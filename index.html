@@ -2453,7 +2453,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.50';
+const APP_VERSION='22.51';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2464,6 +2464,7 @@ const APP_VERSION='22.50';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.51',f:'08/10/2026',h:'03:25',c:[{n:1,t:'🧾 El pedido del momento arranca CERRADO al entrar a Pedidos: muestra sólo cuánto va (grande), productos y unidades. Tocándolo se abre todo.'}]},
   {v:'22.50',f:'08/10/2026',h:'03:10',c:[{n:1,t:'🇵🇾 El pedido que estás armando va en un desplegable: cerrado muestra sólo cuánto va (US$, en rojo si pasa el tope) y cuántos productos; tocándolo se abre todo. Si lo dejás abierto, sigue abierto al cargar unidades.'}]},
   {v:'22.49',f:'08/10/2026',h:'03:00',c:[{n:1,t:'🇵🇾 Pedidos hechos: la tarjeta cerrada muestra grande lo que salió el pedido puesto en la oficina, en dólares.'}]},
   {v:'22.48',f:'08/10/2026',h:'02:55',c:[{n:1,t:'🇵🇾 Pedidos hechos más simples: cerrado muestra sólo la fecha, el % de recargo y en qué está. Productos, unidades y plata, adentro.'}]},
@@ -2875,6 +2876,7 @@ function actualizarApp(){
 
 /* ═══════════ PAGE ROUTING ═══════════ */
 function goPage(page){
+  if(page==='pedidos')window._pedMomOpen=false;   // el pedido del momento arranca cerrado al entrar (08/10/2026)
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   const el=document.getElementById('page-'+page);
   if(el)el.classList.add('active');
@@ -11146,6 +11148,7 @@ let pyVista='probados';
 // PROBADOS Y NUEVOS SE PUEDEN PRENDER JUNTOS (03/10/2026, él: "clickear y sumar los dos juntos o clickear uno solo"):
 // tocar uno lo suma o lo saca; nunca quedan los dos apagados. 🧾 Pedido sigue siendo una vista aparte.
 function pySetVista(v){
+  window._pedMomOpen=false;
   if(v==='hechos'){pyVista='hechos';}
   else{const on={probados:pyVista==='probados'||pyVista==='ambos',nuevos:pyVista==='nuevos'||pyVista==='ambos'};
     if(pyVista==='hechos'){on.probados=v==='probados';on.nuevos=v==='nuevos';}
@@ -12363,11 +12366,19 @@ function pedidoMomentoHTML(){
     const st=t=>`<div style="font-size:.66rem;font-weight:700;color:var(--muted);margin:8px 0 0">${t}</div>`;
     return p.length&&r.length?st('🌸 PERFUMERÍA ('+p.length+')')+p.join('')+st('📦 RESTO ('+r.length+')')+r.join(''):rows.join('');};
   const tit=(t,n,us)=>`<div style="display:flex;justify-content:space-between;font-size:.74rem;font-weight:700;margin:12px 0 2px;padding-bottom:3px;border-bottom:2px solid var(--border2)"><span>${t} (${n})</span><span style="color:var(--muted);font-weight:400">${u2(us)} crudos</span></div>`;
-  return `<div style="margin-bottom:18px;padding:12px 13px;background:var(--surface2);border:1px solid rgba(34,197,94,.45);border-radius:10px">
-    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap">
-      <span style="font-size:.86rem;font-weight:700">🧾 Pedido del momento · ${A.length+N.filas.length+Pp.length} producto(s) · ${uds} u.</span>
-      <span style="font-family:'Syne',sans-serif;font-size:1.45rem;color:${pasa>0?'var(--amber)':'var(--green)'}">${u2(crudo)} <span style="font-size:.7rem;color:var(--muted)">en la web · ${u2(puesto)} puesto${tc?' · '+fmt(Math.round(puesto*tc)):''}</span></span>
-    </div>
+  // CERRADO POR DEFECTO Y MINIMALISTA (08/10/2026, él: "que predeterminado al entrar en pedidos esté cerrado"). Cerrado:
+  // cuánto va (grande), productos y unidades. Abierto: todo lo de antes. Se acuerda si lo abriste mientras
+  // cargás unidades (cada casilla redibuja), y vuelve a cerrado al entrar a Pedidos.
+  return `<details ${window._pedMomOpen?'open':''} ontoggle="window._pedMomOpen=this.open" style="margin-bottom:18px;background:var(--surface2);border:1px solid ${pasa>0?'rgba(245,158,11,.55)':'rgba(34,197,94,.45)'};border-radius:10px">
+    <summary style="cursor:pointer;list-style:none;padding:11px 13px;display:flex;align-items:center;gap:10px">
+      <span style="font-size:1rem">🧾</span>
+      <span style="font-size:.82rem;font-weight:700;white-space:nowrap">Pedido del momento</span>
+      <span style="font-size:1.05rem;font-weight:800;color:${pasa>0?'var(--amber)':'var(--text)'};white-space:nowrap">${u2(crudo).replace('.',',')}</span>
+      <span style="font-size:.66rem;color:var(--muted);white-space:nowrap">${A.length+N.filas.length+Pp.length} prod. · ${uds} u.</span>
+      <span style="margin-left:auto;font-size:.6rem;color:var(--muted)">▾</span>
+    </summary>
+    <div style="padding:0 13px 12px">
+    <div style="font-size:.7rem;color:var(--muted)">${u2(puesto)} puesto${tc?' · '+fmt(Math.round(puesto*tc)):''} · en la web ${u2(crudo)}</div>
     ${crP>0?`<div style="font-size:.66rem;color:#a78bfa;margin-top:2px">🙋 de eso ${u2(crP)} son de uso personal (no son de CYC, no cuentan en el tope)</div>`:''}
     <div style="font-size:.66rem;color:${pasa>0?'var(--amber)':'var(--muted)'};margin-top:2px">${pasa>0?`⚠️ te pasás ${u2(pasa)} de tu tope de ${u2(tope)}`:`tope ${u2(tope)} · te quedan ${u2(-pasa)}`}</div>
     ${cfg}
@@ -12385,7 +12396,8 @@ function pedidoMomentoHTML(){
       ${A.length?`<button class="btn" style="font-size:.62rem;padding:5px 11px" onclick="pyArmadoVaciar()">Vaciar probados</button>`:''}
       ${N.filas.length?`<button class="btn" style="font-size:.62rem;padding:5px 11px" onclick="pedNuevosVaciar()">Vaciar nuevos</button>`:''}
     </div>
-  </div>`;
+    </div>
+  </details>`;
 }
 async function pyArmadoVaciar(){
   if(!confirm('¿Sacar del pedido todas las unidades de productos probados?'))return;
