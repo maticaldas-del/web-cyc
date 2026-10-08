@@ -2453,7 +2453,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.46';
+const APP_VERSION='22.47';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2464,6 +2464,7 @@ const APP_VERSION='22.46';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.47',f:'08/10/2026',h:'02:45',c:[{n:2,t:'🇵🇾 Costos de un pedido: los productos de PRIMERA compra ya no dicen que "subieron" (no había costo anterior): dicen que su costo quedó con el recargo real en vez del 17% estimado. Los que ya tenías y subieron van aparte con ⬆️.'}]},
   {v:'22.46',f:'08/10/2026',h:'02:30',c:[{n:1,t:'🇵🇾 Gastos del pedido: la mercadería va al dólar del panel y lo que el dólar salió más caro es un gasto más, así los % de todos los gastos suman el recargo real. Los costos revisados van en un desplegable.'}]},
   {v:'22.45',f:'08/10/2026',h:'02:15',c:[{n:1,t:'🇵🇾 Pedidos hechos: al abrir un pedido lo primero son los gastos (la plata), después la plata y los días, y la mercadería va abajo en un desplegable cerrado. Así se comparan pedidos sin bajar tanto.'}]},
   {v:'22.44',f:'08/10/2026',h:'02:05',c:[{n:1,t:'🇵🇾 Pedidos hechos: cada pedido muestra con la tarjeta cerrada el % extra que se le cargó ("+22,4% real", o "+17% estimado" si faltan gastos). Productos y unidades salen de la factura cargada.'}]},
@@ -12054,8 +12055,21 @@ function pyGastosChecklistHTML(c){
     const sub=(ca&&ca.subieron)||[];
     pie=`<div style="font-size:.68rem;margin-top:8px;padding-top:7px;border-top:1px solid var(--border);line-height:1.7">
       <div style="display:flex;justify-content:space-between;gap:10px"><b>Recargo real del pedido</b><span><b style="font-size:1.1em">${recTxt}%</b> <span style="${gris}">· el panel estimaba ${Math.round((RECARGO_PY-1)*100)}% · en uno del doble los gastos fijos pesarían la mitad</span></span></div>
-      ${ca?`<details style="margin-top:4px"><summary style="cursor:pointer;list-style:none">💲 Costos revisados: <b>${sub.length}</b> ficha${sub.length===1?'':'s'} subi${sub.length===1?'ó':'eron'}${ca.iguales?` · ${ca.iguales} no`:''} <span style="${gris}">▾</span></summary>
-        <div style="padding:4px 0 0 14px">${sub.map(x=>`<div>${x.nom} · US$ ${Number(x.antes).toFixed(2)} → <b>${Number(x.despues).toFixed(2)}</b></div>`).join('')}${ca.iguales?`<div style="${gris}">${ca.iguales} salieron igual o más baratas: no se tocan.</div>`:''}${!sub.length&&!ca.iguales?`<div style="${gris}">Ninguna cambió.</div>`:''}</div></details>`
+      ${ca?(()=>{
+        // Primera compra ≠ subió (08/10/2026, él: "si esos productos nunca los tuve, ¿cómo aumenta el precio?").
+        // Un producto NUEVO de este pedido nació con el 17% estimado: el "antes" no es un costo anterior,
+        // es la estimación. Va aparte y dicho así. Los datos viejos no traen la marca: se deduce por los
+        // renglones del pedido (los probados tienen prodId y no id; todo lo demás es primera compra).
+        const _prob=new Set((c.items||[]).filter(x=>x&&!x.id&&x.prodId).map(x=>x.prodId));
+        const _esPrim=x=>x.primera!=null?!!x.primera:!_prob.has(x.prodId);
+        const subR=sub.filter(x=>!_esPrim(x)),prim=sub.filter(_esPrim);
+        const res=[subR.length?`<b>${subR.length}</b> que ya tenías subi${subR.length===1?'ó':'eron'}`:'',prim.length?`<b>${prim.length}</b> primera compra`:'',ca.iguales?`${ca.iguales} sin cambios`:''].filter(Boolean).join(' · ')||'ninguna cambió';
+        return `<details style="margin-top:4px"><summary style="cursor:pointer;list-style:none">💲 Costos: ${res} <span style="${gris}">▾</span></summary>
+        <div style="padding:4px 0 0 14px">
+          ${subR.length?`<div style="${gris};margin-top:2px">Ya los tenías: el costo sube al de esta compra</div>`+subR.map(x=>`<div>⬆️ ${x.nom} · US$ ${Number(x.antes).toFixed(2)} → <b>${Number(x.despues).toFixed(2)}</b></div>`).join(''):''}
+          ${prim.length?`<div style="${gris};margin-top:4px">Primera compra: el costo queda con el recargo real (se había puesto con el ${Math.round((RECARGO_PY-1)*100)}% estimado)</div>`+prim.map(x=>`<div>${x.nom} · <b>US$ ${Number(x.despues).toFixed(2)}</b> <span style="${gris}">· estimado era ${Number(x.antes).toFixed(2)}</span></div>`).join(''):''}
+          ${ca.iguales?`<div style="${gris};margin-top:4px">${ca.iguales} salieron igual o más baratas: no se tocan.</div>`:''}
+        </div></details>`;})()
         :'<div style="color:var(--amber);margin-top:4px">💲 Falta que el robot revise los costos (se hace al cargar el último gasto).</div>'}</div>`;
   } else pie=`<div style="font-size:.64rem;color:var(--amber);margin-top:6px;line-height:1.55">Falta: ${R.falta.join(', ')}. Hasta que estén todos, el costo de las fichas no se toca y lo nuevo se calcula con el ${Math.round((RECARGO_PY-1)*100)}% estimado.</div>`;
   const nota=c.usdPanel?`<div style="font-size:.6rem;${gris};margin-top:4px">El panel tenía anotado US$ ${Number(c.usdPanel).toFixed(2)} y la factura dice US$ ${_usd.toFixed(2)}: el recargo se mide contra la factura.</div>`:'';

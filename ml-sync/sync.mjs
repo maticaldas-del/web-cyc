@@ -6839,15 +6839,18 @@ async function aplicarCostosPedido(db, idPedido, c, GO) {
     const antes = parseFloat(p.costUSD) || 0;
     const nuevo = Math.round(usd * r * 100) / 100;
     if (antes > 0 && nuevo <= antes * 1.005) { iguales.push({ nom: p.name, antes, nuevo }); continue; }
-    cambios.push({ pid, p, antes, nuevo });
+    // `primera`: el renglón es un producto NUEVO de este mismo pedido (la ficha nació de él con el 17% estimado).
+    // Ahí no hay un costo anterior de verdad: el "antes" es la estimación, y se dice así (08/10/2026, él).
+    cambios.push({ pid, p, antes, nuevo, primera: !!it.id });
   }
   console.log(`\n💲 COSTOS CON EL RECARGO REAL DE ESTE PEDIDO: ${((r - 1) * 100).toFixed(1)}% (el panel estimaba ${RECARGO_PAR_PCT}%)`);
-  for (const x of cambios) console.log(`  ⬆️ ${x.p.name}: US$ ${x.antes.toFixed(2)} → US$ ${x.nuevo.toFixed(2)}`);
+  for (const x of cambios) console.log(x.primera ? `  · ${x.p.name}: primera compra, costo ajustado del ${RECARGO_PAR_PCT}% estimado al real → US$ ${x.nuevo.toFixed(2)} (estaba US$ ${x.antes.toFixed(2)})` : `  ⬆️ ${x.p.name}: US$ ${x.antes.toFixed(2)} → US$ ${x.nuevo.toFixed(2)}`);
   for (const x of iguales) console.log(`  = ${x.nom}: tiene US$ ${x.antes.toFixed(2)}, este pedido sale US$ ${x.nuevo.toFixed(2)} · no se toca (sólo sube)`);
   if (sinFicha.length) console.log(`  · sin ficha todavía (se crea al llegar con este recargo): ${sinFicha.join(', ')}`);
   if (!GO) { console.log(`  (prueba: no se tocó ninguna ficha)`); return { r, cambios, iguales }; }
   for (const x of cambios) {
-    if (x.antes > 0) {
+    // Primera compra: las ventas que ya hubo salieron de ESTA mercadería, así que van con el costo real (no se congela la estimación).
+    if (x.antes > 0 && !x.primera) {
       const meses = new Set();
       for (const [dk, o] of Object.entries(vp)) for (const v of Object.values(o || {})) {
         if (v && (v.prodId ? v.prodId === x.pid : norm(v.prod || '') === norm(x.p.name || ''))) meses.add(String(dk).slice(0, 7));
@@ -6862,7 +6865,7 @@ async function aplicarCostosPedido(db, idPedido, c, GO) {
   const mal = cambios.filter((x) => Math.abs((parseFloat((ver[x.pid] || {}).costUSD) || 0) - x.nuevo) > 0.005);
   await db.patch('cyc/compraspy/' + idPedido, {
     recargo: r,
-    costosAplicados: { ts: Date.now(), recargo: r, subieron: cambios.map((x) => ({ prodId: x.pid, nom: x.p.name, antes: x.antes, despues: x.nuevo })), iguales: iguales.length },
+    costosAplicados: { ts: Date.now(), recargo: r, subieron: cambios.map((x) => ({ prodId: x.pid, nom: x.p.name, antes: x.antes, despues: x.nuevo, ...(x.primera ? { primera: true } : {}) })), iguales: iguales.length },
   });
   console.log(mal.length ? `  ✗ ${mal.length} no quedaron: revisalo.` : `  ✓ ${cambios.length} ficha(s) con el costo nuevo (releído). Las ventas de meses pasados siguen con el viejo.`);
   if (cambios.length) console.log(`  Esta noche netoweb recalcula el margen con el costo nuevo, y el rescate sube lo que haya quedado bajo.`);
