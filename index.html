@@ -2454,7 +2454,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.58';
+const APP_VERSION='22.59';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2465,6 +2465,7 @@ const APP_VERSION='22.58';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.59',f:'08/10/2026',h:'14:05',c:[{n:1,t:'📈 Línea de tiempo, caja: lo que no es de catálogo (no hay caja que ganar) y lo que está pausado ya no sale en gris como "no se sabe": tiene su color y el globito lo dice.'}]},
   {v:'22.58',f:'08/10/2026',h:'13:25',c:[{n:1,t:'📈 Línea de tiempo: la caja de HOY seguía en gris en algunos productos (los que ya tenían un renglón de hoy a medias en la línea del robot). Ahora hoy siempre toma la caja de la última lectura.'}]},
   {v:'22.57',f:'08/10/2026',h:'13:15',c:[{n:2,t:'📈 Línea de tiempo: las visitas no se guardaban desde el 01/10 (el pedido a ML fallaba callado). Ya se guardan de nuevo y se rellenan los días que faltaron.'},{n:1,t:'📈 Línea de todo: el día de hoy toma la caja, el stock y el remate de ahora.'}]},
   {v:'22.56',f:'08/10/2026',h:'12:58',c:[{n:2,t:'📈 Línea de tiempo de TODOS los productos juntos (Métricas → "📈 Línea de todo", o el botón "📈 Todos" adentro de la línea de un producto): ventas, ganancia por día, % de ganancia, stock en Full, visitas, un índice de precio, cuántas publicaciones subieron y bajaron cada día (con la lista entera de subas y bajadas y su motivo), remate y caja.'},{n:1,t:'📈 Línea de tiempo: el día de HOY ya muestra si ganamos o perdemos la caja (la última lectura del robot, que es cada hora).'}]},
@@ -8577,7 +8578,8 @@ function _lineaJunta(porMla){
         // pausada y se cobraba $3.310). Vale el de las activas o las que vendieron ese día.
         if(x.est==='active'||Number(x.u)>0)o.pA=o.pA==null?Number(x.p):Math.min(o.pA,Number(x.p));
         else if(x.est==null)(o._c=o._c||[]).push({p:Number(x.p),ult:ultVta(k),viva:vive()});}
-      if(x.caja){const r={g:3,c:2,p:1,n:0};if(o.caja==null||(r[x.caja]||0)>(r[o.caja]||0))o.caja=x.caja;}
+      // `nocat`/`sincaja` llegan crudos de la línea del robot (su tabla esperaba otros nombres): se leen como n / s.
+      if(x.caja){const _cj={nocat:'n',sincaja:'s'}[x.caja]||x.caja;const r={g:3,c:2,p:1,s:0.5,n:0};if(o.caja==null||(r[_cj]||0)>(r[o.caja]||0))o.caja=_cj;}
       if(x.rem)o.rem=true;
       if(x.esc!=null)o.esc=o.esc==null?Number(x.esc):Math.min(o.esc,Number(x.esc));
       if(x.mg!=null)o.mg=o.mg==null?Number(x.mg):Math.min(o.mg,Number(x.mg));
@@ -8642,8 +8644,10 @@ function lineaPintar(prodId){
     const _ay=dateToKey(new Date(Date.now()-864e5));
     // LA CAJA DE HOY (08/10/2026, él: "porque no muestra ahora si ganamos o perdemos la caja"): el robot la lee
     // cada HORA y la deja en mllinks (`caja`). Misma regla que la noche: sólo publicaciones activas, gana la mejor.
-    const _rc={winning:3,sharing:2,losing:1},_cc={winning:'g',sharing:'c',losing:'p'};let cjH=null,cjR=0;
+    const _rc={winning:4,sharing:3,losing:2,sincaja:1,nocat:0.5},_cc={winning:'g',sharing:'c',losing:'p',sincaja:'s',nocat:'n'};let cjH=null,cjR=0;
     Object.keys(C.porMla).filter(_mlaOk).forEach(m=>{const e=_lk[m]||{};if((e.status||'')!=='active')return;const r=_rc[e.caja]||0;if(r>cjR){cjR=r;cjH=_cc[e.caja];}});
+    // Sin ninguna publicación activa no hay caja que pelear: se dice (antes quedaba en gris como "no se sabe").
+    const _hayAct=Object.keys(C.porMla).filter(_mlaOk).some(m=>((_lk[m]||{}).status||'')==='active');if(!cjH&&!_hayAct)cjH='z';
     dias[_hk]={u:ents.reduce((a,v)=>a+(Number(v.qty)||1),0),uR:null,vis:null,st,stN:1,p:(dias[_ay]&&dias[_ay].p)||null,caja:cjH||(_prevH&&_prevH.caja)||null,rem:!!(_prevH&&_prevH.rem),esc:_prevH?_prevH.esc:null,mg:_prevH?_prevH.mg:null,tot:null,pubs:1,hoy:true};if(_prevH&&_prevH.vis!=null)dias[_hk].vis=_prevH.vis;if(_prevH&&_prevH.p>0&&!dias[_hk].p)dias[_hk].p=_prevH.p;}}
   const ks=_lineaDias(_lineaRango); const N=ks.length;
   const W=1000, X=i=>i*W/N, bw=Math.max(W/N,0.6);
@@ -8769,7 +8773,7 @@ function lineaPintar(prodId){
     const est=d&&(d.esc!=null?'esc':d.rem?'rem':null);
     if(L.est)svg+=`<rect x="${x}" y="${L.est[0]}" width="${bw}" height="${L.est[1]}" fill="${est==='esc'?'#a855f7':est==='rem'?'#f97316':'rgba(128,128,128,.15)'}"/>`;
     // caja de compra
-    const cj=d&&d.caja; if(L.caja)svg+=`<rect x="${x}" y="${L.caja[0]}" width="${bw}" height="${L.caja[1]}" fill="${cj==='g'?'var(--green)':cj==='c'?'#f59e0b':cj==='p'?'var(--red)':cj==='n'?'#94a3b8':'rgba(128,128,128,.15)'}"/>`;
+    const cj=d&&d.caja; if(L.caja)svg+=`<rect x="${x}" y="${L.caja[0]}" width="${bw}" height="${L.caja[1]}" fill="${cj==='g'?'var(--green)':cj==='c'?'#f59e0b':cj==='p'?'var(--red)':cj==='n'?'#94a3b8':cj==='s'?'#64748b':cj==='z'?'#3f3f46':'rgba(128,128,128,.15)'}"/>`;
   });
   if(ps.length)svg+=`<text x="${W-2}" y="${L.pr[0]+9}" font-size="10" text-anchor="end" fill="var(--muted)">${fmt(Math.max(...ps))}</text>`+(Math.max(...ps)>Math.min(...ps)?`<text x="${W-2}" y="${L.pr[0]+L.pr[1]}" font-size="10" text-anchor="end" fill="var(--muted)">${fmt(Math.min(...ps))}</text>`:'');
   if(L.pct){const yq=q=>L.pct[0]+L.pct[1]-(qMax>qMin?(Math.max(qMin,Math.min(qMax,q))-qMin)/(qMax-qMin):.5)*L.pct[1];let prev=null;
@@ -8816,7 +8820,7 @@ function lineaPintar(prodId){
       d&&d.p>0?`💲 ${d.pCob?'cobrado':'precio'} ${fmt(d.p)}${d.pCob?' por unidad':''}`:'',
       d&&d.mg!=null?`📊 margen ${Number(d.mg).toFixed(0)}%`:'',
       d&&d.esc!=null?`🪜 escalera, escalón ${d.esc}%`:(d&&d.rem?'🔻 rematando':''),
-      d&&d.caja?`🥊 caja: ${(d.hoy?{g:'la ganamos (última lectura del robot)',c:'compartida (última lectura del robot)',p:'la perdemos (última lectura del robot)'}:{g:'la ganábamos',c:'compartida',p:'la perdíamos',n:'no es de catálogo'})[d.caja]||d.caja}`:'',
+      d&&d.caja?`🥊 caja: ${(d.hoy?{g:'la ganamos (última lectura del robot)',c:'compartida (última lectura del robot)',p:'la perdemos (última lectura del robot)',n:'no es de catálogo: no hay caja que ganar',s:'ML no informa caja en ese catálogo',z:'ninguna publicación activa (pausadas): no pelea la caja'}:{g:'la ganábamos',c:'compartida',p:'la perdíamos',n:'no es de catálogo',s:'ML no informaba caja'})[d.caja]||d.caja}`:'',
       ...es.map(e=>`${motivoTxt[e.motivo]||'cambio de precio'}: ${fmt(e.de)} → ${fmt(e.a)}`)].filter(Boolean).join('\n');
     svg+=`<rect x="${X(i)}" y="0" width="${Math.max(bw,1)}" height="${H}" fill="transparent"><title>${t}</title></rect>`;});
   // resumen del rango
@@ -8865,7 +8869,7 @@ function lineaPintar(prodId){
     ${_adHTML?`<div style="margin-top:8px;font-size:.7rem;line-height:1.5"><div style="font-weight:700;margin-bottom:2px">💵 ¿Cada cambio de precio dejó más plata por día?</div>${_adHTML}</div>`:''}
     <details style="margin-top:8px" ${_lineaDetAb?'open':''} ontoggle="_lineaDetAb=this.open"><summary style="cursor:pointer;font-size:.68rem;color:var(--muted)">Qué significa cada color ▾</summary>
     <div style="font-size:.64rem;color:var(--muted);margin-top:6px;line-height:1.9">
-      ${ley('var(--green)','vendió / con stock / caja ganada')}${ley('#f59e0b','vendido en remate / caja compartida')}${ley('var(--red)','sin stock / caja perdida')}${ley('#60a5fa','visitas')}${ley('#f97316','rematando')}${ley('#a855f7','escalera')}${ley('rgba(128,128,128,.35)','no se sabe')}
+      ${ley('var(--green)','vendió / con stock / caja ganada')}${ley('#f59e0b','vendido en remate / caja compartida')}${ley('var(--red)','sin stock / caja perdida')}${ley('#60a5fa','visitas')}${ley('#f97316','rematando')}${ley('#a855f7','escalera')}${ley('#94a3b8','no es de catálogo (no hay caja)')}${ley('#3f3f46','pausada (no pelea la caja)')}${ley('rgba(128,128,128,.35)','no se sabe')}
       <span style="margin-right:10px">📦 stock en unidades, color por los días que alcanza: <span style="color:var(--red)">━ falta (−7)</span> <span style="color:#f97316">━ justo (7-20)</span> <span style="color:var(--green)">━ bien (20-45)</span> <span style="color:#eab308">━ sobra (45-90)</span> <span style="color:#a855f7">━ exceso (+90)</span></span><span style="margin-right:10px"><span style="color:#f59e0b">━</span> costo real por unidad (mercadería × dólar del mes + IIBB y monotributo, que son % de lo cobrado: por eso se mueve un poco; el detalle sale al pasar el mouse)</span><span style="margin-right:10px">📊 % de ganancia: la línea toma el color del nivel de ese día (🔴 Bajo · 🟠 Justo · 🟢 Bien · 🩵 Bueno · 🔵 Excelente · 🟣 Estrella · 💎 JOYA), misma cuenta que Ventas</span><span style="margin-right:10px">▲▼ cambio de precio (con su motivo)</span><br>
       Pasá el mouse (o tocá) un día para ver todo lo que pasó. El precio es el más barato de sus publicaciones; ventas, visitas y stock suman todas. Stock, caja y remate de los días viejos no los guarda ML: quedan en gris. En stock: la línea son las unidades en Full (cuando se sabe el número) y la franja finita de abajo dice si hubo o no hubo stock ese día.
     </div></details></div>`;
