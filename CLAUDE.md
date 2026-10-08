@@ -826,6 +826,8 @@ algun momento van a volver a tener stock"*.
    Full es de antes de la marca `aprox` ("SIN MARCA") y `edadFullCb` exigía fecha real. Ahora una fecha aproximada
    cuenta como MÍNIMO (la mercadería está ahí por lo menos desde que el robot la vio): puede esperar de más, nunca
    bajar antes. La escalera dice en el log por qué deja afuera a cada una, y `porquebajo` muestra el registro crudo.
+   **Medido con eso: a su precio de hoy ya queda en −3,7%** (no hay escalón abajo de 0%) y ganar la caja (~$105.000) es
+   ~−25%. Venderlo es perder plata en esa unidad: el robot no baja de 0% sin que él lo pida.
  · **Pad 2 (`MLA1782639641`) se deja como está**: está marcada liquidando a mano (19/09), ya GANA la caja a $425.700
    (7,8%) y no vende — bajar más no gana nada, ya es el botón de comprar. El problema es la demanda, no el precio.
  · **Quedan, a propósito:** liquidando · supervisor 🔴 · una suba por día y +25% por suba (sigue al día siguiente) ·
