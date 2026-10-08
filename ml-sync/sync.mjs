@@ -668,6 +668,16 @@ function compraCruzaBarrera(v, ents) {
   }
   return ped >= UMBRAL_ENVIO_GRATIS;
 }
+// UNA CLÁSICA SIN VENTAS PROPIAS NO MIDE EL ENVÍO CON LAS VENTAS DE UNA PREMIUM (08/10/2026, etapa 1). Si una
+// publicación no vendió, el envío se deduce con las ventas de las otras del MISMO producto. Ahí entraban
+// las de su hermana Premium, medidas con la comisión CLÁSICA: la diferencia de comisión (~13 puntos, cuotas
+// incluidas) aparecía como "envío" — en el Watch S5 ~$65.000 en vez de ~$7.300 — y el rescate subía de más.
+// Se sacan las ventas de toda publicación que figure en cyc/mlcuotas (ahí está cada Premium). Si esa lista
+// no se pudo leer no se sabe cuál es cuál: no se usan ventas ajenas y va a la tarifa de ML, como una Premium.
+function ventasProdClasica(lista, cuotasMap) {
+  if (!cuotasMap) return [];
+  return (lista || []).filter((v) => !(v && v.mla && cuotasMap[v.mla]));
+}
 async function envioDeducido(ventas, precioHoy, feeAt, opts = {}) {
   const { modo = 'min' } = opts; // 'min' = mejor caso (para subir) · 'max' = peor caso (para bajar)
   if (!ventas || !ventas.length) return { envio: null, usadas: 0, mismoLado: false };
@@ -1914,7 +1924,7 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
       const q = v.qty || 1, tot = (v.total || 0) / q, net = (v.neto || 0) / q;
       if (tot <= 0 || net <= 0 || compraCruzaBarrera(v, ents)) continue;
       if (v.mla) (vtaMla[v.mla] = vtaMla[v.mla] || []).push({ tot, net });
-      if (v.prodId) (vtaProd[v.prodId] = vtaProd[v.prodId] || []).push({ tot, net });
+      if (v.prodId) (vtaProd[v.prodId] = vtaProd[v.prodId] || []).push({ tot, net, mla: v.mla });   // mla: para no mezclar Premium y Clásica (08/10/2026)
     }
   }
   const feeCache = {};
@@ -2029,7 +2039,7 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
         const site = b.site_id || 'MLA', lt = b.listing_type_id, cat = b.category_id;
         const com = await feeAt(site, precio, lt, cat);
         if (com == null) { noVa('ML no devolvió la comisión', precio); continue; }
-        const ventas0 = (vtaMla[mla] && vtaMla[mla].length) ? vtaMla[mla] : (b.listing_type_id === 'gold_pro' ? [] : (vtaProd[p.id] || []));   // una Premium sin ventas propias no mide el envío con ventas de otro tipo de publicación (etapa 1, 27/09): va a la tarifa de ML
+        const ventas0 = (vtaMla[mla] && vtaMla[mla].length) ? vtaMla[mla] : (b.listing_type_id === 'gold_pro' ? [] : ventasProdClasica(vtaProd[p.id], cuotasCfg));   // una Premium sin ventas propias no mide el envío con ventas de otro tipo de publicación (etapa 1, 27/09): va a la tarifa de ML · y una Clásica no usa las de una Premium (08/10/2026)
         // Sólo ventas del mismo lado de los $33.000 (arriba sin ninguna de arriba → envío estimado,
         // el peor medido). Y si ML no contesta alguna comisión no se activa: medir a medias da el
         // envío de menos y el margen de más (F3, 25/09/2026).
@@ -2288,6 +2298,11 @@ async function filtrarRescate(db, rr, o) {
       if (!r || !r.mla || r.estado !== 'medido' || !['remate', 'escalera', 'bajar'].includes(r.motivo)) continue;
       if (!(Number(r.de) > 0 && Number(r.a) > 0 && Number(r.a) < Number(r.de))) continue;
       if (!(Number(r.total) < 0) || Number(r.ts) < (ultTs[r.mla] || 0)) continue;
+      // LAS BAJAS DEL CEREBRO LAS JUZGA EL CEREBRO (08/10/2026, etapa 1). El supervisor las anota como "bajar"
+      // y acá se deshacían con su juicio salteando "lo bajé yo" y "60+ días de stock": dos jueces sobre el
+      // mismo precio (una baja casi siempre da total < 0: cobra menos). Es la misma regla del "volver atrás"
+      // del supervisor ("lo cambió el cerebro: lo juzga él"). Quedan con los frenos de siempre.
+      { const apR = autoprecio && autoprecio[r.mla]; if (apR && apR.por === 'cerebro' && Math.abs((Number(apR.ts) || 0) - Number(r.ts)) < 864e5) continue; }
       bajaPerdio[r.mla] = r;
     }
     // LO PIENSA ANTES DE DESHACER (05/10/2026). Él: *"que lo piense, quizás en algún caso es mejor dejarla
@@ -2472,7 +2487,7 @@ async function rescatarAlVender(db, o) {
           const nuevos = {}; for (const v of x.vars) if ((v.price || 0) < a) nuevos[String(v.id)] = a;
           r = await raiseVariations(mla, nuevos, token);
           if (r && r.ok) { if (r.parcial) console.log(`   ⚠️ ${mla}: subí sólo algunas variantes; ${(r.saltadas || []).length} no (${(r.saltadas || []).map((z) => z.why).join(', ')})`); r = { ok: true, from: x.de, to: a, parcial: !!r.parcial, saltadas: r.saltadas || [] }; }
-        } else r = await raisePriceTo(mla, a, token);
+        } else r = await raisePriceTo(mla, a, token, { cruza: !!(x.cruza && a >= UMBRAL_ENVIO_GRATIS) });   // cruza sólo si la cuenta midió que paga (08/10/2026)
         if (!r || !r.ok) await _soltarSubiendo(db, mla, _msub);
         if (r && r.ok) {
           let quedo = null;
@@ -2498,6 +2513,19 @@ async function rescatarAlVender(db, o) {
   return { marcas, avisos };
 }
 
+// EL PRECIO MÁS BAJO QUE LLEGA A LA META (08/10/2026, etapa 1). `corto` no llega, `llega` sí: se parte el tramo
+// de a $10 preguntando `okEn(precio)` (true/false; null = ML no contestó). Devuelve un múltiplo de $10 que llega;
+// si ML no contesta en el medio devuelve `llega` tal cual (el de antes: más alto, pero seguro de llegar).
+async function precioJustoMeta(corto, llega, okEn) {
+  let a = corto, z = llega;
+  while (z - a > 10) {
+    let mid = Math.floor((a + z) / 20) * 10; if (mid <= a) mid = a + 10; if (mid >= z) break;
+    const r = await okEn(mid);
+    if (r == null) return llega;
+    if (r) z = mid; else a = mid;
+  }
+  return z;
+}
 async function calcSubirPorMargen(db, o) {
   const { products, labels, accounts } = o;
   const PISO = o.piso, META = o.meta;
@@ -2535,7 +2563,7 @@ async function calcSubirPorMargen(db, o) {
       const q = v.qty || 1, tot = (v.total || 0) / q, net = (v.neto || 0) / q;
       if (tot <= 0 || net <= 0 || compraCruzaBarrera(v, ents) || v.netoEstimado) continue;   // Revisión final: sin netos estimados (envío ≈ 0)
       if (v.mla) (vtaMla[v.mla] = vtaMla[v.mla] || []).push({ tot, net });
-      if (v.prodId) (vtaProd[v.prodId] = vtaProd[v.prodId] || []).push({ tot, net });
+      if (v.prodId) (vtaProd[v.prodId] = vtaProd[v.prodId] || []).push({ tot, net, mla: v.mla });   // mla: para no mezclar Premium y Clásica (08/10/2026)
     }
   }
   const feeCache = {};
@@ -2591,7 +2619,7 @@ async function calcSubirPorMargen(db, o) {
         // se restan del neto a cada precio. Premium sin cuotas medidas → no se mide.
         const cuoS = cuotaPremiumDe(cuotasS, mla, b.listing_type_id);
         if (cuoS == null) { frenados.push({ mla, label, nom: (links[mla].title || p.name || mla).slice(0, 40), why: 'es Premium y no tengo las cuotas medidas: no mido el margen a medias' }); continue; }
-        const ventas0 = (vtaMla[mla] && vtaMla[mla].length) ? vtaMla[mla] : (b.listing_type_id === 'gold_pro' ? [] : (vtaProd[p.id] || []));   // una Premium sin ventas propias no mide el envío con ventas de otro tipo de publicación (etapa 1, 27/09): va a la tarifa de ML
+        const ventas0 = (vtaMla[mla] && vtaMla[mla].length) ? vtaMla[mla] : (b.listing_type_id === 'gold_pro' ? [] : ventasProdClasica(vtaProd[p.id], cuotasS));   // una Premium sin ventas propias no mide el envío con ventas de otro tipo de publicación (etapa 1, 27/09): va a la tarifa de ML · y una Clásica no usa las de una Premium (08/10/2026)
         const ladoS = ventas0.filter((v) => (v.tot >= UMBRAL_ENVIO_GRATIS) === (precio0 >= UMBRAL_ENVIO_GRATIS));
         const ventas = ladoS.length ? ladoS : (precio0 >= UMBRAL_ENVIO_GRATIS ? [] : ventas0);
         let envio = -Infinity, faltoComS = false;
@@ -2665,7 +2693,7 @@ async function calcSubirPorMargen(db, o) {
         // El piso decide SI se toca; la meta decide HASTA DÓNDE. Con los dos pegados, cualquier
         // cosa mínima —un envío un peso más caro— volvía a hundir lo recién subido.
         const pisoDe = (P) => costoTotDe(P) * (1 + PISO) + PISO * envio;
-        let P = Math.round(precio0), ok = false, n0 = null, m0 = null;
+        let P = Math.round(precio0), ok = false, n0 = null, m0 = null, Pcorto = null;
         for (let it = 0; it < 14; it++) {
           const n = await netoDe(P); if (n == null) break;
           const m = metaDe(P);
@@ -2673,10 +2701,17 @@ async function calcSubirPorMargen(db, o) {
           // publicación entra o no. Las vueltas siguientes buscan la META.
           if (it === 0) { n0 = n; m0 = apCorto[mla] ? metaDe(P) : pisoDe(P); }
           if (n >= m) { ok = true; break; }
+          Pcorto = P;
           // El hueco se cierra ~0,7 pesos por peso de aumento; se pide 1,5× para no quedar corto.
           P = Math.ceil((P + (m - n) * 1.5) / 10) * 10;
           if (P > TECHO * 1.2) break;
         }
+        // EL RESCATE LLEGA A LA META, NO MÁS ARRIBA (08/10/2026, etapa 1). El 1,5× de arriba se pasaba: pedía
+        // entre 1% y 4% más que el precio justo de la meta, y la corrección de subas de más sólo baja si sobra
+        // 3%+, así que eso quedaba para siempre. Entre el último precio que NO llegaba y el que sí, se busca de a
+        // $10 el más bajo que todavía llega (misma cuenta, comisión preguntada a ML). Si ML no contesta, queda el
+        // de siempre (el más alto, que llega seguro).
+        if (ok && Pcorto != null && P - Pcorto > 10) P = await precioJustoMeta(Pcorto, P, async (Q) => { const n = await netoDe(Q); return n == null ? null : n >= metaDe(Q); });
         const nom = (links[mla].title || p.name || mla).slice(0, 40);
         if (n0 == null) { frenados.push({ mla, label, nom, why: 'ML no me dio la comisión' }); continue; }
         // ── LA SUBA DEL ROBOT QUE QUEDÓ DE MÁS (08/10/2026) ──────────────────────────────────────
@@ -2738,14 +2773,17 @@ async function calcSubirPorMargen(db, o) {
           final = 32999; nota = ` (frenado en la barrera de los ${money(TOPE_ENVIO)}; para el piso hacían falta ${money(P)})`;
           const envA = Math.max(CAND_ENVIO_ARRIBA, Number(p.netoCalcEnvio) || 0, Number(p.gestFull) || 0);
           const netoA = async (Q) => { const c = await feeAt(b.site_id || 'MLA', Q, b.listing_type_id, b.category_id, t.access_token); return c == null ? null : Q - c - envA - Q * cuoS; };
-          let Q = Math.max(P, TOPE_ENVIO), okA = false;
+          let Q = Math.max(P, TOPE_ENVIO), okA = false, Qcorto = null;
           for (let it = 0; it < 14; it++) {
             const n = await netoA(Q); if (n == null) break;
             const m = costoTotDe(Q) * (1 + META) + META * envA;
             if (n >= m) { okA = true; break; }
+            Qcorto = Q;
             Q = Math.ceil((Q + (m - n) * 1.5) / 10) * 10;
             if (Q > TECHO) break;
           }
+          // igual que arriba (08/10/2026): el precio más bajo de arriba de la barrera que todavía llega a la meta
+          if (okA && Qcorto != null && Q - Qcorto > 10) Q = await precioJustoMeta(Qcorto, Q, async (X) => { const n = await netoA(X); return n == null ? null : n >= costoTotDe(X) * (1 + META) + META * envA; });
           const nB = await netoDe(32999);
           const nQ = okA ? await netoA(Q) : null;
           const ganB = nB == null ? null : nB - costoTotDe(32999), ganQ = nQ == null ? null : nQ - costoTotDe(Q);
@@ -10003,6 +10041,27 @@ async function main() {
             const mg = (neto - costo - mlx) / (costo + mlx + env) * 100;
             if (mg <= SUBE_DESDE_AV + 5) cand.add(p.id);
           }
+          // PUBLICACIÓN POR PUBLICACIÓN, NO SÓLO EL NETO DEL PRODUCTO (08/10/2026, etapa 1). `netoCalc` sale de
+          // la publicación que "gana" en netoweb y una ACTIVA le gana siempre a una pausada: si el producto tiene un
+          // color o una cuenta activa sana, los colores pausados sin stock nunca llegaban a este filtro y nadie los
+          // rescataba (al vender necesita una venta; el cerebro mira sólo activas). Misma cuenta, con la fila de
+          // cada publicación de cyc/netopub. Si no se puede leer, se sigue como antes (sólo el neto del producto).
+          try {
+            const npPub = (await db.get('cyc/netopub')) || {};
+            const pIdxPub = {}; for (const p of products) if (p && p.id) pIdxPub[p.id] = p;
+            let pausPub = 0;
+            for (const fila of Object.values(npPub)) {
+              if (!fila || fila.sinMedir || !fila.pid || cand.has(fila.pid)) continue;
+              const p = pIdxPub[fila.pid]; if (!p || !(parseFloat(p.costUSD) > 0)) continue;
+              const neto = Number(fila.neto), precio = Number(fila.precio) || 0;
+              if (!(neto > 0) || !(precio > 0)) continue;
+              const costo = costoPesos(p, 1, tcR).costo;
+              const mlx = precio * (mlExtraPct(fila.cuenta) + monoR) / 100;
+              const mg = (neto - costo - mlx) / (costo + mlx + (Number(fila.envio) || 0)) * 100;
+              if (mg <= SUBE_DESDE_AV + 5) { cand.add(fila.pid); pausPub++; }
+            }
+            if (pausPub) console.log(`   + ${pausPub} producto(s) con alguna publicación cerca del ${SUBE_DESDE_AV}% aunque el neto del producto esté sano (por ej. un color pausado)`);
+          } catch { console.log('   ⚠️ no pude leer cyc/netopub: el filtro mira sólo el neto de cada producto (como antes)'); }
           console.log(`\n── RESCATE (${SUBE_DESDE_AV}% o menos → ${Math.round(META_AV * 100)}%) · ${cand.size} producto(s) cerca para medir con ML ──`);
           if (cand.size) {
             const rr = await calcSubirPorMargen(db, { products, labels, accounts, soloProds: cand, piso: (SUBE_DESDE_AV + 0.5) / 100, meta: META_AV });
@@ -10287,7 +10346,9 @@ async function main() {
         }
         const tareasR = rescates.slice(0, RESCATE_MAX).map((x) => {
           const tope = Math.floor(x.de * 1.25 / 10) * 10;
-          return { tipo: 'rescate', f: { mla: x.mla, nom: x.nom, cuenta: x.label, precio: x.de, pct: x.pct, vars: x.vars, meta: x.a }, a: Math.min(x.a, tope), corto: x.a > tope };
+          // `cruza` viaja con la tarea (08/10/2026): sin él la suba pedía cruzar los $33.000 (calcSubirPorMargen ya
+          // midió que paga CON el envío restado) y `raisePriceTo` la frenaba en $32.999; a la noche siguiente fallaba.
+          return { tipo: 'rescate', f: { mla: x.mla, nom: x.nom, cuenta: x.label, precio: x.de, pct: x.pct, vars: x.vars, meta: x.a, cruza: !!x.cruza }, a: Math.min(x.a, tope), corto: x.a > tope };
         });
         if (rescates.length > RESCATE_MAX) console.log(`   (quedan ${rescates.length - RESCATE_MAX} rescates para mañana: tope de ${RESCATE_MAX} por noche)`);
         const tareasC = corregirAv.map((x) => ({ tipo: 'corrige', f: { mla: x.mla, nom: x.nom, cuenta: x.label, precio: x.de, pct: x.pct, mgPw: x.mg }, a: x.a }));
@@ -19285,28 +19346,61 @@ async function main() {
       // UNA vez por Premium y, si la comisión ya las trae, se guarda pct 0 (`enComision`, con el % medido al
       // lado): todos los que leen cyc/mlcuotas dejan de contarlas dos veces. Si ML no contesta, queda el %
       // (el lado prudente: el margen se ve menor, nunca mayor).
-      let enComN = 0, enComFallo = 0;
+      // SI ML NO CONTESTA, NO SE PISA LO QUE YA SE SABÍA (08/10/2026). La primera versión dejaba el % del
+      // pago cuando la pregunta fallaba (429) o cuando faltaba el dato de la publicación (se cayó la tanda de
+      // /items), y con las 4 cuentas leídas el `set` pisaba el {pct 0, enComision} de la noche anterior: las
+      // cuotas volvían a contarse dos veces, el margen se veía ~13 puntos más bajo y el rescate subía de más.
+      // Ahora, sin respuesta: si lo guardado decía "ya adentro de la comisión" se conserva (con el % del pago
+      // de hoy al lado); si no hay nada guardado (o no se pudo leer) esa publicación NO se escribe esta noche
+      // — sin cuotas medidas una Premium no se mueve — y se cuenta en el log.
+      let enComN = 0, enComFallo = 0, enComConserva = 0;
+      const sinEscribir = [];
       for (const mla of Object.keys(out)) {
         const pi = premInfo[mla];
-        if (!pi || !(pi.price > 0) || !pi.cat) continue;
-        try {
-          const d = await mlGet(`/sites/${pi.site}/listing_prices?price=${Math.round(pi.price)}&listing_type_id=gold_pro&category_id=${pi.cat}`, pi.tok);
-          const o = Array.isArray(d) ? d[0] : d;
-          if (Number(o?.sale_fee_details?.financing_add_on_fee) > 0) {
-            out[mla] = { ...out[mla], pct: 0, enComision: true, pctPago: out[mla].pct, estimado: false };
-            enComN++;
+        let resp = null;   // null = no se pudo preguntar · true/false = ML contestó si la comisión ya trae las cuotas
+        if (pi && pi.price > 0 && pi.cat) {
+          try {
+            const d = await mlGet(`/sites/${pi.site}/listing_prices?price=${Math.round(pi.price)}&listing_type_id=gold_pro&category_id=${pi.cat}`, pi.tok);
+            const o = Array.isArray(d) ? d[0] : d;
+            if (o && o.sale_fee_details) resp = Number(o.sale_fee_details.financing_add_on_fee) > 0;
+            else enComFallo++;
+          } catch { enComFallo++; }
+        } else enComFallo++;
+        // el % que muestra el pago: si el renglón ya era "adentro de la comisión" (conservado), es su pctPago
+        const pctPagoDe = (x) => (x && x.enComision ? x.pctPago : x && x.pct);
+        if (resp === true) {
+          out[mla] = { ...out[mla], pct: 0, enComision: true, pctPago: pctPagoDe(out[mla]), estimado: false };
+          enComN++;
+        } else if (resp === false) {
+          // ML dice que la comisión ya NO las trae: un renglón conservado en 0% vuelve a su % del pago
+          if (out[mla].enComision) {
+            const pp = parseFloat(out[mla].pctPago);
+            if (isFinite(pp)) { const { enComision, pctPago, ...resto } = out[mla]; out[mla] = { ...resto, pct: pp, ts: Date.now() }; }
+            else { delete out[mla]; sinEscribir.push(mla); }
           }
-        } catch { enComFallo++; }
+        } else {
+          const pv = cuoPrev && cuoPrev[mla];
+          if (pv && pv.enComision) {
+            out[mla] = { ...pv, pctPago: out[mla].enComision ? pv.pctPago : out[mla].pct, ts: Date.now() };
+            enComConserva++;
+          } else if (!pv) {
+            // sin registro previo (o sin poder leerlo) no se sabe si la comisión las trae: esta noche no se escribe
+            delete out[mla]; sinEscribir.push(mla);
+          }
+          // con un registro previo que NO era "adentro de la comisión", se sigue con el % medido (como antes)
+        }
       }
-      console.log(`   ${enComN} Premium ya traen las cuotas ADENTRO de la comisión de ML: se guardan en 0% para no contarlas dos veces${enComFallo ? ` · ${enComFallo} no se pudieron preguntar (quedan con su %)` : ''}`);
+      console.log(`   ${enComN} Premium ya traen las cuotas ADENTRO de la comisión de ML: se guardan en 0% para no contarlas dos veces${enComFallo ? ` · ${enComFallo} no se pudieron preguntar` : ''}${enComConserva ? ` · ${enComConserva} conservan su "ya adentro" de antes` : ''}`);
+      if (sinEscribir.length) console.log(`   ⚠️ ${sinEscribir.length} Premium NO se escriben esta noche (ML no dijo si la comisión trae las cuotas y no había nada guardado): ${sinEscribir.join(', ')} — sin cuotas medidas no se les mueve el precio`);
       console.log(`=== CUOTAS SIN INTERÉS (publicaciones PREMIUM) · últimos ${DIAS} días ===`);
       console.log(`Premium: ${Object.keys(premium).length} · con ventas medidas: ${medidos.length} · sin ventas (se les pone el peor medido, ${peor.toFixed(1)}%): ${Object.keys(out).length - medidos.length}`);
       for (const [mla, x] of Object.entries(out)) console.log(`   ${mla} · ${(premium[mla] || '?').padEnd(8)} · cuotas ${String(x.pct).padStart(5)}% del precio${x.enComision ? ` (ya adentro de la comisión · el pago muestra ${x.pctPago}%)` : ''}${x.estimado ? ' (estimado: nunca vendió)' : ` · ${x.n} venta(s)`} · ${((links[mla] || {}).title || '').slice(0, 36)}`);
       if (!DRY) {
-        if (cuentasOk === labels.length) await db.set('cyc/mlcuotas', out);
+        // sin poder leer lo guardado no se reemplaza entero: se borrarían renglones que esta vuelta no vio (08/10/2026)
+        if (cuentasOk === labels.length && cuoPrev) await db.set('cyc/mlcuotas', out);
         else if (Object.keys(out).length) await db.patch('cyc/mlcuotas', out);
         const rele = (await db.get('cyc/mlcuotas')) || {};
-        console.log(`✓ Guardado en cyc/mlcuotas (${cuentasOk === labels.length ? 'reemplazado entero' : 'sólo agregado'}): ${Object.keys(rele).length} publicación(es). netoweb y los comandos de precio lo descuentan.`);
+        console.log(`✓ Guardado en cyc/mlcuotas (${cuentasOk === labels.length && cuoPrev ? 'reemplazado entero' : 'sólo agregado'}): ${Object.keys(rele).length} publicación(es). netoweb y los comandos de precio lo descuentan.`);
       }
       // Etapa 5: sin NINGUNA cuenta leída entera el paso no midió nada. Sale con error para que
       // el aviso de la noche (avisonoche) lo nombre, en vez de figurar "ok".
@@ -25510,7 +25604,7 @@ async function main() {
           const q = v.qty || 1, tot = (v.total || 0) / q, net = (v.neto || 0) / q;
           if (tot <= 0 || net <= 0 || compraCruzaBarrera(v, ents) || v.netoEstimado) continue;   // Revisión final: sin netos estimados (envío ≈ 0)
           if (v.mla) (vtaMla[v.mla] = vtaMla[v.mla] || []).push({ tot, net });
-          if (v.prodId) (vtaProd[v.prodId] = vtaProd[v.prodId] || []).push({ tot, net });
+          if (v.prodId) (vtaProd[v.prodId] = vtaProd[v.prodId] || []).push({ tot, net, mla: v.mla });   // mla: para no mezclar Premium y Clásica (08/10/2026)
         }
       }
       const compEnvio = [];   // comparación: tarifa de ML vs envío deducido de nuestras ventas
@@ -25598,7 +25692,7 @@ async function main() {
             // diferencia eran justo el envío. Un número así hace pensar que un producto está
             // holgado cuando está abajo del piso. El envío que vale es el MÁS CARO, el criterio
             // conservador con el que se fijaron todos los precios (el mismo de bajopiso y unapub).
-            const ventas0 = (vtaMla[mla] && vtaMla[mla].length) ? vtaMla[mla] : (b.listing_type_id === 'gold_pro' ? [] : (vtaProd[p.id] || []));   // una Premium sin ventas propias no mide el envío con ventas de otro tipo de publicación (etapa 1, 27/09): va a la tarifa de ML
+            const ventas0 = (vtaMla[mla] && vtaMla[mla].length) ? vtaMla[mla] : (b.listing_type_id === 'gold_pro' ? [] : ventasProdClasica(vtaProd[p.id], (cuotasLeidas ? cuotasCfg : null)));   // una Premium sin ventas propias no mide el envío con ventas de otro tipo de publicación (etapa 1, 27/09): va a la tarifa de ML · y una Clásica no usa las de una Premium (08/10/2026)
             // ── SÓLO VENTAS DEL MISMO LADO DE LOS $33.000, Y SIN HUECOS (25/09/2026, F3, a) ──
             // Arriba de la barrera el envío lo paga CYC; abajo, el comprador. Mezclar lados daba un
             // envío de $0 a un precio de arriba. Y si ML no contestaba la comisión de algún precio,
@@ -38597,7 +38691,10 @@ async function main() {
           const costoTot = costo + mlx;
           const baseMargen = costoTot + envioVenta;
           const margen = (neto - costoTot) / baseMargen;
-          if (margen < minPct / 100) {
+          // La puerta es el piso O el "24% o menos" del rescate (08/10/2026): desde que se sacó la regla del 20%
+          // el rescate toca todo lo que queda abajo de la base, y una venta entre el piso (22%) y el 24% no
+          // llegaba nunca a `rescatarAlVender`: quedaba para la noche, y sólo si el prefiltro la veía.
+          if (margen < minPct / 100 || Math.round(margen * 100) <= SUBE_DESDE) {
             const T = targetPct / 100;
             const _den = neto - mlx * (1 + T);
             // El multiplicador tiene que llevar el margen a la meta con el envío ADENTRO del
