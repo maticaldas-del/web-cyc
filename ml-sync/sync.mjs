@@ -43,7 +43,7 @@ const EN_CONSULTA = process.env.GITHUB_WORKFLOW === 'ml-consulta' || process.env
 const CONSULTA_ESCRIBE = new Set(['lineatodo', 'revcand', 'vincular', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull']);
 const CONSULTA_NIEGA = new Set(['candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
-  'unapub', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes']);
+  'unapub', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes']);
 let CONSULTA_SOLO_LEE = false;
 if (EN_CONSULTA) {
   const _cmd = String(process.env.BILLING_PROBE || '').trim();
@@ -6578,6 +6578,7 @@ async function promosAgendadas(db, accounts, labels, products) {
   const fin = (await db.get('cyc/finanzas')) || {};
   const tc = parseFloat(fin.tipo_cambio) || 1500;
   const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+  let permAg = {}; try { permAg = (await db.get('cyc/promoclaude')) || {}; } catch { permAg = {}; }
   const pIdx = {}; for (const p of products) pIdx[p.id] = p;
   const out = [];
   // F7 de la segunda vuelta (25/09/2026): lo que ML no contestó se CUENTA (`out.sinLeer`). Antes un
@@ -6601,6 +6602,7 @@ async function promosAgendadas(db, accounts, labels, products) {
       for (const pr of (arr || [])) {
         // 'candidate' es una oferta que ML propone y NADIE aceptó: no se aplica sola, no molesta.
         if (pr.status !== 'pending' && pr.status !== 'started') continue;
+        if (promoPermitida(permAg, it.mla, pr)) continue;   // la puso Claude a propósito: no es una sorpresa
         const precioProm = Number(pr.price);
         const precioHoy = Number(pr.original_price);
         if (!(precioProm > 0)) continue;
@@ -6838,7 +6840,22 @@ async function ponerRetiroMes(db, cfg, ym, dry) {
   };
 }
 
-async function removeStartedPromos(itemId, token) {
+// ── LAS PROMOS EN LAS QUE ENTRÓ CLAUDE (08/10/2026) ───────────────────────────────────────────────────────
+// Regla 8 es sacar TODAS las promociones. Él abrió una excepción: *"si tenés identificada una publicación que vas
+// a bajar y falta poco para una promo (y la promo te da algún beneficio) activala, porque es probable que ml ayude
+// un poquito"*. Las que entra Claude con `entrarpromo` quedan en `cyc/promoclaude/<MLA>` = { id, tipo, precio,
+// hasta, motivo, ts } y la vuelta de cada hora y `sacapromos` NO las sacan mientras no haya pasado `hasta`. Sólo esa
+// promoción (por id; la PRICE_DISCOUNT, que no tiene id, por tipo): cualquier otra de esa publicación se saca igual.
+function promoPermitida(permitidas, itemId, pr, ahora = Date.now()) {
+  const a = permitidas && permitidas[itemId];
+  if (!a || !pr) return false;
+  const hasta = a.hasta ? Date.parse(a.hasta) : NaN;
+  if (Number.isFinite(hasta) && ahora > hasta + 864e5) return false;   // ya terminó: si sigue puesta, se saca
+  if (a.id) return String(pr.id || '') === String(a.id);
+  return !!a.tipo && pr.type === a.tipo && !pr.id;
+}
+
+async function removeStartedPromos(itemId, token, permitidas) {
   let arr;
   try {
     const r = await mlGet('/seller-promotions/items/' + itemId + '?app_version=v2', token);
@@ -6855,6 +6872,7 @@ async function removeStartedPromos(itemId, token) {
     // Si ML pusiera plata en el descuento, conviene quedarse. Hoy no manda ese dato en estas
     // campañas, pero si algún día lo manda, no se saca.
     if (typeof pr.meli_percentage === 'number' && pr.meli_percentage >= 100) continue;
+    if (promoPermitida(permitidas, itemId, pr)) continue;   // la puso Claude a propósito (cyc/promoclaude)
     const qs = new URLSearchParams({ app_version: 'v2' });
     if (pr.id) qs.set('promotion_id', pr.id);
     if (pr.type) qs.set('promotion_type', pr.type);
@@ -10783,7 +10801,7 @@ async function main() {
           if (CEREBRO_ON) for (const d of cz.dec) if (d.accion !== 'nada') cerTocadas.add(d.mla);
           for (const d of cz.dec) {
             const extra = [d.plNow != null && d.plPrev != null ? `deja ${money(d.plNow)}/día (antes ${money(d.plPrev)}/día)` : '', d.enEscasez ? 'en escasez' : '', d.midiendo ? 'midiendo el precio nuevo' : '', d.mg0 != null ? `margen hoy ${d.mg0}%` : '', d.reintentaFecha ? 'fecha de regalos: puede volver a probar un precio que antes no funcionó' : ''].filter(Boolean).join(' · ');
-            expA(d.mla, '🧠 plata por día', `${d.accion === 'nada' ? 'no cambia' : (d.accion === 'sube' ? 'SUBE' : 'BAJA') + ` ${money(d.p0)} → ${money(d.a)}`}: ${d.motivo || '—'}${extra ? ' · ' + extra : ''}`, { nom: d.nom, cuenta: d.cuenta, precio: d.p0 });
+            expA(d.mla, '🧠 plata por día', `${d.accion === 'nada' ? 'no cambia' : (d.accion === 'sube' ? 'SUBE' : 'BAJA') + ` ${money(d.p0)} → ${money(d.a)}`}: ${d.motivo || '—'}${extra ? ' · ' + extra : ''}`, { nom: d.nom, cuenta: d.cuenta, precio: d.p0, bajarA: d.accion === 'baja' ? d.a : null });
             try { expS(d.mla, d.accion !== 'nada' ? 4 : 2, cerebroSimple(d)); } catch { /* el texto simple no puede frenar la noche */ }
           }
           const mid = cz.dec.filter((d) => d.midiendo).length, esc = cz.dec.filter((d) => d.enEscasez).length;
@@ -11101,6 +11119,10 @@ async function main() {
         for (const x of corregirAv) expS(x.mla, 3, `Una suba anterior quedó más cara de lo necesario y no vendió desde entonces: hay que bajarla a ${money(x.a)}.`);
         for (const f of [...sanasCbr, ...sobreSanas]) expS(f.mla, 3, `Otro vendedor tiene el botón de comprar. Bajando a ${money(f.ptw)} lo recupero y sigo ganando bien (${fmtP(f.mgPw)}).`);
         for (const f of [...remE1, ...remE2, ...remE3, ...sobrePaga, ...sobreE3]) expS(f.mla, 3, `${f.quieta != null ? `Lleva ${f.quieta} días sin venderse` : 'Sobra mercadería'}: hay que bajarla a ${money(f.ptw)} para que salga y no siga pagando depósito en Full.`);
+        // A QUÉ PRECIO HABRÍA QUE BAJARLA (`bajarA`): con eso `analizapromo` ve si una promo de ML que viene la deja
+        // igual o mejor que la baja que ya estaba pensada (08/10/2026). El precio más alto gana: es el que menos regala.
+        for (const f of [...sanasCbr, ...sobreSanas, ...remE1, ...remE2, ...remE3, ...sobrePaga, ...sobreE3]) if (f.ptw > 0) EXPI[f.mla] = { ...(EXPI[f.mla] || {}), bajarA: Math.max(Number((EXPI[f.mla] || {}).bajarA) || 0, f.ptw) };
+        for (const x of corregirAv) if (x.a > 0) EXPI[x.mla] = { ...(EXPI[x.mla] || {}), bajarA: Math.max(Number((EXPI[x.mla] || {}).bajarA) || 0, x.a) };
         for (const f of remNo) expS(f.mla, 1, `No se vende${f.quieta != null ? ` hace ${f.quieta} días` : ''}, pero todavía es pronto para rematarla: la sigo mirando.`);
         for (const f of (cbr.noSano || [])) expS(f.mla, 1, `Otro vendedor tiene el botón de comprar, pero para recuperarlo habría que bajar a ${money(f.ptw)} y ahí ganaría muy poco (${fmtP(f.mgPw)}): no conviene.`);
         for (const f of sanasCbr) expA(f.mla, '🥊 caja de compra', `no vende y ${cajaTxt(f)}: se puede bajar a ganarla`, { nom: f.nom, cuenta: f.cuenta, precio: f.precio });
@@ -11133,7 +11155,7 @@ async function main() {
           const out = {};
           for (const [m, pasos] of Object.entries(EXP)) {
             const i = EXPI[m] || {};
-            out[m] = { ts: hoyTs, nom: String(i.nom || '').slice(0, 60), cuenta: i.cuenta || '', precio: Number(i.precio) || null, final: i.final || null, aplica: !!AUTO_ON, simple: EXPS[m] ? EXPS[m].t : '', pasos: pasos.slice(0, 20) };
+            out[m] = { ts: hoyTs, nom: String(i.nom || '').slice(0, 60), cuenta: i.cuenta || '', precio: Number(i.precio) || null, final: i.final || null, bajarA: Number(i.bajarA) > 0 ? Number(i.bajarA) : null, aplica: !!AUTO_ON, simple: EXPS[m] ? EXPS[m].t : '', pasos: pasos.slice(0, 20) };
           }
           try { await db.set('mlapi/cerebroexp', out); console.log(`   🧠 expediente guardado: ${nExp} publicación(es)`); }
           catch (e) { console.log(`   ⚠️ no pude guardar el expediente del cerebro (${String(e && e.message || e).slice(0, 60)}): el botón 🧠 de la web muestra el de ayer`); }
@@ -27391,6 +27413,8 @@ async function main() {
       const links = (await db.get('cyc/mllinks')) || {};
       console.log(`=== SACAR PROMOCIONES ACEPTADAS ${prueba ? '(PRUEBA: no se toca nada)' : ''} ===`);
       console.log(`Se sacan las 'started' (activas) y las 'pending' (agendadas). Las 'candidate' no se tocan.\n`);
+      let permSP; try { permSP = (await db.get('cyc/promoclaude')) || {}; } catch { console.log('⚠️ no pude leer las promos que puso Claude (cyc/promoclaude): no saco nada, para no deshacerle una decisión.'); return; }
+      if (Object.keys(permSP).length) console.log(`Las que puso Claude a propósito no se tocan: ${Object.keys(permSP).join(', ')}\n`);
       let sacadas = 0, fallidas = 0, revisadas = 0, sinLeer = 0; const detalle = []; const noLeidas = [];
       for (const label of labels) {
         const acc = accounts[label];
@@ -27409,7 +27433,7 @@ async function main() {
           revisadas++;
           // Las que paga ML entero no nos cuestan nada: igual que la vuelta de cada hora (etapa 1, 27/09).
           const malas = (arr || []).filter((pr) => (pr.status === 'started' || pr.status === 'pending')
-            && !(typeof pr.meli_percentage === 'number' && pr.meli_percentage >= 100));
+            && !(typeof pr.meli_percentage === 'number' && pr.meli_percentage >= 100) && !promoPermitida(permSP, it.mla, pr));
           if (!malas.length) continue;
           for (const pr of malas) {
             const desc = `${label} · ${it.title.slice(0, 38)} · ${pr.type} ${pr.original_price != null ? money(Math.round(pr.original_price)) : ''}→${pr.price != null ? money(Math.round(pr.price)) : ''}${pr.start_date ? ' desde ' + String(pr.start_date).slice(0, 10) : ''}`;
@@ -34834,6 +34858,239 @@ async function main() {
       return;
     }
 
+    // ── LAS PROMOS DE ML: CUÁLES CONVIENEN Y ENTRAR (08/10/2026) ─────────────────────────────────────────────────
+    // Pedido suyo: *"podés analizar las promos y si vale la pena entrar o no, si tenés identificada una publicación que
+    // vas a bajar y falta poco para una promo (y la promo te da algún beneficio) activala, porque es probable que ML
+    // ayude un poquito al activar una promo de ellos"*. Es una EXCEPCIÓN a la regla 8 (sacar todas): no se entra en
+    // promos para bajar precios en general, sólo cuando la baja ya estaba pensada (el expediente de la noche dice
+    // `bajarA`) o cuando ML pone plata (`meli_percentage`). Medido el 08/10 con `promos:…:crudo`: las de los eventos
+    // (DEAL "DIA DE LA MADRE OCTUBRE", "OFERTAS OCTUBRE", LIGHTNING) piden 5% de descuento mínimo y ML no pone nada.
+    //
+    // BILLING_PROBE=analizapromo[:<días>][:<palabras>] → SOLO LEE. Publicación por publicación: qué promos le ofrece ML
+    // en los próximos días, a qué precio quedaría, el margen a ese precio (la cuenta de `calcCerebro`: comisión
+    // preguntada a ML a ese precio, envío del lado de la barrera, cuotas, IIBB, monotributo) y si conviene. Las que
+    // convienen salen con el `entrarpromo` listo.
+    if (/^analizapromo(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const args = String(process.env.BILLING_PROBE).split(':').slice(1).map((x) => x.trim()).filter(Boolean);
+      const DIAS = args.length && /^\d+$/.test(args[0]) ? Math.min(60, parseInt(args.shift(), 10)) : 21;
+      const pal = (args.join(' ') || '').toLowerCase().split(/[+ ]/).filter(Boolean);
+      const ahora = Date.now(), limite = ahora + DIAS * 864e5;
+      const links = (await db.get('cyc/mllinks')) || {};
+      let exp = {}; try { exp = (await db.get('mlapi/cerebroexp')) || {}; } catch { exp = {}; }
+      let perm = {}; try { perm = (await db.get('cyc/promoclaude')) || {}; } catch { perm = {}; }
+      const PISOa = await pisoConfig(db);
+      const tokA = {};
+      for (const label of labels) {
+        const acc = accounts[label]; if (!acc?.refresh_token) continue;
+        try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() }); tokA[label] = t.access_token; }
+        catch { console.log(`(${label}: no pude entrar)`); }
+      }
+      console.log(`=== 🏷️ LAS PROMOS QUE OFRECE ML · próximos ${DIAS} días${pal.length ? ` · "${pal.join(' ')}"` : ''} · SOLO LEE ===`);
+      console.log(`Piso ${PISOa}%. Regla: se entra sólo si la baja YA estaba pensada (expediente de la noche) o si ML pone plata.\n`);
+      const fechaOk = (pr) => {
+        const fin = pr.finish_date ? Date.parse(pr.finish_date) : NaN, ini = pr.start_date ? Date.parse(pr.start_date) : NaN;
+        if (Number.isFinite(fin) && fin < ahora) return false;
+        if (Number.isFinite(ini) && ini > limite) return false;
+        return true;
+      };
+      const eventos = {}; const porMla = {}; let leidas = 0, sinLeer = 0; const yaEn = [];
+      for (const [mla, e] of Object.entries(links)) {
+        if (!e || e.ignored || e.noVendemosMas || !e.prodId || !/^MLA\d+$/.test(mla) || (e.status || '') !== 'active') continue;
+        const tk = tokA[e.cuenta]; if (!tk) continue;
+        if (pal.length && !pal.every((w) => norm(e.title || '').includes(norm(w)))) continue;
+        let arr;
+        try { const r = await mlGet('/seller-promotions/items/' + mla + '?app_version=v2', tk); arr = Array.isArray(r) ? r : (r.results || []); leidas++; }
+        catch { sinLeer++; continue; }
+        for (const pr of (arr || [])) {
+          if (pr.status === 'started' || pr.status === 'pending') { yaEn.push({ mla, nom: e.title, cuenta: e.cuenta, pr, mia: promoPermitida(perm, mla, pr) }); continue; }
+          if (pr.status !== 'candidate' || !fechaOk(pr)) continue;
+          const orig = Number(pr.original_price) || 0;
+          const maxP = Number(pr.max_discounted_price) || 0, minP = Number(pr.min_discounted_price) || 0;
+          const fijo = !(maxP > 0) && Number(pr.price) > 0;   // SMART / campañas: precio puesto por ML
+          const mlPaga = Number(pr.meli_percentage) > 0 ? Number(pr.meli_percentage) : 0;
+          const nomEv = pr.name || (pr.type === 'PRICE_DISCOUNT' ? 'descuento propio (sin evento)' : pr.type);
+          const kEv = `${nomEv}|${pr.type}|${String(pr.start_date || '').slice(0, 10)}|${String(pr.finish_date || '').slice(0, 10)}`;
+          const ev = eventos[kEv] = eventos[kEv] || { nomEv, tipo: pr.type, ini: String(pr.start_date || '').slice(0, 10), fin: String(pr.finish_date || '').slice(0, 10), n: 0, ctas: new Set(), mlPaga: 0, desc: [] };
+          ev.n++; ev.ctas.add(e.cuenta); if (mlPaga) ev.mlPaga++;
+          if (orig > 0 && maxP > 0) ev.desc.push((1 - maxP / orig) * 100);
+          (porMla[mla] = porMla[mla] || { mla, nom: e.title || mla, cuenta: e.cuenta, ofertas: [] }).ofertas.push({ pr, orig, maxP, minP, fijo, mlPaga, nomEv });
+        }
+      }
+      console.log(`Miradas ${leidas} publicaciones activas${sinLeer ? ` · ⚠️ ${sinLeer} sin leer (ML no contestó: no sé qué promos tienen)` : ''}.\n`);
+      console.log('── 1 · LOS EVENTOS Y PROMOS QUE OFRECE ML ──');
+      const evL = Object.values(eventos).sort((a, b) => b.n - a.n);
+      if (!evL.length) console.log('  ninguna en esta ventana');
+      for (const ev of evL.slice(0, 25)) {
+        const dmin = ev.desc.length ? Math.min(...ev.desc) : null;
+        console.log(`  · ${ev.nomEv} · ${ev.tipo}${ev.ini ? ` · ${ev.ini} → ${ev.fin}` : ''} · ${ev.n} publicación(es) · ${[...ev.ctas].join(', ')}`
+          + `${dmin != null ? ` · descuento mínimo ${dmin.toFixed(1)}%` : ''} · ${ev.mlPaga ? `ML pone plata en ${ev.mlPaga}` : 'ML no pone nada'}`);
+      }
+      // Precio de cada publicación en la promo que mejor le cae: con baja pensada, el precio de esa baja (o el más alto que
+      // deja la promo si la baja pensada es más chica que el mínimo); sin baja pensada, el descuento mínimo.
+      const floor10 = (x) => Math.floor(x / 10) * 10;
+      const elegido = {};
+      for (const m of Object.values(porMla)) {
+        // Expedientes de antes del 08/10 no traen `bajarA`: se lee de las frases ("hay que bajarla a $X", "BAJA $a → $b").
+        const ex = exp[m.mla] || {};
+        let bajarA = Number(ex.bajarA) || 0;
+        if (!bajarA) {
+          const txts = [String(ex.simple || ''), ...((ex.pasos || []).map((x) => String((x && x.d) || '')))];
+          for (const t of txts) {
+            const mt = t.match(/(?:hay que bajarla a|Bajando a) \$\s?([\d.]+)/i) || t.match(/BAJA \$\s?[\d.]+ → \$\s?([\d.]+)/);
+            if (mt) { const v = parseInt(mt[1].replace(/\./g, ''), 10); if (v > 0) bajarA = Math.max(bajarA, v); }
+          }
+        }
+        let best = null;
+        for (const o of m.ofertas) {
+          let P;
+          if (o.fijo) P = Math.round(Number(o.pr.price));
+          else if (bajarA > 0) { P = floor10(Math.min(bajarA, o.maxP)); if (P < o.minP) P = Math.ceil(o.minP); }
+          else P = floor10(o.maxP) >= o.minP ? floor10(o.maxP) : Math.floor(o.maxP);
+          if (!(P > 0)) continue;
+          // Con ML poniendo plata, lo que te queda es más que el precio de la promo: el descuento lo pagás sólo en tu parte.
+          const Pef = o.mlPaga && o.orig > P ? Math.round(o.orig - (o.orig - P) * (100 - o.mlPaga) / 100) : P;
+          const puntaje = (o.mlPaga ? 2e9 : 0) + (bajarA > 0 && P >= floor10(Math.min(bajarA, o.maxP || bajarA)) ? 1e9 : 0) + Pef;
+          if (!best || puntaje > best.puntaje) best = { ...o, P, Pef, puntaje, bajarA };
+        }
+        if (best) elegido[m.mla] = { ...m, o: best };
+      }
+      const forzarA = {};
+      for (const [mla, x] of Object.entries(elegido)) forzarA[mla] = { p: x.o.Pef, piso: true, motivo: 'promo' };
+      const cz = Object.keys(forzarA).length ? await calcCerebro(db, { tokens: tokA, forzar: forzarA, soloMla: new Set(Object.keys(forzarA)) }) : { dec: [] };
+      if (cz.err) { console.log('⚠️ ' + cz.err); return; }
+      const decM = {}; for (const d of cz.dec) decM[d.mla] = d;
+      const conviene = [], cuestaMas = [], sinPlan = [], noSe = [];
+      for (const [mla, x] of Object.entries(elegido)) {
+        const d = decM[mla]; const o = x.o;
+        const r = { ...x, d, mg: d && d.accion !== 'nada' ? d.mgA : (d && d.mismoPrecio ? d.mg0 : null), p0: d ? d.p0 : o.orig };
+        if (!d || (d.accion === 'nada' && !d.mismoPrecio)) { r.why = d ? d.motivo.replace(/^Claude: promo · /, '') : 'no la miré (sin stock en Full, variantes, liquidando o sin ficha)'; noSe.push(r); continue; }
+        if (!(r.mg >= 0)) { r.why = `queda en ${r.mg}%`; noSe.push(r); continue; }
+        if (o.mlPaga && r.mg >= PISOa) { r.por = `ML pone ${o.mlPaga}% del descuento`; conviene.push(r); continue; }
+        if (o.bajarA > 0) {
+          if (o.P >= floor10(o.bajarA)) { r.por = `ya la iba a bajar a ${money(o.bajarA)}: con la promo queda igual y además sale en la vidriera de ML`; conviene.push(r); }
+          else { r.why = `la baja pensada era a ${money(o.bajarA)} y la promo pide bajar hasta ${money(o.P)}: ${money(o.bajarA - o.P)} más por unidad`; cuestaMas.push(r); }
+          continue;
+        }
+        sinPlan.push(r);
+      }
+      const lin = (r) => `${r.cuenta} · ${r.mla} · ${String(r.nom).slice(0, 44)} · ${r.o.nomEv}${r.o.pr.finish_date ? ` (hasta ${String(r.o.pr.finish_date).slice(5, 10)})` : ''} · ${money(r.p0)} → ${money(r.o.P)}${r.o.Pef !== r.o.P ? ` (te queda como ${money(r.o.Pef)})` : ''} · margen ${r.mg != null ? r.mg + '%' : '?'}`;
+      const idDe = (o) => o.pr.id || o.pr.type;
+      console.log(`\n── 2 · ✅ CONVIENE ENTRAR · ${conviene.length} ──`);
+      for (const r of conviene) { console.log('  ' + lin(r)); console.log(`     ${r.por}`); console.log(`     entrarpromo:${r.mla}=${r.o.P}@${idDe(r.o)}${r.mg < PISOa ? '!piso' : ''}|${r.por.replace(/[;|]/g, ',')}`); }
+      console.log(`\n── 3 · 🟠 LA IBA A BAJAR, PERO LA PROMO PIDE BAJAR MÁS · ${cuestaMas.length} ──`);
+      for (const r of cuestaMas) { console.log('  ' + lin(r)); console.log(`     ${r.why}`); }
+      console.log(`\n── 4 · SIN BAJA PENSADA (no entro: sería bajar el precio por bajar) · ${sinPlan.length} ──`);
+      sinPlan.sort((a, b) => (b.mg || 0) - (a.mg || 0));
+      for (const r of sinPlan.slice(0, 15)) console.log('  ' + lin(r));
+      if (sinPlan.length > 15) console.log(`  … y ${sinPlan.length - 15} más`);
+      console.log(`\n── 5 · NO SE PUEDE · ${noSe.length} ──`);
+      for (const r of noSe.slice(0, 20)) console.log(`  ${r.cuenta} · ${r.mla} · ${String(r.nom).slice(0, 44)} · ${r.why}`);
+      if (noSe.length > 20) console.log(`  … y ${noSe.length - 20} más`);
+      console.log(`\n── 6 · YA ESTÁN EN UNA PROMO · ${yaEn.length} ──`);
+      for (const y of yaEn) console.log(`  ${y.cuenta} · ${y.mla} · ${String(y.nom || '').slice(0, 44)} · ${y.pr.type} ${y.pr.status} ${money(Math.round(Number(y.pr.price) || 0))} · ${y.mia ? 'la puse yo a propósito' : '⚠️ NO la puse yo: la vuelta de la hora la saca'}`);
+      console.log('\nSOLO LECTURA: no entré a ninguna promo.');
+      return;
+    }
+
+    // BILLING_PROBE=entrarpromo:<MLA>=<precio>@<id de la promo|PRICE_DISCOUNT>[!piso]|<motivo>[;…][;go]
+    //   · entrarpromo:<MLA>=salir|<motivo>[;go] → sale de la promo que puso Claude y borra la excepción.
+    // ENTRA EN UNA PROMO DE ML (08/10/2026). Va por ml-sync (escribe en ML). Antes de entrar mide el margen al precio de
+    // la promo con `calcCerebro` (mismos frenos duros que `decido`: sin variantes, no liquidando, con stock en Full, nunca
+    // abajo de 0%, abajo del piso sólo con `!piso`) y anota la excepción en `cyc/promoclaude/<MLA>` ANTES de entrar (si
+    // la vuelta de la hora pasara en el medio, la sacaría). Si ML no acepta, borra la excepción. Relee de ML y deja la
+    // nota del 🧠. Sin `;go` sólo muestra.
+    if (/^entrarpromo:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const partes = String(process.env.BILLING_PROBE).slice('entrarpromo:'.length).split(';').map((x) => x.trim()).filter(Boolean);
+      const GOe = partes.length && partes[partes.length - 1].toLowerCase() === 'go'; if (GOe) partes.pop();
+      const pedidos = [], malos = [];
+      for (const x of partes) {
+        const [izq, ...mot] = x.split('|');
+        const ms = String(izq).match(/^\s*(MLA\d+)\s*=\s*salir\s*$/i);
+        if (ms) { pedidos.push({ mla: ms[1].toUpperCase(), salir: true, motivo: mot.join('|').trim() }); continue; }
+        const mm = String(izq).match(/^\s*(MLA\d+)\s*=\s*([\d.,$\s]+)@([\w-]+)((?:!\w+)*)\s*$/i);
+        if (!mm) { malos.push(x); continue; }
+        pedidos.push({ mla: mm[1].toUpperCase(), p: Math.round(pesosArg(mm[2])), id: mm[3], piso: /!piso/i.test(mm[4] || ''), motivo: mot.join('|').trim() });
+      }
+      if (malos.length || !pedidos.length) { console.log(`No entendí: ${malos.join(' · ') || '(nada)'}\nVa así: entrarpromo:MLA123=21360@P-MLA18067012|ya la iba a bajar;MLA456=salir|terminó;go`); return; }
+      const links = (await db.get('cyc/mllinks')) || {};
+      const tokE = {};
+      for (const label of labels) {
+        const acc = accounts[label]; if (!acc?.refresh_token) continue;
+        try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() }); tokE[label] = t.access_token; }
+        catch { console.log(`(${label}: no pude entrar)`); }
+      }
+      const aplicar = GOe && !DRY;
+      console.log(`=== 🏷️ ENTRAR EN PROMOS DE ML ${aplicar ? '· SE APLICA' : '(PRUEBA: no toco nada)'} ===`);
+      const nota = async (mla, txt) => { const e = links[mla] || {}; try { await db.set('mlapi/claudeexp/' + mla, { ts: Date.now(), simple: String(txt).slice(0, 600), nom: String(e.title || '').slice(0, 60), cuenta: e.cuenta || '', tipo: 'promo' }); } catch { console.log('   ⚠️ no pude guardar la nota del 🧠'); } };
+      const leerPromos = async (mla, tk) => { const r = await mlGet('/seller-promotions/items/' + mla + '?app_version=v2', tk); return Array.isArray(r) ? r : (r.results || []); };
+      const PISOe = await pisoConfig(db);
+      // El margen al precio de la promo, una sola corrida de calcCerebro para todas.
+      const forzarE = {}; for (const q of pedidos) if (!q.salir) forzarE[q.mla] = { p: q.p, piso: true, motivo: q.motivo || 'promo' };
+      const cz = Object.keys(forzarE).length ? await calcCerebro(db, { tokens: tokE, forzar: forzarE, soloMla: new Set(Object.keys(forzarE)) }) : { dec: [] };
+      if (cz.err) { console.log('⚠️ ' + cz.err); return; }
+      const decM = {}; for (const d of cz.dec) decM[d.mla] = d;
+      for (const q of pedidos) {
+        const e = links[q.mla]; const tk = e && tokE[e.cuenta];
+        console.log(`\n${q.mla} · ${e ? e.cuenta + ' · ' + String(e.title || '').slice(0, 50) : '?'}`);
+        if (!e || !tk) { console.log('   ✗ no está vinculada o no tengo permiso de esa cuenta'); continue; }
+        let arr; try { arr = await leerPromos(q.mla, tk); } catch (eL) { console.log(`   ✗ ML no me dijo qué promos tiene (${String(eL.message || eL).slice(0, 80)}): no toco nada`); continue; }
+        if (q.salir) {
+          let perm = null; try { perm = await db.get('cyc/promoclaude/' + q.mla); } catch { console.log('   ✗ no pude leer qué promo puse yo: no toco nada'); continue; }
+          if (!perm) { console.log('   ✗ no hay ninguna promo puesta por mí acá (las demás las saca sola la vuelta de la hora)'); continue; }
+          const pr = arr.find((x) => (x.status === 'started' || x.status === 'pending') && promoPermitida({ [q.mla]: perm }, q.mla, x, 0));
+          console.log(`   saldría de ${perm.tipo} ${perm.id || ''}${pr ? ` (${pr.status}, ${money(Math.round(Number(pr.price) || 0))})` : ' (ML ya no la muestra puesta)'}`);
+          if (!aplicar) continue;
+          if (pr) {
+            const qs = new URLSearchParams({ app_version: 'v2' }); if (pr.id) qs.set('promotion_id', pr.id); if (pr.type) qs.set('promotion_type', pr.type);
+            const r = await fetch(ML_API + '/seller-promotions/items/' + q.mla + '?' + qs.toString(), { method: 'DELETE', headers: { Authorization: 'Bearer ' + tk } });
+            let det = ''; if (!r.ok) { try { det = (await r.text() || '').slice(0, 200); } catch { det = ''; } }
+            _anotarEscrituraML(r, q.mla, 'salir de una promoción de ML', det);
+            if (!r.ok) { console.log(`   ✗ ML dijo ${r.status} ${det}: dejo la excepción, la saco la próxima`); continue; }
+          }
+          try { await db.set('cyc/promoclaude/' + q.mla, null); } catch { console.log('   ⚠️ no pude borrar la excepción: sigue la marca'); }
+          console.log('   ✓ fuera de la promo');
+          await nota(q.mla, `Salí de la promo de Mercado Libre. ${q.motivo || ''}`.trim());
+          continue;
+        }
+        const pr = arr.find((x) => (x.id && String(x.id) === q.id) || (!x.id && x.type === q.id.toUpperCase()));
+        if (!pr) { console.log(`   ✗ ML no le ofrece "${q.id}" a esta publicación (ofrece: ${arr.map((x) => (x.id || x.type) + ' ' + x.status).join(', ') || 'nada'})`); continue; }
+        const minP = Number(pr.min_discounted_price) || 0, maxP = Number(pr.max_discounted_price) || 0;
+        const fijo = !(maxP > 0) && Number(pr.price) > 0;
+        if (!fijo && (q.p > maxP + 0.5 || q.p < minP - 0.5)) { console.log(`   ✗ ${money(q.p)} no entra: la promo pide entre ${money(Math.ceil(minP))} y ${money(Math.floor(maxP))}`); continue; }
+        const d = decM[q.mla];
+        if (!d) { console.log('   ✗ no la puedo medir (sin stock en Full, con variantes, liquidando o sin ficha): no entro'); continue; }
+        if (d.accion === 'nada' && !d.mismoPrecio) { console.log(`   ✗ ${d.motivo}`); continue; }
+        const mg = d.accion !== 'nada' ? d.mgA : d.mg0;
+        if (!(mg >= 0)) { console.log(`   ✗ a ${money(q.p)} queda en ${mg}%: nunca abajo de cero`); continue; }
+        if (mg < PISOe && !q.piso) { console.log(`   ✗ a ${money(q.p)} queda en ${mg}%, abajo del piso del ${PISOe}%: para entrar igual va con !piso`); continue; }
+        const hastaPD = new Date(Date.now() + 14 * 864e5);
+        const fmtML = (dt) => new Date(dt.getTime() - 3 * 3600e3).toISOString().slice(0, 19);
+        const hasta = pr.finish_date || (pr.type === 'PRICE_DISCOUNT' ? fmtML(hastaPD) : null);
+        console.log(`   ${pr.name || pr.type} · ${pr.status}${pr.start_date ? ` · ${String(pr.start_date).slice(0, 10)} → ${String(pr.finish_date || '').slice(0, 10)}` : ''} · ${money(d.p0)} → ${money(q.p)} · margen ${d.mg0}% → ${mg}%${mg < PISOe ? ' (abajo del piso, con !piso)' : ''}`);
+        if (q.motivo) console.log(`   ${q.motivo}`);
+        if (pr.status !== 'candidate') { console.log(`   (ya está ${pr.status}: sólo anoto que es mía)`); }
+        if (!aplicar) continue;
+        try { await db.set('cyc/promoclaude/' + q.mla, { id: pr.id || '', tipo: pr.type, precio: q.p, de: d.p0, hasta: hasta || '', nombre: pr.name || '', motivo: (q.motivo || '').slice(0, 240), ts: Date.now() }); }
+        catch { console.log('   ✗ no pude anotar la excepción: no entro (la vuelta de la hora la sacaría)'); continue; }
+        if (pr.status === 'candidate') {
+          let body;
+          if (pr.type === 'PRICE_DISCOUNT') body = { promotion_type: 'PRICE_DISCOUNT', deal_price: q.p, start_date: fmtML(new Date()), finish_date: hasta };
+          else if (fijo) body = { promotion_id: pr.id, promotion_type: pr.type, offer_id: pr.ref_id || pr.offer_id };
+          else body = { promotion_id: pr.id, promotion_type: pr.type, deal_price: q.p };
+          if (pr.type === 'LIGHTNING') { const smin = Number(pr.stock && pr.stock.min) || 1, smax = Number(pr.stock && pr.stock.max) || smin; body.stock = Math.max(smin, Math.min(smax, Number(d.st) || smin)); }
+          const r = await fetch(ML_API + '/seller-promotions/items/' + q.mla + '?app_version=v2', { method: 'POST', headers: { Authorization: 'Bearer ' + tk, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+          let det = ''; if (!r.ok) { try { det = (await r.text() || '').slice(0, 300); } catch { det = ''; } }
+          _anotarEscrituraML(r, q.mla, 'entrar en una promoción de ML', det);
+          if (!r.ok) { console.log(`   ✗ ML dijo ${r.status} ${det}`); try { await db.set('cyc/promoclaude/' + q.mla, null); } catch { /* vence sola con la fecha */ } continue; }
+        }
+        let quedo = null; try { quedo = (await leerPromos(q.mla, tk)).find((x) => promoPermitida({ [q.mla]: { id: pr.id || '', tipo: pr.type } }, q.mla, x, 0) && (x.status === 'started' || x.status === 'pending')); } catch { quedo = null; }
+        console.log(quedo ? `   ✓ ADENTRO · releído de ML: ${quedo.status} a ${money(Math.round(Number(quedo.price) || q.p))}` : '   ⚠️ ML aceptó pero al releer no la veo puesta: la miro en la próxima revisión');
+        await nota(q.mla, `Entré en la promo de Mercado Libre "${pr.name || (pr.type === 'PRICE_DISCOUNT' ? 'descuento' : pr.type)}" a ${money(q.p)}${hasta ? ` hasta el ${String(hasta).slice(8, 10)}/${String(hasta).slice(5, 7)}` : ''} (antes ${money(d.p0)}, queda en ${mg}%). ${q.motivo || ''}`.trim());
+      }
+      if (!aplicar) console.log('\nPRUEBA: no toqué nada. Para aplicar, el mismo comando con ;go al final (por ml-sync).');
+      return;
+    }
+
     // BILLING_PROBE=decido:<MLA>=<precio>[!piso][!cruza]|<motivo>[;<MLA>=…][;go] → LOS PRECIOS QUE DECIDE CLAUDE
     // (08/10/2026). Regla suya: *"que haya solo robots automáticos de api para cosas que no hay que pensar, como
     // ventas y cosas así de datos. TODO lo que sea pensar lo veas exclusivamente vos"*. El robot ya no mueve
@@ -39085,6 +39342,10 @@ async function main() {
   // Etapa 5: cuentas cuya vuelta de stock se cortó por un error a mitad: sus sumas quedaron parciales.
   const cuentaStockRota = new Set();
   const promoNoLeidas = [];   // publicaciones cuyas promociones ML no contestó en la vuelta completa (#22)
+  // Las promos que entró Claude a propósito (cyc/promoclaude). Si no se pueden leer, esta vuelta NO se saca ninguna:
+  // sacar la que él decidió le deshace una decisión; dejar una ajena una hora más se corrige en la vuelta siguiente.
+  let promoClaude = null;
+  try { promoClaude = (await db.get('cyc/promoclaude')) || {}; } catch { promoClaude = null; console.log('⚠️ no pude leer cyc/promoclaude: esta vuelta no saco promociones'); }
   const ignoradasConProd = new Set();   // prodId__Cuenta de publicaciones ocultas (nomas / 🗑)
   // Etapa 3, B3 (29/09/2026, eligió la a): lo que hay adentro de Full en publicaciones OCULTAS. Cuenta en
   // el patrimonio (web: calcArqueo) pero no en Armar caja ni en Pedidos, por eso va aparte de cyc/inventory.
@@ -40168,11 +40429,11 @@ async function main() {
           // vuelta COMPLETA (una por hora) se le pregunta a ML publicación por publicación. Son
           // ~500 llamadas más por hora, no por vuelta: preguntarlo cada 2 minutos serían 360.000
           // llamadas por día para encontrar algo que se acepta una vez por semana.
-          if (autoPromo && !DRY) {
+          if (autoPromo && !DRY && promoClaude) {
             const discounted = (b.original_price != null && b.original_price > b.price)
               || (Array.isArray(b.deal_ids) && b.deal_ids.length > 0);
             if (discounted || !SKIP_PRICES) {
-              const { removed, failed, sinLeer: promoSinLeer } = await removeStartedPromos(mla, t.access_token);
+              const { removed, failed, sinLeer: promoSinLeer } = await removeStartedPromos(mla, t.access_token, promoClaude);
               if (promoSinLeer && !SKIP_PRICES) promoNoLeidas.push(mla);
               if (removed.length) {
                 await sendAlerta(`🏷️ <b>Descuento sacado</b>\n`
