@@ -2197,8 +2197,20 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
   // Para el botón 🧠 de la web (08/10/2026): qué decidió esta vuelta con cada pausada con stock en Full.
   if (!DRY && (activadas.length || noLlegan.length)) {
     const act = {};
-    for (const x of activadas) act[x.mla] = { ts: ahoraP, ok: true, d: `pausada con ${x.stock} u. en Full y a ${money(Math.round(x.precio))} queda en ${x.mg.toFixed(1)}%: la activé` };
-    for (const x of noLlegan) act[x.mla] = { ts: ahoraP, ok: false, d: `pausada con ${x.stock} u. en Full: no la activé · ${String(x.why).slice(0, 200)}` };
+    // `simple`: la frase clara que muestra el 🧠 (pedido suyo del 08/10: "sin cosas técnicas").
+    const simpleNo = (w) => {
+      w = String(w || '');
+      if (/pausó ML/.test(w)) return 'la pausó Mercado Libre: no la puedo activar yo, hay que mirarla en ML.';
+      if (/no la vendemos más/.test(w)) return 'la marcaste "no la vendemos más".';
+      if (/frenada a mano/.test(w)) return 'le pusiste un freno para que no se active sola.';
+      if (/sin costo/.test(w)) return 'la ficha no tiene el costo cargado: sin eso no sé si deja ganar.';
+      if (/abajo del/.test(w)) return 'al precio de hoy deja menos de lo mínimo. Esta noche el cerebro la lleva al precio que deja ganar y después se activa sola.';
+      if (/Premium/.test(w)) return 'es Premium y todavía no sé cuánto cobra ML de cuotas.';
+      if (/rechazó|red|quedó/.test(w)) return 'quise activarla y Mercado Libre no me dejó: lo vuelvo a intentar en una hora.';
+      return 'Mercado Libre no me contestó un dato: lo vuelvo a intentar en una hora.';
+    };
+    for (const x of activadas) act[x.mla] = { ts: ahoraP, ok: true, d: `pausada con ${x.stock} u. en Full y a ${money(Math.round(x.precio))} queda en ${x.mg.toFixed(1)}%: la activé`, simple: `Estaba pausada con ${x.stock} en Full y al precio de hoy deja ganar bien: la activé para que se venda.` };
+    for (const x of noLlegan) act[x.mla] = { ts: ahoraP, ok: false, d: `pausada con ${x.stock} u. en Full: no la activé · ${String(x.why).slice(0, 200)}`, simple: `Está pausada con ${x.stock} en Full y no la activé: ${simpleNo(x.why)}` };
     try { await db.patch('mlapi/cerebroact', act); } catch { /* el botón muestra la de antes */ }
   }
   return { avisos, anotar: anotarP };
@@ -3333,6 +3345,65 @@ function fechaEspecialHoy(hoyTs) {
   }
   return null;
 }
+// ── EL CEREBRO EN PALABRAS CLARAS (08/10/2026) ──────────────────────────────────────────────────────────
+// Pedido suyo, mirando la ventana del 🧠: *"quiero que me de una explicacion resumida de porque hizo o no hizo nada.
+// con palabras claras, sin cosas tecnicas (…) si me quedan dudas de algo te pregunto a vos"*. Arma, con los MISMOS
+// números que usó la decisión (no calcula nada nuevo), dos o tres frases que se entienden sin saber cómo funciona.
+// El detalle técnico sigue en el log y en el expediente (`pasos`), pero la web muestra esto.
+function ritmoSimple(r) {
+  r = Number(r) || 0;
+  if (r <= 0) return 'casi no vende';
+  if (r >= 1) return `vende unas ${Math.round(r)} por día`;
+  if (r * 7 >= 1) return `vende unas ${Math.round(r * 7)} por semana`;
+  return `vende unas ${Math.max(1, Math.round(r * 30))} por mes`;
+}
+const diasSimple = (d) => (d === Infinity || !(d >= 0) ? 'mucho tiempo' : d < 1.5 ? 'un día' : `unos ${Math.round(d)} días`);
+function cerebroSimple(D) {
+  if (!D) return '';
+  const m = String(D.motivo || ''), p0 = D.p0, a = D.a;
+  const r = ritmoSimple(D.rEff), st = Number(D.st) || 0;
+  if (D.accion !== 'nada' && a > 0) {
+    if (D.tipoMot === 'escasez' && D.accion === 'sube') return `Quedan pocas: ${st} en Full y ${r}, así que alcanzan para ${diasSimple(D.cover)} y traer más tarda ${diasSimple(D.lead)}. Lo subí de ${money(p0)} a ${money(a)} para que cada una deje más plata mientras tanto.${D.base ? ` Cuando llegue más, vuelve a ${money(D.base)}.` : ''}`;
+    if (D.tipoMot === 'escasez') return `Quedan pocas, pero a ${money(p0)} estaba más caro de lo que conviene: lo bajé a ${money(a)}.`;
+    if (D.tipoMot === 'finescasez') return `Ya hay mercadería suficiente: deja de estar caro por escasez y vuelve a ${money(a)}.`;
+    if (D.tipoMot === 'volver') return `Al precio de ${money(p0)} se vendió menos y dejó menos plata por día${D.plNow != null && D.plPrev != null ? ` (${money(D.plNow)} contra ${money(D.plPrev)} de antes)` : ''}. Lo volví a ${money(a)}.`;
+    if (D.tipoMot === 'explora') return `${r[0].toUpperCase() + r.slice(1)} y el precio de ahora anda bien. Pruebo subirlo de ${money(p0)} a ${money(a)} para ver si deja más plata; si vende menos, vuelve.`;
+    if (D.tipoMot === 'sobra') return `Sobra mercadería: ${st} en Full alcanzan para ${diasSimple(D.cover)}. Lo bajé un poco, de ${money(p0)} a ${money(a)}, para que rote y no pague depósito de más.`;
+    return `${D.accion === 'sube' ? 'Lo subí' : 'Lo bajé'} de ${money(p0)} a ${money(a)}.`;
+  }
+  if (D.enEscasez) return `Quedan pocas (${st} en Full) y el precio ya está donde conviene hasta que llegue más.`;
+  if (D.midiendo && D.apuesta) return `Lo estoy probando a ${money(p0)}: todavía no vendió. Cada venta a este precio deja mucho más que antes, así que espero unos días más antes de decidir.`;
+  if (D.midiendo) return `Estoy probando el precio de ${money(p0)}${D.sdNow > 0 ? `: lleva ${D.uNow || 0} ${(D.uNow || 0) === 1 ? 'vendida' : 'vendidas'} en ${diasSimple(D.sdNow)} con stock` : ''}. Todavía es poco para saber si conviene; en unos días decido.`;
+  if (D.juicio === 'sobra') return `A ${money(p0)} vende menos que antes, pero sobra mercadería: subirlo la dejaría más parada. La dejo así.`;
+  if (D.juicio === 'peor') return `A ${money(p0)} vende menos que antes, pero volver tampoco conviene (${/correcci/.test(m) ? 'ese precio ya era una corrección' : /piso/.test(m) ? 'el precio de antes hoy deja menos de lo mínimo' : 'igual se agota antes de que llegue más'}). La dejo así por ahora.`;
+  if (D.juicio === 'ganó' || D.juicio === 'igual') {
+    if (/competidor|techo/.test(m)) return `A ${money(p0)} deja ${D.juicio === 'ganó' ? 'más' : 'lo mismo de'} plata que antes y ya está al precio del competidor: lo dejo así.`;
+    return `A ${money(p0)} deja ${D.juicio === 'ganó' ? 'más' : 'lo mismo de'} plata que antes: lo dejo así.`;
+  }
+  const t = [
+    [/no contestó|se mira mañana|no pude leer/, 'Mercado Libre no me contestó un dato que necesito: la miro mañana.'],
+    [/en revisión/, 'Mercado Libre la tiene en revisión por el precio y yo no la veo cara: mirala vos en ML.'],
+    [/no está activa/, 'Está pausada: no la toco. Si tiene stock en Full, la activa sola el robot de cada hora cuando el precio deja ganar.'],
+    [/variantes/, 'Tiene colores o modelos adentro con su precio cada uno: ésta no la mueve el cerebro solo.'],
+    [/liquidando/, 'Está marcada para rematar: no la subo.'],
+    [/suba en curso/, 'Otra vuelta del robot la está cambiando justo ahora: la miro mañana.'],
+    [/no tiene costo/, 'La ficha no tiene el costo cargado: sin eso no sé cuánto deja, así que no la toco.'],
+    [/Premium sin cuotas/, 'Es Premium y todavía no sé cuánto cobra ML de cuotas: sin ese dato no la toco.'],
+    [/sin stock en Full/, 'No tiene stock en Full: no hay nada que decidir hasta que llegue mercadería.'],
+    [/hora por hora/, 'Todavía no tengo el registro de cuándo tuvo stock: no la puedo juzgar todavía.'],
+    [/no gana la caja/, 'Otro vendedor tiene el botón de comprar: subirla la deja más lejos. Si conviene bajarla, lo decide la caja de compra.'],
+    [/🔴|supervisor/, 'Una suba anterior le salió mal: no pruebo subirla otra vez por un tiempo.'],
+    [/escalón de comisión/, 'Subirla un poco hace que ML cobre más comisión de lo que sube: la dejo.'],
+    [/barrera/, 'Está justo abajo de $33.000: pasarse hace pagar el envío y deja menos plata.'],
+    [/competidor/, 'Ya está al precio del competidor: más caro no se vendería.'],
+    [/ya probó/, 'Más caro ya lo probé y dejó menos plata: la dejo donde está.'],
+    [/abajo del piso/, 'Bajarla la dejaría ganando menos de lo mínimo: la dejo.'],
+    [/no vendió/, 'No vendió en el último mes: subirla no ayuda. Si sigue sin venderse, la bajan solos el remate y la escalera.'],
+    [/nada para cambiar|en el techo/, `${r[0].toUpperCase() + r.slice(1)} y el precio está bien: no hay nada que cambiar.`],
+  ];
+  for (const [re, txt] of t) if (re.test(m)) return txt;
+  return 'Hoy no hace falta cambiar nada.';
+}
 async function calcCerebro(db, o) {
   const { tokens = {}, hoyTs = Date.now(), soloMla = null, filtro = null } = o || {};
   const res = { dec: [], err: null, fecha: fechaEspecialHoy(hoyTs), resumen: {} };
@@ -3642,6 +3713,7 @@ async function calcCerebro(db, o) {
         const enough = T != null && rPrev != null && sdNow >= 1 && rPrev * sdNow >= umbralU;
         // 1) ESCASEZ (manda sobre todo: no espera evidencia).
         const coverDias = rEff > 0 ? S / rEff : Infinity;
+        D.rEff = rEff; D.cover = coverDias;   // para el texto simple del botón 🧠 (cerebroSimple)
         // La referencia es el precio de ANTES de la escasez y lo que vendía ahí (si ya subió por escasez):
         // si no, cada noche volvería a multiplicar sobre el precio ya subido.
         const enEsc = Number(M.base) > 0 && Number(M.rb) > 0;
@@ -3862,7 +3934,7 @@ async function aplicarCerebro(db, cz, o) {
     try { quedo = Number((await mlGet('/items/' + d.mla + '?attributes=price', tk))?.price) || null; } catch { quedo = null; }
     if (d.frenadaML) { let st = null; try { st = await mlGet('/items/' + d.mla + '?attributes=status,sub_status', tk); } catch { st = null; } console.log(`   · ${d.nom}: estaba en revisión de ML · ahora ${st ? st.status + (st.sub_status && st.sub_status.length ? ' (' + st.sub_status.join(',') + ')' : '') : 'no pude releer el estado'}`); }
     hechos.push({ ...t, de: r.from || d.p0, a: r.to || d.a, quedo });
-    const reg = { tipo: d.accion === 'sube' ? 'sube' : 'baja', por: 'cerebro', mot: d.tipoMot, motivo: String(d.motivo).slice(0, 300), de: r.from || d.p0, a: r.to || d.a, ts: hoyTs, nom: d.nom, cuenta: d.cuenta, u30: d.u30 };
+    const reg = { tipo: d.accion === 'sube' ? 'sube' : 'baja', por: 'cerebro', mot: d.tipoMot, motivo: String(d.motivo).slice(0, 300), simple: cerebroSimple(d).slice(0, 400), de: r.from || d.p0, a: r.to || d.a, ts: hoyTs, nom: d.nom, cuenta: d.cuenta, u30: d.u30 };
     await anotar(() => db.set('cyc/autoprecio/' + d.mla, reg), 'el registro del robot (autoprecio)', t.f);
     if (autoprecio) autoprecio[d.mla] = reg;
     const pm = { ult: { mot: d.tipoMot, de: reg.de, a: reg.a, ts: hoyTs } };
@@ -6970,7 +7042,7 @@ async function resolveTgChat(db) {
       const esc = (t) => String(t || '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
       const txt = `🔐 <b>Alguien nuevo le escribió al bot</b>\n` + ids.map((id) => `· ${esc((nuevos[id] || {}).name) || '(sin nombre)'} · chat …${id.slice(-3)}`).join('\n')
         + `\n<i>No recibe NADA hasta que me digas "aprobalo". Si no lo conocés, no hagas nada.</i>`;
-      try { await sendAlerta(txt); } catch (e) { console.log('Telegram: no pude avisar del chat nuevo: ' + e.message); }
+      try { await sendAlerta(txt, { directo: true }); } catch (e) { console.log('Telegram: no pude avisar del chat nuevo: ' + e.message); }
     }
   }
   TG_NAMES = {}; for (const [id, v] of Object.entries(chats)) TG_NAMES[id] = (v && v.name) || '';
@@ -8394,11 +8466,41 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
 // no pudo leer, resultados de un comando) se llama con { info: true }: va al LOG y NO a Telegram, y
 // devuelve true para que la memoria de "ya avisado" se anote igual (si devolviera false se repetiría
 // todas las horas en el log). Lo que pide una decisión o una acción suya sigue saliendo.
+// LOS AVISOS PASAN POR EL CEREBRO ANTES DE IR A TELEGRAM (08/10/2026, pedido suyo: *"que me mande al
+// telegram luego que haya pasado por el cerebro y si no pudo resolverlo recien ahi"* y *"lo importante y
+// lo que no se pudo resolver"*). Decide UNA sola cosa: ¿esto lo resuelve el robot solo o necesita a Matías?
+//  · informativo (`opt.info`) → lo hecho o lo que no pide nada: no va.
+//  · "con stock en Full y siguen pausadas, no llegan al piso" → lo resuelve la noche: el cerebro / la base
+//    las lleva al precio que deja ganar y después se activan solas (decisión 3a del 08/10). No va.
+//  · todo lo demás va, con un renglón que dice que el cerebro no lo pudo resolver solo — salvo lo que es
+//    de él directo (`opt.directo`: recordatorios y el aviso de seguridad del bot).
+// Cada aviso (vaya o no) queda en `mlapi/cerebroavisos/<ts>` para poder mirar qué se tragó el cerebro.
+function cerebroDeAvisos(text, opt = {}) {
+  const t = String(text || '');
+  if (opt && opt.info) return { va: false, por: 'es informativo: no pide ninguna decisión' };
+  if (/^⏸️ <b>Con stock en Full y siguen pausadas<\/b>/.test(t)) return { va: false, por: 'la noche las lleva al precio que deja ganar y se activan solas' };
+  return { va: true, por: opt && opt.directo ? 'es para vos directo' : 'no lo puede resolver solo' };
+}
 async function sendAlerta(text, opt = {}) {
-  if (opt && opt.info) {
-    console.log('ℹ️ (no va a Telegram, es sólo informativo) ' + String(text).replace(/<[^>]+>/g, '').split('\n')[0].slice(0, 160));
+  const cv = cerebroDeAvisos(text, opt);
+  if (DB_REF) {
+    // Por DÍA (`mlapi/cerebroavisos/<AAAA_MM_DD>/<ts>`) para poder borrar lo viejo sin leer todo: una vez
+    // por corrida se borran los días 15 a 21 para atrás.
+    try {
+      const ts = Date.now();
+      const dk = (x) => new Date(x - 3 * 3600e3).toISOString().slice(0, 10).replace(/-/g, '_');
+      await DB_REF.set(`mlapi/cerebroavisos/${dk(ts)}/${ts}`, { ts, va: cv.va, por: cv.por, t: String(text).replace(/<[^>]+>/g, '').slice(0, 800) });
+      if (!sendAlerta._podado) {
+        sendAlerta._podado = true;
+        for (let d = 15; d <= 21; d++) { try { await DB_REF.set(`mlapi/cerebroavisos/${dk(ts - d * 864e5)}`, null); } catch { /* */ } }
+      }
+    } catch { /* */ }
+  }
+  if (!cv.va) {
+    console.log(`🧠 (no va a Telegram: ${cv.por}) ` + String(text).replace(/<[^>]+>/g, '').split('\n')[0].slice(0, 160));
     return true;
   }
+  if (!(opt && opt.directo)) text = String(text) + '\n\n<i>🧠 Pasó por el cerebro: esto no lo puede resolver solo.</i>';
   if (!TG_TOKEN || TG_SILENCIO) return false;
   if (!TG_ALERTAS) {
     console.log('⚠️ Telegram: hay avisos para mandar pero el canal privado no está configurado (cyc/mlconfig/tgAlertas). Comando: tgalertas');
@@ -10175,7 +10277,10 @@ async function main() {
       // botoncito de 'cerebro' y al clickear que me diga por qué tomó esa decisión"*). Cada regla que mira una
       // publicación esta noche anota lo que dijo; al final se guarda en `mlapi/cerebroexp/<MLA>` (FUERA de `cyc/`:
       // la web lee `cyc` entero al abrir y esto sólo hace falta al tocar el botón).
-      const EXP = {}, EXPI = {};
+      const EXP = {}, EXPI = {}, EXPS = {};
+      // La frase en palabras claras que muestra el 🧠 (pedido suyo del 08/10: "sin cosas técnicas"). Gana la de más
+      // peso: lo que SE HIZO (5) > lo que decidió el cerebro (4 si cambia, 2 si no) > lo que dijo otra regla (1-3).
+      const expS = (mla, prio, txt) => { if (!mla || !txt) return; if (!EXPS[mla] || prio >= EXPS[mla].p) EXPS[mla] = { p: prio, t: String(txt).slice(0, 400) }; };
       const expA = (mla, regla, dijo, info) => {
         if (!mla || !dijo) return;
         (EXP[mla] = EXP[mla] || []).push({ r: regla, d: String(dijo).slice(0, 300) });
@@ -10620,6 +10725,7 @@ async function main() {
           for (const d of cz.dec) {
             const extra = [d.plNow != null && d.plPrev != null ? `deja ${money(d.plNow)}/día (antes ${money(d.plPrev)}/día)` : '', d.enEscasez ? 'en escasez' : '', d.midiendo ? 'midiendo el precio nuevo' : '', d.mg0 != null ? `margen hoy ${d.mg0}%` : '', d.reintentaFecha ? 'fecha de regalos: puede volver a probar un precio que antes no funcionó' : ''].filter(Boolean).join(' · ');
             expA(d.mla, '🧠 plata por día', `${d.accion === 'nada' ? 'no cambia' : (d.accion === 'sube' ? 'SUBE' : 'BAJA') + ` ${money(d.p0)} → ${money(d.a)}`}: ${d.motivo || '—'}${extra ? ' · ' + extra : ''}`, { nom: d.nom, cuenta: d.cuenta, precio: d.p0 });
+            try { expS(d.mla, d.accion !== 'nada' ? 4 : 2, cerebroSimple(d)); } catch { /* el texto simple no puede frenar la noche */ }
           }
           const mid = cz.dec.filter((d) => d.midiendo).length, esc = cz.dec.filter((d) => d.enEscasez).length;
           console.log(`   midiendo un precio: ${mid} · en escasez (precio ya ajustado): ${esc}`);
@@ -10930,6 +11036,14 @@ async function main() {
         for (const x of corregirAv) expA(x.mla, '↘️ corrección', `una suba del robot quedó de más y no vendió desde entonces: ${money(x.de)} → ${money(x.a)} (queda en ${fmtP(x.mg)})`, { nom: x.nom, cuenta: x.label, precio: x.de });
         for (const x of corrFren) expA(x.mla, '↘️ corrección', `no se corrige: ${x.why}`, { nom: x.nom, cuenta: x.label });
         const cajaTxt = (f) => `ganar la caja pide ${money(f.ptw)} y ahí queda en ${fmtP(f.mgPw)}`;
+        // Las frases claras de las otras reglas (las del cerebro ya están puestas arriba y pesan más).
+        for (const x of rescates) expS(x.mla, 3, `Está dejando menos de lo que tiene que dejar (${fmtP(x.pct)}): hay que llevarlo a ${money(x.a)} para que deje el 25%.`);
+        for (const x of rescFren) expS(x.mla, 1, `Deja poco (${fmtP(x.pct)}), pero no lo subo: ${String(x.why || '').split(' · ')[0]}.`);
+        for (const x of corregirAv) expS(x.mla, 3, `Una suba anterior quedó más cara de lo necesario y no vendió desde entonces: hay que bajarla a ${money(x.a)}.`);
+        for (const f of [...sanasCbr, ...sobreSanas]) expS(f.mla, 3, `Otro vendedor tiene el botón de comprar. Bajando a ${money(f.ptw)} lo recupero y sigo ganando bien (${fmtP(f.mgPw)}).`);
+        for (const f of [...remE1, ...remE2, ...remE3, ...sobrePaga, ...sobreE3]) expS(f.mla, 3, `${f.quieta != null ? `Lleva ${f.quieta} días sin venderse` : 'Sobra mercadería'}: hay que bajarla a ${money(f.ptw)} para que salga y no siga pagando depósito en Full.`);
+        for (const f of remNo) expS(f.mla, 1, `No se vende${f.quieta != null ? ` hace ${f.quieta} días` : ''}, pero todavía es pronto para rematarla: la sigo mirando.`);
+        for (const f of (cbr.noSano || [])) expS(f.mla, 1, `Otro vendedor tiene el botón de comprar, pero para recuperarlo habría que bajar a ${money(f.ptw)} y ahí ganaría muy poco (${fmtP(f.mgPw)}): no conviene.`);
         for (const f of sanasCbr) expA(f.mla, '🥊 caja de compra', `no vende y ${cajaTxt(f)}: se puede bajar a ganarla`, { nom: f.nom, cuenta: f.cuenta, precio: f.precio });
         for (const f of sobreSanas) expA(f.mla, '🥊 caja de compra', `sobra stock y ${cajaTxt(f)}: se puede bajar a ganarla`, { nom: f.nom, cuenta: f.cuenta, precio: f.precio });
         for (const [arr, txt] of [[remE1, `escalón 1 del remate (${REM_D1}+ d sin vender, hasta ${REM_P1}%)`], [remE2, `escalón 2 del remate (${REM_D2}+ d, hasta ${REM_P2}%)`], [remE3, `escalón 3 del remate (${REM_D3}+ d, hasta ${REM_P3}%)`], [sobrePaga, 'sobra stock y ya paga almacenamiento (hasta ' + REM_P1 + '%)'], [sobreE3, `sobra stock para ${REM_D3}+ d (hasta ${REM_P3}%)`]])
@@ -10941,14 +11055,26 @@ async function main() {
           const tipoTxt = { rescate: 'llevado a la base', corrige: 'corregida la suba de más', baja: 'bajado a ganar la caja', remate: 'rematado', escalera: 'escalón de la escalera', cerebro: 'decidido por el cerebro', prueba: 'prueba de suba', sube: 'subido' }[t.tipo] || t.tipo;
           expA(t.f.mla, '✅ HECHO', `${tipoTxt}: ${money(t.de)} → ${money(t.a)}${t.quedo != null ? ` · releído de ML: ${money(t.quedo)}` : ''}`, { nom: t.f.nom, cuenta: t.f.cuenta });
           EXPI[t.f.mla] = { ...(EXPI[t.f.mla] || {}), final: { tipo: t.tipo, de: t.de, a: t.a } };
+          const dd = `de ${money(t.de)} a ${money(t.a)}`;
+          const hTxt = {
+            rescate: `Lo subí ${dd}: estaba dejando menos de lo que tiene que dejar (25%).`,
+            corrige: `Lo bajé ${dd}: una suba anterior había quedado más cara de lo necesario y no se vendía.`,
+            baja: `Lo bajé ${dd} para recuperar el botón de comprar de ML, y sigue ganando bien.`,
+            remate: `Lo bajé ${dd}: no se vendía y estaba pagando depósito en Full. Así sale.`,
+            escalera: `Lo bajé un escalón, ${dd}: lleva muchos días sin venderse.`,
+            prueba: `Lo subí un poco, ${dd}, para probar si deja más plata.`,
+            sube: `Lo subí ${dd}: hay lugar abajo del competidor.`,
+          }[t.tipo];
+          if (t.tipo !== 'cerebro' && hTxt) expS(t.f.mla, 5, hTxt);
+          else if (t.tipo === 'cerebro' && EXPS[t.f.mla]) EXPS[t.f.mla].p = 5;   // la frase del cerebro ya dice lo que hizo
         }
-        for (const t of fallidosAuto) expA(t.f.mla, '✗ no se pudo', `${t.tipo || ''}: ${t.err}`, { nom: t.f.nom, cuenta: t.f.cuenta });
+        for (const t of fallidosAuto) { expA(t.f.mla, '✗ no se pudo', `${t.tipo || ''}: ${t.err}`, { nom: t.f.nom, cuenta: t.f.cuenta }); expS(t.f.mla, 6, `Quise cambiarle el precio${t.a ? ` a ${money(t.a)}` : ''} pero Mercado Libre no me dejó. Lo vuelvo a intentar mañana.`); }
         const nExp = Object.keys(EXP).length;
         if (MANDAR && !DRY && !yaCorrioHoy && nExp) {
           const out = {};
           for (const [m, pasos] of Object.entries(EXP)) {
             const i = EXPI[m] || {};
-            out[m] = { ts: hoyTs, nom: String(i.nom || '').slice(0, 60), cuenta: i.cuenta || '', precio: Number(i.precio) || null, final: i.final || null, aplica: !!AUTO_ON, pasos: pasos.slice(0, 20) };
+            out[m] = { ts: hoyTs, nom: String(i.nom || '').slice(0, 60), cuenta: i.cuenta || '', precio: Number(i.precio) || null, final: i.final || null, aplica: !!AUTO_ON, simple: EXPS[m] ? EXPS[m].t : '', pasos: pasos.slice(0, 20) };
           }
           try { await db.set('mlapi/cerebroexp', out); console.log(`   🧠 expediente guardado: ${nExp} publicación(es)`); }
           catch (e) { console.log(`   ⚠️ no pude guardar el expediente del cerebro (${String(e && e.message || e).slice(0, 60)}): el botón 🧠 de la web muestra el de ayer`); }
@@ -11447,7 +11573,7 @@ async function main() {
       if (!t) { console.log('Falta el texto: recordar:<texto>'); process.exitCode = 1; return; }
       const txt = '⏰ <b>Recordatorio</b>\n' + t.replace(/&/g, '&amp;').replace(/</g, '&lt;');
       let ok = false;
-      try { ok = await sendAlerta(txt); } catch (e) { console.log('✗ sendAlerta tiró: ' + e.message); }
+      try { ok = await sendAlerta(txt, { directo: true }); } catch (e) { console.log('✗ sendAlerta tiró: ' + e.message); }
       if (ok) console.log('✓ recordatorio mandado al canal privado'); else { console.log('❌ NO salió el recordatorio'); process.exitCode = 1; }
       return;
     }

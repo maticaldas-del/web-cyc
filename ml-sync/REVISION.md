@@ -58,11 +58,23 @@ todas las etapas.
   nueva sin `expA` deja el botón mudo) · que lo que se hizo coincida con lo que dice ✅ HECHO · con el cerebro
   prendido el supervisor no mueve precios (`CEREBRO_SUP`) y `nivelarGrupos` no corre · fecha de regalos permite
   reintentar un precio que falló (`fDem > 1`).
+- **El 🧠 en palabras simples (08/10/2026, v22.67):** `cerebroSimple(D)` (sync) arma una frase sin nada técnico
+  de cada decisión del cerebro; va en `autoprecio.simple` y en el expediente (`EXPS`/`expS` con prioridad: lo
+  hecho gana sobre lo que no) y `activarPausadasFull` deja `cerebroact.simple`. La web (`cerebroAbrir`) sólo
+  muestra esas frases + el % de hoy; en Pedidos `_cerPedidoSimple` arma "pido N porque vende X y tenés…".
+  Chequear: que una regla nueva que toca precios escriba también su `expS` (si no, la ventanita dice "no hizo
+  falta cambiar nada" cuando sí cambió) · que la frase y el número de la ficha digan lo mismo · que el motivo
+  nuevo de una regla caiga en alguna fila de la tabla de `cerebroSimple` y no en el genérico.
 
 ## 2 · PLATA
 - **% del mes pasado en Métricas** (`renderMetPctAvg`): el chip del período anterior usa el promedio
   del mes ENTERO, y "a esta altura" va en chico.
 - **Costo real por mes** (probe `costomes`): costo congelado del mes o el de hoy, dólar del mes.
+
+- **🧠 qué pasó (08/10/2026, v22.67):** `vpAnalisisSimple(keys,prevKeys,o)` en Ventas (`vpCerebroAbrir`, período
+  y cuenta elegidos) y en Inicio (`homeHoyCerebro`). Mismas cuentas que los KPIs (`efectivoCostoVP`, `gestDivVP`,
+  `pctGananciaVP`, `ventaEnRemate`). Chequear: que la ganancia y el % de la primera frase sean los mismos de los
+  KPIs de arriba · que con el día en curso no diga "se vendió peor" contra un día entero.
 
 ## 3 · MERCADERÍA
 - **Estado de la caja de cada producto** (probe `cajahoy`, `mllinks.caja`): winning/sharing/losing
@@ -84,6 +96,13 @@ todas las etapas.
   tapa números largos). Una rutina de Claude los lee y resuelve lo que puede
   (2 por día, 10:47 y 22:47, `alertas:12`: la ventana tiene que tapar las 12 h entre vueltas). Chequear: que sólo se guarde lo que
   salió, que no quede nada de terceros en el texto impreso, y que el log no crezca sin fin (podar a 30 días).
+- **Los avisos pasan por el cerebro antes de Telegram (08/10/2026, v22.67):** `cerebroDeAvisos(text,opt)` en
+  `sendAlerta`: `info` y "Con stock en Full y siguen pausadas" (lo resuelve la noche) no salen; lo demás sale con
+  "🧠 Pasó por el cerebro: esto no lo puede resolver solo", salvo `directo` (recordatorios y chat nuevo del bot).
+  Todo queda en `mlapi/cerebroavisos/<día>/<ts>` (se borran los días 15-21 para atrás una vez por corrida).
+  Chequear: que algo que sí pide una decisión no caiga en "resuelto" · que un aviso nuevo que sólo informa vaya
+  con `{ info: true }` · que la rutina de Claude NO mueva precios ni publicaciones (decisión 2a del 08/10).
+
 
 ## 7 · DISEÑO
 - **Métricas → Tendencia** (`_metBarraOn`, `_metLegendClick`, `cycMetBarras` en localStorage): las barras

@@ -457,7 +457,19 @@ importantes y que no tengas respuesta clara, el resto configuralo vos"*). v22.65
 Rotación, Pedidos, Contar lo que hay y Ventas, que lee el expediente de la noche (`mlapi/cerebroexp/<MLA>`) · el
 supervisor ya no vuelve precios con el cerebro prendido · `nivelarGrupos` apagado con el cerebro · en fechas de
 regalos se puede reintentar un precio que falló. **Regla para lo que venga: toda regla que mire o mueva un precio
-anota en el expediente (`expA`) y corre DENTRO de la noche del cerebro, nunca como corrector aparte.** También pidió
+anota en el expediente (`expA`) y corre DENTRO de la noche del cerebro, nunca como corrector aparte.**
+**08/10 a la tarde, sus decisiones sobre el inventario de robots (v22.67):** *"quiero que todos esos robot vivan
+dentro del cerebro. asi lo alimentan de informacion"* y *"los avisos de telegram que esten dentro del cerebro
+tambien (…) si no pudo resolverlo recien ahi que me mande al telegram"*. **1** pedidos y Armar caja también los
+"piensa" el cerebro (misma regla: el 🧠 los explica) · **2a** la rutina de Claude que lee Telegram NO mueve precios
+ni publicaciones: resuelve lo que no es precio y lo demás se lo pasa · **3b** no hay rutina de la mañana: lo
+importante y lo que no se pudo resolver le llega por Telegram. Hecho: `sendAlerta` pasa por `cerebroDeAvisos`
+(lo informativo y las pausadas que la noche lleva al piso NO salen; lo demás sale con "🧠 Pasó por el cerebro: esto
+no lo puede resolver solo"; `directo` = recordatorios y chat nuevo; registro `mlapi/cerebroavisos/<día>`).
+**La ventanita 🧠 es en palabras simples** (él: *"una explicacion resumida de porque hizo o no hizo nada (…) sin
+cosas tecnicas (…) si me quedan dudas te pregunto a vos"*): la frase la arma el robot (`cerebroSimple`, `simple` en
+expediente/autoprecio/cerebroact) y en Pedidos `_cerPedidoSimple`. **Y "🧠 qué pasó" en Ventas y en Ventas de hoy**
+(`vpAnalisisSimple`): cómo se vendió contra antes, por qué el % quedó así, lo que más dejó y lo que perdió. También pidió
 el inventario de TODOS los robots automáticos (nombre, qué revisa, qué hace, cada cuánto) y que los que corren cada
 tanto también pasen por el cerebro.
 
