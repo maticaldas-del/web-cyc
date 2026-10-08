@@ -1676,7 +1676,11 @@ julio, a CYC le quedan **~$2.000.000/mes** después de todo eso.
 7. **Las publicaciones con variantes también se suben.** No alcanza con el precio de la
    publicación: hay que tocar cada variante, y mandar la lista incompleta hace que ML borre las
    que faltan. Después de subirlas, releer y verificar que estén TODAS.
-8. **SACAR SIEMPRE TODAS LAS PROMOCIONES DE ML.** Regla suya del 18/08/2026. Todas: las que ya
+8. **⚠️ CAMBIADA EL 08/10/2026: LAS PROMOS LAS DECIDE CLAUDE Y TODA BAJA VA PRIMERO COMO PROMO.** Regla suya, *"muy
+   importante"*: antes de bajar un precio, poner una promo (precio de lista tachado) que deje el mismo neto o más, y entrar en
+   las promos de ML que convengan (a veces ML pone parte del descuento). Ver "TODA BAJA DE PRECIO VA PRIMERO COMO PROMO". Lo que
+   sigue es la regla VIEJA: hoy vale sólo para las promos que nadie analizó (el guardián de cada hora las saca).
+   **SACAR SIEMPRE TODAS LAS PROMOCIONES DE ML.** Regla suya del 18/08/2026. Todas: las que ya
    están aplicadas (`started`) y las aceptadas que todavía no arrancaron (`pending`). Las
    `candidate` son propuestas que nadie aceptó, no hacen nada y no se tocan (hay ~1.000).
    El robot las saca solo, en la vuelta completa de cada hora. A mano: `sacapromos`.
