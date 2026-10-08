@@ -6793,7 +6793,7 @@ const PY_GASTOS = [
   { k: 'envio', campo: 'envio', nom: 'correo' },
   { k: 'retira', campo: 'retira', nom: 'el que retira y despacha' },
   // La diferencia de la transferencia se guardó a veces en `otros` (el 21/09): cuenta cualquiera de los dos.
-  { k: 'cambista', alt: 'otros', campo: 'cambio', nom: 'diferencia de la transferencia', cero: true },
+  { k: 'cambista', alt: 'otros', campo: 'cambio', nom: 'comisión del cambista y envío de los dólares', cero: true },
 ];
 function pyGastoCargado(c, g) {
   const p = (c && c.pagos) || {};
