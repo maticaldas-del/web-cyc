@@ -19013,6 +19013,7 @@ async function main() {
       const links = (await db.get('cyc/mllinks')) || {};
       const acum = {};      // mla → { fin, precio, n }
       const premium = {};   // mla → cuenta (todas las publicaciones Premium, vendan o no)
+      const premInfo = {};  // mla → precio, categoría y token, para preguntar si la comisión ya trae las cuotas
       let cuentasOk = 0;
       for (const label of labels) {
         const acc = accounts[label];
@@ -19023,8 +19024,8 @@ async function main() {
         const ids = Object.entries(links).filter(([mla, e]) => e && e.cuenta === label && /^MLA/i.test(mla)).map(([mla]) => mla);
         let okItems = true;
         for (let k = 0; k < ids.length; k += 20) {
-          let arr; try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,listing_type_id,status', t.access_token); } catch { okItems = false; continue; }
-          for (const row of (arr || [])) { const b = row.body || {}; if (b.id && b.listing_type_id === 'gold_pro') premium[b.id] = label; }
+          let arr; try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,listing_type_id,status,price,category_id,site_id', t.access_token); } catch { okItems = false; continue; }
+          for (const row of (arr || [])) { const b = row.body || {}; if (b.id && b.listing_type_id === 'gold_pro') { premium[b.id] = label; premInfo[b.id] = { price: b.price, cat: b.category_id, site: b.site_id || 'MLA', tok: t.access_token }; } }
         }
         // 2) el costo real de las cuotas en las ventas Premium
         let orders; try { orders = await fetchOrders(acc.seller_id, t.access_token, desde); } catch { console.log(`⚠️ ${label}: no pude leer las ventas`); continue; }
@@ -19085,9 +19086,32 @@ async function main() {
         if (cuoPrev) out[mla] = { pct: Math.round(peor * 100) / 100, n: 0, estimado: true, ts: Date.now() };
       }
       if (conservados) console.log(`   ${conservados} Premium sin ventas en esta ventana conservan su % MEDIDO de antes (no se pisa con un estimado)`);
+      // LAS CUOTAS QUE YA VIENEN ADENTRO DE LA COMISIÓN NO SE SUMAN DOS VECES (08/10/2026). Lo destapó el
+      // Watch S5: el rescate lo vio en 4% a $429.450 y lo subió +24%, pero sus ventas reales a ese precio
+      // dejaron ~21%. En algunas categorías (electrónica) ML ya trae las cuotas ADENTRO de la comisión
+      // (`sale_fee_details.financing_add_on_fee` > 0: 25,9% = 12,9% + 13% de cuotas), y el pago de cada venta
+      // las muestra aparte — que es lo que mide este paso. `netoweb` y `margenAlDia` ya lo miraban; el rescate,
+      // el cerebro, la caja barata, la escalera y los comandos sumaban el 13% encima. Ahora se pregunta acá
+      // UNA vez por Premium y, si la comisión ya las trae, se guarda pct 0 (`enComision`, con el % medido al
+      // lado): todos los que leen cyc/mlcuotas dejan de contarlas dos veces. Si ML no contesta, queda el %
+      // (el lado prudente: el margen se ve menor, nunca mayor).
+      let enComN = 0, enComFallo = 0;
+      for (const mla of Object.keys(out)) {
+        const pi = premInfo[mla];
+        if (!pi || !(pi.price > 0) || !pi.cat) continue;
+        try {
+          const d = await mlGet(`/sites/${pi.site}/listing_prices?price=${Math.round(pi.price)}&listing_type_id=gold_pro&category_id=${pi.cat}`, pi.tok);
+          const o = Array.isArray(d) ? d[0] : d;
+          if (Number(o?.sale_fee_details?.financing_add_on_fee) > 0) {
+            out[mla] = { ...out[mla], pct: 0, enComision: true, pctPago: out[mla].pct, estimado: false };
+            enComN++;
+          }
+        } catch { enComFallo++; }
+      }
+      console.log(`   ${enComN} Premium ya traen las cuotas ADENTRO de la comisión de ML: se guardan en 0% para no contarlas dos veces${enComFallo ? ` · ${enComFallo} no se pudieron preguntar (quedan con su %)` : ''}`);
       console.log(`=== CUOTAS SIN INTERÉS (publicaciones PREMIUM) · últimos ${DIAS} días ===`);
       console.log(`Premium: ${Object.keys(premium).length} · con ventas medidas: ${medidos.length} · sin ventas (se les pone el peor medido, ${peor.toFixed(1)}%): ${Object.keys(out).length - medidos.length}`);
-      for (const [mla, x] of Object.entries(out)) console.log(`   ${mla} · ${(premium[mla] || '?').padEnd(8)} · cuotas ${String(x.pct).padStart(5)}% del precio${x.estimado ? ' (estimado: nunca vendió)' : ` · ${x.n} venta(s)`} · ${((links[mla] || {}).title || '').slice(0, 36)}`);
+      for (const [mla, x] of Object.entries(out)) console.log(`   ${mla} · ${(premium[mla] || '?').padEnd(8)} · cuotas ${String(x.pct).padStart(5)}% del precio${x.enComision ? ` (ya adentro de la comisión · el pago muestra ${x.pctPago}%)` : ''}${x.estimado ? ' (estimado: nunca vendió)' : ` · ${x.n} venta(s)`} · ${((links[mla] || {}).title || '').slice(0, 36)}`);
       if (!DRY) {
         if (cuentasOk === labels.length) await db.set('cyc/mlcuotas', out);
         else if (Object.keys(out).length) await db.patch('cyc/mlcuotas', out);
