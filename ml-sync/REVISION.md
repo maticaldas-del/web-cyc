@@ -51,6 +51,11 @@ todas las etapas.
   respaldo publicación por publicación y el log dice "visitas: N con dato". Chequear que el número
   no caiga a 0.
 
+## 5 bis · AVISOS DE TELEGRAM QUE LEE CLAUDE (08/10/2026)
+- `sendAlerta` guarda copia de cada aviso que SALIÓ en `mlapi/alertaslog/<ts>`; probe `alertas[:horas]` (solo lee,
+  tapa números largos). Una rutina de Claude los lee y resuelve lo que puede. Chequear: que sólo se guarde lo que
+  salió, que no quede nada de terceros en el texto impreso, y que el log no crezca sin fin (podar a 30 días).
+
 ## 8 · DATOS E HISTORIAL (nueva, 08/10/2026)
 Todo lo que guarda la historia día por día y las pantallas que la dibujan.
 - **Línea de tiempo por producto** (`mlapi/linea/<MLA>/<día>`, `_lineaJunta`, `lineaPintar`): stock,
