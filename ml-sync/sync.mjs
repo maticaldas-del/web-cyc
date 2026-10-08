@@ -10023,6 +10023,10 @@ async function main() {
           // que nos vean"), así que entran también las que `calcCajaBarata` apartó por pocas visitas
           // (revisión max #10). El remate y la baja por caja siguen sin tocarlas.
           const vistasH = [];   // publicaciones ya elegidas esta noche, para no bajar dos hermanas
+          // Lo que la escalera deja afuera se DICE en el log (08/10/2026): con el Watch 5 Lite él preguntó "¿por qué
+          // no lo baja más?" y el log decía "0 candidatas" sin nombrar a nadie — el descarte mudo de siempre.
+          const escFuera = [];
+          const escNo = (f, why) => { escFuera.push(`${(f.nom || f.mla).slice(0, 34)} (${f.cuenta || ''}): ${why}`); };
           for (const f of [...remNo, ...cbr.noSano, ...(cbr.sinVisitas || [])]) {
             if (!f || !f.mla || f.sobre || vistas.has(f.mla)) continue;
             vistas.add(f.mla);
@@ -10031,8 +10035,8 @@ async function main() {
             // 7 días es de TODAS juntas (revisión max #11): si no, bajaba una, ML igualaba la otra y
             // a la noche siguiente bajaba la otra — un escalón por noche en vez de uno por semana.
             const herm = Object.keys(escLinks).filter((h) => h !== f.mla && escLinks[h] && escLinks[h].prodId === e.prodId && esHermanaPrecio(e, escLinks[h]));
-            if (herm.some((h) => vistasH.includes(h))) continue;
-            if (herm.some((h) => (escMem[h] && hoyTs - (Number(escMem[h].ts) || 0) < ESC_ESPERA * 864e5) || recienteAuto(h, 'baja', ESC_ESPERA))) continue;
+            if (herm.some((h) => vistasH.includes(h))) { escNo(f, 'ya elegí una hermana esta noche'); continue; }
+            if (herm.some((h) => (escMem[h] && hoyTs - (Number(escMem[h].ts) || 0) < ESC_ESPERA * 864e5) || recienteAuto(h, 'baja', ESC_ESPERA))) { escNo(f, `una hermana bajó hace menos de ${ESC_ESPERA} d`); continue; }
             let mem = escMem[f.mla];
             // Por color si la publicación es de un color (revisión max #3): mismo reloj que `quietaDe`.
             const uv = Math.max(ultE[f.mla] || 0, ultPC[(e.prodId || '') + '__' + (e.cuenta || f.cuenta) + (e.variant ? '__' + String(e.variant).toLowerCase().trim() : '')] || 0);
@@ -10046,20 +10050,21 @@ async function main() {
             // Lo que él marcó liquidando a mano no es nuestro, AUNQUE la escalera ya lo hubiera
             // escalonado antes (revisión max, 25/09: con memoria se lo seguía bajando desde su precio).
             // La marca que puso la propia escalera o el remate sí (si no, quedaría trabado para siempre).
-            if (!NOSUBIR_OK) continue;
-            if (NOSUBIR[f.mla] && !esMarcaRobot(NOSUBIR[f.mla])) continue;
+            if (!NOSUBIR_OK) { escNo(f, 'no pude leer liquidando'); continue; }
+            if (NOSUBIR[f.mla] && !esMarcaRobot(NOSUBIR[f.mla])) { escNo(f, 'marcada liquidando a mano'); continue; }
             // Manda el reloj de `quietaDe` (f.quieta), que ya descuenta los días sin stock (P1, 25/09):
             // recalcularlo acá desde la última venta volvía a contar como "parado" lo recién llegado.
             const quieta = f.quieta != null ? f.quieta
               : (uv > 0 ? Math.floor((hoyTs - uv) / 864e5) : (e.altaTs > 0 ? Math.floor((hoyTs - e.altaTs) / 864e5) : null));
-            if (quieta == null || quieta < ESC_DIAS) continue;
-            if (mem && hoyTs - (mem.ts || 0) < ESC_ESPERA * 864e5) continue;
-            if (mem && mem.paso <= ESC_PASOS[ESC_PASOS.length - 1]) continue;   // ya está en el último escalón
-            if (recienteAuto(f.mla, 'sube', 14) || (!mem && recienteAuto(f.mla, 'baja', ESC_ESPERA))) continue;
-            if (f.conVars) continue;   // con variantes se hace a mano: no ocupa el tope (etapa 1, 27/09)
+            if (quieta == null || quieta < ESC_DIAS) { escNo(f, quieta == null ? 'sin fecha real de entrada a Full' : `parada hace ${quieta} d (la escalera arranca a los ${ESC_DIAS})`); continue; }
+            if (mem && hoyTs - (mem.ts || 0) < ESC_ESPERA * 864e5) { escNo(f, `bajó un escalón hace menos de ${ESC_ESPERA} d`); continue; }
+            if (mem && mem.paso <= ESC_PASOS[ESC_PASOS.length - 1]) { escNo(f, 'ya está en el último escalón'); continue; }
+            if (recienteAuto(f.mla, 'sube', 14) || (!mem && recienteAuto(f.mla, 'baja', ESC_ESPERA))) { escNo(f, 'el robot le cambió el precio hace poco'); continue; }
+            if (f.conVars) { escNo(f, 'tiene variantes adentro (regla 7: no se baja solo)'); continue; }
             candE.push({ f, e, mem, quieta }); vistasH.push(f.mla);
           }
           console.log(`\n🪜 ESCALERA (ganar la caja da pérdida · baja de a un escalón cada ${ESC_ESPERA} d sin vender): ${candE.length} candidata(s)`);
+          for (const x of escFuera.slice(0, 30)) console.log(`   · afuera: ${x}`);
           const tokE = {};
           const feeCE = {};
           for (const c of candE.slice(0, ESC_MAX * 2)) {
