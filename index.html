@@ -2453,7 +2453,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.41';
+const APP_VERSION='22.42';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2464,6 +2464,7 @@ const APP_VERSION='22.41';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.42',f:'08/10/2026',h:'01:40',c:[{n:1,t:'🇵🇾 Pedidos hechos · Los gastos reales: al lado de cada gasto (cambista, el que retira, correo) sale qué % es de la mercadería, para comparar un pedido contra otro.'}]},
   {v:'22.41',f:'08/10/2026',h:'09:45',c:[{n:1,t:'🇵🇾 Pedidos hechos · Los gastos reales: cada renglón con su nombre (mercadería con el dólar al que la pagaste, comisión del cambista y envío de los dólares, el que retira, correo con los kilos), sin "otros". El recargo real se abre en sus dos partes: cuánto más caro salió el dólar y cuánto suman los gastos del pedido.'}]},
   {v:'22.40',f:'08/10/2026',h:'09:20',c:[{n:1,t:'🇵🇾 Pedidos hechos: mientras falten gastos del pedido ya no muestra un recargo real inventado (decía −97,5%) ni el cartel de "falta el correo" cuando el correo estaba: dice qué falta y que se usa el 17%.'}]},
   {v:'22.39',f:'07/10/2026',h:'20:25',c:[{n:2,t:'🇵🇾 Productos nuevos: sin las DOS fotos (comprasparaguay y ML) no va arriba ni se puede meter al pedido: queda abajo como incompleto. El chat de compras ya no carga candidatos sin foto.'}]},
@@ -12094,10 +12095,12 @@ function pyPedidoDetalleHTML(c){
         const _m=Number(pagos.mercaderia)||0,_tr=(Number(pagos.cambista)||0)+(Number(pagos.otros)||0),_rt=Number(pagos.retira)||0,_co=Number(pagos.envio)||0;
         const _tc=parseFloat(c.tcPedido)||parseFloat(c.tcPanel)||0,_usd=parseFloat(c.usdCrudo)||0,_R=pyRecargoReal(c);
         const _dolPag=_m>0&&_usd>0?_m/_usd:0,_gast=_tr+_rt+_co;
+        // % de cada gasto sobre los pesos de la mercadería, para comparar un pedido contra otro (08/10/2026, pedido suyo).
+        const _pc=v=>_m>0&&v>0?` <span style="color:var(--muted);font-size:.9em">${(v/_m*100).toFixed(1).replace('.',',')}%</span>`:'';
         let h=fila('mercadería'+(_dolPag?` <span style="font-size:.9em">· US$ ${_usd.toFixed(2)} a ${fmt(Math.round(_dolPag))}</span>`:''),_m>0?fmt(Math.round(_m)):'<span style="color:var(--amber)">falta</span>','Los pesos que salieron para comprar los dólares de la factura de Nissei.');
-        h+=fila('comisión del cambista y envío de los dólares',(_tr>0||(Array.isArray(c.pagosOk)&&c.pagosOk.includes('cambista')))?fmt(Math.round(_tr)):'<span style="color:var(--amber)">falta</span>','Lo que se queda el cambista y lo que cuesta mandar los dólares a Paraguay.');
-        h+=fila('el que retira y despacha',_rt>0?fmt(Math.round(_rt)):'<span style="color:var(--amber)">falta</span>','Es el gasto más grande del pedido y no cambia si pedís más: en un pedido del doble pesa la mitad.');
-        h+=fila('correo'+(c.kgCorreo>0?` <span style="font-size:.9em">· ${String(c.kgCorreo).replace('.',',')} kg</span>`:''),_co>0?fmt(Math.round(_co)):'<span style="color:var(--amber)">falta</span>','El flete hasta la oficina.');
+        h+=fila('comisión del cambista y envío de los dólares',(_tr>0||(Array.isArray(c.pagosOk)&&c.pagosOk.includes('cambista')))?fmt(Math.round(_tr))+_pc(_tr):'<span style="color:var(--amber)">falta</span>','Lo que se queda el cambista y lo que cuesta mandar los dólares a Paraguay.');
+        h+=fila('el que retira y despacha',_rt>0?fmt(Math.round(_rt))+_pc(_rt):'<span style="color:var(--amber)">falta</span>','Es el gasto más grande del pedido y no cambia si pedís más: en un pedido del doble pesa la mitad.');
+        h+=fila('correo'+(c.kgCorreo>0?` <span style="font-size:.9em">· ${String(c.kgCorreo).replace('.',',')} kg</span>`:''),_co>0?fmt(Math.round(_co))+_pc(_co):'<span style="color:var(--amber)">falta</span>','El flete hasta la oficina.');
         h+=fila('<b>TOTAL</b>','<b>'+fmt(Math.round(totARS))+'</b>');
         if(_R.r==null){h+=`<div style="font-size:.6rem;color:var(--amber);margin-top:4px;line-height:1.5">⚠️ El recargo real todavía no se puede medir: falta ${_R.falta.join(', ')}. Mientras tanto el panel usa el ${Math.round((RECARGO_PY-1)*100)}%.</div>`;return h;}
         const _rec=(_R.r-1)*100,_dol=_dolPag&&_tc?(_dolPag/_tc-1)*100:null,_gp=_m>0?_gast/_m*100:null;
