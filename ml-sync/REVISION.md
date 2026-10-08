@@ -37,7 +37,8 @@ todas las etapas.
   `=<precio>!activar` (sólo si queda al precio pedido y deja el piso, o con `!piso`; sólo pausas nuestras, no las de ML;
   relee el estado). **`informe[:horas]`** (ml-consulta, solo lee) junta en un log lo que la revisión necesita: avisos,
   ventas, lo que ya decidió Claude y cómo le fue, lo que haría el robot (cerebro sin aplicar), pausadas con stock y
-  publicaciones nuevas. Sacar promos (regla 8) sigue automático. **ml-sync cancela la corrida anterior si se dispara
+  publicaciones nuevas, y (desde la misma noche) canceladas/reclamos, ventas sin costo o sin ficha, los pedidos que más
+  plata ponen en riesgo y las cajas en camino con 9+ días. Sacar promos (regla 8) sigue automático. **ml-sync cancela la corrida anterior si se dispara
   otra: los `decido` van TODOS en un solo comando por revisión.**
   · **Las explicaciones del 🧠 las escribe Claude (v22.69):** `decido` guarda en `mlapi/claudeexp/<MLA>` el motivo de
   cada cambio (o el fallo), `MLA=nota|texto` deja una nota sin tocar el precio y `revisado` anota

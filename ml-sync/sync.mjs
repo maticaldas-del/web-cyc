@@ -34612,6 +34612,35 @@ async function main() {
       const nuevas = Object.entries(links).filter(([m, e]) => /^MLA/.test(m) && e && Number(e.altaTs) >= desde);
       console.log(`\n── 6 · PUBLICACIONES NUEVAS (${nuevas.length}) ──`);
       for (const [m, e] of nuevas.slice(0, 20)) console.log(`· ${m} · ${e.cuenta} · ${corta(e.title, 50)} · ${e.prodId ? 'con ficha' : '⚠️ SIN FICHA'} · ${e.status || '?'}`);
+      // 7) Canceladas, reclamos y ventas sin costo de estas horas (la plata que se va o que no se mide)
+      const malas = []; const sinCosto = {};
+      const prodIdx = {}; for (const p0 of (Array.isArray(products) ? products : Object.values(products || {}))) if (p0 && p0.id) prodIdx[p0.id] = p0;
+      for (const ents of Object.values(vp)) for (const v of Object.values(ents || {})) {
+        if (!v) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ts < desde) continue;
+        if (v.cancelada) malas.push(`${v.tipoCancelacion === 'reclamo' ? 'RECLAMO' : (v.tipoCancelacion || 'cancelada')} · ${v.cuenta || '?'} · ${corta(v.prod, 40)} · ${money(Number(v.total) || 0)}`);
+        else { const pp = v.prodId && prodIdx[v.prodId]; if (!pp || !(Number(pp.costUSD) > 0 || Number(pp.costFullUSD) > 0)) sinCosto[corta(v.prod, 40)] = (sinCosto[corta(v.prod, 40)] || 0) + (Number(v.qty) || 1); }
+      }
+      console.log(`\n── 7 · CANCELADAS Y RECLAMOS (${malas.length}) · VENDIDAS SIN COSTO O SIN FICHA (${Object.keys(sinCosto).length}) ──`);
+      for (const x of malas.slice(0, 15)) console.log('· ' + x);
+      for (const [n, q] of Object.entries(sinCosto).slice(0, 15)) console.log(`· sin costo/ficha: ${n} · ${q} u.`);
+      // 8) Pedidos: lo que más plata pone en riesgo si no se compra
+      try {
+        const peds = [...Object.values((await db.get('cyc/pedidos')) || {}).map((x) => ({ ...x, _c: 'Bs As' })), ...Object.values((await db.get('cyc/pedidos_py')) || {}).map((x) => ({ ...x, _c: 'PY' }))]
+          .filter((x) => x && Number(x.cantidad) > 0).sort((x, y) => (Number(y.riesgoComprar ?? y.riesgo) || 0) - (Number(x.riesgoComprar ?? x.riesgo) || 0));
+        console.log(`\n── 8 · PEDIDOS (${peds.length} con algo para comprar) · los que más plata ponen en riesgo ──`);
+        for (const x of peds.slice(0, 12)) console.log(`· ${x._c} · ${corta(x.producto, 40)} · comprar ${x.cantidad} · ${x.estado || '?'} · en riesgo ${money(Math.round(Number(x.riesgoComprar ?? x.riesgo) || 0))}/mes${x.auto === false ? ' · a mano' : ''}`);
+      } catch (eP2) { console.log('pedidos: no pude leerlos · ' + eP2.message); }
+      // 9) Cajas en camino a Full: las viejas o con faltantes
+      try {
+        const envs = (await db.get('cyc/envios_full')) || {}; const abiertas = []; let nAb = 0;
+        for (const [id, env] of Object.entries(envs)) for (const c of (Array.isArray(env && env.cajasDet) ? env.cajasDet : [])) {
+          if (!c || c.recibida) continue; nAb++;
+          const t0 = Date.parse(String(c.fecha || env.fecha || '').slice(0, 10) + 'T15:00:00Z'); const dd = t0 > 0 ? (ahoraI - t0) / 864e5 : null;
+          if (dd == null || dd >= 9) abiertas.push(`· ${env.cuenta || '?'} · caja ${c.track ? '…' + String(c.track).slice(-4) : id} · ${(c.items || []).reduce((s2, it) => s2 + (Number(it && it.u) || 0), 0)} u. · ${dd == null ? 'sin fecha' : Math.round(dd) + ' días en camino'}`);
+        }
+        console.log(`\n── 9 · CAJAS EN CAMINO A FULL (${nAb} abiertas · ${abiertas.length} con 9+ días) ──`);
+        for (const x of abiertas.slice(0, 15)) console.log(x);
+      } catch (eC) { console.log('cajas: no pude leerlas · ' + eC.message); }
       return;
     }
 
