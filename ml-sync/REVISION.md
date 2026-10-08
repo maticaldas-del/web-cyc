@@ -100,6 +100,14 @@ todas las etapas.
   Chequear: que una regla nueva que toca precios escriba también su `expS` (si no, la ventanita dice "no hizo
   falta cambiar nada" cuando sí cambió) · que la frase y el número de la ficha digan lo mismo · que el motivo
   nuevo de una regla caiga en alguna fila de la tabla de `cerebroSimple` y no en el genérico.
+- **El 🧠 sólo con lo que escribe Claude (08/10/2026, v22.70):** él: *"antes de ver uno escrito por el robot
+  automático prefiero que no aparezca nada, solo lo tuyo"*. Con `autoPrecios: off`, `cerebroAbrir` muestra SÓLO
+  notas de `mlapi/claudeexp` (por publicación, y por renglón: `ped__<prodId>[__v__<var>]` y
+  `caja__<prodId>__<cuenta>[__v__<var>]`, clave armada por `_cerClaveCtx` en la web y por `decido` en sync); si no hay
+  ninguna dice "Todavía no escribí nada sobre esto." No se borró ningún dato (expediente, cerebroact, `_ultima`).
+  Se escriben con `decido:ped:<palabras|id>[#var]=nota|texto` y `decido:caja:<palabras|id>@<cuenta>[#var]=nota|texto`
+  (tiene que agarrar UNA ficha). Chequear: que las dos claves (web y sync) sigan iguales · que una nota de caja/pedido
+  vieja no quede contradiciendo los números de hoy (la revisión de 12 h las reescribe cuando cambian).
 
 ## 2 · PLATA
 - **% del mes pasado en Métricas** (`renderMetPctAvg`): el chip del período anterior usa el promedio

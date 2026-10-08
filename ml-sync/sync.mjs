@@ -34762,7 +34762,7 @@ async function main() {
         return;
       }
       const GOp = partes.length && partes[partes.length - 1].toLowerCase() === 'go'; if (GOp) partes.pop();
-      const forzar = {}; const malos = []; const notas = {}; let revisado = false;
+      const forzar = {}; const malos = []; const notas = {}; const notasCtx = []; let revisado = false;
       for (const x of partes) {
         const [izq, ...mot] = x.split('|');
         // `revisado` = terminé la revisión (el 🧠 de las que no toqué dice cuándo las miré) · `MLA=nota|texto` = sólo
@@ -34770,6 +34770,18 @@ async function main() {
         if (/^\s*revisado\s*$/i.test(izq)) { revisado = true; continue; }
         const mn = String(izq).match(/^\s*(MLA\d+)\s*=\s*nota\s*$/i);
         if (mn) { const t = mot.join('|').trim(); if (t) notas[mn[1].toUpperCase()] = t; else malos.push(x); continue; }
+        // `ped:<palabras|id>[#variante]=nota|texto` y `caja:<palabras|id>@<cuenta>[#variante]=nota|texto` (08/10/2026,
+        // él: *"si abro el cerebro en pedidos del pendrive quiero que me digas por qué se piden esas unidades"*): mi
+        // explicación para el 🧠 de un renglón de Pedidos o de Armar caja. Clave `ped__<id>[__v__<var>]` /
+        // `caja__<id>__<cuenta>[__v__<var>]` (la misma que arma la web en `_cerClaveCtx`).
+        const mpc = String(izq).match(/^\s*(ped|caja):(.+?)\s*=\s*nota\s*$/i);
+        if (mpc) {
+          const t = mot.join('|').trim(); if (!t) { malos.push(x); continue; }
+          const tipo = mpc[1].toLowerCase(); let resto = mpc[2]; let vari = ''; let cta = '';
+          if (resto.includes('#')) { vari = resto.slice(resto.indexOf('#') + 1).trim(); resto = resto.slice(0, resto.indexOf('#')); }
+          if (tipo === 'caja') { if (!resto.includes('@')) { malos.push(x + ' (falta @cuenta)'); continue; } cta = resto.slice(resto.indexOf('@') + 1).trim(); resto = resto.slice(0, resto.indexOf('@')); }
+          notasCtx.push({ tipo, q: resto.trim(), vari, cta, t, raw: x }); continue;
+        }
         // `MLA=7550`, `MLA=7550!activar`, `MLA=activar` (deja el precio y la activa), banderas `!piso` `!cruza`.
         const mm = String(izq).match(/^\s*(MLA\d+)\s*=\s*(activar|[\d.,$\s]+)?((?:!\w+)*)\s*$/i);
         if (!mm || (!mm[2] && !/!activar/i.test(mm[3] || ''))) { malos.push(x); continue; }
@@ -34778,7 +34790,7 @@ async function main() {
         forzar[mm[1].toUpperCase()] = { p: soloAct ? 0 : Math.round(pesosArg(mm[2]) / 10) * 10, motivo: mot.join('|').trim(), piso: banderas.includes('!piso'), cruza: banderas.includes('!cruza'),
           activar: soloAct || banderas.includes('!activar') };
       }
-      if (malos.length) { console.log(`No entendí: ${malos.join(' · ')}\nVa así: decido:MLA123=7550|vende igual a este precio;MLA456=4190!piso|motivo;MLA789=nota|lo que pensé;revisado;go`); return; }
+      if (malos.length) { console.log(`No entendí: ${malos.join(' · ')}\nVa así: decido:MLA123=7550|vende igual a este precio;MLA456=4190!piso|motivo;MLA789=nota|lo que pensé;ped:pendrive 8gb=nota|por qué pido;caja:pendrive 8gb@matias=nota|por qué mando;revisado;go`); return; }
       // MIS EXPLICACIONES PARA EL 🧠 (08/10/2026, él: *"todas las anotaciones del cerebro las escribís vos"*):
       // `mlapi/claudeexp/<MLA>` = { ts, simple, … } y `mlapi/claudeexp/_ultima` = cuándo terminé la última revisión.
       const linksD = (await db.get('cyc/mllinks')) || {};
@@ -34787,12 +34799,34 @@ async function main() {
         try { await db.set('mlapi/claudeexp/' + mla, { ts: Date.now(), simple: String(simple).slice(0, 600), nom: String(e.title || '').slice(0, 60), cuenta: e.cuenta || '', ...(extra || {}) }); return true; }
         catch (eN) { console.log(`   ⚠️ no pude guardar la nota de ${mla}: ${String(eN.message || eN).slice(0, 60)}`); return false; }
       };
+      if (notasCtx.length) {
+        const prodsD = Object.values((await db.get('cyc/products')) || {});
+        const CTAS = ['adriana', 'luciana', 'ayelen', 'matias'];
+        console.log(`\n=== 📝 NOTAS DE PEDIDOS Y CAJAS PARA EL 🧠 ${GOp && !DRY ? '' : '(PRUEBA)'} ===`);
+        for (const n of notasCtx) {
+          const qn = norm(n.q);
+          let cand = prodsD.filter((p) => p && (p.id === n.q || norm(p.name || '') === qn));
+          if (!cand.length) cand = prodsD.filter((p) => p && norm(p.name || '').includes(qn));
+          if (cand.length !== 1) { console.log(`✗ "${n.q}" agarra ${cand.length} fichas${cand.length ? ': ' + cand.slice(0, 5).map((p) => p.name).join(' | ') : ''} — no la escribo`); continue; }
+          const p = cand[0]; const ctaL = n.cta.toLowerCase().replace(/í/g, 'i');
+          if (n.tipo === 'caja' && !CTAS.includes(ctaL)) { console.log(`✗ cuenta "${n.cta}" no existe — no la escribo`); continue; }
+          if (n.vari && !(p.variantes || []).some((v) => sid(String(v).toLowerCase()) === sid(n.vari.toLowerCase()))) { console.log(`✗ "${p.name}" no tiene la variante "${n.vari}" — no la escribo`); continue; }
+          const vk = n.vari ? '__v__' + sid(n.vari.toLowerCase()) : '';
+          const key = n.tipo === 'ped' ? `ped__${p.id}${vk}` : `caja__${p.id}__${ctaL}${vk}`;
+          console.log(`· ${n.tipo === 'ped' ? 'pedido' : 'caja ' + ctaL} · ${p.name}${n.vari ? ' · ' + n.vari : ''}: ${n.t}`);
+          if (GOp && !DRY) {
+            try { await db.set('mlapi/claudeexp/' + key, { ts: Date.now(), simple: String(n.t).slice(0, 600), nom: String(p.name || '').slice(0, 60), cuenta: ctaL, variante: n.vari || '', tipo: n.tipo });
+              const rl = await db.get('mlapi/claudeexp/' + key); console.log(rl && rl.simple ? '   ✓ guardada' : '   ✗ no quedó'); }
+            catch (eN) { console.log(`   ⚠️ no pude guardarla: ${String(eN.message || eN).slice(0, 60)}`); }
+          }
+        }
+      }
       if (Object.keys(notas).length) {
         console.log(`\n=== 📝 NOTAS PARA EL 🧠 ${GOp && !DRY ? '' : '(PRUEBA)'} ===`);
         for (const [m, t] of Object.entries(notas)) { console.log(`· ${m} · ${String((linksD[m] || {}).title || '?').slice(0, 40)}: ${t}`); if (GOp && !DRY) await escribirNota(m, t, { tipo: 'nota' }); }
       }
       const marcarRevisado = async () => { if (revisado && GOp && !DRY) { try { await db.set('mlapi/claudeexp/_ultima', Date.now()); console.log('✓ revisión anotada (el 🧠 de las demás dice cuándo las miré)'); } catch { console.log('⚠️ no pude anotar la revisión'); } } };
-      if (!Object.keys(forzar).length) { if (!Object.keys(notas).length && !revisado) console.log('No pasaste ningún precio ni nota.'); await marcarRevisado(); return; }
+      if (!Object.keys(forzar).length) { if (!Object.keys(notas).length && !notasCtx.length && !revisado) console.log('No pasaste ningún precio ni nota.'); await marcarRevisado(); return; }
       const tokP = {};
       for (const label of labels) {
         const acc = accounts[label]; if (!acc?.refresh_token) continue;

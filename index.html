@@ -2455,7 +2455,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.69';
+const APP_VERSION='22.70';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2466,6 +2466,7 @@ const APP_VERSION='22.69';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.70',f:'08/10/2026',h:'18:50',c:[{n:1,t:'💭 El 🧠 muestra SÓLO lo que escribió Claude, con su fecha. Si todavía no escribí nada, dice eso y nada más (sin textos armados solos). En Pedidos y en Armar caja el 🧠 va a decir por qué se piden o se mandan esas unidades, escrito por Claude.'}]},
   {v:'22.69',f:'08/10/2026',h:'17:55',c:[{n:2,t:'💭 El botón 🧠 muestra lo que escribió Claude: por qué cambió (o no) cada precio, y cuándo revisó las demás. Las pausadas con stock en Full también las activa Claude en su revisión, no el robot.'}]},
   {v:'22.68',f:'08/10/2026',h:'17:40',c:[{n:3,t:'💭 Los precios los decide Claude, no el robot. El robot sigue juntando todo (ventas, stock, caja, visitas) y de noche calcula lo que haría, pero no toca nada solo. Dos veces por día (10:47 y 22:47) Claude mira todo lo que pasó en esas 12 horas y decide qué subir, bajar o dejar; cada cambio dice por qué en el botón 🧠.'}]},
   {v:'22.67',f:'08/10/2026',h:'15:52',c:[{n:2,t:'🧠 La ventanita del cerebro ahora explica en palabras simples por qué hizo o no hizo algo (ej. "Quedan pocas: 5 en Full y vende unas 4 por semana… lo subí para que cada una deje más"). En Pedidos: "Pido comprar 7 porque vende unas 3 por semana y tenés 2 en ML…".'},{n:2,t:'🧠 qué pasó: botón en Ventas (para el período elegido) y en Ventas de hoy de Inicio. Cuenta en criollo cómo se vendió contra el período anterior, por qué el % quedó así (remates, lo que se vendió barato), lo que más dejó, lo que perdió plata y la cuenta que más dejó.'},{n:3,t:'📨 Los avisos de Telegram pasan primero por el cerebro: sólo te llega lo que no puede resolver solo o es importante (las pausadas con stock que no llegan al piso ya no avisan: la noche las lleva al precio que deja ganar y se activan solas).'}]},
@@ -6165,7 +6166,7 @@ function renderOfiCaja(){
         onchange="setCajaItem('${f.p.id}',${JSON.stringify(f.variante||'').replace(/"/g,'&quot;')},this.value,${tope})">`:'';
     return `<div style="padding:12px 14px;background:var(--surface);border:1px solid ${enCaja>0?'var(--accent2)':'var(--border)'};border-radius:var(--r);margin-bottom:8px">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-        ${fotoChipHTML(f.p,36,f.variante,ofiFiltroCuenta)}${cerebroBtn(f.p.id,{variante:f.variante||'',cuenta:ofiFiltroCuenta&&ofiFiltroCuenta!=='todas'?ofiFiltroCuenta:''})}
+        ${fotoChipHTML(f.p,36,f.variante,ofiFiltroCuenta)}${cerebroBtn(f.p.id,{variante:f.variante||'',cuenta:ofiFiltroCuenta&&ofiFiltroCuenta!=='todas'?ofiFiltroCuenta:'',ctx:'caja'})}
         <div class="pi-prod" style="flex:1;min-width:150px">${f.p.name}${f.variante?` <span style="color:var(--accent2);font-weight:700">· ${f.variante}</span>`:(f.sinContarPorAroma?' <span style="color:var(--muted);font-weight:400">· sin variante</span>':'')}</div>
         <div style="font-size:.68rem;color:var(--muted)">tenés ${f.hay} u.${otras>0?` <span style="color:var(--amber)">(${otras} en otra caja)</span>`:''}</div>
         ${casilla}
@@ -9073,7 +9074,7 @@ function cerebroBtn(prodId,o){
   if(!prodId)return '';
   o=o||{};
   const at=(k,v)=>v?` data-${k}="${String(v).replace(/"/g,'&quot;')}"`:'';
-  return `<button class="btn" onclick="cerebroAbrir(this,event)" data-p="${prodId}"${at('c',o.cuenta)}${at('v',o.variante)}${at('m',o.mla)}${at('ped',o.ped)}${at('coll',o.coll)} title="🧠 Por qué el cerebro decidió esto" style="font-size:.64rem;padding:2px 7px;line-height:1.2">🧠</button>`;
+  return `<button class="btn" onclick="cerebroAbrir(this,event)" data-p="${prodId}"${at('c',o.cuenta)}${at('v',o.variante)}${at('m',o.mla)}${at('ped',o.ped)}${at('coll',o.coll)}${at('ctx',o.ctx)} title="🧠 Por qué el cerebro decidió esto" style="font-size:.64rem;padding:2px 7px;line-height:1.2">🧠</button>`;
 }
 function _cerMlas(prodId,cuenta,variante,mla){
   if(mla)return [mla];
@@ -9081,6 +9082,12 @@ function _cerMlas(prodId,cuenta,variante,mla){
   return Object.entries(state.mllinks||{}).filter(([k,e])=>e&&e.prodId===prodId&&!e.ignored&&/^MLA/i.test(k)
     &&(!cuenta||String(e.cuenta||'').toLowerCase()===String(cuenta).toLowerCase())
     &&(!vs||!e.variant||sid(String(e.variant).toLowerCase())===vs)).map(([k])=>k);
+}
+// Las notas que escribe Claude para un renglón de Pedidos o de Armar caja (08/10/2026): misma clave que arma
+// `decido:ped:…=nota|…` / `decido:caja:…@cuenta=nota|…` en sync.mjs.
+function _cerClaveCtx(tipo,prodId,cuenta,variante){
+  const vk=variante?'__v__'+sid(String(variante).toLowerCase()):'';
+  return tipo==='ped'?`ped__${prodId}${vk}`:`caja__${prodId}__${String(cuenta||'').toLowerCase().replace(/í/g,'i')}${vk}`;
 }
 const _cerEsc=t=>String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 function _cerFecha(ts){if(!ts)return '?';const d=new Date(Number(ts)-3*3600e3);return d.toISOString().slice(8,10)+'/'+d.toISOString().slice(5,7)+' '+d.toISOString().slice(11,16);}
@@ -9124,17 +9131,47 @@ async function cerebroAbrir(el,ev){
   // CLAUDE ES EL CEREBRO (08/10/2026, él: *"todas las anotaciones del cerebro las escribís vos"*): con
   // `autoPrecios: off` el 🧠 muestra lo que escribió Claude (`mlapi/claudeexp/<MLA>`) y no el texto automático.
   const modoClaude=String((state.mlconfig||{}).autoPrecios||'on')==='off';
-  let clUlt=null;
   await Promise.all(mlas.map(async k=>{
     try{exp[k]=(await db.ref('mlapi/cerebroexp/'+k).once('value')).val();}catch(e){exp[k]=undefined;}
     try{act[k]=(await db.ref('mlapi/cerebroact/'+k).once('value')).val();}catch(e){act[k]=undefined;}
     if(modoClaude){try{cl[k]=(await db.ref('mlapi/claudeexp/'+k).once('value')).val();}catch(e){cl[k]=undefined;}}
   }));
-  if(modoClaude){try{clUlt=(await db.ref('mlapi/claudeexp/_ultima').once('value')).val();}catch(e){clUlt=null;}}
+  // Notas de Claude del renglón (pedido o caja), aparte de las de cada publicación.
+  const ctxK=[];
+  if(modoClaude){
+    if(d.ped){ctxK.push({k:_cerClaveCtx('ped',d.p,'',d.v),cab:''});if(d.v)ctxK.push({k:_cerClaveCtx('ped',d.p,'',''),cab:''});}
+    if(d.ctx==='caja'){const ctas=d.c?[d.c]:(typeof LOCS!=='undefined'?LOCS:['Adriana','Luciana','Ayelen','Matias']);
+      for(const ct of ctas){ctxK.push({k:_cerClaveCtx('caja',d.p,ct,d.v),cab:ct});if(d.v)ctxK.push({k:_cerClaveCtx('caja',d.p,ct,''),cab:ct});}}
+    await Promise.all(ctxK.map(async o=>{try{o.n=(await db.ref('mlapi/claudeexp/'+o.k).once('value')).val();}catch(e){o.n=undefined;}}));
+  }
   let mem={};try{const sn=await db.ref('cyc/cerebro').once('value');mem=sn.val()||{};}catch(e){mem=null;}
   const L=state.mllinks||{},AP=state.autoprecio||{};
   const par=t=>`<p style="margin:8px 0 0">${t}</p>`;
   let h=`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><b style="font-size:.95rem">${tit}</b><button class="btn" onclick="document.getElementById('cerebro-modal').remove()">Cerrar</button></div>`;
+  // SÓLO LO QUE ESCRIBIÓ CLAUDE (08/10/2026, él: *"antes de ver uno escrito por el robot automático prefiero que no
+  // aparezca nada, solo lo tuyo"*): en modo Claude no sale ningún texto armado solo (ni "la revisé el…", ni el %
+  // de hoy, ni la cuenta del pedido): sólo mis notas, con su fecha. Si no escribí nada, lo dice y nada más.
+  if(modoClaude){
+    let nn=0,falla=false;const vistos=new Set();
+    for(const o of ctxK){
+      if(o.n===undefined){falla=true;continue;}
+      if(!o.n||!o.n.simple||vistos.has(o.cab))continue;vistos.add(o.cab);nn++;
+      h+=par(`${o.cab&&ctxK.length>2?`<b>${_cerEsc(o.cab)}:</b> `:''}💭 ${_cerEsc(_cerFecha(o.n.ts))}: ${_cerEsc(o.n.simple)}`);
+    }
+    const varias=mlas.length>1;
+    for(const k of mlas){
+      const c=cl[k],e=L[k]||{};
+      if(c===undefined){falla=true;continue;}
+      if(!c||!c.simple)continue;nn++;
+      const cab=varias?`<b>${_cerEsc(e.cuenta||'')}${e.variant?' · '+_cerEsc(e.variant):''}${e.status&&e.status!=='active'?' · pausada':''}:</b> `:'';
+      h+=par(`${cab}💭 ${_cerEsc(_cerFecha(c.ts))}: ${_cerEsc(c.simple)}`);
+    }
+    if(falla)h+=par('<span style="color:var(--amber)">No pude leer alguna nota. Probá de nuevo en un rato.</span>');
+    else if(!nn)h+=par('<span style="color:var(--muted)">Todavía no escribí nada sobre esto.</span>');
+    h+=`<p style="margin:12px 0 0;font-size:.72rem;color:var(--muted)">¿Te queda alguna duda? Preguntale a Claude en el chat.</p>`;
+    m.innerHTML=caja(h);
+    return;
+  }
   if(d.ped){
     let ped=null;for(const c of [d.coll,'pedidos','pedidos_py'].filter(Boolean)){const arr=state[c];if(Array.isArray(arr)){ped=arr.find(x=>x&&x.id===d.ped)||null;if(ped)break;}}
     if(ped)h+=par('🛒 '+_cerEsc(_cerPedidoSimple(ped)));
@@ -9144,18 +9181,6 @@ async function cerebroAbrir(el,ev){
   for(const k of mlas){
     const e=L[k]||{},x=exp[k],a=act[k],ap=AP[k],M=mem&&mem[k];
     const fr=[];
-    if(modoClaude){
-      const c=cl[k];
-      if(c&&c.simple)fr.push(`💭 ${_cerFecha(c.ts)}: ${c.simple}`);
-      else if(c===undefined)fr.push('No pude leer lo que anoté. Probá de nuevo en un rato.');
-      else if(clUlt)fr.push(`💭 La revisé el ${_cerFecha(clUlt)} junto con todas las demás y no vi nada para cambiar.`);
-      else fr.push('💭 Todavía no la revisé: la miro en la próxima revisión (8:52 o 20:52).');
-      let mgC='';try{const _np=(state.netopub||{})[k];const mm=_np?margenMLDe(p,_np):null;if(mm&&mm.margen!=null)mgC=`Hoy deja ${Math.round(mm.margen)}% de ganancia.`;}catch(er){}
-      if(mgC)fr.push(mgC);
-      const cab=varias?`<b>${_cerEsc(e.cuenta||'')}${e.variant?' · '+_cerEsc(e.variant):''}${e.status&&e.status!=='active'?' · pausada':''}:</b> `:'';
-      h+=par(cab+fr.map(_cerEsc).join(' '));
-      continue;
-    }
     if(x&&x.simple)fr.push(x.simple);
     else if(x&&x.final)fr.push(`Anoche le cambié el precio de ${fmt(x.final.de)} a ${fmt(x.final.a)}.`);
     else if(x)fr.push('Anoche la miré y no hizo falta cambiar nada.');
