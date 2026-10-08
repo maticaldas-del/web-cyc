@@ -730,6 +730,14 @@ mensaje sin que yo te escriba (…) siempre y cuando sea algo que vos puedas hac
    (`activarPausadasFull`). Piedra Gua Sha activada (59%) · Kit Jade subido $5.299 → $5.420 (25%) para que se active solo ·
    Linterna COB (`MLA3998033920`) sigue pausada: da 5%, falta su costo real.
 
+## ⏰ PENDIENTE: EL PEDIDO AL PAULVIC DEL 06/10 (08/10/2026)
+
+40 u. en 12 aromas, todavía en camino (`cyc/pedidospv`). Le mandaron **$246.283,77** para pagar (≈ $6.157 c/u; la ficha
+"Paulvic TODOS" tiene $6.666 → 40 u. = $266.640). Él: *"quizás me mandan menos porque no tenían stock y falta el flete.
+cuando llegue todo te digo. haceme acordar"*. Recordatorio `trig_012sLEm6uc4eVMXwXoU1pQfR` (10/10 10:00 de acá). Al
+llegar: `pvped:llego` con lo que vino · rehacer la cuenta con lo llegado + flete · si el precio c/u bajó, ofrecer
+`poncosto` · al pagar, `pvped:pago` con monto y comprobante.
+
 ## ⏩ DÓNDE QUEDAMOS — LEER PRIMERO (22/09/2026, cierre del chat)
 
 Él cambió de chat y pidió dejar todo escrito para arrancar del otro. **Esto es lo que quedó abierto,
