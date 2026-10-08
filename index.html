@@ -1533,7 +1533,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
       <input type="date" id="vp-range-to" class="cal-select" onchange="renderVentaProd()">
     </span>
     <span id="vp-date-label" style="font-size:.66rem;color:var(--muted)"></span>
-    <button class="btn" onclick="vpCerebroAbrir(event)" title="🧠 Qué pasó con las ventas de este período, en palabras simples" style="font-size:.72rem;padding:3px 9px">🧠 qué pasó</button>
+    <button class="btn" id="vp-cerebro-btn" onclick="vpCerebroAbrir(event)" title="🧠 Qué pasó con las ventas de este período, en palabras simples" style="font-size:.72rem;padding:3px 9px">🧠 qué pasó</button>
   </div>
 
   <div class="met-kpi-grid" id="vp-kpis"></div>
@@ -2461,7 +2461,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.73';
+const APP_VERSION='22.74';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2472,6 +2472,7 @@ const APP_VERSION='22.73';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.74',f:'08/10/2026',h:'19:55',c:[{n:1,t:'🧠 Vuelven los 🧠 de cada venta (dicen por qué está a ese precio). El "🧠 qué pasó" de Ventas de hoy (y de Ventas) aparece sólo si ese día pasó algo importante, y lo cuenta Claude.'}]},
   {v:'22.73',f:'08/10/2026',h:'19:35',c:[{n:1,t:'🧠 En Ventas el botón aparece sólo si ese día pasó algo importante con esa publicación, y dice qué pasó.'}]},
   {v:'22.72',f:'08/10/2026',h:'19:18',c:[{n:1,t:'🧠 El botón sólo aparece donde Claude escribió algo para ese lugar. Si no hay nota, no hay botón.'}]},
   {v:'22.71',f:'08/10/2026',h:'19:11',c:[{n:1,t:'🧠 Cada lugar dice lo suyo: en Ventas, Productos y Rotación, por qué cambió (o no) el precio; en Pedidos y Armar caja, por qué van esas unidades.'}]},
@@ -9087,9 +9088,6 @@ function _cerHayNota(prodId,o){
   const S=_cerNotas;if(!S||!S.size)return false;
   const vk=o.variante?'__v__'+sid(String(o.variante).toLowerCase()):'';
   if(o.ped)return S.has(`ped__${prodId}${vk}`)||S.has(`ped__${prodId}`);
-  // EN VENTAS, SÓLO SI ESE DÍA PASÓ ALGO (08/10/2026, él: *"en el cerebro de ventas escribí algo si fue importante en el
-  // día, si no no"*): la nota es del día y la publicación (`venta__<AAAA_MM_DD>__<MLA>`), no la de precio.
-  if(o.ctx==='venta')return !!(o.mla&&o.dia&&S.has(`venta__${o.dia}__${o.mla}`));
   if(o.ctx==='caja'){
     const ct=o.cuenta?String(o.cuenta).toLowerCase().replace(/í/g,'i'):'';
     for(const k of S){if(!k.startsWith(`caja__${prodId}__`))continue;const r=k.slice(`caja__${prodId}__`.length);
@@ -9168,7 +9166,6 @@ async function cerebroAbrir(el,ev){
   // Notas de Claude del renglón (pedido o caja), aparte de las de cada publicación.
   const ctxK=[];
   if(modoClaude){
-    if(d.ctx==='venta'&&d.dia&&d.m)ctxK.push({k:`venta__${d.dia}__${d.m}`,cab:''});
     if(d.ped){ctxK.push({k:_cerClaveCtx('ped',d.p,'',d.v),cab:''});if(d.v)ctxK.push({k:_cerClaveCtx('ped',d.p,'',''),cab:''});}
     if(d.ctx==='caja'){const ctas=d.c?[d.c]:(typeof LOCS!=='undefined'?LOCS:['Adriana','Luciana','Ayelen','Matias']);
       for(const ct of ctas){ctxK.push({k:_cerClaveCtx('caja',d.p,ct,d.v),cab:ct});if(d.v)ctxK.push({k:_cerClaveCtx('caja',d.p,ct,''),cab:ct});}}
@@ -9191,7 +9188,7 @@ async function cerebroAbrir(el,ev){
     // CADA LUGAR, SU NOTA (08/10/2026, él: *"en ventas quiero que digas por qué aumentó el precio o por qué no, y en
     // pedidos por qué pide x unidades"*): en Pedidos y Armar caja van SÓLO las notas de unidades (ped/caja); las de
     // precio (por publicación) van en Ventas, Productos y Rotación.
-    const soloUnid=!!(d.ped||d.ctx==='caja'||d.ctx==='venta');
+    const soloUnid=!!(d.ped||d.ctx==='caja');
     const varias=mlas.length>1;
     for(const k of (soloUnid?[]:mlas)){
       const c=cl[k],e=L[k]||{};
@@ -9201,7 +9198,7 @@ async function cerebroAbrir(el,ev){
       h+=par(`${cab}💭 ${_cerEsc(_cerFecha(c.ts))}: ${_cerEsc(c.simple)}`);
     }
     if(falla)h+=par('<span style="color:var(--amber)">No pude leer alguna nota. Probá de nuevo en un rato.</span>');
-    else if(!nn)h+=par(`<span style="color:var(--muted)">${soloUnid?(d.ctx==='venta'?'Ese día no pasó nada importante con esta publicación.':'Todavía no escribí por qué van estas unidades.'):'Todavía no escribí nada sobre el precio de esto.'}</span>`);
+    else if(!nn)h+=par(`<span style="color:var(--muted)">${soloUnid?'Todavía no escribí por qué van estas unidades.':'Todavía no escribí nada sobre el precio de esto.'}</span>`);
     h+=`<p style="margin:12px 0 0;font-size:.72rem;color:var(--muted)">¿Te queda alguna duda? Preguntale a Claude en el chat.</p>`;
     m.innerHTML=caja(h);
     return;
@@ -9305,8 +9302,24 @@ function vpCerebroModal(titulo,frases){
     ${frases.map(t=>`<p style="margin:8px 0 0">${_cerEsc(t)}</p>`).join('')}
     <p style="margin:12px 0 0;font-size:.72rem;color:var(--muted)">¿Te queda alguna duda? Preguntale a Claude en el chat.</p></div>`;
 }
+// "🧠 QUÉ PASÓ" SÓLO CUANDO FUE IMPORTANTE (08/10/2026, él: *"en el cerebro de ventas escribí algo si fue importante en el
+// día, si no no"* · *"yo decía este, el de la tarjeta del principio de ventas de hoy"*): con Claude a cargo el botón lee la
+// nota del día (`mlapi/claudeexp/dia__<AAAA_MM_DD>`, `decido:dia:<AAAA-MM-DD>=nota|…`) y sin nota no aparece.
+function _cerModoClaude(){return String((state.mlconfig||{}).autoPrecios||'on')==='off';}
+function _cerDiaVisible(k){return !_cerModoClaude()||!!(_cerNotas&&_cerNotas.has('dia__'+k));}
+async function _cerDiaModal(titulo,keys){
+  const out=[];
+  for(const k of keys.filter(k=>!_cerNotas||_cerNotas.has('dia__'+k))){try{const n=(await db.ref('mlapi/claudeexp/dia__'+k).once('value')).val();if(n&&n.simple)out.push({k,n});}catch(e){}}
+  vpCerebroModal(titulo,out.length?out.map(o=>`${keys.length>1?o.k.slice(8,10)+'/'+o.k.slice(5,7)+': ':''}💭 ${o.n.simple}`):['Ese día no pasó nada importante.']);
+}
+function vpCerebroBtnSync(){
+  const b=document.getElementById('vp-cerebro-btn');if(!b)return;
+  let ok=true;try{ok=!_cerModoClaude()||vpScopeKeys().keys.some(k=>_cerNotas&&_cerNotas.has('dia__'+k));}catch(e){ok=true;}
+  b.style.display=ok?'':'none';
+}
 function vpCerebroAbrir(ev){
   if(ev&&ev.stopPropagation)ev.stopPropagation();
+  if(_cerModoClaude()){const sk=vpScopeKeys();return _cerDiaModal(`Ventas · ${sk.label||''}`,sk.keys);}
   const sk=vpScopeKeys();
   const enCurso=vpPeriod==='dia'&&vpDate===todayStr();
   const prevLbl=vpPeriod==='dia'?(enCurso?'ayer':'el día anterior'):(sk.prevLabel||'el período anterior');
@@ -9317,6 +9330,7 @@ function homeHoyCerebro(ev){
   if(ev&&ev.stopPropagation)ev.stopPropagation();
   const d=new Date();d.setDate(d.getDate()-_homeHoyOff);const a=new Date(d);a.setDate(a.getDate()-1);
   const enCurso=_homeHoyOff===0;
+  if(_cerModoClaude())return _cerDiaModal(`Ventas de ${enCurso?'hoy':_homeHoyOff===1?'ayer':dateToKey(d).slice(8,10)+'/'+dateToKey(d).slice(5,7)}`,[dateToKey(d)]);
   vpCerebroModal(`Ventas de ${enCurso?'hoy':_homeHoyOff===1?'ayer':dateToKey(d).slice(8,10)+'/'+dateToKey(d).slice(5,7)}`,
     vpAnalisisSimple([dateToKey(d)],[dateToKey(a)],{enCurso,prevLbl:enCurso?'ayer':'el día anterior',cuando:enCurso?'hoy':'ese día'}));
 }
@@ -9962,6 +9976,7 @@ async function delVentaProd(id){
 function renderVentaProd(){
   const dEl=document.getElementById('vp-date');if(!dEl)return;
   vpDate=dEl.value||vpDate||todayStr();
+  try{vpCerebroBtnSync();}catch(e){}
   // etiqueta período activo
   const sk=vpScopeKeys();
   const lbl=document.getElementById('vp-date-label');if(lbl)lbl.textContent=vpPeriod==='dia'&&vpDate===todayStr()?'· hoy':'';
@@ -10156,7 +10171,7 @@ function renderVentaProd(){
       const _cambios=grp.items.map(v=>isCancelled?'':cambioVentaHTML(v,Number(v.ts)||0));
       const _hayCambio=_cambios.some(x=>x);
       const _pill=isCancelled?'':(gpct===null?`<span class="db nc" style="font-size:.66rem" title="${_sinFicha?'Esta venta no está enganchada a ninguna ficha: el panel no sabe qué producto es ni cuánto costó. Se arregla vinculando la publicación.':'La ficha no tiene costo cargado.'}">${_sinFicha?'sin ficha':'sin costo'}</span>`:`<span class="db ${_est?'nc':''}" style="font-size:.72rem;padding:3px 9px;${_est?'color:var(--muted)':_pillSt}">${_est?'≈ ':''}${gpct>=0?'+':''}${gpct.toFixed(0)}%</span>`);
-      const _items=grp.items.map((v,i)=>`<div style="font-size:.8rem;line-height:1.35;${isCancelled?'opacity:.45;text-decoration:line-through':''}">${fotoVentaHTML(v,38)}<span style="color:var(--muted)">${v.qty}×</span> ${nombreDeVenta(v)}${v.variante?` <span style="padding:1px 6px;border-radius:4px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.66rem;white-space:nowrap">${v.variante}</span>`:''}${_cambios[i]?` <span style="font-size:.66rem" title="Cambió de precio antes de esta venta · mirá el detalle">${_cambios[i].includes('⬆️')?'⬆️':'⬇️'}</span>`:''}${(()=>{const _pp=prodDeVenta(v);return _pp?' '+cerebroBtn(_pp.id,{mla:v.mla,ctx:'venta',dia:v._dateKey}):'';})()}</div>`).join('');
+      const _items=grp.items.map((v,i)=>`<div style="font-size:.8rem;line-height:1.35;${isCancelled?'opacity:.45;text-decoration:line-through':''}">${fotoVentaHTML(v,38)}<span style="color:var(--muted)">${v.qty}×</span> ${nombreDeVenta(v)}${v.variante?` <span style="padding:1px 6px;border-radius:4px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.66rem;white-space:nowrap">${v.variante}</span>`:''}${_cambios[i]?` <span style="font-size:.66rem" title="Cambió de precio antes de esta venta · mirá el detalle">${_cambios[i].includes('⬆️')?'⬆️':'⬇️'}</span>`:''}${(()=>{const _pp=prodDeVenta(v);return _pp?' '+cerebroBtn(_pp.id,{mla:v.mla,ctx:'venta'}):'';})()}</div>`).join('');
       const _avisoIco=(rescLabel&&rescLabel.includes('⚠️'))?' <span title="El robot no pudo subirla · mirá el detalle">⚠️</span>':'';
       const _abierto=vpDetOpen.has(grp.gid);
       const _dl=(k,val)=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:3px 0;border-bottom:1px dashed var(--border)"><span style="color:var(--muted)">${k}</span><span style="text-align:right">${val}</span></div>`;
@@ -10180,7 +10195,7 @@ function renderVentaProd(){
       // EN LA PC VA EL RENGLÓN DE ANTES; LA TARJETA ES SÓLO PARA EL TELÉFONO (30/09/2026, él:
       // "en la pc quiero como estaba antes. que quede así en el celu"). Se arman las dos y el CSS
       // (.vp-pc / .vp-cel, corte 640px) muestra una sola.
-      const lines=grp.items.map(v=>`<div style="display:flex;justify-content:space-between;font-size:.72rem;padding:2px 0;align-items:center;${isCancelled?'opacity:.45;text-decoration:line-through':''}"><span>${fotoVentaHTML(v,30)}${v.qty}× ${nombreDeVenta(v)}${v.variante?` <span style="padding:1px 5px;border-radius:3px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.62rem">${v.variante}</span>`:''}${isCancelled?'':(()=>{const x=cambioVentaHTML(v,Number(v.ts)||0);return x?' '+x:'';})()}${(()=>{const _pp=prodDeVenta(v);return _pp?' '+cerebroBtn(_pp.id,{mla:v.mla,ctx:'venta',dia:v._dateKey}):'';})()}</span><span style="color:var(--muted)">${(!isCancelled&&(v.total||0)>0)?`total ${fmt(v.total)} · `:''}${isCancelled?'':'neto '+fmt(v.neto||0)}</span></div>`).join('');
+      const lines=grp.items.map(v=>`<div style="display:flex;justify-content:space-between;font-size:.72rem;padding:2px 0;align-items:center;${isCancelled?'opacity:.45;text-decoration:line-through':''}"><span>${fotoVentaHTML(v,30)}${v.qty}× ${nombreDeVenta(v)}${v.variante?` <span style="padding:1px 5px;border-radius:3px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.62rem">${v.variante}</span>`:''}${isCancelled?'':(()=>{const x=cambioVentaHTML(v,Number(v.ts)||0);return x?' '+x:'';})()}${(()=>{const _pp=prodDeVenta(v);return _pp?' '+cerebroBtn(_pp.id,{mla:v.mla,ctx:'venta'}):'';})()}</span><span style="color:var(--muted)">${(!isCancelled&&(v.total||0)>0)?`total ${fmt(v.total)} · `:''}${isCancelled?'':'neto '+fmt(v.neto||0)}</span></div>`).join('');
       const _pcHtml=`<div class="ingreso-item vp-pc" style="flex-direction:column;align-items:stretch;gap:4px;${isCancelled?'border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.04)':''}">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <span class="who-badge" style="font-size:.6rem;${isCancelled?'opacity:.6':''}">${cuenta}</span>
@@ -18157,7 +18172,7 @@ function renderHomeHoy(){
   el.innerHTML=`<div onclick="homeHoyIr()" style="cursor:pointer;position:relative;overflow:hidden;background:linear-gradient(135deg,rgba(34,197,94,.16),rgba(34,197,94,.03) 55%,var(--surface));border:1px solid rgba(34,197,94,.45);border-radius:20px;padding:20px 22px 16px;margin:4px auto 18px;max-width:min(760px,calc(100vw - 32px));box-shadow:0 6px 28px rgba(34,197,94,.12)">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:10px">
       <span style="display:flex;align-items:center;gap:8px"><span style="display:flex;gap:4px;flex-shrink:0">${flecha(1,'‹',false)}${flecha(-1,'›',_homeHoyOff===0)}</span><span style="font-size:.72rem;text-transform:uppercase;letter-spacing:.16em;color:var(--green);font-weight:700">🏷️ ${titulo}</span></span>
-      <span style="display:flex;gap:6px;align-items:center"><button onclick="homeHoyCerebro(event)" title="🧠 Qué pasó con las ventas de este día" style="background:transparent;border:1px solid var(--border2);color:var(--text);border-radius:999px;padding:3px 10px;font-size:.7rem;cursor:pointer">🧠 qué pasó</button><span style="font-size:.7rem;color:var(--muted);border:1px solid var(--border2);border-radius:999px;padding:3px 10px">ver ventas ›</span></span>
+      <span style="display:flex;gap:6px;align-items:center">${_cerDiaVisible(dateToKey(hoy))?`<button onclick="homeHoyCerebro(event)" title="🧠 Qué pasó con las ventas de este día" style="background:transparent;border:1px solid var(--border2);color:var(--text);border-radius:999px;padding:3px 10px;font-size:.7rem;cursor:pointer">🧠 qué pasó</button>`:''}<span style="font-size:.7rem;color:var(--muted);border:1px solid var(--border2);border-radius:999px;padding:3px 10px">ver ventas ›</span></span>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:10px 34px;align-items:flex-end">
       <div><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(2.3rem,9vw,3.4rem);line-height:1;letter-spacing:-.01em">${fmt(h.bruto)}</div><div style="font-size:.78rem;color:var(--muted);margin-top:6px">facturado · <b style="color:var(--text)">${h.ventas}</b> venta${h.ventas===1?'':'s'} · <b style="color:var(--text)">${h.u}</b> u.</div></div>
