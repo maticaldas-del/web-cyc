@@ -8183,6 +8183,16 @@ async function sendAlerta(text, opt = {}) {
     }
   }
   console.log(`✓ Aviso mandado al canal privado${partes.length > 1 ? ` en ${partes.length} mensajes` : ''}.`);
+  // COPIA DE CADA AVISO PARA CLAUDE (08/10/2026, pedido suyo: *"me gustaria que vos tambien veas lo
+  // que me manda y ver si lo podes resolver vos"*). El bot no puede releer lo que mandó (Telegram no
+  // devuelve los mensajes propios), así que se guarda acá: `mlapi/alertaslog/<ts>` (FUERA de `cyc/`:
+  // la web no lo necesita). Lo lee el probe `alertas` y la rutina de Claude. Sólo corridas reales.
+  if (DB_REF) {
+    try {
+      const ts = Date.now();
+      await DB_REF.set(`mlapi/alertaslog/${ts}`, { ts, t: String(text).replace(/<[^>]+>/g, '').slice(0, 6000), wf: String(process.env.GITHUB_WORKFLOW || ''), probe: String(process.env.BILLING_PROBE || '').slice(0, 60) });
+    } catch (e) { console.log('⚠️ No pude guardar la copia del aviso: ' + (e && e.message || e)); }
+  }
   return true;
 }
 const money = (n) => '$' + Math.round(n).toLocaleString('es-AR');
@@ -16480,6 +16490,22 @@ async function main() {
       for (const [b, l] of Object.entries(B).sort((a, c) => c[1].length - a[1].length)) {
         console.log(`\n${b}: ${l.length}`);
         if (!['gana', 'comparte', 'pierde'].includes(b)) for (const t of l.slice(0, 80)) console.log('   ' + t);
+      }
+      return;
+    }
+    // BILLING_PROBE=alertas[:<horas>] → LOS AVISOS QUE EL ROBOT LE MANDÓ A ÉL POR TELEGRAM (08/10/2026).
+    // SOLO LEE. Sale de `mlapi/alertaslog` (la copia que guarda `sendAlerta`). Es lo que lee la rutina de
+    // Claude para ver si puede resolver algo sin que él escriba. El registro es PÚBLICO: los números
+    // largos (órdenes, paquetes, chats) se tapan.
+    if (/^alertas(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const hrs = Number(String(process.env.BILLING_PROBE).split(':')[1]) || 24;
+      const desde = Date.now() - hrs * 3600e3;
+      const v = (await db.get('mlapi/alertaslog')) || {};
+      const xs = Object.values(v).filter(x => x && x.ts >= desde).sort((a, b) => a.ts - b.ts);
+      console.log(`=== AVISOS MANDADOS A TELEGRAM · últimas ${hrs} h · ${xs.length} ===`);
+      for (const x of xs) {
+        console.log(`\n--- ${new Date(x.ts - 3 * 3600e3).toISOString().slice(0, 16).replace('T', ' ')} (hora de acá) · ${x.wf || '?'}${x.probe ? ' · ' + x.probe : ''} ---`);
+        console.log(String(x.t || '').replace(/\d{9,}/g, m => '…' + m.slice(-4)));
       }
       return;
     }
