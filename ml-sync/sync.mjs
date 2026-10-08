@@ -3318,7 +3318,8 @@ function esperadoMinPoisson(lam, S) {
   return e;
 }
 const CEREBRO_LEAD_DIAS = 21, CEREBRO_LEAD_OFI = 10, CEREBRO_SOBRA_DIAS = 90, CEREBRO_FALLO_DIAS = 30;
-const RE_REGALO = /perfum|parfum|\bedp\b|\bedt\b|eau de|body splash|body mist|colonia|reloj|watch|smartwatch|auricular|\bbuds\b|parlante|joystick|control|mando|juguete|lego|muñec|peluche|cartera|billetera|mochila|termo|plancha|secador|cortapelo|afeitad|maquill|labial|crema|estuche|kit|set de|waflera|sandwichera|cafetera|mate/i;
+// `termo` y `mate` con borde de palabra (08/10/2026): sin eso "Termómetro" y "automático" contaban como regalo.
+const RE_REGALO = /perfum|parfum|\bedp\b|\bedt\b|eau de|body splash|body mist|colonia|reloj|watch|smartwatch|auricular|\bbuds\b|parlante|joystick|control|mando|juguete|lego|muñec|peluche|cartera|billetera|mochila|\btermos?\b|plancha|secador|cortapelo|afeitad|maquill|labial|crema|estuche|kit|set de|waflera|sandwichera|cafetera|\bmate\b/i;
 function _nDomingoAR(y, m, n) { const d = new Date(Date.UTC(y, m, 1)); return Date.UTC(y, m, 1 + ((7 - d.getUTCDay()) % 7) + (n - 1) * 7, 3); }
 function fechasEspeciales(y) {
   const nov1 = new Date(Date.UTC(y, 10, 1)).getUTCDay();
