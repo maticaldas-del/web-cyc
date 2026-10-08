@@ -23,13 +23,26 @@ todas las etapas.
   (tope ×2,5, ML pausó el espejo a $49.190), paciencia de la apuesta alta, vuelta al precio de antes
   al llegar la reposición, fechas especiales.
 - **Corrección de las subas de más** (`exceso` en `calcSubirPorMargen`, `por:'correccion'`): sólo
-  lo que no vendió desde la suba, nunca abajo del precio de antes ni cruzando los $33.000 para abajo.
+  lo que no vendió desde la suba, nunca abajo del precio de antes de la suba, ni abajo de los $33.000 si
+  ANTES de la suba ya estaba arriba (si la suba cruzó la barrera, puede volver abajo, medido sin envío).
 - **Cuotas que ya vienen en la comisión** (`enComision`, probe `cuotas`): no sumarlas dos veces en
   rescate, cerebro, caja barata, escalera, comandos.
 - **Rescate sin umbral** (`subeDesdeDe` = base − 1) y sin frenos con stock 0 (por color, `subStatus`).
 - **Escalera con fecha aproximada** (`edadFullCb`): puede esperar de más, nunca bajar antes.
 - **Supervisor** (`cuentaRemate`, regla firme del 08/10): el ritmo sin robot sale sólo de las ventas
   al precio viejo.
+- **Revisión del 08/10/2026 (lo que se arregló, para mirar que siga así):** el probe `cuotas` no pisa
+  `enComision` si ML no contesta · `ventasProdClasica` (una Clásica no deduce el envío con ventas de
+  una Premium) · `precioJustoMeta` (el rescate llega a la meta, no más) · `cruza` viaja en las tareas
+  del rescate · prefiltro del rescate mira `cyc/netopub` publicación por publicación · al vender entra
+  todo lo de ≤ `SUBE_DESDE` · `_subiendoVivo`/`_bajandoVivo` (las marcas vencen a las 24 h) · cerebro:
+  `D.segPrev` (ventana mezclada, cada venta a su precio), no vuelve para arriba después de una
+  `correccion`, `pisoEntre` (fin de escasez y precio de antes abajo del piso), `limpiarEsc` · la
+  corrección mira la barrera con el precio de ANTES de la suba y sigue la cadena de subas en varias
+  noches · `calcCajaBarata` sin `comHoy` no baja lo que sobra · `CLAS_COLCHON` (se clasifica con el
+  mismo medio punto con que se aplica) · `unapub`/`bajar` usan `cuotaPremiumDe` · `correrVolver`
+  devuelve lo de antes si ML rechaza · supervisor: aviso de pérdidas sólo lo medido, `rescateventa`
+  como fuente, `por` en cada registro · el rescate no deshace bajas del cerebro (`bajaPerdio`).
 
 ## 2 · PLATA
 - **% del mes pasado en Métricas** (`renderMetPctAvg`): el chip del período anterior usa el promedio
