@@ -16429,6 +16429,27 @@ async function main() {
       console.log(`✓ borrada · releída: ${(await db.get('cyc/robotprecios/dia')) || '(vacía)'}`);
       return;
     }
+    // BILLING_PROBE=costomes:<palabras> → EL COSTO DE UNA FICHA MES POR MES, COMO LO ARMA LA WEB (08/10/2026). SOLO LEE.
+    // Para explicar la línea "costo c/u": costo en dólares del mes (precio histórico congelado o el de hoy) × dólar del mes
+    // (tc_mes → cierre → promedio de las ventas → el de hoy) + envío/embalaje.
+    if (/^costomes:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const q = norm(String(process.env.BILLING_PROBE).slice(9));
+      const [prods, hist, tcMes, snaps, tcHoy, vp] = await Promise.all(['cyc/products', 'cyc/precios_hist_prod', 'cyc/tc_mes', 'cyc/snapshots', 'cyc/finanzas/tipo_cambio', 'cyc/ventaprod'].map((r) => db.get(r).catch(() => null)));
+      const ps = Object.values(prods || {}).filter((p) => p && p.id && q.split(/\s+/).every((w) => norm(p.name || '').includes(w)));
+      const tcV = (ym) => { let s = 0, n = 0; for (const [dk, o] of Object.entries(vp || {})) { if (!dk.startsWith(ym + '_')) continue; for (const v of Object.values(o || {})) { const t = parseFloat(v && v.tcSale); if (t > 0) { s += t; n++; } } } return n ? Math.round(s / n) : 0; };
+      console.log(`=== COSTO MES POR MES "${q}" · ${ps.length} ficha(s) · dólar de hoy ${tcHoy} ===`);
+      for (const p of ps) {
+        console.log(`■ ${p.name} · costo hoy US$ ${p.costUSD} · envío/embalaje US$ ${p.shipUSD || 0} · costo full guardado US$ ${p.costFullUSD || '-'}`);
+        for (const ym of ['2026_05', '2026_06', '2026_07', '2026_08', '2026_09', '2026_10']) {
+          const h = ((hist || {})[ym] || {})[p.id];
+          const tm = (tcMes || {})[ym], sn = ((snaps || {})[ym] || {}).tipoCambio, tv = tcV(ym);
+          const tc = tm != null && tm !== '' ? parseFloat(tm) : sn ? parseFloat(sn) : (ym < '2026_10' && tv ? tv : parseFloat(tcHoy));
+          const base = h != null ? Number(h) : Number(p.costUSD) || 0;
+          console.log(`   ${ym}: costo US$ ${base}${h != null ? ' (congelado del mes)' : ' (el de hoy)'} · dólar ${tc} (${tm != null && tm !== '' ? 'cargado' : sn ? 'cierre' : ym < '2026_10' && tv ? 'promedio de ventas' : 'el de hoy'}) → mercadería $${Math.round(base * tc)} + envío $${Math.round((Number(p.shipUSD) || 0) * tc)}`);
+        }
+      }
+      return;
+    }
     // BILLING_PROBE=cajahoy → ¿QUÉ PRODUCTOS NO MUESTRAN SI GANAN O PIERDEN LA CAJA? (08/10/2026, él: "hay productos que
     // todavía no muestran si gana o pierde en caja. revisá todos"). Mismo criterio que la línea de tiempo de hoy: de sus
     // publicaciones ACTIVAS, la mejor caja leída por la vuelta de cada hora (`mllinks.caja`). SOLO LEE.
