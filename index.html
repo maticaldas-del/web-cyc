@@ -2453,7 +2453,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.44';
+const APP_VERSION='22.45';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2464,6 +2464,7 @@ const APP_VERSION='22.44';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.45',f:'08/10/2026',h:'02:15',c:[{n:1,t:'🇵🇾 Pedidos hechos: al abrir un pedido lo primero son los gastos (la plata), después la plata y los días, y la mercadería va abajo en un desplegable cerrado. Así se comparan pedidos sin bajar tanto.'}]},
   {v:'22.44',f:'08/10/2026',h:'02:05',c:[{n:1,t:'🇵🇾 Pedidos hechos: cada pedido muestra con la tarjeta cerrada el % extra que se le cargó ("+22,4% real", o "+17% estimado" si faltan gastos). Productos y unidades salen de la factura cargada.'}]},
   {v:'22.43',f:'08/10/2026',h:'01:55',c:[{n:1,t:'🇵🇾 Pedidos hechos: los gastos van en UNA sola caja (antes eran dos con los mismos montos). Cada gasto con ✓/✗, su monto, de qué es y su % sobre la mercadería; abajo el total y el recargo real abierto en dólar y gastos.'}]},
   {v:'22.42',f:'08/10/2026',h:'01:40',c:[{n:1,t:'🇵🇾 Pedidos hechos · Los gastos reales: al lado de cada gasto (cambista, el que retira, correo) sale qué % es de la mercadería, para comparar un pedido contra otro.'}]},
@@ -12094,6 +12095,7 @@ function pyPedidoDetalleHTML(c){
   const sinPeso=(c.unidades||0)-(c.pesoUnidades||0);
   const fila=(k,v,ay)=>`<div style="display:flex;justify-content:space-between;gap:10px;font-size:.66rem;padding:2px 0"${ay?` title="${String(ay).replace(/"/g,'&quot;')}"`:''}><span style="color:var(--muted)">${k}</span><span>${v}</span></div>`;
   return `<div style="padding:4px 2px 2px">
+    ${pyGastosChecklistHTML(c)}
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px">
       <div style="flex:1;min-width:190px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 11px">
         <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">La plata</div>
@@ -12117,9 +12119,11 @@ function pyPedidoDetalleHTML(c){
         ${sinPeso>0&&c.pesoKg!=null?`<div style="font-size:.6rem;color:var(--muted);margin-top:3px;line-height:1.5">le faltan ${sinPeso} unidad${sinPeso===1?'':'es'} sin peso cargado</div>`:''}
       </div>
     </div>
-    ${pyGastosChecklistHTML(c)}
+    <details style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 11px">
+      <summary style="cursor:pointer;font-size:.68rem;font-weight:700;list-style:none">🧾 La mercadería · ${pyPedidoCuenta(c).p} producto${pyPedidoCuenta(c).p===1?'':'s'} · ${pyPedidoCuenta(c).u} u. · US$ ${(c.usdCrudo||0).toFixed(2)} <span style="color:var(--muted);font-weight:400">▾ tocá para ver</span></summary>
     ${(()=>{const P=pyPedidoPartes(c);const grp=[['✅ Probados',P.prob],['🆕 Nuevos',P.nuev]].filter(g=>g[1].length);
       return grp.map(([t,its])=>`<div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:8px 0 5px">${grp.length>1?t:'Los productos'} · ${its.length}</div>`+_pyItsHTML(its,pyRecargoReal(c).r)).join('')||'<div style="font-size:.63rem;color:var(--muted)">Sin detalle por producto.</div>';})()}
+    </details>
 
     <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:10px">
       ${c.estado==='camino'?`<button class="btn btn-add" style="font-size:.66rem;padding:6px 12px" onclick="pyPedidoLlego('${c.id}')">📦 Ya llegó</button>`:''}
