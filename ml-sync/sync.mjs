@@ -16997,6 +16997,41 @@ async function main() {
       console.log(`\n${ok} de ${plan.length} cargados. Los mide \`candidatos\` en su próxima vuelta (o candidatos:go).`);
       return;
     }
+    // BILLING_PROBE=costoprimera[:go] → LAS VENTAS DE UNA PRIMERA COMPRA CON EL COSTO REAL (08/10/2026, él: "corregí
+    // todo, que quede ganancia real"). Al cargar los gastos de un pedido, el costo de los productos NUEVOS pasaba del
+    // 17% estimado al recargo real y el robot congelaba el estimado en `precios_hist_prod` de los meses con ventas.
+    // Pero esas ventas salieron de ESA misma compra: tienen que ir con el costo real. Esto borra sólo esos congelados
+    // (valor igual al "antes" de la primera compra, meses desde el pedido); sin `:go` sólo muestra.
+    if (/^costoprimera(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const GO = /:go$/.test(String(process.env.BILLING_PROBE));
+      const peds = (await db.get('cyc/compraspy')) || {};
+      const php = (await db.get('cyc/precios_hist_prod')) || {};
+      const prods = (await db.get('cyc/products')) || {};
+      const borrar = [];
+      for (const [pid0, c] of Object.entries(peds)) {
+        const ca = c && c.costosAplicados; if (!ca || !Array.isArray(ca.subieron)) continue;
+        const prob = new Set((c.items || []).filter((x) => x && !x.id && x.prodId).map((x) => x.prodId));
+        const ymPed = String(c.fecha || '').slice(0, 7).replace('-', '_');
+        for (const x of ca.subieron) {
+          const prim = x.primera != null ? !!x.primera : !prob.has(x.prodId);
+          if (!prim || !x.prodId) continue;
+          for (const [ym, o] of Object.entries(php)) {
+            if (!o || o[x.prodId] == null) continue;
+            if (ymPed && ym < ymPed) continue;
+            if (Math.abs(Number(o[x.prodId]) - Number(x.antes)) > 0.006) continue;
+            borrar.push({ ym, pid: x.prodId, nom: x.nom || (prods[x.prodId] || {}).name || x.prodId, v: Number(o[x.prodId]), real: Number((prods[x.prodId] || {}).costUSD) || x.despues, ped: pid0 });
+          }
+        }
+      }
+      console.log(`=== VENTAS DE PRIMERA COMPRA CON EL COSTO ESTIMADO CONGELADO · ${borrar.length} ===`);
+      for (const b of borrar) console.log(`  ${b.ym} · ${b.nom} · congelado US$ ${b.v.toFixed(2)} → pasa al real US$ ${Number(b.real).toFixed(2)} (pedido ${b.ped})`);
+      if (!GO) { console.log('\n(prueba: no se borró nada · agregá :go)'); return; }
+      for (const b of borrar) await db.set(`cyc/precios_hist_prod/${b.ym}/${b.pid}`, null);
+      const ver = (await db.get('cyc/precios_hist_prod')) || {};
+      const quedan = borrar.filter((b) => ver[b.ym] && ver[b.ym][b.pid] != null).length;
+      console.log(`\n✓ ${borrar.length - quedan} de ${borrar.length} borrados (releído)${quedan ? ` · ⚠️ ${quedan} siguen` : ''}. Esas ventas ahora usan el costo real de la ficha.`);
+      return;
+    }
     // BILLING_PROBE=pyprecio:<id|palabras>=<código>/<US$>[@<link>];<id|palabras>=nohabia;…[;go]
     // EL PRECIO Y EL CÓDIGO DE PARAGUAY DE UNA FICHA, DESDE EL CHAT (07/10/2026). Pedido del chat de
     // compras (etapa 1): cargar el Precio Nissei y el Código Nissei de los probados SIN tocar el
