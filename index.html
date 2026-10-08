@@ -2454,7 +2454,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.60';
+const APP_VERSION='22.61';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2465,6 +2465,7 @@ const APP_VERSION='22.60';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.61',f:'08/10/2026',h:'14:45',c:[{n:2,t:'📈 Línea de tiempo: la línea de stock sumaba el mismo stock una vez por cada publicación del producto (el Centímetro decía 413 u. y eran ~107). Ahora cuenta una vez por cuenta (o por color). Lo mismo en la línea de todos los productos.'}]},
   {v:'22.60',f:'08/10/2026',h:'14:20',c:[{n:2,t:'📊 Métricas → % de ganancia: el mes anterior muestra su promedio FINAL (todo el mes) y la flecha compara contra ése. Lo que llevaba a esta misma altura queda abajo, chico.'}]},
   {v:'22.59',f:'08/10/2026',h:'14:05',c:[{n:1,t:'📈 Línea de tiempo, caja: lo que no es de catálogo (no hay caja que ganar) y lo que está pausado ya no sale en gris como "no se sabe": tiene su color y el globito lo dice.'}]},
   {v:'22.58',f:'08/10/2026',h:'13:25',c:[{n:1,t:'📈 Línea de tiempo: la caja de HOY seguía en gris en algunos productos (los que ya tenían un renglón de hoy a medias en la línea del robot). Ahora hoy siempre toma la caja de la última lectura.'}]},
@@ -8545,7 +8546,13 @@ let _lineaRango=365, _lineaCache={}, _lineaDetAb=false;
 function _lineaFmtDia(k){const q=k.split('_');return q[2]+'/'+q[1]+'/'+q[0].slice(2);}
 // Incluye HOY (07/10/2026, él: "el último día que muestra es de ayer. se puede poner el de hoy aunque sea incompleto").
 function _lineaDias(n){const out=[];const hoy=new Date();for(let i=n-1;i>=0;i--){const d=new Date(hoy.getTime()-i*864e5);out.push(dateToKey(d));}return out;}
-function _lineaJunta(porMla){
+// EL STOCK NO SE SUMA DOS VECES (08/10/2026, él con el Centímetro: "aumentó el costo, el precio y el %"; la línea de
+// stock decía 413 u. y había ~107). Cada publicación guarda el stock de SU clave (producto×cuenta, o el color si la
+// publicación tiene color fijado), así que cuatro publicaciones del mismo producto en la misma cuenta traen el MISMO
+// número cuatro veces. Con `lks` (las vinculaciones), por cuenta: si alguna publicación es "del producto entero" vale ese
+// número (ya trae los colores adentro); si son todas de un color, se suma un número por color. `varSel` (la vista de un
+// color): sólo vale el stock guardado de ESE color; el del producto entero no es de ese color y no se usa.
+function _lineaJunta(porMla,lks,varSel){
   // Junta las publicaciones del producto día por día: unidades, visitas y stock se SUMAN; el precio es el
   // más barato; la caja, la mejor; remate/escalera si alguna lo estaba. Stock: sólo si TODAS las que
   // tienen dato ese día lo informan (si falta una, el total no se sabe).
@@ -8573,7 +8580,10 @@ function _lineaJunta(porMla){
       if(x.uR!=null){o.uR=(o.uR||0)+Number(x.uR||0);}
       if(x.vis!=null){o.vis=(o.vis||0)+Number(x.vis||0);}
       if(x.tot!=null){o.tot=(o.tot||0)+Number(x.tot||0);}
-      if(x.st!=null){o.st=(o.st||0)+Number(x.st||0);o.stN++;}
+      if(x.st!=null){if(lks){const l=lks[mla]||{},cta=String(l.cuenta||'?'),vr=String(l.variant||'').trim();
+          if(!varSel||vr===varSel){const S=(o._st=o._st||{})[cta]=(o._st||{})[cta]||{P:null,V:{}};const q=Math.max(0,Number(x.st)||0);
+            if(vr&&!varSel)S.V[vr]=Math.max(S.V[vr]||0,q);else if(vr)S.V[vr]=Math.max(S.V[vr]||0,q);else S.P=Math.max(S.P||0,q);}}
+        else o.st=(o.st||0)+Number(x.st||0);o.stN++;}
       if(x.p!=null&&Number(x.p)>0){o.p=o.p==null?Number(x.p):Math.min(o.p,Number(x.p));
         // El precio de una publicación PAUSADA no es el que se cobra (Cartas Casino: la línea decía $2.706 de una
         // pausada y se cobraba $3.310). Vale el de las activas o las que vendieron ese día.
@@ -8591,7 +8601,8 @@ function _lineaJunta(porMla){
     if(o.pA==null&&o._c){const r=o._c.filter(c=>c.ult&&_t(k)-_t(c.ult)<=30*864e5);
       if(r.length){const m=r.map(c=>c.ult).sort().pop();o.pA=Math.min(...r.filter(c=>c.ult===m).map(c=>c.p));}
       else{const v=o._c.filter(c=>c.viva);if(v.length)o.pA=Math.min(...v.map(c=>c.p));}}
-    delete o._c;if(o.pA!=null)o.p=o.pA;}
+    delete o._c;if(o.pA!=null)o.p=o.pA;
+    if(o._st){let t=0,hay=false;for(const S of Object.values(o._st)){if(S.P!=null){t+=S.P;hay=true;}else{const vs=Object.values(S.V);if(vs.length){t+=vs.reduce((a,b)=>a+b,0);hay=true;}}}o.st=hay?t:null;if(!hay)o.stN=0;delete o._st;}}
   return dias;
 }
 async function lineaAbrir(prodId,ev){
@@ -8635,7 +8646,7 @@ function lineaPintar(prodId){
   const _mlaOk=m=>!_lineaVar||String(_lineaVarMap[m]||'').trim()===_lineaVar;
   const _vOk=v=>!_lineaVar||_lineaVarDeVenta(v)===_lineaVar;
   const porMlaF={};for(const [m,d] of Object.entries(C.porMla))if(_mlaOk(m))porMlaF[m]=d;
-  const dias=_lineaJunta(porMlaF);
+  const dias=_lineaJunta(porMlaF,state.mllinks||{},_lineaVar||'');
   // HOY, INCOMPLETO: la línea del robot es hasta AYER (la escribe de noche). El día de hoy se arma con lo que el
   // panel ya sabe: las ventas de hoy y el stock de ahora en las 4 cuentas. Sin visitas (eso lo trae la noche); la caja sale de la lectura de cada hora.
   // Y AUNQUE LA LÍNEA YA TENGA UN RENGLÓN DE HOY (08/10/2026): el relleno para atrás escribe hoy a medias (sólo stock o

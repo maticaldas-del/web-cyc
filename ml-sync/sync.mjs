@@ -5850,7 +5850,9 @@ function calcLineaTodo(lin, links) {
       if (r.tot != null) x.tot = (x.tot || 0) + Math.round(Number(r.tot) || 0);
       if (r.uR != null) x.uR = (x.uR || 0) + (Number(r.uR) || 0);
       if (r.vis != null) { x.vis = (x.vis || 0) + (Number(r.vis) || 0); x.visN = (x.visN || 0) + 1; }
-      if (r.st != null) { x.st = (x.st || 0) + Math.max(0, Number(r.st) || 0); x.stN = (x.stN || 0) + 1; }
+      // El stock no se suma dos veces (08/10/2026): cada publicación guarda el de SU clave (producto×cuenta o el color),
+      // así que varias publicaciones del mismo producto traen el mismo número. Se junta por clave y se suma al final.
+      if (r.st != null) { const kS = (e.prodId || mla) + '__' + (e.cuenta || '?'); const S = ((x._st = x._st || {})[kS] = x._st[kS] || { P: null, V: {} }); const q = Math.max(0, Number(r.st) || 0); const vr = String(e.variant || '').trim(); if (vr) S.V[vr] = Math.max(S.V[vr] || 0, q); else S.P = Math.max(S.P || 0, q); x.stN = (x.stN || 0) + 1; }
       const activa = r.est == null || r.est === 'active';
       if (activa && (r.caja === 'g' || r.caja === 'c' || r.caja === 'p')) x[r.caja] = (x[r.caja] || 0) + 1;
       if (r.rem === 1) x.rem = (x.rem || 0) + 1;
@@ -5865,7 +5867,10 @@ function calcLineaTodo(lin, links) {
       }
     }
   }
-  for (const x of Object.values(out)) if (x.pl != null) x.pl = Math.round(x.pl * 1e5) / 1e5;
+  for (const x of Object.values(out)) {
+    if (x.pl != null) x.pl = Math.round(x.pl * 1e5) / 1e5;
+    if (x._st) { let t = 0; for (const S of Object.values(x._st)) t += S.P != null ? S.P : Object.values(S.V).reduce((a, b) => a + b, 0); x.st = t; delete x._st; }
+  }
   return out;
 }
 function calcRitmoNormal(o) {
@@ -34133,7 +34138,7 @@ async function main() {
         }
         if (!Object.values(porMla).some((x) => Object.keys(x).length)) { sinLinea++; continue; }
         fichas++;
-        const d = junta(porMla);
+        const d = junta(porMla, lk);
         const ks = Object.keys(d).sort(); dias += ks.length;
         // serrucho
         let serr = 0; const ej = [];
