@@ -81,7 +81,8 @@ todas las etapas.
 
 ## 5 bis · AVISOS DE TELEGRAM QUE LEE CLAUDE (08/10/2026)
 - `sendAlerta` guarda copia de cada aviso que SALIÓ en `mlapi/alertaslog/<ts>`; probe `alertas[:horas]` (solo lee,
-  tapa números largos). Una rutina de Claude los lee y resuelve lo que puede. Chequear: que sólo se guarde lo que
+  tapa números largos). Una rutina de Claude los lee y resuelve lo que puede
+  (2 por día, 10:47 y 22:47, `alertas:12`: la ventana tiene que tapar las 12 h entre vueltas). Chequear: que sólo se guarde lo que
   salió, que no quede nada de terceros en el texto impreso, y que el log no crezca sin fin (podar a 30 días).
 
 ## 8 · DATOS E HISTORIAL (nueva, 08/10/2026)
