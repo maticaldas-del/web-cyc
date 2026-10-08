@@ -16429,6 +16429,34 @@ async function main() {
       console.log(`✓ borrada · releída: ${(await db.get('cyc/robotprecios/dia')) || '(vacía)'}`);
       return;
     }
+    // BILLING_PROBE=cajahoy → ¿QUÉ PRODUCTOS NO MUESTRAN SI GANAN O PIERDEN LA CAJA? (08/10/2026, él: "hay productos que
+    // todavía no muestran si gana o pierde en caja. revisá todos"). Mismo criterio que la línea de tiempo de hoy: de sus
+    // publicaciones ACTIVAS, la mejor caja leída por la vuelta de cada hora (`mllinks.caja`). SOLO LEE.
+    if (/^cajahoy(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const [links, prods] = await Promise.all([db.get('cyc/mllinks'), db.get('cyc/products')]);
+      const pN = {}; for (const p of Object.values(prods || {})) if (p && p.id) pN[p.id] = p.name;
+      const porP = {};
+      for (const [mla, e] of Object.entries(links || {})) { if (!e || e.ignored || !e.prodId) continue; (porP[e.prodId] = porP[e.prodId] || []).push([mla, e]); }
+      const rk = { winning: 3, sharing: 2, losing: 1 }; const B = {}; const ahora = Date.now();
+      const add = (b, t) => (B[b] = B[b] || []).push(t);
+      for (const [pid, arr] of Object.entries(porP)) {
+        const act = arr.filter(([, e]) => (e.status || '') === 'active');
+        const nom = String(pN[pid] || arr[0][1].title || pid).slice(0, 40);
+        if (!act.length) { add('sin publicaciones activas (pausadas o cerradas)', `${nom} · ${arr.map(([m, e]) => m + ' ' + (e.status || '?')).join(', ')}`); continue; }
+        const best = act.reduce((b, [, e]) => ((rk[e.caja] || 0) > (rk[b] || 0) ? e.caja : b), null);
+        if (best) { add({ winning: 'gana', sharing: 'comparte', losing: 'pierde' }[best], nom); continue; }
+        const vals = act.map(([m, e]) => `${m} ${e.caja || 'SIN DATO'}${e.cajaTs ? ' (' + Math.round((ahora - e.cajaTs) / 36e5) + ' h)' : ''}`);
+        if (act.every(([, e]) => e.caja === 'nocat')) add('no es de catálogo (no hay caja que ganar)', nom);
+        else if (act.some(([, e]) => e.caja === 'sincaja')) add('catálogo sin caja informada por ML', `${nom} · ${vals.join(', ')}`);
+        else add('SIN DATO de caja', `${nom} · ${vals.join(', ')}`);
+      }
+      console.log(`=== CAJA DE HOY · ${Object.keys(porP).length} productos con publicación ===`);
+      for (const [b, l] of Object.entries(B).sort((a, c) => c[1].length - a[1].length)) {
+        console.log(`\n${b}: ${l.length}`);
+        if (!['gana', 'comparte', 'pierde'].includes(b)) for (const t of l.slice(0, 80)) console.log('   ' + t);
+      }
+      return;
+    }
     // BILLING_PROBE=lineatodo[:go] → ARMA YA LA LÍNEA DE TODOS LOS PRODUCTOS (`mlapi/lineatodo`, ver `calcLineaTodo`).
     // La noche la arma sola dentro de `ritmo:go`; esto es para no esperar. Sólo junta lo que ya está guardado.
     if (/^lineatodo(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
