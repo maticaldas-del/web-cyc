@@ -826,7 +826,13 @@ mensaje sin que yo te escriba (…) siempre y cuando sea algo que vos puedas hac
    (05/10→19/10, las 4) · "SEMANA DEL BIENESTAR" (19→26/10) · "OFERTAS OCTUBRE" (19/10→02/11). No entramos en ninguno
    (regla 8); en las revisiones del 10 y 11/10 se mira si perdimos cajas de compra o ventas contra los que sí entraron.
 
-### PROMOS DE ML: SE ENTRA SÓLO SI LA BAJA YA ESTABA PENSADA (08/10/2026) · Y VENTAS SÓLO CON LO IMPORTANTE
+### PROMOS DE ML: LAS ANALIZA CLAUDE UNA POR UNA Y ENTRA EN LAS QUE CONVIENEN (08/10/2026) · Y VENTAS SÓLO CON LO IMPORTANTE
+ · **AMPLIADO EL MISMO 08/10 a la noche, él:** *"en todas las promos cambian lo que cubre ML. Yo te había dicho que nunca
+   hacíamos promos, pero ahora que lo analizás vos sí. Ya que yo no los usaba porque no quería analizar. Por eso confío en lo que
+   hacés vos, y al venderse en promo avisan en la tarjeta de la venta que se vendió en promo"*. O sea: ya no es "sólo si la baja
+   estaba pensada": cada promo se mide (lo que pone ML, el margen a ese precio, si el producto ya vende bien sin promo, stock,
+   fechas) y se entra si deja más plata. Lo de abajo es la primera versión. **Falta (esperando su OK del diseño):** el chip
+   "🏷️ en promo · <nombre> · ML puso $X" en la tarjeta de cada venta hecha en promo (se le mandó la maqueta).
  · **Excepción a la regla 8, suya:** *"si tenés identificada una publicación que vas a bajar y falta poco para una promo (y la
    promo te da algún beneficio) activala, porque es probable que ML ayude un poquito"*. `analizapromo[:días]` (solo lee) y
    `entrarpromo:<MLA>=<precio>@<id>|motivo;go` (ml-sync; `=salir` para salir). Las que entra Claude viven en
