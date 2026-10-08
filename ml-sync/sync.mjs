@@ -3372,7 +3372,9 @@ async function calcCerebro(db, o) {
       }
     }
   }
-  const ofiDe = (prodId) => { let n = 0; for (const [k, v] of Object.entries(inv)) if (k.startsWith(prodId + '__Oficina')) n += Math.max(0, parseInt(v) || 0); return n; };
+  // Sólo la clave del TOTAL de la oficina (08/10/2026, etapa 1 · "contar dos veces"): las de color
+  // (`__v__`) son parte de ese total y sumarlas lo duplicaba. Hoy se usa como "¿hay algo?", pero que dé bien.
+  const ofiDe = (prodId) => { let n = 0; for (const [k, v] of Object.entries(inv)) if (k.startsWith(prodId + '__Oficina') && !k.includes('__v__')) n += Math.max(0, parseInt(v) || 0); return n; };
   // Días con stock entre t0 y t1 (registro hora por hora). null = no se miraba esa clave.
   const diasStock = (k, t0, t1) => {
     const cs = Object.entries(slog[k] || {}).map(([t, v]) => [Number(t), Number(v)]).filter(([t]) => t > 0).sort((x, y) => x[0] - y[0]);
