@@ -793,6 +793,12 @@ mensaje sin que yo te escriba (…) siempre y cuando sea algo que vos puedas hac
    (`activarPausadasFull`). Piedra Gua Sha activada (59%) · Kit Jade subido $5.299 → $5.420 (25%) para que se active solo ·
    Linterna COB (`MLA3998033920`) sigue pausada: da 5%, falta su costo real.
 
+### LAS VUELTAS DE CLAUDE: 4 POR DÍA (08/10/2026)
+08:52 y 20:52 revisión completa (`trig_01475PwdPVJ1qTnYswcDxRq8`) · **12:52 y 16:52 vuelta corta** (`trig_01FCaQqzU5MA422N6Z8nH63Z`,
+pedida por él: *"dale, agregalas"*): sólo preguntas nuevas y urgencias de lo que vende fuerte (sin stock, frenada por ML, caja
+perdida), y en semanas de evento también precios y promos · 21:30 auditoría. El motivo: una pregunta que entra a la mañana no
+puede esperar 12 h.
+
 ### EL 🧠 SÓLO CON LO MÍO, Y POR QUÉ DE CADA PEDIDO Y CAJA (08/10/2026, v22.70 · `cyc-v550`)
  · Él: *"antes de ver uno escrito por el robot automático prefiero que no aparezca nada, solo lo tuyo"*. Con
    `autoPrecios: off` la ventanita muestra SÓLO notas de `mlapi/claudeexp` (si no escribí nada: "Todavía no escribí
