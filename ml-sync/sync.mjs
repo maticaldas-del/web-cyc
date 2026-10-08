@@ -34886,7 +34886,7 @@ async function main() {
         catch { console.log(`(${label}: no pude entrar)`); }
       }
       console.log(`=== 🏷️ LAS PROMOS QUE OFRECE ML · próximos ${DIAS} días${pal.length ? ` · "${pal.join(' ')}"` : ''} · SOLO LEE ===`);
-      console.log(`Piso ${PISOa}%. Regla: se entra sólo si la baja YA estaba pensada (expediente de la noche) o si ML pone plata.\n`);
+      console.log(`Piso ${PISOa}%. Regla: toda baja pensada va como promo (de ML si hay una que la cubra o ML pone plata; si no, descuento propio). Nunca bajar por bajar.\n`);
       const fechaOk = (pr) => {
         const fin = pr.finish_date ? Date.parse(pr.finish_date) : NaN, ini = pr.start_date ? Date.parse(pr.start_date) : NaN;
         if (Number.isFinite(fin) && fin < ahora) return false;
@@ -34929,17 +34929,21 @@ async function main() {
       // deja la promo si la baja pensada es más chica que el mínimo); sin baja pensada, el descuento mínimo.
       const floor10 = (x) => Math.floor(x / 10) * 10;
       const elegido = {};
-      for (const m of Object.values(porMla)) {
-        // Expedientes de antes del 08/10 no traen `bajarA`: se lee de las frases ("hay que bajarla a $X", "BAJA $a → $b").
-        const ex = exp[m.mla] || {};
-        let bajarA = Number(ex.bajarA) || 0;
-        if (!bajarA) {
+      // Expedientes de antes del 08/10 no traen `bajarA`: se lee de las frases ("hay que bajarla a $X", "BAJA $a → $b").
+      const bajarADe = (mla) => {
+        const ex = exp[mla] || {};
+        let b = Number(ex.bajarA) || 0;
+        if (!b) {
           const txts = [String(ex.simple || ''), ...((ex.pasos || []).map((x) => String((x && x.d) || '')))];
           for (const t of txts) {
             const mt = t.match(/(?:hay que bajarla a|Bajando a) \$\s?([\d.]+)/i) || t.match(/BAJA \$\s?[\d.]+ → \$\s?([\d.]+)/);
-            if (mt) { const v = parseInt(mt[1].replace(/\./g, ''), 10); if (v > 0) bajarA = Math.max(bajarA, v); }
+            if (mt) { const v = parseInt(mt[1].replace(/\./g, ''), 10); if (v > 0) b = Math.max(b, v); }
           }
         }
+        return b;
+      };
+      for (const m of Object.values(porMla)) {
+        const bajarA = bajarADe(m.mla);
         let best = null;
         for (const o of m.ofertas) {
           let P;
@@ -34990,7 +34994,47 @@ async function main() {
         console.log(`     ML paga ${pr.meli_percentage}% del descuento · vos ${pr.seller_percentage != null ? pr.seller_percentage + '%' : '?'} · precio de la promo ${money(Math.round(Number(pr.price) || r.o.P))} · lista ${money(Math.round(r.o.orig))}${pr.start_date ? ` · ${String(pr.start_date).slice(0, 10)} → ${String(pr.finish_date || '').slice(0, 10)}` : ''}`);
         console.log('     crudo: ' + JSON.stringify(pr).slice(0, 400));
       }
-      console.log(`\n── 3 · 🟠 LA IBA A BAJAR, PERO LA PROMO PIDE BAJAR MÁS · ${cuestaMas.length} ──`);
+      // ── 2c · DESCUENTO PROPIO (08/10/2026, regla suya: *"el descuento lo podés hacer siempre en ML en cualquier producto"*).
+      // Toda baja pensada que no tiene una promo de ML que la cubra (o cuya promo pide bajar de más) se hace como descuento
+      // propio (PRICE_DISCOUNT) al precio pensado: la lista queda tachada y el neto es el mismo que bajando la lista. ML pide
+      // al menos 5% de descuento: si la baja pensada es más chica, se dice (va con `decido`, o un 5% si el margen aguanta).
+      const yaMia = new Set(yaEn.filter((y) => y.mia).map((y) => y.mla));
+      const cubiertas = new Set(conviene.map((r) => r.mla));
+      const propias = {};
+      for (const [mla, e] of Object.entries(links)) {
+        if (cubiertas.has(mla) || yaMia.has(mla)) continue;
+        if (!e || e.ignored || e.noVendemosMas || !e.prodId || !/^MLA\d+$/.test(mla) || (e.status || '') !== 'active' || !tokA[e.cuenta]) continue;
+        if (pal.length && !pal.every((w) => norm(e.title || '').includes(norm(w)))) continue;
+        const b = bajarADe(mla); if (b > 0) propias[mla] = { mla, nom: e.title || mla, cuenta: e.cuenta, bajarA: floor10(b) };
+      }
+      const forzarP = {}; for (const x of Object.values(propias)) forzarP[x.mla] = { p: x.bajarA, piso: true, motivo: 'descuento propio' };
+      const cP = Object.keys(forzarP).length ? await calcCerebro(db, { tokens: tokA, forzar: forzarP, soloMla: new Set(Object.keys(forzarP)) }) : { dec: [] };
+      const propOk = [], propChica = [], propNo = [];
+      for (const d of (cP.dec || [])) {
+        const x = propias[d.mla]; if (!x) continue;
+        const mg = d.accion !== 'nada' ? d.mgA : (d.mismoPrecio ? d.mg0 : null);
+        if (d.accion === 'nada' && !d.mismoPrecio) { propNo.push({ ...x, why: d.motivo.replace(/^Claude: descuento propio · /, '') }); continue; }
+        if (!(d.p0 > x.bajarA)) continue;   // el precio ya está ahí o más abajo: no hay nada que descontar
+        const desc = (1 - x.bajarA / d.p0) * 100;
+        const r = { ...x, p0: d.p0, mg, desc };
+        if (!(mg >= 0)) { propNo.push({ ...r, why: `a ${money(x.bajarA)} queda en ${mg}%` }); continue; }
+        if (desc < 5) { r.p5 = floor10(d.p0 * 0.95); propChica.push(r); continue; }
+        propOk.push(r);
+      }
+      console.log(`\n── 2c · 🏷️ BAJAS PENSADAS SIN PROMO DE ML → DESCUENTO PROPIO (tachado, mismo neto) · ${propOk.length} ──`);
+      for (const r of propOk) {
+        console.log(`  ${r.cuenta} · ${r.mla} · ${String(r.nom).slice(0, 44)} · ${money(r.p0)} tachado → ${money(r.bajarA)} (−${r.desc.toFixed(1)}%) · margen ${r.mg}%`);
+        console.log(`     entrarpromo:${r.mla}=${r.bajarA}@PRICE_DISCOUNT${r.mg < PISOa ? '!piso' : ''}|la iba a bajar: mejor tachado que bajar la lista`);
+      }
+      if (propChica.length) {
+        console.log(`  · baja pensada menor al 5% (ML no deja descuentos más chicos) · ${propChica.length}:`);
+        for (const r of propChica) console.log(`    ${r.cuenta} · ${r.mla} · ${String(r.nom).slice(0, 44)} · ${money(r.p0)} → ${money(r.bajarA)} (−${r.desc.toFixed(1)}%): o decido a ${money(r.bajarA)}, o descuento del 5% a ${money(r.p5)} si el margen aguanta`);
+      }
+      if (propNo.length) {
+        console.log(`  · no se puede · ${propNo.length}:`);
+        for (const r of propNo.slice(0, 15)) console.log(`    ${r.cuenta} · ${r.mla} · ${String(r.nom).slice(0, 44)} · ${r.why}`);
+      }
+      console.log(`\n── 3 · 🟠 LA IBA A BAJAR, PERO LA PROMO PIDE BAJAR MÁS (el descuento propio a lo pensado está en 2c) · ${cuestaMas.length} ──`);
       for (const r of cuestaMas) { console.log('  ' + lin(r)); console.log(`     ${r.why}`); }
       console.log(`\n── 4 · SIN BAJA PENSADA (no entro: sería bajar el precio por bajar) · ${sinPlan.length} ──`);
       sinPlan.sort((a, b) => (b.mg || 0) - (a.mg || 0));
@@ -35065,8 +35109,13 @@ async function main() {
           await nota(q.mla, `Salí de la promo de Mercado Libre. ${q.motivo || ''}`.trim());
           continue;
         }
-        const pr = arr.find((x) => (x.id && String(x.id) === q.id) || (!x.id && x.type === q.id.toUpperCase()));
+        let pr = arr.find((x) => (x.id && String(x.id) === q.id) || (!x.id && x.type === q.id.toUpperCase()));
+        // El descuento propio se puede poner en CUALQUIER publicación aunque ML no lo liste como opción (regla suya del
+        // 08/10). Si ya hay uno puesto (started/pending) se usa ése; si no, se arma el pedido.
+        const esPD = q.id.toUpperCase() === 'PRICE_DISCOUNT';
+        if (!pr && esPD) pr = { type: 'PRICE_DISCOUNT', status: 'candidate', name: 'descuento propio' };
         if (!pr) { console.log(`   ✗ ML no le ofrece "${q.id}" a esta publicación (ofrece: ${arr.map((x) => (x.id || x.type) + ' ' + x.status).join(', ') || 'nada'})`); continue; }
+        if (esPD && arr.some((x) => (x.status === 'started' || x.status === 'pending') && x.type !== 'PRICE_DISCOUNT')) { console.log(`   ✗ ya está en otra promo de ML (${arr.filter((x) => x.status === 'started' || x.status === 'pending').map((x) => x.name || x.type).join(', ')}): primero salir de ésa`); continue; }
         const minP = Number(pr.min_discounted_price) || 0, maxP = Number(pr.max_discounted_price) || 0;
         const fijo = !(maxP > 0) && Number(pr.price) > 0;
         if (!fijo && (q.p > maxP + 0.5 || q.p < minP - 0.5)) { console.log(`   ✗ ${money(q.p)} no entra: la promo pide entre ${money(Math.ceil(minP))} y ${money(Math.floor(maxP))}`); continue; }
@@ -35075,6 +35124,7 @@ async function main() {
         if (d.accion === 'nada' && !d.mismoPrecio) { console.log(`   ✗ ${d.motivo}`); continue; }
         const mg = d.accion !== 'nada' ? d.mgA : d.mg0;
         if (!(mg >= 0)) { console.log(`   ✗ a ${money(q.p)} queda en ${mg}%: nunca abajo de cero`); continue; }
+        if (esPD && pr.status === 'candidate' && !(Number(pr.max_discounted_price) > 0) && q.p > d.p0 * 0.95 + 0.5) { console.log(`   ✗ ${money(q.p)} es menos de 5% de descuento sobre ${money(d.p0)}: ML no deja un descuento más chico (o ${money(Math.floor(d.p0 * 0.95 / 10) * 10)} con 5%, o bajar la lista con decido)`); continue; }
         if (mg < PISOe && !q.piso) { console.log(`   ✗ a ${money(q.p)} queda en ${mg}%, abajo del piso del ${PISOe}%: para entrar igual va con !piso`); continue; }
         const hastaPD = new Date(Date.now() + 14 * 864e5);
         const fmtML = (dt) => new Date(dt.getTime() - 3 * 3600e3).toISOString().slice(0, 19);
