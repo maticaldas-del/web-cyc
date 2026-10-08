@@ -803,6 +803,10 @@ si sigue haciendo falta. Recién si ML no deja ese precio en ninguna promo, se b
 el precio de lista para inflar el tachado** (ML lo controla contra el precio de los últimos días y además es engañar al
 comprador). **El robot que saca promos cada hora queda como guardián**: no toca las que entró Claude (`cyc/promoclaude`) y saca
 las que ML o alguien puso sin análisis (las campañas que ML mete solo; ya pasó dos veces con 40-55% de descuento).
+**Y ADEMÁS (08/10 a la noche, suyo): *"revisá siempre las promos que hay y fijate si sirve alguna. el descuento lo podés hacer
+siempre en ML en cualquier producto"*.** Las 4 vueltas del día corren `analizapromo`. Su sección **2c** arma el descuento propio
+(`entrarpromo:<MLA>=<precio>@PRICE_DISCOUNT`) para cada baja pensada que ninguna promo de ML cubre, y `entrarpromo` ya no exige que
+ML lo liste como opción (sólo frena si la publicación está en otra promo de ML o si el descuento es menor al 5%).
 
 ### LAS VUELTAS DE CLAUDE: 4 POR DÍA (08/10/2026)
 08:52 y 20:52 revisión completa (`trig_01475PwdPVJ1qTnYswcDxRq8`) · **12:52 y 16:52 vuelta corta** (`trig_01FCaQqzU5MA422N6Z8nH63Z`,
