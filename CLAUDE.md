@@ -821,6 +821,10 @@ mensaje sin que yo te escriba (…) siempre y cuando sea algo que vos puedas hac
    **Medido (con el arreglo):** lo regalable contra el resto rindió ×0,3 (Padre), ×1 (Amigo) y ×1,2 (Niño). O sea que
    el ×1,4 que supone el cerebro NO está confirmado: son pocas unidades y se mezclan los quiebres de stock. En las
    revisiones no se aplica a ciegas: se mira lo que de verdad vende esa semana. Día de la Madre 18/10: se mide en vivo.
+   **Él avisó del evento 10.10 de ML, que el calendario fijo no tenía** → comando `eventos[:días]` (y sección 14b del
+   informe). Leído el 08/10: "Ofertas compartidas 10.10" (05/10→18/10, Adriana y Matías) · "DÍA DE LA MADRE OCTUBRE"
+   (05/10→19/10, las 4) · "SEMANA DEL BIENESTAR" (19→26/10) · "OFERTAS OCTUBRE" (19/10→02/11). No entramos en ninguno
+   (regla 8); en las revisiones del 10 y 11/10 se mira si perdimos cajas de compra o ventas contra los que sí entraron.
 
 ## ⏰ PENDIENTE: EL PEDIDO AL PAULVIC DEL 06/10 (08/10/2026)
 
