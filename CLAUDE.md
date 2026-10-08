@@ -430,6 +430,28 @@ de la hora anterior a la suba): igual o más → otro +5% · cayó 20%+ (`PRUEBA
 → no sube y sigue mirando · menos de 7 días con stock de un lado → espera. Sigue cerrando también si `md.total<0`.
 **ETAPA 1 CERRADA.**
 
+### ETAPA 1 (PRECIOS) DE NUEVO · 08/10/2026 · v22.63-22.64 `cyc-v543/544` · CERRADA
+Después de los cambios del 07-08/10 (cerebro, regla del 20%, cuotas Premium, corrección de subas, rescate sin
+stock). 4 revisores + 4 verificadores: **27 reales**, 21 obvios HECHOS en v22.63 (detalle en `ml-sync/REVISION.md`,
+etapa 1): cuotas que no se vuelven a contar si ML no contesta · Clásica sin ventas no usa las de su Premium ·
+rescate justo a la meta y cruzando la barrera si paga · cerebro sin juicios con ventanas mezcladas, sin trabarse
+al terminar la escasez ni con el precio de antes abajo del piso · corrección que mira el precio de antes de la
+suba y la cadena de varias noches · caja barata/remate/unapub sin dato no bajan · marcas subiendo/bajando vencen
+a las 24 h · supervisor sólo con lo medido, `por`/`mot` en cada registro.
+**Las 6 decisiones, de él (v22.64):** 1a manda el cerebro · 2a la caja barata no repite un precio que el cerebro
+vio que no funcionó, y el cerebro sabe que lo que sobra no se sube · 3a **el rescate desaparece** (al vender se
+sacó: `RESCATE_AL_VENDER_OFF`), las pausadas con stock en Full se llevan a la base y se activan solas; las que
+tienen unidades en depósito están pausadas A PROPÓSITO (él no vende nada fuera de Full) · 4a el cerebro no prueba
+subas con un 🔴 del supervisor · 5a lo del cerebro en el aviso de pérdidas es información · 6a escalera a $32.990.
+**Lo que se hizo para que mande el cerebro (puente):** corre PRIMERO cada noche; la base (el viejo rescate de
+noche), la corrección, la caja barata, el remate y la escalera sólo tocan lo que él no decidió y nunca un precio
+que él marcó "no funcionó". **PENDIENTE GRANDE, pedido suyo del 08/10:** *"quiero que dentro del cerebro estén
+todas las reglas, conocimientos, parámetros, TODO (…) al salir una respuesta es porque ya pasó por todo el camino
+(…) y nadie más la corrija. después esa idea puede ser equivocada (…) vuelve a pasar por el cerebro y vuelve a
+tomar una decisión (quizás la misma, porque ahora viene Navidad)"*. O sea: rehacer el robot de precios como UN
+solo cerebro con todas las reglas adentro (base, caja barata, remate, escalera, corrección, activar pausadas,
+supervisor, fechas, escasez) y una sola salida por publicación. **Se habla con él antes de tocar nada.**
+
 ### ETAPA 2 (PLATA) · 28/09/2026 · v20.78 `cyc-v356`
 4 revisores (Arqueo · robot de MP · gastos/mes · monedas), 17 reales. **HECHAS las obvias:** cargar el disponible
 (web y `ancla`) resta de `mp_liq`/`liq_liberado` el `cyc/saldoml/<Cuenta>.liberadoSinDisp` de esa cuenta ·
