@@ -643,6 +643,12 @@ un workflow grande puede comerse el semanal. En el día a día conviene "Alto" (
 **DECIDIDO POR ÉL EL 25/09: las seis etapas en "Alto"** (sacó "Medio"). **Ultracode NO se usa para las etapas**: cada etapa ya reparte el trabajo entre varios revisores con su tope; Ultracode sólo agrega que TODO lo demás del chat también arme equipos, y eso es lo que se come el límite semanal (la revisión max del 25/09 se cortó dos veces por eso). Queda para un caso puntual: una revisión entera después de un cambio muy grande, y sólo si él lo pide.
 
 ### 25/09 A LA TARDE (v20.36 · `cyc-v314`): CUOTAS PREMIUM, "LO QUE TRAJO EL ROBOT" SIN INFLACIÓN, POR MES
+ · **⚠️ CUOTAS CONTADAS DOS VECES (08/10/2026, v22.55):** en algunas categorías (electrónica: Watch S5, Galaxy A06,
+   SSD, Buds Core) `listing_prices` de Premium YA trae las cuotas adentro (`sale_fee_details.financing_add_on_fee` > 0;
+   Watch S5 25,9% = 12,9% + 13%) y el pago de la venta las muestra aparte. `netoweb`/`margenAlDia` lo miraban (`finEnCom`);
+   el rescate, cerebro, caja barata, escalera y comandos sumaban el % de `cyc/mlcuotas` encima. El rescate del 08/10 vio
+   el Watch S5 en 4% a $429.450 (real ~21%) y lo subió a $533.660. Arreglo: el probe `cuotas` pregunta la comisión de
+   cada Premium y, si ya las trae, guarda `pct:0, enComision:true, pctPago:<medido>`. **El Dalí (perfume) NO las trae.**
  · **Salvador Dalí (`MLA1869295911`, Adriana): el panel decía 31% y la venta dio 16%.** Es PREMIUM
    (`gold_pro`): en $119.970 ML se quedó comisión $17.995 + **cuotas $25.914 (21,6%)** + Full $7.290.
    `listing_prices` no trae las cuotas. Él: *"¿cómo no va a tener en cuenta que tiene cuotas? Arreglar"*.
