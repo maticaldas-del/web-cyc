@@ -2690,8 +2690,8 @@ async function calcSubirPorMargen(db, o) {
         // decide a cuáles mirar (sólo las que no vendieron desde la suba: si vende caro, gana más).
         if (exceso && exceso[mla]) {
           const exA = exceso[mla], aRob = Number(exA.a) || 0, deRob = Number(exA.de) || 0;
-          if (vars.length) { frenados.push({ mla, label, nom, why: 'la subí de más pero tiene variantes: no se baja sola' }); continue; }
-          if (Math.abs(precio0 - aRob) > Math.max(10, aRob * 0.005)) { frenados.push({ mla, label, nom, why: `ya no está en el precio que dejé (${money(aRob)}; hoy ${money(precio0)}): no la corrijo` }); continue; }
+          if (vars.length) { frenados.push({ mla, label, nom, why: 'la subí de más pero tiene variantes: no se baja sola', exc: true }); continue; }
+          if (Math.abs(precio0 - aRob) > Math.max(10, aRob * 0.005)) { frenados.push({ mla, label, nom, why: `ya no está en el precio que dejé (${money(aRob)}; hoy ${money(precio0)}): no la corrijo`, exc: true }); continue; }
           const okMeta = async (Q) => { const n = await netoDe(Q); return n == null ? null : n >= metaDe(Q); };
           const okHoy = await okMeta(precio0);
           if (okHoy == null) { frenados.push({ mla, label, nom, why: 'ML no me dio la comisión' }); continue; }
@@ -2714,7 +2714,7 @@ async function calcSubirPorMargen(db, o) {
                 if (!fallo) dest = Math.ceil(z / 10) * 10;
               }
             }
-            if (fallo) { frenados.push({ mla, label, nom, why: 'ML no me dio la comisión al buscar el precio justo: no la corrijo hoy' }); continue; }
+            if (fallo) { frenados.push({ mla, label, nom, why: 'ML no me dio la comisión al buscar el precio justo: no la corrijo hoy', exc: true }); continue; }
             if (dest != null && dest <= precio0 * 0.97) {
               const nD = await netoDe(dest);
               const mgD = nD == null ? null : (nD - costoTotDe(dest)) / (costoTotDe(dest) + envio) * 100;
@@ -10017,7 +10017,7 @@ async function main() {
           if (ids.length) {
             const rc = await calcSubirPorMargen(db, { products, labels, accounts, soloMlas: new Set(ids), exceso: exc, piso: (SUBE_DESDE_AV + 0.5) / 100, meta: META_AV });
             corregirAv = rc.corregir || [];
-            corrFren = (rc.frenados || []).filter((f) => exc[f.mla]);
+            corrFren = (rc.frenados || []).filter((f) => f.exc);
             for (const x of corregirAv) console.log(`   · ${x.nom} (${x.label}): ${money(x.de)} → ${money(x.a)} · hoy ${x.pct.toFixed(1)}%, queda en ${x.mg.toFixed(1)}%`);
             for (const f of corrFren) console.log(`   · ${f.nom} (${f.label}): no la corrijo · ${f.why}`);
           }

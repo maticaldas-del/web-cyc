@@ -648,7 +648,8 @@ un workflow grande puede comerse el semanal. En el día a día conviene "Alto" (
    Watch S5 25,9% = 12,9% + 13%) y el pago de la venta las muestra aparte. `netoweb`/`margenAlDia` lo miraban (`finEnCom`);
    el rescate, cerebro, caja barata, escalera y comandos sumaban el % de `cyc/mlcuotas` encima. El rescate del 08/10 vio
    el Watch S5 en 4% a $429.450 (real ~21%) y lo subió a $533.660. Arreglo: el probe `cuotas` pregunta la comisión de
-   cada Premium y, si ya las trae, guarda `pct:0, enComision:true, pctPago:<medido>`. **El Dalí (perfume) NO las trae.**
+   cada Premium y, si ya las trae, guarda `pct:0, enComision:true, pctPago:<medido>`. **El Dalí también las trae** (28,4% a $150.150; la venta real cuadra así).
+ **Y EL ROBOT CORRIGE SOLO LO QUE SUBIÓ DE MÁS (08/10/2026, él: *"arreglalo y que el robot después decida qué hacer, ya que él debería saber lo correcto"*):** en `avisos:go`, toda suba del rescate (`por` margen/venta/costo) de los últimos 45 días que sigue en el precio que dejó el robot y **no vendió desde la suba** se vuelve a medir (`exceso` en `calcSubirPorMargen`); si el precio que llega a la meta es 3%+ más bajo, baja a ése — nunca abajo del precio de antes de la suba ni de los $33.000 si ya estaba arriba. Si vendió caro, se queda (deja más plata). Registro `por:'correccion'` (tipo baja): no frena rescates futuros ni suma en el supervisor. Prueba en seco del 08/10: Dalí $150.150→$132.550 · Watch S5 $533.660→$448.260 · SSD 1TB $513.600→$425.040 · A06 $426.030→$361.930.
  · **Salvador Dalí (`MLA1869295911`, Adriana): el panel decía 31% y la venta dio 16%.** Es PREMIUM
    (`gold_pro`): en $119.970 ML se quedó comisión $17.995 + **cuotas $25.914 (21,6%)** + Full $7.290.
    `listing_prices` no trae las cuotas. Él: *"¿cómo no va a tener en cuenta que tiene cuotas? Arreglar"*.
