@@ -717,6 +717,19 @@ archivo. **Etapa 8 · Datos e historial** creada ese día (líneas de tiempo); c
 Inicio la pide ya. Y lo que se mira en TODAS: contar dos veces lo mismo (el stock ×4 del Centímetro),
 fallas leídas como dato, dos fórmulas para un número, datos de terceros en el registro público.
 
+## 📨 CLAUDE LEE LOS AVISOS DE TELEGRAM Y RESUELVE LO QUE PUEDE (08/10/2026)
+
+Pedido suyo: *"me gustaria que vos tambien veas lo que me manda y ver si lo podes resolver vos (…) que me envies un
+mensaje sin que yo te escriba (…) siempre y cuando sea algo que vos puedas hacer algo, sino no me mandes nada"*.
+ · `sendAlerta` guarda copia de cada aviso que SALIÓ en `mlapi/alertaslog/<ts>`; se lee con `alertas[:horas]`
+   (ml-consulta, solo lee, tapa números largos).
+ · Rutina `trig_01475PwdPVJ1qTnYswcDxRq8` (8:47, 11:47, 14:47, 17:47, 20:47 y 23:47 de acá) que entra a esta sesión,
+   lee las últimas 3 h y, si hay algo que puedo resolver dentro de sus reglas, lo hago, releo y le mando UNA
+   notificación. Si no hay nada, no se manda nada.
+ · Ese mismo día: el robot trataba `paused_by_seller` como "la pausó ML" y no activaba lo que él creó pausado. Arreglado
+   (`activarPausadasFull`). Piedra Gua Sha activada (59%) · Kit Jade subido $5.299 → $5.420 (25%) para que se active solo ·
+   Linterna COB (`MLA3998033920`) sigue pausada: da 5%, falta su costo real.
+
 ## ⏩ DÓNDE QUEDAMOS — LEER PRIMERO (22/09/2026, cierre del chat)
 
 Él cambió de chat y pidió dejar todo escrito para arrancar del otro. **Esto es lo que quedó abierto,
