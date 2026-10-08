@@ -19,6 +19,19 @@ todas las etapas.
 - **Datos de terceros en el registro público** (nombres, documentos, números de orden enteros).
 
 ## 1 · PRECIOS
+- **LOS PRECIOS LOS DECIDE CLAUDE, NO EL ROBOT (08/10/2026 a la tarde, v22.68).** Él: *"que haya solo robots
+  automáticos de api para cosas que no hay que pensar, como ventas y cosas así de datos. TODO lo que sea pensar lo
+  veas exclusivamente vos"*. Reemplaza la decisión 2a de ese mismo día. `autoPrecios: off` (se cambia con
+  `decido:modo=claude;go` / `decido:modo=robot;go`): la noche (`avisos:go`) sólo CALCULA y anota en el expediente 🧠
+  lo que haría (rescate/base, caja barata, remate, escalera, corrección, cerebro), y `volverSinFull`, el "volver" del
+  supervisor y la suba al vender quedan quietos. La rutina de Claude (10:47 y 22:47) mira todo y aplica con
+  **`decido:<MLA>=<precio>[!piso][!cruza]|<motivo>;…;go`** (ml-sync): `calcCerebro` con `forzar` (misma cuenta que
+  la noche: comisión a ese precio, envío del lado de la barrera, cuotas, IIBB, mono) + `aplicarCerebro` (relee,
+  `cyc/autoprecio` con `por:'claude'`, memoria del cerebro). Siguen automáticos, por mecánicos: sacar promos
+  (regla 8), activar pausadas con stock en Full que dejan el piso, cajas, stock, vínculos, ventas.
+  Chequear: que nada que mueva un precio quede prendido con `autoPrecios: off` · que `decido` respete techo,
+  barrera (sólo `!cruza`), piso (sólo `!piso`), 0%, variantes, liquidando · que el supervisor cuente `por:'claude'`
+  como subir/bajar · que la rutina lea el expediente y no repita lo que ya hizo.
 - **Cerebro de precios** (`calcCerebro`, `cyc/cerebro/<MLA>`, `avisos:go`): plata por día, escasez
   (tope ×2,5, ML pausó el espejo a $49.190), paciencia de la apuesta alta, vuelta al precio de antes
   al llegar la reposición, fechas especiales.
@@ -94,14 +107,14 @@ todas las etapas.
 ## 5 bis · AVISOS DE TELEGRAM QUE LEE CLAUDE (08/10/2026)
 - `sendAlerta` guarda copia de cada aviso que SALIÓ en `mlapi/alertaslog/<ts>`; probe `alertas[:horas]` (solo lee,
   tapa números largos). Una rutina de Claude los lee y resuelve lo que puede
-  (2 por día, 10:47 y 22:47, `alertas:12`: la ventana tiene que tapar las 12 h entre vueltas) · desde el 08/10 (decisión 2a) la rutina NO toca precios ni publicaciones: sólo cajas, vínculos y releer; chequear que su prompt lo siga diciendo. Chequear: que sólo se guarde lo que
+  (2 por día, 10:47 y 22:47, `alertas:12`: la ventana tiene que tapar las 12 h entre vueltas) · desde el 08/10 a la tarde (reemplaza la 2a) la rutina ES la que decide los precios (ver etapa 1, `decido`). Chequear: que sólo se guarde lo que
   salió, que no quede nada de terceros en el texto impreso, y que el log no crezca sin fin (podar a 30 días).
 - **Los avisos pasan por el cerebro antes de Telegram (08/10/2026, v22.67):** `cerebroDeAvisos(text,opt)` en
   `sendAlerta`: `info` y "Con stock en Full y siguen pausadas" (lo resuelve la noche) no salen; lo demás sale con
   "🧠 Pasó por el cerebro: esto no lo puede resolver solo", salvo `directo` (recordatorios y chat nuevo del bot).
   Todo queda en `mlapi/cerebroavisos/<día>/<ts>` (se borran los días 15-21 para atrás una vez por corrida).
   Chequear: que algo que sí pide una decisión no caiga en "resuelto" · que un aviso nuevo que sólo informa vaya
-  con `{ info: true }` · que la rutina de Claude NO mueva precios ni publicaciones (decisión 2a del 08/10).
+  con `{ info: true }` · que la rutina de Claude decida los precios con `decido` (etapa 1).
 
 
 ## 7 · DISEÑO

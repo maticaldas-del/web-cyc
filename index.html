@@ -2455,7 +2455,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.67';
+const APP_VERSION='22.68';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2466,6 +2466,7 @@ const APP_VERSION='22.67';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.68',f:'08/10/2026',h:'17:40',c:[{n:3,t:'💭 Los precios los decide Claude, no el robot. El robot sigue juntando todo (ventas, stock, caja, visitas) y de noche calcula lo que haría, pero no toca nada solo. Dos veces por día (10:47 y 22:47) Claude mira todo lo que pasó en esas 12 horas y decide qué subir, bajar o dejar; cada cambio dice por qué en el botón 🧠.'}]},
   {v:'22.67',f:'08/10/2026',h:'15:52',c:[{n:2,t:'🧠 La ventanita del cerebro ahora explica en palabras simples por qué hizo o no hizo algo (ej. "Quedan pocas: 5 en Full y vende unas 4 por semana… lo subí para que cada una deje más"). En Pedidos: "Pido comprar 7 porque vende unas 3 por semana y tenés 2 en ML…".'},{n:2,t:'🧠 qué pasó: botón en Ventas (para el período elegido) y en Ventas de hoy de Inicio. Cuenta en criollo cómo se vendió contra el período anterior, por qué el % quedó así (remates, lo que se vendió barato), lo que más dejó, lo que perdió plata y la cuenta que más dejó.'},{n:3,t:'📨 Los avisos de Telegram pasan primero por el cerebro: sólo te llega lo que no puede resolver solo o es importante (las pausadas con stock que no llegan al piso ya no avisan: la noche las lleva al precio que deja ganar y se activan solas).'}]},
   {v:'22.66',f:'08/10/2026',h:'15:50',c:[{n:2,t:'🛒 Cada venta: el cambio de precio muestra la suba ENTERA de la semana (el Metatarso Fuerte decía +5,9% y pasó de $4.500 a $7.550: ahora +67,8%), el % de ganancia antes → después con su color, y sólo "+$X" (sin "robot de noche" ni "de más por la suba").'},{n:1,t:'📊 Métricas: las barras de ganancia y gastos del día arrancan apagadas (el retiro del día 1 achicaba el gráfico). Se prenden tocando su nombre en la leyenda.'},{n:1,t:'📈 Línea de tiempo: precio y costo en un solo carril con la misma escala, una marca celeste donde llegaron unidades al stock, y el globito muestra sólo lo de la línea donde está el mouse.'}]},
   {v:'22.65',f:'08/10/2026',h:'14:50',c:[{n:2,t:'🧠 Botón del cerebro en Productos, Rotación, Pedidos, Contar lo que hay y cada venta: al tocarlo dice qué miró cada regla anoche con esa publicación, qué se hizo, el último cambio del robot y lo que recuerda el cerebro (precios que no funcionaron, escasez). En Pedidos dice además por qué pide esas unidades.'},{n:3,t:'El cerebro manda solo: el supervisor ya no vuelve precios atrás por su cuenta (lo juzga el cerebro con plata por día) y los grupos de precio no se nivelan solos.'},{n:2,t:'En una fecha de regalos (Día de la Madre, Navidad…) el cerebro puede volver a probar un precio que antes no funcionó.'}]},
@@ -8920,8 +8921,8 @@ function lineaPintar(prodId){
 // del robot de cada publicación (`cyc/autoprecio`, al instante). El PRECIO es un índice: 100 = el primer día del
 // gráfico, y cada día se mueve con el promedio de lo que cambió el precio de cada publicación.
 let _ltRango=365,_ltC=null,_ltDetAb=false,_ltListAb=false;
-const _LT_MOT={rescate:'🛟 rescate',rescatep:'🛟 rescate',subir:'📈 suba del robot',bajar:'📉 baja del robot',remate:'🔻 remate',escalera:'🪜 escalera',prueba:'🧪 prueba +5%',mano:'✋ a mano',volver:'↩️ vuelto atrás',cerebro:'🧠 cerebro',correccion:'↩️ corrección de una suba de más'};
-function _ltMotAuto(a){const m={margen:'rescate',venta:'rescate',costo:'rescate',remate:'remate',escalera:'escalera',prueba:'prueba',volver:'volver',cerebro:'cerebro',correccion:'correccion'}[a.por];return m||(a.tipo==='baja'?'bajar':'subir');}
+const _LT_MOT={rescate:'🛟 rescate',rescatep:'🛟 rescate',subir:'📈 suba del robot',bajar:'📉 baja del robot',remate:'🔻 remate',escalera:'🪜 escalera',prueba:'🧪 prueba +5%',mano:'✋ a mano',volver:'↩️ vuelto atrás',cerebro:'🧠 cerebro',claude:'💭 Claude',correccion:'↩️ corrección de una suba de más'};
+function _ltMotAuto(a){const m={margen:'rescate',venta:'rescate',costo:'rescate',remate:'remate',escalera:'escalera',prueba:'prueba',volver:'volver',cerebro:'cerebro',claude:'claude',correccion:'correccion'}[a.por];return m||(a.tipo==='baja'?'bajar':'subir');}
 async function lineaTodoAbrir(ev){
   if(ev&&ev.stopPropagation)ev.stopPropagation();
   let m=document.getElementById('linea-modal');
@@ -9107,7 +9108,7 @@ function _cerPedidoSimple(ped){
 const _CER_POR={venta:'para que vuelva a dejar la ganancia mínima',margen:'para que vuelva a dejar la ganancia mínima',costo:'porque cambió el costo',
   remate:'para que se venda: estaba parada',escalera:'bajándolo de a poco porque no se vende',correccion:'porque antes lo había subido de más',
   volver:'porque el cambio anterior hizo perder plata',prueba:'para probar si se vende igual un poco más caro',grupo:'para igualarlo con sus hermanas',
-  cerebro:'por decisión del cerebro'};
+  cerebro:'por decisión del cerebro',claude:'lo decidió Claude mirando todo lo que pasó'};
 async function cerebroAbrir(el,ev){
   if(ev&&ev.stopPropagation)ev.stopPropagation();
   const d=el.dataset||{};const p=prodById(d.p);if(!p)return;
@@ -9258,7 +9259,7 @@ const CAMBIO_VENTA_DIAS=30;  // 06/10/2026, pedido suyo: "quiero que muestre lo 
 // 08/10/2026: conoce también los caminos nuevos (cerebro, corrección, escalera, volver, prueba, grupo).
 // Antes todo eso salía "el robot, de noche", y el cerebro se corre también de día con cerebro:go.
 const _ORIGEN_AUTO={venta:'el robot, al vender',margen:'el robot (rescate)',remate:'el robot (remate)',costo:'el robot (costo)',
-  cerebro:'el robot (cerebro)',correccion:'el robot (corrigió una suba de más)',escalera:'el robot (escalera)',
+  cerebro:'el robot (cerebro)',claude:'Claude',correccion:'el robot (corrigió una suba de más)',escalera:'el robot (escalera)',
   volver:'el robot (volvió atrás un cambio)',prueba:'el robot (prueba de suba)',grupo:'el robot (grupo de precio)'};
 const _origenAuto=a=>_ORIGEN_AUTO[a&&a.por]||'el robot, de noche';
 function cambiosPrecioDe(mla,tsVenta){
@@ -16704,11 +16705,11 @@ const metAutoNorm=t=>String(t||'').toLowerCase().normalize('NFD').replace(/[\u03
 const metAutoMatch=x=>{const q=metAutoNorm(metAutoQ).trim();if(!q)return true;const h=metAutoNorm((x.nom||'')+' '+(x.mla||'')+' '+(x.cuenta||''));return q.split(/\s+/).every(w=>h.includes(w));};
 function metAutoBuscar(v){metAutoQ=v;renderMetAuto();const i=document.getElementById('met-auto-q');if(i){i.focus();const L=i.value.length;try{i.setSelectionRange(L,L);}catch(e){}}}
 const MET_AUTO_MOT={prueba:'🧪 Prueba de suba (sin catálogo)',subir:'📈 Subir (había lugar)',bajar:'📉 Bajar para ganar la caja',remate:'🔨 Remate',escalera:'🪜 Escalera',rescate:'🛟 Rescate después de una venta baja (no cuenta)',rescatep:'🛟 Rescate antes de vender',volver:'↩️ Volvió atrás (el cambio perdía plata)',deshace:'↩️ Deshizo un cambio suyo (no cuenta)',mano:'✋ A mano',
-  cerebro:'🧠 Cerebro de precios',correccion:'↘️ Corrigió una suba suya de más (no cuenta)'};
+  cerebro:'🧠 Cerebro de precios',claude:'💭 Lo decidió Claude',correccion:'↘️ Corrigió una suba suya de más (no cuenta)'};
 // 08/10/2026: el supervisor convierte lo del cerebro en motivo subir/bajar y la corrección en rescate, así
 // que el nombre sale de `por` cuando el registro lo trae (los viejos no lo tienen: queda el motivo).
 // "Deshizo" manda sobre todo: es lo que explica por qué no suma.
-const metAutoMotTxt=x=>!x?'?':x.motivo==='deshace'?MET_AUTO_MOT.deshace:(x.por==='cerebro'||x.por==='correccion')?MET_AUTO_MOT[x.por]:(MET_AUTO_MOT[x.motivo]||x.motivo||'?');
+const metAutoMotTxt=x=>!x?'?':x.motivo==='deshace'?MET_AUTO_MOT.deshace:(x.por==='cerebro'||x.por==='claude'||x.por==='correccion')?MET_AUTO_MOT[x.por]:(MET_AUTO_MOT[x.motivo]||x.motivo||'?');
 function metAutoSet(k,v){if(k==='mes')metAutoMes=v;else metAutoMot=v;renderMetAuto();}
 let metVigAbierto=false;
 // El desplegable con todo lo que vigila el robot (antes era la tarjeta 🧪 Vigilancia aparte).
