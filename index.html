@@ -1013,8 +1013,8 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
     <div class="pedido-filters">
       <button class="pf-btn active-all" id="pf-py-todos" onclick="setPedidoFilter('todos',this)">Todos</button>
       <button class="pf-btn" id="pf-py-rojo" onclick="setPedidoFilter('rojo',this)">🔴 Sin stock</button>
-      <button class="pf-btn" id="pf-py-naranja" onclick="setPedidoFilter('naranja',this)">🟠 14 días o menos</button>
-      <button class="pf-btn" id="pf-py-amarillo" onclick="setPedidoFilter('amarillo',this)">🟡 Más de 14 días</button>
+      <button class="pf-btn" id="pf-py-naranja" onclick="setPedidoFilter('naranja',this)">🟠 17 días o menos</button>
+      <button class="pf-btn" id="pf-py-amarillo" onclick="setPedidoFilter('amarillo',this)">🟡 Más de 17 días</button>
     </div>
     <div id="pedidos-py-list"><div class="empty-msg">Sin pedidos cargados.</div></div>
   </div>
@@ -2453,7 +2453,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.51';
+const APP_VERSION='22.52';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2464,6 +2464,7 @@ const APP_VERSION='22.51';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.52',f:'08/10/2026',h:'02:10',c:[{n:2,t:'🇵🇾 Pedidos de Paraguay se ponen en rojo/naranja con 17 días de stock (7 de viaje + 2 de preparar la caja + 8 hasta que ML lo pone a la venta), no con 14.'},{n:1,t:'⚠️ El aviso "el ritmo sale de UNA sola venta y aun así pide" ya no cuenta los colores que se piden por lo que vendían antes de agotarse (ritmo viejo).'}]},
   {v:'22.51',f:'08/10/2026',h:'03:25',c:[{n:1,t:'🧾 El pedido del momento arranca CERRADO al entrar a Pedidos: muestra sólo cuánto va (grande), productos y unidades. Tocándolo se abre todo.'}]},
   {v:'22.50',f:'08/10/2026',h:'03:10',c:[{n:1,t:'🇵🇾 El pedido que estás armando va en un desplegable: cerrado muestra sólo cuánto va (US$, en rojo si pasa el tope) y cuántos productos; tocándolo se abre todo. Si lo dejás abierto, sigue abierto al cargar unidades.'}]},
   {v:'22.49',f:'08/10/2026',h:'03:00',c:[{n:1,t:'🇵🇾 Pedidos hechos: la tarjeta cerrada muestra grande lo que salió el pedido puesto en la oficina, en dólares.'}]},
@@ -6784,7 +6785,14 @@ const PED_TARGET_DIAS=20;   // los tres proveedores: pedir para cubrir los próx
 // Abajo de estas ventas en la ventana NO se corrige por días con stock: no alcanza para medir un
 // ritmo. Ver el comentario largo en pedVentasNorm — lo destapó el Animale Mujer EDP.
 const PED_MIN_VENTAS_RITMO=3;
-const pedDiasRojoDe=()=>PED_DIAS_ROJO;
+// PARAGUAY: EL PLAZO REAL DE PUNTA A PUNTA (08/10/2026, él: "el envío de Paraguay 5 días, tomemos 7, entre que
+// preparo y mando tardo 2 días, y cuánto tarda en llegar a ML ya lo sabés"). Medido con `demoracaja` el 08/10: de
+// despachar la caja a marcarla llegada, mitad en 9 d o menos (promedio 8,3, la única marcada sola por el robot: 4 d);
+// se usa REPO_DIAS_DEMORA (8). 7 + 2 + 8 = 17 días: con menos stock que eso, un producto de Paraguay se corta seguro.
+const PY_DIAS_VIAJE=7, PY_DIAS_PREPARAR=2;
+const PED_DIAS_ROJO_PY=PY_DIAS_VIAJE+PY_DIAS_PREPARAR+REPO_DIAS_DEMORA;
+const pedDiasRojoDe=p=>(p&&p.origen==='py'&&!esPedidoPaulvic({prodId:p.id}))?PED_DIAS_ROJO_PY:PED_DIAS_ROJO;
+let _pedRojoCur=null;   // el umbral del producto que se está dibujando (lo usa el semáforo de cada color)
 // EL NÚMERO VIVE EN LA BASE, NO ACÁ (16/09/2026). El probe `porquepedido` tenía su propia copia
 // (`TARGET_DAYS = 30`) y al bajar el panel a 20 quedaron diciendo cosas distintas del MISMO
 // producto: el probe calculaba objetivo 5 donde la pantalla calcula 3. Y `porquepedido` existe
@@ -10905,7 +10913,7 @@ async function syncPedidosAuto(){
     const semTot=stock+enOficina+enCamino;
     const semDias=varSemDias!=null?Math.min(cubreCasa,varSemDias):cubreCasa;
     // Con colores: si UN color que vende está en cero en todos lados, el producto es rojo (06/10/2026, él: "si hay rojo en una publicación con variantes que sea rojo").
-    const sem=(semTot<=0||varSemCero>0)?'rojo':(semDias<=PED_DIAS_ROJO?'naranja':'amarillo');
+    const sem=(semTot<=0||varSemCero>0)?'rojo':(semDias<=pedDiasRojoDe(p)?'naranja':'amarillo');
     const riesgoComprar=Math.round((gan30d/30)*diasTapaCompra);
     const riesgoMandar=Math.round((gan30d/30)*diasTapaCasa);
     // Si hay unidades en casa no se puede repartir el pedido por variante con confianza (no se
@@ -14907,7 +14915,11 @@ function pedSinSentido(p){
     const tenes=(p.cML||0)+(p.cCasa||0)+(p.cCamino||0);
     if(tenes>=p.cObjetivo)m.push(`pide comprar ${fmtN(pedir)} y entre ML, tu casa y lo que va en camino ya tenés ${fmtN(tenes)} para un objetivo de ${fmtN(p.cObjetivo)}`);
   }
-  if(pedir>=3&&p.cPocas&&(p.cVend||0)<=1)m.push(`el ritmo sale de ${p.cVend===1?'UNA sola venta':'ninguna venta'} en 30 días y aun así pide ${fmtN(pedir)} unidades`);
+  // Los colores agotados hace 30+ días piden con su ritmo VIEJO (`hist`, decisión suya del 26/09):
+  // ésas no salen de la venta de este mes, así que no cuentan para este aviso (08/10/2026, p47 oreja
+  // gato: 1 venta del negro y pedía 1 de gris, rosa y violeta por lo que vendían antes de agotarse).
+  const pedirMes=_vars?_vars.filter(x=>!x.hist).reduce((a,x)=>a+(x.q||0),0):pedir;
+  if(pedirMes>=3&&p.cPocas&&(p.cVend||0)<=1)m.push(`el ritmo sale de ${p.cVend===1?'UNA sola venta':'ninguna venta'} en 30 días y aun así pide ${fmtN(pedirMes)} unidades`);
   // GUARDA: el ritmo viejo (de hasta 180 días atrás) sólo vale cuando el producto está en CERO.
   if(p.cHist&&(p.cML||0)>0)m.push(`usa el ritmo viejo (de hace meses) teniendo ${fmtN(p.cML)} en ML: ese ritmo sirve para estimar lo que vendería SI hubiera stock, y acá hay`);
   // GUARDA: no podés destrabar por mes más de lo que el producto deja por mes.
@@ -14958,7 +14970,7 @@ const _PED_SEM_ORD={rojo:0,naranja:1,amarillo:2};
 function pedVarSem(x){
   const tot=(x.ml||0)+(x.cam||0)+(x.casa||0)+(x.pv||0);
   if(x.ml!=null&&tot<=0)return 'rojo';
-  return (x.dias!=null&&x.dias<=PED_DIAS_ROJO)?'naranja':'amarillo';
+  return (x.dias!=null&&x.dias<=(_pedRojoCur||PED_DIAS_ROJO))?'naranja':'amarillo';
 }
 function pedVarFila(x){
   const q=x.q||0,sem=pedVarSem(x),n=v=>fmtN(v||0);
@@ -15289,6 +15301,7 @@ function pedCopiarVars(id){
 }
 function _pedidoItemHtml(p,opts){
   opts=opts||{};
+  {const _pr=(state.products||[]).find(x=>x.id===p.prodId);_pedRojoCur=pedDiasRojoDe(_pr);}
   const NEXT={pendiente:'poco_stock',poco_stock:'suficiente',suficiente:'pendiente'};
   const LABEL={pendiente:'🔴 Urgente',poco_stock:'🟡 Poco stock',suficiente:'🟢 Suficiente'};
   // "En camino" se sacó: confundía más de lo que ayudaba. Cualquier pedido que haya quedado
