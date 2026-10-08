@@ -2335,11 +2335,18 @@ async function filtrarRescate(db, rr, o) {
     // esa mercadería, que ya no está) y "comparte la caja" (sin stock no comparte nada); sin nada adentro no vende
     // porque no hay qué vender, y lo que hay que dejar listo es el precio para cuando vuelva. Si el stock no
     // se sabe (sin ficha o sin dato) los frenos quedan como antes.
+    // LA PRIMERA NOCHE NO ANDUVO (08/10/2026): 13 Sábanas pausadas por falta de stock siguieron frenadas con
+    // "hace 56 días que no vende". El stock se buscaba con la clave del producto en la cuenta, y en un producto
+    // con colores eso suma TODOS los colores (Luciana tenía 25 u. de otros colores): el color agotado se leía
+    // "con stock". Ahora manda primero lo que dice ML de ESA publicación (pausada por `out_of_stock` = no tiene
+    // nada adentro), y si no, la clave del color o, sin color, la del producto.
     const eLs = lnk[x.mla] || {};
     let stX = null;
-    if (eLs.prodId) {
-      const kS = eLs.prodId + '__' + sidR(x.label), kSV = eLs.variant ? kS + '__v__' + sidR(eLs.variant) : null;
-      const vS = kSV && invR[kSV] != null ? invR[kSV] : invR[kS];
+    if (/out_of_stock/.test(String(eLs.subStatus || ''))) stX = 0;
+    else if (eLs.prodId) {
+      const ctaS = eLs.cuenta || x.label;
+      const kS = eLs.prodId + '__' + sidR(ctaS), kSV = eLs.variant ? kS + '__v__' + sidR(eLs.variant) : null;
+      const vS = kSV ? invR[kSV] : invR[kS];
       if (vS != null) stX = Math.max(0, parseInt(vS) || 0);
     }
     if (stX === 0) { x.sinStock = true; rescates.push(x); continue; }
