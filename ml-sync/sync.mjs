@@ -1999,7 +1999,10 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
         const noVa = (why, pr) => noLlegan.push({ label, mla, nom, stock: stockFull, precio: pr || 0, why });
         // Pausada por ML (infracción, documentación, revisión). NO se toca —activarla no depende
         // de nosotros— pero sí se avisa: es mercadería trabada que no se puede vender.
-        const sub = [].concat(b.sub_status || []).filter(Boolean).filter((s) => s !== 'out_of_stock');
+        // `paused_by_seller` NO es de ML: la pausamos NOSOTROS (él al crearla sin stock). Se contaba como
+        // "la pausó ML" y quedaban pausadas para siempre con mercadería adentro (08/10/2026: Kit Jade,
+        // Piedra Gua Sha y Linterna COB de Ayelen). El freno a mano es `noAutoActivar`, no esto.
+        const sub = [].concat(b.sub_status || []).filter(Boolean).filter((s) => s !== 'out_of_stock' && s !== 'paused_by_seller');
         if (sub.length) { noVa(`la pausó ML (${sub.join(', ')}): no la puedo activar yo`); continue; }
         const linkRow = links[mla] || {};
         // Marcada "no la vendemos más" (`nomas`). El freno está bien; lo que hay que saber es que
