@@ -34643,9 +34643,14 @@ async function main() {
         return;
       }
       const GOp = partes.length && partes[partes.length - 1].toLowerCase() === 'go'; if (GOp) partes.pop();
-      const forzar = {}; const malos = [];
+      const forzar = {}; const malos = []; const notas = {}; let revisado = false;
       for (const x of partes) {
         const [izq, ...mot] = x.split('|');
+        // `revisado` = terminé la revisión (el 🧠 de las que no toqué dice cuándo las miré) · `MLA=nota|texto` = sólo
+        // mi explicación para el 🧠, sin tocar el precio.
+        if (/^\s*revisado\s*$/i.test(izq)) { revisado = true; continue; }
+        const mn = String(izq).match(/^\s*(MLA\d+)\s*=\s*nota\s*$/i);
+        if (mn) { const t = mot.join('|').trim(); if (t) notas[mn[1].toUpperCase()] = t; else malos.push(x); continue; }
         // `MLA=7550`, `MLA=7550!activar`, `MLA=activar` (deja el precio y la activa), banderas `!piso` `!cruza`.
         const mm = String(izq).match(/^\s*(MLA\d+)\s*=\s*(activar|[\d.,$\s]+)?((?:!\w+)*)\s*$/i);
         if (!mm || (!mm[2] && !/!activar/i.test(mm[3] || ''))) { malos.push(x); continue; }
@@ -34654,8 +34659,21 @@ async function main() {
         forzar[mm[1].toUpperCase()] = { p: soloAct ? 0 : Math.round(pesosArg(mm[2]) / 10) * 10, motivo: mot.join('|').trim(), piso: banderas.includes('!piso'), cruza: banderas.includes('!cruza'),
           activar: soloAct || banderas.includes('!activar') };
       }
-      if (malos.length) { console.log(`No entendí: ${malos.join(' · ')}\nVa así: decido:MLA123=7550|vende igual a este precio;MLA456=4190!piso|motivo;go`); return; }
-      if (!Object.keys(forzar).length) { console.log('No pasaste ningún precio.'); return; }
+      if (malos.length) { console.log(`No entendí: ${malos.join(' · ')}\nVa así: decido:MLA123=7550|vende igual a este precio;MLA456=4190!piso|motivo;MLA789=nota|lo que pensé;revisado;go`); return; }
+      // MIS EXPLICACIONES PARA EL 🧠 (08/10/2026, él: *"todas las anotaciones del cerebro las escribís vos"*):
+      // `mlapi/claudeexp/<MLA>` = { ts, simple, … } y `mlapi/claudeexp/_ultima` = cuándo terminé la última revisión.
+      const linksD = (await db.get('cyc/mllinks')) || {};
+      const escribirNota = async (mla, simple, extra) => {
+        const e = linksD[mla] || {};
+        try { await db.set('mlapi/claudeexp/' + mla, { ts: Date.now(), simple: String(simple).slice(0, 600), nom: String(e.title || '').slice(0, 60), cuenta: e.cuenta || '', ...(extra || {}) }); return true; }
+        catch (eN) { console.log(`   ⚠️ no pude guardar la nota de ${mla}: ${String(eN.message || eN).slice(0, 60)}`); return false; }
+      };
+      if (Object.keys(notas).length) {
+        console.log(`\n=== 📝 NOTAS PARA EL 🧠 ${GOp && !DRY ? '' : '(PRUEBA)'} ===`);
+        for (const [m, t] of Object.entries(notas)) { console.log(`· ${m} · ${String((linksD[m] || {}).title || '?').slice(0, 40)}: ${t}`); if (GOp && !DRY) await escribirNota(m, t, { tipo: 'nota' }); }
+      }
+      const marcarRevisado = async () => { if (revisado && GOp && !DRY) { try { await db.set('mlapi/claudeexp/_ultima', Date.now()); console.log('✓ revisión anotada (el 🧠 de las demás dice cuándo las miré)'); } catch { console.log('⚠️ no pude anotar la revisión'); } } };
+      if (!Object.keys(forzar).length) { if (!Object.keys(notas).length && !revisado) console.log('No pasaste ningún precio ni nota.'); await marcarRevisado(); return; }
       const tokP = {};
       for (const label of labels) {
         const acc = accounts[label]; if (!acc?.refresh_token) continue;
@@ -34677,6 +34695,10 @@ async function main() {
       let apP = null; try { apP = (await db.get('cyc/autoprecio')) || {}; } catch { apP = null; }
       const ac = await aplicarCerebro(db, cz, { tokens: tokP, aplica: true, autoprecio: apP });
       console.log(`\n✓ hechos: ${ac.hechos.length} · no se pudo: ${ac.fallidos.length} · sin anotar: ${ac.sinAnotar.length}`);
+      for (const h of ac.hechos) { const fz = forzar[h.f.mla] || {}; await escribirNota(h.f.mla, `${Number(h.a) > Number(h.de) ? 'Lo subí' : 'Lo bajé'} de ${money(h.de)} a ${money(h.a)}. ${fz.motivo || ''}`.trim(), { tipo: 'precio', de: h.de, a: h.a }); }
+      for (const x of ac.fallidos) { const fz = forzar[x.f.mla] || {}; await escribirNota(x.f.mla, `Quise dejarla a ${money(x.a)} (${fz.motivo || 'sin motivo'}) pero no se pudo: ${x.err}. La vuelvo a mirar en la próxima revisión.`, { tipo: 'fallo' }); }
+      for (const d of cz.dec) if (d.accion === 'nada' && d.mismoPrecio && forzar[d.mla] && forzar[d.mla].motivo) await escribirNota(d.mla, forzar[d.mla].motivo, { tipo: 'nota' });
+      await marcarRevisado();
       // ACTIVAR (`!activar`): sólo si quedó al precio pedido y ese precio deja el piso (o vino con !piso).
       const PISOd = await pisoConfig(db);
       const hechosM = new Set(ac.hechos.map((h) => h.f.mla));
@@ -34701,6 +34723,7 @@ async function main() {
           const it2 = await mlGet('/items/' + mla + '?attributes=status', tk);
           console.log(`   ▶️ ${d.nom}: ACTIVADA · releída de ML: ${it2.status} ${it2.status === 'active' ? '✓' : '✗'}`);
           try { await db.patch('mlapi/cerebroact/' + mla, { ts: Date.now(), ok: true, d: `la activó Claude · ${fz.motivo || ''}`.slice(0, 250), simple: `Estaba pausada con stock en Full: la activé. ${fz.motivo || ''}`.slice(0, 300) }); } catch { /* el 🧠 muestra lo de antes */ }
+          await escribirNota(mla, `Estaba pausada con stock en Full: la activé${d.accion !== 'nada' ? ` a ${money(d.a)}` : ''}. ${fz.motivo || ''}`.trim(), { tipo: 'activar' });
         } catch (eA) { no(String(eA.message || eA).slice(0, 100)); }
       }
       return;
