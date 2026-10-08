@@ -35112,7 +35112,20 @@ async function main() {
     // $33.000 sólo con `!cruza`, abajo del piso sólo con `!piso`, nunca abajo de 0%, sin variantes, no liquidando,
     // y una suba de catálogo sólo si gana la caja. Sin `;go` sólo muestra. El motivo no puede llevar `;`.
     if (/^decido:/.test(String(process.env.BILLING_PROBE || ''))) {
-      const partes = String(process.env.BILLING_PROBE).slice('decido:'.length).split(';').map((x) => x.trim()).filter(Boolean);
+      let partes = String(process.env.BILLING_PROBE).slice('decido:'.length).split(';').map((x) => x.trim()).filter(Boolean);
+      // `decido:archivo=<nombre>[;go]` (08/10/2026): las notas del 🧠 de muchas publicaciones no entran cómodas en el campo del
+      // workflow. Claude las sube a `ml-sync/notas/<nombre>.txt` (mismo formato, una por renglón o separadas por `;`) y esto
+      // las lee. Sólo nombres simples, sólo de esa carpeta. El `;go` del comando manda (el del archivo se ignora).
+      const marc = (partes[0] || '').match(/^archivo=([\w.-]+)$/i);
+      if (marc) {
+        let txt = '';
+        try { txt = readFileSync(new URL('./notas/' + marc[1].replace(/\.txt$/i, '') + '.txt', import.meta.url), 'utf8'); }
+        catch { console.log(`No encontré ml-sync/notas/${marc[1]}.txt`); return; }
+        const goCmd = partes.slice(1).some((x) => x.toLowerCase() === 'go');
+        partes = txt.split(/;|\n/).map((x) => x.trim()).filter((x) => x && x.toLowerCase() !== 'go' && !/^#/.test(x));
+        if (goCmd) partes.push('go');
+        console.log(`(leí ${partes.length - (goCmd ? 1 : 0)} renglones de ml-sync/notas/${marc[1]})`);
+      }
       // `decido:modo` dice quién mueve los precios · `decido:modo=claude;go` apaga lo automático (`autoPrecios: off`,
       // la noche sólo calcula y anota lo que haría) · `decido:modo=robot;go` lo vuelve a prender.
       if (/^modo/i.test(partes[0] || '')) {
