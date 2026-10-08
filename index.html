@@ -2453,7 +2453,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.53';
+const APP_VERSION='22.54';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2464,6 +2464,7 @@ const APP_VERSION='22.53';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.54',f:'08/10/2026',h:'10:50',c:[{n:3,t:'🤖 Lo pausado por falta de stock ahora sí se rescata: el robot miraba el stock del producto entero (todos los colores juntos) y un color agotado se veía "con stock", así que lo frenaba por "no vende". Ahora mira esa publicación.'}]},
   {v:'22.53',f:'08/10/2026',h:'02:15',c:[{n:3,t:'🤖 Se sacó la regla de "el robot sube sólo si cae de 20%": ahora todo lo que quede abajo de la base (24% o menos) lo lleva al 25% solo, sea por una venta, un costo que cambió o la noche.'},{n:3,t:'🤖 Lo que está pausado o sin stock en Full también se acomoda al costo, para que cuando vuelva el stock ya esté al precio correcto. Y "lo bajaste vos a mano" ya no frena al robot.'}]},
   {v:'22.52',f:'08/10/2026',h:'02:10',c:[{n:2,t:'🇵🇾 Pedidos de Paraguay se ponen en rojo/naranja con 17 días de stock (7 de viaje + 2 de preparar la caja + 8 hasta que ML lo pone a la venta), no con 14.'},{n:1,t:'⚠️ El aviso "el ritmo sale de UNA sola venta y aun así pide" ya no cuenta los colores que se piden por lo que vendían antes de agotarse (ritmo viejo).'}]},
   {v:'22.51',f:'08/10/2026',h:'03:25',c:[{n:1,t:'🧾 El pedido del momento arranca CERRADO al entrar a Pedidos: muestra sólo cuánto va (grande), productos y unidades. Tocándolo se abre todo.'}]},

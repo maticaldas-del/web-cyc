@@ -820,6 +820,9 @@ algun momento van a volver a tener stock"*.
    `subeventa:desde` sólo dice que ya no se usa. **No volver a poner un umbral abajo de la base.**
  · **Sin stock en Full (o pausada) se rescata igual**: en `filtrarRescate`, con stock 0 conocido no frenan "no vende",
    "sobra stock", "lo bajé yo en 30 días" ni "comparte la caja". Con stock adentro siguen.
+   **La primera noche no anduvo (v22.54):** se miraba el stock del producto en la cuenta, que en un producto con colores
+   suma todos (las Sábanas 2½ de Luciana: 25 u. de otros colores), y los colores agotados seguían frenados por "no vende".
+   Ahora manda la publicación: `subStatus` con `out_of_stock` = sin stock; si no, la clave del color (sin clave = no se sabe).
  · **"Lo bajaste vos a mano" ya no frena** ni el rescate ni el cerebro: él no toca precios, y lo que manda rematar se
    baja con `unapub:…:bajar=`, que marca `liquidando` (eso sí frena).
  · **El Watch 5 Lite (Matías, 0 ventas en el año, 2 visitas/mes) no entraba a la escalera**: su registro de entrada a
