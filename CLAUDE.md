@@ -780,6 +780,10 @@ mensaje sin que yo te escriba (…) siempre y cuando sea algo que vos puedas hac
    **`decido:<MLA>=<precio>[!piso][!cruza]|<motivo en criollo>;…;go`** por ml-sync (sin `;go` es prueba, por ml-consulta).
    El motivo es lo que él lee en el 🧠. Siguen automáticos por mecánicos: sacar promos, activar pausadas que ya dejan el
    piso, cajas, stock, vínculos, ventas. Notificación sólo si hice algo (una línea por cambio) o si hay una decisión suya.
+   **Y LA AUDITORÍA DEL ROBOT** (pedido suyo del mismo día: *"el robot no piensa, capaz que pasa algo importante y no te
+   lo dice porque no está programado para eso"*): `ml-sync/AUDITORIA.md` + rutina `trig_0138cyCgYeEHjqeayqiQPqWQ`
+   (21:30 de acá, se reprograma sola con `run_once_at`): datos crudos contra el `informe`, lo que falte se arregla en el
+   robot. Diaria al principio; 3 limpias → 3-4 días → semanal → quincenal → mensual; si encuentra algo, vuelve a diaria.
    Primer caso a mirar: **Metatarso Fuerte** (Ayelen, escasez $3.850→$7.550, 168% y vendiendo: NO volver a $4.190 por
    regla cuando llegue mercadería; medir) · **Rebarbador** `MLA2039134465` ($6.000, 78%, 0,5/día, 1 u. + 4 viajando:
    el robot no lo subía porque en escasez no explora y con 1 u. "subir no suma"; candidato a probar más caro).
