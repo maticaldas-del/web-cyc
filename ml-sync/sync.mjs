@@ -2358,7 +2358,7 @@ async function filtrarRescate(db, rr, o) {
     // Excepción: un remate que el robot TERMINÓ porque el stock ya quedó sano (`ritmo:go`, 01/10/2026)
     // sí se rescata: terminar el remate es justamente para volver a la base.
     const remTerm = !!(apB && Number(apB.remateTerminado) > (Number(apB.ts) || 0));
-    if (apB && apB.tipo === 'baja' && hoyTs - (apB.ts || 0) < 30 * 864e5 && !remTerm && !aprende) {
+    if (apB && apB.tipo === 'baja' && apB.por !== 'correccion' && hoyTs - (apB.ts || 0) < 30 * 864e5 && !remTerm && !aprende) {
       rescFren.push({ ...x, why: `lo bajé yo el ${fechaR(apB.ts)} (${money(apB.de)} → ${money(apB.a)}${apB.por ? ' · ' + apB.por : ' · para ganar la caja'}) · no lo vuelvo a subir solo antes de 30 días` });
       continue;
     }
@@ -2503,6 +2503,11 @@ async function calcSubirPorMargen(db, o) {
   const PISO = o.piso, META = o.meta;
   const soloProds = o.soloProds || null;
   const soloMlas = o.soloMlas || null;   // el rescate al vender mira SÓLO la publicación que vendió
+  // CORREGIR UNA SUBA PROPIA QUE QUEDÓ DE MÁS (08/10/2026): { <MLA>: el registro de autoprecio de esa suba }.
+  // Para esas publicaciones, además de medir si están abajo del piso, se busca el precio MÁS BAJO que
+  // todavía llega a la meta (nunca abajo del precio que tenían antes de la suba). Ver `corregir` abajo.
+  const exceso = o.exceso || null;
+  const corregir = [];
   const TOPE_ENVIO = 33000;   // arriba de esto ML te cobra el envío: no se cruza
   const TECHO = 650000;       // regla suya del 13/08/2026
   const finS = (await db.get('cyc/finanzas')) || {};
@@ -2674,6 +2679,52 @@ async function calcSubirPorMargen(db, o) {
         }
         const nom = (links[mla].title || p.name || mla).slice(0, 40);
         if (n0 == null) { frenados.push({ mla, label, nom, why: 'ML no me dio la comisión' }); continue; }
+        // ── LA SUBA DEL ROBOT QUE QUEDÓ DE MÁS (08/10/2026) ──────────────────────────────────────
+        // El 07→08/10 el rescate subió el Watch S5, el SSD 1TB y el Galaxy A06 contando las cuotas de
+        // Premium DOS veces (ML ya las cobra adentro de la comisión): los vio casi en 0% y los dejó en
+        // 45%+. Él: "arreglalo y que el robot después decida qué hacer, ya que él debería saber lo
+        // correcto". O sea: el rescate lleva a la META, no más arriba. Si una suba suya (rescate de
+        // noche, al vender o por costo) quedó por encima del precio que llega a la meta, se vuelve a
+        // ese precio — nunca abajo del que tenía antes de la suba, nunca abajo de los $33.000 si ya
+        // estaba arriba, y sólo si sobra 3% o más (no se mueven precios por centavos). El que llama
+        // decide a cuáles mirar (sólo las que no vendieron desde la suba: si vende caro, gana más).
+        if (exceso && exceso[mla]) {
+          const exA = exceso[mla], aRob = Number(exA.a) || 0, deRob = Number(exA.de) || 0;
+          if (vars.length) { frenados.push({ mla, label, nom, why: 'la subí de más pero tiene variantes: no se baja sola' }); continue; }
+          if (Math.abs(precio0 - aRob) > Math.max(10, aRob * 0.005)) { frenados.push({ mla, label, nom, why: `ya no está en el precio que dejé (${money(aRob)}; hoy ${money(precio0)}): no la corrijo` }); continue; }
+          const okMeta = async (Q) => { const n = await netoDe(Q); return n == null ? null : n >= metaDe(Q); };
+          const okHoy = await okMeta(precio0);
+          if (okHoy == null) { frenados.push({ mla, label, nom, why: 'ML no me dio la comisión' }); continue; }
+          if (okHoy) {
+            let lo = Math.max(deRob, Math.ceil(precio0 * 0.755 / 10) * 10);
+            if (precio0 >= TOPE_ENVIO && lo < TOPE_ENVIO) lo = TOPE_ENVIO;
+            lo = Math.ceil(lo / 10) * 10;
+            let dest = null, fallo = false;
+            if (lo < precio0) {
+              const okLo = await okMeta(lo);
+              if (okLo == null) fallo = true;
+              else if (okLo) dest = lo;
+              else {
+                let a = lo, z = Math.round(precio0);
+                while (z - a > 10) {
+                  let mid = Math.floor((a + z) / 20) * 10; if (mid <= a) mid = a + 10;
+                  const r = await okMeta(mid); if (r == null) { fallo = true; break; }
+                  if (r) z = mid; else a = mid;
+                }
+                if (!fallo) dest = Math.ceil(z / 10) * 10;
+              }
+            }
+            if (fallo) { frenados.push({ mla, label, nom, why: 'ML no me dio la comisión al buscar el precio justo: no la corrijo hoy' }); continue; }
+            if (dest != null && dest <= precio0 * 0.97) {
+              const nD = await netoDe(dest);
+              const mgD = nD == null ? null : (nD - costoTotDe(dest)) / (costoTotDe(dest) + envio) * 100;
+              if (mgD != null && mgD >= META * 100 - 0.01) {
+                corregir.push({ mla, label, nom, prod: p.name, de: Math.round(precio0), a: dest, mg: mgD, deRob, pct: ((n0 - costoTot) / (costoTot + envio) * 100), tok: t.access_token });
+                continue;
+              }
+            }
+          }
+        }
         if (n0 >= m0) { yaOk.push(mla); continue; }
         if (!ok) { frenados.push({ mla, label, nom, why: 'no llego a la meta ni subiendo mucho' }); continue; }
         if (P <= precio0) { frenados.push({ mla, label, nom, why: 'la cuenta da un precio MENOR — no se baja' }); continue; }
@@ -2708,7 +2759,7 @@ async function calcSubirPorMargen(db, o) {
       }
     }
   }
-  return { subir, yaOk, frenados };
+  return { subir, yaOk, frenados, corregir };
 }
 
 // ── SI CAMBIA EL COSTO, EL ROBOT ACTÚA (23/09/2026) ──────────────────────────────────────────
@@ -3104,7 +3155,7 @@ async function calcPrueba(db, o) {
         { const fo = fotoP[mla]; const pHoy = (() => { const vs = (b.variations || []).map((x) => Number(x.price) || 0).filter((x) => x > 0); return vs.length ? Math.min(...vs) : precio; })();
           if (fo && Number(fo.p) > pHoy + 5 && !(ap && ap.tipo === 'baja' && hoyTs - (ap.ts || 0) < 2 * 864e5)) { no('la bajaste vos hoy a mano'); continue; } }
         if (ap && ap.tipo === 'sube' && hoyTs - (ap.ts || 0) < PRUEBA_ESPERA_DIAS * 864e5) { no(`el robot la subió hace ${Math.floor((hoyTs - ap.ts) / 864e5)} d: se espera`, 'espera'); continue; }
-        if (ap && ap.tipo === 'baja' && hoyTs - (ap.ts || 0) < 30 * 864e5) { no('el robot la bajó hace menos de 30 días'); continue; }
+        if (ap && ap.tipo === 'baja' && ap.por !== 'correccion' && hoyTs - (ap.ts || 0) < 30 * 864e5) { no('el robot la bajó hace menos de 30 días'); continue; }
         const vars = (b.variations || []).map((x) => ({ id: x.id, price: Math.round(x.price || 0) })).filter((x) => x.price > 0);
         const base = vars.length ? Math.min(...vars.map((x) => x.price)) : precio;
         const fr = frenosSuba(base, Math.ceil(base * (1 + PRUEBA_PASO) / 10) * 10);
@@ -9938,6 +9989,40 @@ async function main() {
         } catch (e) { console.log('   ⚠️ no pude calcular el rescate: ' + e.message); rescates = []; }
       } else if (cfgAv.autoSubeVenta !== true) console.log('\n── RESCATE apagado (subeventa:off) ──');
       else console.log('\n── RESCATE: no pude leer liquidando o el supervisor · esta noche no sube nada ──');
+      // ── LO QUE EL ROBOT SUBIÓ DE MÁS, VUELVE AL PRECIO JUSTO (08/10/2026) ──────────────────────
+      // Ver `exceso` en calcSubirPorMargen. Entran las subas del RESCATE (noche, venta o costo) de los
+      // últimos 45 días que siguen en el precio que dejó el robot y que NO vendieron desde la suba: si
+      // vendió caro, ese precio está probado y deja más plata, no se toca. Lo que se rescata esta noche
+      // no entra. Sin la lista de liquidando no se baja nada (el lado seguro).
+      let corregirAv = [], corrFren = [];
+      if (NOSUBIR_OK && String(cfgAv.autoPrecios || 'on') !== 'off') {
+        try {
+          const hoyRes = new Set(rescates.map((x) => x.mla));
+          const exc = {};
+          for (const [m, a] of Object.entries(autoprecio || {})) {
+            if (!a || a.tipo !== 'sube' || a.estado === 'subiendo' || !/^(margen|venta|costo)$/.test(String(a.por || ''))) continue;
+            if (!(Number(a.a) > 0) || !(Number(a.de) > 0) || hoyTs - (Number(a.ts) || 0) > 45 * 864e5 || hoyRes.has(m)) continue;
+            exc[m] = a;
+          }
+          // ¿vendió desde la suba? (cualquier venta no cancelada de esa publicación después del cambio)
+          const vendio = new Set();
+          for (const ents of Object.values(vpAv || {})) for (const v of Object.values(ents || {})) {
+            if (!v || v.cancelada || !v.mla || !exc[v.mla]) continue;
+            const tv = v.ts ? new Date(v.ts).getTime() : 0;
+            if (tv > (Number(exc[v.mla].ts) || 0)) vendio.add(v.mla);
+          }
+          for (const m of vendio) delete exc[m];
+          const ids = Object.keys(exc);
+          console.log(`\n── SUBAS DEL ROBOT QUE QUEDARON DE MÁS · ${ids.length} para mirar (${vendio.size} vendieron después de la suba: se quedan) ──`);
+          if (ids.length) {
+            const rc = await calcSubirPorMargen(db, { products, labels, accounts, soloMlas: new Set(ids), exceso: exc, piso: (SUBE_DESDE_AV + 0.5) / 100, meta: META_AV });
+            corregirAv = rc.corregir || [];
+            corrFren = (rc.frenados || []).filter((f) => exc[f.mla]);
+            for (const x of corregirAv) console.log(`   · ${x.nom} (${x.label}): ${money(x.de)} → ${money(x.a)} · hoy ${x.pct.toFixed(1)}%, queda en ${x.mg.toFixed(1)}%`);
+            for (const f of corrFren) console.log(`   · ${f.nom} (${f.label}): no la corrijo · ${f.why}`);
+          }
+        } catch (e) { console.log('   ⚠️ no pude mirar las subas de más: ' + e.message); corregirAv = []; }
+      }
       // Lo que se rescata no se sube además por el otro camino, ni se baja la misma noche.
       { const ids = new Set(rescates.map((x) => x.mla)); autoSube.splice(0, autoSube.length, ...autoSube.filter((f) => !ids.has(f.mla)));
         autoBaja.splice(0, autoBaja.length, ...autoBaja.filter((f) => !ids.has(f.mla))); }
@@ -10164,6 +10249,7 @@ async function main() {
           return { tipo: 'rescate', f: { mla: x.mla, nom: x.nom, cuenta: x.label, precio: x.de, pct: x.pct, vars: x.vars, meta: x.a }, a: Math.min(x.a, tope), corto: x.a > tope };
         });
         if (rescates.length > RESCATE_MAX) console.log(`   (quedan ${rescates.length - RESCATE_MAX} rescates para mañana: tope de ${RESCATE_MAX} por noche)`);
+        const tareasC = corregirAv.map((x) => ({ tipo: 'corrige', f: { mla: x.mla, nom: x.nom, cuenta: x.label, precio: x.de, pct: x.pct, mgPw: x.mg }, a: x.a }));
         const _sb = [
           ...autoSube.map((f) => ({ tipo: 'sube', f, a: f.tope })),
           ...autoBaja.map((f) => ({ tipo: 'baja', f, a: Math.floor(f.ptw / 10) * 10 })),
@@ -10173,8 +10259,8 @@ async function main() {
         for (const t of _sb.slice(AUTO_MAX)) diferidasAuto.add(t.f.mla);
         // Las vueltas 2 y 3 de la noche (ya corrió hoy) no tocan precios: lo que la 1ª hubiera hecho
         // solo tampoco se anota como avisado, si no quedaba trabado 7-10 días (etapa 1, 27/09).
-        if (yaCorrioHoy) for (const t of [...tareasR, ..._sb, ...autoRemate.map((f) => ({ f })), ...escTareas]) diferidasAuto.add(t.f.mla);
-        const tareas = [...tareasR, ..._sb.slice(0, AUTO_MAX), ...autoRemate.slice(0, REMATE_AUTO_MAX).map((f) => ({ tipo: 'remate', f, a: Math.floor(f.ptw / 10) * 10, piso: pisoEsc(f) })), ...escTareas];
+        if (yaCorrioHoy) for (const t of [...tareasR, ...tareasC, ..._sb, ...autoRemate.map((f) => ({ f })), ...escTareas]) diferidasAuto.add(t.f.mla);
+        const tareas = [...tareasR, ...tareasC, ..._sb.slice(0, AUTO_MAX), ...autoRemate.slice(0, REMATE_AUTO_MAX).map((f) => ({ tipo: 'remate', f, a: Math.floor(f.ptw / 10) * 10, piso: pisoEsc(f) })), ...escTareas];
         // Etapa 4 (30/09/2026): la lista `liquidando` se cargó al arrancar `avisos` (minutos antes). Si
         // él marcó algo en el medio, la noche no lo veía y lo bajaba. Se relee justo antes de las tareas;
         // si no se puede leer, esta noche no se baja nada (las subas igual releen la marca una por una).
@@ -10227,7 +10313,7 @@ async function main() {
             if (_apHoy && _apHoy.estado === 'subiendo') { fallidosAuto.push({ ...t, err: 'hay una suba en curso de otra corrida: no la toco' }); continue; }
             tocadasNoche.add(f.mla);
           }
-          if (!AUTO_ON) { console.log(`   · haría: ${t.tipo === 'rescate' ? `RESCATAR (está en ${Math.round(t.f.pct)}%)` : t.tipo === 'sube' ? 'SUBIR' : t.tipo === 'remate' ? `REMATAR (queda en ${f.mgPw.toFixed(1)}%, piso del escalón ${t.piso}% · resigna ${f.resignaTot == null ? '?' : money(f.resignaTot)} en total${t.a >= UMBRAL_ENVIO_GRATIS && Math.round(Number(f.ptw) || 0) < UMBRAL_ENVIO_GRATIS ? ' · ⚠️ el tramo queda arriba de los $33.000: al aplicar se vuelve a medir con envío' : ''})` : t.tipo === 'escalera' ? `ESCALERA al ${t.piso}% (queda en ${f.mgPw.toFixed(1)}%)${t.marcarNo ? ' · NO TRAER MÁS' : ''}` : 'BAJAR'} ${renglon}${t.corto ? ` · hacían falta ${money(t.f.meta)}, tope +25%` : ''}`); continue; }
+          if (!AUTO_ON) { console.log(`   · haría: ${t.tipo === 'corrige' ? `CORREGIR LA SUBA DE MÁS (está en ${Math.round(t.f.pct)}%, queda en ${t.f.mgPw.toFixed(1)}%)` : t.tipo === 'rescate' ? `RESCATAR (está en ${Math.round(t.f.pct)}%)` : t.tipo === 'sube' ? 'SUBIR' : t.tipo === 'remate' ? `REMATAR (queda en ${f.mgPw.toFixed(1)}%, piso del escalón ${t.piso}% · resigna ${f.resignaTot == null ? '?' : money(f.resignaTot)} en total${t.a >= UMBRAL_ENVIO_GRATIS && Math.round(Number(f.ptw) || 0) < UMBRAL_ENVIO_GRATIS ? ' · ⚠️ el tramo queda arriba de los $33.000: al aplicar se vuelve a medir con envío' : ''})` : t.tipo === 'escalera' ? `ESCALERA al ${t.piso}% (queda en ${f.mgPw.toFixed(1)}%)${t.marcarNo ? ' · NO TRAER MÁS' : ''}` : 'BAJAR'} ${renglon}${t.corto ? ` · hacían falta ${money(t.f.meta)}, tope +25%` : ''}`); continue; }
           if (!tk) { fallidosAuto.push({ ...t, err: 'sin token de la cuenta' }); continue; }
           let r, _msubN = null;
           if (t.tipo === 'rescate') {
@@ -10256,6 +10342,11 @@ async function main() {
             try { it = await mlGet('/items/' + f.mla + '?attributes=id,variations,listing_type_id,category_id,site_id', tk); } catch { it = null; }
             if (!it) { fallidosAuto.push({ ...t, err: 'ML no devolvió la publicación' }); continue; }
             if ((it.variations || []).length) { fallidosAuto.push({ ...t, err: 'tiene variantes: se hace a mano' }); continue; }
+            if (t.tipo === 'corrige') {
+              // No depende de la caja de compra: vuelve al precio que llega a la meta. Se declara medio
+              // punto menos de lo medido (el precio ya está redondeado para arriba).
+              r = await setPriceTo(f.mla, null, t.a, tk, { libre: true, margen: f.mgPw - 0.5 });
+            } else {
             // ── ANTES DE BAJAR SE LE VUELVE A PREGUNTAR LA CAJA A ML (25/09/2026, F2 de la segunda vuelta, a) ──
             // El precio de la caja sale de lo que el robot anotó en la vuelta de la hora, y si ML no
             // contestó ahí queda el de ANTES sin fecha: una publicación que hoy ya gana la caja salía
@@ -10307,6 +10398,7 @@ async function main() {
               // Se VUELVE a como estaba (no se borra todo): las marcas que él puso a mano se quedan.
               if (!r || !r.ok) { try { await restaurarLiquidando(db, marcadas); } catch { /* */ } }
             } else r = await setPriceTo(f.mla, null, t.a, tk, { libre: true, margen: f.mgPw });
+            }
           }
           if (!r || !r.ok) { await _soltarSubiendo(db, f.mla, _msubN); fallidosAuto.push({ ...t, err: (r && r.err) || '?' }); continue; }
           // REGLA 6: se relee de ML. Que la escritura no dé error no quiere decir que haya quedado.
@@ -10315,6 +10407,8 @@ async function main() {
           hechosAuto.push({ ...t, de: r.from || f.precio, a: r.to || t.a, quedo });
           const reg = t.tipo === 'rescate'
             ? { tipo: 'sube', por: 'margen', de: r.from || f.precio, a: r.to || t.a, ts: hoyTs, nom: f.nom, cuenta: f.cuenta, margenAntes: Math.round(f.pct * 10) / 10, ...(t.corto ? { corto: true, meta: f.meta } : {}) }
+            : t.tipo === 'corrige'
+              ? { tipo: 'baja', por: 'correccion', de: r.from || f.precio, a: r.to || t.a, ts: hoyTs, nom: f.nom, cuenta: f.cuenta, margen: Math.round(f.mgPw * 10) / 10, margenAntes: Math.round(f.pct * 10) / 10 }
             : t.tipo === 'escalera'
               ? { tipo: 'baja', por: 'escalera', de: r.from || f.precio, a: r.to || t.a, ts: hoyTs, nom: f.nom, cuenta: f.cuenta, margen: Math.round(f.mgPw * 10) / 10, piso: t.piso }
             : t.tipo === 'remate'
@@ -10339,6 +10433,7 @@ async function main() {
             console.log(`   ✓ REMATADO ${renglon} · queda en ${f.mgPw.toFixed(1)}% · 🔒 liquidando${quedo != null ? ` · releído de ML: ${money(quedo)}` : ' · ⚠️ no pude releerlo'}`);
             continue;
           }
+          if (t.tipo === 'corrige') { console.log(`   ✓ CORREGIDA LA SUBA DE MÁS ${renglon} · queda en ${f.mgPw.toFixed(1)}%${quedo != null ? ` · releído de ML: ${money(quedo)}` : ' · ⚠️ no pude releerlo'}`); continue; }
           if (t.tipo === 'rescate') { console.log(`   ✓ RESCATADO ${renglon}${quedo != null ? ` · releído de ML: ${money(quedo)}` : ' · ⚠️ no pude releerlo'}`); continue; }
           // Se anota en la memoria del aviso para que no vuelva a salir como "para decidir".
           const clave = t.tipo === 'sube' ? f.mla : (cbrAutoIds.has(f.mla) ? 'c_' : 'o_') + f.mla;
@@ -10520,6 +10615,7 @@ async function main() {
         for (const x of hechosAuto) {
           const f = x.f;
           if (x.tipo === 'cerebro') { L.push(`· 🧠 ${f.nom} (${f.cuenta})\n   ${money(x.de)} → ${money(x.a)} · ${x.motivo}` + (x.quedo == null ? ' · ⚠️ no pude releerlo de ML' : (Math.round(x.quedo) === Math.round(x.a) ? '' : ` · ⚠️ ML dice ${money(x.quedo)}`))); continue; }
+          if (x.tipo === 'corrige') { L.push(`· ↩️ ${f.nom} (${f.cuenta})\n   ${money(x.de)} → ${money(x.a)} · la había subido de más (estaba en ${Math.round(f.pct)}%) · vuelve al ${f.mgPw.toFixed(1)}%` + (x.quedo == null ? ' · ⚠️ no pude releerlo de ML' : (Math.round(x.quedo) === Math.round(x.a) ? '' : ` · ⚠️ ML dice ${money(x.quedo)}`))); continue; }
           L.push(`· ${x.tipo === 'prueba' ? '🧪' : x.tipo === 'rescate' ? '🛟' : x.tipo === 'sube' ? '📈' : x.tipo === 'remate' ? '🏷️' : x.tipo === 'escalera' ? '🪜' : '📉'} ${f.nom} (${f.cuenta})\n   ${money(x.de)} → ${money(x.a)}`
             + (x.tipo === 'escalera' ? ` · ESCALERA: no vende y ganar la caja daba pérdida · escalón ${x.piso}% (queda en ${f.mgPw.toFixed(1)}%) · el próximo en 7 d si no vende${x.marcarNo ? ' · 🚫 marcado NO TRAER MÁS' : ''} · 🔒 no se la sube nadie`
             : x.tipo === 'remate' ? ` · REMATE: gana la caja · queda en ${f.mgPw.toFixed(1)}%`
@@ -27198,7 +27294,7 @@ async function main() {
       const SUP_CUENTA = new Set(['subir', 'bajar', 'remate', 'escalera', 'prueba', 'rescatep', 'volver']);
       function motivoDeAuto(a) {
         const por = a && a.por;
-        if (por === 'margen' || por === 'venta' || por === 'costo') return 'rescate';
+        if (por === 'margen' || por === 'venta' || por === 'costo' || por === 'correccion') return 'rescate';   // corregir una suba propia de más no es mérito del robot
         if (por === 'remate' || por === 'escalera' || por === 'prueba' || por === 'volver') return por;
         if (a && a.tipo === 'sube') return 'subir';
         if (a && a.tipo === 'baja') return 'bajar';
