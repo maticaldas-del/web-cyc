@@ -2454,7 +2454,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.59';
+const APP_VERSION='22.60';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2465,6 +2465,7 @@ const APP_VERSION='22.59';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.60',f:'08/10/2026',h:'14:20',c:[{n:2,t:'📊 Métricas → % de ganancia: el mes anterior muestra su promedio FINAL (todo el mes) y la flecha compara contra ése. Lo que llevaba a esta misma altura queda abajo, chico.'}]},
   {v:'22.59',f:'08/10/2026',h:'14:05',c:[{n:1,t:'📈 Línea de tiempo, caja: lo que no es de catálogo (no hay caja que ganar) y lo que está pausado ya no sale en gris como "no se sabe": tiene su color y el globito lo dice.'}]},
   {v:'22.58',f:'08/10/2026',h:'13:25',c:[{n:1,t:'📈 Línea de tiempo: la caja de HOY seguía en gris en algunos productos (los que ya tenían un renglón de hoy a medias en la línea del robot). Ahora hoy siempre toma la caja de la última lectura.'}]},
   {v:'22.57',f:'08/10/2026',h:'13:15',c:[{n:2,t:'📈 Línea de tiempo: las visitas no se guardaban desde el 01/10 (el pedido a ML fallaba callado). Ya se guardan de nuevo y se rellenan los días que faltaron.'},{n:1,t:'📈 Línea de todo: el día de hoy toma la caja, el stock y el remate de ahora.'}]},
@@ -17136,9 +17137,11 @@ function renderMetPctAvg(buckets,bucketsPrev,bucketsYear){
     +`<span style="font-size:1rem;font-weight:700;color:var(--text)">${fmtP(val)}</span>${extra}</div>`;
   // revisión max (rev4): el título decía "meta 40%" escrito a mano; va la meta del Puntaje de este mes.
   try{const sp=document.getElementById('met-pct-period');if(sp){const n=new Date();sp.textContent='· markup sobre costo · meta '+puntCfg(n.getFullYear()+'_'+String(n.getMonth()+1).padStart(2,'0')).margenMeta+'%';}}catch(e){}
-  el.innerHTML=chip(CMP_CUR,'Promedio actual',cur,delta(cur,prevAlt,enCurso?'anterior a esta altura':'anterior'))
-    +chip(CMP_PREV,enCurso?'Anterior a esta altura':'Período anterior',prevAlt,enCurso&&prev!=null?`<span style="font-size:.6rem;color:var(--muted)">entero: ${fmtP(prev)}</span>`:'')
-    +(year!=null?chip(CMP_YEAR,'Año pasado',yearAlt,delta(cur,yearAlt,'año pasado')):'');
+  // CONTRA EL ANTERIOR ENTERO (08/10/2026, él: "quiero que el mes pasado tome el promedio final del mes, no del período
+  // donde va este mes"). El número grande y la flecha van contra el período anterior COMPLETO; "a esta altura" queda abajo, chico.
+  el.innerHTML=chip(CMP_CUR,'Promedio actual',cur,delta(cur,prev,'anterior'))
+    +chip(CMP_PREV,'Período anterior',prev,enCurso&&prevAlt!=null?`<span style="font-size:.6rem;color:var(--muted)">a esta altura: ${fmtP(prevAlt)}</span>`:'')
+    +(year!=null?chip(CMP_YEAR,'Año pasado',year,delta(cur,year,'año pasado')+(enCurso&&yearAlt!=null?`<span style="font-size:.6rem;color:var(--muted)">a esta altura: ${fmtP(yearAlt)}</span>`:'')):'');
 }
 
 // Gráfico de % de ganancia (markup = ganancia/costo·100) por período. Solo tiene datos
