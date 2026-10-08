@@ -793,6 +793,21 @@ mensaje sin que yo te escriba (…) siempre y cuando sea algo que vos puedas hac
    (`activarPausadasFull`). Piedra Gua Sha activada (59%) · Kit Jade subido $5.299 → $5.420 (25%) para que se active solo ·
    Linterna COB (`MLA3998033920`) sigue pausada: da 5%, falta su costo real.
 
+### EL 🧠 SÓLO CON LO MÍO, Y POR QUÉ DE CADA PEDIDO Y CAJA (08/10/2026, v22.70 · `cyc-v550`)
+ · Él: *"antes de ver uno escrito por el robot automático prefiero que no aparezca nada, solo lo tuyo"*. Con
+   `autoPrecios: off` la ventanita muestra SÓLO notas de `mlapi/claudeexp` (si no escribí nada: "Todavía no escribí
+   nada sobre esto."). No se borró ningún dato.
+ · Y *"si abro el cerebro en pedidos del pendrive quiero que me digas por qué se piden esas unidades. que tenga lógica
+   todo"*: notas por renglón con `decido:ped:<palabras|id>[#var]=nota|texto` y `decido:caja:<palabras|id>@<cuenta>[#var]=nota|texto`
+   (claves `ped__<id>` / `caja__<id>__<cuenta>`). Cada revisión de 12 h escribe la de cada pedido con plata en riesgo y
+   cada producto que se sugiere mandar, con los números (ritmo con stock, Full + camino + oficina, días que alcanza).
+   Primera: Pendrive Cruzer Blade 8gb (Matías) · 98 vendidas en 7 días con stock, 1 en Full + 100 en camino + 50 en la
+   oficina → mandar las 50 y comprar 129 para 20 días.
+ · **Preguntas, regla suya del 08/10:** *"no contestar las antiguas. a partir de ahora contestá vos las obvias y decime
+   las que no pudiste responder"*. Sólo las nuevas desde la revisión anterior, `contesto:…;go`; las dudosas se le pasan.
+ · **Espejo 8" (`MLA3018947968`)** frenado por ML (`waiting_for_patch`) desde la suba a $49.190: *"yo lo arreglo,
+   haceme acordar"*. Recordárselo en cada revisión mientras siga frenado.
+
 ## ⏰ PENDIENTE: EL PEDIDO AL PAULVIC DEL 06/10 (08/10/2026)
 
 40 u. en 12 aromas, todavía en camino (`cyc/pedidospv`). Le mandaron **$246.283,77** para pagar (≈ $6.157 c/u; la ficha
