@@ -16210,7 +16210,7 @@ async function main() {
             const vars = b && Array.isArray(b.variations) ? b.variations : [];
             const precio = b ? (vars.length ? Math.min(...vars.map((v) => Number(v.price) || Infinity)) : Number(b.price)) : null;
             const vpD = (ventasPanel[mla] || {})[ayerK] || { u: 0, tot: 0, neto: 0, uR: 0 };
-            const caja = { winning: 'g', sharing: 'c', losing: 'p', listed: 'n', not_listed: 'n' }[e.caja] || (e.caja ? String(e.caja).slice(0, 8) : undefined);
+            const caja = { winning: 'g', sharing: 'c', losing: 'p', nocat: 'n', sincaja: 's', listed: 'n', not_listed: 'n' }[e.caja] || (e.caja ? String(e.caja).slice(0, 8) : undefined);
             const np = netopub[mla] || {};
             const row = {
               st: stI != null ? Math.max(0, parseInt(stI) || 0) : undefined, stF: stI != null ? 'inv' : undefined,
