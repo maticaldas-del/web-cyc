@@ -298,7 +298,9 @@ pausadas sin stock que se agotan rápido (lo que se vende en 1-2 días al llegar
 ### El brillo de cada venta va con el neto (09/10/2026, v22.85)
 Él, con un Metatarso de $4.920 de neto lleno de estrellas por su 168%: *"quiero que el brillo vaya de mano con el neto"*.
 `vivaVenta`: color por % (igual), pero figuras (`vi` → `data-vi`, cantidad y opacidad), brillo, flota y fuego sólo por el
-neto: ≤$5.000 nada · $10.000 glow · $25.000 flota · $55.000 fuego. Qué chequear: una venta chica con % alto no brilla.
+neto: ≤$5.000 nada · $10.000 glow · $25.000 flota · $55.000 fuego. v22.86: fondo/borde/halo de cada venta también por
+el neto (`--tint/--bd/--bw/--halo` inline en `vivaEnvolver`, `vi` de $1.500 a $80.000), figuras ∝ vi². Qué chequear:
+una venta chica con % alto no brilla; $1.500 y $12.500 se ven distintas.
 
 ### Ventas de hoy: Día · Mes · Año (09/10/2026, v22.84)
 Pedido suyo: *"poner el selector de día, mes y año. y que siga el mismo pensamiento: el 7 del mes es 115.000 por los
