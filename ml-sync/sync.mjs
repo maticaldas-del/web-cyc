@@ -4001,7 +4001,10 @@ async function aplicarCerebro(db, cz, o) {
         let cj = null;
         try { cj = await mlGet('/items/' + d.mla + '/price_to_win?version=v2', tk); } catch { cj = null; }
         if (!cj || !cj.status) { fallidos.push({ ...t, err: 'ML no contestó la caja de compra: no subo a ciegas' }); continue; }
-        if (cj.status !== 'winning') { fallidos.push({ ...t, err: `ya no gana la caja (${cj.status}): no se sube` }); continue; }
+        // Lo que decidió Claude se sube igual (09/10/2026): ya lo pensó con la caja a la vista, y una publicación pausada
+        // sin stock da `not_listed` (el Cool Water no se podía subir antes de que entrara la tanda nueva).
+        if (cj.status !== 'winning' && d.tipoMot !== 'claude') { fallidos.push({ ...t, err: `ya no gana la caja (${cj.status}): no se sube` }); continue; }
+        if (cj.status !== 'winning') console.log(`   (caja ${cj.status}: la sube igual porque lo decidió Claude)`);
       }
       msub = await _marcarSubiendo(db, d.mla, { por: d.tipoMot === 'claude' ? 'claude' : 'cerebro', de: d.p0, a: d.a, nom: d.nom, cuenta: d.cuenta });
       if (!msub.ok) { fallidos.push({ ...t, err: 'no pude anotar la suba antes de hacerla: no subo a ciegas' }); continue; }

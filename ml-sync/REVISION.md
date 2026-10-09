@@ -189,7 +189,8 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
 ### `decido` sube aunque no haya stock en Full (09/10/2026)
 Cool Water Woman (`MLA2070716651`): se agotó en un día las dos veces a $92.499 (19%) y `decido` se negaba a subirla
 "sin stock en Full", así que la tanda nueva se iba a vender otra vez barata. Ahora en `calcCerebro`, si Claude
-decidió una SUBA, se aplica aunque no haya stock (también pausada por falta de stock). Bajar sin stock sigue frenado.
+decidió una SUBA, se aplica aunque no haya stock (también pausada por falta de stock). Bajar sin stock sigue frenado. Y en `aplicarCerebro` una suba de Claude ya no se frena porque la caja no está
+`winning` (pausada da `not_listed`): sólo se anota en el log.
 Qué chequear: que no se cuele una baja; que la suba en pausada se relea de ML.
 Y la regla de la revisión, suya: *"quiero que cada run evalues publicacion por publicacion"* — incluidas las
 pausadas sin stock que se agotan rápido (lo que se vende en 1-2 días al llegar está barato).
