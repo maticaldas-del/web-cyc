@@ -195,6 +195,13 @@ Qué chequear: que no se cuele una baja; que la suba en pausada se relea de ML.
 Y la regla de la revisión, suya: *"quiero que cada run evalues publicacion por publicacion"* — incluidas las
 pausadas sin stock que se agotan rápido (lo que se vende en 1-2 días al llegar está barato).
 
+### `planilla`: TODAS las publicaciones en cada revisión (09/10/2026)
+Él: *"tres veces te pedí que mires TODOS los productos en las runs"*. Las runs leían `informe` (sólo lo que se movió).
+`planilla[:cuenta]` (solo lee, ml-consulta) lista cada publicación con ficha, activa o pausada: precio leído de ML,
+margen y ganancia/u a ese precio (comisión preguntada a ML), stock en Full, ventas 7/30/60 d, cuánto duró la última
+tanda (`stockhist` desde/desdePrev → cero), caja y último cambio. Es OBLIGATORIA en las revisiones de 08:52 y 20:52.
+Qué chequear: que el total de renglones cierre con las publicaciones vivas con ficha; que "sin leer" se diga.
+
 ### Sin piso del 22%: objetivo 25% (09/10/2026, regla suya)
 - **Qué es:** `cyc/mlconfig` minPct = targetPct = 25 (`meta:25:25`). Colores: abajo de 25 rojo, desde 25 verde. Bajar de 25% sólo con motivo y `!piso`; nunca abajo de 0%.
 - **Qué chequear:** que nadie vuelva a usar 22 como freno, que los comandos que hablan de "piso" lean 25, y que una baja abajo de 25 tenga su motivo en el 🧠.

@@ -36005,6 +36005,101 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=planilla[:<cuenta>] → TODAS LAS PUBLICACIONES, UNA POR RENGLÓN, CON EL DATO CRUDO (09/10/2026). SOLO LEE.
+    // Él, después del Cool Water vendido a 19% las dos veces que llegó: *"tres veces te pedí que mires TODOS los productos
+    // en las runs"*. El `informe` sólo trae lo que se movió; esto trae CADA publicación con ficha (activa o pausada, no las
+    // cerradas ni las ocultas): precio de hoy leído de ML, margen a ese precio (comisión preguntada a ML, envío por lado de
+    // la barrera, cuotas, IIBB+mono), ganancia por unidad, stock en Full, ventas 7/30 d, días que duró la última tanda,
+    // caja de compra y el último cambio de precio. No opina: Claude mira renglón por renglón en cada revisión.
+    if (/^planilla(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const ctaF = String(process.env.BILLING_PROBE).slice('planilla'.length).replace(/^:/, '').trim().toLowerCase();
+      const [lk, inv, vp, np, ap, sh, cfgM, mono, fin, cuoC, prodsO] = await Promise.all(['cyc/mllinks', 'cyc/inventory', 'cyc/ventaprod', 'cyc/netopub', 'cyc/autoprecio', 'cyc/stockhist', 'cyc/mlconfig', 'cyc/monotributo', 'cyc/finanzas', 'cyc/mlcuotas', 'cyc/products']
+        .map((r) => db.get(r).then((x) => x || {}).catch(() => null)));
+      if ([lk, inv, vp, np, prodsO, fin].some((x) => x === null)) { console.log('⚠️ no pude leer la base: no listo nada a medias'); return; }
+      const tc = parseFloat(fin.tipo_cambio) || 0; if (!(tc > 0)) { console.log('⚠️ sin dólar cargado: no hay costo en pesos'); return; }
+      const monoPz = parseFloat(mono.pct) || 0, PISO = Number.isFinite(parseFloat(cfgM.minPct)) ? parseFloat(cfgM.minPct) : 25;
+      const prodById = {}; for (const p of Object.values(prodsO)) if (p && p.id) prodById[p.id] = p;
+      setDevLive(vp);
+      const hoy = Date.now(), sidL = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
+      const ven = {};
+      for (const ents of Object.values(vp)) for (const v of Object.values(ents || {})) {
+        if (!v || v.cancelada || !v.mla) continue;
+        const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ts < hoy - 60 * 864e5) continue;
+        const o = ven[v.mla] = ven[v.mla] || { u7: 0, u30: 0, u60: 0, ult: 0 }; const q = Number(v.qty) || 1;
+        if (ts >= hoy - 7 * 864e5) o.u7 += q; if (ts >= hoy - 30 * 864e5) o.u30 += q; o.u60 += q; if (ts > o.ult) o.ult = ts;
+      }
+      const tok = await tokensCerebro(db);
+      const porCta = {};
+      for (const [mla, e] of Object.entries(lk)) {
+        if (!e || !e.prodId || e.ignored || e.noVendemosMas || e.oculta || !prodById[e.prodId]) continue;
+        const cta = String(e.cuenta || ''); if (!cta || (ctaF && cta.toLowerCase() !== ctaF)) continue;
+        if (e.status === 'closed' || e.status === 'inactive') continue;
+        (porCta[cta] = porCta[cta] || []).push(mla);
+      }
+      const fee = new Map();
+      const feeAtP = async (b, P, tk) => {
+        const k = `${b.listing_type_id}|${b.category_id}|${Math.round(P)}`; if (fee.has(k)) return fee.get(k);
+        let v = null; try { const d = await mlGet(`/sites/${b.site_id || 'MLA'}/listing_prices?price=${Math.round(P)}&listing_type_id=${b.listing_type_id}&category_id=${b.category_id}`, tk); const x = Array.isArray(d) ? d[0] : d; v = typeof x?.sale_fee_amount === 'number' ? x.sale_fee_amount : null; } catch { v = null; }
+        fee.set(k, v); return v;
+      };
+      const filas = [], sinLeer = [];
+      const f = (n) => '$' + Math.round(n).toLocaleString('es-AR');
+      for (const [cta, ids] of Object.entries(porCta)) {
+        const tk = tok[cta] || tok[cta.toLowerCase()] || tok[cta.charAt(0).toUpperCase() + cta.slice(1).toLowerCase()];
+        if (!tk) { sinLeer.push(`${cta}: sin token (${ids.length})`); continue; }
+        for (let k = 0; k < ids.length; k += 20) {
+          let arr; try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,sub_status,price,listing_type_id,category_id,site_id,variations,catalog_listing', tk); } catch { arr = null; }
+          if (!arr) { sinLeer.push(...ids.slice(k, k + 20)); continue; }
+          for (const row of arr) {
+            const b = (row && row.body) || {}, mla = b.id; if (!mla || !lk[mla]) continue;
+            if (b.status === 'closed' || b.status === 'inactive') continue;
+            const e = lk[mla], p = prodById[e.prodId], P = Math.round(Number(b.price) || 0);
+            const kP = e.prodId + '__' + sidL(cta), kV = e.variant ? kP + '__v__' + sidL(e.variant) : null;
+            const st = Math.max(0, parseInt(inv[kV && inv[kV] != null ? kV : kP]) || 0);
+            const costo = Math.round(costoPesos(p, 1, tc).costo || 0);
+            const m = (mlExtraPct(cta) + monoPz) / 100;
+            let mg = null, g = null, nota = '';
+            const cuo = cuotaPremiumDe(cuoC || {}, mla, b.listing_type_id);
+            if (!(costo > 0)) nota = 'SIN COSTO';
+            else if (cuo == null) nota = 'Premium sin cuotas medidas';
+            else if (P > 0) {
+              const n0 = np[mla] || {};
+              const env = P >= UMBRAL_ENVIO_GRATIS ? ((Number(n0.envio) > 0 && !n0.envioML) ? Number(n0.envio) : CAND_ENVIO_ARRIBA) : 0;
+              const fe = await feeAtP(b, P, tk);
+              if (fe == null) nota = 'ML no contestó la comisión';
+              else { g = P - fe - P * cuo - env - costo - P * m; mg = g / (costo + P * m + env) * 100; }
+            }
+            const vv = ven[mla] || { u7: 0, u30: 0, u60: 0, ult: 0 };
+            const kPl = e.prodId + '__' + sidL(cta.toLowerCase()), kVl = e.variant ? kPl + '__v__' + sidL(e.variant) : null;
+            const h = [kV, kVl, kP, kPl].map((x) => x && (sh || {})[x]).find(Boolean) || {};
+            // Cuántos días duró la última tanda: de la entrada de stock al cero, si ya se agotó (al quedar en cero
+            // `desde` pasa a `desdePrev`).
+            const ini = Number(h.desde || h.desdePrev) || 0;
+            const tanda = ini && h.cero && h.cero > ini ? Math.max(0.1, (h.cero - ini) / 864e5) : null;
+            const a = ap[mla];
+            filas.push({ mla, cta, nom: String(e.title || p.name || '').slice(0, 42) + (e.variant ? ' #' + e.variant : ''), est: b.status + ((b.sub_status || []).length ? '(' + b.sub_status.join(',') + ')' : ''),
+              P, mg, g, nota, st, ...vv, cero: h.cero && st === 0 ? h.cero : null, tanda, caja: e.caja || '', ptw: e.cajaPtw || null, var: (b.variations || []).length,
+              cambio: a && a.ts ? `${f(a.de)}→${f(a.a)} hace ${Math.round((hoy - a.ts) / 864e5)} d${a.por ? ' (' + a.por + ')' : ''}` : '' });
+          }
+        }
+      }
+      filas.sort((x, y) => (y.u30 - x.u30) || (y.st - x.st));
+      console.log(`=== 📋 PLANILLA · ${filas.length} publicaciones con ficha (activas y pausadas)${ctaF ? ' · ' + ctaF : ''} · objetivo ${PISO}% ===`);
+      console.log('MLA · cuenta · nombre · estado · precio · margen (gan/u) · Full · vendidas 7d/30d/60d · última · tanda · caja · último cambio\n');
+      for (const r of filas) {
+        const mgT = r.mg == null ? `margen ? (${r.nota})` : `${r.mg.toFixed(0)}% (${f(r.g)}/u)${r.mg < PISO ? ' ⚠️<' + PISO : ''}`;
+        const cajaT = r.caja ? `caja ${r.caja}${r.ptw && r.caja !== 'winning' ? ' ML pide ' + f(r.ptw) : ''}` : '';
+        console.log([r.mla, r.cta, r.nom, r.est, f(r.P), mgT, `Full ${r.st}${r.cero ? ' (cero hace ' + Math.round((hoy - r.cero) / 864e5) + ' d)' : ''}`,
+          `v ${r.u7}/${r.u30}/${r.u60}`, r.ult ? `últ hace ${Math.round((hoy - r.ult) / 864e5)} d` : 'sin ventas 60 d',
+          r.tanda != null ? `tanda duró ${r.tanda.toFixed(1)} d` : '', r.var ? `${r.var} variantes` : '', cajaT, r.cambio ? 'cambio ' + r.cambio : ''].filter(Boolean).join(' · '));
+      }
+      if (sinLeer.length) console.log(`\n⚠️ sin leer (${sinLeer.length}): ${sinLeer.slice(0, 40).join(' · ')}`);
+      const bajo = filas.filter((r) => r.mg != null && r.mg < PISO), sinMg = filas.filter((r) => r.mg == null);
+      const rap = filas.filter((r) => r.tanda != null && r.tanda <= 3 && r.u30 > 0);
+      console.log(`\nResumen: ${filas.length} miradas · ${bajo.length} abajo de ${PISO}% · ${sinMg.length} sin margen medible · ${rap.length} cuya última tanda duró 3 días o menos (probablemente baratas)`);
+      return;
+    }
+
     // BILLING_PROBE=porquebajo:<palabras> → ¿POR QUÉ EL ROBOT BAJÓ ESTO Y QUÉ MARCAS LE PUSO? (30/09/2026)
     // Pedido suyo con las Cartas Españolas vendidas al 6%: "¿está bien bajada? ¿quiere decir que no
     // las traigo nunca más? se vendieron muchísimas en la historia". Junta por ficha (palabras con "+"):
