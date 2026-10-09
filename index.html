@@ -2500,7 +2500,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.99';
+const APP_VERSION='23.00';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2511,6 +2511,7 @@ const APP_VERSION='22.99';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.00',f:'09/10/2026',h:'03:40',c:[{n:3,t:'🧠 Pedidos y Armar caja ya no esconden lo que Claude no decidió: arriba de Pedidos dice cuántos productos que venden están sin decidir, y cada color o cuenta sin decidir lo dice.'},{n:3,t:'📦 Al cerrar una caja o confirmar un pedido de Paraguay se descuenta de lo que decidió Claude (antes seguía pidiendo lo mismo).'},{n:2,t:'🛒 "Cargar lo sugerido" ya no vacía la caja cuando no hay nada decidido: avisa por qué.'},{n:2,t:'🧠 Cada color muestra su motivo, y el precio para el máximo de compra va aparte.'},{n:1,t:'📅 Inicio en Mes o Año: "cuánto cobrar" usa ese mes, y al tocar la tarjeta abre Ventas en ese período.'}]},
   {v:'22.99',f:'09/10/2026',h:'03:10',c:[{n:1,t:'🔴🟠 Ventas: las rojas y naranjas que son muy grandes también tienen vida. Rojo desde $60.000 de neto y naranja desde $45.000: brillo y figuras, flotan desde el doble y tiemblan arriba de unos $200.000. Las chicas siguen sólo con el color del %.'}]},
   {v:'22.98',f:'09/10/2026',h:'02:55',c:[{n:2,t:'🔎 Revisión: etapa nueva 9 · Cerebro. Revisa lo que hace Claude en cada vuelta para que nada quede a medias (precios, pedidos, cajas, preguntas, vínculos).'}]},
   {v:'22.97',f:'09/10/2026',h:'02:35',c:[{n:1,t:'🔥 Ventas: romper el techo depende de cada venta. Las que arden poco rebotan 2-3 veces y salen despacio; las que arden fuerte lo rompen al primer golpe y salen disparadas, más grandes, más alto y con más chispas. Las figuras rápidas lo rompen antes.'}]},
