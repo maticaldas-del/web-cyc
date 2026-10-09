@@ -35421,10 +35421,13 @@ async function main() {
           const lin = LIN[mla];
           if (lin) {
             const d0 = Date.parse(b.k.replace(/_/g, '-') + 'T12:00:00-03:00');
-            let dSt = 0, uAnt = 0, dSab = 0;
-            for (let i = 1; i <= 45; i++) { const kk = new Date(d0 - i * 864e5 - 3 * 36e5).toISOString().slice(0, 10).replace(/-/g, '_'); const r = lin[kk]; if (!r) continue; if (r.st != null) { dSab++; if (Number(r.st) > 0) dSt++; } uAnt += Number(r.u) || 0; }
+            let dSt = 0, uAnt = 0, dSab = 0, pMax = 0;
+            for (let i = 1; i <= 45; i++) { const kk = new Date(d0 - i * 864e5 - 3 * 36e5).toISOString().slice(0, 10).replace(/-/g, '_'); const r = lin[kk]; if (!r) continue; if (r.st != null) { dSab++; if (Number(r.st) > 0) dSt++; } uAnt += Number(r.u) || 0; const pp = Number(r.p ?? r.pF) || 0; if (pp > pMax) pMax = pp; }
+            const pV = (Number(b.v.total) || 0) / b.q;
             if (dSt >= 30 && uAnt / dSt < 1 / 7) { es = true; porque = `antes estuvo ${dSt} días con stock vendiendo ${uAnt}`; }
-            else porque = dSab < 15 ? 'la línea no sabe el stock de antes: cuenta como venta' : `antes: ${dSt} días con stock y ${uAnt} vendidas, no estaba parado`;
+            // Si la línea no sabe el stock: le BAJARON el precio 12%+ en los 45 días anteriores y casi no vendía = remate.
+            else if (dSab < 15 && pMax > 0 && pV > 0 && pMax >= pV * 1.12 && uAnt < 45 / 7) { es = true; porque = `le bajaron el precio de $${Math.round(pMax)} a $${Math.round(pV)} y antes vendía ${uAnt} en 45 días`; }
+            else porque = dSab < 15 ? 'la línea no sabe el stock de antes y no hubo baja de precio: cuenta como venta' : `antes: ${dSt} días con stock y ${uAnt} vendidas, no estaba parado`;
           }
         }
         const s = S[b.v.prodId] || (S[b.v.prodId] = { t30: 0, t60: 0, t180: 0, ult: '', v: {}, rem: 0, barata: 0 });
