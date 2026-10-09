@@ -2499,7 +2499,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.92';
+const APP_VERSION='22.93';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2510,6 +2510,7 @@ const APP_VERSION='22.92';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.93',f:'09/10/2026',h:'03:00',c:[{n:1,t:'🫨 Ventas: el temblor arranca antes. Una venta de ~$60.000 de neto ya tiembla (un tercio de lo que tiembla una de $300.000).'}]},
   {v:'22.92',f:'09/10/2026',h:'02:50',c:[{n:1,t:'🫨 Ventas: el movimiento tiene intensidad. Según el neto (y un poco el %), la tarjeta flota suave, flota rápido o tiembla, y cuanto más deja, más fuerte y rápido tiembla.'}]},
   {v:'22.91',f:'09/10/2026',h:'02:40',c:[{n:1,t:'🫨 Ventas: con $100.000 de neto o más la tarjeta tiembla siempre, aunque no llegue a "Bueno". El fuego sigue siendo sólo desde Bueno.'}]},
   {v:'22.90',f:'09/10/2026',h:'02:25',c:[{n:1,t:'🔥 El fuego vuelve a ser como antes. La venta que arde queda un poco más chica, con lugar arriba y a los costados, para que el fuego se vea entero en la lista.'}]},
@@ -8637,8 +8638,9 @@ function vivaVenta(o){
   // tm de 0 a 1 = 75% el neto (de $30.000 a $300.000) y 25% el nivel del %. Flota suave → flota rápido → tiembla, y
   // el temblor crece con tm (amplitud --tz y velocidad --tv). El fuego sigue: $100.000+ y desde "Bueno".
   const tm=neto>=30000?Math.min(1,.75*_vivaLog(neto,30000,300000)+.25*VIVA_ORD[n.k]/6):0;
-  const tz=Math.round((.6+tm*2.6)*100)/100,tv=Math.round((.5-tm*.28)*100)/100+'s';
-  return{k:n.k,c:n.c,vel,vi,tz,tv,ef:neto>=100000&&VIVA_ORD[n.k]>=VIVA_ORD.bueno?'fuego':tm>=.45?'tiembla':tm>=.25?'flota2':neto>=30000?'flota':neto>=12000?'glow':''};   // fuego: además desde "Bueno" (45%) para arriba, él: "verde es poco"
+  // tz crece más rápido arriba (tm^1.5): una venta de $60.000 tiembla ~1/3 de lo que tiembla una de $300.000 (él, Ferrari contra SSD).
+  const tz=Math.round(Math.max(.5,3.4*Math.pow(tm,1.5))*100)/100,tv=Math.round((.5-tm*.28)*100)/100+'s';
+  return{k:n.k,c:n.c,vel,vi,tz,tv,ef:neto>=100000&&VIVA_ORD[n.k]>=VIVA_ORD.bueno?'fuego':tm>=.3?'tiembla':tm>=.18?'flota2':neto>=30000?'flota':neto>=12000?'glow':''};   // fuego: además desde "Bueno" (45%) para arriba, él: "verde es poco"
 }
 // La tarjeta de una venta adentro de su envoltorio (el fuego necesita salir por afuera de la tarjeta).
 function vivaEnvolver(html,cual,v){
