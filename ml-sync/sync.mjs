@@ -34680,6 +34680,90 @@ async function main() {
     // vendió en esas horas, (3) lo que ya decidió Claude y cómo le fue desde entonces, (4) lo que el robot HARÍA con
     // cada publicación (la cuenta del cerebro, sin aplicar: escasez, plata por día, ritmo antes/ahora, margen),
     // (5) las pausadas con stock en Full y (6) las publicaciones nuevas. Con eso Claude decide y aplica con `decido`.
+    // BILLING_PROBE=escasez[:días] → LO QUE SE QUEDA SIN STOCK EN FULL ANTES DE REPONER (08/10/2026, regla suya).
+    // Él, con el Infusor de té barato: "hasta que no mande una caja con ese producto vos tenés que estirarlo (…)
+    // cuando yo mando la caja sabés que tenés aprox 8 días para estirarlo y terminar de venderlas el día 8 (pero
+    // nunca a menos del precio normal)". SOLO LEE. Datos crudos por producto × cuenta: stock en Full, ritmo con
+    // stock (14 y 30 días), días que alcanza, cajas DESPACHADAS que no llegaron (fecha y unidades), precio de hoy
+    // de cada publicación (leído de ML) y a cuánto vendía (mediana de las ventas de 30 días). La oficina se
+    // muestra pero NO cuenta como reposición hasta que sale la caja. La decisión la toma Claude, no este comando.
+    if (/^escasez(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const dMax = Number(String(process.env.BILLING_PROBE).split(':')[1]) || 15;
+      const ahora = Date.now();
+      const sidE = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
+      const [links, vp, inv, envios, prods] = await Promise.all(['cyc/mllinks', 'cyc/ventaprod', 'cyc/inventory', 'cyc/envios_full', 'cyc/products'].map((r) => db.get(r).then((v) => v || {}).catch(() => ({}))));
+      const pName = {}; for (const pp of Object.values(prods)) if (pp && pp.id) pName[pp.id] = pp.name;
+      const money = (n) => '$' + Math.round(n).toLocaleString('es-AR');
+      // ventas por producto × cuenta (y por publicación, para el precio al que vendía)
+      const V = {}, precioV = {};
+      for (const ents of Object.values(vp)) for (const v of Object.values(ents || {})) {
+        if (!v || v.cancelada || !v.prodId || !v.cuenta) continue;
+        const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ts < ahora - 30 * 864e5) continue;
+        const k = v.prodId + '__' + sidE(v.cuenta), q = Number(v.qty) || 1;
+        const x = (V[k] = V[k] || { u14: 0, u30: 0, u3: 0 });
+        x.u30 += q; if (ts >= ahora - 14 * 864e5) x.u14 += q; if (ts >= ahora - 3 * 864e5) x.u3 += q;
+        if (v.mla && Number(v.total) > 0) (precioV[v.mla] = precioV[v.mla] || []).push(Number(v.total) / q);
+      }
+      // cajas despachadas que todavía no llegaron, por producto × cuenta
+      const cam = {};
+      for (const [id, e] of Object.entries(envios)) {
+        if (!e || !e.cuenta) continue;
+        for (const c of (Array.isArray(e.cajasDet) ? e.cajasDet : [])) {
+          if (!c || c.recibida) continue;
+          for (const it of (c.items || [])) {
+            if (!it || !it.prodId || !(it.u > 0)) continue;
+            const k = it.prodId + '__' + sidE(e.cuenta);
+            (cam[k] = cam[k] || []).push({ u: it.u, fecha: e.fecha || '?', v: it.variante || '' });
+          }
+        }
+      }
+      // días con stock en los últimos 14 (para no dividir por días en cero)
+      const sh = (await db.get('cyc/stockhist').catch(() => null)) || {};
+      const filas = [];
+      for (const [k, st0] of Object.entries(inv)) {
+        if (k.includes('__v__')) continue;
+        const i = k.indexOf('__'); if (i < 0) continue;
+        const pid = k.slice(0, i), cta = k.slice(i + 2); if (/oficina/i.test(cta)) continue;
+        const st = Math.max(0, parseInt(st0) || 0), vv = V[k]; if (!vv || vv.u14 < 2) continue;
+        const h = sh[k] || {}; const desde = Number(h.desde) || 0;
+        const dCon = Math.max(1, Math.min(14, desde && !h.aprox ? (ahora - desde) / 864e5 : 14));
+        const r14 = vv.u14 / dCon, r3 = vv.u3 / 3;
+        const alc = r14 > 0 ? st / r14 : Infinity;
+        if (alc > dMax) continue;
+        const ofi = Math.max(0, parseInt(inv[pid + '__' + sidE('Oficina Mati')]) || 0);
+        filas.push({ k, pid, cta, st, r14, r3, alc, u14: vv.u14, u30: vv.u30, ofi, cam: cam[k] || [] });
+      }
+      filas.sort((a, b) => a.alc - b.alc);
+      // precio de hoy de cada publicación activa de esos productos, leído de ML
+      const tokE = {};
+      for (const label of labels) { const acc = accounts[label]; if (!acc?.refresh_token) continue; try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() }); tokE[label] = t.access_token; } catch { console.log(`(${label}: no pude entrar)`); } }
+      const pubs = {};
+      for (const f of filas) pubs[f.k] = Object.entries(links).filter(([m, e]) => e && e.prodId === f.pid && sidE(e.cuenta || '') === f.cta && !e.oculta && !e.noVendemosMas && e.status !== 'closed').map(([m]) => m);
+      const vivo = {};
+      for (const label of Object.keys(tokE)) {
+        const ids = [...new Set(Object.values(pubs).flat().filter((m) => (links[m] || {}).cuenta === label))];
+        for (let j = 0; j < ids.length; j += 20) {
+          try { const arr = await mlGet('/items?ids=' + ids.slice(j, j + 20).join(',') + '&attributes=id,status,sub_status,price,variations,available_quantity', tokE[label]); for (const x of (arr || [])) if (x && x.body) vivo[x.body.id] = x.body; } catch { /* */ }
+        }
+      }
+      const med = (a) => { if (!a || !a.length) return null; const b = [...a].sort((x, y) => x - y); return b[Math.floor(b.length / 2)]; };
+      console.log(`=== 🔥 ESCASEZ · lo que vende y alcanza ${dMax} días o menos en Full (${filas.length}) ===`);
+      console.log('(ritmo = ventas de 14 días ÷ días con stock · la oficina NO cuenta hasta que sale la caja)\n');
+      for (const f of filas) {
+        const camU = f.cam.reduce((s2, c) => s2 + c.u, 0);
+        const camTxt = camU ? `🚚 despachadas ${camU} u. (${f.cam.map((c) => c.fecha + (c.v ? ' ' + c.v : '') + ' ' + c.u).join(' · ')})` : '🚫 sin caja despachada';
+        console.log(`■ ${pName[f.pid] || f.pid} · ${f.cta} · ${f.st} u. en Full · ${f.r14.toFixed(2)}/día (${f.u14} u. en 14 d · ${f.u30} en 30 d · últimos 3 d ${f.r3.toFixed(1)}/día) · alcanza ${f.alc === Infinity ? '∞' : f.alc.toFixed(1)} d`);
+        console.log(`   ${camTxt}${f.ofi ? ' · oficina ' + f.ofi + ' u.' : ''}`);
+        for (const m of pubs[f.k]) {
+          const b = vivo[m] || {}, e = links[m] || {};
+          const pv = med(precioV[m]);
+          console.log(`   · ${m} · ${b.status || e.status || '?'}${b.sub_status && b.sub_status.length ? ' (' + b.sub_status.join(',') + ')' : ''} · hoy ${b.price ? money(b.price) : '?'}${(b.variations || []).length ? ' · ' + b.variations.length + ' variantes' : ''} · vendía a ${pv ? money(pv) : '—'} (mediana 30 d)${e.caja ? ' · caja ' + e.caja : ''}${(precioV[m] || []).length ? ' · ' + precioV[m].length + ' ventas' : ''}`);
+        }
+      }
+      if (!filas.length) console.log('Nada se queda sin stock en ese plazo.');
+      return;
+    }
+
     if (/^informe(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const hrs = Number(String(process.env.BILLING_PROBE).split(':')[1]) || 12;
       const ahoraI = Date.now(), desde = ahoraI - hrs * 3600e3;

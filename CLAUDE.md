@@ -760,6 +760,25 @@ archivo. **Etapa 8 · Datos e historial** creada ese día (líneas de tiempo); c
 Inicio la pide ya. Y lo que se mira en TODAS: contar dos veces lo mismo (el stock ×4 del Centímetro),
 fallas leídas como dato, dos fórmulas para un número, datos de terceros en el registro público.
 
+## 🔥 ESCASEZ: ESTIRAR EL STOCK HASTA QUE LLEGUE LA CAJA (08/10/2026 a la noche, regla suya, para TODOS los productos)
+
+Él, con el Infusor de té barato (14 u. en Full, 3,5/día, sin caja en camino): *"hasta que no mande una caja con ese
+producto vos tenés que estirarlo indeterminado (…) hay mucho margen pero tampoco la pavada, un producto de 5.000 no
+podés subirlo a 20.000, quizás a 10.000 sí (…) cuando yo mando la caja sabés que ahí tenés aprox 8 días para estirarlo
+y terminar de venderlas el día 8 (pero nunca a menos del precio normal donde se vendían; si no se vendieron para el
+día 8 tampoco pasa nada) (…) seguramente muchísimos productos más están con el mismo problema (…) no sé por qué no lo
+hiciste antes"*.
+ · **En CADA vuelta (las 4 del día) miro todo lo que vende y se queda sin stock en Full antes de reponer.**
+ · **Sin caja despachada a esa cuenta:** se estira sin fecha. Subo de a escalones (máximo +25% por vez), mirando en
+   cada vuelta: si sigue vendiendo rápido, otro escalón; si se frenó del todo, bajo de a poco. **Techo ~×2 del precio
+   normal** (5.000 → 10.000 sí, → 20.000 no): ML pausó el Espejo 8" cuando el robot viejo lo llevó ×6.
+ · **Con caja despachada:** llega en ~8 días desde el despacho. El precio se elige para que la última unidad salga
+   cerca del día 8.
+ · **Nunca abajo del precio normal** (al que vendía antes de la escasez). Si sobran unidades al llegar la caja, no pasa
+   nada. Al llegar la caja no vuelvo a ciegas: si a ese precio sigue vendiendo y deja más, se queda; si no, bajo al normal.
+ · Lo que está en la oficina NO cuenta como reposición hasta que él despacha la caja (y la oficina puede no estar cargada).
+ · Cada suba lleva su motivo en el 🧠 (`decido`). Frenos de siempre: variantes, liquidando, barrera $33.000, techo $650.000.
+
 ## 🤖 EL ROBOT SÓLO JUNTA DATOS · TODO LO DEMÁS LO HAGO YO (09/10/2026)
 
 Él, después del error de los Victoria's Secret: *"te equivocaste por hacerle caso al robot anterior. Ese robot no quiero
