@@ -963,13 +963,14 @@ pase datos. fijate si hay algo más que el robot automático calcule. hacelo vos
    publicaciones nuevas, dólar, retiro del 1º, el guardián que saca promos que nadie analizó, la marca liquidando que se cae
    en stock 0, y el descarte de candidatos de Paraguay que no llegan al 25% en dos mediciones (su piso).
 
-## ⏰ PENDIENTE: COOL WATER WOMAN A $104.990 APENAS ENTRE STOCK (09/10/2026)
+## 🔎 CADA VUELTA: PUBLICACIÓN POR PUBLICACIÓN, TAMBIÉN LAS AGOTADAS (09/10/2026, regla suya)
 
-`MLA2070716651` (Adriana) se vendió a $92.499 en un día las dos veces que llegó (2+2 u.) y ese precio deja 19%.
-Él: *"regalamos ganancia no?"*. Decidido subirla a **$104.990 (~33%)**, pero `decido` no toca una publicación sin
-stock en Full ("✗ no se toca"). **En cada vuelta: si tiene stock, aplicar `decido:MLA2070716651=104990|…;go`**
-ANTES de que se venda la tanda. Regla que sale de acá: lo que se agota en 1-2 días al llegar está barato; se sube
-aunque esté pausado esperando stock (hoy el comando no deja: o se arregla `decido` o se aplica al llegar).
+Él, con el Cool Water Woman vendido a 19% las dos veces que llegó: *"quiero que cada run evalues publicacion por
+publicacion"*. En cada vuelta se miran también las PAUSADAS SIN STOCK que se vendían (sección 12b del `informe`): lo
+que se agota en 1-2 días al llegar está barato y se sube ANTES de que entre la tanda nueva (`decido` ya lo permite sin
+stock y sin caja `winning`). El 09/10 se subieron así Cool Water $92.499→$104.990, enchufe UK $2.730→$3.490,
+almohadilla talón $3.980→$4.390, mini balanza $10.500→$11.990 y Centímetro Rosa/Gris →$3.450. **En los motivos de
+`decido` no va `;`** (corta el comando y no se aplica nada).
 
 ## ⏰ PENDIENTE: EL PEDIDO AL PAULVIC DEL 06/10 (08/10/2026)
 
