@@ -78,7 +78,7 @@ for p,q,d,rent in res:
             mot=f"{b} · ritmo {r*30:.0f} por mes · tiene {t} entre Full casa y camino · para 30 dias hacen falta {obj:.0f}"
             if not rent: mot+=" · NO se compra: con el costo de la ficha no deja ganancia"
             N.append(f"ped:{pid}#{v['v']}=u|{qq}|{mot}")
-        if q>0 and p['precio']: N.append(f"ped:{pid}=venta|{venta(p)}|precio normal de venta")
+        if p['precio']: N.append(f"ped:{pid}=venta|{venta(p)}|precio normal de venta para el maximo de compra")
     else:
         r,t,obj,b=d
         # siempre se escribe (aunque sea 0): si no, una decisión vieja queda colgada (el Ultra Shift del 09/10)
@@ -86,6 +86,6 @@ for p,q,d,rent in res:
         if p.get('rem'): mot+=f" · {p['rem']} vendidas en remate (menos de 10% de ganancia) no cuentan como demanda"
         if not rent: mot+=" · NO se compra: con el costo de la ficha no deja ganancia"
         N.append(f"ped:{pid}=u|{q}|{mot}")
-        if q>0 and p['precio']: N.append(f"ped:{pid}=venta|{venta(p)}|precio normal de venta")
+        if p['precio']: N.append(f"ped:{pid}=venta|{venta(p)}|precio normal de venta para el maximo de compra")
 open('pedidos.txt','w').write('\n'.join(N)+'\n')
 print(len(N),'renglones')

@@ -35690,10 +35690,18 @@ async function main() {
             if (GOp && !DRY) {
               try {
                 await db.set(base + '/' + leaf, n.dec === 'auto' ? null : n.val);
-                if (n.dec !== 'auto') { await db.set(base + '/ts', Date.now()); await db.set(base + '/mot', String(n.t).slice(0, 400)); }
+                // El motivo de cada cosa en su lugar (09/10/2026, revisión 9 · cerebro): el precio para el máximo no pisa el
+                // motivo del pedido (`motPv`), y cada color guarda el suyo (`motVars/<color>`); el renglón del producto dice
+                // que va color por color.
+                if (n.dec !== 'auto') {
+                  await db.set(base + '/ts', Date.now());
+                  if (n.dec === 'venta') await db.set(base + '/motPv', String(n.t).slice(0, 400));
+                  else if (n.tipo === 'ped' && vsk) { await db.set(base + '/motVars/' + vsk, String(n.t).slice(0, 400)); await db.set(base + '/mot', 'Decidido color por color: el motivo de cada color está en su renglón y en el 🧠'); }
+                  else await db.set(base + '/mot', String(n.t).slice(0, 400));
+                }
                 const rl = await db.get(base + '/' + leaf);
                 console.log((n.dec === 'auto' ? rl == null : Number(rl) === n.val) ? '   ✓ guardado' : '   ✗ no quedó');
-                if (n.dec !== 'auto') await db.set('mlapi/claudeexp/' + key, { ts: Date.now(), simple: String(n.t).slice(0, 600), nom: String(p.name || '').slice(0, 60), cuenta: ctaL, variante: n.vari || '', tipo: n.tipo });
+                if (n.dec !== 'auto' && n.dec !== 'venta') await db.set('mlapi/claudeexp/' + key, { ts: Date.now(), simple: String(n.t).slice(0, 600), nom: String(p.name || '').slice(0, 60), cuenta: ctaL, variante: n.vari || '', tipo: n.tipo });
               } catch (eN) { console.log(`   ⚠️ no pude guardarlo: ${String(eN.message || eN).slice(0, 60)}`); }
             }
             continue;
