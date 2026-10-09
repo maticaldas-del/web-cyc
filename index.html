@@ -569,10 +569,11 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
 
 .vw.mv-flota{animation:vivaFlota 3.2s ease-in-out infinite}
 .vw.mv-flota2{animation:vivaFlota 1.6s ease-in-out infinite}
-.vw.mv-tiembla{animation:vivaTiembla .38s linear infinite}
+.vw.mv-tiembla{animation:vivaTiembla var(--tv,.38s) linear infinite}
 @keyframes vivaGlow{0%,100%{opacity:.25}50%{opacity:1}}
 @keyframes vivaFlota{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
-@keyframes vivaTiembla{0%{transform:translate(0,0) rotate(0)}20%{transform:translate(-1px,1px) rotate(-.25deg)}40%{transform:translate(1px,-1px) rotate(.25deg)}60%{transform:translate(-1px,0) rotate(.15deg)}80%{transform:translate(1px,1px) rotate(-.15deg)}100%{transform:translate(0,0) rotate(0)}}
+/* --tz: cuánto tiembla (1 = lo de siempre) · lo pone cada venta según su neto y su % (09/10/2026) */
+@keyframes vivaTiembla{0%{transform:translate(0,0) rotate(0)}20%{transform:translate(calc(var(--tz,1)*-1px),calc(var(--tz,1)*1px)) rotate(calc(var(--tz,1)*-.25deg))}40%{transform:translate(calc(var(--tz,1)*1px),calc(var(--tz,1)*-1px)) rotate(calc(var(--tz,1)*.25deg))}60%{transform:translate(calc(var(--tz,1)*-1px),0) rotate(calc(var(--tz,1)*.15deg))}80%{transform:translate(calc(var(--tz,1)*1px),calc(var(--tz,1)*1px)) rotate(calc(var(--tz,1)*-.15deg))}100%{transform:translate(0,0) rotate(0)}}
 @media (prefers-reduced-motion: reduce){.vw,.vw>.viva{animation:none!important}}
 </style>
 </head>
@@ -2498,7 +2499,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.91';
+const APP_VERSION='22.92';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2509,6 +2510,7 @@ const APP_VERSION='22.91';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.92',f:'09/10/2026',h:'02:50',c:[{n:1,t:'🫨 Ventas: el movimiento tiene intensidad. Según el neto (y un poco el %), la tarjeta flota suave, flota rápido o tiembla, y cuanto más deja, más fuerte y rápido tiembla.'}]},
   {v:'22.91',f:'09/10/2026',h:'02:40',c:[{n:1,t:'🫨 Ventas: con $100.000 de neto o más la tarjeta tiembla siempre, aunque no llegue a "Bueno". El fuego sigue siendo sólo desde Bueno.'}]},
   {v:'22.90',f:'09/10/2026',h:'02:25',c:[{n:1,t:'🔥 El fuego vuelve a ser como antes. La venta que arde queda un poco más chica, con lugar arriba y a los costados, para que el fuego se vea entero en la lista.'}]},
   {v:'22.89',f:'09/10/2026',h:'02:15',c:[{n:1,t:'🖱️ Ventas en la PC: sin la barra de abajo y con un margen a la derecha de la lista para scrollear la página con el mouse. 🔥 El fuego sale sólo desde "Bueno" (45%) para arriba y con $100.000 de neto.'}]},
@@ -8631,7 +8633,12 @@ function vivaVenta(o){
   // hasta $5.000 nada (sólo el color) · $12.000 brilla · $30.000 flota · $100.000 arde (sólo lo excepcional: él, con un
   // Ferrari de $59.000 de neto ardiendo, el 09/10: "¿está bien así, tirando fuego?") · $120.000 tope.
   const neto=Number(o.neto)||0,vi=_vivaLog(neto,1500,120000);   // 0 en $1.500 · ~.28 en $5.000 · ~.48 en $12.500 · .85 en $60.000
-  return{k:n.k,c:n.c,vel,vi,ef:neto>=100000?(VIVA_ORD[n.k]>=VIVA_ORD.bueno?'fuego':'tiembla'):neto>=30000?'flota':neto>=12000?'glow':''};   // fuego: además desde "Bueno" (45%) para arriba, él: "verde es poco"
+  // CUÁNTO SE MUEVE (09/10/2026, él: "que haya intensidad de temblar, según lo caro que sea y teniendo en cuenta todo"):
+  // tm de 0 a 1 = 75% el neto (de $30.000 a $300.000) y 25% el nivel del %. Flota suave → flota rápido → tiembla, y
+  // el temblor crece con tm (amplitud --tz y velocidad --tv). El fuego sigue: $100.000+ y desde "Bueno".
+  const tm=neto>=30000?Math.min(1,.75*_vivaLog(neto,30000,300000)+.25*VIVA_ORD[n.k]/6):0;
+  const tz=Math.round((.6+tm*2.6)*100)/100,tv=Math.round((.5-tm*.28)*100)/100+'s';
+  return{k:n.k,c:n.c,vel,vi,tz,tv,ef:neto>=100000&&VIVA_ORD[n.k]>=VIVA_ORD.bueno?'fuego':tm>=.45?'tiembla':tm>=.25?'flota2':neto>=30000?'flota':neto>=12000?'glow':''};   // fuego: además desde "Bueno" (45%) para arriba, él: "verde es poco"
 }
 // La tarjeta de una venta adentro de su envoltorio (el fuego necesita salir por afuera de la tarjeta).
 function vivaEnvolver(html,cual,v){
@@ -8644,9 +8651,9 @@ function vivaEnvolver(html,cual,v){
   const vars=`--tint:${f(4+vi*14)}%;--bd:${f(18+vi*60)}%;--bw:${vi>=.7?2:1}px;--halo:${f(Math.max(0,vi-.45)*30)}px;`;
   html=html.replace(a,`class="ingreso-item viva lv-${v.k}" style="--c:${v.c};${vars}`);
   // $100.000 de neto o más tiembla siempre; arde sólo desde "Bueno" (09/10/2026, él con 2 Ferrari de $112.000 de neto).
-  const mv=v.ef==='fuego'||v.ef==='tiembla'?'mv-tiembla':v.ef==='flota'?'mv-flota':'';
+  const mv=v.ef==='fuego'||v.ef==='tiembla'?'mv-tiembla':v.ef==='flota2'?'mv-flota2':v.ef==='flota'?'mv-flota':'';
   const gl=v.ef?('gl'+(v.ef==='fuego'||v.ef==='tiembla'?' fuerte':'')):'';
-  return `<div class="vw ${cual} ${mv} ${gl}${v.ef==='fuego'?' vf':''}" style="--c:${v.c};--vr:8px" data-viva="venta" data-vk="${v.k}" data-vv="${v.vel.toFixed(3)}" data-vi="${(v.vi==null?1:v.vi).toFixed(3)}"${v.quieta?' data-vq="1"':''}>${v.ef==='fuego'?'<canvas class="viva-fuego"></canvas>':''}${html}</div>`;
+  return `<div class="vw ${cual} ${mv} ${gl}${v.ef==='fuego'?' vf':''}" style="--c:${v.c};--vr:8px;--tz:${v.tz||1};--tv:${v.tv||'.38s'}" data-viva="venta" data-vk="${v.k}" data-vv="${v.vel.toFixed(3)}" data-vi="${(v.vi==null?1:v.vi).toFixed(3)}"${v.quieta?' data-vq="1"':''}>${v.ef==='fuego'?'<canvas class="viva-fuego"></canvas>':''}${html}</div>`;
 }
 // El día (tarjeta de Inicio).
 function vivaDia(h){
