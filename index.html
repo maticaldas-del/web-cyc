@@ -46,6 +46,8 @@ html{font-size:118%}
 /* Etapa 7 (29/09/2026): en pantallas táctiles, casillas con letra de 16px (el iPhone deja de agrandar la
    pantalla al tocarlas), botones chicos más grandes, y en el teléfono las listas no tienen scroll propio. */
 @media(pointer:coarse){input,select,textarea{font-size:16px!important}input.qty{width:64px;min-height:36px}.ii-del{min-width:36px;min-height:36px;padding:6px 8px;font-size:.9rem}}
+/* Ventas en la PC (09/10/2026, él: "sacá esa barra de abajo, que me deje un lugar para poner el mouse y scrolear la web"): sin barra horizontal y un margen a la derecha, afuera de la lista, donde la rueda mueve la página. */
+@media(min-width:641px){#vp-day-list{margin-right:56px;padding:4px 6px 4px 2px}}
 @media(max-width:640px){#vp-day-list,.ingreso-list{max-height:68vh!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;border:1px solid var(--border);border-radius:10px;padding:4px}}
 #tt-toque{position:fixed;z-index:99990;max-width:min(320px,calc(100vw - 32px));background:var(--surface2);color:var(--text);border:1px solid var(--border2);border-radius:10px;padding:10px 12px;font-size:.78rem;line-height:1.45;box-shadow:0 6px 24px rgba(0,0,0,.35);white-space:pre-line}
 @media(max-width:900px){html{font-size:100%}}
@@ -1582,7 +1584,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
     <button id="vpf-Ayelen" class="vbtn" onclick="setVpCuenta('Ayelen',this)">Ayelen</button>
     <button id="vpf-Matias" class="vbtn" onclick="setVpCuenta('Matias',this)">Matias</button>
   </div>
-  <div id="vp-day-list" class="ingreso-list" style="margin-bottom:6px;max-height:570px;overflow-y:auto"><div class="empty-msg">Sin ventas cargadas.</div></div>
+  <div id="vp-day-list" class="ingreso-list" style="margin-bottom:6px;max-height:570px;overflow-y:auto;overflow-x:hidden"><div class="empty-msg">Sin ventas cargadas.</div></div>
 
   <div class="stitle" style="margin-top:22px">Análisis <span id="vp-scope-lbl-main" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace"></span></div>
 
@@ -2495,7 +2497,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.88';
+const APP_VERSION='22.89';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2506,6 +2508,7 @@ const APP_VERSION='22.88';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.89',f:'09/10/2026',h:'02:15',c:[{n:1,t:'🖱️ Ventas en la PC: sin la barra de abajo y con un margen a la derecha de la lista para scrollear la página con el mouse. 🔥 El fuego sale sólo desde "Bueno" (45%) para arriba y con $100.000 de neto.'}]},
   {v:'22.88',f:'09/10/2026',h:'02:05',c:[{n:1,t:'🔥 El fuego de las ventas grandes se ve como fuego: lenguas amarillas, naranjas y rojas, y también suben desde abajo de la tarjeta (antes quedaban cortadas arriba en la lista).'}]},
   {v:'22.87',f:'09/10/2026',h:'01:55',c:[{n:1,t:'🔥 Ventas: el fuego queda sólo para lo excepcional (neto de $100.000 o más). Un Ferrari de $59.000 de neto ahora flota y brilla, no arde.'}]},
   {v:'22.86',f:'09/10/2026',h:'01:40',c:[{n:1,t:'✨ Ventas: el fondo, el borde y el halo de cada venta también van con el neto, y todo un poco más bajo. Una venta de $1.500 de neto queda casi lisa y una de $12.500 se distingue; las grandes siguen brillando.'}]},
@@ -8625,7 +8628,7 @@ function vivaVenta(o){
   // hasta $5.000 nada (sólo el color) · $12.000 brilla · $30.000 flota · $100.000 arde (sólo lo excepcional: él, con un
   // Ferrari de $59.000 de neto ardiendo, el 09/10: "¿está bien así, tirando fuego?") · $120.000 tope.
   const neto=Number(o.neto)||0,vi=_vivaLog(neto,1500,120000);   // 0 en $1.500 · ~.28 en $5.000 · ~.48 en $12.500 · .85 en $60.000
-  return{k:n.k,c:n.c,vel,vi,ef:neto>=100000?'fuego':neto>=30000?'flota':neto>=12000?'glow':''};
+  return{k:n.k,c:n.c,vel,vi,ef:neto>=100000&&VIVA_ORD[n.k]>=VIVA_ORD.bueno?'fuego':neto>=30000?'flota':neto>=12000?'glow':''};   // fuego: además desde "Bueno" (45%) para arriba, él: "verde es poco"
 }
 // La tarjeta de una venta adentro de su envoltorio (el fuego necesita salir por afuera de la tarjeta).
 function vivaEnvolver(html,cual,v){
