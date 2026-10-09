@@ -87,6 +87,26 @@ def margen(p,pr):
     if not p['neto'] or not p['costo']: return None
     return (p['neto']-0.06*pr-p['costo'])/p['costo']
 N=[];Rz=[]
+# EL MOTIVO LO LEE TITO (09/10/2026, Matías: "los pedidos los ve mi viejo y entra en el cerebrito (...) referite como
+# 'hola tito!' y explicale por qué le pediste ese producto y esas unidades. hablale con confianza y resumido").
+def tito(q,r,t,obj,b,rent,neto,color=None,extra=''):
+    de=f" del {color}" if color else ''
+    quien=f"El {color}" if color else "Este"
+    if not rent:
+        return "Hola Tito! "+quien+" no lo compres: "+("todavía no sé cuánto deja en ML." if not neto else "con lo que cuesta no nos deja ganancia.")
+    mes=f"{r*30:.0f}"; b=str(b or '')
+    if b.startswith('agotado'): base=f"está agotado y cuando había se vendían unos {mes} por mes"
+    elif b.startswith('nunca'): base="todavía no se vendió nunca"
+    else: base=f"se venden unos {mes} por mes"
+    if q>0:
+        x=f"Hola Tito! Te pido {q}{de}: {base} y entre Full, la oficina y lo que viene en camino hay {t}. Con {q} más cubrimos un mes."
+    elif b.startswith('nunca'):
+        x=f"Hola Tito! {quien} no lo compres: {base}."
+    else:
+        dias=(t/r) if r>0 else None
+        x=f"Hola Tito! {quien} no hace falta: {base} y ya hay {t}"+(f", alcanza para unos {dias:.0f} días." if dias and dias<999 else ".")
+    return x+(' '+extra if extra else '')
+def titoJ(mo): return "Hola Tito! "+mo
 for p,q,d,rent in res:
     pid=p['id']
     m=margen(p,p['precio'] or 1)
@@ -94,12 +114,10 @@ for p,q,d,rent in res:
         anyv=any(qq for _,qq,*_ in d) or 'DECID' in str(p)
         for v,qq,r,t,obj,b in d:
             if not (qq or v['v180'] or v['full'] or v['casa']): continue
-            mot=f"{b} · ritmo {r*30:.0f} por mes · tiene {t} entre Full casa y camino · para 30 dias hacen falta {obj:.0f}"
-            if not rent: mot+=(" · NO se compra: sin margen medido en ML" if not p['neto'] else " · NO se compra: con el costo de la ficha no deja ganancia")
-            if p.get('sinColor'): mot+=f" · {p['sinColor']} u. sin color (viajando, en Full o en la oficina) ya descontadas"
+            mot=tito(qq,r,t,obj,b,rent,p['neto'],v['v'],(f"Ya desconté {p['sinColor']} que están sin color." if p.get('sinColor') else ''))
             kj=f"{pid}#{v['v']}"
-            if kj in JU: qq,mot=JU[kj][0],'JUICIO MIO: '+JU[kj][1]
-            elif pid in JU: qq,mot=0 if JU[pid][0]==0 else qq,'JUICIO MIO: '+JU[pid][1]
+            if kj in JU: qq,mot=JU[kj][0],titoJ(JU[kj][1])
+            elif pid in JU: qq,mot=0 if JU[pid][0]==0 else qq,titoJ(JU[pid][1])
             N.append(f"ped:{pid}#{v['v']}=u|{qq}|{mot}")
         if p['precio']: N.append(f"ped:{pid}=venta|{venta(p)}|precio normal de venta para el maximo de compra")
     else:
@@ -107,11 +125,11 @@ for p,q,d,rent in res:
         # siempre se escribe (aunque sea 0): si no, una decisión vieja queda colgada (el Ultra Shift del 09/10).
         # Un producto con colores sin ningún dato por color no se puede escribir sin color (decido lo rechaza): se saltea.
         if p.get('colores') and q==0: continue
-        mot=f"{b} · ritmo {r*30:.0f} por mes · tiene {t} entre Full casa camino y viajando · para 30 dias hacen falta {obj:.0f}"
-        if p.get('rem'): mot+=f" · {p['rem']} vendidas en remate (estaba parado con stock y se vendio abajo de 10%) no cuentan como demanda"
-        if p.get('barata'): mot+=f" · {p['barata']} vendidas abajo de 10% SI cuentan: no estaba parado, se vendian al toque (el precio estaba barato)"
-        if not rent: mot+=(" · NO se compra: sin margen medido en ML" if not p['neto'] else " · NO se compra: con el costo de la ficha no deja ganancia")
-        if pid in JU: q,mot=JU[pid][0],'JUICIO MIO: '+JU[pid][1]
+        ex=''
+        if p.get('rem'): ex+=f"No cuento {p['rem']} que se remataron porque estaban parados. "
+        if p.get('barata'): ex+=f"Cuento {p['barata']} que se vendieron baratas porque salían al toque. "
+        mot=tito(q,r,t,obj,b,rent,p['neto'],None,ex.strip())
+        if pid in JU: q,mot=JU[pid][0],titoJ(JU[pid][1])
         N.append(f"ped:{pid}=u|{q}|{mot}")
         if p['precio']: N.append(f"ped:{pid}=venta|{venta(p)}|precio normal de venta para el maximo de compra")
 open('pedidos.txt','w').write('\n'.join(N)+'\n')

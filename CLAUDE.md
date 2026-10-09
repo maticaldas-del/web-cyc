@@ -774,6 +774,16 @@ robot** (el probe `cerebro`/`calcCerebro` de sync.mjs): ése no se usa más.
 
 Él: *"quiero que todo lo que hagas sea completo, nunca dejar a mitad (...) pedidos no pide casi nada, y no es porque no falten (...) no pide nada en paraguay ni en paulvic (...) actualizarlo dos veces al día"*. Pasó porque yo decidía con `pedidosnotas`, que sólo trae los pedidos que ya existen (= los que ya había decidido). Ahora: `pedidostodo` (ml-consulta, solo lee, las 170 fichas color por color) → `python3 ml-sync/notas/decide_pedidos.py <log> <salida>` (objetivo **30 días**: ritmo de 30 d, de 60 d, o de 180 d si está agotado, menos Full+oficina+camino+viajando; sin ganancia = 0) → revisar a mano → `ml-sync/notas/pedidos.txt` → `decido:archivo=pedidos;go`. En cada vuelta de 08:52 y 20:52. **Toda tarea, completa: nunca una parte.**
 
+## 👴 LOS MOTIVOS DE PEDIDOS LOS LEE TITO (09/10/2026, regla suya)
+
+Él: *"los pedidos los ve mi viejo y entra en el cerebrito para ver la explicación de por qué se pide eso. de ahora en adelante
+cada vez que cargue ahí referite como 'hola tito!' y comenzá a explicarle por qué le pediste ese producto y esas unidades.
+hablale con confianza y resumido"*. Todo motivo de `ped:` (el 🧠 de Pedidos) arranca con **"Hola Tito!"** y dice, corto y en
+criollo, cuántas y por qué (ej. *"Hola Tito! Te pido 107 del Rosa: se venden unos 107 por mes y entre Full, la oficina y lo que
+viene en camino hay 0. Con 107 más cubrimos un mes."*). `decide_pedidos.py` lo arma solo (`tito()`); los motivos de
+`juicios.txt` se escriben para él (sin el "Hola Tito!", lo agrega el script) y las notas `ped__` a mano también. Las de cajas
+(`caja:`) no: ésas las lee Matías.
+
 ## 📉 VENTA BARATA NO ES LO MISMO QUE REMATE: MIRAR LA LÍNEA DE TIEMPO (09/10/2026, regla suya)
 
 Él, con el Ultra Shift (sacado al −3% porque no se vendía) y la Lupa 75mm (vendida siempre barata por un precio mal puesto):
