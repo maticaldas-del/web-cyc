@@ -6,12 +6,12 @@ prods=[];grupo='';cur=None
 for l in L:
     m=re.match(r'════ (\w+) ·',l)
     if m: grupo=m.group(1); continue
-    m=re.match(r'^(p\w+) · (.*?) · v30 (\d+) v60 (\d+) v180 (\d+) · últ (\S+)(?: · REMATE (\d+))? · dCS (\d+) · Full (\d+) \[[^\]]*\] · casa (\d+) · camino (\d+)(.*)$',l)
+    m=re.match(r'^(p\w+) · (.*?) · v30 (\d+) v60 (\d+) v180 (\d+) · últ (\S+)(?: · REMATE (\d+))?(?: · BARATA (\d+))? · dCS (\d+) · Full (\d+) \[[^\]]*\] · casa (\d+) · camino (\d+)(.*)$',l)
     if m and grupo in('BSAS','PY','PAULVIC'):
-        rest=m.group(12)
+        rest=m.group(13)
         g=lambda r: int(re.search(r,rest).group(1)) if re.search(r,rest) else 0
-        cur=dict(id=m.group(1),n=m.group(2),g=grupo,v30=int(m.group(3)),v60=int(m.group(4)),v180=int(m.group(5)),ult=m.group(6),rem=int(m.group(7) or 0),full=int(m.group(9)),casa=int(m.group(10)),cam=int(m.group(11)),
-          py=g(r'PYviaja (\d+)'),pv=g(r'PVviaja (\d+)'),neto=g(r'neto \$(\d+)'),costo=g(r'costo \$(\d+)'),precio=g(r'precio \$(\d+)'),cambios=(re.search(r'precio \$\d+ \((.*?)\)',rest).group(1) if re.search(r'precio \$\d+ \((.*?)\)',rest) else ''),vars=[])
+        cur=dict(id=m.group(1),n=m.group(2),g=grupo,v30=int(m.group(3)),v60=int(m.group(4)),v180=int(m.group(5)),ult=m.group(6),rem=int(m.group(7) or 0),barata=int(m.group(8) or 0),full=int(m.group(10)),casa=int(m.group(11)),cam=int(m.group(12)),
+          py=g(r'PYviaja (\d+)'),pv=g(r'PVviaja (\d+)'),colores=g(r'colores (\d+)'),neto=g(r'neto \$(\d+)'),costo=g(r'costo \$(\d+)'),precio=g(r'precio \$(\d+)'),cambios=(re.search(r'precio \$\d+ \((.*?)\)',rest).group(1) if re.search(r'precio \$\d+ \((.*?)\)',rest) else ''),vars=[])
         prods.append(cur); continue
     m=re.match(r'^   # (.*?) · v30 (\d+) v60 (\d+) v180 (\d+) · últ (\S+) · Full (\d+) · casa (\d+) · camino (\d+)(.*)$',l)
     if m and cur:
@@ -31,7 +31,6 @@ def cuanto(x):
     obj=r*T
     need=obj-tiene
     q=max(0,math.ceil(need-0.25)) if need>0 else 0
-    if q==1 and r<1/30: q=1
     return q,r,tiene,obj,base
 res=[];lines=[]
 for p in prods:
@@ -41,7 +40,14 @@ for p in prods:
         for v in p['vars']:
             q,r,t,obj,b=cuanto(v)
             if not rentable: q=0
-            tot+=q;dets.append((v,q,r,t,obj,b))
+            dets.append([v,q,r,t,obj,b])
+        # Lo que el producto tiene SIN COLOR (viajando de Paraguay, Full de publicaciones sin color, oficina o cajas sin color)
+        # también cubre: se descuenta de los colores que más piden (revisión 9 · cerebro, 09/10/2026).
+        sc=p.get('py',0)+max(0,p['full']-sum(v['full'] for v in p['vars']))+max(0,p['casa']-sum(v['casa'] for v in p['vars']))+max(0,p['cam']-sum(v['cam'] for v in p['vars']))
+        p['sinColor']=sc
+        while sc>0 and any(d[1]>0 for d in dets):
+            d=max(dets,key=lambda d:d[1]); d[1]-=1; sc-=1
+        dets=[tuple(d) for d in dets]; tot=sum(d[1] for d in dets)
         res.append((p,tot,dets,rentable))
     else:
         q,r,t,obj,b=cuanto(p)
@@ -76,15 +82,19 @@ for p,q,d,rent in res:
         for v,qq,r,t,obj,b in d:
             if not (qq or v['v180'] or v['full'] or v['casa']): continue
             mot=f"{b} · ritmo {r*30:.0f} por mes · tiene {t} entre Full casa y camino · para 30 dias hacen falta {obj:.0f}"
-            if not rent: mot+=" · NO se compra: con el costo de la ficha no deja ganancia"
+            if not rent: mot+=(" · NO se compra: sin margen medido en ML" if not p['neto'] else " · NO se compra: con el costo de la ficha no deja ganancia")
+            if p.get('sinColor'): mot+=f" · {p['sinColor']} u. sin color (viajando, en Full o en la oficina) ya descontadas"
             N.append(f"ped:{pid}#{v['v']}=u|{qq}|{mot}")
         if p['precio']: N.append(f"ped:{pid}=venta|{venta(p)}|precio normal de venta para el maximo de compra")
     else:
         r,t,obj,b=d
-        # siempre se escribe (aunque sea 0): si no, una decisión vieja queda colgada (el Ultra Shift del 09/10)
+        # siempre se escribe (aunque sea 0): si no, una decisión vieja queda colgada (el Ultra Shift del 09/10).
+        # Un producto con colores sin ningún dato por color no se puede escribir sin color (decido lo rechaza): se saltea.
+        if p.get('colores') and q==0: continue
         mot=f"{b} · ritmo {r*30:.0f} por mes · tiene {t} entre Full casa camino y viajando · para 30 dias hacen falta {obj:.0f}"
-        if p.get('rem'): mot+=f" · {p['rem']} vendidas en remate (menos de 10% de ganancia) no cuentan como demanda"
-        if not rent: mot+=" · NO se compra: con el costo de la ficha no deja ganancia"
+        if p.get('rem'): mot+=f" · {p['rem']} vendidas en remate (estaba parado con stock y se vendio abajo de 10%) no cuentan como demanda"
+        if p.get('barata'): mot+=f" · {p['barata']} vendidas abajo de 10% SI cuentan: no estaba parado, se vendian al toque (el precio estaba barato)"
+        if not rent: mot+=(" · NO se compra: sin margen medido en ML" if not p['neto'] else " · NO se compra: con el costo de la ficha no deja ganancia")
         N.append(f"ped:{pid}=u|{q}|{mot}")
         if p['precio']: N.append(f"ped:{pid}=venta|{venta(p)}|precio normal de venta para el maximo de compra")
 open('pedidos.txt','w').write('\n'.join(N)+'\n')

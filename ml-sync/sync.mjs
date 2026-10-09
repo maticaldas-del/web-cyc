@@ -6097,7 +6097,8 @@ async function limpiarNoSubir(db, DRY) {
   }
   // Y LAS HERMANAS DE LAS QUE SIGUEN MARCADAS, que quedaron sin marca antes del 24/09 (la Lupa
   // 90mm). Se contagia sola en cada vuelta; sin producto o sin cuenta no se adivina.
-  if (!DRY) {
+  // Con SOLO_DATOS no se contagian marcas nuevas (eso es decidir): sólo se sacan las que ya no corresponden (09/10/2026).
+  if (!DRY && !SOLO_DATOS) {
     const siguen = new Set(mlas.filter((m) => !sacadas.some((x) => x.mla === m)));
     for (const m of siguen) {
       const e = links[m] || {};
@@ -34743,14 +34744,18 @@ async function main() {
       }
       // cajas despachadas que todavía no llegaron, por producto × cuenta
       const cam = {};
+      // Menos lo que ML ya dio de alta de esa caja (`cyc/cajasentrado`): con SOLO_DATOS las cajas no se marcan solas y lo
+      // entrado se contaba en Full Y en camino (revisión 9 · cerebro, 09/10/2026).
+      const entE = {}; try { for (const [ck, x] of Object.entries((await db.get('cyc/cajasentrado')) || {})) for (const it of ((x && x.items) || [])) if (it && it.p) { const kk = ck + '|' + it.p + '|' + (it.v || ''); entE[kk] = (entE[kk] || 0) + (Number(it.q) || 0); } } catch {}
       for (const [id, e] of Object.entries(envios)) {
         if (!e || !e.cuenta) continue;
-        for (const c of (Array.isArray(e.cajasDet) ? e.cajasDet : [])) {
+        for (const [ci, c] of (Array.isArray(e.cajasDet) ? e.cajasDet : []).entries()) {
           if (!c || c.recibida) continue;
           for (const it of (c.items || [])) {
             if (!it || !it.prodId || !(it.u > 0)) continue;
+            const uR = Math.max(0, it.u - (entE[`${id}__${ci}|${it.prodId}|${it.variante || ''}`] || 0)); if (!(uR > 0)) continue;
             const k = it.prodId + '__' + sidE(e.cuenta);
-            (cam[k] = cam[k] || []).push({ u: it.u, fecha: e.fecha || '?', v: it.variante || '' });
+            (cam[k] = cam[k] || []).push({ u: uR, fecha: e.fecha || '?', v: it.variante || '' });
           }
         }
       }
@@ -34913,7 +34918,9 @@ async function main() {
         const qsT = [];
         for (const label of labels) {
           const tk = tokI[label]; const acc = accounts[label]; if (!tk || !acc?.seller_id) continue;
-          try { const q = await mlGet(`/questions/search?seller_id=${acc.seller_id}&status=UNANSWERED&api_version=4&limit=50&sort=date_created_asc`, tk); for (const x of (q?.questions || [])) qsT.push({ ...x, _c: label }); }
+          // Las MÁS NUEVAS primero (09/10/2026, revisión 9 · cerebro): con `asc` y límite 50 una cuenta con más de 50 sin
+          // responder nunca traía las nuevas, que son justo las que hay que contestar. Se dice el total que informa ML.
+          try { const q = await mlGet(`/questions/search?seller_id=${acc.seller_id}&status=UNANSWERED&api_version=4&limit=50&sort=date_created_desc`, tk); for (const x of (q?.questions || [])) qsT.push({ ...x, _c: label }); const tot = Number(q?.total ?? q?.paging?.total) || 0; if (tot > (q?.questions || []).length) console.log(`(preguntas de ${label}: ML dice ${tot} sin responder, leí las ${(q?.questions || []).length} más nuevas)`); }
           catch { console.log(`(preguntas de ${label}: ML no contestó)`); }
         }
         const edad = (x) => (ahoraI - Date.parse(x.date_created || '')) / 864e5;
@@ -35081,6 +35088,9 @@ async function main() {
       const ahora = Date.now(), limite = ahora + DIAS * 864e5;
       const links = (await db.get('cyc/mllinks')) || {};
       let exp = {}; try { exp = (await db.get('mlapi/cerebroexp')) || {}; } catch { exp = {}; }
+      // Con SOLO_DATOS nadie escribe ese expediente (era del robot viejo): las "bajas pensadas" salen vacías. Las bajas las
+      // decide Claude mirando la planilla y las entra con `entrarpromo` (09/10/2026, revisión 9 · cerebro).
+      if (!Object.keys(exp).length) console.log('⚠️ No hay "bajas pensadas" guardadas (el expediente era del robot viejo): las secciones 2c y 3 salen vacías. Las bajas las decidís vos con la planilla y las entrás con entrarpromo.');
       let perm = {}; try { perm = (await db.get('cyc/promoclaude')) || {}; } catch { perm = {}; }
       const PISOa = await pisoConfig(db);
       const tokA = {};
@@ -35379,19 +35389,47 @@ async function main() {
         return e.variant ? String(e.variant) : varianteDeTitulo(e.title || '', p.variantes || []);
       };
       const S = {};   // pid -> {t30,t60,t180,ult, v:{var:{t30,t60,t180,ult}}}
+      const addVenta = (v, k, q) => {
+        const s = S[v.prodId] || (S[v.prodId] = { t30: 0, t60: 0, t180: 0, ult: '', v: {}, rem: 0, barata: 0 });
+        const add = (o) => { o.t180 += q; if (k >= k60) o.t60 += q; if (k >= k30) o.t30 += q; if (k > o.ult) o.ult = k; };
+        add(s); const va = varDe(v); if (va) add(s.v[va] || (s.v[va] = { t30: 0, t60: 0, t180: 0, ult: '' }));
+      };
+      const baratas = [];   // ventas con menos de 10% de ganancia: se deciden mirando la línea de tiempo (abajo)
       for (const [k, ents] of Object.entries(VP)) {
         if (k < k180) continue;
         for (const v of Object.values(ents || {})) {
           if (!v || !v.prodId || v.cancelada) continue;
-          const q = Number(v.qty) || 1, s = S[v.prodId] || (S[v.prodId] = { t30: 0, t60: 0, t180: 0, ult: '', v: {}, rem: 0 });
-          // VENTA EN REMATE NO ES DEMANDA (09/10/2026, él con el Ultra Shift vendido a −3%: "¿me lo pedís si lo tuvimos que sacar
-          // al 3% porque no se vendía ni loco?"): la que dejó menos de 10% sobre el costo de la ficha no cuenta para el ritmo.
+          const q = Number(v.qty) || 1;
+          // ¿VENTA BARATA = REMATE? (09/10/2026, él). Primero: el Ultra Shift vendido a −3% ("lo tuvimos que sacar al 3% porque
+          // no se vendía ni loco") no es demanda. Pero después, con la Lupa 75mm: "quizás se vendió barato porque fue mi culpa
+          // ponerlo barato (…) si sale de pedidos, no compramos más un producto que sí vende (…) no habría por qué ponerlo en
+          // liquidar si llegaron y se vendieron al toque". Entonces una venta con menos de 10% NO se descarta por el %: se
+          // mira la LÍNEA DE TIEMPO de su publicación. Es remate sólo si en los 45 días anteriores estuvo 30+ días con stock
+          // vendiendo menos de 1 por semana (estaba parado). Si llegó y se vendió al toque, es demanda y cuenta.
           { const pr0 = byId[v.prodId] || {}; const c0 = (Number(pr0.costFullUSD) || Number(pr0.costUSD) || 0) * (Number(R[11]) || 0);
             const nU = (Number(v.neto) || 0) / q, tU = (Number(v.total) || 0) / q;
-            if (c0 > 0 && nU > 0 && (nU - 0.06 * tU - c0) / c0 < 0.10) { if (k >= k60) s.rem += q; continue; } }
-          const add = (o) => { o.t180 += q; if (k >= k60) o.t60 += q; if (k >= k30) o.t30 += q; if (k > o.ult) o.ult = k; };
-          add(s); const va = varDe(v); if (va) add(s.v[va] || (s.v[va] = { t30: 0, t60: 0, t180: 0, ult: '' }));
+            if (c0 > 0 && nU > 0 && (nU - 0.06 * tU - c0) / c0 < 0.10) { baratas.push({ v, k, q }); continue; } }
+          addVenta(v, k, q);
         }
+      }
+      // Las ventas baratas, una por una contra la línea de tiempo de su publicación.
+      const LIN = {}, rematesVistos = {};
+      for (const b of baratas) {
+        const mla = b.v.mla; let es = false, porque = 'sin línea de tiempo: cuenta como venta';
+        if (mla) {
+          if (!(mla in LIN)) { try { LIN[mla] = (await db.get('mlapi/linea/' + mla)) || {}; } catch { LIN[mla] = null; } }
+          const lin = LIN[mla];
+          if (lin) {
+            const d0 = Date.parse(b.k.replace(/_/g, '-') + 'T12:00:00-03:00');
+            let dSt = 0, uAnt = 0, dSab = 0;
+            for (let i = 1; i <= 45; i++) { const kk = new Date(d0 - i * 864e5 - 3 * 36e5).toISOString().slice(0, 10).replace(/-/g, '_'); const r = lin[kk]; if (!r) continue; if (r.st != null) { dSab++; if (Number(r.st) > 0) dSt++; } uAnt += Number(r.u) || 0; }
+            if (dSt >= 30 && uAnt / dSt < 1 / 7) { es = true; porque = `antes estuvo ${dSt} días con stock vendiendo ${uAnt}`; }
+            else porque = dSab < 15 ? 'la línea no sabe el stock de antes: cuenta como venta' : `antes: ${dSt} días con stock y ${uAnt} vendidas, no estaba parado`;
+          }
+        }
+        const s = S[b.v.prodId] || (S[b.v.prodId] = { t30: 0, t60: 0, t180: 0, ult: '', v: {}, rem: 0, barata: 0 });
+        if (es) { if (b.k >= k60) s.rem += b.q; rematesVistos[b.v.prodId] = porque; }
+        else { addVenta(b.v, b.k, b.q); s.barata = (s.barata || 0) + b.q; }
       }
       const ent = {};   // lo que ML ya dio de alta de cajas abiertas
       for (const [ck, x] of Object.entries(CE)) for (const it of ((x && x.items) || [])) if (it && it.p) { const kk = ck + '|' + it.p + '|' + (it.v || ''); ent[kk] = (ent[kk] || 0) + (Number(it.q) || 0); }
@@ -35406,6 +35444,15 @@ async function main() {
         }
       });
       const viaPy = {}; for (const c of Object.values(CPY)) if (c && c.estado === 'camino') for (const it of (c.items || [])) if (it && it.prodId) viaPy[it.prodId] = (viaPy[it.prodId] || 0) + (Number(it.u) || 0);
+      // Lo de Paraguay que LLEGÓ y todavía no se contó en la oficina (la misma cuenta que `pyRepoSinContar` de la web, 7 días).
+      for (const c of Object.values(CPY)) {
+        if (!c || c.estado !== 'llego' || !c.fechaLlego || !c.ofiAlLlegar) continue;
+        const t = Date.parse(c.fechaLlego + 'T12:00:00-03:00'); if (!(t > 0) || hoy - t > 7 * 864e5) continue;
+        const uP = {}; for (const it of (c.items || [])) if (it && it.prodId && !it.id) uP[it.prodId] = (uP[it.prodId] || 0) + (parseInt(it.u) || 0);
+        for (const [pid, u] of Object.entries(uP)) { if (!(pid in c.ofiAlLlegar)) continue;
+          const subio = Math.max(0, (parseInt(I[pid + '__Oficina_Mati']) || 0) - (parseInt(c.ofiAlLlegar[pid]) || 0)); const falta = Math.max(0, u - subio);
+          if (falta > 0) viaPy[pid] = (viaPy[pid] || 0) + falta; }
+      }
       const viaPv = {}; for (const c of Object.values(PV)) if (c && c.estado === 'camino' && c.prodId) for (const it of (c.items || [])) if (it && it.v) { const o = viaPv[c.prodId] || (viaPv[c.prodId] = {}); o[it.v] = (o[it.v] || 0) + (Number(it.u) || 0); }
       const dCS = (pid) => { let mx = 0, hubo = false; for (const l of C4) { const h = SH[pid + '__' + l]; if (!h) continue; hubo = true; let d = 30;
         if (h.desde && h.aprox === false) d = Math.min(30, (hoy - Math.max(h.desde, hoy - 30 * 864e5)) / 864e5); else if (!h.desde && h.cero) d = Math.max(0, Math.min(30, (h.cero - (hoy - 30 * 864e5)) / 864e5));
@@ -35428,7 +35475,8 @@ async function main() {
           const d = Math.round((hoy - (Number(a.ts) || 0)) / 864e5); if (d <= 45) cam45.push(`${a.a > a.de ? '⬆️' : '⬇️'}$${a.de}→$${a.a} ${d}d`); }
         const dec0 = ` · precio $${pr}${cam45.length ? ' (' + cam45.slice(0, 3).join(' ') + ')' : ''}`;
         const dec = dec0 + (CD[p.id] ? ` · YA DECIDÍ ${CD[p.id].u != null ? CD[p.id].u : JSON.stringify(CD[p.id].vars || {})}` : '');
-        console.log(`\n${p.id} · ${String(p.name).slice(0, 55)} · v30 ${s.t30} v60 ${s.t60} v180 ${s.t180} · últ ${s.ult ? s.ult.slice(8, 10) + '/' + s.ult.slice(5, 7) : '—'}${s.rem ? ' · REMATE ' + s.rem : ''} · dCS ${dCS(p.id)} · Full ${ft} [${C4.map((c, i) => full[i] ? c.slice(0, 2) + full[i] : '').filter(Boolean).join(' ')}] · casa ${casa} · camino ${cm}${py ? ' · PYviaja ' + py : ''}${pvv ? ' · PVviaja ' + pvv : ''} · neto $${Math.round(Number(p.netoCalc) || 0)} costo $${cost}${p.nisseiUSD ? ' · PY US$' + p.nisseiUSD : ''}${dec}`);
+        console.log(`\n${p.id} · ${String(p.name).slice(0, 55)} · v30 ${s.t30} v60 ${s.t60} v180 ${s.t180} · últ ${s.ult ? s.ult.slice(8, 10) + '/' + s.ult.slice(5, 7) : '—'}${s.rem ? ' · REMATE ' + s.rem : ''}${s.barata ? ' · BARATA ' + s.barata : ''} · dCS ${dCS(p.id)} · Full ${ft} [${C4.map((c, i) => full[i] ? c.slice(0, 2) + full[i] : '').filter(Boolean).join(' ')}] · casa ${casa} · camino ${cm}${py ? ' · PYviaja ' + py : ''}${pvv ? ' · PVviaja ' + pvv : ''} ${(p.variantes || []).length ? ' · colores ' + p.variantes.length : ''} · neto $${Math.round(Number(p.netoCalc) || 0)} costo $${cost}${p.nisseiUSD ? ' · PY US$' + p.nisseiUSD : ''}${dec}`);
+        if (rematesVistos[p.id]) console.log(`   (remate: ${rematesVistos[p.id]})`);
         for (const va of (p.variantes || [])) {
           const sv = s.v[va] || { t30: 0, t60: 0, t180: 0, ult: '' };
           const fv = C4.reduce((a, c) => a + n0(I[p.id + '__' + c + '__v__' + sid(va)]), 0), cv = n0(I[p.id + '__' + OF + '__v__' + sid(va)]);
@@ -35466,11 +35514,16 @@ async function main() {
         if (e.variant) { const kv = k + '__v__' + sidL(String(e.variant)); vend[kv] = (vend[kv] || 0) + (Number(v.qty) || 1); }
       }
       const cam = {};
-      for (const env of Object.values(envs || {})) for (const c of (Array.isArray(env && env.cajasDet) ? env.cajasDet : [])) {
-        if (!c || c.recibida) continue;
-        for (const it of (c.items || [])) { if (!it || !it.prodId) continue; const k = it.prodId + '__' + sidL(env.cuenta || '') + (it.variante ? '__v__' + sidL(String(it.variante)) : ''); cam[k] = (cam[k] || 0) + (Number(it.u) || 0); const k0 = it.prodId + '__' + sidL(env.cuenta || ''); if (it.variante) cam[k0] = (cam[k0] || 0) + (Number(it.u) || 0); }
-      }
+      const entC = {}; try { for (const [ck, x] of Object.entries((await db.get('cyc/cajasentrado')) || {})) for (const it of ((x && x.items) || [])) if (it && it.p) { const kk = ck + '|' + it.p + '|' + (it.v || ''); entC[kk] = (entC[kk] || 0) + (Number(it.q) || 0); } } catch {}
+      for (const [eid, env] of Object.entries(envs || {})) (Array.isArray(env && env.cajasDet) ? env.cajasDet : []).forEach((c, ci) => {
+        if (!c || c.recibida) return;
+        for (const it of (c.items || [])) { if (!it || !it.prodId) continue; const u = Math.max(0, (Number(it.u) || 0) - (entC[`${eid}__${ci}|${it.prodId}|${it.variante || ''}`] || 0)); const k = it.prodId + '__' + sidL(env.cuenta || '') + (it.variante ? '__v__' + sidL(String(it.variante)) : ''); cam[k] = (cam[k] || 0) + u; const k0 = it.prodId + '__' + sidL(env.cuenta || ''); if (it.variante) cam[k0] = (cam[k0] || 0) + u; }
+      });
       const pubCta = {}; for (const [m, e] of Object.entries(Lk)) if (e && e.prodId && !e.ignored && !e.noVendemosMas && /^MLA/i.test(m) && (e.status || '') !== 'closed') (pubCta[e.prodId] = pubCta[e.prodId] || new Set()).add(e.cuenta);
+      // Las cuentas marcadas con `pasara` (cyc/repoextra) también reciben, aunque no publiquen todavía (las ve Armar caja).
+      const RX = (await db.get('cyc/repoextra').catch(() => null)) || {};
+      for (const k of Object.keys(RX)) { const i = k.lastIndexOf('__'); if (i < 0 || !RX[k]) continue; const pid = k.slice(0, i), c = k.slice(i + 2); const C = ['Adriana', 'Luciana', 'Ayelen', 'Matias'].find((x) => x.toLowerCase() === c.toLowerCase()); if (C) (pubCta[pid] = pubCta[pid] || new Set()).add(C); }
+      const DC = (await db.get('cyc/claudedecide/caja').catch(() => null)) || {};
       let n = 0;
       for (const p of Object.values(prods || {})) {
         if (!p || !p.id) continue;
@@ -35485,7 +35538,8 @@ async function main() {
           const full = Math.max(0, parseInt(I[k]) || 0), cm = cam[k] || 0, u = vend[k] || 0;
           const dias = u > 0 ? Math.round((full + cm) / (u / 30)) : null;
           const nk = 'caja__' + p.id + '__' + c.toLowerCase();
-          console.log(`   ${c}: Full ${full} · camino ${cm} · vendió ${u} en 30 d · alcanza ${dias == null ? '—' : dias + ' d'} · ${cx[nk] ? 'tiene nota' : 'SIN NOTA'}`);
+          const dK = Object.keys(DC).filter((k) => k === p.id + '__' + c.toLowerCase() || k.startsWith(p.id + '__' + c.toLowerCase() + '__v__'));
+          console.log(`   ${c}: Full ${full} · camino ${cm} · vendió ${u} en 30 d · alcanza ${dias == null ? '—' : dias + ' d'} · ${cx[nk] ? 'tiene nota' : 'SIN NOTA'} · ${dK.length ? 'DECIDÍ ' + dK.map((k) => (k.split('__v__')[1] || '') + '=' + (DC[k] || {}).u).join(' ') : 'SIN DECIDIR'}${RX[p.id + '__' + c] || RX[p.id + '__' + c.toLowerCase()] ? ' · (pasara: todavía no publica)' : ''}`);
           for (const vr of vars) {
             const kv = k + '__v__' + sidL(vr), ov = Math.max(0, parseInt(I[p.id + '__' + OFIK + '__v__' + sidL(vr)]) || 0);
             const fv = Math.max(0, parseInt(I[kv]) || 0), cv = cam[kv] || 0, uv = vend[kv] || 0;
@@ -35646,6 +35700,7 @@ async function main() {
       };
       if (notasCtx.length) {
         const prodsD = Object.values((await db.get('cyc/products')) || {});
+        const _limpiosDec = new Set(); let _cajaDecViejas = null;
         const CTAS = ['adriana', 'luciana', 'ayelen', 'matias'];
         console.log(`\n=== 📝 NOTAS DE PEDIDOS Y CAJAS PARA EL 🧠 ${GOp && !DRY ? '' : '(PRUEBA)'} ===`);
         for (const n of notasCtx) {
@@ -35689,6 +35744,17 @@ async function main() {
             console.log(`· 🧠 ${n.tipo === 'ped' ? 'pedido' : 'caja ' + ctaL} · ${p.name}${n.vari ? ' · ' + n.vari : ''}: ${qTxt}${n.t ? ' · ' + n.t : ''}`);
             if (GOp && !DRY) {
               try {
+                // LO VIEJO NO QUEDA COLGADO (09/10/2026, revisión 9 · cerebro): la primera vez que esta corrida decide colores
+                // de un producto (o la caja de un producto en una cuenta) se borra lo anterior, así un color que ya no se
+                // nombra no sigue pidiendo/mandando las unidades de una decisión vieja. `=auto` sin color borra todo el producto.
+                if (n.tipo === 'ped' && n.dec === 'auto' && !vsk) await db.set(base, null);
+                if (n.tipo === 'ped' && vsk && n.dec === 'u' && !_limpiosDec.has('p' + p.id)) { _limpiosDec.add('p' + p.id); await db.set(base + '/vars', null); }
+                if (n.tipo === 'caja' && n.dec === 'u' && !_limpiosDec.has('c' + p.id + ctaL)) {
+                  _limpiosDec.add('c' + p.id + ctaL);
+                  if (_cajaDecViejas == null) { try { _cajaDecViejas = (await db.get('cyc/claudedecide/caja')) || {}; } catch { _cajaDecViejas = {}; } }
+                  const pre = `${p.id}__${ctaL}`;
+                  for (const k of Object.keys(_cajaDecViejas)) if ((k === pre || k.startsWith(pre + '__v__')) && k !== `${p.id}__${ctaL}${vk}`) await db.set('cyc/claudedecide/caja/' + k, null);
+                }
                 await db.set(base + '/' + leaf, n.dec === 'auto' ? null : n.val);
                 // El motivo de cada cosa en su lugar (09/10/2026, revisión 9 · cerebro): el precio para el máximo no pisa el
                 // motivo del pedido (`motPv`), y cada color guarda el suyo (`motVars/<color>`); el renglón del producto dice
@@ -36157,12 +36223,19 @@ async function main() {
       }
       const tok = await tokensCerebro(db);
       const porCta = {};
+      // CUÁNTAS QUEDAN AFUERA Y POR QUÉ (09/10/2026, revisión 9 · cerebro): nada se descarta callado.
+      const fuera = { sinFicha: 0, fichaBorrada: 0, oculta: 0, cerradaGuardada: 0, cerradaML: 0, errorML: 0 }, sinFichaVivas = [];
       for (const [mla, e] of Object.entries(lk)) {
-        if (!e || !e.prodId || e.ignored || e.noVendemosMas || e.oculta || !prodById[e.prodId]) continue;
-        const cta = String(e.cuenta || ''); if (!cta || (ctaF && cta.toLowerCase() !== ctaF)) continue;
-        if (e.status === 'closed' || e.status === 'inactive') continue;
+        if (!e || !/^MLA/i.test(mla)) continue;
+        const cta = String(e.cuenta || ''); if (ctaF && cta.toLowerCase() !== ctaF) continue;
+        if (e.status === 'closed' || e.status === 'inactive') { fuera.cerradaGuardada++; continue; }
+        if (e.ignored || e.noVendemosMas || e.oculta) { fuera.oculta++; continue; }
+        if (!e.prodId) { fuera.sinFicha++; sinFichaVivas.push(mla); continue; }
+        if (!prodById[e.prodId]) { fuera.fichaBorrada++; sinFichaVivas.push(mla); continue; }
+        if (!cta) { fuera.sinFicha++; continue; }
         (porCta[cta] = porCta[cta] || []).push(mla);
       }
+      const esperadas = Object.values(porCta).reduce((a, x) => a + x.length, 0);
       const fee = new Map();
       const feeAtP = async (b, P, tk) => {
         const k = `${b.listing_type_id}|${b.category_id}|${Math.round(P)}`; if (fee.has(k)) return fee.get(k);
@@ -36178,8 +36251,9 @@ async function main() {
           let arr; try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,sub_status,price,listing_type_id,category_id,site_id,variations,catalog_listing', tk); } catch { arr = null; }
           if (!arr) { sinLeer.push(...ids.slice(k, k + 20)); continue; }
           for (const row of arr) {
-            const b = (row && row.body) || {}, mla = b.id; if (!mla || !lk[mla]) continue;
-            if (b.status === 'closed' || b.status === 'inactive') continue;
+            const b = (row && row.body) || {}, mla = b.id;
+            if (!mla || !lk[mla]) { fuera.errorML++; if (row && row.body && row.body.id == null) sinLeer.push(`renglón con error ${row.code || '?'}`); continue; }
+            if (b.status === 'closed' || b.status === 'inactive') { fuera.cerradaML++; continue; }
             const e = lk[mla], p = prodById[e.prodId], P = Math.round(Number(b.price) || 0);
             const kP = e.prodId + '__' + sidL(cta), kV = e.variant ? kP + '__v__' + sidL(e.variant) : null;
             const st = Math.max(0, parseInt(inv[kV && inv[kV] != null ? kV : kP]) || 0);
@@ -36212,6 +36286,8 @@ async function main() {
       }
       filas.sort((x, y) => (y.u30 - x.u30) || (y.st - x.st));
       console.log(`=== 📋 PLANILLA · ${filas.length} publicaciones con ficha (activas y pausadas)${ctaF ? ' · ' + ctaF : ''} · objetivo ${PISO}% ===`);
+      console.log(`Cuenta completa: ${esperadas} vivas con ficha para leer = ${filas.length} leídas + ${sinLeer.length} sin leer + ${fuera.cerradaML} que ML ya da cerradas + ${fuera.errorML} con error de ML${esperadas !== filas.length + sinLeer.length + fuera.cerradaML + fuera.errorML ? '  ⚠️ NO CIERRA' : '  ✓ cierra'}`);
+      console.log(`Afuera a propósito: ${fuera.oculta} ocultas o "no la vendemos más" · ${fuera.cerradaGuardada} cerradas/inactivas guardadas · ${fuera.sinFicha + fuera.fichaBorrada} vivas SIN ficha (vincularlas: ${sinFichaVivas.slice(0, 15).join(' ') || '—'})\n`);
       console.log('MLA · cuenta · nombre · estado · precio · margen (gan/u) · Full · vendidas 7d/30d/60d · última · tanda · caja · último cambio\n');
       for (const r of filas) {
         const mgT = r.mg == null ? `margen ? (${r.nota})` : `${r.mg.toFixed(0)}% (${f(r.g)}/u)${r.mg < PISO ? ' ⚠️<' + PISO : ''}`;
@@ -41441,7 +41517,9 @@ async function main() {
   // SACAR LA MARCA DE "LIQUIDANDO" A LO QUE YA SE VENDIÓ ENTERO. Va en la vuelta horaria: el stock
   // no cambia de un minuto al otro. No toca ML, sólo borra marcas del panel, así que va FUERA del
   // bloque que apaga `robot:off`.
-  if (parseInt(process.env.BACKFILL_DAYS || '0', 10) === 0 && !onlyAcc && process.env.SKIP_PRICES !== '1' && !SOLO_DATOS) {
+  // También con SOLO_DATOS (09/10/2026, revisión 9): sacar una marca que ya no corresponde (sin stock) es mecánico, y una
+  // marca vieja frena `decido` y `entrarpromo` para siempre ("liquidando: la maneja el remate").
+  if (parseInt(process.env.BACKFILL_DAYS || '0', 10) === 0 && !onlyAcc && process.env.SKIP_PRICES !== '1') {
     try {
       const ls = await limpiarNoSubir(db, DRY);
       for (const x of ls) console.log(`🔓 Se acabó el stock de ${x.title.slice(0, 40)} (${x.cuenta}): saco la marca de liquidando, el robot ya le puede subir el precio.`);
