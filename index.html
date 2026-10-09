@@ -2501,7 +2501,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.06';
+const APP_VERSION='23.07';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2512,6 +2512,7 @@ const APP_VERSION='23.06';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.07',f:'09/10/2026',h:'14:25',c:[{n:1,t:'⚡ Ventas: en las ventas grandes las figuras de atrás suben 3 veces más rápido. Las chicas siguen lentas como estaban.'}]},
   {v:'23.06',f:'09/10/2026',h:'14:10',c:[{n:1,t:'📈 Ventas: en una compra de varios productos cada renglón tiene su propio botón de línea de tiempo.'},{n:1,t:'▲▼ El renglón del cambio de precio va en gris; sólo la flecha tiene color: verde si subió, roja si bajó.'}]},
   {v:'23.05',f:'09/10/2026',h:'13:40',c:[{n:1,t:'⚡ Ventas: la tarjeta viva usa el MISMO ⚡ Score del ranking (ganancia² ÷ costo) y aparece desde 2.000. Antes era otra cuenta y no coincidía con el número que ves.'}]},
   {v:'23.04',f:'09/10/2026',h:'13:25',c:[{n:1,t:'🔥 Ventas: las ventas vuelven a ir juntas, sin el espacio de arriba de la que arde. El fuego queda atrás de la tarjeta y se ve sólo por los costados.'}]},
@@ -8813,7 +8814,9 @@ function _vivaChispas(c,px,py,n,fi){const f=.6+(fi||0)*1.2;for(let i=0;i<n;i++)c
 function _vivaDibujarCard(c,dt,estatico){
   const x=c.ctx;if(!x)return;x.clearRect(0,0,c.w,c.h);
   const rm=matchMedia('(prefers-reduced-motion: reduce)').matches,quieta=c.quieta||rm||estatico;
-  const v=c.vel,pxs=c.dia?0.8+Math.pow(v,2.8)*960:1.2+Math.pow(v,2.2)*480;
+  // 09/10/2026, él con el SSD de $363.680: las figuras de las ventas grandes suben 3 veces más rápido; las lentas quedan
+  // igual. El ×3 entra de a poco entre velocidad .25 y .55 (puntaje ~5.000 a ~19.000) y de ahí arriba es ×3 entero.
+  const v=c.vel,_x3=c.dia?1:1+2*Math.min(1,Math.max(0,(v-.25)/.3)),pxs=c.dia?0.8+Math.pow(v,2.8)*960:(1.2+Math.pow(v,2.2)*480)*_x3;
   const rot=c.dia?.05+Math.pow(v,2)*22:.08+Math.pow(v,1.5)*12;
   x.fillStyle=c.rgb;x.strokeStyle=c.rgb;
   for(const p of c.parts){
