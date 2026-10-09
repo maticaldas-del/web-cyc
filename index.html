@@ -1021,6 +1021,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
        En camino, que es donde vive. LO QUE NO CAMBIÓ: la cuenta de Pedidos SIGUE descontando lo
        que va en camino, así que abajo no se vuelve a pedir. Lo que se sacó es el aviso, no la regla. -->
   <div id="ped-raro-aviso"></div>
+  <div id="ped-sindecidir"></div>
 
   <!-- ── SECCIÓN PRIORIDAD (mezclado, ordenado por $ en riesgo) ── -->
   <div id="ped-section-prioridad" style="display:none">
@@ -5672,6 +5673,16 @@ function cajaCabenDe(f,items,filas){
 // OJO CON EL OBJETIVO: no es llenar la caja, es meter la mayor ganancia posible. Solo compiten
 // cosas que YA valía la pena mandar, y las que están en cero van primero. Media caja con lo que
 // urge es mejor que una caja llena de relleno que paga almacenamiento sin destrabar ninguna venta.
+// Por qué "Cargar lo sugerido" no cargó nada, en criollo: sin ninguna decisión de Claude para esa cuenta, o
+// con decisiones pero todas en 0 (o sin mercadería en casa para lo decidido).
+function _cajaNadaMsg(cta){
+  if(!SOLO_CLAUDE)return `No hay nada sugerido para ${cta}. La caja queda como estaba.`;
+  const ck='__'+String(cta||'').toLowerCase().replace(/í/g,'i');
+  const dec=Object.entries((state.claudedecide||{}).caja||{}).filter(([k,o])=>{const i=k.indexOf('__');return i>0&&(k.slice(i).split('__v__')[0]===ck)&&_clFresco(o);});
+  if(!dec.length)return `Claude todavía no decidió nada para ${cta}. La caja queda como estaba.`;
+  if(!dec.some(([,o])=>(parseInt(o.u)||0)>0))return `Claude decidió no mandar nada a ${cta} por ahora. La caja queda como estaba.`;
+  return `Lo que Claude decidió para ${cta} no está en tu oficina. La caja queda como estaba.`;
+}
 async function cajaSugerida(){
   if(!ofiFiltroCuenta)return renderOfiCaja();
   const filas=repartoOficina();
@@ -5681,7 +5692,8 @@ async function cajaSugerida(){
     const u=Math.min(x.mandar,f.hay);
     if(u>0)cand.push({f,u,enCero:!!x.enCero,dias:x.dias});
   }));
-  if(!cand.length){await _guardarCajaArmando(ofiFiltroCuenta,{});return renderOfiCaja();}
+  // SIN NADA DECIDIDO NO SE VACÍA LA CAJA (09/10/2026): antes, sin sugerencias, el botón borraba lo cargado a mano.
+  if(!cand.length){toast(_cajaNadaMsg(ofiFiltroCuenta),'info');return renderOfiCaja();}
   // CARGA TODO LO SUGERIDO, AUNQUE SE PASE DE LA CAJA. Decisión suya del 30/08/2026: "al clickear
   // cargar lo recomendado me cargue TODO, no importa si se pasa de los límites. Yo después saco lo
   // que no entra y lo mando en otra caja".
@@ -5819,7 +5831,7 @@ async function cajaSugeridaCupo(){
       vDia:x.vDia||0,dias:x.dias,grande:esGrandeFull(f.p),
       nombre:f.p.name+(f.variante?' · '+f.variante:'')});
   }));
-  if(!cands.length){await _guardarCajaArmando(ofiFiltroCuenta,{});return renderOfiCaja();}
+  if(!cands.length){toast(_cajaNadaMsg(ofiFiltroCuenta),'info');return renderOfiCaja();}   // no vacía lo cargado (09/10/2026)
   const plan=cajaLlenarCupoPlan(cands,cu.estPeq,cu.estGra);
   _cajaCupoFuera={cta:ofiFiltroCuenta,ts:Date.now(),fuera:plan.fuera};
   await _guardarCajaArmando(ofiFiltroCuenta,plan.items);
@@ -6191,7 +6203,8 @@ function renderOfiCaja(){
     let pie='';
     if(f.sinContarPorAroma)pie=`<div style="font-size:.66rem;color:var(--amber);margin-top:5px">⚠️ Estas ${f.hay} u. están contadas en el producto pero sin decir de qué variante. Anotalas en "Contar lo que hay", una por variante, y ahí te digo a dónde van.</div>`;
     else if(f.sinPublicar)pie=`<div style="font-size:.66rem;color:var(--amber);margin-top:5px">⚠️ No está publicado en ninguna cuenta. Mandarlo no sirve hasta que lo publiques.</div>`;
-    else if(f.sinDecidir)pie=`<div style="font-size:.66rem;color:#a78bfa;margin-top:5px">🧠 Sin decidir: Claude todavía no dijo cuántas mandar de esto. Lo decide en la próxima revisión.</div>`;
+    else if(f.sinDecidir){const _sdc=f.sinDecCtas||[];
+      pie=`<div style="font-size:.66rem;color:#a78bfa;margin-top:5px">🧠 Sin decidir${_sdc.length?` para <b>${_sdc.join(', ')}</b>`:''}: Claude todavía no dijo cuántas mandar de esto${f.sug.length?(_sdc.length===1?' a esa cuenta':' a esas cuentas'):''}. Lo decide en la próxima revisión.</div>`;}
     else if(f.nadieNecesita&&SOLO_CLAUDE)pie=`<div style="font-size:.66rem;color:#a78bfa;margin-top:5px">🧠 Claude decidió no mandar de esto por ahora.</div>`;
     else if(f.nadieNecesita){
       // Se dice la CUENTA, no sólo la conclusión: cuántas hay en Full, cuántas van en camino y a
@@ -6725,6 +6738,7 @@ async function cerrarCaja(cuenta){
   }
   if(_fallo.length)alert('⚠️ Se cortó la conexión: estos renglones NO se descontaron de la oficina (contalos de nuevo):\n\n'+_fallo.join('\n'));
   await _guardarCajaArmando(cuenta,{});   // la caja se cerró: deja de estar a medio armar
+  for(const it of items)if(it.u>0)await clDescontarCaja(it.prodId,cuenta,it.variante||'',it.u);   // lo mandado sale de lo decidido (09/10/2026)
   await log('Caja despachada a '+cuenta+': '+uTot+' u.'+(track?' · '+track:''));
   toast('Caja cerrada ✓ · está en "En camino"','ok',5000);
   syncOfiMati();renderOfiCaja();renderOfiContar();renderCajasEnCamino();
@@ -6995,7 +7009,8 @@ function renderNcOfi(filas){
     const uHay=filas.reduce((s,f)=>s+f.hay,0);
     const aMandar=filas.reduce((s,f)=>s+f.sug.reduce((a,x)=>a+x.mandar,0),0);
     const v=cajasVerdes(filas);
-    sub.innerHTML=(uHay?`${uHay} u. en casa · ${aMandar} para mandar`:'Sin nada contado todavía')
+    const nSinDec=SOLO_CLAUDE?new Set(filas.filter(f=>f.sinDecidir&&f.hay>0).map(f=>f.p.id)).size:0;   // 09/10/2026
+    sub.innerHTML=(uHay?`${uHay} u. en casa · ${aMandar} para mandar${nSinDec?` · <span style="color:var(--amber)">${nSinDec} sin decidir</span>`:''}`:'Sin nada contado todavía')
       +(v.length?`<div style="color:var(--green);font-weight:700;margin-top:4px">📦 ${v.length} caja${v.length===1?'':'s'} para mandar ya · ${v.join(', ')}</div>`:'');
   }catch(e){}
 }
@@ -7005,8 +7020,14 @@ function convieneCaja(filas,cuenta){
   const puestos=cajaDe(cuenta);
   const hayPuesto=Object.values(puestos).some(n=>n>0);
   for(const f of filas){
-    for(const s of (f.sug||[])){
-      if(s.cuenta!==cuenta)continue;
+    // LO CARGADO A MANO CUENTA AUNQUE NO TENGA SUGERENCIA (09/10/2026): con SOLO_CLAUDE un producto sin decisión
+    // no trae renglón de sugerencia para esta cuenta, y lo que él puso en la caja quedaba sin contar.
+    let _ss=(f.sug||[]).filter(s=>s.cuenta===cuenta);
+    if(hayPuesto&&!_ss.length&&(puestos[_ck(f.p.id,f.variante||'')]||0)>0){
+      const pq=(f.porQueNo||[]).find(c=>c.cuenta===cuenta);
+      _ss=[{cuenta,mandar:0,vDia:pq?(pq.vMes||0)/PED_MAX_DAYS:0,enCero:pq?((pq.enML||0)+(pq.camino||0))<=0:false}];
+    }
+    for(const s of _ss){
       // Cuántas unidades se están contando: las que ÉL cargó, o las sugeridas si no cargó nada.
       const u=hayPuesto?(puestos[_ck(f.p.id,f.variante||'')]||0):s.mandar;
       if(!(u>0))continue;
@@ -9373,7 +9394,10 @@ let _cerNotas=null;
 function _cerHayNota(prodId,o){
   const S=_cerNotas;if(!S||!S.size)return false;
   const vk=o.variante?'__v__'+sid(String(o.variante).toLowerCase()):'';
-  if(o.ped)return S.has(`ped__${prodId}${vk}`)||S.has(`ped__${prodId}`);
+  if(o.ped){if(S.has(`ped__${prodId}${vk}`)||S.has(`ped__${prodId}`))return true;
+    // Producto con colores sin variante en el botón: vale también la nota de cualquier color (09/10/2026).
+    if(!vk){const pre=`ped__${prodId}__v__`;for(const k of S)if(k.startsWith(pre))return true;}
+    return false;}
   if(o.ctx==='caja'){
     const ct=o.cuenta?String(o.cuenta).toLowerCase().replace(/í/g,'i'):'';
     for(const k of S){if(!k.startsWith(`caja__${prodId}__`))continue;const r=k.slice(`caja__${prodId}__`.length);
@@ -9452,7 +9476,11 @@ async function cerebroAbrir(el,ev){
   // Notas de Claude del renglón (pedido o caja), aparte de las de cada publicación.
   const ctxK=[];
   if(modoClaude){
-    if(d.ped){ctxK.push({k:_cerClaveCtx('ped',d.p,'',d.v),cab:''});if(d.v)ctxK.push({k:_cerClaveCtx('ped',d.p,'',''),cab:''});}
+    if(d.ped){ctxK.push({k:_cerClaveCtx('ped',d.p,'',d.v),cab:''});if(d.v)ctxK.push({k:_cerClaveCtx('ped',d.p,'',''),cab:''});
+      // EL POR QUÉ DE CADA COLOR (09/10/2026): un pedido con colores decididos color por color tiene la nota en
+      // `ped__<id>__v__<color>`. Se listan por color; si ya se sabe qué notas existen, sólo esas.
+      else if((p.variantes||[]).length){const S=_cerNotas;
+        for(const v of p.variantes){const k=_cerClaveCtx('ped',d.p,'',v);if(S&&S.size&&!S.has(k))continue;ctxK.push({k,cab:String(v),esVar:true});}}}
     if(d.ctx==='caja'){const ctas=d.c?[d.c]:(typeof LOCS!=='undefined'?LOCS:['Adriana','Luciana','Ayelen','Matias']);
       for(const ct of ctas){ctxK.push({k:_cerClaveCtx('caja',d.p,ct,d.v),cab:ct});if(d.v)ctxK.push({k:_cerClaveCtx('caja',d.p,ct,''),cab:ct});}}
     await Promise.all(ctxK.map(async o=>{try{o.n=(await db.ref('mlapi/claudeexp/'+o.k).once('value')).val();}catch(e){o.n=undefined;}}));
@@ -9469,7 +9497,7 @@ async function cerebroAbrir(el,ev){
     for(const o of ctxK){
       if(o.n===undefined){falla=true;continue;}
       if(!o.n||!o.n.simple||vistos.has(o.cab))continue;vistos.add(o.cab);nn++;
-      h+=par(`${o.cab&&ctxK.length>2?`<b>${_cerEsc(o.cab)}:</b> `:''}💭 ${_cerEsc(_cerFecha(o.n.ts))}: ${_cerEsc(o.n.simple)}`);
+      h+=par(`${o.cab&&(ctxK.length>2||o.esVar)?`<b>${_cerEsc(o.cab)}:</b> `:''}💭 ${_cerEsc(_cerFecha(o.n.ts))}: ${_cerEsc(o.n.simple)}`);
     }
     // CADA LUGAR, SU NOTA (08/10/2026, él: *"en ventas quiero que digas por qué aumentó el precio o por qué no, y en
     // pedidos por qué pide x unidades"*): en Pedidos y Armar caja van SÓLO las notas de unidades (ped/caja); las de
@@ -9977,6 +10005,10 @@ function initVentaProd(){
   // rango personalizado (default: últimos 7 días)
   const rf=document.getElementById('vp-range-from');if(rf&&!rf.value){const f=new Date(now);f.setDate(f.getDate()-6);rf.value=f.toISOString().split('T')[0];}
   const rt=document.getElementById('vp-range-to');if(rt&&!rt.value)rt.value=todayStr();
+  // Desde la tarjeta de Inicio en Mes o Año: abre en ESE mes / año (una sola vez, 09/10/2026).
+  if(_vpIrPer){const ip=_vpIrPer;_vpIrPer=null;
+    if(ip.per==='mes'&&mEl&&ip.ym){mEl.value=ip.ym;vpPeriod='mes';}
+    else if(ip.per==='anio'&&yEl&&ip.y){yEl.value=ip.y;vpPeriod='anio';}}
   // aplicar visibilidad del período activo (id usa guión bajo en 30d/365d → OK)
   setVpPeriod(vpPeriod,document.getElementById('vpperiod-'+vpPeriod));
   const dl=document.getElementById('vp-prod-list');
@@ -11016,8 +11048,40 @@ const SOLO_CLAUDE=true;
 function escHtml(t){return String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function _clFresco(o){return !!(o&&(SOLO_CLAUDE||Date.now()-(Number(o.ts)||0)<=CL_DEC_DIAS*864e5));}
 function clPedDe(pid){const o=((state.claudedecide||{}).ped||{})[pid];return _clFresco(o)?o:null;}
+function _clCajaKey(pid,cta,va){return pid+'__'+String(cta||'').toLowerCase().replace(/í/g,'i')+(va?'__v__'+sid(String(va).toLowerCase()):'');}
+// LO HECHO SE DESCUENTA DE LO DECIDIDO (09/10/2026). Con SOLO_CLAUDE las decisiones no vencen y nadie las limpiaba:
+// después de despachar una caja con 50, Armar caja seguía pidiendo 50. Al cerrar una caja se resta lo mandado de
+// `claudedecide/caja/<id>__<cuenta>[__v__<color>]/u`, y al marcar "Ya lo pedí" lo pedido de `claudedecide/ped/<id>`
+// (`u` o `vars/<color>`). Nunca abajo de 0, sólo si la decisión existe, con transacción sobre la base.
+async function _clRestar(path,u){
+  u=Math.max(0,parseInt(u)||0);if(!u||!db)return;
+  await db.ref('cyc/claudedecide/'+path).transaction(cur=>cur==null?cur:Math.max(0,(parseInt(cur)||0)-u));
+}
+async function clDescontarCaja(pid,cta,va,u){
+  try{
+    let key=_clCajaKey(pid,cta,va);
+    if(!clCajaDe(pid,cta,va))return;
+    const o=((state.claudedecide||{}).caja||{})[key];
+    await _clRestar('caja/'+key+'/u',u);
+    if(o)o.u=Math.max(0,(parseInt(o.u)||0)-(parseInt(u)||0));
+  }catch(e){console.warn('clDescontarCaja',e);}
+}
+async function clDescontarPed(pid,va,u){
+  try{
+    const o=clPedDe(pid);if(!o)return;
+    let left=Math.max(0,parseInt(u)||0);if(!left)return;
+    const vars=o.vars&&typeof o.vars==='object'?o.vars:null;
+    if(va&&vars){const k=sid(String(va).toLowerCase());if(k in vars){await _clRestar('ped/'+pid+'/vars/'+k,left);vars[k]=Math.max(0,(parseInt(vars[k])||0)-left);}return;}
+    if(o.u!=null){await _clRestar('ped/'+pid+'/u',left);o.u=Math.max(0,(parseInt(o.u)||0)-left);return;}
+    if(vars){   // pedido sin color (Paraguay no anota color): se descuenta de los colores decididos, el más grande primero
+      for(const [k,n] of Object.entries(vars).sort((a,b)=>(parseInt(b[1])||0)-(parseInt(a[1])||0))){
+        if(left<=0)break;const q=Math.min(left,Math.max(0,parseInt(n)||0));if(!q)continue;
+        await _clRestar('ped/'+pid+'/vars/'+k,q);vars[k]=Math.max(0,(parseInt(vars[k])||0)-q);left-=q;}
+    }
+  }catch(e){console.warn('clDescontarPed',e);}
+}
 function clCajaDe(pid,cta,va){
-  const k=pid+'__'+String(cta||'').toLowerCase().replace(/í/g,'i')+(va?'__v__'+sid(String(va).toLowerCase()):'');
+  const k=_clCajaKey(pid,cta,va);
   const o=((state.claudedecide||{}).caja||{})[k];
   return _clFresco(o)&&Number.isFinite(Number(o.u))?o:null;
 }
@@ -11378,7 +11442,10 @@ function _repartoVariantes(p,hayTotal,tr){
       sug.push({...c,mandar,enCero:c.stock<=0,cl:_cc?{u:parseInt(_cc.u)||0,mot:String(_cc.mot||'')}:null});
     }
     filas.push({p,variante:va,hay,sug,sobra:quedan,
-      sinDecidir:SOLO_CLAUDE&&!publicadas.some(l=>clCajaDe(p.id,l,va)),
+      // CUENTA POR CUENTA (09/10/2026): antes sólo era "sin decidir" si NINGUNA cuenta estaba decidida; una cuenta
+      // que publica y no tiene decisión de Claude queda sin decidir aunque otra sí lo esté.
+      sinDecCtas:SOLO_CLAUDE?publicadas.filter(l=>!clCajaDe(p.id,l,va)):[],
+      sinDecidir:SOLO_CLAUDE&&publicadas.some(l=>!clCajaDe(p.id,l,va)),
       sinPublicar:reales.length===0,
       nadieNecesita:sug.length===0&&publicadas.length>0,
       // POR QUÉ no hace falta, con los números. Sin esto el renglón decía sólo "Dejalo en casa" y
@@ -11445,7 +11512,10 @@ function repartoOficina(){
       sug.push({...c,mandar,enCero:c.stock<=0,cl:_cc?{u:parseInt(_cc.u)||0,mot:String(_cc.mot||'')}:null});
     }
     filas.push({p,hay,sug,sobra:quedan,
-      sinDecidir:SOLO_CLAUDE&&!publicadas.some(l=>clCajaDe(p.id,l,'')),
+      // CUENTA POR CUENTA (09/10/2026): antes sólo era "sin decidir" si NINGUNA cuenta estaba decidida; una cuenta
+      // que publica y no tiene decisión de Claude queda sin decidir aunque otra sí lo esté.
+      sinDecCtas:SOLO_CLAUDE?publicadas.filter(l=>!clCajaDe(p.id,l,'')):[],
+      sinDecidir:SOLO_CLAUDE&&publicadas.some(l=>!clCajaDe(p.id,l,'')),
       sinPublicar:reales.length===0,
       nadieNecesita:sug.length===0&&publicadas.length>0,
       // Igual que la rama con variantes: el POR QUÉ con los números de cada cuenta. Faltaba acá y
@@ -11503,6 +11573,8 @@ function pedGananciaNorm(p){
 }
 
 let syncPedidosTimer=null;
+// Productos que venden y Claude todavía no decidió (lo llena syncPedidosAuto). null = todavía no se calculó.
+let _pedSinDecidir=null;
 async function syncPedidosAuto(){
   // El objetivo de compra ya no es uno solo: depende de cuánto tarde el proveedor de ese producto
   // (ver pedTargetDiasDe). Bs As y Paulvic 30 días · Paraguay 95.
@@ -11548,6 +11620,7 @@ async function syncPedidosAuto(){
   // Sexy: *"me lo sigue pidiendo y ya lo compramos"*). Antes sólo la canasta lo descontaba.
   const _pvViaja=pvEnCamino();   // pedido al Paulvic que todavía no llegó, por aroma
   const _pyViaja=(()=>{const m={...pyRepoEnCamino()};try{for(const[k,v]of Object.entries(pyRepoSinContar()))m[k]=(m[k]||0)+v;}catch(e){}return m;})();
+  const _sinDecLista=[];
   for(const p of (state.products||[])){
     // En la papelera = no se vende más. Se saltea ACÁ, antes de calcular nada: así no vuelve a
     // aparecer en Pedidos y tampoco suma "riesgo", que es lo que alimenta el Puntaje del mes y el
@@ -11689,19 +11762,27 @@ async function syncPedidosAuto(){
     // fino: restar los totales otra vez lo contaría dos veces. Lo de Paraguay no trae color: va al total.
     let aComprar=aComprarVar!=null?Math.max(0,aComprarVar-enPy):Math.max(0,necesario-enOficina-enCamino);
     // Si Claude decidió cuántas comprar, manda lo suyo (la cuenta automática queda al lado, para comparar).
-    let clInfo=null;
+    let clInfo=null,_sinDec=false;
     {const _cl=clPedDe(p.id);
       if(_cl&&(_cl.u!=null||_cl.vars)){
         const formU=aComprar;
         if(hasVars&&_cl.vars){
           const cv={};for(const [k,v] of Object.entries(_cl.vars))cv[k]=Math.max(0,parseInt(v)||0);
-          const vn=(variantesNec||[]).map(x=>{const k=sid(String(x.v).toLowerCase());return k in cv?{...x,q:cv[k],cl:1}:(SOLO_CLAUDE?{...x,q:0}:x);});
-          for(const v of (p.variantes||[])){const k=sid(String(v).toLowerCase());if(k in cv&&!vn.some(x=>sid(String(x.v).toLowerCase())===k))vn.push({v,q:cv[k],cl:1});}
+          const _mv=_cl.motVars||{};const _mvDe=k=>_mv[k]?{mot:String(_mv[k]).slice(0,400)}:{};
+          const vn=(variantesNec||[]).map(x=>{const k=sid(String(x.v).toLowerCase());return k in cv?{...x,q:cv[k],cl:1,..._mvDe(k)}:(SOLO_CLAUDE?{...x,q:0}:x);});
+          for(const v of (p.variantes||[])){const k=sid(String(v).toLowerCase());if(k in cv&&!vn.some(x=>sid(String(x.v).toLowerCase())===k))vn.push({v,q:cv[k],cl:1,..._mvDe(k)});}
           variantesNec=vn.length?vn:null;
           aComprar=vn.reduce((a,x)=>a+(x.q||0),0);
         }else if(_cl.u!=null&&(!hasVars||SOLO_CLAUDE)){aComprar=Math.max(0,parseInt(_cl.u)||0);if(hasVars)variantesNec=null;}
-        if(aComprar!==formU||_cl.u!=null||_cl.vars)clInfo={u:aComprar,formU,mot:String(_cl.mot||''),ts:_cl.ts};
-      }else if(SOLO_CLAUDE){aComprar=0;variantesNec=null;}   // sin decisión de Claude no se pide nada (09/10/2026)
+        if(aComprar!==formU||_cl.u!=null||_cl.vars){
+          clInfo={u:aComprar,formU,mot:String(_cl.mot||''),ts:_cl.ts||null};
+          if(_cl.motPv)clInfo.motPv=String(_cl.motPv).slice(0,400);   // por qué ese precio para el máximo de compra
+          if(hasVars&&_cl.motVars&&typeof _cl.motVars==='object'){   // el motivo de cada color (decidido color por color)
+            const mv={};for(const v of (p.variantes||[])){const k=sid(String(v).toLowerCase());if(_cl.motVars[k])mv[k]={v,t:String(_cl.motVars[k]).slice(0,400),q:(_cl.vars&&k in _cl.vars)?Math.max(0,parseInt(_cl.vars[k])||0):null};}
+            if(Object.keys(mv).length)clInfo.motVars=mv;
+          }
+        }
+      }else if(SOLO_CLAUDE){aComprar=0;variantesNec=null;_sinDec=true;}   // sin decisión de Claude no se pide nada (09/10/2026)
     }
     const diasCubProd=diasCubiertos;
     if(varDiasCub!=null&&varDiasCub<diasCubiertos)diasCubiertos=varDiasCub;
@@ -11745,6 +11826,9 @@ async function syncPedidosAuto(){
     const semDias=varSemDias!=null?Math.min(cubreCasa,varSemDias):cubreCasa;
     // Con colores: si UN color que vende está en cero en todos lados, el producto es rojo (06/10/2026, él: "si hay rojo en una publicación con variantes que sea rojo").
     const sem=(semTot<=0||varSemCero>0)?'rojo':(semDias<=pedDiasRojoDe(p)?'naranja':'amarillo');
+    // LO QUE VENDE Y CLAUDE TODAVÍA NO DECIDIÓ (09/10/2026): no se crea el pedido (la web no propone
+    // números), pero tampoco desaparece en silencio: se junta acá y Pedidos lo muestra arriba en ámbar.
+    if(_sinDec&&(vendidos>0||hist))_sinDecLista.push({id:p.id,name:p.name,coll,paulvic:esPedidoPaulvic({prodId:p.id,producto:p.name}),sem,semDias:semTot<=0?0:Math.min(semDias,999),riesgo});
     const riesgoComprar=Math.round((gan30d/30)*diasTapaCompra);
     const riesgoMandar=Math.round((gan30d/30)*diasTapaCasa);
     // Si hay unidades en casa no se puede repartir el pedido por variante con confianza (no se
@@ -11758,6 +11842,7 @@ async function syncPedidosAuto(){
     const objetivoU=varCuenta?varCuenta.obj:Math.max(necesario+stock,0);
     resumen[p.id]={cl:clInfo,p,vendidos,vendidosNorm,stock,diasHistorial,diasCubiertos,necesario,enOficina,enCamino,aComprar,variantesNec,coll,gan30d,riesgo,riesgoComprar,riesgoMandar,dConS,vDia,objetivoU,targetDias:TARGET_DIAS_P,hist,remate,rn,reg,pocasVentas,varCuenta,sem,semDias:semTot<=0?0:Math.min(semDias,999),semColCero:varSemCero};
   }
+  _pedSinDecidir=SOLO_CLAUDE?_sinDecLista:[];
   // 3. IDs que deberían existir como auto-pedidos
   const expectedIds=new Set();
   for(const [pid,r] of Object.entries(resumen)){
@@ -11830,7 +11915,7 @@ async function syncPedidosAuto(){
     // hacía fallar TODA la escritura ("path … is an ancestor of another path"). Manda lo de a mano.
     if(existing&&existing.auto===false&&coll!=='pedidos_py')continue;
     if(existing){
-      const same=existing.cantidad===r.aComprar&&existing.estado===estado&&existing.nota===nota&&existing.producto===r.p.name&&JSON.stringify(existing.variantesNec||null)===JSON.stringify(variantesNec)&&(existing.proveedor||null)===(provNom)&&existing.riesgo===r.riesgo&&existing.gan30d===r.gan30d&&(existing.cSem||null)===(r.sem||null)&&existing.cSemDias===(r.semDias!=null?r.semDias:null)&&(existing.cSemCol||0)===(r.semColCero||0);
+      const same=existing.cantidad===r.aComprar&&existing.estado===estado&&existing.nota===nota&&existing.producto===r.p.name&&JSON.stringify(existing.variantesNec||null)===JSON.stringify(variantesNec)&&(existing.proveedor||null)===(provNom)&&existing.riesgo===r.riesgo&&existing.gan30d===r.gan30d&&(existing.cSem||null)===(r.sem||null)&&existing.cSemDias===(r.semDias!=null?r.semDias:null)&&(existing.cSemCol||0)===(r.semColCero||0)&&JSON.stringify(existing.cClaude||null)===JSON.stringify(r.cl||null);
       if(same)continue;
       existing.cantidad=r.aComprar;existing.estado=estado;existing.nota=nota;existing.producto=r.p.name;existing.prodId=pid;existing.variantesNec=variantesNec;existing.proveedor=provNom;existing.riesgo=r.riesgo;existing.gan30d=r.gan30d;Object.assign(existing,cuentaPed(r));
       delete existing.variante;
@@ -14176,6 +14261,7 @@ async function pyRepoRegistrar(items,opts){
     await fbSet('compraspy/'+id,rec);
     state.compraspy=state.compraspy||{};state.compraspy[id]=rec;
   }
+  for(const it of items)await clDescontarPed(it.prodId,it.variante||'',it.u);   // lo pedido sale de lo decidido (09/10/2026)
   await log('Reposición a Paraguay marcada como pedida: '+id+' · US$'+crudo.toFixed(2));
   if(!opts.sinConfirm){renderPedidos();toast(prev?'Sumado al pedido de hoy ✓':'Reposición en camino ✓');}
   return true;
@@ -15740,19 +15826,21 @@ function pedSinSentido(p){
   // pedido guardado antes de este cambio no trae el objetivo de cada color: ahí no se opina.
   const _vars=Array.isArray(p.variantesNec)&&p.variantesNec.length?p.variantesNec:null;
   if(_vars){
-    const malas=_vars.filter(x=>(x.q||0)>0&&x.obj>0&&((x.ml||0)+(x.casa||0)+(x.cam||0)+(x.pv||0))>=x.obj);
+    // Lo decidido por Claude no se compara contra el objetivo de la fórmula (09/10/2026): él mira 30 días y la
+    // fórmula 20, así que el aviso saltaba sobre decisiones que están bien pensadas.
+    const malas=_vars.filter(x=>!x.cl&&(x.q||0)>0&&x.obj>0&&((x.ml||0)+(x.casa||0)+(x.cam||0)+(x.pv||0))>=x.obj);
     if(malas.length)m.push(malas.slice(0,4).map(x=>`${x.v}: pide comprar ${fmtN(x.q)} y ya tenés ${fmtN((x.ml||0)+(x.casa||0)+(x.cam||0))} entre ML, tu casa y en camino para un objetivo de ${fmtN(x.obj)}`).join(' · ')+(malas.length>4?` · y ${malas.length-4} color(es) más`:''));
-  } else if(pedir>0&&p.cObjetivo>0){
+  } else if(pedir>0&&p.cObjetivo>0&&!p.cClaude){
     const tenes=(p.cML||0)+(p.cCasa||0)+(p.cCamino||0);
     if(tenes>=p.cObjetivo)m.push(`pide comprar ${fmtN(pedir)} y entre ML, tu casa y lo que va en camino ya tenés ${fmtN(tenes)} para un objetivo de ${fmtN(p.cObjetivo)}`);
   }
   // Los colores agotados hace 30+ días piden con su ritmo VIEJO (`hist`, decisión suya del 26/09):
   // ésas no salen de la venta de este mes, así que no cuentan para este aviso (08/10/2026, p47 oreja
   // gato: 1 venta del negro y pedía 1 de gris, rosa y violeta por lo que vendían antes de agotarse).
-  const pedirMes=_vars?_vars.filter(x=>!x.hist).reduce((a,x)=>a+(x.q||0),0):pedir;
+  const pedirMes=_vars?_vars.filter(x=>!x.hist&&!x.cl).reduce((a,x)=>a+(x.q||0),0):(p.cClaude?0:pedir);
   if(pedirMes>=3&&p.cPocas&&(p.cVend||0)<=1)m.push(`el ritmo sale de ${p.cVend===1?'UNA sola venta':'ninguna venta'} en 30 días y aun así pide ${fmtN(pedirMes)} unidades`);
   // GUARDA: el ritmo viejo (de hasta 180 días atrás) sólo vale cuando el producto está en CERO.
-  if(p.cHist&&(p.cML||0)>0)m.push(`usa el ritmo viejo (de hace meses) teniendo ${fmtN(p.cML)} en ML: ese ritmo sirve para estimar lo que vendería SI hubiera stock, y acá hay`);
+  if(p.cHist&&(p.cML||0)>0&&!p.cClaude)m.push(`usa el ritmo viejo (de hace meses) teniendo ${fmtN(p.cML)} en ML: ese ritmo sirve para estimar lo que vendería SI hubiera stock, y acá hay`);
   // GUARDA: no podés destrabar por mes más de lo que el producto deja por mes.
   if((p.gan30d||0)>0&&(p.riesgoComprar||0)>(p.gan30d||0)+1)m.push(`dice que destraba ${fmt(p.riesgoComprar)} y el producto entero deja ${fmt(p.gan30d)} por mes`);
   if(p.auto===false){
@@ -15761,6 +15849,21 @@ function pedSinSentido(p){
   }
   return m.length?{n:m.length,det:m}:null;
 }
+// El motivo de la caja violeta (09/10/2026): si se decidió color por color, cada color con su motivo
+// (los que tienen renglón lo dicen en su renglón; acá van los que no lo tienen: los de 0 u.), y el motivo
+// del precio para el máximo de compra aparte y en chico.
+function _clMotH(p){
+  const c=p.cClaude||{};let h='';
+  const mv=c.motVars&&typeof c.motVars==='object'?Object.values(c.motVars):[];
+  if(mv.length){
+    const conFila=new Set((p.variantesNec||[]).filter(x=>(x.q||0)>0&&x.mot).map(x=>sid(String(x.v).toLowerCase())));
+    const sinFila=mv.filter(m=>!conFila.has(sid(String(m.v).toLowerCase())));
+    h+=`<div style="color:var(--muted);margin-top:2px">Decidido color por color${conFila.size?': el motivo de cada color a comprar está en su renglón':''}.</div>`;
+    if(sinFila.length)h+=`<div style="margin-top:3px">${sinFila.map(m=>`<div style="color:var(--muted)">· <b style="color:var(--text)">${escHtml(m.v)}</b>${m.q!=null?` (${fmtN(m.q)} u.)`:''}: ${escHtml(m.t)}</div>`).join('')}</div>`;
+  }else if(c.mot)h+=`<div style="color:var(--muted);margin-top:2px">${escHtml(c.mot)}</div>`;
+  if(c.motPv)h+=`<div style="color:var(--muted);margin-top:3px;font-size:.92em">💰 Precio para el máximo de compra: ${escHtml(c.motPv)}</div>`;
+  return h;
+}
 function cuentaPedidoHTML(p){
   // Lo vendido en remate no pide reponer (ver ventaEnRemate): se dice cuánto quedó afuera, así no
   // se lee como que el producto vende menos sin motivo.
@@ -15768,7 +15871,7 @@ function cuentaPedidoHTML(p){
   const regH=p.cReg?`<div style="flex-basis:100%;font-size:.6rem;color:var(--amber);margin-top:2px">🔀 ${p.cReg.txt.join(' · ')}. Por eso el ritmo que uso es <strong style="color:var(--text)">${fmtN(p.cReg.mes)}/mes</strong> (lo de antes del cambio ya no vale).</div>`:'';
   rem=rem+regH;
   // Lo que decidió Claude va arriba de todo: es el número que manda (la cuenta automática sigue abajo, para comparar).
-  const clH=p.cClaude?`<div style="flex-basis:100%;font-size:.66rem;line-height:1.5;color:var(--text);background:rgba(139,92,246,.12);border:1px solid rgba(139,92,246,.35);border-radius:6px;padding:5px 9px;margin-top:2px">🧠 <b>Lo decidí yo (Claude): ${fmtN(p.cClaude.u)} a comprar</b>${!SOLO_CLAUDE&&p.cClaude.formU!==p.cClaude.u?` · <span style="color:var(--muted)">la cuenta automática daba ${fmtN(p.cClaude.formU)}</span>`:''}${p.cClaude.mot?`<div style="color:var(--muted);margin-top:2px">${escHtml(p.cClaude.mot)}</div>`:''}</div>`:'';
+  const clH=p.cClaude?`<div style="flex-basis:100%;font-size:.66rem;line-height:1.5;color:var(--text);background:rgba(139,92,246,.12);border:1px solid rgba(139,92,246,.35);border-radius:6px;padding:5px 9px;margin-top:2px">🧠 <b>Lo decidí yo (Claude): ${fmtN(p.cClaude.u)} a comprar</b>${!SOLO_CLAUDE&&p.cClaude.formU!==p.cClaude.u?` · <span style="color:var(--muted)">la cuenta automática daba ${fmtN(p.cClaude.formU)}</span>`:''}${_clMotH(p)}</div>`:'';
   rem=clH+rem;
   if(SOLO_CLAUDE)return clH;   // 09/10/2026: sólo la decisión de Claude con su motivo, sin la cuenta automática
   if(!(p.cObjetivo>0)||!(p.cVdia>0))return rem;
@@ -15813,7 +15916,7 @@ function pedVarFila(x){
   const lug=(x.ml!=null||x.cam!=null||x.casa!=null)?`📦 ${n(x.ml)} en ML · 🚚 ${n(x.cam)} en camino · 🏠 ${n(x.casa)} en casa${x.pv>0?` · 🧴 ${n(x.pv)} al Paulvic`:''}`:'';
   const dTxt=sem==='rojo'?'🔴 sin stock en ningún lado':(x.dias!=null&&x.dias<999?`${sem==='naranja'?'🟠':'🟡'} alcanza ~${x.dias} d`:'');
   return `<div class="ped-var-fila sem-${sem}" style="border-left-color:${col}">
-    <div class="ped-var-txt"><b>${x.v}</b>${x.hist?' <span style="color:var(--amber);font-size:.8em">· ritmo viejo</span>':''}<i>${[dTxt,lug].filter(Boolean).join(' · ')}</i></div>
+    <div class="ped-var-txt"><b>${x.v}</b>${x.hist?' <span style="color:var(--amber);font-size:.8em">· ritmo viejo</span>':''}<i>${[dTxt,lug].filter(Boolean).join(' · ')}</i>${x.mot?`<i style="color:#a78bfa">🧠 ${escHtml(x.mot)}</i>`:''}</div>
     ${q>0?`<span class="ped-var-u" style="color:${col}"><b>${n(q)}</b><i>u. a comprar</i></span>`:`<span class="ped-var-u" style="color:var(--green)"><b>✓</b><i>mandar de casa</i></span>`}
   </div>`;
 }
@@ -16159,8 +16262,11 @@ function _pedidoItemHtml(p,opts){
   // él con la Terracota "✓ mandar de casa · 46 d": "¿y esto para qué?"): Pedidos es para comprar. Van en una
   // sola línea abajo, para que se sepa por qué no están; mandarlos es cosa de Armar caja.
   const _vComp=varsSorted?varsSorted.filter(x=>(x.q||0)>0):[];
-  const _vMand=varsSorted?varsSorted.filter(x=>!((x.q||0)>0)):[];
-  const varToggle=varsSorted?`<div class="ped-vars">${[..._vComp].sort((a,b)=>(_PED_SEM_ORD[pedVarSem(a)]-_PED_SEM_ORD[pedVarSem(b)])||((b.q||0)-(a.q||0))).map(x=>pedVarFila(x)).join('')}${_vMand.length?`<div style="font-size:.68rem;color:var(--muted);padding:2px 4px">✓ no hace falta comprar ${_vMand.length===1?'este color':'estos '+_vMand.length+' colores'} (alcanza con lo de casa y lo que viaja, mandalos desde Armar caja): ${_vMand.map(x=>x.v+(x.dias!=null&&x.dias<999?' ~'+x.dias+' d':'')).join(' · ')}</div>`:''}</div>`:'';
+  // Con SOLO_CLAUDE un color que Claude no nombró queda en 0 porque nadie lo decidió, no porque alcance:
+  // va en su propia línea "🧠 sin decidir" (09/10/2026). Los que sí decidió en 0 siguen en la línea de "no hace falta".
+  const _vSinDec=(varsSorted&&SOLO_CLAUDE)?varsSorted.filter(x=>!((x.q||0)>0)&&!x.cl):[];
+  const _vMand=varsSorted?varsSorted.filter(x=>!((x.q||0)>0)&&!_vSinDec.includes(x)):[];
+  const varToggle=varsSorted?`<div class="ped-vars">${[..._vComp].sort((a,b)=>(_PED_SEM_ORD[pedVarSem(a)]-_PED_SEM_ORD[pedVarSem(b)])||((b.q||0)-(a.q||0))).map(x=>pedVarFila(x)).join('')}${_vSinDec.length?`<div style="font-size:.68rem;color:var(--amber);padding:2px 4px">🧠 sin decidir ${_vSinDec.length===1?'este color':'estos '+_vSinDec.length+' colores'} (Claude todavía no dijo cuántas comprar): ${_vSinDec.map(x=>escHtml(x.v)+(x.dias!=null&&x.dias<999?' ~'+x.dias+' d':'')).join(' · ')}</div>`:''}${_vMand.length?`<div style="font-size:.68rem;color:var(--muted);padding:2px 4px">✓ no hace falta comprar ${_vMand.length===1?'este color':'estos '+_vMand.length+' colores'} (${SOLO_CLAUDE?'Claude decidió 0 · el motivo está en el 🧠':'alcanza con lo de casa y lo que viaja, mandalos desde Armar caja'}): ${_vMand.map(x=>x.v+(x.dias!=null&&x.dias<999?' ~'+x.dias+' d':'')).join(' · ')}</div>`:''}</div>`:'';
   const _prod=(state.products||[]).find(x=>x.id===p.prodId||(x.name&&normTxt(x.name)===normTxt(p.producto||'')));
   // El botón sale con CUALQUIER foto, no sólo con la cargada a mano: antes miraba `_prod.foto`,
   // que sólo se prende al subir una, así que con la foto automática de ML el botón no aparecía.
@@ -16294,6 +16400,28 @@ function transitoInfoDe(pid){
   });
   return u>0?{u,cajas,diasMax,ctas}:null;
 }
+// ── LO QUE VENDE Y CLAUDE TODAVÍA NO DECIDIÓ (09/10/2026) ──────────────────────────────
+// Con SOLO_CLAUDE un producto sin decisión no arma pedido. Antes desaparecía en silencio: un renglón
+// que no está se lee igual que "no hace falta comprar". Ahora sale arriba, en ámbar, con su semáforo.
+// `sec` filtra por la solapa (Bs As sin Paulvic · Paraguay · Paulvic · Prioridad = todo).
+function pedSinDecidirLista(sec){
+  const L=Array.isArray(_pedSinDecidir)?_pedSinDecidir:[];
+  if(sec==='papelera')return [];
+  return L.filter(x=>sec==='bsas'?(x.coll==='pedidos'&&!x.paulvic):sec==='paraguay'?(x.coll==='pedidos_py'&&!x.paulvic):sec==='paulvic'?x.paulvic:true);
+}
+function pedSinDecidirHTML(sec){
+  const L=pedSinDecidirLista(sec);if(!L.length)return '';
+  const ord={rojo:0,naranja:1,amarillo:2};
+  const fila=x=>{const ic=x.sem==='rojo'?'🔴':x.sem==='naranja'?'🟠':'🟡';
+    const d=x.sem==='rojo'?'sin stock en ningún lado':`alcanza ~${fmtN(x.semDias)} días`;
+    return `<div style="padding:4px 0;border-top:1px solid var(--border)">${ic} <strong>${escHtml(x.name||'—')}</strong> <span style="color:var(--muted)">· ${d}</span></div>`;};
+  const rojos=L.filter(x=>x.sem==='rojo').length;
+  return `<details style="background:var(--surface);border:1px solid var(--amber);border-radius:var(--r);padding:9px 14px;margin-bottom:12px">
+    <summary style="cursor:pointer;font-size:.72rem">🧠 <strong style="color:var(--amber)">sin decidir: ${L.length} producto${L.length===1?'':'s'} que vende${L.length===1?'':'n'}</strong>${rojos?` · <span style="color:var(--red)">${rojos} sin stock</span>`:''}
+      <span style="color:var(--muted);font-weight:400">— Claude todavía no dijo cuántas comprar; no están en la lista de abajo</span></summary>
+    <div style="margin-top:6px;font-size:.66rem;line-height:1.6">${L.slice().sort((a,b)=>(ord[a.sem]-ord[b.sem])||((b.riesgo||0)-(a.riesgo||0))).map(fila).join('')}</div>
+  </details>`;
+}
 function renderPedidos(){
   // El número al lado de la solapa se refresca siempre, se esté mirando la papelera o no.
   // El número de la solapa cuenta solo lo que TODAVÍA se puede devolver: si contara también los
@@ -16323,6 +16451,7 @@ function renderPedidos(){
       </details>`;
     }
   }
+  {const _sdEl=document.getElementById('ped-sindecidir');if(_sdEl)_sdEl.innerHTML=pedSinDecidirHTML(pedidoSection);}
   if(pedidoSection==='papelera'){
     renderNoTraer();
     const el=document.getElementById('pedidos-papelera-list');if(!el)return;
@@ -18445,7 +18574,11 @@ function _puntSugerencias(P){
     if(P.stockFuente==='neutro'){msg=`Stock: mes cerrado sin registro histórico de faltantes (valor neutro — se empezó a guardar la foto desde ahora).`;}
     else if(P.stockFuente==='historico'){msg=`Stock: ese mes tuviste en promedio <strong>${fmt(P.riesgoTot)}</strong> en riesgo por faltantes (<strong>${(P.stockPct*100).toFixed(0)}%</strong> de tu ganancia)${mal(cst)?`.`:` — bien cubierto.`}`;}
     else if(P.riesgoTot>0){const top=[...(state.pedidos||[]),...(state.pedidos_py||[])].filter(x=>x.riesgo>0&&(x.estado||'pendiente')!=='suficiente').sort((a,b)=>b.riesgo-a.riesgo).slice(0,3).map(x=>x.producto);msg=`Stock: <strong>${fmt(P.riesgoTot)}</strong> en riesgo por faltantes (<strong>${(P.stockPct*100).toFixed(0)}%</strong> de tu ganancia mensual)${mal(cst)?` — repón ahora para no arrancar el mes que viene sin stock.`:`.`}${(mal(cst)&&top.length)?` Reponé: ${top.join(', ')}.`:``}`;}
-    else msg=`Stock: sin faltantes con plata en riesgo — stock sano.`;
+    else msg=(P.stockFuente==='live'&&pedSinDecidirLista('prioridad').length)?`Stock: sin faltantes con plata en riesgo entre lo que Claude ya decidió.`:`Stock: sin faltantes con plata en riesgo — stock sano.`;
+    // LO SIN DECIDIR NO PUEDE VERSE "PERFECTO" (09/10/2026): esos productos no arman pedido, así que su riesgo no
+    // está en la suma de arriba. No se cambia la cuenta: se dice cuántos son, en el mismo renglón.
+    if(P.stockFuente==='live'){const _sd=pedSinDecidirLista('prioridad');if(_sd.length){const _r=_sd.filter(x=>x.sem==='rojo').length;
+      msg+=` <span style="color:var(--amber)">· 🧠 ${_sd.length} producto${_sd.length===1?'':'s'} que vende${_sd.length===1?'':'n'} sin decidir${_r?` (${_r} sin stock)`:''}: no entran en esta cuenta hasta que Claude diga cuántas comprar.</span>`;}}
     out.push({key:'stock',lbl:'Stock',pts:perd(cst),txt:msg});}
   const cm=byKey.margen;
   // revisión max (rev4): la meta es la MISMA con la que se cuentan los puntos (puntCfg), no un 40 fijo.
@@ -18497,9 +18630,22 @@ function homeHoyEsc(e,ev){if(ev)ev.stopPropagation();_homeHoyEsc=e;_homeHoyOff=0
 // FLECHAS PARA ELEGIR EL DÍA (01/10/2026, pedido suyo: "se puede poner unas flechitas para elegir el día?").
 // _homeHoyOff = cuántos días para atrás (0 = hoy, nunca para adelante). Al tocar la tarjeta, Ventas abre en
 // ESE día (_vpIrDia, lo consume initVentaProd una vez).
-let _homeHoyOff=0,_vpIrDia=null;
+let _homeHoyOff=0,_vpIrDia=null,_vpIrPer=null;
 function homeHoyMover(d,ev){if(ev)ev.stopPropagation();_homeHoyOff=Math.max(0,_homeHoyOff+d);renderHomeHoy();}
-function homeHoyIr(){if(_homeHoyEsc==='dia'&&_homeHoyOff>0){const x=new Date();x.setDate(x.getDate()-_homeHoyOff);_vpIrDia=dateToKey(x).replace(/_/g,'-');}goPage('ventaprod');}
+// La fecha que manda en la tarjeta (09/10/2026): en Día, el día elegido; en Mes, el mes elegido; en Año, el último
+// mes del año elegido que ya empezó. De acá sale el mes de "cuánto cobrar" y a dónde abre Ventas.
+function _homeHoyFecha(){
+  const hoy=new Date();hoy.setHours(12,0,0,0);const off=_homeHoyOff;
+  if(_homeHoyEsc==='mes'){const f=new Date(hoy.getFullYear(),hoy.getMonth()-off+1,0,12);return f>hoy?hoy:f;}
+  if(_homeHoyEsc==='anio'){const f=new Date(hoy.getFullYear()-off,11,31,12);return f>hoy?hoy:f;}
+  hoy.setDate(hoy.getDate()-off);return hoy;
+}
+function homeHoyIr(){
+  if(_homeHoyEsc==='dia'&&_homeHoyOff>0){const x=new Date();x.setDate(x.getDate()-_homeHoyOff);_vpIrDia=dateToKey(x).replace(/_/g,'-');}
+  else if(_homeHoyEsc==='mes'){const f=_homeHoyFecha();_vpIrPer={per:'mes',ym:f.getFullYear()+'-'+String(f.getMonth()+1).padStart(2,'0')};}
+  else if(_homeHoyEsc==='anio'){_vpIrPer={per:'anio',y:_homeHoyFecha().getFullYear()};}
+  goPage('ventaprod');
+}
 // ── EL PUNTAJE DEL DÍA (03/10/2026, pedido suyo: "el puntaje del día según la ganancia") ──────────
 // Misma vara que el Puntaje del mes, llevada a un día: 6 puntos por la ganancia contra lo que hace falta
 // ganar por día para cumplir el mes (retiro + gastos + objetivo de CYC ÷ días del mes) y 4 por el % de
@@ -18551,7 +18697,7 @@ function renderHomeHoy(){
     </div>
     <details id="hoy-cobro" ${_hoyCobroAbierto()?'open':''} onclick="event.stopPropagation()" ontoggle="_hoyCobroToggle(this)" style="margin-top:14px;padding-top:9px;border-top:1px solid color-mix(in srgb,var(--c) 25%,transparent)">
       <summary style="cursor:pointer;font-size:.72rem;color:var(--muted)">💸 cuánto cobrar</summary>
-      <div id="hoy-cobro-in" style="margin-top:8px">${_hoyCobroAbierto()?_homeCobroHtml(hoy):''}</div>
+      <div id="hoy-cobro-in" style="margin-top:8px">${_hoyCobroAbierto()?_homeCobroHtml(_homeHoyFecha()):''}</div>
     </details>
   </div></div>`;
   vivaScan(el);
@@ -18562,7 +18708,7 @@ function renderHomeHoy(){
 // desplegable abierto. El mes es el del día que se está mirando.
 function _hoyCobroAbierto(){try{return localStorage.getItem('cycHoyCobro')==='1';}catch(e){return false;}}
 function _hoyCobroToggle(d){try{localStorage.setItem('cycHoyCobro',d.open?'1':'0');}catch(e){}
-  if(d.open){const f=new Date();f.setDate(f.getDate()-_homeHoyOff);const box=document.getElementById('hoy-cobro-in');if(box)box.innerHTML=_homeCobroHtml(f);}}
+  if(d.open){const box=document.getElementById('hoy-cobro-in');if(box)box.innerHTML=_homeCobroHtml(_homeHoyFecha());}}
 function _homeCobroHtml(f){
   try{
     const ym=f.getFullYear()+'_'+String(f.getMonth()+1).padStart(2,'0');
