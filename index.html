@@ -2499,7 +2499,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.94';
+const APP_VERSION='22.95';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2510,6 +2510,7 @@ const APP_VERSION='22.94';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.95',f:'09/10/2026',h:'02:05',c:[{n:1,t:'🔥 Ventas: la velocidad, el temblor y el fuego llegan al máximo en la venta más grande posible ($650.000 · ~$550.000 de neto), no antes.'}]},
   {v:'22.94',f:'09/10/2026',h:'01:50',c:[{n:1,t:'🔥 Ventas: el fuego sale de un puntaje (ganancia en pesos × lo bueno del %). Arde desde ~$35.000 de puntaje y cada vez más fuerte hasta $250.000. La lista es más ancha y las ventas van un poco adentro para que el fuego se vea entero a los costados.'}]},
   {v:'22.93',f:'09/10/2026',h:'03:00',c:[{n:1,t:'🫨 Ventas: el temblor arranca antes. Una venta de ~$60.000 de neto ya tiembla (un tercio de lo que tiembla una de $300.000).'}]},
   {v:'22.92',f:'09/10/2026',h:'02:50',c:[{n:1,t:'🫨 Ventas: el movimiento tiene intensidad. Según el neto (y un poco el %), la tarjeta flota suave, flota rápido o tiembla, y cuanto más deja, más fuerte y rápido tiembla.'}]},
@@ -8620,11 +8621,14 @@ const VIVA_SH={bajo:'sq',justo:'tri',bien:'circ',bueno:'ring',exc:'plus',estr:'s
 // [cantidad, tamaño, opacidad]: desde verde, pocas figuras y cada vez más según el nivel (09/10/2026, pedido suyo)
 const VIVA_NV={gris:[.8,.9,.8],bajo:[.8,.9,.8],justo:[.8,.9,.85],bien:[.3,1,1],bueno:[.65,1.2,1.2],exc:[1.1,1.4,1.35],estr:[1.7,1.6,1.45],joya:[2.4,1.8,1.55]};
 const VIVA_DIA_NIV=[['bajo',-1e12,'var(--red)'],['justo',90000,'#f97316'],['bien',115000,'var(--green)'],['bueno',150000,'#14b8a6'],['exc',190000,'#60a5fa'],['estr',230000,'#a78bfa'],['joya',300000,'#eab308']];
+// EL TOPE DE UNA VENTA (09/10/2026, él: "lo máximo que puede vender cyc es 650.000, el tope del neto es lo que deje esa
+// venta"): $650.000 menos lo que se queda ML ≈ $550.000 de neto. Velocidad y temblor llegan al máximo ahí, no antes.
+const VIVA_NETO_MAX=550000;
 const _vivaLog=(x,a,b)=>Math.min(1,Math.max(0,Math.log(Math.max(x,a)/a)/Math.log(b/a)));
 // Una venta: devuelve qué dibujar, o null si no se anima (cancelada).
 function vivaVenta(o){
   if(o.cancel)return null;
-  const vel=_vivaLog(Number(o.neto)||0,1500,60000);
+  const vel=_vivaLog(Number(o.neto)||0,1500,VIVA_NETO_MAX);
   if(o.gpct==null||o.est)return null;
   const n=_pctNivel(o.gpct);if(!n)return null;
   // Rojo y naranja: sólo el color del % (09/10/2026, él: "hay muchos colores y quilombo, casi ni se ve nada").
@@ -8638,16 +8642,16 @@ function vivaVenta(o){
   // CUÁNTO SE MUEVE (09/10/2026, él: "que haya intensidad de temblar, según lo caro que sea y teniendo en cuenta todo"):
   // tm de 0 a 1 = 75% el neto (de $30.000 a $300.000) y 25% el nivel del %. Flota suave → flota rápido → tiembla, y
   // el temblor crece con tm (amplitud --tz y velocidad --tv). El fuego sigue: $100.000+ y desde "Bueno".
-  const tm=neto>=30000?Math.min(1,.75*_vivaLog(neto,30000,300000)+.25*VIVA_ORD[n.k]/6):0;
+  const tm=neto>=30000?Math.min(1,.75*_vivaLog(neto,30000,VIVA_NETO_MAX)+.25*VIVA_ORD[n.k]/6):0;
   // tz crece más rápido arriba (tm^1.5): una venta de $60.000 tiembla ~1/3 de lo que tiembla una de $300.000 (él, Ferrari contra SSD).
-  const tz=Math.round(Math.max(.5,3.4*Math.pow(tm,1.5))*100)/100,tv=Math.round((.5-tm*.28)*100)/100+'s';
+  const tz=Math.round(Math.max(.5,4.5*Math.pow(tm,1.5))*100)/100,tv=Math.round((.5-tm*.28)*100)/100+'s';
   // EL FUEGO SALE DE UN PUNTAJE: ganancia en pesos × lo bueno del % (09/10/2026, él: "tomar el score ganancia y % de
   // ganancia… que empiece a arder con variante de intensidad desde x punto y que vaya aumentando"). Factor del % =
   // %/30 (entre 0,5 y 2,5): una venta al 30% vale su ganancia tal cual, al 60% el doble. Arde desde 35.000 de puntaje
   // (2 Ferrari a 42% con $40.000 de ganancia = 56.000 → arde suave) y la intensidad (fi) llega al máximo en 250.000.
   const gan=Number(o.gan)||0,fs=gan>0?gan*Math.min(2.5,Math.max(.5,(Number(o.gpct)||0)/30)):0;
-  const fi=fs>=35000?Math.max(.08,_vivaLog(fs,35000,250000)):0;
-  return{k:n.k,c:n.c,vel,vi,tz,tv,fi,ef:fi>0?'fuego':tm>=.3?'tiembla':tm>=.18?'flota2':neto>=30000?'flota':neto>=12000?'glow':''};   // fuego: además desde "Bueno" (45%) para arriba, él: "verde es poco"
+  const fi=fs>=35000?Math.max(.08,_vivaLog(fs,35000,400000)):0;   // tope 400.000: una venta de $650.000 al 40-60%
+  return{k:n.k,c:n.c,vel,vi,tz,tv,fi,ef:fi>0?'fuego':tm>=.28?'tiembla':tm>=.16?'flota2':neto>=30000?'flota':neto>=12000?'glow':''};   // fuego: además desde "Bueno" (45%) para arriba, él: "verde es poco"
 }
 // La tarjeta de una venta adentro de su envoltorio (el fuego necesita salir por afuera de la tarjeta).
 function vivaEnvolver(html,cual,v){
