@@ -2501,7 +2501,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.02';
+const APP_VERSION='23.03';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2512,6 +2512,7 @@ const APP_VERSION='23.02';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.03',f:'09/10/2026',h:'13:10',c:[{n:1,t:'🎨 Ventas: la tarjeta viva (color, figuras, brillo) aparece recién desde 2.000 puntos (ganancia × %). Las ventas chicas quedan como una tarjeta común.'}]},
   {v:'23.02',f:'09/10/2026',h:'12:05',c:[{n:1,t:'🎨 Ventas: las ventas chicas casi no se pintan (un toque de su color) y el color se enciende con el puntaje. La JOYA chica brilla menos pero conserva su borde dorado; las rojas chicas casi no se ven rojas.'}]},
   {v:'23.01',f:'09/10/2026',h:'11:45',c:[{n:1,t:'🎨 Ventas: el color de cada venta sale siempre de su % (las rojas en rojo, la JOYA en oro de verdad). El brillo, las figuras, el movimiento, el temblor y el fuego salen del puntaje: ganancia × lo bueno del %. Una venta verde muy grande puede arder.'},{n:1,t:'⬆️⬇️ El renglón del cambio de precio va en verde si dejó más plata en esa venta y en rojo si dejó menos (antes era naranja al subir y azul al bajar).'}]},
   {v:'23.00',f:'09/10/2026',h:'03:40',c:[{n:3,t:'🧠 Pedidos y Armar caja ya no esconden lo que Claude no decidió: arriba de Pedidos dice cuántos productos que venden están sin decidir, y cada color o cuenta sin decidir lo dice.'},{n:3,t:'📦 Al cerrar una caja o confirmar un pedido de Paraguay se descuenta de lo que decidió Claude (antes seguía pidiendo lo mismo).'},{n:2,t:'🛒 "Cargar lo sugerido" ya no vacía la caja cuando no hay nada decidido: avisa por qué.'},{n:2,t:'🧠 Cada color muestra su motivo, y el precio para el máximo de compra va aparte.'},{n:1,t:'📅 Inicio en Mes o Año: "cuánto cobrar" usa ese mes, y al tocar la tarjeta abre Ventas en ese período.'}]},
@@ -8664,7 +8665,7 @@ const _vivaLog=(x,a,b)=>Math.min(1,Math.max(0,Math.log(Math.max(x,a)/a)/Math.log
 // tal cual; al 60%, el doble. Las que PERDIERON plata puntúan por lo que perdieron (en rojo), pero nunca arden.
 // Escalones del puntaje: $3.000 brilla · $8.000 flota · ~$25.000 flota rápido · ~$45.000 tiembla · $35.000+ arde (si ganó)
 // y todo llega al máximo en $400.000 (una venta de $650.000 al 40-60%).
-const VIVA_SC_MAX=400000;
+const VIVA_SC_MAX=400000, VIVA_SC_MIN=2000;
 function vivaScore(o){
   const gan=Number(o.gan)||0,pct=Number(o.gpct)||0;
   return gan>0?gan*Math.min(2.5,Math.max(.5,pct/30)):Math.abs(gan);
@@ -8674,6 +8675,7 @@ function vivaVenta(o){
   if(o.gpct==null||o.est)return null;
   const n=_pctNivel(o.gpct);if(!n)return null;
   const sc=vivaScore(o),gano=(Number(o.gan)||0)>0;
+  if(sc<VIVA_SC_MIN)return null; // regla suya del 09/10: la venta viva recién aparece desde 2.000 puntos
   const vel=_vivaLog(sc,1000,VIVA_SC_MAX);   // velocidad de las figuras
   const vi=_vivaLog(sc,1000,150000);          // brillo, cantidad de figuras, halo
   const tm=sc>=8000?.9*_vivaLog(sc,8000,VIVA_SC_MAX):0;   // cuánto se mueve la tarjeta
