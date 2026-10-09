@@ -2501,7 +2501,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.07';
+const APP_VERSION='23.08';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2512,6 +2512,7 @@ const APP_VERSION='23.07';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.08',f:'09/10/2026',h:'15:05',c:[{n:1,t:'⚡ Ventas: las figuras de atrás suben a la velocidad que elegiste por neto: quietas hasta $4.000, 3 px/s en $5.000, 303 en $50.000, 608 en $100.000, 1.037 en $200.000, 2.061 en $400.000 y 2.500 en $550.000.'}]},
   {v:'23.07',f:'09/10/2026',h:'14:25',c:[{n:1,t:'⚡ Ventas: en las ventas grandes las figuras de atrás suben 3 veces más rápido. Las chicas siguen lentas como estaban.'}]},
   {v:'23.06',f:'09/10/2026',h:'14:10',c:[{n:1,t:'📈 Ventas: en una compra de varios productos cada renglón tiene su propio botón de línea de tiempo.'},{n:1,t:'▲▼ El renglón del cambio de precio va en gris; sólo la flecha tiene color: verde si subió, roja si bajó.'}]},
   {v:'23.05',f:'09/10/2026',h:'13:40',c:[{n:1,t:'⚡ Ventas: la tarjeta viva usa el MISMO ⚡ Score del ranking (ganancia² ÷ costo) y aparece desde 2.000. Antes era otra cuenta y no coincidía con el número que ves.'}]},
@@ -8673,6 +8674,15 @@ const _vivaLog=(x,a,b)=>Math.min(1,Math.max(0,Math.log(Math.max(x,a)/a)/Math.log
 // Ventas x Producto: ganancia² ÷ costo de esa venta (una que pierde usa su pérdida). Escalones en esa escala:
 // 1.800 brilla · 2.400 flota · 10.500 arde (si ganó) · todo al máximo en 120.000. Abajo de 2.000 no se anima.
 const VIVA_SC_MAX=120000, VIVA_SC_MIN=2000;
+// VELOCIDAD DE LAS FIGURAS POR NETO (09/10/2026, elegida por él con el ajustador): neto → px por segundo, de a poco
+// entre un punto y otro (escala de neto logarítmica). Sólo la velocidad de subida; lo demás sigue saliendo del puntaje.
+const VIVA_VEL_NETO=[[4000,0],[5000,3],[50000,303],[100000,608],[200000,1037],[400000,2061],[550000,2500]];
+function vivaVelNeto(neto){
+  const T=VIVA_VEL_NETO,n=Number(neto)||0;
+  if(n<=T[0][0])return T[0][1];if(n>=T[T.length-1][0])return T[T.length-1][1];
+  for(let i=1;i<T.length;i++)if(n<=T[i][0]){const a=T[i-1],b=T[i],t=(Math.log(n)-Math.log(a[0]))/(Math.log(b[0])-Math.log(a[0]));return a[1]+(b[1]-a[1])*t;}
+  return 0;
+}
 function vivaScore(o){
   const gan=Number(o.gan)||0,c=Number(o.costo)||0;
   return c>0?gan*gan/c:0;
@@ -8689,7 +8699,7 @@ function vivaVenta(o){
   const tz=Math.round(Math.max(.5,4.5*Math.pow(tm,1.5))*100)/100,tv=Math.round((.5-tm*.28)*100)/100+'s';
   const fi=gano&&sc>=10500?Math.max(.08,_vivaLog(sc,10500,VIVA_SC_MAX)):0;
   const ef=fi>0?'fuego':tm>=.28?'tiembla':tm>=.16?'flota2':sc>=2400?'flota':sc>=1800?'glow':'';
-  return{k:n.k,c:n.c,vel,vi,tz,tv,fi,ef};
+  return{k:n.k,c:n.c,vel,vi,tz,tv,fi,ef,vpx:vivaVelNeto(o.neto)};
 }
 // La tarjeta de una venta adentro de su envoltorio (el fuego necesita salir por afuera de la tarjeta).
 function vivaEnvolver(html,cual,v){
@@ -8709,7 +8719,7 @@ function vivaEnvolver(html,cual,v){
   // $100.000 de neto o más tiembla siempre; arde sólo desde "Bueno" (09/10/2026, él con 2 Ferrari de $112.000 de neto).
   const mv=v.ef==='fuego'||v.ef==='tiembla'?'mv-tiembla':v.ef==='flota2'?'mv-flota2':v.ef==='flota'?'mv-flota':'';
   const gl=v.ef?('gl'+(v.ef==='fuego'||v.ef==='tiembla'?' fuerte':'')):'';
-  return `<div class="vw ${cual} ${mv} ${gl}${v.ef==='fuego'?' vf':''}" style="--c:${v.c};--vr:8px;--tz:${v.tz||1};--tv:${v.tv||'.38s'}" data-viva="venta" data-vk="${v.k}" data-vv="${v.vel.toFixed(3)}" data-vi="${(v.vi==null?1:v.vi).toFixed(3)}" data-vf="${(v.fi||0).toFixed(3)}"${v.quieta?' data-vq="1"':''}>${v.ef==='fuego'?'<canvas class="viva-fuego"></canvas>':''}${html}</div>`;
+  return `<div class="vw ${cual} ${mv} ${gl}${v.ef==='fuego'?' vf':''}" style="--c:${v.c};--vr:8px;--tz:${v.tz||1};--tv:${v.tv||'.38s'}" data-viva="venta" data-vk="${v.k}" data-vv="${v.vel.toFixed(3)}" data-vi="${(v.vi==null?1:v.vi).toFixed(3)}" data-vf="${(v.fi||0).toFixed(3)}"${v.vpx!=null?` data-vpx="${Math.round(v.vpx)}"`:''}${v.quieta?' data-vq="1"':''}>${v.ef==='fuego'?'<canvas class="viva-fuego"></canvas>':''}${html}</div>`;
 }
 // El día (tarjeta de Inicio).
 function vivaDia(h){
@@ -8728,7 +8738,7 @@ function vivaScan(root){
     (root||document).querySelectorAll('.vw[data-viva]').forEach(wr=>{
       if(_viva.cards.some(c=>c.wr===wr))return;
       const el=wr.querySelector(':scope>.viva');if(!el)return;
-      _viva.cards.push({wr,el,dia:wr.dataset.viva==='dia',k:wr.dataset.vk||'gris',vel:Number(wr.dataset.vv)||0,vi:wr.dataset.vi==null?1:(Number(wr.dataset.vi)||0),fi:wr.dataset.vf==null?1:(Number(wr.dataset.vf)||0),
+      _viva.cards.push({wr,el,dia:wr.dataset.viva==='dia',k:wr.dataset.vk||'gris',vel:Number(wr.dataset.vv)||0,vi:wr.dataset.vi==null?1:(Number(wr.dataset.vi)||0),fi:wr.dataset.vf==null?1:(Number(wr.dataset.vf)||0),vpx:wr.dataset.vpx==null?null:(Number(wr.dataset.vpx)||0),
         quieta:wr.dataset.vq==='1',fc:wr.querySelector(':scope>canvas.viva-fuego'),w:0,h:0,llamas:[],parts:[],visible:false});
       if(_viva.io)_viva.io.observe(wr);
     });
@@ -8816,7 +8826,7 @@ function _vivaDibujarCard(c,dt,estatico){
   const rm=matchMedia('(prefers-reduced-motion: reduce)').matches,quieta=c.quieta||rm||estatico;
   // 09/10/2026, él con el SSD de $363.680: las figuras de las ventas grandes suben 3 veces más rápido; las lentas quedan
   // igual. El ×3 entra de a poco entre velocidad .25 y .55 (puntaje ~5.000 a ~19.000) y de ahí arriba es ×3 entero.
-  const v=c.vel,_x3=c.dia?1:1+2*Math.min(1,Math.max(0,(v-.25)/.3)),pxs=c.dia?0.8+Math.pow(v,2.8)*960:(1.2+Math.pow(v,2.2)*480)*_x3;
+  const v=c.vel,_x3=c.dia?1:1+2*Math.min(1,Math.max(0,(v-.25)/.3)),pxs=c.dia?0.8+Math.pow(v,2.8)*960:c.vpx!=null?c.vpx:(1.2+Math.pow(v,2.2)*480)*_x3;   // venta: la velocidad que eligió él por neto
   const rot=c.dia?.05+Math.pow(v,2)*22:.08+Math.pow(v,1.5)*12;
   x.fillStyle=c.rgb;x.strokeStyle=c.rgb;
   for(const p of c.parts){
