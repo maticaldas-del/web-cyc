@@ -843,6 +843,17 @@ duplicadas o faltantes. todo eso"*. Las etapas 6 (ideas) y 7 (diseño) traen SIE
 detalles visuales con sentido, mejoras de comodidad, lo duplicado y lo que falta. Con maqueta para mirar antes.
 Anotado en `ml-sync/REVISION.md` (etapas 6 y 7) y en `REV_ETAPAS`.
 
+## 📲 A TELEGRAM SÓLO LO QUE ÉL TIENE QUE DECIDIR O HACER (09/10/2026, regla suya)
+
+Él: *"quiero que te ocupes todo vos como lo estás haciendo, siempre que tengas una duda de decisión mandame al telegram
+(...) quiero que me llegue lo importante, no si subiste/bajaste algo o si despausaste una publicación que llegó a full"*.
+ · Se manda con **`pregunto:<texto>`** por ml-sync (`//` = salto de línea, sin `;`, sin datos de compradores: el registro
+   es público). Sale al canal privado con "🤔 Para decidir vos". `recordar:` sigue para recordatorios.
+ · Va SÓLO: decisiones suyas (todas juntas, numeradas, (a)/(b)), preguntas de compradores que no supe contestar, cajas para
+   mandar ya, costos que faltan, publicaciones que tiene que arreglar él en ML. **Nunca** "subí/bajé/activé/entré en promo".
+ · Sin nada para decidir no sale nada (ni Telegram ni notificación). Lo hecho queda en el 🧠 y en el chat.
+ · Las dos rutinas (`trig_01475PwdPVJ1qTnYswcDxRq8` y `trig_01FCaQqzU5MA422N6Z8nH63Z`) ya lo dicen.
+
 ## 📨 CLAUDE LEE LOS AVISOS DE TELEGRAM Y RESUELVE LO QUE PUEDE (08/10/2026)
 
 Pedido suyo: *"me gustaria que vos tambien veas lo que me manda y ver si lo podes resolver vos (…) que me envies un

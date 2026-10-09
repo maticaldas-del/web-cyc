@@ -11719,10 +11719,15 @@ async function main() {
     // BILLING_PROBE=recordar:<texto> → manda ese texto SÓLO al canal privado (el de Mati solo, no al del
     // resumen donde está el padre). Para recordatorios que él pide a una hora (01/10/2026). Escribir
     // sólo recordatorios: el texto queda en el registro público.
-    if (/^recordar:/.test(String(process.env.BILLING_PROBE || ''))) {
-      const t = String(process.env.BILLING_PROBE).slice(9).trim();
-      if (!t) { console.log('Falta el texto: recordar:<texto>'); process.exitCode = 1; return; }
-      const txt = '⏰ <b>Recordatorio</b>\n' + t.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    // BILLING_PROBE=pregunto:<texto> (09/10/2026) → lo mismo, para las DECISIONES que Claude no puede
+    // tomar solo en sus vueltas. Regla suya: a Telegram va sólo lo que pide una decisión, nunca "subí",
+    // "bajé" o "activé". `//` en el texto = salto de línea (el campo del workflow es de una línea).
+    if (/^(recordar|pregunto):/.test(String(process.env.BILLING_PROBE || ''))) {
+      const esPreg = /^pregunto:/.test(String(process.env.BILLING_PROBE));
+      const t = String(process.env.BILLING_PROBE).replace(/^(recordar|pregunto):/, '').trim();
+      if (!t) { console.log('Falta el texto: recordar:<texto> / pregunto:<texto>'); process.exitCode = 1; return; }
+      const cuerpo = t.replace(/&/g, '&amp;').replace(/</g, '&lt;').split('//').map((x) => x.trim()).join('\n');
+      const txt = (esPreg ? '🤔 <b>Para decidir vos</b>\n' : '⏰ <b>Recordatorio</b>\n') + cuerpo;
       let ok = false;
       try { ok = await sendAlerta(txt, { directo: true }); } catch (e) { console.log('✗ sendAlerta tiró: ' + e.message); }
       if (ok) console.log('✓ recordatorio mandado al canal privado'); else { console.log('❌ NO salió el recordatorio'); process.exitCode = 1; }

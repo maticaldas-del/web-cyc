@@ -389,6 +389,12 @@ Todo lo que guarda la historia día por día y las pantallas que la dibujan.
 - Dónde se mira: el log de cada comando (cantidades) contra la base (`cyc/claudedecide`, `mlapi/claudeexp`) y la web.
 - **v23.00 (09/10/2026) · lo que salió de la revisión 9:** web — `pedSinDecidirLista`/`#ped-sindecidir` (productos que venden sin decisión), colores sin decidir en ámbar, `_clMotH` (motivo por color y `motPv`), 🧠 de Pedidos con `ped__<id>__v__*`, Armar caja con `sinDecCtas` por cuenta, `_cajaNadaMsg` (Cargar lo sugerido no vacía), `convieneCaja` cuenta lo cargado a mano, `clDescontarCaja` (al cerrar caja) y `clDescontarPed` (al "Ya lo pedí" de Paraguay) restan de `cyc/claudedecide`, `_homeHoyFecha` (Mes/Año). Robot — `decido` borra colores/cajas viejas del producto al decidir de nuevo (`_limpiosDec`), `motPv`/`motVars`, preguntas más nuevas primero en el `informe`, `limpiarNoSubir` corre con SOLO_DATOS (sin contagiar), `escasez`/`cajasnotas` restan `cajasentrado`, `cajasnotas` con `pasara` y decisiones, `planilla` cuenta contra el total, `pedidostodo` suma PY llegado sin contar y juzga las ventas baratas con la línea de tiempo (REMATE/BARATA), `analizapromo` avisa que no hay bajas pensadas. **Quedan pendientes** (ver la sección "Pendientes de la revisión 9" abajo).
 
+### `pregunto:` — a Telegram sólo las decisiones (09/10/2026, regla suya)
+ · Qué es: `pregunto:<texto>` (ml-sync) manda al canal privado "🤔 Para decidir vos" + el texto (`//` = salto de línea).
+   Vive en el mismo bloque que `recordar:` en sync.mjs. Las rutinas de las vueltas lo usan en vez de PushNotification.
+ · Qué chequear: que en las vueltas no salgan avisos de cosas ya hechas (subas, bajas, activadas), que sin decisiones no
+   salga nada, y que el texto no lleve datos de compradores (el log es público).
+
 ### Pendientes de la revisión 9 (09/10/2026, a la madrugada) — se van cerrando en las vueltas
 - **Publicaciones con variantes no tienen dueño de precio:** `decido`/`analizapromo`/`entrarpromo` las rechazan ("la maneja el robot de siempre") y con SOLO_DATOS el robot no las toca. Hace falta un camino de Claude por `raiseVariations` (y que la planilla las muestre como "nadie las maneja").
 - **`escasez` no mira colores** (saltea las claves `__v__`): un color con 1 u. dentro de un producto con stock no salta.
