@@ -307,7 +307,8 @@ Qué chequear: que el total de renglones cierre con las publicaciones vivas con 
 `vivaVenta`: color por % (igual), pero figuras (`vi` → `data-vi`, cantidad y opacidad), brillo, flota y fuego sólo por el
 neto: ≤$5.000 nada · $10.000 glow · $25.000 flota · $55.000 fuego. v22.86: fondo/borde/halo de cada venta también por
 el neto (`--tint/--bd/--bw/--halo` inline en `vivaEnvolver`, `vi` de $1.500 a $80.000), figuras ∝ vi². Qué chequear:
-una venta chica con % alto no brilla; $1.500 y $12.500 se ven distintas.
+una venta chica con % alto no brilla; $1.500 y $12.500 se ven distintas. v22.87: fuego sólo desde $100.000 de neto
+(flota $30.000, glow $12.000, `vi` hasta $120.000).
 
 ### Ventas de hoy: Día · Mes · Año (09/10/2026, v22.84)
 Pedido suyo: *"poner el selector de día, mes y año. y que siga el mismo pensamiento: el 7 del mes es 115.000 por los

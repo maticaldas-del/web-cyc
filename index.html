@@ -2495,7 +2495,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.86';
+const APP_VERSION='22.87';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2506,6 +2506,7 @@ const APP_VERSION='22.86';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.87',f:'09/10/2026',h:'01:55',c:[{n:1,t:'🔥 Ventas: el fuego queda sólo para lo excepcional (neto de $100.000 o más). Un Ferrari de $59.000 de neto ahora flota y brilla, no arde.'}]},
   {v:'22.86',f:'09/10/2026',h:'01:40',c:[{n:1,t:'✨ Ventas: el fondo, el borde y el halo de cada venta también van con el neto, y todo un poco más bajo. Una venta de $1.500 de neto queda casi lisa y una de $12.500 se distingue; las grandes siguen brillando.'}]},
   {v:'22.85',f:'09/10/2026',h:'01:25',c:[{n:1,t:'✨ Ventas: el brillo, las figuras, el movimiento y el fuego van con el neto en pesos, no con el %. Hasta $5.000 de neto sólo el color; $10.000 brilla, $25.000 flota, $55.000 arde. El color sigue diciendo el %.'}]},
   {v:'22.84',f:'09/10/2026',h:'01:15',c:[{n:2,t:'🏠 Ventas de hoy tiene Día · Mes · Año. Las flechas mueven de a un día, mes o año, y el puntaje usa la misma vara: 7 puntos = $115.000 de ganancia por cada día del período (en el mes o año en curso, por los días que ya pasaron).'}]},
@@ -8620,9 +8621,10 @@ function vivaVenta(o){
   // EL BRILLO VA CON EL NETO (09/10/2026, él con un Metatarso de $4.920 de neto lleno de estrellas: "quiero que el
   // brillo vaya de mano con el neto, recontra llama la atención y son menos de 5.000"). El color sigue saliendo del
   // %, pero cuántas figuras, el brillo, el movimiento y el fuego salen SÓLO del neto en pesos, con los precios de CYC:
-  // hasta $5.000 nada (sólo el color) · $10.000 brilla · $25.000 flota · $55.000 arde (un perfume grande) · $80.000 tope.
-  const neto=Number(o.neto)||0,vi=_vivaLog(neto,1500,80000);   // 0 en $1.500 · ~.3 en $5.000 · ~.55 en $12.500 · .9 en $55.000
-  return{k:n.k,c:n.c,vel,vi,ef:neto>=55000?'fuego':neto>=25000?'flota':neto>=10000?'glow':''};
+  // hasta $5.000 nada (sólo el color) · $12.000 brilla · $30.000 flota · $100.000 arde (sólo lo excepcional: él, con un
+  // Ferrari de $59.000 de neto ardiendo, el 09/10: "¿está bien así, tirando fuego?") · $120.000 tope.
+  const neto=Number(o.neto)||0,vi=_vivaLog(neto,1500,120000);   // 0 en $1.500 · ~.28 en $5.000 · ~.48 en $12.500 · .85 en $60.000
+  return{k:n.k,c:n.c,vel,vi,ef:neto>=100000?'fuego':neto>=30000?'flota':neto>=12000?'glow':''};
 }
 // La tarjeta de una venta adentro de su envoltorio (el fuego necesita salir por afuera de la tarjeta).
 function vivaEnvolver(html,cual,v){
