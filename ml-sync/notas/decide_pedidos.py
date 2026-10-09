@@ -6,11 +6,11 @@ prods=[];grupo='';cur=None
 for l in L:
     m=re.match(r'════ (\w+) ·',l)
     if m: grupo=m.group(1); continue
-    m=re.match(r'^(p\w+) · (.*?) · v30 (\d+) v60 (\d+) v180 (\d+) · últ (\S+)(?: · REMATE \d+)? · dCS (\d+) · Full (\d+) \[[^\]]*\] · casa (\d+) · camino (\d+)(.*)$',l)
+    m=re.match(r'^(p\w+) · (.*?) · v30 (\d+) v60 (\d+) v180 (\d+) · últ (\S+)(?: · REMATE (\d+))? · dCS (\d+) · Full (\d+) \[[^\]]*\] · casa (\d+) · camino (\d+)(.*)$',l)
     if m and grupo in('BSAS','PY','PAULVIC'):
-        rest=m.group(11)
+        rest=m.group(12)
         g=lambda r: int(re.search(r,rest).group(1)) if re.search(r,rest) else 0
-        cur=dict(id=m.group(1),n=m.group(2),g=grupo,v30=int(m.group(3)),v60=int(m.group(4)),v180=int(m.group(5)),ult=m.group(6),full=int(m.group(8)),casa=int(m.group(9)),cam=int(m.group(10)),
+        cur=dict(id=m.group(1),n=m.group(2),g=grupo,v30=int(m.group(3)),v60=int(m.group(4)),v180=int(m.group(5)),ult=m.group(6),rem=int(m.group(7) or 0),full=int(m.group(9)),casa=int(m.group(10)),cam=int(m.group(11)),
           py=g(r'PYviaja (\d+)'),pv=g(r'PVviaja (\d+)'),neto=g(r'neto \$(\d+)'),costo=g(r'costo \$(\d+)'),precio=g(r'precio \$(\d+)'),cambios=(re.search(r'precio \$\d+ \((.*?)\)',rest).group(1) if re.search(r'precio \$\d+ \((.*?)\)',rest) else ''),vars=[])
         prods.append(cur); continue
     m=re.match(r'^   # (.*?) · v30 (\d+) v60 (\d+) v180 (\d+) · últ (\S+) · Full (\d+) · casa (\d+) · camino (\d+)(.*)$',l)
@@ -81,8 +81,9 @@ for p,q,d,rent in res:
         if q>0 and p['precio']: N.append(f"ped:{pid}=venta|{venta(p)}|precio normal de venta")
     else:
         r,t,obj,b=d
-        if q==0 and not (p['v180'] or p['full']): continue
+        # siempre se escribe (aunque sea 0): si no, una decisión vieja queda colgada (el Ultra Shift del 09/10)
         mot=f"{b} · ritmo {r*30:.0f} por mes · tiene {t} entre Full casa camino y viajando · para 30 dias hacen falta {obj:.0f}"
+        if p.get('rem'): mot+=f" · {p['rem']} vendidas en remate (menos de 10% de ganancia) no cuentan como demanda"
         if not rent: mot+=" · NO se compra: con el costo de la ficha no deja ganancia"
         N.append(f"ped:{pid}=u|{q}|{mot}")
         if q>0 and p['precio']: N.append(f"ped:{pid}=venta|{venta(p)}|precio normal de venta")
