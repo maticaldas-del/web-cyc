@@ -400,6 +400,7 @@ Todo lo que guarda la historia día por día y las pantallas que la dibujan.
    `#facc15` con fondo dorado) y saca brillo, figuras, velocidad, movimiento y fuego de `vivaScore` = ganancia ×
    (% ÷ 30, entre 0,5 y 2,5); las que perdieron puntúan por lo perdido y no arden. El renglón de cambio de precio
    (`cambioVentaHTML`) va verde/rojo según la plata de más o de menos.
+ · 23.02: la base de cada nivel es un tinte mínimo y el color crece con el puntaje (ventas chicas casi neutras).
  · Qué chequear: que una venta chica JOYA se vea dorada (no naranja), que las rojas se vean rojas, que una verde muy
    cara pueda arder, y que el fuego no aparezca en ventas chicas.
 
