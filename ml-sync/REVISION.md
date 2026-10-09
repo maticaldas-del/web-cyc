@@ -186,6 +186,14 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   promo no pase por abajo del piso sin `!piso` ni de 0% · que el cerebro de la noche no lea el precio de promo como
   "cambio a mano" y frene subas.
 
+### `decido` sube aunque no haya stock en Full (09/10/2026)
+Cool Water Woman (`MLA2070716651`): se agotó en un día las dos veces a $92.499 (19%) y `decido` se negaba a subirla
+"sin stock en Full", así que la tanda nueva se iba a vender otra vez barata. Ahora en `calcCerebro`, si Claude
+decidió una SUBA, se aplica aunque no haya stock (también pausada por falta de stock). Bajar sin stock sigue frenado.
+Qué chequear: que no se cuele una baja; que la suba en pausada se relea de ML.
+Y la regla de la revisión, suya: *"quiero que cada run evalues publicacion por publicacion"* — incluidas las
+pausadas sin stock que se agotan rápido (lo que se vende en 1-2 días al llegar está barato).
+
 ### Sin piso del 22%: objetivo 25% (09/10/2026, regla suya)
 - **Qué es:** `cyc/mlconfig` minPct = targetPct = 25 (`meta:25:25`). Colores: abajo de 25 rojo, desde 25 verde. Bajar de 25% sólo con motivo y `!piso`; nunca abajo de 0%.
 - **Qué chequear:** que nadie vuelva a usar 22 como freno, que los comandos que hablan de "piso" lean 25, y que una baja abajo de 25 tenga su motivo en el 🧠.

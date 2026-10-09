@@ -3611,7 +3611,11 @@ async function calcCerebro(db, o) {
         const kP = e.prodId + '__' + sidL(cta), kV = e.variant ? kP + '__v__' + sidL(e.variant) : null;
         const kS = kV && slog[kV] ? kV : kP;
         const st = Math.max(0, parseInt(inv[kV && inv[kV] != null ? kV : kP]) || 0);
-        if (!(st > 0)) { nada('sin stock en Full'); continue; }
+        // Sin stock en Full el cerebro no decide nada, PERO un precio que decidió Claude para SUBIR se aplica igual
+        // (09/10/2026, el Cool Water: se agotó en un día las dos veces a un precio que dejaba 19%; si la suba espera
+        // a que entre stock, la tanda nueva se vende otra vez barata antes de la vuelta siguiente). Bajar sin stock no.
+        const fzSinSt = !!(forzar && forzar[mla] && Number(forzar[mla].p) > p0 + 10);
+        if (!(st > 0) && !fzSinSt) { nada('sin stock en Full'); continue; }
         const m = (mlExtraPct(cta) + monoPz) / 100;
         const np = netopub[mla] || {};
         const envArriba = (p0 >= UMBRAL_ENVIO_GRATIS && Number(np.envio) > 0 && !np.envioML && !np.sinEnvio) ? Number(np.envio) : CAND_ENVIO_ARRIBA;
