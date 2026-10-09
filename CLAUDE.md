@@ -760,6 +760,15 @@ archivo. **Etapa 8 · Datos e historial** creada ese día (líneas de tiempo); c
 Inicio la pide ya. Y lo que se mira en TODAS: contar dos veces lo mismo (el stock ×4 del Centímetro),
 fallas leídas como dato, dos fórmulas para un número, datos de terceros en el registro público.
 
+## 🧠 "CEREBRO" = MI REVISIÓN COMPLETA DE TODA LA WEB (09/10/2026, nombre suyo)
+
+Él: *"quiero ponerle de nombre CEREBRO a la run tuya recorriendo toda la web y mirando todo lo que tenés que mirar"*.
+Cuando diga **"corré el cerebro"**, **"hacé un cerebro"** o pregunte **"¿ya pasó el cerebro?"** habla de ESTO: la revisión
+completa (informe, escasez, promos, pedidos, cajas, cajas llegadas, preguntas, vínculos, precios, notas del 🧠). Corre sola
+a las 08:52 y 20:52 (`trig_01475PwdPVJ1qTnYswcDxRq8`, "CEREBRO") y la vuelta corta a las 12:52 y 16:52
+(`trig_01FCaQqzU5MA422N6Z8nH63Z`, "CEREBRO corto"). Se puede adelantar cuando él lo pida. **No es el `cerebro` viejo del
+robot** (el probe `cerebro`/`calcCerebro` de sync.mjs): ése no se usa más.
+
 ## 🎯 SIN PISO DEL 22%: UN SOLO NÚMERO, 25% DE OBJETIVO (09/10/2026, regla suya)
 
 Él: *"sacá el piso de 22% ya que no tiene sentido. porque no se respeta nunca y si se respeta perdemos ventas de sobre
