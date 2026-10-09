@@ -538,6 +538,35 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
 }
 .vp-cel{display:none!important}
 @media(max-width:640px){.vp-pc{display:none!important}.vp-cel{display:flex!important}}
+/* VENTAS CON VIDA (09/10/2026, pedido suyo, armado con ejemplos hasta que dijo "está perfecto así"). Cada venta y la
+   tarjeta "Ventas de hoy" toman el color de su nivel, con figuras que flotan atrás. El motor es UNO (vivaScan). */
+.vw{position:relative}
+.vw.vp-pc{display:block!important}
+.vw.vp-cel{display:none!important}
+@media(max-width:640px){.vw.vp-pc{display:none!important}.vw.vp-cel{display:block!important}}
+.vw>canvas.viva-fuego{position:absolute;left:-24px;top:-70px;width:calc(100% + 48px);height:calc(100% + 80px);pointer-events:none;z-index:3}
+.viva{--tint:7%;--bd:32%;--bw:1px;--halo:0px;position:relative;overflow:hidden;z-index:1;
+  background:color-mix(in srgb,var(--c) var(--tint),var(--surface))!important;
+  border:var(--bw) solid color-mix(in srgb,var(--c) var(--bd),var(--border))!important;
+  box-shadow:0 0 var(--halo) 0 color-mix(in srgb,var(--c) 55%,transparent)}
+.viva>canvas.viva-fig{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:0}
+.viva>*:not(canvas){position:relative;z-index:1}
+.viva.lv-gris{--tint:4%;--bd:22%}
+.viva.lv-bajo,.viva.lv-justo{--tint:6%;--bd:28%}
+.viva.lv-bien{--tint:9%;--bd:38%}
+.viva.lv-bueno{--tint:15%;--bd:65%;--bw:2px;--halo:10px}
+.viva.lv-exc{--tint:22%;--bd:85%;--bw:2px;--halo:18px;background:linear-gradient(120deg,color-mix(in srgb,var(--c) 26%,var(--surface)),color-mix(in srgb,var(--c) 12%,var(--surface)) 60%,color-mix(in srgb,var(--c) 30%,var(--surface)))!important}
+.viva.lv-estr{--tint:24%;--bd:90%;--bw:2px;--halo:22px}
+.viva.lv-joya{--tint:26%;--bd:95%;--bw:3px;--halo:26px}
+.vw.gl>.viva{animation:vivaGlow 2.4s ease-in-out infinite}
+.vw.gl.fuerte>.viva{animation:vivaGlow 1.1s ease-in-out infinite}
+.vw.mv-flota{animation:vivaFlota 3.2s ease-in-out infinite}
+.vw.mv-flota2{animation:vivaFlota 1.6s ease-in-out infinite}
+.vw.mv-tiembla{animation:vivaTiembla .38s linear infinite}
+@keyframes vivaGlow{0%,100%{box-shadow:0 0 var(--halo) 0 color-mix(in srgb,var(--c) 45%,transparent)}50%{box-shadow:0 0 calc(var(--halo) + 16px) 3px color-mix(in srgb,var(--c) 65%,transparent)}}
+@keyframes vivaFlota{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+@keyframes vivaTiembla{0%{transform:translate(0,0) rotate(0)}20%{transform:translate(-1px,1px) rotate(-.25deg)}40%{transform:translate(1px,-1px) rotate(.25deg)}60%{transform:translate(-1px,0) rotate(.15deg)}80%{transform:translate(1px,1px) rotate(-.15deg)}100%{transform:translate(0,0) rotate(0)}}
+@media (prefers-reduced-motion: reduce){.vw,.vw>.viva{animation:none!important}}
 </style>
 </head>
 <body>
@@ -2462,7 +2491,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.77';
+const APP_VERSION='22.78';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2473,6 +2502,7 @@ const APP_VERSION='22.77';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.78',f:'08/10/2026',h:'23:50',c:[{n:1,t:'✨ Cada venta tiene el color de su % de ganancia y figuras que flotan atrás (una forma por nivel). Cuanto más neto dejó, más rápido se mueven. Las ventas que movieron mucha plata (por % y por pesos, también las que perdieron) brillan, flotan o tiemblan y se prenden fuego. Bueno y Excelente se ven más fuertes que Bien.'},{n:1,t:'✨ "Ventas de hoy" en Inicio: el color sale de la ganancia del día (Bien = $115.000), la velocidad de las figuras y el movimiento del total vendido, y arde cuando las dos son altas. Abajo de la ganancia queda el % del día.'}]},
   {v:'22.77',f:'08/10/2026',h:'22:45',c:[{n:3,t:'🧠 Pedidos, Armar caja y el máximo de compra muestran SÓLO lo que decide Claude, con su motivo. La web ya no propone números: lo que Claude no decidió dice "sin decidir". Las decisiones no vencen: duran hasta que Claude las cambie.'},{n:2,t:'🔗 Las publicaciones nuevas ya no se enganchan solas a una ficha: entran sin producto y las vincula Claude en su revisión.'}]},
   {v:'22.76',f:'08/10/2026',h:'21:06',c:[{n:3,t:'🧠 Pedidos y Armar caja: las unidades a comprar, las que van en cada caja y el precio con el que se calcula el máximo de compra los puede decidir Claude. Donde lo hizo dice "🧠 lo decidí yo" y la cuenta automática queda al lado para comparar. Si Claude deja de revisar, a los 4 días vuelve la cuenta sola.'}]},
   {v:'22.75',f:'08/10/2026',h:'20:05',c:[{n:2,t:'📈 Línea de tiempo: el "stock hoy · alcanza N días" de arriba y el color de la línea de stock ahora usan la misma cuenta del ritmo de venta (antes arriba podía decir "sobra" y la línea "bien").'}]},
@@ -8543,17 +8573,165 @@ const _pctPisoMeta=()=>{const c=state.mlconfig||{};const piso=parseFloat(c.minPc
 const _pctNivel=pct=>{
   if(pct==null||!isFinite(pct))return null;
   const p=Math.round(pct*10)/10,{piso,meta}=_pctPisoMeta();
-  if(p>=200)return{c:'#eab308',l:'💎 JOYA',g:'#ca8a04,#facc15'};
-  if(p>=130)return{c:'#a78bfa',l:'🟣 Estrella',g:'#7c3aed,#a855f7'};
-  if(p>=70)return{c:'#60a5fa',l:'🔵 Excelente',g:'#3b82f6,#60a5fa'};
-  if(p>=Math.max(45,meta+1))return{c:'#14b8a6',l:'🩵 Bueno',g:'#14b8a6,#2dd4bf'};
-  if(p>=meta)return{c:'var(--green)',l:'🟢 Bien',g:'#22c55e,#4ade80'};
-  if(p>=piso)return{c:'#f97316',l:'🟠 Justo',g:'#f97316,#fb923c'};
-  return{c:'var(--red)',l:'🔴 Bajo',g:'#ef4444,#f87171'};
+  if(p>=200)return{k:'joya',c:'#eab308',l:'💎 JOYA',g:'#ca8a04,#facc15'};
+  if(p>=130)return{k:'estr',c:'#a78bfa',l:'🟣 Estrella',g:'#7c3aed,#a855f7'};
+  if(p>=70)return{k:'exc',c:'#60a5fa',l:'🔵 Excelente',g:'#3b82f6,#60a5fa'};
+  if(p>=Math.max(45,meta+1))return{k:'bueno',c:'#14b8a6',l:'🩵 Bueno',g:'#14b8a6,#2dd4bf'};
+  if(p>=meta)return{k:'bien',c:'var(--green)',l:'🟢 Bien',g:'#22c55e,#4ade80'};
+  if(p>=piso)return{k:'justo',c:'#f97316',l:'🟠 Justo',g:'#f97316,#fb923c'};
+  return{k:'bajo',c:'var(--red)',l:'🔴 Bajo',g:'#ef4444,#f87171'};
 };
 const pctColor=pct=>{const n=_pctNivel(pct);return n?n.c:'var(--muted)';};
 const pctLabel=pct=>{const n=_pctNivel(pct);return n?n.l:'';};
 const pctGradient=pct=>{const n=_pctNivel(pct);return n?n.g:'#7c3aed,#a855f7';};
+// ── VENTAS CON VIDA (09/10/2026) ─────────────────────────────────────────────────────────────────────────────
+// Reglas suyas, elegidas con ejemplos: (1) en cada VENTA el color sale del % de ganancia (los 7 niveles), la
+// velocidad de las figuras sale del NETO y cuánto se anima (brilla, flota, tiembla y arde) sale del PUNTAJE:
+// 4 de 10 por el nivel del % y 6 por la ganancia en pesos (las que PERDIERON mucha plata también, en rojo).
+// (2) En "Ventas de hoy" el color sale de la GANANCIA del día en pesos (Bien = $115.000), la velocidad y el
+// movimiento de la tarjeta del TOTAL vendido (tope en $2.500.000) y el fuego sólo con las dos altas.
+// Las estimadas y las sin costo quedan grises y quietas. Con "menos movimiento" pedido en el teléfono, quietas.
+const VIVA_ORD={bajo:0,justo:1,bien:2,bueno:3,exc:4,estr:5,joya:6};
+const VIVA_SH={bajo:'sq',justo:'tri',bien:'circ',bueno:'ring',exc:'plus',estr:'star',joya:'dia',gris:'circ'};
+const VIVA_NV={gris:[.8,.9,.8],bajo:[.8,.9,.8],justo:[.8,.9,.85],bien:[1,1,1],bueno:[1.5,1.3,1.25],exc:[2,1.6,1.45],estr:[2.2,1.7,1.5],joya:[2.4,1.8,1.55]};
+const VIVA_DIA_NIV=[['bajo',-1e12,'var(--red)'],['justo',90000,'#f97316'],['bien',115000,'var(--green)'],['bueno',150000,'#14b8a6'],['exc',190000,'#60a5fa'],['estr',230000,'#a78bfa'],['joya',300000,'#eab308']];
+const _vivaLog=(x,a,b)=>Math.min(1,Math.max(0,Math.log(Math.max(x,a)/a)/Math.log(b/a)));
+// Una venta: devuelve qué dibujar, o null si no se anima (cancelada).
+function vivaVenta(o){
+  if(o.cancel)return null;
+  const vel=_vivaLog(Number(o.neto)||0,1500,60000);
+  if(o.gpct==null||o.est)return{k:'gris',c:'var(--muted)',vel,ef:'',quieta:1};
+  const n=_pctNivel(o.gpct);if(!n)return null;
+  const b=_vivaLog(Math.abs(Number(o.gan)||0),300,60000);
+  const punt=(VIVA_ORD[n.k]/6*.4+b*.6)*10;
+  return{k:n.k,c:n.c,vel,ef:punt>=7?'fuego':punt>=5.5?'flota':punt>=4?'glow':''};
+}
+// La tarjeta de una venta adentro de su envoltorio (el fuego necesita salir por afuera de la tarjeta).
+function vivaEnvolver(html,cual,v){
+  if(!v)return html;
+  const a=`class="ingreso-item ${cual}" style="`;
+  if(html.indexOf(a)<0)return html;
+  html=html.replace(a,`class="ingreso-item viva lv-${v.k}" style="--c:${v.c};`);
+  const mv=v.ef==='fuego'?'mv-tiembla':v.ef==='flota'?'mv-flota':'';
+  const gl=v.ef?('gl'+(v.ef==='fuego'?' fuerte':'')):'';
+  return `<div class="vw ${cual} ${mv} ${gl}" data-viva="venta" data-vk="${v.k}" data-vv="${v.vel.toFixed(3)}"${v.quieta?' data-vq="1"':''}>${v.ef==='fuego'?'<canvas class="viva-fuego"></canvas>':''}${html}</div>`;
+}
+// El día (tarjeta de Inicio).
+function vivaDia(h){
+  const g=Number(h.gan)||0,t=Number(h.bruto)||0;let k='bajo',c='var(--red)';
+  for(const [kk,m,cc] of VIVA_DIA_NIV)if(g>=m){k=kk;c=cc;}
+  const fuego=g>=190000&&t>=1200000;
+  const mv=fuego?'mv-tiembla':t>=1400000?'mv-tiembla':t>=1000000?'mv-flota2':t>=600000?'mv-flota':'';
+  const gl=VIVA_ORD[k]>=VIVA_ORD.bueno?('gl'+(VIVA_ORD[k]>=VIVA_ORD.estr?' fuerte':'')):'';
+  return{k,c,vel:_vivaLog(t,100000,2500000),fuego,mv,gl,quieta:!(h.ventas>0)};
+}
+const _viva={cards:[],on:false,last:0,tick:0};
+function vivaScan(root){
+  try{
+    _viva.cards=_viva.cards.filter(c=>c.wr.isConnected);
+    (root||document).querySelectorAll('.vw[data-viva]').forEach(wr=>{
+      if(_viva.cards.some(c=>c.wr===wr))return;
+      const el=wr.querySelector(':scope>.viva');if(!el)return;
+      _viva.cards.push({wr,el,dia:wr.dataset.viva==='dia',k:wr.dataset.vk||'gris',vel:Number(wr.dataset.vv)||0,
+        quieta:wr.dataset.vq==='1',fc:wr.querySelector(':scope>canvas.viva-fuego'),w:0,h:0,llamas:[],parts:[],visible:false});
+    });
+    if(!_viva.on){_viva.on=true;_vivaArrancar();}
+    _vivaVisibles();
+  }catch(e){}
+}
+function _vivaRnd(a,b){return a+Math.random()*(b-a);}
+function _vivaColor(c){const t=document.createElement('span');t.style.color='var(--c)';c.el.appendChild(t);const r=getComputedStyle(t).color;t.remove();return r;}
+function _vivaMedir(c,r){
+  const dpr=Math.min(2,window.devicePixelRatio||1);
+  if(!c.cv){c.cv=document.createElement('canvas');c.cv.className='viva-fig';c.el.insertBefore(c.cv,c.el.firstChild);}
+  c.w=r.width;c.h=r.height;c.cv.width=Math.max(1,Math.round(c.w*dpr));c.cv.height=Math.max(1,Math.round(c.h*dpr));
+  c.ctx=c.cv.getContext('2d');c.ctx.setTransform(dpr,0,0,dpr,0,0);c.rgb=_vivaColor(c);
+  const NV=VIVA_NV[c.k]||VIVA_NV.bien;c.nv=NV;
+  let cant=Math.max(6,Math.round(c.w*c.h*.00034*NV[0]*(1+c.vel*.6)));if(c.dia)cant=Math.min(16+Math.round(NV[0]*22),cant);
+  const sh=VIVA_SH[c.k]||'circ';
+  c.parts=Array.from({length:cant},()=>({x:_vivaRnd(0,c.w),y:_vivaRnd(0,c.h),s:_vivaRnd(3,7.5)*NV[1],r:_vivaRnd(0,6.28),vr:_vivaRnd(-.8,.8),fase:_vivaRnd(0,6.28),k:_vivaRnd(.7,1.4)}));
+  c.sh=sh;
+  if(c.fc){c.fw=c.w+48;c.fh=c.h+80;c.fc.width=Math.round(c.fw*dpr);c.fc.height=Math.round(c.fh*dpr);c.fctx=c.fc.getContext('2d');c.fctx.setTransform(dpr,0,0,dpr,0,0);c.llamas=[];}
+  _vivaDibujarCard(c,0,true);
+}
+function _vivaVisibles(){
+  const H=innerHeight||document.documentElement.clientHeight;
+  for(const c of _viva.cards){
+    const r=c.el.getBoundingClientRect();
+    c.visible=r.width>0&&r.height>0&&r.bottom>-120&&r.top<H+120;
+    if(c.visible&&(Math.abs(r.width-c.w)>1||Math.abs(r.height-c.h)>1))_vivaMedir(c,r);
+  }
+}
+function _vivaForma(x,sh,s){
+  x.beginPath();
+  switch(sh){
+    case 'sq':x.rect(-s,-s,2*s,2*s);x.fill();break;
+    case 'tri':x.moveTo(0,-s*1.2);x.lineTo(s*1.1,s*.8);x.lineTo(-s*1.1,s*.8);x.closePath();x.fill();break;
+    case 'ring':x.lineWidth=1.8;x.arc(0,0,s,0,6.283);x.stroke();break;
+    case 'plus':x.rect(-s,-s*.32,2*s,s*.64);x.rect(-s*.32,-s,s*.64,2*s);x.fill();break;
+    case 'star':for(let i=0;i<10;i++){const a=i*Math.PI/5-Math.PI/2,rr=i%2?s*.45:s*1.15;x.lineTo(Math.cos(a)*rr,Math.sin(a)*rr);}x.closePath();x.fill();break;
+    case 'dia':x.moveTo(0,-s*1.3);x.lineTo(s*.8,0);x.lineTo(0,s*1.3);x.lineTo(-s*.8,0);x.closePath();x.fill();break;
+    default:x.arc(0,0,s,0,6.283);x.fill();
+  }
+}
+const _vivaRgba=(rgb,a)=>String(rgb).replace(/^rgba?\(([^)]+)\)$/,(m,x)=>`rgba(${x.split(',').slice(0,3).join(',')},${a})`);
+function _vivaFuego(c,dt){
+  const x=c.fctx;if(!x)return;x.clearRect(0,0,c.fw,c.fh);
+  const ox=24,oy=70,ritmo=(40+c.vel*110)*dt*(c.dia?1.3:1),dark=!document.body.classList.contains('light');
+  const nuevas=Math.floor(ritmo+(Math.random()<ritmo%1?1:0));
+  for(let i=0;i<nuevas;i++){
+    const lado=Math.random();let px,py;
+    if(lado<.7){px=ox+_vivaRnd(4,c.w-4);py=oy+_vivaRnd(0,4);}
+    else if(lado<.85){px=ox+_vivaRnd(-2,3);py=oy+_vivaRnd(4,c.h*.8);}
+    else{px=ox+c.w+_vivaRnd(-3,2);py=oy+_vivaRnd(4,c.h*.8);}
+    c.llamas.push({x:px,y:py,vx:_vivaRnd(-12,12)+(lado>=.85?10:lado>=.7?-10:0),vy:-_vivaRnd(30,60)*(1+c.vel*.9),vida:0,max:_vivaRnd(.45,.95)*(1+c.vel*.5),s:_vivaRnd(3,7)*(1+c.vel*.6)});
+  }
+  x.globalCompositeOperation=dark?'lighter':'source-over';
+  const vivas=[];
+  for(const f of c.llamas){
+    f.vida+=dt;if(f.vida>f.max)continue;
+    f.x+=f.vx*dt+Math.sin((f.vida+f.x)*9)*.4;f.y+=f.vy*dt;f.vx*=.98;
+    const t=f.vida/f.max,r=f.s*(1-t*.7);
+    const g=x.createRadialGradient(f.x,f.y,0,f.x,f.y,r*2.2);
+    g.addColorStop(0,`rgba(255,${Math.round(240-150*t)},${Math.round(160-150*t)},${(1-t)*.85})`);
+    g.addColorStop(.45,_vivaRgba(c.rgb,(1-t)*.55));g.addColorStop(1,_vivaRgba(c.rgb,0));
+    x.fillStyle=g;x.beginPath();x.arc(f.x,f.y,r*2.2,0,6.283);x.fill();vivas.push(f);
+  }
+  c.llamas=vivas;x.globalCompositeOperation='source-over';
+}
+function _vivaDibujarCard(c,dt,estatico){
+  const x=c.ctx;if(!x)return;x.clearRect(0,0,c.w,c.h);
+  const rm=matchMedia('(prefers-reduced-motion: reduce)').matches,quieta=c.quieta||rm||estatico;
+  const v=c.vel,pxs=c.dia?0.8+Math.pow(v,2.8)*960:1.2+Math.pow(v,2.2)*480;
+  const rot=c.dia?.05+Math.pow(v,2)*22:.08+Math.pow(v,1.5)*12;
+  x.fillStyle=c.rgb;x.strokeStyle=c.rgb;
+  for(const p of c.parts){
+    if(!quieta){
+      p.y-=pxs*p.k*dt;p.fase+=dt*(.2+v*6);p.x+=Math.sin(p.fase)*.3*(.3+v*3);p.r+=p.vr*dt*rot;
+      if(p.y<-12){p.y=c.h+12;p.x=_vivaRnd(0,c.w);}
+      if(p.x<-12)p.x=c.w+12;if(p.x>c.w+12)p.x=-12;
+    }
+    let a=Math.min(.85,.42*c.nv[2])*(c.quieta?.4:1)*(c.dia?.8:1);
+    if(c.sh==='dia'&&!quieta)a*=.5+.5*Math.abs(Math.sin(p.fase*1.7));
+    x.globalAlpha=a;x.save();x.translate(p.x,p.y);x.rotate(p.r);_vivaForma(x,c.sh,p.s);x.restore();
+  }
+  x.globalAlpha=1;
+  if(c.fc&&!rm&&!estatico)_vivaFuego(c,dt);
+}
+function _vivaPaso(t){
+  const dt=Math.min(.05,Math.max(0,(t-_viva.last)/1000)||0);_viva.last=t;
+  if(document.hidden)return;
+  for(const c of _viva.cards)if(c.visible&&c.ctx)_vivaDibujarCard(c,dt,false);
+}
+function _vivaArrancar(){
+  const loop=t=>{_viva.tick=performance.now();_vivaPaso(t);requestAnimationFrame(loop);};requestAnimationFrame(loop);
+  // si el visor frena requestAnimationFrame, sigue con un reloj común (~30 por segundo)
+  setInterval(()=>{if(performance.now()-_viva.tick>250)_vivaPaso(performance.now());},33);
+  setInterval(_vivaVisibles,400);addEventListener('scroll',_vivaVisibles,{passive:true});
+  let rt;addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{for(const c of _viva.cards)c.w=0;_vivaVisibles();},150);});
+  // cambio de tema claro/oscuro: recolorear
+  new MutationObserver(()=>{for(const c of _viva.cards)if(c.ctx)c.rgb=_vivaColor(c);}).observe(document.body,{attributes:true,attributeFilter:['class']});
+}
 const scoreColor=s=>s>=250000?'#f59e0b':s>=130000?'#a78bfa':s>=80000?'#60a5fa':s>=40000?'#14b8a6':s>=15000?'#22c55e':s>=5000?'#f97316':'#ef4444';
 const scoreLabel=s=>s>=250000?'🟡 JOYA':s>=130000?'🟣 Estrella':s>=80000?'🔵 Excelente':s>=40000?'🩵 Bueno':s>=15000?'🟢 Objetivo':s>=5000?'🟠 Aceptable':'🔴 Bajo';
 const scoreGradient=s=>s>=250000?'#f59e0b,#fbbf24':s>=130000?'#7c3aed,#a855f7':s>=80000?'#3b82f6,#60a5fa':s>=40000?'#14b8a6,#2dd4bf':s>=15000?'#22c55e,#4ade80':s>=5000?'#f97316,#fb923c':'#ef4444,#f87171';
@@ -10224,7 +10402,7 @@ function renderVentaProd(){
         </div>
         ${lines}
       </div>`;
-      return _pcHtml+`<div class="ingreso-item vp-cel" style="flex-direction:column;align-items:stretch;gap:6px;padding:12px 14px;${isCancelled?'border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.04)':''}">
+      const _celHtml=`<div class="ingreso-item vp-cel" style="flex-direction:column;align-items:stretch;gap:6px;padding:12px 14px;${isCancelled?'border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.04)':''}">
         <div style="display:flex;align-items:center;gap:8px">
           <span class="who-badge" style="font-size:.62rem;${isCancelled?'opacity:.6':''}">${cuenta}</span>
           <span style="font-size:.68rem;color:var(--muted);white-space:nowrap">${_fh}</span>
@@ -10241,7 +10419,10 @@ function renderVentaProd(){
         </div>
         ${_det}
       </div>`;
+      const _vv=vivaVenta({cancel:isCancelled,gpct,est:_est,neto:gn,gan:gg});
+      return vivaEnvolver(_pcHtml,'vp-pc',_vv)+vivaEnvolver(_celHtml,'vp-cel',_vv);
     }).join('')+(filteredGroups.length>VP_CAP?`<div class="empty-msg" style="margin-top:10px">Mostrando las ${VP_CAP} ventas más recientes de ${filteredGroups.length}. Usá el buscador o filtrá por cuenta/período para encontrar otras. (Los totales de arriba sí cuentan todas.)</div>`:''):`<div class="empty-msg">${vpQ||vpFilterCuenta?'Sin resultados para los filtros aplicados en '+mesLabel+'.':'Sin ventas cargadas en '+mesLabel+'.'}</div>`;
+    vivaScan(list);
   }
   const kpis=document.getElementById('vp-kpis');
   // KPIs usan el mismo período que la lista
@@ -18225,23 +18406,25 @@ function renderHomeHoy(){
   const antLbl=_homeHoyOff===0?'ayer':'el día anterior';
   const flecha=(d,txt,off)=>`<button onclick="homeHoyMover(${d},event)" ${off?'disabled':''} style="background:transparent;border:1px solid var(--border2);color:${off?'var(--border2)':'var(--text)'};border-radius:8px;min-width:34px;height:30px;font-size:1.05rem;line-height:1;cursor:${off?'default':'pointer'}">${txt}</button>`;
   const pctTxt=h.pct===null||!isFinite(h.pct)?'—':(h.pct>=0?'+':'')+h.pct.toFixed(0)+'%';
-  el.innerHTML=`<div onclick="homeHoyIr()" style="cursor:pointer;position:relative;overflow:hidden;background:linear-gradient(135deg,rgba(34,197,94,.16),rgba(34,197,94,.03) 55%,var(--surface));border:1px solid rgba(34,197,94,.45);border-radius:20px;padding:20px 22px 16px;margin:4px auto 18px;max-width:min(760px,calc(100vw - 32px));box-shadow:0 6px 28px rgba(34,197,94,.12)">
+  const _vd=vivaDia(h);
+  el.innerHTML=`<div class="vw ${_vd.mv} ${_vd.gl}" data-viva="dia" data-vk="${_vd.k}" data-vv="${_vd.vel.toFixed(3)}"${_vd.quieta?' data-vq="1"':''} style="margin:4px auto 18px;max-width:min(760px,calc(100vw - 32px))">${_vd.fuego?'<canvas class="viva-fuego"></canvas>':''}<div onclick="homeHoyIr()" class="viva lv-${_vd.k}" style="--c:${_vd.c};cursor:pointer;border-radius:20px;padding:20px 22px 16px">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:10px">
-      <span style="display:flex;align-items:center;gap:8px"><span style="display:flex;gap:4px;flex-shrink:0">${flecha(1,'‹',false)}${flecha(-1,'›',_homeHoyOff===0)}</span><span style="font-size:.72rem;text-transform:uppercase;letter-spacing:.16em;color:var(--green);font-weight:700">🏷️ ${titulo}</span></span>
+      <span style="display:flex;align-items:center;gap:8px"><span style="display:flex;gap:4px;flex-shrink:0">${flecha(1,'‹',false)}${flecha(-1,'›',_homeHoyOff===0)}</span><span style="font-size:.72rem;text-transform:uppercase;letter-spacing:.16em;color:var(--c);font-weight:700">🏷️ ${titulo}</span></span>
       <span style="display:flex;gap:6px;align-items:center">${_cerDiaVisible(dateToKey(hoy))?`<button onclick="homeHoyCerebro(event)" title="🧠 Qué pasó con las ventas de este día" style="background:transparent;border:1px solid var(--border2);color:var(--text);border-radius:999px;padding:3px 10px;font-size:.7rem;cursor:pointer">🧠 qué pasó</button>`:''}<span style="font-size:.7rem;color:var(--muted);border:1px solid var(--border2);border-radius:999px;padding:3px 10px">ver ventas ›</span></span>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:10px 34px;align-items:flex-end">
-      <div><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(2.3rem,9vw,3.4rem);line-height:1;letter-spacing:-.01em">${fmt(h.bruto)}</div><div style="font-size:.78rem;color:var(--muted);margin-top:6px">facturado · <b style="color:var(--text)">${h.ventas}</b> venta${h.ventas===1?'':'s'} · <b style="color:var(--text)">${h.u}</b> u.</div></div>
-      <div><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(1.6rem,6vw,2.2rem);line-height:1;color:${h.gan>=0?'var(--green)':'var(--red)'}">${fmt(h.gan)}</div><div style="font-size:.78rem;color:var(--muted);margin-top:6px">ganancia · <b style="color:${h.gan>=0?'var(--green)':'var(--red)'}">${pctTxt}</b></div></div>
+      <div><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(2rem,8vw,3.4rem);line-height:1;letter-spacing:-.01em">${fmt(h.bruto)}</div><div style="font-size:.78rem;color:var(--muted);margin-top:6px">facturado · <b style="color:var(--text)">${h.ventas}</b> venta${h.ventas===1?'':'s'} · <b style="color:var(--text)">${h.u}</b> u.</div></div>
+      <div><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(1.6rem,6vw,2.2rem);line-height:1;color:var(--c)">${fmt(h.gan)}</div><div style="font-size:.78rem;color:var(--muted);margin-top:6px">ganancia · <b style="color:var(--text)">${pctTxt}</b></div></div>
       ${(()=>{const D=_puntajeDia(hoy,h);if(!D)return '';const _c=puntColor(D.score);
         return `<div style="align-self:center;padding:8px 14px;border-radius:12px;color:${_c};background:color-mix(in srgb,${_c} 12%,transparent);border:1px solid color-mix(in srgb,${_c} 35%,transparent);text-align:center" title="Puntaje del día (de 0 a 10), sólo por la ganancia en pesos: 7 en ${fmt(D.target)} por día (que a cada uno de los 3 le queden $900.000 por mes pagando todo) y 10 en ${fmt(D.target2)}.">
           <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.35rem;line-height:1">${D.score.toFixed(1).replace('.',',')}<span style="font-size:.6em;opacity:.7"> /10</span></div><div style="font-size:.74rem;font-weight:700;margin-top:4px">${D.nivel}</div></div>`;})()}
     </div>
-    <div style="display:flex;align-items:center;gap:8px 14px;flex-wrap:wrap;margin-top:14px;padding-top:10px;border-top:1px solid rgba(34,197,94,.2);font-size:.72rem;color:var(--muted)">
+    <div style="display:flex;align-items:center;gap:8px 14px;flex-wrap:wrap;margin-top:14px;padding-top:10px;border-top:1px solid color-mix(in srgb,var(--c) 25%,transparent);font-size:.72rem;color:var(--muted)">
       ${h.ult?`<span>última venta <b style="color:var(--text)">${new Date(h.ult).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',hour12:false})}</b> ·</span>`:''}
       <span>${antLbl}: <b style="color:var(--text)">${fmt(a.bruto)}</b> · ganancia ${fmt(a.gan)} · ${a.ventas} venta${a.ventas===1?'':'s'}</span>
     </div>
-  </div>`;
+  </div></div>`;
+  vivaScan(el);
 }
 // PARA RETIRAR HASTA HOY (30/09/2026). Regla suya: "los 3 cobremos lo mismo: CYC, papá y yo". Corrección suya
 // el mismo día: "que diga cuánto retirar hasta ahora: la ganancia REAL de CYC dividida entre 3". O sea, sin
