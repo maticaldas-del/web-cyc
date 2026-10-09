@@ -416,6 +416,8 @@ Todo lo que guarda la historia día por día y las pantallas que la dibujan.
 
  · **23.08 (09/10):** la velocidad de subida de las figuras de una venta sale del NETO con la tabla que eligió él (`VIVA_VEL_NETO`, interpolada en escala logarítmica; `data-vpx` → `c.vpx`). Lo demás (color, brillo, fuego, mínimo 2.000 de puntaje) sigue igual. Chequear: SSD $296.883 de neto ≈ 1.580 px/s.
 
+ · **23.09 (09/10):** cantidad de figuras de una venta = base × (0,25 + 0,75·vi²), mínimo 4 (antes base × vi², daba 0 cerca de 2.000 de puntaje). El canvas del fuego de una venta mide el alto de la tarjeta. Chequear: el Aer x6 de 2 prod. (puntaje ~2.500) muestra figuras.
+
 ### Pendientes de la revisión 9 (09/10/2026, a la madrugada) — se van cerrando en las vueltas
 - **Publicaciones con variantes no tienen dueño de precio:** `decido`/`analizapromo`/`entrarpromo` las rechazan ("la maneja el robot de siempre") y con SOLO_DATOS el robot no las toca. Hace falta un camino de Claude por `raiseVariations` (y que la planilla las muestre como "nadie las maneja").
 - **`escasez` no mira colores** (saltea las claves `__v__`): un color con 1 u. dentro de un producto con stock no salta.

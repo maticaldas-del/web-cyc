@@ -2501,7 +2501,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.08';
+const APP_VERSION='23.09';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2512,6 +2512,7 @@ const APP_VERSION='23.08';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.09',f:'09/10/2026',h:'15:20',c:[{n:1,t:'⚡ Ventas: toda venta de 2.000 de score o más tiene figuras atrás, a la velocidad de su neto. Antes las que apenas pasaban los 2.000 quedaban casi sin figuras.'}]},
   {v:'23.08',f:'09/10/2026',h:'15:05',c:[{n:1,t:'⚡ Ventas: las figuras de atrás suben a la velocidad que elegiste por neto: quietas hasta $4.000, 3 px/s en $5.000, 303 en $50.000, 608 en $100.000, 1.037 en $200.000, 2.061 en $400.000 y 2.500 en $550.000.'}]},
   {v:'23.07',f:'09/10/2026',h:'14:25',c:[{n:1,t:'⚡ Ventas: en las ventas grandes las figuras de atrás suben 3 veces más rápido. Las chicas siguen lentas como estaban.'}]},
   {v:'23.06',f:'09/10/2026',h:'14:10',c:[{n:1,t:'📈 Ventas: en una compra de varios productos cada renglón tiene su propio botón de línea de tiempo.'},{n:1,t:'▲▼ El renglón del cambio de precio va en gris; sólo la flecha tiene color: verde si subió, roja si bajó.'}]},
@@ -8754,11 +8755,11 @@ function _vivaMedir(c,r){
   c.w=r.width;c.h=r.height;c.cv.width=Math.max(1,Math.round(c.w*dpr));c.cv.height=Math.max(1,Math.round(c.h*dpr));
   c.ctx=c.cv.getContext('2d');c.ctx.setTransform(dpr,0,0,dpr,0,0);c.rgb=_vivaColor(c);
   const NV=VIVA_NV[c.k]||VIVA_NV.bien;c.nv=NV;
-  let cant=Math.max(2,Math.round(c.w*c.h*.00034*NV[0]*(1+c.vel*.6)));if(c.dia)cant=Math.min(16+Math.round(NV[0]*22),cant);else cant=Math.round(cant*c.vi*c.vi);   // venta: las figuras van con el neto (casi nada abajo de $5.000)
+  let cant=Math.max(2,Math.round(c.w*c.h*.00034*NV[0]*(1+c.vel*.6)));if(c.dia)cant=Math.min(16+Math.round(NV[0]*22),cant);else cant=Math.max(4,Math.round(cant*(.25+.75*c.vi*c.vi)));   // venta: toda venta animada (2.000+ de puntaje) tiene figuras; más figuras cuanto más puntaje (09/10/2026, él)
   const sh=VIVA_SH[c.k]||'circ';
   c.parts=Array.from({length:cant},()=>({x:_vivaRnd(0,c.w),y:_vivaRnd(0,c.h),s:_vivaRnd(3,7.5)*NV[1],r:_vivaRnd(0,6.28),vr:_vivaRnd(-.8,.8),fase:_vivaRnd(0,6.28),k:_vivaRnd(.7,1.4)}));
   c.sh=sh;
-  if(c.fc){c.fw=c.w+48;c.fh=c.h+80;c.fc.width=Math.round(c.fw*dpr);c.fc.height=Math.round(c.fh*dpr);c.fctx=c.fc.getContext('2d');c.fctx.setTransform(dpr,0,0,dpr,0,0);c.llamas=[];}
+  if(c.fc){c.fw=c.w+48;c.fh=c.dia?c.h+80:c.h;c.fc.width=Math.round(c.fw*dpr);c.fc.height=Math.round(c.fh*dpr);c.fctx=c.fc.getContext('2d');c.fctx.setTransform(dpr,0,0,dpr,0,0);c.llamas=[];}
   _vivaDibujarCard(c,0,true);
 }
 // Qué tarjeta está en pantalla lo dice el navegador (IntersectionObserver), sin medir la página a cada rato:
