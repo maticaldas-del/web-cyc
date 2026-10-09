@@ -2494,7 +2494,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.81';
+const APP_VERSION='22.82';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2505,6 +2505,7 @@ const APP_VERSION='22.81';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.82',f:'09/10/2026',h:'01:00',c:[{n:1,t:'🧹 Ventas: se sacó el cartel del robot viejo al lado de cada venta ("no lo subí · los precios automáticos están apagados"). Los precios los maneja Claude y esa etiqueta ya no decía nada. Todas las ventas quedan del mismo alto.'}]},
   {v:'22.81',f:'09/10/2026',h:'00:50',c:[{n:2,t:'🏠 Inicio: se sacó la tarjeta del Puntaje del mes. Lo que importaba de ahí, cuánto cobrar, está en el desplegable "💸 cuánto cobrar" de Ventas de hoy. Ventas de hoy ya no tiene la línea de abajo (última venta y ayer) y mantiene siempre el mismo tamaño, aunque no haya ventas.'},{n:1,t:'✨ Las figuras se siguen moviendo mientras hacés scroll.'}]},
   {v:'22.80',f:'09/10/2026',h:'00:30',c:[{n:1,t:'✨ Ventas más limpias: las rojas y naranjas (abajo de la meta) y las grises quedan sólo con el color del %, sin fondo ni figuras. Desde las verdes, las figuras de atrás van de pocas a muchas según el nivel.'}]},
   {v:'22.79',f:'09/10/2026',h:'00:10',c:[{n:1,t:'⚡ Las tarjetas animadas ya no traban el scroll: mientras te movés por la página las figuras se quedan quietas y siguen cuando frenás. El brillo que late cuesta mucho menos al teléfono.'}]},
@@ -10375,6 +10376,9 @@ function renderVentaProd(){
       const _hayCambio=_cambios.some(x=>x);
       const _pill=isCancelled?'':(gpct===null?`<span class="db nc" style="font-size:.66rem" title="${_sinFicha?'Esta venta no está enganchada a ninguna ficha: el panel no sabe qué producto es ni cuánto costó. Se arregla vinculando la publicación.':'La ficha no tiene costo cargado.'}">${_sinFicha?'sin ficha':'sin costo'}</span>`:`<span class="db ${_est?'nc':''}" style="font-size:.72rem;padding:3px 9px;${_est?'color:var(--muted)':_pillSt}">${_est?'≈ ':''}${gpct>=0?'+':''}${gpct.toFixed(0)}%</span>`);
       const _items=grp.items.map((v,i)=>`<div style="font-size:.8rem;line-height:1.35;${isCancelled?'opacity:.45;text-decoration:line-through':''}">${fotoVentaHTML(v,38)}<span style="color:var(--muted)">${v.qty}×</span> ${nombreDeVenta(v)}${v.variante?` <span style="padding:1px 6px;border-radius:4px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.66rem;white-space:nowrap">${v.variante}</span>`:''}${_cambios[i]?` <span style="font-size:.66rem" title="Cambió de precio antes de esta venta · mirá el detalle">${_cambios[i].includes('⬆️')?'⬆️':'⬇️'}</span>`:''}${(()=>{const _pp=prodDeVenta(v);return _pp?' '+cerebroBtn(_pp.id,{mla:v.mla,ctx:'venta'}):'';})()}</div>`).join('');
+      // La etiqueta del rescate al vender era del robot viejo, que ya no toca precios: no se muestra más (09/10/2026, él:
+      // "sacá lo de los precios automáticos están apagados, además por qué sale eso si ya estás haciendo todo vos").
+      rescLabel='';
       const _avisoIco=(rescLabel&&rescLabel.includes('⚠️'))?' <span title="El robot no pudo subirla · mirá el detalle">⚠️</span>':'';
       const _abierto=vpDetOpen.has(grp.gid);
       const _dl=(k,val)=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:3px 0;border-bottom:1px dashed var(--border)"><span style="color:var(--muted)">${k}</span><span style="text-align:right">${val}</span></div>`;
