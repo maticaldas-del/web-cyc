@@ -872,6 +872,24 @@ puede esperar 12 h.
    caja, la de unidades. *"Quiero que todos los lugares que tengan opción de poner cerebro llenarlas"*: se llenan de a
    tandas en cada revisión de 12 h.
 
+### PEDIDOS Y ARMAR CAJA TAMBIÉN LOS DECIDO YO (08/10/2026 a la noche, v22.76 · `cyc-v556`)
+Él, después de que le mostré que el máximo de compra se infla con una suba por escasez: *"hacelo todo vos. que el robot solo
+pase datos. fijate si hay algo más que el robot automático calcule. hacelo vos"*.
+ · **Cuántas comprar:** `decido:ped:<palabras|id>=u|N|motivo` (con colores: `ped:<id>#<color>=u|N|motivo`, color por color).
+ · **Precio de venta para el máximo de compra:** `decido:ped:<id>=venta|<precio>|motivo` — el NORMAL, no el subido por
+   escasez ni uno de prueba. La web saca el máximo con ese precio (fuente `claude`).
+ · **Cuántas mandar en la caja:** `decido:caja:<id>@<cuenta>[#color]=u|N|motivo`. `=auto` borra lo mío.
+ · Vive en `cyc/claudedecide/{ped,caja}` y **vale 4 días**: si dejo de revisar, vuelve la cuenta de la web. La tarjeta dice
+   "🧠 lo decidí yo" con la cuenta automática al lado. El motivo va también al 🧠.
+ · `pedidosnotas` (ml-consulta) da los números: precio de hoy, últimos cambios de precio (⬆️ escasez/prueba) y lo ya decidido.
+ · **En cada revisión de 12 h:** releer `pedidosnotas`/`cajasnotas`, y para cada pedido con plata en riesgo y cada caja
+   sugerida, decidir unidades y (si el precio de hoy no es el normal) el precio de venta para el máximo. Renovar las que sigan
+   valiendo antes de los 4 días.
+ · **Contestar preguntas solo (`responder`) se apaga** con `responder:off`: las contesto yo en cada vuelta.
+ · Lo que sigue automático porque es mecánico o es una regla suya dura: ventas, stock, cajas recibidas, vínculos de
+   publicaciones nuevas, dólar, retiro del 1º, el guardián que saca promos que nadie analizó, la marca liquidando que se cae
+   en stock 0, y el descarte de candidatos de Paraguay que no llegan al 25% en dos mediciones (su piso).
+
 ## ⏰ PENDIENTE: EL PEDIDO AL PAULVIC DEL 06/10 (08/10/2026)
 
 40 u. en 12 aromas, todavía en camino (`cyc/pedidospv`). Le mandaron **$246.283,77** para pagar (≈ $6.157 c/u; la ficha

@@ -27013,6 +27013,14 @@ async function main() {
     // Sin :go SOLO MUESTRA qué contestaría y cuáles no, con el texto tapando teléfonos y mails.
     // Con :go contesta de verdad (lo mismo que hace la vuelta de cada hora).
     if (String(process.env.BILLING_PROBE || '').startsWith('responder')) {
+      // `responder:off` / `responder:on` (09/10/2026): prende o apaga las respuestas solas de cada hora. Con Claude
+      // decidiendo (él: *"que el robot solo pase datos"*) va apagado: las preguntas las contesta Claude en cada vuelta.
+      const mOn = String(process.env.BILLING_PROBE).match(/^responder:(on|off)$/i);
+      if (mOn) {
+        const q = mOn[1].toLowerCase(); const antes = String((await db.get('cyc/mlconfig/responder')) || 'on');
+        await db.set('cyc/mlconfig/responder', q); const rl = String((await db.get('cyc/mlconfig/responder')) || 'on');
+        console.log(`Contestar preguntas solo: ${antes} → ${rl} ${rl === q ? '✓' : '✗ NO quedó'}`); return;
+      }
       const GO = /:go\b/.test(String(process.env.BILLING_PROBE));
       const rq = await responderPreguntas(db, accounts, labels, GO, true);
       for (const l of rq.filas) console.log(l);
@@ -35211,6 +35219,25 @@ async function main() {
     // nota de Claude, para escribir la nota del 🧠 de CADA pedido (`decido:ped:<prodId>[#variante]=nota|…`).
     if (/^pedidosnotas$/.test(String(process.env.BILLING_PROBE || ''))) {
       let cx = {}; try { cx = (await db.get('mlapi/claudeexp')) || {}; } catch { cx = {}; }
+      // Para decidir yo el máximo de compra (09/10/2026): el precio de hoy, los últimos cambios de precio de sus
+      // publicaciones (una suba por escasez infla el máximo) y lo que ya decidí (`cyc/claudedecide/ped`).
+      let cd = {}, prodsN = {}, linksN = {}, apN = {};
+      try { cd = (await db.get('cyc/claudedecide/ped')) || {}; } catch { cd = {}; }
+      try { prodsN = (await db.get('cyc/products')) || {}; } catch {}
+      try { linksN = (await db.get('cyc/mllinks')) || {}; } catch {}
+      try { apN = (await db.get('cyc/autoprecio')) || {}; } catch {}
+      const precioInfo = (pid) => {
+        const pr = prodsN[pid] || {}; const out = [];
+        if (pr.netoCalcPrecio) out.push(`precio hoy $${Math.round(pr.netoCalcPrecio)}`);
+        for (const [mla, e] of Object.entries(linksN)) {
+          if (!e || e.prodId !== pid || e.ignored || e.status === 'closed') continue;
+          const a = apN[mla]; if (!a || a.de == null || a.a == null) continue;
+          const d = Math.round((Date.now() - (Number(a.ts) || 0)) / 864e5); if (d > 45) continue;
+          out.push(`${mla} ${a.a > a.de ? '⬆️' : '⬇️'} $${a.de}→$${a.a} hace ${d} d (${a.por || '?'})`);
+        }
+        const c = cd[pid]; if (c) out.push(`DECIDÍ: ${c.u != null ? 'comprar ' + c.u : ''}${c.vars ? ' colores ' + JSON.stringify(c.vars) : ''}${c.pv ? ' · venta para el máximo $' + c.pv : ''} (hace ${Math.round((Date.now() - (Number(c.ts) || 0)) / 36e5)} h)`);
+        return out.length ? '\n     💲 ' + out.join(' · ') : '';
+      };
       const colls = [['pedidos', 'Bs As (y Paulvic)'], ['pedidos_py', 'PY']];
       for (const [c, nom] of colls) {
         let arr = {}; try { arr = (await db.get('cyc/' + c)) || {}; } catch { console.log(`(${c}: no pude leer)`); continue; }
@@ -35221,7 +35248,7 @@ async function main() {
           const tiene = cx['ped__' + x.prodId + vk] ? `nota ${new Date(cx['ped__' + x.prodId + vk].ts - 3 * 3600e3).toISOString().slice(5, 16)}` : 'SIN NOTA';
           const vN = Array.isArray(x.variantesNec) ? x.variantesNec : (x.variantesNec ? Object.values(x.variantesNec) : []);
           const vs = vN.map((v) => `${v.v || '?'}: comprar ${v.q ?? '?'} (ML ${v.ml ?? 0} · casa ${v.casa ?? 0} · camino ${v.cam ?? 0}${v.obj != null ? ' · objetivo ' + v.obj : ''}${v.dias != null ? ' · alcanza ' + v.dias + ' d' : ''})`).join(' | ');
-          console.log(`${x.prodId}${x.variante ? '#' + x.variante : ''} · ${String(x.producto || '').slice(0, 50)} · comprar ${x.cantidad ?? '?'} · ${x.estado || '?'} · vende ${x.cVdia ?? '?'}/d (${x.cVend ?? '?'} u. en ${x.cDias ?? '?'} d con stock) · ML ${x.cML ?? '?'} · casa ${x.cCasa ?? '?'} · camino ${x.cCamino ?? '?'} · objetivo ${x.cObjetivo ?? '?'} (${x.cTarget ?? '?'} d)${x.cHist ? ` · ritmo viejo ${x.cHist.u} u./${x.cHist.dias} d` : ''}${x.cPocas ? ' · pocas ventas' : ''}${x.cRemate ? ` · ${x.cRemate} en remate` : ''} · riesgo $${Math.round(Number(x.riesgoComprar ?? x.riesgo) || 0)}/mes${x.auto === false ? ' · a mano' : ''} · ${tiene}${vs ? `\n     colores: ${vs}` : ''}`);
+          console.log(`${x.prodId}${x.variante ? '#' + x.variante : ''} · ${String(x.producto || '').slice(0, 50)} · comprar ${x.cantidad ?? '?'} · ${x.estado || '?'} · vende ${x.cVdia ?? '?'}/d (${x.cVend ?? '?'} u. en ${x.cDias ?? '?'} d con stock) · ML ${x.cML ?? '?'} · casa ${x.cCasa ?? '?'} · camino ${x.cCamino ?? '?'} · objetivo ${x.cObjetivo ?? '?'} (${x.cTarget ?? '?'} d)${x.cHist ? ` · ritmo viejo ${x.cHist.u} u./${x.cHist.dias} d` : ''}${x.cPocas ? ' · pocas ventas' : ''}${x.cRemate ? ` · ${x.cRemate} en remate` : ''} · riesgo $${Math.round(Number(x.riesgoComprar ?? x.riesgo) || 0)}/mes${x.auto === false ? ' · a mano' : ''} · ${tiene}${vs ? `\n     colores: ${vs}` : ''}${precioInfo(x.prodId)}`);
         }
       }
       return;
@@ -35288,6 +35315,25 @@ async function main() {
         if (mdn) { const t = mot.join('|').trim(); if (!t) { malos.push(x); continue; } notasCtx.push({ tipo: 'dia', dia: `${mdn[1]}_${mdn[2]}_${mdn[3]}`, t, raw: x }); continue; }
         const mvn = String(izq).match(/^\s*venta:(MLA\d+)@(\d{4})[-_/](\d{2})[-_/](\d{2})\s*=\s*nota\s*$/i);
         if (mvn) { const t = mot.join('|').trim(); if (!t) { malos.push(x); continue; } notasCtx.push({ tipo: 'venta', mla: mvn[1].toUpperCase(), dia: `${mvn[2]}_${mvn[3]}_${mvn[4]}`, t, raw: x }); continue; }
+        // LO QUE DECIDO YO EN PEDIDOS Y ARMAR CAJA (09/10/2026, él: *"hacelo todo vos. que el robot solo pase datos"*):
+        // `ped:<q>[#var]=u|<n>|motivo` = cuántas comprar (con colores, color por color) · `ped:<q>=venta|<precio>|motivo` =
+        // el precio de venta con el que se calcula el MÁXIMO DE COMPRA (el normal, no uno subido por escasez) ·
+        // `caja:<q>@<cuenta>[#var]=u|<n>|motivo` = cuántas mandar · `…=auto` borra lo mío y vuelve la cuenta automática.
+        // Vive en `cyc/claudedecide/{ped,caja}` y vale 4 días (si dejo de revisar, vuelve la cuenta de la web).
+        const mdc = String(izq).match(/^\s*(ped|caja):(.+?)\s*=\s*(u|venta|auto)\s*$/i);
+        if (mdc) {
+          const tipo = mdc[1].toLowerCase(); const que = mdc[3].toLowerCase(); let resto = mdc[2]; let vari = ''; let cta = '';
+          if (resto.includes('#')) { vari = resto.slice(resto.indexOf('#') + 1).trim(); resto = resto.slice(0, resto.indexOf('#')); }
+          if (tipo === 'caja') { if (!resto.includes('@')) { malos.push(x + ' (falta @cuenta)'); continue; } cta = resto.slice(resto.indexOf('@') + 1).trim(); resto = resto.slice(0, resto.indexOf('@')); }
+          if (tipo === 'caja' && que === 'venta') { malos.push(x + ' (venta= sólo va en ped:)'); continue; }
+          let val = null; let t = '';
+          if (que !== 'auto') {
+            val = que === 'venta' ? Math.round(pesosArg(mot[0] || '')) : parseInt(String(mot[0] || '').replace(/\D/g, ''), 10);
+            if (!Number.isFinite(val) || val < 0 || (que === 'venta' && !(val > 0)) || String(mot[0] || '').trim() === '') { malos.push(x + ' (falta el número)'); continue; }
+            t = mot.slice(1).join('|').trim(); if (!t) { malos.push(x + ' (falta el motivo)'); continue; }
+          }
+          notasCtx.push({ tipo, q: resto.trim(), vari, cta, t, raw: x, dec: que, val }); continue;
+        }
         const mpc = String(izq).match(/^\s*(ped|caja):(.+?)\s*=\s*nota\s*$/i);
         if (mpc) {
           const t = mot.join('|').trim(); if (!t) { malos.push(x); continue; }
@@ -35304,7 +35350,7 @@ async function main() {
         forzar[mm[1].toUpperCase()] = { p: soloAct ? 0 : Math.round(pesosArg(mm[2]) / 10) * 10, motivo: mot.join('|').trim(), piso: banderas.includes('!piso'), cruza: banderas.includes('!cruza'),
           activar: soloAct || banderas.includes('!activar') };
       }
-      if (malos.length) { console.log(`No entendí: ${malos.join(' · ')}\nVa así: decido:MLA123=7550|vende igual a este precio;MLA456=4190!piso|motivo;MLA789=nota|lo que pensé;ped:pendrive 8gb=nota|por qué pido;caja:pendrive 8gb@matias=nota|por qué mando;dia:2026-10-08=nota|qué pasó ese día;revisado;go`); return; }
+      if (malos.length) { console.log(`No entendí: ${malos.join(' · ')}\nVa así: decido:MLA123=7550|vende igual a este precio;MLA456=4190!piso|motivo;MLA789=nota|lo que pensé;ped:pendrive 8gb=nota|por qué pido;caja:pendrive 8gb@matias=nota|por qué mando;ped:pendrive 8gb=u|120|por qué esas;ped:paulvic#Persea=u|6|motivo;ped:pendrive 8gb=venta|4990|precio normal;caja:pendrive 8gb@matias=u|50|motivo;ped:pendrive 8gb=auto;dia:2026-10-08=nota|qué pasó ese día;revisado;go`); return; }
       // MIS EXPLICACIONES PARA EL 🧠 (08/10/2026, él: *"todas las anotaciones del cerebro las escribís vos"*):
       // `mlapi/claudeexp/<MLA>` = { ts, simple, … } y `mlapi/claudeexp/_ultima` = cuándo terminé la última revisión.
       const linksD = (await db.get('cyc/mllinks')) || {};
@@ -35349,6 +35395,24 @@ async function main() {
           if (n.vari && !(p.variantes || []).some((v) => sid(String(v).toLowerCase()) === sid(n.vari.toLowerCase()))) { console.log(`✗ "${p.name}" no tiene la variante "${n.vari}" — no la escribo`); continue; }
           const vk = n.vari ? '__v__' + sid(n.vari.toLowerCase()) : '';
           const key = n.tipo === 'ped' ? `ped__${p.id}${vk}` : `caja__${p.id}__${ctaL}${vk}`;
+          if (n.dec) {
+            const vsk = n.vari ? sid(n.vari.toLowerCase()) : '';
+            const base = n.tipo === 'ped' ? `cyc/claudedecide/ped/${p.id}` : `cyc/claudedecide/caja/${p.id}__${ctaL}${vk}`;
+            const leaf = n.dec === 'venta' ? 'pv' : (n.tipo === 'ped' && vsk ? 'vars/' + vsk : 'u');
+            if (n.tipo === 'ped' && !vsk && n.dec === 'u' && (p.variantes || []).length) { console.log(`✗ "${p.name}" tiene colores: va color por color (ped:${p.id}#<color>=u|N|motivo) — no lo escribo`); continue; }
+            const qTxt = n.dec === 'auto' ? 'vuelve a la cuenta automática' : n.dec === 'venta' ? `máximo de compra calculado vendiéndolo a $${n.val}` : `${n.tipo === 'ped' ? 'comprar' : 'mandar'} ${n.val} u.`;
+            console.log(`· 🧠 ${n.tipo === 'ped' ? 'pedido' : 'caja ' + ctaL} · ${p.name}${n.vari ? ' · ' + n.vari : ''}: ${qTxt}${n.t ? ' · ' + n.t : ''}`);
+            if (GOp && !DRY) {
+              try {
+                await db.set(base + '/' + leaf, n.dec === 'auto' ? null : n.val);
+                if (n.dec !== 'auto') { await db.set(base + '/ts', Date.now()); await db.set(base + '/mot', String(n.t).slice(0, 400)); }
+                const rl = await db.get(base + '/' + leaf);
+                console.log((n.dec === 'auto' ? rl == null : Number(rl) === n.val) ? '   ✓ guardado' : '   ✗ no quedó');
+                if (n.dec !== 'auto') await db.set('mlapi/claudeexp/' + key, { ts: Date.now(), simple: String(n.t).slice(0, 600), nom: String(p.name || '').slice(0, 60), cuenta: ctaL, variante: n.vari || '', tipo: n.tipo });
+              } catch (eN) { console.log(`   ⚠️ no pude guardarlo: ${String(eN.message || eN).slice(0, 60)}`); }
+            }
+            continue;
+          }
           console.log(`· ${n.tipo === 'ped' ? 'pedido' : 'caja ' + ctaL} · ${p.name}${n.vari ? ' · ' + n.vari : ''}: ${n.t}`);
           if (GOp && !DRY) {
             try { await db.set('mlapi/claudeexp/' + key, { ts: Date.now(), simple: String(n.t).slice(0, 600), nom: String(p.name || '').slice(0, 60), cuenta: ctaL, variante: n.vari || '', tipo: n.tipo });

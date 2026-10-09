@@ -2041,6 +2041,7 @@ function startApp(){
     // Sólo se muestran; no se calcula nada con ellos.
     state.supervisor={eventos:(d.supervisor&&d.supervisor.eventos)||{}};
     state.autoprecio=d.autoprecio||{};
+    state.claudedecide=d.claudedecide||{};
     // 🧪 VIGILANCIA (idea 6, 27/09/2026): la foto que deja el robot cada noche de TODAS las publicaciones que venden,
     // con su estado frente a la prueba de suba. Sólo se dibuja.
     state.vigilancia=d.vigilancia||null;
@@ -2461,7 +2462,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.75';
+const APP_VERSION='22.76';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2472,6 +2473,7 @@ const APP_VERSION='22.75';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.76',f:'08/10/2026',h:'21:06',c:[{n:3,t:'🧠 Pedidos y Armar caja: las unidades a comprar, las que van en cada caja y el precio con el que se calcula el máximo de compra los puede decidir Claude. Donde lo hizo dice "🧠 lo decidí yo" y la cuenta automática queda al lado para comparar. Si Claude deja de revisar, a los 4 días vuelve la cuenta sola.'}]},
   {v:'22.75',f:'08/10/2026',h:'20:05',c:[{n:2,t:'📈 Línea de tiempo: el "stock hoy · alcanza N días" de arriba y el color de la línea de stock ahora usan la misma cuenta del ritmo de venta (antes arriba podía decir "sobra" y la línea "bien").'}]},
   {v:'22.74',f:'08/10/2026',h:'19:55',c:[{n:1,t:'🧠 Vuelven los 🧠 de cada venta (dicen por qué está a ese precio). El "🧠 qué pasó" de Ventas de hoy (y de Ventas) aparece sólo si ese día pasó algo importante, y lo cuenta Claude.'}]},
   {v:'22.73',f:'08/10/2026',h:'19:35',c:[{n:1,t:'🧠 En Ventas el botón aparece sólo si ese día pasó algo importante con esa publicación, y dice qué pasó.'}]},
@@ -6111,7 +6113,7 @@ function renderOfiCaja(){
         : `vende ${s.vMes}/mes`;
       return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 0;border-top:1px solid var(--border)">
         <span class="pi-prov">${s.cuenta}</span>
-        <strong style="font-family:'Syne',sans-serif;font-size:1rem;${urg?'color:var(--red)':''}">${s.mandar} u.</strong>
+        <strong style="font-family:'Syne',sans-serif;font-size:1rem;${urg?'color:var(--red)':''}">${s.mandar} u.</strong>${s.cl?`<span title="${escHtml('Lo decidí yo (Claude)'+(s.cl.mot?': '+s.cl.mot:''))}" style="font-size:.6rem;color:#a78bfa;border:1px solid rgba(139,92,246,.4);border-radius:5px;padding:1px 6px">🧠 lo decidí yo${s.cl.u>s.mandar?` (pedí ${s.cl.u}, hay ${s.mandar})`:''}</span>`:''}
         ${s.etiq?`<span title="Es el código que ML le da a ESTE producto adentro del Full de ${s.cuenta} — el mismo que aparece en la etiqueta cuando armás el envío. Sirve para chequear que estás mandando el producto correcto y bien etiquetado. OJO: NO es el número de la publicación (MLA); es distinto en cada cuenta." style="font-family:'DM Mono',monospace;font-size:.66rem;background:rgba(255,255,255,.06);border:1px solid var(--border2);border-radius:5px;padding:2px 6px;letter-spacing:.04em">${s.etiq}</span>`:''}
         ${s.enCero&&!s.sinPub?'<span style="background:rgba(239,68,68,.14);color:var(--red);border-radius:5px;padding:2px 7px;font-size:.6rem;font-weight:700">SIN STOCK · no vende</span>':''}
         ${s.sinPub?`<span style="background:rgba(245,158,11,.16);color:var(--amber);border-radius:5px;padding:2px 7px;font-size:.6rem;font-weight:700" title="Vos pediste que este producto pase a ${s.cuenta}, pero todavía no hay publicación hecha ahí. Mandá la mercadería en esta caja y creá la publicación: hasta que exista, esas unidades no se pueden vender.">FALTA CREAR LA PUBLICACIÓN EN ${s.cuenta.toUpperCase()}</span>`:''}
@@ -10717,6 +10719,18 @@ function setPedidoFilter(f,btn){
 // y proyecta a 30 días multiplicando por (30 / diasHistorial).
 const PED_HIST_START=new Date('2026-06-01T00:00:00');
 const PED_MAX_DAYS=30;
+// LO QUE DECIDE CLAUDE EN PEDIDOS Y ARMAR CAJA (09/10/2026, él: *"hacelo todo vos. que el robot solo pase datos"*).
+// Las cuentas de abajo siguen armando su número, pero si Claude escribió el suyo (`decido:ped:…=u|N`, `=venta|$`,
+// `decido:caja:…@cuenta=u|N`) manda el de Claude. Vale CL_DEC_DIAS días: si dejo de revisar, vuelve la cuenta sola.
+const CL_DEC_DIAS=4;
+function escHtml(t){return String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function _clFresco(o){return !!(o&&Date.now()-(Number(o.ts)||0)<=CL_DEC_DIAS*864e5);}
+function clPedDe(pid){const o=((state.claudedecide||{}).ped||{})[pid];return _clFresco(o)?o:null;}
+function clCajaDe(pid,cta,va){
+  const k=pid+'__'+String(cta||'').toLowerCase().replace(/í/g,'i')+(va?'__v__'+sid(String(va).toLowerCase()):'');
+  const o=((state.claudedecide||{}).caja||{})[k];
+  return _clFresco(o)&&Number.isFinite(Number(o.u))?o:null;
+}
 // Días que un producto queda en la papelera de Pedidos pudiendo volver atrás. Después la
 // eliminación es definitiva (regla suya del 13/08/2026).
 const PAP_DIAS=7;
@@ -11066,11 +11080,12 @@ function _repartoVariantes(p,hayTotal,tr){
       // Sin una sola unidad en Full la publicación NO VENDE. Aunque la cuenta "no lo necesite"
       // según los días de stock, si está en cero hay que mandarle algo: es la diferencia entre
       // vender y no vender, no un ajuste de reposición.
-      const necesita=_pisoCeroAplica(c)?Math.max(REPO_PISO_CERO,c.falta):c.falta;
+      let necesita=_pisoCeroAplica(c)?Math.max(REPO_PISO_CERO,c.falta):c.falta;
+      const _cc=clCajaDe(p.id,c.cuenta,va);if(_cc)necesita=Math.max(0,parseInt(_cc.u)||0);   // lo decidió Claude
       if(necesita<=0)continue;
       const mandar=Math.min(quedan,necesita);
       quedan-=mandar;
-      sug.push({...c,mandar,enCero:c.stock<=0});
+      sug.push({...c,mandar,enCero:c.stock<=0,cl:_cc?{u:parseInt(_cc.u)||0,mot:String(_cc.mot||'')}:null});
     }
     filas.push({p,variante:va,hay,sug,sobra:quedan,
       sinPublicar:reales.length===0,
@@ -11131,11 +11146,12 @@ function repartoOficina(){
       // siempre. Sin esto un producto sin ventas daba objetivo 0, falta 0, y la pantalla contestaba
       // "ninguna cuenta lo necesita" con la publicación parada en cero — que es justo cuando más
       // hace falta mandar. Pasaba con la Linterna Multifuncion (23/08/2026).
-      const necesita=_pisoCeroAplica(c)?Math.max(REPO_PISO_CERO,c.falta):c.falta;
+      let necesita=_pisoCeroAplica(c)?Math.max(REPO_PISO_CERO,c.falta):c.falta;
+      const _cc=clCajaDe(p.id,c.cuenta,'');if(_cc)necesita=Math.max(0,parseInt(_cc.u)||0);   // lo decidió Claude
       if(necesita<=0)continue;                // ya tiene para los días de cobertura
       const mandar=Math.min(quedan,necesita);
       quedan-=mandar;
-      sug.push({...c,mandar,enCero:c.stock<=0});
+      sug.push({...c,mandar,enCero:c.stock<=0,cl:_cc?{u:parseInt(_cc.u)||0,mot:String(_cc.mot||'')}:null});
     }
     filas.push({p,hay,sug,sobra:quedan,
       sinPublicar:reales.length===0,
@@ -11379,7 +11395,21 @@ async function syncPedidosAuto(){
     const enCamino=transitoTotal(_trPed,p.id)+enPy+enPv;
     // En los productos con variantes ya se descontó casa y camino VARIANTE POR VARIANTE, que es más
     // fino: restar los totales otra vez lo contaría dos veces. Lo de Paraguay no trae color: va al total.
-    const aComprar=aComprarVar!=null?Math.max(0,aComprarVar-enPy):Math.max(0,necesario-enOficina-enCamino);
+    let aComprar=aComprarVar!=null?Math.max(0,aComprarVar-enPy):Math.max(0,necesario-enOficina-enCamino);
+    // Si Claude decidió cuántas comprar, manda lo suyo (la cuenta automática queda al lado, para comparar).
+    let clInfo=null;
+    {const _cl=clPedDe(p.id);
+      if(_cl&&(_cl.u!=null||_cl.vars)){
+        const formU=aComprar;
+        if(hasVars&&_cl.vars){
+          const cv={};for(const [k,v] of Object.entries(_cl.vars))cv[k]=Math.max(0,parseInt(v)||0);
+          const vn=(variantesNec||[]).map(x=>{const k=sid(String(x.v).toLowerCase());return k in cv?{...x,q:cv[k],cl:1}:x;});
+          for(const v of (p.variantes||[])){const k=sid(String(v).toLowerCase());if(k in cv&&!vn.some(x=>sid(String(x.v).toLowerCase())===k))vn.push({v,q:cv[k],cl:1});}
+          variantesNec=vn.length?vn:null;
+          aComprar=vn.reduce((a,x)=>a+(x.q||0),0);
+        }else if(!hasVars&&_cl.u!=null)aComprar=Math.max(0,parseInt(_cl.u)||0);
+        if(aComprar!==formU||_cl.u!=null||_cl.vars)clInfo={u:aComprar,formU,mot:String(_cl.mot||''),ts:_cl.ts};
+      }}
     const diasCubProd=diasCubiertos;
     if(varDiasCub!=null&&varDiasCub<diasCubiertos)diasCubiertos=varDiasCub;
     // "Dinero en riesgo": ganancia diaria del producto × cuántos de los próximos 30 días vas a pasar REALMENTE sin stock.
@@ -11433,7 +11463,7 @@ async function syncPedidosAuto(){
     // real. Se guarda para poder MOSTRAR la cuenta en la tarjeta (ver cuentaPedidoHTML): sin eso,
     // "6 vendidos" y "4 en camino" invitan a la resta equivocada.
     const objetivoU=varCuenta?varCuenta.obj:Math.max(necesario+stock,0);
-    resumen[p.id]={p,vendidos,vendidosNorm,stock,diasHistorial,diasCubiertos,necesario,enOficina,enCamino,aComprar,variantesNec,coll,gan30d,riesgo,riesgoComprar,riesgoMandar,dConS,vDia,objetivoU,targetDias:TARGET_DIAS_P,hist,remate,rn,reg,pocasVentas,varCuenta,sem,semDias:semTot<=0?0:Math.min(semDias,999),semColCero:varSemCero};
+    resumen[p.id]={cl:clInfo,p,vendidos,vendidosNorm,stock,diasHistorial,diasCubiertos,necesario,enOficina,enCamino,aComprar,variantesNec,coll,gan30d,riesgo,riesgoComprar,riesgoMandar,dConS,vDia,objetivoU,targetDias:TARGET_DIAS_P,hist,remate,rn,reg,pocasVentas,varCuenta,sem,semDias:semTot<=0?0:Math.min(semDias,999),semColCero:varSemCero};
   }
   // 3. IDs que deberían existir como auto-pedidos
   const expectedIds=new Set();
@@ -15376,7 +15406,7 @@ function cuentaPed(r){
   // `cHist` marca que la velocidad NO salió de este mes sino del ritmo viejo (ver pedVentasNorm).
   return{cObjetivo:r.objetivoU||0,cDias:Math.round(r.dConS||0),cVdia:Math.round((r.vDia||0)*100)/100,
     cVend:r.vendidos||0,cCamino:r.varCuenta?r.varCuenta.cam:(r.enCamino||0),cCasa:r.varCuenta?r.varCuenta.casa:(r.enOficina||0),cML:r.varCuenta?r.varCuenta.ml:(r.stock||0),cPocas:!!r.pocasVentas,
-    cHist:r.hist?{u:r.hist.u,dias:Math.round(r.hist.dias)}:null,cTarget:r.targetDias||PED_MAX_DAYS,cSem:r.sem||null,cSemDias:r.semDias!=null?r.semDias:null,cSemCol:r.semColCero||0,cRemate:r.remate||0,cRN:r.rn?{mes:Math.round(r.rn.pd*30*10)/10,f:!!r.rn.f}:null,cReg:r.reg?{mes:Math.round(r.reg.pd*30*10)/10,txt:r.reg.cambio.map(_raTexto)}:null};
+    cHist:r.hist?{u:r.hist.u,dias:Math.round(r.hist.dias)}:null,cTarget:r.targetDias||PED_MAX_DAYS,cSem:r.sem||null,cSemDias:r.semDias!=null?r.semDias:null,cSemCol:r.semColCero||0,cClaude:r.cl||null,cRemate:r.remate||0,cRN:r.rn?{mes:Math.round(r.rn.pd*30*10)/10,f:!!r.rn.f}:null,cReg:r.reg?{mes:Math.round(r.reg.pd*30*10)/10,txt:r.reg.cambio.map(_raTexto)}:null};
 }
 // ── "ESTE RENGLÓN NO CIERRA": EL CHEQUEO AUTOMÁTICO DE PEDIDOS ─────────────────────
 // Pedido suyo, anotado desde el 16/09/2026: *"un producto no puede destrabar más por mes que lo
@@ -15444,6 +15474,9 @@ function cuentaPedidoHTML(p){
   let rem=(p.cRemate||0)>0?`<div style="flex-basis:100%;font-size:.6rem;color:var(--muted);margin-top:2px">🔒 No cuento <strong style="color:var(--text)">${fmtN(p.cRemate)}</strong> u. vendidas abajo del piso (${parseFloat((state.mlconfig||{}).minPct)||30}%): lo que se vende rematado no se vuelve a comprar.${p.cRN?` Uso lo que vende sin remate: <strong style="color:var(--text)">${fmtN(p.cRN.mes)}/mes</strong>${p.cRN.f?' (todavía con pocos días medidos)':''}.`:''}</div>`:'';
   const regH=p.cReg?`<div style="flex-basis:100%;font-size:.6rem;color:var(--amber);margin-top:2px">🔀 ${p.cReg.txt.join(' · ')}. Por eso el ritmo que uso es <strong style="color:var(--text)">${fmtN(p.cReg.mes)}/mes</strong> (lo de antes del cambio ya no vale).</div>`:'';
   rem=rem+regH;
+  // Lo que decidió Claude va arriba de todo: es el número que manda (la cuenta automática sigue abajo, para comparar).
+  const clH=p.cClaude?`<div style="flex-basis:100%;font-size:.66rem;line-height:1.5;color:var(--text);background:rgba(139,92,246,.12);border:1px solid rgba(139,92,246,.35);border-radius:6px;padding:5px 9px;margin-top:2px">🧠 <b>Lo decidí yo (Claude): ${fmtN(p.cClaude.u)} a comprar</b>${p.cClaude.formU!==p.cClaude.u?` · <span style="color:var(--muted)">la cuenta automática daba ${fmtN(p.cClaude.formU)}</span>`:''}${p.cClaude.mot?`<div style="color:var(--muted);margin-top:2px">${escHtml(p.cClaude.mot)}</div>`:''}</div>`:'';
+  rem=clH+rem;
   if(!(p.cObjetivo>0)||!(p.cVdia>0))return rem;
   const pasos=[p.cHist
     ? `<span style="color:var(--amber)">este mes no vendió porque estuvo en CERO</span> · vendía <strong style="color:var(--text)">${p.cVdia}</strong> por día cuando tenía (<strong style="color:var(--text)">${fmtN(p.cHist.u)}</strong> en ${p.cHist.dias} días)`
@@ -15456,7 +15489,7 @@ function cuentaPedidoHTML(p){
   if(p.cML>0)pasos.push(`− <strong style="color:var(--text)">${fmtN(p.cML)}</strong> que ya están en ML`);
   if(p.cCasa>0)pasos.push(`− <strong style="color:var(--text)">${fmtN(p.cCasa)}</strong> que ya tenés en casa`);
   if(p.cCamino>0)pasos.push(`− <strong style="color:var(--text)">${fmtN(p.cCamino)}</strong> que van en camino`);
-  pasos.push(`= <strong style="color:var(--amber)">${fmtN(p.cantidad||0)} a comprar</strong>`);
+  pasos.push(p.cClaude?`= <strong style="color:var(--muted)">${fmtN(p.cClaude.formU)} según la cuenta automática</strong>`:`= <strong style="color:var(--amber)">${fmtN(p.cantidad||0)} a comprar</strong>`);
   const pie=p.cPocas
     ? `Con ${p.cVend===1?'una sola venta':'tan pocas ventas'} no se corrige por los días que tuvo stock: no alcanza para medir un ritmo y corregir multiplicaría ruido. Se usa el mes entero, que es lo conservador.`
     : p.cHist
@@ -15644,7 +15677,7 @@ function pedPyLineaHTML(prod){
   }else partes.push(`<span style="color:var(--muted)" title="Nadie cargó todavía el precio de comprasparaguay de este producto: sin eso no se sabe si conviene reponerlo.">🇵🇾 hoy —</span>`);
   if(r&&!r.motivo){
     if(mx!=null){
-      const donde={full:`a ${fmt(r.P)}, lo que se puede cobrar teniendo Full${r.techo&&r.techo.cS?` (el más barato SIN Full está a ${fmt(r.techo.cS)}: se lo pasa hasta +10%)`:''}${r.techo&&r.techo.cF?` · el más barato CON Full: ${fmt(r.techo.cF)}`:''}`,caja:`a ${fmt(r.P)}, lo que pide ML para ganar la caja`,ganas:`a ${fmt(r.P)}, tu precio de hoy (ya ganás la caja)`,nocat:`a ${fmt(r.P)}, tu precio de hoy (no es de catálogo)`,hoy:`a ${fmt(r.P)}, tu precio de hoy`,vieja:`a ${fmt(r.P)}, tu precio de hoy (publicaciones pausadas)`}[r.fuente]||'';
+      const donde={full:`a ${fmt(r.P)}, lo que se puede cobrar teniendo Full${r.techo&&r.techo.cS?` (el más barato SIN Full está a ${fmt(r.techo.cS)}: se lo pasa hasta +10%)`:''}${r.techo&&r.techo.cF?` · el más barato CON Full: ${fmt(r.techo.cF)}`:''}`,caja:`a ${fmt(r.P)}, lo que pide ML para ganar la caja`,ganas:`a ${fmt(r.P)}, tu precio de hoy (ya ganás la caja)`,nocat:`a ${fmt(r.P)}, tu precio de hoy (no es de catálogo)`,hoy:`a ${fmt(r.P)}, tu precio de hoy`,claude:`a ${fmt(r.P)}, el precio al que lo pienso vender (lo decidí yo, Claude${r.clMot?': '+r.clMot:''})`,vieja:`a ${fmt(r.P)}, tu precio de hoy (publicaciones pausadas)`}[r.fuente]||'';
       partes.push(`<span title="${q(`Lo más que podés pagar (puesto) para quedar en ${r.meta}% vendiendo ${donde}, con todo adentro (comisión, envío de Full, IIBB, monotributo, envío/embalaje y reclamos).${r.usdPy>0?` En la web de Paraguay: ${f2(r.usdPy)} antes del 17%.`:''}${tc>0?' = '+fmt(Math.round(mx*tc))+'.':''}`)}">💰 máx <b>${f2(mx)}</b></span>`);
     }else partes.push(`<span style="color:var(--red)" title="${q(`Vendiendo a ${fmt(r.P)} no hay precio de compra que deje ${r.meta}%.`)}">💰 máx: no llega</span>`);
   }else partes.push(`<span style="color:var(--muted)" title="No hay publicación viva con el neto calculado: no se puede medir.">💰 máx sin medir</span>`);
@@ -15676,6 +15709,10 @@ function maxCompraDe(p,metaPct){
     }
     if(techo&&techo.t>P){P=Math.round(techo.t);fuente='full';}else techo=null;
   }
+  // El precio de venta para el máximo lo puede fijar Claude (`decido:ped:…=venta|$`): por ejemplo el precio
+  // NORMAL cuando la publicación está subida un tiempo por escasez (si no, el máximo sale inflado).
+  let clMot='';
+  {const _cl=clPedDe(p.id);if(_cl&&Number(_cl.pv)>0){P=Math.round(Number(_cl.pv));fuente='claude';techo=null;clMot=String(_cl.mot||'');}}
   // CUOTAS DEL QUE HAY QUE IGUALAR (04/10/2026). Él: "el 28% daba por hecho que se vende sin cuotas (…)
   // arreglalo y que quede bien". El robot ve de noche en `cyc/techofull` si el que pone el techo (cuoT) o el
   // más barato (cuoMin) es Premium o está en una campaña de cuotas de ML. Para venderle a ese precio hay que
@@ -15706,7 +15743,7 @@ function maxCompraDe(p,metaPct){
   const usd=tc>0?(merc/tc-ship)/(1+dev/100):null;
   const chk=simMargen({precio:P,mercaderia:merc,gest,comision:c2.com,impPct,cuotasPct:cuoPct});
   return {P,fuente,cuoN,cuoPct,cuo,merc:Math.round(merc),usd,usdPy:usd!=null?usd/RECARGO_PY:null,meta:Math.round(m*100),
-    chk:chk.margen,hoyUSD:costUSDof(p)||0,esPy:p.origen==='py',techo,netoP,imp,gest,ship,dev,tc};
+    chk:chk.margen,hoyUSD:costUSDof(p)||0,esPy:p.origen==='py',techo,netoP,imp,gest,ship,dev,tc,clMot};
 }
 // El % que quedaría comprando a un precio de Paraguay dado (06/10/2026, pedido suyo: "que los que no den
 // muestren el % que quedaría pidiendo"). Es maxCompraDe dada vuelta: mismo precio de venta, misma comisión,
@@ -15735,7 +15772,7 @@ function pyProbVisHTML(_prod){
     // producto, el que me quedaría si lo pido"). El 35% era con lo que pagaste la última vez; acá va sólo el
     // de pedirlo HOY al precio de Nissei (la misma cuenta del veredicto de arriba: margenSiComproPY).
     let mgPed=null,_mxP=0,_mxF='';try{const _mx=maxCompraDe(_prod,PY_PROB_PISO);mgPed=margenSiComproPY(_mx,parseFloat(_prod.nisseiUSD)||0);if(_mx&&!_mx.motivo){_mxP=_mx.P;_mxF=_mx.fuente;}}catch(e){}
-    const datos=mg&&mg.precio>0?`<div style="font-size:.74rem;color:var(--muted);flex-basis:100%">🏷️ tu precio en ML <b style="color:var(--text)">${fmt(Math.round(mg.precio))}</b>${mgPed!=null?` · si lo pedís hoy te queda <b style="color:${typeof pctColor==='function'?pctColor(mgPed):'var(--text)'}">${Math.round(mgPed)}%</b>${_mxP&&_mxP!==Math.round(mg.precio)?` vendiéndolo a <b style="color:var(--text)">${fmt(_mxP)}</b>${_mxF==='full'?' (lo que se puede cobrar teniendo Full)':_mxF==='caja'?' (lo que pide ML para ganar la caja)':''}`:''}`:''}${_prod.nisseiUSD?` · 🇵🇾 Nissei US$ ${Number(_prod.nisseiUSD).toFixed(2)}${_prod.nisseiTs?' (mirado '+new Date(Number(_prod.nisseiTs)).toLocaleDateString('es-AR')+')':''}`:''}${_prod.codPy?` · 🔖 ${_prod.codPy}`:''}</div>`:'';
+    const datos=mg&&mg.precio>0?`<div style="font-size:.74rem;color:var(--muted);flex-basis:100%">🏷️ tu precio en ML <b style="color:var(--text)">${fmt(Math.round(mg.precio))}</b>${mgPed!=null?` · si lo pedís hoy te queda <b style="color:${typeof pctColor==='function'?pctColor(mgPed):'var(--text)'}">${Math.round(mgPed)}%</b>${_mxP&&_mxP!==Math.round(mg.precio)?` vendiéndolo a <b style="color:var(--text)">${fmt(_mxP)}</b>${_mxF==='full'?' (lo que se puede cobrar teniendo Full)':_mxF==='caja'?' (lo que pide ML para ganar la caja)':_mxF==='claude'?' (el precio que decidí yo, Claude)':''}`:''}`:''}${_prod.nisseiUSD?` · 🇵🇾 Nissei US$ ${Number(_prod.nisseiUSD).toFixed(2)}${_prod.nisseiTs?' (mirado '+new Date(Number(_prod.nisseiTs)).toLocaleDateString('es-AR')+')':''}`:''}${_prod.codPy?` · 🔖 ${_prod.codPy}`:''}</div>`:'';
     return `${datos}<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;width:100%">
       <div style="display:flex;gap:6px">${ph(fPY,'🇵🇾 Paraguay')}${ph(fML,'🏷️ ML')}</div>
       <div style="font-size:.76rem;line-height:1.8">${mlUrl?A(mlUrl,'🔗 verlo en ML'):'<span style="color:var(--muted)">🔗 sin publicación en ML</span>'}<br>${/^https:\/\//.test(lPY)?A(lPY,'🇵🇾 verlo en comprasparaguay'):'<span style="color:var(--amber)">🇵🇾 falta el link de comprasparaguay (lo carga Guay)</span>'}</div>
@@ -15775,7 +15812,7 @@ function maxCompraHTML(p){
   const st='flex-basis:100%;font-size:.62rem;line-height:1.5;margin-top:2px';
   if(r.motivo)return `<div style="${st};color:var(--muted)">💰 Máximo para comprar: <span style="color:var(--amber)">sin medir</span> (no hay publicación viva con el neto calculado)</div>`;
   if(!(r.merc>0)||!(r.usd>0))return `<div style="${st};color:var(--red)">💰 Vendiendo a ${fmt(r.P)} ${r.fuente==='caja'?'(lo que pide ML para ganar la caja)':''} <b>no hay precio de compra que deje ${r.meta}%</b>: ni regalado llega.</div>`;
-  const donde={full:`a ${fmt(r.P)}, lo que se puede cobrar teniendo Full${r.techo&&r.techo.cS?` (el más barato SIN Full está a ${fmt(r.techo.cS)}: se lo pasa hasta +10%)`:''}${r.techo&&r.techo.cF?` · el más barato CON Full: ${fmt(r.techo.cF)}`:''}`,caja:`a ${fmt(r.P)}, lo que pide ML para ganar la caja`,ganas:`a ${fmt(r.P)}, tu precio de hoy (ya ganás la caja)`,nocat:`a ${fmt(r.P)}, tu precio de hoy (no es de catálogo: no hay competidor medido)`,hoy:`a ${fmt(r.P)}, tu precio de hoy`,vieja:`a ${fmt(r.P)}, tu precio de hoy (sus publicaciones están pausadas: la caja de compra que se ve es de cuando estaban activas y no se usa)`}[r.fuente];
+  const donde={full:`a ${fmt(r.P)}, lo que se puede cobrar teniendo Full${r.techo&&r.techo.cS?` (el más barato SIN Full está a ${fmt(r.techo.cS)}: se lo pasa hasta +10%)`:''}${r.techo&&r.techo.cF?` · el más barato CON Full: ${fmt(r.techo.cF)}`:''}`,caja:`a ${fmt(r.P)}, lo que pide ML para ganar la caja`,ganas:`a ${fmt(r.P)}, tu precio de hoy (ya ganás la caja)`,nocat:`a ${fmt(r.P)}, tu precio de hoy (no es de catálogo: no hay competidor medido)`,hoy:`a ${fmt(r.P)}, tu precio de hoy`,claude:`a ${fmt(r.P)}, el precio al que lo pienso vender (lo decidí yo, Claude${r.clMot?': '+r.clMot:''})`,vieja:`a ${fmt(r.P)}, tu precio de hoy (sus publicaciones están pausadas: la caja de compra que se ve es de cuando estaban activas y no se usa)`}[r.fuente];
   const _enPesos=!r.esPy||esProductoPaulvic(p); // Bs As y Paulvic en pesos (06/10/2026)
   const _pg=v=>(_enPesos&&curTC()>0)?fmt(Math.round(v*curTC())):'US$ '+v.toFixed(2).replace('.',',');
   const cmp=r.hoyUSD>0?(r.hoyUSD<=r.usd?` · hoy lo pagaste ${_pg(r.hoyUSD)} <span style="color:var(--green)">✓ entra</span>`:` · hoy lo pagaste ${_pg(r.hoyUSD)} <span style="color:var(--red)">✕ te pasás</span>`):'';
