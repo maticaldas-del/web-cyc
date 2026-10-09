@@ -43,7 +43,7 @@ const EN_CONSULTA = process.env.GITHUB_WORKFLOW === 'ml-consulta' || process.env
 const CONSULTA_ESCRIBE = new Set(['lineatodo', 'revcand', 'vincular', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull']);
 const CONSULTA_NIEGA = new Set(['candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
-  'unapub', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes']);
+  'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes']);
 let CONSULTA_SOLO_LEE = false;
 if (EN_CONSULTA) {
   const _cmd = String(process.env.BILLING_PROBE || '').trim();
@@ -25627,6 +25627,36 @@ async function main() {
     // cambiado diez veces, y el producto aparecía muy abajo del 30% sin forma de darse cuenta.
     // Desde esa fecha la pantalla ya NO mira este campo (el neto sale solo de ML), pero los valores
     // viejos siguen guardados: esto los lista y, con :borrar, los saca de la base.
+    // BILLING_PROBE=aclasica:<MLA>[,<MLA>…][:go] → PASAR DE PREMIUM A CLÁSICA (09/10/2026, decisión suya).
+    // Él: "poner cuotas casi siempre es malo, ya que aumentamos mucho el monotributo por la misma venta". Premium
+    // (gold_pro) cobra las cuotas aparte: a igual precio deposita ~$6.000 menos en un perfume de $53.000. Cambia el
+    // tipo con POST /items/<MLA>/listing_type {id: gold_special} y relee. Sin :go sólo muestra el tipo de hoy.
+    if (/^aclasica:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const arg = String(process.env.BILLING_PROBE).slice('aclasica:'.length);
+      const GO = /:go$/.test(arg) && !DRY;
+      const ids = arg.replace(/:go$/, '').split(/[,; ]+/).map((x) => x.trim().toUpperCase()).filter((x) => /^MLA\d+$/.test(x));
+      const lk = (await db.get('cyc/mllinks')) || {};
+      const tok = await tokensCerebro(db);
+      console.log(`=== PREMIUM → CLÁSICA ${GO ? '(APLICANDO)' : '(PRUEBA: no toco nada)'} · ${ids.length} publicación(es) ===`);
+      for (const mla of ids) {
+        const cta = String((lk[mla] || {}).cuenta || '');
+        const tk = tok[cta] || tok[cta.toLowerCase()] || tok[cta.charAt(0).toUpperCase() + cta.slice(1).toLowerCase()];
+        if (!tk) { console.log(`${mla} · ${cta || '?'} · sin token de la cuenta`); continue; }
+        let it; try { it = await mlGet('/items/' + mla + '?attributes=id,title,listing_type_id,price,status', tk); } catch (e) { console.log(`${mla} · ML no contestó`); continue; }
+        const lt = it.listing_type_id;
+        console.log(`${mla} · ${cta} · ${String(it.title || '').slice(0, 50)} · $${it.price} · hoy ${lt === 'gold_pro' ? 'PREMIUM' : lt === 'gold_special' ? 'Clásica' : lt}`);
+        if (lt !== 'gold_pro') { console.log('   ya no es Premium: no hay nada que cambiar'); continue; }
+        if (!GO) { console.log('   → la pasaría a Clásica'); continue; }
+        const r = await fetch(ML_API + '/items/' + mla + '/listing_type', { method: 'POST', headers: { Authorization: 'Bearer ' + tk, 'Content-Type': 'application/json' }, body: JSON.stringify({ id: 'gold_special' }) });
+        let det = ''; if (!r.ok) { try { det = (await r.text() || '').slice(0, 250); } catch { det = ''; } }
+        _anotarEscrituraML(r, mla, 'pasar a Clásica', det);
+        if (!r.ok) { console.log(`   ✗ ML dijo ${r.status} ${det}`); continue; }
+        let it2 = null; try { it2 = await mlGet('/items/' + mla + '?attributes=listing_type_id,price', tk); } catch { it2 = null; }
+        console.log(`   ✓ pasada a Clásica · releído de ML: ${it2 ? it2.listing_type_id + ' a $' + it2.price : '? (no pude releer)'}`);
+      }
+      return;
+    }
+
     // BILLING_PROBE=sincargo:<palabra>[!<excluir>][:go] → ESTE RECLAMO NO FUE CULPA DEL PRODUCTO.
     //
     // Un reclamo encarece el producto: el costo full se calcula como costo × (1 + % de reclamos),

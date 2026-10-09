@@ -195,6 +195,11 @@ Qué chequear: que no se cuele una baja; que la suba en pausada se relea de ML.
 Y la regla de la revisión, suya: *"quiero que cada run evalues publicacion por publicacion"* — incluidas las
 pausadas sin stock que se agotan rápido (lo que se vende en 1-2 días al llegar está barato).
 
+### `aclasica`: Premium → Clásica (09/10/2026, decisión suya)
+*"poner cuotas casi siempre es malo, ya que aumentamos mucho el monotributo por la misma venta"*. `aclasica:<MLA>,…[:go]`
+(ml-sync) hace POST /items/<MLA>/listing_type {gold_special} y relee. Qué chequear: que ML acepte el cambio y que el
+margen del panel lo refleje en la noche siguiente.
+
 ### `planilla`: TODAS las publicaciones en cada revisión (09/10/2026)
 Él: *"tres veces te pedí que mires TODOS los productos en las runs"*. Las runs leían `informe` (sólo lo que se movió).
 `planilla[:cuenta]` (solo lee, ml-consulta) lista cada publicación con ficha, activa o pausada: precio leído de ML,
