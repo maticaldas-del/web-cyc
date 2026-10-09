@@ -2498,7 +2498,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.90';
+const APP_VERSION='22.91';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2509,6 +2509,7 @@ const APP_VERSION='22.90';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.91',f:'09/10/2026',h:'02:40',c:[{n:1,t:'🫨 Ventas: con $100.000 de neto o más la tarjeta tiembla siempre, aunque no llegue a "Bueno". El fuego sigue siendo sólo desde Bueno.'}]},
   {v:'22.90',f:'09/10/2026',h:'02:25',c:[{n:1,t:'🔥 El fuego vuelve a ser como antes. La venta que arde queda un poco más chica, con lugar arriba y a los costados, para que el fuego se vea entero en la lista.'}]},
   {v:'22.89',f:'09/10/2026',h:'02:15',c:[{n:1,t:'🖱️ Ventas en la PC: sin la barra de abajo y con un margen a la derecha de la lista para scrollear la página con el mouse. 🔥 El fuego sale sólo desde "Bueno" (45%) para arriba y con $100.000 de neto.'}]},
   {v:'22.88',f:'09/10/2026',h:'02:05',c:[{n:1,t:'🔥 El fuego de las ventas grandes se ve como fuego: lenguas amarillas, naranjas y rojas, y también suben desde abajo de la tarjeta (antes quedaban cortadas arriba en la lista).'}]},
@@ -8630,7 +8631,7 @@ function vivaVenta(o){
   // hasta $5.000 nada (sólo el color) · $12.000 brilla · $30.000 flota · $100.000 arde (sólo lo excepcional: él, con un
   // Ferrari de $59.000 de neto ardiendo, el 09/10: "¿está bien así, tirando fuego?") · $120.000 tope.
   const neto=Number(o.neto)||0,vi=_vivaLog(neto,1500,120000);   // 0 en $1.500 · ~.28 en $5.000 · ~.48 en $12.500 · .85 en $60.000
-  return{k:n.k,c:n.c,vel,vi,ef:neto>=100000&&VIVA_ORD[n.k]>=VIVA_ORD.bueno?'fuego':neto>=30000?'flota':neto>=12000?'glow':''};   // fuego: además desde "Bueno" (45%) para arriba, él: "verde es poco"
+  return{k:n.k,c:n.c,vel,vi,ef:neto>=100000?(VIVA_ORD[n.k]>=VIVA_ORD.bueno?'fuego':'tiembla'):neto>=30000?'flota':neto>=12000?'glow':''};   // fuego: además desde "Bueno" (45%) para arriba, él: "verde es poco"
 }
 // La tarjeta de una venta adentro de su envoltorio (el fuego necesita salir por afuera de la tarjeta).
 function vivaEnvolver(html,cual,v){
@@ -8642,8 +8643,9 @@ function vivaEnvolver(html,cual,v){
   const vi=v.vi==null?1:v.vi,f=x=>Math.round(x*10)/10;
   const vars=`--tint:${f(4+vi*14)}%;--bd:${f(18+vi*60)}%;--bw:${vi>=.7?2:1}px;--halo:${f(Math.max(0,vi-.45)*30)}px;`;
   html=html.replace(a,`class="ingreso-item viva lv-${v.k}" style="--c:${v.c};${vars}`);
-  const mv=v.ef==='fuego'?'mv-tiembla':v.ef==='flota'?'mv-flota':'';
-  const gl=v.ef?('gl'+(v.ef==='fuego'?' fuerte':'')):'';
+  // $100.000 de neto o más tiembla siempre; arde sólo desde "Bueno" (09/10/2026, él con 2 Ferrari de $112.000 de neto).
+  const mv=v.ef==='fuego'||v.ef==='tiembla'?'mv-tiembla':v.ef==='flota'?'mv-flota':'';
+  const gl=v.ef?('gl'+(v.ef==='fuego'||v.ef==='tiembla'?' fuerte':'')):'';
   return `<div class="vw ${cual} ${mv} ${gl}${v.ef==='fuego'?' vf':''}" style="--c:${v.c};--vr:8px" data-viva="venta" data-vk="${v.k}" data-vv="${v.vel.toFixed(3)}" data-vi="${(v.vi==null?1:v.vi).toFixed(3)}"${v.quieta?' data-vq="1"':''}>${v.ef==='fuego'?'<canvas class="viva-fuego"></canvas>':''}${html}</div>`;
 }
 // El día (tarjeta de Inicio).
