@@ -35363,9 +35363,9 @@ async function main() {
     // 140 Pedidos sale casi vacío. Por producto (y color): ventas 30/60/180 d, última venta, días con stock en 30, Full por
     // cuenta, oficina, en camino a Full, viajando de Paraguay y del Paulvic, neto y costo. No decide nada: los números para decidir.
     if (/^pedidostodo$/.test(String(process.env.BILLING_PROBE || ''))) {
-      const ks = ['cyc/inventory', 'cyc/mllinks', 'cyc/ventaprod', 'cyc/envios_full', 'cyc/products', 'cyc/stockhist', 'cyc/compraspy', 'cyc/pedidospv', 'cyc/pedidos_papelera', 'cyc/notraer', 'cyc/proveedores', 'cyc/finanzas/tipo_cambio', 'cyc/claudedecide/ped', 'cyc/cajasentrado'];
+      const ks = ['cyc/inventory', 'cyc/mllinks', 'cyc/ventaprod', 'cyc/envios_full', 'cyc/products', 'cyc/stockhist', 'cyc/compraspy', 'cyc/pedidospv', 'cyc/pedidos_papelera', 'cyc/notraer', 'cyc/proveedores', 'cyc/finanzas/tipo_cambio', 'cyc/claudedecide/ped', 'cyc/cajasentrado', 'cyc/autoprecio'];
       const R = await Promise.all(ks.map((k) => db.get(k).catch(() => null)));
-      const [I, L, VP, ENV, PR, SH, CPY, PV, PAP, NT, PROV, TC, CD, CE] = R.map((x) => x || {});
+      const [I, L, VP, ENV, PR, SH, CPY, PV, PAP, NT, PROV, TC, CD, CE, AP] = R.map((x) => x || {});
       const tc = Number(R[11]) || 0;
       const C4 = ['Adriana', 'Luciana', 'Ayelen', 'Matias'], OF = 'Oficina_Mati';
       const hoy = Date.now(), dk = (d) => new Date(hoy - d * 864e5 - 3 * 36e5).toISOString().slice(0, 10).replace(/-/g, '_');
@@ -35418,7 +35418,11 @@ async function main() {
         const full = C4.map((c) => n0(I[p.id + '__' + c])), ft = full.reduce((a, b) => a + b, 0), casa = n0(I[p.id + '__' + OF]);
         const cm = (cam[p.id] || {}).tot || 0, py = viaPy[p.id] || 0, pvv = Object.values(viaPv[p.id] || {}).reduce((a, b) => a + b, 0);
         const cost = Math.round((Number(p.costFullUSD) || Number(p.costUSD) || 0) * tc);
-        const dec = CD[p.id] ? ` · YA DECIDÍ ${CD[p.id].u != null ? CD[p.id].u : JSON.stringify(CD[p.id].vars || {})}` : '';
+        const pr = Math.round(Number(p.netoCalcPrecio) || 0), cam45 = [];
+        for (const [mla, e] of Object.entries(L)) { if (!e || e.prodId !== p.id || e.ignored) continue; const a = AP[mla]; if (!a || a.de == null || a.a == null) continue;
+          const d = Math.round((hoy - (Number(a.ts) || 0)) / 864e5); if (d <= 45) cam45.push(`${a.a > a.de ? '⬆️' : '⬇️'}$${a.de}→$${a.a} ${d}d`); }
+        const dec0 = ` · precio $${pr}${cam45.length ? ' (' + cam45.slice(0, 3).join(' ') + ')' : ''}`;
+        const dec = dec0 + (CD[p.id] ? ` · YA DECIDÍ ${CD[p.id].u != null ? CD[p.id].u : JSON.stringify(CD[p.id].vars || {})}` : '');
         console.log(`\n${p.id} · ${String(p.name).slice(0, 55)} · v30 ${s.t30} v60 ${s.t60} v180 ${s.t180} · últ ${s.ult ? s.ult.slice(8, 10) + '/' + s.ult.slice(5, 7) : '—'} · dCS ${dCS(p.id)} · Full ${ft} [${C4.map((c, i) => full[i] ? c.slice(0, 2) + full[i] : '').filter(Boolean).join(' ')}] · casa ${casa} · camino ${cm}${py ? ' · PYviaja ' + py : ''}${pvv ? ' · PVviaja ' + pvv : ''} · neto $${Math.round(Number(p.netoCalc) || 0)} costo $${cost}${p.nisseiUSD ? ' · PY US$' + p.nisseiUSD : ''}${dec}`);
         for (const va of (p.variantes || [])) {
           const sv = s.v[va] || { t30: 0, t60: 0, t180: 0, ult: '' };
