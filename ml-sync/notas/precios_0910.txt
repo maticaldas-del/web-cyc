@@ -1,0 +1,11 @@
+# Revisión completa 09/10/2026 08:52 · precios, activar y notas
+MLA3998036670=activar|Llegaron las 2 unidades a Full y a $53.000 deja 61%. Estaba pausada esperando la mercadería: la activo.
+MLA3374364116=59990|Vendió 1 en 60 días a $56.470 dejando 14%: esta publicación paga más por venta que las otras de Victoria's Secret. Subo un escalón de 6% hacia el 25%.
+MLA3546661648=55490|A $52.990 esta publicación deja 20%. No tiene stock: la dejo en el 25% para cuando vuelva.
+MLA1682456369=14360|Estaba a $10.500 y perdía plata en cada venta. La llevo al precio de los otros Paulvic. ML la tiene en revisión.
+MLA1695210793=14360|Estaba a $11.990 y dejaba 13%. La llevo al precio de los otros Paulvic. ML la tiene en revisión.
+MLA3110101636=9990|A $8.660 deja 3%: vender así no deja nada. Vende poco (3 en 60 días) y no es de catálogo. La llevo cerca del 25%.
+MLA3550882622=381990|La única unidad se vendió en horas a $363.680 ganando la caja. Viene 1 más en la caja de Matías: subo 5% para la próxima.
+MLA1771197881=nota|Tiene 13 unidades y no vende hace 55 días. Otro vendedor la tiene a $37.600 y a ese precio perdemos plata. Ni a $44.070 se vendía, así que bajar no la mueve: el problema es la competencia, no el precio. No la toco.
+MLA1782602199=nota|Tiene 48 unidades y vende 8 por mes: le sobra stock para 6 meses. Queda al 17% a propósito para que salga. La promo del 10.10 la dejaría en pérdida: no entro.
+MLA2070716651=nota|Las dos tandas se vendieron en un día a $92.499. Está a $104.990 para la próxima tanda. Vienen 4 en el pedido de Paraguay.
