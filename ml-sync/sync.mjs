@@ -36353,6 +36353,100 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=ventasdia[:<horas>] → CADA VENTA DEL PERÍODO, Y LAS QUE SALIERON RARAS CON SU MOTIVO (09/10/2026). SOLO LEE.
+    // Regla suya, después de la Muñequera (29,8% en la nota y 15% en la venta por una retención de Santa Fe): *"en cada
+    // corrida también analizá las ventas del día para ver si pasó algo"*. Junta cada compra (un carrito = una), saca el %
+    // con la MISMA cuenta de la web (`armarCostoWeb`) y la compara contra lo que esa publicación deja NORMALMENTE al mismo
+    // precio (mediana del neto por unidad de sus ventas sueltas de 45 días). La que sale abajo del 25% o deja bastante menos
+    // que lo normal se explica leyendo los cargos de Mercado Pago de ese pago: retención de una provincia, cuotas, comisión
+    // distinta, precio más bajo, neto todavía estimado. NINGÚN dato del comprador ni números de orden en el registro.
+    if (/^ventasdia(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const horas = parseFloat(String(process.env.BILLING_PROBE).split(':')[1]) || 12;
+      const vp = await db.get('cyc/ventaprod').catch(() => null);
+      if (!vp) { console.log('⚠️ no pude leer las ventas: no opino'); return; }
+      setDevLive(vp);
+      const costoDe = await armarCostoWeb(db, vp);
+      const hoy = Date.now(), desde = hoy - horas * 36e5, desdeRef = hoy - 45 * 864e5;
+      const f = (n) => '$' + Math.round(n).toLocaleString('es-AR');
+      const tsDe = (v) => Number(v.ts) || Date.parse(v.ts || '') || 0;
+      // Referencia: neto por unidad de las ventas SUELTAS (una sola fila en la compra) por publicación y precio.
+      const grupos = {}, ref = {}, canc = [];
+      for (const [dk, dia] of Object.entries(vp)) for (const [id, v] of Object.entries(dia || {})) {
+        if (!v) continue; const ts = tsDe(v); if (ts < desdeRef) continue;
+        if (ts >= desde) {
+          if (v.cancelada) { canc.push(v); continue; }
+          const k = String(v.cuenta || '') + '|' + String(v.numVenta || v.saleId || id);
+          (grupos[k] = grupos[k] || []).push({ v, dk, id, ts });
+        }
+      }
+      const filasPorVenta = {};
+      for (const dia of Object.values(vp)) for (const v of Object.values(dia || {})) if (v && !v.cancelada && v.numVenta) { const k = String(v.cuenta || '') + '|' + v.numVenta; filasPorVenta[k] = (filasPorVenta[k] || 0) + 1; }
+      for (const dia of Object.values(vp)) for (const v of Object.values(dia || {})) {
+        if (!v || v.cancelada || !v.mla || v.netoEstimado) continue;
+        const ts = tsDe(v); if (ts < desdeRef || ts >= desde) continue;
+        if (v.numVenta && filasPorVenta[String(v.cuenta || '') + '|' + v.numVenta] > 1) continue;
+        const q = Number(v.qty) || 1, P = Math.round((Number(v.total) || 0) / q), nu = (Number(v.neto) || 0) / q;
+        if (!(P > 0) || !(nu > 0)) continue;
+        ((ref[v.mla] = ref[v.mla] || {})[P] = ref[v.mla][P] || []).push(nu);
+      }
+      const med = (a) => { const b = [...a].sort((x, y) => x - y); const m = b.length >> 1; return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; };
+      const lista = Object.values(grupos).sort((a, b) => b[0].ts - a[0].ts);
+      console.log(`=== 🧾 VENTAS DE LAS ÚLTIMAS ${horas} H · ${lista.length} compras · ${canc.length} canceladas ===`);
+      console.log('(% con la cuenta de la web · "normal" = lo que deja esa publicación al mismo precio en sus ventas sueltas de 45 días)\n');
+      const raras = [];
+      for (const g of lista) {
+        let neto = 0, costo = 0, gest = 0, total = 0, normal = 0, hayNormal = true, est = false; const nombres = [];
+        for (const { v, dk } of g) {
+          const c = costoDe(v, dk); neto += Number(v.neto) || 0; costo += c.costo; gest += v.netoEstimado ? 0 : c.gest; total += Number(v.total) || 0;
+          if (v.netoEstimado) est = true;
+          const q = Number(v.qty) || 1, P = Math.round((Number(v.total) || 0) / q), r = (ref[v.mla] || {})[P];
+          if (r && r.length >= 2) normal += med(r) * q; else hayNormal = false;
+          nombres.push(`${q > 1 ? q + '× ' : ''}${String(v.prod || '').slice(0, 34)}`);
+        }
+        const div = costo + gest, pct = div > 0 ? (neto - costo) / div * 100 : null;
+        const pctN = hayNormal && div > 0 ? (normal - costo) / div * 100 : null;
+        const v0 = g[0].v, hora = new Date(g[0].ts - 3 * 36e5).toISOString().slice(5, 16).replace('T', ' ');
+        const bajo = pct != null && pct < 25, menos = hayNormal && normal - neto > Math.max(0.03 * total, 150);
+        const marca = est ? '≈' : (bajo || menos) ? '⚠️' : '✓';
+        console.log(`${marca} ${hora} · ${v0.cuenta} · ${nombres.join(' + ')}${g.length > 1 ? ' (carrito)' : ''} · ${f(total)} · neto ${f(neto)} · ${pct == null ? 'sin costo' : pct.toFixed(0) + '%'}${pctN != null ? ` (normal ${pctN.toFixed(0)}%)` : ''}`);
+        if (!est && (bajo || menos)) raras.push({ g, neto, normal, hayNormal, total });
+      }
+      if (canc.length) console.log(`\nCanceladas: ${canc.map((v) => `${v.cuenta} · ${String(v.prod || '').slice(0, 30)} · ${f(v.total)}`).join(' | ')}`);
+      if (!raras.length) { console.log('\nNinguna venta rara: todas dejaron lo normal para su precio (o están estimadas y la noche las relee).'); return; }
+      console.log(`\n=== ⚠️ ${raras.length} VENTA(S) PARA MIRAR · el motivo sale de los cargos de Mercado Pago ===`);
+      const tok = await tokensCerebro(db);
+      for (const r of raras) {
+        const v0 = r.g[0].v, cta = String(v0.cuenta || '');
+        const tk = tok[cta] || tok[cta.toLowerCase()] || tok[cta.charAt(0).toUpperCase() + cta.slice(1).toLowerCase()];
+        const motivos = []; const ret = {}; let cuotas = 0, comision = 0, envio = 0, leidos = 0;
+        const oids = [...new Set(r.g.map(({ v, id }) => (String(v.saleId || v.id || id).match(/(\d{6,})/) || [])[1]).filter(Boolean))];
+        for (const oid of tk ? oids : []) {
+          let o = null; try { o = await mlGet('/orders/' + oid, tk); } catch { o = null; }
+          for (const p of (o?.payments || [])) {
+            let b = null; try { const rr = await fetch('https://api.mercadopago.com/v1/payments/' + p.id, { headers: { Authorization: 'Bearer ' + tk } }); b = await rr.json(); } catch { b = null; }
+            if (!b || !b.charges_details) continue; leidos++;
+            if ((b.installments || 1) > 1) motivos.push(`el comprador pagó en ${b.installments} cuotas`);
+            for (const c of b.charges_details) {
+              const n = String(c.name || ''), a = Number(c.amounts?.original) || 0;
+              if (n.startsWith('tax_withholding')) { const prov = (n.split('-')[1] || n).replace(/_/g, ' '); ret[prov] = (ret[prov] || 0) + a; }
+              else if (n === 'financing_fee') cuotas += a;
+              else if (n === 'meli_percentage_fee' || n === 'flat_fee') comision += a;
+              else if (n === 'shp_fulfillment' && (Number(p.shipping_cost) || 0) === 0) envio += a;
+            }
+          }
+        }
+        const totRet = Object.values(ret).reduce((a, x) => a + x, 0);
+        if (totRet > r.total * 0.01) motivos.push(`retención de Ingresos Brutos ${f(totRet)} (${Object.entries(ret).filter(([, a]) => a >= 5).map(([pv, a]) => pv + ' ' + f(a)).join(', ')}): adelanto de impuesto según la provincia del comprador`);
+        if (cuotas > 0) motivos.push(`cuotas a cargo nuestro ${f(cuotas)}`);
+        if (envio > 0) motivos.push(`envío de Full cobrado ${f(envio)}`);
+        if (comision > 0) motivos.push(`comisión de ML ${f(comision)}`);
+        const nom = r.g.map(({ v }) => String(v.prod || '').slice(0, 34)).join(' + ');
+        console.log(`· ${cta} · ${nom} · ${f(r.total)} · neto ${f(r.neto)}${r.hayNormal ? ` · lo normal ${f(r.normal)} (${f(r.normal - r.neto)} menos)` : ' · sin ventas sueltas al mismo precio para comparar'}`);
+        console.log(`   ${!tk ? 'sin token de esa cuenta: no pude leer los cargos' : !leidos ? 'Mercado Pago no contestó los cargos' : (motivos.join(' · ') || 'sin cargos raros: el margen es bajo con el precio y el costo de hoy')}`);
+      }
+      return;
+    }
+
     // BILLING_PROBE=cargosventa:<MLA>[:<días>] → QUÉ LE COBRÓ ML A CADA VENTA DE UNA PUBLICACIÓN (09/10/2026). SOLO LEE.
     // Él, con la Muñequera: la nota del 🧠 decía "deja 29,8%" y la venta de hoy dio 15%. Al mismo precio ML se quedó
     // $2.080 en unas y $2.417 en otra: sin ver los conceptos del pago (comisión, envío, cuotas, retenciones) no se sabe

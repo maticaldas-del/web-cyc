@@ -422,6 +422,8 @@ Todo lo que guarda la historia día por día y las pantallas que la dibujan.
 
 - **`cargosventa:<MLA>[:días]` (09/10/2026, solo lee):** cada venta de una publicación con los cargos de Mercado Pago por nombre (comisión, envío, cuotas, retenciones), sin datos del comprador. Nació con la Muñequera (29,8% en la nota contra 15% en una venta). Chequear: que no imprima ids ni nombres; que un carrito se vea como CARRITO.
 
+- **`ventasdia[:horas]` (09/10/2026, solo lee, regla suya: *"en cada corrida analizá las ventas del día para ver si pasó algo"*):** cada compra del período con su % (cuenta de la web, `armarCostoWeb`) contra lo normal de esa publicación al mismo precio (mediana del neto por unidad de sus ventas sueltas de 45 días); las que salen abajo de 25% o dejan bastante menos que lo normal se explican con los cargos de Mercado Pago (retención de provincia, cuotas, envío, comisión). Corre en las 4 vueltas. Chequear: un carrito es una compra; sin datos del comprador ni números de orden; estimadas no se juzgan.
+
 ### Pendientes de la revisión 9 (09/10/2026, a la madrugada) — se van cerrando en las vueltas
 - **Publicaciones con variantes no tienen dueño de precio:** `decido`/`analizapromo`/`entrarpromo` las rechazan ("la maneja el robot de siempre") y con SOLO_DATOS el robot no las toca. Hace falta un camino de Claude por `raiseVariations` (y que la planilla las muestre como "nadie las maneja").
 - **`escasez` no mira colores** (saltea las claves `__v__`): un color con 1 u. dentro de un producto con stock no salta.
