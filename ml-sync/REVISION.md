@@ -198,6 +198,8 @@ todas las etapas.
   siga visible al lado, que con colores sólo valga color por color, y que el máximo no use un precio de escasez.
 - **Contestar preguntas solo** (`responder`) apagado con `responder:off`: las contesta Claude en cada vuelta.
 
+- **09/10 · VS en 0 por "remate" (error de Claude):** las marcas viejas del robot no son dato; antes de poner 0 o bajar, `porquebajo` (ventas 180 d y días con stock). Chequear: Xbox azul y las demás marcas liquidando del robot.
+
 ## 4 · CHOQUES
 - `mlapi/lineatodo` lo escriben `ritmo:go` (noche) y `lineatodo:go` (ml-consulta): los dos con la
   misma función `calcLineaTodo`.

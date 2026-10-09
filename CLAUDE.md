@@ -886,6 +886,13 @@ pase datos. fijate si hay algo más que el robot automático calcule. hacelo vos
    sugerida, decidir unidades y (si el precio de hoy no es el normal) el precio de venta para el máximo. Renovar las que sigan
    valiendo antes de los 4 días.
  · **Contestar preguntas solo (`responder`) se apaga** con `responder:off`: las contesto yo en cada vuelta.
+ · **ERROR MÍO DEL 08/10, para no repetirlo:** puse en 0 los pedidos de Victoria's Secret "porque estaban en remate". No lo
+   estaban: venden 111 en 180 días y se agotan; las marcas de escalera/liquidando las había dejado el robot viejo contando días SIN
+   stock como días sin vender. Él: *"como pueden estar en remate si deben tener como máximo 30 días en stock"*. **Regla: una marca
+   vieja del robot (escalera, liquidando, `ventaEnRemate`) NO es un dato. Antes de poner 0, bajar o decir "remate", correr
+   `porquebajo:<palabras>` y mirar ventas de 180 días y si tuvo stock.** Corregido: pedidos VS en automático, marca sacada a
+   Coconut Passion (`MLA1771197881`, queda a $44.070 porque comparte la caja), Pure Seduction (`MLA1771209909`) $44.020→$47.370.
+   Quedan por revisar con la misma vara: Xbox azul (también lo puse en 0 por escalera) y las otras marcas liquidando del robot.
  · Lo que sigue automático porque es mecánico o es una regla suya dura: ventas, stock, cajas recibidas, vínculos de
    publicaciones nuevas, dólar, retiro del 1º, el guardián que saca promos que nadie analizó, la marca liquidando que se cae
    en stock 0, y el descarte de candidatos de Paraguay que no llegan al 25% en dos mediciones (su piso).
