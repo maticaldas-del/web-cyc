@@ -295,6 +295,11 @@ pausadas sin stock que se agotan rápido (lo que se vende en 1-2 días al llegar
   la barrera, IIBB en proporción) → después (el real), con `pctColor`. Chequear que el % de "después"
   sea el mismo de la píldora de la venta.
 
+### El brillo de cada venta va con el neto (09/10/2026, v22.85)
+Él, con un Metatarso de $4.920 de neto lleno de estrellas por su 168%: *"quiero que el brillo vaya de mano con el neto"*.
+`vivaVenta`: color por % (igual), pero figuras (`vi` → `data-vi`, cantidad y opacidad), brillo, flota y fuego sólo por el
+neto: ≤$5.000 nada · $10.000 glow · $25.000 flota · $55.000 fuego. Qué chequear: una venta chica con % alto no brilla.
+
 ### Ventas de hoy: Día · Mes · Año (09/10/2026, v22.84)
 Pedido suyo: *"poner el selector de día, mes y año. y que siga el mismo pensamiento: el 7 del mes es 115.000 por los
 días del mes"*. `_homePerTot(esc,off)` suma día por día con `_homeDiaTot` (el % sale de las sumas); `_puntajeDia` recibe

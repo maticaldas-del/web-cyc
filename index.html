@@ -2494,7 +2494,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.84';
+const APP_VERSION='22.85';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2505,6 +2505,7 @@ const APP_VERSION='22.84';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.85',f:'09/10/2026',h:'01:25',c:[{n:1,t:'✨ Ventas: el brillo, las figuras, el movimiento y el fuego van con el neto en pesos, no con el %. Hasta $5.000 de neto sólo el color; $10.000 brilla, $25.000 flota, $55.000 arde. El color sigue diciendo el %.'}]},
   {v:'22.84',f:'09/10/2026',h:'01:15',c:[{n:2,t:'🏠 Ventas de hoy tiene Día · Mes · Año. Las flechas mueven de a un día, mes o año, y el puntaje usa la misma vara: 7 puntos = $115.000 de ganancia por cada día del período (en el mes o año en curso, por los días que ya pasaron).'}]},
   {v:'22.83',f:'09/10/2026',h:'01:10',c:[{n:1,t:'📝 Las revisiones de Ideas y Diseño ahora tienen que proponer solas detalles que den gusto usar la web (como las ventas con vida), mejoras de comodidad, lo repetido y lo que falta.'}]},
   {v:'22.82',f:'09/10/2026',h:'01:00',c:[{n:1,t:'🧹 Ventas: se sacó el cartel del robot viejo al lado de cada venta ("no lo subí · los precios automáticos están apagados"). Los precios los maneja Claude y esa etiqueta ya no decía nada. Todas las ventas quedan del mismo alto.'}]},
@@ -8614,9 +8615,12 @@ function vivaVenta(o){
   const n=_pctNivel(o.gpct);if(!n)return null;
   // Rojo y naranja: sólo el color del % (09/10/2026, él: "hay muchos colores y quilombo, casi ni se ve nada").
   if(n.k==='bajo'||n.k==='justo')return null;
-  const b=_vivaLog(Math.abs(Number(o.gan)||0),300,60000);
-  const punt=(VIVA_ORD[n.k]/6*.4+b*.6)*10;
-  return{k:n.k,c:n.c,vel,ef:punt>=7?'fuego':punt>=5.5?'flota':punt>=4?'glow':''};
+  // EL BRILLO VA CON EL NETO (09/10/2026, él con un Metatarso de $4.920 de neto lleno de estrellas: "quiero que el
+  // brillo vaya de mano con el neto, recontra llama la atención y son menos de 5.000"). El color sigue saliendo del
+  // %, pero cuántas figuras, el brillo, el movimiento y el fuego salen SÓLO del neto en pesos, con los precios de CYC:
+  // hasta $5.000 nada (sólo el color) · $10.000 brilla · $25.000 flota · $55.000 arde (un perfume grande) · $80.000 tope.
+  const neto=Number(o.neto)||0,vi=_vivaLog(neto,5000,80000);
+  return{k:n.k,c:n.c,vel,vi,ef:neto>=55000?'fuego':neto>=25000?'flota':neto>=10000?'glow':''};
 }
 // La tarjeta de una venta adentro de su envoltorio (el fuego necesita salir por afuera de la tarjeta).
 function vivaEnvolver(html,cual,v){
@@ -8626,7 +8630,7 @@ function vivaEnvolver(html,cual,v){
   html=html.replace(a,`class="ingreso-item viva lv-${v.k}" style="--c:${v.c};`);
   const mv=v.ef==='fuego'?'mv-tiembla':v.ef==='flota'?'mv-flota':'';
   const gl=v.ef?('gl'+(v.ef==='fuego'?' fuerte':'')):'';
-  return `<div class="vw ${cual} ${mv} ${gl}" style="--c:${v.c};--vr:8px" data-viva="venta" data-vk="${v.k}" data-vv="${v.vel.toFixed(3)}"${v.quieta?' data-vq="1"':''}>${v.ef==='fuego'?'<canvas class="viva-fuego"></canvas>':''}${html}</div>`;
+  return `<div class="vw ${cual} ${mv} ${gl}" style="--c:${v.c};--vr:8px" data-viva="venta" data-vk="${v.k}" data-vv="${v.vel.toFixed(3)}" data-vi="${(v.vi==null?1:v.vi).toFixed(3)}"${v.quieta?' data-vq="1"':''}>${v.ef==='fuego'?'<canvas class="viva-fuego"></canvas>':''}${html}</div>`;
 }
 // El día (tarjeta de Inicio).
 function vivaDia(h){
@@ -8645,7 +8649,7 @@ function vivaScan(root){
     (root||document).querySelectorAll('.vw[data-viva]').forEach(wr=>{
       if(_viva.cards.some(c=>c.wr===wr))return;
       const el=wr.querySelector(':scope>.viva');if(!el)return;
-      _viva.cards.push({wr,el,dia:wr.dataset.viva==='dia',k:wr.dataset.vk||'gris',vel:Number(wr.dataset.vv)||0,
+      _viva.cards.push({wr,el,dia:wr.dataset.viva==='dia',k:wr.dataset.vk||'gris',vel:Number(wr.dataset.vv)||0,vi:wr.dataset.vi==null?1:(Number(wr.dataset.vi)||0),
         quieta:wr.dataset.vq==='1',fc:wr.querySelector(':scope>canvas.viva-fuego'),w:0,h:0,llamas:[],parts:[],visible:false});
       if(_viva.io)_viva.io.observe(wr);
     });
@@ -8661,7 +8665,7 @@ function _vivaMedir(c,r){
   c.w=r.width;c.h=r.height;c.cv.width=Math.max(1,Math.round(c.w*dpr));c.cv.height=Math.max(1,Math.round(c.h*dpr));
   c.ctx=c.cv.getContext('2d');c.ctx.setTransform(dpr,0,0,dpr,0,0);c.rgb=_vivaColor(c);
   const NV=VIVA_NV[c.k]||VIVA_NV.bien;c.nv=NV;
-  let cant=Math.max(2,Math.round(c.w*c.h*.00034*NV[0]*(1+c.vel*.6)));if(c.dia)cant=Math.min(16+Math.round(NV[0]*22),cant);
+  let cant=Math.max(2,Math.round(c.w*c.h*.00034*NV[0]*(1+c.vel*.6)));if(c.dia)cant=Math.min(16+Math.round(NV[0]*22),cant);else cant=Math.round(cant*c.vi);   // venta: las figuras van con el neto (0 hasta $5.000)
   const sh=VIVA_SH[c.k]||'circ';
   c.parts=Array.from({length:cant},()=>({x:_vivaRnd(0,c.w),y:_vivaRnd(0,c.h),s:_vivaRnd(3,7.5)*NV[1],r:_vivaRnd(0,6.28),vr:_vivaRnd(-.8,.8),fase:_vivaRnd(0,6.28),k:_vivaRnd(.7,1.4)}));
   c.sh=sh;
@@ -8728,7 +8732,7 @@ function _vivaDibujarCard(c,dt,estatico){
       if(p.y<-12){p.y=c.h+12;p.x=_vivaRnd(0,c.w);}
       if(p.x<-12)p.x=c.w+12;if(p.x>c.w+12)p.x=-12;
     }
-    let a=Math.min(.85,.42*c.nv[2])*(c.quieta?.4:1)*(c.dia?.8:1);
+    let a=Math.min(.85,.42*c.nv[2])*(c.quieta?.4:1)*(c.dia?.8:(.45+.55*c.vi));
     if(c.sh==='dia'&&!quieta)a*=.5+.5*Math.abs(Math.sin(p.fase*1.7));
     x.globalAlpha=a;x.save();x.translate(p.x,p.y);x.rotate(p.r);_vivaForma(x,c.sh,p.s);x.restore();
   }
