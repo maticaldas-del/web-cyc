@@ -784,6 +784,16 @@ viene en camino hay 0. Con 107 más cubrimos un mes."*). `decide_pedidos.py` lo 
 `juicios.txt` se escriben para él (sin el "Hola Tito!", lo agrega el script) y las notas `ped__` a mano también. Las de cajas
 (`caja:`) no: ésas las lee Matías.
 
+## 🧾 CADA VUELTA MIRA LAS VENTAS UNA POR UNA (09/10/2026, regla suya)
+
+Él, con la Muñequera (la nota decía 29,8% y la venta dio 15%): *"en cada corrida también analizá las ventas del día para ver
+si pasó algo, como eso (en este caso está bien, es por el ingreso bruto de Santa Fe)"*. Comando **`ventasraras[:horas]`**
+(ml-consulta, solo lee): cada compra con su % y el normal de esa publicación a ese precio; las raras traen el motivo de los
+cargos de Mercado Pago (retención de una provincia, cuotas o envío que pagamos nosotros, o "el precio de hoy deja poco").
+Va en las 4 vueltas (`:5` en las cortas, `:13` a las 08:52). Venta rara de una sola vez = no se toca el precio; precio que
+deja poco = se decide. **Casi todas las ventas tienen una retención de IIBB chica (0,5-2%)**: sólo es motivo si explica la
+diferencia. Detalle de una publicación: `cargosventa:<MLA>:<días>`.
+
 ## 📉 VENTA BARATA NO ES LO MISMO QUE REMATE: MIRAR LA LÍNEA DE TIEMPO (09/10/2026, regla suya)
 
 Él, con el Ultra Shift (sacado al −3% porque no se vendía) y la Lupa 75mm (vendida siempre barata por un precio mal puesto):
