@@ -764,9 +764,10 @@ fallas leídas como dato, dos fórmulas para un número, datos de terceros en el
 
 Él: *"quiero ponerle de nombre CEREBRO a la run tuya recorriendo toda la web y mirando todo lo que tenés que mirar"*.
 Cuando diga **"corré el cerebro"**, **"hacé un cerebro"** o pregunte **"¿ya pasó el cerebro?"** habla de ESTO: la revisión
-completa (informe, escasez, promos, pedidos, cajas, cajas llegadas, preguntas, vínculos, precios, notas del 🧠). Corre sola
-a las 08:52 y 20:52 (`trig_01475PwdPVJ1qTnYswcDxRq8`, "CEREBRO") y la vuelta corta a las 12:52 y 16:52
-(`trig_01FCaQqzU5MA422N6Z8nH63Z`, "CEREBRO corto"). Se puede adelantar cuando él lo pida. **No es el `cerebro` viejo del
+completa (informe, escasez, promos, pedidos, cajas, cajas llegadas, preguntas, vínculos, precios, notas del 🧠). **Desde el 09/10 (regla suya: *"dejá los más pesados a una vez al día, como ver los precios, pedidos (...) si en 10
+minutos se hacen, más de una vez por día"*) la COMPLETA corre UNA vez por día a las 08:52** (`trig_01475PwdPVJ1qTnYswcDxRq8`:
+planilla de precios entera, `pedidostodo` + `historia` + juicios por producto, cajas, promos a fondo) y la vuelta corta a
+las 12:52, 16:52 y 20:52 (`trig_01FCaQqzU5MA422N6Z8nH63Z`: preguntas, escasez, urgencias, cajas llegadas). Se puede adelantar cuando él lo pida. **No es el `cerebro` viejo del
 robot** (el probe `cerebro`/`calcCerebro` de sync.mjs): ése no se usa más.
 
 ## 📦 PEDIDOS COMPLETOS, TODO EL CATÁLOGO, EN CADA VUELTA (09/10/2026, regla suya)
