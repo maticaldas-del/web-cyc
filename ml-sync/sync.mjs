@@ -36434,14 +36434,15 @@ async function main() {
               if (n.startsWith('tax_withholding')) { const prov = (n.split('-')[1] || n).replace(/_/g, ' '); ret[prov] = (ret[prov] || 0) + a; }
               else if (n === 'financing_fee') cuotas += a;
               else if (n === 'meli_percentage_fee' || n === 'flat_fee') comision += a;
-              else if (n === 'shp_fulfillment') envio += a;
+              else if (n === 'shp_fulfillment' && (Number(p.shipping_cost) || 0) === 0) envio += a; // si lo pagó el comprador, viene en shipping_cost
             }
           }
         }
         const totRet = Object.values(ret).reduce((a, x) => a + x, 0), gap = r.hayNormal ? r.normal - r.neto : null;
         // Si dejó lo normal para su precio, el motivo NO es de esta venta: es que el precio de hoy deja poco.
         if (gap != null && gap <= Math.max(0.03 * r.total, 150)) motivos.push(`dejó lo normal para su precio: el problema es el PRECIO de hoy (con este costo no llega al 25%), no esta venta`);
-        if (totRet > r.total * 0.01 && (gap == null || gap > Math.max(0.03 * r.total, 150))) motivos.push(`retención de Ingresos Brutos ${f(totRet)} (${Object.entries(ret).filter(([, a]) => a >= 5).map(([pv, a]) => pv + ' ' + f(a)).join(', ')}): adelanto de impuesto según la provincia del comprador`);
+        if (gap == null && totRet <= r.total * 0.02) motivos.push(`sin otra venta igual para comparar · margen bajo con este precio y este costo (la retención de ${f(totRet)} es la de siempre)`);
+        if ((gap == null ? totRet > r.total * 0.02 : gap > Math.max(0.03 * r.total, 150) && totRet > r.total * 0.01)) motivos.push(`retención de Ingresos Brutos ${f(totRet)} (${Object.entries(ret).filter(([, a]) => a >= 5).map(([pv, a]) => pv + ' ' + f(a)).join(', ')}): adelanto de impuesto según la provincia del comprador`);
         if (cuotas > 0) motivos.push(`cuotas a cargo nuestro ${f(cuotas)}`);
         if (envio > 0) motivos.push(`envío de Full cobrado ${f(envio)}`);
         if (comision > 0) motivos.push(`comisión de ML ${f(comision)}`);
