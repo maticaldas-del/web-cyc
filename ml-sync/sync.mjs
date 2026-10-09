@@ -35383,7 +35383,12 @@ async function main() {
         if (k < k180) continue;
         for (const v of Object.values(ents || {})) {
           if (!v || !v.prodId || v.cancelada) continue;
-          const q = Number(v.qty) || 1, s = S[v.prodId] || (S[v.prodId] = { t30: 0, t60: 0, t180: 0, ult: '', v: {} });
+          const q = Number(v.qty) || 1, s = S[v.prodId] || (S[v.prodId] = { t30: 0, t60: 0, t180: 0, ult: '', v: {}, rem: 0 });
+          // VENTA EN REMATE NO ES DEMANDA (09/10/2026, él con el Ultra Shift vendido a −3%: "¿me lo pedís si lo tuvimos que sacar
+          // al 3% porque no se vendía ni loco?"): la que dejó menos de 10% sobre el costo de la ficha no cuenta para el ritmo.
+          { const pr0 = byId[v.prodId] || {}; const c0 = (Number(pr0.costFullUSD) || Number(pr0.costUSD) || 0) * (Number(R[11]) || 0);
+            const nU = (Number(v.neto) || 0) / q, tU = (Number(v.total) || 0) / q;
+            if (c0 > 0 && nU > 0 && (nU - 0.06 * tU - c0) / c0 < 0.10) { if (k >= k60) s.rem += q; continue; } }
           const add = (o) => { o.t180 += q; if (k >= k60) o.t60 += q; if (k >= k30) o.t30 += q; if (k > o.ult) o.ult = k; };
           add(s); const va = varDe(v); if (va) add(s.v[va] || (s.v[va] = { t30: 0, t60: 0, t180: 0, ult: '' }));
         }
@@ -35414,7 +35419,7 @@ async function main() {
         (pv ? grupos.paulvic : p.origen === 'py' ? grupos.py : grupos.bsas).push(p);
       }
       const ln = (p) => {
-        const s = S[p.id] || { t30: 0, t60: 0, t180: 0, ult: '', v: {} };
+        const s = S[p.id] || { t30: 0, t60: 0, t180: 0, ult: '', v: {}, rem: 0 };
         const full = C4.map((c) => n0(I[p.id + '__' + c])), ft = full.reduce((a, b) => a + b, 0), casa = n0(I[p.id + '__' + OF]);
         const cm = (cam[p.id] || {}).tot || 0, py = viaPy[p.id] || 0, pvv = Object.values(viaPv[p.id] || {}).reduce((a, b) => a + b, 0);
         const cost = Math.round((Number(p.costFullUSD) || Number(p.costUSD) || 0) * tc);
@@ -35423,7 +35428,7 @@ async function main() {
           const d = Math.round((hoy - (Number(a.ts) || 0)) / 864e5); if (d <= 45) cam45.push(`${a.a > a.de ? '⬆️' : '⬇️'}$${a.de}→$${a.a} ${d}d`); }
         const dec0 = ` · precio $${pr}${cam45.length ? ' (' + cam45.slice(0, 3).join(' ') + ')' : ''}`;
         const dec = dec0 + (CD[p.id] ? ` · YA DECIDÍ ${CD[p.id].u != null ? CD[p.id].u : JSON.stringify(CD[p.id].vars || {})}` : '');
-        console.log(`\n${p.id} · ${String(p.name).slice(0, 55)} · v30 ${s.t30} v60 ${s.t60} v180 ${s.t180} · últ ${s.ult ? s.ult.slice(8, 10) + '/' + s.ult.slice(5, 7) : '—'} · dCS ${dCS(p.id)} · Full ${ft} [${C4.map((c, i) => full[i] ? c.slice(0, 2) + full[i] : '').filter(Boolean).join(' ')}] · casa ${casa} · camino ${cm}${py ? ' · PYviaja ' + py : ''}${pvv ? ' · PVviaja ' + pvv : ''} · neto $${Math.round(Number(p.netoCalc) || 0)} costo $${cost}${p.nisseiUSD ? ' · PY US$' + p.nisseiUSD : ''}${dec}`);
+        console.log(`\n${p.id} · ${String(p.name).slice(0, 55)} · v30 ${s.t30} v60 ${s.t60} v180 ${s.t180} · últ ${s.ult ? s.ult.slice(8, 10) + '/' + s.ult.slice(5, 7) : '—'}${s.rem ? ' · REMATE ' + s.rem : ''} · dCS ${dCS(p.id)} · Full ${ft} [${C4.map((c, i) => full[i] ? c.slice(0, 2) + full[i] : '').filter(Boolean).join(' ')}] · casa ${casa} · camino ${cm}${py ? ' · PYviaja ' + py : ''}${pvv ? ' · PVviaja ' + pvv : ''} · neto $${Math.round(Number(p.netoCalc) || 0)} costo $${cost}${p.nisseiUSD ? ' · PY US$' + p.nisseiUSD : ''}${dec}`);
         for (const va of (p.variantes || [])) {
           const sv = s.v[va] || { t30: 0, t60: 0, t180: 0, ult: '' };
           const fv = C4.reduce((a, c) => a + n0(I[p.id + '__' + c + '__v__' + sid(va)]), 0), cv = n0(I[p.id + '__' + OF + '__v__' + sid(va)]);

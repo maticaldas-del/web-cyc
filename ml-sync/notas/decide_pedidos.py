@@ -6,7 +6,7 @@ prods=[];grupo='';cur=None
 for l in L:
     m=re.match(r'════ (\w+) ·',l)
     if m: grupo=m.group(1); continue
-    m=re.match(r'^(p\w+) · (.*?) · v30 (\d+) v60 (\d+) v180 (\d+) · últ (\S+) · dCS (\d+) · Full (\d+) \[[^\]]*\] · casa (\d+) · camino (\d+)(.*)$',l)
+    m=re.match(r'^(p\w+) · (.*?) · v30 (\d+) v60 (\d+) v180 (\d+) · últ (\S+)(?: · REMATE \d+)? · dCS (\d+) · Full (\d+) \[[^\]]*\] · casa (\d+) · camino (\d+)(.*)$',l)
     if m and grupo in('BSAS','PY','PAULVIC'):
         rest=m.group(11)
         g=lambda r: int(re.search(r,rest).group(1)) if re.search(r,rest) else 0
