@@ -35358,6 +35358,86 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=pedidostodo → SOLO LEE (09/10/2026). TODO el catálogo para decidir Pedidos COMPLETOS (él: *"quiero que todo lo
+    // que hagas sea completo, nunca dejar a mitad"*). Con SOLO_CLAUDE la web pide sólo lo que decidí yo, así que si decido 10 de
+    // 140 Pedidos sale casi vacío. Por producto (y color): ventas 30/60/180 d, última venta, días con stock en 30, Full por
+    // cuenta, oficina, en camino a Full, viajando de Paraguay y del Paulvic, neto y costo. No decide nada: los números para decidir.
+    if (/^pedidostodo$/.test(String(process.env.BILLING_PROBE || ''))) {
+      const ks = ['cyc/inventory', 'cyc/mllinks', 'cyc/ventaprod', 'cyc/envios_full', 'cyc/products', 'cyc/stockhist', 'cyc/compraspy', 'cyc/pedidospv', 'cyc/pedidos_papelera', 'cyc/notraer', 'cyc/proveedores', 'cyc/finanzas/tipo_cambio', 'cyc/claudedecide/ped', 'cyc/cajasentrado'];
+      const R = await Promise.all(ks.map((k) => db.get(k).catch(() => null)));
+      const [I, L, VP, ENV, PR, SH, CPY, PV, PAP, NT, PROV, TC, CD, CE] = R.map((x) => x || {});
+      const tc = Number(R[11]) || 0;
+      const C4 = ['Adriana', 'Luciana', 'Ayelen', 'Matias'], OF = 'Oficina_Mati';
+      const hoy = Date.now(), dk = (d) => new Date(hoy - d * 864e5 - 3 * 36e5).toISOString().slice(0, 10).replace(/-/g, '_');
+      const k30 = dk(29), k60 = dk(59), k180 = dk(179);
+      const provN = {}; for (const [id, x] of Object.entries(PROV)) if (x) provN[x.id || id] = String(x.nombre || '');
+      const prods = Object.values(PR).filter((p) => p && p.id);
+      const byId = {}; prods.forEach((p) => { byId[p.id] = p; });
+      const varDe = (v) => {
+        if (v.variante) return String(v.variante);
+        const e = L[v.mla]; const p = byId[v.prodId]; if (!e || !p) return '';
+        return e.variant ? String(e.variant) : varianteDeTitulo(e.title || '', p.variantes || []);
+      };
+      const S = {};   // pid -> {t30,t60,t180,ult, v:{var:{t30,t60,t180,ult}}}
+      for (const [k, ents] of Object.entries(VP)) {
+        if (k < k180) continue;
+        for (const v of Object.values(ents || {})) {
+          if (!v || !v.prodId || v.cancelada) continue;
+          const q = Number(v.qty) || 1, s = S[v.prodId] || (S[v.prodId] = { t30: 0, t60: 0, t180: 0, ult: '', v: {} });
+          const add = (o) => { o.t180 += q; if (k >= k60) o.t60 += q; if (k >= k30) o.t30 += q; if (k > o.ult) o.ult = k; };
+          add(s); const va = varDe(v); if (va) add(s.v[va] || (s.v[va] = { t30: 0, t60: 0, t180: 0, ult: '' }));
+        }
+      }
+      const ent = {};   // lo que ML ya dio de alta de cajas abiertas
+      for (const [ck, x] of Object.entries(CE)) for (const it of ((x && x.items) || [])) if (it && it.p) { const kk = ck + '|' + it.p + '|' + (it.v || ''); ent[kk] = (ent[kk] || 0) + (Number(it.q) || 0); }
+      const cam = {};   // pid -> {tot, v:{}}
+      for (const [eid, env] of Object.entries(ENV)) (Array.isArray(env && env.cajasDet) ? env.cajasDet : []).forEach((c, ci) => {
+        if (!c || c.recibida) return;
+        for (const it of (c.items || [])) {
+          if (!it || !it.prodId) continue;
+          const ya = ent[`${eid}__${ci}|${it.prodId}|${it.variante || ''}`] || 0;
+          const u = Math.max(0, (Number(it.u) || 0) - ya); const o = cam[it.prodId] || (cam[it.prodId] = { tot: 0, v: {} });
+          o.tot += u; if (it.variante) o.v[it.variante] = (o.v[it.variante] || 0) + u;
+        }
+      });
+      const viaPy = {}; for (const c of Object.values(CPY)) if (c && c.estado === 'camino') for (const it of (c.items || [])) if (it && it.prodId) viaPy[it.prodId] = (viaPy[it.prodId] || 0) + (Number(it.u) || 0);
+      const viaPv = {}; for (const c of Object.values(PV)) if (c && c.estado === 'camino' && c.prodId) for (const it of (c.items || [])) if (it && it.v) { const o = viaPv[c.prodId] || (viaPv[c.prodId] = {}); o[it.v] = (o[it.v] || 0) + (Number(it.u) || 0); }
+      const dCS = (pid) => { let mx = 0, hubo = false; for (const l of C4) { const h = SH[pid + '__' + l]; if (!h) continue; hubo = true; let d = 30;
+        if (h.desde && h.aprox === false) d = Math.min(30, (hoy - Math.max(h.desde, hoy - 30 * 864e5)) / 864e5); else if (!h.desde && h.cero) d = Math.max(0, Math.min(30, (h.cero - (hoy - 30 * 864e5)) / 864e5));
+        if (d > mx) mx = d; } return hubo ? Math.max(1, Math.round(mx)) : 30; };
+      const n0 = (x) => Math.max(0, parseInt(x) || 0);
+      const grupos = { bsas: [], py: [], paulvic: [] }; const fuera = [];
+      for (const p of prods) {
+        if (PAP[p.id]) { fuera.push(`🗑️ ${p.name}`); continue; }
+        if (NT[p.id] && !NT[p.id].permitido) { fuera.push(`🚫 no traer · ${p.name}`); continue; }
+        const pv = /paulvic/i.test(provN[p.proveedorId] || '') || /paulvic/i.test(p.name || '');
+        (pv ? grupos.paulvic : p.origen === 'py' ? grupos.py : grupos.bsas).push(p);
+      }
+      const ln = (p) => {
+        const s = S[p.id] || { t30: 0, t60: 0, t180: 0, ult: '', v: {} };
+        const full = C4.map((c) => n0(I[p.id + '__' + c])), ft = full.reduce((a, b) => a + b, 0), casa = n0(I[p.id + '__' + OF]);
+        const cm = (cam[p.id] || {}).tot || 0, py = viaPy[p.id] || 0, pvv = Object.values(viaPv[p.id] || {}).reduce((a, b) => a + b, 0);
+        const cost = Math.round((Number(p.costFullUSD) || Number(p.costUSD) || 0) * tc);
+        const dec = CD[p.id] ? ` · YA DECIDÍ ${CD[p.id].u != null ? CD[p.id].u : JSON.stringify(CD[p.id].vars || {})}` : '';
+        console.log(`\n${p.id} · ${String(p.name).slice(0, 55)} · v30 ${s.t30} v60 ${s.t60} v180 ${s.t180} · últ ${s.ult ? s.ult.slice(8, 10) + '/' + s.ult.slice(5, 7) : '—'} · dCS ${dCS(p.id)} · Full ${ft} [${C4.map((c, i) => full[i] ? c.slice(0, 2) + full[i] : '').filter(Boolean).join(' ')}] · casa ${casa} · camino ${cm}${py ? ' · PYviaja ' + py : ''}${pvv ? ' · PVviaja ' + pvv : ''} · neto $${Math.round(Number(p.netoCalc) || 0)} costo $${cost}${p.nisseiUSD ? ' · PY US$' + p.nisseiUSD : ''}${dec}`);
+        for (const va of (p.variantes || [])) {
+          const sv = s.v[va] || { t30: 0, t60: 0, t180: 0, ult: '' };
+          const fv = C4.reduce((a, c) => a + n0(I[p.id + '__' + c + '__v__' + sid(va)]), 0), cv = n0(I[p.id + '__' + OF + '__v__' + sid(va)]);
+          const mv = ((cam[p.id] || {}).v || {})[va] || 0, pvx = (viaPv[p.id] || {})[va] || 0;
+          if (!sv.t180 && !fv && !cv && !mv && !pvx) continue;
+          console.log(`   # ${va} · v30 ${sv.t30} v60 ${sv.t60} v180 ${sv.t180} · últ ${sv.ult ? sv.ult.slice(8, 10) + '/' + sv.ult.slice(5, 7) : '—'} · Full ${fv} · casa ${cv} · camino ${mv}${pvx ? ' · PVviaja ' + pvx : ''}`);
+        }
+      };
+      console.log(`dólar ${tc} · ventana 30 d desde ${k30} · ${prods.length} fichas`);
+      for (const [g, arr] of Object.entries(grupos)) {
+        arr.sort((a, b) => ((S[b.id] || {}).t180 || 0) - ((S[a.id] || {}).t180 || 0));
+        console.log(`\n════ ${g.toUpperCase()} · ${arr.length} ════`);
+        arr.forEach(ln);
+      }
+      console.log(`\n════ FUERA (papelera / no traer) · ${fuera.length} ════\n${fuera.join('\n')}`);
+      return;
+    }
+
     // BILLING_PROBE=cajasnotas → SOLO LEE (08/10/2026). Lo que hay en la oficina, producto por producto (y color), con cada
     // cuenta que lo publica: en Full, en camino, vendidas en 30 días y días que alcanza. Sirve para escribir la nota del 🧠 de
     // Armar caja (`decido:caja:<prodId>@<cuenta>[#variante]=nota|…`). No calcula cuánto mandar: eso lo hace la web.
