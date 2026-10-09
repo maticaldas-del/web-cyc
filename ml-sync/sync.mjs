@@ -36353,14 +36353,14 @@ async function main() {
       return;
     }
 
-    // BILLING_PROBE=ventasdia[:<horas>] → CADA VENTA DEL PERÍODO, Y LAS QUE SALIERON RARAS CON SU MOTIVO (09/10/2026). SOLO LEE.
+    // BILLING_PROBE=ventasraras[:<horas>] → CADA VENTA DEL PERÍODO, Y LAS QUE SALIERON RARAS CON SU MOTIVO (09/10/2026). SOLO LEE.
     // Regla suya, después de la Muñequera (29,8% en la nota y 15% en la venta por una retención de Santa Fe): *"en cada
     // corrida también analizá las ventas del día para ver si pasó algo"*. Junta cada compra (un carrito = una), saca el %
     // con la MISMA cuenta de la web (`armarCostoWeb`) y la compara contra lo que esa publicación deja NORMALMENTE al mismo
     // precio (mediana del neto por unidad de sus ventas sueltas de 45 días). La que sale abajo del 25% o deja bastante menos
     // que lo normal se explica leyendo los cargos de Mercado Pago de ese pago: retención de una provincia, cuotas, comisión
     // distinta, precio más bajo, neto todavía estimado. NINGÚN dato del comprador ni números de orden en el registro.
-    if (/^ventasdia(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+    if (/^ventasraras(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const horas = parseFloat(String(process.env.BILLING_PROBE).split(':')[1]) || 12;
       const vp = await db.get('cyc/ventaprod').catch(() => null);
       if (!vp) { console.log('⚠️ no pude leer las ventas: no opino'); return; }
