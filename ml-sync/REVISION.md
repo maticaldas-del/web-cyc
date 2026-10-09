@@ -295,6 +295,13 @@ pausadas sin stock que se agotan rápido (lo que se vende en 1-2 días al llegar
   la barrera, IIBB en proporción) → después (el real), con `pctColor`. Chequear que el % de "después"
   sea el mismo de la píldora de la venta.
 
+### Ventas de hoy: Día · Mes · Año (09/10/2026, v22.84)
+Pedido suyo: *"poner el selector de día, mes y año. y que siga el mismo pensamiento: el 7 del mes es 115.000 por los
+días del mes"*. `_homePerTot(esc,off)` suma día por día con `_homeDiaTot` (el % sale de las sumas); `_puntajeDia` recibe
+los días: 7 = $115.000 × días, 10 = el doble. Período en curso cuenta hasta hoy; los días antes del primer día con
+ventas guardadas (01/05/2026) no cuentan. La vida de la tarjeta usa el promedio por día. Elección en `cycHoyEsc`.
+Qué chequear: que el total del mes coincida con Ventas en "Mes"; que las flechas no pasen de hoy.
+
 ### Ventas con vida (08/10/2026 a la noche, v22.78)
 - **Qué es:** cada venta de Ventas x Producto (celu y PC) y la tarjeta "Ventas de hoy" de Inicio llevan color de nivel y figuras animadas atrás. Elegido por él con ejemplos.
 - **Dónde vive:** `index.html`: CSS `.vw`/`.viva`/`lv-*`/`mv-*`; motor `vivaScan` (un solo reloj, sólo anima lo que está en pantalla, reloj de respaldo si el visor frena requestAnimationFrame); `vivaVenta` + `vivaEnvolver` (ventas) y `vivaDia` (Inicio). `_pctNivel` ahora devuelve también la clave `k`.

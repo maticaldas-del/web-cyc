@@ -2494,7 +2494,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.83';
+const APP_VERSION='22.84';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2505,6 +2505,7 @@ const APP_VERSION='22.83';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.84',f:'09/10/2026',h:'01:15',c:[{n:2,t:'🏠 Ventas de hoy tiene Día · Mes · Año. Las flechas mueven de a un día, mes o año, y el puntaje usa la misma vara: 7 puntos = $115.000 de ganancia por cada día del período (en el mes o año en curso, por los días que ya pasaron).'}]},
   {v:'22.83',f:'09/10/2026',h:'01:10',c:[{n:1,t:'📝 Las revisiones de Ideas y Diseño ahora tienen que proponer solas detalles que den gusto usar la web (como las ventas con vida), mejoras de comodidad, lo repetido y lo que falta.'}]},
   {v:'22.82',f:'09/10/2026',h:'01:00',c:[{n:1,t:'🧹 Ventas: se sacó el cartel del robot viejo al lado de cada venta ("no lo subí · los precios automáticos están apagados"). Los precios los maneja Claude y esa etiqueta ya no decía nada. Todas las ventas quedan del mismo alto.'}]},
   {v:'22.81',f:'09/10/2026',h:'00:50',c:[{n:2,t:'🏠 Inicio: se sacó la tarjeta del Puntaje del mes. Lo que importaba de ahí, cuánto cobrar, está en el desplegable "💸 cuánto cobrar" de Ventas de hoy. Ventas de hoy ya no tiene la línea de abajo (última venta y ayer) y mantiene siempre el mismo tamaño, aunque no haya ventas.'},{n:1,t:'✨ Las figuras se siguen moviendo mientras hacés scroll.'}]},
@@ -18389,14 +18390,36 @@ function _homeDiaTot(k){
   // La hora de la última venta contada (30/09/2026): él vio 24 ventas en Inicio y 30 en Ventas —la
   // misma cuenta— porque una de las dos pantallas estaba vieja. Con la hora a la vista se nota al toque.
   let ult=0;ents.forEach(v=>{const t=Number(v.ts)||0;if(t>ult)ult=t;});
-  const gan=neto-costo;return {u,bruto,gan,ult,pct:pctGananciaVP(gan,costo,gest),ventas:new Set(ents.map(vpGrupoKey)).size};
+  const gan=neto-costo;return {u,bruto,gan,ult,costo,gest,pct:pctGananciaVP(gan,costo,gest),ventas:new Set(ents.map(vpGrupoKey)).size};
 }
+// DÍA · MES · AÑO (09/10/2026, pedido suyo: "poner el selector de día, mes y año. y que siga el mismo pensamiento, o
+// sea el 7 puntos del mes es 115.000 por los días del mes"). Suma día por día con _homeDiaTot (la misma cuenta) y el %
+// sale de las sumas, no del promedio de porcentajes. `dias` = días del período que ya pasaron (el período en curso
+// cuenta hasta hoy, uno cerrado cuenta entero): el puntaje mide la ganancia contra $115.000 × esos días.
+function _homePerTot(esc,off){
+  const hoy=new Date();hoy.setHours(12,0,0,0);
+  let ini,fin;
+  if(esc==='mes'){ini=new Date(hoy.getFullYear(),hoy.getMonth()-off,1,12);fin=new Date(ini.getFullYear(),ini.getMonth()+1,0,12);}
+  else{ini=new Date(hoy.getFullYear()-off,0,1,12);fin=new Date(ini.getFullYear(),11,31,12);}
+  if(fin>hoy)fin=hoy;
+  // Las ventas guardadas arrancan el 01/05/2026: los días de antes del primer día con datos no cuentan (si no, el
+  // año 2026 se mediría contra enero-abril, que el panel no tiene).
+  const k0=Object.keys(state.ventaprod||{}).filter(k=>/^\d{4}_\d{2}_\d{2}$/.test(k)).sort()[0];
+  if(k0){const[a,b,c]=k0.split('_').map(Number);const d0=new Date(a,b-1,c,12);if(d0>ini)ini=d0;}
+  const t={u:0,bruto:0,gan:0,costo:0,gest:0,ventas:0,ult:0,dias:0,ini,fin};
+  for(const d=new Date(ini);d<=fin;d.setDate(d.getDate()+1)){const x=_homeDiaTot(dateToKey(d));t.dias++;
+    t.u+=x.u;t.bruto+=x.bruto;t.gan+=x.gan;t.costo+=x.costo;t.gest+=x.gest;t.ventas+=x.ventas;if(x.ult>t.ult)t.ult=x.ult;}
+  t.pct=pctGananciaVP(t.gan,t.costo,t.gest);return t;
+}
+function _homeEsc(){try{const v=localStorage.getItem('cycHoyEsc');return v==='mes'||v==='anio'?v:'dia';}catch(e){return 'dia';}}
+let _homeHoyEsc=_homeEsc();
+function homeHoyEsc(e,ev){if(ev)ev.stopPropagation();_homeHoyEsc=e;_homeHoyOff=0;try{localStorage.setItem('cycHoyEsc',e);}catch(x){}renderHomeHoy();}
 // FLECHAS PARA ELEGIR EL DÍA (01/10/2026, pedido suyo: "se puede poner unas flechitas para elegir el día?").
 // _homeHoyOff = cuántos días para atrás (0 = hoy, nunca para adelante). Al tocar la tarjeta, Ventas abre en
 // ESE día (_vpIrDia, lo consume initVentaProd una vez).
 let _homeHoyOff=0,_vpIrDia=null;
 function homeHoyMover(d,ev){if(ev)ev.stopPropagation();_homeHoyOff=Math.max(0,_homeHoyOff+d);renderHomeHoy();}
-function homeHoyIr(){if(_homeHoyOff>0){const x=new Date();x.setDate(x.getDate()-_homeHoyOff);_vpIrDia=dateToKey(x).replace(/_/g,'-');}goPage('ventaprod');}
+function homeHoyIr(){if(_homeHoyEsc==='dia'&&_homeHoyOff>0){const x=new Date();x.setDate(x.getDate()-_homeHoyOff);_vpIrDia=dateToKey(x).replace(/_/g,'-');}goPage('ventaprod');}
 // ── EL PUNTAJE DEL DÍA (03/10/2026, pedido suyo: "el puntaje del día según la ganancia") ──────────
 // Misma vara que el Puntaje del mes, llevada a un día: 6 puntos por la ganancia contra lo que hace falta
 // ganar por día para cumplir el mes (retiro + gastos + objetivo de CYC ÷ días del mes) y 4 por el % de
@@ -18404,39 +18427,46 @@ function homeHoyIr(){if(_homeHoyOff>0){const x=new Date();x.setDate(x.getDate()-
 // Regla suya del 03/10/2026: 7 puntos = que a cada uno de los 3 (CYC, él y su papá) le queden $900.000 por mes
 // pagando todo. El promedio diario para eso es $115.000 de ganancia. Sólo cuenta la ganancia en pesos.
 const PUNT_DIA_7=115000;
-function _puntajeDia(fecha,h){
+function _puntajeDia(fecha,h,dias,esc){
   // 0 en $0 · 7 en $115.000 · 10 en el doble ($230.000). Más ganancia = más puntaje, siempre.
+  // Mes y año: la misma vara por los días del período (7 = $115.000 × días).
   if(!h||!(h.ventas>0))return null;
-  const target=PUNT_DIA_7, target2=PUNT_DIA_7*2;
+  const n=Math.max(1,dias||1),target=PUNT_DIA_7*n, target2=PUNT_DIA_7*2*n;
   let score;
   if(h.gan<=0)score=0;
   else if(h.gan<=target)score=7*h.gan/target;
   else score=Math.min(10,7+3*(h.gan-target)/(target2-target));
   score=Math.round(score*10)/10;
-  const nivel=score>=9?'🏆 Día excelente':score>=8?'🌟 Muy buen día':score>=7?'✅ Buen día':score>=6?'🟢 Aprobado':score>=5?'🟠 A mejorar':'🔴 Flojo';
-  return{score,nivel,target,target2};
+  const qn=esc==='mes'?['Mes excelente','Muy buen mes','Buen mes']:esc==='anio'?['Año excelente','Muy buen año','Buen año']:['Día excelente','Muy buen día','Buen día'];
+  const nivel=score>=9?'🏆 '+qn[0]:score>=8?'🌟 '+qn[1]:score>=7?'✅ '+qn[2]:score>=6?'🟢 Aprobado':score>=5?'🟠 A mejorar':'🔴 Flojo';
+  return{score,nivel,target,target2,n};
 }
 function renderHomeHoy(){
   const el=document.getElementById('home-hoy');if(!el||!state.ventaprod)return;
-  const hoy=new Date();hoy.setDate(hoy.getDate()-_homeHoyOff);const h=_homeDiaTot(dateToKey(hoy));
-  const ay=new Date(hoy);ay.setDate(ay.getDate()-1);const a=_homeDiaTot(dateToKey(ay));
+  const esc=_homeHoyEsc;
+  const hoy=new Date();if(esc==='dia')hoy.setDate(hoy.getDate()-_homeHoyOff);
+  const h=esc==='dia'?Object.assign(_homeDiaTot(dateToKey(hoy)),{dias:1}):_homePerTot(esc,_homeHoyOff);
   const p2=n=>String(n).padStart(2,'0');
   const dias=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
-  const titulo=_homeHoyOff===0?'Ventas de hoy':_homeHoyOff===1?'Ventas de ayer':`Ventas del ${dias[hoy.getDay()]} ${p2(hoy.getDate())}/${p2(hoy.getMonth()+1)}`;
-  const antLbl=_homeHoyOff===0?'ayer':'el día anterior';
+  const MESES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  const titulo=esc==='mes'?(_homeHoyOff===0?`Ventas de este mes · ${MESES[h.ini.getMonth()]}`:`Ventas de ${MESES[h.ini.getMonth()]} ${h.ini.getFullYear()}`)
+    :esc==='anio'?(_homeHoyOff===0?`Ventas de este año · ${h.ini.getFullYear()}`:`Ventas de ${h.ini.getFullYear()}`)
+    :_homeHoyOff===0?'Ventas de hoy':_homeHoyOff===1?'Ventas de ayer':`Ventas del ${dias[hoy.getDay()]} ${p2(hoy.getDate())}/${p2(hoy.getMonth()+1)}`;
+  const escBtn=(e,txt)=>`<button onclick="homeHoyEsc('${e}',event)" style="background:${esc===e?'color-mix(in srgb,var(--c) 22%,transparent)':'transparent'};border:none;color:${esc===e?'var(--text)':'var(--muted)'};border-radius:999px;padding:3px 10px;font-size:.7rem;font-weight:${esc===e?700:500};cursor:pointer">${txt}</button>`;
+  const escSel=`<span style="display:inline-flex;border:1px solid var(--border2);border-radius:999px;padding:2px">${escBtn('dia','Día')}${escBtn('mes','Mes')}${escBtn('anio','Año')}</span>`;
   const flecha=(d,txt,off)=>`<button onclick="homeHoyMover(${d},event)" ${off?'disabled':''} style="background:transparent;border:1px solid var(--border2);color:${off?'var(--border2)':'var(--text)'};border-radius:8px;min-width:34px;height:30px;font-size:1.05rem;line-height:1;cursor:${off?'default':'pointer'}">${txt}</button>`;
   const pctTxt=h.pct===null||!isFinite(h.pct)?'—':(h.pct>=0?'+':'')+h.pct.toFixed(0)+'%';
-  const _vd=vivaDia(h);
+  const _vd=vivaDia(h.dias>1?{gan:h.gan/h.dias,bruto:h.bruto/h.dias,ventas:h.ventas}:h);   // la vida de la tarjeta, con el promedio por día
   el.innerHTML=`<div class="vw ${_vd.mv} ${_vd.gl}" data-viva="dia" data-vk="${_vd.k}" data-vv="${_vd.vel.toFixed(3)}"${_vd.quieta?' data-vq="1"':''} style="--c:${_vd.c};--vr:20px;margin:4px auto 18px;max-width:min(760px,calc(100vw - 32px))">${_vd.fuego?'<canvas class="viva-fuego"></canvas>':''}<div onclick="homeHoyIr()" class="viva lv-${_vd.k}" style="--c:${_vd.c};cursor:pointer;border-radius:20px;padding:20px 22px 16px">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:10px">
       <span style="display:flex;align-items:center;gap:8px"><span style="display:flex;gap:4px;flex-shrink:0">${flecha(1,'‹',false)}${flecha(-1,'›',_homeHoyOff===0)}</span><span style="font-size:.72rem;text-transform:uppercase;letter-spacing:.16em;color:var(--c);font-weight:700">🏷️ ${titulo}</span></span>
-      <span style="display:flex;gap:6px;align-items:center">${_cerDiaVisible(dateToKey(hoy))?`<button onclick="homeHoyCerebro(event)" title="🧠 Qué pasó con las ventas de este día" style="background:transparent;border:1px solid var(--border2);color:var(--text);border-radius:999px;padding:3px 10px;font-size:.7rem;cursor:pointer">🧠 qué pasó</button>`:''}<span style="font-size:.7rem;color:var(--muted);border:1px solid var(--border2);border-radius:999px;padding:3px 10px">ver ventas ›</span></span>
+      <span style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">${escSel}${esc==='dia'&&_cerDiaVisible(dateToKey(hoy))?`<button onclick="homeHoyCerebro(event)" title="🧠 Qué pasó con las ventas de este día" style="background:transparent;border:1px solid var(--border2);color:var(--text);border-radius:999px;padding:3px 10px;font-size:.7rem;cursor:pointer">🧠 qué pasó</button>`:''}<span style="font-size:.7rem;color:var(--muted);border:1px solid var(--border2);border-radius:999px;padding:3px 10px">ver ventas ›</span></span>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:10px 34px;align-items:flex-end">
       <div><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(2rem,8vw,3.4rem);line-height:1;letter-spacing:-.01em">${fmt(h.bruto)}</div><div style="font-size:.78rem;color:var(--muted);margin-top:6px">facturado · <b style="color:var(--text)">${h.ventas}</b> venta${h.ventas===1?'':'s'} · <b style="color:var(--text)">${h.u}</b> u.</div></div>
       <div><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(1.6rem,6vw,2.2rem);line-height:1;color:var(--c)">${fmt(h.gan)}</div><div style="font-size:.78rem;color:var(--muted);margin-top:6px">ganancia · <b style="color:var(--text)">${pctTxt}</b></div></div>
-      ${(()=>{const D=_puntajeDia(hoy,h);if(!D)return `<div style="align-self:center;padding:8px 14px;border-radius:12px;color:var(--muted);border:1px solid var(--border2);text-align:center"><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.35rem;line-height:1">—<span style="font-size:.6em;opacity:.7"> /10</span></div><div style="font-size:.74rem;font-weight:700;margin-top:4px">sin ventas todavía</div></div>`;const _c=puntColor(D.score);
-        return `<div style="align-self:center;padding:8px 14px;border-radius:12px;color:${_c};background:color-mix(in srgb,${_c} 12%,transparent);border:1px solid color-mix(in srgb,${_c} 35%,transparent);text-align:center" title="Puntaje del día (de 0 a 10), sólo por la ganancia en pesos: 7 en ${fmt(D.target)} por día (que a cada uno de los 3 le queden $900.000 por mes pagando todo) y 10 en ${fmt(D.target2)}.">
+      ${(()=>{const D=_puntajeDia(hoy,h,h.dias,esc);if(!D)return `<div style="align-self:center;padding:8px 14px;border-radius:12px;color:var(--muted);border:1px solid var(--border2);text-align:center"><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.35rem;line-height:1">—<span style="font-size:.6em;opacity:.7"> /10</span></div><div style="font-size:.74rem;font-weight:700;margin-top:4px">sin ventas todavía</div></div>`;const _c=puntColor(D.score);
+        return `<div style="align-self:center;padding:8px 14px;border-radius:12px;color:${_c};background:color-mix(in srgb,${_c} 12%,transparent);border:1px solid color-mix(in srgb,${_c} 35%,transparent);text-align:center" title="Puntaje ${esc==='dia'?'del día':esc==='mes'?'del mes':'del año'} (de 0 a 10), sólo por la ganancia en pesos: 7 en ${fmt(D.target)}${D.n>1?` ($115.000 × ${D.n} días)`:' por día'} (que a cada uno de los 3 le queden $900.000 por mes pagando todo) y 10 en ${fmt(D.target2)}.">
           <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.35rem;line-height:1">${D.score.toFixed(1).replace('.',',')}<span style="font-size:.6em;opacity:.7"> /10</span></div><div style="font-size:.74rem;font-weight:700;margin-top:4px">${D.nivel}</div></div>`;})()}
     </div>
     <details id="hoy-cobro" ${_hoyCobroAbierto()?'open':''} onclick="event.stopPropagation()" ontoggle="_hoyCobroToggle(this)" style="margin-top:14px;padding-top:9px;border-top:1px solid color-mix(in srgb,var(--c) 25%,transparent)">
