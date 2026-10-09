@@ -406,6 +406,8 @@ Todo lo que guarda la historia día por día y las pantallas que la dibujan.
 
  · **23.03 (09/10):** la venta viva aparece recién con puntaje ≥ 2.000 (`VIVA_SC_MIN`, ganancia × %/30 acotado). Abajo, `vivaVenta` devuelve null y la tarjeta queda común. Chequear: que una venta chica no tenga color ni figuras y que una de 2.000+ sí.
 
+ · **23.04 (09/10):** sin el margen de 46px de la venta que arde (`.vw.vf`): las ventas van juntas. El canvas del fuego de una VENTA va atrás de la tarjeta (z-index 0, top 0) y `_vivaFuego` sólo larga llamas por los costados (`c.dia` sigue igual). Chequear: sin huecos entre ventas y fuego visible a los lados.
+
 ### Pendientes de la revisión 9 (09/10/2026, a la madrugada) — se van cerrando en las vueltas
 - **Publicaciones con variantes no tienen dueño de precio:** `decido`/`analizapromo`/`entrarpromo` las rechazan ("la maneja el robot de siempre") y con SOLO_DATOS el robot no las toca. Hace falta un camino de Claude por `raiseVariations` (y que la planilla las muestre como "nadie las maneja").
 - **`escasez` no mira colores** (saltea las claves `__v__`): un color con 1 u. dentro de un producto con stock no salta.

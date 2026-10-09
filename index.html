@@ -47,7 +47,7 @@ html{font-size:118%}
    pantalla al tocarlas), botones chicos más grandes, y en el teléfono las listas no tienen scroll propio. */
 @media(pointer:coarse){input,select,textarea{font-size:16px!important}input.qty{width:64px;min-height:36px}.ii-del{min-width:36px;min-height:36px;padding:6px 8px;font-size:.9rem}}
 /* Ventas en la PC (09/10/2026, él: "sacá esa barra de abajo, que me deje un lugar para poner el mouse y scrolear la web"): sin barra horizontal y un margen a la derecha, afuera de la lista, donde la rueda mueve la página. */
-@media(min-width:641px){#vp-day-list{margin-right:56px;padding:4px 26px}#vp-day-list .vw.vf{margin:46px 2px 8px}}   /* las ventas un poco adentro: el fuego sale por los costados sin cortarse (09/10/2026) */
+@media(min-width:641px){#vp-day-list{margin-right:56px;padding:4px 26px}}   /* las ventas un poco adentro: el fuego sale por los costados sin cortarse (09/10/2026) */
 @media(max-width:640px){#vp-day-list,.ingreso-list{max-height:68vh!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;border:1px solid var(--border);border-radius:10px;padding:4px}}
 #tt-toque{position:fixed;z-index:99990;max-width:min(320px,calc(100vw - 32px));background:var(--surface2);color:var(--text);border:1px solid var(--border2);border-radius:10px;padding:10px 12px;font-size:.78rem;line-height:1.45;box-shadow:0 6px 24px rgba(0,0,0,.35);white-space:pre-line}
 @media(max-width:900px){html{font-size:100%}}
@@ -546,8 +546,8 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
 .vw.vp-pc{display:block!important}
 .vw.vp-cel{display:none!important}
 @media(max-width:640px){.vw.vp-pc{display:none!important}.vw.vp-cel{display:block!important}}
-.vw.vf{margin:46px 18px 8px}   /* venta que arde: un poco más chica para que el fuego entre entero en la lista (09/10/2026, pedido suyo) */
 .vw>canvas.viva-fuego{position:absolute;left:-24px;top:-70px;width:calc(100% + 48px);height:calc(100% + 80px);pointer-events:none;z-index:3}
+.vw[data-viva=venta]>canvas.viva-fuego{top:0;height:100%;z-index:0}   /* venta: el fuego queda ATRÁS de la tarjeta y sale sólo por los costados; las ventas van juntas (09/10/2026, él) */
 .viva{--tint:7%;--bd:32%;--bw:1px;--halo:0px;position:relative;overflow:hidden;z-index:1;
   background:color-mix(in srgb,var(--c) var(--tint),var(--surface))!important;
   border:var(--bw) solid color-mix(in srgb,var(--c) var(--bd),var(--border))!important;
@@ -2501,7 +2501,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.03';
+const APP_VERSION='23.04';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2512,6 +2512,7 @@ const APP_VERSION='23.03';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.04',f:'09/10/2026',h:'13:25',c:[{n:1,t:'🔥 Ventas: las ventas vuelven a ir juntas, sin el espacio de arriba de la que arde. El fuego queda atrás de la tarjeta y se ve sólo por los costados.'}]},
   {v:'23.03',f:'09/10/2026',h:'13:10',c:[{n:1,t:'🎨 Ventas: la tarjeta viva (color, figuras, brillo) aparece recién desde 2.000 puntos (ganancia × %). Las ventas chicas quedan como una tarjeta común.'}]},
   {v:'23.02',f:'09/10/2026',h:'12:05',c:[{n:1,t:'🎨 Ventas: las ventas chicas casi no se pintan (un toque de su color) y el color se enciende con el puntaje. La JOYA chica brilla menos pero conserva su borde dorado; las rojas chicas casi no se ven rojas.'}]},
   {v:'23.01',f:'09/10/2026',h:'11:45',c:[{n:1,t:'🎨 Ventas: el color de cada venta sale siempre de su % (las rojas en rojo, la JOYA en oro de verdad). El brillo, las figuras, el movimiento, el temblor y el fuego salen del puntaje: ganancia × lo bueno del %. Una venta verde muy grande puede arder.'},{n:1,t:'⬆️⬇️ El renglón del cambio de precio va en verde si dejó más plata en esa venta y en rojo si dejó menos (antes era naranja al subir y azul al bajar).'}]},
@@ -8771,13 +8772,13 @@ const _vivaRgba=(rgb,a)=>String(rgb).replace(/^rgba?\(([^)]+)\)$/,(m,x)=>`rgba($
 function _vivaFuego(c,dt){
   const x=c.fctx;if(!x)return;x.clearRect(0,0,c.fw,c.fh);
   const fq=c.dia?1:.3+.7*c.fi,fz=c.dia?1:.6+.6*c.fi;   // venta: cuánto arde sale del puntaje (fi)
-  const ox=24,oy=70,ritmo=(40+c.vel*110)*dt*(c.dia?1.3:fq),dark=!document.body.classList.contains('light');
+  const ox=24,oy=c.dia?70:0,ritmo=(40+c.vel*110)*dt*(c.dia?1.3:fq),dark=!document.body.classList.contains('light');
   const nuevas=Math.floor(ritmo+(Math.random()<ritmo%1?1:0));
   for(let i=0;i<nuevas;i++){
-    const lado=Math.random();let px,py;
+    const lado=c.dia?Math.random():.7+Math.random()*.3;let px,py;   // venta: sólo por los costados
     if(lado<.7){px=ox+_vivaRnd(4,c.w-4);py=oy+_vivaRnd(0,4);}
-    else if(lado<.85){px=ox+_vivaRnd(-2,3);py=oy+_vivaRnd(4,c.h*.8);}
-    else{px=ox+c.w+_vivaRnd(-3,2);py=oy+_vivaRnd(4,c.h*.8);}
+    else if(lado<.85){px=ox+_vivaRnd(-2,3);py=oy+_vivaRnd(c.dia?4:c.h*.3,c.dia?c.h*.8:c.h);}
+    else{px=ox+c.w+_vivaRnd(-3,2);py=oy+_vivaRnd(c.dia?4:c.h*.3,c.dia?c.h*.8:c.h);}
     c.llamas.push({x:px,y:py,vx:_vivaRnd(-12,12)+(lado>=.85?10:lado>=.7?-10:0),vy:-_vivaRnd(30,60)*(1+c.vel*.9)*fz,vida:0,max:_vivaRnd(.45,.95)*(1+c.vel*.5)*fz,s:_vivaRnd(3,7)*(1+c.vel*.6)*fz});
   }
   x.globalCompositeOperation=dark?'lighter':'source-over';
