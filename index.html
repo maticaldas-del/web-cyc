@@ -2499,7 +2499,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.98';
+const APP_VERSION='22.99';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2510,6 +2510,7 @@ const APP_VERSION='22.98';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.99',f:'09/10/2026',h:'03:10',c:[{n:1,t:'🔴🟠 Ventas: las rojas y naranjas que son muy grandes también tienen vida. Rojo desde $60.000 de neto y naranja desde $45.000: brillo y figuras, flotan desde el doble y tiemblan arriba de unos $200.000. Las chicas siguen sólo con el color del %.'}]},
   {v:'22.98',f:'09/10/2026',h:'02:55',c:[{n:2,t:'🔎 Revisión: etapa nueva 9 · Cerebro. Revisa lo que hace Claude en cada vuelta para que nada quede a medias (precios, pedidos, cajas, preguntas, vínculos).'}]},
   {v:'22.97',f:'09/10/2026',h:'02:35',c:[{n:1,t:'🔥 Ventas: romper el techo depende de cada venta. Las que arden poco rebotan 2-3 veces y salen despacio; las que arden fuerte lo rompen al primer golpe y salen disparadas, más grandes, más alto y con más chispas. Las figuras rápidas lo rompen antes.'}]},
   {v:'22.96',f:'09/10/2026',h:'02:20',c:[{n:1,t:'🔥 Ventas: en las que arden, las figuras suben, chocan contra el techo de la tarjeta (rebotan con chispas) y al segundo golpe lo rompen y salen volando hacia arriba entre las llamas.'}]},
@@ -8635,8 +8636,22 @@ function vivaVenta(o){
   const vel=_vivaLog(Number(o.neto)||0,1500,VIVA_NETO_MAX);
   if(o.gpct==null||o.est)return null;
   const n=_pctNivel(o.gpct);if(!n)return null;
-  // Rojo y naranja: sólo el color del % (09/10/2026, él: "hay muchos colores y quilombo, casi ni se ve nada").
-  if(n.k==='bajo'||n.k==='justo')return null;
+  // ROJO Y NARANJA: SÓLO SI LA VENTA ES MUY GRANDE (09/10/2026). Primero él: "hay muchos colores y quilombo, casi ni se
+  // ve nada" (sólo el color del %). Después, con un Cool Water de $70.886 de neto al 20%: "ese producto es importante, y
+  // por más que le ganamos un 20% hace bastante fuerza (…) pueden tener fondo, figuras, velocidad hasta temblar. pero
+  // tiene que ser muy caro (…) los naranja lo mismo un poco menos. no quiero colores por todos lados". O sea: rojo desde
+  // $60.000 de neto y naranja desde $45.000 (antes de eso, sólo el color del %); brillan y tienen figuras, flotan desde
+  // el doble de ese umbral y tiemblan arriba de ~$200.000. Nunca arden por el % solo (el fuego sigue saliendo del puntaje).
+  if(n.k==='bajo'||n.k==='justo'){
+    const nt=Number(o.neto)||0,th=n.k==='bajo'?60000:45000;
+    if(nt<th)return null;
+    const viB=Math.round((.35+.65*_vivaLog(nt,th,VIVA_NETO_MAX))*1000)/1000;
+    const tmB=nt>=th*2?.85*_vivaLog(nt,th*2,VIVA_NETO_MAX):0;
+    const tzB=Math.round(Math.max(.5,4.5*Math.pow(tmB,1.5))*100)/100,tvB=Math.round((.5-tmB*.28)*100)/100+'s';
+    const gB=Number(o.gan)||0,fsB=gB>0?gB*Math.min(2.5,Math.max(.5,(Number(o.gpct)||0)/30)):0;
+    const fiB=fsB>=35000?Math.max(.08,_vivaLog(fsB,35000,400000)):0;
+    return{k:n.k,c:n.c,vel,vi:viB,tz:tzB,tv:tvB,fi:fiB,ef:fiB>0?'fuego':tmB>=.28?'tiembla':tmB>=.16?'flota2':tmB>0?'flota':'glow'};
+  }
   // EL BRILLO VA CON EL NETO (09/10/2026, él con un Metatarso de $4.920 de neto lleno de estrellas: "quiero que el
   // brillo vaya de mano con el neto, recontra llama la atención y son menos de 5.000"). El color sigue saliendo del
   // %, pero cuántas figuras, el brillo, el movimiento y el fuego salen SÓLO del neto en pesos, con los precios de CYC:
