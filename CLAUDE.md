@@ -769,6 +769,10 @@ a las 08:52 y 20:52 (`trig_01475PwdPVJ1qTnYswcDxRq8`, "CEREBRO") y la vuelta cor
 (`trig_01FCaQqzU5MA422N6Z8nH63Z`, "CEREBRO corto"). Se puede adelantar cuando él lo pida. **No es el `cerebro` viejo del
 robot** (el probe `cerebro`/`calcCerebro` de sync.mjs): ése no se usa más.
 
+## 📦 PEDIDOS COMPLETOS, TODO EL CATÁLOGO, EN CADA VUELTA (09/10/2026, regla suya)
+
+Él: *"quiero que todo lo que hagas sea completo, nunca dejar a mitad (...) pedidos no pide casi nada, y no es porque no falten (...) no pide nada en paraguay ni en paulvic (...) actualizarlo dos veces al día"*. Pasó porque yo decidía con `pedidosnotas`, que sólo trae los pedidos que ya existen (= los que ya había decidido). Ahora: `pedidostodo` (ml-consulta, solo lee, las 170 fichas color por color) → `python3 ml-sync/notas/decide_pedidos.py <log> <salida>` (objetivo **30 días**: ritmo de 30 d, de 60 d, o de 180 d si está agotado, menos Full+oficina+camino+viajando; sin ganancia = 0) → revisar a mano → `ml-sync/notas/pedidos.txt` → `decido:archivo=pedidos;go`. En cada vuelta de 08:52 y 20:52. **Toda tarea, completa: nunca una parte.**
+
 ## 🎯 SIN PISO DEL 22%: UN SOLO NÚMERO, 25% DE OBJETIVO (09/10/2026, regla suya)
 
 Él: *"sacá el piso de 22% ya que no tiene sentido. porque no se respeta nunca y si se respeta perdemos ventas de sobre
