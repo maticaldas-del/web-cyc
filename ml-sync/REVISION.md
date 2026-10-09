@@ -420,6 +420,8 @@ Todo lo que guarda la historia día por día y las pantallas que la dibujan.
 
  · **Tito (09/10):** los motivos de `ped:` los lee el papá de Matías: `decide_pedidos.py` arma cada uno con `tito()` ("Hola Tito! Te pido N…", sin ";" ni "|"); los juicios van con `titoJ`. `pedidos.txt` de hoy convertido (279 renglones). Chequear: que ningún motivo de pedido quede en el formato viejo ("ritmo N por mes · tiene…").
 
+- **`cargosventa:<MLA>[:días]` (09/10/2026, solo lee):** cada venta de una publicación con los cargos de Mercado Pago por nombre (comisión, envío, cuotas, retenciones), sin datos del comprador. Nació con la Muñequera (29,8% en la nota contra 15% en una venta). Chequear: que no imprima ids ni nombres; que un carrito se vea como CARRITO.
+
 ### Pendientes de la revisión 9 (09/10/2026, a la madrugada) — se van cerrando en las vueltas
 - **Publicaciones con variantes no tienen dueño de precio:** `decido`/`analizapromo`/`entrarpromo` las rechazan ("la maneja el robot de siempre") y con SOLO_DATOS el robot no las toca. Hace falta un camino de Claude por `raiseVariations` (y que la planilla las muestre como "nadie las maneja").
 - **`escasez` no mira colores** (saltea las claves `__v__`): un color con 1 u. dentro de un producto con stock no salta.

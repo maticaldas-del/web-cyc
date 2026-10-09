@@ -36353,6 +36353,47 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=cargosventa:<MLA>[:<días>] → QUÉ LE COBRÓ ML A CADA VENTA DE UNA PUBLICACIÓN (09/10/2026). SOLO LEE.
+    // Él, con la Muñequera: la nota del 🧠 decía "deja 29,8%" y la venta de hoy dio 15%. Al mismo precio ML se quedó
+    // $2.080 en unas y $2.417 en otra: sin ver los conceptos del pago (comisión, envío, cuotas, retenciones) no se sabe
+    // por qué. Imprime fecha, precio, neto y cada cargo de Mercado Pago por nombre. NINGÚN dato del comprador ni ids.
+    if (/^cargosventa:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const pp = String(process.env.BILLING_PROBE).split(':');
+      const mla = String(pp[1] || '').trim().toUpperCase(), dias = parseInt(pp[2]) || 14;
+      const vp = (await db.get('cyc/ventaprod').catch(() => null)) || {};
+      const desde = Date.now() - dias * 864e5, ventas = [];
+      for (const dia of Object.values(vp)) for (const v of Object.values(dia || {})) {
+        if (!v || String(v.mla || '').toUpperCase() !== mla) continue;
+        const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ts < desde) continue;
+        const m = String(v.saleId || v.id || '').match(/(\d{6,})/); if (m) ventas.push({ v, ts, oid: m[1] });
+      }
+      ventas.sort((a, b) => b.ts - a.ts);
+      console.log(`=== CARGOS DE CADA VENTA · ${mla} · ${dias} días · ${ventas.length} ventas ===\n`);
+      if (!ventas.length) return;
+      const tok = await tokensCerebro(db);
+      const cta = String(ventas[0].v.cuenta || '');
+      const tk = tok[cta] || tok[cta.toLowerCase()] || tok[cta.charAt(0).toUpperCase() + cta.slice(1).toLowerCase()];
+      if (!tk) { console.log('sin token de ' + cta); return; }
+      const f = (n) => '$' + Math.round(n).toLocaleString('es-AR');
+      for (const { v, ts, oid } of ventas) {
+        let o = null; try { o = await mlGet('/orders/' + oid, tk); } catch { o = null; }
+        const fecha = new Date(ts - 3 * 36e5).toISOString().slice(0, 16).replace('T', ' ');
+        if (!o) { console.log(`${fecha} · ML no contestó la orden`); continue; }
+        const its = (o.order_items || []).map((it) => `${it.quantity}×${f(it.unit_price)}${it.item?.id && it.item.id !== mla ? ' (otra publ.)' : ''}`).join(' + ');
+        const fee = (o.order_items || []).reduce((a, it) => a + (Number(it.sale_fee) || 0) * (Number(it.quantity) || 1), 0);
+        console.log(`${fecha} · orden ${its} · total ${f(o.total_amount)} · comisión de la orden ${f(fee)} · ${o.pack_id ? 'CARRITO' : 'sola'} · guardado neto ${f(v.neto)}${v.netoEstimado ? ' (estimado)' : ''}`);
+        for (const p of (o.payments || [])) {
+          let b = null;
+          try { const r = await fetch('https://api.mercadopago.com/v1/payments/' + p.id, { headers: { Authorization: 'Bearer ' + tk } }); b = await r.json(); } catch { b = null; }
+          if (!b || !b.transaction_details) { console.log('   pago: MP no contestó'); continue; }
+          const ch = (b.charges_details || []).map((c) => `${c.name} ${f(c.amounts?.original || 0)}`).join(' · ');
+          console.log(`   pago ${f(b.transaction_amount)} · cuotas ${b.installments || 1} · neto ${f(b.transaction_details.net_received_amount)} · envío del comprador ${f(p.shipping_cost || 0)}`);
+          console.log(`   cargos: ${ch || '—'}`);
+        }
+      }
+      return;
+    }
+
     // BILLING_PROBE=porquebajo:<palabras> → ¿POR QUÉ EL ROBOT BAJÓ ESTO Y QUÉ MARCAS LE PUSO? (30/09/2026)
     // Pedido suyo con las Cartas Españolas vendidas al 6%: "¿está bien bajada? ¿quiere decir que no
     // las traigo nunca más? se vendieron muchísimas en la historia". Junta por ficha (palabras con "+"):
