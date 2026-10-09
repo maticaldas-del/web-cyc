@@ -916,7 +916,7 @@ puede esperar 12 h.
  · **Preguntas, regla suya del 08/10:** *"no contestar las antiguas. a partir de ahora contestá vos las obvias y decime
    las que no pudiste responder"*. Sólo las nuevas desde la revisión anterior, `contesto:…;go`; las dudosas se le pasan.
  · **Espejo 8" (`MLA3018947968`)** frenado por ML (`waiting_for_patch`) desde la suba a $49.190: *"yo lo arreglo,
-   haceme acordar"*. Recordárselo en cada revisión mientras siga frenado.
+   haceme acordar"*. **RESUELTO: el 09/10 ya está activo a $20.630 y vendiendo.** No hace falta recordárselo más.
 
 ### CADA LUGAR DICE LO SUYO, Y LAS FECHAS (08/10/2026, v22.71 · `cyc-v551`)
  · Él: *"si clickeo el cerebro en la misma publicación pero en distintos lugares, que diga distintas cosas: en ventas por
