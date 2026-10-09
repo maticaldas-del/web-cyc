@@ -558,12 +558,16 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
 .viva.lv-exc{--tint:22%;--bd:85%;--bw:2px;--halo:18px;background:linear-gradient(120deg,color-mix(in srgb,var(--c) 26%,var(--surface)),color-mix(in srgb,var(--c) 12%,var(--surface)) 60%,color-mix(in srgb,var(--c) 30%,var(--surface)))!important}
 .viva.lv-estr{--tint:24%;--bd:90%;--bw:2px;--halo:22px}
 .viva.lv-joya{--tint:26%;--bd:95%;--bw:3px;--halo:26px}
-.vw.gl>.viva{animation:vivaGlow 2.4s ease-in-out infinite}
-.vw.gl.fuerte>.viva{animation:vivaGlow 1.1s ease-in-out infinite}
+.vw.gl::before{content:'';position:absolute;left:0;top:0;right:0;bottom:0;border-radius:var(--vr,10px);pointer-events:none;z-index:0;
+  box-shadow:0 0 26px 3px color-mix(in srgb,var(--c) 60%,transparent);opacity:.25;animation:vivaGlow 2.4s ease-in-out infinite;will-change:opacity}
+.vw.gl.fuerte::before{animation-duration:1.1s}
+.vw.mv-flota,.vw.mv-flota2,.vw.mv-tiembla{will-change:transform}
+/* mientras se hace scroll todo queda quieto: así no se traba (09/10/2026, él: "cuando scroleo se le bajan los fps") */
+body.viva-quieto .vw,body.viva-quieto .vw::before{animation-play-state:paused!important}
 .vw.mv-flota{animation:vivaFlota 3.2s ease-in-out infinite}
 .vw.mv-flota2{animation:vivaFlota 1.6s ease-in-out infinite}
 .vw.mv-tiembla{animation:vivaTiembla .38s linear infinite}
-@keyframes vivaGlow{0%,100%{box-shadow:0 0 var(--halo) 0 color-mix(in srgb,var(--c) 45%,transparent)}50%{box-shadow:0 0 calc(var(--halo) + 16px) 3px color-mix(in srgb,var(--c) 65%,transparent)}}
+@keyframes vivaGlow{0%,100%{opacity:.25}50%{opacity:1}}
 @keyframes vivaFlota{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
 @keyframes vivaTiembla{0%{transform:translate(0,0) rotate(0)}20%{transform:translate(-1px,1px) rotate(-.25deg)}40%{transform:translate(1px,-1px) rotate(.25deg)}60%{transform:translate(-1px,0) rotate(.15deg)}80%{transform:translate(1px,1px) rotate(-.15deg)}100%{transform:translate(0,0) rotate(0)}}
 @media (prefers-reduced-motion: reduce){.vw,.vw>.viva{animation:none!important}}
@@ -2491,7 +2495,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.78';
+const APP_VERSION='22.79';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2502,6 +2506,7 @@ const APP_VERSION='22.78';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.79',f:'09/10/2026',h:'00:10',c:[{n:1,t:'⚡ Las tarjetas animadas ya no traban el scroll: mientras te movés por la página las figuras se quedan quietas y siguen cuando frenás. El brillo que late cuesta mucho menos al teléfono.'}]},
   {v:'22.78',f:'08/10/2026',h:'23:50',c:[{n:1,t:'✨ Cada venta tiene el color de su % de ganancia y figuras que flotan atrás (una forma por nivel). Cuanto más neto dejó, más rápido se mueven. Las ventas que movieron mucha plata (por % y por pesos, también las que perdieron) brillan, flotan o tiemblan y se prenden fuego. Bueno y Excelente se ven más fuertes que Bien.'},{n:1,t:'✨ "Ventas de hoy" en Inicio: el color sale de la ganancia del día (Bien = $115.000), la velocidad de las figuras y el movimiento del total vendido, y arde cuando las dos son altas. Abajo de la ganancia queda el % del día.'}]},
   {v:'22.77',f:'08/10/2026',h:'22:45',c:[{n:3,t:'🧠 Pedidos, Armar caja y el máximo de compra muestran SÓLO lo que decide Claude, con su motivo. La web ya no propone números: lo que Claude no decidió dice "sin decidir". Las decisiones no vencen: duran hasta que Claude las cambie.'},{n:2,t:'🔗 Las publicaciones nuevas ya no se enganchan solas a una ficha: entran sin producto y las vincula Claude en su revisión.'}]},
   {v:'22.76',f:'08/10/2026',h:'21:06',c:[{n:3,t:'🧠 Pedidos y Armar caja: las unidades a comprar, las que van en cada caja y el precio con el que se calcula el máximo de compra los puede decidir Claude. Donde lo hizo dice "🧠 lo decidí yo" y la cuenta automática queda al lado para comparar. Si Claude deja de revisar, a los 4 días vuelve la cuenta sola.'}]},
@@ -8614,7 +8619,7 @@ function vivaEnvolver(html,cual,v){
   html=html.replace(a,`class="ingreso-item viva lv-${v.k}" style="--c:${v.c};`);
   const mv=v.ef==='fuego'?'mv-tiembla':v.ef==='flota'?'mv-flota':'';
   const gl=v.ef?('gl'+(v.ef==='fuego'?' fuerte':'')):'';
-  return `<div class="vw ${cual} ${mv} ${gl}" data-viva="venta" data-vk="${v.k}" data-vv="${v.vel.toFixed(3)}"${v.quieta?' data-vq="1"':''}>${v.ef==='fuego'?'<canvas class="viva-fuego"></canvas>':''}${html}</div>`;
+  return `<div class="vw ${cual} ${mv} ${gl}" style="--c:${v.c};--vr:8px" data-viva="venta" data-vk="${v.k}" data-vv="${v.vel.toFixed(3)}"${v.quieta?' data-vq="1"':''}>${v.ef==='fuego'?'<canvas class="viva-fuego"></canvas>':''}${html}</div>`;
 }
 // El día (tarjeta de Inicio).
 function vivaDia(h){
@@ -8625,7 +8630,7 @@ function vivaDia(h){
   const gl=VIVA_ORD[k]>=VIVA_ORD.bueno?('gl'+(VIVA_ORD[k]>=VIVA_ORD.estr?' fuerte':'')):'';
   return{k,c,vel:_vivaLog(t,100000,2500000),fuego,mv,gl,quieta:!(h.ventas>0)};
 }
-const _viva={cards:[],on:false,last:0,tick:0};
+const _viva={cards:[],on:false,last:0,tick:0,scroll:0};
 function vivaScan(root){
   try{
     _viva.cards=_viva.cards.filter(c=>c.wr.isConnected);
@@ -8642,7 +8647,7 @@ function vivaScan(root){
 function _vivaRnd(a,b){return a+Math.random()*(b-a);}
 function _vivaColor(c){const t=document.createElement('span');t.style.color='var(--c)';c.el.appendChild(t);const r=getComputedStyle(t).color;t.remove();return r;}
 function _vivaMedir(c,r){
-  const dpr=Math.min(2,window.devicePixelRatio||1);
+  const dpr=Math.min(c.dia?1.5:1.25,window.devicePixelRatio||1);
   if(!c.cv){c.cv=document.createElement('canvas');c.cv.className='viva-fig';c.el.insertBefore(c.cv,c.el.firstChild);}
   c.w=r.width;c.h=r.height;c.cv.width=Math.max(1,Math.round(c.w*dpr));c.cv.height=Math.max(1,Math.round(c.h*dpr));
   c.ctx=c.cv.getContext('2d');c.ctx.setTransform(dpr,0,0,dpr,0,0);c.rgb=_vivaColor(c);
@@ -8655,6 +8660,7 @@ function _vivaMedir(c,r){
   _vivaDibujarCard(c,0,true);
 }
 function _vivaVisibles(){
+  if(Date.now()-_viva.scroll<250)return;   // durante el scroll no se mide (medir fuerza a recalcular la página)
   const H=innerHeight||document.documentElement.clientHeight;
   for(const c of _viva.cards){
     const r=c.el.getBoundingClientRect();
@@ -8721,16 +8727,19 @@ function _vivaDibujarCard(c,dt,estatico){
 function _vivaPaso(t){
   const dt=Math.min(.05,Math.max(0,(t-_viva.last)/1000)||0);_viva.last=t;
   if(document.hidden)return;
+  if(Date.now()-_viva.scroll<250){_viva.last=t;return;}   // quieto mientras se hace scroll
   for(const c of _viva.cards)if(c.visible&&c.ctx)_vivaDibujarCard(c,dt,false);
 }
 function _vivaArrancar(){
   const loop=t=>{_viva.tick=performance.now();_vivaPaso(t);requestAnimationFrame(loop);};requestAnimationFrame(loop);
   // si el visor frena requestAnimationFrame, sigue con un reloj común (~30 por segundo)
   setInterval(()=>{if(performance.now()-_viva.tick>250)_vivaPaso(performance.now());},33);
-  setInterval(_vivaVisibles,400);addEventListener('scroll',_vivaVisibles,{passive:true});
+  setInterval(_vivaVisibles,500);
+  let st;addEventListener('scroll',()=>{_viva.scroll=Date.now();if(!document.body.classList.contains('viva-quieto'))document.body.classList.add('viva-quieto');clearTimeout(st);st=setTimeout(()=>{document.body.classList.remove('viva-quieto');_viva.scroll=0;_vivaVisibles();},260);},{passive:true,capture:true});
   let rt;addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{for(const c of _viva.cards)c.w=0;_vivaVisibles();},150);});
   // cambio de tema claro/oscuro: recolorear
-  new MutationObserver(()=>{for(const c of _viva.cards)if(c.ctx)c.rgb=_vivaColor(c);}).observe(document.body,{attributes:true,attributeFilter:['class']});
+  let _lz=document.body.classList.contains('light');
+  new MutationObserver(()=>{const l=document.body.classList.contains('light');if(l===_lz)return;_lz=l;for(const c of _viva.cards)if(c.ctx)c.rgb=_vivaColor(c);}).observe(document.body,{attributes:true,attributeFilter:['class']});
 }
 const scoreColor=s=>s>=250000?'#f59e0b':s>=130000?'#a78bfa':s>=80000?'#60a5fa':s>=40000?'#14b8a6':s>=15000?'#22c55e':s>=5000?'#f97316':'#ef4444';
 const scoreLabel=s=>s>=250000?'🟡 JOYA':s>=130000?'🟣 Estrella':s>=80000?'🔵 Excelente':s>=40000?'🩵 Bueno':s>=15000?'🟢 Objetivo':s>=5000?'🟠 Aceptable':'🔴 Bajo';
@@ -18407,7 +18416,7 @@ function renderHomeHoy(){
   const flecha=(d,txt,off)=>`<button onclick="homeHoyMover(${d},event)" ${off?'disabled':''} style="background:transparent;border:1px solid var(--border2);color:${off?'var(--border2)':'var(--text)'};border-radius:8px;min-width:34px;height:30px;font-size:1.05rem;line-height:1;cursor:${off?'default':'pointer'}">${txt}</button>`;
   const pctTxt=h.pct===null||!isFinite(h.pct)?'—':(h.pct>=0?'+':'')+h.pct.toFixed(0)+'%';
   const _vd=vivaDia(h);
-  el.innerHTML=`<div class="vw ${_vd.mv} ${_vd.gl}" data-viva="dia" data-vk="${_vd.k}" data-vv="${_vd.vel.toFixed(3)}"${_vd.quieta?' data-vq="1"':''} style="margin:4px auto 18px;max-width:min(760px,calc(100vw - 32px))">${_vd.fuego?'<canvas class="viva-fuego"></canvas>':''}<div onclick="homeHoyIr()" class="viva lv-${_vd.k}" style="--c:${_vd.c};cursor:pointer;border-radius:20px;padding:20px 22px 16px">
+  el.innerHTML=`<div class="vw ${_vd.mv} ${_vd.gl}" data-viva="dia" data-vk="${_vd.k}" data-vv="${_vd.vel.toFixed(3)}"${_vd.quieta?' data-vq="1"':''} style="--c:${_vd.c};--vr:20px;margin:4px auto 18px;max-width:min(760px,calc(100vw - 32px))">${_vd.fuego?'<canvas class="viva-fuego"></canvas>':''}<div onclick="homeHoyIr()" class="viva lv-${_vd.k}" style="--c:${_vd.c};cursor:pointer;border-radius:20px;padding:20px 22px 16px">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:10px">
       <span style="display:flex;align-items:center;gap:8px"><span style="display:flex;gap:4px;flex-shrink:0">${flecha(1,'‹',false)}${flecha(-1,'›',_homeHoyOff===0)}</span><span style="font-size:.72rem;text-transform:uppercase;letter-spacing:.16em;color:var(--c);font-weight:700">🏷️ ${titulo}</span></span>
       <span style="display:flex;gap:6px;align-items:center">${_cerDiaVisible(dateToKey(hoy))?`<button onclick="homeHoyCerebro(event)" title="🧠 Qué pasó con las ventas de este día" style="background:transparent;border:1px solid var(--border2);color:var(--text);border-radius:999px;padding:3px 10px;font-size:.7rem;cursor:pointer">🧠 qué pasó</button>`:''}<span style="font-size:.7rem;color:var(--muted);border:1px solid var(--border2);border-radius:999px;padding:3px 10px">ver ventas ›</span></span>
