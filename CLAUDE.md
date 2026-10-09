@@ -963,6 +963,14 @@ pase datos. fijate si hay algo más que el robot automático calcule. hacelo vos
    publicaciones nuevas, dólar, retiro del 1º, el guardián que saca promos que nadie analizó, la marca liquidando que se cae
    en stock 0, y el descarte de candidatos de Paraguay que no llegan al 25% en dos mediciones (su piso).
 
+## ⏰ PENDIENTE: COOL WATER WOMAN A $104.990 APENAS ENTRE STOCK (09/10/2026)
+
+`MLA2070716651` (Adriana) se vendió a $92.499 en un día las dos veces que llegó (2+2 u.) y ese precio deja 19%.
+Él: *"regalamos ganancia no?"*. Decidido subirla a **$104.990 (~33%)**, pero `decido` no toca una publicación sin
+stock en Full ("✗ no se toca"). **En cada vuelta: si tiene stock, aplicar `decido:MLA2070716651=104990|…;go`**
+ANTES de que se venda la tanda. Regla que sale de acá: lo que se agota en 1-2 días al llegar está barato; se sube
+aunque esté pausado esperando stock (hoy el comando no deja: o se arregla `decido` o se aplica al llegar).
+
 ## ⏰ PENDIENTE: EL PEDIDO AL PAULVIC DEL 06/10 (08/10/2026)
 
 40 u. en 12 aromas, todavía en camino (`cyc/pedidospv`). Le mandaron **$246.283,77** para pagar (≈ $6.157 c/u; la ficha
