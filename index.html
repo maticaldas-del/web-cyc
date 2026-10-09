@@ -546,6 +546,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
 .vw.vp-pc{display:block!important}
 .vw.vp-cel{display:none!important}
 @media(max-width:640px){.vw.vp-pc{display:none!important}.vw.vp-cel{display:block!important}}
+.vw.vf{margin:46px 18px 8px}   /* venta que arde: un poco más chica para que el fuego entre entero en la lista (09/10/2026, pedido suyo) */
 .vw>canvas.viva-fuego{position:absolute;left:-24px;top:-70px;width:calc(100% + 48px);height:calc(100% + 80px);pointer-events:none;z-index:3}
 .viva{--tint:7%;--bd:32%;--bw:1px;--halo:0px;position:relative;overflow:hidden;z-index:1;
   background:color-mix(in srgb,var(--c) var(--tint),var(--surface))!important;
@@ -2497,7 +2498,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.89';
+const APP_VERSION='22.90';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2508,6 +2509,7 @@ const APP_VERSION='22.89';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.90',f:'09/10/2026',h:'02:25',c:[{n:1,t:'🔥 El fuego vuelve a ser como antes. La venta que arde queda un poco más chica, con lugar arriba y a los costados, para que el fuego se vea entero en la lista.'}]},
   {v:'22.89',f:'09/10/2026',h:'02:15',c:[{n:1,t:'🖱️ Ventas en la PC: sin la barra de abajo y con un margen a la derecha de la lista para scrollear la página con el mouse. 🔥 El fuego sale sólo desde "Bueno" (45%) para arriba y con $100.000 de neto.'}]},
   {v:'22.88',f:'09/10/2026',h:'02:05',c:[{n:1,t:'🔥 El fuego de las ventas grandes se ve como fuego: lenguas amarillas, naranjas y rojas, y también suben desde abajo de la tarjeta (antes quedaban cortadas arriba en la lista).'}]},
   {v:'22.87',f:'09/10/2026',h:'01:55',c:[{n:1,t:'🔥 Ventas: el fuego queda sólo para lo excepcional (neto de $100.000 o más). Un Ferrari de $59.000 de neto ahora flota y brilla, no arde.'}]},
@@ -8642,7 +8644,7 @@ function vivaEnvolver(html,cual,v){
   html=html.replace(a,`class="ingreso-item viva lv-${v.k}" style="--c:${v.c};${vars}`);
   const mv=v.ef==='fuego'?'mv-tiembla':v.ef==='flota'?'mv-flota':'';
   const gl=v.ef?('gl'+(v.ef==='fuego'?' fuerte':'')):'';
-  return `<div class="vw ${cual} ${mv} ${gl}" style="--c:${v.c};--vr:8px" data-viva="venta" data-vk="${v.k}" data-vv="${v.vel.toFixed(3)}" data-vi="${(v.vi==null?1:v.vi).toFixed(3)}"${v.quieta?' data-vq="1"':''}>${v.ef==='fuego'?'<canvas class="viva-fuego"></canvas>':''}${html}</div>`;
+  return `<div class="vw ${cual} ${mv} ${gl}${v.ef==='fuego'?' vf':''}" style="--c:${v.c};--vr:8px" data-viva="venta" data-vk="${v.k}" data-vv="${v.vel.toFixed(3)}" data-vi="${(v.vi==null?1:v.vi).toFixed(3)}"${v.quieta?' data-vq="1"':''}>${v.ef==='fuego'?'<canvas class="viva-fuego"></canvas>':''}${html}</div>`;
 }
 // El día (tarjeta de Inicio).
 function vivaDia(h){
@@ -8713,28 +8715,22 @@ function _vivaFuego(c,dt){
   const ox=24,oy=70,ritmo=(40+c.vel*110)*dt*(c.dia?1.3:1),dark=!document.body.classList.contains('light');
   const nuevas=Math.floor(ritmo+(Math.random()<ritmo%1?1:0));
   for(let i=0;i<nuevas;i++){
-    // FUEGO DE VERDAD (09/10/2026, él: "el fuego se pierde un poco, se puede mejorar"): además del borde de arriba
-    // y los costados, una base de llamas que sube desde el piso de la tarjeta por adentro (en una lista con scroll lo
-    // de arriba queda cortado), lenguas alargadas y colores de fuego (blanco-amarillo, naranja, rojo), no el del %.
-    const lado=Math.random();let px,py,base=false;
-    if(lado<.42){px=ox+_vivaRnd(4,c.w-4);py=oy+_vivaRnd(0,4);}
-    else if(lado<.52){px=ox+_vivaRnd(-2,3);py=oy+_vivaRnd(4,c.h*.8);}
-    else if(lado<.62){px=ox+c.w+_vivaRnd(-3,2);py=oy+_vivaRnd(4,c.h*.8);}
-    else{px=ox+_vivaRnd(2,c.w-2);py=oy+c.h-_vivaRnd(0,3);base=true;}
-    c.llamas.push({x:px,y:py,base,vx:_vivaRnd(-10,10)+(lado>=.52&&lado<.62?10:lado>=.42&&lado<.52?-10:0),vy:-_vivaRnd(30,60)*(1+c.vel*.9)*(base?.55:1),vida:0,max:_vivaRnd(.45,.95)*(1+c.vel*.5)*(base?.7:1),s:_vivaRnd(3,7)*(1+c.vel*.6)*(base?.8:1)});
+    const lado=Math.random();let px,py;
+    if(lado<.7){px=ox+_vivaRnd(4,c.w-4);py=oy+_vivaRnd(0,4);}
+    else if(lado<.85){px=ox+_vivaRnd(-2,3);py=oy+_vivaRnd(4,c.h*.8);}
+    else{px=ox+c.w+_vivaRnd(-3,2);py=oy+_vivaRnd(4,c.h*.8);}
+    c.llamas.push({x:px,y:py,vx:_vivaRnd(-12,12)+(lado>=.85?10:lado>=.7?-10:0),vy:-_vivaRnd(30,60)*(1+c.vel*.9),vida:0,max:_vivaRnd(.45,.95)*(1+c.vel*.5),s:_vivaRnd(3,7)*(1+c.vel*.6)});
   }
   x.globalCompositeOperation=dark?'lighter':'source-over';
   const vivas=[];
   for(const f of c.llamas){
     f.vida+=dt;if(f.vida>f.max)continue;
     f.x+=f.vx*dt+Math.sin((f.vida+f.x)*9)*.4;f.y+=f.vy*dt;f.vx*=.98;
-    const t=f.vida/f.max,r=f.s*(1-t*.7),a=(1-t)*(f.base?.6:.95);
-    x.save();x.translate(f.x,f.y);x.scale(1,1.9);   // lengua alargada para arriba
-    const g=x.createRadialGradient(0,0,0,0,0,r*2.2);
-    g.addColorStop(0,`rgba(255,${Math.round(250-60*t)},${Math.round(200-170*t)},${a})`);
-    g.addColorStop(.35,`rgba(255,${Math.round(170-110*t)},20,${a*.8})`);
-    g.addColorStop(.7,`rgba(${Math.round(230-60*t)},40,10,${a*.45})`);g.addColorStop(1,'rgba(150,20,0,0)');
-    x.fillStyle=g;x.beginPath();x.arc(0,0,r*2.2,0,6.283);x.fill();x.restore();vivas.push(f);
+    const t=f.vida/f.max,r=f.s*(1-t*.7);
+    const g=x.createRadialGradient(f.x,f.y,0,f.x,f.y,r*2.2);
+    g.addColorStop(0,`rgba(255,${Math.round(240-150*t)},${Math.round(160-150*t)},${(1-t)*.85})`);
+    g.addColorStop(.45,_vivaRgba(c.rgb,(1-t)*.55));g.addColorStop(1,_vivaRgba(c.rgb,0));
+    x.fillStyle=g;x.beginPath();x.arc(f.x,f.y,r*2.2,0,6.283);x.fill();vivas.push(f);
   }
   c.llamas=vivas;x.globalCompositeOperation='source-over';
 }
