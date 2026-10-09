@@ -36427,16 +36427,21 @@ async function main() {
             if (!b || !b.charges_details) continue; leidos++;
             if ((b.installments || 1) > 1) motivos.push(`el comprador pagó en ${b.installments} cuotas`);
             for (const c of b.charges_details) {
+              // Sólo lo que sale de NUESTRA plata: lo que paga el comprador (envío abajo de $33.000, intereses de
+              // sus cuotas) viene con accounts.from = 'payer' y no nos toca.
+              if (String(c.accounts?.from || '') === 'payer') continue;
               const n = String(c.name || ''), a = Number(c.amounts?.original) || 0;
               if (n.startsWith('tax_withholding')) { const prov = (n.split('-')[1] || n).replace(/_/g, ' '); ret[prov] = (ret[prov] || 0) + a; }
               else if (n === 'financing_fee') cuotas += a;
               else if (n === 'meli_percentage_fee' || n === 'flat_fee') comision += a;
-              else if (n === 'shp_fulfillment' && (Number(p.shipping_cost) || 0) === 0) envio += a;
+              else if (n === 'shp_fulfillment') envio += a;
             }
           }
         }
-        const totRet = Object.values(ret).reduce((a, x) => a + x, 0);
-        if (totRet > r.total * 0.01) motivos.push(`retención de Ingresos Brutos ${f(totRet)} (${Object.entries(ret).filter(([, a]) => a >= 5).map(([pv, a]) => pv + ' ' + f(a)).join(', ')}): adelanto de impuesto según la provincia del comprador`);
+        const totRet = Object.values(ret).reduce((a, x) => a + x, 0), gap = r.hayNormal ? r.normal - r.neto : null;
+        // Si dejó lo normal para su precio, el motivo NO es de esta venta: es que el precio de hoy deja poco.
+        if (gap != null && gap <= Math.max(0.03 * r.total, 150)) motivos.push(`dejó lo normal para su precio: el problema es el PRECIO de hoy (con este costo no llega al 25%), no esta venta`);
+        if (totRet > r.total * 0.01 && (gap == null || gap > Math.max(0.03 * r.total, 150))) motivos.push(`retención de Ingresos Brutos ${f(totRet)} (${Object.entries(ret).filter(([, a]) => a >= 5).map(([pv, a]) => pv + ' ' + f(a)).join(', ')}): adelanto de impuesto según la provincia del comprador`);
         if (cuotas > 0) motivos.push(`cuotas a cargo nuestro ${f(cuotas)}`);
         if (envio > 0) motivos.push(`envío de Full cobrado ${f(envio)}`);
         if (comision > 0) motivos.push(`comisión de ML ${f(comision)}`);
