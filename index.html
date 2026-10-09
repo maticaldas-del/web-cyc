@@ -2462,7 +2462,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.76';
+const APP_VERSION='22.77';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2473,6 +2473,7 @@ const APP_VERSION='22.76';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.77',f:'08/10/2026',h:'22:45',c:[{n:3,t:'🧠 Pedidos, Armar caja y el máximo de compra muestran SÓLO lo que decide Claude, con su motivo. La web ya no propone números: lo que Claude no decidió dice "sin decidir". Las decisiones no vencen: duran hasta que Claude las cambie.'},{n:2,t:'🔗 Las publicaciones nuevas ya no se enganchan solas a una ficha: entran sin producto y las vincula Claude en su revisión.'}]},
   {v:'22.76',f:'08/10/2026',h:'21:06',c:[{n:3,t:'🧠 Pedidos y Armar caja: las unidades a comprar, las que van en cada caja y el precio con el que se calcula el máximo de compra los puede decidir Claude. Donde lo hizo dice "🧠 lo decidí yo" y la cuenta automática queda al lado para comparar. Si Claude deja de revisar, a los 4 días vuelve la cuenta sola.'}]},
   {v:'22.75',f:'08/10/2026',h:'20:05',c:[{n:2,t:'📈 Línea de tiempo: el "stock hoy · alcanza N días" de arriba y el color de la línea de stock ahora usan la misma cuenta del ritmo de venta (antes arriba podía decir "sobra" y la línea "bien").'}]},
   {v:'22.74',f:'08/10/2026',h:'19:55',c:[{n:1,t:'🧠 Vuelven los 🧠 de cada venta (dicen por qué está a ese precio). El "🧠 qué pasó" de Ventas de hoy (y de Ventas) aparece sólo si ese día pasó algo importante, y lo cuenta Claude.'}]},
@@ -6130,6 +6131,8 @@ function renderOfiCaja(){
     let pie='';
     if(f.sinContarPorAroma)pie=`<div style="font-size:.66rem;color:var(--amber);margin-top:5px">⚠️ Estas ${f.hay} u. están contadas en el producto pero sin decir de qué variante. Anotalas en "Contar lo que hay", una por variante, y ahí te digo a dónde van.</div>`;
     else if(f.sinPublicar)pie=`<div style="font-size:.66rem;color:var(--amber);margin-top:5px">⚠️ No está publicado en ninguna cuenta. Mandarlo no sirve hasta que lo publiques.</div>`;
+    else if(f.sinDecidir)pie=`<div style="font-size:.66rem;color:#a78bfa;margin-top:5px">🧠 Sin decidir: Claude todavía no dijo cuántas mandar de esto. Lo decide en la próxima revisión.</div>`;
+    else if(f.nadieNecesita&&SOLO_CLAUDE)pie=`<div style="font-size:.66rem;color:#a78bfa;margin-top:5px">🧠 Claude decidió no mandar de esto por ahora.</div>`;
     else if(f.nadieNecesita){
       // Se dice la CUENTA, no sólo la conclusión: cuántas hay en Full, cuántas van en camino y a
       // qué ritmo vende. Es el número con el que se decide cuando ML dice lo contrario.
@@ -10723,8 +10726,13 @@ const PED_MAX_DAYS=30;
 // Las cuentas de abajo siguen armando su número, pero si Claude escribió el suyo (`decido:ped:…=u|N`, `=venta|$`,
 // `decido:caja:…@cuenta=u|N`) manda el de Claude. Vale CL_DEC_DIAS días: si dejo de revisar, vuelve la cuenta sola.
 const CL_DEC_DIAS=4;
+// 09/10/2026, regla suya: *"decidí todo vos siempre y borrá todo lo anterior. que queden solo decisiones tuyas con
+// explicaciones"*. Con SOLO_CLAUDE prendido la web NO propone números: Pedidos, Armar caja y el máximo de compra
+// muestran SÓLO lo que decidió Claude (con su motivo); lo que Claude no decidió queda "sin decidir". Y las
+// decisiones no vencen: duran hasta que Claude las cambie (`=auto` las borra).
+const SOLO_CLAUDE=true;
 function escHtml(t){return String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-function _clFresco(o){return !!(o&&Date.now()-(Number(o.ts)||0)<=CL_DEC_DIAS*864e5);}
+function _clFresco(o){return !!(o&&(SOLO_CLAUDE||Date.now()-(Number(o.ts)||0)<=CL_DEC_DIAS*864e5));}
 function clPedDe(pid){const o=((state.claudedecide||{}).ped||{})[pid];return _clFresco(o)?o:null;}
 function clCajaDe(pid,cta,va){
   const k=pid+'__'+String(cta||'').toLowerCase().replace(/í/g,'i')+(va?'__v__'+sid(String(va).toLowerCase()):'');
@@ -11081,13 +11089,14 @@ function _repartoVariantes(p,hayTotal,tr){
       // según los días de stock, si está en cero hay que mandarle algo: es la diferencia entre
       // vender y no vender, no un ajuste de reposición.
       let necesita=_pisoCeroAplica(c)?Math.max(REPO_PISO_CERO,c.falta):c.falta;
-      const _cc=clCajaDe(p.id,c.cuenta,va);if(_cc)necesita=Math.max(0,parseInt(_cc.u)||0);   // lo decidió Claude
+      const _cc=clCajaDe(p.id,c.cuenta,va);if(_cc)necesita=Math.max(0,parseInt(_cc.u)||0);else if(SOLO_CLAUDE)necesita=0;   // lo decidió Claude (sin decisión: no se manda)
       if(necesita<=0)continue;
       const mandar=Math.min(quedan,necesita);
       quedan-=mandar;
       sug.push({...c,mandar,enCero:c.stock<=0,cl:_cc?{u:parseInt(_cc.u)||0,mot:String(_cc.mot||'')}:null});
     }
     filas.push({p,variante:va,hay,sug,sobra:quedan,
+      sinDecidir:SOLO_CLAUDE&&!publicadas.some(l=>clCajaDe(p.id,l,va)),
       sinPublicar:reales.length===0,
       nadieNecesita:sug.length===0&&publicadas.length>0,
       // POR QUÉ no hace falta, con los números. Sin esto el renglón decía sólo "Dejalo en casa" y
@@ -11147,13 +11156,14 @@ function repartoOficina(){
       // "ninguna cuenta lo necesita" con la publicación parada en cero — que es justo cuando más
       // hace falta mandar. Pasaba con la Linterna Multifuncion (23/08/2026).
       let necesita=_pisoCeroAplica(c)?Math.max(REPO_PISO_CERO,c.falta):c.falta;
-      const _cc=clCajaDe(p.id,c.cuenta,'');if(_cc)necesita=Math.max(0,parseInt(_cc.u)||0);   // lo decidió Claude
+      const _cc=clCajaDe(p.id,c.cuenta,'');if(_cc)necesita=Math.max(0,parseInt(_cc.u)||0);else if(SOLO_CLAUDE)necesita=0;   // lo decidió Claude (sin decisión: no se manda)
       if(necesita<=0)continue;                // ya tiene para los días de cobertura
       const mandar=Math.min(quedan,necesita);
       quedan-=mandar;
       sug.push({...c,mandar,enCero:c.stock<=0,cl:_cc?{u:parseInt(_cc.u)||0,mot:String(_cc.mot||'')}:null});
     }
     filas.push({p,hay,sug,sobra:quedan,
+      sinDecidir:SOLO_CLAUDE&&!publicadas.some(l=>clCajaDe(p.id,l,'')),
       sinPublicar:reales.length===0,
       nadieNecesita:sug.length===0&&publicadas.length>0,
       // Igual que la rama con variantes: el POR QUÉ con los números de cada cuenta. Faltaba acá y
@@ -11271,7 +11281,7 @@ async function syncPedidosAuto(){
     // Antes acá decía `if(vendidos===0)continue` a secas, y ése era el renglón que dejaba afuera
     // para siempre a lo que no vendió POR FALTA DE STOCK. Ahora sólo se saltea si tampoco hay
     // ritmo viejo con qué medirlo: sin ningún dato no se puede opinar, y ahí sí se calla.
-    if(vendidos===0&&!hist)continue;
+    if(vendidos===0&&!hist&&!(SOLO_CLAUDE&&clPedDe(p.id)))continue;   // lo que decidió Claude entra aunque no haya vendido
     const stock=stockOf(p);
     // Los días que dura el stock salen de la velocidad REAL (ventas ÷ días con mercadería), no de
     // ventas÷30. Con la cuenta vieja un producto agotado la mitad del mes parecía tener el doble de
@@ -11403,13 +11413,14 @@ async function syncPedidosAuto(){
         const formU=aComprar;
         if(hasVars&&_cl.vars){
           const cv={};for(const [k,v] of Object.entries(_cl.vars))cv[k]=Math.max(0,parseInt(v)||0);
-          const vn=(variantesNec||[]).map(x=>{const k=sid(String(x.v).toLowerCase());return k in cv?{...x,q:cv[k],cl:1}:x;});
+          const vn=(variantesNec||[]).map(x=>{const k=sid(String(x.v).toLowerCase());return k in cv?{...x,q:cv[k],cl:1}:(SOLO_CLAUDE?{...x,q:0}:x);});
           for(const v of (p.variantes||[])){const k=sid(String(v).toLowerCase());if(k in cv&&!vn.some(x=>sid(String(x.v).toLowerCase())===k))vn.push({v,q:cv[k],cl:1});}
           variantesNec=vn.length?vn:null;
           aComprar=vn.reduce((a,x)=>a+(x.q||0),0);
-        }else if(!hasVars&&_cl.u!=null)aComprar=Math.max(0,parseInt(_cl.u)||0);
+        }else if(_cl.u!=null&&(!hasVars||SOLO_CLAUDE)){aComprar=Math.max(0,parseInt(_cl.u)||0);if(hasVars)variantesNec=null;}
         if(aComprar!==formU||_cl.u!=null||_cl.vars)clInfo={u:aComprar,formU,mot:String(_cl.mot||''),ts:_cl.ts};
-      }}
+      }else if(SOLO_CLAUDE){aComprar=0;variantesNec=null;}   // sin decisión de Claude no se pide nada (09/10/2026)
+    }
     const diasCubProd=diasCubiertos;
     if(varDiasCub!=null&&varDiasCub<diasCubiertos)diasCubiertos=varDiasCub;
     // "Dinero en riesgo": ganancia diaria del producto × cuántos de los próximos 30 días vas a pasar REALMENTE sin stock.
@@ -15475,8 +15486,9 @@ function cuentaPedidoHTML(p){
   const regH=p.cReg?`<div style="flex-basis:100%;font-size:.6rem;color:var(--amber);margin-top:2px">🔀 ${p.cReg.txt.join(' · ')}. Por eso el ritmo que uso es <strong style="color:var(--text)">${fmtN(p.cReg.mes)}/mes</strong> (lo de antes del cambio ya no vale).</div>`:'';
   rem=rem+regH;
   // Lo que decidió Claude va arriba de todo: es el número que manda (la cuenta automática sigue abajo, para comparar).
-  const clH=p.cClaude?`<div style="flex-basis:100%;font-size:.66rem;line-height:1.5;color:var(--text);background:rgba(139,92,246,.12);border:1px solid rgba(139,92,246,.35);border-radius:6px;padding:5px 9px;margin-top:2px">🧠 <b>Lo decidí yo (Claude): ${fmtN(p.cClaude.u)} a comprar</b>${p.cClaude.formU!==p.cClaude.u?` · <span style="color:var(--muted)">la cuenta automática daba ${fmtN(p.cClaude.formU)}</span>`:''}${p.cClaude.mot?`<div style="color:var(--muted);margin-top:2px">${escHtml(p.cClaude.mot)}</div>`:''}</div>`:'';
+  const clH=p.cClaude?`<div style="flex-basis:100%;font-size:.66rem;line-height:1.5;color:var(--text);background:rgba(139,92,246,.12);border:1px solid rgba(139,92,246,.35);border-radius:6px;padding:5px 9px;margin-top:2px">🧠 <b>Lo decidí yo (Claude): ${fmtN(p.cClaude.u)} a comprar</b>${!SOLO_CLAUDE&&p.cClaude.formU!==p.cClaude.u?` · <span style="color:var(--muted)">la cuenta automática daba ${fmtN(p.cClaude.formU)}</span>`:''}${p.cClaude.mot?`<div style="color:var(--muted);margin-top:2px">${escHtml(p.cClaude.mot)}</div>`:''}</div>`:'';
   rem=clH+rem;
+  if(SOLO_CLAUDE)return clH;   // 09/10/2026: sólo la decisión de Claude con su motivo, sin la cuenta automática
   if(!(p.cObjetivo>0)||!(p.cVdia>0))return rem;
   const pasos=[p.cHist
     ? `<span style="color:var(--amber)">este mes no vendió porque estuvo en CERO</span> · vendía <strong style="color:var(--text)">${p.cVdia}</strong> por día cuando tenía (<strong style="color:var(--text)">${fmtN(p.cHist.u)}</strong> en ${p.cHist.dias} días)`
@@ -15712,7 +15724,8 @@ function maxCompraDe(p,metaPct){
   // El precio de venta para el máximo lo puede fijar Claude (`decido:ped:…=venta|$`): por ejemplo el precio
   // NORMAL cuando la publicación está subida un tiempo por escasez (si no, el máximo sale inflado).
   let clMot='';
-  {const _cl=clPedDe(p.id);if(_cl&&Number(_cl.pv)>0){P=Math.round(Number(_cl.pv));fuente='claude';techo=null;clMot=String(_cl.mot||'');}}
+  {const _cl=clPedDe(p.id);if(_cl&&Number(_cl.pv)>0){P=Math.round(Number(_cl.pv));fuente='claude';techo=null;clMot=String(_cl.mot||'');}
+    else if(SOLO_CLAUDE)return {motivo:'sinclaude'};}   // 09/10/2026: el precio para el máximo lo decide Claude
   // CUOTAS DEL QUE HAY QUE IGUALAR (04/10/2026). Él: "el 28% daba por hecho que se vende sin cuotas (…)
   // arreglalo y que quede bien". El robot ve de noche en `cyc/techofull` si el que pone el techo (cuoT) o el
   // más barato (cuoMin) es Premium o está en una campaña de cuotas de ML. Para venderle a ese precio hay que
@@ -15810,6 +15823,7 @@ function pyProbVeredicto(ped){
 function maxCompraHTML(p){
   const r=maxCompraDe(p); if(!r)return'';
   const st='flex-basis:100%;font-size:.62rem;line-height:1.5;margin-top:2px';
+  if(r.motivo==='sinclaude')return `<div style="${st};color:var(--muted)">💰 Máximo para comprar: <span style="color:#a78bfa">🧠 sin decidir</span> (Claude todavía no fijó a qué precio lo va a vender)</div>`;
   if(r.motivo)return `<div style="${st};color:var(--muted)">💰 Máximo para comprar: <span style="color:var(--amber)">sin medir</span> (no hay publicación viva con el neto calculado)</div>`;
   if(!(r.merc>0)||!(r.usd>0))return `<div style="${st};color:var(--red)">💰 Vendiendo a ${fmt(r.P)} ${r.fuente==='caja'?'(lo que pide ML para ganar la caja)':''} <b>no hay precio de compra que deje ${r.meta}%</b>: ni regalado llega.</div>`;
   const donde={full:`a ${fmt(r.P)}, lo que se puede cobrar teniendo Full${r.techo&&r.techo.cS?` (el más barato SIN Full está a ${fmt(r.techo.cS)}: se lo pasa hasta +10%)`:''}${r.techo&&r.techo.cF?` · el más barato CON Full: ${fmt(r.techo.cF)}`:''}`,caja:`a ${fmt(r.P)}, lo que pide ML para ganar la caja`,ganas:`a ${fmt(r.P)}, tu precio de hoy (ya ganás la caja)`,nocat:`a ${fmt(r.P)}, tu precio de hoy (no es de catálogo: no hay competidor medido)`,hoy:`a ${fmt(r.P)}, tu precio de hoy`,claude:`a ${fmt(r.P)}, el precio al que lo pienso vender (lo decidí yo, Claude${r.clMot?': '+r.clMot:''})`,vieja:`a ${fmt(r.P)}, tu precio de hoy (sus publicaciones están pausadas: la caja de compra que se ve es de cuando estaban activas y no se usa)`}[r.fuente];

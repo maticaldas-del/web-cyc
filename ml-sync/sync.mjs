@@ -5700,7 +5700,10 @@ async function altaDeNuevas(db, accounts, labels, map, index, DRY) {
         const pHermana = porHermana ? ((index.find((x) => x.p.id === porHermana) || {}).p || null) : null;
         // Si la hermana apunta a una ficha que ya no existe, NO se usa: se vuelve al título y se
         // dice. Emparejar contra una ficha borrada es peor que adivinar.
-        const p = pHermana || porTitulo;
+        // 09/10/2026, regla suya: "vincula siempre vos". Con el robot en SÓLO DATOS la publicación
+        // nueva se da de alta SIN producto (con los candidatos al lado, como dato) y la vincula Claude
+        // en su revisión con `vincular`. Ni ML ni el título deciden solos.
+        const p = SOLO_DATOS ? null : (pHermana || porTitulo);
         const comoSeEmparejo = pHermana
           ? (porTitulo && porTitulo.id !== pHermana.id ? 'ML (⚠ el título decía otra)' : 'ML')
           : (porHermana ? (porTitulo ? 'título (la hermana apuntaba a una ficha que ya no existe)' : '') : (porTitulo ? 'título' : ''));
@@ -34718,9 +34721,11 @@ async function main() {
         try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() }); tokI[label] = t.access_token; }
         catch { console.log(`(${label}: no pude entrar)`); }
       }
-      const cz = await calcCerebro(db, { tokens: tokI });
+      // 09/10/2026: con el robot en SÓLO DATOS lo que "haría el robot" no se calcula ni se muestra:
+      // la regla suya es analizar todo desde cero, sin sugerencias del robot viejo.
+      const cz = SOLO_DATOS ? { err: 'robot en SÓLO DATOS: no sugiere nada, decide Claude con los datos crudos', dec: [], resumen: {} } : await calcCerebro(db, { tokens: tokI });
       const f2 = (x) => x == null ? '—' : (Math.round(x * 100) / 100).toLocaleString('es-AR');
-      if (cz.err) console.log(`\n── 4 · CEREBRO: ⚠️ ${cz.err}`);
+      if (cz.err) console.log(`\n── 4 · CEREBRO: ${SOLO_DATOS ? '' : '⚠️ '}${cz.err}`);
       else {
         const ver = cz.dec.filter((d) => d.accion !== 'nada' || d.enEscasez || d.midiendo || d.juicio || (ventasMla[d.mla]));
         console.log(`\n── 4 · LO QUE HARÍA EL ROBOT (${cz.dec.length} miradas · ${Object.entries(cz.resumen).map(([k, v]) => `${k} ${v}`).join(' · ')}) · muestro ${ver.length} ──`);
@@ -34739,6 +34744,11 @@ async function main() {
       const nuevas = Object.entries(links).filter(([m, e]) => /^MLA/.test(m) && e && Number(e.altaTs) >= desde);
       console.log(`\n── 6 · PUBLICACIONES NUEVAS (${nuevas.length}) ──`);
       for (const [m, e] of nuevas.slice(0, 20)) console.log(`· ${m} · ${e.cuenta} · ${corta(e.title, 50)} · ${e.prodId ? 'con ficha' : '⚠️ SIN FICHA'} · ${e.status || '?'}`);
+      // 09/10/2026, "vincula siempre vos": TODAS las publicaciones vivas sin ficha, no sólo las de
+      // estas horas, con lo que se parece (dato, no decisión). Se vinculan con vincular:<MLA>=<id>:go.
+      const sinFichaV = Object.entries(links).filter(([m, e]) => /^MLA/.test(m) && e && !e.prodId && !e.ignored && !e.noVendemosMas && /^(active|paused)$/.test(String(e.status || '')));
+      console.log(`   vivas SIN ficha para vincular: ${sinFichaV.length}`);
+      for (const [m, e] of sinFichaV.slice(0, 40)) console.log(`   ⚠️ ${m} · ${e.cuenta} · ${e.status} · ${corta(e.title, 50)}${Array.isArray(e.candidatos) && e.candidatos.length ? ' · se parece a: ' + e.candidatos.slice(0, 3).map((c) => `${corta(c.name, 28)} (${c.id})`).join(' | ') : ''}`);
       // 7) Canceladas, reclamos y ventas sin costo de estas horas (la plata que se va o que no se mide)
       const malas = []; const sinCosto = {};
       const prodIdx = {}; for (const p0 of (Array.isArray(products) ? products : Object.values(products || {}))) if (p0 && p0.id) prodIdx[p0.id] = p0;
@@ -39970,7 +39980,7 @@ async function main() {
         alt.nuevas.forEach((n) => console.log(`   ${n.mla}  ${n.label.padEnd(8)} → ${n.prod}${n.variant ? ' · ' + n.variant : ''}${n.como ? ' · lo dijo ' + n.como : ''}   (${n.title.slice(0, 46)})`));
       }
       if (alt.sinFicha.length) {
-        console.log(`\n🆕 ${alt.sinFicha.length} publicación(es) nueva(s) dadas de alta SIN producto (no encontré una ficha clara):`);
+        console.log(`\n🆕 ${alt.sinFicha.length} publicación(es) nueva(s) dadas de alta SIN producto (${SOLO_DATOS ? 'sólo datos: las vincula Claude' : 'no encontré una ficha clara'}):`);
         alt.sinFicha.forEach((n) => console.log(`   ${n.mla}  ${n.label.padEnd(8)} ${n.title.slice(0, 60)}`));
         console.log(`   Se vinculan con: vincular:<MLA>=<palabra o id>:go`);
       }
@@ -40115,12 +40125,16 @@ async function main() {
           // c1: si otra publicación de la misma cuenta que ML dice que es el mismo producto ya está
           // vinculada, manda ésa (las fijadas a mano primero). Si no, el título como siempre.
           p = null;
-          if (e && e.upid) {
+          // 09/10/2026, "vincula siempre vos": en SÓLO DATOS la venta NO empareja nada nuevo. Si la
+          // publicación ya tenía producto se conserva; si no, la venta entra "sin producto" y la
+          // vincula Claude en la revisión (sale en el informe).
+          if (SOLO_DATOS) p = (e && e.prodId) ? (products.find((pp) => pp.id === e.prodId) || null) : null;
+          else if (e && e.upid) {
             const hs = (porUpidVenta[label + '|' + e.upid] || []).filter((h) => h.mla !== mla);
             const h = hs.find((x) => x.manual) || hs[0];
             if (h) p = products.find((pp) => pp.id === h.prodId) || null;
           }
-          if (!p) p = matchProduct(title, index);
+          if (!p && !SOLO_DATOS) p = matchProduct(title, index);
           if (mla) {
             if (!(mla in mapAntes)) mapAntes[mla] = e ? { prodId: e.prodId || null, variant: e.variant || '', e } : null;
             const entry = {

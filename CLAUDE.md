@@ -773,8 +773,13 @@ sugerencias ni nada. SU única función es sacar información de la api de ml NA
  · **El 1º de cada mes cargo yo el retiro** ($1.800.000 hasta que él diga otra cosa) con `retiromes` o en el Arqueo.
  · **Nunca tomar como dato una marca, nota o cuenta vieja del robot** (escalera, liquidando automático, expediente del
    cerebro, juicios del supervisor). Se borraron con `desdecero:go`. Se mira el dato crudo: ventas, stock, precio, ML.
- · Sigue por ahora y espera su decisión: el guardián que saca las promos que mete ML, la vinculación por título de las
-   publicaciones nuevas y los números que propone la web (Pedidos, Armar caja, máximo de compra).
+ · **Sus decisiones del 09/10 (v22.77):** (1) el guardián que saca las promos de ML sigue prendido (*"el 99% no sirve
+   nunca"*), pero tengo que saber todo lo que hace: sale en la sección 1 del `informe`. (2) *"vinculá siempre vos"*: el
+   robot ya no engancha publicaciones nuevas ni ventas a una ficha; la sección 6 del `informe` lista las vivas sin ficha
+   y las vinculo con `vincular`. (3b) *"decidí todo vos siempre y borrá todo lo anterior"*: la web (Pedidos, Armar caja,
+   máximo de compra) muestra SÓLO mis decisiones con su motivo (`SOLO_CLAUDE`); lo no decidido dice "sin decidir". **Mis
+   decisiones ya no vencen a los 4 días**: duran hasta que las cambie. En cada revisión decido los pedidos (`decido:ped`),
+   las cajas (`decido:caja`) y el precio de venta para el máximo (`=venta|$`) de lo que haga falta.
 
 ## 📨 CLAUDE LEE LOS AVISOS DE TELEGRAM Y RESUELVE LO QUE PUEDE (08/10/2026)
 
