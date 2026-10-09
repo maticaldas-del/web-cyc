@@ -2501,7 +2501,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.04';
+const APP_VERSION='23.05';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2512,6 +2512,7 @@ const APP_VERSION='23.04';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.05',f:'09/10/2026',h:'13:40',c:[{n:1,t:'⚡ Ventas: la tarjeta viva usa el MISMO ⚡ Score del ranking (ganancia² ÷ costo) y aparece desde 2.000. Antes era otra cuenta y no coincidía con el número que ves.'}]},
   {v:'23.04',f:'09/10/2026',h:'13:25',c:[{n:1,t:'🔥 Ventas: las ventas vuelven a ir juntas, sin el espacio de arriba de la que arde. El fuego queda atrás de la tarjeta y se ve sólo por los costados.'}]},
   {v:'23.03',f:'09/10/2026',h:'13:10',c:[{n:1,t:'🎨 Ventas: la tarjeta viva (color, figuras, brillo) aparece recién desde 2.000 puntos (ganancia × %). Las ventas chicas quedan como una tarjeta común.'}]},
   {v:'23.02',f:'09/10/2026',h:'12:05',c:[{n:1,t:'🎨 Ventas: las ventas chicas casi no se pintan (un toque de su color) y el color se enciende con el puntaje. La JOYA chica brilla menos pero conserva su borde dorado; las rojas chicas casi no se ven rojas.'}]},
@@ -8666,10 +8667,13 @@ const _vivaLog=(x,a,b)=>Math.min(1,Math.max(0,Math.log(Math.max(x,a)/a)/Math.log
 // tal cual; al 60%, el doble. Las que PERDIERON plata puntúan por lo que perdieron (en rojo), pero nunca arden.
 // Escalones del puntaje: $3.000 brilla · $8.000 flota · ~$25.000 flota rápido · ~$45.000 tiembla · $35.000+ arde (si ganó)
 // y todo llega al máximo en $400.000 (una venta de $650.000 al 40-60%).
-const VIVA_SC_MAX=400000, VIVA_SC_MIN=2000;
+// CAMBIO 09/10/2026 (v23.05), él: "no llega a 2.000 de score" → el puntaje es el MISMO ⚡ Score del ranking de
+// Ventas x Producto: ganancia² ÷ costo de esa venta (una que pierde usa su pérdida). Escalones en esa escala:
+// 1.800 brilla · 2.400 flota · 10.500 arde (si ganó) · todo al máximo en 120.000. Abajo de 2.000 no se anima.
+const VIVA_SC_MAX=120000, VIVA_SC_MIN=2000;
 function vivaScore(o){
-  const gan=Number(o.gan)||0,pct=Number(o.gpct)||0;
-  return gan>0?gan*Math.min(2.5,Math.max(.5,pct/30)):Math.abs(gan);
+  const gan=Number(o.gan)||0,c=Number(o.costo)||0;
+  return c>0?gan*gan/c:0;
 }
 function vivaVenta(o){
   if(o.cancel)return null;
@@ -8677,12 +8681,12 @@ function vivaVenta(o){
   const n=_pctNivel(o.gpct);if(!n)return null;
   const sc=vivaScore(o),gano=(Number(o.gan)||0)>0;
   if(sc<VIVA_SC_MIN)return null; // regla suya del 09/10: la venta viva recién aparece desde 2.000 puntos
-  const vel=_vivaLog(sc,1000,VIVA_SC_MAX);   // velocidad de las figuras
-  const vi=_vivaLog(sc,1000,150000);          // brillo, cantidad de figuras, halo
-  const tm=sc>=8000?.9*_vivaLog(sc,8000,VIVA_SC_MAX):0;   // cuánto se mueve la tarjeta
+  const vel=_vivaLog(sc,VIVA_SC_MIN,VIVA_SC_MAX);   // velocidad de las figuras
+  const vi=_vivaLog(sc,VIVA_SC_MIN,45000);          // brillo, cantidad de figuras, halo
+  const tm=sc>=2400?.9*_vivaLog(sc,2400,VIVA_SC_MAX):0;   // cuánto se mueve la tarjeta
   const tz=Math.round(Math.max(.5,4.5*Math.pow(tm,1.5))*100)/100,tv=Math.round((.5-tm*.28)*100)/100+'s';
-  const fi=gano&&sc>=35000?Math.max(.08,_vivaLog(sc,35000,VIVA_SC_MAX)):0;
-  const ef=fi>0?'fuego':tm>=.28?'tiembla':tm>=.16?'flota2':sc>=8000?'flota':sc>=6000?'glow':'';
+  const fi=gano&&sc>=10500?Math.max(.08,_vivaLog(sc,10500,VIVA_SC_MAX)):0;
+  const ef=fi>0?'fuego':tm>=.28?'tiembla':tm>=.16?'flota2':sc>=2400?'flota':sc>=1800?'glow':'';
   return{k:n.k,c:n.c,vel,vi,tz,tv,fi,ef};
 }
 // La tarjeta de una venta adentro de su envoltorio (el fuego necesita salir por afuera de la tarjeta).
@@ -10552,7 +10556,7 @@ function renderVentaProd(){
         </div>
         ${_det}
       </div>`;
-      const _vv=vivaVenta({cancel:isCancelled,gpct,est:_est,neto:gn,gan:gg});
+      const _vv=vivaVenta({cancel:isCancelled,gpct,est:_est,neto:gn,gan:gg,costo:gc});
       return vivaEnvolver(_pcHtml,'vp-pc',_vv)+vivaEnvolver(_celHtml,'vp-cel',_vv);
     }).join('')+(filteredGroups.length>VP_CAP?`<div class="empty-msg" style="margin-top:10px">Mostrando las ${VP_CAP} ventas más recientes de ${filteredGroups.length}. Usá el buscador o filtrá por cuenta/período para encontrar otras. (Los totales de arriba sí cuentan todas.)</div>`:''):`<div class="empty-msg">${vpQ||vpFilterCuenta?'Sin resultados para los filtros aplicados en '+mesLabel+'.':'Sin ventas cargadas en '+mesLabel+'.'}</div>`;
     vivaScan(list);
