@@ -2501,7 +2501,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.05';
+const APP_VERSION='23.06';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2512,6 +2512,7 @@ const APP_VERSION='23.05';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.06',f:'09/10/2026',h:'14:10',c:[{n:1,t:'📈 Ventas: en una compra de varios productos cada renglón tiene su propio botón de línea de tiempo.'},{n:1,t:'▲▼ El renglón del cambio de precio va en gris; sólo la flecha tiene color: verde si subió, roja si bajó.'}]},
   {v:'23.05',f:'09/10/2026',h:'13:40',c:[{n:1,t:'⚡ Ventas: la tarjeta viva usa el MISMO ⚡ Score del ranking (ganancia² ÷ costo) y aparece desde 2.000. Antes era otra cuenta y no coincidía con el número que ves.'}]},
   {v:'23.04',f:'09/10/2026',h:'13:25',c:[{n:1,t:'🔥 Ventas: las ventas vuelven a ir juntas, sin el espacio de arriba de la que arde. El fuego queda atrás de la tarjeta y se ve sólo por los costados.'}]},
   {v:'23.03',f:'09/10/2026',h:'13:10',c:[{n:1,t:'🎨 Ventas: la tarjeta viva (color, figuras, brillo) aparece recién desde 2.000 puntos (ganancia × %). Las ventas chicas quedan como una tarjeta común.'}]},
@@ -9734,8 +9735,10 @@ function cambioVentaHTML(v,tsVenta){
   }catch(e){}
   // El color del renglón dice si el cambio DEJÓ o SACÓ plata en esta venta (09/10/2026, él: "los rojos aparecen como
   // azules"): verde si dejó más, rojo si dejó menos, gris si no se pudo medir. Antes era ámbar al subir y azul al bajar.
-  const colCambio=exV>0?'var(--green)':exV<0?'var(--red)':'var(--muted)';
-  return`<span style="font-size:.62rem;color:${colCambio}" title="Cambios de precio de esta publicación en los ${CAMBIO_VENTA_DIAS} días antes de esta venta:\n${tip}${cs.some(x=>x.aprox)?'\n(aprox.: fue a mano; la hora sale de comparar dos noches)':''}${pcts?'\n% de ganancia: el de antes es esta misma venta cobrada a '+fmt(deMed)+' (≈ estimado); el de después es el real de esta venta.':''}${extra?'\nLa plata: (precio cobrado − '+fmt(deMed)+') × lo que deja ML de cada peso de esta venta × unidades.':''}">${sube?'⬆️':'⬇️'} ${sube?'+':''}${String(pct).replace('.',',')}% · ${fmt(base)}→${fmt(fin)}${cs.length>1?` · ${cs.length} cambios, el último ${hace}`:` · ${hace}`}${pcts}${extra}</span>`;
+  // 09/10/2026, él: "si baja algo aparezca en rojo pero con una flecha hacia abajo, no con los números": los números van
+  // en gris y sólo la flecha tiene color: ▲ verde si subió el precio, ▼ roja si bajó.
+  const colCambio='var(--muted)',flecha=`<b style="color:${sube?'var(--green)':'var(--red)'};font-size:.8rem">${sube?'▲':'▼'}</b>`;
+  return`<span style="font-size:.62rem;color:${colCambio}" title="Cambios de precio de esta publicación en los ${CAMBIO_VENTA_DIAS} días antes de esta venta:\n${tip}${cs.some(x=>x.aprox)?'\n(aprox.: fue a mano; la hora sale de comparar dos noches)':''}${pcts?'\n% de ganancia: el de antes es esta misma venta cobrada a '+fmt(deMed)+' (≈ estimado); el de después es el real de esta venta.':''}${extra?'\nLa plata: (precio cobrado − '+fmt(deMed)+') × lo que deja ML de cada peso de esta venta × unidades.':''}">${flecha} ${sube?'+':''}${String(pct).replace('.',',')}% · ${fmt(base)}→${fmt(fin)}${cs.length>1?` · ${cs.length} cambios, el último ${hace}`:` · ${hace}`}${pcts}${extra}</span>`;
 }
 // ¿La venta v corresponde al producto p? Por ID interno si está, sino por nombre.
 function ventaEsDe(v,p){return !!p&&(v.prodId?v.prodId===p.id:normTxt(v.prod)===normTxt(p.name));}
@@ -10493,7 +10496,7 @@ function renderVentaProd(){
       const _cambios=grp.items.map(v=>isCancelled?'':cambioVentaHTML(v,Number(v.ts)||0));
       const _hayCambio=_cambios.some(x=>x);
       const _pill=isCancelled?'':(gpct===null?`<span class="db nc" style="font-size:.66rem" title="${_sinFicha?'Esta venta no está enganchada a ninguna ficha: el panel no sabe qué producto es ni cuánto costó. Se arregla vinculando la publicación.':'La ficha no tiene costo cargado.'}">${_sinFicha?'sin ficha':'sin costo'}</span>`:`<span class="db ${_est?'nc':''}" style="font-size:.72rem;padding:3px 9px;${_est?'color:var(--muted)':_pillSt}">${_est?'≈ ':''}${gpct>=0?'+':''}${gpct.toFixed(0)}%</span>`);
-      const _items=grp.items.map((v,i)=>`<div style="font-size:.8rem;line-height:1.35;${isCancelled?'opacity:.45;text-decoration:line-through':''}">${fotoVentaHTML(v,38)}<span style="color:var(--muted)">${v.qty}×</span> ${nombreDeVenta(v)}${v.variante?` <span style="padding:1px 6px;border-radius:4px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.66rem;white-space:nowrap">${v.variante}</span>`:''}${_cambios[i]?` <span style="font-size:.66rem" title="Cambió de precio antes de esta venta · mirá el detalle">${_cambios[i].includes('⬆️')?'⬆️':'⬇️'}</span>`:''}${(()=>{const _pp=prodDeVenta(v);return _pp?' '+cerebroBtn(_pp.id,{mla:v.mla,ctx:'venta'}):'';})()}</div>`).join('');
+      const _items=grp.items.map((v,i)=>`<div style="font-size:.8rem;line-height:1.35;${isCancelled?'opacity:.45;text-decoration:line-through':''}">${fotoVentaHTML(v,38)}<span style="color:var(--muted)">${v.qty}×</span> ${nombreDeVenta(v)}${v.variante?` <span style="padding:1px 6px;border-radius:4px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.66rem;white-space:nowrap">${v.variante}</span>`:''}${_cambios[i]?` <span style="font-size:.66rem" title="Cambió de precio antes de esta venta · mirá el detalle">${_cambios[i].includes('▲')?'<b style="color:var(--green)">▲</b>':'<b style="color:var(--red)">▼</b>'}</span>`:''}${(()=>{const _pp=prodDeVenta(v);return _pp?' '+cerebroBtn(_pp.id,{mla:v.mla,ctx:'venta'}):'';})()}</div>`).join('');
       // La etiqueta del rescate al vender era del robot viejo, que ya no toca precios: no se muestra más (09/10/2026, él:
       // "sacá lo de los precios automáticos están apagados, además por qué sale eso si ya estás haciendo todo vos").
       rescLabel='';
@@ -10512,7 +10515,7 @@ function renderVentaProd(){
           ${(entLabel||rescLabel)?`<div style="padding:5px 0;display:flex;gap:10px;flex-wrap:wrap">${entLabel}${rescLabel}</div>`:''}
           ${isCancelled?reclamoMotivoHTML(grp):''}
           <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px">
-            ${(()=>{const _pp=prodDeVenta(grp.items[0]);return _pp?lineaBtn(_pp.id,'📈 línea'):'';})()}
+            ${(()=>{const _ids=[...new Set(grp.items.map(v=>(prodDeVenta(v)||{}).id).filter(Boolean))];return _ids.map(id=>lineaBtn(id,_ids.length>1?'📈 '+((prodById(id)||{}).name||'línea').slice(0,18):'📈 línea')).join(' ');})()}
             <button class="btn" style="font-size:.68rem;padding:4px 12px;background:rgba(124,58,237,.15);color:#a78bfa;border:1px solid rgba(124,58,237,.3)" onclick="vpToggleEdit('${grp.gid}')">✎ Editar</button>
             ${delBtn}
           </div>
@@ -10520,7 +10523,9 @@ function renderVentaProd(){
       // EN LA PC VA EL RENGLÓN DE ANTES; LA TARJETA ES SÓLO PARA EL TELÉFONO (30/09/2026, él:
       // "en la pc quiero como estaba antes. que quede así en el celu"). Se arman las dos y el CSS
       // (.vp-pc / .vp-cel, corte 640px) muestra una sola.
-      const lines=grp.items.map(v=>`<div style="display:flex;justify-content:space-between;font-size:.72rem;padding:2px 0;align-items:center;${isCancelled?'opacity:.45;text-decoration:line-through':''}"><span>${fotoVentaHTML(v,30)}${v.qty}× ${nombreDeVenta(v)}${v.variante?` <span style="padding:1px 5px;border-radius:3px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.62rem">${v.variante}</span>`:''}${isCancelled?'':(()=>{const x=cambioVentaHTML(v,Number(v.ts)||0);return x?' '+x:'';})()}${(()=>{const _pp=prodDeVenta(v);return _pp?' '+cerebroBtn(_pp.id,{mla:v.mla,ctx:'venta'}):'';})()}</span><span style="color:var(--muted)">${(!isCancelled&&(v.total||0)>0)?`total ${fmt(v.total)} · `:''}${isCancelled?'':'neto '+fmt(v.neto||0)}</span></div>`).join('');
+      // Compra de varios productos: cada renglón trae su propia 📈 línea de tiempo (09/10/2026, él: "quiero poder elegir qué línea mirar").
+      const _varios=new Set(grp.items.map(v=>(prodDeVenta(v)||{}).id).filter(Boolean)).size>1;
+      const lines=grp.items.map(v=>`<div style="display:flex;justify-content:space-between;font-size:.72rem;padding:2px 0;align-items:center;${isCancelled?'opacity:.45;text-decoration:line-through':''}"><span>${fotoVentaHTML(v,30)}${v.qty}× ${nombreDeVenta(v)}${v.variante?` <span style="padding:1px 5px;border-radius:3px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.62rem">${v.variante}</span>`:''}${isCancelled?'':(()=>{const x=cambioVentaHTML(v,Number(v.ts)||0);return x?' '+x:'';})()}${(()=>{const _pp=prodDeVenta(v);return _pp?' '+cerebroBtn(_pp.id,{mla:v.mla,ctx:'venta'})+(_varios?' '+lineaBtn(_pp.id):''):'';})()}</span><span style="color:var(--muted)">${(!isCancelled&&(v.total||0)>0)?`total ${fmt(v.total)} · `:''}${isCancelled?'':'neto '+fmt(v.neto||0)}</span></div>`).join('');
       const _pcHtml=`<div class="ingreso-item vp-pc" style="flex-direction:column;align-items:stretch;gap:4px;${isCancelled?'border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.04)':''}">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <span class="who-badge" style="font-size:.6rem;${isCancelled?'opacity:.6':''}">${cuenta}</span>
@@ -10533,7 +10538,7 @@ function renderVentaProd(){
           ${costLabel}
           ${ganLabel}
           ${pctBox}
-          ${(()=>{const _pp=prodDeVenta(grp.items[0]);return _pp?lineaBtn(_pp.id):'';})()}
+          ${(()=>{if(_varios)return'';const _pp=prodDeVenta(grp.items[0]);return _pp?lineaBtn(_pp.id):'';})()}
           <button class="ii-del" style="background:rgba(124,58,237,.15);color:#a78bfa;border-color:rgba(124,58,237,.3)" onclick="vpToggleEdit('${grp.gid}')">✎</button>
           ${delBtn}
         </div>

@@ -410,6 +410,8 @@ Todo lo que guarda la historia día por día y las pantallas que la dibujan.
 
  · **23.05 (09/10):** `vivaScore` = ganancia² ÷ costo de la venta, el MISMO ⚡ Score del ranking (`roiScore`), para que el número que él ve y el que anima coincidan. Escalones reescalados: 1.800 brilla · 2.400 flota · 10.500 arde · máximo 120.000; mínimo 2.000. Chequear: el Pendrive 64gb (⚡ 1.550) queda común.
 
+ · **23.06 (09/10):** compra de varios productos → un `lineaBtn` por renglón (`_varios`) y en el detalle del teléfono un botón por producto. `cambioVentaHTML`: texto en gris, sólo la flecha ▲ verde / ▼ roja según subió o bajó el precio (la tarjeta del teléfono busca '▲'). Chequear: carrito de 3 productos con 3 botones 📈.
+
 ### Pendientes de la revisión 9 (09/10/2026, a la madrugada) — se van cerrando en las vueltas
 - **Publicaciones con variantes no tienen dueño de precio:** `decido`/`analizapromo`/`entrarpromo` las rechazan ("la maneja el robot de siempre") y con SOLO_DATOS el robot no las toca. Hace falta un camino de Claude por `raiseVariations` (y que la planilla las muestre como "nadie las maneja").
 - **`escasez` no mira colores** (saltea las claves `__v__`): un color con 1 u. dentro de un producto con stock no salta.
