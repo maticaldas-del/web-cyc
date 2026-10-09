@@ -34700,8 +34700,8 @@ async function main() {
         if (!v || v.cancelada || !v.prodId || !v.cuenta) continue;
         const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ts < ahora - 30 * 864e5) continue;
         const k = v.prodId + '__' + sidE(v.cuenta), q = Number(v.qty) || 1;
-        const x = (V[k] = V[k] || { u14: 0, u30: 0, u3: 0 });
-        x.u30 += q; if (ts >= ahora - 14 * 864e5) x.u14 += q; if (ts >= ahora - 3 * 864e5) x.u3 += q;
+        const x = (V[k] = V[k] || { u14: 0, u30: 0, u3: 0, vts: [] });
+        x.u30 += q; if (ts >= ahora - 14 * 864e5) x.u14 += q; if (ts >= ahora - 3 * 864e5) x.u3 += q; x.vts.push([ts, q]);
         if (v.mla && Number(v.total) > 0) (precioV[v.mla] = precioV[v.mla] || []).push(Number(v.total) / q);
       }
       // cajas despachadas que todavía no llegaron, por producto × cuenta
@@ -34726,8 +34726,11 @@ async function main() {
         const pid = k.slice(0, i), cta = k.slice(i + 2); if (/oficina/i.test(cta)) continue;
         const st = Math.max(0, parseInt(st0) || 0), vv = V[k]; if (!vv || vv.u14 < 2) continue;
         const h = sh[k] || {}; const desde = Number(h.desde) || 0;
-        const dCon = Math.max(1, Math.min(14, desde && !h.aprox ? (ahora - desde) / 864e5 : 14));
-        const r14 = vv.u14 / dCon, r3 = vv.u3 / 3;
+        // ventana: los últimos 14 días, o desde que volvió el stock si fue después (ventas y días de la MISMA ventana)
+        const ini = Math.max(ahora - 14 * 864e5, desde && !h.aprox ? desde : 0);
+        const dCon = Math.max(1, (ahora - ini) / 864e5);
+        const uVen = vv.vts.filter(([t]) => t >= ini).reduce((s2, [, q]) => s2 + q, 0);
+        const r14 = (dCon >= 3 ? uVen / dCon : vv.u14 / 14), r3 = vv.u3 / 3;
         const alc = r14 > 0 ? st / r14 : Infinity;
         if (alc > dMax) continue;
         const ofi = Math.max(0, parseInt(inv[pid + '__' + sidE('Oficina Mati')]) || 0);
@@ -34751,7 +34754,7 @@ async function main() {
       console.log('(ritmo = ventas de 14 días ÷ días con stock · la oficina NO cuenta hasta que sale la caja)\n');
       for (const f of filas) {
         const camU = f.cam.reduce((s2, c) => s2 + c.u, 0);
-        const camTxt = camU ? `🚚 despachadas ${camU} u. (${f.cam.map((c) => c.fecha + (c.v ? ' ' + c.v : '') + ' ' + c.u).join(' · ')})` : '🚫 sin caja despachada';
+        const camTxt = camU ? `🚚 despachadas sin marcar ${camU} u. (${f.cam.map((c) => c.fecha + (c.v ? ' ' + c.v : '') + ' ' + c.u + (c.fecha !== '?' && (ahora - Date.parse(c.fecha)) / 864e5 > 9 ? ' ⚠️ +9 d: ¿ya llegó? mirar cajasllegaron' : '')).join(' · ')})` : '🚫 sin caja despachada';
         console.log(`■ ${pName[f.pid] || f.pid} · ${f.cta} · ${f.st} u. en Full · ${f.r14.toFixed(2)}/día (${f.u14} u. en 14 d · ${f.u30} en 30 d · últimos 3 d ${f.r3.toFixed(1)}/día) · alcanza ${f.alc === Infinity ? '∞' : f.alc.toFixed(1)} d`);
         console.log(`   ${camTxt}${f.ofi ? ' · oficina ' + f.ofi + ' u.' : ''}`);
         for (const m of pubs[f.k]) {
