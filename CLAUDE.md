@@ -760,6 +760,22 @@ archivo. **Etapa 8 · Datos e historial** creada ese día (líneas de tiempo); c
 Inicio la pide ya. Y lo que se mira en TODAS: contar dos veces lo mismo (el stock ×4 del Centímetro),
 fallas leídas como dato, dos fórmulas para un número, datos de terceros en el registro público.
 
+## 🤖 EL ROBOT SÓLO JUNTA DATOS · TODO LO DEMÁS LO HAGO YO (09/10/2026)
+
+Él, después del error de los Victoria's Secret: *"te equivocaste por hacerle caso al robot anterior. Ese robot no quiero
+que exista más. Y a partir de ahora analizá todo desde 0 (…) no quiero que el robot automático modifique nada ni que dé
+sugerencias ni nada. SU única función es sacar información de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
+ · `SOLO_DATOS` en sync.mjs (detalle en `ml-sync/REVISION.md`, etapa 0). Lo automático sólo lee y guarda. **Ya no hay
+   rescate, escalera, remate, cerebro, supervisor, activar pausadas, marcar cajas, contestar preguntas, tachar candidatos,
+   retiro del 1º ni avisos del robot por Telegram.** Todo eso lo hago yo en las vueltas (08:52, 12:52, 16:52, 20:52).
+ · **Cajas:** el robot anota lo que ML ya dio de alta (`cyc/cajasentrado`) y lista en el log las que ML da por entradas;
+   las marco yo con `cajallego` en la revisión (si no, quedan "en camino" y se cuenta lo entrado aparte).
+ · **El 1º de cada mes cargo yo el retiro** ($1.800.000 hasta que él diga otra cosa) con `retiromes` o en el Arqueo.
+ · **Nunca tomar como dato una marca, nota o cuenta vieja del robot** (escalera, liquidando automático, expediente del
+   cerebro, juicios del supervisor). Se borraron con `desdecero:go`. Se mira el dato crudo: ventas, stock, precio, ML.
+ · Sigue por ahora y espera su decisión: el guardián que saca las promos que mete ML, la vinculación por título de las
+   publicaciones nuevas y los números que propone la web (Pedidos, Armar caja, máximo de compra).
+
 ## 📨 CLAUDE LEE LOS AVISOS DE TELEGRAM Y RESUELVE LO QUE PUEDE (08/10/2026)
 
 Pedido suyo: *"me gustaria que vos tambien veas lo que me manda y ver si lo podes resolver vos (…) que me envies un

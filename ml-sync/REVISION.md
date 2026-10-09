@@ -18,6 +18,25 @@ todas las etapas.
   función o dar lo mismo con los mismos datos.
 - **Datos de terceros en el registro público** (nombres, documentos, números de orden enteros).
 
+## 0 · EL ROBOT SÓLO JUNTA DATOS (09/10/2026, regla suya)
+*"no quiero que el robot automático modifique nada ni que dé sugerencias ni nada. SU única función es sacar información
+de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
+- **Dónde vive:** `SOLO_DATOS` (sync.mjs, prendido por defecto y si la config no se lee; `cyc/mlconfig/soloDatos='off'` lo
+  apaga) y `CORRIDA_AUTOMATICA` (ciclo sin comando, ml-daily, ml-candidatos). Los comandos de Claude siguen andando.
+- **Apagado en lo automático:** precios (robot de la hora, rescate al vender, grupos, volver sin Full), activar pausadas,
+  marcar cajas (`cajasQueLlegaron(...,soloAnotar)`: sólo anota `cyc/cajasentrado` y lista en el log las que ML dio por
+  entradas), sacar marcas liquidando, contestar preguntas, retiro del 1º, `avisos`/`supervisor`/`cerebro` en ml-daily,
+  la salida del remate de `ritmo`, tachar/destachar candidatos, y TODO aviso a Telegram (queda en `mlapi/cerebroavisos`
+  para Claude; salen sólo los `directo` y el resumen del día).
+- **Sigue (datos):** ventas, stock, caja de compra, reputación, visitas, cuotas, netoweb, facturas, MP (saldoml/dispo),
+  entregas, motivo de reclamos, línea de tiempo, ritmo normal, techo con Full, medir candidatos, dólar, alta de publicaciones.
+- **Pendiente de su decisión:** el guardián que saca las promos que mete ML (sigue prendido mientras tanto), la vinculación
+  por título de las publicaciones nuevas, y si la web deja de proponer números (Pedidos, Armar caja, máximo de compra).
+- **Desde cero:** `desdecero[:go]` borra escalera, cerebro, salidas de remate, marcas liquidando y "no traer más" del
+  robot, y las decisiones de pedidos/cajas de Claude. Las marcas a mano quedan.
+- **Qué chequear:** que ninguna corrida automática escriba precios, marcas o decisiones; que los avisos lleguen a Claude
+  por `informe`/`alertas` y no a Telegram; que las cajas que ML da por entradas las marque Claude y no queden contadas dos veces.
+
 ## 1 · PRECIOS
 - **LOS PRECIOS LOS DECIDE CLAUDE, NO EL ROBOT (08/10/2026 a la tarde, v22.68).** Él: *"que haya solo robots
   automáticos de api para cosas que no hay que pensar, como ventas y cosas así de datos. TODO lo que sea pensar lo

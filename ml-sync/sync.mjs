@@ -335,6 +335,16 @@ let BLOQUEO_ML = { frenados: [], ok: 0 };
 // Se apunta acá una sola vez, al arrancar, y SÓLO si no es una corrida de prueba: así una prueba
 // no puede escribir nada por este camino aunque alguien se olvide de mirar DRY.
 let DB_REF = null;
+// ── MODO SÓLO DATOS (09/10/2026, regla suya) ──
+// *"no quiero que el robot automático modifique nada ni que dé sugerencias ni nada. SU única función es sacar
+// información de la api de ml NADA MÁS. Todo el resto te encargás vos"*. Prendido por defecto (también si la
+// config no se puede leer: el lado seguro es no decidir). Lo automático (el ciclo, ml-daily, ml-candidatos) sólo
+// LEE de ML y guarda; no mueve precios, no activa, no marca, no descarta, no avisa por Telegram (los avisos quedan
+// en `mlapi/cerebroavisos` para Claude). Los comandos que corre Claude (`decido`, `liquidando`, `cajallego`…)
+// siguen andando: son las decisiones de Claude. Se apaga con `cyc/mlconfig/soloDatos = 'off'`.
+let SOLO_DATOS = true;
+// Lo que corre solo (no un comando de Claude): el ciclo sin BILLING_PROBE, ml-daily y ml-candidatos.
+const CORRIDA_AUTOMATICA = !process.env.BILLING_PROBE || /^(ml-daily|ml-candidatos)$/.test(String(process.env.GITHUB_WORKFLOW || ''));
 function _anotarEscrituraML(res, itemId, que, cuerpo) {
   if (res && res.ok) { BLOQUEO_ML.ok++; return; }
   const t = String(cuerpo || '');
@@ -734,7 +744,9 @@ async function envioDeducido(ventas, precioHoy, feeAt, opts = {}) {
 // Una caja se marca recibida SOLO cuando TODOS sus renglones quedaron cubiertos. Si llegó la mitad,
 // se deja abierta: media caja recibida sigue siendo una caja en camino.
 let _cajas429Espera = 0;   // tope de espera por 429 en una vuelta (ver el reintento adentro)
-async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
+// `soloAnotar` (09/10/2026, modo SÓLO DATOS): anota lo que ML ya dio de alta de cada caja abierta (`cyc/cajasentrado`)
+// pero NO marca ninguna caja, ni rellena faltantes, ni guarda entradas de las marcadas a mano: eso lo decide Claude.
+async function cajasQueLlegaron(db, accounts, labels, products, DRY, soloAnotar = false) {
   _cajas429Espera = 0;
   const envios = (await db.get('cyc/envios_full')) || {};
   const links = (await db.get('cyc/mllinks')) || {};
@@ -1319,7 +1331,7 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
     for (const ab of abiertas) {
       const key = ab.id + '__' + ab.i;
       const desdeCaja = Date.parse((ab.fecha || '1970-01-01') + 'T00:00:00-03:00') || 0;
-      const yaMarcada = marcadas.includes(ab);
+      const yaMarcada = !soloAnotar && marcadas.includes(ab);
       let ciego = false; const its = [];
       for (const it of ab.items) {
         const k1 = kR(ab.e.cuenta, it.prodId, it.variante || '');
@@ -1357,8 +1369,8 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
   const aGuardar = marcadasAntes.filter((mb) => mb.calc);
   let manoGuardadas = 0;
   if (aGuardar.length) {
-    console.log(`🧾 ${aGuardar.length} caja(s) marcada(s) a mano: ubicadas sus entradas de Full${DRY ? ' (prueba: no se guarda)' : ''} → ` + aGuardar.map((mb) => `${mb.e.cuenta} ${mb.fecha}${mb.c.track ? ' (' + mb.c.track + ')' : ''}`).join(' · '));
-    if (!DRY) {
+    console.log(`🧾 ${aGuardar.length} caja(s) marcada(s) a mano: ubicadas sus entradas de Full${DRY || soloAnotar ? ' (no se guarda)' : ''} → ` + aGuardar.map((mb) => `${mb.e.cuenta} ${mb.fecha}${mb.c.track ? ' (' + mb.c.track + ')' : ''}`).join(' · '));
+    if (!DRY && !soloAnotar) {
       const porEnv = {};
       for (const mb of aGuardar) (porEnv[mb.id] = porEnv[mb.id] || []).push(mb);
       for (const [id, ms] of Object.entries(porEnv)) {
@@ -1386,7 +1398,7 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
   if (rellenos.length) {
     console.log(`↩️ ${rellenos.length} caja(s) marcada(s) con faltantes recibieron lo que llegó tarde${DRY ? ' (prueba: no se escribe)' : ''} → `
       + rellenos.map((r) => `${r.mb.e.cuenta} ${r.mb.fecha}${r.mb.c.track ? ' (' + r.mb.c.track + ')' : ''}: +${r.extra.reduce((a, x) => a + x.q, 0)} u.${r.faltanN ? '' : ' · ya quedó completa'}`).join(' · '));
-    if (!DRY) {
+    if (!DRY && !soloAnotar) {
       const porEnvR = {};
       for (const r of rellenos) (porEnvR[r.mb.id] = porEnvR[r.mb.id] || []).push(r);
       for (const [id, rs] of Object.entries(porEnvR)) {
@@ -1416,7 +1428,14 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY) {
   if (!marcadas.length) return { marcadas: [], mirados, msg: null, detalle, manoGuardadas, rellenadas, tiposVistos, opsTotal, fallos, erroresOp, sinCantidad, recEnt, enProceso, abiertas: abiertas.length, descontadas };
   // Las que de verdad quedaron escritas (en prueba, todas): de ésas sale el mensaje.
   const hechas = DRY ? marcadas.slice() : [];
-  if (!DRY) {
+  if (soloAnotar) {
+    console.log(`📦 SÓLO DATOS: ${marcadas.length} caja(s) que según ML ya entraron${marcadas.some((m) => (m.faltan || []).length) ? ' (alguna con faltantes)' : ''} — NO las marco, las marca Claude:`);
+    for (const m of marcadas) {
+      const uF = (m.faltan || []).reduce((a, x) => a + (x.pide - x.llego), 0);
+      console.log(`   · ${m.e.cuenta} · caja del ${m.fecha}${m.c.track ? ' (' + m.c.track + ')' : ''} · ${m.items.reduce((a, x) => a + x.u, 0)} u.${uF ? ` · faltarían ${uF} u.` : ' · completa'}`);
+    }
+  }
+  if (!DRY && !soloAnotar) {
     // Se escribe la lista COMPLETA de cajas del envío: cajasDet es un array y un patch parcial la
     // rompería, igual que pasa con las variantes de ML.
     // ── SE RELEE JUSTO ANTES DE ESCRIBIR (revisión max (rev4)) ── La lista salía de la foto leída
@@ -7944,6 +7963,8 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     const usd = parseFloat(c.usd) || 0;
     const puesto = usd > 0 ? Math.round(usd * RECARGO_PAR * 100) / 100 : 0;
     const fuera = async (motivo, margenHoy) => {
+      // SÓLO DATOS (09/10/2026): la corrida automática mide y guarda el número; tachar lo decide Claude.
+      if (SOLO_DATOS && CORRIDA_AUTOMATICA) { descartes.push(`${c.nombre} → ${motivo}  (sólo datos: NO lo tacho, lo decide Claude)`); return; }
       // LO QUE YA ESTÁ CARGADO EN EL PEDIDO (o ya viajando) NO SE TACHA (etapa 3, 29/09/2026): el
       // "Ya lo pedí" y la llegada saltean los descartados, así que tacharlo de noche hacía que lo
       // pagado no entrara "en camino" ni recibiera ficha. Queda en rojo en el pedido (freno del 25%)
@@ -8421,7 +8442,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     }
     // SI ESTABA DESCARTADO Y AHORA DA, SE LE SACA LA CRUZ. Es la otra mitad de volver a medir:
     // sin esto se mediría todas las semanas y seguiría escondido en el desplegable de descartados.
-    if (c.no && !soloPrueba) {
+    if (c.no && !soloPrueba && !(SOLO_DATOS && CORRIDA_AUTOMATICA)) {
       await db.set(`cyc/candidatos_py/${id}/no`, null);
       await db.set(`cyc/candidatos_py/${id}/motivo`, null);
       await db.set(`cyc/candidatos_py/${id}/noTs`, null);
@@ -8554,6 +8575,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
 // Cada aviso (vaya o no) queda en `mlapi/cerebroavisos/<ts>` para poder mirar qué se tragó el cerebro.
 function cerebroDeAvisos(text, opt = {}) {
   const t = String(text || '');
+  if (SOLO_DATOS && !(opt && opt.directo)) return { va: false, por: 'el robot sólo junta datos: lo mira Claude en su revisión' };
   if (opt && opt.info) return { va: false, por: 'es informativo: no pide ninguna decisión' };
   if (/^⏸️ <b>Con stock en Full y siguen pausadas<\/b>/.test(t)) return { va: false, por: 'la noche las lleva al precio que deja ganar y se activan solas' };
   return { va: true, por: opt && opt.directo ? 'es para vos directo' : 'no lo puede resolver solo' };
@@ -8813,6 +8835,8 @@ async function main() {
   // antes que cualquier cosa que pueda mover un precio: si esto no corrió, PISO_DURO vale 30 y lo
   // único que puede pasar es que un comando se niegue a bajar. Fallar hacia el lado seguro.
   try { await cargarPisoDuro(db); } catch { /* queda en 30, que es el lado conservador */ }
+  try { SOLO_DATOS = String(((await db.get('cyc/mlconfig')) || {}).soloDatos || 'on') !== 'off'; } catch { SOLO_DATOS = true; }
+  if (SOLO_DATOS && CORRIDA_AUTOMATICA) console.log('🤖 Robot en modo SÓLO DATOS: trae información de ML y la guarda. No decide, no sugiere y no toca nada (eso lo hace Claude).');
   try { await cargarParamCompra(db); } catch { /* quedan los números de siempre */ }
   // La lista de "no me lo subas, lo estoy liquidando". Si esto falla, NOSUBIR_OK queda en false y
   // raisePrice/raisePriceTo se niegan a subir NADA esta vuelta — ver el comentario de cargarNoSubir.
@@ -9946,7 +9970,42 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=desdecero[:go] → BORRAR LO QUE DECIDIÓ EL ROBOT VIEJO (09/10/2026, pedido suyo)
+    // *"te equivocaste por hacerle caso al robot anterior. Ese robot no quiero que exista más. Y a partir de ahora analizá
+    // todo desde 0"*. Borra las memorias de decisiones del robot automático para que nada viejo influya: la escalera
+    // (`cyc/escalera`), su cerebro (`cyc/cerebro`, `mlapi/cerebroexp`), las salidas de remate (`cyc/salidaremate`), las
+    // marcas "liquidando" que puso él (remate automático / escalera, y las contagiadas de ésas), los "no traer más" que
+    // puso él (`auto:true`) y las decisiones de pedidos/cajas de Claude (`cyc/claudedecide`: se rehacen desde cero).
+    // NO toca: las marcas que pusieron Matías o Claude a mano, el historial (`cyc/autoprecio`, ventas, stock), ni ML.
+    if (/^desdecero(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const GO = /:go$/.test(String(process.env.BILLING_PROBE || '')) && !DRY;
+      console.log(`=== DESDE CERO: borrar lo que decidió el robot viejo ${GO ? '(APLICANDO)' : '(PRUEBA: no borra nada)'} ===\n`);
+      const ns = (await db.get('cyc/nosubir')) || {};
+      const nt = (await db.get('cyc/notraer')) || {};
+      const robotNs = Object.entries(ns).filter(([, d]) => esMarcaRobot(d) || (d && d.hermanaDe && esMarcaRobot(ns[d.hermanaDe])));
+      const manoNs = Object.entries(ns).filter(([k]) => !robotNs.some(([r]) => r === k));
+      const robotNt = Object.entries(nt).filter(([, d]) => d && d.auto === true && !d.permitido);
+      const cuenta = async (r) => { try { const v = await db.get(r); return v && typeof v === 'object' ? Object.keys(v).length : (v ? 1 : 0); } catch { return '?'; } };
+      const nodos = ['cyc/escalera', 'cyc/cerebro', 'mlapi/cerebroexp', 'cyc/salidaremate', 'cyc/claudedecide/ped', 'cyc/claudedecide/caja'];
+      for (const r of nodos) console.log(`· ${r}: ${await cuenta(r)} renglón(es) → se borra`);
+      console.log(`· liquidando puestas por el robot: ${robotNs.length} → se sacan${robotNs.length ? ': ' + robotNs.map(([k, d]) => k + ' (' + String(d.motivo || d.hermanaDe || '').slice(0, 30) + ')').join(' · ') : ''}`);
+      console.log(`· liquidando puestas a mano (QUEDAN): ${manoNs.length}${manoNs.length ? ': ' + manoNs.map(([k, d]) => k + ' (' + String((d && d.motivo) || 'a mano').slice(0, 40) + ')').join(' · ') : ''}`);
+      console.log(`· "no traer más" puestos por el robot: ${robotNt.length} → se sacan${robotNt.length ? ': ' + robotNt.map(([k, d]) => String(d.nom || k).slice(0, 30)).join(' · ') : ''}`);
+      if (!GO) { console.log('\nPRUEBA: no borré nada. Con :go lo borra.'); return; }
+      let mal = 0;
+      for (const r of nodos) { try { await db.set(r, null); } catch { mal++; console.log('⚠️ no pude borrar ' + r); } }
+      for (const [k] of robotNs) { try { await db.set('cyc/nosubir/' + k, null); } catch { mal++; } }
+      for (const [k] of robotNt) { try { await db.set('cyc/notraer/' + k, null); } catch { mal++; } }
+      // Releído
+      const ns2 = (await db.get('cyc/nosubir')) || {}; const nt2 = (await db.get('cyc/notraer')) || {};
+      const quedanR = robotNs.filter(([k]) => ns2[k]).length + robotNt.filter(([k]) => nt2[k]).length;
+      let quedanN = 0; for (const r of nodos) { const c = await cuenta(r); if (c) quedanN++; }
+      console.log(`\n${mal || quedanR || quedanN ? '⚠️' : '✓'} Listo · releído: ${quedanR} marca(s) del robot siguen · ${quedanN} memoria(s) sin borrar${mal ? ` · ${mal} error(es)` : ''}`);
+      if (mal || quedanR || quedanN) process.exitCode = 1;
+      return;
+    }
     if (/^avisos(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      if (SOLO_DATOS && CORRIDA_AUTOMATICA) { console.log('SÓLO DATOS (09/10/2026): "avisos" decide o sugiere, y el robot automático ya no lo hace. Lo piensa Claude en su revisión.'); return; }
       const MANDAR = /:go$/.test(String(process.env.BILLING_PROBE || ''));
       const RESET = /:reset(:|$)/.test(String(process.env.BILLING_PROBE || ''));
       const fin = (await db.get('cyc/finanzas')) || {};
@@ -17212,7 +17271,9 @@ async function main() {
       try { await db.set('cyc/ritmonormal', R.ritmo); console.log(`✓ ritmo normal guardado (${rs.length} claves) · diario del ${R.diaK}`); }
       catch (e) { console.log(`⚠️ no pude guardar el ritmo normal: ${String(e).slice(0, 100)}`); process.exitCode = 1; }
       const hechas = [];
-      for (const x of salen) {
+      // SÓLO DATOS (09/10/2026): el ritmo normal (dato) se guarda; sacar a algo del remate lo decide Claude.
+      if (SOLO_DATOS && CORRIDA_AUTOMATICA && salen.length) console.log(`   (sólo datos: no saco ningún remate, lo decide Claude)`);
+      for (const x of (SOLO_DATOS && CORRIDA_AUTOMATICA ? [] : salen)) {
         try {
           await marcarLiquidando(db, x.mla, null, true);
           try { await db.set('cyc/escalera/' + x.mla, null); } catch { /* */ }
@@ -27778,6 +27839,7 @@ async function main() {
     // avisó; y se anota como avisado sólo si el mensaje salió. Sin `:go` muestra y no escribe.
     // DESDE EL 01/10/2026 VUELVE ATRÁS SOLO lo que perdió plata SEGURO (sección 5a); lo dudoso lo pregunta.
     if (/^supervisor(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      if (SOLO_DATOS && CORRIDA_AUTOMATICA) { console.log('SÓLO DATOS (09/10/2026): "supervisor" decide o sugiere, y el robot automático ya no lo hace. Lo piensa Claude en su revisión.'); return; }
       const MANDAR = /:go$/.test(String(process.env.BILLING_PROBE || '')) && !DRY;
       const VENT = [7, 15, 30];
       const MAX_DIAS = 40;
@@ -35486,6 +35548,7 @@ async function main() {
     // Corre `calcCerebro` (la MISMA función de la noche) y dice, publicación por publicación, qué haría y
     // por qué. Sin palabras muestra sólo las que cambiaría y las que está midiendo; `:todas` muestra todo.
     if (/^cerebro(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      if (SOLO_DATOS && CORRIDA_AUTOMATICA) { console.log('SÓLO DATOS (09/10/2026): "cerebro" decide o sugiere, y el robot automático ya no lo hace. Lo piensa Claude en su revisión.'); return; }
       let arg = String(process.env.BILLING_PROBE).slice('cerebro'.length).replace(/^:/, '').trim().toLowerCase();
       // `cerebro:go` APLICA (va por ml-sync): lo mismo que hace la noche, ahora. Respeta `autoPrecios` y `cerebro` en off.
       const GOc = /(^|:)go$/.test(arg); arg = arg.replace(/:?go$/, '');
@@ -39490,7 +39553,8 @@ async function main() {
   // El antecedente que hay que respetar: los gastos automáticos (monofijo_<mes>) se sacaron el
   // 13/08/2026 porque el monto real cambiaba todos los meses y nadie lo miraba. Acá el monto es
   // fijo por decisión suya y el freno 1 hace que corregirlo a mano alcance para siempre.
-  if (!DRY) { const r = await ponerRetiroMes(db, cfg, mesActualAR(), false); if (r.msg) console.log(r.msg); }
+  // SÓLO DATOS (09/10/2026): el retiro del 1º lo carga Claude en su revisión de ese día.
+  if (!DRY && !SOLO_DATOS) { const r = await ponerRetiroMes(db, cfg, mesActualAR(), false); if (r.msg) console.log(r.msg); }
   // SKIP_PRICES=1 → esta vuelta trae ventas pero NO toca precios. Lo usa el ciclo automático:
   // las ventas se sincronizan cada 2 minutos, pero el robot de precios corre una vez por hora.
   // Sin esto, bajar el intervalo a 2 minutos haría que el robot evalúe 720 veces por día en vez
@@ -39500,7 +39564,7 @@ async function main() {
   // nadie lo pida: el robot que ajusta al piso, la nivelación de grupos y la reactivación de
   // pausadas. Se apagó el 04/08/2026: los precios pasan a manejarse a mano, uno por uno.
   // Los comandos a mano (volver, bajopiso:go, etc.) siguen andando: esto solo frena lo automático.
-  const precioAuto = cfg.autoPrice !== false;
+  const precioAuto = cfg.autoPrice !== false && !SOLO_DATOS;   // SÓLO DATOS: el robot no toca precios ni activa nada
   const autoPrice = precioAuto && !SKIP_PRICES;
   const autoPromo = cfg.autoPromo !== false; // sacar descuentos de ML — ON por defecto
   const autoStock = cfg.autoStock !== false; // cargar stock de ML al panel — ON por defecto
@@ -39521,7 +39585,7 @@ async function main() {
   // nada más. Arranca APAGADO: hay que prenderlo a mano con el comando `subeventa:on`.
   // `autoPrecios: off` es "apagá TODO lo que mueve precios": también apaga la suba al vender (P5 de
   // la segunda vuelta, 25/09/2026 — antes sólo la noche lo miraba y las ventas seguían subiendo).
-  const autoSubeVenta = cfg.autoSubeVenta === true && String(cfg.autoPrecios || 'on') !== 'off';
+  const autoSubeVenta = cfg.autoSubeVenta === true && String(cfg.autoPrecios || 'on') !== 'off' && !SOLO_DATOS;
   // ── DESDE QUÉ MARGEN SUBE SOLO (22/09/2026) ────────────────────────────────────────────
   // Regla suya, textual, con el Ted Lapidus en la mano: *"para que suba automatico en la web de
   // cyc tiene que dar 20% o menos"*. Hasta hoy el robot subía con el MISMO número que el piso del
@@ -40353,6 +40417,7 @@ async function main() {
     }
 
     // ── EL RESCATE EN EL MOMENTO DE LA VENTA (24/09/2026) ──
+    if (SOLO_DATOS) rescVenta.length = 0;   // sólo datos: ni rescate ni etiquetas de "no lo subí"
     if (rescVenta.length && !DRY) {
       const lote = rescVenta.splice(0);
       const apagadas = lote.filter((v) => v.apagado);
@@ -40522,10 +40587,12 @@ async function main() {
             if (novedad && !DRY && pubAlerts < 8) {
               const title = map[mla].title || mla;
               const estados = { closed: 'dada de baja', under_review: 'en revisión', paused: 'pausada' };
-              mandado = (await sendTelegram(`⚠️ <b>Problema en una publicación</b>\n`
+              const _txtPub = `⚠️ <b>Problema en una publicación</b>\n`
                 + `${title}\nCuenta: ${label}\n`
                 + `Estado: ${estados[st] || st}${sub ? ' · ' + sub : ''}\n`
-                + (b.permalink || ''), 'baja')) === true;
+                + (b.permalink || '');
+              // SÓLO DATOS (09/10/2026): queda en mlapi/cerebroavisos para Claude, no va a Telegram.
+              mandado = (SOLO_DATOS ? await sendAlerta(_txtPub) : await sendTelegram(_txtPub, 'baja')) === true;
               pubAlerts++;
             }
             if (!DRY) {
@@ -41034,7 +41101,7 @@ async function main() {
   // que corta lo que ESCRIBE PRECIOS en ML. Esto no toca ML, solo marca cajas en el panel.
   if (parseInt(process.env.BACKFILL_DAYS || '0', 10) === 0 && !onlyAcc && process.env.SKIP_PRICES !== '1') {
     try {
-      const rc = await cajasQueLlegaron(db, accounts, labels, products, DRY);
+      const rc = await cajasQueLlegaron(db, accounts, labels, products, DRY, SOLO_DATOS);
       // revisión max (rev4): iba por sendTelegram SIN tipo y TG_PERMITIDO lo tiraba siempre. Va por
       // el canal privado y sólo si alguna caja se marcó CON faltantes (una completa no es noticia).
       if (rc.msg) { console.log(rc.msg.replace(/<[^>]+>/g, '')); if (!DRY && rc.conFaltantes) await sendAlerta(rc.msg + '\n\n⚠️ Revisá las que dicen "faltaron": esas unidades salieron del patrimonio.'); }
@@ -41044,7 +41111,7 @@ async function main() {
   // SACAR LA MARCA DE "LIQUIDANDO" A LO QUE YA SE VENDIÓ ENTERO. Va en la vuelta horaria: el stock
   // no cambia de un minuto al otro. No toca ML, sólo borra marcas del panel, así que va FUERA del
   // bloque que apaga `robot:off`.
-  if (parseInt(process.env.BACKFILL_DAYS || '0', 10) === 0 && !onlyAcc && process.env.SKIP_PRICES !== '1') {
+  if (parseInt(process.env.BACKFILL_DAYS || '0', 10) === 0 && !onlyAcc && process.env.SKIP_PRICES !== '1' && !SOLO_DATOS) {
     try {
       const ls = await limpiarNoSubir(db, DRY);
       for (const x of ls) console.log(`🔓 Se acabó el stock de ${x.title.slice(0, 40)} (${x.cuenta}): saco la marca de liquidando, el robot ya le puede subir el precio.`);
@@ -41062,7 +41129,7 @@ async function main() {
       console.log(`🏷️  Rubros · ${rb.cats.size} categorías distintas · ${rb.catsNuevas} nombre(s) nuevo(s)${rb.catsFaltan ? ` · quedan ${rb.catsFaltan} para la vuelta siguiente` : ''} · 📷 ${rb.fotos} con foto`);
     } catch (e) { console.log('No pude leer la caja de compra: ' + e.message); }
     // Si una suba que pasó a un competidor sin Full perdió la caja, se vuelve al precio anterior (04/10/2026).
-    try {
+    if (!SOLO_DATOS) try {
       const vs = await volverSinFull(db, accounts, labels, DRY);
       for (const x of vs.vueltos) console.log(`↩️ ${x.nom} (${x.mla}): pasé al que no tiene Full y perdí la caja → vuelvo ${money(x.de)} → ${money(x.a)} (${x.mg.toFixed(1)}%)${x.prueba ? ' [prueba]' : ''}`);
       for (const x of vs.no) console.log(`↩️ ${x.nom} (${x.mla}): perdió la caja después de pasar al que no tiene Full, NO lo volví: ${x.why}`);
@@ -41086,6 +41153,7 @@ async function main() {
   if (parseInt(process.env.BACKFILL_DAYS || '0', 10) === 0 && !onlyAcc && process.env.SKIP_PRICES !== '1') {
     try {
       let onR = true; try { onR = ((await db.get('cyc/mlconfig/responder')) || 'on') !== 'off'; } catch { onR = false; }
+      if (SOLO_DATOS) onR = false;   // las preguntas las contesta Claude
       if (onR) {
         const rq = await responderPreguntas(db, accounts, labels, !DRY, false);
         const cats = Object.entries(rq.porCat).map(([k, v]) => k + ' ' + v).join(' · ');
