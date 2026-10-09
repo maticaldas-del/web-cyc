@@ -2499,7 +2499,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.96';
+const APP_VERSION='22.97';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2510,6 +2510,7 @@ const APP_VERSION='22.96';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.97',f:'09/10/2026',h:'02:35',c:[{n:1,t:'🔥 Ventas: romper el techo depende de cada venta. Las que arden poco rebotan 2-3 veces y salen despacio; las que arden fuerte lo rompen al primer golpe y salen disparadas, más grandes, más alto y con más chispas. Las figuras rápidas lo rompen antes.'}]},
   {v:'22.96',f:'09/10/2026',h:'02:20',c:[{n:1,t:'🔥 Ventas: en las que arden, las figuras suben, chocan contra el techo de la tarjeta (rebotan con chispas) y al segundo golpe lo rompen y salen volando hacia arriba entre las llamas.'}]},
   {v:'22.95',f:'09/10/2026',h:'02:05',c:[{n:1,t:'🔥 Ventas: la velocidad, el temblor y el fuego llegan al máximo en la venta más grande posible ($650.000 · ~$550.000 de neto), no antes.'}]},
   {v:'22.94',f:'09/10/2026',h:'01:50',c:[{n:1,t:'🔥 Ventas: el fuego sale de un puntaje (ganancia en pesos × lo bueno del %). Arde desde ~$35.000 de puntaje y cada vez más fuerte hasta $250.000. La lista es más ancha y las ventas van un poco adentro para que el fuego se vea entero a los costados.'}]},
@@ -8768,7 +8769,7 @@ function _vivaFuego(c,dt){
   }
   c.fuera=sigue;x.globalAlpha=1;x.globalCompositeOperation='source-over';
 }
-function _vivaChispas(c,px,py,n){for(let i=0;i<n;i++)c.llamas.push({x:px,y:py,vx:_vivaRnd(-60,60),vy:-_vivaRnd(20,70),vida:0,max:_vivaRnd(.15,.35),s:_vivaRnd(1.5,3)});}
+function _vivaChispas(c,px,py,n,fi){const f=.6+(fi||0)*1.2;for(let i=0;i<n;i++)c.llamas.push({x:px,y:py,vx:_vivaRnd(-60,60)*f,vy:-_vivaRnd(20,70)*f,vida:0,max:_vivaRnd(.15,.35)*f,s:_vivaRnd(1.5,3)*(.7+(fi||0)*.8)});}
 function _vivaDibujarCard(c,dt,estatico){
   const x=c.ctx;if(!x)return;x.clearRect(0,0,c.w,c.h);
   const rm=matchMedia('(prefers-reduced-motion: reduce)').matches,quieta=c.quieta||rm||estatico;
@@ -8780,9 +8781,12 @@ function _vivaDibujarCard(c,dt,estatico){
       if(p.rb>0){p.rb-=dt;p.y+=pxs*p.k*dt*.7;}else p.y-=pxs*p.k*dt;
       p.fase+=dt*(.2+v*6);p.x+=Math.sin(p.fase)*.3*(.3+v*3);p.r+=p.vr*dt*rot;
       if(c.fc&&p.y<p.s){   // con fuego: la figura choca contra el techo, rebota, y al segundo golpe lo rompe y sale volando (_vivaFuego la dibuja afuera)
-        if(!p.golpe){p.golpe=1;p.rb=.11;p.y=p.s;p.vr=-p.vr*1.6;_vivaChispas(c,24+p.x,70+p.y,3);}
-        else if(p.rb<=0){(c.fuera||(c.fuera=[])).push({x:24+p.x,y:70+p.y,vx:_vivaRnd(-25,25),vy:-(pxs*p.k*.9+60),r:p.r,vr:p.vr*3,s:p.s,vida:0,max:_vivaRnd(.5,.9)});
-          _vivaChispas(c,24+p.x,70+p.y,5);p.golpe=0;p.y=c.h+12;p.x=_vivaRnd(0,c.w);p.vr=_vivaRnd(-.8,.8);}
+        // cuánto aguanta el techo y con qué fuerza salen depende de cada venta: intensidad del fuego (fi), velocidad y cada figura (k)
+        const fi=c.dia?.7:(c.fi||0),aguanta=fi>=.55?1:fi>=.3?2:3;   // las que arden poco rebotan 2-3 veces antes de romperlo; las fuertes lo rompen al primer golpe
+        if(p.rb<=0&&(p.golpe||0)+1<aguanta&&p.k<1.3){p.golpe=(p.golpe||0)+1;p.rb=.08+.1*(1-fi)*Math.random();p.y=p.s;p.vr=-p.vr*1.4;_vivaChispas(c,24+p.x,70+p.y,1+Math.round(fi*4),fi);}
+        else if(p.rb<=0){const f=.6+fi*1.2;
+          (c.fuera||(c.fuera=[])).push({x:24+p.x,y:70+p.y,vx:_vivaRnd(-25,25)*f,vy:-(pxs*p.k*.9+60)*f,r:p.r,vr:p.vr*(2+fi*4),s:p.s*(.8+fi*.6),vida:0,max:_vivaRnd(.35,.6)+fi*.6});
+          _vivaChispas(c,24+p.x,70+p.y,2+Math.round(fi*9),fi);p.golpe=0;p.y=c.h+12;p.x=_vivaRnd(0,c.w);p.vr=_vivaRnd(-.8,.8);}
       }
       if(p.y<-12){p.y=c.h+12;p.x=_vivaRnd(0,c.w);}
       if(p.x<-12)p.x=c.w+12;if(p.x>c.w+12)p.x=-12;
