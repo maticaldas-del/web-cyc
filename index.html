@@ -2499,7 +2499,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.97';
+const APP_VERSION='22.98';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2510,6 +2510,7 @@ const APP_VERSION='22.97';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.98',f:'09/10/2026',h:'02:55',c:[{n:2,t:'🔎 Revisión: etapa nueva 9 · Cerebro. Revisa lo que hace Claude en cada vuelta para que nada quede a medias (precios, pedidos, cajas, preguntas, vínculos).'}]},
   {v:'22.97',f:'09/10/2026',h:'02:35',c:[{n:1,t:'🔥 Ventas: romper el techo depende de cada venta. Las que arden poco rebotan 2-3 veces y salen despacio; las que arden fuerte lo rompen al primer golpe y salen disparadas, más grandes, más alto y con más chispas. Las figuras rápidas lo rompen antes.'}]},
   {v:'22.96',f:'09/10/2026',h:'02:20',c:[{n:1,t:'🔥 Ventas: en las que arden, las figuras suben, chocan contra el techo de la tarjeta (rebotan con chispas) y al segundo golpe lo rompen y salen volando hacia arriba entre las llamas.'}]},
   {v:'22.95',f:'09/10/2026',h:'02:05',c:[{n:1,t:'🔥 Ventas: la velocidad, el temblor y el fuego llegan al máximo en la venta más grande posible ($650.000 · ~$550.000 de neto), no antes.'}]},
@@ -3682,6 +3683,7 @@ const REV_ETAPAS=[
   {n:6,nom:'Ideas nuevas',que:'datos que ML ya da y no usamos, cosas que hacés a mano y se pueden automatizar, y detalles que den gusto usar la web: efectos, comodidad, lo repetido y lo que falta (sólo propone)',esf:'Alto'},
   {n:7,nom:'Diseño',que:'la web más cómoda, sencilla y linda: qué sobra, qué cuesta encontrar, qué se ve mal en el teléfono, y proponer detalles lindos con sentido como las ventas con vida (sólo propone)',esf:'Alto'},
   {n:8,nom:'Datos e historial',que:'las líneas de tiempo de cada producto y de todos juntos: que cada día cuente bien (nada contado dos veces, nada vacío leído como cero) y coincida con Ventas y el Arqueo',esf:'Alto'},
+  {n:9,nom:'Cerebro',que:'lo que hace Claude en cada vuelta: que cada parte quede ENTERA (cada publicación, cada ficha y color de Pedidos, cada caja, cada pregunta y cada vínculo), contando contra el total y no sólo contra lo que ya existe o se movió',esf:'Alto'},
 ];
 const REV_CADA_DIAS=7;
 // ── LA REVISIÓN LA MANEJA CLAUDE, NO ÉL (26/09/2026, pedido suyo) ─────────────────────────────
