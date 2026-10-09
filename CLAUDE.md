@@ -760,6 +760,15 @@ archivo. **Etapa 8 · Datos e historial** creada ese día (líneas de tiempo); c
 Inicio la pide ya. Y lo que se mira en TODAS: contar dos veces lo mismo (el stock ×4 del Centímetro),
 fallas leídas como dato, dos fórmulas para un número, datos de terceros en el registro público.
 
+## 🎯 SIN PISO DEL 22%: UN SOLO NÚMERO, 25% DE OBJETIVO (09/10/2026, regla suya)
+
+Él: *"sacá el piso de 22% ya que no tiene sentido. porque no se respeta nunca y si se respeta perdemos ventas de sobre
+stock y lo que sea. dejamos el 25% como objetivo y listo"*. Aplicado con `meta:25:25` (`cyc/mlconfig` minPct = targetPct
+= 25). En el panel: abajo de 25% rojo, desde 25% verde (el 🟠 Justo desaparece). **El 25% es objetivo, no freno:**
+bajar de 25% se puede cuando lo pienso y lo explico (sobrestock, remate de algo parado de verdad medido con
+`porquebajo`, ganar la caja de algo que no vende) con `!piso` en `decido`/`entrarpromo`. **Nunca abajo de 0%.** Donde
+este archivo diga "piso 22%" o "piso duro", vale esto.
+
 ## 🔥 ESCASEZ: ESTIRAR EL STOCK HASTA QUE LLEGUE LA CAJA (08/10/2026 a la noche, regla suya, para TODOS los productos)
 
 Él, con el Infusor de té barato (14 u. en Full, 3,5/día, sin caja en camino): *"hasta que no mande una caja con ese
