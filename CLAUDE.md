@@ -818,6 +818,14 @@ sugerencias ni nada. SU única función es sacar información de la api de ml NA
    decisiones ya no vencen a los 4 días**: duran hasta que las cambie. En cada revisión decido los pedidos (`decido:ped`),
    las cajas (`decido:caja`) y el precio de venta para el máximo (`=venta|$`) de lo que haga falta.
 
+## ✨ LAS REVISIONES DE DISEÑO E IDEAS TIENEN QUE PROPONER COSAS QUE DEN GUSTO (09/10/2026)
+
+Él, después de las ventas con vida (color por %, formas que se mueven según la plata, fuego): *"no puede ser que no
+me lo haya recomendado cuando está tan bueno (…) que piense cosas así. detalles o mejoras de comodidad, cosas
+duplicadas o faltantes. todo eso"*. Las etapas 6 (ideas) y 7 (diseño) traen SIEMPRE, sin que las pida: efectos y
+detalles visuales con sentido, mejoras de comodidad, lo duplicado y lo que falta. Con maqueta para mirar antes.
+Anotado en `ml-sync/REVISION.md` (etapas 6 y 7) y en `REV_ETAPAS`.
+
 ## 📨 CLAUDE LEE LOS AVISOS DE TELEGRAM Y RESUELVE LO QUE PUEDE (08/10/2026)
 
 Pedido suyo: *"me gustaria que vos tambien veas lo que me manda y ver si lo podes resolver vos (…) que me envies un

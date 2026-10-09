@@ -2494,7 +2494,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.82';
+const APP_VERSION='22.83';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2505,6 +2505,7 @@ const APP_VERSION='22.82';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.83',f:'09/10/2026',h:'01:10',c:[{n:1,t:'📝 Las revisiones de Ideas y Diseño ahora tienen que proponer solas detalles que den gusto usar la web (como las ventas con vida), mejoras de comodidad, lo repetido y lo que falta.'}]},
   {v:'22.82',f:'09/10/2026',h:'01:00',c:[{n:1,t:'🧹 Ventas: se sacó el cartel del robot viejo al lado de cada venta ("no lo subí · los precios automáticos están apagados"). Los precios los maneja Claude y esa etiqueta ya no decía nada. Todas las ventas quedan del mismo alto.'}]},
   {v:'22.81',f:'09/10/2026',h:'00:50',c:[{n:2,t:'🏠 Inicio: se sacó la tarjeta del Puntaje del mes. Lo que importaba de ahí, cuánto cobrar, está en el desplegable "💸 cuánto cobrar" de Ventas de hoy. Ventas de hoy ya no tiene la línea de abajo (última venta y ayer) y mantiene siempre el mismo tamaño, aunque no haya ventas.'},{n:1,t:'✨ Las figuras se siguen moviendo mientras hacés scroll.'}]},
   {v:'22.80',f:'09/10/2026',h:'00:30',c:[{n:1,t:'✨ Ventas más limpias: las rojas y naranjas (abajo de la meta) y las grises quedan sólo con el color del %, sin fondo ni figuras. Desde las verdes, las figuras de atrás van de pocas a muchas según el nivel.'}]},
@@ -3659,8 +3660,8 @@ const REV_ETAPAS=[
   {n:3,nom:'Mercadería',que:'cajas, stock de Full, oficina, pedidos y Paraguay',esf:'Alto'},
   {n:4,nom:'Choques',que:'la web y el robot escribiendo lo mismo, corridas a la vez',esf:'Alto'},
   {n:5,nom:'Fallas mudas y privacidad',que:'cuando ML no contesta y se guarda como dato; datos de terceros en los registros públicos',esf:'Alto'},
-  {n:6,nom:'Ideas nuevas',que:'datos que ML ya da y no usamos, cosas que hacés a mano y se pueden automatizar (sólo propone)',esf:'Alto'},
-  {n:7,nom:'Diseño',que:'la web más cómoda, sencilla y linda: qué sobra, qué cuesta encontrar, qué se ve mal en el teléfono (sólo propone)',esf:'Alto'},
+  {n:6,nom:'Ideas nuevas',que:'datos que ML ya da y no usamos, cosas que hacés a mano y se pueden automatizar, y detalles que den gusto usar la web: efectos, comodidad, lo repetido y lo que falta (sólo propone)',esf:'Alto'},
+  {n:7,nom:'Diseño',que:'la web más cómoda, sencilla y linda: qué sobra, qué cuesta encontrar, qué se ve mal en el teléfono, y proponer detalles lindos con sentido como las ventas con vida (sólo propone)',esf:'Alto'},
   {n:8,nom:'Datos e historial',que:'las líneas de tiempo de cada producto y de todos juntos: que cada día cuente bien (nada contado dos veces, nada vacío leído como cero) y coincida con Ventas y el Arqueo',esf:'Alto'},
 ];
 const REV_CADA_DIAS=7;

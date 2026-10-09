@@ -262,7 +262,21 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   con `{ info: true }` · que la rutina de Claude decida los precios con `decido` (etapa 1).
 
 
+## 6 · IDEAS NUEVAS
+- **QUÉ TIENE QUE PROPONER, regla suya del 09/10/2026:** *"lo que hicimos hoy con los colores y movimientos y
+  efectos de las tarjetas son detalles que quiero que estén en la revisión de diseño o ideas para ir mejorando la
+  web. no puede ser que no me lo haya recomendado cuando está tan bueno (…) que piense cosas así. detalles o mejoras
+  de comodidad, cosas duplicadas o faltantes. todo eso"*. O sea: además de datos de ML sin usar y trabajo a mano,
+  esta etapa tiene que traer **ideas que den gusto usar la web** (como las ventas con vida: color por %, formas que
+  se mueven según la plata, fuego en las mejores), **mejoras de comodidad** (menos toques, lo importante arriba),
+  **cosas duplicadas** (el mismo número en dos lados) y **cosas que faltan** (un dato que él busca y no está).
+  Que no espere a que él lo pida. Se le pasan todas juntas, con maqueta cuando es visual.
+
 ## 7 · DISEÑO
+- **NO SÓLO ARREGLAR: PROPONER (09/10/2026, regla suya, ver etapa 6).** La revisión de diseño no se limita a lo que
+  se ve mal o se corta en el teléfono: tiene que traer ideas que hagan la web más linda y más viva (efectos, color,
+  movimiento con sentido — que el efecto diga algo del dato, como la velocidad = la plata), detalles de comodidad,
+  cosas repetidas y cosas que faltan. Cada idea visual va con un ejemplo para mirar antes de aplicar.
 - **Métricas → Tendencia** (`_metBarraOn`, `_metLegendClick`, `cycMetBarras` en localStorage): las barras
   de ganancia y gastos del día arrancan apagadas; se prenden en la leyenda y queda recordado. Chequear
   que al apagarlas la escala del gráfico se ajuste a las líneas.
