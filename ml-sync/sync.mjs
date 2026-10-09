@@ -35498,6 +35498,48 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=historia[:<palabras>] → SOLO LEE (09/10/2026). LOS 365 DÍAS DE CADA PRODUCTO, PARA PENSARLO UNO POR UNO.
+    // Él: *"tenés que pensar cada producto individualmente (…) mirando los 365 días, no un par de números y ya está (…) vos al
+    // analizar vivamente cada producto no necesitás reglas, ya que ves lo que pasó y lo que va a pasar"*. Junta la línea de
+    // tiempo (`mlapi/linea/<MLA>`) de todas las publicaciones de cada ficha (y de cada color si la publicación tiene color fijo)
+    // en tramos de 14 días, del más viejo al más nuevo: días con stock / sin stock / sin dato, unidades vendidas (y en remate),
+    // precio promedio, margen y visitas. Un tramo sin ningún dato sale "·". No decide nada.
+    if (/^historia(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const q = String(process.env.BILLING_PROBE).slice('historia'.length).replace(/^:/, '').trim().toLowerCase();
+      const [PR, LK, PAP, NT] = await Promise.all(['cyc/products', 'cyc/mllinks', 'cyc/pedidos_papelera', 'cyc/notraer'].map((k) => db.get(k).catch(() => null)));
+      const prods = Object.values(PR || {}).filter((p) => p && p.id && !(PAP || {})[p.id] && !((NT || {})[p.id] && !(NT || {})[p.id].permitido) && (!q || norm(p.name || '').includes(norm(q))));
+      const porProd = {};
+      for (const [mla, e] of Object.entries(LK || {})) if (e && e.prodId && /^MLA\d+$/.test(mla)) (porProd[e.prodId] = porProd[e.prodId] || []).push([mla, e]);
+      const hoy = Date.now(), B = 26, dia = (i) => new Date(hoy - i * 864e5 - 3 * 36e5).toISOString().slice(0, 10).replace(/-/g, '_');
+      const vacio = () => Array.from({ length: B }, () => ({ con: 0, sin: 0, u: 0, uR: 0, pS: 0, pN: 0, mS: 0, mN: 0, vis: 0 }));
+      const sumar = (T, lin) => {
+        for (let i = 0; i < B * 14; i++) {
+          const r = lin[dia(i)]; if (!r) continue; const t = T[B - 1 - Math.floor(i / 14)];
+          if (r.st != null) { if (Number(r.st) > 0) t.con++; else t.sin++; }
+          t.u += Number(r.u) || 0; t.uR += Number(r.uR) || 0; t.vis += Number(r.vis) || 0;
+          if (Number(r.p) > 0) { t.pS += Number(r.p); t.pN++; } if (r.mg != null && isFinite(Number(r.mg))) { t.mS += Number(r.mg); t.mN++; }
+        }
+      };
+      const fila = (T) => T.map((t) => (t.con || t.sin || t.u || t.pN) ? `${t.con}/${t.sin}${t.u ? ' u' + t.u : ''}${t.uR ? '(R' + t.uR + ')' : ''}${t.pN ? ' $' + Math.round(t.pS / t.pN / 100) / 10 + 'k' : ''}${t.mN ? ' ' + Math.round(t.mS / t.mN) + '%' : ''}${t.vis ? ' v' + t.vis : ''}` : '·').join(' | ');
+      console.log(`=== 📜 HISTORIA · ${prods.length} productos · tramos de 14 días del más viejo (hace ~1 año) al más nuevo ===`);
+      console.log('cada tramo: días con stock/sin stock · u vendidas (R en remate) · precio promedio en miles · margen · v visitas\n');
+      let leidas = 0, fallas = 0;
+      for (const p of prods) {
+        const pubs = porProd[p.id] || []; if (!pubs.length) { console.log(`${p.id} · ${p.name} · sin publicaciones`); continue; }
+        const T = vacio(), porColor = {};
+        for (const [mla, e] of pubs) {
+          let lin; try { lin = (await db.get('mlapi/linea/' + mla)) || {}; leidas++; } catch { fallas++; continue; }
+          sumar(T, lin);
+          if (e.variant) { porColor[e.variant] = porColor[e.variant] || vacio(); sumar(porColor[e.variant], lin); }
+        }
+        console.log(`\n${p.id} · ${String(p.name).slice(0, 50)} · ${pubs.length} pub(s) [${[...new Set(pubs.map(([, e]) => e.cuenta))].join(',')}]`);
+        console.log('   ' + fila(T));
+        for (const [c, Tc] of Object.entries(porColor)) console.log(`   #${c}: ` + fila(Tc));
+      }
+      console.log(`\n(${leidas} líneas leídas · ${fallas} que no se pudieron leer)`);
+      return;
+    }
+
     // BILLING_PROBE=cajasnotas → SOLO LEE (08/10/2026). Lo que hay en la oficina, producto por producto (y color), con cada
     // cuenta que lo publica: en Full, en camino, vendidas en 30 días y días que alcanza. Sirve para escribir la nota del 🧠 de
     // Armar caja (`decido:caja:<prodId>@<cuenta>[#variante]=nota|…`). No calcula cuánto mandar: eso lo hace la web.

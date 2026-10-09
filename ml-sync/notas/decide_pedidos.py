@@ -63,6 +63,19 @@ with open(out,'w') as f:
             r,t,obj,b=d
             f.write(f"{p['g']} {p['id']} {p['n'][:40]} -> {q} (r {r*30:.1f}/mes · tiene {t} · obj {obj:.1f} · {b}) {'NO RENTA' if not rent else ''} precio {p['precio']} {p['cambios']}\n")
 import json;json.dump([(p,q,d,rent) for p,q,d,rent in res],open(out+'.json','w'),default=str)
+# ---- JUICIOS A MANO (09/10/2026): lo que Claude decidió mirando la línea de tiempo de un producto, que la cuenta sola no
+# puede ver (ej. el Ultra Shift: se vendió a pérdida porque estuvo parado; la Lupa 75mm: barata pero se vendía al toque).
+# ml-sync/notas/juicios.txt · un renglón por producto: <prodId>[#color]=<unidades>|<motivo> · manda sobre la cuenta.
+import os
+JU={}
+_jp=os.path.join(os.path.dirname(os.path.abspath(__file__)),'juicios.txt')
+if os.path.exists(_jp):
+    for l in open(_jp):
+        l=l.strip()
+        if not l or l.startswith('#') or '=' not in l: continue
+        k,r=l.split('=',1); n,_,mo=r.partition('|')
+        try: JU[k.strip()]=(int(n),mo.strip())
+        except ValueError: pass
 # ---- notas para decido ----
 def venta(p):
     pr=p['precio']; best=pr
@@ -84,6 +97,9 @@ for p,q,d,rent in res:
             mot=f"{b} · ritmo {r*30:.0f} por mes · tiene {t} entre Full casa y camino · para 30 dias hacen falta {obj:.0f}"
             if not rent: mot+=(" · NO se compra: sin margen medido en ML" if not p['neto'] else " · NO se compra: con el costo de la ficha no deja ganancia")
             if p.get('sinColor'): mot+=f" · {p['sinColor']} u. sin color (viajando, en Full o en la oficina) ya descontadas"
+            kj=f"{pid}#{v['v']}"
+            if kj in JU: qq,mot=JU[kj][0],'JUICIO MIO: '+JU[kj][1]
+            elif pid in JU: qq,mot=0 if JU[pid][0]==0 else qq,'JUICIO MIO: '+JU[pid][1]
             N.append(f"ped:{pid}#{v['v']}=u|{qq}|{mot}")
         if p['precio']: N.append(f"ped:{pid}=venta|{venta(p)}|precio normal de venta para el maximo de compra")
     else:
@@ -95,6 +111,7 @@ for p,q,d,rent in res:
         if p.get('rem'): mot+=f" · {p['rem']} vendidas en remate (estaba parado con stock y se vendio abajo de 10%) no cuentan como demanda"
         if p.get('barata'): mot+=f" · {p['barata']} vendidas abajo de 10% SI cuentan: no estaba parado, se vendian al toque (el precio estaba barato)"
         if not rent: mot+=(" · NO se compra: sin margen medido en ML" if not p['neto'] else " · NO se compra: con el costo de la ficha no deja ganancia")
+        if pid in JU: q,mot=JU[pid][0],'JUICIO MIO: '+JU[pid][1]
         N.append(f"ped:{pid}=u|{q}|{mot}")
         if p['precio']: N.append(f"ped:{pid}=venta|{venta(p)}|precio normal de venta para el maximo de compra")
 open('pedidos.txt','w').write('\n'.join(N)+'\n')
