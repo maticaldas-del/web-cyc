@@ -562,8 +562,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
   box-shadow:0 0 26px 3px color-mix(in srgb,var(--c) 60%,transparent);opacity:.25;animation:vivaGlow 2.4s ease-in-out infinite;will-change:opacity}
 .vw.gl.fuerte::before{animation-duration:1.1s}
 .vw.mv-flota,.vw.mv-flota2,.vw.mv-tiembla{will-change:transform}
-/* mientras se hace scroll todo queda quieto: así no se traba (09/10/2026, él: "cuando scroleo se le bajan los fps") */
-body.viva-quieto .vw,body.viva-quieto .vw::before{animation-play-state:paused!important}
+
 .vw.mv-flota{animation:vivaFlota 3.2s ease-in-out infinite}
 .vw.mv-flota2{animation:vivaFlota 1.6s ease-in-out infinite}
 .vw.mv-tiembla{animation:vivaTiembla .38s linear infinite}
@@ -2495,7 +2494,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.80';
+const APP_VERSION='22.81';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2506,6 +2505,7 @@ const APP_VERSION='22.80';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.81',f:'09/10/2026',h:'00:50',c:[{n:2,t:'🏠 Inicio: se sacó la tarjeta del Puntaje del mes. Lo que importaba de ahí, cuánto cobrar, está en el desplegable "💸 cuánto cobrar" de Ventas de hoy. Ventas de hoy ya no tiene la línea de abajo (última venta y ayer) y mantiene siempre el mismo tamaño, aunque no haya ventas.'},{n:1,t:'✨ Las figuras se siguen moviendo mientras hacés scroll.'}]},
   {v:'22.80',f:'09/10/2026',h:'00:30',c:[{n:1,t:'✨ Ventas más limpias: las rojas y naranjas (abajo de la meta) y las grises quedan sólo con el color del %, sin fondo ni figuras. Desde las verdes, las figuras de atrás van de pocas a muchas según el nivel.'}]},
   {v:'22.79',f:'09/10/2026',h:'00:10',c:[{n:1,t:'⚡ Las tarjetas animadas ya no traban el scroll: mientras te movés por la página las figuras se quedan quietas y siguen cuando frenás. El brillo que late cuesta mucho menos al teléfono.'}]},
   {v:'22.78',f:'08/10/2026',h:'23:50',c:[{n:1,t:'✨ Cada venta tiene el color de su % de ganancia y figuras que flotan atrás (una forma por nivel). Cuanto más neto dejó, más rápido se mueven. Las ventas que movieron mucha plata (por % y por pesos, también las que perdieron) brillan, flotan o tiemblan y se prenden fuego. Bueno y Excelente se ven más fuertes que Bien.'},{n:1,t:'✨ "Ventas de hoy" en Inicio: el color sale de la ganancia del día (Bien = $115.000), la velocidad de las figuras y el movimiento del total vendido, y arde cuando las dos son altas. Abajo de la ganancia queda el % del día.'}]},
@@ -8634,15 +8634,17 @@ function vivaDia(h){
   const gl=VIVA_ORD[k]>=VIVA_ORD.bueno?('gl'+(VIVA_ORD[k]>=VIVA_ORD.estr?' fuerte':'')):'';
   return{k,c,vel:_vivaLog(t,100000,2500000),fuego,mv,gl,quieta:!(h.ventas>0)};
 }
-const _viva={cards:[],on:false,last:0,tick:0,scroll:0};
+const _viva={cards:[],on:false,last:0,tick:0,io:null};
 function vivaScan(root){
   try{
-    _viva.cards=_viva.cards.filter(c=>c.wr.isConnected);
+    if(!_viva.io&&'IntersectionObserver' in window)_viva.io=new IntersectionObserver(es=>{for(const e of es){const c=_viva.cards.find(k=>k.wr===e.target);if(c){c.visible=e.isIntersecting;if(c.visible)_vivaVisibles();}}},{rootMargin:'150px'});
+    _viva.cards=_viva.cards.filter(c=>{if(c.wr.isConnected)return true;if(_viva.io)_viva.io.unobserve(c.wr);return false;});
     (root||document).querySelectorAll('.vw[data-viva]').forEach(wr=>{
       if(_viva.cards.some(c=>c.wr===wr))return;
       const el=wr.querySelector(':scope>.viva');if(!el)return;
       _viva.cards.push({wr,el,dia:wr.dataset.viva==='dia',k:wr.dataset.vk||'gris',vel:Number(wr.dataset.vv)||0,
         quieta:wr.dataset.vq==='1',fc:wr.querySelector(':scope>canvas.viva-fuego'),w:0,h:0,llamas:[],parts:[],visible:false});
+      if(_viva.io)_viva.io.observe(wr);
     });
     if(!_viva.on){_viva.on=true;_vivaArrancar();}
     _vivaVisibles();
@@ -8663,13 +8665,15 @@ function _vivaMedir(c,r){
   if(c.fc){c.fw=c.w+48;c.fh=c.h+80;c.fc.width=Math.round(c.fw*dpr);c.fc.height=Math.round(c.fh*dpr);c.fctx=c.fc.getContext('2d');c.fctx.setTransform(dpr,0,0,dpr,0,0);c.llamas=[];}
   _vivaDibujarCard(c,0,true);
 }
+// Qué tarjeta está en pantalla lo dice el navegador (IntersectionObserver), sin medir la página a cada rato:
+// así sigue moviéndose durante el scroll sin trabarlo (09/10/2026, él: "me gusta scrolear y que se sigan moviendo").
+// Acá sólo se revisa si cambió el tamaño de las que se ven (se abrió un detalle, se giró el teléfono).
 function _vivaVisibles(){
-  if(Date.now()-_viva.scroll<250)return;   // durante el scroll no se mide (medir fuerza a recalcular la página)
-  const H=innerHeight||document.documentElement.clientHeight;
   for(const c of _viva.cards){
-    const r=c.el.getBoundingClientRect();
-    c.visible=r.width>0&&r.height>0&&r.bottom>-120&&r.top<H+120;
-    if(c.visible&&(Math.abs(r.width-c.w)>1||Math.abs(r.height-c.h)>1))_vivaMedir(c,r);
+    if(!_viva.io){const r=c.el.getBoundingClientRect(),H=innerHeight;c.visible=r.width>0&&r.bottom>-120&&r.top<H+120;}
+    if(!c.visible)continue;
+    const w=c.el.offsetWidth,h=c.el.offsetHeight;
+    if(w>0&&h>0&&(Math.abs(w-c.w)>1||Math.abs(h-c.h)>1))_vivaMedir(c,{width:w,height:h});
   }
 }
 function _vivaForma(x,sh,s){
@@ -8731,15 +8735,13 @@ function _vivaDibujarCard(c,dt,estatico){
 function _vivaPaso(t){
   const dt=Math.min(.05,Math.max(0,(t-_viva.last)/1000)||0);_viva.last=t;
   if(document.hidden)return;
-  if(Date.now()-_viva.scroll<250){_viva.last=t;return;}   // quieto mientras se hace scroll
   for(const c of _viva.cards)if(c.visible&&c.ctx)_vivaDibujarCard(c,dt,false);
 }
 function _vivaArrancar(){
   const loop=t=>{_viva.tick=performance.now();_vivaPaso(t);requestAnimationFrame(loop);};requestAnimationFrame(loop);
   // si el visor frena requestAnimationFrame, sigue con un reloj común (~30 por segundo)
   setInterval(()=>{if(performance.now()-_viva.tick>250)_vivaPaso(performance.now());},33);
-  setInterval(_vivaVisibles,500);
-  let st;addEventListener('scroll',()=>{_viva.scroll=Date.now();if(!document.body.classList.contains('viva-quieto'))document.body.classList.add('viva-quieto');clearTimeout(st);st=setTimeout(()=>{document.body.classList.remove('viva-quieto');_viva.scroll=0;_vivaVisibles();},260);},{passive:true,capture:true});
+  setInterval(_vivaVisibles,600);
   let rt;addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{for(const c of _viva.cards)c.w=0;_vivaVisibles();},150);});
   // cambio de tema claro/oscuro: recolorear
   let _lz=document.body.classList.contains('light');
@@ -18428,16 +18430,39 @@ function renderHomeHoy(){
     <div style="display:flex;flex-wrap:wrap;gap:10px 34px;align-items:flex-end">
       <div><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(2rem,8vw,3.4rem);line-height:1;letter-spacing:-.01em">${fmt(h.bruto)}</div><div style="font-size:.78rem;color:var(--muted);margin-top:6px">facturado · <b style="color:var(--text)">${h.ventas}</b> venta${h.ventas===1?'':'s'} · <b style="color:var(--text)">${h.u}</b> u.</div></div>
       <div><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(1.6rem,6vw,2.2rem);line-height:1;color:var(--c)">${fmt(h.gan)}</div><div style="font-size:.78rem;color:var(--muted);margin-top:6px">ganancia · <b style="color:var(--text)">${pctTxt}</b></div></div>
-      ${(()=>{const D=_puntajeDia(hoy,h);if(!D)return '';const _c=puntColor(D.score);
+      ${(()=>{const D=_puntajeDia(hoy,h);if(!D)return `<div style="align-self:center;padding:8px 14px;border-radius:12px;color:var(--muted);border:1px solid var(--border2);text-align:center"><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.35rem;line-height:1">—<span style="font-size:.6em;opacity:.7"> /10</span></div><div style="font-size:.74rem;font-weight:700;margin-top:4px">sin ventas todavía</div></div>`;const _c=puntColor(D.score);
         return `<div style="align-self:center;padding:8px 14px;border-radius:12px;color:${_c};background:color-mix(in srgb,${_c} 12%,transparent);border:1px solid color-mix(in srgb,${_c} 35%,transparent);text-align:center" title="Puntaje del día (de 0 a 10), sólo por la ganancia en pesos: 7 en ${fmt(D.target)} por día (que a cada uno de los 3 le queden $900.000 por mes pagando todo) y 10 en ${fmt(D.target2)}.">
           <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.35rem;line-height:1">${D.score.toFixed(1).replace('.',',')}<span style="font-size:.6em;opacity:.7"> /10</span></div><div style="font-size:.74rem;font-weight:700;margin-top:4px">${D.nivel}</div></div>`;})()}
     </div>
-    <div style="display:flex;align-items:center;gap:8px 14px;flex-wrap:wrap;margin-top:14px;padding-top:10px;border-top:1px solid color-mix(in srgb,var(--c) 25%,transparent);font-size:.72rem;color:var(--muted)">
-      ${h.ult?`<span>última venta <b style="color:var(--text)">${new Date(h.ult).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',hour12:false})}</b> ·</span>`:''}
-      <span>${antLbl}: <b style="color:var(--text)">${fmt(a.bruto)}</b> · ganancia ${fmt(a.gan)} · ${a.ventas} venta${a.ventas===1?'':'s'}</span>
-    </div>
+    <details id="hoy-cobro" ${_hoyCobroAbierto()?'open':''} onclick="event.stopPropagation()" ontoggle="_hoyCobroToggle(this)" style="margin-top:14px;padding-top:9px;border-top:1px solid color-mix(in srgb,var(--c) 25%,transparent)">
+      <summary style="cursor:pointer;font-size:.72rem;color:var(--muted)">💸 cuánto cobrar</summary>
+      <div id="hoy-cobro-in" style="margin-top:8px">${_hoyCobroAbierto()?_homeCobroHtml(hoy):''}</div>
+    </details>
   </div></div>`;
   vivaScan(el);
+}
+// CUÁNTO COBRAR, adentro de "Ventas de hoy" (09/10/2026, él: "sacar lo del puntaje del mes, no me interesa. lo único
+// que me interesa de ahí es cuánto cobrar (…) en detalle desplegable en ventas de hoy"). Misma cuenta que tenía el
+// Puntaje (cobroProxMes): la ganancia real de un mes ÷ 3 se cobra al mes siguiente. Se calcula sólo con el
+// desplegable abierto. El mes es el del día que se está mirando.
+function _hoyCobroAbierto(){try{return localStorage.getItem('cycHoyCobro')==='1';}catch(e){return false;}}
+function _hoyCobroToggle(d){try{localStorage.setItem('cycHoyCobro',d.open?'1':'0');}catch(e){}
+  if(d.open){const f=new Date();f.setDate(f.getDate()-_homeHoyOff);const box=document.getElementById('hoy-cobro-in');if(box)box.innerHTML=_homeCobroHtml(f);}}
+function _homeCobroHtml(f){
+  try{
+    const ym=f.getFullYear()+'_'+String(f.getMonth()+1).padStart(2,'0');
+    const P=calcPuntajeMes(ym),cb=cobroProxMes(P);
+    const [py,pm]=ym.split('_').map(Number);
+    const sigLbl=MONTHS[pm%12]+' '+(pm===12?py+1:py);
+    const antYM=pm===1?`${py-1}_12`:`${py}_${String(pm-1).padStart(2,'0')}`;
+    const antLbl=MONTHS[(pm+10)%12],mesCorto=MONTHS[pm-1];
+    let cbAnt=null;try{cbAnt=cobroProxMes(calcPuntajeMes(antYM));}catch(e){}
+    const falta=cbAnt?cbAnt.tercio-cb.yaPorSocio:null;
+    return `<div style="font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)">Para cobrar en ${sigLbl} · cada uno${P.esActual?' · va hasta hoy':''}</div>
+      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.5rem;color:${cb.tercio>0?'var(--text)':'var(--red)'}">${fmt(cb.tercio)}</div>
+      <div style="font-size:.66rem;color:var(--muted);line-height:1.45">Ganancia real de CYC en ${mesCorto}${P.esActual?' hasta hoy':''} ${fmt(cb.gan)} ÷ 3 (CYC, vos y tu papá)</div>
+      ${cbAnt?`<div style="font-size:.7rem;margin-top:6px;line-height:1.45">En ${mesCorto} cobran lo que dejó ${antLbl}: <b>${fmt(cbAnt.tercio)} c/u</b>${cb.yaPorSocio>0?` · ya retiraron ${fmt(cb.yaPorSocio)} c/u · ${falta>=0?`<span style="color:var(--green)">quedan ${fmt(falta)} c/u</span>`:`<span style="color:var(--red)">se retiró de más ${fmt(-falta)} c/u</span>`}`:''}</div>`:''}`;
+  }catch(e){return '<span style="color:var(--muted);font-size:.7rem">No pude calcularlo.</span>';}
 }
 // PARA RETIRAR HASTA HOY (30/09/2026). Regla suya: "los 3 cobremos lo mismo: CYC, papá y yo". Corrección suya
 // el mismo día: "que diga cuánto retirar hasta ahora: la ganancia REAL de CYC dividida entre 3". O sea, sin
@@ -18510,37 +18535,9 @@ function renderPuntajeMes(){
           <div style="font-size:.64rem;color:var(--muted);line-height:1.45">Ganancia real de CYC en ${_mesCorto}${P.esActual?' hasta hoy':''} ${fmt(_cb.gan)} ÷ 3 (CYC, vos y tu papá)</div>
           ${_cbAnt?`<div style="font-size:.66rem;margin-top:6px;line-height:1.45">En ${_mesCorto} cobran lo que dejó ${_antLbl}: <b>${fmt(_cbAnt.tercio)} c/u</b>${_cb.yaPorSocio>0?` · ya retiraron ${fmt(_cb.yaPorSocio)} c/u · ${_faltaEste>=0?`<span style="color:var(--green)">quedan ${fmt(_faltaEste)} c/u</span>`:`<span style="color:var(--red)">se retiró ${fmt(-_faltaEste)} c/u de más</span>`}`:''}</div>`:''}
         </div>`;
-  el.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin:0 auto 16px;max-width:min(720px,calc(100vw - 48px))">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-      <div style="display:flex;align-items:center;gap:7px">
-        <span style="font-size:.62rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted)" title="Ganancia CYC vs objetivo (4) + Margen (2) + Faltantes (2) + Capital parado (1) + Devoluciones (1). Aprobar = 6.">Puntaje del mes</span>
-        <span style="display:flex;gap:4px;flex-shrink:0"><button onclick="puntNav(-1)" style="background:transparent;border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:0 8px;font-size:1rem;line-height:1.6;cursor:pointer">‹</button><button onclick="puntNav(1)" style="background:transparent;border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:0 8px;font-size:1rem;line-height:1.6;cursor:pointer">›</button></span>
-        <span style="font-family:'Syne',sans-serif;font-weight:700;font-size:.82rem">${mesLbl}</span>
-      </div>
-      <button onclick="setPuntajeMeta('${P.ym}')" style="background:transparent;border:1px solid var(--border2);color:var(--muted);border-radius:7px;padding:3px 9px;font-size:.62rem;cursor:pointer;font-family:'DM Mono',monospace">✎ objetivos</button>
-    </div>
-    <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">
-      <div style="width:104px;height:104px;flex-shrink:0">
-        <svg width="104" height="104" viewBox="0 0 124 124">
-          <circle cx="62" cy="62" r="50" fill="none" stroke="var(--surface2)" stroke-width="10"/>
-          <circle cx="62" cy="62" r="50" fill="none" stroke="${col}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 62 62)"/>
-          <text x="62" y="57" text-anchor="middle" dominant-baseline="central" font-family="'Syne',sans-serif" font-weight="800" font-size="38" fill="${col}">${P.score.toFixed(1)}</text>
-          <text x="62" y="86" text-anchor="middle" dominant-baseline="central" font-family="'DM Mono',monospace" font-size="10" fill="var(--muted)">de 10</text>
-        </svg>
-      </div>
-      <div style="flex:1;min-width:150px">
-        <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.15rem;color:${col}">${puntNivel(P.score)}</div>
-        ${_cobroHtml}
-      </div>
-    </div>
-    <details id="punt-det" ${_puntDetAbierto()?'open':''} ontoggle="_puntDetGuardar(this.open)" style="margin-top:10px">
-      <summary style="cursor:pointer;font-size:.68rem;color:var(--muted);padding:6px 0">Ver todo el detalle</summary>
-      <div style="font-size:.68rem;color:var(--text);margin:8px 0 3px">${cycTxt}</div>
-      <div style="font-size:.68rem;color:var(--text);margin-bottom:10px">${nuestroTxt}</div>
-      <div style="margin-top:8px">${bars}</div>
-      ${sugHtml}
-    </details>
-  </div>`;
+  // La tarjeta del Puntaje del mes ya no se dibuja (09/10/2026, él: "sacar lo del puntaje del mes, no me interesa").
+  // Lo único que quería, cuánto cobrar, vive en el desplegable de "Ventas de hoy" (_homeCobroHtml).
+  el.innerHTML='';
   // Pedido suyo del 30/09/2026: "Monotributo · cómo vendés vs AFIP" se mudó a la tarjeta ⚖️ de las 4
   // cuentas, con un botón para cambiar entre las dos vistas. Acá sólo se arma y se deja lista.
   _monoHomeHtml=monoHtml;
