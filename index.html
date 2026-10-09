@@ -2495,7 +2495,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='22.79';
+const APP_VERSION='22.80';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2506,6 +2506,7 @@ const APP_VERSION='22.79';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'22.80',f:'09/10/2026',h:'00:30',c:[{n:1,t:'✨ Ventas más limpias: las rojas y naranjas (abajo de la meta) y las grises quedan sólo con el color del %, sin fondo ni figuras. Desde las verdes, las figuras de atrás van de pocas a muchas según el nivel.'}]},
   {v:'22.79',f:'09/10/2026',h:'00:10',c:[{n:1,t:'⚡ Las tarjetas animadas ya no traban el scroll: mientras te movés por la página las figuras se quedan quietas y siguen cuando frenás. El brillo que late cuesta mucho menos al teléfono.'}]},
   {v:'22.78',f:'08/10/2026',h:'23:50',c:[{n:1,t:'✨ Cada venta tiene el color de su % de ganancia y figuras que flotan atrás (una forma por nivel). Cuanto más neto dejó, más rápido se mueven. Las ventas que movieron mucha plata (por % y por pesos, también las que perdieron) brillan, flotan o tiemblan y se prenden fuego. Bueno y Excelente se ven más fuertes que Bien.'},{n:1,t:'✨ "Ventas de hoy" en Inicio: el color sale de la ganancia del día (Bien = $115.000), la velocidad de las figuras y el movimiento del total vendido, y arde cuando las dos son altas. Abajo de la ganancia queda el % del día.'}]},
   {v:'22.77',f:'08/10/2026',h:'22:45',c:[{n:3,t:'🧠 Pedidos, Armar caja y el máximo de compra muestran SÓLO lo que decide Claude, con su motivo. La web ya no propone números: lo que Claude no decidió dice "sin decidir". Las decisiones no vencen: duran hasta que Claude las cambie.'},{n:2,t:'🔗 Las publicaciones nuevas ya no se enganchan solas a una ficha: entran sin producto y las vincula Claude en su revisión.'}]},
@@ -8598,15 +8599,18 @@ const pctGradient=pct=>{const n=_pctNivel(pct);return n?n.g:'#7c3aed,#a855f7';};
 // Las estimadas y las sin costo quedan grises y quietas. Con "menos movimiento" pedido en el teléfono, quietas.
 const VIVA_ORD={bajo:0,justo:1,bien:2,bueno:3,exc:4,estr:5,joya:6};
 const VIVA_SH={bajo:'sq',justo:'tri',bien:'circ',bueno:'ring',exc:'plus',estr:'star',joya:'dia',gris:'circ'};
-const VIVA_NV={gris:[.8,.9,.8],bajo:[.8,.9,.8],justo:[.8,.9,.85],bien:[1,1,1],bueno:[1.5,1.3,1.25],exc:[2,1.6,1.45],estr:[2.2,1.7,1.5],joya:[2.4,1.8,1.55]};
+// [cantidad, tamaño, opacidad]: desde verde, pocas figuras y cada vez más según el nivel (09/10/2026, pedido suyo)
+const VIVA_NV={gris:[.8,.9,.8],bajo:[.8,.9,.8],justo:[.8,.9,.85],bien:[.3,1,1],bueno:[.65,1.2,1.2],exc:[1.1,1.4,1.35],estr:[1.7,1.6,1.45],joya:[2.4,1.8,1.55]};
 const VIVA_DIA_NIV=[['bajo',-1e12,'var(--red)'],['justo',90000,'#f97316'],['bien',115000,'var(--green)'],['bueno',150000,'#14b8a6'],['exc',190000,'#60a5fa'],['estr',230000,'#a78bfa'],['joya',300000,'#eab308']];
 const _vivaLog=(x,a,b)=>Math.min(1,Math.max(0,Math.log(Math.max(x,a)/a)/Math.log(b/a)));
 // Una venta: devuelve qué dibujar, o null si no se anima (cancelada).
 function vivaVenta(o){
   if(o.cancel)return null;
   const vel=_vivaLog(Number(o.neto)||0,1500,60000);
-  if(o.gpct==null||o.est)return{k:'gris',c:'var(--muted)',vel,ef:'',quieta:1};
+  if(o.gpct==null||o.est)return null;
   const n=_pctNivel(o.gpct);if(!n)return null;
+  // Rojo y naranja: sólo el color del % (09/10/2026, él: "hay muchos colores y quilombo, casi ni se ve nada").
+  if(n.k==='bajo'||n.k==='justo')return null;
   const b=_vivaLog(Math.abs(Number(o.gan)||0),300,60000);
   const punt=(VIVA_ORD[n.k]/6*.4+b*.6)*10;
   return{k:n.k,c:n.c,vel,ef:punt>=7?'fuego':punt>=5.5?'flota':punt>=4?'glow':''};
@@ -8652,7 +8656,7 @@ function _vivaMedir(c,r){
   c.w=r.width;c.h=r.height;c.cv.width=Math.max(1,Math.round(c.w*dpr));c.cv.height=Math.max(1,Math.round(c.h*dpr));
   c.ctx=c.cv.getContext('2d');c.ctx.setTransform(dpr,0,0,dpr,0,0);c.rgb=_vivaColor(c);
   const NV=VIVA_NV[c.k]||VIVA_NV.bien;c.nv=NV;
-  let cant=Math.max(6,Math.round(c.w*c.h*.00034*NV[0]*(1+c.vel*.6)));if(c.dia)cant=Math.min(16+Math.round(NV[0]*22),cant);
+  let cant=Math.max(2,Math.round(c.w*c.h*.00034*NV[0]*(1+c.vel*.6)));if(c.dia)cant=Math.min(16+Math.round(NV[0]*22),cant);
   const sh=VIVA_SH[c.k]||'circ';
   c.parts=Array.from({length:cant},()=>({x:_vivaRnd(0,c.w),y:_vivaRnd(0,c.h),s:_vivaRnd(3,7.5)*NV[1],r:_vivaRnd(0,6.28),vr:_vivaRnd(-.8,.8),fase:_vivaRnd(0,6.28),k:_vivaRnd(.7,1.4)}));
   c.sh=sh;
