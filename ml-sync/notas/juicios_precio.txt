@@ -226,3 +226,4 @@ MLA1460262099_20261009=espera|Decisión mía de hace menos de 7 días: todavía 
 MLA1699834745_20261009=espera|Vuelta atrás de un cambio anterior, hace menos de 7 días. La miro todos los días.
 MLA1464372041_20261009=espera|Decisión mía de hace menos de 7 días: todavía no se sabe. La miro todos los días contra las ventas y el stock.
 MLA1900463085_20261009=espera|Vuelta atrás de un cambio anterior, hace menos de 7 días. La miro todos los días.
+MLA3998265236_20261010=espera|La subí hoy a $54.990 porque con el costo que confirmó Matías quedaba en 20%. Todavía no pasó tiempo para medir
