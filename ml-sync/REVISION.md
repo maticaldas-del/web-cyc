@@ -221,6 +221,7 @@ Qué chequear: que el total de renglones cierre con las publicaciones vivas con 
 - **`analizapromo` (2428f51, cddbe1d):** sección de las promos donde ML pone plata (con el crudo) y lo que te queda en una compartida = lista menos tu parte. Chequear: que "ML pone" salga del dato de la promo y no se suponga.
 - **Activar pausadas (5839aec):** `paused_by_seller` es nuestra, no de ML. Con SOLO_DATOS el robot ya no activa: lo hace Claude con `decido:…!activar`. Chequear: que no quede ninguna con stock en Full pausada sin motivo.
 - **Arreglos de la etapa 1 del 08/10 (52b4710, 774d1b4, 9e2ec84, 04f8917, ead3675):** son los de v22.63, anotados arriba.
+- **Activar pausadas, envío del lado de la barrera (10/10/2026):** abajo de $33.000 ya no se mide el envío con ventas de ARRIBA (los Redmi Buds 6 Play a $32.999 daban −5% por una venta de $101.859 del Buds 6 común). Sin ventas del mismo lado, abajo = $0. Chequear: que una publicación barata sin ventas propias no herede el envío de una cara de la misma ficha.
 
 ## 2 · PLATA
 - **Cada lugar, su nota (08/10/2026, v22.71):** él: *"en ventas por qué aumentó el precio o por qué no, y en pedidos por qué

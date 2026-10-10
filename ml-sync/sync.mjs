@@ -2082,7 +2082,10 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
         // el peor medido). Y si ML no contesta alguna comisión no se activa: medir a medias da el
         // envío de menos y el margen de más (F3, 25/09/2026).
         const ladoA = ventas0.filter((v) => (v.tot >= UMBRAL_ENVIO_GRATIS) === (precio >= UMBRAL_ENVIO_GRATIS));
-        const ventas = ladoA.length ? ladoA : (precio >= UMBRAL_ENVIO_GRATIS ? [] : ventas0);
+        // 10/10/2026: abajo de la barrera tampoco se usan ventas de ARRIBA. Los Redmi Buds 6 Play a
+        // $32.999 daban −5% midiendo el envío con una venta de $101.859 (ahí sí cobra Full y cuotas).
+        // Sin ventas del mismo lado, abajo de $33.000 el envío es cero de verdad (lo pone el de abajo).
+        const ventas = ladoA;
         // Etapa 5: una Premium sin cuotas medidas NO se toma como 0% de cuotas (con cuotas del 20% se
         // activaría abajo del piso). Mismo freno que el rescate y las bajas (`cuotaPremiumDe`).
         // Revisión final: se busca ANTES de deducir el envío, porque hace falta adentro de esa cuenta.
