@@ -299,6 +299,9 @@ usdPagado}`. Sin `ticket`, "Ya llegó" (web) y `pyped:llego` (robot) no cierran.
 ticket" o "🧾 −N%", y adentro el descuento total y por producto (web tachado → pagado).
 **Qué chequear:** que el `usdWeb` no se pise con el pagado al recargar el ticket; que la ficha nueva nazca con el
 precio PAGADO; pedidos viejos en camino sin ticket.
+**11/10 · pedidos guardados con el ticket antes del 10/10:** si el renglón ya tenía el precio pagado, el de la web sale del
+candidato de ese código (`cyc/candidatos_py`, precio de la lista de Nissei con que se armó el pedido). Chequear que no tome
+el precio de un candidato distinto con código parecido (se compara también por el final).
 
 ## 4 · CHOQUES
 - `mlapi/lineatodo` lo escriben `ritmo:go` (noche) y `lineatodo:go` (ml-consulta): los dos con la

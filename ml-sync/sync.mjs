@@ -38279,7 +38279,12 @@ async function main() {
               // tienen descuento de lo que aparece en la web (…) quizás hay productos con más descuento que otro, o
               // algunos quizás nada"). El de la web es el que se guardó al hacer el pedido; si el ticket ya se había
               // cargado antes, se conserva el `usdWeb` de esa vez (no el pagado).
-              const _w = parseFloat(hit.src.usdWeb) > 0 ? parseFloat(hit.src.usdWeb) : (parseFloat(hit.src.usd) > 0 ? parseFloat(hit.src.usd) : (parseFloat(hit.src.nisseiUSD) > 0 ? parseFloat(hit.src.nisseiUSD) : 0));
+              // Si el renglón guardado ya traía el precio del ticket (pedidos cargados antes del 10/10), el de la web
+              // sale del CANDIDATO de ese código, que guarda el precio de la lista de Nissei con que se armó el pedido.
+              const _cDig = String(cod).replace(/\D/g, '');
+              const _cand = Object.values(cands).find((c) => { const a = String(c.cod || c.codPy || '').replace(/\D/g, ''); return a && (a === _cDig || _cDig.endsWith(a) || a.endsWith(_cDig)); });
+              const _wCand = _cand ? (parseFloat(_cand.usd) > 0 ? parseFloat(_cand.usd) : (parseFloat(_cand.nisseiUSD) > 0 ? parseFloat(_cand.nisseiUSD) : 0)) : 0;
+              const _w = parseFloat(hit.src.usdWeb) > 0 ? parseFloat(hit.src.usdWeb) : (_wCand > 0 ? _wCand : (parseFloat(hit.src.usd) > 0 ? parseFloat(hit.src.usd) : (parseFloat(hit.src.nisseiUSD) > 0 ? parseFloat(hit.src.nisseiUSD) : 0)));
               if (_w > 0) o.usdWeb = Math.round(_w * 100) / 100;
               if (o.margen != null) o.margen = Math.round(parseFloat(o.margen) * 10) / 10;
             } else sinNombre.push(cod);
