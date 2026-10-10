@@ -874,6 +874,15 @@ Anotado en `ml-sync/REVISION.md` (etapas 6 y 7) y en `REV_ETAPAS`.
  · Sin nada para decidir no sale nada (ni Telegram ni notificación). Lo hecho queda en el 🧠 y en el chat.
  · Las dos rutinas (`trig_01475PwdPVJ1qTnYswcDxRq8` y `trig_01FCaQqzU5MA422N6Z8nH63Z`) ya lo dicen.
 
+## 🧠 RESUMEN DE CADA CEREBRO POR TELEGRAM (10/10/2026, pedido suyo)
+
+Él: *"cada vez que se activa cerebro (...) me mandás un pequeño resumen de lo que descubrió/modificó?"*. Esto ABRE una
+excepción a "a Telegram sólo decisiones": el resumen va con **`resumen:<texto>`** por ml-sync (sale con el título
+"🧠 Lo que hizo el cerebro", `//` = salto de línea, sin `;`, sin datos de compradores). **La completa de las 08:52
+lo manda SIEMPRE** (6-10 renglones: lo que descubrió y lo que cambió, con 2-3 ejemplos con nombre y precio). **Las
+cortas (12:52, 16:52, 20:52) sólo si cambiaron o descubrieron algo** (2-5 renglones). Va aparte del `pregunto:` de las
+decisiones, que sigue igual. Las dos rutinas ya lo dicen.
+
 ## 📨 CLAUDE LEE LOS AVISOS DE TELEGRAM Y RESUELVE LO QUE PUEDE (08/10/2026)
 
 Pedido suyo: *"me gustaria que vos tambien veas lo que me manda y ver si lo podes resolver vos (…) que me envies un

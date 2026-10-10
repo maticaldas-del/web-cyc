@@ -11722,12 +11722,15 @@ async function main() {
     // BILLING_PROBE=pregunto:<texto> (09/10/2026) → lo mismo, para las DECISIONES que Claude no puede
     // tomar solo en sus vueltas. Regla suya: a Telegram va sólo lo que pide una decisión, nunca "subí",
     // "bajé" o "activé". `//` en el texto = salto de línea (el campo del workflow es de una línea).
-    if (/^(recordar|pregunto):/.test(String(process.env.BILLING_PROBE || ''))) {
+    // BILLING_PROBE=resumen:<texto> (10/10/2026, pedido suyo: "cada vez que se activa cerebro me mandás un
+    // pequeño resumen de lo que descubrió/modificó") → mismo canal, con el título del resumen del cerebro.
+    if (/^(recordar|pregunto|resumen):/.test(String(process.env.BILLING_PROBE || ''))) {
       const esPreg = /^pregunto:/.test(String(process.env.BILLING_PROBE));
-      const t = String(process.env.BILLING_PROBE).replace(/^(recordar|pregunto):/, '').trim();
-      if (!t) { console.log('Falta el texto: recordar:<texto> / pregunto:<texto>'); process.exitCode = 1; return; }
+      const esRes = /^resumen:/.test(String(process.env.BILLING_PROBE));
+      const t = String(process.env.BILLING_PROBE).replace(/^(recordar|pregunto|resumen):/, '').trim();
+      if (!t) { console.log('Falta el texto: recordar:<texto> / pregunto:<texto> / resumen:<texto>'); process.exitCode = 1; return; }
       const cuerpo = t.replace(/&/g, '&amp;').replace(/</g, '&lt;').split('//').map((x) => x.trim()).join('\n');
-      const txt = (esPreg ? '🤔 <b>Para decidir vos</b>\n' : '⏰ <b>Recordatorio</b>\n') + cuerpo;
+      const txt = (esPreg ? '🤔 <b>Para decidir vos</b>\n' : esRes ? '🧠 <b>Lo que hizo el cerebro</b>\n' : '⏰ <b>Recordatorio</b>\n') + cuerpo;
       let ok = false;
       try { ok = await sendAlerta(txt, { directo: true }); } catch (e) { console.log('✗ sendAlerta tiró: ' + e.message); }
       if (ok) console.log('✓ recordatorio mandado al canal privado'); else { console.log('❌ NO salió el recordatorio'); process.exitCode = 1; }
