@@ -36288,17 +36288,21 @@ async function main() {
             if (Math.abs(pct) < 2) { prev = { p, i }; continue; }
             if (Math.abs(pct) > 25) { sinDato.grande++; prev = { p, i }; continue; }
             // ventana de antes: días con el precio p0, hacia atrás hasta W o el cambio anterior
-            const mide = (desdeI, hastaI, paso) => { let dias = 0, u = 0, n = 0; for (let j = desdeI; paso > 0 ? j <= hastaI : j >= hastaI; j += paso) { if (n >= W) break; const x = dd[ks[j]] || {}; n++; const cs = conStock(x); if (cs !== true) continue; dias++; u += Number(x.u) || 0; } return { dias, u }; };
+            // `dias`/`u` = sólo días con stock CONOCIDO. `cal`/`uc`/`hueco` = días de calendario (para los días viejos, donde
+            // ML no guardó el stock): se usa sólo si la ventana siguió vendiendo (hueco sin ventas de menos de 7 días).
+            const mide = (desdeI, hastaI, paso) => { let dias = 0, u = 0, n = 0, cal = 0, uc = 0, hueco = 0, run = 0; for (let j = desdeI; paso > 0 ? j <= hastaI : j >= hastaI; j += paso) { if (n >= W) break; const x = dd[ks[j]] || {}; n++; const q = Number(x.u) || 0; const cs = conStock(x); if (cs !== false) { cal++; uc += q; run = q > 0 ? 0 : run + 1; if (run > hueco) hueco = run; } if (cs !== true) continue; dias++; u += q; } return { dias, u, cal, uc, hueco }; };
             let ini = prev.i; while (ini > 0 && Number(dd[ks[ini - 1]] && dd[ks[ini - 1]].p) === p0) ini--;
             const A = mide(i - 1, Math.max(ini, i - W), -1);
             let fin = i + 1; while (fin + 1 < ks.length && Number(dd[ks[fin + 1]] && dd[ks[fin + 1]].p) === p1) fin++;
             const D = i + 1 < ks.length ? mide(i + 1, Math.min(fin, i + W), 1) : { dias: 0, u: 0 };
-            if (A.dias < MIN_DIAS || D.dias < MIN_DIAS) sinDato.pocosDias++;
-            else if (A.u < MIN_U) sinDato.pocasVentas++;
+            const exacto = A.dias >= MIN_DIAS && D.dias >= MIN_DIAS;
+            const aprox = !exacto && A.cal >= MIN_DIAS && D.cal >= MIN_DIAS && A.hueco < 7 && D.hueco < 7 && D.uc >= 1;
+            if (!exacto && !aprox) sinDato.pocosDias++;
+            else if ((exacto ? A.u : A.uc) < MIN_U) sinDato.pocasVentas++;
             else {
-              const rA = A.u / A.dias, rD = D.u / D.dias;
+              const rA = exacto ? A.u / A.dias : A.uc / A.cal, rD = exacto ? D.u / D.dias : D.uc / D.cal;
               const red = umbralRedondoCruzado(p0, p1);
-              filas.push({ mla, nom: String((lk[mla] && lk[mla].title) || mla).slice(0, 40), cta: (lk[mla] && lk[mla].cuenta) || '?', dia: ks[i], p0, p1, pct, red, barrera: (p0 < 33000) !== (p1 < 33000), rA, rD, ratio: rD / rA, dA: A.dias, dD: D.dias });
+              filas.push({ mla, nom: String((lk[mla] && lk[mla].title) || mla).slice(0, 40), cta: (lk[mla] && lk[mla].cuenta) || '?', dia: ks[i], p0, p1, pct, red, barrera: (p0 < 33000) !== (p1 < 33000), rA, rD, ratio: rD / rA, dA: exacto ? A.dias : A.cal, dD: exacto ? D.dias : D.cal, aprox });
             }
           }
           prev = { p, i };
@@ -36307,7 +36311,8 @@ async function main() {
       const med = (a) => { if (!a.length) return null; const b = [...a].sort((x, y) => x - y); const m = b.length >> 1; return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; };
       const f$ = (n) => '$' + Math.round(n).toLocaleString('es-AR');
       console.log(`=== ¿CRUZAR UN NÚMERO REDONDO FRENA LAS VENTAS? · ${nd} días · ${filas.length} cambios medibles ===`);
-      console.log(`(afuera: ${sinDato.pocosDias} con menos de ${MIN_DIAS} días con stock de un lado · ${sinDato.pocasVentas} con menos de ${MIN_U} u. antes · ${sinDato.grande} cambios de más de 25%)`);
+      console.log(`(${filas.filter((r) => r.aprox).length} de ésos son APROXIMADOS: días viejos sin stock guardado, medidos por calendario y sólo si siguió vendiendo sin cortes de 7+ días · marcados ≈)`);
+      console.log(`(afuera: ${sinDato.pocosDias} sin ${MIN_DIAS} días medibles de un lado (o con un corte de ventas de 7+ días: posible falta de stock) · ${sinDato.pocasVentas} con menos de ${MIN_U} u. antes · ${sinDato.grande} cambios de más de 25%)`);
       const grupo = (fn) => filas.filter((r) => !r.barrera && fn(r));
       for (const [tit, dir] of [['SUBAS', 1], ['BAJAS', -1]]) {
         const cruz = grupo((r) => Math.sign(r.pct) === dir && r.red), nocr = grupo((r) => Math.sign(r.pct) === dir && !r.red);
@@ -36315,7 +36320,7 @@ async function main() {
         console.log(`\n■ ${tit}`);
         console.log(`  cruzan un redondo:   ${desc(cruz)}`);
         console.log(`  no cruzan ninguno:   ${desc(nocr)}`);
-        for (const r of cruz.sort((a, b) => a.dia < b.dia ? 1 : -1)) console.log(`    ${r.dia.slice(5).replace('_', '/')} ${r.mla} ${r.cta} · ${r.nom} · ${f$(r.p0)} → ${f$(r.p1)} (cruza ${f$(r.red)}) · ${r.rA.toFixed(2)} → ${r.rD.toFixed(2)} u/día (${r.dA}/${r.dD} d) ×${r.ratio.toFixed(2)}`);
+        for (const r of cruz.sort((a, b) => a.dia < b.dia ? 1 : -1)) console.log(`    ${r.dia.slice(5).replace('_', '/')} ${r.mla} ${r.cta} · ${r.nom} · ${f$(r.p0)} → ${f$(r.p1)} (cruza ${f$(r.red)}) · ${r.rA.toFixed(2)} → ${r.rD.toFixed(2)} u/día (${r.dA}/${r.dD} d) ×${r.ratio.toFixed(2)}${r.aprox ? ' ≈' : ''}`);
       }
       const bar = filas.filter((r) => r.barrera).length;
       if (bar) console.log(`\n(${bar} cambio(s) cruzaron también los $33.000: fuera de la comparación, ahí cambia el envío)`);

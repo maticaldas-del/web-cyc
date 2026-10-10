@@ -444,6 +444,7 @@ Todo lo que guarda la historia día por día y las pantallas que la dibujan.
   (solo lee): cambios de precio de la línea de tiempo, los que cruzan un redondo contra los que no (mismo tamaño, sin los que
   cruzan $33.000), ventas por día CON stock antes/después. Qué chequear: que no cuente días sin dato de stock; con pocos casos
   no concluir; si los que cruzan no venden peor, se saca la regla 2.
+  - `redondos` primera corrida: 0 medibles (954 afuera: los días viejos de `mlapi/linea` no tienen stock). Se agregó una medida APROXIMADA por calendario para esos días, sólo si la ventana siguió vendiendo (sin cortes de 7+ días sin ventas) y con 1+ venta después; sale marcada ≈ y contada aparte. Chequear: que un día con stock 0 conocido nunca cuente.
 
 ### Pendientes de la revisión 9 (09/10/2026, a la madrugada) — se van cerrando en las vueltas
 - **Publicaciones con variantes no tienen dueño de precio:** `decido`/`analizapromo`/`entrarpromo` las rechazan ("la maneja el robot de siempre") y con SOLO_DATOS el robot no las toca. Hace falta un camino de Claude por `raiseVariations` (y que la planilla las muestre como "nadie las maneja").
