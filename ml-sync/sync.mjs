@@ -35992,6 +35992,27 @@ async function main() {
     if (/^fotosrev(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const arg = String(process.env.BILLING_PROBE).slice('fotosrev'.length).replace(/^:/, '').trim().toLowerCase();
       const todos = arg === 'todos', pal = todos ? [] : arg.split(/[+ ]/).filter(Boolean);
+      // fotosrev:probados (10/10/2026, él con el Joystick Xbox: foto de Paraguay negra y de ML verde, "claramente no
+      // se miró"). Las fichas de Paraguay que ya vendemos: la foto de comprasparaguay de la ficha contra la foto de
+      // CADA publicación viva, con su color. Un renglón por ficha × publicación (id `p…~MLA…`).
+      if (arg === 'probados') {
+        const prods = (await db.get('cyc/products')) || {}; const links = (await db.get('cyc/mllinks')) || {};
+        let n = 0;
+        for (const [pid, pr] of Object.entries(prods)) {
+          if (!pr || pr.origen !== 'py') continue;
+          const pubs = Object.entries(links).filter(([, e]) => e && e.prodId === pid && !e.ignored && e.status !== 'closed');
+          for (const [mla, e] of pubs) {
+            n++;
+            console.log(`\n@@ ${pid}~${mla} · margen 100% · ${mla} · ${e.cuenta || '?'} · ${e.status || '?'}${e.variant ? ' · color ' + e.variant : ''}${pr.codPy ? ' · código PY ' + pr.codPy : ''}${Array.isArray(pr.variantes) && pr.variantes.length > 1 ? ' · la ficha tiene ' + pr.variantes.length + ' colores' : ''}`);
+            console.log(`   PY: ${pr.name || pid}`);
+            console.log(`   ML: ${e.title || '(sin título)'}`);
+            console.log(`   fotoPY: ${pr.pyFoto || '(sin foto)'}`);
+            console.log(`   fotoML: ${e.foto || '(sin foto)'}`);
+          }
+        }
+        console.log(`\n${n} renglón(es) de probados (ficha × publicación viva)`);
+        return;
+      }
       const cands = (await db.get('cyc/candidatos_py')) || {};
       const catDe = (c) => ((String(c.mlLink || '').match(/\/p\/(MLA\d+)/i) || [])[1] || String(c.mlId || '').toUpperCase().replace(/^.*\/P\//, '').split(/[?#]/)[0] || '').toUpperCase();
       const lista = Object.entries(cands).map(([id, c]) => ({ id, ...(c || {}) }))

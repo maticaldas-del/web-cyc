@@ -2501,7 +2501,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.09';
+const APP_VERSION='23.10';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2512,6 +2512,7 @@ const APP_VERSION='23.09';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.10',f:'10/10/2026',h:'01:45',c:[{n:2,t:'🇵🇾 Pedidos Paraguay probados: la foto de ML es la del color que se pide (antes, la de cualquier publicación). Si el producto tiene varios colores, avisa en rojo que el código de Paraguay es uno solo y hay que mirar que la foto sea del color pedido.'}]},
   {v:'23.09',f:'09/10/2026',h:'15:20',c:[{n:1,t:'⚡ Ventas: toda venta de 2.000 de score o más tiene figuras atrás, a la velocidad de su neto. Antes las que apenas pasaban los 2.000 quedaban casi sin figuras.'}]},
   {v:'23.08',f:'09/10/2026',h:'15:05',c:[{n:1,t:'⚡ Ventas: las figuras de atrás suben a la velocidad que elegiste por neto: quietas hasta $4.000, 3 px/s en $5.000, 303 en $50.000, 608 en $100.000, 1.037 en $200.000, 2.061 en $400.000 y 2.500 en $550.000.'}]},
   {v:'23.07',f:'09/10/2026',h:'14:25',c:[{n:1,t:'⚡ Ventas: en las ventas grandes las figuras de atrás suben 3 veces más rápido. Las chicas siguen lentas como estaban.'}]},
@@ -16177,9 +16178,18 @@ function margenSiComproPY(mx,nuUSD){
 }
 // Fotos (Paraguay y ML), links y datos básicos de un PROBADO de Paraguay (03/10/2026). La usan la tarjeta de
 // Probados y el renglón del 🧾 Pedido: una sola función, así muestran lo mismo.
-function pyProbVisHTML(_prod){
+function pyProbVisHTML(_prod,colores){
     const L=Object.entries(state.mllinks||{}).filter(([,e])=>e&&e.prodId===_prod.id&&!e.ignored);
-    const viva=L.find(([,e])=>e.status==='active'&&e.foto)||L.find(([,e])=>e.foto)||L.find(([,e])=>e.status==='active')||L[0];
+    // LA FOTO DE ML ES LA DEL COLOR QUE SE PIDE (10/10/2026, él con el Joystick Xbox: Paraguay negro y ML verde,
+    // "claramente no se miró"). Antes era la primera publicación activa con foto, de cualquier color. Ahora, si el
+    // pedido nombra colores, va la publicación de ese color (misma búsqueda que el código de Full: no se adivina).
+    let viva=null;
+    for(const c of (colores||[])){const e=pubDeVariante(_prod.id,'',c,x=>!!x.foto);if(e){viva=[e.mla,e];break;}}
+    if(!viva)viva=L.find(([,e])=>e.status==='active'&&e.foto)||L.find(([,e])=>e.foto)||L.find(([,e])=>e.status==='active')||L[0];
+    // Y si el producto tiene varios colores, el código de Paraguay es UNO solo: se avisa en rojo para mirar que la
+    // foto de Paraguay sea del color que se pide.
+    const _nVar=(_prod.variantes||[]).length;
+    const _avisoColor=_nVar>1?`<div style="font-size:.72rem;color:var(--red);flex-basis:100%">⚠️ este producto tiene ${_nVar} colores y el código de Paraguay${_prod.codPy?' ('+_prod.codPy+')':''} es uno solo: mirá que la foto de Paraguay sea del color que pedís${(colores||[]).length?' ('+colores.join(', ')+')':''}</div>`:'';
     const mla=viva?viva[0]:'', fML=viva&&viva[1].foto&&/^https:\/\//.test(viva[1].foto)?viva[1].foto:'';
     const cand=Object.values(state.candidatos||{}).find(c=>c&&c.prodId===_prod.id)||{};
     const lPY=String(_prod.pyLink||cand.link||'').trim(), fPY0=String(_prod.pyFoto||cand.foto||'').trim();
@@ -16194,7 +16204,7 @@ function pyProbVisHTML(_prod){
     // de pedirlo HOY al precio de Nissei (la misma cuenta del veredicto de arriba: margenSiComproPY).
     let mgPed=null,_mxP=0,_mxF='';try{const _mx=maxCompraDe(_prod,PY_PROB_PISO);mgPed=margenSiComproPY(_mx,parseFloat(_prod.nisseiUSD)||0);if(_mx&&!_mx.motivo){_mxP=_mx.P;_mxF=_mx.fuente;}}catch(e){}
     const datos=mg&&mg.precio>0?`<div style="font-size:.74rem;color:var(--muted);flex-basis:100%">🏷️ tu precio en ML <b style="color:var(--text)">${fmt(Math.round(mg.precio))}</b>${mgPed!=null?` · si lo pedís hoy te queda <b style="color:${typeof pctColor==='function'?pctColor(mgPed):'var(--text)'}">${Math.round(mgPed)}%</b>${_mxP&&_mxP!==Math.round(mg.precio)?` vendiéndolo a <b style="color:var(--text)">${fmt(_mxP)}</b>${_mxF==='full'?' (lo que se puede cobrar teniendo Full)':_mxF==='caja'?' (lo que pide ML para ganar la caja)':_mxF==='claude'?' (el precio que decidí yo, Claude)':''}`:''}`:''}${_prod.nisseiUSD?` · 🇵🇾 Nissei US$ ${Number(_prod.nisseiUSD).toFixed(2)}${_prod.nisseiTs?' (mirado '+new Date(Number(_prod.nisseiTs)).toLocaleDateString('es-AR')+')':''}`:''}${_prod.codPy?` · 🔖 ${_prod.codPy}`:''}</div>`:'';
-    return `${datos}<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;width:100%">
+    return `${datos}${_avisoColor}<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;width:100%">
       <div style="display:flex;gap:6px">${ph(fPY,'🇵🇾 Paraguay')}${ph(fML,'🏷️ ML')}</div>
       <div style="font-size:.76rem;line-height:1.8">${mlUrl?A(mlUrl,'🔗 verlo en ML'):'<span style="color:var(--muted)">🔗 sin publicación en ML</span>'}<br>${/^https:\/\//.test(lPY)?A(lPY,'🇵🇾 verlo en comprasparaguay'):'<span style="color:var(--amber)">🇵🇾 falta el link de comprasparaguay (lo carga Guay)</span>'}</div>
     </div>`;}
@@ -16332,7 +16342,7 @@ function _pedidoItemHtml(p,opts){
   // FOTOS Y LINKS COMO EN NUEVOS (03/10/2026, él: "que muestre igual que en nuevos ambos links, ambas fotos").
   // ML: la foto y el link de su publicación viva. Paraguay: `pyLink`/`pyFoto` de la ficha (los carga Guay con
   // updPyLink) o, si no, los del candidato del que salió la ficha.
-  const _pyVis=_armU==null?'':pyProbVisHTML(_prod);
+  const _pyVis=_armU==null?'':pyProbVisHTML(_prod,(p.variantesNec||[]).filter(x=>x&&(parseInt(x.q)||0)>0).map(x=>x.v));
   const _armHTML=_armU==null?'':`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 12px 8px;margin:-4px 0 10px;font-size:.78rem;background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px">${_pyVis}
       <span style="font-weight:700;color:${_armU>0?'var(--green)':'var(--muted)'}">🧾 pedir</span>
       <input type="number" min="0" step="1" value="${_armU||''}" placeholder="0" onchange="pyArmSet('${_prod.id}',this.value)" style="width:58px;font-size:.88rem;padding:4px 6px;text-align:center;background:var(--surface2);border:1px solid ${_armU>0?'var(--green)':'var(--border)'};border-radius:6px;color:var(--text)"> u.

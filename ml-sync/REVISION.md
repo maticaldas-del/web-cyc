@@ -270,6 +270,15 @@ Qué chequear: que el total de renglones cierre con las publicaciones vivas con 
 - **09/10/2026 · PEDIDOS COMPLETOS (etapa 3, mercadería).** Con SOLO_CLAUDE la web pide sólo lo que decidí; yo decidía mirando `pedidosnotas`, que lee `cyc/pedidos` (= sólo lo ya decidido), así que nunca veía el resto: Pedidos quedó casi vacío (sábanas, Paraguay y Paulvic sin nada). Nuevo `pedidostodo` (solo lee, TODO el catálogo color por color) + `ml-sync/notas/decide_pedidos.py` (ritmo 30/60/180 d, objetivo 30 días, menos Full+casa+camino+viajando, sin ganancia = 0) → `ml-sync/notas/pedidos.txt` → `decido:archivo=pedidos;go`. Se rehace en cada vuelta (rutina CEREBRO 08:52/20:52). Chequear: que cada producto con ventas de 180 d tenga renglón, y que el log de decido diga "guardado" en todos.
   Comando `pedidostodo` (solo lee): ventas 30/60/180 por color (`v.variante` → `mllinks.variant` → título), Full por cuenta y color, oficina, en camino a Full menos lo que ML ya dio de alta (`cyc/cajasentrado`), viajando de Paraguay (`compraspy` en camino) y del Paulvic (`pedidospv`), precio de hoy y cambios de 45 d (`cyc/autoprecio`), y lo que queda afuera (papelera, no traer). La cuenta: `ml-sync/notas/decide_pedidos.py`.
 
+### Fotos de Probados: el color que se pide, y en mi revisión (10/10/2026, v23.10)
+Él con el Joystick Xbox (foto de Paraguay negra, de ML verde): *"claramente no se miró"*. Mi revisión de fotos
+(`fotosrev`) sólo cubría "Para probar"; Probados nunca se cruzó. **Hecho:** `pyProbVisHTML(prod, colores)` muestra la
+foto de la publicación del COLOR que pide el pedido (`pubDeVariante`, no adivina) y avisa en rojo cuando la ficha tiene
+varios colores y un solo código de Paraguay. `fotosrev:probados` lista ficha de Paraguay × cada publicación viva con
+las dos fotos (`revfotos.py armar` acepta los ids `p…~MLA…`); va en la completa de las 08:52.
+**Qué chequear:** que la foto de ML del renglón sea del color pedido; publicaciones de OTRO producto pegadas a una
+ficha (el Joystick tenía pegado un genérico de Xbox 360 con cable).
+
 ## 4 · CHOQUES
 - `mlapi/lineatodo` lo escriben `ritmo:go` (noche) y `lineatodo:go` (ml-consulta): los dos con la
   misma función `calcLineaTodo`.

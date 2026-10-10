@@ -16,7 +16,7 @@ def leer_log(p):
     out, cur = [], None
     for l in L:
         if l.startswith('@@ '):
-            m = re.match(r'(c\d+) · margen (\S+)% · (MLA\d+)(.*)', l[3:])
+            m = re.match(r'(c\d+|p\d+~MLA\d+) · margen (\S+)% · (MLA\d+)(.*)', l[3:])
             if not m: continue
             cur = dict(zip(('id', 'm', 'cat', 'extra'), m.groups())); out.append(cur)
         elif cur is not None:
@@ -43,8 +43,8 @@ def armar(log, dir_, minm):
     os.makedirs(dir_ + '/img', exist_ok=True); os.makedirs(dir_ + '/hojas', exist_ok=True)
     jobs = []
     for o in sel:
-        jobs.append((o.get('fotoPY', '').replace('/thumbs/med/', '/thumbs/big/'), f"{dir_}/img/{o['id']}_py"))
-        jobs.append((o.get('fotoML', ''), f"{dir_}/img/{o['id']}_ml"))
+        jobs.append((o.get('fotoPY', '').replace('/thumbs/med/', '/thumbs/big/'), f"{dir_}/img/{o['id'].replace('~','_')}_py"))
+        jobs.append((o.get('fotoML', ''), f"{dir_}/img/{o['id'].replace('~','_')}_ml"))
     with cf.ThreadPoolExecutor(12) as ex: list(ex.map(lambda j: bajar(*j), jobs))
     F = '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
     font = ImageFont.truetype(F, 15); fb = ImageFont.truetype(F.replace('Sans.', 'Sans-Bold.'), 15)
@@ -58,7 +58,7 @@ def armar(log, dir_, minm):
     for h in range(0, len(sel), N):
         ch = sel[h:h + N]; img = Image.new('RGB', (W, H * len(ch)), 'white'); d = ImageDraw.Draw(img)
         for k, o in enumerate(ch):
-            y = k * H; img.paste(load(f"{dir_}/img/{o['id']}_py"), (5, y + 10)); img.paste(load(f"{dir_}/img/{o['id']}_ml"), (S + 15, y + 10))
+            y = k * H; img.paste(load(f"{dir_}/img/{o['id'].replace('~','_')}_py"), (5, y + 10)); img.paste(load(f"{dir_}/img/{o['id'].replace('~','_')}_ml"), (S + 15, y + 10))
             x = 2 * S + 30; d.text((x, y + 8), f"#{h + k + 1} {o['id']} · {o['m']}%{o['extra']}", fill='black', font=fb); yy = y + 32
             for lab, t in (('PY', o.get('PY', '')), ('ML', o.get('ML', ''))):
                 for ln in textwrap.wrap(lab + ': ' + t, 52)[:5]: d.text((x, yy), ln, fill='#003399' if lab == 'PY' else '#990000', font=font); yy += 19
