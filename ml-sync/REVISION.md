@@ -270,6 +270,17 @@ Qué chequear: que el total de renglones cierre con las publicaciones vivas con 
 - **09/10/2026 · PEDIDOS COMPLETOS (etapa 3, mercadería).** Con SOLO_CLAUDE la web pide sólo lo que decidí; yo decidía mirando `pedidosnotas`, que lee `cyc/pedidos` (= sólo lo ya decidido), así que nunca veía el resto: Pedidos quedó casi vacío (sábanas, Paraguay y Paulvic sin nada). Nuevo `pedidostodo` (solo lee, TODO el catálogo color por color) + `ml-sync/notas/decide_pedidos.py` (ritmo 30/60/180 d, objetivo 30 días, menos Full+casa+camino+viajando, sin ganancia = 0) → `ml-sync/notas/pedidos.txt` → `decido:archivo=pedidos;go`. Se rehace en cada vuelta (rutina CEREBRO 08:52/20:52). Chequear: que cada producto con ventas de 180 d tenga renglón, y que el log de decido diga "guardado" en todos.
   Comando `pedidostodo` (solo lee): ventas 30/60/180 por color (`v.variante` → `mllinks.variant` → título), Full por cuenta y color, oficina, en camino a Full menos lo que ML ya dio de alta (`cyc/cajasentrado`), viajando de Paraguay (`compraspy` en camino) y del Paulvic (`pedidospv`), precio de hoy y cambios de 45 d (`cyc/autoprecio`), y lo que queda afuera (papelera, no traer). La cuenta: `ml-sync/notas/decide_pedidos.py`.
 
+### Resultados de precios: la cuenta del supervisor + mi juicio diario (10/10/2026, v23.11)
+Él: *"quiero que aparezca todo, desde la primer decisión del robot anterior y que hagas el análisis (…) todos los días"* y
+*"no hay reglas (…) quizás esa decisión es buena y está unos días perdiendo y después recupera"*. La tarjeta de Métricas
+estaba congelada desde el 09/10 (SOLO_DATOS apagó el supervisor). **Hecho:** `supervisor:medir[:go]` (por ml-sync) sólo
+mide y guarda la tarjeta, lista TODOS los cambios con su id y no vuelve nada atrás ni manda Telegram; `supervisor` a secas
+con SOLO_DATOS no corre. Cada decisión de `decido` queda además en `cyc/claudecambios/<ts>_<MLA>` (autoprecio guarda sólo
+la última) y suma con motivo `claude`. `juzgo:<id>=<gano|perdio|igual|espera|nocuenta>|<texto>;…;go` guarda mi juicio en
+`cyc/supervisor/juicio/<id>` y la tarjeta lo muestra (y su color manda sobre el del número). Va en la completa de las 08:52.
+**Qué chequear:** que todo cambio medido tenga juicio; que los juicios viejos se revisen cuando cambian los números; que lo
+que perdió se piense (volver, seguir, otro precio) y no se vuelva atrás por regla.
+
 ### Fotos de Probados: el color que se pide, y en mi revisión (10/10/2026, v23.10)
 Él con el Joystick Xbox (foto de Paraguay negra, de ML verde): *"claramente no se miró"*. Mi revisión de fotos
 (`fotosrev`) sólo cubría "Para probar"; Probados nunca se cruzó. **Hecho:** `pyProbVisHTML(prod, colores)` muestra la

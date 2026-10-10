@@ -2076,6 +2076,7 @@ function startApp(){
     // LO QUE TRAJO EL ROBOT DE PRECIOS: lo calcula el supervisor todas las noches (cyc/supervisor/resumen).
     // La pantalla no hace ninguna cuenta: una segunda copia de la atribución diría otro número.
     state.supResumen=(d.supervisor&&d.supervisor.resumen)||null;
+    state.supJuicio=(d.supervisor&&d.supervisor.juicio)||{};
     // Para el renglón de cada venta: los cambios de precio de su publicación (cambioVentaHTML).
     // Sólo se muestran; no se calcula nada con ellos.
     state.supervisor={eventos:(d.supervisor&&d.supervisor.eventos)||{}};
@@ -2501,7 +2502,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.10';
+const APP_VERSION='23.11';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2512,6 +2513,7 @@ const APP_VERSION='23.10';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.11',f:'10/10/2026',h:'02:30',c:[{n:2,t:'🤖 Métricas, resultados de precios: debajo de cada cambio (del robot viejo y míos) va mi juicio, que reviso todos los días: si de verdad ganó o perdió por el precio, o si fue otra cosa. Mis decisiones desde el 09/10 se miden igual que las del robot.'}]},
   {v:'23.10',f:'10/10/2026',h:'01:45',c:[{n:2,t:'🇵🇾 Pedidos Paraguay probados: la foto de ML es la del color que se pide (antes, la de cualquier publicación). Si el producto tiene varios colores, avisa en rojo que el código de Paraguay es uno solo y hay que mirar que la foto sea del color pedido.'}]},
   {v:'23.09',f:'09/10/2026',h:'15:20',c:[{n:1,t:'⚡ Ventas: toda venta de 2.000 de score o más tiene figuras atrás, a la velocidad de su neto. Antes las que apenas pasaban los 2.000 quedaban casi sin figuras.'}]},
   {v:'23.08',f:'09/10/2026',h:'15:05',c:[{n:1,t:'⚡ Ventas: las figuras de atrás suben a la velocidad que elegiste por neto: quietas hasta $4.000, 3 px/s en $5.000, 303 en $50.000, 608 en $100.000, 1.037 en $200.000, 2.061 en $400.000 y 2.500 en $550.000.'}]},
@@ -17320,6 +17322,14 @@ function metVigBox(){
     <summary style="cursor:pointer;font-size:.66rem;color:var(--text)">👀 Qué está mirando ahora <span style="color:var(--muted)">· ${res}</span></summary>
     <div id="met-vig" style="margin-top:8px"></div></details>`;
 }
+// EL JUICIO DE CLAUDE (10/10/2026). Él: "quiero que aparezca todo, desde la primer decisión del robot anterior y que hagas
+// el análisis (…) todos los días" y "quizás esa decisión es buena y está unos días perdiendo y después recupera". La cuenta
+// (plata cobrada de más o de menos, ventas antes y después) la sigue haciendo el supervisor; lo que dice si GANÓ o PERDIÓ de
+// verdad (quiebres de stock, fechas, una caja que llegó, una retención) es mi juicio, de `cyc/supervisor/juicio/<id>`.
+const MET_JZ={gano:['🟢','ganó','var(--green)'],perdio:['🔴','perdió','var(--red)'],igual:['⚪','igual','var(--muted)'],espera:['⏳','todavía no se sabe','#fbbf24'],nocuenta:['⚪','no fue el precio','var(--muted)']};
+const metJuicio=x=>{const j=x&&x.id&&(state.supJuicio||{})[x.id];return j&&MET_JZ[j.v]?j:null;};
+const metJuicioHTML=x=>{const j=metJuicio(x);if(!j)return '';const [ic,lbl,c]=MET_JZ[j.v];const d=new Date(Number(j.ts)||0);
+  return `<div style="font-size:.62rem;margin-top:3px;color:var(--text);line-height:1.4"><span style="color:${c};font-weight:700">${ic} Claude: ${lbl}</span> <span style="color:var(--muted)">(${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')})</span>${j.txt?' · '+String(j.txt).replace(/[<>&]/g,''):''}</div>`;};
 function renderMetAuto(){
   const el=document.getElementById('met-auto');if(!el)return;
   const r=state.supResumen;
@@ -17347,7 +17357,7 @@ function renderMetAuto(){
   const buscando=!!metAutoNorm(metAutoQ).trim();
   if(buscando)delMes=delMes.filter(metAutoMatch);
   const deshechos=delMes.filter(x=>x.motivo==='deshace'&&x.estado==='medido').length;
-  const lista=delMes.filter(x=>metAutoMot==='todas'?true:metAutoMot==='cuentan'?!!x.enTotal||(x.estado!=='medido'&&['subir','bajar','remate','escalera','prueba','rescatep','volver'].includes(x.motivo)):x.motivo===metAutoMot);
+  const lista=delMes.filter(x=>metAutoMot==='todas'?true:metAutoMot==='cuentan'?!!x.enTotal||(x.estado!=='medido'&&['subir','bajar','remate','escalera','prueba','rescatep','volver','claude'].includes(x.motivo)):x.motivo===metAutoMot);
   // El total grande: SÓLO lo medido que cuenta (decisiones del robot mirando el mercado), del mes elegido.
   const med=delMes.filter(x=>(x.estado==='medido'||x.estado==='encurso')&&x.enTotal);
   const tot=med.reduce((a,x)=>a+n(x.total),0),pre=med.reduce((a,x)=>a+n(x.precio),0),vol=med.reduce((a,x)=>a+n(x.volumen),0);
@@ -17374,9 +17384,10 @@ function renderMetAuto(){
     return `<div style="padding:6px 0;border-bottom:1px solid rgba(148,163,184,.1);font-size:.68rem">
       <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
         <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${sube?'⬆️':'⬇️'} ${x.nom||x.mla}${x.cuenta?' · '+x.cuenta:''}</span>
-        <b style="white-space:nowrap;color:${col(x.total)}">${n(x.total)>0?'ganó ':n(x.total)<0?'perdió ':'igual '}${sg(x.total)}</b>
+        <b style="white-space:nowrap;color:${metJuicio(x)?MET_JZ[metJuicio(x).v][2]:col(x.total)}">${metJuicio(x)?MET_JZ[metJuicio(x).v][1]+' ':n(x.total)>0?'ganó ':n(x.total)<0?'perdió ':'igual '}${sg(x.total)}</b>
       </div>
       <div style="font-size:.6rem;color:var(--muted)">${fh(x.ts)} · ${metAutoMotTxt(x)} · ${x.de?fmt(n(x.de)):'?'} → ${x.a?fmt(n(x.a)):'?'} (${sube?'+':''}${pct}%)${n(x.deRef)>0?' · medido contra '+fmt(n(x.deRef))+', el precio antes del robot':''}${x._mesParcial?' · sólo lo vendido en '+mesTxt(metAutoMes):''}</div>
+      ${metJuicioHTML(x)}
     </div>`;
   };
   // EN CURSO, A LA VISTA Y EN GRIS (06/10/2026, eligió la (a)): él preguntó por qué esperar una semana
@@ -17400,6 +17411,7 @@ function renderMetAuto(){
         <b style="white-space:nowrap">${u>0?sg(v):'—'}</b>
       </div>
       <div style="font-size:.6rem">${fh(x.ts)} · ${metAutoMotTxt(x)} · ${x.de?fmt(n(x.de)):'?'} → ${x.a?fmt(n(x.a)):'?'} · ${que} · ${cuando}</div>
+      ${metJuicioHTML(x)}
     </div>`;
   };
   const curso=enCurso.slice().sort((a,b)=>n(b.ts)-n(a.ts));
@@ -17413,6 +17425,7 @@ function renderMetAuto(){
     <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">${confTot<0?'Plata de MENOS':'Plata de más'} que dejaron las decisiones del robot · ${metAutoMes==='todos'?'todos los meses':mesTxt(metAutoMes)}</div>
     <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:2rem;color:${col(confTot)};line-height:1.1">${sg(confTot)}</div>
     <div style="font-size:.62rem;color:var(--muted);margin-bottom:10px"><span style="color:var(--green)">${ok.filter(x=>n(x.total)>0).length} ganaron ${sg(ok.reduce((a,x)=>a+Math.max(0,n(x.total)),0))}</span> · <span style="color:var(--red)">${ok.filter(x=>n(x.total)<0).length} perdieron ${sg(ok.reduce((a,x)=>a+Math.min(0,n(x.total)),0))}</span></div>
+    ${(()=>{const J=med.map(metJuicio).filter(Boolean),c=k=>J.filter(j=>j.v===k).length;return J.length?`<div style="font-size:.62rem;margin:-4px 0 10px;color:var(--muted)">🧠 Mi juicio: <span style="color:var(--green)">${c('gano')} ganaron</span> · <span style="color:var(--red)">${c('perdio')} perdieron</span> · <span style="color:#fbbf24">${c('espera')} todavía no se sabe</span> · ${c('igual')+c('nocuenta')} igual o no fue el precio · ${med.length-J.length} sin mirar</div>`:'';})()}
     ${ok.map(fila).join('')}`
     :`<div style="font-size:.72rem;color:var(--muted)">Todavía no hay ningún resultado${metAutoMes==='todos'?'':' en '+mesTxt(metAutoMes)}: cada cambio necesita 7 días para saber si ganó o perdió.</div>`;
   // Buscando: lo que también le pasó a ese producto y NO suma (rescates, a mano, deshacer), en gris.
@@ -17431,7 +17444,7 @@ function renderMetAuto(){
     <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px">${chipsMes}</div>
     ${cuerpoB}${notaDesh}${bloqueCurso}${bloqueOtros}
     <details style="margin-top:10px"><summary style="cursor:pointer;font-size:.6rem;color:var(--muted)">¿Qué cuenta?</summary><div style="font-size:.6rem;color:var(--muted);line-height:1.45;margin-top:4px">
-      Todo lo que el robot cambió solo: 📈 subir, 📉 bajar, 🧠 cerebro de precios, 🧪 prueba de suba, 🔨 remate, 🪜 escalera, 🛟 rescate antes de vender (el de la noche o por costo, que sube ANTES de que una venta salga baja) y ↩️ volver atrás un cambio suyo que perdía plata. Sólo después de 7 días. Antes de eso el cambio aparece abajo, en gris, con lo que ya se cobró de más o de menos por el precio: eso es plata firme, pero si se vendió menos (o más) por el precio recién se sabe a la semana. No cuenta: el rescate que sube DESPUÉS de una venta con % bajo, cuando el robot corrige una suba suya que quedó de más, cuando vuelve al precio de antes de un cambio propio (deshizo), ni lo que tocaste a mano.
+      Desde el 09/10/2026 los precios los decido yo (💭 Lo decidió Claude) y se miden igual. Abajo de cada cambio va 🧠 mi juicio, que reviso todos los días: el número es la cuenta (lo cobrado de más o de menos y lo que vendió antes y después), el juicio dice si de verdad fue el precio (o un quiebre de stock, una fecha, una caja que llegó) y si una decisión que hoy pierde puede recuperarse. Antes, todo lo que el robot cambió solo: 📈 subir, 📉 bajar, 🧠 cerebro de precios, 🧪 prueba de suba, 🔨 remate, 🪜 escalera, 🛟 rescate antes de vender (el de la noche o por costo, que sube ANTES de que una venta salga baja) y ↩️ volver atrás un cambio suyo que perdía plata. Sólo después de 7 días. Antes de eso el cambio aparece abajo, en gris, con lo que ya se cobró de más o de menos por el precio: eso es plata firme, pero si se vendió menos (o más) por el precio recién se sabe a la semana. No cuenta: el rescate que sube DESPUÉS de una venta con % bajo, cuando el robot corrige una suba suya que quedó de más, cuando vuelve al precio de antes de un cambio propio (deshizo), ni lo que tocaste a mano.
       "Sin robot" es que el precio se quedaba donde estaba: se compara el mismo tiempo antes y después. En remates y escalera NO se suma la ganancia de lo que se vendió (bajar el precio adelanta la venta, no la crea): cuenta lo que se cobró de menos, el almacenamiento que se dejó de pagar y la plata que volvió antes (la mercadería vendida antes de lo que se habría vendido a su ritmo normal, valorada al 1% por mes en dólares, el interés que paga CYC).
     </div></details>
     ${metVigBox()}

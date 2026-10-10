@@ -4037,6 +4037,9 @@ async function aplicarCerebro(db, cz, o) {
     hechos.push({ ...t, de: r.from || d.p0, a: r.to || d.a, quedo });
     const reg = { tipo: d.accion === 'sube' ? 'sube' : 'baja', por: d.tipoMot === 'claude' ? 'claude' : 'cerebro', mot: d.tipoMot, motivo: String(d.motivo).slice(0, 300), simple: cerebroSimple(d).slice(0, 400), de: r.from || d.p0, a: r.to || d.a, ts: hoyTs, nom: d.nom, cuenta: d.cuenta, u30: d.u30 };
     await anotar(() => db.set('cyc/autoprecio/' + d.mla, reg), 'el registro del robot (autoprecio)', t.f);
+    // REGISTRO DE CADA DECISIÓN DE CLAUDE (10/10/2026): `cyc/autoprecio` guarda sólo el ÚLTIMO cambio de cada publicación, y
+    // la tarjeta de resultados tiene que medir TODAS (él: "quiero que aparezca todo"). Esto no se pisa.
+    if (reg.por === 'claude') { try { await db.set('cyc/claudecambios/' + hoyTs + '_' + d.mla, { mla: d.mla, de: reg.de, a: reg.a, ts: hoyTs, motivo: reg.motivo, nom: d.nom, cuenta: d.cuenta }); } catch { console.log(`   ⚠️ no pude anotar ${d.nom} en el registro de decisiones de Claude`); } }
     if (autoprecio) autoprecio[d.mla] = reg;
     const pm = { ult: { mot: d.tipoMot, de: reg.de, a: reg.a, ts: hoyTs } };
     if (d.eNueva) pm.e = Math.round(((Number(d.eLearn) || CEREBRO_ELAST) * 0.5 + d.eNueva * 0.5) * 100) / 100;
@@ -27905,6 +27908,11 @@ async function main() {
     // DESDE EL 01/10/2026 VUELVE ATRÁS SOLO lo que perdió plata SEGURO (sección 5a); lo dudoso lo pregunta.
     if (/^supervisor(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       if (SOLO_DATOS && CORRIDA_AUTOMATICA) { console.log('SÓLO DATOS (09/10/2026): "supervisor" decide o sugiere, y el robot automático ya no lo hace. Lo piensa Claude en su revisión.'); return; }
+      // `supervisor:medir[:go]` (10/10/2026, él: "quiero que aparezca todo, desde la primer decisión del robot anterior y que
+      // hagas el análisis todos los días"): SÓLO la cuenta. Guarda la tarjeta (con :go) y lista TODOS los cambios para que
+      // Claude los juzgue con `juzgo`. No vuelve nada atrás y no manda nada por Telegram: decidir es de Claude.
+      const MEDIR = /^supervisor:medir/.test(String(process.env.BILLING_PROBE || ''));
+      if (SOLO_DATOS && !MEDIR) { console.log('SÓLO DATOS: el supervisor sólo mide. Usá "supervisor:medir[:go]".'); return; }
       const MANDAR = /:go$/.test(String(process.env.BILLING_PROBE || '')) && !DRY;
       const VENT = [7, 15, 30];
       const MAX_DIAS = 40;
@@ -28208,11 +28216,12 @@ async function main() {
       // automáticamente se tiene que tener en cuenta". Se sumó `volver` (el robot deshace un cambio
       // suyo que perdía, o vuelve de pasar a un sin Full): es una decisión del robot y su efecto se mide
       // igual. La ÚNICA excepción sigue siendo el rescate DESPUÉS de una venta baja (regla suya de hoy).
-      const SUP_CUENTA = new Set(['subir', 'bajar', 'remate', 'escalera', 'prueba', 'rescatep', 'volver']);
+      const SUP_CUENTA = new Set(['subir', 'bajar', 'remate', 'escalera', 'prueba', 'rescatep', 'volver', 'claude']);
       function motivoDeAuto(a) {
         const por = a && a.por;
         if (por === 'margen' || por === 'venta' || por === 'costo' || por === 'correccion') return 'rescate';   // corregir una suba propia de más no es mérito del robot
         if (por === 'remate' || por === 'escalera' || por === 'prueba' || por === 'volver') return por;
+        if (por === 'claude') return 'claude';   // las decisiones de Claude desde el 09/10/2026: se miden igual y suman
         if (a && a.tipo === 'sube') return 'subir';
         if (a && a.tipo === 'baja') return 'bajar';
         return '';
@@ -28258,6 +28267,16 @@ async function main() {
         if (_subiendoVivo(a, ahora) || _bajandoVivo(a, ahora)) continue;   // etapa 4: una suba (o una baja de "volver", 08/10/2026) que quedó a medias no es un cambio medido · vencen a las 24 h
         agregar({ mla, ts: a.ts, a: Math.round(a.a || 0) || null, de: Math.round(a.de || 0) || null, origen: a.por === 'costo' ? 'robot por costo' : 'robot de noche', aprox: false, motivo: motivoDeAuto(a), por: a.por || null, mot: a.mot || null });
       }
+      // LAS DECISIONES DE CLAUDE, UNA POR UNA (10/10/2026): `cyc/claudecambios` no se pisa (autoprecio sí).
+      try {
+        const cc = (await db.get('cyc/claudecambios')) || {};
+        for (const r of Object.values(cc)) {
+          if (!r || !/^MLA/i.test(String(r.mla || '')) || !(Number(r.ts) > 0)) continue;
+          const aR = Math.round(Number(r.a) || 0), deR = Math.round(Number(r.de) || 0);
+          if (!(aR > 0) || !(deR > 0)) continue;
+          agregar({ mla: r.mla, ts: Number(r.ts), a: aR, de: deR, origen: 'robot de noche', aprox: false, motivo: 'claude', por: 'claude', mot: 'claude' });
+        }
+      } catch (e) { console.log(`⚠️ no pude leer el registro de decisiones de Claude: ${String(e).slice(0, 80)}`); }
       // LAS SUBAS DEL RESCATE AL VENDER, DESDE SU ETIQUETA (08/10/2026, etapa 1). Arriba sólo se ve el ÚLTIMO
       // registro de `cyc/autoprecio`: si la noche corrigió esa suba (`por:'correccion'`) antes de que corra el
       // supervisor, el registro de la venta se pisó y la suba desaparecía de la línea de tiempo (o quedaba
@@ -28763,7 +28782,16 @@ async function main() {
         try { await sendAlerta(['⚠️ QUISE VOLVER UN PRECIO ATRÁS Y NO SE PUDO', ...fallosV.map((t) => '· ' + t), '', 'Reintento mañana. Si ML no deja escribir, revisá los permisos de la aplicación.'].join('\n')); } catch { /* */ }
       }
       };
-      if (!MANDAR) { await correrVolver(); console.log('\nPRUEBA: no se guardó nada. Con ":go" guarda y avisa.'); return; }
+      const listarTodo = () => {
+        const jz = sup.juicio || {};
+        console.log(`\n=== TODOS LOS CAMBIOS (${registros.length}) · para el juicio de Claude ===`);
+        for (const x of registros.slice().sort((a, b) => a.ts - b.ts)) {
+          const f = new Date(x.ts - 3 * 3600e3).toISOString().slice(0, 10);
+          const j = jz[x.id] ? ` · JUICIO ${jz[x.id].v} (${new Date((Number(jz[x.id].ts) || 0) - 3 * 3600e3).toISOString().slice(0, 10)}): ${String(jz[x.id].txt || '').slice(0, 120)}` : '';
+          console.log(`@@ ${x.id} · ${f} · ${x.motivo} · ${x.nom} (${x.cuenta}) · ${x.de ? $s(x.de) : '?'}→${x.a ? $s(x.a) : '?'} · ${x.estado}${x.estado === 'medido' || x.estado === 'encurso' ? ` · ${x.dias != null ? x.dias + ' d · ' : ''}${x.uA != null ? x.uA + '→' + x.uD + ' u. · ' : ''}precio ${$s(x.precio || 0)} · volumen ${$s(x.volumen || 0)} · TOTAL ${$s(x.total || 0)}${x.quiebre ? ' · quiebre de stock' : ''}${x.volSinDato ? ' · volumen sin dato' : ''}` : ''}${j}`);
+        }
+      };
+      if (!MANDAR) { if (MEDIR) listarTodo(); else await correrVolver(); console.log('\nPRUEBA: no se guardó nada. Con ":go" guarda' + (MEDIR ? '.' : ' y avisa.')); return; }
 
       // ── 5. GUARDAR ─────────────────────────────────────────────────────────────
       const upd = {};
@@ -28806,6 +28834,7 @@ async function main() {
       const rele = (await db.get('cyc/supervisor/eventos')) || {};
       const okEv = evalNuevas.filter((x) => rele[x.id] && rele[x.id].ev && rele[x.id].ev['d' + x.W]).length;
       console.log(`\nGuardado: ${Object.keys(nuevos).length} cambios nuevos · ${okEv} de ${evalNuevas.length} evaluaciones releídas ✓`);
+      if (MEDIR) { listarTodo(); return; }
 
       // ── 5a. VOLVER ATRÁS SOLO LO QUE PERDIÓ PLATA SEGURO (01/10/2026, eligió la (a)) ──────────
       // Regla suya: *"si el robot vio que perdió plata con la decisión y está seguro que volviendo
@@ -35688,6 +35717,42 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=juzgo:<id>=<gano|perdio|igual|espera|nocuenta>|<texto>[;…][;go] → EL JUICIO DE CLAUDE SOBRE CADA CAMBIO DE
+    // PRECIO (10/10/2026). Él: "quiero que aparezca todo, desde la primer decisión del robot anterior y que hagas el análisis
+    // de todos (…) todos los días" y "no hay reglas, siempre tenés que analizar y pensar cuál es la mejor decisión, quizás
+    // esa decisión es buena y está unos días perdiendo y después recupera y gana". La cuenta la hace `supervisor:medir`;
+    // esto guarda lo que Claude concluye (`cyc/supervisor/juicio/<id>` {v, txt, ts}) y la tarjeta de Métricas lo muestra al
+    // lado de cada cambio. `<id>=borrar` lo saca. Sin `;go` sólo muestra. El texto no puede llevar `;`.
+    if (/^juzgo:/.test(String(process.env.BILLING_PROBE || ''))) {
+      let partes = String(process.env.BILLING_PROBE).slice('juzgo:'.length).split(';').map((x) => x.trim()).filter(Boolean);
+      const marc = (partes[0] || '').match(/^archivo=([\w.-]+)$/i);
+      if (marc) {
+        let txt = '';
+        try { txt = readFileSync(new URL('./notas/' + marc[1].replace(/\.txt$/i, '') + '.txt', import.meta.url), 'utf8'); }
+        catch { console.log(`No encontré ml-sync/notas/${marc[1]}.txt`); return; }
+        const goCmd = partes.slice(1).some((x) => x.toLowerCase() === 'go');
+        partes = txt.split(/;|\n/).map((x) => x.trim()).filter((x) => x && x.toLowerCase() !== 'go' && !/^#/.test(x));
+        if (goCmd) partes.push('go');
+      }
+      const GO = partes.some((x) => x.toLowerCase() === 'go') && !DRY;
+      const evs = (await db.get('cyc/supervisor/eventos')) || {};
+      const up = {}; let mal = 0;
+      for (const x of partes.filter((y) => y.toLowerCase() !== 'go')) {
+        const m = x.match(/^(MLA\d+_\d{8})\s*=\s*(gano|perdio|igual|espera|nocuenta|borrar)\s*(?:\|(.*))?$/i);
+        if (!m) { console.log(`  ✗ no entiendo "${x.slice(0, 80)}"`); mal++; continue; }
+        if (!evs[m[1]]) { console.log(`  ✗ ${m[1]}: no está en los cambios del supervisor`); mal++; continue; }
+        const v = m[2].toLowerCase();
+        up[m[1]] = v === 'borrar' ? null : { v, txt: String(m[3] || '').trim().slice(0, 500), ts: Date.now() };
+        console.log(`  ${v === 'gano' ? '🟢' : v === 'perdio' ? '🔴' : v === 'espera' ? '⏳' : v === 'borrar' ? '✕' : '⚪'} ${m[1]} · ${evs[m[1]].nom || ''} → ${v}${m[3] ? ': ' + m[3].trim().slice(0, 140) : ''}`);
+      }
+      if (mal) { console.log(`\n${mal} renglón(es) con problema: NO escribo nada.`); return; }
+      if (!GO) { console.log(`\nPRUEBA: ${Object.keys(up).length} juicio(s). Con ";go" se guardan.`); return; }
+      await db.patch('cyc/supervisor/juicio', up);
+      const rl = (await db.get('cyc/supervisor/juicio')) || {};
+      const ok = Object.entries(up).filter(([k, v]) => v === null ? !rl[k] : rl[k] && rl[k].v === v.v).length;
+      console.log(`\nGuardados ${ok} de ${Object.keys(up).length} (releídos).`);
+      return;
+    }
     // BILLING_PROBE=decido:<MLA>=<precio>[!piso][!cruza]|<motivo>[;<MLA>=…][;go] → LOS PRECIOS QUE DECIDE CLAUDE
     // (08/10/2026). Regla suya: *"que haya solo robots automáticos de api para cosas que no hay que pensar, como
     // ventas y cosas así de datos. TODO lo que sea pensar lo veas exclusivamente vos"*. El robot ya no mueve
