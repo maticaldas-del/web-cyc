@@ -883,6 +883,13 @@ lo manda SIEMPRE** (6-10 renglones: lo que descubrió y lo que cambió, con 2-3 
 cortas (12:52, 16:52, 20:52) sólo si cambiaron o descubrieron algo** (2-5 renglones). Va aparte del `pregunto:` de las
 decisiones, que sigue igual. Las dos rutinas ya lo dicen.
 
+## ▶️ ACTIVAR LO PAUSADO ES PRIORIDAD (10/10/2026, regla suya)
+
+Él: *"despausar los productos debe ser prioridad. si hay alguno pausado y hay dudas con activarlo, siempre informarme"*.
+En CADA vuelta (también las cortas): `pausadas:25` por ml-consulta y `activarfull:go:25` por ml-sync para lo que da.
+Toda pausada con mercadería en Full que NO se activa (margen bajo, costo dudoso, sin ficha) va en el `pregunto:` con el
+motivo y la propuesta. Nunca queda pausada en silencio.
+
 ## 🧑‍⚖️ LOS RESULTADOS DE PRECIOS LOS JUZGO YO, TODOS LOS DÍAS (10/10/2026, pedido suyo)
 
 Él: *"quiero que aparezca todo, desde la primer decisión del robot anterior y que hagas el análisis si es necesario de
