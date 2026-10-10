@@ -292,6 +292,13 @@ Qué chequear: que el total de renglones cierre con las publicaciones vivas con 
   con `{ info: true }` · que la rutina de Claude decida los precios con `decido` (etapa 1).
 
 
+- **Informe 7b: reclamos abiertos y mensajes sin leer (auditoría del 10/10/2026):** el `chequeo` veía 3 reclamos
+  abiertos (uno de Matías de 2 días con "podés: reembolsar, mandar mensaje, abrir disputa") y 3 mensajes de
+  compradores sin leer, y el `informe` no: su sección 7 sólo miraba ventas canceladas de esas horas. Ahora la 7b
+  pregunta a ML los reclamos abiertos de las 4 cuentas (producto, días, motivo, qué te deja hacer ML; ⏰ los que
+  esperan respuesta) y cuántos mensajes de posventa hay sin leer. Chequear: sin número de orden ni texto del
+  comprador en el registro; que un 429 diga "no pude leer" y no "0 reclamos".
+
 ## 6 · IDEAS NUEVAS
 - **QUÉ TIENE QUE PROPONER, regla suya del 09/10/2026:** *"lo que hicimos hoy con los colores y movimientos y
   efectos de las tarjetas son detalles que quiero que estén en la revisión de diseño o ideas para ir mejorando la

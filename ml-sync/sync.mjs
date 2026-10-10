@@ -34894,6 +34894,32 @@ async function main() {
       console.log(`\n── 7 · CANCELADAS Y RECLAMOS (${malas.length}) · VENDIDAS SIN COSTO O SIN FICHA (${Object.keys(sinCosto).length}) ──`);
       for (const x of malas.slice(0, 15)) console.log('· ' + x);
       for (const [n, q] of Object.entries(sinCosto).slice(0, 15)) console.log(`· sin costo/ficha: ${n} · ${q} u.`);
+      // 7b) RECLAMOS ABIERTOS EN ML Y MENSAJES SIN LEER (auditoría del 10/10/2026: el `chequeo` los veía
+      // —"reclamo de 2 días, todavía podés contestarlo"— y el informe no: la sección 7 sólo mira ventas
+      // canceladas de estas horas, y un reclamo abierto hace días que espera respuesta no es eso).
+      // Mismo pedido que el chequeo. Sin número de orden ni texto del comprador (registro público).
+      try {
+        const recl = []; let msgsI = 0; const errR = [];
+        for (const label of labels) {
+          const tk = tokI[label]; if (!tk) { errR.push(`${label}: sin entrar`); continue; }
+          try {
+            const c = await mlGet('/post-purchase/v1/claims/search?status=opened&limit=20', tk);
+            for (const x of (c?.data || [])) {
+              const dias = x.date_created ? Math.floor((ahoraI - new Date(x.date_created).getTime()) / 864e5) : null;
+              const acc2 = ((x.players || []).find((p) => p.role === 'respondent')?.available_actions || []).map((a) => a.action || a).filter(Boolean);
+              let prodR = '';
+              try { if (x.resource === 'order' && x.resource_id) { const o = await mlGet('/orders/' + x.resource_id, tk); prodR = corta((((o?.order_items || [])[0] || {}).item || {}).title || '', 40); } } catch { }
+              recl.push({ label, dias, razon: x.reason_id || x.type || '?', etapa: x.stage || '', acc2, prodR });
+            }
+          } catch (eC) { errR.push(`${label} reclamos: ${String(eC.message || eC).slice(0, 50)}`); }
+          try { msgsI += (await mlGet('/messages/unread?role=seller&tag=post_sale', tk))?.total || 0; }
+          catch (eM) { errR.push(`${label} mensajes: ${String(eM.message || eM).slice(0, 50)}`); }
+        }
+        const esperan = recl.filter((r) => r.acc2.length);
+        console.log(`\n── 7b · RECLAMOS ABIERTOS (${recl.length} · ${esperan.length} esperan respuesta tuya) · MENSAJES DE COMPRADORES SIN LEER (${msgsI}) ──`);
+        for (const r of recl.sort((a, b) => b.acc2.length - a.acc2.length)) console.log(`${r.acc2.length ? '⏰' : '·'} ${r.label} · ${r.prodR || '?'} · ${r.dias == null ? '?' : r.dias + ' d'} · ${r.razon}${r.etapa ? ' · ' + r.etapa : ''} · ${r.acc2.length ? 'podés: ' + r.acc2.join(', ') : 'lo maneja ML'}`);
+        if (errR.length) console.log('   ⚠️ no pude leer: ' + errR.join(' | '));
+      } catch (eR) { console.log('reclamos: no pude mirarlos · ' + eR.message); }
       // 8) Pedidos: lo que más plata pone en riesgo si no se compra
       try {
         const peds = [...Object.values((await db.get('cyc/pedidos')) || {}).map((x) => ({ ...x, _c: 'Bs As' })), ...Object.values((await db.get('cyc/pedidos_py')) || {}).map((x) => ({ ...x, _c: 'PY' }))]
