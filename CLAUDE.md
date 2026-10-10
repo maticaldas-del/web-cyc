@@ -883,6 +883,16 @@ lo manda SIEMPRE** (6-10 renglones: lo que descubrió y lo que cambió, con 2-3 
 cortas (12:52, 16:52, 20:52) sólo si cambiaron o descubrieron algo** (2-5 renglones). Va aparte del `pregunto:` de las
 decisiones, que sigue igual. Las dos rutinas ya lo dicen.
 
+## 🔢 PSICOLOGÍA DEL PRECIO (10/10/2026, él eligió 1a 2a 3a 4b)
+
+ · **Terminaciones:** todo precio que decido termina en 90 o 990 (99 en lo más barato). Nunca $10.000 o $5.000 redondos.
+ · **Números redondos:** una suba que cruza $5.000, $10.000, $20.000, $50.000, $100.000 (lista en `UMBRALES_REDONDOS`) se
+   frena en $X.990. Se cruza sólo si la ganancia extra vale claramente la pena, y se dice en el motivo del 🧠. `decido` marca
+   con 🔢 lo que termina redondo o cruza uno (avisa, no frena).
+ · **Se mide:** `redondos[:días]` (ml-consulta, solo lee) compara los cambios que cruzan un redondo contra los que no. Si
+   los que cruzan no venden peor, se saca la regla de arriba.
+ · **Productos nuevos: arrancan directo al precio final** (eligió la b). No se arranca más barato para juntar las primeras ventas.
+
 ## 📨 CLAUDE LEE LOS AVISOS DE TELEGRAM Y RESUELVE LO QUE PUEDE (08/10/2026)
 
 Pedido suyo: *"me gustaria que vos tambien veas lo que me manda y ver si lo podes resolver vos (…) que me envies un

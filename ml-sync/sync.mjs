@@ -80,6 +80,22 @@ const norm = (s) => (s || '')
 const sid = (s) => String(s).replace(/[^a-z0-9]/gi, '_');
 
 // Fecha local Argentina (UTC-3) → clave YYYY_MM_DD que usa la app.
+// PSICOLOGÍA DEL PRECIO (10/10/2026, él eligió 1a 2a 3a 4b). Los números redondos que el comprador "ve" (y por los que
+// filtra en ML). Lo usan `decido` (avisa) y `redondos` (mide si de verdad pesa en nuestras ventas).
+const UMBRALES_REDONDOS = [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 12000, 15000, 20000, 25000, 30000, 40000, 50000, 60000, 70000, 80000, 90000, 100000, 120000, 150000, 200000, 250000, 300000, 400000, 500000, 600000];
+function umbralRedondoCruzado(p0, p1) {
+  const lo = Math.min(p0, p1), hi = Math.max(p0, p1); let t = null;
+  for (const u of UMBRALES_REDONDOS) if (lo < u && hi >= u) t = p1 > p0 ? (t ?? u) : u;
+  return t;
+}
+function precioRedondoAviso(p0, p1) {
+  const a = [];
+  if (p1 >= 1000 && p1 % 1000 === 0) a.push(`termina redondo (${'$' + p1.toLocaleString('es-AR')}): mejor ${'$' + (p1 - 10).toLocaleString('es-AR')}`);
+  const u = p1 > p0 ? umbralRedondoCruzado(p0, p1) : null;
+  if (u) a.push(`la suba cruza ${'$' + u.toLocaleString('es-AR')}: quedarse en ${'$' + (u - 10).toLocaleString('es-AR')} salvo que la ganancia extra lo valga (y decirlo en el motivo)`);
+  return a.join(' · ');
+}
+
 function dayKeyFromISO(iso) {
   const d = new Date(iso);
   const p = new Intl.DateTimeFormat('en-CA', {
@@ -35880,6 +35896,10 @@ async function main() {
         console.log(`\n${d.mla} · ${d.cuenta} · ${d.nom}`);
         if (d.accion === 'nada') { console.log(`   ✗ ${d.mismoPrecio ? 'el precio queda igual' : 'no se toca'}: ${d.motivo}${forzar[d.mla] && forzar[d.mla].activar ? ' · (y la activo si está pausada y deja el piso)' : ''}`); continue; }
         console.log(`   ${d.accion === 'sube' ? '⬆️ SUBIR' : '⬇️ BAJAR'} ${money(d.p0)} → ${money(d.a)}${d.cruza ? ' (cruza $33.000)' : ''} · margen ${d.mg0}% → ${d.mgA}%${d.pisoAut ? ' (abajo del piso, con !piso)' : ''}${d.gPorU ? ` · por unidad ${money(d.gPorU.antes)} → ${money(d.gPorU.despues)}` : ''}`);
+        // PSICOLOGÍA DEL PRECIO (10/10/2026, él eligió 1a y 2a): avisa, no frena. Terminación redonda (múltiplo de $1.000)
+        // o una suba que cruza un número redondo — se cruza sólo si la ganancia extra vale claramente la pena y se explica.
+        const _rd = precioRedondoAviso(d.p0, d.a);
+        if (_rd) console.log(`   🔢 ${_rd}`);
         console.log(`   ${d.motivo}`);
       }
       if (!GOp || DRY) { console.log('\nPRUEBA: no toqué nada. Para aplicar, el mismo comando con ;go al final.'); return; }
@@ -36244,6 +36264,65 @@ async function main() {
       console.log(`\n➡️ ${c.nombre}: ${fin.margen ?? '—'}% · ML ${fin.mlTitulo || fin.mlTit || '?'} · $${fin.mlPrecio || '?'}${fin.mlCuotasPct ? ` · cuotas ${fin.mlCuotasPct}%${fin.mlCuotasAuto ? ' (las vio el robot)' : ''}` : ' · sin cuotas'} · ${Number(fin.pedirU) || 0} u.${fin.no ? ' · DESCARTADO: ' + (fin.motivo || '') : ''}`);
       return;
     }
+    // BILLING_PROBE=redondos[:días] → ¿CRUZAR UN NÚMERO REDONDO FRENA LAS VENTAS? (10/10/2026, él eligió la 3a). SOLO LEE.
+    // Recorre la línea de tiempo (`mlapi/linea`) de cada publicación, encuentra cada cambio de precio y lo compara: los que
+    // cruzan un número redondo ($5.000, $10.000, $20.000…) contra los que no, del mismo tamaño. Ventas por día CON stock,
+    // antes y después (hasta 30 días, cortado en el cambio siguiente, sin el día del cambio). Si los que cruzan no venden
+    // peor que los que no cruzan, la regla 2 (frenar abajo del redondo) se saca. Un día sin dato de stock no cuenta.
+    if (/^redondos(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const nd = Math.max(30, Math.min(400, Number(String(process.env.BILLING_PROBE).split(':')[1]) || 365));
+      const [lin, lk] = await Promise.all([db.get('mlapi/linea').catch(() => null), db.get('cyc/mllinks').catch(() => null)]);
+      if (!lin || !lk) { console.log('⚠️ no pude leer la línea de tiempo o las publicaciones: no mido nada a medias'); return; }
+      const desde = new Date(Date.now() - nd * 864e5).toISOString().slice(0, 10).replace(/-/g, '_');
+      const W = 30, MIN_DIAS = 7, MIN_U = 3;
+      const conStock = (x) => { const v = x && (x.stF ?? x.st); return v == null ? null : Number(v) > 0; };
+      const filas = []; const sinDato = { pocosDias: 0, pocasVentas: 0, grande: 0 };
+      for (const [mla, dd] of Object.entries(lin)) {
+        if (!dd || typeof dd !== 'object') continue;
+        const ks = Object.keys(dd).filter((k) => /^\d{4}_\d{2}_\d{2}$/.test(k) && k >= desde).sort();
+        let prev = null;
+        for (let i = 0; i < ks.length; i++) {
+          const p = Number(dd[ks[i]] && dd[ks[i]].p); if (!(p > 0)) continue;
+          if (prev && prev.p !== p) {
+            const p0 = prev.p, p1 = p, pct = (p1 - p0) / p0 * 100;
+            if (Math.abs(pct) < 2) { prev = { p, i }; continue; }
+            if (Math.abs(pct) > 25) { sinDato.grande++; prev = { p, i }; continue; }
+            // ventana de antes: días con el precio p0, hacia atrás hasta W o el cambio anterior
+            const mide = (desdeI, hastaI, paso) => { let dias = 0, u = 0, n = 0; for (let j = desdeI; paso > 0 ? j <= hastaI : j >= hastaI; j += paso) { if (n >= W) break; const x = dd[ks[j]] || {}; n++; const cs = conStock(x); if (cs !== true) continue; dias++; u += Number(x.u) || 0; } return { dias, u }; };
+            let ini = prev.i; while (ini > 0 && Number(dd[ks[ini - 1]] && dd[ks[ini - 1]].p) === p0) ini--;
+            const A = mide(i - 1, Math.max(ini, i - W), -1);
+            let fin = i + 1; while (fin + 1 < ks.length && Number(dd[ks[fin + 1]] && dd[ks[fin + 1]].p) === p1) fin++;
+            const D = i + 1 < ks.length ? mide(i + 1, Math.min(fin, i + W), 1) : { dias: 0, u: 0 };
+            if (A.dias < MIN_DIAS || D.dias < MIN_DIAS) sinDato.pocosDias++;
+            else if (A.u < MIN_U) sinDato.pocasVentas++;
+            else {
+              const rA = A.u / A.dias, rD = D.u / D.dias;
+              const red = umbralRedondoCruzado(p0, p1);
+              filas.push({ mla, nom: String((lk[mla] && lk[mla].title) || mla).slice(0, 40), cta: (lk[mla] && lk[mla].cuenta) || '?', dia: ks[i], p0, p1, pct, red, barrera: (p0 < 33000) !== (p1 < 33000), rA, rD, ratio: rD / rA, dA: A.dias, dD: D.dias });
+            }
+          }
+          prev = { p, i };
+        }
+      }
+      const med = (a) => { if (!a.length) return null; const b = [...a].sort((x, y) => x - y); const m = b.length >> 1; return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; };
+      const f$ = (n) => '$' + Math.round(n).toLocaleString('es-AR');
+      console.log(`=== ¿CRUZAR UN NÚMERO REDONDO FRENA LAS VENTAS? · ${nd} días · ${filas.length} cambios medibles ===`);
+      console.log(`(afuera: ${sinDato.pocosDias} con menos de ${MIN_DIAS} días con stock de un lado · ${sinDato.pocasVentas} con menos de ${MIN_U} u. antes · ${sinDato.grande} cambios de más de 25%)`);
+      const grupo = (fn) => filas.filter((r) => !r.barrera && fn(r));
+      for (const [tit, dir] of [['SUBAS', 1], ['BAJAS', -1]]) {
+        const cruz = grupo((r) => Math.sign(r.pct) === dir && r.red), nocr = grupo((r) => Math.sign(r.pct) === dir && !r.red);
+        const desc = (a) => a.length ? `${a.length} cambios · tamaño mediano ${med(a.map((r) => Math.abs(r.pct))).toFixed(1)}% · ventas después/antes mediana ×${med(a.map((r) => r.ratio)).toFixed(2)}` : 'ninguno';
+        console.log(`\n■ ${tit}`);
+        console.log(`  cruzan un redondo:   ${desc(cruz)}`);
+        console.log(`  no cruzan ninguno:   ${desc(nocr)}`);
+        for (const r of cruz.sort((a, b) => a.dia < b.dia ? 1 : -1)) console.log(`    ${r.dia.slice(5).replace('_', '/')} ${r.mla} ${r.cta} · ${r.nom} · ${f$(r.p0)} → ${f$(r.p1)} (cruza ${f$(r.red)}) · ${r.rA.toFixed(2)} → ${r.rD.toFixed(2)} u/día (${r.dA}/${r.dD} d) ×${r.ratio.toFixed(2)}`);
+      }
+      const bar = filas.filter((r) => r.barrera).length;
+      if (bar) console.log(`\n(${bar} cambio(s) cruzaron también los $33.000: fuera de la comparación, ahí cambia el envío)`);
+      console.log('\nCómo leerlo: si en las SUBAS los que cruzan tienen un × bastante más bajo que los que no cruzan (con tamaños parecidos), el número redondo pesa y la regla 2 se queda. Si dan parecido, no pesa en nuestros productos. Con pocos casos no se concluye nada.');
+      return;
+    }
+
     // BILLING_PROBE=verlinea:<palabras>[:días] → LA LÍNEA DE TIEMPO CRUDA DE UNA FICHA (04/10/2026). Pedido suyo
     // con un gráfico donde la ▼ no se veía en la línea del precio. Por publicación y día: estado, precio y
     // unidades que guarda mlapi/linea, más los cambios de cyc/supervisor/eventos. SOLO LEE.

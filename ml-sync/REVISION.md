@@ -436,6 +436,15 @@ Todo lo que guarda la historia día por día y las pantallas que la dibujan.
   siempre, las cortas sólo si hicieron o encontraron algo. Chequear: sin datos de compradores ni números de orden
   (el registro es público); que no reemplace al `pregunto:` de las decisiones.
 
+- **Psicología del precio (10/10/2026, él eligió 1a 2a 3a 4b):** (1) los precios que decido terminan en 90/990 (99 en lo
+  más barato), nunca redondos · (2) una suba que cruza un redondo ($5.000, $10.000, $20.000…) se frena en $X.990 salvo que la
+  ganancia extra lo valga, y se dice en el motivo · (4) los productos nuevos arrancan directo al precio final (NO se arranca
+  más barato para juntar ventas). Dónde vive: `UMBRALES_REDONDOS`, `umbralRedondoCruzado`, `precioRedondoAviso` (sync.mjs);
+  `decido` imprime `🔢` al lado de cada cambio que termina redondo o cruza uno (avisa, no frena). (3) Probe **`redondos[:días]`**
+  (solo lee): cambios de precio de la línea de tiempo, los que cruzan un redondo contra los que no (mismo tamaño, sin los que
+  cruzan $33.000), ventas por día CON stock antes/después. Qué chequear: que no cuente días sin dato de stock; con pocos casos
+  no concluir; si los que cruzan no venden peor, se saca la regla 2.
+
 ### Pendientes de la revisión 9 (09/10/2026, a la madrugada) — se van cerrando en las vueltas
 - **Publicaciones con variantes no tienen dueño de precio:** `decido`/`analizapromo`/`entrarpromo` las rechazan ("la maneja el robot de siempre") y con SOLO_DATOS el robot no las toca. Hace falta un camino de Claude por `raiseVariations` (y que la planilla las muestre como "nadie las maneja").
 - **`escasez` no mira colores** (saltea las claves `__v__`): un color con 1 u. dentro de un producto con stock no salta.
