@@ -37991,6 +37991,8 @@ async function main() {
         const c = compras[id];
         if (!c) { console.log(`No existe el pedido ${id}. Corré \`pyped\` para ver los que están en camino.`); return; }
         if (c.estado !== 'camino') { console.log(`El pedido ${id} está "${c.estado}", no en camino: no se toca.`); return; }
+        // Sin el ticket real no se cierra (regla suya del 10/10/2026): el costo de cada ficha tiene que salir de lo PAGADO.
+        if (!c.ticket) { console.log(`❌ El pedido ${id} no tiene el ticket cargado. Primero va \`compray:${c.fecha}|det=<código>*<unidades>*<precio pagado>;…|go\` con el ticket del mayorista. No escribo nada.`); return; }
         const _repIts = (c.items || []).filter((x) => x && x.prodId && !x.id);
         console.log(`=== LLEGÓ EL PEDIDO ${id} (${_repIts.length ? _repIts.length + ' probado(s)' : ''}${_repIts.length && (c.items || []).some((x) => x && x.id) ? ' + ' : ''}${(c.items || []).some((x) => x && x.id) ? (c.items || []).filter((x) => x && x.id).length + ' nuevo(s)' : ''} del ${c.fecha}) ${GO ? '' : '(PRUEBA — no escribo nada)'} ===`);
         const plan = [];
@@ -38273,6 +38275,12 @@ async function main() {
             const o = { ...(_esRepoHit ? {} : { id: (hit && hit.src.id) || ('x' + cod) }), nom: (hit && String(hit.src.nom || hit.src.nombre || '').slice(0, 120)) || cod, cod, u, usd: pu };
             if (hit) {
               for (const k of ['mlId', 'link', 'margen', 'ganancia', 'pesoKg', 'pesoTxt', 'prodId']) if (hit.src[k] != null) o[k] = hit.src[k];
+              // EL PRECIO DE LA WEB QUEDA AL LADO DEL PAGADO (10/10/2026, él: "los pedidos que cargo en paraguay siempre
+              // tienen descuento de lo que aparece en la web (…) quizás hay productos con más descuento que otro, o
+              // algunos quizás nada"). El de la web es el que se guardó al hacer el pedido; si el ticket ya se había
+              // cargado antes, se conserva el `usdWeb` de esa vez (no el pagado).
+              const _w = parseFloat(hit.src.usdWeb) > 0 ? parseFloat(hit.src.usdWeb) : (parseFloat(hit.src.usd) > 0 ? parseFloat(hit.src.usd) : (parseFloat(hit.src.nisseiUSD) > 0 ? parseFloat(hit.src.nisseiUSD) : 0));
+              if (_w > 0) o.usdWeb = Math.round(_w * 100) / 100;
               if (o.margen != null) o.margen = Math.round(parseFloat(o.margen) * 10) / 10;
             } else sinNombre.push(cod);
             itemsDet.push(o);
@@ -38282,6 +38290,9 @@ async function main() {
           console.log(`  Detalle de la factura: ${itemsDet.length} producto(s) · ${uDet} unidades · US$ ${sumDet.toFixed(2)}`);
           if (Math.abs(sumDet - usd) > 0.5) console.log(`  ⚠️ NO CIERRA: el detalle suma US$ ${sumDet.toFixed(2)} y pusiste usd=${usd.toFixed(2)}. Se guarda igual, pero uno de los dos está mal.`);
           if (sinNombre.length) console.log(`  ⚠️ ${sinNombre.length} código(s) sin emparejar (quedan con el código de nombre): ${sinNombre.join(', ')}`);
+          const _webT = itemsDet.reduce((a, x) => a + (x.usdWeb > 0 ? x.usdWeb : x.usd) * x.u, 0);
+          for (const x of itemsDet) if (x.usdWeb > 0 && Math.abs(x.usdWeb - x.usd) >= 0.005) console.log(`    ${String(x.nom).slice(0, 50)}: web US$ ${x.usdWeb.toFixed(2)} → pagado US$ ${x.usd.toFixed(2)} (${x.usd < x.usdWeb ? '−' : '+'}${Math.abs((1 - x.usd / x.usdWeb) * 100).toFixed(1)}%)`);
+          console.log(`  Descuento contra la web: US$ ${(_webT - sumDet).toFixed(2)} (${_webT > 0 ? ((1 - sumDet / _webT) * 100).toFixed(1) : '0'}%) · web US$ ${_webT.toFixed(2)} → pagado US$ ${sumDet.toFixed(2)}`);
         }
         // SI EL PEDIDO YA TIENE DETALLE GUARDADO, NO SE TOCA. Punto.
         // El panel lo congela al apretar "Ya lo pedí" —con el código, el precio, el margen, el peso
@@ -38327,6 +38338,9 @@ async function main() {
           pagos: { mercaderia: Math.round(merc), cambista: Math.round(cambio), envio: Math.round(envio), retira: Math.round(retira), otros: Math.round(otros) },
           items: itemsFin, nota: campos.nota || (ya && ya.nota) || '', tcPanel: tcRef || null,
           usdPanel, kgCorreo: kgPedido > 0 ? kgPedido : null,
+          // EL TICKET ES OBLIGATORIO PARA CERRAR EL PEDIDO (10/10/2026, regla suya): sólo `det=` (el ticket real del
+          // mayorista, renglón por renglón) lo marca. Sin esto "Llegó" no cierra el pedido.
+          ...(itemsDet ? { ticket: { ts: Date.now(), productos: itemsDet.length, usdWeb: Math.round(itemsDet.reduce((a, x) => a + (x.usdWeb > 0 ? x.usdWeb : x.usd) * x.u, 0) * 100) / 100, usdPagado: Math.round(itemsDet.reduce((a, x) => a + x.usd * x.u, 0) * 100) / 100 } } : {}),
           // Qué gastos se cargaron A PROPÓSITO (aunque sea 0): un 0 escrito no es lo mismo que uno que falta.
           pagosOk: [...new Set([...(((ya && ya.pagosOk) || [])), ...PY_GASTOS.filter((g) => campos[g.campo] != null).map((g) => g.k)])],
           incompleto: !(envio > 0) || !(merc > 0), ts: Date.now(),

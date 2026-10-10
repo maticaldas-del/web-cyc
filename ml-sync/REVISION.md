@@ -290,6 +290,16 @@ las dos fotos (`revfotos.py armar` acepta los ids `p…~MLA…`); va en la compl
 **Qué chequear:** que la foto de ML del renglón sea del color pedido; publicaciones de OTRO producto pegadas a una
 ficha (el Joystick tenía pegado un genérico de Xbox 360 con cable).
 
+### Paraguay: el ticket es obligatorio y se ve el descuento (10/10/2026, v23.12)
+Él: *"los pedidos que cargo en paraguay siempre tienen descuento de lo que aparece en la web (…) quizás hay productos
+con más descuento que otro, o algunos quizás nada (…) agregar el ticket como una info obligatoria para cerrar el
+pedido"*. **Hecho:** `compray:<fecha>|det=<cod>*<u>*<pagado>;…|go` guarda en cada renglón `usdWeb` (el precio de la web
+del pedido; si ya había ticket, se conserva el de antes) y `usd` (pagado), y marca `ticket {ts, productos, usdWeb,
+usdPagado}`. Sin `ticket`, "Ya llegó" (web) y `pyped:llego` (robot) no cierran. La tarjeta del pedido dice "🧾 falta
+ticket" o "🧾 −N%", y adentro el descuento total y por producto (web tachado → pagado).
+**Qué chequear:** que el `usdWeb` no se pise con el pagado al recargar el ticket; que la ficha nueva nazca con el
+precio PAGADO; pedidos viejos en camino sin ticket.
+
 ## 4 · CHOQUES
 - `mlapi/lineatodo` lo escriben `ritmo:go` (noche) y `lineatodo:go` (ml-consulta): los dos con la
   misma función `calcLineaTodo`.

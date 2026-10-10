@@ -2502,7 +2502,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.11';
+const APP_VERSION='23.12';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2513,6 +2513,7 @@ const APP_VERSION='23.11';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.12',f:'10/10/2026',h:'02:55',c:[{n:3,t:'🇵🇾 Pedidos de Paraguay: el ticket real del mayorista es obligatorio para cerrar un pedido ("Ya llegó" no deja sin él). Con el ticket, cada producto muestra el precio de la web tachado y lo que pagaste, y el pedido el descuento total.'}]},
   {v:'23.11',f:'10/10/2026',h:'02:30',c:[{n:2,t:'🤖 Métricas, resultados de precios: debajo de cada cambio (del robot viejo y míos) va mi juicio, que reviso todos los días: si de verdad ganó o perdió por el precio, o si fue otra cosa. Mis decisiones desde el 09/10 se miden igual que las del robot.'}]},
   {v:'23.10',f:'10/10/2026',h:'01:45',c:[{n:2,t:'🇵🇾 Pedidos Paraguay probados: la foto de ML es la del color que se pide (antes, la de cualquier publicación). Si el producto tiene varios colores, avisa en rojo que el código de Paraguay es uno solo y hay que mirar que la foto sea del color pedido.'}]},
   {v:'23.09',f:'09/10/2026',h:'15:20',c:[{n:1,t:'⚡ Ventas: toda venta de 2.000 de score o más tiene figuras atrás, a la velocidad de su neto. Antes las que apenas pasaban los 2.000 quedaban casi sin figuras.'}]},
@@ -12850,6 +12851,9 @@ async function pyReclamarLlegada(id){
 async function pyPedidoLlego(id){
   const c=(state.compraspy||{})[id];if(!c)return;
   if(c.estado!=='camino'){toast('Ese pedido ya figura como llegado','err');return;}
+  // EL TICKET ES OBLIGATORIO PARA CERRARLO (10/10/2026, regla suya): sin el ticket real del mayorista, el costo de
+  // cada ficha saldría del precio de la web y no del pagado (casi siempre hay descuento, distinto en cada producto).
+  if(!c.ticket){alert(`Falta el ticket de este pedido (${c.fecha}).\n\nPasáselo a Claude por el chat: carga lo que pagaste renglón por renglón y ahí se puede cerrar. Hasta entonces sigue "en camino".`);return;}
   const _repIts=(c.items||[]).filter(x=>x&&x.prodId&&!x.id);
   if(!(c.items||[]).some(x=>x&&x.id)){
     // Reposición: los productos YA tienen ficha. No se crea nada; sólo se cierra y se recuerda
@@ -13051,7 +13055,7 @@ function _pyItsHTML(its,rec){const _r=rec>=1?rec:RECARGO_PY;
           <div style="font-size:.7rem;font-weight:600;line-height:1.3">${it.nom||'—'}</div>
           <div style="font-size:.6rem;color:var(--muted);margin-top:2px;line-height:1.7">
             ${it.cod?'🔖 '+it.cod:'<span style="color:var(--amber)">🔖 sin código</span>'}
-            ${it.usd?` · US$ ${it.usd.toFixed(2)} + ${((_r-1)*100).toFixed(rec>=1?1:0)}%${rec>=1?' real':''} = US$ ${(Math.round(it.usd*_r*100)/100).toFixed(2)} c/u`:' · <span style="color:var(--amber)">sin precio</span>'}
+            ${it.usd?` · ${it.usdWeb>0&&Math.abs(it.usdWeb-it.usd)>=0.005?`<s style="opacity:.7">web US$ ${it.usdWeb.toFixed(2)}</s> → pagado <b style="color:${it.usd<it.usdWeb?'var(--green)':'var(--red)'}">US$ ${it.usd.toFixed(2)}</b> (${it.usd<it.usdWeb?'−':'+'}${Math.abs((1-it.usd/it.usdWeb)*100).toFixed(1).replace('.',',')}%)`:`US$ ${it.usd.toFixed(2)}${it.usdWeb>0?' (sin descuento)':''}`} + ${((_r-1)*100).toFixed(rec>=1?1:0)}%${rec>=1?' real':''} = US$ ${(Math.round(it.usd*_r*100)/100).toFixed(2)} c/u`:' · <span style="color:var(--amber)">sin precio</span>'}
             ${it.margen!=null?` · margen medido al pedirlo <b style="color:${it.margen>=candPisoDe(it)?'var(--green)':'var(--amber)'}">${it.margen.toFixed(1)}%</b>`:' · <span style="color:var(--muted)">sin margen medido</span>'}
             ${it.pesoKg!=null?` · ${it.pesoKg.toFixed(3)} kg c/u`:(it.pesoTxt?` · peso "${it.pesoTxt}" <span style="color:var(--amber)">(sin unidad, no lo cuento)</span>`:'')}
             ${(lML||it.link)?`<br>${lML?`<a href="${lML}" target="_blank" rel="noopener" style="color:#60a5fa">ver en ML</a>`:''}${lML&&it.link?' · ':''}${it.link?`<a href="${it.link}" target="_blank" rel="noopener" style="color:#60a5fa">ver en comprasparaguay</a>`:''}`:'<br><span style="color:var(--amber)">sin links guardados</span>'}
@@ -13073,6 +13077,7 @@ function pyPedidoResumenHTML(c,enCamino,dias,tarde){
     <span style="font-size:.82rem;font-weight:700;white-space:nowrap">${dm(c.fecha)}</span>
     <span style="font-size:1.05rem;font-weight:800;color:var(--text);white-space:nowrap" title="Lo que te salió el pedido puesto en la oficina: la factura más todos los gastos${pyRecargoReal(c).r?'':' (con el 17% estimado: faltan gastos)'}">US$ ${(Math.round((parseFloat(c.usdCrudo)||0)*(pyRecargoReal(c).r||RECARGO_PY)*100)/100).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
     ${pyRecargoChip(c)}
+    ${c.ticket?(()=>{const w=Number(c.ticket.usdWeb)||0,d=w-(Number(c.ticket.usdPagado)||0);return d>0.004?`<span style="font-size:.62rem;color:var(--green);white-space:nowrap" title="Descuento del ticket contra el precio de la web">🧾 −${w>0?(d/w*100).toFixed(1).replace('.',','):'0'}%</span>`:'';})():(c.estado==='camino'?'<span style="font-size:.62rem;color:var(--red);font-weight:700;white-space:nowrap" title="Sin el ticket real el pedido no se puede cerrar">🧾 falta ticket</span>':'')}
     <span style="margin-left:auto;font-size:.68rem;color:${col};font-weight:700;white-space:nowrap">${est}</span>
     <span style="font-size:.6rem;color:var(--muted)">▾</span>`;
 }
@@ -13089,6 +13094,8 @@ function pyPedidoDetalleHTML(c){
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px">
       <div style="flex:1;min-width:190px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 11px">
         <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">La plata</div>
+        ${c.ticket?(()=>{const w=Number(c.ticket.usdWeb)||0,pg=Number(c.ticket.usdPagado)||0,d=w-pg;return fila('🧾 ticket','<b style="color:var(--green)">cargado</b>','El ticket real del mayorista, renglón por renglón. Cada producto guarda lo que se pagó y lo que decía la web.')+fila('precio de la web','US$ '+w.toFixed(2))+fila('pagado (ticket)','US$ '+pg.toFixed(2))+fila('descuento',`<b style="color:${d>0?'var(--green)':d<0?'var(--red)':'var(--muted)'}">${d>0?'−':d<0?'+':''}US$ ${Math.abs(d).toFixed(2)}${w>0?' ('+Math.abs(d/w*100).toFixed(1).replace('.',',')+'%)':''}</b>`,'Lo que pagaste de menos (o de más) contra el precio de la web. Producto por producto, abajo en La mercadería.');})()
+          :fila('🧾 ticket','<b style="color:var(--red)">falta</b>','Sin el ticket real el pedido no se puede cerrar: pasáselo a Claude por el chat.')}
         ${fila('mercadería cruda','US$ '+(c.usdCrudo||0).toFixed(2),'El precio de comprasparaguay, sin el 17%.')}
         ${fila('con el '+(pyRecargoReal(c).r?((pyRecargoReal(c).r-1)*100).toFixed(1)+'% real':Math.round((RECARGO_PY-1)*100)+'% estimado'),'US$ '+puesto.toFixed(2),'Incluye comprar los dólares, el correo y el que despacha. Con todos los gastos cargados es el recargo REAL de este pedido; si no, el estimado.')}
         ${tc?fila('en pesos',fmt(Math.round(puesto*tc))+' <span style="color:var(--muted);font-size:.9em">· dólar '+fmt(Math.round(tc))+'</span>','Con el dólar del DÍA del pedido, no el de hoy: lo que compraste a un precio no cambia solo.'):fila('en pesos','<span style="color:var(--amber)">no había dólar cargado ese día</span>')}

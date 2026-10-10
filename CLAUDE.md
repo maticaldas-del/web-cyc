@@ -883,6 +883,13 @@ lo manda SIEMPRE** (6-10 renglones: lo que descubrió y lo que cambió, con 2-3 
 cortas (12:52, 16:52, 20:52) sólo si cambiaron o descubrieron algo** (2-5 renglones). Va aparte del `pregunto:` de las
 decisiones, que sigue igual. Las dos rutinas ya lo dicen.
 
+## 🧾 PARAGUAY: EL TICKET REAL ES OBLIGATORIO PARA CERRAR EL PEDIDO (10/10/2026, regla suya)
+
+Él: *"siempre te voy a pasar el ticket del pedido real. agregar el ticket como una info obligatoria para cerrar el
+pedido bien"*. Cuando lo pase: `compray:<fecha>|det=<código>*<unidades>*<precio pagado>;…|go` por ml-sync (los códigos
+se emparejan también por el final). Queda el precio de la web y el pagado de cada producto, y el descuento se ve en el
+pedido. Sin ticket, "Ya llegó" no deja cerrar. El ticket trae datos del mayorista: no se sube al repo.
+
 ## ▶️ ACTIVAR LO PAUSADO ES PRIORIDAD (10/10/2026, regla suya)
 
 Él: *"despausar los productos debe ser prioridad. si hay alguno pausado y hay dudas con activarlo, siempre informarme"*.
