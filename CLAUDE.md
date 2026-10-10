@@ -883,6 +883,19 @@ lo manda SIEMPRE** (6-10 renglones: lo que descubrió y lo que cambió, con 2-3 
 cortas (12:52, 16:52, 20:52) sólo si cambiaron o descubrieron algo** (2-5 renglones). Va aparte del `pregunto:` de las
 decisiones, que sigue igual. Las dos rutinas ya lo dicen.
 
+## 🧑‍⚖️ LOS RESULTADOS DE PRECIOS LOS JUZGO YO, TODOS LOS DÍAS (10/10/2026, pedido suyo)
+
+Él: *"quiero que aparezca todo, desde la primer decisión del robot anterior y que hagas el análisis si es necesario de
+todos y que sea todos los días"* y *"no hay reglas, 'si perdió hacé esto', siempre tenés que analizar y pensar cuál es la
+mejor decisión, quizás esa decisión es buena y está unos días perdiendo y después recupera y gana"*.
+ · En la completa de las 08:52: `supervisor:medir:go` por ml-sync (sólo mide, no vuelve nada atrás ni manda Telegram) y
+   leer la lista entera (`@@ <id>`). Juzgar cada cambio con `juzgo:<id>=<gano|perdio|igual|espera|nocuenta>|<texto>` (o
+   `juzgo:archivo=juicios_precio;go` con `ml-sync/notas/juicios_precio.txt`). Revisar los juicios viejos cuando los números
+   cambian. La tarjeta de Métricas muestra el número y abajo mi juicio (su color manda).
+ · Lo que perdió NO se vuelve atrás por regla: se piensa con la línea de tiempo (stock, fechas, caja, otras publicaciones de
+   la misma cuenta) y se decide (seguir, volver, otro precio) con `decido`, explicando en el 🧠.
+ · Cada `decido` queda también en `cyc/claudecambios` (no se pisa) y suma con motivo `claude`.
+
 ## 🔢 PSICOLOGÍA DEL PRECIO (10/10/2026, él eligió 1a 2a 3a 4b)
 
  · **Terminaciones:** todo precio que decido termina en 90 o 990 (99 en lo más barato). Nunca $10.000 o $5.000 redondos.
