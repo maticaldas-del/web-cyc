@@ -1,7 +1,7 @@
 # Juicios de Claude, producto por producto, mirando los 365 días (probe historia). Mandan sobre la cuenta automática.
 # <prodId>[#color]=<unidades>|<motivo>
 p1779912656300=0|Ultra Shift: en el año vendió 6 en julio y después 14 semanas sin vender a $42.500. las 4 de septiembre fueron de remate a pérdida. No se repone
-p1779912656080=20|Lupa 75mm: cada vez que llegó se vendió al toque (38 en dos semanas a $2.900). Lo que se vendió barato fue un precio mal puesto, no remate. Pido para un mes al precio nuevo ($3.820), que va a vender menos que a $2.900
+p1779912656080=10|Lupa 75mm: cada vez que llegó se vendió al toque. Ya hay 10 en la oficina que mando a Ayelen. Pido 10 más para el mes al precio nuevo ($3.820)
 p1779912655860=20|Termómetro horno: vendió 10 a 38 cada dos semanas durante seis meses y se cortó por falta de stock hace seis meses (no por demanda). La cuenta de 180 días lo daba por muerto. Pido para volver a probar
 p1779912655870=40|Termómetro Cable: cuando tuvo stock vendía 50 a 80 cada dos semanas. estuvo meses sin stock y lo poco que entró se vendió. Pido 40 (no 100: el precio subió de $4.500 a $5.850)
 p1779912656050=25|Estimulador Muscular: vendía 10 a 38 cada dos semanas con stock y lleva cuatro meses agotado. Pido 25
@@ -12,7 +12,8 @@ p1779912655850=12|Cortapelo 1 en 1: vendía 5 a 11 cada dos semanas todo el año
 p1779912656250=8|B39: vendía 4 a 5 cada dos semanas y está agotado hace diez semanas
 p1779912656190=6|Cinta 3M: vendía 3 a 5 cada dos semanas y está agotada hace tres meses
 p1787786300945=40|Mini balanza: vendió 18 en 3 días con stock en la última tanda. está agotada y vuela. Pido 40
-p1780106889876=25|Adaptador 8 en 1: las últimas tandas vendieron 20, 31 y 17 (en 7 días): ritmo de ~70 por mes, más que lo que mide la cuenta de 30 días. Con 52 no alcanza el mes
-p1779912656420=10|Chispero: vende 10 a 30 cada dos semanas todo el año (~40 por mes). con 35 no llega al mes
+p1780106889876=10|Adaptador 8 en 1: la última tanda vendió 18 en 9 días (unos 60 por mes). Hay 26 en Full y 26 en la oficina, así que con 10 más cubrimos el mes
+p1779912656420=0|Chispero: hay 23 en Full y 12 en la oficina. Desde que lo subí a $7.350 vendió 1 en dos semanas (antes 10 a 20). Primero miro el precio, no compres
 p1780699107690=0|Mini linterna llavero: vendió bien hace nueve meses y nunca se repuso. demasiado viejo para apostar sin preguntarte
 p1779912656310=0|Indoor: vendía a $9.000-13.000 pero hoy está publicado a $32.999. a ese precio no hay historia. Primero hay que revisar el precio
+p1781714867137=0|Tarjeta SanDisk Ultra con adaptador: las que vendíamos eran truchas y Matías las sacó. No se compra
