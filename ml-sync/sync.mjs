@@ -38442,7 +38442,7 @@ async function main() {
         // entraba al promedio como si fuera una compra completa (07/10/2026, el pedido del 05/10).
         const faltaC = recargoRealPedido(c).falta || [];
         const recPct = (tc > 0 && usd > 0 && !faltaC.length) ? (totARS / tc / usd - 1) * 100 : null;
-        console.log(`\n── ${c.fecha}${faltaC.length ? `  ⚠️ INCOMPLETO · falta: ${faltaC.join(', ')}` : ''}`);
+        console.log(`\n── ${c.fecha} · ${c.id || ''} · estado ${c.estado || 'SIN ESTADO'}${c.tipo ? ' · tipo ' + c.tipo : ''}${c.llegoTs ? ' · llegó' : ''}${faltaC.length ? `  ⚠️ INCOMPLETO · falta: ${faltaC.join(', ')}` : ''}`);
         console.log(`     US$ ${usd.toFixed(2)} crudos · ${(c.items || []).length} producto(s) · ${(c.items || []).reduce((a, x) => a + (x.u || 0), 0)} unidades`);
         console.log(`     recargo real: ${recPct == null ? (faltaC.length ? '? (faltan gastos)' : '? (faltaba el tipo de cambio)') : recPct.toFixed(1) + '%'}`);
         if (c.pagos && c.pagos.envio > 0) console.log(`     correo ${money(Math.round(c.pagos.envio))}${c.kgCorreo ? ` · ${c.kgCorreo} kg` : ''}`);
