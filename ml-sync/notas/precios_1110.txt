@@ -11,6 +11,6 @@ MLA1821851883=19490|Escasez: los 6 aromas venden 6 por día entre todos y alcanz
 MLA3428980806=19490|Escasez: los 6 aromas venden 6 por día entre todos y alcanzan menos de una semana. Subo un escalón de 7% mientras llega más mercadería, para el Día de la Madre.
 MLA3429019144=19490|Escasez: los 6 aromas venden 6 por día entre todos y alcanzan menos de una semana. Subo un escalón de 7% mientras llega más mercadería, para el Día de la Madre.
 MLA3429019146=19490|Escasez: los 6 aromas venden 6 por día entre todos y alcanzan menos de una semana. Subo un escalón de 7% mientras llega más mercadería, para el Día de la Madre.
-MLA1455445977=5490|Escasez: quedan 4 en Full y vende casi 1 por día (3 en los últimos 2 días). Hay 10 en la oficina: hasta que salga la caja subo un escalón de 10%.
+MLA1455445977=5490!cruza|Escasez: quedan 4 en Full y vende casi 1 por día (3 en los últimos 2 días). Hay 10 en la oficina: hasta que salga la caja subo un escalón de 10%. Cruzo los $5.000 a propósito: deja $1.058 por unidad contra $668.
 dia:2026-10-11=nota|La cuenta de Matías vendió casi nada en 2 días (0 ventas en 24 h contra 11 por día de promedio), también en publicaciones que no toqué. Las otras tres cuentas vendieron normal: 61 unidades en 23 publicaciones. Ninguna venta rara.
 revisado
