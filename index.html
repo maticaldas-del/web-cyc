@@ -2098,6 +2098,9 @@ function startApp(){
     // Del envío se guardan SÓLO fechas y estados: el nombre, el teléfono y la dirección del
     // comprador vienen en la misma respuesta y no entran acá.
     state.entregas=d.entregas||{};
+    // Ventas en promo/cupón: cuánto puso ML y cuánto nosotros (11/10/2026). Lo escribe el robot en
+    // `cyc/promoventa/<día>/<orden>` (0 = sin descuento), aparte de la venta.
+    state.promoventa=d.promoventa||{};
     // QUÉ HIZO EL ROBOT CON CADA VENTA QUE SALIÓ EN 20% O MENOS (24/09/2026). La escribe el robot
     // en el momento de la venta (`rescatarAlVender`), aparte de la venta por el mismo motivo que
     // las entregas. Clave: <día>__<id de la venta>.
@@ -2502,7 +2505,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.12';
+const APP_VERSION='23.13';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2513,6 +2516,7 @@ const APP_VERSION='23.12';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.13',f:'11/10/2026',h:'00:26',c:[{n:2,t:'🏷️ Ventas: cada venta hecha con promo o cupón lo dice en su tarjeta, con cuánto puso ML y cuánto nosotros. Arriba, en el bloque por cuenta, el total del período que puso ML.'}]},
   {v:'23.12',f:'10/10/2026',h:'02:55',c:[{n:3,t:'🇵🇾 Pedidos de Paraguay: el ticket real del mayorista es obligatorio para cerrar un pedido ("Ya llegó" no deja sin él). Con el ticket, cada producto muestra el precio de la web tachado y lo que pagaste, y el pedido el descuento total.'}]},
   {v:'23.11',f:'10/10/2026',h:'02:30',c:[{n:2,t:'🤖 Métricas, resultados de precios: debajo de cada cambio (del robot viejo y míos) va mi juicio, que reviso todos los días: si de verdad ganó o perdió por el precio, o si fue otra cosa. Mis decisiones desde el 09/10 se miden igual que las del robot.'}]},
   {v:'23.10',f:'10/10/2026',h:'01:45',c:[{n:2,t:'🇵🇾 Pedidos Paraguay probados: la foto de ML es la del color que se pide (antes, la de cualquier publicación). Si el producto tiene varios colores, avisa en rojo que el código de Paraguay es uno solo y hay que mirar que la foto sea del color pedido.'}]},
@@ -9707,6 +9711,40 @@ function cambiosPrecioDe(mla,tsVenta){
   }
   return out.sort((x,y)=>y.ts-x.ts);
 }
+// ── CUÁNTO PUSO ML EN UNA VENTA EN PROMO (11/10/2026) ──
+// Junta lo de `cyc/promoventa/<día>/<orden>` de los renglones de una compra. Si el registro trae el
+// reparto por publicación (`mla`) se toma la parte de ESE renglón; si no, la orden entera una sola vez.
+function vpPromoDe(items){
+  let t=0,s=0,ml=0,tipos=new Set(),hay=false;const vistas=new Set();
+  for(const v of (items||[])){
+    const oid=String(v.saleId||'').replace(/^s/,'');if(!oid||!v._dateKey)continue;
+    const r=((state.promoventa||{})[v._dateKey]||{})[oid];
+    if(!r||!(Number(r.t)>0))continue;
+    let pt,ps;
+    if(r.mla&&v.mla&&r.mla[v.mla]){pt=Number(r.mla[v.mla].t)||0;ps=Number(r.mla[v.mla].s)||0;}
+    else{if(vistas.has(oid))continue;vistas.add(oid);pt=Number(r.t)||0;ps=Number(r.s)||0;}
+    if(!(pt>0))continue;hay=true;t+=pt;s+=ps;ml+=Math.max(0,pt-ps);
+    String(r.tipo||'').split(',').filter(Boolean).forEach(x=>tipos.add(x));
+  }
+  return hay?{t,s,ml,tipos:[...tipos]}:null;
+}
+// Lo que puso ML en las ventas en promo del período (11/10/2026). Se junta por COMPRA para no contar
+// dos veces una orden de varios renglones. Sin ninguna venta en promo no se dibuja nada.
+function vpPromoTotalHTML(entries){
+  const grupos={};
+  for(const v of (entries||[])){if(v.cancelada)continue;(grupos[vpGrupoKey(v)]=grupos[vpGrupoKey(v)]||[]).push(v);}
+  let n=0,ml=0,nos=0;
+  for(const g of Object.values(grupos)){const p=vpPromoDe(g);if(p){n++;ml+=p.ml;nos+=p.s;}}
+  if(!n)return '';
+  return `<div style="font-size:.7rem;margin-top:8px;padding:7px 10px;border-radius:8px;background:color-mix(in srgb,var(--green) 10%,transparent)">🏷️ <strong>${n}</strong> venta${n!==1?'s':''} con promo o cupón · <strong style="color:var(--green)">ML puso ${fmt(Math.round(ml))}</strong>${nos>0?` · <span style="color:var(--amber)">nosotros ${fmt(Math.round(nos))}</span>`:''} <span style="color:var(--muted)">· lo de ML no sale de nuestro neto</span></div>`;
+}
+function vpPromoLabel(items){
+  const p=vpPromoDe(items);if(!p)return '';
+  const nom={coupon:'cupón',price_discount:'promo',deal:'promo',campaign:'campaña'};
+  const tipo=p.tipos.map(x=>nom[x]||x).filter((x,i,a)=>a.indexOf(x)===i).join(' + ')||'promo';
+  const tit=`Vendida con ${tipo}: descuento total ${fmt(Math.round(p.t))} · ML puso ${fmt(Math.round(p.ml))} · nosotros ${fmt(Math.round(p.s))}. Lo que pone ML no sale de nuestro neto.`;
+  return `<span style="font-size:.64rem;padding:1px 7px;border-radius:4px;background:color-mix(in srgb,var(--green) 14%,transparent);color:var(--green);white-space:nowrap" title="${tit}">🏷️ ${tipo}${p.ml>0?' · ML puso '+fmt(Math.round(p.ml)):''}${p.s>0?` <span style="color:var(--amber)">· nosotros ${fmt(Math.round(p.s))}</span>`:''}</span>`;
+}
 function cambioVentaHTML(v,tsVenta){
   const cs=cambiosPrecioDe(v&&v.mla,tsVenta);
   if(!cs.length)return'';
@@ -10487,6 +10525,11 @@ function renderVentaProd(){
         // ↩ volvió · ⚠️ no se entregó. El dato sigue guardado en `cyc/entregas`.
         if(_e.dev==null&&_e.ent==null&&_e.noEnt!=null)entLabel=`<span style="font-size:.62rem;color:var(--amber)" title="ML marcó el envío como NO entregado.">⚠️ no se entregó</span>`;
       }
+      // ── VENDIDA EN PROMO O CON CUPÓN: CUÁNTO PUSO ML (11/10/2026) ──
+      // Pedido suyo: *"las ventas con descuentos o promos que aparezcan en la tarjeta de la venta y cuánto
+      // nos ahorramos por eso que se hizo cargo ML"*. Sale de `/orders/<id>/discounts` (lo anota el robot):
+      // `t` el descuento entero, `s` lo que pusimos nosotros, `ml` lo que puso ML. Sin registro no dice nada.
+      const promoLabel=isCancelled?'':vpPromoLabel(grp.items);
       // ── LA ETIQUETA DEL RESCATE (24/09/2026) ──
       // Pedido suyo: *"no voy a saber si el % está bien, porque está rematando o el robot se
       // equivocó"*. Cada venta en 20% o menos dice qué pasó: 🔒 remate a propósito · 🛟 subida ·
@@ -10530,7 +10573,7 @@ function renderVentaProd(){
           ${_est?`<div style="padding:4px 0;color:var(--muted)">≈ Mercado Pago todavía no liquidó esta venta: el neto es estimado y se corrige solo.</div>`:''}
           ${grp.items.length>1?grp.items.map(v=>_dl(`${v.qty}× ${nombreDeVenta(v)}${v.variante?' '+v.variante:''}`,`${(v.total||0)>0?fmt(v.total)+' · ':''}neto ${fmt(v.neto||0)}`)).join(''):''}
           ${_hayCambio?`<div style="padding:5px 0;border-bottom:1px dashed var(--border);line-height:1.5">${_cambios.filter(x=>x).join('<br>')}</div>`:''}
-          ${(entLabel||rescLabel)?`<div style="padding:5px 0;display:flex;gap:10px;flex-wrap:wrap">${entLabel}${rescLabel}</div>`:''}
+          ${(entLabel||rescLabel||promoLabel)?`<div style="padding:5px 0;display:flex;gap:10px;flex-wrap:wrap">${promoLabel}${entLabel}${rescLabel}</div>`:''}
           ${isCancelled?reclamoMotivoHTML(grp):''}
           <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px">
             ${(()=>{const _ids=[...new Set(grp.items.map(v=>(prodDeVenta(v)||{}).id).filter(Boolean))];return _ids.map(id=>lineaBtn(id,_ids.length>1?'📈 '+((prodById(id)||{}).name||'línea').slice(0,18):'📈 línea')).join(' ');})()}
@@ -10551,6 +10594,7 @@ function renderVentaProd(){
           ${cancelBadge}
           ${grp.items.length>1?`<span style="font-size:.64rem;color:var(--muted)">${grp.items.length} prod.</span>`:''}
           <span style="flex:1"></span>
+          ${promoLabel}
           ${entLabel}
           ${rescLabel}
           ${costLabel}
@@ -10571,6 +10615,7 @@ function renderVentaProd(){
           ${_pill}
         </div>
         ${_items}
+        ${promoLabel?`<div>${promoLabel}</div>`:''}
         <div style="display:flex;align-items:center;gap:10px;margin-top:2px">
           ${isCancelled?'':(gc>0?`<span style="font-size:.8rem;font-weight:600;color:${gg>=0?'var(--green)':'var(--red)'}">${gg>=0?'+'+fmt(gg):'−'+fmt(-gg)}</span>`:'')}
           ${(!isCancelled&&_tot>0)?`<span style="font-size:.7rem;color:var(--muted)">de ${fmt(_tot)}</span>`:''}${_avisoIco}
@@ -10651,6 +10696,7 @@ function renderVpScopeBlocks(){
     baEl.innerHTML=`<div class="arqueo-section" style="padding:6px 14px 12px">`
       +accs.map(a=>fila(a,cur[a],prev[a]||{},ventasCta[a].size,false)).join('')
       +fila('TOTAL (ponderado)',sum(cur),sum(prev),nTot,true)
+      +vpPromoTotalHTML(vpEntries(sk.keys))
       +`<div style="font-size:.6rem;color:var(--muted);margin-top:4px">Ganancia neta en $ (neto − costo) y % de ganancia · mayor a menor · Δ vs ${sk.prevLabel}</div></div>`;
   }
 }
