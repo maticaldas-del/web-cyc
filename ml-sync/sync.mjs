@@ -34894,6 +34894,23 @@ async function main() {
       console.log(`\n── 2 · VENTAS (${vr.reduce((s2, [, x]) => s2 + x.u, 0)} u. en ${vr.length} publicaciones) ──`);
       for (const [m, x] of vr.slice(0, 30)) console.log(`· ${m} · ${(links[m] || {}).cuenta || '?'} · ${corta((links[m] || {}).title, 40)} · ${x.u} u. a ${money(Math.round(x.tot / x.u))}`);
       if (vr.length > 30) console.log(`  … y ${vr.length - 30} publicaciones más`);
+      // 2b) VENTAS POR CUENTA (auditoría del 11/10/2026): Matías vendió 0 el 10/10 cuando venía de 6 a 20 por día y el
+      // informe no lo decía: la sección 2 lista lo que vendió, nunca lo que DEJÓ de vender. Últimas 24 h de cada cuenta
+      // contra su promedio diario de los 14 días anteriores; ⚠️ si cayó a menos de un tercio.
+      try {
+        const ctaDe = (m) => String((links[m] || {}).cuenta || '?');
+        const ctas = {};
+        for (const v of vtsTodas) {
+          const c = ctaDe(v.mla); const x = (ctas[c] = ctas[c] || { h24: 0, prev: 0 });
+          if (v.ts >= ahoraI - 864e5) x.h24 += 1; else if (v.ts >= ahoraI - 15 * 864e5) x.prev += 1;
+        }
+        console.log(`── 2b · VENTAS POR CUENTA · últimas 24 h contra el promedio de los 14 días anteriores ──`);
+        for (const [c, x] of Object.entries(ctas).filter(([c]) => c !== '?').sort()) {
+          const prom = x.prev / 14;
+          const cayo = prom >= 3 && x.h24 < prom / 3;
+          console.log(`${cayo ? '⚠️' : '·'} ${c}: ${x.h24} ventas en 24 h · promedio ${prom.toFixed(1)}/día${cayo ? ' · CAYÓ FUERTE: mirar si la cuenta tiene un problema (frenazo:' + c.toLowerCase() + ')' : ''}`);
+        }
+      } catch (eC) { console.log('ventas por cuenta: no pude armarlas · ' + eC.message); }
       // 3) Lo que decidió Claude (60 días) y cómo le fue
       const uEnt = (m, t0, t1) => vtsTodas.filter((v) => v.mla === m && v.ts >= t0 && v.ts < t1).reduce((s2, v) => s2 + v.q, 0);
       const cl = Object.entries(ap).filter(([, a]) => a && a.por === 'claude' && ahoraI - (Number(a.ts) || 0) < 60 * 864e5).sort((a, b) => b[1].ts - a[1].ts);
