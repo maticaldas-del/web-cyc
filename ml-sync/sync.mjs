@@ -15952,6 +15952,47 @@ async function main() {
       console.log('Si la raíz sale bien, el "margen por rubro" se puede armar sin adivinar ningún nombre.');
       return;
     }
+    // BILLING_PROBE=promoventas[:días[:cuántas]] → ¿QUÉ DICE ML DE LAS VENTAS HECHAS EN PROMO? SOLO LEE.
+    // 11/10/2026, pedido suyo: que la tarjeta de cada venta diga si fue en promo y cuánto puso ML.
+    // Antes de guardar nada se mide qué trae cada fuente: el precio de lista contra el pagado
+    // (`full_unit_price`), `/orders/<id>/discounts` y el pago de MP. Imprime NOMBRES y MONTOS, nunca
+    // el número de orden ni datos del comprador (el registro es público).
+    if (String(process.env.BILLING_PROBE || '').startsWith('promoventas')) {
+      const _pp = String(process.env.BILLING_PROBE).split(':');
+      const DIAS = Math.max(1, Math.min(30, parseInt(_pp[1] || '10', 10) || 10));
+      const CUANTAS = Math.max(1, Math.min(15, parseInt(_pp[2] || '6', 10) || 6));
+      const tapar = (x) => JSON.stringify(x, (k, v) => (/^(id|order_id|pack_id|buyer|payer|user_id|email|nickname|first_name|last_name|identification)$/i.test(k) && v && typeof v !== 'object') ? '#' : v).slice(0, 900);
+      for (const label of labels) {
+        const acc = accounts[label]; if (!acc?.refresh_token) continue;
+        let t;
+        try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); }
+        catch { console.log(`  ${label}: no pude renovar el token.`); continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const tok = t.access_token;
+        let orders = [];
+        try { orders = await fetchOrdersRange(acc.seller_id, tok, Date.now() - DIAS * 864e5, Date.now()); }
+        catch (e) { console.log(`  ${label}: no pude leer las ventas · ${String(e.message || e).slice(0, 80)}`); continue; }
+        const conLista = orders.filter((o) => (o.order_items || []).some((it) => Number(it.full_unit_price) > Number(it.unit_price) + 0.5));
+        console.log(`\n=== ${label}: ${orders.length} ventas en ${DIAS} d · ${conLista.length} con precio pagado abajo del de lista ===`);
+        const muestra = [...conLista.slice(0, CUANTAS), ...orders.filter((o) => !conLista.includes(o)).slice(0, 2)];
+        for (const o of muestra) {
+          console.log(`\n  ── venta …${String(o.id).slice(-3)} ${conLista.includes(o) ? '(CON descuento en el precio)' : '(sin descuento, de control)'}`);
+          for (const it of (o.order_items || [])) console.log(`     ${String(it.item?.title || '').slice(0, 40)} · ${it.quantity} u · pagado ${it.unit_price} · lista ${it.full_unit_price} · claves: ${Object.keys(it).join(',')}`);
+          try { const d = await mlGet('/orders/' + o.id + '/discounts', tok); console.log(`     /discounts → ${tapar(d)}`); }
+          catch (e) { console.log(`     /discounts → error ${String(e.message || e).slice(0, 80)}`); }
+          for (const pg of (o.payments || []).slice(0, 2)) {
+            try {
+              const r = await fetch('https://api.mercadopago.com/v1/payments/' + pg.id, { headers: { Authorization: 'Bearer ' + tok } });
+              const b = await r.json();
+              const ch = (b?.charges_details || []).map((c) => `${c.name}:${c.type}:${c.amounts?.original}`).join(' | ');
+              console.log(`     pago: monto ${b.transaction_amount} · coupon_amount ${b.coupon_amount} · campaña ${b.campaign_id ? 'sí' : 'no'} · cargos: ${ch.slice(0, 400)}`);
+            } catch (e) { console.log(`     pago → error ${String(e.message || e).slice(0, 60)}`); }
+          }
+        }
+      }
+      return;
+    }
+
     // BILLING_PROBE=envio3[:cuenta[:cuántas]] → ¿CUÁL ES EL ENVÍO REAL? SOLO LEE.
     //
     // Pregunta suya del 21/09/2026: *"fijate vos cual es el real. si el que manda ML o el que
