@@ -34687,18 +34687,25 @@ async function main() {
     if (/^buscacosto:/.test(String(process.env.BILLING_PROBE || ''))) {
       const _n = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
       const pals = String(process.env.BILLING_PROBE).slice('buscacosto:'.length).split('+').map(_n).map((x) => x.trim()).filter(Boolean);
-      const hit = (t) => pals.every((w) => _n(t).includes(w));
+      // 11/10/2026: con todos números, busca por CÓDIGO de Nissei (también por el final, el chat de compras pierde el
+      // primer dígito) en fichas, candidatos y compras. Para cruzar el pedido que él pasa como "código x unidades".
+      const porCod = pals.length && pals.every((w) => /^\d{4,}$/.test(w));
+      const codOk = (c) => { const x = String(c || '').replace(/\D/g, ''); return !!x && pals.some((k) => x === k || x.endsWith(k) || k.endsWith(x)); };
+      const hit = porCod ? (() => false) : ((t) => pals.every((w) => _n(t).includes(w)));
+      const hitP = (p) => porCod ? codOk(p.codPy) : hit(p.name);
+      const hitC = (c) => porCod ? codOk(c.cod) : hit(c.nombre);
+      const hitI = (it) => porCod ? codOk(it.cod) : hit(it.nom);
       const cfg = (await db.get('cyc/finanzas')) || {};
       const tc = parseFloat(cfg.tipo_cambio) || null;
       console.log(`=== ¿CUÁNTO SALIÓ "${pals.join(' ')}"? · dólar del panel ${tc || '?'} ===\n`);
       console.log('── FICHAS');
       let k = 0;
-      for (const p of products) if (hit(p.name)) { k++; console.log(`   ${p.id} · ${p.name} · costo US$ ${p.costUSD || 0} ($${Math.round(p.cost || 0)}) · origen ${p.origen || 'bsas'}${p.codPy ? ' · código ' + p.codPy : ''}${p.nisseiUSD ? ' · Paraguay hoy US$ ' + p.nisseiUSD : ''}`); }
+      for (const p of products) if (hitP(p)) { k++; console.log(`   ${p.id} · ${p.name} · costo US$ ${p.costUSD || 0} ($${Math.round(p.cost || 0)}) · origen ${p.origen || 'bsas'}${p.codPy ? ' · código ' + p.codPy : ''}${p.nisseiUSD ? ' · Paraguay hoy US$ ' + p.nisseiUSD : ''}`); }
       if (!k) console.log('   ninguna');
       console.log('── CANDIDATOS DE PARAGUAY');
       k = 0;
       for (const [id, c] of Object.entries((await db.get('cyc/candidatos_py')) || {})) {
-        if (!c || !hit(c.nombre)) continue; k++;
+        if (!c || !hitC(c)) continue; k++;
         console.log(`   ${id} · ${c.nombre} · US$ ${c.usd || '?'} crudo · código ${c.cod || '—'}${c.prodId ? ' · ficha ' + c.prodId : ''}${c.pedidoEn ? ' · pedido ' + c.pedidoEn : ''}${c.no ? ' · descartado' : ''}${c.margen != null ? ' · margen ' + c.margen + '%' : ''}`);
       }
       if (!k) console.log('   ninguno');
@@ -34706,7 +34713,7 @@ async function main() {
       k = 0;
       for (const [id, r] of Object.entries((await db.get('cyc/compraspy')) || {})) {
         for (const it of (r && r.items) || []) {
-          if (!it || !hit(it.nom)) continue; k++;
+          if (!it || !hitI(it)) continue; k++;
           const pg = r.pagos || {};
           const merc = Number(pg.mercaderia) || 0, envio = Number(pg.envio) || 0, ret = Number(pg.retira) || 0, otros = (Number(pg.cambista) || 0) + (Number(pg.otros) || 0);
           const usdC = Number(r.usdCrudo) || 0;
