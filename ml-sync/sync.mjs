@@ -43,7 +43,7 @@ const EN_CONSULTA = process.env.GITHUB_WORKFLOW === 'ml-consulta' || process.env
 const CONSULTA_ESCRIBE = new Set(['lineatodo', 'revcand', 'vincular', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull']);
 const CONSULTA_NIEGA = new Set(['candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
-  'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes']);
+  'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'promoventas']);
 let CONSULTA_SOLO_LEE = false;
 if (EN_CONSULTA) {
   const _cmd = String(process.env.BILLING_PROBE || '').trim();
@@ -6945,6 +6945,50 @@ async function removeStartedPromos(itemId, token, permitidas) {
     } catch { failed.push((pr.type || 'descuento') + ':red'); }
   }
   return { removed, failed };
+}
+
+// ── LAS VENTAS EN PROMO: CUÁNTO PUSO ML (11/10/2026) ─────────────────────────────────────
+// Pedido suyo: *"las ventas con descuentos o promos que aparezcan en la tarjeta de la venta y cuánto nos
+// ahorramos por eso que se hizo cargo ML"*. Medido con `promoventas`: `full_unit_price` NO viene en la
+// orden, y `/orders/<id>/discounts` sí: 404 "Discount not found" = venta sin descuento; si hay, trae
+// por renglón `amounts.total` (el descuento entero) y `amounts.seller` (lo que pusimos nosotros); lo que
+// pone ML es la resta. Ej. real: cupón de $702,58 con `seller` 0 → lo pagó ML entero y nos depositaron
+// el precio lleno.
+// Vive en `cyc/promoventa/<día>/<orden>`, APARTE de la venta (el ciclo reescribe la venta). Sin
+// descuento se guarda 0 para no volver a preguntar. Si ML no contesta (429, 5xx) no se guarda nada y se
+// reintenta en la vuelta siguiente: un "no tuvo promo" falso es leer una falla como dato.
+const _promoDiaCache = new Map();
+async function anotarPromoVenta(db, o, token, dayKey) {
+  const oid = String(o.id);
+  let dia = _promoDiaCache.get(dayKey);
+  if (dia === undefined) {
+    try { dia = (await db.get('cyc/promoventa/' + dayKey)) || {}; } catch { return; }
+    _promoDiaCache.set(dayKey, dia);
+  }
+  if (dia[oid] !== undefined && dia[oid] !== null) return;
+  let d = null;
+  try { d = await mlGet('/orders/' + oid + '/discounts', token); }
+  catch (e) {
+    const m = String(e.message || e);
+    if (/: 404 /.test(m)) { await db.patch('cyc/promoventa/' + dayKey, { [oid]: 0 }); dia[oid] = 0; }
+    return;
+  }
+  const porMla = {}; const tipos = new Set(); let tot = 0, sel = 0;
+  const elem = {}; for (const it of (o.order_items || [])) if (it.element_id != null) elem[it.element_id] = it.item?.id;
+  for (const det of (d?.details || [])) {
+    if (det.type) tipos.add(String(det.type));
+    for (const it of (det.items || [])) {
+      const t = Number(it.amounts?.total) || 0, s = Number(it.amounts?.seller) || 0;
+      if (!(t > 0)) continue;
+      const mla = String(elem[it.element_id] || it.id || '?');
+      const x = (porMla[mla] = porMla[mla] || { t: 0, s: 0 });
+      x.t += t; x.s += s; tot += t; sel += s;
+    }
+  }
+  const r2 = (n) => Math.round(n * 100) / 100;
+  for (const k of Object.keys(porMla)) porMla[k] = { t: r2(porMla[k].t), s: r2(porMla[k].s) };
+  const rec = tot > 0 ? { t: r2(tot), s: r2(sel), ml: r2(Math.max(0, tot - sel)), tipo: [...tipos].join(',').slice(0, 60), mla: porMla, ts: Date.now() } : 0;
+  await db.patch('cyc/promoventa/' + dayKey, { [oid]: rec }); dia[oid] = rec;
 }
 
 // ── NETO REAL: lo que efectivamente te entra según Mercado Pago ──
@@ -15972,6 +16016,19 @@ async function main() {
         let orders = [];
         try { orders = await fetchOrdersRange(acc.seller_id, tok, Date.now() - DIAS * 864e5, Date.now()); }
         catch (e) { console.log(`  ${label}: no pude leer las ventas · ${String(e.message || e).slice(0, 80)}`); continue; }
+        if (/(^|:)go(:|$)/.test(String(process.env.BILLING_PROBE))) {
+          // Relleno: anota cada venta del período (las ya anotadas no se vuelven a preguntar).
+          let n = 0, conP = 0, ml = 0;
+          for (const o of orders) {
+            const dk = dayKeyFromISO(o.date_created || o.date_closed);
+            try { await anotarPromoVenta(db, o, tok, dk); } catch { /* sigue */ }
+            const r = (_promoDiaCache.get(dk) || {})[String(o.id)];
+            if (r !== undefined) n++; if (r && r.t > 0) { conP++; ml += Number(r.ml) || 0; }
+            await new Promise((ok) => setTimeout(ok, 150));
+          }
+          console.log(`=== ${label}: ${orders.length} ventas en ${DIAS} d · ${n} anotadas · ${conP} con descuento · ML puso $${Math.round(ml)} ===`);
+          continue;
+        }
         const conLista = orders.filter((o) => (o.order_items || []).some((it) => Number(it.full_unit_price) > Number(it.unit_price) + 0.5));
         console.log(`\n=== ${label}: ${orders.length} ventas en ${DIAS} d · ${conLista.length} con precio pagado abajo del de lista ===`);
         const muestra = [...conLista.slice(0, CUANTAS), ...orders.filter((o) => !conLista.includes(o)).slice(0, 2)];
@@ -15979,7 +16036,7 @@ async function main() {
           console.log(`\n  ── venta …${String(o.id).slice(-3)} ${conLista.includes(o) ? '(CON descuento en el precio)' : '(sin descuento, de control)'}`);
           for (const it of (o.order_items || [])) console.log(`     ${String(it.item?.title || '').slice(0, 40)} · ${it.quantity} u · pagado ${it.unit_price} · lista ${it.full_unit_price} · claves: ${Object.keys(it).join(',')}`);
           try { const d = await mlGet('/orders/' + o.id + '/discounts', tok); console.log(`     /discounts → ${tapar(d)}`); }
-          catch (e) { console.log(`     /discounts → error ${String(e.message || e).slice(0, 80)}`); }
+          catch (e) { console.log(`     /discounts → error ${String(e.message || e).replace(/\d{6,}/g, '#').slice(0, 80)}`); }
           for (const pg of (o.payments || []).slice(0, 2)) {
             try {
               const r = await fetch('https://api.mercadopago.com/v1/payments/' + pg.id, { headers: { Authorization: 'Bearer ' + tok } });
@@ -40961,7 +41018,7 @@ async function main() {
       if (!ok || !(gross > 0)) packFallo.add(pk);
       if (ok && gross > 0) {
         packPlata.set(pk, { net, fee, env, gross });
-        if (!DRY) console.log(`  · venta #${pk}: ${list.length} órdenes en un mismo paquete → el neto ($${Math.round(net)}) se reparte entre los ${list.length} productos`);
+        if (!DRY) console.log(`  · venta …${String(pk).slice(-4)}: ${list.length} órdenes en un mismo paquete → el neto ($${Math.round(net)}) se reparte entre los ${list.length} productos`);
       }
     }
 
@@ -40972,6 +41029,7 @@ async function main() {
       if (seenManual.has(num)) continue; // ya cargada a mano/cowork
       const dayKey = dayKeyFromISO(o.date_created || o.date_closed);
       const saleId = 's' + o.id;
+      if (!DRY) { try { await anotarPromoVenta(db, o, t.access_token, dayKey); } catch { /* se reintenta */ } }
       const items = o.order_items || [];
       const orderGross = items.reduce((s, it) => s + (it.unit_price || 0) * (it.quantity || 0), 0);
       // Si esta orden es parte de un carrito, la plata y el denominador son los del PAQUETE entero.

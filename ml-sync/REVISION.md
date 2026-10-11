@@ -250,6 +250,13 @@ Qué chequear: que el total de renglones cierre con las publicaciones vivas con 
   `pctGananciaVP`, `ventaEnRemate`). Chequear: que la ganancia y el % de la primera frase sean los mismos de los
   KPIs de arriba · que con el día en curso no diga "se vendió peor" contra un día entero.
 
+- **Ventas en promo o con cupón (11/10/2026, v23.13).** Qué es: cada venta dice si tuvo descuento, cuánto puso ML y
+  cuánto nosotros; el bloque por cuenta de Ventas suma lo del período. Dónde: robot `anotarPromoVenta` (ciclo, una vez por
+  orden) → `cyc/promoventa/<día>/<orden>` = `{t, s, ml, tipo, mla:{<MLA>:{t,s}}}` o 0; relleno `promoventas:<días>:go` por
+  ml-sync (sin `go` muestra la estructura, solo lee). Web `vpPromoDe`/`vpPromoLabel`/`vpPromoTotalHTML`. Qué chequear:
+  `/orders/<id>/discounts` da 404 = sin descuento (se guarda 0); un 429 no se guarda (se reintenta); que lo de ML no se
+  descuente del neto (el cupón de ML no baja lo depositado); que la suma por compra no cuente dos veces una orden.
+
 ## 3 · MERCADERÍA
 - **Estado de la caja de cada producto** (probe `cajahoy`, `mllinks.caja`): winning/sharing/losing
   y también nocat/sincaja; un producto sin publicación activa no es "sin dato".
