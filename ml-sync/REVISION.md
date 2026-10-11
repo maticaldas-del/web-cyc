@@ -303,6 +303,7 @@ precio PAGADO; pedidos viejos en camino sin ticket.
 **11/10 · pedidos guardados con el ticket antes del 10/10:** si el renglón ya tenía el precio pagado, el de la web sale del
 candidato de ese código (`cyc/candidatos_py`, precio de la lista de Nissei con que se armó el pedido). Chequear que no tome
 el precio de un candidato distinto con código parecido (se compara también por el final).
+- **`buscacosto` por código (11/10/2026):** si todo lo que se le pasa son números (`buscacosto:137567+164712`), busca el código de Nissei en fichas, candidatos y compras (también por el final). Para cruzar el pedido que Matías pasa como "código x unidades". Chequear: que un código corto no agarre otro producto.
 
 ## 4 · CHOQUES
 - `mlapi/lineatodo` lo escriben `ritmo:go` (noche) y `lineatodo:go` (ml-consulta): los dos con la
