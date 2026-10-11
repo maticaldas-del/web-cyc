@@ -38366,7 +38366,8 @@ async function main() {
         const rec = {
           ...(ya || {}),
           // la fecha del PEDIDO se conserva; si el pago vino con otra, queda aparte
-          fecha: (ya && ya.fecha) || fecha, fechaPago: (ya && ya.fecha && ya.fecha !== fecha) ? fecha : ((ya && ya.fechaPago) || null), usdCrudo: usd,
+          // `pedido=AAAA-MM-DD` corrige el día del PEDIDO (11/10/2026: el del 08/10 quedó con el día en que se cargó).
+          fecha: (/^\d{4}-\d{2}-\d{2}$/.test(campos.pedido || '') ? campos.pedido : null) || (ya && ya.fecha) || fecha, fechaPago: (ya && ya.fecha && ya.fecha !== fecha) ? fecha : ((ya && ya.fechaPago) || null), usdCrudo: usd,
           pagos: { mercaderia: Math.round(merc), cambista: Math.round(cambio), envio: Math.round(envio), retira: Math.round(retira), otros: Math.round(otros) },
           items: itemsFin, nota: campos.nota || (ya && ya.nota) || '', tcPanel: tcRef || null,
           usdPanel, kgCorreo: kgPedido > 0 ? kgPedido : null,
