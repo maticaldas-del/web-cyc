@@ -1,0 +1,16 @@
+# Revisión completa 11/10/2026 08:52 · precios y notas
+MLA1852539309=16990|Llegó la caja de 100 y se terminó la escasez. A $21.320 no vendió ninguno en 3 días (antes casi 2 por día). Lo vuelvo al precio normal de antes, terminado en 990.
+MLA1459229525=3910|Después de la suba a $4.150 no vendió ninguno en 3 días (antes 5 por día). Toda la cuenta de Matías vendió mucho menos esos días, así que puede no ser el precio, pero vuelvo al precio que funcionaba mientras lo averiguo.
+MLA1568102809=5290|A $5.590 no vendió en 3 días (antes 2 o 3 por día). Vuelvo al precio que funcionaba. Ojo que toda la cuenta de Matías está más quieta estos días.
+MLA3628541332=4990|Desde la suba a $5.750 no vendió en 3 días (antes 1 por día). Lo bajo a $4.990, un poco abajo del precio de antes.
+MLA1955022122=6990|Desde la suba a $7.350 vende 1 por semana contra 5 a 10 por semana antes, y ya tiene 23 en Full. Lo vuelvo a $6.990.
+MLA3928173584=89990|Escasez: quedan pocas en Full, no hay caja en camino y se vendieron 2 en un día por el Día de la Madre (18/10). Subo un escalón de 9%.
+MLA1821814267=19490|Escasez: los 6 aromas venden 6 por día entre todos y alcanzan menos de una semana. Subo un escalón de 7% mientras llega más mercadería, para el Día de la Madre.
+MLA1821851879=19490|Escasez: los 6 aromas venden 6 por día entre todos y alcanzan menos de una semana. Subo un escalón de 7% mientras llega más mercadería, para el Día de la Madre.
+MLA1821851883=19490|Escasez: los 6 aromas venden 6 por día entre todos y alcanzan menos de una semana. Subo un escalón de 7% mientras llega más mercadería, para el Día de la Madre.
+MLA3428980806=19490|Escasez: los 6 aromas venden 6 por día entre todos y alcanzan menos de una semana. Subo un escalón de 7% mientras llega más mercadería, para el Día de la Madre.
+MLA3429019144=19490|Escasez: los 6 aromas venden 6 por día entre todos y alcanzan menos de una semana. Subo un escalón de 7% mientras llega más mercadería, para el Día de la Madre.
+MLA3429019146=19490|Escasez: los 6 aromas venden 6 por día entre todos y alcanzan menos de una semana. Subo un escalón de 7% mientras llega más mercadería, para el Día de la Madre.
+MLA1455445977=5490|Escasez: quedan 4 en Full y vende casi 1 por día (3 en los últimos 2 días). Hay 10 en la oficina: hasta que salga la caja subo un escalón de 10%.
+dia:2026-10-11=nota|La cuenta de Matías vendió casi nada en 2 días (0 ventas en 24 h contra 11 por día de promedio), también en publicaciones que no toqué. Las otras tres cuentas vendieron normal: 61 unidades en 23 publicaciones. Ninguna venta rara.
+revisado
