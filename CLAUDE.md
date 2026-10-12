@@ -931,10 +931,41 @@ en full siempre se activan solo (…) todo producto que existe tiene que estar a
 hecho el cerebro por cosas como liquidar)"*. ML reactiva sola la pausada sin stock apenas entra la caja.
  · `planilla` trae la sección **🛡️ ABAJO DEL 25% EN EL PEOR CASO** (2% de retención de otra provincia + el peor envío
    visto + cuotas): TODAS, activas o pausadas, con o sin stock. **Corre en las 4 vueltas** (paso 0 de la corta y en la
-   completa) y lo 🛡️ se sube en esa vuelta (escalones de hasta +25%), o se deja a propósito con `decido:…!piso|motivo`,
+   completa) y lo 🛡️ se sube en esa vuelta DE UNA al precio que deja el 25% (corrección suya del 12/10 con la Cinta Boob
+   Tape: *"deberia subirse de una al mejor precio"*; los escalones de +25% son SÓLO para probar demanda en escasez), o se deja a propósito con `decido:…!piso|motivo`,
    que lo anota en `cyc/claudepiso` como excepción. Liquidando y mis promos también son excepción.
  · Lo nuevo (nunca estuvo en Full) no se activa solo: lo activo yo con el precio ya puesto.
  · Primera medición (12/10 01:30): **127 abajo en el peor caso** (47 activas, el resto pausadas), 2 excepciones.
+
+## 🏷️ VENTAS EN PROMO: SE AVISAN EN EL RESUMEN (12/10/2026, pedido suyo)
+
+Él: *"quiero que cuando se venda algo en promo avise"*. `ventasraras` marca cada venta en promo o con cupón (🏷️, de
+`cyc/promoventa`: descuento, cuánto puso ML y cuánto nosotros) y abajo el total. **En el `resumen:` de cada cerebro va una
+línea con las ventas en promo de esa vuelta** (cuántas, cuánto puso ML, y si pusimos plata nosotros). Primera medición, 7 días:
+32 ventas en promo, ML puso $25.700 y nosotros $6.225 (casi todo de una sola, el Halloween 100ml). Infinite Fame: oculto con
+`nomas` (no se vende ni repone más, decisión suya del 12/10). El 12/10 se subieron 110 publicaciones al 25% en el peor caso
+(`ml-sync/notas/precios_1210.txt`); las frenadas en $32.999 son excepción a propósito (regla 2).
+
+## 🎨 CADA VARIANTE SE JUZGA SOLA, CON SU PROPIO 🧠 (12/10/2026, regla suya)
+
+Él, con la nota del Paulvic Abismo que hablaba del producto entero: *"cada variante debe llevar su propio análisis y su propio
+cerebro (…) algunos aromas se pueden vender a 50% y otros al 5%. Se tienen que juzgar todos por separado. No sólo los paulvic"*.
+ · Cada color/aroma es su publicación: precio, margen, stock de ESE color, ventas de ESA publicación, caja. Nunca el promedio
+   ni el total del producto. Si falta el stock del color, se dice "no sé", no se usa el del producto.
+ · Las notas del 🧠 de precio (`decido:<MLA>=nota|…`) van una por variante con sus números, y las decisiones (subir, bajar,
+   promo, no reponer) se toman aroma por aroma.
+
+## 🥊 LA CAJA DE COMPRA ORIENTA, NO DECIDE (12/10/2026, regla suya)
+
+Él: *"ganar no significa vender ni perder significa no vender nunca. ML juega mucho con que quieren ser baratos:
+quizás te ponen 'perdiendo' cuando en realidad vendemos un montón y somos la mejor opción, para que igual lo bajes
+(…) es importante si ganamos o perdemos caja, pero no es decisivo. Manejalo como vos quieras"*.
+ · `price_to_win` es lo que ML QUIERE que pongamos, no el precio al que se vende. Lo que decide son las ventas
+   reales (ritmo, línea de tiempo), el stock y el margen; la caja es un dato más.
+ · Perdiendo y vendiendo bien → no se baja. Perdiendo y sin vender → se prueba primero un escalón que no regale
+   margen (Full vale ~19% de precio, ver "TENER FULL VALE PRECIO"), y recién si no se mueve, más abajo.
+ · Caso que la dejó escrita: Galaxy A07 64GB (`MLA2047097263`), 1 u. sin vender desde el 28/07 a $394.690. Primero lo
+   llevé a la caja ($230.390, 12%); con esta regla quedó en $264.990 (~26%, 15% arriba de la caja).
 
 ## 🔢 PSICOLOGÍA DEL PRECIO (10/10/2026, él eligió 1a 2a 3a 4b)
 

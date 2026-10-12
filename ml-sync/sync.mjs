@@ -36076,7 +36076,7 @@ async function main() {
       const evs = (await db.get('cyc/supervisor/eventos')) || {};
       const up = {}; let mal = 0;
       for (const x of partes.filter((y) => y.toLowerCase() !== 'go')) {
-        const m = x.match(/^(MLA\d+_\d{8})\s*=\s*(gano|perdio|igual|espera|nocuenta|borrar)\s*(?:\|(.*))?$/i);
+        const m = x.match(/^(MLA\d+_\d{8}(?:_\d{4})?)\s*=\s*(gano|perdio|igual|espera|nocuenta|borrar)\s*(?:\|(.*))?$/i);
         if (!m) { console.log(`  ✗ no entiendo "${x.slice(0, 80)}"`); mal++; continue; }
         if (!evs[m[1]]) { console.log(`  ✗ ${m[1]}: no está en los cambios del supervisor`); mal++; continue; }
         const v = m[2].toLowerCase();
@@ -36853,7 +36853,13 @@ async function main() {
             if (b.status === 'closed' || b.status === 'inactive') { fuera.cerradaML++; continue; }
             const e = lk[mla], p = prodById[e.prodId], P = Math.round(Number(b.price) || 0);
             const kP = e.prodId + '__' + sidL(cta), kV = e.variant ? kP + '__v__' + sidL(e.variant) : null;
-            const st = Math.max(0, parseInt(inv[kV && inv[kV] != null ? kV : kP]) || 0);
+            // CADA VARIANTE CON LO SUYO (12/10/2026, regla suya: *"cada variante debe llevar su propio análisis"*): si la
+            // publicación es de un color/aroma y no hay clave de ese color, el stock NO es el del producto entero (el Scandal
+            // Bliss mostraba los 212 de todos los Paulvic): queda desconocido.
+            const kVl0 = e.variant ? e.prodId + '__' + sidL(cta.toLowerCase()) + '__v__' + sidL(e.variant) : null;
+            const kSt = e.variant ? [kV, kVl0].find((x) => x && inv[x] != null) : (inv[kP] != null ? kP : e.prodId + '__' + sidL(cta.toLowerCase()));
+            const stDesc = e.variant && !kSt;
+            const st = stDesc ? 0 : Math.max(0, parseInt(inv[kSt]) || 0);
             const costo = Math.round(costoPesos(p, 1, tc).costo || 0);
             const m = (mlExtraPct(cta) + monoPz) / 100;
             let mg = null, g = null, nota = '', mgP = null, meta = null;
@@ -36891,14 +36897,14 @@ async function main() {
             }
             const vv = ven[mla] || { u7: 0, u30: 0, u60: 0, ult: 0 };
             const kPl = e.prodId + '__' + sidL(cta.toLowerCase()), kVl = e.variant ? kPl + '__v__' + sidL(e.variant) : null;
-            const h = [kV, kVl, kP, kPl].map((x) => x && (sh || {})[x]).find(Boolean) || {};
+            const h = (e.variant ? [kV, kVl] : [kP, kPl]).map((x) => x && (sh || {})[x]).find(Boolean) || {};
             // Cuántos días duró la última tanda: de la entrada de stock al cero, si ya se agotó (al quedar en cero
             // `desde` pasa a `desdePrev`).
             const ini = Number(h.desde || h.desdePrev) || 0;
             const tanda = ini && h.cero && h.cero > ini ? Math.max(0.1, (h.cero - ini) / 864e5) : null;
             const a = ap[mla];
             filas.push({ mla, cta, nom: String(e.title || p.name || '').slice(0, 42) + (e.variant ? ' #' + e.variant : ''), est: b.status + ((b.sub_status || []).length ? '(' + b.sub_status.join(',') + ')' : ''),
-              P, mg, g, mgP, meta, nota, st, exc: (nosub || {})[mla] ? 'liquidando' : (cPiso && cPiso[mla] && Math.abs((Number(cPiso[mla].a) || 0) - P) <= 10) ? 'la dejé así con !piso' : (pClaude && pClaude[mla]) ? 'en promo que entré yo' : (P >= 32900 && P < UMBRAL_ENVIO_GRATIS && meta && meta.barrera) ? 'frenada en la barrera de $33.000 (regla 2)' : '', ...vv, cero: h.cero && st === 0 ? h.cero : null, tanda, caja: e.caja || '', ptw: e.cajaPtw || null, var: (b.variations || []).length,
+              P, mg, g, mgP, meta, nota, st, stDesc, exc: (nosub || {})[mla] ? 'liquidando' : (cPiso && cPiso[mla] && Math.abs((Number(cPiso[mla].a) || 0) - P) <= 10) ? 'la dejé así con !piso' : (pClaude && pClaude[mla]) ? 'en promo que entré yo' : (P >= 32900 && P < UMBRAL_ENVIO_GRATIS && meta && meta.barrera) ? 'frenada en la barrera de $33.000 (regla 2)' : '', ...vv, cero: h.cero && st === 0 ? h.cero : null, tanda, caja: e.caja || '', ptw: e.cajaPtw || null, var: (b.variations || []).length,
               cambio: a && a.ts ? `${f(a.de)}→${f(a.a)} hace ${Math.round((hoy - a.ts) / 864e5)} d${a.por ? ' (' + a.por + ')' : ''}` : '' });
           }
         }
@@ -36911,7 +36917,7 @@ async function main() {
       for (const r of filas) {
         const mgT = r.mg == null ? `margen ? (${r.nota})` : `${r.mg.toFixed(0)}% (${f(r.g)}/u)${r.mg < PISO ? ' ⚠️<' + PISO : ''}`;
         const cajaT = r.caja ? `caja ${r.caja}${r.ptw && r.caja !== 'winning' ? ' ML pide ' + f(r.ptw) : ''}` : '';
-        console.log([r.mla, r.cta, r.nom, r.est, f(r.P), mgT, `Full ${r.st}${r.cero ? ' (cero hace ' + Math.round((hoy - r.cero) / 864e5) + ' d)' : ''}`,
+        console.log([r.mla, r.cta, r.nom, r.est, f(r.P), mgT, `Full ${r.stDesc ? '? (no hay stock guardado de este color)' : r.st}${r.cero ? ' (cero hace ' + Math.round((hoy - r.cero) / 864e5) + ' d)' : ''}`,
           `v ${r.u7}/${r.u30}/${r.u60}`, r.ult ? `últ hace ${Math.round((hoy - r.ult) / 864e5)} d` : 'sin ventas 60 d',
           r.tanda != null ? `tanda duró ${r.tanda.toFixed(1)} d` : '', r.var ? `${r.var} variantes` : '', cajaT, r.cambio ? 'cambio ' + r.cambio : ''].filter(Boolean).join(' · '));
       }
@@ -36924,7 +36930,7 @@ async function main() {
       // mis excepciones a propósito (liquidando, `!piso`, promo mía), que se cuentan aparte.
       const peor = filas.filter((r) => r.mgP != null && r.mgP < PISO), peorNo = peor.filter((r) => !r.exc), peorExc = peor.filter((r) => r.exc);
       console.log(`\n── 🛡️ ABAJO DEL ${PISO}% EN EL PEOR CASO (retención de otra provincia ${(PEOR_RET_PCT * 100).toFixed(1)}% + el envío más caro visto + cuotas): ${peorNo.length} para subir · ${peorExc.length} excepciones mías ──`);
-      for (const r of peorNo.sort((x, y) => x.mgP - y.mgP)) console.log(`🛡️ ${r.mla} · ${r.cta} · ${r.nom} · ${r.est} · ${f(r.P)} · peor caso ${r.mgP.toFixed(0)}% (normal ${r.mg.toFixed(0)}%) · Full ${r.st} · v30 ${r.u30} · ${r.var ? 'CON VARIANTES: a mano' : r.meta ? `→ ${f(r.meta.P)} (${r.meta.mg.toFixed(1)}% peor caso, +${((r.meta.P / r.P - 1) * 100).toFixed(0)}%)${r.meta.P > r.P * 1.25 ? ' ⚠️ más de +25%: escalón ' + f(Math.floor(r.P * 1.25 / 10) * 10) : ''}${r.meta.barrera ? ` ⚠️ cruza $33.000 (a $32.990 queda ${r.meta.barrera.mg == null ? '?' : r.meta.barrera.mg.toFixed(0) + '%'})` : ''}` : 'sin precio que llegue'}`);
+      for (const r of peorNo.sort((x, y) => x.mgP - y.mgP)) console.log(`🛡️ ${r.mla} · ${r.cta} · ${r.nom} · ${r.est} · ${f(r.P)} · peor caso ${r.mgP.toFixed(0)}% (normal ${r.mg.toFixed(0)}%) · Full ${r.st} · v30 ${r.u30} · ${r.var ? 'CON VARIANTES: a mano' : r.meta ? `→ ${f(r.meta.P)} (${r.meta.mg.toFixed(1)}% peor caso, +${((r.meta.P / r.P - 1) * 100).toFixed(0)}%)${r.meta.P > r.P * 1.25 ? ' · más de +25%: va DE UNA (llevar al piso no es por escalones)' : ''}${r.meta.barrera ? ` ⚠️ cruza $33.000 (a $32.990 queda ${r.meta.barrera.mg == null ? '?' : r.meta.barrera.mg.toFixed(0) + '%'})` : ''}` : 'sin precio que llegue'}`);
       for (const r of peorExc) console.log(`   (excepción: ${r.exc}) ${r.mla} · ${r.nom} · ${f(r.P)} · peor caso ${r.mgP.toFixed(0)}%`);
       if (sinMgTxt(filas)) console.log(sinMgTxt(filas));
       console.log(`\nResumen: ${filas.length} miradas · ${bajo.length} abajo de ${PISO}% · ${sinMg.length} sin margen medible · ${rap.length} cuya última tanda duró 3 días o menos (probablemente baratas)`);
