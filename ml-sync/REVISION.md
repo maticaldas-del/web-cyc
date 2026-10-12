@@ -257,6 +257,9 @@ Qué chequear: que el total de renglones cierre con las publicaciones vivas con 
   `/orders/<id>/discounts` da 404 = sin descuento (se guarda 0); un 429 no se guarda (se reintenta); que lo de ML no se
   descuente del neto (el cupón de ML no baja lo depositado); que la suma por compra no cuente dos veces una orden.
 
+### Tope de H: el ritmo son los 30 días enteros hasta ayer (12/10/2026, v23.14)
+Qué: `parejoDatos` (index.html) proyecta el cierre con las ventas de los 30 días ENTEROS hasta ayer. Antes contaba hoy recién empezado ÷ 30: a la madrugada la proyección caía sola y Matías pasaba de rojo a amarillo sin que nada cambiara. Chequear: que el número no salte a la medianoche y que la barra de ventas siga incluyendo canceladas.
+
 ## 3 · MERCADERÍA
 - **Estado de la caja de cada producto** (probe `cajahoy`, `mllinks.caja`): winning/sharing/losing
   y también nocat/sincaja; un producto sin publicación activa no es "sin dato".
