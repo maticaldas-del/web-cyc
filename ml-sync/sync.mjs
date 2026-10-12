@@ -36111,7 +36111,13 @@ async function main() {
       for (const m of Object.keys(forzar)) if (!vistos.has(m)) console.log(`\n${m} · no la miré: no está vinculada, no está activa o es de otra cosa (sin ficha, oculta, "no la vendemos más")`);
       for (const d of cz.dec) {
         console.log(`\n${d.mla} · ${d.cuenta} · ${d.nom}`);
-        if (d.accion === 'nada') { console.log(`   ✗ ${d.mismoPrecio ? 'el precio queda igual' : 'no se toca'}: ${d.motivo}${forzar[d.mla] && forzar[d.mla].activar ? ' · (y la activo si está pausada y deja el piso)' : ''}`); continue; }
+        if (d.accion === 'nada') {
+          console.log(`   ✗ ${d.mismoPrecio ? 'el precio queda igual' : 'no se toca'}: ${d.motivo}${forzar[d.mla] && forzar[d.mla].activar ? ' · (y la activo si está pausada y deja el piso)' : ''}`);
+          // Dejarla a propósito en el precio de hoy con `!piso` (12/10/2026): la excepción se anota igual, si no la planilla la sigue marcando 🛡️.
+          const fz0 = forzar[d.mla] || {};
+          if (d.mismoPrecio && fz0.piso && GOp && !DRY) { try { await db.set('cyc/claudepiso/' + d.mla, { a: Math.round(Number(d.p0) || 0), ts: Date.now(), motivo: String(fz0.motivo || '').slice(0, 200) }); console.log('   ✓ anotada como excepción mía (!piso): la planilla no la vuelve a marcar'); } catch { console.log('   ⚠️ no pude anotar la excepción'); } }
+          continue;
+        }
         console.log(`   ${d.accion === 'sube' ? '⬆️ SUBIR' : '⬇️ BAJAR'} ${money(d.p0)} → ${money(d.a)}${d.cruza ? ' (cruza $33.000)' : ''} · margen ${d.mg0}% → ${d.mgA}%${d.pisoAut ? ' (abajo del piso, con !piso)' : ''}${d.gPorU ? ` · por unidad ${money(d.gPorU.antes)} → ${money(d.gPorU.despues)}` : ''}`);
         // PSICOLOGÍA DEL PRECIO (10/10/2026, él eligió 1a y 2a): avisa, no frena. Terminación redonda (múltiplo de $1.000)
         // o una suba que cruza un número redondo — se cruza sólo si la ganancia extra vale claramente la pena y se explica.
