@@ -7479,6 +7479,10 @@ const CAND_PISO_PERFUME = 24;   // 06/10/2026: 24 para todo lo que se compra (é
 const RE_CAND_PERF = /perfum|parfum|\bedp\b|\bedt\b|eau de|fragan|fragr|body splash|body mist|\bcolonia\b|\bsplash\b/i;
 function candPisoDe(c) { return c && RE_CAND_PERF.test(`${c.nombre || ''} ${c.mlTit || ''}`) ? CAND_PISO_PERFUME : CAND_PISO_PCT; }
 const CAND_MIN_VENT = 100;      // suyo, 03/10/2026: "100 unidades mínimo vendidas, sino no sirve" para entrar al pedido
+// Peor caso razonable de retención de IIBB de otra provincia al vender (12/10/2026): casi todas las ventas traen 0,5-2%.
+const PEOR_RET_PCT = 0.02;
+// Las que no tienen margen medible también son un agujero: se nombran (sin costo, Premium sin cuotas, ML no contestó).
+const sinMgTxt = (filas) => { const x = filas.filter((r) => r.mg == null); return x.length ? `⚠️ sin margen medible (${x.length}, no se puede saber si están bien): ` + x.slice(0, 30).map((r) => `${r.mla} ${r.nom.slice(0, 24)} (${r.nota || '?'})`).join(' · ') : ''; };
 let CAND_ENVIO_ARRIBA = 6190; // el envío de Full arriba de la barrera · lo pisa `cargarParamCompra` con lo medido
 // ── LOS NÚMEROS CON LOS QUE SE DECIDE UNA COMPRA SE ACTUALIZAN SOLOS (06/10/2026) ──────────────
 // Pedido suyo: *"el envío ahora cobra más. todo eso quiero que lo mantengas actualizado al robot.
@@ -36120,6 +36124,10 @@ async function main() {
       const ac = await aplicarCerebro(db, cz, { tokens: tokP, aplica: true, autoprecio: apP });
       console.log(`\n✓ hechos: ${ac.hechos.length} · no se pudo: ${ac.fallidos.length} · sin anotar: ${ac.sinAnotar.length}`);
       for (const h of ac.hechos) { const fz = forzar[h.f.mla] || {}; await escribirNota(h.f.mla, `${Number(h.a) > Number(h.de) ? 'Lo subí' : 'Lo bajé'} de ${money(h.de)} a ${money(h.a)}. ${fz.motivo || ''}`.trim(), { tipo: 'precio', de: h.de, a: h.a }); }
+      // EXCEPCIONES A PROPÓSITO (12/10/2026): un precio que dejé abajo del 25% con `!piso` (remate, liquidar, sobrestock)
+      // queda anotado con el precio exacto, para que el chequeo del peor caso de `planilla` no lo marque. Si después
+      // decido otro precio sin `!piso`, la marca se borra.
+      for (const h of ac.hechos) { const fz = forzar[h.f.mla] || {}; try { if (fz.piso) await db.set('cyc/claudepiso/' + h.f.mla, { a: Math.round(Number(h.a) || 0), ts: Date.now(), motivo: String(fz.motivo || '').slice(0, 200) }); else await db.set('cyc/claudepiso/' + h.f.mla, null); } catch { console.log(`   ⚠️ no pude anotar la excepción del piso de ${h.f.mla}`); } }
       for (const x of ac.fallidos) { const fz = forzar[x.f.mla] || {}; await escribirNota(x.f.mla, `Quise dejarla a ${money(x.a)} (${fz.motivo || 'sin motivo'}) pero no se pudo: ${x.err}. La vuelvo a mirar en la próxima revisión.`, { tipo: 'fallo' }); }
       for (const d of cz.dec) if (d.accion === 'nada' && d.mismoPrecio && forzar[d.mla] && forzar[d.mla].motivo) await escribirNota(d.mla, forzar[d.mla].motivo, { tipo: 'nota' });
       await marcarRevisado();
@@ -36603,7 +36611,7 @@ async function main() {
     // caja de compra y el último cambio de precio. No opina: Claude mira renglón por renglón en cada revisión.
     if (/^planilla(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const ctaF = String(process.env.BILLING_PROBE).slice('planilla'.length).replace(/^:/, '').trim().toLowerCase();
-      const [lk, inv, vp, np, ap, sh, cfgM, mono, fin, cuoC, prodsO] = await Promise.all(['cyc/mllinks', 'cyc/inventory', 'cyc/ventaprod', 'cyc/netopub', 'cyc/autoprecio', 'cyc/stockhist', 'cyc/mlconfig', 'cyc/monotributo', 'cyc/finanzas', 'cyc/mlcuotas', 'cyc/products']
+      const [lk, inv, vp, np, ap, sh, cfgM, mono, fin, cuoC, prodsO, nosub, cPiso, pClaude] = await Promise.all(['cyc/mllinks', 'cyc/inventory', 'cyc/ventaprod', 'cyc/netopub', 'cyc/autoprecio', 'cyc/stockhist', 'cyc/mlconfig', 'cyc/monotributo', 'cyc/finanzas', 'cyc/mlcuotas', 'cyc/products', 'cyc/nosubir', 'cyc/claudepiso', 'cyc/promoclaude']
         .map((r) => db.get(r).then((x) => x || {}).catch(() => null)));
       if ([lk, inv, vp, np, prodsO, fin].some((x) => x === null)) { console.log('⚠️ no pude leer la base: no listo nada a medias'); return; }
       const tc = parseFloat(fin.tipo_cambio) || 0; if (!(tc > 0)) { console.log('⚠️ sin dólar cargado: no hay costo en pesos'); return; }
@@ -36656,7 +36664,7 @@ async function main() {
             const st = Math.max(0, parseInt(inv[kV && inv[kV] != null ? kV : kP]) || 0);
             const costo = Math.round(costoPesos(p, 1, tc).costo || 0);
             const m = (mlExtraPct(cta) + monoPz) / 100;
-            let mg = null, g = null, nota = '';
+            let mg = null, g = null, nota = '', mgP = null;
             const cuo = cuotaPremiumDe(cuoC || {}, mla, b.listing_type_id);
             if (!(costo > 0)) nota = 'SIN COSTO';
             else if (cuo == null) nota = 'Premium sin cuotas medidas';
@@ -36665,7 +36673,14 @@ async function main() {
               const env = P >= UMBRAL_ENVIO_GRATIS ? ((Number(n0.envio) > 0 && !n0.envioML) ? Number(n0.envio) : CAND_ENVIO_ARRIBA) : 0;
               const fe = await feeAtP(b, P, tk);
               if (fe == null) nota = 'ML no contestó la comisión';
-              else { g = P - fe - P * cuo - env - costo - P * m; mg = g / (costo + P * m + env) * 100; }
+              else {
+                g = P - fe - P * cuo - env - costo - P * m; mg = g / (costo + P * m + env) * 100;
+                // PEOR CASO (12/10/2026, regla suya con los Sony ZX310): retención de IIBB de otra provincia
+                // (`PEOR_RET_PCT`) y, arriba de la barrera, el envío más caro entre el medido y el de referencia.
+                const envP = P >= UMBRAL_ENVIO_GRATIS ? Math.max(env, CAND_ENVIO_ARRIBA) : 0;
+                const gP = P - fe - P * cuo - envP - costo - P * m - P * PEOR_RET_PCT;
+                mgP = gP / (costo + P * m + envP) * 100;
+              }
             }
             const vv = ven[mla] || { u7: 0, u30: 0, u60: 0, ult: 0 };
             const kPl = e.prodId + '__' + sidL(cta.toLowerCase()), kVl = e.variant ? kPl + '__v__' + sidL(e.variant) : null;
@@ -36676,7 +36691,7 @@ async function main() {
             const tanda = ini && h.cero && h.cero > ini ? Math.max(0.1, (h.cero - ini) / 864e5) : null;
             const a = ap[mla];
             filas.push({ mla, cta, nom: String(e.title || p.name || '').slice(0, 42) + (e.variant ? ' #' + e.variant : ''), est: b.status + ((b.sub_status || []).length ? '(' + b.sub_status.join(',') + ')' : ''),
-              P, mg, g, nota, st, ...vv, cero: h.cero && st === 0 ? h.cero : null, tanda, caja: e.caja || '', ptw: e.cajaPtw || null, var: (b.variations || []).length,
+              P, mg, g, mgP, nota, st, exc: (nosub || {})[mla] ? 'liquidando' : (cPiso && cPiso[mla] && Math.abs((Number(cPiso[mla].a) || 0) - P) <= 10) ? 'la dejé así con !piso' : (pClaude && pClaude[mla]) ? 'en promo que entré yo' : '', ...vv, cero: h.cero && st === 0 ? h.cero : null, tanda, caja: e.caja || '', ptw: e.cajaPtw || null, var: (b.variations || []).length,
               cambio: a && a.ts ? `${f(a.de)}→${f(a.a)} hace ${Math.round((hoy - a.ts) / 864e5)} d${a.por ? ' (' + a.por + ')' : ''}` : '' });
           }
         }
@@ -36696,6 +36711,15 @@ async function main() {
       if (sinLeer.length) console.log(`\n⚠️ sin leer (${sinLeer.length}): ${sinLeer.slice(0, 40).join(' · ')}`);
       const bajo = filas.filter((r) => r.mg != null && r.mg < PISO), sinMg = filas.filter((r) => r.mg == null);
       const rap = filas.filter((r) => r.tanda != null && r.tanda <= 3 && r.u30 > 0);
+      // EL PEOR CASO, DE TODAS (12/10/2026, regla suya): *"todo producto que existe tiene que estar arriba del 25%"*. ML
+      // reactiva sola una publicación que ya estuvo en Full apenas le entra stock, así que una pausada sin stock a mal precio
+      // vende mal en cuanto llega la caja. Acá van TODAS (con o sin stock) que en el peor caso quedan abajo del objetivo, salvo
+      // mis excepciones a propósito (liquidando, `!piso`, promo mía), que se cuentan aparte.
+      const peor = filas.filter((r) => r.mgP != null && r.mgP < PISO), peorNo = peor.filter((r) => !r.exc), peorExc = peor.filter((r) => r.exc);
+      console.log(`\n── 🛡️ ABAJO DEL ${PISO}% EN EL PEOR CASO (retención de otra provincia ${(PEOR_RET_PCT * 100).toFixed(1)}%, envío caro, cuotas): ${peorNo.length} para subir · ${peorExc.length} excepciones mías ──`);
+      for (const r of peorNo.sort((x, y) => x.mgP - y.mgP)) console.log(`🛡️ ${r.mla} · ${r.cta} · ${r.nom} · ${r.est} · ${f(r.P)} · peor caso ${r.mgP.toFixed(0)}% (normal ${r.mg.toFixed(0)}%) · Full ${r.st} · v30 ${r.u30}`);
+      for (const r of peorExc) console.log(`   (excepción: ${r.exc}) ${r.mla} · ${r.nom} · ${f(r.P)} · peor caso ${r.mgP.toFixed(0)}%`);
+      if (sinMgTxt(filas)) console.log(sinMgTxt(filas));
       console.log(`\nResumen: ${filas.length} miradas · ${bajo.length} abajo de ${PISO}% · ${sinMg.length} sin margen medible · ${rap.length} cuya última tanda duró 3 días o menos (probablemente baratas)`);
       return;
     }
