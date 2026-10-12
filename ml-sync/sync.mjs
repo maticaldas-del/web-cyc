@@ -281,7 +281,8 @@ async function armarCostoWeb(db, vp) {
   const tcForYM = (ym) => {
     const m = tcMes[ym];
     if (m != null && m !== '' && !isNaN(parseFloat(m))) return parseFloat(m);
-    const sn = snaps[ym]; if (sn && sn.tipoCambio) return parseFloat(sn.tipoCambio);
+    // Cierre: `tcMes` (el dólar de la ganancia, 2a del 12/10/2026) y si no, el del día del cierre (cierres viejos).
+    const sn = snaps[ym]; if (sn && (parseFloat(sn.tcMes) > 0 || sn.tipoCambio)) return parseFloat(sn.tcMes) > 0 ? parseFloat(sn.tcMes) : parseFloat(sn.tipoCambio);
     const t = ym < curYM ? tcVentasMes(ym) : 0;
     return t > 0 ? t : tcHoy;
   };
@@ -6331,8 +6332,69 @@ async function podarStocklog(db, slog, ahora) {
   return Object.keys(slPoda).length;
 }
 
+// ── VENTA EN REMATE: UNA SOLA REGLA PARA EL ROBOT Y LA WEB (12/10/2026, él eligió 1a) ─────────────────
+// Antes había tres: la web (toda venta abajo de 20%), la línea y el ritmo del robot (marcas: liquidando,
+// etiqueta "remate", bajas del robot) y `pedidostodo` (abajo de 10% y parado en la línea de tiempo). La
+// misma venta podía ser remate en un lado y demanda en el otro. Ahora: remate = el % de la venta (la MISMA
+// cuenta que el renglón de Ventas: `armarCostoWeb`, costo y dólar del mes, envío de Full en el divisor) quedó
+// abajo de 20% Y hay una PRUEBA de que se estaba rematando: etiqueta "remate" de la venta, marca liquidando
+// de antes de la venta, una baja de remate/escalera de antes que no terminó, o la línea de tiempo dice que
+// estaba PARADO (30+ días con stock en los 45 anteriores vendiendo menos de 1 por semana; si la línea no
+// sabe el stock, que le hayan bajado el precio 12%+ y casi no vendiera). Su regla del 09/10: "si llegaron y se
+// vendieron al toque" es demanda y cuenta. Falta de dato no es remate.
+// Lo decide el robot cada noche (`linea`) y lo guarda en `cyc/ventaremate/<día>/<id de la venta>` = 1; la web
+// SÓLO lee eso (`ventaEnRemate`), así no puede haber dos respuestas.
+const VENTA_REMATE_PCT = 20;
+function paradoEnLinea(lin, dk, pV) {
+  if (!lin) return { es: false, porque: 'sin línea de tiempo' };
+  const d0 = Date.parse(dk.replace(/_/g, '-') + 'T12:00:00-03:00');
+  let dSt = 0, uAnt = 0, dSab = 0, pMax = 0;
+  for (let i = 1; i <= 45; i++) {
+    const kk = new Date(d0 - i * 864e5 - 3 * 36e5).toISOString().slice(0, 10).replace(/-/g, '_'); const r = lin[kk]; if (!r) continue;
+    if (r.st != null) { dSab++; if (Number(r.st) > 0) dSt++; }
+    uAnt += Number(r.u) || 0; const pp = Number(r.p ?? r.pF) || 0; if (pp > pMax) pMax = pp;
+  }
+  if (dSt >= 30 && uAnt / dSt < 1 / 7) return { es: true, porque: `antes estuvo ${dSt} días con stock vendiendo ${uAnt}` };
+  if (dSab < 15 && pMax > 0 && pV > 0 && pMax >= pV * 1.12 && uAnt < 45 / 7) return { es: true, porque: `le bajaron el precio de $${Math.round(pMax)} a $${Math.round(pV)} y antes vendía ${uAnt} en 45 días` };
+  return { es: false, porque: dSab < 15 ? 'la línea no sabe el stock de antes y no hubo baja de precio' : `antes: ${dSt} días con stock y ${uAnt} vendidas, no estaba parado` };
+}
+// → { mapa: {dk: {id: 1}}, info: {'dk|id': {pct, remate, porque}}, fallo: Set('dk|id') }. `lineaDe(mla)` puede ser
+// async y devolver null si no se pudo leer (esa venta va a `fallo`: no se sabe, se conserva lo de antes).
+async function clasificarRemates(db, vp, o) {
+  const { nosubir = {}, rescv = {}, autoprecio = {}, lineaDe, desde = '' } = o || {};
+  setDevLive(vp);
+  const cw = await armarCostoWeb(db, vp);
+  const mapa = {}, info = {}, fallo = new Set();
+  for (const [dk0, ents] of Object.entries(vp || {})) {
+    const dk = dk0.slice(0, 10); if (desde && dk < desde) continue;
+    for (const [id0, v] of Object.entries(ents || {})) {
+      if (!v || v.cancelada || !(Number(v.neto) > 0)) continue;
+      const id = v.id || id0, q = Number(v.qty) || 1;
+      const c = cw(v, dk); if (c.sinCosto || !(c.costo > 0)) continue;
+      const pct = ((Number(v.neto) || 0) - c.costo) / (c.costo + (v.netoEstimado ? 0 : c.gest)) * 100;
+      if (!(pct < VENTA_REMATE_PCT)) continue;
+      const ts = Number(v.ts) || Date.parse(dk.replace(/_/g, '-') + 'T12:00:00-03:00');
+      const et = rescv[dk + '__' + id];
+      const ns = v.mla && nosubir[v.mla]; const nsF = ns && ns.fecha ? Date.parse(ns.fecha) : NaN;
+      const ap = v.mla && autoprecio[v.mla];
+      let r = null;
+      if (et && et.estado === 'remate') r = { es: true, porque: 'la venta quedó etiquetada remate' };
+      else if (isFinite(nsF) && nsF <= ts) r = { es: true, porque: 'estaba marcada liquidando' };
+      else if (ap && ns && !ap.remateTerminado && ap.tipo === 'baja' && /remate|escalera/.test(String(ap.por || '')) && (Number(ap.ts) || 0) <= ts) r = { es: true, porque: 'la habían bajado para rematar' };
+      else if (v.mla && lineaDe) {
+        const lin = await lineaDe(v.mla);
+        if (lin === null) { fallo.add(dk + '|' + id); continue; }
+        r = paradoEnLinea(lin, dk, (Number(v.total) || 0) / q);
+      } else r = { es: false, porque: 'sin publicación ni marca' };
+      info[dk + '|' + id] = { pct: Math.round(pct * 10) / 10, remate: r.es, porque: r.porque, v };
+      if (r.es) (mapa[dk] = mapa[dk] || {})[id] = 1;
+    }
+  }
+  return { mapa, info, fallo };
+}
+
 function calcRitmoNormal(o) {
-  const { links = {}, inv = {}, vp = {}, nosubir = {}, rescateventa = {}, autoprecio = {}, cambios = {}, diario = {}, precios = {}, hoyTs = Date.now(), DIAS = 365, primerVp = null } = o || {};
+  const { links = {}, inv = {}, vp = {}, nosubir = {}, ventaremate = {}, cambios = {}, diario = {}, precios = {}, hoyTs = Date.now(), DIAS = 365, primerVp = null } = o || {};
   const sid = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
   const DMS = 864e5;
   // Día local de acá: el día D arranca a las 03:00 UTC.
@@ -6373,14 +6435,10 @@ function calcRitmoNormal(o) {
       const kP = v.prodId + '__' + sid(v.cuenta);
       const varV = v.variante || ((links[v.mla] || {}).variant) || '';
       const ks = varV ? [kP, kP + '__v__' + sid(varV)] : [kP];
-      const et = rescateventa[dk + '__' + (v.id || id)];
-      const ns = v.mla && nosubir[v.mla]; const nsF = ns && ns.fecha ? Date.parse(ns.fecha) : NaN;
-      const ap = v.mla && autoprecio[v.mla];
-      // Remate = de ESTA venta o de su propia clave (la más específica), no de cualquier clave del producto. La baja
-      // por remate/escalera cuenta sólo mientras sigue la marca liquidando y el remate no terminó (etapa 8).
-      const rem = (et && et.estado === 'remate') || (isFinite(nsF) && nsF <= ts)
-        || (ap && ns && !ap.remateTerminado && ap.tipo === 'baja' && /remate|escalera/.test(String(ap.por || '')) && (Number(ap.ts) || 0) <= ts)
-        || esRemDia(ks[ks.length - 1], dk);
+      // Venta en remate = la MISMA regla que la web y la línea (`clasificarRemates`, guardada por `linea` en
+      // `cyc/ventaremate`; 12/10/2026, él eligió 1a): % abajo de 20 Y prueba de remate. Los días rematando se
+      // siguen sacando de los días con stock (abajo, `esRemDia`), pero una venta sola no es remate por caer ahí.
+      const rem = !!(ventaremate[dk] && ventaremate[dk][v.id || id]);
       for (const k of ks) add(k, dk, q, rem);
     }
   }
@@ -17013,6 +17071,25 @@ async function main() {
       const vp = (await db.get('cyc/ventaprod')) || {};
       const nosubir = (await db.get('cyc/nosubir')) || {};
       const rescv = (await db.get('cyc/rescateventa')) || {};
+      // Qué venta fue en remate: UNA sola regla (`clasificarRemates`, 12/10/2026, él eligió 1a). La noche la
+      // calcula y la guarda en `cyc/ventaremate` (la web lee eso); el relleno para atrás usa lo guardado.
+      let vRem = {};
+      if (!ATRAS) {
+        const apL = (await db.get('cyc/autoprecio')) || {};
+        const linC = {};
+        const lineaDe = async (mla) => { if (!(mla in linC)) { try { linC[mla] = (await db.get('mlapi/linea/' + mla)) || {}; } catch { linC[mla] = null; } } return linC[mla]; };
+        const cl = await clasificarRemates(db, vp, { nosubir, rescv, autoprecio: apL, lineaDe });
+        vRem = cl.mapa;
+        let viejo = {}; try { viejo = (await db.get('cyc/ventaremate')) || {}; } catch { viejo = null; }
+        if (cl.fallo.size && viejo === null) console.log(`⚠️ venta en remate: ${cl.fallo.size} venta(s) sin poder leer su línea y no pude leer lo guardado: no escribo`);
+        else {
+          for (const k of cl.fallo) { const [dk, id] = k.split('|'); if (viejo && viejo[dk] && viejo[dk][id]) (vRem[dk] = vRem[dk] || {})[id] = 1; }
+          const nR = Object.values(vRem).reduce((a, o) => a + Object.keys(o).length, 0);
+          const nB = Object.values(cl.info).filter((x) => !x.remate).length;
+          console.log(`venta en remate (abajo de ${VENTA_REMATE_PCT}% y con prueba): ${nR} · abajo de ${VENTA_REMATE_PCT}% pero era demanda (cuentan): ${nB}${cl.fallo.size ? ' · sin poder leer la línea (queda lo de antes): ' + cl.fallo.size : ''}`);
+          if (GO) await db.set('cyc/ventaremate', Object.keys(vRem).length ? vRem : null);
+        }
+      } else { try { vRem = (await db.get('cyc/ventaremate')) || {}; } catch { vRem = {}; } }
       // Ventas del panel por MLA y día (desde mayo, con neto y remate).
       const ventasPanel = {}; let primerDiaPanel = null;
       for (const [dk0, ents] of Object.entries(vp)) {
@@ -17021,8 +17098,7 @@ async function main() {
           if (!v || v.cancelada || !v.mla) continue;
           const x = ((ventasPanel[v.mla] = ventasPanel[v.mla] || {})[dk] = ventasPanel[v.mla][dk] || { u: 0, tot: 0, neto: 0, uR: 0 });
           const q = Number(v.qty) || 1; x.u += q; x.tot += Number(v.total) || 0; x.neto += Number(v.neto) || 0;
-          const et = rescv[dk + '__' + (v.id || id)]; const ns = nosubir[v.mla]; const nsF = ns && ns.fecha ? Date.parse(ns.fecha) : NaN;
-          if ((et && et.estado === 'remate') || (isFinite(nsF) && nsF <= (Number(v.ts) || 0))) x.uR += q;
+          if (vRem[dk] && vRem[dk][v.id || id]) x.uR += q;
         }
       }
       console.log(`=== LÍNEA DE TIEMPO ${ATRAS ? '· PARA ATRÁS' : '· AYER (' + ayerK + ')'} ${GO ? '' : '(PRUEBA — no escribo nada)'} ===`);
@@ -17371,7 +17447,7 @@ async function main() {
         const _meses = []; for (let y = 2026, m = 5; (y + '_' + String(m).padStart(2, '0')) <= curYMc; m++) { if (m > 12) { m = 0; y++; continue; } _meses.push(y + '_' + String(m).padStart(2, '0')); }
         for (const ym of _meses) {
           const h = ((hist || {})[ym] || {})[p.id];
-          const tm = (tcMes || {})[ym], sn = ((snaps || {})[ym] || {}).tipoCambio, tv = tcV(ym);
+          const tm = (tcMes || {})[ym], sn = (parseFloat(((snaps || {})[ym] || {}).tcMes) || 0) || ((snaps || {})[ym] || {}).tipoCambio, tv = tcV(ym);
           const tc = tm != null && tm !== '' ? parseFloat(tm) : sn ? parseFloat(sn) : (ym < curYMc && tv ? tv : parseFloat(tcHoy));
           const base = h != null ? Number(h) : Number(p.costUSD) || 0;
           console.log(`   ${ym}: costo US$ ${base}${h != null ? ' (congelado del mes)' : ' (el de hoy)'} · dólar ${tc} (${tm != null && tm !== '' ? 'cargado' : sn ? 'cierre' : ym < curYMc && tv ? 'promedio de ventas' : 'el de hoy'}) → mercadería $${Math.round(base * tc)} + envío $${Math.round((Number(p.shipUSD) || 0) * tc)}`);
@@ -17473,8 +17549,11 @@ async function main() {
         try { const LT = calcLineaTodo(lin, linksC); if (GO && Object.keys(LT).length) await db.set('mlapi/lineatodo', { dias: LT, ts: Date.now() }); console.log(`línea de todos: ${Object.keys(LT).length} días ${GO ? 'guardados' : '(prueba)'}`); }
         catch (e) { console.log(`⚠️ no pude armar la línea de todos (${String(e).slice(0, 80)})`); }
       } catch (e) { linFallo = true; console.log(`⚠️ no pude leer la línea de tiempo (${String(e).slice(0, 80)})`); }
-      const R = calcRitmoNormal({ links: linksC, inv: inv || {}, vp: vp || {}, nosubir: nosubir || {}, rescateventa: rescateventa || {},
-        autoprecio: autoprecio || {}, cambios: cambios || {}, diario, precios: precios || {}, hoyTs: ahoraR,
+      // Qué venta fue en remate: lo que guardó `linea` con la regla única (`clasificarRemates`). Sin eso no se
+      // pisa el ritmo guardado (igual que sin la línea).
+      let vRemR = {}; try { vRemR = (await db.get('cyc/ventaremate')) || {}; } catch (e) { linFallo = true; console.log(`⚠️ no pude leer qué ventas fueron en remate (${String(e).slice(0, 80)})`); }
+      const R = calcRitmoNormal({ links: linksC, inv: inv || {}, vp: vp || {}, nosubir: nosubir || {}, ventaremate: vRemR,
+        cambios: cambios || {}, diario, precios: precios || {}, hoyTs: ahoraR,
         primerVp: Object.keys(vp || {}).map((k) => k.slice(0, 10)).sort()[0] || null });
       const rs = Object.values(R.ritmo);
       console.log(`=== RITMO NORMAL ${GO ? '' : '(PRUEBA — no escribo nada)'} ===`);
@@ -35753,46 +35832,25 @@ async function main() {
         const add = (o) => { o.t180 += q; if (k >= k60) o.t60 += q; if (k >= k30) o.t30 += q; if (k > o.ult) o.ult = k; };
         add(s); const va = varDe(v); if (va) add(s.v[va] || (s.v[va] = { t30: 0, t60: 0, t180: 0, ult: '' }));
       };
-      const baratas = [];   // ventas con menos de 10% de ganancia: se deciden mirando la línea de tiempo (abajo)
+      // ¿VENTA BARATA = REMATE? Con la regla ÚNICA del robot y la web (`clasificarRemates`, 12/10/2026, él eligió 1a):
+      // remate = abajo de 20% Y prueba (etiqueta, liquidando, baja de remate, o PARADO en la línea de tiempo: su regla
+      // del 09/10 con el Ultra Shift y la Lupa 75mm). Lo de abajo de 20% sin prueba es demanda y cuenta ("BARATA").
+      const LIN = {}, rematesVistos = {};
+      const lineaDe = async (mla) => { if (!(mla in LIN)) { try { LIN[mla] = (await db.get('mlapi/linea/' + mla)) || {}; } catch { LIN[mla] = null; } } return LIN[mla]; };
+      const [nsP, rvP, apP] = await Promise.all(['cyc/nosubir', 'cyc/rescateventa', 'cyc/autoprecio'].map((k) => db.get(k).catch(() => null)));
+      const clP = await clasificarRemates(db, VP, { nosubir: nsP || {}, rescv: rvP || {}, autoprecio: apP || {}, lineaDe, desde: k180 });
       for (const [k, ents] of Object.entries(VP)) {
         if (k < k180) continue;
-        for (const v of Object.values(ents || {})) {
+        for (const [id0, v] of Object.entries(ents || {})) {
           if (!v || !v.prodId || v.cancelada) continue;
-          const q = Number(v.qty) || 1;
-          // ¿VENTA BARATA = REMATE? (09/10/2026, él). Primero: el Ultra Shift vendido a −3% ("lo tuvimos que sacar al 3% porque
-          // no se vendía ni loco") no es demanda. Pero después, con la Lupa 75mm: "quizás se vendió barato porque fue mi culpa
-          // ponerlo barato (…) si sale de pedidos, no compramos más un producto que sí vende (…) no habría por qué ponerlo en
-          // liquidar si llegaron y se vendieron al toque". Entonces una venta con menos de 10% NO se descarta por el %: se
-          // mira la LÍNEA DE TIEMPO de su publicación. Es remate sólo si en los 45 días anteriores estuvo 30+ días con stock
-          // vendiendo menos de 1 por semana (estaba parado). Si llegó y se vendió al toque, es demanda y cuenta.
-          { const pr0 = byId[v.prodId] || {}; const c0 = (Number(pr0.costFullUSD) || Number(pr0.costUSD) || 0) * (Number(R[11]) || 0);
-            const nU = (Number(v.neto) || 0) / q, tU = (Number(v.total) || 0) / q;
-            if (c0 > 0 && nU > 0 && (nU - 0.06 * tU - c0) / c0 < 0.10) { baratas.push({ v, k, q }); continue; } }
+          const q = Number(v.qty) || 1, inf = clP.info[k.slice(0, 10) + '|' + (v.id || id0)];
+          const s = S[v.prodId] || (S[v.prodId] = { t30: 0, t60: 0, t180: 0, ult: '', v: {}, rem: 0, barata: 0 });
+          if (inf && inf.remate) { if (k >= k60) s.rem += q; rematesVistos[v.prodId] = inf.porque; continue; }
+          if (inf) s.barata += q;
           addVenta(v, k, q);
         }
       }
-      // Las ventas baratas, una por una contra la línea de tiempo de su publicación.
-      const LIN = {}, rematesVistos = {};
-      for (const b of baratas) {
-        const mla = b.v.mla; let es = false, porque = 'sin línea de tiempo: cuenta como venta';
-        if (mla) {
-          if (!(mla in LIN)) { try { LIN[mla] = (await db.get('mlapi/linea/' + mla)) || {}; } catch { LIN[mla] = null; } }
-          const lin = LIN[mla];
-          if (lin) {
-            const d0 = Date.parse(b.k.replace(/_/g, '-') + 'T12:00:00-03:00');
-            let dSt = 0, uAnt = 0, dSab = 0, pMax = 0;
-            for (let i = 1; i <= 45; i++) { const kk = new Date(d0 - i * 864e5 - 3 * 36e5).toISOString().slice(0, 10).replace(/-/g, '_'); const r = lin[kk]; if (!r) continue; if (r.st != null) { dSab++; if (Number(r.st) > 0) dSt++; } uAnt += Number(r.u) || 0; const pp = Number(r.p ?? r.pF) || 0; if (pp > pMax) pMax = pp; }
-            const pV = (Number(b.v.total) || 0) / b.q;
-            if (dSt >= 30 && uAnt / dSt < 1 / 7) { es = true; porque = `antes estuvo ${dSt} días con stock vendiendo ${uAnt}`; }
-            // Si la línea no sabe el stock: le BAJARON el precio 12%+ en los 45 días anteriores y casi no vendía = remate.
-            else if (dSab < 15 && pMax > 0 && pV > 0 && pMax >= pV * 1.12 && uAnt < 45 / 7) { es = true; porque = `le bajaron el precio de $${Math.round(pMax)} a $${Math.round(pV)} y antes vendía ${uAnt} en 45 días`; }
-            else porque = dSab < 15 ? 'la línea no sabe el stock de antes y no hubo baja de precio: cuenta como venta' : `antes: ${dSt} días con stock y ${uAnt} vendidas, no estaba parado`;
-          }
-        }
-        const s = S[b.v.prodId] || (S[b.v.prodId] = { t30: 0, t60: 0, t180: 0, ult: '', v: {}, rem: 0, barata: 0 });
-        if (es) { if (b.k >= k60) s.rem += b.q; rematesVistos[b.v.prodId] = porque; }
-        else { addVenta(b.v, b.k, b.q); s.barata = (s.barata || 0) + b.q; }
-      }
+      if (clP.fallo.size) console.log(`⚠️ ${clP.fallo.size} venta(s) barata(s) sin poder leer su línea de tiempo: cuentan como venta`);
       const ent = {};   // lo que ML ya dio de alta de cajas abiertas
       for (const [ck, x] of Object.entries(CE)) for (const it of ((x && x.items) || [])) if (it && it.p) { const kk = ck + '|' + it.p + '|' + (it.v || ''); ent[kk] = (ent[kk] || 0) + (Number(it.q) || 0); }
       const cam = {};   // pid -> {tot, v:{}}

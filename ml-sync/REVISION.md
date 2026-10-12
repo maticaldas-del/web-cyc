@@ -480,6 +480,20 @@ Todo lo que guarda la historia día por día y las pantallas que la dibujan.
   usa un mes al cerrarlo (hoy: el del día del cierre, y la ganancia del mes cambia al cerrar).
   Chequear: que `linea:go` no deje sin stock lo que tiene colores dentro de una publicación; que `ritmo:go` diga cuántos
   renglones podó; que lo que trajo el robot de agosto no cambie de una noche a otra.
+- **Las dos decisiones de la etapa 8, de él (12/10/2026, v23.17): 1a y 2a.**
+  · **1a · venta en remate = UNA regla** (`clasificarRemates` en sync.mjs): % de la venta con la cuenta de la web
+    (`armarCostoWeb`) abajo de `VENTA_REMATE_PCT` (20) **y** prueba: etiqueta `remate` (`cyc/rescateventa`), marca
+    `liquidando` de antes de la venta, baja de remate/escalera de antes que no terminó, o `paradoEnLinea` (30+ días con
+    stock en los 45 anteriores vendiendo menos de 1 por semana; sin stock sabido, baja de precio 12%+ y casi sin
+    ventas). `linea:go` (noche) la calcula y guarda `cyc/ventaremate/<día>/<id>` = 1 (si una línea no se lee, queda lo
+    de antes); `linea:atras` usa lo guardado; `ritmo:go` (`calcRitmoNormal`) y `pedidostodo` la usan; la web
+    (`ventaEnRemate`) SÓLO lee `state.ventaremate`. Reemplaza la regla del 03/10 (toda venta abajo de 20%) y el 10% de
+    `pedidostodo`. Chequear: que el log de `linea` diga cuántas son remate y cuántas "demanda"; que ninguna venta de
+    hoy aparezca como remate; que Pedidos y la línea den las mismas unidades en remate.
+  · **2a · dólar del mes cerrado**: `saveSnapshot` guarda `tcMes` (dólar cargado del mes o promedio de sus ventas;
+    si no hay, el del día) además de `tipoCambio` (el del día, para el Arqueo). `histTCforYM` (`_tcGananciaSnap`) y
+    el robot (`armarCostoWeb`, `costomes`) usan `tcMes` y, en cierres viejos sin él, `tipoCambio`. Chequear: cerrar un
+    mes no cambia su ganancia en Resumen.
 
 ## 9 · CEREBRO (nueva, 09/10/2026, pedido suyo)
 Él, después de que dos veces salió incompleto (precios y pedidos): *"es un problema grave que pasó dos veces ya (...) en los dos se hizo súper incompleto y nunca te diste cuenta (...) quiero agregar esto de revisar cerebro a las etapas"*. Revisa LO QUE HACE CLAUDE en cada vuelta (08:52, 12:52, 16:52, 20:52): que cada parte se haga ENTERA.
