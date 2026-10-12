@@ -469,6 +469,57 @@ Todo lo que guarda la historia día por día y las pantallas que la dibujan.
   arriba y verde en la línea (real ~31 d). Ahora los dos usan `_pdiaAntes(i)`. Chequear: que no vuelva a haber dos cuentas
   del mismo ritmo en la línea.
 
+- **Revisión de la etapa 8 (12/10/2026, v23.15) · web:** (1) en `lineaPintar` las unidades (`u`, `uR`) de cada día salen del
+  PANEL desde su primer día (`_vp1`), con el mismo filtro que la ganancia: la fila de ayer del robot llega ~06-07 h y no ve lo
+  cancelado después (un día que vendió 4 decía "no vendió" y la franja de stock salía roja). (2) La ganancia de la línea de un
+  producto (`gd`, `_ganPre`) y la de la línea de todos (`vd`) llevan `_dateKey` = misma cuenta que Ventas (costo y dólar del
+  mes). (3) "En remate" en la línea de un producto = `ventaEnRemate` (la misma regla que la línea de todos y Pedidos). (4) Sin
+  ritmo para medir, el stock va en gris "sin ventas para medir el ritmo" (antes violeta "+999 d exceso"). (5) Hoy: stock sin
+  negativos y `qty||0` como Ventas; el "stock hoy" del resumen usa la misma ventana que el último punto.
+  Chequear: que ayer a la mañana la línea ya muestre las ventas del panel; que la ganancia de un día coincida con Ventas.
+- **Revisión de la etapa 8 (12/10/2026, v23.16) · robot e historial:** línea de tiempo · (1) `linea:go`: el color de la
+  publicación sale también del TÍTULO (`linksConColor`, misma regla que `_varPorMla`); con color y sin clave de ese color, o
+  producto con colores sin color identificado, el stock queda sin dato (antes ponía el del producto entero: Centímetro 10 →
+  107 y "llegaron ~97" falso); el stock de ayer suma lo vendido de madrugada (`vendHoy`: corre 06-07 h y la web veía una
+  llegada falsa); las ventas de los 7 días anteriores se releen del panel cada noche (tardías, canceladas, neto real).
+  (2) `linea:atras` stock: un depósito queda "hecho" sólo si se leyó el año o ML contestó 4xx (corte de tiempo, 429, 5xx o red
+  = se vuelve a pedir; `lineaprog/stock.ok` sólo sin pendientes, sin fallas y sin medias); sin movimientos se pide el stock de
+  ESE depósito (antes la clave del producto); una publicación con varios depósitos se escribe sólo si se leyeron todos en la
+  misma corrida (si no, se releen juntos). (3) `linea:atras` ventas: una cuenta con la lista cortada no escribe nada.
+  (4) `calcLineaTodo` y `_lineaJunta` (web): color del título; una publicación de un color sin identificar cuenta sólo su
+  depósito como un color aparte; índice de precio: los saltos se recortan a ±×2,5 en vez de tirarse (la escasez del cerebro
+  llega a ×2,5). Ritmo normal · (5) el remate de un color marca sólo ese color, no el producto ni las hermanas (`marcaDesde`,
+  `d[3]`); una baja de remate/escalera de autoprecio vale si no terminó el remate; sin poder leer la línea NO se guarda el ritmo
+  (pisaba el bueno con uno corto). Registros · (6) poda del registro de stock en `podarStocklog`, 430 días, dejando el último
+  cambio ANTERIOR al corte (antes el último de toda la clave: borraba el "tenía stock desde hace 150 días"); corre también en
+  `ritmo:go` (el supervisor sale temprano en sólo datos); `alertaslog` se poda a 90 días. Supervisor · (7) costo, dólar y
+  monotributo del MES del cambio (`armarCostoWeb`, igual que la web): un `poncosto` ya no reescribe meses cerrados; dos cambios
+  distintos de la misma publicación el mismo día ya no se pisan (id con hora); la foto de precios no copia filas `sinMedir` y
+  "ya anotado" busca desde la foto anterior (armaba un "a mano" falso que dejaba el cambio real en curso para siempre).
+  Otros · (8) el aviso de chat nuevo de Telegram lleva sólo la inicial (`_tgMask`: se reimprime en el log público) · cargar un
+  mes cerrado a mano guarda el dólar de ESE mes, no el de hoy · `costomes:<AAAA_MM>` vuelve al comando viejo y el nuevo arma los
+  meses hasta el actual (tenía octubre fijo). No se hizo: Pedidos por cuenta con remate en una sola (Pedidos ya no propone
+  números, `SOLO_CLAUDE`); `entregas` no ve devoluciones posteriores a la entrega (chip "↩ volvió" casi nunca sale); `informe`
+  con más de 36 h; `ventaborrada` 60 d contra un relleno de más días.
+  Para decidir él: (a) una sola definición de "venta en remate" (prueba + % bajo, su regla O2) en robot y web; (b) qué dólar
+  usa un mes al cerrarlo (hoy: el del día del cierre, y la ganancia del mes cambia al cerrar).
+  Chequear: que `linea:go` no deje sin stock lo que tiene colores dentro de una publicación; que `ritmo:go` diga cuántos
+  renglones podó; que lo que trajo el robot de agosto no cambie de una noche a otra.
+- **Las dos decisiones de la etapa 8, de él (12/10/2026, v23.17): 1a y 2a.**
+  · **1a · venta en remate = UNA regla** (`clasificarRemates` en sync.mjs): % de la venta con la cuenta de la web
+    (`armarCostoWeb`) abajo de `VENTA_REMATE_PCT` (20) **y** prueba: etiqueta `remate` (`cyc/rescateventa`), marca
+    `liquidando` de antes de la venta, baja de remate/escalera de antes que no terminó, o `paradoEnLinea` (30+ días con
+    stock en los 45 anteriores vendiendo menos de 1 por semana; sin stock sabido, baja de precio 12%+ y casi sin
+    ventas). `linea:go` (noche) la calcula y guarda `cyc/ventaremate/<día>/<id>` = 1 (si una línea no se lee, queda lo
+    de antes); `linea:atras` usa lo guardado; `ritmo:go` (`calcRitmoNormal`) y `pedidostodo` la usan; la web
+    (`ventaEnRemate`) SÓLO lee `state.ventaremate`. Reemplaza la regla del 03/10 (toda venta abajo de 20%) y el 10% de
+    `pedidostodo`. Chequear: que el log de `linea` diga cuántas son remate y cuántas "demanda"; que ninguna venta de
+    hoy aparezca como remate; que Pedidos y la línea den las mismas unidades en remate.
+  · **2a · dólar del mes cerrado**: `saveSnapshot` guarda `tcMes` (dólar cargado del mes o promedio de sus ventas;
+    si no hay, el del día) además de `tipoCambio` (el del día, para el Arqueo). `histTCforYM` (`_tcGananciaSnap`) y
+    el robot (`armarCostoWeb`, `costomes`) usan `tcMes` y, en cierres viejos sin él, `tipoCambio`. Chequear: cerrar un
+    mes no cambia su ganancia en Resumen.
+
 ## 9 · CEREBRO (nueva, 09/10/2026, pedido suyo)
 Él, después de que dos veces salió incompleto (precios y pedidos): *"es un problema grave que pasó dos veces ya (...) en los dos se hizo súper incompleto y nunca te diste cuenta (...) quiero agregar esto de revisar cerebro a las etapas"*. Revisa LO QUE HACE CLAUDE en cada vuelta (08:52, 12:52, 16:52, 20:52): que cada parte se haga ENTERA.
 - **La pregunta de esta etapa, para cada tarea:** ¿de dónde salió la lista que miré? ¿esa lista es TODO o sólo lo que ya existe / se movió / ya decidí? El error de las dos veces fue el mismo: mirar una lista que sólo traía una parte (`informe` = lo que se movió · `pedidosnotas` = lo ya decidido) y creer que era todo.

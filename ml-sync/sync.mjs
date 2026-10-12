@@ -281,7 +281,8 @@ async function armarCostoWeb(db, vp) {
   const tcForYM = (ym) => {
     const m = tcMes[ym];
     if (m != null && m !== '' && !isNaN(parseFloat(m))) return parseFloat(m);
-    const sn = snaps[ym]; if (sn && sn.tipoCambio) return parseFloat(sn.tipoCambio);
+    // Cierre: `tcMes` (el dólar de la ganancia, 2a del 12/10/2026) y si no, el del día del cierre (cierres viejos).
+    const sn = snaps[ym]; if (sn && (parseFloat(sn.tcMes) > 0 || sn.tipoCambio)) return parseFloat(sn.tcMes) > 0 ? parseFloat(sn.tcMes) : parseFloat(sn.tipoCambio);
     const t = ym < curYM ? tcVentasMes(ym) : 0;
     return t > 0 ? t : tcHoy;
   };
@@ -6267,7 +6268,14 @@ function calcLineaTodo(lin, links) {
       if (r.vis != null) { x.vis = (x.vis || 0) + (Number(r.vis) || 0); x.visN = (x.visN || 0) + 1; }
       // El stock no se suma dos veces (08/10/2026): cada publicación guarda el de SU clave (producto×cuenta o el color),
       // así que varias publicaciones del mismo producto traen el mismo número. Se junta por clave y se suma al final.
-      if (r.st != null) { const kS = (e.prodId || mla) + '__' + (e.cuenta || '?'); const S = ((x._st = x._st || {})[kS] = x._st[kS] || { P: null, V: {} }); const q = Math.max(0, Number(r.st) || 0); const vr = String(e.variant || '').trim(); if (vr) S.V[vr] = Math.max(S.V[vr] || 0, q); else S.P = Math.max(S.P || 0, q); x.stN = (x.stN || 0) + 1; }
+      if (r.st != null) { const kS = (e.prodId || mla) + '__' + (e.cuenta || '?'); const S = ((x._st = x._st || {})[kS] = x._st[kS] || { P: null, V: {} }); const q = Math.max(0, Number(r.st) || 0); const vr = String(e.variant || '').trim();
+        // Publicación de UN color que no se pudo identificar (etapa 8): el relleno guarda el stock de SU depósito (un color),
+        // no el del producto; va como un color aparte. La foto de la noche de una así (clave del producto) no se usa.
+        const todosAd = e.invVar && Object.keys(e.invVar).length > 1;
+        if (vr) S.V[vr] = Math.max(S.V[vr] || 0, q);
+        else if (e._conColor && !todosAd) { if (r.stF === 'ops' || r.stF === 'sinmov') S.V['?' + mla] = Math.max(S.V['?' + mla] || 0, q); }
+        else S.P = Math.max(S.P || 0, q);
+        x.stN = (x.stN || 0) + 1; }
       const activa = r.est == null || r.est === 'active';
       if (activa && (r.caja === 'g' || r.caja === 'c' || r.caja === 'p')) x[r.caja] = (x[r.caja] || 0) + 1;
       if (r.rem === 1) x.rem = (x.rem || 0) + 1;
@@ -6276,7 +6284,8 @@ function calcLineaTodo(lin, links) {
       if (p > 0) {
         if (pAnt > 0) {
           const q = p / pAnt;
-          if (q > 0.5 && q < 2) { x.pl = (x.pl || 0) + Math.log(q); x.pN = (x.pN || 0) + 1; if (q > 1.005) x.sb = (x.sb || 0) + 1; else if (q < 0.995) x.bj = (x.bj || 0) + 1; }
+          // Un salto real de hasta ×2,5 (la escasez del cerebro) cuenta; lo más grande se recorta a ±×2,5 en vez de tirarse (etapa 8).
+          if (q > 0) { const _L = Math.log(2.5); x.pl = (x.pl || 0) + Math.max(-_L, Math.min(_L, Math.log(q))); x.pN = (x.pN || 0) + 1; if (q > 1.005) x.sb = (x.sb || 0) + 1; else if (q < 0.995) x.bj = (x.bj || 0) + 1; }
         }
         pAnt = p;
       }
@@ -6288,8 +6297,104 @@ function calcLineaTodo(lin, links) {
   }
   return out;
 }
+// EL COLOR DE CADA PUBLICACIÓN, también cuando sale del TÍTULO (etapa 8, 12/10/2026): la web lo deduce así
+// (`_varPorMla`) y el robot miraba sólo `variant`, así que una publicación de un aroma sin el campo cargado
+// sumaba en la línea y en el ritmo el stock y las ventas del producto entero. Devuelve una copia; `_conColor`
+// = el producto tiene colores (sin color identificado, el stock del producto no es el de esa publicación).
+function linksConColor(links, prodsById) {
+  const out = {};
+  for (const [mla, e] of Object.entries(links || {})) {
+    if (!e || !e.prodId) { out[mla] = e; continue; }
+    const p = prodsById && prodsById[e.prodId]; const vs = (p && Array.isArray(p.variantes)) ? p.variantes : [];
+    const va = e.variant || (vs.length ? varianteDeTitulo(e.title || '', vs) : '');
+    out[mla] = (va && va !== e.variant) || vs.length ? { ...e, variant: va || e.variant || '', _conColor: vs.length > 0 } : e;
+  }
+  return out;
+}
+// PODA DEL REGISTRO DE STOCK HORA POR HORA (etapa 8, 12/10/2026). Antes vivía adentro de `supervisor:go`, se
+// podaba a 100 días y de cada clave dejaba el ÚLTIMO cambio de todos, no el último ANTERIOR al corte: un producto
+// con stock desde hace 150 días y un cero de una hora la semana pasada perdía su "1" viejo y ya no se sabía que
+// tenía stock (la 🧪, el cerebro y el volumen del supervisor quedaban sin dato). Ahora se guardan 430 días (los
+// cambios del supervisor viven 400 + 30 de ventana) y de cada clave queda siempre el último cambio antes del corte.
+const STOCKLOG_DIAS = 430;
+async function podarStocklog(db, slog, ahora) {
+  if (!slog) slog = (await db.get('cyc/stocklog')) || {};
+  const corte = (ahora || Date.now()) - STOCKLOG_DIAS * 864e5, slPoda = {};
+  for (const [c, hs] of Object.entries(slog.lect || {})) for (const h of Object.keys(hs || {})) {
+    const t = Date.UTC(+h.slice(0, 4), +h.slice(4, 6) - 1, +h.slice(6, 8), +h.slice(8, 10));
+    if (t < corte) slPoda['lect/' + c + '/' + h] = null;
+  }
+  for (const [k, cs] of Object.entries(slog.cambios || {})) {
+    const viejos = Object.keys(cs || {}).map(Number).filter((t) => t < corte).sort((a, b) => a - b);
+    for (const t of viejos.slice(0, -1)) slPoda['cambios/' + k + '/' + t] = null;   // el último anterior al corte queda
+  }
+  if (Object.keys(slPoda).length) await db.patch('cyc/stocklog', slPoda);
+  return Object.keys(slPoda).length;
+}
+
+// ── VENTA EN REMATE: UNA SOLA REGLA PARA EL ROBOT Y LA WEB (12/10/2026, él eligió 1a) ─────────────────
+// Antes había tres: la web (toda venta abajo de 20%), la línea y el ritmo del robot (marcas: liquidando,
+// etiqueta "remate", bajas del robot) y `pedidostodo` (abajo de 10% y parado en la línea de tiempo). La
+// misma venta podía ser remate en un lado y demanda en el otro. Ahora: remate = el % de la venta (la MISMA
+// cuenta que el renglón de Ventas: `armarCostoWeb`, costo y dólar del mes, envío de Full en el divisor) quedó
+// abajo de 20% Y hay una PRUEBA de que se estaba rematando: etiqueta "remate" de la venta, marca liquidando
+// de antes de la venta, una baja de remate/escalera de antes que no terminó, o la línea de tiempo dice que
+// estaba PARADO (30+ días con stock en los 45 anteriores vendiendo menos de 1 por semana; si la línea no
+// sabe el stock, que le hayan bajado el precio 12%+ y casi no vendiera). Su regla del 09/10: "si llegaron y se
+// vendieron al toque" es demanda y cuenta. Falta de dato no es remate.
+// Lo decide el robot cada noche (`linea`) y lo guarda en `cyc/ventaremate/<día>/<id de la venta>` = 1; la web
+// SÓLO lee eso (`ventaEnRemate`), así no puede haber dos respuestas.
+const VENTA_REMATE_PCT = 20;
+function paradoEnLinea(lin, dk, pV) {
+  if (!lin) return { es: false, porque: 'sin línea de tiempo' };
+  const d0 = Date.parse(dk.replace(/_/g, '-') + 'T12:00:00-03:00');
+  let dSt = 0, uAnt = 0, dSab = 0, pMax = 0;
+  for (let i = 1; i <= 45; i++) {
+    const kk = new Date(d0 - i * 864e5 - 3 * 36e5).toISOString().slice(0, 10).replace(/-/g, '_'); const r = lin[kk]; if (!r) continue;
+    if (r.st != null) { dSab++; if (Number(r.st) > 0) dSt++; }
+    uAnt += Number(r.u) || 0; const pp = Number(r.p ?? r.pF) || 0; if (pp > pMax) pMax = pp;
+  }
+  if (dSt >= 30 && uAnt / dSt < 1 / 7) return { es: true, porque: `antes estuvo ${dSt} días con stock vendiendo ${uAnt}` };
+  if (dSab < 15 && pMax > 0 && pV > 0 && pMax >= pV * 1.12 && uAnt < 45 / 7) return { es: true, porque: `le bajaron el precio de $${Math.round(pMax)} a $${Math.round(pV)} y antes vendía ${uAnt} en 45 días` };
+  return { es: false, porque: dSab < 15 ? 'la línea no sabe el stock de antes y no hubo baja de precio' : `antes: ${dSt} días con stock y ${uAnt} vendidas, no estaba parado` };
+}
+// → { mapa: {dk: {id: 1}}, info: {'dk|id': {pct, remate, porque}}, fallo: Set('dk|id') }. `lineaDe(mla)` puede ser
+// async y devolver null si no se pudo leer (esa venta va a `fallo`: no se sabe, se conserva lo de antes).
+async function clasificarRemates(db, vp, o) {
+  const { nosubir = {}, rescv = {}, autoprecio = {}, lineaDe, desde = '' } = o || {};
+  setDevLive(vp);
+  const cw = await armarCostoWeb(db, vp);
+  const mapa = {}, info = {}, fallo = new Set();
+  for (const [dk0, ents] of Object.entries(vp || {})) {
+    const dk = dk0.slice(0, 10); if (desde && dk < desde) continue;
+    for (const [id0, v] of Object.entries(ents || {})) {
+      if (!v || v.cancelada || !(Number(v.neto) > 0)) continue;
+      const id = v.id || id0, q = Number(v.qty) || 1;
+      const c = cw(v, dk); if (c.sinCosto || !(c.costo > 0)) continue;
+      const pct = ((Number(v.neto) || 0) - c.costo) / (c.costo + (v.netoEstimado ? 0 : c.gest)) * 100;
+      if (!(pct < VENTA_REMATE_PCT)) continue;
+      const ts = Number(v.ts) || Date.parse(dk.replace(/_/g, '-') + 'T12:00:00-03:00');
+      const et = rescv[dk + '__' + id];
+      const ns = v.mla && nosubir[v.mla]; const nsF = ns && ns.fecha ? Date.parse(ns.fecha) : NaN;
+      const ap = v.mla && autoprecio[v.mla];
+      let r = null;
+      if (et && et.estado === 'remate') r = { es: true, porque: 'la venta quedó etiquetada remate' };
+      else if (isFinite(nsF) && nsF <= ts) r = { es: true, porque: 'estaba marcada liquidando' };
+      else if (ap && ns && !ap.remateTerminado && ap.tipo === 'baja' && /remate|escalera/.test(String(ap.por || '')) && (Number(ap.ts) || 0) <= ts) r = { es: true, porque: 'la habían bajado para rematar' };
+      else if (v.mla && lineaDe) {
+        const lin = await lineaDe(v.mla);
+        if (lin === null) { fallo.add(dk + '|' + id); continue; }
+        r = paradoEnLinea(lin, dk, (Number(v.total) || 0) / q);
+      } else r = { es: false, porque: 'sin publicación ni marca' };
+      info[dk + '|' + id] = { pct: Math.round(pct * 10) / 10, remate: r.es, porque: r.porque, v };
+      if (r.es) (mapa[dk] = mapa[dk] || {})[id] = 1;
+    }
+  }
+  return { mapa, info, fallo };
+}
+
 function calcRitmoNormal(o) {
-  const { links = {}, inv = {}, vp = {}, nosubir = {}, rescateventa = {}, autoprecio = {}, cambios = {}, diario = {}, precios = {}, hoyTs = Date.now(), DIAS = 365, primerVp = null } = o || {};
+  const { links = {}, inv = {}, vp = {}, nosubir = {}, ventaremate = {}, cambios = {}, diario = {}, precios = {}, hoyTs = Date.now(), DIAS = 365, primerVp = null } = o || {};
   const sid = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
   const DMS = 864e5;
   // Día local de acá: el día D arranca a las 03:00 UTC.
@@ -6310,7 +6415,10 @@ function calcRitmoNormal(o) {
   const marcaDesde = {};   // clave → fecha (AAAA_MM_DD) desde que está marcada, la más vieja
   for (const [mla, d] of Object.entries(nosubir)) {
     if (!d) continue; const f = String(d.fecha || '').slice(0, 10).replace(/-/g, '_');
-    for (const k of (claveDe[mla] || [])) if (!marcaDesde[k] || (f && f < marcaDesde[k])) marcaDesde[k] = f || '0000_00_00';
+    // Sólo la clave MÁS ESPECÍFICA de la publicación marcada (etapa 8, 12/10/2026): un aroma rematando no puede
+    // sacar del ritmo al producto entero ni a los otros colores (antes la marca iba también a kP).
+    const cl = claveDe[mla] || []; const k = cl[cl.length - 1];
+    if (k && (!marcaDesde[k] || (f && f < marcaDesde[k]))) marcaDesde[k] = f || '0000_00_00';
   }
   const esRemDia = (k, dk) => {
     const di = diario[dk] && diario[dk][k]; if (di && di[3] === 1) return true;
@@ -6327,12 +6435,10 @@ function calcRitmoNormal(o) {
       const kP = v.prodId + '__' + sid(v.cuenta);
       const varV = v.variante || ((links[v.mla] || {}).variant) || '';
       const ks = varV ? [kP, kP + '__v__' + sid(varV)] : [kP];
-      const et = rescateventa[dk + '__' + (v.id || id)];
-      const ns = v.mla && nosubir[v.mla]; const nsF = ns && ns.fecha ? Date.parse(ns.fecha) : NaN;
-      const ap = v.mla && autoprecio[v.mla];
-      const rem = (et && et.estado === 'remate') || (isFinite(nsF) && nsF <= ts)
-        || (ap && ap.tipo === 'baja' && /remate|escalera/.test(String(ap.por || '')) && (Number(ap.ts) || 0) <= ts)
-        || ks.some((k) => esRemDia(k, dk));
+      // Venta en remate = la MISMA regla que la web y la línea (`clasificarRemates`, guardada por `linea` en
+      // `cyc/ventaremate`; 12/10/2026, él eligió 1a): % abajo de 20 Y prueba de remate. Los días rematando se
+      // siguen sacando de los días con stock (abajo, `esRemDia`), pero una venta sola no es remate por caer ahí.
+      const rem = !!(ventaremate[dk] && ventaremate[dk][v.id || id]);
       for (const k of ks) add(k, dk, q, rem);
     }
   }
@@ -7213,7 +7319,7 @@ async function resolveTgChat(db) {
     const ids = Object.keys(nuevos).filter((id) => id !== TG_ALERTAS);
     if (ids.length) {
       const esc = (t) => String(t || '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
-      const txt = `🔐 <b>Alguien nuevo le escribió al bot</b>\n` + ids.map((id) => `· ${esc((nuevos[id] || {}).name) || '(sin nombre)'} · chat …${id.slice(-3)}`).join('\n')
+      const txt = `🔐 <b>Alguien nuevo le escribió al bot</b>\n` + ids.map((id) => `· ${esc(_tgMask(id, (nuevos[id] || {}).name))}`)   /* sólo la inicial: el aviso queda en registros que se reimprimen en el log público (etapa 8) */.join('\n')
         + `\n<i>No recibe NADA hasta que me digas "aprobalo". Si no lo conocés, no hagas nada.</i>`;
       try { await sendAlerta(txt, { directo: true }); } catch (e) { console.log('Telegram: no pude avisar del chat nuevo: ' + e.message); }
     }
@@ -16965,6 +17071,25 @@ async function main() {
       const vp = (await db.get('cyc/ventaprod')) || {};
       const nosubir = (await db.get('cyc/nosubir')) || {};
       const rescv = (await db.get('cyc/rescateventa')) || {};
+      // Qué venta fue en remate: UNA sola regla (`clasificarRemates`, 12/10/2026, él eligió 1a). La noche la
+      // calcula y la guarda en `cyc/ventaremate` (la web lee eso); el relleno para atrás usa lo guardado.
+      let vRem = {};
+      if (!ATRAS) {
+        const apL = (await db.get('cyc/autoprecio')) || {};
+        const linC = {};
+        const lineaDe = async (mla) => { if (!(mla in linC)) { try { linC[mla] = (await db.get('mlapi/linea/' + mla)) || {}; } catch { linC[mla] = null; } } return linC[mla]; };
+        const cl = await clasificarRemates(db, vp, { nosubir, rescv, autoprecio: apL, lineaDe });
+        vRem = cl.mapa;
+        let viejo = {}; try { viejo = (await db.get('cyc/ventaremate')) || {}; } catch { viejo = null; }
+        if (cl.fallo.size && viejo === null) console.log(`⚠️ venta en remate: ${cl.fallo.size} venta(s) sin poder leer su línea y no pude leer lo guardado: no escribo`);
+        else {
+          for (const k of cl.fallo) { const [dk, id] = k.split('|'); if (viejo && viejo[dk] && viejo[dk][id]) (vRem[dk] = vRem[dk] || {})[id] = 1; }
+          const nR = Object.values(vRem).reduce((a, o) => a + Object.keys(o).length, 0);
+          const nB = Object.values(cl.info).filter((x) => !x.remate).length;
+          console.log(`venta en remate (abajo de ${VENTA_REMATE_PCT}% y con prueba): ${nR} · abajo de ${VENTA_REMATE_PCT}% pero era demanda (cuentan): ${nB}${cl.fallo.size ? ' · sin poder leer la línea (queda lo de antes): ' + cl.fallo.size : ''}`);
+          if (GO) await db.set('cyc/ventaremate', Object.keys(vRem).length ? vRem : null);
+        }
+      } else { try { vRem = (await db.get('cyc/ventaremate')) || {}; } catch { vRem = {}; } }
       // Ventas del panel por MLA y día (desde mayo, con neto y remate).
       const ventasPanel = {}; let primerDiaPanel = null;
       for (const [dk0, ents] of Object.entries(vp)) {
@@ -16973,8 +17098,7 @@ async function main() {
           if (!v || v.cancelada || !v.mla) continue;
           const x = ((ventasPanel[v.mla] = ventasPanel[v.mla] || {})[dk] = ventasPanel[v.mla][dk] || { u: 0, tot: 0, neto: 0, uR: 0 });
           const q = Number(v.qty) || 1; x.u += q; x.tot += Number(v.total) || 0; x.neto += Number(v.neto) || 0;
-          const et = rescv[dk + '__' + (v.id || id)]; const ns = nosubir[v.mla]; const nsF = ns && ns.fecha ? Date.parse(ns.fecha) : NaN;
-          if ((et && et.estado === 'remate') || (isFinite(nsF) && nsF <= (Number(v.ts) || 0))) x.uR += q;
+          if (vRem[dk] && vRem[dk][v.id || id]) x.uR += q;
         }
       }
       console.log(`=== LÍNEA DE TIEMPO ${ATRAS ? '· PARA ATRÁS' : '· AYER (' + ayerK + ')'} ${GO ? '' : '(PRUEBA — no escribo nada)'} ===`);
@@ -16983,6 +17107,22 @@ async function main() {
         // ── AYER, con todo leído en el momento ──
         const inv = (await db.get('cyc/inventory')) || {};
         const netopub = (await db.get('cyc/netopub')) || {};
+        const prodsL = {}; try { for (const p of Object.values((await db.get('cyc/products')) || {})) if (p && p.id) prodsL[p.id] = p; } catch { /* sin fichas: sólo vale `variant` */ }
+        const linksC = linksConColor(links, prodsL);
+        // EL CIERRE DE AYER DE VERDAD (etapa 8, 12/10/2026): esto corre ~06-07 h de HOY, así que `inv` ya tiene
+        // descontado lo vendido de madrugada y la web lo leía como una llegada falsa al día siguiente. Se suma lo
+        // vendido hoy hasta ahora, por clave (producto×cuenta y color).
+        const hoyKL = diaDe(T0), vendHoy = {};
+        for (const [dk0, ents] of Object.entries(vp)) {
+          if (dk0.slice(0, 10) !== hoyKL) continue;
+          for (const v of Object.values(ents || {})) {
+            if (!v || v.cancelada || !v.prodId || !v.cuenta) continue;
+            const q = Number(v.qty) || 1, kP0 = v.prodId + '__' + sidL(v.cuenta);
+            vendHoy[kP0] = (vendHoy[kP0] || 0) + q;
+            const va0 = v.variante || ((linksC[v.mla] || {}).variant) || '';
+            if (va0) { const kV0 = kP0 + '__v__' + sidL(va0); vendHoy[kV0] = (vendHoy[kV0] || 0) + q; }
+          }
+        }
         const escalera = (await db.get('cyc/escalera')) || {};
         const filas = {}; let leidas = 0, sinLeer = 0, visUna = 0, visErr = '';
         const desdeY = new Date(Date.parse(ayerK.replace(/_/g, '-') + 'T03:00:00Z')).toISOString(), hastaY = new Date(Date.parse(ayerK.replace(/_/g, '-') + 'T03:00:00Z') + DMS - 1000).toISOString();
@@ -17012,18 +17152,22 @@ async function main() {
             }
           }
           for (const mla of mlas) {
-            const e = links[mla] || {}, b = info[mla];
+            const e = linksC[mla] || {}, b = info[mla];
             if (b) leidas++; else sinLeer++;
             const kP = e.prodId ? e.prodId + '__' + sidL(e.cuenta) : null;
             const kV = kP && e.variant ? kP + '__v__' + sidL(e.variant) : null;
-            const stI = kV && inv[kV] != null ? inv[kV] : (kP && inv[kP] != null ? inv[kP] : null);
+            // Con color y sin clave de ese color, el stock del producto (todos los colores) no es el de esta publicación: queda sin dato (etapa 8).
             const vars = b && Array.isArray(b.variations) ? b.variations : [];
+            // Una publicación con los colores ADENTRO (variaciones de ML) sí es el producto entero en esa cuenta.
+            const todosAdentro = vars.length > 1 || (e.invVar && Object.keys(e.invVar).length > 1);
+            const usaP = todosAdentro && !(links[mla] || {}).variant;   // el color sacado del título no manda si están todos adentro
+            const stI = kV && !usaP ? (inv[kV] != null ? inv[kV] : null) : (kP && (!e._conColor || todosAdentro) && inv[kP] != null ? inv[kP] : null);
             const precio = b ? (vars.length ? Math.min(...vars.map((v) => Number(v.price) || Infinity)) : Number(b.price)) : null;
             const vpD = (ventasPanel[mla] || {})[ayerK] || { u: 0, tot: 0, neto: 0, uR: 0 };
             const caja = { winning: 'g', sharing: 'c', losing: 'p', nocat: 'n', sincaja: 's', listed: 'n', not_listed: 'n' }[e.caja] || (e.caja ? String(e.caja).slice(0, 8) : undefined);
             const np = netopub[mla] || {};
             const row = {
-              st: stI != null ? Math.max(0, parseInt(stI) || 0) : undefined, stF: stI != null ? 'inv' : undefined,
+              st: stI != null ? Math.max(0, parseInt(stI) || 0) + (vendHoy[kV && !usaP ? kV : kP] || 0) : undefined, stF: stI != null ? 'inv' : undefined,
               p: precio > 0 && isFinite(precio) ? Math.round(precio) : undefined, pF: precio > 0 && isFinite(precio) ? 'ml' : undefined,
               est: b ? b.status : undefined, sub: b && Array.isArray(b.sub_status) && b.sub_status.length ? b.sub_status.join(',') : undefined,
               caja, ptw: Number(e.cajaPtw) > 0 ? Math.round(Number(e.cajaPtw)) : undefined,
@@ -17038,6 +17182,21 @@ async function main() {
           }
         }
         const n = await escribir(filas, false);
+        // Las ventas de los 7 días anteriores se reescriben desde el panel: una venta que entró tarde, una
+        // cancelación o un neto que pasó de estimado a real cambian el día después de anotado (etapa 8, 12/10/2026).
+        if (primerDiaPanel) {
+          const re7 = {};
+          for (let i = 2; i <= 8; i++) {
+            const dk = diaDe(T0 - i * DMS); if (dk < primerDiaPanel) continue;
+            for (const mla of Object.keys(links)) {
+              if (!/^MLA\d+$/.test(mla) || !links[mla] || !links[mla].cuenta) continue;
+              const vpD = (ventasPanel[mla] || {})[dk] || { u: 0, tot: 0, neto: 0, uR: 0 };
+              (re7[mla] = re7[mla] || {})[dk] = { u: vpD.u, tot: Math.round(vpD.tot), neto: Math.round(vpD.neto), uR: vpD.uR };
+            }
+          }
+          const n7 = await escribir(re7, false);
+          console.log(`ventas de los 7 días anteriores releídas del panel: ${n7} datos ${GO ? 'guardados' : 'a guardar'}`);
+        }
         console.log(`${Object.keys(filas).length} publicaciones · ${leidas} leídas de ML · ${sinLeer} sin leer (quedan incompletas) · ${n} datos ${GO ? 'guardados' : 'a guardar'} · día ${ayerK}`);
         console.log(`visitas: ${Object.values(filas).filter((f) => f[ayerK].vis != null).length} con dato (${visUna} pedidas una por una)${visErr ? ' · el pedido por lote falló: ' + visErr.replace(/ids=[^&]*/, 'ids=…') : ''}`);
         // Poda a los 400 días (una vez por mes alcanza: el día 1).
@@ -17064,7 +17223,8 @@ async function main() {
           for (const cta of Object.keys(mlasCta)) {
             const t = await tokDe(cta); if (!t) { cortadas.push(cta + ' (sin token)'); continue; }
             const lista = await fetchOrdersRange(t.seller, t.tk, desde365, T0);
-            if (lista.incompleto) cortadas.push(cta);
+            // Lista cortada: no se escribe nada de esa cuenta (un día a medias no se volvería a pisar nunca) (etapa 8).
+            if (lista.incompleto) { cortadas.push(cta); continue; }
             for (const o of lista) {
               const dk = diaDe(Date.parse(o.date_created || o.date_closed));
               for (const it of (o.order_items || [])) {
@@ -17084,7 +17244,7 @@ async function main() {
               : { u: f.u, tot: Math.round(f.tot), uR: dk < '2026_09_12' ? 0 : undefined, pVenta: f._p || undefined };
           }
           const n = await escribir(salida, true);
-          console.log(`ventas: ${ord} renglones de órdenes · ${Object.keys(salida).length} publicaciones · ${n} datos${cortadas.length ? ' · ⚠️ LISTA CORTADA en ' + cortadas.join(', ') + ' (esas quedan incompletas)' : ''}`);
+          console.log(`ventas: ${ord} renglones de órdenes · ${Object.keys(salida).length} publicaciones · ${n} datos${cortadas.length ? ' · ⚠️ LISTA CORTADA en ' + cortadas.join(', ') + ' (no se escribió nada de esas: se reintenta)' : ''}`);
           if (GO) await db.set('mlapi/lineaprog/ventas', { ok: !cortadas.length, ts: Date.now(), cortadas });
         }
         if (fase === 'visitas') {
@@ -17120,7 +17280,7 @@ async function main() {
           }
           const hecho = (prog.stock && prog.stock.inv) || {};
           const inv = (await db.get('cyc/inventory')) || {};
-          let ok = 0, mal = 0, pend = 0, n = 0, parcial = 0; const errLog = [];
+          let ok = 0, mal = 0, pend = 0, n = 0, parcial = 0, incompletos = 0; const errLog = []; const leidosAhora = new Set();
           const porMla = {};   // mla → dk → suma de sus depósitos
           // PRIMERO LO QUE IMPORTA (08/10/2026, él: "quiero tener la máxima línea de stock posible en todos los
           // productos"). ML deja leer ~25 depósitos por noche (cupo 429), así que el orden decide quién tiene la línea
@@ -17138,7 +17298,7 @@ async function main() {
             // De lo más NUEVO a lo más viejo, mes por mes. Si ML no contesta un mes (o no guarda tan
             // atrás), se para ahí y se usa lo que se pudo leer: desde ese punto para adelante la cuenta
             // es exacta; para atrás queda sin dato (no se inventa).
-            const ops = []; let desdeLeido = T0, errTxt = '';
+            const ops = []; let desdeLeido = T0, errTxt = '', cortoTiempo = false;
             for (let m1 = T0; m1 > desde365; m1 -= 30 * DMS) {
               const m0 = Math.max(desde365, m1 - 30 * DMS);
               const vistos = new Set(); let okMes = true;
@@ -17153,18 +17313,27 @@ async function main() {
               }
               if (!okMes) break;
               desdeLeido = m0;
-              if (!tiempo()) break;
+              if (!tiempo()) { if (m0 > desde365) cortoTiempo = true; break; }
             }
             if (errTxt && errLog.length < 4) errLog.push(iv + ': ' + errTxt.replace(/seller_id=\d+&/, ''));
             // Un 429 (ML corta por cupo) no es "no hay más historia": se guarda lo leído y ese depósito
             // se vuelve a pedir entero en la próxima vuelta, sin darlo por terminado.
             const por429 = /\b429\b|over_quota/.test(errTxt);
+            // Terminado SÓLO si se leyó el año entero o si ML contestó un 4xx (no guarda tan atrás). Un corte por
+            // tiempo, un 5xx o un error de red NO es "no hay más historia": se vuelve a pedir (etapa 8, 12/10/2026).
+            const _st = (errTxt.match(/:\s*(\d{3})\b/) || [])[1];
+            const completo = desdeLeido <= desde365 + DMS || (!!errTxt && !por429 && _st && +_st >= 400 && +_st < 500);
+            const sinTerminar = !completo || cortoTiempo;
             if (desdeLeido >= T0 - DMS) { mal++; continue; }
             const pts = ops.map((o) => [Date.parse(o.date_created || o.date), Number((o.result || {}).available_quantity)]).filter(([ts, q]) => isFinite(ts) && isFinite(q)).sort((a, b) => a[0] - b[0]);
             const serie = {};
             const e0 = links[x.mlas[0]] || {}; const k0 = e0.prodId ? e0.prodId + '__' + sidL(e0.cuenta) + (e0.variant ? '__v__' + sidL(e0.variant) : '') : null;
-            const hoyS = k0 && inv[k0] != null ? Math.max(0, parseInt(inv[k0]) || 0) : null;
+            let hoyS = null;
             if (!pts.length) {
+              // El stock de HOY de ESTE depósito (no el de la clave del producto, que suma todos los colores o
+              // puede ser de otro depósito). Si ML no lo da, ese tramo queda sin dato (etapa 8, 12/10/2026).
+              try { const rS = await g429(`/inventories/${iv}/stock/fulfillment`, t.tk); const q = Number(rS && rS.available_quantity); if (isFinite(q)) hoyS = Math.max(0, q); } catch { hoyS = null; }
+              void k0;
               // Sin un solo movimiento en lo leído: el stock de hoy es el de todo ese tramo.
               if (hoyS != null) for (let d = desdeLeido; d < T0; d += DMS) serie[diaDe(d)] = [hoyS, 'sinmov'];
             } else {
@@ -17176,16 +17345,31 @@ async function main() {
               }
             }
             if (desdeLeido > desde365 + DMS) parcial++;
+            leidosAhora.add(iv);
             for (const mla of x.mlas) for (const [dk, [q, f]] of Object.entries(serie)) {
               const z = ((porMla[mla] = porMla[mla] || {})[dk] = porMla[mla][dk] || { st: 0, stF: f });
               z.st += q;
             }
-            if (!por429) hecho[iv] = 1; ok++;
+            if (!sinTerminar) hecho[iv] = 1; else incompletos++;
+            ok++;
           }
+          // Una publicación con varios depósitos (colores adentro) se escribe SÓLO si esta corrida leyó TODOS: con
+          // la mitad la suma queda corta y, como no se pisa lo ya escrito, quedaría corta para siempre (etapa 8).
+          const depsDe = {};
+          for (const [iv2, x2] of Object.entries(invDe)) for (const mla of x2.mlas) (depsDe[mla] = depsDe[mla] || new Set()).add(iv2);
+          let aMedias = 0;
+          for (const mla of Object.keys(porMla)) {
+            const ds = [...(depsDe[mla] || [])];
+            if (ds.every((d) => leidosAhora.has(d))) continue;
+            delete porMla[mla]; aMedias++;
+            for (const d of ds) delete hecho[d];   // se releen TODOS juntos la próxima vez
+          }
+          if (aMedias) console.log(`   ${aMedias} publicación(es) con varios depósitos sin leer todos esta vez: no se escriben (se releen juntos)`);
           n = await escribir(porMla, true);
           console.log(`stock: ${ok} depósitos reconstruidos (${parcial} sin llegar al año entero: para atrás queda sin dato) · ${mal} que ML no dejó leer · ${pend} pendientes (${pendUtil} de publicaciones activas o con stock) · ${n} días`);
           for (const t of errLog) console.log('   ML contestó: ' + t);
-          if (GO) await db.set('mlapi/lineaprog/stock', { inv: hecho, ts: Date.now(), ok: !pend });
+          if (incompletos) console.log(`   ${incompletos} depósito(s) quedaron a medias (corte de tiempo, 429 o error de ML): se vuelven a pedir`);
+          if (GO) await db.set('mlapi/lineaprog/stock', { inv: hecho, ts: Date.now(), ok: !pend && !mal && !incompletos });
         }
         if (fase === 'precio') {
           // El precio de cada día: el cobrado en una venta ese día, o un cambio registrado, o el último
@@ -17251,7 +17435,7 @@ async function main() {
     // BILLING_PROBE=costomes:<palabras> → EL COSTO DE UNA FICHA MES POR MES, COMO LO ARMA LA WEB (08/10/2026). SOLO LEE.
     // Para explicar la línea "costo c/u": costo en dólares del mes (precio histórico congelado o el de hoy) × dólar del mes
     // (tc_mes → cierre → promedio de las ventas → el de hoy) + envío/embalaje.
-    if (/^costomes:/.test(String(process.env.BILLING_PROBE || ''))) {
+    if (/^costomes:(?!\d{4}_\d{2}$)/.test(String(process.env.BILLING_PROBE || ''))) {   // `costomes:<AAAA_MM>` sigue yendo al viejo (etapa 8)
       const q = norm(String(process.env.BILLING_PROBE).slice(9));
       const [prods, hist, tcMes, snaps, tcHoy, vp] = await Promise.all(['cyc/products', 'cyc/precios_hist_prod', 'cyc/tc_mes', 'cyc/snapshots', 'cyc/finanzas/tipo_cambio', 'cyc/ventaprod'].map((r) => db.get(r).catch(() => null)));
       const ps = Object.values(prods || {}).filter((p) => p && p.id && q.split(/\s+/).every((w) => norm(p.name || '').includes(w)));
@@ -17259,12 +17443,14 @@ async function main() {
       console.log(`=== COSTO MES POR MES "${q}" · ${ps.length} ficha(s) · dólar de hoy ${tcHoy} ===`);
       for (const p of ps) {
         console.log(`■ ${p.name} · costo hoy US$ ${p.costUSD} · envío/embalaje US$ ${p.shipUSD || 0} · costo full guardado US$ ${p.costFullUSD || '-'}`);
-        for (const ym of ['2026_05', '2026_06', '2026_07', '2026_08', '2026_09', '2026_10']) {
+        const _hoyAR = new Date(Date.now() - 3 * 3600e3), curYMc = _hoyAR.getUTCFullYear() + '_' + String(_hoyAR.getUTCMonth() + 1).padStart(2, '0');
+        const _meses = []; for (let y = 2026, m = 5; (y + '_' + String(m).padStart(2, '0')) <= curYMc; m++) { if (m > 12) { m = 0; y++; continue; } _meses.push(y + '_' + String(m).padStart(2, '0')); }
+        for (const ym of _meses) {
           const h = ((hist || {})[ym] || {})[p.id];
-          const tm = (tcMes || {})[ym], sn = ((snaps || {})[ym] || {}).tipoCambio, tv = tcV(ym);
-          const tc = tm != null && tm !== '' ? parseFloat(tm) : sn ? parseFloat(sn) : (ym < '2026_10' && tv ? tv : parseFloat(tcHoy));
+          const tm = (tcMes || {})[ym], sn = (parseFloat(((snaps || {})[ym] || {}).tcMes) || 0) || ((snaps || {})[ym] || {}).tipoCambio, tv = tcV(ym);
+          const tc = tm != null && tm !== '' ? parseFloat(tm) : sn ? parseFloat(sn) : (ym < curYMc && tv ? tv : parseFloat(tcHoy));
           const base = h != null ? Number(h) : Number(p.costUSD) || 0;
-          console.log(`   ${ym}: costo US$ ${base}${h != null ? ' (congelado del mes)' : ' (el de hoy)'} · dólar ${tc} (${tm != null && tm !== '' ? 'cargado' : sn ? 'cierre' : ym < '2026_10' && tv ? 'promedio de ventas' : 'el de hoy'}) → mercadería $${Math.round(base * tc)} + envío $${Math.round((Number(p.shipUSD) || 0) * tc)}`);
+          console.log(`   ${ym}: costo US$ ${base}${h != null ? ' (congelado del mes)' : ' (el de hoy)'} · dólar ${tc} (${tm != null && tm !== '' ? 'cargado' : sn ? 'cierre' : ym < curYMc && tv ? 'promedio de ventas' : 'el de hoy'}) → mercadería $${Math.round(base * tc)} + envío $${Math.round((Number(p.shipUSD) || 0) * tc)}`);
         }
       }
       return;
@@ -17317,8 +17503,9 @@ async function main() {
     // La noche la arma sola dentro de `ritmo:go`; esto es para no esperar. Sólo junta lo que ya está guardado.
     if (/^lineatodo(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const GO = /:go$/.test(String(process.env.BILLING_PROBE));
-      const [lin, links] = await Promise.all([db.get('mlapi/linea'), db.get('cyc/mllinks')]);
-      const LT = calcLineaTodo(lin || {}, links || {});
+      const [lin, links, prodsLT] = await Promise.all([db.get('mlapi/linea'), db.get('cyc/mllinks'), db.get('cyc/products')]);
+      const pIdxLT = {}; for (const p of Object.values(prodsLT || {})) if (p && p.id) pIdxLT[p.id] = p;
+      const LT = calcLineaTodo(lin || {}, linksConColor(links || {}, pIdxLT));
       const ks = Object.keys(LT).sort();
       console.log(`=== LÍNEA DE TODOS ${GO ? '' : '(PRUEBA — no escribo nada)'} ===`);
       console.log(`${Object.keys(lin || {}).length} publicaciones con línea · ${ks.length} días (${ks[0] || '—'} → ${ks[ks.length - 1] || '—'})`);
@@ -17340,29 +17527,33 @@ async function main() {
       let cfgR = {}, pIdxR = {}; try { cfgR = (await db.get('cyc/mlconfig')) || {}; for (const p of Object.values((await db.get('cyc/products')) || {})) if (p && p.id) pIdxR[p.id] = p; } catch { /* sin eso, tamaño pequeño */ }
       // El "diario" por clave sale de la LÍNEA DE TIEMPO de cada publicación (`linea`): stock, precio,
       // caja, remate y ventas de cada día, hasta 365 días para atrás.
-      let diario = {}, nLin = 0;
+      const linksC = linksConColor(links || {}, pIdxR);
+      let diario = {}, nLin = 0, linFallo = false;
       try {
         const lin = (await db.get('mlapi/linea')) || {};
         const sidD = (x) => String(x).replace(/[^a-z0-9]/gi, '_'); const rk = { g: 3, c: 2, p: 1 };
         for (const [mla, dias] of Object.entries(lin)) {
-          const e = (links || {})[mla]; if (!e || !e.prodId || !e.cuenta) continue; nLin++;
+          const e = linksC[mla]; if (!e || !e.prodId || !e.cuenta) continue; nLin++;
           const kP = e.prodId + '__' + sidD(e.cuenta); const ks = e.variant ? [kP, kP + '__v__' + sidD(e.variant)] : [kP];
           for (const [dk, r] of Object.entries(dias || {})) for (const k of ks) {
             const d = ((diario[dk] = diario[dk] || {})[k] = diario[dk][k] || [null, 0, '', 0, 0, 0, null]);
             if (r.st != null) d[0] = Math.max(d[0] || 0, Number(r.st) || 0);
             if (r.p > 0 && (!d[1] || r.p < d[1])) d[1] = r.p;
             if ((rk[r.caja] || 0) > (rk[d[2]] || 0)) d[2] = r.caja;
-            if (r.rem === 1) d[3] = 1;
+            if (r.rem === 1 && k === ks[ks.length - 1]) d[3] = 1;   // el remate de un color no marca al producto entero (etapa 8)
             d[4] += Number(r.u) || 0; d[5] += Number(r.uR) || 0;
             if (r.vis != null) d[6] = (d[6] || 0) + (Number(r.vis) || 0);
           }
         }
         // Y la línea de TODOS los productos juntos (08/10/2026), con la misma lectura: ver `calcLineaTodo`.
-        try { const LT = calcLineaTodo(lin, links); if (GO && Object.keys(LT).length) await db.set('mlapi/lineatodo', { dias: LT, ts: Date.now() }); console.log(`línea de todos: ${Object.keys(LT).length} días ${GO ? 'guardados' : '(prueba)'}`); }
+        try { const LT = calcLineaTodo(lin, linksC); if (GO && Object.keys(LT).length) await db.set('mlapi/lineatodo', { dias: LT, ts: Date.now() }); console.log(`línea de todos: ${Object.keys(LT).length} días ${GO ? 'guardados' : '(prueba)'}`); }
         catch (e) { console.log(`⚠️ no pude armar la línea de todos (${String(e).slice(0, 80)})`); }
-      } catch (e) { console.log(`⚠️ no pude leer la línea de tiempo (${String(e).slice(0, 80)}): sigo sin ella`); }
-      const R = calcRitmoNormal({ links: links || {}, inv: inv || {}, vp: vp || {}, nosubir: nosubir || {}, rescateventa: rescateventa || {},
-        autoprecio: autoprecio || {}, cambios: cambios || {}, diario, precios: precios || {}, hoyTs: ahoraR,
+      } catch (e) { linFallo = true; console.log(`⚠️ no pude leer la línea de tiempo (${String(e).slice(0, 80)})`); }
+      // Qué venta fue en remate: lo que guardó `linea` con la regla única (`clasificarRemates`). Sin eso no se
+      // pisa el ritmo guardado (igual que sin la línea).
+      let vRemR = {}; try { vRemR = (await db.get('cyc/ventaremate')) || {}; } catch (e) { linFallo = true; console.log(`⚠️ no pude leer qué ventas fueron en remate (${String(e).slice(0, 80)})`); }
+      const R = calcRitmoNormal({ links: linksC, inv: inv || {}, vp: vp || {}, nosubir: nosubir || {}, ventaremate: vRemR,
+        cambios: cambios || {}, diario, precios: precios || {}, hoyTs: ahoraR,
         primerVp: Object.keys(vp || {}).map((k) => k.slice(0, 10)).sort()[0] || null });
       const rs = Object.values(R.ritmo);
       console.log(`=== RITMO NORMAL ${GO ? '' : '(PRUEBA — no escribo nada)'} ===`);
@@ -17413,6 +17604,12 @@ async function main() {
       }
       if (salen.length) console.log(`\n✅ SALEN DEL REMATE (stock sano o sobra joven) (≤ ${RN_SANO_DIAS} d de venta normal): ${salen.map((x) => String(x.e.title || x.mla).slice(0, 40) + ' ' + x.st + ' u.').join(' · ')}`);
       if (!GO) { console.log('\nPRUEBA: no escribí nada. Con :go guarda el ritmo y saca el remate de los que ya están sanos.'); return; }
+      // La poda del registro de stock corre acá también: el supervisor sale temprano en sólo datos y nunca podaba.
+      // La copia de los avisos (`mlapi/alertaslog`) no se podaba nunca: se deja 90 días (etapa 8).
+      try { const al = (await db.get('mlapi/alertaslog')) || {}; const cA = Date.now() - 90 * 864e5, pz = {}; for (const k of Object.keys(al)) if ((Number(k) || 0) < cA) pz[k] = null; if (Object.keys(pz).length) { await db.patch('mlapi/alertaslog', pz); console.log(`🧹 ${Object.keys(pz).length} avisos de más de 90 días podados`); } } catch { /* sólo limpieza */ }
+      try { const np = await podarStocklog(db, null, Date.now()); if (np) console.log(`🧹 registro de stock: ${np} renglones de más de ${STOCKLOG_DIAS} días podados`); } catch (e) { console.log(`(no pude podar el registro de stock: ${String(e).slice(0, 80)})`); }
+      // Sin la línea de tiempo el ritmo sale sin los días viejos: NO se pisa el de anoche (etapa 8, 12/10/2026).
+      if (linFallo) { console.log('⚠️ NO guardo el ritmo normal: sin la línea de tiempo pisaría el bueno de anoche con uno corto'); process.exitCode = 1; return; }
       try { await db.set('cyc/ritmonormal', R.ritmo); console.log(`✓ ritmo normal guardado (${rs.length} claves) · diario del ${R.diaK}`); }
       catch (e) { console.log(`⚠️ no pude guardar el ritmo normal: ${String(e).slice(0, 100)}`); process.exitCode = 1; }
       const hechas = [];
@@ -28080,10 +28277,21 @@ async function main() {
           (porMla[v.mla] = porMla[v.mla] || []).push({ ts, q, neto: Number(v.neto) || 0, tot: Number(v.total) || 0 });
         }
       }
-      const costoDe = (mla) => {
+      // EL COSTO Y LOS IMPUESTOS DEL MES DEL CAMBIO, no los de hoy (etapa 8, 12/10/2026). Con el costo y el dólar
+      // de HOY, un `poncosto` o el dólar nuevo reescribían cada noche lo que trajo el robot en meses ya cerrados.
+      // Con `ts` usa la MISMA cuenta que la web (`armarCostoWeb`: costo congelado del mes × dólar del mes, y el
+      // monotributo de ese mes); sin `ts` (decisiones de HOY, como volver un precio) sigue con el de hoy.
+      let _cwSup = null; try { _cwSup = await armarCostoWeb(db, vpS); } catch { _cwSup = null; }
+      const costoDe = (mla, ts) => {
         const p = pIdx[(links[mla] || {}).prodId];
         if (!p) return 0;
+        if (ts && _cwSup) { try { const r = _cwSup({ prodId: p.id, qty: 1, total: 0 }, _rnDia(ts)); return r.sinCosto ? 0 : Math.round(r.costo) || 0; } catch { /* cae al de hoy */ } }
         try { return costoPesos(p, 1, tc).costo || 0; } catch { return 0; }
+      };
+      // IIBB + monotributo (en %) del mes del cambio, con la misma función: con total 100 y sin ficha, el costo ES ese %.
+      const impPctMes = (cuenta, ts) => {
+        if (ts && _cwSup) { try { const r = _cwSup({ qty: 1, total: 100, cuenta }, _rnDia(ts)); if (isFinite(r.costo)) return r.costo; } catch { /* */ } }
+        return mlExtraPct(cuenta) + monoSup;
       };
       const stockDe = (mla) => {
         const l = links[mla] || {};
@@ -28207,7 +28415,7 @@ async function main() {
       const RV_MIN_DIAS = 14;   // con menos días al precio viejo no se mide un ritmo
       const cuentaRemate = (ev, costo, finT) => {
         const l = links[ev.mla] || {}, cuenta = l.cuenta || '', p = pIdx[l.prodId] || {};
-        const imp = (mlExtraPct(cuenta) + monoSup) / 100;
+        const imp = impPctMes(cuenta, ev.ts) / 100;
         const vs = porMla[ev.mla] || [];
         const key = l.prodId && cuenta ? l.prodId + '__' + sidS(cuenta) : null;
         const keyV = l.variant && key ? key + '__v__' + sidS(l.variant) : null;
@@ -28358,8 +28566,16 @@ async function main() {
       // ── 1. LOS CAMBIOS NUEVOS ──────────────────────────────────────────────────
       const nuevos = {};
       const agregar = (ev) => {
-        const id = idDe(ev.mla, ev.ts);
-        if (eventos[id] || nuevos[id]) return false;
+        let id = idDe(ev.mla, ev.ts);
+        // Dos cambios DISTINTOS de la misma publicación el mismo día (etapa 8, 12/10/2026): antes se perdía el
+        // segundo y quedaba el último con el `de` del intermedio (una suba neta se leía como baja). Si el que ya
+        // está es el MISMO cambio (≤ 10 min) o alguno es la foto aproximada, sigue siendo uno solo.
+        const prev = eventos[id] || nuevos[id];
+        if (prev) {
+          if (prev.aprox || ev.aprox || Math.abs((Number(prev.ts) || 0) - ev.ts) < 10 * 60e3) return false;
+          id = id + '_' + new Date(ev.ts - 3 * 3600e3).toISOString().slice(11, 16).replace(':', '');
+          if (eventos[id] || nuevos[id]) return false;
+        }
         // El stock del producto en esa cuenta el día del cambio: lo necesita la cuenta del
         // almacenamiento de los remates (sin esto se reconstruye con el de hoy + lo vendido).
         const st0 = stockDe(ev.mla);
@@ -28407,11 +28623,15 @@ async function main() {
       let aMano = 0;
       for (const [mla, r] of Object.entries(netopub)) {
         const p = Math.round(Number(r && r.precio) || 0);
-        if (!(p > 0)) continue;
         const f = fotos[mla];
+        // Una fila que la noche no pudo medir guarda el precio VIEJO: no se copia a la foto (armaba un "a mano"
+        // falso días después). Queda la foto anterior (etapa 8, 12/10/2026).
+        if (r && r.sinMedir) { if (f) fotosNuevas[mla] = f; continue; }
+        if (!(p > 0)) continue;
         fotosNuevas[mla] = { p, ts: ahora, st: stockDe(mla) };
         if (!f || !(f.p > 0) || Math.abs(p - f.p) / f.p < 0.005) continue;
-        const yaEsta = todosEv().some((ev) => ev.mla === mla && Math.abs(ev.ts - ahora) < 3 * 864e5
+        // Ya anotado = un cambio a ese precio DESPUÉS de la foto anterior (no sólo en los últimos 3 días).
+        const yaEsta = todosEv().some((ev) => ev.mla === mla && ev.ts >= (Number(f.ts) || 0) - 864e5
           && ev.a && Math.abs(ev.a - p) / p < 0.01);
         if (yaEsta) continue;
         const ts = Math.round((f.ts + ahora) / 2);
@@ -28461,7 +28681,7 @@ async function main() {
           if ((ev.ev || {})[k]) continue;
           if (ahora < ev.ts + W * 864e5) continue;
           const vs = porMla[ev.mla] || [];
-          const costo = costoDe(ev.mla);
+          const costo = costoDe(ev.mla, ev.ts);
           const suma = (arr) => arr.reduce((a, x) => ({ u: a.u + x.q, g: a.g + (x.neto - costo * x.q) }), { u: 0, g: 0 });
           // LA VENTA QUE DISPARÓ LA SUBA NO CUENTA. El robot sube justo DESPUÉS de una venta, así que
           // la ventana de antes tiene esa venta SIEMPRE: contarla es comparar contra un antes inflado
@@ -28580,7 +28800,7 @@ async function main() {
         if (!ev.motivo) { if (nuevos[id]) nuevos[id].motivo = motivo; else motivosNuevos[id] = motivo; }
         if (!ROBOT.has(ev.origen)) { manuales++; registros.push({ ...base(id, ev, motivo), estado: 'mano' }); continue; }
         if (!(ev.de > 0) || !(ev.a > 0)) { sinPrecio++; registros.push({ ...base(id, ev, motivo), estado: 'sinprecio' }); continue; }
-        const costo = costoDe(ev.mla);
+        const costo = costoDe(ev.mla, ev.ts);
         if (!(costo > 0)) { sinCosto++; registros.push({ ...base(id, ev, motivo), estado: 'sincosto' }); continue; }
         let deEf = ev.de, deRef = null;
         if (motivo !== 'remate' && motivo !== 'escalera') {
@@ -28617,7 +28837,7 @@ async function main() {
           const dv = (porMla[ev.mla] || []).filter((x) => x.ts > ev.ts + 60e3 && x.ts <= finT);
           // IIBB + monotributo se llevan su % también de lo cobrado de más (etapa 1, 27/09): sin eso el
           // efecto precio salía 4-10% más grande de lo que queda.
-          const impS = (mlExtraPct((links[ev.mla] || {}).cuenta || '') + monoSup) / 100;
+          const impS = impPctMes((links[ev.mla] || {}).cuenta || '', ev.ts) / 100;
           let pr = 0; const mesC = {};
           for (const x of dv) { if (x.tot > 0 && x.neto > 0) { const e = (x.tot / x.q - deEf) * (x.neto / x.tot - impS) * x.q; pr += e; sumMes(mesC, x.ts, e); } }
           // LO DEL PRECIO CUENTA DESDE EL PRIMER DÍA (25/09/2026, él: "cartas casino se vendía a 1000
@@ -28651,7 +28871,7 @@ async function main() {
         for (const x of despV) {
           if (!(x.tot > 0) || !(x.neto > 0)) continue;
           const pu = x.tot / x.q;
-          const e = (pu - deEf) * (x.neto / x.tot - (mlExtraPct((links[ev.mla] || {}).cuenta || '') + monoSup) / 100) * x.q;
+          const e = (pu - deEf) * (x.neto / x.tot - impPctMes((links[ev.mla] || {}).cuenta || '', ev.ts) / 100) * x.q;
           precio += e; sumMes(mesM, x.ts, e);
         }
         // ganancia por unidad al precio VIEJO: la de después menos lo que agregó el precio, o si no
@@ -28921,21 +29141,8 @@ async function main() {
       // Los cambios se guardan 400 días (antes 60): la tarjeta se puede mirar por MES (pedido suyo
       // del 25/09) y a los 60 días se perdía la historia. Son unos pocos por día.
       for (const [id, ev] of Object.entries(eventos)) if (ahora - ev.ts > 400 * 864e5 && !cambiosEv[id] && !evalNuevas.some((x) => x.id === id)) upd['eventos/' + id] = null;
-      // El registro de stock se poda a los 100 días (los cambios más viejos se miran hasta ~90 días
-      // atrás: 60 que vive un cambio + 30 de ventana). De cada producto se deja SIEMPRE el último
-      // cambio, que dice si tiene stock desde antes.
-      try {
-        const corte = ahora - 100 * 864e5, slPoda = {};
-        for (const [c, hs] of Object.entries(slog.lect || {})) for (const h of Object.keys(hs || {})) {
-          const t = Date.UTC(+h.slice(0, 4), +h.slice(4, 6) - 1, +h.slice(6, 8), +h.slice(8, 10));
-          if (t < corte) slPoda['lect/' + c + '/' + h] = null;
-        }
-        for (const [k, cs] of Object.entries(slog.cambios || {})) {
-          const ts = Object.keys(cs || {}).map(Number).sort((a, b) => a - b);
-          for (const t of ts.slice(0, -1)) if (t < corte) slPoda['cambios/' + k + '/' + t] = null;
-        }
-        if (Object.keys(slPoda).length) await db.patch('cyc/stocklog', slPoda);
-      } catch { /* podar es sólo limpieza */ }
+      // La poda del registro de stock vive en `podarStocklog` (etapa 8): corre también en `ritmo:go`.
+      try { await podarStocklog(db, slog, ahora); } catch { /* podar es sólo limpieza */ }
       try { await db.patch('cyc/supervisor', upd); }
       catch (e) { console.log(`⚠️ no se pudo guardar el supervisor: ${String(e).slice(0, 120)} · no se avisa nada`); return; }
       const rele = (await db.get('cyc/supervisor/eventos')) || {};
@@ -35625,46 +35832,25 @@ async function main() {
         const add = (o) => { o.t180 += q; if (k >= k60) o.t60 += q; if (k >= k30) o.t30 += q; if (k > o.ult) o.ult = k; };
         add(s); const va = varDe(v); if (va) add(s.v[va] || (s.v[va] = { t30: 0, t60: 0, t180: 0, ult: '' }));
       };
-      const baratas = [];   // ventas con menos de 10% de ganancia: se deciden mirando la línea de tiempo (abajo)
+      // ¿VENTA BARATA = REMATE? Con la regla ÚNICA del robot y la web (`clasificarRemates`, 12/10/2026, él eligió 1a):
+      // remate = abajo de 20% Y prueba (etiqueta, liquidando, baja de remate, o PARADO en la línea de tiempo: su regla
+      // del 09/10 con el Ultra Shift y la Lupa 75mm). Lo de abajo de 20% sin prueba es demanda y cuenta ("BARATA").
+      const LIN = {}, rematesVistos = {};
+      const lineaDe = async (mla) => { if (!(mla in LIN)) { try { LIN[mla] = (await db.get('mlapi/linea/' + mla)) || {}; } catch { LIN[mla] = null; } } return LIN[mla]; };
+      const [nsP, rvP, apP] = await Promise.all(['cyc/nosubir', 'cyc/rescateventa', 'cyc/autoprecio'].map((k) => db.get(k).catch(() => null)));
+      const clP = await clasificarRemates(db, VP, { nosubir: nsP || {}, rescv: rvP || {}, autoprecio: apP || {}, lineaDe, desde: k180 });
       for (const [k, ents] of Object.entries(VP)) {
         if (k < k180) continue;
-        for (const v of Object.values(ents || {})) {
+        for (const [id0, v] of Object.entries(ents || {})) {
           if (!v || !v.prodId || v.cancelada) continue;
-          const q = Number(v.qty) || 1;
-          // ¿VENTA BARATA = REMATE? (09/10/2026, él). Primero: el Ultra Shift vendido a −3% ("lo tuvimos que sacar al 3% porque
-          // no se vendía ni loco") no es demanda. Pero después, con la Lupa 75mm: "quizás se vendió barato porque fue mi culpa
-          // ponerlo barato (…) si sale de pedidos, no compramos más un producto que sí vende (…) no habría por qué ponerlo en
-          // liquidar si llegaron y se vendieron al toque". Entonces una venta con menos de 10% NO se descarta por el %: se
-          // mira la LÍNEA DE TIEMPO de su publicación. Es remate sólo si en los 45 días anteriores estuvo 30+ días con stock
-          // vendiendo menos de 1 por semana (estaba parado). Si llegó y se vendió al toque, es demanda y cuenta.
-          { const pr0 = byId[v.prodId] || {}; const c0 = (Number(pr0.costFullUSD) || Number(pr0.costUSD) || 0) * (Number(R[11]) || 0);
-            const nU = (Number(v.neto) || 0) / q, tU = (Number(v.total) || 0) / q;
-            if (c0 > 0 && nU > 0 && (nU - 0.06 * tU - c0) / c0 < 0.10) { baratas.push({ v, k, q }); continue; } }
+          const q = Number(v.qty) || 1, inf = clP.info[k.slice(0, 10) + '|' + (v.id || id0)];
+          const s = S[v.prodId] || (S[v.prodId] = { t30: 0, t60: 0, t180: 0, ult: '', v: {}, rem: 0, barata: 0 });
+          if (inf && inf.remate) { if (k >= k60) s.rem += q; rematesVistos[v.prodId] = inf.porque; continue; }
+          if (inf) s.barata += q;
           addVenta(v, k, q);
         }
       }
-      // Las ventas baratas, una por una contra la línea de tiempo de su publicación.
-      const LIN = {}, rematesVistos = {};
-      for (const b of baratas) {
-        const mla = b.v.mla; let es = false, porque = 'sin línea de tiempo: cuenta como venta';
-        if (mla) {
-          if (!(mla in LIN)) { try { LIN[mla] = (await db.get('mlapi/linea/' + mla)) || {}; } catch { LIN[mla] = null; } }
-          const lin = LIN[mla];
-          if (lin) {
-            const d0 = Date.parse(b.k.replace(/_/g, '-') + 'T12:00:00-03:00');
-            let dSt = 0, uAnt = 0, dSab = 0, pMax = 0;
-            for (let i = 1; i <= 45; i++) { const kk = new Date(d0 - i * 864e5 - 3 * 36e5).toISOString().slice(0, 10).replace(/-/g, '_'); const r = lin[kk]; if (!r) continue; if (r.st != null) { dSab++; if (Number(r.st) > 0) dSt++; } uAnt += Number(r.u) || 0; const pp = Number(r.p ?? r.pF) || 0; if (pp > pMax) pMax = pp; }
-            const pV = (Number(b.v.total) || 0) / b.q;
-            if (dSt >= 30 && uAnt / dSt < 1 / 7) { es = true; porque = `antes estuvo ${dSt} días con stock vendiendo ${uAnt}`; }
-            // Si la línea no sabe el stock: le BAJARON el precio 12%+ en los 45 días anteriores y casi no vendía = remate.
-            else if (dSab < 15 && pMax > 0 && pV > 0 && pMax >= pV * 1.12 && uAnt < 45 / 7) { es = true; porque = `le bajaron el precio de $${Math.round(pMax)} a $${Math.round(pV)} y antes vendía ${uAnt} en 45 días`; }
-            else porque = dSab < 15 ? 'la línea no sabe el stock de antes y no hubo baja de precio: cuenta como venta' : `antes: ${dSt} días con stock y ${uAnt} vendidas, no estaba parado`;
-          }
-        }
-        const s = S[b.v.prodId] || (S[b.v.prodId] = { t30: 0, t60: 0, t180: 0, ult: '', v: {}, rem: 0, barata: 0 });
-        if (es) { if (b.k >= k60) s.rem += b.q; rematesVistos[b.v.prodId] = porque; }
-        else { addVenta(b.v, b.k, b.q); s.barata = (s.barata || 0) + b.q; }
-      }
+      if (clP.fallo.size) console.log(`⚠️ ${clP.fallo.size} venta(s) barata(s) sin poder leer su línea de tiempo: cuentan como venta`);
       const ent = {};   // lo que ML ya dio de alta de cajas abiertas
       for (const [ck, x] of Object.entries(CE)) for (const it of ((x && x.items) || [])) if (it && it.p) { const kk = ck + '|' + it.p + '|' + (it.v || ''); ent[kk] = (ent[kk] || 0) + (Number(it.q) || 0); }
       const cam = {};   // pid -> {tot, v:{}}
