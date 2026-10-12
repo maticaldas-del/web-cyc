@@ -529,6 +529,8 @@ línea del precio en el de la publicación que vendía.
 **Ojo, aparte:** los días CON ventas la línea es lo COBRADO por unidad (03/10), que mezcla colores a
 distinto precio y carritos: puede subir y bajar sin ▲▼ (las flechas son sólo cambios de precio de la
 publicación).
+**DECIDIDO POR ÉL EL 12/10, eligió la (b): la línea sigue mostrando lo COBRADO los días con ventas.** No volver a
+proponer cambiarla al precio puesto.
 
 ### Línea de tiempo: desde una venta abre la de ESA variante (12/10/2026, v23.20)
 Él: *"al apretar línea en una variante, quiero ver la línea de esa variante"*. `lineaBtn(prodId,txt,varSel)` y
