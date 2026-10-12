@@ -936,6 +936,15 @@ hecho el cerebro por cosas como liquidar)"*. ML reactiva sola la pausada sin sto
  · Lo nuevo (nunca estuvo en Full) no se activa solo: lo activo yo con el precio ya puesto.
  · Primera medición (12/10 01:30): **127 abajo en el peor caso** (47 activas, el resto pausadas), 2 excepciones.
 
+## 🏷️ VENTAS EN PROMO: SE AVISAN EN EL RESUMEN (12/10/2026, pedido suyo)
+
+Él: *"quiero que cuando se venda algo en promo avise"*. `ventasraras` marca cada venta en promo o con cupón (🏷️, de
+`cyc/promoventa`: descuento, cuánto puso ML y cuánto nosotros) y abajo el total. **En el `resumen:` de cada cerebro va una
+línea con las ventas en promo de esa vuelta** (cuántas, cuánto puso ML, y si pusimos plata nosotros). Primera medición, 7 días:
+32 ventas en promo, ML puso $25.700 y nosotros $6.225 (casi todo de una sola, el Halloween 100ml). Infinite Fame: oculto con
+`nomas` (no se vende ni repone más, decisión suya del 12/10). El 12/10 se subieron 110 publicaciones al 25% en el peor caso
+(`ml-sync/notas/precios_1210.txt`); las frenadas en $32.999 son excepción a propósito (regla 2).
+
 ## 🔢 PSICOLOGÍA DEL PRECIO (10/10/2026, él eligió 1a 2a 3a 4b)
 
  · **Terminaciones:** todo precio que decido termina en 90 o 990 (99 en lo más barato). Nunca $10.000 o $5.000 redondos.
