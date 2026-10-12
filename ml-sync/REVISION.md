@@ -452,6 +452,34 @@ Todo lo que guarda la historia día por día y las pantallas que la dibujan.
   ritmo para medir, el stock va en gris "sin ventas para medir el ritmo" (antes violeta "+999 d exceso"). (5) Hoy: stock sin
   negativos y `qty||0` como Ventas; el "stock hoy" del resumen usa la misma ventana que el último punto.
   Chequear: que ayer a la mañana la línea ya muestre las ventas del panel; que la ganancia de un día coincida con Ventas.
+- **Revisión de la etapa 8 (12/10/2026, v23.16) · robot e historial:** línea de tiempo · (1) `linea:go`: el color de la
+  publicación sale también del TÍTULO (`linksConColor`, misma regla que `_varPorMla`); con color y sin clave de ese color, o
+  producto con colores sin color identificado, el stock queda sin dato (antes ponía el del producto entero: Centímetro 10 →
+  107 y "llegaron ~97" falso); el stock de ayer suma lo vendido de madrugada (`vendHoy`: corre 06-07 h y la web veía una
+  llegada falsa); las ventas de los 7 días anteriores se releen del panel cada noche (tardías, canceladas, neto real).
+  (2) `linea:atras` stock: un depósito queda "hecho" sólo si se leyó el año o ML contestó 4xx (corte de tiempo, 429, 5xx o red
+  = se vuelve a pedir; `lineaprog/stock.ok` sólo sin pendientes, sin fallas y sin medias); sin movimientos se pide el stock de
+  ESE depósito (antes la clave del producto); una publicación con varios depósitos se escribe sólo si se leyeron todos en la
+  misma corrida (si no, se releen juntos). (3) `linea:atras` ventas: una cuenta con la lista cortada no escribe nada.
+  (4) `calcLineaTodo` y `_lineaJunta` (web): color del título; una publicación de un color sin identificar cuenta sólo su
+  depósito como un color aparte; índice de precio: los saltos se recortan a ±×2,5 en vez de tirarse (la escasez del cerebro
+  llega a ×2,5). Ritmo normal · (5) el remate de un color marca sólo ese color, no el producto ni las hermanas (`marcaDesde`,
+  `d[3]`); una baja de remate/escalera de autoprecio vale si no terminó el remate; sin poder leer la línea NO se guarda el ritmo
+  (pisaba el bueno con uno corto). Registros · (6) poda del registro de stock en `podarStocklog`, 430 días, dejando el último
+  cambio ANTERIOR al corte (antes el último de toda la clave: borraba el "tenía stock desde hace 150 días"); corre también en
+  `ritmo:go` (el supervisor sale temprano en sólo datos); `alertaslog` se poda a 90 días. Supervisor · (7) costo, dólar y
+  monotributo del MES del cambio (`armarCostoWeb`, igual que la web): un `poncosto` ya no reescribe meses cerrados; dos cambios
+  distintos de la misma publicación el mismo día ya no se pisan (id con hora); la foto de precios no copia filas `sinMedir` y
+  "ya anotado" busca desde la foto anterior (armaba un "a mano" falso que dejaba el cambio real en curso para siempre).
+  Otros · (8) el aviso de chat nuevo de Telegram lleva sólo la inicial (`_tgMask`: se reimprime en el log público) · cargar un
+  mes cerrado a mano guarda el dólar de ESE mes, no el de hoy · `costomes:<AAAA_MM>` vuelve al comando viejo y el nuevo arma los
+  meses hasta el actual (tenía octubre fijo). No se hizo: Pedidos por cuenta con remate en una sola (Pedidos ya no propone
+  números, `SOLO_CLAUDE`); `entregas` no ve devoluciones posteriores a la entrega (chip "↩ volvió" casi nunca sale); `informe`
+  con más de 36 h; `ventaborrada` 60 d contra un relleno de más días.
+  Para decidir él: (a) una sola definición de "venta en remate" (prueba + % bajo, su regla O2) en robot y web; (b) qué dólar
+  usa un mes al cerrarlo (hoy: el del día del cierre, y la ganancia del mes cambia al cerrar).
+  Chequear: que `linea:go` no deje sin stock lo que tiene colores dentro de una publicación; que `ritmo:go` diga cuántos
+  renglones podó; que lo que trajo el robot de agosto no cambie de una noche a otra.
 
 ## 9 · CEREBRO (nueva, 09/10/2026, pedido suyo)
 Él, después de que dos veces salió incompleto (precios y pedidos): *"es un problema grave que pasó dos veces ya (...) en los dos se hizo súper incompleto y nunca te diste cuenta (...) quiero agregar esto de revisar cerebro a las etapas"*. Revisa LO QUE HACE CLAUDE en cada vuelta (08:52, 12:52, 16:52, 20:52): que cada parte se haga ENTERA.

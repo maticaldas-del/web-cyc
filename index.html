@@ -2505,7 +2505,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.15';
+const APP_VERSION='23.16';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2516,6 +2516,7 @@ const APP_VERSION='23.15';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.16',f:'12/10/2026',h:'02:05',c:[{n:2,t:'📈 Línea de tiempo: el color de cada publicación sale también del título; el stock de un color que no se reconoce ya no se suma como si fuera todo el producto (subidas y "llegaron" falsos), y el de ayer cuenta lo vendido de madrugada.'},{n:2,t:'🤖 Lo que trajo el robot: cada cambio se mide con el costo y el dólar de SU mes, así un costo nuevo no cambia los meses cerrados. Dos cambios el mismo día ya no se pisan.'},{n:1,t:'📅 Cargar a mano un mes cerrado guarda el dólar de ese mes, no el de hoy.'}]},
   {v:'23.15',f:'12/10/2026',h:'01:52',c:[{n:2,t:'📈 Línea de tiempo: las ventas de cada día salen del panel (ayer ya no dice "no vendió" mientras la noche no lo cargó, y lo cancelado después no cuenta). La ganancia de cada día usa la misma cuenta que Ventas (costo y dólar del mes). Sin ventas para medir el ritmo, el stock va en gris en vez de "exceso".'}]},
   {v:'23.14',f:'12/10/2026',h:'01:10',c:[{n:2,t:'⚖️ Tope de H: el ritmo para proyectar el cierre ahora son los 30 días enteros hasta ayer. Antes contaba el día de hoy recién empezado y a la madrugada la proyección bajaba sola (Matías pasaba de rojo a amarillo).'}]},
   {v:'23.13',f:'11/10/2026',h:'00:26',c:[{n:2,t:'🏷️ Ventas: cada venta hecha con promo o cupón lo dice en su tarjeta, con cuánto puso ML y cuánto nosotros. Arriba, en el bloque por cuenta, el total del período que puso ML.'}]},
@@ -3718,6 +3719,8 @@ const REV_CADA_DIAS=7;
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel pide la
 //                     etapa más vieja cuando pasaron REV_CADA_DIAS desde la última.
 const REV_PENDIENTE=[
+  {t:'Etapa 8 · venta en remate',que:'El robot y la web cuentan distinto qué venta fue de remate (el robot sin mirar el %). Elegir: (a) las dos con tu regla: prueba de remate Y % bajo · (b) dejarlo',pedi:'remate 1a o 1b'},
+  {t:'Etapa 8 · dólar del mes cerrado',que:'Al cerrar un mes se guarda el dólar del día del cierre y la ganancia de ese mes cambia sola. Elegir: (a) que siga con el dólar que ya usaba (promedio de sus ventas) · (b) el del día del cierre',pedi:'dolar 2a o 2b'},
 ];
 // Etapa 7 (diseño) cerrada el 01/10/2026: hechas 1-9, 11, 13, 14 y 15; la 10 (Pedidos) y la 12 (sacar
 // "Participación por cuenta") él eligió dejarlas como están.
@@ -3726,7 +3729,7 @@ const REV_PENDIENTE=[
 // por una nota vieja.
 // 30/09 a la tarde: la revisión completa final (6 revisores) cubrió precios, plata, mercadería, ventas,
 // corridas del robot y la web; lo obvio quedó arreglado en la v20.88.
-const REV_HECHAS={1:'2026-10-08',2:'2026-09-30',3:'2026-09-30',4:'2026-09-30',5:'2026-09-30',6:'2026-09-27',7:'2026-10-01'};
+const REV_HECHAS={1:'2026-10-08',2:'2026-09-30',3:'2026-09-30',4:'2026-09-30',5:'2026-09-30',6:'2026-09-27',7:'2026-10-01',8:'2026-10-12'};
 function _revFecha(iso){const d=new Date(iso+'T12:00:00');return isNaN(d)?null:d;}
 function _revFmt(d){return ['dom','lun','mar','mié','jue','vie','sáb'][d.getDay()]+' '+String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0');}
 function revProxima(){
@@ -8412,7 +8415,9 @@ async function addManualSnapshot(){
   const key=yy+'_'+mm;
   const label=(MONTHS[parseInt(mm)-1]||'')+' '+yy;
   if(state.snapshots[key]&&!confirm('Ya existe un cierre de '+label+'. ¿Sobrescribir con este total?'))return;
-  const snap={label,ts:Date.now(),total,stock:0,stockML:0,stockLocal:0,tipoCambio:curTC(),manual:true,finanzas:{},locValues:{},prodValues:{}};
+  // El dólar del mes que se carga, no el de HOY (etapa 8): el cierre manifiesta el dólar que ese mes ya usaba,
+  // así cargar marzo hoy no le cambia la ganancia de marzo.
+  const snap={label,ts:Date.now(),total,stock:0,stockML:0,stockLocal:0,tipoCambio:(state.snapshots&&state.snapshots[key]&&parseFloat(state.snapshots[key].tipoCambio))||tcForYM(key),manual:true,finanzas:{},locValues:{},prodValues:{}};
   await fbSet('snapshots/'+key,snap);await log('Cargó mes manual: '+label+' ('+fmt(total)+')');
   if(!state.snapshots)state.snapshots={};state.snapshots[key]=snap;
   document.getElementById('snap-total').value='';
@@ -8902,6 +8907,8 @@ function _lineaDias(n){const out=[];const hoy=new Date();for(let i=n-1;i>=0;i--)
 // número cuatro veces. Con `lks` (las vinculaciones), por cuenta: si alguna publicación es "del producto entero" vale ese
 // número (ya trae los colores adentro); si son todas de un color, se suma un número por color. `varSel` (la vista de un
 // color): sólo vale el stock guardado de ESE color; el del producto entero no es de ese color y no se usa.
+// El color de una publicación: el fijado a mano o el que nombra el título (misma regla que `_varPorMla`).
+function _lineaColorDe(l){if(!l)return '';const v=String(l.variant||'').trim();if(v)return v;const p=(state.products||[]).find(pp=>pp.id===l.prodId);return p&&(p.variantes||[]).length?String(_matchProdVariant(l.title||'',p.variantes)||'').trim():'';}
 function _lineaJunta(porMla,lks,varSel){
   // Junta las publicaciones del producto día por día: unidades, visitas y stock se SUMAN; el precio es el
   // más barato; la caja, la mejor; remate/escalera si alguna lo estaba. Stock: sólo si TODAS las que
@@ -8930,9 +8937,13 @@ function _lineaJunta(porMla,lks,varSel){
       if(x.uR!=null){o.uR=(o.uR||0)+Number(x.uR||0);}
       if(x.vis!=null){o.vis=(o.vis||0)+Number(x.vis||0);}
       if(x.tot!=null){o.tot=(o.tot||0)+Number(x.tot||0);}
-      if(x.st!=null){if(lks){const l=lks[mla]||{},cta=String(l.cuenta||'?'),vr=String(l.variant||'').trim();
+      if(x.st!=null){if(lks){const l=lks[mla]||{},cta=String(l.cuenta||'?'),vr=_lineaColorDe(l);
+          // Color sacado también del TÍTULO (igual que `_varPorMla` y el robot, etapa 8). Una publicación de UN
+          // color que no se identifica: sólo su depósito (relleno) cuenta, como un color aparte; la foto de la noche
+          // de una así es la del producto entero y no se usa.
+          const _p1=(state.products||[]).find(pp=>pp.id===l.prodId),_conC=!!(_p1&&(_p1.variantes||[]).length),_todosAd=l.invVar&&Object.keys(l.invVar).length>1;
           if(!varSel||vr===varSel){const S=(o._st=o._st||{})[cta]=(o._st||{})[cta]||{P:null,V:{}};const q=Math.max(0,Number(x.st)||0);
-            if(vr&&!varSel)S.V[vr]=Math.max(S.V[vr]||0,q);else if(vr)S.V[vr]=Math.max(S.V[vr]||0,q);else S.P=Math.max(S.P||0,q);}}
+            if(vr)S.V[vr]=Math.max(S.V[vr]||0,q);else if(_conC&&!_todosAd){if(x.stF==='ops'||x.stF==='sinmov')S.V['?'+mla]=Math.max(S.V['?'+mla]||0,q);}else S.P=Math.max(S.P||0,q);}}
         else o.st=(o.st||0)+Number(x.st||0);o.stN++;}
       if(x.p!=null&&Number(x.p)>0){o.p=o.p==null?Number(x.p):Math.min(o.p,Number(x.p));
         // El precio de una publicación PAUSADA no es el que se cobra (Cartas Casino: la línea decía $2.706 de una
