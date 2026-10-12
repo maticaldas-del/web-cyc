@@ -35890,7 +35890,7 @@ async function main() {
       const evs = (await db.get('cyc/supervisor/eventos')) || {};
       const up = {}; let mal = 0;
       for (const x of partes.filter((y) => y.toLowerCase() !== 'go')) {
-        const m = x.match(/^(MLA\d+_\d{8})\s*=\s*(gano|perdio|igual|espera|nocuenta|borrar)\s*(?:\|(.*))?$/i);
+        const m = x.match(/^(MLA\d+_\d{8}(?:_\d{4})?)\s*=\s*(gano|perdio|igual|espera|nocuenta|borrar)\s*(?:\|(.*))?$/i);
         if (!m) { console.log(`  ✗ no entiendo "${x.slice(0, 80)}"`); mal++; continue; }
         if (!evs[m[1]]) { console.log(`  ✗ ${m[1]}: no está en los cambios del supervisor`); mal++; continue; }
         const v = m[2].toLowerCase();
