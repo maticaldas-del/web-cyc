@@ -36712,7 +36712,7 @@ async function main() {
             const tanda = ini && h.cero && h.cero > ini ? Math.max(0.1, (h.cero - ini) / 864e5) : null;
             const a = ap[mla];
             filas.push({ mla, cta, nom: String(e.title || p.name || '').slice(0, 42) + (e.variant ? ' #' + e.variant : ''), est: b.status + ((b.sub_status || []).length ? '(' + b.sub_status.join(',') + ')' : ''),
-              P, mg, g, mgP, meta, nota, st, exc: (nosub || {})[mla] ? 'liquidando' : (cPiso && cPiso[mla] && Math.abs((Number(cPiso[mla].a) || 0) - P) <= 10) ? 'la dejé así con !piso' : (pClaude && pClaude[mla]) ? 'en promo que entré yo' : '', ...vv, cero: h.cero && st === 0 ? h.cero : null, tanda, caja: e.caja || '', ptw: e.cajaPtw || null, var: (b.variations || []).length,
+              P, mg, g, mgP, meta, nota, st, exc: (nosub || {})[mla] ? 'liquidando' : (cPiso && cPiso[mla] && Math.abs((Number(cPiso[mla].a) || 0) - P) <= 10) ? 'la dejé así con !piso' : (pClaude && pClaude[mla]) ? 'en promo que entré yo' : (P >= 32900 && P < UMBRAL_ENVIO_GRATIS && meta && meta.barrera) ? 'frenada en la barrera de $33.000 (regla 2)' : '', ...vv, cero: h.cero && st === 0 ? h.cero : null, tanda, caja: e.caja || '', ptw: e.cajaPtw || null, var: (b.variations || []).length,
               cambio: a && a.ts ? `${f(a.de)}→${f(a.a)} hace ${Math.round((hoy - a.ts) / 864e5)} d${a.por ? ' (' + a.por + ')' : ''}` : '' });
           }
         }
