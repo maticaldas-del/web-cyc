@@ -38605,7 +38605,7 @@ async function main() {
         const usd = campos.usd != null ? num(campos.usd) : (yaG ? parseFloat(yaG.usdCrudo) || null : null);
         const merc = dePrevio('merc', 'mercaderia');
         const envio = dePrevio('envio', 'envio'), cambio = dePrevio('cambio', 'cambista') || 0, otros = dePrevio('otros', 'otros') || 0;
-        if (yaG && Object.keys(campos).some((k) => !['usd', 'merc', 'envio', 'cambio', 'otros', 'retira', 'det', 'nota', 'kg', 'tipo'].includes(k))) console.log('  (hay un campo que no conozco; se ignora)');
+        if (yaG && Object.keys(campos).some((k) => !['usd', 'merc', 'envio', 'cambio', 'otros', 'retira', 'det', 'nota', 'kg', 'tipo', 'sinpesos'].includes(k))) console.log('  (hay un campo que no conozco; se ignora)');
         if (yaG) console.log(`  (lo que no pasaste se toma de lo guardado: ${['usd', 'merc', 'envio', 'cambio', 'retira', 'otros'].filter((k) => campos[k] == null).join(', ') || 'nada'})`);
         // `retira` es lo que cobra el que retira en Paraguay y despacha. Tiene su propio nombre y no
         // va metido en `otros` porque es el gasto FIJO más grande que tiene el pedido (medido el
@@ -38620,7 +38620,9 @@ async function main() {
         // Un pedido que YA existe (lo guardó "Ya lo pedí") puede recibir los gastos de a uno: el
         // correo llega días después de los dólares, o antes (07/10/2026: el correo del pedido del
         // 05/10 llegó sin nada más cargado). Queda INCOMPLETO y fuera del promedio hasta que estén todos.
-        if (!(merc > 0) && !yaG) { console.log('Falta `merc=` (los pesos que salieron por la mercadería).'); return; }
+        // `sinpesos` (12/10/2026, él: "crealo igual, si faltan cosas me la indicas como los gastos"): un pedido viejo
+        // del que todavía no tiene los pesos se crea igual, INCOMPLETO y fuera del promedio, y la falta se dice.
+        if (!(merc > 0) && !yaG && campos.sinpesos == null && !partes.some((x) => /^sinpesos$/i.test(x))) { console.log('Falta `merc=` (los pesos que salieron por la mercadería). Si todavía no los tenés: `|sinpesos` lo crea igual, incompleto.'); return; }
         if (envio == null) { console.log('Falta `envio=` (los pesos del correo). Si todavía no lo sabés poné `envio=0`: queda marcado INCOMPLETO y no entra en el promedio.'); return; }
         const id = idCompra;
         const ya = guardadas[id];

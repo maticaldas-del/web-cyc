@@ -282,6 +282,8 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 (sería doble), y que el número de Gastos y el del Arqueo sean el mismo para cada mes.
 
 ## 3 · MERCADERÍA
+
+- **`compray:<fecha>|usd=…|sinpesos` (12/10/2026):** crea un pedido de Paraguay viejo sin los pesos de los dólares (él: *"crealo igual, si faltan cosas me la indicas"*). Queda INCOMPLETO, fuera del promedio, y la falta se lista como los otros gastos. Primer uso: el pedido del 08/09 (ticket US$ 652, sin detalle de productos). Chequear: que sin `sinpesos` siga pidiendo `merc=`.
 - **Estado de la caja de cada producto** (probe `cajahoy`, `mllinks.caja`): winning/sharing/losing
   y también nocat/sincaja; un producto sin publicación activa no es "sin dato".
 - **Stock en las líneas de tiempo**: por cuenta manda la clave del producto sobre las de color; con
