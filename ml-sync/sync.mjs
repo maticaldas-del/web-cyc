@@ -36111,7 +36111,13 @@ async function main() {
       for (const m of Object.keys(forzar)) if (!vistos.has(m)) console.log(`\n${m} · no la miré: no está vinculada, no está activa o es de otra cosa (sin ficha, oculta, "no la vendemos más")`);
       for (const d of cz.dec) {
         console.log(`\n${d.mla} · ${d.cuenta} · ${d.nom}`);
-        if (d.accion === 'nada') { console.log(`   ✗ ${d.mismoPrecio ? 'el precio queda igual' : 'no se toca'}: ${d.motivo}${forzar[d.mla] && forzar[d.mla].activar ? ' · (y la activo si está pausada y deja el piso)' : ''}`); continue; }
+        if (d.accion === 'nada') {
+          console.log(`   ✗ ${d.mismoPrecio ? 'el precio queda igual' : 'no se toca'}: ${d.motivo}${forzar[d.mla] && forzar[d.mla].activar ? ' · (y la activo si está pausada y deja el piso)' : ''}`);
+          // Dejarla a propósito en el precio de hoy con `!piso` (12/10/2026): la excepción se anota igual, si no la planilla la sigue marcando 🛡️.
+          const fz0 = forzar[d.mla] || {};
+          if (d.mismoPrecio && fz0.piso && GOp && !DRY) { try { await db.set('cyc/claudepiso/' + d.mla, { a: Math.round(Number(d.p0) || 0), ts: Date.now(), motivo: String(fz0.motivo || '').slice(0, 200) }); console.log('   ✓ anotada como excepción mía (!piso): la planilla no la vuelve a marcar'); } catch { console.log('   ⚠️ no pude anotar la excepción'); } }
+          continue;
+        }
         console.log(`   ${d.accion === 'sube' ? '⬆️ SUBIR' : '⬇️ BAJAR'} ${money(d.p0)} → ${money(d.a)}${d.cruza ? ' (cruza $33.000)' : ''} · margen ${d.mg0}% → ${d.mgA}%${d.pisoAut ? ' (abajo del piso, con !piso)' : ''}${d.gPorU ? ` · por unidad ${money(d.gPorU.antes)} → ${money(d.gPorU.despues)}` : ''}`);
         // PSICOLOGÍA DEL PRECIO (10/10/2026, él eligió 1a y 2a): avisa, no frena. Terminación redonda (múltiplo de $1.000)
         // o una suba que cruza un número redondo — se cruza sólo si la ganancia extra vale claramente la pena y se explica.
@@ -36664,7 +36670,7 @@ async function main() {
             const st = Math.max(0, parseInt(inv[kV && inv[kV] != null ? kV : kP]) || 0);
             const costo = Math.round(costoPesos(p, 1, tc).costo || 0);
             const m = (mlExtraPct(cta) + monoPz) / 100;
-            let mg = null, g = null, nota = '', mgP = null;
+            let mg = null, g = null, nota = '', mgP = null, meta = null;
             const cuo = cuotaPremiumDe(cuoC || {}, mla, b.listing_type_id);
             if (!(costo > 0)) nota = 'SIN COSTO';
             else if (cuo == null) nota = 'Premium sin cuotas medidas';
@@ -36681,6 +36687,20 @@ async function main() {
                 const envP = env;
                 const gP = P - fe - P * cuo - envP - costo - P * m - P * PEOR_RET_PCT;
                 mgP = gP / (costo + P * m + envP) * 100;
+                // EL PRECIO QUE HACE FALTA (12/10/2026): si en el peor caso no llega, se despeja el precio que deja el
+                // objetivo con la comisión preguntada a ML AL PRECIO NUEVO (se verifica, no se estima), terminado en 90/990.
+                if (mgP < PISO && !(b.variations || []).length) {
+                  const rnd = (x) => x < 10000 ? Math.ceil((x + 10) / 100) * 100 - 10 : Math.ceil((x + 10) / 1000) * 1000 - 10;
+                  const mgEn = async (Pn) => { const fn = await feeAtP(b, Pn, tk); if (fn == null) return null; const en = Pn >= UMBRAL_ENVIO_GRATIS ? (env > 0 ? env : CAND_ENVIO_ARRIBA) : 0; return (Pn - fn - Pn * cuo - en - costo - Pn * m - Pn * PEOR_RET_PCT) / (costo + Pn * m + en) * 100; };
+                  const fp = fe / P; let Pn = P;
+                  for (const enT of [0, env > 0 ? env : CAND_ENVIO_ARRIBA]) { const d = 1 - fp - cuo - m * (1 + PISO / 100) - PEOR_RET_PCT; if (d <= 0) { Pn = null; break; } const x = (1 + PISO / 100) * (costo + enT) / d; if (enT === 0 && x < UMBRAL_ENVIO_GRATIS) { Pn = x; break; } if (enT > 0) Pn = Math.max(x, UMBRAL_ENVIO_GRATIS); }
+                  if (Pn != null) {
+                    Pn = rnd(Math.max(Pn, P + 1)); let ok = null;
+                    for (let i = 0; i < 12 && Pn <= 650000; i++) { const mm = await mgEn(Pn); if (mm == null) break; if (mm >= PISO) { ok = { P: Pn, mg: mm }; break; } Pn = rnd(Pn + (Pn < 10000 ? 100 : 1000)); }
+                    meta = ok;
+                    if (ok && P < UMBRAL_ENVIO_GRATIS && ok.P >= UMBRAL_ENVIO_GRATIS) { const mm = await mgEn(32990); meta.barrera = { mg: mm }; }
+                  }
+                }
               }
             }
             const vv = ven[mla] || { u7: 0, u30: 0, u60: 0, ult: 0 };
@@ -36692,7 +36712,7 @@ async function main() {
             const tanda = ini && h.cero && h.cero > ini ? Math.max(0.1, (h.cero - ini) / 864e5) : null;
             const a = ap[mla];
             filas.push({ mla, cta, nom: String(e.title || p.name || '').slice(0, 42) + (e.variant ? ' #' + e.variant : ''), est: b.status + ((b.sub_status || []).length ? '(' + b.sub_status.join(',') + ')' : ''),
-              P, mg, g, mgP, nota, st, exc: (nosub || {})[mla] ? 'liquidando' : (cPiso && cPiso[mla] && Math.abs((Number(cPiso[mla].a) || 0) - P) <= 10) ? 'la dejé así con !piso' : (pClaude && pClaude[mla]) ? 'en promo que entré yo' : '', ...vv, cero: h.cero && st === 0 ? h.cero : null, tanda, caja: e.caja || '', ptw: e.cajaPtw || null, var: (b.variations || []).length,
+              P, mg, g, mgP, meta, nota, st, exc: (nosub || {})[mla] ? 'liquidando' : (cPiso && cPiso[mla] && Math.abs((Number(cPiso[mla].a) || 0) - P) <= 10) ? 'la dejé así con !piso' : (pClaude && pClaude[mla]) ? 'en promo que entré yo' : (P >= 32900 && P < UMBRAL_ENVIO_GRATIS && meta && meta.barrera) ? 'frenada en la barrera de $33.000 (regla 2)' : '', ...vv, cero: h.cero && st === 0 ? h.cero : null, tanda, caja: e.caja || '', ptw: e.cajaPtw || null, var: (b.variations || []).length,
               cambio: a && a.ts ? `${f(a.de)}→${f(a.a)} hace ${Math.round((hoy - a.ts) / 864e5)} d${a.por ? ' (' + a.por + ')' : ''}` : '' });
           }
         }
@@ -36718,7 +36738,7 @@ async function main() {
       // mis excepciones a propósito (liquidando, `!piso`, promo mía), que se cuentan aparte.
       const peor = filas.filter((r) => r.mgP != null && r.mgP < PISO), peorNo = peor.filter((r) => !r.exc), peorExc = peor.filter((r) => r.exc);
       console.log(`\n── 🛡️ ABAJO DEL ${PISO}% EN EL PEOR CASO (retención de otra provincia ${(PEOR_RET_PCT * 100).toFixed(1)}% + el envío más caro visto + cuotas): ${peorNo.length} para subir · ${peorExc.length} excepciones mías ──`);
-      for (const r of peorNo.sort((x, y) => x.mgP - y.mgP)) console.log(`🛡️ ${r.mla} · ${r.cta} · ${r.nom} · ${r.est} · ${f(r.P)} · peor caso ${r.mgP.toFixed(0)}% (normal ${r.mg.toFixed(0)}%) · Full ${r.st} · v30 ${r.u30}`);
+      for (const r of peorNo.sort((x, y) => x.mgP - y.mgP)) console.log(`🛡️ ${r.mla} · ${r.cta} · ${r.nom} · ${r.est} · ${f(r.P)} · peor caso ${r.mgP.toFixed(0)}% (normal ${r.mg.toFixed(0)}%) · Full ${r.st} · v30 ${r.u30} · ${r.var ? 'CON VARIANTES: a mano' : r.meta ? `→ ${f(r.meta.P)} (${r.meta.mg.toFixed(1)}% peor caso, +${((r.meta.P / r.P - 1) * 100).toFixed(0)}%)${r.meta.P > r.P * 1.25 ? ' ⚠️ más de +25%: escalón ' + f(Math.floor(r.P * 1.25 / 10) * 10) : ''}${r.meta.barrera ? ` ⚠️ cruza $33.000 (a $32.990 queda ${r.meta.barrera.mg == null ? '?' : r.meta.barrera.mg.toFixed(0) + '%'})` : ''}` : 'sin precio que llegue'}`);
       for (const r of peorExc) console.log(`   (excepción: ${r.exc}) ${r.mla} · ${r.nom} · ${f(r.P)} · peor caso ${r.mgP.toFixed(0)}%`);
       if (sinMgTxt(filas)) console.log(sinMgTxt(filas));
       console.log(`\nResumen: ${filas.length} miradas · ${bajo.length} abajo de ${PISO}% · ${sinMg.length} sin margen medible · ${rap.length} cuya última tanda duró 3 días o menos (probablemente baratas)`);
@@ -36766,6 +36786,11 @@ async function main() {
       console.log(`=== 🧾 VENTAS DE LAS ÚLTIMAS ${horas} H · ${lista.length} compras · ${canc.length} canceladas ===`);
       console.log('(% con la cuenta de la web · "normal" = lo que deja esa publicación al mismo precio en sus ventas sueltas de 45 días)\n');
       const raras = [];
+      // VENTAS EN PROMO (12/10/2026, pedido suyo: *"quiero que cuando se venda algo en promo avise"*): lo que anota el
+      // ciclo en `cyc/promoventa/<día>/<orden>` (cuánto fue el descuento y cuánto puso ML). Sin registro no se dice nada.
+      const pvDias = {}; for (const g of lista) for (const { dk } of g) if (!(dk in pvDias)) pvDias[dk] = await db.get('cyc/promoventa/' + dk).catch(() => null);
+      const enPromo = [];
+      const promoDe = (g) => { let t = 0, s2 = 0; const vis = new Set(); for (const { v, dk } of g) { const oid = String(v.saleId || '').replace(/^s/, ''); const r = ((pvDias[dk] || {})[oid]); if (!r || !(Number(r.t) > 0)) continue; if (r.mla && v.mla && r.mla[v.mla]) { t += Number(r.mla[v.mla].t) || 0; s2 += Number(r.mla[v.mla].s) || 0; } else if (!vis.has(oid)) { vis.add(oid); t += Number(r.t) || 0; s2 += Number(r.s) || 0; } } return t > 0 ? { t, s: s2, ml: Math.max(0, t - s2) } : null; };
       for (const g of lista) {
         let neto = 0, costo = 0, gest = 0, total = 0, normal = 0, hayNormal = true, est = false; const nombres = [];
         for (const { v, dk } of g) {
@@ -36780,9 +36805,10 @@ async function main() {
         const v0 = g[0].v, hora = new Date(g[0].ts - 3 * 36e5).toISOString().slice(5, 16).replace('T', ' ');
         const bajo = pct != null && pct < 25, menos = hayNormal && normal - neto > Math.max(0.03 * total, 150);
         const marca = est ? '≈' : (bajo || menos) ? '⚠️' : '✓';
-        console.log(`${marca} ${hora} · ${v0.cuenta} · ${nombres.join(' + ')}${g.length > 1 ? ' (carrito)' : ''} · ${f(total)} · neto ${f(neto)} · ${pct == null ? 'sin costo' : pct.toFixed(0) + '%'}${pctN != null ? ` (normal ${pctN.toFixed(0)}%)` : ''}`);
+        console.log(`${marca} ${hora} · ${v0.cuenta} · ${nombres.join(' + ')}${g.length > 1 ? ' (carrito)' : ''} · ${f(total)} · neto ${f(neto)} · ${pct == null ? 'sin costo' : pct.toFixed(0) + '%'}${pctN != null ? ` (normal ${pctN.toFixed(0)}%)` : ''}${(() => { const pr = promoDe(g); if (!pr) return ''; enPromo.push({ nom: nombres.join(' + '), cta: v0.cuenta, pr, pct }); return ` · 🏷️ EN PROMO: descuento ${f(pr.t)} (ML puso ${f(pr.ml)}, nosotros ${f(pr.s)})`; })()}`);
         if (!est && (bajo || menos)) raras.push({ g, neto, normal, hayNormal, total });
       }
+      console.log(enPromo.length ? `\n🏷️ ${enPromo.length} VENTA(S) EN PROMO O CON CUPÓN: ${enPromo.map((x) => `${x.cta} · ${x.nom} · ML puso ${f(x.pr.ml)}${x.pr.s > 0 ? ' · nosotros ' + f(x.pr.s) : ''} · ${x.pct == null ? 'sin costo' : x.pct.toFixed(0) + '%'}`).join(' | ')}` : '\n🏷️ Ninguna venta en promo o con cupón en este período.');
       if (canc.length) console.log(`\nCanceladas: ${canc.map((v) => `${v.cuenta} · ${String(v.prod || '').slice(0, 30)} · ${f(v.total)}`).join(' | ')}`);
       if (!raras.length) { console.log('\nNinguna venta rara: todas dejaron lo normal para su precio (o están estimadas y la noche las relee).'); return; }
       console.log(`\n=== ⚠️ ${raras.length} VENTA(S) PARA MIRAR · el motivo sale de los cargos de Mercado Pago ===`);

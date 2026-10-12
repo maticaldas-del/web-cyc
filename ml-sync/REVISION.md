@@ -217,6 +217,9 @@ y `cyc/promoclaude`. También nombra las que no tienen margen medible. Se corre 
 🛡️ se sube en esa misma vuelta. Lo nuevo (nunca estuvo en Full) no se activa solo: lo activo yo con el precio ya puesto.
 Qué chequear: que la cuenta del peor caso use la misma comisión que la normal, y que una excepción vieja no tape un precio nuevo.
 
+- **12/10/2026 · `planilla` dice el precio que hace falta** en cada 🛡️: se despeja y se VERIFICA con la comisión de ML al precio nuevo, termina en 90/990, avisa si pasa +25% (da el escalón) o cruza $33.000 (y cuánto queda a $32.990). Con variantes: a mano. Chequear: el precio propuesto da ≥25% en el peor caso.
+- **12/10/2026 · `ventasraras` marca las ventas en promo** (🏷️, de `cyc/promoventa`): cada renglón dice descuento, cuánto puso ML y nosotros, y abajo el total. Pedido suyo: que avise cuando se vende algo en promo. Chequear: sin registro no inventa nada.
+
 ### Sin piso del 22%: objetivo 25% (09/10/2026, regla suya)
 - **Qué es:** `cyc/mlconfig` minPct = targetPct = 25 (`meta:25:25`). Colores: abajo de 25 rojo, desde 25 verde. Bajar de 25% sólo con motivo y `!piso`; nunca abajo de 0%.
 - **Qué chequear:** que nadie vuelva a usar 22 como freno, que los comandos que hablan de "piso" lean 25, y que una baja abajo de 25 tenga su motivo en el 🧠.
