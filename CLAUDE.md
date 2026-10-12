@@ -910,6 +910,20 @@ mejor decisión, quizás esa decisión es buena y está unos días perdiendo y d
    la misma cuenta) y se decide (seguir, volver, otro precio) con `decido`, explicando en el 🧠.
  · Cada `decido` queda también en `cyc/claudecambios` (no se pisa) y suma con motivo `claude`.
 
+## 🛡️ EL PRECIO SE PONE PARA EL PEOR CASO, Y LO NUEVO QUE VUELA SE SUBE AL TOQUE (12/10/2026, regla suya)
+
+Él, con los auriculares Sony ZX310 (2 u., se vendieron las dos en 12 h a $67.230, 24%): *"siempre tomar el peor
+escenario posible al tomar un precio (tampoco la exageración) entonces si ese escenario se da queda mínimo en verde
+25%"* y *"al ver que se vendió al 24% la unidad que quedaba sí o sí se tendría que haber aumentado"*.
+ · **Al poner o activar un precio** (sobre todo lo nuevo, que no tiene ventas medidas): el 25% se calcula con el peor
+   caso razonable — retención de IIBB de otra provincia, cuotas que pagamos nosotros, el envío de Full más caro visto —
+   o sea apuntar a **~28% en el número del panel**, no a 25% justo. Antes de activar algo nuevo (`activarfull`), mirar
+   el precio con esa vara y subirlo ANTES de que se active.
+ · **Si una venta sale abajo de 25% y queda poco stock** (o se agota sin reposición a la vista): en la MISMA vuelta se
+   sube (escasez: escalones de hasta +25%, techo ~×2), y después se baja de a poco si se frena. Nunca abajo del precio
+   que deja 25% en el peor caso.
+ · Aplicado ese día: Sony ZX310 Black `MLA3998159220` $67.230 → $74.990 (el 25% del peor caso pide ~$71.000).
+
 ## 🔢 PSICOLOGÍA DEL PRECIO (10/10/2026, él eligió 1a 2a 3a 4b)
 
  · **Terminaciones:** todo precio que decido termina en 90 o 990 (99 en lo más barato). Nunca $10.000 o $5.000 redondos.
