@@ -207,6 +207,16 @@ margen y ganancia/u a ese precio (comisión preguntada a ML), stock en Full, ven
 tanda (`stockhist` desde/desdePrev → cero), caja y último cambio. Es OBLIGATORIA en las revisiones de 08:52 y 20:52.
 Qué chequear: que el total de renglones cierre con las publicaciones vivas con ficha; que "sin leer" se diga.
 
+### `planilla`: el peor caso de TODAS, con o sin stock (12/10/2026, regla suya, eligió la a)
+Él: *"una vez que el producto estuvo una vez en full siempre se activan solo (…) todo producto que existe tiene que estar arriba
+del 25% (salvo excepciones que haya hecho el cerebro)"*. ML reactiva sola una pausada sin stock apenas le entra la caja.
+`planilla` calcula además el margen en el PEOR CASO (`PEOR_RET_PCT` 2% de retención de otra provincia + el envío más caro
+arriba de $33.000 + cuotas Premium) y lista 🛡️ las que quedan abajo del 25%, activas o pausadas. Excepciones mías aparte:
+liquidando, `cyc/claudepiso/<MLA>` (lo escribe `decido` con `!piso`, con el precio exacto; otro precio sin `!piso` lo borra)
+y `cyc/promoclaude`. También nombra las que no tienen margen medible. Se corre en TODAS las vueltas (no sólo 08:52/20:52) y lo
+🛡️ se sube en esa misma vuelta. Lo nuevo (nunca estuvo en Full) no se activa solo: lo activo yo con el precio ya puesto.
+Qué chequear: que la cuenta del peor caso use la misma comisión que la normal, y que una excepción vieja no tape un precio nuevo.
+
 ### Sin piso del 22%: objetivo 25% (09/10/2026, regla suya)
 - **Qué es:** `cyc/mlconfig` minPct = targetPct = 25 (`meta:25:25`). Colores: abajo de 25 rojo, desde 25 verde. Bajar de 25% sólo con motivo y `!piso`; nunca abajo de 0%.
 - **Qué chequear:** que nadie vuelva a usar 22 como freno, que los comandos que hablan de "piso" lean 25, y que una baja abajo de 25 tenga su motivo en el 🧠.
