@@ -2509,7 +2509,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.18';
+const APP_VERSION='23.19';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2520,6 +2520,7 @@ const APP_VERSION='23.18';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.19',f:'12/10/2026',h:'17:20',c:[{n:2,t:'📈 Línea de tiempo: cuando un producto se queda sin stock la línea del precio ya no baja sola. Tomaba el precio más barato de todas las publicaciones pausadas (incluida alguna vieja que no vende); ahora toma el de la que vendió último.'}]},
   {v:'23.18',f:'12/10/2026',h:'16:45',c:[{n:2,t:'💸 Gastos: arriba de la lista del mes está el retiro de los socios. Se carga ahí mismo (es la misma casilla del Arqueo, no se cuenta como gasto para no restarlo dos veces).'}]},
   {v:'23.17',f:'12/10/2026',h:'16:23',c:[{n:3,t:'Venta en remate: una sola regla para el robot y la web (elegiste la 1a). Cuenta como remate sólo si dejó menos de 20% Y hay prueba de que se estaba rematando (marcado liquidando, etiquetado remate, o la línea de tiempo dice que estaba parado). Lo que llegó y se vendió al toque barato cuenta como venta para pedir y mandar. Lo decide el robot cada noche; las ventas de hoy cuentan hasta que las mire.'},{n:3,t:'Dólar del mes cerrado (elegiste la 2a): al cerrar un mes, la ganancia sigue con el dólar que ya usaba (el cargado a mano o el promedio de sus ventas), así cerrar no la cambia. El Arqueo del cierre sigue con el dólar de ese día. Los meses ya cerrados no se tocan.'}]},
   {v:'23.16',f:'12/10/2026',h:'02:05',c:[{n:2,t:'📈 Línea de tiempo: el color de cada publicación sale también del título; el stock de un color que no se reconoce ya no se suma como si fuera todo el producto (subidas y "llegaron" falsos), y el de ayer cuenta lo vendido de madrugada.'},{n:2,t:'🤖 Lo que trajo el robot: cada cambio se mide con el costo y el dólar de SU mes, así un costo nuevo no cambia los meses cerrados. Dos cambios el mismo día ya no se pisan.'},{n:1,t:'📅 Cargar a mano un mes cerrado guarda el dólar de ese mes, no el de hoy.'}]},
@@ -8956,7 +8957,11 @@ function _lineaJunta(porMla,lks,varSel){
         // El precio de una publicación PAUSADA no es el que se cobra (Cartas Casino: la línea decía $2.706 de una
         // pausada y se cobraba $3.310). Vale el de las activas o las que vendieron ese día.
         if(x.est==='active'||Number(x.u)>0)o.pA=o.pA==null?Number(x.p):Math.min(o.pA,Number(x.p));
-        else if(x.est==null)(o._c=o._c||[]).push({p:Number(x.p),ult:ultVta(k),viva:vive()});}
+        // SIN STOCK LA LÍNEA BAJABA SOLA (12/10/2026, él: "al quedar sin stock el precio de venta baja. ¿está bien
+        // eso?"). No: cuando se agota, TODAS quedan pausadas, ninguna es "activa" y ganaba el mínimo de todas, incluida
+        // una publicación vieja y barata que no vende. Una pausada vale lo mismo que un día sin estado: el precio de la
+        // que vendió más reciente (30 días) o la última que figuraba activa.
+        else (o._c=o._c||[]).push({p:Number(x.p),ult:ultVta(k),viva:vive()});}
       // `nocat`/`sincaja` llegan crudos de la línea del robot (su tabla esperaba otros nombres): se leen como n / s.
       if(x.caja){const _cj={nocat:'n',sincaja:'s'}[x.caja]||x.caja;const r={g:3,c:2,p:1,s:0.5,n:0};if(o.caja==null||(r[_cj]||0)>(r[o.caja]||0))o.caja=_cj;}
       if(x.rem)o.rem=true;

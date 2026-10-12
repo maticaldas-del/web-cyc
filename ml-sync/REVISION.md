@@ -520,6 +520,16 @@ Todo lo que guarda la historia día por día y las pantallas que la dibujan.
     el robot (`armarCostoWeb`, `costomes`) usan `tcMes` y, en cierres viejos sin él, `tipoCambio`. Chequear: cerrar un
     mes no cambia su ganancia en Resumen.
 
+### Línea de tiempo: sin stock el precio no baja solo (12/10/2026, v23.19)
+Él: *"al quedar sin stock el precio de venta baja. ¿está bien eso?"*. En `_lineaJunta`, una publicación
+PAUSADA ya no entra al "más barato de todas": se trata como un día sin estado (vale la que vendió más
+reciente en 30 días, o la última activa). Antes, al agotarse, ganaba una publicación vieja y barata y la
+línea bajaba sin que ningún precio hubiera cambiado. **Qué chequear:** un producto agotado mantiene la
+línea del precio en el de la publicación que vendía.
+**Ojo, aparte:** los días CON ventas la línea es lo COBRADO por unidad (03/10), que mezcla colores a
+distinto precio y carritos: puede subir y bajar sin ▲▼ (las flechas son sólo cambios de precio de la
+publicación).
+
 ## 9 · CEREBRO (nueva, 09/10/2026, pedido suyo)
 Él, después de que dos veces salió incompleto (precios y pedidos): *"es un problema grave que pasó dos veces ya (...) en los dos se hizo súper incompleto y nunca te diste cuenta (...) quiero agregar esto de revisar cerebro a las etapas"*. Revisa LO QUE HACE CLAUDE en cada vuelta (08:52, 12:52, 16:52, 20:52): que cada parte se haga ENTERA.
 - **La pregunta de esta etapa, para cada tarea:** ¿de dónde salió la lista que miré? ¿esa lista es TODO o sólo lo que ya existe / se movió / ya decidí? El error de las dos veces fue el mismo: mirar una lista que sólo traía una parte (`informe` = lo que se movió · `pedidosnotas` = lo ya decidido) y creer que era todo.
