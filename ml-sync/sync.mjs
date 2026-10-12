@@ -14506,7 +14506,9 @@ async function main() {
           for (const m of mios) {
             const e = links[m];
             if (!e) r.faltan.push(m);
-            else if (!e.prodId) r.sinFicha.push(m);
+            // Las marcadas "no las vendemos más" u ocultas no cuentan (auditoría del 12/10/2026: el chequeo decía 8 y
+            // el informe 0; 6 de las 8 eran las marcadas con `nomas` el 18/08, que ya están decididas).
+            else if (!e.prodId && !e.noVendemosMas && !e.oculta) r.sinFicha.push(m);
           }
         } catch (e) { r.err.push('catálogo: ' + String(e.message || e).slice(0, 60)); }
         // ── PREGUNTAS ──
@@ -35145,6 +35147,27 @@ async function main() {
       const quie = Object.entries(links).filter(([m, e]) => e && !e.oculta && !e.noVendemosMas && /out_of_stock/.test(e.subStatus || '') && (u30[m] || 0) >= 2).sort((a, b) => (u30[b[0]] || 0) - (u30[a[0]] || 0));
       console.log(`── 12b · SIN STOCK Y VENDÍAN (${quie.length} · ${quie.reduce((s2, [m]) => s2 + (u30[m] || 0), 0)} u. vendidas en 30 d) ──`);
       for (const [m, e] of quie.slice(0, 15)) console.log(`· ${m} · ${e.cuenta} · ${tit(m)} · ${u30[m]} u. en 30 d`);
+      // 12c) CON STOCK EN FULL Y SIN VENDER EN 30 DÍAS (auditoría del 12/10/2026): el chequeo de la mañana lo mostraba
+      // (40 publicaciones, $3,2M) y el informe no. Va por producto×cuenta (el stock de Full es de esa clave), con la plata
+      // parada (costo de la ficha), si alguna publicación está activa y las visitas de 30 días: con menos de 20 no la ve
+      // nadie y el precio no es el problema. Una venta en cualquier publicación del producto en esa cuenta lo saca.
+      try {
+        const [invI, prodsI] = await Promise.all(['cyc/inventory', 'cyc/products'].map((r) => db.get(r).then((v) => v || {}).catch(() => ({}))));
+        const sidK = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
+        const costoI = {}; for (const p of Object.values(prodsI)) if (p && p.id) costoI[p.id] = Number(p.cost) || 0;
+        const grp = {};
+        for (const [m, e] of Object.entries(links)) {
+          if (!/^MLA/.test(m) || !e || !e.prodId || e.oculta || e.noVendemosMas || e.status === 'closed') continue;
+          const k = e.prodId + '__' + sidK(e.cuenta); const x = (grp[k] = grp[k] || { e, mlas: [], u30: 0, activa: false, vis: 0, visSabida: false });
+          x.mlas.push(m); x.u30 += u30[m] || 0; if (e.status === 'active') x.activa = true;
+          if (e.vis30 != null) { x.vis += Number(e.vis30) || 0; x.visSabida = true; }
+        }
+        const par = Object.entries(grp).map(([k, x]) => ({ k, x, st: parseInt(invI[k]) || 0 })).filter((r) => r.st > 0 && r.x.u30 === 0)
+          .map((r) => ({ ...r, plata: r.st * (costoI[r.x.e.prodId] || 0) })).sort((a, b) => b.plata - a.plata);
+        console.log(`── 12c · CON STOCK EN FULL Y SIN VENDER EN 30 DÍAS (${par.length} · ${money(par.reduce((s2, r) => s2 + r.plata, 0))} parados) ──`);
+        for (const r of par.slice(0, 15)) console.log(`· ${r.x.mlas[0]}${r.x.mlas.length > 1 ? ' (+' + (r.x.mlas.length - 1) + ')' : ''} · ${r.x.e.cuenta} · ${tit(r.x.mlas[0])} · ${r.st} u. · ${money(r.plata)} · ${r.x.activa ? 'activa' : 'TODAS PAUSADAS'} · ${r.x.visSabida ? r.x.vis + ' visitas' + (r.x.vis < 20 ? ' → no la ve nadie' : '') : 'visitas ?'}`);
+        if (par.length > 15) console.log(`  (y ${par.length - 15} más)`);
+      } catch (eS) { console.log('stock parado: no pude armarlo · ' + eS.message); }
       // 13) Reputación, promos sin leer y el dólar
       try {
         const rep = (await db.get('cyc/reputacion')) || {};
