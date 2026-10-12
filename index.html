@@ -576,6 +576,8 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
 /* --tz: cuánto tiembla (1 = lo de siempre) · lo pone cada venta según su neto y su % (09/10/2026) */
 @keyframes vivaTiembla{0%{transform:translate(0,0) rotate(0)}20%{transform:translate(calc(var(--tz,1)*-1px),calc(var(--tz,1)*1px)) rotate(calc(var(--tz,1)*-.25deg))}40%{transform:translate(calc(var(--tz,1)*1px),calc(var(--tz,1)*-1px)) rotate(calc(var(--tz,1)*.25deg))}60%{transform:translate(calc(var(--tz,1)*-1px),0) rotate(calc(var(--tz,1)*.15deg))}80%{transform:translate(calc(var(--tz,1)*1px),calc(var(--tz,1)*1px)) rotate(calc(var(--tz,1)*-.15deg))}100%{transform:translate(0,0) rotate(0)}}
 @media (prefers-reduced-motion: reduce){.vw,.vw>.viva{animation:none!important}}
+.vp-promo{font-size:.66rem;font-weight:700;padding:2px 8px;border-radius:5px;white-space:nowrap;color:#facc15;background:color-mix(in srgb,#facc15 14%,transparent);border:1px solid color-mix(in srgb,#facc15 55%,transparent)}
+body.light .vp-promo{color:#a16207;background:color-mix(in srgb,#ca8a04 12%,transparent);border-color:color-mix(in srgb,#ca8a04 50%,transparent)}
 </style>
 </head>
 <body>
@@ -2509,7 +2511,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.21';
+const APP_VERSION='23.22';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2520,6 +2522,7 @@ const APP_VERSION='23.21';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.22',f:'12/10/2026',h:'21:40',c:[{n:1,t:'🏷️ Ventas: la venta hecha en promo dice en DORADO "Descuento ML" (si el descuento lo puso ML entero) o "Vendido en promoción" (si pusimos algo nosotros), con cuánto puso cada uno.'}]},
   {v:'23.21',f:'12/10/2026',h:'19:10',c:[{n:2,t:'⚡ Al volver a la web después de tenerla en segundo plano, "Ventas de hoy" se actualiza en segundos: se reconecta al instante y trae primero sólo las ventas de hoy (antes esperaba a bajar toda la base). Con la web abierta, se refresca sola cada minuto.'},{n:2,t:'🔧 Se arregló el archivo que avisa las versiones nuevas: desde la 23.19 había quedado vacío y la web no se enteraba sola de las actualizaciones.'}]},
   {v:'23.20',f:'12/10/2026',h:'17:45',c:[{n:1,t:'📈 Ventas: el botón línea de una venta de un color o aroma abre la línea de tiempo de ESA variante (arriba se puede volver a ver todas).'}]},
   {v:'23.19',f:'12/10/2026',h:'17:20',c:[{n:2,t:'📈 Línea de tiempo: cuando un producto se queda sin stock la línea del precio ya no baja sola. Tomaba el precio más barato de todas las publicaciones pausadas (incluida alguna vieja que no vende); ahora toma el de la que vendió último.'}]},
@@ -9805,10 +9808,14 @@ function vpPromoTotalHTML(entries){
 }
 function vpPromoLabel(items){
   const p=vpPromoDe(items);if(!p)return '';
+  // EN DORADO (12/10/2026, pedido suyo: "al venderse un producto en promoción que diga en dorado vendido en
+  // promoción o descuento ML"). Si el descuento lo puso ML entero dice "Descuento ML"; si pusimos algo
+  // nosotros, "Vendido en promoción". El detalle (cupón/promo, cuánto cada uno) sigue en el globito.
   const nom={coupon:'cupón',price_discount:'promo',deal:'promo',campaign:'campaña'};
   const tipo=p.tipos.map(x=>nom[x]||x).filter((x,i,a)=>a.indexOf(x)===i).join(' + ')||'promo';
   const tit=`Vendida con ${tipo}: descuento total ${fmt(Math.round(p.t))} · ML puso ${fmt(Math.round(p.ml))} · nosotros ${fmt(Math.round(p.s))}. Lo que pone ML no sale de nuestro neto.`;
-  return `<span style="font-size:.64rem;padding:1px 7px;border-radius:4px;background:color-mix(in srgb,var(--green) 14%,transparent);color:var(--green);white-space:nowrap" title="${tit}">🏷️ ${tipo}${p.ml>0?' · ML puso '+fmt(Math.round(p.ml)):''}${p.s>0?` <span style="color:var(--amber)">· nosotros ${fmt(Math.round(p.s))}</span>`:''}</span>`;
+  const txt=(p.ml>0&&!(p.s>0))?'Descuento ML':'Vendido en promoción';
+  return `<span class="vp-promo" title="${tit}">🏷️ ${txt}${p.ml>0?' · ML puso '+fmt(Math.round(p.ml)):''}${p.s>0?' · nosotros '+fmt(Math.round(p.s)):''}</span>`;
 }
 function cambioVentaHTML(v,tsVenta){
   const cs=cambiosPrecioDe(v&&v.mla,tsVenta);
