@@ -304,6 +304,7 @@ la última) y suma con motivo `claude`. `juzgo:<id>=<gano|perdio|igual|espera|no
 `cyc/supervisor/juicio/<id>` y la tarjeta lo muestra (y su color manda sobre el del número). Va en la completa de las 08:52.
 **Qué chequear:** que todo cambio medido tenga juicio; que los juicios viejos se revisen cuando cambian los números; que lo
 que perdió se piense (volver, seguir, otro precio) y no se vuelva atrás por regla.
+**12/10 · llevar al piso va de una:** la sección 🛡️ de `planilla` ya no propone escalón de +25%: el precio que deja 25% en el peor caso se pone directo (él, con la Cinta Boob Tape). Los escalones quedan sólo para la escasez. **Qué chequear:** que ninguna corrección al piso quede a medias.
 **12/10:** `juzgo` no aceptaba los cambios con hora en el id (`MLA…_AAAAMMDD_HHMM`, dos cambios el mismo día) y por UN renglón no escribía ninguno. Ahora el id acepta `_HHMM`. **Qué chequear:** que `juzgo:archivo=…` diga 0 renglones con problema.
 
 ### Fotos de Probados: el color que se pide, y en mi revisión (10/10/2026, v23.10)

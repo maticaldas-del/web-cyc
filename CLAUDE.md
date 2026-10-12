@@ -931,7 +931,8 @@ en full siempre se activan solo (…) todo producto que existe tiene que estar a
 hecho el cerebro por cosas como liquidar)"*. ML reactiva sola la pausada sin stock apenas entra la caja.
  · `planilla` trae la sección **🛡️ ABAJO DEL 25% EN EL PEOR CASO** (2% de retención de otra provincia + el peor envío
    visto + cuotas): TODAS, activas o pausadas, con o sin stock. **Corre en las 4 vueltas** (paso 0 de la corta y en la
-   completa) y lo 🛡️ se sube en esa vuelta (escalones de hasta +25%), o se deja a propósito con `decido:…!piso|motivo`,
+   completa) y lo 🛡️ se sube en esa vuelta DE UNA al precio que deja el 25% (corrección suya del 12/10 con la Cinta Boob
+   Tape: *"deberia subirse de una al mejor precio"*; los escalones de +25% son SÓLO para probar demanda en escasez), o se deja a propósito con `decido:…!piso|motivo`,
    que lo anota en `cyc/claudepiso` como excepción. Liquidando y mis promos también son excepción.
  · Lo nuevo (nunca estuvo en Full) no se activa solo: lo activo yo con el precio ya puesto.
  · Primera medición (12/10 01:30): **127 abajo en el peor caso** (47 activas, el resto pausadas), 2 excepciones.
