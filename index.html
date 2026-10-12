@@ -2505,7 +2505,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.13';
+const APP_VERSION='23.14';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2516,6 +2516,7 @@ const APP_VERSION='23.13';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.14',f:'12/10/2026',h:'01:10',c:[{n:2,t:'⚖️ Tope de H: el ritmo para proyectar el cierre ahora son los 30 días enteros hasta ayer. Antes contaba el día de hoy recién empezado y a la madrugada la proyección bajaba sola (Matías pasaba de rojo a amarillo).'}]},
   {v:'23.13',f:'11/10/2026',h:'00:26',c:[{n:2,t:'🏷️ Ventas: cada venta hecha con promo o cupón lo dice en su tarjeta, con cuánto puso ML y cuánto nosotros. Arriba, en el bloque por cuenta, el total del período que puso ML.'}]},
   {v:'23.12',f:'10/10/2026',h:'02:55',c:[{n:3,t:'🇵🇾 Pedidos de Paraguay: el ticket real del mayorista es obligatorio para cerrar un pedido ("Ya llegó" no deja sin él). Con el ticket, cada producto muestra el precio de la web tachado y lo que pagaste, y el pedido el descuento total.'}]},
   {v:'23.11',f:'10/10/2026',h:'02:30',c:[{n:2,t:'🤖 Métricas, resultados de precios: debajo de cada cambio (del robot viejo y míos) va mi juicio, que reviso todos los días: si de verdad ganó o perdió por el precio, o si fue otra cosa. Mis decisiones desde el 09/10 se miden igual que las del robot.'}]},
@@ -18384,8 +18385,11 @@ function parejoDatos(){
   const {ini,fin}=_proxCierreARCA();
   const {real,ofi}=_facOficial(ini,hoy);
   const faltan=Math.max(0,Math.round((fin-hoy)/864e5));
-  const desde=new Date(hoy); desde.setDate(desde.getDate()-29);
-  const dK=dateToKey(desde), hK=dateToKey(hoy);
+  // Ritmo = los 30 días ENTEROS hasta AYER. Antes entraba HOY, que a la madrugada casi no tiene ventas:
+  // el ritmo bajaba de golpe a la medianoche y una cuenta pasaba de rojo a amarillo sin que nada cambiara (12/10/2026).
+  const ayer=new Date(hoy); ayer.setDate(ayer.getDate()-1);
+  const desde=new Date(hoy); desde.setDate(desde.getDate()-30);
+  const dK=dateToKey(desde), hK=dateToKey(ayer);
   const m30={}; MET_ACCTS.forEach(a=>m30[a]=0);
   // Canceladas adentro: para ARCA son facturado (misma regla que _facVentana).
   Object.keys(state.ventaprod||{}).filter(k=>k>=dK&&k<=hK).forEach(k=>Object.values(state.ventaprod[k]||{}).forEach(v=>{
@@ -18463,7 +18467,7 @@ function renderHomeParejo(){
       ${(()=>{const t=_parejoCatLinea(f.a,fM,facARCA);return t?`<div style="font-size:.6rem;color:var(--muted);margin-top:1px">${t}</div>`:'';})()}
     </div>`;}).join('');
   el.innerHTML=caja(`<div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.85rem">⚖️ Las 4 cuentas contra el tope de H (${fM(d.topeH)}/año)</div>
-    <div style="font-size:.6rem;color:var(--muted);margin-top:2px">La próxima recategorización de ARCA mira del ${fD(d.ini)} al ${fD(d.fin)}. Barra llena = lo facturado oficial hasta hoy (canceladas incluidas, como las cuenta ARCA) · barra clarita = lo que falta hasta el cierre, al ritmo de los últimos 30 días. El tope es por cuenta.</div>
+    <div style="font-size:.6rem;color:var(--muted);margin-top:2px">La próxima recategorización de ARCA mira del ${fD(d.ini)} al ${fD(d.fin)}. Barra llena = lo facturado oficial hasta hoy (canceladas incluidas, como las cuenta ARCA) · barra clarita = lo que falta hasta el cierre, al ritmo de los últimos 30 días enteros (hasta ayer). El tope es por cuenta.</div>
     ${barras}${aviso}
     <div style="font-size:.66rem;margin-top:8px">💡 Lo próximo nuevo que no sea perfume → <strong style="color:var(--green)">${MET_LABELS[menos.a]}</strong>, que es la que más lugar tiene. <span style="color:var(--muted)">(Perfumes siguen yendo a Adriana; lo que ya está en una cuenta, queda.)</span></div>
     <div style="text-align:right;margin-top:8px"><button onclick="goMonotributo()" style="background:transparent;border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:2px 8px;font-size:.6rem;cursor:pointer">✎ AFIP / meses</button></div>`);
