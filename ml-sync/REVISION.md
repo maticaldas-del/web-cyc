@@ -273,6 +273,14 @@ Qué chequear: que la cuenta del peor caso use la misma comisión que la normal,
 ### Tope de H: el ritmo son los 30 días enteros hasta ayer (12/10/2026, v23.14)
 Qué: `parejoDatos` (index.html) proyecta el cierre con las ventas de los 30 días ENTEROS hasta ayer. Antes contaba hoy recién empezado ÷ 30: a la madrugada la proyección caía sola y Matías pasaba de rojo a amarillo sin que nada cambiara. Chequear: que el número no salte a la medianoche y que la barra de ventas siga incluyendo canceladas.
 
+### El retiro de los socios también se carga desde Gastos (12/10/2026, v23.15)
+Pedido suyo: *"poner una opción en gastos lo que retiramos nosotros al mes"*. Arriba de la lista de
+Gastos (vista por mes) va la casilla del retiro (`renderComprasRetiro` / `saveRetiroGastos`). **Es la
+MISMA casilla del Arqueo** (`cyc/retiro_mes/<AAAA_MM>`, vía `saveRetiroMesYM`), no un gasto: si se
+guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin cargar (usa el supuesto).
+**Qué chequear:** que no aparezca ningún gasto con categoría o descripción "retiro de socios"
+(sería doble), y que el número de Gastos y el del Arqueo sean el mismo para cada mes.
+
 ## 3 · MERCADERÍA
 - **Estado de la caja de cada producto** (probe `cajahoy`, `mllinks.caja`): winning/sharing/losing
   y también nocat/sincaja; un producto sin publicación activa no es "sin dato".

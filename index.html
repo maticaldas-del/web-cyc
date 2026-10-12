@@ -1780,6 +1780,9 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
     <button class="btn btn-add" onclick="addCompra()">+ Agregar</button>
   </div>
 
+  <div class="stitle">💸 Lo que retiramos nosotros este mes</div>
+  <div id="compras-retiro"></div>
+
   <div class="stitle">¿Falta cargar algún gasto de este mes?</div>
   <div id="compras-checklist"></div>
 
@@ -2506,7 +2509,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.17';
+const APP_VERSION='23.18';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2517,6 +2520,7 @@ const APP_VERSION='23.17';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.18',f:'12/10/2026',h:'16:45',c:[{n:2,t:'💸 Gastos: arriba de la lista del mes está el retiro de los socios. Se carga ahí mismo (es la misma casilla del Arqueo, no se cuenta como gasto para no restarlo dos veces).'}]},
   {v:'23.17',f:'12/10/2026',h:'16:23',c:[{n:3,t:'Venta en remate: una sola regla para el robot y la web (elegiste la 1a). Cuenta como remate sólo si dejó menos de 20% Y hay prueba de que se estaba rematando (marcado liquidando, etiquetado remate, o la línea de tiempo dice que estaba parado). Lo que llegó y se vendió al toque barato cuenta como venta para pedir y mandar. Lo decide el robot cada noche; las ventas de hoy cuentan hasta que las mire.'},{n:3,t:'Dólar del mes cerrado (elegiste la 2a): al cerrar un mes, la ganancia sigue con el dólar que ya usaba (el cargado a mano o el promedio de sus ventas), así cerrar no la cambia. El Arqueo del cierre sigue con el dólar de ese día. Los meses ya cerrados no se tocan.'}]},
   {v:'23.16',f:'12/10/2026',h:'02:05',c:[{n:2,t:'📈 Línea de tiempo: el color de cada publicación sale también del título; el stock de un color que no se reconoce ya no se suma como si fuera todo el producto (subidas y "llegaron" falsos), y el de ayer cuenta lo vendido de madrugada.'},{n:2,t:'🤖 Lo que trajo el robot: cada cambio se mide con el costo y el dólar de SU mes, así un costo nuevo no cambia los meses cerrados. Dos cambios el mismo día ya no se pisan.'},{n:1,t:'📅 Cargar a mano un mes cerrado guarda el dólar de ese mes, no el de hoy.'}]},
   {v:'23.15',f:'12/10/2026',h:'01:52',c:[{n:2,t:'📈 Línea de tiempo: las ventas de cada día salen del panel (ayer ya no dice "no vendió" mientras la noche no lo cargó, y lo cancelado después no cuenta). La ganancia de cada día usa la misma cuenta que Ventas (costo y dólar del mes). Sin ventas para medir el ritmo, el stock va en gris en vez de "exceso".'}]},
@@ -19375,7 +19379,33 @@ async function setGastoNoVa(ym,n,val){
   await log((val?'Este mes no va: ':'Vuelve a pedirse: ')+n+' · '+ym.replace('_','/'));
   renderComprasChecklist();
 }
+// EL RETIRO DE LOS DUEÑOS, TAMBIÉN DESDE GASTOS (12/10/2026, pedido suyo: *"poner una opción en
+// gastos lo que retiramos nosotros al mes"*). NO es un gasto más y NO se guarda como gasto: es la
+// MISMA casilla que "💸 Retiro cobrado" del Arqueo (cyc/retiro_mes/<AAAA_MM>), para el mes que se
+// está mirando en Gastos. Si fuera un renglón de gasto, el Resumen y el Puntaje lo restarían DOS
+// veces (ya restan retiro_mes aparte). Vacío = no cargado (usa el supuesto), no $0.
+function saveRetiroGastos(ym,val){
+  saveRetiroMesYM(ym,val);
+  try{renderComprasRetiro();}catch(e){}
+}
+function renderComprasRetiro(){
+  const el=document.getElementById('compras-retiro');if(!el)return;
+  if(cmpScopeMode!=='mes'){el.innerHTML='';const t=el.previousElementSibling;if(t&&t.classList.contains('stitle'))t.style.display='none';return;}
+  {const t=el.previousElementSibling;if(t&&t.classList.contains('stitle'))t.style.display='';}
+  const ym=String(getKey('cmp','mes')).substring(0,7);
+  const rv=_retiroMesVal(ym);
+  let sug=0;try{sug=retiroDefMes(ym,_netoMesData(ym).tot);}catch(e){}
+  const col=rv!=null?'var(--green)':'var(--amber)';
+  el.innerHTML=`<div style="background:var(--surface);border:1px solid ${rv!=null?'var(--border)':'var(--amber)'};border-radius:var(--r);padding:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <span style="font-size:.9rem">${rv!=null?'✅':'⚠️'}</span>
+    <span style="font-size:.78rem;font-weight:600;flex:1;min-width:160px">Retiro de los socios (Mati + papá)<br>
+      <span style="font-size:.64rem;font-weight:400;color:${col}">${rv!=null?`cargado: ${fmt(rv)} · ${fmt(Math.round(rv/2))} cada uno`:`sin cargar · mientras tanto se usa ${fmt(sug)}`}</span><br>
+      <span style="font-size:.6rem;font-weight:400;color:var(--muted)">No es un gasto: se resta aparte en el Resumen y el Puntaje. Es la misma casilla del Arqueo.</span></span>
+    <input class="fin-input money" type="text" inputmode="numeric" placeholder="${fmt(sug)}" value="${rv!=null?Math.round(rv).toLocaleString('es-AR'):''}" onchange="saveRetiroGastos('${ym}',this.value)" style="width:150px">
+  </div>`;
+}
 function renderComprasChecklist(){
+  try{renderComprasRetiro();}catch(e){}
   const el=document.getElementById('compras-checklist');if(!el)return;
   // Sólo tiene sentido por MES: "los gastos de este mes" no significa nada mirando un día o un año.
   if(cmpScopeMode!=='mes'){el.innerHTML='';return;}
