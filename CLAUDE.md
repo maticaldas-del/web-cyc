@@ -946,6 +946,15 @@ línea con las ventas en promo de esa vuelta** (cuántas, cuánto puso ML, y si 
 `nomas` (no se vende ni repone más, decisión suya del 12/10). El 12/10 se subieron 110 publicaciones al 25% en el peor caso
 (`ml-sync/notas/precios_1210.txt`); las frenadas en $32.999 son excepción a propósito (regla 2).
 
+## 🎨 CADA VARIANTE SE JUZGA SOLA, CON SU PROPIO 🧠 (12/10/2026, regla suya)
+
+Él, con la nota del Paulvic Abismo que hablaba del producto entero: *"cada variante debe llevar su propio análisis y su propio
+cerebro (…) algunos aromas se pueden vender a 50% y otros al 5%. Se tienen que juzgar todos por separado. No sólo los paulvic"*.
+ · Cada color/aroma es su publicación: precio, margen, stock de ESE color, ventas de ESA publicación, caja. Nunca el promedio
+   ni el total del producto. Si falta el stock del color, se dice "no sé", no se usa el del producto.
+ · Las notas del 🧠 de precio (`decido:<MLA>=nota|…`) van una por variante con sus números, y las decisiones (subir, bajar,
+   promo, no reponer) se toman aroma por aroma.
+
 ## 🥊 LA CAJA DE COMPRA ORIENTA, NO DECIDE (12/10/2026, regla suya)
 
 Él: *"ganar no significa vender ni perder significa no vender nunca. ML juega mucho con que quieren ser baratos:
