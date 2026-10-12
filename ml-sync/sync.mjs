@@ -36676,8 +36676,9 @@ async function main() {
               else {
                 g = P - fe - P * cuo - env - costo - P * m; mg = g / (costo + P * m + env) * 100;
                 // PEOR CASO (12/10/2026, regla suya con los Sony ZX310): retención de IIBB de otra provincia
-                // (`PEOR_RET_PCT`) y, arriba de la barrera, el envío más caro entre el medido y el de referencia.
-                const envP = P >= UMBRAL_ENVIO_GRATIS ? Math.max(env, CAND_ENVIO_ARRIBA) : 0;
+                // (`PEOR_RET_PCT`). El envío ya es el peor visto en sus ventas (o el de referencia si nunca vendió):
+                // ponerle encima el de referencia a todas sería la exageración que él pidió no hacer.
+                const envP = env;
                 const gP = P - fe - P * cuo - envP - costo - P * m - P * PEOR_RET_PCT;
                 mgP = gP / (costo + P * m + envP) * 100;
               }
@@ -36716,7 +36717,7 @@ async function main() {
       // vende mal en cuanto llega la caja. Acá van TODAS (con o sin stock) que en el peor caso quedan abajo del objetivo, salvo
       // mis excepciones a propósito (liquidando, `!piso`, promo mía), que se cuentan aparte.
       const peor = filas.filter((r) => r.mgP != null && r.mgP < PISO), peorNo = peor.filter((r) => !r.exc), peorExc = peor.filter((r) => r.exc);
-      console.log(`\n── 🛡️ ABAJO DEL ${PISO}% EN EL PEOR CASO (retención de otra provincia ${(PEOR_RET_PCT * 100).toFixed(1)}%, envío caro, cuotas): ${peorNo.length} para subir · ${peorExc.length} excepciones mías ──`);
+      console.log(`\n── 🛡️ ABAJO DEL ${PISO}% EN EL PEOR CASO (retención de otra provincia ${(PEOR_RET_PCT * 100).toFixed(1)}% + el envío más caro visto + cuotas): ${peorNo.length} para subir · ${peorExc.length} excepciones mías ──`);
       for (const r of peorNo.sort((x, y) => x.mgP - y.mgP)) console.log(`🛡️ ${r.mla} · ${r.cta} · ${r.nom} · ${r.est} · ${f(r.P)} · peor caso ${r.mgP.toFixed(0)}% (normal ${r.mg.toFixed(0)}%) · Full ${r.st} · v30 ${r.u30}`);
       for (const r of peorExc) console.log(`   (excepción: ${r.exc}) ${r.mla} · ${r.nom} · ${f(r.P)} · peor caso ${r.mgP.toFixed(0)}%`);
       if (sinMgTxt(filas)) console.log(sinMgTxt(filas));
