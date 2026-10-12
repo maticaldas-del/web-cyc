@@ -546,7 +546,9 @@ memoria en `ml-sync/notas/techo.md`. **Qué chequear:** que cada prueba tenga su
 que no se juzgue con días de quiebre o fechas especiales adentro. **Ampliado el mismo día (regla suya): sin tope de
 cantidad, entra el 100% de lo que vende con stock y sin techo conocido**, arrancando ~1/3 por día; afuera sólo escasez,
 sobra (>90 días de stock), liquidando, mis promos, regalables antes de su fecha y frenadas por ML, contadas con su motivo.
-Chequear que ninguna candidata quede afuera sin motivo escrito.
+Chequear que ninguna candidata quede afuera sin motivo escrito. **Y el mismo día, corrección suya:** arrancan TODAS juntas (cada una se juzga con sus propias ventas) y el
+juicio va a los 7 días con stock (vende 1+/día) o 14 (el resto); con menos de 6 ventas esperadas sólo si la diferencia es
+clara, si no hasta 30 días como mucho (antes decía 60).
 
 ### Ventas de hoy al volver a la web (v23.21, 12/10/2026)
 `_ventasHoyFrescas` (index.html): al volver de segundo plano fuerza `db.goOffline/goOnline` (si estuvo oculta 15+ s) y pide
