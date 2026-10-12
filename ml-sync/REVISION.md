@@ -294,6 +294,16 @@ Qué: `parejoDatos` (index.html) proyecta el cierre con las ventas de los 30 dí
 - **09/10/2026 · PEDIDOS COMPLETOS (etapa 3, mercadería).** Con SOLO_CLAUDE la web pide sólo lo que decidí; yo decidía mirando `pedidosnotas`, que lee `cyc/pedidos` (= sólo lo ya decidido), así que nunca veía el resto: Pedidos quedó casi vacío (sábanas, Paraguay y Paulvic sin nada). Nuevo `pedidostodo` (solo lee, TODO el catálogo color por color) + `ml-sync/notas/decide_pedidos.py` (ritmo 30/60/180 d, objetivo 30 días, menos Full+casa+camino+viajando, sin ganancia = 0) → `ml-sync/notas/pedidos.txt` → `decido:archivo=pedidos;go`. Se rehace en cada vuelta (rutina CEREBRO 08:52/20:52). Chequear: que cada producto con ventas de 180 d tenga renglón, y que el log de decido diga "guardado" en todos.
   Comando `pedidostodo` (solo lee): ventas 30/60/180 por color (`v.variante` → `mllinks.variant` → título), Full por cuenta y color, oficina, en camino a Full menos lo que ML ya dio de alta (`cyc/cajasentrado`), viajando de Paraguay (`compraspy` en camino) y del Paulvic (`pedidospv`), precio de hoy y cambios de 45 d (`cyc/autoprecio`), y lo que queda afuera (papelera, no traer). La cuenta: `ml-sync/notas/decide_pedidos.py`.
 
+### Cada variante con su propio análisis y su propio 🧠 (12/10/2026, regla suya)
+Él: *"cada variante debe llevar su propio análisis y su propio cerebro (…) algunos aromas se pueden vender a 50% y otros al 5%"*.
+Todas las variantes son publicaciones aparte (0 con variaciones adentro, medido con `planilla` el 12/10), así que se juzgan por
+MLA: precio, margen, stock de ese color, ventas de esa publicación y caja. **Arreglo en `planilla`:** si la publicación es de un
+color y no hay clave de stock de ese color, ya no toma el stock del producto entero (Scandal Bliss mostraba 212 = todos los
+Paulvic de Adriana): dice `?`. El registro de tandas (`stockhist`) tampoco cae al del producto. Las notas del 🧠 de cada
+variante se rehicieron una por una con sus números (`ml-sync/notas/variantes_1210.txt`).
+**Qué chequear:** ningún renglón con `#color` muestra el stock del producto; las notas de dos aromas del mismo producto dicen
+números distintos.
+
 ### La caja de compra orienta, no decide (12/10/2026, regla suya)
 Qué es: `price_to_win` es lo que ML quiere que pongamos; manda la venta real. Dónde vive: CLAUDE.md (🥊). Qué
 chequear: que ninguna baja se decida SÓLO por "perdiendo"; que lo que pierde y vende no se baje; que la primera baja
