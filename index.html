@@ -2509,7 +2509,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.20';
+const APP_VERSION='23.21';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2520,6 +2520,7 @@ const APP_VERSION='23.20';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.21',f:'12/10/2026',h:'19:10',c:[{n:2,t:'⚡ Al volver a la web después de tenerla en segundo plano, "Ventas de hoy" se actualiza en segundos: se reconecta al instante y trae primero sólo las ventas de hoy (antes esperaba a bajar toda la base). Con la web abierta, se refresca sola cada minuto.'},{n:2,t:'🔧 Se arregló el archivo que avisa las versiones nuevas: desde la 23.19 había quedado vacío y la web no se enteraba sola de las actualizaciones.'}]},
   {v:'23.20',f:'12/10/2026',h:'17:45',c:[{n:1,t:'📈 Ventas: el botón línea de una venta de un color o aroma abre la línea de tiempo de ESA variante (arriba se puede volver a ver todas).'}]},
   {v:'23.19',f:'12/10/2026',h:'17:20',c:[{n:2,t:'📈 Línea de tiempo: cuando un producto se queda sin stock la línea del precio ya no baja sola. Tomaba el precio más barato de todas las publicaciones pausadas (incluida alguna vieja que no vende); ahora toma el de la que vendió último.'}]},
   {v:'23.18',f:'12/10/2026',h:'16:45',c:[{n:2,t:'💸 Gastos: arriba de la lista del mes está el retiro de los socios. Se carga ahí mismo (es la misma casilla del Arqueo, no se cuenta como gasto para no restarlo dos veces).'}]},
@@ -3117,6 +3118,33 @@ function isEditing(){
 // sacaras el foco, y en la PC eso podía no pasar nunca), y al volver a la pestaña.
 setInterval(()=>{if(pendingRender&&!isEditing()){pendingRender=false;renderAll();}},4000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&pendingRender&&!isEditing()){pendingRender=false;renderAll();}});
+/* AL VOLVER A LA WEB, AL DÍA EN SEGUNDOS (12/10/2026, él: "la tarjeta de la venta de hoy del inicio se sigue actualizando
+   tarde"). En segundo plano el teléfono congela la página y corta la conexión con la base; al volver, Firebase reconecta
+   solo pero con espera y re-baja TODA la base antes de avisar, así que la tarjeta quedaba con los números de cuando la
+   dejaste. Ahora: (1) se fuerza la reconexión al instante (goOffline/goOnline), y (2) se piden aparte SÓLO las ventas de
+   hoy (y de ayer, por si pasó la medianoche), que son chicas, y se dibuja Inicio con eso ya. El resto llega después por
+   el listener de siempre, que pisa esto con lo mismo. Mientras la web está a la vista, lo mismo cada 60 s por si la
+   conexión quedó muda sin avisar. */
+let _hoyFrescoT=0,_vueltaOculta=0;
+async function _ventasHoyFrescas(forzar){
+  if(!db||firstDataLoad||!state.ventaprod)return;
+  if(!forzar&&Date.now()-_hoyFrescoT<20000)return;_hoyFrescoT=Date.now();
+  const d=new Date(),ay=new Date();ay.setDate(ay.getDate()-1);
+  for(const k of [dateToKey(d),dateToKey(ay)]){
+    try{const v=(await db.ref('cyc/ventaprod/'+k).get()).val();
+      if(v)state.ventaprod[k]=v;else delete state.ventaprod[k];}catch(e){return;}
+  }
+  _netoMesMemo={};_netoAggMemo=null;
+  if(currentPage==='home'){try{renderHomeHoy();}catch(e){}}else if(currentPage==='ventaprod'){try{renderVentaProd();}catch(e){}}
+}
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){_vueltaOculta=Date.now();return;}
+  if(db&&_vueltaOculta&&Date.now()-_vueltaOculta>15000){try{db.goOffline();db.goOnline();}catch(e){}}
+  _ventasHoyFrescas(true);
+});
+addEventListener('pageshow',e=>{if(e.persisted)_ventasHoyFrescas(true);});
+addEventListener('online',()=>_ventasHoyFrescas(true));
+setInterval(()=>{if(!document.hidden)_ventasHoyFrescas(false);},60000);
 /* ── POR QUÉ LA PÁGINA SE TRABA EN EL CELULAR MIENTRAS SCROLEÁS ──
    Cada vez que cambia algo en la base se vuelve a dibujar la página entera y, para que no salte,
    se la devolvía a la posición de scroll anterior con window.scrollTo(). Eso está bien si estás

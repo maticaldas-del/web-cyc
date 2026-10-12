@@ -548,6 +548,13 @@ cantidad, entra el 100% de lo que vende con stock y sin techo conocido**, arranc
 sobra (>90 días de stock), liquidando, mis promos, regalables antes de su fecha y frenadas por ML, contadas con su motivo.
 Chequear que ninguna candidata quede afuera sin motivo escrito.
 
+### Ventas de hoy al volver a la web (v23.21, 12/10/2026)
+`_ventasHoyFrescas` (index.html): al volver de segundo plano fuerza `db.goOffline/goOnline` (si estuvo oculta 15+ s) y pide
+aparte `cyc/ventaprod/<hoy>` y `<ayer>` con `.get()`, y redibuja Inicio o Ventas; con la web a la vista, cada 60 s.
+**Chequear:** que no pise ventas recién escritas por la web (lo de la base manda) y que no corra antes de la primera carga.
+**Y el mismo día:** el commit de v23.19 dejó `sw.js` VACÍO (0 bytes) en las dos ramas: sin `CACHE` la web no detecta
+versiones nuevas. Restaurado en v23.21 (`cyc-v601`). **Antes de cada commit: `wc -c sw.js` > 0.**
+
 ## 9 · CEREBRO (nueva, 09/10/2026, pedido suyo)
 Él, después de que dos veces salió incompleto (precios y pedidos): *"es un problema grave que pasó dos veces ya (...) en los dos se hizo súper incompleto y nunca te diste cuenta (...) quiero agregar esto de revisar cerebro a las etapas"*. Revisa LO QUE HACE CLAUDE en cada vuelta (08:52, 12:52, 16:52, 20:52): que cada parte se haga ENTERA.
 - **La pregunta de esta etapa, para cada tarea:** ¿de dónde salió la lista que miré? ¿esa lista es TODO o sólo lo que ya existe / se movió / ya decidí? El error de las dos veces fue el mismo: mirar una lista que sólo traía una parte (`informe` = lo que se movió · `pedidosnotas` = lo ya decidido) y creer que era todo.
