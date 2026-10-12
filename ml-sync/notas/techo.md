@@ -15,21 +15,15 @@ Una fila por publicación (cada variante sola). Plata por día = ganancia por d�
 | MLA1998586178 | Joystick Bluetooth Inalambrico Celular P · Ayelen | $27.110 · 13/mes · $1.909/día | 12/10 → $29.790 (+10%) | probando |
 | MLA1998561036 | Par Corrector Juanete Magnético Dedo Mar · Ayelen | $8.840 · 12/mes · $565/día | 12/10 → $9.690 (+10%) | probando |
 | MLA1739471305 | Almohadilla Protectora Adhesiva Para Tal · Ayelen | $3.980 · 7/mes · $256/día | 12/10 → $4.390 (+10%) | probando |
-| MLA1550578476 | Perfume Masculino Paulvic Gold Eau De Pa · Adriana | $14.360 · 7/mes · $664/día | 12/10 → $15.790 (+10%) | probando |
 | MLA1807593513 | Batidor Eléctrico Usb Espumadora Café Le · Luciana | $17.870 · 7/mes · $1.336/día | 12/10 → $19.690 (+10%) | probando |
 | MLA3932382684 | Batidor Eléctrico Usb Espumadora Café Le · Luciana | $17.800 · 1/mes · $189/día | 12/10 → $19.690 (+11%) | probando |
 | MLA1701523603 | Auriculares Inalámbricos Bluetooth P47 A · Matias | $9.230 · 4/mes · $243/día | 12/10 → $9.990 (+8%) | probando |
 | MLA1955025360 | Auriculares Inalámbricos Cyc P47 Con Luz · Matias | $9.230 · 0/mes · $0/día | 12/10 → $9.990 (+8%) | probando |
-| MLA1546343320 | Parfum Paulvic Invictus Hombre Nacional  · Adriana | $14.360 · 3/mes · $284/día | 12/10 → $15.790 (+10%) | probando |
-| MLA3091313732 | Perfume Paulvic Leyton Hombre Cítrico Pa · Adriana | $14.840 · 3/mes · $322/día | 12/10 → $16.290 (+10%) | probando |
-| MLA1533621553 | Leyton 55 Ml. Parfum Para Hombre #Leyton · Adriana | $14.840 · 0/mes · $0/día | 12/10 → $16.290 (+10%) | probando |
-| MLA1823112871 | Paulvic Phantom Eau De Parfum 50ml Hombr · Adriana | $14.360 · 3/mes · $284/día | 12/10 → $15.790 (+10%) | probando |
-| MLA3026301044 | Eau De Parfum Paulvic Debutant Hombre 50 · Adriana | $14.360 · 2/mes · $190/día | 12/10 → $15.790 (+10%) | probando |
-| MLA1695234269 | Perfume Masculino Paulvic Gentleman Eau  · Adriana | $14.950 · 2/mes · $220/día | 12/10 → $16.490 (+10%) | probando |
-| MLA1441701719 | Perfume Paulvic 1.4 Sexy For Men Eau De  · Adriana | $14.360 · 1/mes · $95/día | 12/10 → $15.790 (+10%) | probando |
 | MLA1871169569 | Xiaomi Redmi Watch 4 Smartwatch Negro Gr · Matias | $209.720 · 1/mes · $1.209/día | 12/10 → $229.990 (+10%) | probando |
 | MLA3535622380 | Xiaomi Redmi Watch 4 Smartwatch Negro Gr · Matias | $176.770 · 1/mes · $1.205/día | 12/10 → $194.490 (+10%) | probando |
 | MLA3920081802 | Seagate Externo 2023 500 Gb Negro · Matias | $180.046 · 1/mes · $1.916/día | 12/10 → $197.990 (+10%) | probando |
-| MLA1695195433 | Perfume Hombre Paulvic Red 55 Ml Eau De  · Adriana | $14.360 · 1/mes · $95/día | 12/10 → $15.790 (+10%) | probando |
 | MLA2067443797 | Western Digital Wd Green Wds480g3g0a 480 · Matias | $189.999 · 1/mes · $1.345/día | 12/10 → $208.990 (+10%) | probando |
 | MLA3998210018 | Auriculares In Ear Sony Con Microfono Md · Ayelen | $43.550 · 1/mes · $340/día | 12/10 → $47.990 (+10%) | probando |
+
+
+Fuera a propósito el 12/10: los Paulvic de hombre (Gold, Leyton x2, Gentleman, Red, 1.4 Sexy Men, Debutant, Invictus, Phantom). A $14.360-14.950 están justo abajo del escalón de comisión de ML en $15.000: subir a $15.790 deja MENOS plata por unidad ($2.844 → $2.542). Para que convenga habría que saltar a ~$17.500 o más (ver ideas.md).
