@@ -952,10 +952,14 @@ línea con las ventas en promo de esa vuelta** (cuántas, cuánto puso ML, y si 
 vende la mitad es bueno (…) no sabés cuál es el techo, y no hablo sólo de este producto, digo un parámetro del cerebro en
 gral"*. Lo que vende bien no se deja quieto porque vende: se busca el precio que más **plata por día** deja (ganancia por
 unidad × unidades por día con stock), no el que más unidades vende.
- · Candidatas (cada variante sola): vende 4+ en 14 días con stock, stock para 14+ días (si no, es ESCASEZ), sin promo
-   mía, no liquidando, no en las 2 semanas antes de una fecha de regalo. Hasta ~10 pruebas abiertas a la vez.
+ · **El 100% de lo que no tiene techo conocido** (corrección suya del mismo día: *"eso se debería hacer con el 100% de
+   los productos que no se sepa el techo"*). Candidatas, cada variante sola: TODA publicación con ventas en 60 días y
+   stock en Full, sin techo encontrado (o encontrado hace 60+ días). **Sin tope de cantidad.** Afuera sólo, contadas con
+   su motivo: escasez (stock < 14 días, va por ESCASEZ), sobra (stock > 90 días: ahí se busca vender), liquidando, mis
+   promos, regalables en las 2 semanas antes de su fecha y frenadas por ML. Arrancan escalonadas (~1/3 de las nuevas por
+   día) para no mezclar señales. Lo que vende poco tarda más en juzgarse, pero entra igual.
  · Escalón +10% (+15% si vende 1+/día con margen alto), 90/990, frenos de siempre.
- · Juicio cuando al ritmo de antes se esperaban 8+ ventas o pasaron 21 días con stock: igual o más plata por día (hasta
+ · Juicio cuando al ritmo de antes se esperaban 8+ ventas (o 60 días con stock, juicio flojo y se dice): igual o más plata por día (hasta
    −5%) → otro escalón · 15%+ menos → volver al anterior (techo) y 60 días sin probar · en el medio → se queda.
  · Memoria en `ml-sync/notas/techo.md`. Va en el paso 2c de la completa de las 08:52.
 

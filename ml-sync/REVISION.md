@@ -543,7 +543,10 @@ línea sea el de la venta.
 Paso 2c de la completa (trigger `trig_01475PwdPVJ1qTnYswcDxRq8`) y sección en CLAUDE.md. Escalones de +10/15% en lo que
 vende bien con stock, juicio por ganancia por día con stock (misma cuenta que la línea de tiempo y `supervisor:medir`),
 memoria en `ml-sync/notas/techo.md`. **Qué chequear:** que cada prueba tenga su renglón en techo.md y su motivo en el 🧠,
-que no se juzgue con días de quiebre o fechas especiales adentro, y que nunca haya más de ~10 abiertas.
+que no se juzgue con días de quiebre o fechas especiales adentro. **Ampliado el mismo día (regla suya): sin tope de
+cantidad, entra el 100% de lo que vende con stock y sin techo conocido**, arrancando ~1/3 por día; afuera sólo escasez,
+sobra (>90 días de stock), liquidando, mis promos, regalables antes de su fecha y frenadas por ML, contadas con su motivo.
+Chequear que ninguna candidata quede afuera sin motivo escrito.
 
 ## 9 · CEREBRO (nueva, 09/10/2026, pedido suyo)
 Él, después de que dos veces salió incompleto (precios y pedidos): *"es un problema grave que pasó dos veces ya (...) en los dos se hizo súper incompleto y nunca te diste cuenta (...) quiero agregar esto de revisar cerebro a las etapas"*. Revisa LO QUE HACE CLAUDE en cada vuelta (08:52, 12:52, 16:52, 20:52): que cada parte se haga ENTERA.
