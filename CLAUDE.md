@@ -924,6 +924,18 @@ escenario posible al tomar un precio (tampoco la exageración) entonces si ese e
    que deja 25% en el peor caso.
  · Aplicado ese día: Sony ZX310 Black `MLA3998159220` $67.230 → $74.990 (el 25% del peor caso pide ~$71.000).
 
+## 🛡️ TODA PUBLICACIÓN QUE EXISTE, ARRIBA DEL 25% EN EL PEOR CASO (12/10/2026, regla suya, eligió la a)
+
+Él: *"lo que no quiero es que se venda algo sin antes haber sido analizado"* y *"una vez que el producto estuvo una vez
+en full siempre se activan solo (…) todo producto que existe tiene que estar arriba del 25% (salvo excepciones que haya
+hecho el cerebro por cosas como liquidar)"*. ML reactiva sola la pausada sin stock apenas entra la caja.
+ · `planilla` trae la sección **🛡️ ABAJO DEL 25% EN EL PEOR CASO** (2% de retención de otra provincia + el peor envío
+   visto + cuotas): TODAS, activas o pausadas, con o sin stock. **Corre en las 4 vueltas** (paso 0 de la corta y en la
+   completa) y lo 🛡️ se sube en esa vuelta (escalones de hasta +25%), o se deja a propósito con `decido:…!piso|motivo`,
+   que lo anota en `cyc/claudepiso` como excepción. Liquidando y mis promos también son excepción.
+ · Lo nuevo (nunca estuvo en Full) no se activa solo: lo activo yo con el precio ya puesto.
+ · Primera medición (12/10 01:30): **127 abajo en el peor caso** (47 activas, el resto pausadas), 2 excepciones.
+
 ## 🔢 PSICOLOGÍA DEL PRECIO (10/10/2026, él eligió 1a 2a 3a 4b)
 
  · **Terminaciones:** todo precio que decido termina en 90 o 990 (99 en lo más barato). Nunca $10.000 o $5.000 redondos.
