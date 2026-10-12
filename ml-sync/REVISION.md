@@ -548,7 +548,10 @@ cantidad, entra el 100% de lo que vende con stock y sin techo conocido**, arranc
 sobra (>90 días de stock), liquidando, mis promos, regalables antes de su fecha y frenadas por ML, contadas con su motivo.
 Chequear que ninguna candidata quede afuera sin motivo escrito. **Y el mismo día, corrección suya:** arrancan TODAS juntas (cada una se juzga con sus propias ventas) y el
 juicio va a los 7 días con stock (vende 1+/día) o 14 (el resto); con menos de 6 ventas esperadas sólo si la diferencia es
-clara, si no hasta 30 días como mucho (antes decía 60).
+clara, si no hasta 30 días como mucho (antes decía 60). **Tercera corrección:** el juicio es por CERTEZA (lo esperado contra lo vendido, tipo
+Poisson, nunca con un solo día) y en plata por día, no por calendario; lo de mucho volumen se mira también en las vueltas
+cortas (paso 1c). **Y regla nueva:** cada cerebro busca mejoras nuevas (paso 10 de la completa, 5b de las cortas), con
+memoria en `ml-sync/notas/ideas.md`. Chequear que cada idea tenga números y estado.
 
 ### Ventas de hoy al volver a la web (v23.21, 12/10/2026)
 `_ventasHoyFrescas` (index.html): al volver de segundo plano fuerza `db.goOffline/goOnline` (si estuvo oculta 15+ s) y pide

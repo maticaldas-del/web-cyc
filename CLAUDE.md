@@ -959,11 +959,22 @@ unidad × unidades por día con stock), no el que más unidades vende.
    promos, regalables en las 2 semanas antes de su fecha y frenadas por ML. **Arrancan TODAS juntas** (él: *"que arranquen
    todas juntas, si total se puede ver venta x venta y producto x producto"*): cada una se juzga con SUS ventas.
  · Escalón +10% (+15% si vende 1+/día con margen alto), 90/990, frenos de siempre.
- · Juicio a los **7 días con stock** (si vende 1+/día) o **14** (el resto) — él: *"¿no tenés info en 7 o 14 días?"*. Si
-   a ese ritmo se esperaban menos de 6 ventas, se juzga sólo si la diferencia es clara (igual o más → otro escalón ·
-   cero ventas esperando 3+ → volver); si no, hasta 30 días como mucho y se dice que el juicio es flojo. Resultado: igual o más plata por día (hasta
+ · Juicio **por certeza, no por calendario** (él: *"si vende 5 por día, se subió y vende 0, es una información fuerte (…)
+   quizás fue un día malo (…) tenés que estar bastante seguro (…) si subís el triple de ganancia y vende la mitad quizás
+   sigue conviniendo (…) los números los sabés vos"*). Se mira en cada vuelta: esperado = ritmo de antes × días con stock;
+   se decide apenas la diferencia no puede ser casualidad (Poisson: 3 esperadas y 0 ventas = 5% de azar · 6 y 0-1 = 2% ·
+   10 y ≤2 = 0,3%), nunca con un solo día. Manda la PLATA POR DÍA, no las unidades. Sin certeza, hasta 30 días como
+   mucho. Resultado:
    −5%) → otro escalón · 15%+ menos → volver al anterior (techo) y 60 días sin probar · en el medio → se queda.
  · Memoria en `ml-sync/notas/techo.md`. Va en el paso 2c de la completa de las 08:52.
+
+## 💡 CADA CEREBRO BUSCA ALGO NUEVO PARA MEJORAR (12/10/2026, regla suya)
+
+Él: *"todo eso que te digo yo, por ejemplo lo de buscar un techo (…) deberías darme vos esos consejos o ideas. te dejo
+todo en tus manos, acordate siempre maximizar, mejorar y bajar costos (…) quiero que siempre que corre cerebro busque
+cosas así, no sólo los caminos de siempre"*. Paso 10 de la completa y 5b de las cortas: mirar el negocio como dueño,
+medir con datos crudos dónde se pierde o se gasta plata que nadie mira, hacer lo chico y proponer lo grande con números
+y (a)/(b). Memoria en `ml-sync/notas/ideas.md` (para no repetir). Si no aparece nada, no se inventa.
 
 ## 🎨 CADA VARIANTE SE JUZGA SOLA, CON SU PROPIO 🧠 (12/10/2026, regla suya)
 
