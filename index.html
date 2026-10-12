@@ -2505,7 +2505,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.14';
+const APP_VERSION='23.15';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2516,6 +2516,7 @@ const APP_VERSION='23.14';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.15',f:'12/10/2026',h:'01:52',c:[{n:2,t:'📈 Línea de tiempo: las ventas de cada día salen del panel (ayer ya no dice "no vendió" mientras la noche no lo cargó, y lo cancelado después no cuenta). La ganancia de cada día usa la misma cuenta que Ventas (costo y dólar del mes). Sin ventas para medir el ritmo, el stock va en gris en vez de "exceso".'}]},
   {v:'23.14',f:'12/10/2026',h:'01:10',c:[{n:2,t:'⚖️ Tope de H: el ritmo para proyectar el cierre ahora son los 30 días enteros hasta ayer. Antes contaba el día de hoy recién empezado y a la madrugada la proyección bajaba sola (Matías pasaba de rojo a amarillo).'}]},
   {v:'23.13',f:'11/10/2026',h:'00:26',c:[{n:2,t:'🏷️ Ventas: cada venta hecha con promo o cupón lo dice en su tarjeta, con cuánto puso ML y cuánto nosotros. Arriba, en el bloque por cuenta, el total del período que puso ML.'}]},
   {v:'23.12',f:'10/10/2026',h:'02:55',c:[{n:3,t:'🇵🇾 Pedidos de Paraguay: el ticket real del mayorista es obligatorio para cerrar un pedido ("Ya llegó" no deja sin él). Con el ticket, cada producto muestra el precio de la web tachado y lo que pagaste, y el pedido el descuento total.'}]},
@@ -9001,7 +9002,7 @@ function lineaPintar(prodId){
   // Y AUNQUE LA LÍNEA YA TENGA UN RENGLÓN DE HOY (08/10/2026): el relleno para atrás escribe hoy a medias (sólo stock o
   // visitas de alguna publicación) y con eso este bloque no corría y la caja de hoy quedaba en gris. Hoy manda lo de ahora.
   {const _hk=dateToKey(new Date());const _prevH=dias[_hk]||null;{const ents=Object.values((state.ventaprod||{})[_hk]||{}).filter(v=>v&&!v.cancelada&&(prodDeVenta(v)||{}).id===prodId&&_vOk(v));
-    let st=0;LOCS.forEach(l=>{st+=_lineaVar?getQV(prodId,l,_lineaVar):getQ(prodId,l);});
+    let st=0;LOCS.forEach(l=>{st+=Math.max(0,Number(_lineaVar?getQV(prodId,l,_lineaVar):getQ(prodId,l))||0);});
     const _ay=dateToKey(new Date(Date.now()-864e5));
     // LA CAJA DE HOY (08/10/2026, él: "porque no muestra ahora si ganamos o perdemos la caja"): el robot la lee
     // cada HORA y la deja en mllinks (`caja`). Misma regla que la noche: sólo publicaciones activas, gana la mejor.
@@ -9009,22 +9010,29 @@ function lineaPintar(prodId){
     Object.keys(C.porMla).filter(_mlaOk).forEach(m=>{const e=_lk[m]||{};if((e.status||'')!=='active')return;const r=_rc[e.caja]||0;if(r>cjR){cjR=r;cjH=_cc[e.caja];}});
     // Sin ninguna publicación activa no hay caja que pelear: se dice (antes quedaba en gris como "no se sabe").
     const _hayAct=Object.keys(C.porMla).filter(_mlaOk).some(m=>((_lk[m]||{}).status||'')==='active');if(!cjH&&!_hayAct)cjH='z';
-    dias[_hk]={u:ents.reduce((a,v)=>a+(Number(v.qty)||1),0),uR:null,vis:null,st,stN:1,p:(dias[_ay]&&dias[_ay].p)||null,caja:cjH||(_prevH&&_prevH.caja)||null,rem:!!(_prevH&&_prevH.rem),esc:_prevH?_prevH.esc:null,mg:_prevH?_prevH.mg:null,tot:null,pubs:1,hoy:true};if(_prevH&&_prevH.vis!=null)dias[_hk].vis=_prevH.vis;if(_prevH&&_prevH.p>0&&!dias[_hk].p)dias[_hk].p=_prevH.p;}}
+    dias[_hk]={u:ents.reduce((a,v)=>a+(Number(v.qty)||0),0),uR:ents.reduce((a,v)=>a+(ventaEnRemate(v,_hk)?(Number(v.qty)||0):0),0),vis:null,st,stN:1,p:(dias[_ay]&&dias[_ay].p)||null,caja:cjH||(_prevH&&_prevH.caja)||null,rem:!!(_prevH&&_prevH.rem),esc:_prevH?_prevH.esc:null,mg:_prevH?_prevH.mg:null,tot:null,pubs:1,hoy:true};if(_prevH&&_prevH.vis!=null)dias[_hk].vis=_prevH.vis;if(_prevH&&_prevH.p>0&&!dias[_hk].p)dias[_hk].p=_prevH.p;}}
   const ks=_lineaDias(_lineaRango); const N=ks.length;
   const W=1000, X=i=>i*W/N, bw=Math.max(W/N,0.6);
   // Escalas
   const maxU=Math.max(1,...ks.map(k=>(dias[k]&&dias[k].u)||0));
   const maxV=Math.max(1,...ks.map(k=>(dias[k]&&dias[k].vis)||0));
   // Los días con ventas en el panel: el precio es lo COBRADO por unidad (03/10/2026), no el de la publicación.
+  // LAS UNIDADES DE CADA DÍA SALEN DEL PANEL desde el primer día que el panel tiene ventas (etapa 8, 12/10/2026): la fila
+  // del robot de AYER recién se escribe ~06-07 h (o nunca, si la noche falla) y no se entera de lo cancelado después; con
+  // eso un día que vendió 4 decía "no vendió" y la franja de stock salía roja. Mismo filtro que la ganancia (`gd`).
+  const _vp1=Object.keys(state.ventaprod||{}).filter(k=>/^\d{4}_\d{2}_\d{2}$/.test(k)).sort()[0]||null;
   for(const k of ks){const ents=Object.values((state.ventaprod||{})[k]||{}).filter(v=>v&&!v.cancelada&&(prodDeVenta(v)||{}).id===prodId&&_vOk(v));
-    let t=0,q=0;ents.forEach(v=>{t+=Number(v.total)||0;q+=Number(v.qty)||0;});if(q>0&&t>0){(dias[k]=dias[k]||{u:null,uR:null,vis:null,st:null,stN:0,p:null,caja:null,rem:false,esc:null,mg:null,tot:null,pubs:0}).p=Math.round(t/q);dias[k].pCob=true;}}
+    let t=0,q=0,qR=0;ents.forEach(v=>{t+=Number(v.total)||0;q+=Number(v.qty)||0;if(ventaEnRemate(v,k))qR+=Number(v.qty)||0;});
+    // "En remate" con la MISMA regla que la línea de todos y Pedidos (ventaEnRemate), no la marca del robot (etapa 8).
+    if(_vp1&&k>=_vp1&&!(dias[k]&&dias[k].hoy)&&(q>0||(dias[k]&&dias[k].u!=null))){const o=dias[k]=dias[k]||{u:null,uR:null,vis:null,st:null,stN:0,p:null,caja:null,rem:false,esc:null,mg:null,tot:null,pubs:0};o.u=q;o.uR=qR;}
+    if(q>0&&t>0){(dias[k]=dias[k]||{u:null,uR:null,vis:null,st:null,stN:0,p:null,caja:null,rem:false,esc:null,mg:null,tot:null,pubs:0}).p=Math.round(t/q);dias[k].pCob=true;}}
   // Escala con un rango mínimo del 20%: un cambio de 3% no puede verse como un salto (él, con el costo: "$1.007 a $1.036").
   const _esc=(mn,mx)=>{if(!(mx>0))return[0,1];if(mx-mn<mx*0.2){const c=(mx+mn)/2;return[c-mx*0.1,c+mx*0.1];}return[mn,mx];};
   const ps=ks.map(k=>dias[k]&&dias[k].p).filter(x=>x>0); const [pMin,pMax]=ps.length?_esc(Math.min(...ps),Math.max(...ps)):[0,1];
   // Carriles: y y alto
   // La GANANCIA de cada día sale de las ventas del panel con la MISMA cuenta que Ventas e Inicio
   // (efectivoCostoVP, gestDivVP, pctGananciaVP), no de la línea del robot: así no puede decir otro número.
-  const gd={}; for(const k of ks){const ents=Object.values((state.ventaprod||{})[k]||{}).filter(v=>v&&!v.cancelada&&(prodDeVenta(v)||{}).id===prodId&&_vOk(v));
+  const gd={}; for(const k of ks){const ents=Object.values((state.ventaprod||{})[k]||{}).filter(v=>v&&!v.cancelada&&(prodDeVenta(v)||{}).id===prodId&&_vOk(v)).map(v=>({...v,_dateKey:k}));
     if(!ents.length)continue;let neto=0,costo=0,gest=0,q=0,mer=0,imp=0,tot=0;ents.forEach(v=>{neto+=v.neto||0;costo+=efectivoCostoVP(v);gest+=gestDivVP(v);q+=Number(v.qty)||0;
       // Para la LÍNEA del costo va sólo la MERCADERÍA (costo × dólar del mes): el costo de la ganancia trae además
       // IIBB + monotributo como % del precio cobrado, y eso hacía que la línea se moviera con cada venta (03/10/2026).
@@ -9072,14 +9080,14 @@ function lineaPintar(prodId){
   const _pdiaAntes=i=>{let u=0,dc=0;for(let j=Math.max(0,i-30);j<i;j++){const kk=ks[j],dd=dias[kk];if(_conSR(kk)){dc++;u+=Math.max(0,(dd.u||0)-(dd.uR||0));}}return (u>=3&&dc>=7)?u/dc:_rnP;};
   const stU={},stD={};{
     ks.forEach((k,i)=>{const d=dias[k];if(!d||d.st==null||!(d.stN>=d.pubs))return;stU[k]=d.st;
-      const pdia=_pdiaAntes(i);stD[k]=pdia>0?d.st/pdia:(d.st>0?999:0);});}
+      const pdia=_pdiaAntes(i);stD[k]=pdia>0?d.st/pdia:(d.st>0?null:0);});}
   // LAS LLEGADAS DE MERCADERÍA (08/10/2026, él: "que en stock tenga una pequeña marca indicando que llegaron
   // unidades"). Entre dos días con el número de stock (a 3 días o menos): lo que hay hoy − lo que había + lo vendido
   // en el medio. 2 u. o más (o desde cero) es una llegada; 1 u. suelta puede ser una devolución y no se marca.
   const stIn={};{let pk=null,pi=-9;ks.forEach((k,i)=>{if(stU[k]==null)return;if(pk!=null&&i-pi<=3){let v=0;for(let j=pi+1;j<=i;j++){const dd=dias[ks[j]];v+=(dd&&dd.u)||0;}
       const e=stU[k]-stU[pk]+v;if(e>=2||(e>=1&&stU[pk]===0))stIn[k]=Math.round(e);}pk=k;pi=i;});}
-  const _stCol=dd=>dd<7?'var(--red)':dd<20?'#f97316':dd<45?'var(--green)':dd<90?'#eab308':'#a855f7';
-  const _stTxt=dd=>dd<7?'falta':dd<20?'justo':dd<45?'bien':dd<90?'sobra':'exceso';
+  const _stCol=dd=>dd==null?'var(--muted)':dd<7?'var(--red)':dd<20?'#f97316':dd<45?'var(--green)':dd<90?'#eab308':'#a855f7';
+  const _stTxt=dd=>dd==null?'sin ritmo para medir':dd<7?'falta':dd<20?'justo':dd<45?'bien':dd<90?'sobra':'exceso';
   const suv=Object.values(stU);const sMax=suv.length?Math.max(1,...suv):1;
   const pvs=Object.values(pd); const qMin=pvs.length?Math.max(-50,Math.min(...pvs)):0, qMax=pvs.length?Math.min(250,Math.max(...pvs)):1;
   // PRECIO Y COSTO EN UN SOLO CARRIL, CON LA MISMA ESCALA (08/10/2026, él: "poner las dos líneas de precio y costo en
@@ -9096,7 +9104,7 @@ function lineaPintar(prodId){
   // sin ellos la línea arrancaba recién el 7º día del gráfico. Misma cuenta que `gd` (neto − efectivoCostoVP).
   const _ksAll=_lineaDias(ks.length+6).slice(0,6).concat(ks);
   const _ganPre={};_ksAll.slice(0,6).forEach(k=>{const ents=Object.values((state.ventaprod||{})[k]||{}).filter(v=>v&&!v.cancelada&&(prodDeVenta(v)||{}).id===prodId&&_vOk(v));
-    if(ents.length)_ganPre[k]=ents.reduce((a,v)=>a+(v.neto||0)-efectivoCostoVP(v),0);});
+    if(ents.length)_ganPre[k]=ents.reduce((a,v)=>a+(v.neto||0)-efectivoCostoVP({...v,_dateKey:k}),0);});
   const _ganK=k=>gd[k]?gd[k].gan:(_ganPre[k]||0);
   const g7={};ks.forEach((k,i)=>{const ia=i+6;let t=0;for(let j=ia-6;j<=ia;j++)t+=_ganK(_ksAll[j]);g7[k]=t/7;});
   const g7v=Object.values(g7);const gMax=g7v.length?Math.max(0,...g7v):1,gMin=g7v.length?Math.min(0,...g7v):0;
@@ -9191,7 +9199,7 @@ function lineaPintar(prodId){
     const _pctU=!gd[k]&&pdUlt[k]?`💰 % ganancia de la última venta (${_lineaFmtDia(pdUlt[k][1])}): ${pdUlt[k][0].toFixed(0)}%`:'';
     const _g7=g7[k]!=null?`💵 ganancia promedio de los últimos 7 días: ${fmt(Math.round(g7[k]))} por día`:'';
     const _gan=gd[k]?`💰 ${gd[k].est?'≈ ganancia estimada':'ganancia'} ${fmt(gd[k].gan)}${(()=>{const q=pctGananciaVP(gd[k].gan,gd[k].costo,gd[k].gest);return q!=null&&isFinite(q)?` (${q.toFixed(0)}%)`:'';})()}`:'';
-    const _st=stU[k]!=null?`📦 ${stU[k]} u. en Full · alcanza ${stD[k]>=999?'+999':Math.round(stD[k])} d (${_stTxt(stD[k])})`:'';
+    const _st=stU[k]!=null?`📦 ${stU[k]} u. en Full · ${stD[k]==null?'sin ventas para medir el ritmo':'alcanza '+(stD[k]>=999?'+999':Math.round(stD[k]))+' d ('+_stTxt(stD[k])+')'}`:'';
     const _cos=cu[k]!=null?`🏷️ costo real ${ct[k]>0?fmt(ct[k]):'?'} c/u = mercadería ${fmt(cu[k])} (dólar del mes $${Math.round(tcForYM(k.slice(0,7))||0)}) + IIBB y monotributo ${ct[k]>0?fmt(ct[k]-cu[k]):'?'}${gd[k]&&gd[k].impPct!=null?` (${gd[k].impPct.toFixed(1)}% de lo cobrado)`:''}${gd[k]&&gd[k].cu>0?'':' · el último conocido'}`:'';
     const _vis=d&&d.vis!=null?`👀 ${d.vis} visitas`:'';
     const _tuvo=_conSt(d,k)?`📦 tenía stock${d&&d.st>0?` (${d.st} u. en Full)`:d&&d.u>0?' (vendió)':d&&d.vis>0?' (tuvo visitas)':` (el robot lo ve en Full desde el ${_lineaFmtDia(_stHistDesde)})`}`:(k>=_stIni?(d&&d.st!=null?'📦 sin stock en Full':'📦 sin stock (sin dato, sin ventas ni visitas)'):'📦 todavía no se miraba');
@@ -9212,8 +9220,8 @@ function lineaPintar(prodId){
   // excedente, faltan"). Unidades en Full de las 4 cuentas (o del color elegido) y los días que alcanzan al ritmo de
   // los últimos 30 días con stock (3+ ventas; si no, el ritmo normal del año): MISMOS colores que la línea de stock.
   const _stHoy=(()=>{let q=0;LOCS.forEach(l=>{q+=Math.max(0,Number(_lineaVar?getQV(prodId,l,_lineaVar):getQ(prodId,l))||0);});
-    const pdia=_pdiaAntes(N);const dd=pdia>0?q/pdia:(q>0?999:0);
-    return `stock hoy: <b style="color:${_stCol(dd)}">${q} u.</b> <span style="color:${_stCol(dd)}">(${q>0?(dd>=999?'sin ventas para medir':'alcanza '+Math.round(dd)+' d'):'agotado'} · ${_stTxt(dd)})</span>`;})();
+    const pdia=_pdiaAntes(N-1);const dd=pdia>0?q/pdia:(q>0?null:0);
+    return `stock hoy: <b style="color:${_stCol(dd)}">${q} u.</b> <span style="color:${_stCol(dd)}">(${q>0?(dd==null?'sin ventas para medir el ritmo':'alcanza '+Math.round(dd)+' d · '+_stTxt(dd)):'agotado · '+_stTxt(0)})</span>`;})();
   const pIni=ks.map(k=>dias[k]&&dias[k].p).find(x=>x>0), pFin=[...ks].reverse().map(k=>dias[k]&&dias[k].p).find(x=>x>0);
   // ¿EL CAMBIO DE PRECIO DEJÓ MÁS PLATA? (04/10/2026, él con el Metatarso: "quizás lo aumentó un 10% y se vendió un
   // 20% menos"). Por cada cambio del rango: ganancia por día CON STOCK en los 14 días antes y en los días después
@@ -9304,7 +9312,7 @@ function lineaTodoPintar(){
   // Ventas y ganancia del panel, día por día (con 6 días antes para el promedio de 7).
   const _ksAll=_lineaDias(N+6);const pv=state.ventaprod||{};const pv0=Object.keys(pv).sort()[0]||'9999';
   const vd={};_ksAll.forEach(k=>{const ents=Object.values(pv[k]||{}).filter(v=>v&&!v.cancelada);if(!ents.length)return;
-    let u=0,uR=0,gan=0,costo=0,gest=0,tot=0;ents.forEach(v=>{const q=Number(v.qty)||1;u+=q;if(ventaEnRemate(v,k))uR+=q;const c=efectivoCostoVP(v);gan+=(v.neto||0)-c;costo+=c;gest+=gestDivVP(v);tot+=Number(v.total)||0;});
+    let u=0,uR=0,gan=0,costo=0,gest=0,tot=0;ents.forEach(v0=>{const v={...v0,_dateKey:k};const q=Number(v.qty)||0;u+=q;if(ventaEnRemate(v,k))uR+=q;const c=efectivoCostoVP(v);gan+=(v.neto||0)-c;costo+=c;gest+=gestDivVP(v);tot+=Number(v.total)||0;});
     vd[k]={u,uR,gan,costo,gest,tot,n:ents.length};});
   const uDe=k=>vd[k]?vd[k].u:(k<pv0&&R[k]&&R[k].u!=null?R[k].u:(k>=pv0?0:null));
   const uRDe=k=>vd[k]?vd[k].uR:(k<pv0&&R[k]?R[k].uR||0:0);

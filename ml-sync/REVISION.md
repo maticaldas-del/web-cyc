@@ -441,6 +441,15 @@ Todo lo que guarda la historia día por día y las pantallas que la dibujan.
   arriba y verde en la línea (real ~31 d). Ahora los dos usan `_pdiaAntes(i)`. Chequear: que no vuelva a haber dos cuentas
   del mismo ritmo en la línea.
 
+- **Revisión de la etapa 8 (12/10/2026, v23.15) · web:** (1) en `lineaPintar` las unidades (`u`, `uR`) de cada día salen del
+  PANEL desde su primer día (`_vp1`), con el mismo filtro que la ganancia: la fila de ayer del robot llega ~06-07 h y no ve lo
+  cancelado después (un día que vendió 4 decía "no vendió" y la franja de stock salía roja). (2) La ganancia de la línea de un
+  producto (`gd`, `_ganPre`) y la de la línea de todos (`vd`) llevan `_dateKey` = misma cuenta que Ventas (costo y dólar del
+  mes). (3) "En remate" en la línea de un producto = `ventaEnRemate` (la misma regla que la línea de todos y Pedidos). (4) Sin
+  ritmo para medir, el stock va en gris "sin ventas para medir el ritmo" (antes violeta "+999 d exceso"). (5) Hoy: stock sin
+  negativos y `qty||0` como Ventas; el "stock hoy" del resumen usa la misma ventana que el último punto.
+  Chequear: que ayer a la mañana la línea ya muestre las ventas del panel; que la ganancia de un día coincida con Ventas.
+
 ## 9 · CEREBRO (nueva, 09/10/2026, pedido suyo)
 Él, después de que dos veces salió incompleto (precios y pedidos): *"es un problema grave que pasó dos veces ya (...) en los dos se hizo súper incompleto y nunca te diste cuenta (...) quiero agregar esto de revisar cerebro a las etapas"*. Revisa LO QUE HACE CLAUDE en cada vuelta (08:52, 12:52, 16:52, 20:52): que cada parte se haga ENTERA.
 - **La pregunta de esta etapa, para cada tarea:** ¿de dónde salió la lista que miré? ¿esa lista es TODO o sólo lo que ya existe / se movió / ya decidí? El error de las dos veces fue el mismo: mirar una lista que sólo traía una parte (`informe` = lo que se movió · `pedidosnotas` = lo ya decidido) y creer que era todo.
