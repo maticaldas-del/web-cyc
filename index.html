@@ -2509,7 +2509,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.19';
+const APP_VERSION='23.20';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2520,6 +2520,7 @@ const APP_VERSION='23.19';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.20',f:'12/10/2026',h:'17:45',c:[{n:1,t:'📈 Ventas: el botón línea de una venta de un color o aroma abre la línea de tiempo de ESA variante (arriba se puede volver a ver todas).'}]},
   {v:'23.19',f:'12/10/2026',h:'17:20',c:[{n:2,t:'📈 Línea de tiempo: cuando un producto se queda sin stock la línea del precio ya no baja sola. Tomaba el precio más barato de todas las publicaciones pausadas (incluida alguna vieja que no vende); ahora toma el de la que vendió último.'}]},
   {v:'23.18',f:'12/10/2026',h:'16:45',c:[{n:2,t:'💸 Gastos: arriba de la lista del mes está el retiro de los socios. Se carga ahí mismo (es la misma casilla del Arqueo, no se cuenta como gasto para no restarlo dos veces).'}]},
   {v:'23.17',f:'12/10/2026',h:'16:23',c:[{n:3,t:'Venta en remate: una sola regla para el robot y la web (elegiste la 1a). Cuenta como remate sólo si dejó menos de 20% Y hay prueba de que se estaba rematando (marcado liquidando, etiquetado remate, o la línea de tiempo dice que estaba parado). Lo que llegó y se vendió al toque barato cuenta como venta para pedir y mandar. Lo decide el robot cada noche; las ventas de hoy cuentan hasta que las mire.'},{n:3,t:'Dólar del mes cerrado (elegiste la 2a): al cerrar un mes, la ganancia sigue con el dólar que ya usaba (el cargado a mano o el promedio de sus ventas), así cerrar no la cambia. El Arqueo del cierre sigue con el dólar de ese día. Los meses ya cerrados no se tocan.'}]},
@@ -8978,9 +8979,9 @@ function _lineaJunta(porMla,lks,varSel){
     if(o._st){let t=0,hay=false;for(const S of Object.values(o._st)){if(S.P!=null){t+=S.P;hay=true;}else{const vs=Object.values(S.V);if(vs.length){t+=vs.reduce((a,b)=>a+b,0);hay=true;}}}o.st=hay?t:null;if(!hay)o.stN=0;delete o._st;}}
   return dias;
 }
-async function lineaAbrir(prodId,ev){
+async function lineaAbrir(prodId,ev,varSel){
   if(ev&&ev.stopPropagation)ev.stopPropagation();
-  const p=prodById(prodId); if(!p)return; _lineaVar='';
+  const p=prodById(prodId); if(!p)return; _lineaVar=varSel?String(varSel):'';
   let m=document.getElementById('linea-modal');
   if(!m){m=document.createElement('div');m.id='linea-modal';m.style.cssText='position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.6);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:16px';
     m.onclick=e=>{if(e.target===m)m.remove();};document.body.appendChild(m);}
@@ -9704,7 +9705,11 @@ function homeHoyCerebro(ev){
   vpCerebroModal(`Ventas de ${enCurso?'hoy':_homeHoyOff===1?'ayer':dateToKey(d).slice(8,10)+'/'+dateToKey(d).slice(5,7)}`,
     vpAnalisisSimple([dateToKey(d)],[dateToKey(a)],{enCurso,prevLbl:enCurso?'ayer':'el día anterior',cuando:enCurso?'hoy':'ese día'}));
 }
-function lineaBtn(prodId,txt){return prodId?`<button class="btn" onclick="lineaAbrir('${prodId}',event)" title="Línea de tiempo: stock, ventas, precio y remates de los últimos 365 días" style="font-size:.64rem;padding:2px 7px;line-height:1.2">${txt||'📈'}</button>`:'';}
+// LA LÍNEA DE ESA VARIANTE (12/10/2026, él con el Paulvic Debutant: "al apretar línea en una variante, quiero ver la
+// línea de esa variante"). `varSel` abre la línea ya filtrada por ese color/aroma (el mismo selector de arriba).
+function _lineaVarDeVentas(items,prodId){const p=prodById(prodId);if(!p||!(p.variantes||[]).length)return'';const m=_varPorMla(p);
+  const vs=[...new Set(items.filter(v=>(prodDeVenta(v)||{}).id===prodId).map(v=>String(v.variante||m[v.mla]||'').trim()))];return vs.length===1?vs[0]:'';}
+function lineaBtn(prodId,txt,varSel){return prodId?`<button class="btn" onclick="lineaAbrir('${prodId}',event,${varSel?JSON.stringify(String(varSel)).replace(/"/g,'&quot;'):"''"})" title="Línea de tiempo: stock, ventas, precio y remates de los últimos 365 días" style="font-size:.64rem;padding:2px 7px;line-height:1.2">${txt||'📈'}</button>`:'';}
 // Resuelve el producto de una venta: por ID interno (prodId) si existe, sino por nombre (compat).
 function prodDeVenta(v){return (v&&v.prodId)?(prodById(v.prodId)||prodByName(v&&v.prod)):prodByName(v&&v.prod);}
 // Nombre ACTUAL del producto de una venta (sigue al producto aunque se renombre).
@@ -10612,7 +10617,7 @@ function renderVentaProd(){
           ${(entLabel||rescLabel||promoLabel)?`<div style="padding:5px 0;display:flex;gap:10px;flex-wrap:wrap">${promoLabel}${entLabel}${rescLabel}</div>`:''}
           ${isCancelled?reclamoMotivoHTML(grp):''}
           <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px">
-            ${(()=>{const _ids=[...new Set(grp.items.map(v=>(prodDeVenta(v)||{}).id).filter(Boolean))];return _ids.map(id=>lineaBtn(id,_ids.length>1?'📈 '+((prodById(id)||{}).name||'línea').slice(0,18):'📈 línea')).join(' ');})()}
+            ${(()=>{const _ids=[...new Set(grp.items.map(v=>(prodDeVenta(v)||{}).id).filter(Boolean))];return _ids.map(id=>{const _vs=_lineaVarDeVentas(grp.items,id);return lineaBtn(id,_ids.length>1?'📈 '+((prodById(id)||{}).name||'línea').slice(0,18):(_vs?'📈 línea '+_vs.slice(0,16):'📈 línea'),_vs);}).join(' ');})()}
             <button class="btn" style="font-size:.68rem;padding:4px 12px;background:rgba(124,58,237,.15);color:#a78bfa;border:1px solid rgba(124,58,237,.3)" onclick="vpToggleEdit('${grp.gid}')">✎ Editar</button>
             ${delBtn}
           </div>
@@ -10636,7 +10641,7 @@ function renderVentaProd(){
           ${costLabel}
           ${ganLabel}
           ${pctBox}
-          ${(()=>{if(_varios)return'';const _pp=prodDeVenta(grp.items[0]);return _pp?lineaBtn(_pp.id):'';})()}
+          ${(()=>{if(_varios)return'';const _pp=prodDeVenta(grp.items[0]);return _pp?lineaBtn(_pp.id,null,_lineaVarDeVentas(grp.items,_pp.id)):'';})()}
           <button class="ii-del" style="background:rgba(124,58,237,.15);color:#a78bfa;border-color:rgba(124,58,237,.3)" onclick="vpToggleEdit('${grp.gid}')">✎</button>
           ${delBtn}
         </div>

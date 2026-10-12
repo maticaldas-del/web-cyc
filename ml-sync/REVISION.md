@@ -530,6 +530,13 @@ línea del precio en el de la publicación que vendía.
 distinto precio y carritos: puede subir y bajar sin ▲▼ (las flechas son sólo cambios de precio de la
 publicación).
 
+### Línea de tiempo: desde una venta abre la de ESA variante (12/10/2026, v23.20)
+Él: *"al apretar línea en una variante, quiero ver la línea de esa variante"*. `lineaBtn(prodId,txt,varSel)` y
+`lineaAbrir(prodId,ev,varSel)`; la variante sale de `_lineaVarDeVentas` (la de la venta o, si no la trae, la de su
+publicación por `_varPorMla`). Si el carrito trae dos colores del mismo producto, abre todas. Si el nombre no está
+entre los colores de la línea, cae a "todas" (no se inventa). **Qué chequear:** que el color elegido arriba de la
+línea sea el de la venta.
+
 ## 9 · CEREBRO (nueva, 09/10/2026, pedido suyo)
 Él, después de que dos veces salió incompleto (precios y pedidos): *"es un problema grave que pasó dos veces ya (...) en los dos se hizo súper incompleto y nunca te diste cuenta (...) quiero agregar esto de revisar cerebro a las etapas"*. Revisa LO QUE HACE CLAUDE en cada vuelta (08:52, 12:52, 16:52, 20:52): que cada parte se haga ENTERA.
 - **La pregunta de esta etapa, para cada tarea:** ¿de dónde salió la lista que miré? ¿esa lista es TODO o sólo lo que ya existe / se movió / ya decidí? El error de las dos veces fue el mismo: mirar una lista que sólo traía una parte (`informe` = lo que se movió · `pedidosnotas` = lo ya decidido) y creer que era todo.
