@@ -946,6 +946,19 @@ línea con las ventas en promo de esa vuelta** (cuántas, cuánto puso ML, y si 
 `nomas` (no se vende ni repone más, decisión suya del 12/10). El 12/10 se subieron 110 publicaciones al 25% en el peor caso
 (`ml-sync/notas/precios_1210.txt`); las frenadas en $32.999 son excepción a propósito (regla 2).
 
+## 📈 BUSCAR EL TECHO: LO QUE VENDE BIEN SE PRUEBA PARA ARRIBA (12/10/2026, regla suya)
+
+Él, con la Batidora Blanco: *"no se sabe si se puede aumentar más y se vende igual (…) podés aumentarlo el doble y si se
+vende la mitad es bueno (…) no sabés cuál es el techo, y no hablo sólo de este producto, digo un parámetro del cerebro en
+gral"*. Lo que vende bien no se deja quieto porque vende: se busca el precio que más **plata por día** deja (ganancia por
+unidad × unidades por día con stock), no el que más unidades vende.
+ · Candidatas (cada variante sola): vende 4+ en 14 días con stock, stock para 14+ días (si no, es ESCASEZ), sin promo
+   mía, no liquidando, no en las 2 semanas antes de una fecha de regalo. Hasta ~10 pruebas abiertas a la vez.
+ · Escalón +10% (+15% si vende 1+/día con margen alto), 90/990, frenos de siempre.
+ · Juicio cuando al ritmo de antes se esperaban 8+ ventas o pasaron 21 días con stock: igual o más plata por día (hasta
+   −5%) → otro escalón · 15%+ menos → volver al anterior (techo) y 60 días sin probar · en el medio → se queda.
+ · Memoria en `ml-sync/notas/techo.md`. Va en el paso 2c de la completa de las 08:52.
+
 ## 🎨 CADA VARIANTE SE JUZGA SOLA, CON SU PROPIO 🧠 (12/10/2026, regla suya)
 
 Él, con la nota del Paulvic Abismo que hablaba del producto entero: *"cada variante debe llevar su propio análisis y su propio

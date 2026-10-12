@@ -539,6 +539,12 @@ publicación por `_varPorMla`). Si el carrito trae dos colores del mismo product
 entre los colores de la línea, cae a "todas" (no se inventa). **Qué chequear:** que el color elegido arriba de la
 línea sea el de la venta.
 
+### Buscar el techo de lo que vende bien (12/10/2026, regla suya)
+Paso 2c de la completa (trigger `trig_01475PwdPVJ1qTnYswcDxRq8`) y sección en CLAUDE.md. Escalones de +10/15% en lo que
+vende bien con stock, juicio por ganancia por día con stock (misma cuenta que la línea de tiempo y `supervisor:medir`),
+memoria en `ml-sync/notas/techo.md`. **Qué chequear:** que cada prueba tenga su renglón en techo.md y su motivo en el 🧠,
+que no se juzgue con días de quiebre o fechas especiales adentro, y que nunca haya más de ~10 abiertas.
+
 ## 9 · CEREBRO (nueva, 09/10/2026, pedido suyo)
 Él, después de que dos veces salió incompleto (precios y pedidos): *"es un problema grave que pasó dos veces ya (...) en los dos se hizo súper incompleto y nunca te diste cuenta (...) quiero agregar esto de revisar cerebro a las etapas"*. Revisa LO QUE HACE CLAUDE en cada vuelta (08:52, 12:52, 16:52, 20:52): que cada parte se haga ENTERA.
 - **La pregunta de esta etapa, para cada tarea:** ¿de dónde salió la lista que miré? ¿esa lista es TODO o sólo lo que ya existe / se movió / ya decidí? El error de las dos veces fue el mismo: mirar una lista que sólo traía una parte (`informe` = lo que se movió · `pedidosnotas` = lo ya decidido) y creer que era todo.
