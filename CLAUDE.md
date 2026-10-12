@@ -946,6 +946,18 @@ línea con las ventas en promo de esa vuelta** (cuántas, cuánto puso ML, y si 
 `nomas` (no se vende ni repone más, decisión suya del 12/10). El 12/10 se subieron 110 publicaciones al 25% en el peor caso
 (`ml-sync/notas/precios_1210.txt`); las frenadas en $32.999 son excepción a propósito (regla 2).
 
+## 🥊 LA CAJA DE COMPRA ORIENTA, NO DECIDE (12/10/2026, regla suya)
+
+Él: *"ganar no significa vender ni perder significa no vender nunca. ML juega mucho con que quieren ser baratos:
+quizás te ponen 'perdiendo' cuando en realidad vendemos un montón y somos la mejor opción, para que igual lo bajes
+(…) es importante si ganamos o perdemos caja, pero no es decisivo. Manejalo como vos quieras"*.
+ · `price_to_win` es lo que ML QUIERE que pongamos, no el precio al que se vende. Lo que decide son las ventas
+   reales (ritmo, línea de tiempo), el stock y el margen; la caja es un dato más.
+ · Perdiendo y vendiendo bien → no se baja. Perdiendo y sin vender → se prueba primero un escalón que no regale
+   margen (Full vale ~19% de precio, ver "TENER FULL VALE PRECIO"), y recién si no se mueve, más abajo.
+ · Caso que la dejó escrita: Galaxy A07 64GB (`MLA2047097263`), 1 u. sin vender desde el 28/07 a $394.690. Primero lo
+   llevé a la caja ($230.390, 12%); con esta regla quedó en $264.990 (~26%, 15% arriba de la caja).
+
 ## 🔢 PSICOLOGÍA DEL PRECIO (10/10/2026, él eligió 1a 2a 3a 4b)
 
  · **Terminaciones:** todo precio que decido termina en 90 o 990 (99 en lo más barato). Nunca $10.000 o $5.000 redondos.

@@ -294,6 +294,11 @@ Qué: `parejoDatos` (index.html) proyecta el cierre con las ventas de los 30 dí
 - **09/10/2026 · PEDIDOS COMPLETOS (etapa 3, mercadería).** Con SOLO_CLAUDE la web pide sólo lo que decidí; yo decidía mirando `pedidosnotas`, que lee `cyc/pedidos` (= sólo lo ya decidido), así que nunca veía el resto: Pedidos quedó casi vacío (sábanas, Paraguay y Paulvic sin nada). Nuevo `pedidostodo` (solo lee, TODO el catálogo color por color) + `ml-sync/notas/decide_pedidos.py` (ritmo 30/60/180 d, objetivo 30 días, menos Full+casa+camino+viajando, sin ganancia = 0) → `ml-sync/notas/pedidos.txt` → `decido:archivo=pedidos;go`. Se rehace en cada vuelta (rutina CEREBRO 08:52/20:52). Chequear: que cada producto con ventas de 180 d tenga renglón, y que el log de decido diga "guardado" en todos.
   Comando `pedidostodo` (solo lee): ventas 30/60/180 por color (`v.variante` → `mllinks.variant` → título), Full por cuenta y color, oficina, en camino a Full menos lo que ML ya dio de alta (`cyc/cajasentrado`), viajando de Paraguay (`compraspy` en camino) y del Paulvic (`pedidospv`), precio de hoy y cambios de 45 d (`cyc/autoprecio`), y lo que queda afuera (papelera, no traer). La cuenta: `ml-sync/notas/decide_pedidos.py`.
 
+### La caja de compra orienta, no decide (12/10/2026, regla suya)
+Qué es: `price_to_win` es lo que ML quiere que pongamos; manda la venta real. Dónde vive: CLAUDE.md (🥊). Qué
+chequear: que ninguna baja se decida SÓLO por "perdiendo"; que lo que pierde y vende no se baje; que la primera baja
+de algo parado no regale más margen que el premio de Full (~19%).
+
 ### Resultados de precios: la cuenta del supervisor + mi juicio diario (10/10/2026, v23.11)
 Él: *"quiero que aparezca todo, desde la primer decisión del robot anterior y que hagas el análisis (…) todos los días"* y
 *"no hay reglas (…) quizás esa decisión es buena y está unos días perdiendo y después recupera"*. La tarjeta de Métricas
