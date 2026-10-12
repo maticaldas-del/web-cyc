@@ -211,7 +211,7 @@ Qué chequear: que el total de renglones cierre con las publicaciones vivas con 
 Él: *"una vez que el producto estuvo una vez en full siempre se activan solo (…) todo producto que existe tiene que estar arriba
 del 25% (salvo excepciones que haya hecho el cerebro)"*. ML reactiva sola una pausada sin stock apenas le entra la caja.
 `planilla` calcula además el margen en el PEOR CASO (`PEOR_RET_PCT` 2% de retención de otra provincia + el envío más caro
-arriba de $33.000 + cuotas Premium) y lista 🛡️ las que quedan abajo del 25%, activas o pausadas. Excepciones mías aparte:
+visto en sus ventas, o el de referencia si nunca vendió + cuotas Premium) y lista 🛡️ las que quedan abajo del 25%, activas o pausadas. Excepciones mías aparte:
 liquidando, `cyc/claudepiso/<MLA>` (lo escribe `decido` con `!piso`, con el precio exacto; otro precio sin `!piso` lo borra)
 y `cyc/promoclaude`. También nombra las que no tienen margen medible. Se corre en TODAS las vueltas (no sólo 08:52/20:52) y lo
 🛡️ se sube en esa misma vuelta. Lo nuevo (nunca estuvo en Full) no se activa solo: lo activo yo con el precio ya puesto.
