@@ -7685,7 +7685,7 @@ async function cargarParamCompra(db) {
 }
 // La cuenta donde iría un producto nuevo: perfume → Adriana (rubro), el resto → la que menos factura.
 function cuentaNuevoDe(c) { return c && RE_CAND_PERF.test(`${c.nombre || ''} ${c.mlTit || ''}`) ? 'adriana' : CUENTA_NUEVOS; }
-// A mano se puede pedir más: `candidatos:go:max=400` (03/10/2026, Guay cargó 350 de una). El 40 es para
+// A mano se puede pedir más: `candidatos:max=400:go` (el go va al final) (03/10/2026, Guay cargó 350 de una). El 40 es para
 // que la corrida de la noche no se cuelgue; una corrida a mano no lleva nada atrás.
 const CAND_MAX_ML = (() => { const m = String(process.env.BILLING_PROBE || '').match(/^candidatos\b.*\bmax=(\d+)/); return m ? Math.min(500, Math.max(1, parseInt(m[1], 10))) : 40; })();
 // ── LOS QUE DAN SE VUELVEN A MEDIR TODOS LOS DÍAS (26/09/2026) ─────────────────────────
