@@ -2514,7 +2514,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.29';
+const APP_VERSION='23.30';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2525,6 +2525,7 @@ const APP_VERSION='23.29';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.30',f:'13/10/2026',h:'16:45',c:[{n:1,t:'🧠 Pedidos de Paraguay (Probados): abajo de cada tarjeta dice a la vista por qué pide esas unidades.'}]},
   {v:'23.29',f:'13/10/2026',h:'16:20',c:[{n:1,t:'▲▼ Las flechitas de cambio de precio tienen el color del motivo: verde prueba/hay lugar · celeste cuidar el margen · naranja escasez · cian pelear la caja · violeta promo · amarillo vuelta atrás · rojo remate · gris a mano. Pasando el mouse dice cuál es.'}]},
   {v:'23.28',f:'13/10/2026',h:'15:40',c:[{n:1,t:'🤖 Robot de precios: si mi juicio dice "perdió" y el número da positivo (o al revés), el número sale en gris aclarando que es sólo lo cobrado de más en lo que se vendió, sin contar las ventas que se perdieron.'}]},
   {v:'23.27',f:'13/10/2026',h:'14:55',c:[{n:1,t:'📈 Línea de tiempo: un ▾ ámbar marca los días que se COBRÓ menos sin que nadie bajara el precio (promo o cupón de ML, carrito, o se vendió un color más barato). El globito del día dice cuánto menos.'}]},
@@ -16559,6 +16560,12 @@ function _pedidoItemHtml(p,opts){
       <span style="font-weight:700;color:${_armU>0?'var(--green)':'var(--muted)'}">🧾 pedir</span>
       <input type="number" min="0" step="1" value="${_armU||''}" placeholder="0" onchange="pyArmSet('${_prod.id}',this.value)" style="width:58px;font-size:.88rem;padding:4px 6px;text-align:center;background:var(--surface2);border:1px solid ${_armU>0?'var(--green)':'var(--border)'};border-radius:6px;color:var(--text)"> u.
       ${_armU>0?`<span style="color:var(--green)">✓ en el pedido</span>`:`<button class="btn" style="font-size:.66rem;padding:3px 9px" onclick="pyArmSet('${_prod.id}',${parseInt(p.cantidad)||1})">+ las ${fmtN(p.cantidad||1)} sugeridas</button>`}
+      ${(()=>{// EL POR QUÉ A LA VISTA (13/10/2026, él: "no me explica porque me pide esas unidades"): el motivo que escribí al
+        // decidir (o la cuenta guardada del pedido), abajo de la casilla, sin tener que abrir nada.
+        const o=clPedDe(_prod.id);let t=o&&o.motivo?String(o.motivo):'';
+        if(o&&o.motVars)t=[t,...Object.entries(o.motVars).map(([c,m])=>`${c}: ${m}`)].filter(Boolean).join(' · ');
+        if(!t)t=_cerPedidoSimple(p);
+        return t?`<div style="flex-basis:100%;font-size:.74rem;line-height:1.45;color:var(--text);padding:4px 0 0">🧠 <b>Por qué ${fmtN(p.cantidad||0)}:</b> ${escHtml(t)}</div>`:'';})()}
     </div>`;
   const _sem=_enCam?null:_pedSem(p);
   const _semTxt=!_sem?'':_sem==='rojo'?(p.cSemCol>0?`🔴 ${p.cSemCol} color${p.cSemCol>1?'es':''} sin stock en ningún lado`:'🔴 sin stock en ningún lado'):(p.cSemDias!=null&&p.cSemDias<999?`${_sem==='naranja'?'🟠':'🟡'} alcanza ~${p.cSemDias} d`:'')+(p.cSemCol>0?` · ${p.cSemCol} color${p.cSemCol>1?'es':''} en cero`:'');
