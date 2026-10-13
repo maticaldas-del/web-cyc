@@ -10288,6 +10288,7 @@ async function vpCancelarGrupo(grpId,grpKey,tipo){
     }
     if(p)afectados.add(p.id);
     o.cancelada=true;o.tipoCancelacion=tipo;
+    if(!o.canceladaTs)o.canceladaTs=Date.now(); // revisión 9 (13/10/2026): el informe filtra canceladas por cuándo se canceló, no por el día de la venta
     // Se guarda lo que había, para poder devolverlo al reactivar: el robot sólo reescribe las
     // ventas de las últimas 48 h, así que una vieja quedaba en $0 para siempre (revisión max).
     if(!o.antesCancel&&(Number(o.total)>0||Number(o.neto)>0))o.antesCancel={total:Number(o.total)||0,neto:Number(o.neto)||0};
@@ -10324,7 +10325,7 @@ async function vpReactivarGrupo(grpId,grpKey){
       }
     }
     if(p)afectados.add(p.id);
-    delete o.cancelada;delete o.tipoCancelacion;
+    delete o.cancelada;delete o.tipoCancelacion;delete o.canceladaTs;
     // Reactivar es volver a lo que dice ML: se saca la marca de "tocada a mano" para que el robot
     // le vuelva a poner el total y el neto reales (la cancelación los había dejado en 0).
     delete o.manualTs;

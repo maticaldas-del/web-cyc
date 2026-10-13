@@ -7018,7 +7018,14 @@ async function removeStartedPromos(itemId, token, permitidas) {
   try {
     const r = await mlGet('/seller-promotions/items/' + itemId + '?app_version=v2', token);
     arr = Array.isArray(r) ? r : (r.results || []);
-  } catch { return { removed: [], failed: [], sinLeer: true }; }   // no leída ≠ "sin promo" (revisión max #22)
+  } catch (e) {
+    // no leída ≠ "sin promo" (revisión max #22). Revisión 9 (13/10/2026): se devuelve POR QUÉ (código HTTP y el código
+    // de error de ML, sin el texto entero) para saber por qué ~250 publicaciones no se pueden leer cada hora.
+    const msg = String((e && e.message) || e || '');
+    const st = (msg.match(/: (\d{3}) /) || [])[1] || (e && e.name === 'TimeoutError' ? 'timeout' : e && e.name === 'SyntaxError' ? 'no-json' : 'red');
+    const cod = (msg.match(/"(?:error|code)"\s*:\s*"([^"]{1,40})"/) || [])[1] || '';
+    return { removed: [], failed: [], sinLeer: true, err: st + (cod ? ' ' + cod : '') };
+  }
   const removed = [], failed = [];
   for (const pr of arr) {
     // 'started'  = descuento aplicado AHORA.
@@ -35103,24 +35110,37 @@ async function main() {
       const dMax = Number(String(process.env.BILLING_PROBE).split(':')[1]) || 15;
       const ahora = Date.now();
       const sidE = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
-      const [links, vp, inv, envios, prods] = await Promise.all(['cyc/mllinks', 'cyc/ventaprod', 'cyc/inventory', 'cyc/envios_full', 'cyc/products'].map((r) => db.get(r).then((v) => v || {}).catch(() => ({}))));
-      const pName = {}; for (const pp of Object.values(prods)) if (pp && pp.id) pName[pp.id] = pp.name;
+      // Revisión 9 (13/10/2026): cada lectura que falla corta el comando. Antes caía en `{}` y con cyc/inventory o
+      // cyc/ventaprod sin leer decía "Nada se queda sin stock", que es leer una falla como dato.
+      const FALLO_E = Symbol('fallo');
+      const rutasE = ['cyc/mllinks', 'cyc/ventaprod', 'cyc/inventory', 'cyc/envios_full', 'cyc/products'];
+      const RE = await Promise.all(rutasE.map((r) => db.get(r).then((v) => v || {}).catch(() => FALLO_E)));
+      const malasE = rutasE.filter((_, i) => RE[i] === FALLO_E);
+      if (malasE.length) { console.log(`⚠️ NO LEÍ ${malasE.join(', ')}: no armo la escasez a medias (con la base sin leer no puedo decir que nada se queda sin stock)`); return; }
+      const [links, vp, inv, envios, prods] = RE;
+      const pName = {}, pById = {}; for (const pp of Object.values(prods)) if (pp && pp.id) { pName[pp.id] = pp.name; pById[pp.id] = pp; }
       const money = (n) => '$' + Math.round(n).toLocaleString('es-AR');
-      // ventas por producto × cuenta (y por publicación, para el precio al que vendía)
-      const V = {}, precioV = {};
+      // El color de una venta: el de la venta, si no el de su publicación (`mllinks.variant` o el título). Misma regla
+      // que `varDe` de `pedidostodo` (revisión 9: "cada variante se juzga sola", regla suya del 12/10).
+      const colorDeLink = (e) => { if (!e) return ''; const p = pById[e.prodId]; return e.variant ? String(e.variant) : (p ? varianteDeTitulo(e.title || '', p.variantes || []) : ''); };
+      const colorDeVenta = (v) => v.variante ? String(v.variante) : colorDeLink(links[v.mla]);
+      // ventas por producto × cuenta Y por color (y por publicación, para el precio al que vendía)
+      const V = {}, precioV = {}, sinColorU = {};
+      const addV = (k, ts, q) => { const x = (V[k] = V[k] || { u14: 0, u30: 0, u3: 0, vts: [] }); x.u30 += q; if (ts >= ahora - 14 * 864e5) x.u14 += q; if (ts >= ahora - 3 * 864e5) x.u3 += q; x.vts.push([ts, q]); };
       for (const ents of Object.values(vp)) for (const v of Object.values(ents || {})) {
         if (!v || v.cancelada || !v.prodId || !v.cuenta) continue;
         const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ts < ahora - 30 * 864e5) continue;
         const k = v.prodId + '__' + sidE(v.cuenta), q = Number(v.qty) || 1;
-        const x = (V[k] = V[k] || { u14: 0, u30: 0, u3: 0, vts: [] });
-        x.u30 += q; if (ts >= ahora - 14 * 864e5) x.u14 += q; if (ts >= ahora - 3 * 864e5) x.u3 += q; x.vts.push([ts, q]);
+        addV(k, ts, q);
+        const col = colorDeVenta(v);
+        if (col) addV(k + '__v__' + sidE(col), ts, q); else sinColorU[k] = (sinColorU[k] || 0) + q;
         if (v.mla && Number(v.total) > 0) (precioV[v.mla] = precioV[v.mla] || []).push(Number(v.total) / q);
       }
-      // cajas despachadas que todavía no llegaron, por producto × cuenta
+      // cajas despachadas que todavía no llegaron, por producto × cuenta (y por color)
       const cam = {};
       // Menos lo que ML ya dio de alta de esa caja (`cyc/cajasentrado`): con SOLO_DATOS las cajas no se marcan solas y lo
       // entrado se contaba en Full Y en camino (revisión 9 · cerebro, 09/10/2026).
-      const entE = {}; try { for (const [ck, x] of Object.entries((await db.get('cyc/cajasentrado')) || {})) for (const it of ((x && x.items) || [])) if (it && it.p) { const kk = ck + '|' + it.p + '|' + (it.v || ''); entE[kk] = (entE[kk] || 0) + (Number(it.q) || 0); } } catch {}
+      const entE = {}; try { for (const [ck, x] of Object.entries((await db.get('cyc/cajasentrado')) || {})) for (const it of ((x && x.items) || [])) if (it && it.p) { const kk = ck + '|' + it.p + '|' + (it.v || ''); entE[kk] = (entE[kk] || 0) + (Number(it.q) || 0); } } catch { console.log('(no pude leer lo que ML ya dio de alta de las cajas: lo en camino puede estar de más)'); }
       for (const [id, e] of Object.entries(envios)) {
         if (!e || !e.cuenta) continue;
         for (const [ci, c] of (Array.isArray(e.cajasDet) ? e.cajasDet : []).entries()) {
@@ -35129,35 +35149,71 @@ async function main() {
             if (!it || !it.prodId || !(it.u > 0)) continue;
             const uR = Math.max(0, it.u - (entE[`${id}__${ci}|${it.prodId}|${it.variante || ''}`] || 0)); if (!(uR > 0)) continue;
             const k = it.prodId + '__' + sidE(e.cuenta);
-            (cam[k] = cam[k] || []).push({ u: uR, fecha: e.fecha || '?', v: it.variante || '' });
+            for (const kk of it.variante ? [k, k + '__v__' + sidE(it.variante)] : [k]) (cam[kk] = cam[kk] || []).push({ u: uR, fecha: e.fecha || '?', v: it.variante || '' });
           }
         }
       }
-      // días con stock en los últimos 14 (para no dividir por días en cero)
+      // DÍAS CON STOCK (revisión 9): del registro hora por hora (`cyc/stocklog/cambios`), misma cuenta que `diasStock` /
+      // `ventana` de `calcCerebro`: las ventas cuentan sólo desde que el registro mira esa clave. Sin registro de la clave
+      // (o si no se pudo leer) cae a días corridos desde que volvió el stock (`cyc/stockhist`) y el renglón lo dice (📅).
+      let slogE = null; try { slogE = (await db.get('cyc/stocklog/cambios')) || {}; } catch { slogE = null; }
+      if (!slogE) console.log('⚠️ no pude leer el registro de stock hora por hora: el ritmo va por días corridos (📅) en todas');
       const sh = (await db.get('cyc/stockhist').catch(() => null)) || {};
-      const filas = [];
-      for (const [k, st0] of Object.entries(inv)) {
-        if (k.includes('__v__')) continue;
-        const i = k.indexOf('__'); if (i < 0) continue;
-        const pid = k.slice(0, i), cta = k.slice(i + 2); if (/oficina/i.test(cta)) continue;
-        const st = Math.max(0, parseInt(st0) || 0), vv = V[k]; if (!vv || vv.u14 < 2) continue;
+      const diasStockE = (k, t0, t1) => {
+        const cs = Object.entries((slogE || {})[k] || {}).map(([t, v]) => [Number(t), Number(v)]).filter(([t]) => t > 0).sort((x, y) => x[0] - y[0]);
+        if (!cs.length || cs[0][0] > t1) return null;
+        let est = null; for (const [t, v] of cs) if (t <= t0) est = v;
+        let ms = 0, desdeS = Math.max(t0, cs[0][0]);
+        for (const [t, v] of cs) { if (t <= t0 || t > t1) continue; if (est === 1) ms += t - desdeS; est = v; desdeS = t; }
+        if (est === 1) ms += t1 - desdeS;
+        return ms / 864e5;
+      };
+      const ritmo14 = (k, vv) => {
+        const t0 = ahora - 14 * 864e5;
+        const cs = Object.keys((slogE || {})[k] || {}).map(Number).filter((t) => t > 0);
+        if (cs.length) {
+          const desdeR = Math.max(t0, Math.min(...cs));
+          const d = desdeR < ahora ? diasStockE(k, desdeR, ahora) : null;
+          if (d != null && d >= 3) { const u = vv.vts.filter(([t]) => t >= desdeR).reduce((s2, [, q]) => s2 + q, 0); return { r: u / d, d, cal: false }; }
+        }
+        // Respaldo: días corridos desde que volvió el stock (la cuenta de antes).
         const h = sh[k] || {}; const desde = Number(h.desde) || 0;
-        // ventana: los últimos 14 días, o desde que volvió el stock si fue después (ventas y días de la MISMA ventana)
-        const ini = Math.max(ahora - 14 * 864e5, desde && !h.aprox ? desde : 0);
+        const ini = Math.max(t0, desde && !h.aprox ? desde : 0);
         const dCon = Math.max(1, (ahora - ini) / 864e5);
         const uVen = vv.vts.filter(([t]) => t >= ini).reduce((s2, [, q]) => s2 + q, 0);
-        const r14 = (dCon >= 3 ? uVen / dCon : vv.u14 / 14), r3 = vv.u3 / 3;
+        return dCon >= 3 ? { r: uVen / dCon, d: dCon, cal: true } : { r: vv.u14 / 14, d: 14, cal: true };
+      };
+      // Qué se juzga: cada producto × cuenta con ventas en 30 días. Si tiene stock POR COLOR (claves `__v__` en el
+      // inventario) se juzga cada color solo y NO el total (sumado tapaba un color agotado con otro sobrado).
+      const conColor = new Set(); for (const k of Object.keys(inv)) { const iv = k.indexOf('__v__'); if (iv > 0) conColor.add(k.slice(0, iv)); }
+      const unidades = [];
+      for (const k of Object.keys(V)) {
+        if (k.includes('__v__')) { if (conColor.has(k.slice(0, k.indexOf('__v__')))) unidades.push(k); }
+        else if (!conColor.has(k)) unidades.push(k);
+      }
+      const nomK = (k) => { const i = k.indexOf('__'), iv = k.indexOf('__v__'); const pid = k.slice(0, i); return (pName[pid] || pid) + ' · ' + (iv > 0 ? k.slice(i + 2, iv) + ' · ' + k.slice(iv + 5).replace(/_/g, ' ') : k.slice(i + 2)); };
+      const filas = [], fueraPocas = [], fueraSinClave = []; let juzgadas = 0;
+      for (const k of unidades) {
+        const i = k.indexOf('__'), iv = k.indexOf('__v__');
+        const pid = k.slice(0, i), cta = iv > 0 ? k.slice(i + 2, iv) : k.slice(i + 2); if (/oficina/i.test(cta)) continue;
+        const vv = V[k];
+        if (!(k in inv)) { fueraSinClave.push(k); continue; }
+        if (vv.u14 < 2) { fueraPocas.push(k); continue; }
+        juzgadas++;
+        const st = Math.max(0, parseInt(inv[k]) || 0);
+        const rr = ritmo14(k, vv), r14 = rr.r, r3 = vv.u3 / 3;
         const alc = r14 > 0 ? st / r14 : Infinity;
         if (alc > dMax) continue;
-        const ofi = Math.max(0, parseInt(inv[pid + '__' + sidE('Oficina Mati')]) || 0);
-        filas.push({ k, pid, cta, st, r14, r3, alc, u14: vv.u14, u30: vv.u30, ofi, cam: cam[k] || [] });
+        const ofiK = iv > 0 ? pid + '__' + sidE('Oficina Mati') + '__v__' + k.slice(iv + 5) : pid + '__' + sidE('Oficina Mati');
+        const ofi = Math.max(0, parseInt(inv[ofiK]) || 0);
+        filas.push({ k, pid, cta, color: iv > 0 ? k.slice(iv + 5) : '', st, r14, dCon: rr.d, cal: rr.cal, r3, alc, u14: vv.u14, u30: vv.u30, ofi, cam: cam[k] || [] });
       }
       filas.sort((a, b) => a.alc - b.alc);
       // precio de hoy de cada publicación activa de esos productos, leído de ML
       const tokE = {};
       for (const label of labels) { const acc = accounts[label]; if (!acc?.refresh_token) continue; try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() }); tokE[label] = t.access_token; } catch { console.log(`(${label}: no pude entrar)`); } }
       const pubs = {};
-      for (const f of filas) pubs[f.k] = Object.entries(links).filter(([m, e]) => e && e.prodId === f.pid && sidE(e.cuenta || '') === f.cta && !e.oculta && !e.noVendemosMas && e.status !== 'closed').map(([m]) => m);
+      for (const f of filas) pubs[f.k] = Object.entries(links).filter(([m, e]) => e && e.prodId === f.pid && sidE(e.cuenta || '') === f.cta && !e.ignored && !e.noVendemosMas && e.status !== 'closed' && (!f.color || sidE(colorDeLink(e)) === f.color)).map(([m]) => m);
       const vivo = {};
       for (const label of Object.keys(tokE)) {
         const ids = [...new Set(Object.values(pubs).flat().filter((m) => (links[m] || {}).cuenta === label))];
@@ -35167,12 +35223,13 @@ async function main() {
       }
       const med = (a) => { if (!a || !a.length) return null; const b = [...a].sort((x, y) => x - y); return b[Math.floor(b.length / 2)]; };
       console.log(`=== 🔥 ESCASEZ · lo que vende y alcanza ${dMax} días o menos en Full (${filas.length}) ===`);
-      console.log('(ritmo = ventas de 14 días ÷ días con stock · la oficina NO cuenta hasta que sale la caja)\n');
+      console.log('(ritmo = ventas de 14 días ÷ días CON stock del registro hora por hora · 📅 = esa clave no tiene registro: ÷ días corridos desde que volvió el stock · cada color se juzga solo · la oficina NO cuenta hasta que sale la caja)\n');
       for (const f of filas) {
         const camU = f.cam.reduce((s2, c) => s2 + c.u, 0);
         const camTxt = camU ? `🚚 despachadas sin marcar ${camU} u. (${f.cam.map((c) => c.fecha + (c.v ? ' ' + c.v : '') + ' ' + c.u + (c.fecha !== '?' && (ahora - Date.parse(c.fecha)) / 864e5 > 9 ? ' ⚠️ +9 d: ¿ya llegó? mirar cajasllegaron' : '')).join(' · ')})` : '🚫 sin caja despachada';
-        console.log(`■ ${pName[f.pid] || f.pid} · ${f.cta} · ${f.st} u. en Full · ${f.r14.toFixed(2)}/día (${f.u14} u. en 14 d · ${f.u30} en 30 d · últimos 3 d ${f.r3.toFixed(1)}/día) · alcanza ${f.alc === Infinity ? '∞' : f.alc.toFixed(1)} d`);
+        console.log(`■ ${pName[f.pid] || f.pid}${f.color ? ' · 🎨 ' + f.color.replace(/_/g, ' ') : ''} · ${f.cta} · ${f.st} u. en Full · ${f.r14.toFixed(2)}/día${f.cal ? ' 📅' : ''} (${f.u14} u. en 14 d · ${f.dCon.toFixed(1)} d ${f.cal ? 'corridos' : 'con stock'} · ${f.u30} en 30 d · últimos 3 d ${f.r3.toFixed(1)}/día) · alcanza ${f.alc === Infinity ? '∞' : f.alc.toFixed(1)} d`);
         console.log(`   ${camTxt}${f.ofi ? ' · oficina ' + f.ofi + ' u.' : ''}`);
+        if (f.color && !(pubs[f.k] || []).length) console.log('   (ninguna publicación viva nombra este color: mirarlo con fijarvar)');
         for (const m of pubs[f.k]) {
           const b = vivo[m] || {}, e = links[m] || {};
           const pv = med(precioV[m]);
@@ -35180,6 +35237,12 @@ async function main() {
         }
       }
       if (!filas.length) console.log('Nada se queda sin stock en ese plazo.');
+      // Lo que quedó afuera, con nombre (revisión 9: un cero sin explicación parece una buena noticia).
+      const sinColTxt = Object.entries(sinColorU).filter(([k]) => conColor.has(k));
+      console.log(`\nMiré ${juzgadas} de ${unidades.length} producto×cuenta (o color) con ventas en 30 d · afuera: ${fueraPocas.length} con menos de 2 ventas en 14 d · ${fueraSinClave.length} sin clave de stock en el inventario`);
+      if (fueraSinClave.length) console.log(`   sin clave de stock: ${fueraSinClave.slice(0, 12).map(nomK).join(' | ')}${fueraSinClave.length > 12 ? ` (y ${fueraSinClave.length - 12} más…)` : ''}`);
+      if (fueraPocas.length) console.log(`   menos de 2 ventas en 14 d: ${fueraPocas.slice(0, 12).map(nomK).join(' | ')}${fueraPocas.length > 12 ? ` (y ${fueraPocas.length - 12} más…)` : ''}`);
+      if (sinColTxt.length) console.log(`   ventas sin color identificado (no entran en ningún color): ${sinColTxt.slice(0, 10).map(([k, u]) => nomK(k) + ' ' + u + ' u.').join(' | ')}${sinColTxt.length > 10 ? ` (y ${sinColTxt.length - 10} más…)` : ''}`);
       return;
     }
 
@@ -35188,7 +35251,16 @@ async function main() {
       const ahoraI = Date.now(), desde = ahoraI - hrs * 3600e3;
       const hl = (t) => new Date(t - 3 * 3600e3).toISOString().slice(5, 16).replace('T', ' ');
       const corta = (t, n) => String(t || '').replace(/\s+/g, ' ').replace(/\d{9,}/g, (m) => '…' + m.slice(-4)).slice(0, n);
-      const [links, vp, ap, alog] = await Promise.all(['cyc/mllinks', 'cyc/ventaprod', 'cyc/autoprecio', 'mlapi/alertaslog'].map((r) => db.get(r).then((v) => v || {}).catch(() => ({}))));
+      // Revisión 9 (13/10/2026): una lectura que falla NO es "no hubo ventas". Antes `.catch(() => ({}))` dejaba el
+      // informe entero diciendo 0 ventas y 0 publicaciones. Sin publicaciones o sin ventas no se arma; sin autoprecio o
+      // sin el registro de avisos sale, pero diciendo qué falta.
+      const FALLO_I = Symbol('fallo');
+      const rutasI = ['cyc/mllinks', 'cyc/ventaprod', 'cyc/autoprecio', 'mlapi/alertaslog'];
+      const RI = await Promise.all(rutasI.map((r) => db.get(r).then((v) => v || {}).catch(() => FALLO_I)));
+      for (const i of [0, 1]) if (RI[i] === FALLO_I) { console.log(`⚠️ NO LEÍ ${rutasI[i]}: no armo el informe a medias`); return; }
+      for (const i of [2, 3]) if (RI[i] === FALLO_I) { console.log(`⚠️ no leí ${rutasI[i]}: ${i === 2 ? 'la sección 3 (lo que decidí) sale vacía' : 'los avisos salen sólo del registro del cerebro'}`); RI[i] = {}; }
+      const [links, vp, ap, alog] = RI;
+      setDevLive(vp);
       console.log(`=== 💭 INFORME PARA CLAUDE · últimas ${hrs} h · ${hl(ahoraI)} (hora de acá) ===`);
       // 1) Avisos: TODOS los que armó el robot, también los que el filtro no mandó a Telegram (`info`: pasos de la
       // noche que fallaron, promos no leídas, etc.). La auditoría del 08/10 vio que `alertaslog` sólo guarda lo que
@@ -35198,7 +35270,7 @@ async function main() {
       const cav = [];
       for (const dd of diasAv) { try { for (const x of Object.values((await db.get('mlapi/cerebroavisos/' + dd)) || {})) if (x && x.ts >= desde) cav.push(x); } catch { /* */ } }
       const al = cav.length ? cav.sort((a, b) => a.ts - b.ts) : Object.values(alog).filter((x) => x && x.ts >= desde).sort((a, b) => a.ts - b.ts).map((x) => ({ ...x, va: true }));
-      console.log(`\n── 1 · AVISOS DEL ROBOT (${al.length} · ${al.filter((x) => x.va).length} salieron por Telegram) ──`);
+      console.log(`\n── 1 · AVISOS DEL ROBOT (${al.length} · ${al.filter((x) => x.va).length} salieron por Telegram)${al.length > 25 ? ` · muestro los últimos 25 de ${al.length}` : ''} ──`);
       for (const x of al.slice(-25)) console.log(`${x.va ? '📨' : '🔇'} ${hl(x.ts)} ${corta(String(x.t || '').replace(/<[^>]+>/g, ''), 220)}${x.va ? '' : ' · (no salió: ' + corta(x.por, 40) + ')'}`);
       // 2) Ventas
       const ventasMla = {}; const vtsTodas = [];
@@ -35264,22 +35336,32 @@ async function main() {
       const nuevas = Object.entries(links).filter(([m, e]) => /^MLA/.test(m) && e && Number(e.altaTs) >= desde);
       console.log(`\n── 6 · PUBLICACIONES NUEVAS (${nuevas.length}) ──`);
       for (const [m, e] of nuevas.slice(0, 20)) console.log(`· ${m} · ${e.cuenta} · ${corta(e.title, 50)} · ${e.prodId ? 'con ficha' : '⚠️ SIN FICHA'} · ${e.status || '?'}`);
+      if (nuevas.length > 20) console.log(`  (y ${nuevas.length - 20} más…)`);
       // 09/10/2026, "vincula siempre vos": TODAS las publicaciones vivas sin ficha, no sólo las de
       // estas horas, con lo que se parece (dato, no decisión). Se vinculan con vincular:<MLA>=<id>:go.
       const sinFichaV = Object.entries(links).filter(([m, e]) => /^MLA/.test(m) && e && !e.prodId && !e.ignored && !e.noVendemosMas && /^(active|paused)$/.test(String(e.status || '')));
       console.log(`   vivas SIN ficha para vincular: ${sinFichaV.length}`);
       for (const [m, e] of sinFichaV.slice(0, 40)) console.log(`   ⚠️ ${m} · ${e.cuenta} · ${e.status} · ${corta(e.title, 50)}${Array.isArray(e.candidatos) && e.candidatos.length ? ' · se parece a: ' + e.candidatos.slice(0, 3).map((c) => `${corta(c.name, 28)} (${c.id})`).join(' | ') : ''}`);
+      if (sinFichaV.length > 40) console.log(`   (y ${sinFichaV.length - 40} más…)`);
       // 7) Canceladas, reclamos y ventas sin costo de estas horas (la plata que se va o que no se mide)
       const malas = []; const sinCosto = {};
       const prodIdx = {}; for (const p0 of (Array.isArray(products) ? products : Object.values(products || {}))) if (p0 && p0.id) prodIdx[p0.id] = p0;
-      for (const ents of Object.values(vp)) for (const v of Object.values(ents || {})) {
-        if (!v) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ts < desde) continue;
-        if (v.cancelada) malas.push(`${v.tipoCancelacion === 'reclamo' ? 'RECLAMO' : (v.tipoCancelacion || 'cancelada')} · ${v.cuenta || '?'} · ${corta(v.prod, 40)} · ${money(Number(v.total) || Number((v.antesCancel || {}).total) || 0)}`);
-        else { const pp = v.prodId && prodIdx[v.prodId]; if (!pp || !(Number(pp.costUSD) > 0 || Number(pp.costFullUSD) > 0)) sinCosto[corta(v.prod, 40)] = (sinCosto[corta(v.prod, 40)] || 0) + (Number(v.qty) || 1); }
+      // Revisión 9 (13/10/2026): "sin costo" con la MISMA regla de la web (`armarCostoWeb(...).sinCosto`, la de
+      // `ventaSinCostoVP`), no una más angosta que miraba sólo la ficha. Y las canceladas por CUÁNDO se cancelaron
+      // (`canceladaTs`), no por el día de la venta: una venta de hace 5 días cancelada hoy no salía nunca.
+      let costoDeI = null; try { costoDeI = await armarCostoWeb(db, vp); } catch (eA) { console.log('⚠️ no pude armar el costo como la web (' + String(eA.message || eA).slice(0, 60) + '): no listo las vendidas sin costo'); }
+      for (const [dkV, ents] of Object.entries(vp)) for (const v of Object.values(ents || {})) {
+        if (!v) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0;
+        if (v.cancelada) { if ((Number(v.canceladaTs) || ts) >= desde) malas.push(`${v.tipoCancelacion === 'reclamo' ? 'RECLAMO' : (v.tipoCancelacion || 'cancelada')} · ${v.cuenta || '?'} · ${corta(v.prod, 40)} · ${money(Number(v.total) || Number((v.antesCancel || {}).total) || 0)}${Number(v.canceladaTs) > 0 && ts < desde ? ' · venta del ' + hl(ts).slice(0, 5) : ''}`); continue; }
+        if (ts < desde) continue;
+        if (costoDeI && costoDeI(v, dkV).sinCosto) sinCosto[corta(v.prod, 40)] = (sinCosto[corta(v.prod, 40)] || 0) + (Number(v.qty) || 1);
       }
-      console.log(`\n── 7 · CANCELADAS Y RECLAMOS (${malas.length}) · VENDIDAS SIN COSTO O SIN FICHA (${Object.keys(sinCosto).length}) ──`);
+      const nSinC = Object.keys(sinCosto).length;
+      console.log(`\n── 7 · CANCELADAS Y RECLAMOS (${malas.length}) · VENDIDAS SIN COSTO O SIN FICHA (${costoDeI ? nSinC : '?'}) ──`);
       for (const x of malas.slice(0, 15)) console.log('· ' + x);
+      if (malas.length > 15) console.log(`  (y ${malas.length - 15} canceladas/reclamos más…)`);
       for (const [n, q] of Object.entries(sinCosto).slice(0, 15)) console.log(`· sin costo/ficha: ${n} · ${q} u.`);
+      if (nSinC > 15) console.log(`  (y ${nSinC - 15} productos sin costo más…)`);
       // 7b) RECLAMOS ABIERTOS EN ML Y MENSAJES SIN LEER (auditoría del 10/10/2026: el `chequeo` los veía
       // —"reclamo de 2 días, todavía podés contestarlo"— y el informe no: la sección 7 sólo mira ventas
       // canceladas de estas horas, y un reclamo abierto hace días que espera respuesta no es eso).
@@ -35290,6 +35372,9 @@ async function main() {
           const tk = tokI[label]; if (!tk) { errR.push(`${label}: sin entrar`); continue; }
           try {
             const c = await mlGet('/post-purchase/v1/claims/search?status=opened&limit=20', tk);
+            // Revisión 9: se piden 20 sin paginar; si ML dice que hay más, se dice cuántos quedaron sin leer.
+            const totCl = Number(c?.paging?.total) || 0, leidosCl = (c?.data || []).length;
+            if (totCl > leidosCl) errR.push(`${label}: leí ${leidosCl} de ${totCl} reclamos abiertos`);
             for (const x of (c?.data || [])) {
               const dias = x.date_created ? Math.floor((ahoraI - new Date(x.date_created).getTime()) / 864e5) : null;
               const acc2 = ((x.players || []).find((p) => p.role === 'respondent')?.available_actions || []).map((a) => a.action || a).filter(Boolean);
@@ -35304,7 +35389,7 @@ async function main() {
         const esperan = recl.filter((r) => r.acc2.length);
         console.log(`\n── 7b · RECLAMOS ABIERTOS (${recl.length} · ${esperan.length} esperan respuesta tuya) · MENSAJES DE COMPRADORES SIN LEER (${msgsI}) ──`);
         for (const r of recl.sort((a, b) => b.acc2.length - a.acc2.length)) console.log(`${r.acc2.length ? '⏰' : '·'} ${r.label} · ${r.prodR || '?'} · ${r.dias == null ? '?' : r.dias + ' d'} · ${r.razon}${r.etapa ? ' · ' + r.etapa : ''} · ${r.acc2.length ? 'podés: ' + r.acc2.join(', ') : 'lo maneja ML'}`);
-        if (errR.length) console.log('   ⚠️ no pude leer: ' + errR.join(' | '));
+        if (errR.length) console.log('   ⚠️ no pude leer todo: ' + errR.join(' | '));
       } catch (eR) { console.log('reclamos: no pude mirarlos · ' + eR.message); }
       // 8) Pedidos: lo que más plata pone en riesgo si no se compra
       try {
@@ -35312,17 +35397,29 @@ async function main() {
           .filter((x) => x && Number(x.cantidad) > 0).sort((x, y) => (Number(y.riesgoComprar ?? y.riesgo) || 0) - (Number(x.riesgoComprar ?? x.riesgo) || 0));
         console.log(`\n── 8 · PEDIDOS (${peds.length} con algo para comprar) · los que más plata ponen en riesgo ──`);
         for (const x of peds.slice(0, 12)) console.log(`· ${x._c} · ${corta(x.producto, 40)} · comprar ${x.cantidad} · ${x.estado || '?'} · en riesgo ${money(Math.round(Number(x.riesgoComprar ?? x.riesgo) || 0))}/mes${x.auto === false ? ' · a mano' : ''}`);
+        if (peds.length > 12) console.log(`  (y ${peds.length - 12} pedidos más…)`);
       } catch (eP2) { console.log('pedidos: no pude leerlos · ' + eP2.message); }
       // 9) Cajas en camino a Full: las viejas o con faltantes
       try {
         const envs = (await db.get('cyc/envios_full')) || {}; const abiertas = []; let nAb = 0;
-        for (const [id, env] of Object.entries(envs)) for (const c of (Array.isArray(env && env.cajasDet) ? env.cajasDet : [])) {
+        // Revisión 9 (13/10/2026): lo que ML YA dio de alta de cada caja (`cyc/cajasentrado/<envío>__<caja>`, lo anota
+        // el robot cada vuelta), con la MISMA regla que `cajaEntradoDe` de la web: sólo si el seguimiento coincide, y
+        // nunca más de lo que llevaba el renglón. Con "ML ya dio de alta N de M" se sabe si va `cajallego`.
+        let entC = null; try { entC = (await db.get('cyc/cajasentrado')) || {}; } catch { entC = null; }
+        const entradoCaja = (id, ci, c) => {
+          const r = entC && entC[id + '__' + ci]; if (!r || String(r.track || '') !== String(c.track || '')) return 0;
+          const its = Array.isArray(r.items) ? r.items : Object.values(r.items || {});
+          return (c.items || []).reduce((s2, it) => { if (!it) return s2; const x = its.find((y) => y && y.p === it.prodId && (y.v || '') === (it.variante || '')); return s2 + (x ? Math.max(0, Math.min(Number(x.q) || 0, Number(it.u) || 0)) : 0); }, 0);
+        };
+        for (const [id, env] of Object.entries(envs)) for (const [ci, c] of (Array.isArray(env && env.cajasDet) ? env.cajasDet : []).entries()) {
           if (!c || c.recibida) continue; nAb++;
           const t0 = Date.parse(String(c.fecha || env.fecha || '').slice(0, 10) + 'T15:00:00Z'); const dd = t0 > 0 ? (ahoraI - t0) / 864e5 : null;
-          if (dd == null || dd >= 9) abiertas.push(`· ${env.cuenta || '?'} · caja ${c.track ? '…' + String(c.track).slice(-4) : id} · ${(c.items || []).reduce((s2, it) => s2 + (Number(it && it.u) || 0), 0)} u. · ${dd == null ? 'sin fecha' : Math.round(dd) + ' días en camino'}`);
+          const uC = (c.items || []).reduce((s2, it) => s2 + (Number(it && it.u) || 0), 0), eC = entradoCaja(id, ci, c);
+          if (dd == null || dd >= 9) abiertas.push(`· ${env.cuenta || '?'} · caja ${c.track ? '…' + String(c.track).slice(-4) : id} · ${uC} u. · ${dd == null ? 'sin fecha' : Math.round(dd) + ' días en camino'} · ${entC ? `ML ya dio de alta ${eC} de ${uC}${uC > 0 && eC >= uC ? ' ✅ entró completa: cajallego' : ''}` : 'no pude leer lo que ML dio de alta'}`);
         }
         console.log(`\n── 9 · CAJAS EN CAMINO A FULL (${nAb} abiertas · ${abiertas.length} con 9+ días) ──`);
         for (const x of abiertas.slice(0, 15)) console.log(x);
+        if (abiertas.length > 15) console.log(`  (y ${abiertas.length - 15} cajas viejas más…)`);
       } catch (eC) { console.log('cajas: no pude leerlas · ' + eC.message); }
       // 10-14: lo que faltaba (auditoría del 08/10/2026). Preguntas, publicaciones frenadas por ML, caja de compra
       // perdida en lo que vende, quiebres de stock de lo que vende, reputación, promos sin leer y el dólar.
@@ -35344,31 +35441,45 @@ async function main() {
         const recientes = qsT.filter((x) => edad(x) <= 7).sort((a, b) => edad(a) - edad(b));
         const porC = {}; for (const x of qsT) porC[x._c] = (porC[x._c] || 0) + 1;
         console.log(`\n── 10 · PREGUNTAS SIN RESPONDER (${qsT.length} · ${Object.entries(porC).map(([k, v]) => k + ' ' + v).join(' · ')} · ${recientes.length} de los últimos 7 días · la más vieja ${qsT.length ? Math.round(Math.max(...qsT.map(edad))) : 0} d) ──`);
+        if (recientes.length > 20) console.log(`⚠️ muestro las 20 más nuevas de ${recientes.length} de los últimos 7 días: las otras ${recientes.length - 20} también hay que contestarlas (comando preguntas)`);
         for (const x of recientes.slice(0, 20)) console.log(`· q${x.id} · ${x._c} · ${x.item_id} · ${tit(x.item_id)} · ${(links[x.item_id] || {}).status || '?'} · hace ${edad(x) < 1 ? Math.round(edad(x) * 24) + ' h' : Math.round(edad(x)) + ' d'} · «${corta(taparQ(x.text), 160)}»`);
         if (qsT.length > recientes.length) console.log(`  (las ${qsT.length - recientes.length} de más de 7 días: comando preguntas)`);
       } catch (eQ) { console.log('preguntas: no pude leerlas · ' + eQ.message); }
       // 11) Publicaciones frenadas por ML (revisión, documentación, infracción) o cerradas, de lo que vende o tiene ficha
-      const raro = Object.entries(links).filter(([m, e]) => /^MLA/.test(m) && e && !e.oculta && !e.noVendemosMas && (e.status === 'under_review' || e.status === 'inactive' || /under_review|pending_documentation|waiting_for_patch|forbidden|picture_download_pending|moderation/.test(e.subStatus || '')) && (u30[m] || e.prodId));
+      const raro = Object.entries(links).filter(([m, e]) => /^MLA/.test(m) && e && !e.ignored && !e.noVendemosMas && (e.status === 'under_review' || e.status === 'inactive' || /under_review|pending_documentation|waiting_for_patch|forbidden|picture_download_pending|moderation/.test(e.subStatus || '')) && (u30[m] || e.prodId));
       console.log(`\n── 11 · PUBLICACIONES FRENADAS POR ML O CERRADAS (${raro.length}) ──`);
       for (const [m, e] of raro.sort((a, b) => (u30[b[0]] || 0) - (u30[a[0]] || 0)).slice(0, 15)) console.log(`· ${m} · ${e.cuenta} · ${tit(m)} · ${e.status}${e.subStatus ? ' (' + e.subStatus + ')' : ''} · vendió ${u30[m] || 0} u. en 30 d`);
+      if (raro.length > 15) console.log(`  (y ${raro.length - 15} más…)`);
       // 12) Caja de compra perdida en lo que vende, y quiebres: lo que vendía y hoy está sin stock
       const perd = Object.entries(links).filter(([m, e]) => e && e.status === 'active' && e.caja === 'losing' && (u30[m] || 0) >= 2).sort((a, b) => (u30[b[0]] || 0) - (u30[a[0]] || 0));
+      // El dólar del panel, para poner en pesos el costo (12 y 12c). Revisión 9 (13/10/2026): misma cuenta que el chequeo
+      // de la mañana (`costoPesos`, con los reclamos en vivo de `setDevLive`), no `p.cost`, que queda viejo o en $0.
+      let tcI = 0; try { tcI = parseFloat(await db.get('cyc/finanzas/tipo_cambio')) || 0; } catch { tcI = 0; }
+      const costoDeMlaI = (m) => { const p = prodIdx[(links[m] || {}).prodId]; return p && tcI > 0 ? costoPesos(p, 1, tcI).costo : 0; };
       console.log(`\n── 12 · PIERDEN LA CAJA DE COMPRA Y VENDÍAN (${perd.length}) ──`);
-      for (const [m, e] of perd.slice(0, 12)) console.log(`· ${m} · ${e.cuenta} · ${tit(m)} · ${u30[m]} u. en 30 d · ML pide ${e.cajaPtw ? money(e.cajaPtw) : '?'}${e.cajaTs ? ' (hace ' + Math.round((ahoraI - e.cajaTs) / 36e5) + ' h)' : ''}`);
-      const quie = Object.entries(links).filter(([m, e]) => e && !e.oculta && !e.noVendemosMas && /out_of_stock/.test(e.subStatus || '') && (u30[m] || 0) >= 2).sort((a, b) => (u30[b[0]] || 0) - (u30[a[0]] || 0));
+      if (!(tcI > 0)) console.log('   (sin dólar cargado: no comparo el precio de la caja contra el costo)');
+      for (const [m, e] of perd.slice(0, 12)) { const cM = costoDeMlaI(m), ptw = Number(e.cajaPtw) || 0; console.log(`· ${m} · ${e.cuenta} · ${tit(m)} · ${u30[m]} u. en 30 d · ML pide ${ptw ? money(ptw) : '?'}${e.cajaTs ? ' (hace ' + Math.round((ahoraI - e.cajaTs) / 36e5) + ' h)' : ''}${ptw > 0 && cM > 0 && ptw < cM ? ` · ⚠️ ese precio no deja ganancia (el costo de la ficha es ${money(cM)})` : ''}`); }
+      if (perd.length > 12) console.log(`  (y ${perd.length - 12} más…)`);
+      const quie = Object.entries(links).filter(([m, e]) => e && !e.ignored && !e.noVendemosMas && /out_of_stock/.test(e.subStatus || '') && (u30[m] || 0) >= 2).sort((a, b) => (u30[b[0]] || 0) - (u30[a[0]] || 0));
       console.log(`── 12b · SIN STOCK Y VENDÍAN (${quie.length} · ${quie.reduce((s2, [m]) => s2 + (u30[m] || 0), 0)} u. vendidas en 30 d) ──`);
       for (const [m, e] of quie.slice(0, 15)) console.log(`· ${m} · ${e.cuenta} · ${tit(m)} · ${u30[m]} u. en 30 d`);
+      if (quie.length > 15) console.log(`  (y ${quie.length - 15} más…)`);
       // 12c) CON STOCK EN FULL Y SIN VENDER EN 30 DÍAS (auditoría del 12/10/2026): el chequeo de la mañana lo mostraba
       // (40 publicaciones, $3,2M) y el informe no. Va por producto×cuenta (el stock de Full es de esa clave), con la plata
       // parada (costo de la ficha), si alguna publicación está activa y las visitas de 30 días: con menos de 20 no la ve
       // nadie y el precio no es el problema. Una venta en cualquier publicación del producto en esa cuenta lo saca.
       try {
-        const [invI, prodsI] = await Promise.all(['cyc/inventory', 'cyc/products'].map((r) => db.get(r).then((v) => v || {}).catch(() => ({}))));
+        // Revisión 9 (13/10/2026): si el inventario o las fichas no se leen, la sección NO sale (antes con `{}` decía
+        // "0 parados"); el costo es `costoPesos` × el dólar, como el chequeo, y sin dólar tampoco sale.
+        const FALLO_C = Symbol('fallo');
+        const [invI, prodsI] = await Promise.all(['cyc/inventory', 'cyc/products'].map((r) => db.get(r).then((v) => v || {}).catch(() => FALLO_C)));
+        if (invI === FALLO_C || prodsI === FALLO_C) throw new Error(`no leí ${invI === FALLO_C ? 'cyc/inventory' : 'cyc/products'}, no la armo a medias`);
+        if (!(tcI > 0)) throw new Error('no hay dólar cargado (cyc/finanzas/tipo_cambio): sin eso no pongo en pesos lo parado');
         const sidK = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
-        const costoI = {}; for (const p of Object.values(prodsI)) if (p && p.id) costoI[p.id] = Number(p.cost) || 0;
+        const costoI = {}; for (const p of Object.values(prodsI)) if (p && p.id) costoI[p.id] = costoPesos(p, 1, tcI).costo || 0;
         const grp = {};
         for (const [m, e] of Object.entries(links)) {
-          if (!/^MLA/.test(m) || !e || !e.prodId || e.oculta || e.noVendemosMas || e.status === 'closed') continue;
+          if (!/^MLA/.test(m) || !e || !e.prodId || e.ignored || e.noVendemosMas || e.status === 'closed') continue;
           const k = e.prodId + '__' + sidK(e.cuenta); const x = (grp[k] = grp[k] || { e, mlas: [], u30: 0, activa: false, vis: 0, visSabida: false });
           x.mlas.push(m); x.u30 += u30[m] || 0; if (e.status === 'active') x.activa = true;
           if (e.vis30 != null) { x.vis += Number(e.vis30) || 0; x.visSabida = true; }
@@ -35378,28 +35489,33 @@ async function main() {
         console.log(`── 12c · CON STOCK EN FULL Y SIN VENDER EN 30 DÍAS (${par.length} · ${money(par.reduce((s2, r) => s2 + r.plata, 0))} parados) ──`);
         for (const r of par.slice(0, 15)) console.log(`· ${r.x.mlas[0]}${r.x.mlas.length > 1 ? ' (+' + (r.x.mlas.length - 1) + ')' : ''} · ${r.x.e.cuenta} · ${tit(r.x.mlas[0])} · ${r.st} u. · ${money(r.plata)} · ${r.x.activa ? 'activa' : 'TODAS PAUSADAS'} · ${r.x.visSabida ? r.x.vis + ' visitas' + (r.x.vis < 20 ? ' → no la ve nadie' : '') : 'visitas ?'}`);
         if (par.length > 15) console.log(`  (y ${par.length - 15} más)`);
-      } catch (eS) { console.log('stock parado: no pude armarlo · ' + eS.message); }
+      } catch (eS) { console.log('── 12c · stock parado: no lo armo · ' + eS.message); }
       // 12d) UNIDADES CON PROBLEMA ADENTRO DE FULL (auditoría del 13/10/2026: el chequeo decía "6 u. con problema"
       // —perdidas (`lost`) o que ML no acepta (`notSupported`)— y el informe no). Una perdida la tiene que pagar ML;
       // una que no acepta hay que retirarla. Sólo en la revisión de 12 h o más: son ~400 consultas.
       if (hrs >= 12) try {
         const vistosI = new Set(), aMirarI = [];
+        // Revisión 9 (13/10/2026): también los depósitos de cada COLOR (`invVar`): las publicaciones con variantes adentro
+        // no tienen `inv` suelto y quedaban afuera enteras.
         for (const [m, e] of Object.entries(links)) {
-          if (!/^MLA/.test(m) || !e || !e.inv || !tokI[e.cuenta] && !tokI[String(e.cuenta || '').toLowerCase()]) continue;
-          const k = e.cuenta + '|' + e.inv; if (vistosI.has(k)) continue; vistosI.add(k);
-          aMirarI.push({ m, e });
+          if (!/^MLA/.test(m) || !e || !tokI[e.cuenta] && !tokI[String(e.cuenta || '').toLowerCase()]) continue;
+          for (const iv of [e.inv, ...Object.values(e.invVar || {})]) {
+            if (!iv) continue;
+            const k = e.cuenta + '|' + iv; if (vistosI.has(k)) continue; vistosI.add(k);
+            aMirarI.push({ m, e, iv });
+          }
         }
         const prob = []; let fallI = 0;
         const enTandaI = async (items, n, fn) => { let i = 0; await Promise.all(Array.from({ length: Math.min(n, items.length) }, async () => { for (;;) { const k = i++; if (k >= items.length) return; await fn(items[k], k); } })); };
-        await enTandaI(aMirarI, 4, async ({ m, e }) => {
+        await enTandaI(aMirarI, 4, async ({ m, e, iv }) => {
           try {
             const tk = tokI[e.cuenta] || tokI[String(e.cuenta || '').toLowerCase()];
-            const st = await mlGet('/inventories/' + e.inv + '/stock/fulfillment', tk);
+            const st = await mlGet('/inventories/' + iv + '/stock/fulfillment', tk);
             const na = Number(st?.not_available_quantity) || 0;
             if (na > 0) prob.push({ m, e, na, det: (st?.not_available_detail || []).map((d) => `${d.status || d.type || '?'} ${d.quantity || 0}`).join(', ') });
           } catch { fallI++; }
         });
-        console.log(`\n── 12d · UNIDADES CON PROBLEMA ADENTRO DE FULL (${prob.reduce((s2, x) => s2 + x.na, 0)} u.) · perdidas las paga ML, las que no acepta hay que retirarlas ──`);
+        console.log(`\n── 12d · UNIDADES CON PROBLEMA ADENTRO DE FULL (${prob.reduce((s2, x) => s2 + x.na, 0)} u.) · miré ${aMirarI.length} inventarios · perdidas las paga ML, las que no acepta hay que retirarlas ──`);
         for (const x of prob) console.log(`· ${x.m} · ${x.e.cuenta} · ${corta(x.e.title, 45)} · ${x.na} u. (${x.det || 'sin detalle'})`);
         if (fallI) console.log(`  ⚠️ ${fallI} de ${aMirarI.length} inventarios no contestaron: puede haber más`);
       } catch (eP) { console.log('unidades con problema en Full: no pude mirarlas · ' + eP.message); }
@@ -35410,7 +35526,10 @@ async function main() {
         console.log(`\n── 13 · REPUTACIÓN · PROMOS · DÓLAR ──`);
         console.log('· ' + Object.entries(rep).map(([k, r]) => `${k} ${String((r || {}).nivel || '?').replace(/^\d_/, '')}${(r || {}).power ? '/' + r.power : ''} reclamos ${pct((r || {}).reclamos)} cancel ${pct((r || {}).cancelaciones)} demoras ${pct((r || {}).demoras)}${(r || {}).ts && ahoraI - r.ts > 2 * 864e5 ? ' ⚠️ dato de hace ' + Math.round((ahoraI - r.ts) / 864e5) + ' d' : ''}`).join(' | '));
         const psl = (await db.get('mlapi/promosinleer')) || {};
-        console.log(`· promociones sin poder leer: ${Number(psl.n) || 0}${psl.ts ? ' (' + hl(psl.ts) + ')' : ''}`);
+        // Revisión 9 (13/10/2026): `n` son las VUELTAS seguidas (una por hora) con alguna sin leer, no las publicaciones;
+        // cuántas publicaciones quedaron sin leer está en `cant` (desde hoy).
+        const nPsl = Number(psl.n) || 0;
+        console.log(`· promociones: ${nPsl ? `${psl.cant != null ? Number(psl.cant) : '?'} publicaciones sin poder leer (hace ${nPsl} hora${nPsl === 1 ? '' : 's'} seguida${nPsl === 1 ? '' : 's'})${psl.errs ? ' · ML contestó: ' + psl.errs : ''}` : 'se leyeron todas en la última vuelta completa'}${psl.ts ? ' (' + hl(psl.ts) + ')' : ''}`);
         const tc = await db.get('cyc/finanzas/tipo_cambio');
         console.log(`· dólar del panel: ${tc || '⚠️ sin cargar'}`);
       } catch (eR) { console.log('reputación/promos/dólar: no pude leerlos · ' + eR.message); }
@@ -36974,15 +37093,19 @@ async function main() {
       if (!vp) { console.log('⚠️ no pude leer las ventas: no opino'); return; }
       setDevLive(vp);
       const costoDe = await armarCostoWeb(db, vp);
+      // Revisión 9 (13/10/2026): el piso sale de la configuración (`cyc/mlconfig/minPct`, hoy 25), no escrito a mano.
+      const PISO_V = await pisoConfig(db, 25);
       const hoy = Date.now(), desde = hoy - horas * 36e5, desdeRef = hoy - 45 * 864e5;
       const f = (n) => '$' + Math.round(n).toLocaleString('es-AR');
       const tsDe = (v) => Number(v.ts) || Date.parse(v.ts || '') || 0;
       // Referencia: neto por unidad de las ventas SUELTAS (una sola fila en la compra) por publicación y precio.
       const grupos = {}, ref = {}, canc = [];
       for (const [dk, dia] of Object.entries(vp)) for (const [id, v] of Object.entries(dia || {})) {
-        if (!v) continue; const ts = tsDe(v); if (ts < desdeRef) continue;
+        if (!v) continue; const ts = tsDe(v);
+        // Revisión 9: las canceladas por CUÁNDO se cancelaron (`canceladaTs`), no por el día de la venta.
+        if (v.cancelada) { if ((Number(v.canceladaTs) || ts) >= desde) canc.push(v); continue; }
+        if (ts < desdeRef) continue;
         if (ts >= desde) {
-          if (v.cancelada) { canc.push(v); continue; }
           const k = String(v.cuenta || '') + '|' + String(v.numVenta || v.saleId || id);
           (grupos[k] = grupos[k] || []).push({ v, dk, id, ts });
         }
@@ -36999,34 +37122,38 @@ async function main() {
       }
       const med = (a) => { const b = [...a].sort((x, y) => x - y); const m = b.length >> 1; return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; };
       const lista = Object.values(grupos).sort((a, b) => b[0].ts - a[0].ts);
-      console.log(`=== 🧾 VENTAS DE LAS ÚLTIMAS ${horas} H · ${lista.length} compras · ${canc.length} canceladas ===`);
-      console.log('(% con la cuenta de la web · "normal" = lo que deja esa publicación al mismo precio en sus ventas sueltas de 45 días)\n');
-      const raras = [];
+      const nEstV = lista.filter((g) => g.some(({ v }) => v.netoEstimado)).length;
+      console.log(`=== 🧾 VENTAS DE LAS ÚLTIMAS ${horas} H · ${lista.length} compras · ${canc.length} canceladas · ${nEstV} sin juzgar (neto estimado) ===`);
+      console.log(`(% con la cuenta de la web · piso ${PISO_V}% · "normal" = lo que deja esa publicación al mismo precio en sus ventas sueltas de 45 días)\n`);
+      const raras = [], sinCostoV = [];
       // VENTAS EN PROMO (12/10/2026, pedido suyo: *"quiero que cuando se venda algo en promo avise"*): lo que anota el
       // ciclo en `cyc/promoventa/<día>/<orden>` (cuánto fue el descuento y cuánto puso ML). Sin registro no se dice nada.
       const pvDias = {}; for (const g of lista) for (const { dk } of g) if (!(dk in pvDias)) pvDias[dk] = await db.get('cyc/promoventa/' + dk).catch(() => null);
       const enPromo = [];
       const promoDe = (g) => { let t = 0, s2 = 0; const vis = new Set(); for (const { v, dk } of g) { const oid = String(v.saleId || '').replace(/^s/, ''); const r = ((pvDias[dk] || {})[oid]); if (!r || !(Number(r.t) > 0)) continue; if (r.mla && v.mla && r.mla[v.mla]) { t += Number(r.mla[v.mla].t) || 0; s2 += Number(r.mla[v.mla].s) || 0; } else if (!vis.has(oid)) { vis.add(oid); t += Number(r.t) || 0; s2 += Number(r.s) || 0; } } return t > 0 ? { t, s: s2, ml: Math.max(0, t - s2) } : null; };
       for (const g of lista) {
-        let neto = 0, costo = 0, gest = 0, total = 0, normal = 0, hayNormal = true, est = false; const nombres = [];
+        let neto = 0, costo = 0, gest = 0, total = 0, normal = 0, hayNormal = true, est = false, sinC = false; const nombres = [];
         for (const { v, dk } of g) {
           const c = costoDe(v, dk); neto += Number(v.neto) || 0; costo += c.costo; gest += v.netoEstimado ? 0 : c.gest; total += Number(v.total) || 0;
+          if (c.sinCosto) sinC = true;   // revisión 9: sin ficha o sin costo → no hay % que medir (antes salía un % enorme con ✓)
           if (v.netoEstimado) est = true;
           const q = Number(v.qty) || 1, P = Math.round((Number(v.total) || 0) / q), r = (ref[v.mla] || {})[P];
           if (r && r.length >= 2) normal += med(r) * q; else hayNormal = false;
           nombres.push(`${q > 1 ? q + '× ' : ''}${String(v.prod || '').slice(0, 34)}`);
         }
-        const div = costo + gest, pct = div > 0 ? (neto - costo) / div * 100 : null;
-        const pctN = hayNormal && div > 0 ? (normal - costo) / div * 100 : null;
+        const div = costo + gest, pct = !sinC && div > 0 ? (neto - costo) / div * 100 : null;
+        const pctN = !sinC && hayNormal && div > 0 ? (normal - costo) / div * 100 : null;
         const v0 = g[0].v, hora = new Date(g[0].ts - 3 * 36e5).toISOString().slice(5, 16).replace('T', ' ');
-        const bajo = pct != null && pct < 25, menos = hayNormal && normal - neto > Math.max(0.03 * total, 150);
-        const marca = est ? '≈' : (bajo || menos) ? '⚠️' : '✓';
-        console.log(`${marca} ${hora} · ${v0.cuenta} · ${nombres.join(' + ')}${g.length > 1 ? ' (carrito)' : ''} · ${f(total)} · neto ${f(neto)} · ${pct == null ? 'sin costo' : pct.toFixed(0) + '%'}${pctN != null ? ` (normal ${pctN.toFixed(0)}%)` : ''}${(() => { const pr = promoDe(g); if (!pr) return ''; enPromo.push({ nom: nombres.join(' + '), cta: v0.cuenta, pr, pct }); return ` · 🏷️ EN PROMO: descuento ${f(pr.t)} (ML puso ${f(pr.ml)}, nosotros ${f(pr.s)})`; })()}`);
-        if (!est && (bajo || menos)) raras.push({ g, neto, normal, hayNormal, total });
+        const bajo = pct != null && pct < PISO_V, menos = !sinC && hayNormal && normal - neto > Math.max(0.03 * total, 150);
+        const marca = sinC ? '⚠️' : est ? '≈' : (bajo || menos) ? '⚠️' : '✓';
+        if (sinC) sinCostoV.push(`${v0.cuenta} · ${nombres.join(' + ')} · ${f(total)}`);
+        console.log(`${marca} ${hora} · ${v0.cuenta} · ${nombres.join(' + ')}${g.length > 1 ? ' (carrito)' : ''} · ${f(total)} · neto ${f(neto)} · ${pct == null ? (sinC ? 'sin costo/ficha ⚠️' : 'sin costo') : pct.toFixed(0) + '%'}${pctN != null ? ` (normal ${pctN.toFixed(0)}%)` : ''}${(() => { const pr = promoDe(g); if (!pr) return ''; enPromo.push({ nom: nombres.join(' + '), cta: v0.cuenta, pr, pct }); return ` · 🏷️ EN PROMO: descuento ${f(pr.t)} (ML puso ${f(pr.ml)}, nosotros ${f(pr.s)})`; })()}`);
+        if (!est && !sinC && (bajo || menos)) raras.push({ g, neto, normal, hayNormal, total });
       }
       console.log(enPromo.length ? `\n🏷️ ${enPromo.length} VENTA(S) EN PROMO O CON CUPÓN: ${enPromo.map((x) => `${x.cta} · ${x.nom} · ML puso ${f(x.pr.ml)}${x.pr.s > 0 ? ' · nosotros ' + f(x.pr.s) : ''} · ${x.pct == null ? 'sin costo' : x.pct.toFixed(0) + '%'}`).join(' | ')}` : '\n🏷️ Ninguna venta en promo o con cupón en este período.');
-      if (canc.length) console.log(`\nCanceladas: ${canc.map((v) => `${v.cuenta} · ${String(v.prod || '').slice(0, 30)} · ${f(v.total)}`).join(' | ')}`);
-      if (!raras.length) { console.log('\nNinguna venta rara: todas dejaron lo normal para su precio (o están estimadas y la noche las relee).'); return; }
+      if (canc.length) console.log(`\nCanceladas: ${canc.map((v) => `${v.cuenta} · ${String(v.prod || '').slice(0, 30)} · ${f(Number(v.total) || Number((v.antesCancel || {}).total) || 0)}`).join(' | ')}`);
+      if (sinCostoV.length) console.log(`\n=== ⚠️ ${sinCostoV.length} VENTA(S) PARA MIRAR · SIN COSTO O SIN FICHA (no hay % que medir: cargar el costo o vincular) ===\n${sinCostoV.map((x) => '· ' + x).join('\n')}`);
+      if (!raras.length) { console.log(`\nNinguna venta rara${sinCostoV.length ? ' (fuera de las sin costo)' : ''}: todas dejaron lo normal para su precio (o están estimadas y la noche las relee).`); return; }
       console.log(`\n=== ⚠️ ${raras.length} VENTA(S) PARA MIRAR · el motivo sale de los cargos de Mercado Pago ===`);
       const tok = await tokensCerebro(db);
       for (const r of raras) {
@@ -37054,7 +37181,7 @@ async function main() {
         }
         const totRet = Object.values(ret).reduce((a, x) => a + x, 0), gap = r.hayNormal ? r.normal - r.neto : null;
         // Si dejó lo normal para su precio, el motivo NO es de esta venta: es que el precio de hoy deja poco.
-        if (gap != null && gap <= Math.max(0.03 * r.total, 150)) motivos.push(`dejó lo normal para su precio: el problema es el PRECIO de hoy (con este costo no llega al 25%), no esta venta`);
+        if (gap != null && gap <= Math.max(0.03 * r.total, 150)) motivos.push(`dejó lo normal para su precio: el problema es el PRECIO de hoy (con este costo no llega al ${PISO_V}%), no esta venta`);
         if (gap == null && totRet <= r.total * 0.02) motivos.push(`sin otra venta igual para comparar · margen bajo con este precio y este costo (la retención de ${f(totRet)} es la de siempre)`);
         if ((gap == null ? totRet > r.total * 0.02 : gap > Math.max(0.03 * r.total, 150) && totRet > r.total * 0.01)) motivos.push(`retención de Ingresos Brutos ${f(totRet)} (${Object.entries(ret).filter(([, a]) => a >= 5).map(([pv, a]) => pv + ' ' + f(a)).join(', ')}): adelanto de impuesto según la provincia del comprador`);
         if (cuotas > 0) motivos.push(`cuotas a cargo nuestro ${f(cuotas)}`);
@@ -37074,15 +37201,18 @@ async function main() {
     if (/^cargosventa:/.test(String(process.env.BILLING_PROBE || ''))) {
       const pp = String(process.env.BILLING_PROBE).split(':');
       const mla = String(pp[1] || '').trim().toUpperCase(), dias = parseInt(pp[2]) || 14;
-      const vp = (await db.get('cyc/ventaprod').catch(() => null)) || {};
-      const desde = Date.now() - dias * 864e5, ventas = [];
+      // Revisión 9 (13/10/2026): si las ventas no se leen NO es "0 ventas": se dice y se corta.
+      const FALLO_CV = Symbol('fallo');
+      const vp = await db.get('cyc/ventaprod').then((x) => x || {}).catch(() => FALLO_CV);
+      if (vp === FALLO_CV) { console.log('⚠️ NO LEÍ cyc/ventaprod: no puedo listar las ventas (no es que no haya)'); return; }
+      const desde = Date.now() - dias * 864e5, ventas = []; let sinNumCV = 0;
       for (const dia of Object.values(vp)) for (const v of Object.values(dia || {})) {
         if (!v || String(v.mla || '').toUpperCase() !== mla) continue;
         const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ts < desde) continue;
-        const m = String(v.saleId || v.id || '').match(/(\d{6,})/); if (m) ventas.push({ v, ts, oid: m[1] });
+        const m = String(v.saleId || v.id || '').match(/(\d{6,})/); if (m) ventas.push({ v, ts, oid: m[1] }); else sinNumCV++;
       }
       ventas.sort((a, b) => b.ts - a.ts);
-      console.log(`=== CARGOS DE CADA VENTA · ${mla} · ${dias} días · ${ventas.length} ventas ===\n`);
+      console.log(`=== CARGOS DE CADA VENTA · ${mla} · ${dias} días · ${ventas.length} ventas${sinNumCV ? ` · ${sinNumCV} sin número de orden (cargadas a mano: no se pueden leer de ML)` : ''} ===\n`);
       if (!ventas.length) return;
       const tok = await tokensCerebro(db);
       const cta = String(ventas[0].v.cuenta || '');
@@ -37095,7 +37225,7 @@ async function main() {
         if (!o) { console.log(`${fecha} · ML no contestó la orden`); continue; }
         const its = (o.order_items || []).map((it) => `${it.quantity}×${f(it.unit_price)}${it.item?.id && it.item.id !== mla ? ' (otra publ.)' : ''}`).join(' + ');
         const fee = (o.order_items || []).reduce((a, it) => a + (Number(it.sale_fee) || 0) * (Number(it.quantity) || 1), 0);
-        console.log(`${fecha} · orden ${its} · total ${f(o.total_amount)} · comisión de la orden ${f(fee)} · ${o.pack_id ? 'CARRITO' : 'sola'} · guardado neto ${f(v.neto)}${v.netoEstimado ? ' (estimado)' : ''}`);
+        console.log(`${fecha} · orden ${its} · total ${f(o.total_amount)} · comisión de la orden ${f(fee)} · ${o.pack_id ? 'CARRITO' : 'sola'} · ${v.cancelada ? `CANCELADA (${v.tipoCancelacion || 'cancelada'})${v.antesCancel ? ' · antes neto ' + f(Number(v.antesCancel.neto) || 0) : ''}` : `guardado neto ${f(v.neto)}${v.netoEstimado ? ' (estimado)' : ''}`}`);
         for (const p of (o.payments || [])) {
           let b = null;
           try { const r = await fetch('https://api.mercadopago.com/v1/payments/' + p.id, { headers: { Authorization: 'Bearer ' + tk } }); b = await r.json(); } catch { b = null; }
@@ -40878,6 +41008,7 @@ async function main() {
   // Etapa 5: cuentas cuya vuelta de stock se cortó por un error a mitad: sus sumas quedaron parciales.
   const cuentaStockRota = new Set();
   const promoNoLeidas = [];   // publicaciones cuyas promociones ML no contestó en la vuelta completa (#22)
+  const promoErrs = {};       // revisión 9: por qué no contestó (código HTTP / código de ML) → cuántas
   // Las promos que entró Claude a propósito (cyc/promoclaude). Si no se pueden leer, esta vuelta NO se saca ninguna:
   // sacar la que él decidió le deshace una decisión; dejar una ajena una hora más se corrige en la vuelta siguiente.
   let promoClaude = null;
@@ -41734,6 +41865,9 @@ async function main() {
           let cur = null;
           try { cur = await db.get(`cyc/ventaprod/${h.dayKey}/${h.id}`); } catch { cur = null; }
           const _pc = { cancelada: true, tipoCancelacion: tipo, total: 0, neto: 0, costo: 0, costBaseUSD: 0 };
+          // Revisión 9 (13/10/2026): cuándo se canceló. El informe y `ventasraras` filtraban las canceladas por el día de
+          // la VENTA, así que una venta de hace 5 días cancelada hoy no salía nunca. Se guarda la primera vez y no se pisa.
+          if (!(cur && Number(cur.canceladaTs) > 0)) _pc.canceladaTs = Date.now();
           if (cur && !cur.antesCancel && (Number(cur.total) > 0 || Number(cur.neto) > 0)) {
             _pc.antesCancel = { total: Number(cur.total) || 0, neto: Number(cur.neto) || 0 };
           }
@@ -41977,8 +42111,8 @@ async function main() {
             const discounted = (b.original_price != null && b.original_price > b.price)
               || (Array.isArray(b.deal_ids) && b.deal_ids.length > 0);
             if (discounted || !SKIP_PRICES) {
-              const { removed, failed, sinLeer: promoSinLeer } = await removeStartedPromos(mla, t.access_token, promoClaude);
-              if (promoSinLeer && !SKIP_PRICES) promoNoLeidas.push(mla);
+              const { removed, failed, sinLeer: promoSinLeer, err: promoErr } = await removeStartedPromos(mla, t.access_token, promoClaude);
+              if (promoSinLeer && !SKIP_PRICES) { promoNoLeidas.push(mla); promoErrs[promoErr || '?'] = (promoErrs[promoErr || '?'] || 0) + 1; if (promoNoLeidas.length <= 5) console.log(`  (promos de ${mla}: ML no contestó · ${promoErr || '?'})`); }
               if (removed.length) {
                 await sendAlerta(`🏷️ <b>Descuento sacado</b>\n`
                   + `${map[mla].title || mla}\nCuenta: ${label}\n`
@@ -42097,7 +42231,8 @@ async function main() {
     try {
       const mem = (await db.get('mlapi/promosinleer')) || {};
       if (promoNoLeidas.length) {
-        console.log(`⚠️ Promociones: ${promoNoLeidas.length} publicación(es) que ML no contestó — no se sabe si tienen descuento (${promoNoLeidas.slice(0, 8).join(', ')}).`);
+        const errsTxt = Object.entries(promoErrs).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([k, c]) => `${k} ×${c}`).join(', ');
+        console.log(`⚠️ Promociones: ${promoNoLeidas.length} publicación(es) que ML no contestó — no se sabe si tienen descuento (${promoNoLeidas.slice(0, 8).join(', ')}) · respuestas de ML: ${errsTxt || '?'}.`);
         const n = (Number(mem.n) || 0) + 1;
         const hoyD = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
         let avisado = mem.avisado || '';
@@ -42105,8 +42240,9 @@ async function main() {
           const ok = await sendAlerta(`⚠️ <b>No puedo mirar las promociones de ${promoNoLeidas.length} publicación(es)</b>\nHace ${n} horas seguidas que ML no me contesta si tienen descuento, así que no las puedo sacar.\n${promoNoLeidas.slice(0, 10).join(' · ')}`, { info: true });
           if (ok) avisado = hoyD;
         }
-        await db.set('mlapi/promosinleer', { n, ts: Date.now(), avisado });
-      } else if (mem.n) await db.set('mlapi/promosinleer', { n: 0, ts: Date.now(), avisado: mem.avisado || '' });
+        // `n` = vueltas completas seguidas con alguna sin leer · `cant` = cuántas publicaciones en ESTA vuelta (revisión 9).
+        await db.set('mlapi/promosinleer', { n, cant: promoNoLeidas.length, errs: errsTxt.slice(0, 120), ts: Date.now(), avisado });
+      } else if (mem.n || mem.cant) await db.set('mlapi/promosinleer', { n: 0, cant: 0, ts: Date.now(), avisado: mem.avisado || '' });
     } catch { /* se mira en la vuelta siguiente */ }
   }
   // guardar los precios que subimos solos (para no pisarlos en loop)
