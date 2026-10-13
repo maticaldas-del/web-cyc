@@ -29813,6 +29813,28 @@ async function main() {
       const hoyK = dayKeyFromISO(Date.now());
       const kAgo = (n) => dayKeyFromISO(Date.now() - n * 864e5);
       const k7 = kAgo(7), k37 = kAgo(37);
+      // Todo lo demás que puede cambiar la lectura de un número (13/10/2026, él: "pensá en todas las miniopciones que
+      // pueden llegar a suceder, y tiene que ser así en todos los productos"). Si una fuente no se lee, se dice abajo.
+      const sidLu = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
+      const noLeido = [];
+      const leer = async (ruta) => { try { return (await db.get(ruta)) || {}; } catch { noLeido.push(ruta); return {}; } };
+      const invL = await leer('cyc/inventory'), envL = await leer('cyc/envios_full'), histL = await leer('cyc/stockhist');
+      const promoL = await leer('cyc/promoclaude'), ccL = await leer('cyc/claudecambios'), apL = await leer('cyc/autoprecio');
+      const nosubL = await leer('cyc/nosubir'), pisoL = await leer('cyc/claudepiso'), vpL = await leer('cyc/ventaprod');
+      const caminoL = {};
+      for (const ev of Object.values(envL)) { if (!ev || !ev.cuenta) continue; for (const c of (Array.isArray(ev.cajasDet) ? ev.cajasDet : [])) { if (!c || c.recibida) continue; for (const it of (c.items || [])) { if (!it || !it.prodId || !(Number(it.u) > 0)) continue; const kP = it.prodId + '__' + sidLu(ev.cuenta); const x = (caminoL[kP] = caminoL[kP] || { u: 0, vars: {} }); x.u += Number(it.u); if (it.variante) x.vars[sidLu(it.variante)] = (x.vars[sidLu(it.variante)] || 0) + Number(it.u); } } }
+      const ofiL = (pid, vari) => { let n = 0; for (const [k, v] of Object.entries(invL)) { if (!k.startsWith(pid + '__Oficina')) continue; const esV = k.includes('__v__'); if (vari ? (esV && k.endsWith('__v__' + sidLu(vari))) : !esV) n += Math.max(0, parseInt(v) || 0); } return n; };
+      // Decisiones de precio que tomé yo (o el robot viejo) en 7 días: un cambio de precio sin ninguna de éstas lo hizo ML o alguien a mano.
+      const tsK7 = Date.now() - 7 * 864e5; const decididoP = new Set();
+      for (const c of Object.values(ccL)) if (c && c.mla && Number(c.ts) >= tsK7) decididoP.add(c.mla);
+      for (const [m, a] of Object.entries(apL)) if (a && Number(a.ts) >= tsK7) decididoP.add(m);
+      for (const [m, pc] of Object.entries(promoL)) if (pc && Number(pc.ts) >= tsK7) decididoP.add(m);
+      // Cancelaciones y reclamos por publicación (7 d y 30 d antes).
+      const cancL = {};
+      for (const [dk, dia] of Object.entries(vpL)) { if (!/^\d{4}_\d{2}_\d{2}$/.test(dk) || dk < k37) continue; for (const v of Object.values(dia || {})) { if (!v || !v.mla || !v.cancelada) continue; const x = (cancL[v.mla] = cancL[v.mla] || { c7: 0, r7: 0, cA: 0 }); const q = Number(v.qty) || 1; const recl = v.tipoCancelacion === 'reclamo' || v.tipoCancelacion === 'perdida'; if (dk >= k7) { x.c7 += q; if (recl) x.r7 += q; } else x.cA += q; } }
+      // La próxima fecha de regalo dentro de 30 días.
+      const yH = new Date().getUTCFullYear(); const proxFecha = [...fechasEspeciales(yH), ...fechasEspeciales(yH + 1)].filter((f) => f.regalo && f.ts > Date.now() && f.ts - Date.now() < 30 * 864e5).sort((a, b) => a.ts - b.ts)[0] || null;
+      const MALOS_SUB = /under_review|waiting_for_patch|pending_documentation|poor_quality|forbidden|suspended|picture|moderation/i;
       const fm = (n) => '$' + Math.round(n).toLocaleString('es-AR');
       const filas = [];
       let miradas = 0, sinLinea = 0;
@@ -29861,9 +29883,53 @@ async function main() {
         if (caja7 && cajaHoy && caja7 !== cajaHoy && (cajaHoy === 'p' ? frenó : caja7 === 'p')) flags.push(`caja: ${caja7 === 'g' ? 'la ganaba' : caja7 === 'c' ? 'compartía' : 'la perdía'} → ${cajaHoy === 'g' ? 'la gana' : cajaHoy === 'c' ? 'comparte' : 'la pierde'}`);
         const cambioP = p7 && pHoy && Math.abs(pHoy / p7 - 1) >= 0.03 ? `precio ${fm(p7)} → ${fm(pHoy)} en 7 d` : '';
         if (cambioP && flags.length) flags.push(cambioP);
-        if (stHoy > 0 && A.ritmo && stHoy / A.ritmo < 7) flags.push(`se queda sin stock en ~${Math.round(stHoy / A.ritmo)} d`);
-        filas.push({ mla, cta: e.cuenta || '?', tit: String(e.title || pr.name).slice(0, 44), A, B, stHoy, pHoy, cajaHoy, diasSin, flags });
+        // ── STOCK: lo que hay, lo que viaja, lo que está en la oficina, lo que sobra y lo que desapareció ──
+        const kPL = e.prodId + '__' + sidLu(e.cuenta || '');
+        const cam = caminoL[kPL] ? (e.variant ? (caminoL[kPL].vars[sidLu(e.variant)] || 0) : caminoL[kPL].u) : 0;
+        const ofi = ofiL(e.prodId, e.variant || null);
+        const repo = (cam ? `${cam} en camino` : '') + (cam && ofi ? ' · ' : '') + (ofi ? `${ofi} en la oficina` : '');
+        const ritmoRef = A.ritmo || B.ritmo || 0;
+        if (stHoy <= 0 && ritmoRef > 0 && A.plataDia > 0) flags.push(`AGOTADA: dejás de ganar ~${fm(A.plataDia)} por día · ${repo || 'sin nada en camino ni en la oficina'}`);
+        else if (stHoy > 0 && ritmoRef && stHoy / ritmoRef < 7) flags.push(`se queda sin stock en ~${Math.round(stHoy / ritmoRef)} d · ${repo || 'sin reposición a la vista: estirar (escasez)'}`);
+        else if (stHoy > 0 && ritmoRef && stHoy / ritmoRef < 14 && !cam) flags.push(`stock para ~${Math.round(stHoy / ritmoRef)} d y nada en camino${ofi ? ` (hay ${ofi} en la oficina: mandar)` : ''}`);
+        if (stHoy > 0 && ritmoRef && stHoy / ritmoRef > 90) flags.push(`sobra: ${stHoy} u. = ${Math.round(stHoy / ritmoRef)} d de venta`);
+        if (stHoy > 0 && !uT) { const h = histL[kPL]; const edadR = h && h.desde ? Math.floor((Date.now() - h.desde) / 864e5) : null; if (edadR != null && edadR >= 14) flags.push(`nunca vendió en 37 d con ${stHoy} u. adentro (en Full hace ${edadR}${h.aprox === false ? '' : '+'} d)`); }
+        { const h = histL[kPL]; const edadR = h && h.desde && h.aprox === false ? Math.floor((Date.now() - h.desde) / 864e5) : null; if (stHoy > 0 && edadR != null && edadR >= 50 && ritmoRef * 30 < stHoy) flags.push(edadR >= 60 ? `paga almacenamiento: en Full hace ${edadR} d y no se vende en un mes` : `empieza a pagar almacenamiento en ${60 - edadR} d`); }
+        { const ks7 = ks.filter((k) => k >= k7); const ini = ks7.find((k) => d[k].st != null); let sold = 0; for (const k of ks7) sold += Number(d[k].u) || 0; const st0 = ini ? Number(d[ini].st) : null;
+          let entro = 0, prev = st0; for (const k of ks7) { const sk = d[k].st; if (sk == null) continue; const v = Number(sk); if (prev != null && v > prev) entro += v - prev; prev = v; }
+          if (st0 != null && !entro && st0 - stHoy - sold >= 3) flags.push(`desaparecieron ${st0 - stHoy - sold} u. sin venderse (ML las dio de baja, perdidas o dañadas: revisar)`);
+          if (entro >= 3) flags.push(`entraron ${entro} u. esta semana: revisar si el precio de escasez sigue teniendo sentido`); }
+        // ── VENTAS: picos, remate, cancelaciones, lo cobrado contra lo publicado ──
+        { let maxD = 0, uR7 = 0, cob = 0, pub = 0; for (const k of ks) { if (k < k7) continue; const x = d[k]; const u = Number(x.u) || 0; if (u > maxD) maxD = u; uR7 += Number(x.uR) || 0; if (u > 0 && Number(x.p) > 0 && Number(x.tot) > 0) { cob += Number(x.tot); pub += u * Number(x.p); } }
+          if (B.u >= 4 && maxD >= B.u * 0.6) flags.push(`ojo: ${maxD} de las ${B.u} ventas de la semana fueron en UN día (un comprador grande o un pico): el ritmo está inflado`);
+          if (B.u >= 2 && uR7 >= B.u * 0.5) flags.push(`${uR7} de ${B.u} ventas de la semana fueron en remate (abajo del objetivo)`);
+          if (pub > 0 && cob < pub * 0.97) flags.push(`se cobró ${Math.round((1 - cob / pub) * 100)}% menos que el precio publicado (promo o cupón de ML, o carrito)`); }
+        { const c = cancL[mla]; if (c && c.c7 > 0) { const tasa = B.u ? c.c7 / (B.u + c.c7) : 1; if (c.r7 > 0 || tasa >= 0.2) flags.push(`${c.c7} cancelada(s) en 7 d${c.r7 ? ` · ${c.r7} por reclamo` : ''}${c.cA ? ` (antes ${c.cA} en 30 d)` : ''}: mirar el motivo`); } }
+        // ── VISITAS Y CONVERSIÓN ──
+        { const visT = (desde, hasta) => { let v = 0, n = 0; for (const k of ks) { if (k < desde || k >= hasta) continue; if (d[k].vis == null) continue; v += Number(d[k].vis) || 0; n++; } return n ? { v, n, dia: v / n } : null; };
+          const VA = visT(k37, k7), VB = visT(k7, hoyK);
+          if (VA && VB && VB.n >= 3 && VA.dia >= 5 && VB.dia < VA.dia * 0.6) flags.push(`visitas cayeron ${Math.round((1 - VB.dia / VA.dia) * 100)}% (${VA.dia.toFixed(0)} → ${VB.dia.toFixed(0)} por día): perdió posición o la caja`);
+          if (VB && VB.n >= 5 && VB.v === 0 && stHoy > 0 && (ultX.est || e.status || 'active') === 'active') flags.push('0 visitas en la semana con stock: no la ve nadie');
+          if (VA && VB && VA.v >= 30 && VB.dia >= VA.dia * 0.7 && A.u >= 3) { const cA = A.u / VA.v, cB = B.u / Math.max(1, VB.v); if (cB < cA * 0.5) flags.push(`la ven igual pero compran menos: conversión ${(cA * 100).toFixed(1)}% → ${(cB * 100).toFixed(1)}% (precio o competencia)`); } }
+        // ── ESTADO EN ML ──
+        var est = ultX.est || e.status || null; const sub = String(ultX.sub || e.subStatus || '');
+        if (stHoy > 0 && est && est !== 'active') flags.push(`${est === 'paused' ? 'PAUSADA' : est.toUpperCase()} con ${stHoy} u. adentro${sub ? ` (${sub})` : ''}: activar o ver por qué`);
+        if (MALOS_SUB.test(sub)) flags.push(`ML la tiene frenada: ${sub}`);
+        { let sub7 = null; for (const k of ks) if (k <= k7 && d[k].sub !== undefined) sub7 = String(d[k].sub || ''); if (sub7 != null && sub7 !== sub && (sub || sub7)) flags.push(`cambió el estado en ML: "${sub7 || 'normal'}" → "${sub || 'normal'}"`); }
+        // ── PRECIO, CAJA Y MARGEN ──
+        if (cambioP && !decididoP.has(mla)) flags.push(`el precio cambió (${cambioP.replace('precio ', '')}) y no lo decidí yo: ML, una promo de ML o alguien a mano`);
+        { let ptw7 = 0; for (const k of ks) if (k <= k7 && Number(d[k].ptw) > 0) ptw7 = Number(d[k].ptw); const ptwH = Number(ultX.ptw) || Number(e.cajaPtw) || 0; if (ptw7 && ptwH && ptwH < ptw7 * 0.95 && cajaHoy !== 'g') flags.push(`el competidor bajó: para ganar la caja ML pide ${fm(ptw7)} → ${fm(ptwH)}`); }
+        { const mg = Number(ultX.mg); if (isFinite(mg) && ultX.mg != null && mg < 25 && !pisoL[mla] && !nosubL[mla]) flags.push(`margen de hoy ${mg.toFixed(1)}%: abajo del objetivo 25%`); }
+        if (pHoy >= 33000 && pHoy < 34500) flags.push(`precio ${fm(pHoy)}: apenas arriba de la barrera de $33.000 (paga envío): ¿conviene $32.990?`);
+        if (nosubL[mla] && stHoy > 0 && ritmoRef && stHoy / ritmoRef < 20) flags.push('marcada LIQUIDANDO pero ya le queda poco stock y vende: ¿sacar la marca?');
+        { const pc = promoL[mla]; if (pc && Number(pc.hasta) > 0) { const dRest = (Number(pc.hasta) - Date.now()) / 864e5; if (dRest < 0) flags.push('mi promo ya venció: decidir si se renueva'); else if (dRest < 2) flags.push(`mi promo vence en ${Math.max(0, Math.round(dRest * 24))} h: decidir si se renueva`); } }
+        // ── FECHAS ──
+        if (proxFecha && RE_REGALO.test(String(e.title || '') + ' ' + String(pr.name || ''))) { const dF = (proxFecha.ts - Date.now()) / 864e5; if (dF <= proxFecha.pre + 7 && ritmoRef && stHoy < ritmoRef * 1.4 * dF) flags.push(`${proxFecha.nom} en ${Math.round(dF)} d: con ${stHoy} u. no llega (a ritmo de regalo se venden ~${Math.round(ritmoRef * 1.4 * dF)})`); }
+        filas.push({ mla, cta: e.cuenta || '?', prodId: e.prodId, tit: String(e.title || pr.name).slice(0, 44), A, B, stHoy, pHoy, cajaHoy, diasSin, flags });
       }
+      // ── HERMANAS: misma ficha y misma cuenta, una vende y la otra no (se pisan entre ellas) ──
+      { const gr = {}; for (const f of filas) (gr[f.prodId + '|' + f.cta] = gr[f.prodId + '|' + f.cta] || []).push(f);
+        for (const arr of Object.values(gr)) { if (arr.length < 2) continue; const vend = arr.filter((f) => f.B.u > 0); for (const f of arr) if (f.stHoy > 0 && !f.B.u && vend.length) f.flags.push(`su hermana ${vend[0].mla} vende y ésta no: misma ficha y cuenta, ¿sobra o le falta algo?`); } }
       const L = (f) => {
         const r = (t) => t.ritmo == null ? '—' : t.ritmo.toFixed(2) + '/d';
         const g = (t) => t.ganU == null ? '—' : fm(t.ganU);
@@ -29879,6 +29945,8 @@ async function main() {
       console.log(`\n── SIN NOVEDAD · ${sin.length} ──`);
       for (const f of sin) console.log('   ' + L(f));
       console.log(`\nMiradas ${miradas} publicaciones con stock o ventas en 37 días · ${sinLinea} sin línea de tiempo leíble${tc ? '' : ' · ⚠️ sin dólar: ganancia sin mercadería'}`);
+      if (noLeido.length) console.log(`⚠️ no pude leer: ${noLeido.join(', ')} · esos controles faltan en esta corrida`);
+      { const cnt = {}; for (const f of con) for (const x of f.flags) { const t = x.split(/[:(·]/)[0].replace(/\d+/g, 'N').trim().slice(0, 40); cnt[t] = (cnt[t] || 0) + 1; } console.log('\nResumen de banderas: ' + Object.entries(cnt).sort((a, b) => b[1] - a[1]).map(([t, n]) => `${t} ×${n}`).join(' · ')); }
       return;
     }
     // BILLING_PROBE=borrarficha:<id,id,...>[;go] · BORRA FICHAS DEL PANEL (13/10/2026). Pedido suyo con los perfumes
