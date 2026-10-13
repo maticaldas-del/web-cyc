@@ -98,7 +98,7 @@ la historia y el porqué). Si algo de acá choca con CLAUDE.md, manda lo más nu
 - Workflows: mirar opciones repetidas en un paso antes de subir.
 
 ## 10 · Pendientes vivos (se borran al cerrarse)
-- Paraguay 08/10: falta el que retira y el correo. Paraguay 08/09: pesos de los dólares, ticket, retira, correo.
+- Paraguay 08/10: falta sólo el correo (monto y kilos). Paraguay 08/09: pesos de los dólares, ticket, retira, correo.
   Transferencia de $50.000 del 29/09: preguntar de qué es.
 - Paulvic del 06/10 (40 u.): al llegar, `pvped:llego`, rehacer la cuenta con el flete y ofrecer `poncosto`.
 - Idea propuesta: probar un Paulvic de hombre a ~$17.990 después del Día de la Madre (escalón de comisión de $15.000).
