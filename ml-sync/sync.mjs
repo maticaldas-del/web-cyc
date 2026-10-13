@@ -29798,6 +29798,32 @@ async function main() {
     }
     // BILLING_PROBE=capital → foto del capital de CYC: stock, efectivo, deudas y los dólares de los
     // socios. Sirve para decidir si conviene sacar plata del negocio o dejarla trabajando.
+    // BILLING_PROBE=debencyc:<+N|-N|N>[|<nota>][;go]  · "LO QUE NOS DEBEN" DEL ARQUEO, DESDE EL CHAT (13/10/2026).
+    // Él eligió (a): lo que la perfumería se lleva de un pedido de Paraguay se lo devuelve a CYC. Se anota en
+    // cyc/finanzas/deben_cyc, que está en DÓLARES como todo el Arqueo, y cada movimiento queda con su motivo en
+    // cyc/debencyc/<ts> (nada de datos de terceros). +N suma, -N resta (cuando paga), N solo fija. Sin ;go sólo muestra.
+    if (/^debencyc(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const raw = String(process.env.BILLING_PROBE).slice('debencyc'.length).replace(/^:/, '');
+      const GO = /;go$/i.test(raw);
+      const cuerpo = raw.replace(/;go$/i, '');
+      const [numTxt, ...notaP] = cuerpo.split('|');
+      const nota = notaP.join('|').trim();
+      const m = String(numTxt || '').trim().match(/^([+-]?)(\d+(?:[.,]\d+)?)$/);
+      const antes = parseFloat(await db.get('cyc/finanzas/deben_cyc')) || 0;
+      if (!m) { console.log(`Usá: debencyc:<+N|-N|N>[|nota][;go] (dólares). Hoy: US$ ${antes.toFixed(2)}`); return; }
+      const n = parseFloat(m[2].replace(',', '.'));
+      const despues = Math.round((m[1] === '+' ? antes + n : m[1] === '-' ? antes - n : n) * 100) / 100;
+      console.log(`=== LO QUE NOS DEBEN (Arqueo, en dólares) ${GO ? '· APLICANDO' : '· PRUEBA'} ===`);
+      console.log(`  US$ ${antes.toFixed(2)} → US$ ${despues.toFixed(2)}${nota ? ' · ' + nota : ''}`);
+      if (despues < 0) { console.log('  ✗ quedaría negativo: no se escribe.'); return; }
+      if (!GO) { console.log('No se guardó nada (falta ;go).'); return; }
+      await db.set('cyc/finanzas/deben_cyc', despues);
+      await db.set('cyc/finanzas/_ts/deben_cyc', Date.now());
+      await db.set('cyc/debencyc/' + Date.now(), { antes, despues, mov: m[1] + m[2], nota: nota.slice(0, 200) });
+      const rel = parseFloat(await db.get('cyc/finanzas/deben_cyc')) || 0;
+      console.log(Math.abs(rel - despues) < 0.005 ? `  ✓ guardado y releído: US$ ${rel.toFixed(2)}` : `  ⚠️ releído US$ ${rel} (esperaba ${despues})`);
+      return;
+    }
     if (String(process.env.BILLING_PROBE || '') === 'capital') {
       const fin = (await db.get('cyc/finanzas')) || {};
       const inv = (await db.get('cyc/inventory')) || {};

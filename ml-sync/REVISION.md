@@ -696,3 +696,8 @@ La pregunta de la etapa: *¿la lista que miré es TODO o sólo una parte? ¿una 
   (`nisseiMsgLineas`). Mira nombre (castellano y portugués), `catNom`/`dom` de la ficha y `mlTit` del candidato.
   NO toca el piso (`candPisoDe` sigue con `esPerfumeNom`) ni la cuenta (perfumes → Adriana). Chequear: que nada de
   electrónica caiga en belleza por una palabra suelta (ej. "facial", "crema") y que el termómetro de cocina sea salud a propósito.
+
+- **13/10/2026 · `debencyc:<+N|-N|N>[|nota][;go]`** (etapa 2, plata). Escribe "Lo que nos deben" del Arqueo
+  (`cyc/finanzas/deben_cyc`, en DÓLARES) con relectura, y deja cada movimiento en `cyc/debencyc/<ts>`. Primer uso:
+  la perfumería le debe a CYC los 8 perfumes del pedido py20261005 que no van a ML (decisión suya, eligió la a).
+  Chequear: que el Arqueo lo sume una sola vez y que se reste cuando paguen.
