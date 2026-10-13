@@ -750,3 +750,8 @@ la oficina ni el estado. `llego` ahora también trata como "sin ficha" a un cand
 Él, con el Paulvic Barbarella: *"no explica por qué aumentó de 58 a 97%"*. La nota de la publicación dice cómo está hoy; ahora
 el 🧠 (Ventas, Productos, Rotación) agrega las últimas 3 decisiones de `cyc/claudecambios` con su motivo y su flechita de
 color. Chequear que cada `decido` tenga motivo escrito (si no, sale "sin motivo anotado").
+
+### La flechita explica por qué (13/10/2026, v23.32)
+Él: *"si pongo el mouse ahí es porque quiero saber qué pasó y por qué"*. `cambioTxt` arma el texto: tipo de cambio (el
+color de `FLECHA_TIPOS`), precio de antes → después, % y el motivo de `claudecambios`/`autoprecio`. Va en el globito de la
+flechita (dibujada arriba de los rectángulos del globito, si no el mouse no llega) y en el del día. Chequear con el mouse.

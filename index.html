@@ -2514,7 +2514,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.31';
+const APP_VERSION='23.32';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2525,6 +2525,7 @@ const APP_VERSION='23.31';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.32',f:'13/10/2026',h:'17:45',c:[{n:1,t:'📈 Línea de tiempo: pasando el mouse por una flechita (o por ese día) dice qué cambio fue, por qué es de ese color y el motivo que escribí.'}]},
   {v:'23.31',f:'13/10/2026',h:'17:30',c:[{n:1,t:'🧠 El cerebro de una venta o producto ahora dice POR QUÉ cambió el precio (las últimas 3 subas o bajas, con su motivo y la flechita de color).'}]},
   {v:'23.30',f:'13/10/2026',h:'16:45',c:[{n:1,t:'🧠 Pedidos de Paraguay (Probados): abajo de cada tarjeta dice a la vista por qué pide esas unidades.'}]},
   {v:'23.29',f:'13/10/2026',h:'16:20',c:[{n:1,t:'▲▼ Las flechitas de cambio de precio tienen el color del motivo: verde prueba/hay lugar · celeste cuidar el margen · naranja escasez · cian pelear la caja · violeta promo · amarillo vuelta atrás · rojo remate · gris a mano. Pasando el mouse dice cuál es.'}]},
@@ -9252,8 +9253,10 @@ function lineaPintar(prodId){
   // marcas de cambios de precio
   const motivoTxt={rescate:'🛟 rescate después de una venta baja',rescatep:'🛟 rescate antes de vender (cuenta)',subir:'📈 suba del robot',bajar:'📉 baja del robot',remate:'🔻 remate',escalera:'🪜 escalera',prueba:'🧪 prueba +5%',promo:'🏷️ promo (precio tachado)',mano:'✋ a mano',volver:'↩️ vuelto atrás'};
   const evK={}; for(const e of C.evP){if(!e.ts||!_mlaOk(e.mla))continue;const kk=dateToKey(new Date(e.ts));(evK[kk]=evK[kk]||[]).push(e);}
+  let _flechasSvg='';
   ks.forEach((k,i)=>{const es=evK[k];if(!es)return;const e0=es[es.length-1];const sube=Number(e0.a)>Number(e0.de);const col=(FLECHA_TIPOS[flechaTipo(e0.mla,Number(e0.ts),e0.motivo,sube)]||FLECHA_TIPOS.otro)[0];
-    svg+=`<text x="${X(i)+bw/2}" y="${L.pr[0]-2}" font-size="11" text-anchor="middle" fill="${col}">${sube?'▲':'▼'}</text>`;});
+    const tt=es.map(e=>cambioTxt(e)).join('\n').replace(/[<>&]/g,'');
+    _flechasSvg+=`<text x="${X(i)+bw/2}" y="${L.pr[0]-2}" font-size="11" text-anchor="middle" fill="${col}" style="cursor:help"><title>${_lineaFmtDia?_lineaFmtDia(k):k}\n${tt}</title>${sube?'▲':'▼'}</text>`;});
   // SE COBRÓ MENOS SIN QUE NADIE BAJARA EL PRECIO (13/10/2026, él con la Batidora: "porque se nota que el precio baja si no
   // hay flechita roja"). La línea del precio, los días con ventas, es lo COBRADO por unidad, y eso baja sin cambio de precio
   // por una promo/cupón de ML, un carrito, o porque ese día se vendió una publicación (color) más barata. Se marca con
@@ -9284,10 +9287,12 @@ function lineaPintar(prodId){
     const _est=d&&d.esc!=null?`🪜 escalera, escalón ${d.esc}%`:(d&&d.rem?'🔻 rematando':'');
     const _caja=d&&d.caja?`🥊 caja: ${(d.hoy?{g:'la ganamos (última lectura del robot)',c:'compartida (última lectura del robot)',p:'la perdemos (última lectura del robot)',n:'no es de catálogo: no hay caja que ganar',s:'ML no informa caja en ese catálogo',z:'ninguna publicación activa (pausadas): no pelea la caja'}:{g:'la ganábamos',c:'compartida',p:'la perdíamos',n:'no es de catálogo',s:'ML no informaba caja'})[d.caja]||d.caja}`:'';
     const _ent=stIn[k]!=null?`📥 llegaron ~${stIn[k]} u.`:'';
-    const _ev=es.map(e=>`${motivoTxt[e.motivo]||'cambio de precio'}: ${fmt(e.de)} → ${fmt(e.a)}`);
+    const _ev=es.map(e=>cambioTxt(e).replace(/[<>&]/g,''));
     const por={vent:[_vent,_gan],gan:[_g7],pct:[_gan||_pctU,_mg],st:[_ent,_st||_tuvo],vis:[_vis],pr:[_pr,_cos,..._ev],est:[_est||'sin remate ni escalera'],caja:[_caja]};
     for(const [n,arr] of Object.entries(por)){if(!L[n])continue;const t=[_h,...arr].filter(Boolean).join('\n');
       svg+=`<rect x="${X(i)}" y="${Math.max(0,L[n][0]-4)}" width="${Math.max(bw,1)}" height="${L[n][1]+8}" fill="transparent"><title>${t}</title></rect>`;}});
+  // Las flechitas van ARRIBA de los rectángulos del globito: si no, el mouse nunca llega a su explicación.
+  svg+=_flechasSvg;
   // resumen del rango
   let uT=0,uRT=0,dCon=0,dSin=0,dNo=0,dRem=0,vT=0; ks.forEach(k=>{const d=dias[k];if(d&&d.u)uT+=d.u;if(d&&d.uR)uRT+=d.uR;if(d&&d.vis)vT+=d.vis;
     const s=_conSt(d,k)?1:(k>=_stIni?0:null);if(s===1)dCon++;else if(s===0)dSin++;else dNo++;if(d&&(d.rem||d.esc!=null))dRem++;});
@@ -9881,6 +9886,12 @@ function flechaTipo(mla,ts,motivo,sube){
   return 'otro';
 }
 const flechaHTML=(tipo,sube,tam='.8rem')=>{const [c,n]=FLECHA_TIPOS[tipo]||FLECHA_TIPOS.otro;return `<b style="color:${c};font-size:${tam}" title="${n}">${sube?'▲':'▼'}</b>`;};
+// El texto de un cambio de precio para el globito: qué tipo de cambio fue (el color) y el motivo que escribí.
+function cambioTxt(e){const de=Number(e.de)||0,a=Number(e.a)||0,sube=a>de,ts=Number(e.ts)||0;const tipo=flechaTipo(e.mla,ts,e.motivo,sube);
+  let mot='';const cc=Object.values(state.claudecambios||{}).find(c=>c&&c.mla===e.mla&&Math.abs((Number(c.ts)||0)-ts)<15*60e3);
+  if(cc)mot=cc.motivo||'';else{const ap=(state.autoprecio||{})[e.mla];if(ap&&Math.abs((Number(ap.ts)||0)-ts)<15*60e3)mot=ap.motivo||'';}
+  if(!mot&&e.motivo==='promo')mot=e.origen||'promo';
+  return `${sube?'▲':'▼'} ${FLECHA_TIPOS[tipo][1]}: ${fmt(de)} → ${fmt(a)} (${sube?'+':''}${de?((a/de-1)*100).toFixed(1):'?'}%)${mot?' · '+mot:' · sin motivo anotado'}`;}
 const flechaLeyenda=()=>Object.entries(FLECHA_TIPOS).map(([k,[c,n]])=>`<span style="margin-right:8px;white-space:nowrap"><b style="color:${c}">${k==='promo'||k==='remate'||k==='volver'||k==='caja'?'▼':'▲'}</b> ${n}</span>`).join('');
 function cambioVentaHTML(v,tsVenta){
   const cs=cambiosPrecioDe(v&&v.mla,tsVenta);
