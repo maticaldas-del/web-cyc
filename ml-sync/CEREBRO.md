@@ -20,7 +20,10 @@ la historia y el porqué). Si algo de acá choca con CLAUDE.md, manda lo más nu
 - **Cada variante (color/aroma) se juzga sola**: su precio, su stock, sus ventas. Nunca el promedio del producto.
 - **Barrera $33.000**: se frena en $32.999 salvo que cruzar deje claramente más (`!cruza`, explicado).
 - **Techo $650.000.** Variantes: se suben todas o ninguna (ML borra las que faltan).
-- **Terminaciones 90/990** (99 en lo más barato). Cruzar $5.000/$10.000/$20.000/$50.000/$100.000 se frena en $X.990
+- **`decido` mide el piso en el PEOR caso** (el mismo número de la planilla 🛡️) y lo muestra al lado del normal. Una suba
+  de más del doble de una se rechaza salvo con `!salto` (un cero de más en un archivo de 110 renglones no puede pasar).
+  Algo que está en un descuento mío vigente no se sube de lista (infla el tachado): salir primero con `entrarpromo:…=salir`.
+- **Terminaciones 90/990** (también en lo más barato: `decido` redondea a $10, así que el "99" no se puede escribir). Cruzar $5.000/$10.000/$20.000/$50.000/$100.000 se frena en $X.990
   salvo que valga la pena. `redondos` mide si eso pesa; si no pesa, se saca la regla.
 - **Comisión de ML con escalones** (ej. ~$15.000): antes de subir, mirar la ganancia por unidad al precio NUEVO
   (el `decido` en prueba la muestra). Subir y ganar menos no se hace.
@@ -68,6 +71,11 @@ la historia y el porqué). Si algo de acá choca con CLAUDE.md, manda lo más nu
 ## 5 · Pedidos, cajas, Paraguay
 - **Pedidos COMPLETOS, todo el catálogo**, en la completa (`pedidostodo` → `decide_pedidos.py` → revisar → `decido:archivo=pedidos`).
   Objetivo 30 días. El stock de las 4 cuentas va SUMADO. Lo que se pide sin ventas recientes se mira en la línea de tiempo.
+  El ritmo es por día CON stock (`dCS`, también por color). Sin costo cargado no se pide (va a la lista "venden y no tienen
+  costo"). El precio para el máximo de compra es la mediana de lo cobrado en 60 días (no el subido por escasez). Si el log
+  dice "NO LEÍ" o el script dice "NO CIERRA", no se carga nada: se vuelve a correr.
+- **Cajas:** `decide_cajas.py` lee del mismo log de `pedidostodo` a qué cuentas se le puede mandar (`ctas [..]`: publican,
+  sin `nomandar`, más `pasara`). Si puede ir a más de una, sale en "decidir a mano": lo decido yo mirando `cajasnotas`.
 - **Los motivos de Pedidos los lee Tito**: arrancan con "Hola Tito!", cortos y en criollo.
 - **Cajas:** marco yo las que ML dio por entradas (`cajallego`). Decido cuántas mandar (`decido:caja`), cubrir ~20-30 días,
   cuenta en cero recibe el mínimo salvo que otra cuenta tenga stock de ese color. Costo de la caja: $17.310.

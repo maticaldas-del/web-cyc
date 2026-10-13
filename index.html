@@ -2513,7 +2513,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.23';
+const APP_VERSION='23.24';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2524,6 +2524,7 @@ const APP_VERSION='23.23';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.24',f:'13/10/2026',h:'01:50',c:[{n:1,t:'🧠 Revisión 9 (el cerebro): una venta cancelada guarda cuándo se canceló, para que la revisión vea los reclamos y devoluciones de ventas viejas. Lo demás de la revisión fue en el robot (pedidos, cajas, precios, promos e informe).'}]},
   {v:'23.23',f:'13/10/2026',h:'00:30',c:[{n:1,t:'🏷️ Ventas: "Descuento ML" (lo pagó ML entero, a vos te llega el precio lleno) pasa a AZUL. El DORADO queda sólo para las promos o descuentos donde pusimos plata nosotros.'}]},
   {v:'23.22',f:'12/10/2026',h:'21:40',c:[{n:1,t:'🏷️ Ventas: la venta hecha en promo dice en DORADO "Descuento ML" (si el descuento lo puso ML entero) o "Vendido en promoción" (si pusimos algo nosotros), con cuánto puso cada uno.'}]},
   {v:'23.21',f:'12/10/2026',h:'19:10',c:[{n:2,t:'⚡ Al volver a la web después de tenerla en segundo plano, "Ventas de hoy" se actualiza en segundos: se reconecta al instante y trae primero sólo las ventas de hoy (antes esperaba a bajar toda la base). Con la web abierta, se refresca sola cada minuto.'},{n:2,t:'🔧 Se arregló el archivo que avisa las versiones nuevas: desde la 23.19 había quedado vacío y la web no se enteraba sola de las actualizaciones.'}]},
@@ -3769,7 +3770,7 @@ const REV_PENDIENTE=[
 // por una nota vieja.
 // 30/09 a la tarde: la revisión completa final (6 revisores) cubrió precios, plata, mercadería, ventas,
 // corridas del robot y la web; lo obvio quedó arreglado en la v20.88.
-const REV_HECHAS={1:'2026-10-08',2:'2026-09-30',3:'2026-09-30',4:'2026-09-30',5:'2026-09-30',6:'2026-09-27',7:'2026-10-01',8:'2026-10-12'};
+const REV_HECHAS={1:'2026-10-08',2:'2026-09-30',3:'2026-09-30',4:'2026-09-30',5:'2026-09-30',6:'2026-09-27',7:'2026-10-01',8:'2026-10-12',9:'2026-10-13'};
 function _revFecha(iso){const d=new Date(iso+'T12:00:00');return isNaN(d)?null:d;}
 function _revFmt(d){return ['dom','lun','mar','mié','jue','vie','sáb'][d.getDay()]+' '+String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0');}
 function revProxima(){

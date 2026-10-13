@@ -644,3 +644,42 @@ versiones nuevas. Restaurado en v23.21 (`cyc-v601`). **Antes de cada commit: `wc
 - **Informe 12c · con stock en Full y sin vender en 30 días (12/10/2026, auditoría):** por producto×cuenta, plata parada (costo de la ficha), si alguna publicación está activa y visitas de 30 días (<20 = no la ve nadie). El chequeo lo traía (40 publicaciones, $3,2M) y el informe no. Chequear: que la plata parada salga en la revisión de 12 h.
 - **Precio para el peor caso (12/10/2026, regla suya):** el 25% se mide con retención de otra provincia/cuotas/envío caro (~28% en el panel); lo nuevo se revisa antes de activar y lo que vende abajo de 25% con poco stock se sube en la misma vuelta (caso Sony ZX310). Chequear: que ninguna venta de algo recién activado salga abajo de 25%.
 - **Chequeo: "sin ficha" ya no cuenta las marcadas `nomas` u ocultas (12/10/2026, auditoría):** decía 8 contra 0 del informe; 6 eran las de `nomas` del 18/08. Chequear: que el número del chequeo y el del informe coincidan.
+
+### REVISIÓN 9 DEL 13/10/2026 (4 revisores · ~50 hallazgos verificados · v23.24 `cyc-v604`)
+La pregunta de la etapa: *¿la lista que miré es TODO o sólo una parte? ¿una falla se leyó como dato?* Lo obvio, hecho:
+ · **Pedidos y cajas:** `pedidostodo`/`cajasnotas` cortan con "⚠️ NO LEÍ" si una lectura falla (antes 0 ventas / 0 en camino);
+   sin dólar no sigue; `dCS` por color; `med60` (mediana cobrada en 60 d = precio normal para el máximo de compra, no el subido
+   por escasez); `ctas [..]` = cuentas que pueden recibir; cierra "N fichas = para decidir + fuera". `decide_pedidos.py`: ritmo
+   por días con stock, ventas sin color repartidas entre colores, sin costo = no se pide (y se lista), log con hora de GitHub,
+   N de M por grupo, un redondeo por producto y reparto por resto mayor, juicio de producto reparte entre colores, `=auto` para
+   decisiones viejas sin colores, juicios que no coinciden se avisan, nada con ";". `decide_cajas.py`: la cuenta sale de `ctas`
+   (antes del Full o de una lista a mano: P47 iba a Matías en vez de Ayelen); más de una cuenta → "decidir a mano".
+ · **decido:** piso medido en el PEOR caso (igual que la planilla) y los dos números a la vista; suba de más del doble sólo con
+   `!salto`; no sube la lista de algo en un descuento mío vigente; relee el precio y si no coincide va a "no se pudo"; cada nota
+   se relee y al final "X de Y guardadas · Z rechazadas".
+ · **Cerebro/planilla:** color sin clave de stock propia = "no sé" (antes tomaba el total del producto); la planilla no cuenta dos
+   veces los errores (falso "NO CIERRA") y nombra el MLA; corta si no lee nosubir/claudepiso/promoclaude/mlconfig/monotributo/
+   autoprecio; una promo mía vencida ya no es excepción (`promoClaudeVigente`).
+ · **activarfull:** margen en el peor caso; nombra las cuentas sin permiso; "no la vendemos más" frena desde el primer chequeo.
+   `vincular` saca también `noVendemosMas`.
+ · **redondos:** `stF` es la fuente del dato (`'inv'`), no el stock: todos los días con stock contaban como "sin stock" y no
+   medía nada (el "0 medibles" de la primera corrida era esto).
+ · **Promos:** `entrarpromo` ya puede poner el descuento propio donde ML no lo lista (chocaba con "entre $0 y $0"); no anota como
+   mía una promo puesta a otro precio; `analizapromo` dice N de M, "(y N más)" y en §6 la fecha de fin de cada promo mía (⏰ renovar
+   / ⌛ vencida). El guardián guarda el código de error de ML y §13 dice cuántas publicaciones no lee (antes mostraba horas).
+ · **Preguntas y avisos:** `contesto` entiende todo antes de mandar (una respuesta con ";" ya no sale cortada); `pregunto/resumen/
+   recordar` no parten los links `https://`; `ml-sync.yml` ya no pega el texto libre del comando en bash (inyección).
+ · **Fotos:** `revfotos` no da por "ok" una foto que no bajó (`duda`), saltea los probados, cuenta lo que deja afuera; `fotosrev`
+   dice N de M y por qué quedan afuera.
+ · **Informe y ventas:** `informe` corta si no lee publicaciones o ventas; 12c con `costoPesos` y dólar (como el chequeo); 12d mira
+   los depósitos de cada color; `e.oculta` (no existe) → `e.ignored`; toda lista cortada dice cuántas faltan; §7b avisa si hay más
+   de 20 reclamos; §9 dice "ML ya dio de alta N de M" de cada caja vieja; §12 avisa cuando el precio de la caja no deja ganancia.
+   Canceladas: `canceladaTs` (robot y web) y el informe/`ventasraras` filtran por cuándo se canceló. `ventasraras`: venta sin
+   costo/ficha va aparte (antes "755% ✓"), piso de la base, cuenta las estimadas. `cargosventa` no dice "0 ventas" si no leyó.
+ · **escasez:** corta si no lee; cada COLOR se juzga solo; ritmo por días con stock (`stocklog`, como el cerebro; 📅 si usa días
+   corridos); cierra con "N de M · afuera …".
+ · **Qué chequear la próxima:** que `decide_pedidos.py` diga "leí N de N ✓" en los tres grupos; que `redondos` ya mida algo; que
+   `planilla` diga "✓ cierra"; que §13 diga cuántas publicaciones y qué código de error da ML.
+ · **Sigue abierto:** las publicaciones con variantes adentro (no los colores en publicaciones separadas) siguen sin dueño de
+   precio: `decido` las rechaza y la planilla las lista "a mano". Falta un camino de Claude por `raiseVariations`.
+
