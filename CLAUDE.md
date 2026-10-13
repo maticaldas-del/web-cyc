@@ -760,6 +760,12 @@ archivo. **Etapa 8 · Datos e historial** creada ese día (líneas de tiempo); c
 Inicio la pide ya. Y lo que se mira en TODAS: contar dos veces lo mismo (el stock ×4 del Centímetro),
 fallas leídas como dato, dos fórmulas para un número, datos de terceros en el registro público.
 
+## 📋 LA LISTA ÚNICA DEL CEREBRO: `ml-sync/CEREBRO.md` (13/10/2026, pedido suyo)
+
+Él: *"no quiero que te olvides las cosas que agregamos a cerebro (...) me gustaría que tengas una lista de TODO lo que
+tener en cuenta"*. Todo lo que el cerebro tiene que mirar está junto en **`ml-sync/CEREBRO.md`** y **cada vuelta
+arranca leyéndolo** (las dos rutinas lo dicen). **Toda regla nueva suya se agrega ahí en el mismo commit**, además de acá.
+
 ## 🧠 "CEREBRO" = MI REVISIÓN COMPLETA DE TODA LA WEB (09/10/2026, nombre suyo)
 
 Él: *"quiero ponerle de nombre CEREBRO a la run tuya recorriendo toda la web y mirando todo lo que tenés que mirar"*.

@@ -1,0 +1,106 @@
+# 🧠 CEREBRO · TODO LO QUE HAY QUE TENER EN CUENTA
+
+Pedido suyo del 13/10/2026: *"no quiero que te olvides las cosas que agregamos a cerebro (...) me gustaría que tengas
+una lista de TODO lo que tener en cuenta"*. **Cada vuelta (08:52 completa · 12:52, 16:52 y 20:52 cortas) arranca
+leyendo este archivo.** Cada regla nueva que él dé se agrega ACÁ en el mismo commit (además de CLAUDE.md, que tiene
+la historia y el porqué). Si algo de acá choca con CLAUDE.md, manda lo más nuevo y se corrige el otro.
+
+## 0 · Quién hace qué
+- **El robot SÓLO junta datos de ML.** No decide, no sugiere, no vincula, no le avisa a él. Todo lo demás lo hago yo.
+- **Él no marca nada a mano: me lo dice y lo hago yo** por comando ("Ya lo pedí", "Llegó", cajas, oficina, ancla…).
+- **Nunca tomar como dato una marca vieja del robot** (escalera, liquidando automático, expediente). Dato crudo siempre.
+- Él no toca precios ni promos: **no hace falta que me avise nada de eso, lo miro yo en cada vuelta.**
+- Lo grande o lo que no tiene respuesta clara lo decide él: va todo junto, numerado, con (a) sugerida y (b).
+
+## 1 · Precios (cada decisión con su motivo en el 🧠, una por variante)
+- **Objetivo 25% en el PEOR caso** (retención de otra provincia 2% + el peor envío visto + cuotas) ≈ 28% en el número
+  normal. Sin piso del 22%: bajar de 25% sólo con motivo y `!piso`. **Nunca abajo de 0%.**
+- **Paso 0 de TODAS las vueltas:** `planilla` → sección 🛡️ → subir DE UNA al precio del 25% en el peor caso, o dejarlo a
+  propósito con `!piso` (excepción anotada). Lo nuevo que nunca estuvo en Full se pone a precio antes de activarse.
+- **Cada variante (color/aroma) se juzga sola**: su precio, su stock, sus ventas. Nunca el promedio del producto.
+- **Barrera $33.000**: se frena en $32.999 salvo que cruzar deje claramente más (`!cruza`, explicado).
+- **Techo $650.000.** Variantes: se suben todas o ninguna (ML borra las que faltan).
+- **Terminaciones 90/990** (99 en lo más barato). Cruzar $5.000/$10.000/$20.000/$50.000/$100.000 se frena en $X.990
+  salvo que valga la pena. `redondos` mide si eso pesa; si no pesa, se saca la regla.
+- **Comisión de ML con escalones** (ej. ~$15.000): antes de subir, mirar la ganancia por unidad al precio NUEVO
+  (el `decido` en prueba la muestra). Subir y ganar menos no se hace.
+- **La caja de compra orienta, no decide.** Perdiendo y vendiendo bien → no se baja. Full vale ~19% de precio.
+- **Toda baja va primero como promo** (descuento propio, mínimo 5%, 14 días) que deje el mismo neto; recién si no se
+  puede, bajar el precio de lista. Nunca subir la lista para inflar el tachado.
+- **Escasez** (todas las vueltas, `escasez`): sin caja despachada se estira sin fecha, escalones de hasta +25%, techo ~×2
+  del normal; con caja despachada, que la última salga cerca del día 8. Nunca abajo del precio normal. Al llegar la
+  caja no se vuelve a ciegas.
+- **Lo nuevo que vuela se sube al toque**; venta abajo de 25% con poco stock → subir en la MISMA vuelta.
+- **Productos nuevos arrancan directo a su precio final.**
+- **Buscar el techo** (`notas/techo.md`): TODO lo que vende y no tiene techo conocido, todas juntas, +10% (+15% si
+  vende 1+/día con margen alto). Juicio por CERTEZA en plata por día (Poisson: 3 esperadas y 0 = 5% azar · 6 y 0-1 =
+  2% · 10 y ≤2 = 0,3%), nunca con un solo día, máximo 30 días. Afuera: escasez, sobra (+90 d), liquidando, mis promos,
+  regalables antes de su fecha, frenadas por ML.
+- **Venta barata ≠ remate**: remate sólo si antes estuvo parado de verdad (línea de tiempo `mlapi/linea`).
+- **Juzgar los resultados de precios todos los días** (08:52: `supervisor:medir:go` + `juzgo:`). Lo que perdió no se
+  vuelve atrás por regla: se piensa.
+- Siempre releer de ML después de cambiar un precio.
+
+## 2 · Promos y descuentos
+- **Las analizo yo, sin que él avise.** En la completa: `analizapromo` entero (eventos de ML, compartidas, cuánto pone ML,
+  margen a ese precio, si ya vende bien sin promo, stock, fechas). Se entra si deja más plata.
+- El guardián de cada hora saca las promos que nadie analizó; las mías viven en `cyc/promoclaude` y no se tocan.
+- Las mías que vencen en 2 días: renovar o dejar terminar (sección 6 de `analizapromo:7`, también en las cortas).
+- **Cupón de ML (lo paga ML entero):** no nos cuesta nada, a nosotros nos llega el precio lleno. En la web va en AZUL
+  ("Descuento ML"). **Promo nuestra (pusimos plata):** DORADO ("Vendido en promoción"). Él sólo quiere seguir de cerca las doradas.
+- **Medir si una promo activa la venta**: plata por día antes vs durante, igual que el techo. Primera oportunidad
+  grande: **CyberMonday 02/11**. No suponer que la promo vende más (Halloween 9-10/10: 3 con cupón y 2 sin, al mismo precio).
+- En el `resumen:` de cada cerebro, una línea con las ventas en promo de la vuelta (cuántas, cuánto puso ML, si pusimos nosotros).
+- Fechas y eventos: sección 14/14b del `informe` y `eventos`. El ×1,4 de lo regalable NO está confirmado: mirar lo que vende de verdad.
+
+## 3 · Pausadas, publicaciones, vínculos
+- **Activar lo pausado es PRIORIDAD** en todas las vueltas (`pausadas:25` + `activarfull:go:25`). Lo que no se activa
+  va al `pregunto:` con motivo y propuesta. Nunca pausada en silencio.
+- Publicaciones nuevas sin ficha: las vinculo yo (`vincular`). Él crea la publicación en ML; yo la ficha y el vínculo.
+- Frenadas por ML (`under_review`, documentación): no se puede tocar precio; si hay que arreglar algo en ML, se le avisa.
+
+## 4 · Ventas y preguntas
+- **Ventas una por una** en cada vuelta (`ventasraras`): lo de una sola vez (retención de provincia, cuotas, carrito)
+  no toca el precio; si el precio de hoy ya no deja lo que creíamos, se decide.
+- **Preguntas:** contesto las que sé SIN DUDA (`contesto:`), cortas, sin teléfonos/links. Las demás, a él. Nada de más de 7 días.
+- Reclamos con ⏰ que esperan respuesta suya: recordarle una vez por día como mucho.
+
+## 5 · Pedidos, cajas, Paraguay
+- **Pedidos COMPLETOS, todo el catálogo**, en la completa (`pedidostodo` → `decide_pedidos.py` → revisar → `decido:archivo=pedidos`).
+  Objetivo 30 días. El stock de las 4 cuentas va SUMADO. Lo que se pide sin ventas recientes se mira en la línea de tiempo.
+- **Los motivos de Pedidos los lee Tito**: arrancan con "Hola Tito!", cortos y en criollo.
+- **Cajas:** marco yo las que ML dio por entradas (`cajallego`). Decido cuántas mandar (`decido:caja`), cubrir ~20-30 días,
+  cuenta en cero recibe el mínimo salvo que otra cuenta tenga stock de ese color. Costo de la caja: $17.310.
+- Caja para mandar ya → al `pregunto:`.
+- **Paraguay:** el ticket real es obligatorio para cerrar un pedido (`compray:<fecha>|det=…|go`). Gastos de cada pedido:
+  dólares (ticket ×1,005 del cambista + US$ 3,80 de la red), el que retira y despacha, correo (monto y kilos).
+  Pedido viejo sin datos: `compray:…|sinpesos|go` y lo que falta se le pide. Con los gastos del próximo pedido se
+  re-evalúa el recargo del 17% (medidos: 19,9% y 22,4%). Precios y códigos sólo de comprasparaguay (nunca nissei.com).
+- Al llegar un pedido: ficha (costo pagado ×1,17), cuenta según rubro (perfumes → Adriana) y equilibrio, vínculo.
+
+## 6 · Plata
+- **El 1º de cada mes cargo el retiro** ($1.800.000 hasta que él diga otra cosa).
+- Gastos del mes que se cargan a mano: la lista de Gastos dice qué falta; recordárselo a fin de mes.
+- Lo que se cobra en el mes que viene: la ganancia real del mes ÷ 3 (CYC, él y su papá).
+
+## 7 · Telegram y resúmenes
+- `pregunto:` SÓLO decisiones suyas o cosas que tiene que hacer con las manos. Nunca "subí/bajé/activé".
+- `resumen:` en cada cerebro: la completa SIEMPRE (6-10 renglones), las cortas sólo si cambiaron o descubrieron algo.
+- Sin datos de compradores ni números de orden en nada que se publique (el registro es público).
+
+## 8 · Cada vuelta busca algo nuevo
+- Mirar el negocio como dueño: dónde se pierde o se gasta plata que nadie mira. Lo chico se hace; lo grande se
+  propone con números y (a)/(b). Anotado en `notas/ideas.md` para no repetir. Si no aparece nada, no se inventa.
+
+## 9 · Al cambiar algo del sistema
+- Anotarlo en `ml-sync/REVISION.md` en su etapa, en el mismo commit. Subir a las dos ramas (la de la sesión y
+  `claude/add-folder-78ysyb`). Web: subir `APP_VERSION`, `APP_CAMBIOS` y `CACHE` de `sw.js` (y que `sw.js` no quede vacío).
+- Workflows: mirar opciones repetidas en un paso antes de subir.
+
+## 10 · Pendientes vivos (se borran al cerrarse)
+- Paraguay 08/10: falta el que retira y el correo. Paraguay 08/09: pesos de los dólares, ticket, retira, correo.
+  Transferencia de $50.000 del 29/09: preguntar de qué es.
+- Paulvic del 06/10 (40 u.): al llegar, `pvped:llego`, rehacer la cuenta con el flete y ofrecer `poncosto`.
+- Idea propuesta: probar un Paulvic de hombre a ~$17.990 después del Día de la Madre (escalón de comisión de $15.000).
+- Medir promos en el CyberMonday 02/11.
+- Tarifa de almacenamiento (`almactarifa`) sigue sin pasarla él.
