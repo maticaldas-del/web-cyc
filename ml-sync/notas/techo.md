@@ -61,3 +61,8 @@ Regla de vuelta, suya: no por calendario; sólo cuando los datos digan con segur
 ## 13/10 21:40 · PRIMERA TANDA SIN ESCALONES (aplicadas y releídas de ML)
 Hub 8 en 1 MLA3251292052 $19.990→$27.990 · Almohadilla talón MLA3164646020 y MLA3164694314 $4.390→$6.490 · Pendrive 32gb MLA1970314726 $21.990→$28.990 · Joystick Bluetooth MLA1998586178 $29.790→$32.990 (borde de la barrera).
 Afuera: Termómetro cocina líquido MLA3376866646 (se frenó después de la suba del 12/10: 4 en 7 días contra ~10 esperadas) · las pruebas del 12/10 en lo caro (Watch 4, Seagate, WD, Sony EX15AP, Buds Core): venden 1 por mes, otra suba no daría información antes de semanas.
+
+## 13/10 22:30 · TODO JUNTO, NO POR TANDAS (regla suya: "NO hagas por tanda. TODO junto")
+Se pasaron las 411 publicaciones por la planilla de una sola vez. Ya tienen precio de prueba casi todas las que se podían probar: las 15 del +50%, los 8 Paulvic y las 5 sin escalones de hoy.
+Aplicado ahora (releído de ML): Sábanas 2½ MLA1809315921 $21.760→$27.990 · Adaptador 2 patas MLA1512051683 VUELVE $3.490→$3.140 (1 venta en 7 días contra ~18 esperadas: certeza).
+Lo que queda sin probar, con su motivo: 72 cambiadas en los últimos 2 días (es su prueba, se juzga en cada vuelta) · 229 sin stock o pausadas · 39 Paulvic (su prueba con control) · 36 sin ventas en 60 días · 9 con stock de sobra · escasez (Sábanas Azul Acero, Plantillas silicona, Rodillera) · techo ya encontrado (Naipes Casino, Centímetro Blanco/Gris, Pizarra) · frenadas sin cambio de precio (Pendrive 16gb y Adaptador universal de Matías) · 1 unidad sola o 1 venta por mes (Dalí, Mazo $23.320, Sábanas 1½, Linterna COB) · Batidor negro (vuelve a $19.020 si sigue en 0 la próxima vuelta).
