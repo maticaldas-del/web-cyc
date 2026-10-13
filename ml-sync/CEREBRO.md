@@ -117,3 +117,10 @@ la historia y el porqué). Si algo de acá choca con CLAUDE.md, manda lo más nu
 - Descuentos del 13/10 (Tendedero, Ferrari Rojo, Pendrive 16gb, Centímetro Blanco, Mercedes, Corsair, Pokémon, Adyan): ML los
   aceptó pero no se veían al releer. Confirmar en la vuelta de las 12:52 que estén puestos y juzgarlos a los 7-14 días.
 - Tarifa de almacenamiento (`almactarifa`) sigue sin pasarla él.
+
+## 🔍 LA LUPA: CADA PUBLICACIÓN, TODOS LOS DÍAS (13/10/2026, pedido suyo)
+Él: *"todos esos pequeños detalles diarios, casi milimétricos (…) en TODOS los productos (…) necesito ese nivel de detalle"*.
+En la completa de las 08:52 y en cada corta: `lupa` por ml-consulta (solo lee). Por cada publicación con stock o ventas:
+últimos 7 días con stock contra los 30 anteriores (ritmo, ganancia por unidad, plata por día, días sin vender, caja, precio).
+Cada 🚩 se mira con la línea de tiempo y se decide (o se anota por qué no se toca). La caja perdida sola no es motivo.
+Línea de tiempo: el ▾ ámbar = ese día se cobró menos sin cambiar el precio (promo/cupón, carrito o color más barato).
