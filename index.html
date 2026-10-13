@@ -578,6 +578,8 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
 @media (prefers-reduced-motion: reduce){.vw,.vw>.viva{animation:none!important}}
 .vp-promo{font-size:.66rem;font-weight:700;padding:2px 8px;border-radius:5px;white-space:nowrap;color:#facc15;background:color-mix(in srgb,#facc15 14%,transparent);border:1px solid color-mix(in srgb,#facc15 55%,transparent)}
 body.light .vp-promo{color:#a16207;background:color-mix(in srgb,#ca8a04 12%,transparent);border-color:color-mix(in srgb,#ca8a04 50%,transparent)}
+.vp-promo.vp-promo-ml{font-weight:600;color:#60a5fa;background:color-mix(in srgb,#60a5fa 12%,transparent);border-color:color-mix(in srgb,#60a5fa 45%,transparent)}
+body.light .vp-promo.vp-promo-ml{color:#0369a1;background:color-mix(in srgb,#0369a1 10%,transparent);border-color:color-mix(in srgb,#0369a1 40%,transparent)}
 </style>
 </head>
 <body>
@@ -2511,7 +2513,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.22';
+const APP_VERSION='23.23';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2522,6 +2524,7 @@ const APP_VERSION='23.22';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.23',f:'13/10/2026',h:'00:30',c:[{n:1,t:'🏷️ Ventas: "Descuento ML" (lo pagó ML entero, a vos te llega el precio lleno) pasa a AZUL. El DORADO queda sólo para las promos o descuentos donde pusimos plata nosotros.'}]},
   {v:'23.22',f:'12/10/2026',h:'21:40',c:[{n:1,t:'🏷️ Ventas: la venta hecha en promo dice en DORADO "Descuento ML" (si el descuento lo puso ML entero) o "Vendido en promoción" (si pusimos algo nosotros), con cuánto puso cada uno.'}]},
   {v:'23.21',f:'12/10/2026',h:'19:10',c:[{n:2,t:'⚡ Al volver a la web después de tenerla en segundo plano, "Ventas de hoy" se actualiza en segundos: se reconecta al instante y trae primero sólo las ventas de hoy (antes esperaba a bajar toda la base). Con la web abierta, se refresca sola cada minuto.'},{n:2,t:'🔧 Se arregló el archivo que avisa las versiones nuevas: desde la 23.19 había quedado vacío y la web no se enteraba sola de las actualizaciones.'}]},
   {v:'23.20',f:'12/10/2026',h:'17:45',c:[{n:1,t:'📈 Ventas: el botón línea de una venta de un color o aroma abre la línea de tiempo de ESA variante (arriba se puede volver a ver todas).'}]},
@@ -9814,8 +9817,11 @@ function vpPromoLabel(items){
   const nom={coupon:'cupón',price_discount:'promo',deal:'promo',campaign:'campaña'};
   const tipo=p.tipos.map(x=>nom[x]||x).filter((x,i,a)=>a.indexOf(x)===i).join(' + ')||'promo';
   const tit=`Vendida con ${tipo}: descuento total ${fmt(Math.round(p.t))} · ML puso ${fmt(Math.round(p.ml))} · nosotros ${fmt(Math.round(p.s))}. Lo que pone ML no sale de nuestro neto.`;
-  const txt=(p.ml>0&&!(p.s>0))?'Descuento ML':'Vendido en promoción';
-  return `<span class="vp-promo" title="${tit}">🏷️ ${txt}${p.ml>0?' · ML puso '+fmt(Math.round(p.ml)):''}${p.s>0?' · nosotros '+fmt(Math.round(p.s)):''}</span>`;
+  // AZUL si lo puso ML entero, DORADO sólo si pusimos plata nosotros (12/10/2026, él: "dejar dorado solo para
+  // promociones o descuentos hechos nuestros").
+  const soloML=p.ml>0&&!(p.s>0);
+  const txt=soloML?'Descuento ML':'Vendido en promoción';
+  return `<span class="vp-promo${soloML?' vp-promo-ml':''}" title="${tit}">🏷️ ${txt}${p.ml>0?' · ML puso '+fmt(Math.round(p.ml)):''}${p.s>0?' · nosotros '+fmt(Math.round(p.s)):''}</span>`;
 }
 function cambioVentaHTML(v,tsVenta){
   const cs=cambiosPrecioDe(v&&v.mla,tsVenta);

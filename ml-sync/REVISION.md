@@ -397,6 +397,7 @@ el precio de un candidato distinto con código parecido (se compara también por
 ## 7 · DISEÑO
 
 - **Venta en promo en dorado (v23.22, 12/10/2026):** `vpPromoLabel` (clase `.vp-promo`, también en `body.light`) dice "Descuento ML" si ML puso el descuento entero y "Vendido en promoción" si pusimos algo nosotros. Datos de `cyc/promoventa`. Chequear: que se vea en PC y celu, y en los dos temas.
+- **v23.23 (13/10):** "Descuento ML" va en AZUL (`.vp-promo-ml`); el dorado queda sólo para "Vendido en promoción" (pusimos plata nosotros).
 - **NO SÓLO ARREGLAR: PROPONER (09/10/2026, regla suya, ver etapa 6).** La revisión de diseño no se limita a lo que
   se ve mal o se corta en el teléfono: tiene que traer ideas que hagan la web más linda y más viva (efectos, color,
   movimiento con sentido — que el efecto diga algo del dato, como la velocidad = la plata), detalles de comodidad,
