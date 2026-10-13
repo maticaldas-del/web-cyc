@@ -76,6 +76,12 @@ Candidatos (una línea por tanda, productos separados por ;):
 Probados (si los hay):
   pyprecio:<palabras de la ficha unidas con +>=<código>/<US$ crudo>;<ficha que Nissei no tiene>=nohabia;go
   Ej: pyprecio:ferrari+negro=92568/19;cruzer+blade+64=07112/6.50;starlit=nohabia;go
+  PRODUCTOS CON COLORES (Joystick Xbox, P47, sábanas…): cada color es OTRO producto en Nissei, con su código, su link y su
+  foto. Cargá cada color aparte con #color, link y foto (en ese orden, separados con @):
+  pyprecio:<palabras>#<color>=<código>/<US$ crudo>@<link comprasparaguay>@<link foto>
+  Ej: pyprecio:joystick+xbox#azul=12345/48@https://comprasparaguay.com.ar/...@https://bucket-prod...jpg;go
+  El color se escribe igual que en la ficha (si no coincide, el comando lo rechaza y dice cuáles hay). Nunca pongas el
+  código o el link de un color en otro: el pedido del azul con el link del negro hace comprar el color equivocado.
 Resumen al final: la cuenta del barrido, dónde quedaste, y las dudas para Matías con los dos títulos y los dos links.
 
 == ENVÍO AL CHAT CYC ==

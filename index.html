@@ -2514,7 +2514,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.33';
+const APP_VERSION='23.34';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2525,6 +2525,7 @@ const APP_VERSION='23.33';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.34',f:'13/10/2026',h:'18:45',c:[{n:2,t:'🇵🇾 Pedidos de Paraguay: cada color puede tener su propio código, link y foto de comprasparaguay. Si pedís un solo color (ej. el Joystick azul), el renglón y el mensaje para Nissei usan los de ESE color.'}]},
   {v:'23.33',f:'13/10/2026',h:'18:00',c:[{n:1,t:'🧠 El cerebro muestra también los cambios de precio viejos (de antes de anotar cada decisión) y se sacó el renglón "¿Te queda alguna duda?".'}]},
   {v:'23.32',f:'13/10/2026',h:'17:45',c:[{n:1,t:'📈 Línea de tiempo: pasando el mouse por una flechita (o por ese día) dice qué cambio fue, por qué es de ese color y el motivo que escribí.'}]},
   {v:'23.31',f:'13/10/2026',h:'17:30',c:[{n:1,t:'🧠 El cerebro de una venta o producto ahora dice POR QUÉ cambió el precio (las últimas 3 subas o bajas, con su motivo y la flechita de color).'}]},
@@ -14416,7 +14417,9 @@ function pyCanasta(){
     const pr=(state.products||[]).find(x=>x.id===ped.prodId)||prodByName(ped.producto);
     // EL COSTO ES EL DE COMPRARLO HOY: precio de Paraguay de hoy + recargo (regla del 17/09). Sin
     // precio de hoy se usa lo que pagaste y el renglón lo dice en ámbar. No toca el costo de la ficha.
-    const _nuHoy=pr?(parseFloat(pr.nisseiUSD)||0):0;
+    const _cols=(ped.variantesNec||[]).filter(x=>x&&(parseInt(x.q)||0)>0).map(x=>x.v);
+    const _pc=_cols.length===1?pyDeColor(pr,_cols):null;   // un solo color pedido con su propio código
+    const _nuHoy=_pc&&parseFloat(_pc.usd)>0?parseFloat(_pc.usd):(pr?(parseFloat(pr.nisseiUSD)||0):0);
     const _vj=_viaja[ped.prodId]||0;
     const u=Math.max(0,(ped.cantidad||0)-_vj), cu=_nuHoy>0?Math.round(_nuHoy*RECARGO_PY*100)/100:(pr?(costUSDof(pr)||0):0);
     const sinHoy=!(_nuHoy>0);
@@ -14429,7 +14432,7 @@ function pyCanasta(){
     const caro=noLlega||(maxWeb!=null&&precioWeb>0&&precioWeb>maxWeb+0.005);
     const seguro=!caro&&!_sinHoyFlag(_nuHoy)&&maxWeb!=null&&precioWeb>0;
     return{ped,pr,u,cu,sinHoy,seguro,viaja:_vj,nu:_nuHoy,destraba,total:cu*u,lleva:u,sinStock:!!sin[ped.prodId],
-      gratis:!!(pr&&pr.gratisViaje),cod:(pr&&pr.codPy)?String(pr.codPy).trim():'',
+      gratis:!!(pr&&pr.gratisViaje),cod:(_pc&&_pc.cod)?String(_pc.cod).trim():(pr&&pr.codPy)?String(pr.codPy).trim():'',
       maxWeb,noLlega,sinMax:!mx||!!mx.motivo,precioWeb,caro};
   }).filter(x=>x.u>0).sort((a,b)=>b.destraba-a.destraba);
   const vivos=filas.filter(x=>!x.sinStock);
@@ -16411,6 +16414,15 @@ function margenSiComproPY(mx,nuUSD){
 }
 // Fotos (Paraguay y ML), links y datos básicos de un PROBADO de Paraguay (03/10/2026). La usan la tarjeta de
 // Probados y el renglón del 🧾 Pedido: una sola función, así muestran lo mismo.
+// CADA COLOR CON SU CÓDIGO DE PARAGUAY (13/10/2026, él con el Joystick Xbox: "me pide el azul, pero no puso el link del
+// azul, puso el del negro"). La ficha tenía UN código, link y foto para todos los colores. Ahora `pyVar/<color>` =
+// {cod, usd, link, foto, ts}, lo carga `pyprecio:<ficha>#<color>=…`. Si el pedido es de UN color y ese color tiene
+// lo suyo, manda eso; si no, lo de la ficha (con el aviso rojo de siempre).
+function pyDeColor(prod,colores){
+  const pv=(prod&&prod.pyVar)||{};
+  for(const c of (colores||[])){const d=pv[sid(String(c||'').toLowerCase())];if(d&&(d.cod||d.link))return Object.assign({color:c},d);}
+  return null;
+}
 function pyProbVisHTML(_prod,colores){
     const L=Object.entries(state.mllinks||{}).filter(([,e])=>e&&e.prodId===_prod.id&&!e.ignored);
     // LA FOTO DE ML ES LA DEL COLOR QUE SE PIDE (10/10/2026, él con el Joystick Xbox: Paraguay negro y ML verde,
@@ -16422,10 +16434,11 @@ function pyProbVisHTML(_prod,colores){
     // Y si el producto tiene varios colores, el código de Paraguay es UNO solo: se avisa en rojo para mirar que la
     // foto de Paraguay sea del color que se pide.
     const _nVar=(_prod.variantes||[]).length;
-    const _avisoColor=_nVar>1?`<div style="font-size:.72rem;color:var(--red);flex-basis:100%">⚠️ este producto tiene ${_nVar} colores y el código de Paraguay${_prod.codPy?' ('+_prod.codPy+')':''} es uno solo: mirá que la foto de Paraguay sea del color que pedís${(colores||[]).length?' ('+colores.join(', ')+')':''}</div>`:'';
+    const _pc=pyDeColor(_prod,colores);
+    const _avisoColor=_pc?`<div style="font-size:.72rem;color:var(--green);flex-basis:100%">✅ código de Paraguay del ${_pc.color}: <b>${_pc.cod||'—'}</b>${_pc.usd>0?' · US$ '+Number(_pc.usd).toFixed(2):''} (cargado para ese color)</div>`:_nVar>1?`<div style="font-size:.72rem;color:var(--red);flex-basis:100%">⚠️ este producto tiene ${_nVar} colores y el código de Paraguay${_prod.codPy?' ('+_prod.codPy+')':''} es uno solo: mirá que la foto de Paraguay sea del color que pedís${(colores||[]).length?' ('+colores.join(', ')+')':''}</div>`:'';
     const mla=viva?viva[0]:'', fML=viva&&viva[1].foto&&/^https:\/\//.test(viva[1].foto)?viva[1].foto:'';
     const cand=Object.values(state.candidatos||{}).find(c=>c&&c.prodId===_prod.id)||{};
-    const lPY=String(_prod.pyLink||cand.link||'').trim(), fPY0=String(_prod.pyFoto||cand.foto||'').trim();
+    const lPY=String((_pc&&_pc.link)||_prod.pyLink||cand.link||'').trim(), fPY0=String((_pc&&_pc.foto)||_prod.pyFoto||cand.foto||'').trim();
     const fPY=/^https:\/\//.test(fPY0)?fPY0:'';
     const ph=(u,t)=>u?`<a href="${u}" onclick="event.preventDefault();_mostrarLightbox(this.getAttribute('href'),'')" style="cursor:zoom-in;text-align:center;text-decoration:none;color:var(--muted);font-size:.66rem"><img src="${u}" loading="lazy" onerror="this.style.display='none'" style="width:84px;height:84px;object-fit:contain;background:#fff;border-radius:8px;display:block">${t}</a>`
       :`<div style="width:84px;height:84px;border:1px dashed var(--border);border-radius:8px;font-size:.62rem;color:var(--muted);display:flex;align-items:center;justify-content:center;text-align:center">${t}<br>sin foto</div>`;
@@ -16435,7 +16448,7 @@ function pyProbVisHTML(_prod,colores){
     // UN SOLO % (07/10/2026, él: "porque dice que me queda un 35 y arriba un 48%? (…) que me muestre un % por
     // producto, el que me quedaría si lo pido"). El 35% era con lo que pagaste la última vez; acá va sólo el
     // de pedirlo HOY al precio de Nissei (la misma cuenta del veredicto de arriba: margenSiComproPY).
-    let mgPed=null,_mxP=0,_mxF='';try{const _mx=maxCompraDe(_prod,PY_PROB_PISO);mgPed=margenSiComproPY(_mx,parseFloat(_prod.nisseiUSD)||0);if(_mx&&!_mx.motivo){_mxP=_mx.P;_mxF=_mx.fuente;}}catch(e){}
+    let mgPed=null,_mxP=0,_mxF='';try{const _mx=maxCompraDe(_prod,PY_PROB_PISO);mgPed=margenSiComproPY(_mx,(_pc&&parseFloat(_pc.usd))||parseFloat(_prod.nisseiUSD)||0);if(_mx&&!_mx.motivo){_mxP=_mx.P;_mxF=_mx.fuente;}}catch(e){}
     const datos=mg&&mg.precio>0?`<div style="font-size:.74rem;color:var(--muted);flex-basis:100%">🏷️ tu precio en ML <b style="color:var(--text)">${fmt(Math.round(mg.precio))}</b>${mgPed!=null?` · si lo pedís hoy te queda <b style="color:${typeof pctColor==='function'?pctColor(mgPed):'var(--text)'}">${Math.round(mgPed)}%</b>${_mxP&&_mxP!==Math.round(mg.precio)?` vendiéndolo a <b style="color:var(--text)">${fmt(_mxP)}</b>${_mxF==='full'?' (lo que se puede cobrar teniendo Full)':_mxF==='caja'?' (lo que pide ML para ganar la caja)':_mxF==='claude'?' (el precio que decidí yo, Claude)':''}`:''}`:''}${_prod.nisseiUSD?` · 🇵🇾 Nissei US$ ${Number(_prod.nisseiUSD).toFixed(2)}${_prod.nisseiTs?' (mirado '+new Date(Number(_prod.nisseiTs)).toLocaleDateString('es-AR')+')':''}`:''}${_prod.codPy?` · 🔖 ${_prod.codPy}`:''}</div>`:'';
     return `${datos}${_avisoColor}<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;width:100%">
       <div style="display:flex;gap:6px">${ph(fPY,'🇵🇾 Paraguay')}${ph(fML,'🏷️ ML')}</div>

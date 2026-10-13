@@ -288,6 +288,14 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 
 ## 3 · MERCADERÍA
 
+### Cada color con su código de Paraguay (13/10/2026, v23.34 · `cyc-v614`)
+Él con el Joystick Xbox: *"me pide el azul, pero no puso el link del azul, puso el del negro"*. La ficha tenía un solo
+código/link/foto para todos los colores. Ahora `cyc/products/<id>/pyVar/<color>` = {cod, usd, link, foto, ts}, cargado con
+`pyprecio:<ficha>#<color>=<cód>/<US$>@<link>@<foto>` (valida que el color exista en la ficha). Web: `pyDeColor`; el renglón
+de Probados usa link, foto, código y precio del color, y `pyCanasta` (mensaje para Nissei) usa el código y precio del color
+cuando el pedido es de UN solo color. **Qué chequear:** con varios colores pedidos sigue el código de la ficha (aviso rojo);
+que la clave del color sea la misma en el robot y la web (minúsculas, no alfanumérico → _).
+
 - **`compray:<fecha>|usd=…|sinpesos` (12/10/2026):** crea un pedido de Paraguay viejo sin los pesos de los dólares (él: *"crealo igual, si faltan cosas me la indicas"*). Queda INCOMPLETO, fuera del promedio, y la falta se lista como los otros gastos. Primer uso: el pedido del 08/09 (ticket US$ 652, sin detalle de productos). Chequear: que sin `sinpesos` siga pidiendo `merc=`.
 - **Estado de la caja de cada producto** (probe `cajahoy`, `mllinks.caja`): winning/sharing/losing
   y también nocat/sincaja; un producto sin publicación activa no es "sin dato".

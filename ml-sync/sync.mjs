@@ -18353,7 +18353,7 @@ async function main() {
       console.log(`\n✓ ${borrar.length - quedan} de ${borrar.length} borrados (releído)${quedan ? ` · ⚠️ ${quedan} siguen` : ''}. Esas ventas ahora usan el costo real de la ficha.`);
       return;
     }
-    // BILLING_PROBE=pyprecio:<id|palabras>=<código>/<US$>[@<link>];<id|palabras>=nohabia;…[;go]
+    // BILLING_PROBE=pyprecio:<id|palabras>[#<color>]=<código>/<US$>[@<link>][@<foto>];<id|palabras>=nohabia;…[;go]
     // EL PRECIO Y EL CÓDIGO DE PARAGUAY DE UNA FICHA, DESDE EL CHAT (07/10/2026). Pedido del chat de
     // compras (etapa 1): cargar el Precio Nissei y el Código Nissei de los probados SIN tocar el
     // Costo US$. Escribe lo mismo que las casillas de la ficha (`updNisseiUSD`/`updNisseiCod`):
@@ -18374,7 +18374,9 @@ async function main() {
       for (const par of pares) {
         const i = par.lastIndexOf('=');
         if (i <= 0) { console.log(`❌ "${par}" mal escrito.`); malos++; continue; }
-        const quien = par.slice(0, i).trim(), val = par.slice(i + 1).trim();
+        // `<ficha>#<color>` (13/10/2026): el código, precio, link y foto de ESE color van a `pyVar/<color>`, no a la ficha.
+        const _q0 = par.slice(0, i).trim(), val = par.slice(i + 1).trim();
+        const _h = _q0.indexOf('#'), quien = _h > 0 ? _q0.slice(0, _h).trim() : _q0, color = _h > 0 ? _q0.slice(_h + 1).trim() : '';
         let cand;
         if (products.some((x) => x.id === quien)) cand = products.filter((x) => x.id === quien);
         else if (quien.startsWith('=')) cand = products.filter((x) => _n(x.name) === _n(quien.slice(1)));
@@ -18385,9 +18387,18 @@ async function main() {
         }
         const p = cand[0];
         if (/^no ?habia$/i.test(_n(val))) { plan.push({ p, nohay: true }); console.log(`── ${p.name} (${p.id})\n     → Nissei NO lo tiene (marca "no había")`); continue; }
-        const m = val.match(/^([0-9A-Za-z-]+)\/([0-9]+(?:[.,][0-9]+)?)(?:@(https:\/\/\S+))?$/);
-        if (!m) { console.log(`❌ "${par}": va <código>/<US$>[@link] o nohabia.`); malos++; continue; }
-        const cod = m[1], usd = parseFloat(m[2].replace(',', '.')), link = m[3] || '';
+        const m = val.match(/^([0-9A-Za-z-]+)\/([0-9]+(?:[.,][0-9]+)?)(?:@(https:\/\/[^@\s]+))?(?:@(https:\/\/[^@\s]+))?$/);
+        if (!m) { console.log(`❌ "${par}": va <código>/<US$>[@link][@foto] o nohabia.`); malos++; continue; }
+        const cod = m[1], usd = parseFloat(m[2].replace(',', '.')), link = m[3] || '', foto = m[4] || '';
+        if (color) {
+          if (!(usd > 0)) { console.log(`❌ "${par}": precio en cero.`); malos++; continue; }
+          const vars = (p.variantes || []).map((v) => String(v && v.nombre != null ? v.nombre : v));
+          const vOk = vars.find((v) => _n(v) === _n(color));
+          if (!vOk) { console.log(`❌ "${par}": la ficha ${p.name} no tiene el color "${color}" (tiene: ${vars.join(', ') || 'ninguno'})`); malos++; continue; }
+          const key = String(vOk).toLowerCase().replace(/[^a-z0-9]/gi, '_');
+          console.log(`── ${p.name} (${p.id}) · color ${vOk}\n     código ${cod} · US$ ${usd.toFixed(2)}${link ? ' · link' : ' · SIN link'}${foto ? ' · foto' : ' · sin foto'} → pyVar/${key} (lo de la ficha no se toca)`);
+          plan.push({ p, cod, usd, link, foto, key }); continue;
+        }
         if (!(usd > 0)) { console.log(`❌ "${par}": precio en cero.`); malos++; continue; }
         console.log(`── ${p.name} (${p.id})`);
         console.log(`     código ${p.codPy || '—'} → ${cod} · Paraguay US$ ${p.nisseiUSD != null ? p.nisseiUSD : '—'} → ${usd.toFixed(2)}${link ? ' · link nuevo' : ''} · costo US$ ${p.costUSD ?? '—'} (no se toca)`);
@@ -18399,6 +18410,7 @@ async function main() {
       for (const x of plan) {
         const b = `cyc/products/${x.p.id}`;
         if (x.nohay) { await db.set(`cyc/py_sinstock/${x.p.id}`, { ts: ahora }); continue; }
+        if (x.key) { await db.set(`${b}/pyVar/${x.key}`, { cod: String(x.cod), usd: x.usd, ts: ahora, ...(x.link ? { link: x.link.slice(0, 300) } : {}), ...(x.foto ? { foto: x.foto.slice(0, 300) } : {}) }); continue; }
         await db.patch(b, { nisseiUSD: x.usd, nisseiTs: ahora, codPy: String(x.cod), ...(x.link ? { pyLink: x.link.slice(0, 300) } : {}) });
         try { await db.set(`cyc/py_sinstock/${x.p.id}`, null); } catch { console.log(`⚠️ no pude sacar la marca "no había" de ${x.p.name}`); }
       }
@@ -18407,6 +18419,7 @@ async function main() {
       let ok = 0;
       for (const x of plan) {
         const r = (await db.get(`cyc/products/${x.p.id}`)) || {};
+        if (x.key) { const v = (r.pyVar || {})[x.key] || {}; const okv = String(v.cod) === String(x.cod) && Math.abs(parseFloat(v.usd) - x.usd) < 0.005; if (okv) ok++; console.log(`  ${okv ? '✓' : '❌'} ${x.p.name} · ${x.key}: código ${v.cod} · US$ ${v.usd}`); continue; }
         const bien = x.nohay ? !!sinSt[x.p.id] : (Math.abs(parseFloat(r.nisseiUSD) - x.usd) < 0.005 && String(r.codPy) === String(x.cod) && !sinSt[x.p.id] && r.costUSD === x.p.costUSD);
         if (bien) ok++;
         console.log(`  ${bien ? '✓' : '❌'} ${x.p.name}: ${x.nohay ? 'marcado "no había"' : `código ${r.codPy} · US$ ${r.nisseiUSD} · costo US$ ${r.costUSD} (igual)`}`);
