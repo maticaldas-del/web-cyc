@@ -29898,7 +29898,7 @@ async function main() {
         { const ks7 = ks.filter((k) => k >= k7); const ini = ks7.find((k) => d[k].st != null); let sold = 0; for (const k of ks7) sold += Number(d[k].u) || 0; const st0 = ini ? Number(d[ini].st) : null;
           let entro = 0, prev = st0; for (const k of ks7) { const sk = d[k].st; if (sk == null) continue; const v = Number(sk); if (prev != null && v > prev) entro += v - prev; prev = v; }
           if (st0 != null && !entro && st0 - stHoy - sold >= 3) flags.push(`desaparecieron ${st0 - stHoy - sold} u. sin venderse (ML las dio de baja, perdidas o dañadas: revisar)`);
-          if (entro >= 3) flags.push(`entraron ${entro} u. esta semana: revisar si el precio de escasez sigue teniendo sentido`); }
+          if (entro >= Math.max(3, (st0 || 0) * 0.3) && Number(pHoy) > 0) flags.push(`entraron ${entro} u. esta semana: revisar si el precio de escasez sigue teniendo sentido`); }
         // ── VENTAS: picos, remate, cancelaciones, lo cobrado contra lo publicado ──
         { let maxD = 0, uR7 = 0, cob = 0, pub = 0; for (const k of ks) { if (k < k7) continue; const x = d[k]; const u = Number(x.u) || 0; if (u > maxD) maxD = u; uR7 += Number(x.uR) || 0; if (u > 0 && Number(x.p) > 0 && Number(x.tot) > 0) { cob += Number(x.tot); pub += u * Number(x.p); } }
           if (B.u >= 4 && maxD >= B.u * 0.6) flags.push(`ojo: ${maxD} de las ${B.u} ventas de la semana fueron en UN día (un comprador grande o un pico): el ritmo está inflado`);
@@ -29915,33 +29915,41 @@ async function main() {
         var est = ultX.est || e.status || null; const sub = String(ultX.sub || e.subStatus || '');
         if (stHoy > 0 && est && est !== 'active') flags.push(`${est === 'paused' ? 'PAUSADA' : est.toUpperCase()} con ${stHoy} u. adentro${sub ? ` (${sub})` : ''}: activar o ver por qué`);
         if (MALOS_SUB.test(sub)) flags.push(`ML la tiene frenada: ${sub}`);
-        { let sub7 = null; for (const k of ks) if (k <= k7 && d[k].sub !== undefined) sub7 = String(d[k].sub || ''); if (sub7 != null && sub7 !== sub && (sub || sub7)) flags.push(`cambió el estado en ML: "${sub7 || 'normal'}" → "${sub || 'normal'}"`); }
+        { let sub7 = null; for (const k of ks) if (k <= k7 && d[k].sub !== undefined) sub7 = String(d[k].sub || ''); const sinStockSub = (x) => x.split(',').filter((y) => y && !/out_of_stock/.test(y)).join(',');
+          if (sub7 != null && sinStockSub(sub7) !== sinStockSub(sub)) flags.push(`cambió el estado en ML: "${sub7 || 'normal'}" → "${sub || 'normal'}"`); }
         // ── PRECIO, CAJA Y MARGEN ──
         if (cambioP && !decididoP.has(mla)) flags.push(`el precio cambió (${cambioP.replace('precio ', '')}) y no lo decidí yo: ML, una promo de ML o alguien a mano`);
-        { let ptw7 = 0; for (const k of ks) if (k <= k7 && Number(d[k].ptw) > 0) ptw7 = Number(d[k].ptw); const ptwH = Number(ultX.ptw) || Number(e.cajaPtw) || 0; if (ptw7 && ptwH && ptwH < ptw7 * 0.95 && cajaHoy !== 'g') flags.push(`el competidor bajó: para ganar la caja ML pide ${fm(ptw7)} → ${fm(ptwH)}`); }
+        { let ptw7 = 0; for (const k of ks) if (k <= k7 && Number(d[k].ptw) > 0) ptw7 = Number(d[k].ptw); const ptwH = Number(ultX.ptw) || Number(e.cajaPtw) || 0; if (ptw7 && ptwH && ptwH < ptw7 * 0.9 && cajaHoy === 'p') flags.push(`el competidor bajó: para ganar la caja ML pide ${fm(ptw7)} → ${fm(ptwH)}`); }
         { const mg = Number(ultX.mg); if (isFinite(mg) && ultX.mg != null && mg < 25 && !pisoL[mla] && !nosubL[mla]) flags.push(`margen de hoy ${mg.toFixed(1)}%: abajo del objetivo 25%`); }
         if (pHoy >= 33000 && pHoy < 34500) flags.push(`precio ${fm(pHoy)}: apenas arriba de la barrera de $33.000 (paga envío): ¿conviene $32.990?`);
         if (nosubL[mla] && stHoy > 0 && ritmoRef && stHoy / ritmoRef < 20) flags.push('marcada LIQUIDANDO pero ya le queda poco stock y vende: ¿sacar la marca?');
         { const pc = promoL[mla]; if (pc && Number(pc.hasta) > 0) { const dRest = (Number(pc.hasta) - Date.now()) / 864e5; if (dRest < 0) flags.push('mi promo ya venció: decidir si se renueva'); else if (dRest < 2) flags.push(`mi promo vence en ${Math.max(0, Math.round(dRest * 24))} h: decidir si se renueva`); } }
         // ── FECHAS ──
-        if (proxFecha && RE_REGALO.test(String(e.title || '') + ' ' + String(pr.name || ''))) { const dF = (proxFecha.ts - Date.now()) / 864e5; if (dF <= proxFecha.pre + 7 && ritmoRef && stHoy < ritmoRef * 1.4 * dF) flags.push(`${proxFecha.nom} en ${Math.round(dF)} d: con ${stHoy} u. no llega (a ritmo de regalo se venden ~${Math.round(ritmoRef * 1.4 * dF)})`); }
+        if (proxFecha && RE_REGALO.test(String(e.title || '') + ' ' + String(pr.name || ''))) { const dF = (proxFecha.ts - Date.now()) / 864e5; if (dF <= proxFecha.pre + 7 && ritmoRef >= 0.15 && ritmoRef * 1.4 * dF - stHoy >= 3) flags.push(`${proxFecha.nom} en ${Math.round(dF)} d: con ${stHoy} u. no llega (a ritmo de regalo se venden ~${Math.round(ritmoRef * 1.4 * dF)})`); }
         filas.push({ mla, cta: e.cuenta || '?', prodId: e.prodId, tit: String(e.title || pr.name).slice(0, 44), A, B, stHoy, pHoy, cajaHoy, diasSin, flags });
       }
       // ── HERMANAS: misma ficha y misma cuenta, una vende y la otra no (se pisan entre ellas) ──
       { const gr = {}; for (const f of filas) (gr[f.prodId + '|' + f.cta] = gr[f.prodId + '|' + f.cta] || []).push(f);
-        for (const arr of Object.values(gr)) { if (arr.length < 2) continue; const vend = arr.filter((f) => f.B.u > 0); for (const f of arr) if (f.stHoy > 0 && !f.B.u && vend.length) f.flags.push(`su hermana ${vend[0].mla} vende y ésta no: misma ficha y cuenta, ¿sobra o le falta algo?`); } }
+        for (const arr of Object.values(gr)) { if (arr.length < 2) continue; const vend = arr.filter((f) => f.B.u > 0); for (const f of arr) if (f.stHoy > 0 && !f.B.u && !f.A.u && vend.length && vend[0].B.u >= 2) f.flags.push(`su hermana ${vend[0].mla} vende y ésta no: misma ficha y cuenta, ¿sobra o le falta algo?`); } }
       const L = (f) => {
         const r = (t) => t.ritmo == null ? '—' : t.ritmo.toFixed(2) + '/d';
         const g = (t) => t.ganU == null ? '—' : fm(t.ganU);
         const pd = (t) => t.plataDia == null ? '—' : fm(t.plataDia);
         return `${f.cta} · ${f.mla} · ${f.tit} · hoy ${f.pHoy ? fm(f.pHoy) : '?'} · ${f.stHoy} u. · caja ${f.cajaHoy || '?'} · ritmo ${r(f.A)} → ${r(f.B)} · $/u ${g(f.A)} → ${g(f.B)} · plata/día ${pd(f.A)} → ${pd(f.B)} · ${f.diasSin == null ? 'sin ventas' : f.diasSin + ' d sin vender'}`;
       };
-      const con = filas.filter((f) => f.flags.length).sort((a, b) => (b.A.plataDia || 0) - (a.A.plataDia || 0));
+      // Dos niveles: lo que pide una decisión (🚩) y lo que es contexto para decidir (·). Una publicación entra en
+      // "para mirar" sólo si tiene algo del primero; el contexto va abajo de ella o en "con detalle".
+      const CONTEXTO = /^(entraron|cambió el estado|el competidor bajó|su hermana|precio \$|plata por día subió|caja:|se cobró|ojo:|precio \$.*barrera|\d+ de \d+ ventas)/;
+      const esFuerte = (f) => f.flags.some((x) => !CONTEXTO.test(x));
+      const con = filas.filter(esFuerte).sort((a, b) => (b.A.plataDia || 0) - (a.A.plataDia || 0));
+      const ctx = filas.filter((f) => f.flags.length && !esFuerte(f)).sort((a, b) => (b.A.plataDia || 0) - (a.A.plataDia || 0));
       const sin = filas.filter((f) => !f.flags.length).sort((a, b) => (b.B.plataDia || 0) - (a.B.plataDia || 0));
       console.log(`=== 🔬 LUPA · cada publicación · últimos 7 días con stock contra los 30 anteriores · SOLO LEE ===`);
       console.log(`(ganancia aprox: neto − mercadería − IIBB − 2% mono · cajas: g gana · c comparte · p pierde · n sin catálogo)\n`);
       console.log(`── 🚩 PARA MIRAR · ${con.length} ──`);
-      for (const f of con) { console.log('🚩 ' + L(f)); for (const x of f.flags) console.log('     · ' + x); }
+      for (const f of con) { console.log('🚩 ' + L(f)); for (const x of f.flags) console.log((CONTEXTO.test(x) ? '       ~ ' : '     · ') + x); }
+      console.log(`\n── CON DETALLE (sólo contexto, no pide decisión) · ${ctx.length} ──`);
+      for (const f of ctx) { console.log('   ' + L(f)); for (const x of f.flags) console.log('       ~ ' + x); }
       console.log(`\n── SIN NOVEDAD · ${sin.length} ──`);
       for (const f of sin) console.log('   ' + L(f));
       console.log(`\nMiradas ${miradas} publicaciones con stock o ventas en 37 días · ${sinLinea} sin línea de tiempo leíble${tc ? '' : ' · ⚠️ sin dólar: ganancia sin mercadería'}`);
