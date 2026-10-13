@@ -2513,7 +2513,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.24';
+const APP_VERSION='23.25';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2524,6 +2524,7 @@ const APP_VERSION='23.24';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.25',f:'13/10/2026',h:'12:25',c:[{n:1,t:'🇵🇾 Pedido de Paraguay: el bloque de perfumes ahora junta todo lo de BELLEZA Y SALUD (maquillaje, cremas, shampoo, termómetros, plantillas, masajeadores…); el resto va en Resto. También en el mensaje para Nissei y en el botón 🧴. No cambia en qué cuenta va cada producto.'}]},
   {v:'23.24',f:'13/10/2026',h:'01:50',c:[{n:1,t:'🧠 Revisión 9 (el cerebro): una venta cancelada guarda cuándo se canceló, para que la revisión vea los reclamos y devoluciones de ventas viejas. Lo demás de la revisión fue en el robot (pedidos, cajas, precios, promos e informe).'}]},
   {v:'23.23',f:'13/10/2026',h:'00:30',c:[{n:1,t:'🏷️ Ventas: "Descuento ML" (lo pagó ML entero, a vos te llega el precio lleno) pasa a AZUL. El DORADO queda sólo para las promos o descuentos donde pusimos plata nosotros.'}]},
   {v:'23.22',f:'12/10/2026',h:'21:40',c:[{n:1,t:'🏷️ Ventas: la venta hecha en promo dice en DORADO "Descuento ML" (si el descuento lo puso ML entero) o "Vendido en promoción" (si pusimos algo nosotros), con cuánto puso cada uno.'}]},
@@ -13361,9 +13362,29 @@ function esPerfumeNom(t){
     if(c&&String(c.nombre||'').trim().toLowerCase()===nl&&_PERF_RE.test(String(c.mlTit||'')))return true;
   return false;
 }
+// BELLEZA Y SALUD VAN CON LOS PERFUMES (13/10/2026, él: "no es solo perfume, es todo lo que está relacionado a
+// belleza y salud va en perfumes y el resto sí va en resto"). Vale para la lista del pedido de Paraguay, el botón
+// 🧴 y el mensaje para Nissei. NO toca en qué cuenta va cada producto (perfumes → Adriana sigue igual) ni el piso.
+// Se mira el nombre (castellano y portugués de comprasparaguay), y si no alcanza el rubro de ML de la ficha
+// (`catNom` "Belleza y Cuidado Personal" / "Salud y Equipamiento Médico", o `dom`) o el título del candidato.
+const _BELLEZA_RE=/maquill|maquiag|labial|batom|gloss|lip ?(tint|balm|oil)|b[aá]lsamo|rubor|blush|base (l[ií]quida|de maq|matte)|corrector|corretivo|delineador|delineado|r[ií]mel|m[aá]scara (de pesta|de c[ií]lios|para pesta)|cílios|pesta[ñn]as|sombra|paleta de|iluminador|polvo (compacto|suelto|facial)|p[oó] (compacto|facial)|pincel|esponja de maq|esmalte|u[ñn]as|crema|creme|s[eé]rum|hidratante|protector solar|protetor solar|bronceador|desodorante|antitranspirante|jab[oó]n|sabonete|shampo|shamp[uú]|xampu|acondicionador|condicionador|tratamiento capilar|m[aá]scara capilar|t[oó]nico|micelar|desmaquill|exfolia|loci[oó]n|lo[cç][aã]o|skin ?care|facial|cabello|cabelo|capilar|tintura|alisad|planchita|rizador|secador de pelo|depila|afeitad|barbear|rasurad|cortapelo|recortadora|cuidado personal|higiene|cepillo (de dientes|dental)|dental|bucal|masaje|massag|term[oóô]metro|tens[ií]metro|ox[ií]metro|balan[cç]a (corporal|de banheiro)|balanza (corporal|de ba[ñn]o|personal)|nebuliz|vitamina|suplemento|col[aá]geno|prote[ií]na|ortop[eé]d|plantilla|juanete|metatars|tal[oó]n|faja|rodillera|mu[ñn]equera|tobillera|corrector postural|salud/i;
+function esBellezaNom(t){
+  if(esPerfumeNom(t))return true;
+  const n=String(t||'').trim(); if(!n)return false; if(_BELLEZA_RE.test(n))return true;
+  const nl=n.toLowerCase(), cat=/belleza|cuidado personal|salud|equipamiento m[eé]dico/i,
+        dom=/BEAUTY|MAKEUP|LIPSTICK|FOUNDATION|MASCARA|EYESHADOW|EYELINER|NAIL|SKIN|HAIR|SHAMPOO|CONDITIONER|COSMETIC|DEODORANT|SOAP|MOISTUR|SUNSCREEN|HEALTH|THERMOMETER|BLOOD_PRESSURE|OXIMETER|MASSAG|VITAMIN|SUPPLEMENT|ORTHOP|INSOLE|SHAVER|TRIMMER/i;
+  const p=(state.products||[]).find(x=>String(x.name||'').trim().toLowerCase()===nl);
+  if(p)for(const e of Object.values(state.mllinks||{})){
+    if(!e||e.prodId!==p.id)continue;
+    if(cat.test(String(e.catNom||''))||dom.test(String(e.dom||''))||_BELLEZA_RE.test(String(e.title||'')))return true;
+  }
+  for(const c of Object.values(state.candidatos||{}))
+    if(c&&String(c.nombre||'').trim().toLowerCase()===nl&&_BELLEZA_RE.test(String(c.mlTit||'')))return true;
+  return false;
+}
 function nisseiMsgLineas(items){
   const t=x=>`${x.cod} x ${x.u}`;
-  const p=items.filter(x=>esPerfumeNom(x.nom)).map(t), r=items.filter(x=>!esPerfumeNom(x.nom)).map(t);
+  const p=items.filter(x=>esBellezaNom(x.nom)).map(t), r=items.filter(x=>!esBellezaNom(x.nom)).map(t);
   return p.length&&r.length?['PERFUMERÍA',...p,'','RESTO',...r]:items.map(t);
 }
 // PERFUMES Y RESTO EN PARAGUAY (04/10/2026, pedido suyo: "en pedidos paraguay nuevos y probados, poner la sección
@@ -13372,7 +13393,7 @@ function nisseiMsgLineas(items){
 // que parte el mensaje para Nissei).
 let _pyRubro=(()=>{try{return localStorage.getItem('cycPyRubro')||'todos';}catch(e){return'todos';}})();
 function pySetRubro(v){_pyRubro=v;try{localStorage.setItem('cycPyRubro',v);}catch(e){}renderPedidos();}
-function _pyRubroOk(nom){if(_pyRubro==='todos')return true;const p=esPerfumeNom(nom);return _pyRubro==='perf'?p:!p;}
+function _pyRubroOk(nom){if(_pyRubro==='todos')return true;const p=esBellezaNom(nom);return _pyRubro==='perf'?p:!p;}
 function _pedOrden(){try{return localStorage.getItem('cycPedOrden')||'orig';}catch(e){return'orig';}}
 function _pedOrdenSet(k){try{localStorage.setItem('cycPedOrden',k);}catch(e){} if(typeof renderPedidos==='function')renderPedidos();}
 // ── USO PERSONAL EN EL PEDIDO (04/10/2026, él: "agregame estas dos, una y una en el pedido. Es para mí, uso
@@ -13453,9 +13474,9 @@ function pedidoMomentoHTML(){
   const sinCod=A.filter(f=>!f.cod).length+N.sinCod.length;
   const pasa=crudoCYC-tope;   // el tope es de CYC: lo de uso personal no cuenta
   // PERFUMERÍA Y RESTO TAMBIÉN EN LA LISTA (03/10/2026, él: "así unificamos"): misma división que el mensaje a Nissei.
-  const _perfGrupos=(rows,noms)=>{const p=rows.filter((_,i)=>esPerfumeNom(noms[i])), r=rows.filter((_,i)=>!esPerfumeNom(noms[i]));
+  const _perfGrupos=(rows,noms)=>{const p=rows.filter((_,i)=>esBellezaNom(noms[i])), r=rows.filter((_,i)=>!esBellezaNom(noms[i]));
     const st=t=>`<div style="font-size:.66rem;font-weight:700;color:var(--muted);margin:8px 0 0">${t}</div>`;
-    return p.length&&r.length?st('🌸 PERFUMERÍA ('+p.length+')')+p.join('')+st('📦 RESTO ('+r.length+')')+r.join(''):rows.join('');};
+    return p.length&&r.length?st('🌸 PERFUMERÍA, BELLEZA Y SALUD ('+p.length+')')+p.join('')+st('📦 RESTO ('+r.length+')')+r.join(''):rows.join('');};
   const tit=(t,n,us)=>`<div style="display:flex;justify-content:space-between;font-size:.74rem;font-weight:700;margin:12px 0 2px;padding-bottom:3px;border-bottom:2px solid var(--border2)"><span>${t} (${n})</span><span style="color:var(--muted);font-weight:400">${u2(us)} crudos</span></div>`;
   // CERRADO POR DEFECTO Y MINIMALISTA (08/10/2026, él: "que predeterminado al entrar en pedidos esté cerrado"). Cerrado:
   // cuánto va (grande), productos y unidades. Abierto: todo lo de antes. Se acuerda si lo abriste mientras
@@ -16773,7 +16794,7 @@ function renderPedidos(){
       ${_tab('probados','✅ Productos probados','Lo que YA vendés: cuánto hay que reponer para no quedarte sin stock, y lo que dejó de convenir al precio de Paraguay de hoy.')}
       ${_tab('nuevos','🆕 Productos nuevos','Lo que todavía NO vendés: los candidatos que trae el chat de Paraguay y el armado de ese pedido.')}
       ${_tab('hechos',`🧾 Pedido${(()=>{const n=pyArmadoFilas().length+pedNuevos(candList().filter(candEnArmado).filter(c=>candEnPedido(c)!=='viajando')).filas.length;return n?' ('+n+' cargados)':'';})()}`,'El pedido del momento (probados + nuevos juntos, con el mensaje para Nissei) y abajo los pedidos ya hechos: en camino y llegados.')}
-    </div>`+(pyVista!=='hechos'?`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:-4px 0 12px"><span style="font-size:.66rem;color:var(--muted)">Mostrar:</span>${[['todos','Todo'],['perf','🧴 Perfumes'],['resto','📦 Resto']].map(([v,t])=>`<button class="btn" style="font-size:.64rem;padding:4px 11px;${_pyRubro===v?'background:#7c3aed;color:#fff;border-color:#7c3aed;font-weight:700':''}" onclick="pySetRubro('${v}')">${t}</button>`).join('')}</div>`:'');
+    </div>`+(pyVista!=='hechos'?`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:-4px 0 12px"><span style="font-size:.66rem;color:var(--muted)">Mostrar:</span>${[['todos','Todo'],['perf','🧴 Perfumes, belleza y salud'],['resto','📦 Resto']].map(([v,t])=>`<button class="btn" style="font-size:.64rem;padding:4px 11px;${_pyRubro===v?'background:#7c3aed;color:#fff;border-color:#7c3aed;font-weight:700':''}" onclick="pySetRubro('${v}')">${t}</button>`).join('')}</div>`:'');
     // PROBADOS = IDÉNTICO A BS AS (01/10/2026, pedido suyo): sólo la lista de pedidos, sin canasta ni precios.
     el.innerHTML=_tabs+(pyVista==='nuevos'?candidatosHTML():pyVista==='ambos'?el.innerHTML+`<div style="font-size:.8rem;font-weight:700;margin:18px 0 8px;padding-top:10px;border-top:2px solid var(--border2)">🆕 Productos nuevos</div>`+candidatosHTML():pyVista==='hechos'?pedidoMomentoHTML()+`<div style="font-size:.8rem;font-weight:700;margin:6px 0 8px">📦 Pedidos hechos (${pyCompras().length})</div>`+pyHechosHTML():el.innerHTML);
   }

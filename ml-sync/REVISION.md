@@ -690,3 +690,9 @@ La pregunta de la etapa: *¿la lista que miré es TODO o sólo una parte? ¿una 
  · **Sigue abierto:** las publicaciones con variantes adentro (no los colores en publicaciones separadas) siguen sin dueño de
    precio: `decido` las rechaza y la planilla las lista "a mano". Falta un camino de Claude por `raiseVariations`.
 
+
+- **13/10/2026 · Paraguay: belleza y salud van con los perfumes** (etapa 3, mercadería). `esBellezaNom` + `_BELLEZA_RE` en
+  index.html: parte la lista del pedido (`_perfGrupos`), el botón 🧴 (`_pyRubroOk`) y el mensaje para Nissei
+  (`nisseiMsgLineas`). Mira nombre (castellano y portugués), `catNom`/`dom` de la ficha y `mlTit` del candidato.
+  NO toca el piso (`candPisoDe` sigue con `esPerfumeNom`) ni la cuenta (perfumes → Adriana). Chequear: que nada de
+  electrónica caiga en belleza por una palabra suelta (ej. "facial", "crema") y que el termómetro de cocina sea salud a propósito.
