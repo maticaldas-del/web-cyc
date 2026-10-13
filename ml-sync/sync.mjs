@@ -36391,7 +36391,7 @@ async function main() {
         const cost = Math.round((Number(p.costFullUSD) || Number(p.costUSD) || 0) * tc);
         const pr = Math.round(Number(p.netoCalcPrecio) || 0), cam45 = [];
         for (const [mla, e] of Object.entries(L)) { if (!e || e.prodId !== p.id || e.ignored) continue; const a = AP[mla]; if (!a || a.de == null || a.a == null) continue;
-          const d = Math.round((hoy - (Number(a.ts) || 0)) / 864e5); if (d <= 45) cam45.push(`${a.a > a.de ? '⬆️' : '⬇️'}$${a.de}→$${a.a} ${d}d`); }
+          const d = Math.round((hoy - (Number(a.ts) || 0)) / 864e5); if (d <= 45) cam45.push(`${a.a > a.de ? '⬆️' : '⬇️'}$${a.de}→$${a.a} ${d}d${a.a > a.de && /escas|estir/i.test(String(a.motivo || '')) ? 'ESC' : ''}`); }
         const dec0 = ` · precio $${pr}${cam45.length ? ' (' + cam45.slice(0, 3).join(' ') + ')' : ''}`;
         const m60 = med(pU[p.id]);
         const dec = dec0 + (m60 ? ` · med60 $${m60}` : '') + ` · ctas [${ctasDe(p.id).map((c) => c.slice(0, 2)).join(' ')}]` + (CD[p.id] ? ` · YA DECIDÍ ${CD[p.id].u != null ? CD[p.id].u : JSON.stringify(CD[p.id].vars || {})}` : '');

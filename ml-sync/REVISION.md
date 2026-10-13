@@ -722,3 +722,14 @@ Probe de sólo lectura (ml-consulta): de cada publicación con ficha y stock o v
 anteriores (ritmo, ganancia por unidad, plata por día, días sin vender, caja, precio). Un día cuenta salvo que se SEPA que no
 había stock. El cambio de precio sólo se muestra como contexto de otra bandera. Va en las vueltas del cerebro. Chequear que
 las 🚩 sean pocas y reales (la primera corrida dio 185 de 236: demasiadas).
+
+### Juicio contra el número del supervisor (13/10/2026, v23.28)
+Él, con el Chispero: *"porque dice perdió y dio positivo?"*. El número del supervisor es sólo el efecto precio (lo cobrado de
+más en lo que SÍ se vendió; el volumen perdido no se cuenta, `VOLUMEN_CONFIABLE`). Si mi juicio dice lo contrario, el número
+sale en gris con la aclaración. Chequear que no aparezca cuando coinciden.
+
+### Pedidos: el ritmo de antes cuando subí por escasez (13/10/2026)
+Él: *"si subo por escasez se vende menos de lo normal; eso no debería achicar las unidades a comprar"*. `pedidostodo` marca
+`ESC` en cada suba cuyo motivo dice escasez/estirar; `decide_pedidos.py` (`ritmo`) usa el mayor entre el ritmo de hoy y el de
+los 30 días previos / 60 días, si la suba fue hace 30 d o menos. **Los motivos de escasez en `decido` tienen que decir "escasez"**.
+Chequear que un producto en escasez no baje su pedido.

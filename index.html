@@ -2514,7 +2514,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.27';
+const APP_VERSION='23.28';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2525,6 +2525,7 @@ const APP_VERSION='23.27';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.28',f:'13/10/2026',h:'15:40',c:[{n:1,t:'🤖 Robot de precios: si mi juicio dice "perdió" y el número da positivo (o al revés), el número sale en gris aclarando que es sólo lo cobrado de más en lo que se vendió, sin contar las ventas que se perdieron.'}]},
   {v:'23.27',f:'13/10/2026',h:'14:55',c:[{n:1,t:'📈 Línea de tiempo: un ▾ ámbar marca los días que se COBRÓ menos sin que nadie bajara el precio (promo o cupón de ML, carrito, o se vendió un color más barato). El globito del día dice cuánto menos.'}]},
   {v:'23.26',f:'13/10/2026',h:'14:55',c:[{n:2,t:'🏷️ Una promo que puse yo (precio tachado) ahora cuenta como BAJA DE PRECIO: sale ⬇️ en la venta y ▼ en la línea de tiempo. Y la etiqueta de la venta en promo dice el nombre (descuento propio, el evento de ML, cupón…).'}]},
   {v:'23.25',f:'13/10/2026',h:'12:25',c:[{n:1,t:'🇵🇾 Pedido de Paraguay: el bloque de perfumes ahora junta todo lo de BELLEZA Y SALUD (maquillaje, cremas, shampoo, termómetros, plantillas, masajeadores…); el resto va en Resto. También en el mensaje para Nissei y en el botón 🧴. No cambia en qué cuenta va cada producto.'}]},
@@ -17571,7 +17572,7 @@ function renderMetAuto(){
     return `<div style="padding:6px 0;border-bottom:1px solid rgba(148,163,184,.1);font-size:.68rem">
       <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
         <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${sube?'⬆️':'⬇️'} ${x.nom||x.mla}${x.cuenta?' · '+x.cuenta:''}</span>
-        <b style="white-space:nowrap;color:${metJuicio(x)?MET_JZ[metJuicio(x).v][2]:col(x.total)}">${metJuicio(x)?MET_JZ[metJuicio(x).v][1]+' ':n(x.total)>0?'ganó ':n(x.total)<0?'perdió ':'igual '}${sg(x.total)}</b>
+        <b style="white-space:nowrap;color:${metJuicio(x)?MET_JZ[metJuicio(x).v][2]:col(x.total)}">${metJuicio(x)?MET_JZ[metJuicio(x).v][1]+' ':n(x.total)>0?'ganó ':n(x.total)<0?'perdió ':'igual '}${(()=>{const j=metJuicio(x);const choca=j&&((j.v==='perdio'&&n(x.total)>0)||(j.v==='gano'&&n(x.total)<0));return choca?`<span style="color:var(--muted);font-weight:400" title="El número es sólo lo que se cobró de más (o de menos) en las unidades que SÍ se vendieron. No cuenta las ventas que se perdieron por el precio: eso lo mira mi juicio.">(cuenta del precio ${sg(x.total)}, sin las ventas perdidas)</span>`:sg(x.total);})()}</b>
       </div>
       <div style="font-size:.6rem;color:var(--muted)">${fh(x.ts)} · ${metAutoMotTxt(x)} · ${x.de?fmt(n(x.de)):'?'} → ${x.a?fmt(n(x.a)):'?'} (${sube?'+':''}${pct}%)${n(x.deRef)>0?' · medido contra '+fmt(n(x.deRef))+', el precio antes del robot':''}${x._mesParcial?' · sólo lo vendido en '+mesTxt(metAutoMes):''}</div>
       ${metJuicioHTML(x)}
