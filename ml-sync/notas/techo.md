@@ -32,3 +32,19 @@ Fuera a propósito el 12/10: los Paulvic de hombre (Gold, Leyton x2, Gentleman, 
 Afuera, con su motivo: 71 con un cambio de precio de los últimos 7 días (casi todas subidas de la vuelta del peor caso: ese cambio YA es su primer escalón, se juzga y desde ahí sigue) · 30 regalos del Día de la Madre (18/10: vuelven el 19/10) · 9 Paulvic de hombre (escalón de comisión) · 8 con stock de sobra · 5 sin ventas en 30 días · Pendrive 16gb y Adaptador universal de Matías (se frenaron: 0 ventas en 7 días) · Sábanas 2½ sin color (stock del color sin dato) · Mazo azul (su hermana cambió hace 4 días) · 1 en la barrera de $33.000.
 
 13/10 · DECISIÓN SUYA (eligió la a): las 71 que quedaron afuera por un cambio de precio de los últimos 7 días NO se suman todavía. Se espera 2-3 días a los primeros juicios del escalón 1; recién ahí (desde el 15-16/10) se suman en su SEGUNDO escalón, cada una juzgada primero contra su suba del peor caso. Motivo: si la suba al 25% ya les bajó las ventas, otro escalón encima mezcla los dos efectos.
+
+## 13/10 · PRUEBA DE TECHO DEL PAULVIC (decidida por Matías: 1b 2b 3b)
+Aplicada y releída de ML: 8 aromas de Adriana a **$21.990** (deja $7.344 por unidad contra ~$2.842; salta el escalón de comisión de $15.000 a propósito).
+| MLA | aroma | antes | stock Full |
+|---|---|---|---|
+| MLA3026120138 | Good | $14.360 | 10 |
+| MLA3026299952 | Dream Way | $14.270 | 31 |
+| MLA1890297208 | Free Love | $14.360 | 7 |
+| MLA1542270890 | Transparent | $14.360 | 6 |
+| MLA1550578476 | Gold | $14.360 | 8 |
+| MLA1542283690 | L'extase | $14.360 | 3 |
+| MLA1695234269 | Gentleman | $14.950 | 3 |
+| MLA1823112871 | Phantom | $14.360 | 1 |
+Grupo de control: los demás aromas siguen en $14.360 (mismas semanas, misma cuenta).
+Alcanza con vender ~40% de lo de antes para ganar más plata por día.
+**Regla suya (13/10): "todo eso miralo hasta que tengas info de decir, esto no sirve volvamos al precio anterior".** Se mira en CADA vuelta (lupa + línea de tiempo). No se vuelve por calendario: sólo cuando los datos digan con certeza que deja menos plata por día (Poisson: ej. 0 ventas con 3+ esperadas con stock). Si vuelve, va al precio de antes de cada uno (no a $17.990 de paso, salvo que los datos sugieran un punto intermedio). Día de la Madre (18/10) queda adentro de la prueba: comparar contra el control.
