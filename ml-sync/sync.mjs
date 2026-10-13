@@ -36127,7 +36127,7 @@ async function main() {
       }
       const viaPv = {}; for (const c of Object.values(PV)) if (c && c.estado === 'camino' && c.prodId) for (const it of (c.items || [])) if (it && it.v) { const o = viaPv[c.prodId] || (viaPv[c.prodId] = {}); o[it.v] = (o[it.v] || 0) + (Number(it.u) || 0); }
       // DÍAS CON STOCK EN 30 (revisión 9, 13/10/2026): del registro hora por hora (`cyc/stocklog/cambios`, la misma cuenta que
-      // `escasez` y el cerebro), llevado a 30 días según la parte del mes que el registro mira (desde el 24/09; pide 7+ días). El
+      // `escasez` y el cerebro), los días que el registro todavía no miraba (antes del 24/09) cuentan con stock; pide 7+ días de registro. El
       // `stockhist` solo mira desde la ÚLTIMA vez que volvió el stock: un corte de un día hacía "5 días con stock" a algo que
       // estuvo 29 y el ritmo salía ×6 (Enchufe 2 patas: pedía 286). Sin registro de la clave, la cuenta vieja.
       let SLOG = null; try { SLOG = (await db.get('cyc/stocklog/cambios')) || {}; } catch { SLOG = null; }
@@ -36139,7 +36139,9 @@ async function main() {
         let ms = 0, desdeS = ini;
         for (const [t, v] of cs) { if (t <= ini || t > t1) continue; if (est === 1) ms += t - desdeS; est = v; desdeS = t; }
         if (est === 1) ms += t1 - desdeS;
-        return 30 * ms / (t1 - ini);
+        // Lo que el registro todavía no miraba (antes del 24/09) se cuenta CON stock: es el lado prudente (ritmo más bajo).
+        // Llevarlo a 30 por proporción le daba "1 día" al Centímetro Rosa (vendió 103 antes de agotarse) y pedía 292.
+        return Math.min(30, (ms + (ini - t0)) / 864e5);
       };
       const dCS = (pid, suf = '', sinDato = 30) => { let mx = 0, hubo = false; for (const l of C4) { const kk = pid + '__' + l + suf; const dl = diasConStock(kk, hoy - 30 * 864e5, hoy);
         if (dl != null) { hubo = true; if (dl > mx) mx = dl; continue; }
