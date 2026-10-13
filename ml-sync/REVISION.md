@@ -704,3 +704,8 @@ La pregunta de la etapa: *¿la lista que miré es TODO o sólo una parte? ¿una 
 - **13/10/2026 · `borrarficha:<id,...>[;go]`** (etapa 3, mercadería): borra fichas sin publicación, ventas ni stock
   (y sus claves en 0 de inventario y repoextra). Primer uso: los 5 perfumes del pedido 05/10 que se queda la
   perfumería (decisión suya: "sacalos de web cyc, yo me encargo"). El `debencyc` de esa tarde se volvió a US$ 2.380.
+- **13/10/2026 · v23.26 · la promo mía cuenta como baja de precio** (etapa 1, precios). `state.promoclaude` (de
+  `cyc/promoclaude`) entra en `cambiosPrecioDe` (⬇️ de la venta) y en los eventos de la línea de tiempo (▼, motivo
+  `promo`). `promoNombreDe` da el nombre (PRICE_DISCOUNT = "descuento propio") y `vpPromoLabel` lo agrega a la
+  etiqueta. Chequear: que no cuente dos veces una baja que además se hizo en el precio de lista, y que una promo
+  vencida (registro borrado) deje de aparecer en ventas viejas (se pierde la marca: aceptado).

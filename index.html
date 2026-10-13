@@ -2088,6 +2088,7 @@ function startApp(){
     // Sólo se muestran; no se calcula nada con ellos.
     state.supervisor={eventos:(d.supervisor&&d.supervisor.eventos)||{}};
     state.autoprecio=d.autoprecio||{};
+    state.promoclaude=d.promoclaude||{};   // promos que entré yo (13/10/2026: cuentan como baja de precio en la venta)
     state.claudedecide=d.claudedecide||{};
     // 🧪 VIGILANCIA (idea 6, 27/09/2026): la foto que deja el robot cada noche de TODAS las publicaciones que venden,
     // con su estado frente a la prueba de suba. Sólo se dibuja.
@@ -2513,7 +2514,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.25';
+const APP_VERSION='23.26';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2524,6 +2525,7 @@ const APP_VERSION='23.25';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.26',f:'13/10/2026',h:'14:55',c:[{n:2,t:'🏷️ Una promo que puse yo (precio tachado) ahora cuenta como BAJA DE PRECIO: sale ⬇️ en la venta y ▼ en la línea de tiempo. Y la etiqueta de la venta en promo dice el nombre (descuento propio, el evento de ML, cupón…).'}]},
   {v:'23.25',f:'13/10/2026',h:'12:25',c:[{n:1,t:'🇵🇾 Pedido de Paraguay: el bloque de perfumes ahora junta todo lo de BELLEZA Y SALUD (maquillaje, cremas, shampoo, termómetros, plantillas, masajeadores…); el resto va en Resto. También en el mensaje para Nissei y en el botón 🧴. No cambia en qué cuenta va cada producto.'}]},
   {v:'23.24',f:'13/10/2026',h:'01:50',c:[{n:1,t:'🧠 Revisión 9 (el cerebro): una venta cancelada guarda cuándo se canceló, para que la revisión vea los reclamos y devoluciones de ventas viejas. Lo demás de la revisión fue en el robot (pedidos, cajas, precios, promos e informe).'}]},
   {v:'23.23',f:'13/10/2026',h:'00:30',c:[{n:1,t:'🏷️ Ventas: "Descuento ML" (lo pagó ML entero, a vos te llega el precio lleno) pasa a AZUL. El DORADO queda sólo para las promos o descuentos donde pusimos plata nosotros.'}]},
@@ -9029,6 +9031,9 @@ async function lineaAbrir(prodId,ev,varSel){
       await Promise.all(mlas.map(async mla=>{try{const sn=await db.ref('mlapi/linea/'+mla).once('value');porMla[mla]=sn.val()||{};}catch(e){porMla[mla]=null;}}));
       let evs={};try{const sn=await db.ref('cyc/supervisor/eventos').once('value');evs=sn.val()||{};}catch(e){}
       const evP=Object.values(evs).filter(e=>e&&mlas.includes(e.mla));
+      // UNA PROMO MÍA TAMBIÉN ES UNA BAJA DE PRECIO (13/10/2026, él: "porque no aparece que bajamos de precio? esta en
+      // promo es lo mismo no?"). Sale de `cyc/promoclaude/<MLA>` {de, precio, ts, nombre}.
+      for(const mla of mlas){const pc=(state.promoclaude||{})[mla];if(pc&&Number(pc.ts)>0&&Number(pc.de)>0&&Number(pc.precio)>0&&Number(pc.precio)!==Number(pc.de))evP.push({mla,ts:Number(pc.ts),de:Number(pc.de),a:Number(pc.precio),origen:promoNombreDe(pc),motivo:'promo'});}
       _lineaCache[prodId]={porMla,evP,ts:Date.now(),fallo:Object.values(porMla).some(x=>x===null)};
     }
     const _C=_lineaCache[prodId];
@@ -9240,7 +9245,7 @@ function lineaPintar(prodId){
     svg+=`<text x="${W-2}" y="${L.st[0]+9}" font-size="10" text-anchor="end" fill="var(--muted)">${Math.round(sMax)} u.</text>`;}
   if(ptsP.length>1)svg+=`<polyline points="${ptsP.join(' ')}" fill="none" stroke="var(--text)" stroke-width="1.5"/>`;
   // marcas de cambios de precio
-  const motivoTxt={rescate:'🛟 rescate después de una venta baja',rescatep:'🛟 rescate antes de vender (cuenta)',subir:'📈 suba del robot',bajar:'📉 baja del robot',remate:'🔻 remate',escalera:'🪜 escalera',prueba:'🧪 prueba +5%',mano:'✋ a mano',volver:'↩️ vuelto atrás'};
+  const motivoTxt={rescate:'🛟 rescate después de una venta baja',rescatep:'🛟 rescate antes de vender (cuenta)',subir:'📈 suba del robot',bajar:'📉 baja del robot',remate:'🔻 remate',escalera:'🪜 escalera',prueba:'🧪 prueba +5%',promo:'🏷️ promo (precio tachado)',mano:'✋ a mano',volver:'↩️ vuelto atrás'};
   const evK={}; for(const e of C.evP){if(!e.ts||!_mlaOk(e.mla))continue;const kk=dateToKey(new Date(e.ts));(evK[kk]=evK[kk]||[]).push(e);}
   ks.forEach((k,i)=>{const es=evK[k];if(!es)return;const sube=es.some(e=>Number(e.a)>Number(e.de));
     svg+=`<text x="${X(i)+bw/2}" y="${L.pr[0]-2}" font-size="11" text-anchor="middle" fill="${sube?'var(--green)':'var(--red)'}">${sube?'▲':'▼'}</text>`;});
@@ -9333,7 +9338,7 @@ function lineaPintar(prodId){
 // del robot de cada publicación (`cyc/autoprecio`, al instante). El PRECIO es un índice: 100 = el primer día del
 // gráfico, y cada día se mueve con el promedio de lo que cambió el precio de cada publicación.
 let _ltRango=365,_ltC=null,_ltDetAb=false,_ltListAb=false;
-const _LT_MOT={rescate:'🛟 rescate',rescatep:'🛟 rescate',subir:'📈 suba del robot',bajar:'📉 baja del robot',remate:'🔻 remate',escalera:'🪜 escalera',prueba:'🧪 prueba +5%',mano:'✋ a mano',volver:'↩️ vuelto atrás',cerebro:'🧠 cerebro',claude:'💭 Claude',correccion:'↩️ corrección de una suba de más'};
+const _LT_MOT={rescate:'🛟 rescate',rescatep:'🛟 rescate',subir:'📈 suba del robot',bajar:'📉 baja del robot',remate:'🔻 remate',escalera:'🪜 escalera',prueba:'🧪 prueba +5%',promo:'🏷️ promo (precio tachado)',mano:'✋ a mano',volver:'↩️ vuelto atrás',cerebro:'🧠 cerebro',claude:'💭 Claude',correccion:'↩️ corrección de una suba de más'};
 function _ltMotAuto(a){const m={margen:'rescate',venta:'rescate',costo:'rescate',remate:'remate',escalera:'escalera',prueba:'prueba',volver:'volver',cerebro:'cerebro',claude:'claude',correccion:'correccion'}[a.por];return m||(a.tipo==='baja'?'bajar':'subir');}
 async function lineaTodoAbrir(ev){
   if(ev&&ev.stopPropagation)ev.stopPropagation();
@@ -9782,7 +9787,16 @@ function cambiosPrecioDe(mla,tsVenta){
     // día de diferencia) no se repite.
     if(ok(c)&&!out.some(x=>Math.abs(x.ts-c.ts)<864e5&&Math.abs(x.a-c.a)/c.a<0.01))out.push(c);
   }
+  const pc=(state.promoclaude||{})[mla];
+  if(pc){const c={ts:Number(pc.ts),de:Number(pc.de),a:Number(pc.precio),quien:'🏷️ '+promoNombreDe(pc),aprox:false};if(ok(c))out.push(c);}
   return out.sort((x,y)=>y.ts-x.ts);
+}
+// EL NOMBRE DE LA PROMO, EN CRIOLLO (13/10/2026, él: "quiero que diga el nombre de la promocion o que es").
+function promoNombreDe(pc){
+  if(!pc)return 'promo';
+  const t=String(pc.tipo||'').toUpperCase();
+  if(t==='PRICE_DISCOUNT')return 'descuento propio (precio tachado)';
+  return String(pc.nombre||'').trim()||({DEAL:'promo de ML',LIGHTNING:'oferta relámpago',SMART:'oferta compartida de ML',PRICE_MATCHING:'Gánale a la competencia',UNHEALTHY_STOCK:'campaña de stock'}[t]||'promo');
 }
 // ── CUÁNTO PUSO ML EN UNA VENTA EN PROMO (11/10/2026) ──
 // Junta lo de `cyc/promoventa/<día>/<orden>` de los renglones de una compra. Si el registro trae el
@@ -9822,7 +9836,11 @@ function vpPromoLabel(items){
   // AZUL si lo puso ML entero, DORADO sólo si pusimos plata nosotros (12/10/2026, él: "dejar dorado solo para
   // promociones o descuentos hechos nuestros").
   const soloML=p.ml>0&&!(p.s>0);
-  const txt=soloML?'Descuento ML':'Vendido en promoción';
+  // Y CON SU NOMBRE (13/10/2026): si la promo la puse yo, su nombre ("descuento propio", el evento de ML); si no, qué
+  // fue (cupón, oferta del día…).
+  const _pc=(items||[]).map(v=>{const pc=(state.promoclaude||{})[v&&v.mla];const tv=v&&v.ts?new Date(v.ts).getTime():0;return pc&&(!tv||!(Number(pc.ts)>0)||tv>=Number(pc.ts))?pc:null;}).find(Boolean);
+  const _nom=_pc?promoNombreDe(_pc):tipo;
+  const txt=(soloML?'Descuento ML · ':'Vendido en promoción · ')+_nom;
   return `<span class="vp-promo${soloML?' vp-promo-ml':''}" title="${tit}">🏷️ ${txt}${p.ml>0?' · ML puso '+fmt(Math.round(p.ml)):''}${p.s>0?' · nosotros '+fmt(Math.round(p.s)):''}</span>`;
 }
 function cambioVentaHTML(v,tsVenta){
