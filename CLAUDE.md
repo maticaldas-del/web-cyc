@@ -986,6 +986,8 @@ y (a)/(b). Memoria en `ml-sync/notas/ideas.md` (para no repetir). Si no aparece 
 
 ## 🎨 CADA VARIANTE SE JUZGA SOLA, CON SU PROPIO 🧠 (12/10/2026, regla suya)
 
+**Corrección suya del 13/10:** *"sacar eso de que 'se mira solo', ya lo sabemos. además quiero explicación clara de por qué se subió/bajó y si no se subió/bajó por qué, en ambos casos"*. Cada nota del 🧠 dice el último cambio con su motivo y, si hoy no se toca, **HOY NO LO TOCO PORQUE …**. Ver `ml-sync/CEREBRO.md`.
+
 Él, con la nota del Paulvic Abismo que hablaba del producto entero: *"cada variante debe llevar su propio análisis y su propio
 cerebro (…) algunos aromas se pueden vender a 50% y otros al 5%. Se tienen que juzgar todos por separado. No sólo los paulvic"*.
  · Cada color/aroma es su publicación: precio, margen, stock de ESE color, ventas de ESA publicación, caja. Nunca el promedio

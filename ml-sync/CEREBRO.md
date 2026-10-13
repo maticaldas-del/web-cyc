@@ -18,6 +18,7 @@ la historia y el porqué). Si algo de acá choca con CLAUDE.md, manda lo más nu
 - **Paso 0 de TODAS las vueltas:** `planilla` → sección 🛡️ → subir DE UNA al precio del 25% en el peor caso, o dejarlo a
   propósito con `!piso` (excepción anotada). Lo nuevo que nunca estuvo en Full se pone a precio antes de activarse.
 - **Cada variante (color/aroma) se juzga sola**: su precio, su stock, sus ventas. Nunca el promedio del producto.
+- **La nota del 🧠 dice SIEMPRE el porqué, se toque o no (regla suya del 13/10):** *"quiero explicación clara de por qué se subió/bajó y si no se subió/bajó por qué, en ambos casos"*. Cada nota: precio y estado · último cambio con fecha, de cuánto a cuánto y su motivo · ventas 7/30 d y stock · y **HOY NO LO TOCO PORQUE …** (cambié hace pocos días y mido · sin stock · grupo de comparación · sobra stock · vende muy poco · ML en revisión) o QUÉ HICE / POR QUÉ. **Sin la frase "se mira solo, no con el resto del producto"**: ya se sabe.
 - **Barrera $33.000**: se frena en $32.999 salvo que cruzar deje claramente más (`!cruza`, explicado).
 - **Techo $650.000.** Variantes: se suben todas o ninguna (ML borra las que faltan).
 - **`decido` mide el piso en el PEOR caso** (el mismo número de la planilla 🛡️) y lo muestra al lado del normal. Una suba

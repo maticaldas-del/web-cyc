@@ -241,6 +241,8 @@ Qué chequear: que la cuenta del peor caso use la misma comisión que la normal,
 - **Arreglos de la etapa 1 del 08/10 (52b4710, 774d1b4, 9e2ec84, 04f8917, ead3675):** son los de v22.63, anotados arriba.
 - **Activar pausadas, envío del lado de la barrera (10/10/2026):** abajo de $33.000 ya no se mide el envío con ventas de ARRIBA (los Redmi Buds 6 Play a $32.999 daban −5% por una venta de $101.859 del Buds 6 común). Sin ventas del mismo lado, abajo = $0. Chequear: que una publicación barata sin ventas propias no herede el envío de una cara de la misma ficha.
 
+- **Notas del 🧠 de variantes reescritas (13/10/2026), pedido suyo.** Las 117 que decían "se mira solo, no con el resto del producto" (lote del 12/10) se rehicieron con la planilla del día (`ml-sync/notas/variantes_1310.txt`): precio, último cambio con motivo (sacado de los `decido` guardados), ventas y "HOY NO LO TOCO PORQUE…". Comando nuevo `vernotas[:texto]` (solo lee) para ver las notas como están. Chequear: ninguna nota con "se mira solo" (`vernotas:se mira solo` da 0) y que ninguna pase los 600 caracteres.
+
 ## 2 · PLATA
 - **Cada lugar, su nota (08/10/2026, v22.71):** él: *"en ventas por qué aumentó el precio o por qué no, y en pedidos por qué
   pide x unidades"*. `cerebroAbrir`: con `ped` o `ctx:'caja'` muestra SÓLO las notas `ped__`/`caja__`; con `ctx:'venta'`
