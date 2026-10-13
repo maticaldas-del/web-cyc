@@ -29798,6 +29798,84 @@ async function main() {
     }
     // BILLING_PROBE=capital → foto del capital de CYC: stock, efectivo, deudas y los dólares de los
     // socios. Sirve para decidir si conviene sacar plata del negocio o dejarla trabajando.
+    // BILLING_PROBE=diario[:<palabra>] · LA LUPA DIARIA, PUBLICACIÓN POR PUBLICACIÓN (13/10/2026, pedido suyo con el
+    // Pendrive 16gb: "todos esos pequeños detalles diarios, casi milimétricos, ¿los ves todos los días con atención en
+    // TODOS los productos? necesito ese nivel de detalle"). SOLO LEE. Para CADA publicación con stock o ventas en 37 d
+    // sale de `mlapi/linea/<MLA>` (día por día: stock, precio, unidades, neto, caja) y compara los últimos 7 días con
+    // stock contra los 30 anteriores: ritmo, ganancia por unidad, PLATA POR DÍA, caja, precio y días sin vender.
+    // Arriba van las 🚩 (algo cambió y hay que mirarlo), abajo una línea por cada una. La ganancia es aproximada
+    // (neto − mercadería − IIBB de la cuenta − ~2% de monotributo): sirve para comparar, no para el balance.
+    if (/^diario(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const q = String(process.env.BILLING_PROBE).slice('diario'.length).replace(/^:/, '').trim().toLowerCase();
+      const links = (await db.get('cyc/mllinks')) || {};
+      const tc = parseFloat(await db.get('cyc/finanzas/tipo_cambio')) || 0;
+      const pIdx = {}; for (const pr of products) pIdx[pr.id] = pr;
+      const hoyK = dayKeyFromISO(Date.now());
+      const kAgo = (n) => dayKeyFromISO(Date.now() - n * 864e5);
+      const k7 = kAgo(7), k37 = kAgo(37);
+      const fm = (n) => '$' + Math.round(n).toLocaleString('es-AR');
+      const filas = [];
+      let miradas = 0, sinLinea = 0;
+      for (const [mla, e] of Object.entries(links)) {
+        if (!e || e.ignored || !e.prodId || (e.status || '') === 'closed') continue;
+        if (q && !String(e.title || '').toLowerCase().includes(q)) continue;
+        const pr = pIdx[e.prodId]; if (!pr) continue;
+        let d; try { d = (await db.get('mlapi/linea/' + mla)) || {}; } catch { sinLinea++; continue; }
+        const ks = Object.keys(d).filter((k) => k >= k37 && k < hoyK).sort();
+        if (!ks.length) { sinLinea++; continue; }
+        const conSt = (x) => x && ((Number(x.st) > 0) || (Number(x.u) > 0));
+        let uT = 0; for (const k of ks) uT += Number(d[k].u) || 0;
+        const stHoy = Number((d[ks[ks.length - 1]] || {}).st) || 0;
+        if (!uT && !stHoy) continue;
+        miradas++;
+        const cta = String(e.cuenta || '').toLowerCase();
+        const imp = ((ML_EXTRA_PCT[cta] || 4) + 2) / 100;
+        const cu = tc > 0 ? costoPesos(pr, 1, tc).costo : 0;
+        const tramo = (desde, hasta) => {
+          let dias = 0, u = 0, neto = 0, tot = 0;
+          for (const k of ks) { if (k < desde || k >= hasta) continue; const x = d[k]; if (!conSt(x)) continue; dias++; u += Number(x.u) || 0; neto += Number(x.neto) || 0; tot += Number(x.tot) || 0; }
+          const gan = neto - u * cu - tot * imp;
+          return { dias, u, ritmo: dias ? u / dias : null, ganU: u ? gan / u : null, plataDia: dias ? gan / dias : null, precioU: u ? tot / u : null };
+        };
+        const A = tramo(k37, k7), B = tramo(k7, hoyK);
+        // días sin vender y el intervalo normal
+        let ult = null; for (const k of ks) if (Number(d[k].u) > 0) ult = k;
+        const diasSin = ult ? Math.round((Date.parse(hoyK.replace(/_/g, '-')) - Date.parse(ult.replace(/_/g, '-'))) / 864e5) : null;
+        const intervalo = A.ritmo ? 1 / A.ritmo : null;
+        // precio y caja: hoy contra hace 7 días
+        const ultX = d[ks[ks.length - 1]] || {};
+        const pHoy = Number(ultX.p) || 0;
+        let p7 = 0; for (const k of ks) if (k <= k7 && Number(d[k].p) > 0) p7 = Number(d[k].p);
+        let caja7 = null; for (const k of ks) if (k <= k7 && d[k].caja) caja7 = d[k].caja;
+        const cajaHoy = ultX.caja || null;
+        const flags = [];
+        if (diasSin != null && intervalo && stHoy > 0 && diasSin >= 4 && diasSin > 3 * intervalo) flags.push(`dejó de vender: ${diasSin} d sin ventas (antes 1 cada ${intervalo.toFixed(1)} d)`);
+        if (A.plataDia > 0 && B.dias >= 3 && B.plataDia != null && B.plataDia < A.plataDia * 0.7 && (A.ritmo || 0) * B.dias >= 3) flags.push(`plata por día cayó ${Math.round((1 - B.plataDia / A.plataDia) * 100)}% (${fm(A.plataDia)} → ${fm(B.plataDia)})`);
+        if (A.plataDia != null && B.plataDia != null && B.dias >= 3 && B.plataDia > Math.max(A.plataDia * 1.3, A.plataDia + 300)) flags.push(`plata por día subió ${A.plataDia > 0 ? Math.round((B.plataDia / A.plataDia - 1) * 100) + '%' : ''} (${fm(A.plataDia)} → ${fm(B.plataDia)})`);
+        if (A.ganU > 0 && B.ganU != null && B.ganU < A.ganU * 0.8) flags.push(`cada venta deja menos: ${fm(A.ganU)} → ${fm(B.ganU)} por unidad`);
+        if (B.ganU != null && B.ganU < 0) flags.push(`vende perdiendo (${fm(B.ganU)} por unidad)`);
+        if (caja7 && cajaHoy && caja7 !== cajaHoy && (cajaHoy === 'p' || caja7 === 'p')) flags.push(`caja: ${caja7 === 'g' ? 'la ganaba' : caja7 === 'c' ? 'compartía' : 'la perdía'} → ${cajaHoy === 'g' ? 'la gana' : cajaHoy === 'c' ? 'comparte' : 'la pierde'}`);
+        if (p7 && pHoy && Math.abs(pHoy / p7 - 1) >= 0.03) flags.push(`precio ${fm(p7)} → ${fm(pHoy)} en 7 d`);
+        if (stHoy > 0 && A.ritmo && stHoy / A.ritmo < 7) flags.push(`se queda sin stock en ~${Math.round(stHoy / A.ritmo)} d`);
+        filas.push({ mla, cta: e.cuenta || '?', tit: String(e.title || pr.name).slice(0, 44), A, B, stHoy, pHoy, cajaHoy, diasSin, flags });
+      }
+      const L = (f) => {
+        const r = (t) => t.ritmo == null ? '—' : t.ritmo.toFixed(2) + '/d';
+        const g = (t) => t.ganU == null ? '—' : fm(t.ganU);
+        const pd = (t) => t.plataDia == null ? '—' : fm(t.plataDia);
+        return `${f.cta} · ${f.mla} · ${f.tit} · hoy ${f.pHoy ? fm(f.pHoy) : '?'} · ${f.stHoy} u. · caja ${f.cajaHoy || '?'} · ritmo ${r(f.A)} → ${r(f.B)} · $/u ${g(f.A)} → ${g(f.B)} · plata/día ${pd(f.A)} → ${pd(f.B)} · ${f.diasSin == null ? 'sin ventas' : f.diasSin + ' d sin vender'}`;
+      };
+      const con = filas.filter((f) => f.flags.length).sort((a, b) => (b.A.plataDia || 0) - (a.A.plataDia || 0));
+      const sin = filas.filter((f) => !f.flags.length).sort((a, b) => (b.B.plataDia || 0) - (a.B.plataDia || 0));
+      console.log(`=== 🔬 DIARIO · cada publicación · últimos 7 días con stock contra los 30 anteriores · SOLO LEE ===`);
+      console.log(`(ganancia aprox: neto − mercadería − IIBB − 2% mono · cajas: g gana · c comparte · p pierde · n sin catálogo)\n`);
+      console.log(`── 🚩 PARA MIRAR · ${con.length} ──`);
+      for (const f of con) { console.log('🚩 ' + L(f)); for (const x of f.flags) console.log('     · ' + x); }
+      console.log(`\n── SIN NOVEDAD · ${sin.length} ──`);
+      for (const f of sin) console.log('   ' + L(f));
+      console.log(`\nMiradas ${miradas} publicaciones con stock o ventas en 37 días · ${sinLinea} sin línea de tiempo leíble${tc ? '' : ' · ⚠️ sin dólar: ganancia sin mercadería'}`);
+      return;
+    }
     // BILLING_PROBE=borrarficha:<id,id,...>[;go] · BORRA FICHAS DEL PANEL (13/10/2026). Pedido suyo con los perfumes
     // del pedido 05/10 que se queda la perfumería: "sacalos de publicaciones de web cyc y listo, yo me encargo de todo".
     // Borra cyc/products/<id> y sus claves de cyc/inventory y cyc/repoextra. NO toca ventas ni compras guardadas.
