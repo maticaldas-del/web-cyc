@@ -40,6 +40,8 @@ la historia y el porqué). Si algo de acá choca con CLAUDE.md, manda lo más nu
   vende 1+/día con margen alto). Juicio por CERTEZA en plata por día (Poisson: 3 esperadas y 0 = 5% azar · 6 y 0-1 =
   2% · 10 y ≤2 = 0,3%), nunca con un solo día, máximo 30 días. Afuera: escasez, sobra (+90 d), liquidando, mis promos,
   regalables antes de su fecha, frenadas por ML.
+  Lo que cambió de precio en 7 días (subas del peor caso) espera los primeros juicios y entra desde el 15-16/10 en su
+  SEGUNDO escalón, juzgado antes contra esa suba (decisión suya del 13/10).
 - **Venta barata ≠ remate**: remate sólo si antes estuvo parado de verdad (línea de tiempo `mlapi/linea`).
 - **Juzgar los resultados de precios todos los días** (08:52: `supervisor:medir:go` + `juzgo:`). Lo que perdió no se
   vuelve atrás por regla: se piensa.

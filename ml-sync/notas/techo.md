@@ -30,3 +30,5 @@ Fuera a propósito el 12/10: los Paulvic de hombre (Gold, Leyton x2, Gentleman, 
 
 12/10 · escalón 1 aplicado en 18 (los dos "hermanos" Lupa 90 y P47 azul no cambiaron: ML les copia el precio de la otra publicación).
 Afuera, con su motivo: 71 con un cambio de precio de los últimos 7 días (casi todas subidas de la vuelta del peor caso: ese cambio YA es su primer escalón, se juzga y desde ahí sigue) · 30 regalos del Día de la Madre (18/10: vuelven el 19/10) · 9 Paulvic de hombre (escalón de comisión) · 8 con stock de sobra · 5 sin ventas en 30 días · Pendrive 16gb y Adaptador universal de Matías (se frenaron: 0 ventas en 7 días) · Sábanas 2½ sin color (stock del color sin dato) · Mazo azul (su hermana cambió hace 4 días) · 1 en la barrera de $33.000.
+
+13/10 · DECISIÓN SUYA (eligió la a): las 71 que quedaron afuera por un cambio de precio de los últimos 7 días NO se suman todavía. Se espera 2-3 días a los primeros juicios del escalón 1; recién ahí (desde el 15-16/10) se suman en su SEGUNDO escalón, cada una juzgada primero contra su suba del peor caso. Motivo: si la suba al 25% ya les bajó las ventas, otro escalón encima mezcla los dos efectos.
