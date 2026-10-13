@@ -709,3 +709,16 @@ La pregunta de la etapa: *¿la lista que miré es TODO o sólo una parte? ¿una 
   `promo`). `promoNombreDe` da el nombre (PRICE_DISCOUNT = "descuento propio") y `vpPromoLabel` lo agrega a la
   etiqueta. Chequear: que no cuente dos veces una baja que además se hizo en el precio de lista, y que una promo
   vencida (registro borrado) deje de aparecer en ventas viejas (se pierde la marca: aceptado).
+
+### Línea de tiempo: ▾ ámbar = se cobró menos sin cambiar el precio (13/10/2026, v23.27)
+Él, con la Batidora: *"porque se nota que el precio baja si no hay flechita roja"*. Los días con ventas la línea del precio es
+lo COBRADO por unidad (`pCob`), y baja sin ningún cambio de precio por promo/cupón de ML, carrito o un color más barato
+vendido ese día (en "Todas juntas" se mezclan los colores). Ahora se guarda el precio publicado (`pLista`) y, si lo cobrado
+quedó 3%+ abajo y ese día no hubo ▲▼, sale un ▾ ámbar chico y el globito dice cuánto y por qué. Chequear: que no tape una ▼
+real (sólo sale sin evento ese día) y que en una sola publicación sin promo no aparezca.
+
+### `lupa`: cada publicación, todos los días (13/10/2026)
+Probe de sólo lectura (ml-consulta): de cada publicación con ficha y stock o ventas, los últimos 7 días con stock contra los 30
+anteriores (ritmo, ganancia por unidad, plata por día, días sin vender, caja, precio). Un día cuenta salvo que se SEPA que no
+había stock. El cambio de precio sólo se muestra como contexto de otra bandera. Va en las vueltas del cerebro. Chequear que
+las 🚩 sean pocas y reales (la primera corrida dio 185 de 236: demasiadas).

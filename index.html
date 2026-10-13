@@ -2514,7 +2514,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.26';
+const APP_VERSION='23.27';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2525,6 +2525,7 @@ const APP_VERSION='23.26';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.27',f:'13/10/2026',h:'14:55',c:[{n:1,t:'📈 Línea de tiempo: un ▾ ámbar marca los días que se COBRÓ menos sin que nadie bajara el precio (promo o cupón de ML, carrito, o se vendió un color más barato). El globito del día dice cuánto menos.'}]},
   {v:'23.26',f:'13/10/2026',h:'14:55',c:[{n:2,t:'🏷️ Una promo que puse yo (precio tachado) ahora cuenta como BAJA DE PRECIO: sale ⬇️ en la venta y ▼ en la línea de tiempo. Y la etiqueta de la venta en promo dice el nombre (descuento propio, el evento de ML, cupón…).'}]},
   {v:'23.25',f:'13/10/2026',h:'12:25',c:[{n:1,t:'🇵🇾 Pedido de Paraguay: el bloque de perfumes ahora junta todo lo de BELLEZA Y SALUD (maquillaje, cremas, shampoo, termómetros, plantillas, masajeadores…); el resto va en Resto. También en el mensaje para Nissei y en el botón 🧴. No cambia en qué cuenta va cada producto.'}]},
   {v:'23.24',f:'13/10/2026',h:'01:50',c:[{n:1,t:'🧠 Revisión 9 (el cerebro): una venta cancelada guarda cuándo se canceló, para que la revisión vea los reclamos y devoluciones de ventas viejas. Lo demás de la revisión fue en el robot (pedidos, cajas, precios, promos e informe).'}]},
@@ -9090,7 +9091,7 @@ function lineaPintar(prodId){
     let t=0,q=0,qR=0;ents.forEach(v=>{t+=Number(v.total)||0;q+=Number(v.qty)||0;if(ventaEnRemate(v,k))qR+=Number(v.qty)||0;});
     // "En remate" con la MISMA regla que la línea de todos y Pedidos (ventaEnRemate), no la marca del robot (etapa 8).
     if(_vp1&&k>=_vp1&&!(dias[k]&&dias[k].hoy)&&(q>0||(dias[k]&&dias[k].u!=null))){const o=dias[k]=dias[k]||{u:null,uR:null,vis:null,st:null,stN:0,p:null,caja:null,rem:false,esc:null,mg:null,tot:null,pubs:0};o.u=q;o.uR=qR;}
-    if(q>0&&t>0){(dias[k]=dias[k]||{u:null,uR:null,vis:null,st:null,stN:0,p:null,caja:null,rem:false,esc:null,mg:null,tot:null,pubs:0}).p=Math.round(t/q);dias[k].pCob=true;}}
+    if(q>0&&t>0){const _o=(dias[k]=dias[k]||{u:null,uR:null,vis:null,st:null,stN:0,p:null,caja:null,rem:false,esc:null,mg:null,tot:null,pubs:0});if(_o.p>0&&!_o.pCob)_o.pLista=_o.p;_o.p=Math.round(t/q);_o.pCob=true;}}
   // Escala con un rango mínimo del 20%: un cambio de 3% no puede verse como un salto (él, con el costo: "$1.007 a $1.036").
   const _esc=(mn,mx)=>{if(!(mx>0))return[0,1];if(mx-mn<mx*0.2){const c=(mx+mn)/2;return[c-mx*0.1,c+mx*0.1];}return[mn,mx];};
   const ps=ks.map(k=>dias[k]&&dias[k].p).filter(x=>x>0); const [pMin,pMax]=ps.length?_esc(Math.min(...ps),Math.max(...ps)):[0,1];
@@ -9249,6 +9250,12 @@ function lineaPintar(prodId){
   const evK={}; for(const e of C.evP){if(!e.ts||!_mlaOk(e.mla))continue;const kk=dateToKey(new Date(e.ts));(evK[kk]=evK[kk]||[]).push(e);}
   ks.forEach((k,i)=>{const es=evK[k];if(!es)return;const sube=es.some(e=>Number(e.a)>Number(e.de));
     svg+=`<text x="${X(i)+bw/2}" y="${L.pr[0]-2}" font-size="11" text-anchor="middle" fill="${sube?'var(--green)':'var(--red)'}">${sube?'▲':'▼'}</text>`;});
+  // SE COBRÓ MENOS SIN QUE NADIE BAJARA EL PRECIO (13/10/2026, él con la Batidora: "porque se nota que el precio baja si no
+  // hay flechita roja"). La línea del precio, los días con ventas, es lo COBRADO por unidad, y eso baja sin cambio de precio
+  // por una promo/cupón de ML, un carrito, o porque ese día se vendió una publicación (color) más barata. Se marca con
+  // un ▾ ámbar chico (no es un cambio de precio) y el globito del día lo explica.
+  ks.forEach((k,i)=>{const d=dias[k];if(evK[k]||!d||!d.pCob||!(d.pLista>0)||!(d.p<d.pLista*0.97))return;
+    svg+=`<text x="${X(i)+bw/2}" y="${L.pr[0]-2}" font-size="9" text-anchor="middle" fill="var(--amber)">▾</text>`;});
   // capa de "pasar el mouse": un rectángulo invisible por día con todo el dato
   // EL GLOBITO DICE LO MISMO TODOS LOS DÍAS (04/10/2026, él: "cuando paso el mouse quiero que me muestre la misma
   // info en todos, ahí no me muestra el % de ganancia de un día cualquiera"). Un día sin ventas no tiene % propio:
@@ -9268,7 +9275,7 @@ function lineaPintar(prodId){
     const _cos=cu[k]!=null?`🏷️ costo real ${ct[k]>0?fmt(ct[k]):'?'} c/u = mercadería ${fmt(cu[k])} (dólar del mes $${Math.round(tcForYM(k.slice(0,7))||0)}) + IIBB y monotributo ${ct[k]>0?fmt(ct[k]-cu[k]):'?'}${gd[k]&&gd[k].impPct!=null?` (${gd[k].impPct.toFixed(1)}% de lo cobrado)`:''}${gd[k]&&gd[k].cu>0?'':' · el último conocido'}`:'';
     const _vis=d&&d.vis!=null?`👀 ${d.vis} visitas`:'';
     const _tuvo=_conSt(d,k)?`📦 tenía stock${d&&d.st>0?` (${d.st} u. en Full)`:d&&d.u>0?' (vendió)':d&&d.vis>0?' (tuvo visitas)':` (el robot lo ve en Full desde el ${_lineaFmtDia(_stHistDesde)})`}`:(k>=_stIni?(d&&d.st!=null?'📦 sin stock en Full':'📦 sin stock (sin dato, sin ventas ni visitas)'):'📦 todavía no se miraba');
-    const _pr=d&&d.p>0?`💲 ${d.pCob?'cobrado':'precio'} ${fmt(d.p)}${d.pCob?' por unidad':''}`:'';
+    const _pr=d&&d.p>0?`💲 ${d.pCob?'cobrado':'precio'} ${fmt(d.p)}${d.pCob?' por unidad':''}${d.pCob&&d.pLista>0&&d.p<d.pLista*0.97?` · <span style="color:var(--amber)">▾ ${Math.round((1-d.p/d.pLista)*100)}% menos que el publicado (${fmt(d.pLista)}) sin cambiar el precio: promo o cupón de ML, carrito, o se vendió un color más barato</span>`:''}`:'';
     const _mg=d&&d.mg!=null?`📊 margen ${Number(d.mg).toFixed(0)}%`:'';
     const _est=d&&d.esc!=null?`🪜 escalera, escalón ${d.esc}%`:(d&&d.rem?'🔻 rematando':'');
     const _caja=d&&d.caja?`🥊 caja: ${(d.hoy?{g:'la ganamos (última lectura del robot)',c:'compartida (última lectura del robot)',p:'la perdemos (última lectura del robot)',n:'no es de catálogo: no hay caja que ganar',s:'ML no informa caja en ese catálogo',z:'ninguna publicación activa (pausadas): no pelea la caja'}:{g:'la ganábamos',c:'compartida',p:'la perdíamos',n:'no es de catálogo',s:'ML no informaba caja'})[d.caja]||d.caja}`:'';
@@ -9323,7 +9330,7 @@ function lineaPintar(prodId){
     <details style="margin-top:8px" ${_lineaDetAb?'open':''} ontoggle="_lineaDetAb=this.open"><summary style="cursor:pointer;font-size:.68rem;color:var(--muted)">Qué significa cada color ▾</summary>
     <div style="font-size:.64rem;color:var(--muted);margin-top:6px;line-height:1.9">
       ${ley('var(--green)','vendió / con stock / caja ganada')}${ley('#f59e0b','vendido en remate / caja compartida')}${ley('var(--red)','sin stock / caja perdida')}${ley('#60a5fa','visitas')}${ley('#f97316','rematando')}${ley('#a855f7','escalera')}${ley('#94a3b8','no es de catálogo (no hay caja)')}${ley('#3f3f46','pausada (no pelea la caja)')}${ley('rgba(128,128,128,.35)','no se sabe')}
-      <span style="margin-right:10px">📦 stock en unidades, color por los días que alcanza: <span style="color:var(--red)">━ falta (−7)</span> <span style="color:#f97316">━ justo (7-20)</span> <span style="color:var(--green)">━ bien (20-45)</span> <span style="color:#eab308">━ sobra (45-90)</span> <span style="color:#a855f7">━ exceso (+90)</span></span><span style="margin-right:10px"><span style="color:#f59e0b">━</span> costo real por unidad (mercadería × dólar del mes + IIBB y monotributo, que son % de lo cobrado: por eso se mueve un poco; el detalle sale al pasar el mouse)</span><span style="margin-right:10px">📊 % de ganancia: la línea toma el color del nivel de ese día (🔴 Bajo · 🟠 Justo · 🟢 Bien · 🩵 Bueno · 🔵 Excelente · 🟣 Estrella · 💎 JOYA), misma cuenta que Ventas</span><span style="margin-right:10px">▲▼ cambio de precio (con su motivo)</span><br>
+      <span style="margin-right:10px">📦 stock en unidades, color por los días que alcanza: <span style="color:var(--red)">━ falta (−7)</span> <span style="color:#f97316">━ justo (7-20)</span> <span style="color:var(--green)">━ bien (20-45)</span> <span style="color:#eab308">━ sobra (45-90)</span> <span style="color:#a855f7">━ exceso (+90)</span></span><span style="margin-right:10px"><span style="color:#f59e0b">━</span> costo real por unidad (mercadería × dólar del mes + IIBB y monotributo, que son % de lo cobrado: por eso se mueve un poco; el detalle sale al pasar el mouse)</span><span style="margin-right:10px">📊 % de ganancia: la línea toma el color del nivel de ese día (🔴 Bajo · 🟠 Justo · 🟢 Bien · 🩵 Bueno · 🔵 Excelente · 🟣 Estrella · 💎 JOYA), misma cuenta que Ventas</span><span style="margin-right:10px">▲▼ cambio de precio (con su motivo) · <span style="color:var(--amber)">▾</span> ese día se cobró menos sin cambiar el precio (promo/cupón de ML, carrito o un color más barato)</span><br>
       Pasá el mouse (o tocá) un día para ver todo lo que pasó. El precio es el más barato de sus publicaciones; ventas, visitas y stock suman todas. Stock, caja y remate de los días viejos no los guarda ML: quedan en gris. En stock: la línea son las unidades en Full (cuando se sabe el número) y la franja finita de abajo dice si hubo o no hubo stock ese día.
     </div></details></div>`;
 }
