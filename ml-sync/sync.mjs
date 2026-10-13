@@ -29853,10 +29853,12 @@ async function main() {
         const flags = [];
         if (diasSin != null && intervalo && stHoy > 0 && diasSin >= 4 && diasSin > 3 * intervalo) flags.push(`dejó de vender: ${diasSin} d sin ventas (antes 1 cada ${intervalo.toFixed(1)} d)`);
         if (A.plataDia > 0 && B.dias >= 3 && B.plataDia != null && B.plataDia < A.plataDia * 0.7 && (A.ritmo || 0) * B.dias >= 3) flags.push(`plata por día cayó ${Math.round((1 - B.plataDia / A.plataDia) * 100)}% (${fm(A.plataDia)} → ${fm(B.plataDia)})`);
-        if (A.plataDia != null && B.plataDia != null && B.dias >= 3 && B.plataDia > Math.max(A.plataDia * 1.3, A.plataDia + 300)) flags.push(`plata por día subió ${A.plataDia > 0 ? Math.round((B.plataDia / A.plataDia - 1) * 100) + '%' : ''} (${fm(A.plataDia)} → ${fm(B.plataDia)})`);
-        if (A.ganU > 0 && B.ganU != null && B.ganU < A.ganU * 0.8) flags.push(`cada venta deja menos: ${fm(A.ganU)} → ${fm(B.ganU)} por unidad`);
+        if (A.plataDia != null && B.plataDia != null && B.dias >= 3 && B.u >= 3 && B.plataDia > Math.max(A.plataDia * 1.3, A.plataDia + 300)) flags.push(`plata por día subió ${A.plataDia > 0 ? Math.round((B.plataDia / A.plataDia - 1) * 100) + '%' : ''} (${fm(A.plataDia)} → ${fm(B.plataDia)})`);
+        if (A.ganU > 0 && B.ganU != null && B.u >= 2 && B.ganU < A.ganU * 0.8) flags.push(`cada venta deja menos: ${fm(A.ganU)} → ${fm(B.ganU)} por unidad`);
         if (B.ganU != null && B.ganU < 0) flags.push(`vende perdiendo (${fm(B.ganU)} por unidad)`);
-        if (caja7 && cajaHoy && caja7 !== cajaHoy && (cajaHoy === 'p' || caja7 === 'p')) flags.push(`caja: ${caja7 === 'g' ? 'la ganaba' : caja7 === 'c' ? 'compartía' : 'la perdía'} → ${cajaHoy === 'g' ? 'la gana' : cajaHoy === 'c' ? 'comparte' : 'la pierde'}`);
+        // La caja orienta, no decide (regla del 12/10): perderla sólo se marca si además se frenaron las ventas.
+        const frenó = stHoy > 0 && (A.ritmo || 0) > 0 && (B.ritmo || 0) < (A.ritmo || 0) * 0.7;
+        if (caja7 && cajaHoy && caja7 !== cajaHoy && (cajaHoy === 'p' ? frenó : caja7 === 'p')) flags.push(`caja: ${caja7 === 'g' ? 'la ganaba' : caja7 === 'c' ? 'compartía' : 'la perdía'} → ${cajaHoy === 'g' ? 'la gana' : cajaHoy === 'c' ? 'comparte' : 'la pierde'}`);
         const cambioP = p7 && pHoy && Math.abs(pHoy / p7 - 1) >= 0.03 ? `precio ${fm(p7)} → ${fm(pHoy)} en 7 d` : '';
         if (cambioP && flags.length) flags.push(cambioP);
         if (stHoy > 0 && A.ritmo && stHoy / A.ritmo < 7) flags.push(`se queda sin stock en ~${Math.round(stHoy / A.ritmo)} d`);
