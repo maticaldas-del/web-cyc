@@ -678,6 +678,13 @@ La pregunta de la etapa: *¿la lista que miré es TODO o sólo una parte? ¿una 
    costo/ficha va aparte (antes "755% ✓"), piso de la base, cuenta las estimadas. `cargosventa` no dice "0 ventas" si no leyó.
  · **escasez:** corta si no lee; cada COLOR se juzga solo; ritmo por días con stock (`stocklog`, como el cerebro; 📅 si usa días
    corridos); cierra con "N de M · afuera …".
+ · **Pruebas reales (13/10, ml-consulta):** `pedidostodo` → "170 fichas = 152 + 18 ✓", `decide_pedidos.py` lee 99/52/1 de 99/52/1.
+   Salió un error mío: el `dCS` de `stockhist` sólo mira desde la última vez que volvió el stock (Enchufe 2 patas daba 5 días
+   con 110 en Full y pedía 286) → ahora sale del registro hora por hora (`cyc/stocklog/cambios`), y lo que el registro no
+   miraba (antes del 24/09) cuenta con stock. Total propuesto 804 u. (antes 522). `planilla` → "410 = 410 ✓ cierra"; el
+   color de la publicación ahora sale también del título (sin eso 40 decían "stock del color: no sé"; quedan 15 pausadas sin
+   dato del color). `escasez` → "90 de 174 · 84 con menos de 2 ventas · 0 sin clave". `redondos` midió 141 cambios: la regla
+   de frenar en $X.990 se sacó (ver CLAUDE.md, psicología del precio).
  · **Qué chequear la próxima:** que `decide_pedidos.py` diga "leí N de N ✓" en los tres grupos; que `redondos` ya mida algo; que
    `planilla` diga "✓ cierra"; que §13 diga cuántas publicaciones y qué código de error da ML.
  · **Sigue abierto:** las publicaciones con variantes adentro (no los colores en publicaciones separadas) siguen sin dueño de

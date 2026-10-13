@@ -23,8 +23,8 @@ la historia y el porqué). Si algo de acá choca con CLAUDE.md, manda lo más nu
 - **`decido` mide el piso en el PEOR caso** (el mismo número de la planilla 🛡️) y lo muestra al lado del normal. Una suba
   de más del doble de una se rechaza salvo con `!salto` (un cero de más en un archivo de 110 renglones no puede pasar).
   Algo que está en un descuento mío vigente no se sube de lista (infla el tachado): salir primero con `entrarpromo:…=salir`.
-- **Terminaciones 90/990** (también en lo más barato: `decido` redondea a $10, así que el "99" no se puede escribir). Cruzar $5.000/$10.000/$20.000/$50.000/$100.000 se frena en $X.990
-  salvo que valga la pena. `redondos` mide si eso pesa; si no pesa, se saca la regla.
+- **Terminaciones 90/990** (también en lo más barato: `decido` redondea a $10, así que el "99" no se puede escribir). Cruzar $5.000/$10.000/$20.000/$50.000/$100.000 YA NO se
+  frena: medido el 13/10 con `redondos` (40 subas que cruzan, 8,3%, venden ×0,60 · 83 que no cruzan, 3,3%, ×0,60), no pesa.
 - **Comisión de ML con escalones** (ej. ~$15.000): antes de subir, mirar la ganancia por unidad al precio NUEVO
   (el `decido` en prueba la muestra). Subir y ganar menos no se hace.
 - **La caja de compra orienta, no decide.** Perdiendo y vendiendo bien → no se baja. Full vale ~19% de precio.

@@ -1011,6 +1011,11 @@ quizás te ponen 'perdiendo' cuando en realidad vendemos un montón y somos la m
    con 🔢 lo que termina redondo o cruza uno (avisa, no frena).
  · **Se mide:** `redondos[:días]` (ml-consulta, solo lee) compara los cambios que cruzan un redondo contra los que no. Si
    los que cruzan no venden peor, se saca la regla de arriba.
+ · **MEDIDO EL 13/10/2026 (revisión 9, con `redondos` arreglado: antes no medía nada por un error): LA REGLA SE SACÓ.**
+   365 días, 141 cambios medibles. Subas que cruzan un redondo: 40, suben 8,3% (mediana) y venden ×0,60 · las que no
+   cruzan: 83, suben 3,3% y venden ×0,60. O sea: subas 2,5 veces más grandes cruzando el redondo y la MISMA caída de
+   ventas. Cruzar $5.000/$10.000/… no pesa en nuestros productos: ya no se frena en $X.990 por eso (las terminaciones
+   90/990 siguen). Se vuelve a medir si cambia algo.
  · **Productos nuevos: arrancan directo al precio final** (eligió la b). No se arranca más barato para juntar las primeras ventas.
 
 ## 📨 CLAUDE LEE LOS AVISOS DE TELEGRAM Y RESUELVE LO QUE PUEDE (08/10/2026)
