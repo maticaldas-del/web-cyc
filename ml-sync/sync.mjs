@@ -2053,7 +2053,11 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
         const linkRow = links[mla] || {};
         // Marcada "no la vendemos más" (`nomas`). El freno está bien; lo que hay que saber es que
         // adentro de Full quedó mercadería de algo que decidiste no vender: o se retira o paga.
-        if (linkRow.ignored) { noVa('la marcaste "no la vendemos más" y quedó mercadería adentro de Full'); continue; }
+        // `noVendemosMas` también, y con su propio motivo (13/10/2026, revisión 9): antes este primer chequeo miraba sólo
+        // `ignored` y la relectura de abajo veía `noVendemosMas`, así que `pausadas` decía "la activaría" y `activarfull:go`
+        // después no la activaba ("cambió en el panel"). Una publicación puede tener una sin la otra (p. ej. `vincular`).
+        if (linkRow.noVendemosMas) { noVa('la marcaste "no la vendemos más" y quedó mercadería adentro de Full'); continue; }
+        if (linkRow.ignored) { noVa('la ocultaste del panel y quedó mercadería adentro de Full'); continue; }
         // `altaSinVender` YA NO FRENA LA ACTIVACIÓN (17/09/2026). Regla suya, textual: *"quiero que
         // se active automaticamente siempre que el producto este pausado con stock en full y tenga
         // mas del 25% de ganancia"*, después de tener que activar a mano los dos P47 Cat Ear.
@@ -2122,7 +2126,9 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
         }
         extra = Math.max(0, extra);
         const mlx = precio * m;
-        const mg = ((precio - com - extra - precio * cuo) - costo - mlx) / (costo + mlx + extra);
+        // En el PEOR CASO, igual que `planilla` (13/10/2026, revisión 9): la retención de IIBB de otra provincia
+        // (`PEOR_RET_PCT`) en el numerador. Sin eso se activaba algo que la planilla marcaba 🛡️ abajo del 25%.
+        const mg = ((precio - com - extra - precio * cuo) - costo - mlx - precio * PEOR_RET_PCT) / (costo + mlx + extra);
         if (mg < PISO) { noVa(`queda en ${(mg * 100).toFixed(0)}%, abajo del ${(PISO * 100).toFixed(0)}%`, precio); continue; }
         if (DRY) { activadas.push({ label, mla, nom, precio, stock: stockFull, mg: mg * 100, dry: true, envioEstimado, costoSinProbar }); continue; }
         // Etapa 4 (30/09/2026): la foto de `links` es del arranque de la vuelta (minutos antes). Si en
@@ -2221,7 +2227,10 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
   const anotarP = {};
   if (!DRY) for (const x of nuevasP) anotarP[x.mla] = { ts: ahoraP, why: x.why, nom: x.nom, cuenta: x.label };
   console.log(`Activar pausadas con Full: ${activadas.length} activadas · ${noLlegan.length} no (${porMargen.length} por margen, ${sinMedir.length} sin poder medir, ${noLlegan.length - nuevasP.length} ya avisadas antes).`);
-  console.log(`   De dónde sale ese número: ${conteo.enCuenta} publicación(es) de las 4 cuentas · ${conteo.miradas} contestó ML`
+  // Sólo se miran las cuentas con token esta vuelta (13/10/2026, revisión 9): decía "de las 4 cuentas" aunque faltara una.
+  const ctasLinks = [...new Set(Object.values(links).map((e) => e && e.cuenta).filter(Boolean))];
+  const ctasSin = ctasLinks.filter((c) => !Object.prototype.hasOwnProperty.call(tokensRun, c));
+  console.log(`   De dónde sale ese número: ${conteo.enCuenta} publicación(es) de ${ctasSin.length ? `${ctasLinks.length - ctasSin.length} cuenta(s) (SIN MIRAR: ${ctasSin.join(', ')}, no tuve permiso esta vuelta)` : 'las ' + ctasLinks.length + ' cuentas'} · ${conteo.miradas} contestó ML`
     + ` → ${conteo.activas} ya están activas · ${conteo.noFull} no son de Full · ${conteo.sinStock} están pausadas pero sin stock adentro`
     + ` → quedaron ${conteo.conStock} PAUSADAS CON MERCADERÍA ADENTRO DE FULL.`);
   if (conteo.sinLeer || conteo.lotesFallidos) console.log(`   ⚠️ Sin leer esta vuelta: ${conteo.sinLeer} pausada(s) de Full cuyo stock ML no contestó${sinLeerStock.length ? ' (' + sinLeerStock.slice(0, 10).join(' · ') + ')' : ''}${conteo.lotesFallidos ? ` · ${conteo.lotesFallidos} tanda(s) de 20 publicaciones que ML no devolvió` : ''}. Se miran en la vuelta siguiente.`);
@@ -2241,6 +2250,7 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
       w = String(w || '');
       if (/pausó ML/.test(w)) return 'la pausó Mercado Libre: no la puedo activar yo, hay que mirarla en ML.';
       if (/no la vendemos más/.test(w)) return 'la marcaste "no la vendemos más".';
+      if (/ocultaste del panel/.test(w)) return 'la ocultaste del panel.';
       if (/frenada a mano/.test(w)) return 'le pusiste un freno para que no se active sola.';
       if (/sin costo/.test(w)) return 'la ficha no tiene el costo cargado: sin eso no sé si deja ganar.';
       if (/abajo del/.test(w)) return 'al precio de hoy deja menos de lo mínimo. Esta noche el cerebro la lleva al precio que deja ganar y después se activa sola.';
@@ -3495,6 +3505,10 @@ async function calcCerebro(db, o) {
   let slog; try { slog = (await db.get('cyc/stocklog/cambios')) || {}; } catch { slog = null; }
   if (!slog) { res.err = 'no pude leer el registro de stock hora por hora: sin eso no se pueden contar los días con stock'; return res; }
   let stockhist = {}; try { stockhist = (await db.get('cyc/stockhist')) || {}; } catch { stockhist = {}; }
+  // Las promos que entró Claude (13/10/2026, revisión 9): sólo para `decido`. Subir el precio de lista de algo que está
+  // en una promo mía infla el tachado. Si no se pueden leer, `decido` no sube (no sabe si está en promo).
+  let pClaudeC = {}, pClaudeOk = true;
+  if (forzar) { try { pClaudeC = (await db.get('cyc/promoclaude')) || {}; } catch { pClaudeOk = false; } }
   // El stock antiguo: lotes del Excel de ML (`lotesfull`), cajas llegadas con fecha y la tabla de ML por tamaño.
   let lotesFull = {}; try { lotesFull = (await db.get('cyc/lotesfull')) || {}; } catch { lotesFull = {}; }
   const cajasPC = cajasLlegadasPorClave(envios);
@@ -3630,19 +3644,31 @@ async function calcCerebro(db, o) {
         if (cuo == null) { nada('Premium sin cuotas medidas: sin eso el margen es un invento'); continue; }
         const kP = e.prodId + '__' + sidL(cta), kV = e.variant ? kP + '__v__' + sidL(e.variant) : null;
         const kS = kV && slog[kV] ? kV : kP;
-        const st = Math.max(0, parseInt(inv[kV && inv[kV] != null ? kV : kP]) || 0);
+        // EL STOCK DEL COLOR, NO EL DEL PRODUCTO (13/10/2026, revisión 9): si la ficha tiene colores/aromas y la publicación
+        // es de uno solo (sin variantes adentro), el stock es el de ESE color. Sin clave del color se tomaba el del producto
+        // entero (todos los colores juntos). Ahora queda DESCONOCIDO (null): no pasa el freno de "sin stock" como si tuviera.
+        const kVl = e.variant ? e.prodId + '__' + sidL(String(cta).toLowerCase()) + '__v__' + sidL(e.variant) : null;
+        const kVf = [kV, kVl].find((x) => x && inv[x] != null) || null;
+        const fichaVars = Array.isArray(p.variantes) ? p.variantes.length : Object.keys(p.variantes || {}).length;
+        const stDesc = !!(fichaVars && !(b.variations || []).length && (!e.variant || !kVf));
+        const st = stDesc ? null : Math.max(0, parseInt(inv[kVf || kP]) || 0);
         // Sin stock en Full el cerebro no decide nada, PERO un precio que decidió Claude para SUBIR se aplica igual
         // (09/10/2026, el Cool Water: se agotó en un día las dos veces a un precio que dejaba 19%; si la suba espera
         // a que entre stock, la tanda nueva se vende otra vez barata antes de la vuelta siguiente). Bajar sin stock no.
         const fzSinSt = !!(forzar && forzar[mla] && Number(forzar[mla].p) > p0 + 10);
-        if (!(st > 0) && !fzSinSt) { nada('sin stock en Full'); continue; }
+        if (stDesc && !fzSinSt) { nada(`stock del color: no sé (${e.variant ? 'no hay stock guardado de "' + e.variant + '"' : 'la publicación no tiene el color fijado: fijarvar'}): no decido a ciegas`); continue; }
+        if (!(st > 0) && !stDesc && !fzSinSt) { nada('sin stock en Full'); continue; }
         const m = (mlExtraPct(cta) + monoPz) / 100;
         const np = netopub[mla] || {};
         const envArriba = (p0 >= UMBRAL_ENVIO_GRATIS && Number(np.envio) > 0 && !np.envioML && !np.sinEnvio) ? Number(np.envio) : CAND_ENVIO_ARRIBA;
         const gan = async (P) => {
           const f = await feeAt(b, P, tk); if (f == null) return null;
           const env = P >= UMBRAL_ENVIO_GRATIS ? envArriba : 0;
-          return { g: P - f - P * cuo - env - costo - P * m, mg: (P - f - P * cuo - env - costo - P * m) / (costo + P * m + env) * 100 };
+          // `mgP` = el PEOR CASO (13/10/2026, revisión 9): la misma cuenta de `planilla` (retención de IIBB de otra
+          // provincia `PEOR_RET_PCT`; el envío ya es el peor visto). Con dos fórmulas para "arriba del 25%", `decido` dejaba
+          // bajar o activar algo que la planilla marcaba 🛡️ en la vuelta siguiente.
+          const g = P - f - P * cuo - env - costo - P * m, gP = g - P * PEOR_RET_PCT, den = costo + P * m + env;
+          return { g, mg: g / den * 100, gP, mgP: gP / den * 100 };
         };
         const g0 = await gan(p0);
         if (!g0) { nada('ML no contestó la comisión: se mira mañana'); continue; }
@@ -3656,10 +3682,18 @@ async function calcCerebro(db, o) {
         if (fz) {
           let P = Math.round(Number(fz.p) || 0) || p0;   // 0 = dejar el precio (sólo activar)
           const motF = 'Claude: ' + String(fz.motivo || 'sin motivo escrito').slice(0, 240);
-          Object.assign(D, { st, mg0: Math.round(g0.mg * 10) / 10, tipoMot: 'claude', memPrev: mem[mla] || {} });
-          if (!(P > 0) || Math.abs(P - p0) < 10) { D.mismoPrecio = true; nada(`${motF} · ${money(P)} es el precio de hoy: nada que cambiar`); continue; }
+          const r1 = (x) => Math.round(x * 10) / 10;
+          Object.assign(D, { st, stDesc, mg0: r1(g0.mg), mgP0: r1(g0.mgP), tipoMot: 'claude', memPrev: mem[mla] || {}, salto: !!fz.salto });
+          if (!(P > 0) || Math.abs(P - p0) < 10) { D.mismoPrecio = true; nada(`${motF} · ${money(P)} es el precio de hoy: nada que cambiar (normal ${D.mg0}% · peor caso ${D.mgP0}%)`); continue; }
           const sube = P > p0;
           if (sube && P > TECHO_DURO) { nada(`${motF} · ${money(P)} pasa el techo de ${money(TECHO_DURO)}`); continue; }
+          // MÁS DEL DOBLE DE UNA (13/10/2026, revisión 9): `aplicarCerebro` sube con `libre` (sin el freno del +25%), así que
+          // un cero de más en el renglón llegaba a ML. Más del doble va sólo con `!salto` (escasez, precio mal puesto).
+          if (sube && P > p0 * 2 && !fz.salto) { nada(`${motF} · sube más del doble (${money(p0)} → ${money(P)}): si es a propósito, agregá !salto`); continue; }
+          // EN UNA PROMO MÍA NO SE SUBE EL PRECIO DE LISTA (13/10/2026, revisión 9): infla el tachado (ML lo controla y es
+          // engañar al comprador). Primero se sale de la promo. Bajar sí se puede.
+          if (sube && !pClaudeOk) { nada(`${motF} · no pude leer mis promos (cyc/promoclaude): no subo sin saber si está en una`); continue; }
+          if (sube) { const pv = promoClaudeVigente(pClaudeC[mla], hoyTs); if (pv.vig) { nada(`${motF} · ⚠️ está en mi promo${pv.hasta ? ' (hasta ' + pv.hasta + ')' : ''}: subir el precio de lista infla el tachado — salir primero con entrarpromo:${mla}=salir`); continue; } }
           let cruza = false;
           if (sube && p0 < UMBRAL_ENVIO_GRATIS && P >= UMBRAL_ENVIO_GRATIS) {
             if (fz.cruza) cruza = true;
@@ -3668,8 +3702,9 @@ async function calcCerebro(db, o) {
           const gF = await gan(P);
           if (!gF) { nada(`${motF} · ML no contestó la comisión a ${money(P)}`); continue; }
           if (!sube && gF.mg < 0) { nada(`${motF} · a ${money(P)} queda en ${gF.mg.toFixed(1)}%: abajo de cero no se baja nunca`); continue; }
-          if (!sube && gF.mg < PISO && !fz.piso) { nada(`${motF} · a ${money(P)} queda en ${gF.mg.toFixed(1)}%, abajo del piso del ${PISO}%: para bajar igual va con !piso`); continue; }
-          Object.assign(D, { accion: sube ? 'sube' : 'baja', a: P, motivo: motF, cruza, mgA: Math.round(gF.mg * 10) / 10, pisoAut: !sube && gF.mg < PISO,
+          // El piso se mide en el PEOR CASO, igual que la planilla (13/10/2026, revisión 9).
+          if (!sube && gF.mgP < PISO && !fz.piso) { nada(`${motF} · a ${money(P)} queda en normal ${gF.mg.toFixed(1)}% · peor caso ${gF.mgP.toFixed(1)}%, abajo del piso del ${PISO}%: para bajar igual va con !piso`); continue; }
+          Object.assign(D, { accion: sube ? 'sube' : 'baja', a: P, motivo: motF, cruza, mgA: r1(gF.mg), mgPA: r1(gF.mgP), pisoAut: !sube && gF.mgP < PISO,
             gPorU: { antes: Math.round(g0.g), despues: Math.round(gF.g) } });
           dec(D); continue;
         }
@@ -4016,6 +4051,8 @@ async function aplicarCerebro(db, cz, o) {
     const apA = autoprecio && autoprecio[d.mla];
     if (apC && (_subiendoVivo(apC, hoyTs) || ((Number(apC.ts) || 0) !== (Number(apA && apA.ts) || 0) && hoyTs - (Number(apC.ts) || 0) < 24 * 3600e3))) { fallidos.push({ ...t, err: 'el robot de ventas la tocó hace un rato: no la toco hoy' }); continue; }
     let r, msub = null;
+    // Segunda red del "más del doble" (13/10/2026, revisión 9): `raisePriceTo` va con `libre` y no frena el +25%.
+    if (d.accion === 'sube' && d.tipoMot === 'claude' && Number(d.a) > Number(d.p0) * 2 && !d.salto) { fallidos.push({ ...t, err: `sube más del doble (${money(d.p0)} → ${money(d.a)}): si es a propósito, agregá !salto` }); continue; }
     if (d.accion === 'sube') {
       if (d.catalogo) {
         let cj = null;
@@ -4037,6 +4074,13 @@ async function aplicarCerebro(db, cz, o) {
     if (!r || !r.ok) { await _soltarSubiendo(db, d.mla, msub); fallidos.push({ ...t, err: (r && r.err) || '?' }); continue; }
     let quedo = null;
     try { quedo = Number((await mlGet('/items/' + d.mla + '?attributes=price', tk))?.price) || null; } catch { quedo = null; }
+    // QUE QUEDÓ DE VERDAD (13/10/2026, revisión 9): se releía e imprimía sin comparar. Si ML dejó otro precio (±$10 por
+    // redondeo), no es un hecho: va a "no se pudo" y no se escribe la nota de "Lo subí de…". La marca "subiendo" queda
+    // (frena 24 h, el lado seguro: el precio sí se movió).
+    const objetivo = Number(r.to || d.a) || 0;
+    if (quedo != null && Math.abs(quedo - objetivo) > 10) {
+      fallidos.push({ ...t, err: `releído de ML quedó en ${money(quedo)}, no en ${money(objetivo)}` }); continue;
+    }
     if (d.frenadaML) { let st = null; try { st = await mlGet('/items/' + d.mla + '?attributes=status,sub_status', tk); } catch { st = null; } console.log(`   · ${d.nom}: estaba en revisión de ML · ahora ${st ? st.status + (st.sub_status && st.sub_status.length ? ' (' + st.sub_status.join(',') + ')' : '') : 'no pude releer el estado'}`); }
     hechos.push({ ...t, de: r.from || d.p0, a: r.to || d.a, quedo });
     const reg = { tipo: d.accion === 'sube' ? 'sube' : 'baja', por: d.tipoMot === 'claude' ? 'claude' : 'cerebro', mot: d.tipoMot, motivo: String(d.motivo).slice(0, 300), simple: cerebroSimple(d).slice(0, 400), de: r.from || d.p0, a: r.to || d.a, ts: hoyTs, nom: d.nom, cuenta: d.cuenta, u30: d.u30 };
@@ -7011,6 +7055,16 @@ function promoPermitida(permitidas, itemId, pr, ahora = Date.now()) {
   if (Number.isFinite(hasta) && ahora > hasta + 864e5) return false;   // ya terminó: si sigue puesta, se saca
   if (a.id) return String(pr.id || '') === String(a.id);
   return !!a.tipo && pr.type === a.tipo && !pr.id;
+}
+// ¿SIGUE VIGENTE LA PROMO QUE ENTRÓ CLAUDE? (13/10/2026, revisión 9). Misma vara que `promoPermitida` (vence un día
+// después de `hasta`): la planilla la trataba como excepción PARA SIEMPRE aunque ya hubiera terminado, y `decido`
+// no la miraba. → { vig, hasta: 'dd/mm' | '' }. Sin fecha guardada se toma como vigente (igual que la vuelta de la hora).
+function promoClaudeVigente(a, ahora = Date.now()) {
+  if (!a) return { vig: false, hasta: '' };
+  const s = String(a.hasta || ''), t = s ? Date.parse(s) : NaN;
+  const dd = /^\d{4}-\d{2}-\d{2}/.test(s) ? s.slice(8, 10) + '/' + s.slice(5, 7) : '';
+  if (!Number.isFinite(t)) return { vig: true, hasta: dd };
+  return { vig: ahora <= t + 864e5, hasta: dd };
 }
 
 async function removeStartedPromos(itemId, token, permitidas) {
@@ -21727,21 +21781,24 @@ async function main() {
       const dueno = e.prodId ? ((products.find((x) => x.id === e.prodId) || {}).name || e.prodId) : '(ninguno)';
       console.log(`=== VINCULAR ${APLICAR ? '(APLICANDO)' : '(PRUEBA)'} ===\n`);
       console.log(`  ${MLA} · ${e.cuenta || '?'} · ${e.title || ''}`);
-      console.log(`  en ML: ${e.status || '?'}${e.ignored ? ' · OCULTA en el panel' : ''}`);
+      console.log(`  en ML: ${e.status || '?'}${e.ignored ? ' · OCULTA en el panel' : ''}${e.noVendemosMas ? ' · marcada "no la vendemos más"' : ''}`);
       console.log(`  producto de hoy: ${dueno}`);
       console.log(`  producto nuevo : ${p.name} (${p.id})`);
-      if (e.prodId === p.id && !e.ignored) { console.log('\nYa estaba así: no hay nada que cambiar.'); return; }
+      if (e.prodId === p.id && !e.ignored && !e.noVendemosMas) { console.log('\nYa estaba así: no hay nada que cambiar.'); return; }
       if (e.prodId && e.prodId !== p.id) {
         console.log(`\n  ⚠️ OJO: se la sacás a "${dueno}". Si ese producto se queda sin ninguna publicación,`);
         console.log(`     va a pasar a mostrar "—" en Margen ML. Cuando son dos fichas del mismo producto,`);
         console.log(`     revincular no alcanza: hay que quedarse con UNA sola.`);
       }
       if (!APLICAR) { console.log(`\nPRUEBA: no escribí nada. Para aplicar: vincular:${MLA}=${p.id}:go`); return; }
-      await db.patch('cyc/mllinks/' + MLA, { prodId: p.id, ignored: null, manual: true });
+      // "Pega y la saca de oculta" (13/10/2026, revisión 9): `nomas` pone `ignored` Y `noVendemosMas`. Se borraba sólo
+      // `ignored` y decía "oculta: no ✓", pero la publicación seguía afuera de la planilla, del cerebro y de activar pausadas.
+      await db.patch('cyc/mllinks/' + MLA, { prodId: p.id, ignored: null, noVendemosMas: null, manual: true });
       const ver = (await db.get('cyc/mllinks/' + MLA)) || {};
-      const okP = ver.prodId === p.id, okI = !ver.ignored;
-      console.log(`\n  releído del panel: producto ${ver.prodId || '(ninguno)'} ${okP ? '✓' : '✗'} · oculta ${ver.ignored ? 'SÍ ✗' : 'no ✓'}`);
-      console.log(okP && okI ? '\n✓ Vinculada.' : '\n✗ NO quedó como pedí — revisalo.');
+      const okP = ver.prodId === p.id, okI = !ver.ignored, okN = !ver.noVendemosMas;
+      console.log(`\n  releído del panel: producto ${ver.prodId || '(ninguno)'} ${okP ? '✓' : '✗'} · oculta ${ver.ignored ? 'SÍ ✗' : 'no ✓'} · "no la vendemos más" ${ver.noVendemosMas ? 'SÍ ✗' : 'no ✓'}`);
+      if (e.noVendemosMas && okN) console.log('  estaba marcada "no la vendemos más": se la saqué.');
+      console.log(okP && okI && okN ? '\n✓ Vinculada.' : '\n✗ NO quedó como pedí — revisalo.');
       console.log('Después corré netoweb, si no el producto sigue mostrando "—".');
       return;
     }
@@ -36115,7 +36172,7 @@ async function main() {
       console.log(`\nGuardados ${ok} de ${Object.keys(up).length} (releídos).`);
       return;
     }
-    // BILLING_PROBE=decido:<MLA>=<precio>[!piso][!cruza]|<motivo>[;<MLA>=…][;go] → LOS PRECIOS QUE DECIDE CLAUDE
+    // BILLING_PROBE=decido:<MLA>=<precio>[!piso][!cruza][!salto]|<motivo>[;<MLA>=…][;go] → LOS PRECIOS QUE DECIDE CLAUDE
     // (08/10/2026). Regla suya: *"que haya solo robots automáticos de api para cosas que no hay que pensar, como
     // ventas y cosas así de datos. TODO lo que sea pensar lo veas exclusivamente vos"*. El robot ya no mueve
     // precios solo (`autoPrecios: off`): junta los datos y de noche calcula lo que HARÍA (el expediente 🧠), y
@@ -36125,6 +36182,8 @@ async function main() {
     // `cyc/autoprecio` con `por:'claude'` y en la memoria del cerebro). (No es `precios:`: ése ya existe, es el viejo.) Frenos duros: techo $650.000, la barrera de
     // $33.000 sólo con `!cruza`, abajo del piso sólo con `!piso`, nunca abajo de 0%, sin variantes, no liquidando,
     // y una suba de catálogo sólo si gana la caja. Sin `;go` sólo muestra. El motivo no puede llevar `;`.
+    // (13/10/2026, revisión 9) El piso se mide en el PEOR CASO (como `planilla`), una suba de más del doble va sólo con
+    // `!salto`, y no se sube el precio de lista de algo que está en una promo mía (primero `entrarpromo:<MLA>=salir`).
     if (/^decido:/.test(String(process.env.BILLING_PROBE || ''))) {
       let partes = String(process.env.BILLING_PROBE).slice('decido:'.length).split(';').map((x) => x.trim()).filter(Boolean);
       // `decido:archivo=<nombre>[;go]` (08/10/2026): las notas del 🧠 de muchas publicaciones no entran cómodas en el campo del
@@ -36209,7 +36268,7 @@ async function main() {
         const banderas = String(mm[3] || '').toLowerCase();
         const soloAct = /^activar$/i.test(String(mm[2] || '').trim()) || !mm[2];
         forzar[mm[1].toUpperCase()] = { p: soloAct ? 0 : Math.round(pesosArg(mm[2]) / 10) * 10, motivo: mot.join('|').trim(), piso: banderas.includes('!piso'), cruza: banderas.includes('!cruza'),
-          activar: soloAct || banderas.includes('!activar') };
+          activar: soloAct || banderas.includes('!activar'), salto: banderas.includes('!salto') };
       }
       if (malos.length) { console.log(`No entendí: ${malos.join(' · ')}\nVa así: decido:MLA123=7550|vende igual a este precio;MLA456=4190!piso|motivo;MLA789=nota|lo que pensé;ped:pendrive 8gb=nota|por qué pido;caja:pendrive 8gb@matias=nota|por qué mando;ped:pendrive 8gb=u|120|por qué esas;ped:paulvic#Persea=u|6|motivo;ped:pendrive 8gb=venta|4990|precio normal;caja:pendrive 8gb@matias=u|50|motivo;ped:pendrive 8gb=auto;dia:2026-10-08=nota|qué pasó ese día;revisado;go`); return; }
       // MIS EXPLICACIONES PARA EL 🧠 (08/10/2026, él: *"todas las anotaciones del cerebro las escribís vos"*):
@@ -36328,7 +36387,7 @@ async function main() {
           if (d.mismoPrecio && fz0.piso && GOp && !DRY) { try { await db.set('cyc/claudepiso/' + d.mla, { a: Math.round(Number(d.p0) || 0), ts: Date.now(), motivo: String(fz0.motivo || '').slice(0, 200) }); console.log('   ✓ anotada como excepción mía (!piso): la planilla no la vuelve a marcar'); } catch { console.log('   ⚠️ no pude anotar la excepción'); } }
           continue;
         }
-        console.log(`   ${d.accion === 'sube' ? '⬆️ SUBIR' : '⬇️ BAJAR'} ${money(d.p0)} → ${money(d.a)}${d.cruza ? ' (cruza $33.000)' : ''} · margen ${d.mg0}% → ${d.mgA}%${d.pisoAut ? ' (abajo del piso, con !piso)' : ''}${d.gPorU ? ` · por unidad ${money(d.gPorU.antes)} → ${money(d.gPorU.despues)}` : ''}`);
+        console.log(`   ${d.accion === 'sube' ? '⬆️ SUBIR' : '⬇️ BAJAR'} ${money(d.p0)} → ${money(d.a)}${d.cruza ? ' (cruza $33.000)' : ''} · margen ${d.mg0}% → ${d.mgA}% (peor caso ${d.mgP0 ?? '?'}% → ${d.mgPA ?? '?'}%)${d.pisoAut ? ' (abajo del piso, con !piso)' : ''}${d.stDesc ? ' · stock del color: no sé' : ''}${d.gPorU ? ` · por unidad ${money(d.gPorU.antes)} → ${money(d.gPorU.despues)}` : ''}`);
         // PSICOLOGÍA DEL PRECIO (10/10/2026, él eligió 1a y 2a): avisa, no frena. Terminación redonda (múltiplo de $1.000)
         // o una suba que cruza un número redondo — se cruza sólo si la ganancia extra vale claramente la pena y se explica.
         const _rd = precioRedondoAviso(d.p0, d.a);
@@ -36357,8 +36416,10 @@ async function main() {
         if (!d) { no('no la miré (ver arriba)'); continue; }
         if (d.accion === 'nada' && !d.mismoPrecio) { no(d.motivo); continue; }
         if (d.accion !== 'nada' && !hechosM.has(mla)) { no('el precio no quedó como pedí'); continue; }
+        // En el PEOR CASO, como la planilla (13/10/2026, revisión 9): activar algo que la planilla marca 🛡️ es vender abajo del piso.
         const mg = d.accion !== 'nada' ? Number(d.mgA) : Number(d.mg0);
-        if (!(mg >= PISOd) && !fz.piso) { no(`a ese precio queda en ${mg}%, abajo del piso del ${PISOd}%`); continue; }
+        const mgPa = d.accion !== 'nada' ? Number(d.mgPA) : Number(d.mgP0);
+        if (!(mgPa >= PISOd) && !fz.piso) { no(`a ese precio queda en normal ${mg}% · peor caso ${Number.isFinite(mgPa) ? mgPa + '%' : '?'}, abajo del piso del ${PISOd}%`); continue; }
         const tk = tokP[d.cuenta]; if (!tk) { no('sin permiso de la cuenta'); continue; }
         try {
           const it = await mlGet('/items/' + mla + '?attributes=status,sub_status', tk);
@@ -36829,7 +36890,10 @@ async function main() {
       const ctaF = String(process.env.BILLING_PROBE).slice('planilla'.length).replace(/^:/, '').trim().toLowerCase();
       const [lk, inv, vp, np, ap, sh, cfgM, mono, fin, cuoC, prodsO, nosub, cPiso, pClaude] = await Promise.all(['cyc/mllinks', 'cyc/inventory', 'cyc/ventaprod', 'cyc/netopub', 'cyc/autoprecio', 'cyc/stockhist', 'cyc/mlconfig', 'cyc/monotributo', 'cyc/finanzas', 'cyc/mlcuotas', 'cyc/products', 'cyc/nosubir', 'cyc/claudepiso', 'cyc/promoclaude']
         .map((r) => db.get(r).then((x) => x || {}).catch(() => null)));
-      if ([lk, inv, vp, np, prodsO, fin].some((x) => x === null)) { console.log('⚠️ no pude leer la base: no listo nada a medias'); return; }
+      // Todas las que deciden algo (13/10/2026, revisión 9): una lectura fallida de las excepciones (liquidando, `!piso`, mis
+      // promos), del piso, del monotributo o de los cambios se leía como "no hay ninguna" y la planilla salía igual, mal.
+      // `null` = falló la lectura; un nodo vacío llega como {} y sigue.
+      if ([lk, inv, vp, np, prodsO, fin, nosub, cPiso, pClaude, cfgM, mono, ap].some((x) => x === null)) { console.log('⚠️ no pude leer la base: no listo nada a medias'); return; }
       const tc = parseFloat(fin.tipo_cambio) || 0; if (!(tc > 0)) { console.log('⚠️ sin dólar cargado: no hay costo en pesos'); return; }
       const monoPz = parseFloat(mono.pct) || 0, PISO = Number.isFinite(parseFloat(cfgM.minPct)) ? parseFloat(cfgM.minPct) : 25;
       const prodById = {}; for (const p of Object.values(prodsO)) if (p && p.id) prodById[p.id] = p;
@@ -36863,17 +36927,23 @@ async function main() {
         let v = null; try { const d = await mlGet(`/sites/${b.site_id || 'MLA'}/listing_prices?price=${Math.round(P)}&listing_type_id=${b.listing_type_id}&category_id=${b.category_id}`, tk); const x = Array.isArray(d) ? d[0] : d; v = typeof x?.sale_fee_amount === 'number' ? x.sale_fee_amount : null; } catch { v = null; }
         fee.set(k, v); return v;
       };
-      const filas = [], sinLeer = [];
+      // `sinLeer` es la lista para mostrar y `nSinLeer` cuántas publicaciones son (13/10/2026, revisión 9): "sin token" es
+      // un renglón que vale por todas las de esa cuenta. Los renglones con error de ML van aparte (`errMLs`), con su MLA.
+      const filas = [], sinLeer = [], errMLs = []; let nSinLeer = 0;
       const f = (n) => '$' + Math.round(n).toLocaleString('es-AR');
       for (const [cta, ids] of Object.entries(porCta)) {
         const tk = tok[cta] || tok[cta.toLowerCase()] || tok[cta.charAt(0).toUpperCase() + cta.slice(1).toLowerCase()];
-        if (!tk) { sinLeer.push(`${cta}: sin token (${ids.length})`); continue; }
+        if (!tk) { sinLeer.push(`${cta}: sin token (${ids.length})`); nSinLeer += ids.length; continue; }
         for (let k = 0; k < ids.length; k += 20) {
-          let arr; try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,sub_status,price,listing_type_id,category_id,site_id,variations,catalog_listing', tk); } catch { arr = null; }
-          if (!arr) { sinLeer.push(...ids.slice(k, k + 20)); continue; }
-          for (const row of arr) {
+          const req = ids.slice(k, k + 20);
+          let arr; try { arr = await mlGet('/items?ids=' + req.join(',') + '&attributes=id,status,sub_status,price,listing_type_id,category_id,site_id,variations,catalog_listing', tk); } catch { arr = null; }
+          if (!Array.isArray(arr)) { sinLeer.push(...req); nSinLeer += req.length; continue; }
+          // ML contesta en el mismo orden que se pidió: el renglón j es `req[j]`. Si devolvió menos, las que faltan quedan sin leer.
+          for (let j = arr.length; j < req.length; j++) { sinLeer.push(req[j]); nSinLeer++; }
+          for (let j = 0; j < arr.length; j++) {
+            const row = arr[j];
             const b = (row && row.body) || {}, mla = b.id;
-            if (!mla || !lk[mla]) { fuera.errorML++; if (row && row.body && row.body.id == null) sinLeer.push(`renglón con error ${row.code || '?'}`); continue; }
+            if (!mla || !lk[mla]) { fuera.errorML++; errMLs.push(`${req[j] || mla || '?'} (${(row && row.code) || '?'})`); continue; }
             if (b.status === 'closed' || b.status === 'inactive') { fuera.cerradaML++; continue; }
             const e = lk[mla], p = prodById[e.prodId], P = Math.round(Number(b.price) || 0);
             const kP = e.prodId + '__' + sidL(cta), kV = e.variant ? kP + '__v__' + sidL(e.variant) : null;
@@ -36882,7 +36952,10 @@ async function main() {
             // Bliss mostraba los 212 de todos los Paulvic): queda desconocido.
             const kVl0 = e.variant ? e.prodId + '__' + sidL(cta.toLowerCase()) + '__v__' + sidL(e.variant) : null;
             const kSt = e.variant ? [kV, kVl0].find((x) => x && inv[x] != null) : (inv[kP] != null ? kP : e.prodId + '__' + sidL(cta.toLowerCase()));
-            const stDesc = e.variant && !kSt;
+            // Y si la ficha tiene colores pero la publicación no tiene el color fijado (13/10/2026, revisión 9): tampoco es el
+            // stock del producto entero.
+            const fichaVars = p ? (Array.isArray(p.variantes) ? p.variantes.length : Object.keys(p.variantes || {}).length) : 0;
+            const stDesc = !!(e.variant ? !kSt : (fichaVars && !(b.variations || []).length));
             const st = stDesc ? 0 : Math.max(0, parseInt(inv[kSt]) || 0);
             const costo = Math.round(costoPesos(p, 1, tc).costo || 0);
             const m = (mlExtraPct(cta) + monoPz) / 100;
@@ -36927,25 +37000,28 @@ async function main() {
             const ini = Number(h.desde || h.desdePrev) || 0;
             const tanda = ini && h.cero && h.cero > ini ? Math.max(0.1, (h.cero - ini) / 864e5) : null;
             const a = ap[mla];
+            // Mi promo cuenta como excepción sólo MIENTRAS dure (13/10/2026, revisión 9): vencida se juzga como cualquiera.
+            const pcV = promoClaudeVigente(pClaude[mla], hoy);
             filas.push({ mla, cta, nom: String(e.title || p.name || '').slice(0, 42) + (e.variant ? ' #' + e.variant : ''), est: b.status + ((b.sub_status || []).length ? '(' + b.sub_status.join(',') + ')' : ''),
-              P, mg, g, mgP, meta, nota, st, stDesc, exc: (nosub || {})[mla] ? 'liquidando' : (cPiso && cPiso[mla] && Math.abs((Number(cPiso[mla].a) || 0) - P) <= 10) ? 'la dejé así con !piso' : (pClaude && pClaude[mla]) ? 'en promo que entré yo' : (P >= 32900 && P < UMBRAL_ENVIO_GRATIS && meta && meta.barrera) ? 'frenada en la barrera de $33.000 (regla 2)' : '', ...vv, cero: h.cero && st === 0 ? h.cero : null, tanda, caja: e.caja || '', ptw: e.cajaPtw || null, var: (b.variations || []).length,
+              P, mg, g, mgP, meta, nota, st, stDesc, exc: (nosub || {})[mla] ? 'liquidando' : (cPiso && cPiso[mla] && Math.abs((Number(cPiso[mla].a) || 0) - P) <= 10) ? 'la dejé así con !piso' : pcV.vig ? `en promo mía${pcV.hasta ? ' hasta ' + pcV.hasta : ''}` : (P >= 32900 && P < UMBRAL_ENVIO_GRATIS && meta && meta.barrera) ? 'frenada en la barrera de $33.000 (regla 2)' : '', pcVen: pClaude[mla] && !pcV.vig ? (pcV.hasta || '?') : '', ...vv, cero: h.cero && st === 0 && !stDesc ? h.cero : null, tanda, caja: e.caja || '', ptw: e.cajaPtw || null, var: (b.variations || []).length,
               cambio: a && a.ts ? `${f(a.de)}→${f(a.a)} hace ${Math.round((hoy - a.ts) / 864e5)} d${a.por ? ' (' + a.por + ')' : ''}` : '' });
           }
         }
       }
       filas.sort((x, y) => (y.u30 - x.u30) || (y.st - x.st));
       console.log(`=== 📋 PLANILLA · ${filas.length} publicaciones con ficha (activas y pausadas)${ctaF ? ' · ' + ctaF : ''} · objetivo ${PISO}% ===`);
-      console.log(`Cuenta completa: ${esperadas} vivas con ficha para leer = ${filas.length} leídas + ${sinLeer.length} sin leer + ${fuera.cerradaML} que ML ya da cerradas + ${fuera.errorML} con error de ML${esperadas !== filas.length + sinLeer.length + fuera.cerradaML + fuera.errorML ? '  ⚠️ NO CIERRA' : '  ✓ cierra'}`);
+      console.log(`Cuenta completa: ${esperadas} vivas con ficha para leer = ${filas.length} leídas + ${nSinLeer} sin leer + ${fuera.cerradaML} que ML ya da cerradas + ${fuera.errorML} con error de ML${esperadas !== filas.length + nSinLeer + fuera.cerradaML + fuera.errorML ? '  ⚠️ NO CIERRA' : '  ✓ cierra'}`);
       console.log(`Afuera a propósito: ${fuera.oculta} ocultas o "no la vendemos más" · ${fuera.cerradaGuardada} cerradas/inactivas guardadas · ${fuera.sinFicha + fuera.fichaBorrada} vivas SIN ficha (vincularlas: ${sinFichaVivas.slice(0, 15).join(' ') || '—'})\n`);
       console.log('MLA · cuenta · nombre · estado · precio · margen (gan/u) · Full · vendidas 7d/30d/60d · última · tanda · caja · último cambio\n');
       for (const r of filas) {
         const mgT = r.mg == null ? `margen ? (${r.nota})` : `${r.mg.toFixed(0)}% (${f(r.g)}/u)${r.mg < PISO ? ' ⚠️<' + PISO : ''}`;
         const cajaT = r.caja ? `caja ${r.caja}${r.ptw && r.caja !== 'winning' ? ' ML pide ' + f(r.ptw) : ''}` : '';
-        console.log([r.mla, r.cta, r.nom, r.est, f(r.P), mgT, `Full ${r.stDesc ? '? (no hay stock guardado de este color)' : r.st}${r.cero ? ' (cero hace ' + Math.round((hoy - r.cero) / 864e5) + ' d)' : ''}`,
+        console.log([r.mla, r.cta, r.nom, r.est, f(r.P), mgT, `Full ${r.stDesc ? '? (stock del color: no sé)' : r.st}${r.cero ? ' (cero hace ' + Math.round((hoy - r.cero) / 864e5) + ' d)' : ''}`,
           `v ${r.u7}/${r.u30}/${r.u60}`, r.ult ? `últ hace ${Math.round((hoy - r.ult) / 864e5)} d` : 'sin ventas 60 d',
           r.tanda != null ? `tanda duró ${r.tanda.toFixed(1)} d` : '', r.var ? `${r.var} variantes` : '', cajaT, r.cambio ? 'cambio ' + r.cambio : ''].filter(Boolean).join(' · '));
       }
-      if (sinLeer.length) console.log(`\n⚠️ sin leer (${sinLeer.length}): ${sinLeer.slice(0, 40).join(' · ')}`);
+      if (nSinLeer) console.log(`\n⚠️ sin leer (${nSinLeer}): ${sinLeer.slice(0, 40).join(' · ')}`);
+      if (errMLs.length) console.log(`⚠️ con error de ML (${errMLs.length}): ${errMLs.slice(0, 40).join(' · ')}`);
       const bajo = filas.filter((r) => r.mg != null && r.mg < PISO), sinMg = filas.filter((r) => r.mg == null);
       const rap = filas.filter((r) => r.tanda != null && r.tanda <= 3 && r.u30 > 0);
       // EL PEOR CASO, DE TODAS (12/10/2026, regla suya): *"todo producto que existe tiene que estar arriba del 25%"*. ML
@@ -36954,7 +37030,7 @@ async function main() {
       // mis excepciones a propósito (liquidando, `!piso`, promo mía), que se cuentan aparte.
       const peor = filas.filter((r) => r.mgP != null && r.mgP < PISO), peorNo = peor.filter((r) => !r.exc), peorExc = peor.filter((r) => r.exc);
       console.log(`\n── 🛡️ ABAJO DEL ${PISO}% EN EL PEOR CASO (retención de otra provincia ${(PEOR_RET_PCT * 100).toFixed(1)}% + el envío más caro visto + cuotas): ${peorNo.length} para subir · ${peorExc.length} excepciones mías ──`);
-      for (const r of peorNo.sort((x, y) => x.mgP - y.mgP)) console.log(`🛡️ ${r.mla} · ${r.cta} · ${r.nom} · ${r.est} · ${f(r.P)} · peor caso ${r.mgP.toFixed(0)}% (normal ${r.mg.toFixed(0)}%) · Full ${r.st} · v30 ${r.u30} · ${r.var ? 'CON VARIANTES: a mano' : r.meta ? `→ ${f(r.meta.P)} (${r.meta.mg.toFixed(1)}% peor caso, +${((r.meta.P / r.P - 1) * 100).toFixed(0)}%)${r.meta.P > r.P * 1.25 ? ' · más de +25%: va DE UNA (llevar al piso no es por escalones)' : ''}${r.meta.barrera ? ` ⚠️ cruza $33.000 (a $32.990 queda ${r.meta.barrera.mg == null ? '?' : r.meta.barrera.mg.toFixed(0) + '%'})` : ''}` : 'sin precio que llegue'}`);
+      for (const r of peorNo.sort((x, y) => x.mgP - y.mgP)) console.log(`🛡️ ${r.mla} · ${r.cta} · ${r.nom} · ${r.est} · ${f(r.P)} · peor caso ${r.mgP.toFixed(0)}% (normal ${r.mg.toFixed(0)}%) · Full ${r.stDesc ? '? (stock del color: no sé)' : r.st} · v30 ${r.u30}${r.pcVen ? ` · (mi promo venció el ${r.pcVen})` : ''} · ${r.var ? 'CON VARIANTES: a mano' : r.meta ? `→ ${f(r.meta.P)} (${r.meta.mg.toFixed(1)}% peor caso, +${((r.meta.P / r.P - 1) * 100).toFixed(0)}%)${r.meta.P > r.P * 1.25 ? ' · más de +25%: va DE UNA (llevar al piso no es por escalones)' : ''}${r.meta.barrera ? ` ⚠️ cruza $33.000 (a $32.990 queda ${r.meta.barrera.mg == null ? '?' : r.meta.barrera.mg.toFixed(0) + '%'})` : ''}` : 'sin precio que llegue'}`);
       for (const r of peorExc) console.log(`   (excepción: ${r.exc}) ${r.mla} · ${r.nom} · ${f(r.P)} · peor caso ${r.mgP.toFixed(0)}%`);
       if (sinMgTxt(filas)) console.log(sinMgTxt(filas));
       console.log(`\nResumen: ${filas.length} miradas · ${bajo.length} abajo de ${PISO}% · ${sinMg.length} sin margen medible · ${rap.length} cuya última tanda duró 3 días o menos (probablemente baratas)`);
