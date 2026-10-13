@@ -38926,7 +38926,11 @@ async function main() {
         return;
       }
 
-      if (sub === 'llego') {
+      // pyped:fichas:<id>[:go] (13/10/2026, él: "crealas, no van a venderse en ML, pero quiero tener los costos de todo eso"):
+      // vuelve a crear las fichas que faltan de un pedido YA llegado (las que se borraron), con el mismo costo que
+      // `llego` (precio pagado × recargo real). No marca nada, no toca la oficina ni el estado del pedido.
+      const SOLOFICHAS = sub === 'fichas';
+      if (sub === 'llego' || SOLOFICHAS) {
         let id = arg.trim();
         if (/^\d{4}-\d{2}-\d{2}$/.test(id)) {
           const m = Object.entries(compras).filter(([, c]) => c && c.fecha === id && c.estado === 'camino');
@@ -38935,7 +38939,8 @@ async function main() {
         }
         const c = compras[id];
         if (!c) { console.log(`No existe el pedido ${id}. Corré \`pyped\` para ver los que están en camino.`); return; }
-        if (c.estado !== 'camino') { console.log(`El pedido ${id} está "${c.estado}", no en camino: no se toca.`); return; }
+        if (!SOLOFICHAS && c.estado !== 'camino') { console.log(`El pedido ${id} está "${c.estado}", no en camino: no se toca.`); return; }
+        if (SOLOFICHAS && c.estado !== 'llego') { console.log(`El pedido ${id} está "${c.estado}": fichas sólo rehace las de un pedido que ya llegó.`); return; }
         // Sin el ticket real no se cierra (regla suya del 10/10/2026): el costo de cada ficha tiene que salir de lo PAGADO.
         if (!c.ticket) { console.log(`❌ El pedido ${id} no tiene el ticket cargado. Primero va \`compray:${c.fecha}|det=<código>*<unidades>*<precio pagado>;…|go\` con el ticket del mayorista. No escribo nada.`); return; }
         const _repIts = (c.items || []).filter((x) => x && x.prodId && !x.id);
@@ -38951,7 +38956,7 @@ async function main() {
             if (!it || !it.id) continue;
             const k = cands[it.id];
             const src = { id: it.id, nombre: (k && k.nombre) || it.nom || '', usd: parseFloat(it.usd) > 0 ? it.usd : (k && k.usd), cod: (k && k.cod) || it.cod || '', ts: k && k.ts };
-            if (k && k.prodId) { plan.push({ src, estado: 'ya' }); continue; }
+            if (k && k.prodId && prods.some((p) => p.id === k.prodId)) { plan.push({ src, estado: 'ya' }); continue; }
             if (!String(src.nombre).trim()) { plan.push({ src, estado: 'nonombre' }); continue; }
             // D2 (etapa 3, 29/09): sólo frena la MISMA ficha —mismo código de Nissei (también por el
             // final, al chat le falta a veces el primer dígito) o mismo nombre completo— y la engancha.
@@ -39005,6 +39010,7 @@ async function main() {
         }
         // Etapa 4: cortada a mitad, el pedido NO se marca llegado. Al repetir el comando, las fichas ya
         // creadas salen como "parecidas" y se enganchan; las que faltaban se crean.
+        if (SOLOFICHAS) { const rel = await db.get('cyc/products'); const ok = hechas.filter((p) => rel && rel[p.id]); console.log(`\n✓ ${ok.length} de ${hechas.length} ficha(s) creada(s) y releída(s)${ok.length ? ': ' + ok.map((p) => p.name + ' · US$ ' + p.costUSD).join(' | ') : ''}. El pedido no se tocó.`); return; }
         if (_pyCortado) { console.log(`\n⚠️ Cancelaron la corrida: ${hechas.length} ficha(s) creada(s) y el pedido ${id} NO quedó marcado llegado. Repetí el mismo comando.`); return; }
         for (const x of plan.filter((y) => y.estado === 'repe')) {
           if (x.src.id && cands[x.src.id] && !cands[x.src.id].prodId) { try { await db.set(`cyc/candidatos_py/${x.src.id}/prodId`, x.rep[0].id); } catch { console.log(`⚠️ no pude enganchar ${x.src.nombre} a su ficha`); } }

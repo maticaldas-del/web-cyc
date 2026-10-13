@@ -740,3 +740,8 @@ Chequear que un producto en escasez no baje su pedido.
 lugar · celeste margen · naranja escasez · cian caja · violeta promo · amarillo vuelta atrás · rojo remate · gris a mano.
 Línea de tiempo, renglón de cada venta y su detalle. **Los motivos de `decido` tienen que nombrar la causa** (escasez,
 techo/prueba, peor caso/25%, caja, remate, vuelvo) o la flecha sale gris. Chequear que la leyenda y las flechas coincidan.
+
+### `pyped:fichas:<id>[:go]` (13/10/2026, etapa 3)
+Rehace las fichas que faltan de un pedido de Paraguay YA llegado (las de perfumería se habían borrado y él quiere los costos
+de todo: *"no van a venderse en ML, pero quiero tener los costos"*). Mismo costo que `llego` (pagado × recargo real), no toca
+la oficina ni el estado. `llego` ahora también trata como "sin ficha" a un candidato cuyo `prodId` apunta a una ficha borrada.
