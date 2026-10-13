@@ -57,3 +57,7 @@ Regla de vuelta, suya: no por calendario; sólo cuando los datos digan con segur
 
 ## 13/10 · REGLA NUEVA SUYA: SIN ESCALONES
 "ml deja tranquilamente subir hasta el 100% del precio actual del producto, sea cual sea su precio. así que no vayamos con escala, andá directo al precio que pensás vos". Lo del Espejo 8" no fue por el precio. O sea: el +10% de los escalones se terminó; cada prueba va directo al precio que creo que es el techo, también en lo caro. Los escalones 1 del 12/10 se llevan directo a su precio de prueba.
+
+## 13/10 21:40 · PRIMERA TANDA SIN ESCALONES (aplicadas y releídas de ML)
+Hub 8 en 1 MLA3251292052 $19.990→$27.990 · Almohadilla talón MLA3164646020 y MLA3164694314 $4.390→$6.490 · Pendrive 32gb MLA1970314726 $21.990→$28.990 · Joystick Bluetooth MLA1998586178 $29.790→$32.990 (borde de la barrera).
+Afuera: Termómetro cocina líquido MLA3376866646 (se frenó después de la suba del 12/10: 4 en 7 días contra ~10 esperadas) · las pruebas del 12/10 en lo caro (Watch 4, Seagate, WD, Sony EX15AP, Buds Core): venden 1 por mes, otra suba no daría información antes de semanas.
