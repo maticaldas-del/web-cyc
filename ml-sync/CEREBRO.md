@@ -126,3 +126,12 @@ Cada 🚩 se mira con la línea de tiempo y se decide (o se anota por qué no se
 Línea de tiempo: el ▾ ámbar = ese día se cobró menos sin cambiar el precio (promo/cupón, carrito o color más barato).
 - **Escasez y pedidos (13/10):** subir por escasez frena las ventas a propósito; para COMPRAR manda el ritmo de antes de la suba. En `decido` el motivo de una suba por escasez dice "escasez" (así `pedidostodo` la marca ESC).
 - **Motivos de `decido` con la causa en palabras (13/10):** escasez · techo/prueba · peor caso 25% · caja · remate/liquidar · vuelvo (no funcionó). De eso sale el color de la flechita y el ritmo de compra.
+
+## ✍️ CADA DECISIÓN DE PRECIO SE EXPLICA EN 4 PARTES (13/10/2026, regla suya)
+Él: *"quiero que diga algo como 'subí el producto para probar el techo de x a y, lo que espero ver es tal cosa, y si no pasa
+eso espero tantos días o haré tal cosa'"*. Todo motivo de `decido` (y toda nota del 🧠 de precio) lleva:
+1. **QUÉ HICE:** de $X a $Y (+N%).
+2. **POR QUÉ:** el tipo con su palabra (techo/prueba · escasez · peor caso 25% · caja · remate/liquidar · vuelvo) y el dato que lo dispara.
+3. **QUÉ ESPERO VER:** en números (cuántas ventas por semana, cuánto deja por unidad, plata por día).
+4. **SI NO PASA:** cuántos días espero y qué hago (volver a $Z, bajar, promo, otro escalón).
+Sin `;` adentro. Al revisar una decisión vieja, se escribe la nota con lo que pasó contra lo esperado.

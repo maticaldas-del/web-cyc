@@ -755,3 +755,7 @@ color. Chequear que cada `decido` tenga motivo escrito (si no, sale "sin motivo 
 Él: *"si pongo el mouse ahí es porque quiero saber qué pasó y por qué"*. `cambioTxt` arma el texto: tipo de cambio (el
 color de `FLECHA_TIPOS`), precio de antes → después, % y el motivo de `claudecambios`/`autoprecio`. Va en el globito de la
 flechita (dibujada arriba de los rectángulos del globito, si no el mouse no llega) y en el del día. Chequear con el mouse.
+
+### El 🧠 sin "¿te queda alguna duda?" y con los cambios viejos (13/10/2026, v23.33)
+Se sacó el renglón final. "Por qué cambió el precio" también toma el último de `cyc/autoprecio` si no está en
+`claudecambios`. Regla de las 4 partes del motivo en `CEREBRO.md`. Chequear que las notas nuevas la cumplan.

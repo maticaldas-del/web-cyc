@@ -2514,7 +2514,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.32';
+const APP_VERSION='23.33';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2525,6 +2525,7 @@ const APP_VERSION='23.32';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.33',f:'13/10/2026',h:'18:00',c:[{n:1,t:'🧠 El cerebro muestra también los cambios de precio viejos (de antes de anotar cada decisión) y se sacó el renglón "¿Te queda alguna duda?".'}]},
   {v:'23.32',f:'13/10/2026',h:'17:45',c:[{n:1,t:'📈 Línea de tiempo: pasando el mouse por una flechita (o por ese día) dice qué cambio fue, por qué es de ese color y el motivo que escribí.'}]},
   {v:'23.31',f:'13/10/2026',h:'17:30',c:[{n:1,t:'🧠 El cerebro de una venta o producto ahora dice POR QUÉ cambió el precio (las últimas 3 subas o bajas, con su motivo y la flechita de color).'}]},
   {v:'23.30',f:'13/10/2026',h:'16:45',c:[{n:1,t:'🧠 Pedidos de Paraguay (Probados): abajo de cada tarjeta dice a la vista por qué pide esas unidades.'}]},
@@ -9628,13 +9629,15 @@ async function cerebroAbrir(el,ev){
     // POR QUÉ CAMBIÓ EL PRECIO (13/10/2026, él con el Paulvic Barbarella: "no explica por qué aumentó de 58 a 97%"): la nota
     // de la publicación dice cómo está hoy; el motivo de cada suba o baja vive en `cyc/claudecambios`. Van los últimos 3.
     if(!soloUnid){
-      const cc=Object.values(state.claudecambios||{}).filter(c=>c&&mlas.includes(c.mla)&&Number(c.ts)>0).sort((x,y)=>Number(y.ts)-Number(x.ts)).slice(0,3);
+      // También el último cambio de `cyc/autoprecio` si no está en claudecambios (los del 07-08/10, antes de anotar cada uno).
+      const cc0=Object.values(state.claudecambios||{}).filter(c=>c&&mlas.includes(c.mla)&&Number(c.ts)>0);
+      for(const k of mlas){const a=(state.autoprecio||{})[k];if(a&&Number(a.ts)>0&&Number(a.a)>0&&!cc0.some(c=>c.mla===k&&Math.abs(Number(c.ts)-Number(a.ts))<15*60e3))cc0.push({mla:k,ts:Number(a.ts),de:a.de,a:a.a,motivo:a.motivo||(a.por?'('+a.por+')':'')});}
+      const cc=cc0.sort((x,y)=>Number(y.ts)-Number(x.ts)).slice(0,3);
       if(cc.length){h+=par('<b>Por qué cambió el precio:</b>');
         for(const c of cc){const sube=Number(c.a)>Number(c.de);h+=par(`${flechaHTML(flechaTipo(c.mla,Number(c.ts),'',sube),sube)} ${_cerEsc(_cerFecha(c.ts))}: ${fmt(Number(c.de)||0)} → ${fmt(Number(c.a)||0)} · ${_cerEsc(c.motivo||'sin motivo anotado')}`);nn++;}}
     }
     if(falla)h+=par('<span style="color:var(--amber)">No pude leer alguna nota. Probá de nuevo en un rato.</span>');
     else if(!nn)h+=par(`<span style="color:var(--muted)">${soloUnid?'Todavía no escribí por qué van estas unidades.':'Todavía no escribí nada sobre el precio de esto.'}</span>`);
-    h+=`<p style="margin:12px 0 0;font-size:.72rem;color:var(--muted)">¿Te queda alguna duda? Preguntale a Claude en el chat.</p>`;
     m.innerHTML=caja(h);
     return;
   }
@@ -9664,7 +9667,6 @@ async function cerebroAbrir(el,ev){
     const cab=varias?`<b>${_cerEsc(e.cuenta||'')}${e.variant?' · '+_cerEsc(e.variant):''}${e.status&&e.status!=='active'?' · pausada':''}:</b> `:'';
     h+=par(cab+fr.map(_cerEsc).join(' '));
   }
-  h+=`<p style="margin:12px 0 0;font-size:.72rem;color:var(--muted)">¿Te queda alguna duda? Preguntale a Claude en el chat.</p>`;
   m.innerHTML=caja(h);
 }
 // EL CEREBRO DE LAS VENTAS (08/10/2026, pedido suyo: *"quizas puede haber un cerebro en ventas por dia por
@@ -9734,8 +9736,7 @@ function vpCerebroModal(titulo,frases){
     m.onclick=e=>{if(e.target===m)m.remove();};document.body.appendChild(m);}
   m.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;max-width:560px;width:100%;padding:14px 16px;margin-top:20px;font-size:.85rem;line-height:1.5">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><b style="font-size:.95rem">🧠 ${_cerEsc(titulo)}</b><button class="btn" onclick="document.getElementById('cerebro-modal').remove()">Cerrar</button></div>
-    ${frases.map(t=>`<p style="margin:8px 0 0">${_cerEsc(t)}</p>`).join('')}
-    <p style="margin:12px 0 0;font-size:.72rem;color:var(--muted)">¿Te queda alguna duda? Preguntale a Claude en el chat.</p></div>`;
+    ${frases.map(t=>`<p style="margin:8px 0 0">${_cerEsc(t)}</p>`).join('')}</div>`;
 }
 // "🧠 QUÉ PASÓ" SÓLO CUANDO FUE IMPORTANTE (08/10/2026, él: *"en el cerebro de ventas escribí algo si fue importante en el
 // día, si no no"* · *"yo decía este, el de la tarjeta del principio de ventas de hoy"*): con Claude a cargo el botón lee la
