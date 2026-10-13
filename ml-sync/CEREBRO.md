@@ -34,7 +34,8 @@ la historia y el porqué). Si algo de acá choca con CLAUDE.md, manda lo más nu
   del normal; con caja despachada, que la última salga cerca del día 8. Nunca abajo del precio normal. Al llegar la
   caja no se vuelve a ciegas.
 - **Lo nuevo que vuela se sube al toque**; venta abajo de 25% con poco stock → subir en la MISMA vuelta.
-- **Productos nuevos arrancan directo a su precio final.**
+- **Productos nuevos arrancan directo a su precio final.** Y en la primera semana se mira la caja: si es de catálogo y la pierde
+  (0 visitas), el precio no es el final: descuento al precio que gana la caja si deja 25%+ (caso del pedido del 21/09, 13/10).
 - **Buscar el techo** (`notas/techo.md`): TODO lo que vende y no tiene techo conocido, todas juntas, +10% (+15% si
   vende 1+/día con margen alto). Juicio por CERTEZA en plata por día (Poisson: 3 esperadas y 0 = 5% azar · 6 y 0-1 =
   2% · 10 y ≤2 = 0,3%), nunca con un solo día, máximo 30 días. Afuera: escasez, sobra (+90 d), liquidando, mis promos,
@@ -111,4 +112,6 @@ la historia y el porqué). Si algo de acá choca con CLAUDE.md, manda lo más nu
 - Paulvic del 06/10 (40 u.): al llegar, `pvped:llego`, rehacer la cuenta con el flete y ofrecer `poncosto`.
 - Idea propuesta: probar un Paulvic de hombre a ~$17.990 después del Día de la Madre (escalón de comisión de $15.000).
 - Medir promos en el CyberMonday 02/11.
+- Descuentos del 13/10 (Tendedero, Ferrari Rojo, Pendrive 16gb, Centímetro Blanco, Mercedes, Corsair, Pokémon, Adyan): ML los
+  aceptó pero no se veían al releer. Confirmar en la vuelta de las 12:52 que estén puestos y juzgarlos a los 7-14 días.
 - Tarifa de almacenamiento (`almactarifa`) sigue sin pasarla él.
