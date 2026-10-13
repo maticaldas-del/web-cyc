@@ -29823,7 +29823,9 @@ async function main() {
         let d; try { d = (await db.get('mlapi/linea/' + mla)) || {}; } catch { sinLinea++; continue; }
         const ks = Object.keys(d).filter((k) => k >= k37 && k < hoyK).sort();
         if (!ks.length) { sinLinea++; continue; }
-        const conSt = (x) => x && ((Number(x.st) > 0) || (Number(x.u) > 0));
+        // Un día cuenta salvo que se SEPA que no había stock (st 0 y sin ventas): el relleno viejo no tiene stock y
+        // contar sólo los días con venta inflaba el ritmo (1 venta en 1 día = "1 por día").
+        const conSt = (x) => x && !(x.st != null && Number(x.st) <= 0 && !(Number(x.u) > 0));
         let uT = 0; for (const k of ks) uT += Number(d[k].u) || 0;
         const stHoy = Number((d[ks[ks.length - 1]] || {}).st) || 0;
         if (!uT && !stHoy) continue;
@@ -29855,7 +29857,8 @@ async function main() {
         if (A.ganU > 0 && B.ganU != null && B.ganU < A.ganU * 0.8) flags.push(`cada venta deja menos: ${fm(A.ganU)} → ${fm(B.ganU)} por unidad`);
         if (B.ganU != null && B.ganU < 0) flags.push(`vende perdiendo (${fm(B.ganU)} por unidad)`);
         if (caja7 && cajaHoy && caja7 !== cajaHoy && (cajaHoy === 'p' || caja7 === 'p')) flags.push(`caja: ${caja7 === 'g' ? 'la ganaba' : caja7 === 'c' ? 'compartía' : 'la perdía'} → ${cajaHoy === 'g' ? 'la gana' : cajaHoy === 'c' ? 'comparte' : 'la pierde'}`);
-        if (p7 && pHoy && Math.abs(pHoy / p7 - 1) >= 0.03) flags.push(`precio ${fm(p7)} → ${fm(pHoy)} en 7 d`);
+        const cambioP = p7 && pHoy && Math.abs(pHoy / p7 - 1) >= 0.03 ? `precio ${fm(p7)} → ${fm(pHoy)} en 7 d` : '';
+        if (cambioP && flags.length) flags.push(cambioP);
         if (stHoy > 0 && A.ritmo && stHoy / A.ritmo < 7) flags.push(`se queda sin stock en ~${Math.round(stHoy / A.ritmo)} d`);
         filas.push({ mla, cta: e.cuenta || '?', tit: String(e.title || pr.name).slice(0, 44), A, B, stHoy, pHoy, cajaHoy, diasSin, flags });
       }
