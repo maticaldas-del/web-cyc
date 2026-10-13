@@ -11,6 +11,8 @@ todas las etapas.
 
 - **`ml-sync/CEREBRO.md` (13/10/2026):** la lista única de todo lo que el cerebro tiene en cuenta; las dos rutinas la leen al arrancar. Chequear en cada etapa: que cada regla nueva esté ahí y que los pendientes vivos estén al día.
 
+- **informe 12d (13/10/2026, auditoría):** unidades `not_available` adentro de Full (perdidas = las paga ML, `notSupported` = retirar), sólo con `informe:12` o más. Y el `chequeo` no cuenta como sin ficha las publicaciones cerradas. Chequear: que 12d coincida con "Full: N u. con problema" del chequeo.
+
 ## SIEMPRE, EN CUALQUIER ETAPA
 - **Contar dos (o cuatro) veces lo mismo.** El caso de la línea del Centímetro (08/10): el stock se
   sumaba por clave de producto Y por cada clave de color → 413 en vez de ~107. Cada vez que algo

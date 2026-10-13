@@ -14618,7 +14618,7 @@ async function main() {
             if (!e) r.faltan.push(m);
             // Las marcadas "no las vendemos más" u ocultas no cuentan (auditoría del 12/10/2026: el chequeo decía 8 y
             // el informe 0; 6 de las 8 eran las marcadas con `nomas` el 18/08, que ya están decididas).
-            else if (!e.prodId && !e.noVendemosMas && !e.oculta) r.sinFicha.push(m);
+            else if (!e.prodId && !e.noVendemosMas && !e.oculta && !e.ignored && /^(active|paused)$/.test(String(e.status || ''))) r.sinFicha.push(m);  // 13/10: las cerradas tampoco (misma cuenta que el informe)
           }
         } catch (e) { r.err.push('catálogo: ' + String(e.message || e).slice(0, 60)); }
         // ── PREGUNTAS ──
@@ -35379,6 +35379,29 @@ async function main() {
         for (const r of par.slice(0, 15)) console.log(`· ${r.x.mlas[0]}${r.x.mlas.length > 1 ? ' (+' + (r.x.mlas.length - 1) + ')' : ''} · ${r.x.e.cuenta} · ${tit(r.x.mlas[0])} · ${r.st} u. · ${money(r.plata)} · ${r.x.activa ? 'activa' : 'TODAS PAUSADAS'} · ${r.x.visSabida ? r.x.vis + ' visitas' + (r.x.vis < 20 ? ' → no la ve nadie' : '') : 'visitas ?'}`);
         if (par.length > 15) console.log(`  (y ${par.length - 15} más)`);
       } catch (eS) { console.log('stock parado: no pude armarlo · ' + eS.message); }
+      // 12d) UNIDADES CON PROBLEMA ADENTRO DE FULL (auditoría del 13/10/2026: el chequeo decía "6 u. con problema"
+      // —perdidas (`lost`) o que ML no acepta (`notSupported`)— y el informe no). Una perdida la tiene que pagar ML;
+      // una que no acepta hay que retirarla. Sólo en la revisión de 12 h o más: son ~400 consultas.
+      if (hrs >= 12) try {
+        const vistosI = new Set(), aMirarI = [];
+        for (const [m, e] of Object.entries(links)) {
+          if (!/^MLA/.test(m) || !e || !e.inv || !tokI[e.cuenta] && !tokI[String(e.cuenta || '').toLowerCase()]) continue;
+          const k = e.cuenta + '|' + e.inv; if (vistosI.has(k)) continue; vistosI.add(k);
+          aMirarI.push({ m, e });
+        }
+        const prob = []; let fallI = 0;
+        await enTanda(aMirarI, 4, async ({ m, e }) => {
+          try {
+            const tk = tokI[e.cuenta] || tokI[String(e.cuenta || '').toLowerCase()];
+            const st = await mlGet('/inventories/' + e.inv + '/stock/fulfillment', tk);
+            const na = Number(st?.not_available_quantity) || 0;
+            if (na > 0) prob.push({ m, e, na, det: (st?.not_available_detail || []).map((d) => `${d.status || d.type || '?'} ${d.quantity || 0}`).join(', ') });
+          } catch { fallI++; }
+        });
+        console.log(`\n── 12d · UNIDADES CON PROBLEMA ADENTRO DE FULL (${prob.reduce((s2, x) => s2 + x.na, 0)} u.) · perdidas las paga ML, las que no acepta hay que retirarlas ──`);
+        for (const x of prob) console.log(`· ${x.m} · ${x.e.cuenta} · ${corta(x.e.title, 45)} · ${x.na} u. (${x.det || 'sin detalle'})`);
+        if (fallI) console.log(`  ⚠️ ${fallI} de ${aMirarI.length} inventarios no contestaron: puede haber más`);
+      } catch (eP) { console.log('unidades con problema en Full: no pude mirarlas · ' + eP.message); }
       // 13) Reputación, promos sin leer y el dólar
       try {
         const rep = (await db.get('cyc/reputacion')) || {};
