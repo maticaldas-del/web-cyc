@@ -35390,7 +35390,8 @@ async function main() {
           aMirarI.push({ m, e });
         }
         const prob = []; let fallI = 0;
-        await enTanda(aMirarI, 4, async ({ m, e }) => {
+        const enTandaI = async (items, n, fn) => { let i = 0; await Promise.all(Array.from({ length: Math.min(n, items.length) }, async () => { for (;;) { const k = i++; if (k >= items.length) return; await fn(items[k], k); } })); };
+        await enTandaI(aMirarI, 4, async ({ m, e }) => {
           try {
             const tk = tokI[e.cuenta] || tokI[String(e.cuenta || '').toLowerCase()];
             const st = await mlGet('/inventories/' + e.inv + '/stock/fulfillment', tk);
