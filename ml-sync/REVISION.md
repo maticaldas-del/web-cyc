@@ -701,3 +701,6 @@ La pregunta de la etapa: *¿la lista que miré es TODO o sólo una parte? ¿una 
   (`cyc/finanzas/deben_cyc`, en DÓLARES) con relectura, y deja cada movimiento en `cyc/debencyc/<ts>`. Primer uso:
   la perfumería le debe a CYC los 8 perfumes del pedido py20261005 que no van a ML (decisión suya, eligió la a).
   Chequear: que el Arqueo lo sume una sola vez y que se reste cuando paguen.
+- **13/10/2026 · `borrarficha:<id,...>[;go]`** (etapa 3, mercadería): borra fichas sin publicación, ventas ni stock
+  (y sus claves en 0 de inventario y repoextra). Primer uso: los 5 perfumes del pedido 05/10 que se queda la
+  perfumería (decisión suya: "sacalos de web cyc, yo me encargo"). El `debencyc` de esa tarde se volvió a US$ 2.380.

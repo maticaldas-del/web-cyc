@@ -29798,6 +29798,41 @@ async function main() {
     }
     // BILLING_PROBE=capital → foto del capital de CYC: stock, efectivo, deudas y los dólares de los
     // socios. Sirve para decidir si conviene sacar plata del negocio o dejarla trabajando.
+    // BILLING_PROBE=borrarficha:<id,id,...>[;go] · BORRA FICHAS DEL PANEL (13/10/2026). Pedido suyo con los perfumes
+    // del pedido 05/10 que se queda la perfumería: "sacalos de publicaciones de web cyc y listo, yo me encargo de todo".
+    // Borra cyc/products/<id> y sus claves de cyc/inventory y cyc/repoextra. NO toca ventas ni compras guardadas.
+    // Se niega si la ficha tiene publicación vinculada, ventas o stock: ahí borrar escondería mercadería o historia.
+    if (/^borrarficha(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const raw = String(process.env.BILLING_PROBE).slice('borrarficha'.length).replace(/^:/, '');
+      const GO = /;go$/i.test(raw);
+      const ids = raw.replace(/;go$/i, '').split(',').map((x) => x.trim()).filter(Boolean);
+      const inv = (await db.get('cyc/inventory')) || {};
+      const rx = (await db.get('cyc/repoextra')) || {};
+      const links = (await db.get('cyc/mllinks')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      console.log(`=== BORRAR FICHAS ${GO ? '· APLICANDO' : '· PRUEBA'} ===`);
+      let n = 0;
+      for (const id of ids) {
+        const pr = await db.get('cyc/products/' + id);
+        if (!pr) { console.log(`  ✗ ${id}: no existe`); continue; }
+        const pubs = Object.entries(links).filter(([, e]) => e && e.prodId === id).map(([k]) => k);
+        let ventas = 0; for (const d of Object.values(vp)) for (const v of Object.values(d || {})) if (v && v.prodId === id) ventas++;
+        const ik = Object.keys(inv).filter((k) => k === id || k.startsWith(id + '__'));
+        const stock = ik.reduce((a, k) => a + Math.max(0, parseInt(inv[k]) || 0), 0);
+        const rk = Object.keys(rx).filter((k) => k.startsWith(id + '__'));
+        if (pubs.length || ventas || stock) { console.log(`  ✗ ${id} · ${pr.name}: no se borra (publicaciones ${pubs.length} · ventas ${ventas} · stock ${stock})`); continue; }
+        console.log(`  ${GO ? '✓' : '·'} ${id} · ${pr.name} · se van ${ik.length} clave(s) de stock en 0 y ${rk.length} marca(s)`);
+        if (GO) {
+          for (const k of ik) await db.set('cyc/inventory/' + k, null);
+          for (const k of rk) await db.set('cyc/repoextra/' + k, null);
+          await db.set('cyc/products/' + id, null);
+          if (await db.get('cyc/products/' + id)) console.log('    ⚠️ al releer sigue estando');
+          else n++;
+        }
+      }
+      console.log(GO ? `${n} ficha(s) borrada(s).` : 'No se borró nada (falta ;go).');
+      return;
+    }
     // BILLING_PROBE=debencyc:<+N|-N|N>[|<nota>][;go]  · "LO QUE NOS DEBEN" DEL ARQUEO, DESDE EL CHAT (13/10/2026).
     // Él eligió (a): lo que la perfumería se lleva de un pedido de Paraguay se lo devuelve a CYC. Se anota en
     // cyc/finanzas/deben_cyc, que está en DÓLARES como todo el Arqueo, y cada movimiento queda con su motivo en
