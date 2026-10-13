@@ -3642,21 +3642,23 @@ async function calcCerebro(db, o) {
         if (!(costo > 0)) { nada('la ficha no tiene costo'); continue; }
         const cuo = cuotaPremiumDe(cuotasCfg, mla, b.listing_type_id);
         if (cuo == null) { nada('Premium sin cuotas medidas: sin eso el margen es un invento'); continue; }
-        const kP = e.prodId + '__' + sidL(cta), kV = e.variant ? kP + '__v__' + sidL(e.variant) : null;
+        // El color sale también del TÍTULO (como `linksConColor`/la web): sin esto, una publicación de un color sin `variant` cargado daba "stock del color: no sé" (13/10/2026).
+        const eVar = e.variant || ((p && Array.isArray(p.variantes) && p.variantes.length) ? varianteDeTitulo(e.title || '', p.variantes) : '');
+        const kP = e.prodId + '__' + sidL(cta), kV = eVar ? kP + '__v__' + sidL(eVar) : null;
         const kS = kV && slog[kV] ? kV : kP;
         // EL STOCK DEL COLOR, NO EL DEL PRODUCTO (13/10/2026, revisión 9): si la ficha tiene colores/aromas y la publicación
         // es de uno solo (sin variantes adentro), el stock es el de ESE color. Sin clave del color se tomaba el del producto
         // entero (todos los colores juntos). Ahora queda DESCONOCIDO (null): no pasa el freno de "sin stock" como si tuviera.
-        const kVl = e.variant ? e.prodId + '__' + sidL(String(cta).toLowerCase()) + '__v__' + sidL(e.variant) : null;
+        const kVl = eVar ? e.prodId + '__' + sidL(String(cta).toLowerCase()) + '__v__' + sidL(eVar) : null;
         const kVf = [kV, kVl].find((x) => x && inv[x] != null) || null;
         const fichaVars = Array.isArray(p.variantes) ? p.variantes.length : Object.keys(p.variantes || {}).length;
-        const stDesc = !!(fichaVars && !(b.variations || []).length && (!e.variant || !kVf));
+        const stDesc = !!(fichaVars && !(b.variations || []).length && (!eVar || !kVf));
         const st = stDesc ? null : Math.max(0, parseInt(inv[kVf || kP]) || 0);
         // Sin stock en Full el cerebro no decide nada, PERO un precio que decidió Claude para SUBIR se aplica igual
         // (09/10/2026, el Cool Water: se agotó en un día las dos veces a un precio que dejaba 19%; si la suba espera
         // a que entre stock, la tanda nueva se vende otra vez barata antes de la vuelta siguiente). Bajar sin stock no.
         const fzSinSt = !!(forzar && forzar[mla] && Number(forzar[mla].p) > p0 + 10);
-        if (stDesc && !fzSinSt) { nada(`stock del color: no sé (${e.variant ? 'no hay stock guardado de "' + e.variant + '"' : 'la publicación no tiene el color fijado: fijarvar'}): no decido a ciegas`); continue; }
+        if (stDesc && !fzSinSt) { nada(`stock del color: no sé (${eVar ? 'no hay stock guardado de "' + eVar + '"' : 'la publicación no tiene el color fijado: fijarvar'}): no decido a ciegas`); continue; }
         if (!(st > 0) && !stDesc && !fzSinSt) { nada('sin stock en Full'); continue; }
         const m = (mlExtraPct(cta) + monoPz) / 100;
         const np = netopub[mla] || {};
@@ -37161,16 +37163,18 @@ async function main() {
             if (!mla || !lk[mla]) { fuera.errorML++; errMLs.push(`${req[j] || mla || '?'} (${(row && row.code) || '?'})`); continue; }
             if (b.status === 'closed' || b.status === 'inactive') { fuera.cerradaML++; continue; }
             const e = lk[mla], p = prodById[e.prodId], P = Math.round(Number(b.price) || 0);
-            const kP = e.prodId + '__' + sidL(cta), kV = e.variant ? kP + '__v__' + sidL(e.variant) : null;
+            // El color sale también del TÍTULO (como `linksConColor`/la web): sin esto, una publicación de un color sin `variant` cargado daba "stock del color: no sé" (13/10/2026).
+            const eVar = e.variant || ((p && Array.isArray(p.variantes) && p.variantes.length) ? varianteDeTitulo(e.title || '', p.variantes) : '');
+            const kP = e.prodId + '__' + sidL(cta), kV = eVar ? kP + '__v__' + sidL(eVar) : null;
             // CADA VARIANTE CON LO SUYO (12/10/2026, regla suya: *"cada variante debe llevar su propio análisis"*): si la
             // publicación es de un color/aroma y no hay clave de ese color, el stock NO es el del producto entero (el Scandal
             // Bliss mostraba los 212 de todos los Paulvic): queda desconocido.
-            const kVl0 = e.variant ? e.prodId + '__' + sidL(cta.toLowerCase()) + '__v__' + sidL(e.variant) : null;
-            const kSt = e.variant ? [kV, kVl0].find((x) => x && inv[x] != null) : (inv[kP] != null ? kP : e.prodId + '__' + sidL(cta.toLowerCase()));
+            const kVl0 = eVar ? e.prodId + '__' + sidL(cta.toLowerCase()) + '__v__' + sidL(eVar) : null;
+            const kSt = eVar ? [kV, kVl0].find((x) => x && inv[x] != null) : (inv[kP] != null ? kP : e.prodId + '__' + sidL(cta.toLowerCase()));
             // Y si la ficha tiene colores pero la publicación no tiene el color fijado (13/10/2026, revisión 9): tampoco es el
             // stock del producto entero.
             const fichaVars = p ? (Array.isArray(p.variantes) ? p.variantes.length : Object.keys(p.variantes || {}).length) : 0;
-            const stDesc = !!(e.variant ? !kSt : (fichaVars && !(b.variations || []).length));
+            const stDesc = !!(eVar ? !kSt : (fichaVars && !(b.variations || []).length));
             const st = stDesc ? 0 : Math.max(0, parseInt(inv[kSt]) || 0);
             const costo = Math.round(costoPesos(p, 1, tc).costo || 0);
             const m = (mlExtraPct(cta) + monoPz) / 100;
@@ -37208,8 +37212,8 @@ async function main() {
               }
             }
             const vv = ven[mla] || { u7: 0, u30: 0, u60: 0, ult: 0 };
-            const kPl = e.prodId + '__' + sidL(cta.toLowerCase()), kVl = e.variant ? kPl + '__v__' + sidL(e.variant) : null;
-            const h = (e.variant ? [kV, kVl] : [kP, kPl]).map((x) => x && (sh || {})[x]).find(Boolean) || {};
+            const kPl = e.prodId + '__' + sidL(cta.toLowerCase()), kVl = eVar ? kPl + '__v__' + sidL(eVar) : null;
+            const h = (eVar ? [kV, kVl] : [kP, kPl]).map((x) => x && (sh || {})[x]).find(Boolean) || {};
             // Cuántos días duró la última tanda: de la entrada de stock al cero, si ya se agotó (al quedar en cero
             // `desde` pasa a `desdePrev`).
             const ini = Number(h.desde || h.desdePrev) || 0;
