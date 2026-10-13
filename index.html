@@ -580,6 +580,8 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
 body.light .vp-promo{color:#a16207;background:color-mix(in srgb,#ca8a04 12%,transparent);border-color:color-mix(in srgb,#ca8a04 50%,transparent)}
 .vp-promo.vp-promo-ml{font-weight:600;color:#60a5fa;background:color-mix(in srgb,#60a5fa 12%,transparent);border-color:color-mix(in srgb,#60a5fa 45%,transparent)}
 body.light .vp-promo.vp-promo-ml{color:#0369a1;background:color-mix(in srgb,#0369a1 10%,transparent);border-color:color-mix(in srgb,#0369a1 40%,transparent)}
+/* En el celu la etiqueta de promo baja de renglón en vez de salirse de la tarjeta (13/10/2026, él: "se sale de la pantalla"). */
+@media(max-width:640px){.vp-promo{white-space:normal;display:inline-block;max-width:100%;line-height:1.4}.vp-cel>div{min-width:0}}
 </style>
 </head>
 <body>
@@ -2514,7 +2516,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.34';
+const APP_VERSION='23.35';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2525,6 +2527,7 @@ const APP_VERSION='23.34';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.35',f:'13/10/2026',h:'21:30',c:[{n:1,t:'📱 Ventas en el celu: la etiqueta dorada de "Vendido en promoción" baja de renglón y ya no se sale de la pantalla.'}]},
   {v:'23.34',f:'13/10/2026',h:'18:45',c:[{n:2,t:'🇵🇾 Pedidos de Paraguay: cada color puede tener su propio código, link y foto de comprasparaguay. Si pedís un solo color (ej. el Joystick azul), el renglón y el mensaje para Nissei usan los de ESE color.'}]},
   {v:'23.33',f:'13/10/2026',h:'18:00',c:[{n:1,t:'🧠 El cerebro muestra también los cambios de precio viejos (de antes de anotar cada decisión) y se sacó el renglón "¿Te queda alguna duda?".'}]},
   {v:'23.32',f:'13/10/2026',h:'17:45',c:[{n:1,t:'📈 Línea de tiempo: pasando el mouse por una flechita (o por ese día) dice qué cambio fue, por qué es de ese color y el motivo que escribí.'}]},
@@ -9855,7 +9858,7 @@ function vpPromoLabel(items){
   // EN DORADO (12/10/2026, pedido suyo: "al venderse un producto en promoción que diga en dorado vendido en
   // promoción o descuento ML"). Si el descuento lo puso ML entero dice "Descuento ML"; si pusimos algo
   // nosotros, "Vendido en promoción". El detalle (cupón/promo, cuánto cada uno) sigue en el globito.
-  const nom={coupon:'cupón',price_discount:'promo',deal:'promo',campaign:'campaña'};
+  const nom={coupon:'cupón',price_discount:'promo',discount:'descuento',deal:'promo',campaign:'campaña'};
   const tipo=p.tipos.map(x=>nom[x]||x).filter((x,i,a)=>a.indexOf(x)===i).join(' + ')||'promo';
   const tit=`Vendida con ${tipo}: descuento total ${fmt(Math.round(p.t))} · ML puso ${fmt(Math.round(p.ml))} · nosotros ${fmt(Math.round(p.s))}. Lo que pone ML no sale de nuestro neto.`;
   // AZUL si lo puso ML entero, DORADO sólo si pusimos plata nosotros (12/10/2026, él: "dejar dorado solo para
