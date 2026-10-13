@@ -830,9 +830,9 @@ y terminar de venderlas el día 8 (pero nunca a menos del precio normal donde se
 día 8 tampoco pasa nada) (…) seguramente muchísimos productos más están con el mismo problema (…) no sé por qué no lo
 hiciste antes"*.
  · **En CADA vuelta (las 4 del día) miro todo lo que vende y se queda sin stock en Full antes de reponer.**
- · **Sin caja despachada a esa cuenta:** se estira sin fecha. Subo de a escalones (máximo +25% por vez), mirando en
-   cada vuelta: si sigue vendiendo rápido, otro escalón; si se frenó del todo, bajo de a poco. **Techo ~×2 del precio
-   normal** (5.000 → 10.000 sí, → 20.000 no): ML pausó el Espejo 8" cuando el robot viejo lo llevó ×6.
+ · **Sin caja despachada a esa cuenta:** se estira sin fecha. Voy directo al precio que pienso (sin escalones, regla del 13/10), mirando en
+   cada vuelta: si sigue vendiendo rápido, más; si se frenó del todo, bajo de a poco. **Techo ~×2 del precio
+   normal**. ML deja subir hasta +100% sin pausar (lo del Espejo 8" fue por otra cosa, aclarado por él el 13/10).
  · **Con caja despachada:** llega en ~8 días desde el despacho. El precio se elige para que la última unidad salga
    cerca del día 8.
  · **Nunca abajo del precio normal** (al que vendía antes de la escasez). Si sobran unidades al llegar la caja, no pasa
@@ -964,7 +964,9 @@ unidad × unidades por día con stock), no el que más unidades vende.
    su motivo: escasez (stock < 14 días, va por ESCASEZ), sobra (stock > 90 días: ahí se busca vender), liquidando, mis
    promos, regalables en las 2 semanas antes de su fecha y frenadas por ML. **Arrancan TODAS juntas** (él: *"que arranquen
    todas juntas, si total se puede ver venta x venta y producto x producto"*): cada una se juzga con SUS ventas.
- · Escalón +10% (+15% si vende 1+/día con margen alto), 90/990, frenos de siempre.
+ · ~~Escalón +10%~~ **SIN ESCALONES desde el 13/10 (él: *"ml deja tranquilamente subir hasta el 100% del precio actual,
+   sea cual sea su precio. así que no vayamos con escala, andá directo al precio que pensás vos"*)**: directo al precio que
+   creo que es el techo, también en lo caro. 90/990, frenos de siempre (barrera $33.000, techo $650.000, variantes, liquidando).
  · Juicio **por certeza, no por calendario** (él: *"si vende 5 por día, se subió y vende 0, es una información fuerte (…)
    quizás fue un día malo (…) tenés que estar bastante seguro (…) si subís el triple de ganancia y vende la mitad quizás
    sigue conviniendo (…) los números los sabés vos"*). Se mira en cada vuelta: esperado = ritmo de antes × días con stock;

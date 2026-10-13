@@ -30,14 +30,15 @@ la historia y el porqué). Si algo de acá choca con CLAUDE.md, manda lo más nu
 - **La caja de compra orienta, no decide.** Perdiendo y vendiendo bien → no se baja. Full vale ~19% de precio.
 - **Toda baja va primero como promo** (descuento propio, mínimo 5%, 14 días) que deje el mismo neto; recién si no se
   puede, bajar el precio de lista. Nunca subir la lista para inflar el tachado.
-- **Escasez** (todas las vueltas, `escasez`): sin caja despachada se estira sin fecha, escalones de hasta +25%, techo ~×2
-  del normal; con caja despachada, que la última salga cerca del día 8. Nunca abajo del precio normal. Al llegar la
+- **Escasez** (todas las vueltas, `escasez`): sin caja despachada se estira sin fecha, directo al precio que pienso (ML deja hasta +100% sin problema),
+  techo ~×2 del normal; con caja despachada, que la última salga cerca del día 8. Nunca abajo del precio normal. Al llegar la
   caja no se vuelve a ciegas.
 - **Lo nuevo que vuela se sube al toque**; venta abajo de 25% con poco stock → subir en la MISMA vuelta.
 - **Productos nuevos arrancan directo a su precio final.** Y en la primera semana se mira la caja: si es de catálogo y la pierde
   (0 visitas), el precio no es el final: descuento al precio que gana la caja si deja 25%+ (caso del pedido del 21/09, 13/10).
-- **Buscar el techo** (`notas/techo.md`): TODO lo que vende y no tiene techo conocido, todas juntas, +10% (+15% si
-  vende 1+/día con margen alto). Juicio por CERTEZA en plata por día (Poisson: 3 esperadas y 0 = 5% azar · 6 y 0-1 =
+- **Buscar el techo** (`notas/techo.md`): TODO lo que vende y no tiene techo conocido, todas juntas. **SIN ESCALONES
+  (regla suya del 13/10): directo al precio que pienso que es el techo, a cualquier precio. ML deja subir hasta +100% del
+  precio actual sin pausar nada** (lo del Espejo 8" fue por otra cosa, no por el precio). Juicio por CERTEZA en plata por día (Poisson: 3 esperadas y 0 = 5% azar · 6 y 0-1 =
   2% · 10 y ≤2 = 0,3%), nunca con un solo día, máximo 30 días. Afuera: escasez, sobra (+90 d), liquidando, mis promos,
   regalables antes de su fecha, frenadas por ML.
   Lo que cambió de precio en 7 días (subas del peor caso) espera los primeros juicios y entra desde el 15-16/10 en su

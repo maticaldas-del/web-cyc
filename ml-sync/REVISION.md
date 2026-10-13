@@ -550,6 +550,9 @@ entre los colores de la línea, cae a "todas" (no se inventa). **Qué chequear:*
 línea sea el de la venta.
 
 ### Buscar el techo de lo que vende bien (12/10/2026, regla suya)
+**13/10: SIN ESCALONES (regla suya).** ML deja subir hasta +100% sin pausar; cada prueba va directo al precio que creo que es
+el techo, también en lo caro. Lo del +10/15% de abajo ya no rige. **Qué chequear:** que ninguna prueba nueva sea un +10% "por las
+dudas", que las reglas de CEREBRO.md/CLAUDE.md digan esto, y que la vuelta no se haga por calendario sino por certeza.
 Paso 2c de la completa (trigger `trig_01475PwdPVJ1qTnYswcDxRq8`) y sección en CLAUDE.md. Escalones de +10/15% en lo que
 vende bien con stock, juicio por ganancia por día con stock (misma cuenta que la línea de tiempo y `supervisor:medir`),
 memoria en `ml-sync/notas/techo.md`. **Qué chequear:** que cada prueba tenga su renglón en techo.md y su motivo en el 🧠,
