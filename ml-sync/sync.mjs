@@ -11905,7 +11905,7 @@ async function main() {
       const esRes = /^resumen:/.test(String(process.env.BILLING_PROBE));
       const t = String(process.env.BILLING_PROBE).replace(/^(recordar|pregunto|resumen):/, '').trim();
       if (!t) { console.log('Falta el texto: recordar:<texto> / pregunto:<texto> / resumen:<texto>'); process.exitCode = 1; return; }
-      const cuerpo = t.replace(/&/g, '&amp;').replace(/</g, '&lt;').split('//').map((x) => x.trim()).join('\n');
+      const cuerpo = t.replace(/&/g, '&amp;').replace(/</g, '&lt;').split(/(?<!:)\/\//).map((x) => x.trim()).join('\n'); // `//` = salto, pero no el de https:// (13/10/2026, revisión 9)
       const txt = (esPreg ? '🤔 <b>Para decidir vos</b>\n' : esRes ? '🧠 <b>Lo que hizo el cerebro</b>\n' : '⏰ <b>Recordatorio</b>\n') + cuerpo;
       let ok = false;
       try { ok = await sendAlerta(txt, { directo: true }); } catch (e) { console.log('✗ sendAlerta tiró: ' + e.message); }
@@ -35500,15 +35500,18 @@ async function main() {
     if (/^contesto:/.test(String(process.env.BILLING_PROBE || ''))) {
       const partesC = String(process.env.BILLING_PROBE).slice('contesto:'.length).split(';').map((x) => x.trim()).filter(Boolean);
       const GOc = partesC.includes('go');
+      // Se entienden TODAS antes de mandar ninguna (13/10/2026, revisión 9): una respuesta con `;` adentro se partía y
+      // salía cortada, con el pedazo de atrás como "no entendí". Si un pedazo no tiene la forma <id>=<respuesta>, no se
+      // manda nada.
+      const pedC = [], malosC = [];
+      for (const pc of partesC.filter((x) => x !== 'go')) { const mm = pc.match(/^q?(\d+)\s*=\s*([\s\S]+)$/); if (mm) pedC.push({ qid: mm[1], txt: mm[2].trim() }); else malosC.push(pc); }
+      if (malosC.length || !pedC.length) { console.log(`No entendí ${malosC.map((x) => '"' + x.slice(0, 60) + '"').join(', ') || '(nada)'}: no mandé ninguna. Va <id>=<respuesta>;<id>=<respuesta>;go y las respuestas no pueden llevar ;`); process.exitCode = 1; return; }
       const tokC = {};
       for (const label of labels) { const acc = accounts[label]; if (!acc?.refresh_token) continue; try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() }); tokC[label] = t.access_token; } catch { console.log(`(${label}: no pude entrar)`); } }
       const taparC = (x) => String(x || '').replace(/\S+@\S+/g, '[mail]').replace(/\d[\d\s.-]{5,}\d/g, '[número]');
       let ok = 0, mal = 0;
       console.log(`=== 💬 RESPUESTAS DE CLAUDE · ${GOc ? 'SE MANDAN' : 'PRUEBA (sin ;go no se manda nada)'} ===`);
-      for (const pc of partesC.filter((x) => x !== 'go')) {
-        const mm = pc.match(/^q?(\d+)\s*=\s*([\s\S]+)$/);
-        if (!mm) { console.log(`✗ No entendí "${pc.slice(0, 60)}": va <id>=<respuesta>`); mal++; continue; }
-        const qid = mm[1]; const txt = mm[2].trim();
+      for (const { qid, txt } of pedC) {
         if (!respuestaIAValida(txt)) { console.log(`✗ q${qid}: la respuesta no pasa el freno (10-500 caracteres, sin teléfonos/mails/links/números largos)`); mal++; continue; }
         let q = null, cta = null;
         for (const label of Object.keys(tokC)) {
@@ -35570,10 +35573,15 @@ async function main() {
         return true;
       };
       const eventos = {}; const porMla = {}; let leidas = 0, sinLeer = 0; const yaEn = [];
+      // Lo que no se mira se CUENTA (13/10/2026, revisión 9): activas sin ficha y las de una cuenta que no entró salían
+      // calladas y "Miradas N" se leía como el total.
+      let totA = 0, sinFichaA = 0; const sinTokA = {};
       for (const [mla, e] of Object.entries(links)) {
-        if (!e || e.ignored || e.noVendemosMas || !e.prodId || !/^MLA\d+$/.test(mla) || (e.status || '') !== 'active') continue;
-        const tk = tokA[e.cuenta]; if (!tk) continue;
+        if (!e || e.ignored || e.noVendemosMas || !/^MLA\d+$/.test(mla) || (e.status || '') !== 'active') continue;
         if (pal.length && !pal.every((w) => norm(e.title || '').includes(norm(w)))) continue;
+        if (!e.prodId) { sinFichaA++; continue; }
+        totA++;
+        const tk = tokA[e.cuenta]; if (!tk) { sinTokA[e.cuenta || '?'] = (sinTokA[e.cuenta || '?'] || 0) + 1; continue; }
         let arr;
         try { const r = await mlGet('/seller-promotions/items/' + mla + '?app_version=v2', tk); arr = Array.isArray(r) ? r : (r.results || []); leidas++; }
         catch { sinLeer++; continue; }
@@ -35592,10 +35600,14 @@ async function main() {
           (porMla[mla] = porMla[mla] || { mla, nom: e.title || mla, cuenta: e.cuenta, ofertas: [] }).ofertas.push({ pr, orig, maxP, minP, fijo, mlPaga, nomEv });
         }
       }
-      console.log(`Miradas ${leidas} publicaciones activas${sinLeer ? ` · ⚠️ ${sinLeer} sin leer (ML no contestó: no sé qué promos tienen)` : ''}.\n`);
+      const sinTokL = Object.entries(sinTokA);
+      console.log(`Miradas ${leidas} de ${totA} publicaciones activas con ficha${sinLeer ? ` · ⚠️ ${sinLeer} sin leer (ML no contestó: no sé qué promos tienen)` : ''}`
+        + `${sinTokL.length ? ` · ⚠️ sin mirar porque no pude entrar a la cuenta: ${sinTokL.map(([c, n]) => `${c} (${n})`).join(', ')}` : ''}`
+        + `${sinFichaA ? ` · ${sinFichaA} activa(s) sin ficha no se miran (vincularlas)` : ''}.\n`);
       console.log('── 1 · LOS EVENTOS Y PROMOS QUE OFRECE ML ──');
       const evL = Object.values(eventos).sort((a, b) => b.n - a.n);
       if (!evL.length) console.log('  ninguna en esta ventana');
+      if (evL.length > 25) console.log(`  (van las 25 con más publicaciones · y ${evL.length - 25} más)`);
       for (const ev of evL.slice(0, 25)) {
         const dmin = ev.desc.length ? Math.min(...ev.desc) : null;
         console.log(`  · ${ev.nomEv} · ${ev.tipo}${ev.ini ? ` · ${ev.ini} → ${ev.fin}` : ''} · ${ev.n} publicación(es) · ${[...ev.ctas].join(', ')}`
@@ -35709,6 +35721,7 @@ async function main() {
       if (propNo.length) {
         console.log(`  · no se puede · ${propNo.length}:`);
         for (const r of propNo.slice(0, 15)) console.log(`    ${r.cuenta} · ${r.mla} · ${String(r.nom).slice(0, 44)} · ${r.why}`);
+        if (propNo.length > 15) console.log(`    … y ${propNo.length - 15} más`);
       }
       console.log(`\n── 3 · 🟠 LA IBA A BAJAR, PERO LA PROMO PIDE BAJAR MÁS (el descuento propio a lo pensado está en 2c) · ${cuestaMas.length} ──`);
       for (const r of cuestaMas) { console.log('  ' + lin(r)); console.log(`     ${r.why}`); }
@@ -35720,7 +35733,23 @@ async function main() {
       for (const r of noSe.slice(0, 20)) console.log(`  ${r.cuenta} · ${r.mla} · ${String(r.nom).slice(0, 44)} · ${r.why}`);
       if (noSe.length > 20) console.log(`  … y ${noSe.length - 20} más`);
       console.log(`\n── 6 · YA ESTÁN EN UNA PROMO · ${yaEn.length} ──`);
-      for (const y of yaEn) console.log(`  ${y.cuenta} · ${y.mla} · ${String(y.nom || '').slice(0, 44)} · ${y.pr.type} ${y.pr.status} ${money(Math.round(Number(y.pr.price) || 0))} · ${y.mia ? 'la puse yo a propósito' : '⚠️ NO la puse yo: la vuelta de la hora la saca'}`);
+      // Las mías con su FECHA DE FIN (13/10/2026, revisión 9): la vuelta renueva "las mías que vencen en 2 días" y acá no
+      // se veía cuándo vencía ninguna. Sale de `cyc/promoclaude/<MLA>.hasta` (lo escribe entrarpromo) o de la promo de ML.
+      // Fecha sin zona = hora de acá (entrarpromo la escribe así para ML).
+      const finDe = (x) => { const t = String(x || '').trim(); if (!t) return NaN; return Date.parse(/(z|[+-]\d\d:?\d\d)$/i.test(t) || t.length <= 10 ? t : t + '-03:00'); };
+      const ddmm = (ms) => new Date(ms - 3 * 3600e3).toISOString().slice(5, 10).split('-').reverse().join('/');
+      const venceTxt = (mla, pr) => {
+        const fin = finDe((perm[mla] && perm[mla].hasta) || (pr && pr.finish_date));
+        if (!Number.isFinite(fin)) return ' · sin fecha de fin';
+        if (fin < ahora) return ` · ⌛ venció el ${ddmm(fin)}`;
+        return ` · vence el ${ddmm(fin)}${fin - ahora <= 2 * 864e5 ? ' ⏰ renovar' : ''}`;
+      };
+      for (const y of yaEn) console.log(`  ${y.cuenta} · ${y.mla} · ${String(y.nom || '').slice(0, 44)} · ${y.pr.type} ${y.pr.status} ${money(Math.round(Number(y.pr.price) || 0))} · ${y.mia ? 'la puse yo a propósito' + venceTxt(y.mla, y.pr) : perm[y.mla] ? `⚠️ no es la que anoté como mía (o ya venció${venceTxt(y.mla, null)}): la vuelta de la hora la saca` : '⚠️ NO la puse yo: la vuelta de la hora la saca'}`);
+      const miasFuera = Object.keys(perm).filter((mla) => perm[mla] && !yaEn.some((y) => y.mla === mla) && (!pal.length || pal.every((w) => norm((links[mla] && links[mla].title) || '').includes(norm(w)))));
+      if (miasFuera.length) {
+        console.log(`  · anotadas como mías que no vi puestas (pausada, sin ficha, sin leer o ML ya no la muestra) · ${miasFuera.length}:`);
+        for (const mla of miasFuera) { const e = links[mla] || {}; console.log(`    ${e.cuenta || '?'} · ${mla} · ${String(e.title || '').slice(0, 44)} · ${perm[mla].tipo || ''} ${perm[mla].precio ? money(perm[mla].precio) : ''}${venceTxt(mla, null)}`); }
+      }
       console.log('\nSOLO LECTURA: no entré a ninguna promo.');
       return;
     }
@@ -35794,7 +35823,11 @@ async function main() {
         if (esPD && arr.some((x) => (x.status === 'started' || x.status === 'pending') && x.type !== 'PRICE_DISCOUNT')) { console.log(`   ✗ ya está en otra promo de ML (${arr.filter((x) => x.status === 'started' || x.status === 'pending').map((x) => x.name || x.type).join(', ')}): primero salir de ésa`); continue; }
         const minP = Number(pr.min_discounted_price) || 0, maxP = Number(pr.max_discounted_price) || 0;
         const fijo = !(maxP > 0) && Number(pr.price) > 0;
-        if (!fijo && (q.p > maxP + 0.5 || q.p < minP - 0.5)) { console.log(`   ✗ ${money(q.p)} no entra: la promo pide entre ${money(Math.ceil(minP))} y ${money(Math.floor(maxP))}`); continue; }
+        // El descuento propio que ML no lista no trae rango (min/max en 0): ahí no hay rango que mirar y manda el freno
+        // del 5% de abajo. Antes se armaba el "candidate" de mentira y esto lo rechazaba siempre ("entre $0 y $0")
+        // (13/10/2026, revisión 9).
+        const sinRango = esPD && !(maxP > 0);
+        if (!fijo && !sinRango && (q.p > maxP + 0.5 || q.p < minP - 0.5)) { console.log(`   ✗ ${money(q.p)} no entra: la promo pide entre ${money(Math.ceil(minP))} y ${money(Math.floor(maxP))}`); continue; }
         const d = decM[q.mla];
         if (!d) { console.log('   ✗ no la puedo medir (sin stock en Full, con variantes, liquidando o sin ficha): no entro'); continue; }
         if (d.accion === 'nada' && !d.mismoPrecio) { console.log(`   ✗ ${d.motivo}`); continue; }
@@ -35807,6 +35840,9 @@ async function main() {
         const hasta = pr.finish_date || (pr.type === 'PRICE_DISCOUNT' ? fmtML(hastaPD) : null);
         console.log(`   ${pr.name || pr.type} · ${pr.status}${pr.start_date ? ` · ${String(pr.start_date).slice(0, 10)} → ${String(pr.finish_date || '').slice(0, 10)}` : ''} · ${money(d.p0)} → ${money(q.p)} · margen ${d.mg0}% → ${mg}%${mg < PISOe ? ' (abajo del piso, con !piso)' : ''}`);
         if (q.motivo) console.log(`   ${q.motivo}`);
+        // Ya puesta (started/pending): sólo se anota como mía si ML la tiene AL precio pedido. Si no, la excepción guardaría
+        // un precio que no es el real (13/10/2026, revisión 9).
+        if (pr.status !== 'candidate' && Math.abs((Number(pr.price) || 0) - q.p) > 10) { console.log(`   ✗ ya está a ${money(Math.round(Number(pr.price) || 0))}, no a ${money(q.p)}: salir primero y volver a entrar`); continue; }
         if (pr.status !== 'candidate') { console.log(`   (ya está ${pr.status}: sólo anoto que es mía)`); }
         if (!aplicar) continue;
         try { await db.set('cyc/promoclaude/' + q.mla, { id: pr.id || '', tipo: pr.type, precio: q.p, de: d.p0, hasta: hasta || '', nombre: pr.name || '', motivo: (q.motivo || '').slice(0, 240), ts: Date.now() }); }
@@ -35823,7 +35859,10 @@ async function main() {
           if (!r.ok) { console.log(`   ✗ ML dijo ${r.status} ${det}`); try { await db.set('cyc/promoclaude/' + q.mla, null); } catch { /* vence sola con la fecha */ } continue; }
         }
         let quedo = null; try { quedo = (await leerPromos(q.mla, tk)).find((x) => promoPermitida({ [q.mla]: { id: pr.id || '', tipo: pr.type } }, q.mla, x, 0) && (x.status === 'started' || x.status === 'pending')); } catch { quedo = null; }
-        console.log(quedo ? `   ✓ ADENTRO · releído de ML: ${quedo.status} a ${money(Math.round(Number(quedo.price) || q.p))}` : '   ⚠️ ML aceptó pero al releer no la veo puesta: la miro en la próxima revisión');
+        const pQuedo = quedo ? Math.round(Number(quedo.price) || 0) : 0;
+        console.log(!quedo ? '   ⚠️ ML aceptó pero al releer no la veo puesta: la miro en la próxima revisión'
+          : (pQuedo > 0 && Math.abs(pQuedo - q.p) > 10) ? `   ✗ releído de ML: ${quedo.status} pero a ${money(pQuedo)}, no a ${money(q.p)}: mirarla en la próxima revisión`
+          : `   ✓ ADENTRO · releído de ML: ${quedo.status} a ${money(pQuedo || q.p)}`);
         await nota(q.mla, `Entré en la promo de Mercado Libre "${pr.name || (pr.type === 'PRICE_DISCOUNT' ? 'descuento' : pr.type)}" a ${money(q.p)}${hasta ? ` hasta el ${String(hasta).slice(8, 10)}/${String(hasta).slice(5, 7)}` : ''} (antes ${money(d.p0)}, queda en ${mg}%). ${q.motivo || ''}`.trim());
       }
       if (!aplicar) console.log('\nPRUEBA: no toqué nada. Para aplicar, el mismo comando con ;go al final (por ml-sync).');
@@ -36485,12 +36524,19 @@ async function main() {
       }
       const cands = (await db.get('cyc/candidatos_py')) || {};
       const catDe = (c) => ((String(c.mlLink || '').match(/\/p\/(MLA\d+)/i) || [])[1] || String(c.mlId || '').toUpperCase().replace(/^.*\/P\//, '').split(/[?#]/)[0] || '').toUpperCase();
+      // Lo que queda afuera se CUENTA por motivo (13/10/2026, revisión 9): "N candidato(s)" solo no decía si el resto
+      // estaba mirado, descartado o sin catálogo.
+      const fuera = { sinCat: 0, desc: 0, ficha: 0, pal: 0, mirado: 0 };
       const lista = Object.entries(cands).map(([id, c]) => ({ id, ...(c || {}) }))
-        .filter((c) => c.nombre && c.mlTit && !c.no && !c.prodId && catDe(c))
-        .filter((c) => !pal.length || pal.every((w) => String(c.nombre).toLowerCase().includes(w)))
-        .filter((c) => todos || pal.length || !(c.revClaude && c.revClaude.cat === catDe(c)))
+        .filter((c) => { if (c.no) { fuera.desc++; return false; } if (c.prodId) { fuera.ficha++; return false; } if (!(c.nombre && c.mlTit && catDe(c))) { fuera.sinCat++; return false; } return true; })
+        .filter((c) => { const ok = !pal.length || pal.every((w) => String(c.nombre).toLowerCase().includes(w)); if (!ok) fuera.pal++; return ok; })
+        .filter((c) => { const ok = todos || pal.length || !(c.revClaude && c.revClaude.cat === catDe(c)); if (!ok) fuera.mirado++; return ok; })
         .sort((a, b) => (Number(b.margen) || -999) - (Number(a.margen) || -999));
-      console.log(`\n=== 🤖 PARA MIRAR · ${lista.length} candidato(s) ===`);
+      const PISOf = await pisoConfig(db);
+      const bajoPiso = lista.filter((c) => !(Number(c.margen) >= PISOf)).length;
+      console.log(`\n=== 🤖 PARA MIRAR · ${lista.length} candidato(s) de ${Object.keys(cands).length} ===`);
+      console.log(`Afuera: ${fuera.mirado} ya mirados por Claude para ese catálogo · ${fuera.desc} descartados · ${fuera.ficha} ya con ficha · ${fuera.sinCat} sin catálogo de ML o sin título medido${pal.length ? ` · ${fuera.pal} no tienen "${pal.join(' ')}"` : ''}`);
+      if (bajoPiso) console.log(`De los ${lista.length}, ${bajoPiso} están abajo del ${PISOf}% o sin margen medido (revfotos armar los deja afuera con el mínimo de siempre).`);
       for (const c of lista) {
         const r = c.revClaude && c.revClaude.cat === catDe(c) ? ` · ya mirado: ${c.revClaude.v}${c.revClaude.nota ? ' (' + c.revClaude.nota + ')' : ''}` : '';
         console.log(`\n@@ ${c.id} · margen ${c.margen ?? '—'}% · ${catDe(c)}${c.mismoOk ? ' · él marcó ✅ es el mismo' : ''}${r}`);

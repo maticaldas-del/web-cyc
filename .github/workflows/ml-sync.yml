@@ -187,7 +187,9 @@ jobs:
           # "billing_probe = ciclo" NO es un comando del robot: es la forma de volver a prender el
           # ciclo automático a mano. Va por acá y no por una opción nueva porque GitHub no deja
           # tener más de 25 opciones en un workflow, y ya están todas usadas.
-          if [ "${{ github.event.inputs.billing_probe }}" = "ciclo" ]; then
+          # Se compara la variable BILLING_PROBE (del env de arriba) y no el input pegado: el texto libre de un
+          # "resumen:" con comillas invertidas o $( ) se ejecutaba en bash con los secretos (13/10/2026, revisión 9).
+          if [ "$BILLING_PROBE" = "ciclo" ]; then
             unset BILLING_PROBE   # si no, el robot lo tomaría como un comando que no existe
           elif [ "${{ github.event_name }}" != "schedule" ]; then
             # Corrida a mano (un comando): se ejecuta una sola vez y listo.
