@@ -733,3 +733,10 @@ sale en gris con la aclaración. Chequear que no aparezca cuando coinciden.
 `ESC` en cada suba cuyo motivo dice escasez/estirar; `decide_pedidos.py` (`ritmo`) usa el mayor entre el ritmo de hoy y el de
 los 30 días previos / 60 días, si la suba fue hace 30 d o menos. **Los motivos de escasez en `decido` tienen que decir "escasez"**.
 Chequear que un producto en escasez no baje su pedido.
+
+### Flechas de precio con el color del motivo (13/10/2026, v23.29)
+Él: *"cuando se aumenta por escasez o se baja por distintos motivos, ¿podés poner las flechitas de otro color?"*. `flechaTipo`
+(index.html) lee el motivo de `cyc/claudecambios` (o `autoprecio`, o el evento) y `FLECHA_TIPOS` da el color: verde prueba/hay
+lugar · celeste margen · naranja escasez · cian caja · violeta promo · amarillo vuelta atrás · rojo remate · gris a mano.
+Línea de tiempo, renglón de cada venta y su detalle. **Los motivos de `decido` tienen que nombrar la causa** (escasez,
+techo/prueba, peor caso/25%, caja, remate, vuelvo) o la flecha sale gris. Chequear que la leyenda y las flechas coincidan.

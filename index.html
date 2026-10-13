@@ -2087,7 +2087,7 @@ function startApp(){
     // Para el renglón de cada venta: los cambios de precio de su publicación (cambioVentaHTML).
     // Sólo se muestran; no se calcula nada con ellos.
     state.supervisor={eventos:(d.supervisor&&d.supervisor.eventos)||{}};
-    state.autoprecio=d.autoprecio||{};
+    state.autoprecio=d.autoprecio||{};state.claudecambios=d.claudecambios||{};
     state.promoclaude=d.promoclaude||{};   // promos que entré yo (13/10/2026: cuentan como baja de precio en la venta)
     state.claudedecide=d.claudedecide||{};
     // 🧪 VIGILANCIA (idea 6, 27/09/2026): la foto que deja el robot cada noche de TODAS las publicaciones que venden,
@@ -2514,7 +2514,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.28';
+const APP_VERSION='23.29';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2525,6 +2525,7 @@ const APP_VERSION='23.28';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.29',f:'13/10/2026',h:'16:20',c:[{n:1,t:'▲▼ Las flechitas de cambio de precio tienen el color del motivo: verde prueba/hay lugar · celeste cuidar el margen · naranja escasez · cian pelear la caja · violeta promo · amarillo vuelta atrás · rojo remate · gris a mano. Pasando el mouse dice cuál es.'}]},
   {v:'23.28',f:'13/10/2026',h:'15:40',c:[{n:1,t:'🤖 Robot de precios: si mi juicio dice "perdió" y el número da positivo (o al revés), el número sale en gris aclarando que es sólo lo cobrado de más en lo que se vendió, sin contar las ventas que se perdieron.'}]},
   {v:'23.27',f:'13/10/2026',h:'14:55',c:[{n:1,t:'📈 Línea de tiempo: un ▾ ámbar marca los días que se COBRÓ menos sin que nadie bajara el precio (promo o cupón de ML, carrito, o se vendió un color más barato). El globito del día dice cuánto menos.'}]},
   {v:'23.26',f:'13/10/2026',h:'14:55',c:[{n:2,t:'🏷️ Una promo que puse yo (precio tachado) ahora cuenta como BAJA DE PRECIO: sale ⬇️ en la venta y ▼ en la línea de tiempo. Y la etiqueta de la venta en promo dice el nombre (descuento propio, el evento de ML, cupón…).'}]},
@@ -9249,8 +9250,8 @@ function lineaPintar(prodId){
   // marcas de cambios de precio
   const motivoTxt={rescate:'🛟 rescate después de una venta baja',rescatep:'🛟 rescate antes de vender (cuenta)',subir:'📈 suba del robot',bajar:'📉 baja del robot',remate:'🔻 remate',escalera:'🪜 escalera',prueba:'🧪 prueba +5%',promo:'🏷️ promo (precio tachado)',mano:'✋ a mano',volver:'↩️ vuelto atrás'};
   const evK={}; for(const e of C.evP){if(!e.ts||!_mlaOk(e.mla))continue;const kk=dateToKey(new Date(e.ts));(evK[kk]=evK[kk]||[]).push(e);}
-  ks.forEach((k,i)=>{const es=evK[k];if(!es)return;const sube=es.some(e=>Number(e.a)>Number(e.de));
-    svg+=`<text x="${X(i)+bw/2}" y="${L.pr[0]-2}" font-size="11" text-anchor="middle" fill="${sube?'var(--green)':'var(--red)'}">${sube?'▲':'▼'}</text>`;});
+  ks.forEach((k,i)=>{const es=evK[k];if(!es)return;const e0=es[es.length-1];const sube=Number(e0.a)>Number(e0.de);const col=(FLECHA_TIPOS[flechaTipo(e0.mla,Number(e0.ts),e0.motivo,sube)]||FLECHA_TIPOS.otro)[0];
+    svg+=`<text x="${X(i)+bw/2}" y="${L.pr[0]-2}" font-size="11" text-anchor="middle" fill="${col}">${sube?'▲':'▼'}</text>`;});
   // SE COBRÓ MENOS SIN QUE NADIE BAJARA EL PRECIO (13/10/2026, él con la Batidora: "porque se nota que el precio baja si no
   // hay flechita roja"). La línea del precio, los días con ventas, es lo COBRADO por unidad, y eso baja sin cambio de precio
   // por una promo/cupón de ML, un carrito, o porque ese día se vendió una publicación (color) más barata. Se marca con
@@ -9331,7 +9332,7 @@ function lineaPintar(prodId){
     <details style="margin-top:8px" ${_lineaDetAb?'open':''} ontoggle="_lineaDetAb=this.open"><summary style="cursor:pointer;font-size:.68rem;color:var(--muted)">Qué significa cada color ▾</summary>
     <div style="font-size:.64rem;color:var(--muted);margin-top:6px;line-height:1.9">
       ${ley('var(--green)','vendió / con stock / caja ganada')}${ley('#f59e0b','vendido en remate / caja compartida')}${ley('var(--red)','sin stock / caja perdida')}${ley('#60a5fa','visitas')}${ley('#f97316','rematando')}${ley('#a855f7','escalera')}${ley('#94a3b8','no es de catálogo (no hay caja)')}${ley('#3f3f46','pausada (no pelea la caja)')}${ley('rgba(128,128,128,.35)','no se sabe')}
-      <span style="margin-right:10px">📦 stock en unidades, color por los días que alcanza: <span style="color:var(--red)">━ falta (−7)</span> <span style="color:#f97316">━ justo (7-20)</span> <span style="color:var(--green)">━ bien (20-45)</span> <span style="color:#eab308">━ sobra (45-90)</span> <span style="color:#a855f7">━ exceso (+90)</span></span><span style="margin-right:10px"><span style="color:#f59e0b">━</span> costo real por unidad (mercadería × dólar del mes + IIBB y monotributo, que son % de lo cobrado: por eso se mueve un poco; el detalle sale al pasar el mouse)</span><span style="margin-right:10px">📊 % de ganancia: la línea toma el color del nivel de ese día (🔴 Bajo · 🟠 Justo · 🟢 Bien · 🩵 Bueno · 🔵 Excelente · 🟣 Estrella · 💎 JOYA), misma cuenta que Ventas</span><span style="margin-right:10px">▲▼ cambio de precio (con su motivo) · <span style="color:var(--amber)">▾</span> ese día se cobró menos sin cambiar el precio (promo/cupón de ML, carrito o un color más barato)</span><br>
+      <span style="margin-right:10px">📦 stock en unidades, color por los días que alcanza: <span style="color:var(--red)">━ falta (−7)</span> <span style="color:#f97316">━ justo (7-20)</span> <span style="color:var(--green)">━ bien (20-45)</span> <span style="color:#eab308">━ sobra (45-90)</span> <span style="color:#a855f7">━ exceso (+90)</span></span><span style="margin-right:10px"><span style="color:#f59e0b">━</span> costo real por unidad (mercadería × dólar del mes + IIBB y monotributo, que son % de lo cobrado: por eso se mueve un poco; el detalle sale al pasar el mouse)</span><span style="margin-right:10px">📊 % de ganancia: la línea toma el color del nivel de ese día (🔴 Bajo · 🟠 Justo · 🟢 Bien · 🩵 Bueno · 🔵 Excelente · 🟣 Estrella · 💎 JOYA), misma cuenta que Ventas</span><span style="margin-right:10px">▲▼ cambio de precio, el color dice por qué: ${flechaLeyenda()} · <span style="color:var(--amber)">▾</span> ese día se cobró menos sin cambiar el precio (promo/cupón de ML, carrito o un color más barato)</span><br>
       Pasá el mouse (o tocá) un día para ver todo lo que pasó. El precio es el más barato de sus publicaciones; ventas, visitas y stock suman todas. Stock, caja y remate de los días viejos no los guarda ML: quedan en gris. En stock: la línea son las unidades en Full (cuando se sabe el número) y la franja finita de abajo dice si hubo o no hubo stock ese día.
     </div></details></div>`;
 }
@@ -9851,6 +9852,27 @@ function vpPromoLabel(items){
   const txt=(soloML?'Descuento ML · ':'Vendido en promoción · ')+_nom;
   return `<span class="vp-promo${soloML?' vp-promo-ml':''}" title="${tit}">🏷️ ${txt}${p.ml>0?' · ML puso '+fmt(Math.round(p.ml)):''}${p.s>0?' · nosotros '+fmt(Math.round(p.s)):''}</span>`;
 }
+// EL COLOR DE LA FLECHA DICE POR QUÉ CAMBIÓ EL PRECIO (13/10/2026, él: "cuando se aumenta por escasez o se baja por distintos
+// motivos, ¿podés poner las flechitas de otro color? así veo cuando se aumentan por cosas raras"). Sale del motivo que escribí
+// en `cyc/claudecambios` (o `cyc/autoprecio`, o el motivo del evento del robot viejo).
+const FLECHA_TIPOS={techo:['var(--green)','prueba de precio / hay lugar'],margen:['#38bdf8','cuidar el margen (25% en el peor caso)'],escasez:['#f97316','escasez: estirar el stock'],caja:['#22d3ee','pelear la caja'],promo:['#a855f7','promo (precio tachado)'],volver:['#eab308','vuelta atrás: no funcionó'],remate:['var(--red)','remate / liquidar / sobra'],otro:['#9ca3af','a mano u otro']};
+function flechaTipo(mla,ts,motivo,sube){
+  if(motivo==='promo')return 'promo';
+  let txt='';const cc=Object.values(state.claudecambios||{}).find(c=>c&&c.mla===mla&&Math.abs((Number(c.ts)||0)-ts)<15*60e3);
+  if(cc)txt=cc.motivo||'';else{const a=(state.autoprecio||{})[mla];if(a&&Math.abs((Number(a.ts)||0)-ts)<15*60e3)txt=(a.motivo||'')+' '+(a.por||'');}
+  const t=(txt+' '+(motivo||'')).toLowerCase();
+  if(/promo|tachad/.test(t))return 'promo';
+  if(/escas|estir/.test(t))return 'escasez';
+  if(/volv|vuelvo|no funcion|correcci|deshace/.test(t))return 'volver';
+  if(/remat|liquid|sobra|parad|escalera/.test(t))return 'remate';
+  if(/peor caso|25 ?%|piso|rescat|margen|costo/.test(t))return 'margen';
+  if(/caja|competid/.test(t))return sube?'techo':'caja';
+  if(/techo|prueba|lugar|escal[oó]n|subir|vuela|demanda/.test(t))return sube?'techo':'otro';
+  if(/bajar/.test(t))return 'caja';
+  return 'otro';
+}
+const flechaHTML=(tipo,sube,tam='.8rem')=>{const [c,n]=FLECHA_TIPOS[tipo]||FLECHA_TIPOS.otro;return `<b style="color:${c};font-size:${tam}" title="${n}">${sube?'▲':'▼'}</b>`;};
+const flechaLeyenda=()=>Object.entries(FLECHA_TIPOS).map(([k,[c,n]])=>`<span style="margin-right:8px;white-space:nowrap"><b style="color:${c}">${k==='promo'||k==='remate'||k==='volver'||k==='caja'?'▼':'▲'}</b> ${n}</span>`).join('');
 function cambioVentaHTML(v,tsVenta){
   const cs=cambiosPrecioDe(v&&v.mla,tsVenta);
   if(!cs.length)return'';
@@ -9899,7 +9921,7 @@ function cambioVentaHTML(v,tsVenta){
   // azules"): verde si dejó más, rojo si dejó menos, gris si no se pudo medir. Antes era ámbar al subir y azul al bajar.
   // 09/10/2026, él: "si baja algo aparezca en rojo pero con una flecha hacia abajo, no con los números": los números van
   // en gris y sólo la flecha tiene color: ▲ verde si subió el precio, ▼ roja si bajó.
-  const colCambio='var(--muted)',flecha=`<b style="color:${sube?'var(--green)':'var(--red)'};font-size:.8rem">${sube?'▲':'▼'}</b>`;
+  const colCambio='var(--muted)',flecha=flechaHTML(flechaTipo(v&&v.mla,c.ts,c.motivo||c.mot||(String(c.quien||'').includes('🏷️')?'promo':''),sube),sube);
   return`<span style="font-size:.62rem;color:${colCambio}" title="Cambios de precio de esta publicación en los ${CAMBIO_VENTA_DIAS} días antes de esta venta:\n${tip}${cs.some(x=>x.aprox)?'\n(aprox.: fue a mano; la hora sale de comparar dos noches)':''}${pcts?'\n% de ganancia: el de antes es esta misma venta cobrada a '+fmt(deMed)+' (≈ estimado); el de después es el real de esta venta.':''}${extra?'\nLa plata: (precio cobrado − '+fmt(deMed)+') × lo que deja ML de cada peso de esta venta × unidades.':''}">${flecha} ${sube?'+':''}${String(pct).replace('.',',')}% · ${fmt(base)}→${fmt(fin)}${cs.length>1?` · ${cs.length} cambios, el último ${hace}`:` · ${hace}`}${pcts}${extra}</span>`;
 }
 // ¿La venta v corresponde al producto p? Por ID interno si está, sino por nombre.
@@ -10668,7 +10690,7 @@ function renderVentaProd(){
       const _cambios=grp.items.map(v=>isCancelled?'':cambioVentaHTML(v,Number(v.ts)||0));
       const _hayCambio=_cambios.some(x=>x);
       const _pill=isCancelled?'':(gpct===null?`<span class="db nc" style="font-size:.66rem" title="${_sinFicha?'Esta venta no está enganchada a ninguna ficha: el panel no sabe qué producto es ni cuánto costó. Se arregla vinculando la publicación.':'La ficha no tiene costo cargado.'}">${_sinFicha?'sin ficha':'sin costo'}</span>`:`<span class="db ${_est?'nc':''}" style="font-size:.72rem;padding:3px 9px;${_est?'color:var(--muted)':_pillSt}">${_est?'≈ ':''}${gpct>=0?'+':''}${gpct.toFixed(0)}%</span>`);
-      const _items=grp.items.map((v,i)=>`<div style="font-size:.8rem;line-height:1.35;${isCancelled?'opacity:.45;text-decoration:line-through':''}">${fotoVentaHTML(v,38)}<span style="color:var(--muted)">${v.qty}×</span> ${nombreDeVenta(v)}${v.variante?` <span style="padding:1px 6px;border-radius:4px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.66rem;white-space:nowrap">${v.variante}</span>`:''}${_cambios[i]?` <span style="font-size:.66rem" title="Cambió de precio antes de esta venta · mirá el detalle">${_cambios[i].includes('▲')?'<b style="color:var(--green)">▲</b>':'<b style="color:var(--red)">▼</b>'}</span>`:''}${(()=>{const _pp=prodDeVenta(v);return _pp?' '+cerebroBtn(_pp.id,{mla:v.mla,ctx:'venta'}):'';})()}</div>`).join('');
+      const _items=grp.items.map((v,i)=>`<div style="font-size:.8rem;line-height:1.35;${isCancelled?'opacity:.45;text-decoration:line-through':''}">${fotoVentaHTML(v,38)}<span style="color:var(--muted)">${v.qty}×</span> ${nombreDeVenta(v)}${v.variante?` <span style="padding:1px 6px;border-radius:4px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.66rem;white-space:nowrap">${v.variante}</span>`:''}${_cambios[i]?` <span style="font-size:.66rem" title="Cambió de precio antes de esta venta · mirá el detalle">${(_cambios[i].match(/<b style="color:[^"]*;font-size:\.8rem" title="[^"]*">[▲▼]<\/b>/)||[''])[0].replace('font-size:.8rem','font-size:.66rem')||(_cambios[i].includes('▲')?'<b style="color:var(--green)">▲</b>':'<b style="color:var(--red)">▼</b>')}</span>`:''}${(()=>{const _pp=prodDeVenta(v);return _pp?' '+cerebroBtn(_pp.id,{mla:v.mla,ctx:'venta'}):'';})()}</div>`).join('');
       // La etiqueta del rescate al vender era del robot viejo, que ya no toca precios: no se muestra más (09/10/2026, él:
       // "sacá lo de los precios automáticos están apagados, además por qué sale eso si ya estás haciendo todo vos").
       rescLabel='';

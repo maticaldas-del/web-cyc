@@ -125,3 +125,4 @@ En la completa de las 08:52 y en cada corta: `lupa` por ml-consulta (solo lee). 
 Cada 🚩 se mira con la línea de tiempo y se decide (o se anota por qué no se toca). La caja perdida sola no es motivo.
 Línea de tiempo: el ▾ ámbar = ese día se cobró menos sin cambiar el precio (promo/cupón, carrito o color más barato).
 - **Escasez y pedidos (13/10):** subir por escasez frena las ventas a propósito; para COMPRAR manda el ritmo de antes de la suba. En `decido` el motivo de una suba por escasez dice "escasez" (así `pedidostodo` la marca ESC).
+- **Motivos de `decido` con la causa en palabras (13/10):** escasez · techo/prueba · peor caso 25% · caja · remate/liquidar · vuelvo (no funcionó). De eso sale el color de la flechita y el ritmo de compra.
