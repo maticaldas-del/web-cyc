@@ -37340,6 +37340,22 @@ async function main() {
     // cerradas ni las ocultas): precio de hoy leído de ML, margen a ese precio (comisión preguntada a ML, envío por lado de
     // la barrera, cuotas, IIBB+mono), ganancia por unidad, stock en Full, ventas 7/30 d, días que duró la última tanda,
     // caja de compra y el último cambio de precio. No opina: Claude mira renglón por renglón en cada revisión.
+    // BILLING_PROBE=vernotas[:<texto>] → SOLO LEE (13/10/2026). Las notas del 🧠 de precio (`mlapi/claudeexp/<MLA>`) tal como
+    // están hoy, con su fecha; con texto, sólo las que lo contienen. Sirve para reescribirlas sin pisar a ciegas lo que ya dicen.
+    // Son textos míos (no traen datos de compradores).
+    if (/^vernotas(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const fil = String(process.env.BILLING_PROBE).slice('vernotas'.length).replace(/^:/, '').trim().toLowerCase();
+      let cx; try { cx = (await db.get('mlapi/claudeexp')) || {}; } catch { console.log('⚠️ no pude leer las notas'); return; }
+      let n = 0;
+      for (const [k, v] of Object.entries(cx)) {
+        if (!/^MLA\d+$/.test(k) || !v || !v.simple) continue;
+        if (fil && !String(v.simple).toLowerCase().includes(fil)) continue;
+        n++; console.log(`@@ ${k} · ${new Date(v.ts || 0).toISOString().slice(0, 16)} · ${String(v.simple).replace(/\s+/g, ' ')}`);
+      }
+      console.log(`\n${n} nota(s)${fil ? ` con "${fil}"` : ''}.`);
+      return;
+    }
+
     if (/^planilla(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const ctaF = String(process.env.BILLING_PROBE).slice('planilla'.length).replace(/^:/, '').trim().toLowerCase();
       const [lk, inv, vp, np, ap, sh, cfgM, mono, fin, cuoC, prodsO, nosub, cPiso, pClaude] = await Promise.all(['cyc/mllinks', 'cyc/inventory', 'cyc/ventaprod', 'cyc/netopub', 'cyc/autoprecio', 'cyc/stockhist', 'cyc/mlconfig', 'cyc/monotributo', 'cyc/finanzas', 'cyc/mlcuotas', 'cyc/products', 'cyc/nosubir', 'cyc/claudepiso', 'cyc/promoclaude']
