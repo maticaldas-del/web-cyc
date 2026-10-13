@@ -29862,6 +29862,8 @@ async function main() {
           return { dias, u, ritmo: dias ? u / dias : null, ganU: u ? gan / u : null, plataDia: dias ? gan / dias : null, precioU: u ? tot / u : null };
         };
         const A = tramo(k37, k7), B = tramo(k7, hoyK);
+        // Con menos de 7 días con stock en el mes anterior no hay ritmo de antes: una venta en 1 día no es "1 por día".
+        if (A.dias < 7) { A.ritmo = null; A.plataDia = null; A.poco = true; }
         // días sin vender y el intervalo normal
         let ult = null; for (const k of ks) if (Number(d[k].u) > 0) ult = k;
         const diasSin = ult ? Math.round((Date.parse(hoyK.replace(/_/g, '-')) - Date.parse(ult.replace(/_/g, '-'))) / 864e5) : null;
