@@ -14191,7 +14191,7 @@ async function main() {
           const [cta, pid, va] = k.split('|');
           console.log(`   ${cta} · ${(pIdxProbe[pid] || {}).name || pid}${va ? ' · ' + va : ''} → ${n} u.`);
         }
-        console.log(`   (siguen contando como "en camino", que es la verdad: son tuyas y todavía no se pueden vender)`);
+        console.log(`   (cuentan como "en camino" sólo mientras la caja siga abierta: si la marcás llegada, estas unidades no las cuenta nadie hasta que ML las dé de alta)`);
       }
       const _r = Object.entries(r.recEnt || {}).filter(([, arr]) => arr && arr.length);
       console.log(`\nENTRADAS QUE INFORMÓ ML, CON SU FECHA (sólo cuentan las posteriores al despacho de cada caja):`);
@@ -35836,9 +35836,15 @@ async function main() {
     // cuenta, oficina, en camino a Full, viajando de Paraguay y del Paulvic, neto y costo. No decide nada: los números para decidir.
     if (/^pedidostodo$/.test(String(process.env.BILLING_PROBE || ''))) {
       const ks = ['cyc/inventory', 'cyc/mllinks', 'cyc/ventaprod', 'cyc/envios_full', 'cyc/products', 'cyc/stockhist', 'cyc/compraspy', 'cyc/pedidospv', 'cyc/pedidos_papelera', 'cyc/notraer', 'cyc/proveedores', 'cyc/finanzas/tipo_cambio', 'cyc/claudedecide/ped', 'cyc/cajasentrado', 'cyc/autoprecio'];
-      const R = await Promise.all(ks.map((k) => db.get(k).catch(() => null)));
+      // Una lectura que FALLA no es un nodo vacío (revisión 9, 13/10/2026): con `{}` salían 0 ventas o 0 en camino y los
+      // scripts pedían de más. Si algo no se leyó, se dice y no se imprime nada (decide_pedidos.py rechaza un log con ⚠️ NO LEÍ).
+      const FALLO = Symbol('fallo');
+      const R = await Promise.all(ks.map((k) => db.get(k).catch(() => FALLO)));
+      const noLei = ks.filter((k, i) => R[i] === FALLO);
+      if (noLei.length) { console.log(`⚠️ NO LEÍ: ${noLei.join(' · ')} — no armo la lista a medias`); return; }
       const [I, L, VP, ENV, PR, SH, CPY, PV, PAP, NT, PROV, TC, CD, CE, AP] = R.map((x) => x || {});
       const tc = Number(R[11]) || 0;
+      if (!(tc > 0)) { console.log('⚠️ NO LEÍ el dólar (cyc/finanzas/tipo_cambio en 0): sin dólar los costos dan 0 y todo parece rentable'); return; }
       const C4 = ['Adriana', 'Luciana', 'Ayelen', 'Matias'], OF = 'Oficina_Mati';
       const hoy = Date.now(), dk = (d) => new Date(hoy - d * 864e5 - 3 * 36e5).toISOString().slice(0, 10).replace(/-/g, '_');
       const k30 = dk(29), k60 = dk(59), k180 = dk(179);
@@ -35860,8 +35866,12 @@ async function main() {
       // remate = abajo de 20% Y prueba (etiqueta, liquidando, baja de remate, o PARADO en la línea de tiempo: su regla
       // del 09/10 con el Ultra Shift y la Lupa 75mm). Lo de abajo de 20% sin prueba es demanda y cuenta ("BARATA").
       const LIN = {}, rematesVistos = {};
+      // El precio NORMAL para el máximo de compra (revisión 9, 13/10/2026): la mediana de lo que se cobró por unidad en 60 días
+      // (sin remates). El precio de hoy puede estar subido por escasez y el máximo saldría inflado.
+      const pU = {}, med = (a) => { if (!a || !a.length) return 0; const b = [...a].sort((x, y) => x - y); return Math.round(b.length % 2 ? b[(b.length - 1) / 2] : (b[b.length / 2 - 1] + b[b.length / 2]) / 2); };
       const lineaDe = async (mla) => { if (!(mla in LIN)) { try { LIN[mla] = (await db.get('mlapi/linea/' + mla)) || {}; } catch { LIN[mla] = null; } } return LIN[mla]; };
-      const [nsP, rvP, apP] = await Promise.all(['cyc/nosubir', 'cyc/rescateventa', 'cyc/autoprecio'].map((k) => db.get(k).catch(() => null)));
+      const [nsP, rvP, apP, nrP, rxP] = await Promise.all(['cyc/nosubir', 'cyc/rescateventa', 'cyc/autoprecio', 'cyc/norepo', 'cyc/repoextra'].map((k) => db.get(k).catch(() => FALLO)));
+      if ([nsP, rvP, apP, nrP, rxP].includes(FALLO)) { console.log('⚠️ NO LEÍ: cyc/nosubir, rescateventa, autoprecio, norepo o repoextra — no armo la lista a medias'); return; }
       const clP = await clasificarRemates(db, VP, { nosubir: nsP || {}, rescv: rvP || {}, autoprecio: apP || {}, lineaDe, desde: k180 });
       for (const [k, ents] of Object.entries(VP)) {
         if (k < k180) continue;
@@ -35872,6 +35882,7 @@ async function main() {
           if (inf && inf.remate) { if (k >= k60) s.rem += q; rematesVistos[v.prodId] = inf.porque; continue; }
           if (inf) s.barata += q;
           addVenta(v, k, q);
+          if (k >= k60 && Number(v.total) > 0) (pU[v.prodId] = pU[v.prodId] || []).push(Number(v.total) / q);
         }
       }
       if (clP.fallo.size) console.log(`⚠️ ${clP.fallo.size} venta(s) barata(s) sin poder leer su línea de tiempo: cuentan como venta`);
@@ -35898,10 +35909,16 @@ async function main() {
           if (falta > 0) viaPy[pid] = (viaPy[pid] || 0) + falta; }
       }
       const viaPv = {}; for (const c of Object.values(PV)) if (c && c.estado === 'camino' && c.prodId) for (const it of (c.items || [])) if (it && it.v) { const o = viaPv[c.prodId] || (viaPv[c.prodId] = {}); o[it.v] = (o[it.v] || 0) + (Number(it.u) || 0); }
-      const dCS = (pid) => { let mx = 0, hubo = false; for (const l of C4) { const h = SH[pid + '__' + l]; if (!h) continue; hubo = true; let d = 30;
+      const dCS = (pid, suf = '', sinDato = 30) => { let mx = 0, hubo = false; for (const l of C4) { const h = SH[pid + '__' + l + suf]; if (!h) continue; hubo = true; let d = 30;
         if (h.desde && h.aprox === false) d = Math.min(30, (hoy - Math.max(h.desde, hoy - 30 * 864e5)) / 864e5); else if (!h.desde && h.cero) d = Math.max(0, Math.min(30, (h.cero - (hoy - 30 * 864e5)) / 864e5));
-        if (d > mx) mx = d; } return hubo ? Math.max(1, Math.round(mx)) : 30; };
+        if (d > mx) mx = d; } return hubo ? Math.max(1, Math.round(mx)) : sinDato; };
       const n0 = (x) => Math.max(0, parseInt(x) || 0);
+      // A qué cuentas se le puede mandar (revisión 9, 13/10/2026): las que publican (no ocultas, no "no la vendemos más", no
+      // cerradas), menos las marcadas `nomandar` (cyc/norepo), más las marcadas `pasara` (cyc/repoextra). La misma regla que
+      // `cajasnotas`; decide_cajas.py la lee de acá en vez de adivinar la cuenta por dónde está el Full.
+      const ctasPub = {}; for (const [m, e] of Object.entries(L)) if (e && e.prodId && !e.ignored && !e.noVendemosMas && /^MLA/i.test(m) && (e.status || '') !== 'closed' && C4.includes(e.cuenta)) (ctasPub[e.prodId] = ctasPub[e.prodId] || new Set()).add(e.cuenta);
+      for (const [k, x] of Object.entries(rxP || {})) { const i = k.lastIndexOf('__'); if (i < 0 || !x) continue; const C = C4.find((c) => c.toLowerCase() === k.slice(i + 2).toLowerCase()); if (C) (ctasPub[k.slice(0, i)] = ctasPub[k.slice(0, i)] || new Set()).add(C); }
+      const ctasDe = (pid) => C4.filter((c) => (ctasPub[pid] || new Set()).has(c) && !(nrP || {})[pid + '__' + c.toLowerCase()] && !(nrP || {})[pid + '__' + c]);
       const grupos = { bsas: [], py: [], paulvic: [] }; const fuera = [];
       for (const p of prods) {
         if (PAP[p.id]) { fuera.push(`🗑️ ${p.name}`); continue; }
@@ -35918,7 +35935,8 @@ async function main() {
         for (const [mla, e] of Object.entries(L)) { if (!e || e.prodId !== p.id || e.ignored) continue; const a = AP[mla]; if (!a || a.de == null || a.a == null) continue;
           const d = Math.round((hoy - (Number(a.ts) || 0)) / 864e5); if (d <= 45) cam45.push(`${a.a > a.de ? '⬆️' : '⬇️'}$${a.de}→$${a.a} ${d}d`); }
         const dec0 = ` · precio $${pr}${cam45.length ? ' (' + cam45.slice(0, 3).join(' ') + ')' : ''}`;
-        const dec = dec0 + (CD[p.id] ? ` · YA DECIDÍ ${CD[p.id].u != null ? CD[p.id].u : JSON.stringify(CD[p.id].vars || {})}` : '');
+        const m60 = med(pU[p.id]);
+        const dec = dec0 + (m60 ? ` · med60 $${m60}` : '') + ` · ctas [${ctasDe(p.id).map((c) => c.slice(0, 2)).join(' ')}]` + (CD[p.id] ? ` · YA DECIDÍ ${CD[p.id].u != null ? CD[p.id].u : JSON.stringify(CD[p.id].vars || {})}` : '');
         console.log(`\n${p.id} · ${String(p.name).slice(0, 55)} · v30 ${s.t30} v60 ${s.t60} v180 ${s.t180} · últ ${s.ult ? s.ult.slice(8, 10) + '/' + s.ult.slice(5, 7) : '—'}${s.rem ? ' · REMATE ' + s.rem : ''}${s.barata ? ' · BARATA ' + s.barata : ''} · dCS ${dCS(p.id)} · Full ${ft} [${C4.map((c, i) => full[i] ? c.slice(0, 2) + full[i] : '').filter(Boolean).join(' ')}] · casa ${casa} · camino ${cm}${py ? ' · PYviaja ' + py : ''}${pvv ? ' · PVviaja ' + pvv : ''} ${(p.variantes || []).length ? ' · colores ' + p.variantes.length : ''} · neto $${Math.round(Number(p.netoCalc) || 0)} costo $${cost}${p.nisseiUSD ? ' · PY US$' + p.nisseiUSD : ''}${dec}`);
         if (rematesVistos[p.id]) console.log(`   (remate: ${rematesVistos[p.id]})`);
         for (const va of (p.variantes || [])) {
@@ -35926,7 +35944,7 @@ async function main() {
           const fv = C4.reduce((a, c) => a + n0(I[p.id + '__' + c + '__v__' + sid(va)]), 0), cv = n0(I[p.id + '__' + OF + '__v__' + sid(va)]);
           const mv = ((cam[p.id] || {}).v || {})[va] || 0, pvx = (viaPv[p.id] || {})[va] || 0;
           if (!sv.t180 && !fv && !cv && !mv && !pvx) continue;
-          console.log(`   # ${va} · v30 ${sv.t30} v60 ${sv.t60} v180 ${sv.t180} · últ ${sv.ult ? sv.ult.slice(8, 10) + '/' + sv.ult.slice(5, 7) : '—'} · Full ${fv} · casa ${cv} · camino ${mv}${pvx ? ' · PVviaja ' + pvx : ''}`);
+          console.log(`   # ${va} · v30 ${sv.t30} v60 ${sv.t60} v180 ${sv.t180} · últ ${sv.ult ? sv.ult.slice(8, 10) + '/' + sv.ult.slice(5, 7) : '—'} · dCS ${dCS(p.id, '__v__' + sid(va), dCS(p.id))} · Full ${fv} · casa ${cv} · camino ${mv}${pvx ? ' · PVviaja ' + pvx : ''}`);
         }
       };
       console.log(`dólar ${tc} · ventana 30 d desde ${k30} · ${prods.length} fichas`);
@@ -35936,6 +35954,8 @@ async function main() {
         arr.forEach(ln);
       }
       console.log(`\n════ FUERA (papelera / no traer) · ${fuera.length} ════\n${fuera.join('\n')}`);
+      const nG = grupos.bsas.length + grupos.py.length + grupos.paulvic.length;
+      console.log(`\nCUENTA: ${prods.length} fichas = ${nG} para decidir + ${fuera.length} fuera ${nG + fuera.length === prods.length ? '✓' : '⚠️ NO CIERRA'}`);
       return;
     }
 
@@ -35985,7 +36005,10 @@ async function main() {
     // cuenta que lo publica: en Full, en camino, vendidas en 30 días y días que alcanza. Sirve para escribir la nota del 🧠 de
     // Armar caja (`decido:caja:<prodId>@<cuenta>[#variante]=nota|…`). No calcula cuánto mandar: eso lo hace la web.
     if (/^cajasnotas$/.test(String(process.env.BILLING_PROBE || ''))) {
-      const [inv, links, vp, envs, prods, norepo] = await Promise.all(['cyc/inventory', 'cyc/mllinks', 'cyc/ventaprod', 'cyc/envios_full', 'cyc/products', 'cyc/norepo'].map((k) => db.get(k).catch(() => null)));
+      const KSc = ['cyc/inventory', 'cyc/mllinks', 'cyc/ventaprod', 'cyc/envios_full', 'cyc/products', 'cyc/norepo'];
+      const RRc = await Promise.all(KSc.map((k) => db.get(k).catch(() => 'FALLO')));
+      if (RRc.includes('FALLO')) { console.log(`⚠️ NO LEÍ: ${KSc.filter((k, i) => RRc[i] === 'FALLO').join(' · ')} — no armo la lista a medias`); return; }
+      const [inv, links, vp, envs, prods, norepo] = RRc;
       let cx = {}; try { cx = (await db.get('mlapi/claudeexp')) || {}; } catch { cx = {}; }
       const I = inv || {}, Lk = links || {}, NR = norepo || {};
       const sidL = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
@@ -35997,10 +36020,13 @@ async function main() {
         const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ts < hace30) continue;
         const e = Lk[v.mla]; if (!e || !e.prodId || !e.cuenta) continue;
         const k = e.prodId + '__' + sidL(e.cuenta); vend[k] = (vend[k] || 0) + (Number(v.qty) || 1);
-        if (e.variant) { const kv = k + '__v__' + sidL(String(e.variant)); vend[kv] = (vend[kv] || 0) + (Number(v.qty) || 1); }
+        // El color de la venta como en `pedidostodo` (revisión 9, 13/10/2026): el de la venta, el fijado en la publicación o el del título.
+        const pV = (prods || {})[e.prodId] || Object.values(prods || {}).find((x) => x && x.id === e.prodId) || {};
+        const va = v.variante ? String(v.variante) : e.variant ? String(e.variant) : varianteDeTitulo(e.title || '', pV.variantes || []);
+        if (va) { const kv = k + '__v__' + sidL(va); vend[kv] = (vend[kv] || 0) + (Number(v.qty) || 1); }
       }
       const cam = {};
-      const entC = {}; try { for (const [ck, x] of Object.entries((await db.get('cyc/cajasentrado')) || {})) for (const it of ((x && x.items) || [])) if (it && it.p) { const kk = ck + '|' + it.p + '|' + (it.v || ''); entC[kk] = (entC[kk] || 0) + (Number(it.q) || 0); } } catch {}
+      const entC = {}; try { for (const [ck, x] of Object.entries((await db.get('cyc/cajasentrado')) || {})) for (const it of ((x && x.items) || [])) if (it && it.p) { const kk = ck + '|' + it.p + '|' + (it.v || ''); entC[kk] = (entC[kk] || 0) + (Number(it.q) || 0); } } catch { console.log('⚠️ NO LEÍ cyc/cajasentrado: lo que ML ya dio de alta de las cajas abiertas sigue contando como "en camino"'); }
       for (const [eid, env] of Object.entries(envs || {})) (Array.isArray(env && env.cajasDet) ? env.cajasDet : []).forEach((c, ci) => {
         if (!c || c.recibida) return;
         for (const it of (c.items || [])) { if (!it || !it.prodId) continue; const u = Math.max(0, (Number(it.u) || 0) - (entC[`${eid}__${ci}|${it.prodId}|${it.variante || ''}`] || 0)); const k = it.prodId + '__' + sidL(env.cuenta || '') + (it.variante ? '__v__' + sidL(String(it.variante)) : ''); cam[k] = (cam[k] || 0) + u; const k0 = it.prodId + '__' + sidL(env.cuenta || ''); if (it.variante) cam[k0] = (cam[k0] || 0) + u; }
@@ -36215,11 +36241,17 @@ async function main() {
       // MIS EXPLICACIONES PARA EL 🧠 (08/10/2026, él: *"todas las anotaciones del cerebro las escribís vos"*):
       // `mlapi/claudeexp/<MLA>` = { ts, simple, … } y `mlapi/claudeexp/_ultima` = cuándo terminé la última revisión.
       const linksD = (await db.get('cyc/mllinks')) || {};
+      // Cuenta final (revisión 9, 13/10/2026): con 110 renglones de un archivo, un "✗" en el medio no se ve. Al final sale
+      // "X de Y guardados · Z rechazados" y cada nota se relee (antes la de precio se escribía sin mirar si quedó).
+      const TAL = { ok: 0, no: 0, rech: 0 };
+      const marcaG = (ok, txtOk = '   ✓ guardada') => { if (ok) TAL.ok++; else TAL.no++; return ok ? txtOk : '   ✗ no quedó'; };
       const escribirNota = async (mla, simple, extra) => {
         const e = linksD[mla] || {};
-        try { await db.set('mlapi/claudeexp/' + mla, { ts: Date.now(), simple: String(simple).slice(0, 600), nom: String(e.title || '').slice(0, 60), cuenta: e.cuenta || '', ...(extra || {}) }); return true; }
-        catch (eN) { console.log(`   ⚠️ no pude guardar la nota de ${mla}: ${String(eN.message || eN).slice(0, 60)}`); return false; }
+        try { const ts = Date.now(); await db.set('mlapi/claudeexp/' + mla, { ts, simple: String(simple).slice(0, 600), nom: String(e.title || '').slice(0, 60), cuenta: e.cuenta || '', ...(extra || {}) });
+          const rl = await db.get('mlapi/claudeexp/' + mla); const ok = !!(rl && rl.ts === ts); if (ok) TAL.ok++; else { TAL.no++; console.log(`   ✗ la nota de ${mla} no quedó`); } return ok; }
+        catch (eN) { TAL.no++; console.log(`   ⚠️ no pude guardar la nota de ${mla}: ${String(eN.message || eN).slice(0, 60)}`); return false; }
       };
+      const totalTal = () => { const n = TAL.ok + TAL.no + TAL.rech; if (n && GOp && !DRY) console.log(`\n📋 NOTAS Y DECISIONES DE PEDIDOS/CAJAS: ${TAL.ok} de ${n} guardadas${TAL.no ? ` · ${TAL.no} NO QUEDARON` : ''}${TAL.rech ? ` · ${TAL.rech} rechazadas (no las escribí)` : ''} ${TAL.no || TAL.rech ? '⚠️' : '✓'}`); else if (n && TAL.rech) console.log(`\n📋 PRUEBA: ${TAL.rech} renglón(es) se rechazarían`); };
       if (notasCtx.length) {
         const prodsD = Object.values((await db.get('cyc/products')) || {});
         const _limpiosDec = new Set(); let _cajaDecViejas = null;
@@ -36231,37 +36263,37 @@ async function main() {
             console.log(`· el día ${n.dia.slice(8, 10)}/${n.dia.slice(5, 7)}: ${n.t}`);
             if (GOp && !DRY) {
               try { await db.set('mlapi/claudeexp/' + key, { ts: Date.now(), simple: String(n.t).slice(0, 900), tipo: 'dia', dia: n.dia });
-                const rl = await db.get('mlapi/claudeexp/' + key); console.log(rl && rl.simple ? '   ✓ guardada' : '   ✗ no quedó'); }
-              catch (eN) { console.log(`   ⚠️ no pude guardarla: ${String(eN.message || eN).slice(0, 60)}`); }
+                const rl = await db.get('mlapi/claudeexp/' + key); console.log(marcaG(!!(rl && rl.simple))); }
+              catch (eN) { TAL.no++; console.log(`   ⚠️ no pude guardarla: ${String(eN.message || eN).slice(0, 60)}`); }
             }
             continue;
           }
           if (n.tipo === 'venta') {
             const e = linksD[n.mla];
-            if (!e) { console.log(`✗ ${n.mla} no está vinculada — no la escribo`); continue; }
+            if (!e) { TAL.rech++; console.log(`✗ ${n.mla} no está vinculada — no la escribo`); continue; }
             const key = `venta__${n.dia}__${n.mla}`;
             console.log(`· ventas del ${n.dia.slice(8, 10)}/${n.dia.slice(5, 7)} · ${String(e.title || n.mla).slice(0, 44)} (${e.cuenta || '?'}): ${n.t}`);
             if (GOp && !DRY) {
               try { await db.set('mlapi/claudeexp/' + key, { ts: Date.now(), simple: String(n.t).slice(0, 600), nom: String(e.title || '').slice(0, 60), cuenta: e.cuenta || '', tipo: 'venta', dia: n.dia });
-                const rl = await db.get('mlapi/claudeexp/' + key); console.log(rl && rl.simple ? '   ✓ guardada' : '   ✗ no quedó'); }
-              catch (eN) { console.log(`   ⚠️ no pude guardarla: ${String(eN.message || eN).slice(0, 60)}`); }
+                const rl = await db.get('mlapi/claudeexp/' + key); console.log(marcaG(!!(rl && rl.simple))); }
+              catch (eN) { TAL.no++; console.log(`   ⚠️ no pude guardarla: ${String(eN.message || eN).slice(0, 60)}`); }
             }
             continue;
           }
           const qn = norm(n.q);
           let cand = prodsD.filter((p) => p && (p.id === n.q || norm(p.name || '') === qn));
           if (!cand.length) cand = prodsD.filter((p) => p && norm(p.name || '').includes(qn));
-          if (cand.length !== 1) { console.log(`✗ "${n.q}" agarra ${cand.length} fichas${cand.length ? ': ' + cand.slice(0, 5).map((p) => p.name).join(' | ') : ''} — no la escribo`); continue; }
+          if (cand.length !== 1) { TAL.rech++; console.log(`✗ "${n.q}" agarra ${cand.length} fichas${cand.length ? ': ' + cand.slice(0, 5).map((p) => p.name).join(' | ') : ''} — no la escribo`); continue; }
           const p = cand[0]; const ctaL = n.cta.toLowerCase().replace(/í/g, 'i');
-          if (n.tipo === 'caja' && !CTAS.includes(ctaL)) { console.log(`✗ cuenta "${n.cta}" no existe — no la escribo`); continue; }
-          if (n.vari && !(p.variantes || []).some((v) => sid(String(v).toLowerCase()) === sid(n.vari.toLowerCase()))) { console.log(`✗ "${p.name}" no tiene la variante "${n.vari}" — no la escribo`); continue; }
+          if (n.tipo === 'caja' && !CTAS.includes(ctaL)) { TAL.rech++; console.log(`✗ cuenta "${n.cta}" no existe — no la escribo`); continue; }
+          if (n.vari && !(p.variantes || []).some((v) => sid(String(v).toLowerCase()) === sid(n.vari.toLowerCase()))) { console.log(`✗ "${p.name}" no tiene la variante "${n.vari}" — no la escribo`); TAL.rech++; continue; }
           const vk = n.vari ? '__v__' + sid(n.vari.toLowerCase()) : '';
           const key = n.tipo === 'ped' ? `ped__${p.id}${vk}` : `caja__${p.id}__${ctaL}${vk}`;
           if (n.dec) {
             const vsk = n.vari ? sid(n.vari.toLowerCase()) : '';
             const base = n.tipo === 'ped' ? `cyc/claudedecide/ped/${p.id}` : `cyc/claudedecide/caja/${p.id}__${ctaL}${vk}`;
             const leaf = n.dec === 'venta' ? 'pv' : (n.tipo === 'ped' && vsk ? 'vars/' + vsk : 'u');
-            if (n.tipo === 'ped' && !vsk && n.dec === 'u' && (p.variantes || []).length) { console.log(`✗ "${p.name}" tiene colores: va color por color (ped:${p.id}#<color>=u|N|motivo) — no lo escribo`); continue; }
+            if (n.tipo === 'ped' && !vsk && n.dec === 'u' && (p.variantes || []).length) { console.log(`✗ "${p.name}" tiene colores: va color por color (ped:${p.id}#<color>=u|N|motivo) — no lo escribo`); TAL.rech++; continue; }
             const qTxt = n.dec === 'auto' ? 'vuelve a la cuenta automática' : n.dec === 'venta' ? `máximo de compra calculado vendiéndolo a $${n.val}` : `${n.tipo === 'ped' ? 'comprar' : 'mandar'} ${n.val} u.`;
             console.log(`· 🧠 ${n.tipo === 'ped' ? 'pedido' : 'caja ' + ctaL} · ${p.name}${n.vari ? ' · ' + n.vari : ''}: ${qTxt}${n.t ? ' · ' + n.t : ''}`);
             if (GOp && !DRY) {
@@ -36288,17 +36320,17 @@ async function main() {
                   else await db.set(base + '/mot', String(n.t).slice(0, 400));
                 }
                 const rl = await db.get(base + '/' + leaf);
-                console.log((n.dec === 'auto' ? rl == null : Number(rl) === n.val) ? '   ✓ guardado' : '   ✗ no quedó');
+                console.log(marcaG(n.dec === 'auto' ? rl == null : Number(rl) === n.val, '   ✓ guardado'));
                 if (n.dec !== 'auto' && n.dec !== 'venta') await db.set('mlapi/claudeexp/' + key, { ts: Date.now(), simple: String(n.t).slice(0, 600), nom: String(p.name || '').slice(0, 60), cuenta: ctaL, variante: n.vari || '', tipo: n.tipo });
-              } catch (eN) { console.log(`   ⚠️ no pude guardarlo: ${String(eN.message || eN).slice(0, 60)}`); }
+              } catch (eN) { TAL.no++; console.log(`   ⚠️ no pude guardarlo: ${String(eN.message || eN).slice(0, 60)}`); }
             }
             continue;
           }
           console.log(`· ${n.tipo === 'ped' ? 'pedido' : 'caja ' + ctaL} · ${p.name}${n.vari ? ' · ' + n.vari : ''}: ${n.t}`);
           if (GOp && !DRY) {
             try { await db.set('mlapi/claudeexp/' + key, { ts: Date.now(), simple: String(n.t).slice(0, 600), nom: String(p.name || '').slice(0, 60), cuenta: ctaL, variante: n.vari || '', tipo: n.tipo });
-              const rl = await db.get('mlapi/claudeexp/' + key); console.log(rl && rl.simple ? '   ✓ guardada' : '   ✗ no quedó'); }
-            catch (eN) { console.log(`   ⚠️ no pude guardarla: ${String(eN.message || eN).slice(0, 60)}`); }
+              const rl = await db.get('mlapi/claudeexp/' + key); console.log(marcaG(!!(rl && rl.simple))); }
+            catch (eN) { TAL.no++; console.log(`   ⚠️ no pude guardarla: ${String(eN.message || eN).slice(0, 60)}`); }
           }
         }
       }
@@ -36306,6 +36338,7 @@ async function main() {
         console.log(`\n=== 📝 NOTAS PARA EL 🧠 ${GOp && !DRY ? '' : '(PRUEBA)'} ===`);
         for (const [m, t] of Object.entries(notas)) { console.log(`· ${m} · ${String((linksD[m] || {}).title || '?').slice(0, 40)}: ${t}`); if (GOp && !DRY) await escribirNota(m, t, { tipo: 'nota' }); }
       }
+      totalTal();
       const marcarRevisado = async () => { if (revisado && GOp && !DRY) { try { await db.set('mlapi/claudeexp/_ultima', Date.now()); console.log('✓ revisión anotada (el 🧠 de las demás dice cuándo las miré)'); } catch { console.log('⚠️ no pude anotar la revisión'); } } };
       if (!Object.keys(forzar).length) { if (!Object.keys(notas).length && !notasCtx.length && !revisado) console.log('No pasaste ningún precio ni nota.'); await marcarRevisado(); return; }
       const tokP = {};
@@ -36733,7 +36766,7 @@ async function main() {
       if (!lin || !lk) { console.log('⚠️ no pude leer la línea de tiempo o las publicaciones: no mido nada a medias'); return; }
       const desde = new Date(Date.now() - nd * 864e5).toISOString().slice(0, 10).replace(/-/g, '_');
       const W = 30, MIN_DIAS = 7, MIN_U = 3;
-      const conStock = (x) => { const v = x && (x.stF ?? x.st); return v == null ? null : Number(v) > 0; };
+      const conStock = (x) => { const v = x && x.st; return v == null ? null : Number(v) > 0; };  // stF es la FUENTE ('inv'/'ops'), no un número (revisión 9, 13/10)
       const filas = []; const sinDato = { pocosDias: 0, pocasVentas: 0, grande: 0 };
       for (const [mla, dd] of Object.entries(lin)) {
         if (!dd || typeof dd !== 'object') continue;
