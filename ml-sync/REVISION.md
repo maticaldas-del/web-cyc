@@ -745,3 +745,8 @@ techo/prueba, peor caso/25%, caja, remate, vuelvo) o la flecha sale gris. Cheque
 Rehace las fichas que faltan de un pedido de Paraguay YA llegado (las de perfumería se habían borrado y él quiere los costos
 de todo: *"no van a venderse en ML, pero quiero tener los costos"*). Mismo costo que `llego` (pagado × recargo real), no toca
 la oficina ni el estado. `llego` ahora también trata como "sin ficha" a un candidato cuyo `prodId` apunta a una ficha borrada.
+
+### El 🧠 dice por qué cambió el precio (13/10/2026, v23.31)
+Él, con el Paulvic Barbarella: *"no explica por qué aumentó de 58 a 97%"*. La nota de la publicación dice cómo está hoy; ahora
+el 🧠 (Ventas, Productos, Rotación) agrega las últimas 3 decisiones de `cyc/claudecambios` con su motivo y su flechita de
+color. Chequear que cada `decido` tenga motivo escrito (si no, sale "sin motivo anotado").
