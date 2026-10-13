@@ -29798,15 +29798,15 @@ async function main() {
     }
     // BILLING_PROBE=capital → foto del capital de CYC: stock, efectivo, deudas y los dólares de los
     // socios. Sirve para decidir si conviene sacar plata del negocio o dejarla trabajando.
-    // BILLING_PROBE=diario[:<palabra>] · LA LUPA DIARIA, PUBLICACIÓN POR PUBLICACIÓN (13/10/2026, pedido suyo con el
+    // BILLING_PROBE=lupa[:<palabra>] · LA LUPA DIARIA, PUBLICACIÓN POR PUBLICACIÓN (13/10/2026, pedido suyo con el
     // Pendrive 16gb: "todos esos pequeños detalles diarios, casi milimétricos, ¿los ves todos los días con atención en
     // TODOS los productos? necesito ese nivel de detalle"). SOLO LEE. Para CADA publicación con stock o ventas en 37 d
     // sale de `mlapi/linea/<MLA>` (día por día: stock, precio, unidades, neto, caja) y compara los últimos 7 días con
     // stock contra los 30 anteriores: ritmo, ganancia por unidad, PLATA POR DÍA, caja, precio y días sin vender.
     // Arriba van las 🚩 (algo cambió y hay que mirarlo), abajo una línea por cada una. La ganancia es aproximada
     // (neto − mercadería − IIBB de la cuenta − ~2% de monotributo): sirve para comparar, no para el balance.
-    if (/^diario(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
-      const q = String(process.env.BILLING_PROBE).slice('diario'.length).replace(/^:/, '').trim().toLowerCase();
+    if (/^lupa(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const q = String(process.env.BILLING_PROBE).slice('lupa'.length).replace(/^:/, '').trim().toLowerCase();
       const links = (await db.get('cyc/mllinks')) || {};
       const tc = parseFloat(await db.get('cyc/finanzas/tipo_cambio')) || 0;
       const pIdx = {}; for (const pr of products) pIdx[pr.id] = pr;
@@ -29867,7 +29867,7 @@ async function main() {
       };
       const con = filas.filter((f) => f.flags.length).sort((a, b) => (b.A.plataDia || 0) - (a.A.plataDia || 0));
       const sin = filas.filter((f) => !f.flags.length).sort((a, b) => (b.B.plataDia || 0) - (a.B.plataDia || 0));
-      console.log(`=== 🔬 DIARIO · cada publicación · últimos 7 días con stock contra los 30 anteriores · SOLO LEE ===`);
+      console.log(`=== 🔬 LUPA · cada publicación · últimos 7 días con stock contra los 30 anteriores · SOLO LEE ===`);
       console.log(`(ganancia aprox: neto − mercadería − IIBB − 2% mono · cajas: g gana · c comparte · p pierde · n sin catálogo)\n`);
       console.log(`── 🚩 PARA MIRAR · ${con.length} ──`);
       for (const f of con) { console.log('🚩 ' + L(f)); for (const x of f.flags) console.log('     · ' + x); }
