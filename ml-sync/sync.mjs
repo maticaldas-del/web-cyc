@@ -13197,16 +13197,21 @@ async function main() {
         const cg = cargoAntiguoProy(lotes, rDia, tabla, DIA_CIERRE_ALM_CTA[_ctaSinTilde(cta)] || 12);
         const edad = Math.floor((Date.now() - lotes[0].ts) / 864e5);
         const prox = (cg.meses[0] || {}).cargo || 0, tres = cg.meses.slice(0, 3).reduce((s2, x) => s2 + x.cargo, 0);
-        filas.push({ n: (pIdxA[m[1]] || {}).name || m[1], cta, st, edad, f: lotes[0].f, rDia, tam, prox, tres, tot: cg.pesos, cierre: cg.meses[0] ? new Date(cg.meses[0].T - 3 * 36e5).toISOString().slice(5, 10) : '?', rnF: !!(rn && rn.pd > 0) });
+        // Sin ritmo (nunca vendió ahí) la cuenta da "no se vende nunca" y suma 3 años de cargo: no es una proyección.
+        // Lo recién llegado sin ventas va aparte y no suma (vuelve a la lista cuando tenga ritmo o cumpla 60 días).
+        if (!(rDia > 0) && edad < 60) { filas.push({ n: (pIdxA[m[1]] || {}).name || m[1], cta, st, edad, f: lotes[0].f, rDia: 0, tam, prox: 0, tres: 0, tot: 0, nuevo: true }); continue; }
+        const doce = cg.meses.slice(0, 12).reduce((s2, x) => s2 + x.cargo, 0);
+        filas.push({ n: (pIdxA[m[1]] || {}).name || m[1], cta, st, edad, f: lotes[0].f, rDia, tam, prox, tres, tot: doce, sinVenta: !(rDia > 0), cierre: cg.meses[0] ? new Date(cg.meses[0].T - 3 * 36e5).toISOString().slice(5, 10) : '?', rnF: !!(rn && rn.pd > 0) });
       }
       filas.sort((a, b) => b.tot - a.tot || b.edad - a.edad);
       const conCargo = filas.filter((x) => x.tot > 0), $ = (n) => '$' + Math.round(n).toLocaleString('es-AR');
       console.log(`=== STOCK ANTIGUO DE FULL, PROYECTADO (${soloA || 'las 4 cuentas'}) ===`);
       console.log(`${mirados} producto×cuenta con stock en Full · ${conCargo.length} van a pagar algo al ritmo de hoy · ${sinLink} sin publicación vinculada (fecha de stockhist)`);
-      console.log(`Total proyectado: ${$(conCargo.reduce((s2, x) => s2 + x.tot, 0))} · en el próximo cierre: ${$(filas.reduce((s2, x) => s2 + x.prox, 0))} · en los próximos 3: ${$(filas.reduce((s2, x) => s2 + x.tres, 0))}`);
+      console.log(`Proyectado a 12 cierres: ${$(conCargo.reduce((s2, x) => s2 + x.tot, 0))} · en el próximo cierre: ${$(filas.reduce((s2, x) => s2 + x.prox, 0))} · en los próximos 3: ${$(filas.reduce((s2, x) => s2 + x.tres, 0))}`);
       console.log('Fecha de la unidad más vieja: excel = lote del Excel de ML (`lotesfull`) · caja = caja marcada llegada · antes = más vieja que todo lo que tiene fecha (stockhist o alta) · sinfecha = no se sabe (cuenta como hoy)\n');
-      for (const x of conCargo) console.log(`· ${String(x.n).slice(0, 42)} · ${x.cta} · ${x.st} u. · la más vieja ${x.edad} d (${x.f}) · ${x.tam} · vende ${(x.rDia * 30).toFixed(1)}/mes${x.rnF ? '' : ' (60 d, sin ritmo normal)'} · cierre ${x.cierre}: ${$(x.prox)} · 3 cierres: ${$(x.tres)} · total ${$(x.tot)}`);
-      const cerca = filas.filter((x) => !(x.tot > 0) && x.edad >= 90).sort((a, b) => b.edad - a.edad);
+      for (const x of conCargo) console.log(`· ${String(x.n).slice(0, 42)} · ${x.cta} · ${x.st} u. · la más vieja ${x.edad} d (${x.f}) · ${x.tam} · vende ${(x.rDia * 30).toFixed(1)}/mes${x.rnF ? '' : ' (60 d, sin ritmo normal)'} · cierre ${x.cierre}: ${$(x.prox)} · 3 cierres: ${$(x.tres)} · 12 cierres: ${$(x.tot)}${x.sinVenta ? ' ⚠️ no vendió en 60 d' : ''}`);
+      const nuevos = filas.filter((x) => x.nuevo); if (nuevos.length) console.log(`\nRecién llegados que todavía no vendieron (no se proyectan: ${nuevos.length}): ${nuevos.map((x) => String(x.n).slice(0, 28) + ' ' + x.cta + ' ' + x.edad + 'd').join(' · ')}`);
+      const cerca = filas.filter((x) => !x.nuevo && !(x.tot > 0) && x.edad >= 90).sort((a, b) => b.edad - a.edad);
       if (cerca.length) { console.log(`\nCon 90+ días en Full que al ritmo de hoy se venden antes de pagar (${cerca.length}):`); for (const x of cerca.slice(0, 25)) console.log(`· ${String(x.n).slice(0, 42)} · ${x.cta} · ${x.st} u. · ${x.edad} d (${x.f}) · vende ${(x.rDia * 30).toFixed(1)}/mes`); if (cerca.length > 25) console.log(`  (y ${cerca.length - 25} más)`); }
       const sinF = filas.filter((x) => x.f === 'sinfecha'); if (sinF.length) console.log(`\n⚠️ ${sinF.length} sin ninguna fecha (cuentan como entradas hoy: el cargo real puede ser MAYOR): ${sinF.slice(0, 10).map((x) => String(x.n).slice(0, 25) + ' ' + x.cta).join(' · ')}`);
       console.log(`\nCUENTA: ${mirados} = ${conCargo.length} con cargo + ${mirados - conCargo.length} sin cargo ${filas.length === mirados ? '✓' : '⚠️ NO CIERRA'}`);
@@ -20361,6 +20366,23 @@ async function main() {
           sumar('resolution.reason', cuenta(r.reason)); sumar('resolution.closed_by', cuenta(r.closed_by)); sumar('resolution.benefited', cuenta(r.benefited));
           sumar('resolution.applied_coverage', cuenta(r.applied_coverage));
         }
+        // La plata: cómo quedó el pago en Mercado Pago (aprobado = la plata quedó; devuelto = salió) y quién puso la
+        // devolución (`refunds[].source.type`). Sólo estados y tipos, ningún dato del comprador.
+        try {
+          const ord = await mlGet('/orders/' + orden, tokens[o.cuenta]);
+          const cub = arr.some((c) => c.resolution && c.resolution.applied_coverage === true) ? 'cubierto' : 'no cubierto';
+          for (const p of (ord.payments || [])) {
+            let b = null; try { const r2 = await fetch('https://api.mercadopago.com/v1/payments/' + p.id, { headers: { Authorization: 'Bearer ' + tokens[o.cuenta] } }); b = r2.ok ? await r2.json() : null; } catch { b = null; }
+            if (!b) { sumar('pago (' + cub + ')', 'no se pudo leer'); continue; }
+            sumar('pago (' + cub + ')', `${b.status}/${b.status_detail}`);
+            const rf = Array.isArray(b.refunds) ? b.refunds : [];
+            const devuelto = rf.reduce((a, x) => a + (Number(x.amount) || 0), 0), tot = Number(b.transaction_amount) || 0;
+            sumar('devuelto al comprador (' + cub + ')', !rf.length ? 'nada' : devuelto >= tot - 1 ? 'todo' : 'una parte');
+            for (const x of rf) sumar('quién puso la devolución (' + cub + ')', cuenta(x.source && x.source.type) + (x.source && x.source.name ? ' · ' + String(x.source.name).replace(/\d{4,}/g, '#').slice(0, 30) : ''));
+            const neto = Number(b.transaction_details && b.transaction_details.net_received_amount) || 0;
+            sumar('neto que quedó (' + cub + ')', neto > 0 && b.status === 'approved' ? 'quedó el neto' : neto > 0 ? 'figura neto pero ' + b.status : 'cero');
+          }
+        } catch { sumar('pago', 'no pude leer la orden'); }
       }
       console.log(`=== ¿ML CUBRIÓ LOS RECLAMOS? (${DIAS} días) ===`);
       console.log(`${Object.keys(porOrden).length} órdenes con reclamo/devolución/pérdida · ${leidos} con claim leído · ${sinClaim} sin claim · ${fallas} no se pudieron leer`);
