@@ -72,3 +72,9 @@ Lo que queda sin probar, con su motivo: 72 cambiadas en los últimos 2 días (es
 13/10 · las de 1 venta por mes o menos también se prueban (él: "aumentar ya"). Aplicadas y releídas de ML: Linterna COB MLA3998033920 $6.390→$8.990 · Sábanas 1½ MLA3160820188 $17.510→$22.990 · Mazo póker MLA1514083917 $23.320→$29.990 · Dalí MLA1869295911 $150.150→$189.990. Vuelven al precio de antes si en 60 días no venden ninguna.
 
 13/10 21:00 (vuelta corta) · Batidor negro MLA3384643016 VUELVE $20.930→$19.020: 0 ventas en 6 días con stock contra ~3,6 esperadas (Poisson <3%). No se prueba más caro por 60 días. El blanco MLA1807593513 a $19.690 sigue vendiendo (6 en 7 d).
+
+## 14/10 08:52 · revisión completa
+Todavía nada para juzgar con certeza: las pruebas grandes tienen menos de 1 día. Primeras señales: Lupa 100mm vendió 2 a $11.990 en horas · Mazo Rojo 1 a $7.490 · Espejo redondo 1 a $7.890 · Talonera 1 a $5.290 · Mazo Azul 1 a $6.490 · Paulvic a $21.990: 0 ventas en 0,7 d (el control a $14.360 vendió 4).
+Aplicado hoy (releído de ML): Batidor Blanco MLA1807593513 y MLA3932382684 $19.690→$22.990 (escasez y techo: vendió 6 en 7 días a $19.690, queda 1 u. y 28 en la oficina) · Brisa Marina MLA1821851883 $21.490→$25.990 (escasez, 2 u., sin caja).
+VUELVE: Sábanas 2½ Azul Acero MLA2047098393 $23.270→$21.990 (0 ventas en 9 días con stock contra ~5 esperadas). 60 días sin probar.
+Escalón 1 del 12/10 en lo que vende rápido (Lupa 90, metatarso par, juanete, termómetro pinche): bajaron el ritmo pero con 2 días todavía no hay certeza (esperadas 1-2). Se juzga en las cortas.
