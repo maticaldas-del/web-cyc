@@ -478,6 +478,10 @@ Qué chequear: que el total del mes coincida con Ventas en "Mes"; que las flecha
 
 - **v22.99 (09/10/2026) · rojas y naranjas grandes con vida:** en `vivaVenta`, `bajo` desde $60.000 de neto y `justo` desde $45.000 tienen brillo/figuras (`vi` .35→1 con el log del neto), flotan desde el doble y tiemblan arriba de ~$200.000; el fuego sigue saliendo del puntaje. Chequear: que las chicas sigan sólo con el color.
 
+### El nombre de la ficha se lee entero en el celu (14/10/2026, v23.38 · `cyc-v618`)
+- **Qué es:** el nombre en Productos pasó de casilla de una línea a texto que corta en renglones (`pname-area`); en ≤640px va primero y a todo el ancho. Enter guarda (no mete saltos de línea).
+- **Qué chequear:** que renombrar siga guardando igual (`updProdName`) y que en la PC no quede un renglón vacío de más.
+
 ## 8 · DATOS E HISTORIAL (nueva, 08/10/2026)
 Todo lo que guarda la historia día por día y las pantallas que la dibujan.
 - **Línea de tiempo por producto** (`mlapi/linea/<MLA>/<día>`, `_lineaJunta`, `lineaPintar`): stock,

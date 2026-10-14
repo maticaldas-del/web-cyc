@@ -216,6 +216,9 @@ input.qty:focus{border-color:var(--accent2)}
 .pname-edit{font-family:'Syne',sans-serif;font-weight:700;font-size:.82rem;flex:1;min-width:130px;background:transparent;border:1px dashed transparent;border-radius:5px;color:var(--text);padding:3px 6px;outline:none;transition:border .15s}
 .pname-edit:hover{border-color:var(--border2)}
 .pname-edit:focus{border-color:var(--accent2);background:var(--surface2)}
+/* 14/10/2026, él: "no puedo ver el nombre completo en el celu". El nombre de la ficha es un textarea que corta en renglones, y en el teléfono va en su propio renglón a todo el ancho. */
+.pname-area{resize:none;overflow:hidden;line-height:1.35;white-space:pre-wrap;word-break:break-word}
+@media (max-width:640px){.pname-area{flex:1 1 100%;order:-1;font-size:.95rem}}
 .prod-item label{font-size:.68rem;color:var(--muted)}
 .prod-item input{width:120px;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:.72rem;padding:6px 10px;outline:none;text-align:right;transition:border .15s}
 .prod-item input:focus{border-color:var(--accent2)}
@@ -2516,7 +2519,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.37';
+const APP_VERSION='23.38';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2527,6 +2530,7 @@ const APP_VERSION='23.37';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.38',f:'14/10/2026',h:'11:10',c:[{n:1,t:'📱 Productos en el celu: el nombre de cada ficha va arriba, a todo el ancho y en varios renglones, así se lee completo.'}]},
   {v:'23.37',f:'14/10/2026',h:'22:45',c:[{n:2,t:'🇵🇾 Para probar: el precio de Paraguay ahora dura 60 días (antes 45) porque el chat de compras pasa una vez por mes a actualizar todo lo cargado.'}]},
   {v:'23.36',f:'14/10/2026',h:'21:15',c:[{n:3,t:'📦 Armar caja: lo que se manda cubre 30 días de venta más los 7 que tarda en llegar (antes 20 en total). Y el aviso de almacenamiento de Full cuenta 4 meses para todo lo chico (los Tenders siguen en 2).'}]},
   {v:'23.35',f:'13/10/2026',h:'21:30',c:[{n:1,t:'📱 Ventas en el celu: la etiqueta dorada de "Vendido en promoción" baja de renglón y ya no se sale de la pantalla.'}]},
@@ -4465,7 +4469,7 @@ function renderProds(){
     return`<div class="prod-item" style="flex-direction:column;align-items:stretch;gap:10px">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         ${fotoChipHTML(p,64)}
-        <input class="pname-edit" type="text" value="${p.name.replace(/"/g,'&quot;')}" onchange="updProdName('${p.id}',this.value)" title="Editar nombre (el vínculo de ventas es por ID interno, no se pierde nada)">
+        <textarea class="pname-edit pname-area" rows="${Math.max(1,Math.min(4,Math.ceil(p.name.length/38)))}" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}" onchange="updProdName('${p.id}',this.value.replace(/\s*\n\s*/g,' ').trim())" title="Editar nombre (el vínculo de ventas es por ID interno, no se pierde nada)">${p.name.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</textarea>
         <button class="btn" style="white-space:nowrap;background:${p.origen==='py'?'rgba(239,68,68,.15)':'rgba(59,130,246,.12)'};color:${p.origen==='py'?'#f87171':'#60a5fa'};border:1px solid ${p.origen==='py'?'rgba(239,68,68,.3)':'rgba(59,130,246,.3)'}" onclick="toggleProdOrigen('${p.id}')" title="Origen del producto: define en qué sección de Pedidos aparece (BS AS o Paraguay)">${p.origen==='py'?'🇵🇾 Paraguay':'🇦🇷 BS AS'}</button>
         ${lineaBtn(p.id,'📈 línea')}${cerebroBtn(p.id)}
         <button class="btn btn-del" onclick="delProd('${p.id}')">✕</button>
