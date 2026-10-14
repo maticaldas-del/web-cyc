@@ -451,6 +451,38 @@ el precio de un candidato distinto con código parecido (se compara también por
   (antes salían sólo con 9+ días y el seguimiento cortado). **Chequear:** misma regla que `cajaEntradoDe` (seguimiento
   igual, nunca más de lo que llevaba el renglón).
 
+- **Lo que eligió (14/10/2026, él: "arma todas las ideas que vos tiraste, excepto lo super importante que modifica
+  mucho y tenes dudas"). v23.42 · `cyc-v622`:**
+  - **1 · tanque de días en Pedidos** (`pedTanqueHTML`): barra en DÍAS al ritmo del pedido (`cVdia`) con ML, camino,
+    oficina y lo rayado que se compra, raya roja en `pedDiasRojoDe` (14/17). En los pedidos automáticos se sacó el chip
+    "🔴 Urgente" (mide sólo ML y contradecía al "alcanza ~N d") y de la nota se ocultan "~Nd cubiertos" y los tres
+    lugares (van en la barra). Los pedidos a mano conservan su botón de estado. **Chequear:** con 0 en Full y mucho en
+    casa la barra dice "hay que MANDAR", nunca "urgente"; los días salen de los campos guardados (`cuentaPed`).
+  - **2 · nota "Hola Tito!" a la vista** (`_cerNotaCtx`/`_cerNotaVisHTML`, `_cerTxt` lo llena el listener de
+    `mlapi/claudeexp` sólo con `ped__`/`caja__`): en la tarjeta de Pedidos (2 renglones, entera al abrir) y en cada
+    renglón de Armar caja (se abre al tocar). En probados de Paraguay no se repite (ya va el "🧠 Por qué N" de abajo).
+    **Chequear:** misma clave que el 🧠 (`_cerClaveCtx`); sin nota no se dibuja nada.
+  - **3 · Ventas de hoy contra la semana pasada a la misma hora** (`_homeCurva`/`_homeCurvaHTML`): ganancia acumulada
+    hora por hora con `efectivoCostoVP` y la hora real (`ts`) de cada venta; un día que no es hoy se compara entero.
+    **Chequear:** las ventas sin `ts` no entran en la línea (sí en el total); la cuenta es la misma de la tarjeta.
+  - **4 · venta nueva con Inicio abierto** (`_homeHoyEfectos`, `_hoyPastilla`, `_hoyRodar`): pastilla del color del %
+    de esa venta, el total y la ganancia suben rodando, `navigator.vibrate(35)`. Sólo Día=hoy, Inicio a la vista y la
+    app al frente; la primera pintada no cuenta. Respeta "menos movimiento".
+  - **5 · día cumplido** (`_hoyChispas`): chispas verdes al pasar `PUNT_DIA_7` ($115.000) de ganancia en el día y
+    doradas al pasar el doble; una vez por día y nivel (`localStorage cycDiaCumplido`).
+  - **6 · una sola escala de puntos**: Ventas usa `_puntajeDia` con la ganancia promedio por día (antes `GAN_DIA_TABLA`,
+    borrada). Código muerto sacado: `retiroMes`/`retMitadMes` (0,15 del neto) de los KPIs de Ventas y `RETIRO_PCT`,
+    `_vpGan`, `vpGanSum` del Resumen. **Chequear:** el mismo día da el mismo puntaje en Inicio y en Ventas.
+  - **9 y 10 · `cargosmes[:<AAAA_MM>][:<meses>][:go]`** (sync.mjs; `:go` sólo por ml-sync): la factura de ML por tipo
+    de cargo de las 4 cuentas. (9) gasto de Full = CFWA + CFBA + CFRS + CFPB netos de bonificaciones, con `:go` en
+    `cyc/compras/fullml_<AAAA_MM>_<cuenta>` (cat Envios, día 15); no escribe si falta leer una cuenta ni si ya hay uno
+    cargado a mano ese mes. Afuera: cargos de cada venta (ya en el neto), percepciones (ya van como %), devolución CDSD
+    (ya la cuenta el % de reclamos). (10) tabla de percepciones de IIBB por provincia × cuenta para el contador.
+    **Chequear:** que ningún cargo de Full quede en "otros" sin mirar y que la tabla de IIBB use sólo renglones de IIBB.
+  - **NO se hizo, a propósito:** 7 (reclamos que pagó ML) cambia el costo de todos los productos: primero se confirma
+    con el reporte de liquidación de MP (queda en `REV_PENDIENTE`). 8 (juntar pedidos de Paraguay a ~US$1.000) es una
+    decisión de compra, no código. 11 (dinero que rinde en MP) lo mira él en la app.
+
 ## 7 · DISEÑO
 
 - **Etiqueta de promo en el celu (13/10/2026, v23.35).** Se salía de la tarjeta por `white-space:nowrap`. En ≤640px `.vp-promo` baja de renglón. "discount" ahora dice "descuento". Chequear: ninguna etiqueta o chip de Ventas con `nowrap` y texto largo en el celu.

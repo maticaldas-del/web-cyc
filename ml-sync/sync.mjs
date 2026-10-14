@@ -43,7 +43,7 @@ const EN_CONSULTA = process.env.GITHUB_WORKFLOW === 'ml-consulta' || process.env
 const CONSULTA_ESCRIBE = new Set(['lineatodo', 'revcand', 'vincular', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull']);
 const CONSULTA_NIEGA = new Set(['candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
-  'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'promoventas']);
+  'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'promoventas', 'cargosmes']);
 let CONSULTA_SOLO_LEE = false;
 if (EN_CONSULTA) {
   const _cmd = String(process.env.BILLING_PROBE || '').trim();
@@ -13215,6 +13215,103 @@ async function main() {
       if (cerca.length) { console.log(`\nCon 90+ días en Full que al ritmo de hoy se venden antes de pagar (${cerca.length}):`); for (const x of cerca.slice(0, 25)) console.log(`· ${String(x.n).slice(0, 42)} · ${x.cta} · ${x.st} u. · ${x.edad} d (${x.f}) · vende ${(x.rDia * 30).toFixed(1)}/mes`); if (cerca.length > 25) console.log(`  (y ${cerca.length - 25} más)`); }
       const sinF = filas.filter((x) => x.f === 'sinfecha'); if (sinF.length) console.log(`\n⚠️ ${sinF.length} sin ninguna fecha (cuentan como entradas hoy: el cargo real puede ser MAYOR): ${sinF.slice(0, 10).map((x) => String(x.n).slice(0, 25) + ' ' + x.cta).join(' · ')}`);
       console.log(`\nCUENTA: ${mirados} = ${conCargo.length} con cargo + ${mirados - conCargo.length} sin cargo ${filas.length === mirados ? '✓' : '⚠️ NO CIERRA'}`);
+      return;
+    }
+    // BILLING_PROBE=cargosmes[:<AAAA_MM>][:<meses>][:go] → LA FACTURA DE ML POR TIPO DE CARGO, DE LAS 4 CUENTAS
+    // (etapa 6, ideas 9 y 10, 14/10/2026, eligió la a en las dos).
+    // Lee el resumen del período de facturación de ML (`/billing/integration/periods/key/<AAAA-MM-01>/summary/details`)
+    // y saca dos cosas:
+    //  · GASTO DE FULL DEL MES (idea 9): almacenamiento (CFWA), almacenamiento prolongado = stock antiguo (CFBA), retiro o
+    //    descarte (CFRS) y multas por envíos a Full (CFPB), netos de sus bonificaciones. Antes él bajaba el reporte de
+    //    cada cuenta y me lo pasaba. Con `:go` (y un solo mes) lo carga como gasto en `cyc/compras/fullml_<AAAA_MM>_<cuenta>`
+    //    (categoría Envios, la del renglón "Cargos de Full de ML" de Gastos). NO entran: los cargos de cada venta (CVFV,
+    //    CVFF, CFF, CVFN: ya están en el neto de cada venta), las percepciones (ya van como % en cada venta) ni la
+    //    devolución (CDSD: ya la cuenta el % de reclamos de cada producto). Lo que no se conoce se lista aparte.
+    //  · PERCEPCIONES DE IIBB POR PROVINCIA (idea 10): todo renglón de IIBB, agrupado por provincia y cuenta, para el
+    //    contador (Ayelen paga 5,99% y las otras 3,4-4%).
+    // Si ya hay un gasto de Full cargado A MANO en ese mes, no escribe (avisa): sería contarlo dos veces.
+    // Sólo lee salvo `:go`. No imprime datos de compradores: son cargos de la cuenta.
+    if (/^cargosmes(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _ps = String(process.env.BILLING_PROBE).split(':').map((x) => x.trim()).slice(1);
+      const GO = _ps.includes('go');
+      const ymArg = _ps.find((x) => /^\d{4}_\d{2}$/.test(x));
+      const nMeses = Math.max(1, Math.min(12, parseInt(_ps.find((x) => /^\d{1,2}$/.test(x)) || '1', 10) || 1));
+      if (GO && nMeses > 1) { console.log('Con :go va UN solo mes (el gasto se carga mes por mes).'); return; }
+      const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
+      const _hoy = new Date();
+      const base = ymArg ? new Date(Date.UTC(+ymArg.slice(0, 4), +ymArg.slice(5, 7) - 1, 1)) : new Date(Date.UTC(_hoy.getUTCFullYear(), _hoy.getUTCMonth() - 1, 1));
+      const periodos = []; for (let i = nMeses - 1; i >= 0; i--) { const d = new Date(base); d.setUTCMonth(d.getUTCMonth() - i); periodos.push(d.toISOString().slice(0, 8) + '01'); }
+      const FULL = { CFWA: 'almacenamiento', CFBA: 'stock antiguo', CFRS: 'retiro o descarte', CFPB: 'multa por envíos a Full' };
+      const VENTA = new Set(['CVFV', 'CVFF', 'CFF', 'CVFN', 'BVFV', 'BVFF', 'BFF', 'BVFN']);
+      const PROV = ['Buenos Aires', 'CABA', 'Catamarca', 'Chaco', 'Chubut', 'Córdoba', 'Corrientes', 'Entre Ríos', 'Formosa', 'Jujuy', 'La Pampa', 'La Rioja', 'Mendoza', 'Misiones', 'Neuquén', 'Río Negro', 'Salta', 'San Juan', 'San Luis', 'Santa Cruz', 'Santa Fe', 'Santiago del Estero', 'Tierra del Fuego', 'Tucumán'];
+      const _n = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+      const provDe = (lab) => { const l = _n(lab).replace(/bs\.?\s*as\.?/g, 'buenos aires'); if (/\bcaba\b|ciudad aut/.test(l)) return 'CABA'; for (const p of PROV) if (l.includes(_n(p))) return p; return 'sin provincia'; };
+      const raw = async (path, tok) => {
+        for (let i = 0; ; i++) {
+          const r = await fetch(ML_API + path, { headers: { Authorization: 'Bearer ' + tok } });
+          const t = await r.text();
+          if (r.status === 429 && i < 4) { console.log(`    (429, espero ${30 * (i + 1)} s)`); await dormir(30000 * (i + 1)); continue; }
+          return { st: r.status, t };
+        }
+      };
+      const full = {}, iibb = {}, otros = {}, faltan = [];
+      for (const label of labels) {
+        const acc = accounts[label]; if (!acc?.refresh_token) continue;
+        let tok;
+        for (let i = 0; i < 3 && !tok; i++) {
+          try { const rt = (await db.get('mlapi/tokens/' + label + '/refresh_token')) || acc.refresh_token; const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, rt);
+            await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() }); tok = t.access_token; }
+          catch (e) { console.log(`${label}: no pude entrar (${String(e.message).slice(0, 80)}) · reintento en 30 s`); await dormir(30000); }
+        }
+        if (!tok) { for (const k of periodos) faltan.push(`${label} ${k}`); continue; }
+        for (const k of periodos) {
+          const r = await raw(`/billing/integration/periods/key/${k}/summary/details?group=ML&document_type=BILL`, tok);
+          await dormir(13000);
+          let bi = null; try { const j = JSON.parse(r.t); bi = j.bill_includes || j; } catch {}
+          if (r.st !== 200 || !bi || !Array.isArray(bi.charges)) { faltan.push(`${label} ${k} [${r.st}]`); continue; }
+          for (const c of [...(bi.charges || []), ...(bi.bonuses || [])]) {
+            const ty = String(c.type || '?'), amt = Number(c.amount) || 0, lab = String(c.label || ty);
+            if (/iibb|percep/i.test(lab)) { const pv = provDe(lab); ((iibb[label] ||= {})[pv] ||= 0); iibb[label][pv] += amt; continue; }
+            const fk = FULL[ty] ? ty : (ty.startsWith('B') && FULL['C' + ty.slice(1)] ? 'C' + ty.slice(1) : null);
+            if (fk) { ((full[label] ||= {})[k] ||= {}); full[label][k][fk] = (full[label][k][fk] || 0) + amt; continue; }
+            if (VENTA.has(ty)) continue;
+            ((otros[label] ||= {})[ty + ' · ' + lab] ||= 0); otros[label][ty + ' · ' + lab] += amt;
+          }
+        }
+      }
+      console.log(`=== FACTURA DE ML POR TIPO · ${periodos.join(', ')} ${GO ? '(CARGANDO EL GASTO)' : '(sólo muestra)'} ===`);
+      if (faltan.length) console.log(`⚠️ NO LEÍ: ${faltan.join(' · ')} — esos números faltan abajo.`);
+      console.log('\n── 1 · GASTO DE FULL (almacenamiento + stock antiguo + retiro/descarte + multas, neto de bonificaciones) ──');
+      let totFull = 0;
+      for (const label of labels) { for (const k of periodos) { const o = (full[label] || {})[k]; if (!o) { console.log(`  ${label.padEnd(8)} ${k}: $0 (o no leído)`); continue; }
+        const t = Object.values(o).reduce((a, b) => a + b, 0); totFull += t;
+        console.log(`  ${label.padEnd(8)} ${k}: ${money(t).padStart(10)} · ${Object.entries(o).map(([ty, v]) => FULL[ty] + ' ' + money(v)).join(' · ')}`); } }
+      console.log(`  TOTAL ${money(totFull)}`);
+      console.log('\n── 2 · PERCEPCIONES DE IIBB POR PROVINCIA (para el contador) ──');
+      const provs = [...new Set(Object.values(iibb).flatMap((o) => Object.keys(o)))].sort((a, b) => Object.values(iibb).reduce((s, o) => s + (o[b] || 0), 0) - Object.values(iibb).reduce((s, o) => s + (o[a] || 0), 0));
+      console.log('  ' + 'provincia'.padEnd(22) + labels.map((l) => l.padStart(12)).join('') + 'TOTAL'.padStart(12));
+      for (const pv of provs) { const fila = labels.map((l) => (iibb[l] || {})[pv] || 0); console.log('  ' + pv.padEnd(22) + fila.map((v) => money(v).padStart(12)).join('') + money(fila.reduce((a, b) => a + b, 0)).padStart(12)); }
+      const tots = labels.map((l) => Object.values(iibb[l] || {}).reduce((a, b) => a + b, 0));
+      console.log('  ' + 'TOTAL'.padEnd(22) + tots.map((v) => money(v).padStart(12)).join('') + money(tots.reduce((a, b) => a + b, 0)).padStart(12));
+      const otrosL = Object.entries(otros).flatMap(([l, o]) => Object.entries(o).filter(([, v]) => Math.abs(v) >= 1).map(([t, v]) => `${l}: ${t} ${money(v)}`));
+      if (otrosL.length) console.log(`\n── 3 · Otros cargos que NO entran en el gasto de Full (para mirar) ──\n  ${otrosL.join('\n  ')}`);
+      if (!GO) { console.log('\nSin :go no se carga nada.'); return; }
+      const k = periodos[0], ym = k.slice(0, 7).replace('-', '_');
+      if (faltan.length) { console.log(`\n✗ No cargo el gasto: falta leer ${faltan.length} cuenta(s). Un gasto a medias se lee como completo.`); return; }
+      const compras = (await db.get('cyc/compras')) || {};
+      const aMano = Object.entries(compras).filter(([id, g]) => g && !id.startsWith('fullml_') && String(g.dayKey || '').startsWith(ym)
+        && /almacenamiento|stock antiguo|cargos? de full|retiro de stock/i.test(String(g.desc || '') + ' ' + String(g.cat || '')));
+      if (aMano.length) { console.log(`\n✗ No cargo: ya hay ${aMano.length} gasto(s) de Full cargado(s) a mano en ${ym} (${aMano.map(([, g]) => money(g.monto || 0) + ' ' + String(g.desc || '').slice(0, 30)).join(' · ')}). Sería contarlo dos veces.`); return; }
+      const upd = {};
+      for (const label of labels) { const o = (full[label] || {})[k] || {}; const t = Math.round(Object.values(o).reduce((a, b) => a + b, 0));
+        const id = `fullml_${ym}_${label.toLowerCase()}`;
+        if (!(t > 0)) { if (compras[id]) upd[id] = null; continue; }
+        upd[id] = { id, dayKey: ym + '_15', monto: t, cat: 'Envios', ts: Date.now(), auto: 'cargosmes',
+          desc: `Cargos de Full de ML · ${label} · período ${k.slice(0, 7)} (${Object.entries(o).map(([ty, v]) => FULL[ty] + ' ' + money(v)).join(' · ')})` }; }
+      await db.patch('cyc/compras', upd);
+      const rel = (await db.get('cyc/compras')) || {};
+      const ok = Object.entries(upd).every(([id, v]) => v === null ? !rel[id] : rel[id] && Math.round(rel[id].monto) === v.monto);
+      console.log(`\n${ok ? '✓' : '✗'} Gasto de Full de ${ym} ${ok ? 'cargado y releído' : 'NO quedó igual al releer'}: ${Object.values(upd).filter(Boolean).map((v) => v.desc.split(' · ')[1] + ' ' + money(v.monto)).join(' · ')}`);
       return;
     }
     // BILLING_PROBE=cargosfull[:<cuenta>][:go] → ¿QUÉ PRODUCTOS PAGAN ALMACENAMIENTO Y STOCK ANTIGUO? (04/10/2026)

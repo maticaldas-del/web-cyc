@@ -471,6 +471,38 @@ input.qty:focus{border-color:var(--accent2)}
 .ped-card.sem-rojo .ped-buy b{color:var(--red)}
 .ped-card.sem-naranja .ped-buy b{color:#f97316}
 .ped-card.sem-amarillo .ped-buy b{color:#ca8a04}
+.cer-vis{flex-basis:100%;order:9;font-size:.74rem;line-height:1.4;color:var(--text);background:rgba(139,92,246,.12);border-radius:8px;padding:5px 9px;font-weight:400;font-family:inherit}
+.cer-vis .cv-t{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.cer-vis b{color:#a78bfa}
+.caja-vis{margin-top:8px;cursor:pointer}
+.ped-card[open] .cer-vis .cv-t,.cer-vis.abierta .cv-t{-webkit-line-clamp:unset;display:block}
+.ped-head{flex-wrap:wrap}
+.hoy-sp{margin-top:12px}.hoy-sp svg{width:100%;height:54px;display:block;overflow:visible}
+.hoy-sp .sp-b{fill:none;stroke:var(--muted);stroke-width:1.4;stroke-dasharray:3 3;vector-effect:non-scaling-stroke;opacity:.8}
+.hoy-sp .sp-a{fill:none;stroke:var(--c,var(--green));stroke-width:2.4;vector-effect:non-scaling-stroke;stroke-linejoin:round}
+.hoy-sp .sp-dot{fill:var(--c,var(--green))}
+.hoy-sp-anim .sp-a{stroke-dasharray:1000;stroke-dashoffset:1000;animation:hoySpDraw 1.4s ease-out forwards}
+@keyframes hoySpDraw{to{stroke-dashoffset:0}}
+.hoy-sp .sp-txt{font-size:.74rem;color:var(--muted);margin-top:4px}
+.hoy-pill{position:fixed;left:50%;top:14px;z-index:9999;display:flex;align-items:center;gap:7px;padding:7px 14px 7px 9px;border-radius:999px;font-size:.82rem;font-weight:700;color:var(--text);background:color-mix(in srgb,var(--c) 22%,var(--surface));border:1px solid var(--c);box-shadow:0 0 18px color-mix(in srgb,var(--c) 50%,transparent);max-width:calc(100vw - 32px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transform:translateX(-50%);animation:hoyPop 4.2s ease-out forwards;pointer-events:none}
+@keyframes hoyPop{0%{transform:translate(-50%,30px) scale(.6);opacity:0}12%{transform:translate(-50%,-4px) scale(1.06);opacity:1}20%{transform:translate(-50%,0)}85%{opacity:1}100%{transform:translate(-50%,-18px);opacity:0}}
+.hoy-flash{animation:hoyFl .9s ease-out}@keyframes hoyFl{0%{text-shadow:0 0 16px var(--c,var(--green))}}
+.hoy-boom{position:fixed;inset:0;pointer-events:none;display:flex;align-items:center;justify-content:center;z-index:9998}
+.hoy-boom i{position:absolute;left:50%;top:50%;width:7px;height:7px;border-radius:50%;background:var(--c);opacity:0;animation:hoyBoom 1.2s ease-out forwards}
+@keyframes hoyBoom{0%{opacity:1;transform:translate(-50%,-50%)}100%{opacity:0;transform:translate(calc(-50% + var(--x)),calc(-50% + var(--y))) scale(.4)}}
+.hoy-boom b{font-family:'Syne',sans-serif;font-size:1.05rem;color:var(--c);background:color-mix(in srgb,var(--c) 16%,var(--surface));border:1px solid var(--c);border-radius:999px;padding:6px 14px;animation:hoyBoomTxt 3.5s ease-out forwards}
+@keyframes hoyBoomTxt{0%{opacity:0;transform:scale(.7)}12%{opacity:1;transform:scale(1.05)}20%{transform:none}85%{opacity:1}100%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.hoy-pill,.hoy-boom b,.hoy-sp-anim .sp-a{animation:none}.hoy-sp-anim .sp-a{stroke-dashoffset:0}}
+.ped-tanque{flex-basis:100%;margin:2px 0 4px}
+.tq-bar{position:relative;height:12px;background:var(--surface2);border-radius:6px;display:flex;overflow:visible}
+.tq-bar>span:not(.tq-corte){height:100%}.tq-bar>span:first-child{border-radius:6px 0 0 6px}
+.tq-ml{background:var(--green)}.tq-cam{background:#38bdf8}.tq-casa{background:var(--amber)}
+.tq-buy{background:repeating-linear-gradient(45deg,rgba(255,255,255,.22) 0 4px,transparent 4px 8px);border:1px dashed rgba(255,255,255,.4);border-left:none;border-radius:0 6px 6px 0;box-sizing:border-box}
+body.light .tq-buy{background:repeating-linear-gradient(45deg,rgba(0,0,0,.18) 0 4px,transparent 4px 8px);border-color:rgba(0,0,0,.35)}
+.tq-corte{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--red);box-shadow:0 0 5px var(--red)}
+.tq-leg{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:.62rem;color:var(--muted);margin-top:4px}
+.tq-leg i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:3px;vertical-align:-1px}
+.tq-msg{font-size:.66rem;color:var(--muted);margin-top:2px}
 .ped-sem{font-style:normal;font-size:.6rem;letter-spacing:.02em;margin-top:1px}
 .ped-vars{width:100%;display:flex;flex-direction:column;gap:5px;margin:0 0 8px}
 .ped-var-fila{display:flex;align-items:center;gap:10px;padding:7px 10px;background:var(--surface2,rgba(127,127,127,.06));border:1px solid var(--border);border-left:4px solid var(--border2);border-radius:6px}
@@ -1995,6 +2027,8 @@ function startApp(){
   // hay una nota mía para ESE lugar. Se escucha `mlapi/claudeexp` y al cambiar se vuelve a dibujar.
   db.ref('mlapi/claudeexp').on('value',snap=>{
     const v=snap.val()||{};_cerNotas=new Set(Object.keys(v).filter(k=>v[k]&&v[k].simple));
+    // El TEXTO de las notas de unidades (ped__/caja__) queda en memoria para mostrarlo a la vista (etapa 6, idea 2).
+    _cerTxt={};for(const k of _cerNotas)if(k.startsWith('ped__')||k.startsWith('caja__'))_cerTxt[k]={s:String(v[k].simple),ts:v[k].ts||0};
     if(typeof renderPronto==='function')renderPronto();
   },()=>{_cerNotas=null;});
   db.ref('cyc').on('value',snap=>{
@@ -2519,7 +2553,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.41';
+const APP_VERSION='23.42';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2530,6 +2564,12 @@ const APP_VERSION='23.41';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.42',f:'14/10/2026',h:'19:50',c:[{n:2,t:'📋 Pedidos: cada tarjeta tiene una barra de días (ML, en camino, oficina y lo que se compra) con la raya del corte. Se fue el "🔴 Urgente" que contradecía al "alcanza ~60 d".'},
+    {n:1,t:'🧠 La nota "Hola Tito!" se ve en la tarjeta de Pedidos (y la de cada caja en Armar caja) sin tocar el 🧠.'},
+    {n:1,t:'📈 Ventas de hoy: una línea con la ganancia hora por hora contra el mismo día de la semana pasada, cortado a la misma hora.'},
+    {n:1,t:'🛒 Con Inicio abierto, cada venta nueva sale en una pastilla del color de su %, el total sube rodando y el teléfono vibra un instante.'},
+    {n:1,t:'✨ Día cumplido: chispas verdes al pasar $115.000 de ganancia en el día y doradas al pasar $230.000.'},
+    {n:2,t:'🎯 Ventas usa la misma escala de puntos que Inicio (antes el mismo día daba 7,9 en un lado y 9,3 en el otro).'}]},
   {v:'23.41',f:'14/10/2026',h:'19:28',c:[{n:1,t:'🔎 Inicio: el cartel de la revisión muestra que la etapa 6 (ideas nuevas) espera que elijas.'}]},
   {v:'23.40',f:'14/10/2026',h:'19:18',c:[{n:1,t:'📋 Pedidos de Paraguay: el contador de arriba dice el corte real (17 días: viaje + preparar + caja), no 14 como Bs As.'}]},
   {v:'23.39',f:'14/10/2026',h:'11:00',c:[{n:1,t:'🧠 La ventanita del cerebro ya no repite oraciones: si el motivo de un cambio de precio ya está en la nota de arriba, no se vuelve a escribir.'}]},
@@ -3785,7 +3825,7 @@ const REV_CADA_DIAS=7;
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel pide la
 //                     etapa más vieja cuando pasaron REV_CADA_DIAS desde la última.
 const REV_PENDIENTE=[
-  {t:'Etapa 6 · ideas nuevas: 11 para elegir',que:'Te las pasé todas juntas en el chat (maquetas en una página aparte)',pedi:'etapa 6: 1a 2b 3a…'},
+  {t:'Etapa 6 · reclamos que pagó ML (idea 7)',que:'Lo confirmo con el reporte de Mercado Pago antes de cambiar el costo de los productos',pedi:'nada: lo hago yo y te aviso'},
 ];
 // Etapa 7 (diseño) cerrada el 01/10/2026: hechas 1-9, 11, 13, 14 y 15; la 10 (Pedidos) y la 12 (sacar
 // "Participación por cuenta") él eligió dejarlas como están.
@@ -6349,6 +6389,7 @@ function renderOfiCaja(){
         <div style="font-size:.68rem;color:var(--muted)">tenés ${f.hay} u.${otras>0?` <span style="color:var(--amber)">(${otras} en otra caja)</span>`:''}</div>
         ${casilla}
       </div>
+      ${_cerNotaVisHTML(_cerNotaCtx('caja',f.p.id,ofiFiltroCuenta&&ofiFiltroCuenta!=='todas'?ofiFiltroCuenta:'',f.variante||''),'caja-vis')}
       ${lineas}${pie}
     </div>`;
   }).join('')+_noRepoPie()+_repoExtraPie();
@@ -9519,6 +9560,26 @@ function mlas_cnt(C){return Object.keys(C.porMla||{}).length;}
 // En Pedidos suma por qué pide esas unidades (la misma cuenta de la tarjeta, `cuentaPedidoHTML`). No calcula
 // nada nuevo: dice lo que ya decidieron el robot y el panel.
 let _cerNotas=null;
+// ── LA NOTA "HOLA TITO!" A LA VISTA (etapa 6, idea 2, 14/10/2026, eligió la a) ─────────────────
+// La explicación de cada pedido (y la de cada caja) vivía sólo adentro del 🧠: había que tocar para leerla.
+// Ahora va en la tarjeta, cortada en dos renglones y entera al abrirla. Es el MISMO texto que abre el 🧠
+// (misma clave, `_cerClaveCtx`); sin nota escrita no se dibuja nada.
+let _cerTxt={};
+function _cerNotaCtx(tipo,prodId,cuenta,variante){
+  const T=_cerTxt||{};
+  const k1=_cerClaveCtx(tipo,prodId,cuenta,variante);if(T[k1])return T[k1];
+  if(variante){const k2=_cerClaveCtx(tipo,prodId,cuenta,'');if(T[k2])return T[k2];}
+  if(!variante){const pre=k1+'__v__';const vs=Object.keys(T).filter(k=>k.startsWith(pre));
+    if(vs.length)return {s:vs.map(k=>T[k].s).join(' · '),ts:Math.max(...vs.map(k=>T[k].ts||0))};}
+  if(tipo==='caja'&&!cuenta){const pre=`caja__${prodId}__`;const vs=Object.keys(T).filter(k=>k.startsWith(pre)&&(!variante||k.endsWith('__v__'+sid(String(variante).toLowerCase()))));
+    if(vs.length===1)return T[vs[0]];}
+  return null;
+}
+function _cerNotaVisHTML(n,extraCls){
+  if(!n||!n.s)return '';
+  const t=_cerEsc(n.s).replace(/^(Hola Tito!)/,'<b>$1</b>');
+  return `<div class="cer-vis${extraCls?' '+extraCls:''}"${extraCls?` onclick="this.classList.toggle('abierta')"`:''} title="Lo escribió Claude${n.ts?' el '+_cerFecha(n.ts):''}"><span class="cv-t">🧠 ${t}</span></div>`;
+}
 // ¿Escribió Claude algo para ESTE lugar? Mismas claves que lee `cerebroAbrir`: en Pedidos `ped__<prod>` (con o sin
 // variante), en Armar caja `caja__<prod>__<cuenta>` (de esa cuenta o de cualquiera si se miran todas), en el resto la
 // nota de precio de alguna publicación del producto.
@@ -10168,15 +10229,9 @@ function vpAggByAccount(entries){
 // Afinado el 27/09 con su definición: 7 = que a CYC, descontando TODO (retiro $1.800.000 + gastos
 // ~$760.000), le queden ~$900.000 en el mes → (2.560.000 + 900.000) / 30 ≈ $115.000 por día.
 // De 5 para arriba, cada punto son $15.000/día más (≈ $450.000 más por mes para CYC).
-const GAN_DIA_TABLA=[[0,0],[17000,1],[34000,2],[51000,3],[68000,4],[85000,5],[100000,6],[115000,7],[130000,8],[145000,9],[160000,10]];
-const GAN_DIA_TABLA_TXT='Guía: ganancia promedio por día → puntos. '+GAN_DIA_TABLA.slice(1).map(([g,p])=>p+' = $'+g.toLocaleString('es-AR')).join(' · ')+'. Sostenido todo el mes, con ~$700.000 de gastos y la ganancia ÷ 3: 4 ≈ $450.000 c/u · 5 ≈ $600.000 c/u · 7 ≈ $900.000 c/u · 10 ≈ $1.400.000 c/u. Es el promedio de los días del período, no un solo día bueno. No es el Puntaje del mes (ése mira además margen, faltantes, stock y reclamos).';
-function ganDiaPts(g){
-  if(!(g>0))return 0;
-  const T=GAN_DIA_TABLA;if(g>=T[T.length-1][0])return 10;
-  for(let i=1;i<T.length;i++){if(g<=T[i][0]){const[a,pa]=T[i-1],[b,pb]=T[i];return pa+(pb-pa)*(g-a)/(b-a);}}
-  return 10;
-}
-function ganDiaColor(g){const p=ganDiaPts(g);return p>=7?'var(--green)':p>=5?'var(--amber,#f59e0b)':'var(--red)';}
+// La tabla GAN_DIA_TABLA (ganDiaPts/ganDiaColor) se sacó el 14/10/2026 (etapa 6, idea 6, eligió la a): para la misma
+// ganancia daba otro número que Inicio (un día de $150.000 era 7,9 allá y 9,3 acá). Ventas usa ahora `_puntajeDia`.
+function ventasCountPts(e){return new Set(e.map(vpGrupoKey)).size||1;}
 function vpScopeKeys(){
   const allKeys=Object.keys(state.ventaprod||{});
   const{vy:y,vm:m}=vpGetYM();
@@ -10822,9 +10877,11 @@ function renderVentaProd(){
   const hoyK=dateToKey(new Date());
   const soloHoy=diasConVenta===1&&kpiEntries.every(v=>v._dateKey===hoyK);
   const ganDia=diasConVenta>0?gMes/diasConVenta:0;
-  const ptsDiaHtml=(!vpFilterCuenta&&diasConVenta>0)?`<br><span style="color:${ganDiaColor(ganDia)};font-weight:600" title="${GAN_DIA_TABLA_TXT}">≈ ${ganDiaPts(ganDia).toFixed(1).replace('.',',')} / 10</span> <span style="color:var(--muted)">${diasConVenta>1?`· ${fmt(Math.round(ganDia))}/día prom.`:''}${soloHoy?' · hoy va en curso':''}</span>`:'';
+  // UNA SOLA ESCALA (etapa 6, idea 6, 14/10/2026): la misma de Inicio (`_puntajeDia`: 7 en $115.000 por día, 10 en el
+  // doble), con la ganancia promedio por día del período. Antes era otra tabla y el mismo día daba dos puntajes.
+  const _ptsD=(!vpFilterCuenta&&diasConVenta>0)?_puntajeDia(null,{ventas:ventasCountPts(kpiEntries),gan:ganDia},1,'dia'):null;
+  const ptsDiaHtml=_ptsD?`<br><span style="color:${puntColor(_ptsD.score)};font-weight:600" title="La misma vara que el puntaje de Inicio: ganancia promedio por día → 7 puntos en ${fmt(PUNT_DIA_7)} (que a CYC, a vos y a tu papá les queden $900.000 por mes pagando todo) y 10 en ${fmt(PUNT_DIA_7*2)}. Es el promedio de los días del período con ventas, no un solo día bueno.">≈ ${_ptsD.score.toFixed(1).replace('.',',')} / 10</span> <span style="color:var(--muted)">${diasConVenta>1?`· ${fmt(Math.round(ganDia))}/día prom.`:''}${soloHoy?' · hoy va en curso':''}</span>`:'';
   let sinCostoU=0,sinCostoTot=0;kpiEntries.forEach(v=>{if(ventaSinCostoVP(v)){sinCostoU+=v.qty||0;sinCostoTot+=v.total||0;}});
-  const retiroMes=Math.round(mNeto*0.15);const retMitadMes=Math.round(retiroMes/2);
   // cantidad de VENTAS (operaciones únicas por N° de venta); las viejas sin saleId cuentan 1 c/u
   const ventasCount=new Set(kpiEntries.map(vpGrupoKey)).size;
   const periodoLabel=sk.label;
@@ -16188,6 +16245,38 @@ function cuentaPedidoHTML(p){
     <div style="font-size:.6rem;margin-top:3px;opacity:.85">${pie}</div>
   </div>${rem}`;
 }
+// ── EL TANQUE DE DÍAS (etapa 6, idea 1, 14/10/2026, eligió la a) ─────────────────────
+// La tarjeta decía la urgencia de TRES formas que podían contradecirse: con 0 en Full y 200 en casa
+// arriba "alcanza ~60 d", el chip "🔴 Urgente" (mide sólo ML) y la nota "~0d cubiertos". Ahora hay una
+// sola barra, en DÍAS al ritmo de venta: lo que cubre ML, lo que viaja y la oficina, más lo rayado que
+// se compra, con la raya roja del corte (14 Bs As · 17 Paraguay). Los números salen de lo que ya guarda
+// el pedido (cML/cCamino/cCasa/cVdia de cuentaPed): no calcula un ritmo nuevo. Sin ritmo no se dibuja.
+function pedTanqueHTML(p){
+  const v=parseFloat(p&&p.cVdia)||0;if(!(v>0)||p.cML==null)return '';
+  const ml=Math.max(0,parseInt(p.cML)||0),cam=Math.max(0,parseInt(p.cCamino)||0),casa=Math.max(0,parseInt(p.cCasa)||0);
+  const comp=Math.max(0,parseInt(p.cClaude&&p.cClaude.u!=null?p.cClaude.u:p.cantidad)||0);
+  const dMl=ml/v,dCam=cam/v,dCasa=casa/v,dComp=comp/v;
+  const _pr=(state.products||[]).find(x=>x.id===p.prodId);const corte=pedDiasRojoDe(_pr);
+  const tot=dMl+dCam+dCasa;
+  const escala=Math.max(30,corte*1.6,Math.min(120,tot+dComp));
+  const w=d=>Math.max(0,Math.min(100,d/escala*100));
+  let acc=0;const seg=(d,cls)=>{const ww=Math.min(w(d),100-acc);acc+=ww;return ww>0.4?`<span class="${cls}" style="width:${ww.toFixed(1)}%"></span>`:'';};
+  const barra=seg(dMl,'tq-ml')+seg(dCam,'tq-cam')+seg(dCasa,'tq-casa')+seg(dComp,'tq-buy');
+  const r=x=>x>=99?'99+':String(Math.round(x));
+  const colMin=(p.cSemDias!=null&&p.cSemDias<999&&p.cSemDias+1<tot)?` · <span style="color:var(--amber)">el color más corto alcanza ~${p.cSemDias} d</span>`:'';
+  const tr=p.prodId?transitoInfoDe(p.prodId):null;
+  const leg=[`<span><i class="tq-ml"></i>ML ${fmtN(ml)} u. · ${r(dMl)} d</span>`,
+    `<span><i class="tq-cam"></i>camino ${fmtN(cam)} u. · ${r(dCam)} d${tr&&tr.diasMax>=ENV_ROJO_DIAS?` <b style="color:var(--red)">(salió hace ${tr.diasMax} d)</b>`:''}</span>`,
+    `<span><i class="tq-casa"></i>oficina ${fmtN(casa)} u. · ${r(dCasa)} d</span>`,
+    comp>0?`<span><i class="tq-buy"></i>con lo que pido ${r(tot+dComp)} d</span>`:''].filter(Boolean).join('');
+  const msg=tot<=0?'<b style="color:var(--red)">no hay en ningún lado</b>'
+    :(dMl<corte&&dMl+dCam+dCasa>=corte?`<b style="color:var(--amber)">alcanza ${r(tot)} d, pero en ML sólo ${r(dMl)} d: hay que MANDAR</b>`
+    :tot<corte?`<b style="color:#f97316">se corta a los ${r(tot)} d, antes del corte de ${corte}</b>`:`alcanza ~${r(tot)} d`);
+  return `<div class="ped-tanque" title="Días que cubre cada lugar al ritmo de ${fmtN(Math.round(v*30))} por mes. La raya roja es el corte: lo que tarda reponer (${corte} días).">
+    <div class="tq-bar">${barra}<span class="tq-corte" style="left:${w(corte).toFixed(1)}%"></span></div>
+    <div class="tq-leg">${leg}</div>
+    <div class="tq-msg">${msg} · corte ${corte} d${colMin}</div></div>`;
+}
 // ── EL CHIP DE CADA VARIANTE: QUÉ COMPRAR Y DÓNDE ESTÁ LO QUE YA TENÉS ─────────────
 // Pedido suyo del 14/09/2026. Los tres lugares van SIEMPRE, aunque sean cero: un chip sin el
 // renglón se lee igual que uno donde nadie lo midió, y son justo los dos números que cambian la
@@ -16632,6 +16721,7 @@ function _pedidoItemHtml(p,opts){
         return t?`<div style="flex-basis:100%;font-size:.74rem;line-height:1.45;color:var(--text);padding:4px 0 0">🧠 <b>Por qué ${fmtN(p.cantidad||0)}:</b> ${escHtml(t)}</div>`:'';})()}
     </div>`;
   const _sem=_enCam?null:_pedSem(p);
+  const _tanque=_enCam?'':pedTanqueHTML(p);
   const _semTxt=!_sem?'':_sem==='rojo'?(p.cSemCol>0?`🔴 ${p.cSemCol} color${p.cSemCol>1?'es':''} sin stock en ningún lado`:'🔴 sin stock en ningún lado'):(p.cSemDias!=null&&p.cSemDias<999?`${_sem==='naranja'?'🟠':'🟡'} alcanza ~${p.cSemDias} d`:'')+(p.cSemCol>0?` · ${p.cSemCol} color${p.cSemCol>1?'es':''} en cero`:'');
   return `<details class="ped-card ${_est}${_sem?' sem-'+_sem:''}"${_abierto?' open':''} ontoggle="_setPedCardOpen('${p.id}',this.open)">
     <summary class="ped-head">
@@ -16640,18 +16730,19 @@ function _pedidoItemHtml(p,opts){
       ${_prod?maxCompraChip(_prod):''}
       <span class="ped-buy"><b>${fmtN(p.cantidad||1)}</b><i>u. a comprar${p.auto===false?' · a mano':''}</i>${_semTxt?`<i class="ped-sem" title="Cuenta lo que hay en ML + en camino + en tu oficina, al ritmo de venta">${_semTxt}</i>`:''}</span>
       <span class="ped-caret">▼</span>
+      ${(_prod&&_armU==null)?_cerNotaVisHTML(_cerNotaCtx('ped',_prod.id,'',p.variante||'')):''}
     </summary>
     <div class="ped-body">
       ${varToggle}
       ${fotoBtn}${copiarBtn}${_prod?cerebroBtn(_prod.id,{ped:p.id,variante:p.variante||''}):''}
-      ${p.nota?`<span class="pi-nota">${p.nota}</span>`:'<span class="pi-nota" style="flex:0"></span>'}
+      ${_tanque}${(()=>{const n=_tanque?String(p.nota||'').replace(/ · ~\d+d cubiertos/,'').replace(/ · 📦[\s\S]*$/,''):p.nota;return n?`<span class="pi-nota">${n}</span>`:'<span class="pi-nota" style="flex:0"></span>';})()}
       ${_enCam?'':riesgoBadge}
       ${(()=>{const _r=pedSinSentido(p);return _r?`<span class="pi-var-toggle" style="background:rgba(245,158,11,.14);color:var(--amber);border-color:rgba(245,158,11,.35);cursor:default" title="${_r.det.join(' · ').replace(/"/g,'&quot;')}">⚠️ este renglón no cierra${_r.n>1?' ('+_r.n+')':''}</span>`:'';})()}
       ${origenBtn}
       ${cuentaPedidoHTML(p)}
       ${opts.verdDet?`<div style="flex-basis:100%;font-size:.62rem;line-height:1.5;color:var(--muted)">🇵🇾 ${opts.verdDet}</div>`:''}${_prod?maxCompraHTML(_prod):''}
       <button class="pi-prov ${p.proveedor?'':'sin-prov'}" onclick="setPedidoProveedor('${p.id}')">${p.proveedor?p.proveedor.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'):'+ proveedor'}</button>
-      ${accionBtns}
+      ${p.auto===false||!_tanque?accionBtns:''}
       <span class="pi-ts">${p.ts?ts2s(p.ts):''}</span>
       <button class="btn btn-del" onclick="delPedido('${p.id}')">✕</button>
     </div>
@@ -18997,6 +19088,88 @@ function _puntajeDia(fecha,h,dias,esc){
   const nivel=score>=9?'🏆 '+qn[0]:score>=8?'🌟 '+qn[1]:score>=7?'✅ '+qn[2]:score>=6?'🟢 Aprobado':score>=5?'🟠 A mejorar':'🔴 Flojo';
   return{score,nivel,target,target2,n};
 }
+// ── A ESTA HORA, CONTRA LA SEMANA PASADA (etapa 6, idea 3, 14/10/2026, eligió la a) ─────────────
+// "Ventas de hoy" contra el MISMO día de la semana pasada, cortado a la MISMA hora: comparar contra el día entero de
+// ayer engaña (a la tarde siempre se va "abajo"). La línea es la ganancia acumulada hora por hora, la misma cuenta
+// que la tarjeta (`efectivoCostoVP`), con la hora real de cada venta (`ts`). Un día que no es hoy se compara entero.
+function _homeCurva(k){
+  const ents=Object.values((state.ventaprod||{})[k]||{}).filter(v=>!v.cancelada&&Number(v.ts)>0);
+  const pts=ents.map(v=>{const d=new Date(Number(v.ts));return {m:d.getHours()*60+d.getMinutes(),g:(v.neto||0)-efectivoCostoVP({...v,_dateKey:k})};}).sort((a,b)=>a.m-b.m);
+  const hasta=min=>pts.reduce((a,x)=>a+(x.m<=min?x.g:0),0);
+  const c=[];for(let h=0;h<=24;h++)c.push(hasta(h*60-1));
+  return {c,hasta,n:pts.length};
+}
+let _homeCurvaAnim=true;
+function _homeCurvaHTML(dia){
+  const k=dateToKey(dia),d7=new Date(dia);d7.setDate(d7.getDate()-7);const k7=dateToKey(d7);
+  if(!(state.ventaprod||{})[k7])return '';
+  const A=_homeCurva(k),B=_homeCurva(k7);if(!A.n&&!B.n)return '';
+  const esHoy=_homeHoyOff===0,now=new Date(),nm=now.getHours()*60+now.getMinutes();
+  const lim=esHoy?nm:1439;
+  const gA=A.hasta(lim),gB=B.hasta(lim);
+  const W=240,H=54,ymax=Math.max(1,...A.c,...B.c,gA),ymin=Math.min(0,...A.c,...B.c);
+  const X=h=>(h/24*W).toFixed(1),Y=g=>(H-2-(g-ymin)/(ymax-ymin)*(H-6)).toFixed(1);
+  const lin=(arr,hMax)=>{const pp=[];for(let h=0;h<=24&&h<=hMax;h++)pp.push(X(h)+','+Y(arr[h]));return pp.join(' ');};
+  const hFin=esHoy?nm/60:24;
+  let pA=lin(A.c,Math.floor(hFin));if(esHoy)pA+=' '+X(hFin)+','+Y(gA);
+  const DIAS=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  const p2=n=>String(n).padStart(2,'0');
+  const dif=gB>0?Math.round((gA-gB)/gB*100):null;
+  const difTxt=dif==null?'':`<b style="color:${dif>=0?'var(--green)':'var(--red)'}">${dif>=0?'+':''}${dif}%</b>`;
+  const anim=_homeCurvaAnim?' hoy-sp-anim':'';_homeCurvaAnim=false;
+  return `<div class="hoy-sp" title="Ganancia acumulada hora por hora. Línea de color: ${esHoy?'hoy':'este día'} · punteada: el ${DIAS[d7.getDay()]} ${p2(d7.getDate())}/${p2(d7.getMonth()+1)}. ${esHoy?'Se compara hasta la misma hora.':'Se comparan los dos días enteros.'}">
+    <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" class="${anim.trim()}"><polyline class="sp-b" points="${lin(B.c,24)}"/><polyline class="sp-a" pathLength="1000" points="${pA}"/>${esHoy&&A.n?`<circle class="sp-dot" cx="${X(hFin)}" cy="${Y(gA)}" r="3"/>`:''}</svg>
+    <div class="sp-txt">${esHoy?`A esta hora, el ${DIAS[d7.getDay()]} pasado`:`El ${DIAS[d7.getDay()]} anterior`} (${p2(d7.getDate())}/${p2(d7.getMonth()+1)}) iba <b style="color:var(--text)">${fmt(gB)}</b> de ganancia${difTxt?` · ${esHoy?'hoy':'este día'} ${difTxt}`:''}</div></div>`;
+}
+// ── CUANDO ENTRA UNA VENTA CON INICIO ABIERTO (etapa 6, idea 4, 14/10/2026, eligió la a) ─────────────
+// El total sube rodando, sale una pastilla con el color de su % y el teléfono vibra un instante. Sólo con "Ventas
+// de hoy" a la vista (Día, hoy) y la app al frente; la primera pintada no cuenta como venta nueva.
+// ── DÍA CUMPLIDO (idea 5): al pasar $115.000 de ganancia en el día el aro larga chispas verdes, y doradas al pasar
+// $230.000. Una vez por día por nivel (localStorage `cycDiaCumplido`).
+let _hoyVisto=null;
+function _homeHoyEfectos(esc,h,dia){
+  if(esc!=='dia'||_homeHoyOff!==0)return;
+  const k=dateToKey(dia);
+  const ents=Object.values((state.ventaprod||{})[k]||{}).filter(v=>!v.cancelada);
+  const grupos=new Set(ents.map(vpGrupoKey));
+  const prev=_hoyVisto;_hoyVisto={k,grupos,bruto:h.bruto,gan:h.gan};
+  const visible=currentPage==='home'&&document.visibilityState!=='hidden';
+  const calma=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(prev&&prev.k===k&&visible){
+    const nuevas=[...grupos].filter(g=>!prev.grupos.has(g));
+    if(nuevas.length){
+      const vs=ents.filter(v=>nuevas.includes(vpGrupoKey(v)));
+      let gan=0,cost=0,gest=0,tot=0;vs.forEach(v=>{gan+=(v.neto||0)-efectivoCostoVP({...v,_dateKey:k});cost+=efectivoCostoVP({...v,_dateKey:k});gest+=gestDivVP(v);tot+=v.total||0;});
+      const pct=pctGananciaVP(gan,cost,gest);
+      const nombre=vs.length&&nuevas.length===1?(vs[0].prod||vs[0].title||''):`${nuevas.length} ventas nuevas`;
+      _hoyPastilla(`+${fmt(tot)} · ${nombre}${pct!=null&&isFinite(pct)?' · '+(pct>=0?'+':'')+pct.toFixed(0)+'%':''}`,pctColor(pct));
+      if(!calma){_hoyRodar('hoy-bruto',prev.bruto,h.bruto);_hoyRodar('hoy-gan',prev.gan,h.gan);}
+      try{if(navigator.vibrate)navigator.vibrate(35);}catch(e){}
+    }
+  }
+  if(!visible)return;
+  let ya={};try{ya=JSON.parse(localStorage.getItem('cycDiaCumplido')||'{}')||{};}catch(e){ya={};}
+  const nivel=h.gan>=PUNT_DIA_7*2?2:h.gan>=PUNT_DIA_7?1:0;
+  if(nivel>0&&(ya.k!==k||(ya.n||0)<nivel)){
+    try{localStorage.setItem('cycDiaCumplido',JSON.stringify({k,n:nivel}));}catch(e){}
+    _hoyChispas(nivel===2?'#eab308':'#22c55e',nivel===2?`🏆 Día de oro · ${fmt(h.gan)} de ganancia`:`✅ Día cumplido · ${fmt(h.gan)} de ganancia`,calma);
+  }
+}
+function _hoyRodar(id,de,a){
+  const el=document.getElementById(id);if(!el||de===a)return;const t0=performance.now(),dur=900;
+  const paso=t=>{const x=Math.min(1,(t-t0)/dur),e=1-Math.pow(1-x,3);el.textContent=fmt(Math.round(de+(a-de)*e));if(x<1)requestAnimationFrame(paso);else el.textContent=fmt(a);};
+  requestAnimationFrame(paso);el.classList.add('hoy-flash');setTimeout(()=>el.classList.remove('hoy-flash'),900);
+}
+function _hoyPastilla(txt,col){
+  const d=document.createElement('div');d.className='hoy-pill';d.style.setProperty('--c',col||'var(--green)');
+  d.innerHTML=`<span>🛒</span>${String(txt).replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}`;
+  document.body.appendChild(d);setTimeout(()=>d.remove(),4200);
+}
+function _hoyChispas(col,txt,calma){
+  const b=document.createElement('div');b.className='hoy-boom';b.style.setProperty('--c',col);
+  let h='';if(!calma)for(let i=0;i<18;i++){const a=i/18*Math.PI*2,r=70+Math.random()*60;h+=`<i style="--x:${Math.round(Math.cos(a)*r)}px;--y:${Math.round(Math.sin(a)*r)}px;animation-delay:${Math.round(Math.random()*120)}ms"></i>`;}
+  b.innerHTML=h+`<b>${txt}</b>`;document.body.appendChild(b);setTimeout(()=>b.remove(),3600);
+}
 function renderHomeHoy(){
   const el=document.getElementById('home-hoy');if(!el||!state.ventaprod)return;
   const esc=_homeHoyEsc;
@@ -19019,18 +19192,20 @@ function renderHomeHoy(){
       <span style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">${escSel}${esc==='dia'&&_cerDiaVisible(dateToKey(hoy))?`<button onclick="homeHoyCerebro(event)" title="🧠 Qué pasó con las ventas de este día" style="background:transparent;border:1px solid var(--border2);color:var(--text);border-radius:999px;padding:3px 10px;font-size:.7rem;cursor:pointer">🧠 qué pasó</button>`:''}<span style="font-size:.7rem;color:var(--muted);border:1px solid var(--border2);border-radius:999px;padding:3px 10px">ver ventas ›</span></span>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:10px 34px;align-items:flex-end">
-      <div><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(2rem,8vw,3.4rem);line-height:1;letter-spacing:-.01em">${fmt(h.bruto)}</div><div style="font-size:.78rem;color:var(--muted);margin-top:6px">facturado · <b style="color:var(--text)">${h.ventas}</b> venta${h.ventas===1?'':'s'} · <b style="color:var(--text)">${h.u}</b> u.</div></div>
-      <div><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(1.6rem,6vw,2.2rem);line-height:1;color:var(--c)">${fmt(h.gan)}</div><div style="font-size:.78rem;color:var(--muted);margin-top:6px">ganancia · <b style="color:var(--text)">${pctTxt}</b></div></div>
+      <div><div id="hoy-bruto" style="font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(2rem,8vw,3.4rem);line-height:1;letter-spacing:-.01em">${fmt(h.bruto)}</div><div style="font-size:.78rem;color:var(--muted);margin-top:6px">facturado · <b style="color:var(--text)">${h.ventas}</b> venta${h.ventas===1?'':'s'} · <b style="color:var(--text)">${h.u}</b> u.</div></div>
+      <div><div id="hoy-gan" style="font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(1.6rem,6vw,2.2rem);line-height:1;color:var(--c)">${fmt(h.gan)}</div><div style="font-size:.78rem;color:var(--muted);margin-top:6px">ganancia · <b style="color:var(--text)">${pctTxt}</b></div></div>
       ${(()=>{const D=_puntajeDia(hoy,h,h.dias,esc);if(!D)return `<div style="align-self:center;padding:8px 14px;border-radius:12px;color:var(--muted);border:1px solid var(--border2);text-align:center"><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.35rem;line-height:1">—<span style="font-size:.6em;opacity:.7"> /10</span></div><div style="font-size:.74rem;font-weight:700;margin-top:4px">sin ventas todavía</div></div>`;const _c=puntColor(D.score);
         return `<div style="align-self:center;padding:8px 14px;border-radius:12px;color:${_c};background:color-mix(in srgb,${_c} 12%,transparent);border:1px solid color-mix(in srgb,${_c} 35%,transparent);text-align:center" title="Puntaje ${esc==='dia'?'del día':esc==='mes'?'del mes':'del año'} (de 0 a 10), sólo por la ganancia en pesos: 7 en ${fmt(D.target)}${D.n>1?` ($115.000 × ${D.n} días)`:' por día'} (que a cada uno de los 3 le queden $900.000 por mes pagando todo) y 10 en ${fmt(D.target2)}.">
           <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.35rem;line-height:1">${D.score.toFixed(1).replace('.',',')}<span style="font-size:.6em;opacity:.7"> /10</span></div><div style="font-size:.74rem;font-weight:700;margin-top:4px">${D.nivel}</div></div>`;})()}
     </div>
+    ${esc==='dia'?(()=>{try{return _homeCurvaHTML(hoy);}catch(e){return '';}})():''}
     <details id="hoy-cobro" ${_hoyCobroAbierto()?'open':''} onclick="event.stopPropagation()" ontoggle="_hoyCobroToggle(this)" style="margin-top:14px;padding-top:9px;border-top:1px solid color-mix(in srgb,var(--c) 25%,transparent)">
       <summary style="cursor:pointer;font-size:.72rem;color:var(--muted)">💸 cuánto cobrar</summary>
       <div id="hoy-cobro-in" style="margin-top:8px">${_hoyCobroAbierto()?_homeCobroHtml(_homeHoyFecha()):''}</div>
     </details>
   </div></div>`;
   vivaScan(el);
+  try{_homeHoyEfectos(esc,h,hoy);}catch(e){}
 }
 // CUÁNTO COBRAR, adentro de "Ventas de hoy" (09/10/2026, él: "sacar lo del puntaje del mes, no me interesa. lo único
 // que me interesa de ahí es cuánto cobrar (…) en detalle desplegable en ventas de hoy"). Misma cuenta que tenía el
@@ -19218,11 +19393,9 @@ function renderResumen_page(){
   setComp('res-efect-comp',c.efect,prevSnap?['efectivo','mp_disp','mp_liq'].reduce((s,k)=>s+(parseFloat(prevSnap.finanzas?.[k])||0),0):null,'cierre anterior');
 
   _initScopeDefaults('res');
-  const RETIRO_PCT=0.15;
 
   // ── Sumadores genéricos ──
   const _vpField=(keys,field)=>{let t=0;keys.forEach(k=>{Object.values(state.ventaprod[k]||{}).forEach(v=>t+=(v[field]||0));});return t;};
-  const _vpGan=(keys)=>{let g=0;keys.forEach(k=>{Object.values(state.ventaprod[k]||{}).forEach(v=>g+=((v.neto||0)-(v.costo||0)));});return g;};
   const _vpEfectCosto=keys=>{let t=0;keys.forEach(k=>{Object.values(state.ventaprod[k]||{}).forEach(v=>{t+=efectivoCostoVP({...v,_dateKey:k});});});return t;};
   // Cuánto de ese costo son impuestos (IIBB + monotributo) y no mercadería. Mismo criterio que
   // efectivoCostoVP: las canceladas no suman.
@@ -19275,7 +19448,6 @@ function renderResumen_page(){
   // ── Sumadores con período activo ──
   const vpNetoSum=(mk)=>_vpField(periodKeys,'neto');
   const vpCostoSum=(mk)=>_vpEfectCosto(periodKeys);
-  const vpGanSum=(mk)=>_vpGan(periodKeys);
   const comprasTot=(mk,tipo)=>_cmpTot(periodKeys._cmpKeys||[],tipo);
 
   // ── Cascada ──
