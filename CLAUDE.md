@@ -760,6 +760,29 @@ archivo. **Etapa 8 · Datos e historial** creada ese día (líneas de tiempo); c
 Inicio la pide ya. Y lo que se mira en TODAS: contar dos veces lo mismo (el stock ×4 del Centímetro),
 fallas leídas como dato, dos fórmulas para un número, datos de terceros en el registro público.
 
+## 🇵🇾 LA PASADA DEL MES DE GUAY: LISTA, ESPERANDO QUE ÉL LA PIDA (14/10/2026)
+
+Pedido suyo: *"quiero que TODOS esos estén en la web de cyc, no a la vista si no llega a las 100 ventas ni al 25% (...) la
+run de guay va a ser solo una vez al mes (...) y cerebro mira todos los días si los precios de ml suben o bajan"* y *"al mes
+no debería mirar solo precios, sino productos nuevos"*. Y después: *"no quiero mandarle nada ahora al chat (...) guardá todo
+para cuando te pregunte"*. **NO se le mandó nada al chat de compras todavía.**
+ · **Hecho y subido (v23.37):** `candalta` de un código ya cargado actualiza precio/fecha/vendidas (no lo saltea) ·
+   `candprecio:<código>=<US$>[/<vendidas>]` y `=nohay` (precios del mes sin buscar en ML; `nohay` = duro `noTipo:'nissei'`,
+   se revive si vuelve con precio; no toca lo tachado a mano) · `pyvisto:<código>|<nombre>|<motivo>` (lo mirado sin catálogo
+   exacto, `cyc/pyvistos`, se vuelve a buscar a los 90 días) · `pyconocidos` (solo lee: la lista código|US$|estado|nombre) ·
+   el robot mide 250 por vuelta (antes 40) y los descartados por margen cada 2 días (antes 7) · un candidato vence a los 60
+   días sin precio nuevo (antes 45) · `ml-sync/PROMPT_GUAY.md` ya dice todo eso (cargar aunque tenga <100 ventas, `pyvisto`,
+   pasada mensual por TODAS las páginas: lo conocido sólo precio, lo nuevo se busca en ML).
+ · **Cuando él diga "hagamos la de guay" (o pida el PROMPT GUAY):** (1) correr `pyconocidos` por ml-consulta, armar el
+   archivo "ya en CYC" (las líneas entre `@@LISTA` y `@@FIN`) y mandárselo con SendUserFile para que lo suba al chat de compras
+   · (2) pasarle el texto entero de `PROMPT_GUAY.md` (el otro chat no lee direcciones) · (3) cargar lo que mande:
+   `candprecio`/`pyvisto`/`candalta` por ml-sync, y `pyprecio` para los probados · (4) actualizar "DÓNDE QUEDÓ" en el prompt.
+ · **El número al 14/10:** 1.034 códigos de Paraguay en CYC (145 a la vista o esperando 2ª medición · 784 guardados por margen
+   · 59 afuera por otros motivos · 46 ya son fichas). El barrido llegó a la página 424 de Nissei (del más caro al más barato,
+   ~8.500 de ~13.000): faltan ~4.500, los más baratos. Lo que antes se miró en ML y no se cargó (sin catálogo o <100 ventas)
+   no quedó anotado: desde la próxima pasada sí.
+ · **Lo que falta medir:** que la corrida de `candidatos` con 250 no tarde de más ni haga dar 429 a la noche.
+
 ## 📦 CAJAS A FULL: 30 DÍAS + 7 DE VIAJE · ALMACENAMIENTO A LOS 4 MESES (14/10/2026, regla suya)
 
 Él: *"para mandar cajas a full tené en cuenta 30 días para mantener stock y 7 días que tarda en llegar y que te cobran a los 4
