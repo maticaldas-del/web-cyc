@@ -463,6 +463,13 @@ los días: 7 = $115.000 × días, 10 = el doble. Período en curso cuenta hasta 
 ventas guardadas (01/05/2026) no cuentan. La vida de la tarjeta usa el promedio por día. Elección en `cycHoyEsc`.
 Qué chequear: que el total del mes coincida con Ventas en "Mes"; que las flechas no pasen de hoy.
 
+### El 🧠 nunca repite oraciones (14/10/2026, v23.39 `cyc-v619`, regla suya)
+Él, con el Metatarso Fuerte: *"repite oraciones. no quiero que nunca repita oraciones"*. La nota de la publicación ya trae el
+motivo del último cambio y abajo "Por qué cambió el precio" lo volvía a escribir. Vive en `cerebroBtn` (index.html, modo Claude):
+`yaDicho`/`_repetido`/`_decir` comparan el texto normalizado (sin tildes ni signos, primeros 80 caracteres) y un motivo o nota que
+ya está adentro de algo mostrado no se vuelve a escribir; si todos los cambios se repiten, no sale el título. Qué chequear: una
+nota con el motivo adentro + el mismo cambio en claudecambios → sale una sola vez; un cambio con otro motivo sí sale.
+
 ### Ventas con vida (08/10/2026 a la noche, v22.78)
 - **Qué es:** cada venta de Ventas x Producto (celu y PC) y la tarjeta "Ventas de hoy" de Inicio llevan color de nivel y figuras animadas atrás. Elegido por él con ejemplos.
 - **Dónde vive:** `index.html`: CSS `.vw`/`.viva`/`lv-*`/`mv-*`; motor `vivaScan` (un solo reloj, sólo anima lo que está en pantalla, reloj de respaldo si el visor frena requestAnimationFrame); `vivaVenta` + `vivaEnvolver` (ventas) y `vivaDia` (Inicio). `_pctNivel` ahora devuelve también la clave `k`.

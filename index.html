@@ -2519,7 +2519,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.38';
+const APP_VERSION='23.39';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2530,6 +2530,7 @@ const APP_VERSION='23.38';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.39',f:'14/10/2026',h:'11:00',c:[{n:1,t:'🧠 La ventanita del cerebro ya no repite oraciones: si el motivo de un cambio de precio ya está en la nota de arriba, no se vuelve a escribir.'}]},
   {v:'23.38',f:'14/10/2026',h:'11:10',c:[{n:1,t:'📱 Productos en el celu: el nombre de cada ficha va arriba, a todo el ancho y en varios renglones, así se lee completo.'}]},
   {v:'23.37',f:'14/10/2026',h:'22:45',c:[{n:2,t:'🇵🇾 Para probar: el precio de Paraguay ahora dura 60 días (antes 45) porque el chat de compras pasa una vez por mes a actualizar todo lo cargado.'}]},
   {v:'23.36',f:'14/10/2026',h:'21:15',c:[{n:3,t:'📦 Armar caja: lo que se manda cubre 30 días de venta más los 7 que tarda en llegar (antes 20 en total). Y el aviso de almacenamiento de Full cuenta 4 meses para todo lo chico (los Tenders siguen en 2).'}]},
@@ -9621,9 +9622,15 @@ async function cerebroAbrir(el,ev){
   // de hoy, ni la cuenta del pedido): sólo mis notas, con su fecha. Si no escribí nada, lo dice y nada más.
   if(modoClaude){
     let nn=0,falla=false;const vistos=new Set();
+    // SIN ORACIONES REPETIDAS (14/10/2026, él: *"repite oraciones. no quiero que nunca repita oraciones"*): todo texto
+    // que ya salió en la ventana queda anotado acá, y un motivo de cambio que ya está adentro de una nota no se repite.
+    const yaDicho=[];const _nrm=t=>String(t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim();
+    const _repetido=t=>{const n=_nrm(t);if(n.length<12)return false;const pz=n.slice(0,80);return yaDicho.some(y=>y.includes(pz)||n.includes(y.slice(0,80)));};
+    const _decir=t=>{yaDicho.push(_nrm(t));};
     for(const o of ctxK){
       if(o.n===undefined){falla=true;continue;}
       if(!o.n||!o.n.simple||vistos.has(o.cab))continue;vistos.add(o.cab);nn++;
+      if(_repetido(o.n.simple))continue;_decir(o.n.simple);
       h+=par(`${o.cab&&(ctxK.length>2||o.esVar)?`<b>${_cerEsc(o.cab)}:</b> `:''}💭 ${_cerEsc(_cerFecha(o.n.ts))}: ${_cerEsc(o.n.simple)}`);
     }
     // CADA LUGAR, SU NOTA (08/10/2026, él: *"en ventas quiero que digas por qué aumentó el precio o por qué no, y en
@@ -9636,6 +9643,7 @@ async function cerebroAbrir(el,ev){
       if(c===undefined){falla=true;continue;}
       if(!c||!c.simple)continue;nn++;
       const cab=varias?`<b>${_cerEsc(e.cuenta||'')}${e.variant?' · '+_cerEsc(e.variant):''}${e.status&&e.status!=='active'?' · pausada':''}:</b> `:'';
+      if(_repetido(c.simple))continue;_decir(c.simple);
       h+=par(`${cab}💭 ${_cerEsc(_cerFecha(c.ts))}: ${_cerEsc(c.simple)}`);
     }
     // POR QUÉ CAMBIÓ EL PRECIO (13/10/2026, él con el Paulvic Barbarella: "no explica por qué aumentó de 58 a 97%"): la nota
@@ -9645,8 +9653,10 @@ async function cerebroAbrir(el,ev){
       const cc0=Object.values(state.claudecambios||{}).filter(c=>c&&mlas.includes(c.mla)&&Number(c.ts)>0);
       for(const k of mlas){const a=(state.autoprecio||{})[k];if(a&&Number(a.ts)>0&&Number(a.a)>0&&!cc0.some(c=>c.mla===k&&Math.abs(Number(c.ts)-Number(a.ts))<15*60e3))cc0.push({mla:k,ts:Number(a.ts),de:a.de,a:a.a,motivo:a.motivo||(a.por?'('+a.por+')':'')});}
       const cc=cc0.sort((x,y)=>Number(y.ts)-Number(x.ts)).slice(0,3);
-      if(cc.length){h+=par('<b>Por qué cambió el precio:</b>');
-        for(const c of cc){const sube=Number(c.a)>Number(c.de);h+=par(`${flechaHTML(flechaTipo(c.mla,Number(c.ts),'',sube),sube)} ${_cerEsc(_cerFecha(c.ts))}: ${fmt(Number(c.de)||0)} → ${fmt(Number(c.a)||0)} · ${_cerEsc(c.motivo||'sin motivo anotado')}`);nn++;}}
+      // Un cambio cuyo motivo ya está en la nota de arriba no se vuelve a escribir.
+      const cc2=cc.filter(c=>!(c.motivo&&_repetido(c.motivo)));
+      if(cc2.length){h+=par('<b>Por qué cambió el precio:</b>');
+        for(const c of cc2){if(c.motivo)_decir(c.motivo);const sube=Number(c.a)>Number(c.de);h+=par(`${flechaHTML(flechaTipo(c.mla,Number(c.ts),'',sube),sube)} ${_cerEsc(_cerFecha(c.ts))}: ${fmt(Number(c.de)||0)} → ${fmt(Number(c.a)||0)} · ${_cerEsc(c.motivo||'sin motivo anotado')}`);nn++;}}
     }
     if(falla)h+=par('<span style="color:var(--amber)">No pude leer alguna nota. Probá de nuevo en un rato.</span>');
     else if(!nn)h+=par(`<span style="color:var(--muted)">${soloUnid?'Todavía no escribí por qué van estas unidades.':'Todavía no escribí nada sobre el precio de esto.'}</span>`);

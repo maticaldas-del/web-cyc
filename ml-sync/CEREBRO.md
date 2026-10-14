@@ -139,6 +139,6 @@ eso espero tantos días o haré tal cosa'"*. Todo motivo de `decido` (y toda not
 2. **POR QUÉ:** el tipo con su palabra (techo/prueba · escasez · peor caso 25% · caja · remate/liquidar · vuelvo) y el dato que lo dispara.
 3. **QUÉ ESPERO VER:** en números (cuántas ventas por semana, cuánto deja por unidad, plata por día).
 4. **SI NO PASA:** cuántos días espero y qué hago (volver a $Z, bajar, promo, otro escalón).
-Sin `;` adentro. Al revisar una decisión vieja, se escribe la nota con lo que pasó contra lo esperado.
+Sin `;` adentro. **Nunca repetir oraciones** (regla suya del 14/10): la nota no copia el motivo de otro cambio que ya se ve. Al revisar una decisión vieja, se escribe la nota con lo que pasó contra lo esperado.
 
 - **Cajas a 60 días sólo en lo parejo (14/10/2026, eligió la a):** 37 días de base; 60 si vende parejo hace 2 meses y no tiene prueba de precio abierta (`notas/sin_estirar.txt`, mantenerla al abrir o cerrar pruebas). Respetar el cupo de la cuenta.
