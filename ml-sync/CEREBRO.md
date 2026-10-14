@@ -119,7 +119,7 @@ la historia y el porqué). Si algo de acá choca con CLAUDE.md, manda lo más nu
 - Paulvic del 06/10 (40 u.): al llegar, `pvped:llego`, rehacer la cuenta con el flete y ofrecer `poncosto`.
 - Idea propuesta: probar un Paulvic de hombre a ~$17.990 después del Día de la Madre (escalón de comisión de $15.000).
 - Medir promos en el CyberMonday 02/11.
-- Descuentos del 13/10 (Tendedero, Ferrari Rojo, Pendrive 16gb, Centímetro Blanco, Mercedes, Corsair, Pokémon, Adyan): ML los
+- Descuentos del 13/10: CONFIRMADOS puestos el 14/10 (vencen 26-27/10), se juzgan desde el 20/10. Descuentos del 14/10 (Asher, Infusor de acero, Chispero, Adaptador universal de Matías, Temporizador, Redmi 5 Lite en promo de ML): ML los aceptó y no se veían al releer, confirmar en la vuelta de las 12:52.
   aceptó pero no se veían al releer. Confirmar en la vuelta de las 12:52 que estén puestos y juzgarlos a los 7-14 días.
 - Tarifa de almacenamiento (`almactarifa`) sigue sin pasarla él.
 
