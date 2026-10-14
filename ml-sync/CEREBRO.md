@@ -93,6 +93,11 @@ la historia y el porqué). Si algo de acá choca con CLAUDE.md, manda lo más nu
   Pedido viejo sin datos: `compray:…|sinpesos|go` y lo que falta se le pide. Con los gastos del próximo pedido se
   re-evalúa el recargo del 17% (medidos: 19,9% y 22,4%). Precios y códigos sólo de comprasparaguay (nunca nissei.com).
 - Al llegar un pedido: ficha (costo pagado ×1,17), cuenta según rubro (perfumes → Adriana) y equilibrio, vínculo.
+- **Lo que NO SE CONSIGUE MÁS no se pide nunca** (`ml-sync/notas/juicios.txt` con 0). Dicho por él: los **De la Patagonia**
+  (las 3 fichas, 14/10). Lo que queda se vende hasta terminarlo: cada unidad es la última, así que no se remata por debajo
+  de lo necesario; sí se baja si el almacenamiento (120 días) va a costar más que lo que se resigna.
+- **Gasto nuevo de Paraguay (14/10):** adelantar plata de "a liquidar" de MP para comprar los dólares cuesta (el 14/10, $29.000):
+  va como `otros=` del pedido. Lo que pagó de más el cambista sobre el ticket va en `cambio=`.
 
 ## 6 · Plata
 - **El 1º de cada mes cargo el retiro** ($1.800.000 hasta que él diga otra cosa).

@@ -18,3 +18,6 @@ p1779912656310=0|Indoor: vendía a $9.000-13.000 pero hoy está publicado a $32.
 p1781714867137=0|Tarjeta SanDisk Ultra con adaptador: las que vendíamos eran truchas y Matías las sacó. No se compra
 p1779912655660#Rosa=0|Centímetro Rosa: en la oficina hay 150 Rosa que van a Full ahora y entre los tres colores tenemos más de 800 (Full, oficina y camino). Desde que subió a $3.450 se vende bastante menos. No compres hasta que eso baje
 p17833581096732=2|Xiaomi Watch S5: vendió 3 en todo el semestre (2 en el último mes) y cada uno cuesta US$135. Con 2 alcanza para ver si a $533.000 sigue saliendo
+p1779912655500=0|De la Patagonia: no se consigue más, me lo dijiste el 14/10. No se pide. Quedan 21 en el Full de Adriana y se venden hasta que se terminen
+p1779912655510=0|Patagonia Estuche: no se consigue más (14/10). No se pide
+p1787594663055=0|De la Patagonia KO UNISEX: no se consigue más (14/10). No se pide. Quedan 2 en el Full de Adriana
