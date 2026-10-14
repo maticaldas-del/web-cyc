@@ -778,3 +778,5 @@ Se sacó el renglón final. "Por qué cambió el precio" también toma el últim
 `claudecambios`. Regla de las 4 partes del motivo en `CEREBRO.md`. Chequear que las notas nuevas la cumplan.
 
 - 13/10 · PROMPT_GUAY rehecho con las correcciones del chat de compras: Chrome al frente con 3 pestañas, Claude in Chrome (no el navegador integrado), sin leer direcciones remotas (se pega entero), recorrido por `ordem=maior-preco` sin www, foto `thumbs/big`, ML por HTML (polycard), algo cada 15 min, y pregunta antes de pegar en el chat CYC. Se sacó la contradicción maquillaje/perfumes (afuera desde el 13/10) y el "17%" (el recargo se mide, hoy ~21%). Chequear: que "DÓNDE QUEDÓ" se actualice después de cada barrido.
+
+- **(etapa 3 · 14/10/2026) Cajas a 60 días en lo parejo:** `decide_cajas.py` `dias_de`/`parejo`, lista `notas/sin_estirar.txt`. Chequear: que la lista siga al día con las pruebas abiertas de `techo.md`, que el criterio de "parejo" no estire algo que se está frenando, y que el cupo de la cuenta no se pase.

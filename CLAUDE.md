@@ -766,6 +766,10 @@ fallas leídas como dato, dos fórmulas para un número, datos de terceros en el
 meses de stock en productos pequeños (o sea todos menos los tenders)"*. Armar caja y `decide_cajas.py` cubren **37 días** de venta
 (`REPO_DIAS_COBERTURA`=30 + `REPO_DIAS_DEMORA`=7, `REPO_DIAS_TOTAL`=37; antes 20). El aviso de almacenamiento de Rotación y
 `liquidarDe` usan `almacDiasDe(p)`: **120 días** para lo chico, **60** para lo grande (`esGrandeFull`, los Tenders). v23.36.
+**Y SE ESTIRA A 60 DÍAS SÓLO EN LO PAREJO (14/10/2026, eligió la a):** `decide_cajas.py` usa 60 días (`T_LARGO`) cuando el
+producto vende parejo (4+ en 30 d, 8+ en 60 d, stock 28+ días y los dos meses parecidos: aproxima "vendió todas las semanas")
+**y** no tiene una prueba de precio abierta (`ml-sync/notas/sin_estirar.txt`, un pedazo de nombre por renglón: sacarlo cuando
+la prueba se cierra). Todo lo demás, 37. El cupo de cada cuenta lo sigue frenando el botón del cupo de Armar caja.
 
 ## 📋 LA LISTA ÚNICA DEL CEREBRO: `ml-sync/CEREBRO.md` (13/10/2026, pedido suyo)
 

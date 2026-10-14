@@ -7,6 +7,21 @@
 # mínimo 4; nunca más de lo que hay en la oficina. Paulvic: todo a Adriana menos Persea (Luciana). Remates no cuentan.
 import re,sys,math
 T=37  # 30 días de venta + 7 de viaje (regla suya del 14/10/2026)
+T_LARGO=60  # se estira a 60 días sólo en lo que vende parejo y no tiene prueba de precio abierta (eligió la a, 14/10/2026)
+import os
+_SE=os.path.join(os.path.dirname(os.path.abspath(__file__)),'sin_estirar.txt')
+SIN_ESTIRAR=[l.strip().lower() for l in open(_SE)] if os.path.exists(_SE) else None
+SIN_ESTIRAR=[x for x in SIN_ESTIRAR if x and not x.startswith('#')] if SIN_ESTIRAR is not None else None
+def parejo(v30,v60,dcs):
+    # "vendió todas las semanas de los últimos 2 meses": el log no trae semanas, así que se pide lo que lo aproxima:
+    # 4+ en 30 días (una por semana), 8+ en 60, stock casi todo el mes y los dos meses parecidos (ni subiendo ni cayendo).
+    return v30>=4 and v60>=8 and dcs>=28 and 0.4<=v30/v60<=0.6
+def dias_de(nombre,v30,v60,dcs):
+    if SIN_ESTIRAR is None: return T,'sin la lista de pruebas abiertas no estiro'
+    n=nombre.lower()
+    if any(x in n for x in SIN_ESTIRAR): return T,'tiene una prueba de precio abierta'
+    if parejo(v30,v60,dcs): return T_LARGO,'vende parejo hace 2 meses'
+    return T,''
 AB={'Ad':'Adriana','Lu':'Luciana','Ay':'Ayelen','Ma':'Matias'}
 def r_de(v30,v60,v180,tiene,dcs=30):
     d=max(7,min(30,dcs))
@@ -15,9 +30,9 @@ def r_de(v30,v60,v180,tiene,dcs=30):
     if v180>=4 and tiene==0: return v180/180,f"agotado, vendía {v180} en 180 d"
     if v30>0: return v30/d,f"vendió {v30} en 30 d"
     return 0,"no vende"
-def calc(v30,v60,v180,full,cam,casa,dcs=30):
+def calc(v30,v60,v180,full,cam,casa,dcs=30,dias=T):
     t=full+cam; r,b=r_de(v30,v60,v180,t,dcs)
-    q=math.ceil(r*T-t-0.25) if r*T>t else 0
+    q=math.ceil(r*dias-t-0.25) if r*dias>t else 0
     if t==0 and r>0: q=max(q,4)
     return max(0,min(q,casa)),r,b
 L=[re.sub(r'^\d{4}-\d\d-\d\dT[\d:.]+Z ?','',l) for l in open(sys.argv[1]).read().split('\n')]
@@ -36,7 +51,9 @@ for l in L:
     if m and cur: cur['vars'].append(dict(v=m.group(1),s=list(map(int,m.group(2,3,4))),dcs=int(m.group(5)) if m.group(5) else cur['dcs'],full=int(m.group(6)),casa=int(m.group(7)),cam=int(m.group(8))))
 print(f"leí {len(P)} de {esper} productos"+(' ✓' if len(P)==esper else ' ⚠️ NO CIERRA: hay renglones que no entendí'))
 if any(p['ctas'] is None for p in P): print('⚠️ el log es viejo (no trae "ctas [..]"): corré pedidostodo de nuevo'); sys.exit(1)
-out=[];res=[];sin=[];amano=[];nOfi=0
+out=[];res=[];sin=[];amano=[];nOfi=0;largos=[]
+def txt_dias(D,por):
+    return f"para {D} dias ({por}: el cupo de esa cuenta lo controla el botón del cupo)" if D==T_LARGO else "para 37 dias (30 + 7 de viaje)"
 for p in P:
     if p['casa']<=0 and not any(x['casa']>0 for x in p['vars']): continue
     nOfi+=1
@@ -51,14 +68,20 @@ for p in P:
             if x['casa']<=0: continue
             c='Luciana' if (pv and x['v']=='Persea') else cta
             if pv and c not in ctas: sin.append(f"{p['n']} · {x['v']}: va a {c} pero {c} no lo puede recibir (no publica o nomandar)"); continue
-            q,r,b=calc(*x['s'],x['full'],x['cam'],x['casa'],x['dcs'])
-            out.append(f"caja:{p['id']}@{c}#{x['v']}=u|{q}|{b} · hay {x['full']} en Full y {x['cam']} en camino · para 37 dias (30 + 7 de viaje) hacen falta {r*T:.0f} · en la oficina {x['casa']}")
+            D,por=dias_de(p['n'],x['s'][0],x['s'][1],x['dcs'])
+            q,r,b=calc(*x['s'],x['full'],x['cam'],x['casa'],x['dcs'],D)
+            out.append(f"caja:{p['id']}@{c}#{x['v']}=u|{q}|{b} · hay {x['full']} en Full y {x['cam']} en camino · {txt_dias(D,por)} hacen falta {r*D:.0f} · en la oficina {x['casa']}")
+            if D==T_LARGO: largos.append(f"{p['n'][:38]} · {x['v']}")
             if q: res.append(f"{p['n'][:38]} · {x['v']} → {c}: {q}")
     else:
-        q,r,b=calc(*p['v'],p['full'],p['cam'],p['casa'],p['dcs'])
-        out.append(f"caja:{p['id']}@{cta}=u|{q}|{b} · hay {p['full']} en Full y {p['cam']} en camino · para 37 dias (30 + 7 de viaje) hacen falta {r*T:.0f} · en la oficina {p['casa']}")
+        D,por=dias_de(p['n'],p['v'][0],p['v'][1],p['dcs'])
+        q,r,b=calc(*p['v'],p['full'],p['cam'],p['casa'],p['dcs'],D)
+        out.append(f"caja:{p['id']}@{cta}=u|{q}|{b} · hay {p['full']} en Full y {p['cam']} en camino · {txt_dias(D,por)} hacen falta {r*D:.0f} · en la oficina {p['casa']}")
+        if D==T_LARGO: largos.append(p['n'][:38])
         if q: res.append(f"{p['n'][:38]} → {cta}: {q}")
 open('cajas.txt','w').write('\n'.join(out)+'\n')
 print(len(out),'renglones de caja ·',nOfi,'productos con mercadería en la oficina');print('\n'.join(res))
+print(f"estirados a {T_LARGO} días (venden parejo, sin prueba abierta): {len(largos)}",*largos,sep='\n  ')
+if SIN_ESTIRAR is None: print('⚠️ no encontré sin_estirar.txt: todo quedó en 37 días')
 if sin: print('SIN CUENTA:',*sin,sep='\n  ')
 if amano: print('DECIDIR A MANO (más de una cuenta):',*amano,sep='\n  ')
