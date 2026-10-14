@@ -430,6 +430,23 @@ el precio de un candidato distinto con código parecido (se compara también por
   corre aparte (`BILLING_PROBE="$c" node …`, el chequeo de sólo lectura de ml-consulta se aplica a cada uno), separados
   por `##### <comando>`; si uno falla siguen los demás y la corrida termina en error. **Chequear:** que el texto siga
   entrando por variable de entorno (nunca pegado en bash) y que no haya opciones repetidas en un paso del workflow.
+- **`antiguo[:cuenta]`** (solo lee): lo que Full va a cobrar de stock antiguo por producto×cuenta, al ritmo normal
+  (`lotesFifo` + `cargoAntiguoProy`, la misma cuenta de la sobra, que con SOLO_DATOS no miraba nadie): próximo cierre,
+  3 y 12 cierres. Lo recién llegado sin ventas no se proyecta (si no, suma 3 años de cargo inventado). Primera medición
+  14/10: 8 con cargo, $40.613 en el próximo cierre, $1,19M a 12 cierres (la Tira Led de Luciana se lleva $761.450).
+  **Chequear:** que la cuenta cierre (`CUENTA: N = con cargo + sin cargo ✓`) y que use la misma tabla que la sobra.
+- **`reclamocubre[:días]`** (solo lee): qué dice ML de cada reclamo (`resolution`) y cómo quedó la plata del pago.
+  Medido 14/10 (90 días): **68 de 69 los pagó el programa de protección de ML** (`refunds[].source.type = bpp`,
+  `bpp_refunded`/`bpp_covered`), 1 lo pagamos nosotros. **Imprime sólo códigos y tipos: NUNCA `source.name`** (trae
+  nombre y apellido del titular; pasó en la primera corrida y se borró ese registro de GitHub).
+- **Cargos de Full por tipo** (`cargosfull` sin `:go`): el resumen del período de ML trae almacenamiento (CFWA),
+  almacenamiento prolongado (CFBA), retiro/descarte (CFRS), devoluciones (CDSD) y multas por envíos a Full (CFPB), por
+  cuenta. Con eso el "gasto de Full del mes" puede salir de ML en vez de pasarlo él. Y el "$1M que ML factura y no se
+  explica" (idea de un revisor) NO existe: el resto de la factura son cargos por venta (CVFV, CVFF, CFF, CVFN) que ya
+  están en el neto de cada venta, más percepciones.
+- **Precio sugerido de ML** (`/suggestions/items/<MLA>/details`): contesta en publicaciones con comparables
+  (`lowest_price`, `suggested_price`, `status: with_benchmark_highest`); en las que no tienen, 404. `health` da 404
+  ("buy_it_now not allowed") y `trends` vuelve vacío: descartados.
 - **informe §9** lista las cajas que ML ya dio de alta ENTERAS (cualquier edad) con el `cajallego:<seg>;…:go` listo
   (antes salían sólo con 9+ días y el seguimiento cortado). **Chequear:** misma regla que `cajaEntradoDe` (seguimiento
   igual, nunca más de lo que llevaba el renglón).

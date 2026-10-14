@@ -2519,7 +2519,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.40';
+const APP_VERSION='23.41';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2530,6 +2530,7 @@ const APP_VERSION='23.40';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.41',f:'14/10/2026',h:'19:28',c:[{n:1,t:'🔎 Inicio: el cartel de la revisión muestra que la etapa 6 (ideas nuevas) espera que elijas.'}]},
   {v:'23.40',f:'14/10/2026',h:'19:18',c:[{n:1,t:'📋 Pedidos de Paraguay: el contador de arriba dice el corte real (17 días: viaje + preparar + caja), no 14 como Bs As.'}]},
   {v:'23.39',f:'14/10/2026',h:'11:00',c:[{n:1,t:'🧠 La ventanita del cerebro ya no repite oraciones: si el motivo de un cambio de precio ya está en la nota de arriba, no se vuelve a escribir.'}]},
   {v:'23.38',f:'14/10/2026',h:'11:10',c:[{n:1,t:'📱 Productos en el celu: el nombre de cada ficha va arriba, a todo el ancho y en varios renglones, así se lee completo.'}]},
@@ -3784,6 +3785,7 @@ const REV_CADA_DIAS=7;
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel pide la
 //                     etapa más vieja cuando pasaron REV_CADA_DIAS desde la última.
 const REV_PENDIENTE=[
+  {t:'Etapa 6 · ideas nuevas: 11 para elegir',que:'Te las pasé todas juntas en el chat (maquetas en una página aparte)',pedi:'etapa 6: 1a 2b 3a…'},
 ];
 // Etapa 7 (diseño) cerrada el 01/10/2026: hechas 1-9, 11, 13, 14 y 15; la 10 (Pedidos) y la 12 (sacar
 // "Participación por cuenta") él eligió dejarlas como están.

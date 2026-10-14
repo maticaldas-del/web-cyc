@@ -20378,7 +20378,9 @@ async function main() {
             const rf = Array.isArray(b.refunds) ? b.refunds : [];
             const devuelto = rf.reduce((a, x) => a + (Number(x.amount) || 0), 0), tot = Number(b.transaction_amount) || 0;
             sumar('devuelto al comprador (' + cub + ')', !rf.length ? 'nada' : devuelto >= tot - 1 ? 'todo' : 'una parte');
-            for (const x of rf) sumar('quién puso la devolución (' + cub + ')', cuenta(x.source && x.source.type) + (x.source && x.source.name ? ' · ' + String(x.source.name).replace(/\d{4,}/g, '#').slice(0, 30) : ''));
+            // Sólo el TIPO (bpp = el programa de protección de ML · collector = nosotros). Nunca `source.name`: trae el
+            // nombre y apellido del titular de la cuenta, y el registro es público (pasó el 14/10 y se borró el registro).
+            for (const x of rf) sumar('quién puso la devolución (' + cub + ')', cuenta(x.source && x.source.type));
             const neto = Number(b.transaction_details && b.transaction_details.net_received_amount) || 0;
             sumar('neto que quedó (' + cub + ')', neto > 0 && b.status === 'approved' ? 'quedó el neto' : neto > 0 ? 'figura neto pero ' + b.status : 'cero');
           }
