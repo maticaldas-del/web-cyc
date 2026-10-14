@@ -16225,7 +16225,11 @@ async function main() {
           console.log(`=== ${label}: ${orders.length} ventas en ${DIAS} d · ${n} anotadas · ${conP} con descuento · ML puso $${Math.round(ml)} ===`);
           continue;
         }
-        const conLista = orders.filter((o) => (o.order_items || []).some((it) => Number(it.full_unit_price) > Number(it.unit_price) + 0.5));
+        // 14/10/2026: con una palabra (promoventas:<días>:<cuántas>:<palabra>) mira SÓLO las ventas de ese
+        // título, para explicar una tarjeta "ML puso $X" puntual.
+        const _pal = String(_pp[3] || '').toLowerCase().trim();
+        if (_pal) orders = orders.filter((o) => (o.order_items || []).some((it) => String(it.item?.title || '').toLowerCase().includes(_pal)));
+        const conLista = _pal ? orders : orders.filter((o) => (o.order_items || []).some((it) => Number(it.full_unit_price) > Number(it.unit_price) + 0.5));
         console.log(`\n=== ${label}: ${orders.length} ventas en ${DIAS} d · ${conLista.length} con precio pagado abajo del de lista ===`);
         const muestra = [...conLista.slice(0, CUANTAS), ...orders.filter((o) => !conLista.includes(o)).slice(0, 2)];
         for (const o of muestra) {
