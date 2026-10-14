@@ -6,7 +6,7 @@
 # 30 d por día CON stock (o 60 d si vendió poco, o 180 d si está agotado) menos Full y camino; si está en cero y vende,
 # mínimo 4; nunca más de lo que hay en la oficina. Paulvic: todo a Adriana menos Persea (Luciana). Remates no cuentan.
 import re,sys,math
-T=20
+T=37  # 30 días de venta + 7 de viaje (regla suya del 14/10/2026)
 AB={'Ad':'Adriana','Lu':'Luciana','Ay':'Ayelen','Ma':'Matias'}
 def r_de(v30,v60,v180,tiene,dcs=30):
     d=max(7,min(30,dcs))
@@ -52,11 +52,11 @@ for p in P:
             c='Luciana' if (pv and x['v']=='Persea') else cta
             if pv and c not in ctas: sin.append(f"{p['n']} · {x['v']}: va a {c} pero {c} no lo puede recibir (no publica o nomandar)"); continue
             q,r,b=calc(*x['s'],x['full'],x['cam'],x['casa'],x['dcs'])
-            out.append(f"caja:{p['id']}@{c}#{x['v']}=u|{q}|{b} · hay {x['full']} en Full y {x['cam']} en camino · para 20 dias hacen falta {r*T:.0f} · en la oficina {x['casa']}")
+            out.append(f"caja:{p['id']}@{c}#{x['v']}=u|{q}|{b} · hay {x['full']} en Full y {x['cam']} en camino · para 37 dias (30 + 7 de viaje) hacen falta {r*T:.0f} · en la oficina {x['casa']}")
             if q: res.append(f"{p['n'][:38]} · {x['v']} → {c}: {q}")
     else:
         q,r,b=calc(*p['v'],p['full'],p['cam'],p['casa'],p['dcs'])
-        out.append(f"caja:{p['id']}@{cta}=u|{q}|{b} · hay {p['full']} en Full y {p['cam']} en camino · para 20 dias hacen falta {r*T:.0f} · en la oficina {p['casa']}")
+        out.append(f"caja:{p['id']}@{cta}=u|{q}|{b} · hay {p['full']} en Full y {p['cam']} en camino · para 37 dias (30 + 7 de viaje) hacen falta {r*T:.0f} · en la oficina {p['casa']}")
         if q: res.append(f"{p['n'][:38]} → {cta}: {q}")
 open('cajas.txt','w').write('\n'.join(out)+'\n')
 print(len(out),'renglones de caja ·',nOfi,'productos con mercadería en la oficina');print('\n'.join(res))

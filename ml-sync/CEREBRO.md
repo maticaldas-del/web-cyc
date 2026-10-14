@@ -84,8 +84,9 @@ la historia y el porqué). Si algo de acá choca con CLAUDE.md, manda lo más nu
 - **Cajas:** `decide_cajas.py` lee del mismo log de `pedidostodo` a qué cuentas se le puede mandar (`ctas [..]`: publican,
   sin `nomandar`, más `pasara`). Si puede ir a más de una, sale en "decidir a mano": lo decido yo mirando `cajasnotas`.
 - **Los motivos de Pedidos los lee Tito**: arrancan con "Hola Tito!", cortos y en criollo.
-- **Cajas:** marco yo las que ML dio por entradas (`cajallego`). Decido cuántas mandar (`decido:caja`), cubrir ~20-30 días,
+- **Cajas:** marco yo las que ML dio por entradas (`cajallego`). Decido cuántas mandar (`decido:caja`): **30 días de venta + 7 de viaje = 37 días desde hoy** (regla suya del 14/10),
   cuenta en cero recibe el mínimo salvo que otra cuenta tenga stock de ese color. Costo de la caja: $17.310.
+- **Almacenamiento de Full: lo chico paga a los 4 meses (120 días) parado; los Tenders (grandes) a los 60** (dicho por él el 14/10). Nada se manda para más de 37 días, así que una caja nunca llega a pagar sola.
 - Caja para mandar ya → al `pregunto:`.
 - **Paraguay:** el ticket real es obligatorio para cerrar un pedido (`compray:<fecha>|det=…|go`). Gastos de cada pedido:
   dólares (ticket ×1,005 del cambista + US$ 3,80 de la red), el que retira y despacha, correo (monto y kilos).

@@ -760,6 +760,13 @@ archivo. **Etapa 8 · Datos e historial** creada ese día (líneas de tiempo); c
 Inicio la pide ya. Y lo que se mira en TODAS: contar dos veces lo mismo (el stock ×4 del Centímetro),
 fallas leídas como dato, dos fórmulas para un número, datos de terceros en el registro público.
 
+## 📦 CAJAS A FULL: 30 DÍAS + 7 DE VIAJE · ALMACENAMIENTO A LOS 4 MESES (14/10/2026, regla suya)
+
+Él: *"para mandar cajas a full tené en cuenta 30 días para mantener stock y 7 días que tarda en llegar y que te cobran a los 4
+meses de stock en productos pequeños (o sea todos menos los tenders)"*. Armar caja y `decide_cajas.py` cubren **37 días** de venta
+(`REPO_DIAS_COBERTURA`=30 + `REPO_DIAS_DEMORA`=7, `REPO_DIAS_TOTAL`=37; antes 20). El aviso de almacenamiento de Rotación y
+`liquidarDe` usan `almacDiasDe(p)`: **120 días** para lo chico, **60** para lo grande (`esGrandeFull`, los Tenders). v23.36.
+
 ## 📋 LA LISTA ÚNICA DEL CEREBRO: `ml-sync/CEREBRO.md` (13/10/2026, pedido suyo)
 
 Él: *"no quiero que te olvides las cosas que agregamos a cerebro (...) me gustaría que tengas una lista de TODO lo que
