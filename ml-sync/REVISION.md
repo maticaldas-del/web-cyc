@@ -292,6 +292,11 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 
 - **Cajas: 30 días + 7 de viaje, almacenamiento a los 4 meses (14/10/2026, v23.36).** `REPO_DIAS_TOTAL`=37 (index.html) y `T=37` en `ml-sync/notas/decide_cajas.py`. `almacDiasDe(p)`: 120 días lo chico, 60 lo grande (`esGrandeFull`). Chequear: Armar caja y el script dan el mismo objetivo · ninguna caja manda para más de 37 días · el aviso "empieza a pagar en N d" de Rotación cuenta desde 120 en lo chico.
 
+### Paraguay: todo guardado en CYC y una pasada por mes (14/10/2026, pedido suyo · v23.37 `cyc-v617`)
+- **Qué es:** el chat de compras carga TODO lo de Nissei con catálogo exacto en ML (aunque no dé 25% ni tenga 100 vendidas: el panel ya lo esconde en desplegables), anota lo que no tiene catálogo con `pyvisto` (`cyc/pyvistos/<código>`), y una vez por mes actualiza precios con `candprecio:<código>=<US$>[/<vendidas>]|=nohay` sin volver a buscar en ML, usando la lista de `pyconocidos`. `candalta` de un código ya cargado ya no lo saltea: le pone el precio y la fecha. El robot mide hasta 250 por vuelta (antes 40) y los descartados por margen se vuelven a medir cada 2 días (antes 7). Un candidato vence a los 60 días sin precio nuevo (antes 45).
+- **Dónde:** `candalta`, `candprecio`, `pyvisto`, `pyconocidos`, `CAND_MAX_ML`, `CAND_REMEDIR_DIAS` (sync.mjs) · `CAND_VENCE_DIAS` (index.html) · `ml-sync/PROMPT_GUAY.md`.
+- **Qué chequear:** que `candprecio` no reviva lo tachado a mano; que un precio nuevo borre `calcTs` y se vuelva a medir; que la corrida de `candidatos` con 250 no tarde demasiado ni dé 429 a otros pasos de la noche.
+
 ### Por qué cada caja abierta no se lee sola, en el informe (14/10/2026, auditoría)
 - **Qué es:** `cajasQueLlegaron` anota en `mlapi/cajasciegas` (cada hora) los renglones de cada caja abierta que quedaron sin leer y el motivo (`sinpub` sin publicación de Full con código en esa cuenta · `color` falta fijarvar · `sincolor` renglón sin color · `ml` 429). La sección 9 del `informe` lo muestra para TODAS las abiertas, no sólo las de 9+ días.
 - **Dónde:** `motivoSL` en `cajasQueLlegaron` (sync.mjs) y el bloque "Auditoría 14/10" de la sección 9 del informe.

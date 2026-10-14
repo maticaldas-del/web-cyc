@@ -7708,7 +7708,7 @@ async function cargarParamCompra(db) {
 function cuentaNuevoDe(c) { return c && RE_CAND_PERF.test(`${c.nombre || ''} ${c.mlTit || ''}`) ? 'adriana' : CUENTA_NUEVOS; }
 // A mano se puede pedir más: `candidatos:max=400:go` (el go va al final) (03/10/2026, Guay cargó 350 de una). El 40 es para
 // que la corrida de la noche no se cuelgue; una corrida a mano no lleva nada atrás.
-const CAND_MAX_ML = (() => { const m = String(process.env.BILLING_PROBE || '').match(/^candidatos\b.*\bmax=(\d+)/); return m ? Math.min(500, Math.max(1, parseInt(m[1], 10))) : 40; })();
+const CAND_MAX_ML = (() => { const m = String(process.env.BILLING_PROBE || '').match(/^candidatos\b.*\bmax=(\d+)/); return m ? Math.min(500, Math.max(1, parseInt(m[1], 10))) : 250; })();
 // ── LOS QUE DAN SE VUELVEN A MEDIR TODOS LOS DÍAS (26/09/2026) ─────────────────────────
 // Pedido suyo: *"el chat carga productos y precios y el bot en la nube todos los días busca si
 // los precios dan con ML"*. Hasta hoy el que ya daba NO se volvía a medir nunca (sólo al subir
@@ -7761,7 +7761,7 @@ const CAND_CALC_VER = 12;   // 12: 06/10/2026, comisión siempre Clásica (Premi
 //    todos los días: **se vuelve a medir a los 7 días**.
 //  · **DURO** — la marca la frena ML, no lo ofrece Nissei, no tiene precio, pasa el tope de
 //    US$250, o lo bajó él a mano. Eso no cambia solo, así que queda.
-const CAND_REMEDIR_DIAS = 7;
+const CAND_REMEDIR_DIAS = 2;   // 14/10/2026: era 7; él quiere que se mire todos los días si ML subió o bajó (los que dan, cada vuelta; los que no, día por medio)
 // "SIEMPRE LEJOS" ES SU CONDICIÓN PARA EL NUNCA MÁS, y hay que ponerle número: **4 mediciones**
 // seguidas quedando **10 puntos o más abajo del piso** (o sea 15% o menos con el piso en 25).
 // El que anda rondando el 23% NO entra nunca en esa cuenta y se sigue midiendo, que es justo lo
@@ -18282,6 +18282,84 @@ async function main() {
       if (!APLICAR || prueba) console.log('\nPRUEBA: no escribí nada ni mandé ningún mensaje. Para aplicar: candidatos:go');
       return;
     }
+    // BILLING_PROBE=pyvisto:<código>|<nombre>|<motivo>;…[;go] → LO QUE EL CHAT DE COMPRAS YA MIRÓ Y NO SIRVE (14/10/2026).
+    // Pedido suyo: que TODO lo de comprasparaguay que pasa los filtros quede guardado en CYC, para que la pasada del
+    // mes no vuelva a buscar en ML lo que ya se buscó. Lo que tiene catálogo exacto va como candidato (`candalta`);
+    // lo que NO tiene catálogo exacto en ML (o sólo vendedores del exterior) va acá, en `cyc/pyvistos/<código>`, con
+    // el motivo y la fecha. A los 90 días se puede volver a buscar (puede aparecer el catálogo). Sin `;go` muestra.
+    if (/^pyvisto:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _pv = String(process.env.BILLING_PROBE).slice('pyvisto:'.length);
+      const APLICAR = /(^|;)go\s*$/.test(_pv);
+      const filas = _pv.replace(/(^|;)go\s*$/, '').split(';').map((x) => x.trim()).filter(Boolean);
+      const upd = {}; let malos = 0;
+      for (const f of filas) {
+        const [cod, nom, mot] = f.split('|').map((x) => (x || '').trim());
+        const c = String(cod || '').replace(/\D/g, '');
+        if (!c || !nom) { console.log(`❌ mal escrito (falta código o nombre): ${f.slice(0, 100)}`); malos++; continue; }
+        upd[c] = { n: nom.slice(0, 120), m: (mot || 'sin catálogo exacto en ML').slice(0, 100), ts: Date.now() };
+        console.log(`· ${c} · ${nom.slice(0, 70)} → ${upd[c].m}`);
+      }
+      if (malos) { console.log(`\n${malos} renglón(es) mal escritos: NO escribo ninguno.`); return; }
+      if (!APLICAR) { console.log(`\nPRUEBA: ${Object.keys(upd).length} para anotar. Agregá ";go" al final.`); return; }
+      await db.patch('cyc/pyvistos', upd);
+      const r = (await db.get('cyc/pyvistos')) || {};
+      console.log(`\n✓ ${Object.keys(upd).filter((k) => r[k]).length} de ${Object.keys(upd).length} anotados (releído) · en total hay ${Object.keys(r).length} mirados sin catálogo.`);
+      return;
+    }
+    // BILLING_PROBE=candprecio:<código>=<US$>[/<vendidas>];<código>=nohay;…[;go] → LA PASADA DEL MES SOBRE LO YA CARGADO
+    // (14/10/2026). El chat de compras manda sólo código y precio de hoy de los candidatos que ya están en CYC (no busca
+    // en ML de nuevo). Pone el precio, renueva la fecha (así no vence) y, si cambió, borra la cuenta guardada para que el
+    // robot lo vuelva a medir. `nohay` = Nissei ya no lo ofrece: queda afuera (duro, `noTipo:'nissei'`); si un mes vuelve
+    // con precio, se revive solo. No toca lo que él tachó a mano ni las fichas (ésas van con `pyprecio`). Sin `;go` muestra.
+    if (/^candprecio:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _cp = String(process.env.BILLING_PROBE).slice('candprecio:'.length);
+      const APLICAR = /(^|;)go\s*$/.test(_cp);
+      const filas = _cp.replace(/(^|;)go\s*$/, '').split(';').map((x) => x.trim()).filter(Boolean);
+      const cands = (await db.get('cyc/candidatos_py')) || {};
+      const dg = (x) => String(x || '').replace(/\D/g, '');
+      const codIg = (a, b) => { const x = dg(a), y = dg(b); if (!x || !y) return false; if (x === y) return true; const [c1, c2] = x.length < y.length ? [x, y] : [y, x]; return c1.length >= 5 && c2.endsWith(c1); };
+      const upd = {}; let malos = 0, noEsta = 0, sube = 0, baja = 0, igual = 0, fuera = 0, vuelve = 0;
+      for (const f of filas) {
+        const m = f.match(/^([0-9]+)\s*=\s*(nohay|[0-9]+(?:[.,][0-9]+)?)(?:\s*\/\s*([0-9.]+))?$/i);
+        if (!m) { console.log(`❌ mal escrito: ${f.slice(0, 80)}`); malos++; continue; }
+        const hits = Object.entries(cands).filter(([, c]) => c && codIg(c.cod, m[1]));
+        if (!hits.length) { console.log(`? ${m[1]}: no es candidato (si es nuevo va con candalta, si es ficha con pyprecio)`); noEsta++; continue; }
+        for (const [id, c] of hits) {
+          if (c.prodId) continue;
+          if (c.no && c.noTipo === 'mano') { console.log(`= ${m[1]} · ${String(c.nombre).slice(0, 50)}: lo tachaste a mano, no lo toco`); continue; }
+          if (/^nohay$/i.test(m[2])) { if (!(c.no && c.noTipo === 'nissei')) { upd[`${id}/no`] = true; upd[`${id}/noTs`] = Date.now(); upd[`${id}/noTipo`] = 'nissei'; upd[`${id}/motivo`] = 'en comprasparaguay Nissei ya no lo ofrece (pasada del mes)'; fuera++; } continue; }
+          const usd = parseFloat(m[2].replace(',', '.')); const v = parseInt(String(m[3] || '').replace(/\D/g, ''), 10);
+          upd[`${id}/ts`] = Date.now(); if (isFinite(v) && v > 0) upd[`${id}/vendCarga`] = v;
+          const u0 = Number(c.usd) || 0;
+          if (Math.abs(u0 - usd) >= 0.005) { upd[`${id}/usd`] = usd; upd[`${id}/usdAntes`] = u0 || null; upd[`${id}/calcTs`] = null; if (usd > u0) sube++; else baja++; } else igual++;
+          if (c.no && c.noTipo === 'nissei') { upd[`${id}/no`] = null; upd[`${id}/noTipo`] = null; upd[`${id}/motivo`] = null; vuelve++; }
+        }
+      }
+      console.log(`=== PRECIOS DE PARAGUAY DEL MES ${APLICAR ? '(APLICANDO)' : '(PRUEBA)'} ===\n${sube} subieron · ${baja} bajaron · ${igual} igual · ${fuera} Nissei ya no los tiene · ${vuelve} volvieron a estar · ${noEsta} códigos que no son candidatos${malos ? ` · ${malos} mal escritos` : ''}`);
+      if (malos) { console.log('Hay renglones mal escritos: NO escribo nada.'); return; }
+      if (!APLICAR) { console.log('PRUEBA: agregá ";go" al final.'); return; }
+      if (Object.keys(upd).length) await db.patch('cyc/candidatos_py', upd);
+      const r = (await db.get('cyc/candidatos_py')) || {};
+      const mal = Object.entries(upd).filter(([k, v]) => { const [id, f] = k.split('/'); const x = r[id] && r[id][f]; return v === null ? x != null : (typeof v === 'number' && f !== 'ts' && f !== 'noTs' ? Math.abs(Number(x) - v) > 0.005 : false); }).length;
+      console.log(mal ? `⚠️ ${mal} campo(s) no quedaron como debían (releído)` : `✓ escrito y releído. El robot los vuelve a medir en su próxima vuelta.`);
+      return;
+    }
+    // BILLING_PROBE=pyconocidos → LA LISTA DE LO QUE YA ESTÁ EN CYC, PARA EL CHAT DE COMPRAS (14/10/2026). Solo lee.
+    // Un renglón por código: candidatos (con su precio de Paraguay y si está descartado), fichas probadas y lo mirado
+    // sin catálogo. El chat la usa en la pasada del mes: a lo conocido sólo le actualiza el precio (sin buscar en ML)
+    // y busca en ML sólo lo que no está en la lista.
+    if (/^pyconocidos$/.test(String(process.env.BILLING_PROBE || ''))) {
+      const cands = (await db.get('cyc/candidatos_py')) || {}; const vis = (await db.get('cyc/pyvistos')) || {};
+      const out = []; const vistos = new Set();
+      const dg = (x) => String(x || '').replace(/\D/g, '');
+      for (const c of Object.values(cands)) { const k = dg(c && c.cod); if (!k || vistos.has(k)) continue; vistos.add(k);
+        out.push(`${k}|${(Number(c.usd) || 0).toFixed(2)}|${c.prodId ? 'ficha' : c.no ? (c.noTipo === 'margen' || /abajo de tu piso/i.test(String(c.motivo || '')) ? 'margen' : 'fuera') : 'candidato'}|${String(c.nombre || '').slice(0, 70)}`); }
+      for (const p of products) { const k = dg(p.codPy); if (!k || vistos.has(k)) continue; vistos.add(k); out.push(`${k}|${(Number(p.nisseiUSD) || 0).toFixed(2)}|ficha|${String(p.name || '').slice(0, 70)}`); }
+      for (const [k, v] of Object.entries(vis)) { if (vistos.has(k)) continue; vistos.add(k); out.push(`${k}|-|sincatalogo ${new Date(Number(v.ts) || 0).toISOString().slice(0, 10)}|${String((v && v.n) || '').slice(0, 70)}`); }
+      console.log(`=== YA EN CYC: ${out.length} códigos (código|US$ de Paraguay|estado|nombre) ===`);
+      console.log('@@LISTA'); for (const l of out) console.log(l); console.log('@@FIN');
+      return;
+    }
     // BILLING_PROBE=candalta:<nombre>|<código>|<US$>|<catálogo ML>|<vendidos>|<link CP>|<foto>;…[;go]
     // CARGA CANDIDATOS NUEVOS DE "PARA PROBAR" DESDE EL CHAT (07/10/2026). El chat de compras manda la
     // lista y acá se escribe en `cyc/candidatos_py` con los mismos campos que deja él: nombre, código,
@@ -18306,7 +18384,17 @@ async function main() {
         const mlId = (String(ml).match(/MLA\d+/) || [''])[0];
         if (!nom || !_dg(cod) || !(usd > 0) || !mlId) { console.log(`❌ mal escrito (falta nombre, código, precio o catálogo de ML): ${f.slice(0, 120)}`); malos++; continue; }
         const yaC = Object.entries(cands).find(([, c]) => c && (codIg(c.cod, cod) || _n(c.nombre) === _n(nom)));
-        if (yaC) { console.log(`= ya es candidato, no lo cargo: ${nom} → ${yaC[1].nombre} (${yaC[0]})${yaC[1].no ? ' · descartado: ' + String(yaC[1].motivo || '').slice(0, 80) : ''}`); continue; }
+        // LA PASADA DEL MES ACTUALIZA LO YA CARGADO (14/10/2026, él: "la run de guay va a ser una vez al mes para
+        // actualizar precios de productos que ya están cargados"). Si el código ya es candidato, no se duplica: se le
+        // pone el precio de hoy, la fecha (así no vence) y las vendidas, y si el precio cambió se borra la cuenta
+        // guardada para que el robot lo vuelva a medir. No revive lo que él tachó a mano ni toca el catálogo de ML.
+        if (yaC) {
+          const [idC, cC] = yaC; const v0 = parseInt(String(vend).replace(/\D/g, ''), 10);
+          const upd = { usd, ts: Date.now() }; if (isFinite(v0) && v0 > 0) upd.vendCarga = v0;
+          if (Math.abs((Number(cC.usd) || 0) - usd) >= 0.005) { upd.calcTs = null; upd.usdAntes = Number(cC.usd) || null; }
+          console.log(`↻ ya es candidato: precio ${Number(cC.usd || 0).toFixed(2)} → ${usd.toFixed(2)}${upd.vendCarga ? ' · vendidas ' + upd.vendCarga : ''} · ${nom.slice(0, 60)} (${idC})${cC.no ? ' · sigue descartado (' + String(cC.noTipo || cC.motivo || '').slice(0, 40) + '): el robot lo vuelve a medir si es por margen' : ''}`);
+          plan.push({ _upd: idC, ...upd }); continue;
+        }
         const yaP = products.find((p) => codIg(p.codPy, cod) || _n(p.name) === _n(nom));
         if (yaP) { console.log(`= ya es producto probado, no lo cargo: ${nom} → ${yaP.name} (${yaP.id})`); continue; }
         const v = parseInt(String(vend).replace(/\D/g, ''), 10);
@@ -18324,9 +18412,16 @@ async function main() {
       }
       if (malos) { console.log(`\n${malos} renglón(es) mal escritos: NO escribo ninguno.`); return; }
       if (!plan.length) { console.log('\nNada nuevo para cargar.'); return; }
-      if (!APLICAR) { console.log(`\nPRUEBA: ${plan.length} para cargar. Para aplicar, agregá ";go" al final.`); return; }
+      if (!APLICAR) { const nU = plan.filter((x) => x._upd).length; console.log(`\nPRUEBA: ${plan.length - nU} nuevos y ${nU} con el precio actualizado. Para aplicar, agregá ";go" al final.`); return; }
       let ok = 0; const base = Date.now();
       for (let i = 0; i < plan.length; i++) {
+        if (plan[i]._upd) {
+          const { _upd, ...u } = plan[i];
+          await db.patch('cyc/candidatos_py/' + _upd, u);
+          const r = await db.get('cyc/candidatos_py/' + _upd);
+          const bien = r && Math.abs(Number(r.usd) - u.usd) < 0.005; if (bien) ok++;
+          console.log(`  ${bien ? '✓' : '❌'} precio actualizado (${_upd})`); continue;
+        }
         const id = 'c' + base + String(i);
         await db.set('cyc/candidatos_py/' + id, plan[i]);
         const r = await db.get('cyc/candidatos_py/' + id);
@@ -18334,7 +18429,7 @@ async function main() {
         if (bien) ok++;
         console.log(`  ${bien ? '✓' : '❌'} ${plan[i].nombre} (${id})`);
       }
-      console.log(`\n${ok} de ${plan.length} cargados. Los mide \`candidatos\` en su próxima vuelta (o candidatos:go).`);
+      console.log(`\n${ok} de ${plan.length} escritos (nuevos y precios actualizados). Los mide \`candidatos\` en su próxima vuelta (o candidatos:go).`);
       return;
     }
     // BILLING_PROBE=costoprimera[:go] → LAS VENTAS DE UNA PRIMERA COMPRA CON EL COSTO REAL (08/10/2026, él: "corregí
