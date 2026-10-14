@@ -86,6 +86,9 @@ la historia y el porqué). Si algo de acá choca con CLAUDE.md, manda lo más nu
 - Reclamos con ⏰ que esperan respuesta suya: recordarle una vez por día como mucho.
 
 ## 5 · Pedidos, cajas, Paraguay
+- **Paraguay se pide de a ~US$1.000, cada 2-3 semanas** (14/10/2026, eligió la a): cada pedido paga ~US$68 fijos (el que
+  retira, la transferencia, el correo), o sea ~21% arriba de la web con US$500 y ~14% con US$1.000. Lo que no es urgente
+  espera al próximo pedido grande; lo que se corta antes de que llegue (rojo o naranja de Paraguay) se pide igual.
 - **Pedidos COMPLETOS, todo el catálogo**, en la completa (`pedidostodo` → `decide_pedidos.py` → revisar → `decido:archivo=pedidos`).
   Objetivo 30 días. El stock de las 4 cuentas va SUMADO. Lo que se pide sin ventas recientes se mira en la línea de tiempo.
   El ritmo es por día CON stock (`dCS`, también por color). Sin costo cargado no se pide (va a la lista "venden y no tienen
@@ -138,6 +141,10 @@ la historia y el porqué). Si algo de acá choca con CLAUDE.md, manda lo más nu
 - Descuentos del 13/10: CONFIRMADOS puestos el 14/10 (vencen 26-27/10), se juzgan desde el 20/10. Descuentos del 14/10 (Asher, Infusor de acero, Chispero, Adaptador universal de Matías, Temporizador, Redmi 5 Lite en promo de ML): ML los aceptó y no se veían al releer, confirmar en la vuelta de las 12:52.
   aceptó pero no se veían al releer. Confirmar en la vuelta de las 12:52 que estén puestos y juzgarlos a los 7-14 días.
 - Tarifa de almacenamiento (`almactarifa`) sigue sin pasarla él.
+- **Reclamos que pagó ML (etapa 6, idea 7, eligió la a):** confirmar con el reporte de liquidación de Mercado Pago que la
+  devolución de esas ventas no salió de nuestra cuenta; si cierra, esas ventas cuentan como lo que fueron y dejan de
+  encarecer el costo (%Dev). Hasta confirmarlo no se toca nada.
+- **Dinero que rinde en MP (idea 11):** lo revisa él en la app de cada cuenta.
 
 ## 🔍 LA LUPA: CADA PUBLICACIÓN, TODOS LOS DÍAS (13/10/2026, pedido suyo)
 Él: *"todos esos pequeños detalles diarios, casi milimétricos (…) en TODOS los productos (…) necesito ese nivel de detalle"*.
