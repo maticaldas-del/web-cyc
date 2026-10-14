@@ -43,6 +43,18 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           BILLING_PROBE: ${{ github.event.inputs.comando }}
+        # Varios comandos en una corrida, uno por renglón (etapa 6, 14/10/2026): cada uno corre aparte, con su
+        # propio chequeo de sólo lectura, y el registro los separa con "##### <comando>". Si uno falla, siguen los
+        # demás y la corrida termina en error. Un solo renglón corre igual que antes.
         run: |
-          if [ -z "$BILLING_PROBE" ] || [ "$BILLING_PROBE" = "ciclo" ]; then echo "Falta el comando (el ciclo va por ml-sync)."; exit 1; fi
-          node ml-sync/sync.mjs
+          if [ -z "$BILLING_PROBE" ]; then echo "Falta el comando."; exit 1; fi
+          CMDS="$(printf '%s\n' "$BILLING_PROBE" | tr -d '\r' | sed '/^[[:space:]]*$/d')"
+          rc=0; n=0
+          while IFS= read -r c; do
+            n=$((n+1))
+            if [ "$c" = "ciclo" ]; then echo "##### ciclo: va por ml-sync, no por ml-consulta"; rc=1; continue; fi
+            echo "##### $c"
+            BILLING_PROBE="$c" node ml-sync/sync.mjs || { echo "##### ✗ falló: $c"; rc=1; }
+          done <<< "$CMDS"
+          echo "##### $n comando(s) · $([ $rc -eq 0 ] && echo 'todos bien' || echo 'alguno falló')"
+          exit $rc

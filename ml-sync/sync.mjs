@@ -35815,7 +35815,7 @@ async function main() {
       } catch (eP2) { console.log('pedidos: no pude leerlos · ' + eP2.message); }
       // 9) Cajas en camino a Full: las viejas o con faltantes
       try {
-        const envs = (await db.get('cyc/envios_full')) || {}; const abiertas = []; let nAb = 0;
+        const envs = (await db.get('cyc/envios_full')) || {}; const abiertas = []; let nAb = 0; const completas = [];
         // Revisión 9 (13/10/2026): lo que ML YA dio de alta de cada caja (`cyc/cajasentrado/<envío>__<caja>`, lo anota
         // el robot cada vuelta), con la MISMA regla que `cajaEntradoDe` de la web: sólo si el seguimiento coincide, y
         // nunca más de lo que llevaba el renglón. Con "ML ya dio de alta N de M" se sabe si va `cajallego`.
@@ -35829,10 +35829,14 @@ async function main() {
           if (!c || c.recibida) continue; nAb++;
           const t0 = Date.parse(String(c.fecha || env.fecha || '').slice(0, 10) + 'T15:00:00Z'); const dd = t0 > 0 ? (ahoraI - t0) / 864e5 : null;
           const uC = (c.items || []).reduce((s2, it) => s2 + (Number(it && it.u) || 0), 0), eC = entradoCaja(id, ci, c);
+          // Etapa 6 (14/10/2026): la caja que ML ya dio de alta ENTERA va a la lista lista para `cajallego`, tenga la edad
+          // que tenga (antes sólo salía con 9+ días y con el seguimiento cortado: había que ir a buscarlo a mano).
+          if (entC && uC > 0 && eC >= uC && c.track) completas.push({ txt: `${env.cuenta || '?'} …${String(c.track).slice(-4)} (${uC} u.)`, track: String(c.track) });
           if (dd == null || dd >= 9) abiertas.push(`· ${env.cuenta || '?'} · caja ${c.track ? '…' + String(c.track).slice(-4) : id} · ${uC} u. · ${dd == null ? 'sin fecha' : Math.round(dd) + ' días en camino'} · ${entC ? `ML ya dio de alta ${eC} de ${uC}${uC > 0 && eC >= uC ? ' ✅ entró completa: cajallego' : ''}` : 'no pude leer lo que ML dio de alta'}`);
         }
         console.log(`\n── 9 · CAJAS EN CAMINO A FULL (${nAb} abiertas · ${abiertas.length} con 9+ días) ──`);
         for (const x of abiertas.slice(0, 15)) console.log(x);
+        if (completas.length) console.log(`  ✅ ML ya dio de alta ENTERAS ${completas.length}: ${completas.map((x) => x.txt).join(' · ')}\n  → cajallego:${[...new Set(completas.map((x) => x.track))].join(';')}:go   (por ml-sync)`);
         if (abiertas.length > 15) console.log(`  (y ${abiertas.length - 15} cajas viejas más…)`);
         // Auditoría 14/10/2026: POR QUÉ una caja abierta (de cualquier edad) no se puede leer sola. Lo anota la vuelta
         // de la hora en `mlapi/cajasciegas`; sólo se muestran las que siguen abiertas con el mismo seguimiento.

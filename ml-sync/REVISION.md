@@ -426,6 +426,13 @@ el precio de un candidato distinto con código parecido (se compara también por
 - Hecho de paso (obvio): el contador de Pedidos (`_pedSemCount`) decía "≤14 días" también en Paraguay, que corta en
   `PED_DIAS_ROJO_PY` (17). Ahora recibe el corte de cada sección. **Chequear:** el rótulo de cada pestaña coincide con
   el `pedDiasRojoDe` que usa `syncPedidosAuto` para pintar el naranja.
+- **Varios comandos en una corrida** (`ml-consulta.yml` y la rama a mano de `ml-sync.yml`): uno por renglón, cada uno
+  corre aparte (`BILLING_PROBE="$c" node …`, el chequeo de sólo lectura de ml-consulta se aplica a cada uno), separados
+  por `##### <comando>`; si uno falla siguen los demás y la corrida termina en error. **Chequear:** que el texto siga
+  entrando por variable de entorno (nunca pegado en bash) y que no haya opciones repetidas en un paso del workflow.
+- **informe §9** lista las cajas que ML ya dio de alta ENTERAS (cualquier edad) con el `cajallego:<seg>;…:go` listo
+  (antes salían sólo con 9+ días y el seguimiento cortado). **Chequear:** misma regla que `cajaEntradoDe` (seguimiento
+  igual, nunca más de lo que llevaba el renglón).
 
 ## 7 · DISEÑO
 

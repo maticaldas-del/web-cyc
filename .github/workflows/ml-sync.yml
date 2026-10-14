@@ -192,9 +192,20 @@ jobs:
           if [ "$BILLING_PROBE" = "ciclo" ]; then
             unset BILLING_PROBE   # si no, el robot lo tomaría como un comando que no existe
           elif [ "${{ github.event_name }}" != "schedule" ]; then
-            # Corrida a mano (un comando): se ejecuta una sola vez y listo.
-            node ml-sync/sync.mjs
-            exit $?
+            # Corrida a mano: se ejecuta y listo. Varios comandos, uno por renglón (etapa 6, 14/10/2026): corren
+            # en fila en esta misma corrida (una sola renovación de candado), separados por "##### <comando>";
+            # si uno falla siguen los demás y la corrida termina en error. Sin comando (otras opciones) corre una vez.
+            if [ -z "$BILLING_PROBE" ]; then node ml-sync/sync.mjs; exit $?; fi
+            CMDS="$(printf '%s\n' "$BILLING_PROBE" | tr -d '\r' | sed '/^[[:space:]]*$/d')"
+            rc=0; n=0
+            while IFS= read -r c; do
+              n=$((n+1))
+              if [ "$c" = "ciclo" ]; then echo "##### ciclo: se prende solo al final"; continue; fi
+              echo "##### $c"
+              BILLING_PROBE="$c" node ml-sync/sync.mjs || { echo "##### ✗ falló: $c"; rc=1; }
+            done <<< "$CMDS"
+            echo "##### $n comando(s) · $([ $rc -eq 0 ] && echo 'todos bien' || echo 'alguno falló')"
+            exit $rc
           fi
           bash ml-sync/ciclo.sh
 

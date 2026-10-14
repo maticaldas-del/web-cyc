@@ -11,6 +11,9 @@ la historia y el porqué). Si algo de acá choca con CLAUDE.md, manda lo más nu
 - **Nunca tomar como dato una marca vieja del robot** (escalera, liquidando automático, expediente). Dato crudo siempre.
 - Él no toca precios ni promos: **no hace falta que me avise nada de eso, lo miro yo en cada vuelta.**
 - Lo grande o lo que no tiene respuesta clara lo decide él: va todo junto, numerado, con (a) sugerida y (b).
+- **Varios comandos en UNA corrida** (14/10): en `comando` (ml-consulta) o `billing_probe` (ml-sync) van uno por renglón.
+  Las lecturas de la vuelta (planilla, informe, pedidostodo, escasez, ventasraras…) van juntas en una sola ml-consulta, y
+  las escrituras juntas en una sola ml-sync. El registro los separa con `##### <comando>`.
 
 ## 1 · Precios (cada decisión con su motivo en el 🧠, una por variante)
 - **Objetivo 25% en el PEOR caso** (retención de otra provincia 2% + el peor envío visto + cuotas) ≈ 28% en el número
