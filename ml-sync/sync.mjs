@@ -7542,7 +7542,7 @@ function cargoAntiguoProy(lotes, rDia, tabla, diaCierre, ahora, demoraDias) {
   ahora = ahora || Date.now(); rDia = Math.max(0, Number(rDia) || 0);
   const dem = Math.max(0, Number(demoraDias) || 0) * 864e5;
   const tarifa = (edad) => { for (const [a, b, $] of tabla || []) if (edad >= a && edad < b) return $; return 0; };
-  let pesos = 0, uConCargo = 0;
+  let pesos = 0, uConCargo = 0; const meses = [];   // `meses`: lo de cada cierre, en orden (lo usa `antiguo`)
   const d = new Date(ahora - 3 * 3600e3);
   let y = d.getUTCFullYear(), m = d.getUTCMonth();
   if (d.getUTCDate() >= diaCierre) m++;
@@ -7556,10 +7556,10 @@ function cargoAntiguoProy(lotes, rDia, tabla, diaCierre, ahora, demoraDias) {
       const t = tarifa((T - l.ts) / 864e5);
       if (t > 0) { cargoMes += u * t; uConCargo = Math.max(uConCargo, u); }
     }
-    pesos += cargoMes;
+    pesos += cargoMes; meses.push({ T, cargo: Math.round(cargoMes), quedan: Math.round(quedan) });
     if (quedan <= 0) break;
   }
-  return { pesos: Math.round(pesos), uConCargo: Math.round(uConCargo) };
+  return { pesos: Math.round(pesos), uConCargo: Math.round(uConCargo), meses };
 }
 let RECARGO_PAR_PCT = Math.round((RECARGO_PAR - 1) * 100);
 // ── EL RECARGO REAL DE CADA PEDIDO Y EL COSTO QUE SUBE SOLO (05/10/2026) ──────────────────────
@@ -13154,6 +13154,62 @@ async function main() {
       const re = (await db.get('cyc/lotesfull')) || {};
       const ok = Object.keys(upd).filter((k) => re[k] && re[k].ref === upd[k].ref && (re[k].lotes || []).length === upd[k].lotes.length).length;
       console.log(`✓ releído: ${ok} de ${Object.keys(upd).length}`);
+      return;
+    }
+    // BILLING_PROBE=antiguo[:<cuenta>] → CUÁNTO VA A COBRAR FULL POR STOCK ANTIGUO, PRODUCTO POR PRODUCTO (etapa 6,
+    // 14/10/2026). SOLO LEE. La cuenta que ya existía (`lotesFifo` + `cargoAntiguoProy`, la misma de la sobra) sólo
+    // corría adentro del remate automático, que con SOLO_DATOS no corre: nadie la miraba. Acá se corre para TODO lo
+    // que tiene stock en Full, al ritmo normal (`cyc/ritmonormal`, si no las ventas de 60 días): la unidad más vieja,
+    // lo que ML cobraría en el próximo cierre, en los 3 siguientes y en total, y de dónde salió la fecha.
+    // Es para que el cerebro mire lo que se acerca ANTES de que llegue la factura; no decide nada.
+    if (/^antiguo(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const soloA = (String(process.env.BILLING_PROBE).split(':')[1] || '').trim().toLowerCase();
+      let invA, linksA, histA, lotesA, cfgA, enviosA, rnA, vpA;
+      try {
+        [invA, linksA, histA, lotesA, cfgA, enviosA, rnA, vpA] = await Promise.all(['cyc/inventory', 'cyc/mllinks', 'cyc/stockhist', 'cyc/lotesfull', 'cyc/mlconfig', 'cyc/envios_full', 'cyc/ritmonormal', 'cyc/ventaprod'].map((k) => db.get(k)));
+      } catch (e) { console.log('⚠️ NO LEÍ la base: ' + e.message + ' · no saco cuentas a medias'); process.exitCode = 1; return; }
+      if (!invA) { console.log('⚠️ NO LEÍ el stock (cyc/inventory vacío) · no saco cuentas'); process.exitCode = 1; return; }
+      const cajasA = cajasLlegadasPorClave(enviosA || {});
+      const pIdxA = {}; for (const p of products) pIdxA[p.id] = p;
+      const sidA = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
+      const ctaDeSid = {}; for (const l of labels) ctaDeSid[sidA(l)] = l;
+      // Ventas de 60 días por producto×cuenta (sin canceladas), para lo que no tiene ritmo normal.
+      const v60 = {}; const desde60 = Date.now() - 60 * 864e5;
+      for (const [dk, ents] of Object.entries(vpA || {})) {
+        const ts = Date.parse(dk.slice(0, 10).replace(/_/g, '-')); if (!(ts >= desde60)) continue;
+        for (const v of Object.values(ents || {})) { if (!v || v.cancelada || !v.prodId || !v.cuenta) continue; const k = v.prodId + '__' + sidA(v.cuenta); v60[k] = (v60[k] || 0) + (Number(v.qty) || 1); }
+      }
+      const linkDe = {}; for (const [mla, e] of Object.entries(linksA || {})) { if (!e || !e.prodId || !e.cuenta || e.ignored) continue; const k = e.prodId + '__' + sidA(e.cuenta); if (!linkDe[k] || (e.inv && !linkDe[k].inv)) linkDe[k] = { ...e, mla }; }
+      const filas = []; let mirados = 0, sinLink = 0;
+      for (const [k, v] of Object.entries(invA)) {
+        const m = k.match(/^(.+?)__([^_].*?)$/); if (!m || /__v__/.test(k)) continue;
+        const cta = ctaDeSid[m[2]]; if (!cta) continue;                       // la oficina y lo que no es de ML no
+        if (soloA && _ctaSinTilde(cta) !== soloA) continue;
+        const st = Math.max(0, Math.round(Number(v) || 0)); if (!st) continue;
+        mirados++;
+        const e = linkDe[k]; if (!e) sinLink++;
+        const eL = e || { prodId: m[1], cuenta: cta };
+        const h = (histA || {})[k];
+        const fb = Math.min(...[h && h.desde, eL.altaTs].map(Number).filter((x) => x > 0), Infinity);
+        const lotes = lotesFifo(st, eL.inv ? (lotesA || {})[eL.inv] : null, cajasA[m[1] + '__' + (e ? e.cuenta : cta)] || cajasA[m[1] + '__' + cta], isFinite(fb) ? fb : 0);
+        const rn = (rnA || {})[k]; const rDia = rn && rn.pd > 0 ? rn.pd : (v60[k] || 0) / 60;
+        const { tam, tabla } = tablaAntiguoDe(eL, pIdxA[m[1]], lotesA, cfgA);
+        const cg = cargoAntiguoProy(lotes, rDia, tabla, DIA_CIERRE_ALM_CTA[_ctaSinTilde(cta)] || 12);
+        const edad = Math.floor((Date.now() - lotes[0].ts) / 864e5);
+        const prox = (cg.meses[0] || {}).cargo || 0, tres = cg.meses.slice(0, 3).reduce((s2, x) => s2 + x.cargo, 0);
+        filas.push({ n: (pIdxA[m[1]] || {}).name || m[1], cta, st, edad, f: lotes[0].f, rDia, tam, prox, tres, tot: cg.pesos, cierre: cg.meses[0] ? new Date(cg.meses[0].T - 3 * 36e5).toISOString().slice(5, 10) : '?', rnF: !!(rn && rn.pd > 0) });
+      }
+      filas.sort((a, b) => b.tot - a.tot || b.edad - a.edad);
+      const conCargo = filas.filter((x) => x.tot > 0), $ = (n) => '$' + Math.round(n).toLocaleString('es-AR');
+      console.log(`=== STOCK ANTIGUO DE FULL, PROYECTADO (${soloA || 'las 4 cuentas'}) ===`);
+      console.log(`${mirados} producto×cuenta con stock en Full · ${conCargo.length} van a pagar algo al ritmo de hoy · ${sinLink} sin publicación vinculada (fecha de stockhist)`);
+      console.log(`Total proyectado: ${$(conCargo.reduce((s2, x) => s2 + x.tot, 0))} · en el próximo cierre: ${$(filas.reduce((s2, x) => s2 + x.prox, 0))} · en los próximos 3: ${$(filas.reduce((s2, x) => s2 + x.tres, 0))}`);
+      console.log('Fecha de la unidad más vieja: excel = lote del Excel de ML (`lotesfull`) · caja = caja marcada llegada · antes = más vieja que todo lo que tiene fecha (stockhist o alta) · sinfecha = no se sabe (cuenta como hoy)\n');
+      for (const x of conCargo) console.log(`· ${String(x.n).slice(0, 42)} · ${x.cta} · ${x.st} u. · la más vieja ${x.edad} d (${x.f}) · ${x.tam} · vende ${(x.rDia * 30).toFixed(1)}/mes${x.rnF ? '' : ' (60 d, sin ritmo normal)'} · cierre ${x.cierre}: ${$(x.prox)} · 3 cierres: ${$(x.tres)} · total ${$(x.tot)}`);
+      const cerca = filas.filter((x) => !(x.tot > 0) && x.edad >= 90).sort((a, b) => b.edad - a.edad);
+      if (cerca.length) { console.log(`\nCon 90+ días en Full que al ritmo de hoy se venden antes de pagar (${cerca.length}):`); for (const x of cerca.slice(0, 25)) console.log(`· ${String(x.n).slice(0, 42)} · ${x.cta} · ${x.st} u. · ${x.edad} d (${x.f}) · vende ${(x.rDia * 30).toFixed(1)}/mes`); if (cerca.length > 25) console.log(`  (y ${cerca.length - 25} más)`); }
+      const sinF = filas.filter((x) => x.f === 'sinfecha'); if (sinF.length) console.log(`\n⚠️ ${sinF.length} sin ninguna fecha (cuentan como entradas hoy: el cargo real puede ser MAYOR): ${sinF.slice(0, 10).map((x) => String(x.n).slice(0, 25) + ' ' + x.cta).join(' · ')}`);
+      console.log(`\nCUENTA: ${mirados} = ${conCargo.length} con cargo + ${mirados - conCargo.length} sin cargo ${filas.length === mirados ? '✓' : '⚠️ NO CIERRA'}`);
       return;
     }
     // BILLING_PROBE=cargosfull[:<cuenta>][:go] → ¿QUÉ PRODUCTOS PAGAN ALMACENAMIENTO Y STOCK ANTIGUO? (04/10/2026)
@@ -20267,6 +20323,51 @@ async function main() {
     // NUNCA se guarda ni se imprime lo que escribió el comprador, ni su nombre: sólo el motivo de ML.
     // Con `:go` escribe y, una vez por semana, manda por el canal privado los de envío/comprador que
     // todavía encarecen el producto, para que él diga si se sacan del costo (`sincargo`).
+    // BILLING_PROBE=reclamocubre[:días] → ¿ML CUBRIÓ LA PLATA DE LOS RECLAMOS? (etapa 6, 14/10/2026). SOLO LEE.
+    // Todo reclamo se cuenta como pérdida y encarece el producto (% de reclamos en el costo); si ML lo cubrió
+    // (`resolution.benefited`, `applied_coverage`…), no lo fue. Antes de usarlo se mide qué trae ML: imprime SÓLO
+    // códigos y nombres de campo (nunca texto del comprador, el registro es público) y cuántos de cada uno.
+    if (/^reclamocubre(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const DIAS = parseInt(String(process.env.BILLING_PROBE).split(':')[1]) || 60;
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const desdeK = new Date(Date.now() - DIAS * 864e5 - 3 * 3600e3).toISOString().slice(0, 10).replace(/-/g, '_');
+      const porOrden = {};
+      for (const [dk, ents] of Object.entries(vp)) {
+        if (dk < desdeK) continue;
+        for (const v of Object.values(ents || {})) {
+          if (!v || !v.cancelada || !['reclamo', 'devolucion', 'perdida'].includes(v.tipoCancelacion)) continue;
+          const m = /^v(\d+)_/.exec(String(v.id || '')); if (!m) continue;
+          porOrden[m[1]] = porOrden[m[1]] || { cuenta: String(v.cuenta || '').toLowerCase(), tipo: v.tipoCancelacion, sinCargo: !!v.sinCargo };
+        }
+      }
+      const tokens = {}, cuenta = (o) => (o === undefined ? '∅' : JSON.stringify(o).slice(0, 40));
+      const tally = {}, claves = {}; let leidos = 0, fallas = 0, sinClaim = 0;
+      const sumar = (k, v) => { tally[k] = tally[k] || {}; tally[k][v] = (tally[k][v] || 0) + 1; };
+      for (const [orden, o] of Object.entries(porOrden)) {
+        if (!tokens[o.cuenta]) {
+          const lbl = labels.find((l) => l.toLowerCase() === o.cuenta); const acc = lbl && accounts[lbl];
+          if (!acc?.refresh_token) { fallas++; continue; }
+          try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + lbl, { refresh_token: t.refresh_token, updated_ts: Date.now() }); tokens[o.cuenta] = t.access_token; } catch { fallas++; continue; }
+        }
+        let cl = null; try { cl = await mlGet('/post-purchase/v1/claims/search?resource=order&resource_id=' + orden, tokens[o.cuenta]); } catch { cl = null; }
+        if (!cl) { fallas++; continue; }
+        const arr = cl.data || cl.results || []; if (!arr.length) { sinClaim++; continue; }
+        leidos++;
+        for (const c of arr) {
+          sumar('tipo de venta', o.tipo + (o.sinCargo ? ' (sinCargo)' : '')); sumar('claim.type', c.type); sumar('claim.stage', c.stage); sumar('claim.status', c.status);
+          const r = c.resolution || null;
+          if (!r) { sumar('resolution', '∅ (sin resolución)'); continue; }
+          for (const k of Object.keys(r)) claves[k] = (claves[k] || 0) + 1;
+          sumar('resolution.reason', cuenta(r.reason)); sumar('resolution.closed_by', cuenta(r.closed_by)); sumar('resolution.benefited', cuenta(r.benefited));
+          sumar('resolution.applied_coverage', cuenta(r.applied_coverage));
+        }
+      }
+      console.log(`=== ¿ML CUBRIÓ LOS RECLAMOS? (${DIAS} días) ===`);
+      console.log(`${Object.keys(porOrden).length} órdenes con reclamo/devolución/pérdida · ${leidos} con claim leído · ${sinClaim} sin claim · ${fallas} no se pudieron leer`);
+      console.log(`campos que trae resolution: ${Object.entries(claves).map(([k, n]) => k + ' ×' + n).join(' · ') || '(ninguno)'}`);
+      for (const [k, m] of Object.entries(tally)) console.log(`· ${k}: ${Object.entries(m).sort((a, b) => b[1] - a[1]).map(([v, n]) => v + ' ×' + n).join(' · ')}`);
+      return;
+    }
     if (/^motivoreclamo(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const partes = String(process.env.BILLING_PROBE).split(':');
       const DIAS = parseInt(partes[1]) || 60, GO = partes.includes('go');
