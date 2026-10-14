@@ -241,6 +241,8 @@ Qué chequear: que la cuenta del peor caso use la misma comisión que la normal,
 - **Arreglos de la etapa 1 del 08/10 (52b4710, 774d1b4, 9e2ec84, 04f8917, ead3675):** son los de v22.63, anotados arriba.
 - **Activar pausadas, envío del lado de la barrera (10/10/2026):** abajo de $33.000 ya no se mide el envío con ventas de ARRIBA (los Redmi Buds 6 Play a $32.999 daban −5% por una venta de $101.859 del Buds 6 común). Sin ventas del mismo lado, abajo = $0. Chequear: que una publicación barata sin ventas propias no herede el envío de una cara de la misma ficha.
 
+- **Notas del 🧠 de variantes reescritas (13/10/2026), pedido suyo.** Las 117 que decían "se mira solo, no con el resto del producto" (lote del 12/10) se rehicieron con la planilla del día (`ml-sync/notas/variantes_1310.txt`): precio, último cambio con motivo (sacado de los `decido` guardados), ventas y "HOY NO LO TOCO PORQUE…". Comando nuevo `vernotas[:texto]` (solo lee) para ver las notas como están. Chequear: ninguna nota con "se mira solo" (`vernotas:se mira solo` da 0) y que ninguna pase los 600 caracteres.
+
 ## 2 · PLATA
 - **Cada lugar, su nota (08/10/2026, v22.71):** él: *"en ventas por qué aumentó el precio o por qué no, y en pedidos por qué
   pide x unidades"*. `cerebroAbrir`: con `ped` o `ctx:'caja'` muestra SÓLO las notas `ped__`/`caja__`; con `ctx:'venta'`
@@ -271,6 +273,7 @@ Qué chequear: que la cuenta del peor caso use la misma comisión que la normal,
 - **Ventas en promo o con cupón (11/10/2026, v23.13).** Qué es: cada venta dice si tuvo descuento, cuánto puso ML y
   cuánto nosotros; el bloque por cuenta de Ventas suma lo del período. Dónde: robot `anotarPromoVenta` (ciclo, una vez por
   orden) → `cyc/promoventa/<día>/<orden>` = `{t, s, ml, tipo, mla:{<MLA>:{t,s}}}` o 0; relleno `promoventas:<días>:go` por
+  `promoventas:<días>:<cuántas>:<palabra>` (14/10) mira sólo las ventas de ese título, para explicar una tarjeta puntual.
   ml-sync (sin `go` muestra la estructura, solo lee). Web `vpPromoDe`/`vpPromoLabel`/`vpPromoTotalHTML`. Qué chequear:
   `/orders/<id>/discounts` da 404 = sin descuento (se guarda 0); un 429 no se guarda (se reintenta); que lo de ML no se
   descuente del neto (el cupón de ML no baja lo depositado); que la suma por compra no cuente dos veces una orden.
@@ -287,6 +290,26 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 (sería doble), y que el número de Gastos y el del Arqueo sean el mismo para cada mes.
 
 ## 3 · MERCADERÍA
+
+- **Cajas: 30 días + 7 de viaje, almacenamiento a los 4 meses (14/10/2026, v23.36).** `REPO_DIAS_TOTAL`=37 (index.html) y `T=37` en `ml-sync/notas/decide_cajas.py`. `almacDiasDe(p)`: 120 días lo chico, 60 lo grande (`esGrandeFull`). Chequear: Armar caja y el script dan el mismo objetivo · ninguna caja manda para más de 37 días · el aviso "empieza a pagar en N d" de Rotación cuenta desde 120 en lo chico.
+
+### Paraguay: todo guardado en CYC y una pasada por mes (14/10/2026, pedido suyo · v23.37 `cyc-v617`)
+- **Qué es:** el chat de compras carga TODO lo de Nissei con catálogo exacto en ML (aunque no dé 25% ni tenga 100 vendidas: el panel ya lo esconde en desplegables), anota lo que no tiene catálogo con `pyvisto` (`cyc/pyvistos/<código>`), y una vez por mes actualiza precios con `candprecio:<código>=<US$>[/<vendidas>]|=nohay` sin volver a buscar en ML, usando la lista de `pyconocidos`. `candalta` de un código ya cargado ya no lo saltea: le pone el precio y la fecha. El robot mide hasta 250 por vuelta (antes 40) y los descartados por margen se vuelven a medir cada 2 días (antes 7). Un candidato vence a los 60 días sin precio nuevo (antes 45).
+- **Dónde:** `candalta`, `candprecio`, `pyvisto`, `pyconocidos`, `CAND_MAX_ML`, `CAND_REMEDIR_DIAS` (sync.mjs) · `CAND_VENCE_DIAS` (index.html) · `ml-sync/PROMPT_GUAY.md`.
+- **Qué chequear:** que `candprecio` no reviva lo tachado a mano; que un precio nuevo borre `calcTs` y se vuelva a medir; que la corrida de `candidatos` con 250 no tarde demasiado ni dé 429 a otros pasos de la noche.
+
+### Por qué cada caja abierta no se lee sola, en el informe (14/10/2026, auditoría)
+- **Qué es:** `cajasQueLlegaron` anota en `mlapi/cajasciegas` (cada hora) los renglones de cada caja abierta que quedaron sin leer y el motivo (`sinpub` sin publicación de Full con código en esa cuenta · `color` falta fijarvar · `sincolor` renglón sin color · `ml` 429). La sección 9 del `informe` lo muestra para TODAS las abiertas, no sólo las de 9+ días.
+- **Dónde:** `motivoSL` en `cajasQueLlegaron` (sync.mjs) y el bloque "Auditoría 14/10" de la sección 9 del informe.
+- **Qué chequear:** que sólo muestre cajas que siguen abiertas con el mismo seguimiento; que un producto nuevo (primera caja) diga "normal"; que no escriba en modo prueba.
+
+### Cada color con su código de Paraguay (13/10/2026, v23.34 · `cyc-v614`)
+Él con el Joystick Xbox: *"me pide el azul, pero no puso el link del azul, puso el del negro"*. La ficha tenía un solo
+código/link/foto para todos los colores. Ahora `cyc/products/<id>/pyVar/<color>` = {cod, usd, link, foto, ts}, cargado con
+`pyprecio:<ficha>#<color>=<cód>/<US$>@<link>@<foto>` (valida que el color exista en la ficha). Web: `pyDeColor`; el renglón
+de Probados usa link, foto, código y precio del color, y `pyCanasta` (mensaje para Nissei) usa el código y precio del color
+cuando el pedido es de UN solo color. **Qué chequear:** con varios colores pedidos sigue el código de la ficha (aviso rojo);
+que la clave del color sea la misma en el robot y la web (minúsculas, no alfanumérico → _).
 
 - **`compray:<fecha>|usd=…|sinpesos` (12/10/2026):** crea un pedido de Paraguay viejo sin los pesos de los dólares (él: *"crealo igual, si faltan cosas me la indicas"*). Queda INCOMPLETO, fuera del promedio, y la falta se lista como los otros gastos. Primer uso: el pedido del 08/09 (ticket US$ 652, sin detalle de productos). Chequear: que sin `sinpesos` siga pidiendo `merc=`.
 - **Estado de la caja de cada producto** (probe `cajahoy`, `mllinks.caja`): winning/sharing/losing
@@ -406,6 +429,8 @@ el precio de un candidato distinto con código parecido (se compara también por
 
 ## 7 · DISEÑO
 
+- **Etiqueta de promo en el celu (13/10/2026, v23.35).** Se salía de la tarjeta por `white-space:nowrap`. En ≤640px `.vp-promo` baja de renglón. "discount" ahora dice "descuento". Chequear: ninguna etiqueta o chip de Ventas con `nowrap` y texto largo en el celu.
+
 - **Venta en promo en dorado (v23.22, 12/10/2026):** `vpPromoLabel` (clase `.vp-promo`, también en `body.light`) dice "Descuento ML" si ML puso el descuento entero y "Vendido en promoción" si pusimos algo nosotros. Datos de `cyc/promoventa`. Chequear: que se vea en PC y celu, y en los dos temas.
 - **v23.23 (13/10):** "Descuento ML" va en AZUL (`.vp-promo-ml`); el dorado queda sólo para "Vendido en promoción" (pusimos plata nosotros).
 - **NO SÓLO ARREGLAR: PROPONER (09/10/2026, regla suya, ver etapa 6).** La revisión de diseño no se limita a lo que
@@ -444,6 +469,13 @@ los días: 7 = $115.000 × días, 10 = el doble. Período en curso cuenta hasta 
 ventas guardadas (01/05/2026) no cuentan. La vida de la tarjeta usa el promedio por día. Elección en `cycHoyEsc`.
 Qué chequear: que el total del mes coincida con Ventas en "Mes"; que las flechas no pasen de hoy.
 
+### El 🧠 nunca repite oraciones (14/10/2026, v23.39 `cyc-v619`, regla suya)
+Él, con el Metatarso Fuerte: *"repite oraciones. no quiero que nunca repita oraciones"*. La nota de la publicación ya trae el
+motivo del último cambio y abajo "Por qué cambió el precio" lo volvía a escribir. Vive en `cerebroBtn` (index.html, modo Claude):
+`yaDicho`/`_repetido`/`_decir` comparan el texto normalizado (sin tildes ni signos, primeros 80 caracteres) y un motivo o nota que
+ya está adentro de algo mostrado no se vuelve a escribir; si todos los cambios se repiten, no sale el título. Qué chequear: una
+nota con el motivo adentro + el mismo cambio en claudecambios → sale una sola vez; un cambio con otro motivo sí sale.
+
 ### Ventas con vida (08/10/2026 a la noche, v22.78)
 - **Qué es:** cada venta de Ventas x Producto (celu y PC) y la tarjeta "Ventas de hoy" de Inicio llevan color de nivel y figuras animadas atrás. Elegido por él con ejemplos.
 - **Dónde vive:** `index.html`: CSS `.vw`/`.viva`/`lv-*`/`mv-*`; motor `vivaScan` (un solo reloj, sólo anima lo que está en pantalla, reloj de respaldo si el visor frena requestAnimationFrame); `vivaVenta` + `vivaEnvolver` (ventas) y `vivaDia` (Inicio). `_pctNivel` ahora devuelve también la clave `k`.
@@ -458,6 +490,10 @@ Qué chequear: que el total del mes coincida con Ventas en "Mes"; que las flecha
 - **v22.97 (09/10/2026):** el techo depende de la venta: `aguanta` = golpes hasta romperlo (fi ≥ .55 → 1, ≥ .3 → 2, si no 3; figuras rápidas `p.k` ≥ 1.3 lo rompen al primero); fuerza de salida, tamaño, giro, altura (vida) y chispas escalan con `fi` (Inicio usa .7 fijo).
 
 - **v22.99 (09/10/2026) · rojas y naranjas grandes con vida:** en `vivaVenta`, `bajo` desde $60.000 de neto y `justo` desde $45.000 tienen brillo/figuras (`vi` .35→1 con el log del neto), flotan desde el doble y tiemblan arriba de ~$200.000; el fuego sigue saliendo del puntaje. Chequear: que las chicas sigan sólo con el color.
+
+### El nombre de la ficha se lee entero en el celu (14/10/2026, v23.38 · `cyc-v618`)
+- **Qué es:** el nombre en Productos pasó de casilla de una línea a texto que corta en renglones (`pname-area`); en ≤640px va primero y a todo el ancho. Enter guarda (no mete saltos de línea).
+- **Qué chequear:** que renombrar siga guardando igual (`updProdName`) y que en la PC no quede un renglón vacío de más.
 
 ## 8 · DATOS E HISTORIAL (nueva, 08/10/2026)
 Todo lo que guarda la historia día por día y las pantallas que la dibujan.
@@ -555,6 +591,9 @@ entre los colores de la línea, cae a "todas" (no se inventa). **Qué chequear:*
 línea sea el de la venta.
 
 ### Buscar el techo de lo que vende bien (12/10/2026, regla suya)
+**13/10: SIN ESCALONES (regla suya).** ML deja subir hasta +100% sin pausar; cada prueba va directo al precio que creo que es
+el techo, también en lo caro. Lo del +10/15% de abajo ya no rige. **Qué chequear:** que ninguna prueba nueva sea un +10% "por las
+dudas", que las reglas de CEREBRO.md/CLAUDE.md digan esto, y que la vuelta no se haga por calendario sino por certeza.
 Paso 2c de la completa (trigger `trig_01475PwdPVJ1qTnYswcDxRq8`) y sección en CLAUDE.md. Escalones de +10/15% en lo que
 vende bien con stock, juicio por ganancia por día con stock (misma cuenta que la línea de tiempo y `supervisor:medir`),
 memoria en `ml-sync/notas/techo.md`. **Qué chequear:** que cada prueba tenga su renglón en techo.md y su motivo en el 🧠,
@@ -695,3 +734,76 @@ La pregunta de la etapa: *¿la lista que miré es TODO o sólo una parte? ¿una 
  · **Sigue abierto:** las publicaciones con variantes adentro (no los colores en publicaciones separadas) siguen sin dueño de
    precio: `decido` las rechaza y la planilla las lista "a mano". Falta un camino de Claude por `raiseVariations`.
 
+
+- **13/10/2026 · Paraguay: belleza y salud van con los perfumes** (etapa 3, mercadería). `esBellezaNom` + `_BELLEZA_RE` en
+  index.html: parte la lista del pedido (`_perfGrupos`), el botón 🧴 (`_pyRubroOk`) y el mensaje para Nissei
+  (`nisseiMsgLineas`). Mira nombre (castellano y portugués), `catNom`/`dom` de la ficha y `mlTit` del candidato.
+  NO toca el piso (`candPisoDe` sigue con `esPerfumeNom`) ni la cuenta (perfumes → Adriana). Chequear: que nada de
+  electrónica caiga en belleza por una palabra suelta (ej. "facial", "crema") y que el termómetro de cocina sea salud a propósito.
+
+- **13/10/2026 · `debencyc:<+N|-N|N>[|nota][;go]`** (etapa 2, plata). Escribe "Lo que nos deben" del Arqueo
+  (`cyc/finanzas/deben_cyc`, en DÓLARES) con relectura, y deja cada movimiento en `cyc/debencyc/<ts>`. Primer uso:
+  la perfumería le debe a CYC los 8 perfumes del pedido py20261005 que no van a ML (decisión suya, eligió la a).
+  Chequear: que el Arqueo lo sume una sola vez y que se reste cuando paguen.
+- **13/10/2026 · `borrarficha:<id,...>[;go]`** (etapa 3, mercadería): borra fichas sin publicación, ventas ni stock
+  (y sus claves en 0 de inventario y repoextra). Primer uso: los 5 perfumes del pedido 05/10 que se queda la
+  perfumería (decisión suya: "sacalos de web cyc, yo me encargo"). El `debencyc` de esa tarde se volvió a US$ 2.380.
+- **13/10/2026 · v23.26 · la promo mía cuenta como baja de precio** (etapa 1, precios). `state.promoclaude` (de
+  `cyc/promoclaude`) entra en `cambiosPrecioDe` (⬇️ de la venta) y en los eventos de la línea de tiempo (▼, motivo
+  `promo`). `promoNombreDe` da el nombre (PRICE_DISCOUNT = "descuento propio") y `vpPromoLabel` lo agrega a la
+  etiqueta. Chequear: que no cuente dos veces una baja que además se hizo en el precio de lista, y que una promo
+  vencida (registro borrado) deje de aparecer en ventas viejas (se pierde la marca: aceptado).
+
+### Línea de tiempo: ▾ ámbar = se cobró menos sin cambiar el precio (13/10/2026, v23.27)
+Él, con la Batidora: *"porque se nota que el precio baja si no hay flechita roja"*. Los días con ventas la línea del precio es
+lo COBRADO por unidad (`pCob`), y baja sin ningún cambio de precio por promo/cupón de ML, carrito o un color más barato
+vendido ese día (en "Todas juntas" se mezclan los colores). Ahora se guarda el precio publicado (`pLista`) y, si lo cobrado
+quedó 3%+ abajo y ese día no hubo ▲▼, sale un ▾ ámbar chico y el globito dice cuánto y por qué. Chequear: que no tape una ▼
+real (sólo sale sin evento ese día) y que en una sola publicación sin promo no aparezca.
+
+### `lupa`: cada publicación, todos los días (13/10/2026)
+Probe de sólo lectura (ml-consulta): de cada publicación con ficha y stock o ventas, los últimos 7 días con stock contra los 30
+anteriores (ritmo, ganancia por unidad, plata por día, días sin vender, caja, precio). Un día cuenta salvo que se SEPA que no
+había stock. El cambio de precio sólo se muestra como contexto de otra bandera. Va en las vueltas del cerebro. Chequear que
+las 🚩 sean pocas y reales (la primera corrida dio 185 de 236: demasiadas).
+
+### Juicio contra el número del supervisor (13/10/2026, v23.28)
+Él, con el Chispero: *"porque dice perdió y dio positivo?"*. El número del supervisor es sólo el efecto precio (lo cobrado de
+más en lo que SÍ se vendió; el volumen perdido no se cuenta, `VOLUMEN_CONFIABLE`). Si mi juicio dice lo contrario, el número
+sale en gris con la aclaración. Chequear que no aparezca cuando coinciden.
+
+### Pedidos: el ritmo de antes cuando subí por escasez (13/10/2026)
+Él: *"si subo por escasez se vende menos de lo normal; eso no debería achicar las unidades a comprar"*. `pedidostodo` marca
+`ESC` en cada suba cuyo motivo dice escasez/estirar; `decide_pedidos.py` (`ritmo`) usa el mayor entre el ritmo de hoy y el de
+los 30 días previos / 60 días, si la suba fue hace 30 d o menos. **Los motivos de escasez en `decido` tienen que decir "escasez"**.
+Chequear que un producto en escasez no baje su pedido.
+
+### Flechas de precio con el color del motivo (13/10/2026, v23.29)
+Él: *"cuando se aumenta por escasez o se baja por distintos motivos, ¿podés poner las flechitas de otro color?"*. `flechaTipo`
+(index.html) lee el motivo de `cyc/claudecambios` (o `autoprecio`, o el evento) y `FLECHA_TIPOS` da el color: verde prueba/hay
+lugar · celeste margen · naranja escasez · cian caja · violeta promo · amarillo vuelta atrás · rojo remate · gris a mano.
+Línea de tiempo, renglón de cada venta y su detalle. **Los motivos de `decido` tienen que nombrar la causa** (escasez,
+techo/prueba, peor caso/25%, caja, remate, vuelvo) o la flecha sale gris. Chequear que la leyenda y las flechas coincidan.
+
+### `pyped:fichas:<id>[:go]` (13/10/2026, etapa 3)
+Rehace las fichas que faltan de un pedido de Paraguay YA llegado (las de perfumería se habían borrado y él quiere los costos
+de todo: *"no van a venderse en ML, pero quiero tener los costos"*). Mismo costo que `llego` (pagado × recargo real), no toca
+la oficina ni el estado. `llego` ahora también trata como "sin ficha" a un candidato cuyo `prodId` apunta a una ficha borrada.
+
+### El 🧠 dice por qué cambió el precio (13/10/2026, v23.31)
+Él, con el Paulvic Barbarella: *"no explica por qué aumentó de 58 a 97%"*. La nota de la publicación dice cómo está hoy; ahora
+el 🧠 (Ventas, Productos, Rotación) agrega las últimas 3 decisiones de `cyc/claudecambios` con su motivo y su flechita de
+color. Chequear que cada `decido` tenga motivo escrito (si no, sale "sin motivo anotado").
+
+### La flechita explica por qué (13/10/2026, v23.32)
+Él: *"si pongo el mouse ahí es porque quiero saber qué pasó y por qué"*. `cambioTxt` arma el texto: tipo de cambio (el
+color de `FLECHA_TIPOS`), precio de antes → después, % y el motivo de `claudecambios`/`autoprecio`. Va en el globito de la
+flechita (dibujada arriba de los rectángulos del globito, si no el mouse no llega) y en el del día. Chequear con el mouse.
+
+### El 🧠 sin "¿te queda alguna duda?" y con los cambios viejos (13/10/2026, v23.33)
+Se sacó el renglón final. "Por qué cambió el precio" también toma el último de `cyc/autoprecio` si no está en
+`claudecambios`. Regla de las 4 partes del motivo en `CEREBRO.md`. Chequear que las notas nuevas la cumplan.
+
+- 13/10 · PROMPT_GUAY rehecho con las correcciones del chat de compras: Chrome al frente con 3 pestañas, Claude in Chrome (no el navegador integrado), sin leer direcciones remotas (se pega entero), recorrido por `ordem=maior-preco` sin www, foto `thumbs/big`, ML por HTML (polycard), algo cada 15 min, y pregunta antes de pegar en el chat CYC. Se sacó la contradicción maquillaje/perfumes (afuera desde el 13/10) y el "17%" (el recargo se mide, hoy ~21%). Chequear: que "DÓNDE QUEDÓ" se actualice después de cada barrido.
+
+- **(etapa 3 · 14/10/2026) Cajas a 60 días en lo parejo:** `decide_cajas.py` `dias_de`/`parejo`, lista `notas/sin_estirar.txt`. Chequear: que la lista siga al día con las pruebas abiertas de `techo.md`, que el criterio de "parejo" no estire algo que se está frenando, y que el cupo de la cuenta no se pase.

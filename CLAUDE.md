@@ -760,6 +760,40 @@ archivo. **Etapa 8 · Datos e historial** creada ese día (líneas de tiempo); c
 Inicio la pide ya. Y lo que se mira en TODAS: contar dos veces lo mismo (el stock ×4 del Centímetro),
 fallas leídas como dato, dos fórmulas para un número, datos de terceros en el registro público.
 
+## 🇵🇾 LA PASADA DEL MES DE GUAY: LISTA, ESPERANDO QUE ÉL LA PIDA (14/10/2026)
+
+Pedido suyo: *"quiero que TODOS esos estén en la web de cyc, no a la vista si no llega a las 100 ventas ni al 25% (...) la
+run de guay va a ser solo una vez al mes (...) y cerebro mira todos los días si los precios de ml suben o bajan"* y *"al mes
+no debería mirar solo precios, sino productos nuevos"*. Y después: *"no quiero mandarle nada ahora al chat (...) guardá todo
+para cuando te pregunte"*. **NO se le mandó nada al chat de compras todavía.**
+ · **Hecho y subido (v23.37):** `candalta` de un código ya cargado actualiza precio/fecha/vendidas (no lo saltea) ·
+   `candprecio:<código>=<US$>[/<vendidas>]` y `=nohay` (precios del mes sin buscar en ML; `nohay` = duro `noTipo:'nissei'`,
+   se revive si vuelve con precio; no toca lo tachado a mano) · `pyvisto:<código>|<nombre>|<motivo>` (lo mirado sin catálogo
+   exacto, `cyc/pyvistos`, se vuelve a buscar a los 90 días) · `pyconocidos` (solo lee: la lista código|US$|estado|nombre) ·
+   el robot mide 250 por vuelta (antes 40) y los descartados por margen cada 2 días (antes 7) · un candidato vence a los 60
+   días sin precio nuevo (antes 45) · `ml-sync/PROMPT_GUAY.md` ya dice todo eso (cargar aunque tenga <100 ventas, `pyvisto`,
+   pasada mensual por TODAS las páginas: lo conocido sólo precio, lo nuevo se busca en ML).
+ · **Cuando él diga "hagamos la de guay" (o pida el PROMPT GUAY):** (1) correr `pyconocidos` por ml-consulta, armar el
+   archivo "ya en CYC" (las líneas entre `@@LISTA` y `@@FIN`) y mandárselo con SendUserFile para que lo suba al chat de compras
+   · (2) pasarle el texto entero de `PROMPT_GUAY.md` (el otro chat no lee direcciones) · (3) cargar lo que mande:
+   `candprecio`/`pyvisto`/`candalta` por ml-sync, y `pyprecio` para los probados · (4) actualizar "DÓNDE QUEDÓ" en el prompt.
+ · **El número al 14/10:** 1.034 códigos de Paraguay en CYC (145 a la vista o esperando 2ª medición · 784 guardados por margen
+   · 59 afuera por otros motivos · 46 ya son fichas). El barrido llegó a la página 424 de Nissei (del más caro al más barato,
+   ~8.500 de ~13.000): faltan ~4.500, los más baratos. Lo que antes se miró en ML y no se cargó (sin catálogo o <100 ventas)
+   no quedó anotado: desde la próxima pasada sí.
+ · **Lo que falta medir:** que la corrida de `candidatos` con 250 no tarde de más ni haga dar 429 a la noche.
+
+## 📦 CAJAS A FULL: 30 DÍAS + 7 DE VIAJE · ALMACENAMIENTO A LOS 4 MESES (14/10/2026, regla suya)
+
+Él: *"para mandar cajas a full tené en cuenta 30 días para mantener stock y 7 días que tarda en llegar y que te cobran a los 4
+meses de stock en productos pequeños (o sea todos menos los tenders)"*. Armar caja y `decide_cajas.py` cubren **37 días** de venta
+(`REPO_DIAS_COBERTURA`=30 + `REPO_DIAS_DEMORA`=7, `REPO_DIAS_TOTAL`=37; antes 20). El aviso de almacenamiento de Rotación y
+`liquidarDe` usan `almacDiasDe(p)`: **120 días** para lo chico, **60** para lo grande (`esGrandeFull`, los Tenders). v23.36.
+**Y SE ESTIRA A 60 DÍAS SÓLO EN LO PAREJO (14/10/2026, eligió la a):** `decide_cajas.py` usa 60 días (`T_LARGO`) cuando el
+producto vende parejo (4+ en 30 d, 8+ en 60 d, stock 28+ días y los dos meses parecidos: aproxima "vendió todas las semanas")
+**y** no tiene una prueba de precio abierta (`ml-sync/notas/sin_estirar.txt`, un pedazo de nombre por renglón: sacarlo cuando
+la prueba se cierra). Todo lo demás, 37. El cupo de cada cuenta lo sigue frenando el botón del cupo de Armar caja.
+
 ## 📋 LA LISTA ÚNICA DEL CEREBRO: `ml-sync/CEREBRO.md` (13/10/2026, pedido suyo)
 
 Él: *"no quiero que te olvides las cosas que agregamos a cerebro (...) me gustaría que tengas una lista de TODO lo que
@@ -830,9 +864,9 @@ y terminar de venderlas el día 8 (pero nunca a menos del precio normal donde se
 día 8 tampoco pasa nada) (…) seguramente muchísimos productos más están con el mismo problema (…) no sé por qué no lo
 hiciste antes"*.
  · **En CADA vuelta (las 4 del día) miro todo lo que vende y se queda sin stock en Full antes de reponer.**
- · **Sin caja despachada a esa cuenta:** se estira sin fecha. Subo de a escalones (máximo +25% por vez), mirando en
-   cada vuelta: si sigue vendiendo rápido, otro escalón; si se frenó del todo, bajo de a poco. **Techo ~×2 del precio
-   normal** (5.000 → 10.000 sí, → 20.000 no): ML pausó el Espejo 8" cuando el robot viejo lo llevó ×6.
+ · **Sin caja despachada a esa cuenta:** se estira sin fecha. Voy directo al precio que pienso (sin escalones, regla del 13/10), mirando en
+   cada vuelta: si sigue vendiendo rápido, más; si se frenó del todo, bajo de a poco. **Techo ~×2 del precio
+   normal**. ML deja subir hasta +100% sin pausar (lo del Espejo 8" fue por otra cosa, aclarado por él el 13/10).
  · **Con caja despachada:** llega en ~8 días desde el despacho. El precio se elige para que la última unidad salga
    cerca del día 8.
  · **Nunca abajo del precio normal** (al que vendía antes de la escasez). Si sobran unidades al llegar la caja, no pasa
@@ -964,7 +998,9 @@ unidad × unidades por día con stock), no el que más unidades vende.
    su motivo: escasez (stock < 14 días, va por ESCASEZ), sobra (stock > 90 días: ahí se busca vender), liquidando, mis
    promos, regalables en las 2 semanas antes de su fecha y frenadas por ML. **Arrancan TODAS juntas** (él: *"que arranquen
    todas juntas, si total se puede ver venta x venta y producto x producto"*): cada una se juzga con SUS ventas.
- · Escalón +10% (+15% si vende 1+/día con margen alto), 90/990, frenos de siempre.
+ · ~~Escalón +10%~~ **SIN ESCALONES desde el 13/10 (él: *"ml deja tranquilamente subir hasta el 100% del precio actual,
+   sea cual sea su precio. así que no vayamos con escala, andá directo al precio que pensás vos"*)**: directo al precio que
+   creo que es el techo, también en lo caro. 90/990, frenos de siempre (barrera $33.000, techo $650.000, variantes, liquidando).
  · Juicio **por certeza, no por calendario** (él: *"si vende 5 por día, se subió y vende 0, es una información fuerte (…)
    quizás fue un día malo (…) tenés que estar bastante seguro (…) si subís el triple de ganancia y vende la mitad quizás
    sigue conviniendo (…) los números los sabés vos"*). Se mira en cada vuelta: esperado = ritmo de antes × días con stock;
@@ -983,6 +1019,8 @@ medir con datos crudos dónde se pierde o se gasta plata que nadie mira, hacer l
 y (a)/(b). Memoria en `ml-sync/notas/ideas.md` (para no repetir). Si no aparece nada, no se inventa.
 
 ## 🎨 CADA VARIANTE SE JUZGA SOLA, CON SU PROPIO 🧠 (12/10/2026, regla suya)
+
+**Corrección suya del 13/10:** *"sacar eso de que 'se mira solo', ya lo sabemos. además quiero explicación clara de por qué se subió/bajó y si no se subió/bajó por qué, en ambos casos"*. Cada nota del 🧠 dice el último cambio con su motivo y, si hoy no se toca, **HOY NO LO TOCO PORQUE …**. Ver `ml-sync/CEREBRO.md`.
 
 Él, con la nota del Paulvic Abismo que hablaba del producto entero: *"cada variante debe llevar su propio análisis y su propio
 cerebro (…) algunos aromas se pueden vender a 50% y otros al 5%. Se tienen que juzgar todos por separado. No sólo los paulvic"*.
@@ -4076,7 +4114,7 @@ anduvo es el mismo error que leer un cero como buena noticia.
 
 ## EL "PROMPT GUAY": EL CHAT QUE MIRA LOS PRECIOS DE PARAGUAY (17/09/2026)
 
-**EL TEXTO VIGENTE ESTÁ EN `ml-sync/PROMPT_GUAY.md` (desde el 07/10/2026).** **El chat de compras lo LEE SOLO de la web cada vez que arranca** (raw.githubusercontent.com/maticaldas-del/web-cyc/claude/add-folder-78ysyb/ml-sync/PROMPT_GUAY.md): a Matías le alcanza con decirle *"Leé esa dirección y hacé lo que dice"*. **Cualquier regla de compras nueva se escribe en ese archivo y se sube a `claude/add-folder-78ysyb`**, si no la próxima corrida no la ve. Cuando lo pida, se le pasa ESE archivo entero.
+**EL TEXTO VIGENTE ESTÁ EN `ml-sync/PROMPT_GUAY.md` (desde el 07/10/2026).** **~~El chat de compras lo lee solo de la web~~ — NO FUNCIONA (13/10/2026): el otro chat se niega a seguir instrucciones de direcciones remotas (lo toma como posible engaño). Hay que pegárselo ENTERO cada vez**, y después de cada barrido actualizar la sección "DÓNDE QUEDÓ" con lo que reporte. **Cualquier regla de compras nueva se escribe en ese archivo y se sube a `claude/add-folder-78ysyb`**, si no la próxima corrida no la ve. Cuando lo pida, se le pasa ESE archivo entero.
 Cambios de esa versión, pedidos suyos: (1) arranca solo sin preguntar y barre **TODO** el catálogo de Nissei en
 comprasparaguay (~13.800; la vez anterior miró sólo ~1.000 por su cuenta), con la cuenta total = descartados + ya en el panel
 + mirados, y dónde quedó si no termina; (2) **les manda él mismo los resultados al chat CYC** (claude.ai/code, la sesión

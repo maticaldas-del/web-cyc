@@ -216,6 +216,9 @@ input.qty:focus{border-color:var(--accent2)}
 .pname-edit{font-family:'Syne',sans-serif;font-weight:700;font-size:.82rem;flex:1;min-width:130px;background:transparent;border:1px dashed transparent;border-radius:5px;color:var(--text);padding:3px 6px;outline:none;transition:border .15s}
 .pname-edit:hover{border-color:var(--border2)}
 .pname-edit:focus{border-color:var(--accent2);background:var(--surface2)}
+/* 14/10/2026, él: "no puedo ver el nombre completo en el celu". El nombre de la ficha es un textarea que corta en renglones, y en el teléfono va en su propio renglón a todo el ancho. */
+.pname-area{resize:none;overflow:hidden;line-height:1.35;white-space:pre-wrap;word-break:break-word}
+@media (max-width:640px){.pname-area{flex:1 1 100%;order:-1;font-size:.95rem}}
 .prod-item label{font-size:.68rem;color:var(--muted)}
 .prod-item input{width:120px;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:.72rem;padding:6px 10px;outline:none;text-align:right;transition:border .15s}
 .prod-item input:focus{border-color:var(--accent2)}
@@ -580,6 +583,8 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
 body.light .vp-promo{color:#a16207;background:color-mix(in srgb,#ca8a04 12%,transparent);border-color:color-mix(in srgb,#ca8a04 50%,transparent)}
 .vp-promo.vp-promo-ml{font-weight:600;color:#60a5fa;background:color-mix(in srgb,#60a5fa 12%,transparent);border-color:color-mix(in srgb,#60a5fa 45%,transparent)}
 body.light .vp-promo.vp-promo-ml{color:#0369a1;background:color-mix(in srgb,#0369a1 10%,transparent);border-color:color-mix(in srgb,#0369a1 40%,transparent)}
+/* En el celu la etiqueta de promo baja de renglón en vez de salirse de la tarjeta (13/10/2026, él: "se sale de la pantalla"). */
+@media(max-width:640px){.vp-promo{white-space:normal;display:inline-block;max-width:100%;line-height:1.4}.vp-cel>div{min-width:0}}
 </style>
 </head>
 <body>
@@ -2087,7 +2092,8 @@ function startApp(){
     // Para el renglón de cada venta: los cambios de precio de su publicación (cambioVentaHTML).
     // Sólo se muestran; no se calcula nada con ellos.
     state.supervisor={eventos:(d.supervisor&&d.supervisor.eventos)||{}};
-    state.autoprecio=d.autoprecio||{};
+    state.autoprecio=d.autoprecio||{};state.claudecambios=d.claudecambios||{};
+    state.promoclaude=d.promoclaude||{};   // promos que entré yo (13/10/2026: cuentan como baja de precio en la venta)
     state.claudedecide=d.claudedecide||{};
     // 🧪 VIGILANCIA (idea 6, 27/09/2026): la foto que deja el robot cada noche de TODAS las publicaciones que venden,
     // con su estado frente a la prueba de suba. Sólo se dibuja.
@@ -2513,7 +2519,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.25';
+const APP_VERSION='23.40';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2524,7 +2530,22 @@ const APP_VERSION='23.25';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
-  {v:'23.25',f:'14/10/2026',h:'19:18',c:[{n:1,t:'📋 Pedidos de Paraguay: el contador de arriba dice el corte real (17 días: viaje + preparar + caja), no 14 como Bs As.'}]},
+  {v:'23.40',f:'14/10/2026',h:'19:18',c:[{n:1,t:'📋 Pedidos de Paraguay: el contador de arriba dice el corte real (17 días: viaje + preparar + caja), no 14 como Bs As.'}]},
+  {v:'23.39',f:'14/10/2026',h:'11:00',c:[{n:1,t:'🧠 La ventanita del cerebro ya no repite oraciones: si el motivo de un cambio de precio ya está en la nota de arriba, no se vuelve a escribir.'}]},
+  {v:'23.38',f:'14/10/2026',h:'11:10',c:[{n:1,t:'📱 Productos en el celu: el nombre de cada ficha va arriba, a todo el ancho y en varios renglones, así se lee completo.'}]},
+  {v:'23.37',f:'14/10/2026',h:'22:45',c:[{n:2,t:'🇵🇾 Para probar: el precio de Paraguay ahora dura 60 días (antes 45) porque el chat de compras pasa una vez por mes a actualizar todo lo cargado.'}]},
+  {v:'23.36',f:'14/10/2026',h:'21:15',c:[{n:3,t:'📦 Armar caja: lo que se manda cubre 30 días de venta más los 7 que tarda en llegar (antes 20 en total). Y el aviso de almacenamiento de Full cuenta 4 meses para todo lo chico (los Tenders siguen en 2).'}]},
+  {v:'23.35',f:'13/10/2026',h:'21:30',c:[{n:1,t:'📱 Ventas en el celu: la etiqueta dorada de "Vendido en promoción" baja de renglón y ya no se sale de la pantalla.'}]},
+  {v:'23.34',f:'13/10/2026',h:'18:45',c:[{n:2,t:'🇵🇾 Pedidos de Paraguay: cada color puede tener su propio código, link y foto de comprasparaguay. Si pedís un solo color (ej. el Joystick azul), el renglón y el mensaje para Nissei usan los de ESE color.'}]},
+  {v:'23.33',f:'13/10/2026',h:'18:00',c:[{n:1,t:'🧠 El cerebro muestra también los cambios de precio viejos (de antes de anotar cada decisión) y se sacó el renglón "¿Te queda alguna duda?".'}]},
+  {v:'23.32',f:'13/10/2026',h:'17:45',c:[{n:1,t:'📈 Línea de tiempo: pasando el mouse por una flechita (o por ese día) dice qué cambio fue, por qué es de ese color y el motivo que escribí.'}]},
+  {v:'23.31',f:'13/10/2026',h:'17:30',c:[{n:1,t:'🧠 El cerebro de una venta o producto ahora dice POR QUÉ cambió el precio (las últimas 3 subas o bajas, con su motivo y la flechita de color).'}]},
+  {v:'23.30',f:'13/10/2026',h:'16:45',c:[{n:1,t:'🧠 Pedidos de Paraguay (Probados): abajo de cada tarjeta dice a la vista por qué pide esas unidades.'}]},
+  {v:'23.29',f:'13/10/2026',h:'16:20',c:[{n:1,t:'▲▼ Las flechitas de cambio de precio tienen el color del motivo: verde prueba/hay lugar · celeste cuidar el margen · naranja escasez · cian pelear la caja · violeta promo · amarillo vuelta atrás · rojo remate · gris a mano. Pasando el mouse dice cuál es.'}]},
+  {v:'23.28',f:'13/10/2026',h:'15:40',c:[{n:1,t:'🤖 Robot de precios: si mi juicio dice "perdió" y el número da positivo (o al revés), el número sale en gris aclarando que es sólo lo cobrado de más en lo que se vendió, sin contar las ventas que se perdieron.'}]},
+  {v:'23.27',f:'13/10/2026',h:'14:55',c:[{n:1,t:'📈 Línea de tiempo: un ▾ ámbar marca los días que se COBRÓ menos sin que nadie bajara el precio (promo o cupón de ML, carrito, o se vendió un color más barato). El globito del día dice cuánto menos.'}]},
+  {v:'23.26',f:'13/10/2026',h:'14:55',c:[{n:2,t:'🏷️ Una promo que puse yo (precio tachado) ahora cuenta como BAJA DE PRECIO: sale ⬇️ en la venta y ▼ en la línea de tiempo. Y la etiqueta de la venta en promo dice el nombre (descuento propio, el evento de ML, cupón…).'}]},
+  {v:'23.25',f:'13/10/2026',h:'12:25',c:[{n:1,t:'🇵🇾 Pedido de Paraguay: el bloque de perfumes ahora junta todo lo de BELLEZA Y SALUD (maquillaje, cremas, shampoo, termómetros, plantillas, masajeadores…); el resto va en Resto. También en el mensaje para Nissei y en el botón 🧴. No cambia en qué cuenta va cada producto.'}]},
   {v:'23.24',f:'13/10/2026',h:'01:50',c:[{n:1,t:'🧠 Revisión 9 (el cerebro): una venta cancelada guarda cuándo se canceló, para que la revisión vea los reclamos y devoluciones de ventas viejas. Lo demás de la revisión fue en el robot (pedidos, cajas, precios, promos e informe).'}]},
   {v:'23.23',f:'13/10/2026',h:'00:30',c:[{n:1,t:'🏷️ Ventas: "Descuento ML" (lo pagó ML entero, a vos te llega el precio lleno) pasa a AZUL. El DORADO queda sólo para las promos o descuentos donde pusimos plata nosotros.'}]},
   {v:'23.22',f:'12/10/2026',h:'21:40',c:[{n:1,t:'🏷️ Ventas: la venta hecha en promo dice en DORADO "Descuento ML" (si el descuento lo puso ML entero) o "Vendido en promoción" (si pusimos algo nosotros), con cuánto puso cada uno.'}]},
@@ -4173,7 +4194,7 @@ function liquidarDe(p,diasSinVender,stock,edad){
   const d=diasSinVender;
   // "Nunca vendió" (d==null) con stock cuenta como parado: es el caso más viejo de todos.
   const parado=(d==null)?Infinity:d;
-  const pagando=(edad!=null&&edad>=ALMAC_DIAS);    // ya paga almacenamiento de Full
+  const pagando=(edad!=null&&edad>=almacDiasDe(p));    // ya paga almacenamiento de Full
   if(parado>=LIQ_DIAS_REMATAR||pagando)
     return {nivel:'rematar',pct:LIQ_PCT_REMATAR,precio:precioParaMargen(p,LIQ_PCT_REMATAR),
       motivo:pagando&&parado<LIQ_DIAS_REMATAR?`ya paga almacenamiento`:`${parado===Infinity?'nunca vendió':parado+' días sin vender'}`};
@@ -4450,7 +4471,7 @@ function renderProds(){
     return`<div class="prod-item" style="flex-direction:column;align-items:stretch;gap:10px">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         ${fotoChipHTML(p,64)}
-        <input class="pname-edit" type="text" value="${p.name.replace(/"/g,'&quot;')}" onchange="updProdName('${p.id}',this.value)" title="Editar nombre (el vínculo de ventas es por ID interno, no se pierde nada)">
+        <textarea class="pname-edit pname-area" rows="${Math.max(1,Math.min(4,Math.ceil(p.name.length/38)))}" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}" onchange="updProdName('${p.id}',this.value.replace(/\s*\n\s*/g,' ').trim())" title="Editar nombre (el vínculo de ventas es por ID interno, no se pierde nada)">${p.name.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</textarea>
         <button class="btn" style="white-space:nowrap;background:${p.origen==='py'?'rgba(239,68,68,.15)':'rgba(59,130,246,.12)'};color:${p.origen==='py'?'#f87171':'#60a5fa'};border:1px solid ${p.origen==='py'?'rgba(239,68,68,.3)':'rgba(59,130,246,.3)'}" onclick="toggleProdOrigen('${p.id}')" title="Origen del producto: define en qué sección de Pedidos aparece (BS AS o Paraguay)">${p.origen==='py'?'🇵🇾 Paraguay':'🇦🇷 BS AS'}</button>
         ${lineaBtn(p.id,'📈 línea')}${cerebroBtn(p.id)}
         <button class="btn btn-del" onclick="delProd('${p.id}')">✕</button>
@@ -6917,15 +6938,17 @@ function diasConStockProd(pid){
 // por la API (medido con `cupofull`: 14 rutas × 4 cuentas), así que en vez de copiarlo se achica la
 // perilla. La regla de "una cuenta en CERO siempre recibe" (REPO_PISO_CERO) NO cambia: es justo el
 // caso en que él dice que ML se equivoca.
-const REPO_DIAS_COBERTURA=20;
+// 30 DÍAS + 7 DE VIAJE (14/10/2026, regla suya: "para mandar cajas a full tené en cuenta 30 días para mantener
+// stock y 7 días que tarda en llegar"). Lo que se manda tiene que alcanzar 30 días DE VENTA después de que llega.
+const REPO_DIAS_COBERTURA=30;
 // Cuánto tarda desde que se arma la caja hasta que ML la tiene a la venta. Estaba en 14 (7 de
 // despacho + 7 de activación); él corrigió el 20/08 que en la práctica son unos 8. Se sobreestima
 // la demora = se manda de más, así que el número importa. Cuando haya cajas marcadas como llegadas
 // se puede medir de verdad, con la fecha de despacho contra la de entrada a Full.
-const REPO_DIAS_DEMORA=8;
+const REPO_DIAS_DEMORA=7;
 // Ya NO se le suma la demora: el objetivo son 30 días de stock total, punto. `REPO_DIAS_DEMORA`
 // sigue existiendo porque la pantalla lo nombra y porque el rojo de Pedidos lo usa de referencia.
-const REPO_DIAS_TOTAL=REPO_DIAS_COBERTURA;
+const REPO_DIAS_TOTAL=REPO_DIAS_COBERTURA+REPO_DIAS_DEMORA;   // 37 días desde hoy (14/10/2026)
 // CUÁNDO UN PEDIDO SE PINTA DE ROJO. Estaba en 7 días de stock y no se hablaba con la demora del
 // viaje: las Cartas Casino tenían 10 días de stock y salían AMARILLAS, cuando en 10 días no llega
 // ni la caja. O sea que el amarillo podía significar "ya está condenado a cortarse".
@@ -9029,6 +9052,9 @@ async function lineaAbrir(prodId,ev,varSel){
       await Promise.all(mlas.map(async mla=>{try{const sn=await db.ref('mlapi/linea/'+mla).once('value');porMla[mla]=sn.val()||{};}catch(e){porMla[mla]=null;}}));
       let evs={};try{const sn=await db.ref('cyc/supervisor/eventos').once('value');evs=sn.val()||{};}catch(e){}
       const evP=Object.values(evs).filter(e=>e&&mlas.includes(e.mla));
+      // UNA PROMO MÍA TAMBIÉN ES UNA BAJA DE PRECIO (13/10/2026, él: "porque no aparece que bajamos de precio? esta en
+      // promo es lo mismo no?"). Sale de `cyc/promoclaude/<MLA>` {de, precio, ts, nombre}.
+      for(const mla of mlas){const pc=(state.promoclaude||{})[mla];if(pc&&Number(pc.ts)>0&&Number(pc.de)>0&&Number(pc.precio)>0&&Number(pc.precio)!==Number(pc.de))evP.push({mla,ts:Number(pc.ts),de:Number(pc.de),a:Number(pc.precio),origen:promoNombreDe(pc),motivo:'promo'});}
       _lineaCache[prodId]={porMla,evP,ts:Date.now(),fallo:Object.values(porMla).some(x=>x===null)};
     }
     const _C=_lineaCache[prodId];
@@ -9085,7 +9111,7 @@ function lineaPintar(prodId){
     let t=0,q=0,qR=0;ents.forEach(v=>{t+=Number(v.total)||0;q+=Number(v.qty)||0;if(ventaEnRemate(v,k))qR+=Number(v.qty)||0;});
     // "En remate" con la MISMA regla que la línea de todos y Pedidos (ventaEnRemate), no la marca del robot (etapa 8).
     if(_vp1&&k>=_vp1&&!(dias[k]&&dias[k].hoy)&&(q>0||(dias[k]&&dias[k].u!=null))){const o=dias[k]=dias[k]||{u:null,uR:null,vis:null,st:null,stN:0,p:null,caja:null,rem:false,esc:null,mg:null,tot:null,pubs:0};o.u=q;o.uR=qR;}
-    if(q>0&&t>0){(dias[k]=dias[k]||{u:null,uR:null,vis:null,st:null,stN:0,p:null,caja:null,rem:false,esc:null,mg:null,tot:null,pubs:0}).p=Math.round(t/q);dias[k].pCob=true;}}
+    if(q>0&&t>0){const _o=(dias[k]=dias[k]||{u:null,uR:null,vis:null,st:null,stN:0,p:null,caja:null,rem:false,esc:null,mg:null,tot:null,pubs:0});if(_o.p>0&&!_o.pCob)_o.pLista=_o.p;_o.p=Math.round(t/q);_o.pCob=true;}}
   // Escala con un rango mínimo del 20%: un cambio de 3% no puede verse como un salto (él, con el costo: "$1.007 a $1.036").
   const _esc=(mn,mx)=>{if(!(mx>0))return[0,1];if(mx-mn<mx*0.2){const c=(mx+mn)/2;return[c-mx*0.1,c+mx*0.1];}return[mn,mx];};
   const ps=ks.map(k=>dias[k]&&dias[k].p).filter(x=>x>0); const [pMin,pMax]=ps.length?_esc(Math.min(...ps),Math.max(...ps)):[0,1];
@@ -9240,10 +9266,18 @@ function lineaPintar(prodId){
     svg+=`<text x="${W-2}" y="${L.st[0]+9}" font-size="10" text-anchor="end" fill="var(--muted)">${Math.round(sMax)} u.</text>`;}
   if(ptsP.length>1)svg+=`<polyline points="${ptsP.join(' ')}" fill="none" stroke="var(--text)" stroke-width="1.5"/>`;
   // marcas de cambios de precio
-  const motivoTxt={rescate:'🛟 rescate después de una venta baja',rescatep:'🛟 rescate antes de vender (cuenta)',subir:'📈 suba del robot',bajar:'📉 baja del robot',remate:'🔻 remate',escalera:'🪜 escalera',prueba:'🧪 prueba +5%',mano:'✋ a mano',volver:'↩️ vuelto atrás'};
+  const motivoTxt={rescate:'🛟 rescate después de una venta baja',rescatep:'🛟 rescate antes de vender (cuenta)',subir:'📈 suba del robot',bajar:'📉 baja del robot',remate:'🔻 remate',escalera:'🪜 escalera',prueba:'🧪 prueba +5%',promo:'🏷️ promo (precio tachado)',mano:'✋ a mano',volver:'↩️ vuelto atrás'};
   const evK={}; for(const e of C.evP){if(!e.ts||!_mlaOk(e.mla))continue;const kk=dateToKey(new Date(e.ts));(evK[kk]=evK[kk]||[]).push(e);}
-  ks.forEach((k,i)=>{const es=evK[k];if(!es)return;const sube=es.some(e=>Number(e.a)>Number(e.de));
-    svg+=`<text x="${X(i)+bw/2}" y="${L.pr[0]-2}" font-size="11" text-anchor="middle" fill="${sube?'var(--green)':'var(--red)'}">${sube?'▲':'▼'}</text>`;});
+  let _flechasSvg='';
+  ks.forEach((k,i)=>{const es=evK[k];if(!es)return;const e0=es[es.length-1];const sube=Number(e0.a)>Number(e0.de);const col=(FLECHA_TIPOS[flechaTipo(e0.mla,Number(e0.ts),e0.motivo,sube)]||FLECHA_TIPOS.otro)[0];
+    const tt=es.map(e=>cambioTxt(e)).join('\n').replace(/[<>&]/g,'');
+    _flechasSvg+=`<text x="${X(i)+bw/2}" y="${L.pr[0]-2}" font-size="11" text-anchor="middle" fill="${col}" style="cursor:help"><title>${_lineaFmtDia?_lineaFmtDia(k):k}\n${tt}</title>${sube?'▲':'▼'}</text>`;});
+  // SE COBRÓ MENOS SIN QUE NADIE BAJARA EL PRECIO (13/10/2026, él con la Batidora: "porque se nota que el precio baja si no
+  // hay flechita roja"). La línea del precio, los días con ventas, es lo COBRADO por unidad, y eso baja sin cambio de precio
+  // por una promo/cupón de ML, un carrito, o porque ese día se vendió una publicación (color) más barata. Se marca con
+  // un ▾ ámbar chico (no es un cambio de precio) y el globito del día lo explica.
+  ks.forEach((k,i)=>{const d=dias[k];if(evK[k]||!d||!d.pCob||!(d.pLista>0)||!(d.p<d.pLista*0.97))return;
+    svg+=`<text x="${X(i)+bw/2}" y="${L.pr[0]-2}" font-size="9" text-anchor="middle" fill="var(--amber)">▾</text>`;});
   // capa de "pasar el mouse": un rectángulo invisible por día con todo el dato
   // EL GLOBITO DICE LO MISMO TODOS LOS DÍAS (04/10/2026, él: "cuando paso el mouse quiero que me muestre la misma
   // info en todos, ahí no me muestra el % de ganancia de un día cualquiera"). Un día sin ventas no tiene % propio:
@@ -9263,15 +9297,17 @@ function lineaPintar(prodId){
     const _cos=cu[k]!=null?`🏷️ costo real ${ct[k]>0?fmt(ct[k]):'?'} c/u = mercadería ${fmt(cu[k])} (dólar del mes $${Math.round(tcForYM(k.slice(0,7))||0)}) + IIBB y monotributo ${ct[k]>0?fmt(ct[k]-cu[k]):'?'}${gd[k]&&gd[k].impPct!=null?` (${gd[k].impPct.toFixed(1)}% de lo cobrado)`:''}${gd[k]&&gd[k].cu>0?'':' · el último conocido'}`:'';
     const _vis=d&&d.vis!=null?`👀 ${d.vis} visitas`:'';
     const _tuvo=_conSt(d,k)?`📦 tenía stock${d&&d.st>0?` (${d.st} u. en Full)`:d&&d.u>0?' (vendió)':d&&d.vis>0?' (tuvo visitas)':` (el robot lo ve en Full desde el ${_lineaFmtDia(_stHistDesde)})`}`:(k>=_stIni?(d&&d.st!=null?'📦 sin stock en Full':'📦 sin stock (sin dato, sin ventas ni visitas)'):'📦 todavía no se miraba');
-    const _pr=d&&d.p>0?`💲 ${d.pCob?'cobrado':'precio'} ${fmt(d.p)}${d.pCob?' por unidad':''}`:'';
+    const _pr=d&&d.p>0?`💲 ${d.pCob?'cobrado':'precio'} ${fmt(d.p)}${d.pCob?' por unidad':''}${d.pCob&&d.pLista>0&&d.p<d.pLista*0.97?` · <span style="color:var(--amber)">▾ ${Math.round((1-d.p/d.pLista)*100)}% menos que el publicado (${fmt(d.pLista)}) sin cambiar el precio: promo o cupón de ML, carrito, o se vendió un color más barato</span>`:''}`:'';
     const _mg=d&&d.mg!=null?`📊 margen ${Number(d.mg).toFixed(0)}%`:'';
     const _est=d&&d.esc!=null?`🪜 escalera, escalón ${d.esc}%`:(d&&d.rem?'🔻 rematando':'');
     const _caja=d&&d.caja?`🥊 caja: ${(d.hoy?{g:'la ganamos (última lectura del robot)',c:'compartida (última lectura del robot)',p:'la perdemos (última lectura del robot)',n:'no es de catálogo: no hay caja que ganar',s:'ML no informa caja en ese catálogo',z:'ninguna publicación activa (pausadas): no pelea la caja'}:{g:'la ganábamos',c:'compartida',p:'la perdíamos',n:'no es de catálogo',s:'ML no informaba caja'})[d.caja]||d.caja}`:'';
     const _ent=stIn[k]!=null?`📥 llegaron ~${stIn[k]} u.`:'';
-    const _ev=es.map(e=>`${motivoTxt[e.motivo]||'cambio de precio'}: ${fmt(e.de)} → ${fmt(e.a)}`);
+    const _ev=es.map(e=>cambioTxt(e).replace(/[<>&]/g,''));
     const por={vent:[_vent,_gan],gan:[_g7],pct:[_gan||_pctU,_mg],st:[_ent,_st||_tuvo],vis:[_vis],pr:[_pr,_cos,..._ev],est:[_est||'sin remate ni escalera'],caja:[_caja]};
     for(const [n,arr] of Object.entries(por)){if(!L[n])continue;const t=[_h,...arr].filter(Boolean).join('\n');
       svg+=`<rect x="${X(i)}" y="${Math.max(0,L[n][0]-4)}" width="${Math.max(bw,1)}" height="${L[n][1]+8}" fill="transparent"><title>${t}</title></rect>`;}});
+  // Las flechitas van ARRIBA de los rectángulos del globito: si no, el mouse nunca llega a su explicación.
+  svg+=_flechasSvg;
   // resumen del rango
   let uT=0,uRT=0,dCon=0,dSin=0,dNo=0,dRem=0,vT=0; ks.forEach(k=>{const d=dias[k];if(d&&d.u)uT+=d.u;if(d&&d.uR)uRT+=d.uR;if(d&&d.vis)vT+=d.vis;
     const s=_conSt(d,k)?1:(k>=_stIni?0:null);if(s===1)dCon++;else if(s===0)dSin++;else dNo++;if(d&&(d.rem||d.esc!=null))dRem++;});
@@ -9318,7 +9354,7 @@ function lineaPintar(prodId){
     <details style="margin-top:8px" ${_lineaDetAb?'open':''} ontoggle="_lineaDetAb=this.open"><summary style="cursor:pointer;font-size:.68rem;color:var(--muted)">Qué significa cada color ▾</summary>
     <div style="font-size:.64rem;color:var(--muted);margin-top:6px;line-height:1.9">
       ${ley('var(--green)','vendió / con stock / caja ganada')}${ley('#f59e0b','vendido en remate / caja compartida')}${ley('var(--red)','sin stock / caja perdida')}${ley('#60a5fa','visitas')}${ley('#f97316','rematando')}${ley('#a855f7','escalera')}${ley('#94a3b8','no es de catálogo (no hay caja)')}${ley('#3f3f46','pausada (no pelea la caja)')}${ley('rgba(128,128,128,.35)','no se sabe')}
-      <span style="margin-right:10px">📦 stock en unidades, color por los días que alcanza: <span style="color:var(--red)">━ falta (−7)</span> <span style="color:#f97316">━ justo (7-20)</span> <span style="color:var(--green)">━ bien (20-45)</span> <span style="color:#eab308">━ sobra (45-90)</span> <span style="color:#a855f7">━ exceso (+90)</span></span><span style="margin-right:10px"><span style="color:#f59e0b">━</span> costo real por unidad (mercadería × dólar del mes + IIBB y monotributo, que son % de lo cobrado: por eso se mueve un poco; el detalle sale al pasar el mouse)</span><span style="margin-right:10px">📊 % de ganancia: la línea toma el color del nivel de ese día (🔴 Bajo · 🟠 Justo · 🟢 Bien · 🩵 Bueno · 🔵 Excelente · 🟣 Estrella · 💎 JOYA), misma cuenta que Ventas</span><span style="margin-right:10px">▲▼ cambio de precio (con su motivo)</span><br>
+      <span style="margin-right:10px">📦 stock en unidades, color por los días que alcanza: <span style="color:var(--red)">━ falta (−7)</span> <span style="color:#f97316">━ justo (7-20)</span> <span style="color:var(--green)">━ bien (20-45)</span> <span style="color:#eab308">━ sobra (45-90)</span> <span style="color:#a855f7">━ exceso (+90)</span></span><span style="margin-right:10px"><span style="color:#f59e0b">━</span> costo real por unidad (mercadería × dólar del mes + IIBB y monotributo, que son % de lo cobrado: por eso se mueve un poco; el detalle sale al pasar el mouse)</span><span style="margin-right:10px">📊 % de ganancia: la línea toma el color del nivel de ese día (🔴 Bajo · 🟠 Justo · 🟢 Bien · 🩵 Bueno · 🔵 Excelente · 🟣 Estrella · 💎 JOYA), misma cuenta que Ventas</span><span style="margin-right:10px">▲▼ cambio de precio, el color dice por qué: ${flechaLeyenda()} · <span style="color:var(--amber)">▾</span> ese día se cobró menos sin cambiar el precio (promo/cupón de ML, carrito o un color más barato)</span><br>
       Pasá el mouse (o tocá) un día para ver todo lo que pasó. El precio es el más barato de sus publicaciones; ventas, visitas y stock suman todas. Stock, caja y remate de los días viejos no los guarda ML: quedan en gris. En stock: la línea son las unidades en Full (cuando se sabe el número) y la franja finita de abajo dice si hubo o no hubo stock ese día.
     </div></details></div>`;
 }
@@ -9333,7 +9369,7 @@ function lineaPintar(prodId){
 // del robot de cada publicación (`cyc/autoprecio`, al instante). El PRECIO es un índice: 100 = el primer día del
 // gráfico, y cada día se mueve con el promedio de lo que cambió el precio de cada publicación.
 let _ltRango=365,_ltC=null,_ltDetAb=false,_ltListAb=false;
-const _LT_MOT={rescate:'🛟 rescate',rescatep:'🛟 rescate',subir:'📈 suba del robot',bajar:'📉 baja del robot',remate:'🔻 remate',escalera:'🪜 escalera',prueba:'🧪 prueba +5%',mano:'✋ a mano',volver:'↩️ vuelto atrás',cerebro:'🧠 cerebro',claude:'💭 Claude',correccion:'↩️ corrección de una suba de más'};
+const _LT_MOT={rescate:'🛟 rescate',rescatep:'🛟 rescate',subir:'📈 suba del robot',bajar:'📉 baja del robot',remate:'🔻 remate',escalera:'🪜 escalera',prueba:'🧪 prueba +5%',promo:'🏷️ promo (precio tachado)',mano:'✋ a mano',volver:'↩️ vuelto atrás',cerebro:'🧠 cerebro',claude:'💭 Claude',correccion:'↩️ corrección de una suba de más'};
 function _ltMotAuto(a){const m={margen:'rescate',venta:'rescate',costo:'rescate',remate:'remate',escalera:'escalera',prueba:'prueba',volver:'volver',cerebro:'cerebro',claude:'claude',correccion:'correccion'}[a.por];return m||(a.tipo==='baja'?'bajar':'subir');}
 async function lineaTodoAbrir(ev){
   if(ev&&ev.stopPropagation)ev.stopPropagation();
@@ -9587,9 +9623,15 @@ async function cerebroAbrir(el,ev){
   // de hoy, ni la cuenta del pedido): sólo mis notas, con su fecha. Si no escribí nada, lo dice y nada más.
   if(modoClaude){
     let nn=0,falla=false;const vistos=new Set();
+    // SIN ORACIONES REPETIDAS (14/10/2026, él: *"repite oraciones. no quiero que nunca repita oraciones"*): todo texto
+    // que ya salió en la ventana queda anotado acá, y un motivo de cambio que ya está adentro de una nota no se repite.
+    const yaDicho=[];const _nrm=t=>String(t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim();
+    const _repetido=t=>{const n=_nrm(t);if(n.length<12)return false;const pz=n.slice(0,80);return yaDicho.some(y=>y.includes(pz)||n.includes(y.slice(0,80)));};
+    const _decir=t=>{yaDicho.push(_nrm(t));};
     for(const o of ctxK){
       if(o.n===undefined){falla=true;continue;}
       if(!o.n||!o.n.simple||vistos.has(o.cab))continue;vistos.add(o.cab);nn++;
+      if(_repetido(o.n.simple))continue;_decir(o.n.simple);
       h+=par(`${o.cab&&(ctxK.length>2||o.esVar)?`<b>${_cerEsc(o.cab)}:</b> `:''}💭 ${_cerEsc(_cerFecha(o.n.ts))}: ${_cerEsc(o.n.simple)}`);
     }
     // CADA LUGAR, SU NOTA (08/10/2026, él: *"en ventas quiero que digas por qué aumentó el precio o por qué no, y en
@@ -9602,11 +9644,23 @@ async function cerebroAbrir(el,ev){
       if(c===undefined){falla=true;continue;}
       if(!c||!c.simple)continue;nn++;
       const cab=varias?`<b>${_cerEsc(e.cuenta||'')}${e.variant?' · '+_cerEsc(e.variant):''}${e.status&&e.status!=='active'?' · pausada':''}:</b> `:'';
+      if(_repetido(c.simple))continue;_decir(c.simple);
       h+=par(`${cab}💭 ${_cerEsc(_cerFecha(c.ts))}: ${_cerEsc(c.simple)}`);
+    }
+    // POR QUÉ CAMBIÓ EL PRECIO (13/10/2026, él con el Paulvic Barbarella: "no explica por qué aumentó de 58 a 97%"): la nota
+    // de la publicación dice cómo está hoy; el motivo de cada suba o baja vive en `cyc/claudecambios`. Van los últimos 3.
+    if(!soloUnid){
+      // También el último cambio de `cyc/autoprecio` si no está en claudecambios (los del 07-08/10, antes de anotar cada uno).
+      const cc0=Object.values(state.claudecambios||{}).filter(c=>c&&mlas.includes(c.mla)&&Number(c.ts)>0);
+      for(const k of mlas){const a=(state.autoprecio||{})[k];if(a&&Number(a.ts)>0&&Number(a.a)>0&&!cc0.some(c=>c.mla===k&&Math.abs(Number(c.ts)-Number(a.ts))<15*60e3))cc0.push({mla:k,ts:Number(a.ts),de:a.de,a:a.a,motivo:a.motivo||(a.por?'('+a.por+')':'')});}
+      const cc=cc0.sort((x,y)=>Number(y.ts)-Number(x.ts)).slice(0,3);
+      // Un cambio cuyo motivo ya está en la nota de arriba no se vuelve a escribir.
+      const cc2=cc.filter(c=>!(c.motivo&&_repetido(c.motivo)));
+      if(cc2.length){h+=par('<b>Por qué cambió el precio:</b>');
+        for(const c of cc2){if(c.motivo)_decir(c.motivo);const sube=Number(c.a)>Number(c.de);h+=par(`${flechaHTML(flechaTipo(c.mla,Number(c.ts),'',sube),sube)} ${_cerEsc(_cerFecha(c.ts))}: ${fmt(Number(c.de)||0)} → ${fmt(Number(c.a)||0)} · ${_cerEsc(c.motivo||'sin motivo anotado')}`);nn++;}}
     }
     if(falla)h+=par('<span style="color:var(--amber)">No pude leer alguna nota. Probá de nuevo en un rato.</span>');
     else if(!nn)h+=par(`<span style="color:var(--muted)">${soloUnid?'Todavía no escribí por qué van estas unidades.':'Todavía no escribí nada sobre el precio de esto.'}</span>`);
-    h+=`<p style="margin:12px 0 0;font-size:.72rem;color:var(--muted)">¿Te queda alguna duda? Preguntale a Claude en el chat.</p>`;
     m.innerHTML=caja(h);
     return;
   }
@@ -9636,7 +9690,6 @@ async function cerebroAbrir(el,ev){
     const cab=varias?`<b>${_cerEsc(e.cuenta||'')}${e.variant?' · '+_cerEsc(e.variant):''}${e.status&&e.status!=='active'?' · pausada':''}:</b> `:'';
     h+=par(cab+fr.map(_cerEsc).join(' '));
   }
-  h+=`<p style="margin:12px 0 0;font-size:.72rem;color:var(--muted)">¿Te queda alguna duda? Preguntale a Claude en el chat.</p>`;
   m.innerHTML=caja(h);
 }
 // EL CEREBRO DE LAS VENTAS (08/10/2026, pedido suyo: *"quizas puede haber un cerebro en ventas por dia por
@@ -9706,8 +9759,7 @@ function vpCerebroModal(titulo,frases){
     m.onclick=e=>{if(e.target===m)m.remove();};document.body.appendChild(m);}
   m.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;max-width:560px;width:100%;padding:14px 16px;margin-top:20px;font-size:.85rem;line-height:1.5">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><b style="font-size:.95rem">🧠 ${_cerEsc(titulo)}</b><button class="btn" onclick="document.getElementById('cerebro-modal').remove()">Cerrar</button></div>
-    ${frases.map(t=>`<p style="margin:8px 0 0">${_cerEsc(t)}</p>`).join('')}
-    <p style="margin:12px 0 0;font-size:.72rem;color:var(--muted)">¿Te queda alguna duda? Preguntale a Claude en el chat.</p></div>`;
+    ${frases.map(t=>`<p style="margin:8px 0 0">${_cerEsc(t)}</p>`).join('')}</div>`;
 }
 // "🧠 QUÉ PASÓ" SÓLO CUANDO FUE IMPORTANTE (08/10/2026, él: *"en el cerebro de ventas escribí algo si fue importante en el
 // día, si no no"* · *"yo decía este, el de la tarjeta del principio de ventas de hoy"*): con Claude a cargo el botón lee la
@@ -9782,7 +9834,16 @@ function cambiosPrecioDe(mla,tsVenta){
     // día de diferencia) no se repite.
     if(ok(c)&&!out.some(x=>Math.abs(x.ts-c.ts)<864e5&&Math.abs(x.a-c.a)/c.a<0.01))out.push(c);
   }
+  const pc=(state.promoclaude||{})[mla];
+  if(pc){const c={ts:Number(pc.ts),de:Number(pc.de),a:Number(pc.precio),quien:'🏷️ '+promoNombreDe(pc),aprox:false};if(ok(c))out.push(c);}
   return out.sort((x,y)=>y.ts-x.ts);
+}
+// EL NOMBRE DE LA PROMO, EN CRIOLLO (13/10/2026, él: "quiero que diga el nombre de la promocion o que es").
+function promoNombreDe(pc){
+  if(!pc)return 'promo';
+  const t=String(pc.tipo||'').toUpperCase();
+  if(t==='PRICE_DISCOUNT')return 'descuento propio (precio tachado)';
+  return String(pc.nombre||'').trim()||({DEAL:'promo de ML',LIGHTNING:'oferta relámpago',SMART:'oferta compartida de ML',PRICE_MATCHING:'Gánale a la competencia',UNHEALTHY_STOCK:'campaña de stock'}[t]||'promo');
 }
 // ── CUÁNTO PUSO ML EN UNA VENTA EN PROMO (11/10/2026) ──
 // Junta lo de `cyc/promoventa/<día>/<orden>` de los renglones de una compra. Si el registro trae el
@@ -9816,15 +9877,46 @@ function vpPromoLabel(items){
   // EN DORADO (12/10/2026, pedido suyo: "al venderse un producto en promoción que diga en dorado vendido en
   // promoción o descuento ML"). Si el descuento lo puso ML entero dice "Descuento ML"; si pusimos algo
   // nosotros, "Vendido en promoción". El detalle (cupón/promo, cuánto cada uno) sigue en el globito.
-  const nom={coupon:'cupón',price_discount:'promo',deal:'promo',campaign:'campaña'};
+  const nom={coupon:'cupón',price_discount:'promo',discount:'descuento',deal:'promo',campaign:'campaña'};
   const tipo=p.tipos.map(x=>nom[x]||x).filter((x,i,a)=>a.indexOf(x)===i).join(' + ')||'promo';
   const tit=`Vendida con ${tipo}: descuento total ${fmt(Math.round(p.t))} · ML puso ${fmt(Math.round(p.ml))} · nosotros ${fmt(Math.round(p.s))}. Lo que pone ML no sale de nuestro neto.`;
   // AZUL si lo puso ML entero, DORADO sólo si pusimos plata nosotros (12/10/2026, él: "dejar dorado solo para
   // promociones o descuentos hechos nuestros").
   const soloML=p.ml>0&&!(p.s>0);
-  const txt=soloML?'Descuento ML':'Vendido en promoción';
+  // Y CON SU NOMBRE (13/10/2026): si la promo la puse yo, su nombre ("descuento propio", el evento de ML); si no, qué
+  // fue (cupón, oferta del día…).
+  const _pc=(items||[]).map(v=>{const pc=(state.promoclaude||{})[v&&v.mla];const tv=v&&v.ts?new Date(v.ts).getTime():0;return pc&&(!tv||!(Number(pc.ts)>0)||tv>=Number(pc.ts))?pc:null;}).find(Boolean);
+  const _nom=_pc?promoNombreDe(_pc):tipo;
+  const txt=(soloML?'Descuento ML · ':'Vendido en promoción · ')+_nom;
   return `<span class="vp-promo${soloML?' vp-promo-ml':''}" title="${tit}">🏷️ ${txt}${p.ml>0?' · ML puso '+fmt(Math.round(p.ml)):''}${p.s>0?' · nosotros '+fmt(Math.round(p.s)):''}</span>`;
 }
+// EL COLOR DE LA FLECHA DICE POR QUÉ CAMBIÓ EL PRECIO (13/10/2026, él: "cuando se aumenta por escasez o se baja por distintos
+// motivos, ¿podés poner las flechitas de otro color? así veo cuando se aumentan por cosas raras"). Sale del motivo que escribí
+// en `cyc/claudecambios` (o `cyc/autoprecio`, o el motivo del evento del robot viejo).
+const FLECHA_TIPOS={techo:['var(--green)','prueba de precio / hay lugar'],margen:['#38bdf8','cuidar el margen (25% en el peor caso)'],escasez:['#f97316','escasez: estirar el stock'],caja:['#22d3ee','pelear la caja'],promo:['#a855f7','promo (precio tachado)'],volver:['#eab308','vuelta atrás: no funcionó'],remate:['var(--red)','remate / liquidar / sobra'],otro:['#9ca3af','a mano u otro']};
+function flechaTipo(mla,ts,motivo,sube){
+  if(motivo==='promo')return 'promo';
+  let txt='';const cc=Object.values(state.claudecambios||{}).find(c=>c&&c.mla===mla&&Math.abs((Number(c.ts)||0)-ts)<15*60e3);
+  if(cc)txt=cc.motivo||'';else{const a=(state.autoprecio||{})[mla];if(a&&Math.abs((Number(a.ts)||0)-ts)<15*60e3)txt=(a.motivo||'')+' '+(a.por||'');}
+  const t=(txt+' '+(motivo||'')).toLowerCase();
+  if(/promo|tachad/.test(t))return 'promo';
+  if(/escas|estir/.test(t))return 'escasez';
+  if(/volv|vuelvo|no funcion|correcci|deshace/.test(t))return 'volver';
+  if(/remat|liquid|sobra|parad|escalera/.test(t))return 'remate';
+  if(/peor caso|25 ?%|piso|rescat|margen|costo/.test(t))return 'margen';
+  if(/caja|competid/.test(t))return sube?'techo':'caja';
+  if(/techo|prueba|lugar|escal[oó]n|subir|vuela|demanda/.test(t))return sube?'techo':'otro';
+  if(/bajar/.test(t))return 'caja';
+  return 'otro';
+}
+const flechaHTML=(tipo,sube,tam='.8rem')=>{const [c,n]=FLECHA_TIPOS[tipo]||FLECHA_TIPOS.otro;return `<b style="color:${c};font-size:${tam}" title="${n}">${sube?'▲':'▼'}</b>`;};
+// El texto de un cambio de precio para el globito: qué tipo de cambio fue (el color) y el motivo que escribí.
+function cambioTxt(e){const de=Number(e.de)||0,a=Number(e.a)||0,sube=a>de,ts=Number(e.ts)||0;const tipo=flechaTipo(e.mla,ts,e.motivo,sube);
+  let mot='';const cc=Object.values(state.claudecambios||{}).find(c=>c&&c.mla===e.mla&&Math.abs((Number(c.ts)||0)-ts)<15*60e3);
+  if(cc)mot=cc.motivo||'';else{const ap=(state.autoprecio||{})[e.mla];if(ap&&Math.abs((Number(ap.ts)||0)-ts)<15*60e3)mot=ap.motivo||'';}
+  if(!mot&&e.motivo==='promo')mot=e.origen||'promo';
+  return `${sube?'▲':'▼'} ${FLECHA_TIPOS[tipo][1]}: ${fmt(de)} → ${fmt(a)} (${sube?'+':''}${de?((a/de-1)*100).toFixed(1):'?'}%)${mot?' · '+mot:' · sin motivo anotado'}`;}
+const flechaLeyenda=()=>Object.entries(FLECHA_TIPOS).map(([k,[c,n]])=>`<span style="margin-right:8px;white-space:nowrap"><b style="color:${c}">${k==='promo'||k==='remate'||k==='volver'||k==='caja'?'▼':'▲'}</b> ${n}</span>`).join('');
 function cambioVentaHTML(v,tsVenta){
   const cs=cambiosPrecioDe(v&&v.mla,tsVenta);
   if(!cs.length)return'';
@@ -9873,7 +9965,7 @@ function cambioVentaHTML(v,tsVenta){
   // azules"): verde si dejó más, rojo si dejó menos, gris si no se pudo medir. Antes era ámbar al subir y azul al bajar.
   // 09/10/2026, él: "si baja algo aparezca en rojo pero con una flecha hacia abajo, no con los números": los números van
   // en gris y sólo la flecha tiene color: ▲ verde si subió el precio, ▼ roja si bajó.
-  const colCambio='var(--muted)',flecha=`<b style="color:${sube?'var(--green)':'var(--red)'};font-size:.8rem">${sube?'▲':'▼'}</b>`;
+  const colCambio='var(--muted)',flecha=flechaHTML(flechaTipo(v&&v.mla,c.ts,c.motivo||c.mot||(String(c.quien||'').includes('🏷️')?'promo':''),sube),sube);
   return`<span style="font-size:.62rem;color:${colCambio}" title="Cambios de precio de esta publicación en los ${CAMBIO_VENTA_DIAS} días antes de esta venta:\n${tip}${cs.some(x=>x.aprox)?'\n(aprox.: fue a mano; la hora sale de comparar dos noches)':''}${pcts?'\n% de ganancia: el de antes es esta misma venta cobrada a '+fmt(deMed)+' (≈ estimado); el de después es el real de esta venta.':''}${extra?'\nLa plata: (precio cobrado − '+fmt(deMed)+') × lo que deja ML de cada peso de esta venta × unidades.':''}">${flecha} ${sube?'+':''}${String(pct).replace('.',',')}% · ${fmt(base)}→${fmt(fin)}${cs.length>1?` · ${cs.length} cambios, el último ${hace}`:` · ${hace}`}${pcts}${extra}</span>`;
 }
 // ¿La venta v corresponde al producto p? Por ID interno si está, sino por nombre.
@@ -10642,7 +10734,7 @@ function renderVentaProd(){
       const _cambios=grp.items.map(v=>isCancelled?'':cambioVentaHTML(v,Number(v.ts)||0));
       const _hayCambio=_cambios.some(x=>x);
       const _pill=isCancelled?'':(gpct===null?`<span class="db nc" style="font-size:.66rem" title="${_sinFicha?'Esta venta no está enganchada a ninguna ficha: el panel no sabe qué producto es ni cuánto costó. Se arregla vinculando la publicación.':'La ficha no tiene costo cargado.'}">${_sinFicha?'sin ficha':'sin costo'}</span>`:`<span class="db ${_est?'nc':''}" style="font-size:.72rem;padding:3px 9px;${_est?'color:var(--muted)':_pillSt}">${_est?'≈ ':''}${gpct>=0?'+':''}${gpct.toFixed(0)}%</span>`);
-      const _items=grp.items.map((v,i)=>`<div style="font-size:.8rem;line-height:1.35;${isCancelled?'opacity:.45;text-decoration:line-through':''}">${fotoVentaHTML(v,38)}<span style="color:var(--muted)">${v.qty}×</span> ${nombreDeVenta(v)}${v.variante?` <span style="padding:1px 6px;border-radius:4px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.66rem;white-space:nowrap">${v.variante}</span>`:''}${_cambios[i]?` <span style="font-size:.66rem" title="Cambió de precio antes de esta venta · mirá el detalle">${_cambios[i].includes('▲')?'<b style="color:var(--green)">▲</b>':'<b style="color:var(--red)">▼</b>'}</span>`:''}${(()=>{const _pp=prodDeVenta(v);return _pp?' '+cerebroBtn(_pp.id,{mla:v.mla,ctx:'venta'}):'';})()}</div>`).join('');
+      const _items=grp.items.map((v,i)=>`<div style="font-size:.8rem;line-height:1.35;${isCancelled?'opacity:.45;text-decoration:line-through':''}">${fotoVentaHTML(v,38)}<span style="color:var(--muted)">${v.qty}×</span> ${nombreDeVenta(v)}${v.variante?` <span style="padding:1px 6px;border-radius:4px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.66rem;white-space:nowrap">${v.variante}</span>`:''}${_cambios[i]?` <span style="font-size:.66rem" title="Cambió de precio antes de esta venta · mirá el detalle">${(_cambios[i].match(/<b style="color:[^"]*;font-size:\.8rem" title="[^"]*">[▲▼]<\/b>/)||[''])[0].replace('font-size:.8rem','font-size:.66rem')||(_cambios[i].includes('▲')?'<b style="color:var(--green)">▲</b>':'<b style="color:var(--red)">▼</b>')}</span>`:''}${(()=>{const _pp=prodDeVenta(v);return _pp?' '+cerebroBtn(_pp.id,{mla:v.mla,ctx:'venta'}):'';})()}</div>`).join('');
       // La etiqueta del rescate al vender era del robot viejo, que ya no toca precios: no se muestra más (09/10/2026, él:
       // "sacá lo de los precios automáticos están apagados, además por qué sale eso si ya estás haciendo todo vos").
       rescLabel='';
@@ -12381,7 +12473,7 @@ function candEnPedido(c){
 // VENCEN SOLOS. Sin esto la lista se vuelve un cementerio de tarjetas viejas que nadie mira —
 // el mismo problema que ya apareció con `repoextra` y con la pausa por precio. Un precio de
 // Paraguay de hace 45 días al lado de una decisión de compra se lee como si estuviera al día.
-const CAND_VENCE_DIAS=45;
+const CAND_VENCE_DIAS=60;   // 14/10/2026: era 45. La pasada del chat de compras es una vez por mes y le renueva la fecha a lo ya cargado.
 // ── NUNCA SE CARGA EN EL PEDIDO ALGO QUE NO LLEGA AL PISO (19/09/2026) ────────────────
 // Regla suya, textual: *"Nunca puede suceder eso que la web no permita menos de 25%"*. Y salió de
 // un caso real: el **Perfume Mirada Muse Rose Musc** entró al pedido con 2 unidades teniendo
@@ -13365,9 +13457,29 @@ function esPerfumeNom(t){
     if(c&&String(c.nombre||'').trim().toLowerCase()===nl&&_PERF_RE.test(String(c.mlTit||'')))return true;
   return false;
 }
+// BELLEZA Y SALUD VAN CON LOS PERFUMES (13/10/2026, él: "no es solo perfume, es todo lo que está relacionado a
+// belleza y salud va en perfumes y el resto sí va en resto"). Vale para la lista del pedido de Paraguay, el botón
+// 🧴 y el mensaje para Nissei. NO toca en qué cuenta va cada producto (perfumes → Adriana sigue igual) ni el piso.
+// Se mira el nombre (castellano y portugués de comprasparaguay), y si no alcanza el rubro de ML de la ficha
+// (`catNom` "Belleza y Cuidado Personal" / "Salud y Equipamiento Médico", o `dom`) o el título del candidato.
+const _BELLEZA_RE=/maquill|maquiag|labial|batom|gloss|lip ?(tint|balm|oil)|b[aá]lsamo|rubor|blush|base (l[ií]quida|de maq|matte)|corrector|corretivo|delineador|delineado|r[ií]mel|m[aá]scara (de pesta|de c[ií]lios|para pesta)|cílios|pesta[ñn]as|sombra|paleta de|iluminador|polvo (compacto|suelto|facial)|p[oó] (compacto|facial)|pincel|esponja de maq|esmalte|u[ñn]as|crema|creme|s[eé]rum|hidratante|protector solar|protetor solar|bronceador|desodorante|antitranspirante|jab[oó]n|sabonete|shampo|shamp[uú]|xampu|acondicionador|condicionador|tratamiento capilar|m[aá]scara capilar|t[oó]nico|micelar|desmaquill|exfolia|loci[oó]n|lo[cç][aã]o|skin ?care|facial|cabello|cabelo|capilar|tintura|alisad|planchita|rizador|secador de pelo|depila|afeitad|barbear|rasurad|cortapelo|recortadora|cuidado personal|higiene|cepillo (de dientes|dental)|dental|bucal|masaje|massag|term[oóô]metro|tens[ií]metro|ox[ií]metro|balan[cç]a (corporal|de banheiro)|balanza (corporal|de ba[ñn]o|personal)|nebuliz|vitamina|suplemento|col[aá]geno|prote[ií]na|ortop[eé]d|plantilla|juanete|metatars|tal[oó]n|faja|rodillera|mu[ñn]equera|tobillera|corrector postural|salud/i;
+function esBellezaNom(t){
+  if(esPerfumeNom(t))return true;
+  const n=String(t||'').trim(); if(!n)return false; if(_BELLEZA_RE.test(n))return true;
+  const nl=n.toLowerCase(), cat=/belleza|cuidado personal|salud|equipamiento m[eé]dico/i,
+        dom=/BEAUTY|MAKEUP|LIPSTICK|FOUNDATION|MASCARA|EYESHADOW|EYELINER|NAIL|SKIN|HAIR|SHAMPOO|CONDITIONER|COSMETIC|DEODORANT|SOAP|MOISTUR|SUNSCREEN|HEALTH|THERMOMETER|BLOOD_PRESSURE|OXIMETER|MASSAG|VITAMIN|SUPPLEMENT|ORTHOP|INSOLE|SHAVER|TRIMMER/i;
+  const p=(state.products||[]).find(x=>String(x.name||'').trim().toLowerCase()===nl);
+  if(p)for(const e of Object.values(state.mllinks||{})){
+    if(!e||e.prodId!==p.id)continue;
+    if(cat.test(String(e.catNom||''))||dom.test(String(e.dom||''))||_BELLEZA_RE.test(String(e.title||'')))return true;
+  }
+  for(const c of Object.values(state.candidatos||{}))
+    if(c&&String(c.nombre||'').trim().toLowerCase()===nl&&_BELLEZA_RE.test(String(c.mlTit||'')))return true;
+  return false;
+}
 function nisseiMsgLineas(items){
   const t=x=>`${x.cod} x ${x.u}`;
-  const p=items.filter(x=>esPerfumeNom(x.nom)).map(t), r=items.filter(x=>!esPerfumeNom(x.nom)).map(t);
+  const p=items.filter(x=>esBellezaNom(x.nom)).map(t), r=items.filter(x=>!esBellezaNom(x.nom)).map(t);
   return p.length&&r.length?['PERFUMERÍA',...p,'','RESTO',...r]:items.map(t);
 }
 // PERFUMES Y RESTO EN PARAGUAY (04/10/2026, pedido suyo: "en pedidos paraguay nuevos y probados, poner la sección
@@ -13376,7 +13488,7 @@ function nisseiMsgLineas(items){
 // que parte el mensaje para Nissei).
 let _pyRubro=(()=>{try{return localStorage.getItem('cycPyRubro')||'todos';}catch(e){return'todos';}})();
 function pySetRubro(v){_pyRubro=v;try{localStorage.setItem('cycPyRubro',v);}catch(e){}renderPedidos();}
-function _pyRubroOk(nom){if(_pyRubro==='todos')return true;const p=esPerfumeNom(nom);return _pyRubro==='perf'?p:!p;}
+function _pyRubroOk(nom){if(_pyRubro==='todos')return true;const p=esBellezaNom(nom);return _pyRubro==='perf'?p:!p;}
 function _pedOrden(){try{return localStorage.getItem('cycPedOrden')||'orig';}catch(e){return'orig';}}
 function _pedOrdenSet(k){try{localStorage.setItem('cycPedOrden',k);}catch(e){} if(typeof renderPedidos==='function')renderPedidos();}
 // ── USO PERSONAL EN EL PEDIDO (04/10/2026, él: "agregame estas dos, una y una en el pedido. Es para mí, uso
@@ -13457,9 +13569,9 @@ function pedidoMomentoHTML(){
   const sinCod=A.filter(f=>!f.cod).length+N.sinCod.length;
   const pasa=crudoCYC-tope;   // el tope es de CYC: lo de uso personal no cuenta
   // PERFUMERÍA Y RESTO TAMBIÉN EN LA LISTA (03/10/2026, él: "así unificamos"): misma división que el mensaje a Nissei.
-  const _perfGrupos=(rows,noms)=>{const p=rows.filter((_,i)=>esPerfumeNom(noms[i])), r=rows.filter((_,i)=>!esPerfumeNom(noms[i]));
+  const _perfGrupos=(rows,noms)=>{const p=rows.filter((_,i)=>esBellezaNom(noms[i])), r=rows.filter((_,i)=>!esBellezaNom(noms[i]));
     const st=t=>`<div style="font-size:.66rem;font-weight:700;color:var(--muted);margin:8px 0 0">${t}</div>`;
-    return p.length&&r.length?st('🌸 PERFUMERÍA ('+p.length+')')+p.join('')+st('📦 RESTO ('+r.length+')')+r.join(''):rows.join('');};
+    return p.length&&r.length?st('🌸 PERFUMERÍA, BELLEZA Y SALUD ('+p.length+')')+p.join('')+st('📦 RESTO ('+r.length+')')+r.join(''):rows.join('');};
   const tit=(t,n,us)=>`<div style="display:flex;justify-content:space-between;font-size:.74rem;font-weight:700;margin:12px 0 2px;padding-bottom:3px;border-bottom:2px solid var(--border2)"><span>${t} (${n})</span><span style="color:var(--muted);font-weight:400">${u2(us)} crudos</span></div>`;
   // CERRADO POR DEFECTO Y MINIMALISTA (08/10/2026, él: "que predeterminado al entrar en pedidos esté cerrado"). Cerrado:
   // cuánto va (grande), productos y unidades. Abierto: todo lo de antes. Se acuerda si lo abriste mientras
@@ -14330,7 +14442,9 @@ function pyCanasta(){
     const pr=(state.products||[]).find(x=>x.id===ped.prodId)||prodByName(ped.producto);
     // EL COSTO ES EL DE COMPRARLO HOY: precio de Paraguay de hoy + recargo (regla del 17/09). Sin
     // precio de hoy se usa lo que pagaste y el renglón lo dice en ámbar. No toca el costo de la ficha.
-    const _nuHoy=pr?(parseFloat(pr.nisseiUSD)||0):0;
+    const _cols=(ped.variantesNec||[]).filter(x=>x&&(parseInt(x.q)||0)>0).map(x=>x.v);
+    const _pc=_cols.length===1?pyDeColor(pr,_cols):null;   // un solo color pedido con su propio código
+    const _nuHoy=_pc&&parseFloat(_pc.usd)>0?parseFloat(_pc.usd):(pr?(parseFloat(pr.nisseiUSD)||0):0);
     const _vj=_viaja[ped.prodId]||0;
     const u=Math.max(0,(ped.cantidad||0)-_vj), cu=_nuHoy>0?Math.round(_nuHoy*RECARGO_PY*100)/100:(pr?(costUSDof(pr)||0):0);
     const sinHoy=!(_nuHoy>0);
@@ -14343,7 +14457,7 @@ function pyCanasta(){
     const caro=noLlega||(maxWeb!=null&&precioWeb>0&&precioWeb>maxWeb+0.005);
     const seguro=!caro&&!_sinHoyFlag(_nuHoy)&&maxWeb!=null&&precioWeb>0;
     return{ped,pr,u,cu,sinHoy,seguro,viaja:_vj,nu:_nuHoy,destraba,total:cu*u,lleva:u,sinStock:!!sin[ped.prodId],
-      gratis:!!(pr&&pr.gratisViaje),cod:(pr&&pr.codPy)?String(pr.codPy).trim():'',
+      gratis:!!(pr&&pr.gratisViaje),cod:(_pc&&_pc.cod)?String(_pc.cod).trim():(pr&&pr.codPy)?String(pr.codPy).trim():'',
       maxWeb,noLlega,sinMax:!mx||!!mx.motivo,precioWeb,caro};
   }).filter(x=>x.u>0).sort((a,b)=>b.destraba-a.destraba);
   const vivos=filas.filter(x=>!x.sinStock);
@@ -14983,9 +15097,9 @@ function rotEstadoHtml(rt,stock){
   if(k==='sano')return stock===0
     ?'<span style="color:var(--green)" title="Vendiste todo el stock">🟢 Sin stock</span>'
     :'<span style="color:var(--green)">🟢 Sano</span>';
-  if(k==='lento')return '<span style="color:var(--amber)">🟠 Lento</span>'+almacenaHtml(rt.edad);
+  if(k==='lento')return '<span style="color:var(--amber)">🟠 Lento</span>'+almacenaHtml(rt.edad,rt.ad);
   if(k==='reciente')return `<span style="color:var(--blue)" title="Entró a Full hace poco. No se le juzga la rotación hasta los ${ROT_GRACIA_DIAS} días: todavía no tuvo tiempo de venderse.">🆕 Recién llegado</span>`+(rt.edad!=null?`<div style="font-size:.6rem;color:var(--muted);margin-top:2px">entró hace ${rt.edad} d</div>`:'');
-  return '<span style="color:var(--red)">🔴 Muerto</span>'+almacenaHtml(rt.edad);
+  return '<span style="color:var(--red)">🔴 Muerto</span>'+almacenaHtml(rt.edad,rt.ad);
 }
 // Idea 3 de la etapa 6 (27/09/2026): "no la ve nadie" y "la ven y no compran" se veían iguales
 // (🔴 Muerto) y se arreglan al revés. Con menos de 20 visitas en 30 días bajar el precio no sirve
@@ -15231,7 +15345,10 @@ function cajaMLDeVariante(p,v){
   return {st,pubs,n,ts,ptw};
 }
 const ROT_GRACIA_DIAS=30;   // recién llegado: no se le juzga la rotación todavía
-const ALMAC_DIAS=60;        // a los ~2 meses parado ML empieza a cobrar almacenamiento
+const ALMAC_DIAS=120;       // lo chico paga almacenamiento a los 4 meses (14/10/2026, dicho por él)
+// Lo grande (los Tenders, `esGrandeFull`) sigue en 60 hasta que él diga otro número.
+const ALMAC_DIAS_GRANDE=60;
+function almacDiasDe(p){try{return p&&esGrandeFull(p)?ALMAC_DIAS_GRANDE:ALMAC_DIAS;}catch(e){return ALMAC_DIAS;}}
 function edadStockDe(p){
   const e=diasEnStockDe(p), c=ultimaEntradaDe(p), cand=[];
   if(e&&e.aprox===false)cand.push(e.dias);
@@ -15263,14 +15380,15 @@ function rotEstadoDe(p,stock,rotNorm,ventasPeriodo,now){
   const edad=edadStockDe(p);
   if(p.restockTs&&(now-p.restockTs)<7*86400000)return{k:'reciente',edad};
   if(edad!=null&&edad<ROT_GRACIA_DIAS)return{k:'reciente',edad};
-  if(rotNorm>=0.20)return{k:'lento',edad};
-  return{k:'muerto',edad};
+  if(rotNorm>=0.20)return{k:'lento',edad,ad:almacDiasDe(p)};
+  return{k:'muerto',edad,ad:almacDiasDe(p)};
 }
 // El avisito de almacenamiento. Va PEGADO al estado y no en una columna aparte a propósito: él
 // dijo que lo único que mira es cuando algo se pone naranja, así que el dato tiene que estar
 // donde ya mira. Sin fecha real no dice nada — mejor callado que inventando un plazo.
-function almacenaHtml(edad){
+function almacenaHtml(edad,ad){
   if(edad==null)return'';
+  const ALMAC_DIAS=ad||120;
   if(edad>=ALMAC_DIAS)return`<div style="font-size:.6rem;color:var(--red);margin-top:2px" title="Lleva ${edad} días adentro de Full. ML cobra almacenamiento a partir de los ${ALMAC_DIAS} días de mercadería parada.">💸 paga almacenamiento hace ${edad-ALMAC_DIAS} d</div>`;
   return`<div style="font-size:.6rem;color:var(--amber);margin-top:2px" title="Lleva ${edad} días adentro de Full. ML cobra almacenamiento a partir de los ${ALMAC_DIAS} días de mercadería parada.">⏳ empieza a pagar en ${ALMAC_DIAS-edad} d</div>`;
 }
@@ -16325,6 +16443,15 @@ function margenSiComproPY(mx,nuUSD){
 }
 // Fotos (Paraguay y ML), links y datos básicos de un PROBADO de Paraguay (03/10/2026). La usan la tarjeta de
 // Probados y el renglón del 🧾 Pedido: una sola función, así muestran lo mismo.
+// CADA COLOR CON SU CÓDIGO DE PARAGUAY (13/10/2026, él con el Joystick Xbox: "me pide el azul, pero no puso el link del
+// azul, puso el del negro"). La ficha tenía UN código, link y foto para todos los colores. Ahora `pyVar/<color>` =
+// {cod, usd, link, foto, ts}, lo carga `pyprecio:<ficha>#<color>=…`. Si el pedido es de UN color y ese color tiene
+// lo suyo, manda eso; si no, lo de la ficha (con el aviso rojo de siempre).
+function pyDeColor(prod,colores){
+  const pv=(prod&&prod.pyVar)||{};
+  for(const c of (colores||[])){const d=pv[sid(String(c||'').toLowerCase())];if(d&&(d.cod||d.link))return Object.assign({color:c},d);}
+  return null;
+}
 function pyProbVisHTML(_prod,colores){
     const L=Object.entries(state.mllinks||{}).filter(([,e])=>e&&e.prodId===_prod.id&&!e.ignored);
     // LA FOTO DE ML ES LA DEL COLOR QUE SE PIDE (10/10/2026, él con el Joystick Xbox: Paraguay negro y ML verde,
@@ -16336,10 +16463,11 @@ function pyProbVisHTML(_prod,colores){
     // Y si el producto tiene varios colores, el código de Paraguay es UNO solo: se avisa en rojo para mirar que la
     // foto de Paraguay sea del color que se pide.
     const _nVar=(_prod.variantes||[]).length;
-    const _avisoColor=_nVar>1?`<div style="font-size:.72rem;color:var(--red);flex-basis:100%">⚠️ este producto tiene ${_nVar} colores y el código de Paraguay${_prod.codPy?' ('+_prod.codPy+')':''} es uno solo: mirá que la foto de Paraguay sea del color que pedís${(colores||[]).length?' ('+colores.join(', ')+')':''}</div>`:'';
+    const _pc=pyDeColor(_prod,colores);
+    const _avisoColor=_pc?`<div style="font-size:.72rem;color:var(--green);flex-basis:100%">✅ código de Paraguay del ${_pc.color}: <b>${_pc.cod||'—'}</b>${_pc.usd>0?' · US$ '+Number(_pc.usd).toFixed(2):''} (cargado para ese color)</div>`:_nVar>1?`<div style="font-size:.72rem;color:var(--red);flex-basis:100%">⚠️ este producto tiene ${_nVar} colores y el código de Paraguay${_prod.codPy?' ('+_prod.codPy+')':''} es uno solo: mirá que la foto de Paraguay sea del color que pedís${(colores||[]).length?' ('+colores.join(', ')+')':''}</div>`:'';
     const mla=viva?viva[0]:'', fML=viva&&viva[1].foto&&/^https:\/\//.test(viva[1].foto)?viva[1].foto:'';
     const cand=Object.values(state.candidatos||{}).find(c=>c&&c.prodId===_prod.id)||{};
-    const lPY=String(_prod.pyLink||cand.link||'').trim(), fPY0=String(_prod.pyFoto||cand.foto||'').trim();
+    const lPY=String((_pc&&_pc.link)||_prod.pyLink||cand.link||'').trim(), fPY0=String((_pc&&_pc.foto)||_prod.pyFoto||cand.foto||'').trim();
     const fPY=/^https:\/\//.test(fPY0)?fPY0:'';
     const ph=(u,t)=>u?`<a href="${u}" onclick="event.preventDefault();_mostrarLightbox(this.getAttribute('href'),'')" style="cursor:zoom-in;text-align:center;text-decoration:none;color:var(--muted);font-size:.66rem"><img src="${u}" loading="lazy" onerror="this.style.display='none'" style="width:84px;height:84px;object-fit:contain;background:#fff;border-radius:8px;display:block">${t}</a>`
       :`<div style="width:84px;height:84px;border:1px dashed var(--border);border-radius:8px;font-size:.62rem;color:var(--muted);display:flex;align-items:center;justify-content:center;text-align:center">${t}<br>sin foto</div>`;
@@ -16349,7 +16477,7 @@ function pyProbVisHTML(_prod,colores){
     // UN SOLO % (07/10/2026, él: "porque dice que me queda un 35 y arriba un 48%? (…) que me muestre un % por
     // producto, el que me quedaría si lo pido"). El 35% era con lo que pagaste la última vez; acá va sólo el
     // de pedirlo HOY al precio de Nissei (la misma cuenta del veredicto de arriba: margenSiComproPY).
-    let mgPed=null,_mxP=0,_mxF='';try{const _mx=maxCompraDe(_prod,PY_PROB_PISO);mgPed=margenSiComproPY(_mx,parseFloat(_prod.nisseiUSD)||0);if(_mx&&!_mx.motivo){_mxP=_mx.P;_mxF=_mx.fuente;}}catch(e){}
+    let mgPed=null,_mxP=0,_mxF='';try{const _mx=maxCompraDe(_prod,PY_PROB_PISO);mgPed=margenSiComproPY(_mx,(_pc&&parseFloat(_pc.usd))||parseFloat(_prod.nisseiUSD)||0);if(_mx&&!_mx.motivo){_mxP=_mx.P;_mxF=_mx.fuente;}}catch(e){}
     const datos=mg&&mg.precio>0?`<div style="font-size:.74rem;color:var(--muted);flex-basis:100%">🏷️ tu precio en ML <b style="color:var(--text)">${fmt(Math.round(mg.precio))}</b>${mgPed!=null?` · si lo pedís hoy te queda <b style="color:${typeof pctColor==='function'?pctColor(mgPed):'var(--text)'}">${Math.round(mgPed)}%</b>${_mxP&&_mxP!==Math.round(mg.precio)?` vendiéndolo a <b style="color:var(--text)">${fmt(_mxP)}</b>${_mxF==='full'?' (lo que se puede cobrar teniendo Full)':_mxF==='caja'?' (lo que pide ML para ganar la caja)':_mxF==='claude'?' (el precio que decidí yo, Claude)':''}`:''}`:''}${_prod.nisseiUSD?` · 🇵🇾 Nissei US$ ${Number(_prod.nisseiUSD).toFixed(2)}${_prod.nisseiTs?' (mirado '+new Date(Number(_prod.nisseiTs)).toLocaleDateString('es-AR')+')':''}`:''}${_prod.codPy?` · 🔖 ${_prod.codPy}`:''}</div>`:'';
     return `${datos}${_avisoColor}<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;width:100%">
       <div style="display:flex;gap:6px">${ph(fPY,'🇵🇾 Paraguay')}${ph(fML,'🏷️ ML')}</div>
@@ -16494,6 +16622,12 @@ function _pedidoItemHtml(p,opts){
       <span style="font-weight:700;color:${_armU>0?'var(--green)':'var(--muted)'}">🧾 pedir</span>
       <input type="number" min="0" step="1" value="${_armU||''}" placeholder="0" onchange="pyArmSet('${_prod.id}',this.value)" style="width:58px;font-size:.88rem;padding:4px 6px;text-align:center;background:var(--surface2);border:1px solid ${_armU>0?'var(--green)':'var(--border)'};border-radius:6px;color:var(--text)"> u.
       ${_armU>0?`<span style="color:var(--green)">✓ en el pedido</span>`:`<button class="btn" style="font-size:.66rem;padding:3px 9px" onclick="pyArmSet('${_prod.id}',${parseInt(p.cantidad)||1})">+ las ${fmtN(p.cantidad||1)} sugeridas</button>`}
+      ${(()=>{// EL POR QUÉ A LA VISTA (13/10/2026, él: "no me explica porque me pide esas unidades"): el motivo que escribí al
+        // decidir (o la cuenta guardada del pedido), abajo de la casilla, sin tener que abrir nada.
+        const o=clPedDe(_prod.id);let t=o&&o.motivo?String(o.motivo):'';
+        if(o&&o.motVars)t=[t,...Object.entries(o.motVars).map(([c,m])=>`${c}: ${m}`)].filter(Boolean).join(' · ');
+        if(!t)t=_cerPedidoSimple(p);
+        return t?`<div style="flex-basis:100%;font-size:.74rem;line-height:1.45;color:var(--text);padding:4px 0 0">🧠 <b>Por qué ${fmtN(p.cantidad||0)}:</b> ${escHtml(t)}</div>`:'';})()}
     </div>`;
   const _sem=_enCam?null:_pedSem(p);
   const _semTxt=!_sem?'':_sem==='rojo'?(p.cSemCol>0?`🔴 ${p.cSemCol} color${p.cSemCol>1?'es':''} sin stock en ningún lado`:'🔴 sin stock en ningún lado'):(p.cSemDias!=null&&p.cSemDias<999?`${_sem==='naranja'?'🟠':'🟡'} alcanza ~${p.cSemDias} d`:'')+(p.cSemCol>0?` · ${p.cSemCol} color${p.cSemCol>1?'es':''} en cero`:'');
@@ -16777,7 +16911,7 @@ function renderPedidos(){
       ${_tab('probados','✅ Productos probados','Lo que YA vendés: cuánto hay que reponer para no quedarte sin stock, y lo que dejó de convenir al precio de Paraguay de hoy.')}
       ${_tab('nuevos','🆕 Productos nuevos','Lo que todavía NO vendés: los candidatos que trae el chat de Paraguay y el armado de ese pedido.')}
       ${_tab('hechos',`🧾 Pedido${(()=>{const n=pyArmadoFilas().length+pedNuevos(candList().filter(candEnArmado).filter(c=>candEnPedido(c)!=='viajando')).filas.length;return n?' ('+n+' cargados)':'';})()}`,'El pedido del momento (probados + nuevos juntos, con el mensaje para Nissei) y abajo los pedidos ya hechos: en camino y llegados.')}
-    </div>`+(pyVista!=='hechos'?`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:-4px 0 12px"><span style="font-size:.66rem;color:var(--muted)">Mostrar:</span>${[['todos','Todo'],['perf','🧴 Perfumes'],['resto','📦 Resto']].map(([v,t])=>`<button class="btn" style="font-size:.64rem;padding:4px 11px;${_pyRubro===v?'background:#7c3aed;color:#fff;border-color:#7c3aed;font-weight:700':''}" onclick="pySetRubro('${v}')">${t}</button>`).join('')}</div>`:'');
+    </div>`+(pyVista!=='hechos'?`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:-4px 0 12px"><span style="font-size:.66rem;color:var(--muted)">Mostrar:</span>${[['todos','Todo'],['perf','🧴 Perfumes, belleza y salud'],['resto','📦 Resto']].map(([v,t])=>`<button class="btn" style="font-size:.64rem;padding:4px 11px;${_pyRubro===v?'background:#7c3aed;color:#fff;border-color:#7c3aed;font-weight:700':''}" onclick="pySetRubro('${v}')">${t}</button>`).join('')}</div>`:'');
     // PROBADOS = IDÉNTICO A BS AS (01/10/2026, pedido suyo): sólo la lista de pedidos, sin canasta ni precios.
     el.innerHTML=_tabs+(pyVista==='nuevos'?candidatosHTML():pyVista==='ambos'?el.innerHTML+`<div style="font-size:.8rem;font-weight:700;margin:18px 0 8px;padding-top:10px;border-top:2px solid var(--border2)">🆕 Productos nuevos</div>`+candidatosHTML():pyVista==='hechos'?pedidoMomentoHTML()+`<div style="font-size:.8rem;font-weight:700;margin:6px 0 8px">📦 Pedidos hechos (${pyCompras().length})</div>`+pyHechosHTML():el.innerHTML);
   }
@@ -17529,7 +17663,7 @@ function renderMetAuto(){
     return `<div style="padding:6px 0;border-bottom:1px solid rgba(148,163,184,.1);font-size:.68rem">
       <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
         <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${sube?'⬆️':'⬇️'} ${x.nom||x.mla}${x.cuenta?' · '+x.cuenta:''}</span>
-        <b style="white-space:nowrap;color:${metJuicio(x)?MET_JZ[metJuicio(x).v][2]:col(x.total)}">${metJuicio(x)?MET_JZ[metJuicio(x).v][1]+' ':n(x.total)>0?'ganó ':n(x.total)<0?'perdió ':'igual '}${sg(x.total)}</b>
+        <b style="white-space:nowrap;color:${metJuicio(x)?MET_JZ[metJuicio(x).v][2]:col(x.total)}">${metJuicio(x)?MET_JZ[metJuicio(x).v][1]+' ':n(x.total)>0?'ganó ':n(x.total)<0?'perdió ':'igual '}${(()=>{const j=metJuicio(x);const choca=j&&((j.v==='perdio'&&n(x.total)>0)||(j.v==='gano'&&n(x.total)<0));return choca?`<span style="color:var(--muted);font-weight:400" title="El número es sólo lo que se cobró de más (o de menos) en las unidades que SÍ se vendieron. No cuenta las ventas que se perdieron por el precio: eso lo mira mi juicio.">(cuenta del precio ${sg(x.total)}, sin las ventas perdidas)</span>`:sg(x.total);})()}</b>
       </div>
       <div style="font-size:.6rem;color:var(--muted)">${fh(x.ts)} · ${metAutoMotTxt(x)} · ${x.de?fmt(n(x.de)):'?'} → ${x.a?fmt(n(x.a)):'?'} (${sube?'+':''}${pct}%)${n(x.deRef)>0?' · medido contra '+fmt(n(x.deRef))+', el precio antes del robot':''}${x._mesParcial?' · sólo lo vendido en '+mesTxt(metAutoMes):''}</div>
       ${metJuicioHTML(x)}

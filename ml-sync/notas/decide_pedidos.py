@@ -44,6 +44,13 @@ def ritmo(x,dcs=30):
     elif x['v180']>=4 and x['full']==0: r=r180; base=f"agotado · vendía {R(x['v180'])} en 180 d"
     elif x['v30']>0: r=x['v30']/d; base=f"vendió {R(x['v30'])} en 30 d"
     else: r=0; base=f"{R(x['v180'])} en 180 d" if x['v180'] else "nunca vendió"
+    # ESCASEZ (13/10/2026, él: "si subo por escasez se vende menos de lo normal; eso no debería achicar las unidades a
+    # comprar"). Si en los últimos 30 días subí el precio POR ESCASEZ, las ventas de después no son el ritmo real:
+    # manda el ritmo de antes (los 30 días previos, o el de 60 días), nunca uno más bajo.
+    esc=[int(d) for d in re.findall(r'⬆️\$\d+→\$\d+ (\d+)dESC',x.get('cambios',''))]
+    if esc and min(esc)<=30:
+        rPre=max((x['v60']-x['v30'])/30, x['v60']/60)
+        if rPre>r: r=rPre; base+=f" · subí por escasez hace {min(esc)} d: uso el ritmo de antes ({R(x['v60']-x['v30'])} en los 30 d previos)"
     return r,tiene,base
 def reparto(total,pesos):
     # reparte `total` unidades enteras según `pesos` (resto mayor): la suma da justo el total
@@ -68,7 +75,7 @@ for p in prods:
                 p['sinColorV_'+f]=sobra
         dets=[]
         for v in p['vars']:
-            r,t,b=ritmo(v,v['dcs']); need=max(0.0,r*T-t)
+            r,t,b=ritmo(dict(v,cambios=p['cambios']),v['dcs']); need=max(0.0,r*T-t)
             dets.append([v,need,r,t,r*T,b])
         # Lo que el producto tiene SIN COLOR (viajando de Paraguay, Full de publicaciones sin color, oficina o cajas sin color)
         # también cubre: se descuenta de los colores que más piden (revisión 9, 09/10/2026).
