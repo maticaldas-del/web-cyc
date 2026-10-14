@@ -70,3 +70,5 @@ Lo que queda sin probar, con su motivo: 72 cambiadas en los últimos 2 días (es
 13/10 19:24 · primera venta de la prueba +50%: Lupa 100mm MLA1937821267 vendida a $11.990 (+150% de ganancia, $8.775 de neto) dos horas después de la suba. Una sola venta: no confirma todavía, se sigue midiendo.
 
 13/10 · las de 1 venta por mes o menos también se prueban (él: "aumentar ya"). Aplicadas y releídas de ML: Linterna COB MLA3998033920 $6.390→$8.990 · Sábanas 1½ MLA3160820188 $17.510→$22.990 · Mazo póker MLA1514083917 $23.320→$29.990 · Dalí MLA1869295911 $150.150→$189.990. Vuelven al precio de antes si en 60 días no venden ninguna.
+
+13/10 21:00 (vuelta corta) · Batidor negro MLA3384643016 VUELVE $20.930→$19.020: 0 ventas en 6 días con stock contra ~3,6 esperadas (Poisson <3%). No se prueba más caro por 60 días. El blanco MLA1807593513 a $19.690 sigue vendiendo (6 en 7 d).
