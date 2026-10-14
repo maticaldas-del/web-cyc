@@ -13296,7 +13296,9 @@ async function main() {
       const otrosL = Object.entries(otros).flatMap(([l, o]) => Object.entries(o).filter(([, v]) => Math.abs(v) >= 1).map(([t, v]) => `${l}: ${t} ${money(v)}`));
       if (otrosL.length) console.log(`\n── 3 · Otros cargos que NO entran en el gasto de Full (para mirar) ──\n  ${otrosL.join('\n  ')}`);
       if (!GO) { console.log('\nSin :go no se carga nada.'); return; }
-      const k = periodos[0], ym = k.slice(0, 7).replace('-', '_');
+      // El período de ML de un mes se carga en el MES SIGUIENTE, como lo venía cargando él: los "cargos de Full de agosto"
+      // ($186.885, período 2026-08-01) están en los gastos de septiembre. Se cobran después de cerrar el período.
+      const k = periodos[0], _sig = new Date(Date.UTC(+k.slice(0, 4), +k.slice(5, 7), 1)), ym = _sig.toISOString().slice(0, 7).replace('-', '_');
       if (faltan.length) { console.log(`\n✗ No cargo el gasto: falta leer ${faltan.length} cuenta(s). Un gasto a medias se lee como completo.`); return; }
       const compras = (await db.get('cyc/compras')) || {};
       const aMano = Object.entries(compras).filter(([id, g]) => g && !id.startsWith('fullml_') && String(g.dayKey || '').startsWith(ym)

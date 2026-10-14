@@ -17,7 +17,7 @@ la historia y el porqué). Si algo de acá choca con CLAUDE.md, manda lo más nu
   Las lecturas de la vuelta (planilla, informe, pedidostodo, escasez, ventasraras…) van juntas en una sola ml-consulta, y
   las escrituras juntas en una sola ml-sync. El registro los separa con `##### <comando>`.
 - **Gasto de Full del mes** (14/10, él eligió que lo cargue yo): en la completa del día 15 de cada mes (o la primera
-  después) corro `cargosmes` por ml-consulta para mirar y `cargosmes:<AAAA_MM>:go` por ml-sync para cargarlo (almacenamiento
+  después) corro `cargosmes` por ml-consulta para mirar y `cargosmes:<AAAA_MM>:go` por ml-sync para cargarlo (el período de ML de un mes va como gasto del mes SIGUIENTE: el de septiembre en octubre) (almacenamiento
   + stock antiguo + retiro/descarte + multas, de la factura de ML de cada cuenta). Ya no hace falta que él me pase el reporte.
 - **Las notas de Pedidos y Armar caja ahora se ven en la tarjeta** (sin tocar 🧠): escribirlas cortas, la primera frase
   es lo que se lee en dos renglones.

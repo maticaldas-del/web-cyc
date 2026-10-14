@@ -475,7 +475,7 @@ el precio de un candidato distinto con código parecido (se compara también por
     `_vpGan`, `vpGanSum` del Resumen. **Chequear:** el mismo día da el mismo puntaje en Inicio y en Ventas.
   - **9 y 10 · `cargosmes[:<AAAA_MM>][:<meses>][:go]`** (sync.mjs; `:go` sólo por ml-sync): la factura de ML por tipo
     de cargo de las 4 cuentas. (9) gasto de Full = CFWA + CFBA + CFRS + CFPB netos de bonificaciones, con `:go` en
-    `cyc/compras/fullml_<AAAA_MM>_<cuenta>` (cat Envios, día 15); no escribe si falta leer una cuenta ni si ya hay uno
+    `cyc/compras/fullml_<AAAA_MM>_<cuenta>` (cat Envios, día 15 del MES SIGUIENTE al período, como lo cargaba él); no escribe si falta leer una cuenta ni si ya hay uno
     cargado a mano ese mes. Afuera: cargos de cada venta (ya en el neto), percepciones (ya van como %), devolución CDSD
     (ya la cuenta el % de reclamos). (10) tabla de percepciones de IIBB por provincia × cuenta para el contador.
     **Chequear:** que ningún cargo de Full quede en "otros" sin mirar y que la tabla de IIBB use sólo renglones de IIBB.
