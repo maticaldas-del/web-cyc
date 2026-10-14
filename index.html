@@ -2513,7 +2513,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.24';
+const APP_VERSION='23.25';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2524,6 +2524,7 @@ const APP_VERSION='23.24';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.25',f:'14/10/2026',h:'19:18',c:[{n:1,t:'📋 Pedidos de Paraguay: el contador de arriba dice el corte real (17 días: viaje + preparar + caja), no 14 como Bs As.'}]},
   {v:'23.24',f:'13/10/2026',h:'01:50',c:[{n:1,t:'🧠 Revisión 9 (el cerebro): una venta cancelada guarda cuándo se canceló, para que la revisión vea los reclamos y devoluciones de ventas viejas. Lo demás de la revisión fue en el robot (pedidos, cajas, precios, promos e informe).'}]},
   {v:'23.23',f:'13/10/2026',h:'00:30',c:[{n:1,t:'🏷️ Ventas: "Descuento ML" (lo pagó ML entero, a vos te llega el precio lleno) pasa a AZUL. El DORADO queda sólo para las promos o descuentos donde pusimos plata nosotros.'}]},
   {v:'23.22',f:'12/10/2026',h:'21:40',c:[{n:1,t:'🏷️ Ventas: la venta hecha en promo dice en DORADO "Descuento ML" (si el descuento lo puso ML entero) o "Vendido en promoción" (si pusimos algo nosotros), con cuánto puso cada uno.'}]},
@@ -11174,11 +11175,14 @@ function _pedSem(p){
 }
 const _PED_SEM_FILTROS=['rojo','naranja','amarillo'];
 function _pedFiltrar(peds){return _PED_SEM_FILTROS.includes(pedidoFilter)?peds.filter(p=>_pedSem(p)===pedidoFilter):peds.filter(p=>p.estado===pedidoFilter);}
-function _pedSemCount(peds){
+// El corte del naranja no es 14 para todos: Paraguay usa PED_DIAS_ROJO_PY (viaje + preparar + caja). Sin `dias`
+// (la vista que junta los dos) el rótulo no inventa un número (etapa 6, 14/10/2026).
+function _pedSemCount(peds,dias){
   const c={rojo:0,naranja:0,amarillo:0};peds.forEach(p=>c[_pedSem(p)]++);
+  const d=dias>0?dias+' días':'el corte';
   return `<div class="pcount"><strong style="color:var(--red)">${c.rojo}</strong>🔴 Sin stock</div>
-      <div class="pcount"><strong style="color:#f97316">${c.naranja}</strong>🟠 ≤14 días</div>
-      <div class="pcount"><strong style="color:#ca8a04">${c.amarillo}</strong>🟡 +14 días</div>`;
+      <div class="pcount"><strong style="color:#f97316">${c.naranja}</strong>🟠 ≤${d}</div>
+      <div class="pcount"><strong style="color:#ca8a04">${c.amarillo}</strong>🟡 +${d}</div>`;
 }
 function setPedidoFilter(f,btn){
   pedidoFilter=f;
@@ -16688,7 +16692,7 @@ function renderPedidos(){
     peds.forEach(p=>cnt[p.estado||'pendiente']=(cnt[p.estado||'pendiente']||0)+1);
     const cntEl=document.getElementById('pedidos-paulvic-count');
     if(cntEl)cntEl.innerHTML=`
-      ${_pedSemCount(peds)}
+      ${_pedSemCount(peds,PED_DIAS_ROJO)}
       <div class="pcount"><strong>${peds.length}</strong>Total</div>${_pedCostoChip(peds)}`;
     if(pedidoFilter==='todos'){
       peds=peds.filter(p=>(p.estado||'pendiente')!=='suficiente');
@@ -16720,7 +16724,7 @@ function renderPedidos(){
   const cnt={pendiente:0,poco_stock:0,suficiente:0};peds.forEach(p=>{const e=p.estado==='en_camino'?'pendiente':(p.estado||'pendiente');cnt[e]=(cnt[e]||0)+1;});
   const cntEl=document.getElementById(countId);
   if(cntEl)cntEl.innerHTML=`
-    ${_pedSemCount(peds)}
+    ${_pedSemCount(peds,isBsas?PED_DIAS_ROJO:PED_DIAS_ROJO_PY)}
     <div class="pcount"><strong>${peds.length}</strong>Total</div>${_pedCostoChip(peds)}`;
   if(pedidoFilter!=='todos')peds=_pedFiltrar(peds);
   const searchId=isBsas?'ped-search':'ped-py-search';

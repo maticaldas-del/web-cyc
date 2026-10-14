@@ -399,6 +399,11 @@ el precio de un candidato distinto con código parecido (se compara también por
   **cosas duplicadas** (el mismo número en dos lados) y **cosas que faltan** (un dato que él busca y no está).
   Que no espere a que él lo pida. Se le pasan todas juntas, con maqueta cuando es visual.
 
+### ETAPA 6 DEL 14/10/2026 (en curso)
+- Hecho de paso (obvio): el contador de Pedidos (`_pedSemCount`) decía "≤14 días" también en Paraguay, que corta en
+  `PED_DIAS_ROJO_PY` (17). Ahora recibe el corte de cada sección. **Chequear:** el rótulo de cada pestaña coincide con
+  el `pedDiasRojoDe` que usa `syncPedidosAuto` para pintar el naranja.
+
 ## 7 · DISEÑO
 
 - **Venta en promo en dorado (v23.22, 12/10/2026):** `vpPromoLabel` (clase `.vp-promo`, también en `body.light`) dice "Descuento ML" si ML puso el descuento entero y "Vendido en promoción" si pusimos algo nosotros. Datos de `cyc/promoventa`. Chequear: que se vea en PC y celu, y en los dos temas.
