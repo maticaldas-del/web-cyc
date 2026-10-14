@@ -861,6 +861,7 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY, soloAnotar 
   const erroresOp = {};                      // texto del error -> cuántas veces
   const sinLeer = {};                        // renglones cuya consulta a ML falló: NO se pueden dar por faltantes
   const sinLeerProd = {};                    // "cuenta|prodId" cuya publicación ML no contestó: todo el producto queda ciego
+  const motivoSL = {};                       // auditoría 14/10: por qué quedó sin leer (sinpub · color · sincolor) → mlapi/cajasciegas, lo lee el informe
   const sinCantidad = [];                    // entradas aceptadas pero sin unidades legibles
   for (const [cta, o] of Object.entries(porCta)) {
     // Etapa 5: sin token esa cuenta NO se leyó. Sus productos quedan "sin leer": si no, abajo se veían
@@ -1095,7 +1096,7 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY, soloAnotar 
     // caja se queda abierta) y se avisa para vincularlo.
     for (const pid of o.prods) {
       if (conDeposito.has(pid) || sinLeerProd[cta + '|' + pid]) continue;
-      sinLeerProd[cta + '|' + pid] = true;
+      sinLeerProd[cta + '|' + pid] = true; motivoSL[cta + '|' + pid] = 'sinpub';
       console.log(`⚠️ ${cta} · ${(pIdx[pid] && pIdx[pid].name) || pid}: no tiene ninguna publicación de Full vinculada en esta cuenta → sus renglones quedan sin leer (la caja no se marca). Vinculá la publicación.`);
     }
     // ── LO MISMO POR COLOR (revisión max (rev4)) ── El freno de arriba es por PRODUCTO: si el
@@ -1113,13 +1114,13 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY, soloAnotar 
         // faltantes falsos o dejar libres las entradas para la caja siguiente.
         if (!va && ((pIdx[it.prodId] && pIdx[it.prodId].variantes) || []).length) {
           const k0 = kR(cta, it.prodId, '');
-          if (!sinLeer[k0]) { sinLeer[k0] = true; console.log(`⚠️ ${cta} · ${(pIdx[it.prodId] && pIdx[it.prodId].name) || it.prodId}: la caja lleva unidades SIN color de un producto con colores → ese renglón queda sin leer (la caja no se marca sola).`); }
+          if (!sinLeer[k0]) { sinLeer[k0] = true; motivoSL[k0] = 'sincolor'; console.log(`⚠️ ${cta} · ${(pIdx[it.prodId] && pIdx[it.prodId].name) || it.prodId}: la caja lleva unidades SIN color de un producto con colores → ese renglón queda sin leer (la caja no se marca sola).`); }
           continue;
         }
         if (!va || !conDeposito.has(it.prodId)) continue;
         const kV = kR(cta, it.prodId, va);
         if (conDepVar.has(kV) || sinLeer[kV]) continue;
-        sinLeer[kV] = true;
+        sinLeer[kV] = true; motivoSL[kV] = 'color';
         if (!avisadoVar.has(kV)) { avisadoVar.add(kV); console.log(`⚠️ ${cta} · ${(pIdx[it.prodId] && pIdx[it.prodId].name) || it.prodId} · ${va}: ninguna publicación de Full de esta cuenta nombra ese color → el renglón queda sin leer (la caja no se marca). Fijá el color con fijarvar.`); }
       }
     }
@@ -1378,6 +1379,26 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY, soloAnotar 
       if (!DRY) await db.set('cyc/cajasentrado', Object.keys(nuevoE).length ? nuevoE : null);
     }
   } catch (err) { console.log('⚠️ no se pudo anotar lo que ya entró de las cajas abiertas: ' + (err && err.message)); }
+  // ── POR QUÉ CADA CAJA ABIERTA NO SE PUEDE LEER (auditoría 14/10/2026) ── Los avisos de arriba (producto sin
+  // publicación de Full en esa cuenta, color sin fijar, ML que no contestó) sólo iban a este log de la hora, y el
+  // `informe` decía "5 abiertas" sin decir que la del 07/10 de Adriana nunca se iba a poder leer sola. Se guarda la
+  // foto en `mlapi/cajasciegas` (fuera de cyc/: la web no la necesita) y la sección 9 del informe la muestra.
+  try {
+    const ciegas = {};
+    for (const ab of abiertas) {
+      const rs = [];
+      for (const it of ab.items) {
+        const k1 = kR(ab.e.cuenta, it.prodId, it.variante || ''), kp = ab.e.cuenta + '|' + it.prodId;
+        if (!(sinLeer[k1] || sinLeerProd[kp])) continue;
+        rs.push({ n: String((pIdx[it.prodId] && pIdx[it.prodId].name) || it.prodId).slice(0, 50), v: it.variante || '', u: Number(it.u) || 0,
+          m: motivoSL[kp] || motivoSL[k1] || 'ml' });
+      }
+      if (rs.length) ciegas[ab.id + '__' + ab.i] = { cuenta: ab.e.cuenta, track: String(ab.c.track || ''), fecha: String(ab.fecha || ''), r: rs };
+    }
+    const err1 = Object.entries(erroresOp).sort((x, y) => y[1] - x[1])[0];
+    if (!DRY) await db.set('mlapi/cajasciegas', { ts: Date.now(), fallos: Object.values(erroresOp).reduce((a, x) => a + x, 0),
+      error: err1 ? String(err1[0]).slice(0, 120) : '', cajas: Object.keys(ciegas).length ? ciegas : null });
+  } catch (eCg) { console.log('⚠️ no pude guardar por qué las cajas quedan sin leer: ' + (eCg && eCg.message)); }
   // Guardar las entradas ubicadas de las marcadas a mano (decisión 3). Lista FRESCA, caja buscada por
   // seguimiento + contenido, y sólo si sigue marcada y sin `recUsadas` (si la abrieron o la tocó
   // otro mientras corría la vuelta, no se toca).
@@ -35714,6 +35735,19 @@ async function main() {
         console.log(`\n── 9 · CAJAS EN CAMINO A FULL (${nAb} abiertas · ${abiertas.length} con 9+ días) ──`);
         for (const x of abiertas.slice(0, 15)) console.log(x);
         if (abiertas.length > 15) console.log(`  (y ${abiertas.length - 15} cajas viejas más…)`);
+        // Auditoría 14/10/2026: POR QUÉ una caja abierta (de cualquier edad) no se puede leer sola. Lo anota la vuelta
+        // de la hora en `mlapi/cajasciegas`; sólo se muestran las que siguen abiertas con el mismo seguimiento.
+        try {
+          const cg = (await db.get('mlapi/cajasciegas')) || {}; const MOT = { sinpub: 'sin publicación de Full con código en esa cuenta (normal si es la 1ª caja de un producto nuevo: se lee cuando ML la da de alta) · si no, vincular',
+            color: 'ninguna publicación de Full de esa cuenta nombra ese color → fijarvar', sincolor: 'renglón sin color de un producto con colores', ml: 'ML no contestó (429): se reintenta sola' };
+          const vivas = Object.entries(cg.cajas || {}).filter(([k, x]) => { const [eid, ci] = k.split('__'); const c = ((envs[eid] || {}).cajasDet || [])[Number(ci)]; return c && !c.recibida && String(c.track || '') === String(x.track || ''); });
+          if (cg.ts) console.log(`  lectura de la hora (${new Date(cg.ts - 3 * 36e5).toISOString().slice(5, 16).replace('T', ' ')}): ${cg.fallos || 0} consultas de movimientos fallaron${cg.error ? ' · ' + cg.error.slice(0, 70) : ''}`);
+          for (const [, x] of vivas) {
+            const noMl = x.r.filter((r) => r.m !== 'ml'), nMl = x.r.length - noMl.length;
+            console.log(`· ${x.cuenta} · caja …${String(x.track).slice(-4)} del ${String(x.fecha).slice(5)} · ${x.r.length} renglón(es) sin leer${nMl ? ` (${nMl} por ML)` : ''}`);
+            for (const r of noMl.slice(0, 8)) console.log(`    ⚠️ ${r.n}${r.v ? ' · ' + r.v : ''} (${r.u} u.): ${MOT[r.m] || r.m}`);
+          }
+        } catch (eCg) { console.log('  (no pude leer por qué las cajas quedan sin leer: ' + eCg.message + ')'); }
       } catch (eC) { console.log('cajas: no pude leerlas · ' + eC.message); }
       // 10-14: lo que faltaba (auditoría del 08/10/2026). Preguntas, publicaciones frenadas por ML, caja de compra
       // perdida en lo que vende, quiebres de stock de lo que vende, reputación, promos sin leer y el dólar.

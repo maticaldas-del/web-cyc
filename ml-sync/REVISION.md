@@ -292,6 +292,11 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 
 - **Cajas: 30 días + 7 de viaje, almacenamiento a los 4 meses (14/10/2026, v23.36).** `REPO_DIAS_TOTAL`=37 (index.html) y `T=37` en `ml-sync/notas/decide_cajas.py`. `almacDiasDe(p)`: 120 días lo chico, 60 lo grande (`esGrandeFull`). Chequear: Armar caja y el script dan el mismo objetivo · ninguna caja manda para más de 37 días · el aviso "empieza a pagar en N d" de Rotación cuenta desde 120 en lo chico.
 
+### Por qué cada caja abierta no se lee sola, en el informe (14/10/2026, auditoría)
+- **Qué es:** `cajasQueLlegaron` anota en `mlapi/cajasciegas` (cada hora) los renglones de cada caja abierta que quedaron sin leer y el motivo (`sinpub` sin publicación de Full con código en esa cuenta · `color` falta fijarvar · `sincolor` renglón sin color · `ml` 429). La sección 9 del `informe` lo muestra para TODAS las abiertas, no sólo las de 9+ días.
+- **Dónde:** `motivoSL` en `cajasQueLlegaron` (sync.mjs) y el bloque "Auditoría 14/10" de la sección 9 del informe.
+- **Qué chequear:** que sólo muestre cajas que siguen abiertas con el mismo seguimiento; que un producto nuevo (primera caja) diga "normal"; que no escriba en modo prueba.
+
 ### Cada color con su código de Paraguay (13/10/2026, v23.34 · `cyc-v614`)
 Él con el Joystick Xbox: *"me pide el azul, pero no puso el link del azul, puso el del negro"*. La ficha tenía un solo
 código/link/foto para todos los colores. Ahora `cyc/products/<id>/pyVar/<color>` = {cod, usd, link, foto, ts}, cargado con
