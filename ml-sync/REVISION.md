@@ -310,6 +310,10 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 - Nada se borra: lo de menos de 15% queda guardado (él: "quizás mañana dan, y sirve para la perfumería del local").
 - Qué chequear: que `pycat` y el panel cuenten igual; que lo que pasa a Para probar no repita candidatos ni fichas (código también por
   el final); que un 429 no quede como "sin catálogo"; que lo "fuera por regla" no se coma cosas que sí se miran (webcam, mesa digitalizadora).
+- **Los probados primero** (15/10, pedido suyo): `pycatprobados[:go]` (ml-consulta) pone el precio de Paraguay de hoy en cada ficha de
+  Paraguay desde `mlapi/pycat` (gratis, sin consultar a ML; el costo no se toca), lista las fichas con código que no está en el catálogo y
+  propone el código más parecido para las que no tienen (no elige solo: se carga con `pyprecio`). La carga de `pycat` ahora refresca
+  `nisseiTs` aunque el precio sea igual. Qué chequear: que no toque `costUSD`; que el código se compare también por el final.
 
 ### Paraguay: todo guardado en CYC y una pasada por mes (14/10/2026, pedido suyo · v23.37 `cyc-v617`)
 - **Qué es:** el chat de compras carga TODO lo de Nissei con catálogo exacto en ML (aunque no dé 25% ni tenga 100 vendidas: el panel ya lo esconde en desplegables), anota lo que no tiene catálogo con `pyvisto` (`cyc/pyvistos/<código>`), y una vez por mes actualiza precios con `candprecio:<código>=<US$>[/<vendidas>]|=nohay` sin volver a buscar en ML, usando la lista de `pyconocidos`. `candalta` de un código ya cargado ya no lo saltea: le pone el precio y la fecha. El robot mide hasta 250 por vuelta (antes 40) y los descartados por margen se vuelven a medir cada 2 días (antes 7). Un candidato vence a los 60 días sin precio nuevo (antes 45).

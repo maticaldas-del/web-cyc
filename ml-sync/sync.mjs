@@ -40,7 +40,7 @@ process.on('SIGTERM', () => _alCortar('SIGTERM'));
 // los que escriben en cantidad o en plata se niegan de entrada, y cualquier otro corre con la base,
 // ML, Mercado Pago y Telegram en sólo lectura (se deja renovar y guardar el token de ML, que ML rota).
 const EN_CONSULTA = process.env.GITHUB_WORKFLOW === 'ml-consulta' || process.env.ML_CONSULTA === '1';
-const CONSULTA_ESCRIBE = new Set(['pycat', 'candprecio', 'lineatodo', 'revcand', 'vincular', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull']);
+const CONSULTA_ESCRIBE = new Set(['pycat', 'pycatprobados', 'candprecio', 'lineatodo', 'revcand', 'vincular', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull']);
 const CONSULTA_NIEGA = new Set(['candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'promoventas', 'cargosmes']);
@@ -18816,13 +18816,14 @@ async function main() {
         const yc = Object.entries(cands).find(([, c]) => c && _pyCodIg(c.cod, f.cod));
         if (yc && Math.abs((Number(yc[1].usd) || 0) - f.u) >= 0.005) candUpd.push([yc[0], yc[1], f]);
         const yp = products.find((p) => p && p.codPy && _pyCodIg(p.codPy, f.cod));
-        if (yp && Math.abs((Number(yp.nisseiUSD) || 0) - f.u) >= 0.005) fichaUpd.push([yp, f]);
+        // La ficha se toca aunque el precio sea el mismo: así `nisseiTs` dice que se miró hoy (antes quedaba "hace 12 d").
+        if (yp) fichaUpd.push([yp, f]);
       }
       const ultPg = filas.reduce((mx, f) => (f.pg != null && f.pg > mx ? f.pg : mx), -1);
       console.log(`=== CATÁLOGO DE PARAGUAY · carga ${APLICAR ? '' : '(PRUEBA: no escribo nada)'} ===`);
       console.log(`${filas.length} renglones · ${nuevos} nuevos · ${cambio} cambiaron de precio · ${igual} iguales · páginas ${[...new Set(filas.map((f) => f.pg).filter((x) => x != null))].join(', ') || '(sin número)'}`);
       for (const [id, c, f] of candUpd) console.log(`  ↻ candidato ${c.nombre.slice(0, 60)}: US$ ${Number(c.usd || 0).toFixed(2)} → ${f.u.toFixed(2)}`);
-      for (const [p, f] of fichaUpd) console.log(`  ↻ ficha ${p.name.slice(0, 60)}: Paraguay US$ ${p.nisseiUSD ?? '—'} → ${f.u.toFixed(2)} (el costo no se toca)`);
+      for (const [p, f] of fichaUpd) if (Math.abs((Number(p.nisseiUSD) || 0) - f.u) >= 0.005) console.log(`  ↻ ficha ${p.name.slice(0, 60)}: Paraguay US$ ${p.nisseiUSD ?? '—'} → ${f.u.toFixed(2)} (el costo no se toca)`);
       if (!APLICAR) { console.log('\nPRUEBA. Para guardar, agregá ";go" al final.'); return; }
       await db.patch('mlapi/pycat', upd);
       for (const [id, c, f] of candUpd) await db.patch('cyc/candidatos_py/' + id, { usd: f.u, ts: ahora, calcTs: null, usdAntes: Number(c.usd) || null });
@@ -18842,6 +18843,52 @@ async function main() {
       const fal = Object.values(cands).filter((c) => c && c.fuente === 'pycat' && !c.no && !c.prodId && !(Number(c.vendCarga) > 0));
       console.log(`=== VENTAS QUE FALTAN · ${fal.length} candidato(s) que dan y no tienen las ventas de ML ===`);
       console.log('@@LISTA'); for (const c of fal) console.log(`${c.cod}|${(Number(c.usd) || 0).toFixed(2)}|${c_link(c)}|${String(c.nombre || '').slice(0, 70)}`); console.log('@@FIN');
+      return;
+    }
+    // BILLING_PROBE=pycatprobados[:go] → LOS PROBADOS PRIMERO (15/10/2026, pedido suyo: "que el robot mire primero siempre la
+    // mercadería probada"). Lo probado no se mide contra ML (ya tiene sus ventas reales): lo que necesita es el PRECIO DE PARAGUAY
+    // de hoy, y eso ya está en `mlapi/pycat`, gratis y sin consultar a ML. Para cada ficha de Paraguay:
+    //  · con código y está en el catálogo → `nisseiUSD` y `nisseiTs` al día (la carga de `pycat` sólo tocaba la ficha si el precio
+    //    CAMBIABA, así que las de precio igual seguían diciendo "mirado hace 12 d"). El costo NO se toca (regla del 17/09).
+    //  · con código y NO está en los 13.467 → se lista: o Nissei ya no lo vende o el código está mal. No se marca solo.
+    //  · sin código → se proponen los 3 del catálogo de nombre más parecido. NO se elige solo (regla del 19/09): se mira y se
+    //    carga con `pyprecio`. Sin `:go` sólo muestra.
+    if (/^pycatprobados(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const aplicar = /:go$/.test(String(process.env.BILLING_PROBE));
+      const cat = (await db.get('mlapi/pycat')) || {};
+      const ents = Object.entries(cat).filter(([, e]) => e && e.n && Number(e.u) > 0);
+      if (ents.length < 1000) { console.log(`❌ El catálogo tiene sólo ${ents.length} productos: no comparo contra algo incompleto.`); return; }
+      const fichas = products.filter((p) => p && p.id && (p.origen === 'py' || p.codPy));
+      const toks = (t) => new Set(_rvNorm(t).split(' ').filter((w) => w.length >= 3 || /^\d+$/.test(w)));
+      const catToks = ents.map(([cod, e]) => [cod, e, toks(e.n)]);
+      const alDia = [], cambia = [], noEsta = [], sinCod = [];
+      for (const p of fichas) {
+        if (p.codPy) {
+          const hit = ents.find(([cod]) => _pyCodIg(p.codPy, cod));
+          if (!hit) { noEsta.push(p); continue; }
+          const [cod, e] = hit; const u = Math.round(Number(e.u) * 100) / 100;
+          (Math.abs((Number(p.nisseiUSD) || 0) - u) >= 0.005 ? cambia : alDia).push({ p, cod, u, ts: Number(e.ts) || Date.now() });
+        } else {
+          const tp = toks(p.name); if (!tp.size) { sinCod.push({ p, sug: [] }); continue; }
+          const sug = catToks.map(([cod, e, te]) => { let k = 0; for (const w of tp) if (te.has(w)) k++; return { cod, e, s: k / tp.size }; })
+            .filter((x) => x.s >= 0.5).sort((a, b) => b.s - a.s).slice(0, 3);
+          sinCod.push({ p, sug });
+        }
+      }
+      console.log(`=== LOS PROBADOS CONTRA EL CATÁLOGO DE PARAGUAY ${aplicar ? '' : '(PRUEBA: no escribo nada)'} ===`);
+      console.log(`${fichas.length} fichas de Paraguay · catálogo ${ents.length} · precio igual ${alDia.length} · precio cambió ${cambia.length} · código que no está ${noEsta.length} · sin código ${sinCod.length}`);
+      for (const x of cambia) console.log(`  ↻ ${String(x.p.name).slice(0, 60)} · código ${x.cod} · Paraguay US$ ${x.p.nisseiUSD ?? '—'} → ${x.u.toFixed(2)} (el costo no se toca)`);
+      if (noEsta.length) { console.log('\n❓ TIENEN CÓDIGO Y NO ESTÁ EN EL CATÁLOGO (Nissei ya no lo vende, o el código está mal):'); for (const p of noEsta) console.log(`  · ${String(p.name).slice(0, 70)} · código ${p.codPy} · US$ ${p.nisseiUSD ?? '—'}`); }
+      if (sinCod.length) { console.log('\n🔎 SIN CÓDIGO · lo más parecido del catálogo (NO se elige solo: mirarlo y cargar con pyprecio):');
+        for (const x of sinCod) { console.log(`  · ${String(x.p.name).slice(0, 70)} (${x.p.id})`); if (!x.sug.length) console.log('      nada parecido'); for (const s of x.sug) console.log(`      ${Math.round(s.s * 100)}% · ${s.cod} · US$ ${Number(s.e.u).toFixed(2)} · ${String(s.e.n).slice(0, 80)}`); } }
+      if (!aplicar) { console.log('\nPRUEBA. Para guardar los precios, agregá ":go".'); return; }
+      let ok = 0;
+      for (const x of [...alDia, ...cambia]) {
+        await db.patch('cyc/products/' + x.p.id, { nisseiUSD: x.u, nisseiTs: x.ts });
+        const r = await db.get('cyc/products/' + x.p.id);
+        if (r && Math.abs(parseFloat(r.nisseiUSD) - x.u) < 0.005 && r.costUSD === x.p.costUSD) ok++; else console.log(`  ❌ no quedó: ${x.p.name}`);
+      }
+      console.log(`\n✓ ${ok} de ${alDia.length + cambia.length} fichas con el precio de Paraguay al día (releídas; el costo igual).`);
       return;
     }
     // BILLING_PROBE=pycatmedir[:<cuántos>][:go] → MIDE CONTRA ML LO GUARDADO EN `mlapi/pycat` (15/10/2026). Ver `correrPyCatMedir`.
