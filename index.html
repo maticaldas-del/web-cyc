@@ -657,12 +657,7 @@ body.light .vp-promo.vp-promo-ml{color:#0369a1;background:color-mix(in srgb,#036
   <div id="home-push"></div>
   <div id="home-puntaje"></div>
   <div id="home-cierre-aviso" style="display:none"></div>
-  <div id="home-revision"></div>
-  <!-- La versión, la fecha y los últimos cambios, arriba del puntaje (25/09/2026, pedido suyo) -->
-  <div style="max-width:760px;margin:0 auto 12px;text-align:center">
-    <span id="home-version" onclick="actualizarApp()" title="Versión de la app que estás usando ahora. Tocá para buscar actualizaciones." style="display:inline-flex;align-items:center;gap:7px;font-size:.62rem;color:var(--muted);border:1px solid var(--border);border-radius:999px;padding:5px 13px;cursor:pointer;letter-spacing:.06em">…</span>
-    <details id="home-cambios" style="margin-top:6px;text-align:left"></details>
-  </div>
+  <!-- 15/10/2026, pedido suyo: la revisión del panel, la versión y los últimos cambios se mudaron a Ajustes. -->
   <div class="home-grid">
     <div class="nav-card nc6" onclick="goPage('resumen')">
       <span class="nc-icon">📋</span>
@@ -692,6 +687,7 @@ body.light .vp-promo.vp-promo-ml{color:#0369a1;background:color-mix(in srgb,#036
       <span class="nc-icon">🧾</span>
       <div class="nc-title">Facturas</div>
       <div class="nc-desc">Las facturas que emitió ML por cada cuenta, y si alguna venta quedó sin facturar.</div>
+      <div id="nc-fac-aviso"></div>
       <span class="nc-arrow">→</span>
     </div>
     <div class="nav-card" onclick="goPage('compras')" style="border-color:rgba(239,68,68,.3)">
@@ -2342,6 +2338,7 @@ async function pushActivar(){
 }
 if('serviceWorker' in navigator)navigator.serviceWorker.addEventListener('message',ev=>{if(ev.data&&ev.data.cycIr)try{goPage(ev.data.cycIr);}catch(e){}});
 function enterAjustes(){
+  try{renderHomeRevision();renderRevPanel();_pintarVersion();}catch(e){console.warn('revisiones',e);}
   const inp=document.getElementById('ajuste-nombre');if(inp)inp.value=whoAmI;
   const badge=document.getElementById('who-ajustes');if(badge)badge.textContent='👤 '+whoAmI;
   const isLight=document.body.classList.contains('light');
@@ -2617,7 +2614,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.56';
+const APP_VERSION='23.57';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2628,6 +2625,7 @@ const APP_VERSION='23.56';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.57',f:'15/10/2026',h:'16:40',c:[{n:1,t:'⚙️ La revisión del panel, la versión y los últimos cambios se mudaron de Inicio a Ajustes. Ahí cada etapa de la revisión se abre: qué mira, cuándo fue la última, qué pasó en cada una y cuándo toca.'},{n:1,t:'🔴 Si alguna cuenta pasaría el tope de H, la tarjeta de Facturas de Inicio lo avisa en rojo.'},{n:2,t:'🏷️ Rotación: si una publicación está en una promo que puse yo, abajo del % dice a cuánto se vende de verdad y el % a ese precio (el de arriba es al precio tachado).'}]},
   {v:'23.56',f:'15/10/2026',h:'16:10',c:[{n:1,t:'⚖️ La tarjeta "Las 4 cuentas contra el tope de H" se mudó de Inicio a Facturas.'},{n:1,t:'🇵🇾 Pedidos → Probados: el precio, el código, las fotos y los links van en "detalle ▾"; a la vista queda la casilla de pedir.'}]},
   {v:'23.55',f:'15/10/2026',h:'15:35',c:[{n:1,t:'🧠 La ventanita del cerebro ya no repite la misma explicación en "Por qué cambió el precio" cuando ya está en la nota de arriba (pasaba cuando el motivo guardado empezaba con "Claude:").'}]},
   {v:'23.54',f:'15/10/2026',h:'15:20',c:[{n:1,t:'📦 Armar caja: arriba sólo lo que hay que mandar (y lo que ya cargaste en la caja). Lo que no tiene recomendación va abajo, en el desplegable "Sin recomendación para mandar".'}]},
@@ -3166,7 +3164,7 @@ function goPage(page){
   if(page==='facturas'){renderFacturas();try{renderHomeParejo();}catch(e){}}
   if(page==='ajustes')enterAjustes();
   if(page==='inventario'){initFinViewSel();renderInv();renderProds();renderHist();loadFinInputs();updateArqueo();updateTotals();updateHdr();}
-  if(page==='home'){try{renderHomeHoy();}catch(e){}checkCierrePendiente();renderHomeRevision();updateHomeDolar();renderPuntajeMes();renderHomeParejo();renderNcOfi();}
+  if(page==='home'){try{renderHomeHoy();}catch(e){}checkCierrePendiente();renderHomeRevision();updateHomeDolar();renderPuntajeMes();renderHomeParejo();renderNcOfi();try{renderNcFacAviso();}catch(e){}}
   if(page!=='home'){
     // Al entrar a una página se baja el header para dejar el contenido arriba. OJO: esto solo puede
     // pasar en los primeros milisegundos. Antes había un MutationObserver que repetía el scroll cada
@@ -3818,7 +3816,7 @@ function renderAll(){
   if(currentPage==='rotacion')renderRotacionStock();
   // Inicio: cada tarjeta por separado y "Ventas de hoy" primero (30/09/2026, él: "la tarjeta de arriba no se
   // actualiza"). Antes iban en fila: si una de las de antes fallaba, las de después quedaban con lo viejo.
-  if(currentPage==='home'){[renderHomeHoy,checkCierrePendiente,renderHomeRevision,updateHomeDolar,renderPuntajeMes,renderHomeParejo,renderNcOfi,renderPush].forEach(f=>{try{f();}catch(e){console.warn('Inicio:',f.name,e);}});}
+  if(currentPage==='home'){[renderHomeHoy,checkCierrePendiente,renderHomeRevision,updateHomeDolar,renderPuntajeMes,renderHomeParejo,renderNcOfi,renderNcFacAviso,renderPush].forEach(f=>{try{f();}catch(e){console.warn('Inicio:',f.name,e);}});}
   updatePedidosCosto();
 }
 
@@ -3912,6 +3910,52 @@ const REV_PENDIENTE=[
 // 30/09 a la tarde: la revisión completa final (6 revisores) cubrió precios, plata, mercadería, ventas,
 // corridas del robot y la web; lo obvio quedó arreglado en la v20.88.
 const REV_HECHAS={1:'2026-10-08',2:'2026-09-30',3:'2026-09-30',4:'2026-09-30',5:'2026-09-30',6:'2026-10-15',7:'2026-10-01',8:'2026-10-12',9:'2026-10-13'};
+// LO QUE PASÓ EN CADA ETAPA (15/10/2026, para el panel de Ajustes). Lo escribe Claude al cerrar cada vuelta: fecha y una línea.
+const REV_HIST={
+  1:[{f:'2026-09-24',t:'Primera vuelta: el rescate, la espera de las bajas y los frenos de suba.'},
+     {f:'2026-09-27',t:'4 revisores, 23 hallazgos: 22 arreglados (cuotas Premium, variantes, remate en tramos). Él eligió cómo juzgar la prueba de +5%.'},
+     {f:'2026-10-08',t:'Después del cerebro y la regla del 20%: 27 reales, 21 arreglados y 6 decisiones suyas (manda el cerebro, sin rescate al vender).'}],
+  2:[{f:'2026-09-28',t:'4 revisores (Arqueo, Mercado Pago, gastos, monedas): 17 reales, las obvias arregladas.'},
+     {f:'2026-09-29',t:'Cerrada: lo vendido después del reporte de MP suma al patrimonio (A1) y el Telegram usa la misma cuenta que la web (D4).'},
+     {f:'2026-09-30',t:'Revisión completa final: lo de plata quedó sin pendientes.'}],
+  3:[{f:'2026-09-29',t:'4 revisores (cajas, stock, pedidos, Paraguay): 29 hallazgos, las obvias hechas y 6 decididas por él.'},
+     {f:'2026-09-30',t:'Cerrada: el aviso de renglón que no cierra se mide color por color.'}],
+  4:[{f:'2026-09-30',t:'Choques web/robot y corridas a la vez: ~30 reales, todas arregladas (transacciones, relecturas, candados).'}],
+  5:[{f:'2026-09-30',t:'Fallas mudas y privacidad: ~35 reales arregladas; él decidió aprobar a mano los chats nuevos de Telegram y cómo contar días con stock.'}],
+  6:[{f:'2026-09-27',t:'Ideas 1-10: eligió Premium vs Clásica, visitas en Rotación, caja ML, tope de H, prueba de suba y motivo de reclamos.'},
+     {f:'2026-10-15',t:'Etapa del 14/10 cerrada: lo de los reclamos que paga ML se midió (sí nos cuestan) y no quedó nada pendiente.'}],
+  7:[{f:'2026-09-29',t:'4 revisores (teléfono, lo que sobra, lo que cuesta encontrar, parejo): lo chico hecho.'},
+     {f:'2026-10-01',t:'Cerrada: eligió 13 de 15 ideas (Inicio, Rotación en el teléfono, colores del %, Ventas por semana, Métricas con índice).'}],
+  8:[{f:'2026-10-12',t:'Primera vuelta de las líneas de tiempo: que cada día cuente bien y coincida con Ventas y el Arqueo.'}],
+  9:[{f:'2026-10-13',t:'Revisión del cerebro: cada parte entera contra el total; se midieron los precios redondos y la regla se sacó.'}],
+};
+// Las etapas en el orden en que van a tocar: primero las que nunca se hicieron, después de la más vieja a la más nueva,
+// una por semana desde la próxima.
+function revAgenda(){
+  const {vence}=revProxima();
+  const orden=[...REV_ETAPAS].sort((a,b)=>{const fa=REV_HECHAS[a.n]?_revFecha(REV_HECHAS[a.n]):null,fb=REV_HECHAS[b.n]?_revFecha(REV_HECHAS[b.n]):null;
+    if(!fa&&!fb)return a.n-b.n;if(!fa)return -1;if(!fb)return 1;return fa-fb;});
+  return orden.map((et,i)=>({et,ult:REV_HECHAS[et.n]?_revFecha(REV_HECHAS[et.n]):null,toca:vence?new Date(vence.getTime()+i*REV_CADA_DIAS*864e5):null}));
+}
+function renderRevPanel(){
+  const el=document.getElementById('aj-revisiones');if(!el)return;
+  const esc=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const hoy=new Date();hoy.setHours(12,0,0,0);
+  const pend=REV_PENDIENTE.length?`<div style="margin:8px 0;font-size:.74rem;color:var(--amber)">⏳ Falta resolver: ${REV_PENDIENTE.map(x=>esc(x.t)).join(' · ')}</div>`:`<div style="margin:8px 0;font-size:.74rem;color:var(--green)">✅ No queda nada pendiente de ninguna revisión.</div>`;
+  el.innerHTML=pend+revAgenda().map(({et,ult,toca},i)=>{
+    const hace=ult?Math.round((hoy-ult)/864e5):null;
+    const dT=toca?Math.round((toca-hoy)/864e5):null;
+    const tocaTxt=!toca?'':dT<=0?'<b style="color:var(--amber)">toca ahora</b>':`toca el ${_revFmt(toca)} (en ${dT} d)`;
+    const hist=(REV_HIST[et.n]||[]).slice().reverse();
+    return `<details style="border-top:1px solid var(--border);padding:8px 0">
+      <summary style="cursor:pointer;font-size:.8rem"><b>${i===0?'👉 ':''}Etapa ${et.n} · ${esc(et.nom)}</b> <span style="color:var(--muted);font-size:.7rem">· ${ult?`última ${_revFmt(ult)} (hace ${hace} d)`:'nunca se hizo'} · ${tocaTxt}</span></summary>
+      <div style="font-size:.72rem;line-height:1.55;padding:6px 0 0 4px">
+        <div><b>Qué mira:</b> ${esc(et.que)}</div>
+        <div style="color:var(--muted)">Esfuerzo ${esc(et.esf)} · se pide en el chat: <i>"etapa ${et.n}"</i></div>
+        <div style="margin-top:6px"><b>Lo que pasó:</b></div>
+        ${hist.length?hist.map(h=>{const d=_revFecha(h.f);return `<div style="padding-left:8px">· <b>${d?_revFmt(d):h.f}</b>: ${esc(h.t)}</div>`;}).join(''):'<div style="padding-left:8px;color:var(--muted)">Todavía no se hizo.</div>'}
+      </div></details>`;}).join('');
+}
 function _revFecha(iso){const d=new Date(iso+'T12:00:00');return isNaN(d)?null:d;}
 function _revFmt(d){return ['dom','lun','mar','mié','jue','vie','sáb'][d.getDay()]+' '+String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0');}
 function revProxima(){
@@ -15639,6 +15683,26 @@ function margenDudosoDe(mg){
   if(mg.sinEnvio||mg.envioML)return 'corto';
   return null;
 }
+// La promo que puse yo (cyc/promoclaude) en alguna publicación del producto, vigente, y el margen a ese precio. Misma cuenta que
+// cajaBajarDe: la comisión de hoy despejada del neto, llevada al precio de la promo, con simMargen.
+function promoMargenDe(p,mg){
+  if(!p||!mg||!(mg.precio>0))return null;
+  const ahora=Date.now();
+  for(const [mla,e] of Object.entries(state.mllinks||{})){
+    if(!e||e.prodId!==p.id||e.ignored)continue;
+    const pc=(state.promoclaude||{})[mla];if(!pc||!(Number(pc.precio)>0)||!(Number(pc.de)>Number(pc.precio)))continue;
+    if(pc.hasta&&Date.parse(pc.hasta)<ahora)continue;
+    const precio=Math.round(mg.precio), pp=Number(pc.precio);
+    let margen=null;
+    const comHoy=precio-(Number(mg.neto)||0)-(Number(mg.gest)||0);
+    if(comHoy>0){const c2=comisionEnPrecio(comHoy,precio,pp);
+      if(c2){const impPct=(Number(mg.mlExtra)>0?Number(mg.mlExtra)/precio*100:0);
+        margen=simMargen({precio:pp,mercaderia:costFullP(p),gest:Number(mg.gest)||0,comision:c2.com,impPct,cuotasPct:0}).margen;}}
+    const h=pc.hasta?new Date(pc.hasta):null;
+    return {mla,precio:pp,margen,hasta:h&&!isNaN(h)?String(h.getDate()).padStart(2,'0')+'/'+String(h.getMonth()+1).padStart(2,'0'):''};
+  }
+  return null;
+}
 function rotMargenHtml(r){
   const PISO=parseFloat((state.mlconfig||{}).minPct)||30;
   if(r.margen==null)
@@ -15710,6 +15774,9 @@ function rotMargenHtml(r){
   // al otro hay que subirlo. Va en la misma columna y no en una aparte porque es una aclaración
   // SOBRE ese número, no un dato nuevo.
   if(r.liq2)pie+=`<div title="Vos lo bajaste a mano para liquidarlo${r.liq2.fecha?' el '+r.liq2.fecha.split('-').reverse().join('/'):''}. El robot NO le va a subir el precio aunque la venta quede abajo del piso. La marca se saca sola cuando se acabe el stock." style="font-size:.6rem;color:#a78bfa;margin-top:2px;white-space:nowrap">🔒 liquidando a propósito</div>`;
+  // EN PROMO (15/10/2026, él con el Galaxy A07: "¿por qué queda en 80%?"): el % de arriba es al precio de LISTA (el tachado);
+  // si le puse una promo, abajo va a cuánto se vende de verdad y el % a ese precio, que es el que importa.
+  if(r.promo)pie+=`<div title="Está en una promo que puse yo${r.promo.hasta?' hasta el '+r.promo.hasta:''}: el comprador ve ${fmt(r.margenPrecio)} tachado y paga ${fmt(r.promo.precio)}. El % de arriba es al precio tachado." style="font-size:.62rem;color:#a78bfa;margin-top:2px;white-space:nowrap">🏷️ en promo a ${fmt(r.promo.precio)}${r.promo.margen!=null?` · <b style="color:${pctColor(r.promo.margen)}">${Math.round(r.promo.margen)}%</b>`:''}</div>`;
   return `<span title="${tit}" style="font-weight:700;color:${color}">${m>=0?'+':''}${m.toFixed(0)}%</span>${pie}`;
 }
 function rotDiasSinVenderHtml(dias,sinStock){
@@ -16050,7 +16117,7 @@ function renderRotacionStock(){
     return{pid:p.id,name:p.name,capital,ventasPeriodo,rotNorm,estadoKey,estadoHtml,stock,diasSinVender,liq:_liq,
       margen:mg.margen,margenSinEnvio:mg.sinEnvio,margenEnvioML:mg.envioML,margenNeto:mg.neto,margenCosto:mg.costo,
       margenPrecio:mg.precio,margenGest:mg.gest,margenEst:mg.margenEst,margenGestEst:mg.gestEst,margenEstN:mg.estN,margenDudoso:margenDudosoDe(mg),margenSinMedir:mg.sinMedir,margenTs:mg.ts,liq2:liquidandoDe(p),
-      caja:_cajaML,cajaBaja:cajaBajarDe(p,_cajaML,mg),diasEnStock:diasEnStockDe(p),diasCaja:ultimaEntradaDe(p),diasSinStock:diasSinStockDe(LOCS.map(l=>[getQ(p.id,l),invKey(p.id,l)]))};
+      caja:_cajaML,cajaBaja:cajaBajarDe(p,_cajaML,mg),promo:promoMargenDe(p,mg),diasEnStock:diasEnStockDe(p),diasCaja:ultimaEntradaDe(p),diasSinStock:diasSinStockDe(LOCS.map(l=>[getQ(p.id,l),invKey(p.id,l)]))};
   });
 
   // ── Puntaje de rotación: % del capital ($) atascado en productos "Muerto" ──
@@ -18891,6 +18958,14 @@ function _parejoCatLinea(a,fM,facARCA){
   if(!debe||debe<=cat)return `🪪 Inscripta en Cat ${cat} · está bien`;
   return `<span style="color:var(--amber)">🪪 Inscripta en Cat ${cat}, pero la recategorización pasada (${fD(w.winStart)} a ${fD(w.winEnd)}: ${fM(fac)}) ya pedía Cat ${debe} → hay que recategorizar (contador)</span>`;
 }
+// EL ROJO DEL TOPE DE H, EN LA TARJETA DE FACTURAS DE INICIO (15/10/2026, pedido suyo: "cuando alguna cuenta se pase a rojo
+// (cualquier motivo) que avise en la tarjeta de facturación así lo veo"). Rojo = la misma regla de la tarjeta del tope: a este
+// ritmo cierra el año arriba de H. Sin ninguna en rojo no se dibuja nada.
+function renderNcFacAviso(){
+  const el=document.getElementById('nc-fac-aviso');if(!el)return;
+  let rojas=[];try{const d=parejoDatos();if(d&&d.filas)rojas=d.filas.filter(f=>f.proy>d.topeH);}catch(e){rojas=[];}
+  el.innerHTML=rojas.length?`<div style="margin-top:8px;font-size:.72rem;font-weight:700;color:var(--red);background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.4);border-radius:8px;padding:6px 8px">🔴 ${rojas.map(f=>MET_LABELS[f.a]).join(' y ')} ${rojas.length>1?'pasarían':'pasaría'} el tope de H a este ritmo. Tocá para ver.</div>`:'';
+}
 function renderHomeParejo(){
   const el=document.getElementById('home-parejo'); if(!el)return;
   const d=parejoDatos(); const hayTope=!!(d&&d.filas.some(f=>f.proy>0));
@@ -20125,6 +20200,22 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
   </div>
 
   <div style="max-width:640px">
+
+    <!-- 15/10/2026, pedido suyo: "mandar todo a ajustes (…) y las revisiones que pueda clickear, y ver todo lo que pasó, cuáles son,
+         qué falta, qué fecha". Antes estaba abajo de todo en Inicio. -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
+      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;margin-bottom:10px">🔄 Versión y últimos cambios</div>
+      <div style="text-align:center">
+        <span id="home-version" onclick="actualizarApp()" title="Versión de la app que estás usando ahora. Tocá para buscar actualizaciones." style="display:inline-flex;align-items:center;gap:7px;font-size:.66rem;color:var(--muted);border:1px solid var(--border);border-radius:999px;padding:5px 13px;cursor:pointer;letter-spacing:.06em">…</span>
+        <details id="home-cambios" style="margin-top:6px;text-align:left"></details>
+      </div>
+    </div>
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
+      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;margin-bottom:10px">🔎 Revisiones del panel</div>
+      <div id="home-revision"></div>
+      <div id="aj-revisiones"></div>
+    </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
       <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;margin-bottom:12px">🔔 Aviso de cada venta en este teléfono</div>

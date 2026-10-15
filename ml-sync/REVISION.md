@@ -548,6 +548,15 @@ el precio de un candidato distinto con código parecido (se compara también por
 
 ## 7 · DISEÑO
 
+### Revisiones y versión en Ajustes · rojo del tope en Facturas · % de la promo en Rotación (15/10/2026, v23.57, pedidos suyos)
+- La revisión, la versión y los últimos cambios salieron de Inicio y viven en Ajustes. `renderRevPanel` lista las 9 etapas en el
+  orden en que tocan (`revAgenda`), cada una desplegable con qué mira, última fecha, cuándo toca y lo que pasó (`REV_HIST`).
+  **Al cerrar una etapa: fecha en `REV_HECHAS` Y un renglón en `REV_HIST`.**
+- `renderNcFacAviso`: si alguna cuenta cierra el año arriba de H (misma regla roja de la tarjeta del tope), la tarjeta de Facturas
+  de Inicio lo dice en rojo.
+- `promoMargenDe`: en Rotación, si una publicación está en una promo mía (`cyc/promoclaude`, vigente), abajo del % (que es al
+  precio tachado) va "🏷️ en promo a $X · Y%". Caso: Galaxy A07 a $394.690 tachado, $264.990 en promo hasta el 26/10.
+
 ### Tope de H en Facturas · detalle de Probados plegado (15/10/2026, v23.56, pedido suyo)
 - `#home-parejo` vive en la página de Facturas (se dibuja al entrar, `renderHomeParejo`); en Inicio ya no está. En Pedidos →
   Probados, `pyProbVisHTML` (precio, código, fotos, links) va dentro de "detalle ▾"; la casilla de pedir queda a la vista.
