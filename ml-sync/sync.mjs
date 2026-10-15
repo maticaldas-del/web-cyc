@@ -7326,7 +7326,74 @@ async function tgFlushCola(db) {
 // (+1,66%), se actualizó bien en el panel y a Mati no le llegó nada — lo contó él.
 // El dólar SÍ tiene que avisar: mueve el costo de TODOS los productos y por lo tanto todos los
 // márgenes, y sólo salta cuando se movió más del 1,5%, o sea rara vez. No es ruido.
-const TG_PERMITIDO = new Set(['resumen', 'baja', 'dolar']);
+// ── UN TELEGRAM POR CADA VENTA NUEVA (15/10/2026, pedido suyo) ─────────────────────────────
+// Él: "cada vez que haya una venta nueva al instante me llegue una notificación (…) a mí y a mi
+// viejo". Eligió 1a (UN mensaje por vuelta del robot, ~2 min, con todas las ventas nuevas juntas),
+// 2a (cuenta · producto y color · precio · ganancia en $ y % con su color · cómo va el día) y 3a (al
+// mismo chat del resumen del día, que ya les llega a los dos).
+// "Nueva" = no está en la memoria `mlapi/avisoventa/<id>` y es de las últimas 3 horas (así un
+// relleno de ventas viejas no manda cien mensajes). La primera vez (memoria vacía) sólo anota, no
+// manda. Se anota SÓLO si el mensaje salió. Si la memoria no se puede leer, no se manda nada.
+// La ganancia sale de `armarCostoWeb`, la MISMA regla que la web y el resumen del día.
+// Sin datos de compradores ni números de orden (el registro de GitHub es público).
+const AVISO_VENTA_VENTANA_MS = 3 * 36e5;
+function _nivelPct(p) {
+  if (p == null || !isFinite(p)) return '⚪';
+  if (p < 25) return '🔴'; if (p < 45) return '🟢'; if (p < 70) return '🩵';
+  if (p < 130) return '🔵'; if (p < 200) return '🟣'; return '💎';
+}
+async function avisarVentasNuevas(db, lista) {
+  if (!TG_TOKEN || TG_SILENCIO || CONSULTA_SOLO_LEE || DRY) return;
+  let mem;
+  try { mem = await db.get('mlapi/avisoventa'); } catch { console.log('Aviso de ventas: no pude leer la memoria, esta vuelta no aviso.'); return; }
+  mem = mem && typeof mem === 'object' ? mem : null;
+  const ahora = Date.now();
+  const kid = (id) => String(id).replace(/[.#$\[\]\/]/g, '_');
+  const nuevas = (lista || []).filter((x) => x && x.v && !(mem && mem[kid(x.v.id)]) && ahora - (Number(x.v.ts) || 0) < AVISO_VENTA_VENTANA_MS);
+  const anotar = {};
+  for (const x of nuevas) anotar[kid(x.v.id)] = ahora;
+  if (mem) for (const [k, t] of Object.entries(mem)) if (k !== '_ini' && ahora - (Number(t) || 0) > 3 * 864e5) anotar[k] = null;
+  if (!mem) {   // primera vez: anoto lo que hay y no mando (si no, salen de golpe las de las últimas 3 h)
+    for (const x of lista || []) if (x && x.v) anotar[kid(x.v.id)] = ahora;
+    anotar._ini = ahora;   // marca fija: la memoria nunca vuelve a quedar vacía (y no se poda)
+    await db.patch('mlapi/avisoventa', anotar);
+    console.log('Aviso de ventas: memoria nueva, anoto sin mandar.');
+    return;
+  }
+  if (!nuevas.length) { if (Object.values(anotar).some((v) => v === null)) await db.patch('mlapi/avisoventa', anotar); return; }
+  const dk = nuevas[nuevas.length - 1].dayKey;
+  const vp = (await db.get('cyc/ventaprod')) || {};
+  const costoWeb = await armarCostoWeb(db, vp);
+  const ganDe = (v, d) => {
+    const cw = costoWeb(v, d);
+    if (cw.sinCosto) return null;
+    const g = (Number(v.neto) || 0) - cw.costo;
+    const div = cw.costo + (v.netoEstimado ? 0 : cw.gest);
+    return { g, pct: div > 0 ? g / div * 100 : null };
+  };
+  const renglones = nuevas.sort((a, b) => (a.v.ts || 0) - (b.v.ts || 0)).map((x) => {
+    const v = x.v, r = ganDe(v, x.dayKey);
+    const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const nom = esc(String(v.prod || '?').slice(0, 40) + (v.variante ? ` (${String(v.variante).slice(0, 20)})` : ''));
+    const hora = new Date((Number(v.ts) || ahora) - 3 * 36e5).toISOString().slice(11, 16);
+    const gan = r ? `${v.netoEstimado ? '≈ ' : ''}gana <b>${money(r.g)}</b> ${_nivelPct(r.pct)} ${r.pct == null ? '' : Math.round(r.pct) + '%'}` : 'sin costo cargado';
+    return `🛒 <b>${v.cuenta || '?'}</b> · ${hora}\n${nom}${(v.qty || 1) > 1 ? ' x' + v.qty : ''} · ${money(Number(v.total) || 0)}\n${gan}`;
+  });
+  let n = 0, fact = 0, gan = 0;
+  for (const v of Object.values(vp[dk] || {})) {
+    if (!v || v.cancelada) continue;
+    n++; fact += Number(v.total) || 0;
+    const r = ganDe(v, dk); if (r) gan += r.g;
+  }
+  const msg = `${nuevas.length === 1 ? '🔔 <b>Venta nueva</b>' : `🔔 <b>${nuevas.length} ventas nuevas</b>`}\n\n`
+    + renglones.join('\n\n')
+    + `\n\n📊 Hoy van <b>${n}</b> ventas · ${money(fact)} · ganancia <b>${money(gan)}</b>`;
+  const ok = await sendTelegram(msg, 'venta');
+  if (ok) { await db.patch('mlapi/avisoventa', anotar); console.log(`Aviso de ventas: mandé ${nuevas.length}.`); }
+  else console.log(`Aviso de ventas: no salió el mensaje (${nuevas.length}), lo reintento la vuelta que viene.`);
+}
+
+const TG_PERMITIDO = new Set(['resumen', 'baja', 'dolar', 'venta']);   // 'venta': aviso de cada venta nueva (15/10/2026, pedido suyo)
 async function sendTelegram(text, tipo) {
   if (!TG_TOKEN || TG_SILENCIO) return false;
   if (!TG_PERMITIDO.has(tipo)) {
@@ -41838,6 +41905,7 @@ async function main() {
 
   const state = (await db.get('mlapi/state')) || {};
   let cargadas = 0;
+  const _avisoVentas = [];   // ventas escritas en esta vuelta, para el aviso de venta nueva (abajo)
 
   if (process.env.DUMP_SKU) {
     const label = labels[0];
@@ -42420,6 +42488,7 @@ async function main() {
         else if (_aMano) console.log(`  ✋ venta ${id} (${obj.prod}): la tocó él a mano, no la reescribo`);
         else if (_yaCancel) { /* ya marcada cancelada/reclamo: la clasificación de abajo la mantiene, no se reescribe */ }
         else await db.set(`cyc/ventaprod/${dayKey}/${id}`, obj);
+        if (!DRY && !_yaCancel && !_aMano) _avisoVentas.push({ dayKey, v: obj });
         cargadas++;
         // dejar registrada la carga por si esta misma venta se cancela después
         if (!loadedByNum.has(num)) loadedByNum.set(num, []);
@@ -43359,6 +43428,9 @@ async function main() {
       }
     } catch (e) { console.log('No pude mirar el dólar: ' + e.message); }
   }
+
+  // ── AVISO DE CADA VENTA NUEVA (15/10/2026, pedido suyo: 1a 2a 3a) ──
+  try { await avisarVentasNuevas(db, _avisoVentas); } catch (e) { console.log('No pude avisar las ventas nuevas: ' + e.message); }
 
   // ── ¿ML ME DEJÓ TRABAJAR? ───────────────────────────────────────────────
   // Va al FINAL, después de todo lo que escribe en ML, y fuera de cualquier `if`: un aviso que

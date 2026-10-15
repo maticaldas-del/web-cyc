@@ -914,6 +914,14 @@ Anotado en `ml-sync/REVISION.md` (etapas 6 y 7) y en `REV_ETAPAS`.
  · Sin nada para decidir no sale nada (ni Telegram ni notificación). Lo hecho queda en el 🧠 y en el chat.
  · Las dos rutinas (`trig_01475PwdPVJ1qTnYswcDxRq8` y `trig_01FCaQqzU5MA422N6Z8nH63Z`) ya lo dicen.
 
+## 🔔 CADA VENTA NUEVA LLEGA POR TELEGRAM (15/10/2026, pedido suyo, eligió 1a 2a 3a)
+
+Él: *"cada vez que haya una venta nueva al instante me llegue una notificación (…) a mí y a mi viejo"*. Otra excepción
+a "Telegram sólo decisiones": `avisarVentasNuevas` (sync.mjs) manda al chat del resumen UN mensaje por vuelta del
+ciclo (~2 min) con las ventas nuevas: cuenta, hora, producto y color, precio, ganancia en $ y % (emoji de nivel) y
+cómo va el día. Memoria `mlapi/avisoventa`. Detalle en `ml-sync/REVISION.md` (5 bis). Notificación de la web
+(push de la app) quedó como idea: Android anda, iPhone sólo con la app agregada a la pantalla de inicio.
+
 ## 🧠 RESUMEN DE CADA CEREBRO POR TELEGRAM (10/10/2026, pedido suyo)
 
 Él: *"cada vez que se activa cerebro (...) me mandás un pequeño resumen de lo que descubrió/modificó?"*. Esto ABRE una

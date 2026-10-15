@@ -410,6 +410,14 @@ el precio de un candidato distinto con código parecido (se compara también por
   con `{ info: true }` · que la rutina de Claude decida los precios con `decido` (etapa 1).
 
 
+- **Aviso de cada venta nueva (15/10/2026, pedido suyo, eligió 1a 2a 3a):** `avisarVentasNuevas` en sync.mjs, al
+  final de cada vuelta del ciclo: UN mensaje con las ventas nuevas de esa vuelta (cuenta · hora · producto y color ·
+  precio · ganancia en $ y % con emoji de nivel 🔴<25 🟢 🩵45 🔵70 🟣130 💎200 · ≈ si el neto es estimado) y cómo va
+  el día. Tipo `'venta'` en `TG_PERMITIDO`, va al chat del resumen (`TG_CHATS`: él y Tito). Memoria
+  `mlapi/avisoventa/<id>` (+ `_ini`), sólo ventas de las últimas 3 h, la primera vez anota sin mandar, se anota
+  sólo si salió, sin memoria legible no manda. Ganancia con `armarCostoWeb` (la regla de la web). Chequear: que no
+  repita · que un relleno viejo no dispare una avalancha · sin nombre de comprador ni número de orden.
+
 - **Informe 7b: reclamos abiertos y mensajes sin leer (auditoría del 10/10/2026):** el `chequeo` veía 3 reclamos
   abiertos (uno de Matías de 2 días con "podés: reembolsar, mandar mensaje, abrir disputa") y 3 mensajes de
   compradores sin leer, y el `informe` no: su sección 7 sólo miraba ventas canceladas de esas horas. Ahora la 7b
