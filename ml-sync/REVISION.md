@@ -278,6 +278,10 @@ Qué chequear: que la cuenta del peor caso use la misma comisión que la normal,
   `/orders/<id>/discounts` da 404 = sin descuento (se guarda 0); un 429 no se guarda (se reintenta); que lo de ML no se
   descuente del neto (el cupón de ML no baja lo depositado); que la suma por compra no cuente dos veces una orden.
 
+### Gastos del mes, todos al día 1 en Métricas (15/10/2026, v23.49, pedido suyo)
+- `_cargosDiaDet` pone retiro y TODOS los gastos en el primer día del mes con ventas (antes cada gasto iba a su día de pago). La fecha
+  real del gasto no se toca. Qué chequear: que la suma del mes siga dando igual que el Resumen.
+
 ### Tope de H: el ritmo son los 30 días enteros hasta ayer (12/10/2026, v23.14)
 Qué: `parejoDatos` (index.html) proyecta el cierre con las ventas de los 30 días ENTEROS hasta ayer. Antes contaba hoy recién empezado ÷ 30: a la madrugada la proyección caía sola y Matías pasaba de rojo a amarillo sin que nada cambiara. Chequear: que el número no salte a la medianoche y que la barra de ventas siga incluyendo canceladas.
 
@@ -543,6 +547,12 @@ el precio de un candidato distinto con código parecido (se compara también por
     decisión de compra, no código. 11 (dinero que rinde en MP) lo mira él en la app.
 
 ## 7 · DISEÑO
+
+### Armar caja: lo importante a la vista, el resto al tocar (15/10/2026, v23.50, pedido suyo)
+- Cada renglón muestra nombre · variante · "tenés N" · casilla, y por cuenta "mandar N u." + código de etiqueta. Ritmo, 🧠, avisos y
+  botones se abren tocando el producto (`cajaToggleDet`, recordado en `localStorage` `cycCajaAb`). Si hay un aviso importante
+  escondido (falta crear la publicación, sin variante, sin publicar) el renglón cerrado dice "⚠️ ver detalle". Qué chequear: que
+  ningún aviso que frena la caja quede escondido sin la marca.
 
 - **Etiqueta de promo en el celu (13/10/2026, v23.35).** Se salía de la tarjeta por `white-space:nowrap`. En ≤640px `.vp-promo` baja de renglón. "discount" ahora dice "descuento". Chequear: ninguna etiqueta o chip de Ventas con `nowrap` y texto largo en el celu.
 

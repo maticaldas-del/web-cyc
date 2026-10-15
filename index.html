@@ -2615,7 +2615,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.50';
+const APP_VERSION='23.52';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2626,6 +2626,8 @@ const APP_VERSION='23.50';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.52',f:'15/10/2026',h:'14:45',c:[{n:1,t:'📦 Armar caja más simple: cada producto muestra sólo nombre, variante, cuántas tenés, cuántas mandar por cuenta y el código de la etiqueta. Todo lo demás (ritmo, 🧠, avisos, botones) se abre tocando el producto.'}]},
+  {v:'23.51',f:'15/10/2026',h:'14:30',c:[{n:2,t:'📊 Métricas: todos los gastos del mes van al día 1 (junto con el retiro), aunque se hayan pagado el 15. Así el gráfico muestra una sola barra de gastos por mes. El total del mes no cambia y en Gastos cada uno sigue con su fecha real.'}]},
   {v:'23.50',f:'15/10/2026',h:'14:10',c:[{n:2,t:'Paraguay · 🪄 Llenar: lo barato (hasta US$15) que vende 100+ en ML con pocos vendedores va con 3-4 u.; lo caro (más de US$60), con 1; el resto, 2.'}]},
   {v:'23.49',f:'15/10/2026',h:'13:45',c:[{n:1,t:'📈 Línea de tiempo: en "$ ganancia/día" los días en $0 van en gris (antes verde, se leía como ganancia).'}]},
   {v:'23.48',f:'15/10/2026',h:'13:05',c:[{n:3,t:'🇵🇾 Gastos del pedido de Paraguay: nuevo renglón "Adelanto de plata para el pedido" (lo que cuesta adelantar la plata para poder hacerlo). Suma al total y al recargo real. Cargado en el del 14/10: $29.000.'}]},
@@ -6451,17 +6453,37 @@ function renderOfiCaja(){
     const casilla=_sinVarCaja?`<span style="font-size:.6rem;color:var(--amber);max-width:120px;text-align:right">decime de qué color son para poder mandarlas</span>`:armando?`<input type="number" inputmode="numeric" value="${enCaja||''}" placeholder="0" max="${tope}"
         style="flex:none;width:66px;text-align:center;background:var(--bg);border:1px solid ${enCaja>0?'var(--accent2)':'var(--border2)'};border-radius:8px;color:var(--text);font-family:'DM Mono',monospace;font-size:.95rem;padding:8px 4px;outline:none"
         onchange="setCajaItem('${f.p.id}',${JSON.stringify(f.variante||'').replace(/"/g,'&quot;')},this.value,${tope})">`:'';
+    // LO IMPORTANTE A LA VISTA, LO DEMÁS AL TOCAR (15/10/2026, pedido suyo: "que se muestre lo importante solo: nombre,
+    // variante, código, unidades a mandar, unidades que tengo. todo el resto en desplegable al clickear el producto").
+    // Arriba: nombre · variante · lo que tenés · la casilla, y abajo un renglón por cuenta con cuántas mandar y el código
+    // de la etiqueta. El ritmo, el 🧠, los avisos y los botones van adentro. Abierto/cerrado se recuerda por renglón.
+    const _kAb=_ck(f.p.id,f.variante);
+    const _ab=_cajaAbiertos.has(_kAb);
+    const _tog=`onclick="cajaToggleDet(${JSON.stringify(_kAb).replace(/"/g,'&quot;')})"`;
+    const _resum=sug.filter(s=>s.mandar>0).map(s=>`<span style="display:inline-flex;align-items:center;gap:6px;margin-right:12px">
+        <span class="pi-prov">${s.cuenta}</span><strong style="font-family:'Syne',sans-serif;font-size:1rem">mandar ${s.mandar} u.</strong>
+        ${s.etiq?`<span title="Código de la etiqueta de Full en ${s.cuenta} (no es el MLA)." style="font-family:'DM Mono',monospace;font-size:.7rem;background:rgba(255,255,255,.06);border:1px solid var(--border2);border-radius:5px;padding:2px 6px;letter-spacing:.04em">${s.etiq}</span>`:'<span style="font-size:.62rem;color:var(--muted)">sin código</span>'}</span>`).join('');
+    const _hayAviso=sug.some(s=>s.sinPub)||!!f.sinContarPorAroma||!!f.sinPublicar;
     return `<div style="padding:12px 14px;background:var(--surface);border:1px solid ${enCaja>0?'var(--accent2)':'var(--border)'};border-radius:var(--r);margin-bottom:8px">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-        ${fotoChipHTML(f.p,36,f.variante,ofiFiltroCuenta)}${cerebroBtn(f.p.id,{variante:f.variante||'',cuenta:ofiFiltroCuenta&&ofiFiltroCuenta!=='todas'?ofiFiltroCuenta:'',ctx:'caja'})}
-        <div class="pi-prod" style="flex:1;min-width:150px">${f.p.name}${f.variante?` <span style="color:var(--accent2);font-weight:700">· ${f.variante}</span>`:(f.sinContarPorAroma?' <span style="color:var(--muted);font-weight:400">· sin variante</span>':'')}</div>
-        <div style="font-size:.68rem;color:var(--muted)">tenés ${f.hay} u.${otras>0?` <span style="color:var(--amber)">(${otras} en otra caja)</span>`:''}</div>
+        ${fotoChipHTML(f.p,36,f.variante,ofiFiltroCuenta)}
+        <div class="pi-prod" ${_tog} style="flex:1;min-width:150px;cursor:pointer">${f.p.name}${f.variante?` <span style="color:var(--accent2);font-weight:700">· ${f.variante}</span>`:(f.sinContarPorAroma?' <span style="color:var(--muted);font-weight:400">· sin variante</span>':'')} <span style="font-size:.7rem;color:var(--muted)">${_ab?'▴':'▾'}</span></div>
+        <div style="font-size:.78rem;color:var(--text)">tenés <b>${f.hay}</b> u.${otras>0?` <span style="color:var(--amber)">(${otras} en otra caja)</span>`:''}</div>
         ${casilla}
       </div>
+      <div ${_tog} style="margin-top:6px;font-size:.75rem;cursor:pointer">${_resum||'<span style="color:var(--muted)">no hace falta mandar</span>'}${!_ab&&_hayAviso?' <span style="color:var(--amber);font-size:.65rem">⚠️ ver detalle</span>':''}</div>
+      ${_ab?`<div style="margin-top:6px">${cerebroBtn(f.p.id,{variante:f.variante||'',cuenta:ofiFiltroCuenta&&ofiFiltroCuenta!=='todas'?ofiFiltroCuenta:'',ctx:'caja'})}
       ${_cerNotaVisHTML(_cerNotaCtx('caja',f.p.id,ofiFiltroCuenta&&ofiFiltroCuenta!=='todas'?ofiFiltroCuenta:'',f.variante||''),'caja-vis')}
-      ${lineas}${pie}
+      ${lineas}${pie}</div>`:''}
     </div>`;
   }).join('')+_noRepoPie()+_repoExtraPie();
+}
+// Qué renglones de Armar caja están abiertos (15/10/2026). Se recuerda en el teléfono; si el guardado falla, igual anda.
+const _cajaAbiertos=new Set((()=>{try{return JSON.parse(localStorage.getItem('cycCajaAb')||'[]')}catch{return []}})());
+function cajaToggleDet(k){
+  if(_cajaAbiertos.has(k))_cajaAbiertos.delete(k);else _cajaAbiertos.add(k);
+  try{localStorage.setItem('cycCajaAb',JSON.stringify([..._cajaAbiertos].slice(-200)))}catch{}
+  renderOfiCaja();
 }
 // EL PIE DE LOS "MANDALE IGUAL". Mismo criterio que el de arriba y por lo mismo: una marca que
 // mete renglones que no estaban tiene que verse, y tiene que poder deshacerse de un click. Va
@@ -17209,9 +17231,8 @@ document.addEventListener('keydown',(e)=>{if(e.key==='Escape')closeMetScopeMenu(
 // función, y la regla de que "Ganancia CYC" diga lo mismo que el último renglón del Resumen es
 // anterior a esto. Tocar un lado solo los haría discrepar.
 let _gastoMesMemo={},_netoMesMemo={},_cargosDiaMemo={};
-// Retiro + gastos del mes, puestos en el DÍA en que salen (ver gananciaCYC en metGetValDay). El
-// retiro va al primer día del mes que tiene ventas; cada gasto a su día, o al siguiente con ventas
-// (un día sin ventas no aparece en el gráfico y el gasto se perdería). La suma del mes da exacto.
+// Retiro + gastos del mes (ver gananciaCYC en metGetValDay). Desde el 15/10/2026 TODO va al primer día
+// del mes que tiene ventas, gastos incluidos, sin importar el día que se pagaron. La suma del mes da exacto.
 function _cargosDia(ym){
   if(_cargosDiaMemo[ym])return _cargosDiaMemo[ym];
   const out={};
@@ -17231,7 +17252,9 @@ function _cargosDiaDet(ym){
     (out[dias[0]]=out[dias[0]]||[]).push({t:'Retiro de los dueños',m:rm!=null?rm:retiroDefMes(ym,md.tot)});
     Object.values(state.compras||{}).forEach(x=>{
       if(getCompraTipo(x)!=='gasto'||!(x.dayKey||'').startsWith(ym))return;
-      const d=dias.find(k=>k>=x.dayKey)||dias[dias.length-1];
+      // 15/10/2026, él: "que todos los gastos se carguen el primero de cada mes (…) total está dentro del mes". Van al mismo
+      // día que el retiro (el primero del mes con ventas). La fecha real del pago queda guardada igual en el gasto.
+      const d=dias[0];
       (out[d]=out[d]||[]).push({t:(x.cat||'Gasto')+(x.desc?' · '+String(x.desc).slice(0,40):''),m:x.monto||0});
     });
   }
