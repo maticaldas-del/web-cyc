@@ -548,6 +548,12 @@ el precio de un candidato distinto con código parecido (se compara también por
 
 ## 7 · DISEÑO
 
+### Probados se ve igual que Nuevos · Precios ML en Ajustes (15/10/2026, v23.58-23.59, pedidos suyos)
+- Pedidos → Probados (`_pedidoItemHtml` con `_armU!=null`): tarjeta compacta como la de Nuevos (foto, nombre, código, US$ → puesto,
+  pesos, lo vendido, % grande de "pidiéndolo queda"); la tarjeta de siempre va adentro de "detalle ▾" con su cabecera escondida.
+  Bs As y Paulvic no cambian. Qué chequear: que el % grande sea el mismo que el veredicto ("pidiéndolo queda en N%").
+- Ajustes: fuera el botón "Subir precios automático" (con SOLO_DATOS no hacía nada); quedan sacar descuentos y cargar stock.
+
 ### Revisiones y versión en Ajustes · rojo del tope en Facturas · % de la promo en Rotación (15/10/2026, v23.57, pedidos suyos)
 - La revisión, la versión y los últimos cambios salieron de Inicio y viven en Ajustes. `renderRevPanel` lista las 9 etapas en el
   orden en que tocan (`revAgenda`), cada una desplegable con qué mira, última fecha, cuándo toca y lo que pasó (`REV_HIST`).
