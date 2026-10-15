@@ -610,6 +610,8 @@ Todo lo que guarda la historia día por día y las pantallas que la dibujan.
 - **Línea de todo** (`mlapi/lineatodo`, `calcLineaTodo`, `lineaTodoPintar`): suma de todos los
   productos; precio como promedio de cambios (sólo cambios entre ×0,5 y ×2), subas/bajas, ganancia
   del día con la misma cuenta que Ventas, cambios del robot desde supervisor + autoprecio sin repetir.
+- **Color de "$ ganancia/día"** (`ganColor`, las dos líneas): verde > $0, rojo < $0, **gris en $0** (15/10/2026,
+  pedido suyo: en verde se leía como ganancia). Chequear que las dos pantallas usen `ganColor` y no un color propio.
 - **Relleno hacia atrás** (`linea:atras`, `mlapi/lineaprog`): ventas, visitas (`:rehacer`), precio,
   stock a medias por cupo de ML.
   Desde el 08/10 el stock va primero por los depósitos de publicaciones activas con stock, después activas
