@@ -6823,7 +6823,7 @@ async function promosAgendadas(db, accounts, labels, products) {
       try {
         const r = await mlGet('/seller-promotions/items/' + it.mla + '?app_version=v2', t.access_token);
         arr = Array.isArray(r) ? r : (r.results || []);
-      } catch { out.sinLeer++; continue; }
+      } catch (eP) { if (/: 400 /.test(String((eP && eP.message) || eP)) && PROMO_NO_APLICA.test(String((links[it.mla] || {}).status || ''))) continue; out.sinLeer++; continue; }
       for (const pr of (arr || [])) {
         // 'candidate' es una oferta que ML propone y NADIE aceptó: no se aplica sola, no molesta.
         if (pr.status !== 'pending' && pr.status !== 'started') continue;
@@ -7090,6 +7090,9 @@ function promoClaudeVigente(a, ahora = Date.now()) {
   return { vig: ahora <= t + 864e5, hasta: dd };
 }
 
+// 15/10/2026 (auditoría): ML contesta 400 a la consulta de promos de una publicación cerrada, inactiva o en revisión.
+// Esas no pueden tener una promo andando: no se cuentan como "sin leer" (eran 55 fijas, "hace 388 horas seguidas").
+const PROMO_NO_APLICA = /^(closed|inactive|under_review)$/;
 async function removeStartedPromos(itemId, token, permitidas) {
   let arr;
   try {
@@ -28279,7 +28282,7 @@ async function main() {
       console.log(`Se sacan las 'started' (activas) y las 'pending' (agendadas). Las 'candidate' no se tocan.\n`);
       let permSP; try { permSP = (await db.get('cyc/promoclaude')) || {}; } catch { console.log('⚠️ no pude leer las promos que puso Claude (cyc/promoclaude): no saco nada, para no deshacerle una decisión.'); return; }
       if (Object.keys(permSP).length) console.log(`Las que puso Claude a propósito no se tocan: ${Object.keys(permSP).join(', ')}\n`);
-      let sacadas = 0, fallidas = 0, revisadas = 0, sinLeer = 0; const detalle = []; const noLeidas = [];
+      let sacadas = 0, fallidas = 0, revisadas = 0, sinLeer = 0, noAplica = 0; const detalle = []; const noLeidas = [];
       for (const label of labels) {
         const acc = accounts[label];
         if (!acc?.refresh_token) continue;
@@ -28287,13 +28290,19 @@ async function main() {
         await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
         const ids = Object.entries(links)
           .filter(([mla, e]) => e && e.cuenta === label && !e.ignored && /^MLA/i.test(mla))
-          .map(([mla, e]) => ({ mla, title: e.title || mla }));
+          .map(([mla, e]) => ({ mla, title: e.title || mla, st: String(e.status || '?') }));
         for (const it of ids) {
           let arr;
           try {
             const r = await mlGet('/seller-promotions/items/' + it.mla + '?app_version=v2', t.access_token);
             arr = Array.isArray(r) ? r : (r.results || []);
-          } catch { sinLeer++; noLeidas.push(`${label} · ${it.title.slice(0, 38)}`); continue; }   // no leída ≠ "sin promo" (revisión max #22)
+          } catch (eP) {
+            // 15/10/2026 (auditoría): una publicación cerrada/inactiva/en revisión contesta 400 siempre: no puede tener
+            // una promo andando, así que no es "sin leer" (eran las 55 de "hace 388 horas").
+            const m4 = String((eP && eP.message) || eP || '');
+            if (/: 400 /.test(m4) && PROMO_NO_APLICA.test(it.st)) { noAplica++; continue; }
+            sinLeer++; noLeidas.push(`${label} · ${it.st} · ${it.title.slice(0, 38)} · ${(m4.match(/: (\d{3}) /) || [])[1] || 'red'}`); continue;
+          }   // no leída ≠ "sin promo" (revisión max #22)
           revisadas++;
           // Las que paga ML entero no nos cuestan nada: igual que la vuelta de cada hora (etapa 1, 27/09).
           const malas = (arr || []).filter((pr) => (pr.status === 'started' || pr.status === 'pending')
@@ -28319,7 +28328,7 @@ async function main() {
           }
         }
       }
-      console.log(`\n${prueba ? '(PRUEBA) ' : ''}${sacadas} promociones ${prueba ? 'se sacarían' : 'sacadas'} · ${fallidas} con error · ${revisadas} publicaciones revisadas${sinLeer ? ` · ⚠️ ${sinLeer} NO se pudieron leer (no se sabe si tienen promo)` : ''}`);
+      console.log(`\n${prueba ? '(PRUEBA) ' : ''}${sacadas} promociones ${prueba ? 'se sacarían' : 'sacadas'} · ${fallidas} con error · ${revisadas} publicaciones revisadas${sinLeer ? ` · ⚠️ ${sinLeer} NO se pudieron leer (no se sabe si tienen promo)` : ''}${noAplica ? ` · ${noAplica} cerradas/inactivas/en revisión (ML no les deja tener promo: no se cuentan)` : ''}`);
       if (sinLeer) for (const x of noLeidas.slice(0, 20)) console.log(`   sin leer: ${x}`);
       if (!prueba && sacadas) {
         // Sin tipo, sendTelegram lo tiraba antes de mandarlo (etapa 1, 27/09): va al canal de precios.
@@ -42908,7 +42917,7 @@ async function main() {
               || (Array.isArray(b.deal_ids) && b.deal_ids.length > 0);
             if (discounted || !SKIP_PRICES) {
               const { removed, failed, sinLeer: promoSinLeer, err: promoErr } = await removeStartedPromos(mla, t.access_token, promoClaude);
-              if (promoSinLeer && !SKIP_PRICES) { promoNoLeidas.push(mla); promoErrs[promoErr || '?'] = (promoErrs[promoErr || '?'] || 0) + 1; if (promoNoLeidas.length <= 5) console.log(`  (promos de ${mla}: ML no contestó · ${promoErr || '?'})`); }
+              if (promoSinLeer && !SKIP_PRICES && !(/^400/.test(String(promoErr || '')) && PROMO_NO_APLICA.test(String(b.status || '')))) { promoNoLeidas.push(mla); promoErrs[promoErr || '?'] = (promoErrs[promoErr || '?'] || 0) + 1; if (promoNoLeidas.length <= 5) console.log(`  (promos de ${mla}: ML no contestó · ${promoErr || '?'})`); }
               if (removed.length) {
                 await sendAlerta(`🏷️ <b>Descuento sacado</b>\n`
                   + `${map[mla].title || mla}\nCuenta: ${label}\n`
