@@ -2614,7 +2614,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.57';
+const APP_VERSION='23.58';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2625,6 +2625,7 @@ const APP_VERSION='23.57';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.58',f:'15/10/2026',h:'17:00',c:[{n:1,t:'⚙️ Ajustes: se sacó el botón "Subir precios automático" (el robot ya no toca precios desde el 09/10, los decido yo). La tarjeta ahora se llama "Lo que hace solo el robot de ML" y deja sacar descuentos y cargar el stock.'}]},
   {v:'23.57',f:'15/10/2026',h:'16:40',c:[{n:1,t:'⚙️ La revisión del panel, la versión y los últimos cambios se mudaron de Inicio a Ajustes. Ahí cada etapa de la revisión se abre: qué mira, cuándo fue la última, qué pasó en cada una y cuándo toca.'},{n:1,t:'🔴 Si alguna cuenta pasaría el tope de H, la tarjeta de Facturas de Inicio lo avisa en rojo.'},{n:2,t:'🏷️ Rotación: si una publicación está en una promo que puse yo, abajo del % dice a cuánto se vende de verdad y el % a ese precio (el de arriba es al precio tachado).'}]},
   {v:'23.56',f:'15/10/2026',h:'16:10',c:[{n:1,t:'⚖️ La tarjeta "Las 4 cuentas contra el tope de H" se mudó de Inicio a Facturas.'},{n:1,t:'🇵🇾 Pedidos → Probados: el precio, el código, las fotos y los links van en "detalle ▾"; a la vista queda la casilla de pedir.'}]},
   {v:'23.55',f:'15/10/2026',h:'15:35',c:[{n:1,t:'🧠 La ventanita del cerebro ya no repite la misma explicación en "Por qué cambió el precio" cuando ya está en la nota de arriba (pasaba cuando el motivo guardado empezaba con "Claude:").'}]},
@@ -20240,18 +20241,16 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
       </div>
     </div>
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
-      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;margin-bottom:6px">🔼 Precios ML (automático)</div>
-      <p style="font-size:.68rem;color:var(--muted);margin:0 0 12px;line-height:1.5">Cuando entra una venta con margen por debajo del <strong id="mlcfg-min-lbl">40%</strong>, el robot sube solo el precio en ML hasta la meta (<strong id="mlcfg-target-lbl">42%</strong>) y te avisa por Telegram. Nunca baja precios y tiene tope de +25% por seguridad.</p>
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px">
-        <span style="font-size:.75rem;color:var(--muted)">Subir precios automático</span>
-        <button class="btn" id="mlcfg-auto-btn" style="background:var(--surface2);border:1px solid var(--border2);color:var(--text)" onclick="toggleAutoPrice()">…</button>
-      </div>
-      <div style="border-top:1px solid var(--border);padding-top:10px">
+      <!-- 15/10/2026: el botón "Subir precios automático" se sacó. Desde el 09/10 el robot sólo junta datos (SOLO_DATOS): no sube ni
+           baja nada, así que el botón no hacía nada. Los precios los decide Claude en cada vuelta. Quedan las dos cosas que sí corren solas. -->
+      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;margin-bottom:6px">🤖 Lo que hace solo el robot de ML</div>
+      <p style="font-size:.68rem;color:var(--muted);margin:0 0 12px;line-height:1.5">El robot ya <b>no toca precios</b>: los sube y los baja Claude en cada vuelta del día (con el motivo en el 🧠). Acá quedan las dos cosas que el robot sigue haciendo solo.</p>
+      <div>
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
           <span style="font-size:.75rem;color:var(--muted)">Sacar descuentos que pone ML</span>
           <button class="btn" id="mlcfg-promo-btn" style="background:var(--surface2);border:1px solid var(--border2);color:var(--text)" onclick="toggleAutoPromo()">…</button>
         </div>
-        <p style="font-size:.62rem;color:var(--muted);margin:8px 0 0;line-height:1.5">Cuando ML le aplica un descuento a una de tus publicaciones, el robot lo saca solo y te avisa. No toca las "ofertas candidatas" que ML propone pero no puso.</p>
+        <p style="font-size:.62rem;color:var(--muted);margin:8px 0 0;line-height:1.5">Cuando ML (o alguien) le pone un descuento a una publicación sin que nadie lo haya pensado, el robot lo saca solo cada hora. Las promos que pongo yo a propósito (por ejemplo, para bajar un precio) no las toca. No toca las "ofertas candidatas" que ML propone pero no puso.</p>
       </div>
       <div style="border-top:1px solid var(--border);padding-top:10px;margin-top:10px">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
