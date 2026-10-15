@@ -303,6 +303,10 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
   y catálogo en el mismo nodo; se vuelve a medir a los 7 días o si cambió el precio.
 - Lo que da el piso de candidatos pasa SOLO a `cyc/candidatos_py` (fuente `pycat`, con el catálogo fijo y la foto): ahí `candidatos`
   lo mide dos veces y `fotosrev` revisa las fotos. Perfumería, maquillaje y cuidado personal NO pasan (regla del 13/10), quedan medidos.
+- CAMBIO DEL MISMO 15/10, él: "guardá TODOS y vos hacés el filtro del 25% y más de 100 ventas, y listo". `pyCatFuera` ya no saca nada por
+  precio, rubro ni tamaño (sólo 110V y marcas frenadas por ML) y perfumería también pasa. Las ventas de ML el robot no las ve: `pycatventas`
+  lista los que pasaron sin ventas, el chat las mira y las carga con `candprecio:<cód>=<US$>/<vendidas>;go` (ahora va por ml-consulta).
+  El panel ya muestra arriba sólo 25%+ y 100+ ventas (`CAND_MIN_VENT`).
 - Nada se borra: lo de menos de 15% queda guardado (él: "quizás mañana dan, y sirve para la perfumería del local").
 - Qué chequear: que `pycat` y el panel cuenten igual; que lo que pasa a Para probar no repita candidatos ni fichas (código también por
   el final); que un 429 no quede como "sin catálogo"; que lo "fuera por regla" no se coma cosas que sí se miran (webcam, mesa digitalizadora).

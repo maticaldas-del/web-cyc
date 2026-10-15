@@ -791,8 +791,10 @@ del local"*. El chat de compras YA NO busca en ML: sólo copia Nissei (código|n
 `pycat:#<pág>@<orden>;…;go` por ml-consulta → `mlapi/pycat` (fuera de `cyc/`, ~4 MB, gratis). `pycat` solo dice la última página.
 El robot (`ml-pycat`, cada 3 h) saca lo obvio, lo busca en ML, mide el margen y pasa solo a "Para probar" lo que da el piso (menos
 perfumería/maquillaje/cuidado personal, regla del 13/10). Lo de 15% a 24% queda guardado y escondido (2a). Texto nuevo en
-`ml-sync/PROMPT_GUAY.md`. Detalle en `ml-sync/REVISION.md` (etapa 3). Las ventas de otros vendedores el robot no las ve (403): se le
-piden al chat sólo para la lista corta.
+`ml-sync/PROMPT_GUAY.md`. Detalle en `ml-sync/REVISION.md` (etapa 3). **Corrección suya del mismo día: *"guardá TODOS y vos hacés el filtro del 25% y más de
+100 ventas, y listo"*** → ya no se saca nada por precio, rubro ni tamaño (sólo 110V y marcas que ML frena) y la perfumería también pasa.
+Las ventas de otros vendedores el robot no las ve (403): `pycatventas` arma la lista corta, el chat de compras las mira y las carga con
+`candprecio:<cód>=<US$>/<vendidas>;go`. Arriba en "Para probar" sólo 25%+ y 100+ ventas.
 
 ## 📦 CAJAS A FULL: 30 DÍAS + 7 DE VIAJE · ALMACENAMIENTO A LOS 4 MESES (14/10/2026, regla suya)
 

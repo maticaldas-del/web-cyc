@@ -40,7 +40,7 @@ process.on('SIGTERM', () => _alCortar('SIGTERM'));
 // los que escriben en cantidad o en plata se niegan de entrada, y cualquier otro corre con la base,
 // ML, Mercado Pago y Telegram en sólo lectura (se deja renovar y guardar el token de ML, que ML rota).
 const EN_CONSULTA = process.env.GITHUB_WORKFLOW === 'ml-consulta' || process.env.ML_CONSULTA === '1';
-const CONSULTA_ESCRIBE = new Set(['pycat', 'lineatodo', 'revcand', 'vincular', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull']);
+const CONSULTA_ESCRIBE = new Set(['pycat', 'candprecio', 'lineatodo', 'revcand', 'vincular', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull']);
 const CONSULTA_NIEGA = new Set(['candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'promoventas', 'cargosmes']);
@@ -8272,7 +8272,6 @@ const PYCAT_REMEDIR_DIAS = 7;
 const PYCAT_POR_VUELTA = 300;
 // Relleno en portugués que no ayuda a buscar en ML (comprasparaguay describe, ML nombra).
 const PYCAT_RELLENO = new Set(['fone','ouvido','relogio','analogico','digital','cabo','carregador','mouse','teclado','caixa','som','alto','falante','speaker','portatil','sem','fio','wireless','bluetooth','com','para','de','do','da','e','em','preto','branco','cinza','azul','vermelho','verde','rosa','dourado','prata','silver','white','black','gold','masculino','feminino','unissex','smartwatch','fones','auricular']);
-const RE_PYCAT_NOPASA = new RegExp(RE_CAND_PERF.source + '|maquiagem|maquillaje|batom|labial|rimel|r[íi]mel|m[áa]scara de c[íi]lios|delineador|sombra|base l[íi]quida|corretivo|corrector|blush|rubor|p[óo] compacto|shampoo|xampu|condicionador|acondicionador|creme|crema|hidratante|protetor solar|protector solar|desodorante|esmalte', 'i');
 // LO OBVIO, que no se mide (regla suya del 03/10, copiada del PROMPT GUAY): lo que no entra en una caja o es de otro
 // rubro. Se guarda igual con el motivo, así no se pierde. Los nombres de comprasparaguay vienen en portugués.
 const PYCAT_FUERA_RE = [
@@ -8291,10 +8290,11 @@ const PYCAT_FUERA_RE = [
 ];
 function pyCatFuera(nombre, usd, marcasNo) {
   const n = String(nombre || '');
-  if (usd > 215) return 'más de US$ 215';
+  // 15/10/2026, él: "guardá TODOS los productos y vos hacés el filtro del 25% para arriba y más de 100 ventas, y listo".
+  // Ya no se saca nada por precio, rubro ni tamaño (la lista `PYCAT_FUERA_RE` queda sin usar, por si vuelve). Sólo quedan
+  // afuera lo que no se puede vender acá: 110V (no anda en Argentina) y las marcas que ML frena.
   if (/\b110\s*v\b/i.test(n) && !/\b(220\s*v|bivolt)\b/i.test(n)) return '110V';
   const mf = marcasNo ? marcaFrenadaDe({ nombre: n }, marcasNo) : null; if (mf) return 'marca frenada: ' + mf;
-  for (const [re, m] of PYCAT_FUERA_RE) if (re.test(n) && !(m === 'cámara' && /\bweb\b|webcam/i.test(n))) return m;
   return null;
 }
 const _pyDg = (x) => String(x || '').replace(/\D/g, '');
@@ -8428,9 +8428,6 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
   let alta = 0;
   for (const [i, x] of res.pasan.entries()) {
     console.log(`  ${x.upd.m.toFixed(1)}% · ${x.e.n.slice(0, 70)} → ML ${x.upd.mi} "${x.upd.mt.slice(0, 60)}" a ${money(x.upd.mp)}`);
-    // PERFUMERÍA, MAQUILLAJE Y CUIDADO PERSONAL NO PASAN SOLOS (decisión suya del 13/10: no se compran por ahora). Quedan
-    // medidos y guardados para la perfumería del local; si él lo cambia, se saca este freno.
-    if (RE_PYCAT_NOPASA.test(`${x.e.n} ${x.upd.mt}`)) { console.log('     (perfumería/maquillaje/cuidado personal: queda guardado, no pasa a Para probar por la regla del 13/10)'); continue; }
     if (!x.e.f) { console.log('     (sin foto de Paraguay: no pasa a Para probar)'); continue; }
     if (!aplicar) continue;
     const id = 'c' + Date.now() + 'p' + i;
@@ -18832,6 +18829,16 @@ async function main() {
       const r = (await db.get('mlapi/pycat/' + last.cod)) || {};
       const ok = Math.abs((Number(r.u) || 0) - last.u) < 0.005;
       console.log(`\n${ok ? '✓' : '❌'} guardado (releído el último: ${last.n.slice(0, 60)} · US$ ${r.u}). ${ultPg >= 0 ? `Quedó en la página ${ultPg}.` : ''} Los mide \`pycatmedir\` solo.`);
+      return;
+    }
+    // BILLING_PROBE=pycatventas → LA LISTA CORTA PARA EL CHAT DE COMPRAS (15/10/2026). Los candidatos que pasaron solos desde el
+    // catálogo (dan 25%+) y todavía no tienen las ventas de ML cargadas: el robot no las puede ver (403), las mira el chat en el
+    // link y las carga con `candprecio:<código>=<US$>/<vendidas>;…;go`. El panel los muestra recién con 100 o más. Solo lee.
+    if (/^pycatventas$/.test(String(process.env.BILLING_PROBE || ''))) {
+      const cands = (await db.get('cyc/candidatos_py')) || {};
+      const fal = Object.values(cands).filter((c) => c && c.fuente === 'pycat' && !c.no && !c.prodId && !(Number(c.vendCarga) > 0));
+      console.log(`=== VENTAS QUE FALTAN · ${fal.length} candidato(s) que dan y no tienen las ventas de ML ===`);
+      console.log('@@LISTA'); for (const c of fal) console.log(`${c.cod}|${(Number(c.usd) || 0).toFixed(2)}|${c_link(c)}|${String(c.nombre || '').slice(0, 70)}`); console.log('@@FIN');
       return;
     }
     // BILLING_PROBE=pycatmedir[:<cuántos>][:go] → MIDE CONTRA ML LO GUARDADO EN `mlapi/pycat` (15/10/2026). Ver `correrPyCatMedir`.

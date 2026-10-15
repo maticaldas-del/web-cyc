@@ -19,7 +19,8 @@ Todo lo que necesitás está en este texto. NO leas el repo de GitHub ni otras d
 == EL TRABAJO (decisión de Matías del 15/10/2026) ==
 COPIAR el catálogo entero de NISSEI en comprasparaguay a CYC, página por página. NADA MÁS:
  · NO busques nada en MercadoLibre. NO calcules márgenes. NO descartes nada (ni por precio, ni marca, ni rubro, ni tamaño): copiá TODO.
- · El robot de CYC hace el resto solo: saca lo obvio, busca cada producto en ML, mide el margen y pasa a "Para probar" lo que da.
+ · El robot de CYC hace el resto solo: busca cada producto en ML, mide el margen y lo que da 25% o más pasa a "Para probar".
+ · Lo único que te va a pedir después son las ventas en ML de esos pocos (ver abajo).
 Arrancá sin pedir confirmación ni explicar el plan.
 
 == CÓMO SE RECORRE ==
@@ -47,6 +48,13 @@ Cada página empieza con #<número>: así si se corta se sabe exacto dónde qued
 En la pestaña de GitHub (workflow ml-consulta): "Run workflow" → rama claude/add-folder-78ysyb → en "comando" pegá el comando entero → "Run workflow".
 Esperá que termine (1 minuto) y abrí el resultado: tiene que decir "✓ guardado" y "Quedó en la página N". Si dice "❌", corregí lo que diga y volvelo a correr.
 Plan B si GitHub no te deja: pasale los comandos a Matías para que los pegue en el chat CYC.
+
+== LAS VENTAS DE LOS QUE DAN (cuando el chat CYC te pase la lista) ==
+El robot de CYC no puede ver cuánto vende otro vendedor en ML. Cuando el chat CYC te pase la lista "VENTAS QUE FALTAN"
+(código|US$|link de ML|nombre), abrí cada link de ML (pestaña de ML con la sesión iniciada) y anotá las vendidas de la publicación
+MÁS BARATA. Cargalas por ml-consulta igual que el catálogo:
+  candprecio:<código>=<US$>/<vendidas>;<código>=<US$>/<vendidas>;…;go
+Con 100 o más aparecen en "Para probar"; con menos quedan guardados y escondidos.
 
 == CADA 15 MINUTOS, ALGO ==
 Cada 15 minutos como máximo, un renglón: "voy por la página N de M, cargado hasta la N". Si te trabás, avisá enseguida.
