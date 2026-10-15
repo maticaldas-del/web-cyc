@@ -548,6 +548,11 @@ el precio de un candidato distinto con código parecido (se compara también por
 
 ## 7 · DISEÑO
 
+### El 🧠 no repite la explicación (15/10/2026, v23.55, pedido suyo con la Lupa 90mm)
+- `_repetido` del cerebro saca la etiqueta "Claude:" del principio y además compara un pedazo del medio (40 letras): un motivo de
+  `cyc/claudecambios` que ya está en la nota no se vuelve a escribir en "Por qué cambió el precio". Qué chequear: que dos motivos
+  distintos de la misma publicación sigan saliendo los dos.
+
 ### Pedidos: sin "Hola Tito" a la vista, colores con su 🧠 (15/10/2026, v23.53, pedido suyo)
 - Bs As, Paraguay y Paulvic (misma tarjeta): la nota del 🧠 ya no se ve en la tarjeta ni el "Por qué N" abajo de 🧾 pedir; sale
   tocando el 🧠. Al abrir un producto con colores se ven sólo los colores (cada uno con su 🧠, `pedVarFila(x,p)`) y lo demás va en

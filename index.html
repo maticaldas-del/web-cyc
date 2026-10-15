@@ -2615,7 +2615,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.54';
+const APP_VERSION='23.55';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2626,6 +2626,7 @@ const APP_VERSION='23.54';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.55',f:'15/10/2026',h:'15:35',c:[{n:1,t:'🧠 La ventanita del cerebro ya no repite la misma explicación en "Por qué cambió el precio" cuando ya está en la nota de arriba (pasaba cuando el motivo guardado empezaba con "Claude:").'}]},
   {v:'23.54',f:'15/10/2026',h:'15:20',c:[{n:1,t:'📦 Armar caja: arriba sólo lo que hay que mandar (y lo que ya cargaste en la caja). Lo que no tiene recomendación va abajo, en el desplegable "Sin recomendación para mandar".'}]},
   {v:'23.53',f:'15/10/2026',h:'15:05',c:[{n:1,t:'📋 Pedidos (Bs As, Paraguay y Paulvic): el "Hola Tito" ya no está a la vista, sale tocando el 🧠. Al abrir un producto con colores se ven sólo los colores, cada uno con su 🧠; el resto de los datos va en "más datos".'}]},
   {v:'23.52',f:'15/10/2026',h:'14:45',c:[{n:1,t:'📦 Armar caja más simple: cada producto muestra sólo nombre, variante, cuántas tenés, cuántas mandar por cuenta y el código de la etiqueta. Todo lo demás (ritmo, 🧠, avisos, botones) se abre tocando el producto.'}]},
@@ -9798,8 +9799,11 @@ async function cerebroAbrir(el,ev){
     let nn=0,falla=false;const vistos=new Set();
     // SIN ORACIONES REPETIDAS (14/10/2026, él: *"repite oraciones. no quiero que nunca repita oraciones"*): todo texto
     // que ya salió en la ventana queda anotado acá, y un motivo de cambio que ya está adentro de una nota no se repite.
-    const yaDicho=[];const _nrm=t=>String(t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim();
-    const _repetido=t=>{const n=_nrm(t);if(n.length<12)return false;const pz=n.slice(0,80);return yaDicho.some(y=>y.includes(pz)||n.includes(y.slice(0,80)));};
+    const yaDicho=[];const _nrm=t=>String(t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim().replace(/^(claude|robot|cerebro)\s+/,'');
+    // 15/10/2026 (Lupa 90mm salía dos veces): el motivo guardado arranca con "Claude:" y la nota no, así que el pedazo
+    // inicial no coincidía nunca. Se saca esa etiqueta y además se compara un pedazo del MEDIO (40 letras), que no
+    // depende de cómo empieza cada texto.
+    const _repetido=t=>{const n=_nrm(t);if(n.length<12)return false;const pz=n.slice(0,80);const md=n.length>=60?n.slice(Math.floor(n.length/2)-20,Math.floor(n.length/2)+20):null;return yaDicho.some(y=>y.includes(pz)||n.includes(y.slice(0,80))||(md&&y.includes(md)));};
     const _decir=t=>{yaDicho.push(_nrm(t));};
     for(const o of ctxK){
       if(o.n===undefined){falla=true;continue;}
