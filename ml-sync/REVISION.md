@@ -479,6 +479,10 @@ el precio de un candidato distinto con código parecido (se compara también por
   Medido 14/10 (90 días): **68 de 69 los pagó el programa de protección de ML** (`refunds[].source.type = bpp`,
   `bpp_refunded`/`bpp_covered`), 1 lo pagamos nosotros. **Imprime sólo códigos y tipos: NUNCA `source.name`** (trae
   nombre y apellido del titular; pasó en la primera corrida y se borró ese registro de GitHub).
+- **Adelanto de plata para el pedido de Paraguay (15/10/2026, v23.48):** `compraspy/<id>/pagos/adelanto`, se carga con
+  `compray:<fecha>|adelanto=<pesos>|go`. Gasto fijo extra (no obligatorio): suma en el total y el recargo real de la web
+  (`pyRecargoReal`, `pyGastosChecklistHTML`, `pyPedidoDetalleHTML`) y del robot (`recargoRealPedido`, historial de
+  `compray`, `buscacosto`). **Chequear:** que toda suma de `pagos` lo incluya (buscar `otros` y ver que vaya al lado).
 - **`reclamoplata[:días]`** (solo lee, 15/10/2026): para cada reclamo/devolución suma TODAS las filas del reporte de
   liquidación de MP de esa orden (`ORDER_ID`) y lo compara contra el neto de la venta: dice si la plata quedó, se fue o
   quedó una parte. Es la confirmación que faltaba para la idea 7. Imprime sólo cantidades, tipos y %. **Chequear:** que

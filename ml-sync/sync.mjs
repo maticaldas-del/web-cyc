@@ -7748,7 +7748,7 @@ function recargoRealPedido(c) {
   if (!(usd > 0)) falta.push('los dólares crudos');
   if (falta.length) return { r: null, falta };
   const p = c.pagos || {};
-  const tot = (Number(p.mercaderia) || 0) + (Number(p.cambista) || 0) + (Number(p.envio) || 0) + (Number(p.retira) || 0) + (Number(p.otros) || 0);
+  const tot = (Number(p.mercaderia) || 0) + (Number(p.cambista) || 0) + (Number(p.envio) || 0) + (Number(p.retira) || 0) + (Number(p.otros) || 0) + (Number(p.adelanto) || 0);
   const r = tot / tc / usd;
   // Un recargo abajo de 1 o arriba de 1,6 no es un pedido: es un dato mal cargado. No se usa.
   if (!(r >= 1 && r <= 1.6)) return { r: null, falta: [`el recargo da ${((r - 1) * 100).toFixed(1)}%: algún número está mal`] };
@@ -36182,7 +36182,7 @@ async function main() {
         for (const it of (r && r.items) || []) {
           if (!it || !hitI(it)) continue; k++;
           const pg = r.pagos || {};
-          const merc = Number(pg.mercaderia) || 0, envio = Number(pg.envio) || 0, ret = Number(pg.retira) || 0, otros = (Number(pg.cambista) || 0) + (Number(pg.otros) || 0);
+          const merc = Number(pg.mercaderia) || 0, envio = Number(pg.envio) || 0, ret = Number(pg.retira) || 0, otros = (Number(pg.cambista) || 0) + (Number(pg.otros) || 0) + (Number(pg.adelanto) || 0);
           const usdC = Number(r.usdCrudo) || 0;
           const rec = merc > 0 && usdC > 0 && (r.tcPedido || tc) ? ((merc + envio + ret + otros) / (usdC * (r.tcPedido || tc))) : null;
           console.log(`   ${id} (${r.fecha || '?'} · ${r.estado || '?'}) · ${it.nom} · ${it.u} u. · US$ ${it.usd} crudo c/u · código ${it.cod || '—'}`);
@@ -39997,7 +39997,7 @@ async function main() {
     //
     // CÓMO SE USA:
     //   compray                                  → lo guardado hasta hoy y el recargo medido
-    //   compray:<AAAA-MM-DD>|usd=<crudo>|merc=<pesos>|envio=<pesos>[|cambio=][|retira=][|otros=][|nota=][|go]
+    //   compray:<AAAA-MM-DD>|usd=<crudo>|merc=<pesos>|envio=<pesos>[|cambio=][|retira=][|otros=][|adelanto=][|nota=][|go]
     //
     //  · `usd` son los dólares CRUDOS de comprasparaguay, SIN el 15%. Es contra ese número que se
     //    mide todo: cargarle el precio ya recargado da un recargo falso, chico.
@@ -40066,8 +40066,10 @@ async function main() {
         const usd = campos.usd != null ? num(campos.usd) : (yaG ? parseFloat(yaG.usdCrudo) || null : null);
         const merc = dePrevio('merc', 'mercaderia');
         const envio = dePrevio('envio', 'envio'), cambio = dePrevio('cambio', 'cambista') || 0, otros = dePrevio('otros', 'otros') || 0;
-        if (yaG && Object.keys(campos).some((k) => !['usd', 'merc', 'envio', 'cambio', 'otros', 'retira', 'det', 'nota', 'kg', 'tipo', 'sinpesos'].includes(k))) console.log('  (hay un campo que no conozco; se ignora)');
-        if (yaG) console.log(`  (lo que no pasaste se toma de lo guardado: ${['usd', 'merc', 'envio', 'cambio', 'retira', 'otros'].filter((k) => campos[k] == null).join(', ') || 'nada'})`);
+        // `adelanto` (15/10/2026): lo que cuesta adelantar la plata para poder hacer el pedido. Gasto fijo aparte.
+        const adelanto = dePrevio('adelanto', 'adelanto') || 0;
+        if (yaG && Object.keys(campos).some((k) => !['usd', 'merc', 'envio', 'cambio', 'otros', 'retira', 'adelanto', 'det', 'nota', 'kg', 'tipo', 'sinpesos'].includes(k))) console.log('  (hay un campo que no conozco; se ignora)');
+        if (yaG) console.log(`  (lo que no pasaste se toma de lo guardado: ${['usd', 'merc', 'envio', 'cambio', 'retira', 'otros', 'adelanto'].filter((k) => campos[k] == null).join(', ') || 'nada'})`);
         // `retira` es lo que cobra el que retira en Paraguay y despacha. Tiene su propio nombre y no
         // va metido en `otros` porque es el gasto FIJO más grande que tiene el pedido (medido el
         // 21/09: $74.260 sobre una compra de US$ 474,80, o sea 10 puntos del recargo) y un renglón
@@ -40195,7 +40197,7 @@ async function main() {
           // la fecha del PEDIDO se conserva; si el pago vino con otra, queda aparte
           // `pedido=AAAA-MM-DD` corrige el día del PEDIDO (11/10/2026: el del 08/10 quedó con el día en que se cargó).
           fecha: (/^\d{4}-\d{2}-\d{2}$/.test(campos.pedido || '') ? campos.pedido : null) || (ya && ya.fecha) || fecha, fechaPago: (ya && ya.fecha && ya.fecha !== fecha) ? fecha : ((ya && ya.fechaPago) || null), usdCrudo: usd,
-          pagos: { mercaderia: Math.round(merc), cambista: Math.round(cambio), envio: Math.round(envio), retira: Math.round(retira), otros: Math.round(otros) },
+          pagos: { mercaderia: Math.round(merc), cambista: Math.round(cambio), envio: Math.round(envio), retira: Math.round(retira), otros: Math.round(otros), adelanto: Math.round(adelanto) },
           items: itemsFin, nota: campos.nota || (ya && ya.nota) || '', tcPanel: tcRef || null,
           usdPanel, kgCorreo: kgPedido > 0 ? kgPedido : null,
           // EL TICKET ES OBLIGATORIO PARA CERRAR EL PEDIDO (10/10/2026, regla suya): sólo `det=` (el ticket real del
@@ -40208,15 +40210,15 @@ async function main() {
           // recargo, no cuenta "en camino" en el Arqueo). Con |camino queda viajando y lleva "Ya llegó".
           estado: (ya && ya.estado) || (partes.some((x) => /^camino$/i.test(x)) ? 'camino' : 'historial'),
         };
-        const totARS = merc + cambio + envio + retira + otros;
+        const totARS = merc + cambio + envio + retira + otros + adelanto;
         const dolarMerc = merc / usd;                       // el dólar efectivo de la mercadería
         const faltaPy = recargoRealPedido(rec).falta || [];
-        const fijos = envio + retira + otros;
+        const fijos = envio + retira + otros + adelanto;
         console.log(`=== COMPRA A PARAGUAY DEL ${fecha} ===`);
         if (ya) console.log(`⚠️ Ya había una compra guardada con esta fecha (${ya.usdCrudo} US$ crudos). Se pisa.`);
         console.log(`  mercadería en Paraguay   US$ ${usd.toFixed(2)} crudos`);
         console.log(`  pagado por la mercadería ${money(Math.round(merc))}${cambio ? ` · cambista aparte ${money(Math.round(cambio))}` : ''}`);
-        console.log(`  envío                    ${money(Math.round(envio))}${retira ? ` · el que retira y despacha ${money(Math.round(retira))}` : ''}${otros ? ` · otros ${money(Math.round(otros))}` : ''}`);
+        console.log(`  envío                    ${money(Math.round(envio))}${retira ? ` · el que retira y despacha ${money(Math.round(retira))}` : ''}${otros ? ` · otros ${money(Math.round(otros))}` : ''}${adelanto ? ` · adelanto de plata ${money(Math.round(adelanto))}` : ''}`);
         console.log(`  TOTAL                    ${money(Math.round(totARS))}`);
         if (kgPedido > 0 && envio > 0) console.log(`  el correo: ${kgPedido} kg · ${money(Math.round(envio / kgPedido))} por kilo`);
         console.log('');
@@ -40263,7 +40265,7 @@ async function main() {
         // `retira` se agregó el 21/09 y esta suma no lo tenía: el historial daba el recargo CORTO
         // justo por el gasto fijo más grande del pedido ($74.260 de $84.627). Un número que sale
         // menor de lo real es el lado peligroso — dice que comprar sale más barato de lo que sale.
-        const totARS = (p.mercaderia || 0) + (p.cambista || 0) + (p.envio || 0) + (p.retira || 0) + (p.otros || 0);
+        const totARS = (p.mercaderia || 0) + (p.cambista || 0) + (p.envio || 0) + (p.retira || 0) + (p.otros || 0) + (p.adelanto || 0);
         const tc = parseFloat(c.tcPedido) || parseFloat(c.tcPanel) || tcPanel || 0;
         const usd = parseFloat(c.usdCrudo) || 0;
         // Un pedido al que le falta algún gasto NO tiene recargo: con los pesos en cero daba "−100%" y
@@ -40276,7 +40278,7 @@ async function main() {
         if (c.pagos && c.pagos.envio > 0) console.log(`     correo ${money(Math.round(c.pagos.envio))}${c.kgCorreo ? ` · ${c.kgCorreo} kg` : ''}`);
         if (c.nota) console.log(`     ${c.nota}`);
         if (recPct == null || faltaC.length) continue;
-        const fijoUSD = ((p.envio || 0) + (p.retira || 0) + (p.otros || 0)) / tc;
+        const fijoUSD = ((p.envio || 0) + (p.retira || 0) + (p.otros || 0) + (p.adelanto || 0)) / tc;
         const varPct = ((p.mercaderia || 0) + (p.cambista || 0)) / tc / usd - 1;
         sumU += usd; sumFijoU += fijoUSD; sumVar += varPct * usd; n++;
       }
@@ -40296,7 +40298,7 @@ async function main() {
           const usd = parseFloat(c.usdCrudo) || 0;
           if (!(tc > 0 && usd > 0) || !((p.mercaderia || 0) > 0)) continue;
           sumU += usd;
-          sumFijoU += ((p.envio || 0) + (p.retira || 0) + (p.otros || 0)) / tc;
+          sumFijoU += ((p.envio || 0) + (p.retira || 0) + (p.otros || 0) + (p.adelanto || 0)) / tc;
           sumVar += (((p.mercaderia || 0) + (p.cambista || 0)) / tc / usd - 1) * usd;
           n++;
         }
@@ -40357,7 +40359,7 @@ async function main() {
           const tc = parseFloat(c.tcPedido) || parseFloat(c.tcPanel) || tcPanel || 0;
           if (tc > 0) tcRef = tc;
           correoTot += (p.envio || 0);                       // por PESO
-          peajeTot += (p.retira || 0) + (p.otros || 0);      // fijo por pedido
+          peajeTot += (p.retira || 0) + (p.otros || 0) + (p.adelanto || 0);      // fijo por pedido
           for (const it of c.items) {
             const u = parseInt(it.u) || 0; if (!(u > 0)) continue;
             const k = String(it.cod || it.nom || '?').trim();

@@ -2615,7 +2615,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.47';
+const APP_VERSION='23.48';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2626,6 +2626,7 @@ const APP_VERSION='23.47';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.48',f:'15/10/2026',h:'13:05',c:[{n:3,t:'🇵🇾 Gastos del pedido de Paraguay: nuevo renglón "Adelanto de plata para el pedido" (lo que cuesta adelantar la plata para poder hacerlo). Suma al total y al recargo real. Cargado en el del 14/10: $29.000.'}]},
   {v:'23.47',f:'15/10/2026',h:'12:50',c:[{n:1,t:'🔎 Revisión: cerrada la idea de los reclamos que pagó ML. Lo confirmé en Mercado Pago: la plata de esos reclamos SÍ salió de la cuenta, así que el panel los contaba bien como pérdida. No cambia ningún costo.'}]},
   {v:'23.46',f:'15/10/2026',h:'09:55',c:[{n:2,t:'🔔 El aviso al teléfono ya no suena con cada venta: sólo con las compras que dejan $10.000 o más de ganancia. Las demás se siguen viendo en Ventas y en el total del día.'}]},
   {v:'23.45',f:'15/10/2026',h:'08:55',c:[{n:1,t:'🔥 Ventas vivas: el temblor y el fuego recién pueden aparecer en ventas que dejaron $10.000 o más de ganancia. Todo lo demás (color, brillo, figuras, velocidad) sigue igual.'}]},
@@ -13334,7 +13335,7 @@ function pyRecargoReal(c){
   const tc=parseFloat(c&&c.tcPedido)||parseFloat(c&&c.tcPanel)||0,usd=parseFloat(c&&c.usdCrudo)||0;
   if(!(tc>0))falta.push('el dólar del día del pedido');if(!(usd>0))falta.push('los dólares crudos');
   if(falta.length)return{r:null,falta};
-  const p=c.pagos||{};const tot=(Number(p.mercaderia)||0)+(Number(p.cambista)||0)+(Number(p.envio)||0)+(Number(p.retira)||0)+(Number(p.otros)||0);
+  const p=c.pagos||{};const tot=(Number(p.mercaderia)||0)+(Number(p.cambista)||0)+(Number(p.envio)||0)+(Number(p.retira)||0)+(Number(p.otros)||0)+(Number(p.adelanto)||0);
   const r=tot/tc/usd;if(!(r>=1&&r<=1.6))return{r:null,falta:['el recargo da '+((r-1)*100).toFixed(1)+'%: algún número está mal']};
   return{r:Math.round(r*10000)/10000,falta:[]};
 }
@@ -13366,7 +13367,11 @@ function pyGastosChecklistHTML(c){
     const g=G(k),ok=pyGastoCargado(c,g),v=val(g);
     filas+=fila(ok,k==='cambista'?'Cambista y envío de los dólares':g.nom,k==='envio'&&c.kgCorreo?String(c.kgCorreo).replace('.',',')+' kg':'',fmt(Math.round(v)),_base>0&&v>0?_pct(v)+'%':'',g.cero&&!(v>0));
   }
-  const tot=(Number(p.mercaderia)||0)+(Number(p.cambista)||0)+(Number(p.envio)||0)+(Number(p.retira)||0)+(Number(p.otros)||0);
+  // Gasto extra (15/10/2026, pedido suyo): lo que cuesta adelantar la plata para poder hacer el pedido. No es
+  // obligatorio (no frena el recargo real): sale sólo si se cargó, y suma al total.
+  const _adel=Number(p.adelanto)||0;
+  if(_adel>0)filas+=fila(true,'Adelanto de plata para el pedido','',fmt(Math.round(_adel)),_base>0?_pct(_adel)+'%':'');
+  const tot=(Number(p.mercaderia)||0)+(Number(p.cambista)||0)+(Number(p.envio)||0)+(Number(p.retira)||0)+(Number(p.otros)||0)+(Number(p.adelanto)||0);
   const recTxt=R.r?((R.r-1)*100).toFixed(1).replace('.',','):null;
   filas+=`<div style="display:flex;justify-content:space-between;gap:10px;font-size:.72rem;padding:5px 0 2px"><b>Total</b><span style="white-space:nowrap"><b>${fmt(Math.round(tot))}</b>${celPc(recTxt?'<b style="color:var(--text)">+'+recTxt+'%</b>':'')}</span></div>`;
   const ca=c.costosAplicados;
@@ -13445,7 +13450,7 @@ function pyPedidoDetalleHTML(c){
   const tc=c.tcPedido||0;
   const puesto=Math.round((c.usdCrudo||0)*(pyRecargoReal(c).r||RECARGO_PY)*100)/100;
   const pagos=c.pagos||{};
-  const totARS=(Number(pagos.mercaderia)||0)+(Number(pagos.cambista)||0)+(Number(pagos.envio)||0)+(Number(pagos.retira)||0)+(Number(pagos.otros)||0);
+  const totARS=(Number(pagos.mercaderia)||0)+(Number(pagos.cambista)||0)+(Number(pagos.envio)||0)+(Number(pagos.retira)||0)+(Number(pagos.otros)||0)+(Number(pagos.adelanto)||0);
   const hayPagos=totARS>0;
   const sinPeso=(c.unidades||0)-(c.pesoUnidades||0);
   const fila=(k,v,ay)=>`<div style="display:flex;justify-content:space-between;gap:10px;font-size:.66rem;padding:2px 0"${ay?` title="${String(ay).replace(/"/g,'&quot;')}"`:''}><span style="color:var(--muted)">${k}</span><span>${v}</span></div>`;

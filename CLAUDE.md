@@ -760,6 +760,11 @@ archivo. **Etapa 8 · Datos e historial** creada ese día (líneas de tiempo); c
 Inicio la pide ya. Y lo que se mira en TODAS: contar dos veces lo mismo (el stock ×4 del Centímetro),
 fallas leídas como dato, dos fórmulas para un número, datos de terceros en el registro público.
 
+## 🇵🇾 ADELANTO DE PLATA PARA EL PEDIDO (15/10/2026, v23.48)
+
+Pedido suyo: lo que cuesta adelantar la plata para poder hacer el pedido va como gasto aparte. `compray:<fecha>|adelanto=<pesos>|go`
+(por ml-sync). Renglón propio en la caja de gastos, suma al recargo real, no es obligatorio. Pedido del 14/10: $29.000.
+
 ## 🧾 LOS RECLAMOS QUE "CUBRE" ML SÍ NOS CUESTAN (15/10/2026, v23.47)
 
 La idea 7 de la etapa 6 decía que ML pagaba 68 de 69 reclamos y que el panel los contaba de más como pérdida.
