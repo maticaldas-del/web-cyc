@@ -2614,7 +2614,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.61';
+const APP_VERSION='23.62';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2625,6 +2625,7 @@ const APP_VERSION='23.61';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.62',f:'15/10/2026',h:'18:25',c:[{n:1,t:'🇵🇾 Pedidos → Nuevos: se sacó el "🧮 Simulador real de precio" del final de la lista (no se usaba).'}]},
   {v:'23.61',f:'15/10/2026',h:'18:10',c:[{n:3,t:'🧴 Perfumes de Paraguay: al lado del % de ML va un % AZUL 🏪 = lo que le queda a CYC vendiéndolo en la perfumería del local al precio de ML (la perfumería se queda su 30%, sin comisión ni impuestos). Si da 25% o más, el perfume se puede pedir aunque en ML no llegue, y de cualquier marca. El % de ML abajo de 25% va en rojo.'}]},
   {v:'23.60',f:'15/10/2026',h:'17:40',c:[{n:1,t:'🇵🇾 Pedidos → Paraguay más simple: abre con los probados arriba y los nuevos abajo. En el medio queda un solo renglón (🆕 Nuevos · cuántos dan 25%+). Se sacaron el texto de explicación, "cómo funciona esto", la barra del pedido de nuevos (está en 🧾 Pedido) y la caja grande de cuántos dan.'}]},
   {v:'23.59',f:'15/10/2026',h:'17:20',c:[{n:1,t:'🇵🇾 Pedidos → Probados se ve igual que Nuevos: foto, nombre, código, precio de Paraguay puesto y en pesos, lo que vendiste y el % grande. Los colores, el máximo y la casilla de pedir se abren en "detalle".'}]},
@@ -14276,7 +14277,7 @@ function candidatosHTML(){
       ? `<div class="empty-msg" style="font-size:.68rem;line-height:1.6">No queda ninguno para evaluar: ${enPed?`<b>${enPed}</b> está${enPed===1?'':'n'} en el pedido de arriba`:''}${enPed&&enVia?' y ':''}${enVia?`<b>${enVia}</b> ya ${enVia===1?'viaja':'viajan'}`:''}.</div>`
       : `<div class="empty-msg" style="font-size:.68rem;line-height:1.6">Todavía no hay ninguno.<br>
       El chat de Paraguay los carga cuando encuentra algo en comprasparaguay <b>que Nissei ofrezca</b> (ahí salen juntos el código, el precio y que hay stock), cueste menos de US$ 250 puesto y no sea de una marca que ML frena.</div>`;
-    return cab(null)+vacio+simPYHTML();
+    return cab(null)+vacio;   // 15/10: el simulador no se usa, se sacó de la pantalla (la función queda)
   }
   // El que más margen deja, primero. Los que todavía no tienen la cuenta hecha van al final:
   // no se pueden comparar contra los medidos y ponerlos arriba sería invitar a decidir sin número.
@@ -14424,7 +14425,7 @@ function candidatosHTML(){
     +(_flojas.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--amber)">🟠 ${_flojas.length} con menos de ${CAND_MIN_VENT} vendidas en ML (o sin el dato) · no se pueden pedir · tocá para verlos</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_flojas.map(_card).join('')}</div></details>`:'')
     +(_rojos.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--red)">🔻 ${_rojos.length} no llega${_rojos.length===1?'':'n'} al ${CAND_PISO_TXT()} · tocá para verlos</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_rojos.map(_card).join('')}</div></details>`:'')
     +(_sinAnalizar.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--muted)">⏳ ${_sinAnalizar.length} sin analizar o incompletos (falta la medición de ML o alguna de las dos fotos) · suben solos cuando estén completos y den · tocá para verlos</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_sinAnalizar.map(_card).join('')}</div></details>`:'')
-    +candDescartadosHTML()+`<div style="margin-top:16px">${simPYHTML()}</div>`;
+    +candDescartadosHTML();
 }
 // LO DESCARTADO NO SE ESCONDE. Una lista que saca renglones sin decirlo es una lista que miente —
 // la misma regla que el desplegable de `nomandar` en Armar caja.

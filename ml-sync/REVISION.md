@@ -994,3 +994,6 @@ Regla suya: los perfumes también se venden en el local; costo puesto × 1,25 ×
 Con 25%+ (`PERF_LOCAL_GAN`) el perfume entra aunque en ML no llegue: no se descarta en `candidatos`, pasa de pycat a Para probar,
 `candPuedePedir`/`pedir` lo dejan cargar, en Probados cuenta como "da", y NO se filtra por marca frenada (en el local va cualquier
 marca). En pantalla: % azul 🏪 al lado del de ML; el % de ML abajo de 25 en rojo. Chequear: que el costo use el puesto (17%).
+
+### Etapa 7 · 15/10/2026 · v23.62
+Se sacó el 🧮 Simulador real de precio de Pedidos → Nuevos (él: "no lo uso"). `simPYHTML` queda sin llamar, por si vuelve.
