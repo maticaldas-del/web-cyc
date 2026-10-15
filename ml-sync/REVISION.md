@@ -1000,3 +1000,6 @@ Se sacó el 🧮 Simulador real de precio de Pedidos → Nuevos (él: "no lo uso
 
 ### Etapa 3 · 15/10/2026 · v23.63
 Marca `noLocal` (en `cyc/candidatos_py/<id>` o `cyc/products/<id>`): "ya lo probamos en la perfumería y no da". Apaga el % azul y la entrada por el local (web `candLocalPct`/probados, robot `candidatos` y `pedir`). Botón 🏪✕ / ↩︎ en la tarjeta.
+
+### Etapa 3 · 15/10/2026 · v23.64
+`pyNuDePedido`: el precio de Paraguay de un probado sale de los colores a comprar (`pyVar`, el más caro), si no de la ficha. Lo usan la tarjeta y `pyProbVeredicto`. Fotos y links (`pyProbVisHTML`) arriba de la tarjeta abierta. Chequear: un producto con colores de distinto precio.

@@ -2614,7 +2614,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.63';
+const APP_VERSION='23.64';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2625,6 +2625,7 @@ const APP_VERSION='23.63';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.64',f:'15/10/2026',h:'19:00',c:[{n:3,t:'🇵🇾 Probados: el % se mide con el precio de Paraguay de los COLORES que se piden (el más caro de ésos), no el de la ficha. El Joystick azul (US$ 55) se medía con los US$ 48 del negro.'},{n:1,t:'🇵🇾 Probados: las dos fotos (Paraguay y ML) y los links "verlo en ML / comprasparaguay" van ARRIBA de todo al abrir la tarjeta, antes de los colores.'}]},
   {v:'23.63',f:'15/10/2026',h:'18:40',c:[{n:2,t:'🏪 Botón "🏪✕ no da en el local" al lado del % azul de cada perfume: lo saca de la sugerencia para la perfumería (vuelve a depender sólo de ML). Se devuelve con "↩︎ 🏪 volver a sugerir".'}]},
   {v:'23.62',f:'15/10/2026',h:'18:25',c:[{n:1,t:'🇵🇾 Pedidos → Nuevos: se sacó el "🧮 Simulador real de precio" del final de la lista (no se usaba).'}]},
   {v:'23.61',f:'15/10/2026',h:'18:10',c:[{n:3,t:'🧴 Perfumes de Paraguay: al lado del % de ML va un % AZUL 🏪 = lo que le queda a CYC vendiéndolo en la perfumería del local al precio de ML (la perfumería se queda su 30%, sin comisión ni impuestos). Si da 25% o más, el perfume se puede pedir aunque en ML no llegue, y de cualquier marca. El % de ML abajo de 25% va en rojo.'}]},
@@ -16806,11 +16807,20 @@ function pyProbVisHTML(_prod,colores){
 //   notiene → Nissei no lo tenía (`py_sinstock`)
 //   sinrev  → sin precio de Nissei, o mirado hace más de PY_PROB_FRESCO_DIAS: falta que Guay lo revise
 const PY_PROB_PISO=24, PY_PROB_FRESCO_DIAS=7;   // 06/10/2026: 24 (él: "arriba del 24% TODO"; el Ferrari Negro quedaba en 24,9% y no entraba)
+// EL PRECIO DE PARAGUAY DE LOS COLORES QUE SE PIDEN (15/10/2026, él con el Joystick: el azul sale US$ 55 y la tarjeta medía
+// con los US$ 48 del negro). Si los colores a comprar tienen su precio cargado (`pyVar`), manda el MÁS CARO de ésos (peor caso);
+// si no, el de la ficha.
+function pyNuDePedido(pr,ped){
+  const cols=((ped&&ped.variantesNec)||[]).filter(x=>x&&(parseInt(x.q)||0)>0).map(x=>x.v);
+  const pv=(pr&&pr.pyVar)||{};let mx=0;
+  for(const c of cols){const d=pv[sid(String(c||'').toLowerCase())];if(d&&Number(d.usd)>0)mx=Math.max(mx,Number(d.usd));}
+  return mx>0?mx:(parseFloat(pr&&pr.nisseiUSD)||0);
+}
 function pyProbVeredicto(ped){
   const pr=(state.products||[]).find(x=>x.id===ped.prodId)||prodByName(ped.producto);
   if(!pr)return{k:'sinrev',txt:'sin ficha'};
   if((state.pySinStock||{})[pr.id])return{k:'notiene',txt:'Nissei no lo tenía'};
-  const nu=parseFloat(pr.nisseiUSD)||0, ts=Number(pr.nisseiTs)||0;
+  const nu=pyNuDePedido(pr,ped), ts=Number(pr.nisseiTs)||0;
   const dias=ts?Math.floor((Date.now()-ts)/864e5):null;
   if(!(nu>0)||dias==null||dias>PY_PROB_FRESCO_DIAS)return{k:'sinrev',txt:nu>0?`precio de Nissei de hace ${dias==null?'?':dias} días: falta revisarlo`:'sin precio de Nissei: falta revisarlo'};
   if(pr.nisseiListado){const dl=Math.floor((Date.now()-Date.parse(pr.nisseiListado+'T12:00:00-03:00'))/864e5);
@@ -16935,7 +16945,7 @@ function _pedidoItemHtml(p,opts){
   // ML: la foto y el link de su publicación viva. Paraguay: `pyLink`/`pyFoto` de la ficha (los carga Guay con
   // updPyLink) o, si no, los del candidato del que salió la ficha.
   const _pyVis=_armU==null?'':pyProbVisHTML(_prod,(p.variantesNec||[]).filter(x=>x&&(parseInt(x.q)||0)>0).map(x=>x.v));
-  const _armHTML=_armU==null?'':`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 12px 8px;margin:-4px 0 10px;font-size:.78rem;background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px">${_pyVis}
+  const _armHTML=_armU==null?'':`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 12px 8px;margin:-4px 0 10px;font-size:.78rem;background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px">
       <span style="font-weight:700;color:${_armU>0?'var(--green)':'var(--muted)'}">🧾 pedir</span>
       <input type="number" min="0" step="1" value="${_armU||''}" placeholder="0" onchange="pyArmSet('${_prod.id}',this.value)" style="width:58px;font-size:.88rem;padding:4px 6px;text-align:center;background:var(--surface2);border:1px solid ${_armU>0?'var(--green)':'var(--border)'};border-radius:6px;color:var(--text)"> u.
       ${_armU>0?`<span style="color:var(--green)">✓ en el pedido</span>`:`<button class="btn" style="font-size:.66rem;padding:3px 9px" onclick="pyArmSet('${_prod.id}',${parseInt(p.cantidad)||1})">+ las ${fmtN(p.cantidad||1)} sugeridas</button>`}
@@ -16974,7 +16984,7 @@ function _pedidoItemHtml(p,opts){
   if(!_esProb)return _card;
   // PROBADOS SE VE IGUAL QUE NUEVOS (15/10/2026, pedido suyo): arriba foto, nombre, código, precio de Paraguay puesto y en pesos, lo que
   // vendió y el % grande; todo lo demás (colores, máximo, la casilla de pedir) adentro de "detalle ▾".
-  const _nu=parseFloat(_prod.nisseiUSD)||0, _pu=_nu>0?Math.round(_nu*RECARGO_PY*100)/100:0, _ps=_pu>0?Math.round(_pu*curTC()):0;
+  const _nu=pyNuDePedido(_prod,p), _pu=_nu>0?Math.round(_nu*RECARGO_PY*100)/100:0, _ps=_pu>0?Math.round(_pu*curTC()):0;
   let _mgP=null;try{_mgP=margenSiComproPY(maxCompraDe(_prod,PY_PROB_PISO),_nu);}catch(e){_mgP=null;}
   const _colP=_mgP==null?'var(--muted)':(typeof pctColor==='function'?pctColor(_mgP):'var(--text)');
   const _esPerfP=esPerfumeNom(_prod.name||p.producto);
@@ -16996,7 +17006,7 @@ function _pedidoItemHtml(p,opts){
         <div style="font-size:.6rem;color:var(--muted);margin-top:2px">detalle ▾</div>
       </div>
     </summary>
-    <div style="margin-top:10px">${_card}</div>
+    <div style="margin-top:10px">${_pyVis?`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:8px 10px;margin-bottom:8px;background:var(--surface);border:1px solid var(--border);border-radius:10px">${_pyVis}</div>`:''}${_card}</div>
   </details>`;
 }
 const _pedSortFn=(a,b)=>{const o={pendiente:0,poco_stock:1,suficiente:2};return(o[a.estado||'pendiente']-o[b.estado||'pendiente'])||((b.cantidad||1)-(a.cantidad||1))||((a.producto||'').localeCompare(b.producto||'','es',{sensitivity:'base'}));};
