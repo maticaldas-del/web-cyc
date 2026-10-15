@@ -558,6 +558,8 @@ el precio de un candidato distinto con código parecido (se compara también por
   botones se abren tocando el producto (`cajaToggleDet`, recordado en `localStorage` `cycCajaAb`). Si hay un aviso importante
   escondido (falta crear la publicación, sin variante, sin publicar) el renglón cerrado dice "⚠️ ver detalle". Qué chequear: que
   ningún aviso que frena la caja quede escondido sin la marca.
+- (v23.54) Lo que no tiene nada para mandar (en la cuenta elegida) y no está cargado en la caja va abajo, en "Sin recomendación
+  para mandar (N)", cerrado (`localStorage` `cycCajaSinRec`). Qué chequear: que algo cargado en la caja nunca quede escondido.
 
 - **Etiqueta de promo en el celu (13/10/2026, v23.35).** Se salía de la tarjeta por `white-space:nowrap`. En ≤640px `.vp-promo` baja de renglón. "discount" ahora dice "descuento". Chequear: ninguna etiqueta o chip de Ventas con `nowrap` y texto largo en el celu.
 

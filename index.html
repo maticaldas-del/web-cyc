@@ -2615,7 +2615,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.53';
+const APP_VERSION='23.54';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2626,6 +2626,7 @@ const APP_VERSION='23.53';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.54',f:'15/10/2026',h:'15:20',c:[{n:1,t:'📦 Armar caja: arriba sólo lo que hay que mandar (y lo que ya cargaste en la caja). Lo que no tiene recomendación va abajo, en el desplegable "Sin recomendación para mandar".'}]},
   {v:'23.53',f:'15/10/2026',h:'15:05',c:[{n:1,t:'📋 Pedidos (Bs As, Paraguay y Paulvic): el "Hola Tito" ya no está a la vista, sale tocando el 🧠. Al abrir un producto con colores se ven sólo los colores, cada uno con su 🧠; el resto de los datos va en "más datos".'}]},
   {v:'23.52',f:'15/10/2026',h:'14:45',c:[{n:1,t:'📦 Armar caja más simple: cada producto muestra sólo nombre, variante, cuántas tenés, cuántas mandar por cuenta y el código de la etiqueta. Todo lo demás (ritmo, 🧠, avisos, botones) se abre tocando el producto.'}]},
   {v:'23.51',f:'15/10/2026',h:'14:30',c:[{n:2,t:'📊 Métricas: todos los gastos del mes van al día 1 (junto con el retiro), aunque se hayan pagado el 15. Así el gráfico muestra una sola barra de gastos por mes. El total del mes no cambia y en Gastos cada uno sigue con su fecha real.'}]},
@@ -6368,7 +6369,7 @@ function renderOfiCaja(){
     cont.innerHTML=cartel+`<div class="empty-msg">Ningún producto de los ${vis.length} de esta lista dice "${_q}".</div>`+_noRepoPie()+_repoExtraPie();
     return;
   }
-  cont.innerHTML=cartel+verLista.map(f=>{
+  const _fila=f=>{
     const sug=ofiFiltroCuenta?f.sug.filter(s=>s.cuenta===ofiFiltroCuenta):f.sug;
     const lineas=sug.map(s=>{
       const dias=s.dias==null?'no vendió':(s.dias>=999?'no vende':Math.round(s.dias)+' días de stock');
@@ -6477,7 +6478,19 @@ function renderOfiCaja(){
       ${_cerNotaVisHTML(_cerNotaCtx('caja',f.p.id,ofiFiltroCuenta&&ofiFiltroCuenta!=='todas'?ofiFiltroCuenta:'',f.variante||''),'caja-vis')}
       ${lineas}${pie}</div>`:''}
     </div>`;
-  }).join('')+_noRepoPie()+_repoExtraPie();
+  };
+  // LO QUE NO TIENE RECOMENDACIÓN, EN UN DESPLEGABLE (15/10/2026, pedido suyo: "los que no tengan recomendación para
+  // mandar, que estén en un desplegable"). Arriba quedan los que tienen algo para mandar (en la cuenta elegida) y los que ya
+  // tienen unidades cargadas en la caja; el resto va abajo, cerrado, con cuántos son. Abierto/cerrado se recuerda.
+  const _conRec=f=>(ofiFiltroCuenta?f.sug.filter(s=>s.cuenta===ofiFiltroCuenta):f.sug).some(s=>s.mandar>0)
+    ||(armando&&(cajaAct[_ck(f.p.id,f.variante)]||0)>0);
+  const _arriba=verLista.filter(_conRec), _abajo=verLista.filter(f=>!_conRec(f));
+  let _abOpen=false;try{_abOpen=localStorage.getItem('cycCajaSinRec')==='1'}catch{}
+  cont.innerHTML=cartel+(_arriba.length?_arriba.map(_fila).join(''):'<div class="empty-msg">Nada recomendado para mandar.</div>')
+    +(_abajo.length?`<details style="margin-top:6px"${_abOpen?' open':''} ontoggle="try{localStorage.setItem('cycCajaSinRec',this.open?'1':'0')}catch{}">
+      <summary style="cursor:pointer;font-size:.78rem;color:var(--muted);padding:8px 4px">Sin recomendación para mandar (${_abajo.length}) ▾</summary>
+      ${_abajo.map(_fila).join('')}</details>`:'')
+    +_noRepoPie()+_repoExtraPie();
 }
 // Qué renglones de Armar caja están abiertos (15/10/2026). Se recuerda en el teléfono; si el guardado falla, igual anda.
 const _cajaAbiertos=new Set((()=>{try{return JSON.parse(localStorage.getItem('cycCajaAb')||'[]')}catch{return []}})());
