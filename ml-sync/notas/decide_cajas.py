@@ -4,7 +4,8 @@
 # más las marcadas `pasara`; la misma regla que Armar caja y `cajasnotas`, revisión 9 del 13/10/2026). Si puede ir a más
 # de una, no adivino: va a la lista "decidir a mano". Por color: cubrir 20 días (REPO_DIAS_COBERTURA) con el ritmo de
 # 30 d por día CON stock (o 60 d si vendió poco, o 180 d si está agotado) menos Full y camino; si está en cero y vende,
-# mínimo 4; nunca más de lo que hay en la oficina. Paulvic: todo a Adriana menos Persea (Luciana). Remates no cuentan.
+# mínimo 4; nunca más de lo que hay en la oficina. Nuevo (nunca vendió, nada en Full): 4. Nada pasa los 90 días
+# de venta (tope para lo lento: Full cobra a los 120). 15/10/2026. Paulvic: todo a Adriana menos Persea (Luciana). Remates no cuentan.
 import re,sys,math
 T=37  # 30 días de venta + 7 de viaje (regla suya del 14/10/2026)
 T_LARGO=60  # se estira a 60 días sólo en lo que vende parejo y no tiene prueba de precio abierta (eligió la a, 14/10/2026)
@@ -30,10 +31,19 @@ def r_de(v30,v60,v180,tiene,dcs=30):
     if v180>=4 and tiene==0: return v180/180,f"agotado, vendía {v180} en 180 d"
     if v30>0: return v30/d,f"vendió {v30} en 30 d"
     return 0,"no vende"
+PISO_CERO=4     # cuenta en cero que vende: mínimo para no quedar sin vender
+TOPE_LENTO=90   # lo que se manda nunca pasa los 90 días de venta (Full cobra a los 120 en lo chico). Eligió la a, 15/10/2026
 def calc(v30,v60,v180,full,cam,casa,dcs=30,dias=T):
     t=full+cam; r,b=r_de(v30,v60,v180,t,dcs)
+    # NUEVO (nunca vendió en 180 d y no hay nada en Full ni en camino): no se sabe cuánto vende, va el mínimo
+    # para que pueda arrancar. Antes daba "no vende" y no salía nada (15/10/2026, eligió la a).
+    if v30==v60==v180==0 and t==0: return max(0,min(PISO_CERO,casa)),0,'nuevo: nunca vendió, va el mínimo para arrancar'
     q=math.ceil(r*dias-t-0.25) if r*dias>t else 0
-    if t==0 and r>0: q=max(q,4)
+    if t==0 and r>0: q=max(q,PISO_CERO)
+    if r>0:
+        tope=math.floor(r*TOPE_LENTO-t)
+        if q>0 and q>max(tope,0):
+            q=max(tope,1 if t==0 else 0); b+=f' · tope {TOPE_LENTO} días (vende lento)'
     return max(0,min(q,casa)),r,b
 L=[re.sub(r'^\d{4}-\d\d-\d\dT[\d:.]+Z ?','',l) for l in open(sys.argv[1]).read().split('\n')]
 if any('NO LEÍ' in l for l in L):

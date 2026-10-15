@@ -928,3 +928,6 @@ Se sacó el renglón final. "Por qué cambió el precio" también toma el últim
 - **(etapa 3 · 14/10/2026) Cajas a 60 días en lo parejo:** `decide_cajas.py` `dias_de`/`parejo`, lista `notas/sin_estirar.txt`. Chequear: que la lista siga al día con las pruebas abiertas de `techo.md`, que el criterio de "parejo" no estire algo que se está frenando, y que el cupo de la cuenta no se pase.
 
 - **15/10/2026 · códigos de Nissei con letras (Ferso: `FE00633`).** `_pyDg` los guarda enteros en mayúscula y `_pyCodIg` los empareja sólo EXACTOS (antes quedaban en sus dígitos y podían pegarse a otro código que termine igual). `candprecio` usa la misma función. Chequear: un código con letras nunca matchea por el final.
+
+- **Cajas: tope 90 días y lo nuevo sale solo** (`decide_cajas.py`, `TOPE_LENTO`, `PISO_CERO`, 15/10/2026). Chequear que el
+  tope no pise el mínimo de 1 de una cuenta en cero que vende, y que "nuevo" sea sólo v30=v60=v180=0 con Full+camino en 0.

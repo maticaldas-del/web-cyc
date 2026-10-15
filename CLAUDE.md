@@ -821,6 +821,10 @@ meses de stock en productos pequeños (o sea todos menos los tenders)"*. Armar c
 producto vende parejo (4+ en 30 d, 8+ en 60 d, stock 28+ días y los dos meses parecidos: aproxima "vendió todas las semanas")
 **y** no tiene una prueba de precio abierta (`ml-sync/notas/sin_estirar.txt`, un pedazo de nombre por renglón: sacarlo cuando
 la prueba se cierra). Todo lo demás, 37. El cupo de cada cuenta lo sigue frenando el botón del cupo de Armar caja.
+**Y NADA PASA LOS 90 DÍAS; LO NUEVO SALE SOLO (15/10/2026, eligió la a):** `decide_cajas.py` limita lo que se manda a
+90 días de venta (`TOPE_LENTO`; antes 1 venta/mes con el mínimo de 4 daba 120 justos: 1/mes → 3, agotado que vendía 4 en
+180 d → 2) y un producto NUEVO (nunca vendió en 180 d, nada en Full ni camino) recibe el mínimo de 4 (`PISO_CERO`); antes
+daba "no vende" y no salía. Medido ese día: de 43 renglones a mandar, ninguno pasaba los 90 días.
 
 ## 📋 LA LISTA ÚNICA DEL CEREBRO: `ml-sync/CEREBRO.md` (13/10/2026, pedido suyo)
 
