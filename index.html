@@ -2062,6 +2062,7 @@ function startApp(){
     state.pyArmado=d.py_armado||{};          // unidades de PROBADOS cargadas en el pedido del momento (03/10/2026)       // 'el mayorista no tenía esto hoy' (ver la canasta de US$1.000)
     state.candidatos=d.candidatos_py||{};     // 'Para probar': productos que todavía no vendemos
     state.compraspy=d.compraspy||{};          // los pedidos a Paraguay ya hechos: en camino y llegados
+    state.reponer=d.reponer||{};              // cuánto tarda en volver a haber cada producto (lo lee el robot en `escasez`)
     state.pedidospv=d.pedidospv||{};          // los pedidos al Paulvic en camino (06/10/2026, los carga el robot con `pvped`)
     _limpiarEnCamino(); // borra los "en camino" que hayan quedado marcados (la función ya no existe)
     state.proveedores=d.proveedores?Object.values(d.proveedores).sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{sensitivity:'base'})).map(pv=>({...pv,condiciones:pv.condiciones?Object.values(pv.condiciones).sort((a,b)=>(a.minUSD||0)-(b.minUSD||0)):[]})):[];
@@ -2618,7 +2619,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.68';
+const APP_VERSION='23.69';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2629,6 +2630,7 @@ const APP_VERSION='23.68';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.69',f:'15/10/2026',h:'19:45',c:[{n:3,t:'⏱️ Pedidos: el corte del naranja ya no es fijo (14/17 días). Sale de cuánto tarda de verdad en volver a haber cada producto: si viene en un pedido en camino, lo que le falta; si en Paraguay el precio no da o Nissei no lo tiene, SIN FECHA (cuenta 60 días); si da, 17 días más lo que falte del pedido que viaja. La tarjeta dice el motivo abajo de la barra.'}]},
   {v:'23.68',f:'15/10/2026',h:'18:00',c:[{n:1,t:'📋 Listas: ya no se miden solas cada 3 horas (eso queda sólo para Paraguay). Se mide cada lista una vez al cargarla, y si no da se descarta el proveedor (no se muestra más).'}]},
   {v:'23.67',f:'15/10/2026',h:'17:50',c:[{n:2,t:'📋 Pedidos → Listas: pestaña nueva para las listas de precios de otros proveedores. Se guardan como Paraguay, el robot las mide contra ML cada 3 horas, arriba van las que dan 25%+ (o 🏪 en perfumes) y abajo un buscador para ver cualquiera.'}]},
   {v:'23.66',f:'15/10/2026',h:'17:15',c:[{n:1,t:'📱 En el celular la página ya no se corre de costado. Las tablas anchas siguen deslizándose adentro de su caja.'}]},
@@ -7202,7 +7204,66 @@ const PED_MIN_VENTAS_RITMO=3;
 // se usa REPO_DIAS_DEMORA (8). 7 + 2 + 8 = 17 días: con menos stock que eso, un producto de Paraguay se corta seguro.
 const PY_DIAS_VIAJE=7, PY_DIAS_PREPARAR=2;
 const PED_DIAS_ROJO_PY=PY_DIAS_VIAJE+PY_DIAS_PREPARAR+REPO_DIAS_DEMORA;
-const pedDiasRojoDe=p=>(p&&p.origen==='py'&&!esPedidoPaulvic({prodId:p.id}))?PED_DIAS_ROJO_PY:PED_DIAS_ROJO;
+// ── CUÁNTO TARDA DE VERDAD EN VOLVER A HABER, PRODUCTO POR PRODUCTO (15/10/2026, regla suya) ──────────────
+// Él: *"un producto está en naranja, tiene para 20 días, pero en Paraguay el % no da, o sea que no sabemos cuánto va a
+// tardar (…) quizás esos 20 días en realidad son escasez (…) no son las mismas condiciones el que no tiene stock en
+// Nissei o el precio no da, al que ya está pedido, otro que está en camino hace 3 días o el que tengo en la oficina"*.
+// El corte era fijo (14 Bs As · 17 Paraguay). Ahora sale de la situación de compra de CADA producto:
+//   · viene en un pedido de Paraguay/Paulvic en camino → lo que le falta a ese pedido + 2 de armar + 8 de caja
+//   · Paraguay, el precio da → 17 (7 viaje + 2 + 8) + lo que le falta al pedido que viaja (va uno a la vez)
+//   · Paraguay, el precio no da / Nissei no lo tiene / "no traer más" → SIN FECHA: cuenta REPO_SIN_FECHA_DIAS
+//   · Paraguay sin precio revisado → 17 + espera, avisando que falta revisar
+//   · Bs As y Paulvic sin pedido → 14
+// La oficina y las cajas a Full no entran acá: ya están sumadas en los días que alcanza (ML + camino + oficina).
+// La misma cuenta la escribe syncPedidosAuto en `cyc/reponer/<prodId>` y la lee el robot (`escasez`).
+const REPO_SIN_FECHA_DIAS=60, REPO_ARMAR_CAJA=PY_DIAS_PREPARAR+8;
+function _pedidoViaja(pid){
+  // El pedido en camino más cercano que trae este producto (Paraguay o Paulvic), con los días que le faltan.
+  const dd=f=>{const t=Date.parse(String(f||'')+'T12:00:00-03:00');return t>0?(Date.now()-t)/864e5:null;};
+  let mejor=null;
+  for(const c of Object.values(state.compraspy||{})){
+    if(!c||c.estado!=='camino'||!(c.items||[]).some(it=>it&&it.prodId===pid))continue;
+    const e=dd(c.fecha),falta=Math.max(0,Math.ceil(PY_DIAS_VIAJE-(e==null?0:e)));
+    if(!mejor||falta<mejor.falta)mejor={falta,fecha:c.fecha,de:'Paraguay'};
+  }
+  for(const c of Object.values(state.pedidospv||{})){
+    if(!c||c.estado!=='camino'||c.prodId!==pid)continue;
+    const e=dd(c.fecha),falta=Math.max(0,Math.ceil(7-(e==null?0:e)));
+    if(!mejor||falta<mejor.falta)mejor={falta,fecha:c.fecha,de:'Paulvic'};
+  }
+  return mejor;
+}
+function _pyPedidoViajandoFalta(){
+  // Paraguay va de a un pedido: si hay uno viajando, el próximo recién sale cuando llegue ése.
+  let f=null;
+  for(const c of Object.values(state.compraspy||{})){
+    if(!c||c.estado!=='camino')continue;
+    const t=Date.parse(String(c.fecha||'')+'T12:00:00-03:00');const e=t>0?(Date.now()-t)/864e5:0;
+    const x=Math.max(0,Math.ceil(PY_DIAS_VIAJE-e));if(f==null||x<f)f=x;
+  }
+  return f||0;
+}
+let _repoMemo={},_repoMemoTs=0;
+function reponerDe(p){
+  if(!p)return{d:PED_DIAS_ROJO,txt:'sin ficha'};
+  if(Date.now()-_repoMemoTs>5000){_repoMemo={};_repoMemoTs=Date.now();}
+  return _repoMemo[p.id]||(_repoMemo[p.id]=_reponerCalc(p));
+}
+function _reponerCalc(p){
+  const dm=s=>String(s||'').split('-').reverse().slice(0,2).join('/');
+  const v=_pedidoViaja(p.id);
+  if(v)return{d:v.falta+REPO_ARMAR_CAJA,txt:`viene en el pedido de ${v.de} del ${dm(v.fecha)} (~${v.falta} d) + ${REPO_ARMAR_CAJA} d de caja a Full`};
+  if(noTraerDe(p.id))return{d:REPO_SIN_FECHA_DIAS,inf:true,txt:'marcado "no traer más": no se repone'};
+  const py=p.origen==='py'&&!esPedidoPaulvic({prodId:p.id});
+  if(!py)return{d:PED_DIAS_ROJO,txt:esPedidoPaulvic({prodId:p.id})?'Paulvic: ~1 semana + caja':'Bs As: ~1 semana + caja'};
+  if((state.pySinStock||{})[p.id])return{d:REPO_SIN_FECHA_DIAS,inf:true,txt:'Nissei no lo tiene: sin fecha'};
+  const esp=_pyPedidoViajandoFalta(),espT=esp>0?` + ${esp} d hasta que llegue el pedido que viaja`:'';
+  const ver=pyProbVeredicto({prodId:p.id,producto:p.name});
+  if(ver.k==='noda')return{d:REPO_SIN_FECHA_DIAS,inf:true,txt:'el precio de Paraguay no da el %: sin fecha'};
+  if(ver.k==='notiene')return{d:REPO_SIN_FECHA_DIAS,inf:true,txt:'Nissei no lo tiene: sin fecha'};
+  return{d:PED_DIAS_ROJO_PY+esp,dudoso:ver.k!=='da',txt:`Paraguay ${PED_DIAS_ROJO_PY} d (viaje, armar, caja)${espT}${ver.k!=='da'?' · ⚠ falta revisar el precio en Nissei':''}`};
+}
+const pedDiasRojoDe=p=>reponerDe(p).d;
 let _pedRojoCur=null;   // el umbral del producto que se está dibujando (lo usa el semáforo de cada color)
 // EL NÚMERO VIVE EN LA BASE, NO ACÁ (16/09/2026). El probe `porquepedido` tenía su propia copia
 // (`TARGET_DAYS = 30`) y al bajar el panel a 20 quedaron diciendo cosas distintas del MISMO
@@ -11513,10 +11574,10 @@ function _pedFiltrar(peds){return _PED_SEM_FILTROS.includes(pedidoFilter)?peds.f
 // (la vista que junta los dos) el rótulo no inventa un número (etapa 6, 14/10/2026).
 function _pedSemCount(peds,dias){
   const c={rojo:0,naranja:0,amarillo:0};peds.forEach(p=>c[_pedSem(p)]++);
-  const d=dias>0?dias+' días':'el corte';
+  const d=dias>0?dias+' días':'lo que tarda reponer';
   return `<div class="pcount"><strong style="color:var(--red)">${c.rojo}</strong>🔴 Sin stock</div>
-      <div class="pcount"><strong style="color:#f97316">${c.naranja}</strong>🟠 ≤${d}</div>
-      <div class="pcount"><strong style="color:#ca8a04">${c.amarillo}</strong>🟡 +${d}</div>`;
+      <div class="pcount"><strong style="color:#f97316">${c.naranja}</strong>🟠 ${dias>0?'≤'+d:'se corta antes de reponer'}</div>
+      <div class="pcount"><strong style="color:#ca8a04">${c.amarillo}</strong>🟡 ${dias>0?'+'+d:'alcanza'}</div>`;
 }
 function setPedidoFilter(f,btn){
   pedidoFilter=f;
@@ -12432,6 +12493,9 @@ async function syncPedidosAuto(){
   if(currentPage==='pedidos')renderPedidos();
   updatePedidosCosto();
   // Persistir TODO en una sola escritura → un solo eco del listener (no redibuja de a uno).
+  // Lo que tarda en volver a haber cada producto, para el robot (`escasez`): sólo lo que cambió.
+  try{for(const pr of (state.products||[])){if(!pr||!pr.id)continue;const rp=reponerDe(pr),ant=(state.reponer||{})[pr.id]||{};
+    if(ant.d!==rp.d||!!ant.inf!==!!rp.inf||ant.txt!==rp.txt){const o={d:rp.d,inf:!!rp.inf,txt:rp.txt,ts:Date.now()};updates['reponer/'+pr.id]=o;(state.reponer=state.reponer||{})[pr.id]=o;}}}catch(e){console.warn('reponer',e);}
   if(Object.keys(updates).length)await db.ref('cyc').update(updates);
   // Foto diaria del stock: guarda el riesgo total y la ganancia 30d de hoy, para que los meses cerrados
   // muestren en el puntaje cómo estaba el stock DE VERDAD (y no un valor neutro inventado).
@@ -16533,7 +16597,7 @@ function pedTanqueHTML(p){
   const ml=Math.max(0,parseInt(p.cML)||0),cam=Math.max(0,parseInt(p.cCamino)||0),casa=Math.max(0,parseInt(p.cCasa)||0);
   const comp=Math.max(0,parseInt(p.cClaude&&p.cClaude.u!=null?p.cClaude.u:p.cantidad)||0);
   const dMl=ml/v,dCam=cam/v,dCasa=casa/v,dComp=comp/v;
-  const _pr=(state.products||[]).find(x=>x.id===p.prodId);const corte=pedDiasRojoDe(_pr);
+  const _pr=(state.products||[]).find(x=>x.id===p.prodId);const _rp=reponerDe(_pr),corte=_rp.d;
   const tot=dMl+dCam+dCasa;
   const escala=Math.max(30,corte*1.6,Math.min(120,tot+dComp));
   const w=d=>Math.max(0,Math.min(100,d/escala*100));
@@ -16552,7 +16616,7 @@ function pedTanqueHTML(p){
   return `<div class="ped-tanque" title="Días que cubre cada lugar al ritmo de ${fmtN(Math.round(v*30))} por mes. La raya roja es el corte: lo que tarda reponer (${corte} días).">
     <div class="tq-bar">${barra}<span class="tq-corte" style="left:${w(corte).toFixed(1)}%"></span></div>
     <div class="tq-leg">${leg}</div>
-    <div class="tq-msg">${msg} · corte ${corte} d${colMin}</div></div>`;
+    <div class="tq-msg">${msg} · corte ${_rp.inf?'sin fecha (cuento '+corte+' d)':corte+' d'}${colMin}</div><div class="tq-msg" style="color:${_rp.inf?'var(--red)':'var(--muted)'}">⏱️ reponer: ${_rp.txt}</div></div>`;
 }
 // ── EL CHIP DE CADA VARIANTE: QUÉ COMPRAR Y DÓNDE ESTÁ LO QUE YA TENÉS ─────────────
 // Pedido suyo del 14/09/2026. Los tres lugares van SIEMPRE, aunque sean cero: un chip sin el
@@ -17280,7 +17344,7 @@ function renderPedidos(){
     peds.forEach(p=>cnt[p.estado||'pendiente']=(cnt[p.estado||'pendiente']||0)+1);
     const cntEl=document.getElementById('pedidos-paulvic-count');
     if(cntEl)cntEl.innerHTML=`
-      ${_pedSemCount(peds,PED_DIAS_ROJO)}
+      ${_pedSemCount(peds,0)}
       <div class="pcount"><strong>${peds.length}</strong>Total</div>${_pedCostoChip(peds)}`;
     if(pedidoFilter==='todos'){
       peds=peds.filter(p=>(p.estado||'pendiente')!=='suficiente');
@@ -17312,7 +17376,7 @@ function renderPedidos(){
   const cnt={pendiente:0,poco_stock:0,suficiente:0};peds.forEach(p=>{const e=p.estado==='en_camino'?'pendiente':(p.estado||'pendiente');cnt[e]=(cnt[e]||0)+1;});
   const cntEl=document.getElementById(countId);
   if(cntEl)cntEl.innerHTML=`
-    ${_pedSemCount(peds,isBsas?PED_DIAS_ROJO:PED_DIAS_ROJO_PY)}
+    ${_pedSemCount(peds,0)}
     <div class="pcount"><strong>${peds.length}</strong>Total</div>${_pedCostoChip(peds)}`;
   if(pedidoFilter!=='todos')peds=_pedFiltrar(peds);
   const searchId=isBsas?'ped-search':'ped-py-search';
