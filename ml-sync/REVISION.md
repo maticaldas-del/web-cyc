@@ -710,6 +710,11 @@ versiones nuevas. Restaurado en v23.21 (`cyc-v601`). **Antes de cada commit: `wc
  · Qué chequear: que en las vueltas no salgan avisos de cosas ya hechas (subas, bajas, activadas), que sin decisiones no
    salga nada, y que el texto no lleve datos de compradores (el log es público).
 
+### Aviso de venta al teléfono: sólo desde $10.000 de ganancia (15/10/2026, v23.46, regla suya)
+Qué: `avisarVentasNuevas` (sync.mjs) filtra con `AVISO_VENTA_GAN_MIN` = 10000 la ganancia de cada venta (misma cuenta
+`armarCostoWeb` que el panel). Las de menos o sin costo se anotan en `mlapi/avisoventa` sin avisar. Qué chequear: que una
+venta grande avise y una chica no; que el total del día del aviso siga contando todas; un carrito se mide por renglón.
+
 ### Ventas con vida: temblor y fuego sólo desde $10.000 de ganancia (15/10/2026, v23.45, regla suya)
 Él: *"dejar las reglas idénticas, excepto que la vibración y fuego permita activarse a partir de $10.000 de ganancia"*.
 `vivaVenta` (index.html): `VIVA_GAN_TIEMBLA` = 10000. Abajo de eso no hay fuego (`fi`=0) ni `tiembla` (cae a flota rápido);

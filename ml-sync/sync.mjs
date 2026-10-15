@@ -7339,6 +7339,7 @@ async function tgFlushCola(db) {
 const AVISO_VENTA_VENTANA_MS = 3 * 36e5;
 const AVISO_VENTA_DUERME = [30, 600];   // 00:30 a 10:00 de Argentina, sin avisos de venta (pedido suyo, 15/10/2026)
 const AVISO_VENTA_TELEGRAM = false;   // 15/10/2026: el aviso de cada venta va sólo al teléfono (push), pedido suyo
+const AVISO_VENTA_GAN_MIN = 10000;    // 15/10/2026: sólo avisan las compras que dejan $10.000 o más de ganancia (pedido suyo)
 function _nivelPct(p) {
   if (p == null || !isFinite(p)) return '⚪';
   if (p < 25) return '🔴'; if (p < 45) return '🟢'; if (p < 70) return '🩵';
@@ -7432,8 +7433,18 @@ async function avisarVentasNuevas(db, lista) {
     const div = cw.costo + (v.netoEstimado ? 0 : cw.gest);
     return { g, pct: div > 0 ? g / div * 100 : null };
   };
+  // SÓLO LAS QUE DEJAN $10.000 O MÁS (15/10/2026, él: "quiero que las notificaciones de la web sean todas las
+  // compras que generen 10.000 o más de ganancia"). Una compra = la venta entera (con todas sus unidades). Las que
+  // dejan menos, o no tienen costo cargado, se anotan como vistas sin avisar. El "hoy van" sigue contando todo.
+  const conGan = nuevas.filter((x) => { const r = ganDe(x.v, x.dayKey); return r && r.g >= AVISO_VENTA_GAN_MIN; });
+  if (!conGan.length) {
+    await db.patch('mlapi/avisoventa', anotar);
+    console.log(`Aviso de ventas: ${nuevas.length} nueva(s), ninguna deja ${money(AVISO_VENTA_GAN_MIN)} o más: anoto sin avisar.`);
+    return;
+  }
+  if (conGan.length < nuevas.length) console.log(`Aviso de ventas: ${nuevas.length - conGan.length} con menos de ${money(AVISO_VENTA_GAN_MIN)} de ganancia, no se avisan.`);
   const planos = [];   // el mismo renglón sin HTML, para el aviso del teléfono
-  const renglones = nuevas.sort((a, b) => (a.v.ts || 0) - (b.v.ts || 0)).map((x) => {
+  const renglones = conGan.sort((a, b) => (a.v.ts || 0) - (b.v.ts || 0)).map((x) => {
     const v = x.v, r = ganDe(v, x.dayKey);
     planos.push(`${v.cuenta || '?'} · ${String(v.prod || '?').slice(0, 40)}${v.variante ? ` (${String(v.variante).slice(0, 20)})` : ''}${(v.qty || 1) > 1 ? ' x' + v.qty : ''} · ${money(Number(v.total) || 0)}`
       + (r ? ` · ${v.netoEstimado ? '≈' : ''}gana ${money(r.g)} ${_nivelPct(r.pct)}${r.pct == null ? '' : ' ' + Math.round(r.pct) + '%'}` : ' · sin costo'));
@@ -7449,7 +7460,7 @@ async function avisarVentasNuevas(db, lista) {
     n++; fact += Number(v.total) || 0;
     const r = ganDe(v, dk); if (r) gan += r.g;
   }
-  const msg = `${nuevas.length === 1 ? '🔔 <b>Venta nueva</b>' : `🔔 <b>${nuevas.length} ventas nuevas</b>`}\n\n`
+  const msg = `${conGan.length === 1 ? '🔔 <b>Venta nueva</b>' : `🔔 <b>${conGan.length} ventas nuevas</b>`}\n\n`
     + renglones.join('\n\n')
     + `\n\n📊 Hoy van <b>${n}</b> ventas · ${money(fact)} · ganancia <b>${money(gan)}</b>`;
   // POR TELEGRAM YA NO (15/10/2026, él: "da de baja el aviso de venta por telegram, ya lo activé por la web").
@@ -7458,13 +7469,13 @@ async function avisarVentasNuevas(db, lista) {
   let pushOk = 0;
   try {
     pushOk = await enviarPush(db, {
-      title: nuevas.length === 1 ? '🔔 Venta nueva' : `🔔 ${nuevas.length} ventas nuevas`,
+      title: conGan.length === 1 ? '🔔 Venta nueva' : `🔔 ${conGan.length} ventas nuevas`,
       body: planos.join('\n') + `\n📊 Hoy: ${n} ventas · ganancia ${money(gan)}`,
-      tag: 'venta-' + kid(nuevas[nuevas.length - 1].v.id), url: './#ventaprod',
+      tag: 'venta-' + kid(conGan[conGan.length - 1].v.id), url: './#ventaprod',
     });
   } catch (e) { console.log('Aviso al teléfono: ' + e.message); }
   const ok = tgOk || pushOk > 0;   // con que haya salido por uno de los dos, no se repite
-  if (ok) { await db.patch('mlapi/avisoventa', anotar); console.log(`Aviso de ventas: mandé ${nuevas.length} (Telegram ${tgOk ? 'sí' : 'no'} · teléfonos ${pushOk}).`); }
+  if (ok) { await db.patch('mlapi/avisoventa', anotar); console.log(`Aviso de ventas: mandé ${conGan.length} de ${nuevas.length} (Telegram ${tgOk ? 'sí' : 'no'} · teléfonos ${pushOk}).`); }
   else console.log(`Aviso de ventas: no salió el mensaje (${nuevas.length}), lo reintento la vuelta que viene.`);
 }
 
