@@ -2614,7 +2614,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.59';
+const APP_VERSION='23.60';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2625,6 +2625,7 @@ const APP_VERSION='23.59';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.60',f:'15/10/2026',h:'17:40',c:[{n:1,t:'🇵🇾 Pedidos → Paraguay más simple: abre con los probados arriba y los nuevos abajo. En el medio queda un solo renglón (🆕 Nuevos · cuántos dan 25%+). Se sacaron el texto de explicación, "cómo funciona esto", la barra del pedido de nuevos (está en 🧾 Pedido) y la caja grande de cuántos dan.'}]},
   {v:'23.59',f:'15/10/2026',h:'17:20',c:[{n:1,t:'🇵🇾 Pedidos → Probados se ve igual que Nuevos: foto, nombre, código, precio de Paraguay puesto y en pesos, lo que vendiste y el % grande. Los colores, el máximo y la casilla de pedir se abren en "detalle".'}]},
   {v:'23.58',f:'15/10/2026',h:'17:00',c:[{n:1,t:'⚙️ Ajustes: se sacó el botón "Subir precios automático" (el robot ya no toca precios desde el 09/10, los decido yo). La tarjeta ahora se llama "Lo que hace solo el robot de ML" y deja sacar descuentos y cargar el stock.'}]},
   {v:'23.57',f:'15/10/2026',h:'16:40',c:[{n:1,t:'⚙️ La revisión del panel, la versión y los últimos cambios se mudaron de Inicio a Ajustes. Ahí cada etapa de la revisión se abre: qué mira, cuándo fue la última, qué pasó en cada una y cuándo toca.'},{n:1,t:'🔴 Si alguna cuenta pasaría el tope de H, la tarjeta de Facturas de Inicio lo avisa en rojo.'},{n:2,t:'🏷️ Rotación: si una publicación está en una promo que puse yo, abajo del % dice a cuánto se vende de verdad y el % a ese precio (el de arriba es al precio tachado).'}]},
@@ -12550,7 +12551,7 @@ function pySetModo(m){pyModo=m;renderPedidos();}
 // si vende). Mezclados en una sola pantalla larga, armar uno obligaba a pasar por el otro.
 // NO se esconde nada que decida: lo que cambia es CUÁL de los dos pedidos estás armando, y el
 // botón dice siempre en cuál estás.
-let pyVista='probados';
+let pyVista='ambos';
 // PROBADOS Y NUEVOS SE PUEDEN PRENDER JUNTOS (03/10/2026, él: "clickear y sumar los dos juntos o clickear uno solo"):
 // tocar uno lo suma o lo saca; nunca quedan los dos apagados. 🧾 Pedido sigue siendo una vista aparte.
 function pySetVista(v){
@@ -14248,17 +14249,12 @@ function candidatosHTML(){
   const vivos=vivos0.filter(c=>!candEnPedido(c)&&_pyRubroOk(c.nombre));
   const fuera=todos.length-vivos0.length;
   const chip=(txt,col,tit)=>`<span class="pi-var-toggle" style="cursor:default;background:color-mix(in srgb,${col} 12%,transparent);color:${col};border-color:color-mix(in srgb,${col} 35%,transparent)" title="${String(tit||'').replace(/"/g,'&quot;')}">${txt}</span>`;
-  const cab=`<div style="margin:22px 0 10px;padding-top:16px;border-top:1px solid var(--border)">
-    <div style="font-size:.82rem;font-weight:700">🆕 Para probar <span style="font-weight:400;color:var(--muted);font-size:.9em">· productos que todavía no vendés</span></div>
-    <div style="font-size:.62rem;color:var(--muted);margin-top:3px">
-      ${vivos.length} para evaluar${enPed?` · <b style="color:var(--green)">${enPed} ya está${enPed===1?'':'n'} en el pedido de arriba</b>`:''}${enVia?` · <b style="color:#38bdf8">${enVia} viajando</b>`:''}${fuera?` · ${fuera} afuera (descartados, con ficha o vencidos)`:''}
-      <details style="display:inline"><summary style="display:inline;cursor:pointer;color:#60a5fa">· cómo funciona esto</summary>
-        <div style="margin-top:6px;line-height:1.6;font-size:.98em">
-          Van <b>aparte del pedido</b> a propósito: son para evaluar, no para comprar de una. Los trae el chat de Paraguay desde comprasparaguay; el robot les pregunta a ML a cuánto se venden y hace la cuenta.
-          <br>${CAND_NOTA_CAJA}
-        </div>
-      </details>
-    </div>
+  // SIMPLE (15/10/2026, él: "no quiero tantas letras ahi en el medio, ademas nunca clickeo ahi"): un solo renglón.
+  // Se fueron "cómo funciona esto", la barra del pedido de nuevos (vive en 🧾 Pedido) y la caja de cuántos dan.
+  const cab=(nDan)=>`<div style="margin:22px 0 8px;padding-top:14px;border-top:2px solid var(--border2);display:flex;gap:10px;align-items:baseline;flex-wrap:wrap">
+    <span style="font-size:.85rem;font-weight:700">🆕 Nuevos</span>
+    ${nDan!=null?`<span style="font-size:.74rem;color:var(--green);font-weight:700">${nDan} dan ${CAND_PISO_TXT()}+</span>`:''}
+    ${enPed?`<span style="font-size:.66rem;color:var(--muted)">· ${enPed} en el pedido</span>`:''}${enVia?`<span style="font-size:.66rem;color:var(--muted)">· ${enVia} viajando</span>`:''}
   </div>`;
   if(!vivos.length){
     // Si no queda ninguna tarjeta PERO hay algo cargado en el pedido, el armado se dibuja igual:
@@ -14267,7 +14263,7 @@ function candidatosHTML(){
       ? `<div class="empty-msg" style="font-size:.68rem;line-height:1.6">No queda ninguno para evaluar: ${enPed?`<b>${enPed}</b> está${enPed===1?'':'n'} en el pedido de arriba`:''}${enPed&&enVia?' y ':''}${enVia?`<b>${enVia}</b> ya ${enVia===1?'viaja':'viajan'}`:''}.</div>`
       : `<div class="empty-msg" style="font-size:.68rem;line-height:1.6">Todavía no hay ninguno.<br>
       El chat de Paraguay los carga cuando encuentra algo en comprasparaguay <b>que Nissei ofrezca</b> (ahí salen juntos el código, el precio y que hay stock), cueste menos de US$ 250 puesto y no sea de una marca que ML frena.</div>`;
-    return cab+pedNuevosResumenHTML()+vacio+simPYHTML();
+    return cab(null)+vacio+simPYHTML();
   }
   // El que más margen deja, primero. Los que todavía no tienen la cuenta hecha van al final:
   // no se pueden comparar contra los medidos y ponerlos arriba sería invitar a decidir sin número.
@@ -14406,17 +14402,11 @@ function candidatosHTML(){
   // CUÁNTOS DAN (02/10/2026, pedido suyo: *"antes de arrancar la lista poné cuántos candidatos con % positivo en
   // verde hay, así voy viendo cuando sube productos nuevos"*). Verde = medido y en el piso o arriba.
   const _verdes=_arriba.filter(c=>c.margen!=null&&isFinite(c.margen)).length, _sinMed=_arriba.length-_verdes;
-  const _cuenta=`<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:baseline;margin:6px 0 10px;padding:10px 12px;border-radius:10px;background:color-mix(in srgb,var(--green) 10%,transparent);border:1px solid color-mix(in srgb,var(--green) 35%,transparent)">
-    <span style="font-size:1.5rem;font-weight:800;color:var(--green)">${_verdes}</span>
-    <span style="font-size:.78rem;color:var(--green);font-weight:600">dan ${CAND_PISO_TXT()} o más</span>
-    ${_sinAnalizar.length?`<span style="font-size:.7rem;color:var(--muted)">· ⏳ ${_sinAnalizar.length} sin analizar o incompletos (abajo)</span>`:''}
-    ${_rojos.length?`<span style="font-size:.7rem;color:var(--red)">· 🔻 ${_rojos.length} no llega${_rojos.length===1?'':'n'}</span>`:''}
-  </div>`;
   const _ob=(k,t)=>`<button class="btn" style="font-size:.66rem;padding:4px 11px;${_candOrden===k?'background:var(--blue);color:#fff;font-weight:700':''}" onclick="candOrdenar('${k}')">${t}</button>`;
-  const _orden=`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:0 0 10px"><span style="font-size:.66rem;color:var(--muted)">Ordenar de mayor a menor:</span>${_ob('pct','% de ganancia')}${_ob('vend','🛒 más vendidos')}${_ob('gan','$ por unidad')}${_ob('usd','$ por dólar invertido')}${_ob('barato','más barato')}</div>`;
+  const _orden=`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:0 0 10px"><span style="font-size:.66rem;color:var(--muted)">Ordenar:</span>${_ob('pct','% de ganancia')}${_ob('vend','🛒 más vendidos')}${_ob('gan','$ por unidad')}${_ob('usd','$ por dólar invertido')}${_ob('barato','más barato')}</div>`;
   // 03/10/2026, él: el simulador y el historial "ahí no se usan y molestan": el simulador va al final y el
   // historial de pedidos vive en la pestaña 🧾 Pedido.
-  return cab+pedNuevosResumenHTML()+_cuenta+_orden+_arriba.map(_card).join('')
+  return cab(_verdes)+_orden+_arriba.map(_card).join('')
     +(_flojas.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--amber)">🟠 ${_flojas.length} con menos de ${CAND_MIN_VENT} vendidas en ML (o sin el dato) · no se pueden pedir · tocá para verlos</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_flojas.map(_card).join('')}</div></details>`:'')
     +(_rojos.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--red)">🔻 ${_rojos.length} no llega${_rojos.length===1?'':'n'} al ${CAND_PISO_TXT()} · tocá para verlos</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_rojos.map(_card).join('')}</div></details>`:'')
     +(_sinAnalizar.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--muted)">⏳ ${_sinAnalizar.length} sin analizar o incompletos (falta la medición de ML o alguna de las dos fotos) · suben solos cuando estén completos y den · tocá para verlos</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_sinAnalizar.map(_card).join('')}</div></details>`:'')
@@ -17210,7 +17200,7 @@ function renderPedidos(){
       return _pedidoItemHtml(p,{showRiesgo:true,etiqueta:et,verdDet:(v.k==='da'||v.k==='noda')?v.txt:''});};
     const grupo=(t,arr,col)=>arr.length?`<div style="font-size:.76rem;font-weight:700;color:${col};margin:12px 0 6px">${t} (${arr.length})</div>`+arr.map(card).join(''):'';
     const resto=G.noda.length+G.notiene.length+G.sinrev.length;
-    el.innerHTML=`<div style="font-size:.72rem;color:var(--muted);margin:2px 0 8px">✅ Arriba sólo lo que <b style="color:var(--text)">da</b>: Nissei lo tiene, el precio se miró en los últimos ${PY_PROB_FRESCO_DIAS} días y deja ${PY_PROB_PISO}% o más. Lo deja al día Guay, que recorre los probados primero.</div>`
+    el.innerHTML=''
       +(G.da.length?G.da.map(card).join(''):`<div class="empty-msg">Todavía ninguno confirmado: falta que Guay revise los precios de Nissei.</div>`)
       +(resto?`<details style="margin-top:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px"><summary style="cursor:pointer;font-size:.82rem;font-weight:700">⬇️ No da, no hay o falta revisar (${resto})</summary>
         ${grupo('❔ Falta revisar el precio en Nissei',G.sinrev,'var(--amber)')}${grupo('🔴 No da el precio',G.noda,'var(--red)')}${grupo('⚪ Nissei no lo tiene',G.notiene,'var(--muted)')}</details>`:'');
@@ -17237,7 +17227,7 @@ function renderPedidos(){
       ${_tab('hechos',`🧾 Pedido${(()=>{const n=pyArmadoFilas().length+pedNuevos(candList().filter(candEnArmado).filter(c=>candEnPedido(c)!=='viajando')).filas.length;return n?' ('+n+' cargados)':'';})()}`,'El pedido del momento (probados + nuevos juntos, con el mensaje para Nissei) y abajo los pedidos ya hechos: en camino y llegados.')}
     </div>`+(pyVista!=='hechos'?`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:-4px 0 12px"><span style="font-size:.66rem;color:var(--muted)">Mostrar:</span>${[['todos','Todo'],['perf','🧴 Perfumes, belleza y salud'],['resto','📦 Resto']].map(([v,t])=>`<button class="btn" style="font-size:.64rem;padding:4px 11px;${_pyRubro===v?'background:#7c3aed;color:#fff;border-color:#7c3aed;font-weight:700':''}" onclick="pySetRubro('${v}')">${t}</button>`).join('')}</div>`:'');
     // PROBADOS = IDÉNTICO A BS AS (01/10/2026, pedido suyo): sólo la lista de pedidos, sin canasta ni precios.
-    el.innerHTML=_tabs+(pyVista==='nuevos'?candidatosHTML():pyVista==='ambos'?el.innerHTML+`<div style="font-size:.8rem;font-weight:700;margin:18px 0 8px;padding-top:10px;border-top:2px solid var(--border2)">🆕 Productos nuevos</div>`+candidatosHTML():pyVista==='hechos'?pedidoMomentoHTML()+`<div style="font-size:.8rem;font-weight:700;margin:6px 0 8px">📦 Pedidos hechos (${pyCompras().length})</div>`+pyHechosHTML():el.innerHTML);
+    el.innerHTML=_tabs+(pyVista==='nuevos'?candidatosHTML():pyVista==='ambos'?el.innerHTML+candidatosHTML():pyVista==='hechos'?pedidoMomentoHTML()+`<div style="font-size:.8rem;font-weight:700;margin:6px 0 8px">📦 Pedidos hechos (${pyCompras().length})</div>`+pyHechosHTML():el.innerHTML);
   }
 }
 

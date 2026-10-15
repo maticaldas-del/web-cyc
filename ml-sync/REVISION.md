@@ -982,3 +982,8 @@ Se sacó el renglón final. "Por qué cambió el precio" también toma el últim
   tope no pise el mínimo de 1 de una cuenta en cero que vende, y que "nuevo" sea sólo v30=v60=v180=0 con Full+camino en 0.
 
 - **Unidades por nuevo de Paraguay (15/10/2026, v23.50):** `candMaxU` en index.html (lo usan `pedLlenarPlan` y el aviso ámbar de `pedNuevoFilaHTML`). Chequear: barato que vende = 3-4, caro = 1, resto = casilla; que nunca pase el tope del pedido.
+
+### Etapa 7 · 15/10/2026 · v23.60 · Paraguay simple
+Pedidos → Paraguay abre en `pyVista='ambos'` (probados arriba, nuevos abajo). `candidatosHTML` arranca con `cab(nDan)`, un solo
+renglón; se sacaron la línea "Arriba sólo lo que da", "cómo funciona esto", `pedNuevosResumenHTML()` de esa vista (sigue en 🧾 Pedido)
+y la caja `_cuenta`. Chequear: el renglón 🆕 Nuevos muestra el mismo número que antes daba la caja verde.
