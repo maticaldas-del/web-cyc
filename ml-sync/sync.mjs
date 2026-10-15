@@ -8368,26 +8368,26 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
     try {
       // BÚSQUEDA: primero marca + modelo, después el nombre sin el relleno en portugués, después el nombre entero. comprasparaguay
       // escribe "Fone de Ouvido JBL Tune 520BT - Preto" y buscando eso ML trae el 730BT; con "jbl 520bt" trae el correcto.
-      const mods = _rvMod(e.n); const pal = _rvNorm(e.n).split(' ').filter((w) => w.length >= 2 && !RV_VACIAS.has(w) && !PYCAT_RELLENO.has(w));
+      const mods = _rvMod(e.n); const pal = _rvNorm(e.n).split(' ').filter((w) => (w.length >= 2 || /^\d$/.test(w)) && !RV_VACIAS.has(w) && !PYCAT_RELLENO.has(w));
       const qs = [...new Set([mods.length ? [pal[0], ...mods].filter(Boolean).join(' ') : null, pal.slice(0, 7).join(' '), String(e.n).slice(0, 80)].filter((x) => x && x.length >= 3))];
       const vistosB = new Map();
       for (const q of qs) {
-        if (vistosB.size >= 10) break;
+        if (vistosB.size >= 15) break;
         await espera(250);
-        const bus = await mlGet(`/products/search?site_id=MLA&q=${encodeURIComponent(q.slice(0, 80))}&limit=5`, tok);
+        const bus = await mlGet(`/products/search?site_id=MLA&q=${encodeURIComponent(q.slice(0, 80))}&limit=8`, tok);
         for (const r of ((bus && bus.results) || [])) if (r && r.id && !vistosB.has(r.id)) vistosB.set(r.id, r);
       }
       const resB = [...vistosB.values()];
       // Se prueban los que no tienen reparos DUROS (otro modelo, otro tamaño, otro color, edición/pack/lite…). Que falte alguna
       // palabra no frena: el portugués no está en ML. Ese reparo blando queda anotado (`rp`) y lo mira la revisión de fotos.
-      // Si el primero es un catálogo viejo sin vendedores, se prueba el siguiente (hasta 3).
+      // Si el primero es un catálogo viejo sin vendedores, se prueba el siguiente (hasta 5).
       const duros = (rr) => rr.filter((x) => !/^en ML no está/.test(x));
       const okB = resB.map((r) => [r, chequeoMismoProducto(e.n, r.name || r.title)]).filter(([, rr]) => !duros(rr).length);
       if (!okB.length) { upd.sc = 1; upd.mt = resB[0] ? String(resB[0].name || '').slice(0, 120) : ''; upd.m = null; res.sinCat++;
         console.log(`  · sin catálogo exacto · ${e.n.slice(0, 60)}${resB[0] ? ` (lo más parecido: "${upd.mt.slice(0, 60)}" · ${duros(chequeoMismoProducto(e.n, upd.mt)).join(' · ').slice(0, 90)})` : ' (ML no trajo nada)'}`);
         if (aplicar) await db.patch('mlapi/pycat/' + cod, upd); continue; }
       let prod = null, rpBlando = null, ofertas = [], pi = null;
-      for (const [r, rr] of okB.slice(0, 3)) {
+      for (const [r, rr] of okB.slice(0, 5)) {
         let ofs = [];
         try { await espera(250); const it = await mlGet(`/products/${r.id}/items`, tok); ofs = ((it && it.results) || []).filter((o) => !esOfertaDeAfuera(o)); }
         catch (e2) { if (!/404/.test(String(e2.message || e2))) throw e2; ofs = []; }
