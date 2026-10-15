@@ -111,7 +111,7 @@ la historia y el porqué). Si algo de acá choca con CLAUDE.md, manda lo más nu
   cobre almacenamiento (120 días desde que entró). Regla suya del 14/10: *"al no haber más, ¿por qué lo dejamos barato?
   tenemos tiempo para venderlo antes de pagar por stock"*. Recién cerca de esa fecha se piensa bajar.
 - **Gasto nuevo de Paraguay (14/10):** adelantar plata de "a liquidar" de MP para comprar los dólares cuesta (el 14/10, $29.000):
-  va como `otros=` del pedido. Lo que pagó de más el cambista sobre el ticket va en `cambio=`.
+  va como `adelanto=` del pedido (renglón propio, 15/10; antes iba en `otros=` y se mezclaba con el cambista). Lo que pagó de más el cambista sobre el ticket va en `cambio=`.
 
 ## 6 · Plata
 - **El 1º de cada mes cargo el retiro** ($1.800.000 hasta que él diga otra cosa).
@@ -141,9 +141,6 @@ la historia y el porqué). Si algo de acá choca con CLAUDE.md, manda lo más nu
 - Descuentos del 13/10: CONFIRMADOS puestos el 14/10 (vencen 26-27/10), se juzgan desde el 20/10. Descuentos del 14/10 (Asher, Infusor de acero, Chispero, Adaptador universal de Matías, Temporizador, Redmi 5 Lite en promo de ML): ML los aceptó y no se veían al releer, confirmar en la vuelta de las 12:52.
   aceptó pero no se veían al releer. Confirmar en la vuelta de las 12:52 que estén puestos y juzgarlos a los 7-14 días.
 - Tarifa de almacenamiento (`almactarifa`) sigue sin pasarla él.
-- **Reclamos que pagó ML (etapa 6, idea 7, eligió la a):** confirmar con el reporte de liquidación de Mercado Pago que la
-  devolución de esas ventas no salió de nuestra cuenta; si cierra, esas ventas cuentan como lo que fueron y dejan de
-  encarecer el costo (%Dev). Hasta confirmarlo no se toca nada.
 - **Dinero que rinde en MP (idea 11):** lo revisa él en la app de cada cuenta.
 
 ## 🔍 LA LUPA: CADA PUBLICACIÓN, TODOS LOS DÍAS (13/10/2026, pedido suyo)
