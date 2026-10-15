@@ -20923,6 +20923,79 @@ async function main() {
       for (const [k, m] of Object.entries(tally)) console.log(`· ${k}: ${Object.entries(m).sort((a, b) => b[1] - a[1]).map(([v, n]) => v + ' ×' + n).join(' · ')}`);
       return;
     }
+    // BILLING_PROBE=reclamoplata[:días] → ¿LA PLATA DE LOS RECLAMOS QUE CUBRIÓ ML QUEDÓ EN LA CUENTA? (15/10/2026). SOLO LEE.
+    // `reclamocubre` dice que el pago figura "refunded/bpp_refunded": al comprador se le devolvió, pero eso no dice
+    // si ML nos repuso la plata. El reporte de liquidación de MP lo dice: se suman TODAS las filas de cada orden
+    // (venta, devolución, lo que puso el programa de protección) y se compara contra el neto de la venta.
+    // Imprime sólo cantidades, tipos de movimiento y porcentajes: nunca números de orden ni pesos por renglón.
+    if (/^reclamoplata(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const DIAS = parseInt(String(process.env.BILLING_PROBE).split(':')[1]) || 90;
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const desdeK = new Date(Date.now() - DIAS * 864e5 - 3 * 3600e3).toISOString().slice(0, 10).replace(/-/g, '_');
+      const porCta = {};   // cuenta → { orden → {neto, tipo} }
+      for (const [dk, ents] of Object.entries(vp)) {
+        if (dk < desdeK) continue;
+        for (const v of Object.values(ents || {})) {
+          if (!v || !v.cancelada || !['reclamo', 'devolucion', 'perdida'].includes(v.tipoCancelacion)) continue;
+          const m = /^v(\d+)_/.exec(String(v.id || '')); if (!m) continue;
+          const c = String(v.cuenta || '').toLowerCase();
+          const o = (porCta[c] = porCta[c] || {})[m[1]] = (porCta[c] || {})[m[1]] || { neto: 0, tipo: v.tipoCancelacion };
+          o.neto += Number(v.neto) || 0;
+        }
+      }
+      const MP = 'https://api.mercadopago.com';
+      const tot = { ordenes: 0, enReporte: 0, quedo: 0, parte: 0, sefue: 0, fuera: 0, netoVentas: 0, quedoPesos: 0 };
+      const tipos = {};
+      for (const label of labels) {
+        const ords = porCta[label.toLowerCase()] || {}; const ids = Object.keys(ords);
+        if (!ids.length) continue;
+        tot.ordenes += ids.length;
+        const acc = accounts[label]; if (!acc?.refresh_token) { console.log(`── ${label}: sin token`); tot.fuera += ids.length; continue; }
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { console.log(`── ${label}: no renovó el token`); tot.fuera += ids.length; continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const H = { Authorization: `Bearer ${t.access_token}` };
+        let csv = null, rango = '';
+        try {
+          const r = await fetch(`${MP}/v1/account/settlement_report/list`, { headers: H, signal: AbortSignal.timeout(20000) });
+          const arr = await r.json();
+          const u = r.ok && Array.isArray(arr) ? elegirReporte(arr, { minDias: 20 }) : null;
+          if (u) {
+            rango = `${String(u.begin_date || '').slice(0, 10)} → ${String(u.end_date || '').slice(0, 10)}`;
+            const r2 = await fetch(`${MP}/v1/account/settlement_report/${encodeURIComponent(u.file_name)}`, { headers: H, signal: AbortSignal.timeout(30000) });
+            if (r2.ok) csv = await r2.text();
+          }
+        } catch { csv = null; }
+        if (!csv) { console.log(`── ${label}: no pude bajar el reporte`); tot.fuera += ids.length; continue; }
+        const li = csv.split('\n').filter((x) => x.trim());
+        const sep = (li[0] || '').includes(';') ? ';' : ',';
+        const cols = csvPartir(li[0] || '', sep).map((x) => x.replace(/^"|"$/g, '').trim().toUpperCase());
+        const iOrd = cols.indexOf('ORDER_ID'), iReal = cols.indexOf('REAL_AMOUNT'), iTipo = cols.indexOf('TRANSACTION_TYPE');
+        if (iOrd < 0 || iReal < 0) { console.log(`── ${label}: el reporte no trae ORDER_ID/REAL_AMOUNT`); tot.fuera += ids.length; continue; }
+        const suma = {}, filas = {};
+        for (const l of li.slice(1)) {
+          const f = csvPartir(l, sep); const oid = String(f[iOrd] || '').replace(/"/g, '').trim();
+          if (!oid || !ords[oid]) continue;
+          const v = csvNum(f[iReal]); if (v == null) continue;
+          suma[oid] = (suma[oid] || 0) + v; filas[oid] = (filas[oid] || 0) + 1;
+          const tp = (iTipo >= 0 ? f[iTipo] : '?') + (v >= 0 ? ' (+)' : ' (−)');
+          tipos[tp] = (tipos[tp] || 0) + 1;
+        }
+        let q = 0, p = 0, s = 0, fu = 0;
+        for (const oid of ids) {
+          if (!filas[oid]) { fu++; continue; }
+          const n = ords[oid].neto, x = suma[oid];
+          tot.netoVentas += n; tot.quedoPesos += x;
+          if (n > 0 && x >= n * 0.9) q++; else if (x <= Math.max(1, n * 0.1)) s++; else p++;
+        }
+        tot.enReporte += ids.length - fu; tot.quedo += q; tot.parte += p; tot.sefue += s; tot.fuera += fu;
+        console.log(`── ${label} (reporte ${rango}): ${ids.length} con reclamo · quedó la plata ${q} · una parte ${p} · se fue ${s} · fuera del reporte ${fu}`);
+      }
+      console.log(`=== ¿QUEDÓ LA PLATA DE LOS RECLAMOS? (${DIAS} días) ===`);
+      console.log(`${tot.ordenes} órdenes · ${tot.enReporte} en el reporte · quedó ${tot.quedo} · una parte ${tot.parte} · se fue ${tot.sefue} · fuera ${tot.fuera}`);
+      if (tot.netoVentas > 0) console.log(`lo que quedó en MP = ${Math.round(tot.quedoPesos / tot.netoVentas * 100)}% del neto de esas ventas`);
+      console.log(`movimientos: ${Object.entries(tipos).sort((a, b) => b[1] - a[1]).map(([k, n]) => k + ' ×' + n).join(' · ') || '(ninguno)'}`);
+      return;
+    }
     if (/^motivoreclamo(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const partes = String(process.env.BILLING_PROBE).split(':');
       const DIAS = parseInt(partes[1]) || 60, GO = partes.includes('go');

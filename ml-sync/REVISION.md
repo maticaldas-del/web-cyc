@@ -479,6 +479,10 @@ el precio de un candidato distinto con código parecido (se compara también por
   Medido 14/10 (90 días): **68 de 69 los pagó el programa de protección de ML** (`refunds[].source.type = bpp`,
   `bpp_refunded`/`bpp_covered`), 1 lo pagamos nosotros. **Imprime sólo códigos y tipos: NUNCA `source.name`** (trae
   nombre y apellido del titular; pasó en la primera corrida y se borró ese registro de GitHub).
+- **`reclamoplata[:días]`** (solo lee, 15/10/2026): para cada reclamo/devolución suma TODAS las filas del reporte de
+  liquidación de MP de esa orden (`ORDER_ID`) y lo compara contra el neto de la venta: dice si la plata quedó, se fue o
+  quedó una parte. Es la confirmación que faltaba para la idea 7. Imprime sólo cantidades, tipos y %. **Chequear:** que
+  no imprima números de orden ni columnas con texto (DESCRIPTION puede traer datos).
 - **Cargos de Full por tipo** (`cargosfull` sin `:go`): el resumen del período de ML trae almacenamiento (CFWA),
   almacenamiento prolongado (CFBA), retiro/descarte (CFRS), devoluciones (CDSD) y multas por envíos a Full (CFPB), por
   cuenta. Con eso el "gasto de Full del mes" puede salir de ML en vez de pasarlo él. Y el "$1M que ML factura y no se
