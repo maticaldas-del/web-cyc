@@ -8270,6 +8270,8 @@ function c_link(c) {
 // Lo demás queda guardado y escondido, y se vuelve a medir cada `PYCAT_REMEDIR_DIAS`.
 const PYCAT_REMEDIR_DIAS = 7;
 const PYCAT_POR_VUELTA = 300;
+// Los rubros que ya vendemos (nombres de comprasparaguay, en portugués y castellano): se miden antes que el resto.
+const PYCAT_RUBRO_RE = /\b(perfume|perf\.?|col[oô]nia|eau\s+de|edp|edt|body\s+splash|fone|auricular(es)?|aud[ií]fonos?|headset|earbuds|buds|pen\s*-?drive|cart[aã]o\s+de\s+mem[oó]ria|micro\s*-?sd|tarjeta\s+de\s+memoria|rel[oó]gio|reloj|smartwatch|smart\s*band|watch)\b/i;
 // Relleno en portugués que no ayuda a buscar en ML (comprasparaguay describe, ML nombra).
 const PYCAT_RELLENO = new Set(['fone','ouvido','relogio','analogico','digital','cabo','carregador','mouse','teclado','caixa','som','alto','falante','speaker','portatil','sem','fio','wireless','bluetooth','com','para','de','do','da','e','em','preto','branco','cinza','azul','vermelho','verde','rosa','dourado','prata','silver','white','black','gold','masculino','feminino','unissex','smartwatch','fones','auricular']);
 // LO OBVIO, que no se mide (regla suya del 03/10, copiada del PROMPT GUAY): lo que no entra en una caja o es de otro
@@ -8342,8 +8344,12 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
     if (e.t && ahora - e.t < PYCAT_REMEDIR_DIAS * 864e5 && !(e.uMed != null && Math.abs(e.uMed - e.u) >= 0.005)) { cuenta.frescos++; continue; }
     cola.push([cod, e]);
   }
-  cola.sort((a, b) => (Number(a[1].t) || 0) - (Number(b[1].t) || 0));
+  // 15/10/2026, eligió la (a): primero los RUBROS QUE YA VENDEMOS (perfumes, auriculares, pendrives y memorias, relojes) y después
+  // el resto. Adentro de cada grupo, el que hace más que no se mide.
+  const rubro = (n) => (PYCAT_RUBRO_RE.test(String(n || '')) ? 0 : 1);
+  cola.sort((a, b) => rubro(a[1].n) - rubro(b[1].n) || (Number(a[1].t) || 0) - (Number(b[1].t) || 0));
   const toca = cola.slice(0, maxN);
+  console.log(`(de los ${cola.length} para medir, ${cola.filter(([, e]) => !rubro(e.n)).length} son de los rubros que ya vendemos y van primero)`);
   console.log(`=== CATÁLOGO DE PARAGUAY · medir contra ML ${aplicar ? '' : '(PRUEBA: no escribo nada)'} ===`);
   console.log(`${todos.length} guardados · ${cuenta.fuera} fuera por regla · ${cuenta.cand} ya son candidatos · ${cuenta.ficha} ya son fichas · ${cuenta.frescos} medidos hace menos de ${PYCAT_REMEDIR_DIAS} días · ${cola.length} para medir · esta vuelta ${toca.length}`);
   if (!toca.length) return;
@@ -18827,7 +18833,9 @@ async function main() {
       if (!APLICAR) { console.log('\nPRUEBA. Para guardar, agregá ";go" al final.'); return; }
       await db.patch('mlapi/pycat', upd);
       for (const [id, c, f] of candUpd) await db.patch('cyc/candidatos_py/' + id, { usd: f.u, ts: ahora, calcTs: null, usdAntes: Number(c.usd) || null });
-      for (const [p, f] of fichaUpd) await db.patch('cyc/products/' + p.id, { nisseiUSD: f.u, nisseiTs: ahora });
+      { const sinStP = (await db.get('cyc/py_sinstock')) || {};
+        for (const [p, f] of fichaUpd) { await db.patch('cyc/products/' + p.id, { nisseiUSD: f.u, nisseiTs: ahora });
+          if (sinStP[p.id]) { try { await db.set('cyc/py_sinstock/' + p.id, null); console.log(`  ↺ ${p.name.slice(0, 60)}: Nissei lo volvió a listar, le saco la marca "no había"`); } catch { /* sigue */ } } } }
       const last = filas[filas.length - 1];
       if (ultPg >= 0) await db.patch('mlapi/pycatprog', { pg: ultPg, cod: last.cod, n: last.n.slice(0, 80), ts: ahora, ...(orden ? { orden } : {}) });
       const r = (await db.get('mlapi/pycat/' + last.cod)) || {};
@@ -18882,9 +18890,10 @@ async function main() {
       if (sinCod.length) { console.log('\n🔎 SIN CÓDIGO · lo más parecido del catálogo (NO se elige solo: mirarlo y cargar con pyprecio):');
         for (const x of sinCod) { console.log(`  · ${String(x.p.name).slice(0, 70)} (${x.p.id})`); if (!x.sug.length) console.log('      nada parecido'); for (const s of x.sug) console.log(`      ${Math.round(s.s * 100)}% · ${s.cod} · US$ ${Number(s.e.u).toFixed(2)} · ${String(s.e.n).slice(0, 80)}`); } }
       if (!aplicar) { console.log('\nPRUEBA. Para guardar los precios, agregá ":go".'); return; }
-      let ok = 0;
+      let ok = 0; const sinStP = (await db.get('cyc/py_sinstock')) || {};
       for (const x of [...alDia, ...cambia]) {
         await db.patch('cyc/products/' + x.p.id, { nisseiUSD: x.u, nisseiTs: x.ts });
+        if (sinStP[x.p.id]) { try { await db.set('cyc/py_sinstock/' + x.p.id, null); console.log(`  ↺ ${String(x.p.name).slice(0, 60)}: Nissei lo volvió a listar, le saco la marca "no había"`); } catch { /* sigue marcado */ } }
         const r = await db.get('cyc/products/' + x.p.id);
         if (r && Math.abs(parseFloat(r.nisseiUSD) - x.u) < 0.005 && r.costUSD === x.p.costUSD) ok++; else console.log(`  ❌ no quedó: ${x.p.name}`);
       }
