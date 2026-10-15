@@ -2587,7 +2587,7 @@ Con eso se llegó a "los márgenes están 6 puntos inflados" y "falta un millón
 FALSAS. **Para medir un % que va a mover precios, el denominador tiene que ser las ventas del panel,
 no una base que informa ML.**
 
-**Las percepciones NO salen por la API. Probado el 21/08/2026** con `probarpercep` en Matías: 11
+**⚠️ YA SALEN, DESDE EL 14/10/2026: `cargosmes` las lee de `/billing/integration/periods/key/<AAAA-MM-01>/summary/details?group=ML&document_type=BILL` (la factura por tipo de cargo, con provincia). Lo de abajo es lo que se probó antes y falló.** **Las percepciones NO salían por la API. Probado el 21/08/2026** con `probarpercep` en Matías: 11
 endpoints candidatos, **10 fallan** (404 los de `/details`, `/summary`, `/perceptions`; 422 los que
 prueban `group=MP` o `document_type=PERCEPTION`). El único que contesta es el que ya se usa
 (`/billing/integration/monthly/periods?group=ML&document_type=BILL`) y devuelve **solo el total del
@@ -7785,7 +7785,7 @@ verdad no hayan entrado.
   verde con un ✓** cuando alguno volvió a llegar al piso. Sin ese aviso la lista se convertiría en
   un cementerio. Vive en `cyc/pausado_precio/<prodId>`.
 
-- **EL ALMACENAMIENTO DE FULL NO SALE POR LA API. Probado el 02/09/2026** con `probaralmacena` en
+- **⚠️ EL CARGO DE ALMACENAMIENTO SÍ SALE DESDE EL 14/10/2026** (la factura por tipo de cargo, `cargosmes`, ver la tabla de comandos); la ANTIGÜEDAD del stock sigue sin salir. **EL ALMACENAMIENTO DE FULL NO SALÍA POR LA API. Probado el 02/09/2026** con `probaralmacena` en
   las cuatro cuentas: 10 rutas candidatas fallan (404, o directamente una página web — o sea que ni
   siquiera es una ruta de la API): `/inventories/<id>/stock/fulfillment/aging`, `/storage`,
   `/detail`, `/inventories/<id>/stock`, `/users/<sid>/stock/fulfillment/storage`,
