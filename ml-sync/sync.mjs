@@ -7823,6 +7823,16 @@ const CAND_PISO_PCT = 24;       // suyo: "el % sano es de 25 hacia arriba"
 // dice (misma idea que `repartopy` y que `esPerfumeNom` de la web). El resto sigue en CAND_PISO_PCT.
 const CAND_PISO_PERFUME = 24;   // 06/10/2026: 24 para todo lo que se compra (él: "arriba del 24% TODO")
 const RE_CAND_PERF = /perfum|parfum|\bedp\b|\bedt\b|eau de|fragan|fragr|body splash|body mist|\bcolonia\b|\bsplash\b/i;
+// LA PERFUMERÍA DEL LOCAL (15/10/2026, regla suya): los perfumes también se venden en el local, y ahí no hay comisión
+// de ML ni impuestos. La cuenta de ellos: costo puesto × 1,25 (lo nuestro) × 1,30 (lo de la perfumería) tiene que dar
+// lo mismo o parecido que ML. O sea: vendiendo al precio de ML, la perfumería se queda su 30% y a CYC le queda
+// (precio ML ÷ 1,30 − costo) ÷ costo. Si eso da 25% o más, el perfume sirve aunque en ML no llegue, y ahí se puede
+// cualquier marca (las que ML frena se venden en el local). Misma cuenta en index.html (`perfLocalPct`).
+const PERF_LOCAL_TIENDA = 30, PERF_LOCAL_GAN = 25;
+function perfLocalPct(costoPesos, precioML) {
+  if (!(costoPesos > 0) || !(precioML > 0)) return null;
+  return (precioML / (1 + PERF_LOCAL_TIENDA / 100) / costoPesos - 1) * 100;
+}
 function candPisoDe(c) { return c && RE_CAND_PERF.test(`${c.nombre || ''} ${c.mlTit || ''}`) ? CAND_PISO_PERFUME : CAND_PISO_PCT; }
 const CAND_MIN_VENT = 100;      // suyo, 03/10/2026: "100 unidades mínimo vendidas, sino no sirve" para entrar al pedido
 // Peor caso razonable de retención de IIBB de otra provincia al vender (12/10/2026): casi todas las ventas traen 0,5-2%.
@@ -8296,7 +8306,7 @@ function pyCatFuera(nombre, usd, marcasNo) {
   // Ya no se saca nada por precio, rubro ni tamaño (la lista `PYCAT_FUERA_RE` queda sin usar, por si vuelve). Sólo quedan
   // afuera lo que no se puede vender acá: 110V (no anda en Argentina) y las marcas que ML frena.
   if (/\b110\s*v\b/i.test(n) && !/\b(220\s*v|bivolt)\b/i.test(n)) return '110V';
-  const mf = marcasNo ? marcaFrenadaDe({ nombre: n }, marcasNo) : null; if (mf) return 'marca frenada: ' + mf;
+  const mf = (marcasNo && !RE_CAND_PERF.test(n)) ? marcaFrenadaDe({ nombre: n }, marcasNo) : null; if (mf) return 'marca frenada: ' + mf;   // perfumes: cualquier marca (local)
   return null;
 }
 // Código de Nissei: casi todos son sólo números, pero algunos (Ferso: FE00633) traen letras.
@@ -8427,7 +8437,8 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
       upd.m = Math.round(r.margen * 10) / 10; res.medidos++;
       console.log(`  · ${String(upd.m.toFixed(1)).padStart(6)}% · ${e.n.slice(0, 55)} · US$ ${e.u} → ${upd.mi} "${upd.mt.slice(0, 50)}" a ${money(upd.mp)}${upd.rp ? ' · ⚠️ ' + upd.rp.slice(0, 60) : ''}`);
       const piso = candPisoDe({ nombre: e.n, mlTit: upd.mt });
-      if (upd.m >= piso) { res.b25++; res.pasan.push({ cod, e, upd }); } else if (upd.m >= 15) res.b15++; else res.bajo++;
+      const loc = RE_CAND_PERF.test(`${e.n} ${upd.mt}`) ? perfLocalPct(puesto * tc, upd.mp) : null;
+      if (upd.m >= piso || (loc != null && loc >= PERF_LOCAL_GAN)) { res.b25++; res.pasan.push({ cod, e, upd }); if (upd.m < piso) console.log(`     🏪 en ML no llega, pero en la perfumería del local deja ${loc.toFixed(0)}%: pasa`); } else if (upd.m >= 15) res.b15++; else res.bajo++;
       if (aplicar) await db.patch('mlapi/pycat/' + cod, upd);
     } catch (err) { res.err++; console.log(`  ✗ ${e.n.slice(0, 60)}: ${String(err.message || err).slice(-120)}`); if (/429/.test(String(err.message || err))) await espera(60000); }
   }
@@ -8630,7 +8641,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     // ── LOS DESCARTES BARATOS PRIMERO, que no cuestan ninguna consulta ──
     if (c.enNissei === false) { baratos++; await fuera('en comprasparaguay no lo ofrece Nissei: no se compra'); continue; }
     if (!(usd > 0)) { baratos++; await fuera('sin precio cargado: no se puede medir nada'); continue; }
-    { const _mf = marcaFrenadaDe(c, marcasNo); if (_mf) { baratos++; await fuera(`marca frenada: ${_mf}`); continue; } }
+    { const _mf = RE_CAND_PERF.test(`${c.nombre || ''} ${c.mlTit || ''}`) ? null : marcaFrenadaDe(c, marcasNo); if (_mf) { baratos++; await fuera(`marca frenada: ${_mf}`); continue; } }   // perfumes: cualquier marca (se venden en el local)
     // ── EL QUE YA TIENE LA CUENTA HECHA SE EVALÚA IGUAL (18/09/2026) ────────────────────
     // Acá había un `continue` pelado con el comentario *"ya tiene la cuenta hecha"*. Lo que hacía
     // era **sacarlo de la lista de los que dan**: no se contaba en ningún contador, no entraba en
@@ -9041,7 +9052,9 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     // faltaba que la vuelta siguiente VOLVIERA a medir, y el atajo de "ya tiene la cuenta hecha"
     // se lo comía antes (ver el comentario largo de ese `if`). 27 candidatos se descartaron con
     // una sola lectura mientras esta línea afirmaba que no podía pasar.
-    if (margen < candPisoDe({ ...c, mlTit })) {
+    const _loc = RE_CAND_PERF.test(`${c.nombre || ''} ${mlTit || ''}`) ? perfLocalPct(puesto * tc, mlPrecio) : null;
+    if (_loc != null && _loc >= PERF_LOCAL_GAN && margen < candPisoDe({ ...c, mlTit })) console.log(`      🏪 en ML da ${margen.toFixed(1)}%, pero en la perfumería del local deja ${_loc.toFixed(0)}%: no se descarta`);
+    if (margen < candPisoDe({ ...c, mlTit }) && !(_loc != null && _loc >= PERF_LOCAL_GAN)) {
       const antesM = (c.margen != null && isFinite(c.margen)) ? Number(c.margen) : null;
       const primera = antesM == null;
       // N3 de la segunda vuelta (25/09/2026): la segunda medición tiene que ser de OTRO momento.
@@ -18255,6 +18268,7 @@ async function main() {
     if (/^pedir(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const _pd = String(process.env.BILLING_PROBE);
       const APLICAR = /(^|;)go$/.test(_pd);
+      let _tcP;   // dólar, para la cuenta de la perfumería del local
       const pares = _pd.replace(/^pedir:?/, '').replace(/(^|;)go$/, '').split(';')
         .map((x) => x.trim()).filter(Boolean)
         // `=baja` da de baja el candidato ADEMÁS de ponerlo en cero, y las dos cosas van juntas a
@@ -18314,10 +18328,11 @@ async function main() {
         // SUBIR se frena; BAJAR y `=baja` siempre se pueden, que es la salida para sacar del
         // pedido lo que se cargó cuando todavía daba.
         const mg = Number(c.margen);
+        if (_tcP === undefined) { try { _tcP = parseFloat(((await db.get('cyc/finanzas/tipo_cambio')) || 0)) || 0; } catch { _tcP = 0; } }
         const puede = c.no ? 'está descartado de la lista'
           : _viaja(c) ? `ya está viajando en el pedido del ${_viaja(c)}`
           : (c.margen == null || !isFinite(mg)) ? 'todavía no está medido en ML'
-          : (mg < candPisoDe(c)) ? `da ${mg.toFixed(1)}% y tu piso es ${candPisoDe(c)}%`
+          : (mg < candPisoDe(c) && !(_tcP > 0 && RE_CAND_PERF.test(`${c.nombre || ''} ${c.mlTit || ''}`) && (perfLocalPct((parseFloat(c.usd) || 0) * RECARGO_PAR * _tcP, Number(c.mlPrecio) || 0) || 0) >= PERF_LOCAL_GAN)) ? `da ${mg.toFixed(1)}% y tu piso es ${candPisoDe(c)}%`
           : !(_vendP(c) >= CAND_MIN_VENT) ? (_vendP(c) == null ? `no tiene cargadas las vendidas en ML (mínimo ${CAND_MIN_VENT})` : `vendió ${_vendP(c)} en ML y el mínimo es ${CAND_MIN_VENT}`) : '';
         if (puede && p.u > antes) { problemas.push(`"${p.busca}" → ${c.nombre}: NO se puede pedir, ${puede}`); continue; }
         cambios.push({ id, c, antes, u: p.u, baja: !!p.baja });

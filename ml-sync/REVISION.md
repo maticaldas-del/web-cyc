@@ -987,3 +987,10 @@ Se sacó el renglón final. "Por qué cambió el precio" también toma el últim
 Pedidos → Paraguay abre en `pyVista='ambos'` (probados arriba, nuevos abajo). `candidatosHTML` arranca con `cab(nDan)`, un solo
 renglón; se sacaron la línea "Arriba sólo lo que da", "cómo funciona esto", `pedNuevosResumenHTML()` de esa vista (sigue en 🧾 Pedido)
 y la caja `_cuenta`. Chequear: el renglón 🆕 Nuevos muestra el mismo número que antes daba la caja verde.
+
+### Etapa 3 · 15/10/2026 · v23.61 · Perfumes: la perfumería del local
+Regla suya: los perfumes también se venden en el local; costo puesto × 1,25 × 1,30 ≈ precio de ML, sin comisión ni impuestos.
+`perfLocalPct(costo, precioML)` = (precioML ÷ 1,30 − costo) ÷ costo, en index.html y sync.mjs (misma fórmula, tocar las dos).
+Con 25%+ (`PERF_LOCAL_GAN`) el perfume entra aunque en ML no llegue: no se descarta en `candidatos`, pasa de pycat a Para probar,
+`candPuedePedir`/`pedir` lo dejan cargar, en Probados cuenta como "da", y NO se filtra por marca frenada (en el local va cualquier
+marca). En pantalla: % azul 🏪 al lado del de ML; el % de ML abajo de 25 en rojo. Chequear: que el costo use el puesto (17%).

@@ -2614,7 +2614,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.60';
+const APP_VERSION='23.61';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2625,6 +2625,7 @@ const APP_VERSION='23.60';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.61',f:'15/10/2026',h:'18:10',c:[{n:3,t:'🧴 Perfumes de Paraguay: al lado del % de ML va un % AZUL 🏪 = lo que le queda a CYC vendiéndolo en la perfumería del local al precio de ML (la perfumería se queda su 30%, sin comisión ni impuestos). Si da 25% o más, el perfume se puede pedir aunque en ML no llegue, y de cualquier marca. El % de ML abajo de 25% va en rojo.'}]},
   {v:'23.60',f:'15/10/2026',h:'17:40',c:[{n:1,t:'🇵🇾 Pedidos → Paraguay más simple: abre con los probados arriba y los nuevos abajo. En el medio queda un solo renglón (🆕 Nuevos · cuántos dan 25%+). Se sacaron el texto de explicación, "cómo funciona esto", la barra del pedido de nuevos (está en 🧾 Pedido) y la caja grande de cuántos dan.'}]},
   {v:'23.59',f:'15/10/2026',h:'17:20',c:[{n:1,t:'🇵🇾 Pedidos → Probados se ve igual que Nuevos: foto, nombre, código, precio de Paraguay puesto y en pesos, lo que vendiste y el % grande. Los colores, el máximo y la casilla de pedir se abren en "detalle".'}]},
   {v:'23.58',f:'15/10/2026',h:'17:00',c:[{n:1,t:'⚙️ Ajustes: se sacó el botón "Subir precios automático" (el robot ya no toca precios desde el 09/10, los decido yo). La tarjeta ahora se llama "Lo que hace solo el robot de ML" y deja sacar descuentos y cargar el stock.'}]},
@@ -12726,6 +12727,18 @@ const CAND_PISO_PCT=24;   // 06/10/2026, él: "que entre. o sea arriba del 24% T
 // Sólo lo NUEVO de Paraguay. Perfume = esPerfumeNom (nombre o ficha) o el título de ML que midió el robot.
 // MISMA regla que candPisoDe del robot (sync.mjs): si se toca una, se toca la otra.
 const CAND_PISO_PERFUME=24;   // 06/10/2026: 24 para todo lo que se compra (él: "que entre. o sea arriba del 24% TODO")
+// LA PERFUMERÍA DEL LOCAL (15/10/2026, regla suya): los perfumes también se venden en el local, sin comisión de ML ni
+// impuestos. Su cuenta: costo puesto × 1,25 (lo nuestro) × 1,30 (lo de la perfumería) ≈ precio de ML. O sea, vendiendo
+// al precio de ML, a CYC le queda (precio ML ÷ 1,30 − costo) ÷ costo. Ése es el % AZUL. Con 25%+ el perfume sirve
+// aunque en ML no llegue, y cualquier marca. Misma cuenta en el robot (sync.mjs `perfLocalPct`).
+const PERF_LOCAL_TIENDA=30, PERF_LOCAL_GAN=25;
+function perfLocalPct(costoPesos,precioML){if(!(costoPesos>0)||!(precioML>0))return null;return (precioML/(1+PERF_LOCAL_TIENDA/100)/costoPesos-1)*100;}
+function candEsPerf(c){return !!c&&(esPerfumeNom(String(c.nombre||''))||_PERF_RE.test(String(c.mlTit||'')));}
+function candLocalPct(c){if(!candEsPerf(c))return null;const u=parseFloat(c.usd)||0,tc=curTC();return perfLocalPct(u*RECARGO_PY*tc,Number(c.mlPrecio)||0);}
+function candLocalOk(c){const l=candLocalPct(c);return l!=null&&l>=PERF_LOCAL_GAN;}
+// El % azul al lado del de ML (rojo si no llega: azul si da).
+function perfLocalHTML(pct,grande){if(pct==null||!isFinite(pct))return'';const ok=pct>=PERF_LOCAL_GAN;
+  return `<span title="🏪 Perfumería del local: vendiendo al precio de ML, la perfumería se queda su ${PERF_LOCAL_TIENDA}% y a CYC le queda esto. Sin comisión de ML ni impuestos. Da con ${PERF_LOCAL_GAN}% o más." style="font-size:${grande?'1.05rem':'.8rem'};font-weight:700;color:${ok?'#60a5fa':'var(--muted)'};white-space:nowrap">🏪 ${Math.round(pct)}%</span>`;}
 function candPisoDe(c){if(!c)return CAND_PISO_PCT;const t=String(c.nombre||c.nom||'');return (esPerfumeNom(t)||_PERF_RE.test(String(c.mlTit||'')))?CAND_PISO_PERFUME:CAND_PISO_PCT;}
 const CAND_PISO_TXT=()=>`${CAND_PISO_PCT}%`;
 const CAND_MIN_VENT=100; // suyo, 03/10/2026: "100 unidades mínimo vendidas, sino no sirve" para cargar unidades
@@ -12772,7 +12785,7 @@ function candPuedePedir(c){
   if(candEnPedido(c)==='viajando'){const pe=(state.compraspy||{})[c.pedidoEn]||{};return{ok:false,motivo:`ya está viajando en el pedido del ${pe.fecha||'?'}`};}
   const m=Number(c.margen);
   if(c.margen==null||!isFinite(m))return{ok:false,motivo:'todavía no está medido en ML'};
-  if(m<candPisoDe(c))return{ok:false,motivo:`da ${m.toFixed(1)}% y tu piso es ${candPisoDe(c)}%`};
+  if(m<candPisoDe(c)&&!candLocalOk(c))return{ok:false,motivo:`da ${m.toFixed(1)}% y tu piso es ${candPisoDe(c)}%`};   // perfume que da en el local: entra igual
   // Sin las dos fotos no se compra (07/10/2026, "sin foto tampoco acepto"): no se puede ver que sea el mismo producto.
   if(!/^https:\/\//.test(String(c.foto||'')))return{ok:false,motivo:'falta la foto de comprasparaguay'};
   if(!/^https:\/\//.test(String(c.mlFoto||'')))return{ok:false,motivo:'falta la foto de ML'};
@@ -14271,14 +14284,15 @@ function candidatosHTML(){
   // LOS QUE NO LLEGAN AL PISO, JUNTOS ABAJO Y CERRADOS (02/10/2026, pedido suyo: *"todos los candidatos
   // que dan abajo de 25% (los rojos) ponerlos juntos ABAJO en un desplegable cerrado, así no molestan"*).
   // No se esconden: el robot los vuelve a medir y si cruzan el piso vuelven arriba solos.
-  const _esRojo=c=>c.margen!=null&&isFinite(c.margen)&&Number(c.margen)<candPisoDe(c);
+  const _esRojo=c=>c.margen!=null&&isFinite(c.margen)&&Number(c.margen)<candPisoDe(c)&&!candLocalOk(c);
   const _card=c=>{
     const d=candDias(c);
     const usd=parseFloat(c.usd)||0;
     const puesto=usd>0?Math.round(usd*RECARGO_PY*100)/100:0;
     const pesos=puesto>0?Math.round(puesto*curTC()):0;
     const tieneCuenta=c.margen!=null&&isFinite(c.margen);
-    const col=!tieneCuenta?'var(--muted)':(c.margen>=candPisoDe(c)?'var(--green)':'var(--red)');
+    const col=!tieneCuenta?'var(--muted)':(c.margen>=25?'var(--green)':'var(--red)');   // 15/10: abajo de 25% en ML, rojo
+    const _loc=candLocalPct(c);
     const info=[];
     if(c.cod)info.push(chip('🔖 '+c.cod,'var(--muted)','El código con el que se pide. Es el de Nissei que usa comprasparaguay, no el número interno de la lista de Nissei.'));
     if(c.marca)info.push(chip('🏷️ '+c.marca,'var(--muted)','La marca, para poder frenarla entera si ML la pide documentar.'));
@@ -14323,7 +14337,7 @@ function candidatosHTML(){
           <div style="font-size:.68rem;color:var(--muted);margin-top:3px">${c.cod?`🔖 ${c.cod} · `:''}${usd>0?`US$ ${usd.toFixed(2)} → <b style="color:var(--text)">US$ ${puesto.toFixed(2)}</b> puesto${pesos?` · ${fmt(pesos)}`:''}`:'<span style="color:var(--red)">sin precio</span>'}${(()=>{const _v=candVentasDe(c);return _v!=null?` · <b style="color:${_v>=CAND_MIN_VENT?'var(--green)':'var(--amber)'}">🛒 ${_v>=1000?'+1000':_v} vendidas</b>`:' · <span style="color:var(--amber)">🛒 sin dato de ventas</span>';})()}</div>
         </div>
         <div style="text-align:right;flex:0 0 auto">
-          ${tieneCuenta?`<div style="font-size:1.35rem;font-weight:700;color:${col};line-height:1">${c.margen.toFixed(0)}%${dudas?' <span title="Hay dudas de que sea el mismo producto: abrilo y mirá las dos fotos" style="font-size:.8em">⚠️</span>':''}</div>`:'<div style="font-size:.68rem;color:var(--muted)">⏳ sin medir</div>'}
+          ${tieneCuenta?`<div style="font-size:1.35rem;font-weight:700;color:${col};line-height:1">${c.margen.toFixed(0)}%${dudas?' <span title="Hay dudas de que sea el mismo producto: abrilo y mirá las dos fotos" style="font-size:.8em">⚠️</span>':''}</div>${_loc!=null?`<div style="margin-top:3px">${perfLocalHTML(_loc)}</div>`:''}`:'<div style="font-size:.68rem;color:var(--muted)">⏳ sin medir</div>'}
           <div style="font-size:.6rem;color:var(--muted);margin-top:3px">detalle ▾</div>
         </div>
       </summary>
@@ -14350,7 +14364,7 @@ function candidatosHTML(){
         :`<div style="color:var(--muted)">${c.motivo?c.motivo:'Todavía no le preguntó a ML a cuánto se vende. Lo hace el robot esta noche.'}</div>`}
       </div>
       ${tieneCuenta?`<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
-        <span style="font-size:1.35rem;font-weight:700;color:${col}">${c.margen.toFixed(0)}%</span>
+        <span style="font-size:1.35rem;font-weight:700;color:${col}">${c.margen.toFixed(0)}% <span style="font-size:.55em;font-weight:400;color:var(--muted)">ML</span></span>${_loc!=null?perfLocalHTML(_loc,true)+' <span style="font-size:.6rem;color:var(--muted)">perfumería del local</span>':''}
         <span style="font-size:.68rem;color:var(--muted)">contra el más barato de ML${c.ganancia?` · te quedarían <b style="color:var(--text)">${fmt(Math.round(c.ganancia))}</b> por unidad</span>`:'</span>'}
         <span style="font-size:.6rem;color:var(--amber)" title="El envío sale de la tarifa de ML porque este producto nunca vendió, y esa tarifa se midió $246 corta el 20/08. El margen real puede ser un poco menor.">· estimado</span>
       </div>`:`<div style="font-size:.68rem;color:var(--muted)">⏳ falta la cuenta de ML. <b>No se muestra ningún porcentaje</b> hasta tenerla: un margen inventado acá se aplica y recién se nota cuando ya compraste.</div>`}
@@ -16799,7 +16813,11 @@ function pyProbVeredicto(ped){
   const mxW=Math.floor(mx.usdPy*100)/100;
   const fullTxt=(mx.fuente==='full'?` · vendiéndolo a ${fmt(mx.P)} con Full${mx.techo&&mx.techo.cS?` (el más barato sin Full: ${fmt(mx.techo.cS)})`:''}`:'')
     +(mx.cuoN?` · 💳 el que hay que igualar da cuotas sin interés: descuento ${mx.cuoN} cuotas (${fmt(mx.cuo)}, ${mx.cuoPct}%)`:'');
-  if(nu>mxW+0.005)return{k:'noda',corto,txt:`Nissei US$ ${nu.toFixed(2)}${pedTxt} · máx para ${PY_PROB_PISO}%: US$ ${mxW.toFixed(2)}${fullTxt}`};
+  if(nu>mxW+0.005){
+    // Perfume que en ML no llega pero en la perfumería del local deja 25%+: da igual (15/10/2026).
+    const loc=esPerfumeNom(pr.name||ped.producto)?perfLocalPct((nu*RECARGO_PY*(1+(mx.dev||0)/100)+(mx.ship||0))*mx.tc,mx.P):null;
+    if(loc!=null&&loc>=PERF_LOCAL_GAN)return{k:'da',corto:corto+` · 🏪 local ${Math.round(loc)}%`,txt:`en ML no llega (máx US$ ${mxW.toFixed(2)}), pero en la perfumería del local deja ${Math.round(loc)}%`};
+    return{k:'noda',corto,txt:`Nissei US$ ${nu.toFixed(2)}${pedTxt} · máx para ${PY_PROB_PISO}%: US$ ${mxW.toFixed(2)}${fullTxt}`};}
   return{k:'da',corto,txt:`Nissei US$ ${nu.toFixed(2)} · máx US$ ${mxW.toFixed(2)} · mirado hace ${dias} d${fullTxt}`};
 }
 function maxCompraHTML(p){
@@ -16949,6 +16967,7 @@ function _pedidoItemHtml(p,opts){
   const _nu=parseFloat(_prod.nisseiUSD)||0, _pu=_nu>0?Math.round(_nu*RECARGO_PY*100)/100:0, _ps=_pu>0?Math.round(_pu*curTC()):0;
   let _mgP=null;try{_mgP=margenSiComproPY(maxCompraDe(_prod,PY_PROB_PISO),_nu);}catch(e){_mgP=null;}
   const _colP=_mgP==null?'var(--muted)':(typeof pctColor==='function'?pctColor(_mgP):'var(--text)');
+  let _locP=null;try{if(esPerfumeNom(_prod.name||p.producto)){const mx=maxCompraDe(_prod,PY_PROB_PISO);if(mx&&!mx.motivo&&_nu>0&&mx.tc>0)_locP=perfLocalPct((_nu*RECARGO_PY*(1+(mx.dev||0)/100)+(mx.ship||0))*mx.tc,mx.P);}}catch(e){_locP=null;}
   const _ft=fotoDeProducto(_prod,p.variante||''), _fu=_ft&&_ft.url;
   const _tq=JSON.stringify(String(p.producto||'')).replace(/"/g,'&quot;');
   return `<details class="ingreso-item" style="display:block;border-left:3px solid ${_colP};margin-bottom:8px"${_abierto?' open':''} ontoggle="_setPedCardOpen('${p.id}',this.open)">
@@ -16961,7 +16980,7 @@ function _pedidoItemHtml(p,opts){
         <div style="font-size:.68rem;color:var(--muted);margin-top:3px">${_prod.codPy?`🔖 ${_prod.codPy} · `:'<span style="color:var(--amber)">🔖 sin código</span> · '}${_nu>0?`US$ ${_nu.toFixed(2)} → <b style="color:var(--text)">US$ ${_pu.toFixed(2)}</b> puesto${_ps?` · ${fmt(_ps)}`:''}`:'<span style="color:var(--red)">sin precio de Paraguay</span>'}${p.cVend!=null?` · 🛒 vendiste ${fmtN(p.cVend)}${p.cDias?` en ${p.cDias} d`:''}`:''}${_semTxt?` · ${_semTxt}`:''}</div>
       </div>
       <div style="text-align:right;flex:0 0 auto">
-        ${_mgP!=null?`<div style="font-size:1.35rem;font-weight:700;color:${_colP};line-height:1">${Math.round(_mgP)}%</div>`:'<div style="font-size:.68rem;color:var(--amber)">sin medir</div>'}
+        ${_mgP!=null?`<div style="font-size:1.35rem;font-weight:700;color:${_colP};line-height:1">${Math.round(_mgP)}%</div>`:'<div style="font-size:.68rem;color:var(--amber)">sin medir</div>'}${_locP!=null?`<div style="margin-top:3px">${perfLocalHTML(_locP)}</div>`:''}
         <div style="font-size:.62rem;color:var(--muted);margin-top:3px">comprar ${fmtN(p.cantidad||0)} u.${_armU>0?` · <b style="color:var(--green)">🧾 ${_armU} en el pedido</b>`:''}</div>
         <div style="font-size:.6rem;color:var(--muted);margin-top:2px">detalle ▾</div>
       </div>
