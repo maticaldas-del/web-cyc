@@ -927,6 +927,10 @@ Probe `webpush[:go|:probar]` por ml-sync. **Y por Telegram se dio de baja** (ped
 `AVISO_VENTA_TELEGRAM = false`. El aviso de cada venta va SÓLO al teléfono. **Y no suena de 00:30 a 10:00 (Argentina)**:
 `AVISO_VENTA_DUERME`; lo de esa franja se anota sin avisar.
 
+## 🔥 VENTAS VIVAS: TEMBLOR Y FUEGO DESDE $10.000 DE GANANCIA (15/10/2026, v23.45)
+
+Él: *"dejar las reglas idénticas, excepto que la vibración y fuego permita activarse a partir de $10.000 de ganancia. No quiere decir que sí o sí se activen, sino que permita"*. `VIVA_GAN_TIEMBLA` en `vivaVenta`. El aviso al teléfono NO se filtró (sigue avisando cada venta).
+
 ## 🧠 RESUMEN DE CADA CEREBRO POR TELEGRAM (10/10/2026, pedido suyo)
 
 Él: *"cada vez que se activa cerebro (...) me mandás un pequeño resumen de lo que descubrió/modificó?"*. Esto ABRE una

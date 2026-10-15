@@ -710,6 +710,11 @@ versiones nuevas. Restaurado en v23.21 (`cyc-v601`). **Antes de cada commit: `wc
  · Qué chequear: que en las vueltas no salgan avisos de cosas ya hechas (subas, bajas, activadas), que sin decisiones no
    salga nada, y que el texto no lleve datos de compradores (el log es público).
 
+### Ventas con vida: temblor y fuego sólo desde $10.000 de ganancia (15/10/2026, v23.45, regla suya)
+Él: *"dejar las reglas idénticas, excepto que la vibración y fuego permita activarse a partir de $10.000 de ganancia"*.
+`vivaVenta` (index.html): `VIVA_GAN_TIEMBLA` = 10000. Abajo de eso no hay fuego (`fi`=0) ni `tiembla` (cae a flota rápido);
+el resto (color, brillo, figuras, velocidad, puntaje) igual. Chequear: una venta con puntaje alto y ganancia < $10.000 no arde.
+
 ### Ventas con vida: color por %, todo lo demás por puntaje (09/10/2026, v23.01, regla suya)
  · Qué es: `vivaVenta` (index.html) da a TODA venta el color de su nivel de % (rojo y naranja incluidos, JOYA en oro
    `#facc15` con fondo dorado) y saca brillo, figuras, velocidad, movimiento y fuego de `vivaScore` = ganancia ×
