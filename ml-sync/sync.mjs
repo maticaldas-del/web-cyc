@@ -8297,8 +8297,11 @@ function pyCatFuera(nombre, usd, marcasNo) {
   const mf = marcasNo ? marcaFrenadaDe({ nombre: n }, marcasNo) : null; if (mf) return 'marca frenada: ' + mf;
   return null;
 }
-const _pyDg = (x) => String(x || '').replace(/\D/g, '');
-const _pyCodIg = (a, b) => { const x = _pyDg(a), y = _pyDg(b); if (!x || !y) return false; if (x === y) return true; const [c1, c2] = x.length < y.length ? [x, y] : [y, x]; return c1.length >= 5 && c2.endsWith(c1); };
+// Código de Nissei: casi todos son sólo números, pero algunos (Ferso: FE00633) traen letras.
+// Esos se guardan enteros (letras en mayúscula) y sólo se emparejan EXACTOS: recortarlos a los
+// dígitos los confundía con otro código que termine igual.
+const _pyDg = (x) => { const s = String(x || ''); return /[a-z]/i.test(s) ? s.replace(/[^a-z0-9]/gi, '').toUpperCase() : s.replace(/\D/g, ''); };
+const _pyCodIg = (a, b) => { const x = _pyDg(a), y = _pyDg(b); if (!x || !y) return false; if (x === y) return true; if (/[A-Z]/.test(x + y)) return false; const [c1, c2] = x.length < y.length ? [x, y] : [y, x]; return c1.length >= 5 && c2.endsWith(c1); };
 // Lee renglones `código|nombre|US$|link|foto` y marcas de página `#<n>` (opcional `#<n>@<orden>`). Devuelve lo leído y los malos.
 function pyCatParse(lineas) {
   const filas = [], malos = []; let pg = null, orden = null;
@@ -18910,8 +18913,7 @@ async function main() {
       const APLICAR = /(^|;)go\s*$/.test(_cp);
       const filas = _cp.replace(/(^|;)go\s*$/, '').split(';').map((x) => x.trim()).filter(Boolean);
       const cands = (await db.get('cyc/candidatos_py')) || {};
-      const dg = (x) => String(x || '').replace(/\D/g, '');
-      const codIg = (a, b) => { const x = dg(a), y = dg(b); if (!x || !y) return false; if (x === y) return true; const [c1, c2] = x.length < y.length ? [x, y] : [y, x]; return c1.length >= 5 && c2.endsWith(c1); };
+      const codIg = _pyCodIg; // la misma del catálogo (acepta los códigos con letras de Ferso)
       const upd = {}; let malos = 0, noEsta = 0, sube = 0, baja = 0, igual = 0, fuera = 0, vuelve = 0;
       for (const f of filas) {
         const m = f.match(/^([0-9]+)\s*=\s*(nohay|[0-9]+(?:[.,][0-9]+)?)(?:\s*\/\s*([0-9.]+))?$/i);

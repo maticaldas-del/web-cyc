@@ -795,6 +795,7 @@ perfumería/maquillaje/cuidado personal, regla del 13/10). Lo de 15% a 24% queda
 100 ventas, y listo"*** → ya no se saca nada por precio, rubro ni tamaño (sólo 110V y marcas que ML frena) y la perfumería también pasa.
 Las ventas de otros vendedores el robot no las ve (403): `pycatventas` arma la lista corta, el chat de compras las mira y las carga con
 `candprecio:<cód>=<US$>/<vendidas>;go`. Arriba en "Para probar" sólo 25%+ y 100+ ventas.
+**Copia terminada el 15/10: 754 páginas (A-Z 1-500 + Z-A 1-254, cruce en 'Oukitel P2 Plus'), 13.467 códigos únicos, 151 comandos `pycat`.** Falta cargarlos: el Chrome del chat de compras no tenía la sesión de GitHub iniciada. Los 6 Ferso traen código con letras y se guardan enteros.
 
 ## 📦 CAJAS A FULL: 30 DÍAS + 7 DE VIAJE · ALMACENAMIENTO A LOS 4 MESES (14/10/2026, regla suya)
 
