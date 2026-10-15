@@ -69,3 +69,6 @@ No tocás ML, no publicás, no tocás precios, stock ni costos, no borrás nada.
 **El modo viejo (buscar en ML producto por producto, `candalta`/`pyvisto`/`candprecio`) quedó reemplazado el 15/10/2026:**
 el robot lo hace solo con `pycatmedir` (workflow `ml-pycat`, cada 3 horas). Si hace falta volver a él, está en la historia del repo.
 `pyprecio` sigue para los probados con colores (`pyVar`); los demás probados se actualizan solos cuando `pycat` trae su código.
+
+
+**UNIDADES POR PRODUCTO (15/10/2026):** no hace falta que pienses las unidades: el panel pone 3-4 a lo barato que vende mucho, 1 a lo caro y 2 al resto. Vos traé bien el precio, las vendidas y el link.

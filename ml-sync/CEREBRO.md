@@ -163,3 +163,9 @@ eso espero tantos días o haré tal cosa'"*. Todo motivo de `decido` (y toda not
 Sin `;` adentro. **Nunca repetir oraciones** (regla suya del 14/10): la nota no copia el motivo de otro cambio que ya se ve. Al revisar una decisión vieja, se escribe la nota con lo que pasó contra lo esperado.
 
 - **Cajas a 60 días sólo en lo parejo (14/10/2026, eligió la a):** 37 días de base; 60 si vende parejo hace 2 meses y no tiene prueba de precio abierta (`notas/sin_estirar.txt`, mantenerla al abrir o cerrar pruebas). Respetar el cupo de la cuenta.
+
+## 🇵🇾 CUÁNTAS DE CADA PRODUCTO NUEVO DE PARAGUAY (15/10/2026, eligió la a)
+Ya no son 2 de todo. El botón 🪄 Llenar hasta el tope (`candMaxU` en index.html): **barato (hasta US$15 crudo) con 100+ vendidas
+en ML y 5 vendedores o menos → 3 (4 si tiene 300+ vendidas) · caro (más de US$60) → 1 · el resto → 2** (la casilla). Lo que
+vuela (se agota rápido) entra en el pedido SIGUIENTE con unidades según sus ventas: eso lo decido yo con `pedidostodo`.
+Medido antes: del pedido del 21/09, 1 de 12 se agotó rápido (ZX310) y 10 no vendieron nada en 17 días.

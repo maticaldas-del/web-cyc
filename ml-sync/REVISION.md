@@ -931,3 +931,5 @@ Se sacó el renglón final. "Por qué cambió el precio" también toma el últim
 
 - **Cajas: tope 90 días y lo nuevo sale solo** (`decide_cajas.py`, `TOPE_LENTO`, `PISO_CERO`, 15/10/2026). Chequear que el
   tope no pise el mínimo de 1 de una cuenta en cero que vende, y que "nuevo" sea sólo v30=v60=v180=0 con Full+camino en 0.
+
+- **Unidades por nuevo de Paraguay (15/10/2026, v23.50):** `candMaxU` en index.html (lo usan `pedLlenarPlan` y el aviso ámbar de `pedNuevoFilaHTML`). Chequear: barato que vende = 3-4, caro = 1, resto = casilla; que nunca pase el tope del pedido.

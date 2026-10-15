@@ -2615,7 +2615,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.49';
+const APP_VERSION='23.50';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2626,6 +2626,7 @@ const APP_VERSION='23.49';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.50',f:'15/10/2026',h:'14:10',c:[{n:2,t:'Paraguay · 🪄 Llenar: lo barato (hasta US$15) que vende 100+ en ML con pocos vendedores va con 3-4 u.; lo caro (más de US$60), con 1; el resto, 2.'}]},
   {v:'23.49',f:'15/10/2026',h:'13:45',c:[{n:1,t:'📈 Línea de tiempo: en "$ ganancia/día" los días en $0 van en gris (antes verde, se leía como ganancia).'}]},
   {v:'23.48',f:'15/10/2026',h:'13:05',c:[{n:3,t:'🇵🇾 Gastos del pedido de Paraguay: nuevo renglón "Adelanto de plata para el pedido" (lo que cuesta adelantar la plata para poder hacerlo). Suma al total y al recargo real. Cargado en el del 14/10: $29.000.'}]},
   {v:'23.47',f:'15/10/2026',h:'12:50',c:[{n:1,t:'🔎 Revisión: cerrada la idea de los reclamos que pagó ML. Lo confirmé en Mercado Pago: la plata de esos reclamos SÍ salió de la cuenta, así que el panel los contaba bien como pérdida. No cambia ningún costo.'}]},
@@ -12986,6 +12987,18 @@ async function candSetPedir(id,v){
 // algo es "de los mejores" sin saber si se vende. Se dicen cuántos quedaron afuera por eso.
 // LA CUENTA VA APARTE DE LA PANTALLA, para poder probarla con la función REAL y no con una copia
 // —la regla de este archivo—. `pedNuevosLlenar` pregunta y escribe; ésta sólo decide.
+// CUÁNTAS DE CADA NUEVO, SEGÚN PRECIO Y SEÑAL DE ML (15/10/2026, eligió la a). Con 2 de todo no se
+// sabe si una venta fue casualidad y lo barato que vuela se corta enseguida; y 4 de algo de US$100 se
+// come el pedido. Barato (≤ US$15 crudo) con 100+ vendidas en ML y 5 vendedores o menos → hasta 4
+// (3 si tiene menos de 300 vendidas) · caro (> US$60) → 1 · el resto → lo de la casilla (2).
+// Lo que vuela se repone en el pedido siguiente con unidades por sus ventas: eso lo decido yo.
+const PED_BARATO_USD=15, PED_CARO_USD=60, PED_POCOS_VEND=5;
+function candMaxU(c,maxU){
+  const usd=parseFloat(c&&c.usd)||0, v=candVentasDe(c), nv=Number(c&&c.mlVendedores);
+  if(usd>PED_CARO_USD)return 1;
+  if(usd>0&&usd<=PED_BARATO_USD&&v!=null&&v>=100&&(!isFinite(nv)||nv<=PED_POCOS_VEND))return Math.max(maxU,v>=300?4:3);
+  return maxU;
+}
 function pedLlenarPlan(vivos,tope,maxU,minV){
   let sinVentas=0, flojos=0, viajando=0;
   const elegibles=(vivos||[]).filter(c=>{
@@ -13008,7 +13021,8 @@ function pedLlenarPlan(vivos,tope,maxU,minV){
     let u=antes;
     // No se corta en el primero que no entra: uno barato más abajo en la lista todavía puede
     // aprovechar los dólares que quedan.
-    while(u<maxU&&total+usd<=tope+0.0001){u++;total+=usd;}
+    const mx=candMaxU(c,maxU);
+    while(u<mx&&total+usd<=tope+0.0001){u++;total+=usd;}
     if(u>antes)suma.push({c,antes,u});
   }
   return {suma,total:Math.round(total*100)/100,sinVentas,flojos,viajando};
@@ -13699,7 +13713,7 @@ function pedidoMomentoHTML(){
       m==null?'var(--muted)':(typeof pctColor==='function'?pctColor(m):'var(--green)'),
       pedNuevoFilaHTML(f,maxU,tc,true));});
   const cfg=`<details style="margin:8px 0 2px"><summary style="cursor:pointer;font-size:.68rem;color:var(--muted)">⚙️ tope, máximo por producto y mínimo de vendidas</summary><div style="display:flex;gap:7px;flex-wrap:wrap;align-items:flex-end;margin:8px 0 4px">
-      ${[['pedTopeUSD',tope,'Tope del pedido (US$, probados + nuevos)'],['pedMaxU',maxU,'Máx. u. por nuevo'],['pedMinVent',minV,'Mín. vendidas en ML']]
+      ${[['pedTopeUSD',tope,'Tope del pedido (US$, probados + nuevos)'],['pedMaxU',maxU,'U. por nuevo (barato que vende: 3-4 · caro: 1)'],['pedMinVent',minV,'Mín. vendidas en ML']]
         .map(([k,v,t])=>`<label style="flex:1;min-width:105px"><div style="font-size:.6rem;color:var(--muted);margin-bottom:3px">${t}</div>
           <input type="number" min="0" step="${k==='pedTopeUSD'?'10':'1'}" value="${v}" onchange="pedNuevosCfg('${k}',this.value)" style="width:100%;font-size:.74rem;padding:5px 7px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text)"></label>`).join('')}
     </div></details>`;
@@ -13777,6 +13791,7 @@ async function pyMomentoYaLoPedi(){
 // ancho. Los datos salen de `candPreciosPartes`, la MISMA función de la tarjeta del candidato.
 function pedNuevoFilaHTML(f,maxU,tc,sinCab){
   const c=f.c, R=candPreciosPartes(c);
+  maxU=candMaxU(c,maxU); // el máximo de ESTE producto (barato que vende: 3-4 · caro: 1)
   const cod=String(c.cod||'').trim();
   const puesto=f.usd>0?Math.round(f.usd*RECARGO_PY*100)/100:0;
   const mg=R.margenPct;
