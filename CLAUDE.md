@@ -923,7 +923,8 @@ cómo va el día. Memoria `mlapi/avisoventa`. Detalle en `ml-sync/REVISION.md` (
 (push de la app) **HECHO el mismo día (v23.44)**: vibra y suena en el teléfono. Cada teléfono toca UNA vez
 "🔔 Activar aviso de cada venta" (Inicio o Ajustes; en iPhone con CYC abierto desde el ícono). Llaves VAPID armadas por
 el robot: privada en `mlapi/vapid` (nunca al repo), pública en `cyc/mlconfig/vapidPublic`, teléfonos en `cyc/pushsubs`.
-Probe `webpush[:go|:probar]` por ml-sync.
+Probe `webpush[:go|:probar]` por ml-sync. **Y por Telegram se dio de baja** (pedido suyo, ya lo activó en la web):
+`AVISO_VENTA_TELEGRAM = false`. El aviso de cada venta va SÓLO al teléfono.
 
 ## 🧠 RESUMEN DE CADA CEREBRO POR TELEGRAM (10/10/2026, pedido suyo)
 

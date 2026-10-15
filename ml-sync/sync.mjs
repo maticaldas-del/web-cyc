@@ -7337,6 +7337,7 @@ async function tgFlushCola(db) {
 // La ganancia sale de `armarCostoWeb`, la MISMA regla que la web y el resumen del día.
 // Sin datos de compradores ni números de orden (el registro de GitHub es público).
 const AVISO_VENTA_VENTANA_MS = 3 * 36e5;
+const AVISO_VENTA_TELEGRAM = false;   // 15/10/2026: el aviso de cada venta va sólo al teléfono (push), pedido suyo
 function _nivelPct(p) {
   if (p == null || !isFinite(p)) return '⚪';
   if (p < 25) return '🔴'; if (p < 45) return '🟢'; if (p < 70) return '🩵';
@@ -7441,7 +7442,9 @@ async function avisarVentasNuevas(db, lista) {
   const msg = `${nuevas.length === 1 ? '🔔 <b>Venta nueva</b>' : `🔔 <b>${nuevas.length} ventas nuevas</b>`}\n\n`
     + renglones.join('\n\n')
     + `\n\n📊 Hoy van <b>${n}</b> ventas · ${money(fact)} · ganancia <b>${money(gan)}</b>`;
-  const tgOk = TG_TOKEN ? await sendTelegram(msg, 'venta') : false;
+  // POR TELEGRAM YA NO (15/10/2026, él: "da de baja el aviso de venta por telegram, ya lo activé por la web").
+  // Queda sólo el aviso al teléfono. Para volver a prenderlo: AVISO_VENTA_TELEGRAM = true.
+  const tgOk = AVISO_VENTA_TELEGRAM && TG_TOKEN ? await sendTelegram(msg, 'venta') : false;
   let pushOk = 0;
   try {
     pushOk = await enviarPush(db, {
