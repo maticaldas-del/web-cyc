@@ -1012,3 +1012,6 @@ Buscador de todo comprasparaguay en Nuevos (`pycatBuscar`, lee `mlapi/pycat` rec
 
 ### Etapa 3 · 15/10/2026 · v23.67 · Listas de precios de otros proveedores
 `lista:<proveedor>[|rec=<%>];<producto>=<pesos>[@<código>];…;go` guarda en `mlapi/listas/<prov>` y el proveedor en `cyc/mlconfig/listasProv`. `listamedir[:<prov>][:N][:go]` las mide con `correrPyCatMedir` (opts.lista: costo en pesos + recargo, no pasa nada a Para probar), corre cada 3 h en ml-pycat (paso aparte, `!cancelled()`). Web: Pedidos → 📋 Listas (`renderListas`). Chequear: que el costo en pesos se convierta bien a dólares (÷ dólar del día) y que la lista de un proveedor no pise la de otro.
+
+### Etapa 3 · 15/10/2026 · v23.68
+Listas: se sacó `listamedir` del ml-pycat (regla suya: se evalúa la lista una vez y si no da se descarta). `lista:<prov>|descartar;go` / `|volver;go` (`listasProv.<k>.desc`), la web no muestra los descartados.

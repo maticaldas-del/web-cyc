@@ -18939,7 +18939,7 @@ async function main() {
     // LISTAS DE PRECIOS DE OTROS PROVEEDORES, "lo mismo que con Paraguay": se guardan en `mlapi/listas/<prov>/<código>`
     // ({n, p = pesos por unidad, ts}) y el proveedor en `cyc/mlconfig/listasProv/<prov>` ({nombre, rec, n, ts}), que es lo que
     // la web lee para mostrar la pestaña 📋 Listas. Sin código, el código sale del nombre. `rec` = % de gastos para traerlo
-    // (flete, etc.), opcional. Las mide `listamedir` (cada 3 h en ml-pycat). Sin `;go` sólo muestra. `lista` solo: las guardadas.
+    // (flete, etc.), opcional. Las mide `listamedir` a pedido (NO cada 3 h: decisión suya, primero se evalúa la lista entera y si no da se descarta el proveedor). Sin `;go` sólo muestra. `lista` solo: las guardadas.
     if (/^lista(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const _ls = String(process.env.BILLING_PROBE).slice('lista'.length).replace(/^:/, '');
       const APLICAR = /(^|;)go\s*$/.test(_ls);
@@ -18951,6 +18951,12 @@ async function main() {
       if (!provK) { console.log('❌ Falta el nombre del proveedor: lista:<proveedor>;<producto>=<pesos>;…'); return; }
       let rec = provs[provK] && provs[provK].rec != null ? Number(provs[provK].rec) : 0;
       for (const o of opc) { const m = o.match(/^rec=([\d.,]+)$/); if (m) rec = parseFloat(m[1].replace(',', '.')) || 0; }
+      // DESCARTAR UN PROVEEDOR (15/10/2026, él: "si todos están muy lejos del % descartamos el proveedor"): `lista:<prov>|descartar;go`
+      // lo esconde de la pestaña (los datos quedan); `|volver;go` lo devuelve.
+      const _dsc = opc.some((o) => o.trim() === 'descartar'), _vlv = opc.some((o) => o.trim() === 'volver');
+      if (_dsc || _vlv) { if (!provs[provK]) { console.log(`❌ No hay ninguna lista "${provNom}".`); return; }
+        console.log(`${provNom}: ${_dsc ? 'DESCARTADO (no se muestra más en 📋 Listas)' : 'vuelve a la pestaña 📋 Listas'}${APLICAR ? '' : ' · PRUEBA: agregá ;go'}`);
+        if (APLICAR) await db.patch('cyc/mlconfig/listasProv/' + provK, { desc: _dsc ? true : null, descTs: _dsc ? Date.now() : null }); return; }
       const filas = [], malos = [];
       for (const x of partes) {
         const i = x.lastIndexOf('='); if (i < 1) { malos.push(x); continue; }
@@ -18975,7 +18981,7 @@ async function main() {
       const total = Object.keys({ ...cat, ...upd }).length;
       await db.patch('cyc/mlconfig/listasProv/' + provK, { nombre: provNom, rec, n: total, ts: ahora });
       const r = (await db.get('mlapi/listas/' + provK + '/' + filas[filas.length - 1].cod)) || {};
-      console.log(`\n${Math.abs((Number(r.p) || 0) - filas[filas.length - 1].p) < 1 ? '✓' : '❌'} guardado (${total} productos en la lista). Los mide \`listamedir\` solo.`);
+      console.log(`\n${Math.abs((Number(r.p) || 0) - filas[filas.length - 1].p) < 1 ? '✓' : '❌'} guardado (${total} productos en la lista). Medila con \`listamedir:<proveedor>:<cuántos>:go\`.`);
       return;
     }
     // BILLING_PROBE=listamedir[:<proveedor>][:<cuántos>][:go] → mide contra ML las listas guardadas (la misma cuenta que Paraguay).

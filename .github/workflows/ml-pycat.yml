@@ -16,7 +16,7 @@ concurrency:
 jobs:
   medir:
     runs-on: ubuntu-latest
-    timeout-minutes: 100
+    timeout-minutes: 50
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -33,18 +33,4 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           BILLING_PROBE: pycatmedir:go
-        run: node ml-sync/sync.mjs
-      - name: Listas de precios de otros proveedores contra ML
-        env:
-          ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
-          ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
-          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
-          FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
-          FIREBASE_BOT_EMAIL: ${{ secrets.FIREBASE_BOT_EMAIL }}
-          FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          BILLING_PROBE: listamedir:200:go
-        if: ${{ !cancelled() }}
-        continue-on-error: true
         run: node ml-sync/sync.mjs

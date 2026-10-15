@@ -2618,7 +2618,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.67';
+const APP_VERSION='23.68';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2629,6 +2629,7 @@ const APP_VERSION='23.67';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.68',f:'15/10/2026',h:'18:00',c:[{n:1,t:'📋 Listas: ya no se miden solas cada 3 horas (eso queda sólo para Paraguay). Se mide cada lista una vez al cargarla, y si no da se descarta el proveedor (no se muestra más).'}]},
   {v:'23.67',f:'15/10/2026',h:'17:50',c:[{n:2,t:'📋 Pedidos → Listas: pestaña nueva para las listas de precios de otros proveedores. Se guardan como Paraguay, el robot las mide contra ML cada 3 horas, arriba van las que dan 25%+ (o 🏪 en perfumes) y abajo un buscador para ver cualquiera.'}]},
   {v:'23.66',f:'15/10/2026',h:'17:15',c:[{n:1,t:'📱 En el celular la página ya no se corre de costado. Las tablas anchas siguen deslizándose adentro de su caja.'}]},
   {v:'23.65',f:'15/10/2026',h:'19:20',c:[{n:2,t:'🔎 Pedidos → Paraguay → Nuevos: buscador de TODO comprasparaguay (los ~13.500 de Guay), aunque no den el %. Muestra fotos, código, precio puesto, el % de ML (o por qué no hay), el 🏪 local en perfumes y los dos links.'},{n:1,t:'📈 Línea de tiempo: los números del % (máximo y mínimo) van con su color de ganancia, no en gris.'}]},
@@ -17147,14 +17148,15 @@ function pedSinDecidirHTML(sec){
 // ── 📋 LISTAS DE PRECIOS DE OTROS PROVEEDORES (15/10/2026, pedido suyo) ──────────────────────────────────────
 // *"hacé lo mismo que con Paraguay, que quede guardado y poné un proveedor nuevo como Bs As, Paraguay o Paulvic"*. Las carga Claude
 // con `lista:<proveedor>;<producto>=<pesos>;…;go` en `mlapi/listas/<prov>` (FUERA de `cyc/`: se baja recién al abrir la pestaña) y
-// el robot las mide contra ML cada 3 h (`listamedir`, misma cuenta que Paraguay, costo en pesos + el recargo del proveedor).
+// el robot las mide contra ML a pedido (`listamedir`, misma cuenta que Paraguay, costo en pesos + el recargo del proveedor). Un proveedor
+// descartado (`lista:<prov>|descartar;go`) no se muestra.
 // Arriba lo que da 25%+ en ML (o, en perfumes, 25%+ en la perfumería del local); abajo un buscador para ver cualquiera.
 let _listaSel=null,_listaCache={},_listaQ='';
 async function renderListas(){
   const el=document.getElementById('listas-body');if(!el)return;
   const provs=(state.mlconfig&&state.mlconfig.listasProv)||{};
-  const ks=Object.keys(provs).sort((a,b)=>String(provs[a].nombre||a).localeCompare(String(provs[b].nombre||b)));
-  if(!ks.length){el.innerHTML=`<div class="empty-msg">Todavía no hay listas. Pasale a Claude la lista de precios del proveedor (foto, PDF o texto) y la guarda acá; el robot la mide contra ML cada 3 horas.</div>`;return;}
+  const ks=Object.keys(provs).filter(k=>!provs[k].desc).sort((a,b)=>String(provs[a].nombre||a).localeCompare(String(provs[b].nombre||b)));
+  if(!ks.length){el.innerHTML=`<div class="empty-msg">Todavía no hay listas. Pasale a Claude la lista de precios del proveedor (foto, PDF o texto): la guarda acá y la mide contra ML.</div>`;return;}
   if(!_listaSel||!provs[_listaSel])_listaSel=ks[0];
   const chips=ks.map(k=>{const v=provs[k];return `<button class="btn" style="font-size:.68rem;padding:5px 12px;${k===_listaSel?'background:var(--blue);color:#fff;font-weight:700':''}" onclick="_listaSel='${k}';_listaQ='';renderListas()">${v.nombre||k} <span style="opacity:.75">· ${v.n||0}</span></button>`;}).join('');
   const v=provs[_listaSel];
@@ -17183,7 +17185,7 @@ async function renderListas(){
   el.innerHTML=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">${chips}</div>
     <div style="font-size:.7rem;color:var(--muted);margin-bottom:8px">${filas.length} productos · ${med} medidos · ${sinMed} sin medir todavía${rec?` · recargo del proveedor ${rec}%`:''}${v.ts?` · lista del ${new Date(v.ts).toLocaleDateString('es-AR')}`:''}</div>
     <div style="font-size:.85rem;font-weight:700;color:var(--green);margin:4px 0 8px">✅ Dan 25% o más · ${dan.length}</div>
-    <div style="display:flex;flex-direction:column;gap:6px">${dan.length?dan.map(fila).join(''):'<div class="empty-msg">Todavía ninguno (o falta medirlos: el robot pasa cada 3 horas).</div>'}</div>
+    <div style="display:flex;flex-direction:column;gap:6px">${dan.length?dan.map(fila).join(''):'<div class="empty-msg">Todavía ninguno (o falta medirlos).</div>'}</div>
     <div style="margin-top:14px"><input id="lista-q" type="search" value="${q.replace(/"/g,'&quot;')}" placeholder="🔎 buscar en toda la lista (aunque no dé)" oninput="clearTimeout(window._listaT);window._listaT=setTimeout(()=>{_listaQ=this.value.trim();renderListas();setTimeout(()=>{const i=document.getElementById('lista-q');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length);}},0);},400)" style="width:100%;padding:8px 10px;font-size:.85rem;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--text)">
     ${q.length>=2?`<div style="font-size:.64rem;color:var(--muted);margin:6px 0">${res.length} encontrado${res.length===1?'':'s'}${res.length>60?' · muestro 60':''}</div><div style="display:flex;flex-direction:column;gap:6px">${res.slice(0,60).map(fila).join('')}</div>`:''}</div>`;
 }
