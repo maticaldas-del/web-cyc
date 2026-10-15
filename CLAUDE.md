@@ -764,6 +764,8 @@ fallas leídas como dato, dos fórmulas para un número, datos de terceros en el
 
 Pedido suyo: lo que cuesta adelantar la plata para poder hacer el pedido va como gasto aparte. `compray:<fecha>|adelanto=<pesos>|go`
 (por ml-sync). Renglón propio en la caja de gastos, suma al recargo real, no es obligatorio. Pedido del 14/10: $29.000.
+**Es ocasional, no fijo** (él: *"fue sólo para ese pedido, puede pasar de nuevo, pero normalmente no"*): no se le pide en cada
+pedido; se carga sólo cuando avisa. Y es OTRA cosa que el cambista: van en renglones separados.
 
 ## 🧾 LOS RECLAMOS QUE "CUBRE" ML SÍ NOS CUESTAN (15/10/2026, v23.47)
 

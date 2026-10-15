@@ -111,7 +111,9 @@ la historia y el porqué). Si algo de acá choca con CLAUDE.md, manda lo más nu
   cobre almacenamiento (120 días desde que entró). Regla suya del 14/10: *"al no haber más, ¿por qué lo dejamos barato?
   tenemos tiempo para venderlo antes de pagar por stock"*. Recién cerca de esa fecha se piensa bajar.
 - **Gasto nuevo de Paraguay (14/10):** adelantar plata de "a liquidar" de MP para comprar los dólares cuesta (el 14/10, $29.000):
-  va como `adelanto=` del pedido (renglón propio, 15/10; antes iba en `otros=` y se mezclaba con el cambista). Lo que pagó de más el cambista sobre el ticket va en `cambio=`.
+  va como `adelanto=` del pedido (renglón propio, 15/10; antes iba en `otros=` y se mezclaba con el cambista). **No es un gasto
+  fijo** (él, 15/10: *"fue sólo para ese pedido, puede pasar de nuevo, pero normalmente no"*): no se pide en cada pedido ni frena el
+  cierre; se carga sólo cuando él avisa que pasó. Lo que pagó de más el cambista sobre el ticket va en `cambio=`.
 
 ## 6 · Plata
 - **El 1º de cada mes cargo el retiro** ($1.800.000 hasta que él diga otra cosa).
