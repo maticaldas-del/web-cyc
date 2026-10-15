@@ -2224,6 +2224,7 @@ Los que más se usan:
 | `pyprecio:<palabras>=<código>/<US$>[@link];<palabras>=nohabia[;go]` | **precio y código de Paraguay de las fichas probadas** (07/10) · no toca el costo · con precio saca la marca "no había" · las palabras tienen que agarrar UNA ficha |
 | `candalta:<nombre>\|<código>\|<US$>\|<MLA catálogo>\|<vendidos>\|<link CP>\|<foto>;…[;go]` | **carga candidatos nuevos de "Para probar"** que manda el chat de compras (07/10) · no repite candidatos ni fichas (mismo código o nombre) · los mide `candidatos` |
 | `cargosmes[:<AAAA_MM>][:<meses>][:go]` | **la factura de ML por tipo de cargo, de las 4 cuentas** (14/10/2026): el gasto de Full del mes (con `:go` lo carga en Gastos) y las percepciones de IIBB por provincia para el contador |
+| `lista:<proveedor>[\|rec=<%>];<producto>=<pesos>[@<cód>];…[;go]` | **listas de precios de otros proveedores** (15/10/2026): se guardan en `mlapi/listas` y salen en Pedidos → 📋 Listas · `listamedir` las mide contra ML cada 3 h · `lista` solo muestra las guardadas |
 | `premiumvs` | **Premium contra Clásica** (idea 2 de la etapa 6, 27/09): cuánto cuesta ser Premium por venta (comisión + cuotas) y cuánto menos se puede vender en Clásica ganando lo mismo · solo lee |
 
 Casi todos son de solo lectura. Los que escriben piden `:go` explícito.

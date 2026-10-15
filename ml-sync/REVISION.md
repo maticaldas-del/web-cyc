@@ -1009,3 +1009,6 @@ Buscador de todo comprasparaguay en Nuevos (`pycatBuscar`, lee `mlapi/pycat` rec
 
 ### Etapa 7 · 15/10/2026 · v23.66
 `html,body{overflow-x:hidden}`: en el celu la página no se desliza de costado. Chequear: que las tablas con barrita propia (Rotación, gráficos) se sigan deslizando.
+
+### Etapa 3 · 15/10/2026 · v23.67 · Listas de precios de otros proveedores
+`lista:<proveedor>[|rec=<%>];<producto>=<pesos>[@<código>];…;go` guarda en `mlapi/listas/<prov>` y el proveedor en `cyc/mlconfig/listasProv`. `listamedir[:<prov>][:N][:go]` las mide con `correrPyCatMedir` (opts.lista: costo en pesos + recargo, no pasa nada a Para probar), corre cada 3 h en ml-pycat (paso aparte, `!cancelled()`). Web: Pedidos → 📋 Listas (`renderListas`). Chequear: que el costo en pesos se convierta bien a dólares (÷ dólar del día) y que la lista de un proveedor no pise la de otro.
