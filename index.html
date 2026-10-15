@@ -663,7 +663,6 @@ body.light .vp-promo.vp-promo-ml{color:#0369a1;background:color-mix(in srgb,#036
     <span id="home-version" onclick="actualizarApp()" title="Versión de la app que estás usando ahora. Tocá para buscar actualizaciones." style="display:inline-flex;align-items:center;gap:7px;font-size:.62rem;color:var(--muted);border:1px solid var(--border);border-radius:999px;padding:5px 13px;cursor:pointer;letter-spacing:.06em">…</span>
     <details id="home-cambios" style="margin-top:6px;text-align:left"></details>
   </div>
-  <div id="home-parejo"></div>
   <div class="home-grid">
     <div class="nav-card nc6" onclick="goPage('resumen')">
       <span class="nc-icon">📋</span>
@@ -1316,6 +1315,9 @@ body.light .vp-promo.vp-promo-ml{color:#0369a1;background:color-mix(in srgb,#036
       <span class="who-badge" id="who-fac">—</span>
     </div>
   </div>
+
+  <!-- 15/10/2026, pedido suyo: la tarjeta del tope de H vive acá, en Facturas (antes en Inicio). -->
+  <div id="home-parejo"></div>
 
   <!-- EMITIDAS = tus ventas (las hace el facturador de ML solo).
        RECIBIDAS = tus compras (salen de ARCA, Mis Comprobantes → Recibidos).
@@ -2615,7 +2617,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.55';
+const APP_VERSION='23.56';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2626,6 +2628,7 @@ const APP_VERSION='23.55';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.56',f:'15/10/2026',h:'16:10',c:[{n:1,t:'⚖️ La tarjeta "Las 4 cuentas contra el tope de H" se mudó de Inicio a Facturas.'},{n:1,t:'🇵🇾 Pedidos → Probados: el precio, el código, las fotos y los links van en "detalle ▾"; a la vista queda la casilla de pedir.'}]},
   {v:'23.55',f:'15/10/2026',h:'15:35',c:[{n:1,t:'🧠 La ventanita del cerebro ya no repite la misma explicación en "Por qué cambió el precio" cuando ya está en la nota de arriba (pasaba cuando el motivo guardado empezaba con "Claude:").'}]},
   {v:'23.54',f:'15/10/2026',h:'15:20',c:[{n:1,t:'📦 Armar caja: arriba sólo lo que hay que mandar (y lo que ya cargaste en la caja). Lo que no tiene recomendación va abajo, en el desplegable "Sin recomendación para mandar".'}]},
   {v:'23.53',f:'15/10/2026',h:'15:05',c:[{n:1,t:'📋 Pedidos (Bs As, Paraguay y Paulvic): el "Hola Tito" ya no está a la vista, sale tocando el 🧠. Al abrir un producto con colores se ven sólo los colores, cada uno con su 🧠; el resto de los datos va en "más datos".'}]},
@@ -3160,7 +3163,7 @@ function goPage(page){
   if(page==='ventaprod')initVentaProd();
   if(page==='rotacion')renderRotacionStock();
   if(page==='oficina')enterOficina();
-  if(page==='facturas')renderFacturas();
+  if(page==='facturas'){renderFacturas();try{renderHomeParejo();}catch(e){}}
   if(page==='ajustes')enterAjustes();
   if(page==='inventario'){initFinViewSel();renderInv();renderProds();renderHist();loadFinInputs();updateArqueo();updateTotals();updateHdr();}
   if(page==='home'){try{renderHomeHoy();}catch(e){}checkCierrePendiente();renderHomeRevision();updateHomeDolar();renderPuntajeMes();renderHomeParejo();renderNcOfi();}
@@ -16845,7 +16848,7 @@ function _pedidoItemHtml(p,opts){
   // ML: la foto y el link de su publicación viva. Paraguay: `pyLink`/`pyFoto` de la ficha (los carga Guay con
   // updPyLink) o, si no, los del candidato del que salió la ficha.
   const _pyVis=_armU==null?'':pyProbVisHTML(_prod,(p.variantesNec||[]).filter(x=>x&&(parseInt(x.q)||0)>0).map(x=>x.v));
-  const _armHTML=_armU==null?'':`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 12px 8px;margin:-4px 0 10px;font-size:.78rem;background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px">${_pyVis}
+  const _armHTML=_armU==null?'':`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 12px 8px;margin:-4px 0 10px;font-size:.78rem;background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px">${_pyVis?`<details style="flex-basis:100%"><summary style="cursor:pointer;font-size:.72rem;color:var(--muted)">detalle (precio, código, fotos y links) ▾</summary><div style="display:flex;flex-wrap:wrap;gap:8px;padding-top:6px">${_pyVis}</div></details>`:''}
       <span style="font-weight:700;color:${_armU>0?'var(--green)':'var(--muted)'}">🧾 pedir</span>
       <input type="number" min="0" step="1" value="${_armU||''}" placeholder="0" onchange="pyArmSet('${_prod.id}',this.value)" style="width:58px;font-size:.88rem;padding:4px 6px;text-align:center;background:var(--surface2);border:1px solid ${_armU>0?'var(--green)':'var(--border)'};border-radius:6px;color:var(--text)"> u.
       ${_armU>0?`<span style="color:var(--green)">✓ en el pedido</span>`:`<button class="btn" style="font-size:.66rem;padding:3px 9px" onclick="pyArmSet('${_prod.id}',${parseInt(p.cantidad)||1})">+ las ${fmtN(p.cantidad||1)} sugeridas</button>`}

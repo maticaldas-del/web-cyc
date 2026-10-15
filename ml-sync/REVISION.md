@@ -548,6 +548,10 @@ el precio de un candidato distinto con código parecido (se compara también por
 
 ## 7 · DISEÑO
 
+### Tope de H en Facturas · detalle de Probados plegado (15/10/2026, v23.56, pedido suyo)
+- `#home-parejo` vive en la página de Facturas (se dibuja al entrar, `renderHomeParejo`); en Inicio ya no está. En Pedidos →
+  Probados, `pyProbVisHTML` (precio, código, fotos, links) va dentro de "detalle ▾"; la casilla de pedir queda a la vista.
+
 ### El 🧠 no repite la explicación (15/10/2026, v23.55, pedido suyo con la Lupa 90mm)
 - `_repetido` del cerebro saca la etiqueta "Claude:" del principio y además compara un pedazo del medio (40 letras): un motivo de
   `cyc/claudecambios` que ya está en la nota no se vuelve a escribir en "Por qué cambió el precio". Qué chequear: que dos motivos
