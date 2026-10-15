@@ -525,8 +525,9 @@ el precio de un candidato distinto con código parecido (se compara también por
     **Chequear:** que ningún cargo de Full quede en "otros" sin mirar y que la tabla de IIBB use sólo renglones de IIBB.
     v23.43: el renglón "Cargos de Full de ML" de la lista de Gastos ya no le pide el reporte (dice que lo cargo yo con
     `cargosmes`). **Chequear:** que ese texto y el comando sigan diciendo lo mismo.
-  - **NO se hizo, a propósito:** 7 (reclamos que pagó ML) cambia el costo de todos los productos: primero se confirma
-    con el reporte de liquidación de MP (queda en `REV_PENDIENTE`). 8 (juntar pedidos de Paraguay a ~US$1.000) es una
+  - **7 (reclamos que pagó ML) · CERRADA 15/10/2026, NO se hace:** `reclamoplata:90` cruzó el reporte de MP: de 70
+    reclamos, en NINGUNO quedó la plata (46 se fue entera, 24 una parte; filas DISPUTE −). `applied_coverage`/`bpp` quiere
+    decir que ML le devolvió al comprador con su programa, no que nos repuso. El % de reclamos en el costo está bien. 8 (juntar pedidos de Paraguay a ~US$1.000) es una
     decisión de compra, no código. 11 (dinero que rinde en MP) lo mira él en la app.
 
 ## 7 · DISEÑO

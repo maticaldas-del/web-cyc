@@ -760,6 +760,13 @@ archivo. **Etapa 8 · Datos e historial** creada ese día (líneas de tiempo); c
 Inicio la pide ya. Y lo que se mira en TODAS: contar dos veces lo mismo (el stock ×4 del Centímetro),
 fallas leídas como dato, dos fórmulas para un número, datos de terceros en el registro público.
 
+## 🧾 LOS RECLAMOS QUE "CUBRE" ML SÍ NOS CUESTAN (15/10/2026, v23.47)
+
+La idea 7 de la etapa 6 decía que ML pagaba 68 de 69 reclamos y que el panel los contaba de más como pérdida.
+Confirmado con el reporte de liquidación de MP (`reclamoplata[:días]`, solo lee): **0 de 70 dejaron la plata** (46 se
+fue entera, 24 una parte, por filas DISPUTE −). "Cubierto" (`bpp`) es la devolución al COMPRADOR. El costo con % de
+reclamos queda como está. **No volver a proponerlo.** El cartel de la revisión quedó sin pendientes.
+
 ## 🇵🇾 LA PASADA DEL MES DE GUAY: LISTA, ESPERANDO QUE ÉL LA PIDA (14/10/2026)
 
 Pedido suyo: *"quiero que TODOS esos estén en la web de cyc, no a la vista si no llega a las 100 ventas ni al 25% (...) la

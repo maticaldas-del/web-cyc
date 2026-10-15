@@ -2615,7 +2615,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.46';
+const APP_VERSION='23.47';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2626,6 +2626,7 @@ const APP_VERSION='23.46';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.47',f:'15/10/2026',h:'12:50',c:[{n:1,t:'🔎 Revisión: cerrada la idea de los reclamos que pagó ML. Lo confirmé en Mercado Pago: la plata de esos reclamos SÍ salió de la cuenta, así que el panel los contaba bien como pérdida. No cambia ningún costo.'}]},
   {v:'23.46',f:'15/10/2026',h:'09:55',c:[{n:2,t:'🔔 El aviso al teléfono ya no suena con cada venta: sólo con las compras que dejan $10.000 o más de ganancia. Las demás se siguen viendo en Ventas y en el total del día.'}]},
   {v:'23.45',f:'15/10/2026',h:'08:55',c:[{n:1,t:'🔥 Ventas vivas: el temblor y el fuego recién pueden aparecer en ventas que dejaron $10.000 o más de ganancia. Todo lo demás (color, brillo, figuras, velocidad) sigue igual.'}]},
   {v:'23.44',f:'15/10/2026',h:'22:46',c:[{n:2,t:'🔔 Cada venta nueva hace vibrar y sonar el teléfono (además del Telegram). Hay que tocar una vez "Activar aviso de cada venta" en Inicio o en Ajustes, en cada teléfono. En iPhone, con CYC abierto desde el ícono.'}]},
@@ -3891,7 +3892,6 @@ const REV_CADA_DIAS=7;
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel pide la
 //                     etapa más vieja cuando pasaron REV_CADA_DIAS desde la última.
 const REV_PENDIENTE=[
-  {t:'Etapa 6 · reclamos que pagó ML (idea 7)',que:'Lo confirmo con el reporte de Mercado Pago antes de cambiar el costo de los productos',pedi:'nada: lo hago yo y te aviso'},
 ];
 // Etapa 7 (diseño) cerrada el 01/10/2026: hechas 1-9, 11, 13, 14 y 15; la 10 (Pedidos) y la 12 (sacar
 // "Participación por cuenta") él eligió dejarlas como están.
@@ -3900,7 +3900,7 @@ const REV_PENDIENTE=[
 // por una nota vieja.
 // 30/09 a la tarde: la revisión completa final (6 revisores) cubrió precios, plata, mercadería, ventas,
 // corridas del robot y la web; lo obvio quedó arreglado en la v20.88.
-const REV_HECHAS={1:'2026-10-08',2:'2026-09-30',3:'2026-09-30',4:'2026-09-30',5:'2026-09-30',6:'2026-09-27',7:'2026-10-01',8:'2026-10-12',9:'2026-10-13'};
+const REV_HECHAS={1:'2026-10-08',2:'2026-09-30',3:'2026-09-30',4:'2026-09-30',5:'2026-09-30',6:'2026-10-15',7:'2026-10-01',8:'2026-10-12',9:'2026-10-13'};
 function _revFecha(iso){const d=new Date(iso+'T12:00:00');return isNaN(d)?null:d;}
 function _revFmt(d){return ['dom','lun','mar','mié','jue','vie','sáb'][d.getDay()]+' '+String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0');}
 function revProxima(){
