@@ -2614,7 +2614,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.62';
+const APP_VERSION='23.63';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2625,6 +2625,7 @@ const APP_VERSION='23.62';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.63',f:'15/10/2026',h:'18:40',c:[{n:2,t:'🏪 Botón "🏪✕ no da en el local" al lado del % azul de cada perfume: lo saca de la sugerencia para la perfumería (vuelve a depender sólo de ML). Se devuelve con "↩︎ 🏪 volver a sugerir".'}]},
   {v:'23.62',f:'15/10/2026',h:'18:25',c:[{n:1,t:'🇵🇾 Pedidos → Nuevos: se sacó el "🧮 Simulador real de precio" del final de la lista (no se usaba).'}]},
   {v:'23.61',f:'15/10/2026',h:'18:10',c:[{n:3,t:'🧴 Perfumes de Paraguay: al lado del % de ML va un % AZUL 🏪 = lo que le queda a CYC vendiéndolo en la perfumería del local al precio de ML (la perfumería se queda su 30%, sin comisión ni impuestos). Si da 25% o más, el perfume se puede pedir aunque en ML no llegue, y de cualquier marca. El % de ML abajo de 25% va en rojo.'}]},
   {v:'23.60',f:'15/10/2026',h:'17:40',c:[{n:1,t:'🇵🇾 Pedidos → Paraguay más simple: abre con los probados arriba y los nuevos abajo. En el medio queda un solo renglón (🆕 Nuevos · cuántos dan 25%+). Se sacaron el texto de explicación, "cómo funciona esto", la barra del pedido de nuevos (está en 🧾 Pedido) y la caja grande de cuántos dan.'}]},
@@ -12735,7 +12736,15 @@ const CAND_PISO_PERFUME=24;   // 06/10/2026: 24 para todo lo que se compra (él:
 const PERF_LOCAL_TIENDA=30, PERF_LOCAL_GAN=25;
 function perfLocalPct(costoPesos,precioML){if(!(costoPesos>0)||!(precioML>0))return null;return (precioML/(1+PERF_LOCAL_TIENDA/100)/costoPesos-1)*100;}
 function candEsPerf(c){return !!c&&(esPerfumeNom(String(c.nombre||''))||_PERF_RE.test(String(c.mlTit||'')));}
-function candLocalPct(c){if(!candEsPerf(c))return null;const u=parseFloat(c.usd)||0,tc=curTC();return perfLocalPct(u*RECARGO_PY*tc,Number(c.mlPrecio)||0);}
+// "YA LO PROBAMOS EN LA PERFUMERÍA Y NO DA" (15/10/2026, pedido suyo): con la marca `noLocal` (en el candidato o en la
+// ficha del probado) el % azul no se calcula y el perfume vuelve a depender sólo de ML. Se saca y se devuelve con un botón.
+async function perfNoLocal(tipo,id,on){
+  if(tipo==='c'){const c=(state.candidatos||{})[id];if(c)c.noLocal=on?true:null;await fbSet('candidatos_py/'+id+'/noLocal',on?true:null);}
+  else{const p=(state.products||[]).find(x=>x.id===id);if(p)p.noLocal=on?true:null;await fbSet('products/'+id+'/noLocal',on?true:null);}
+  renderPedidos();toast(on?'Sacado de la sugerencia para la perfumería ✓':'Vuelve a sugerirse para la perfumería ✓');
+}
+function perfNoLocalBtn(tipo,id,on){return `<button class="btn" style="font-size:.6rem;padding:2px 8px;margin-left:4px" onclick="event.preventDefault();event.stopPropagation();perfNoLocal('${tipo}','${id}',${on?'false':'true'})" title="${on?'Volver a sugerirlo para la perfumería del local':'Ya lo probaron en la perfumería y no da: dejar de sugerirlo para el local'}">${on?'↩︎ 🏪 volver a sugerir':'🏪✕ no da en el local'}</button>`;}
+function candLocalPct(c){if(!candEsPerf(c)||c.noLocal)return null;const u=parseFloat(c.usd)||0,tc=curTC();return perfLocalPct(u*RECARGO_PY*tc,Number(c.mlPrecio)||0);}
 function candLocalOk(c){const l=candLocalPct(c);return l!=null&&l>=PERF_LOCAL_GAN;}
 // El % azul al lado del de ML (rojo si no llega: azul si da).
 function perfLocalHTML(pct,grande){if(pct==null||!isFinite(pct))return'';const ok=pct>=PERF_LOCAL_GAN;
@@ -14338,7 +14347,7 @@ function candidatosHTML(){
           <div style="font-size:.68rem;color:var(--muted);margin-top:3px">${c.cod?`🔖 ${c.cod} · `:''}${usd>0?`US$ ${usd.toFixed(2)} → <b style="color:var(--text)">US$ ${puesto.toFixed(2)}</b> puesto${pesos?` · ${fmt(pesos)}`:''}`:'<span style="color:var(--red)">sin precio</span>'}${(()=>{const _v=candVentasDe(c);return _v!=null?` · <b style="color:${_v>=CAND_MIN_VENT?'var(--green)':'var(--amber)'}">🛒 ${_v>=1000?'+1000':_v} vendidas</b>`:' · <span style="color:var(--amber)">🛒 sin dato de ventas</span>';})()}</div>
         </div>
         <div style="text-align:right;flex:0 0 auto">
-          ${tieneCuenta?`<div style="font-size:1.35rem;font-weight:700;color:${col};line-height:1">${c.margen.toFixed(0)}%${dudas?' <span title="Hay dudas de que sea el mismo producto: abrilo y mirá las dos fotos" style="font-size:.8em">⚠️</span>':''}</div>${_loc!=null?`<div style="margin-top:3px">${perfLocalHTML(_loc)}</div>`:''}`:'<div style="font-size:.68rem;color:var(--muted)">⏳ sin medir</div>'}
+          ${tieneCuenta?`<div style="font-size:1.35rem;font-weight:700;color:${col};line-height:1">${c.margen.toFixed(0)}%${dudas?' <span title="Hay dudas de que sea el mismo producto: abrilo y mirá las dos fotos" style="font-size:.8em">⚠️</span>':''}</div>${_loc!=null?`<div style="margin-top:3px">${perfLocalHTML(_loc)}${perfNoLocalBtn('c',c.id,false)}</div>`:candEsPerf(c)&&c.noLocal?`<div style="margin-top:3px;font-size:.6rem;color:var(--muted)">🏪 no da en el local${perfNoLocalBtn('c',c.id,true)}</div>`:''}`:'<div style="font-size:.68rem;color:var(--muted)">⏳ sin medir</div>'}
           <div style="font-size:.6rem;color:var(--muted);margin-top:3px">detalle ▾</div>
         </div>
       </summary>
@@ -16816,7 +16825,7 @@ function pyProbVeredicto(ped){
     +(mx.cuoN?` · 💳 el que hay que igualar da cuotas sin interés: descuento ${mx.cuoN} cuotas (${fmt(mx.cuo)}, ${mx.cuoPct}%)`:'');
   if(nu>mxW+0.005){
     // Perfume que en ML no llega pero en la perfumería del local deja 25%+: da igual (15/10/2026).
-    const loc=esPerfumeNom(pr.name||ped.producto)?perfLocalPct((nu*RECARGO_PY*(1+(mx.dev||0)/100)+(mx.ship||0))*mx.tc,mx.P):null;
+    const loc=(esPerfumeNom(pr.name||ped.producto)&&!pr.noLocal)?perfLocalPct((nu*RECARGO_PY*(1+(mx.dev||0)/100)+(mx.ship||0))*mx.tc,mx.P):null;
     if(loc!=null&&loc>=PERF_LOCAL_GAN)return{k:'da',corto:corto+` · 🏪 local ${Math.round(loc)}%`,txt:`en ML no llega (máx US$ ${mxW.toFixed(2)}), pero en la perfumería del local deja ${Math.round(loc)}%`};
     return{k:'noda',corto,txt:`Nissei US$ ${nu.toFixed(2)}${pedTxt} · máx para ${PY_PROB_PISO}%: US$ ${mxW.toFixed(2)}${fullTxt}`};}
   return{k:'da',corto,txt:`Nissei US$ ${nu.toFixed(2)} · máx US$ ${mxW.toFixed(2)} · mirado hace ${dias} d${fullTxt}`};
@@ -16968,7 +16977,8 @@ function _pedidoItemHtml(p,opts){
   const _nu=parseFloat(_prod.nisseiUSD)||0, _pu=_nu>0?Math.round(_nu*RECARGO_PY*100)/100:0, _ps=_pu>0?Math.round(_pu*curTC()):0;
   let _mgP=null;try{_mgP=margenSiComproPY(maxCompraDe(_prod,PY_PROB_PISO),_nu);}catch(e){_mgP=null;}
   const _colP=_mgP==null?'var(--muted)':(typeof pctColor==='function'?pctColor(_mgP):'var(--text)');
-  let _locP=null;try{if(esPerfumeNom(_prod.name||p.producto)){const mx=maxCompraDe(_prod,PY_PROB_PISO);if(mx&&!mx.motivo&&_nu>0&&mx.tc>0)_locP=perfLocalPct((_nu*RECARGO_PY*(1+(mx.dev||0)/100)+(mx.ship||0))*mx.tc,mx.P);}}catch(e){_locP=null;}
+  const _esPerfP=esPerfumeNom(_prod.name||p.producto);
+  let _locP=null;try{if(_esPerfP&&!_prod.noLocal){const mx=maxCompraDe(_prod,PY_PROB_PISO);if(mx&&!mx.motivo&&_nu>0&&mx.tc>0)_locP=perfLocalPct((_nu*RECARGO_PY*(1+(mx.dev||0)/100)+(mx.ship||0))*mx.tc,mx.P);}}catch(e){_locP=null;}
   const _ft=fotoDeProducto(_prod,p.variante||''), _fu=_ft&&_ft.url;
   const _tq=JSON.stringify(String(p.producto||'')).replace(/"/g,'&quot;');
   return `<details class="ingreso-item" style="display:block;border-left:3px solid ${_colP};margin-bottom:8px"${_abierto?' open':''} ontoggle="_setPedCardOpen('${p.id}',this.open)">
@@ -16981,7 +16991,7 @@ function _pedidoItemHtml(p,opts){
         <div style="font-size:.68rem;color:var(--muted);margin-top:3px">${_prod.codPy?`🔖 ${_prod.codPy} · `:'<span style="color:var(--amber)">🔖 sin código</span> · '}${_nu>0?`US$ ${_nu.toFixed(2)} → <b style="color:var(--text)">US$ ${_pu.toFixed(2)}</b> puesto${_ps?` · ${fmt(_ps)}`:''}`:'<span style="color:var(--red)">sin precio de Paraguay</span>'}${p.cVend!=null?` · 🛒 vendiste ${fmtN(p.cVend)}${p.cDias?` en ${p.cDias} d`:''}`:''}${_semTxt?` · ${_semTxt}`:''}</div>
       </div>
       <div style="text-align:right;flex:0 0 auto">
-        ${_mgP!=null?`<div style="font-size:1.35rem;font-weight:700;color:${_colP};line-height:1">${Math.round(_mgP)}%</div>`:'<div style="font-size:.68rem;color:var(--amber)">sin medir</div>'}${_locP!=null?`<div style="margin-top:3px">${perfLocalHTML(_locP)}</div>`:''}
+        ${_mgP!=null?`<div style="font-size:1.35rem;font-weight:700;color:${_colP};line-height:1">${Math.round(_mgP)}%</div>`:'<div style="font-size:.68rem;color:var(--amber)">sin medir</div>'}${_locP!=null?`<div style="margin-top:3px">${perfLocalHTML(_locP)}${perfNoLocalBtn('p',_prod.id,false)}</div>`:_esPerfP&&_prod.noLocal?`<div style="margin-top:3px;font-size:.6rem;color:var(--muted)">🏪 no da en el local${perfNoLocalBtn('p',_prod.id,true)}</div>`:''}
         <div style="font-size:.62rem;color:var(--muted);margin-top:3px">comprar ${fmtN(p.cantidad||0)} u.${_armU>0?` · <b style="color:var(--green)">🧾 ${_armU} en el pedido</b>`:''}</div>
         <div style="font-size:.6rem;color:var(--muted);margin-top:2px">detalle ▾</div>
       </div>

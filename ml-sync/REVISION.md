@@ -997,3 +997,6 @@ marca). En pantalla: % azul 🏪 al lado del de ML; el % de ML abajo de 25 en ro
 
 ### Etapa 7 · 15/10/2026 · v23.62
 Se sacó el 🧮 Simulador real de precio de Pedidos → Nuevos (él: "no lo uso"). `simPYHTML` queda sin llamar, por si vuelve.
+
+### Etapa 3 · 15/10/2026 · v23.63
+Marca `noLocal` (en `cyc/candidatos_py/<id>` o `cyc/products/<id>`): "ya lo probamos en la perfumería y no da". Apaga el % azul y la entrada por el local (web `candLocalPct`/probados, robot `candidatos` y `pedir`). Botón 🏪✕ / ↩︎ en la tarjeta.

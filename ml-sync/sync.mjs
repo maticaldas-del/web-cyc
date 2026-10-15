@@ -9052,7 +9052,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     // faltaba que la vuelta siguiente VOLVIERA a medir, y el atajo de "ya tiene la cuenta hecha"
     // se lo comía antes (ver el comentario largo de ese `if`). 27 candidatos se descartaron con
     // una sola lectura mientras esta línea afirmaba que no podía pasar.
-    const _loc = RE_CAND_PERF.test(`${c.nombre || ''} ${mlTit || ''}`) ? perfLocalPct(puesto * tc, mlPrecio) : null;
+    const _loc = (!c.noLocal && RE_CAND_PERF.test(`${c.nombre || ''} ${mlTit || ''}`)) ? perfLocalPct(puesto * tc, mlPrecio) : null;
     if (_loc != null && _loc >= PERF_LOCAL_GAN && margen < candPisoDe({ ...c, mlTit })) console.log(`      🏪 en ML da ${margen.toFixed(1)}%, pero en la perfumería del local deja ${_loc.toFixed(0)}%: no se descarta`);
     if (margen < candPisoDe({ ...c, mlTit }) && !(_loc != null && _loc >= PERF_LOCAL_GAN)) {
       const antesM = (c.margen != null && isFinite(c.margen)) ? Number(c.margen) : null;
@@ -18332,7 +18332,7 @@ async function main() {
         const puede = c.no ? 'está descartado de la lista'
           : _viaja(c) ? `ya está viajando en el pedido del ${_viaja(c)}`
           : (c.margen == null || !isFinite(mg)) ? 'todavía no está medido en ML'
-          : (mg < candPisoDe(c) && !(_tcP > 0 && RE_CAND_PERF.test(`${c.nombre || ''} ${c.mlTit || ''}`) && (perfLocalPct((parseFloat(c.usd) || 0) * RECARGO_PAR * _tcP, Number(c.mlPrecio) || 0) || 0) >= PERF_LOCAL_GAN)) ? `da ${mg.toFixed(1)}% y tu piso es ${candPisoDe(c)}%`
+          : (mg < candPisoDe(c) && !(_tcP > 0 && !c.noLocal && RE_CAND_PERF.test(`${c.nombre || ''} ${c.mlTit || ''}`) && (perfLocalPct((parseFloat(c.usd) || 0) * RECARGO_PAR * _tcP, Number(c.mlPrecio) || 0) || 0) >= PERF_LOCAL_GAN)) ? `da ${mg.toFixed(1)}% y tu piso es ${candPisoDe(c)}%`
           : !(_vendP(c) >= CAND_MIN_VENT) ? (_vendP(c) == null ? `no tiene cargadas las vendidas en ML (mínimo ${CAND_MIN_VENT})` : `vendió ${_vendP(c)} en ML y el mínimo es ${CAND_MIN_VENT}`) : '';
         if (puede && p.u > antes) { problemas.push(`"${p.busca}" → ${c.nombre}: NO se puede pedir, ${puede}`); continue; }
         cambios.push({ id, c, antes, u: p.u, baja: !!p.baja });
