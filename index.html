@@ -2615,7 +2615,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.52';
+const APP_VERSION='23.53';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2626,6 +2626,7 @@ const APP_VERSION='23.52';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.53',f:'15/10/2026',h:'15:05',c:[{n:1,t:'📋 Pedidos (Bs As, Paraguay y Paulvic): el "Hola Tito" ya no está a la vista, sale tocando el 🧠. Al abrir un producto con colores se ven sólo los colores, cada uno con su 🧠; el resto de los datos va en "más datos".'}]},
   {v:'23.52',f:'15/10/2026',h:'14:45',c:[{n:1,t:'📦 Armar caja más simple: cada producto muestra sólo nombre, variante, cuántas tenés, cuántas mandar por cuenta y el código de la etiqueta. Todo lo demás (ritmo, 🧠, avisos, botones) se abre tocando el producto.'}]},
   {v:'23.51',f:'15/10/2026',h:'14:30',c:[{n:2,t:'📊 Métricas: todos los gastos del mes van al día 1 (junto con el retiro), aunque se hayan pagado el 15. Así el gráfico muestra una sola barra de gastos por mes. El total del mes no cambia y en Gastos cada uno sigue con su fecha real.'}]},
   {v:'23.50',f:'15/10/2026',h:'14:10',c:[{n:2,t:'Paraguay · 🪄 Llenar: lo barato (hasta US$15) que vende 100+ en ML con pocos vendedores va con 3-4 u.; lo caro (más de US$60), con 1; el resto, 2.'}]},
@@ -16407,13 +16408,14 @@ function pedVarSem(x){
   if(x.ml!=null&&tot<=0)return 'rojo';
   return (x.dias!=null&&x.dias<=(_pedRojoCur||PED_DIAS_ROJO))?'naranja':'amarillo';
 }
-function pedVarFila(x){
+function pedVarFila(x,p){
   const q=x.q||0,sem=pedVarSem(x),n=v=>fmtN(v||0);
   const col={rojo:'var(--red)',naranja:'#f97316',amarillo:'#ca8a04'}[sem];
   const lug=(x.ml!=null||x.cam!=null||x.casa!=null)?`📦 ${n(x.ml)} en ML · 🚚 ${n(x.cam)} en camino · 🏠 ${n(x.casa)} en casa${x.pv>0?` · 🧴 ${n(x.pv)} al Paulvic`:''}`:'';
   const dTxt=sem==='rojo'?'🔴 sin stock en ningún lado':(x.dias!=null&&x.dias<999?`${sem==='naranja'?'🟠':'🟡'} alcanza ~${x.dias} d`:'');
   return `<div class="ped-var-fila sem-${sem}" style="border-left-color:${col}">
-    <div class="ped-var-txt"><b>${x.v}</b>${x.hist?' <span style="color:var(--amber);font-size:.8em">· ritmo viejo</span>':''}<i>${[dTxt,lug].filter(Boolean).join(' · ')}</i>${x.mot?`<i style="color:#a78bfa">🧠 ${escHtml(x.mot)}</i>`:''}</div>
+    <div class="ped-var-txt"><b>${x.v}</b>${x.hist?' <span style="color:var(--amber);font-size:.8em">· ritmo viejo</span>':''}<i>${[dTxt,lug].filter(Boolean).join(' · ')}</i></div>
+    ${p&&p.prodId?`<span onclick="event.stopPropagation()">${cerebroBtn(p.prodId,{ped:p.id,variante:x.v})}</span>`:''}
     ${q>0?`<span class="ped-var-u" style="color:${col}"><b>${n(q)}</b><i>u. a comprar</i></span>`:`<span class="ped-var-u" style="color:var(--green)"><b>✓</b><i>mandar de casa</i></span>`}
   </div>`;
 }
@@ -16782,7 +16784,7 @@ function _pedidoItemHtml(p,opts){
   // va en su propia línea "🧠 sin decidir" (09/10/2026). Los que sí decidió en 0 siguen en la línea de "no hace falta".
   const _vSinDec=(varsSorted&&SOLO_CLAUDE)?varsSorted.filter(x=>!((x.q||0)>0)&&!x.cl):[];
   const _vMand=varsSorted?varsSorted.filter(x=>!((x.q||0)>0)&&!_vSinDec.includes(x)):[];
-  const varToggle=varsSorted?`<div class="ped-vars">${[..._vComp].sort((a,b)=>(_PED_SEM_ORD[pedVarSem(a)]-_PED_SEM_ORD[pedVarSem(b)])||((b.q||0)-(a.q||0))).map(x=>pedVarFila(x)).join('')}${_vSinDec.length?`<div style="font-size:.68rem;color:var(--amber);padding:2px 4px">🧠 sin decidir ${_vSinDec.length===1?'este color':'estos '+_vSinDec.length+' colores'} (Claude todavía no dijo cuántas comprar): ${_vSinDec.map(x=>escHtml(x.v)+(x.dias!=null&&x.dias<999?' ~'+x.dias+' d':'')).join(' · ')}</div>`:''}${_vMand.length?`<div style="font-size:.68rem;color:var(--muted);padding:2px 4px">✓ no hace falta comprar ${_vMand.length===1?'este color':'estos '+_vMand.length+' colores'} (${SOLO_CLAUDE?'Claude decidió 0 · el motivo está en el 🧠':'alcanza con lo de casa y lo que viaja, mandalos desde Armar caja'}): ${_vMand.map(x=>x.v+(x.dias!=null&&x.dias<999?' ~'+x.dias+' d':'')).join(' · ')}</div>`:''}</div>`:'';
+  const varToggle=varsSorted?`<div class="ped-vars">${[..._vComp].sort((a,b)=>(_PED_SEM_ORD[pedVarSem(a)]-_PED_SEM_ORD[pedVarSem(b)])||((b.q||0)-(a.q||0))).map(x=>pedVarFila(x,p)).join('')}${_vSinDec.length?`<div style="font-size:.68rem;color:var(--amber);padding:2px 4px">🧠 sin decidir ${_vSinDec.length===1?'este color':'estos '+_vSinDec.length+' colores'} (Claude todavía no dijo cuántas comprar): ${_vSinDec.map(x=>escHtml(x.v)+(x.dias!=null&&x.dias<999?' ~'+x.dias+' d':'')).join(' · ')}</div>`:''}${_vMand.length?`<div style="font-size:.68rem;color:var(--muted);padding:2px 4px">✓ no hace falta comprar ${_vMand.length===1?'este color':'estos '+_vMand.length+' colores'} (${SOLO_CLAUDE?'Claude decidió 0 · el motivo está en el 🧠':'alcanza con lo de casa y lo que viaja, mandalos desde Armar caja'}): ${_vMand.map(x=>x.v+(x.dias!=null&&x.dias<999?' ~'+x.dias+' d':'')).join(' · ')}</div>`:''}</div>`:'';
   const _prod=(state.products||[]).find(x=>x.id===p.prodId||(x.name&&normTxt(x.name)===normTxt(p.producto||'')));
   // El botón sale con CUALQUIER foto, no sólo con la cargada a mano: antes miraba `_prod.foto`,
   // que sólo se prende al subir una, así que con la foto automática de ML el botón no aparecía.
@@ -16830,12 +16832,7 @@ function _pedidoItemHtml(p,opts){
       <span style="font-weight:700;color:${_armU>0?'var(--green)':'var(--muted)'}">🧾 pedir</span>
       <input type="number" min="0" step="1" value="${_armU||''}" placeholder="0" onchange="pyArmSet('${_prod.id}',this.value)" style="width:58px;font-size:.88rem;padding:4px 6px;text-align:center;background:var(--surface2);border:1px solid ${_armU>0?'var(--green)':'var(--border)'};border-radius:6px;color:var(--text)"> u.
       ${_armU>0?`<span style="color:var(--green)">✓ en el pedido</span>`:`<button class="btn" style="font-size:.66rem;padding:3px 9px" onclick="pyArmSet('${_prod.id}',${parseInt(p.cantidad)||1})">+ las ${fmtN(p.cantidad||1)} sugeridas</button>`}
-      ${(()=>{// EL POR QUÉ A LA VISTA (13/10/2026, él: "no me explica porque me pide esas unidades"): el motivo que escribí al
-        // decidir (o la cuenta guardada del pedido), abajo de la casilla, sin tener que abrir nada.
-        const o=clPedDe(_prod.id);let t=o&&o.motivo?String(o.motivo):'';
-        if(o&&o.motVars)t=[t,...Object.entries(o.motVars).map(([c,m])=>`${c}: ${m}`)].filter(Boolean).join(' · ');
-        if(!t)t=_cerPedidoSimple(p);
-        return t?`<div style="flex-basis:100%;font-size:.74rem;line-height:1.45;color:var(--text);padding:4px 0 0">🧠 <b>Por qué ${fmtN(p.cantidad||0)}:</b> ${escHtml(t)}</div>`:'';})()}
+      ${''/* 15/10/2026, él: "oculta el hola tito": el por qué ya no va a la vista, está en el 🧠 de la tarjeta. */}
     </div>`;
   const _sem=_enCam?null:_pedSem(p);
   const _tanque=_enCam?'':pedTanqueHTML(p);
@@ -16847,11 +16844,12 @@ function _pedidoItemHtml(p,opts){
       ${_prod?maxCompraChip(_prod):''}
       <span class="ped-buy"><b>${fmtN(p.cantidad||1)}</b><i>u. a comprar${p.auto===false?' · a mano':''}</i>${_semTxt?`<i class="ped-sem" title="Cuenta lo que hay en ML + en camino + en tu oficina, al ritmo de venta">${_semTxt}</i>`:''}</span>
       <span class="ped-caret">▼</span>
-      ${(_prod&&_armU==null)?_cerNotaVisHTML(_cerNotaCtx('ped',_prod.id,'',p.variante||'')):''}
     </summary>
     <div class="ped-body">
       ${varToggle}
-      ${fotoBtn}${copiarBtn}${_prod?cerebroBtn(_prod.id,{ped:p.id,variante:p.variante||''}):''}
+      ${copiarBtn}${_prod?cerebroBtn(_prod.id,{ped:p.id,variante:p.variante||''}):''}
+      ${varsSorted?'<details class="ped-mas" style="flex-basis:100%"><summary style="cursor:pointer;font-size:.7rem;color:var(--muted)">más datos ▾</summary><div class="ped-body" style="padding:6px 0 0">':''}
+      ${fotoBtn}
       ${_tanque}${(()=>{const n=_tanque?String(p.nota||'').replace(/ · ~\d+d cubiertos/,'').replace(/ · 📦[\s\S]*$/,''):p.nota;return n?`<span class="pi-nota">${n}</span>`:'<span class="pi-nota" style="flex:0"></span>';})()}
       ${_enCam?'':riesgoBadge}
       ${(()=>{const _r=pedSinSentido(p);return _r?`<span class="pi-var-toggle" style="background:rgba(245,158,11,.14);color:var(--amber);border-color:rgba(245,158,11,.35);cursor:default" title="${_r.det.join(' · ').replace(/"/g,'&quot;')}">⚠️ este renglón no cierra${_r.n>1?' ('+_r.n+')':''}</span>`:'';})()}
@@ -16862,6 +16860,7 @@ function _pedidoItemHtml(p,opts){
       ${p.auto===false||!_tanque?accionBtns:''}
       <span class="pi-ts">${p.ts?ts2s(p.ts):''}</span>
       <button class="btn btn-del" onclick="delPedido('${p.id}')">✕</button>
+      ${varsSorted?'</div></details>':''}
     </div>
   </details>${_armHTML}`;
 }

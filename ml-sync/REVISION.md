@@ -548,6 +548,11 @@ el precio de un candidato distinto con código parecido (se compara también por
 
 ## 7 · DISEÑO
 
+### Pedidos: sin "Hola Tito" a la vista, colores con su 🧠 (15/10/2026, v23.53, pedido suyo)
+- Bs As, Paraguay y Paulvic (misma tarjeta): la nota del 🧠 ya no se ve en la tarjeta ni el "Por qué N" abajo de 🧾 pedir; sale
+  tocando el 🧠. Al abrir un producto con colores se ven sólo los colores (cada uno con su 🧠, `pedVarFila(x,p)`) y lo demás va en
+  "más datos". Qué chequear: que el 🧠 de cada color abra la nota de ESE color.
+
 ### Armar caja: lo importante a la vista, el resto al tocar (15/10/2026, v23.50, pedido suyo)
 - Cada renglón muestra nombre · variante · "tenés N" · casilla, y por cuenta "mandar N u." + código de etiqueta. Ritmo, 🧠, avisos y
   botones se abren tocando el producto (`cajaToggleDet`, recordado en `localStorage` `cycCajaAb`). Si hay un aviso importante
