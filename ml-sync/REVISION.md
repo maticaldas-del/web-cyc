@@ -1008,4 +1008,4 @@ Marca `noLocal` (en `cyc/candidatos_py/<id>` o `cyc/products/<id>`): "ya lo prob
 Buscador de todo comprasparaguay en Nuevos (`pycatBuscar`, lee `mlapi/pycat` recién al buscar, ~4 MB, queda en memoria). Sólo muestra. Línea de tiempo: etiquetas del % con `pctColor`. Chequear: que las reglas de Firebase dejen leer `mlapi/pycat` con la sesión (son por uid, sí).
 
 ### Etapa 7 · 15/10/2026 · v23.66
-`html,body{overflow-x:hidden}` + `touch-action:pan-y pinch-zoom`: en el celu la página no se desliza de costado. Chequear: que las tablas con barrita propia (Rotación, gráficos) se sigan deslizando.
+`html,body{overflow-x:hidden}`: en el celu la página no se desliza de costado. Chequear: que las tablas con barrita propia (Rotación, gráficos) se sigan deslizando.
