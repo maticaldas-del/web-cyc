@@ -1003,3 +1003,6 @@ Marca `noLocal` (en `cyc/candidatos_py/<id>` o `cyc/products/<id>`): "ya lo prob
 
 ### Etapa 3 · 15/10/2026 · v23.64
 `pyNuDePedido`: el precio de Paraguay de un probado sale de los colores a comprar (`pyVar`, el más caro), si no de la ficha. Lo usan la tarjeta y `pyProbVeredicto`. Fotos y links (`pyProbVisHTML`) arriba de la tarjeta abierta. Chequear: un producto con colores de distinto precio.
+
+### Etapa 3/7 · 15/10/2026 · v23.65
+Buscador de todo comprasparaguay en Nuevos (`pycatBuscar`, lee `mlapi/pycat` recién al buscar, ~4 MB, queda en memoria). Sólo muestra. Línea de tiempo: etiquetas del % con `pctColor`. Chequear: que las reglas de Firebase dejen leer `mlapi/pycat` con la sesión (son por uid, sí).

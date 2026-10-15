@@ -2614,7 +2614,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.64';
+const APP_VERSION='23.65';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2625,6 +2625,7 @@ const APP_VERSION='23.64';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.65',f:'15/10/2026',h:'19:20',c:[{n:2,t:'🔎 Pedidos → Paraguay → Nuevos: buscador de TODO comprasparaguay (los ~13.500 de Guay), aunque no den el %. Muestra fotos, código, precio puesto, el % de ML (o por qué no hay), el 🏪 local en perfumes y los dos links.'},{n:1,t:'📈 Línea de tiempo: los números del % (máximo y mínimo) van con su color de ganancia, no en gris.'}]},
   {v:'23.64',f:'15/10/2026',h:'19:00',c:[{n:3,t:'🇵🇾 Probados: el % se mide con el precio de Paraguay de los COLORES que se piden (el más caro de ésos), no el de la ficha. El Joystick azul (US$ 55) se medía con los US$ 48 del negro.'},{n:1,t:'🇵🇾 Probados: las dos fotos (Paraguay y ML) y los links "verlo en ML / comprasparaguay" van ARRIBA de todo al abrir la tarjeta, antes de los colores.'}]},
   {v:'23.63',f:'15/10/2026',h:'18:40',c:[{n:2,t:'🏪 Botón "🏪✕ no da en el local" al lado del % azul de cada perfume: lo saca de la sugerencia para la perfumería (vuelve a depender sólo de ML). Se devuelve con "↩︎ 🏪 volver a sugerir".'}]},
   {v:'23.62',f:'15/10/2026',h:'18:25',c:[{n:1,t:'🇵🇾 Pedidos → Nuevos: se sacó el "🧮 Simulador real de precio" del final de la lista (no se usaba).'}]},
@@ -9457,7 +9458,7 @@ function lineaPintar(prodId){
     ks.forEach((k,i)=>{if(pd[k]==null)return;const pt=[X(i)+bw/2,yq(pd[k])];
       if(prev)svg+=`<line x1="${prev[0].toFixed(1)}" y1="${prev[1].toFixed(1)}" x2="${pt[0].toFixed(1)}" y2="${pt[1].toFixed(1)}" stroke="${pctColor(pd[k])}" stroke-width="2"/>`;
       else svg+=`<circle cx="${pt[0].toFixed(1)}" cy="${pt[1].toFixed(1)}" r="1.5" fill="${pctColor(pd[k])}"/>`;prev=pt;});
-    svg+=`<text x="${W-2}" y="${L.pct[0]+9}" font-size="10" text-anchor="end" fill="var(--muted)">${Math.round(qMax)}%</text>`+(qMax>qMin?`<text x="${W-2}" y="${L.pct[0]+L.pct[1]}" font-size="10" text-anchor="end" fill="var(--muted)">${Math.round(qMin)}%</text>`:'');}
+    svg+=`<text x="${W-2}" y="${L.pct[0]+9}" font-size="10" text-anchor="end" font-weight="700" fill="${pctColor(qMax)}">${Math.round(qMax)}%</text>`+(qMax>qMin?`<text x="${W-2}" y="${L.pct[0]+L.pct[1]}" font-size="10" text-anchor="end" font-weight="700" fill="${pctColor(qMin)}">${Math.round(qMin)}%</text>`:'');}
   if(L.gan){const yg=v=>L.gan[0]+L.gan[1]-(gMax>gMin?(v-gMin)/(gMax-gMin):.5)*L.gan[1];
     if(gMin<0)svg+=`<line x1="0" y1="${yg(0).toFixed(1)}" x2="${W}" y2="${yg(0).toFixed(1)}" stroke="rgba(128,128,128,.4)" stroke-dasharray="3,3"/>`;
     let prev=null;ks.forEach((k,i)=>{if(g7[k]==null)return;const pt=[X(i)+bw/2,yg(g7[k])];
@@ -9664,7 +9665,10 @@ function lineaTodoPintar(){
       if(prev&&i-prevI<=3)svg+=`<line x1="${prev[0].toFixed(1)}" y1="${prev[1].toFixed(1)}" x2="${pt[0].toFixed(1)}" y2="${pt[1].toFixed(1)}" stroke="${c}" stroke-width="2"/>`;
       else svg+=`<circle cx="${pt[0].toFixed(1)}" cy="${pt[1].toFixed(1)}" r="1.5" fill="${c}"/>`;prev=pt;prevI=i;});
     if(mn<0&&mx>0)svg+=`<line x1="0" y1="${yv(0).toFixed(1)}" x2="${W}" y2="${yv(0).toFixed(1)}" stroke="rgba(128,128,128,.4)" stroke-dasharray="3,3"/>`;
-    svg+=`<text x="${W-2}" y="${lane[0]+9}" font-size="10" text-anchor="end" fill="var(--muted)">${fmtT(Math.max(...v))}</text><text x="${W-2}" y="${lane[0]+lane[1]}" font-size="10" text-anchor="end" fill="var(--muted)">${fmtT(Math.min(...v))}</text>`;};
+    // 15/10/2026, él: "que muestre el color real del % de ganancia, no gris, aunque no haya terminado el día": los
+    // números de las líneas con color (el %) van con su color, no en gris.
+    const _lc=q=>typeof col==='function'?col(q):'var(--muted)', _fw=typeof col==='function'?' font-weight="700"':'';
+    svg+=`<text x="${W-2}" y="${lane[0]+9}" font-size="10" text-anchor="end"${_fw} fill="${_lc(Math.max(...v))}">${fmtT(Math.max(...v))}</text><text x="${W-2}" y="${lane[0]+lane[1]}" font-size="10" text-anchor="end"${_fw} fill="${_lc(Math.min(...v))}">${fmtT(Math.min(...v))}</text>`;};
   if(L.st)linea(L.st,stU,'#eab308',q=>Math.round(q)+' u.');
   if(L.gan)linea(L.gan,g7,ganColor,q=>fmt(Math.round(q))+'/día');
   if(L.pct)linea(L.pct,pd,q=>pctColor(q),q=>Math.round(q)+'%');
@@ -12679,6 +12683,49 @@ function embudoHTML(){
     </div>
   </div>`).join('');
 }
+// ── BUSCADOR DE TODO COMPRASPARAGUAY (15/10/2026, pedido suyo) ─────────────────────────────────────────────
+// *"quiero tener un buscador que busque entre todos los productos de compraparaguai (…) quizás quiero justo un producto que no
+// da el % pero quiero verlo igual"*. Busca en `mlapi/pycat` (los ~13.500 que copió Guay, FUERA de `cyc/`: ~4 MB, por eso se
+// baja recién la primera vez que se busca y queda en memoria). Sólo muestra: no carga nada ni toca el pedido.
+let _pycatCache=null,_pycatCargando=null;
+function _pycNorm(t){return String(t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');}
+async function pycatCargar(){
+  if(_pycatCache)return _pycatCache;
+  if(!_pycatCargando)_pycatCargando=db.ref('mlapi/pycat').once('value').then(sn=>{_pycatCache=sn.val()||{};return _pycatCache;}).catch(e=>{_pycatCargando=null;throw e;});
+  return _pycatCargando;
+}
+function pycatBuscarHTML(){
+  const q=window._pycatQ||'';
+  return `<details style="margin:0 0 10px"${q?' open':''}><summary style="cursor:pointer;font-size:.74rem;font-weight:700;color:#60a5fa">🔎 Buscar en todo comprasparaguay</summary>
+    <input id="pycat-q" type="search" value="${q.replace(/"/g,'&quot;')}" placeholder="nombre o código (ej: lattafa, jbl go, 100250)" oninput="clearTimeout(window._pycatT);window._pycatT=setTimeout(()=>pycatBuscar(this.value),350)" style="width:100%;margin-top:8px;padding:8px 10px;font-size:.85rem;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--text)">
+    <div id="pycat-res" style="margin-top:8px;display:flex;flex-direction:column;gap:6px"></div></details>`;
+}
+async function pycatBuscar(q){
+  window._pycatQ=q=String(q||'').trim();
+  const el=document.getElementById('pycat-res');if(!el)return;
+  if(q.length<2){el.innerHTML='';return;}
+  if(!_pycatCache)el.innerHTML='<div style="font-size:.7rem;color:var(--muted)">⏳ bajando el catálogo (la primera vez tarda unos segundos)…</div>';
+  let cat;try{cat=await pycatCargar();}catch(e){el.innerHTML=`<div style="font-size:.7rem;color:var(--red)">No pude leer el catálogo: ${String(e.message||e).slice(0,120)}</div>`;return;}
+  if((window._pycatQ||'')!==q)return;
+  const pal=_pycNorm(q).split(/\s+/).filter(Boolean);
+  const res=[];for(const [cod,e] of Object.entries(cat)){if(!e||!e.n)continue;const t=_pycNorm(e.n+' '+cod);if(pal.every(w=>t.includes(w)))res.push([cod,e]);}
+  res.sort((a,b)=>((b[1].m!=null)-(a[1].m!=null))||((Number(b[1].m)||-999)-(Number(a[1].m)||-999)));
+  const tc=curTC();
+  const fila=([cod,e])=>{const u=Number(e.u)||0,pu=u*RECARGO_PY,ps=tc>0?Math.round(pu*tc):0;
+    const m=(e.m!=null&&isFinite(e.m))?Number(e.m):null;
+    const perf=_PERF_RE.test(e.n+' '+(e.mt||'')), loc=perf&&e.mp>0?perfLocalPct(ps,Number(e.mp)):null;
+    const est=m!=null?`<b style="font-size:1rem;color:${m>=25?'var(--green)':'var(--red)'}">${Math.round(m)}%</b> <span style="font-size:.6rem;color:var(--muted)">ML</span>`
+      :e.sc?'<span style="font-size:.62rem;color:var(--muted)">sin catálogo exacto en ML</span>':e.sv?'<span style="font-size:.62rem;color:var(--muted)">en ML no lo vende nadie</span>':e.fz?`<span style="font-size:.62rem;color:var(--muted)">afuera: ${e.fz}</span>`:'<span style="font-size:.62rem;color:var(--muted)">⏳ sin medir</span>';
+    const fPY=/^https:\/\//.test(e.f||'')?e.f:'', fML=/^https:\/\//.test(e.mf||'')?e.mf:'';
+    const im=(u,t)=>u?`<img src="${u}" loading="lazy" title="${t}" onclick="_mostrarLightbox('${u}','')" onerror="this.style.visibility='hidden'" style="width:44px;height:44px;object-fit:contain;background:#fff;border-radius:6px;cursor:zoom-in">`:'';
+    return `<div style="display:flex;gap:8px;align-items:center;padding:6px 8px;background:var(--surface);border:1px solid var(--border);border-radius:8px">
+      ${im(fPY,'Paraguay')}${im(fML,'ML')}
+      <div style="flex:1;min-width:0;font-size:.72rem;line-height:1.45"><div style="font-weight:600">${e.n}</div>
+        <div style="color:var(--muted);font-size:.64rem">🔖 ${cod} · US$ ${u.toFixed(2)} → <b style="color:var(--text)">US$ ${pu.toFixed(2)}</b> puesto${ps?' · '+fmt(ps):''}${e.mp?` · en ML ${fmt(e.mp)}${e.mv?' · '+e.mv+' vend.':''}`:''}${e.cand?' · <span style="color:var(--green)">ya está en Para probar</span>':''}</div>
+        <div style="font-size:.64rem">${/^https:\/\//.test(e.l||'')?`<a href="${e.l}" target="_blank" rel="noopener" style="color:var(--green)">🇵🇾 comprasparaguay</a>`:''}${e.mi?` · <a href="https://www.mercadolibre.com.ar/p/${e.mi}" target="_blank" rel="noopener" style="color:var(--green)">🔗 ML</a>`:''}</div></div>
+      <div style="text-align:right;flex:0 0 auto">${est}${loc!=null?`<div>${perfLocalHTML(loc)}</div>`:''}</div></div>`;};
+  el.innerHTML=`<div style="font-size:.64rem;color:var(--muted)">${res.length} encontrado${res.length===1?'':'s'}${res.length>60?' · muestro los primeros 60 (escribí más palabras para afinar)':''} · los medidos primero</div>`+res.slice(0,60).map(fila).join('');
+}
 function candList(){
   return Object.entries(state.candidatos||{}).map(([id,c])=>({...c,id})).filter(c=>c&&c.nombre);
 }
@@ -14287,7 +14334,7 @@ function candidatosHTML(){
       ? `<div class="empty-msg" style="font-size:.68rem;line-height:1.6">No queda ninguno para evaluar: ${enPed?`<b>${enPed}</b> está${enPed===1?'':'n'} en el pedido de arriba`:''}${enPed&&enVia?' y ':''}${enVia?`<b>${enVia}</b> ya ${enVia===1?'viaja':'viajan'}`:''}.</div>`
       : `<div class="empty-msg" style="font-size:.68rem;line-height:1.6">Todavía no hay ninguno.<br>
       El chat de Paraguay los carga cuando encuentra algo en comprasparaguay <b>que Nissei ofrezca</b> (ahí salen juntos el código, el precio y que hay stock), cueste menos de US$ 250 puesto y no sea de una marca que ML frena.</div>`;
-    return cab(null)+vacio;   // 15/10: el simulador no se usa, se sacó de la pantalla (la función queda)
+    return cab(null)+pycatBuscarHTML()+vacio;   // 15/10: el simulador no se usa, se sacó de la pantalla (la función queda)
   }
   // El que más margen deja, primero. Los que todavía no tienen la cuenta hecha van al final:
   // no se pueden comparar contra los medidos y ponerlos arriba sería invitar a decidir sin número.
@@ -14431,7 +14478,7 @@ function candidatosHTML(){
   const _orden=`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:0 0 10px"><span style="font-size:.66rem;color:var(--muted)">Ordenar:</span>${_ob('pct','% de ganancia')}${_ob('vend','🛒 más vendidos')}${_ob('gan','$ por unidad')}${_ob('usd','$ por dólar invertido')}${_ob('barato','más barato')}</div>`;
   // 03/10/2026, él: el simulador y el historial "ahí no se usan y molestan": el simulador va al final y el
   // historial de pedidos vive en la pestaña 🧾 Pedido.
-  return cab(_verdes)+_orden+_arriba.map(_card).join('')
+  return cab(_verdes)+pycatBuscarHTML()+_orden+_arriba.map(_card).join('')
     +(_flojas.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--amber)">🟠 ${_flojas.length} con menos de ${CAND_MIN_VENT} vendidas en ML (o sin el dato) · no se pueden pedir · tocá para verlos</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_flojas.map(_card).join('')}</div></details>`:'')
     +(_rojos.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--red)">🔻 ${_rojos.length} no llega${_rojos.length===1?'':'n'} al ${CAND_PISO_TXT()} · tocá para verlos</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_rojos.map(_card).join('')}</div></details>`:'')
     +(_sinAnalizar.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--muted)">⏳ ${_sinAnalizar.length} sin analizar o incompletos (falta la medición de ML o alguna de las dos fotos) · suben solos cuando estén completos y den · tocá para verlos</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_sinAnalizar.map(_card).join('')}</div></details>`:'')
@@ -17268,6 +17315,7 @@ function renderPedidos(){
     </div>`+(pyVista!=='hechos'?`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:-4px 0 12px"><span style="font-size:.66rem;color:var(--muted)">Mostrar:</span>${[['todos','Todo'],['perf','🧴 Perfumes, belleza y salud'],['resto','📦 Resto']].map(([v,t])=>`<button class="btn" style="font-size:.64rem;padding:4px 11px;${_pyRubro===v?'background:#7c3aed;color:#fff;border-color:#7c3aed;font-weight:700':''}" onclick="pySetRubro('${v}')">${t}</button>`).join('')}</div>`:'');
     // PROBADOS = IDÉNTICO A BS AS (01/10/2026, pedido suyo): sólo la lista de pedidos, sin canasta ni precios.
     el.innerHTML=_tabs+(pyVista==='nuevos'?candidatosHTML():pyVista==='ambos'?el.innerHTML+candidatosHTML():pyVista==='hechos'?pedidoMomentoHTML()+`<div style="font-size:.8rem;font-weight:700;margin:6px 0 8px">📦 Pedidos hechos (${pyCompras().length})</div>`+pyHechosHTML():el.innerHTML);
+    if(window._pycatQ&&pyVista!=='probados'&&pyVista!=='hechos')setTimeout(()=>pycatBuscar(window._pycatQ),0);   // el buscador conserva lo buscado al redibujar
   }
 }
 
