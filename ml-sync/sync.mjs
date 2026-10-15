@@ -8312,8 +8312,10 @@ function pyCatParse(lineas) {
   }
   return { filas, malos, pg, orden };
 }
-async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar) {
-  const cat = (await db.get('mlapi/pycat')) || {};
+async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, prueba = null) {
+  // `prueba`: productos inventados ({cod: {n, u, f}}) para correr el camino entero sin escribir nada.
+  const cat = prueba || (await db.get('mlapi/pycat')) || {};
+  if (prueba) aplicar = false;
   const cands = (await db.get('cyc/candidatos_py')) || {};
   let marcasNo = null; try { marcasNo = (await db.get('cyc/mlconfig/marcasFrenadas')) || {}; } catch { marcasNo = null; }
   if (!marcasNo) { console.log('⚠️ No pude leer las marcas frenadas: no mido nada esta vuelta.'); return; }
@@ -18806,6 +18808,10 @@ async function main() {
     if (/^pycatmedir(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const _pm = String(process.env.BILLING_PROBE);
       const n = parseInt((_pm.match(/^pycatmedir:(\d+)/) || [])[1], 10) || PYCAT_POR_VUELTA;
+      // pycatmedir:prueba:<nombre>|<US$>;<otro>|<US$> → mide productos inventados sin escribir nada.
+      const mP = _pm.match(/^pycatmedir:prueba:(.+)$/);
+      if (mP) { const pr = {}; mP[1].split(';').forEach((x, i) => { const [nom, u] = x.split('|'); if (nom && parseFloat(u) > 0) pr['9999990' + i] = { n: nom.trim(), u: parseFloat(u), f: 'x' }; });
+        await correrPyCatMedir(db, products, labels, accounts, 20, false, pr); return; }
       await correrPyCatMedir(db, products, labels, accounts, n, /:go$/.test(_pm));
       return;
     }
