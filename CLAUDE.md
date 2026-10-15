@@ -783,6 +783,17 @@ para cuando te pregunte"*. **NO se le mandó nada al chat de compras todavía.**
    no quedó anotado: desde la próxima pasada sí.
  · **Lo que falta medir:** que la corrida de `candidatos` con 250 no tarde de más ni haga dar 429 a la noche.
 
+## 🇵🇾 EL CATÁLOGO ENTERO DE PARAGUAY EN CYC (15/10/2026, eligió 1a y 2a) — REEMPLAZA LA PASADA DEL MES
+
+Él: *"quiero terminar de barrer la web y que tengas todos los datos (…) sacando los obvios y los que dan menos del 15%, todos esos
+filtros los aplicás vos y no me los mostrás"* y *"que no se borren los de menos de 15%: quizás mañana dan, o sirven para la perfumería
+del local"*. El chat de compras YA NO busca en ML: sólo copia Nissei (código|nombre|US$|link|foto) y lo carga él mismo con
+`pycat:#<pág>@<orden>;…;go` por ml-consulta → `mlapi/pycat` (fuera de `cyc/`, ~4 MB, gratis). `pycat` solo dice la última página.
+El robot (`ml-pycat`, cada 3 h) saca lo obvio, lo busca en ML, mide el margen y pasa solo a "Para probar" lo que da el piso (menos
+perfumería/maquillaje/cuidado personal, regla del 13/10). Lo de 15% a 24% queda guardado y escondido (2a). Texto nuevo en
+`ml-sync/PROMPT_GUAY.md`. Detalle en `ml-sync/REVISION.md` (etapa 3). Las ventas de otros vendedores el robot no las ve (403): se le
+piden al chat sólo para la lista corta.
+
 ## 📦 CAJAS A FULL: 30 DÍAS + 7 DE VIAJE · ALMACENAMIENTO A LOS 4 MESES (14/10/2026, regla suya)
 
 Él: *"para mandar cajas a full tené en cuenta 30 días para mantener stock y 7 días que tarda en llegar y que te cobran a los 4

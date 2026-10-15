@@ -1,0 +1,36 @@
+name: ml-pycat
+
+# EL CATÁLOGO DE PARAGUAY MEDIDO CONTRA ML (15/10/2026). El chat de compras copia el catálogo de Nissei a
+# `mlapi/pycat` (comando `pycat`) y esto lo busca en el catálogo de ML y le mide el margen, de a 300 por vuelta,
+# cada 3 horas. Lo que da el piso pasa solo a "Para probar"; lo demás queda guardado y escondido.
+# NO TOCA NINGÚN PRECIO NI COMPRA NADA. No usa el candado de `ml-sync`, así que no corta el ciclo.
+on:
+  schedule:
+    - cron: '23 */3 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: ml-pycat
+  cancel-in-progress: false
+
+jobs:
+  medir:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Catálogo de Paraguay contra ML
+        env:
+          ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
+          ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
+          FIREBASE_BOT_EMAIL: ${{ secrets.FIREBASE_BOT_EMAIL }}
+          FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          BILLING_PROBE: pycatmedir:go
+        run: node ml-sync/sync.mjs

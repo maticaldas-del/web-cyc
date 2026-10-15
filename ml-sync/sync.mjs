@@ -40,7 +40,7 @@ process.on('SIGTERM', () => _alCortar('SIGTERM'));
 // los que escriben en cantidad o en plata se niegan de entrada, y cualquier otro corre con la base,
 // ML, Mercado Pago y Telegram en sólo lectura (se deja renovar y guardar el token de ML, que ML rota).
 const EN_CONSULTA = process.env.GITHUB_WORKFLOW === 'ml-consulta' || process.env.ML_CONSULTA === '1';
-const CONSULTA_ESCRIBE = new Set(['lineatodo', 'revcand', 'vincular', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull']);
+const CONSULTA_ESCRIBE = new Set(['pycat', 'lineatodo', 'revcand', 'vincular', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull']);
 const CONSULTA_NIEGA = new Set(['candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'promoventas', 'cargosmes']);
@@ -8257,6 +8257,156 @@ function c_link(c) {
   if (l) return l;
   const idf = String((c && c.mlId) || '').trim().toUpperCase().replace(/^.*\/P\//, '').split(/[?#]/)[0];
   return /^MLA\d+$/.test(idf) ? 'https://www.mercadolibre.com.ar/p/' + idf : '(sin link: el robot lo busco por nombre)';
+}
+// ── EL CATÁLOGO ENTERO DE PARAGUAY, GUARDADO Y MEDIDO POR EL ROBOT (15/10/2026) ──────────────────
+// Él: *"me gustaría que en la web de cyc tengas todos los productos, sacando los obvios y sacando los que dan
+// menos del 15% (…) todos esos filtros los aplicás vos y no me los mostrás"* y *"que no queden afuera los de menos
+// de 15%: quizás hoy no dan y mañana son muy buenos, o para la perfumería del local"*. Eligió 1a y 2a.
+// El chat de compras sólo COPIA el catálogo de Nissei (código, nombre, US$, link, foto) página por página, sin buscar
+// nada en ML; `pycat` lo guarda en `mlapi/pycat/<código>` (FUERA de `cyc/`: la web baja `cyc` entero y son ~13.000).
+// `pycatmedir` lo busca en el catálogo de ML con el robot y mide el margen con la MISMA cuenta de `candidatos`
+// (`cuentaCandidatoMejor`). Lo que da el piso de candidatos (25%, 24% en perfumes) y ML lo empareja sin reparos
+// pasa solo a "Para probar" (`cyc/candidatos_py`), donde se vuelve a medir dos veces y pasa por la revisión de fotos.
+// Lo demás queda guardado y escondido, y se vuelve a medir cada `PYCAT_REMEDIR_DIAS`.
+const PYCAT_REMEDIR_DIAS = 7;
+const PYCAT_POR_VUELTA = 300;
+const RE_PYCAT_NOPASA = new RegExp(RE_CAND_PERF.source + '|maquiagem|maquillaje|batom|labial|rimel|r[íi]mel|m[áa]scara de c[íi]lios|delineador|sombra|base l[íi]quida|corretivo|corrector|blush|rubor|p[óo] compacto|shampoo|xampu|condicionador|acondicionador|creme|crema|hidratante|protetor solar|protector solar|desodorante|esmalte', 'i');
+// LO OBVIO, que no se mide (regla suya del 03/10, copiada del PROMPT GUAY): lo que no entra en una caja o es de otro
+// rubro. Se guarda igual con el motivo, así no se pierde. Los nombres de comprasparaguay vienen en portugués.
+const PYCAT_FUERA_RE = [
+  [/\b(celular|smartphone|iphone|notebook|laptop|macbook|chromebook|tablet|ipad)\b/i, 'celular, notebook o tablet'],
+  [/\b(c[aâ]mera|camara|filmadora|dvr|nvr|gopro|dashcam)\b/i, 'cámara'],
+  [/\bplaca\s+(m[aã]e|de\s+v[ií]deo|madre)\b|\b(geforce|radeon)\b/i, 'placa de PC'],
+  [/\b(monitor|impressora|impresora|multifuncional|computador|desktop|servidor|gabinete|nobreak)\b/i, 'monitor, impresora o PC'],
+  [/\b(smart\s*tv|televisor|televis[aã]o)\b|\btv\s+\d{2}/i, 'televisor'],
+  [/\b(cadeira|silla|escrivaninha|sof[aá]|poltrona)\b|\bmesa\b(?!\s+digitalizadora)/i, 'mueble'],
+  [/\b(ar\s+condicionado|geladeira|refrigerador|freezer|lava\s*(lou[cç]as|roupas)|lavadora|secadora\s+de\s+roupa|micro-?ondas|forno|fog[aã]o|cooktop|adega)\b/i, 'electrodoméstico grande'],
+  [/\b(hidrolavadora|lavadora\s+de\s+alta|patinete|scooter|bicicleta|moto\s+el[eé]trica|hoverboard|esteira|halter|anilha|cortador\s+de\s+grama|cofre)\b/i, 'grande o pesado'],
+  [/\b(mala|valise|maleta)\s+(de\s+)?(viagem|bordo)\b|\bmala\b/i, 'valija'],
+  [/\b(rob[oô]\s+aspirador|aspirador\s+rob[oô])\b/i, 'robot de limpieza'],
+  [/\b(calvin\s+klein|tommy\s+hilfiger|carolina\s+herrera|dolce\s*(&|e|and)?\s*gabbana)\b/i, 'marca que no se compra'],
+  [/\b(garrafa\s+t[eé]rmica|t[eé]rmic[ao]|termo|caneca\s+t[eé]rmica|copo\s+t[eé]rmico|marmita|cooler)\b/i, 'termo o térmico (falta que decida)'],
+];
+function pyCatFuera(nombre, usd, marcasNo) {
+  const n = String(nombre || '');
+  if (usd > 215) return 'más de US$ 215';
+  if (/\b110\s*v\b/i.test(n) && !/\b(220\s*v|bivolt)\b/i.test(n)) return '110V';
+  const mf = marcasNo ? marcaFrenadaDe({ nombre: n }, marcasNo) : null; if (mf) return 'marca frenada: ' + mf;
+  for (const [re, m] of PYCAT_FUERA_RE) if (re.test(n) && !(m === 'cámara' && /\bweb\b|webcam/i.test(n))) return m;
+  return null;
+}
+const _pyDg = (x) => String(x || '').replace(/\D/g, '');
+const _pyCodIg = (a, b) => { const x = _pyDg(a), y = _pyDg(b); if (!x || !y) return false; if (x === y) return true; const [c1, c2] = x.length < y.length ? [x, y] : [y, x]; return c1.length >= 5 && c2.endsWith(c1); };
+// Lee renglones `código|nombre|US$|link|foto` y marcas de página `#<n>` (opcional `#<n>@<orden>`). Devuelve lo leído y los malos.
+function pyCatParse(lineas) {
+  const filas = [], malos = []; let pg = null, orden = null;
+  for (const l0 of lineas) {
+    const l = String(l0 || '').trim(); if (!l) continue;
+    const mp = l.match(/^#\s*(\d+)(?:\s*@\s*([\w-]+))?\s*$/); if (mp) { pg = parseInt(mp[1], 10); if (mp[2]) orden = mp[2]; continue; }
+    const [cod, nom, usdS, link, foto] = l.split('|').map((x) => (x || '').trim());
+    const usd = parseFloat(String(usdS).replace(/[^\d.,]/g, '').replace(',', '.'));
+    if (!_pyDg(cod) || !nom || !(usd > 0)) { malos.push(l.slice(0, 120)); continue; }
+    const okHttps = (u) => (/^https:\/\//.test(u) ? u.slice(0, 300) : '');
+    const fotoUrl = okHttps(foto) || (/^[0-9a-f]{20,}\.(webp|jpg|jpeg|png)$/i.test(foto || '') ? 'https://bucket-prod.us-ord-10.linodeobjects.com/site/media/fotos/produtos/thumbs/big/' + foto : '');
+    filas.push({ cod: _pyDg(cod), n: nom.slice(0, 160), u: Math.round(usd * 100) / 100, l: okHttps(link || ''), f: fotoUrl, pg });
+  }
+  return { filas, malos, pg, orden };
+}
+async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar) {
+  const cat = (await db.get('mlapi/pycat')) || {};
+  const cands = (await db.get('cyc/candidatos_py')) || {};
+  let marcasNo = null; try { marcasNo = (await db.get('cyc/mlconfig/marcasFrenadas')) || {}; } catch { marcasNo = null; }
+  if (!marcasNo) { console.log('⚠️ No pude leer las marcas frenadas: no mido nada esta vuelta.'); return; }
+  try { await cargarParamCompra(db); } catch { /* quedan los de siempre */ }
+  const fin = (await db.get('cyc/finanzas')) || {};
+  const tc = parseFloat(fin.tipo_cambio) || 0;
+  if (!(tc > 0)) { console.log('❌ No hay dólar cargado: sin costo en pesos no se puede medir.'); return; }
+  const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+  const candList = Object.entries(cands).filter(([, c]) => c && c.cod);
+  const fichas = products.filter((p) => p && p.codPy);
+  const ahora = Date.now();
+  const todos = Object.entries(cat);
+  const cola = [], cuenta = { fuera: 0, cand: 0, ficha: 0, frescos: 0 };
+  for (const [cod, e] of todos) {
+    if (!e || !e.n) continue;
+    const fz = pyCatFuera(e.n, Number(e.u) || 0, marcasNo); if (fz) { cuenta.fuera++; if (aplicar && e.fz !== fz) await db.patch('mlapi/pycat/' + cod, { fz }); continue; }
+    if (candList.some(([, c]) => _pyCodIg(c.cod, cod))) { cuenta.cand++; continue; }
+    if (fichas.some((p) => _pyCodIg(p.codPy, cod))) { cuenta.ficha++; continue; }
+    if (e.t && ahora - e.t < PYCAT_REMEDIR_DIAS * 864e5 && !(e.uMed != null && Math.abs(e.uMed - e.u) >= 0.005)) { cuenta.frescos++; continue; }
+    cola.push([cod, e]);
+  }
+  cola.sort((a, b) => (Number(a[1].t) || 0) - (Number(b[1].t) || 0));
+  const toca = cola.slice(0, maxN);
+  console.log(`=== CATÁLOGO DE PARAGUAY · medir contra ML ${aplicar ? '' : '(PRUEBA: no escribo nada)'} ===`);
+  console.log(`${todos.length} guardados · ${cuenta.fuera} fuera por regla · ${cuenta.cand} ya son candidatos · ${cuenta.ficha} ya son fichas · ${cuenta.frescos} medidos hace menos de ${PYCAT_REMEDIR_DIAS} días · ${cola.length} para medir · esta vuelta ${toca.length}`);
+  if (!toca.length) return;
+  let tok = null;
+  for (const label of labels) {
+    const acc = accounts[label]; if (!acc?.refresh_token) continue;
+    try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+      await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() }); tok = t.access_token; break; } catch { /* siguiente */ }
+  }
+  if (!tok) { console.log('❌ No pude sacar token de ninguna cuenta.'); return; }
+  const feeCache = {};
+  const feeAt = async (price, lt, catx) => {
+    const k = lt + '|' + catx + '|' + Math.round(price); if (feeCache[k] !== undefined) return feeCache[k];
+    let out = null;
+    try { const d = await mlGet(`/sites/MLA/listing_prices?price=${Math.round(price)}&listing_type_id=${lt}&category_id=${catx}`, tok);
+      const o = Array.isArray(d) ? d[0] : d; if (typeof o?.sale_fee_amount === 'number') out = o.sale_fee_amount; } catch { out = null; }
+    feeCache[k] = out; return out;
+  };
+  const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+  const res = { medidos: 0, sinCat: 0, sinVend: 0, err: 0, b25: 0, b15: 0, bajo: 0, pasan: [] };
+  const t0 = Date.now();
+  for (const [cod, e] of toca) {
+    if (Date.now() - t0 > 40 * 60e3) { console.log('⏱️ 40 minutos: corto acá, sigue la próxima vuelta.'); break; }
+    const upd = { t: Date.now(), uMed: e.u };
+    try {
+      await espera(250);
+      const bus = await mlGet(`/products/search?site_id=MLA&q=${encodeURIComponent(String(e.n).slice(0, 80))}&limit=5`, tok);
+      const resB = ((bus && bus.results) || []).filter((r) => r && r.id);
+      // El primero que NO tiene reparos de "otro producto" (otro modelo, otro tamaño, otro color, edición, pack…).
+      let prod = resB.find((r) => !chequeoMismoProducto(e.n, r.name || r.title).length);
+      if (!prod) { upd.sc = 1; upd.mt = resB[0] ? String(resB[0].name || '').slice(0, 120) : ''; upd.m = null; res.sinCat++;
+        if (aplicar) await db.patch('mlapi/pycat/' + cod, upd); continue; }
+      upd.sc = null; upd.mi = prod.id; upd.mt = String(prod.name || prod.title || '').slice(0, 120);
+      { const pic = Array.isArray(prod.pictures) && prod.pictures[0]; const u = String((pic && (pic.secure_url || pic.url)) || '').replace(/^http:\/\//, 'https://');
+        let h = ''; try { h = new URL(u).hostname.toLowerCase(); } catch { h = ''; } upd.mf = (h === 'mlstatic.com' || h.endsWith('.mlstatic.com')) ? u : null; }
+      let ofertas = [];
+      try { await espera(250); const it = await mlGet(`/products/${prod.id}/items`, tok); ofertas = ((it && it.results) || []).filter((o) => !esOfertaDeAfuera(o)); }
+      catch (e2) { if (!/404/.test(String(e2.message || e2))) throw e2; ofertas = []; }
+      const pi = precioAIgualar(ofertas);
+      if (!pi || !(pi.precio > 0) || !(pi.ref && pi.ref.category_id)) { upd.m = null; upd.sv = 1; res.sinVend++; if (aplicar) await db.patch('mlapi/pycat/' + cod, upd); continue; }
+      upd.sv = null; upd.mp = Math.round(pi.precio); upd.mv = ofertas.length;
+      const cuoA = cuotasDeOferta(pi.ref); const cuoPct = cuoA ? CUOTAS_PCT_ML[cuoA] || 0 : 0;
+      const puesto = Math.round(e.u * RECARGO_PAR * 100) / 100;
+      const cn = cuentaNuevoDe({ nombre: e.n, mlTit: upd.mt });
+      const r = await cuentaCandidatoMejor(Math.min(pi.precio, TECHO_DURO), pi.ref.category_id, puesto, tc, monoP, feeAt, cuoPct, cn);
+      if (!r) { res.err++; continue; }
+      upd.m = Math.round(r.margen * 10) / 10; res.medidos++;
+      const piso = candPisoDe({ nombre: e.n, mlTit: upd.mt });
+      if (upd.m >= piso) { res.b25++; res.pasan.push({ cod, e, upd }); } else if (upd.m >= 15) res.b15++; else res.bajo++;
+      if (aplicar) await db.patch('mlapi/pycat/' + cod, upd);
+    } catch (err) { res.err++; console.log(`  ✗ ${e.n.slice(0, 60)}: ${String(err.message || err).slice(-120)}`); if (/429/.test(String(err.message || err))) await espera(15000); }
+  }
+  console.log(`\nMedidos ${res.medidos} · dan el piso ${res.b25} · entre 15% y el piso ${res.b15} · menos de 15% ${res.bajo} · sin catálogo exacto en ML ${res.sinCat} · catálogo sin vendedores ${res.sinVend} · errores ${res.err} (se reintentan)`);
+  // LOS QUE DAN PASAN SOLOS A "PARA PROBAR", con el catálogo de ML fijo. Ahí `candidatos` los vuelve a medir (dos veces
+  // antes de descartar) y la revisión de fotos confirma que son el mismo producto. Sin foto de Paraguay no pasan (regla del 07/10).
+  let alta = 0;
+  for (const [i, x] of res.pasan.entries()) {
+    console.log(`  ${x.upd.m.toFixed(1)}% · ${x.e.n.slice(0, 70)} → ML ${x.upd.mi} "${x.upd.mt.slice(0, 60)}" a ${money(x.upd.mp)}`);
+    // PERFUMERÍA, MAQUILLAJE Y CUIDADO PERSONAL NO PASAN SOLOS (decisión suya del 13/10: no se compran por ahora). Quedan
+    // medidos y guardados para la perfumería del local; si él lo cambia, se saca este freno.
+    if (RE_PYCAT_NOPASA.test(`${x.e.n} ${x.upd.mt}`)) { console.log('     (perfumería/maquillaje/cuidado personal: queda guardado, no pasa a Para probar por la regla del 13/10)'); continue; }
+    if (!x.e.f) { console.log('     (sin foto de Paraguay: no pasa a Para probar)'); continue; }
+    if (!aplicar) continue;
+    const id = 'c' + Date.now() + 'p' + i;
+    const c = { nombre: x.e.n, cod: x.cod, usd: x.e.u, mlId: x.upd.mi, enNissei: true, fuente: 'pycat', ts: Date.now(), ...(x.e.l ? { link: x.e.l } : {}), foto: x.e.f };
+    await db.set('cyc/candidatos_py/' + id, c);
+    const rr = await db.get('cyc/candidatos_py/' + id);
+    if (rr && rr.cod === c.cod) { alta++; await db.patch('mlapi/pycat/' + x.cod, { cand: id }); }
+  }
+  if (aplicar && res.pasan.length) console.log(`\n${alta} pasaron a "Para probar" (los mide \`candidatos\` y después la revisión de fotos).`);
 }
 // `prueba` es un candidato INVENTADO que se le pasa desde el probe para correr el camino entero
 // —consulta al catálogo de ML, comisión al precio real, la cuenta— sin tener que cargar nada en la
@@ -18593,6 +18743,70 @@ async function main() {
       console.log(' · si el precio de comprasparaguay sigue siendo ése (esa página le contesta 403 al robot)');
       console.log(' · las medidas y el peso de lo que no las informa');
       console.log(' · publicar en ML lo hacés vos: el freno de escritura que tiene ML es contra el robot, no contra tu cuenta.');
+      return;
+    }
+    // BILLING_PROBE=pycat:<#página>;<código>|<nombre>|<US$>|<link>|<foto>;…[;go]  ·  pycat:archivo=<nombre>[;go]
+    // CARGA EL CATÁLOGO DE PARAGUAY QUE COPIA EL CHAT DE COMPRAS (15/10/2026). Guarda en `mlapi/pycat/<código>` (no en
+    // `cyc/`) y anota la última página en `mlapi/pycatprog`, así si se corta se sabe exacto dónde seguir. Lo ya guardado
+    // se actualiza (precio y fecha); si es candidato o ficha, también les pone el precio de Paraguay de hoy (el costo de
+    // la ficha NO se toca). `archivo=` lee `ml-sync/notas/pycat/<nombre>.txt` (un renglón por producto, `#<página>` arriba
+    // de cada página). Sin `;go` sólo muestra. `pycat` solo: dónde quedó y cuántos hay.
+    if (/^pycat(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _pc = String(process.env.BILLING_PROBE).slice('pycat'.length).replace(/^:/, '');
+      const APLICAR = /(^|;)go\s*$/.test(_pc);
+      const cuerpo = _pc.replace(/(^|;)go\s*$/, '');
+      const prog = (await db.get('mlapi/pycatprog')) || {};
+      if (!cuerpo.trim()) {
+        const cat = (await db.get('mlapi/pycat')) || {}; const v = Object.values(cat);
+        const med = v.filter((e) => e && e.t), cnt = (f) => v.filter(f).length;
+        console.log(`=== CATÁLOGO DE PARAGUAY EN CYC ===\n${v.length} productos guardados · última página guardada: ${prog.pg ?? '—'}${prog.orden ? ' (orden ' + prog.orden + ')' : ''} · último código ${prog.cod ?? '—'} · ${prog.ts ? new Date(prog.ts).toISOString().slice(0, 16).replace('T', ' ') + ' UTC' : ''}`);
+        console.log(`medidos ${med.length} · fuera por regla ${cnt((e) => e && e.fz)} · dan el piso ${cnt((e) => e && e.m >= 24)} · 15% a 24% ${cnt((e) => e && e.m >= 15 && e.m < 24)} · menos de 15% ${cnt((e) => e && e.m != null && e.m < 15)} · sin catálogo exacto ${cnt((e) => e && e.sc)} · pasaron a Para probar ${cnt((e) => e && e.cand)}`);
+        return;
+      }
+      let lineas;
+      const mA = cuerpo.match(/^archivo=([\w.-]+)$/);
+      if (mA) {
+        const fs = await import('node:fs'); const ruta = `ml-sync/notas/pycat/${mA[1].replace(/\.txt$/, '')}.txt`;
+        try { lineas = fs.readFileSync(ruta, 'utf8').split(/\r?\n/); } catch { console.log(`❌ No encuentro ${ruta}`); return; }
+      } else lineas = cuerpo.split(';');
+      const { filas, malos, pg, orden } = pyCatParse(lineas);
+      if (malos.length) { console.log(`❌ ${malos.length} renglón(es) mal escritos (falta código, nombre o precio). NO escribo ninguno:`); malos.slice(0, 10).forEach((m) => console.log('   ' + m)); return; }
+      if (!filas.length) { console.log('Nada para cargar.'); return; }
+      const cat = (await db.get('mlapi/pycat')) || {};
+      const cands = (await db.get('cyc/candidatos_py')) || {};
+      const ahora = Date.now(); const upd = {}; let nuevos = 0, cambio = 0, igual = 0; const candUpd = [], fichaUpd = [];
+      for (const f of filas) {
+        const viejo = cat[f.cod];
+        const e = { ...(viejo || {}), n: f.n, u: f.u, ts: ahora, ...(f.pg != null ? { pg: f.pg } : {}), ...(f.l ? { l: f.l } : {}), ...(f.f ? { f: f.f } : {}) };
+        if (!viejo) nuevos++; else if (Math.abs((Number(viejo.u) || 0) - f.u) >= 0.005) { cambio++; e.uAnt = Number(viejo.u) || null; } else igual++;
+        upd[f.cod] = e;
+        const yc = Object.entries(cands).find(([, c]) => c && _pyCodIg(c.cod, f.cod));
+        if (yc && Math.abs((Number(yc[1].usd) || 0) - f.u) >= 0.005) candUpd.push([yc[0], yc[1], f]);
+        const yp = products.find((p) => p && p.codPy && _pyCodIg(p.codPy, f.cod));
+        if (yp && Math.abs((Number(yp.nisseiUSD) || 0) - f.u) >= 0.005) fichaUpd.push([yp, f]);
+      }
+      const ultPg = filas.reduce((mx, f) => (f.pg != null && f.pg > mx ? f.pg : mx), -1);
+      console.log(`=== CATÁLOGO DE PARAGUAY · carga ${APLICAR ? '' : '(PRUEBA: no escribo nada)'} ===`);
+      console.log(`${filas.length} renglones · ${nuevos} nuevos · ${cambio} cambiaron de precio · ${igual} iguales · páginas ${[...new Set(filas.map((f) => f.pg).filter((x) => x != null))].join(', ') || '(sin número)'}`);
+      for (const [id, c, f] of candUpd) console.log(`  ↻ candidato ${c.nombre.slice(0, 60)}: US$ ${Number(c.usd || 0).toFixed(2)} → ${f.u.toFixed(2)}`);
+      for (const [p, f] of fichaUpd) console.log(`  ↻ ficha ${p.name.slice(0, 60)}: Paraguay US$ ${p.nisseiUSD ?? '—'} → ${f.u.toFixed(2)} (el costo no se toca)`);
+      if (!APLICAR) { console.log('\nPRUEBA. Para guardar, agregá ";go" al final.'); return; }
+      await db.patch('mlapi/pycat', upd);
+      for (const [id, c, f] of candUpd) await db.patch('cyc/candidatos_py/' + id, { usd: f.u, ts: ahora, calcTs: null, usdAntes: Number(c.usd) || null });
+      for (const [p, f] of fichaUpd) await db.patch('cyc/products/' + p.id, { nisseiUSD: f.u, nisseiTs: ahora });
+      const last = filas[filas.length - 1];
+      if (ultPg >= 0) await db.patch('mlapi/pycatprog', { pg: ultPg, cod: last.cod, n: last.n.slice(0, 80), ts: ahora, ...(orden ? { orden } : {}) });
+      const r = (await db.get('mlapi/pycat/' + last.cod)) || {};
+      const ok = Math.abs((Number(r.u) || 0) - last.u) < 0.005;
+      console.log(`\n${ok ? '✓' : '❌'} guardado (releído el último: ${last.n.slice(0, 60)} · US$ ${r.u}). ${ultPg >= 0 ? `Quedó en la página ${ultPg}.` : ''} Los mide \`pycatmedir\` solo.`);
+      return;
+    }
+    // BILLING_PROBE=pycatmedir[:<cuántos>][:go] → MIDE CONTRA ML LO GUARDADO EN `mlapi/pycat` (15/10/2026). Ver `correrPyCatMedir`.
+    // Corre solo en `ml-pycat.yml`. Sin `:go` muestra sin escribir.
+    if (/^pycatmedir(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _pm = String(process.env.BILLING_PROBE);
+      const n = parseInt((_pm.match(/^pycatmedir:(\d+)/) || [])[1], 10) || PYCAT_POR_VUELTA;
+      await correrPyCatMedir(db, products, labels, accounts, n, /:go$/.test(_pm));
       return;
     }
     if (/^candidatos(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {

@@ -293,6 +293,20 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 
 - **Cajas: 30 días + 7 de viaje, almacenamiento a los 4 meses (14/10/2026, v23.36).** `REPO_DIAS_TOTAL`=37 (index.html) y `T=37` en `ml-sync/notas/decide_cajas.py`. `almacDiasDe(p)`: 120 días lo chico, 60 lo grande (`esGrandeFull`). Chequear: Armar caja y el script dan el mismo objetivo · ninguna caja manda para más de 37 días · el aviso "empieza a pagar en N d" de Rotación cuenta desde 120 en lo chico.
 
+### Paraguay: el catálogo ENTERO de Nissei en CYC, medido por el robot (15/10/2026, eligió 1a y 2a)
+- Qué: el chat de compras sólo COPIA el catálogo (código, nombre, US$, link, foto) página por página con `pycat:#<pág>@<orden>;…;go`
+  (va por ml-consulta: es el único que escribe ahí, sólo en `mlapi/pycat`). `pycat` solo dice cuántos hay y la última página guardada
+  (`mlapi/pycatprog`). Al cargar, si el código ya es candidato o ficha, les pone el precio de Paraguay de hoy (el costo no se toca).
+- `pycatmedir[:N][:go]` (workflow `ml-pycat`, cada 3 h, 300 por vuelta, tope 40 min): saca lo obvio (`pyCatFuera`: +US$215, 110V,
+  marcas frenadas o que no se compran, celulares/notebooks/cámaras/TV/muebles/electrodomésticos grandes/termos), busca en el catálogo
+  de ML el primer resultado sin reparos de `chequeoMismoProducto`, y mide con `cuentaCandidatoMejor` (la de `candidatos`). Guarda margen
+  y catálogo en el mismo nodo; se vuelve a medir a los 7 días o si cambió el precio.
+- Lo que da el piso de candidatos pasa SOLO a `cyc/candidatos_py` (fuente `pycat`, con el catálogo fijo y la foto): ahí `candidatos`
+  lo mide dos veces y `fotosrev` revisa las fotos. Perfumería, maquillaje y cuidado personal NO pasan (regla del 13/10), quedan medidos.
+- Nada se borra: lo de menos de 15% queda guardado (él: "quizás mañana dan, y sirve para la perfumería del local").
+- Qué chequear: que `pycat` y el panel cuenten igual; que lo que pasa a Para probar no repita candidatos ni fichas (código también por
+  el final); que un 429 no quede como "sin catálogo"; que lo "fuera por regla" no se coma cosas que sí se miran (webcam, mesa digitalizadora).
+
 ### Paraguay: todo guardado en CYC y una pasada por mes (14/10/2026, pedido suyo · v23.37 `cyc-v617`)
 - **Qué es:** el chat de compras carga TODO lo de Nissei con catálogo exacto en ML (aunque no dé 25% ni tenga 100 vendidas: el panel ya lo esconde en desplegables), anota lo que no tiene catálogo con `pyvisto` (`cyc/pyvistos/<código>`), y una vez por mes actualiza precios con `candprecio:<código>=<US$>[/<vendidas>]|=nohay` sin volver a buscar en ML, usando la lista de `pyconocidos`. `candalta` de un código ya cargado ya no lo saltea: le pone el precio y la fecha. El robot mide hasta 250 por vuelta (antes 40) y los descartados por margen se vuelven a medir cada 2 días (antes 7). Un candidato vence a los 60 días sin precio nuevo (antes 45).
 - **Dónde:** `candalta`, `candprecio`, `pyvisto`, `pyconocidos`, `CAND_MAX_ML`, `CAND_REMEDIR_DIAS` (sync.mjs) · `CAND_VENCE_DIAS` (index.html) · `ml-sync/PROMPT_GUAY.md`.
