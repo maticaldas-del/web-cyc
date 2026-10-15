@@ -7337,6 +7337,7 @@ async function tgFlushCola(db) {
 // La ganancia sale de `armarCostoWeb`, la MISMA regla que la web y el resumen del día.
 // Sin datos de compradores ni números de orden (el registro de GitHub es público).
 const AVISO_VENTA_VENTANA_MS = 3 * 36e5;
+const AVISO_VENTA_DUERME = [30, 600];   // 00:30 a 10:00 de Argentina, sin avisos de venta (pedido suyo, 15/10/2026)
 const AVISO_VENTA_TELEGRAM = false;   // 15/10/2026: el aviso de cada venta va sólo al teléfono (push), pedido suyo
 function _nivelPct(p) {
   if (p == null || !isFinite(p)) return '⚪';
@@ -7412,6 +7413,15 @@ async function avisarVentasNuevas(db, lista) {
     return;
   }
   if (!nuevas.length) { if (Object.values(anotar).some((v) => v === null)) await db.patch('mlapi/avisoventa', anotar); return; }
+  // HORARIO DE DESCANSO (15/10/2026, él: "no quiero que mande notificaciones desde las 00:30 hasta las 10:00,
+  // ya que dormimos. Horario Argentina"). Las ventas de esa franja se anotan como avisadas sin mandar nada,
+  // así a las 10:00 no llega una tanda de golpe. Se ven igual en Ventas y en el resumen del día.
+  const _mArg = (Math.floor(ahora / 6e4) - 180) % 1440;   // minutos del día en Argentina (UTC−3)
+  if (_mArg >= AVISO_VENTA_DUERME[0] && _mArg < AVISO_VENTA_DUERME[1]) {
+    await db.patch('mlapi/avisoventa', anotar);
+    console.log(`Aviso de ventas: horario de descanso (00:30-10:00), anoto ${nuevas.length} sin avisar.`);
+    return;
+  }
   const dk = nuevas[nuevas.length - 1].dayKey;
   const vp = (await db.get('cyc/ventaprod')) || {};
   const costoWeb = await armarCostoWeb(db, vp);

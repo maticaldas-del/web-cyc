@@ -424,7 +424,8 @@ el precio de un candidato distinto con código parecido (se compara también por
   ({endpoint, keys, pub, disp}); 404/410 = se borra solo. `sw.js` muestra el aviso (vibra) y al tocarlo abre Ventas.
   Se anota como avisado si salió por Telegram O por algún teléfono. Probe `webpush[:go|:probar]` (ml-sync). Chequear:
   que la llave pública de la base sea la de `mlapi/vapid` · teléfonos anotados · que el registro no imprima endpoints.
-  **Por Telegram se dio de baja el mismo día** (él ya lo activó en la web): `AVISO_VENTA_TELEGRAM = false`. Queda sólo el push.
+  **Por Telegram se dio de baja el mismo día** (él ya lo activó en la web): `AVISO_VENTA_TELEGRAM = false`. Queda sólo el push. **Horario de descanso 00:30-10:00 de Argentina**
+  (`AVISO_VENTA_DUERME`): las ventas de esa franja se anotan sin avisar (no llega una tanda a las 10).
 
 - **Informe 7b: reclamos abiertos y mensajes sin leer (auditoría del 10/10/2026):** el `chequeo` veía 3 reclamos
   abiertos (uno de Matías de 2 días con "podés: reembolsar, mandar mensaje, abrir disputa") y 3 mensajes de

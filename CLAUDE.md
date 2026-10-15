@@ -924,7 +924,8 @@ cómo va el día. Memoria `mlapi/avisoventa`. Detalle en `ml-sync/REVISION.md` (
 "🔔 Activar aviso de cada venta" (Inicio o Ajustes; en iPhone con CYC abierto desde el ícono). Llaves VAPID armadas por
 el robot: privada en `mlapi/vapid` (nunca al repo), pública en `cyc/mlconfig/vapidPublic`, teléfonos en `cyc/pushsubs`.
 Probe `webpush[:go|:probar]` por ml-sync. **Y por Telegram se dio de baja** (pedido suyo, ya lo activó en la web):
-`AVISO_VENTA_TELEGRAM = false`. El aviso de cada venta va SÓLO al teléfono.
+`AVISO_VENTA_TELEGRAM = false`. El aviso de cada venta va SÓLO al teléfono. **Y no suena de 00:30 a 10:00 (Argentina)**:
+`AVISO_VENTA_DUERME`; lo de esa franja se anota sin avisar.
 
 ## 🧠 RESUMEN DE CADA CEREBRO POR TELEGRAM (10/10/2026, pedido suyo)
 
