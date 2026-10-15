@@ -46,6 +46,9 @@ la historia y el porqué). Si algo de acá choca con CLAUDE.md, manda lo más nu
 - **Escasez** (todas las vueltas, `escasez`): sin caja despachada se estira sin fecha, directo al precio que pienso (ML deja hasta +100% sin problema),
   techo ~×2 del normal; con caja despachada, que la última salga cerca del día 8. Nunca abajo del precio normal. Al llegar la
   caja no se vuelve a ciegas.
+  **Qué es escasez (15/10, regla suya): no son 15 días fijos.** Es que se corta ANTES de que vuelva a haber: caja despachada →
+  lo que le falta · oficina → ~10 d · si no, comprar (`cyc/reponer`: pedido en camino, Paraguay 17 d + espera, precio que no
+  da o Nissei sin stock = SIN FECHA). `escasez` lo marca 🔥 por fila (Full o "de compra"). Lo sin fecha se estira aunque tenga 20 días.
 - **Lo nuevo que vuela se sube al toque**; venta abajo de 25% con poco stock → subir en la MISMA vuelta.
 - **Productos nuevos arrancan directo a su precio final.** Y en la primera semana se mira la caja: si es de catálogo y la pierde
   (0 visitas), el precio no es el final: descuento al precio que gana la caja si deja 25%+ (caso del pedido del 21/09, 13/10).

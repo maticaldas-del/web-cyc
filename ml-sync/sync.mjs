@@ -36496,6 +36496,19 @@ async function main() {
         else if (!conColor.has(k)) unidades.push(k);
       }
       const nomK = (k) => { const i = k.indexOf('__'), iv = k.indexOf('__v__'); const pid = k.slice(0, i); return (pName[pid] || pid) + ' · ' + (iv > 0 ? k.slice(i + 2, iv) + ' · ' + k.slice(iv + 5).replace(/_/g, ' ') : k.slice(i + 2)); };
+      const REPO_SIN_FECHA_E = 60;
+      let repoE = {}, sinStE = {}, compPyE = {};
+      try { repoE = (await db.get('cyc/reponer')) || {}; } catch { console.log('(no pude leer cyc/reponer: lo que tarda comprar va por el respaldo 📅)'); }
+      try { sinStE = (await db.get('cyc/py_sinstock')) || {}; } catch { /* respaldo sin la marca */ }
+      try { for (const c of Object.values((await db.get('cyc/compraspy')) || {})) if (c && c.estado === 'camino') for (const it of (c.items || [])) if (it && it.prodId) compPyE[it.prodId] = c.fecha; } catch { /* */ }
+      // Respaldo si la web todavía no escribió `cyc/reponer` de ese producto (o es de hace más de 3 días).
+      const repoFallback = (pid) => {
+        const p = pById[pid] || {};
+        if (compPyE[pid]) { const e = (ahora - Date.parse(compPyE[pid] + 'T12:00:00-03:00')) / 864e5; const f = Math.max(0, Math.ceil(7 - (e || 0))); return { d: f + 10, txt: `📅 viene en el pedido de Paraguay del ${compPyE[pid]} (~${f} d) + 10 d de caja` }; }
+        if (p.origen === 'py' && sinStE[pid]) return { d: REPO_SIN_FECHA_E, inf: true, txt: '📅 Nissei no lo tiene: sin fecha' };
+        return p.origen === 'py' ? { d: 17, txt: '📅 Paraguay 17 d (sin el dato de la web: no sé si el precio da)' } : { d: 14, txt: '📅 Bs As/Paulvic 14 d' };
+      };
+      for (const [pid, x] of Object.entries(repoE)) if (!x || !(Number(x.ts) > ahora - 3 * 864e5)) delete repoE[pid];
       const filas = [], fueraPocas = [], fueraSinClave = []; let juzgadas = 0;
       for (const k of unidades) {
         const i = k.indexOf('__'), iv = k.indexOf('__v__');
@@ -36507,12 +36520,28 @@ async function main() {
         const st = Math.max(0, parseInt(inv[k]) || 0);
         const rr = ritmo14(k, vv), r14 = rr.r, r3 = vv.u3 / 3;
         const alc = r14 > 0 ? st / r14 : Infinity;
-        if (alc > dMax) continue;
         const ofiK = iv > 0 ? pid + '__' + sidE('Oficina Mati') + '__v__' + k.slice(iv + 5) : pid + '__' + sidE('Oficina Mati');
         const ofi = Math.max(0, parseInt(inv[ofiK]) || 0);
-        filas.push({ k, pid, cta, color: iv > 0 ? k.slice(iv + 5) : '', st, r14, dCon: rr.d, cal: rr.cal, r3, alc, u14: vv.u14, u30: vv.u30, ofi, cam: cam[k] || [] });
+        // CUÁNTO TARDA EN VOLVER A HABER EN FULL (15/10/2026, regla suya): no es 15 días para todos. Con caja
+        // despachada, lo que le falta a esa caja; con mercadería en la oficina, armar y mandar (10 d); si no, lo
+        // que tarda COMPRAR según la situación del producto (`cyc/reponer`, lo escribe la web con la misma
+        // cuenta del semáforo de Pedidos): pedido en camino, precio de Paraguay que no da (sin fecha), etc.
+        const camK = cam[k] || [];
+        const fCam = camK.map((c) => Date.parse(c.fecha)).filter((t) => t > 0);
+        const comp = repoE[pid] || repoFallback(pid);
+        let lead, leadTxt;
+        if (camK.length) { const e = fCam.length ? (ahora - Math.min(...fCam)) / 864e5 : 0; lead = Math.max(1, Math.ceil(8 - e)); leadTxt = `caja despachada: llega en ~${lead} d`; }
+        else if (ofi > 0) { lead = 10; leadTxt = `hay ${ofi} u. en la oficina: armar y mandar ~10 d`; }
+        else { lead = comp.inf ? Infinity : comp.d; leadTxt = `sin caja ni oficina · comprar: ${comp.txt}`; }
+        // Y lo que hay en total (Full + camino + oficina) tiene que durar hasta que llegue una COMPRA nueva.
+        const tot = r14 > 0 ? (st + camK.reduce((a, c) => a + c.u, 0) + ofi) / r14 : Infinity;
+        const leadComp = comp.inf ? Infinity : comp.d;
+        const escFull = alc < lead && !(lead === Infinity && alc > REPO_SIN_FECHA_E);
+        const escComp = tot < leadComp && !(leadComp === Infinity && tot > REPO_SIN_FECHA_E);
+        if (alc > dMax && !escFull && !escComp) continue;
+        filas.push({ k, pid, cta, color: iv > 0 ? k.slice(iv + 5) : '', st, r14, dCon: rr.d, cal: rr.cal, r3, alc, u14: vv.u14, u30: vv.u30, ofi, cam: camK, lead, leadTxt, tot, comp, escFull, escComp });
       }
-      filas.sort((a, b) => a.alc - b.alc);
+      filas.sort((a, b) => (Number(b.escFull || b.escComp) - Number(a.escFull || a.escComp)) || (a.alc - b.alc));
       // precio de hoy de cada publicación activa de esos productos, leído de ML
       const tokE = {};
       for (const label of labels) { const acc = accounts[label]; if (!acc?.refresh_token) continue; try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() }); tokE[label] = t.access_token; } catch { console.log(`(${label}: no pude entrar)`); } }
@@ -36526,13 +36555,17 @@ async function main() {
         }
       }
       const med = (a) => { if (!a || !a.length) return null; const b = [...a].sort((x, y) => x - y); return b[Math.floor(b.length / 2)]; };
-      console.log(`=== 🔥 ESCASEZ · lo que vende y alcanza ${dMax} días o menos en Full (${filas.length}) ===`);
+      console.log(`=== 🔥 ESCASEZ · lo que vende y se corta antes de que vuelva a haber, o alcanza ${dMax} días o menos en Full (${filas.length} · escasez de verdad: ${filas.filter((f) => f.escFull || f.escComp).length}) ===`);
       console.log('(ritmo = ventas de 14 días ÷ días CON stock del registro hora por hora · 📅 = esa clave no tiene registro: ÷ días corridos desde que volvió el stock · cada color se juzga solo · la oficina NO cuenta hasta que sale la caja)\n');
       for (const f of filas) {
         const camU = f.cam.reduce((s2, c) => s2 + c.u, 0);
         const camTxt = camU ? `🚚 despachadas sin marcar ${camU} u. (${f.cam.map((c) => c.fecha + (c.v ? ' ' + c.v : '') + ' ' + c.u + (c.fecha !== '?' && (ahora - Date.parse(c.fecha)) / 864e5 > 9 ? ' ⚠️ +9 d: ¿ya llegó? mirar cajasllegaron' : '')).join(' · ')})` : '🚫 sin caja despachada';
         console.log(`■ ${pName[f.pid] || f.pid}${f.color ? ' · 🎨 ' + f.color.replace(/_/g, ' ') : ''} · ${f.cta} · ${f.st} u. en Full · ${f.r14.toFixed(2)}/día${f.cal ? ' 📅' : ''} (${f.u14} u. en 14 d · ${f.dCon.toFixed(1)} d ${f.cal ? 'corridos' : 'con stock'} · ${f.u30} en 30 d · últimos 3 d ${f.r3.toFixed(1)}/día) · alcanza ${f.alc === Infinity ? '∞' : f.alc.toFixed(1)} d`);
         console.log(`   ${camTxt}${f.ofi ? ' · oficina ' + f.ofi + ' u.' : ''}`);
+        const dTx = (x) => x === Infinity ? 'sin fecha' : x.toFixed(0) + ' d';
+        console.log(`   ⏱️ vuelve a haber en Full: ${f.leadTxt}${f.escFull ? ` → 🔥 ESCASEZ: Full alcanza ${dTx(f.alc)} y reponer tarda ${dTx(f.lead)}` : ''}`);
+        if (f.escComp) console.log(`   🔥 ESCASEZ DE COMPRA: todo junto (Full + camino + oficina) alcanza ${dTx(f.tot)} y comprar tarda ${f.comp.inf ? 'sin fecha' : f.comp.d + ' d'} (${f.comp.txt})`);
+        else if (!f.escFull) console.log(`   ✓ no es escasez: alcanza hasta que vuelva a haber (Full ${dTx(f.alc)} · todo junto ${dTx(f.tot)})`);
         if (f.color && !(pubs[f.k] || []).length) console.log('   (ninguna publicación viva nombra este color: mirarlo con fijarvar)');
         for (const m of pubs[f.k]) {
           const b = vivo[m] || {}, e = links[m] || {};

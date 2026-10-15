@@ -234,6 +234,18 @@ Qué chequear: que la cuenta del peor caso use la misma comisión que la normal,
 - **Dónde vive:** las vueltas de Claude (`trig_01475PwdPVJ1qTnYswcDxRq8`, `trig_01FCaQqzU5MA422N6Z8nH63Z`); datos con `cerebro:todas` (sólo lee, sección escasez) y `porquebajo`; precio con `decido`.
 - **Qué chequear:** que ninguna pase ×2 del normal, que ML no la pause, que al llegar la caja se revise (no quede cara sin vender), y que una caja despachada se note (`cyc/envios_full`).
 
+### Escasez y semáforo de Pedidos: lo que tarda reponer, producto por producto (15/10/2026, v23.69, regla suya)
+Él: *"no son las mismas condiciones el que no tiene stock en Nissei o el precio no da, al que ya está pedido, otro que está en
+camino hace 3 días o el que tengo en la oficina"*. **Qué es:** `reponerDe(p)` (index.html) da los días hasta que vuelva a haber
+COMPRANDO: pedido de Paraguay/Paulvic en camino → lo que le falta + 10 (armar 2 + caja 8) · Paraguay y el precio da → 17 + lo que
+falte del pedido que viaja · precio no da / Nissei no lo tiene / "no traer más" → SIN FECHA (cuenta 60) · Bs As/Paulvic → 14.
+Es el corte del naranja (`pedDiasRojoDe`) y se ve abajo del tanque (⏱️ reponer). La web lo escribe en `cyc/reponer/<prodId>`
+(sólo lo que cambió) y `escasez` lo lee (respaldo 📅 si falta o tiene +3 días). En `escasez` cada fila dice cuándo vuelve a
+haber en Full (caja despachada → lo que le falta · oficina → 10 d · si no, comprar) y marca 🔥 ESCASEZ si Full se corta antes,
+o 🔥 ESCASEZ DE COMPRA si todo junto (Full + camino + oficina) se corta antes de que llegue una compra.
+**Qué chequear:** que `cyc/reponer` se actualice (lo escribe syncPedidosAuto, o sea alguien abre la web) · que lo "sin fecha"
+no deje naranja algo con meses de stock (tope 60) · que el pedido en camino se saque al marcar "Llegó".
+
 ### Agregados el 09/10/2026 (cambios del 08/10 que no se habían anotado)
 - **`escasez` (a3dce89):** el ritmo sale de ventas y días de la MISMA ventana, y avisa cajas viejas sin marcar. Chequear: que un producto con stock vuelto hace pocos días no dé un ritmo inflado.
 - **`analizapromo` (2428f51, cddbe1d):** sección de las promos donde ML pone plata (con el crudo) y lo que te queda en una compartida = lista menos tu parte. Chequear: que "ML pone" salga del dato de la promo y no se suponga.
