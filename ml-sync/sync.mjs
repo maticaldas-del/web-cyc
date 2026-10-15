@@ -8270,6 +8270,8 @@ function c_link(c) {
 // Lo demás queda guardado y escondido, y se vuelve a medir cada `PYCAT_REMEDIR_DIAS`.
 const PYCAT_REMEDIR_DIAS = 7;
 const PYCAT_POR_VUELTA = 300;
+// Relleno en portugués que no ayuda a buscar en ML (comprasparaguay describe, ML nombra).
+const PYCAT_RELLENO = new Set(['fone','ouvido','relogio','analogico','digital','cabo','carregador','mouse','teclado','caixa','som','alto','falante','speaker','portatil','sem','fio','wireless','bluetooth','com','para','de','do','da','e','em','preto','branco','cinza','azul','vermelho','verde','rosa','dourado','prata','silver','white','black','gold','masculino','feminino','unissex','smartwatch','fones','auricular']);
 const RE_PYCAT_NOPASA = new RegExp(RE_CAND_PERF.source + '|maquiagem|maquillaje|batom|labial|rimel|r[íi]mel|m[áa]scara de c[íi]lios|delineador|sombra|base l[íi]quida|corretivo|corrector|blush|rubor|p[óo] compacto|shampoo|xampu|condicionador|acondicionador|creme|crema|hidratante|protetor solar|protector solar|desodorante|esmalte', 'i');
 // LO OBVIO, que no se mide (regla suya del 03/10, copiada del PROMPT GUAY): lo que no entra en una caja o es de otro
 // rubro. Se guarda igual con el motivo, así no se pierde. Los nombres de comprasparaguay vienen en portugués.
@@ -8364,26 +8366,39 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
     if (Date.now() - t0 > 40 * 60e3) { console.log('⏱️ 40 minutos: corto acá, sigue la próxima vuelta.'); break; }
     const upd = { t: Date.now(), uMed: e.u };
     try {
-      await espera(250);
-      const bus = await mlGet(`/products/search?site_id=MLA&q=${encodeURIComponent(String(e.n).slice(0, 80))}&limit=5`, tok);
-      const resB = ((bus && bus.results) || []).filter((r) => r && r.id);
-      // El primero sin reparos DUROS (otro modelo, otro tamaño, otro color, edición/pack/lite…). Que falte alguna palabra
-      // no frena: comprasparaguay escribe en portugués ("relógio", "analógico") y ML en castellano. Ese reparo blando queda
-      // anotado (`rp`) y la revisión de fotos lo mira antes de que llegue a Para probar.
+      // BÚSQUEDA: primero marca + modelo, después el nombre sin el relleno en portugués, después el nombre entero. comprasparaguay
+      // escribe "Fone de Ouvido JBL Tune 520BT - Preto" y buscando eso ML trae el 730BT; con "jbl 520bt" trae el correcto.
+      const mods = _rvMod(e.n); const pal = _rvNorm(e.n).split(' ').filter((w) => w.length >= 2 && !RV_VACIAS.has(w) && !PYCAT_RELLENO.has(w));
+      const qs = [...new Set([mods.length ? [pal[0], ...mods].filter(Boolean).join(' ') : null, pal.slice(0, 7).join(' '), String(e.n).slice(0, 80)].filter((x) => x && x.length >= 3))];
+      const vistosB = new Map();
+      for (const q of qs) {
+        if (vistosB.size >= 10) break;
+        await espera(250);
+        const bus = await mlGet(`/products/search?site_id=MLA&q=${encodeURIComponent(q.slice(0, 80))}&limit=5`, tok);
+        for (const r of ((bus && bus.results) || [])) if (r && r.id && !vistosB.has(r.id)) vistosB.set(r.id, r);
+      }
+      const resB = [...vistosB.values()];
+      // Se prueban los que no tienen reparos DUROS (otro modelo, otro tamaño, otro color, edición/pack/lite…). Que falte alguna
+      // palabra no frena: el portugués no está en ML. Ese reparo blando queda anotado (`rp`) y lo mira la revisión de fotos.
+      // Si el primero es un catálogo viejo sin vendedores, se prueba el siguiente (hasta 3).
       const duros = (rr) => rr.filter((x) => !/^en ML no está/.test(x));
-      let prod = null, rpBlando = null;
-      for (const r of resB) { const rr = chequeoMismoProducto(e.n, r.name || r.title); if (!duros(rr).length) { prod = r; rpBlando = rr.length ? rr.join(' · ') : null; break; } }
-      if (!prod) { upd.sc = 1; upd.mt = resB[0] ? String(resB[0].name || '').slice(0, 120) : ''; upd.m = null; res.sinCat++;
+      const okB = resB.map((r) => [r, chequeoMismoProducto(e.n, r.name || r.title)]).filter(([, rr]) => !duros(rr).length);
+      if (!okB.length) { upd.sc = 1; upd.mt = resB[0] ? String(resB[0].name || '').slice(0, 120) : ''; upd.m = null; res.sinCat++;
         console.log(`  · sin catálogo exacto · ${e.n.slice(0, 60)}${resB[0] ? ` (lo más parecido: "${upd.mt.slice(0, 60)}" · ${duros(chequeoMismoProducto(e.n, upd.mt)).join(' · ').slice(0, 90)})` : ' (ML no trajo nada)'}`);
         if (aplicar) await db.patch('mlapi/pycat/' + cod, upd); continue; }
+      let prod = null, rpBlando = null, ofertas = [], pi = null;
+      for (const [r, rr] of okB.slice(0, 3)) {
+        let ofs = [];
+        try { await espera(250); const it = await mlGet(`/products/${r.id}/items`, tok); ofs = ((it && it.results) || []).filter((o) => !esOfertaDeAfuera(o)); }
+        catch (e2) { if (!/404/.test(String(e2.message || e2))) throw e2; ofs = []; }
+        const p2 = precioAIgualar(ofs);
+        if (!prod) { prod = r; rpBlando = rr.length ? rr.join(' · ') : null; }
+        if (p2 && p2.precio > 0 && p2.ref && p2.ref.category_id) { prod = r; rpBlando = rr.length ? rr.join(' · ') : null; ofertas = ofs; pi = p2; break; }
+      }
       upd.sc = null; upd.mi = prod.id; upd.mt = String(prod.name || prod.title || '').slice(0, 120); upd.rp = rpBlando;
       { const pic = Array.isArray(prod.pictures) && prod.pictures[0]; const u = String((pic && (pic.secure_url || pic.url)) || '').replace(/^http:\/\//, 'https://');
         let h = ''; try { h = new URL(u).hostname.toLowerCase(); } catch { h = ''; } upd.mf = (h === 'mlstatic.com' || h.endsWith('.mlstatic.com')) ? u : null; }
-      let ofertas = [];
-      try { await espera(250); const it = await mlGet(`/products/${prod.id}/items`, tok); ofertas = ((it && it.results) || []).filter((o) => !esOfertaDeAfuera(o)); }
-      catch (e2) { if (!/404/.test(String(e2.message || e2))) throw e2; ofertas = []; }
-      const pi = precioAIgualar(ofertas);
-      if (!pi || !(pi.precio > 0) || !(pi.ref && pi.ref.category_id)) { upd.m = null; upd.sv = 1; res.sinVend++; console.log(`  · catálogo sin vendedores · ${e.n.slice(0, 60)} → ${upd.mi}`); if (aplicar) await db.patch('mlapi/pycat/' + cod, upd); continue; }
+      if (!pi) { upd.m = null; upd.sv = 1; res.sinVend++; console.log(`  · catálogo sin vendedores · ${e.n.slice(0, 60)} → ${upd.mi}`); if (aplicar) await db.patch('mlapi/pycat/' + cod, upd); continue; }
       upd.sv = null; upd.mp = Math.round(pi.precio); upd.mv = ofertas.length;
       const cuoA = cuotasDeOferta(pi.ref); const cuoPct = cuoA ? CUOTAS_PCT_ML[cuoA] || 0 : 0;
       const puesto = Math.round(e.u * RECARGO_PAR * 100) / 100;
