@@ -392,6 +392,11 @@ el precio de un candidato distinto con código parecido (se compara también por
   respaldo publicación por publicación y el log dice "visitas: N con dato". Chequear que el número
   no caiga a 0.
 
+- **Promos "sin leer" que no eran falla (15/10/2026, auditoría):** ML contesta 400 a la consulta de promos de una
+  publicación cerrada, inactiva o en revisión. Se contaban como "sin leer" (55 fijas, "hace 388 horas seguidas") y tapaban
+  una falla real. `PROMO_NO_APLICA` (sync.mjs) las saca de la cuenta en la vuelta de la hora, en `sacapromos` (que las
+  cuenta aparte) y en el chequeo. Chequear: con un 400 en una publicación ACTIVA o pausada sigue contando como sin leer.
+
 ## 5 bis · AVISOS DE TELEGRAM QUE LEE CLAUDE (08/10/2026)
 - `sendAlerta` guarda copia de cada aviso que SALIÓ en `mlapi/alertaslog/<ts>`; probe `alertas[:horas]` (solo lee,
   tapa números largos). Una rutina de Claude los lee y resuelve lo que puede
