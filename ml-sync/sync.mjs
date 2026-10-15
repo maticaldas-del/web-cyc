@@ -18843,6 +18843,19 @@ async function main() {
       console.log(`\n${ok ? '✓' : '❌'} guardado (releído el último: ${last.n.slice(0, 60)} · US$ ${r.u}). ${ultPg >= 0 ? `Quedó en la página ${ultPg}.` : ''} Los mide \`pycatmedir\` solo.`);
       return;
     }
+    // BILLING_PROBE=pycatbusca:<palabras>[;<otras>] → BUSCA EN EL CATÁLOGO DE PARAGUAY GUARDADO (15/10/2026). Solo lee. Cada término
+    // trae los renglones que tienen TODAS sus palabras (código · US$ · nombre · link), para cargar el código de un color con pyprecio.
+    if (/^pycatbusca:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const cat = (await db.get('mlapi/pycat')) || {};
+      const norm = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      for (const q of String(process.env.BILLING_PROBE).slice('pycatbusca:'.length).split(';').map((x) => x.trim()).filter(Boolean)) {
+        const ws = norm(q).split(/[\s+]+/).filter(Boolean);
+        const hits = Object.entries(cat).filter(([, e]) => e && e.n && ws.every((w) => norm(e.n).includes(w)));
+        console.log(`\n=== "${q}" · ${hits.length} en el catálogo ===`);
+        for (const [cod, e] of hits.slice(0, 40)) console.log(`  ${cod} · US$ ${Number(e.u).toFixed(2)} · ${e.n}${e.l ? ' · ' + e.l : ''}${e.f ? ' · foto ' + e.f : ''}`);
+      }
+      return;
+    }
     // BILLING_PROBE=pycatventas → LA LISTA CORTA PARA EL CHAT DE COMPRAS (15/10/2026). Los candidatos que pasaron solos desde el
     // catálogo (dan 25%+) y todavía no tienen las ventas de ML cargadas: el robot no las puede ver (403), las mira el chat en el
     // link y las carga con `candprecio:<código>=<US$>/<vendidas>;…;go`. El panel los muestra recién con 100 o más. Solo lee.
