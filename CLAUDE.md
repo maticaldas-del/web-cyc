@@ -920,7 +920,10 @@ Anotado en `ml-sync/REVISION.md` (etapas 6 y 7) y en `REV_ETAPAS`.
 a "Telegram sólo decisiones": `avisarVentasNuevas` (sync.mjs) manda al chat del resumen UN mensaje por vuelta del
 ciclo (~2 min) con las ventas nuevas: cuenta, hora, producto y color, precio, ganancia en $ y % (emoji de nivel) y
 cómo va el día. Memoria `mlapi/avisoventa`. Detalle en `ml-sync/REVISION.md` (5 bis). Notificación de la web
-(push de la app) quedó como idea: Android anda, iPhone sólo con la app agregada a la pantalla de inicio.
+(push de la app) **HECHO el mismo día (v23.44)**: vibra y suena en el teléfono. Cada teléfono toca UNA vez
+"🔔 Activar aviso de cada venta" (Inicio o Ajustes; en iPhone con CYC abierto desde el ícono). Llaves VAPID armadas por
+el robot: privada en `mlapi/vapid` (nunca al repo), pública en `cyc/mlconfig/vapidPublic`, teléfonos en `cyc/pushsubs`.
+Probe `webpush[:go|:probar]` por ml-sync.
 
 ## 🧠 RESUMEN DE CADA CEREBRO POR TELEGRAM (10/10/2026, pedido suyo)
 

@@ -1,5 +1,5 @@
 // Service worker de CYC: cachea la app (mismo origen) para que abra como app instalada.
-const CACHE = "cyc-v623";
+const CACHE = "cyc-v624";
 const ARCHIVOS = [".", "index.html", "manifest.webmanifest", "icon.svg"];
 
 self.addEventListener("install", (e) => {
@@ -31,4 +31,27 @@ self.addEventListener("fetch", (e) => {
       })
       .catch(() => caches.match(e.request).then((r) => r || caches.match("index.html")))
   );
+});
+
+// EL AVISO DE CADA VENTA, QUE VIBRA Y SUENA (15/10/2026, pedido suyo). Lo manda el robot por "push";
+// acá sólo se muestra. Al tocarlo abre la app (o la trae al frente) en Ventas x Producto.
+self.addEventListener("push", (e) => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch (_) { d = { body: e.data ? e.data.text() : "" }; }
+  e.waitUntil(self.registration.showNotification(d.title || "🔔 CYC", {
+    body: d.body || "",
+    tag: d.tag || "cyc",
+    icon: "icon.svg",
+    badge: "icon.svg",
+    vibrate: [200, 100, 200],
+    data: { url: d.url || "./" },
+  }));
+});
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  const url = (e.notification.data && e.notification.data.url) || "./";
+  e.waitUntil(clients.matchAll({ type: "window", includeUncontrolled: true }).then((ls) => {
+    for (const c of ls) { if ("focus" in c) { c.postMessage({ cycIr: "ventaprod" }); return c.focus(); } }
+    return clients.openWindow(url);
+  }));
 });

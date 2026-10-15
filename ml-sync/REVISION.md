@@ -417,6 +417,13 @@ el precio de un candidato distinto con código parecido (se compara también por
   `mlapi/avisoventa/<id>` (+ `_ini`), sólo ventas de las últimas 3 h, la primera vez anota sin mandar, se anota
   sólo si salió, sin memoria legible no manda. Ganancia con `armarCostoWeb` (la regla de la web). Chequear: que no
   repita · que un relleno viejo no dispare una avalancha · sin nombre de comprador ni número de orden.
+  **Y vibra y suena en el teléfono (v23.44, él: "ya lo tengo en el inicio en iphone"):** el mismo aviso va por push
+  (`enviarPush`, librería `web-push` en `ml-sync/package.json`). Llaves VAPID las arma el robot la primera vez
+  (`vapidKeys`): privada en `mlapi/vapid` (NUNCA al repo ni al registro), pública en `cyc/mlconfig/vapidPublic`; no se
+  pisan nunca. Cada teléfono toca "🔔 Activar aviso de cada venta" (Inicio o Ajustes) y queda en `cyc/pushsubs/<clave>`
+  ({endpoint, keys, pub, disp}); 404/410 = se borra solo. `sw.js` muestra el aviso (vibra) y al tocarlo abre Ventas.
+  Se anota como avisado si salió por Telegram O por algún teléfono. Probe `webpush[:go|:probar]` (ml-sync). Chequear:
+  que la llave pública de la base sea la de `mlapi/vapid` · teléfonos anotados · que el registro no imprima endpoints.
 
 - **Informe 7b: reclamos abiertos y mensajes sin leer (auditoría del 10/10/2026):** el `chequeo` veía 3 reclamos
   abiertos (uno de Matías de 2 días con "podés: reembolsar, mandar mensaje, abrir disputa") y 3 mensajes de

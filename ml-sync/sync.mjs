@@ -7342,8 +7342,58 @@ function _nivelPct(p) {
   if (p < 25) return '🔴'; if (p < 45) return '🟢'; if (p < 70) return '🩵';
   if (p < 130) return '🔵'; if (p < 200) return '🟣'; return '💎';
 }
+// EL AVISO TAMBIÉN VIBRA Y SUENA EN EL TELÉFONO, DESDE LA APP DE CYC (15/10/2026, pedido suyo: "que vibre
+// y suene la web" y "yo ya lo tengo en el inicio en iphone"). Es el aviso "push" de la web: cada teléfono
+// toca UNA vez "🔔 Activar avisos de ventas" en la app y queda anotado en `cyc/pushsubs/<clave>`.
+// LAS LLAVES (VAPID) LAS ARMA EL ROBOT SOLO la primera vez y las guarda en la base: la privada en
+// `mlapi/vapid` (nunca al repo ni al registro, que son públicos) y la pública en `cyc/mlconfig/vapidPublic`,
+// que es la que usa la web para anotarse. NUNCA se pisan: cambiarlas deja a todos los teléfonos sin aviso.
+// Un teléfono que ya no existe (404/410) se borra de la lista solo. Sin la librería `web-push` no se
+// manda nada y se dice en el log (Telegram sigue igual).
+let _webpush;
+async function _wp() {
+  if (_webpush !== undefined) return _webpush;
+  try { _webpush = (await import('web-push')).default; } catch { _webpush = null; console.log('Aviso al teléfono: falta la librería web-push, sólo va Telegram.'); }
+  return _webpush;
+}
+async function vapidKeys(db, crear) {
+  const wp = await _wp(); if (!wp) return null;
+  let k = await db.get('mlapi/vapid');
+  if (!(k && k.publicKey && k.privateKey)) {
+    if (!crear) return null;
+    k = wp.generateVAPIDKeys();
+    await db.set('mlapi/vapid', { publicKey: k.publicKey, privateKey: k.privateKey, ts: Date.now() });
+    const re = await db.get('mlapi/vapid');   // si otra corrida las armó a la vez, gana la que quedó guardada
+    if (re && re.publicKey) k = re;
+    console.log('Aviso al teléfono: armé las llaves nuevas.');
+  }
+  let pub; try { pub = await db.get('cyc/mlconfig/vapidPublic'); } catch {}
+  if (pub !== k.publicKey) await db.patch('cyc/mlconfig', { vapidPublic: k.publicKey });
+  return k;
+}
+async function enviarPush(db, payload) {
+  const wp = await _wp(); if (!wp) return 0;
+  const k = await vapidKeys(db, true); if (!k) return 0;
+  const subs = (await db.get('cyc/pushsubs')) || {};
+  const lista = Object.entries(subs).filter(([, s]) => s && s.endpoint && s.keys && s.keys.p256dh && s.keys.auth);
+  if (!lista.length) { console.log('Aviso al teléfono: ningún teléfono anotado todavía.'); return 0; }
+  wp.setVapidDetails('https://maticaldas-del.github.io/web-cyc/', k.publicKey, k.privateKey);
+  let ok = 0, malos = 0;
+  for (const [key, s] of lista) {
+    try {
+      await wp.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.keys.p256dh, auth: s.keys.auth } }, JSON.stringify(payload), { TTL: 6 * 3600, urgency: 'high' });
+      ok++;
+    } catch (e) {
+      const st = e && e.statusCode;
+      if (st === 404 || st === 410) { malos++; await db.set(`cyc/pushsubs/${key}`, null); }
+      else console.log(`Aviso al teléfono (${s.disp || '?'}): falló con ${st || e.message}`);
+    }
+  }
+  console.log(`Aviso al teléfono: ${ok} de ${lista.length} teléfonos${malos ? ` · ${malos} dado(s) de baja (ya no existen)` : ''}.`);
+  return ok;
+}
 async function avisarVentasNuevas(db, lista) {
-  if (!TG_TOKEN || TG_SILENCIO || CONSULTA_SOLO_LEE || DRY) return;
+  if (TG_SILENCIO || CONSULTA_SOLO_LEE || DRY) return;
   let mem;
   try { mem = await db.get('mlapi/avisoventa'); } catch { console.log('Aviso de ventas: no pude leer la memoria, esta vuelta no aviso.'); return; }
   mem = mem && typeof mem === 'object' ? mem : null;
@@ -7371,8 +7421,11 @@ async function avisarVentasNuevas(db, lista) {
     const div = cw.costo + (v.netoEstimado ? 0 : cw.gest);
     return { g, pct: div > 0 ? g / div * 100 : null };
   };
+  const planos = [];   // el mismo renglón sin HTML, para el aviso del teléfono
   const renglones = nuevas.sort((a, b) => (a.v.ts || 0) - (b.v.ts || 0)).map((x) => {
     const v = x.v, r = ganDe(v, x.dayKey);
+    planos.push(`${v.cuenta || '?'} · ${String(v.prod || '?').slice(0, 40)}${v.variante ? ` (${String(v.variante).slice(0, 20)})` : ''}${(v.qty || 1) > 1 ? ' x' + v.qty : ''} · ${money(Number(v.total) || 0)}`
+      + (r ? ` · ${v.netoEstimado ? '≈' : ''}gana ${money(r.g)} ${_nivelPct(r.pct)}${r.pct == null ? '' : ' ' + Math.round(r.pct) + '%'}` : ' · sin costo'));
     const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const nom = esc(String(v.prod || '?').slice(0, 40) + (v.variante ? ` (${String(v.variante).slice(0, 20)})` : ''));
     const hora = new Date((Number(v.ts) || ahora) - 3 * 36e5).toISOString().slice(11, 16);
@@ -7388,8 +7441,17 @@ async function avisarVentasNuevas(db, lista) {
   const msg = `${nuevas.length === 1 ? '🔔 <b>Venta nueva</b>' : `🔔 <b>${nuevas.length} ventas nuevas</b>`}\n\n`
     + renglones.join('\n\n')
     + `\n\n📊 Hoy van <b>${n}</b> ventas · ${money(fact)} · ganancia <b>${money(gan)}</b>`;
-  const ok = await sendTelegram(msg, 'venta');
-  if (ok) { await db.patch('mlapi/avisoventa', anotar); console.log(`Aviso de ventas: mandé ${nuevas.length}.`); }
+  const tgOk = TG_TOKEN ? await sendTelegram(msg, 'venta') : false;
+  let pushOk = 0;
+  try {
+    pushOk = await enviarPush(db, {
+      title: nuevas.length === 1 ? '🔔 Venta nueva' : `🔔 ${nuevas.length} ventas nuevas`,
+      body: planos.join('\n') + `\n📊 Hoy: ${n} ventas · ganancia ${money(gan)}`,
+      tag: 'venta-' + kid(nuevas[nuevas.length - 1].v.id), url: './#ventaprod',
+    });
+  } catch (e) { console.log('Aviso al teléfono: ' + e.message); }
+  const ok = tgOk || pushOk > 0;   // con que haya salido por uno de los dos, no se repite
+  if (ok) { await db.patch('mlapi/avisoventa', anotar); console.log(`Aviso de ventas: mandé ${nuevas.length} (Telegram ${tgOk ? 'sí' : 'no'} · teléfonos ${pushOk}).`); }
   else console.log(`Aviso de ventas: no salió el mensaje (${nuevas.length}), lo reintento la vuelta que viene.`);
 }
 
@@ -12044,6 +12106,22 @@ async function main() {
       await db.patch('cyc/mlconfig', { tgAlertas: arg });
       console.log(`\n✓ Listo: los avisos van a ${arg}. Te mandé un mensaje de prueba ahí.`);
       console.log('   Ese chat queda FUERA del resumen del día, así no se mezclan.');
+      return;
+    }
+    // BILLING_PROBE=webpush[:go|:probar] (15/10/2026) → el aviso de ventas en el teléfono. Sin nada: cuántos
+    // teléfonos están anotados (sin imprimir direcciones). `:go` arma las llaves si faltan. `:probar` además
+    // manda un aviso de prueba a todos los teléfonos anotados. Va por ml-sync (escribe).
+    if (/^webpush(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const arg = String(process.env.BILLING_PROBE).split(':')[1] || '';
+      const wp = await _wp();
+      if (!wp) { console.log('❌ No está la librería web-push (npm install en ml-sync).'); process.exitCode = 1; return; }
+      const k = await vapidKeys(db, arg === 'go' || arg === 'probar');
+      console.log(k ? '✓ Llaves listas (la pública está en cyc/mlconfig/vapidPublic).' : 'Todavía no hay llaves: correr webpush:go.');
+      const subs = (await db.get('cyc/pushsubs')) || {};
+      const vs = Object.values(subs).filter((x) => x && x.endpoint);
+      console.log(`Teléfonos anotados: ${vs.length}`);
+      for (const x of vs) console.log(`  · ${x.disp || '?'} · anotado ${x.ts ? new Date(x.ts - 3 * 36e5).toISOString().slice(0, 16).replace('T', ' ') : '?'}`);
+      if (arg === 'probar' && k) await enviarPush(db, { title: '✅ Prueba de CYC', body: 'Así te va a llegar cada venta nueva.', tag: 'prueba', url: './#ventaprod' });
       return;
     }
     // BILLING_PROBE=recordar:<texto> → manda ese texto SÓLO al canal privado (el de Mati solo, no al del

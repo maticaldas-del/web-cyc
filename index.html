@@ -654,6 +654,7 @@ body.light .vp-promo.vp-promo-ml{color:#0369a1;background:color-mix(in srgb,#036
   </div>
   <!-- Arriba de todo CYC y el dólar; ahí nomás las ventas de hoy y el puntaje (29/09/2026, pedido suyo) -->
   <div id="home-hoy"></div>
+  <div id="home-push"></div>
   <div id="home-puntaje"></div>
   <div id="home-cierre-aviso" style="display:none"></div>
   <div id="home-revision"></div>
@@ -2091,6 +2092,7 @@ function startApp(){
     // uno que se hundió solo, porque el remedio es opuesto (a uno se lo deja, al otro se lo sube).
     state.nosubir=d.nosubir||{};
     state.mlconfig=d.mlconfig||{};   // config del robot (auto-precio, meta, umbral)
+    state.pushsubs=d.pushsubs||{};   // teléfonos anotados para el aviso de cada venta (15/10/2026)
     try{_aplicarParamCompra();}catch(e){}
     state.monotributo=d.monotributo||{}; // monotributo: montos por cuenta + % que calcula el robot
     // Facturas que emitió el facturador automático de ML, por cuenta. Las carga el robot una vez
@@ -2174,7 +2176,7 @@ function startApp(){
     if(_extEntries.length)_applyStockEntries(_extEntries);
     document.getElementById('loading').style.display='none';
     const primeraVez=firstDataLoad;
-    if(firstDataLoad){firstDataLoad=false;goPage('home');}
+    if(firstDataLoad){firstDataLoad=false;const _irV=location.hash==='#ventaprod';if(_irV)try{history.replaceState(null,'',location.pathname);}catch(e){}goPage(_irV?'ventaprod':'home');}   // #ventaprod = abrió tocando el aviso de una venta
     // La primera carga se dibuja ya; las demás se juntan y respetan tu scroll (ver renderPronto).
     renderPronto(primeraVez);
   },err=>{
@@ -2278,6 +2280,65 @@ function setWhoLabels(){
   });
 }
 /* ═══════════ AJUSTES ═══════════ */
+/* ═══════════ AVISO DE CADA VENTA EN EL TELÉFONO (15/10/2026) ═══════════
+   Pedido suyo: "que vibre y suene la web" y "yo ya lo tengo en el inicio en iphone". Cada teléfono toca
+   UNA vez "Activar" y queda anotado en cyc/pushsubs; el robot le manda el aviso en la misma vuelta en que
+   manda el Telegram. La llave pública la arma el robot (cyc/mlconfig/vapidPublic). En iPhone sólo anda
+   abriendo CYC desde el ícono de la pantalla de inicio (iOS 16.4 o más), y el permiso se pide al tocar. */
+function _pushSoportado(){return 'serviceWorker' in navigator&&'PushManager' in window&&'Notification' in window;}
+function _b64u8(b){b=String(b).replace(/-/g,'+').replace(/_/g,'/');while(b.length%4)b+='=';const r=atob(b);return Uint8Array.from(r,c=>c.charCodeAt(0));}
+function _pushClave(ep){let h=0;for(let i=0;i<ep.length;i++)h=(h*31+ep.charCodeAt(i))|0;return 't'+(h>>>0).toString(36)+'_'+ep.length;}
+function _pushDisp(){const u=navigator.userAgent;return /iPhone/.test(u)?'iPhone':/iPad/.test(u)?'iPad':/Android/.test(u)?'Android':/Mac/.test(u)?'Mac':/Windows/.test(u)?'PC':'otro';}
+let _pushEstado=null;   // 'activo' | 'falta' | 'nosoporta' | 'negado'
+async function _pushMirar(){
+  if(!_pushSoportado())return 'nosoporta';
+  if(Notification.permission==='denied')return 'negado';
+  if(Notification.permission!=='granted')return 'falta';
+  try{
+    const reg=await navigator.serviceWorker.getRegistration();const sub=reg&&await reg.pushManager.getSubscription();
+    if(!sub)return 'falta';
+    const k=_pushClave(sub.endpoint),g=(state.pushsubs||{})[k],pub=(state.mlconfig||{}).vapidPublic;
+    if(!g)return 'falta';
+    if(pub&&g.pub&&g.pub!==pub)return 'falta';   // la llave cambió: hay que volver a anotarse
+    return 'activo';
+  }catch(e){return 'falta';}
+}
+async function renderPush(){
+  _pushEstado=await _pushMirar();
+  const h=document.getElementById('home-push'),a=document.getElementById('ajustes-push');
+  const n=Object.values(state.pushsubs||{}).filter(x=>x&&x.endpoint).length;
+  const btn='<button class="btn" style="background:#22c55e;color:#06210f;font-weight:700;border:none;border-radius:10px;padding:10px 14px;cursor:pointer" onclick="pushActivar()">🔔 Activar aviso de cada venta</button>';
+  if(h)h.innerHTML=_pushEstado==='falta'?`<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;margin:10px 0;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span style="font-size:.8rem;color:var(--muted);flex:1;min-width:180px">Que este teléfono vibre y suene con cada venta nueva.</span>${btn}</div>`:'';
+  if(!a)return;
+  const txt={
+    activo:'<div style="color:var(--green);font-weight:700">✅ Este teléfono recibe el aviso de cada venta.</div><div style="font-size:.75rem;color:var(--muted);margin-top:6px">Si dejan de llegar, tocá de nuevo para volver a anotarlo.</div><div style="margin-top:10px">'+btn.replace('🔔 Activar aviso de cada venta','🔄 Volver a anotar este teléfono')+'</div>',
+    falta:'<div style="font-size:.8rem;color:var(--muted);margin-bottom:10px">Tocá una vez en cada teléfono (el tuyo y el de tu viejo). Te pide permiso y listo.</div>'+btn,
+    negado:'<div style="color:var(--amber)">⚠️ En este teléfono los avisos de CYC están bloqueados. Se habilitan en Ajustes del teléfono → Notificaciones → CYC.</div>',
+    nosoporta:'<div style="color:var(--amber)">⚠️ Así no se pueden recibir avisos. En iPhone: abrí CYC desde el ícono de la pantalla de inicio (no desde Safari) y con iOS 16.4 o más.</div>'
+  }[_pushEstado];
+  a.innerHTML=txt+`<div style="font-size:.7rem;color:var(--muted);margin-top:10px">Teléfonos anotados: ${n}</div>`;
+}
+async function pushActivar(){
+  try{
+    if(!_pushSoportado()){alert('Así no se pueden recibir avisos. En iPhone: abrí CYC desde el ícono de la pantalla de inicio (no desde Safari), con iOS 16.4 o más.');return;}
+    const pub=(state.mlconfig||{}).vapidPublic;
+    if(!pub){alert('El robot todavía no armó la llave de los avisos. Probá de nuevo en unos minutos.');return;}
+    const perm=await Notification.requestPermission();   // tiene que ser lo primero después del toque (iPhone)
+    if(perm!=='granted'){alert('No se dio el permiso, así que este teléfono no va a recibir avisos.');renderPush();return;}
+    const reg=await navigator.serviceWorker.ready;
+    let sub=await reg.pushManager.getSubscription();
+    const viejaK=sub&&_pushClave(sub.endpoint),vieja=viejaK&&(state.pushsubs||{})[viejaK];
+    if(sub&&vieja&&vieja.pub&&vieja.pub!==pub){try{await sub.unsubscribe();}catch(e){}sub=null;}
+    if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:_b64u8(pub)});
+    const j=sub.toJSON(),k=_pushClave(j.endpoint);
+    if(viejaK&&viejaK!==k)await fbSet('pushsubs/'+viejaK,null);
+    await fbSet('pushsubs/'+k,{endpoint:j.endpoint,keys:j.keys,pub,ts:Date.now(),disp:_pushDisp(),quien:whoAmI||''});
+    state.pushsubs=Object.assign({},state.pushsubs,{[k]:{endpoint:j.endpoint,pub,disp:_pushDisp()}});
+    try{await reg.showNotification('✅ Avisos activados',{body:'Desde ahora este teléfono vibra y suena con cada venta nueva.',icon:'icon.svg',tag:'cyc-ok',vibrate:[200,100,200]});}catch(e){}
+    renderPush();
+  }catch(e){alert('No se pudo activar: '+e.message);}
+}
+if('serviceWorker' in navigator)navigator.serviceWorker.addEventListener('message',ev=>{if(ev.data&&ev.data.cycIr)try{goPage(ev.data.cycIr);}catch(e){}});
 function enterAjustes(){
   const inp=document.getElementById('ajuste-nombre');if(inp)inp.value=whoAmI;
   const badge=document.getElementById('who-ajustes');if(badge)badge.textContent='👤 '+whoAmI;
@@ -2287,6 +2348,7 @@ function enterAjustes(){
   renderAutoPriceCfg();
   renderMono();
   renderMlLinks();
+  renderPush();
 }
 // ── Auto-precio ML (on/off) — se guarda en cyc/mlconfig y lo lee el robot ──
 function renderAutoPriceCfg(){
@@ -2553,7 +2615,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.43';
+const APP_VERSION='23.44';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2564,6 +2626,7 @@ const APP_VERSION='23.43';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.44',f:'15/10/2026',h:'22:46',c:[{n:2,t:'🔔 Cada venta nueva hace vibrar y sonar el teléfono (además del Telegram). Hay que tocar una vez "Activar aviso de cada venta" en Inicio o en Ajustes, en cada teléfono. En iPhone, con CYC abierto desde el ícono.'}]},
   {v:'23.43',f:'14/10/2026',h:'21:47',c:[{n:1,t:'🧾 Gastos: el renglón "Cargos de Full de ML" ya no pide el reporte: lo cargo yo cada mes leyendo la factura de ML.'}]},
   {v:'23.42',f:'14/10/2026',h:'19:50',c:[{n:2,t:'📋 Pedidos: cada tarjeta tiene una barra de días (ML, en camino, oficina y lo que se compra) con la raya del corte. Se fue el "🔴 Urgente" que contradecía al "alcanza ~60 d".'},
     {n:1,t:'🧠 La nota "Hola Tito!" se ve en la tarjeta de Pedidos (y la de cada caja en Armar caja) sin tocar el 🧠.'},
@@ -3741,7 +3804,7 @@ function renderAll(){
   if(currentPage==='rotacion')renderRotacionStock();
   // Inicio: cada tarjeta por separado y "Ventas de hoy" primero (30/09/2026, él: "la tarjeta de arriba no se
   // actualiza"). Antes iban en fila: si una de las de antes fallaba, las de después quedaban con lo viejo.
-  if(currentPage==='home'){[renderHomeHoy,checkCierrePendiente,renderHomeRevision,updateHomeDolar,renderPuntajeMes,renderHomeParejo,renderNcOfi].forEach(f=>{try{f();}catch(e){console.warn('Inicio:',f.name,e);}});}
+  if(currentPage==='home'){[renderHomeHoy,checkCierrePendiente,renderHomeRevision,updateHomeDolar,renderPuntajeMes,renderHomeParejo,renderNcOfi,renderPush].forEach(f=>{try{f();}catch(e){console.warn('Inicio:',f.name,e);}});}
   updatePedidosCosto();
 }
 
@@ -19989,6 +20052,11 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
   </div>
 
   <div style="max-width:640px">
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
+      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;margin-bottom:12px">🔔 Aviso de cada venta en este teléfono</div>
+      <div id="ajustes-push"></div>
+    </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
       <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;margin-bottom:12px">👤 Perfil</div>
