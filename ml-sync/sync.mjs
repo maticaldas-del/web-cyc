@@ -8367,18 +8367,23 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
       await espera(250);
       const bus = await mlGet(`/products/search?site_id=MLA&q=${encodeURIComponent(String(e.n).slice(0, 80))}&limit=5`, tok);
       const resB = ((bus && bus.results) || []).filter((r) => r && r.id);
-      // El primero que NO tiene reparos de "otro producto" (otro modelo, otro tamaño, otro color, edición, pack…).
-      let prod = resB.find((r) => !chequeoMismoProducto(e.n, r.name || r.title).length);
+      // El primero sin reparos DUROS (otro modelo, otro tamaño, otro color, edición/pack/lite…). Que falte alguna palabra
+      // no frena: comprasparaguay escribe en portugués ("relógio", "analógico") y ML en castellano. Ese reparo blando queda
+      // anotado (`rp`) y la revisión de fotos lo mira antes de que llegue a Para probar.
+      const duros = (rr) => rr.filter((x) => !/^en ML no está/.test(x));
+      let prod = null, rpBlando = null;
+      for (const r of resB) { const rr = chequeoMismoProducto(e.n, r.name || r.title); if (!duros(rr).length) { prod = r; rpBlando = rr.length ? rr.join(' · ') : null; break; } }
       if (!prod) { upd.sc = 1; upd.mt = resB[0] ? String(resB[0].name || '').slice(0, 120) : ''; upd.m = null; res.sinCat++;
+        console.log(`  · sin catálogo exacto · ${e.n.slice(0, 60)}${resB[0] ? ` (lo más parecido: "${upd.mt.slice(0, 60)}" · ${duros(chequeoMismoProducto(e.n, upd.mt)).join(' · ').slice(0, 90)})` : ' (ML no trajo nada)'}`);
         if (aplicar) await db.patch('mlapi/pycat/' + cod, upd); continue; }
-      upd.sc = null; upd.mi = prod.id; upd.mt = String(prod.name || prod.title || '').slice(0, 120);
+      upd.sc = null; upd.mi = prod.id; upd.mt = String(prod.name || prod.title || '').slice(0, 120); upd.rp = rpBlando;
       { const pic = Array.isArray(prod.pictures) && prod.pictures[0]; const u = String((pic && (pic.secure_url || pic.url)) || '').replace(/^http:\/\//, 'https://');
         let h = ''; try { h = new URL(u).hostname.toLowerCase(); } catch { h = ''; } upd.mf = (h === 'mlstatic.com' || h.endsWith('.mlstatic.com')) ? u : null; }
       let ofertas = [];
       try { await espera(250); const it = await mlGet(`/products/${prod.id}/items`, tok); ofertas = ((it && it.results) || []).filter((o) => !esOfertaDeAfuera(o)); }
       catch (e2) { if (!/404/.test(String(e2.message || e2))) throw e2; ofertas = []; }
       const pi = precioAIgualar(ofertas);
-      if (!pi || !(pi.precio > 0) || !(pi.ref && pi.ref.category_id)) { upd.m = null; upd.sv = 1; res.sinVend++; if (aplicar) await db.patch('mlapi/pycat/' + cod, upd); continue; }
+      if (!pi || !(pi.precio > 0) || !(pi.ref && pi.ref.category_id)) { upd.m = null; upd.sv = 1; res.sinVend++; console.log(`  · catálogo sin vendedores · ${e.n.slice(0, 60)} → ${upd.mi}`); if (aplicar) await db.patch('mlapi/pycat/' + cod, upd); continue; }
       upd.sv = null; upd.mp = Math.round(pi.precio); upd.mv = ofertas.length;
       const cuoA = cuotasDeOferta(pi.ref); const cuoPct = cuoA ? CUOTAS_PCT_ML[cuoA] || 0 : 0;
       const puesto = Math.round(e.u * RECARGO_PAR * 100) / 100;
@@ -8386,6 +8391,7 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
       const r = await cuentaCandidatoMejor(Math.min(pi.precio, TECHO_DURO), pi.ref.category_id, puesto, tc, monoP, feeAt, cuoPct, cn);
       if (!r) { res.err++; continue; }
       upd.m = Math.round(r.margen * 10) / 10; res.medidos++;
+      console.log(`  · ${String(upd.m.toFixed(1)).padStart(6)}% · ${e.n.slice(0, 55)} · US$ ${e.u} → ${upd.mi} "${upd.mt.slice(0, 50)}" a ${money(upd.mp)}${upd.rp ? ' · ⚠️ ' + upd.rp.slice(0, 60) : ''}`);
       const piso = candPisoDe({ nombre: e.n, mlTit: upd.mt });
       if (upd.m >= piso) { res.b25++; res.pasan.push({ cod, e, upd }); } else if (upd.m >= 15) res.b15++; else res.bajo++;
       if (aplicar) await db.patch('mlapi/pycat/' + cod, upd);
