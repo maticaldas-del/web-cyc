@@ -8355,11 +8355,19 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
   const feeAt = async (price, lt, catx) => {
     const k = lt + '|' + catx + '|' + Math.round(price); if (feeCache[k] !== undefined) return feeCache[k];
     let out = null;
-    try { const d = await mlGet(`/sites/MLA/listing_prices?price=${Math.round(price)}&listing_type_id=${lt}&category_id=${catx}`, tok);
+    try { const d = await mlGetR(`/sites/MLA/listing_prices?price=${Math.round(price)}&listing_type_id=${lt}&category_id=${catx}`);
       const o = Array.isArray(d) ? d[0] : d; if (typeof o?.sale_fee_amount === 'number') out = o.sale_fee_amount; } catch { out = null; }
     feeCache[k] = out; return out;
   };
   const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+  // ML corta por cupo (429 local_rate_limited) si se le pregunta seguido: se espera y se reintenta (5, 15 y 30 s) en vez de
+  // saltear el producto. Si sigue cortando, el producto queda sin medir y se reintenta en la vuelta siguiente.
+  const mlGetR = async (ruta) => {
+    for (const w of [0, 5000, 15000, 30000]) {
+      if (w) await espera(w);
+      try { return await mlGet(ruta, tok); } catch (e) { if (!/429/.test(String(e.message || e)) || w === 30000) throw e; }
+    }
+  };
   const res = { medidos: 0, sinCat: 0, sinVend: 0, err: 0, b25: 0, b15: 0, bajo: 0, pasan: [] };
   const t0 = Date.now();
   for (const [cod, e] of toca) {
@@ -8374,7 +8382,7 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
       for (const q of qs) {
         if (vistosB.size >= 15) break;
         await espera(250);
-        const bus = await mlGet(`/products/search?site_id=MLA&q=${encodeURIComponent(q.slice(0, 80))}&limit=8`, tok);
+        const bus = await mlGetR(`/products/search?site_id=MLA&q=${encodeURIComponent(q.slice(0, 80))}&limit=8`);
         for (const r of ((bus && bus.results) || [])) if (r && r.id && !vistosB.has(r.id)) vistosB.set(r.id, r);
       }
       const resB = [...vistosB.values()];
@@ -8390,7 +8398,7 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
       let prod = null, rpBlando = null, ofertas = [], pi = null;
       for (const [r, rr] of okB.slice(0, 5)) {
         let ofs = [];
-        try { await espera(250); const it = await mlGet(`/products/${r.id}/items`, tok); ofs = ((it && it.results) || []).filter((o) => !esOfertaDeAfuera(o)); }
+        try { await espera(250); const it = await mlGetR(`/products/${r.id}/items`); ofs = ((it && it.results) || []).filter((o) => !esOfertaDeAfuera(o)); }
         catch (e2) { if (!/404/.test(String(e2.message || e2))) throw e2; ofs = []; }
         const p2 = precioAIgualar(ofs);
         if (prueba) console.log(`      prueba ${r.id} "${String(r.name || '').slice(0, 60)}" · ${ofs.length} vendedor(es)${rr.length ? ' · ' + rr.join(' · ').slice(0, 60) : ''}`);
@@ -8412,7 +8420,7 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
       const piso = candPisoDe({ nombre: e.n, mlTit: upd.mt });
       if (upd.m >= piso) { res.b25++; res.pasan.push({ cod, e, upd }); } else if (upd.m >= 15) res.b15++; else res.bajo++;
       if (aplicar) await db.patch('mlapi/pycat/' + cod, upd);
-    } catch (err) { res.err++; console.log(`  ✗ ${e.n.slice(0, 60)}: ${String(err.message || err).slice(-120)}`); if (/429/.test(String(err.message || err))) await espera(15000); }
+    } catch (err) { res.err++; console.log(`  ✗ ${e.n.slice(0, 60)}: ${String(err.message || err).slice(-120)}`); if (/429/.test(String(err.message || err))) await espera(60000); }
   }
   console.log(`\nMedidos ${res.medidos} · dan el piso ${res.b25} · entre 15% y el piso ${res.b15} · menos de 15% ${res.bajo} · sin catálogo exacto en ML ${res.sinCat} · catálogo sin vendedores ${res.sinVend} · errores ${res.err} (se reintentan)`);
   // LOS QUE DAN PASAN SOLOS A "PARA PROBAR", con el catálogo de ML fijo. Ahí `candidatos` los vuelve a medir (dos veces
