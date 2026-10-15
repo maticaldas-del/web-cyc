@@ -52,6 +52,8 @@ html{font-size:118%}
 #tt-toque{position:fixed;z-index:99990;max-width:min(320px,calc(100vw - 32px));background:var(--surface2);color:var(--text);border:1px solid var(--border2);border-radius:10px;padding:10px 12px;font-size:.78rem;line-height:1.45;box-shadow:0 6px 24px rgba(0,0,0,.35);white-space:pre-line}
 @media(max-width:900px){html{font-size:100%}}
 body{font-family:'DM Mono',monospace;background:var(--bg);color:var(--text);min-height:100vh}
+/* 15/10/2026, él: "en el celu puedo ir para el costado, no me gusta": la página nunca se corre de costado (las tablas anchas siguen con su propia barrita). */
+html,body{overflow-x:hidden;max-width:100%}html{overflow-x:clip}body{overscroll-behavior-x:none;touch-action:pan-y pinch-zoom}
 .home-cambios-lista{scrollbar-width:thin;scrollbar-color:#64748b transparent}
 .home-cambios-lista::-webkit-scrollbar{width:6px;-webkit-appearance:none}
 .home-cambios-lista::-webkit-scrollbar-thumb{background:#64748b;border-radius:3px}
@@ -2614,7 +2616,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.65';
+const APP_VERSION='23.66';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2625,6 +2627,7 @@ const APP_VERSION='23.65';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.66',f:'15/10/2026',h:'17:15',c:[{n:1,t:'📱 En el celular la página ya no se corre de costado. Las tablas anchas siguen deslizándose adentro de su caja.'}]},
   {v:'23.65',f:'15/10/2026',h:'19:20',c:[{n:2,t:'🔎 Pedidos → Paraguay → Nuevos: buscador de TODO comprasparaguay (los ~13.500 de Guay), aunque no den el %. Muestra fotos, código, precio puesto, el % de ML (o por qué no hay), el 🏪 local en perfumes y los dos links.'},{n:1,t:'📈 Línea de tiempo: los números del % (máximo y mínimo) van con su color de ganancia, no en gris.'}]},
   {v:'23.64',f:'15/10/2026',h:'19:00',c:[{n:3,t:'🇵🇾 Probados: el % se mide con el precio de Paraguay de los COLORES que se piden (el más caro de ésos), no el de la ficha. El Joystick azul (US$ 55) se medía con los US$ 48 del negro.'},{n:1,t:'🇵🇾 Probados: las dos fotos (Paraguay y ML) y los links "verlo en ML / comprasparaguay" van ARRIBA de todo al abrir la tarjeta, antes de los colores.'}]},
   {v:'23.63',f:'15/10/2026',h:'18:40',c:[{n:2,t:'🏪 Botón "🏪✕ no da en el local" al lado del % azul de cada perfume: lo saca de la sugerencia para la perfumería (vuelve a depender sólo de ML). Se devuelve con "↩︎ 🏪 volver a sugerir".'}]},
