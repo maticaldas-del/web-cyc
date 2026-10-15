@@ -2553,7 +2553,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.42';
+const APP_VERSION='23.43';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2564,6 +2564,7 @@ const APP_VERSION='23.42';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.43',f:'14/10/2026',h:'21:47',c:[{n:1,t:'🧾 Gastos: el renglón "Cargos de Full de ML" ya no pide el reporte: lo cargo yo cada mes leyendo la factura de ML.'}]},
   {v:'23.42',f:'14/10/2026',h:'19:50',c:[{n:2,t:'📋 Pedidos: cada tarjeta tiene una barra de días (ML, en camino, oficina y lo que se compra) con la raya del corte. Se fue el "🔴 Urgente" que contradecía al "alcanza ~60 d".'},
     {n:1,t:'🧠 La nota "Hola Tito!" se ve en la tarjeta de Pedidos (y la de cada caja en Armar caja) sin tocar el 🧠.'},
     {n:1,t:'📈 Ventas de hoy: una línea con la ganancia hora por hora contra el mismo día de la semana pasada, cortado a la misma hora.'},
@@ -19725,7 +19726,7 @@ const GASTOS_DEL_MES=[
   {n:'Intereses financieros',  cat:'Intereses financieros',
    nota:'el interés del capital en dólares de los socios ya NO se paga (19/09/2026): queda sólo el otro'},
   {n:'Cargos de Full de ML (las 4 cuentas)', cat:'Envios', pal:['almacenamiento','full','stock antiguo','retiro'],
-   nota:'ML → Facturación → el mes → Ir al detalle → bajar el "Reporte de Facturación" de CADA cuenta y pasármelo. '
+   nota:'Lo cargo yo el 15 de cada mes con cargosmes (sale de la factura de ML por tipo de cargo, las 4 cuentas): no hace falta que me pases el reporte. El período de un mes entra en los gastos del mes siguiente. '
       + 'Son almacenamiento + stock antiguo + retiro de stock + multas (ej. caja mal mandada). Julio fueron $127.835. Van SÓLO acá: desde el 26/09 el % de cada venta ya no los incluye. '
       + 'OJO: NO se carga el total de la factura de ML — casi toda son percepciones de IIBB y comisiones, que ya se descuentan en cada venta.'},
 ];

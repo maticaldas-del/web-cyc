@@ -484,6 +484,8 @@ el precio de un candidato distinto con código parecido (se compara también por
     cargado a mano ese mes. Afuera: cargos de cada venta (ya en el neto), percepciones (ya van como %), devolución CDSD
     (ya la cuenta el % de reclamos). (10) tabla de percepciones de IIBB por provincia × cuenta para el contador.
     **Chequear:** que ningún cargo de Full quede en "otros" sin mirar y que la tabla de IIBB use sólo renglones de IIBB.
+    v23.43: el renglón "Cargos de Full de ML" de la lista de Gastos ya no le pide el reporte (dice que lo cargo yo con
+    `cargosmes`). **Chequear:** que ese texto y el comando sigan diciendo lo mismo.
   - **NO se hizo, a propósito:** 7 (reclamos que pagó ML) cambia el costo de todos los productos: primero se confirma
     con el reporte de liquidación de MP (queda en `REV_PENDIENTE`). 8 (juntar pedidos de Paraguay a ~US$1.000) es una
     decisión de compra, no código. 11 (dinero que rinde en MP) lo mira él en la app.
