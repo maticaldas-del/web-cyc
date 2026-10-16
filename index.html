@@ -2619,7 +2619,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.79';
+const APP_VERSION='23.80';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2630,6 +2630,7 @@ const APP_VERSION='23.79';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.80',f:'16/10/2026',h:'11:15',c:[{n:2,t:'Línea de tiempo con un color elegido: ahora cuenta la caja en camino de ESE color. Antes la dejaba afuera y marcaba escasez de compra que no era (Protector talón Común Beige).'}]},
   {v:'23.79',f:'16/10/2026',h:'03:20',c:[{n:2,t:'🔴 Escasez es ROJO en todos lados (Pedidos, línea de tiempo, barra): lo que se termina antes de poder reponer, o lo que no se puede reponer (Nissei no lo tiene o el precio no da). 🟠 naranja ahora es "comprar ya, llega a tiempo" y 🟡 "hay tiempo".'}]},
   {v:'23.78',f:'16/10/2026',h:'02:55',c:[{n:1,t:'🔥 Línea de tiempo: lo que está en escasez se pinta en naranja (el número de stock, el texto y la línea del gráfico), no en verde, aunque alcance 30 días.'}]},
   {v:'23.77',f:'16/10/2026',h:'02:40',c:[{n:2,t:'🔥 Una sola regla de escasez en Pedidos, la línea de tiempo y el robot: se corta antes de poder reponer (todo junto dura menos que reponer), o Full se corta antes de que llegue lo de casa (caja en camino 8 d, oficina 10 d). "Hay que MANDAR" en Pedidos ahora mira lo que tarda la caja, no lo que tarda comprar.'}]},
@@ -9640,9 +9641,9 @@ function lineaPintar(prodId){
   const _stHoy=(()=>{let q=0;LOCS.forEach(l=>{q+=Math.max(0,Number(_lineaVar?getQV(prodId,l,_lineaVar):getQ(prodId,l))||0);});
     const pdia=_pdiaAntes(N-1);const dd=pdia>0?q/pdia:(q>0?null:0);
     // LA ESCASEZ TAMBIÉN ACÁ (16/10/2026, él con el Pendrive 16gb: "no me marca escasez por ningún lado"). La MISMA
-    // regla que Pedidos y el robot (`escasezDe`), con la oficina y (sin color elegido) la caja en camino.
+    // regla que Pedidos y el robot (`escasezDe`), con la oficina y la caja en camino (con color elegido, sólo la de ese color).
     const _cs=Math.max(0,Number(_lineaVar?getQV(prodId,OFI,_lineaVar):getQ(prodId,OFI))||0);
-    const _tr=_lineaVar?null:transitoInfoDe(prodId);
+    const _tr=transitoInfoDe(prodId,_lineaVar||null);
     const _ez=escasezDe(p,{ml:q,cam:_tr?_tr.u:0,casa:_cs,vDia:pdia,camDias:_tr?_tr.diasMax:0});
     const _esc=q>0&&(_ez.comp||_ez.full)?`<b style="color:var(--red)">🔥 escasez</b>: ${_ez.txt}`:'';
     const _sr=_ez.sinRepo?` · <b style="color:var(--amber)">sin reposición</b>: estirar para venderlo en ~100 días`:'';
@@ -17263,7 +17264,10 @@ function pedTresLugares(r){
   return ` · 📦 ${r.stock} en ML · ${camino} · ${ofi}`;
 }
 
-function transitoInfoDe(pid){
+function transitoInfoDe(pid,vari){
+  // `vari` (16/10/2026): sólo lo de ESE color. Sin esto la línea de tiempo de un color no veía la caja en camino
+  // y marcaba escasez de compra que no era (Protector talón Común Beige: 18 viajando no contaban).
+  const _vn=x=>String(x||'').toLowerCase().trim();
   let u=0,cajas=0,diasMax=0;const ctas={};
   Object.entries(state.envios_full||{}).forEach(([eid,e])=>{
     const cta=e.cuenta;if(!cta||!LOCS.includes(cta))return;
@@ -17271,7 +17275,7 @@ function transitoInfoDe(pid){
     cajasDe(e).forEach((c,i)=>{
       if(c.recibida)return;
       let uc=0;
-      for(const it of (c.items||[]))if(it&&it.prodId===pid&&it.u>0)uc+=cajaPendU(eid,i,c,it);
+      for(const it of (c.items||[]))if(it&&it.prodId===pid&&it.u>0&&(vari==null||_vn(it.variante)===_vn(vari)))uc+=cajaPendU(eid,i,c,it);
       if(uc<=0)return;
       u+=uc;cajas++;ctas[cta]=(ctas[cta]||0)+uc;
       if(d>diasMax)diasMax=d;
