@@ -37268,7 +37268,7 @@ async function main() {
       }
       const aplicar = GOe && !DRY;
       console.log(`=== 🏷️ ENTRAR EN PROMOS DE ML ${aplicar ? '· SE APLICA' : '(PRUEBA: no toco nada)'} ===`);
-      const nota = async (mla, txt) => { const e = links[mla] || {}; try { await db.set('mlapi/claudeexp/' + mla, { ts: Date.now(), simple: String(txt).slice(0, 600), nom: String(e.title || '').slice(0, 60), cuenta: e.cuenta || '', tipo: 'promo' }); } catch { console.log('   ⚠️ no pude guardar la nota del 🧠'); } };
+      const nota = async (mla, txt) => { const e = links[mla] || {}; try { await db.set('mlapi/claudeexp/' + mla, { ts: Date.now(), simple: String(txt).slice(0, 2500), nom: String(e.title || '').slice(0, 60), cuenta: e.cuenta || '', tipo: 'promo' }); } catch { console.log('   ⚠️ no pude guardar la nota del 🧠'); } };
       const leerPromos = async (mla, tk) => { const r = await mlGet('/seller-promotions/items/' + mla + '?app_version=v2', tk); return Array.isArray(r) ? r : (r.results || []); };
       const PISOe = await pisoConfig(db);
       // El margen al precio de la promo, una sola corrida de calcCerebro para todas.
@@ -37792,7 +37792,7 @@ async function main() {
       const marcaG = (ok, txtOk = '   ✓ guardada') => { if (ok) TAL.ok++; else TAL.no++; return ok ? txtOk : '   ✗ no quedó'; };
       const escribirNota = async (mla, simple, extra) => {
         const e = linksD[mla] || {};
-        try { const ts = Date.now(); await db.set('mlapi/claudeexp/' + mla, { ts, simple: String(simple).slice(0, 600), nom: String(e.title || '').slice(0, 60), cuenta: e.cuenta || '', ...(extra || {}) });
+        try { const ts = Date.now(); await db.set('mlapi/claudeexp/' + mla, { ts, simple: String(simple).slice(0, 2500), nom: String(e.title || '').slice(0, 60), cuenta: e.cuenta || '', ...(extra || {}) });
           const rl = await db.get('mlapi/claudeexp/' + mla); const ok = !!(rl && rl.ts === ts); if (ok) TAL.ok++; else { TAL.no++; console.log(`   ✗ la nota de ${mla} no quedó`); } return ok; }
         catch (eN) { TAL.no++; console.log(`   ⚠️ no pude guardar la nota de ${mla}: ${String(eN.message || eN).slice(0, 60)}`); return false; }
       };
@@ -37807,7 +37807,7 @@ async function main() {
             const key = 'dia__' + n.dia;
             console.log(`· el día ${n.dia.slice(8, 10)}/${n.dia.slice(5, 7)}: ${n.t}`);
             if (GOp && !DRY) {
-              try { await db.set('mlapi/claudeexp/' + key, { ts: Date.now(), simple: String(n.t).slice(0, 900), tipo: 'dia', dia: n.dia });
+              try { await db.set('mlapi/claudeexp/' + key, { ts: Date.now(), simple: String(n.t).slice(0, 2500), tipo: 'dia', dia: n.dia });
                 const rl = await db.get('mlapi/claudeexp/' + key); console.log(marcaG(!!(rl && rl.simple))); }
               catch (eN) { TAL.no++; console.log(`   ⚠️ no pude guardarla: ${String(eN.message || eN).slice(0, 60)}`); }
             }
@@ -37819,7 +37819,7 @@ async function main() {
             const key = `venta__${n.dia}__${n.mla}`;
             console.log(`· ventas del ${n.dia.slice(8, 10)}/${n.dia.slice(5, 7)} · ${String(e.title || n.mla).slice(0, 44)} (${e.cuenta || '?'}): ${n.t}`);
             if (GOp && !DRY) {
-              try { await db.set('mlapi/claudeexp/' + key, { ts: Date.now(), simple: String(n.t).slice(0, 600), nom: String(e.title || '').slice(0, 60), cuenta: e.cuenta || '', tipo: 'venta', dia: n.dia });
+              try { await db.set('mlapi/claudeexp/' + key, { ts: Date.now(), simple: String(n.t).slice(0, 2500), nom: String(e.title || '').slice(0, 60), cuenta: e.cuenta || '', tipo: 'venta', dia: n.dia });
                 const rl = await db.get('mlapi/claudeexp/' + key); console.log(marcaG(!!(rl && rl.simple))); }
               catch (eN) { TAL.no++; console.log(`   ⚠️ no pude guardarla: ${String(eN.message || eN).slice(0, 60)}`); }
             }
@@ -37860,20 +37860,20 @@ async function main() {
                 // que va color por color.
                 if (n.dec !== 'auto') {
                   await db.set(base + '/ts', Date.now());
-                  if (n.dec === 'venta') await db.set(base + '/motPv', String(n.t).slice(0, 400));
-                  else if (n.tipo === 'ped' && vsk) { await db.set(base + '/motVars/' + vsk, String(n.t).slice(0, 400)); await db.set(base + '/mot', 'Decidido color por color: el motivo de cada color está en su renglón y en el 🧠'); }
-                  else await db.set(base + '/mot', String(n.t).slice(0, 400));
+                  if (n.dec === 'venta') await db.set(base + '/motPv', String(n.t).slice(0, 2500));
+                  else if (n.tipo === 'ped' && vsk) { await db.set(base + '/motVars/' + vsk, String(n.t).slice(0, 2500)); await db.set(base + '/mot', 'Decidido color por color: el motivo de cada color está en su renglón y en el 🧠'); }
+                  else await db.set(base + '/mot', String(n.t).slice(0, 2500));
                 }
                 const rl = await db.get(base + '/' + leaf);
                 console.log(marcaG(n.dec === 'auto' ? rl == null : Number(rl) === n.val, '   ✓ guardado'));
-                if (n.dec !== 'auto' && n.dec !== 'venta') await db.set('mlapi/claudeexp/' + key, { ts: Date.now(), simple: String(n.t).slice(0, 600), nom: String(p.name || '').slice(0, 60), cuenta: ctaL, variante: n.vari || '', tipo: n.tipo });
+                if (n.dec !== 'auto' && n.dec !== 'venta') await db.set('mlapi/claudeexp/' + key, { ts: Date.now(), simple: String(n.t).slice(0, 2500), nom: String(p.name || '').slice(0, 60), cuenta: ctaL, variante: n.vari || '', tipo: n.tipo });
               } catch (eN) { TAL.no++; console.log(`   ⚠️ no pude guardarlo: ${String(eN.message || eN).slice(0, 60)}`); }
             }
             continue;
           }
           console.log(`· ${n.tipo === 'ped' ? 'pedido' : 'caja ' + ctaL} · ${p.name}${n.vari ? ' · ' + n.vari : ''}: ${n.t}`);
           if (GOp && !DRY) {
-            try { await db.set('mlapi/claudeexp/' + key, { ts: Date.now(), simple: String(n.t).slice(0, 600), nom: String(p.name || '').slice(0, 60), cuenta: ctaL, variante: n.vari || '', tipo: n.tipo });
+            try { await db.set('mlapi/claudeexp/' + key, { ts: Date.now(), simple: String(n.t).slice(0, 2500), nom: String(p.name || '').slice(0, 60), cuenta: ctaL, variante: n.vari || '', tipo: n.tipo });
               const rl = await db.get('mlapi/claudeexp/' + key); console.log(marcaG(!!(rl && rl.simple))); }
             catch (eN) { TAL.no++; console.log(`   ⚠️ no pude guardarla: ${String(eN.message || eN).slice(0, 60)}`); }
           }
