@@ -29764,12 +29764,16 @@ async function main() {
         agregar({ mla, ts: a.ts, a: Math.round(a.a || 0) || null, de: Math.round(a.de || 0) || null, origen: a.por === 'costo' ? 'robot por costo' : 'robot de noche', aprox: false, motivo: motivoDeAuto(a), por: a.por || null, mot: a.mot || null });
       }
       // LAS DECISIONES DE CLAUDE, UNA POR UNA (10/10/2026): `cyc/claudecambios` no se pisa (autoprecio sí).
+      // Las que fueron por ESCASEZ o SIN REPOSICIÓN quedan anotadas en `escSup` (16/10/2026): se miden sin volumen.
+      const escSup = new Set();
+      for (const [m0, a0] of Object.entries(autop || {})) if (a0 && a0.ts && (a0.mot === 'escasez' || /escasez/i.test(String(a0.simple || a0.motivo || '')))) escSup.add(m0 + '|' + Math.round(Number(a0.ts) / 60e3));
       try {
         const cc = (await db.get('cyc/claudecambios')) || {};
         for (const r of Object.values(cc)) {
           if (!r || !/^MLA/i.test(String(r.mla || '')) || !(Number(r.ts) > 0)) continue;
           const aR = Math.round(Number(r.a) || 0), deR = Math.round(Number(r.de) || 0);
           if (!(aR > 0) || !(deR > 0)) continue;
+          if (/escasez|sin reposici/i.test(String(r.motivo || '')) && !/VUELVE/i.test(String(r.motivo || ''))) escSup.add(r.mla + '|' + Math.round(Number(r.ts) / 60e3));
           agregar({ mla: r.mla, ts: Number(r.ts), a: aR, de: deR, origen: 'robot de noche', aprox: false, motivo: 'claude', por: 'claude', mot: 'claude' });
         }
       } catch (e) { console.log(`⚠️ no pude leer el registro de decisiones de Claude: ${String(e).slice(0, 80)}`); }
@@ -30079,12 +30083,17 @@ async function main() {
         // UNA SUBA POR ESCASEZ DEL CEREBRO SE HACE PARA VENDER MENOS (08/10/2026, decisión 5a): el stock no alcanza
         // hasta reponer y se cobra más cada unidad. Lo que "dejó de vender" lo vende después, al llegar la caja:
         // no es plata perdida. Se cuenta sólo lo cobrado de más (el efecto precio).
-        const escCer = ev.por === 'cerebro' && ev.mot === 'escasez';
+        // Y LO MISMO PARA LAS MÍAS (16/10/2026, él con el Barbarella: "el objetivo no fue ganar más, sino ganar lo mismo
+        // manteniendo stock (…) sería pérdida si llegó la otra mercadería y la que estábamos alargando no se vendió"). Toda
+        // suba por escasez o sin reposición, sea del robot viejo o mía, cuenta sólo lo cobrado de más: lo que no vendió en
+        // esos días se vende después. El riesgo real (que llegue la caja y quede stock caro) se mira en la vuelta: con la
+        // caja cerca se vuelve al precio normal para terminar el stock cerca del día que llega.
+        const escCer = (ev.por === 'cerebro' && ev.mot === 'escasez') || escSup.has(ev.mla + '|' + Math.round(Number(ev.ts) / 60e3)) || [...escSup].some((k) => k.startsWith(ev.mla + '|') && Math.abs(Number(k.split('|')[1]) * 60e3 - Number(ev.ts)) < 15 * 60e3);
         const volumen = (!volConfiable || quiebreR || escCer) ? 0 : (ev.a > ev.de ? Math.min(0, volCrudo) : Math.max(0, volCrudo));
         const evs = ev.ev || {}; const juicio = (evalNuevas.filter((x) => x.id === id).sort((a, b) => b.W - a.W)[0] || {}).res;
         const v = quiebreR ? 'sinstock' : ((juicio || evs.d30 || evs.d15 || evs.d7 || {}).v || '');
         const reg = { ...base(id, ev, motivo), estado: 'medido', dias: Math.round(L), diasX: Math.round(L * 100) / 100, uA, uD, gD: Math.round(gD), cobrado: Math.round(despV.reduce((a, x) => a + x.neto, 0)), precio: Math.round(precio), volumen: Math.round(volumen),
-          total: Math.round(precio + volumen), v, quiebre: quiebreR, volSinDato: !volConfiable && !quiebreR, enTotal: SUP_CUENTA.has(motivo), deRef };
+          total: Math.round(precio + volumen), v, quiebre: quiebreR, esc: escCer || undefined, volSinDato: !volConfiable && !quiebreR, enTotal: SUP_CUENTA.has(motivo), deRef };
         sumMes(mesM, finT, volumen); reg.mes = redMes(mesM);
         registros.push(reg);
         if (reg.enTotal) atrib.push(reg);
@@ -36918,7 +36927,13 @@ async function main() {
           const dTx = (x) => x === Infinity ? 'sin fecha' : Math.round(x) + ' d';
           if (!t) { salen.push(`· ${nom}: casi no vende ahora (menos de 2 en 14 d o sin clave de stock) → ¿la razón de la suba sigue?`); continue; }
           const motivos = [];
-          if (tipo === 'escasez' && !t.escFull && !t.escComp) motivos.push(`ya no hay escasez: Full alcanza ${dTx(t.alc)} y vuelve a haber en ${dTx(t.lead)} (todo junto ${dTx(t.tot)})`);
+          // EL RITMO DE ANTES DE LA SUBA (16/10/2026): la suba frena las ventas a propósito, así que con el ritmo de ahora
+          // el stock "alcanza" y parecería que ya no hay escasez. Se mide con lo que vendía al precio normal (la ficha
+          // guarda el ritmo de los 21 días antes de cada cambio). Sólo sale cuando AL PRECIO NORMAL alcanza hasta la caja:
+          // ahí se vuelve al normal para terminar el stock cerca del día que llega.
+          let rN = null; if (tipo === 'escasez') { try { const cs = (await db.get('mlapi/ficha/' + d.mla + '/cambios')) || []; const c0 = (Array.isArray(cs) ? cs : Object.values(cs)).filter((c) => c && Math.abs(Number(c.ts) - Number(d.ts)) < 3 * 864e5).pop(); if (c0 && c0.A && Number(c0.A.r) > 0) rN = Number(c0.A.r); } catch { rN = null; } }
+          const alcN = rN > 0 ? t.st / rN : null;
+          if (tipo === 'escasez' && !t.escFull && !t.escComp && !(alcN != null && alcN < t.lead)) motivos.push(`ya no hay escasez: ${alcN != null ? `al ritmo de antes de la suba (${rN.toFixed(2)}/día) Full alcanza ${dTx(alcN)}` : `Full alcanza ${dTx(t.alc)}`} y vuelve a haber en ${dTx(t.lead)} (todo junto ${dTx(t.tot)}) → volver al precio normal para que la última salga cerca del día que llega`);
           if (tipo === 'sinrepo') {
             if (!t.comp.inf) motivos.push(`ya se puede reponer: ${t.comp.txt}`);
             const mA = mot.match(/[Hh]ay (\d+) u\./), antes = mA ? Number(mA[1]) : null, ahoraU = t.st + t.camU + t.ofi;

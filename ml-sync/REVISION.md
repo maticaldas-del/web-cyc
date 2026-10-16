@@ -823,6 +823,16 @@ versiones nuevas. Restaurado en v23.21 (`cyc-v601`). **Antes de cada commit: `wc
   sabemos" no diga algo con $0 · que la ganancia use la misma cuenta que `lupa`/`escmedir`.
 
 ## 9 · CEREBRO (nueva, 09/10/2026, pedido suyo)
+
+### Una suba por escasez no se mide como pérdida por vender menos (16/10/2026, él con el Barbarella)
+- **Qué es:** él: *"el objetivo no fue ganar más, sino ganar lo mismo manteniendo stock (…) sería pérdida si llegó la otra
+  mercadería y la que estábamos alargando no se vendió"*. El supervisor ya no cuenta volumen en ninguna suba por escasez o
+  sin reposición (antes sólo las del robot viejo): las mías se reconocen por el motivo (`escSup`), el registro lleva `esc`.
+  Y el 🔁 de `escasez` mide si "ya no hay escasez" con el ritmo de ANTES de la suba (lo guarda la ficha): la suba frena las
+  ventas a propósito y con el ritmo de ahora parecía que ya alcanzaba. Sale cuando al precio normal alcanza hasta la caja:
+  ahí se vuelve al normal para terminar el stock cerca del día que llega.
+- **Qué chequear:** que el Barbarella deje de salir con −$20.922 · que el 🔁 no oscile (subo → frena → "ya alcanza" → bajo).
+
 Él, después de que dos veces salió incompleto (precios y pedidos): *"es un problema grave que pasó dos veces ya (...) en los dos se hizo súper incompleto y nunca te diste cuenta (...) quiero agregar esto de revisar cerebro a las etapas"*. Revisa LO QUE HACE CLAUDE en cada vuelta (08:52, 12:52, 16:52, 20:52): que cada parte se haga ENTERA.
 - **La pregunta de esta etapa, para cada tarea:** ¿de dónde salió la lista que miré? ¿esa lista es TODO o sólo lo que ya existe / se movió / ya decidí? El error de las dos veces fue el mismo: mirar una lista que sólo traía una parte (`informe` = lo que se movió · `pedidosnotas` = lo ya decidido) y creer que era todo.
 - **Contar contra el total:** cada tarea termina con "N de M" contra el universo completo (publicaciones vivas, fichas del catálogo, productos con mercadería en la oficina, preguntas sin responder, publicaciones sin ficha). Si N < M, decir cuáles faltan y por qué.
