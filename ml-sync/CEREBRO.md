@@ -166,6 +166,8 @@ archivo son AYUDA, no la decisión: si sólo se siguen las reglas, lo que nadie 
 - Descuentos del 13/10 y 14/10: CONFIRMADOS puestos (vencen 26-29/10), se juzgan desde el 20/10. El Asher quedó sin descuento a propósito (De la Patagonia a precio lleno).
 - Tarifa de almacenamiento (`almactarifa`) sigue sin pasarla él.
 - **Dinero que rinde en MP (idea 11):** lo revisa él en la app de cada cuenta.
+- **Completa del 17/10 (eligió 2a el 16/10):** revisar los 4 perfumes Cuba de Adriana (Prestige Platinum $50.000, Blue $45.000, Gold $67.174, Prestige Classic $50.000; nunca vendieron, 2 u. cada uno): costo de la ficha contra el margen aprox de 98-169%, precio contra la competencia de catálogo, terminación 90/990. Juicio en el 🧠 de cada uno.
+- **9 pedidos puestos en 0 el 16/10 (eligió 1a)** por no poder reponerse (Ferrari Negro, Halloween Kiss Sexy y Kiss, Ted Lapidus Rumba, Cool Water, Sony ZX310, SSD 1TB, Buds Core, VS STARLIT Bare Vanilla): si vuelve Nissei o baja el precio, se vuelven a pedir; cuando entre stock, regla ⏳.
 
 ## 🔍 LA LUPA: CADA PUBLICACIÓN, TODOS LOS DÍAS (13/10/2026, pedido suyo)
 Él: *"todos esos pequeños detalles diarios, casi milimétricos (…) en TODOS los productos (…) necesito ese nivel de detalle"*.
