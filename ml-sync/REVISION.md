@@ -1075,5 +1075,5 @@ semáforo y la barra de Pedidos y la línea de tiempo; el robot (`escasez`, sync
 (`cyc/reponer` que escribe la web; sin reposición = 60 d). Dos condiciones: todo junto dura menos que reponer · ML dura menos
 que la caja en camino (8 d desde el despacho) / la oficina (10 d) / comprar. Se corrigió: "hay que MANDAR" comparaba ML contra
 lo que tarda COMPRAR; el semáforo usaba ≤ y el robot <. Chequear: que un producto dé lo mismo en Pedidos, línea y expediente.
-Diferencia que queda: el robot mide el ritmo con 14 d con stock y la web con 30 d (decisión pendiente con él).
+Ritmo: los tres con 30 días con stock (eligió la a el 16/10; antes el robot usaba 14).
 **v23.78:** la línea de tiempo pinta en naranja (número, texto y línea del gráfico) lo que alcanza menos de lo que tarda reponer (`_corteE` = `reponerDe(p).d`). Chequear: Pendrive 16gb en naranja, no verde.

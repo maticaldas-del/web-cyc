@@ -36474,8 +36474,10 @@ async function main() {
         if (est === 1) ms += t1 - desdeS;
         return ms / 864e5;
       };
+      // EL RITMO SE MIDE CON 30 DÍAS CON STOCK (16/10/2026, eligió la a): el mismo que Pedidos y la línea de tiempo, así
+      // los tres dan los mismos días. La aceleración se sigue viendo aparte en "últimos 3 d". (El nombre quedó de antes.)
       const ritmo14 = (k, vv) => {
-        const t0 = ahora - 14 * 864e5;
+        const t0 = ahora - 30 * 864e5;
         const cs = Object.keys((slogE || {})[k] || {}).map(Number).filter((t) => t > 0);
         if (cs.length) {
           const desdeR = Math.max(t0, Math.min(...cs));
@@ -36487,7 +36489,7 @@ async function main() {
         const ini = Math.max(t0, desde && !h.aprox ? desde : 0);
         const dCon = Math.max(1, (ahora - ini) / 864e5);
         const uVen = vv.vts.filter(([t]) => t >= ini).reduce((s2, [, q]) => s2 + q, 0);
-        return dCon >= 3 ? { r: uVen / dCon, d: dCon, cal: true } : { r: vv.u14 / 14, d: 14, cal: true };
+        return dCon >= 3 ? { r: uVen / dCon, d: dCon, cal: true } : { r: vv.u30 / 30, d: 30, cal: true };
       };
       // Qué se juzga: cada producto × cuenta con ventas en 30 días. Si tiene stock POR COLOR (claves `__v__` en el
       // inventario) se juzga cada color solo y NO el total (sumado tapaba un color agotado con otro sobrado).
@@ -36597,9 +36599,9 @@ async function main() {
         for (const t of sel) {
           const p = pById[t.pid] || {};
           console.log(`■ ${pName[t.pid] || t.pid}${t.color ? ' · 🎨 ' + t.color.replace(/_/g, ' ') : ''} · ${t.cta}   [${t.why.join(' · ')}]`);
-          console.log(`   stock: Full ${t.st} · camino ${t.camU}${t.cam.length ? ' (' + t.cam.map((c) => c.fecha + ' ' + c.u).join(', ') + ')' : ''} · oficina ${t.ofi} → ${t.r14 > 0 ? `Full alcanza ${dTx(t.alc)} · todo junto ${dTx(t.tot)}` : 'no vendió en 14 días: no hay ritmo para medir cuánto alcanza'}`);
+          console.log(`   stock: Full ${t.st} · camino ${t.camU}${t.cam.length ? ' (' + t.cam.map((c) => c.fecha + ' ' + c.u).join(', ') + ')' : ''} · oficina ${t.ofi} → ${t.r14 > 0 ? `Full alcanza ${dTx(t.alc)} · todo junto ${dTx(t.tot)}` : 'no vendió en 30 días: no hay ritmo para medir cuánto alcanza'}`);
           console.log(`   reponer: vuelve a haber en Full ${t.leadTxt}${t.leadTxt.includes(t.comp.txt) ? '' : ' · comprar más: ' + t.comp.txt}${t.escFull ? ' · 🔥 Full se corta antes' : ''}${t.escComp ? ' · 🔥 se corta antes de poder comprar' : ''}`);
-          console.log(`   ventas: 14 d ${t.u14} u. (${t.r14.toFixed(2)}/día ${t.cal ? 'en días corridos' : 'con stock, ' + t.dCon.toFixed(1) + ' d'}) · 30 d ${t.u30} u. · últimos 3 d ${t.r3.toFixed(1)}/día`);
+          console.log(`   ventas: 30 d ${t.u30} u. → ritmo ${t.r14.toFixed(2)}/día ${t.cal ? 'en días corridos' : 'con stock (' + t.dCon.toFixed(1) + ' d)'} · 14 d ${t.u14} u. · últimos 3 d ${t.r3.toFixed(1)}/día`);
           for (const m of t.mlas) {
             const b = vivoX[m] || {}, e = links[m] || {}, np = npX[m] || {};
             const pr = Number(b.price) || Number(np.precio) || 0, pv = medX(precioV[m]);
