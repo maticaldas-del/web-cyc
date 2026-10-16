@@ -267,8 +267,10 @@ corto sí. **Se saca el techo ×2** (queda sólo el de $650.000).
  · **A qué productos (2b, con su aclaración):** *"no vayamos con todos, los que tiene sentido subir. los que ya sabemos que no
    funcionan más arriba no"*. Va de una para todo lo que está en escasez y tiene sentido, MENOS: lo que ya falló una suba y
    volví (techo conocido en `notas/techo.md`: Naipes Casino, Centímetro Blanco/Gris, Pendrive 8gb, Infusores, Metatarso,
-   Filtros, Chispero, Rebarbador, Pizarras… y lo que se frenó después de una suba), de catálogo con competidor CON stock (el
-   techo es él), lo que tiene variantes que no se pueden subir solas, liquidando y mis promos. Ésos van con el precio que pienso, sin ×3/×4.
+   Filtros, Chispero, Rebarbador, Pizarras… y lo que se frenó después de una suba), lo que tiene variantes que no se pueden
+   subir solas, liquidando y mis promos. Ésos van con el precio que pienso, sin ×3/×4.
+   **La caja de compra NO frena la escalera** (corrección suya del 16/10: *"ya dijimos que perder la caja no quiere decir no
+   vender"*): de catálogo con competidor con stock también sube; lo que decide son las ventas a ese precio, no la caja.
  · **Barrera $33.000:** se cruza sólo si cada unidad deja más con el envío (~$6.200) restado. Comisión de ML al precio nuevo
    mirada con el `decido` en prueba (escalones de comisión).
  · **Salida:** cuando la escasez se termina (llegó la caja) o pasa a sobrar (el stock dura más que la caja + margen, o quedaría

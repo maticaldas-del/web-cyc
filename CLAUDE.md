@@ -911,7 +911,7 @@ hiciste antes"*.
 **Se saca el techo ×2 de escasez** (queda $650.000). Primer salto por ritmo de ESA publicación: 3+/día ×4 · 1-3 ×3 · <1 ×2 ·
 <1 cada 2 días ×1,5 fijo. Si no vende baja 25%/12 h · 20%/24 h · 15%/2-3 d; si vende de más, sube un escalón; nunca abajo del
 normal. **2b con su aclaración:** de una, pero sólo *"los que tiene sentido subir. los que ya sabemos que no funcionan más arriba
-no"* (techo conocido en `notas/techo.md`, catálogo con competidor con stock, liquidando, mis promos). Salida: al llegar la caja o
+no"* (techo conocido en `notas/techo.md`, liquidando, mis promos; la caja de compra NO frena: *"perder la caja no quiere decir no vender"*). Salida: al llegar la caja o
 pasar a sobrar, baja (promo primero). Si ML pausa alguna, vuelve al último precio aceptado. **3a:** fuera de escasez el techo se
 busca con saltos de +30 a +50%. Detalle en `ml-sync/CEREBRO.md` (🪜).
 
