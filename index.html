@@ -2619,7 +2619,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.73';
+const APP_VERSION='23.74';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2630,6 +2630,7 @@ const APP_VERSION='23.73';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.74',f:'16/10/2026',h:'01:25',c:[{n:2,t:'💰 Pedidos: cada color puede tener su propio máximo de compra, calculado con el precio al que se vende ESE color (el que sostuvo 2 semanas con stock, sin escasez ni pruebas). Sale en el renglón del color cuando Claude decidió ese precio.'}]},
   {v:'23.73',f:'16/10/2026',h:'12:30',c:[{n:1,t:'🧠 Las notas del cerebro ya no se cortan: se guardaban sólo los primeros 600 caracteres (400 en Pedidos). Ahora entran enteras. Las ya guardadas siguen cortadas hasta que Claude las vuelva a escribir.'}]},
   {v:'23.72',f:'16/10/2026',h:'12:10',c:[{n:1,t:'🚚 Pedidos hechos: la tarjeta cerrada de un pedido en camino dice "llega ~dd/mm" (desde la guía del correo si está). Cuando llega, dice "llegó dd/mm".'}]},
   {v:'23.71',f:'16/10/2026',h:'11:55',c:[{n:1,t:'🚚 Pedidos de Paraguay: con la guía del correo cargada, "llegaría aprox." se cuenta desde el día que salió por el correo (3 días hábiles), no desde el pedido. Se ve también "despachado el".'}]},
@@ -16653,13 +16654,28 @@ function pedVarSem(x){
   if(x.ml!=null&&tot<=0)return 'rojo';
   return (x.dias!=null&&x.dias<=(_pedRojoCur||PED_DIAS_ROJO))?'naranja':'amarillo';
 }
+// El máximo de compra de ESE color (16/10/2026, 1a). Sólo cuando decidí un precio para el color: si no, es el del producto
+// y ya está en la cabecera de la tarjeta (repetirlo en cada renglón sería ruido).
+function pedVarMaxTxt(x,p){
+  try{
+    const pr=p&&(state.products||[]).find(y=>y.id===p.prodId);if(!pr)return '';
+    const cl=clPedDe(pr.id),k=sid(String(x.v||'').toLowerCase());
+    if(!(cl&&cl.pvVars&&Number(cl.pvVars[k])>0))return '';
+    const r=maxCompraDe(pr,pr.origen==='py'?PY_PROB_PISO:undefined,x.v);
+    if(!r||r.motivo)return '';
+    const enPesos=!r.esPy||esProductoPaulvic(pr),tc=curTC();
+    if(!(r.usd>0))return `<span style="color:var(--red)">💰 máx: no llega vendiéndolo a ${fmt(r.P)}</span>`;
+    const v=enPesos&&tc>0?fmt(Math.round(r.usd*tc)):'US$ '+r.usd.toFixed(2).replace('.',',');
+    return `<span title="Lo más que podés pagar este color para quedar en ${r.meta}% vendiéndolo a ${fmt(r.P)} (el precio que decidí para este color${r.clMot?': '+escHtml(r.clMot):''}).">💰 máx <b style="color:var(--text)">${v}</b> (a ${fmt(r.P)})</span>`;
+  }catch(e){return '';}
+}
 function pedVarFila(x,p){
   const q=x.q||0,sem=pedVarSem(x),n=v=>fmtN(v||0);
   const col={rojo:'var(--red)',naranja:'#f97316',amarillo:'#ca8a04'}[sem];
   const lug=(x.ml!=null||x.cam!=null||x.casa!=null)?`📦 ${n(x.ml)} en ML · 🚚 ${n(x.cam)} en camino · 🏠 ${n(x.casa)} en casa${x.pv>0?` · 🧴 ${n(x.pv)} al Paulvic`:''}`:'';
   const dTxt=sem==='rojo'?'🔴 sin stock en ningún lado':(x.dias!=null&&x.dias<999?`${sem==='naranja'?'🟠':'🟡'} alcanza ~${x.dias} d`:'');
   return `<div class="ped-var-fila sem-${sem}" style="border-left-color:${col}">
-    <div class="ped-var-txt"><b>${x.v}</b>${x.hist?' <span style="color:var(--amber);font-size:.8em">· ritmo viejo</span>':''}<i>${[dTxt,lug].filter(Boolean).join(' · ')}</i></div>
+    <div class="ped-var-txt"><b>${x.v}</b>${x.hist?' <span style="color:var(--amber);font-size:.8em">· ritmo viejo</span>':''}<i>${[dTxt,lug,pedVarMaxTxt(x,p)].filter(Boolean).join(' · ')}</i></div>
     ${p&&p.prodId?`<span onclick="event.stopPropagation()">${cerebroBtn(p.prodId,{ped:p.id,variante:x.v})}</span>`:''}
     ${q>0?`<span class="ped-var-u" style="color:${col}"><b>${n(q)}</b><i>u. a comprar</i></span>`:`<span class="ped-var-u" style="color:var(--green)"><b>✓</b><i>mandar de casa</i></span>`}
   </div>`;
@@ -16824,11 +16840,16 @@ function pedPyLineaHTML(prod){
   }else partes.push(`<span style="color:var(--muted)" title="No hay publicación viva con el neto calculado: no se puede medir.">💰 máx sin medir</span>`);
   return `<div style="flex-basis:100%;font-size:.72rem;line-height:1.6;display:flex;flex-wrap:wrap;gap:4px 12px;padding:4px 0">${partes.join('<span style="color:var(--muted)">·</span>')}</div>`;
 }
-function maxCompraDe(p,metaPct){
+// POR COLOR (16/10/2026, eligió la 1a): con `color`, el margen sale de la publicación de ESE color (`cyc/netopub`), la
+// caja de ese color, y el precio de venta el que decidí para ese color (`claudedecide/ped/<id>/pvVars/<color>`: el que
+// el color sostuvo 2 semanas con stock, sin escasez ni la primera semana de una prueba). Sin dato del color, el del producto.
+function maxCompraDe(p,metaPct,color){
   if(!p)return null;
-  const mg=margenMLDe(p);
+  let pubV=null;
+  if(color){const e=pubDeVariante(p.id,'',color,x=>!!(state.netopub||{})[x.mla]);if(e)pubV=(state.netopub||{})[e.mla]||null;}
+  const mg=pubV?margenMLDe(p,pubV):margenMLDe(p);
   if(!mg||!(mg.precio>0)||!(mg.neto>0))return {motivo:'sinprecio'};
-  const c=cajaMLDe(p);
+  const c=(color&&cajaMLDeVariante(p,color))||cajaMLDe(p);
   let P=Math.round(mg.precio),fuente='hoy';
   // Revisión max (rev4): con la caja congelada de una pausada no se decide nada: precio de hoy y se dice.
   if(c&&c.vieja)fuente='vieja';
@@ -16853,7 +16874,10 @@ function maxCompraDe(p,metaPct){
   // El precio de venta para el máximo lo puede fijar Claude (`decido:ped:…=venta|$`): por ejemplo el precio
   // NORMAL cuando la publicación está subida un tiempo por escasez (si no, el máximo sale inflado).
   let clMot='';
-  {const _cl=clPedDe(p.id);if(_cl&&Number(_cl.pv)>0){P=Math.round(Number(_cl.pv));fuente='claude';techo=null;clMot=String(_cl.mot||'');}
+  {const _cl=clPedDe(p.id);const _ck=color?sid(String(color).toLowerCase()):'';
+    const _pvC=_cl&&_ck&&_cl.pvVars?Number(_cl.pvVars[_ck]):0;
+    if(_pvC>0){P=Math.round(_pvC);fuente='claude';techo=null;clMot=String((_cl.motPvVars||{})[_ck]||_cl.motPv||'');}
+    else if(_cl&&Number(_cl.pv)>0){P=Math.round(Number(_cl.pv));fuente='claude';techo=null;clMot=String(_cl.motPv||_cl.mot||'');}
     else if(SOLO_CLAUDE)return {motivo:'sinclaude'};}   // 09/10/2026: el precio para el máximo lo decide Claude
   // CUOTAS DEL QUE HAY QUE IGUALAR (04/10/2026). Él: "el 28% daba por hecho que se vende sin cuotas (…)
   // arreglalo y que quede bien". El robot ve de noche en `cyc/techofull` si el que pone el techo (cuoT) o el
@@ -16885,7 +16909,7 @@ function maxCompraDe(p,metaPct){
   const usd=tc>0?(merc/tc-ship)/(1+dev/100):null;
   const chk=simMargen({precio:P,mercaderia:merc,gest,comision:c2.com,impPct,cuotasPct:cuoPct});
   return {P,fuente,cuoN,cuoPct,cuo,merc:Math.round(merc),usd,usdPy:usd!=null?usd/RECARGO_PY:null,meta:Math.round(m*100),
-    chk:chk.margen,hoyUSD:costUSDof(p)||0,esPy:p.origen==='py',techo,netoP,imp,gest,ship,dev,tc,clMot};
+    chk:chk.margen,hoyUSD:costUSDof(p)||0,esPy:p.origen==='py',techo,netoP,imp,gest,ship,dev,tc,clMot,color:pubV?color:''};
 }
 // El % que quedaría comprando a un precio de Paraguay dado (06/10/2026, pedido suyo: "que los que no den
 // muestren el % que quedaría pidiendo"). Es maxCompraDe dada vuelta: mismo precio de venta, misma comisión,

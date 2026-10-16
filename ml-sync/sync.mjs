@@ -37837,7 +37837,7 @@ async function main() {
           if (n.dec) {
             const vsk = n.vari ? sid(n.vari.toLowerCase()) : '';
             const base = n.tipo === 'ped' ? `cyc/claudedecide/ped/${p.id}` : `cyc/claudedecide/caja/${p.id}__${ctaL}${vk}`;
-            const leaf = n.dec === 'venta' ? 'pv' : (n.tipo === 'ped' && vsk ? 'vars/' + vsk : 'u');
+            const leaf = n.dec === 'venta' ? (n.tipo === 'ped' && vsk ? 'pvVars/' + vsk : 'pv') : (n.tipo === 'ped' && vsk ? 'vars/' + vsk : 'u');   // venta por color (16/10/2026, 1a)
             if (n.tipo === 'ped' && !vsk && n.dec === 'u' && (p.variantes || []).length) { console.log(`✗ "${p.name}" tiene colores: va color por color (ped:${p.id}#<color>=u|N|motivo) — no lo escribo`); TAL.rech++; continue; }
             const qTxt = n.dec === 'auto' ? 'vuelve a la cuenta automática' : n.dec === 'venta' ? `máximo de compra calculado vendiéndolo a $${n.val}` : `${n.tipo === 'ped' ? 'comprar' : 'mandar'} ${n.val} u.`;
             console.log(`· 🧠 ${n.tipo === 'ped' ? 'pedido' : 'caja ' + ctaL} · ${p.name}${n.vari ? ' · ' + n.vari : ''}: ${qTxt}${n.t ? ' · ' + n.t : ''}`);
@@ -37860,7 +37860,7 @@ async function main() {
                 // que va color por color.
                 if (n.dec !== 'auto') {
                   await db.set(base + '/ts', Date.now());
-                  if (n.dec === 'venta') await db.set(base + '/motPv', String(n.t).slice(0, 2500));
+                  if (n.dec === 'venta') await db.set(base + (vsk ? '/motPvVars/' + vsk : '/motPv'), String(n.t).slice(0, 2500));
                   else if (n.tipo === 'ped' && vsk) { await db.set(base + '/motVars/' + vsk, String(n.t).slice(0, 2500)); await db.set(base + '/mot', 'Decidido color por color: el motivo de cada color está en su renglón y en el 🧠'); }
                   else await db.set(base + '/mot', String(n.t).slice(0, 2500));
                 }
