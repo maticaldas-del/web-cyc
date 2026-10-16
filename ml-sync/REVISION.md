@@ -316,6 +316,18 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 
 ## 3 · MERCADERÍA
 
+### Paraguay con DOS proveedores: Nissei y Elegancia (16/10/2026, v23.82, pedido suyo)
+Qué es: él, con el catálogo "Atacado Black Friday" del proveedor **Elegancia**: *"separar por proveedor dentro de paraguay
+(…) dentro de cada uno tenés probados, nuevos y pedidos. ya que los pedidos no se pueden juntar (…) que sea idéntico a
+como está armado nissei"*. Dónde vive: `PY_PROVS`, `pyProv` (localStorage `cycPyProv`), `pyProvDe`, `pySetProv`,
+`pyIdHoy` en index.html; candidatos con `prov:'elegancia'`, compras `compraspy/pyel<fecha>` con `prov`, fichas con
+`provPy`, uso personal con `prov`. Filtran por proveedor: `candList`, `pyCompras`, `pyArmadoFilas`,
+`pyPersonalFilas` y la lista de Probados; "Ya lo pedí" vacía sólo lo del proveedor elegido (`pyArmadoVaciarProv`).
+Robot: `candalta:prov=elegancia;…;go` (sólo compara contra candidatos del mismo proveedor). Fotos de Elegancia
+recortadas del PDF en `elegancia/<código>.jpg` (se publican en GitHub Pages). Qué chequear: que un pedido de un
+proveedor no aparezca ni se vacíe en el otro · `compray`/`pyped:llego` de Elegancia usan el id `pyel<fecha>` · el
+"Sharaf The Club" del PDF trae la foto y el código del Yaa Umree (error del catálogo): sin foto hasta confirmarlo.
+
 ### Pasada de fotos: los candidatos del catálogo entero (16/10/2026)
 **Qué es:** los candidatos que vienen de `pycat` tienen código `c<números>p<números>` y ni `revfotos.py armar` ni `revcand` los reconocían: la pasada decía 0 para mirar con 29 arriba del 25%, y `revcand` no escribía nada. Ahora los dos aceptan ese formato. **Qué chequear:** que `revfotos.py armar` no diga "30 de 30 afuera" cuando `fotosrev` lista más.
 

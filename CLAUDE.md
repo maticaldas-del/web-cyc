@@ -760,6 +760,14 @@ archivo. **Etapa 8 · Datos e historial** creada ese día (líneas de tiempo); c
 Inicio la pide ya. Y lo que se mira en TODAS: contar dos veces lo mismo (el stock ×4 del Centímetro),
 fallas leídas como dato, dos fórmulas para un número, datos de terceros en el registro público.
 
+## 🇵🇾 DOS PROVEEDORES EN PARAGUAY: NISSEI Y ELEGANCIA (16/10/2026, v23.82)
+Él: *"separar por proveedor dentro de paraguay (…) los pedidos no se pueden juntar y los productos son distintos, precios
+distintos (…) que sea idéntico a como está armado nissei"*. **El proveedor del catálogo "Atacado" se llama Elegancia.**
+Pedidos → Paraguay arranca con el selector 🟢 Nissei / 🟣 Elegancia; cada uno con sus Probados, Nuevos y 🧾 Pedido.
+Mismos costos que Nissei (US$ × 1,17). Candidatos de Elegancia: `candalta:prov=elegancia;<nombre>|<cód>|<US$>|<MLA>|<vend>||<foto>;go`
+(fotos en `elegancia/<cód>.jpg`, recortadas del PDF). Pedido de Elegancia = `compraspy/pyel<fecha>`. Detalle en
+`ml-sync/REVISION.md` etapa 3.
+
 ## 🇵🇾 ADELANTO DE PLATA PARA EL PEDIDO (15/10/2026, v23.48)
 
 Pedido suyo: lo que cuesta adelantar la plata para poder hacer el pedido va como gasto aparte. `compray:<fecha>|adelanto=<pesos>|go`
