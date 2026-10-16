@@ -8992,3 +8992,11 @@ Ya no son 2 de todo. El botón 🪄 Llenar hasta el tope (`candMaxU` en index.ht
 en ML y 5 vendedores o menos → 3 (4 si tiene 300+ vendidas) · caro (más de US$60) → 1 · el resto → 2** (la casilla). Lo que
 vuela (se agota rápido) entra en el pedido SIGUIENTE con unidades según sus ventas: eso lo decido yo con `pedidostodo`.
 Medido antes: del pedido del 21/09, 1 de 12 se agotó rápido (ZX310) y 10 no vendieron nada en 17 días.
+
+## ⏳ LO QUE NO SE PUEDE REPONER: ESTIRAR HASTA 4 MESES (16/10/2026, regla suya)
+Él: *"una combinacion entre esperar lo maximo posible y maximizar ganancia lo maximo posible en los 4 meses de stock que
+tenemos. pero si o si en los 4 meses hay que vender todo. siempre esperando a que se pueda pedir en nissei"*. Lo que Nissei no
+tiene o cuyo precio de Paraguay no da: precio al más alto que vacíe el stock en ~100 días (nunca pasar los 120). Detalle en
+`ml-sync/CEREBRO.md`. Primeros (16/10): Pendrive 8gb $16.990→$21.990 · Pendrive 16gb $20.500→$25.990 · Cabotine 30 $49.990→$57.990.
+Y él: *"3 no depende de mí, no hablemos de eso"* → las compras de Bs As NO se le pasan como decisión suya (las ve Tito en Pedidos).
+**Máximo de compra por color: eligió la 1a** (ver CEREBRO.md).
