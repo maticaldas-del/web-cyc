@@ -613,6 +613,16 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
 /* --tz: cuánto tiembla (1 = lo de siempre) · lo pone cada venta según su neto y su % (09/10/2026) */
 @keyframes vivaTiembla{0%{transform:translate(0,0) rotate(0)}20%{transform:translate(calc(var(--tz,1)*-1px),calc(var(--tz,1)*1px)) rotate(calc(var(--tz,1)*-.25deg))}40%{transform:translate(calc(var(--tz,1)*1px),calc(var(--tz,1)*-1px)) rotate(calc(var(--tz,1)*.25deg))}60%{transform:translate(calc(var(--tz,1)*-1px),0) rotate(calc(var(--tz,1)*.15deg))}80%{transform:translate(calc(var(--tz,1)*1px),calc(var(--tz,1)*1px)) rotate(calc(var(--tz,1)*-.15deg))}100%{transform:translate(0,0) rotate(0)}}
 @media (prefers-reduced-motion: reduce){.vw,.vw>.viva{animation:none!important}}
+/* MODO DISCRETO (16/10/2026, él: "uso la web en el trabajo y la gente puede mirar, queda feo con tantos colores y movimiento
+   (...) que tengan un detalle para que me dé cuenta que fue una venta especial o rara"). Sin movimiento, sin figuras, sin
+   fuego, sin brillo ni fondos de color. Lo que se animaba queda con una rayita de su color a la izquierda; lo que temblaba o
+   ardía, además, un ✦ chiquito. Se prende en Ajustes → Apariencia (`cycDiscreto` en este aparato). */
+body.discreto .vw{animation:none!important;transform:none!important}
+body.discreto .vw::before{display:none!important}
+body.discreto canvas.viva-fig,body.discreto canvas.viva-fuego{display:none!important}
+body.discreto .viva,body.discreto .vw[data-viva] > .viva[class*=lv-]{background:var(--surface)!important;border:1px solid var(--border)!important;box-shadow:none!important}
+body.discreto .vw.gl[data-viva]>.viva[class],body.discreto .vw.mv-flota[data-viva]>.viva[class],body.discreto .vw.mv-flota2[data-viva]>.viva[class],body.discreto .vw.mv-tiembla[data-viva]>.viva[class]{border-left:3px solid var(--c)!important}
+body.discreto .vw.mv-tiembla>.viva::after,body.discreto .vw.vf>.viva::after{content:'✦';position:absolute;top:5px;right:8px;font-size:.85rem;line-height:1;color:var(--c);z-index:2;opacity:.9}
 .vp-promo{font-size:.66rem;font-weight:700;padding:2px 8px;border-radius:5px;white-space:nowrap;color:#facc15;background:color-mix(in srgb,#facc15 14%,transparent);border:1px solid color-mix(in srgb,#facc15 55%,transparent)}
 body.light .vp-promo{color:#a16207;background:color-mix(in srgb,#ca8a04 12%,transparent);border-color:color-mix(in srgb,#ca8a04 50%,transparent)}
 .vp-promo.vp-promo-ml{font-weight:600;color:#60a5fa;background:color-mix(in srgb,#60a5fa 12%,transparent);border-color:color-mix(in srgb,#60a5fa 45%,transparent)}
@@ -1983,6 +1993,12 @@ function toggleTheme(){
   const btn=document.getElementById('theme-toggle');
   if(btn)btn.textContent=isLight?'🌙':'☀️';
 }
+function toggleDiscreto(){
+  const on=!document.body.classList.contains('discreto');document.body.classList.toggle('discreto',on);
+  try{localStorage.setItem('cycDiscreto',on?'1':'0');}catch(e){}
+  const b=document.getElementById('ajuste-discreto-btn');if(b)b.textContent=on?'🤫 Discreto (prendido)':'✨ Con efectos';
+}
+(function(){try{if(localStorage.getItem('cycDiscreto')==='1')document.body.classList.add('discreto');}catch(e){}})();
 (function(){
   if(localStorage.getItem('cyc_theme')==='light'){
     document.body.classList.add('light');
@@ -2349,6 +2365,7 @@ function enterAjustes(){
   const badge=document.getElementById('who-ajustes');if(badge)badge.textContent='👤 '+whoAmI;
   const isLight=document.body.classList.contains('light');
   const tb=document.getElementById('ajuste-tema-btn');if(tb)tb.textContent=isLight?'☀️ Modo claro':'🌙 Modo oscuro';
+  {const db2=document.getElementById('ajuste-discreto-btn');if(db2)db2.textContent=document.body.classList.contains('discreto')?'🤫 Discreto (prendido)':'✨ Con efectos';}
   const ok=document.getElementById('ajuste-nombre-ok');if(ok)ok.textContent='';
   renderAutoPriceCfg();
   renderMono();
@@ -2620,7 +2637,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.94';
+const APP_VERSION='23.95';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2631,6 +2648,7 @@ const APP_VERSION='23.94';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.95',f:'16/10/2026',h:'19:10',c:[{n:1,t:'Ajustes → Apariencia: modo discreto. Las ventas quedan sin colores ni movimiento (fuego, figuras, temblor, brillo); las especiales con una rayita de su color y las muy buenas con un ✦. Se guarda en cada aparato.'}]},
   {v:'23.94',f:'16/10/2026',h:'18:50',c:[{n:2,t:'Reloj de los 4 meses: donde está cargado el Excel de lotes de ML, toma la edad REAL de cada unidad en Full (no la deduce).'}]},
   {v:'23.93',f:'16/10/2026',h:'18:30',c:[{n:2,t:'Línea de tiempo: el reloj de los 4 meses ahora mide la edad de la unidad MÁS VIEJA (lo primero que entra es lo primero que sale), no desde que hay stock seguido. Si el stock rota, el reloj baja.'}]},
   {v:'23.92',f:'16/10/2026',h:'18:05',c:[{n:1,t:'Línea de tiempo: en stock, una barra roja que se va llenando día a día hasta los 4 meses (cuando ML empieza a cobrar almacenamiento), y arriba a la derecha cuántos días faltan.'}]},
@@ -9295,6 +9313,7 @@ function _vivaDibujarCard(c,dt,estatico){
   if(c.fc&&!rm&&!estatico)_vivaFuego(c,dt);
 }
 function _vivaPaso(t){
+  if(document.body.classList.contains('discreto'))return;   // modo discreto: no se dibuja nada
   const dt=Math.min(.05,Math.max(0,(t-_viva.last)/1000)||0);_viva.last=t;
   if(document.hidden)return;
   for(const c of _viva.cards)if(c.visible&&c.ctx)_vivaDibujarCard(c,dt,false);
@@ -20717,6 +20736,10 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
         <span style="font-size:.75rem;color:var(--muted)">Tema de la app (claro / oscuro)</span>
         <button class="btn" id="ajuste-tema-btn" style="background:var(--surface2);border:1px solid var(--border2);color:var(--text)" onclick="toggleTheme();enterAjustes()">🌙 Modo oscuro</button>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:12px;border-top:1px solid var(--border);padding-top:12px">
+        <span style="font-size:.75rem;color:var(--muted)">Modo discreto: ventas sin colores ni movimiento (para usarla en el trabajo). Las ventas especiales quedan con una rayita de color y las muy buenas con un ✦.</span>
+        <button class="btn" id="ajuste-discreto-btn" style="background:var(--surface2);border:1px solid var(--border2);color:var(--text)" onclick="toggleDiscreto()">✨ Con efectos</button>
       </div>
     </div>
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">

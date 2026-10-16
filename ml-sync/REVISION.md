@@ -612,6 +612,10 @@ el precio de un candidato distinto con código parecido (se compara también por
     decisión de compra, no código. 11 (dinero que rinde en MP) lo mira él en la app.
 
 ## 7 · DISEÑO
+- **Modo discreto (16/10/2026, v23.95).** Ajustes → Apariencia → `toggleDiscreto` (clase `body.discreto`, `localStorage cycDiscreto`):
+  ventas vivas sin movimiento, figuras, fuego, brillo ni fondo de color; las que tenían efecto quedan con rayita izquierda de su
+  color y las que temblaban/ardían con ✦. `_vivaPaso` no dibuja. Chequear: un nivel nuevo de `.viva` no puede volver a pintar
+  el fondo en modo discreto (la regla usa `[class*=lv-]`).
 
 ### Probados se ve igual que Nuevos · Precios ML en Ajustes (15/10/2026, v23.58-23.59, pedidos suyos)
 - Pedidos → Probados (`_pedidoItemHtml` con `_armU!=null`): tarjeta compacta como la de Nuevos (foto, nombre, código, US$ → puesto,
