@@ -1155,3 +1155,5 @@ sin color, igual que antes. La escasez de Full (se vacía antes de que llegue la
 Mide cada suba mía (`cyc/claudecambios`, a > de): ritmo con stock y plata por día 21 días antes contra después, con la
 línea de tiempo; elasticidad por suba y resumen escasez/otras. Sirve para elegir cuánto subir en escasez. Chequear que el
 día de la suba no cuente en ningún lado y que una segunda suba corte el tramo de la primera.
+
+- **16/10/2026 · v23.85 · Paraguay → Nuevos: desplegables "Ver" y "Ordenar".** Ver: todos / dan en ML (margen ≥ piso, `candPisoDe`) / dan en el local (`candLocalOk`) / los dos. Ordenar reemplaza los botones (mismos criterios). Vive en `_candFiltro` (localStorage `cycCandFiltro`) y `_candOrden`. Chequear: el filtro se aplica a las cuatro listas (arriba, flojas, rojas, sin analizar) y "Nuevos N dan" cuenta sólo lo filtrado.

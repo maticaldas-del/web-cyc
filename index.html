@@ -2619,7 +2619,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.84';
+const APP_VERSION='23.85';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2630,6 +2630,7 @@ const APP_VERSION='23.84';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.85',f:'16/10/2026',h:'16:10',c:[{n:1,t:'🇵🇾 Nuevos: dos desplegables arriba de la lista. "Ver": todos, los que dan en ML, los que dan en el local o los que dan en los dos. "Ordenar": igual que los botones de antes. Se acuerda de lo último que elegiste.'}]},
   {v:'23.84',f:'16/10/2026',h:'14:45',c:[{n:2,t:'🇵🇾 Nuevos: en el detalle de cada producto hay una casilla "🛒 Vendidas en ML" con el link para mirarlo. Cargás las vendidas que ves y, si llega a 100, ya se puede pedir.'}]},
   {v:'23.83',f:'16/10/2026',h:'14:30',c:[{n:1,t:'📋 Copiar pedido termina con "SÓLO estos colores: si no hay, no reemplazar por otro" (llegaban colores lentos en vez de los que se agotan).'}]},
   {v:'23.82',f:'16/10/2026',h:'14:00',c:[{n:3,t:'🇵🇾 Paraguay tiene dos proveedores separados: 🟢 Nissei y 🟣 Elegancia (el del catálogo Atacado). Arriba elegís cuál, y cada uno tiene sus Productos probados, sus Nuevos y su 🧾 Pedido: un "Ya lo pedí" de uno no toca el pedido del otro. Elegancia arranca con sus perfumes de la lista Black Friday, con foto, código, precio, % y link de ML, igual que Nissei.'}]},
@@ -14682,8 +14683,11 @@ function candidatosHTML(){
   // SIN LAS DOS FOTOS TAMPOCO (07/10/2026, él con el Sony MDR-E9LP sin foto de Paraguay: *"sin foto tampoco acepto"*):
   // sin la de comprasparaguay y la de ML no se puede ver que sean el mismo producto, así que no está completo.
   const _medido=c=>{if(c.margen==null||!isFinite(c.margen))return false;const R=candPreciosPartes(c);return !!(R.fotoPY&&R.fotoML);};
-  const _sinAnalizar=vivos.filter(c=>!_medido(c));
-  const _arriba=vivos.filter(c=>_medido(c)&&!_esRojo(c)&&!_pocas(c)), _rojos=vivos.filter(c=>_medido(c)&&_esRojo(c)), _flojas=vivos.filter(c=>_medido(c)&&!_esRojo(c)&&_pocas(c));
+  // FILTRO ML / LOCAL (16/10/2026, él: "un desplegable para ver solo los que dan en ml, en perfumería local o ambos").
+  const _daML=c=>c.margen!=null&&isFinite(c.margen)&&Number(c.margen)>=candPisoDe(c);
+  const _fOk=c=>_candFiltro==='ml'?_daML(c):_candFiltro==='local'?candLocalOk(c):_candFiltro==='ambos'?(_daML(c)&&candLocalOk(c)):true;
+  const _sinAnalizar=vivos.filter(c=>!_medido(c)&&_fOk(c));
+  const _arriba=vivos.filter(c=>_fOk(c)&&_medido(c)&&!_esRojo(c)&&!_pocas(c)), _rojos=vivos.filter(c=>_fOk(c)&&_medido(c)&&_esRojo(c)), _flojas=vivos.filter(c=>_fOk(c)&&_medido(c)&&!_esRojo(c)&&_pocas(c));
   // ORDENAR (03/10/2026, pedido suyo: "poder buscar de mayor a menor los que más unidades vendieron, mayor
   // porcentaje y eso"). Los sin dato van siempre al final.
   {const k=_candOrden, val=c=>{const n=x=>(x!=null&&isFinite(x))?Number(x):null;
@@ -14697,8 +14701,8 @@ function candidatosHTML(){
   // CUÁNTOS DAN (02/10/2026, pedido suyo: *"antes de arrancar la lista poné cuántos candidatos con % positivo en
   // verde hay, así voy viendo cuando sube productos nuevos"*). Verde = medido y en el piso o arriba.
   const _verdes=_arriba.filter(c=>c.margen!=null&&isFinite(c.margen)).length, _sinMed=_arriba.length-_verdes;
-  const _ob=(k,t)=>`<button class="btn" style="font-size:.66rem;padding:4px 11px;${_candOrden===k?'background:var(--blue);color:#fff;font-weight:700':''}" onclick="candOrdenar('${k}')">${t}</button>`;
-  const _orden=`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:0 0 10px"><span style="font-size:.66rem;color:var(--muted)">Ordenar:</span>${_ob('pct','% de ganancia')}${_ob('vend','🛒 más vendidos')}${_ob('gan','$ por unidad')}${_ob('usd','$ por dólar invertido')}${_ob('barato','más barato')}</div>`;
+  const _sel=(arr,cur,fn)=>`<select onchange="${fn}(this.value)" style="font-size:.72rem;padding:4px 8px;border-radius:6px;background:var(--surface);color:var(--text);border:1px solid var(--border)">${arr.map(([k,t])=>`<option value="${k}"${cur===k?' selected':''}>${t}</option>`).join('')}</select>`;
+  const _orden=`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 10px"><span style="font-size:.66rem;color:var(--muted)">Ver:</span>${_sel([['todos','todos'],['ml','🛒 los que dan en ML'],['local','🏪 los que dan en el local'],['ambos','✅ los que dan en los dos']],_candFiltro,'candFiltrar')}<span style="font-size:.66rem;color:var(--muted)">Ordenar:</span>${_sel([['pct','% de ganancia'],['vend','🛒 más vendidos'],['gan','$ por unidad'],['usd','$ por dólar invertido'],['barato','más barato']],_candOrden,'candOrdenar')}</div>`;
   // 03/10/2026, él: el simulador y el historial "ahí no se usan y molestan": el simulador va al final y el
   // historial de pedidos vive en la pestaña 🧾 Pedido.
   return cab(_verdes)+pycatBuscarHTML()+_orden+_arriba.map(_card).join('')
@@ -14714,6 +14718,8 @@ function candidatosHTML(){
 const _candAbiertos=new Set();
 let _candOrden=(()=>{try{return localStorage.getItem('cycCandOrden')||'pct';}catch(e){return 'pct';}})();
 function candOrdenar(k){_candOrden=k;try{localStorage.setItem('cycCandOrden',k);}catch(e){}renderPedidos();}
+let _candFiltro=(()=>{try{return localStorage.getItem('cycCandFiltro')||'todos';}catch(e){return 'todos';}})();
+function candFiltrar(k){_candFiltro=k;try{localStorage.setItem('cycCandFiltro',k);}catch(e){}renderPedidos();}
 function candToggle(id,ab){if(ab)_candAbiertos.add(id);else _candAbiertos.delete(id);}
 function candDescartadosHTML(){
   const desc=candList().filter(c=>c.no);
