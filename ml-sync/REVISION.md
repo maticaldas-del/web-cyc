@@ -317,6 +317,9 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 (sería doble), y que el número de Gastos y el del Arqueo sean el mismo para cada mes.
 
 ## 3 · MERCADERÍA
+- **Lo "no disponible" de Nissei sale de Para probar (16/10/2026, regla suya).** El chat de compras no lo copia en `pycat` y lo
+  carga con `candprecio:<cód>=nohay;go` (duro `noTipo:'nissei'`, vuelve solo si reaparece con precio). Caso: Corsair Void Elite
+  58605, listado a US$ 2,25 (precio viejo) daba 599%. Escrito en `PROMPT_GUAY.md`.
 - **`antiguo` color por color (16/10/2026).** ML cobra stock antiguo por código de Full (= color). El comando sumaba el
   producto×cuenta y usaba el código de UNA publicación: los colores que venden tapaban a los parados (P47 Matías blanco 12 u.
   195 d y azul 10 u. 157 d en el Excel no aparecían). Ahora, si hay stock por color (`__v__`), va una fila por color con su

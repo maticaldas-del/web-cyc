@@ -38,6 +38,10 @@ Si al seguir otro día una página repite productos de la anterior, no pasa nada
 - Foto = sólo el nombre del archivo de la imagen (el pedazo final tipo a143491349f5fdd35fde34c7f7ce28da2412dad0.webp). Si no tiene foto real, dejalo vacío (la genérica de "sin foto", ej. 15526b56….webp, NO cuenta).
 Si podés sacarlo del listado sin abrir cada producto, mejor (más rápido). Si el listado no trae el código, abrí cada uno.
 Nunca uses nissei.com. Si aparece "no soy un robot", la pasa Matías a mano.
+NO DISPONIBLE (16/10/2026, regla de Matías: "cuando no está disponible, que lo saque"): si un producto dice "¡Uy! Producto no disponible"
+o "Ver todas las 0 ofertas", NO lo copies en pycat (su precio es viejo y da márgenes falsos, ej. un Corsair a US$ 2,25). Juntá sus
+códigos y cargalos aparte, por ml-consulta: candprecio:<código>=nohay;<código>=nohay;…;go — así sale de "Para probar". Si un mes
+vuelve a estar disponible, copialo normal y vuelve solo.
 
 == FORMATO: UN COMANDO CADA 5 PÁGINAS ==
   pycat:#<página>@<orden>;<código>|<nombre>|<US$>|<link>|<foto>;<código>|…;#<página siguiente>;…;go
@@ -52,7 +56,8 @@ Plan B si GitHub no te deja: pasale los comandos a Matías para que los pegue en
 == LAS VENTAS DE LOS QUE DAN (cuando el chat CYC te pase la lista) ==
 El robot de CYC no puede ver cuánto vende otro vendedor en ML. Cuando el chat CYC te pase la lista "VENTAS QUE FALTAN"
 (código|US$|link de ML|nombre), abrí cada link de ML (pestaña de ML con la sesión iniciada) y anotá las vendidas de la publicación
-MÁS BARATA. Cargalas por ml-consulta igual que el catálogo:
+MÁS BARATA. Antes, abrí también el link de comprasparaguay: si dice "no disponible", ése va con =nohay en vez de vendidas.
+Cargalas por ml-consulta igual que el catálogo:
   candprecio:<código>=<US$>/<vendidas>;<código>=<US$>/<vendidas>;…;go
 Con 100 o más aparecen en "Para probar"; con menos quedan guardados y escondidos.
 
