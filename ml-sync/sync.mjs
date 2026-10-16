@@ -19205,20 +19205,25 @@ async function main() {
     if (/^candalta:/.test(String(process.env.BILLING_PROBE || ''))) {
       const _ca = String(process.env.BILLING_PROBE).slice('candalta:'.length);
       const APLICAR = /(^|;)go\s*$/.test(_ca);
-      const filas = _ca.replace(/(^|;)go\s*$/, '').split(';').map((x) => x.trim()).filter(Boolean);
+      let filas = _ca.replace(/(^|;)go\s*$/, '').split(';').map((x) => x.trim()).filter(Boolean);
+      // PROVEEDOR (16/10/2026): `candalta:prov=elegancia;…` carga candidatos de OTRO proveedor de Paraguay. Quedan con
+      // `prov` y sólo se comparan contra los candidatos de ese mismo proveedor (el mismo perfume en Nissei es otro
+      // candidato: otro código, otro precio y otro pedido). Sin `prov=` es Nissei, como siempre.
+      let PROV = '';
+      if (filas.length && /^prov=/i.test(filas[0])) { PROV = filas.shift().slice(5).trim().toLowerCase().replace(/[^a-z]/g, ''); if (PROV === 'nissei') PROV = ''; }
       if (!filas.length) { console.log('Usá: candalta:<nombre>|<código>|<US$>|<MLA del catálogo>|<vendidos>|<link CP>|<foto>[;…][;go]'); return; }
       const cands = (await db.get('cyc/candidatos_py')) || {};
       const _dg = (x) => String(x || '').replace(/\D/g, '');
       const codIg = (a, b) => { const x = _dg(a), y = _dg(b); if (!x || !y) return false; if (x === y) return true; const [c1, c2] = x.length < y.length ? [x, y] : [y, x]; return c1.length >= 5 && c2.endsWith(c1); };
       const _n = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
-      console.log(`=== CANDIDATOS NUEVOS ${APLICAR ? '(APLICANDO)' : '(PRUEBA: no escribo nada)'} ===\n`);
+      console.log(`=== CANDIDATOS NUEVOS${PROV ? ' · ' + PROV.toUpperCase() : ''} ${APLICAR ? '(APLICANDO)' : '(PRUEBA: no escribo nada)'} ===\n`);
       const plan = []; let malos = 0;
       for (const f of filas) {
         const [nom, cod, usdS, ml, vend, link, foto] = f.split('|').map((x) => (x || '').trim());
         const usd = parseFloat(String(usdS).replace(',', '.'));
         const mlId = (String(ml).match(/MLA\d+/) || [''])[0];
         if (!nom || !_dg(cod) || !(usd > 0) || !mlId) { console.log(`❌ mal escrito (falta nombre, código, precio o catálogo de ML): ${f.slice(0, 120)}`); malos++; continue; }
-        const yaC = Object.entries(cands).find(([, c]) => c && (codIg(c.cod, cod) || _n(c.nombre) === _n(nom)));
+        const yaC = Object.entries(cands).find(([, c]) => c && String(c.prov || '') === PROV && (codIg(c.cod, cod) || _n(c.nombre) === _n(nom)));
         // LA PASADA DEL MES ACTUALIZA LO YA CARGADO (14/10/2026, él: "la run de guay va a ser una vez al mes para
         // actualizar precios de productos que ya están cargados"). Si el código ya es candidato, no se duplica: se le
         // pone el precio de hoy, la fecha (así no vence) y las vendidas, y si el precio cambió se borra la cuenta
@@ -19230,7 +19235,7 @@ async function main() {
           console.log(`↻ ya es candidato: precio ${Number(cC.usd || 0).toFixed(2)} → ${usd.toFixed(2)}${upd.vendCarga ? ' · vendidas ' + upd.vendCarga : ''} · ${nom.slice(0, 60)} (${idC})${cC.no ? ' · sigue descartado (' + String(cC.noTipo || cC.motivo || '').slice(0, 40) + '): el robot lo vuelve a medir si es por margen' : ''}`);
           plan.push({ _upd: idC, ...upd }); continue;
         }
-        const yaP = products.find((p) => codIg(p.codPy, cod) || _n(p.name) === _n(nom));
+        const yaP = products.find((p) => (PROV ? String(p.provPy || '') === PROV && codIg(p.codPy, cod) : codIg(p.codPy, cod)) || _n(p.name) === _n(nom));
         if (yaP) { console.log(`= ya es producto probado, no lo cargo: ${nom} → ${yaP.name} (${yaP.id})`); continue; }
         const v = parseInt(String(vend).replace(/\D/g, ''), 10);
         const okHttps = (u) => /^https:\/\//.test(u) ? u.slice(0, 300) : '';
@@ -19238,7 +19243,7 @@ async function main() {
         // SIN FOTO NO SE CARGA (07/10/2026, él: *"sin foto tampoco acepto"*): sin la foto de comprasparaguay no se
         // puede comparar contra la de ML. Se saltea este renglón (no frena los demás) y se dice.
         if (!fotoUrl) { console.log(`✗ sin foto de comprasparaguay, no lo cargo: ${nom}`); continue; }
-        const c = { nombre: nom.slice(0, 160), cod: String(cod), usd, mlId, enNissei: true, fuente: 'chat', ts: Date.now() };
+        const c = { nombre: nom.slice(0, 160), cod: String(cod), usd, mlId, enNissei: true, fuente: PROV ? 'lista' : 'chat', ts: Date.now(), ...(PROV ? { prov: PROV } : {}) };
         if (isFinite(v) && v > 0) c.vendCarga = v;
         if (okHttps(link)) c.link = okHttps(link);
         if (fotoUrl) c.foto = fotoUrl;
