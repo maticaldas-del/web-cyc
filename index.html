@@ -2619,7 +2619,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.72';
+const APP_VERSION='23.73';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2630,6 +2630,7 @@ const APP_VERSION='23.72';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.73',f:'16/10/2026',h:'12:30',c:[{n:1,t:'🧠 Las notas del cerebro ya no se cortan: se guardaban sólo los primeros 600 caracteres (400 en Pedidos). Ahora entran enteras. Las ya guardadas siguen cortadas hasta que Claude las vuelva a escribir.'}]},
   {v:'23.72',f:'16/10/2026',h:'12:10',c:[{n:1,t:'🚚 Pedidos hechos: la tarjeta cerrada de un pedido en camino dice "llega ~dd/mm" (desde la guía del correo si está). Cuando llega, dice "llegó dd/mm".'}]},
   {v:'23.71',f:'16/10/2026',h:'11:55',c:[{n:1,t:'🚚 Pedidos de Paraguay: con la guía del correo cargada, "llegaría aprox." se cuenta desde el día que salió por el correo (3 días hábiles), no desde el pedido. Se ve también "despachado el".'}]},
   {v:'23.70',f:'16/10/2026',h:'01:30',c:[{n:2,t:'📦 Deshacer una caja devuelve también las unidades sugeridas a Armar caja (antes quedaba vacía, porque cerrarla las descontaba y deshacerla no las devolvía).'}]},
@@ -12342,7 +12343,7 @@ async function syncPedidosAuto(){
         const formU=aComprar;
         if(hasVars&&_cl.vars){
           const cv={};for(const [k,v] of Object.entries(_cl.vars))cv[k]=Math.max(0,parseInt(v)||0);
-          const _mv=_cl.motVars||{};const _mvDe=k=>_mv[k]?{mot:String(_mv[k]).slice(0,400)}:{};
+          const _mv=_cl.motVars||{};const _mvDe=k=>_mv[k]?{mot:String(_mv[k]).slice(0,2500)}:{};
           const vn=(variantesNec||[]).map(x=>{const k=sid(String(x.v).toLowerCase());return k in cv?{...x,q:cv[k],cl:1,..._mvDe(k)}:(SOLO_CLAUDE?{...x,q:0}:x);});
           for(const v of (p.variantes||[])){const k=sid(String(v).toLowerCase());if(k in cv&&!vn.some(x=>sid(String(x.v).toLowerCase())===k))vn.push({v,q:cv[k],cl:1,..._mvDe(k)});}
           variantesNec=vn.length?vn:null;
@@ -12350,9 +12351,9 @@ async function syncPedidosAuto(){
         }else if(_cl.u!=null&&(!hasVars||SOLO_CLAUDE)){aComprar=Math.max(0,parseInt(_cl.u)||0);if(hasVars)variantesNec=null;}
         if(aComprar!==formU||_cl.u!=null||_cl.vars){
           clInfo={u:aComprar,formU,mot:String(_cl.mot||''),ts:_cl.ts||null};
-          if(_cl.motPv)clInfo.motPv=String(_cl.motPv).slice(0,400);   // por qué ese precio para el máximo de compra
+          if(_cl.motPv)clInfo.motPv=String(_cl.motPv).slice(0,2500);   // por qué ese precio para el máximo de compra
           if(hasVars&&_cl.motVars&&typeof _cl.motVars==='object'){   // el motivo de cada color (decidido color por color)
-            const mv={};for(const v of (p.variantes||[])){const k=sid(String(v).toLowerCase());if(_cl.motVars[k])mv[k]={v,t:String(_cl.motVars[k]).slice(0,400),q:(_cl.vars&&k in _cl.vars)?Math.max(0,parseInt(_cl.vars[k])||0):null};}
+            const mv={};for(const v of (p.variantes||[])){const k=sid(String(v).toLowerCase());if(_cl.motVars[k])mv[k]={v,t:String(_cl.motVars[k]).slice(0,2500),q:(_cl.vars&&k in _cl.vars)?Math.max(0,parseInt(_cl.vars[k])||0):null};}
             if(Object.keys(mv).length)clInfo.motVars=mv;
           }
         }
