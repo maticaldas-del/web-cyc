@@ -248,7 +248,7 @@ próxima caja a Full"*.
  · En CADA vuelta (las 4 del día), todo lo que el expediente marca 🔥 por primera vez se trata en ESA vuelta: no espera a la
    completa. "Ahí nomás" = la próxima vuelta (el robot no toca precios, así que lo más rápido son ~4 h).
  · Para cada uno se calcula cuándo llega la próxima caja a Full: caja despachada ~8 d desde el despacho · en la oficina sin
-   despachar ~10 d (y se pide mandarla en Armar caja) · hay que comprar: Paraguay ~16 d · **Bs As NO se da por repuesto** (regla del 16/10: a veces no se consigue por meses): si hay en la oficina, cuenta como caja por mandar; si no hay, se trata como sin reposición · sin
+   despachar ~10 d (y se pide mandarla en Armar caja) · hay que comprar: Paraguay ~16 d · **Bs As se da por repuesto (~1 semana + caja)** salvo que Pedidos lo pida hace 10+ días sin que entre nada a la oficina: ahí "no se consigue" = sin reposición (eligió 1b el 16/10; "oficina en 0" solo hacía un bucle). La escasez se mide SIEMPRE con el ritmo normal, no con el de después de una suba (2a) · sin
    reposición: estirar para venderlo en ~100 días (regla ⏳). El precio se pone para que la última unidad salga cerca de ese día.
  · Se sigue mirando en cada vuelta: si con el precio nuevo vende más rápido de lo pensado, se sube otra vez; si se frenó del
    todo, se baja de a poco. Nunca abajo del precio normal. Al llegar la caja se juzga con la línea de tiempo (no se vuelve a

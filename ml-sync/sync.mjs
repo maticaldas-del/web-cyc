@@ -36814,7 +36814,9 @@ async function main() {
           for (const m of ms) for (const [dk, d] of Object.entries(LINR[m])) { if (dk >= hoyK || !d) continue; const x = (dias[dk] = dias[dk] || { u: 0, uR: 0, st: null, vis: 0 }); x.u += Number(d.u) || 0; x.uR += Number(d.uR) || 0; x.vis += Number(d.vis) || 0; if (d.st != null) x.st = (x.st || 0) + (Number(d.st) || 0); }
           const ult = Object.keys(dias).sort().slice(-30);
           let u = 0, dc = 0; for (const dk of ult) { const d = dias[dk]; if (d.u > 0 || d.st > 0 || (d.vis > 0 && d.st == null)) { dc++; u += Math.max(0, d.u - d.uR); } }
-          if (u >= 3 && dc >= 7) RIT[k] = { r: u / dc, d: dc, cal: false };
+          // 2a (16/10/2026, él: el bucle "no vende porque está caro, y no se compra porque hay para un montón de días"): la
+          // escasez se mide con el ritmo NORMAL; si la suba frenó las ventas, el ritmo de estos 30 días no puede ser menor que él.
+          if (u >= 3 && dc >= 7) { const rn0 = rnE[k], pdN = rn0 && !rn0.f ? Number(rn0.pd) || 0 : 0; RIT[k] = pdN > u / dc ? { r: pdN, d: dc, cal: false, normal: true } : { r: u / dc, d: dc, cal: false }; }
           else { const rn = rnE[k]; if (rn && Number(rn.pd) > 0) RIT[k] = { r: Number(rn.pd), d: dc, cal: false, normal: true }; }
         }
         if (sinLin) console.log(`(${sinLin} producto×cuenta sin línea de tiempo: su ritmo sale del registro de stock)`);
@@ -37915,7 +37917,7 @@ async function main() {
         const cost = Math.round((Number(p.costFullUSD) || Number(p.costUSD) || 0) * tc);
         const pr = Math.round(Number(p.netoCalcPrecio) || 0), cam45 = [];
         for (const [mla, e] of Object.entries(L)) { if (!e || e.prodId !== p.id || e.ignored) continue; const a = AP[mla]; if (!a || a.de == null || a.a == null) continue;
-          const d = Math.round((hoy - (Number(a.ts) || 0)) / 864e5); if (d <= 45) cam45.push(`${a.a > a.de ? '⬆️' : '⬇️'}$${a.de}→$${a.a} ${d}d${a.a > a.de && /escas|estir/i.test(String(a.motivo || '')) ? 'ESC' : ''}`); }
+          const d = Math.round((hoy - (Number(a.ts) || 0)) / 864e5); if (d <= 45) cam45.push(`${a.a > a.de ? '⬆️' : '⬇️'}$${a.de}→$${a.a} ${d}d${a.a > a.de && /escas|estir/i.test(String(a.motivo || '')) ? 'ESC' : a.a > a.de && /techo|prueba|probar/i.test(String(a.motivo || '')) ? 'PRU' : ''}`); }
         const dec0 = ` · precio $${pr}${cam45.length ? ' (' + cam45.slice(0, 3).join(' ') + ')' : ''}`;
         const m60 = med(pU[p.id]);
         const dec = dec0 + (m60 ? ` · med60 $${m60}` : '') + ` · ctas [${ctasDe(p.id).map((c) => c.slice(0, 2)).join(' ')}]` + (CD[p.id] ? ` · YA DECIDÍ ${CD[p.id].u != null ? CD[p.id].u : JSON.stringify(CD[p.id].vars || {})}` : '');
@@ -38307,6 +38309,17 @@ async function main() {
                 }
                 const rl = await db.get(base + '/' + leaf);
                 console.log(marcaG(n.dec === 'auto' ? rl == null : Number(rl) === n.val, '   ✓ guardado'));
+                // DESDE CUÁNDO PEDIDOS LE PIDE COMPRAR (16/10/2026, 1b): con algo para comprar y sin `desde`, se anota hoy;
+                // si ya no pide nada, se borra. La web lo usa para Bs As: 10 días pidiendo sin que entre nada a la oficina
+                // = no se consigue → recién ahí cuenta como sin reposición (escasez).
+                if (n.tipo === 'ped' && n.dec !== 'venta') {
+                  try {
+                    const bo = (await db.get(base)) || null;
+                    const tot = bo ? (Number(bo.u) || 0) + Object.values(bo.vars || {}).reduce((a, x) => a + (Number(x) || 0), 0) : 0;
+                    if (bo && tot > 0 && !(Number(bo.desde) > 0)) await db.set(base + '/desde', Date.now());
+                    else if (bo && tot <= 0 && bo.desde != null) await db.set(base + '/desde', null);
+                  } catch { /* sin la marca, la web lo da por repuesto */ }
+                }
                 if (n.dec !== 'auto' && n.dec !== 'venta') await db.set('mlapi/claudeexp/' + key, { ts: Date.now(), simple: String(n.t).slice(0, 2500), nom: String(p.name || '').slice(0, 60), cuenta: ctaL, variante: n.vari || '', tipo: n.tipo });
               } catch (eN) { TAL.no++; console.log(`   ⚠️ no pude guardarlo: ${String(eN.message || eN).slice(0, 60)}`); }
             }
@@ -40347,6 +40360,9 @@ async function main() {
           if (tN !== tA) _ofiUpd[kTot(o.p.id)] = tN || null;
         }
         if (GO) await db.patch('cyc/inventory', _ofiUpd);
+        // 1b (16/10/2026): entró mercadería a la oficina → se anota el día. La regla de Bs As cuenta los 10 días
+        // sin conseguirlo desde lo último que pasó: el pedido o esta entrada.
+        if (GO && dv > 0) { try { await db.set('cyc/ofientro/' + o.p.id, Date.now()); } catch { /* no frena el conteo */ } }
         console.log(`  ${o.p.name}${o.va ? ' · ' + o.va : ''}: ${antes} → ${ahora}${totTxt}`);
       }
       if (GO && _ofiCortado) console.log(`\n⚠️ Cancelaron la corrida: ${_ofiCortado} renglón(es) sin escribir (los de arriba sí quedaron). Repetí sólo ésos.`);

@@ -2134,6 +2134,7 @@ function startApp(){
     state.autoprecio=d.autoprecio||{};state.claudecambios=d.claudecambios||{};
     state.promoclaude=d.promoclaude||{};   // promos que entré yo (13/10/2026: cuentan como baja de precio en la venta)
     state.claudedecide=d.claudedecide||{};
+    state.ofientro=d.ofientro||{};   // 1b (16/10): cuándo entró mercadería a la oficina por última vez
     // 🧪 VIGILANCIA (idea 6, 27/09/2026): la foto que deja el robot cada noche de TODAS las publicaciones que venden,
     // con su estado frente a la prueba de suba. Sólo se dibuja.
     state.vigilancia=d.vigilancia||null;
@@ -2619,7 +2620,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.88';
+const APP_VERSION='23.89';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2630,6 +2631,7 @@ const APP_VERSION='23.88';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.89',f:'16/10/2026',h:'17:10',c:[{n:3,t:'Escasez de Bs As corregida: ya no alcanza con tener la oficina vacía. Se da por repuesto (~1 semana + caja) y pasa a "no se consigue" sólo si Pedidos lo pide hace 10 días y no entró nada a la oficina; cuando entra, se cae solo. Y la escasez se mide con el ritmo normal: una suba que frenó las ventas no achica lo que se pide comprar.'}]},
   {v:'23.88',f:'16/10/2026',h:'15:58',c:[{n:3,t:'Escasez: lo de Bs As ya no se da por repuesto en una semana. Si hay en la oficina, la reposición es mandar la caja; si no hay nada, se trata como un producto sin reposición (se estira para venderlo en ~4 meses, al precio más alto).'}]},
   {v:'23.87',f:'16/10/2026',h:'15:23',c:[{n:2,t:'🇵🇾 Nuevos: ahora se puede cargar en el pedido un producto que no llega al piso. Antes de agregarlo pregunta, así no se carga sin querer. El botón Llenar sigue sin meterlos.'}]},
   {v:'23.86',f:'16/10/2026',h:'14:50',c:[{n:1,t:'🇵🇾 Pedidos hechos más simple: sin íconos, cada pedido con la fecha y en qué está a la izquierda y la plata a la derecha, fondo más claro y una barra de color. Los que ya llegaron van en un desplegable cerrado.'}]},
@@ -4722,6 +4724,7 @@ function setQ(pid,loc,val,variant=''){
   const _pStk=state.products.find(x=>x.id===pid);
   const _totalBefore=_pStk?stockOf(_pStk):0;
   state.inventory[k]=nv;_invPending[k]=nv;
+  if(loc===OFI&&nv>old)_ofiEntro(invKey(pid,OFI),0,1);
   // Si es variante, recalcular y actualizar la clave de producto (suma de todas las variantes)
   if(variant){
     const p=state.products.find(x=>x.id===pid);
@@ -6865,7 +6868,14 @@ async function ofiTx(key,{delta=0,fijo=null}={}){
     ahora=parseInt(r&&r.snapshot&&r.snapshot.val())||0;
   }
   state.inventory[key]=ahora;
+  _ofiEntro(key,antes,ahora);
   return {antes,ahora};
+}
+// 1b (16/10/2026): entró mercadería a la oficina → se anota el día (la regla de Bs As mide 10 días desde el pedido o desde esto).
+function _ofiEntro(key,antes,ahora){
+  if(!(ahora>antes)||String(key).includes('__v__'))return;const i=String(key).indexOf('__');if(i<=0)return;
+  const pid=String(key).slice(0,i);(state.ofientro=state.ofientro||{})[pid]=Date.now();
+  if(db)db.ref('cyc/ofientro/'+pid).set(Date.now()).catch(()=>{});
 }
 // Mueve unidades de la oficina: con variante toca la clave de la variante y le aplica al total del
 // producto EXACTAMENTE lo que cambió la variante (así lo "sin aroma" no se toca); sin variante, el
@@ -7268,6 +7278,7 @@ function reponerDe(p){
   if(Date.now()-_repoMemoTs>5000){_repoMemo={};_repoMemoTs=Date.now();}
   return _repoMemo[p.id]||(_repoMemo[p.id]=_reponerCalc(p));
 }
+const BSAS_NO_SE_CONSIGUE_DIAS=10;   // 1b (16/10/2026): Bs As pedido 10 días sin que entre nada = no se consigue
 function _reponerCalc(p){
   const dm=s=>String(s||'').split('-').reverse().slice(0,2).join('/');
   const v=_pedidoViaja(p.id);
@@ -7277,8 +7288,16 @@ function _reponerCalc(p){
   if(!py&&esPedidoPaulvic({prodId:p.id}))return{d:PED_DIAS_ROJO,txt:'Paulvic: ~1 semana + caja'};
   // Bs As NO se da por repuesto (16/10/2026, regla suya: "a veces no se consiguen por meses"): con unidades en la oficina
   // la reposición es mandar esa caja; sin nada en la oficina, se trata como sin reposición (igual que Paraguay sin stock).
+  // CORREGIDO EL MISMO DÍA (eligió 1b): "oficina en 0 = sin reposición" hacía un bucle — se subía el precio, vendía menos,
+  // Pedidos veía muchos días de stock y Tito no compraba nunca. Ahora Bs As se da por repuesto (~1 semana + caja) y pasa a
+  // "no se consigue" recién cuando Pedidos le pide comprarlo hace 10+ días (`claudedecide/ped/<id>/desde`) y desde ese
+  // pedido no entró nada a la oficina (`cyc/ofientro/<id>`).
   if(!py){const of=parseInt(state.inventory[invKey(p.id,OFI)])||0;
-    return of>0?{d:REPO_ARMAR_CAJA,txt:`Bs As: ${of} u. en la oficina → mandar caja (~${REPO_ARMAR_CAJA} d)`}:{d:REPO_SIN_FECHA_DIAS,inf:true,txt:'Bs As sin nada en la oficina: no se da por repuesto (a veces no se consigue por meses)'};}
+    if(of>0)return{d:REPO_ARMAR_CAJA,txt:`Bs As: ${of} u. en la oficina → mandar caja (~${REPO_ARMAR_CAJA} d)`};
+    const pd=((state.claudedecide||{}).ped||{})[p.id],desde=Number(pd&&pd.desde)||0,ent=Number((state.ofientro||{})[p.id])||0;
+    const dPid=desde?Math.floor((Date.now()-Math.max(desde,ent))/864e5):0;
+    if(desde&&dPid>=BSAS_NO_SE_CONSIGUE_DIAS)return{d:REPO_SIN_FECHA_DIAS,inf:true,txt:`Bs As: Pedidos lo pide hace ${dPid} d y no entró nada a la oficina: no se consigue`};
+    return{d:PED_DIAS_ROJO,txt:desde?`Bs As: ~1 semana + caja (Pedidos lo pide hace ${dPid} d)`:'Bs As: ~1 semana + caja'};}
   if((state.pySinStock||{})[p.id])return{d:REPO_SIN_FECHA_DIAS,inf:true,txt:'Nissei no lo tiene: sin fecha'};
   const esp=_pyPedidoViajandoFalta(),espT=esp>0?` + ${esp} d hasta que llegue el pedido que viaja`:'';
   const ver=pyProbVeredicto({prodId:p.id,producto:p.name});
@@ -7294,7 +7313,10 @@ const pedDiasRojoDe=p=>reponerDe(p).d;
 //  · Full se corta antes de que llegue lo de casa: lo de ML dura menos que la caja en camino (8 d desde el despacho),
 //    o que armar y mandar lo de la oficina (10 d), o que comprar si no hay nada.
 function escasezDe(p,o){
-  const r=reponerDe(p),v=Number(o.vDia)||0,ml=Math.max(0,o.ml||0),cam=Math.max(0,o.cam||0),casa=Math.max(0,o.casa||0);
+  // 2a (16/10/2026): la escasez se mide con el ritmo NORMAL (`cyc/ritmonormal`, sin remate). Si una suba frenó las ventas,
+  // el ritmo de hoy no puede achicar la cuenta: si no, "hay para un montón de días" y Tito no compra nunca (el bucle).
+  const _rn=p&&p.id?ritmoNormalDe(p.id):null;
+  const r=reponerDe(p),v=Math.max(Number(o.vDia)||0,_rn&&!_rn.f&&!o.sinNormal?_rn.pd:0),ml=Math.max(0,o.ml||0),cam=Math.max(0,o.cam||0),casa=Math.max(0,o.casa||0);
   const leadFull=cam>0?Math.max(1,Math.ceil(8-(Number(o.camDias)||0))):casa>0?10:r.d;
   const tot=v>0?(ml+cam+casa)/v:Infinity,dMl=v>0?ml/v:Infinity;
   // Sin reposición (Nissei no lo tiene, el precio no da, no traer más) es escasez SIEMPRE que quede algo (16/10, él:
@@ -9656,7 +9678,7 @@ function lineaPintar(prodId){
     // regla que Pedidos y el robot (`escasezDe`), con la oficina y la caja en camino (con color elegido, sólo la de ese color).
     const _cs=Math.max(0,Number(_lineaVar?getQV(prodId,OFI,_lineaVar):getQ(prodId,OFI))||0);
     const _tr=transitoInfoDe(prodId,_lineaVar||null);
-    const _ez=escasezDe(p,{ml:q,cam:_tr?_tr.u:0,casa:_cs,vDia:pdia,camDias:_tr?_tr.diasMax:0});
+    const _ez=escasezDe(p,{ml:q,cam:_tr?_tr.u:0,casa:_cs,vDia:pdia,camDias:_tr?_tr.diasMax:0,sinNormal:!!_lineaVar});
     const _esc=q>0&&(_ez.comp||_ez.full)?`<b style="color:var(--red)">🔥 escasez</b>: ${_ez.txt}`:'';
     const _sr=_ez.sinRepo?` · <b style="color:var(--amber)">sin reposición</b>: estirar para venderlo en ~100 días`:'';
     const _cHoy=q>0&&_esc?'var(--red)':_stCol(dd);

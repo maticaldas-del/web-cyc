@@ -9047,8 +9047,13 @@ internacional agregarle un % ya que la gente tiene que esperar 10 días"*. Con u
 (como siempre); si son todos de afuera, `ofertasParaMedir` los usa con +20% (`RECARGO_INTER`). Caso: Cabotine de Gres 100ml,
 el de Texas ($30.529) ya se sacaba; el más barato argentino está a $30.457 (agencia, sin Full).
 
-## 🏬 BS AS NO SE DA POR REPUESTO (16/10/2026, regla suya, v23.88)
-Él: *"a veces no se consiguen por meses. lo de bs as mirá si hay en la oficina, si en la oficina no hay tomalo como en paraguay cuando no hay stock"*. Con unidades en la oficina → la reposición es mandar la caja; sin nada → sin reposición (regla de 4 meses de abajo). Paulvic aparte (~1 semana + caja). En `_reponerCalc` (index.html) y `ml-sync/CEREBRO.md`.
+## 🏬 BS AS: "NO SE CONSIGUE" A LOS 10 DÍAS, Y LA ESCASEZ CON EL RITMO NORMAL (16/10/2026, eligió 1b 2a, v23.89)
+La v23.88 ("oficina en 0 = sin reposición") hacía un BUCLE, lo vio él: subía el precio por escasez → vendía menos → Pedidos veía
+muchos días de stock → Tito no compraba → seguía en escasez. Ahora: Bs As se da por repuesto (~1 semana + caja) y pasa a "no se
+consigue" (regla ⏳ de 4 meses) recién cuando Pedidos lo pide hace 10+ días (`cyc/claudedecide/ped/<id>/desde`, lo pone `decido`)
+y desde ese pedido no entró nada a la oficina (`cyc/ofientro/<id>`, lo anotan la web y `ofi`). Al entrar mercadería se cae solo;
+el producto sigue en Pedidos todo el tiempo. Y la escasez (web `escasezDe`, robot `escasez`) y Pedidos (`decide_pedidos.py`,
+también tras subas de prueba `PRU`) miden con el RITMO NORMAL: una suba que frenó las ventas no achica la cuenta. Paulvic sigue en ~1 semana + caja.
 
 ## ⏳ LO QUE NO SE PUEDE REPONER: ESTIRAR HASTA 4 MESES (16/10/2026, regla suya)
 Él: *"una combinacion entre esperar lo maximo posible y maximizar ganancia lo maximo posible en los 4 meses de stock que

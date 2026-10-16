@@ -47,10 +47,11 @@ def ritmo(x,dcs=30):
     # ESCASEZ (13/10/2026, él: "si subo por escasez se vende menos de lo normal; eso no debería achicar las unidades a
     # comprar"). Si en los últimos 30 días subí el precio POR ESCASEZ, las ventas de después no son el ritmo real:
     # manda el ritmo de antes (los 30 días previos, o el de 60 días), nunca uno más bajo.
-    esc=[int(d) for d in re.findall(r'⬆️\$\d+→\$\d+ (\d+)dESC',x.get('cambios',''))]
+    # 2a (16/10/2026): también una suba de PRUEBA de techo (PRU) achica las ventas: manda el ritmo normal de antes.
+    esc=[int(d) for d in re.findall(r'⬆️\$\d+→\$\d+ (\d+)d(?:ESC|PRU)',x.get('cambios',''))]
     if esc and min(esc)<=30:
         rPre=max((x['v60']-x['v30'])/30, x['v60']/60)
-        if rPre>r: r=rPre; base+=f" · subí por escasez hace {min(esc)} d: uso el ritmo de antes ({R(x['v60']-x['v30'])} en los 30 d previos)"
+        if rPre>r: r=rPre; base+=f" · subí el precio (escasez o prueba) hace {min(esc)} d: uso el ritmo de antes ({R(x['v60']-x['v30'])} en los 30 d previos)"
     return r,tiene,base
 # 45 DÍAS PARA LO DE BS AS QUE SE CORTA (16/10/2026, idea 1 del análisis, eligió la a): lo que se cortó 2+ veces en 60 días,
 # vende medio por día o más y deja 25%+ se compra para 45 días (con ~14 días de compra a Full, 30 no alcanzaba y se volvía a
