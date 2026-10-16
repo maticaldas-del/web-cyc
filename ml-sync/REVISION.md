@@ -1090,3 +1090,8 @@ tiempo (hasta `PED_NARANJA_MARGEN`=7 d más que reponer) · 🟡 hay tiempo. Igu
 elegido, la caja en camino quedaba en 0 y `escasezDe` daba escasez de COMPRA falsa (Protector talón Común Beige: 6 en Full
 + 13 en la oficina "se corta a los 12 d" con 18 viajando). Chequear: con color elegido el camino coincide con Armar caja;
 sin color, igual que antes. La escasez de Full (se vacía antes de que llegue la caja) sigue saliendo y es real.
+
+### 16/10/2026 · `escmedir[:días]` (etapa 1 · precios) · SOLO LEE
+Mide cada suba mía (`cyc/claudecambios`, a > de): ritmo con stock y plata por día 21 días antes contra después, con la
+línea de tiempo; elasticidad por suba y resumen escasez/otras. Sirve para elegir cuánto subir en escasez. Chequear que el
+día de la suba no cuente en ningún lado y que una segunda suba corte el tramo de la primera.

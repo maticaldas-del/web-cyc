@@ -30829,6 +30829,60 @@ async function main() {
     // stock contra los 30 anteriores: ritmo, ganancia por unidad, PLATA POR DÍA, caja, precio y días sin vender.
     // Arriba van las 🚩 (algo cambió y hay que mirarlo), abajo una línea por cada una. La ganancia es aproximada
     // (neto − mercadería − IIBB de la cuenta − ~2% de monotributo): sirve para comparar, no para el balance.
+    // BILLING_PROBE=escmedir[:<días>] · ¿CUÁNTO CONVIENE SUBIR UN PRODUCTO EN ESCASEZ? (16/10/2026, él: "y cuánto lo aumenta?
+    // está bien pensado eso? (...) pensalo"). SOLO LEE. Toma cada SUBA que decidí yo (`cyc/claudecambios`, a > de) en los
+    // últimos <días> (def 30) y, con la línea de tiempo de esa publicación (`mlapi/linea/<MLA>`), compara ritmo con stock y
+    // plata por día en los 21 días ANTES de la suba contra los días DESPUÉS (hasta ayer). Saca la elasticidad de cada una
+    // (cuánto cae la venta por cada 1% de suba) y el resumen separado: escasez contra el resto. Es para elegir la regla.
+    if (/^escmedir(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const nDias = parseInt(String(process.env.BILLING_PROBE).split(':')[1]) || 30;
+      const links = (await db.get('cyc/mllinks')) || {};
+      const cc = (await db.get('cyc/claudecambios')) || {};
+      const tc = parseFloat(await db.get('cyc/finanzas/tipo_cambio')) || 0;
+      const pIdx = {}; for (const pr of products) pIdx[pr.id] = pr;
+      const hoyK = dayKeyFromISO(Date.now());
+      const desde = Date.now() - nDias * 864e5;
+      const subas = Object.values(cc).filter((c) => c && c.mla && Number(c.a) > Number(c.de) && Number(c.ts) >= desde).sort((a, b) => a.ts - b.ts);
+      // Si una publicación tuvo varias subas, cada tramo termina donde empieza la siguiente.
+      const porMla = {}; for (const c of subas) (porMla[c.mla] = porMla[c.mla] || []).push(c);
+      const conSt = (x) => x && !(x.st != null && Number(x.st) <= 0 && !(Number(x.u) > 0));
+      const filas = [];
+      for (const [mla, lista] of Object.entries(porMla)) {
+        const e = links[mla] || {}; const pr = pIdx[e.prodId];
+        let d; try { d = (await db.get('mlapi/linea/' + mla)) || {}; } catch { continue; }
+        const ks = Object.keys(d).filter((k) => /^\d{4}_\d{2}_\d{2}$/.test(k) && k < hoyK).sort();
+        const cta = String(e.cuenta || '').toLowerCase();
+        const imp = ((ML_EXTRA_PCT[cta] || 4) + 2) / 100;
+        const cu = pr && tc > 0 ? costoPesos(pr, 1, tc).costo : 0;
+        for (let i = 0; i < lista.length; i++) {
+          const c = lista[i]; const kC = dayKeyFromISO(Number(c.ts));
+          const kFin = lista[i + 1] ? dayKeyFromISO(Number(lista[i + 1].ts)) : hoyK;
+          const kIni = dayKeyFromISO(Number(c.ts) - 21 * 864e5);
+          const tramo = (a, b) => { let dias = 0, u = 0, neto = 0, tot = 0, agot = 0; for (const k of ks) { if (k < a || k >= b) continue; const x = d[k]; if (!conSt(x)) { agot++; continue; } dias++; u += Number(x.u) || 0; neto += Number(x.neto) || 0; tot += Number(x.tot) || 0; } const gan = neto - u * cu - tot * imp; return { dias, u, agot, r: dias ? u / dias : null, pd: dias ? gan / dias : null, gu: u ? gan / u : null }; };
+          // el día de la suba no cuenta en ninguno de los dos lados (tiene horas a cada precio)
+          const kDesp = dayKeyFromISO(Number(c.ts) + 864e5);
+          const A = tramo(kIni, kC), B = tramo(kDesp, kFin);
+          const pr0 = Number(c.de), pr1 = Number(c.a), sub = pr1 / pr0 - 1;
+          const esc = /escasez/i.test(String(c.motivo || ''));
+          let el = null; if (A.r > 0 && B.dias >= 2 && sub > 0.01) el = B.u > 0 ? Math.log(B.r / A.r) / Math.log(pr1 / pr0) : -9;
+          filas.push({ mla, nom: c.nom || e.title || mla, cuenta: c.cuenta || e.cuenta || '?', kC, sub, esc, A, B, el, pr0, pr1 });
+        }
+      }
+      const f0 = (x, n = 1) => (x == null || !isFinite(x)) ? '—' : x.toFixed(n);
+      const $ = (x) => (x == null || !isFinite(x)) ? '—' : '$' + Math.round(x).toLocaleString('es-AR');
+      console.log(`=== 📐 SUBAS DE CLAUDE EN ${nDias} DÍAS · ${filas.length} tramo(s) · antes = 21 d antes con stock · después = desde el día siguiente hasta ayer con stock ===`);
+      for (const grupo of [true, false]) {
+        const G = filas.filter((x) => x.esc === grupo).sort((a, b) => b.sub - a.sub);
+        console.log(`\n── ${grupo ? '🔥 ESCASEZ' : '📈 OTRAS SUBAS (techo, piso, peor caso)'} · ${G.length} ──`);
+        for (const x of G) console.log(`@@ ${x.kC} · ${x.nom.slice(0, 40)} (${x.cuenta}) · ${$(x.pr0)}→${$(x.pr1)} (+${f0(x.sub * 100, 0)}%) · antes ${f0(x.A.r, 2)}/d en ${x.A.dias} d con stock (gana/u ${$(x.A.gu)}, ${$(x.A.pd)}/d) · después ${f0(x.B.r, 2)}/d en ${x.B.dias} d${x.B.agot ? ` (${x.B.agot} d agotado)` : ''} (gana/u ${$(x.B.gu)}, ${$(x.B.pd)}/d) · elasticidad ${x.el === -9 ? '0 ventas' : f0(x.el, 1)}`);
+        const ok = G.filter((x) => x.A.r > 0 && x.B.dias >= 3);
+        const med = (arr) => { const a = arr.filter((v) => v != null && isFinite(v)).sort((p, q) => p - q); return a.length ? a[Math.floor(a.length / 2)] : null; };
+        const rr = ok.map((x) => x.B.r / x.A.r), pdr = ok.filter((x) => x.A.pd > 0).map((x) => x.B.pd / x.A.pd);
+        const els = ok.filter((x) => x.el != null && x.el !== -9).map((x) => x.el);
+        console.log(`   resumen (con 3+ d después y ritmo antes): ${ok.length} · ventas por día después/antes mediana ×${f0(med(rr), 2)} · plata por día después/antes mediana ×${f0(med(pdr), 2)} · elasticidad mediana ${f0(med(els), 1)} · ${ok.filter((x) => x.B.u === 0).length} sin ventas después`);
+      }
+      process.exit(0);
+    }
     if (/^lupa(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const q = String(process.env.BILLING_PROBE).slice('lupa'.length).replace(/^:/, '').trim().toLowerCase();
       const links = (await db.get('cyc/mllinks')) || {};
