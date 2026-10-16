@@ -2619,7 +2619,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.83';
+const APP_VERSION='23.84';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2630,6 +2630,7 @@ const APP_VERSION='23.83';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.84',f:'16/10/2026',h:'14:45',c:[{n:2,t:'🇵🇾 Nuevos: en el detalle de cada producto hay una casilla "🛒 Vendidas en ML" con el link para mirarlo. Cargás las vendidas que ves y, si llega a 100, ya se puede pedir.'}]},
   {v:'23.83',f:'16/10/2026',h:'14:30',c:[{n:1,t:'📋 Copiar pedido termina con "SÓLO estos colores: si no hay, no reemplazar por otro" (llegaban colores lentos en vez de los que se agotan).'}]},
   {v:'23.82',f:'16/10/2026',h:'14:00',c:[{n:3,t:'🇵🇾 Paraguay tiene dos proveedores separados: 🟢 Nissei y 🟣 Elegancia (el del catálogo Atacado). Arriba elegís cuál, y cada uno tiene sus Productos probados, sus Nuevos y su 🧾 Pedido: un "Ya lo pedí" de uno no toca el pedido del otro. Elegancia arranca con sus perfumes de la lista Black Friday, con foto, código, precio, % y link de ML, igual que Nissei.'}]},
   {v:'23.81',f:'16/10/2026',h:'13:11',c:[{n:2,t:'📋 Ficha completa de cada publicación: desde el 🧠 tocás "Ficha completa" y ves lo mismo que miro yo antes de decidir: lo que ya sabemos (qué precio no rindió y hasta cuándo no se repite), cada cambio de precio con cómo le fue, cada precio que tuvo con su ganancia por día, mis notas y la línea de tiempo entera día por día.'}]},
@@ -13050,6 +13051,15 @@ function candPuedePedir(c){
   if(v<CAND_MIN_VENT)return{ok:false,motivo:`vendió ${v} en ML y el mínimo es ${CAND_MIN_VENT}`};
   return{ok:true,motivo:''};
 }
+// LAS VENDIDAS EN ML SE PUEDEN CARGAR DESDE LA TARJETA (16/10/2026, él armando el pedido de Elegancia: "no me aparecen
+// para pedir"). ML no deja leer ventas de otros vendedores; el chat de compras las carga con candprecio, y ahora también
+// él mismo en la casilla del detalle. Vacío borra el dato.
+async function candSetVend(id,v){
+  const n=String(v).trim()===''?null:Math.max(0,parseInt(String(v).replace(/\D/g,''))||0);
+  try{await fbSet('candidatos_py/'+id+'/vendCarga',n);}catch(e){toast('No se pudo guardar: '+(e.message||e),'err',5000);return;}
+  if((state.candidatos||{})[id])state.candidatos[id].vendCarga=n;
+  toast(n==null?'Vendidas borradas':'Vendidas: '+n+' ✓');renderPedidos();
+}
 function candDias(c){return c&&c.ts?Math.max(0,Math.round((Date.now()-c.ts)/86400000)):null;}
 // ¿SIGUE EN EL ARMADO? (etapa 3, 29/09/2026). La pantalla escondía los de más de CAND_VENCE_DIAS, pero
 // "Llenar" y "Ya lo pedí" no miraban la fecha: le cargaban unidades a uno invisible y lo guardaban en
@@ -14611,6 +14621,9 @@ function candidatosHTML(){
       </summary>
       <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
       <div style="display:flex;gap:10px;flex-wrap:wrap">${fotoBox(RP.fotoPY,'🇵🇾 Paraguay')}${fotoBox(RP.fotoML,'🏷️ ML')}</div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:.72rem" onclick="event.stopPropagation()">🛒 Vendidas en ML (mirá la publicación más barata):
+        <input type="number" min="0" step="1" inputmode="numeric" value="${c.vendCarga!=null&&isFinite(c.vendCarga)?Number(c.vendCarga):''}" placeholder="ej. 150" style="width:90px;font-size:16px;padding:3px 6px" onchange="candSetVend('${c.id}',this.value)">
+        ${c.mlId?`<a href="https://www.mercadolibre.com.ar/p/${String(c.mlId).match(/MLA\d+/)?String(c.mlId).match(/MLA\d+/)[0]:''}" target="_blank" rel="noopener" style="color:var(--green)">abrir en ML ↗</a>`:''}</div>
       <div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap">
         <div style="flex:1;min-width:200px">
           <div style="font-size:.76rem;font-weight:600;line-height:1.35">${c.link?`<a href="${c.link}" target="_blank" rel="noopener" style="color:inherit">${c.nombre}</a>`:c.nombre}</div>
