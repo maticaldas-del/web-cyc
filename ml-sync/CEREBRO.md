@@ -64,7 +64,7 @@ archivo son AYUDA, no la decisión: si sólo se siguen las reglas, lo que nadie 
 - **Toda baja va primero como promo** (descuento propio, mínimo 5%, 14 días) que deje el mismo neto; recién si no se
   puede, bajar el precio de lista. Nunca subir la lista para inflar el tachado.
 - **Escasez** (todas las vueltas, `escasez`): sin caja despachada se estira sin fecha, directo al precio que pienso (ML deja hasta +100% sin problema),
-  techo ~×2 del normal; con caja despachada, que la última salga cerca del día 8. Nunca abajo del precio normal. Al llegar la
+  SIN techo ×2 desde el 16/10: arranca alto y baja en escalera (ver 🪜 abajo); con caja despachada, que la última salga cerca del día 8. Nunca abajo del precio normal. Al llegar la
   caja no se vuelve a ciegas.
   **Qué es escasez (15/10, regla suya): no son 15 días fijos.** Es que se corta ANTES de que vuelva a haber: caja despachada →
   lo que le falta · oficina → ~10 d · si no, comprar (`cyc/reponer`: pedido en camino, Paraguay 17 d + espera, precio que no
@@ -254,3 +254,27 @@ próxima caja a Full"*.
    todo, se baja de a poco. Nunca abajo del precio normal. Al llegar la caja se juzga con la línea de tiempo (no se vuelve a
    ciegas).
  · Y en la misma vuelta se mira Armar caja: si hay mercadería en la oficina de ese producto, se decide mandarla.
+
+## 🪜 ESCASEZ: ARRANCAR MUY ALTO Y BAJAR EN ESCALERA (16/10/2026, regla suya, eligió 1a 2b 3a)
+Él: *"probemos más del 100% de lo que se vende (...) quizás algo que vendemos por 5.000 podemos venderlo a 25.000, no lo
+sabemos (...) es gratis subir precio"* y *"vas bajando en escalera, si no vende o si nos pasamos de escasez a sobrestock"*.
+Por qué: en escasez lo que no se vende antes de la caja se vende después al precio normal; subir de más casi no cuesta, quedarse
+corto sí. **Se saca el techo ×2** (queda sólo el de $650.000).
+ · **Primer salto (1a), según cuánto vendía ESA publicación con stock:** 3+/día → ×4 · 1 a 3/día → ×3 · menos de 1/día → ×2 ·
+   menos de 1 cada 2 días → ×1,5 fijo, sin escalera.
+ · **Escalera:** si no vende, baja 25% a las 12 h (3+/día) · 20% a las 24 h (1-3/día) · 15% a los 2-3 días (menos de 1/día).
+   Si vende más rápido de lo que hace falta para llegar a la caja, sube un escalón. Nunca abajo del precio normal.
+ · **A qué productos (2b, con su aclaración):** *"no vayamos con todos, los que tiene sentido subir. los que ya sabemos que no
+   funcionan más arriba no"*. Va de una para todo lo que está en escasez y tiene sentido, MENOS: lo que ya falló una suba y
+   volví (techo conocido en `notas/techo.md`: Naipes Casino, Centímetro Blanco/Gris, Pendrive 8gb, Infusores, Metatarso,
+   Filtros, Chispero, Rebarbador, Pizarras… y lo que se frenó después de una suba), de catálogo con competidor CON stock (el
+   techo es él), lo que tiene variantes que no se pueden subir solas, liquidando y mis promos. Ésos van con el precio que pienso, sin ×3/×4.
+ · **Barrera $33.000:** se cruza sólo si cada unidad deja más con el envío (~$6.200) restado. Comisión de ML al precio nuevo
+   mirada con el `decido` en prueba (escalones de comisión).
+ · **Salida:** cuando la escasez se termina (llegó la caja) o pasa a sobrar (el stock dura más que la caja + margen, o quedaría
+   con más de 90 días), se baja: primero como promo (PRICE_DISCOUNT), si no con `decido`. Al llegar la caja se juzga con la
+   línea de tiempo: si a ese precio sigue vendiendo y deja más, se queda.
+ · **Riesgo vigilado:** ML nunca nos pausó hasta el doble; más arriba no se probó. En cada vuelta se mira si alguna quedó frenada
+   por ML (`informe`, frenadas) y si pasa, se vuelve al último precio que ML aceptó y se anota.
+ · **Medir:** `escmedir` en las completas; el techo encontrado de cada una va a `notas/techo.md`.
+ · **Fuera de escasez (3a):** buscar el techo con saltos de +30 a +50% y, si funciona, otro salto (la escalera alta es sólo escasez).
