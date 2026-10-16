@@ -8101,6 +8101,21 @@ function esOfertaDeAfuera(o) {
   return !!m && m !== 'none';
 }
 
+// ── SI SÓLO LO VENDEN DESDE AFUERA: SE MIDE CONTRA ELLOS + 20% (16/10/2026, regla suya) ──────
+// Él, con el Cabotine de Gres: *"compra internacional no hay que mirar (excepto que no haya otro
+// vendedor) ahí lo que hay que hacer a la compra internacional agregarle un % ya que la gente tiene
+// que esperar 10 días"*. Antes, sin vendedores argentinos el producto quedaba "sin dato" y no se
+// medía. Ahora se mide contra el de afuera con su precio subido `RECARGO_INTER` (20%: lo que vale
+// llegar mañana contra esperar ~10 días; mismo orden que el premio de Full medido, 3-26%).
+// Con aunque sea UN vendedor de acá, los de afuera se siguen sacando enteros, como antes.
+const RECARGO_INTER = 0.20;
+function ofertasParaMedir(ofertas) {
+  const afuera = (ofertas || []).filter(esOfertaDeAfuera);
+  const aca = (ofertas || []).filter((o) => !esOfertaDeAfuera(o));
+  if (aca.length || !afuera.length) return { ofs: aca, afuera: afuera.length, soloAfuera: false };
+  return { ofs: afuera.map((o) => ({ ...o, price: Math.round((Number(o.price) || 0) * (1 + RECARGO_INTER)) })), afuera: afuera.length, soloAfuera: true };
+}
+
 // ── FULL, FLEX Y CONTRA QUÉ PRECIO SE MIDE DE VERDAD (22/09/2026) ──────────────────────────
 // Pregunta suya con la tintura de la góndola —*"los de 6.999 ¿tienen full?"*— y después la regla:
 // *"tener full nos ayuda a ganar caja, nosotros siempre vamos a vender de esa forma. ojo que ellos
@@ -8950,16 +8965,10 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       // internacional a $31.093 y el más barato argentino está a $37.999.**
       // Si TODOS son de afuera no se inventa un precio: se dice y el producto no se mide, que es
       // lo mismo que se hace cuando el catálogo no tiene vendedores.
-      const ofsAfuera = ofertas.filter(esOfertaDeAfuera);
-      const ofsAca = ofertas.filter((o) => !esOfertaDeAfuera(o));
-      if (ofsAfuera.length && !ofsAca.length) {
-        if (!soloPrueba) await db.set(`cyc/candidatos_py/${id}/motivo`, 'En ML sólo lo venden desde el exterior: no hay contra qué medir.');
-        console.log(`      → los ${ofertas.length} vendedores son del exterior. No lo mido: no es contra ésos que competimos.`);
-        sinDato.push(`${c.nombre} → en ML sólo lo venden desde el exterior`);
-        continue;
-      }
-      if (ofsAfuera.length) console.log(`      (saco ${ofsAfuera.length} vendedor(es) del exterior: no es contra ésos que competimos)`);
-      ofertas = ofsAca;
+      const _om = ofertasParaMedir(ofertas);
+      if (_om.soloAfuera) console.log(`      → los ${ofertas.length} vendedores son del exterior: mido contra ellos con +${Math.round(RECARGO_INTER * 100)}% (el comprador espera ~10 días)`);
+      else if (_om.afuera) console.log(`      (saco ${_om.afuera} vendedor(es) del exterior: no es contra ésos que competimos)`);
+      ofertas = _om.ofs;
       vendedores = ofertas.length;
       // EL PRECIO DE REFERENCIA ES EL MÁS BARATO **CON FULL**, no el más barato a secas
       // (22/09/2026 · ver `precioAIgualar`). Uno que manda a mano no obliga a igualarle el precio:
@@ -18770,13 +18779,10 @@ async function main() {
           console.log(`  🏷️ ${/404/.test(txt) ? '❌ hoy no hay ningún vendedor activo en ese catálogo. Sin precio no hay margen que chequear.' : `❌ no pude pedir los vendedores (${txt.slice(0, 80)})`}`);
           rojos.push({ c, frenos, reparos, u: Number(c.pedirU) || 0, usd, margen: null, ganancia: 0, vend: isFinite(Number(c.vendCarga)) ? Number(c.vendCarga) : null }); console.log(''); continue;
         }
+        const _omR = ofertasParaMedir(ofertas);
         const afuera = ofertas.filter(esOfertaDeAfuera);
-        const aca = ofertas.filter((o) => !esOfertaDeAfuera(o));
-        if (!aca.length) {
-          frenos.push('en ML sólo lo venden desde el exterior');
-          console.log(`  🏷️ ❌ los ${ofertas.length} vendedores son del EXTERIOR. No es contra ésos que competís, así que no hay con qué medir.`);
-          rojos.push({ c, frenos, reparos, u: Number(c.pedirU) || 0, usd, margen: null, ganancia: 0, vend: isFinite(Number(c.vendCarga)) ? Number(c.vendCarga) : null }); console.log(''); continue;
-        }
+        const aca = _omR.ofs;
+        if (_omR.soloAfuera) { reparos.push(`sólo lo venden desde el exterior: medido contra ellos +${Math.round(RECARGO_INTER * 100)}%`); console.log(`  🏷️ ⚠️ los ${ofertas.length} vendedores son del EXTERIOR: mido contra su precio +${Math.round(RECARGO_INTER * 100)}% (el comprador espera ~10 días).`); }
         // CONTRA QUIÉN SE MIDE: la MISMA función que usa el comando que decide la compra
         // (`precioAIgualar`). Con dos copias, el que revisa diría "está todo bien" midiendo contra
         // otro precio que el que decidió — que es todo el motivo por el que este comando existe.
@@ -18784,7 +18790,7 @@ async function main() {
         const mlPrecio = _piR ? _piR.precio : 0;
         const mlMax = _piR ? Math.round(_piR.max) : 0;
         const ref = _piR ? _piR.ref : aca[0];
-        console.log(`  🏷️ hoy en ML: ${mlMax > mlPrecio ? `de ${money(Math.round(_piR ? _piR.baratoTodos : mlPrecio))} a ${money(mlMax)}` : money(Math.round(mlPrecio))} · ${aca.length} vendedor(es) argentino(s)${afuera.length ? ` (saqué ${afuera.length} del exterior)` : ''}`);
+        console.log(`  🏷️ hoy en ML: ${mlMax > mlPrecio ? `de ${money(Math.round(_piR ? _piR.baratoTodos : mlPrecio))} a ${money(mlMax)}` : money(Math.round(mlPrecio))} · ${_omR.soloAfuera ? `${aca.length} vendedor(es), todos del exterior (precio +${Math.round(RECARGO_INTER * 100)}%)` : `${aca.length} vendedor(es) argentino(s)${afuera.length ? ` (saqué ${afuera.length} del exterior)` : ''}`}`);
         console.log(`     cómo despachan: con Full ${_piR ? _piR.conFull : '?'}${_piR && _piR.conFlex ? ` · con Flex ${_piR.conFlex}` : ''} · a mano ${_piR ? _piR.sinFull - (_piR.conFlex || 0) : '?'}`);
         if (_piR && _piR.premioPct > 0) {
           reparos.push(`el más barato (${money(Math.round(_piR.baratoSinFull))}) no tiene Full: se mide contra ${money(Math.round(mlPrecio))}`);
@@ -18796,7 +18802,7 @@ async function main() {
         } else {
           console.log(`     el más barato con Full es la publicación ${ref && ref.item_id ? ref.item_id : '?'} — ése es el precio que tenés que igualar`);
         }
-        if (afuera.length && afuera.length >= aca.length) console.log('     ⚠️ hay tantos o más vendedores de afuera que argentinos: es un catálogo que manejan de afuera.');
+        if (!_omR.soloAfuera && afuera.length && afuera.length >= aca.length) console.log('     ⚠️ hay tantos o más vendedores de afuera que argentinos: es un catálogo que manejan de afuera.');
 
         // 5 · LAS VENTAS. Las carga el chat: ML contesta 403 de publicaciones ajenas (probado).
         // ── LAS VENTAS: +100 PARA EL PEDIDO DE HOY (19/09/2026) ──────────────────────
@@ -20290,9 +20296,11 @@ async function main() {
       }
       // LOS DE AFUERA NO CUENTAN (regla suya del 19/09): no es contra ésos que competís, y como se
       // mide contra el MÁS BARATO, alcanza con que uno de afuera esté abajo para que el número salga mal.
+      const _omG = ofertasParaMedir(ofsG);
       const _afueraG = ofsG.filter(esOfertaDeAfuera);
-      const _acaG = ofsG.filter((o) => !esOfertaDeAfuera(o));
-      if (!_acaG.length) { console.log(`\n❌ ${_afueraG.length ? 'En ML sólo lo venden desde el EXTERIOR' : 'No hay vendedores'}: no hay contra qué medir.`); return; }
+      const _acaG = _omG.ofs;
+      if (!_acaG.length) { console.log('\n❌ No hay vendedores: no hay contra qué medir.'); return; }
+      if (_omG.soloAfuera) console.log(`\n⚠️ En ML sólo lo venden desde el EXTERIOR: mido contra su precio +${Math.round(RECARGO_INTER * 100)}% (el comprador espera ~10 días).`);
       // ── EL MÁS BARATO NO SIEMPRE ES CONTRA QUIEN COMPETÍS: MIRAR SI ES FULL ──────────
       // Pregunta suya con la tintura: *"otro detalle, los de 6.999 tienen full?"*. Es la misma
       // lógica que los vendedores del exterior, que ya se sacan: el comprador de ML elige el que
@@ -20323,7 +20331,7 @@ async function main() {
       const _barato = _piG.precio;
       const _ofBarata = _piG.ref;
       console.log(`\n── A CUÁNTO SE VENDE HOY ──`);
-      console.log(`   ${_acaG.length} vendedor(es) argentino(s)${_afueraG.length ? ` (y ${_afueraG.length} del exterior, que no cuentan)` : ''}`);
+      console.log(_omG.soloAfuera ? `   ${_acaG.length} vendedor(es), todos del exterior (con +${Math.round(RECARGO_INTER * 100)}%)` : `   ${_acaG.length} vendedor(es) argentino(s)${_afueraG.length ? ` (y ${_afueraG.length} del exterior, que no cuentan)` : ''}`);
       console.log(`   del más barato ${money(_baratoTodos)} al más caro ${money(_caro)}`);
       console.log(`   con Full: ${_conFull.length}${_conFull.length ? ` · el más barato ${money(_baratoFull)}` : ''}`);
       console.log(`   sin Full: ${_sinFull.length}${_sinFull.length ? ` · el más barato ${money(Math.min.apply(null, _sinFull.map((o) => Number(o.price) || Infinity)))}` : ''}`);

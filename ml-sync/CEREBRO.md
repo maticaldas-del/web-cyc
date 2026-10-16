@@ -321,3 +321,6 @@ producto?"* y, con la lista, *"lo que recomiendes"* en las 11. Cada una, en cada
 10. **Lo que vuelve de agotado** se compara contra el ÚLTIMO tramo con stock de su línea de tiempo (no contra 30 días en
     cero): así entra en el techo y en la lupa.
 11. **Lista de Tito: "SÓLO estos colores, si no hay no reemplazar"** (lo agregan `decide_pedidos.py` y el 📋 Copiar pedido).
+
+## 🌎 VENDEDORES DEL EXTERIOR (16/10/2026, regla suya)
+No se miran (los saca `esOfertaDeAfuera`), salvo que no haya ningún vendedor de acá: ahí se mide contra el de afuera con su precio +20% (`RECARGO_INTER`), porque el comprador espera ~10 días.

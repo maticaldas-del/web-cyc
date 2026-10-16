@@ -9039,6 +9039,12 @@ en ML y 5 vendedores o menos → 3 (4 si tiene 300+ vendidas) · caro (más de U
 vuela (se agota rápido) entra en el pedido SIGUIENTE con unidades según sus ventas: eso lo decido yo con `pedidostodo`.
 Medido antes: del pedido del 21/09, 1 de 12 se agotó rápido (ZX310) y 10 no vendieron nada en 17 días.
 
+## 🌎 LO QUE SÓLO VENDEN DESDE AFUERA: SE MIDE CONTRA ELLOS +20% (16/10/2026, regla suya)
+Él: *"compra internacional no hay que mirar (excepto que no haya otro vendedor) ahí lo que hay que hacer a la compra
+internacional agregarle un % ya que la gente tiene que esperar 10 días"*. Con un vendedor argentino, los de afuera se sacan
+(como siempre); si son todos de afuera, `ofertasParaMedir` los usa con +20% (`RECARGO_INTER`). Caso: Cabotine de Gres 100ml,
+el de Texas ($30.529) ya se sacaba; el más barato argentino está a $30.457 (agencia, sin Full).
+
 ## ⏳ LO QUE NO SE PUEDE REPONER: ESTIRAR HASTA 4 MESES (16/10/2026, regla suya)
 Él: *"una combinacion entre esperar lo maximo posible y maximizar ganancia lo maximo posible en los 4 meses de stock que
 tenemos. pero si o si en los 4 meses hay que vender todo. siempre esperando a que se pueda pedir en nissei"*. Lo que Nissei no
