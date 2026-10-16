@@ -2619,7 +2619,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.74';
+const APP_VERSION='23.75';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2630,6 +2630,7 @@ const APP_VERSION='23.74';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.75',f:'16/10/2026',h:'01:57',c:[{n:1,t:'🚚 Pedidos: cuando un pedido al proveedor ya pasó la fecha en que tenía que llegar, el aviso dice "ya debería haber llegado" en vez de "~0 d".'}]},
   {v:'23.74',f:'16/10/2026',h:'01:25',c:[{n:2,t:'💰 Pedidos: cada color puede tener su propio máximo de compra, calculado con el precio al que se vende ESE color (el que sostuvo 2 semanas con stock, sin escasez ni pruebas). Sale en el renglón del color cuando Claude decidió ese precio.'}]},
   {v:'23.73',f:'16/10/2026',h:'12:30',c:[{n:1,t:'🧠 Las notas del cerebro ya no se cortan: se guardaban sólo los primeros 600 caracteres (400 en Pedidos). Ahora entran enteras. Las ya guardadas siguen cortadas hasta que Claude las vuelva a escribir.'}]},
   {v:'23.72',f:'16/10/2026',h:'12:10',c:[{n:1,t:'🚚 Pedidos hechos: la tarjeta cerrada de un pedido en camino dice "llega ~dd/mm" (desde la guía del correo si está). Cuando llega, dice "llegó dd/mm".'}]},
@@ -7257,7 +7258,7 @@ function reponerDe(p){
 function _reponerCalc(p){
   const dm=s=>String(s||'').split('-').reverse().slice(0,2).join('/');
   const v=_pedidoViaja(p.id);
-  if(v)return{d:v.falta+REPO_ARMAR_CAJA,txt:`viene en el pedido de ${v.de} del ${dm(v.fecha)} (~${v.falta} d) + ${REPO_ARMAR_CAJA} d de caja a Full`};
+  if(v)return{d:v.falta+REPO_ARMAR_CAJA,txt:`viene en el pedido de ${v.de} del ${dm(v.fecha)} (${v.falta>0?'~'+v.falta+' d':'ya debería haber llegado'}) + ${REPO_ARMAR_CAJA} d de caja a Full`};
   if(noTraerDe(p.id))return{d:REPO_SIN_FECHA_DIAS,inf:true,txt:'marcado "no traer más": no se repone'};
   const py=p.origen==='py'&&!esPedidoPaulvic({prodId:p.id});
   if(!py)return{d:PED_DIAS_ROJO,txt:esPedidoPaulvic({prodId:p.id})?'Paulvic: ~1 semana + caja':'Bs As: ~1 semana + caja'};
