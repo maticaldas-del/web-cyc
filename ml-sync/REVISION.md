@@ -237,7 +237,7 @@ Qué chequear: que la cuenta del peor caso use la misma comisión que la normal,
 ### Escasez: arrancar muy alto y bajar en escalera (16/10/2026, regla suya, eligió 1a 2b 3a)
 - **Qué es:** reemplaza el "techo ~×2" de arriba. Primer salto por ritmo (3+/día ×4 · 1-3 ×3 · <1 ×2 · <0,5 ×1,5 fijo), escalera
   para abajo si no vende (25%/12 h · 20%/24 h · 15%/2-3 d), sube un escalón si vende de más, nunca abajo del normal. Va para todo
-  lo que está en escasez y tiene sentido, salvo techo conocido (falló una suba), catálogo con competidor con stock, liquidando, mis promos.
+  lo que está en escasez y tiene sentido, salvo techo conocido (falló una suba), liquidando, mis promos. La caja de compra no frena (corrección suya del 16/10).
 - **Dónde vive:** `ml-sync/CEREBRO.md` (🪜), las vueltas de Claude, `decido`, `escmedir`, `notas/techo.md`.
 - **Qué chequear:** que ninguna quede pausada por ML (si pasa, volver al último precio aceptado y anotarlo) · que la escalera
   baje de verdad cuando no vende · que al llegar la caja o pasar a sobrar se salga (promo primero) · que no se use ×3/×4 en lo
