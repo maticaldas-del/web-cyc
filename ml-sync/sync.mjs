@@ -36574,8 +36574,11 @@ async function main() {
         // Y lo que hay en total (Full + camino + oficina) tiene que durar hasta que llegue una COMPRA nueva.
         const tot = r14 > 0 ? (st + camK.reduce((a, c) => a + c.u, 0) + ofi) / r14 : Infinity;
         const leadComp = comp.inf ? Infinity : comp.d;
-        const escFull = alc < lead && !(lead === Infinity && alc > REPO_SIN_FECHA_E);
-        const escComp = tot < leadComp && !(leadComp === Infinity && tot > REPO_SIN_FECHA_E);
+        // Sin reposición = escasez SIEMPRE que quede algo (16/10/2026, él: "no tenemos fecha siquiera para recuperar stock,
+        // va en rojo (…) agrandar el % lo máximo posible"). Misma regla que `escasezDe` de la web.
+        const hayAlgo = st + camK.reduce((a, c) => a + c.u, 0) + ofi > 0;
+        const escComp = comp.inf ? hayAlgo : tot < leadComp;
+        const escFull = !escComp && alc < lead && lead !== Infinity;
         todasE[k] = { k, pid, cta, color: iv > 0 ? k.slice(iv + 5) : '', st, r14, cal: rr.cal, dCon: rr.d, rn: !!rr.normal, r3, u14: vv.u14, u30: vv.u30, alc, lead, leadTxt, tot, comp, escFull, escComp, ofi, cam: camK, camU: camK.reduce((a, c) => a + c.u, 0), vts: vv.vts };
         if (alc > dMax && !escFull && !escComp) continue;
         filas.push({ k, pid, cta, color: iv > 0 ? k.slice(iv + 5) : '', st, r14, dCon: rr.d, cal: rr.cal, r3, alc, u14: vv.u14, u30: vv.u30, ofi, cam: camK, lead, leadTxt, tot, comp, escFull, escComp });

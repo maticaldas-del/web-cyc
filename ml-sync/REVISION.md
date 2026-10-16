@@ -1078,3 +1078,9 @@ lo que tarda COMPRAR; el semáforo usaba ≤ y el robot <. Chequear: que un prod
 Ritmo: los tres con 30 días con stock (eligió la a el 16/10; antes el robot usaba 14).
 **v23.78:** la línea de tiempo pinta en naranja (número, texto y línea del gráfico) lo que alcanza menos de lo que tarda reponer (`_corteE` = `reponerDe(p).d`). Chequear: Pendrive 16gb en naranja, no verde.
 **16/10 · ritmo único:** el robot (`escasez`) saca el ritmo de `mlapi/linea` (últimos 30 días, días con venta o stock, sin remates, 3+ ventas y 7+ días; si no, `cyc/ritmonormal`), la misma cuenta que `_pdiaAntes` de la línea de la web. Respaldo: el registro hora por hora. Chequear: Pendrive 16gb da los mismos días en la línea y en el expediente.
+**v23.79 (16/10) · ESCASEZ ES ROJO, regla suya:** *"escasez significa lo mismo siempre: rojo. Naranja es que compramos y
+recuperamos el stock (…) mientras tanto escasez, rojo y tratar el producto como tal: agrandar el % lo máximo posible"*.
+`pedSemDe`: 🔴 sin stock o escasez (dura menos que reponer, o sin reposición con algo de stock) · 🟠 comprar ya y llega a
+tiempo (hasta `PED_NARANJA_MARGEN`=7 d más que reponer) · 🟡 hay tiempo. Igual en `escasezDe`, la línea de tiempo y el robot
+(sin reposición = escasez siempre, sin el corte de 60 d). Si mañana Paraguay vuelve a dar el 25%, `reponerDe` deja de ser
+"sin fecha" y el producto pasa solo a naranja o amarillo. Chequear: Pendrive 16gb en rojo en Pedidos, línea y expediente.

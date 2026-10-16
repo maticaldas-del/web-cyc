@@ -218,6 +218,12 @@ máximo de ese color sale con el margen de su publicación (`cyc/netopub`). El p
 stock, nunca uno de escasez ni de la primera semana de una prueba de techo. Lo pongo en las vueltas de pedidos cuando los colores
 se venden a precios distintos (si no, alcanza el del producto).
 
+## 🔴 ESCASEZ = ROJO, Y SE TRATA COMO ESCASEZ (16/10/2026, regla suya)
+*"escasez significa lo mismo siempre (…) en este caso no tenemos fecha siquiera para recuperar stock, va en rojo (…) agrandar el
+% de ganancia lo máximo posible"*. Lo que se termina antes de poder reponer, o lo que NO se puede reponer, es escasez: precio
+para la mayor ganancia que vacíe el stock a tiempo (sin reposición: en ~100 días, nunca más de 120). Si vuelve a poder
+comprarse con 25%, deja de ser escasez solo (naranja/amarillo) y el precio se vuelve a pensar.
+
 ## 🔁 TODA DECISIÓN TIENE SU SALIDA (16/10/2026, pedido suyo)
 Él: *"si eso no te lo decía yo, ¿te ibas a dar cuenta? puede haber cosas que yo no me di cuenta, no te expliqué, no hay regla
 para eso y vos no lo mirás. me gustaría que esté controlado"*. Respuesta honesta: no, no me iba a dar cuenta: las decisiones
