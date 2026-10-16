@@ -2619,7 +2619,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.70';
+const APP_VERSION='23.71';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2630,6 +2630,7 @@ const APP_VERSION='23.70';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.71',f:'16/10/2026',h:'11:55',c:[{n:1,t:'🚚 Pedidos de Paraguay: con la guía del correo cargada, "llegaría aprox." se cuenta desde el día que salió por el correo (3 días hábiles), no desde el pedido. Se ve también "despachado el".'}]},
   {v:'23.70',f:'16/10/2026',h:'01:30',c:[{n:2,t:'📦 Deshacer una caja devuelve también las unidades sugeridas a Armar caja (antes quedaba vacía, porque cerrarla las descontaba y deshacerla no las devolvía).'}]},
   {v:'23.69',f:'15/10/2026',h:'19:45',c:[{n:3,t:'⏱️ Pedidos: el corte del naranja ya no es fijo (14/17 días). Sale de cuánto tarda de verdad en volver a haber cada producto: si viene en un pedido en camino, lo que le falta; si en Paraguay el precio no da o Nissei no lo tiene, SIN FECHA (cuenta 60 días); si da, 17 días más lo que falte del pedido que viaja. La tarjeta dice el motivo abajo de la barra.'}]},
   {v:'23.68',f:'15/10/2026',h:'18:00',c:[{n:1,t:'📋 Listas: ya no se miden solas cada 3 horas (eso queda sólo para Paraguay). Se mide cada lista una vez al cargarla, y si no da se descarta el proveedor (no se muestra más).'}]},
@@ -13345,6 +13346,9 @@ function pedNuevos(vivos){
 // Y LOS CANDIDATOS QUEDAN MARCADOS `pedidoEn`, que no es un detalle: sin eso el botón
 // 🪄 Llenar hasta el tope volvía a cargar lo que YA está viajando, y eso se paga dos veces.
 const PY_DIAS_LLEGADA=5;   // días HÁBILES que tarda el pedido de Paraguay (CLAUDE.md, 16/09/2026)
+// Con la guía del correo cargada (`despacho`), la llegada sale de ese día + lo que tarda el correo (16/10/2026, él: "tiene en
+// cuenta el día que pedimos, no el día despachado"). 3 hábiles de Puerto Iguazú a la oficina: aprox, a medir con estos pedidos.
+const PY_DIAS_CORREO=3;
 // Días hábiles desde una fecha, para decir cuándo llegaría. No cuenta feriados: no los sabemos, y
 // por eso el renglón dice "aprox" en vez de dar una fecha como si fuera una promesa.
 function pyMasHabiles(f,n){
@@ -13735,8 +13739,9 @@ function pyPedidoDetalleHTML(c){
         ${c.estado==='llego'
           ? fila('llegó el',(c.fechaLlego||'—')+(c.fechaLlego?' <span style="color:var(--muted)">· '+Math.max(0,Math.round((Date.parse(c.fechaLlego+'T12:00:00-03:00')-Date.parse(c.fecha+'T12:00:00-03:00'))/86400e3))+' d</span>':''))
           : fila('hace','<b>'+Math.max(0,Math.floor((Date.now()-Date.parse(c.fecha+'T12:00:00-03:00'))/86400e3))+' días</b>')}
-        ${c.estado==='camino'?(()=>{const lleg=pyMasHabiles(c.fecha,PY_DIAS_LLEGADA);const f=lleg.toISOString().slice(0,10);const tarde=Date.now()>lleg.getTime()+86400e3;
-          return fila('llegaría aprox.',`<span style="color:${tarde?'var(--amber)':'var(--text)'}">${f}${tarde?' · ya se pasó':''}</span>`,'Son '+PY_DIAS_LLEGADA+' días hábiles, que es lo que tarda el pedido de Paraguay. No cuenta feriados: por eso dice "aprox".');})():''}
+        ${c.estado==='camino'&&c.despacho?fila('despachado el',c.despacho+' <span style="color:var(--muted)">· guía del correo</span>'):''}
+        ${c.estado==='camino'?(()=>{const desp=/^\d{4}-\d{2}-\d{2}$/.test(c.despacho||'');const lleg=desp?pyMasHabiles(c.despacho,PY_DIAS_CORREO):pyMasHabiles(c.fecha,PY_DIAS_LLEGADA);const f=lleg.toISOString().slice(0,10);const tarde=Date.now()>lleg.getTime()+86400e3;
+          return fila('llegaría aprox.',`<span style="color:${tarde?'var(--amber)':'var(--text)'}">${f}${tarde?' · ya se pasó':''}</span>${desp?'':' <span style="color:var(--muted)">· sin guía: cuento desde el pedido</span>'}`,desp?'Son '+PY_DIAS_CORREO+' días hábiles desde que salió por el correo (la guía). No cuenta feriados: por eso dice "aprox".':'Son '+PY_DIAS_LLEGADA+' días hábiles desde el pedido, porque todavía no está la guía del correo. Con la guía cargada se cuenta desde el despacho.');})():''}
         ${fila('productos / unidades',pyPedidoCuenta(c).p+' / '+pyPedidoCuenta(c).u)}
         ${c.pesoKg!=null
           ? fila('peso aprox.', (c.pesoKg).toFixed(2)+' kg'+(sinPeso>0?` <span style="color:var(--amber)">· es un PISO</span>`:''), sinPeso>0?`Medido sobre ${c.pesoUnidades} de ${c.unidades} unidades: a ${sinPeso} no les habían cargado el peso, así que el pedido pesa MÁS que esto. El correo cobra por peso.`:'Todas las unidades tenían el peso cargado.')

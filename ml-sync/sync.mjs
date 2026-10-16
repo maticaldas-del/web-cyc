@@ -40268,7 +40268,7 @@ async function main() {
         const envio = dePrevio('envio', 'envio'), cambio = dePrevio('cambio', 'cambista') || 0, otros = dePrevio('otros', 'otros') || 0;
         // `adelanto` (15/10/2026): lo que cuesta adelantar la plata para poder hacer el pedido. Gasto fijo aparte.
         const adelanto = dePrevio('adelanto', 'adelanto') || 0;
-        if (yaG && Object.keys(campos).some((k) => !['usd', 'merc', 'envio', 'cambio', 'otros', 'retira', 'adelanto', 'det', 'nota', 'kg', 'tipo', 'sinpesos'].includes(k))) console.log('  (hay un campo que no conozco; se ignora)');
+        if (yaG && Object.keys(campos).some((k) => !['usd', 'merc', 'envio', 'cambio', 'otros', 'retira', 'adelanto', 'det', 'nota', 'kg', 'tipo', 'sinpesos', 'despacho', 'pedido'].includes(k))) console.log('  (hay un campo que no conozco; se ignora)');
         if (yaG) console.log(`  (lo que no pasaste se toma de lo guardado: ${['usd', 'merc', 'envio', 'cambio', 'retira', 'otros', 'adelanto'].filter((k) => campos[k] == null).join(', ') || 'nada'})`);
         // `retira` es lo que cobra el que retira en Paraguay y despacha. Tiene su propio nombre y no
         // va metido en `otros` porque es el gasto FIJO más grande que tiene el pedido (medido el
@@ -40400,6 +40400,8 @@ async function main() {
           pagos: { mercaderia: Math.round(merc), cambista: Math.round(cambio), envio: Math.round(envio), retira: Math.round(retira), otros: Math.round(otros), adelanto: Math.round(adelanto) },
           items: itemsFin, nota: campos.nota || (ya && ya.nota) || '', tcPanel: tcRef || null,
           usdPanel, kgCorreo: kgPedido > 0 ? kgPedido : null,
+          // `despacho=AAAA-MM-DD`: el día que salió por el correo (la guía). Con eso la web calcula la llegada desde ahí (16/10/2026).
+          despacho: (/^\d{4}-\d{2}-\d{2}$/.test(campos.despacho || '') ? campos.despacho : null) || (ya && ya.despacho) || null,
           // EL TICKET ES OBLIGATORIO PARA CERRAR EL PEDIDO (10/10/2026, regla suya): sólo `det=` (el ticket real del
           // mayorista, renglón por renglón) lo marca. Sin esto "Llegó" no cierra el pedido.
           ...(itemsDet ? { ticket: { ts: Date.now(), productos: itemsDet.length, usdWeb: Math.round(itemsDet.reduce((a, x) => a + (x.usdWeb > 0 ? x.usdWeb : x.usd) * x.u, 0) * 100) / 100, usdPagado: Math.round(itemsDet.reduce((a, x) => a + x.usd * x.u, 0) * 100) / 100 } } : {}),
