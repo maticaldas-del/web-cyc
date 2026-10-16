@@ -279,6 +279,10 @@ corto sí. **Se saca el techo ×2** (queda sólo el de $650.000).
  · **Riesgo vigilado:** ML nunca nos pausó hasta el doble; más arriba no se probó. En cada vuelta se mira si alguna quedó frenada
    por ML (`informe`, frenadas) y si pasa, se vuelve al último precio que ML aceptó y se anota.
  · **Medir:** `escmedir` en las completas; el techo encontrado de cada una va a `notas/techo.md`.
+ · **Cómo se juzga (16/10, él con el Barbarella):** una suba por escasez NO pierde plata por vender menos: lo que no se vende
+   en esos días se vende después. Cuenta sólo lo cobrado de más. La única pérdida real es que llegue la caja y quede stock caro
+   que al precio normal se habría vendido: por eso, cuando AL RITMO NORMAL (el de antes de la suba) el stock alcanza hasta la
+   caja, vuelve al precio normal para que la última salga cerca del día que llega (lo marca el 🔁 de `escasez`).
  · **Fuera de escasez (3a):** buscar el techo con saltos de +30 a +50% y, si funciona, otro salto (la escalera alta es sólo escasez).
 
 ## 📋 LA FICHA DE CADA PUBLICACIÓN SE ABRE ANTES DE DECIDIR (16/10/2026, regla suya, eligió 1a 2a 3a)
