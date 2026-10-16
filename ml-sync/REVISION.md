@@ -717,6 +717,10 @@ nota con el motivo adentro + el mismo cambio en claudecambios → sale una sola 
 - **Qué chequear:** que renombrar siga guardando igual (`updProdName`) y que en la PC no quede un renglón vacío de más.
 
 ## 8 · DATOS E HISTORIAL (nueva, 08/10/2026)
+- **Reloj de los 4 meses en la línea de tiempo (16/10/2026, v23.92).** Carril de stock: barra roja por día = días seguidos con
+  stock ÷ `almacDiasDe(p)` (120 chico · 60 Tenders); vuelve a 0 cuando el stock queda en cero; arranca desde `_stHistDesde`
+  (historial o lotes de ML) si es anterior al gráfico. Arriba a la derecha "⏳ faltan N d". Chequear: que no se cuente un día
+  sin dato como "con stock" (usa `_conSt`, la misma regla que la franja verde/roja). Es aproximado: manda la unidad más vieja.
 Todo lo que guarda la historia día por día y las pantallas que la dibujan.
 - **Línea de tiempo por producto** (`mlapi/linea/<MLA>/<día>`, `_lineaJunta`, `lineaPintar`): stock,
   precio, caja, visitas, ventas, remate, escalera; el día de hoy armado en la web; campo ausente =

@@ -2620,7 +2620,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.91';
+const APP_VERSION='23.92';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2631,6 +2631,7 @@ const APP_VERSION='23.91';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.92',f:'16/10/2026',h:'18:05',c:[{n:1,t:'Línea de tiempo: en stock, una barra roja que se va llenando día a día hasta los 4 meses (cuando ML empieza a cobrar almacenamiento), y arriba a la derecha cuántos días faltan.'}]},
   {v:'23.91',f:'16/10/2026',h:'17:45',c:[{n:3,t:'Arreglado: la app no abría. El archivo que la hace funcionar como app instalada había quedado vacío en las versiones 23.89 y 23.90.'}]},
   {v:'23.90',f:'16/10/2026',h:'17:20',c:[{n:1,t:'Pedidos: cada color muestra su precio máximo de compra, también los que no tienen un precio propio decidido (usan el del producto y el globito lo aclara).'}]},
   {v:'23.89',f:'16/10/2026',h:'17:10',c:[{n:3,t:'Escasez de Bs As corregida: ya no alcanza con tener la oficina vacía. Se da por repuesto (~1 semana + caja) y pasa a "no se consigue" sólo si Pedidos lo pide hace 10 días y no entró nada a la oficina; cuando entra, se cae solo. Y la escasez se mide con el ritmo normal: una suba que frenó las ventas no achica lo que se pide comprar.'}]},
@@ -9575,6 +9576,13 @@ function lineaPintar(prodId){
   const _conSt=(d,k)=>(!!d&&(d.u>0||d.st>0||(d.vis>0&&!(d.st!=null&&d.stN>=d.pubs))))||(!!k&&_stHistDesde!=null&&k>=_stHistDesde&&!(d&&d.st!=null&&d.stN>=d.pubs&&!(d.st>0)));
   const _stIni=ks.find(k=>dias[k]&&(dias[k].u>0||dias[k].st!=null||dias[k].vis>0))||'9999';
   let svg='';
+  // EL RELOJ DE LOS 4 MESES (16/10/2026, él: "agregar lo que falta para llegar a los 4 meses, por día, con una barra que
+  // se vaya llenando, siempre roja"). Días seguidos con stock (si se quedó en cero, la mercadería vieja ya se vendió y el
+  // reloj vuelve a 0) contra `almacDiasDe(p)` (120 chico · 60 Tenders). Si el historial o los lotes de ML dicen que había
+  // stock desde antes del gráfico, arranca contando esos días. Es aproximado: la unidad más vieja manda.
+  const _alD=almacDiasDe(p),_alC={};{let c=null;ks.forEach(k=>{const d=dias[k];const si=_conSt(d,k),no=!si&&k>=_stIni;
+    if(si){if(c==null)c=(_stHistDesde&&_stHistDesde<k)?Math.max(0,Math.round((Date.parse(k.replace(/_/g,'-'))-Date.parse(_stHistDesde.replace(/_/g,'-')))/864e5)):0;c++;_alC[k]=c;}
+    else if(no)c=0;});}
   // fondo de meses
   let lastM=''; ks.forEach((k,i)=>{const mm=k.slice(0,7);if(mm!==lastM){lastM=mm;svg+=`<line x1="${X(i)}" y1="0" x2="${X(i)}" y2="${H}" stroke="rgba(128,128,128,.25)" stroke-width="1"/><text x="${X(i)+2}" y="${H+12}" font-size="10" fill="var(--muted)">${['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'][Number(k.slice(5,7))-1]}</text>`;}});
   let ptsP=[];
@@ -9594,6 +9602,7 @@ function lineaPintar(prodId){
     // dato del producto queda gris (ahí todavía no existía o no se miraba).
     // Y si no hay dato de stock pero tuvo VISITAS, había stock (él, mismo día).
     const stK=_conSt(d,k)?'si':(k>=_stIni?'no':null);
+    if(suv.length&&_alC[k]){const hA=Math.min(1,_alC[k]/_alD)*(_stB0-L.st[0]-2);svg+=`<rect x="${x}" y="${(_stB0-hA).toFixed(1)}" width="${bw}" height="${hA.toFixed(1)}" fill="var(--red)" opacity="${_alC[k]>=_alD?'.45':'.22'}"><title>${_alC[k]} d con stock · ${_alC[k]>=_alD?'ya paga almacenamiento':'faltan '+(_alD-_alC[k])+' d para los '+Math.round(_alD/30)+' meses'}</title></rect>`;}
     svg+=`<rect x="${x}" y="${_stB0}" width="${bw}" height="${_stBh}" fill="${stK==='si'?'var(--green)':stK==='no'?'var(--red)':'rgba(128,128,128,.25)'}" opacity="${stK?'.75':'1'}"/>`;
     // precio
     if(d&&d.p>0)ptsP.push(`${(x+bw/2).toFixed(1)},${(L.pr[0]+L.pr[1]-(pcMax>pcMin?(d.p-pcMin)/(pcMax-pcMin):.5)*L.pr[1]).toFixed(1)}`);
@@ -9622,7 +9631,8 @@ function lineaPintar(prodId){
       if(prev&&i-prevI<=3)svg+=`<line x1="${prev[0].toFixed(1)}" y1="${prev[1].toFixed(1)}" x2="${pt[0].toFixed(1)}" y2="${pt[1].toFixed(1)}" stroke="${c}" stroke-width="2"/>`;
       else svg+=`<circle cx="${pt[0].toFixed(1)}" cy="${pt[1].toFixed(1)}" r="1.5" fill="${c}"/>`;prev=pt;prevI=i;});
     ks.forEach((k,i)=>{if(stIn[k]==null)return;const x=X(i)+bw/2,y=ys(stU[k]);svg+=`<path d="M${(x-3.5).toFixed(1)},${(y-9).toFixed(1)} L${(x+3.5).toFixed(1)},${(y-9).toFixed(1)} L${x.toFixed(1)},${(y-3).toFixed(1)} Z" fill="#38bdf8"/>`;});
-    svg+=`<text x="${W-2}" y="${L.st[0]+9}" font-size="10" text-anchor="end" fill="var(--muted)">${Math.round(sMax)} u.</text>`;}
+    svg+=`<text x="${W-2}" y="${L.st[0]+9}" font-size="10" text-anchor="end" fill="var(--muted)">${Math.round(sMax)} u.</text>`;
+    {const _kh=ks[ks.length-1],_ch=_alC[_kh];svg+=`<text x="${W-2}" y="${L.st[0]+21}" font-size="10" text-anchor="end" fill="var(--red)">${_ch?(_ch>=_alD?'⏳ ya paga almacenamiento':'⏳ faltan '+(_alD-_ch)+' d para '+Math.round(_alD/30)+' meses'):'⏳ reloj en 0'}</text>`;}}
   if(ptsP.length>1)svg+=`<polyline points="${ptsP.join(' ')}" fill="none" stroke="var(--text)" stroke-width="1.5"/>`;
   // marcas de cambios de precio
   const motivoTxt={rescate:'🛟 rescate después de una venta baja',rescatep:'🛟 rescate antes de vender (cuenta)',subir:'📈 suba del robot',bajar:'📉 baja del robot',remate:'🔻 remate',escalera:'🪜 escalera',prueba:'🧪 prueba +5%',promo:'🏷️ promo (precio tachado)',mano:'✋ a mano',volver:'↩️ vuelto atrás'};
