@@ -310,7 +310,7 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 ### Pasada de fotos: los candidatos del catálogo entero (16/10/2026)
 **Qué es:** los candidatos que vienen de `pycat` tienen código `c<números>p<números>` y ni `revfotos.py armar` ni `revcand` los reconocían: la pasada decía 0 para mirar con 29 arriba del 25%, y `revcand` no escribía nada. Ahora los dos aceptan ese formato. **Qué chequear:** que `revfotos.py armar` no diga "30 de 30 afuera" cuando `fotosrev` lista más.
 
-### Paraguay: la llegada se cuenta desde el despacho (16/10/2026, v23.71)
+### Paraguay: la llegada se cuenta desde el despacho (16/10/2026, v23.71 · v23.72 la muestra en la tarjeta cerrada: "llega ~dd/mm", `pyLlegadaAprox`)
 **Qué es:** `compray:…|despacho=AAAA-MM-DD|go` guarda el día de la guía del correo y la tarjeta del pedido calcula "llegaría aprox." con `PY_DIAS_CORREO` (3 hábiles) desde ahí; sin guía sigue 5 hábiles desde el pedido. **Qué chequear:** medir con los próximos pedidos cuánto tarda de verdad el correo y ajustar el 3.
 
 ### Deshacer caja devuelve lo decidido (16/10/2026, v23.70)

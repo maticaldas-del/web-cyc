@@ -2619,7 +2619,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.71';
+const APP_VERSION='23.72';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2630,6 +2630,7 @@ const APP_VERSION='23.71';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.72',f:'16/10/2026',h:'12:10',c:[{n:1,t:'🚚 Pedidos hechos: la tarjeta cerrada de un pedido en camino dice "llega ~dd/mm" (desde la guía del correo si está). Cuando llega, dice "llegó dd/mm".'}]},
   {v:'23.71',f:'16/10/2026',h:'11:55',c:[{n:1,t:'🚚 Pedidos de Paraguay: con la guía del correo cargada, "llegaría aprox." se cuenta desde el día que salió por el correo (3 días hábiles), no desde el pedido. Se ve también "despachado el".'}]},
   {v:'23.70',f:'16/10/2026',h:'01:30',c:[{n:2,t:'📦 Deshacer una caja devuelve también las unidades sugeridas a Armar caja (antes quedaba vacía, porque cerrarla las descontaba y deshacerla no las devolvía).'}]},
   {v:'23.69',f:'15/10/2026',h:'19:45',c:[{n:3,t:'⏱️ Pedidos: el corte del naranja ya no es fijo (14/17 días). Sale de cuánto tarda de verdad en volver a haber cada producto: si viene en un pedido en camino, lo que le falta; si en Paraguay el precio no da o Nissei no lo tiene, SIN FECHA (cuenta 60 días); si da, 17 días más lo que falte del pedido que viaja. La tarjeta dice el motivo abajo de la barra.'}]},
@@ -13701,10 +13702,13 @@ function _pyItsHTML(its,rec){const _r=rec>=1?rec:RECARGO_PY;
 }
 // La tarjeta cerrada de un pedido: sólo lo importante (08/10/2026, él: "más minimalista, solo lo importante,
 // el detalle adentro al clickearlo"). Fecha, el % que se le cargó y en qué está. Todo lo demás, al abrirla.
+// El día aprox. de llegada de un pedido en camino: desde la guía del correo si está (`despacho`), si no desde el pedido.
+function pyLlegadaAprox(c){const desp=/^\d{4}-\d{2}-\d{2}$/.test(c&&c.despacho||'');return{d:desp?pyMasHabiles(c.despacho,PY_DIAS_CORREO):pyMasHabiles(c.fecha,PY_DIAS_LLEGADA),desp};}
 function pyPedidoResumenHTML(c,enCamino,dias,tarde){
   const dm=f=>{const m=String(f||'').match(/^\d{4}-(\d{2})-(\d{2})/);return m?m[2]+'/'+m[1]:(f||'—');};
-  const est=enCamino?`en camino · ${dias} d${tarde?' · atrasado':''}`:c.estado==='llego'?`llegó${c.fechaLlego?' '+dm(c.fechaLlego):''}`:'historial';
-  const col=enCamino?(tarde?'var(--amber)':'#38bdf8'):'var(--green)';
+  const _ll=enCamino?pyLlegadaAprox(c):null,_llT=_ll?(Date.now()>_ll.d.getTime()+86400e3):false;
+  const est=enCamino?`llega ~${dm(_ll.d.toISOString().slice(0,10))}${_llT?' · atrasado':''}`:c.estado==='llego'?`llegó${c.fechaLlego?' '+dm(c.fechaLlego):''}`:'historial';
+  const col=enCamino?(_llT?'var(--amber)':'#38bdf8'):'var(--green)';
   return `<span style="font-size:1rem">${enCamino?'🚚':'📦'}</span>
     <span style="font-size:.82rem;font-weight:700;white-space:nowrap">${dm(c.fecha)}</span>
     <span style="font-size:1.05rem;font-weight:800;color:var(--text);white-space:nowrap" title="Lo que te salió el pedido puesto en la oficina: la factura más todos los gastos${pyRecargoReal(c).r?'':' (con el 17% estimado: faltan gastos)'}">US$ ${(Math.round((parseFloat(c.usdCrudo)||0)*(pyRecargoReal(c).r||RECARGO_PY)*100)/100).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
@@ -13740,7 +13744,7 @@ function pyPedidoDetalleHTML(c){
           ? fila('llegó el',(c.fechaLlego||'—')+(c.fechaLlego?' <span style="color:var(--muted)">· '+Math.max(0,Math.round((Date.parse(c.fechaLlego+'T12:00:00-03:00')-Date.parse(c.fecha+'T12:00:00-03:00'))/86400e3))+' d</span>':''))
           : fila('hace','<b>'+Math.max(0,Math.floor((Date.now()-Date.parse(c.fecha+'T12:00:00-03:00'))/86400e3))+' días</b>')}
         ${c.estado==='camino'&&c.despacho?fila('despachado el',c.despacho+' <span style="color:var(--muted)">· guía del correo</span>'):''}
-        ${c.estado==='camino'?(()=>{const desp=/^\d{4}-\d{2}-\d{2}$/.test(c.despacho||'');const lleg=desp?pyMasHabiles(c.despacho,PY_DIAS_CORREO):pyMasHabiles(c.fecha,PY_DIAS_LLEGADA);const f=lleg.toISOString().slice(0,10);const tarde=Date.now()>lleg.getTime()+86400e3;
+        ${c.estado==='camino'?(()=>{const {d:lleg,desp}=pyLlegadaAprox(c);const f=lleg.toISOString().slice(0,10);const tarde=Date.now()>lleg.getTime()+86400e3;
           return fila('llegaría aprox.',`<span style="color:${tarde?'var(--amber)':'var(--text)'}">${f}${tarde?' · ya se pasó':''}</span>${desp?'':' <span style="color:var(--muted)">· sin guía: cuento desde el pedido</span>'}`,desp?'Son '+PY_DIAS_CORREO+' días hábiles desde que salió por el correo (la guía). No cuenta feriados: por eso dice "aprox".':'Son '+PY_DIAS_LLEGADA+' días hábiles desde el pedido, porque todavía no está la guía del correo. Con la guía cargada se cuenta desde el despacho.');})():''}
         ${fila('productos / unidades',pyPedidoCuenta(c).p+' / '+pyPedidoCuenta(c).u)}
         ${c.pesoKg!=null
