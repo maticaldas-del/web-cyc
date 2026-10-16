@@ -2620,7 +2620,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.92';
+const APP_VERSION='23.93';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2631,6 +2631,7 @@ const APP_VERSION='23.92';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.93',f:'16/10/2026',h:'18:30',c:[{n:2,t:'Línea de tiempo: el reloj de los 4 meses ahora mide la edad de la unidad MÁS VIEJA (lo primero que entra es lo primero que sale), no desde que hay stock seguido. Si el stock rota, el reloj baja.'}]},
   {v:'23.92',f:'16/10/2026',h:'18:05',c:[{n:1,t:'Línea de tiempo: en stock, una barra roja que se va llenando día a día hasta los 4 meses (cuando ML empieza a cobrar almacenamiento), y arriba a la derecha cuántos días faltan.'}]},
   {v:'23.91',f:'16/10/2026',h:'17:45',c:[{n:3,t:'Arreglado: la app no abría. El archivo que la hace funcionar como app instalada había quedado vacío en las versiones 23.89 y 23.90.'}]},
   {v:'23.90',f:'16/10/2026',h:'17:20',c:[{n:1,t:'Pedidos: cada color muestra su precio máximo de compra, también los que no tienen un precio propio decidido (usan el del producto y el globito lo aclara).'}]},
@@ -9577,12 +9578,24 @@ function lineaPintar(prodId){
   const _stIni=ks.find(k=>dias[k]&&(dias[k].u>0||dias[k].st!=null||dias[k].vis>0))||'9999';
   let svg='';
   // EL RELOJ DE LOS 4 MESES (16/10/2026, él: "agregar lo que falta para llegar a los 4 meses, por día, con una barra que
-  // se vaya llenando, siempre roja"). Días seguidos con stock (si se quedó en cero, la mercadería vieja ya se vendió y el
-  // reloj vuelve a 0) contra `almacDiasDe(p)` (120 chico · 60 Tenders). Si el historial o los lotes de ML dicen que había
-  // stock desde antes del gráfico, arranca contando esos días. Es aproximado: la unidad más vieja manda.
-  const _alD=almacDiasDe(p),_alC={};{let c=null;ks.forEach(k=>{const d=dias[k];const si=_conSt(d,k),no=!si&&k>=_stIni;
-    if(si){if(c==null)c=(_stHistDesde&&_stHistDesde<k)?Math.max(0,Math.round((Date.parse(k.replace(/_/g,'-'))-Date.parse(_stHistDesde.replace(/_/g,'-')))/864e5)):0;c++;_alC[k]=c;}
-    else if(no)c=0;});}
+  // se vaya llenando, siempre roja"). CORREGIDO EL MISMO DÍA (él con el Metatarso: "toma desde que tiene stock, pero el stock
+  // va rotando"): es la EDAD DE LA UNIDAD MÁS VIEJA, primero entra primero sale. Cada llegada (stock de hoy − el de antes +
+  // lo vendido en el medio) es un lote con su fecha; las ventas gastan el lote más viejo. Sin stock = 0. Contra
+  // `almacDiasDe(p)` (120 chico · 60 Tenders). Lo que ya había al empezar el gráfico arranca en `_stHistDesde` si es anterior.
+  const _alD=almacDiasDe(p),_alC={};{const _dk=k=>Date.parse(k.replace(/_/g,'-')+'T12:00:00Z');let lotes=[],pk=null,ventaDesde=0;
+    ks.forEach((k,i)=>{const d=dias[k]||{};const vu=Math.max(0,Number(d.u)||0);
+      if(stU[k]!=null){const st=Math.max(0,stU[k]);
+        if(pk==null){if(st>0){const t0=(_stHistDesde&&_stHistDesde<k)?_dk(_stHistDesde):_dk(k);lotes=[{t:t0,q:st}];}}
+        else{let tot=lotes.reduce((a,l)=>a+l.q,0);let vend=ventaDesde+vu;
+          // primero las ventas (gastan lo más viejo), después lo que llegó
+          while(vend>0&&lotes.length){const x=Math.min(vend,lotes[0].q);lotes[0].q-=x;vend-=x;if(lotes[0].q<=0)lotes.shift();}
+          tot=lotes.reduce((a,l)=>a+l.q,0);
+          if(st>tot)lotes.push({t:_dk(k),q:st-tot});
+          else{let sob=tot-st;while(sob>0&&lotes.length){const x=Math.min(sob,lotes[0].q);lotes[0].q-=x;sob-=x;if(lotes[0].q<=0)lotes.shift();}}}
+        if(st<=0)lotes=[];pk=k;ventaDesde=0;}
+      else{if(pk==null)return;let v=vu;while(v>0&&lotes.length){const x=Math.min(v,lotes[0].q);lotes[0].q-=x;v-=x;if(lotes[0].q<=0)lotes.shift();}
+        if(!_conSt(dias[k],k)&&k>=_stIni&&!(vu>0))lotes=[];}
+      if(lotes.length)_alC[k]=Math.max(1,Math.round((_dk(k)-lotes[0].t)/864e5)+1);});}
   // fondo de meses
   let lastM=''; ks.forEach((k,i)=>{const mm=k.slice(0,7);if(mm!==lastM){lastM=mm;svg+=`<line x1="${X(i)}" y1="0" x2="${X(i)}" y2="${H}" stroke="rgba(128,128,128,.25)" stroke-width="1"/><text x="${X(i)+2}" y="${H+12}" font-size="10" fill="var(--muted)">${['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'][Number(k.slice(5,7))-1]}</text>`;}});
   let ptsP=[];
@@ -9602,7 +9615,7 @@ function lineaPintar(prodId){
     // dato del producto queda gris (ahí todavía no existía o no se miraba).
     // Y si no hay dato de stock pero tuvo VISITAS, había stock (él, mismo día).
     const stK=_conSt(d,k)?'si':(k>=_stIni?'no':null);
-    if(suv.length&&_alC[k]){const hA=Math.min(1,_alC[k]/_alD)*(_stB0-L.st[0]-2);svg+=`<rect x="${x}" y="${(_stB0-hA).toFixed(1)}" width="${bw}" height="${hA.toFixed(1)}" fill="var(--red)" opacity="${_alC[k]>=_alD?'.45':'.22'}"><title>${_alC[k]} d con stock · ${_alC[k]>=_alD?'ya paga almacenamiento':'faltan '+(_alD-_alC[k])+' d para los '+Math.round(_alD/30)+' meses'}</title></rect>`;}
+    if(suv.length&&_alC[k]){const hA=Math.min(1,_alC[k]/_alD)*(_stB0-L.st[0]-2);svg+=`<rect x="${x}" y="${(_stB0-hA).toFixed(1)}" width="${bw}" height="${hA.toFixed(1)}" fill="var(--red)" opacity="${_alC[k]>=_alD?'.45':'.22'}"><title>la unidad más vieja lleva ${_alC[k]} d · ${_alC[k]>=_alD?'ya paga almacenamiento':'faltan '+(_alD-_alC[k])+' d para los '+Math.round(_alD/30)+' meses'}</title></rect>`;}
     svg+=`<rect x="${x}" y="${_stB0}" width="${bw}" height="${_stBh}" fill="${stK==='si'?'var(--green)':stK==='no'?'var(--red)':'rgba(128,128,128,.25)'}" opacity="${stK?'.75':'1'}"/>`;
     // precio
     if(d&&d.p>0)ptsP.push(`${(x+bw/2).toFixed(1)},${(L.pr[0]+L.pr[1]-(pcMax>pcMin?(d.p-pcMin)/(pcMax-pcMin):.5)*L.pr[1]).toFixed(1)}`);
