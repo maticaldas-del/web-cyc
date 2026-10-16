@@ -7528,7 +7528,8 @@ async function resolveTgChat(db) {
   try { const legacy = await db.get('mlapi/telegram/chatId'); if (legacy && !chats[String(legacy)]) chats[String(legacy)] = { name: '', ts: Date.now() }; } catch { /* */ }
   if (TG_CHAT && !chats[String(TG_CHAT)]) chats[String(TG_CHAT)] = { name: 'fijo', ts: Date.now() };
   const nuevos = {};
-  const r = await tgApi('getUpdates', {});
+  // En una consulta de sólo lectura no se pregunta a Telegram (es un POST y ensuciaba el registro con un ⛔).
+  const r = CONSULTA_SOLO_LEE ? null : await tgApi('getUpdates', {});
   if (r && r.ok) {
     for (const u of (r.result || [])) {
       const m = u.message || u.edited_message || u.channel_post || {};
@@ -36512,7 +36513,7 @@ async function main() {
       // Respaldo si la web todavía no escribió `cyc/reponer` de ese producto (o es de hace más de 3 días).
       const repoFallback = (pid) => {
         const p = pById[pid] || {};
-        if (compPyE[pid]) { const e = (ahora - Date.parse(compPyE[pid] + 'T12:00:00-03:00')) / 864e5; const f = Math.max(0, Math.ceil(7 - (e || 0))); return { d: f + 10, txt: `📅 viene en el pedido de Paraguay del ${compPyE[pid]} (~${f} d) + 10 d de caja` }; }
+        if (compPyE[pid]) { const e = (ahora - Date.parse(compPyE[pid] + 'T12:00:00-03:00')) / 864e5; const f = Math.max(0, Math.ceil(7 - (e || 0))); return { d: f + 10, txt: `📅 viene en el pedido de Paraguay del ${compPyE[pid]} (${f > 0 ? '~' + f + ' d' : 'ya debería haber llegado'}) + 10 d de caja` }; }
         if (p.origen === 'py' && sinStE[pid]) return { d: REPO_SIN_FECHA_E, inf: true, txt: '📅 Nissei no lo tiene: sin fecha' };
         return p.origen === 'py' ? { d: 17, txt: '📅 Paraguay 17 d (sin el dato de la web: no sé si el precio da)' } : { d: 14, txt: '📅 Bs As/Paulvic 14 d' };
       };
@@ -36573,7 +36574,9 @@ async function main() {
           const ms = pubsDe(t); t.mlas = ms;
           // Una decisión de precio mía de los últimos 7 días se mira todos los días (es una prueba en curso). Los pedidos
           // se deciden todos todos los días: eso solo no alcanza para entrar (si no, entraba el catálogo entero).
-          if (ms.some((m) => ultDec[m] && Number(ultDec[m].ts) >= ahora - 7 * 864e5)) why.push('decisión mía');
+          // Las correcciones al peor caso del 12/10 (subir para quedar en 25%) no son pruebas: no hay nada que medir a diario.
+          const esPrueba = (d) => d && Number(d.ts) >= ahora - 7 * 864e5 && !/^Claude:\s*Revisé esta publicación con el peor caso/i.test(String(d.motivo || ''));
+          if (ms.some((m) => esPrueba(ultDec[m]))) why.push('decisión mía');
           if (!why.length && (EXP_TODOS || hashK(t.k) % 3 === diaN % 3)) why.push('turno (cada 3 días)');
           if (why.length) sel.push(Object.assign(t, { why }));
         }
@@ -36595,7 +36598,7 @@ async function main() {
           const p = pById[t.pid] || {};
           console.log(`■ ${pName[t.pid] || t.pid}${t.color ? ' · 🎨 ' + t.color.replace(/_/g, ' ') : ''} · ${t.cta}   [${t.why.join(' · ')}]`);
           console.log(`   stock: Full ${t.st} · camino ${t.camU}${t.cam.length ? ' (' + t.cam.map((c) => c.fecha + ' ' + c.u).join(', ') + ')' : ''} · oficina ${t.ofi} → ${t.r14 > 0 ? `Full alcanza ${dTx(t.alc)} · todo junto ${dTx(t.tot)}` : 'no vendió en 14 días: no hay ritmo para medir cuánto alcanza'}`);
-          console.log(`   reponer: vuelve a haber en Full ${t.leadTxt} · comprar más: ${t.comp.txt}${t.escFull ? ' · 🔥 Full se corta antes' : ''}${t.escComp ? ' · 🔥 se corta antes de poder comprar' : ''}`);
+          console.log(`   reponer: vuelve a haber en Full ${t.leadTxt}${t.leadTxt.includes(t.comp.txt) ? '' : ' · comprar más: ' + t.comp.txt}${t.escFull ? ' · 🔥 Full se corta antes' : ''}${t.escComp ? ' · 🔥 se corta antes de poder comprar' : ''}`);
           console.log(`   ventas: 14 d ${t.u14} u. (${t.r14.toFixed(2)}/día ${t.cal ? 'en días corridos' : 'con stock, ' + t.dCon.toFixed(1) + ' d'}) · 30 d ${t.u30} u. · últimos 3 d ${t.r3.toFixed(1)}/día`);
           for (const m of t.mlas) {
             const b = vivoX[m] || {}, e = links[m] || {}, np = npX[m] || {};
@@ -36603,14 +36606,15 @@ async function main() {
             let mg = '';
             if (tcX > 0 && Number(np.neto) > 0 && Number(np.precio) > 0) { const c = costoPesos(p, 1, tcX).costo; const imp = np.precio * (mlExtraPct(e.cuenta) + 2) / 100; if (c > 0) mg = ` · margen aprox ${Math.round((np.neto - c - imp) / (c + imp + (Number(np.envio) || 0)) * 100)}% a ${money(np.precio)}`; }
             const pc = prX[m]; const promo = pc && (!pc.hasta || pc.hasta >= new Date(ahora - 3 * 3600e3).toISOString().slice(0, 10)) ? ` · 🏷️ promo mía a ${money(pc.precio)} hasta ${pc.hasta || '?'}` : '';
-            console.log(`   · ${m} · ${b.status || e.status || '?'}${(b.sub_status || []).length ? ' (' + b.sub_status.join(',') + ')' : ''} · hoy ${pr ? money(pr) : '?'} · vendía a ${pv ? money(pv) : '—'} (mediana 30 d) · caja ${e.caja || '?'}${mg}${promo}`);
+            console.log(`   · ${m} · ${b.status || e.status || '?'}${(b.sub_status || []).length ? ' (' + b.sub_status.join(',') + ')' : ''} · hoy ${pr ? money(pr) : '?'} · ${pv ? 'vendía a ' + money(pv) + ' (mediana 30 d)' : 'sin ventas en 30 d'} · caja ${e.caja || '?'}${mg}${promo}`);
             const d = ultDec[m]; if (d) console.log(`     mi última decisión: ${dd(d.ts)} ${money(d.de || 0)} → ${money(d.a || 0)} · ${String(d.motivo || '').replace(/\s+/g, ' ').slice(0, 260)}`);
           }
           if (!t.mlas.length) console.log('   · (ninguna publicación viva para esta cuenta/color)');
           const cdP = (cdX.ped || {})[t.pid];
-          if (cdP) { const vk = t.color ? sid(t.color.replace(/_/g, ' ').toLowerCase()) : ''; const u = vk && cdP.vars ? cdP.vars[vk] : cdP.u; if (u != null || cdP.pv) console.log(`   pedido decidido (${dd(cdP.ts)}): ${u != null ? 'comprar ' + u + ' u.' : ''}${cdP.pv ? ' · venta para el máximo ' + money(cdP.pv) : ''}`); }
+          if (cdP) { const vk = t.color ? sid(t.color.replace(/_/g, ' ').toLowerCase()) : ''; const u = vk && cdP.vars ? cdP.vars[vk] : cdP.u; if (u != null || cdP.pv) console.log(`   pedido decidido (${dd(cdP.ts)}): ${u != null ? 'comprar ' + u + ' u.' : ''}${cdP.pv ? ' · venta para el máximo ' + money(cdP.pv) : ''}${t.comp.inf && Number(u) > 0 ? ` · ⚠️ NO CIERRA: pide comprar ${u} y no se puede reponer (${t.comp.txt.replace(/^📅\s*/, '')})` : ''}`); }
           const ckB = `${t.pid}__${t.cta.toLowerCase()}`;
-          const cj = Object.entries(cdX.caja || {}).filter(([kk]) => kk === ckB || kk.startsWith(ckB + '__v__')).map(([kk, o]) => `${kk.includes('__v__') ? kk.split('__v__')[1] + ' ' : ''}${o && o.u != null ? o.u : '?'} u.`);
+          const vkB = t.color ? sid(t.color.replace(/_/g, ' ').toLowerCase()) : '';
+          const cj = Object.entries(cdX.caja || {}).filter(([kk]) => vkB ? kk === ckB + '__v__' + vkB : (kk === ckB || kk.startsWith(ckB + '__v__'))).map(([kk, o]) => `${kk.includes('__v__') ? kk.split('__v__')[1] + ' ' : ''}${o && o.u != null ? o.u : '?'} u.`);
           if (cj.length) console.log(`   caja decidida: ${cj.join(' · ')}`);
           console.log('');
         }

@@ -1061,3 +1061,9 @@ Un bloque por producto × cuenta (y color) con stock por lugar, ritmo, reposici�
 caja, margen aprox, mi promo, mi última decisión) y lo decidido de pedido y caja. Selección: vendió o cambió el stock en 2 días,
 escasez, decisión mía de precio en 7 días, y un tercio del resto por turno. Paso obligatorio de la completa (CEREBRO.md arriba
 de todo). Chequear: que "Afuera hoy" no dé 0 (si da 0 la selección no filtra nada) y que el margen aprox no se aleje del panel.
+**Ajustes del 16/10 (v23.75), después de la primera corrida (184 de 225):** "decisión mía" ya no cuenta las correcciones al
+peor caso del 12/10 (no son pruebas) · la caja decidida de un color muestra sólo ESE color (antes salían los de los otros) ·
+⚠️ NO CIERRA cuando el pedido decidido pide comprar algo que no se puede reponer (Nissei no lo tiene / el precio no da) ·
+"sin ventas en 30 d" en vez de "vendía a —" · el renglón de reponer no repite "comprar" · un pedido al proveedor vencido dice
+"ya debería haber llegado" (web y robot) · `escasez` por ml-consulta ya no intenta el POST de Telegram. Chequear: que el
+⚠️ NO CIERRA aparezca en los que de verdad chocan y no en los que sí se pueden comprar.
