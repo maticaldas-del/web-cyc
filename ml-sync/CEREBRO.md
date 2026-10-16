@@ -199,7 +199,7 @@ Medido antes: del pedido del 21/09, 1 de 12 se agotó rápido (ZX310) y 10 no ve
 Él, sobre lo que se agota y no se puede reponer (Nissei no lo tiene, o el precio de Paraguay no deja el %): *"lo mejor seria
 una combinacion entre esperar lo maximo posible y maximizar ganancia lo maximo posible en los 4 meses de stock que tenemos.
 pero si o si en los 4 meses hay que vender todo. siempre esperando a que se pueda pedir en nissei"*.
- · Se aplica a todo lo que `escasez`/`reponerDe` dice "sin fecha" (Nissei no lo tiene · el precio no da · Bs As no aplica).
+ · Se aplica a todo lo que `escasez`/`reponerDe` dice "sin fecha" (Nissei no lo tiene · el precio no da · **Bs As sin nada en la oficina**, regla del 16/10).
  · Con stock fijo, la plata máxima es vender TODO al precio más alto que todavía lo vacía en ~4 meses: el ritmo objetivo es
    (Full + camino + oficina) ÷ ~100 días (colchón contra los 120 en que Full cobra almacenamiento). Si vende más rápido que
    eso, subo; si vende más lento y no llega a vaciarse en 120 días, bajo. Directo al precio que pienso (sin escalones),
@@ -248,7 +248,7 @@ próxima caja a Full"*.
  · En CADA vuelta (las 4 del día), todo lo que el expediente marca 🔥 por primera vez se trata en ESA vuelta: no espera a la
    completa. "Ahí nomás" = la próxima vuelta (el robot no toca precios, así que lo más rápido son ~4 h).
  · Para cada uno se calcula cuándo llega la próxima caja a Full: caja despachada ~8 d desde el despacho · en la oficina sin
-   despachar ~10 d (y se pide mandarla en Armar caja) · hay que comprar: Bs As ~1 semana + caja, Paraguay ~16 d · sin
+   despachar ~10 d (y se pide mandarla en Armar caja) · hay que comprar: Paraguay ~16 d · **Bs As NO se da por repuesto** (regla del 16/10: a veces no se consigue por meses): si hay en la oficina, cuenta como caja por mandar; si no hay, se trata como sin reposición · sin
    reposición: estirar para venderlo en ~100 días (regla ⏳). El precio se pone para que la última unidad salga cerca de ese día.
  · Se sigue mirando en cada vuelta: si con el precio nuevo vende más rápido de lo pensado, se sube otra vez; si se frenó del
    todo, se baja de a poco. Nunca abajo del precio normal. Al llegar la caja se juzga con la línea de tiempo (no se vuelve a
@@ -332,3 +332,9 @@ Regla: antes de un descuento por sobrestock, (1) 30+ días con stock desde la ú
 oficina ÷ ritmo con stock) arriba de ~100. Si no, no se descuenta. Ferrari Rojo: 17 u., ~7/mes = ~70 días → se sacó el
 descuento ($63.890 → $70.990). Revisadas las otras del 13/10: Tendedero (13 u., 58 días en Full, ya paga almacenamiento)
 queda con descuento; Centímetro y Pendrive 16 no tenían.
+
+## 🏬 BS AS NO SE DA POR REPUESTO (16/10/2026, regla suya)
+Él: *"vos ahí estás pensando que en Bs As vamos a traer. pero a veces no se consiguen por meses. entonces lo de Bs As mirá si
+hay en la oficina, si en la oficina no hay tomalo como en Paraguay cuando no hay stock o no da el % de ganancia"*.
+Para escasez y precio: lo de Bs As con unidades en la oficina → la reposición es mandar esa caja (~10 d). Sin nada en la
+oficina → sin reposición (regla ⏳): precio para vender lo que hay en ~100 días, al más alto que lo vacía.

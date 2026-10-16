@@ -9047,6 +9047,9 @@ internacional agregarle un % ya que la gente tiene que esperar 10 días"*. Con u
 (como siempre); si son todos de afuera, `ofertasParaMedir` los usa con +20% (`RECARGO_INTER`). Caso: Cabotine de Gres 100ml,
 el de Texas ($30.529) ya se sacaba; el más barato argentino está a $30.457 (agencia, sin Full).
 
+## 🏬 BS AS NO SE DA POR REPUESTO (16/10/2026, regla suya, v23.88)
+Él: *"a veces no se consiguen por meses. lo de bs as mirá si hay en la oficina, si en la oficina no hay tomalo como en paraguay cuando no hay stock"*. Con unidades en la oficina → la reposición es mandar la caja; sin nada → sin reposición (regla de 4 meses de abajo). Paulvic aparte (~1 semana + caja). En `_reponerCalc` (index.html) y `ml-sync/CEREBRO.md`.
+
 ## ⏳ LO QUE NO SE PUEDE REPONER: ESTIRAR HASTA 4 MESES (16/10/2026, regla suya)
 Él: *"una combinacion entre esperar lo maximo posible y maximizar ganancia lo maximo posible en los 4 meses de stock que
 tenemos. pero si o si en los 4 meses hay que vender todo. siempre esperando a que se pueda pedir en nissei"*. Lo que Nissei no

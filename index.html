@@ -2619,7 +2619,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.87';
+const APP_VERSION='23.88';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2630,6 +2630,7 @@ const APP_VERSION='23.87';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.88',f:'16/10/2026',h:'15:58',c:[{n:3,t:'Escasez: lo de Bs As ya no se da por repuesto en una semana. Si hay en la oficina, la reposición es mandar la caja; si no hay nada, se trata como un producto sin reposición (se estira para venderlo en ~4 meses, al precio más alto).'}]},
   {v:'23.87',f:'16/10/2026',h:'15:23',c:[{n:2,t:'🇵🇾 Nuevos: ahora se puede cargar en el pedido un producto que no llega al piso. Antes de agregarlo pregunta, así no se carga sin querer. El botón Llenar sigue sin meterlos.'}]},
   {v:'23.86',f:'16/10/2026',h:'14:50',c:[{n:1,t:'🇵🇾 Pedidos hechos más simple: sin íconos, cada pedido con la fecha y en qué está a la izquierda y la plata a la derecha, fondo más claro y una barra de color. Los que ya llegaron van en un desplegable cerrado.'}]},
   {v:'23.85',f:'16/10/2026',h:'16:10',c:[{n:1,t:'🇵🇾 Nuevos: dos desplegables arriba de la lista. "Ver": todos, los que dan en ML, los que dan en el local o los que dan en los dos. "Ordenar": igual que los botones de antes. Se acuerda de lo último que elegiste.'}]},
@@ -7273,7 +7274,11 @@ function _reponerCalc(p){
   if(v)return{d:v.falta+REPO_ARMAR_CAJA,txt:`viene en el pedido de ${v.de} del ${dm(v.fecha)} (${v.falta>0?'~'+v.falta+' d':'ya debería haber llegado'}) + ${REPO_ARMAR_CAJA} d de caja a Full`};
   if(noTraerDe(p.id))return{d:REPO_SIN_FECHA_DIAS,inf:true,txt:'marcado "no traer más": no se repone'};
   const py=p.origen==='py'&&!esPedidoPaulvic({prodId:p.id});
-  if(!py)return{d:PED_DIAS_ROJO,txt:esPedidoPaulvic({prodId:p.id})?'Paulvic: ~1 semana + caja':'Bs As: ~1 semana + caja'};
+  if(!py&&esPedidoPaulvic({prodId:p.id}))return{d:PED_DIAS_ROJO,txt:'Paulvic: ~1 semana + caja'};
+  // Bs As NO se da por repuesto (16/10/2026, regla suya: "a veces no se consiguen por meses"): con unidades en la oficina
+  // la reposición es mandar esa caja; sin nada en la oficina, se trata como sin reposición (igual que Paraguay sin stock).
+  if(!py){const of=parseInt(state.inventory[invKey(p.id,OFI)])||0;
+    return of>0?{d:REPO_ARMAR_CAJA,txt:`Bs As: ${of} u. en la oficina → mandar caja (~${REPO_ARMAR_CAJA} d)`}:{d:REPO_SIN_FECHA_DIAS,inf:true,txt:'Bs As sin nada en la oficina: no se da por repuesto (a veces no se consigue por meses)'};}
   if((state.pySinStock||{})[p.id])return{d:REPO_SIN_FECHA_DIAS,inf:true,txt:'Nissei no lo tiene: sin fecha'};
   const esp=_pyPedidoViajandoFalta(),espT=esp>0?` + ${esp} d hasta que llegue el pedido que viaja`:'';
   const ver=pyProbVeredicto({prodId:p.id,producto:p.name});

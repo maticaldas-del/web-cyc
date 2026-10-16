@@ -1168,3 +1168,5 @@ duros); `candSetPedir` pide `confirm()` antes de subir unidades. La tarjeta mues
 el comando `pedir` siguen sin meterlos. Chequear: que `.ok` siga en false para esos (resúmenes y Llenar lo usan).
 
 - 16/10/2026 · Etapa 1 (precios): descuento propio del Ferrari Rojo (MLA1841629747) sacado: se había puesto por "sobra stock" con 5 días de stock. Regla nueva en CEREBRO.md (🏷️): descuento por sobrestock sólo con 30+ días con stock y ~100+ días de stock. Chequear en cada vuelta que ninguna promo propia por sobrestock la incumpla.
+
+- 16/10/2026 · Etapa 3 (mercadería) y 1 (precios): `_reponerCalc` (index.html, v23.88): Bs As ya no es "~1 semana + caja". Con unidades en la oficina → mandar caja (REPO_ARMAR_CAJA); sin nada → sin reposición (REPO_SIN_FECHA_DIAS, regla ⏳ de 4 meses). Paulvic sigue en ~1 semana + caja. Chequear que la lupa y el expediente de escasez digan lo mismo.
