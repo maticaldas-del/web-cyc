@@ -13639,10 +13639,12 @@ async function main() {
       const sidA = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
       const ctaDeSid = {}; for (const l of labels) ctaDeSid[sidA(l)] = l;
       // Ventas de 60 días por producto×cuenta (sin canceladas), para lo que no tiene ritmo normal.
-      const v60 = {}; const desde60 = Date.now() - 60 * 864e5;
+      // Y las de 30 días (16/10/2026, análisis): lo que se frenó paga más de lo que dice el ritmo normal; se muestra también
+      // la cuenta con el ritmo de los últimos 30 días cuando es bastante más bajo.
+      const v60 = {}, v30A = {}; const desde60 = Date.now() - 60 * 864e5, desde30A = Date.now() - 30 * 864e5;
       for (const [dk, ents] of Object.entries(vpA || {})) {
         const ts = Date.parse(dk.slice(0, 10).replace(/_/g, '-')); if (!(ts >= desde60)) continue;
-        for (const v of Object.values(ents || {})) { if (!v || v.cancelada || !v.prodId || !v.cuenta) continue; const k = v.prodId + '__' + sidA(v.cuenta); v60[k] = (v60[k] || 0) + (Number(v.qty) || 1); }
+        for (const v of Object.values(ents || {})) { if (!v || v.cancelada || !v.prodId || !v.cuenta) continue; const k = v.prodId + '__' + sidA(v.cuenta); v60[k] = (v60[k] || 0) + (Number(v.qty) || 1); if (ts >= desde30A) v30A[k] = (v30A[k] || 0) + (Number(v.qty) || 1); }
       }
       const linkDe = {}; for (const [mla, e] of Object.entries(linksA || {})) { if (!e || !e.prodId || !e.cuenta || e.ignored) continue; const k = e.prodId + '__' + sidA(e.cuenta); if (!linkDe[k] || (e.inv && !linkDe[k].inv)) linkDe[k] = { ...e, mla }; }
       const filas = []; let mirados = 0, sinLink = 0;
@@ -13666,15 +13668,17 @@ async function main() {
         // Lo recién llegado sin ventas va aparte y no suma (vuelve a la lista cuando tenga ritmo o cumpla 60 días).
         if (!(rDia > 0) && edad < 60) { filas.push({ n: (pIdxA[m[1]] || {}).name || m[1], cta, st, edad, f: lotes[0].f, rDia: 0, tam, prox: 0, tres: 0, tot: 0, nuevo: true }); continue; }
         const doce = cg.meses.slice(0, 12).reduce((s2, x) => s2 + x.cargo, 0);
-        filas.push({ n: (pIdxA[m[1]] || {}).name || m[1], cta, st, edad, f: lotes[0].f, rDia, tam, prox, tres, tot: doce, sinVenta: !(rDia > 0), cierre: cg.meses[0] ? new Date(cg.meses[0].T - 3 * 36e5).toISOString().slice(5, 10) : '?', rnF: !!(rn && rn.pd > 0) });
+        const r30A = (v30A[k] || 0) / 30; let t30 = null;
+        if (rDia > 0 && r30A < rDia * 0.7) { const cg30 = cargoAntiguoProy(lotes, r30A, tabla, DIA_CIERRE_ALM_CTA[_ctaSinTilde(cta)] || 12); t30 = cg30.meses.slice(0, 12).reduce((s2, x) => s2 + x.cargo, 0); }
+        filas.push({ t30, r30: r30A, n: (pIdxA[m[1]] || {}).name || m[1], cta, st, edad, f: lotes[0].f, rDia, tam, prox, tres, tot: doce, sinVenta: !(rDia > 0), cierre: cg.meses[0] ? new Date(cg.meses[0].T - 3 * 36e5).toISOString().slice(5, 10) : '?', rnF: !!(rn && rn.pd > 0) });
       }
       filas.sort((a, b) => b.tot - a.tot || b.edad - a.edad);
-      const conCargo = filas.filter((x) => x.tot > 0), $ = (n) => '$' + Math.round(n).toLocaleString('es-AR');
+      const conCargo = filas.filter((x) => x.tot > 0 || x.t30 > 0), $ = (n) => '$' + Math.round(n).toLocaleString('es-AR');
       console.log(`=== STOCK ANTIGUO DE FULL, PROYECTADO (${soloA || 'las 4 cuentas'}) ===`);
       console.log(`${mirados} producto×cuenta con stock en Full · ${conCargo.length} van a pagar algo al ritmo de hoy · ${sinLink} sin publicación vinculada (fecha de stockhist)`);
       console.log(`Proyectado a 12 cierres: ${$(conCargo.reduce((s2, x) => s2 + x.tot, 0))} · en el próximo cierre: ${$(filas.reduce((s2, x) => s2 + x.prox, 0))} · en los próximos 3: ${$(filas.reduce((s2, x) => s2 + x.tres, 0))}`);
       console.log('Fecha de la unidad más vieja: excel = lote del Excel de ML (`lotesfull`) · caja = caja marcada llegada · antes = más vieja que todo lo que tiene fecha (stockhist o alta) · sinfecha = no se sabe (cuenta como hoy)\n');
-      for (const x of conCargo) console.log(`· ${String(x.n).slice(0, 42)} · ${x.cta} · ${x.st} u. · la más vieja ${x.edad} d (${x.f}) · ${x.tam} · vende ${(x.rDia * 30).toFixed(1)}/mes${x.rnF ? '' : ' (60 d, sin ritmo normal)'} · cierre ${x.cierre}: ${$(x.prox)} · 3 cierres: ${$(x.tres)} · 12 cierres: ${$(x.tot)}${x.sinVenta ? ' ⚠️ no vendió en 60 d' : ''}`);
+      for (const x of conCargo) console.log(`· ${String(x.n).slice(0, 42)} · ${x.cta} · ${x.st} u. · la más vieja ${x.edad} d (${x.f}) · ${x.tam} · vende ${(x.rDia * 30).toFixed(1)}/mes${x.rnF ? '' : ' (60 d, sin ritmo normal)'} · cierre ${x.cierre}: ${$(x.prox)} · 3 cierres: ${$(x.tres)} · 12 cierres: ${$(x.tot)}${x.t30 != null ? ` · con las ventas de 30 d (${(x.r30 * 30).toFixed(1)}/mes): ${$(x.t30)} en 12 cierres` : ''}${x.sinVenta ? ' ⚠️ no vendió en 60 d' : ''}`);
       const nuevos = filas.filter((x) => x.nuevo); if (nuevos.length) console.log(`\nRecién llegados que todavía no vendieron (no se proyectan: ${nuevos.length}): ${nuevos.map((x) => String(x.n).slice(0, 28) + ' ' + x.cta + ' ' + x.edad + 'd').join(' · ')}`);
       const cerca = filas.filter((x) => !x.nuevo && !(x.tot > 0) && x.edad >= 90).sort((a, b) => b.edad - a.edad);
       if (cerca.length) { console.log(`\nCon 90+ días en Full que al ritmo de hoy se venden antes de pagar (${cerca.length}):`); for (const x of cerca.slice(0, 25)) console.log(`· ${String(x.n).slice(0, 42)} · ${x.cta} · ${x.st} u. · ${x.edad} d (${x.f}) · vende ${(x.rDia * 30).toFixed(1)}/mes`); if (cerca.length > 25) console.log(`  (y ${cerca.length - 25} más)`); }
@@ -31077,6 +31081,11 @@ async function main() {
       const fm = (n) => '$' + Math.round(n).toLocaleString('es-AR');
       const filas = [];
       let miradas = 0, sinLinea = 0;
+      // STOCK COMPARTIDO (16/10/2026, análisis): varias publicaciones del mismo producto×cuenta (o una sin color en un producto
+      // con colores) ven el MISMO stock; las ventas de las hermanas no están en la línea de ésta y salía "desaparecieron N u."
+      // (~600 u. falsas). Con stock compartido ese aviso no se da.
+      const pubsClaveL = {};
+      for (const e0 of Object.values(links)) { if (!e0 || e0.ignored || !e0.prodId || (e0.status || '') === 'closed') continue; const kk = e0.prodId + '__' + sidLu(e0.cuenta || ''); pubsClaveL[kk] = (pubsClaveL[kk] || 0) + 1; }
       for (const [mla, e] of Object.entries(links)) {
         if (!e || e.ignored || !e.prodId || (e.status || '') === 'closed') continue;
         if (q && !String(e.title || '').toLowerCase().includes(q)) continue;
@@ -31138,7 +31147,8 @@ async function main() {
         { const h = histL[kPL]; const edadR = h && h.desde && h.aprox === false ? Math.floor((Date.now() - h.desde) / 864e5) : null; if (stHoy > 0 && edadR != null && edadR >= 50 && ritmoRef * 30 < stHoy) flags.push(edadR >= 60 ? `paga almacenamiento: en Full hace ${edadR} d y no se vende en un mes` : `empieza a pagar almacenamiento en ${60 - edadR} d`); }
         { const ks7 = ks.filter((k) => k >= k7); const ini = ks7.find((k) => d[k].st != null); let sold = 0; for (const k of ks7) sold += Number(d[k].u) || 0; const st0 = ini ? Number(d[ini].st) : null;
           let entro = 0, prev = st0; for (const k of ks7) { const sk = d[k].st; if (sk == null) continue; const v = Number(sk); if (prev != null && v > prev) entro += v - prev; prev = v; }
-          if (st0 != null && !entro && st0 - stHoy - sold >= 3) flags.push(`desaparecieron ${st0 - stHoy - sold} u. sin venderse (ML las dio de baja, perdidas o dañadas: revisar)`);
+          const compartido = (pubsClaveL[kPL] || 0) > 1 || (!e.variant && (pr.variantes || []).length > 0);
+          if (st0 != null && !entro && !compartido && st0 - stHoy - sold >= 3) flags.push(`desaparecieron ${st0 - stHoy - sold} u. sin venderse (ML las dio de baja, perdidas o dañadas: revisar)`);
           if (entro >= Math.max(3, (st0 || 0) * 0.3) && Number(pHoy) > 0) flags.push(`entraron ${entro} u. esta semana: revisar si el precio de escasez sigue teniendo sentido`); }
         // ── VENTAS: picos, remate, cancelaciones, lo cobrado contra lo publicado ──
         { let maxD = 0, uR7 = 0, cob = 0, pub = 0; for (const k of ks) { if (k < k7) continue; const x = d[k]; const u = Number(x.u) || 0; if (u > maxD) maxD = u; uR7 += Number(x.uR) || 0; if (u > 0 && Number(x.p) > 0 && Number(x.tot) > 0) { cob += Number(x.tot); pub += u * Number(x.p); } }
@@ -36764,13 +36774,20 @@ async function main() {
         }
         if (sinLin) console.log(`(${sinLin} producto×cuenta sin línea de tiempo: su ritmo sale del registro de stock)`);
       }
-      const filas = [], fueraPocas = [], fueraSinClave = [], todasE = {}; let juzgadas = 0;
+      const filas = [], fueraPocas = [], fueraSinClave = [], ceroConOfi = [], todasE = {}; let juzgadas = 0;
       for (const k of unidades) {
         const i = k.indexOf('__'), iv = k.indexOf('__v__');
         const pid = k.slice(0, i), cta = iv > 0 ? k.slice(i + 2, iv) : k.slice(i + 2); if (/oficina/i.test(cta)) continue;
         const vv = V[k];
         if (!(k in inv)) { fueraSinClave.push(k); continue; }
-        if (vv.u14 < 2 && !EXP) { fueraPocas.push(k); continue; }
+        // EN CERO EN FULL CON MERCADERÍA EN LA OFICINA (16/10/2026, análisis, eligió la a): no vende porque no hay, así que el
+        // filtro de "menos de 2 ventas en 14 d" lo escondía (Centímetro Rosa: 150 en la oficina, en cero desde el 24/09).
+        if (vv.u14 < 2 && !EXP) {
+          const _ofK = iv > 0 ? pid + '__' + sidE('Oficina Mati') + '__v__' + k.slice(iv + 5) : pid + '__' + sidE('Oficina Mati');
+          const _of = Math.max(0, parseInt(inv[_ofK]) || 0);
+          if (Math.max(0, parseInt(inv[k]) || 0) === 0 && _of > 0 && vv.u30 >= 1 && !(cam[k] || []).length) ceroConOfi.push({ k, of: _of, u30: vv.u30 });
+          fueraPocas.push(k); continue;
+        }
         juzgadas++;
         const st = Math.max(0, parseInt(inv[k]) || 0);
         const rr = RIT[k] || ritmo14(k, vv), r14 = rr.r, r3 = vv.u3 / 3;
@@ -36909,6 +36926,7 @@ async function main() {
       const sinColTxt = Object.entries(sinColorU).filter(([k]) => conColor.has(k));
       console.log(`\nMiré ${juzgadas} de ${unidades.length} producto×cuenta (o color) con ventas en 30 d · afuera: ${fueraPocas.length} con menos de 2 ventas en 14 d · ${fueraSinClave.length} sin clave de stock en el inventario`);
       if (fueraSinClave.length) console.log(`   sin clave de stock: ${fueraSinClave.slice(0, 12).map(nomK).join(' | ')}${fueraSinClave.length > 12 ? ` (y ${fueraSinClave.length - 12} más…)` : ''}`);
+      if (ceroConOfi.length) { console.log(`\n📦 EN CERO EN FULL CON MERCADERÍA EN LA OFICINA (${ceroConOfi.length}) · no vende porque no hay: mandar en la próxima caja`); for (const x of ceroConOfi.sort((a, b) => b.u30 - a.u30)) console.log(`   ${nomK(x.k)} · oficina ${x.of} u. · vendió ${x.u30} en 30 d antes de cortarse`); }
       if (fueraPocas.length) console.log(`   menos de 2 ventas en 14 d: ${fueraPocas.slice(0, 12).map(nomK).join(' | ')}${fueraPocas.length > 12 ? ` (y ${fueraPocas.length - 12} más…)` : ''}`);
       if (sinColTxt.length) console.log(`   ventas sin color identificado (no entran en ningún color): ${sinColTxt.slice(0, 10).map(([k, u]) => nomK(k) + ' ' + u + ' u.').join(' | ')}${sinColTxt.length > 10 ? ` (y ${sinColTxt.length - 10} más…)` : ''}`);
       // ── 🔁 MIS DECISIONES CUYA RAZÓN YA NO ESTÁ (16/10/2026, pedido suyo: "puede haber cosas que yo no me di cuenta (…)
@@ -37826,6 +37844,11 @@ async function main() {
         const h = SH[kk]; if (!h) continue; hubo = true; let d = 30;
         if (h.desde && h.aprox === false) d = Math.min(30, (hoy - Math.max(h.desde, hoy - 30 * 864e5)) / 864e5); else if (!h.desde && h.cero) d = Math.max(0, Math.min(30, (h.cero - (hoy - 30 * 864e5)) / 864e5));
         if (d > mx) mx = d; } return hubo ? Math.max(1, Math.round(mx)) : sinDato; };
+      // CORTES EN 60 DÍAS (16/10/2026, idea 1 del análisis, eligió la a): cuántas veces quedó en CERO en Full (de 1 a 0) en
+      // los últimos 60 días, la cuenta que más se cortó. `decide_pedidos.py` compra para 45 días lo de Bs As que se cortó 2+
+      // veces y vende medio por día o más con 25%+ (lo demás sigue en 30). Sin registro de la clave, no cuenta (0).
+      const cortes60 = (pid, suf = '') => { let mx = 0; for (const l of C4) { const cs = Object.entries((SLOG || {})[pid + '__' + l + suf] || {}).map(([t, v]) => [Number(t), Number(v)]).filter(([t]) => t > 0).sort((x, y) => x[0] - y[0]);
+        let n = 0, prev = null; for (const [t, v] of cs) { if (t >= hoy - 60 * 864e5 && prev === 1 && v === 0) n++; prev = v; } if (n > mx) mx = n; } return mx; };
       const n0 = (x) => Math.max(0, parseInt(x) || 0);
       // A qué cuentas se le puede mandar (revisión 9, 13/10/2026): las que publican (no ocultas, no "no la vendemos más", no
       // cerradas), menos las marcadas `nomandar` (cyc/norepo), más las marcadas `pasara` (cyc/repoextra). La misma regla que
@@ -37851,14 +37874,14 @@ async function main() {
         const dec0 = ` · precio $${pr}${cam45.length ? ' (' + cam45.slice(0, 3).join(' ') + ')' : ''}`;
         const m60 = med(pU[p.id]);
         const dec = dec0 + (m60 ? ` · med60 $${m60}` : '') + ` · ctas [${ctasDe(p.id).map((c) => c.slice(0, 2)).join(' ')}]` + (CD[p.id] ? ` · YA DECIDÍ ${CD[p.id].u != null ? CD[p.id].u : JSON.stringify(CD[p.id].vars || {})}` : '');
-        console.log(`\n${p.id} · ${String(p.name).slice(0, 55)} · v30 ${s.t30} v60 ${s.t60} v180 ${s.t180} · últ ${s.ult ? s.ult.slice(8, 10) + '/' + s.ult.slice(5, 7) : '—'}${s.rem ? ' · REMATE ' + s.rem : ''}${s.barata ? ' · BARATA ' + s.barata : ''} · dCS ${dCS(p.id)} · Full ${ft} [${C4.map((c, i) => full[i] ? c.slice(0, 2) + full[i] : '').filter(Boolean).join(' ')}] · casa ${casa} · camino ${cm}${py ? ' · PYviaja ' + py : ''}${pvv ? ' · PVviaja ' + pvv : ''} ${(p.variantes || []).length ? ' · colores ' + p.variantes.length : ''} · neto $${Math.round(Number(p.netoCalc) || 0)} costo $${cost}${p.nisseiUSD ? ' · PY US$' + p.nisseiUSD : ''}${dec}`);
+        console.log(`\n${p.id} · ${String(p.name).slice(0, 55)} · v30 ${s.t30} v60 ${s.t60} v180 ${s.t180} · últ ${s.ult ? s.ult.slice(8, 10) + '/' + s.ult.slice(5, 7) : '—'}${s.rem ? ' · REMATE ' + s.rem : ''}${s.barata ? ' · BARATA ' + s.barata : ''} · dCS ${dCS(p.id)}${cortes60(p.id) ? ' · cortes ' + cortes60(p.id) : ''} · Full ${ft} [${C4.map((c, i) => full[i] ? c.slice(0, 2) + full[i] : '').filter(Boolean).join(' ')}] · casa ${casa} · camino ${cm}${py ? ' · PYviaja ' + py : ''}${pvv ? ' · PVviaja ' + pvv : ''} ${(p.variantes || []).length ? ' · colores ' + p.variantes.length : ''} · neto $${Math.round(Number(p.netoCalc) || 0)} costo $${cost}${p.nisseiUSD ? ' · PY US$' + p.nisseiUSD : ''}${dec}`);
         if (rematesVistos[p.id]) console.log(`   (remate: ${rematesVistos[p.id]})`);
         for (const va of (p.variantes || [])) {
           const sv = s.v[va] || { t30: 0, t60: 0, t180: 0, ult: '' };
           const fv = C4.reduce((a, c) => a + n0(I[p.id + '__' + c + '__v__' + sid(va)]), 0), cv = n0(I[p.id + '__' + OF + '__v__' + sid(va)]);
           const mv = ((cam[p.id] || {}).v || {})[va] || 0, pvx = (viaPv[p.id] || {})[va] || 0;
           if (!sv.t180 && !fv && !cv && !mv && !pvx) continue;
-          console.log(`   # ${va} · v30 ${sv.t30} v60 ${sv.t60} v180 ${sv.t180} · últ ${sv.ult ? sv.ult.slice(8, 10) + '/' + sv.ult.slice(5, 7) : '—'} · dCS ${dCS(p.id, '__v__' + sid(va), dCS(p.id))} · Full ${fv} · casa ${cv} · camino ${mv}${pvx ? ' · PVviaja ' + pvx : ''}`);
+          console.log(`   # ${va} · v30 ${sv.t30} v60 ${sv.t60} v180 ${sv.t180} · últ ${sv.ult ? sv.ult.slice(8, 10) + '/' + sv.ult.slice(5, 7) : '—'} · dCS ${dCS(p.id, '__v__' + sid(va), dCS(p.id))}${cortes60(p.id, '__v__' + sid(va)) ? ' · cortes ' + cortes60(p.id, '__v__' + sid(va)) : ''} · Full ${fv} · casa ${cv} · camino ${mv}${pvx ? ' · PVviaja ' + pvx : ''}`);
         }
       };
       console.log(`dólar ${tc} · ventana 30 d desde ${k30} · ${prods.length} fichas`);

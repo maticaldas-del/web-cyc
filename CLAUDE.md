@@ -760,6 +760,12 @@ archivo. **Etapa 8 · Datos e historial** creada ese día (líneas de tiempo); c
 Inicio la pide ya. Y lo que se mira en TODAS: contar dos veces lo mismo (el stock ×4 del Centímetro),
 fallas leídas como dato, dos fórmulas para un número, datos de terceros en el registro público.
 
+## 🔬 EL ANÁLISIS A FONDO: LAS 11 APLICADAS (16/10/2026, "lo que recomiendes")
+Bs As que se corta → 45 días · pendrives en familia (el de 32 el conveniente) · Paulvic pedido cada 15 días y, si pierde la
+prueba de $21.990, vuelve a $14.950 · las visitas cortan antes una prueba mala · lo que paga stock antiguo es excepción del
+25% · subas juzgadas por compradores y 7 días · lo barato deja $1.000/u o más · Premium que gana la caja se queda ·
+agotados contra su último tramo con stock · Tito: "SÓLO estos colores". Detalle en `ml-sync/CEREBRO.md` (🔬).
+
 ## 🇵🇾 DOS PROVEEDORES EN PARAGUAY: NISSEI Y ELEGANCIA (16/10/2026, v23.82)
 Él: *"separar por proveedor dentro de paraguay (…) los pedidos no se pueden juntar y los productos son distintos, precios
 distintos (…) que sea idéntico a como está armado nissei"*. **El proveedor del catálogo "Atacado" se llama Elegancia.**
