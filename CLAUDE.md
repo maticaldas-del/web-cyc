@@ -995,6 +995,7 @@ el robot: privada en `mlapi/vapid` (nunca al repo), pública en `cyc/mlconfig/va
 Probe `webpush[:go|:probar]` por ml-sync. **Y por Telegram se dio de baja** (pedido suyo, ya lo activó en la web):
 `AVISO_VENTA_TELEGRAM = false`. El aviso de cada venta va SÓLO al teléfono. **Y no suena de 00:30 a 10:00 (Argentina)**:
 `AVISO_VENTA_DUERME`; lo de esa franja se anota sin avisar.
+**La compra ENTERA, no cada producto (16/10/2026):** un carrito de 2 Paulvic dejó $10.286 y no avisó porque cada orden sola dejaba menos; ahora suma las órdenes de la misma compra (cuenta + número de venta).
 **Y sólo avisa las compras que dejan $10.000 o más de ganancia (15/10/2026, v23.46, pedido suyo):** `AVISO_VENTA_GAN_MIN`
  en `avisarVentasNuevas`; las de menos (o sin costo) se anotan como vistas sin avisar. El "hoy van" del aviso sigue contando todas.
 

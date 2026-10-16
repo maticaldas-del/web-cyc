@@ -486,6 +486,9 @@ el precio de un candidato distinto con código parecido (se compara también por
   una falla real. `PROMO_NO_APLICA` (sync.mjs) las saca de la cuenta en la vuelta de la hora, en `sacapromos` (que las
   cuenta aparte) y en el chequeo. Chequear: con un 400 en una publicación ACTIVA o pausada sigue contando como sin leer.
 
+### Aviso de venta: suma la compra entera (16/10/2026)
+`avisarVentasNuevas` agrupa por cuenta + `numVenta` (también órdenes de otra vuelta) antes del corte de $10.000. Qué chequear: un carrito de 2+ productos que pasa $10.000 avisa.
+
 ## 5 bis · AVISOS DE TELEGRAM QUE LEE CLAUDE (08/10/2026)
 - `sendAlerta` guarda copia de cada aviso que SALIÓ en `mlapi/alertaslog/<ts>`; probe `alertas[:horas]` (solo lee,
   tapa números largos). Una rutina de Claude los lee y resuelve lo que puede
