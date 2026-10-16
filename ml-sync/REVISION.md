@@ -1067,3 +1067,6 @@ peor caso del 12/10 (no son pruebas) · la caja decidida de un color muestra só
 "sin ventas en 30 d" en vez de "vendía a —" · el renglón de reponer no repite "comprar" · un pedido al proveedor vencido dice
 "ya debería haber llegado" (web y robot) · `escasez` por ml-consulta ya no intenta el POST de Telegram. Chequear: que el
 ⚠️ NO CIERRA aparezca en los que de verdad chocan y no en los que sí se pueden comprar.
+**v23.76 (16/10):** la línea de tiempo de cada producto (`lineaPintar`, "stock hoy") usa `reponerDe` como Pedidos y el
+robot: 🔥 escasez si se acaba antes de reponer, 🔥 sin reposición si no se puede reponer. Chequear: que no diga "bien" en un
+producto sin reposición (caso Pendrive 16gb).
