@@ -906,6 +906,14 @@ hiciste antes"*.
  · Lo que está en la oficina NO cuenta como reposición hasta que él despacha la caja (y la oficina puede no estar cargada).
  · Cada suba lleva su motivo en el 🧠 (`decido`). Frenos de siempre: variantes, liquidando, barrera $33.000, techo $650.000.
 
+## 📋 LA FICHA MÉDICA DE CADA PUBLICACIÓN (16/10/2026, regla suya, eligió 1a 2a 3a)
+Él: *"queda guardado en un archivo de cada producto? como si fuera una ficha médica (...) vos cada vez que hacés un análisis
+abrís eso y tenés todo"* y *"quiero poder verla, así veo lo que ves vos. y que esté completa, mínimo la info de la línea
+temporal"*. La arma el robot cada noche (`mlapi/ficha/<MLA>`, comando `ficha`): línea de tiempo + mis cambios con su
+resultado + tramos de precio + mis notas (historia nueva en `mlapi/fichanotas`) + lo que sabemos con vencimiento (60 d).
+Se ve en la web con "📋 Ficha completa" en el 🧠. Lo abro antes de decidir (ver `ml-sync/CEREBRO.md`). Detalle en
+`ml-sync/REVISION.md` etapa 8.
+
 ## 🪜 ESCASEZ: ARRANCAR MUY ALTO Y BAJAR EN ESCALERA (16/10/2026, regla suya, eligió 1a 2b 3a)
 Él: *"probemos más del 100% (...) quizás algo que vendemos por 5.000 podemos venderlo a 25.000 (...) es gratis subir precio"*.
 **Se saca el techo ×2 de escasez** (queda $650.000). Primer salto por ritmo de ESA publicación: 3+/día ×4 · 1-3 ×3 · <1 ×2 ·

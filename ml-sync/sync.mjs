@@ -3429,7 +3429,12 @@ function armarFicha({ mla, d, e, cu, imp, cambios, notas, hoyK }) {
   // 1 · TRAMOS DE PRECIO (precio de lista de cada día; un día sin precio sigue el anterior)
   const tramos = []; let cur = null, pAnt = null;
   for (const k of ks) {
-    const x = d[k]; const p = Number(x.p) > 0 ? Number(x.p) : pAnt; pAnt = p;
+    // El precio del día es el de la noche, pero el día que cambia, lo vendido pudo salir al precio de antes: si vendió,
+    // vale el precio (de hoy o de ayer) más parecido a lo que se cobró por unidad (Centímetro 08/10: 18 vendidas a $3.450
+    // quedaban anotadas a $4.690, el precio de la noche).
+    const x = d[k]; const pN = Number(x.p) > 0 ? Number(x.p) : pAnt;
+    let p = pN; if (Number(x.u) > 0 && Number(x.tot) > 0 && pAnt && pN && pAnt !== pN) { const pu = Number(x.tot) / Number(x.u); if (Math.abs(pu - pAnt) < Math.abs(pu - pN)) p = pAnt; }
+    pAnt = pN;
     if (!cur || p !== cur.p) { if (cur) tramos.push(cur); cur = { p, desde: k, hasta: k, dias: 0, diasSt: 0, agot: 0, u: 0, neto: 0, tot: 0, uR: 0, vis: 0, nv: 0, cajas: {}, est: {} }; }
     cur.hasta = k; cur.dias++;
     if (x.vis != null) { cur.vis += Number(x.vis) || 0; cur.nv++; }
@@ -3472,7 +3477,7 @@ function armarFicha({ mla, d, e, cu, imp, cambios, notas, hoyK }) {
     if (c.ver === 'perdió') { const vencida = c.vence <= hoyK; sab.push({ t: 'perdio', k: c.k, txt: `${c.sube ? 'subir' : 'bajar'} a ${$(c.a)} NO rindió (${pre}${ctx ? ', ' + ctx : ''}): plata por día ${$(c.A.pd)} → ${$(c.B.pd)}, vendió ${c.B.u} donde se esperaban ${c.esp} · ${vencida ? 'YA VENCIÓ: se puede volver a probar' : 'no se repite hasta el ' + fK(c.vence) + ' (antes sólo si cambia algo grande)'}`, vence: c.vence }); }
     else if (c.ver === 'ganó') sab.push({ t: 'gano', k: c.k, txt: `${c.sube ? 'subir' : 'bajar'} a ${$(c.a)} rindió (${pre}${ctx ? ', ' + ctx : ''}): plata por día ${$(c.A.pd)} → ${$(c.B.pd)}` });
   }
-  const med = T.filter((t) => t.diasSt >= 5 && t.pd != null && t.p);
+  const med = T.filter((t) => t.diasSt >= 5 && t.pd > 0 && t.p);
   if (med.length) { const b = med.reduce((x, y) => (y.pd > x.pd ? y : x)); sab.push({ t: 'mejor', txt: `el precio que más plata por día dejó (medido con 5+ días con stock): ${$(b.p)} → ${$(b.pd)} por día (${b.r} por día, ${b.diasSt} d con stock, ${fK(b.desde)} a ${fK(b.hasta)})` }); }
   const enCurso = C.filter((c) => c.ver === 'en curso' || c.ver === 'sin certeza').slice(-1)[0];
   if (enCurso) sab.push({ t: 'curso', txt: `en prueba: ${fK(enCurso.k)} ${$(enCurso.de)} → ${$(enCurso.a)} · ${enCurso.B.dias} d con stock después · vendió ${enCurso.B.u}${enCurso.esp != null ? ' (esperadas ' + enCurso.esp + ')' : ''} · ${enCurso.ver}` });
