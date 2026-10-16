@@ -240,3 +240,17 @@ talón Común Beige, cuando las 18 todavía se estaban armando) y Armar caja no 
 en la oficina. Él lo marcó. En la completa de las 08:52 van LOS DOS scripts sobre el mismo log de `pedidostodo`, y
 `decido:archivo=pedidos;go` + `decido:archivo=cajas;go`. Y todo lo que el expediente marca "🔥 Full se corta antes" con
 mercadería en la oficina se mira contra la caja decidida.
+
+## 🛡️ APENAS ENTRA EN ESCASEZ, SE PROTEGE HASTA QUE LLEGUE LA CAJA (16/10/2026, regla suya)
+Él, viendo que lo subido por escasez se siguió vendiendo: *"me encantó eso (...) quiero que sigas así, y cuando un producto
+entre en escasez, ahí nomás lo trates como tal y protegerlo hasta que calcules cuántos días aprox va a tardar en llegar la
+próxima caja a Full"*.
+ · En CADA vuelta (las 4 del día), todo lo que el expediente marca 🔥 por primera vez se trata en ESA vuelta: no espera a la
+   completa. "Ahí nomás" = la próxima vuelta (el robot no toca precios, así que lo más rápido son ~4 h).
+ · Para cada uno se calcula cuándo llega la próxima caja a Full: caja despachada ~8 d desde el despacho · en la oficina sin
+   despachar ~10 d (y se pide mandarla en Armar caja) · hay que comprar: Bs As ~1 semana + caja, Paraguay ~16 d · sin
+   reposición: estirar para venderlo en ~100 días (regla ⏳). El precio se pone para que la última unidad salga cerca de ese día.
+ · Se sigue mirando en cada vuelta: si con el precio nuevo vende más rápido de lo pensado, se sube otra vez; si se frenó del
+   todo, se baja de a poco. Nunca abajo del precio normal. Al llegar la caja se juzga con la línea de tiempo (no se vuelve a
+   ciegas).
+ · Y en la misma vuelta se mira Armar caja: si hay mercadería en la oficina de ese producto, se decide mandarla.

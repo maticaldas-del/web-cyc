@@ -906,6 +906,12 @@ hiciste antes"*.
  · Lo que está en la oficina NO cuenta como reposición hasta que él despacha la caja (y la oficina puede no estar cargada).
  · Cada suba lleva su motivo en el 🧠 (`decido`). Frenos de siempre: variantes, liquidando, barrera $33.000, techo $650.000.
 
+## 🛡️ ESCASEZ: SE TRATA EN LA MISMA VUELTA EN QUE APARECE (16/10/2026, regla suya)
+Lo subido por escasez se siguió vendiendo y le gustó: *"quiero que sigas así"*. Todo lo que entra en escasez (🔥 en el
+expediente) se trata en esa misma vuelta, no en la completa: precio para que dure hasta que llegue la próxima caja a Full
+(despachada ~8 d · en la oficina ~10 d · comprar Bs As ~1 semana + caja · Paraguay ~16 d · sin reposición ~100 d), y se
+decide mandar lo que haya en la oficina. Detalle en `ml-sync/CEREBRO.md`.
+
 ## 🤖 EL ROBOT SÓLO JUNTA DATOS · TODO LO DEMÁS LO HAGO YO (09/10/2026)
 
 Él, después del error de los Victoria's Secret: *"te equivocaste por hacerle caso al robot anterior. Ese robot no quiero
