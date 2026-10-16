@@ -36520,6 +36520,33 @@ async function main() {
         return p.origen === 'py' ? { d: 17, txt: '📅 Paraguay 17 d (sin el dato de la web: no sé si el precio da)' } : { d: 14, txt: '📅 Bs As/Paulvic 14 d' };
       };
       for (const [pid, x] of Object.entries(repoE)) if (!x || !(Number(x.ts) > ahora - 3 * 864e5)) delete repoE[pid];
+      // EL RITMO SALE DE LA MISMA LÍNEA DE TIEMPO QUE MIRA LA WEB (16/10/2026, él: "quiero que sean lo mismo"; eligió 30
+      // días). Por cada producto × cuenta (y color): los últimos 30 días de `mlapi/linea` de sus publicaciones; un día
+      // cuenta si vendió o tuvo stock (o tuvo visitas sin dato de stock); unidades sin las de remate ÷ esos días, con 3+
+      // ventas y 7+ días; si no, el ritmo normal (`cyc/ritmonormal`). Misma cuenta que `_pdiaAntes` de la línea de la web.
+      const RIT = {};
+      {
+        let rnE = {}; try { rnE = (await db.get('cyc/ritmonormal')) || {}; } catch { /* sin ritmo normal */ }
+        const mlasK = {};
+        for (const k of unidades) {
+          const i = k.indexOf('__'), iv = k.indexOf('__v__'), pid = k.slice(0, i), cta = iv > 0 ? k.slice(i + 2, iv) : k.slice(i + 2), col = iv > 0 ? k.slice(iv + 5) : '';
+          mlasK[k] = Object.entries(links).filter(([m, e]) => e && e.prodId === pid && sidE(e.cuenta || '') === cta && !e.ignored && (!col || sidE(colorDeLink(e)) === col)).map(([m]) => m);
+        }
+        const todas = [...new Set(Object.values(mlasK).flat())], LINR = {};
+        for (let j = 0; j < todas.length; j += 25) await Promise.all(todas.slice(j, j + 25).map(async (m) => { try { LINR[m] = (await db.get('mlapi/linea/' + m)) || {}; } catch { LINR[m] = null; } }));
+        const hoyK = new Date(ahora - 3 * 3600e3).toISOString().slice(0, 10).replace(/-/g, '_');
+        let sinLin = 0;
+        for (const k of unidades) {
+          const ms = mlasK[k].filter((m) => LINR[m]); if (!ms.length) { sinLin++; continue; }
+          const dias = {};
+          for (const m of ms) for (const [dk, d] of Object.entries(LINR[m])) { if (dk >= hoyK || !d) continue; const x = (dias[dk] = dias[dk] || { u: 0, uR: 0, st: null, vis: 0 }); x.u += Number(d.u) || 0; x.uR += Number(d.uR) || 0; x.vis += Number(d.vis) || 0; if (d.st != null) x.st = (x.st || 0) + (Number(d.st) || 0); }
+          const ult = Object.keys(dias).sort().slice(-30);
+          let u = 0, dc = 0; for (const dk of ult) { const d = dias[dk]; if (d.u > 0 || d.st > 0 || (d.vis > 0 && d.st == null)) { dc++; u += Math.max(0, d.u - d.uR); } }
+          if (u >= 3 && dc >= 7) RIT[k] = { r: u / dc, d: dc, cal: false };
+          else { const rn = rnE[k]; if (rn && Number(rn.pd) > 0) RIT[k] = { r: Number(rn.pd), d: dc, cal: false, normal: true }; }
+        }
+        if (sinLin) console.log(`(${sinLin} producto×cuenta sin línea de tiempo: su ritmo sale del registro de stock)`);
+      }
       const filas = [], fueraPocas = [], fueraSinClave = [], todasE = {}; let juzgadas = 0;
       for (const k of unidades) {
         const i = k.indexOf('__'), iv = k.indexOf('__v__');
@@ -36529,7 +36556,7 @@ async function main() {
         if (vv.u14 < 2 && !EXP) { fueraPocas.push(k); continue; }
         juzgadas++;
         const st = Math.max(0, parseInt(inv[k]) || 0);
-        const rr = ritmo14(k, vv), r14 = rr.r, r3 = vv.u3 / 3;
+        const rr = RIT[k] || ritmo14(k, vv), r14 = rr.r, r3 = vv.u3 / 3;
         const alc = r14 > 0 ? st / r14 : Infinity;
         const ofiK = iv > 0 ? pid + '__' + sidE('Oficina Mati') + '__v__' + k.slice(iv + 5) : pid + '__' + sidE('Oficina Mati');
         const ofi = Math.max(0, parseInt(inv[ofiK]) || 0);
@@ -36549,7 +36576,7 @@ async function main() {
         const leadComp = comp.inf ? Infinity : comp.d;
         const escFull = alc < lead && !(lead === Infinity && alc > REPO_SIN_FECHA_E);
         const escComp = tot < leadComp && !(leadComp === Infinity && tot > REPO_SIN_FECHA_E);
-        todasE[k] = { k, pid, cta, color: iv > 0 ? k.slice(iv + 5) : '', st, r14, cal: rr.cal, dCon: rr.d, r3, u14: vv.u14, u30: vv.u30, alc, lead, leadTxt, tot, comp, escFull, escComp, ofi, cam: camK, camU: camK.reduce((a, c) => a + c.u, 0), vts: vv.vts };
+        todasE[k] = { k, pid, cta, color: iv > 0 ? k.slice(iv + 5) : '', st, r14, cal: rr.cal, dCon: rr.d, rn: !!rr.normal, r3, u14: vv.u14, u30: vv.u30, alc, lead, leadTxt, tot, comp, escFull, escComp, ofi, cam: camK, camU: camK.reduce((a, c) => a + c.u, 0), vts: vv.vts };
         if (alc > dMax && !escFull && !escComp) continue;
         filas.push({ k, pid, cta, color: iv > 0 ? k.slice(iv + 5) : '', st, r14, dCon: rr.d, cal: rr.cal, r3, alc, u14: vv.u14, u30: vv.u30, ofi, cam: camK, lead, leadTxt, tot, comp, escFull, escComp });
       }
@@ -36601,7 +36628,7 @@ async function main() {
           console.log(`■ ${pName[t.pid] || t.pid}${t.color ? ' · 🎨 ' + t.color.replace(/_/g, ' ') : ''} · ${t.cta}   [${t.why.join(' · ')}]`);
           console.log(`   stock: Full ${t.st} · camino ${t.camU}${t.cam.length ? ' (' + t.cam.map((c) => c.fecha + ' ' + c.u).join(', ') + ')' : ''} · oficina ${t.ofi} → ${t.r14 > 0 ? `Full alcanza ${dTx(t.alc)} · todo junto ${dTx(t.tot)}` : 'no vendió en 30 días: no hay ritmo para medir cuánto alcanza'}`);
           console.log(`   reponer: vuelve a haber en Full ${t.leadTxt}${t.leadTxt.includes(t.comp.txt) ? '' : ' · comprar más: ' + t.comp.txt}${t.escFull ? ' · 🔥 Full se corta antes' : ''}${t.escComp ? ' · 🔥 se corta antes de poder comprar' : ''}`);
-          console.log(`   ventas: 30 d ${t.u30} u. → ritmo ${t.r14.toFixed(2)}/día ${t.cal ? 'en días corridos' : 'con stock (' + t.dCon.toFixed(1) + ' d)'} · 14 d ${t.u14} u. · últimos 3 d ${t.r3.toFixed(1)}/día`);
+          console.log(`   ventas: 30 d ${t.u30} u. → ritmo ${t.r14.toFixed(2)}/día ${t.cal ? 'en días corridos' : (t.rn ? 'ritmo normal (pocas ventas en 30 d)' : 'con stock (' + Math.round(t.dCon) + ' d)')} · 14 d ${t.u14} u. · últimos 3 d ${t.r3.toFixed(1)}/día`);
           for (const m of t.mlas) {
             const b = vivoX[m] || {}, e = links[m] || {}, np = npX[m] || {};
             const pr = Number(b.price) || Number(np.precio) || 0, pv = medX(precioV[m]);
