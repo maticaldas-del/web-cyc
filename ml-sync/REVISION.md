@@ -1048,3 +1048,10 @@ Listas: se sacó `listamedir` del ml-pycat (regla suya: se evalúa la lista una 
    `claudedecide/ped/<id>/pvVars/<color>`; `pedVarMaxTxt` lo muestra en el renglón del color. `decido:ped:<id>#<color>=venta|$`
    escribe `pvVars`/`motPvVars` (sync.mjs). Chequear: un color sin precio propio NO muestra nada (sigue el del producto).
  · Regla nueva en CEREBRO.md: lo que no tiene reposición se estira para vaciarse en ~100-120 días al precio más alto.
+
+### TODAS LAS ETAPAS · 16/10/2026 · ¿cada decisión tiene salida?
+Pedido suyo: que lo que cambia sin que nadie lo diga no quede con una decisión vieja colgada. En cada etapa, por cada regla
+que cambia algo (precio, pedido, caja, marca): ¿qué pasa si desaparece la condición que la disparó? ¿qué la deshace, y en qué
+vuelta se mira? Si la respuesta es "nada" o "se acuerda él", es un hallazgo. Hecho hoy: `escasez` → sección 🔁 (escasez y sin
+reposición). Faltan controles iguales para: bajas por caja o sobra, promos propias, liquidando, notraer, pausas, decisiones de
+pedidos y cajas (`claudedecide`) cuyo motivo ya no vale.
