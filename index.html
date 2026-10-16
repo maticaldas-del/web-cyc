@@ -2619,7 +2619,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.69';
+const APP_VERSION='23.70';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2630,6 +2630,7 @@ const APP_VERSION='23.69';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.70',f:'16/10/2026',h:'01:30',c:[{n:2,t:'📦 Deshacer una caja devuelve también las unidades sugeridas a Armar caja (antes quedaba vacía, porque cerrarla las descontaba y deshacerla no las devolvía).'}]},
   {v:'23.69',f:'15/10/2026',h:'19:45',c:[{n:3,t:'⏱️ Pedidos: el corte del naranja ya no es fijo (14/17 días). Sale de cuánto tarda de verdad en volver a haber cada producto: si viene en un pedido en camino, lo que le falta; si en Paraguay el precio no da o Nissei no lo tiene, SIN FECHA (cuenta 60 días); si da, 17 días más lo que falte del pedido que viaja. La tarjeta dice el motivo abajo de la barra.'}]},
   {v:'23.68',f:'15/10/2026',h:'18:00',c:[{n:1,t:'📋 Listas: ya no se miden solas cada 3 horas (eso queda sólo para Paraguay). Se mide cada lista una vez al cargarla, y si no da se descarta el proveedor (no se muestra más).'}]},
   {v:'23.67',f:'15/10/2026',h:'17:50',c:[{n:2,t:'📋 Pedidos → Listas: pestaña nueva para las listas de precios de otros proveedores. Se guardan como Paraguay, el robot las mide contra ML cada 3 horas, arriba van las que dan 25%+ (o 🏪 en perfumes) y abajo un buscador para ver cualquiera.'}]},
@@ -7591,6 +7592,9 @@ async function deshacerCaja(id,i){
   }catch(err){toast('No la deshice: '+(err.message||err),'err');return;}
   // Devolver a la oficina, con la misma cuenta que se usó al descontar.
   for(const it of items)await ofiMover(it.prodId,it.variante||'',{delta:it.u});    // c3: sobre la base
+  // Lo que se descontó de mis decisiones al cerrarla vuelve (16/10/2026: él deshizo la caja de Adriana y
+  // Armar caja quedó vacía, porque cerrar resta lo mandado y deshacer no lo devolvía).
+  for(const it of items)await clDevolverCaja(it.prodId,e.cuenta,it.variante||'',it.u);
   if(!quedan.length){
     // Era la única caja del envío: se borra el envío entero, si no queda un renglón vacío.
     await fbSet('envios_full/'+id,null);
@@ -11635,6 +11639,14 @@ async function clDescontarPed(pid,va,u){
         await _clRestar('ped/'+pid+'/vars/'+k,q);vars[k]=Math.max(0,(parseInt(vars[k])||0)-q);left-=q;}
     }
   }catch(e){console.warn('clDescontarPed',e);}
+}
+async function clDevolverCaja(pid,cta,va,u){
+  try{
+    u=Math.max(0,parseInt(u)||0);if(!u||!db)return;
+    const key=_clCajaKey(pid,cta,va);const o=((state.claudedecide||{}).caja||{})[key];if(!o)return;
+    await db.ref('cyc/claudedecide/caja/'+key+'/u').transaction(cur=>cur==null?cur:(parseInt(cur)||0)+u);
+    o.u=(parseInt(o.u)||0)+u;
+  }catch(e){console.warn('clDevolverCaja',e);}
 }
 function clCajaDe(pid,cta,va){
   const k=_clCajaKey(pid,cta,va);
