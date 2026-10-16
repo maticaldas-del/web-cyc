@@ -57,6 +57,10 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   por `informe`/`alertas` y no a Telegram; que las cajas que ML da por entradas las marque Claude y no queden contadas dos veces.
 
 ## 1 · PRECIOS
+- **El expediente trae el stock antiguo (16/10/2026).** `calcAntiguoFilas` (una sola cuenta para `antiguo` y el expediente):
+  sección 💸 arriba de todo con lo que paga o va a pagar (por color), mi última decisión o SIN DECIDIR, y una línea 💸 en cada
+  bloque. Caso: P47 blanco pagaba y le subí el precio; Tira Led paga ~$39.000/cierre. Chequear: la sección sale aunque el
+  producto venda poco (antes `fueraPocas` lo sacaba del expediente).
 - **LOS PRECIOS LOS DECIDE CLAUDE, NO EL ROBOT (08/10/2026 a la tarde, v22.68).** Él: *"que haya solo robots
   automáticos de api para cosas que no hay que pensar, como ventas y cosas así de datos. TODO lo que sea pensar lo
   veas exclusivamente vos"*. Reemplaza la decisión 2a de ese mismo día. `autoPrecios: off` (se cambia con
