@@ -338,3 +338,6 @@ queda con descuento; Centímetro y Pendrive 16 no tenían.
 hay en la oficina, si en la oficina no hay tomalo como en Paraguay cuando no hay stock o no da el % de ganancia"*.
 Para escasez y precio: lo de Bs As con unidades en la oficina → la reposición es mandar esa caja (~10 d). Sin nada en la
 oficina → sin reposición (regla ⏳): precio para vender lo que hay en ~100 días, al más alto que lo vacía.
+Aclaración suya del mismo día: *"más importante que la escasez son los 4 meses para pagar. nunca tenemos que llegar a pagar
+por stock"*. O sea: aunque haya stock para 1 mes, sin nada en la oficina se trata como escasez, y el techo de todo es vender
+lo que hay antes de que Full cobre almacenamiento (~120 días; se apunta a ~100).
