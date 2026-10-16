@@ -13683,11 +13683,11 @@ async function main() {
       // Ventas de 60 días por producto×cuenta (sin canceladas), para lo que no tiene ritmo normal.
       // Y las de 30 días (16/10/2026, análisis): lo que se frenó paga más de lo que dice el ritmo normal; se muestra también
       // la cuenta con el ritmo de los últimos 30 días cuando es bastante más bajo.
-      const v60 = {}, v30A = {}; const desde60 = Date.now() - 60 * 864e5, desde30A = Date.now() - 30 * 864e5;
+      const v60 = {}, v30A = {}, conVar30 = {}; const desde60 = Date.now() - 60 * 864e5, desde30A = Date.now() - 30 * 864e5;
       for (const [dk, ents] of Object.entries(vpA || {})) {
         const ts = Date.parse(dk.slice(0, 10).replace(/_/g, '-')); if (!(ts >= desde60)) continue;
         for (const v of Object.values(ents || {})) { if (!v || v.cancelada || !v.prodId || !v.cuenta) continue; const k = v.prodId + '__' + sidA(v.cuenta); v60[k] = (v60[k] || 0) + (Number(v.qty) || 1); if (ts >= desde30A) v30A[k] = (v30A[k] || 0) + (Number(v.qty) || 1);
-          if (v.variante) { const kv = k + '__v__' + sidA(v.variante); v60[kv] = (v60[kv] || 0) + (Number(v.qty) || 1); if (ts >= desde30A) v30A[kv] = (v30A[kv] || 0) + (Number(v.qty) || 1); } }
+          if (v.variante) { const kv = k + '__v__' + sidA(v.variante); v60[kv] = (v60[kv] || 0) + (Number(v.qty) || 1); if (ts >= desde30A) v30A[kv] = (v30A[kv] || 0) + (Number(v.qty) || 1); if (ts >= desde30A) conVar30[k] = (conVar30[k] || 0) + (Number(v.qty) || 1); } }
       }
       const linkDe = {}; for (const [mla, e] of Object.entries(linksA || {})) { if (!e || !e.prodId || !e.cuenta || e.ignored) continue; const k = e.prodId + '__' + sidA(e.cuenta); if (!linkDe[k] || (e.inv && !linkDe[k].inv)) linkDe[k] = { ...e, mla }; }
       // POR COLOR (16/10/2026, él con el P47 blanco: "¿por qué éste paga stock y no se lo bajó?"). ML cobra por código de Full,
@@ -13726,7 +13726,9 @@ async function main() {
         if (!(rDia > 0) && edad < 60) { filas.push({ n: ((pIdxA[m[1]] || {}).name || m[1]) + (colS ? ' · ' + ((e && e.variant) || colS) : ''), cta, st, edad, f: lotes[0].f, rDia: 0, tam, prox: 0, tres: 0, tot: 0, nuevo: true }); continue; }
         const doce = cg.meses.slice(0, 12).reduce((s2, x) => s2 + x.cargo, 0);
         const r30A = (v30A[k] || 0) / 30; let t30 = null;
-        if (rDia > 0 && r30A < rDia * 0.7) { const cg30 = cargoAntiguoProy(lotes, r30A, tabla, DIA_CIERRE_ALM_CTA[_ctaSinTilde(cta)] || 12); t30 = cg30.meses.slice(0, 12).reduce((s2, x) => s2 + x.cargo, 0); }
+        // Por color, el ritmo de 30 días sólo vale si casi todas las ventas de 30 días traen el color anotado (si no, sale bajo de mentira).
+        const _k0 = colS ? k.slice(0, k.indexOf('__v__')) : k, _cob = colS ? (conVar30[_k0] || 0) / Math.max(1, v30A[_k0] || 0) : 1;
+        if (rDia > 0 && r30A < rDia * 0.7 && _cob >= 0.8) { const cg30 = cargoAntiguoProy(lotes, r30A, tabla, DIA_CIERRE_ALM_CTA[_ctaSinTilde(cta)] || 12); t30 = cg30.meses.slice(0, 12).reduce((s2, x) => s2 + x.cargo, 0); }
         filas.push({ t30, r30: r30A, n: ((pIdxA[m[1]] || {}).name || m[1]) + (colS ? ' · ' + ((e && e.variant) || colS) : ''), cta, st, edad, f: lotes[0].f, rDia, tam, prox, tres, tot: doce, sinVenta: !(rDia > 0), cierre: cg.meses[0] ? new Date(cg.meses[0].T - 3 * 36e5).toISOString().slice(5, 10) : '?', rnF: !!(rn && rn.pd > 0) });
       }
       filas.sort((a, b) => b.tot - a.tot || b.edad - a.edad);
