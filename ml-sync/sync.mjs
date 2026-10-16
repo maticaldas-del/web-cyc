@@ -36950,8 +36950,11 @@ async function main() {
               const ms = pubsDe({ pid, cta: ctaS, color: iv > 0 ? f.k.slice(iv + 5) : '' });
               const dec = ms.map((m) => ultDec[m]).filter(Boolean).sort((x, y) => Number(y.ts) - Number(x.ts))[0];
               const reciente = dec && Number(dec.ts) >= ahora - 7 * 864e5;
+              // Una SUBA en algo que paga no cuenta como decidido (la Tira Led "decidida" el 12/10 era una suba por el peor caso).
+              const subaQuePaga = dec && Number(dec.a) > Number(dec.de) && (f.prox > 0 || f.tot > 0);
+              if (subaQuePaga) console.log(`   ⚠️ LA ÚLTIMA FUE UNA SUBA (${dd(dec.ts)} ${money(dec.de || 0)} → ${money(dec.a || 0)}) y esto paga stock antiguo: revisarla hoy`);
               console.log(`💸 ${f.n} · ${f.cta} · ${f.st} u. · la más vieja ${f.edad} d (${f.f}) · vende ${(f.rDia * 30).toFixed(1)}/mes · próximo cierre ${money(f.prox || 0)} · 12 cierres ${money(f.tot || 0)}${f.t30 > 0 ? ` (al ritmo de 30 d: ${money(f.t30)})` : ''} · ${ms.join(', ') || 'sin publicación viva'}`);
-              console.log(`   ${reciente ? `mi decisión ${dd(dec.ts)}: ${money(dec.de || 0)} → ${money(dec.a || 0)} · ${String(dec.motivo || '').replace(/\s+/g, ' ').slice(0, 200)}` : '⚠️ SIN DECIDIR (ninguna decisión mía en 7 días): decidir hoy · promo/remate para que salga antes del cierre, o por qué se deja'}`);
+              console.log(`   ${reciente && !subaQuePaga ? `mi decisión ${dd(dec.ts)}: ${money(dec.de || 0)} → ${money(dec.a || 0)} · ${String(dec.motivo || '').replace(/\s+/g, ' ').slice(0, 200)}` : (subaQuePaga ? '⚠️ SIN DECIDIR (la suba no resuelve el stock antiguo)' : '⚠️ SIN DECIDIR (ninguna decisión mía en 7 días)') + ': decidir hoy · promo/remate para que salga antes del cierre, o por qué se deja'}`);
             }
             console.log('');
           }
