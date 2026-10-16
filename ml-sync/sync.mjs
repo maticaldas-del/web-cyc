@@ -7486,6 +7486,15 @@ async function avisarVentasNuevas(db, lista) {
   const ahora = Date.now();
   const kid = (id) => String(id).replace(/[.#$\[\]\/]/g, '_');
   const nuevas = (lista || []).filter((x) => x && x.v && !(mem && mem[kid(x.v.id)]) && ahora - (Number(x.v.ts) || 0) < AVISO_VENTA_VENTANA_MS);
+  // LO DE LA NOCHE SALE A LAS 10:00 (16/10/2026, él: "cuando sale esa hora de silencio quiero que me mande los que se
+  // vendieron con 10.000 o más, ya sea un producto o varios en una sola venta"). En el horario de descanso las ventas
+  // quedan en `mlapi/avisoventa_pend`; la primera vuelta fuera de ese horario las suma a las nuevas, con el mismo corte
+  // de $10.000 por compra entera, y después borra la lista.
+  const _mArg0 = (Math.floor(ahora / 6e4) - 180) % 1440;
+  const _duerme = _mArg0 >= AVISO_VENTA_DUERME[0] && _mArg0 < AVISO_VENTA_DUERME[1];
+  let pend = {};
+  if (!_duerme) { try { pend = (await db.get('mlapi/avisoventa_pend')) || {}; } catch { pend = {}; } }
+  const hayPend = !!pend && typeof pend === 'object' && Object.keys(pend).length > 0;
   const anotar = {};
   for (const x of nuevas) anotar[kid(x.v.id)] = ahora;
   if (mem) for (const [k, t] of Object.entries(mem)) if (k !== '_ini' && ahora - (Number(t) || 0) > 3 * 864e5) anotar[k] = null;
@@ -7496,18 +7505,28 @@ async function avisarVentasNuevas(db, lista) {
     console.log('Aviso de ventas: memoria nueva, anoto sin mandar.');
     return;
   }
-  if (!nuevas.length) { if (Object.values(anotar).some((v) => v === null)) await db.patch('mlapi/avisoventa', anotar); return; }
+  if (!nuevas.length && !hayPend) { if (Object.values(anotar).some((v) => v === null)) await db.patch('mlapi/avisoventa', anotar); return; }
   // HORARIO DE DESCANSO (15/10/2026, él: "no quiero que mande notificaciones desde las 00:30 hasta las 10:00,
-  // ya que dormimos. Horario Argentina"). Las ventas de esa franja se anotan como avisadas sin mandar nada,
-  // así a las 10:00 no llega una tanda de golpe. Se ven igual en Ventas y en el resumen del día.
-  const _mArg = (Math.floor(ahora / 6e4) - 180) % 1440;   // minutos del día en Argentina (UTC−3)
-  if (_mArg >= AVISO_VENTA_DUERME[0] && _mArg < AVISO_VENTA_DUERME[1]) {
+  // ya que dormimos. Horario Argentina"). Las ventas de esa franja no suenan: quedan guardadas y salen juntas
+  // en la primera vuelta después de las 10:00 (sólo las compras de $10.000 o más, ver arriba).
+  if (_duerme) {
+    const _pd = {}; for (const x of nuevas) _pd[kid(x.v.id)] = { dk: x.dayKey, id: String(x.v.id) };
+    if (Object.keys(_pd).length) await db.patch('mlapi/avisoventa_pend', _pd);
     await db.patch('mlapi/avisoventa', anotar);
-    console.log(`Aviso de ventas: horario de descanso (00:30-10:00), anoto ${nuevas.length} sin avisar.`);
+    console.log(`Aviso de ventas: horario de descanso (00:30-10:00), guardo ${nuevas.length} para mandar a las 10:00.`);
     return;
   }
-  const dk = nuevas[nuevas.length - 1].dayKey;
   const vp = (await db.get('cyc/ventaprod')) || {};
+  const borrarPend = {};
+  for (const [k, p0] of Object.entries(hayPend ? pend : {})) {
+    borrarPend[k] = null;
+    const v0 = p0 && Object.values(vp[p0.dk] || {}).find((w) => w && String(w.id) === String(p0.id));
+    if (v0 && !v0.cancelada && !nuevas.some((y) => String(y.v.id) === String(v0.id))) nuevas.push({ v: v0, dayKey: p0.dk });
+  }
+  const _fin = async () => { if (hayPend) await db.patch('mlapi/avisoventa_pend', borrarPend); };
+  if (!nuevas.length) { await db.patch('mlapi/avisoventa', anotar); await _fin(); return; }
+  if (hayPend) console.log(`Aviso de ventas: sumo ${Object.keys(pend).length} de la noche (horario de descanso).`);
+  const dk = nuevas.slice().sort((a, b) => (a.v.ts || 0) - (b.v.ts || 0))[nuevas.length - 1].dayKey;
   const costoWeb = await armarCostoWeb(db, vp);
   const ganDe = (v, d) => {
     const cw = costoWeb(v, d);
@@ -7534,7 +7553,7 @@ async function avisarVentasNuevas(db, lista) {
   }
   const conGan = nuevas.filter((x) => { const g = ganGrupo[gk(x.v)]; return g != null && g >= AVISO_VENTA_GAN_MIN; });
   if (!conGan.length) {
-    await db.patch('mlapi/avisoventa', anotar);
+    await db.patch('mlapi/avisoventa', anotar); await _fin();
     console.log(`Aviso de ventas: ${nuevas.length} nueva(s), ninguna deja ${money(AVISO_VENTA_GAN_MIN)} o más: anoto sin avisar.`);
     return;
   }
@@ -7571,7 +7590,7 @@ async function avisarVentasNuevas(db, lista) {
     });
   } catch (e) { console.log('Aviso al teléfono: ' + e.message); }
   const ok = tgOk || pushOk > 0;   // con que haya salido por uno de los dos, no se repite
-  if (ok) { await db.patch('mlapi/avisoventa', anotar); console.log(`Aviso de ventas: mandé ${conGan.length} de ${nuevas.length} (Telegram ${tgOk ? 'sí' : 'no'} · teléfonos ${pushOk}).`); }
+  if (ok) { await db.patch('mlapi/avisoventa', anotar); await _fin(); console.log(`Aviso de ventas: mandé ${conGan.length} de ${nuevas.length} (Telegram ${tgOk ? 'sí' : 'no'} · teléfonos ${pushOk}).`); }
   else console.log(`Aviso de ventas: no salió el mensaje (${nuevas.length}), lo reintento la vuelta que viene.`);
 }
 
