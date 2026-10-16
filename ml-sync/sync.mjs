@@ -36838,10 +36838,22 @@ async function main() {
           x.mlas.push(m); x.u30 += u30[m] || 0; if (e.status === 'active') x.activa = true;
           if (e.vis30 != null) { x.vis += Number(e.vis30) || 0; x.visSabida = true; }
         }
-        const par = Object.entries(grp).map(([k, x]) => ({ k, x, st: parseInt(invI[k]) || 0 })).filter((r) => r.st > 0 && r.x.u30 === 0)
+        // CADA COLOR SE JUZGA SOLO (auditoría del 16/10/2026): agrupado por producto×cuenta, un color parado quedaba tapado
+        // por otro que vende (VS Coconut Passion: 13 u., $328.653, 0 ventas, y no salía porque otros aromas de esa ficha
+        // vendían). Si el inventario tiene claves por color (`__v__`), se juzga cada color con sus publicaciones.
+        const colorDeI = (e) => { const p = prodsI[e.prodId] || Object.values(prodsI).find((q) => q && q.id === e.prodId); return e.variant ? String(e.variant) : (p ? varianteDeTitulo(e.title || '', p.variantes || []) : ''); };
+        const filasC = [];
+        for (const [k, x] of Object.entries(grp)) {
+          const pref = k + '__v__';
+          if (!Object.keys(invI).some((kk) => kk.startsWith(pref))) { filasC.push({ k, x, st: parseInt(invI[k]) || 0 }); continue; }
+          const porCol = {};
+          for (const m of x.mlas) { const e = links[m]; const c = colorDeI(e); if (!c) continue; const kc = pref + sidK(c); const y = (porCol[kc] = porCol[kc] || { e, mlas: [], u30: 0, activa: false, vis: 0, visSabida: false, color: c }); y.mlas.push(m); y.u30 += u30[m] || 0; if (e.status === 'active') y.activa = true; if (e.vis30 != null) { y.vis += Number(e.vis30) || 0; y.visSabida = true; } }
+          for (const [kc, y] of Object.entries(porCol)) filasC.push({ k: kc, x: y, st: parseInt(invI[kc]) || 0 });
+        }
+        const par = filasC.filter((r) => r.st > 0 && r.x.u30 === 0)
           .map((r) => ({ ...r, plata: r.st * (costoI[r.x.e.prodId] || 0) })).sort((a, b) => b.plata - a.plata);
         console.log(`── 12c · CON STOCK EN FULL Y SIN VENDER EN 30 DÍAS (${par.length} · ${money(par.reduce((s2, r) => s2 + r.plata, 0))} parados) ──`);
-        for (const r of par.slice(0, 15)) console.log(`· ${r.x.mlas[0]}${r.x.mlas.length > 1 ? ' (+' + (r.x.mlas.length - 1) + ')' : ''} · ${r.x.e.cuenta} · ${tit(r.x.mlas[0])} · ${r.st} u. · ${money(r.plata)} · ${r.x.activa ? 'activa' : 'TODAS PAUSADAS'} · ${r.x.visSabida ? r.x.vis + ' visitas' + (r.x.vis < 20 ? ' → no la ve nadie' : '') : 'visitas ?'}`);
+        for (const r of par.slice(0, 15)) console.log(`· ${r.x.mlas[0]}${r.x.mlas.length > 1 ? ' (+' + (r.x.mlas.length - 1) + ')' : ''} · ${r.x.e.cuenta} · ${tit(r.x.mlas[0])}${r.x.color ? ' · 🎨 ' + r.x.color : ''} · ${r.st} u. · ${money(r.plata)} · ${r.x.activa ? 'activa' : 'TODAS PAUSADAS'} · ${r.x.visSabida ? r.x.vis + ' visitas' + (r.x.vis < 20 ? ' → no la ve nadie' : '') : 'visitas ?'}`);
         if (par.length > 15) console.log(`  (y ${par.length - 15} más)`);
       } catch (eS) { console.log('── 12c · stock parado: no lo armo · ' + eS.message); }
       // 12d) UNIDADES CON PROBLEMA ADENTRO DE FULL (auditoría del 13/10/2026: el chequeo decía "6 u. con problema"
