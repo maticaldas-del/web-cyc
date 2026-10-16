@@ -518,6 +518,7 @@ el precio de un candidato distinto con código parecido (se compara también por
   que la llave pública de la base sea la de `mlapi/vapid` · teléfonos anotados · que el registro no imprima endpoints.
   **Por Telegram se dio de baja el mismo día** (él ya lo activó en la web): `AVISO_VENTA_TELEGRAM = false`. Queda sólo el push. **Horario de descanso 00:30-10:00 de Argentina**
   (`AVISO_VENTA_DUERME`): las ventas de esa franja quedan en `mlapi/avisoventa_pend` y salen en la primera vuelta después de las 10:00, con el mismo corte de $10.000 por compra entera (16/10/2026, pedido suyo). Chequear: que la lista se borre sólo si el aviso salió.
+- `candprecio:prov=elegancia;…` (16/10/2026): toca sólo los candidatos de ese proveedor (sin `prov=` sólo Nissei). Las ventas de ML de publicaciones ajenas no se pueden leer ni por la API (403) ni por la página (pide iniciar sesión): las carga el chat de compras con su navegador. Chequear: que una carga de Elegancia no mueva el precio de un candidato de Nissei con código parecido.
 
 - **Informe 7b: reclamos abiertos y mensajes sin leer (auditoría del 10/10/2026):** el `chequeo` veía 3 reclamos
   abiertos (uno de Matías de 2 días con "podés: reembolsar, mandar mensaje, abrir disputa") y 3 mensajes de
