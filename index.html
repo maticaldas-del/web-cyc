@@ -2619,7 +2619,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.77';
+const APP_VERSION='23.78';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2630,6 +2630,7 @@ const APP_VERSION='23.77';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.78',f:'16/10/2026',h:'02:55',c:[{n:1,t:'🔥 Línea de tiempo: lo que está en escasez se pinta en naranja (el número de stock, el texto y la línea del gráfico), no en verde, aunque alcance 30 días.'}]},
   {v:'23.77',f:'16/10/2026',h:'02:40',c:[{n:2,t:'🔥 Una sola regla de escasez en Pedidos, la línea de tiempo y el robot: se corta antes de poder reponer (todo junto dura menos que reponer), o Full se corta antes de que llegue lo de casa (caja en camino 8 d, oficina 10 d). "Hay que MANDAR" en Pedidos ahora mira lo que tarda la caja, no lo que tarda comprar.'}]},
   {v:'23.76',f:'16/10/2026',h:'02:20',c:[{n:2,t:'📈 Línea de tiempo: el stock de hoy dice 🔥 escasez cuando se termina antes de poder reponerlo, y 🔥 sin reposición cuando Nissei no lo tiene o el precio de Paraguay no da (antes decía "bien" aunque no hubiera forma de reponerlo).'}]},
   {v:'23.75',f:'16/10/2026',h:'01:57',c:[{n:1,t:'🚚 Pedidos: cuando un pedido al proveedor ya pasó la fecha en que tenía que llegar, el aviso dice "ya debería haber llegado" en vez de "~0 d".'}]},
@@ -9475,8 +9476,11 @@ function lineaPintar(prodId){
   // en el medio. 2 u. o más (o desde cero) es una llegada; 1 u. suelta puede ser una devolución y no se marca.
   const stIn={};{let pk=null,pi=-9;ks.forEach((k,i)=>{if(stU[k]==null)return;if(pk!=null&&i-pi<=3){let v=0;for(let j=pi+1;j<=i;j++){const dd=dias[ks[j]];v+=(dd&&dd.u)||0;}
       const e=stU[k]-stU[pk]+v;if(e>=2||(e>=1&&stU[pk]===0))stIn[k]=Math.round(e);}pk=k;pi=i;});}
-  const _stCol=dd=>dd==null?'var(--muted)':dd<7?'var(--red)':dd<20?'#f97316':dd<45?'var(--green)':dd<90?'#eab308':'#a855f7';
-  const _stTxt=dd=>dd==null?'sin ritmo para medir':dd<7?'falta':dd<20?'justo':dd<45?'bien':dd<90?'sobra':'exceso';
+  // ESCASEZ CON SU COLOR (16/10/2026, él: "dice escasez, pero lo sigo viendo en verde"). Lo que alcanza menos de lo que
+  // tarda reponer (`reponerDe`, la misma regla de Pedidos y del robot) va en naranja como escasez, aunque sean 30 días.
+  const _corteE=reponerDe(p).d;
+  const _stCol=dd=>dd==null?'var(--muted)':dd<7?'var(--red)':(dd<20||dd<_corteE)?'#f97316':dd<45?'var(--green)':dd<90?'#eab308':'#a855f7';
+  const _stTxt=dd=>dd==null?'sin ritmo para medir':dd<7?'falta':dd<_corteE?'escasez':dd<20?'justo':dd<45?'bien':dd<90?'sobra':'exceso';
   const suv=Object.values(stU);const sMax=suv.length?Math.max(1,...suv):1;
   const pvs=Object.values(pd); const qMin=pvs.length?Math.max(-50,Math.min(...pvs)):0, qMax=pvs.length?Math.min(250,Math.max(...pvs)):1;
   // PRECIO Y COSTO EN UN SOLO CARRIL, CON LA MISMA ESCALA (08/10/2026, él: "poner las dos líneas de precio y costo en
@@ -9627,7 +9631,8 @@ function lineaPintar(prodId){
     const _ez=escasezDe(p,{ml:q,cam:_tr?_tr.u:0,casa:_cs,vDia:pdia,camDias:_tr?_tr.diasMax:0});
     const _esc=q>0&&(_ez.comp||_ez.full)?`<b style="color:var(--red)">🔥 escasez</b>: ${_ez.txt}`:'';
     const _sr=_ez.sinRepo?` · <b style="color:var(--amber)">sin reposición</b>: estirar para venderlo en ~100 días`:'';
-    return `stock hoy: <b style="color:${_stCol(dd)}">${q} u.</b> <span style="color:${_stCol(dd)}">(${q>0?(dd==null?'sin ventas para medir el ritmo':'alcanza '+Math.round(dd)+' d · '+(_esc?'escasez':_stTxt(dd))):'agotado · '+_stTxt(0)})</span>${_esc?' · '+_esc:''}${_sr}`;})();
+    const _cHoy=q>0&&_esc&&!(dd!=null&&dd<7)?'#f97316':_stCol(dd);
+    return `stock hoy: <b style="color:${_cHoy}">${q} u.</b> <span style="color:${_cHoy}">(${q>0?(dd==null?'sin ventas para medir el ritmo':'alcanza '+Math.round(dd)+' d · '+(_esc?'escasez':_stTxt(dd))):'agotado · '+_stTxt(0)})</span>${_esc?' · '+_esc:''}${_sr}`;})();
   const pIni=ks.map(k=>dias[k]&&dias[k].p).find(x=>x>0), pFin=[...ks].reverse().map(k=>dias[k]&&dias[k].p).find(x=>x>0);
   // ¿EL CAMBIO DE PRECIO DEJÓ MÁS PLATA? (04/10/2026, él con el Metatarso: "quizás lo aumentó un 10% y se vendió un
   // 20% menos"). Por cada cambio del rango: ganancia por día CON STOCK en los 14 días antes y en los días después
@@ -9664,7 +9669,7 @@ function lineaPintar(prodId){
     <details style="margin-top:8px" ${_lineaDetAb?'open':''} ontoggle="_lineaDetAb=this.open"><summary style="cursor:pointer;font-size:.68rem;color:var(--muted)">Qué significa cada color ▾</summary>
     <div style="font-size:.64rem;color:var(--muted);margin-top:6px;line-height:1.9">
       ${ley('var(--green)','vendió / con stock / caja ganada')}${ley('#f59e0b','vendido en remate / caja compartida')}${ley('var(--red)','sin stock / caja perdida')}${ley('#60a5fa','visitas')}${ley('#f97316','rematando')}${ley('#a855f7','escalera')}${ley('#94a3b8','no es de catálogo (no hay caja)')}${ley('#3f3f46','pausada (no pelea la caja)')}${ley('rgba(128,128,128,.35)','no se sabe')}
-      <span style="margin-right:10px">📦 stock en unidades, color por los días que alcanza: <span style="color:var(--red)">━ falta (−7)</span> <span style="color:#f97316">━ justo (7-20)</span> <span style="color:var(--green)">━ bien (20-45)</span> <span style="color:#eab308">━ sobra (45-90)</span> <span style="color:#a855f7">━ exceso (+90)</span></span><span style="margin-right:10px"><span style="color:#f59e0b">━</span> costo real por unidad (mercadería × dólar del mes + IIBB y monotributo, que son % de lo cobrado: por eso se mueve un poco; el detalle sale al pasar el mouse)</span><span style="margin-right:10px">📊 % de ganancia: la línea toma el color del nivel de ese día (🔴 Bajo · 🟠 Justo · 🟢 Bien · 🩵 Bueno · 🔵 Excelente · 🟣 Estrella · 💎 JOYA), misma cuenta que Ventas</span><span style="margin-right:10px">▲▼ cambio de precio, el color dice por qué: ${flechaLeyenda()} · <span style="color:var(--amber)">▾</span> ese día se cobró menos sin cambiar el precio (promo/cupón de ML, carrito o un color más barato)</span><br>
+      <span style="margin-right:10px">📦 stock en unidades, color por los días que alcanza: <span style="color:var(--red)">━ falta (−7)</span> <span style="color:#f97316">━ justo (7-20) o escasez (alcanza menos de lo que tarda reponer: ${_corteE} d)</span> <span style="color:var(--green)">━ bien (20-45)</span> <span style="color:#eab308">━ sobra (45-90)</span> <span style="color:#a855f7">━ exceso (+90)</span></span><span style="margin-right:10px"><span style="color:#f59e0b">━</span> costo real por unidad (mercadería × dólar del mes + IIBB y monotributo, que son % de lo cobrado: por eso se mueve un poco; el detalle sale al pasar el mouse)</span><span style="margin-right:10px">📊 % de ganancia: la línea toma el color del nivel de ese día (🔴 Bajo · 🟠 Justo · 🟢 Bien · 🩵 Bueno · 🔵 Excelente · 🟣 Estrella · 💎 JOYA), misma cuenta que Ventas</span><span style="margin-right:10px">▲▼ cambio de precio, el color dice por qué: ${flechaLeyenda()} · <span style="color:var(--amber)">▾</span> ese día se cobró menos sin cambiar el precio (promo/cupón de ML, carrito o un color más barato)</span><br>
       Pasá el mouse (o tocá) un día para ver todo lo que pasó. El precio es el más barato de sus publicaciones; ventas, visitas y stock suman todas. Stock, caja y remate de los días viejos no los guarda ML: quedan en gris. En stock: la línea son las unidades en Full (cuando se sabe el número) y la franja finita de abajo dice si hubo o no hubo stock ese día.
     </div></details></div>`;
 }
