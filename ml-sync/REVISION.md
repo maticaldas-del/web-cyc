@@ -307,6 +307,9 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 
 ## 3 · MERCADERÍA
 
+### Informe 12c: cada color parado se juzga solo (16/10/2026, auditoría)
+**Qué es:** la sección 12c del `informe` (con stock en Full y sin vender en 30 días) agrupaba por producto×cuenta y un color parado quedaba tapado por otro que vendía. Ahora, si el inventario tiene claves `__v__`, se juzga cada color con sus publicaciones (`colorDeI`). **Qué chequear:** que el total de 12c se parezca al del chequeo de la mañana (16/10: 46 · $3,10M contra 45 · $2,75M).
+
 - **Cajas: 30 días + 7 de viaje, almacenamiento a los 4 meses (14/10/2026, v23.36).** `REPO_DIAS_TOTAL`=37 (index.html) y `T=37` en `ml-sync/notas/decide_cajas.py`. `almacDiasDe(p)`: 120 días lo chico, 60 lo grande (`esGrandeFull`). Chequear: Armar caja y el script dan el mismo objetivo · ninguna caja manda para más de 37 días · el aviso "empieza a pagar en N d" de Rotación cuenta desde 120 en lo chico.
 
 ### Paraguay: el catálogo ENTERO de Nissei en CYC, medido por el robot (15/10/2026, eligió 1a y 2a)
