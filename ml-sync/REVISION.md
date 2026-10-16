@@ -1042,3 +1042,9 @@ Buscador de todo comprasparaguay en Nuevos (`pycatBuscar`, lee `mlapi/pycat` rec
 
 ### Etapa 3 · 15/10/2026 · v23.68
 Listas: se sacó `listamedir` del ml-pycat (regla suya: se evalúa la lista una vez y si no da se descarta). `lista:<prov>|descartar;go` / `|volver;go` (`listasProv.<k>.desc`), la web no muestra los descartados.
+
+### 16/10/2026 · v23.74 · máximo de compra por color y regla "sin reposición" (etapa 3 · mercadería)
+ · `maxCompraDe(p,meta,color)` (index.html): margen de la publicación del color (`netopub`), caja del color y precio
+   `claudedecide/ped/<id>/pvVars/<color>`; `pedVarMaxTxt` lo muestra en el renglón del color. `decido:ped:<id>#<color>=venta|$`
+   escribe `pvVars`/`motPvVars` (sync.mjs). Chequear: un color sin precio propio NO muestra nada (sigue el del producto).
+ · Regla nueva en CEREBRO.md: lo que no tiene reposición se estira para vaciarse en ~100-120 días al precio más alto.

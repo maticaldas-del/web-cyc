@@ -172,3 +172,21 @@ Ya no son 2 de todo. El botón 🪄 Llenar hasta el tope (`candMaxU` en index.ht
 en ML y 5 vendedores o menos → 3 (4 si tiene 300+ vendidas) · caro (más de US$60) → 1 · el resto → 2** (la casilla). Lo que
 vuela (se agota rápido) entra en el pedido SIGUIENTE con unidades según sus ventas: eso lo decido yo con `pedidostodo`.
 Medido antes: del pedido del 21/09, 1 de 12 se agotó rápido (ZX310) y 10 no vendieron nada en 17 días.
+
+## ⏳ SIN REPOSICIÓN: ESTIRAR Y SACAR LA MAYOR PLATA EN 4 MESES (16/10/2026, regla suya)
+Él, sobre lo que se agota y no se puede reponer (Nissei no lo tiene, o el precio de Paraguay no deja el %): *"lo mejor seria
+una combinacion entre esperar lo maximo posible y maximizar ganancia lo maximo posible en los 4 meses de stock que tenemos.
+pero si o si en los 4 meses hay que vender todo. siempre esperando a que se pueda pedir en nissei"*.
+ · Se aplica a todo lo que `escasez`/`reponerDe` dice "sin fecha" (Nissei no lo tiene · el precio no da · Bs As no aplica).
+ · Con stock fijo, la plata máxima es vender TODO al precio más alto que todavía lo vacía en ~4 meses: el ritmo objetivo es
+   (Full + camino + oficina) ÷ ~100 días (colchón contra los 120 en que Full cobra almacenamiento). Si vende más rápido que
+   eso, subo; si vende más lento y no llega a vaciarse en 120 días, bajo. Directo al precio que pienso (sin escalones),
+   nunca abajo del precio normal de antes, frenos de siempre (barrera $33.000, techo, variantes).
+ · Cada vuelta se mira si Nissei volvió a tenerlo o el precio ya da: ahí deja de ser "sin reposición" y vuelve a la regla normal.
+ · Lo que tiene 1-2 unidades no se toca más (ya está arriba): no hay ritmo que medir.
+
+## 💰 MÁXIMO DE COMPRA POR COLOR (16/10/2026, eligió la 1a)
+`decido:ped:<id>#<color>=venta|<precio>|motivo` guarda el precio de venta de ESE color (`claudedecide/ped/<id>/pvVars`); el
+máximo de ese color sale con el margen de su publicación (`cyc/netopub`). El precio es el que el color sostuvo 2+ semanas con
+stock, nunca uno de escasez ni de la primera semana de una prueba de techo. Lo pongo en las vueltas de pedidos cuando los colores
+se venden a precios distintos (si no, alcanza el del producto).
