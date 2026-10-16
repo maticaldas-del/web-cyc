@@ -195,3 +195,13 @@ pero si o si en los 4 meses hay que vender todo. siempre esperando a que se pued
 máximo de ese color sale con el margen de su publicación (`cyc/netopub`). El precio es el que el color sostuvo 2+ semanas con
 stock, nunca uno de escasez ni de la primera semana de una prueba de techo. Lo pongo en las vueltas de pedidos cuando los colores
 se venden a precios distintos (si no, alcanza el del producto).
+
+## 🔁 TODA DECISIÓN TIENE SU SALIDA (16/10/2026, pedido suyo)
+Él: *"si eso no te lo decía yo, ¿te ibas a dar cuenta? puede haber cosas que yo no me di cuenta, no te expliqué, no hay regla
+para eso y vos no lo mirás. me gustaría que esté controlado"*. Respuesta honesta: no, no me iba a dar cuenta: las decisiones
+viejas sólo se revisaban si una regla las miraba.
+ · **En cada vuelta**, el final de `escasez` lista **🔁 mis subas por escasez o sin reposición cuya razón cambió** (ya no se
+   corta, ya se puede reponer, entró mercadería nueva, no se vacía en 4 meses, casi no vende). Cada renglón se decide de nuevo.
+   Las pruebas de techo ya tienen su control (`lupa`); las bajas, promos y remates todavía no (ver REVISION.md).
+ · **Regla para todo lo nuevo:** al crear una regla que cambia un precio o un pedido, escribir también QUÉ la deshace y dónde
+   se mira. Si no tiene salida, no está terminada.

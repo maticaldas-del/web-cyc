@@ -36509,7 +36509,7 @@ async function main() {
         return p.origen === 'py' ? { d: 17, txt: '📅 Paraguay 17 d (sin el dato de la web: no sé si el precio da)' } : { d: 14, txt: '📅 Bs As/Paulvic 14 d' };
       };
       for (const [pid, x] of Object.entries(repoE)) if (!x || !(Number(x.ts) > ahora - 3 * 864e5)) delete repoE[pid];
-      const filas = [], fueraPocas = [], fueraSinClave = []; let juzgadas = 0;
+      const filas = [], fueraPocas = [], fueraSinClave = [], todasE = {}; let juzgadas = 0;
       for (const k of unidades) {
         const i = k.indexOf('__'), iv = k.indexOf('__v__');
         const pid = k.slice(0, i), cta = iv > 0 ? k.slice(i + 2, iv) : k.slice(i + 2); if (/oficina/i.test(cta)) continue;
@@ -36538,6 +36538,7 @@ async function main() {
         const leadComp = comp.inf ? Infinity : comp.d;
         const escFull = alc < lead && !(lead === Infinity && alc > REPO_SIN_FECHA_E);
         const escComp = tot < leadComp && !(leadComp === Infinity && tot > REPO_SIN_FECHA_E);
+        todasE[k] = { st, r14, alc, lead, tot, comp, escFull, escComp, ofi, camU: camK.reduce((a, c) => a + c.u, 0) };
         if (alc > dMax && !escFull && !escComp) continue;
         filas.push({ k, pid, cta, color: iv > 0 ? k.slice(iv + 5) : '', st, r14, dCon: rr.d, cal: rr.cal, r3, alc, u14: vv.u14, u30: vv.u30, ofi, cam: camK, lead, leadTxt, tot, comp, escFull, escComp });
       }
@@ -36580,6 +36581,39 @@ async function main() {
       if (fueraSinClave.length) console.log(`   sin clave de stock: ${fueraSinClave.slice(0, 12).map(nomK).join(' | ')}${fueraSinClave.length > 12 ? ` (y ${fueraSinClave.length - 12} más…)` : ''}`);
       if (fueraPocas.length) console.log(`   menos de 2 ventas en 14 d: ${fueraPocas.slice(0, 12).map(nomK).join(' | ')}${fueraPocas.length > 12 ? ` (y ${fueraPocas.length - 12} más…)` : ''}`);
       if (sinColTxt.length) console.log(`   ventas sin color identificado (no entran en ningún color): ${sinColTxt.slice(0, 10).map(([k, u]) => nomK(k) + ' ' + u + ' u.').join(' | ')}${sinColTxt.length > 10 ? ` (y ${sinColTxt.length - 10} más…)` : ''}`);
+      // ── 🔁 MIS DECISIONES CUYA RAZÓN YA NO ESTÁ (16/10/2026, pedido suyo: "puede haber cosas que yo no me di cuenta (…)
+      // me gustaría que esté controlado"). Toda suba por ESCASEZ o SIN REPOSICIÓN de los últimos 60 días se vuelve a medir
+      // contra el estado de HOY con la misma cuenta de arriba. Si la razón se fue (ya no se corta, ya se puede reponer,
+      // entró mercadería nueva, casi no vende) sale acá para que la decida de nuevo en la vuelta. Solo lee.
+      let ccE = null; try { ccE = (await db.get('cyc/claudecambios')) || {}; } catch { ccE = null; }
+      if (!ccE) console.log('\n⚠️ no pude leer mis decisiones (cyc/claudecambios): el control de razones NO se hizo');
+      else {
+        const ultD = {};
+        for (const d of Object.values(ccE)) { if (!d || !d.mla || !(Number(d.ts) > ahora - 60 * 864e5)) continue; if (!ultD[d.mla] || Number(d.ts) > Number(ultD[d.mla].ts)) ultD[d.mla] = d; }
+        const salen = []; let miradas = 0;
+        for (const d of Object.values(ultD)) {
+          const mot = String(d.motivo || '');
+          const tipo = /SIN REPOSICI/i.test(mot) ? 'sinrepo' : /ESCASEZ|estir|se corta|se agota/i.test(mot) && !/VUELVE/i.test(mot) ? 'escasez' : null;
+          if (!tipo) continue; miradas++;
+          const e = links[d.mla] || {}; if (!e.prodId) { salen.push(`· ${d.mla} · ${String(d.nom || '').slice(0, 40)}: la publicación ya no está vinculada`); continue; }
+          const base = e.prodId + '__' + sidE(e.cuenta || ''), col = colorDeLink(e);
+          const k = col && conColor.has(base) ? base + '__v__' + sidE(col) : base;
+          const t = todasE[k], nom = `${d.mla} · ${String(d.nom || pName[e.prodId] || '').slice(0, 40)} (${e.cuenta || '?'}) · lo subí a $${d.a} el ${new Date(Number(d.ts) - 3 * 3600e3).toISOString().slice(8, 10)}/${new Date(Number(d.ts) - 3 * 3600e3).toISOString().slice(5, 7)}`;
+          const dTx = (x) => x === Infinity ? 'sin fecha' : Math.round(x) + ' d';
+          if (!t) { salen.push(`· ${nom}: casi no vende ahora (menos de 2 en 14 d o sin clave de stock) → ¿la razón de la suba sigue?`); continue; }
+          const motivos = [];
+          if (tipo === 'escasez' && !t.escFull && !t.escComp) motivos.push(`ya no hay escasez: Full alcanza ${dTx(t.alc)} y vuelve a haber en ${dTx(t.lead)} (todo junto ${dTx(t.tot)})`);
+          if (tipo === 'sinrepo') {
+            if (!t.comp.inf) motivos.push(`ya se puede reponer: ${t.comp.txt}`);
+            const mA = mot.match(/[Hh]ay (\d+) u\./), antes = mA ? Number(mA[1]) : null, ahoraU = t.st + t.camU + t.ofi;
+            if (antes != null && ahoraU > antes + Math.max(2, antes * 0.1)) motivos.push(`entró mercadería nueva: antes ${antes} u., ahora ${ahoraU} (Full ${t.st} · camino ${t.camU} · oficina ${t.ofi}) → ¿de dónde vino? ¿se puede volver a comprar ahí?`);
+            if (t.tot !== Infinity && t.tot > 120) motivos.push(`a este ritmo NO se vacía en 4 meses: todo junto alcanza ${dTx(t.tot)} → bajar`);
+          }
+          if (motivos.length) salen.push(`· ${nom}:\n     ${motivos.join('\n     ')}`);
+        }
+        console.log(`\n=== 🔁 MIS SUBAS POR ESCASEZ O SIN REPOSICIÓN CUYA RAZÓN CAMBIÓ (${salen.length} de ${miradas} miradas · 60 d) ===`);
+        console.log(salen.length ? salen.join('\n') : 'Ninguna: todas siguen teniendo la misma razón que cuando las decidí.');
+      }
       return;
     }
 
