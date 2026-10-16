@@ -19188,7 +19188,12 @@ async function main() {
       const _cp = String(process.env.BILLING_PROBE).slice('candprecio:'.length);
       const APLICAR = /(^|;)go\s*$/.test(_cp);
       const filas = _cp.replace(/(^|;)go\s*$/, '').split(';').map((x) => x.trim()).filter(Boolean);
-      const cands = (await db.get('cyc/candidatos_py')) || {};
+      // PROVEEDOR (16/10/2026): `candprecio:prov=elegancia;<cód>=<US$>/<vendidas>;…` toca SÓLO los candidatos de ese
+      // proveedor. Sin `prov=` sólo Nissei. Los códigos de Elegancia y de Nissei se pueden parecer (y se comparan también
+      // por el final): sin este filtro una carga de un proveedor pisaba el precio del otro.
+      let PROVc = '';
+      if (filas.length && /^prov=/i.test(filas[0])) { PROVc = filas.shift().slice(5).trim().toLowerCase().replace(/[^a-z]/g, ''); if (PROVc === 'nissei') PROVc = ''; }
+      const cands = Object.fromEntries(Object.entries((await db.get('cyc/candidatos_py')) || {}).filter(([, c]) => c && String(c.prov || '').toLowerCase() === PROVc));
       const codIg = _pyCodIg; // la misma del catálogo (acepta los códigos con letras de Ferso)
       const upd = {}; let malos = 0, noEsta = 0, sube = 0, baja = 0, igual = 0, fuera = 0, vuelve = 0;
       for (const f of filas) {
