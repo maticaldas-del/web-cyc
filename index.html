@@ -2637,7 +2637,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.95';
+const APP_VERSION='23.96';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2648,6 +2648,7 @@ const APP_VERSION='23.95';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.96',f:'16/10/2026',h:'19:40',c:[{n:2,t:'Reloj de los 4 meses coordinado con el Excel de stock antiguo de ML: los productos del Excel marcan la edad real de sus lotes viejos; los que no figuran no pueden aparecer pagando ese día.'}]},
   {v:'23.95',f:'16/10/2026',h:'19:10',c:[{n:1,t:'Ajustes → Apariencia: modo discreto. Las ventas quedan sin colores ni movimiento (fuego, figuras, temblor, brillo); las especiales con una rayita de su color y las muy buenas con un ✦. Se guarda en cada aparato.'}]},
   {v:'23.94',f:'16/10/2026',h:'18:50',c:[{n:2,t:'Reloj de los 4 meses: donde está cargado el Excel de lotes de ML, toma la edad REAL de cada unidad en Full (no la deduce).'}]},
   {v:'23.93',f:'16/10/2026',h:'18:30',c:[{n:2,t:'Línea de tiempo: el reloj de los 4 meses ahora mide la edad de la unidad MÁS VIEJA (lo primero que entra es lo primero que sale), no desde que hay stock seguido. Si el stock rota, el reloj baja.'}]},
@@ -9610,20 +9611,35 @@ function lineaPintar(prodId){
       [l.inv,...Object.values(l.invVar||{})].filter(Boolean).forEach(inv=>{if(vistos.has(inv))return;vistos.add(inv);const L=LF[inv];
         if(!L||!Array.isArray(L.lotes))return;const ref=Date.parse(String(L.ref||'')+'T12:00:00Z');if(!(ref>0))return;
         const rk=dateToKey(new Date(ref));(_lxE[rk]=_lxE[rk]||[]);L.lotes.forEach(x=>{if(Number(x.u)>0&&Number(x.dias)>=0)_lxE[rk].push({t:ref-Number(x.dias)*864e5,q:Number(x.u)});});});});}
+    // Los días en que se cargó un Excel de ML (de cualquier producto): si éste no figura, ese día no pagaba.
+    const _lxNoPaga=new Set();if(!Object.keys(_lxE).length)Object.values(state.lotesfull||{}).forEach(L=>{const r=Date.parse(String((L||{}).ref||'')+'T12:00:00Z');if(r>0)_lxNoPaga.add(dateToKey(new Date(r)));});
+    // DOS PASADAS: si un producto que no figura en el Excel tenía unidades de 120+ días el día del Excel, esas unidades
+    // eran más nuevas de lo que dedujimos: en la segunda pasada nacen con esa fecha corregida (también hacia atrás).
+    let _nid=0,_flo={},_floOut={};const _mk=(t,q)=>{const id=_nid++;return{id,t:_flo[id]!=null?Math.max(t,_flo[id]):t,q};};
+    const _corre=()=>{_nid=0;lotes=[];pk=null;ventaDesde=0;const out={};
     ks.forEach((k,i)=>{const d=dias[k]||{};const vu=Math.max(0,Number(d.u)||0);
       if(stU[k]!=null){const st=Math.max(0,stU[k]);
-        if(pk==null){if(st>0){const t0=(_stHistDesde&&_stHistDesde<k)?_dk(_stHistDesde):_dk(k);lotes=[{t:t0,q:st}];}}
+        if(pk==null){if(st>0){const t0=(_stHistDesde&&_stHistDesde<k)?_dk(_stHistDesde):_dk(k);lotes=[_mk(t0,st)];}}
         else{let tot=lotes.reduce((a,l)=>a+l.q,0);let vend=ventaDesde+vu;
           // primero las ventas (gastan lo más viejo), después lo que llegó
           while(vend>0&&lotes.length){const x=Math.min(vend,lotes[0].q);lotes[0].q-=x;vend-=x;if(lotes[0].q<=0)lotes.shift();}
           tot=lotes.reduce((a,l)=>a+l.q,0);
-          if(st>tot)lotes.push({t:_dk(k),q:st-tot});
+          if(st>tot)lotes.push(_mk(_dk(k),st-tot));
           else{let sob=tot-st;while(sob>0&&lotes.length){const x=Math.min(sob,lotes[0].q);lotes[0].q-=x;sob-=x;if(lotes[0].q<=0)lotes.shift();}}}
         if(st<=0)lotes=[];pk=k;ventaDesde=0;}
       else{if(pk==null)return;let v=vu;while(v>0&&lotes.length){const x=Math.min(v,lotes[0].q);lotes[0].q-=x;v-=x;if(lotes[0].q<=0)lotes.shift();}
         if(!_conSt(dias[k],k)&&k>=_stIni&&!(vu>0))lotes=[];}
-      if(_lxE[k]&&_lxE[k].length){lotes=_lxE[k].map(x=>({...x})).sort((x,y)=>x.t-y.t);if(pk==null)pk=k;}
-      if(lotes.length)_alC[k]=Math.max(1,Math.round((_dk(k)-lotes[0].t)/864e5)+1);});}
+      // EL EXCEL DICE QUIÉN PAGA (16/10/2026, él: "yo te pasé productos que ya pagan, y sólo esos pagan; coordiná con las barras").
+      // · Producto en el Excel: el día del Excel lo viejo son SUS lotes (edad real) y el resto del stock queda con las fechas
+      //   nuestras más nuevas (lo que el Excel no lista es lo que todavía no paga).
+      // · Producto que NO está en ningún Excel: ese día ML dijo que no paga → ninguna unidad puede tener 120+ días ahí.
+      if(_lxE[k]&&_lxE[k].length){const ex=_lxE[k].map(x=>({...x})).sort((x,y)=>x.t-y.t),exU=ex.reduce((a,l)=>a+l.q,0);
+        const tot=stU[k]!=null?Math.max(0,stU[k]):Math.max(exU,lotes.reduce((a,l)=>a+l.q,0));let resto=Math.max(0,tot-exU);const nuevos=[];
+        for(let j=lotes.length-1;j>=0&&resto>0;j--){const x=Math.min(resto,lotes[j].q);nuevos.unshift({t:Math.max(lotes[j].t,_dk(k)-(_alD-1)*864e5),q:x});resto-=x;}
+        if(resto>0)nuevos.unshift({t:_dk(k),q:resto});lotes=ex.concat(nuevos);if(pk==null)pk=k;}
+      else if(_lxNoPaga.has(k)&&lotes.length){const lim=_dk(k)-(_alD-1)*864e5;lotes.forEach(l=>{if(l.t<lim){if(l.id!=null)_floOut[l.id]=lim;l.t=lim;}});}
+      if(lotes.length)out[k]=Math.max(1,Math.round((_dk(k)-lotes[0].t)/864e5)+1);});return out;};
+    let _r=_corre();if(Object.keys(_floOut).length){_flo=_floOut;_floOut={};_r=_corre();}Object.assign(_alC,_r);}
   // fondo de meses
   let lastM=''; ks.forEach((k,i)=>{const mm=k.slice(0,7);if(mm!==lastM){lastM=mm;svg+=`<line x1="${X(i)}" y1="0" x2="${X(i)}" y2="${H}" stroke="rgba(128,128,128,.25)" stroke-width="1"/><text x="${X(i)+2}" y="${H+12}" font-size="10" fill="var(--muted)">${['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'][Number(k.slice(5,7))-1]}</text>`;}});
   let ptsP=[];
