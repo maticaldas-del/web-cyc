@@ -719,6 +719,7 @@ nota con el motivo adentro + el mismo cambio en claudecambios → sale una sola 
 ## 8 · DATOS E HISTORIAL (nueva, 08/10/2026)
 - **Reloj de los 4 meses en la línea de tiempo (16/10/2026, v23.92 · corregido en v23.93: EDAD DE LA UNIDAD MÁS VIEJA, primero
   entra primero sale — lotes armados con stock de hoy − el de antes + lo vendido; él: "el stock va rotando").** Carril de stock: barra roja por día = edad del lote más viejo
+  (v23.94: el día del Excel de lotes de ML, `cyc/lotesfull` `ref`, los lotes se reemplazan por las edades reales de ML)
   ÷ `almacDiasDe(p)` (120 chico · 60 Tenders); vuelve a 0 cuando el stock queda en cero; arranca desde `_stHistDesde`
   (historial o lotes de ML) si es anterior al gráfico. Arriba a la derecha "⏳ faltan N d". Chequear: que no se cuente un día
   sin dato como "con stock" (usa `_conSt`, la misma regla que la franja verde/roja). Es aproximado: manda la unidad más vieja.
