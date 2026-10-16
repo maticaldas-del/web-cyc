@@ -8556,7 +8556,8 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
   const cands = (await db.get('cyc/candidatos_py')) || {};
   const entradas = Object.entries(cands).filter(([, c]) => c && c.nombre);
   // La medición más vieja primero: con el tope de consultas, así ninguno se queda sin medir días.
-  entradas.sort((x, y) => (Number(x[1].calcTs) || 0) - (Number(y[1].calcTs) || 0));
+  // Empate (nunca medidos): primero los recién cargados (16/10/2026: los 36 de Elegancia quedaban detrás de ~960 del catálogo).
+  entradas.sort((x, y) => (Number(x[1].calcTs) || 0) - (Number(y[1].calcTs) || 0) || (Number(y[1].ts) || 0) - (Number(x[1].ts) || 0));
   if (prueba) [].concat(prueba).forEach((x, i) => entradas.unshift(['__prueba' + i + '__', x]));
   const fin = (await db.get('cyc/finanzas')) || {};
   const tc = parseFloat(fin.tipo_cambio) || 1500;
