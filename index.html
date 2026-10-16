@@ -2619,7 +2619,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.75';
+const APP_VERSION='23.76';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2630,6 +2630,7 @@ const APP_VERSION='23.75';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.76',f:'16/10/2026',h:'02:20',c:[{n:2,t:'📈 Línea de tiempo: el stock de hoy dice 🔥 escasez cuando se termina antes de poder reponerlo, y 🔥 sin reposición cuando Nissei no lo tiene o el precio de Paraguay no da (antes decía "bien" aunque no hubiera forma de reponerlo).'}]},
   {v:'23.75',f:'16/10/2026',h:'01:57',c:[{n:1,t:'🚚 Pedidos: cuando un pedido al proveedor ya pasó la fecha en que tenía que llegar, el aviso dice "ya debería haber llegado" en vez de "~0 d".'}]},
   {v:'23.74',f:'16/10/2026',h:'01:25',c:[{n:2,t:'💰 Pedidos: cada color puede tener su propio máximo de compra, calculado con el precio al que se vende ESE color (el que sostuvo 2 semanas con stock, sin escasez ni pruebas). Sale en el renglón del color cuando Claude decidió ese precio.'}]},
   {v:'23.73',f:'16/10/2026',h:'12:30',c:[{n:1,t:'🧠 Las notas del cerebro ya no se cortan: se guardaban sólo los primeros 600 caracteres (400 en Pedidos). Ahora entran enteras. Las ya guardadas siguen cortadas hasta que Claude las vuelva a escribir.'}]},
@@ -9603,7 +9604,10 @@ function lineaPintar(prodId){
   // los últimos 30 días con stock (3+ ventas; si no, el ritmo normal del año): MISMOS colores que la línea de stock.
   const _stHoy=(()=>{let q=0;LOCS.forEach(l=>{q+=Math.max(0,Number(_lineaVar?getQV(prodId,l,_lineaVar):getQ(prodId,l))||0);});
     const pdia=_pdiaAntes(N-1);const dd=pdia>0?q/pdia:(q>0?null:0);
-    return `stock hoy: <b style="color:${_stCol(dd)}">${q} u.</b> <span style="color:${_stCol(dd)}">(${q>0?(dd==null?'sin ventas para medir el ritmo':'alcanza '+Math.round(dd)+' d · '+_stTxt(dd)):'agotado · '+_stTxt(0)})</span>`;})();
+    // LA ESCASEZ TAMBIÉN ACÁ (16/10/2026, él con el Pendrive 16gb: "no me marca escasez por ningún lado"). Misma cuenta
+    // que Pedidos y el robot (`reponerDe`): si lo que hay se termina antes de poder reponer, o no se puede reponer, se dice.
+    const _rp=reponerDe(p);const _esc=_rp.inf?(q>0?`<b style="color:var(--red)">🔥 sin reposición</b> (${_rp.txt}): estirar para venderlo en ~100 días`:`no se repone (${_rp.txt})`):(q>0&&dd!=null&&dd<_rp.d?`<b style="color:var(--red)">🔥 escasez</b>: se acaba antes de reponer (${_rp.txt})`:'');
+    return `stock hoy: <b style="color:${_stCol(dd)}">${q} u.</b> <span style="color:${_stCol(dd)}">(${q>0?(dd==null?'sin ventas para medir el ritmo':'alcanza '+Math.round(dd)+' d · '+(_rp.inf||(dd!=null&&dd<_rp.d)?'escasez':_stTxt(dd))):'agotado · '+_stTxt(0)})</span>${_esc?' · '+_esc:''}`;})();
   const pIni=ks.map(k=>dias[k]&&dias[k].p).find(x=>x>0), pFin=[...ks].reverse().map(k=>dias[k]&&dias[k].p).find(x=>x>0);
   // ¿EL CAMBIO DE PRECIO DEJÓ MÁS PLATA? (04/10/2026, él con el Metatarso: "quizás lo aumentó un 10% y se vendió un
   // 20% menos"). Por cada cambio del rango: ganancia por día CON STOCK en los 14 días antes y en los días después
