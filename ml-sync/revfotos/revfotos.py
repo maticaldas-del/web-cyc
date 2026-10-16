@@ -17,7 +17,7 @@ def leer_log(p):
     out, cur = [], None
     for l in L:
         if l.startswith('@@ '):
-            m = re.match(r'(c\d+|p\d+~MLA\d+) · margen (\S+)% · (MLA\d+)(.*)', l[3:])
+            m = re.match(r'(c\d+(?:p\d+)?|p\d+~MLA\d+) · margen (\S+)% · (MLA\d+)(.*)', l[3:])
             if not m: continue
             cur = dict(zip(('id', 'm', 'cat', 'extra'), m.groups())); out.append(cur)
         elif cur is not None:
@@ -86,7 +86,7 @@ def comando(dir_, js):
     if falta: sys.exit('ids que no están en la lista: ' + ', '.join(falta))
     # revcand sólo entiende candidatos (c…) y un id que no entiende frena TODO el comando: los probados se saltean
     # (13/10/2026, revisión 9). Y un candidato sin las dos fotos bajadas no va como ok: va como duda.
-    prob = [o['id'] for o in sel if not re.match(r'^c\d+$', o['id'])]
+    prob = [o['id'] for o in sel if not re.match(r'^c\d+(?:p\d+)?$', o['id'])]
     if prob: print(f"los probados no se escriben con revcand: {len(prob)} salteados", file=sys.stderr)
     partes, dudas = [], 0
     for o in sel:
