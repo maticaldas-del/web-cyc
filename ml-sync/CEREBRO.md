@@ -233,3 +233,10 @@ viejas sólo se revisaban si una regla las miraba.
    Las pruebas de techo ya tienen su control (`lupa`); las bajas, promos y remates todavía no (ver REVISION.md).
  · **Regla para todo lo nuevo:** al crear una regla que cambia un precio o un pedido, escribir también QUÉ la deshace y dónde
    se mira. Si no tiene salida, no está terminada.
+
+## 📦 LAS CAJAS SE DECIDEN EN CADA COMPLETA, NO SÓLO LOS PEDIDOS (16/10/2026)
+El 16/10 corrí `decide_pedidos.py` y me salteé `decide_cajas.py`: quedó la decisión del día anterior ("no mandar" del Protector
+talón Común Beige, cuando las 18 todavía se estaban armando) y Armar caja no recomendaba mandar algo en escasez de Full con 13
+en la oficina. Él lo marcó. En la completa de las 08:52 van LOS DOS scripts sobre el mismo log de `pedidostodo`, y
+`decido:archivo=pedidos;go` + `decido:archivo=cajas;go`. Y todo lo que el expediente marca "🔥 Full se corta antes" con
+mercadería en la oficina se mira contra la caja decidida.
