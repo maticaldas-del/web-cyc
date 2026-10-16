@@ -808,6 +808,20 @@ aparte `cyc/ventaprod/<hoy>` y `<ayer>` con `.get()`, y redibuja Inicio o Ventas
 **Y el mismo día:** el commit de v23.19 dejó `sw.js` VACÍO (0 bytes) en las dos ramas: sin `CACHE` la web no detecta
 versiones nuevas. Restaurado en v23.21 (`cyc-v601`). **Antes de cada commit: `wc -c sw.js` > 0.**
 
+### La ficha médica de cada publicación (16/10/2026, v23.81 · `cyc-v662`, eligió 1a 2a 3a)
+- **Qué es:** él: *"como si fuera una ficha médica del producto (...) cada vez que hacés un análisis abrís eso y tenés todo"* y
+  *"quiero poder verla (...) completa, mínimo la info que está en la línea temporal"*. `armarFicha` (sync.mjs) junta por
+  publicación: la línea de tiempo, mis cambios (`cyc/claudecambios`), mis promos (`cyc/promoclaude`), los cambios viejos del
+  supervisor (`cyc/supervisor/eventos`) y la historia de mis notas (`mlapi/fichanotas/<MLA>/<ts>`, nueva: cada nota del 🧠
+  se guarda también ahí). Saca tramos de precio (ganancia por día con stock), el resultado de cada cambio (21 d antes contra
+  después, Poisson) y LO QUE SABEMOS con vencimiento (60 d para un precio que no rindió).
+- **Dónde vive:** `mlapi/ficha/<MLA>` · comando `ficha[:<MLA o palabras>][:go]` (con filtro imprime la ficha entera) · paso
+  "Ficha de cada publicación" en ml-daily después de la línea de tiempo · línea `📋 ficha:` en `escasez` y en el expediente
+  · web: botón "📋 Ficha completa" en el 🧠 (`fichaAbrir`, `_fichaBotones`) con la línea de tiempo entera día por día.
+- **Qué chequear:** que el día de un cambio de precio las ventas vayan al precio cobrado (no al de la noche) · que una nota
+  nueva quede en la historia · que la ficha se arme cada noche (el paso entra en `avisonoche` si falla) · que "lo que
+  sabemos" no diga algo con $0 · que la ganancia use la misma cuenta que `lupa`/`escmedir`.
+
 ## 9 · CEREBRO (nueva, 09/10/2026, pedido suyo)
 Él, después de que dos veces salió incompleto (precios y pedidos): *"es un problema grave que pasó dos veces ya (...) en los dos se hizo súper incompleto y nunca te diste cuenta (...) quiero agregar esto de revisar cerebro a las etapas"*. Revisa LO QUE HACE CLAUDE en cada vuelta (08:52, 12:52, 16:52, 20:52): que cada parte se haga ENTERA.
 - **La pregunta de esta etapa, para cada tarea:** ¿de dónde salió la lista que miré? ¿esa lista es TODO o sólo lo que ya existe / se movió / ya decidí? El error de las dos veces fue el mismo: mirar una lista que sólo traía una parte (`informe` = lo que se movió · `pedidosnotas` = lo ya decidido) y creer que era todo.

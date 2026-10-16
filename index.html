@@ -2619,7 +2619,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.80';
+const APP_VERSION='23.81';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2630,6 +2630,7 @@ const APP_VERSION='23.80';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.81',f:'16/10/2026',h:'13:11',c:[{n:2,t:'📋 Ficha completa de cada publicación: desde el 🧠 tocás "Ficha completa" y ves lo mismo que miro yo antes de decidir: lo que ya sabemos (qué precio no rindió y hasta cuándo no se repite), cada cambio de precio con cómo le fue, cada precio que tuvo con su ganancia por día, mis notas y la línea de tiempo entera día por día.'}]},
   {v:'23.80',f:'16/10/2026',h:'11:15',c:[{n:2,t:'Línea de tiempo con un color elegido: ahora cuenta la caja en camino de ESE color. Antes la dejaba afuera y marcaba escasez de compra que no era (Protector talón Común Beige).'}]},
   {v:'23.79',f:'16/10/2026',h:'03:20',c:[{n:2,t:'🔴 Escasez es ROJO en todos lados (Pedidos, línea de tiempo, barra): lo que se termina antes de poder reponer, o lo que no se puede reponer (Nissei no lo tiene o el precio no da). 🟠 naranja ahora es "comprar ya, llega a tiempo" y 🟡 "hay tiempo".'}]},
   {v:'23.78',f:'16/10/2026',h:'02:55',c:[{n:1,t:'🔥 Línea de tiempo: lo que está en escasez se pinta en naranja (el número de stock, el texto y la línea del gráfico), no en verde, aunque alcance 30 días.'}]},
@@ -10018,6 +10019,7 @@ async function cerebroAbrir(el,ev){
     }
     if(falla)h+=par('<span style="color:var(--amber)">No pude leer alguna nota. Probá de nuevo en un rato.</span>');
     else if(!nn)h+=par(`<span style="color:var(--muted)">${soloUnid?'Todavía no escribí por qué van estas unidades.':'Todavía no escribí nada sobre el precio de esto.'}</span>`);
+    h+=_fichaBotones(mlas);
     m.innerHTML=caja(h);
     return;
   }
@@ -10047,7 +10049,51 @@ async function cerebroAbrir(el,ev){
     const cab=varias?`<b>${_cerEsc(e.cuenta||'')}${e.variant?' · '+_cerEsc(e.variant):''}${e.status&&e.status!=='active'?' · pausada':''}:</b> `:'';
     h+=par(cab+fr.map(_cerEsc).join(' '));
   }
+  h+=_fichaBotones(mlas);
   m.innerHTML=caja(h);
+}
+// ── LA FICHA MÉDICA DE CADA PUBLICACIÓN (16/10/2026, él: "quiero poder verla, así veo lo que ves vos. y que esté
+// completa que no falte nada. mínimo la info que está en la línea temporal"). La arma el robot cada noche en
+// `mlapi/ficha/<MLA>` (lo que ya sabemos con vencimiento, cada cambio con su resultado, los tramos de precio y mis
+// notas) y abajo va la línea de tiempo ENTERA de la publicación, día por día (`mlapi/linea/<MLA>`), leída al abrirla.
+// Es exactamente lo que miro yo antes de decidir un precio. Se abre desde el 🧠 de cada publicación.
+const _FICHA_CAJA={g:'la gana',c:'comparte',p:'la pierde',n:'sin catálogo',s:'sin caja'};
+const _FICHA_EST={active:'activa',paused:'pausada',closed:'cerrada',under_review:'en revisión de ML',inactive:'inactiva'};
+async function fichaAbrir(mla,ev){
+  if(ev&&ev.stopPropagation)ev.stopPropagation();
+  let m=document.getElementById('ficha-modal');
+  if(!m){m=document.createElement('div');m.id='ficha-modal';m.style.cssText='position:fixed;inset:0;z-index:9100;background:rgba(0,0,0,.6);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:16px';
+    m.onclick=e=>{if(e.target===m)m.remove();};document.body.appendChild(m);}
+  const caja=h=>`<div style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;max-width:980px;width:100%;padding:14px 16px;margin-top:20px;font-size:.8rem;line-height:1.5">${h}</div>`;
+  const e=(state.mllinks||{})[mla]||{};const p=prodById(e.prodId)||{};
+  m.innerHTML=caja(`📋 Cargando la ficha de <b>${_cerEsc(p.name||e.title||mla)}</b>…`);
+  let F=null,L=null,falla='';
+  try{F=(await db.ref('mlapi/ficha/'+mla).once('value')).val();}catch(er){falla='la ficha';}
+  try{L=(await db.ref('mlapi/linea/'+mla).once('value')).val()||{};}catch(er){falla+=(falla?' y ':'')+'la línea de tiempo';}
+  const esc=_cerEsc,fK=k=>k?k.slice(8,10)+'/'+k.slice(5,7)+'/'+k.slice(2,4):'?',$=x=>x==null||!isFinite(x)?'—':fmt(x);
+  const sec=(t,h)=>`<div style="margin-top:14px"><div style="font-weight:700;font-size:.85rem;margin-bottom:4px">${t}</div>${h}</div>`;
+  const tb=(cab,filas)=>`<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;font-size:.72rem"><tr>${cab.map(c=>`<th style="text-align:left;padding:3px 6px;border-bottom:1px solid var(--border2);color:var(--muted);white-space:nowrap">${c}</th>`).join('')}</tr>${filas.map(f=>`<tr>${f.map(c=>`<td style="padding:3px 6px;border-bottom:1px solid var(--border);vertical-align:top">${c}</td>`).join('')}</tr>`).join('')}</table></div>`;
+  const tit=`${esc(p.name||'')}${e.variant?' · 🎨 '+esc(e.variant):''} · ${esc(e.cuenta||'')}`;
+  let h=`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><b style="font-size:.95rem">📋 Ficha · ${tit}</b><div style="color:var(--muted)">${esc(mla)} · "${esc(e.title||'')}"</div></div><div style="display:flex;gap:6px;flex-wrap:wrap">${e.prodId?`<button class="btn" onclick="lineaAbrir('${e.prodId}',event,${JSON.stringify(e.variant||'').replace(/"/g,'&quot;')})">📈 Gráfico</button>`:''}<button class="btn" onclick="document.getElementById('ficha-modal').remove()">Cerrar</button></div></div>`;
+  if(falla)h+=`<p style="color:var(--amber)">No pude leer ${falla}. Probá de nuevo en un rato.</p>`;
+  if(F){const r=F.res||{};
+    h+=`<p style="margin:8px 0 0">Hoy: <b>${$(r.p)}</b> · ${esc(_FICHA_EST[r.est]||r.est||'?')} · ${r.st!=null?r.st+' u. en Full':'stock ?'} · últimos 30 días: ${r.u30||0} u. (${r.r30??'—'} por día con stock, ${$(r.pd30)} de ganancia por día) · costo ${$(r.cu)} · ficha armada ${_cerFecha(F.ts)}</p>`;
+    const ico={perdio:'⛔',gano:'✅',mejor:'🏆',curso:'🧪'};
+    h+=sec('Lo que ya sabemos',(F.sabemos||[]).length?(F.sabemos||[]).map(s=>`<div style="margin:3px 0">${ico[s.t]||'·'} ${esc(s.txt)}</div>`).join(''):'<div style="color:var(--muted)">Todavía no hay nada medido: ningún cambio de precio con días suficientes después.</div>');
+    const vC={'ganó':'var(--green)','perdió':'var(--red)'};
+    h+=sec('Cada cambio de precio y cómo le fue (21 días antes contra después, días con stock)',(F.cambios||[]).length?tb(['Fecha','Precio','Antes','Después','Vendió','Resultado','Situación','Por qué'],(F.cambios||[]).slice().reverse().map(c=>[fK(c.k),`${$(c.de)} → <b>${$(c.a)}</b>`,`${c.A.r??'—'}/día · ${$(c.A.pd)}/día<br><span style="color:var(--muted)">${c.A.dias} d</span>`,`${c.B.r??'—'}/día · ${$(c.B.pd)}/día<br><span style="color:var(--muted)">${c.B.dias} d${c.B.agot?' · '+c.B.agot+' agotado':''}</span>`,`${c.B.u}${c.esp!=null?' de '+c.esp+' esperadas':''}`,`<b style="color:${vC[c.ver]||'var(--muted)'}">${esc(c.ver)}</b>${c.vence?'<br><span style="color:var(--muted)">no repetir hasta '+fK(c.vence)+'</span>':''}`,esc([c.sit&&c.sit.st!=null?c.sit.st+' u. en Full':'',c.sit&&c.sit.esc?'escasez':'',c.sit&&c.sit.fecha?'cerca de '+c.sit.fecha:'',c.sit&&c.sit.caja?'caja: '+(_FICHA_CAJA[c.sit.caja]||c.sit.caja):''].filter(Boolean).join(', ')),esc(c.motivo||'')])):'<div style="color:var(--muted)">No hay cambios de precio anotados.</div>');
+    h+=sec('Cada precio que tuvo (tramos)',(F.tramos||[]).length?tb(['Desde','Hasta','Precio','Días con stock','Vendió','Por día','Ganancia por día','Gana por unidad','Visitas/día','Caja'],(F.tramos||[]).slice().reverse().map(t=>[fK(t.desde),fK(t.hasta),`<b>${$(t.p)}</b>${t.pausada?' <span style="color:var(--muted)">pausada</span>':''}`,`${t.diasSt} de ${t.dias}${t.agot?' ('+t.agot+' agotado)':''}`,t.u+(t.uR?` (${t.uR} en remate)`:''),t.r??'—',$(t.pd),$(t.gu),t.vd??'—',esc(_FICHA_CAJA[t.caja]||t.caja||'—')])):'<div style="color:var(--muted)">Sin tramos todavía.</div>');
+    h+=sec('Mis notas (de la más nueva a la más vieja)',(F.notas||[]).length?(F.notas||[]).map(n=>`<div style="margin:4px 0">💭 <span style="color:var(--muted)">${_cerFecha(n.ts)}</span> ${esc(n.t)}</div>`).join(''):'<div style="color:var(--muted)">Todavía no hay notas guardadas en la historia (se guardan desde el 16/10).</div>');
+  }else if(!falla)h+=`<p style="color:var(--muted)">La ficha se arma de noche: esta publicación todavía no tiene. Abajo está igual su línea de tiempo entera.</p>`;
+  // La línea de tiempo ENTERA, día por día, de la más nueva a la más vieja. Un dato que no está es "no se sabe" (—).
+  const dias=Object.keys(L||{}).filter(k=>/^\d{4}_\d{2}_\d{2}$/.test(k)&&L[k]&&typeof L[k]==='object').sort().reverse();
+  const v=(x,f)=>x==null?'<span style="color:var(--muted)">—</span>':f?f(x):esc(String(x));
+  h+=sec(`Línea de tiempo, día por día (${dias.length} días guardados)`,dias.length?`<details${dias.length<=45?' open':''}><summary style="cursor:pointer;color:var(--muted)">ver los ${dias.length} días</summary>${tb(['Día','Estado','Stock Full','Precio','Vendió','Cobrado','Neto','En remate','Caja','ML pide','Visitas','Margen','Vendidas (vida)','Falta algo'],dias.map(k=>{const x=L[k];return[fK(k),v(x.est,s=>esc(_FICHA_EST[s]||s)+(x.sub?' <span style="color:var(--muted)">('+esc(x.sub)+')</span>':'')),v(x.st),v(x.p,$),v(x.u),v(x.tot,$),v(x.neto,$),v(x.uR),v(x.caja,c=>esc(_FICHA_CAJA[c]||c)),v(x.ptw,$),v(x.vis),v(x.mg,g=>g+'%'),v(x.vend),x.inc?'<span style="color:var(--amber)">incompleto</span>':''];}))}</details>`:'<div style="color:var(--muted)">Sin línea de tiempo guardada.</div>');
+  m.innerHTML=caja(h);
+}
+function _fichaBotones(mlas){
+  const L=state.mllinks||{};const ok=(mlas||[]).filter(k=>/^MLA\d+$/.test(k));if(!ok.length)return '';
+  return `<div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:6px">${ok.map(k=>{const e=L[k]||{};return `<button class="btn" onclick="fichaAbrir('${k}',event)">📋 Ficha completa${ok.length>1?` · ${_cerEsc(e.cuenta||'')}${e.variant?' · '+_cerEsc(e.variant):''}${e.status&&e.status!=='active'?' (pausada)':''}`:''}</button>`;}).join('')}</div>`;
 }
 // EL CEREBRO DE LAS VENTAS (08/10/2026, pedido suyo: *"quizas puede haber un cerebro en ventas por dia por
 // ejemplo y que diga un analisis de las ventas del periodo seleccionado. por ejemplo, hoy se vendio bien, pero

@@ -280,3 +280,11 @@ corto sí. **Se saca el techo ×2** (queda sólo el de $650.000).
    por ML (`informe`, frenadas) y si pasa, se vuelve al último precio que ML aceptó y se anota.
  · **Medir:** `escmedir` en las completas; el techo encontrado de cada una va a `notas/techo.md`.
  · **Fuera de escasez (3a):** buscar el techo con saltos de +30 a +50% y, si funciona, otro salto (la escalera alta es sólo escasez).
+
+## 📋 LA FICHA DE CADA PUBLICACIÓN SE ABRE ANTES DE DECIDIR (16/10/2026, regla suya, eligió 1a 2a 3a)
+Él: *"cada vez que hacés un análisis abrís eso y tenés todo"*. Antes de tocar el precio de una publicación miro su ficha:
+la línea `📋 ficha:` del expediente y de `escasez` (lo que no rindió y hasta cuándo, el mejor precio medido, la prueba en curso)
+y, si hace falta el detalle, `ficha:<MLA o palabras>` por ml-consulta (cada cambio con su resultado, cada precio que tuvo
+con su ganancia por día, mis notas). **Un precio que no rindió no se repite hasta su vencimiento (60 días)**, salvo que
+cambie algo grande (escasez, fecha de regalo, competidor sin stock o más caro, costo nuevo) y lo digo en el motivo. Si ya
+venció, se puede volver a probar. Él ve lo mismo tocando "📋 Ficha completa" en el 🧠.
