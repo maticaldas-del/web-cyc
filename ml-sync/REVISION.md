@@ -1070,3 +1070,9 @@ peor caso del 12/10 (no son pruebas) · la caja decidida de un color muestra só
 **v23.76 (16/10):** la línea de tiempo de cada producto (`lineaPintar`, "stock hoy") usa `reponerDe` como Pedidos y el
 robot: 🔥 escasez si se acaba antes de reponer, 🔥 sin reposición si no se puede reponer. Chequear: que no diga "bien" en un
 producto sin reposición (caso Pendrive 16gb).
+**v23.77 (16/10) · UNA SOLA REGLA DE ESCASEZ** (él: "quiero que sean lo mismo"): `escasezDe` en index.html la usan el
+semáforo y la barra de Pedidos y la línea de tiempo; el robot (`escasez`, sync.mjs) hace la misma cuenta con el mismo corte
+(`cyc/reponer` que escribe la web; sin reposición = 60 d). Dos condiciones: todo junto dura menos que reponer · ML dura menos
+que la caja en camino (8 d desde el despacho) / la oficina (10 d) / comprar. Se corrigió: "hay que MANDAR" comparaba ML contra
+lo que tarda COMPRAR; el semáforo usaba ≤ y el robot <. Chequear: que un producto dé lo mismo en Pedidos, línea y expediente.
+Diferencia que queda: el robot mide el ritmo con 14 d con stock y la web con 30 d (decisión pendiente con él).
