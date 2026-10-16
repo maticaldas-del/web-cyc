@@ -13686,12 +13686,26 @@ async function main() {
       const v60 = {}, v30A = {}; const desde60 = Date.now() - 60 * 864e5, desde30A = Date.now() - 30 * 864e5;
       for (const [dk, ents] of Object.entries(vpA || {})) {
         const ts = Date.parse(dk.slice(0, 10).replace(/_/g, '-')); if (!(ts >= desde60)) continue;
-        for (const v of Object.values(ents || {})) { if (!v || v.cancelada || !v.prodId || !v.cuenta) continue; const k = v.prodId + '__' + sidA(v.cuenta); v60[k] = (v60[k] || 0) + (Number(v.qty) || 1); if (ts >= desde30A) v30A[k] = (v30A[k] || 0) + (Number(v.qty) || 1); }
+        for (const v of Object.values(ents || {})) { if (!v || v.cancelada || !v.prodId || !v.cuenta) continue; const k = v.prodId + '__' + sidA(v.cuenta); v60[k] = (v60[k] || 0) + (Number(v.qty) || 1); if (ts >= desde30A) v30A[k] = (v30A[k] || 0) + (Number(v.qty) || 1);
+          if (v.variante) { const kv = k + '__v__' + sidA(v.variante); v60[kv] = (v60[kv] || 0) + (Number(v.qty) || 1); if (ts >= desde30A) v30A[kv] = (v30A[kv] || 0) + (Number(v.qty) || 1); } }
       }
       const linkDe = {}; for (const [mla, e] of Object.entries(linksA || {})) { if (!e || !e.prodId || !e.cuenta || e.ignored) continue; const k = e.prodId + '__' + sidA(e.cuenta); if (!linkDe[k] || (e.inv && !linkDe[k].inv)) linkDe[k] = { ...e, mla }; }
+      // POR COLOR (16/10/2026, él con el P47 blanco: "¿por qué éste paga stock y no se lo bajó?"). ML cobra por código de Full,
+      // o sea por COLOR. Sumando el producto entero, los colores que venden tapaban a los parados (el P47 de Matías no salía:
+      // blanco 12 u. de 195 d y azul 10 u. de 157 d en el Excel). Si el producto×cuenta tiene stock por color, va color por color,
+      // cada uno con su código, su Excel, su ritmo y su fecha.
+      for (const [mla, e] of Object.entries(linksA || {})) { if (!e || !e.prodId || !e.cuenta || e.ignored) continue; const pV = pIdxA[e.prodId];
+        const va = e.variant || ((pV && Array.isArray(pV.variantes) && pV.variantes.length) ? varianteDeTitulo(e.title || '', pV.variantes) : ''); if (!va) continue;
+        const kv = e.prodId + '__' + sidA(e.cuenta) + '__v__' + sidA(va); if (!linkDe[kv] || (e.inv && !linkDe[kv].inv)) linkDe[kv] = { ...e, variant: va, mla }; }
       const filas = []; let mirados = 0, sinLink = 0;
-      for (const [k, v] of Object.entries(invA)) {
-        const m = k.match(/^(.+?)__([^_].*?)$/); if (!m || /__v__/.test(k)) continue;
+      const _filasDe = [];
+      for (const [k0, v0] of Object.entries(invA)) {
+        const m0 = k0.match(/^(.+?)__([^_].*?)$/); if (!m0 || /__v__/.test(k0)) continue;
+        const colores = Object.entries(invA).filter(([kk, vv]) => kk.startsWith(k0 + '__v__') && Number(vv) > 0);
+        if (colores.length) for (const [kk, vv] of colores) _filasDe.push([kk, vv, m0, kk.slice((k0 + '__v__').length)]);
+        else _filasDe.push([k0, v0, m0, null]);
+      }
+      for (const [k, v, m, colS] of _filasDe) {
         const cta = ctaDeSid[m[2]]; if (!cta) continue;                       // la oficina y lo que no es de ML no
         if (soloA && _ctaSinTilde(cta) !== soloA) continue;
         const st = Math.max(0, Math.round(Number(v) || 0)); if (!st) continue;
@@ -13700,7 +13714,8 @@ async function main() {
         const eL = e || { prodId: m[1], cuenta: cta };
         const h = (histA || {})[k];
         const fb = Math.min(...[h && h.desde, eL.altaTs].map(Number).filter((x) => x > 0), Infinity);
-        const lotes = lotesFifo(st, eL.inv ? (lotesA || {})[eL.inv] : null, cajasA[m[1] + '__' + (e ? e.cuenta : cta)] || cajasA[m[1] + '__' + cta], isFinite(fb) ? fb : 0);
+        // Las cajas llegadas no dicen de qué color eran: por color sólo el Excel y la fecha del color.
+        const lotes = lotesFifo(st, eL.inv ? (lotesA || {})[eL.inv] : null, colS ? [] : (cajasA[m[1] + '__' + (e ? e.cuenta : cta)] || cajasA[m[1] + '__' + cta]), isFinite(fb) ? fb : 0);
         const rn = (rnA || {})[k]; const rDia = rn && rn.pd > 0 ? rn.pd : (v60[k] || 0) / 60;
         const { tam, tabla } = tablaAntiguoDe(eL, pIdxA[m[1]], lotesA, cfgA);
         const cg = cargoAntiguoProy(lotes, rDia, tabla, DIA_CIERRE_ALM_CTA[_ctaSinTilde(cta)] || 12);
@@ -13708,11 +13723,11 @@ async function main() {
         const prox = (cg.meses[0] || {}).cargo || 0, tres = cg.meses.slice(0, 3).reduce((s2, x) => s2 + x.cargo, 0);
         // Sin ritmo (nunca vendió ahí) la cuenta da "no se vende nunca" y suma 3 años de cargo: no es una proyección.
         // Lo recién llegado sin ventas va aparte y no suma (vuelve a la lista cuando tenga ritmo o cumpla 60 días).
-        if (!(rDia > 0) && edad < 60) { filas.push({ n: (pIdxA[m[1]] || {}).name || m[1], cta, st, edad, f: lotes[0].f, rDia: 0, tam, prox: 0, tres: 0, tot: 0, nuevo: true }); continue; }
+        if (!(rDia > 0) && edad < 60) { filas.push({ n: ((pIdxA[m[1]] || {}).name || m[1]) + (colS ? ' · ' + ((e && e.variant) || colS) : ''), cta, st, edad, f: lotes[0].f, rDia: 0, tam, prox: 0, tres: 0, tot: 0, nuevo: true }); continue; }
         const doce = cg.meses.slice(0, 12).reduce((s2, x) => s2 + x.cargo, 0);
         const r30A = (v30A[k] || 0) / 30; let t30 = null;
         if (rDia > 0 && r30A < rDia * 0.7) { const cg30 = cargoAntiguoProy(lotes, r30A, tabla, DIA_CIERRE_ALM_CTA[_ctaSinTilde(cta)] || 12); t30 = cg30.meses.slice(0, 12).reduce((s2, x) => s2 + x.cargo, 0); }
-        filas.push({ t30, r30: r30A, n: (pIdxA[m[1]] || {}).name || m[1], cta, st, edad, f: lotes[0].f, rDia, tam, prox, tres, tot: doce, sinVenta: !(rDia > 0), cierre: cg.meses[0] ? new Date(cg.meses[0].T - 3 * 36e5).toISOString().slice(5, 10) : '?', rnF: !!(rn && rn.pd > 0) });
+        filas.push({ t30, r30: r30A, n: ((pIdxA[m[1]] || {}).name || m[1]) + (colS ? ' · ' + ((e && e.variant) || colS) : ''), cta, st, edad, f: lotes[0].f, rDia, tam, prox, tres, tot: doce, sinVenta: !(rDia > 0), cierre: cg.meses[0] ? new Date(cg.meses[0].T - 3 * 36e5).toISOString().slice(5, 10) : '?', rnF: !!(rn && rn.pd > 0) });
       }
       filas.sort((a, b) => b.tot - a.tot || b.edad - a.edad);
       const conCargo = filas.filter((x) => x.tot > 0 || x.t30 > 0), $ = (n) => '$' + Math.round(n).toLocaleString('es-AR');

@@ -317,6 +317,11 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 (sería doble), y que el número de Gastos y el del Arqueo sean el mismo para cada mes.
 
 ## 3 · MERCADERÍA
+- **`antiguo` color por color (16/10/2026).** ML cobra stock antiguo por código de Full (= color). El comando sumaba el
+  producto×cuenta y usaba el código de UNA publicación: los colores que venden tapaban a los parados (P47 Matías blanco 12 u.
+  195 d y azul 10 u. 157 d en el Excel no aparecían). Ahora, si hay stock por color (`__v__`), va una fila por color con su
+  código (`mllinks.variant` o el título), su Excel, su ritmo (`ritmonormal`/ventas con `variante`) y su `stockhist`. Las cajas
+  llegadas no tienen color: por color no se usan. Chequear: la `CUENTA` del final sigue cerrando.
 
 ### El análisis a fondo aplicado (16/10/2026, eligió "lo que recomiendes" en las 11)
 Qué es: reglas nuevas del cerebro (`ml-sync/CEREBRO.md`, sección 🔬). Código: `pedidostodo` imprime `cortes N` (veces que
