@@ -2620,7 +2620,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.90';
+const APP_VERSION='23.91';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2631,6 +2631,7 @@ const APP_VERSION='23.90';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.91',f:'16/10/2026',h:'17:45',c:[{n:3,t:'Arreglado: la app no abría. El archivo que la hace funcionar como app instalada había quedado vacío en las versiones 23.89 y 23.90.'}]},
   {v:'23.90',f:'16/10/2026',h:'17:20',c:[{n:1,t:'Pedidos: cada color muestra su precio máximo de compra, también los que no tienen un precio propio decidido (usan el del producto y el globito lo aclara).'}]},
   {v:'23.89',f:'16/10/2026',h:'17:10',c:[{n:3,t:'Escasez de Bs As corregida: ya no alcanza con tener la oficina vacía. Se da por repuesto (~1 semana + caja) y pasa a "no se consigue" sólo si Pedidos lo pide hace 10 días y no entró nada a la oficina; cuando entra, se cae solo. Y la escasez se mide con el ritmo normal: una suba que frenó las ventas no achica lo que se pide comprar.'}]},
   {v:'23.88',f:'16/10/2026',h:'15:58',c:[{n:3,t:'Escasez: lo de Bs As ya no se da por repuesto en una semana. Si hay en la oficina, la reposición es mandar la caja; si no hay nada, se trata como un producto sin reposición (se estira para venderlo en ~4 meses, al precio más alto).'}]},

@@ -22,6 +22,8 @@ todas las etapas.
 - **Dos fórmulas para el mismo número** (web y robot, o dos comandos): tienen que llamar a la misma
   función o dar lo mismo con los mismos datos.
 - **Datos de terceros en el registro público** (nombres, documentos, números de orden enteros).
+- **`sw.js` vacío (16/10/2026, v23.89-23.90): la app no abría.** Al subir el número de caché el archivo quedó en 0
+  bytes y se publicó así. Antes de subir: `node --check sw.js` y que tenga más de 1 KB (`wc -c sw.js`). Arreglado en v23.91 (`cyc-v672`).
 
 ## 0 · EL ROBOT SÓLO JUNTA DATOS (09/10/2026, regla suya)
 *"no quiero que el robot automático modifique nada ni que dé sugerencias ni nada. SU única función es sacar información
