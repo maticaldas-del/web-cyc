@@ -8471,6 +8471,14 @@ git show HEAD:index.html > /tmp/viejo.html   # y comparar los tres conjuntos
 Regla simple: **para borrar un bloque hay que marcar dónde empieza Y dónde termina a mano.** Buscar
 "el próximo }" es adivinar dónde termina algo.
 
+## UN ERROR ENCONTRADO SE BUSCA EN TODOS LADOS (16/10/2026, regla suya)
+
+Él: *"siempre que hay un error encontrado, mira si hay otros afectados con ese problema. haces eso? o solo miras la que
+yo te digo?"*. Cuando él marca un error en UN producto o UNA pantalla, antes de contestar: (1) arreglarlo en el código, no
+en ese producto · (2) buscar el MISMO patrón en las otras pantallas y en el robot (grep de la función o del atajo que
+falló) · (3) decirle cuántos otros estaban afectados y cuáles, aunque sea "ninguno". Caso que la dejó escrita: la línea
+de tiempo con un color elegido no contaba la caja en camino (v23.80); se revisó Pedidos por color, el tanque y el robot.
+
 ## Cómo verificar antes de decir que algo anda
 
 No alcanza con que el código compile. Para cualquier cambio que toque plata o precios:
