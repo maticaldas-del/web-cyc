@@ -183,6 +183,11 @@ pero si o si en los 4 meses hay que vender todo. siempre esperando a que se pued
    eso, subo; si vende más lento y no llega a vaciarse en 120 días, bajo. Directo al precio que pienso (sin escalones),
    nunca abajo del precio normal de antes, frenos de siempre (barrera $33.000, techo, variantes).
  · Cada vuelta se mira si Nissei volvió a tenerlo o el precio ya da: ahí deja de ser "sin reposición" y vuelve a la regla normal.
+ · Y SI APARECE MERCADERÍA NUEVA (16/10, pregunta suya: "si lo consigo por otro lado y aparece en mi oficina, ¿vuelve para
+   atrás?"): en cada vuelta comparo oficina + camino contra la vuelta anterior. Si subió sin un pedido de Paraguay que lo traiga,
+   (1) la cuenta de los 100 días se rehace con el stock nuevo (más stock → el precio que lo vacía es MÁS BAJO, así que baja solo,
+   nunca abajo del normal) y (2) le pregunto si ese proveedor sirve para volver a comprar: si sirve, deja de ser "sin reposición"
+   y vuelve a la regla normal (precio normal, o escasez si Full se corta antes de que llegue la caja).
  · Lo que tiene 1-2 unidades no se toca más (ya está arriba): no hay ritmo que medir.
 
 ## 💰 MÁXIMO DE COMPRA POR COLOR (16/10/2026, eligió la 1a)
