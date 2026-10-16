@@ -36791,7 +36791,7 @@ async function main() {
         if (p.origen === 'py' && sinStE[pid]) return { d: REPO_SIN_FECHA_E, inf: true, txt: '📅 Nissei no lo tiene: sin fecha' };
         return p.origen === 'py' ? { d: 17, txt: '📅 Paraguay 17 d (sin el dato de la web: no sé si el precio da)' } : { d: 14, txt: '📅 Bs As/Paulvic 14 d' };
       };
-      for (const [pid, x] of Object.entries(repoE)) if (!x || !(Number(x.ts) > ahora - 3 * 864e5)) delete repoE[pid];
+      for (const [pid, x] of Object.entries(repoE)) if (!x || !(Number(x.ts) > ahora - 3 * 864e5) || /Bs As sin nada en la oficina/.test(String(x.txt || ''))) delete repoE[pid];   // la regla de la v23.88 se corrigió (1b): ese texto viejo no vale
       // EL RITMO SALE DE LA MISMA LÍNEA DE TIEMPO QUE MIRA LA WEB (16/10/2026, él: "quiero que sean lo mismo"; eligió 30
       // días). Por cada producto × cuenta (y color): los últimos 30 días de `mlapi/linea` de sus publicaciones; un día
       // cuenta si vendió o tuvo stock (o tuvo visitas sin dato de stock); unidades sin las de remate ÷ esos días, con 3+
