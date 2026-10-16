@@ -8977,7 +8977,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       // Se DICE contra quién se mide y por qué: un precio de referencia que no es el más barato de
       // la lista se lee como un error si no se explica.
       if (_pi && _pi.premioPct > 0) {
-        console.log(`      el más barato (${money(Math.round(_pi.baratoSinFull))}) NO tiene Full: mido contra ${money(Math.round(mlPrecio))}, que es el más barato CON Full (${_pi.premioPct.toFixed(0)}% más caro)`);
+        console.log(`      el más barato (${money(Math.round(_pi.baratoSinFull))}) NO tiene Full · el más barato CON Full está a ${money(Math.round(_pi.baratoFull))} (${_pi.premioPct.toFixed(0)}% más caro) · mido igual contra el más barato de todos (${money(Math.round(mlPrecio))}), el peor caso`);
       } else if (_pi && !_pi.hayFull) {
         console.log(`      ⚠️  ninguno de los ${_pi.sinFull} vendedores tiene Full: mido contra el más barato a secas (${money(Math.round(mlPrecio))})`);
       }
@@ -18788,9 +18788,8 @@ async function main() {
         console.log(`     cómo despachan: con Full ${_piR ? _piR.conFull : '?'}${_piR && _piR.conFlex ? ` · con Flex ${_piR.conFlex}` : ''} · a mano ${_piR ? _piR.sinFull - (_piR.conFlex || 0) : '?'}`);
         if (_piR && _piR.premioPct > 0) {
           reparos.push(`el más barato (${money(Math.round(_piR.baratoSinFull))}) no tiene Full: se mide contra ${money(Math.round(mlPrecio))}`);
-          console.log(`     ⚠️ EL MÁS BARATO (${money(Math.round(_piR.baratoSinFull))}) NO TIENE FULL. Mido contra ${money(Math.round(mlPrecio))}, el más barato CON Full (${_piR.premioPct.toFixed(0)}% más caro):`);
-          console.log(`        el comprador elige el que dice "Llega mañana", así que ése es el precio que de verdad tenés que igualar.`);
-          console.log(`        Ojo igual: el de ${money(Math.round(_piR.baratoSinFull))} compite, sólo que con desventaja.`);
+          console.log(`     ⚠️ EL MÁS BARATO (${money(Math.round(_piR.baratoSinFull))}) NO TIENE FULL · el más barato CON Full está a ${money(Math.round(_piR.baratoFull))} (${_piR.premioPct.toFixed(0)}% más caro) · mido igual contra el más barato de todos (${money(Math.round(mlPrecio))}), el peor caso:`);
+          console.log(`        el de "Llega mañana" puede valer más, pero la caja la puede ganar uno sin Full: por eso se mide contra el más barato.`);
         } else if (_piR && !_piR.hayFull) {
           reparos.push('ninguno de los vendedores tiene Full');
           console.log(`     ⚠️ NINGUNO tiene Full. Mido contra el más barato a secas (${money(Math.round(mlPrecio))}).`);
