@@ -36571,9 +36571,9 @@ async function main() {
           if (Object.keys((slogE || {})[t.k] || {}).some((x) => Number(x) >= ahora - 2 * 864e5)) why.push('cambió el stock');
           if (t.escFull || t.escComp) why.push('escasez');
           const ms = pubsDe(t); t.mlas = ms;
-          if (ms.some((m) => ultDec[m] && Number(ultDec[m].ts) >= ahora - 14 * 864e5)) why.push('decisión mía');
-          const cdP = ((cdX.ped || {})[t.pid]) || null;
-          if (cdP && Number(cdP.ts) >= ahora - 14 * 864e5) why.push('pedido decidido');
+          // Una decisión de precio mía de los últimos 7 días se mira todos los días (es una prueba en curso). Los pedidos
+          // se deciden todos todos los días: eso solo no alcanza para entrar (si no, entraba el catálogo entero).
+          if (ms.some((m) => ultDec[m] && Number(ultDec[m].ts) >= ahora - 7 * 864e5)) why.push('decisión mía');
           if (!why.length && (EXP_TODOS || hashK(t.k) % 3 === diaN % 3)) why.push('turno (cada 3 días)');
           if (why.length) sel.push(Object.assign(t, { why }));
         }
@@ -36594,7 +36594,7 @@ async function main() {
         for (const t of sel) {
           const p = pById[t.pid] || {};
           console.log(`■ ${pName[t.pid] || t.pid}${t.color ? ' · 🎨 ' + t.color.replace(/_/g, ' ') : ''} · ${t.cta}   [${t.why.join(' · ')}]`);
-          console.log(`   stock: Full ${t.st} · camino ${t.camU}${t.cam.length ? ' (' + t.cam.map((c) => c.fecha + ' ' + c.u).join(', ') + ')' : ''} · oficina ${t.ofi} → Full alcanza ${dTx(t.alc)} · todo junto ${dTx(t.tot)}`);
+          console.log(`   stock: Full ${t.st} · camino ${t.camU}${t.cam.length ? ' (' + t.cam.map((c) => c.fecha + ' ' + c.u).join(', ') + ')' : ''} · oficina ${t.ofi} → ${t.r14 > 0 ? `Full alcanza ${dTx(t.alc)} · todo junto ${dTx(t.tot)}` : 'no vendió en 14 días: no hay ritmo para medir cuánto alcanza'}`);
           console.log(`   reponer: vuelve a haber en Full ${t.leadTxt} · comprar más: ${t.comp.txt}${t.escFull ? ' · 🔥 Full se corta antes' : ''}${t.escComp ? ' · 🔥 se corta antes de poder comprar' : ''}`);
           console.log(`   ventas: 14 d ${t.u14} u. (${t.r14.toFixed(2)}/día ${t.cal ? 'en días corridos' : 'con stock, ' + t.dCon.toFixed(1) + ' d'}) · 30 d ${t.u30} u. · últimos 3 d ${t.r3.toFixed(1)}/día`);
           for (const m of t.mlas) {
