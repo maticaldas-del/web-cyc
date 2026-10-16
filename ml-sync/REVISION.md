@@ -1084,3 +1084,9 @@ recuperamos el stock (…) mientras tanto escasez, rojo y tratar el producto com
 tiempo (hasta `PED_NARANJA_MARGEN`=7 d más que reponer) · 🟡 hay tiempo. Igual en `escasezDe`, la línea de tiempo y el robot
 (sin reposición = escasez siempre, sin el corte de 60 d). Si mañana Paraguay vuelve a dar el 25%, `reponerDe` deja de ser
 "sin fecha" y el producto pasa solo a naranja o amarillo. Chequear: Pendrive 16gb en rojo en Pedidos, línea y expediente.
+
+### v23.80 · 16/10/2026 · la línea de tiempo de un color cuenta su caja en camino (etapa 3 · mercadería)
+`transitoInfoDe(pid, vari)` acepta el color y la línea de tiempo (`_stHoy`) la llama con `_lineaVar`. Antes, con un color
+elegido, la caja en camino quedaba en 0 y `escasezDe` daba escasez de COMPRA falsa (Protector talón Común Beige: 6 en Full
++ 13 en la oficina "se corta a los 12 d" con 18 viajando). Chequear: con color elegido el camino coincide con Armar caja;
+sin color, igual que antes. La escasez de Full (se vacía antes de que llegue la caja) sigue saliendo y es real.
