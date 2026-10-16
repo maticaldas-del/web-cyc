@@ -17,3 +17,4 @@ Cada renglón: fecha · idea · plata estimada · estado (hecha / propuesta / de
 | 14/10 | Etapa 6: cargos de Full del mes salen de ML por tipo (`cargosfull`) en vez de pasarlos él | trabajo a mano | propuesta (decide él) |
 | 14/10 | Etapa 6: stock antiguo proyectado (`antiguo`): Tira Led Luciana 10 u., 222 d, $39.227 en el próximo cierre | $40.613/mes hoy, $1,19M a 12 meses | hecha la medición; lo decido en las vueltas |
 | 14/10 | Etapa 6: IIBB Ayelen 5,99% contra 3,4-4% de las otras: tabla por provincia para el contador | ~$70k/mes si se empareja | propuesta (decide él) |
+| 16/10 | Lo nuevo de Paraguay se activó a precios de 2 a 3 veces la caja y no vendió nunca (Cuba Gold $67.174 con la caja en $24.383, Cuba Blue, Classic, Platinum, TP-Link, Halloween Man: 12 u. paradas). Regla para cada llegada: precio = caja + ~15-19% (lo que vale Full), si deja 28% en el peor caso; si no, el del 28% | ~12 u. que no rotaban | hecha (descuento propio a los 6) |
