@@ -1078,9 +1078,9 @@ body.light .vp-promo.vp-promo-ml{color:#0369a1;background:color-mix(in srgb,#036
     <input class="search-box" id="ped-search" type="search" placeholder="Buscar pedido..." oninput="renderPedidos()" style="margin-bottom:10px">
     <div class="pedido-filters">
       <button class="pf-btn active-all" id="pf-todos" onclick="setPedidoFilter('todos',this)">Todos</button>
-      <button class="pf-btn" id="pf-rojo" onclick="setPedidoFilter('rojo',this)">🔴 Sin stock</button>
-      <button class="pf-btn" id="pf-naranja" onclick="setPedidoFilter('naranja',this)">🟠 14 días o menos</button>
-      <button class="pf-btn" id="pf-amarillo" onclick="setPedidoFilter('amarillo',this)">🟡 Más de 14 días</button>
+      <button class="pf-btn" id="pf-rojo" onclick="setPedidoFilter('rojo',this)">🔴 Sin stock o escasez</button>
+      <button class="pf-btn" id="pf-naranja" onclick="setPedidoFilter('naranja',this)">🟠 Comprar ya (llega a tiempo)</button>
+      <button class="pf-btn" id="pf-amarillo" onclick="setPedidoFilter('amarillo',this)">🟡 Hay tiempo</button>
     </div>
     <div id="pedidos-list"><div class="empty-msg">Sin pedidos cargados.</div></div>
   </div>
@@ -1091,9 +1091,9 @@ body.light .vp-promo.vp-promo-ml{color:#0369a1;background:color-mix(in srgb,#036
     <input class="search-box" id="ped-py-search" type="search" placeholder="Buscar pedido..." oninput="renderPedidos()" style="margin-bottom:10px">
     <div class="pedido-filters">
       <button class="pf-btn active-all" id="pf-py-todos" onclick="setPedidoFilter('todos',this)">Todos</button>
-      <button class="pf-btn" id="pf-py-rojo" onclick="setPedidoFilter('rojo',this)">🔴 Sin stock</button>
-      <button class="pf-btn" id="pf-py-naranja" onclick="setPedidoFilter('naranja',this)">🟠 17 días o menos</button>
-      <button class="pf-btn" id="pf-py-amarillo" onclick="setPedidoFilter('amarillo',this)">🟡 Más de 17 días</button>
+      <button class="pf-btn" id="pf-py-rojo" onclick="setPedidoFilter('rojo',this)">🔴 Sin stock o escasez</button>
+      <button class="pf-btn" id="pf-py-naranja" onclick="setPedidoFilter('naranja',this)">🟠 Comprar ya (llega a tiempo)</button>
+      <button class="pf-btn" id="pf-py-amarillo" onclick="setPedidoFilter('amarillo',this)">🟡 Hay tiempo</button>
     </div>
     <div id="pedidos-py-list"><div class="empty-msg">Sin pedidos cargados.</div></div>
   </div>
@@ -1104,9 +1104,9 @@ body.light .vp-promo.vp-promo-ml{color:#0369a1;background:color-mix(in srgb,#036
     <input class="search-box" id="ped-paulvic-search" type="search" placeholder="Buscar pedido paulvic..." oninput="renderPedidos()" style="margin-bottom:10px">
     <div class="pedido-filters">
       <button class="pf-btn active-all" id="pf-paulvic-todos" onclick="setPedidoFilter('todos',this)">Todos</button>
-      <button class="pf-btn" id="pf-paulvic-rojo" onclick="setPedidoFilter('rojo',this)">🔴 Sin stock</button>
-      <button class="pf-btn" id="pf-paulvic-naranja" onclick="setPedidoFilter('naranja',this)">🟠 14 días o menos</button>
-      <button class="pf-btn" id="pf-paulvic-amarillo" onclick="setPedidoFilter('amarillo',this)">🟡 Más de 14 días</button>
+      <button class="pf-btn" id="pf-paulvic-rojo" onclick="setPedidoFilter('rojo',this)">🔴 Sin stock o escasez</button>
+      <button class="pf-btn" id="pf-paulvic-naranja" onclick="setPedidoFilter('naranja',this)">🟠 Comprar ya (llega a tiempo)</button>
+      <button class="pf-btn" id="pf-paulvic-amarillo" onclick="setPedidoFilter('amarillo',this)">🟡 Hay tiempo</button>
     </div>
     <div id="pedidos-paulvic-list"><div class="empty-msg">Sin pedidos cargados.</div></div>
   </div>
@@ -2619,7 +2619,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.78';
+const APP_VERSION='23.79';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2630,6 +2630,7 @@ const APP_VERSION='23.78';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.79',f:'16/10/2026',h:'03:20',c:[{n:2,t:'🔴 Escasez es ROJO en todos lados (Pedidos, línea de tiempo, barra): lo que se termina antes de poder reponer, o lo que no se puede reponer (Nissei no lo tiene o el precio no da). 🟠 naranja ahora es "comprar ya, llega a tiempo" y 🟡 "hay tiempo".'}]},
   {v:'23.78',f:'16/10/2026',h:'02:55',c:[{n:1,t:'🔥 Línea de tiempo: lo que está en escasez se pinta en naranja (el número de stock, el texto y la línea del gráfico), no en verde, aunque alcance 30 días.'}]},
   {v:'23.77',f:'16/10/2026',h:'02:40',c:[{n:2,t:'🔥 Una sola regla de escasez en Pedidos, la línea de tiempo y el robot: se corta antes de poder reponer (todo junto dura menos que reponer), o Full se corta antes de que llegue lo de casa (caja en camino 8 d, oficina 10 d). "Hay que MANDAR" en Pedidos ahora mira lo que tarda la caja, no lo que tarda comprar.'}]},
   {v:'23.76',f:'16/10/2026',h:'02:20',c:[{n:2,t:'📈 Línea de tiempo: el stock de hoy dice 🔥 escasez cuando se termina antes de poder reponerlo, y 🔥 sin reposición cuando Nissei no lo tiene o el precio de Paraguay no da (antes decía "bien" aunque no hubiera forma de reponerlo).'}]},
@@ -7283,11 +7284,25 @@ function escasezDe(p,o){
   const r=reponerDe(p),v=Number(o.vDia)||0,ml=Math.max(0,o.ml||0),cam=Math.max(0,o.cam||0),casa=Math.max(0,o.casa||0);
   const leadFull=cam>0?Math.max(1,Math.ceil(8-(Number(o.camDias)||0))):casa>0?10:r.d;
   const tot=v>0?(ml+cam+casa)/v:Infinity,dMl=v>0?ml/v:Infinity;
-  const comp=tot<r.d,full=dMl<leadFull&&!comp;
+  // Sin reposición (Nissei no lo tiene, el precio no da, no traer más) es escasez SIEMPRE que quede algo (16/10, él:
+  // "no tenemos fecha siquiera para recuperar stock, va en rojo (…) agrandar el % de ganancia lo máximo posible").
+  const comp=r.inf?(ml+cam+casa>0):tot<r.d,full=dMl<leadFull&&!comp;
   return{r,comp,full,leadFull,tot,dMl,corte:r.d,sinRepo:!!r.inf,
-    txt:comp?(r.inf?`se corta a los ${Math.round(tot)} d y no se puede reponer (${r.txt.replace(/: sin fecha$/,'')})`:`se corta a los ${Math.round(tot)} d y reponer tarda ${r.d} d · ${r.txt}`)
+    txt:comp?(r.inf?`no se puede reponer (${r.txt.replace(/: sin fecha$/,'')})${isFinite(tot)?' y se termina en ~'+Math.round(tot)+' d':''}: subir el % lo máximo posible`:`se corta a los ${Math.round(tot)} d y reponer tarda ${r.d} d · ${r.txt}`)
       :full?`en ML alcanza ${Math.round(dMl)} d y lo de ${cam>0?'la caja en camino':casa>0?'la oficina':'una compra'} tarda ${leadFull} d`:''};
 }
+// EL SEMÁFORO CON LA REGLA DE ESCASEZ (16/10/2026, él: "escasez significa lo mismo siempre: rojo. Naranja es que
+// compramos y recuperamos el stock"). 🔴 no hay en ningún lado, o escasez (se termina antes de poder reponer, o no se
+// puede reponer) · 🟠 hay que comprar ya y llega a tiempo (alcanza hasta 7 días más que lo que tarda reponer) · 🟡 hay tiempo.
+const PED_NARANJA_MARGEN=7;
+function pedSemDe(tot,dias,r){
+  if(!(tot>0))return 'rojo';
+  if(r&&r.inf)return 'rojo';
+  const d=r?r.d:PED_DIAS_ROJO;
+  if(dias==null)return 'amarillo';
+  return dias<d?'rojo':dias<d+PED_NARANJA_MARGEN?'naranja':'amarillo';
+}
+let _pedRepoCur=null;
 let _pedRojoCur=null;   // el umbral del producto que se está dibujando (lo usa el semáforo de cada color)
 // EL NÚMERO VIVE EN LA BASE, NO ACÁ (16/09/2026). El probe `porquepedido` tenía su propia copia
 // (`TARGET_DAYS = 30`) y al bajar el panel a 20 quedaron diciendo cosas distintas del MISMO
@@ -9478,9 +9493,9 @@ function lineaPintar(prodId){
       const e=stU[k]-stU[pk]+v;if(e>=2||(e>=1&&stU[pk]===0))stIn[k]=Math.round(e);}pk=k;pi=i;});}
   // ESCASEZ CON SU COLOR (16/10/2026, él: "dice escasez, pero lo sigo viendo en verde"). Lo que alcanza menos de lo que
   // tarda reponer (`reponerDe`, la misma regla de Pedidos y del robot) va en naranja como escasez, aunque sean 30 días.
-  const _corteE=reponerDe(p).d;
-  const _stCol=dd=>dd==null?'var(--muted)':dd<7?'var(--red)':(dd<20||dd<_corteE)?'#f97316':dd<45?'var(--green)':dd<90?'#eab308':'#a855f7';
-  const _stTxt=dd=>dd==null?'sin ritmo para medir':dd<7?'falta':dd<_corteE?'escasez':dd<20?'justo':dd<45?'bien':dd<90?'sobra':'exceso';
+  const _repE=reponerDe(p),_corteE=_repE.inf?Infinity:_repE.d;
+  const _stCol=dd=>dd==null?'var(--muted)':(dd<7||dd<_corteE)?'var(--red)':(dd<20||dd<_corteE+PED_NARANJA_MARGEN)?'#f97316':dd<45?'var(--green)':dd<90?'#eab308':'#a855f7';
+  const _stTxt=dd=>dd==null?'sin ritmo para medir':dd<_corteE?'escasez':dd<7?'falta':dd<20?'justo':dd<45?'bien':dd<90?'sobra':'exceso';
   const suv=Object.values(stU);const sMax=suv.length?Math.max(1,...suv):1;
   const pvs=Object.values(pd); const qMin=pvs.length?Math.max(-50,Math.min(...pvs)):0, qMax=pvs.length?Math.min(250,Math.max(...pvs)):1;
   // PRECIO Y COSTO EN UN SOLO CARRIL, CON LA MISMA ESCALA (08/10/2026, él: "poner las dos líneas de precio y costo en
@@ -9631,7 +9646,7 @@ function lineaPintar(prodId){
     const _ez=escasezDe(p,{ml:q,cam:_tr?_tr.u:0,casa:_cs,vDia:pdia,camDias:_tr?_tr.diasMax:0});
     const _esc=q>0&&(_ez.comp||_ez.full)?`<b style="color:var(--red)">🔥 escasez</b>: ${_ez.txt}`:'';
     const _sr=_ez.sinRepo?` · <b style="color:var(--amber)">sin reposición</b>: estirar para venderlo en ~100 días`:'';
-    const _cHoy=q>0&&_esc&&!(dd!=null&&dd<7)?'#f97316':_stCol(dd);
+    const _cHoy=q>0&&_esc?'var(--red)':_stCol(dd);
     return `stock hoy: <b style="color:${_cHoy}">${q} u.</b> <span style="color:${_cHoy}">(${q>0?(dd==null?'sin ventas para medir el ritmo':'alcanza '+Math.round(dd)+' d · '+(_esc?'escasez':_stTxt(dd))):'agotado · '+_stTxt(0)})</span>${_esc?' · '+_esc:''}${_sr}`;})();
   const pIni=ks.map(k=>dias[k]&&dias[k].p).find(x=>x>0), pFin=[...ks].reverse().map(k=>dias[k]&&dias[k].p).find(x=>x>0);
   // ¿EL CAMBIO DE PRECIO DEJÓ MÁS PLATA? (04/10/2026, él con el Metatarso: "quizás lo aumentó un 10% y se vendió un
@@ -9669,7 +9684,7 @@ function lineaPintar(prodId){
     <details style="margin-top:8px" ${_lineaDetAb?'open':''} ontoggle="_lineaDetAb=this.open"><summary style="cursor:pointer;font-size:.68rem;color:var(--muted)">Qué significa cada color ▾</summary>
     <div style="font-size:.64rem;color:var(--muted);margin-top:6px;line-height:1.9">
       ${ley('var(--green)','vendió / con stock / caja ganada')}${ley('#f59e0b','vendido en remate / caja compartida')}${ley('var(--red)','sin stock / caja perdida')}${ley('#60a5fa','visitas')}${ley('#f97316','rematando')}${ley('#a855f7','escalera')}${ley('#94a3b8','no es de catálogo (no hay caja)')}${ley('#3f3f46','pausada (no pelea la caja)')}${ley('rgba(128,128,128,.35)','no se sabe')}
-      <span style="margin-right:10px">📦 stock en unidades, color por los días que alcanza: <span style="color:var(--red)">━ falta (−7)</span> <span style="color:#f97316">━ justo (7-20) o escasez (alcanza menos de lo que tarda reponer: ${_corteE} d)</span> <span style="color:var(--green)">━ bien (20-45)</span> <span style="color:#eab308">━ sobra (45-90)</span> <span style="color:#a855f7">━ exceso (+90)</span></span><span style="margin-right:10px"><span style="color:#f59e0b">━</span> costo real por unidad (mercadería × dólar del mes + IIBB y monotributo, que son % de lo cobrado: por eso se mueve un poco; el detalle sale al pasar el mouse)</span><span style="margin-right:10px">📊 % de ganancia: la línea toma el color del nivel de ese día (🔴 Bajo · 🟠 Justo · 🟢 Bien · 🩵 Bueno · 🔵 Excelente · 🟣 Estrella · 💎 JOYA), misma cuenta que Ventas</span><span style="margin-right:10px">▲▼ cambio de precio, el color dice por qué: ${flechaLeyenda()} · <span style="color:var(--amber)">▾</span> ese día se cobró menos sin cambiar el precio (promo/cupón de ML, carrito o un color más barato)</span><br>
+      <span style="margin-right:10px">📦 stock en unidades, color por los días que alcanza: <span style="color:var(--red)">━ falta (−7) o escasez (${_repE.inf?'no se puede reponer':'alcanza menos de lo que tarda reponer: '+_corteE+' d'})</span> <span style="color:#f97316">━ justo (comprar ya, llega a tiempo)</span> <span style="color:var(--green)">━ bien (20-45)</span> <span style="color:#eab308">━ sobra (45-90)</span> <span style="color:#a855f7">━ exceso (+90)</span></span><span style="margin-right:10px"><span style="color:#f59e0b">━</span> costo real por unidad (mercadería × dólar del mes + IIBB y monotributo, que son % de lo cobrado: por eso se mueve un poco; el detalle sale al pasar el mouse)</span><span style="margin-right:10px">📊 % de ganancia: la línea toma el color del nivel de ese día (🔴 Bajo · 🟠 Justo · 🟢 Bien · 🩵 Bueno · 🔵 Excelente · 🟣 Estrella · 💎 JOYA), misma cuenta que Ventas</span><span style="margin-right:10px">▲▼ cambio de precio, el color dice por qué: ${flechaLeyenda()} · <span style="color:var(--amber)">▾</span> ese día se cobró menos sin cambiar el precio (promo/cupón de ML, carrito o un color más barato)</span><br>
       Pasá el mouse (o tocá) un día para ver todo lo que pasó. El precio es el más barato de sus publicaciones; ventas, visitas y stock suman todas. Stock, caja y remate de los días viejos no los guarda ML: quedan en gris. En stock: la línea son las unidades en Full (cuando se sabe el número) y la franja finita de abajo dice si hubo o no hubo stock ese día.
     </div></details></div>`;
 }
@@ -12431,7 +12446,7 @@ async function syncPedidosAuto(){
     const semTot=stock+enOficina+enCamino;
     const semDias=varSemDias!=null?Math.min(cubreCasa,varSemDias):cubreCasa;
     // Con colores: si UN color que vende está en cero en todos lados, el producto es rojo (06/10/2026, él: "si hay rojo en una publicación con variantes que sea rojo").
-    const sem=(semTot<=0||varSemCero>0)?'rojo':(semDias<pedDiasRojoDe(p)?'naranja':'amarillo');
+    const sem=varSemCero>0?'rojo':pedSemDe(semTot,semDias,reponerDe(p));
     // LO QUE VENDE Y CLAUDE TODAVÍA NO DECIDIÓ (09/10/2026): no se crea el pedido (la web no propone
     // números), pero tampoco desaparece en silencio: se junta acá y Pedidos lo muestra arriba en ámbar.
     if(_sinDec&&(vendidos>0||hist))_sinDecLista.push({id:p.id,name:p.name,coll,paulvic:esPedidoPaulvic({prodId:p.id,producto:p.name}),sem,semDias:semTot<=0?0:Math.min(semDias,999),riesgo});
@@ -16666,7 +16681,7 @@ function pedTanqueHTML(p){
     comp>0?`<span><i class="tq-buy"></i>con lo que pido ${r(tot+dComp)} d</span>`:''].filter(Boolean).join('');
   const msg=tot<=0?'<b style="color:var(--red)">no hay en ningún lado</b>'
     :(_ez.full?`<b style="color:var(--amber)">alcanza ${r(tot)} d, pero en ML sólo ${r(dMl)} d y lo de ${cam>0?'la caja en camino':'la oficina'} tarda ${_ez.leadFull} d: hay que MANDAR</b>`
-    :_ez.comp?`<b style="color:#f97316">se corta a los ${r(tot)} d, antes del corte de ${corte}</b>`:`alcanza ~${r(tot)} d`);
+    :_ez.comp?`<b style="color:var(--red)">🔥 escasez: ${_ez.txt}</b>`:`alcanza ~${r(tot)} d`);
   return `<div class="ped-tanque" title="Días que cubre cada lugar al ritmo de ${fmtN(Math.round(v*30))} por mes. La raya roja es el corte: lo que tarda reponer (${corte} días).">
     <div class="tq-bar">${barra}<span class="tq-corte" style="left:${w(corte).toFixed(1)}%"></span></div>
     <div class="tq-leg">${leg}</div>
@@ -16683,7 +16698,7 @@ const _PED_SEM_ORD={rojo:0,naranja:1,amarillo:2};
 function pedVarSem(x){
   const tot=(x.ml||0)+(x.cam||0)+(x.casa||0)+(x.pv||0);
   if(x.ml!=null&&tot<=0)return 'rojo';
-  return (x.dias!=null&&x.dias<=(_pedRojoCur||PED_DIAS_ROJO))?'naranja':'amarillo';
+  return pedSemDe(x.ml==null?1:tot,x.dias,_pedRepoCur||{d:_pedRojoCur||PED_DIAS_ROJO});
 }
 // El máximo de compra de ESE color (16/10/2026, 1a). Sólo cuando decidí un precio para el color: si no, es el del producto
 // y ya está en la cabecera de la tarjeta (repetirlo en cada renglón sería ruido).
@@ -16704,7 +16719,7 @@ function pedVarFila(x,p){
   const q=x.q||0,sem=pedVarSem(x),n=v=>fmtN(v||0);
   const col={rojo:'var(--red)',naranja:'#f97316',amarillo:'#ca8a04'}[sem];
   const lug=(x.ml!=null||x.cam!=null||x.casa!=null)?`📦 ${n(x.ml)} en ML · 🚚 ${n(x.cam)} en camino · 🏠 ${n(x.casa)} en casa${x.pv>0?` · 🧴 ${n(x.pv)} al Paulvic`:''}`:'';
-  const dTxt=sem==='rojo'?'🔴 sin stock en ningún lado':(x.dias!=null&&x.dias<999?`${sem==='naranja'?'🟠':'🟡'} alcanza ~${x.dias} d`:'');
+  const dTxt=sem==='rojo'?((x.ml!=null&&(x.ml||0)+(x.cam||0)+(x.casa||0)+(x.pv||0)<=0)?'🔴 sin stock en ningún lado':`🔴 escasez${x.dias!=null&&x.dias<999?': alcanza ~'+x.dias+' d':''}`):(x.dias!=null&&x.dias<999?`${sem==='naranja'?'🟠':'🟡'} alcanza ~${x.dias} d`:'');
   return `<div class="ped-var-fila sem-${sem}" style="border-left-color:${col}">
     <div class="ped-var-txt"><b>${x.v}</b>${x.hist?' <span style="color:var(--amber);font-size:.8em">· ritmo viejo</span>':''}<i>${[dTxt,lug,pedVarMaxTxt(x,p)].filter(Boolean).join(' · ')}</i></div>
     ${p&&p.prodId?`<span onclick="event.stopPropagation()">${cerebroBtn(p.prodId,{ped:p.id,variante:x.v})}</span>`:''}
@@ -17076,7 +17091,7 @@ function pedCopiarVars(id){
 }
 function _pedidoItemHtml(p,opts){
   opts=opts||{};
-  {const _pr=(state.products||[]).find(x=>x.id===p.prodId);_pedRojoCur=pedDiasRojoDe(_pr);}
+  {const _pr=(state.products||[]).find(x=>x.id===p.prodId);_pedRojoCur=pedDiasRojoDe(_pr);_pedRepoCur=reponerDe(_pr);}
   const NEXT={pendiente:'poco_stock',poco_stock:'suficiente',suficiente:'pendiente'};
   const LABEL={pendiente:'🔴 Urgente',poco_stock:'🟡 Poco stock',suficiente:'🟢 Suficiente'};
   // "En camino" se sacó: confundía más de lo que ayudaba. Cualquier pedido que haya quedado
@@ -17149,7 +17164,7 @@ function _pedidoItemHtml(p,opts){
     </div>`;
   const _sem=_enCam?null:_pedSem(p);
   const _tanque=_enCam?'':pedTanqueHTML(p);
-  const _semTxt=!_sem?'':_sem==='rojo'?(p.cSemCol>0?`🔴 ${p.cSemCol} color${p.cSemCol>1?'es':''} sin stock en ningún lado`:'🔴 sin stock en ningún lado'):(p.cSemDias!=null&&p.cSemDias<999?`${_sem==='naranja'?'🟠':'🟡'} alcanza ~${p.cSemDias} d`:'')+(p.cSemCol>0?` · ${p.cSemCol} color${p.cSemCol>1?'es':''} en cero`:'');
+  const _semTxt=!_sem?'':_sem==='rojo'?(p.cSemCol>0?`🔴 ${p.cSemCol} color${p.cSemCol>1?'es':''} sin stock en ningún lado`:(p.cSemDias>0&&p.cSemDias<999?`🔴 escasez: alcanza ~${p.cSemDias} d y no llega lo nuevo`:p.cSemDias>=999?'🔴 escasez: no se puede reponer':'🔴 sin stock en ningún lado')):(p.cSemDias!=null&&p.cSemDias<999?`${_sem==='naranja'?'🟠':'🟡'} alcanza ~${p.cSemDias} d`:'')+(p.cSemCol>0?` · ${p.cSemCol} color${p.cSemCol>1?'es':''} en cero`:'');
   const _esProb=_armU!=null;
   const _card=`<details class="ped-card ${_est}${_sem?' sem-'+_sem:''}"${_abierto||_esProb?' open':''} ${_esProb?'':`ontoggle="_setPedCardOpen('${p.id}',this.open)"`}>
     <summary class="ped-head"${_esProb?' style="display:none"':''}>
@@ -17277,7 +17292,7 @@ function pedSinDecidirHTML(sec){
   const L=pedSinDecidirLista(sec);if(!L.length)return '';
   const ord={rojo:0,naranja:1,amarillo:2};
   const fila=x=>{const ic=x.sem==='rojo'?'🔴':x.sem==='naranja'?'🟠':'🟡';
-    const d=x.sem==='rojo'?'sin stock en ningún lado':`alcanza ~${fmtN(x.semDias)} días`;
+    const d=x.sem==='rojo'?(x.semDias>0?`escasez: alcanza ~${fmtN(x.semDias)} días`:'sin stock en ningún lado'):`alcanza ~${fmtN(x.semDias)} días`;
     return `<div style="padding:4px 0;border-top:1px solid var(--border)">${ic} <strong>${escHtml(x.name||'—')}</strong> <span style="color:var(--muted)">· ${d}</span></div>`;};
   const rojos=L.filter(x=>x.sem==='rojo').length;
   return `<details style="background:var(--surface);border:1px solid var(--amber);border-radius:var(--r);padding:9px 14px;margin-bottom:12px">
