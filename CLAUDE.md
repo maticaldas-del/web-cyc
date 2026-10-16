@@ -906,6 +906,15 @@ hiciste antes"*.
  · Lo que está en la oficina NO cuenta como reposición hasta que él despacha la caja (y la oficina puede no estar cargada).
  · Cada suba lleva su motivo en el 🧠 (`decido`). Frenos de siempre: variantes, liquidando, barrera $33.000, techo $650.000.
 
+## 🪜 ESCASEZ: ARRANCAR MUY ALTO Y BAJAR EN ESCALERA (16/10/2026, regla suya, eligió 1a 2b 3a)
+Él: *"probemos más del 100% (...) quizás algo que vendemos por 5.000 podemos venderlo a 25.000 (...) es gratis subir precio"*.
+**Se saca el techo ×2 de escasez** (queda $650.000). Primer salto por ritmo de ESA publicación: 3+/día ×4 · 1-3 ×3 · <1 ×2 ·
+<1 cada 2 días ×1,5 fijo. Si no vende baja 25%/12 h · 20%/24 h · 15%/2-3 d; si vende de más, sube un escalón; nunca abajo del
+normal. **2b con su aclaración:** de una, pero sólo *"los que tiene sentido subir. los que ya sabemos que no funcionan más arriba
+no"* (techo conocido en `notas/techo.md`, catálogo con competidor con stock, liquidando, mis promos). Salida: al llegar la caja o
+pasar a sobrar, baja (promo primero). Si ML pausa alguna, vuelve al último precio aceptado. **3a:** fuera de escasez el techo se
+busca con saltos de +30 a +50%. Detalle en `ml-sync/CEREBRO.md` (🪜).
+
 ## 🛡️ ESCASEZ: SE TRATA EN LA MISMA VUELTA EN QUE APARECE (16/10/2026, regla suya)
 Lo subido por escasez se siguió vendiendo y le gustó: *"quiero que sigas así"*. Todo lo que entra en escasez (🔥 en el
 expediente) se trata en esa misma vuelta, no en la completa: precio para que dure hasta que llegue la próxima caja a Full
