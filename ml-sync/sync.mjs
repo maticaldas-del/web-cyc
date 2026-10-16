@@ -38087,7 +38087,7 @@ async function main() {
         if (!sacar.length) { console.log('No hay candidatos marcados "no es el mismo" para sacar.'); return; }
       }
       for (const parte of (/^aplicarno(;|$)/i.test(raw.trim()) ? [] : raw.split(';').map((x) => x.trim()).filter((x) => x && x.toLowerCase() !== 'go'))) {
-        const m = parte.match(/^(c\d+)\s*=\s*(ok|no|duda|mismo)(?:!(.*))?$/i);
+        const m = parte.match(/^(c\d+(?:p\d+)?)\s*=\s*(ok|no|duda|mismo)(?:!(.*))?$/i);
         if (!m) { console.log(`  ✗ no entiendo "${parte}"`); mal++; continue; }
         const c = cands[m[1]]; const cat = c && catDe(c);
         if (!c || !cat) { console.log(`  ✗ ${m[1]}: no existe o no está medido contra un catálogo`); mal++; continue; }
