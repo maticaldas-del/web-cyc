@@ -2619,7 +2619,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.85';
+const APP_VERSION='23.86';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2630,6 +2630,7 @@ const APP_VERSION='23.85';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.86',f:'16/10/2026',h:'14:50',c:[{n:1,t:'🇵🇾 Pedidos hechos más simple: sin íconos, cada pedido con la fecha y en qué está a la izquierda y la plata a la derecha, fondo más claro y una barra de color. Los que ya llegaron van en un desplegable cerrado.'}]},
   {v:'23.85',f:'16/10/2026',h:'16:10',c:[{n:1,t:'🇵🇾 Nuevos: dos desplegables arriba de la lista. "Ver": todos, los que dan en ML, los que dan en el local o los que dan en los dos. "Ordenar": igual que los botones de antes. Se acuerda de lo último que elegiste.'}]},
   {v:'23.84',f:'16/10/2026',h:'14:45',c:[{n:2,t:'🇵🇾 Nuevos: en el detalle de cada producto hay una casilla "🛒 Vendidas en ML" con el link para mirarlo. Cargás las vendidas que ves y, si llega a 100, ya se puede pedir.'}]},
   {v:'23.83',f:'16/10/2026',h:'14:30',c:[{n:1,t:'📋 Copiar pedido termina con "SÓLO estos colores: si no hay, no reemplazar por otro" (llegaban colores lentos en vez de los que se agotan).'}]},
@@ -13826,17 +13827,34 @@ function _pyItsHTML(its,rec){const _r=rec>=1?rec:RECARGO_PY;
 // El día aprox. de llegada de un pedido en camino: desde la guía del correo si está (`despacho`), si no desde el pedido.
 function pyLlegadaAprox(c){const desp=/^\d{4}-\d{2}-\d{2}$/.test(c&&c.despacho||'');return{d:desp?pyMasHabiles(c.despacho,PY_DIAS_CORREO):pyMasHabiles(c.fecha,PY_DIAS_LLEGADA),desp};}
 function pyPedidoResumenHTML(c,enCamino,dias,tarde){
+  // 16/10/2026, él: "más minimalista (...) muchos íconos y no se nota bien cada pedido, más contraste".
+  // Sin íconos: a la izquierda la fecha y en qué está; a la derecha la plata y, chico abajo, el recargo.
   const dm=f=>{const m=String(f||'').match(/^\d{4}-(\d{2})-(\d{2})/);return m?m[2]+'/'+m[1]:(f||'—');};
   const _ll=enCamino?pyLlegadaAprox(c):null,_llT=_ll?(Date.now()>_ll.d.getTime()+86400e3):false;
-  const est=enCamino?`llega ~${dm(_ll.d.toISOString().slice(0,10))}${_llT?' · atrasado':''}`:c.estado==='llego'?`llegó${c.fechaLlego?' '+dm(c.fechaLlego):''}`:'historial';
+  const est=enCamino?`llega ~${dm(_ll.d.toISOString().slice(0,10))}${_llT?' · atrasado':''}`:c.estado==='llego'?`llegó ${c.fechaLlego?dm(c.fechaLlego):''}`:'historial';
   const col=enCamino?(_llT?'var(--amber)':'#38bdf8'):'var(--green)';
-  return `<span style="font-size:1rem">${enCamino?'🚚':'📦'}</span>
-    <span style="font-size:.82rem;font-weight:700;white-space:nowrap">${dm(c.fecha)}</span>
-    <span style="font-size:1.05rem;font-weight:800;color:var(--text);white-space:nowrap" title="Lo que te salió el pedido puesto en la oficina: la factura más todos los gastos${pyRecargoReal(c).r?'':' (con el 17% estimado: faltan gastos)'}">US$ ${(Math.round((parseFloat(c.usdCrudo)||0)*(pyRecargoReal(c).r||RECARGO_PY)*100)/100).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
-    ${pyRecargoChip(c)}
-    ${c.ticket?(()=>{const w=Number(c.ticket.usdWeb)||0,d=w-(Number(c.ticket.usdPagado)||0);return d>0.004?`<span style="font-size:.62rem;color:var(--green);white-space:nowrap" title="Descuento del ticket contra el precio de la web">🧾 −${w>0?(d/w*100).toFixed(1).replace('.',','):'0'}%</span>`:'';})():(c.estado==='camino'?'<span style="font-size:.62rem;color:var(--red);font-weight:700;white-space:nowrap" title="Sin el ticket real el pedido no se puede cerrar">🧾 falta ticket</span>':'')}
-    <span style="margin-left:auto;font-size:.68rem;color:${col};font-weight:700;white-space:nowrap">${est}</span>
-    <span style="font-size:.6rem;color:var(--muted)">▾</span>`;
+  const R=pyRecargoReal(c);
+  const rec=R.r?`<span style="color:${(R.r-1)*100>(RECARGO_PY-1)*100+0.05?'var(--amber)':'var(--green)'}">+${((R.r-1)*100).toFixed(1).replace('.',',')}%</span> recargo`:`<span title="Faltan gastos: ${R.falta.join(', ').replace(/"/g,'&quot;')}">+${Math.round((RECARGO_PY-1)*100)}% estimado</span>`;
+  const tk=c.ticket?(()=>{const w=Number(c.ticket.usdWeb)||0,d=w-(Number(c.ticket.usdPagado)||0);return d>0.004&&w>0?` · ticket −${(d/w*100).toFixed(1).replace('.',',')}%`:'';})():(c.estado==='camino'?' · <b style="color:var(--red)">falta ticket</b>':'');
+  const usd=(Math.round((parseFloat(c.usdCrudo)||0)*(R.r||RECARGO_PY)*100)/100).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  return `<div style="min-width:0">
+      <div style="font-size:.95rem;font-weight:800;color:var(--text)">${dm(c.fecha)}</div>
+      <div style="font-size:.66rem;font-weight:700;color:${col};margin-top:2px;white-space:nowrap">${est}</div>
+    </div>
+    <div style="margin-left:auto;text-align:right">
+      <div style="font-size:1.05rem;font-weight:800;color:var(--text);white-space:nowrap" title="Lo que te salió el pedido puesto en la oficina: la factura más todos los gastos${R.r?'':' (con el 17% estimado: faltan gastos)'}">US$ ${usd}</div>
+      <div style="font-size:.62rem;color:var(--muted);margin-top:2px;white-space:nowrap">${rec}${tk}</div>
+    </div>
+    <span style="font-size:.7rem;color:var(--muted);margin-left:4px">▾</span>`;
+}
+// La tarjeta de un pedido, la misma en las dos pantallas: fondo más claro, borde y una barra de color a la izquierda.
+function pyPedidoTarjeta(c,enCamino){
+  const _ll=enCamino?pyLlegadaAprox(c):null,tarde=_ll?(Date.now()>_ll.d.getTime()+86400e3):false;
+  const col=enCamino?(tarde?'var(--amber)':'#38bdf8'):'var(--green)';
+  return `<details style="margin-bottom:8px;background:var(--surface2);border:1px solid var(--border2);border-left:4px solid ${col};border-radius:9px">
+      <summary style="cursor:pointer;padding:11px 13px;display:flex;align-items:center;gap:12px;list-style:none">${pyPedidoResumenHTML(c,enCamino,0,tarde)}</summary>
+      ${pyPedidoDetalleHTML(c)}
+    </details>`;
 }
 function pyPedidoDetalleHTML(c){
   const tc=c.tcPedido||0;
@@ -13892,16 +13910,7 @@ function pyEnCaminoHTML(tipo){
   const camino=todas.filter(c=>c.estado==='camino');
   const llegados=todas.filter(c=>c.estado!=='camino').slice(0,6);
   if(!camino.length&&!llegados.length)return '';
-  const tarjeta=(c,enCamino)=>{
-    const puesto=Math.round((c.usdCrudo||0)*(pyRecargoReal(c).r||RECARGO_PY)*100)/100;
-    const dias=Math.max(0,Math.floor((Date.now()-Date.parse(c.fecha+'T12:00:00-03:00'))/86400e3));
-    const lleg=enCamino?pyMasHabiles(c.fecha,PY_DIAS_LLEGADA):null;
-    const tarde=lleg?Date.now()>lleg.getTime()+86400e3:false;
-    return `<details style="margin-bottom:7px;background:var(--surface);border:1px solid ${enCamino?(tarde?'var(--amber)':'rgba(56,189,248,.35)'):'var(--border)'};border-radius:9px">
-      <summary style="cursor:pointer;padding:10px 12px;display:flex;align-items:center;gap:10px;list-style:none">${pyPedidoResumenHTML(c,enCamino,dias,tarde)}</summary>
-      ${pyPedidoDetalleHTML(c)}
-    </details>`;
-  };
+  const tarjeta=(c,enCamino)=>pyPedidoTarjeta(c,enCamino);
   return `<div style="margin:14px 0 4px">
     ${camino.length?`<div style="font-size:.7rem;font-weight:700;margin-bottom:6px">🚚 ${tipo==='repo'?'Reposición en camino':'Pedidos en camino'} <span style="font-weight:400;color:var(--muted);font-size:.9em">· tocá uno para ver cómo fue</span></div>
       ${camino.map(c=>tarjeta(c,true)).join('')}`:''}
@@ -13918,18 +13927,9 @@ function pyHechosHTML(){
   const todas=pyCompras();
   if(!todas.length)return '<div style="font-size:.72rem;color:var(--muted);padding:12px">Todavía no hay pedidos a Paraguay hechos. Se registran al tocar "✅ Ya lo pedí" o cuando CYC WEB los carga.</div>';
   const camino=todas.filter(c=>c.estado==='camino'), resto=todas.filter(c=>c.estado!=='camino');
-  const tarjeta=(c,enCamino)=>{
-    const puesto=Math.round((c.usdCrudo||0)*(pyRecargoReal(c).r||RECARGO_PY)*100)/100;
-    const dias=Math.max(0,Math.floor((Date.now()-Date.parse(c.fecha+'T12:00:00-03:00'))/86400e3));
-    const lleg=enCamino?pyMasHabiles(c.fecha,PY_DIAS_LLEGADA):null;
-    const tarde=lleg?Date.now()>lleg.getTime()+86400e3:false;
-    return `<details style="margin-bottom:8px;background:var(--surface);border:1px solid ${enCamino?(tarde?'var(--amber)':'rgba(56,189,248,.35)'):'var(--border)'};border-radius:9px">
-      <summary style="cursor:pointer;padding:10px 12px;display:flex;align-items:center;gap:10px;list-style:none">${pyPedidoResumenHTML(c,enCamino,dias,tarde)}</summary>
-      ${pyPedidoDetalleHTML(c)}
-    </details>`;
-  };
-  return `${camino.length?`<div style="font-size:.78rem;font-weight:700;margin:4px 0 8px">🚚 En camino (${camino.length})</div>${camino.map(c=>tarjeta(c,true)).join('')}`:''}
-    ${resto.length?`<div style="font-size:.78rem;font-weight:700;margin:14px 0 8px">📦 Ya llegaron (${resto.length})</div>${resto.map(c=>tarjeta(c,false)).join('')}`:''}
+  const tarjeta=(c,enCamino)=>pyPedidoTarjeta(c,enCamino);
+  return `${camino.length?`<div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:4px 0 8px">En camino · ${camino.length}</div>${camino.map(c=>tarjeta(c,true)).join('')}`:''}
+    ${resto.length?`<details style="margin-top:14px"><summary style="cursor:pointer;list-style:none;font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Ya llegaron · ${resto.length} <span style="font-weight:400">▾</span></summary>${resto.map(c=>tarjeta(c,false)).join('')}</details>`:''}
 `;
 }
 // ── EL PEDIDO DEL MOMENTO: PROBADOS + NUEVOS EN UN SOLO LUGAR (03/10/2026) ───────────────────
@@ -17619,7 +17619,7 @@ function renderPedidos(){
       ${_tab('hechos',`🧾 Pedido${(()=>{const n=pyArmadoFilas().length+pedNuevos(candList().filter(candEnArmado).filter(c=>candEnPedido(c)!=='viajando')).filas.length;return n?' ('+n+' cargados)':'';})()}`,'El pedido del momento (probados + nuevos juntos, con el mensaje para Nissei) y abajo los pedidos ya hechos: en camino y llegados.')}
     </div>`+(pyVista!=='hechos'?`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:-4px 0 12px"><span style="font-size:.66rem;color:var(--muted)">Mostrar:</span>${[['todos','Todo'],['perf','🧴 Perfumes, belleza y salud'],['resto','📦 Resto']].map(([v,t])=>`<button class="btn" style="font-size:.64rem;padding:4px 11px;${_pyRubro===v?'background:#7c3aed;color:#fff;border-color:#7c3aed;font-weight:700':''}" onclick="pySetRubro('${v}')">${t}</button>`).join('')}</div>`:'');
     // PROBADOS = IDÉNTICO A BS AS (01/10/2026, pedido suyo): sólo la lista de pedidos, sin canasta ni precios.
-    el.innerHTML=_tabs+(pyVista==='nuevos'?candidatosHTML():pyVista==='ambos'?el.innerHTML+candidatosHTML():pyVista==='hechos'?pedidoMomentoHTML()+`<div style="font-size:.8rem;font-weight:700;margin:6px 0 8px">📦 Pedidos hechos (${pyCompras().length})</div>`+pyHechosHTML():el.innerHTML);
+    el.innerHTML=_tabs+(pyVista==='nuevos'?candidatosHTML():pyVista==='ambos'?el.innerHTML+candidatosHTML():pyVista==='hechos'?pedidoMomentoHTML()+`<div style="font-size:.85rem;font-weight:800;margin:10px 0 10px">Pedidos hechos <span style="color:var(--muted);font-weight:400">· ${pyCompras().length}</span></div>`+pyHechosHTML():el.innerHTML);
     if(window._pycatQ&&pyVista!=='probados'&&pyVista!=='hechos')setTimeout(()=>pycatBuscar(window._pycatQ),0);   // el buscador conserva lo buscado al redibujar
   }
 }
