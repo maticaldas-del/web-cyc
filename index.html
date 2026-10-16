@@ -2620,7 +2620,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.89';
+const APP_VERSION='23.90';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2631,6 +2631,7 @@ const APP_VERSION='23.89';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.90',f:'16/10/2026',h:'17:20',c:[{n:1,t:'Pedidos: cada color muestra su precio máximo de compra, también los que no tienen un precio propio decidido (usan el del producto y el globito lo aclara).'}]},
   {v:'23.89',f:'16/10/2026',h:'17:10',c:[{n:3,t:'Escasez de Bs As corregida: ya no alcanza con tener la oficina vacía. Se da por repuesto (~1 semana + caja) y pasa a "no se consigue" sólo si Pedidos lo pide hace 10 días y no entró nada a la oficina; cuando entra, se cae solo. Y la escasez se mide con el ritmo normal: una suba que frenó las ventas no achica lo que se pide comprar.'}]},
   {v:'23.88',f:'16/10/2026',h:'15:58',c:[{n:3,t:'Escasez: lo de Bs As ya no se da por repuesto en una semana. Si hay en la oficina, la reposición es mandar la caja; si no hay nada, se trata como un producto sin reposición (se estira para venderlo en ~4 meses, al precio más alto).'}]},
   {v:'23.87',f:'16/10/2026',h:'15:23',c:[{n:2,t:'🇵🇾 Nuevos: ahora se puede cargar en el pedido un producto que no llega al piso. Antes de agregarlo pregunta, así no se carga sin querer. El botón Llenar sigue sin meterlos.'}]},
@@ -16824,19 +16825,20 @@ function pedVarSem(x){
   if(x.ml!=null&&tot<=0)return 'rojo';
   return pedSemDe(x.ml==null?1:tot,x.dias,_pedRepoCur||{d:_pedRojoCur||PED_DIAS_ROJO});
 }
-// El máximo de compra de ESE color (16/10/2026, 1a). Sólo cuando decidí un precio para el color: si no, es el del producto
-// y ya está en la cabecera de la tarjeta (repetirlo en cada renglón sería ruido).
+// El máximo de compra de ESE color (16/10/2026, 1a). Desde v23.90 en TODOS los colores (pedido suyo).
 function pedVarMaxTxt(x,p){
   try{
     const pr=p&&(state.products||[]).find(y=>y.id===p.prodId);if(!pr)return '';
     const cl=clPedDe(pr.id),k=sid(String(x.v||'').toLowerCase());
-    if(!(cl&&cl.pvVars&&Number(cl.pvVars[k])>0))return '';
+    // 16/10/2026, él: "¿por qué no me pone precio máximo para cada variante?" → va SIEMPRE en cada color. Sin precio
+    // decidido para ese color se usa el del producto (con la publicación de ese color) y el globito lo dice.
+    const propio=!!(cl&&cl.pvVars&&Number(cl.pvVars[k])>0);
     const r=maxCompraDe(pr,pr.origen==='py'?PY_PROB_PISO:undefined,x.v);
     if(!r||r.motivo)return '';
     const enPesos=!r.esPy||esProductoPaulvic(pr),tc=curTC();
     if(!(r.usd>0))return `<span style="color:var(--red)">💰 máx: no llega vendiéndolo a ${fmt(r.P)}</span>`;
     const v=enPesos&&tc>0?fmt(Math.round(r.usd*tc)):'US$ '+r.usd.toFixed(2).replace('.',',');
-    return `<span title="Lo más que podés pagar este color para quedar en ${r.meta}% vendiéndolo a ${fmt(r.P)} (el precio que decidí para este color${r.clMot?': '+escHtml(r.clMot):''}).">💰 máx <b style="color:var(--text)">${v}</b> (a ${fmt(r.P)})</span>`;
+    return `<span title="Lo más que podés pagar este color para quedar en ${r.meta}% vendiéndolo a ${fmt(r.P)} (${propio?'el precio que decidí para este color'+(r.clMot?': '+escHtml(r.clMot):''):'el precio del producto: este color todavía no tiene uno propio'}).">💰 máx <b style="color:var(--text)">${v}</b> (a ${fmt(r.P)})</span>`;
   }catch(e){return '';}
 }
 function pedVarFila(x,p){
