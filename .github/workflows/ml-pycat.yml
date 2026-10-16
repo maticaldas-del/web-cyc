@@ -1,12 +1,12 @@
 name: ml-pycat
 
 # EL CATÁLOGO DE PARAGUAY MEDIDO CONTRA ML (15/10/2026). El chat de compras copia el catálogo de Nissei a
-# `mlapi/pycat` (comando `pycat`) y esto lo busca en el catálogo de ML y le mide el margen, de a 300 por vuelta,
-# cada 3 horas. Lo que da el piso pasa solo a "Para probar"; lo demás queda guardado y escondido.
+# `mlapi/pycat` (comando `pycat`) y esto lo busca en el catálogo de ML y le mide el margen, de a 700 por vuelta (era 300, 16/10/2026),
+# cada 2 horas (era 3). Lo que da el piso pasa solo a "Para probar"; lo demás queda guardado y escondido.
 # NO TOCA NINGÚN PRECIO NI COMPRA NADA. No usa el candado de `ml-sync`, así que no corta el ciclo.
 on:
   schedule:
-    - cron: '23 */3 * * *'
+    - cron: '23 */2 * * *'
   workflow_dispatch:
 
 concurrency:
@@ -16,7 +16,7 @@ concurrency:
 jobs:
   medir:
     runs-on: ubuntu-latest
-    timeout-minutes: 50
+    timeout-minutes: 55
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

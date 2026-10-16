@@ -8477,7 +8477,7 @@ function c_link(c) {
 // pasa solo a "Para probar" (`cyc/candidatos_py`), donde se vuelve a medir dos veces y pasa por la revisión de fotos.
 // Lo demás queda guardado y escondido, y se vuelve a medir cada `PYCAT_REMEDIR_DIAS`.
 const PYCAT_REMEDIR_DIAS = 7;
-const PYCAT_POR_VUELTA = 300;
+const PYCAT_POR_VUELTA = 700;   // 16/10/2026: era 300 (13 min); con 10.595 por medir y GitHub salteando corridas tardaba semanas
 // Los rubros que ya vendemos (nombres de comprasparaguay, en portugués y castellano): se miden antes que el resto.
 const PYCAT_RUBRO_RE = /\b(perfume|perf\.?|col[oô]nia|eau\s+de|edp|edt|body\s+splash|fone|auricular(es)?|aud[ií]fonos?|headset|earbuds|buds|pen\s*-?drive|cart[aã]o\s+de\s+mem[oó]ria|micro\s*-?sd|tarjeta\s+de\s+memoria|rel[oó]gio|reloj|smartwatch|smart\s*band|watch)\b/i;
 // Relleno en portugués que no ayuda a buscar en ML (comprasparaguay describe, ML nombra).

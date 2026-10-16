@@ -321,6 +321,9 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 (sería doble), y que el número de Gastos y el del Arqueo sean el mismo para cada mes.
 
 ## 3 · MERCADERÍA
+- **El catálogo de Paraguay se mide más rápido (16/10/2026).** Él: *"no veo ni cerca los 13.000"*. Medido: 13.467 guardados,
+  1.436 medidos en 7 días, 10.595 esperando; GitHub corrió `ml-pycat` 8 veces en ~2 días. `PYCAT_POR_VUELTA` 300 → 700 y cada
+  2 h (era 3). Chequear en el log de `ml-pycat`: que no aparezcan 429 de ML y que la vuelta termine antes de 55 min.
 - **Lo "no disponible" de Nissei sale de Para probar (16/10/2026, regla suya).** El chat de compras no lo copia en `pycat` y lo
   carga con `candprecio:<cód>=nohay;go` (duro `noTipo:'nissei'`, vuelve solo si reaparece con precio). Caso: Corsair Void Elite
   58605, listado a US$ 2,25 (precio viejo) daba 599%. Escrito en `PROMPT_GUAY.md`.
