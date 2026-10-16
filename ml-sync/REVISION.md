@@ -1055,3 +1055,9 @@ que cambia algo (precio, pedido, caja, marca): ¿qué pasa si desaparece la cond
 vuelta se mira? Si la respuesta es "nada" o "se acuerda él", es un hallazgo. Hecho hoy: `escasez` → sección 🔁 (escasez y sin
 reposición). Faltan controles iguales para: bajas por caja o sobra, promos propias, liquidando, notraer, pausas, decisiones de
 pedidos y cajas (`claudedecide`) cuyo motivo ya no vale.
+
+### ETAPA 9 · CEREBRO · 16/10/2026 · el expediente (`escasez:expediente[:todos]`)
+Un bloque por producto × cuenta (y color) con stock por lugar, ritmo, reposición, cada publicación (precio de hoy vs vendía,
+caja, margen aprox, mi promo, mi última decisión) y lo decidido de pedido y caja. Selección: vendió o cambió el stock en 2 días,
+escasez, decisión mía de precio en 7 días, y un tercio del resto por turno. Paso obligatorio de la completa (CEREBRO.md arriba
+de todo). Chequear: que "Afuera hoy" no dé 0 (si da 0 la selección no filtra nada) y que el margen aprox no se aleje del panel.

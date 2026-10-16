@@ -5,6 +5,26 @@ una lista de TODO lo que tener en cuenta"*. **Cada vuelta (08:52 completa · 12:
 leyendo este archivo.** Cada regla nueva que él dé se agrega ACÁ en el mismo commit (además de CLAUDE.md, que tiene
 la historia y el porqué). Si algo de acá choca con CLAUDE.md, manda lo más nuevo y se corrige el otro.
 
+## 📂 PASO OBLIGATORIO DE LA COMPLETA (08:52): EL EXPEDIENTE, PRODUCTO POR PRODUCTO, PENSADO (16/10/2026, eligió la b)
+Él: *"quiero que sea 'vivo' el pensamiento, que gaste tokens, no que sea mecánico, sino que sea como que te lo pregunte por
+acá (…) así todos/todo. pero fijate siempre que sea coherente, si no es un exceso de gastar tokens"*. Las reglas de este
+archivo son AYUDA, no la decisión: si sólo se siguen las reglas, lo que nadie previó no lo ve nadie.
+ 1. Correr `escasez:expediente` por ml-consulta y leer el log ENTERO (scratchpad, en pedazos). Trae, por producto × cuenta
+    (y color): stock en Full / camino / oficina, días que alcanza, cuánto tarda en volver a haber y en poder comprar, ventas
+    14/30 días y últimos 3, cada publicación con precio de hoy vs al que vendía, caja, margen aprox y mi promo, mi última
+    decisión con su motivo, y lo decidido de pedido y caja. Entran los que se movieron (vendieron o cambió el stock en
+    2 días, escasez, una decisión mía de precio en 7 días) y un tercio del resto por día: nadie pasa 3 días sin
+    mirarse (`escasez:expediente:todos` = todos).
+ 2. Por CADA bloque, pensar como si él me preguntara por el chat: ¿lo que está hoy (precio, promo, pedido, caja) sigue
+    teniendo sentido con todo esto? ¿qué cambió desde mi última decisión? ¿hay algo raro que ninguna regla nombra? Mirar la
+    línea de tiempo (`lupa`, `historia`, `porquebajo`) sólo cuando el bloque no alcanza para decidir.
+ 3. Escribir un juicio por bloque en el 🧠 (`decido:<MLA>=nota|…` o el cambio con su motivo): QUÉ HAGO o POR QUÉ NO HAGO NADA
+    HOY, con los números de ese bloque. Nada de "sin cambios" pelado. Muchas notas: `ml-sync/notas/expediente_<fecha>.txt` y
+    `decido:archivo=…;go`.
+ 4. COHERENCIA, para no gastar de más: si un bloque no cambió nada desde el juicio anterior (mismo stock, mismo ritmo, mismo
+    precio, ninguna decisión vencida), alcanza con renovar el juicio en una línea; el pensamiento largo va donde algo se movió.
+ 5. En el chat cerrar con: "expediente: N mirados · C cambié · S sigue igual con motivo · R raros (qué)".
+
 ## 0 · Quién hace qué
 - **El robot SÓLO junta datos de ML.** No decide, no sugiere, no vincula, no le avisa a él. Todo lo demás lo hago yo.
 - **Él no marca nada a mano: me lo dice y lo hago yo** por comando ("Ya lo pedí", "Llegó", cajas, oficina, ancla…).
