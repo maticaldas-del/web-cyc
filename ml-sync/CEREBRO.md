@@ -324,3 +324,11 @@ producto?"* y, con la lista, *"lo que recomiendes"* en las 11. Cada una, en cada
 
 ## 🌎 VENDEDORES DEL EXTERIOR (16/10/2026, regla suya)
 No se miran (los saca `esOfertaDeAfuera`), salvo que no haya ningún vendedor de acá: ahí se mide contra el de afuera con su precio +20% (`RECARGO_INTER`), porque el comprador espera ~10 días.
+
+## 🏷️ UN DESCUENTO POR "SOBRA STOCK" SE MIDE CON DÍAS CON STOCK (16/10/2026, error mío marcado por él)
+Él, con el Ferrari Rojo vendido al 14% con descuento propio: *"tenemos stock justo y bastante tiempo para los 4 meses"*.
+El 13/10 le puse descuento creyendo que sobraba, pero la mercadería había entrado el 08/10: 5 días con stock no dicen nada.
+Regla: antes de un descuento por sobrestock, (1) 30+ días con stock desde la última entrada y (2) días de stock (Full +
+oficina ÷ ritmo con stock) arriba de ~100. Si no, no se descuenta. Ferrari Rojo: 17 u., ~7/mes = ~70 días → se sacó el
+descuento ($63.890 → $70.990). Revisadas las otras del 13/10: Tendedero (13 u., 58 días en Full, ya paga almacenamiento)
+queda con descuento; Centímetro y Pendrive 16 no tenían.

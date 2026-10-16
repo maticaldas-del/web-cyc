@@ -1166,3 +1166,5 @@ día de la suba no cuente en ningún lado y que una segunda suba corte el tramo 
 devuelve `bajoPiso:true` cuando el ÚNICO freno es el margen (fotos, vendidas, descartado, viajando y sin medir siguen
 duros); `candSetPedir` pide `confirm()` antes de subir unidades. La tarjeta muestra la casilla con "⚠️ no da". 🪄 Llenar y
 el comando `pedir` siguen sin meterlos. Chequear: que `.ok` siga en false para esos (resúmenes y Llenar lo usan).
+
+- 16/10/2026 · Etapa 1 (precios): descuento propio del Ferrari Rojo (MLA1841629747) sacado: se había puesto por "sobra stock" con 5 días de stock. Regla nueva en CEREBRO.md (🏷️): descuento por sobrestock sólo con 30+ días con stock y ~100+ días de stock. Chequear en cada vuelta que ninguna promo propia por sobrestock la incumpla.
