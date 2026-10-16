@@ -1077,3 +1077,4 @@ que la caja en camino (8 d desde el despacho) / la oficina (10 d) / comprar. Se 
 lo que tarda COMPRAR; el semáforo usaba ≤ y el robot <. Chequear: que un producto dé lo mismo en Pedidos, línea y expediente.
 Ritmo: los tres con 30 días con stock (eligió la a el 16/10; antes el robot usaba 14).
 **v23.78:** la línea de tiempo pinta en naranja (número, texto y línea del gráfico) lo que alcanza menos de lo que tarda reponer (`_corteE` = `reponerDe(p).d`). Chequear: Pendrive 16gb en naranja, no verde.
+**16/10 · ritmo único:** el robot (`escasez`) saca el ritmo de `mlapi/linea` (últimos 30 días, días con venta o stock, sin remates, 3+ ventas y 7+ días; si no, `cyc/ritmonormal`), la misma cuenta que `_pdiaAntes` de la línea de la web. Respaldo: el registro hora por hora. Chequear: Pendrive 16gb da los mismos días en la línea y en el expediente.
