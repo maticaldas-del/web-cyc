@@ -4980,6 +4980,8 @@ hoy de 26→43% y de 31→66%: alguien subió el precio en ML, así que es un pr
 
 ## NO SE PUEDE CARGAR EN EL PEDIDO ALGO QUE NO LLEGA AL 25% (19/09/2026)
 
+**CAMBIADO EL 16/10/2026 (v23.87), él: *"que deje agregar productos que no dan. pero que tenga que confirmar al agregar uno de esos. asi no agrego sin querer"*.** Abajo del piso ya se puede cargar desde la web, pero pregunta antes (`bajoPiso` en `candPuedePedir`). Los otros frenos (fotos, vendidas, sin medir, descartado, viajando) siguen duros, y 🪄 Llenar y el comando `pedir` no los meten.
+
 Regla suya, textual: **"Nunca puede suceder eso que la web no permita menos de 25%."** Salió de un
 caso real: el **Perfume Mirada Muse Rose Musc** entró al pedido con **2 unidades** teniendo
 **−4,2%** anotado en la misma tarjeta, tres centímetros arriba de la casilla donde se cargaron.

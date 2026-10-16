@@ -2619,7 +2619,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.86';
+const APP_VERSION='23.87';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2630,6 +2630,7 @@ const APP_VERSION='23.86';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.87',f:'16/10/2026',h:'15:23',c:[{n:2,t:'🇵🇾 Nuevos: ahora se puede cargar en el pedido un producto que no llega al piso. Antes de agregarlo pregunta, así no se carga sin querer. El botón Llenar sigue sin meterlos.'}]},
   {v:'23.86',f:'16/10/2026',h:'14:50',c:[{n:1,t:'🇵🇾 Pedidos hechos más simple: sin íconos, cada pedido con la fecha y en qué está a la izquierda y la plata a la derecha, fondo más claro y una barra de color. Los que ya llegaron van en un desplegable cerrado.'}]},
   {v:'23.85',f:'16/10/2026',h:'16:10',c:[{n:1,t:'🇵🇾 Nuevos: dos desplegables arriba de la lista. "Ver": todos, los que dan en ML, los que dan en el local o los que dan en los dos. "Ordenar": igual que los botones de antes. Se acuerda de lo último que elegiste.'}]},
   {v:'23.84',f:'16/10/2026',h:'14:45',c:[{n:2,t:'🇵🇾 Nuevos: en el detalle de cada producto hay una casilla "🛒 Vendidas en ML" con el link para mirarlo. Cargás las vendidas que ves y, si llega a 100, ya se puede pedir.'}]},
@@ -13042,7 +13043,10 @@ function candPuedePedir(c){
   if(candEnPedido(c)==='viajando'){const pe=(state.compraspy||{})[c.pedidoEn]||{};return{ok:false,motivo:`ya está viajando en el pedido del ${pe.fecha||'?'}`};}
   const m=Number(c.margen);
   if(c.margen==null||!isFinite(m))return{ok:false,motivo:'todavía no está medido en ML'};
-  if(m<candPisoDe(c)&&!candLocalOk(c))return{ok:false,motivo:`da ${m.toFixed(1)}% y tu piso es ${candPisoDe(c)}%`};   // perfume que da en el local: entra igual
+  // ABAJO DEL PISO YA NO ES UN FRENO DURO (16/10/2026, él: "que deje agregar productos que no dan. pero que tenga que
+  // confirmar al agregar uno de esos. asi no agrego sin querer"). Se siguen mirando los otros frenos (fotos, vendidas)
+  // y, si sólo falla el margen, sale `bajoPiso:true`: candSetPedir pregunta antes de cargar. Llenar no los mete nunca.
+  const _bajo=(m<candPisoDe(c)&&!candLocalOk(c))?`da ${m.toFixed(1)}% y tu piso es ${candPisoDe(c)}%`:'';   // perfume que da en el local: entra igual
   // Sin las dos fotos no se compra (07/10/2026, "sin foto tampoco acepto"): no se puede ver que sea el mismo producto.
   if(!/^https:\/\//.test(String(c.foto||'')))return{ok:false,motivo:'falta la foto de comprasparaguay'};
   if(!/^https:\/\//.test(String(c.mlFoto||'')))return{ok:false,motivo:'falta la foto de ML'};
@@ -13051,6 +13055,7 @@ function candPuedePedir(c){
   const v=candVentasDe(c);
   if(v==null)return{ok:false,motivo:`no tiene cargadas las vendidas en ML (mínimo ${CAND_MIN_VENT})`};
   if(v<CAND_MIN_VENT)return{ok:false,motivo:`vendió ${v} en ML y el mínimo es ${CAND_MIN_VENT}`};
+  if(_bajo)return{ok:false,bajoPiso:true,motivo:_bajo};
   return{ok:true,motivo:''};
 }
 // LAS VENDIDAS EN ML SE PUEDEN CARGAR DESDE LA TARJETA (16/10/2026, él armando el pedido de Elegancia: "no me aparecen
@@ -13331,7 +13336,9 @@ async function candSetPedir(id,v){
   // EL FRENO VA ACÁ Y NO EN LA CASILLA: por esta función pasa TODA carga de unidades, venga del
   // cuadradito de la tarjeta o del renglón del pedido. Una casilla apagada se puede esquivar.
   const P=candPuedePedir(c);
-  if(!P.ok&&n>antes){
+  if(!P.ok&&P.bajoPiso&&n>antes){
+    if(!confirm(`⚠️ Este producto NO llega a tu piso.\n\n${c.nombre}\n\n${P.motivo}.\n\n¿Lo agregás igual al pedido (${n} u.)?`)){renderPedidos();return;}
+  }else if(!P.ok&&n>antes){
     alert(`No se puede pedir este producto.\n\n${c?c.nombre:''}\n\nMotivo: ${P.motivo}.\n\nTu piso es ${candPisoDe(c)}%. Si el precio en ML cambió, el robot lo vuelve a medir esta noche y la casilla se abre sola.`);
     renderPedidos();return;
   }
@@ -14084,7 +14091,7 @@ function pedidoMomentoHTML(){
   const maxU=pedMaxU(), minV=pedMinVent();
   const filasN=Ns.map(f=>{const R=candPreciosPartes(f.c);const m=R.margenPct;const P=candPuedePedir(f.c);
     return fila(f.c.nombre,String(f.c.cod||'').trim(),f.u,f.usd,`candSetPedir('${f.c.id}',this.value)`,`candSetPedir('${f.c.id}',0)`,
-      (P.ok?'':`<div style="color:var(--red);font-weight:700">🚫 ${P.motivo}</div>`)+(R.dudas.length?'<div style="color:var(--red);font-weight:700">🚨 revisá si es el mismo producto (adentro el detalle)</div>':''),
+      (P.ok?'':`<div style="color:var(--red);font-weight:700">${P.bajoPiso?'⚠️ no da: '+P.motivo+' · lo agregaste igual':'🚫 '+P.motivo}</div>`)+(R.dudas.length?'<div style="color:var(--red);font-weight:700">🚨 revisá si es el mismo producto (adentro el detalle)</div>':''),
       R.fotoPY||R.fotoML||'', m!=null?m.toFixed(0)+'%':null,
       m==null?'var(--muted)':(typeof pctColor==='function'?pctColor(m):'var(--green)'),
       pedNuevoFilaHTML(f,maxU,tc,true));});
@@ -14659,7 +14666,7 @@ function candidatosHTML(){
           if(!pe||pe.estado!=='camino')return '';
           return `<span style="font-size:.64rem;color:#38bdf8;font-weight:700" title="Ya está en el pedido del ${pe.fecha}, que está en camino. El botón de llenar no lo vuelve a cargar; si querés más igual lo podés poner a mano.">🚚 en el pedido del ${pe.fecha}</span>`;})()}
         ${(()=>{const Q=candPuedePedir(c),uu=Math.max(0,parseInt(c.pedirU)||0);
-          if(Q.ok)return `<label style="display:flex;align-items:center;gap:5px;font-size:.64rem;color:var(--muted)" title="Las unidades de este producto para el pedido. Se suman arriba. No compra nada: sólo arma la lista.">pedir
+          if(Q.ok||Q.bajoPiso)return (Q.bajoPiso?`<span style="font-size:.64rem;color:var(--red);font-weight:600">⚠️ no da: ${Q.motivo} · se puede igual, pregunta antes</span> `:'')+`<label style="display:flex;align-items:center;gap:5px;font-size:.64rem;color:var(--muted)" title="Las unidades de este producto para el pedido. Se suman arriba. No compra nada: sólo arma la lista.">pedir
           <input type="number" min="0" step="1" value="${uu}" onchange="candSetPedir('${c.id}',this.value)" style="width:56px;font-size:.68rem;padding:4px 6px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text)"> u.</label>`;
           return `<span style="font-size:.64rem;color:var(--red);font-weight:600" title="Tu piso es ${candPisoDe(c)}%. El robot lo vuelve a medir todas las noches: si el precio de ML cambia y pasa el piso, la casilla se abre sola.">🚫 no se puede pedir: ${Q.motivo}</span>`
             +(uu>0?` <span style="font-size:.64rem;color:var(--red);font-weight:700">· tiene ${uu} u. cargadas</span> <button class="btn" style="font-size:.62rem;padding:4px 10px;color:var(--red);border-color:rgba(239,68,68,.35)" onclick="candSetPedir('${c.id}',0)">✕ sacarlo del pedido</button>`:'');

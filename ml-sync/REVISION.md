@@ -1160,3 +1160,9 @@ día de la suba no cuente en ningún lado y que una segunda suba corte el tramo 
 - **16/10/2026 · v23.86 · Pedidos hechos de Paraguay, más simple.** Sin íconos: fecha y estado a la izquierda, US$ puesto a la derecha con el recargo y el ticket chico abajo; tarjeta en `--surface2` con borde `--border2` y barra de color a la izquierda (celeste en camino, ámbar atrasado, verde llegó). "Ya llegaron" en un desplegable cerrado. Una sola tarjeta (`pyPedidoTarjeta`) para Pedidos hechos y para los en camino de Probados/Nuevos. Chequear: "falta ticket" sigue en rojo en los en camino; el detalle al abrir no cambió.
 - **16/10/2026 · textos de `candidatos`/`revisarcompra` sobre Full.** Decían "mido contra $X, el más barato CON Full" mostrando el precio del más barato de todos (desde el 02/10 se mide contra el más barato de todos, `precioAIgualar`). Ahora dicen los dos precios y contra cuál se mide. Sólo texto, la cuenta no cambió.
 - **16/10/2026 · Paraguay: si en ML sólo lo venden desde afuera, se mide contra ellos +20% (regla suya).** `ofertasParaMedir` + `RECARGO_INTER` (sync.mjs), usada en `candidatos`, `revisarcompra` y `gondola`. Con un vendedor argentino, los de afuera se siguen sacando enteros (`esOfertaDeAfuera`, tag `cbt`). Antes quedaba "sin dato". Chequear: un catálogo sólo de afuera ahora tiene margen y el renglón lo dice.
+
+### v23.87 · 16/10/2026 · cargar en el pedido lo que no llega al piso, con confirmación (etapa 3)
+Él: *"que deje agregar productos que no dan. pero que tenga que confirmar al agregar uno de esos"*. `candPuedePedir`
+devuelve `bajoPiso:true` cuando el ÚNICO freno es el margen (fotos, vendidas, descartado, viajando y sin medir siguen
+duros); `candSetPedir` pide `confirm()` antes de subir unidades. La tarjeta muestra la casilla con "⚠️ no da". 🪄 Llenar y
+el comando `pedir` siguen sin meterlos. Chequear: que `.ok` siga en false para esos (resúmenes y Llenar lo usan).
