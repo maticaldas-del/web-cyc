@@ -316,6 +316,14 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 
 ## 3 · MERCADERÍA
 
+### El análisis a fondo aplicado (16/10/2026, eligió "lo que recomiendes" en las 11)
+Qué es: reglas nuevas del cerebro (`ml-sync/CEREBRO.md`, sección 🔬). Código: `pedidostodo` imprime `cortes N` (veces que
+quedó en 0 en Full en 60 d, `cortes60`) y `decide_pedidos.py` compra 45 días lo de Bs As que se corta 2+ veces, vende 0,5+/día
+y deja 25%+ (`Tde`); el motivo de Tito y el 📋 Copiar pedido dicen "SÓLO este color / estos colores"; `escasez` lista aparte
+"📦 EN CERO EN FULL CON MERCADERÍA EN LA OFICINA" (antes los escondía el filtro de 2 ventas en 14 d); la `lupa` ya no dice
+"desaparecieron N u." con stock compartido; `antiguo` muestra también la cuenta con las ventas de 30 d. Qué chequear:
+que `cortes` salga en el log de `pedidostodo` y `decide_pedidos.py` lea N de M ✓.
+
 ### Paraguay con DOS proveedores: Nissei y Elegancia (16/10/2026, v23.82, pedido suyo)
 Qué es: él, con el catálogo "Atacado Black Friday" del proveedor **Elegancia**: *"separar por proveedor dentro de paraguay
 (…) dentro de cada uno tenés probados, nuevos y pedidos. ya que los pedidos no se pueden juntar (…) que sea idéntico a

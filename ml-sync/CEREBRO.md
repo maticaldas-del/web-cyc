@@ -292,3 +292,32 @@ y, si hace falta el detalle, `ficha:<MLA o palabras>` por ml-consulta (cada camb
 con su ganancia por día, mis notas). **Un precio que no rindió no se repite hasta su vencimiento (60 días)**, salvo que
 cambie algo grande (escasez, fecha de regalo, competidor sin stock o más caro, costo nuevo) y lo digo en el motivo. Si ya
 venció, se puede volver a probar. Él ve lo mismo tocando "📋 Ficha completa" en el 🧠.
+
+## 🔬 EL ANÁLISIS A FONDO: LAS 11, "LO QUE RECOMIENDES" (16/10/2026, eligió la (a) en todas)
+Él: *"podemos hacer un análisis en profundo para ver si hay algo más que podamos hacer para hacer rendir al máximo a cada
+producto?"* y, con la lista, *"lo que recomiendes"* en las 11. Cada una, en cada vuelta:
+1. **Bs As que se corta: 45 días.** `decide_pedidos.py` compra para 45 días lo de Bs As que se cortó 2+ veces en 60 días
+   (`cortes N` de `pedidostodo`), vende 0,5+/día y deja 25%+; y lo nuevo que vuela (1+/día en su primera semana). Resto, 30.
+2. **Pendrives como familia.** Se juzgan por la plata por día del GRUPO (8/16/32/64/128 de Matías), no de a uno. El de 32 GB
+   (se repone) es "el conveniente": el precio más tentador de la escalera. 8 y 16 (no se reponen, ⏳) pueden quedar más
+   caros que el de 32 a propósito: así la compra se va a la que se repone y las que no se reponen duran sus 4 meses.
+3. **Paulvic.** Pedido fijo cada 15 días, por aroma, para 45 días de su ritmo (`pvped`). Al juzgar la prueba de $21.990
+   (19-20/10): si pierde, volver a **$14.950**, no a $14.360 (abajo del escalón de comisión de $15.000 deja más). Si gana,
+   la primera a extender es Persea (Luciana, la que más vende).
+4. **Las visitas cortan antes una prueba de precio mala.** En el techo/lupa: si las visitas de 3 días cayeron a la mitad
+   o menos de las de los 14 anteriores **y** cambió la caja, se vuelve en esa misma vuelta, sin esperar las ventas. Siempre
+   con una hermana sin cambio como control (si la hermana también cayó, es la temporada).
+5. **Stock antiguo.** Lo que paga o va a pagar stock antiguo (`antiguo`, ahora también con las ventas de 30 d) es excepción
+   del 🛡️ 25% y no entra en buscar el techo: se le pone descuento propio (`!piso`) para vaciarlo antes del cierre. "Sobra"
+   = Full + oficina + camino en todas las reglas. Antes de retirar algo de Full, comparar el retiro contra rematarlo al 0%.
+6. **Una suba no se deshace por casualidad.** En lo que se compra de a muchos se cuentan COMPRADORES (no unidades) y se
+   esperan 7 días como mínimo, salvo certeza fuerte (Poisson) o el corte por visitas del punto 4.
+7. **Lo barato: piso en pesos.** Al reponer o tocar algo de hasta ~$5.500, cada unidad tiene que dejar ~$1.000 o más de
+   ganancia (el cargo fijo de ML ~$1.230 se lleva más que nosotros). Si no, subir (de una, regla del 13/10) antes de que entre la caja.
+8. **Premium que gana la caja se queda en Premium** (Ferrari Rojo, Dalí: la gemela Clásica vendió 0). Una Clásica gemela
+   nunca al precio de su Premium. Cuando ganar la caja pide bajar más de ~17%, conviene probar un gemelo Premium (lo crea él).
+9. **Visitas que caen sin cambio de precio** (Adaptador Universal de Ayelen 21→7/día): mirar preguntas sin responder y la
+   descripción; eso lo arregla él en ML y se le pasa en el `pregunto:`.
+10. **Lo que vuelve de agotado** se compara contra el ÚLTIMO tramo con stock de su línea de tiempo (no contra 30 días en
+    cero): así entra en el techo y en la lupa.
+11. **Lista de Tito: "SÓLO estos colores, si no hay no reemplazar"** (lo agregan `decide_pedidos.py` y el 📋 Copiar pedido).

@@ -16,19 +16,19 @@ for l in L:
     if m: nfichas=int(m.group(1))
     m=re.match(r'════ (\w+) · (\d+) ════',l)
     if m: grupo=m.group(1); esper[grupo]=int(m.group(2)); continue
-    m=re.match(r'^(p\w+) · (.*?) · v30 (\d+) v60 (\d+) v180 (\d+) · últ (\S+)(?: · REMATE (\d+))?(?: · BARATA (\d+))? · dCS (\d+) · Full (\d+) \[[^\]]*\] · casa (\d+) · camino (\d+)(.*)$',l)
+    m=re.match(r'^(p\w+) · (.*?) · v30 (\d+) v60 (\d+) v180 (\d+) · últ (\S+)(?: · REMATE (\d+))?(?: · BARATA (\d+))? · dCS (\d+)(?: · cortes (\d+))? · Full (\d+) \[[^\]]*\] · casa (\d+) · camino (\d+)(.*)$',l)
     if m and grupo in('BSAS','PY','PAULVIC'):
-        rest=m.group(13)
+        rest=m.group(14)
         g=lambda r: int(re.search(r,rest).group(1)) if re.search(r,rest) else 0
         cm=re.search(r'precio \$\d+ \((.*?)\)',rest)
-        cur=dict(id=m.group(1),n=m.group(2),g=grupo,v30=int(m.group(3)),v60=int(m.group(4)),v180=int(m.group(5)),ult=m.group(6),rem=int(m.group(7) or 0),barata=int(m.group(8) or 0),dcs=int(m.group(9)),full=int(m.group(10)),casa=int(m.group(11)),cam=int(m.group(12)),
+        cur=dict(id=m.group(1),n=m.group(2),g=grupo,v30=int(m.group(3)),v60=int(m.group(4)),v180=int(m.group(5)),ult=m.group(6),rem=int(m.group(7) or 0),barata=int(m.group(8) or 0),dcs=int(m.group(9)),cortes=int(m.group(10) or 0),full=int(m.group(11)),casa=int(m.group(12)),cam=int(m.group(13)),
           py=g(r'PYviaja (\d+)'),pv=g(r'PVviaja (\d+)'),colores=g(r'colores (\d+)'),neto=g(r'neto \$(\d+)'),costo=g(r'costo \$(\d+)'),precio=g(r'precio \$(\d+)'),med60=g(r'med60 \$(\d+)'),
           cambios=(cm.group(1) if cm else ''),decidido=(' YA DECIDÍ ' in rest),vars=[])
         prods.append(cur); continue
-    m=re.match(r'^   # (.*?) · v30 (\d+) v60 (\d+) v180 (\d+) · últ (\S+)(?: · dCS (\d+))? · Full (\d+) · casa (\d+) · camino (\d+)(.*)$',l)
+    m=re.match(r'^   # (.*?) · v30 (\d+) v60 (\d+) v180 (\d+) · últ (\S+)(?: · dCS (\d+))?(?: · cortes (\d+))? · Full (\d+) · casa (\d+) · camino (\d+)(.*)$',l)
     if m and cur:
-        pv=re.search(r'PVviaja (\d+)',m.group(10))
-        cur['vars'].append(dict(v=m.group(1),v30=int(m.group(2)),v60=int(m.group(3)),v180=int(m.group(4)),ult=m.group(5),dcs=int(m.group(6)) if m.group(6) else cur['dcs'],full=int(m.group(7)),casa=int(m.group(8)),cam=int(m.group(9)),pv=int(pv.group(1)) if pv else 0))
+        pv=re.search(r'PVviaja (\d+)',m.group(11))
+        cur['vars'].append(dict(v=m.group(1),v30=int(m.group(2)),v60=int(m.group(3)),v180=int(m.group(4)),ult=m.group(5),dcs=int(m.group(6)) if m.group(6) else cur['dcs'],cortes=int(m.group(7) or 0),full=int(m.group(8)),casa=int(m.group(9)),cam=int(m.group(10)),pv=int(pv.group(1)) if pv else 0))
 # N DE M: que se hayan leído TODAS las fichas que imprimió pedidostodo (si no, un renglón con otro formato se pierde callado).
 for gr,n in esper.items():
     if gr in('BSAS','PY','PAULVIC'):
@@ -52,6 +52,17 @@ def ritmo(x,dcs=30):
         rPre=max((x['v60']-x['v30'])/30, x['v60']/60)
         if rPre>r: r=rPre; base+=f" · subí por escasez hace {min(esc)} d: uso el ritmo de antes ({R(x['v60']-x['v30'])} en los 30 d previos)"
     return r,tiene,base
+# 45 DÍAS PARA LO DE BS AS QUE SE CORTA (16/10/2026, idea 1 del análisis, eligió la a): lo que se cortó 2+ veces en 60 días,
+# vende medio por día o más y deja 25%+ se compra para 45 días (con ~14 días de compra a Full, 30 no alcanzaba y se volvía a
+# cortar). Y lo nuevo que vuela (1+ por día en su primera semana con stock) también. El resto sigue en 30.
+def Tde(p,x,r):
+    if p['g']!='BSAS' or r<0.5: return T,''
+    pr=p.get('precio') or p.get('med60') or 0
+    m=((p['neto']-0.08*pr-p['costo'])/p['costo']) if p['costo']>0 and p['neto']>0 else -1
+    if m<0.25: return T,''
+    if x.get('cortes',0)>=2: return 45,f"se cortó {x['cortes']} veces en 60 días"
+    if p['v180']==p['v30'] and x.get('dcs',30)<=10 and r>=1: return 45,'es nuevo y vuela'
+    return T,''
 def reparto(total,pesos):
     # reparte `total` unidades enteras según `pesos` (resto mayor): la suma da justo el total
     s=sum(pesos)
@@ -75,8 +86,9 @@ for p in prods:
                 p['sinColorV_'+f]=sobra
         dets=[]
         for v in p['vars']:
-            r,t,b=ritmo(dict(v,cambios=p['cambios']),v['dcs']); need=max(0.0,r*T-t)
-            dets.append([v,need,r,t,r*T,b])
+            r,t,b=ritmo(dict(v,cambios=p['cambios']),v['dcs']); Tv,por=Tde(p,v,r); need=max(0.0,r*Tv-t)
+            if por: b+=f' · {Tv} días porque {por}'
+            dets.append([v,need,r,t,r*Tv,b])
         # Lo que el producto tiene SIN COLOR (viajando de Paraguay, Full de publicaciones sin color, oficina o cajas sin color)
         # también cubre: se descuenta de los colores que más piden (revisión 9, 09/10/2026).
         sc=p.get('py',0)+max(0,p['full']-sum(v['full'] for v in p['vars']))+max(0,p['casa']-sum(v['casa'] for v in p['vars']))+max(0,p['cam']-sum(v['cam'] for v in p['vars']))
@@ -90,10 +102,11 @@ for p in prods:
         dets=[(d[0],q,d[2],d[3],d[4],d[5]) for d,q in zip(dets,qs)]
         res.append((p,tot,dets,rentable))
     else:
-        r,t,b=ritmo(p,p['dcs']); need=r*T-t
+        r,t,b=ritmo(p,p['dcs']); Tp,por=Tde(p,p,r); need=r*Tp-t
+        if por: b+=f' · {Tp} días porque {por}'
         q=max(0,math.ceil(need-0.25)) if need>0 else 0
         if not rentable: q=0
-        res.append((p,q,(r,t,r*T,b),rentable))
+        res.append((p,q,(r,t,r*Tp,b),rentable))
 with open(out,'w') as f:
     for p,q,d,rent in res:
         nr=f"NO RENTA ({p['motNoRenta']})" if not rent else ''
@@ -144,7 +157,8 @@ def tito(q,r,t,obj,b,rent,neto,color=None,extra='',motNo=''):
     else: base=f"se venden unos {mes} por mes"
     tt=round(t)
     if q>0:
-        x=f"Hola Tito! Te pido {q}{de}: {base} y entre Full, la oficina y lo que viene en camino hay {tt}. Con {q} más cubrimos un mes."
+        m45=re.search(r'45 días porque (.*)$',b)
+        x=f"Hola Tito! Te pido {q}{de}: {base} y entre Full, la oficina y lo que viene en camino hay {tt}. Con {q} más cubrimos "+(f"un mes y medio ({m45.group(1)})." if m45 else "un mes.")
     elif b.startswith('nunca'):
         x=f"Hola Tito! {quien} no lo compres: {base}."
     else:
@@ -172,6 +186,8 @@ for p,q,d,rent in res:
             mot=moJt or tito(qq,r,t,obj,b,rent,p['neto'],v['v'],ex,p['motNoRenta'])
             kj=f"{pid}#{v['v']}"
             if kj in JU: qq,mot=JU[kj][0],titoJ(JU[kj][1])
+            # SÓLO ESTOS COLORES (16/10/2026, idea 11 del análisis): llegaban colores lentos en vez de los que se agotan.
+            if qq>0: mot+=' Sólo este color: si no hay, no lo cambies por otro.'
             N.append(f"ped:{pid}#{v['v']}=u|{qq}|{mot}")
         if not filas:
             # Producto con colores sin ningún color con datos: no se puede escribir sin color (decido lo rechaza). Si había

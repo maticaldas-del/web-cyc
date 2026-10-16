@@ -2619,7 +2619,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.82';
+const APP_VERSION='23.83';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2630,6 +2630,7 @@ const APP_VERSION='23.82';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.83',f:'16/10/2026',h:'14:30',c:[{n:1,t:'📋 Copiar pedido termina con "SÓLO estos colores: si no hay, no reemplazar por otro" (llegaban colores lentos en vez de los que se agotan).'}]},
   {v:'23.82',f:'16/10/2026',h:'14:00',c:[{n:3,t:'🇵🇾 Paraguay tiene dos proveedores separados: 🟢 Nissei y 🟣 Elegancia (el del catálogo Atacado). Arriba elegís cuál, y cada uno tiene sus Productos probados, sus Nuevos y su 🧾 Pedido: un "Ya lo pedí" de uno no toca el pedido del otro. Elegancia arranca con sus perfumes de la lista Black Friday, con foto, código, precio, % y link de ML, igual que Nissei.'}]},
   {v:'23.81',f:'16/10/2026',h:'13:11',c:[{n:2,t:'📋 Ficha completa de cada publicación: desde el 🧠 tocás "Ficha completa" y ves lo mismo que miro yo antes de decidir: lo que ya sabemos (qué precio no rindió y hasta cuándo no se repite), cada cambio de precio con cómo le fue, cada precio que tuvo con su ganancia por día, mis notas y la línea de tiempo entera día por día.'}]},
   {v:'23.80',f:'16/10/2026',h:'11:15',c:[{n:2,t:'Línea de tiempo con un color elegido: ahora cuenta la caja en camino de ESE color. Antes la dejaba afuera y marcaba escasez de compra que no era (Protector talón Común Beige).'}]},
@@ -17187,7 +17188,8 @@ function _pedidoItemHtml(p,opts){
   // El botón sale con CUALQUIER foto, no sólo con la cargada a mano: antes miraba `_prod.foto`,
   // que sólo se prende al subir una, así que con la foto automática de ML el botón no aparecía.
   const _aCopiar=varsSorted?varsSorted.filter(x=>(x.q||0)>0).map(x=>`${x.v} x${x.q}`):[];
-  if(_aCopiar.length)_pedCopiaTxt[p.id]=_aCopiar.join('\n');else delete _pedCopiaTxt[p.id];
+  // SÓLO ESTOS COLORES (16/10/2026, idea 11 del análisis): llegaban colores lentos en lugar de los que se agotan.
+  if(_aCopiar.length)_pedCopiaTxt[p.id]=_aCopiar.join('\n')+'\nSÓLO estos colores: si no hay, no reemplazar por otro.';else delete _pedCopiaTxt[p.id];
   const copiarBtn=_aCopiar.length?`<button class="pi-var-toggle" style="background:rgba(34,197,94,.12);color:var(--green);border-color:rgba(34,197,94,.3)" onclick="pedCopiarVars('${p.id}')" title="Copia sólo el nombre y las unidades a pedir de cada variante, para pegarlo en WhatsApp">📋 Copiar pedido</button>`:'';
   const fotoBtn=(_prod&&fotoDeProducto(_prod))?`<button class="pi-var-toggle" style="background:rgba(56,189,248,.12);color:#38bdf8;border-color:rgba(56,189,248,.3)" onclick="verFoto('${_prod.id}')" title="Ver foto del producto">📷 Foto</button>`:'';
   // UN SOLO NÚMERO: lo que queda en riesgo DESPUÉS de mandar lo que ya tenés en casa o viajando.
