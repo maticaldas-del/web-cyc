@@ -7519,7 +7519,20 @@ async function avisarVentasNuevas(db, lista) {
   // SÓLO LAS QUE DEJAN $10.000 O MÁS (15/10/2026, él: "quiero que las notificaciones de la web sean todas las
   // compras que generen 10.000 o más de ganancia"). Una compra = la venta entera (con todas sus unidades). Las que
   // dejan menos, o no tienen costo cargado, se anotan como vistas sin avisar. El "hoy van" sigue contando todo.
-  const conGan = nuevas.filter((x) => { const r = ganDe(x.v, x.dayKey); return r && r.g >= AVISO_VENTA_GAN_MIN; });
+  // LA COMPRA ENTERA, NO CADA PRODUCTO (16/10/2026, él: "no avisó nunca más, una venta con más de 10.000 de ganancia"):
+  // un carrito de 2 Paulvic dejó $10.286 pero cada orden por separado dejaba menos de $10.000 y no salió nada. Ahora se suma
+  // la ganancia de todas las órdenes de la MISMA compra (cuenta + número de venta), también las que llegaron en otra vuelta.
+  const gk = (v) => (v.cuenta || '') + '|' + (v.numVenta || v.saleId || v.id);
+  const ganGrupo = {};
+  for (const x of nuevas) {
+    const k = gk(x.v); if (k in ganGrupo) continue;
+    const filasG = new Map();
+    for (const [id2, v2] of Object.entries(vp[x.dayKey] || {})) if (v2 && !v2.cancelada && gk(v2) === k) filasG.set(String(v2.id || id2), v2);
+    for (const y of nuevas) if (y.v && !y.v.cancelada && gk(y.v) === k && !filasG.has(String(y.v.id))) filasG.set(String(y.v.id), y.v);
+    let g = 0, alguno = false; for (const v2 of filasG.values()) { const r = ganDe(v2, x.dayKey); if (r) { g += r.g; alguno = true; } }
+    ganGrupo[k] = alguno ? g : null;
+  }
+  const conGan = nuevas.filter((x) => { const g = ganGrupo[gk(x.v)]; return g != null && g >= AVISO_VENTA_GAN_MIN; });
   if (!conGan.length) {
     await db.patch('mlapi/avisoventa', anotar);
     console.log(`Aviso de ventas: ${nuevas.length} nueva(s), ninguna deja ${money(AVISO_VENTA_GAN_MIN)} o más: anoto sin avisar.`);
