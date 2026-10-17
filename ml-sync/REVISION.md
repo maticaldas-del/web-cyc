@@ -1374,3 +1374,10 @@ Se cruzaron las versiones de `APP_CAMBIOS` y los commits del robot desde el 13/1
    `arcaDeudaARS(<mes del cierre anterior>)` (lo acumulado hasta ese mes). El mes sólo carga con lo que H suma ese mes, que la ganancia
    ya descuenta. Cada cierre nuevo guarda `arcaARS` (la deuda que tenía adentro), así desde noviembre la cuenta sale sola.
  · Qué chequear: octubre no tiene que dar "Falta plata" por ~$2,1M; el aviso ámbar del ajuste sale sólo cuando aplica.
+### Etapa 2 · 17/10/2026 · la deuda con ARCA adentro de cada mes cerrado (v24.25)
+ · Qué: él: *"debería descontarse al patrimonio cerrado de cada mes, a partir del primer mes que deberíamos haber pagado H"*.
+   Probe `arcacierres[:go]` (ml-sync): a cada `cyc/snapshots/<mes>` desde `arcaHDesde` le resta del `total` la deuda acumulada
+   hasta ese mes (en dólares con el `tipoCambio` de ese cierre) y guarda `arcaARS` y `totalSinArca` (para volver). No toca un cierre
+   que ya tiene `arcaARS`. La web, mirando un mes cerrado, suma esa deuda en "Lo que debemos" (`calcArqueo` lee `arcaARS`).
+ · Qué chequear: que el total de un mes cerrado en pantalla coincida con `snapshots/<mes>/total`; si cambia `arcaHDesde` o `arcaHMes`,
+   hay que volver a correrlo (borrando antes `arcaARS` y reponiendo `totalSinArca`).
