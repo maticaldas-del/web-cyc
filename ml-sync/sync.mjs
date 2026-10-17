@@ -41,7 +41,7 @@ process.on('SIGTERM', () => _alCortar('SIGTERM'));
 // ML, Mercado Pago y Telegram en sólo lectura (se deja renovar y guardar el token de ML, que ML rota).
 const EN_CONSULTA = process.env.GITHUB_WORKFLOW === 'ml-consulta' || process.env.ML_CONSULTA === '1';
 const CONSULTA_ESCRIBE = new Set(['pycat', 'lista', 'listamedir', 'pycatprobados', 'candprecio', 'lineatodo', 'revcand', 'vincular', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull']);
-const CONSULTA_NIEGA = new Set(['candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
+const CONSULTA_NIEGA = new Set(['cajaitems', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'promoventas', 'cargosmes']);
 let CONSULTA_SOLO_LEE = false;
@@ -40448,6 +40448,66 @@ async function main() {
       await db.set('cyc/pedidospv/' + id, { prodId: P.id, fecha, ts: (prev && prev.ts) || Date.now(), estado: 'camino', items: its });
       const rel = await db.get('cyc/pedidospv/' + id);
       console.log(rel && rel.estado === 'camino' && lista(rel).length === its.length ? `\n✓ Guardado y releído: cyc/pedidospv/${id} (en camino). Pedidos → Paulvic ya lo descuenta.` : '\n⚠️ Se escribió pero al releer no coincide. Mirar a mano.');
+      return;
+    }
+
+    // BILLING_PROBE=cajaitems:<seguimiento>|<palabra>[@<variante>]=<u>[;…][;go] → CORREGIR LO QUE SALIÓ EN UNA CAJA YA DESPACHADA
+    // (17/10/2026, él con la pantalla de ML del envío: *"este envío al final salió así, modificalo de cyc en el envío hecho"*).
+    // Fija las unidades de cada renglón (lo que no está, lo agrega; `=0` lo saca) y mueve la DIFERENCIA contra la oficina: si salió
+    // más de lo anotado, baja la oficina; si salió menos, vuelve a la oficina. Así el patrimonio no se mueve (sólo pasa de un lado al
+    // otro). Si la oficina no tiene para cubrir lo que salió de más, lo dice y la deja en 0. Sin `go` sólo muestra. Caja recibida: no.
+    if (/^cajaitems(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _raw = String(process.env.BILLING_PROBE).replace(/^cajaitems:?/, '');
+      const GO = /(^|;)go$/.test(_raw) && !DRY;
+      const cuerpo = _raw.replace(/(^|;)go$/, '');
+      const track = (cuerpo.split('|')[0] || '').replace(/\D/g, '');
+      const pares = cuerpo.split('|').slice(1).join('|').split(';').map((x) => x.trim()).filter(Boolean);
+      if (!track || !pares.length) { console.log('Usá: cajaitems:<seguimiento>|<palabra>[@<variante>]=<u>;…;go'); return; }
+      const nrm = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+      const envios = (await db.get('cyc/envios_full')) || {};
+      let envId = null, ci = -1;
+      for (const [id, e] of Object.entries(envios)) { const cj = (e && e.cajasDet) || []; const j = cj.findIndex((c) => c && String(c.track || '').replace(/\D/g, '') === track); if (j >= 0) { envId = id; ci = j; break; } }
+      if (!envId) { console.log(`❌ No encontré ninguna caja con seguimiento ${track}.`); return; }
+      const env = envios[envId]; const caja = env.cajasDet[ci];
+      if (caja.recibida) { console.log(`❌ La caja ${track} ya está marcada como llegada: no la toco.`); return; }
+      const prods = Object.values((await db.get('cyc/products')) || {}).filter((p) => p && p.name);
+      const items = (caja.items || []).map((x) => ({ ...x }));
+      const ops = [], problemas = [];
+      for (const x of pares) {
+        const m = x.match(/^(.+?)(?:@(.+?))?=(\d+)$/);
+        if (!m) { problemas.push(`"${x}" → va <palabra>[@<variante>]=<u>`); continue; }
+        const exacto = m[1].trim().startsWith('='); const q = nrm(m[1].trim().replace(/^=/, ''));
+        const hits = prods.filter((p) => exacto ? nrm(p.name) === q : nrm(p.name).includes(q));
+        if (hits.length !== 1) { problemas.push(`"${m[1]}" → ${hits.length ? `agarra ${hits.length}: ${hits.slice(0, 6).map((p) => p.name).join(' | ')}` : 'ninguna ficha'}`); continue; }
+        const p = hits[0]; let va = '';
+        if (m[2]) { const vq = nrm(m[2]); let vs = (p.variantes || []).filter((v) => nrm(v) === vq); if (!vs.length) vs = (p.variantes || []).filter((v) => nrm(v).includes(vq)); if (vs.length !== 1) { problemas.push(`"${m[2]}" en ${p.name} → ${vs.length ? 'agarra ' + vs.join(' | ') : 'no es variante'}`); continue; } va = vs[0]; }
+        else if ((p.variantes || []).length) { problemas.push(`"${m[1]}" tiene colores: decime cuál con @`); continue; }
+        ops.push({ p, va, u: parseInt(m[3], 10) });
+      }
+      if (problemas.length) { console.log('❌ NO ESCRIBO NADA:'); problemas.forEach((x) => console.log('   ' + x)); return; }
+      const OFI = sid('Oficina Mati'); const kTot = (pid) => pid + '__' + OFI; const kVar = (pid, v) => kTot(pid) + '__v__' + sid(v);
+      const inv = (await db.get('cyc/inventory')) || {};
+      console.log(`=== CORREGIR LA CAJA ${track} (${env.cuenta}, ${env.fecha}) ${GO ? '' : '(PRUEBA — no escribo nada)'} ===`);
+      const upd = {}; const get = (k) => (k in upd ? (upd[k] || 0) : (parseInt(inv[k]) || 0));
+      for (const o of ops) {
+        const j = items.findIndex((it) => it && it.prodId === o.p.id && String(it.variante || '') === String(o.va || ''));
+        const antes = j >= 0 ? (parseInt(items[j].u) || 0) : 0; const d = o.u - antes;
+        if (j >= 0) { if (o.u > 0) items[j].u = o.u; else items.splice(j, 1); } else if (o.u > 0) items.push({ prodId: o.p.id, ...(o.va ? { variante: o.va } : {}), u: o.u });
+        let ofTxt = '';
+        if (d) {
+          const kv = o.va ? kVar(o.p.id, o.va) : kTot(o.p.id);
+          const a0 = get(kv); const a1 = Math.max(0, a0 - d); upd[kv] = a1 || null;
+          if (o.va) { const t0 = get(kTot(o.p.id)); const t1 = Math.max(0, t0 - (a0 - a1)); upd[kTot(o.p.id)] = t1 || null; }
+          ofTxt = ` · oficina ${a0} → ${a1}${d > 0 && a0 < d ? ` ⚠️ en la oficina había ${a0}: ${d - a0} u. salieron sin estar contadas` : ''}`;
+        }
+        console.log(`  ${o.p.name}${o.va ? ' · ' + o.va : ''}: ${antes} → ${o.u}${d ? ` (${d > 0 ? '+' : ''}${d})` : ' (igual)'}${ofTxt}`);
+      }
+      console.log(`  caja: ${(caja.items || []).reduce((a, x) => a + (parseInt(x.u) || 0), 0)} → ${items.reduce((a, x) => a + (parseInt(x.u) || 0), 0)} u. en ${items.length} renglón(es)`);
+      if (!GO) { console.log('\nNo se guardó nada (falta ;go).'); return; }
+      await db.set(`cyc/envios_full/${envId}/cajasDet/${ci}/items`, items);
+      if (Object.keys(upd).length) await db.patch('cyc/inventory', upd);
+      const rel = (await db.get(`cyc/envios_full/${envId}/cajasDet/${ci}/items`)) || [];
+      console.log(rel.length === items.length && rel.reduce((a, x) => a + (parseInt(x.u) || 0), 0) === items.reduce((a, x) => a + (parseInt(x.u) || 0), 0) ? '\n✓ Guardado y releído (caja y oficina).' : '\n⚠️ Al releer la caja no coincide: mirar a mano.');
       return;
     }
 
