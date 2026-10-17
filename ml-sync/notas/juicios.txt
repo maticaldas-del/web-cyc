@@ -30,3 +30,4 @@ p1788886453710=0|Cool Water Woman: no se puede reponer a un precio que deje el 2
 p17833581096736=0|SSD 1TB: el precio de Paraguay no da el 25%. No se pide
 p1780106778739=0|Buds Core: el precio de Paraguay no da el 25%. No se pide
 p1788904839781#Bare Vanilla=0|STARLIT Bare Vanilla: no se puede reponer. No se pide
+p1779912655550#Mango Temptation=3|Mango Temptation: la última tanda se vendió en horas y vendió 2 en sólo 7 días con stock. Vienen 3 en camino y pido 3 más para no cortarnos
