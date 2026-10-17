@@ -57,6 +57,8 @@ def ritmo(x,dcs=30):
 # vende medio por día o más y deja 25%+ se compra para 45 días (con ~14 días de compra a Full, 30 no alcanzaba y se volvía a
 # cortar). Y lo nuevo que vuela (1+ por día en su primera semana con stock) también. El resto sigue en 30.
 def Tde(p,x,r):
+    # PAULVIC: pedido cada 15 días para 45 días de su ritmo (análisis a fondo, 16/10/2026, idea 3 · CEREBRO.md).
+    if p['g']=='PAULVIC' and r>0: return 45,'el Paulvic se pide cada 15 días'
     if p['g']!='BSAS' or r<0.5: return T,''
     pr=p.get('precio') or p.get('med60') or 0
     m=((p['neto']-0.08*pr-p['costo'])/p['costo']) if p['costo']>0 and p['neto']>0 else -1
