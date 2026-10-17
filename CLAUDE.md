@@ -9058,7 +9058,8 @@ también tras subas de prueba `PRU`) miden con el RITMO NORMAL: una suba que fre
 
 ## 🚫 "NO LO CONSIGO" EN PEDIDOS (16/10/2026, v23.97, pedido suyo)
 Botón en cada tarjeta de Pedidos Bs As/Paulvic: marca `cyc/noconsigo/<prodId>` y el producto pasa a escasez sin reposición
-(regla ⏳ de abajo) sin esperar los 10 días; se cae solo cuando entra mercadería a la oficina. Si él dice que Tito no
+(regla ⏳ de abajo) sin esperar los 10 días; se cae solo cuando entra mercadería a la oficina. **Por color (v23.98):** el botón
+de la tarjeta = ningún color se consigue; el de cada renglón de color = sólo ese color (`cyc/noconsigo/<id>/v/<color>`). Si él dice que Tito no
 consigue algo, lo marco yo igual (`cyc/noconsigo`).
 
 ## ⏳ LO QUE NO SE PUEDE REPONER: ESTIRAR HASTA 4 MESES (16/10/2026, regla suya)

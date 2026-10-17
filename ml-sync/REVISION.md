@@ -904,6 +904,14 @@ versiones nuevas. Restaurado en v23.21 (`cyc-v601`). **Antes de cada commit: `wc
  · Qué chequear: que en las vueltas no salgan avisos de cosas ya hechas (subas, bajas, activadas), que sin decisiones no
    salga nada, y que el texto no lleve datos de compradores (el log es público).
 
+### "🚫 No lo consigo" por color (16/10/2026, v23.98, pedido suyo)
+ · Él: *"si apreto el botón en la publicación es porque no se consigue ninguna variante. si clickeo en una variante es
+   porque esa sola no se consigue"*. `cyc/noconsigo/<prodId>` = `{todo: fecha, v: {<color sid>: fecha}}` (un número suelto
+   de la v23.97 vale como `todo`). Botón en cada renglón de color de Pedidos. `reponerDe(p, color)` / `escasezDe(p,{vari})`
+   y la línea de tiempo con color elegido lo usan; el robot (`escasez`) lo aplica por clave de color. La de un color se cae
+   cuando entró algo a la oficina después de marcarla y ese color tiene unidades ahí.
+ · Qué chequear: marcar un color → la escasez de ESE color dice "no se consigue este color" y los otros siguen normales.
+
 ### "🚫 No lo consigo" en Pedidos (16/10/2026, v23.97, pedido suyo)
  · Él, con las Sábanas: *"no está el botón de no lo consigo. para que entre en escasez"*. Botón en la tarjeta de Pedidos
    (Bs As y Paulvic; Paraguay ya tiene "Nissei no lo tiene"): guarda `cyc/noconsigo/<prodId>` = fecha. `_reponerCalc` lo

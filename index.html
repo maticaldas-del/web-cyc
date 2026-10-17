@@ -2638,7 +2638,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.97';
+const APP_VERSION='23.98';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2649,6 +2649,7 @@ const APP_VERSION='23.97';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.98',f:'16/10/2026',h:'22:10',c:[{n:3,t:'"🚫 No lo consigo" también por color: el botón de la tarjeta marca el producto entero (ningún color se consigue) y el de cada color marca sólo ese color. El color marcado pasa solo a escasez.'}]},
   {v:'23.97',f:'16/10/2026',h:'21:50',c:[{n:3,t:'Pedidos (Bs As y Paulvic): botón "🚫 No lo consigo". Si Tito no lo consigue, el producto pasa a escasez sin reposición y el precio se estira para que el stock dure; se saca solo cuando entra mercadería a la oficina (o con "deshacer").'}]},
   {v:'23.96',f:'16/10/2026',h:'19:40',c:[{n:2,t:'Reloj de los 4 meses coordinado con el Excel de stock antiguo de ML: los productos del Excel marcan la edad real de sus lotes viejos; los que no figuran no pueden aparecer pagando ese día.'}]},
   {v:'23.95',f:'16/10/2026',h:'19:10',c:[{n:1,t:'Ajustes → Apariencia: modo discreto. Las ventas quedan sin colores ni movimiento (fuego, figuras, temblor, brillo); las especiales con una rayita de su color y las muy buenas con un ✦. Se guarda en cada aparato.'}]},
@@ -7299,13 +7300,14 @@ function _pyPedidoViajandoFalta(){
   return f||0;
 }
 let _repoMemo={},_repoMemoTs=0;
-function reponerDe(p){
+function reponerDe(p,vari){
   if(!p)return{d:PED_DIAS_ROJO,txt:'sin ficha'};
   if(Date.now()-_repoMemoTs>5000){_repoMemo={};_repoMemoTs=Date.now();}
-  return _repoMemo[p.id]||(_repoMemo[p.id]=_reponerCalc(p));
+  const mk=p.id+'|'+(vari||'');
+  return _repoMemo[mk]||(_repoMemo[mk]=_reponerCalc(p,vari));
 }
 const BSAS_NO_SE_CONSIGUE_DIAS=10;   // 1b (16/10/2026): Bs As pedido 10 días sin que entre nada = no se consigue
-function _reponerCalc(p){
+function _reponerCalc(p,vari){
   const dm=s=>String(s||'').split('-').reverse().slice(0,2).join('/');
   const v=_pedidoViaja(p.id);
   if(v)return{d:v.falta+REPO_ARMAR_CAJA,txt:`viene en el pedido de ${v.de} del ${dm(v.fecha)} (${v.falta>0?'~'+v.falta+' d':'ya debería haber llegado'}) + ${REPO_ARMAR_CAJA} d de caja a Full`};
@@ -7314,8 +7316,10 @@ function _reponerCalc(p){
   // "🚫 NO LO CONSIGO" (17/10/2026, él con las Sábanas: "no está el botón de no lo consigo, para que entre en escasez"):
   // en Bs As o Paulvic, marcado a mano desde Pedidos = sin reposición (escasez, estirar hasta ~4 meses) hasta que entre
   // mercadería a la oficina después de la marca (`cyc/ofientro`), que lo saca solo. Lo lee el robot por `cyc/reponer`.
-  if(!py){const nc=Number((state.noconsigo||{})[p.id])||0,ent=Number((state.ofientro||{})[p.id])||0;
-    if(nc&&!(ent>nc))return{d:REPO_SIN_FECHA_DIAS,inf:true,txt:`no se consigue (marcado el ${new Date(nc).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'})}): sin fecha`};}
+  // Por color (16/10, él: "si clickeo en una variante es porque esa sola no se consigue"): la marca del producto vale
+  // para todos los colores; la de un color, sólo para ese.
+  if(!py){const nc=_noConsigoActivo(p.id,vari);
+    if(nc)return{d:REPO_SIN_FECHA_DIAS,inf:true,txt:`no se consigue${nc.v?' este color':''} (marcado el ${new Date(nc.ts).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'})}): sin fecha`};}
   if(!py&&esPedidoPaulvic({prodId:p.id}))return{d:PED_DIAS_ROJO,txt:'Paulvic: ~1 semana + caja'};
   // Bs As NO se da por repuesto (16/10/2026, regla suya: "a veces no se consiguen por meses"): con unidades en la oficina
   // la reposición es mandar esa caja; sin nada en la oficina, se trata como sin reposición (igual que Paraguay sin stock).
@@ -7347,7 +7351,7 @@ function escasezDe(p,o){
   // 2a (16/10/2026): la escasez se mide con el ritmo NORMAL (`cyc/ritmonormal`, sin remate). Si una suba frenó las ventas,
   // el ritmo de hoy no puede achicar la cuenta: si no, "hay para un montón de días" y Tito no compra nunca (el bucle).
   const _rn=p&&p.id?ritmoNormalDe(p.id):null;
-  const r=reponerDe(p),v=Math.max(Number(o.vDia)||0,_rn&&!_rn.f&&!o.sinNormal?_rn.pd:0),ml=Math.max(0,o.ml||0),cam=Math.max(0,o.cam||0),casa=Math.max(0,o.casa||0);
+  const r=reponerDe(p,o&&o.vari),v=Math.max(Number(o.vDia)||0,_rn&&!_rn.f&&!o.sinNormal?_rn.pd:0),ml=Math.max(0,o.ml||0),cam=Math.max(0,o.cam||0),casa=Math.max(0,o.casa||0);
   const leadFull=cam>0?Math.max(1,Math.ceil(8-(Number(o.camDias)||0))):casa>0?10:r.d;
   const tot=v>0?(ml+cam+casa)/v:Infinity,dMl=v>0?ml/v:Infinity;
   // Sin reposición (Nissei no lo tiene, el precio no da, no traer más) es escasez SIEMPRE que quede algo (16/10, él:
@@ -9560,7 +9564,7 @@ function lineaPintar(prodId){
       const e=stU[k]-stU[pk]+v;if(e>=2||(e>=1&&stU[pk]===0))stIn[k]=Math.round(e);}pk=k;pi=i;});}
   // ESCASEZ CON SU COLOR (16/10/2026, él: "dice escasez, pero lo sigo viendo en verde"). Lo que alcanza menos de lo que
   // tarda reponer (`reponerDe`, la misma regla de Pedidos y del robot) va en naranja como escasez, aunque sean 30 días.
-  const _repE=reponerDe(p),_corteE=_repE.inf?Infinity:_repE.d;
+  const _repE=reponerDe(p,_lineaVar||undefined),_corteE=_repE.inf?Infinity:_repE.d;
   const _stCol=dd=>dd==null?'var(--muted)':(dd<7||dd<_corteE)?'var(--red)':(dd<20||dd<_corteE+PED_NARANJA_MARGEN)?'#f97316':dd<45?'var(--green)':dd<90?'#eab308':'#a855f7';
   const _stTxt=dd=>dd==null?'sin ritmo para medir':dd<_corteE?'escasez':dd<7?'falta':dd<20?'justo':dd<45?'bien':dd<90?'sobra':'exceso';
   const suv=Object.values(stU);const sMax=suv.length?Math.max(1,...suv):1;
@@ -9754,7 +9758,7 @@ function lineaPintar(prodId){
     // regla que Pedidos y el robot (`escasezDe`), con la oficina y la caja en camino (con color elegido, sólo la de ese color).
     const _cs=Math.max(0,Number(_lineaVar?getQV(prodId,OFI,_lineaVar):getQ(prodId,OFI))||0);
     const _tr=transitoInfoDe(prodId,_lineaVar||null);
-    const _ez=escasezDe(p,{ml:q,cam:_tr?_tr.u:0,casa:_cs,vDia:pdia,camDias:_tr?_tr.diasMax:0,sinNormal:!!_lineaVar});
+    const _ez=escasezDe(p,{ml:q,cam:_tr?_tr.u:0,casa:_cs,vDia:pdia,camDias:_tr?_tr.diasMax:0,sinNormal:!!_lineaVar,vari:_lineaVar||undefined});
     const _esc=q>0&&(_ez.comp||_ez.full)?`<b style="color:var(--red)">🔥 escasez</b>: ${_ez.txt}`:'';
     const _sr=_ez.sinRepo?` · <b style="color:var(--amber)">sin reposición</b>: estirar para venderlo en ~100 días`:'';
     const _cHoy=q>0&&_esc?'var(--red)':_stCol(dd);
@@ -16923,7 +16927,7 @@ function pedVarFila(x,p){
   const dTxt=sem==='rojo'?((x.ml!=null&&(x.ml||0)+(x.cam||0)+(x.casa||0)+(x.pv||0)<=0)?'🔴 sin stock en ningún lado':`🔴 escasez${x.dias!=null&&x.dias<999?': alcanza ~'+x.dias+' d':''}`):(x.dias!=null&&x.dias<999?`${sem==='naranja'?'🟠':'🟡'} alcanza ~${x.dias} d`:'');
   return `<div class="ped-var-fila sem-${sem}" style="border-left-color:${col}">
     <div class="ped-var-txt"><b>${x.v}</b>${x.hist?' <span style="color:var(--amber);font-size:.8em">· ritmo viejo</span>':''}<i>${[dTxt,lug,pedVarMaxTxt(x,p)].filter(Boolean).join(' · ')}</i></div>
-    ${p&&p.prodId?`<span onclick="event.stopPropagation()">${cerebroBtn(p.prodId,{ped:p.id,variante:x.v})}</span>`:''}
+    ${p&&p.prodId?`<span onclick="event.stopPropagation()">${cerebroBtn(p.prodId,{ped:p.id,variante:x.v})}${noConsigoBtn((state.products||[]).find(z=>z.id===p.prodId),x.v)}</span>`:''}
     ${q>0?`<span class="ped-var-u" style="color:${col}"><b>${n(q)}</b><i>u. a comprar</i></span>`:`<span class="ped-var-u" style="color:var(--green)"><b>✓</b><i>mandar de casa</i></span>`}
   </div>`;
 }
@@ -17781,20 +17785,40 @@ async function togglePedidoOrigen(pedId,prodId){
   renderPedidos();
 }
 // "🚫 NO LO CONSIGO" (17/10/2026): sólo en lo que se compra en Bs As o al Paulvic (Paraguay ya tiene "Nissei no lo tiene").
-function _noConsigoActivo(prodId){const nc=Number((state.noconsigo||{})[prodId])||0,ent=Number((state.ofientro||{})[prodId])||0;return nc&&!(ent>nc)?nc:0;}
-function noConsigoBtn(prod){
-  if(!prod||(prod.origen==='py'&&!esPedidoPaulvic({prodId:prod.id})))return'';
-  const nc=_noConsigoActivo(prod.id);
-  return nc
-    ?`<button class="pi-var-toggle" style="background:rgba(239,68,68,.14);color:var(--red);border-color:rgba(239,68,68,.35)" onclick="toggleNoConsigo('${prod.id}')" title="Marcado: no se consigue. Cuenta como sin reposición (escasez: se estira el precio para que dure hasta ~4 meses). Se saca solo cuando entra mercadería a la oficina. Tocá para sacarlo ya.">🚫 no se consigue · deshacer</button>`
-    :`<button class="pi-var-toggle" onclick="toggleNoConsigo('${prod.id}')" title="Si Tito no lo consigue en el mayorista: tocá acá. Pasa a escasez (sin reposición) y el precio se estira para que el stock dure. Se saca solo cuando entra mercadería a la oficina.">🚫 No lo consigo</button>`;
+// `cyc/noconsigo/<prodId>` = {todo: fecha, v: {<color>: fecha}} (un número suelto = todo, de la v23.97).
+// La del producto se cae cuando entra mercadería a la oficina después de marcarla; la de un color, cuando entró algo
+// después de marcarla Y ese color tiene unidades en la oficina.
+function _noConsigoRaw(prodId){const r=(state.noconsigo||{})[prodId];return typeof r==='number'?{todo:r}:(r||{});}
+function _noConsigoActivo(prodId,vari){
+  const r=_noConsigoRaw(prodId),ent=Number((state.ofientro||{})[prodId])||0;
+  const todo=Number(r.todo)||0;if(todo&&!(ent>todo))return{ts:todo,v:false};
+  if(!vari)return 0;const vt=Number((r.v||{})[sid(vari)])||0;if(!vt)return 0;
+  const ofiV=Math.max(0,Number(getQV(prodId,OFI,vari))||0);
+  return (ent>vt&&ofiV>0)?0:{ts:vt,v:true};
 }
-async function toggleNoConsigo(prodId){
-  const act=_noConsigoActivo(prodId),val=act?null:Date.now();
-  try{await db.ref('cyc/noconsigo/'+prodId).set(val);}catch(e){toast('No se pudo guardar: '+e.message,'err');return;}
-  if(val)(state.noconsigo=state.noconsigo||{})[prodId]=val;else if(state.noconsigo)delete state.noconsigo[prodId];
+function noConsigoBtn(prod,vari){
+  if(!prod||(prod.origen==='py'&&!esPedidoPaulvic({prodId:prod.id})))return'';
+  const nc=_noConsigoActivo(prod.id,vari),va=vari?String(vari).replace(/'/g,"\\'"):'';
+  const deTodo=!!(vari&&nc&&!nc.v);   // el color está frenado porque se marcó el producto entero
+  if(deTodo)return`<span class="pi-var-toggle" style="cursor:default;color:var(--red);border-color:rgba(239,68,68,.35)" title="Está marcado el producto entero: no se consigue ningún color">🚫</span>`;
+  const onc=`event.stopPropagation();toggleNoConsigo('${prod.id}','${va}')`;
+  return nc
+    ?`<button class="pi-var-toggle" style="background:rgba(239,68,68,.14);color:var(--red);border-color:rgba(239,68,68,.35)" onclick="${onc}" title="Marcado: no se consigue${vari?' este color':''}. Cuenta como sin reposición (escasez: se estira el precio para que dure hasta ~4 meses). Se saca solo cuando entra mercadería a la oficina. Tocá para sacarlo ya.">🚫 ${vari?'no se consigue':'no se consigue · deshacer'}</button>`
+    :`<button class="pi-var-toggle" onclick="${onc}" title="${vari?'Si Tito no consigue ESTE color: tocá acá. Sólo este color pasa a escasez.':'Si Tito no consigue NINGÚN color (o el producto): tocá acá. Pasa a escasez (sin reposición) y el precio se estira para que el stock dure.'} Se saca solo cuando entra mercadería a la oficina.">🚫 ${vari?'no lo consigo':'No lo consigo'}</button>`;
+}
+async function toggleNoConsigo(prodId,vari){
+  const act=_noConsigoActivo(prodId,vari||undefined),val=act?null:Date.now();
+  const path='cyc/noconsigo/'+prodId+(vari?'/v/'+sid(vari):'/todo');
+  try{
+    const raw=(state.noconsigo||{})[prodId];
+    if(typeof raw==='number')await db.ref('cyc/noconsigo/'+prodId).set({todo:raw});   // pasa al formato nuevo
+    await db.ref(path).set(val);
+  }catch(e){toast('No se pudo guardar: '+e.message,'err');return;}
+  const r=_noConsigoRaw(prodId);r.v=r.v||{};
+  if(vari){if(val)r.v[sid(vari)]=val;else delete r.v[sid(vari)];}else{if(val)r.todo=val;else delete r.todo;}
+  (state.noconsigo=state.noconsigo||{})[prodId]=r;
   _repoMemo={};
-  toast(val?'Marcado: no se consigue · entra en escasez':'Sacado: vuelve a reponerse normal','ok');
+  toast(val?`Marcado: no se consigue${vari?' '+vari:''} · entra en escasez`:'Sacado: vuelve a reponerse normal','ok');
   renderPedidos();
 }
 

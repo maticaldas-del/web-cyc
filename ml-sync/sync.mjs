@@ -36831,7 +36831,7 @@ async function main() {
         const p = pById[pid] || {};
         if (compPyE[pid]) { const e = (ahora - Date.parse(compPyE[pid] + 'T12:00:00-03:00')) / 864e5; const f = Math.max(0, Math.ceil(7 - (e || 0))); return { d: f + 10, txt: `📅 viene en el pedido de Paraguay del ${compPyE[pid]} (${f > 0 ? '~' + f + ' d' : 'ya debería haber llegado'}) + 10 d de caja` }; }
         if (p.origen === 'py' && sinStE[pid]) return { d: REPO_SIN_FECHA_E, inf: true, txt: '📅 Nissei no lo tiene: sin fecha' };
-        { const nc = Number(noConsE[pid]) || 0; if (p.origen !== 'py' && nc && !(Number(ofiEntE[pid]) > nc)) return { d: REPO_SIN_FECHA_E, inf: true, txt: '📅 no se consigue (marcado en Pedidos): sin fecha' }; }
+        { const r0 = noConsE[pid], nc = typeof r0 === 'number' ? r0 : Number(r0 && r0.todo) || 0; if (p.origen !== 'py' && nc && !(Number(ofiEntE[pid]) > nc)) return { d: REPO_SIN_FECHA_E, inf: true, txt: '📅 no se consigue (marcado en Pedidos): sin fecha' }; }
         return p.origen === 'py' ? { d: 17, txt: '📅 Paraguay 17 d (sin el dato de la web: no sé si el precio da)' } : { d: 14, txt: '📅 Bs As/Paulvic 14 d' };
       };
       for (const [pid, x] of Object.entries(repoE)) if (!x || !(Number(x.ts) > ahora - 3 * 864e5) || /Bs As sin nada en la oficina/.test(String(x.txt || ''))) delete repoE[pid];   // la regla de la v23.88 se corrigió (1b): ese texto viejo no vale
@@ -36890,7 +36890,13 @@ async function main() {
         // cuenta del semáforo de Pedidos): pedido en camino, precio de Paraguay que no da (sin fecha), etc.
         const camK = cam[k] || [];
         const fCam = camK.map((c) => Date.parse(c.fecha)).filter((t) => t > 0);
-        const comp = repoE[pid] || repoFallback(pid);
+        let comp = repoE[pid] || repoFallback(pid);
+        // "🚫 no lo consigo" de UN color (16/10/2026, él: "si clickeo en una variante es porque esa sola no se consigue"):
+        // ese color va sin reposición hasta que entre algo a la oficina después de la marca y ese color tenga unidades ahí.
+        if (iv > 0 && !comp.inf && (pById[pid] || {}).origen !== 'py') {
+          const r0 = noConsE[pid], vt = r0 && typeof r0 === 'object' ? Number((r0.v || {})[k.slice(iv + 5)]) || 0 : 0;
+          if (vt && !(Number(ofiEntE[pid]) > vt && ofi > 0)) comp = { d: REPO_SIN_FECHA_E, inf: true, txt: 'no se consigue este color (marcado en Pedidos): sin fecha' };
+        }
         let lead, leadTxt;
         if (camK.length) { const e = fCam.length ? (ahora - Math.min(...fCam)) / 864e5 : 0; lead = Math.max(1, Math.ceil(8 - e)); leadTxt = `caja despachada: llega en ~${lead} d`; }
         else if (ofi > 0) { lead = 10; leadTxt = `hay ${ofi} u. en la oficina: armar y mandar ~10 d`; }
