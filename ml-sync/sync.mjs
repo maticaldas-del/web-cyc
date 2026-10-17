@@ -15536,19 +15536,31 @@ async function main() {
               }
             }
           } catch { /* si no contesta, se saltea */ }
-          try {
-            const o = await mlGet(`/stock/fulfillment/operations/search?seller_id=${sid}&inventory_id=${x.inv}&date_from=${desdeISO}&limit=20`, tok);
-            for (const op of (o?.results || [])) {
-              const tipo = String(op.type || op.operation_type || '').toLowerCase();
-              if (!tipo.includes('inbound') && !tipo.includes('reception')) continue;
-              r.cajas.push({ nom: x.nom, q: op.quantity || op.detail?.quantity || 0, fecha: String(op.date_created || '').slice(0, 10) });
-            }
-          } catch { /* idem */ }
+          // AUDITORÍA 17/10/2026: acá se pedían los movimientos de Full SIN `date_to` (ML exige las dos
+          // fechas: contestaba 400 y el catch vacío lo tragaba) y con un campo de cantidad que no existe.
+          // Resultado: "0 cajas en 3 días" SIEMPRE, y el 🔴 PARA HOY gritaba "0 cajas a Full" el mismo
+          // día que se marcaron tres. Además eran ~170 consultas que suman 429. Ahora las cajas llegadas
+          // salen del registro del panel (cyc/envios_full, cajas marcadas como recibidas), abajo.
         });
         console.log(`  ${label}: Full ${aMirar.length} inventarios en ${((Date.now() - _t0Full) / 1000).toFixed(0)}s · van ${_seg()} de chequeo`);
         R.push(r);
       }
       if (!R.length) { console.log('No pude entrar a ninguna cuenta.'); return; }
+      // Cajas que llegaron en la ventana: del registro del panel, que es lo que marca "llegó".
+      try {
+        const envs = (await db.get('cyc/envios_full')) || {};
+        const desdeDia = new Date(Date.now() - DIAS * 864e5 - 3 * 36e5).toISOString().slice(0, 10);
+        for (const e of Object.values(envs)) {
+          if (!e || !Array.isArray(e.cajasDet)) continue;
+          const r = R.find((x) => String(x.label || '').toLowerCase() === String(e.cuenta || '').toLowerCase());
+          if (!r) continue;
+          for (const c of e.cajasDet) {
+            if (!c || !c.recibida || String(c.recFecha || '').slice(0, 10) < desdeDia) continue;
+            const u = (c.items || []).reduce((a, it) => a + (Number(it && it.u) || 0), 0);
+            r.cajas.push({ nom: `caja despachada ${e.fecha || '?'}${c.recAuto ? ' (marcada sola)' : ''}`, q: u, fecha: String(c.recFecha).slice(0, 10) });
+          }
+        }
+      } catch (eC) { console.log('cajas llegadas: no pude leer el registro · ' + String(eC.message || eC).slice(0, 80)); }
       console.log(`Las 4 cuentas leídas en ${_seg()}. Armando el texto...`);
       // ── SALIDA ──
       const L = [];
@@ -16843,7 +16855,10 @@ async function main() {
       // el error anotado una docena de veces en CLAUDE.md, y la primera versión de este probe lo
       // cometía: tenía la lectura duplicada.
       console.log('=== REPUTACIÓN DE CADA CUENTA (de /users/<id>) ===\n');
-      const rep = await reputacionML(db, accounts, labels, DRY);
+      // Por ml-consulta (sólo lectura) no se guarda: antes el guardado frenado hacía caer la lectura y
+      // decía "0 cuentas leídas" (auditoría 17/10/2026).
+      const _repSoloLee = DRY || process.env.GITHUB_WORKFLOW === 'ml-consulta';
+      const rep = await reputacionML(db, accounts, labels, _repSoloLee);
       for (const f of rep.filas) {
         if (f.error) { console.log(`${f.label}: ✗ ${f.error}\n`); continue; }
         const pc = (x) => (x == null ? '?' : (x * 100).toFixed(2) + '%');
@@ -16852,7 +16867,7 @@ async function main() {
         console.log(`  ventas: ${f.ventas != null ? f.ventas : '?'} · completadas ${f.completadas != null ? f.completadas : '?'} · canceladas ${f.canceladas != null ? f.canceladas : '?'}`);
         console.log(`  reclamos ${pc(f.reclamos)} · demoras ${pc(f.demoras)} · cancelaciones ${pc(f.cancelaciones)}\n`);
       }
-      console.log(`${rep.ok} cuenta(s) leídas · ${rep.mal} no${DRY ? ' · modo prueba: no se escribió nada' : ' · guardado en cyc/reputacion'}\n`);
+      console.log(`${rep.ok} cuenta(s) leídas · ${rep.mal} no${_repSoloLee ? ' · sólo lectura: no se escribió nada' : ' · guardado en cyc/reputacion'}\n`);
       const tokUno = await (async () => {
         for (const l of labels) {
           const a2 = accounts[l]; if (!a2?.refresh_token) continue;
@@ -37302,10 +37317,13 @@ async function main() {
       if (!(tcI > 0)) console.log('   (sin dólar cargado: no comparo el precio de la caja contra el costo)');
       for (const [m, e] of perd.slice(0, 12)) { const cM = costoDeMlaI(m), ptw = Number(e.cajaPtw) || 0; console.log(`· ${m} · ${e.cuenta} · ${tit(m)} · ${u30[m]} u. en 30 d · ML pide ${ptw ? money(ptw) : '?'}${e.cajaTs ? ' (hace ' + Math.round((ahoraI - e.cajaTs) / 36e5) + ' h)' : ''}${ptw > 0 && cM > 0 && ptw < cM ? ` · ⚠️ ese precio no deja ganancia (el costo de la ficha es ${money(cM)})` : ''}`); }
       if (perd.length > 12) console.log(`  (y ${perd.length - 12} más…)`);
-      const quie = Object.entries(links).filter(([m, e]) => e && !e.ignored && !e.noVendemosMas && /out_of_stock/.test(e.subStatus || '') && (u30[m] || 0) >= 2).sort((a, b) => (u30[b[0]] || 0) - (u30[a[0]] || 0));
-      console.log(`── 12b · SIN STOCK Y VENDÍAN (${quie.length} · ${quie.reduce((s2, [m]) => s2 + (u30[m] || 0), 0)} u. vendidas en 30 d) ──`);
-      for (const [m, e] of quie.slice(0, 15)) console.log(`· ${m} · ${e.cuenta} · ${tit(m)} · ${u30[m]} u. en 30 d`);
-      if (quie.length > 15) console.log(`  (y ${quie.length - 15} más…)`);
+      // AUDITORÍA 17/10/2026: se ordenaba por UNIDADES y se cortaba en 15, así que lo caro que vende poco (Watch S5,
+      // Redmi Pad 2: 2 u. en 30 d, ~$27.000 por día de venta cada uno) quedaba escondido en "y 26 más", mientras el
+      // chequeo los ponía primeros. Ahora va por la PLATA de venta por día (lo facturado en 30 d ÷ 30) y salen TODAS.
+      const f30 = {}; for (const v of vtsTodas) if (v.ts >= ahoraI - 30 * 864e5) f30[v.mla] = (f30[v.mla] || 0) + v.tot;
+      const quie = Object.entries(links).filter(([m, e]) => e && !e.ignored && !e.noVendemosMas && /out_of_stock/.test(e.subStatus || '') && (u30[m] || 0) >= 2).sort((a, b) => (f30[b[0]] || 0) - (f30[a[0]] || 0));
+      console.log(`── 12b · SIN STOCK Y VENDÍAN (${quie.length} · ${quie.reduce((s2, [m]) => s2 + (u30[m] || 0), 0)} u. vendidas en 30 d · ${money(Math.round(quie.reduce((s2, [m]) => s2 + (f30[m] || 0), 0) / 30))} de venta por día) ──`);
+      for (const [m, e] of quie) console.log(`· ${m} · ${e.cuenta} · ${tit(m)} · ${u30[m]} u. en 30 d · ${money(Math.round((f30[m] || 0) / 30))}/día`);
       // 12c) CON STOCK EN FULL Y SIN VENDER EN 30 DÍAS (auditoría del 12/10/2026): el chequeo de la mañana lo mostraba
       // (40 publicaciones, $3,2M) y el informe no. Va por producto×cuenta (el stock de Full es de esa clave), con la plata
       // parada (costo de la ficha), si alguna publicación está activa y las visitas de 30 días: con menos de 20 no la ve

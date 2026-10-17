@@ -904,6 +904,14 @@ versiones nuevas. Restaurado en v23.21 (`cyc-v601`). **Antes de cada commit: `wc
  · Qué chequear: que en las vueltas no salgan avisos de cosas ya hechas (subas, bajas, activadas), que sin decisiones no
    salga nada, y que el texto no lleve datos de compradores (el log es público).
 
+### Auditoría 17/10/2026: 12b por plata, cajas del chequeo, `reputa` en sólo lectura
+ · `informe` 12b (sin stock y vendían): ordena por lo facturado en 30 d ÷ 30 y lista TODAS (antes por unidades y
+   cortado en 15: lo caro que vende poco quedaba escondido). Qué chequear: que el Watch S5 y la Pad 2 salgan arriba.
+ · `chequeo`: las cajas llegadas salen de `cyc/envios_full` (cajas `recibida` con `recFecha` en la ventana), no de
+   `/stock/fulfillment/operations/search` (sin `date_to` daba 400 y siempre "0 cajas"). Qué chequear: el día que se marca
+   una caja, el chequeo la cuenta y el 🔴 "0 cajas a Full" no sale.
+ · `reputa` por ml-consulta no intenta guardar (`GITHUB_WORKFLOW`), así lee las 4 cuentas.
+
 ### Telegram: sólo lo importante, sin resúmenes (16/10/2026, regla suya)
  · Él: *"quiero que en telegram lleguen cosas más importantes. sino nada. o algo que tenga que decidir"*.
  · Qué cambió: se sacó el `resumen:` de las dos rutinas (completa 08:52 `trig_01475PwdPVJ1qTnYswcDxRq8` y cortas
