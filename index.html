@@ -2638,7 +2638,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.98';
+const APP_VERSION='23.99';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2649,6 +2649,7 @@ const APP_VERSION='23.98';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'23.99',f:'16/10/2026',h:'23:30',c:[{n:1,t:'Pedidos → Paraguay → Nuevos (Nissei): abajo de todo, desplegable "🗂️ Todo lo que revisó el robot y NO da" con los del catálogo de comprasparaguay que no llegan al piso, los que no tienen el mismo producto en ML, los que nadie vende y los que quedaron afuera por regla. Sólo muestra.'}]},
   {v:'23.98',f:'16/10/2026',h:'22:10',c:[{n:3,t:'"🚫 No lo consigo" también por color: el botón de la tarjeta marca el producto entero (ningún color se consigue) y el de cada color marca sólo ese color. El color marcado pasa solo a escasez.'}]},
   {v:'23.97',f:'16/10/2026',h:'21:50',c:[{n:3,t:'Pedidos (Bs As y Paulvic): botón "🚫 No lo consigo". Si Tito no lo consigue, el producto pasa a escasez sin reposición y el precio se estira para que el stock dure; se saca solo cuando entra mercadería a la oficina (o con "deshacer").'}]},
   {v:'23.96',f:'16/10/2026',h:'19:40',c:[{n:2,t:'Reloj de los 4 meses coordinado con el Excel de stock antiguo de ML: los productos del Excel marcan la edad real de sus lotes viejos; los que no figuran no pueden aparecer pagando ese día.'}]},
@@ -13017,8 +13018,9 @@ async function pycatBuscar(q){
   const pal=_pycNorm(q).split(/\s+/).filter(Boolean);
   const res=[];for(const [cod,e] of Object.entries(cat)){if(!e||!e.n)continue;const t=_pycNorm(e.n+' '+cod);if(pal.every(w=>t.includes(w)))res.push([cod,e]);}
   res.sort((a,b)=>((b[1].m!=null)-(a[1].m!=null))||((Number(b[1].m)||-999)-(Number(a[1].m)||-999)));
-  const tc=curTC();
-  const fila=([cod,e])=>{const u=Number(e.u)||0,pu=u*RECARGO_PY,ps=tc>0?Math.round(pu*tc):0;
+  el.innerHTML=`<div style="font-size:.64rem;color:var(--muted)">${res.length} encontrado${res.length===1?'':'s'}${res.length>60?' · muestro los primeros 60 (escribí más palabras para afinar)':''} · los medidos primero</div>`+res.slice(0,60).map(pycatFila).join('');
+}
+function pycatFila([cod,e]){const tc=curTC();{const u=Number(e.u)||0,pu=u*RECARGO_PY,ps=tc>0?Math.round(pu*tc):0;
     const m=(e.m!=null&&isFinite(e.m))?Number(e.m):null;
     const perf=_PERF_RE.test(e.n+' '+(e.mt||'')), loc=perf&&e.mp>0?perfLocalPct(ps,Number(e.mp)):null;
     const est=m!=null?`<b style="font-size:1rem;color:${m>=25?'var(--green)':'var(--red)'}">${Math.round(m)}%</b> <span style="font-size:.6rem;color:var(--muted)">ML</span>`
@@ -13030,8 +13032,35 @@ async function pycatBuscar(q){
       <div style="flex:1;min-width:0;font-size:.72rem;line-height:1.45"><div style="font-weight:600">${e.n}</div>
         <div style="color:var(--muted);font-size:.64rem">🔖 ${cod} · US$ ${u.toFixed(2)} → <b style="color:var(--text)">US$ ${pu.toFixed(2)}</b> puesto${ps?' · '+fmt(ps):''}${e.mp?` · en ML ${fmt(e.mp)}${e.mv?' · '+e.mv+' vend.':''}`:''}${e.cand?' · <span style="color:var(--green)">ya está en Para probar</span>':''}</div>
         <div style="font-size:.64rem">${/^https:\/\//.test(e.l||'')?`<a href="${e.l}" target="_blank" rel="noopener" style="color:var(--green)">🇵🇾 comprasparaguay</a>`:''}${e.mi?` · <a href="https://www.mercadolibre.com.ar/p/${e.mi}" target="_blank" rel="noopener" style="color:var(--green)">🔗 ML</a>`:''}</div></div>
-      <div style="text-align:right;flex:0 0 auto">${est}${loc!=null?`<div>${perfLocalHTML(loc)}</div>`:''}</div></div>`;};
-  el.innerHTML=`<div style="font-size:.64rem;color:var(--muted)">${res.length} encontrado${res.length===1?'':'s'}${res.length>60?' · muestro los primeros 60 (escribí más palabras para afinar)':''} · los medidos primero</div>`+res.slice(0,60).map(fila).join('');
+      <div style="text-align:right;flex:0 0 auto">${est}${loc!=null?`<div>${perfLocalHTML(loc)}</div>`:''}</div></div>`;}}
+// ── TODO LO QUE EL ROBOT REVISÓ Y NO DA, ABAJO DE TODO (17/10/2026, pedido suyo) ──────────────────────────
+// *"quiero que abajo de todo muestre todos los productos que no dan. o sea todos los que revisó el robot que estén guardados, en
+// un desplegable"*. Lee `mlapi/pycat` recién al abrirlo (~4 MB, la misma memoria que el buscador). Sólo muestra. Cuatro grupos
+// con el motivo: medidos abajo del piso (del más cercano al piso al más lejos), sin catálogo exacto en ML, en ML no lo vende
+// nadie, y afuera por regla (110V, marca frenada). Lo que ya está en Para probar o da el piso no entra.
+let _pycNoDanVer={};
+function pycatNoDanHTML(){
+  if(typeof pyProv!=='undefined'&&pyProv!=='nissei')return'';
+  return `<details style="margin-top:14px" ontoggle="if(this.open)pycatNoDan()"><summary style="cursor:pointer;font-size:.72rem;font-weight:700;color:var(--muted)">🗂️ Todo lo que revisó el robot y NO da · tocá para verlo</summary><div id="pycat-nodan" style="margin-top:8px"></div></details>`;
+}
+async function pycatNoDan(){
+  const el=document.getElementById('pycat-nodan');if(!el)return;
+  if(!_pycatCache)el.innerHTML='<div style="font-size:.7rem;color:var(--muted)">⏳ bajando el catálogo (la primera vez tarda unos segundos)…</div>';
+  let cat;try{cat=await pycatCargar();}catch(e){el.innerHTML=`<div style="font-size:.7rem;color:var(--red)">No pude leer el catálogo: ${String(e.message||e).slice(0,120)}</div>`;return;}
+  const g={bajo:[],sc:[],sv:[],fz:[]};let medidos=0,sinMedir=0;
+  for(const [cod,e] of Object.entries(cat||{})){if(!e||!e.n||e.cand)continue;
+    const m=(e.m!=null&&isFinite(e.m))?Number(e.m):null;
+    if(m!=null){medidos++;if(m<CAND_PISO_PCT)g.bajo.push([cod,e]);continue;}
+    if(e.fz){g.fz.push([cod,e]);continue;}
+    if(e.sc){g.sc.push([cod,e]);continue;}
+    if(e.sv){g.sv.push([cod,e]);continue;}
+    sinMedir++;}
+  g.bajo.sort((a,b)=>Number(b[1].m)-Number(a[1].m));
+  const grupos=[['bajo',`🔻 medidos abajo del ${CAND_PISO_TXT()}`,'del más cercano al piso al más lejos'],['sc','🔍 sin catálogo exacto en ML','no se pudo comparar contra el mismo producto'],['sv','🚫 en ML no lo vende nadie','el catálogo existe pero sin vendedores'],['fz','⛔ afuera por regla','110V, marca que ML frena, etc.']];
+  const tot=g.bajo.length+g.sc.length+g.sv.length+g.fz.length;
+  el.innerHTML=`<div style="font-size:.64rem;color:var(--muted);margin-bottom:6px">${tot.toLocaleString('es-AR')} que no dan · ${sinMedir.toLocaleString('es-AR')} todavía sin medir (el robot sigue midiendo cada 2 h; los que den pasan solos a Para probar)</div>`
+    +grupos.filter(([k])=>g[k].length).map(([k,t,d])=>{const n=_pycNoDanVer[k]||100,arr=g[k];
+      return `<details style="margin-top:6px"><summary style="cursor:pointer;font-size:.7rem">${t} · <b>${arr.length.toLocaleString('es-AR')}</b> <span style="color:var(--muted);font-size:.62rem">(${d})</span></summary><div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">${arr.slice(0,n).map(pycatFila).join('')}${arr.length>n?`<button class="btn" style="font-size:.66rem" onclick="_pycNoDanVer['${k}']=${n+100};pycatNoDan().then(()=>{const d=document.querySelectorAll('#pycat-nodan details')[${grupos.filter(([kk])=>g[kk].length).findIndex(([kk])=>kk===k)}];if(d)d.open=true;})">mostrar 100 más (quedan ${(arr.length-n).toLocaleString('es-AR')})</button>`:''}</div></details>`;}).join('');
 }
 function candList(){
   return Object.entries(state.candidatos||{}).map(([id,c])=>({...c,id})).filter(c=>c&&c.nombre&&pyProvDe(c)===pyProv);
@@ -14669,7 +14698,7 @@ function candidatosHTML(){
       ? `<div class="empty-msg" style="font-size:.68rem;line-height:1.6">No queda ninguno para evaluar: ${enPed?`<b>${enPed}</b> está${enPed===1?'':'n'} en el pedido de arriba`:''}${enPed&&enVia?' y ':''}${enVia?`<b>${enVia}</b> ya ${enVia===1?'viaja':'viajan'}`:''}.</div>`
       : `<div class="empty-msg" style="font-size:.68rem;line-height:1.6">Todavía no hay ninguno.<br>
       ${pyProv==='nissei'?'El chat de Paraguay los carga cuando encuentra algo en comprasparaguay <b>que Nissei ofrezca</b>':'Se cargan de la lista de precios de <b>'+pyProvNom()+'</b> que me pasás'} (ahí salen juntos el código, el precio y que hay stock), cueste menos de US$ 250 puesto y no sea de una marca que ML frena.</div>`;
-    return cab(null)+pycatBuscarHTML()+vacio;   // 15/10: el simulador no se usa, se sacó de la pantalla (la función queda)
+    return cab(null)+pycatBuscarHTML()+vacio+pycatNoDanHTML();   // 15/10: el simulador no se usa, se sacó de la pantalla (la función queda)
   }
   // El que más margen deja, primero. Los que todavía no tienen la cuenta hecha van al final:
   // no se pueden comparar contra los medidos y ponerlos arriba sería invitar a decidir sin número.
@@ -14823,7 +14852,7 @@ function candidatosHTML(){
     +(_flojas.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--amber)">🟠 ${_flojas.length} con menos de ${CAND_MIN_VENT} vendidas en ML (o sin el dato) · no se pueden pedir · tocá para verlos</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_flojas.map(_card).join('')}</div></details>`:'')
     +(_rojos.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--red)">🔻 ${_rojos.length} no llega${_rojos.length===1?'':'n'} al ${CAND_PISO_TXT()} · tocá para verlos</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_rojos.map(_card).join('')}</div></details>`:'')
     +(_sinAnalizar.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--muted)">⏳ ${_sinAnalizar.length} sin analizar o incompletos (falta la medición de ML o alguna de las dos fotos) · suben solos cuando estén completos y den · tocá para verlos</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_sinAnalizar.map(_card).join('')}</div></details>`:'')
-    +candDescartadosHTML();
+    +candDescartadosHTML()+pycatNoDanHTML();
 }
 // LO DESCARTADO NO SE ESCONDE. Una lista que saca renglones sin decirlo es una lista que miente —
 // la misma regla que el desplegable de `nomandar` en Armar caja.

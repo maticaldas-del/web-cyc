@@ -341,6 +341,12 @@ y deja 25%+ (`Tde`); el motivo de Tito y el 📋 Copiar pedido dicen "SÓLO este
 "desaparecieron N u." con stock compartido; `antiguo` muestra también la cuenta con las ventas de 30 d. Qué chequear:
 que `cortes` salga en el log de `pedidostodo` y `decide_pedidos.py` lea N de M ✓.
 
+### Todo lo que el robot revisó y no da, en Nuevos (17/10/2026, v23.99, pedido suyo)
+Qué: abajo de todo en Pedidos → Paraguay → Nuevos (sólo Nissei), desplegable `pycatNoDanHTML`/`pycatNoDan` que lee `mlapi/pycat` al
+abrirlo y lista en 4 grupos: medidos abajo del piso, sin catálogo exacto, nadie lo vende, afuera por regla (de a 100). El renglón es
+`pycatFila`, el mismo del buscador. Chequear: que los números cierren contra `pycat` (fuera por regla, menos de 15%, sin catálogo) y que
+lo que ya está en Para probar (`cand`) no aparezca.
+
 ### Vendidas en ML desde la tarjeta del candidato (16/10/2026, v23.84)
 Casilla "🛒 Vendidas en ML" en el detalle (`candSetVend` → `candidatos_py/<id>/vendCarga`). Qué chequear: que con 100+ el candidato pase arriba y se pueda pedir.
 
