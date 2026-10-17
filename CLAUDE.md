@@ -9056,6 +9056,11 @@ y desde ese pedido no entró nada a la oficina (`cyc/ofientro/<id>`, lo anotan l
 el producto sigue en Pedidos todo el tiempo. Y la escasez (web `escasezDe`, robot `escasez`) y Pedidos (`decide_pedidos.py`,
 también tras subas de prueba `PRU`) miden con el RITMO NORMAL: una suba que frenó las ventas no achica la cuenta. Paulvic sigue en ~1 semana + caja.
 
+## 🚫 "NO LO CONSIGO" EN PEDIDOS (16/10/2026, v23.97, pedido suyo)
+Botón en cada tarjeta de Pedidos Bs As/Paulvic: marca `cyc/noconsigo/<prodId>` y el producto pasa a escasez sin reposición
+(regla ⏳ de abajo) sin esperar los 10 días; se cae solo cuando entra mercadería a la oficina. Si él dice que Tito no
+consigue algo, lo marco yo igual (`cyc/noconsigo`).
+
 ## ⏳ LO QUE NO SE PUEDE REPONER: ESTIRAR HASTA 4 MESES (16/10/2026, regla suya)
 Él: *"una combinacion entre esperar lo maximo posible y maximizar ganancia lo maximo posible en los 4 meses de stock que
 tenemos. pero si o si en los 4 meses hay que vender todo. siempre esperando a que se pueda pedir en nissei"*. Lo que Nissei no

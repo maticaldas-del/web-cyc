@@ -904,6 +904,14 @@ versiones nuevas. Restaurado en v23.21 (`cyc-v601`). **Antes de cada commit: `wc
  · Qué chequear: que en las vueltas no salgan avisos de cosas ya hechas (subas, bajas, activadas), que sin decisiones no
    salga nada, y que el texto no lleve datos de compradores (el log es público).
 
+### "🚫 No lo consigo" en Pedidos (16/10/2026, v23.97, pedido suyo)
+ · Él, con las Sábanas: *"no está el botón de no lo consigo. para que entre en escasez"*. Botón en la tarjeta de Pedidos
+   (Bs As y Paulvic; Paraguay ya tiene "Nissei no lo tiene"): guarda `cyc/noconsigo/<prodId>` = fecha. `_reponerCalc` lo
+   trata como sin reposición (escasez, estirar a ~4 meses) mientras no entre mercadería a la oficina después de la marca
+   (`cyc/ofientro`); el robot lo ve por `cyc/reponer` y, de respaldo, leyendo la marca.
+ · Qué chequear: marcar un producto → la escasez lo muestra "no se consigue: sin fecha"; cargar unidades en la oficina →
+   vuelve solo a "~1 semana + caja"; "deshacer" lo saca.
+
 ### Auditoría 17/10/2026: 12b por plata, cajas del chequeo, `reputa` en sólo lectura
  · `informe` 12b (sin stock y vendían): ordena por lo facturado en 30 d ÷ 30 y lista TODAS (antes por unidades y
    cortado en 15: lo caro que vende poco quedaba escondido). Qué chequear: que el Watch S5 y la Pad 2 salgan arriba.

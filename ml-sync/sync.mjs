@@ -36824,12 +36824,14 @@ async function main() {
       let repoE = {}, sinStE = {}, compPyE = {};
       try { repoE = (await db.get('cyc/reponer')) || {}; } catch { console.log('(no pude leer cyc/reponer: lo que tarda comprar va por el respaldo 📅)'); }
       try { sinStE = (await db.get('cyc/py_sinstock')) || {}; } catch { /* respaldo sin la marca */ }
+      let noConsE = {}, ofiEntE = {}; try { noConsE = (await db.get('cyc/noconsigo')) || {}; ofiEntE = (await db.get('cyc/ofientro')) || {}; } catch { /* sin la marca */ }
       try { for (const c of Object.values((await db.get('cyc/compraspy')) || {})) if (c && c.estado === 'camino') for (const it of (c.items || [])) if (it && it.prodId) compPyE[it.prodId] = c.fecha; } catch { /* */ }
       // Respaldo si la web todavía no escribió `cyc/reponer` de ese producto (o es de hace más de 3 días).
       const repoFallback = (pid) => {
         const p = pById[pid] || {};
         if (compPyE[pid]) { const e = (ahora - Date.parse(compPyE[pid] + 'T12:00:00-03:00')) / 864e5; const f = Math.max(0, Math.ceil(7 - (e || 0))); return { d: f + 10, txt: `📅 viene en el pedido de Paraguay del ${compPyE[pid]} (${f > 0 ? '~' + f + ' d' : 'ya debería haber llegado'}) + 10 d de caja` }; }
         if (p.origen === 'py' && sinStE[pid]) return { d: REPO_SIN_FECHA_E, inf: true, txt: '📅 Nissei no lo tiene: sin fecha' };
+        { const nc = Number(noConsE[pid]) || 0; if (p.origen !== 'py' && nc && !(Number(ofiEntE[pid]) > nc)) return { d: REPO_SIN_FECHA_E, inf: true, txt: '📅 no se consigue (marcado en Pedidos): sin fecha' }; }
         return p.origen === 'py' ? { d: 17, txt: '📅 Paraguay 17 d (sin el dato de la web: no sé si el precio da)' } : { d: 14, txt: '📅 Bs As/Paulvic 14 d' };
       };
       for (const [pid, x] of Object.entries(repoE)) if (!x || !(Number(x.ts) > ahora - 3 * 864e5) || /Bs As sin nada en la oficina/.test(String(x.txt || ''))) delete repoE[pid];   // la regla de la v23.88 se corrigió (1b): ese texto viejo no vale
