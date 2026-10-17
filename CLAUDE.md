@@ -9079,3 +9079,7 @@ Y él: *"3 no depende de mí, no hablemos de eso"* → las compras de Bs As NO s
 Él: *"y si el que pone el techo se queda sin stock o aumentó (…) perdemos 60 días sin mirar"*. Ya no son 60 días fijos:
 `techofreno` guarda la foto de la competencia al volver una prueba y en cada completa se reabre si el más barato ajeno sube 8%+,
 ya no hay ajenos abajo del precio probado, ganamos la caja o pasan 30 días. Detalle en `ml-sync/CEREBRO.md` (🔓).
+
+## 🎯 AL LLEGAR LA CAJA NO SE ELIGE ENTRE DOS PRECIOS: SE BUSCA EL MEDIO (17/10/2026, eligió la a)
+Si el precio de escasez deja menos plata por día que el normal, no se vuelve directo al normal: pasos al medio, arrancando por
+el tramo de la escalera que mejor anduvo, medidos con certeza (Poisson). Detalle en `ml-sync/CEREBRO.md` (🎯).

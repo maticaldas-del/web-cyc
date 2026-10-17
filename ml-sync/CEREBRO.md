@@ -262,6 +262,18 @@ próxima caja a Full"*.
    ciegas).
  · Y en la misma vuelta se mira Armar caja: si hay mercadería en la oficina de ese producto, se decide mandarla.
 
+## 🎯 AL LLEGAR LA CAJA: EL MEJOR PRECIO ENTRE EL DE ESCASEZ Y EL NORMAL (17/10/2026, regla suya, eligió la a)
+Él: *"si el precio está entre los dos? como lo sabes? quizás lo mejor es un poquito menos del precio de escasez"*.
+Cuando termina la escasez no se elige entre dos puntos (escasez o normal): se BUSCA el mejor en el medio.
+ · Si al precio de escasez sigue dejando igual o más plata por día que con el normal, se queda (como siempre).
+ · Si deja menos: NO se vuelve directo al normal. Se baja al punto del medio entre los dos, **arrancando por el tramo de la
+   escalera que más plata por día dejó** (los tramos están en la ficha médica de cada publicación; ojo, en escasez la gente
+   compra apurada, así que esos números salen algo inflados: sirven para elegir por dónde arrancar, no para decidir).
+ · Cada paso se mide con la misma vara de certeza que el techo (Poisson, nunca un solo día, manda la plata por día con stock
+   normal): si deja más que el normal, se queda y se prueba un paso más cerca del de escasez; si deja menos, un paso más cerca
+   del normal. En 2-3 pasos queda el mejor. Cada baja, primero como promo.
+ · Lo encontrado va a `notas/techo.md` como el precio de esa publicación con stock normal.
+
 ## 🪜 ESCASEZ: ARRANCAR MUY ALTO Y BAJAR EN ESCALERA (16/10/2026, regla suya, eligió 1a 2b 3a)
 Él: *"probemos más del 100% de lo que se vende (...) quizás algo que vendemos por 5.000 podemos venderlo a 25.000, no lo
 sabemos (...) es gratis subir precio"* y *"vas bajando en escalera, si no vende o si nos pasamos de escasez a sobrestock"*.

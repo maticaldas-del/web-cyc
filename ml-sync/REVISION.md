@@ -1257,3 +1257,8 @@ el comando `pedir` siguen sin meterlos. Chequear: que `.ok` siga en false para e
 - **`cajaitems:<seguimiento>@<cuenta>|…;go` crea una caja nueva (17/10/2026).** Si el seguimiento no existe y se pasa `@<cuenta>`, arma el envío igual que "Cerrar caja" de la web (una caja, no recibida) y saca de la oficina lo que lleva. Vive en `sync.mjs` (bloque `cajaitems`). Chequear: que la caja aparezca en Mi oficina → En camino y que la oficina baje lo mismo.
 - **`decido:…!sinstock` (17/10/2026):** deja BAJAR el precio de una publicación sin stock en Full (las nuevas, antes de que llegue la caja: ML las activa solas al entrar stock). Sin la marca sigue igual (sin stock no se baja). Chequear: que sólo se use en publicaciones nuevas.
 - **`techofreno` (17/10/2026):** el freno de "no probar más caro" guarda la foto del mercado (`cyc/techofreno/<MLA>`) y se reabre si el competidor más barato sube 8%+, se queda sin ajenos abajo del precio probado, ganamos la caja o pasan 30 días. Vive en `sync.mjs` (bloque `techofreno`). Chequear: que lo frenado no se quede sin mirar y que la foto se tome el día que se vuelve.
+
+- **17/10/2026 · Etapa 1 (precios) · salida de la escasez por pasos al medio (eligió la a).** Qué: al llegar la caja, si el
+  precio de escasez deja menos plata por día, se busca el mejor entre escasez y normal por pasos, arrancando por el mejor
+  tramo de la escalera. Dónde: regla mía en las vueltas (`ml-sync/CEREBRO.md` 🎯), sin código nuevo. Chequear: que las
+  publicaciones que salen de escasez tengan su paso anotado en `notas/techo.md` y no vuelvan directo al normal.
