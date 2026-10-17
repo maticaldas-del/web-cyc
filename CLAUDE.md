@@ -1306,7 +1306,7 @@ pedido en una tarjeta como la de Paraguay (`pvPedidoTarjeta`).
 ## ⏰ PAULVIC DEL 06/10: LLEGÓ EL 17/10 (remito del 07/10), FALTA PAGAR
 Llegaron 38 u. (37 + 1 tester de Blush, el tester NO se sumó a la oficina). Faltaron Acqua, Indigo Mujer y Miss Mujer (3 c/u):
 **Regla suya del mismo día: lo que se pide al Paulvic y no viene queda anotado en el pedido y NO SE PIDE MÁS** (`cyc/noconsigo/<prod>/nunca/<aroma>`, lo marca `pvped:llego`; se saca pidiéndolo de nuevo o con `pvped:nunca:-<aroma>;go`). Vinieron 6 Blush que no se pidieron: aroma nuevo, agregado a la ficha "Paulvic TODOS", SIN publicación
-en ML todavía. A pagar $246.283,77 (calculadora) · valor declarado del remito $214.252,95 · flete (Transporte Oballe) sin dato.
+en ML todavía. A pagar $246.283,77 (calculadora) · valor declarado del remito $214.252,95 · flete (Transporte Oballe) $8.500 (cargado el 17/10: costo c/u $6.705).
 Cuando pase el comprobante: `pvped:pago:pv20261006;monto=246284;go` (con las fotos cifradas). Costo c/u se revisa con el flete.
 
 ## (VIEJO) PENDIENTE: EL PEDIDO AL PAULVIC DEL 06/10 (08/10/2026)
