@@ -520,7 +520,9 @@ body.light .tq-buy{background:repeating-linear-gradient(45deg,rgba(0,0,0,.18) 0 
 .pf-btn.active-prov{background:rgba(56,189,248,.12);color:#38bdf8;border-color:rgba(56,189,248,.25)}
 .pedidos-count{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
 /* 17/10/2026, él: "sacar eso de todos, no lo miramos nunca": el cartel 🧠 sin decidir y los cuadros de conteo de Pedidos, ocultos (se siguen calculando) */
-#ped-sindecidir,#pedidos-prioridad-count,#pedidos-count,#pedidos-py-count,#pedidos-paulvic-count,#pedidos-papelera-count{display:none!important}
+#ped-sindecidir,#pedidos-papelera-count{display:none!important}
+/* y de los cuadros sólo queda "Falta reponer" (pedido suyo, mismo día) */
+#pedidos-prioridad-count .pcount:not(.pcount-reponer),#pedidos-count .pcount:not(.pcount-reponer),#pedidos-py-count .pcount:not(.pcount-reponer),#pedidos-paulvic-count .pcount:not(.pcount-reponer){display:none!important}
 .pcount{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:.65rem;color:var(--muted)}
 .pcount strong{font-family:'Syne',sans-serif;font-size:.95rem;color:var(--text);display:block;margin-bottom:2px}
 .cmp-type{font-size:.64rem;text-transform:uppercase;letter-spacing:.08em;border-radius:5px;padding:3px 8px;white-space:nowrap}
@@ -2641,7 +2643,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.08';
+const APP_VERSION='24.09';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2652,6 +2654,7 @@ const APP_VERSION='24.08';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.09',f:'17/10/2026',h:'15:15',c:[{n:1,t:'💰 Pedidos: de los cuadros de arriba queda sólo "Falta reponer" (la plata de todo lo que hay que comprar).'}]},
   {v:'24.08',f:'17/10/2026',h:'15:15',c:[{n:1,t:'🧹 Pedidos: se sacaron el cartel "🧠 sin decidir" y los cuadros de arriba (sin stock, se corta, alcanza, total, falta reponer) en todas las pestañas.'}]},
   {v:'24.07',f:'17/10/2026',h:'15:13',c:[{n:1,t:'🧴 Pedidos → Paulvic: cada pedido es una tarjeta como las de Paraguay (fecha y en qué está; adentro la plata, los días, aroma por aroma con lo que faltó y los comprobantes).'},{n:3,t:'💲 El costo del Paulvic sale del último pedido: (lo pagado + flete) ÷ (lo que llegó + testers + regalos que sean perfume). Los testers y regalos se venden al costo.'}]},
   {v:'24.06',f:'17/10/2026',h:'15:08',c:[{n:2,t:'🚫 Paulvic: lo que se pidió y no vino queda anotado en el pedido y marcado "no viene más": Pedidos no lo vuelve a pedir y cuenta como sin reposición. Se saca tocando el botón o pidiéndolo de nuevo.'}]},
@@ -15393,7 +15396,7 @@ function _pedsCostoReponer(peds){
 function _pedCostoChip(peds){
   const c=_pedsCostoReponer(peds);
   const val=c.ars?fmt(c.ars):'US$'+Math.round(c.usd).toLocaleString('es-AR');
-  return `<div class="pcount" title="Plata para comprar las unidades que faltan (costo base, sin envío) · US$${Math.round(c.usd).toLocaleString('es-AR')}"><strong style="color:var(--blue)">${val}</strong>Falta reponer</div>`;
+  return `<div class="pcount pcount-reponer" title="Plata para comprar las unidades que faltan (costo base, sin envío) · US$${Math.round(c.usd).toLocaleString('es-AR')}"><strong style="color:var(--blue)">${val}</strong>Falta reponer</div>`;
 }
 
 async function setPedidoEstado(id,estado){
