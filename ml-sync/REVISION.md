@@ -1255,3 +1255,4 @@ el comando `pedir` siguen sin meterlos. Chequear: que `.ok` siga en false para e
 - 16/10/2026 · Etapa 7 (diseño) · v23.90: `pedVarMaxTxt` muestra el máximo de compra en TODOS los colores (antes sólo con `pvVars` del color). Chequear que un color sin precio propio dé el mismo número que la cabecera.
 
 - **`cajaitems:<seguimiento>@<cuenta>|…;go` crea una caja nueva (17/10/2026).** Si el seguimiento no existe y se pasa `@<cuenta>`, arma el envío igual que "Cerrar caja" de la web (una caja, no recibida) y saca de la oficina lo que lleva. Vive en `sync.mjs` (bloque `cajaitems`). Chequear: que la caja aparezca en Mi oficina → En camino y que la oficina baje lo mismo.
+- **`decido:…!sinstock` (17/10/2026):** deja BAJAR el precio de una publicación sin stock en Full (las nuevas, antes de que llegue la caja: ML las activa solas al entrar stock). Sin la marca sigue igual (sin stock no se baja). Chequear: que sólo se use en publicaciones nuevas.

@@ -3788,7 +3788,9 @@ async function calcCerebro(db, o) {
         // Sin stock en Full el cerebro no decide nada, PERO un precio que decidió Claude para SUBIR se aplica igual
         // (09/10/2026, el Cool Water: se agotó en un día las dos veces a un precio que dejaba 19%; si la suba espera
         // a que entre stock, la tanda nueva se vende otra vez barata antes de la vuelta siguiente). Bajar sin stock no.
-        const fzSinSt = !!(forzar && forzar[mla] && Number(forzar[mla].p) > p0 + 10);
+        // `!sinstock` (17/10/2026): una publicación NUEVA, todavía sin stock, con un precio copiado mal. ML la activa sola apenas
+        // entra la caja, así que el precio tiene que estar bien ANTES. Lo pide Claude a propósito, nunca el robot solo.
+        const fzSinSt = !!(forzar && forzar[mla] && (Number(forzar[mla].p) > p0 + 10 || (forzar[mla].sinstock && Number(forzar[mla].p) > 0)));
         if (stDesc && !fzSinSt) { nada(`stock del color: no sé (${eVar ? 'no hay stock guardado de "' + eVar + '"' : 'la publicación no tiene el color fijado: fijarvar'}): no decido a ciegas`); continue; }
         if (!(st > 0) && !stDesc && !fzSinSt) { nada('sin stock en Full'); continue; }
         const m = (mlExtraPct(cta) + monoPz) / 100;
@@ -38376,7 +38378,7 @@ async function main() {
         const banderas = String(mm[3] || '').toLowerCase();
         const soloAct = /^activar$/i.test(String(mm[2] || '').trim()) || !mm[2];
         forzar[mm[1].toUpperCase()] = { p: soloAct ? 0 : Math.round(pesosArg(mm[2]) / 10) * 10, motivo: mot.join('|').trim(), piso: banderas.includes('!piso'), cruza: banderas.includes('!cruza'),
-          activar: soloAct || banderas.includes('!activar'), salto: banderas.includes('!salto'), tag: mm[4] ? mm[4].toLowerCase() : '' };
+          activar: soloAct || banderas.includes('!activar'), salto: banderas.includes('!salto'), sinstock: banderas.includes('!sinstock'), tag: mm[4] ? mm[4].toLowerCase() : '' };
       }
       if (malos.length) { console.log(`No entendí: ${malos.join(' · ')}\nVa así: decido:MLA123=7550|vende igual a este precio;MLA456=4190!piso|motivo;MLA789=nota|lo que pensé;ped:pendrive 8gb=nota|por qué pido;caja:pendrive 8gb@matias=nota|por qué mando;ped:pendrive 8gb=u|120|por qué esas;ped:paulvic#Persea=u|6|motivo;ped:pendrive 8gb=venta|4990|precio normal;caja:pendrive 8gb@matias=u|50|motivo;ped:pendrive 8gb=auto;dia:2026-10-08=nota|qué pasó ese día;revisado;go`); return; }
       // MIS EXPLICACIONES PARA EL 🧠 (08/10/2026, él: *"todas las anotaciones del cerebro las escribís vos"*):
