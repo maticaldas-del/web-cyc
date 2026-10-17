@@ -30984,6 +30984,50 @@ async function main() {
     // Los gastos también se normalizan: el gasto de monotributo de cada mes se reemplaza por el
     // autónomo + obra social de hoy, porque el impuesto integrado ya está adentro del costo de cada
     // venta. Si se dejara el gasto viejo, el monotributo quedaría contado dos veces.
+    // BILLING_PROBE=cobromes[:AAAA_MM] → CUÁNTO VA A COBRAR CADA SOCIO A FIN DE MES (17/10/2026, él: "ya podemos sacar
+    // un cálculo de lo que vamos a cobrar a fin de mes"). SOLO LEE. Misma cuenta que la web (`_puntGananciaMes`):
+    // neto − costo (armarCostoWeb) − gastos cargados del mes, ÷ 3. Proyecta lo de las ventas al mes entero y muestra
+    // los gastos que faltan cargar comparando con el mes anterior.
+    if (/^cobromes(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const nAR = new Date(Date.now() - 3 * 36e5);
+      const ym = (String(process.env.BILLING_PROBE).split(':')[1]) || `${nAR.getUTCFullYear()}_${String(nAR.getUTCMonth() + 1).padStart(2, '0')}`;
+      const [Y, M] = ym.split('_').map(Number);
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
+      const cw = await armarCostoWeb(db, vp);
+      const compras = (await db.get('cyc/compras')) || {};
+      const prevYM = M === 1 ? `${Y - 1}_12` : `${Y}_${String(M - 1).padStart(2, '0')}`;
+      const gastosDe = (k) => { const L = []; for (const x of Object.values(compras)) if (x && x.tipo !== 'mercaderia' && String(x.dayKey || '').startsWith(k)) L.push(x); return L; };
+      const gA = gastosDe(ym), gP = gastosDe(prevYM);
+      const sum = (L) => L.reduce((a, x) => a + (Number(x.monto) || 0), 0);
+      let neto = 0, costo = 0, canc = 0, sinC = 0; const porDia = {};
+      for (const [dk, ents] of Object.entries(vp)) {
+        if (!dk.startsWith(ym)) continue;
+        for (const v of Object.values(ents || {})) {
+          if (!v) continue; if (v.cancelada) { canc++; continue; }
+          const c = cw(v, dk); if (c.sinCosto) sinC++;
+          const g = (Number(v.neto) || 0) - (c.costo || 0);
+          neto += Number(v.neto) || 0; costo += c.costo || 0; porDia[dk] = (porDia[dk] || 0) + g;
+        }
+      }
+      const diasMes = new Date(Date.UTC(Y, M, 0)).getUTCDate();
+      const ini = Date.UTC(Y, M - 1, 1) + 3 * 36e5;
+      const esActual = ym === `${nAR.getUTCFullYear()}_${String(nAR.getUTCMonth() + 1).padStart(2, '0')}`;
+      const diasTr = esActual ? Math.min(diasMes, (Date.now() - ini) / 864e5) : diasMes;
+      const nc = neto - costo, gastos = sum(gA), gastosPrev = sum(gP);
+      const ultimos = Object.keys(porDia).sort().slice(-8, -1);   // 7 días cerrados
+      const r7 = ultimos.length ? ultimos.reduce((a, k) => a + porDia[k], 0) / ultimos.length : null;
+      const $ = (n) => '$' + Math.round(n).toLocaleString('es-AR');
+      console.log(`=== 💸 COBRO DE ${ym} · SOLO LEE ===`);
+      console.log(`Días: ${diasTr.toFixed(2)} de ${diasMes} · ventas: neto ${$(neto)} − mercadería ${$(costo)} = ${$(nc)} (${canc} canceladas fuera · ${sinC} sin costo cuentan $0 de ganancia)`);
+      console.log(`Gastos cargados del mes: ${$(gastos)} (${gA.length}) · el mes anterior: ${$(gastosPrev)} (${gP.length})`);
+      for (const x of gP) { const ya = gA.some((y) => (y.cat || y.categoria) === (x.cat || x.categoria)); console.log(`   ${ya ? '✓' : '⏳ falta'} ${String(x.cat || x.categoria || '?').slice(0, 28)} · ${String(x.desc || x.descripcion || '').replace(/\d{6,}/g, '…').slice(0, 30)} · ${$(x.monto || 0)}`); }
+      console.log(`Hasta hoy: (${$(nc)} − ${$(gastos)}) ÷ 3 = ${$((nc - gastos) / 3)} c/u`);
+      const gEsp = Math.max(gastos, gastosPrev);
+      const p1 = nc / diasTr * diasMes;
+      console.log(`Proyección al ritmo del mes (${$(nc / diasTr)}/día): ventas ${$(p1)} − gastos esperados ${$(gEsp)} = ${$(p1 - gEsp)} → ${$((p1 - gEsp) / 3)} c/u`);
+      if (r7 != null) { const p2 = nc + r7 * (diasMes - diasTr); console.log(`Proyección al ritmo de los últimos 7 días (${$(r7)}/día): ventas ${$(p2)} − ${$(gEsp)} = ${$(p2 - gEsp)} → ${$((p2 - gEsp) / 3)} c/u`); }
+      return;
+    }
     if (String(process.env.BILLING_PROBE || '').startsWith('proyec')) {
       const _pj = String(process.env.BILLING_PROBE).split(':');
       const RETIRO = parseFloat(_pj[1]) || 1800000;
