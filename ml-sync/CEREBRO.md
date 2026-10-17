@@ -383,3 +383,5 @@ probado, no queda ningún vendedor ajeno, pasamos a ganar la caja, o pasaron 30 
 (`decido`) y se saca el freno (`techofreno:-<MLA>;go`). Sin catálogo sólo se reabre a los 30 días.
 
 **Paraguay: el piso para pedir es 25%, no 24%** (17/10/2026, regla suya: *"tienen que llegar a 25, no a 24"*). Nuevos, perfumes y probados.
+
+- **Escasez con mercadería en la oficina: decidir la caja en la MISMA vuelta (17/10/2026, él con la Piedra Gua Sha).** Si un producto entra en escasez y hay unidades en la oficina, además del precio se decide la caja (`decido:caja`) en esa vuelta. Si venía lento (días con stock sin vender), se manda poco (lo justo para no quedar en cero y medir si el ritmo nuevo se sostiene), no todo lo de la oficina.
