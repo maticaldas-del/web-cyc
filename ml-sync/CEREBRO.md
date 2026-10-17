@@ -296,7 +296,7 @@ corto sí. **Se saca el techo ×2** (queda sólo el de $650.000).
 Él: *"cada vez que hacés un análisis abrís eso y tenés todo"*. Antes de tocar el precio de una publicación miro su ficha:
 la línea `📋 ficha:` del expediente y de `escasez` (lo que no rindió y hasta cuándo, el mejor precio medido, la prueba en curso)
 y, si hace falta el detalle, `ficha:<MLA o palabras>` por ml-consulta (cada cambio con su resultado, cada precio que tuvo
-con su ganancia por día, mis notas). **Un precio que no rindió no se repite hasta su vencimiento (60 días)**, salvo que
+con su ganancia por día, mis notas). **Un precio que no rindió no se repite hasta que cambie la razón** (ver 🔓 abajo; máximo 30 días), salvo que
 cambie algo grande (escasez, fecha de regalo, competidor sin stock o más caro, costo nuevo) y lo digo en el motivo. Si ya
 venció, se puede volver a probar. Él ve lo mismo tocando "📋 Ficha completa" en el 🧠.
 
@@ -353,3 +353,11 @@ lo que hay antes de que Full cobre almacenamiento (~120 días; se apunta a ~100)
 Todo `decido:<MLA>=<precio>` va con `#<estrategia>` (si falta, se deduce del motivo y puede errar): `base` · `escasez` · `sinrepo`
 (no se consigue, 4 meses) · `techo` (prueba de suba) · `liquidando` · `caja` · `promo` · `fecha` · `excepcion` · `nuevo` · `correccion`.
 Cambiar sólo la estrategia, sin tocar el precio: `tag:<MLA>=<estrategia>|motivo;go`. Se ve en cada venta de Ventas x Producto.
+
+## 🔓 EL FRENO DE TECHO CON FOTO DEL MERCADO (17/10/2026, pedido suyo)
+Él: *"y si el que pone el techo se queda sin stock o aumentó, se podría subir y perdemos 60 días sin mirar"*. El "no probar más
+caro" ya no es un calendario fijo de 60 días. Cada vez que vuelvo una prueba que perdió: `techofreno:<MLA>=<precio probado>|motivo;go`
+(ml-sync), que guarda la foto del mercado ese día (más barato ajeno, cuántos ajenos abajo del probado, caja). En CADA completa
+corro `techofreno` (ml-consulta, solo lee): **🔓 REABRIR** si el más barato ajeno subió 8%+, ya no hay ajenos abajo del precio
+probado, no queda ningún vendedor ajeno, pasamos a ganar la caja, o pasaron 30 días. Lo reabierto se vuelve a probar ese día
+(`decido`) y se saca el freno (`techofreno:-<MLA>;go`). Sin catálogo sólo se reabre a los 30 días.

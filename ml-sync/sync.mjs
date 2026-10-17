@@ -41,7 +41,7 @@ process.on('SIGTERM', () => _alCortar('SIGTERM'));
 // ML, Mercado Pago y Telegram en sólo lectura (se deja renovar y guardar el token de ML, que ML rota).
 const EN_CONSULTA = process.env.GITHUB_WORKFLOW === 'ml-consulta' || process.env.ML_CONSULTA === '1';
 const CONSULTA_ESCRIBE = new Set(['pycat', 'lista', 'listamedir', 'pycatprobados', 'candprecio', 'lineatodo', 'revcand', 'vincular', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull']);
-const CONSULTA_NIEGA = new Set(['cajaitems', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
+const CONSULTA_NIEGA = new Set(['cajaitems', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'promoventas', 'cargosmes']);
 let CONSULTA_SOLO_LEE = false;
@@ -40450,6 +40450,92 @@ async function main() {
       await db.set('cyc/pedidospv/' + id, { prodId: P.id, fecha, ts: (prev && prev.ts) || Date.now(), estado: 'camino', items: its });
       const rel = await db.get('cyc/pedidospv/' + id);
       console.log(rel && rel.estado === 'camino' && lista(rel).length === its.length ? `\n✓ Guardado y releído: cyc/pedidospv/${id} (en camino). Pedidos → Paulvic ya lo descuenta.` : '\n⚠️ Se escribió pero al releer no coincide. Mirar a mano.');
+      return;
+    }
+
+    // BILLING_PROBE=techofreno[:<MLA>=<precio probado>[@AAAA-MM-DD]|motivo;…][:-<MLA>][;go] → EL "NO PROBAR MÁS CARO" CON FOTO DEL
+    // MERCADO (17/10/2026, él: *"y si el que pone el techo se queda sin stock o aumentó, se podría subir y perdemos 60 días sin mirar"*).
+    // Cuando una prueba de precio pierde y vuelvo, guardo cómo estaba la competencia ese día (el más barato ajeno, cuántos estaban
+    // abajo del precio probado, la caja). Sin argumentos (SOLO LEE): compara contra hoy y marca 🔓 REABRIR si cambió el mercado
+    // (el más barato ajeno subió 8%+, ya no hay ajenos abajo del precio probado, pasamos a ganar la caja) o si pasaron 30 días.
+    // Así el freno ya no es calendario fijo: dura lo que dura la razón por la que se puso.
+    if (/^techofreno(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _raw = String(process.env.BILLING_PROBE).replace(/^techofreno:?/, '');
+      const GO = /(^|;)go$/.test(_raw) && !DRY;
+      const pares = _raw.replace(/(^|;)go$/, '').split(';').map((x) => x.trim()).filter(Boolean);
+      const links = (await db.get('cyc/mllinks')) || {};
+      const sids = {}; for (const l of labels) if (accounts[l]?.seller_id) sids[String(accounts[l].seller_id)] = l;
+      const toks = {};
+      const tokDe = async (cta) => {
+        const label = labels.find((l) => l === cta && accounts[l]?.refresh_token) || labels.find((l) => accounts[l]?.refresh_token);
+        if (!label) return null;
+        if (toks[label] !== undefined) return toks[label];
+        try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, accounts[label].refresh_token); await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() }); toks[label] = t.access_token; }
+        catch { toks[label] = null; }
+        return toks[label];
+      };
+      // La foto del mercado de UNA publicación, hoy.
+      const foto = async (mla, probado) => {
+        const e = links[mla] || {}; const tok = await tokDe(e.cuenta); if (!tok) return { err: 'sin token' };
+        let b; try { b = await mlGet('/items/' + mla + '?attributes=id,title,price,catalog_product_id,status', tok); } catch (er) { return { err: 'ML no contestó la publicación' }; }
+        const out = { precio: Math.round(b.price || 0), titulo: String(b.title || e.title || '').slice(0, 55), cuenta: e.cuenta || '?', cat: !!b.catalog_product_id };
+        if (!b.catalog_product_id) return out;
+        try { const p = await mlGet('/items/' + mla + '/price_to_win?version=v2', tok); out.caja = p?.status || null; out.ptw = p?.price_to_win ? Math.round(p.price_to_win) : null; } catch { out.caja = null; }
+        let comp = null; try { comp = await mlGet(`/products/${b.catalog_product_id}/items`, tok); } catch { return { ...out, err: 'ML no dio los competidores' }; }
+        const ajenos = ofertasParaMedir((comp?.results || []).filter((x) => x && x.price > 0 && !sids[String(x.seller_id)])).ofs;
+        out.ajenos = ajenos.length;
+        out.barato = ajenos.length ? Math.round(Math.min(...ajenos.map((x) => x.price))) : null;
+        out.abajo = probado ? ajenos.filter((x) => x.price < probado).length : null;
+        return out;
+      };
+      const altas = [], bajas = [];
+      for (const x of pares) {
+        if (/^-MLA\d+$/i.test(x)) { bajas.push(x.slice(1).toUpperCase()); continue; }
+        const m = x.match(/^(MLA\d+)\s*=\s*([\d.,$\s]+?)(?:@(\d{4}-\d{2}-\d{2}))?\s*(?:\|(.*))?$/i);
+        if (!m) { console.log(`❌ "${x}" → va <MLA>=<precio probado>[@AAAA-MM-DD]|motivo`); return; }
+        altas.push({ mla: m[1].toUpperCase(), probado: Math.round(pesosArg(m[2])), ts: m[3] ? new Date(m[3] + 'T12:00:00-03:00').getTime() : Date.now(), motivo: (m[4] || '').trim() });
+      }
+      if (altas.length || bajas.length) {
+        console.log(`=== FRENO DE TECHO: ANOTAR ${GO ? '' : '(PRUEBA — no escribo nada)'} ===`);
+        const upd = {};
+        for (const a of altas) {
+          const f = await foto(a.mla, a.probado);
+          console.log(`  ${a.mla} · ${f.titulo || ''} · probado ${money(a.probado)} · hoy ${money(f.precio || 0)}${f.cat ? ` · más barato ajeno ${f.barato ? money(f.barato) : '—'} (${f.abajo ?? '?'} abajo del probado, ${f.ajenos ?? '?'} ajenos) · caja ${f.caja || '?'}` : ' · no es de catálogo: sólo se reabre por tiempo'}${f.err ? ' ⚠️ ' + f.err : ''}`);
+          upd[a.mla] = { ts: a.ts, probado: a.probado, volvio: f.precio || null, motivo: a.motivo || null, cat: !!f.cat, barato: f.barato ?? null, abajo: f.abajo ?? null, ajenos: f.ajenos ?? null, caja: f.caja || null, fotoTs: Date.now() };
+        }
+        for (const b of bajas) { upd[b] = null; console.log(`  ${b} · se saca el freno`); }
+        if (!GO) { console.log('\nNo se guardó nada (falta ;go).'); return; }
+        await db.patch('cyc/techofreno', upd);
+        const rel = (await db.get('cyc/techofreno')) || {};
+        const ok = Object.entries(upd).every(([k, v]) => v === null ? !rel[k] : rel[k] && rel[k].probado === v.probado);
+        console.log(ok ? '\n✓ Guardado y releído.' : '\n⚠️ Al releer no coincide: mirar a mano.');
+        return;
+      }
+      const fr = (await db.get('cyc/techofreno')) || {};
+      const ids = Object.keys(fr);
+      console.log(`=== FRENO DE TECHO: ¿CAMBIÓ EL MERCADO? · ${ids.length} frenada(s) ===`);
+      if (!ids.length) { console.log('No hay ninguna. Se anotan con techofreno:<MLA>=<precio probado>|motivo;go al volver una prueba.'); return; }
+      const DIAS = 30, SUBE = 0.08; let reabrir = 0;
+      for (const mla of ids) {
+        const r = fr[mla] || {}; const dias = Math.floor((Date.now() - (r.ts || 0)) / 864e5);
+        const f = await foto(mla, r.probado);
+        const por = [];
+        if (dias >= DIAS) por.push(`pasaron ${dias} días`);
+        if (r.cat && !f.err) {
+          if (r.barato && f.barato && f.barato >= r.barato * (1 + SUBE)) por.push(`el más barato ajeno subió ${money(r.barato)} → ${money(f.barato)}`);
+          if (r.barato && !f.barato) por.push('ya no hay ningún vendedor ajeno en la ficha');
+          if ((r.abajo || 0) > 0 && f.abajo === 0) por.push(`antes había ${r.abajo} ajeno(s) más barato(s) que ${money(r.probado)} y hoy ninguno`);
+          if (r.caja && r.caja !== 'winning' && f.caja === 'winning') por.push('ahora ganamos la caja (antes no)');
+        }
+        if (por.length) reabrir++;
+        console.log(`\n${por.length ? '🔓 REABRIR' : '🔒 sigue'} · ${mla} · ${f.cuenta || '?'} · ${f.titulo || ''}`);
+        console.log(`   frenada hace ${dias} d · probado ${money(r.probado || 0)} · hoy ${money(f.precio || 0)}${r.motivo ? ' · ' + r.motivo : ''}`);
+        if (r.cat) console.log(`   más barato ajeno: entonces ${r.barato ? money(r.barato) : '—'} → hoy ${f.barato ? money(f.barato) : '—'} · abajo del probado: ${r.abajo ?? '?'} → ${f.abajo ?? '?'} · caja: ${r.caja || '?'} → ${f.caja || '?'}${f.ptw ? ' (ML pide ' + money(f.ptw) + ')' : ''}`);
+        else console.log('   no es de catálogo: se reabre a los 30 días');
+        if (f.err) console.log(`   ⚠️ ${f.err}: esta vuelta no se pudo comparar`);
+        if (por.length) console.log(`   por qué: ${por.join(' · ')}`);
+      }
+      console.log(`\n${reabrir} para volver a probar más caro · ${ids.length - reabrir} siguen frenadas. Al reabrir: decido la prueba y techofreno:-<MLA>;go.`);
       return;
     }
 

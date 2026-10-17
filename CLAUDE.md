@@ -1102,7 +1102,7 @@ unidad × unidades por día con stock), no el que más unidades vende.
    se decide apenas la diferencia no puede ser casualidad (Poisson: 3 esperadas y 0 ventas = 5% de azar · 6 y 0-1 = 2% ·
    10 y ≤2 = 0,3%), nunca con un solo día. Manda la PLATA POR DÍA, no las unidades. Sin certeza, hasta 30 días como
    mucho. Resultado:
-   −5%) → otro escalón · 15%+ menos → volver al anterior (techo) y 60 días sin probar · en el medio → se queda.
+   −5%) → otro escalón · 15%+ menos → volver al anterior (techo) y frenado con foto del mercado (`techofreno`, se reabre si cambia la competencia o a los 30 días) · en el medio → se queda.
  · Memoria en `ml-sync/notas/techo.md`. Va en el paso 2c de la completa de las 08:52.
 
 ## 💡 CADA CEREBRO BUSCA ALGO NUEVO PARA MEJORAR (12/10/2026, regla suya)
@@ -9074,3 +9074,8 @@ tiene o cuyo precio de Paraguay no da: precio al más alto que vacíe el stock e
 `ml-sync/CEREBRO.md`. Primeros (16/10): Pendrive 8gb $16.990→$21.990 · Pendrive 16gb $20.500→$25.990 · Cabotine 30 $49.990→$57.990.
 Y él: *"3 no depende de mí, no hablemos de eso"* → las compras de Bs As NO se le pasan como decisión suya (las ve Tito en Pedidos).
 **Máximo de compra por color: eligió la 1a** (ver CEREBRO.md).
+
+## 🔓 EL FRENO DE TECHO SE REABRE SI CAMBIA EL MERCADO (17/10/2026, pedido suyo)
+Él: *"y si el que pone el techo se queda sin stock o aumentó (…) perdemos 60 días sin mirar"*. Ya no son 60 días fijos:
+`techofreno` guarda la foto de la competencia al volver una prueba y en cada completa se reabre si el más barato ajeno sube 8%+,
+ya no hay ajenos abajo del precio probado, ganamos la caja o pasan 30 días. Detalle en `ml-sync/CEREBRO.md` (🔓).
