@@ -341,6 +341,11 @@ y deja 25%+ (`Tde`); el motivo de Tito y el 📋 Copiar pedido dicen "SÓLO este
 "desaparecieron N u." con stock compartido; `antiguo` muestra también la cuenta con las ventas de 30 d. Qué chequear:
 que `cortes` salga en el log de `pedidostodo` y `decide_pedidos.py` lea N de M ✓.
 
+### Paulvic: costo del último pedido y tarjeta de pedido (17/10/2026, v24.07, pedido suyo)
+- Qué: `pvCosto` en `pvped` = (montoPago||aPagar + flete) ÷ (llegadas + testers + regalos) → ficha "Paulvic TODOS" (sólo si es el último llegado; congela el costo viejo en meses con ventas como `poncosto`). Corre en `llego`, `pago` con monto y `costo`.
+- Web: `pvPedidoTarjeta` (index.html), tarjeta por pedido como `pyPedidoTarjeta`: plata, días, aroma por aroma (faltaron, no pedidas, 🚫 no viene más), comprobantes.
+- Chequear: que un pedido viejo no pise el costo de uno más nuevo; que los regalos que NO son perfume no se carguen en `regalo=`; que el flete se sume cuando llegue.
+
 ### Paulvic: lo que no vino no viene más (17/10/2026, v24.06, regla suya)
 - Qué: `pvped:llego` marca cada aroma que faltó en `cyc/noconsigo/<prod>/nunca/<sid>` ({ts, ped, v, falto}); `pvped:nunca[:aroma;-aroma][;go]` a mano; volver a pedirlo con `pvped:<aroma>=<u>;go` saca la marca.
 - Dónde: sync.mjs (pvped, `pedidostodo` imprime ` · NUNCA` en el color), `notas/decide_pedidos.py` (pone 0 con motivo para Tito), index.html (`_noConsigoActivo` la devuelve siempre, botón "🚫 no viene más").

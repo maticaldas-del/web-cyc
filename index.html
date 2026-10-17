@@ -2639,7 +2639,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.06';
+const APP_VERSION='24.07';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2650,6 +2650,7 @@ const APP_VERSION='24.06';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.07',f:'17/10/2026',h:'15:13',c:[{n:1,t:'🧴 Pedidos → Paulvic: cada pedido es una tarjeta como las de Paraguay (fecha y en qué está; adentro la plata, los días, aroma por aroma con lo que faltó y los comprobantes).'},{n:3,t:'💲 El costo del Paulvic sale del último pedido: (lo pagado + flete) ÷ (lo que llegó + testers + regalos que sean perfume). Los testers y regalos se venden al costo.'}]},
   {v:'24.06',f:'17/10/2026',h:'15:08',c:[{n:2,t:'🚫 Paulvic: lo que se pidió y no vino queda anotado en el pedido y marcado "no viene más": Pedidos no lo vuelve a pedir y cuenta como sin reposición. Se saca tocando el botón o pidiéndolo de nuevo.'}]},
   {v:'24.05',f:'17/10/2026',h:'13:51',c:[{n:1,t:'🎨 Línea del precio: con dos publicaciones al mismo precio, el color sale de la que vendió o tiene estrategia anotada (antes el Espejo 5" salía azul el último día estando en 📈 buscando techo).'}]},
   {v:'24.04',f:'17/10/2026',h:'13:38',c:[{n:1,t:'📈 En la línea de tiempo, la línea del precio va del color de su estrategia (🎯 base azul, 🔥 escasez naranja, ⏳ sin reposición amarillo, 📈 techo verde, 📉 liquidando rojo…). Pasando el mouse dice qué estrategia era y por qué. El costo pasó a línea punteada.'}]},
@@ -15101,31 +15102,61 @@ function pvSubirComprob(id){
   };
   inp.click();
 }
+// LA TARJETA DEL PEDIDO AL PAULVIC, COMO LA DE PARAGUAY (17/10/2026, pedido suyo: *"quiero que en pedidos paulvic sea parecido
+// a pedidos paraguay, que tiene una tarjeta de pedido"*). Una tarjeta por pedido: arriba la fecha y en qué está (en camino ·
+// llegó, falta pagar · pagado) y la plata; adentro la plata (a pagar, flete, testers y regalos, costo c/u que va a la ficha),
+// los días, aroma por aroma (pedidas · llegaron · faltaron, con "no viene más") y los comprobantes.
+function pvPedidoTarjeta(id,c){
+  const dm=f=>{const m=String(f||'').match(/^\d{4}-(\d{2})-(\d{2})/);return m?m[2]+'/'+m[1]:(f||'—');};
+  const esc=t=>String(t).replace(/[<>&"]/g,'');
+  const uDe=a=>(a||[]).filter(Boolean).reduce((s,x)=>s+(parseInt(x.u)||0),0);
+  const cam=c.estado==='camino',debe=c.estado==='llego'&&!c.pagado;
+  const col=cam?'#38bdf8':debe?'var(--amber)':'var(--green)';
+  const est=cam?`en camino · hace ${Math.max(0,Math.floor((Date.now()-Date.parse(c.fecha+'T12:00:00-03:00'))/864e5))} d`:debe?`llegó ${dm(c.fechaLlego)} · falta pagar`:`pagado ${dm(c.fechaPago)}`;
+  const tot=Number(c.montoPago)||Number(c.aPagar)||0,fl=Number(c.flete)||0;
+  const uLl=uDe(c.llego),uT=parseInt(c.testers)||0,uR=parseInt(c.regalos)||0;
+  const cu=c.costoUnit||((tot>0&&(uLl+uT+uR)>0)?Math.round((tot+fl)/(uLl+uT+uR)):0);
+  const fila=(k,v,ay)=>`<div style="display:flex;justify-content:space-between;gap:10px;font-size:.66rem;padding:2px 0"${ay?` title="${String(ay).replace(/"/g,'&quot;')}"`:''}><span style="color:var(--muted)">${k}</span><span>${v}</span></div>`;
+  const box=(t,h)=>`<div style="flex:1;min-width:190px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 11px"><div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">${t}</div>${h}</div>`;
+  const ped={};for(const x of (c.items||[]).filter(Boolean))ped[x.v]=(ped[x.v]||0)+(parseInt(x.u)||0);
+  const lle={};for(const x of (c.llego||[]).filter(Boolean))lle[x.v]=(lle[x.v]||0)+(parseInt(x.u)||0);
+  const nun=((((state.noconsigo||{})[c.prodId])||{}).nunca)||{};
+  const aromas=[...new Set([...Object.keys(ped),...Object.keys(lle)])].sort((a,b)=>a.localeCompare(b,'es'));
+  const filaA=v=>{const pe=ped[v]||0,ll=lle[v],f=cam?0:Math.max(0,pe-(ll||0)),ex=!cam&&!pe&&ll>0;
+    return `<div style="display:flex;justify-content:space-between;gap:8px;font-size:.66rem;padding:2px 0;border-bottom:1px dashed var(--border)"><span>${esc(v)}${nun[sid(v)]?' <span style="color:var(--red)" title="Se pidió y no vino: no se vuelve a pedir">🚫 no viene más</span>':''}</span><span style="white-space:nowrap">${cam?`${pe} pedidas`:ex?`<span style="color:var(--green)">+${ll} no pedidas</span>`:`${pe} → ${ll||0}${f?` <b style="color:var(--red)">faltaron ${f}</b>`:' ✓'}`}</span></div>`;};
+  const n=parseInt(c.comprobantes)||0;
+  const comps=n?Array.from({length:n},(_,i)=>`<button class="btn btn-ghost btn-sm" style="font-size:.66rem;padding:2px 8px;margin:4px 4px 0 0" onclick="pvVerComprob('${id}',${i})">🧾 comprobante${n>1?' '+(i+1):''}</button>`).join(''):'';
+  const plata=(tot>0?fila(c.pagado?'pagado':'a pagar','<b>'+fmt(Math.round(tot))+'</b>',c.pagado?'Lo que se transfirió.':'Lo que dice la calculadora del Paulvic.'):fila('a pagar',cam?'<span style="color:var(--muted)">se paga al llegar</span>':'<span style="color:var(--amber)">sin dato</span>'))
+    +(cam?'':fila('flete',fl?fmt(fl):'<span style="color:var(--amber)">falta</span>','Lo que cobra el transporte. Sin esto el costo c/u queda corto.'))
+    +(uT?fila('testers',uT+' u.','Se venden al costo: entran en la cuenta del costo c/u.'):'')
+    +(uR?fila('regalos (perfume)',uR+' u.','Los regalos que son perfume se venden al costo: entran en la cuenta del costo c/u.'):'')
+    +(cu?fila('costo c/u','<b style="color:var(--green)">'+fmt(cu)+'</b>',`(${fmt(Math.round(tot))}${fl?' + flete '+fmt(fl):''}) ÷ ${uLl+uT+uR} u. (${uLl} llegadas${uT?' + '+uT+' tester':''}${uR?' + '+uR+' regalo':''}). Es el costo que va a la ficha del Paulvic si es el último pedido.`)+(c.costoAplicado?fila('','<span style="color:var(--muted)">✓ puesto en la ficha</span>'):''):'');
+  const dias=fila('pedido el',dm(c.fecha))+(cam?'':fila('llegó el',dm(c.fechaLlego)+(c.fechaLlego?' <span style="color:var(--muted)">· '+Math.max(0,Math.round((Date.parse(c.fechaLlego+'T12:00:00-03:00')-Date.parse(c.fecha+'T12:00:00-03:00'))/864e5))+' d</span>':'')))+(c.pagado?fila('pagado el',dm(c.fechaPago)):'')
+    +fila('unidades',cam?uDe(c.items)+' pedidas':`${uDe(c.items)} pedidas · ${uLl} llegaron`);
+  const der=tot>0?fmt(Math.round(tot)):`${cam?uDe(c.items):uLl} u.`;
+  return `<details style="margin-bottom:8px;background:var(--surface2);border:1px solid var(--border2);border-left:4px solid ${col};border-radius:9px">
+    <summary style="cursor:pointer;padding:11px 13px;display:flex;align-items:center;gap:12px;list-style:none">
+      <div style="min-width:0"><div style="font-size:.95rem;font-weight:800;color:var(--text)">${dm(c.fecha)}</div><div style="font-size:.66rem;font-weight:700;color:${col};margin-top:2px;white-space:nowrap">${est}</div></div>
+      <div style="margin-left:auto;text-align:right"><div style="font-size:1.05rem;font-weight:800;color:var(--text);white-space:nowrap">${der}</div><div style="font-size:.62rem;color:var(--muted);margin-top:2px;white-space:nowrap">${cu?'costo '+fmt(cu)+' c/u':(cam?uDe(c.items)+' u. en '+Object.keys(ped).length+' aromas':'')}</div></div>
+      <span style="font-size:.7rem;color:var(--muted);margin-left:4px">▾</span></summary>
+    <div style="padding:4px 11px 11px">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px">${box('La plata',plata)}${box('Los días',dias)}</div>
+      ${box('Aroma por aroma',aromas.map(filaA).join(''))}
+      ${comps||debe?`<div style="margin-top:8px">${comps}${debe?`<button class="btn btn-ghost btn-sm" style="font-size:.66rem;padding:2px 8px;margin:4px 0 0" onclick="pvSubirComprob('${id}')">📎 subir comprobante</button>`:''}</div>`:''}
+    </div></details>`;
+}
 function pvEnCaminoHTML(){
-  const todos=Object.entries(state.pedidospv||{}).filter(([,c])=>c);
+  const todos=Object.entries(state.pedidospv||{}).filter(([,c])=>c&&c.fecha);
   const cam=todos.filter(([,c])=>c.estado==='camino').sort((a,b)=>String(a[1].fecha).localeCompare(String(b[1].fecha)));
   const imp=todos.filter(([,c])=>c.estado==='llego'&&!c.pagado).sort((a,b)=>String(a[1].fechaLlego||'').localeCompare(String(b[1].fechaLlego||'')));
-  // Pagados en los últimos 45 días, para tener el comprobante a mano.
-  const lim=new Date(Date.now()-45*864e5-3*3600e3).toISOString().slice(0,10);
-  const pag=todos.filter(([,c])=>c.estado==='llego'&&c.pagado&&String(c.fechaPago||c.fechaLlego||'')>=lim).sort((a,b)=>String(b[1].fechaPago||'').localeCompare(String(a[1].fechaPago||'')));
+  const pag=todos.filter(([,c])=>c.estado==='llego'&&c.pagado).sort((a,b)=>String(b[1].fechaPago||b[1].fecha).localeCompare(String(a[1].fechaPago||a[1].fecha)));
   if(!cam.length&&!imp.length&&!pag.length)return '';
-  const dd=f=>{const p=String(f||'').split('-');return p.length===3?p[2]+'/'+p[1]:(f||'?');};
-  const esc=t=>String(t).replace(/[<>&]/g,'');
-  const uDe=a=>(a||[]).filter(Boolean).reduce((s,x)=>s+(parseInt(x.u)||0),0);
-  const lista=a=>(a||[]).filter(Boolean).map(x=>`${esc(x.v)} ×${parseInt(x.u)||0}`).join(' · ');
-  const comps=(id,c)=>{const n=parseInt(c.comprobantes)||0;return n?Array.from({length:n},(_,i)=>`<button class="btn btn-ghost btn-sm" style="font-size:.66rem;padding:2px 8px;margin:4px 4px 0 0" onclick="pvVerComprob('${id}',${i})">🧾 comprobante${n>1?' '+(i+1):''}</button>`).join(''):'';};
-  const caja=(borde,html)=>`<div style="padding:10px 12px;margin-bottom:10px;border:1px solid ${borde};border-radius:var(--r);background:var(--surface)">${html}</div>`;
-  let h='';
-  if(imp.length)h+=caja('var(--amber)',`<div style="font-size:.8rem;font-weight:600;margin-bottom:4px;color:var(--amber)">💸 Llegó del Paulvic · falta pagar</div>
-    <div style="font-size:.66rem;color:var(--muted);margin-bottom:6px">Ya está en tu oficina y cuenta como deuda en el Arqueo hasta que me pases el comprobante (puede ser más de una transferencia).</div>
-    ${imp.map(([id,c])=>{const u=uDe(c.llego||c.items),p=prodById(c.prodId),usd=u*((p&&costP(p))||0);
-      return `<div style="font-size:.72rem;margin-top:6px"><strong>pedido del ${dd(c.fecha)}</strong> · llegó el ${dd(c.fechaLlego)} · ${u} u.${usd>0?` · se debe ~${fmtUS(usd)}`:''}<div style="color:var(--muted);margin-top:2px">${lista(c.llego||c.items)}</div>${comps(id,c)}<button class="btn btn-ghost btn-sm" style="font-size:.66rem;padding:2px 8px;margin-top:4px" onclick="pvSubirComprob('${id}')">📎 subir comprobante</button></div>`;}).join('')}`);
-  if(cam.length)h+=caja('var(--accent2)',`<div style="font-size:.8rem;font-weight:600;margin-bottom:4px">🚚 Pedido al Paulvic, todavía no llegó</div>
-    <div style="font-size:.66rem;color:var(--muted);margin-bottom:6px">Ya está descontado de lo que hay que comprar. Cuando llegue, decime qué vino y lo paso a tu oficina.</div>
-    ${cam.map(([id,c])=>{const its=(c.items||[]).filter(Boolean);
-      return `<div style="font-size:.72rem;margin-top:4px"><strong>del ${dd(c.fecha)}</strong> · ${uDe(its)} u. en ${its.length} aroma(s)<div style="color:var(--muted);margin-top:2px">${lista(its)}</div></div>`;}).join('')}`);
-  if(pag.length)h+=`<details style="margin-bottom:10px"><summary style="font-size:.72rem;color:var(--muted);cursor:pointer">✅ Pagados (${pag.length}) · comprobantes</summary>${pag.map(([id,c])=>`<div style="font-size:.7rem;margin-top:6px">pedido del ${dd(c.fecha)} · pagado el ${dd(c.fechaPago)}${c.montoPago?' · $'+Number(c.montoPago).toLocaleString('es-AR'):''} · ${uDe(c.llego||c.items)} u.<div>${comps(id,c)||'<span style="color:var(--muted)">sin foto</span>'}</div></div>`).join('')}</details>`;
-  return h;
+  const tit=t=>`<div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:4px 0 8px">${t}</div>`;
+  return `<div style="margin-bottom:12px">
+    ${cam.length?tit('🚚 En camino · '+cam.length)+cam.map(([id,c])=>pvPedidoTarjeta(id,c)).join(''):''}
+    ${imp.length?tit('💸 Llegó · falta pagar · '+imp.length)+`<div style="font-size:.64rem;color:var(--muted);margin:-4px 0 8px">Ya está en tu oficina y cuenta como deuda en el Arqueo hasta que me pases el comprobante.</div>`+imp.map(([id,c])=>pvPedidoTarjeta(id,c)).join(''):''}
+    ${pag.length?`<details style="margin-top:6px"><summary style="cursor:pointer;list-style:none;font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">✅ Pagados · ${pag.length} <span style="font-weight:400">▾</span></summary>${pag.map(([id,c])=>pvPedidoTarjeta(id,c)).join('')}</details>`:''}
+  </div>`;
 }
 function pyRepoEnCamino(){
   const m={};

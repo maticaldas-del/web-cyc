@@ -326,6 +326,9 @@ producto?"* y, con la lista, *"lo que recomiendes"* en las 11. Cada una, en cada
    **Lo que se pide y no viene, no viene más** (17/10/2026, regla suya): queda anotado en el pedido (`falto`) y el aroma se marca
    `cyc/noconsigo/<prod>/nunca/<aroma>` (lo hace `pvped:llego`): no se vuelve a pedir y cuenta como sin reposición (⏳). Se saca
    sólo si él lo vuelve a pedir o con `pvped:nunca:-<aroma>;go`. Primeros: Acqua, Indigo Mujer y Miss Mujer (pedido del 06/10).
+   **El costo del Paulvic es el del ÚLTIMO pedido** (17/10/2026, regla suya): (lo pagado —o la calculadora— + flete) ÷ (lo que
+   llegó + testers + regalos que sean perfume). Testers y regalos perfume se venden al costo, por eso entran en la división.
+   Lo hace `pvped:llego`/`pvped:pago`/`pvped:costo:<id>;apagar=;flete=;tester=;regalo=;go`, con el costo viejo congelado en sus meses.
 4. **Las visitas cortan antes una prueba de precio mala.** En el techo/lupa: si las visitas de 3 días cayeron a la mitad
    o menos de las de los 14 anteriores **y** cambió la caja, se vuelve en esa misma vuelta, sin esperar las ventas. Siempre
    con una hermana sin cambio como control (si la hermana también cayó, es la temporada).

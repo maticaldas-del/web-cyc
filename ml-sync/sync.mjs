@@ -40281,7 +40281,9 @@ async function main() {
     // resta lo pedido, aroma por aroma, de lo que hay que comprar. Sin `go` SOLO MUESTRA.
     //   pvped                                         → los pedidos en camino
     //   pvped:<aroma>=<u>[;<aroma>=<u>][;fecha=AAAA-MM-DD][;go]  → "ya lo pedí" (`=` adelante = nombre exacto)
-    //   pvped:llego:<id|ultimo>[;<aroma>=<u>…][;go]   → llegó. Sin aromas = llegó TODO lo pedido; con aromas,
+    //   pvped:costo:<id|ultimo>[;apagar=$][;flete=$][;tester=u][;regalo=u][;go] → costo c/u del último pedido a la ficha
+    //   pvped:nunca[:<aroma>;-<aroma>][;go]          → "no viene más" (lo que se pidió y no vino)
+    //   pvped:llego:<id|ultimo>[;<aroma>=<u>…][;tester=u][;regalo=u][;apagar=$][;go]   → llegó. Sin aromas = llegó TODO lo pedido; con aromas,
     //                                                   lo que se nombra reemplaza lo pedido (0 = no vino) y lo
     //                                                   que no se nombra llegó completo. Lo que llegó se SUMA a
     //                                                   la oficina (misma cuenta que `ofi`) y lo que faltó se anota.
@@ -40305,6 +40307,62 @@ async function main() {
       const leerPares = (txt) => txt.split(';').map((x) => x.trim()).filter(Boolean).map((x) => { const m = x.match(/^(.+?)=(\d+)$/); return m ? { busca: m[1].trim(), u: parseInt(m[2], 10) } : { busca: x, u: null }; });
       const lista = (c) => (c.items || []).filter(Boolean);
       const sub0 = (t) => String(t).split(/[:;]/)[0];
+      // EL COSTO DEL PAULVIC SALE DEL ÚLTIMO PEDIDO (17/10/2026, regla suya: *"actualizar el precio de los paulvic siempre al
+      // último pedido. Los testers podemos venderlos al costo, o sea esos los descontamos del precio final. Y los regalos también
+      // (siempre que sean perfumes)"*). Costo c/u = (lo pagado —o lo que dice la calculadora— + flete) ÷ (unidades que llegaron
+      // + testers + regalos que sean perfume y no estén ya en lo llegado). Se aplica a la ficha sólo si es el ÚLTIMO pedido
+      // llegado, con el mismo freno que `poncosto`: el costo viejo queda congelado en los meses con ventas.
+      const pvCosto = async (id, GO_) => {
+        const c = (await db.get('cyc/pedidospv/' + id)) || {};
+        const pv = pvFichas.length === 1 ? pvFichas[0] : null;
+        if (!pv) { console.log('  (costo: no hay una sola ficha del Paulvic, no lo toco)'); return; }
+        const total = (Number(c.montoPago) || Number(c.aPagar) || 0), flete = Number(c.flete) || 0;
+        const uLl = (c.llego || []).filter(Boolean).reduce((a, x) => a + (parseInt(x.u) || 0), 0);
+        const uT = parseInt(c.testers) || 0, uR = parseInt(c.regalos) || 0, uTot = uLl + uT + uR;
+        if (!(total > 0) || !(uTot > 0)) { console.log(`  (costo: falta ${!(total > 0) ? 'lo que hay que pagar (apagar= o monto=)' : 'lo que llegó'}; no lo calculo)`); return; }
+        const cu = Math.round((total + flete) / uTot);
+        console.log(`\n💲 COSTO DEL PAULVIC DESDE ESTE PEDIDO: ($${total.toLocaleString('es-AR')} ${flete ? '+ flete $' + flete.toLocaleString('es-AR') : '· sin flete todavía'}) ÷ (${uLl} llegadas${uT ? ' + ' + uT + ' tester(s)' : ''}${uR ? ' + ' + uR + ' regalo(s)' : ''}) = $${cu.toLocaleString('es-AR')} c/u`);
+        const ult = Object.entries((await db.get('cyc/pedidospv')) || {}).filter(([, x]) => x && x.estado === 'llego').sort((a, b) => String(b[1].fechaLlego || b[1].fecha).localeCompare(String(a[1].fechaLlego || a[1].fecha)))[0];
+        if (!ult || ult[0] !== id) { console.log(`  No es el último pedido llegado (${ult ? ult[0] : '—'}): guardo la cuenta pero no toco la ficha.`); if (GO_) await db.patch('cyc/pedidospv/' + id, { costoUnit: cu }); return; }
+        const tcP = parseFloat(((await db.get('cyc/finanzas')) || {}).tipo_cambio) || 0;
+        if (!(tcP > 0)) { console.log('  Falta el dólar en Finanzas: no paso el costo a dólares. No toqué la ficha.'); return; }
+        const usd = Math.round((cu / tcP) * 100) / 100, antesUSD = parseFloat(pv.costUSD) || 0;
+        console.log(`  ficha "${pv.name}": US$ ${antesUSD.toFixed(2)} → US$ ${usd.toFixed(2)} (dólar $${tcP})`);
+        if (!GO_) return;
+        const vpP = (await db.get('cyc/ventaprod')) || {}; setDevLive(vpP);
+        if (antesUSD > 0 && Math.abs(antesUSD - usd) > 0.005) {
+          const phpP = (await db.get('cyc/precios_hist_prod')) || {}, meses = new Set();
+          for (const [dk, o] of Object.entries(vpP)) for (const v of Object.values(o || {})) if (v && v.prodId === pv.id) meses.add(String(dk).slice(0, 7));
+          let nC = 0; for (const ym of meses) { if (phpP[ym] && phpP[ym][pv.id] != null) continue; await db.set('cyc/precios_hist_prod/' + ym + '/' + pv.id, antesUSD); nC++; }
+          if (nC) console.log(`  🧊 US$ ${antesUSD.toFixed(2)} congelado en ${nC} mes(es) con ventas (esas ventas no cambian)`);
+        }
+        const dev = DEV_LIVE[pv.id] != null ? DEV_LIVE[pv.id] : (parseFloat(pv.devPct) || 0);
+        const fullUSD = Math.round((usd * (1 + dev / 100) + (parseFloat(pv.shipUSD) || 0)) * 100) / 100;
+        await db.patch('cyc/products/' + pv.id, { costUSD: usd, cost: cu, costFullUSD: fullUSD });
+        await db.patch('cyc/pedidospv/' + id, { costoUnit: cu, costoAplicado: Date.now() });
+        const rel = (await db.get('cyc/products/' + pv.id)) || {};
+        console.log(Math.abs((parseFloat(rel.costUSD) || 0) - usd) < 0.005 ? '  ✓ Costo de la ficha guardado y releído.' : '  ⚠️ Se escribió el costo pero al releer no coincide.');
+      };
+      // pvped:costo:<id|ultimo>[;apagar=<$>][;flete=<$>][;tester=<u>][;regalo=<u>][;go] → anota esos datos en el pedido y recalcula.
+      if (sub0(cuerpo) === 'costo') {
+        const partes = cuerpo.split(';'), idArg = partes[0].replace(/^costo:?/, '');
+        const opt = Object.fromEntries(partes.slice(1).map((x) => { const i = x.indexOf('='); return i < 0 ? [x.trim(), true] : [x.slice(0, i).trim(), x.slice(i + 1).trim()]; }));
+        const lleg = Object.entries(peds).filter(([, c]) => c && c.estado === 'llego').sort((a, b) => String(b[1].fechaLlego || b[1].fecha).localeCompare(String(a[1].fechaLlego || a[1].fecha)));
+        const hit = (!idArg || idArg === 'ultimo') ? lleg[0] : lleg.find(([i]) => i === idArg);
+        if (!hit) { console.log(`❌ No encuentro el pedido llegado "${idArg || 'ultimo'}".`); return; }
+        const num = (v) => { let t = String(v || '').replace(/[^\d.,]/g, ''); if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.'); else if (/^\d{1,3}(\.\d{3})+$/.test(t)) t = t.replace(/\./g, ''); return parseFloat(t) || 0; };
+        const upd = {};
+        if (opt.apagar != null) upd.aPagar = Math.round(num(opt.apagar) * 100) / 100;
+        if (opt.flete != null) upd.flete = Math.round(num(opt.flete));
+        if (opt.tester != null) upd.testers = parseInt(opt.tester) || 0;
+        if (opt.regalo != null) upd.regalos = parseInt(opt.regalo) || 0;
+        console.log(`=== COSTO DEL PEDIDO ${hit[0]} ${GO ? '' : '(PRUEBA — no escribo nada)'} ===${Object.keys(upd).length ? '\n  anoto: ' + JSON.stringify(upd) : ''}`);
+        if (GO && Object.keys(upd).length) await db.patch('cyc/pedidospv/' + hit[0], upd);
+        else if (!GO) Object.assign(hit[1], upd);
+        if (!GO) { const c = hit[1]; const tot = (Number(c.montoPago) || Number(c.aPagar) || 0) + (Number(c.flete) || 0); const u = (c.llego || []).reduce((a, x) => a + (parseInt(x && x.u) || 0), 0) + (parseInt(c.testers) || 0) + (parseInt(c.regalos) || 0); console.log(`  c/u ≈ $${u ? Math.round(tot / u).toLocaleString('es-AR') : '?'} (con ;go se aplica a la ficha)`); return; }
+        await pvCosto(hit[0], true);
+        return;
+      }
       if (!cuerpo) {
         const cam = Object.entries(peds).filter(([, c]) => c && c.estado === 'camino').sort((a, b) => String(a[1].fecha).localeCompare(String(b[1].fecha)));
         console.log(`=== PEDIDOS AL PAULVIC EN CAMINO (${cam.length}) ===`);
@@ -40385,6 +40443,7 @@ async function main() {
         const relF = fotos.length ? await db.get('comprobantes/pv/' + id) : null;
         const okF = !fotos.length || (relF && fotos.every((x, i) => relF[String(prevN + i)] === x));
         console.log(rel && rel.pagado && okF ? `\n✓ Guardado y releído: ${id} pagado, con ${prevN + fotos.length} comprobante(s) en la web.` : '\n⚠️ Se escribió pero al releer no coincide. Mirar a mano.');
+        if (monto) await pvCosto(id, true);
         return;
       }
       if (pvFichas.length !== 1) { console.log(`❌ Fichas del Paulvic con aromas: ${pvFichas.length} (${pvFichas.map((p) => p.name).join(' | ') || 'ninguna'}). Tiene que haber una sola: no escribo nada.`); return; }
@@ -40410,8 +40469,10 @@ async function main() {
         const hit = (!idArg || idArg === 'ultimo') ? cam[0] : cam.find(([id, c]) => id === idArg || c.fecha === idArg);
         if (!hit) { console.log(`❌ No encuentro un pedido en camino "${idArg || 'ultimo'}". En camino: ${cam.map(([id]) => id).join(', ') || 'ninguno'}`); return; }
         const [id, c] = hit;
-        const cambios = {}, problemas = [];
-        for (const pr of leerPares(rest2.join(';'))) {
+        const cambios = {}, problemas = [], extraLl = {};
+        const _OPT = /^(tester|regalo|apagar|flete)=(.+)$/i;
+        for (const x of rest2) { const m = String(x).trim().match(_OPT); if (m) { const k = m[1].toLowerCase(), n = parseFloat(String(m[2]).replace(/\./g, '').replace(',', '.')) || 0; extraLl[k === 'tester' ? 'testers' : k === 'regalo' ? 'regalos' : k === 'apagar' ? 'aPagar' : 'flete'] = n; } }
+        for (const pr of leerPares(rest2.filter((x) => !_OPT.test(String(x).trim())).join(';'))) {
           if (pr.u == null) { problemas.push(`"${pr.busca}" → se espera <aroma>=<unidades>`); continue; }
           const vs = buscaVar(P, pr.busca);
           if (vs.length !== 1) { problemas.push(`"${pr.busca}" → ${vs.length ? 'agarra ' + vs.length + ': ' + vs.join(' | ') : 'no es un aroma de ' + P.name}`); continue; }
@@ -40430,7 +40491,7 @@ async function main() {
         if (!GO) { console.log('\nNo se guardó nada (falta ;go). Con ;go las que llegaron se SUMAN a la oficina.'); return; }
         // Primero se cierra el pedido (que deje de restar en Pedidos) y recién después se suma a la oficina,
         // releyendo cada clave justo antes: si la corrida se corta en el medio, se ve qué faltó.
-        await db.patch('cyc/pedidospv/' + id, { estado: 'llego', fechaLlego: hoyAR, llego, falto: falto.length ? falto : null });
+        await db.patch('cyc/pedidospv/' + id, { estado: 'llego', fechaLlego: hoyAR, llego, falto: falto.length ? falto : null, ...extraLl });
         // LO QUE NO VINO NO VIENE MÁS (17/10/2026, regla suya: *"los que pido de paulvic y no llegan que quede registro en el
         // pedido y tomarlos como que no vienen nunca más"*). Queda en el pedido (`falto`) y el aroma se marca para siempre en
         // `cyc/noconsigo/<prod>/nunca/<aroma>`: Pedidos no lo vuelve a pedir y cuenta como sin reposición (escasez). No se cae
@@ -40444,6 +40505,7 @@ async function main() {
           await db.patch('cyc/inventory', { [kVar(x.v)]: antes + x.u, [kTot]: tA + x.u });
           console.log(`  🏠 oficina · ${x.v}: ${antes} → ${antes + x.u}`);
         }
+        await pvCosto(id, true);
         const rel = await db.get('cyc/pedidospv/' + id);
         console.log(rel && rel.estado === 'llego' ? `\n✓ Guardado y releído: llegó, y lo que vino está en la oficina.${falto.length ? ' Faltaron ' + falto.reduce((a, x) => a + x.u, 0) + ' u. (' + falto.map((x) => x.v).join(', ') + '): quedan anotadas en el pedido y marcadas "no viene más" — Pedidos no las vuelve a pedir.' : ''}` : '\n⚠️ Se escribió pero al releer no coincide. Mirar a mano.');
         return;
