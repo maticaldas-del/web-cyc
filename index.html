@@ -2643,7 +2643,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.09';
+const APP_VERSION='24.10';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2654,6 +2654,7 @@ const APP_VERSION='24.09';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.10',f:'17/10/2026',h:'15:27',c:[{n:1,t:'🗂️ Paraguay → Nuevos: los cinco desplegables de abajo (pocas ventas, no llegan al %, falta analizar, descartados y el resto del catálogo) van juntos adentro de uno solo, "Lo que no entra en el pedido", con nombres cortos y el número al final. No se sacó nada; el catálogo ya no repite lo que es candidato.'}]},
   {v:'24.09',f:'17/10/2026',h:'15:15',c:[{n:1,t:'💰 Pedidos: de los cuadros de arriba queda sólo "Falta reponer" (la plata de todo lo que hay que comprar).'}]},
   {v:'24.08',f:'17/10/2026',h:'15:15',c:[{n:1,t:'🧹 Pedidos: se sacaron el cartel "🧠 sin decidir" y los cuadros de arriba (sin stock, se corta, alcanza, total, falta reponer) en todas las pestañas.'}]},
   {v:'24.07',f:'17/10/2026',h:'15:13',c:[{n:1,t:'🧴 Pedidos → Paulvic: cada pedido es una tarjeta como las de Paraguay (fecha y en qué está; adentro la plata, los días, aroma por aroma con lo que faltó y los comprobantes).'},{n:3,t:'💲 El costo del Paulvic sale del último pedido: (lo pagado + flete) ÷ (lo que llegó + testers + regalos que sean perfume). Los testers y regalos se venden al costo.'}]},
@@ -13097,14 +13098,16 @@ function pycatFila([cod,e]){const tc=curTC();{const u=Number(e.u)||0,pu=u*RECARG
 let _pycNoDanVer={};
 function pycatNoDanHTML(){
   if(typeof pyProv!=='undefined'&&pyProv!=='nissei')return'';
-  return `<details style="margin-top:14px" ontoggle="if(this.open)pycatNoDan()"><summary style="cursor:pointer;font-size:.72rem;font-weight:700;color:var(--muted)">🗂️ Todo lo que revisó el robot y NO da · tocá para verlo</summary><div id="pycat-nodan" style="margin-top:8px"></div></details>`;
+  return `<details style="margin-top:14px" ontoggle="if(this.open)pycatNoDan()"><summary style="cursor:pointer;font-size:.7rem;color:var(--muted)" title="Todo el catálogo de comprasparaguay que el robot midió y no da (sin los que ya son candidatos).">🔎 Resto del catálogo revisado por el robot que no da</summary><div id="pycat-nodan" style="margin-top:8px"></div></details>`;
 }
 async function pycatNoDan(){
   const el=document.getElementById('pycat-nodan');if(!el)return;
   if(!_pycatCache)el.innerHTML='<div style="font-size:.7rem;color:var(--muted)">⏳ bajando el catálogo (la primera vez tarda unos segundos)…</div>';
   let cat;try{cat=await pycatCargar();}catch(e){el.innerHTML=`<div style="font-size:.7rem;color:var(--red)">No pude leer el catálogo: ${String(e.message||e).slice(0,120)}</div>`;return;}
   const g={bajo:[],sc:[],sv:[],fz:[]};let medidos=0,sinMedir=0;
-  for(const [cod,e] of Object.entries(cat||{})){if(!e||!e.n||e.cand)continue;
+  // Sin repetir: lo que ya es candidato (vivo, en el pedido o descartado) está arriba, aunque el catálogo no lo tenga marcado.
+  const _cc=new Set(Object.values(state.candidatos||{}).map(c=>String(c&&c.cod||'').trim()).filter(Boolean));
+  for(const [cod,e] of Object.entries(cat||{})){if(!e||!e.n||e.cand||_cc.has(String(cod).trim()))continue;
     const m=(e.m!=null&&isFinite(e.m))?Number(e.m):null;
     if(m!=null){medidos++;if(m<CAND_PISO_PCT)g.bajo.push([cod,e]);continue;}
     if(e.fz){g.fz.push([cod,e]);continue;}
@@ -14905,10 +14908,11 @@ function candidatosHTML(){
   // 03/10/2026, él: el simulador y el historial "ahí no se usan y molestan": el simulador va al final y el
   // historial de pedidos vive en la pestaña 🧾 Pedido.
   return cab(_verdes)+pycatBuscarHTML()+_orden+_arriba.map(_card).join('')
-    +(_flojas.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--amber)">🟠 ${_flojas.length} con menos de ${CAND_MIN_VENT} vendidas en ML (o sin el dato) · no se pueden pedir · tocá para verlos</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_flojas.map(_card).join('')}</div></details>`:'')
-    +(_rojos.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--red)">🔻 ${_rojos.length} no llega${_rojos.length===1?'':'n'} al ${CAND_PISO_TXT()} · tocá para verlos</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_rojos.map(_card).join('')}</div></details>`:'')
-    +(_sinAnalizar.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--muted)">⏳ ${_sinAnalizar.length} sin analizar o incompletos (falta la medición de ML o alguna de las dos fotos) · suben solos cuando estén completos y den · tocá para verlos</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_sinAnalizar.map(_card).join('')}</div></details>`:'')
-    +candDescartadosHTML()+pycatNoDanHTML();
+    +`<details style="margin-top:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:8px 12px"><summary style="cursor:pointer;font-size:.74rem;font-weight:700;color:var(--muted)">🗂️ Lo que no entra en el pedido · ${(_flojas.length+_rojos.length+_sinAnalizar.length+candList().filter(c=>c.no).length).toLocaleString('es-AR')} <span style="font-weight:400">· tocá para abrir</span></summary>`
+    +(_flojas.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--amber)">🟠 Pocas ventas en ML (menos de ${CAND_MIN_VENT} o sin el dato) · <b>${_flojas.length}</b></summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_flojas.map(_card).join('')}</div></details>`:'')
+    +(_rojos.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--red)">🔻 No llegan al ${CAND_PISO_TXT()} · <b>${_rojos.length}</b></summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_rojos.map(_card).join('')}</div></details>`:'')
+    +(_sinAnalizar.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--muted)" title="Falta la medición de ML o alguna de las dos fotos. Suben solos cuando estén completos y den.">⏳ Falta analizar (medición de ML o fotos) · <b>${_sinAnalizar.length}</b></summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_sinAnalizar.map(_card).join('')}</div></details>`:'')
+    +candDescartadosHTML()+pycatNoDanHTML()+`</details>`;
 }
 // LO DESCARTADO NO SE ESCONDE. Una lista que saca renglones sin decirlo es una lista que miente —
 // la misma regla que el desplegable de `nomandar` en Armar caja.
@@ -14923,7 +14927,7 @@ function candToggle(id,ab){if(ab)_candAbiertos.add(id);else _candAbiertos.delete
 function candDescartadosHTML(){
   const desc=candList().filter(c=>c.no);
   if(!desc.length)return '';
-  return `<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.66rem;color:var(--muted)">${desc.length} descartado${desc.length===1?'':'s'} · tocá para verlos y devolverlos</summary>
+  return `<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--muted)">👎 Descartados (se pueden devolver) · <b>${desc.length.toLocaleString('es-AR')}</b></summary>
     <div style="display:flex;flex-direction:column;gap:5px;margin-top:8px">
     ${desc.map(c=>`<div style="display:flex;align-items:center;gap:8px;font-size:.66rem;color:var(--muted)">
       <span style="flex:1">${c.nombre}${c.usd?` · US$ ${parseFloat(c.usd).toFixed(2)}`:''}</span>

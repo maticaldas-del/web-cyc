@@ -341,6 +341,9 @@ y deja 25%+ (`Tde`); el motivo de Tito y el 📋 Copiar pedido dicen "SÓLO este
 "desaparecieron N u." con stock compartido; `antiguo` muestra también la cuenta con las ventas de 30 d. Qué chequear:
 que `cortes` salga en el log de `pedidostodo` y `decide_pedidos.py` lea N de M ✓.
 
+### Paraguay Nuevos: lo que no entra en el pedido, en un solo desplegable (17/10/2026, v24.10)
+- Pocas ventas · no llegan al % · falta analizar · descartados · resto del catálogo, adentro de "🗂️ Lo que no entra en el pedido". `pycatNoDan` saltea los códigos que ya son candidatos (aunque `mlapi/pycat` no tenga `cand`). Chequear que no se repita nada entre grupos.
+
 ### Paulvic: Pedidos a 45 días en `decide_pedidos.py` (17/10/2026)
 - La regla del análisis (Paulvic cada 15 días, 45 días de ritmo) estaba en CEREBRO.md pero no en el script: Paulvic pedía para 30. `Tde` devuelve 45 para PAULVIC. Chequear que el pedido del Paulvic tenga decisiones por color (el 17/10 estaba vacío: él vio "nada para reponer").
 
