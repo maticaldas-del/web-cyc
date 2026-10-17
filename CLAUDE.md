@@ -9100,3 +9100,12 @@ el tramo de la escalera que mejor anduvo, medidos con certeza (Poisson). Detalle
  · **Vía Cargo $100.000 vs `retira` $90.000:** *"no importa, como está cargado está bien"*. No volver a preguntar.
  · **Dalí (`MLA1869295911`) queda en PREMIUM**, decisión suya. No volver a proponer Clásica.
  · **Recargo de Paraguay de respaldo 20%** (antes 17%). El panel y el robot usan el MEDIDO de los pedidos (`paramcompra`, 22,7% al 17/10); el 20% sólo si falta. Las pantallas dicen "recargo", no un número fijo.
+
+## 💸 SE COBRA LO QUE DICE LA TARJETA AL CERRAR EL MES · Y LA DEUDA CON ARCA (17/10/2026, regla suya)
+Él: *"siempre vamos a cobrar lo que dice ahí la tarjeta cuando se cierra el mes"*. El retiro de cada mes = lo que dice
+"💸 cuánto cobrar" del mes cerrado (cada uno × 2, Matías y su padre; el tercio de CYC queda). **Reemplaza los $1.800.000
+fijos**: el 1º cargo el retiro con ese número (`cobromes:<mes cerrado>` lo da). La tarjeta del mes en curso proyecta a fin
+de mes al ritmo del mes (v24.21-24.22; la línea de 7 días la sacó él).
+**ARCA, categoría H (eligió la a):** la ganancia ya descuenta H en las 4 cuentas, así que cobran ~$142.500 menos cada uno
+por mes y esa plata queda en CYC para pagarle a ARCA. El Arqueo la muestra como deuda (`arcaDeudaARS`, $427.498/mes desde
+`cyc/mlconfig/arcaHDesde`=2026_05). Al pagar, cargar `arcaHPagadoHasta`. Intereses/multas: falta que el contador diga.

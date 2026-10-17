@@ -1361,3 +1361,10 @@ Se cruzaron las versiones de `APP_CAMBIOS` y los commits del robot desde el 13/1
    `_homeCobroHtml` lo muestra grande en el mes en curso; lo ganado hasta hoy (`cobroProxMes`) queda abajo. Robot: `cobromes[:AAAA_MM]`
    (solo lee) con la misma cuenta y la lista de gastos del mes anterior contra los cargados.
  · Qué chequear: que `cobromes` y la tarjeta den lo mismo; que un mes cerrado siga mostrando lo real (sin proyección).
+
+### Etapa 2 · 17/10/2026 · deuda con ARCA por la categoría H (v24.23, eligió la a)
+ · Qué: `arcaDeudaARS()`/`arcaDeudaUSD()` (index.html) suman `cyc/mlconfig/arcaHMes` (427.498 = G→H Adriana + F→H Luciana y Matías)
+   por cada mes desde `arcaHDesde` (por defecto 2026_05, "estos 6 meses") hasta hoy, salteando hasta `arcaHPagadoHasta`. Entra en
+   "Lo que debemos" de `calcArqueo` (no en un mes cerrado). Sin intereses ni multas.
+ · Qué chequear: que al pagar se cargue `arcaHPagadoHasta`; que en febrero 2027 (cambian las cuotas) se actualice `arcaHMes`; que la
+   ganancia (que ya descuenta H en cada venta) no la reste otra vez.
