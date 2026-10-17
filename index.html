@@ -2644,7 +2644,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.24';
+const APP_VERSION='24.25';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2655,6 +2655,7 @@ const APP_VERSION='24.24';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.25',f:'17/10/2026',h:'18:34',c:[{n:3,t:'🧾 Meses cerrados: cada cierre desde mayo lleva la deuda con ARCA que tenía a esa fecha (como si se hubiera pagado H). El patrimonio de cada mes baja lo que corresponde y la comparación mes a mes sigue pareja.'}]},
   {v:'24.24',f:'17/10/2026',h:'18:09',c:[{n:3,t:'🔍 ¿Cierra el mes?: la deuda con ARCA de los meses anteriores ya no se le cobra a octubre. Es un ajuste de una sola vez; el mes sólo carga con lo que H suma ese mes (que la ganancia ya descuenta). Cada cierre guarda la deuda que tenía adentro.'}]},
   {v:'24.23',f:'17/10/2026',h:'17:58',c:[{n:3,t:'🧾 Arqueo: lo que se le va a deber a ARCA por pagar como categoría H en las 4 cuentas ($427.498 por mes desde mayo, sin intereses) va en Lo que debemos. El patrimonio ya no muestra esa plata como del negocio.'}]},
   {v:'24.22',f:'17/10/2026',h:'17:55',c:[{n:1,t:'💸 Cuánto cobrar: se sacó la línea del ritmo de los últimos 7 días. Queda la proyección al ritmo del mes y lo ganado hasta hoy.'}]},
@@ -7983,7 +7984,9 @@ function calcArqueo(){
   // llega y volvía a bajar al pagar, sin que pasara nada.
   const pvDeuda=_arqViewYM?0:pvDeudaUSD();
   deudas+=pvDeuda;
-  const arcaDeuda=_arqViewYM?0:arcaDeudaUSD();
+  // Un mes cerrado lleva la deuda con ARCA que tenía a ESE cierre (`arcaARS`, 17/10/2026), pasada con su dólar.
+  const _snA=_arqViewYM&&state.snapshots&&state.snapshots[_arqViewYM];
+  const arcaDeuda=_arqViewYM?((_snA&&Number(_snA.arcaARS)>0&&Number(_snA.tipoCambio)>0)?Number(_snA.arcaARS)/Number(_snA.tipoCambio):0):arcaDeudaUSD();
   deudas+=arcaDeuda;
   const efect=['efectivo','mp_disp','mp_liq'].reduce((s,k)=>s+(parseFloat(state.finanzas[k])||0),0)+vsr;
   const deben=['deben_cyc'].reduce((s,k)=>s+(parseFloat(state.finanzas[k])||0),0);
@@ -8353,7 +8356,7 @@ function updateArqueo(){try{if(!_arqViewYM)_btnCerrarTxt();}catch(_){}
   const prevDeuda=prev?['tarjeta','deuda_cyc','dolares_mati','dolares_tito'].reduce((s,k)=>s+(Math.abs(parseFloat(prev.finanzas?.[k])||0)),0):null;
   const dbkEf=document.getElementById('dbk_efectivo');if(dbkEf)dbkEf.innerHTML=prevEfect!==null?deltaBadge(c.efect,prevEfect):'';
   const dbkDb=document.getElementById('dbk_deben');if(dbkDb)dbkDb.innerHTML=prevDeben!==null?deltaBadge(c.deben,prevDeben):'';
-  const dbkDd=document.getElementById('dbk_deudas');if(dbkDd)dbkDd.innerHTML=(prevDeuda!==null?deltaBadge(c.deuda,prevDeuda,true):'')+(c.pvDeuda>0?`<div style="font-size:.62rem;color:var(--amber);margin-top:3px">incluye ${fmtUS(c.pvDeuda)} del Paulvic · llegó, falta pagar</div>`:'')+(c.arcaDeuda>0?(()=>{const a=arcaDeudaARS();return `<div style="font-size:.62rem;color:var(--amber);margin-top:3px">incluye ${fmtUS(c.arcaDeuda)} (${fmt(a.ars)}) para ARCA · categoría H de ${a.meses} mes${a.meses===1?'':'es'} · sin intereses</div>`;})():'');
+  const dbkDd=document.getElementById('dbk_deudas');if(dbkDd)dbkDd.innerHTML=(prevDeuda!==null?deltaBadge(c.deuda,prevDeuda,true):'')+(c.pvDeuda>0?`<div style="font-size:.62rem;color:var(--amber);margin-top:3px">incluye ${fmtUS(c.pvDeuda)} del Paulvic · llegó, falta pagar</div>`:'')+(c.arcaDeuda>0?(()=>{const _s=_arqViewYM&&state.snapshots&&state.snapshots[_arqViewYM];const a=_s&&_s.arcaARS>0?{ars:Number(_s.arcaARS),meses:Math.round(Number(_s.arcaARS)/(Number((state.mlconfig||{}).arcaHMes)||427498))}:arcaDeudaARS();return `<div style="font-size:.62rem;color:var(--amber);margin-top:3px">incluye ${fmtUS(c.arcaDeuda)} (${fmt(a.ars)}) para ARCA · categoría H de ${a.meses} mes${a.meses===1?'':'es'} · sin intereses</div>`;})():'');
   const dbkT=document.getElementById('dbk_total_day');
   if(dbkT)dbkT.innerHTML='';
   if(!_arqViewYM)saveDailySnap();

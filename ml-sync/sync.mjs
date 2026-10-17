@@ -43,7 +43,7 @@ const EN_CONSULTA = process.env.GITHUB_WORKFLOW === 'ml-consulta' || process.env
 const CONSULTA_ESCRIBE = new Set(['pycat', 'pycatres', 'lista', 'listamedir', 'pycatprobados', 'candprecio', 'lineatodo', 'revcand', 'vincular', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull']);
 const CONSULTA_NIEGA = new Set(['cajaitems', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
-  'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'promoventas', 'cargosmes']);
+  'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'promoventas', 'cargosmes', 'arcacierres']);
 let CONSULTA_SOLO_LEE = false;
 if (EN_CONSULTA) {
   const _cmd = String(process.env.BILLING_PROBE || '').trim();
@@ -30984,6 +30984,39 @@ async function main() {
     // Los gastos también se normalizan: el gasto de monotributo de cada mes se reemplaza por el
     // autónomo + obra social de hoy, porque el impuesto integrado ya está adentro del costo de cada
     // venta. Si se dejara el gasto viejo, el monotributo quedaría contado dos veces.
+    // BILLING_PROBE=arcacierres[:go] → LA DEUDA CON ARCA ADENTRO DE CADA MES CERRADO (17/10/2026, él: "debería
+    // descontarse al patrimonio cerrado de cada mes, a partir del primer mes que deberíamos haber pagado H. si teníamos
+    // que pagar 100.000 y pagamos 50.000, poner que pagamos 100.000"). A cada cierre desde `arcaHDesde` le resta del
+    // total la deuda acumulada hasta ESE mes (meses × arcaHMes, salteando hasta arcaHPagadoHasta), pasada a dólares con
+    // el dólar de ESE cierre, y guarda `arcaARS` y `totalSinArca` (el número de antes, para poder volver). No toca un
+    // cierre que ya tiene `arcaARS`. Sin `:go` sólo muestra.
+    if (/^arcacierres(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const go = /:go$/.test(String(process.env.BILLING_PROBE));
+      const cfg = (await db.get('cyc/mlconfig')) || {};
+      const desde = cfg.arcaHDesde || '2026_05', mes = Number(cfg.arcaHMes) || 427498, pag = cfg.arcaHPagadoHasta || '';
+      const snaps = (await db.get('cyc/snapshots')) || {};
+      const acum = (ym) => { const [y, m] = desde.split('_').map(Number), [hy, hm] = ym.split('_').map(Number); let t = 0;
+        for (let k = y * 12 + m - 1; k <= hy * 12 + hm - 1; k++) { const x = Math.floor(k / 12) + '_' + String(k % 12 + 1).padStart(2, '0'); if (pag && x <= pag) continue; t += mes; } return t; };
+      console.log(`🧾 ARCA en los cierres · desde ${desde} · ${mes}/mes · pagado hasta ${pag || '(nada)'} · ${go ? 'APLICA' : 'PRUEBA'}`);
+      let n = 0;
+      for (const ym of Object.keys(snaps).sort()) {
+        const sn = snaps[ym]; if (!sn || sn.total == null) continue;
+        if (ym < desde) { console.log(`  ${ym}: antes de ${desde}, no se toca`); continue; }
+        if (sn.arcaARS != null) { console.log(`  ${ym}: ya tiene la deuda adentro ($${Math.round(sn.arcaARS)}), no se toca`); continue; }
+        const tc = Number(sn.tipoCambio) || 0;
+        if (!(tc > 0)) { console.log(`  ⚠️ ${ym}: el cierre no tiene dólar, no se toca`); continue; }
+        const ars = acum(ym), usd = ars / tc, nuevo = Number(sn.total) - usd;
+        console.log(`  ${ym}: deuda $${ars} = US$ ${usd.toFixed(0)} (dólar ${tc}) · patrimonio US$ ${Number(sn.total).toFixed(0)} → US$ ${nuevo.toFixed(0)}`);
+        if (go) {
+          await db.patch('cyc/snapshots/' + ym, { total: nuevo, totalSinArca: Number(sn.total), arcaARS: ars });
+          const r = await db.get('cyc/snapshots/' + ym);
+          console.log(r && Math.abs(Number(r.total) - nuevo) < 0.01 && r.arcaARS === ars ? '     ✓ releído' : '     ⚠️ NO quedó');
+        }
+        n++;
+      }
+      console.log(`${n} cierre(s) ${go ? 'corregidos' : 'a corregir'}`);
+      return;
+    }
     // BILLING_PROBE=cobromes[:AAAA_MM] → CUÁNTO VA A COBRAR CADA SOCIO A FIN DE MES (17/10/2026, él: "ya podemos sacar
     // un cálculo de lo que vamos a cobrar a fin de mes"). SOLO LEE. Misma cuenta que la web (`_puntGananciaMes`):
     // neto − costo (armarCostoWeb) − gastos cargados del mes, ÷ 3. Proyecta lo de las ventas al mes entero y muestra
