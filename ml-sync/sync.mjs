@@ -7746,7 +7746,7 @@ async function resolveTgChat(db) {
 // se calcula todo. Pasado a 17% el 23/09/2026, pedido suyo. UN solo número para todo el robot:
 // antes estaba escrito 1,15 en nueve lugares. Ojo: vale para pedidos de ~US$ 500; uno de US$ 1.000
 // diluye el costo fijo y baja a ~13%.
-let RECARGO_PAR = 1.17;   // ojo: lo pisa `cargarParamCompra` con el recargo MEDIDO en los pedidos (06/10/2026)
+let RECARGO_PAR = 1.20;   // ojo: lo pisa `cargarParamCompra` con el recargo MEDIDO en los pedidos (06/10/2026)
 // Desde cuántos días de la unidad más vieja en Full se baja por "sobra de stock" (04/10/2026, eligió
 // la a): ML cobra stock antiguo desde los 120 días; antes de eso sostener cuesta ~1%/mes y no paga bajar.
 const SOBRA_EDAD_MIN = 100;
@@ -36682,7 +36682,7 @@ async function main() {
           const usdC = Number(r.usdCrudo) || 0;
           const rec = merc > 0 && usdC > 0 && (r.tcPedido || tc) ? ((merc + envio + ret + otros) / (usdC * (r.tcPedido || tc))) : null;
           console.log(`   ${id} (${r.fecha || '?'} · ${r.estado || '?'}) · ${it.nom} · ${it.u} u. · US$ ${it.usd} crudo c/u · código ${it.cod || '—'}`);
-          console.log(`      con el 17% del panel: US$ ${(it.usd * 1.17).toFixed(2)}${rec ? ` · con el recargo real de ESA compra (${((rec - 1) * 100).toFixed(1)}%): US$ ${(it.usd * rec).toFixed(2)}` : ' · recargo real de esa compra: sin medir'}`);
+          console.log(`      con el recargo del panel (${RECARGO_PAR_PCT}%): US$ ${(it.usd * RECARGO_PAR).toFixed(2)}${rec ? ` · con el recargo real de ESA compra (${((rec - 1) * 100).toFixed(1)}%): US$ ${(it.usd * rec).toFixed(2)}` : ' · recargo real de esa compra: sin medir'}`);
         }
       }
       if (!k) console.log('   ninguna');

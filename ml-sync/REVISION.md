@@ -1262,3 +1262,9 @@ el comando `pedir` siguen sin meterlos. Chequear: que `.ok` siga en false para e
   precio de escasez deja menos plata por día, se busca el mejor entre escasez y normal por pasos, arrancando por el mejor
   tramo de la escalera. Dónde: regla mía en las vueltas (`ml-sync/CEREBRO.md` 🎯), sin código nuevo. Chequear: que las
   publicaciones que salen de escasez tengan su paso anotado en `notas/techo.md` y no vuelvan directo al normal.
+
+### Etapa 3 · 17/10/2026 · recargo de Paraguay de respaldo 17% → 20% (v24.02, eligió la a)
+ · Qué: `RECARGO_PY` (index.html) y `RECARGO_PAR` (sync.mjs) arrancan en 1,20. Sólo valen si `cyc/mlconfig/paramCompra.recargo`
+   no está (lo mide `paramcompra:go` cada noche con el promedio de los últimos pedidos completos: 17/10 = 22,7%).
+ · Los textos de Paraguay ya no dicen "17%" fijo: dicen "recargo". El log de `revisarcompra`/historial usa `RECARGO_PAR_PCT`.
+ · Qué chequear: que ninguna pantalla vuelva a escribir un % de recargo a mano.

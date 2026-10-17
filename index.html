@@ -2639,7 +2639,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.01';
+const APP_VERSION='24.02';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2650,6 +2650,7 @@ const APP_VERSION='24.01';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.02',f:'17/10/2026',h:'02:10',c:[{n:2,t:'🇵🇾 Paraguay: el recargo de respaldo pasa de 17% a 20% (sólo se usa si no hay pedidos medidos; hoy el panel ya usa el real de los pedidos, ~22%). Las pantallas ya no dicen "17%" escrito a mano: dicen "recargo".'}]},
   {v:'24.01',f:'16/10/2026',h:'23:50',c:[{n:1,t:'Ventas x Producto: toda venta muestra su estrategia. Las de publicaciones que nunca tuvieron una anotada dicen 🎯 base (precio normal).'}]},
   {v:'24.00',f:'16/10/2026',h:'23:55',c:[{n:2,t:'Cada precio tiene su estrategia: 🎯 base · 🔥 escasez · ⏳ sin reposición · 📈 buscando techo · 📉 liquidando · 🥊 ganar la caja · 🏷️ promo · 🎁 fecha especial · 🛡️ excepción · 🆕 lanzamiento · ↩️ corrección. En Ventas x Producto cada venta muestra la estrategia que tenía ese producto cuando se vendió (tocala para ver el motivo).'}]},
   {v:'23.99',f:'16/10/2026',h:'23:30',c:[{n:1,t:'Pedidos → Paraguay → Nuevos (Nissei): abajo de todo, desplegable "🗂️ Todo lo que revisó el robot y NO da" con los del catálogo de comprasparaguay que no llegan al piso, los que no tienen el mismo producto en ML, los que nadie vende y los que quedaron afuera por regla. Sólo muestra.'}]},
@@ -4266,7 +4267,7 @@ const UMBRAL_ENVIO_GRATIS=33000;
 // correo, ~$103.600) pesa menos en uno más grande. Los textos de la pantalla dicen "17%" a mano:
 // si este número cambia, buscar "17%" en las pantallas de Paraguay.
 // El costo de lo YA comprado NO cambia: es lo que se pagó y vive en cada ficha.
-let RECARGO_PY=1.17;   // lo pisa _aplicarParamCompra con el recargo MEDIDO en los pedidos (06/10/2026)
+let RECARGO_PY=1.20;   // lo pisa _aplicarParamCompra con el recargo MEDIDO en los pedidos (06/10/2026)
 // ── EL CARGO FIJO DE ML, Y POR QUÉ LA COMISIÓN NO ES UN % PAREJO ──────────────────────────
 // Medido con `comisiones` el 11/09/2026 preguntándole a ML publicación por publicación: la
 // comisión NO es un porcentaje parejo, es **un % del precio MÁS un cargo fijo por venta**. Por eso
@@ -5074,8 +5075,8 @@ function paraguayHtml(p){
     <div style="font-size:.6rem;color:#f87171;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">🇵🇾 Paraguay <span style="text-transform:none;letter-spacing:0;font-size:.92em;color:var(--muted)">· mirado ${cuando}</span></div>
     <div style="display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap">
       <div><label title="El código de NISSEI, el que se usa para hacer el pedido. NO es el número interno que muestra la lista de Nissei.">Código Nissei ⓘ</label><br><input type="text" style="width:110px" value="${(p.codPy||'').replace(/"/g,'&quot;')}" oninput="guardarProdLuego('${p.id}',this.value,updNisseiCod)" onchange="updNisseiCod('${p.id}',this.value)" placeholder="p. ej. 91832"></div>
-      <div><label title="El precio en dólares que muestra comprasparaguay, CRUDO, sin el 17%.">Precio Nissei US$ ⓘ</label><br><input type="number" min="0" step="0.01" style="width:100px" value="${nu||''}" oninput="guardarProdLuego('${p.id}',this.value,updNisseiUSD)" onchange="updNisseiUSD('${p.id}',this.value)"></div>
-      ${nu>0?`<div style="font-size:.66rem;padding-bottom:6px;color:var(--muted)" title="El 17% incluye la compra del dólar con sus comisiones y el traslado hasta tu oficina.">
+      <div><label title="El precio en dólares que muestra comprasparaguay, CRUDO, sin el recargo.">Precio Nissei US$ ⓘ</label><br><input type="number" min="0" step="0.01" style="width:100px" value="${nu||''}" oninput="guardarProdLuego('${p.id}',this.value,updNisseiUSD)" onchange="updNisseiUSD('${p.id}',this.value)"></div>
+      ${nu>0?`<div style="font-size:.66rem;padding-bottom:6px;color:var(--muted)" title="El recargo incluye la compra del dólar con sus comisiones y el traslado hasta tu oficina.">
         × ${RECARGO_PY.toFixed(2).replace('.',',')} = <b style="color:var(--text)">US$ ${puesto.toFixed(2)}</b> puesto
       </div>`:''}
     </div>
@@ -14005,7 +14006,7 @@ function pyPedidoResumenHTML(c,enCamino,dias,tarde){
       <div style="font-size:.66rem;font-weight:700;color:${col};margin-top:2px;white-space:nowrap">${est}</div>
     </div>
     <div style="margin-left:auto;text-align:right">
-      <div style="font-size:1.05rem;font-weight:800;color:var(--text);white-space:nowrap" title="Lo que te salió el pedido puesto en la oficina: la factura más todos los gastos${R.r?'':' (con el 17% estimado: faltan gastos)'}">US$ ${usd}</div>
+      <div style="font-size:1.05rem;font-weight:800;color:var(--text);white-space:nowrap" title="Lo que te salió el pedido puesto en la oficina: la factura más todos los gastos${R.r?'':' (con el recargo estimado: faltan gastos)'}">US$ ${usd}</div>
       <div style="font-size:.62rem;color:var(--muted);margin-top:2px;white-space:nowrap">${rec}${tk}</div>
     </div>
     <span style="font-size:.7rem;color:var(--muted);margin-left:4px">▾</span>`;
@@ -14034,7 +14035,7 @@ function pyPedidoDetalleHTML(c){
         <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">La plata</div>
         ${c.ticket?(()=>{const w=Number(c.ticket.usdWeb)||0,pg=Number(c.ticket.usdPagado)||0,d=w-pg;return fila('🧾 ticket','<b style="color:var(--green)">cargado</b>','El ticket real del mayorista, renglón por renglón. Cada producto guarda lo que se pagó y lo que decía la web.')+fila('precio de la web','US$ '+w.toFixed(2))+fila('pagado (ticket)','US$ '+pg.toFixed(2))+fila('descuento',`<b style="color:${d>0?'var(--green)':d<0?'var(--red)':'var(--muted)'}">${d>0?'−':d<0?'+':''}US$ ${Math.abs(d).toFixed(2)}${w>0?' ('+Math.abs(d/w*100).toFixed(1).replace('.',',')+'%)':''}</b>`,'Lo que pagaste de menos (o de más) contra el precio de la web. Producto por producto, abajo en La mercadería.');})()
           :fila('🧾 ticket','<b style="color:var(--red)">falta</b>','Sin el ticket real el pedido no se puede cerrar: pasáselo a Claude por el chat.')}
-        ${fila('mercadería cruda','US$ '+(c.usdCrudo||0).toFixed(2),'El precio de comprasparaguay, sin el 17%.')}
+        ${fila('mercadería cruda','US$ '+(c.usdCrudo||0).toFixed(2),'El precio de comprasparaguay, sin el recargo.')}
         ${fila('con el '+(pyRecargoReal(c).r?((pyRecargoReal(c).r-1)*100).toFixed(1)+'% real':Math.round((RECARGO_PY-1)*100)+'% estimado'),'US$ '+puesto.toFixed(2),'Incluye comprar los dólares, el correo y el que despacha. Con todos los gastos cargados es el recargo REAL de este pedido; si no, el estimado.')}
         ${tc?fila('en pesos',fmt(Math.round(puesto*tc))+' <span style="color:var(--muted);font-size:.9em">· dólar '+fmt(Math.round(tc))+'</span>','Con el dólar del DÍA del pedido, no el de hoy: lo que compraste a un precio no cambia solo.'):fila('en pesos','<span style="color:var(--amber)">no había dólar cargado ese día</span>')}
         ${c.gananciaEst?fila('si se vende todo deja','<b style="color:var(--green)">'+fmt(c.gananciaEst)+'</b>','Estimado con el margen medido de cada producto al momento del pedido.'):''}
@@ -14348,7 +14349,7 @@ function pedNuevoFilaHTML(f,maxU,tc,sinCab){
     </div>`;
   const cajas=[
     caja('🇵🇾 te sale c/u',f.usd>0?`<b>US$ ${puesto.toFixed(2)}</b>`:'<span style="color:var(--red)">sin precio</span>',
-      f.usd>0?`US$ ${f.usd.toFixed(2)} + 17%${tc?` · ${fmt(Math.round(f.usd*RECARGO_PY*tc))}`:''}`:''),
+      f.usd>0?`US$ ${f.usd.toFixed(2)} + recargo${tc?` · ${fmt(Math.round(f.usd*RECARGO_PY*tc))}`:''}`:''),
     caja('🏷️ se vende en ML',R.medido?R.rango:'<span style="color:var(--amber)">sin medir</span>',R.vend||''),
     caja('💸 ML se queda',R.comPct||'—',R.comDet||''),
     caja('🛒 vendidas en ML',R.ventasN||'<span style="color:var(--amber)">faltan</span>',R.ventasN?(R.ventasExtra?`<span style="color:var(--amber)">${R.ventasExtra}</span>`:''):'las carga el chat'),
@@ -14415,10 +14416,10 @@ function pedNuevosHTML(vivos){
     <div style="padding:0 13px 12px">
     <div style="font-size:.6rem;color:var(--muted);margin-bottom:9px">poné las unidades en cada producto de abajo · la web sólo hace las cuentas</div>
     <div style="background:var(--surface);border-radius:9px;padding:11px 13px;margin-bottom:9px">
-      <div style="font-size:.6rem;color:var(--muted);letter-spacing:.04em">TOTAL DEL PEDIDO · mercadería, sin el 17%</div>
+      <div style="font-size:.6rem;color:var(--muted);letter-spacing:.04em">TOTAL DEL PEDIDO · mercadería, sin el recargo</div>
       <div style="font-size:2.1rem;font-weight:700;line-height:1.15;margin:2px 0 3px">US$ ${P.crudo.toFixed(2)}</div>
       <div style="font-size:.66rem;color:var(--muted);line-height:1.6">
-        con el 17% son <b style="color:var(--text)">US$ ${puesto.toFixed(2)}</b>${tc?` · ${fmt(Math.round(puesto*tc))}`:''}
+        con el recargo son <b style="color:var(--text)">US$ ${puesto.toFixed(2)}</b>${tc?` · ${fmt(Math.round(puesto*tc))}`:''}
         <br>${P.filas.length} producto${P.filas.length===1?'':'s'} · ${P.unidades} unidad${P.unidades===1?'':'es'}${P.ganancia>0?` · si se vende todo deja <b style="color:var(--green)">${fmt(Math.round(P.ganancia))}</b>`:''}
       </div>
       <div style="margin-top:8px">
@@ -14434,7 +14435,7 @@ function pedNuevosHTML(vivos){
       ${P.noDan.length?`<div style="font-size:.62rem;color:var(--red);margin-top:5px">🚫 <b>${P.noDan.length} ya no llega(n) a tu piso de ${CAND_PISO_TXT()}</b> y están sumando en el total. Se cargaron cuando todavía daban. No los saco solo: abajo tienen el botón.</div>`:''}
     </div>
     <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:flex-end;margin-bottom:9px">
-      ${[['pedTopeUSD',tope,'Tope del pedido (US$)','Hasta cuántos dólares de mercadería CRUDA (sin el 17%) querés gastar. No frena: si te pasás lo dice en rojo y seguís.'],
+      ${[['pedTopeUSD',tope,'Tope del pedido (US$)','Hasta cuántos dólares de mercadería CRUDA (sin el recargo) querés gastar. No frena: si te pasás lo dice en rojo y seguís.'],
          ['pedMaxU',maxU,'Máx. u. por producto','Cuántas unidades como mucho de cada producto pone el botón de llenar. A mano podés cargar más: sólo avisa.'],
          ['pedMinVent',minV,'Mín. vendidas en ML','Tu vara para este pedido. El botón de llenar no agarra nada que venda menos, ni nada sin el dato cargado.']]
         .map(([k,v,t,ay])=>`<label style="flex:1;min-width:105px" title="${ay}">
@@ -14527,12 +14528,12 @@ function simPYHTML(){
     <div style="margin-top:9px;padding:12px 13px;background:var(--surface2);border-radius:10px;border:1px solid var(--border)">
       <div style="font-size:.61rem;color:var(--muted);line-height:1.6;margin-bottom:11px">
         El simulador de ML te dice cuánto te deposita y nada más. Éste le suma lo que ML no sabe:
-        la mercadería con el 17% de Paraguay, el IIBB, el monotributo, lo que cobra Full y los reclamos.
+        la mercadería con el recargo de Paraguay, el IIBB, el monotributo, lo que cobra Full y los reclamos.
         <b>No guarda nada ni toca ningún precio: sólo calcula.</b>
         ${tc?'':'<br><span style="color:var(--red)">⚠️ No hay dólar cargado: el costo en pesos va a dar cero.</span>'}
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(232px,1fr));gap:10px">
-        ${campo(1,'Precio en comprasparaguay','obligatorio','El precio en <b>dólares</b> de la fila de <b>NISSEI</b>, <b>crudo</b>: sin sumarle el 17%. El panel se lo suma solo. Si lo cargás con el 17% adentro, el margen sale mal.',
+        ${campo(1,'Precio en comprasparaguay','obligatorio','El precio en <b>dólares</b> de la fila de <b>NISSEI</b>, <b>crudo</b>: sin sumarle el recargo. El panel se lo suma solo. Si lo cargás con el recargo adentro, el margen sale mal.',
           `<div style="display:flex;align-items:center;gap:6px;font-size:.78rem">US$ ${inp('spy-usd','0,00','',96)}</div>`)}
         ${campo(2,'A cuánto lo vendés en ML','obligatorio','El precio que va a pagar el comprador. En un producto nuevo no lo elegís vos: poné el del vendedor <b>MÁS BARATO</b>, que es contra el que vas a competir.',
           `<div style="display:flex;align-items:center;gap:6px;font-size:.78rem">$ ${inp('spy-precio','0','',118)}</div>`)}
@@ -14669,7 +14670,7 @@ function simPYCalc(){
     <div style="border-top:1px solid var(--border);margin:4px 0"></div>
     ${fila('te deposita ML',r.neto,'')}
     ${fila('IIBB + monotributo ('+impPct.toFixed(2)+'%)',r.imp,'−')}
-    ${fila('mercadería puesta (US$ '+puestoUSD.toFixed(2)+')',mercPy,'−','US$ '+usd.toFixed(2)+' de comprasparaguay + 17% = US$ '+puestoUSD.toFixed(2)+', al dólar de hoy.')}
+    ${fila('mercadería puesta (US$ '+puestoUSD.toFixed(2)+')',mercPy,'−','US$ '+usd.toFixed(2)+' de comprasparaguay + recargo = US$ '+puestoUSD.toFixed(2)+', al dólar de hoy.')}
     ${aFull?fila('mandarlo a Full ('+fmt(costoCaja())+' ÷ '+cajaU+')',aFull,'−','Lo que sale mandar una caja a Full, repartido entre las unidades que entran. Es el mismo número que el Envío+embalaje de cualquier ficha.'):''}
     ${recl?fila('reclamos ('+devP.toFixed(1)+'%)',recl,'−'):''}
     <div style="border-top:1px solid var(--border);margin:6px 0"></div>
@@ -14993,7 +14994,7 @@ async function candCrearFicha(id){
   const usd=parseFloat(c.usd)||0;
   const puesto=usd>0?Math.round(usd*RECARGO_PY*100)/100:0;
   const rep=candFichasParecidas(c.nombre);
-  if(!confirm(`Crear la ficha de:\n\n${c.nombre}\n\nCosto US$ ${puesto.toFixed(2)} (precio de Paraguay ${usd.toFixed(2)} + 17%)\nCódigo de pedido: ${c.cod||'(sin código)'}\nOrigen: Paraguay\n`
+  if(!confirm(`Crear la ficha de:\n\n${c.nombre}\n\nCosto US$ ${puesto.toFixed(2)} (precio de Paraguay ${usd.toFixed(2)} + recargo)\nCódigo de pedido: ${c.cod||'(sin código)'}\nOrigen: Paraguay\n`
     +(rep.length?`\n⚠️ OJO: ya hay ${rep.length} ficha(s) con un nombre parecido:\n${rep.slice(0,4).map(p=>'· '+p.name).join('\n')}\nSi es el mismo producto, no crees otra.\n`:'')
     +`\nNo publica nada en ML ni compra nada.`))return;
   const r=await candFichaDesde({id,nombre:c.nombre,usd:c.usd,cod:c.cod,ts:c.ts});
@@ -15263,7 +15264,7 @@ function pyCanastaHTML(){
   const u2=n=>'US$ '+Number(n).toFixed(2).replace('.',',');
   const fila=(f,gris)=>{
     const mx=f.maxWeb!=null
-      ? `<span style="font-size:.68rem;color:${f.caro?'var(--red)':'var(--green)'};font-weight:700" title="Lo más que podés pagar en la web de Paraguay (antes del 17%) para quedar en el 25% vendiendo al precio de la competencia en ML. Es la misma cuenta del 💰 de cada tarjeta.">máx ${u2(f.maxWeb)}</span>`
+      ? `<span style="font-size:.68rem;color:${f.caro?'var(--red)':'var(--green)'};font-weight:700" title="Lo más que podés pagar en la web de Paraguay (antes del recargo) para quedar en el 25% vendiendo al precio de la competencia en ML. Es la misma cuenta del 💰 de cada tarjeta.">máx ${u2(f.maxWeb)}</span>`
       : f.noLlega?`<span style="font-size:.64rem;color:var(--red)" title="Vendiendo al precio que pide la competencia no hay precio de compra que deje el 25%.">✕ ni regalado llega al 25%</span>`
       : `<span style="font-size:.62rem;color:var(--amber)" title="No hay publicación viva con el neto medido: no se puede calcular el máximo. Comprá al precio de siempre.">máx sin medir</span>`;
     const hoy=!(f.precioWeb>0)?`<span style="font-size:.6rem;color:var(--amber)">sin precio cargado</span>`
@@ -17121,7 +17122,7 @@ function pedPyLineaHTML(prod){
   const r=maxCompraDe(prod);
   const mx=(r&&!r.motivo&&r.usd>0)?r.usd:null;
   const partes=[];
-  if(cu>0)partes.push(`<span title="${q(`Lo que pagaste, puesto en tu oficina (unos ${f2(cu/RECARGO_PY)} en Paraguay + 17%)${tc>0?' = '+fmt(Math.round(cu*tc)):''}. Es el costo que decide los márgenes de lo que ya tenés.`)}">💵 pagaste <b>${f2(cu)}</b></span>`);
+  if(cu>0)partes.push(`<span title="${q(`Lo que pagaste, puesto en tu oficina (unos ${f2(cu/RECARGO_PY)} en Paraguay + recargo)${tc>0?' = '+fmt(Math.round(cu*tc)):''}. Es el costo que decide los márgenes de lo que ya tenés.`)}">💵 pagaste <b>${f2(cu)}</b></span>`);
   if(puesto>0){
     const dias=prod.nisseiTs?Math.max(0,Math.round((Date.now()-prod.nisseiTs)/86400000)):null;
     const viejo=dias==null||dias>30;
@@ -17129,13 +17130,13 @@ function pedPyLineaHTML(prod){
     const col=mx!=null?(puesto<=mx?'var(--green)':'var(--red)'):noLlega?'var(--red)':'var(--text)';
     const dif=cu>0?((puesto-cu)/cu)*100:null;
     const difTxt=dif==null?'':Math.abs(dif)<=1?' · igual':` · ${dif>0?'+':'−'}${Math.round(Math.abs(dif))}%`;
-    const tit=`Reponerlo hoy: ${f2(nu)} en comprasparaguay + 17% = ${f2(puesto)} puesto${tc>0?' ('+fmt(Math.round(puesto*tc))+')':''}. ${dias==null?'Sin fecha de cuándo se miró.':`Mirado hace ${dias} días.`}${viejo?' Conviene volver a mirarlo antes de comprar.':''}${dif!=null?` Contra lo que pagaste: ${Math.abs(dif)<=1?'igual':(dif>0?Math.round(dif)+'% más caro':Math.round(-dif)+'% más barato')}.`:''}${mx!=null?(puesto<=mx?' Entra en el máximo.':' Se pasa del máximo: así no conviene comprarlo.'):''}`;
+    const tit=`Reponerlo hoy: ${f2(nu)} en comprasparaguay + recargo = ${f2(puesto)} puesto${tc>0?' ('+fmt(Math.round(puesto*tc))+')':''}. ${dias==null?'Sin fecha de cuándo se miró.':`Mirado hace ${dias} días.`}${viejo?' Conviene volver a mirarlo antes de comprar.':''}${dif!=null?` Contra lo que pagaste: ${Math.abs(dif)<=1?'igual':(dif>0?Math.round(dif)+'% más caro':Math.round(-dif)+'% más barato')}.`:''}${mx!=null?(puesto<=mx?' Entra en el máximo.':' Se pasa del máximo: así no conviene comprarlo.'):''}`;
     partes.push(`<span title="${q(tit)}">🇵🇾 hoy <b style="color:${col}">${f2(puesto)}</b>${mx!=null?(puesto<=mx?' 🟢':' 🔴'):''}<span style="color:var(--muted)">${difTxt}</span>${viejo?`<span style="color:var(--amber)"> · ${dias==null?'sin fecha':'hace '+dias+' d'}</span>`:''}</span>`);
   }else partes.push(`<span style="color:var(--muted)" title="Nadie cargó todavía el precio de comprasparaguay de este producto: sin eso no se sabe si conviene reponerlo.">🇵🇾 hoy —</span>`);
   if(r&&!r.motivo){
     if(mx!=null){
       const donde={full:`a ${fmt(r.P)}, lo que se puede cobrar teniendo Full${r.techo&&r.techo.cS?` (el más barato SIN Full está a ${fmt(r.techo.cS)}: se lo pasa hasta +10%)`:''}${r.techo&&r.techo.cF?` · el más barato CON Full: ${fmt(r.techo.cF)}`:''}`,caja:`a ${fmt(r.P)}, lo que pide ML para ganar la caja`,ganas:`a ${fmt(r.P)}, tu precio de hoy (ya ganás la caja)`,nocat:`a ${fmt(r.P)}, tu precio de hoy (no es de catálogo)`,hoy:`a ${fmt(r.P)}, tu precio de hoy`,claude:`a ${fmt(r.P)}, el precio al que lo pienso vender (lo decidí yo, Claude${r.clMot?': '+r.clMot:''})`,vieja:`a ${fmt(r.P)}, tu precio de hoy (publicaciones pausadas)`}[r.fuente]||'';
-      partes.push(`<span title="${q(`Lo más que podés pagar (puesto) para quedar en ${r.meta}% vendiendo ${donde}, con todo adentro (comisión, envío de Full, IIBB, monotributo, envío/embalaje y reclamos).${r.usdPy>0?` En la web de Paraguay: ${f2(r.usdPy)} antes del 17%.`:''}${tc>0?' = '+fmt(Math.round(mx*tc))+'.':''}`)}">💰 máx <b>${f2(mx)}</b></span>`);
+      partes.push(`<span title="${q(`Lo más que podés pagar (puesto) para quedar en ${r.meta}% vendiendo ${donde}, con todo adentro (comisión, envío de Full, IIBB, monotributo, envío/embalaje y reclamos).${r.usdPy>0?` En la web de Paraguay: ${f2(r.usdPy)} antes del recargo.`:''}${tc>0?' = '+fmt(Math.round(mx*tc))+'.':''}`)}">💰 máx <b>${f2(mx)}</b></span>`);
     }else partes.push(`<span style="color:var(--red)" title="${q(`Vendiendo a ${fmt(r.P)} no hay precio de compra que deje ${r.meta}%.`)}">💰 máx: no llega</span>`);
   }else partes.push(`<span style="color:var(--muted)" title="No hay publicación viva con el neto calculado: no se puede medir.">💰 máx sin medir</span>`);
   return `<div style="flex-basis:100%;font-size:.72rem;line-height:1.6;display:flex;flex-wrap:wrap;gap:4px 12px;padding:4px 0">${partes.join('<span style="color:var(--muted)">·</span>')}</div>`;
@@ -17315,7 +17316,7 @@ function maxCompraHTML(p){
   const _enPesos=!r.esPy||esProductoPaulvic(p); // Bs As y Paulvic en pesos (06/10/2026)
   const _pg=v=>(_enPesos&&curTC()>0)?fmt(Math.round(v*curTC())):'US$ '+v.toFixed(2).replace('.',',');
   const cmp=r.hoyUSD>0?(r.hoyUSD<=r.usd?` · hoy lo pagaste ${_pg(r.hoyUSD)} <span style="color:var(--green)">✓ entra</span>`:` · hoy lo pagaste ${_pg(r.hoyUSD)} <span style="color:var(--red)">✕ te pasás</span>`):'';
-  const py=!_enPesos&&r.usdPy>0?` · en la web de Paraguay: <b>US$ ${r.usdPy.toFixed(2).replace('.',',')}</b> (antes del 17%)`:'';
+  const py=!_enPesos&&r.usdPy>0?` · en la web de Paraguay: <b>US$ ${r.usdPy.toFixed(2).replace('.',',')}</b> (antes del recargo)`:'';
   return `<div style="${st};color:var(--muted)" title="Es lo más que podés pagar la mercadería para que, vendiéndola ${donde}, te quede ${r.meta}% con todo adentro (comisión de ML a ese precio, envío de Full, IIBB, monotributo, envío/embalaje y reclamos). Puesta en tu oficina: ${fmt(r.merc)}.">💰 Máximo para comprar: <b style="color:var(--text)">${_enPesos&&curTC()>0?fmt(Math.round(r.usd*curTC())):'US$ '+r.usd.toFixed(2).replace('.',',')}</b>${py} · para quedar en ${r.meta}% vendiendo ${donde}${r.cuoN?` · 💳 <span style="color:var(--amber)">el que hay que igualar da cuotas sin interés: van descontadas ${r.cuoN} cuotas (${fmt(r.cuo)})</span>`:''}${cmp}</div>`;
 }
 // El máximo de compra A LA VISTA en la cabecera de la tarjeta, en dólares y pesos (24/09/2026,

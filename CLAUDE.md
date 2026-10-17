@@ -9083,3 +9083,8 @@ ya no hay ajenos abajo del precio probado, ganamos la caja o pasan 30 días. Det
 ## 🎯 AL LLEGAR LA CAJA NO SE ELIGE ENTRE DOS PRECIOS: SE BUSCA EL MEDIO (17/10/2026, eligió la a)
 Si el precio de escasez deja menos plata por día que el normal, no se vuelve directo al normal: pasos al medio, arrancando por
 el tramo de la escalera que mejor anduvo, medidos con certeza (Poisson). Detalle en `ml-sync/CEREBRO.md` (🎯).
+
+## 17/10/2026 · TRES DECISIONES SUYAS
+ · **Vía Cargo $100.000 vs `retira` $90.000:** *"no importa, como está cargado está bien"*. No volver a preguntar.
+ · **Dalí (`MLA1869295911`) queda en PREMIUM**, decisión suya. No volver a proponer Clásica.
+ · **Recargo de Paraguay de respaldo 20%** (antes 17%). El panel y el robot usan el MEDIDO de los pedidos (`paramcompra`, 22,7% al 17/10); el 20% sólo si falta. Las pantallas dicen "recargo", no un número fijo.
