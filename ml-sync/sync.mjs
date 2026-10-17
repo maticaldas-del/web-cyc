@@ -40460,14 +40460,26 @@ async function main() {
       const _raw = String(process.env.BILLING_PROBE).replace(/^cajaitems:?/, '');
       const GO = /(^|;)go$/.test(_raw) && !DRY;
       const cuerpo = _raw.replace(/(^|;)go$/, '');
-      const track = (cuerpo.split('|')[0] || '').replace(/\D/g, '');
+      const _cab = (cuerpo.split('|')[0] || '');
+      const track = _cab.split('@')[0].replace(/\D/g, '');
+      const _ctaNueva = (_cab.split('@')[1] || '').trim();
       const pares = cuerpo.split('|').slice(1).join('|').split(';').map((x) => x.trim()).filter(Boolean);
       if (!track || !pares.length) { console.log('Usá: cajaitems:<seguimiento>|<palabra>[@<variante>]=<u>;…;go'); return; }
       const nrm = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
       const envios = (await db.get('cyc/envios_full')) || {};
       let envId = null, ci = -1;
       for (const [id, e] of Object.entries(envios)) { const cj = (e && e.cajasDet) || []; const j = cj.findIndex((c) => c && String(c.track || '').replace(/\D/g, '') === track); if (j >= 0) { envId = id; ci = j; break; } }
-      if (!envId) { console.log(`❌ No encontré ninguna caja con seguimiento ${track}.`); return; }
+      // CAJA NUEVA (17/10/2026): con `@<cuenta>` y un seguimiento que no existe, se crea el envío igual que "Cerrar caja"
+      // de la web (envío nuevo, una caja, no recibida) y todo lo que lleva sale de la oficina.
+      let _nueva = false;
+      if (!envId && _ctaNueva) {
+        const CTAS = ['Adriana', 'Luciana', 'Ayelen', 'Matias'];
+        const cta = CTAS.find((c) => nrm(c) === nrm(_ctaNueva));
+        if (!cta) { console.log(`❌ "${_ctaNueva}" no es una cuenta (${CTAS.join(', ')}).`); return; }
+        envId = 'env' + Date.now(); ci = 0; _nueva = true;
+        envios[envId] = { fecha: new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10), cuenta: cta, correo: 'Andreani', sucursal: '', cajas: 1, seguimientos: [track], obs: 'cargada desde el chat', ts: Date.now(), cajasDet: [{ n: 1, track, items: [], recibida: false }] };
+      }
+      if (!envId) { console.log(`❌ No encontré ninguna caja con seguimiento ${track}. Para crearla: cajaitems:${track}@<cuenta>|…`); return; }
       const env = envios[envId]; const caja = env.cajasDet[ci];
       if (caja.recibida) { console.log(`❌ La caja ${track} ya está marcada como llegada: no la toco.`); return; }
       const prods = Object.values((await db.get('cyc/products')) || {}).filter((p) => p && p.name);
@@ -40487,7 +40499,7 @@ async function main() {
       if (problemas.length) { console.log('❌ NO ESCRIBO NADA:'); problemas.forEach((x) => console.log('   ' + x)); return; }
       const OFI = sid('Oficina Mati'); const kTot = (pid) => pid + '__' + OFI; const kVar = (pid, v) => kTot(pid) + '__v__' + sid(v);
       const inv = (await db.get('cyc/inventory')) || {};
-      console.log(`=== CORREGIR LA CAJA ${track} (${env.cuenta}, ${env.fecha}) ${GO ? '' : '(PRUEBA — no escribo nada)'} ===`);
+      console.log(`=== ${_nueva ? 'CAJA NUEVA' : 'CORREGIR LA CAJA'} ${track} (${env.cuenta}, ${env.fecha}) ${GO ? '' : '(PRUEBA — no escribo nada)'} ===`);
       const upd = {}; const get = (k) => (k in upd ? (upd[k] || 0) : (parseInt(inv[k]) || 0));
       for (const o of ops) {
         const j = items.findIndex((it) => it && it.prodId === o.p.id && String(it.variante || '') === String(o.va || ''));
@@ -40504,7 +40516,8 @@ async function main() {
       }
       console.log(`  caja: ${(caja.items || []).reduce((a, x) => a + (parseInt(x.u) || 0), 0)} → ${items.reduce((a, x) => a + (parseInt(x.u) || 0), 0)} u. en ${items.length} renglón(es)`);
       if (!GO) { console.log('\nNo se guardó nada (falta ;go).'); return; }
-      await db.set(`cyc/envios_full/${envId}/cajasDet/${ci}/items`, items);
+      if (_nueva) await db.set(`cyc/envios_full/${envId}`, { ...env, cajasDet: [{ ...caja, items }] });
+      else await db.set(`cyc/envios_full/${envId}/cajasDet/${ci}/items`, items);
       if (Object.keys(upd).length) await db.patch('cyc/inventory', upd);
       const rel = (await db.get(`cyc/envios_full/${envId}/cajasDet/${ci}/items`)) || [];
       console.log(rel.length === items.length && rel.reduce((a, x) => a + (parseInt(x.u) || 0), 0) === items.reduce((a, x) => a + (parseInt(x.u) || 0), 0) ? '\n✓ Guardado y releído (caja y oficina).' : '\n⚠️ Al releer la caja no coincide: mirar a mano.');
