@@ -2644,7 +2644,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.21';
+const APP_VERSION='24.22';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2655,6 +2655,7 @@ const APP_VERSION='24.21';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.22',f:'17/10/2026',h:'17:55',c:[{n:1,t:'💸 Cuánto cobrar: se sacó la línea del ritmo de los últimos 7 días. Queda la proyección al ritmo del mes y lo ganado hasta hoy.'}]},
   {v:'24.21',f:'17/10/2026',h:'17:54',c:[{n:2,t:'💸 Cuánto cobrar: en el mes que corre el número grande es la PROYECCIÓN a fin de mes (ventas al ritmo del mes menos los gastos del mes, ÷ 3). Abajo, al ritmo de los últimos 7 días y lo ya ganado hasta hoy.'}]},
   {v:'24.20',f:'17/10/2026',h:'16:58',c:[{n:1,t:'🔎 Revisión: los títulos de las etapas al día (Precios ya dice lo que decido yo y el robot que mide; Mercadería suma Paulvic, Elegancia y el catálogo de Paraguay; Datos suma la ficha médica y las estrategias).'}]},
   {v:'24.19',f:'17/10/2026',h:'16:46',c:[{n:2,t:'🤖 Robot de precios (Métricas): el total se abre en ✅ firme (medido entero, con el stock de las dos ventanas) y sin confirmar en gris. Pasados 30 días todo cambio queda juzgado con la cuenta más justa (ventas por día con stock antes y después), y las subas por escasez restan lo que quedó sin vender al llegar la caja.'}]},
@@ -20202,7 +20203,7 @@ function _homeCobroHtml(f){
     const pr=P.esActual?cobroProyMes(ym):null;
     if(pr)return `<div style="font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)">Para cobrar en ${sigLbl} · cada uno · proyección a fin de ${mesCorto.toLowerCase()}</div>
       <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.5rem;color:${pr.mes>0?'var(--text)':'var(--red)'}">${fmt(pr.mes)}</div>
-      <div style="font-size:.66rem;color:var(--muted);line-height:1.45">Ventas al ritmo de ${mesCorto} (${fmt(pr.rMes)}/día) hasta el ${pr.diasMes} · menos los gastos del mes (${fmt(pr.gEsp)}${pr.gEsp>pr.gastos?', lo del mes pasado: faltan cargar':''}) · ÷ 3${pr.r7!=null?`<br>Al ritmo de los últimos 7 días (${fmt(pr.r7d)}/día): <b style="color:var(--text)">${fmt(pr.r7)} c/u</b>`:''}<br>Ya ganado hasta hoy: ${fmt(cb.tercio)} c/u (${fmt(cb.gan)} ÷ 3)</div>
+      <div style="font-size:.66rem;color:var(--muted);line-height:1.45">Ventas al ritmo de ${mesCorto} (${fmt(pr.rMes)}/día) hasta el ${pr.diasMes} · menos los gastos del mes (${fmt(pr.gEsp)}${pr.gEsp>pr.gastos?', lo del mes pasado: faltan cargar':''}) · ÷ 3<br>Ya ganado hasta hoy: ${fmt(cb.tercio)} c/u (${fmt(cb.gan)} ÷ 3)</div>
       ${cbAnt?`<div style="font-size:.7rem;margin-top:6px;line-height:1.45">En ${mesCorto} cobran lo que dejó ${antLbl}: <b>${fmt(cbAnt.tercio)} c/u</b>${cb.yaPorSocio>0?` · ya retiraron ${fmt(cb.yaPorSocio)} c/u · ${falta>=0?`<span style="color:var(--green)">quedan ${fmt(falta)} c/u</span>`:`<span style="color:var(--red)">se retiró de más ${fmt(-falta)} c/u</span>`}`:''}</div>`:''}`;
     return `<div style="font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)">Para cobrar en ${sigLbl} · cada uno${P.esActual?' · va hasta hoy':''}</div>
       <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.5rem;color:${cb.tercio>0?'var(--text)':'var(--red)'}">${fmt(cb.tercio)}</div>
