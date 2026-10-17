@@ -1326,3 +1326,4 @@ el comando `pedir` siguen sin meterlos. Chequear: que `.ok` siga en false para e
 
 ### 17/10/2026 · v24.16 · tarjeta de Pedidos (Paraguay probados) más corta (etapa 7)
 Pedido suyo: "deja lo importante, los detalles que sean desplegables". A la vista: foto, nombre, etiqueta sin repetir el "pidiéndolo queda en N%" (es el número grande), el aviso del semáforo y "comprar N u.". El renglón código · US$ puesto · pesos · vendiste pasa a la primera línea adentro del desplegable. Vive en la rama `_esProb` de la tarjeta de Pedidos. Chequear: que el % grande y el aviso de escasez sigan visibles.
+· v24.17, mismo día: él sacó de la vista "no da" y el aviso de escasez; "comprar N u." en blanco y grande; la casilla 🧾 pedir pasa al resumen de la tarjeta (con stopPropagation para no abrir/cerrar) y sale del desplegable (`_card` sin `_armHTML`). Chequear: tocar la casilla no abre la tarjeta.

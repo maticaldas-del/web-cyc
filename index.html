@@ -2644,7 +2644,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.16';
+const APP_VERSION='24.17';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2655,6 +2655,7 @@ const APP_VERSION='24.16';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.17',f:'17/10/2026',h:'16:13',c:[{n:1,t:'🧾 Pedidos (Paraguay probados): sin los avisos de no da / escasez en la tarjeta, las unidades a comprar en blanco y más grandes, y la casilla para pedir a la vista sin abrir el detalle.'}]},
   {v:'24.16',f:'17/10/2026',h:'16:08',c:[{n:1,t:'🧾 Pedidos (Paraguay probados): la tarjeta muestra sólo lo importante (foto, nombre, el % grande, el aviso de escasez y cuántas comprar). El código, el precio de Paraguay y lo vendido pasaron adentro del detalle ▾.'}]},
   {v:'24.15',f:'17/10/2026',h:'15:48',c:[{n:1,t:'📁 Paraguay → Nuevos: "Lo que no entra en el pedido" tiene dos carpetas, 📏 Medidos (pocas ventas, no llegan al 25%, descartados con margen, ya son tuyos) y ❔ No medidos (falta analizar y descartados sin margen), cada una con sus grupos como antes.'}]},
   {v:'24.14',f:'17/10/2026',h:'15:46',c:[{n:1,t:'📈 Línea de tiempo: al lado del stock de hoy dice la caja en camino a Full (unidades y en cuántos días llega, ~8 desde el despacho), lo que hay en la oficina y si viene un pedido del proveedor. Con un color elegido, sólo de ese color.'}]},
@@ -17585,16 +17586,15 @@ function _pedidoItemHtml(p,opts){
         :`<div style="width:56px;height:56px;border:1px dashed var(--border);border-radius:8px;flex:0 0 auto;font-size:.55rem;color:var(--muted);display:flex;align-items:center;justify-content:center">sin foto</div>`}
       <div style="flex:1;min-width:0">
         <div style="font-size:.8rem;font-weight:600;line-height:1.3">${p.producto||'—'}${p.variante?` <span style="color:#a78bfa;font-size:.7rem">· ${p.variante}</span>`:''}</div>
-        ${opts.etiqueta?`<div style="font-size:.68rem;margin-top:2px">${String(opts.etiqueta).replace(/ · pidiéndolo queda en (<b>)?-?\d+%(<\/b>)?/,'')}</div>`:''}
-        ${_semTxt?`<div style="font-size:.66rem;margin-top:3px;color:var(--muted)">${_semTxt}</div>`:''}
-      </div>
+              </div>
       <div style="text-align:right;flex:0 0 auto">
         ${_mgP!=null?`<div style="font-size:1.35rem;font-weight:700;color:${_colP};line-height:1">${Math.round(_mgP)}%</div>`:'<div style="font-size:.68rem;color:var(--amber)">sin medir</div>'}${_locP!=null?`<div style="margin-top:3px">${perfLocalHTML(_locP)}${perfNoLocalBtn('p',_prod.id,false)}</div>`:_esPerfP&&_prod.noLocal?`<div style="margin-top:3px;font-size:.6rem;color:var(--muted)">🏪 no da en el local${perfNoLocalBtn('p',_prod.id,true)}</div>`:''}
-        <div style="font-size:.62rem;color:var(--muted);margin-top:3px">comprar ${fmtN(p.cantidad||0)} u.${_armU>0?` · <b style="color:var(--green)">🧾 ${_armU} en el pedido</b>`:''}</div>
+        <div style="font-size:.8rem;color:var(--text);margin-top:4px">comprar <b style="font-size:1.15rem">${fmtN(p.cantidad||0)}</b> u.</div>
+        ${_armU!=null?`<span onclick="event.preventDefault();event.stopPropagation()" style="display:inline-flex;align-items:center;gap:4px;margin-top:4px;font-size:.66rem;color:${_armU>0?'var(--green)':'var(--muted)'}">🧾 pedir <input type="number" min="0" step="1" value="${_armU||''}" placeholder="0" onchange="pyArmSet('${_prod.id}',this.value)" style="width:54px;font-size:.95rem;padding:3px 5px;text-align:center;background:var(--surface2);border:1px solid ${_armU>0?'var(--green)':'var(--border)'};border-radius:6px;color:var(--text)"></span>`:''}
         <div style="font-size:.6rem;color:var(--muted);margin-top:2px">detalle ▾</div>
       </div>
     </summary>
-    <div style="margin-top:10px"><div style="font-size:.68rem;color:var(--muted);margin-bottom:8px">${_prod.codPy?`🔖 ${_prod.codPy} · `:'<span style="color:var(--amber)">🔖 sin código</span> · '}${_nu>0?`US$ ${_nu.toFixed(2)} → <b style="color:var(--text)">US$ ${_pu.toFixed(2)}</b> puesto${_ps?` · ${fmt(_ps)}`:''}`:'<span style="color:var(--red)">sin precio de Paraguay</span>'}${p.cVend!=null?` · 🛒 vendiste ${fmtN(p.cVend)}${p.cDias?` en ${p.cDias} d`:''}`:''}</div>${_pyVis?`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:8px 10px;margin-bottom:8px;background:var(--surface);border:1px solid var(--border);border-radius:10px">${_pyVis}</div>`:''}${_card}</div>
+    <div style="margin-top:10px"><div style="font-size:.68rem;color:var(--muted);margin-bottom:8px">${_prod.codPy?`🔖 ${_prod.codPy} · `:'<span style="color:var(--amber)">🔖 sin código</span> · '}${_nu>0?`US$ ${_nu.toFixed(2)} → <b style="color:var(--text)">US$ ${_pu.toFixed(2)}</b> puesto${_ps?` · ${fmt(_ps)}`:''}`:'<span style="color:var(--red)">sin precio de Paraguay</span>'}${p.cVend!=null?` · 🛒 vendiste ${fmtN(p.cVend)}${p.cDias?` en ${p.cDias} d`:''}`:''}</div>${_pyVis?`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:8px 10px;margin-bottom:8px;background:var(--surface);border:1px solid var(--border);border-radius:10px">${_pyVis}</div>`:''}${_armHTML?_card.slice(0,-_armHTML.length):_card}</div>
   </details>`;
 }
 const _pedSortFn=(a,b)=>{const o={pendiente:0,poco_stock:1,suficiente:2};return(o[a.estado||'pendiente']-o[b.estado||'pendiente'])||((b.cantidad||1)-(a.cantidad||1))||((a.producto||'').localeCompare(b.producto||'','es',{sensitivity:'base'}));};
