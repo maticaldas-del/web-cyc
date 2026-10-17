@@ -907,6 +907,13 @@ versiones nuevas. Restaurado en v23.21 (`cyc-v601`). **Antes de cada commit: `wc
   ahí se vuelve al normal para terminar el stock cerca del día que llega.
 - **Qué chequear:** que el Barbarella deje de salir con −$20.922 · que el 🔁 no oscile (subo → frena → "ya alcanza" → bajo).
 
+### El armador de cajas no leía los productos con "cortes" (17/10/2026, lo encontré en la completa)
+- **Qué es:** desde el 16/10 `pedidostodo` imprime `· cortes N ·` entre `dCS` y `Full`, y `decide_cajas.py` no lo esperaba:
+  leía 146 de 180 productos (lo decía con "⚠️ NO CIERRA" y no lo miré) y los colores con cortes se pegaban al producto de
+  arriba (el 3 Patas del enchufe de Ayelen salió como "Filtro agua" de Matías; el Centímetro salió sin colores, 95 u. de golpe).
+  Arreglado el patrón del producto y del color. `decide_pedidos.py` no tenía el problema (99 + 80 + 1 ✓).
+- **Qué chequear:** que `decide_cajas.py` diga "leí N de N ✓" en cada vuelta; si dice NO CIERRA, no se carga nada hasta arreglarlo.
+
 Él, después de que dos veces salió incompleto (precios y pedidos): *"es un problema grave que pasó dos veces ya (...) en los dos se hizo súper incompleto y nunca te diste cuenta (...) quiero agregar esto de revisar cerebro a las etapas"*. Revisa LO QUE HACE CLAUDE en cada vuelta (08:52, 12:52, 16:52, 20:52): que cada parte se haga ENTERA.
 - **La pregunta de esta etapa, para cada tarea:** ¿de dónde salió la lista que miré? ¿esa lista es TODO o sólo lo que ya existe / se movió / ya decidí? El error de las dos veces fue el mismo: mirar una lista que sólo traía una parte (`informe` = lo que se movió · `pedidosnotas` = lo ya decidido) y creer que era todo.
 - **Contar contra el total:** cada tarea termina con "N de M" contra el universo completo (publicaciones vivas, fichas del catálogo, productos con mercadería en la oficina, preguntas sin responder, publicaciones sin ficha). Si N < M, decir cuáles faltan y por qué.
