@@ -1323,3 +1323,6 @@ el comando `pedir` siguen sin meterlos. Chequear: que `.ok` siga en false para e
  · Qué chequear: que un cambio de estrategia cambie el color el día correcto; días sin estrategia anotada = 🎯 base (azul).
  · 17/10 (v24.05): con dos publicaciones al mismo precio el color sale de la que vendió ese día, después la de precio más
    parecido y, en empate, la que tiene estrategia anotada (antes ganaba la primera de la lista: Espejo 5" azul en 📈).
+
+### 17/10/2026 · v24.16 · tarjeta de Pedidos (Paraguay probados) más corta (etapa 7)
+Pedido suyo: "deja lo importante, los detalles que sean desplegables". A la vista: foto, nombre, etiqueta sin repetir el "pidiéndolo queda en N%" (es el número grande), el aviso del semáforo y "comprar N u.". El renglón código · US$ puesto · pesos · vendiste pasa a la primera línea adentro del desplegable. Vive en la rama `_esProb` de la tarjeta de Pedidos. Chequear: que el % grande y el aviso de escasez sigan visibles.
