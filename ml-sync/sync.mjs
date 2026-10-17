@@ -98,6 +98,7 @@ const ESTRATEGIAS = { base: '🎯 base', escasez: '🔥 escasez', sinrepo: '⏳ 
 function tagDeMotivo(m) {
   const t = String(m || '').toLowerCase();
   if (/no se consigue|sin reposici|4 meses|cuatro meses|nissei no|no lo consigo|no da en paraguay/.test(t)) return 'sinrepo';
+  if (/termin[oó] la escasez|fin de la escasez|sali[oó] de la escasez|ya no hay escasez/.test(t)) return 'base';
   if (/escasez|estir|hasta que llegue|se agota|se acaba|quedan pocas/.test(t)) return 'escasez';
   if (/liquid|remat|sobra|stock antiguo|sobrestock|parad[oa]|vender todo/.test(t)) return 'liquidando';
   if (/d[ií]a de la madre|d[ií]a del padre|navidad|reyes|black friday|cyber|d[ií]a del ni[nñ]o|san valent/.test(t)) return 'fecha';
