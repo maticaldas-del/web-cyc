@@ -40460,7 +40460,7 @@ async function main() {
     // (el más barato ajeno subió 8%+, ya no hay ajenos abajo del precio probado, pasamos a ganar la caja) o si pasaron 30 días.
     // Así el freno ya no es calendario fijo: dura lo que dura la razón por la que se puso.
     if (/^techofreno(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
-      const _raw = String(process.env.BILLING_PROBE).replace(/^techofreno:?/, '');
+      const _raw = String(process.env.BILLING_PROBE).replace(/^techofreno:?/, '').replace(/[;\s]+$/, '');
       const GO = /(^|;)go$/.test(_raw) && !DRY;
       const pares = _raw.replace(/(^|;)go$/, '').split(';').map((x) => x.trim()).filter(Boolean);
       const links = (await db.get('cyc/mllinks')) || {};
