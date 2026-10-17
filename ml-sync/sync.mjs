@@ -29599,6 +29599,46 @@ async function main() {
         return cs.some((x) => x[0] > t0 && x[0] <= t1 && x[1] === 0) ? false : true;
       };
 
+      // Plazo para decidir ganó/perdió aunque falte el registro de stock (17/10/2026, decisión 3).
+      const SUP_PLAZO_JUICIO = 30;
+      const linSup = {};
+      const lineaSup = async (mla) => { if (!(mla in linSup)) { try { linSup[mla] = (await db.get('mlapi/linea/' + mla)) || {}; } catch { linSup[mla] = null; } } return linSup[mla]; };
+      // Días CON stock entre t0 y t1: del registro hora por hora si ya miraba esa clave en t0; si no, de la línea
+      // de tiempo (stock del día). null si se sabe menos de la mitad de los días.
+      const diasStockSup = async (mla, t0, t1) => {
+        if (!(t1 > t0)) return 0;
+        const l = links[mla] || {}; if (!l.prodId || !l.cuenta) return null;
+        const c = sidS(l.cuenta), cam = slog.cambios || {};
+        const kV = l.variant ? l.prodId + '__' + c + '__v__' + sidS(l.variant) : null;
+        const cs = Object.entries(cam[kV && cam[kV] ? kV : l.prodId + '__' + c] || {}).map(([t, v]) => [Number(t), Number(v)]).filter(([t]) => t > 0).sort((x, y) => x[0] - y[0]);
+        let est = null; for (const [t, v] of cs) if (t <= t0) est = v;
+        if (est !== null) {
+          let ms = 0, d = t0;
+          for (const [t, v] of cs) { if (t <= t0 || t > t1) continue; if (est === 1) ms += t - d; est = v; d = t; }
+          if (est === 1) ms += t1 - d;
+          return ms / 864e5;
+        }
+        const lin = await lineaSup(mla); if (!lin) return null;
+        let con = 0, sab = 0, tot = 0;
+        for (let t = t0; t < t1; t += 864e5) { tot++; const z = lin[_rnDia(t)]; if (!z || z.st == null) continue; sab++; if (Number(z.st) > 0) con++; }
+        if (!tot || sab < tot * 0.5) return null;
+        return con / sab * ((t1 - t0) / 864e5);
+      };
+      // Lo que quedaba en stock cuando entró la caja siguiente (o hoy, si no entró). null = no se sabe.
+      const sobraTrasSup = async (mla, t0, t1) => {
+        const lin = await lineaSup(mla); if (!lin) return null;
+        let prev = null, prevK = null;
+        for (let t = t0; t <= t1; t += 864e5) {
+          const k = _rnDia(t), z = lin[k]; if (!z || z.st == null) continue;
+          const st = Math.max(0, Number(z.st) || 0);
+          if (prev != null && st > prev) return { u: prev, t: prevK, caja: true };
+          if (st === 0) return { u: 0, t: k, caja: false };
+          prev = st; prevK = k;
+        }
+        return prev != null ? { u: prev, t: prevK, caja: false } : null;
+      };
+      const sobraUsada = {};
+
       // Ventas por publicación, con la hora REAL de la venta.
       const porMla = {};
       for (const ents of Object.values(vpS)) {
@@ -30158,7 +30198,7 @@ async function main() {
           const rg = { ...base(id, ev, motivo), estado: L < 7 ? 'encurso' : 'medido', dias: Math.round(L * 10) / 10,
             uD: dv.reduce((a, x) => a + x.q, 0), cobrado: Math.round(dv.reduce((a, x) => a + x.neto, 0)),
             gD: Math.round(dv.reduce((a, x) => a + x.neto - costo * x.q, 0)),
-            precio: rm.base, volumen: 0, total: rm.total, enTotal: true, rem: rm };
+            precio: rm.base, volumen: 0, total: rm.total, enTotal: true, rem: rm, firme: L >= 7, decidido: L >= 7 };
           { const m = {}, uT = dv.reduce((a, x) => a + x.q, 0);
             if (uT > 0) for (const x of dv) sumMes(m, x.ts, rm.total * x.q / uT); else sumMes(m, finT, rm.total);
             rg.mes = redMes(m); }
@@ -30187,7 +30227,7 @@ async function main() {
           const enT = SUP_CUENTA.has(motivo) && motivo !== 'remate' && motivo !== 'escalera';   // la 🧪 prueba también (etapa 1, 27/09)
           const rg = { ...base(id, ev, motivo), estado: 'encurso', dias: Math.round(L * 10) / 10,
             uD: dv.reduce((a, x) => a + x.q, 0), cobrado: Math.round(dv.reduce((a, x) => a + x.neto, 0)),
-            precio: Math.round(pr), volumen: 0, total: Math.round(pr), enTotal: enT,
+            precio: Math.round(pr), volumen: 0, total: Math.round(pr), enTotal: enT, firme: false, decidido: (ahora - ev.ts) / 864e5 >= SUP_PLAZO_JUICIO, volFuente: (ahora - ev.ts) / 864e5 >= SUP_PLAZO_JUICIO ? 'pisado' : 'espera',
             gD: Math.round(dv.reduce((a, x) => a + x.neto - costo * x.q, 0)), mes: redMes(mesC), deRef };
           registros.push(rg);
           if (enT) atrib.push(rg);
@@ -30249,11 +30289,45 @@ async function main() {
         // esos días se vende después. El riesgo real (que llegue la caja y quede stock caro) se mira en la vuelta: con la
         // caja cerca se vuelve al precio normal para terminar el stock cerca del día que llega.
         const escCer = (ev.por === 'cerebro' && ev.mot === 'escasez') || escSup.has(ev.mla + '|' + Math.round(Number(ev.ts) / 60e3)) || [...escSup].some((k) => k.startsWith(ev.mla + '|') && Math.abs(Number(k.split('|')[1]) * 60e3 - Number(ev.ts)) < 15 * 60e3);
-        const volumen = (!volConfiable || quiebreR || escCer) ? 0 : (ev.a > ev.de ? Math.min(0, volCrudo) : Math.max(0, volCrudo));
+        // ── LAS TRES DECISIONES DEL 17/10/2026 (él: "1a / 2a / 3 que no haya no se sabe después de x tiempo, que vaya
+        // a ganar o perder. que solo haya 'no se sabe' cuando todavía no hay info segura") ──
+        // FIRME = el volumen se midió entero (stock hora por hora de las dos ventanas, sin quiebre, sin escasez).
+        // Si no, mientras el cambio tiene menos de SUP_PLAZO_JUICIO días queda "sin confirmar" (sólo el precio).
+        // Pasado el plazo se DECIDE con la cuenta más justa que se pueda:
+        //  · lo común: ventas por día CON stock antes contra después (stock del registro hora por hora o, si no
+        //    cubre, de la línea de tiempo); lo esperado sin el cambio = ritmo de antes × días con stock después.
+        //  · la escasez (2a): ¿lo que dejó de vender se vendió después? Se mira el stock que quedaba al entrar la
+        //    caja siguiente (o a hoy si no entró): las "ahorradas" que siguen ahí se restan a la ganancia de antes.
+        //  · sin ningún dato de stock: se juzga sólo por el precio (no se inventa un volumen).
+        const dirV = (v) => (ev.a > ev.de ? Math.min(0, v) : Math.max(0, v));
+        const vencido = (ahora - ev.ts) / 864e5 >= SUP_PLAZO_JUICIO;
+        let volumen = 0, volFuente = 'espera', volNota = '';
+        if (volConfiable && !quiebreR && !escCer) { volumen = dirV(volCrudo); volFuente = 'medido'; }
+        else if (vencido) {
+          const dA = await diasStockSup(ev.mla, ev.ts - L * 864e5, ev.ts), dD = await diasStockSup(ev.mla, ev.ts, finT);
+          const rA = dA != null && dA >= 3 ? uA / dA : null;
+          if (escCer) {
+            volFuente = 'escasez'; volNota = 'lo que dejó de vender se vendió después';
+            const ahorr = rA != null && dD != null ? Math.max(0, rA * dD - uD) : 0;
+            if (ahorr >= 0.5) {
+              const sb = await sobraTrasSup(ev.mla, ev.ts, ahora);
+              if (sb) {
+                const kS = ev.mla + '|' + sb.t; const queda = sobraUsada[kS] != null ? sobraUsada[kS] : sb.u;
+                const q = Math.min(ahorr, queda); sobraUsada[kS] = queda - q;
+                if (q > 0) { volumen = -q * Math.max(0, gUViejo); volNota = `quedaron ${Math.round(q * 10) / 10} u. sin vender ${sb.caja ? 'al llegar la caja' : 'a hoy'}`; }
+              } else volNota = 'sin stock diario para saber si sobró: sólo el precio';
+            }
+          } else if (rA != null && dD != null && dD >= 3) {
+            volumen = dirV((uD - rA * dD) * gUViejo); volFuente = 'estimado';
+            volNota = `ritmo con stock ${Math.round(rA * 300) / 10}→${Math.round(uD / dD * 300) / 10} u./mes`;
+          } else { volFuente = 'soloprecio'; volNota = 'sin dato de stock: se juzga sólo por el precio'; }
+        }
+        const firme = volFuente === 'medido', decidido = firme || vencido;
         const evs = ev.ev || {}; const juicio = (evalNuevas.filter((x) => x.id === id).sort((a, b) => b.W - a.W)[0] || {}).res;
         const v = quiebreR ? 'sinstock' : ((juicio || evs.d30 || evs.d15 || evs.d7 || {}).v || '');
         const reg = { ...base(id, ev, motivo), estado: 'medido', dias: Math.round(L), diasX: Math.round(L * 100) / 100, uA, uD, gD: Math.round(gD), cobrado: Math.round(despV.reduce((a, x) => a + x.neto, 0)), precio: Math.round(precio), volumen: Math.round(volumen),
-          total: Math.round(precio + volumen), v, quiebre: quiebreR, esc: escCer || undefined, volSinDato: !volConfiable && !quiebreR, enTotal: SUP_CUENTA.has(motivo), deRef };
+          total: Math.round(precio + volumen), v, quiebre: quiebreR, esc: escCer || undefined, volSinDato: !decidido && !volConfiable && !quiebreR, enTotal: SUP_CUENTA.has(motivo), deRef,
+          firme, decidido, volFuente, volNota: volNota || undefined };
         sumMes(mesM, finT, volumen); reg.mes = redMes(mesM);
         registros.push(reg);
         if (reg.enTotal) atrib.push(reg);
@@ -30276,6 +30350,11 @@ async function main() {
         ganaron: atrib.filter((x) => x.total > 0).length,
         perdieron: atrib.filter((x) => x.total < 0).length,
         quiebres: atrib.filter((x) => x.quiebre).length,
+        // 1a (17/10/2026): FIRME = medido entero · SIN CONFIRMAR = el resto (todavía no se sabe o estimado).
+        firme: { n: atrib.filter((x) => x.firme).length, total: Math.round(sumaA((x) => x.firme ? x.total : 0)) },
+        decidido: { n: atrib.filter((x) => x.decidido).length, total: Math.round(sumaA((x) => x.decidido ? x.total : 0)) },
+        espera: { n: atrib.filter((x) => !x.decidido).length, total: Math.round(sumaA((x) => !x.decidido ? x.total : 0)) },
+        plazoJuicio: SUP_PLAZO_JUICIO,
         enCurso, sinCosto, sinPrecio, manuales,
         // v2: sólo decisiones del robot mirando el mercado (regla del 25/09). Los rescates van aparte.
         ver: 2,
@@ -30328,6 +30407,8 @@ async function main() {
       console.log(`=== LA AUTOMATIZACIÓN CONTRA NO TENERLA ===`);
       console.log(`${resumen.n} cambios del robot medidos (${resumen.subas} subas · ${resumen.bajas} bajas) · ${enCurso} en curso (menos de 7 días) · ${sinCosto} sin costo · ${sinPrecio} sin precio de antes · ${manuales} a mano (no cuentan)`);
       console.log(`Efecto precio (firme): ${$s(resumen.precio)} · efecto volumen (supuesto): ${$s(resumen.volumen)} · TOTAL ${$s(resumen.total)}`);
+      console.log(`FIRME (medido entero): ${resumen.firme.n} · ${$s(resumen.firme.total)} · DECIDIDO (firme + estimado pasados ${SUP_PLAZO_JUICIO} d): ${resumen.decidido.n} · ${$s(resumen.decidido.total)} · ESPERANDO DATO: ${resumen.espera.n} · ${$s(resumen.espera.total)}`);
+      { const fu = {}; for (const x of atrib) fu[x.volFuente || '-'] = (fu[x.volFuente || '-'] || 0) + 1; console.log(`Cómo se midió el volumen: ${Object.entries(fu).map(([k, n]) => k + ' ' + n).join(' · ')}`); }
       console.log(`Ganó ${$s(resumen.gano)} en ${resumen.ganaron} cambios · PERDIÓ ${$s(-resumen.perdio)} en ${resumen.perdieron} cambios (primero van los que perdieron)`);
       console.log(`${resumen.ganaron} dejaron más · ${resumen.perdieron} dejaron menos · ${resumen.quiebres} con el volumen sin contar por quiebre de stock`);
       console.log(`No cuentan (🛟 recuperar margen por costo/inflación): ${resumen.rescates.n} cambios · ${$s(resumen.rescates.total)}`);
@@ -30457,7 +30538,7 @@ async function main() {
         for (const x of registros.slice().sort((a, b) => a.ts - b.ts)) {
           const f = new Date(x.ts - 3 * 3600e3).toISOString().slice(0, 10);
           const j = jz[x.id] ? ` · JUICIO ${jz[x.id].v} (${new Date((Number(jz[x.id].ts) || 0) - 3 * 3600e3).toISOString().slice(0, 10)}): ${String(jz[x.id].txt || '').slice(0, 120)}` : '';
-          console.log(`@@ ${x.id} · ${f} · ${x.motivo} · ${x.nom} (${x.cuenta}) · ${x.de ? $s(x.de) : '?'}→${x.a ? $s(x.a) : '?'} · ${x.estado}${x.estado === 'medido' || x.estado === 'encurso' ? ` · ${x.dias != null ? x.dias + ' d · ' : ''}${x.uA != null ? x.uA + '→' + x.uD + ' u. · ' : ''}precio ${$s(x.precio || 0)} · volumen ${$s(x.volumen || 0)} · TOTAL ${$s(x.total || 0)}${x.quiebre ? ' · quiebre de stock' : ''}${x.volSinDato ? ' · volumen sin dato' : ''}` : ''}${j}`);
+          console.log(`@@ ${x.id} · ${f} · ${x.motivo} · ${x.nom} (${x.cuenta}) · ${x.de ? $s(x.de) : '?'}→${x.a ? $s(x.a) : '?'} · ${x.estado}${x.estado === 'medido' || x.estado === 'encurso' ? ` · ${x.dias != null ? x.dias + ' d · ' : ''}${x.uA != null ? x.uA + '→' + x.uD + ' u. · ' : ''}precio ${$s(x.precio || 0)} · volumen ${$s(x.volumen || 0)} · TOTAL ${$s(x.total || 0)}${x.quiebre ? ' · quiebre de stock' : ''}${x.volSinDato ? ' · volumen sin dato' : ''}${x.volFuente ? ' · ' + x.volFuente + (x.volNota ? ' (' + x.volNota + ')' : '') : ''}` : ''}${j}`);
         }
       };
       if (!MANDAR) { if (MEDIR) listarTodo(); else await correrVolver(); console.log('\nPRUEBA: no se guardó nada. Con ":go" guarda' + (MEDIR ? '.' : ' y avisa.')); return; }

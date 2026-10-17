@@ -2644,7 +2644,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.18';
+const APP_VERSION='24.19';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2655,6 +2655,7 @@ const APP_VERSION='24.18';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.19',f:'17/10/2026',h:'16:46',c:[{n:2,t:'🤖 Robot de precios (Métricas): el total se abre en ✅ firme (medido entero, con el stock de las dos ventanas) y sin confirmar en gris. Pasados 30 días todo cambio queda juzgado con la cuenta más justa (ventas por día con stock antes y después), y las subas por escasez restan lo que quedó sin vender al llegar la caja.'}]},
   {v:'24.18',f:'17/10/2026',h:'16:22',c:[{n:1,t:'🇵🇾 Paraguay: probados y nuevos con la misma tarjeta, más baja y usando el ancho: foto, nombre, código · precio puesto · vendidas, y a la derecha en una fila el % del local, comprar N u., la casilla 🧾 pedir y el % grande.'}]},
   {v:'24.17',f:'17/10/2026',h:'16:13',c:[{n:1,t:'🧾 Pedidos (Paraguay probados): sin los avisos de no da / escasez en la tarjeta, las unidades a comprar en blanco y más grandes, y la casilla para pedir a la vista sin abrir el detalle.'}]},
   {v:'24.16',f:'17/10/2026',h:'16:08',c:[{n:1,t:'🧾 Pedidos (Paraguay probados): la tarjeta muestra sólo lo importante (foto, nombre, el % grande, el aviso de escasez y cuántas comprar). El código, el precio de Paraguay y lo vendido pasaron adentro del detalle ▾.'}]},
@@ -18709,7 +18710,7 @@ function renderMetAuto(){
         <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${sube?'⬆️':'⬇️'} ${x.nom||x.mla}${x.cuenta?' · '+x.cuenta:''}</span>
         <b style="white-space:nowrap;color:${metJuicio(x)?MET_JZ[metJuicio(x).v][2]:col(x.total)}">${metJuicio(x)?MET_JZ[metJuicio(x).v][1]+' ':n(x.total)>0?'ganó ':n(x.total)<0?'perdió ':'igual '}${(()=>{const j=metJuicio(x);const choca=j&&((j.v==='perdio'&&n(x.total)>0)||(j.v==='gano'&&n(x.total)<0));return choca?`<span style="color:var(--muted);font-weight:400" title="El número es sólo lo que se cobró de más (o de menos) en las unidades que SÍ se vendieron. No cuenta las ventas que se perdieron por el precio: eso lo mira mi juicio.">(cuenta del precio ${sg(x.total)}, sin las ventas perdidas)</span>`:sg(x.total);})()}</b>
       </div>
-      <div style="font-size:.6rem;color:var(--muted)">${fh(x.ts)} · ${metAutoMotTxt(x)} · ${x.de?fmt(n(x.de)):'?'} → ${x.a?fmt(n(x.a)):'?'} (${sube?'+':''}${pct}%)${n(x.deRef)>0?' · medido contra '+fmt(n(x.deRef))+', el precio antes del robot':''}${x._mesParcial?' · sólo lo vendido en '+mesTxt(metAutoMes):''}</div>
+      <div style="font-size:.6rem;color:var(--muted)">${fh(x.ts)} · ${metAutoMotTxt(x)} · ${x.de?fmt(n(x.de)):'?'} → ${x.a?fmt(n(x.a)):'?'} (${sube?'+':''}${pct}%)${n(x.deRef)>0?' · medido contra '+fmt(n(x.deRef))+', el precio antes del robot':''}${x._mesParcial?' · sólo lo vendido en '+mesTxt(metAutoMes):''}${x.estado==='medido'?fuenteTxt(x):''}</div>
       ${metJuicioHTML(x)}
     </div>`;
   };
@@ -18744,10 +18745,23 @@ function renderMetAuto(){
     <div style="font-size:.62rem;color:var(--muted);margin:2px 0 6px">${curso.length} cambio${curso.length===1?'':'s'} · ${sg(cursoTotV)} cobrado${curso.length===1?'':'s'} por el precio · no suma arriba hasta los 7 días</div>
     ${curso.map(filaCurso).join('')}</div>`:'';
   const ok=conf.slice().sort((a,b)=>n(a.total)-n(b.total));
+  // FIRME Y SIN CONFIRMAR (17/10/2026, decisión 1a): firme = el volumen se midió entero con el stock hora por hora.
+  // Lo demás va aparte en gris: "decidido" con la cuenta más justa pasados 30 días, o esperando dato.
+  const esFirme=x=>x.firme!=null?!!x.firme:(!x.volSinDato&&!x.quiebre&&!x.esc);
+  const fir=ok.filter(esFirme),sinC=ok.filter(x=>!esFirme(x)),dec=sinC.filter(x=>x.decidido);
+  const firTot=fir.reduce((a,x)=>a+n(x.total),0),sinCTot=sinC.reduce((a,x)=>a+n(x.total),0);
+  const lineaFirme=ok.length?`<div style="font-size:.66rem;margin:-4px 0 10px;line-height:1.5">✅ <b>Firme</b> (medido entero): <b style="color:${col(firTot)}">${sg(firTot)}</b> en ${fir.length} · <span style="color:var(--muted)">sin confirmar ${sg(sinCTot)} en ${sinC.length}${dec.length?` (${dec.length} ya juzgado${dec.length===1?'':'s'} con la cuenta más justa${sinC.length-dec.length?` · ${sinC.length-dec.length} esperando dato`:''})`:''}</span></div>`:'';
+  const fuenteTxt=x=>{const vf=x.volFuente;if(esFirme(x))return ' · ✅ medido entero';
+    if(vf==='estimado')return ' · estimado'+(x.volNota?': '+x.volNota:'');
+    if(vf==='escasez')return ' · escasez'+(x.volNota?': '+x.volNota:'');
+    if(vf==='soloprecio')return ' · sólo el precio (no hay dato de stock)';
+    if(vf==='pisado')return ' · otro cambio llegó antes de los 7 días: sólo el precio';
+    return ' · ⏳ sin confirmar hasta el '+fh(n(x.ts)+30*864e5).slice(0,5);};
   const cuerpo=ok.length?`
     <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">${confTot<0?'Plata de MENOS':'Plata de más'} que dejaron las decisiones del robot · ${metAutoMes==='todos'?'todos los meses':mesTxt(metAutoMes)}</div>
     <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:2rem;color:${col(confTot)};line-height:1.1">${sg(confTot)}</div>
     <div style="font-size:.62rem;color:var(--muted);margin-bottom:10px"><span style="color:var(--green)">${ok.filter(x=>n(x.total)>0).length} ganaron ${sg(ok.reduce((a,x)=>a+Math.max(0,n(x.total)),0))}</span> · <span style="color:var(--red)">${ok.filter(x=>n(x.total)<0).length} perdieron ${sg(ok.reduce((a,x)=>a+Math.min(0,n(x.total)),0))}</span></div>
+    ${lineaFirme}
     ${(()=>{const J=med.map(metJuicio).filter(Boolean),c=k=>J.filter(j=>j.v===k).length;return J.length?`<div style="font-size:.62rem;margin:-4px 0 10px;color:var(--muted)">🧠 Mi juicio: <span style="color:var(--green)">${c('gano')} ganaron</span> · <span style="color:var(--red)">${c('perdio')} perdieron</span> · <span style="color:#fbbf24">${c('espera')} todavía no se sabe</span> · ${c('igual')+c('nocuenta')} igual o no fue el precio · ${med.length-J.length} sin mirar</div>`:'';})()}
     ${ok.map(fila).join('')}`
     :`<div style="font-size:.72rem;color:var(--muted)">Todavía no hay ningún resultado${metAutoMes==='todos'?'':' en '+mesTxt(metAutoMes)}: cada cambio necesita 7 días para saber si ganó o perdió.</div>`;

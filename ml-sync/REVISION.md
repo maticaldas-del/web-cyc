@@ -1328,3 +1328,13 @@ el comando `pedir` siguen sin meterlos. Chequear: que `.ok` siga en false para e
 Pedido suyo: "deja lo importante, los detalles que sean desplegables". A la vista: foto, nombre, etiqueta sin repetir el "pidiéndolo queda en N%" (es el número grande), el aviso del semáforo y "comprar N u.". El renglón código · US$ puesto · pesos · vendiste pasa a la primera línea adentro del desplegable. Vive en la rama `_esProb` de la tarjeta de Pedidos. Chequear: que el % grande y el aviso de escasez sigan visibles.
 · v24.17, mismo día: él sacó de la vista "no da" y el aviso de escasez; "comprar N u." en blanco y grande; la casilla 🧾 pedir pasa al resumen de la tarjeta (con stopPropagation para no abrir/cerrar) y sale del desplegable (`_card` sin `_armHTML`). Chequear: tocar la casilla no abre la tarjeta.
 · v24.18: probados y nuevos con la MISMA tarjeta (pedido suyo: "todos los productos dentro de paraguay se vean igual"): renglón código · US$ → puesto · $ · vendidas abajo del nombre en los dos, y a la derecha UNA fila (local, comprar N en probados, 🧾 pedir, % grande + detalle). La casilla de nuevos llama a `candSetPedir` (mismo freno del piso). Chequear: al tocar la casilla no se abre la tarjeta; si se toca alguna, tocar la otra igual.
+
+### v24.19 · 17/10/2026 · Robot de precios: firme / sin confirmar y juicio a los 30 días (etapa 1, eligió 1a 2a 3)
+- **Qué:** el supervisor marca cada cambio `firme` (volumen medido entero con el stock hora por hora), `decidido` y `volFuente`
+  (`medido` · `estimado` · `escasez` · `soloprecio` · `pisado` · `espera`). Pasados `SUP_PLAZO_JUICIO` (30) días todo cambio se juzga:
+  ventas por día CON stock antes vs después (`diasStockSup`: stocklog o, si no cubre, `mlapi/linea` st>0; null con menos de la mitad
+  de los días sabidos); escasez: lo "ahorrado" que seguía en stock al entrar la caja siguiente (`sobraTrasSup`, repartido una sola vez
+  por caja con `sobraUsada`) se resta a la ganancia del precio viejo. Sin dato de stock: sólo precio. `resumen.firme/decidido/espera`.
+- **Web:** `renderMetAuto` muestra "✅ Firme" y "sin confirmar" (gris) abajo del total, y cada renglón dice cómo se midió (`fuenteTxt`).
+- **Chequear:** que la suma firme + sin confirmar = total; que un cambio de escasez no reste la misma sobra dos veces; que `estimado`
+  mantenga la regla de dirección (subas sólo restan, bajas sólo suman); que la lectura de la línea no alargue mucho la corrida.

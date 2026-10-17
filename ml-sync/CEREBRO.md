@@ -86,6 +86,7 @@ archivo son AYUDA, no la decisión: si sólo se siguen las reglas, lo que nadie 
 - **Venta barata ≠ remate**: remate sólo si antes estuvo parado de verdad (línea de tiempo `mlapi/linea`).
 - **Juzgar los resultados de precios todos los días** (08:52: `supervisor:medir:go` + `juzgo:`). Lo que perdió no se
   vuelve atrás por regla: se piensa.
+- **"No se sabe" sólo mientras falta dato (17/10/2026, eligió 1a 2a 3).** El supervisor separa ✅ firme (medido entero) de sin confirmar; a los 30 días todo cambio queda juzgado con la cuenta más justa (ritmo con stock antes vs después) y las subas por escasez restan lo que quedó sin vender al llegar la caja. Mis `juzgo` tampoco quedan en `espera` más de 30 días: decido ganó/perdió/igual.
 - Siempre releer de ML después de cambiar un precio.
 
 ## 2 · Promos y descuentos
