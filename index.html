@@ -2639,7 +2639,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.00';
+const APP_VERSION='24.01';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2650,6 +2650,7 @@ const APP_VERSION='24.00';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.01',f:'16/10/2026',h:'23:50',c:[{n:1,t:'Ventas x Producto: toda venta muestra su estrategia. Las de publicaciones que nunca tuvieron una anotada dicen 🎯 base (precio normal).'}]},
   {v:'24.00',f:'16/10/2026',h:'23:55',c:[{n:2,t:'Cada precio tiene su estrategia: 🎯 base · 🔥 escasez · ⏳ sin reposición · 📈 buscando techo · 📉 liquidando · 🥊 ganar la caja · 🏷️ promo · 🎁 fecha especial · 🛡️ excepción · 🆕 lanzamiento · ↩️ corrección. En Ventas x Producto cada venta muestra la estrategia que tenía ese producto cuando se vendió (tocala para ver el motivo).'}]},
   {v:'23.99',f:'16/10/2026',h:'23:30',c:[{n:1,t:'Pedidos → Paraguay → Nuevos (Nissei): abajo de todo, desplegable "🗂️ Todo lo que revisó el robot y NO da" con los del catálogo de comprasparaguay que no llegan al piso, los que no tienen el mismo producto en ML, los que nadie vende y los que quedaron afuera por regla. Sólo muestra.'}]},
   {v:'23.98',f:'16/10/2026',h:'22:10',c:[{n:3,t:'"🚫 No lo consigo" también por color: el botón de la tarjeta marca el producto entero (ningún color se consigue) y el de cada color marca sólo ese color. El color marcado pasa solo a escasez.'}]},
@@ -10332,6 +10333,8 @@ function estrategiaDe(mla,ts){
   if(!mla)return null;const h=(state.estrategia||{})[mla]||{};const t=Number(ts)||Date.now();
   let best=null;for(const [k,x] of Object.entries(h)){const n=Number(k);if(!(n>0)||n>t+60e3||!x||!ESTRATEGIA_UI[x.t])continue;if(!best||n>best.ts)best={...x,ts:n};}
   if(!best){const ns=(state.nosubir||{})[mla];if(ns){const n=Number(ns.ts||ns.desde)||0;if(!n||n<=t)best={t:'liquidando',m:'marcada liquidando',ts:n};}}
+  // 17/10, él: "¿por qué algunos no tienen tag?". Lo que nunca tuvo una estrategia anotada está en su precio normal: es 🎯 base.
+  if(!best)best={t:'base',m:'sin estrategia anotada: precio normal',ts:0};
   return best;
 }
 function estrategiaChip(e){if(!e)return'';const u=ESTRATEGIA_UI[e.t];if(!u)return'';const d=e.ts?new Date(e.ts).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}):'';
