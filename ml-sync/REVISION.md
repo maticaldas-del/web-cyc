@@ -1289,3 +1289,5 @@ el comando `pedir` siguen sin meterlos. Chequear: que `.ok` siga en false para e
    El globito del carril del precio dice la estrategia, qué significa y el motivo (🧠 por qué). Abajo, la leyenda con las
    estrategias que aparecen. El costo pasó a línea punteada (para no confundirse con escasez/sin reposición).
  · Qué chequear: que un cambio de estrategia cambie el color el día correcto; días sin estrategia anotada = 🎯 base (azul).
+ · 17/10 (v24.05): con dos publicaciones al mismo precio el color sale de la que vendió ese día, después la de precio más
+   parecido y, en empate, la que tiene estrategia anotada (antes ganaba la primera de la lista: Espejo 5" azul en 📈).

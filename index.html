@@ -2639,7 +2639,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.04';
+const APP_VERSION='24.05';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2650,6 +2650,7 @@ const APP_VERSION='24.04';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.05',f:'17/10/2026',h:'13:51',c:[{n:1,t:'🎨 Línea del precio: con dos publicaciones al mismo precio, el color sale de la que vendió o tiene estrategia anotada (antes el Espejo 5" salía azul el último día estando en 📈 buscando techo).'}]},
   {v:'24.04',f:'17/10/2026',h:'13:38',c:[{n:1,t:'📈 En la línea de tiempo, la línea del precio va del color de su estrategia (🎯 base azul, 🔥 escasez naranja, ⏳ sin reposición amarillo, 📈 techo verde, 📉 liquidando rojo…). Pasando el mouse dice qué estrategia era y por qué. El costo pasó a línea punteada.'}]},
   {v:'24.03',f:'17/10/2026',h:'12:15',c:[{n:1,t:'📈 Buscando techo cuenta las subas seguidas: la segunda dice "buscando techo ×2", la tercera ×3, y vuelve a empezar después de una corrección o de otra estrategia.'}]},
   {v:'24.02',f:'17/10/2026',h:'02:10',c:[{n:2,t:'🇵🇾 Paraguay: el recargo de respaldo pasa de 17% a 20% (sólo se usa si no hay pedidos medidos; hoy el panel ya usa el real de los pedidos, ~22%). Las pantallas ya no dicen "17%" escrito a mano: dicen "recargo".'}]},
@@ -9665,8 +9666,15 @@ function lineaPintar(prodId){
   // buscadas por los precios. y al poner el mouse arriba que explique"). Por día: la estrategia (`estrategiaDe`, la MISMA del
   // chip de Ventas) de la publicación que pone el precio de la línea (la más barata ese día), al cierre de ese día.
   const _estD={};{const _ms=Object.keys(porMlaF);ks.forEach(k=>{const d=dias[k];if(!d||!(d.p>0)||!_ms.length)return;
-    let m=null,mp=Infinity;for(const mm of _ms){const x=(porMlaF[mm]||{})[k];const xp=x&&Number(x.p);if(xp>0&&xp<mp){mp=xp;m=mm;}}
-    if(!m)m=_ms[0];const t=new Date(k.replace(/_/g,'-')+'T23:59:59-03:00').getTime();const e=estrategiaDe(m,t);if(e&&ESTRATEGIA_UI[e.t])_estD[k]=e;});}
+    // 17/10, él con el Espejo 5": "dice buscando techo y en la línea está azul". Con dos publicaciones al MISMO precio ganaba
+    // la primera de la lista (la que nunca tuvo estrategia). Ahora: la que vendió ese día, después la de precio más parecido
+    // al de la línea, y en un empate la que tiene una estrategia anotada (no base).
+    const t=new Date(k.replace(/_/g,'-')+'T23:59:59-03:00').getTime();let best=null,bs=null;
+    for(const mm of _ms){const x=(porMlaF[mm]||{})[k];const xp=x&&Number(x.p);if(!(xp>0))continue;const e=estrategiaDe(mm,t);
+      const sc=[Number(x.u)>0?0:1,Math.round(Math.abs(xp-d.p)/Math.max(1,d.p)*100),e&&e.t!=='base'?0:1,-(e&&e.ts||0)];
+      const di=bs?sc.findIndex((v,i)=>v!==bs[i]):-1;if(!bs||(di>=0&&sc[di]<bs[di])){bs=sc;best=e;}}
+    if(!bs){const e0=_ms.map(mm=>estrategiaDe(mm,t)).find(e=>e&&e.t!=='base');best=e0||estrategiaDe(_ms[0],t);}
+    if(best&&ESTRATEGIA_UI[best.t])_estD[k]=best;});}
   const _estCol=k=>{const e=_estD[k];return e?ESTRATEGIA_UI[e.t][2]:'var(--text)';};
   const _estTxt=e=>{if(!e)return'';const u=ESTRATEGIA_UI[e.t];const d=e.ts?new Date(e.ts).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}):'';
     return `${u[0]} ${u[1]}${e.n>1?' ×'+e.n:''}: ${u[3]}${e.n>1?' Es la suba n.º '+e.n+' seguida buscando el techo.':''}${e.m?'\n🧠 por qué: '+e.m:''}${d?' (desde el '+d+')':''}`.replace(/[<>&]/g,'');};
