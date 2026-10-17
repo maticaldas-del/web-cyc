@@ -323,6 +323,9 @@ producto?"* y, con la lista, *"lo que recomiendes"* en las 11. Cada una, en cada
 3. **Paulvic.** Pedido fijo cada 15 días, por aroma, para 45 días de su ritmo (`pvped`). Al juzgar la prueba de $21.990
    (19-20/10): si pierde, volver a **$14.950**, no a $14.360 (abajo del escalón de comisión de $15.000 deja más). Si gana,
    la primera a extender es Persea (Luciana, la que más vende).
+   **Lo que se pide y no viene, no viene más** (17/10/2026, regla suya): queda anotado en el pedido (`falto`) y el aroma se marca
+   `cyc/noconsigo/<prod>/nunca/<aroma>` (lo hace `pvped:llego`): no se vuelve a pedir y cuenta como sin reposición (⏳). Se saca
+   sólo si él lo vuelve a pedir o con `pvped:nunca:-<aroma>;go`. Primeros: Acqua, Indigo Mujer y Miss Mujer (pedido del 06/10).
 4. **Las visitas cortan antes una prueba de precio mala.** En el techo/lupa: si las visitas de 3 días cayeron a la mitad
    o menos de las de los 14 anteriores **y** cambió la caja, se vuelve en esa misma vuelta, sin esperar las ventas. Siempre
    con una hermana sin cambio como control (si la hermana también cayó, es la temporada).

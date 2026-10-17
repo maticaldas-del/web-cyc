@@ -2639,7 +2639,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.05';
+const APP_VERSION='24.06';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2650,6 +2650,7 @@ const APP_VERSION='24.05';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.06',f:'17/10/2026',h:'15:08',c:[{n:2,t:'🚫 Paulvic: lo que se pidió y no vino queda anotado en el pedido y marcado "no viene más": Pedidos no lo vuelve a pedir y cuenta como sin reposición. Se saca tocando el botón o pidiéndolo de nuevo.'}]},
   {v:'24.05',f:'17/10/2026',h:'13:51',c:[{n:1,t:'🎨 Línea del precio: con dos publicaciones al mismo precio, el color sale de la que vendió o tiene estrategia anotada (antes el Espejo 5" salía azul el último día estando en 📈 buscando techo).'}]},
   {v:'24.04',f:'17/10/2026',h:'13:38',c:[{n:1,t:'📈 En la línea de tiempo, la línea del precio va del color de su estrategia (🎯 base azul, 🔥 escasez naranja, ⏳ sin reposición amarillo, 📈 techo verde, 📉 liquidando rojo…). Pasando el mouse dice qué estrategia era y por qué. El costo pasó a línea punteada.'}]},
   {v:'24.03',f:'17/10/2026',h:'12:15',c:[{n:1,t:'📈 Buscando techo cuenta las subas seguidas: la segunda dice "buscando techo ×2", la tercera ×3, y vuelve a empezar después de una corrección o de otra estrategia.'}]},
@@ -17869,7 +17870,11 @@ function _noConsigoRaw(prodId){const r=(state.noconsigo||{})[prodId];return type
 function _noConsigoActivo(prodId,vari){
   const r=_noConsigoRaw(prodId),ent=Number((state.ofientro||{})[prodId])||0;
   const todo=Number(r.todo)||0;if(todo&&!(ent>todo))return{ts:todo,v:false};
-  if(!vari)return 0;const vt=Number((r.v||{})[sid(vari)])||0;if(!vt)return 0;
+  if(!vari)return 0;
+  // NO VIENE MÁS (17/10/2026, regla suya): un aroma del Paulvic que se pidió y no vino queda marcado para siempre
+  // (`cyc/noconsigo/<prod>/nunca/<aroma>`, lo pone `pvped:llego`). No se cae al entrar mercadería.
+  {const nu=(r.nunca||{})[sid(vari)];if(nu)return{ts:Number(nu.ts)||Date.now(),v:true,nunca:nu};}
+  const vt=Number((r.v||{})[sid(vari)])||0;if(!vt)return 0;
   const ofiV=Math.max(0,Number(getQV(prodId,OFI,vari))||0);
   return (ent>vt&&ofiV>0)?0:{ts:vt,v:true};
 }
@@ -17879,12 +17884,17 @@ function noConsigoBtn(prod,vari){
   const deTodo=!!(vari&&nc&&!nc.v);   // el color está frenado porque se marcó el producto entero
   if(deTodo)return`<span class="pi-var-toggle" style="cursor:default;color:var(--red);border-color:rgba(239,68,68,.35)" title="Está marcado el producto entero: no se consigue ningún color">🚫</span>`;
   const onc=`event.stopPropagation();toggleNoConsigo('${prod.id}','${va}')`;
+  if(nc&&nc.nunca)return`<button class="pi-var-toggle" style="background:rgba(239,68,68,.14);color:var(--red);border-color:rgba(239,68,68,.35)" onclick="${onc}" title="Se pidió${nc.nunca.ped?' en el pedido '+nc.nunca.ped:''} y no vino: se da por que no viene más. No se vuelve a pedir y cuenta como sin reposición. Tocá para sacarlo (o pedilo de nuevo al Paulvic).">🚫 no viene más</button>`;
   return nc
     ?`<button class="pi-var-toggle" style="background:rgba(239,68,68,.14);color:var(--red);border-color:rgba(239,68,68,.35)" onclick="${onc}" title="Marcado: no se consigue${vari?' este color':''}. Cuenta como sin reposición (escasez: se estira el precio para que dure hasta ~4 meses). Se saca solo cuando entra mercadería a la oficina. Tocá para sacarlo ya.">🚫 ${vari?'no se consigue':'no se consigue · deshacer'}</button>`
     :`<button class="pi-var-toggle" onclick="${onc}" title="${vari?'Si Tito no consigue ESTE color: tocá acá. Sólo este color pasa a escasez.':'Si Tito no consigue NINGÚN color (o el producto): tocá acá. Pasa a escasez (sin reposición) y el precio se estira para que el stock dure.'} Se saca solo cuando entra mercadería a la oficina.">🚫 ${vari?'no lo consigo':'No lo consigo'}</button>`;
 }
 async function toggleNoConsigo(prodId,vari){
   const act=_noConsigoActivo(prodId,vari||undefined),val=act?null:Date.now();
+  if(act&&act.nunca){if(!confirm(`${vari}: se pidió y no vino. ¿Volver a pedirlo?`))return;
+    try{await db.ref('cyc/noconsigo/'+prodId+'/nunca/'+sid(vari)).remove();}catch(e){toast('No se pudo guardar: '+e.message,'err');return;}
+    const r0=_noConsigoRaw(prodId);if(r0.nunca)delete r0.nunca[sid(vari)];(state.noconsigo=state.noconsigo||{})[prodId]=r0;_repoMemo={};
+    toast('Sacado: '+vari+' vuelve a pedirse','ok');renderPedidos();return;}
   const path='cyc/noconsigo/'+prodId+(vari?'/v/'+sid(vari):'/todo');
   try{
     const raw=(state.noconsigo||{})[prodId];

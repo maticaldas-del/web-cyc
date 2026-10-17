@@ -341,6 +341,11 @@ y deja 25%+ (`Tde`); el motivo de Tito y el 📋 Copiar pedido dicen "SÓLO este
 "desaparecieron N u." con stock compartido; `antiguo` muestra también la cuenta con las ventas de 30 d. Qué chequear:
 que `cortes` salga en el log de `pedidostodo` y `decide_pedidos.py` lea N de M ✓.
 
+### Paulvic: lo que no vino no viene más (17/10/2026, v24.06, regla suya)
+- Qué: `pvped:llego` marca cada aroma que faltó en `cyc/noconsigo/<prod>/nunca/<sid>` ({ts, ped, v, falto}); `pvped:nunca[:aroma;-aroma][;go]` a mano; volver a pedirlo con `pvped:<aroma>=<u>;go` saca la marca.
+- Dónde: sync.mjs (pvped, `pedidostodo` imprime ` · NUNCA` en el color), `notas/decide_pedidos.py` (pone 0 con motivo para Tito), index.html (`_noConsigoActivo` la devuelve siempre, botón "🚫 no viene más").
+- Chequear: que la marca NO se caiga al entrar mercadería a la oficina, que Pedidos no pida ese aroma y que pedirlo de nuevo la saque.
+
 ### `cajaitems`: corregir lo que salió en una caja ya despachada (17/10/2026)
 Qué: `cajaitems:<seguimiento>|<palabra>[@color]=<u>;…;go` (ml-sync) fija las unidades de la caja y mueve la diferencia contra la
 oficina (salió de más → baja la oficina; de menos → vuelve). No toca cajas recibidas. Chequear: que la suma caja + oficina no cambie

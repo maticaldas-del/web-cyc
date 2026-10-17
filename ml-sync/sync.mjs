@@ -37911,6 +37911,9 @@ async function main() {
       const noLei = ks.filter((k, i) => R[i] === FALLO);
       if (noLei.length) { console.log(`⚠️ NO LEÍ: ${noLei.join(' · ')} — no armo la lista a medias`); return; }
       const [I, L, VP, ENV, PR, SH, CPY, PV, PAP, NT, PROV, TC, CD, CE, AP] = R.map((x) => x || {});
+      // Lo que no vino del Paulvic "no viene más" (17/10/2026): `cyc/noconsigo/<prod>/nunca/<aroma>` → el renglón dice NUNCA y no se pide.
+      let NCp; try { NCp = (await db.get('cyc/noconsigo')) || {}; } catch { console.log('⚠️ NO LEÍ: cyc/noconsigo — no armo la lista a medias'); return; }
+      const nuncaPD = {}; for (const [pid, r] of Object.entries(NCp)) for (const k of Object.keys((r && r.nunca) || {})) nuncaPD[pid + '#' + k] = true;
       const tc = Number(R[11]) || 0;
       if (!(tc > 0)) { console.log('⚠️ NO LEÍ el dólar (cyc/finanzas/tipo_cambio en 0): sin dólar los costos dan 0 y todo parece rentable'); return; }
       const C4 = ['Adriana', 'Luciana', 'Ayelen', 'Matias'], OF = 'Oficina_Mati';
@@ -38036,7 +38039,7 @@ async function main() {
           const fv = C4.reduce((a, c) => a + n0(I[p.id + '__' + c + '__v__' + sid(va)]), 0), cv = n0(I[p.id + '__' + OF + '__v__' + sid(va)]);
           const mv = ((cam[p.id] || {}).v || {})[va] || 0, pvx = (viaPv[p.id] || {})[va] || 0;
           if (!sv.t180 && !fv && !cv && !mv && !pvx) continue;
-          console.log(`   # ${va} · v30 ${sv.t30} v60 ${sv.t60} v180 ${sv.t180} · últ ${sv.ult ? sv.ult.slice(8, 10) + '/' + sv.ult.slice(5, 7) : '—'} · dCS ${dCS(p.id, '__v__' + sid(va), dCS(p.id))}${cortes60(p.id, '__v__' + sid(va)) ? ' · cortes ' + cortes60(p.id, '__v__' + sid(va)) : ''} · Full ${fv} · casa ${cv} · camino ${mv}${pvx ? ' · PVviaja ' + pvx : ''}`);
+          console.log(`   # ${va} · v30 ${sv.t30} v60 ${sv.t60} v180 ${sv.t180} · últ ${sv.ult ? sv.ult.slice(8, 10) + '/' + sv.ult.slice(5, 7) : '—'} · dCS ${dCS(p.id, '__v__' + sid(va), dCS(p.id))}${cortes60(p.id, '__v__' + sid(va)) ? ' · cortes ' + cortes60(p.id, '__v__' + sid(va)) : ''} · Full ${fv} · casa ${cv} · camino ${mv}${pvx ? ' · PVviaja ' + pvx : ''}${nuncaPD[p.id + '#' + sid(va)] ? ' · NUNCA' : ''}`);
         }
       };
       console.log(`dólar ${tc} · ventana 30 d desde ${k30} · ${prods.length} fichas`);
@@ -40387,6 +40390,20 @@ async function main() {
       if (pvFichas.length !== 1) { console.log(`❌ Fichas del Paulvic con aromas: ${pvFichas.length} (${pvFichas.map((p) => p.name).join(' | ') || 'ninguna'}). Tiene que haber una sola: no escribo nada.`); return; }
       const P = pvFichas[0];
       const [sub, ...resto] = cuerpo.split(':');
+      // pvped:nunca[:<aroma>;<-aroma>…][;go] → la marca "no viene más" a mano (sin aromas: lista). `-` adelante la saca.
+      if (sub === 'nunca') {
+        const NC = (await db.get('cyc/noconsigo/' + P.id + '/nunca')) || {};
+        const args = resto.join(':').split(';').map((x) => x.trim()).filter(Boolean);
+        if (!args.length) { console.log(`=== NO VIENEN MÁS (${Object.keys(NC).length}) ===`); for (const x of Object.values(NC)) console.log(`  · ${x.v} · desde ${new Date(x.ts).toISOString().slice(0, 10)}${x.ped ? ' · faltó en ' + x.ped : ''}`); return; }
+        const upd = {}, prob = [];
+        for (const a of args) { const saca = a.startsWith('-'); const vs = buscaVar(P, a.replace(/^-/, '')); if (vs.length !== 1) { prob.push(`"${a}" → ${vs.length ? 'agarra ' + vs.join(' | ') : 'no es un aroma'}`); continue; } upd[sid(vs[0])] = saca ? null : { ts: Date.now(), v: vs[0], mano: true }; console.log(`  ${saca ? '↩︎ vuelve a pedirse' : '🚫 no viene más'} · ${vs[0]}`); }
+        if (prob.length) { console.log('❌ NO ESCRIBO NADA:'); prob.forEach((x) => console.log('   ' + x)); return; }
+        if (!GO) { console.log('\nNo se guardó nada (falta ;go).'); return; }
+        await db.patch('cyc/noconsigo/' + P.id + '/nunca', upd);
+        const rel = (await db.get('cyc/noconsigo/' + P.id + '/nunca')) || {};
+        console.log(Object.entries(upd).every(([k, v]) => !!rel[k] === !!v) ? '\n✓ Guardado y releído.' : '\n⚠️ Se escribió pero al releer no coincide.');
+        return;
+      }
       if (sub === 'llego') {
         const [idArg, ...rest2] = resto.join(':').split(';');
         const cam = Object.entries(peds).filter(([, c]) => c && c.estado === 'camino').sort((a, b) => String(b[1].fecha).localeCompare(String(a[1].fecha)));
@@ -40414,6 +40431,11 @@ async function main() {
         // Primero se cierra el pedido (que deje de restar en Pedidos) y recién después se suma a la oficina,
         // releyendo cada clave justo antes: si la corrida se corta en el medio, se ve qué faltó.
         await db.patch('cyc/pedidospv/' + id, { estado: 'llego', fechaLlego: hoyAR, llego, falto: falto.length ? falto : null });
+        // LO QUE NO VINO NO VIENE MÁS (17/10/2026, regla suya: *"los que pido de paulvic y no llegan que quede registro en el
+        // pedido y tomarlos como que no vienen nunca más"*). Queda en el pedido (`falto`) y el aroma se marca para siempre en
+        // `cyc/noconsigo/<prod>/nunca/<aroma>`: Pedidos no lo vuelve a pedir y cuenta como sin reposición (escasez). No se cae
+        // sola al entrar mercadería; se saca si él lo vuelve a pedir a propósito (`pvped:<aroma>=<u>;go`) o con `pvped:nunca:-<aroma>;go`.
+        for (const x of falto) if (!(cambios[x.v] > 0)) await db.set('cyc/noconsigo/' + P.id + '/nunca/' + sid(x.v), { ts: Date.now(), ped: id, v: x.v, falto: x.u });
         const kTot = P.id + '__' + sid(OFI_LOC), kVar = (v) => kTot + '__v__' + sid(v);
         for (const x of llego) {
           if (!(x.u > 0)) continue;
@@ -40423,7 +40445,7 @@ async function main() {
           console.log(`  🏠 oficina · ${x.v}: ${antes} → ${antes + x.u}`);
         }
         const rel = await db.get('cyc/pedidospv/' + id);
-        console.log(rel && rel.estado === 'llego' ? `\n✓ Guardado y releído: llegó, y lo que vino está en la oficina.${falto.length ? ' Faltaron ' + falto.reduce((a, x) => a + x.u, 0) + ' u.: vuelven a pedirse solas en Pedidos.' : ''}` : '\n⚠️ Se escribió pero al releer no coincide. Mirar a mano.');
+        console.log(rel && rel.estado === 'llego' ? `\n✓ Guardado y releído: llegó, y lo que vino está en la oficina.${falto.length ? ' Faltaron ' + falto.reduce((a, x) => a + x.u, 0) + ' u. (' + falto.map((x) => x.v).join(', ') + '): quedan anotadas en el pedido y marcadas "no viene más" — Pedidos no las vuelve a pedir.' : ''}` : '\n⚠️ Se escribió pero al releer no coincide. Mirar a mano.');
         return;
       }
       let fecha = hoyAR;
@@ -40448,6 +40470,8 @@ async function main() {
       console.log(`  total: ${its.reduce((a, x) => a + x.u, 0)} u. en ${its.length} aroma(s)`);
       if (!GO) { console.log('\nNo se guardó nada (falta ;go).'); return; }
       await db.set('cyc/pedidospv/' + id, { prodId: P.id, fecha, ts: (prev && prev.ts) || Date.now(), estado: 'camino', items: its });
+      { const NC = (await db.get('cyc/noconsigo/' + P.id + '/nunca')) || {}; const vuelve = items.filter((it) => NC[sid(it.v)]);
+        if (vuelve.length) { await db.patch('cyc/noconsigo/' + P.id + '/nunca', Object.fromEntries(vuelve.map((it) => [sid(it.v), null]))); console.log(`  ↩︎ lo volviste a pedir: se saca "no viene más" de ${vuelve.map((it) => it.v).join(', ')}`); } }
       const rel = await db.get('cyc/pedidospv/' + id);
       console.log(rel && rel.estado === 'camino' && lista(rel).length === its.length ? `\n✓ Guardado y releído: cyc/pedidospv/${id} (en camino). Pedidos → Paulvic ya lo descuenta.` : '\n⚠️ Se escribió pero al releer no coincide. Mirar a mano.');
       return;

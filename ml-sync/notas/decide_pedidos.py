@@ -28,7 +28,7 @@ for l in L:
     m=re.match(r'^   # (.*?) · v30 (\d+) v60 (\d+) v180 (\d+) · últ (\S+)(?: · dCS (\d+))?(?: · cortes (\d+))? · Full (\d+) · casa (\d+) · camino (\d+)(.*)$',l)
     if m and cur:
         pv=re.search(r'PVviaja (\d+)',m.group(11))
-        cur['vars'].append(dict(v=m.group(1),v30=int(m.group(2)),v60=int(m.group(3)),v180=int(m.group(4)),ult=m.group(5),dcs=int(m.group(6)) if m.group(6) else cur['dcs'],cortes=int(m.group(7) or 0),full=int(m.group(8)),casa=int(m.group(9)),cam=int(m.group(10)),pv=int(pv.group(1)) if pv else 0))
+        cur['vars'].append(dict(v=m.group(1),v30=int(m.group(2)),v60=int(m.group(3)),v180=int(m.group(4)),ult=m.group(5),dcs=int(m.group(6)) if m.group(6) else cur['dcs'],cortes=int(m.group(7) or 0),full=int(m.group(8)),casa=int(m.group(9)),cam=int(m.group(10)),pv=int(pv.group(1)) if pv else 0,nunca=(' · NUNCA' in m.group(11))))
 # N DE M: que se hayan leído TODAS las fichas que imprimió pedidostodo (si no, un renglón con otro formato se pierde callado).
 for gr,n in esper.items():
     if gr in('BSAS','PY','PAULVIC'):
@@ -188,6 +188,8 @@ for p,q,d,rent in res:
             kj=f"{pid}#{v['v']}"
             if kj in JU: qq,mot=JU[kj][0],titoJ(JU[kj][1])
             # SÓLO ESTOS COLORES (16/10/2026, idea 11 del análisis): llegaban colores lentos en vez de los que se agotan.
+            # NO VIENE MÁS (17/10/2026, regla suya): un aroma que se pidió al Paulvic y no vino no se vuelve a pedir.
+            if v.get('nunca'): qq,mot=0,f"Hola Tito! {v['v']}: no te lo pido más. Lo pedimos y no vino, así que lo damos por que no viene más."
             if qq>0: mot+=' Sólo este color: si no hay, no lo cambies por otro.'
             N.append(f"ped:{pid}#{v['v']}=u|{qq}|{mot}")
         if not filas:
