@@ -2644,7 +2644,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.23';
+const APP_VERSION='24.24';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2655,6 +2655,7 @@ const APP_VERSION='24.23';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.24',f:'17/10/2026',h:'18:09',c:[{n:3,t:'🔍 ¿Cierra el mes?: la deuda con ARCA de los meses anteriores ya no se le cobra a octubre. Es un ajuste de una sola vez; el mes sólo carga con lo que H suma ese mes (que la ganancia ya descuenta). Cada cierre guarda la deuda que tenía adentro.'}]},
   {v:'24.23',f:'17/10/2026',h:'17:58',c:[{n:3,t:'🧾 Arqueo: lo que se le va a deber a ARCA por pagar como categoría H en las 4 cuentas ($427.498 por mes desde mayo, sin intereses) va en Lo que debemos. El patrimonio ya no muestra esa plata como del negocio.'}]},
   {v:'24.22',f:'17/10/2026',h:'17:55',c:[{n:1,t:'💸 Cuánto cobrar: se sacó la línea del ritmo de los últimos 7 días. Queda la proyección al ritmo del mes y lo ganado hasta hoy.'}]},
   {v:'24.21',f:'17/10/2026',h:'17:54',c:[{n:2,t:'💸 Cuánto cobrar: en el mes que corre el número grande es la PROYECCIÓN a fin de mes (ventas al ritmo del mes menos los gastos del mes, ÷ 3). Abajo, al ritmo de los últimos 7 días y lo ya ganado hasta hoy.'}]},
@@ -8006,7 +8007,8 @@ function renderReconciliacion(){
   // mes contra sí mismo y daba "Falta plata" sin que faltara nada. Ahora usa el último cierre de
   // ANTES del mes, y si no hay ninguno no opina.
   const _prevKeys=Object.keys(state.snapshots||{}).filter(k=>k<ym).sort();
-  const snap=(state.snapshots&&state.snapshots[prevYm])?state.snapshots[prevYm]:(_prevKeys.length?state.snapshots[_prevKeys[_prevKeys.length-1]]:null);
+  const snapKey=(state.snapshots&&state.snapshots[prevYm])?prevYm:(_prevKeys.length?_prevKeys[_prevKeys.length-1]:null);
+  const snap=snapKey?state.snapshots[snapKey]:null;
   if(!snap||snap.total==null){el.innerHTML=card(`<div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.9rem;margin-bottom:4px">🔍 ¿Cierra el mes?</div><div style="font-size:.66rem;color:var(--muted)">Cerrá un mes con 📸 para tener un punto de comparación del patrimonio.</div>`,'#6b6b7a');return;}
   const P=_puntGananciaMes(ym);                 // neto/costo/retiro/gastos/ganancia (pesos)
   const cArq=calcArqueo();
@@ -8019,7 +8021,13 @@ function renderReconciliacion(){
   // patrimonio pasado a pesos con un número que nadie cargó. Sin dólar no se opina.
   if(!(tc>0)){el.innerHTML=card(`<div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.9rem;margin-bottom:4px">🔍 ¿Cierra el mes?</div><div style="font-size:.66rem;color:var(--amber)">⚠️ Sin dólar cargado: no se puede pasar el patrimonio a pesos, así que no hay veredicto. Cargá el tipo de cambio arriba.</div>`,'#f59e0b');return;}
   const arqNow=endSnap?endSnap.total:cArq.total; // patrimonio al cierre del mes (USD)
-  const dP=Math.round((arqNow-snap.total)*tc);  // cuánto creció el patrimonio (pesos, aprox)
+  // LA DEUDA CON ARCA DE LOS MESES ANTERIORES NO ES DE ESTE MES (17/10/2026). Él: *"voy a hacer el arqueo
+  // a fin de mes y me va a dar muy negativo, porque agregamos este gasto de H todos juntos"*. La ganancia
+  // de cada mes ya descontó H, así que esa plata quedó en CYC y el patrimonio se veía de más; al anotar la
+  // deuda entera de golpe, este mes cargaba con varios. Si el cierre anterior no la tenía adentro, se le
+  // resta la que ya existía hasta ese mes: así el mes sólo carga con SU parte (lo que H suma este mes).
+  const arcaPrevFalta=(snap.arcaARS==null&&(endSnap?Number(endSnap.arcaARS)>0:cArq.arcaDeuda>0))?arcaDeudaARS(snapKey).ars:0;
+  const dP=Math.round((arqNow-snap.total)*tc)+arcaPrevFalta;  // cuánto creció el patrimonio (pesos, aprox)
   const genera=P.neto-P.costo-P.gastos;         // lo que generó el negocio
   const rmRaw=state.retiro_mes&&state.retiro_mes[ym];
   const retReal=(rmRaw!=null&&rmRaw!=='')?Number(rmRaw):null;      // lo que cobraron de verdad
@@ -8043,7 +8051,7 @@ function renderReconciliacion(){
       ${row('Creció el patrimonio (arqueo)',fmt(dP))}
       <div style="border-top:1px solid var(--border);margin-top:3px;padding-top:6px">${row('Diferencia',fmt(dif),`font-weight:700;color:${col}`)}</div>
     </div>
-    <div style="font-size:.6rem;color:var(--muted);margin-top:10px;line-height:1.5">${expl}<br>El negocio generó ${fmt(genera)} · retiro ${retReal!=null?'cobrado':'estimado 15%'} ${fmt(retiroUsado)}${retReal==null?' <span style="color:var(--amber)">(cargá el retiro real arriba para precisión)</span>':''}. Patrimonio pasado a pesos al dólar ${fmt(tc)} (aprox).</div>
+    <div style="font-size:.6rem;color:var(--muted);margin-top:10px;line-height:1.5">${expl}<br>El negocio generó ${fmt(genera)} · retiro ${retReal!=null?'cobrado':'estimado 15%'} ${fmt(retiroUsado)}${retReal==null?' <span style="color:var(--amber)">(cargá el retiro real arriba para precisión)</span>':''}. Patrimonio pasado a pesos al dólar ${fmt(tc)} (aprox).${arcaPrevFalta>0?`<br><span style="color:var(--amber)">La deuda con ARCA de los meses anteriores (${fmt(arcaPrevFalta)}) no se le cobra a este mes: es un ajuste de una sola vez. Acá cuenta sólo lo que H suma este mes.</span>`:''}</div>
   `,col);
 }
 
@@ -8526,7 +8534,8 @@ async function saveSnapshot(){
   // anotado de punta a punta en este archivo. Los cierres viejos tampoco la tienen, así que
   // `renderAgenda` no la muestra cuando se mira un mes cerrado.
   const {agenda:_sinAgenda, ...finSnap}=state.finanzas||{};
-  const snap={label,ts:Date.now(),stock:c.stockVal,stockML:c.stockML,stockLocal:c.stockLocal,total:c.total,tipoCambio,tcMes,
+  // La deuda con ARCA que ya está ADENTRO de este total, en pesos: el mes siguiente la resta para medir sólo lo suyo.
+  const snap={label,ts:Date.now(),stock:c.stockVal,stockML:c.stockML,stockLocal:c.stockLocal,total:c.total,tipoCambio,tcMes,arcaARS:c.arcaDeuda>0?arcaDeudaARS().ars:0,
     finanzas:finSnap,
     locValues:Object.fromEntries(LOCS.map(l=>{let v=0;(state.products||[]).forEach(p=>v+=Math.max(0,getQ(p.id,l))*costP(p));return[sid(l),v];})),
     prodValues};
@@ -15130,9 +15139,12 @@ function pvEnCamino(){
 // Suma `arcaHMes` (lo que falta para H por mes entre las 4: Adriana G→H $133.314 + Luciana y Matías F→H $147.092
 // c/u) por cada mes desde `arcaHDesde` hasta el mes actual; los meses hasta `arcaHPagadoHasta` ya se pagaron.
 // Todo en cyc/mlconfig. Sin intereses ni multas (no se saben).
-function arcaDeudaARS(){
+// `hastaYm` (opcional): la deuda acumulada hasta el cierre de ESE mes. Lo usa "¿Cierra el mes?" para
+// no culpar a un solo mes de lo que se juntó en varios (17/10/2026).
+function arcaDeudaARS(hastaYm){
   const c=state.mlconfig||{},desde=c.arcaHDesde||'2026_05',mes=Number(c.arcaHMes)||427498,pag=c.arcaHPagadoHasta||'';
-  const n=new Date(),hoy=n.getFullYear()*12+n.getMonth();
+  const n=new Date();let hoy=n.getFullYear()*12+n.getMonth();
+  if(hastaYm&&/^\d{4}_\d{2}$/.test(hastaYm)){const [hy,hm]=hastaYm.split('_').map(Number);hoy=Math.min(hoy,hy*12+hm-1);}
   const [y,m]=desde.split('_').map(Number);let t=0,meses=0;
   for(let k=y*12+m-1;k<=hoy;k++){const ym=Math.floor(k/12)+'_'+String(k%12+1).padStart(2,'0');if(pag&&ym<=pag)continue;t+=mes;meses++;}
   return{ars:t,meses};
