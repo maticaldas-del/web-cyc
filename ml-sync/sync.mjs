@@ -88,6 +88,32 @@ function umbralRedondoCruzado(p0, p1) {
   for (const u of UMBRALES_REDONDOS) if (lo < u && hi >= u) t = p1 > p0 ? (t ?? u) : u;
   return t;
 }
+// ── LA ESTRATEGIA DE CADA PRECIO (17/10/2026, pedido suyo) ─────────────────────────────────────────────
+// *"quiero que cada precio tenga un tag. o sea liquidando, escasez, etc. con todo lo que hablamos (…) y que al venderse ese
+// producto en ventas x producto diga qué tag tiene"*. Cada precio que pongo queda en `cyc/estrategia/<MLA>/<ts>` = {t, m}
+// (historia: no se pisa). La web toma, para cada venta, la última estrategia anterior a esa venta. `decido` acepta `#<tag>`
+// después del precio; si no va, se deduce del motivo con `tagDeMotivo`. A mano: `tag:<MLA>=<tag>|motivo;go`.
+// MISMA LISTA EN index.html (ESTRATEGIA_UI): si se agrega una, va en los dos.
+const ESTRATEGIAS = { base: '🎯 base', escasez: '🔥 escasez', sinrepo: '⏳ sin reposición', techo: '📈 buscando techo', liquidando: '📉 liquidando', caja: '🥊 ganar la caja', promo: '🏷️ promo', fecha: '🎁 fecha especial', excepcion: '🛡️ excepción', nuevo: '🆕 lanzamiento', correccion: '↩️ corrección' };
+function tagDeMotivo(m) {
+  const t = String(m || '').toLowerCase();
+  if (/no se consigue|sin reposici|4 meses|cuatro meses|nissei no|no lo consigo|no da en paraguay/.test(t)) return 'sinrepo';
+  if (/escasez|estir|hasta que llegue|se agota|se acaba|quedan pocas/.test(t)) return 'escasez';
+  if (/liquid|remat|sobra|stock antiguo|sobrestock|parad[oa]|vender todo/.test(t)) return 'liquidando';
+  if (/d[ií]a de la madre|d[ií]a del padre|navidad|reyes|black friday|cyber|d[ií]a del ni[nñ]o|san valent/.test(t)) return 'fecha';
+  if (/caja de compra|ganar la caja|gana la caja|perd[ií]a la caja|perdiendo la caja/.test(t)) return 'caja';
+  if (/techo|prueba|probar|probando|para ver si/.test(t)) return 'techo';
+  if (/promo|descuento|tachad/.test(t)) return 'promo';
+  if (/33\.?000|barrera|excepci/.test(t)) return 'excepcion';
+  if (/lanzamiento|reci[eé]n lleg|producto nuevo|primera venta/.test(t)) return 'nuevo';
+  if (/vuelvo|volver al|corrijo|correcci|deshago/.test(t)) return 'correccion';
+  return 'base';
+}
+async function guardarEstrategia(db, mla, t, m, ts) {
+  if (!/^MLA\d+$/.test(String(mla)) || !ESTRATEGIAS[t]) return false;
+  const k = Math.round(Number(ts) || Date.now());
+  try { await db.set(`cyc/estrategia/${mla}/${k}`, { t, m: String(m || '').slice(0, 160) }); const r = await db.get(`cyc/estrategia/${mla}/${k}`); return !!(r && r.t === t); } catch { return false; }
+}
 function precioRedondoAviso(p0, p1) {
   const a = [];
   if (p1 >= 1000 && p1 % 1000 === 0) a.push(`termina redondo (${'$' + p1.toLocaleString('es-AR')}): mejor ${'$' + (p1 - 10).toLocaleString('es-AR')}`);
@@ -38204,6 +38230,54 @@ async function main() {
       console.log(`\nGuardados ${ok} de ${Object.keys(up).length} (releídos).`);
       return;
     }
+    // BILLING_PROBE=tag[:<MLA>=<tag>[|motivo];…][;go] · tag:semilla[;go] → LA ESTRATEGIA DE CADA PRECIO (17/10/2026)
+    // Sin nada: cuántas publicaciones hay en cada estrategia hoy. `<MLA>=<tag>|motivo` la pone a mano (sin tocar el precio).
+    // `semilla` arma la historia desde mis decisiones de precio (`cyc/claudecambios`, el tag sale del motivo), lo marcado
+    // liquidando (`cyc/nosubir`) y mis promos (`cyc/promoclaude`). No pisa lo que ya tiene estrategia en el mismo momento.
+    if (/^tag(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const raw = String(process.env.BILLING_PROBE).replace(/^tag:?/, '');
+      const partes = raw.split(';').map((x) => x.trim()).filter(Boolean);
+      const GOt = partes.includes('go') && !DRY;
+      const es = (await db.get('cyc/estrategia')) || {};
+      const links = (await db.get('cyc/mllinks')) || {};
+      const nomDe = (m) => `${String((links[m] || {}).title || m).slice(0, 40)} (${(links[m] || {}).cuenta || '?'})`;
+      const actual = (m) => { const h = es[m] || {}; const k = Object.keys(h).map(Number).filter((n) => n > 0).sort((a, b) => b - a)[0]; return k ? { ...h[k], ts: k } : null; };
+      if (partes.includes('semilla')) {
+        console.log(`=== 🏷 ESTRATEGIAS: SEMILLA ${GOt ? '' : '(PRUEBA · agregá ;go)'} ===`);
+        const nuevas = [];
+        const ya = (m, ts) => Object.keys(es[m] || {}).some((k) => Math.abs(Number(k) - ts) < 15 * 60e3);
+        const cc = (await db.get('cyc/claudecambios')) || {};
+        for (const c of Object.values(cc)) { if (!c || !/^MLA\d+$/.test(c.mla) || !(Number(c.ts) > 0) || ya(c.mla, Number(c.ts))) continue; nuevas.push({ mla: c.mla, ts: Number(c.ts), t: tagDeMotivo(c.motivo), m: c.motivo }); }
+        const ns = (await db.get('cyc/nosubir')) || {};
+        for (const [m, x] of Object.entries(ns)) { if (!/^MLA\d+$/.test(m)) continue; const ts = Number((x || {}).ts || (x || {}).desde) || Date.now(); if (ya(m, ts)) continue; nuevas.push({ mla: m, ts, t: 'liquidando', m: (x && (x.motivo || x.por)) || 'marcada liquidando' }); }
+        const pc = (await db.get('cyc/promoclaude')) || {};
+        for (const [m, x] of Object.entries(pc)) { if (!/^MLA\d+$/.test(m) || !x) continue; const ts = Number(x.ts || x.desde) || Date.now(); if (ya(m, ts)) continue; nuevas.push({ mla: m, ts, t: 'promo', m: x.motivo || 'en promo' }); }
+        const cuenta = {}; for (const n of nuevas) cuenta[n.t] = (cuenta[n.t] || 0) + 1;
+        console.log(`${nuevas.length} renglones nuevos · ${Object.entries(cuenta).map(([t, n]) => `${ESTRATEGIAS[t]} ${n}`).join(' · ')}`);
+        for (const n of nuevas.slice(0, 40)) console.log(`· ${new Date(n.ts).toISOString().slice(0, 10)} ${ESTRATEGIAS[n.t]} · ${nomDe(n.mla)} · ${String(n.m || '').slice(0, 70)}`);
+        if (nuevas.length > 40) console.log(`… y ${nuevas.length - 40} más`);
+        if (GOt) { let ok = 0; for (const n of nuevas) if (await guardarEstrategia(db, n.mla, n.t, n.m, n.ts)) ok++; console.log(`\n✓ ${ok} de ${nuevas.length} guardadas y releídas`); }
+        return;
+      }
+      const pon = partes.filter((x) => x !== 'go');
+      if (pon.length) {
+        console.log(`=== 🏷 PONER ESTRATEGIA ${GOt ? '' : '(PRUEBA · agregá ;go)'} ===`);
+        for (const x of pon) {
+          const mt = x.match(/^\s*(MLA\d+)\s*=\s*(\w+)\s*(?:\|(.*))?$/i);
+          if (!mt || !ESTRATEGIAS[mt[2].toLowerCase()]) { console.log(`✗ no entendí "${x}" · va así: tag:MLA123=escasez|motivo;go · estrategias: ${Object.keys(ESTRATEGIAS).join(', ')}`); continue; }
+          const m = mt[1].toUpperCase(), t = mt[2].toLowerCase();
+          if (!links[m]) { console.log(`✗ ${m} no está vinculada`); continue; }
+          const a = actual(m);
+          console.log(`· ${nomDe(m)}: ${a ? ESTRATEGIAS[a.t] : 'sin estrategia'} → ${ESTRATEGIAS[t]}${mt[3] ? ' · ' + mt[3].trim() : ''}`);
+          if (GOt) console.log((await guardarEstrategia(db, m, t, (mt[3] || '').trim(), Date.now())) ? '   ✓ guardada' : '   ✗ no quedó');
+        }
+        return;
+      }
+      const cnt = {}; for (const m of Object.keys(es)) { const a = actual(m); if (a) (cnt[a.t] = cnt[a.t] || []).push(m); }
+      console.log('=== 🏷 ESTRATEGIA DE CADA PRECIO, HOY ===');
+      for (const [t, l] of Object.entries(ESTRATEGIAS)) { const arr = cnt[t] || []; console.log(`${l}: ${arr.length}`); for (const m of arr.slice(0, 15)) console.log(`   · ${nomDe(m)}`); }
+      return;
+    }
     // BILLING_PROBE=decido:<MLA>=<precio>[!piso][!cruza][!salto]|<motivo>[;<MLA>=…][;go] → LOS PRECIOS QUE DECIDE CLAUDE
     // (08/10/2026). Regla suya: *"que haya solo robots automáticos de api para cosas que no hay que pensar, como
     // ventas y cosas así de datos. TODO lo que sea pensar lo veas exclusivamente vos"*. El robot ya no mueve
@@ -38295,12 +38369,13 @@ async function main() {
           notasCtx.push({ tipo, q: resto.trim(), vari, cta, t, raw: x }); continue;
         }
         // `MLA=7550`, `MLA=7550!activar`, `MLA=activar` (deja el precio y la activa), banderas `!piso` `!cruza`.
-        const mm = String(izq).match(/^\s*(MLA\d+)\s*=\s*(activar|[\d.,$\s]+)?((?:!\w+)*)\s*$/i);
+        const mm = String(izq).match(/^\s*(MLA\d+)\s*=\s*(activar|[\d.,$\s]+)?((?:!\w+)*)(?:#(\w+))?\s*$/i);
+        if (mm && mm[4] && !ESTRATEGIAS[mm[4].toLowerCase()]) { malos.push(x + ` (la estrategia #${mm[4]} no existe: ${Object.keys(ESTRATEGIAS).join(', ')})`); continue; }
         if (!mm || (!mm[2] && !/!activar/i.test(mm[3] || ''))) { malos.push(x); continue; }
         const banderas = String(mm[3] || '').toLowerCase();
         const soloAct = /^activar$/i.test(String(mm[2] || '').trim()) || !mm[2];
         forzar[mm[1].toUpperCase()] = { p: soloAct ? 0 : Math.round(pesosArg(mm[2]) / 10) * 10, motivo: mot.join('|').trim(), piso: banderas.includes('!piso'), cruza: banderas.includes('!cruza'),
-          activar: soloAct || banderas.includes('!activar'), salto: banderas.includes('!salto') };
+          activar: soloAct || banderas.includes('!activar'), salto: banderas.includes('!salto'), tag: mm[4] ? mm[4].toLowerCase() : '' };
       }
       if (malos.length) { console.log(`No entendí: ${malos.join(' · ')}\nVa así: decido:MLA123=7550|vende igual a este precio;MLA456=4190!piso|motivo;MLA789=nota|lo que pensé;ped:pendrive 8gb=nota|por qué pido;caja:pendrive 8gb@matias=nota|por qué mando;ped:pendrive 8gb=u|120|por qué esas;ped:paulvic#Persea=u|6|motivo;ped:pendrive 8gb=venta|4990|precio normal;caja:pendrive 8gb@matias=u|50|motivo;ped:pendrive 8gb=auto;dia:2026-10-08=nota|qué pasó ese día;revisado;go`); return; }
       // MIS EXPLICACIONES PARA EL 🧠 (08/10/2026, él: *"todas las anotaciones del cerebro las escribís vos"*):
@@ -38450,6 +38525,8 @@ async function main() {
       let apP = null; try { apP = (await db.get('cyc/autoprecio')) || {}; } catch { apP = null; }
       const ac = await aplicarCerebro(db, cz, { tokens: tokP, aplica: true, autoprecio: apP });
       console.log(`\n✓ hechos: ${ac.hechos.length} · no se pudo: ${ac.fallidos.length} · sin anotar: ${ac.sinAnotar.length}`);
+      // LA ESTRATEGIA DE ESTE PRECIO (17/10/2026): `#tag` si lo puse, si no se deduce del motivo.
+      for (const h of ac.hechos) { const fz = forzar[h.f.mla] || {}; const tg = fz.tag || tagDeMotivo(fz.motivo); const okT = await guardarEstrategia(db, h.f.mla, tg, fz.motivo, Date.now()); console.log(`   ${okT ? '🏷' : '⚠️ no quedó la'} estrategia ${ESTRATEGIAS[tg]} · ${h.f.mla}`); }
       for (const h of ac.hechos) { const fz = forzar[h.f.mla] || {}; await escribirNota(h.f.mla, `${Number(h.a) > Number(h.de) ? 'Lo subí' : 'Lo bajé'} de ${money(h.de)} a ${money(h.a)}. ${fz.motivo || ''}`.trim(), { tipo: 'precio', de: h.de, a: h.a }); }
       // EXCEPCIONES A PROPÓSITO (12/10/2026): un precio que dejé abajo del 25% con `!piso` (remate, liquidar, sobrestock)
       // queda anotado con el precio exacto, para que el chequeo del peor caso de `planilla` no lo marque. Si después

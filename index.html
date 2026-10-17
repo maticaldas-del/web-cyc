@@ -2110,6 +2110,7 @@ function startApp(){
     // sólo para MOSTRARLO: un margen en rojo que está así a propósito tiene que verse distinto de
     // uno que se hundió solo, porque el remedio es opuesto (a uno se lo deja, al otro se lo sube).
     state.nosubir=d.nosubir||{};
+    state.estrategia=d.estrategia||{};   // 17/10: la estrategia de cada precio (historia por publicación)
     state.mlconfig=d.mlconfig||{};   // config del robot (auto-precio, meta, umbral)
     state.pushsubs=d.pushsubs||{};   // teléfonos anotados para el aviso de cada venta (15/10/2026)
     try{_aplicarParamCompra();}catch(e){}
@@ -2638,7 +2639,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='23.99';
+const APP_VERSION='24.00';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2649,6 +2650,7 @@ const APP_VERSION='23.99';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.00',f:'16/10/2026',h:'23:55',c:[{n:2,t:'Cada precio tiene su estrategia: 🎯 base · 🔥 escasez · ⏳ sin reposición · 📈 buscando techo · 📉 liquidando · 🥊 ganar la caja · 🏷️ promo · 🎁 fecha especial · 🛡️ excepción · 🆕 lanzamiento · ↩️ corrección. En Ventas x Producto cada venta muestra la estrategia que tenía ese producto cuando se vendió (tocala para ver el motivo).'}]},
   {v:'23.99',f:'16/10/2026',h:'23:30',c:[{n:1,t:'Pedidos → Paraguay → Nuevos (Nissei): abajo de todo, desplegable "🗂️ Todo lo que revisó el robot y NO da" con los del catálogo de comprasparaguay que no llegan al piso, los que no tienen el mismo producto en ML, los que nadie vende y los que quedaron afuera por regla. Sólo muestra.'}]},
   {v:'23.98',f:'16/10/2026',h:'22:10',c:[{n:3,t:'"🚫 No lo consigo" también por color: el botón de la tarjeta marca el producto entero (ningún color se consigue) y el de cada color marca sólo ese color. El color marcado pasa solo a escasez.'}]},
   {v:'23.97',f:'16/10/2026',h:'21:50',c:[{n:3,t:'Pedidos (Bs As y Paulvic): botón "🚫 No lo consigo". Si Tito no lo consigue, el producto pasa a escasez sin reposición y el precio se estira para que el stock dure; se saca solo cuando entra mercadería a la oficina (o con "deshacer").'}]},
@@ -10321,6 +10323,21 @@ function lineaBtn(prodId,txt,varSel){return prodId?`<button class="btn" onclick=
 // Resuelve el producto de una venta: por ID interno (prodId) si existe, sino por nombre (compat).
 function prodDeVenta(v){return (v&&v.prodId)?(prodById(v.prodId)||prodByName(v&&v.prod)):prodByName(v&&v.prod);}
 // Nombre ACTUAL del producto de una venta (sigue al producto aunque se renombre).
+// ── LA ESTRATEGIA DE CADA PRECIO (17/10/2026, pedido suyo) ─────────────────────────────────────────────
+// *"quiero que cada precio tenga un tag (…) y que al venderse ese producto en ventas x producto diga qué tag tiene"*. La pone
+// Claude con cada precio (`cyc/estrategia/<MLA>/<ts>`, historia). Cada venta muestra la última estrategia ANTERIOR a esa venta,
+// así una venta vieja dice la estrategia que tenía ese día. MISMA LISTA EN sync.mjs (ESTRATEGIAS).
+const ESTRATEGIA_UI={base:['🎯','base','#60a5fa','Precio normal: el 25% en el peor caso.'],escasez:['🔥','escasez','#f97316','Se estira el stock hasta que llegue la próxima caja: precio alto para que dure.'],sinrepo:['⏳','sin reposición','#eab308','No se consigue: el precio va para que el stock se venda en 4 meses al máximo posible.'],techo:['📈','buscando techo','#22c55e','Prueba de suba: se busca el precio que más plata por día deja.'],liquidando:['📉','liquidando','#ef4444','Se remata a propósito (sobra stock, stock antiguo o no vende): el % bajo es buscado.'],caja:['🥊','ganar la caja','#a78bfa','Bajado para ganar la caja de compra de ML.'],promo:['🏷️','promo','#c084fc','En promo o descuento puesto por Claude.'],fecha:['🎁','fecha especial','#f472b6','Precio pensado para una fecha (Día de la Madre, Navidad…).'],excepcion:['🛡️','excepción','#94a3b8','Abajo del 25% a propósito (barrera de $33.000 u otro motivo explicado en el 🧠).'],nuevo:['🆕','lanzamiento','#2dd4bf','Producto nuevo: primer precio.'],correccion:['↩️','corrección','#94a3b8','Vuelta atrás de un precio que no funcionó.']};
+function estrategiaDe(mla,ts){
+  if(!mla)return null;const h=(state.estrategia||{})[mla]||{};const t=Number(ts)||Date.now();
+  let best=null;for(const [k,x] of Object.entries(h)){const n=Number(k);if(!(n>0)||n>t+60e3||!x||!ESTRATEGIA_UI[x.t])continue;if(!best||n>best.ts)best={...x,ts:n};}
+  if(!best){const ns=(state.nosubir||{})[mla];if(ns){const n=Number(ns.ts||ns.desde)||0;if(!n||n<=t)best={t:'liquidando',m:'marcada liquidando',ts:n};}}
+  return best;
+}
+function estrategiaChip(e){if(!e)return'';const u=ESTRATEGIA_UI[e.t];if(!u)return'';const d=e.ts?new Date(e.ts).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}):'';
+  const tit=(u[3]+(e.m?' · '+e.m:'')+(d?' · desde el '+d:'')).replace(/"/g,'&quot;');
+  return ` <span title="${tit}" style="padding:1px 6px;border-radius:4px;border:1px solid ${u[2]}55;background:${u[2]}1f;color:${u[2]};font-size:.62rem;white-space:nowrap">${u[0]} ${u[1]}</span>`;}
+function estrategiaVentaHTML(v){return v&&v.mla?estrategiaChip(estrategiaDe(v.mla,Number(v.ts)||0)):'';}
 function nombreDeVenta(v){const p=prodDeVenta(v);return p?p.name:((v&&v.prod)||'');}
 // ── LOS CAMBIOS DE PRECIO DE ESA PUBLICACIÓN, AL LADO DE CADA VENTA (24/09/2026) ──
 // Pedido suyo: *"yo quiero ver los aumentos diarios que efecto tienen en las ventas diarias"*.
@@ -11248,7 +11265,7 @@ function renderVentaProd(){
       const _cambios=grp.items.map(v=>isCancelled?'':cambioVentaHTML(v,Number(v.ts)||0));
       const _hayCambio=_cambios.some(x=>x);
       const _pill=isCancelled?'':(gpct===null?`<span class="db nc" style="font-size:.66rem" title="${_sinFicha?'Esta venta no está enganchada a ninguna ficha: el panel no sabe qué producto es ni cuánto costó. Se arregla vinculando la publicación.':'La ficha no tiene costo cargado.'}">${_sinFicha?'sin ficha':'sin costo'}</span>`:`<span class="db ${_est?'nc':''}" style="font-size:.72rem;padding:3px 9px;${_est?'color:var(--muted)':_pillSt}">${_est?'≈ ':''}${gpct>=0?'+':''}${gpct.toFixed(0)}%</span>`);
-      const _items=grp.items.map((v,i)=>`<div style="font-size:.8rem;line-height:1.35;${isCancelled?'opacity:.45;text-decoration:line-through':''}">${fotoVentaHTML(v,38)}<span style="color:var(--muted)">${v.qty}×</span> ${nombreDeVenta(v)}${v.variante?` <span style="padding:1px 6px;border-radius:4px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.66rem;white-space:nowrap">${v.variante}</span>`:''}${_cambios[i]?` <span style="font-size:.66rem" title="Cambió de precio antes de esta venta · mirá el detalle">${(_cambios[i].match(/<b style="color:[^"]*;font-size:\.8rem" title="[^"]*">[▲▼]<\/b>/)||[''])[0].replace('font-size:.8rem','font-size:.66rem')||(_cambios[i].includes('▲')?'<b style="color:var(--green)">▲</b>':'<b style="color:var(--red)">▼</b>')}</span>`:''}${(()=>{const _pp=prodDeVenta(v);return _pp?' '+cerebroBtn(_pp.id,{mla:v.mla,ctx:'venta'}):'';})()}</div>`).join('');
+      const _items=grp.items.map((v,i)=>`<div style="font-size:.8rem;line-height:1.35;${isCancelled?'opacity:.45;text-decoration:line-through':''}">${fotoVentaHTML(v,38)}<span style="color:var(--muted)">${v.qty}×</span> ${nombreDeVenta(v)}${estrategiaVentaHTML(v)}${v.variante?` <span style="padding:1px 6px;border-radius:4px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.66rem;white-space:nowrap">${v.variante}</span>`:''}${_cambios[i]?` <span style="font-size:.66rem" title="Cambió de precio antes de esta venta · mirá el detalle">${(_cambios[i].match(/<b style="color:[^"]*;font-size:\.8rem" title="[^"]*">[▲▼]<\/b>/)||[''])[0].replace('font-size:.8rem','font-size:.66rem')||(_cambios[i].includes('▲')?'<b style="color:var(--green)">▲</b>':'<b style="color:var(--red)">▼</b>')}</span>`:''}${(()=>{const _pp=prodDeVenta(v);return _pp?' '+cerebroBtn(_pp.id,{mla:v.mla,ctx:'venta'}):'';})()}</div>`).join('');
       // La etiqueta del rescate al vender era del robot viejo, que ya no toca precios: no se muestra más (09/10/2026, él:
       // "sacá lo de los precios automáticos están apagados, además por qué sale eso si ya estás haciendo todo vos").
       rescLabel='';
@@ -11277,7 +11294,7 @@ function renderVentaProd(){
       // (.vp-pc / .vp-cel, corte 640px) muestra una sola.
       // Compra de varios productos: cada renglón trae su propia 📈 línea de tiempo (09/10/2026, él: "quiero poder elegir qué línea mirar").
       const _varios=new Set(grp.items.map(v=>(prodDeVenta(v)||{}).id).filter(Boolean)).size>1;
-      const lines=grp.items.map(v=>`<div style="display:flex;justify-content:space-between;font-size:.72rem;padding:2px 0;align-items:center;${isCancelled?'opacity:.45;text-decoration:line-through':''}"><span>${fotoVentaHTML(v,30)}${v.qty}× ${nombreDeVenta(v)}${v.variante?` <span style="padding:1px 5px;border-radius:3px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.62rem">${v.variante}</span>`:''}${isCancelled?'':(()=>{const x=cambioVentaHTML(v,Number(v.ts)||0);return x?' '+x:'';})()}${(()=>{const _pp=prodDeVenta(v);return _pp?' '+cerebroBtn(_pp.id,{mla:v.mla,ctx:'venta'})+(_varios?' '+lineaBtn(_pp.id):''):'';})()}</span><span style="color:var(--muted)">${(!isCancelled&&(v.total||0)>0)?`total ${fmt(v.total)} · `:''}${isCancelled?'':'neto '+fmt(v.neto||0)}</span></div>`).join('');
+      const lines=grp.items.map(v=>`<div style="display:flex;justify-content:space-between;font-size:.72rem;padding:2px 0;align-items:center;${isCancelled?'opacity:.45;text-decoration:line-through':''}"><span>${fotoVentaHTML(v,30)}${v.qty}× ${nombreDeVenta(v)}${estrategiaVentaHTML(v)}${v.variante?` <span style="padding:1px 5px;border-radius:3px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.62rem">${v.variante}</span>`:''}${isCancelled?'':(()=>{const x=cambioVentaHTML(v,Number(v.ts)||0);return x?' '+x:'';})()}${(()=>{const _pp=prodDeVenta(v);return _pp?' '+cerebroBtn(_pp.id,{mla:v.mla,ctx:'venta'})+(_varios?' '+lineaBtn(_pp.id):''):'';})()}</span><span style="color:var(--muted)">${(!isCancelled&&(v.total||0)>0)?`total ${fmt(v.total)} · `:''}${isCancelled?'':'neto '+fmt(v.neto||0)}</span></div>`).join('');
       const _pcHtml=`<div class="ingreso-item vp-pc" style="flex-direction:column;align-items:stretch;gap:4px;${isCancelled?'border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.04)':''}">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <span class="who-badge" style="font-size:.6rem;${isCancelled?'opacity:.6':''}">${cuenta}</span>

@@ -341,6 +341,13 @@ y deja 25%+ (`Tde`); el motivo de Tito y el 📋 Copiar pedido dicen "SÓLO este
 "desaparecieron N u." con stock compartido; `antiguo` muestra también la cuenta con las ventas de 30 d. Qué chequear:
 que `cortes` salga en el log de `pedidostodo` y `decide_pedidos.py` lea N de M ✓.
 
+### La estrategia de cada precio (17/10/2026, v24.00, pedido suyo)
+Qué: cada precio guarda su estrategia en `cyc/estrategia/<MLA>/<ts>` = {t, m} (historia). `decido:<MLA>=<precio>#<tag>|motivo` la pone;
+sin `#tag` sale de `tagDeMotivo(motivo)`. A mano `tag:<MLA>=<tag>|motivo;go`; `tag:semilla;go` arma la historia vieja (claudecambios,
+nosubir, promoclaude); `tag` solo lista. Web: `estrategiaVentaHTML` en cada venta de Ventas x Producto (la última estrategia anterior
+a la venta; sin dato y marcada liquidando → 📉). Lista igual en `ESTRATEGIAS` (sync.mjs) y `ESTRATEGIA_UI` (index.html).
+Chequear: que las dos listas coincidan, que `tagDeMotivo` no ponga "base" a motivos claros de escasez/liquidar, y que cada `decido` deje su estrategia.
+
 ### Todo lo que el robot revisó y no da, en Nuevos (17/10/2026, v23.99, pedido suyo)
 Qué: abajo de todo en Pedidos → Paraguay → Nuevos (sólo Nissei), desplegable `pycatNoDanHTML`/`pycatNoDan` que lee `mlapi/pycat` al
 abrirlo y lista en 4 grupos: medidos abajo del piso, sin catálogo exacto, nadie lo vende, afuera por regla (de a 100). El renglón es
