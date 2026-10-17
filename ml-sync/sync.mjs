@@ -40,7 +40,7 @@ process.on('SIGTERM', () => _alCortar('SIGTERM'));
 // los que escriben en cantidad o en plata se niegan de entrada, y cualquier otro corre con la base,
 // ML, Mercado Pago y Telegram en sólo lectura (se deja renovar y guardar el token de ML, que ML rota).
 const EN_CONSULTA = process.env.GITHUB_WORKFLOW === 'ml-consulta' || process.env.ML_CONSULTA === '1';
-const CONSULTA_ESCRIBE = new Set(['pycat', 'lista', 'listamedir', 'pycatprobados', 'candprecio', 'lineatodo', 'revcand', 'vincular', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull']);
+const CONSULTA_ESCRIBE = new Set(['pycat', 'pycatres', 'lista', 'listamedir', 'pycatprobados', 'candprecio', 'lineatodo', 'revcand', 'vincular', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull']);
 const CONSULTA_NIEGA = new Set(['cajaitems', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'promoventas', 'cargosmes']);
@@ -8556,6 +8556,34 @@ function pyCatParse(lineas) {
   }
   return { filas, malos, pg, orden };
 }
+// EL CATÁLOGO ENTERO DIVIDIDO, PARA LA WEB (17/10/2026, él: *"quiero que estén todos los 13.000 divididos en todas las
+// categorías (…) total esos 4 MB no se abren hasta que clickee"*). La web baja `mlapi/pycat` recién al abrir; los NÚMEROS de
+// cada grupo los deja el robot en `cyc/pycatres` (chico) para que los encabezados los muestren sin bajar nada. MISMA división
+// que `pycatNoDan` de index.html: candidato · ficha · afuera por regla · medido abajo del piso · sin catálogo exacto · nadie lo
+// vende · sin medir (o medido arriba del piso y esperando pasar a candidato). Si se toca una, se toca la otra.
+function pyCodMatcher(codes) {
+  const full = new Set(), suf = new Set();
+  for (const c of codes) { const x = _pyDg(c); if (!x) continue; full.add(x); if (!/[A-Z]/.test(x)) for (let k = 5; k < x.length; k++) suf.add(x.slice(-k)); }
+  return (y0) => { const y = _pyDg(y0); if (!y) return false; if (full.has(y)) return true; if (/[A-Z]/.test(y)) return false;
+    if (y.length >= 5 && suf.has(y)) return true; for (let k = 5; k < y.length; k++) if (full.has(y.slice(-k))) return true; return false; };
+}
+async function pycatResumenEscribir(db, cat, cands, products) {
+  const esCand = pyCodMatcher(Object.values(cands || {}).map((c) => c && c.cod).filter(Boolean));
+  const esFicha = pyCodMatcher((products || []).map((p) => p && p.codPy).filter(Boolean));
+  const r = { t: Date.now(), tot: 0, cand: 0, ficha: 0, fz: 0, bajo: 0, sc: 0, sv: 0, nomed: 0 };
+  for (const [cod, e] of Object.entries(cat || {})) {
+    if (!e || !e.n) continue; r.tot++;
+    if (e.cand || esCand(cod)) { r.cand++; continue; }
+    if (esFicha(cod)) { r.ficha++; continue; }
+    const m = e.m != null && isFinite(e.m) ? Number(e.m) : null;
+    if (m != null) { if (m < CAND_PISO_PCT) r.bajo++; else r.nomed++; continue; }
+    if (e.fz) { r.fz++; continue; } if (e.sc) { r.sc++; continue; } if (e.sv) { r.sv++; continue; }
+    r.nomed++;
+  }
+  await db.set('cyc/pycatres', r);
+  console.log(`📊 catálogo dividido (cyc/pycatres): ${r.tot} = ${r.cand} candidatos + ${r.ficha} fichas + ${r.fz} afuera por regla + ${r.bajo} abajo del ${CAND_PISO_PCT}% + ${r.sc} sin catálogo exacto + ${r.sv} nadie lo vende + ${r.nomed} sin medir`);
+  return r;
+}
 async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, prueba = null, opts = {}) {
   // `prueba`: productos inventados ({cod: {n, u, f}}) para correr el camino entero sin escribir nada.
   // `opts.lista` (15/10/2026): mide una LISTA DE PRECIOS de otro proveedor (`mlapi/listas/<prov>`), con el costo en PESOS
@@ -8567,6 +8595,7 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
   const cands = (await db.get('cyc/candidatos_py')) || {};
   let marcasNo = null; try { marcasNo = (await db.get('cyc/mlconfig/marcasFrenadas')) || {}; } catch { marcasNo = null; }
   if (!marcasNo) { console.log('⚠️ No pude leer las marcas frenadas: no mido nada esta vuelta.'); return; }
+  if (aplicar && !esLista && !prueba) { try { await pycatResumenEscribir(db, cat, cands, products); } catch (e) { console.log('⚠️ no pude escribir cyc/pycatres: ' + e.message); } }
   try { await cargarParamCompra(db); } catch { /* quedan los de siempre */ }
   const fin = (await db.get('cyc/finanzas')) || {};
   const tc = parseFloat(fin.tipo_cambio) || 0;
@@ -19197,6 +19226,13 @@ async function main() {
     }
     // BILLING_PROBE=pycatmedir[:<cuántos>][:go] → MIDE CONTRA ML LO GUARDADO EN `mlapi/pycat` (15/10/2026). Ver `correrPyCatMedir`.
     // Corre solo en `ml-pycat.yml`. Sin `:go` muestra sin escribir.
+    // BILLING_PROBE=pycatres[:go] → arma ya los números del catálogo dividido (`cyc/pycatres`); sin go sólo los muestra.
+    if (/^pycatres(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const cat = (await db.get('mlapi/pycat')) || {}, cands = (await db.get('cyc/candidatos_py')) || {};
+      if (/:go$/.test(String(process.env.BILLING_PROBE))) await pycatResumenEscribir(db, cat, cands, products);
+      else { const _set = db.set; db.set = async () => {}; try { await pycatResumenEscribir(db, cat, cands, products); } finally { db.set = _set; } console.log('(prueba: no escribí nada)'); }
+      return;
+    }
     if (/^pycatmedir(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const _pm = String(process.env.BILLING_PROBE);
       const n = parseInt((_pm.match(/^pycatmedir:(\d+)/) || [])[1], 10) || PYCAT_POR_VUELTA;

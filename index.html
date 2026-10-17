@@ -2083,6 +2083,7 @@ function startApp(){
     state.candidatos=d.candidatos_py||{};     // 'Para probar': productos que todavía no vendemos
     state.compraspy=d.compraspy||{};          // los pedidos a Paraguay ya hechos: en camino y llegados
     state.reponer=d.reponer||{};              // cuánto tarda en volver a haber cada producto (lo lee el robot en `escasez`)
+    state.pycatres=d.pycatres||null;          // 17/10/2026: los números del catálogo de Paraguay dividido (los arma el robot)
     state.pedidospv=d.pedidospv||{};          // los pedidos al Paulvic en camino (06/10/2026, los carga el robot con `pvped`)
     _limpiarEnCamino(); // borra los "en camino" que hayan quedado marcados (la función ya no existe)
     state.proveedores=d.proveedores?Object.values(d.proveedores).sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{sensitivity:'base'})).map(pv=>({...pv,condiciones:pv.condiciones?Object.values(pv.condiciones).sort((a,b)=>(a.minUSD||0)-(b.minUSD||0)):[]})):[];
@@ -2643,7 +2644,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.12';
+const APP_VERSION='24.13';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2654,6 +2655,7 @@ const APP_VERSION='24.12';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.13',f:'17/10/2026',h:'15:41',c:[{n:1,t:'🗂️ Paraguay → Nuevos: los 13.467 del catálogo de comprasparaguay están todos repartidos en los grupos de abajo (no llegan al 25%, falta analizar —incluye los todavía sin medir—, descartados y "ya son productos tuyos"), con su número en cada encabezado. Las filas se bajan recién al abrir cada grupo.'}]},
   {v:'24.12',f:'17/10/2026',h:'15:37',c:[{n:3,t:'🎯 Paraguay: lo nuevo y lo probado tiene que llegar al 25% (antes 24%). Lo que quede entre 24 y 25 pasa a "No llegan al 25%".'}]},
   {v:'24.11',f:'17/10/2026',h:'15:30',c:[{n:1,t:'🗂️ Paraguay → Nuevos: "el resto del catálogo" ya no es una lista aparte. Lo que el robot midió y no llega al % va adentro de "🔻 No llegan al %", y lo sin catálogo exacto, que nadie vende o afuera por regla va adentro de "👎 Descartados".'}]},
   {v:'24.10',f:'17/10/2026',h:'15:27',c:[{n:1,t:'🗂️ Paraguay → Nuevos: los cinco desplegables de abajo (pocas ventas, no llegan al %, falta analizar, descartados y el resto del catálogo) van juntos adentro de uno solo, "Lo que no entra en el pedido", con nombres cortos y el número al final. No se sacó nada; el catálogo ya no repite lo que es candidato.'}]},
@@ -13101,7 +13103,12 @@ let _pycNoDanVer={};
 // 17/10/2026, él: "el resto del catálogo, ¿no se puede meter en no dan? ¿o descartados?". Sí: los medidos abajo del piso van
 // adentro de "🔻 No llegan al %" y los sin catálogo exacto / nadie lo vende / afuera por regla adentro de "👎 Descartados".
 // `keys` elige los grupos; `id` es dónde se dibuja (se baja recién al abrir: son ~4 MB).
-const _PYC_GRUPOS={bajo:['🔻 medidos abajo del piso','del más cercano al piso al más lejos'],sc:['🔍 sin catálogo exacto en ML','no se pudo comparar contra el mismo producto'],sv:['🚫 en ML no lo vende nadie','el catálogo existe pero sin vendedores'],fz:['⛔ afuera por regla','110V, marca que ML frena, etc.']};
+// Mismo emparejado de códigos que el robot (`pyCodMatcher`): igual, o uno termina con el otro (5+ dígitos).
+function _pycDg(x){const s=String(x||'');return /[a-z]/i.test(s)?s.replace(/[^a-z0-9]/gi,'').toUpperCase():s.replace(/\D/g,'');}
+function _pycMatcher(codes){const full=new Set(),suf=new Set();
+  for(const c of codes){const x=_pycDg(c);if(!x)continue;full.add(x);if(!/[A-Z]/.test(x))for(let k=5;k<x.length;k++)suf.add(x.slice(-k));}
+  return y0=>{const y=_pycDg(y0);if(!y)return false;if(full.has(y))return true;if(/[A-Z]/.test(y))return false;if(y.length>=5&&suf.has(y))return true;for(let k=5;k<y.length;k++)if(full.has(y.slice(-k)))return true;return false;};}
+const _PYC_GRUPOS={ficha:['✅ ya son productos tuyos','tienen ficha en CYC'],nomed:['⏳ todavía sin medir','el robot los mide de a tandas cada 2 h; los que den pasan solos a Para probar'],bajo:['🔻 medidos abajo del piso','del más cercano al piso al más lejos'],sc:['🔍 sin catálogo exacto en ML','no se pudo comparar contra el mismo producto'],sv:['🚫 en ML no lo vende nadie','el catálogo existe pero sin vendedores'],fz:['⛔ afuera por regla','110V, marca que ML frena, etc.']};
 function pycatNoDanHTML(keys,id,titulo){
   if(typeof pyProv!=='undefined'&&pyProv!=='nissei')return'';
   keys=keys||['bajo','sc','sv','fz'];id=id||'pycat-nodan';
@@ -13112,21 +13119,24 @@ async function pycatNoDan(id,keysTxt){
   const el=document.getElementById(id);if(!el)return;
   if(!_pycatCache)el.innerHTML='<div style="font-size:.7rem;color:var(--muted)">⏳ bajando el catálogo (la primera vez tarda unos segundos)…</div>';
   let cat;try{cat=await pycatCargar();}catch(e){el.innerHTML=`<div style="font-size:.7rem;color:var(--red)">No pude leer el catálogo: ${String(e.message||e).slice(0,120)}</div>`;return;}
-  const g={bajo:[],sc:[],sv:[],fz:[]};let sinMedir=0;
+  const g={bajo:[],sc:[],sv:[],fz:[],ficha:[],nomed:[]};
   // Sin repetir: lo que ya es candidato (vivo, en el pedido o descartado) está arriba, aunque el catálogo no lo tenga marcado.
-  const _cc=new Set(Object.values(state.candidatos||{}).map(c=>String(c&&c.cod||'').trim()).filter(Boolean));
-  for(const [cod,e] of Object.entries(cat||{})){if(!e||!e.n||e.cand||_cc.has(String(cod).trim()))continue;
+  // MISMA división que `pycatResumenEscribir` del robot (los números de los encabezados).
+  const esCand=_pycMatcher(Object.values(state.candidatos||{}).map(c=>c&&c.cod).filter(Boolean));
+  const esFicha=_pycMatcher((state.products||[]).map(p=>p&&p.codPy).filter(Boolean));
+  for(const [cod,e] of Object.entries(cat||{})){if(!e||!e.n||e.cand||esCand(cod))continue;
+    if(esFicha(cod)){g.ficha.push([cod,e]);continue;}
     const m=(e.m!=null&&isFinite(e.m))?Number(e.m):null;
-    if(m!=null){if(m<CAND_PISO_PCT)g.bajo.push([cod,e]);continue;}
+    if(m!=null){(m<CAND_PISO_PCT?g.bajo:g.nomed).push([cod,e]);continue;}
     if(e.fz){g.fz.push([cod,e]);continue;}
     if(e.sc){g.sc.push([cod,e]);continue;}
     if(e.sv){g.sv.push([cod,e]);continue;}
-    sinMedir++;}
+    g.nomed.push([cod,e]);}
   g.bajo.sort((a,b)=>Number(b[1].m)-Number(a[1].m));
   const ks=keys.filter(k=>g[k]&&g[k].length),tot=ks.reduce((a,k)=>a+g[k].length,0);
   const lista=(k)=>{const vk=id+'_'+k,n=_pycNoDanVer[vk]||100,arr=g[k];
     return `<div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">${arr.slice(0,n).map(pycatFila).join('')}${arr.length>n?`<button class="btn" style="font-size:.66rem" onclick="_pycNoDanVer['${vk}']=${n+100};pycatNoDan('${id}','${keys.join(',')}').then(()=>{const d=document.querySelector('#${id} details[data-k=${k}]');if(d)d.open=true;})">mostrar 100 más (quedan ${(arr.length-n).toLocaleString('es-AR')})</button>`:''}</div>`;};
-  el.innerHTML=`<div style="font-size:.64rem;color:var(--muted);margin-bottom:6px">${tot.toLocaleString('es-AR')} del catálogo${keys.includes('bajo')?` · ${sinMedir.toLocaleString('es-AR')} todavía sin medir (los que den pasan solos a Para probar)`:''}</div>`
+  el.innerHTML=`<div style="font-size:.64rem;color:var(--muted);margin-bottom:6px">${tot.toLocaleString('es-AR')} del catálogo de comprasparaguay</div>`
     +(ks.length===1?lista(ks[0]):ks.map(k=>`<details data-k="${k}" style="margin-top:6px"><summary style="cursor:pointer;font-size:.7rem">${_PYC_GRUPOS[k][0]} · <b>${g[k].length.toLocaleString('es-AR')}</b> <span style="color:var(--muted);font-size:.62rem">(${_PYC_GRUPOS[k][1]})</span></summary>${lista(k)}</details>`).join(''));
 }
 function candList(){
@@ -14916,11 +14926,21 @@ function candidatosHTML(){
   // 03/10/2026, él: el simulador y el historial "ahí no se usan y molestan": el simulador va al final y el
   // historial de pedidos vive en la pestaña 🧾 Pedido.
   return cab(_verdes)+pycatBuscarHTML()+_orden+_arriba.map(_card).join('')
-    +`<details style="margin-top:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:8px 12px"><summary style="cursor:pointer;font-size:.74rem;font-weight:700;color:var(--muted)">🗂️ Lo que no entra en el pedido · ${(_flojas.length+_rojos.length+_sinAnalizar.length+candList().filter(c=>c.no).length).toLocaleString('es-AR')} <span style="font-weight:400">· tocá para abrir</span></summary>`
-    +(_flojas.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--amber)">🟠 Pocas ventas en ML (menos de ${CAND_MIN_VENT} o sin el dato) · <b>${_flojas.length}</b></summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_flojas.map(_card).join('')}</div></details>`:'')
-    +((_rojos.length||pyProv==='nissei')?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--red)">🔻 No llegan al ${CAND_PISO_TXT()} · <b>${_rojos.length}</b> candidatos <span style="color:var(--muted);font-weight:400">+ los del catálogo</span></summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_rojos.map(_card).join('')}</div>${pycatNoDanHTML(['bajo'],'pycat-nodan-bajo','📦 Del catálogo: medidos por el robot, abajo del piso')}</details>`:'')
-    +(_sinAnalizar.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--muted)" title="Falta la medición de ML o alguna de las dos fotos. Suben solos cuando estén completos y den.">⏳ Falta analizar (medición de ML o fotos) · <b>${_sinAnalizar.length}</b></summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_sinAnalizar.map(_card).join('')}</div></details>`:'')
-    +candDescartadosHTML()+`</details>`;
+    +(()=>{
+      // EL CATÁLOGO ENTERO, DIVIDIDO (17/10/2026, él: "quiero que estén todos los 13.000 divididos en todas las categorías").
+      // Los números del catálogo los deja el robot en `cyc/pycatres`; las filas se bajan recién al abrir cada grupo (~4 MB).
+      const R=pyProv==='nissei'?state.pycatres:null,n=k=>R&&R[k]!=null?Number(R[k]):0,f=x=>Number(x||0).toLocaleString('es-AR');
+      const mas=k=>R?` <span style="color:var(--muted);font-weight:400">+ <b>${f(n(k))}</b> del catálogo</span>`:'';
+      const nDesc=candList().filter(c=>c.no).length;
+      const tot=_flojas.length+_rojos.length+_sinAnalizar.length+nDesc+(R?n('ficha')+n('bajo')+n('nomed')+n('sc')+n('sv')+n('fz'):0);
+      const cuenta=R?`<div style="font-size:.64rem;color:var(--muted);margin:8px 0 2px;line-height:1.5">📊 comprasparaguay tiene <b>${f(R.tot)}</b>: <b>${f(n('cand'))}</b> ya son candidatos (para probar, en el pedido y los de acá abajo) · <b>${f(n('ficha'))}</b> ya son productos tuyos · <b>${f(n('bajo'))}</b> medidos que no llegan al ${CAND_PISO_TXT()} · <b>${f(n('sc')+n('sv')+n('fz'))}</b> sin catálogo exacto, que nadie vende o afuera por regla · <b>${f(n('nomed'))}</b> todavía sin medir. <span title="Los números los arma el robot cada vez que mide (cada 2 h).">(contado el ${new Date(R.t).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})})</span></div>`:'';
+      return `<details style="margin-top:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:8px 12px"><summary style="cursor:pointer;font-size:.74rem;font-weight:700;color:var(--muted)">🗂️ Lo que no entra en el pedido · ${f(tot)} <span style="font-weight:400">· tocá para abrir</span></summary>`+cuenta
+      +(_flojas.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--amber)">🟠 Pocas ventas en ML (menos de ${CAND_MIN_VENT} o sin el dato) · <b>${_flojas.length}</b></summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_flojas.map(_card).join('')}</div></details>`:'')
+      +((_rojos.length||R)?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--red)">🔻 No llegan al ${CAND_PISO_TXT()} · <b>${_rojos.length}</b> candidatos${mas('bajo')}</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_rojos.map(_card).join('')}</div>${pycatNoDanHTML(['bajo'],'pycat-nodan-bajo','📦 Del catálogo: medidos por el robot, abajo del piso')}</details>`:'')
+      +((_sinAnalizar.length||R)?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--muted)" title="Falta la medición de ML o alguna de las dos fotos. Suben solos cuando estén completos y den.">⏳ Falta analizar · <b>${_sinAnalizar.length}</b> candidatos${mas('nomed')}</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_sinAnalizar.map(_card).join('')}</div>${pycatNoDanHTML(['nomed'],'pycat-nodan-nomed','📦 Del catálogo: todavía sin medir')}</details>`:'')
+      +candDescartadosHTML(R?n('sc')+n('sv')+n('fz'):null)
+      +(R&&n('ficha')?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--green)">✅ Ya son productos tuyos · <b>${f(n('ficha'))}</b> del catálogo</summary>${pycatNoDanHTML(['ficha'],'pycat-nodan-ficha','📦 Del catálogo: ya tienen ficha en CYC')}</details>`:'')
+      +`</details>`;})();
 }
 // LO DESCARTADO NO SE ESCONDE. Una lista que saca renglones sin decirlo es una lista que miente —
 // la misma regla que el desplegable de `nomandar` en Armar caja.
@@ -14932,11 +14952,11 @@ function candOrdenar(k){_candOrden=k;try{localStorage.setItem('cycCandOrden',k);
 let _candFiltro=(()=>{try{return localStorage.getItem('cycCandFiltro')||'todos';}catch(e){return 'todos';}})();
 function candFiltrar(k){_candFiltro=k;try{localStorage.setItem('cycCandFiltro',k);}catch(e){}renderPedidos();}
 function candToggle(id,ab){if(ab)_candAbiertos.add(id);else _candAbiertos.delete(id);}
-function candDescartadosHTML(){
+function candDescartadosHTML(nCat){
   const desc=candList().filter(c=>c.no);
   const _cat=pycatNoDanHTML(['sc','sv','fz'],'pycat-nodan-desc','📦 Del catálogo: sin catálogo exacto en ML, nadie lo vende o afuera por regla');
   if(!desc.length&&!_cat)return '';
-  return `<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--muted)">👎 Descartados · <b>${desc.length.toLocaleString('es-AR')}</b> candidatos (se pueden devolver) <span style="color:var(--muted);font-weight:400">+ los del catálogo</span></summary>
+  return `<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--muted)">👎 Descartados · <b>${desc.length.toLocaleString('es-AR')}</b> candidatos (se pueden devolver) ${nCat!=null?` <span style="color:var(--muted);font-weight:400">+ <b>${Number(nCat).toLocaleString('es-AR')}</b> del catálogo</span>`:''}</summary>
     <div style="display:flex;flex-direction:column;gap:5px;margin-top:8px">
     ${desc.map(c=>`<div style="display:flex;align-items:center;gap:8px;font-size:.66rem;color:var(--muted)">
       <span style="flex:1">${c.nombre}${c.usd?` · US$ ${parseFloat(c.usd).toFixed(2)}`:''}</span>
