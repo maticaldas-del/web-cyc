@@ -30305,7 +30305,7 @@ async function main() {
         if (volConfiable && !quiebreR && !escCer) { volumen = dirV(volCrudo); volFuente = 'medido'; }
         else if (vencido) {
           const dA = await diasStockSup(ev.mla, ev.ts - L * 864e5, ev.ts), dD = await diasStockSup(ev.mla, ev.ts, finT);
-          const rA = dA != null && dA >= 3 ? uA / dA : null;
+          const rA = dA != null && dA >= 7 ? uA / dA : null;
           if (escCer) {
             volFuente = 'escasez'; volNota = 'lo que dejó de vender se vendió después';
             const ahorr = rA != null && dD != null ? Math.max(0, rA * dD - uD) : 0;
@@ -30317,8 +30317,11 @@ async function main() {
                 if (q > 0) { volumen = -q * Math.max(0, gUViejo); volNota = `quedaron ${Math.round(q * 10) / 10} u. sin vender ${sb.caja ? 'al llegar la caja' : 'a hoy'}`; }
               } else volNota = 'sin stock diario para saber si sobró: sólo el precio';
             }
-          } else if (rA != null && dD != null && dD >= 3) {
-            volumen = dirV((uD - rA * dD) * gUViejo); volFuente = 'estimado';
+          } else if (rA != null && dD != null && dD >= 7) {
+            // Lo que puede ser casualidad (±√esperadas, Poisson) no se cobra ni se regala: con pocas unidades una
+            // venta de más o de menos no es el precio.
+            const esp = rA * dD, dif = uD - esp, neto = Math.sign(dif) * Math.max(0, Math.abs(dif) - Math.sqrt(esp));
+            volumen = dirV(neto * gUViejo); volFuente = 'estimado';
             volNota = `ritmo con stock ${Math.round(rA * 300) / 10}→${Math.round(uD / dD * 300) / 10} u./mes`;
           } else { volFuente = 'soloprecio'; volNota = 'sin dato de stock: se juzga sólo por el precio'; }
         }

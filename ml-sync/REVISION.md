@@ -1332,7 +1332,7 @@ Pedido suyo: "deja lo importante, los detalles que sean desplegables". A la vist
 ### v24.19 · 17/10/2026 · Robot de precios: firme / sin confirmar y juicio a los 30 días (etapa 1, eligió 1a 2a 3)
 - **Qué:** el supervisor marca cada cambio `firme` (volumen medido entero con el stock hora por hora), `decidido` y `volFuente`
   (`medido` · `estimado` · `escasez` · `soloprecio` · `pisado` · `espera`). Pasados `SUP_PLAZO_JUICIO` (30) días todo cambio se juzga:
-  ventas por día CON stock antes vs después (`diasStockSup`: stocklog o, si no cubre, `mlapi/linea` st>0; null con menos de la mitad
+  ventas por día CON stock antes vs después (7+ días de cada lado, se descuenta ±√esperadas por azar; `diasStockSup`: stocklog o, si no cubre, `mlapi/linea` st>0; null con menos de la mitad
   de los días sabidos); escasez: lo "ahorrado" que seguía en stock al entrar la caja siguiente (`sobraTrasSup`, repartido una sola vez
   por caja con `sobraUsada`) se resta a la ganancia del precio viejo. Sin dato de stock: sólo precio. `resumen.firme/decidido/espera`.
 - **Web:** `renderMetAuto` muestra "✅ Firme" y "sin confirmar" (gris) abajo del total, y cada renglón dice cómo se midió (`fuenteTxt`).
