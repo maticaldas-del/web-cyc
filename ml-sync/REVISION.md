@@ -1338,3 +1338,19 @@ Pedido suyo: "deja lo importante, los detalles que sean desplegables". A la vist
 - **Web:** `renderMetAuto` muestra "✅ Firme" y "sin confirmar" (gris) abajo del total, y cada renglón dice cómo se midió (`fuenteTxt`).
 - **Chequear:** que la suma firme + sin confirmar = total; que un cambio de escasez no reste la misma sobra dos veces; que `estimado`
   mantenga la regla de dirección (subas sólo restan, bajas sólo suman); que la lectura de la línea no alargue mucho la corrida.
+
+### 17/10/2026 · completado de la revisión (pedido suyo: "fijate si hay cosas nuevas que tienen que estar en etapas de revisión y no lo están")
+Se cruzaron las versiones de `APP_CAMBIOS` y los commits del robot desde el 13/10 contra este archivo. Faltaban:
+ · **Etapa 3 · corte de Paraguay 17 días (v23.40):** el contador de arriba de Pedidos → Paraguay usa viaje + preparar + caja (17 d),
+   no los 14 de Bs As. Chequear que el rojo de Paraguay y el de Bs As salgan de su propio número.
+ · **Etapa 3 · "SÓLO estos colores" (v23.83):** 📋 Copiar pedido termina avisando que no se reemplace un color por otro. Chequear
+   que salga en todos los pedidos con colores (Bs As, Paulvic y Paraguay).
+ · **Etapa 3 · `candidatos`: entre los nunca medidos, primero los recién cargados (commit 6a92720).** Chequear que un candidato
+   viejo sin medir no quede para siempre atrás (el tope de 250 por vuelta los alcanza a todos).
+ · **Etapa 3 · `pycatbusca` (solo lee):** busca en el catálogo de Paraguay guardado (`mlapi/pycat`). Chequear que no imprima nada de terceros.
+ · **Etapa 7 · Armar caja simple (v23.52):** a la vista sólo nombre, variante, cuántas tenés, cuántas mandar y el código de
+   etiqueta; lo demás al tocar. Chequear que el código de etiqueta siga a la vista (es el control de que se manda lo correcto).
+ · **Títulos de las etapas (`REV_ETAPAS`):** la 1 decía "el robot que sube y baja, el rescate, la escalera, el remate", que ya no
+   existen desde `SOLO_DATOS` (09/10): ahora dice lo que hago yo (escasez, techo, peor caso, promos, estrategias) y el robot que
+   mide. La 3 suma Paulvic, Elegancia, el catálogo de Paraguay, las listas y "no lo consigo". La 8 suma la ficha médica y las
+   estrategias.

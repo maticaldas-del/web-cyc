@@ -2644,7 +2644,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.19';
+const APP_VERSION='24.20';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2655,6 +2655,7 @@ const APP_VERSION='24.19';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.20',f:'17/10/2026',h:'16:58',c:[{n:1,t:'🔎 Revisión: los títulos de las etapas al día (Precios ya dice lo que decido yo y el robot que mide; Mercadería suma Paulvic, Elegancia y el catálogo de Paraguay; Datos suma la ficha médica y las estrategias).'}]},
   {v:'24.19',f:'17/10/2026',h:'16:46',c:[{n:2,t:'🤖 Robot de precios (Métricas): el total se abre en ✅ firme (medido entero, con el stock de las dos ventanas) y sin confirmar en gris. Pasados 30 días todo cambio queda juzgado con la cuenta más justa (ventas por día con stock antes y después), y las subas por escasez restan lo que quedó sin vender al llegar la caja.'}]},
   {v:'24.18',f:'17/10/2026',h:'16:22',c:[{n:1,t:'🇵🇾 Paraguay: probados y nuevos con la misma tarjeta, más baja y usando el ancho: foto, nombre, código · precio puesto · vendidas, y a la derecha en una fila el % del local, comprar N u., la casilla 🧾 pedir y el % grande.'}]},
   {v:'24.17',f:'17/10/2026',h:'16:13',c:[{n:1,t:'🧾 Pedidos (Paraguay probados): sin los avisos de no da / escasez en la tarjeta, las unidades a comprar en blanco y más grandes, y la casilla para pedir a la vista sin abrir el detalle.'}]},
@@ -3973,14 +3974,14 @@ function updateHomeDolar(){
 // Desde el 26/09/2026 lo que se hizo y lo que falta lo lleva Claude en REV_PENDIENTE / REV_HECHAS
 // (más abajo), no un botón: `cyc/revision/ultima` ya no se usa.
 const REV_ETAPAS=[
-  {n:1,nom:'Precios',que:'el robot que sube y baja, el rescate, la escalera, el remate y sus frenos',esf:'Alto'},
+  {n:1,nom:'Precios',que:'los precios que decido yo en cada vuelta (escasez y su escalera, buscar el techo, peor caso del 25%, promos, estrategias), sus frenos (barrera $33.000, techo $650.000, variantes) y el robot de precios que mide si ganaron o perdieron',esf:'Alto'},
   {n:2,nom:'Plata',que:'Arqueo, Mercado Pago, a liquidar, dólares y pesos, gastos',esf:'Alto'},
-  {n:3,nom:'Mercadería',que:'cajas, stock de Full, oficina, pedidos y Paraguay',esf:'Alto'},
+  {n:3,nom:'Mercadería',que:'cajas, stock de Full, oficina, pedidos (Bs As, Paulvic, Paraguay Nissei y Elegancia, el catálogo de Paraguay y las listas de proveedores) y lo que no se consigue',esf:'Alto'},
   {n:4,nom:'Choques',que:'la web y el robot escribiendo lo mismo, corridas a la vez',esf:'Alto'},
   {n:5,nom:'Fallas mudas y privacidad',que:'cuando ML no contesta y se guarda como dato; datos de terceros en los registros públicos',esf:'Alto'},
   {n:6,nom:'Ideas nuevas',que:'datos que ML ya da y no usamos, cosas que hacés a mano y se pueden automatizar, y detalles que den gusto usar la web: efectos, comodidad, lo repetido y lo que falta (sólo propone)',esf:'Alto'},
   {n:7,nom:'Diseño',que:'la web más cómoda, sencilla y linda: qué sobra, qué cuesta encontrar, qué se ve mal en el teléfono, y proponer detalles lindos con sentido como las ventas con vida (sólo propone)',esf:'Alto'},
-  {n:8,nom:'Datos e historial',que:'las líneas de tiempo de cada producto y de todos juntos: que cada día cuente bien (nada contado dos veces, nada vacío leído como cero) y coincida con Ventas y el Arqueo',esf:'Alto'},
+  {n:8,nom:'Datos e historial',que:'las líneas de tiempo de cada producto y de todos juntos, la ficha médica de cada publicación y la historia de estrategias: que cada día cuente bien (nada contado dos veces, nada vacío leído como cero) y coincida con Ventas y el Arqueo',esf:'Alto'},
   {n:9,nom:'Cerebro',que:'lo que hace Claude en cada vuelta: que cada parte quede ENTERA (cada publicación, cada ficha y color de Pedidos, cada caja, cada pregunta y cada vínculo), contando contra el total y no sólo contra lo que ya existe o se movió',esf:'Alto'},
 ];
 const REV_CADA_DIAS=7;
