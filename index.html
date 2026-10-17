@@ -2644,7 +2644,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.14';
+const APP_VERSION='24.15';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2655,6 +2655,7 @@ const APP_VERSION='24.14';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.15',f:'17/10/2026',h:'15:48',c:[{n:1,t:'📁 Paraguay → Nuevos: "Lo que no entra en el pedido" tiene dos carpetas, 📏 Medidos (pocas ventas, no llegan al 25%, descartados con margen, ya son tuyos) y ❔ No medidos (falta analizar y descartados sin margen), cada una con sus grupos como antes.'}]},
   {v:'24.14',f:'17/10/2026',h:'15:46',c:[{n:1,t:'📈 Línea de tiempo: al lado del stock de hoy dice la caja en camino a Full (unidades y en cuántos días llega, ~8 desde el despacho), lo que hay en la oficina y si viene un pedido del proveedor. Con un color elegido, sólo de ese color.'}]},
   {v:'24.13',f:'17/10/2026',h:'15:41',c:[{n:1,t:'🗂️ Paraguay → Nuevos: los 13.467 del catálogo de comprasparaguay están todos repartidos en los grupos de abajo (no llegan al 25%, falta analizar —incluye los todavía sin medir—, descartados y "ya son productos tuyos"), con su número en cada encabezado. Las filas se bajan recién al abrir cada grupo.'}]},
   {v:'24.12',f:'17/10/2026',h:'15:37',c:[{n:3,t:'🎯 Paraguay: lo nuevo y lo probado tiene que llegar al 25% (antes 24%). Lo que quede entre 24 y 25 pasa a "No llegan al 25%".'}]},
@@ -14941,12 +14942,22 @@ function candidatosHTML(){
       const nDesc=candList().filter(c=>c.no).length;
       const tot=_flojas.length+_rojos.length+_sinAnalizar.length+nDesc+(R?n('ficha')+n('bajo')+n('nomed')+n('sc')+n('sv')+n('fz'):0);
       const cuenta=R?`<div style="font-size:.64rem;color:var(--muted);margin:8px 0 2px;line-height:1.5">📊 comprasparaguay tiene <b>${f(R.tot)}</b>: <b>${f(n('cand'))}</b> ya son candidatos (para probar, en el pedido y los de acá abajo) · <b>${f(n('ficha'))}</b> ya son productos tuyos · <b>${f(n('bajo'))}</b> medidos que no llegan al ${CAND_PISO_TXT()} · <b>${f(n('sc')+n('sv')+n('fz'))}</b> sin catálogo exacto, que nadie vende o afuera por regla · <b>${f(n('nomed'))}</b> todavía sin medir. <span title="Los números los arma el robot cada vez que mide (cada 2 h).">(contado el ${new Date(R.t).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})})</span></div>`:'';
+      // DOS CARPETAS: MEDIDOS Y NO MEDIDOS (17/10/2026, él: "quiero dos carpetas, medidos y no medidos y dentro de cada una que
+      // esté lo mismo que ahora"). Medidos = el robot ya sabe el margen (pocas ventas, no llegan, descartados con margen, ya son
+      // tuyos). No medidos = falta analizar (incluye el catálogo sin medir) y descartados sin margen (sin catálogo exacto, nadie lo
+      // vende, afuera por regla). Un grupo vacío no se dibuja.
+      const descM=candList().filter(c=>c.no&&_candMedido(c)).length,descN=nDesc-descM;
+      const totM=_flojas.length+_rojos.length+descM+(R?n('bajo')+n('ficha'):0),totN=_sinAnalizar.length+descN+(R?n('nomed')+n('sc')+n('sv')+n('fz'):0);
+      const carp=(t,nn,col,html)=>`<details style="margin-top:10px;border:1px solid var(--border2);border-radius:8px;padding:6px 10px;background:var(--surface2)"><summary style="cursor:pointer;font-size:.74rem;font-weight:700;color:${col}">${t} · ${f(nn)}</summary>${html}</details>`;
       return `<details style="margin-top:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:8px 12px"><summary style="cursor:pointer;font-size:.74rem;font-weight:700;color:var(--muted)">🗂️ Lo que no entra en el pedido · ${f(tot)} <span style="font-weight:400">· tocá para abrir</span></summary>`+cuenta
+      +carp('📏 Medidos',totM,'var(--text)',''
       +(_flojas.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--amber)">🟠 Pocas ventas en ML (menos de ${CAND_MIN_VENT} o sin el dato) · <b>${_flojas.length}</b></summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_flojas.map(_card).join('')}</div></details>`:'')
       +((_rojos.length||R)?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--red)">🔻 No llegan al ${CAND_PISO_TXT()} · <b>${_rojos.length}</b> candidatos${mas('bajo')}</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_rojos.map(_card).join('')}</div>${pycatNoDanHTML(['bajo'],'pycat-nodan-bajo','📦 Del catálogo: medidos por el robot, abajo del piso')}</details>`:'')
+      +candDescartadosHTML(null,true)
+      +(R&&n('ficha')?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--green)">✅ Ya son productos tuyos · <b>${f(n('ficha'))}</b> del catálogo</summary>${pycatNoDanHTML(['ficha'],'pycat-nodan-ficha','📦 Del catálogo: ya tienen ficha en CYC')}</details>`:''))
+      +carp('❔ No medidos',totN,'var(--muted)',''
       +((_sinAnalizar.length||R)?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--muted)" title="Falta la medición de ML o alguna de las dos fotos. Suben solos cuando estén completos y den.">⏳ Falta analizar · <b>${_sinAnalizar.length}</b> candidatos${mas('nomed')}</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_sinAnalizar.map(_card).join('')}</div>${pycatNoDanHTML(['nomed'],'pycat-nodan-nomed','📦 Del catálogo: todavía sin medir')}</details>`:'')
-      +candDescartadosHTML(R?n('sc')+n('sv')+n('fz'):null)
-      +(R&&n('ficha')?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--green)">✅ Ya son productos tuyos · <b>${f(n('ficha'))}</b> del catálogo</summary>${pycatNoDanHTML(['ficha'],'pycat-nodan-ficha','📦 Del catálogo: ya tienen ficha en CYC')}</details>`:'')
+      +candDescartadosHTML(R?n('sc')+n('sv')+n('fz'):null,false))
       +`</details>`;})();
 }
 // LO DESCARTADO NO SE ESCONDE. Una lista que saca renglones sin decirlo es una lista que miente —
@@ -14959,9 +14970,13 @@ function candOrdenar(k){_candOrden=k;try{localStorage.setItem('cycCandOrden',k);
 let _candFiltro=(()=>{try{return localStorage.getItem('cycCandFiltro')||'todos';}catch(e){return 'todos';}})();
 function candFiltrar(k){_candFiltro=k;try{localStorage.setItem('cycCandFiltro',k);}catch(e){}renderPedidos();}
 function candToggle(id,ab){if(ab)_candAbiertos.add(id);else _candAbiertos.delete(id);}
-function candDescartadosHTML(nCat){
-  const desc=candList().filter(c=>c.no);
-  const _cat=pycatNoDanHTML(['sc','sv','fz'],'pycat-nodan-desc','📦 Del catálogo: sin catálogo exacto en ML, nadie lo vende o afuera por regla');
+// `med` (17/10/2026, carpetas Medidos / No medidos): true = sólo los que tienen margen medido (y sin catálogo), false = los
+// sin medir más los del catálogo que no se pudieron medir; sin `med` = todos (como antes).
+const _candMedido=c=>c&&c.margen!=null&&isFinite(c.margen);
+function candDescartadosHTML(nCat,med){
+  const desc=candList().filter(c=>c.no&&(med==null||_candMedido(c)===med));
+  const _cat=med===true?'':pycatNoDanHTML(['sc','sv','fz'],'pycat-nodan-desc','📦 Del catálogo: sin catálogo exacto en ML, nadie lo vende o afuera por regla');
+  if(med===true)nCat=null;
   if(!desc.length&&!_cat)return '';
   return `<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--muted)">👎 Descartados · <b>${desc.length.toLocaleString('es-AR')}</b> candidatos (se pueden devolver) ${nCat!=null?` <span style="color:var(--muted);font-weight:400">+ <b>${Number(nCat).toLocaleString('es-AR')}</b> del catálogo</span>`:''}</summary>
     <div style="display:flex;flex-direction:column;gap:5px;margin-top:8px">

@@ -341,6 +341,9 @@ y deja 25%+ (`Tde`); el motivo de Tito y el 📋 Copiar pedido dicen "SÓLO este
 "desaparecieron N u." con stock compartido; `antiguo` muestra también la cuenta con las ventas de 30 d. Qué chequear:
 que `cortes` salga en el log de `pedidostodo` y `decide_pedidos.py` lea N de M ✓.
 
+### Paraguay Nuevos: carpetas Medidos / No medidos (17/10/2026, v24.15, pedido suyo)
+- Medidos: pocas ventas · no llegan (+catálogo `bajo`) · descartados con margen · ya son tuyos. No medidos: falta analizar (+`nomed`) · descartados sin margen (+`sc/sv/fz`). `candDescartadosHTML(nCat,med)`. Chequear que la suma de las dos carpetas = el total de arriba.
+
 ### Línea de tiempo: caja en camino, días que faltan y oficina (17/10/2026, v24.14, pedido suyo)
 - En el resumen de arriba (`_stHoy`): cada caja pendiente (`transitoInfoDe(...).lista`) con unidades y ~8 d desde el despacho, la oficina del color y `_pedidoViaja`. Chequear que con un color elegido muestre sólo ese color.
 
