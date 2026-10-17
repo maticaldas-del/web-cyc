@@ -348,3 +348,8 @@ oficina → sin reposición (regla ⏳): precio para vender lo que hay en ~100 d
 Aclaración suya del mismo día: *"más importante que la escasez son los 4 meses para pagar. nunca tenemos que llegar a pagar
 por stock"*. O sea: aunque haya stock para 1 mes, sin nada en la oficina se trata como escasez, y el techo de todo es vender
 lo que hay antes de que Full cobre almacenamiento (~120 días; se apunta a ~100).
+
+## 🏷️ CADA PRECIO LLEVA SU ESTRATEGIA (17/10/2026, pedido suyo)
+Todo `decido:<MLA>=<precio>` va con `#<estrategia>` (si falta, se deduce del motivo y puede errar): `base` · `escasez` · `sinrepo`
+(no se consigue, 4 meses) · `techo` (prueba de suba) · `liquidando` · `caja` · `promo` · `fecha` · `excepcion` · `nuevo` · `correccion`.
+Cambiar sólo la estrategia, sin tocar el precio: `tag:<MLA>=<estrategia>|motivo;go`. Se ve en cada venta de Ventas x Producto.

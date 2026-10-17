@@ -766,6 +766,11 @@ prueba de $21.990, vuelve a $14.950 · las visitas cortan antes una prueba mala 
 25% · subas juzgadas por compradores y 7 días · lo barato deja $1.000/u o más · Premium que gana la caja se queda ·
 agotados contra su último tramo con stock · Tito: "SÓLO estos colores". Detalle en `ml-sync/CEREBRO.md` (🔬).
 
+## 🏷️ CADA PRECIO TIENE SU ESTRATEGIA (17/10/2026, v24.00, pedido suyo)
+Él: *"quiero que cada precio tenga un tag (…) y que al venderse ese producto en ventas x producto diga qué tag tiene"*.
+`cyc/estrategia/<MLA>/<ts>` (historia). `decido:<MLA>=<precio>#<tag>|motivo` (sin `#` se deduce del motivo) · `tag:<MLA>=<tag>|motivo;go` ·
+`tag` lista. Cada venta muestra la estrategia que tenía cuando se vendió. Detalle en `ml-sync/CEREBRO.md`.
+
 ## 🇵🇾 DOS PROVEEDORES EN PARAGUAY: NISSEI Y ELEGANCIA (16/10/2026, v23.82)
 Él: *"separar por proveedor dentro de paraguay (…) los pedidos no se pueden juntar y los productos son distintos, precios
 distintos (…) que sea idéntico a como está armado nissei"*. **El proveedor del catálogo "Atacado" se llama Elegancia.**
