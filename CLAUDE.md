@@ -978,8 +978,8 @@ Anotado en `ml-sync/REVISION.md` (etapas 6 y 7) y en `REV_ETAPAS`.
 (...) quiero que me llegue lo importante, no si subiste/bajaste algo o si despausaste una publicación que llegó a full"*.
  · Se manda con **`pregunto:<texto>`** por ml-sync (`//` = salto de línea, sin `;`, sin datos de compradores: el registro
    es público). Sale al canal privado con "🤔 Para decidir vos". `recordar:` sigue para recordatorios.
- · Va SÓLO: decisiones suyas (todas juntas, numeradas, (a)/(b)), preguntas de compradores que no supe contestar, cajas para
-   mandar ya, costos que faltan, publicaciones que tiene que arreglar él en ML. **Nunca** "subí/bajé/activé/entré en promo".
+ · Va SÓLO: decisiones suyas (todas juntas, numeradas, (a)/(b)) y lo IMPORTANTE que sólo puede hacer él (ver "SE SACÓ EL
+   16/10" abajo: desde ese día las preguntas sin contestar y las cajas "para la próxima" ya no van). **Nunca** "subí/bajé/activé/entré en promo".
  · Sin nada para decidir no sale nada (ni Telegram ni notificación). Lo hecho queda en el 🧠 y en el chat.
  · Las dos rutinas (`trig_01475PwdPVJ1qTnYswcDxRq8` y `trig_01FCaQqzU5MA422N6Z8nH63Z`) ya lo dicen.
 
@@ -1003,14 +1003,15 @@ Probe `webpush[:go|:probar]` por ml-sync. **Y por Telegram se dio de baja** (ped
 
 Él: *"dejar las reglas idénticas, excepto que la vibración y fuego permita activarse a partir de $10.000 de ganancia. No quiere decir que sí o sí se activen, sino que permita"*. `VIVA_GAN_TIEMBLA` en `vivaVenta`. El aviso al teléfono NO se filtró (sigue avisando cada venta).
 
-## 🧠 RESUMEN DE CADA CEREBRO POR TELEGRAM (10/10/2026, pedido suyo)
+## 🧠 ~~RESUMEN DE CADA CEREBRO POR TELEGRAM~~ — SE SACÓ EL 16/10/2026 (regla suya)
 
-Él: *"cada vez que se activa cerebro (...) me mandás un pequeño resumen de lo que descubrió/modificó?"*. Esto ABRE una
-excepción a "a Telegram sólo decisiones": el resumen va con **`resumen:<texto>`** por ml-sync (sale con el título
-"🧠 Lo que hizo el cerebro", `//` = salto de línea, sin `;`, sin datos de compradores). **La completa de las 08:52
-lo manda SIEMPRE** (6-10 renglones: lo que descubrió y lo que cambió, con 2-3 ejemplos con nombre y precio). **Las
-cortas (12:52, 16:52, 20:52) sólo si cambiaron o descubrieron algo** (2-5 renglones). Va aparte del `pregunto:` de las
-decisiones, que sigue igual. Las dos rutinas ya lo dicen.
+Él: *"quiero que en telegram lleguen cosas más importantes. sino nada. o algo que tenga que decidir"*. **Ya no se manda
+`resumen:` en ninguna vuelta** (ni la completa de las 08:52). Lo hecho queda en el 🧠 y en el chat. Por Telegram va
+SÓLO `pregunto:` y sólo con: (1) decisiones suyas (todas juntas, numeradas, (a)/(b)) · (2) lo IMPORTANTE que sólo puede
+hacer él y cuesta plata si no lo hace: un reclamo que espera su respuesta, ML que frenó o cerró algo que vende, algo que
+vende fuerte en 0 en Full con mercadería en la oficina (caja para mandar ya), un costo que falta en algo que se vende.
+**NO van:** preguntas de compradores que no supe contestar (quedan en ML y en el chat), cajas "para la próxima", ideas
+chicas, resúmenes. Si no hay nada de eso, no sale nada. Las dos rutinas lo dicen.
 
 ## 🧾 PARAGUAY: EL TICKET REAL ES OBLIGATORIO PARA CERRAR EL PEDIDO (10/10/2026, regla suya)
 

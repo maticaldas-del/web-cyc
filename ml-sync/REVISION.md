@@ -904,6 +904,16 @@ versiones nuevas. Restaurado en v23.21 (`cyc-v601`). **Antes de cada commit: `wc
  · Qué chequear: que en las vueltas no salgan avisos de cosas ya hechas (subas, bajas, activadas), que sin decisiones no
    salga nada, y que el texto no lleve datos de compradores (el log es público).
 
+### Telegram: sólo lo importante, sin resúmenes (16/10/2026, regla suya)
+ · Él: *"quiero que en telegram lleguen cosas más importantes. sino nada. o algo que tenga que decidir"*.
+ · Qué cambió: se sacó el `resumen:` de las dos rutinas (completa 08:52 `trig_01475PwdPVJ1qTnYswcDxRq8` y cortas
+   `trig_01FCaQqzU5MA422N6Z8nH63Z`). El `pregunto:` va sólo con decisiones suyas o con lo importante que sólo puede hacer
+   él y cuesta plata si no lo hace hoy (reclamo que espera su respuesta, ML frenó algo que vende, algo que vende fuerte en
+   0 en Full con mercadería en la oficina, costo que falta en algo que se vende). Ya NO van preguntas sin contestar ni cajas
+   "para la próxima". Reglas en CLAUDE.md y CEREBRO.md (sección 7).
+ · Qué chequear: que ninguna vuelta mande `resumen:` y que un día sin nada importante no salga ningún mensaje. El comando
+   `resumen:` sigue existiendo en sync.mjs (no se borró) por si él lo vuelve a pedir.
+
 ### Aviso de venta al teléfono: sólo desde $10.000 de ganancia (15/10/2026, v23.46, regla suya)
 Qué: `avisarVentasNuevas` (sync.mjs) filtra con `AVISO_VENTA_GAN_MIN` = 10000 la ganancia de cada venta (misma cuenta
 `armarCostoWeb` que el panel). Las de menos o sin costo se anotan en `mlapi/avisoventa` sin avisar. Qué chequear: que una

@@ -97,7 +97,7 @@ archivo son AYUDA, no la decisión: si sólo se siguen las reglas, lo que nadie 
   ("Descuento ML"). **Promo nuestra (pusimos plata):** DORADO ("Vendido en promoción"). Él sólo quiere seguir de cerca las doradas.
 - **Medir si una promo activa la venta**: plata por día antes vs durante, igual que el techo. Primera oportunidad
   grande: **CyberMonday 02/11**. No suponer que la promo vende más (Halloween 9-10/10: 3 con cupón y 2 sin, al mismo precio).
-- En el `resumen:` de cada cerebro, una línea con las ventas en promo de la vuelta (cuántas, cuánto puso ML, si pusimos nosotros).
+- Las ventas en promo de la vuelta (cuántas, cuánto puso ML, si pusimos nosotros) se cuentan en el chat (el `resumen:` por Telegram se sacó el 16/10).
 - Fechas y eventos: sección 14/14b del `informe` y `eventos`. El ×1,4 de lo regalable NO está confirmado: mirar lo que vende de verdad.
 
 ## 3 · Pausadas, publicaciones, vínculos
@@ -148,8 +148,11 @@ archivo son AYUDA, no la decisión: si sólo se siguen las reglas, lo que nadie 
 - Lo que se cobra en el mes que viene: la ganancia real del mes ÷ 3 (CYC, él y su papá).
 
 ## 7 · Telegram y resúmenes
-- `pregunto:` SÓLO decisiones suyas o cosas que tiene que hacer con las manos. Nunca "subí/bajé/activé".
-- `resumen:` en cada cerebro: la completa SIEMPRE (6-10 renglones), las cortas sólo si cambiaron o descubrieron algo.
+- Regla suya del 16/10: *"que lleguen cosas más importantes. sino nada. o algo que tenga que decidir"*.
+- `pregunto:` SÓLO decisiones suyas o lo IMPORTANTE que sólo puede hacer él y cuesta plata si no lo hace (reclamo que
+  espera su respuesta, ML frenó algo que vende, algo que vende fuerte en 0 en Full con mercadería en la oficina, costo que
+  falta en algo que se vende). NO: preguntas sin contestar, cajas "para la próxima", ideas chicas. Nunca "subí/bajé/activé".
+- `resumen:` YA NO SE MANDA (se sacó el 16/10), en ninguna vuelta.
 - Sin datos de compradores ni números de orden en nada que se publique (el registro es público).
 
 ## 8 · Cada vuelta busca algo nuevo
