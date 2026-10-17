@@ -1368,3 +1368,9 @@ Se cruzaron las versiones de `APP_CAMBIOS` y los commits del robot desde el 13/1
    "Lo que debemos" de `calcArqueo` (no en un mes cerrado). Sin intereses ni multas.
  · Qué chequear: que al pagar se cargue `arcaHPagadoHasta`; que en febrero 2027 (cambian las cuotas) se actualice `arcaHMes`; que la
    ganancia (que ya descuenta H en cada venta) no la reste otra vez.
+### Etapa 2 · 17/10/2026 · "¿Cierra el mes?" sin el golpe de la deuda vieja con ARCA (v24.24)
+ · Qué: él: *"voy a hacer el arqueo a fin de mes y me va a dar muy negativo, porque agregamos este gasto de H todos juntos"*.
+   `renderReconciliacion`: si el cierre anterior no tiene `arcaARS` y el patrimonio de hoy sí incluye la deuda, se le suma de vuelta
+   `arcaDeudaARS(<mes del cierre anterior>)` (lo acumulado hasta ese mes). El mes sólo carga con lo que H suma ese mes, que la ganancia
+   ya descuenta. Cada cierre nuevo guarda `arcaARS` (la deuda que tenía adentro), así desde noviembre la cuenta sale sola.
+ · Qué chequear: octubre no tiene que dar "Falta plata" por ~$2,1M; el aviso ámbar del ajuste sale sólo cuando aplica.
