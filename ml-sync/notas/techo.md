@@ -92,3 +92,8 @@ Sábanas 2½ Terracota MLA3886916158 a $32.790 (cerebro viejo 07/10): 1 venta en
 Siguen ganando a precio nuevo: Talonera Beige (4 contra 8 con +52%), Mazos Azul y Rojo, Cartas Españolas, Zapatillas protector, Espejo redondo, Lupa 100mm, Cubreasiento x5. Almohadilla Triples (1 contra 3): en duda, se mira en las cortas. Paulvic a $21.990: se juzga 19-20/10 (después del Día de la Madre).
 - 16/10 · Ted Lapidus Rumba (Adriana): $69.999 → $104.990 (+50%) y vendió a las 2 h · deja 83% (antes 28%) · +$26.954 en esa venta. Era la ÚLTIMA unidad (dicho por él): no se puede seguir midiendo. Cuando vuelva a tener stock, arranca en $104.990 o más (no en $69.999).
 - 16/10 tarde · PAULVIC EXTENDIDO (decisión suya 1a 2a): los 40 aromas restantes (incluidas las pausadas sin stock y el Persea de Luciana, que vendía 13 en 7 d) a $21.990 antes del Día de la Madre. Control a $14.360: Luna, Hot e Invictus. Se juzga igual: plata por día contra antes y contra el control.
+
+## 17/10 · JUANETE (MLA1998561036): SE VUELVE A PROBAR EL 20/10 (decisión suya, eligió la a)
+La vuelta del 16/10 fue con poca certeza (0 ventas con ~2,4 esperadas, ~9% de azar) y con un +10% chico. Queda en $8.840
+hasta después del Día de la Madre. El 20/10 (completa) se prueba directo a ~$10.990 y se juzga con más días antes de volver.
+El freno de `techofreno` se fechó para que se reabra solo ese día.
