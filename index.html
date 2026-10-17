@@ -2643,7 +2643,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.11';
+const APP_VERSION='24.12';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2654,6 +2654,7 @@ const APP_VERSION='24.11';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.12',f:'17/10/2026',h:'15:37',c:[{n:3,t:'🎯 Paraguay: lo nuevo y lo probado tiene que llegar al 25% (antes 24%). Lo que quede entre 24 y 25 pasa a "No llegan al 25%".'}]},
   {v:'24.11',f:'17/10/2026',h:'15:30',c:[{n:1,t:'🗂️ Paraguay → Nuevos: "el resto del catálogo" ya no es una lista aparte. Lo que el robot midió y no llega al % va adentro de "🔻 No llegan al %", y lo sin catálogo exacto, que nadie vende o afuera por regla va adentro de "👎 Descartados".'}]},
   {v:'24.10',f:'17/10/2026',h:'15:27',c:[{n:1,t:'🗂️ Paraguay → Nuevos: los cinco desplegables de abajo (pocas ventas, no llegan al %, falta analizar, descartados y el resto del catálogo) van juntos adentro de uno solo, "Lo que no entra en el pedido", con nombres cortos y el número al final. No se sacó nada; el catálogo ya no repite lo que es candidato.'}]},
   {v:'24.09',f:'17/10/2026',h:'15:15',c:[{n:1,t:'💰 Pedidos: de los cuadros de arriba queda sólo "Falta reponer" (la plata de todo lo que hay que comprar).'}]},
@@ -13174,11 +13175,11 @@ const CAND_VENCE_DIAS=60;   // 14/10/2026: era 45. La pasada del chat de compras
 // punta a punta acá. Lo que ya estaba queda EN ROJO, se cuenta arriba con su aviso y tiene un
 // botón para sacarlo de un toque. Y BAJAR siempre se puede, aunque el producto ya no dé: si no,
 // lo que se cargó cuando todavía daba quedaría trabado adentro del pedido para siempre.
-const CAND_PISO_PCT=24;   // 06/10/2026, él: "que entre. o sea arriba del 24% TODO"
+const CAND_PISO_PCT=25;   // 17/10/2026: 25 (él: "tienen que llegar a 25, no a 24") · antes 06/10/2026, él: "que entre. o sea arriba del 24% TODO"
 // PERFUMES AL 20% (05/10/2026, él: "bajar la ganancia mínima a 20% a ver si entran algunos, solo en perfumes").
 // Sólo lo NUEVO de Paraguay. Perfume = esPerfumeNom (nombre o ficha) o el título de ML que midió el robot.
 // MISMA regla que candPisoDe del robot (sync.mjs): si se toca una, se toca la otra.
-const CAND_PISO_PERFUME=24;   // 06/10/2026: 24 para todo lo que se compra (él: "que entre. o sea arriba del 24% TODO")
+const CAND_PISO_PERFUME=25;   // 06/10/2026: 24 para todo lo que se compra (él: "que entre. o sea arriba del 24% TODO")
 // LA PERFUMERÍA DEL LOCAL (15/10/2026, regla suya): los perfumes también se venden en el local, sin comisión de ML ni
 // impuestos. Su cuenta: costo puesto × 1,25 (lo nuestro) × 1,30 (lo de la perfumería) ≈ precio de ML. O sea, vendiendo
 // al precio de ML, a CYC le queda (precio ML ÷ 1,30 − costo) ÷ costo. Ése es el % AZUL. Con 25%+ el perfume sirve
@@ -17349,7 +17350,7 @@ function pyProbVisHTML(_prod,colores){
 //   noda    → Nissei lo tiene pero más caro que ese máximo (o ni regalado llega)
 //   notiene → Nissei no lo tenía (`py_sinstock`)
 //   sinrev  → sin precio de Nissei, o mirado hace más de PY_PROB_FRESCO_DIAS: falta que Guay lo revise
-const PY_PROB_PISO=24, PY_PROB_FRESCO_DIAS=7;   // 06/10/2026: 24 (él: "arriba del 24% TODO"; el Ferrari Negro quedaba en 24,9% y no entraba)
+const PY_PROB_PISO=25, PY_PROB_FRESCO_DIAS=7;   // 06/10/2026: 24 (él: "arriba del 24% TODO"; el Ferrari Negro quedaba en 24,9% y no entraba)
 // EL PRECIO DE PARAGUAY DE LOS COLORES QUE SE PIDEN (15/10/2026, él con el Joystick: el azul sale US$ 55 y la tarjeta medía
 // con los US$ 48 del negro). Si los colores a comprar tienen su precio cargado (`pyVar`), manda el MÁS CARO de ésos (peor caso);
 // si no, el de la ficha.

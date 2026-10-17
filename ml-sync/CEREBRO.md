@@ -380,3 +380,5 @@ caro" ya no es un calendario fijo de 60 días. Cada vez que vuelvo una prueba qu
 corro `techofreno` (ml-consulta, solo lee): **🔓 REABRIR** si el más barato ajeno subió 8%+, ya no hay ajenos abajo del precio
 probado, no queda ningún vendedor ajeno, pasamos a ganar la caja, o pasaron 30 días. Lo reabierto se vuelve a probar ese día
 (`decido`) y se saca el freno (`techofreno:-<MLA>;go`). Sin catálogo sólo se reabre a los 30 días.
+
+**Paraguay: el piso para pedir es 25%, no 24%** (17/10/2026, regla suya: *"tienen que llegar a 25, no a 24"*). Nuevos, perfumes y probados.

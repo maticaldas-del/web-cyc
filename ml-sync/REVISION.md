@@ -341,6 +341,9 @@ y deja 25%+ (`Tde`); el motivo de Tito y el 📋 Copiar pedido dicen "SÓLO este
 "desaparecieron N u." con stock compartido; `antiguo` muestra también la cuenta con las ventas de 30 d. Qué chequear:
 que `cortes` salga en el log de `pedidostodo` y `decide_pedidos.py` lea N de M ✓.
 
+### Paraguay: piso 25%, no 24% (17/10/2026, v24.12, regla suya)
+- `CAND_PISO_PCT`/`CAND_PISO_PERFUME` (index.html y sync.mjs) y `PY_PROB_PISO` (probados) en 25. Chequear que las dos copias digan lo mismo.
+
 ### Paraguay Nuevos: lo que no entra en el pedido, en un solo desplegable (17/10/2026, v24.10)
 - Pocas ventas · no llegan al % · falta analizar · descartados · resto del catálogo, adentro de "🗂️ Lo que no entra en el pedido". `pycatNoDan` saltea los códigos que ya son candidatos (aunque `mlapi/pycat` no tenga `cand`). Chequear que no se repita nada entre grupos. v24.11 (él: "¿no se puede meter en no dan o descartados?"): el catálogo ya no es un grupo aparte: `pycatNoDanHTML(keys,id,título)` — `bajo` adentro de 🔻 No llegan, `sc/sv/fz` adentro de 👎 Descartados.
 
