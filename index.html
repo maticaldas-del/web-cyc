@@ -2639,7 +2639,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.03';
+const APP_VERSION='24.04';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2650,6 +2650,7 @@ const APP_VERSION='24.03';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.04',f:'17/10/2026',h:'13:38',c:[{n:1,t:'📈 En la línea de tiempo, la línea del precio va del color de su estrategia (🎯 base azul, 🔥 escasez naranja, ⏳ sin reposición amarillo, 📈 techo verde, 📉 liquidando rojo…). Pasando el mouse dice qué estrategia era y por qué. El costo pasó a línea punteada.'}]},
   {v:'24.03',f:'17/10/2026',h:'12:15',c:[{n:1,t:'📈 Buscando techo cuenta las subas seguidas: la segunda dice "buscando techo ×2", la tercera ×3, y vuelve a empezar después de una corrección o de otra estrategia.'}]},
   {v:'24.02',f:'17/10/2026',h:'02:10',c:[{n:2,t:'🇵🇾 Paraguay: el recargo de respaldo pasa de 17% a 20% (sólo se usa si no hay pedidos medidos; hoy el panel ya usa el real de los pedidos, ~22%). Las pantallas ya no dicen "17%" escrito a mano: dicen "recargo".'}]},
   {v:'24.01',f:'16/10/2026',h:'23:50',c:[{n:1,t:'Ventas x Producto: toda venta muestra su estrategia. Las de publicaciones que nunca tuvieron una anotada dicen 🎯 base (precio normal).'}]},
@@ -9660,6 +9661,16 @@ function lineaPintar(prodId){
   // fondo de meses
   let lastM=''; ks.forEach((k,i)=>{const mm=k.slice(0,7);if(mm!==lastM){lastM=mm;svg+=`<line x1="${X(i)}" y1="0" x2="${X(i)}" y2="${H}" stroke="rgba(128,128,128,.25)" stroke-width="1"/><text x="${X(i)+2}" y="${H+12}" font-size="10" fill="var(--muted)">${['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'][Number(k.slice(5,7))-1]}</text>`;}});
   let ptsP=[];
+  // LA LÍNEA DEL PRECIO CON EL COLOR DE SU ESTRATEGIA (17/10/2026, él: "que cada color haga referencia a los tags/estrategias
+  // buscadas por los precios. y al poner el mouse arriba que explique"). Por día: la estrategia (`estrategiaDe`, la MISMA del
+  // chip de Ventas) de la publicación que pone el precio de la línea (la más barata ese día), al cierre de ese día.
+  const _estD={};{const _ms=Object.keys(porMlaF);ks.forEach(k=>{const d=dias[k];if(!d||!(d.p>0)||!_ms.length)return;
+    let m=null,mp=Infinity;for(const mm of _ms){const x=(porMlaF[mm]||{})[k];const xp=x&&Number(x.p);if(xp>0&&xp<mp){mp=xp;m=mm;}}
+    if(!m)m=_ms[0];const t=new Date(k.replace(/_/g,'-')+'T23:59:59-03:00').getTime();const e=estrategiaDe(m,t);if(e&&ESTRATEGIA_UI[e.t])_estD[k]=e;});}
+  const _estCol=k=>{const e=_estD[k];return e?ESTRATEGIA_UI[e.t][2]:'var(--text)';};
+  const _estTxt=e=>{if(!e)return'';const u=ESTRATEGIA_UI[e.t];const d=e.ts?new Date(e.ts).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}):'';
+    return `${u[0]} ${u[1]}${e.n>1?' ×'+e.n:''}: ${u[3]}${e.n>1?' Es la suba n.º '+e.n+' seguida buscando el techo.':''}${e.m?'\n🧠 por qué: '+e.m:''}${d?' (desde el '+d+')':''}`.replace(/[<>&]/g,'');};
+  const ptsPK=[];
   ks.forEach((k,i)=>{
     const d=dias[k]; const x=X(i);
     // ventas
@@ -9680,6 +9691,7 @@ function lineaPintar(prodId){
     svg+=`<rect x="${x}" y="${_stB0}" width="${bw}" height="${_stBh}" fill="${stK==='si'?'var(--green)':stK==='no'?'var(--red)':'rgba(128,128,128,.25)'}" opacity="${stK?'.75':'1'}"/>`;
     // precio
     if(d&&d.p>0)ptsP.push(`${(x+bw/2).toFixed(1)},${(L.pr[0]+L.pr[1]-(pcMax>pcMin?(d.p-pcMin)/(pcMax-pcMin):.5)*L.pr[1]).toFixed(1)}`);
+    if(d&&d.p>0)ptsPK.push([x+bw/2,L.pr[0]+L.pr[1]-(pcMax>pcMin?(d.p-pcMin)/(pcMax-pcMin):.5)*L.pr[1],k]);
     // estado: remate / escalera
     const est=d&&(d.esc!=null?'esc':d.rem?'rem':null);
     if(L.est)svg+=`<rect x="${x}" y="${L.est[0]}" width="${bw}" height="${L.est[1]}" fill="${est==='esc'?'#a855f7':est==='rem'?'#f97316':'rgba(128,128,128,.15)'}"/>`;
@@ -9699,7 +9711,7 @@ function lineaPintar(prodId){
     svg+=`<text x="${W-2}" y="${L.gan[0]+9}" font-size="10" text-anchor="end" fill="var(--muted)">${fmt(Math.round(gMax))}/día</text>`;}
   if(cvs.length){const yc=c=>L.pr[0]+L.pr[1]-(pcMax>pcMin?(c-pcMin)/(pcMax-pcMin):.5)*L.pr[1];
     const ptT=[];ks.forEach((k,i)=>{if(ct[k]>0)ptT.push(`${(X(i)+bw/2).toFixed(1)},${yc(ct[k]).toFixed(1)}`);});
-    if(ptT.length>1)svg+=`<polyline points="${ptT.join(' ')}" fill="none" stroke="#f59e0b" stroke-width="2"/>`;}
+    if(ptT.length>1)svg+=`<polyline points="${ptT.join(' ')}" fill="none" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4,3"/>`;}
   if(suv.length){const ys=v=>L.st[0]+(L.st[1]-9)-v/sMax*(L.st[1]-9);let prev=null,prevI=-9;
     ks.forEach((k,i)=>{if(stU[k]==null){prev=null;return;}const pt=[X(i)+bw/2,ys(stU[k])];const c=_stCol(stD[k]);
       if(prev&&i-prevI<=3)svg+=`<line x1="${prev[0].toFixed(1)}" y1="${prev[1].toFixed(1)}" x2="${pt[0].toFixed(1)}" y2="${pt[1].toFixed(1)}" stroke="${c}" stroke-width="2"/>`;
@@ -9707,7 +9719,8 @@ function lineaPintar(prodId){
     ks.forEach((k,i)=>{if(stIn[k]==null)return;const x=X(i)+bw/2,y=ys(stU[k]);svg+=`<path d="M${(x-3.5).toFixed(1)},${(y-9).toFixed(1)} L${(x+3.5).toFixed(1)},${(y-9).toFixed(1)} L${x.toFixed(1)},${(y-3).toFixed(1)} Z" fill="#38bdf8"/>`;});
     svg+=`<text x="${W-2}" y="${L.st[0]+9}" font-size="10" text-anchor="end" fill="var(--muted)">${Math.round(sMax)} u.</text>`;
     {const _kh=ks[ks.length-1],_ch=_alC[_kh];svg+=`<text x="${W-2}" y="${L.st[0]+21}" font-size="10" text-anchor="end" fill="var(--red)">${_ch?(_ch>=_alD?'⏳ ya paga almacenamiento':'⏳ faltan '+(_alD-_ch)+' d para '+Math.round(_alD/30)+' meses'):'⏳ reloj en 0'}</text>`;}}
-  if(ptsP.length>1)svg+=`<polyline points="${ptsP.join(' ')}" fill="none" stroke="var(--text)" stroke-width="1.5"/>`;
+  // Cada tramo toma el color de la estrategia del día al que llega (la línea cambia de color el día que cambió la estrategia).
+  if(ptsPK.length>1)for(let j=1;j<ptsPK.length;j++){const a=ptsPK[j-1],b=ptsPK[j];svg+=`<line x1="${a[0].toFixed(1)}" y1="${a[1].toFixed(1)}" x2="${b[0].toFixed(1)}" y2="${b[1].toFixed(1)}" stroke="${_estCol(b[2])}" stroke-width="2" stroke-linecap="round"/>`;}
   // marcas de cambios de precio
   const motivoTxt={rescate:'🛟 rescate después de una venta baja',rescatep:'🛟 rescate antes de vender (cuenta)',subir:'📈 suba del robot',bajar:'📉 baja del robot',remate:'🔻 remate',escalera:'🪜 escalera',prueba:'🧪 prueba +5%',promo:'🏷️ promo (precio tachado)',mano:'✋ a mano',volver:'↩️ vuelto atrás'};
   const evK={}; for(const e of C.evP){if(!e.ts||!_mlaOk(e.mla))continue;const kk=dateToKey(new Date(e.ts));(evK[kk]=evK[kk]||[]).push(e);}
@@ -9746,7 +9759,7 @@ function lineaPintar(prodId){
     const _caja=d&&d.caja?`🥊 caja: ${(d.hoy?{g:'la ganamos (última lectura del robot)',c:'compartida (última lectura del robot)',p:'la perdemos (última lectura del robot)',n:'no es de catálogo: no hay caja que ganar',s:'ML no informa caja en ese catálogo',z:'ninguna publicación activa (pausadas): no pelea la caja'}:{g:'la ganábamos',c:'compartida',p:'la perdíamos',n:'no es de catálogo',s:'ML no informaba caja'})[d.caja]||d.caja}`:'';
     const _ent=stIn[k]!=null?`📥 llegaron ~${stIn[k]} u.`:'';
     const _ev=es.map(e=>cambioTxt(e).replace(/[<>&]/g,''));
-    const por={vent:[_vent,_gan],gan:[_g7],pct:[_gan||_pctU,_mg],st:[_ent,_st||_tuvo],vis:[_vis],pr:[_pr,_cos,..._ev],est:[_est||'sin remate ni escalera'],caja:[_caja]};
+    const por={vent:[_vent,_gan],gan:[_g7],pct:[_gan||_pctU,_mg],st:[_ent,_st||_tuvo],vis:[_vis],pr:[_pr,_estD[k]?'🎨 '+_estTxt(_estD[k]):'',_cos,..._ev],est:[_est||'sin remate ni escalera'],caja:[_caja]};
     for(const [n,arr] of Object.entries(por)){if(!L[n])continue;const t=[_h,...arr].filter(Boolean).join('\n');
       svg+=`<rect x="${X(i)}" y="${Math.max(0,L[n][0]-4)}" width="${Math.max(bw,1)}" height="${L[n][1]+8}" fill="transparent"><title>${t}</title></rect>`;}});
   // Las flechitas van ARRIBA de los rectángulos del globito: si no, el mouse nunca llega a su explicación.
@@ -9802,6 +9815,8 @@ function lineaPintar(prodId){
       <svg viewBox="0 0 ${W} ${H+16}" preserveAspectRatio="none" style="width:100%;height:${Math.round((H+16)*1.1)}px;display:block">${svg}</svg>
     </div>
     ${_adHTML?`<div style="margin-top:8px;font-size:.7rem;line-height:1.5"><div style="font-weight:700;margin-bottom:2px">💵 ¿Cada cambio de precio dejó más plata por día?</div>${_adHTML}</div>`:''}
+    ${(()=>{const vs=[...new Set(Object.values(_estD).map(e=>e.t))];if(!vs.length)return'';
+      return `<div style="font-size:.64rem;color:var(--muted);margin-top:6px;line-height:1.9">💲 la línea del precio va del color de su estrategia: ${vs.map(t=>{const u=ESTRATEGIA_UI[t];return `<span title="${u[3].replace(/"/g,'&quot;')}" style="display:inline-flex;align-items:center;gap:4px;margin-right:10px;cursor:help"><span style="width:14px;height:3px;border-radius:2px;background:${u[2]};display:inline-block"></span><span style="color:${u[2]}">${u[0]} ${u[1]}</span></span>`;}).join('')}${cvs.length?'<span style="margin-right:10px"><span style="color:#f59e0b">┄ costo</span></span>':''} · pasá el mouse por la línea para ver por qué</div>`;})()}
     <details style="margin-top:8px" ${_lineaDetAb?'open':''} ontoggle="_lineaDetAb=this.open"><summary style="cursor:pointer;font-size:.68rem;color:var(--muted)">Qué significa cada color ▾</summary>
     <div style="font-size:.64rem;color:var(--muted);margin-top:6px;line-height:1.9">
       ${ley('var(--green)','vendió / con stock / caja ganada')}${ley('#f59e0b','vendido en remate / caja compartida')}${ley('var(--red)','sin stock / caja perdida')}${ley('#60a5fa','visitas')}${ley('#f97316','rematando')}${ley('#a855f7','escalera')}${ley('#94a3b8','no es de catálogo (no hay caja)')}${ley('#3f3f46','pausada (no pelea la caja)')}${ley('rgba(128,128,128,.35)','no se sabe')}

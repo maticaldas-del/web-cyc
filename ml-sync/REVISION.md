@@ -1282,3 +1282,10 @@ el comando `pedir` siguen sin meterlos. Chequear: que `.ok` siga en false para e
    no está (lo mide `paramcompra:go` cada noche con el promedio de los últimos pedidos completos: 17/10 = 22,7%).
  · Los textos de Paraguay ya no dicen "17%" fijo: dicen "recargo". El log de `revisarcompra`/historial usa `RECARGO_PAR_PCT`.
  · Qué chequear: que ninguna pantalla vuelva a escribir un % de recargo a mano.
+
+### Etapa 8 · 17/10/2026 · la línea del precio con el color de su estrategia (v24.04, pedido suyo)
+ · Qué: en la línea de tiempo (`_estD` en la función de la línea), cada día el precio toma el color de su estrategia
+   (`estrategiaDe` + `ESTRATEGIA_UI`, lo mismo que el chip de Ventas), de la publicación más barata ese día, al cierre del día.
+   El globito del carril del precio dice la estrategia, qué significa y el motivo (🧠 por qué). Abajo, la leyenda con las
+   estrategias que aparecen. El costo pasó a línea punteada (para no confundirse con escasez/sin reposición).
+ · Qué chequear: que un cambio de estrategia cambie el color el día correcto; días sin estrategia anotada = 🎯 base (azul).
