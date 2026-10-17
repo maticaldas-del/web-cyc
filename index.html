@@ -483,7 +483,8 @@ input.qty:focus{border-color:var(--accent2)}
 .hoy-sp .sp-b{fill:none;stroke:var(--muted);stroke-width:1.4;stroke-dasharray:3 3;vector-effect:non-scaling-stroke;opacity:.8}
 .hoy-sp .sp-a{fill:none;stroke:var(--c,var(--green));stroke-width:2.4;vector-effect:non-scaling-stroke;stroke-linejoin:round}
 .hoy-sp .sp-dot{fill:var(--c,var(--green))}
-.hoy-sp-anim .sp-a{stroke-dasharray:1000;stroke-dashoffset:1000;animation:hoySpDraw 1.4s ease-out forwards}
+/* Sin pathLength (17/10/2026): en el iPhone, con vector-effect el largo 1000 no era el de la línea y la línea roja quedaba cortada a mitad de camino. 4000 alcanza en cualquier pantalla. */
+.hoy-sp-anim .sp-a{stroke-dasharray:4000;stroke-dashoffset:4000;animation:hoySpDraw 1.4s ease-out forwards}
 @keyframes hoySpDraw{to{stroke-dashoffset:0}}
 .hoy-sp .sp-txt{font-size:.74rem;color:var(--muted);margin-top:4px}
 .hoy-pill{position:fixed;left:50%;top:14px;z-index:9999;display:flex;align-items:center;gap:7px;padding:7px 14px 7px 9px;border-radius:999px;font-size:.82rem;font-weight:700;color:var(--text);background:color-mix(in srgb,var(--c) 22%,var(--surface));border:1px solid var(--c);box-shadow:0 0 18px color-mix(in srgb,var(--c) 50%,transparent);max-width:calc(100vw - 32px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transform:translateX(-50%);animation:hoyPop 4.2s ease-out forwards;pointer-events:none}
@@ -2644,7 +2645,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.25';
+const APP_VERSION='24.26';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2655,6 +2656,7 @@ const APP_VERSION='24.25';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.26',f:'17/10/2026',h:'19:46',c:[{n:1,t:'📈 Ventas de hoy: la línea de hoy en el gráfico contra la semana pasada se cortaba a mitad de camino en el celular. Ahora llega hasta el punto de la hora actual.'}]},
   {v:'24.25',f:'17/10/2026',h:'18:34',c:[{n:3,t:'🧾 Meses cerrados: cada cierre desde mayo lleva la deuda con ARCA que tenía a esa fecha (como si se hubiera pagado H). El patrimonio de cada mes baja lo que corresponde y la comparación mes a mes sigue pareja.'}]},
   {v:'24.24',f:'17/10/2026',h:'18:09',c:[{n:3,t:'🔍 ¿Cierra el mes?: la deuda con ARCA de los meses anteriores ya no se le cobra a octubre. Es un ajuste de una sola vez; el mes sólo carga con lo que H suma ese mes (que la ganancia ya descuenta). Cada cierre guarda la deuda que tenía adentro.'}]},
   {v:'24.23',f:'17/10/2026',h:'17:58',c:[{n:3,t:'🧾 Arqueo: lo que se le va a deber a ARCA por pagar como categoría H en las 4 cuentas ($427.498 por mes desde mayo, sin intereses) va en Lo que debemos. El patrimonio ya no muestra esa plata como del negocio.'}]},
@@ -20126,7 +20128,7 @@ function _homeCurvaHTML(dia){
   const difTxt=dif==null?'':`<b style="color:${dif>=0?'var(--green)':'var(--red)'}">${dif>=0?'+':''}${dif}%</b>`;
   const anim=_homeCurvaAnim?' hoy-sp-anim':'';_homeCurvaAnim=false;
   return `<div class="hoy-sp" title="Ganancia acumulada hora por hora. Línea de color: ${esHoy?'hoy':'este día'} · punteada: el ${DIAS[d7.getDay()]} ${p2(d7.getDate())}/${p2(d7.getMonth()+1)}. ${esHoy?'Se compara hasta la misma hora.':'Se comparan los dos días enteros.'}">
-    <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" class="${anim.trim()}"><polyline class="sp-b" points="${lin(B.c,24)}"/><polyline class="sp-a" pathLength="1000" points="${pA}"/>${esHoy&&A.n?`<circle class="sp-dot" cx="${X(hFin)}" cy="${Y(gA)}" r="3"/>`:''}</svg>
+    <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" class="${anim.trim()}"><polyline class="sp-b" points="${lin(B.c,24)}"/><polyline class="sp-a" points="${pA}"/>${esHoy&&A.n?`<circle class="sp-dot" cx="${X(hFin)}" cy="${Y(gA)}" r="3"/>`:''}</svg>
     <div class="sp-txt">${esHoy?`A esta hora, el ${DIAS[d7.getDay()]} pasado`:`El ${DIAS[d7.getDay()]} anterior`} (${p2(d7.getDate())}/${p2(d7.getMonth()+1)}) iba <b style="color:var(--text)">${fmt(gB)}</b> de ganancia${difTxt?` · ${esHoy?'hoy':'este día'} ${difTxt}`:''}</div></div>`;
 }
 // ── CUANDO ENTRA UNA VENTA CON INICIO ABIERTO (etapa 6, idea 4, 14/10/2026, eligió la a) ─────────────
