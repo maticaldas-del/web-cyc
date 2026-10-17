@@ -1354,3 +1354,10 @@ Se cruzaron las versiones de `APP_CAMBIOS` y los commits del robot desde el 13/1
    existen desde `SOLO_DATOS` (09/10): ahora dice lo que hago yo (escasez, techo, peor caso, promos, estrategias) y el robot que
    mide. La 3 suma Paulvic, Elegancia, el catálogo de Paraguay, las listas y "no lo consigo". La 8 suma la ficha médica y las
    estrategias.
+
+### Etapa 2 · 17/10/2026 · "cuánto cobrar" proyecta a fin de mes (v24.21, pedido suyo)
+ · Qué: `cobroProyMes(ym)` (index.html) lleva neto − mercadería del mes al mes entero (ritmo del mes por días transcurridos, y
+   aparte los últimos 7 días cerrados) y resta los gastos del mes (lo cargado o lo del mes anterior si fue más). ÷ 3, a $1.000.
+   `_homeCobroHtml` lo muestra grande en el mes en curso; lo ganado hasta hoy (`cobroProxMes`) queda abajo. Robot: `cobromes[:AAAA_MM]`
+   (solo lee) con la misma cuenta y la lista de gastos del mes anterior contra los cargados.
+ · Qué chequear: que `cobromes` y la tarjeta den lo mismo; que un mes cerrado siga mostrando lo real (sin proyección).
