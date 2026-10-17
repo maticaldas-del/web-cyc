@@ -2644,7 +2644,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.13';
+const APP_VERSION='24.14';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2655,6 +2655,7 @@ const APP_VERSION='24.13';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.14',f:'17/10/2026',h:'15:46',c:[{n:1,t:'📈 Línea de tiempo: al lado del stock de hoy dice la caja en camino a Full (unidades y en cuántos días llega, ~8 desde el despacho), lo que hay en la oficina y si viene un pedido del proveedor. Con un color elegido, sólo de ese color.'}]},
   {v:'24.13',f:'17/10/2026',h:'15:41',c:[{n:1,t:'🗂️ Paraguay → Nuevos: los 13.467 del catálogo de comprasparaguay están todos repartidos en los grupos de abajo (no llegan al 25%, falta analizar —incluye los todavía sin medir—, descartados y "ya son productos tuyos"), con su número en cada encabezado. Las filas se bajan recién al abrir cada grupo.'}]},
   {v:'24.12',f:'17/10/2026',h:'15:37',c:[{n:3,t:'🎯 Paraguay: lo nuevo y lo probado tiene que llegar al 25% (antes 24%). Lo que quede entre 24 y 25 pasa a "No llegan al 25%".'}]},
   {v:'24.11',f:'17/10/2026',h:'15:30',c:[{n:1,t:'🗂️ Paraguay → Nuevos: "el resto del catálogo" ya no es una lista aparte. Lo que el robot midió y no llega al % va adentro de "🔻 No llegan al %", y lo sin catálogo exacto, que nadie vende o afuera por regla va adentro de "👎 Descartados".'}]},
@@ -9802,7 +9803,13 @@ function lineaPintar(prodId){
     const _esc=q>0&&(_ez.comp||_ez.full)?`<b style="color:var(--red)">🔥 escasez</b>: ${_ez.txt}`:'';
     const _sr=_ez.sinRepo?` · <b style="color:var(--amber)">sin reposición</b>: estirar para venderlo en ~100 días`:'';
     const _cHoy=q>0&&_esc?'var(--red)':_stCol(dd);
-    return `stock hoy: <b style="color:${_cHoy}">${q} u.</b> <span style="color:${_cHoy}">(${q>0?(dd==null?'sin ventas para medir el ritmo':'alcanza '+Math.round(dd)+' d · '+(_esc?'escasez':_stTxt(dd))):'agotado · '+_stTxt(0)})</span>${_esc?' · '+_esc:''}${_sr}`;})();
+    // CAJA EN CAMINO Y OFICINA EN EL RESUMEN (17/10/2026, él con el Protector talón Triples Negro: "se terminó muy rápido (…)
+    // quiero que me muestre cuántos días aprox faltan para que llegue la caja a Full y cuántas unidades, y cuántas en la oficina").
+    // La caja tarda ~8 días desde que se despacha (misma vara que la escasez); del color elegido si hay uno.
+    const _CL=8,_cajTxt=_tr?_tr.lista.slice().sort((a,b)=>b.d-a.d).map(c=>{const f=Math.max(0,Math.round(_CL-c.d));return `<b>${c.u} u.</b> ${f>0?`llega en ~${f} d`:`ya debería estar (despachada hace ${Math.round(c.d)} d, ML la está procesando)`}`;}).join(' · '):'';
+    const _pv=_pedidoViaja(prodId);
+    const _repTxt=` · 🚚 camino a Full: ${_tr?_cajTxt:'<span style="color:var(--amber)">ninguna caja</span>'} · 🏠 oficina: <b style="color:${_cs>0?'var(--text)':'var(--amber)'}">${_cs} u.</b>${_pv?` · 📦 pedido a ${_pv.de} del ${String(_pv.fecha).slice(8,10)}/${String(_pv.fecha).slice(5,7)} (${_pv.falta>0?'~'+_pv.falta+' d':'ya debería haber llegado'})`:''}`;
+    return `stock hoy: <b style="color:${_cHoy}">${q} u.</b> <span style="color:${_cHoy}">(${q>0?(dd==null?'sin ventas para medir el ritmo':'alcanza '+Math.round(dd)+' d · '+(_esc?'escasez':_stTxt(dd))):'agotado · '+_stTxt(0)})</span>${_repTxt}${_esc?' · '+_esc:''}${_sr}`;})();
   const pIni=ks.map(k=>dias[k]&&dias[k].p).find(x=>x>0), pFin=[...ks].reverse().map(k=>dias[k]&&dias[k].p).find(x=>x>0);
   // ¿EL CAMBIO DE PRECIO DEJÓ MÁS PLATA? (04/10/2026, él con el Metatarso: "quizás lo aumentó un 10% y se vendió un
   // 20% menos"). Por cada cambio del rango: ganancia por día CON STOCK en los 14 días antes y en los días después
@@ -17621,7 +17628,7 @@ function transitoInfoDe(pid,vari){
   // `vari` (16/10/2026): sólo lo de ESE color. Sin esto la línea de tiempo de un color no veía la caja en camino
   // y marcaba escasez de compra que no era (Protector talón Común Beige: 18 viajando no contaban).
   const _vn=x=>String(x||'').toLowerCase().trim();
-  let u=0,cajas=0,diasMax=0;const ctas={};
+  let u=0,cajas=0,diasMax=0;const ctas={},lista=[];
   Object.entries(state.envios_full||{}).forEach(([eid,e])=>{
     const cta=e.cuenta;if(!cta||!LOCS.includes(cta))return;
     const d=envDias(e);
@@ -17632,9 +17639,10 @@ function transitoInfoDe(pid,vari){
       if(uc<=0)return;
       u+=uc;cajas++;ctas[cta]=(ctas[cta]||0)+uc;
       if(d>diasMax)diasMax=d;
+      lista.push({u:uc,d,cta});
     });
   });
-  return u>0?{u,cajas,diasMax,ctas}:null;
+  return u>0?{u,cajas,diasMax,ctas,lista}:null;
 }
 // ── LO QUE VENDE Y CLAUDE TODAVÍA NO DECIDIÓ (09/10/2026) ──────────────────────────────
 // Con SOLO_CLAUDE un producto sin decisión no arma pedido. Antes desaparecía en silencio: un renglón

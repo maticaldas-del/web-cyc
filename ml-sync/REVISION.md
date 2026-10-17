@@ -341,6 +341,9 @@ y deja 25%+ (`Tde`); el motivo de Tito y el 📋 Copiar pedido dicen "SÓLO este
 "desaparecieron N u." con stock compartido; `antiguo` muestra también la cuenta con las ventas de 30 d. Qué chequear:
 que `cortes` salga en el log de `pedidostodo` y `decide_pedidos.py` lea N de M ✓.
 
+### Línea de tiempo: caja en camino, días que faltan y oficina (17/10/2026, v24.14, pedido suyo)
+- En el resumen de arriba (`_stHoy`): cada caja pendiente (`transitoInfoDe(...).lista`) con unidades y ~8 d desde el despacho, la oficina del color y `_pedidoViaja`. Chequear que con un color elegido muestre sólo ese color.
+
 ### Paraguay: el catálogo ENTERO dividido en los grupos (17/10/2026, v24.13, pedido suyo)
 - Robot: `pycatResumenEscribir` → `cyc/pycatres` {tot,cand,ficha,fz,bajo,sc,sv,nomed} (corre en `pycatmedir:go` y con `pycatres:go`); emparejado de códigos `pyCodMatcher`. Web: `pycatNoDan` con los MISMOS grupos (`_pycMatcher`) + ficha y nomed; encabezados con "+ N del catálogo".
 - Chequear: que la suma cierre con el total (`📊` del log) y que web y robot dividan igual.
