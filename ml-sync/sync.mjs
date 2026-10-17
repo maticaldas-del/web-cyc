@@ -40492,7 +40492,7 @@ async function main() {
       for (const o of ops) {
         const j = items.findIndex((it) => it && it.prodId === o.p.id && String(it.variante || '') === String(o.va || ''));
         const antes = j >= 0 ? (parseInt(items[j].u) || 0) : 0; const d = o.u - antes;
-        if (j >= 0) { if (o.u > 0) items[j].u = o.u; else items.splice(j, 1); } else if (o.u > 0) items.push({ prodId: o.p.id, ...(o.va ? { variante: o.va } : {}), u: o.u });
+        if (j >= 0) { if (o.u > 0) items[j].u = o.u; else items.splice(j, 1); } else if (o.u > 0) items.push({ prodId: o.p.id, nombre: o.p.name, variante: o.va || '', u: o.u });
         let ofTxt = '';
         if (d) {
           const kv = o.va ? kVar(o.p.id, o.va) : kTot(o.p.id);
