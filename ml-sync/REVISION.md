@@ -1381,3 +1381,8 @@ Se cruzaron las versiones de `APP_CAMBIOS` y los commits del robot desde el 13/1
    que ya tiene `arcaARS`. La web, mirando un mes cerrado, suma esa deuda en "Lo que debemos" (`calcArqueo` lee `arcaARS`).
  · Qué chequear: que el total de un mes cerrado en pantalla coincida con `snapshots/<mes>/total`; si cambia `arcaHDesde` o `arcaHMes`,
    hay que volver a correrlo (borrando antes `arcaARS` y reponiendo `totalSinArca`).
+### Etapa 7 · 17/10/2026 · la línea de hoy del gráfico "a esta hora" se cortaba en el iPhone (v24.26)
+ · Qué: `_homeCurvaHTML` dibujaba la línea con `pathLength="1000"` + `vector-effect:non-scaling-stroke` y una animación de trazo;
+   en Safari ese largo no coincide y la línea quedaba cortada (en la captura, a las ~13 h con el punto a las ~19 h). Se sacó
+   `pathLength` y el trazo usa 4000. El número (−53%) estaba bien: compara el punto de ahora contra la punteada a la misma hora.
+ · Qué chequear: en el teléfono la línea de color llega hasta el punto.
