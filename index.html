@@ -2639,7 +2639,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.02';
+const APP_VERSION='24.03';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2650,6 +2650,7 @@ const APP_VERSION='24.02';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.03',f:'17/10/2026',h:'12:15',c:[{n:1,t:'📈 Buscando techo cuenta las subas seguidas: la segunda dice "buscando techo ×2", la tercera ×3, y vuelve a empezar después de una corrección o de otra estrategia.'}]},
   {v:'24.02',f:'17/10/2026',h:'02:10',c:[{n:2,t:'🇵🇾 Paraguay: el recargo de respaldo pasa de 17% a 20% (sólo se usa si no hay pedidos medidos; hoy el panel ya usa el real de los pedidos, ~22%). Las pantallas ya no dicen "17%" escrito a mano: dicen "recargo".'}]},
   {v:'24.01',f:'16/10/2026',h:'23:50',c:[{n:1,t:'Ventas x Producto: toda venta muestra su estrategia. Las de publicaciones que nunca tuvieron una anotada dicen 🎯 base (precio normal).'}]},
   {v:'24.00',f:'16/10/2026',h:'23:55',c:[{n:2,t:'Cada precio tiene su estrategia: 🎯 base · 🔥 escasez · ⏳ sin reposición · 📈 buscando techo · 📉 liquidando · 🥊 ganar la caja · 🏷️ promo · 🎁 fecha especial · 🛡️ excepción · 🆕 lanzamiento · ↩️ corrección. En Ventas x Producto cada venta muestra la estrategia que tenía ese producto cuando se vendió (tocala para ver el motivo).'}]},
@@ -10336,11 +10337,14 @@ function estrategiaDe(mla,ts){
   if(!best){const ns=(state.nosubir||{})[mla];if(ns){const n=Number(ns.ts||ns.desde)||0;if(!n||n<=t)best={t:'liquidando',m:'marcada liquidando',ts:n};}}
   // 17/10, él: "¿por qué algunos no tienen tag?". Lo que nunca tuvo una estrategia anotada está en su precio normal: es 🎯 base.
   if(!best)best={t:'base',m:'sin estrategia anotada: precio normal',ts:0};
+  // 17/10, él: "cuando vuelve a subir puede poner el tag como buscando techo x2". Se cuentan las subas 📈 seguidas hasta ésta
+  // (para atrás, hasta la primera anotación que no es techo): 1 = primera suba, 2 = segunda, etc.
+  if(best.t==='techo'){const ks=Object.keys(h).map(Number).filter(n=>n>0&&n<=best.ts&&h[n]&&ESTRATEGIA_UI[h[n].t]).sort((x,y)=>y-x);let n=0;for(const k of ks){if(h[k].t!=='techo')break;n++;}best.n=n;}
   return best;
 }
 function estrategiaChip(e){if(!e)return'';const u=ESTRATEGIA_UI[e.t];if(!u)return'';const d=e.ts?new Date(e.ts).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}):'';
-  const tit=(u[3]+(e.m?' · '+e.m:'')+(d?' · desde el '+d:'')).replace(/"/g,'&quot;');
-  return ` <span title="${tit}" style="padding:1px 6px;border-radius:4px;border:1px solid ${u[2]}55;background:${u[2]}1f;color:${u[2]};font-size:.62rem;white-space:nowrap">${u[0]} ${u[1]}</span>`;}
+  const tit=(u[3]+(e.n>1?' Es la suba n.º '+e.n+' seguida buscando el techo.':'')+(e.m?' · '+e.m:'')+(d?' · desde el '+d:'')).replace(/"/g,'&quot;');
+  return ` <span title="${tit}" style="padding:1px 6px;border-radius:4px;border:1px solid ${u[2]}55;background:${u[2]}1f;color:${u[2]};font-size:.62rem;white-space:nowrap">${u[0]} ${u[1]}${e.n>1?' ×'+e.n:''}</span>`;}
 function estrategiaVentaHTML(v){return v&&v.mla?estrategiaChip(estrategiaDe(v.mla,Number(v.ts)||0)):'';}
 function nombreDeVenta(v){const p=prodDeVenta(v);return p?p.name:((v&&v.prod)||'');}
 // ── LOS CAMBIOS DE PRECIO DE ESA PUBLICACIÓN, AL LADO DE CADA VENTA (24/09/2026) ──

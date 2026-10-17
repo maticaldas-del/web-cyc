@@ -365,6 +365,7 @@ lo que hay antes de que Full cobre almacenamiento (~120 días; se apunta a ~100)
 Todo `decido:<MLA>=<precio>` va con `#<estrategia>` (si falta, se deduce del motivo y puede errar): `base` · `escasez` · `sinrepo`
 (no se consigue, 4 meses) · `techo` (prueba de suba) · `liquidando` · `caja` · `promo` · `fecha` · `excepcion` · `nuevo` · `correccion`.
 Cambiar sólo la estrategia, sin tocar el precio: `tag:<MLA>=<estrategia>|motivo;go`. Se ve en cada venta de Ventas x Producto.
+Cada suba de techo seguida se cuenta sola en la web (📈 buscando techo ×2, ×3…, pedido suyo del 17/10): toda suba de techo va con `#techo`.
 
 ## 🔓 EL FRENO DE TECHO CON FOTO DEL MERCADO (17/10/2026, pedido suyo)
 Él: *"y si el que pone el techo se queda sin stock o aumentó, se podría subir y perdemos 60 días sin mirar"*. El "no probar más

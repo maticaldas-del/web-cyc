@@ -914,6 +914,13 @@ versiones nuevas. Restaurado en v23.21 (`cyc-v601`). **Antes de cada commit: `wc
   Arreglado el patrón del producto y del color. `decide_pedidos.py` no tenía el problema (99 + 80 + 1 ✓).
 - **Qué chequear:** que `decide_cajas.py` diga "leí N de N ✓" en cada vuelta; si dice NO CIERRA, no se carga nada hasta arreglarlo.
 
+### "Buscando techo ×2": la web cuenta las subas seguidas (17/10/2026, pedido suyo, v24.03)
+- **Qué es:** él: *"cuando vuelve a subir puede poner el tag como buscando techo x2. Así me doy cuenta que fue una segunda suba"*.
+  `estrategiaDe` (index.html) cuenta, para atrás desde la estrategia vigente, cuántas anotaciones 📈 techo seguidas hay en
+  `cyc/estrategia/<MLA>` hasta la primera que no es techo; el chip dice ×N desde la segunda. No cambia nada en el robot: cada
+  suba de techo va con `#techo` como siempre.
+- **Qué chequear:** que una nota sin precio no cuente como suba (sólo las subas guardan estrategia) · que después de una corrección vuelva a 1.
+
 Él, después de que dos veces salió incompleto (precios y pedidos): *"es un problema grave que pasó dos veces ya (...) en los dos se hizo súper incompleto y nunca te diste cuenta (...) quiero agregar esto de revisar cerebro a las etapas"*. Revisa LO QUE HACE CLAUDE en cada vuelta (08:52, 12:52, 16:52, 20:52): que cada parte se haga ENTERA.
 - **La pregunta de esta etapa, para cada tarea:** ¿de dónde salió la lista que miré? ¿esa lista es TODO o sólo lo que ya existe / se movió / ya decidí? El error de las dos veces fue el mismo: mirar una lista que sólo traía una parte (`informe` = lo que se movió · `pedidosnotas` = lo ya decidido) y creer que era todo.
 - **Contar contra el total:** cada tarea termina con "N de M" contra el universo completo (publicaciones vivas, fichas del catálogo, productos con mercadería en la oficina, preguntas sin responder, publicaciones sin ficha). Si N < M, decir cuáles faltan y por qué.
