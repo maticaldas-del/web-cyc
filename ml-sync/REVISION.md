@@ -341,6 +341,11 @@ y deja 25%+ (`Tde`); el motivo de Tito y el 📋 Copiar pedido dicen "SÓLO este
 "desaparecieron N u." con stock compartido; `antiguo` muestra también la cuenta con las ventas de 30 d. Qué chequear:
 que `cortes` salga en el log de `pedidostodo` y `decide_pedidos.py` lea N de M ✓.
 
+### `cajaitems`: corregir lo que salió en una caja ya despachada (17/10/2026)
+Qué: `cajaitems:<seguimiento>|<palabra>[@color]=<u>;…;go` (ml-sync) fija las unidades de la caja y mueve la diferencia contra la
+oficina (salió de más → baja la oficina; de menos → vuelve). No toca cajas recibidas. Chequear: que la suma caja + oficina no cambie
+y que el `__v__` de la oficina sea el mismo que usa la web (`sid(variante)`).
+
 ### La estrategia de cada precio (17/10/2026, v24.00, pedido suyo)
 Qué: cada precio guarda su estrategia en `cyc/estrategia/<MLA>/<ts>` = {t, m} (historia). `decido:<MLA>=<precio>#<tag>|motivo` la pone;
 sin `#tag` sale de `tagDeMotivo(motivo)`. A mano `tag:<MLA>=<tag>|motivo;go`; `tag:semilla;go` arma la historia vieja (claudecambios,
