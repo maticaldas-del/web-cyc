@@ -1414,3 +1414,7 @@ Se cruzaron las versiones de `APP_CAMBIOS` y los commits del robot desde el 13/1
    dan en ML" ni en "los dos"; en "perfumería" sólo si da en el local; el % grande dice "🚫 ML"; `_esRojo` la juzga sólo por el local.
    El robot no la toca (los candidatos existentes se actualizan por campo).
  · Qué chequear: que una marca nueva frenada por ML no se pida para ML (el robot sigue midiendo el % de ML, pero la web lo ignora).
+### Etapa 8 · 18/10/2026 · el informe ya dice lo ACTIVO FUERA DE FULL (auditoría)
+ · Qué: `activarPausadasFull` pide `available_quantity` y junta las activas con `logistic_type` distinto de `fulfillment` y stock > 0
+   (`fueraFull`); las imprime como "📤 ACTIVAS FUERA DE FULL" (sección 5 del informe y `pausadas`). El chequeo ya lo tenía en 🔴.
+ · Qué chequear: que no aparezca nada ahí (él no vende fuera de Full); lo nuevo que él crea con envío propio sale acá hasta que entra a Full.
