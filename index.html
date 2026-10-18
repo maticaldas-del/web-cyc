@@ -2662,7 +2662,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.35';
+const APP_VERSION='24.36';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2673,6 +2673,7 @@ const APP_VERSION='24.35';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.36',f:'18/10/2026',h:'23:13',c:[{n:1,t:'📋 Listas: "1 vend." decía cuántos VENDEDORES tiene ese producto en ML, no cuántas ventas. Ahora dice "1 vendedor".'}]},
   {v:'24.35',f:'18/10/2026',h:'23:12',c:[{n:2,t:'📋 Listas → Nuevos: arriba sólo lo que da 25% a 80% en ML y con el mismo nombre. Lo que da 80% o más, o donde ML no nombra alguna palabra (el aroma, la marca), va a "🔎 Para revisar con los ojos", sin casilla: casi siempre es otro producto.'}]},
   {v:'24.34',f:'18/10/2026',h:'22:26',c:[{n:2,t:'📦 Pedidos queda en este orden: 🇦🇷 Bs As · 🇵🇾 Paraguay · 🧴 Paulvic · 📋 Listas.'},{n:2,t:'📋 Listas funciona como Paraguay: arriba el proveedor y tres solapas — ✅ Probados (lo que ya le compraste), 🆕 Nuevos (lo de su lista que da 25% o más en ML, con la casilla de unidades) y 🧾 Pedido (mensaje con código y unidades, Ya lo pedí, y al llegar crea las fichas).'},{n:1,t:'📋 Listas es sólo para ML: se fue la carpeta Lista precio negocio y el % de la perfumería del local.'}]},
   {v:'24.33',f:'18/10/2026',h:'22:20',c:[{n:1,t:'📋 Pedidos → Listas: carpeta "📁 Lista precio negocio" con los proveedores de la perfumería del local (el primero, Wels). Ahí se ve el % del local en todos los productos, no sólo en perfumes.'}]},
@@ -13149,7 +13150,7 @@ function pycatFila([cod,e]){const tc=curTC();{const u=Number(e.u)||0,pu=u*RECARG
     return `<div style="display:flex;gap:8px;align-items:center;padding:6px 8px;background:var(--surface);border:1px solid var(--border);border-radius:8px">
       ${im(fPY,'Paraguay')}${im(fML,'ML')}
       <div style="flex:1;min-width:0;font-size:.72rem;line-height:1.45"><div style="font-weight:600">${e.n}</div>
-        <div style="color:var(--muted);font-size:.64rem">🔖 ${cod} · US$ ${u.toFixed(2)} → <b style="color:var(--text)">US$ ${pu.toFixed(2)}</b> puesto${ps?' · '+fmt(ps):''}${e.mp?` · en ML ${fmt(e.mp)}${e.mv?' · '+e.mv+' vend.':''}`:''}${e.cand?' · <span style="color:var(--green)">ya está en Para probar</span>':''}</div>
+        <div style="color:var(--muted);font-size:.64rem">🔖 ${cod} · US$ ${u.toFixed(2)} → <b style="color:var(--text)">US$ ${pu.toFixed(2)}</b> puesto${ps?' · '+fmt(ps):''}${e.mp?` · en ML ${fmt(e.mp)}${e.mv?' · '+e.mv+(e.mv==1?' vendedor':' vendedores'):''}`:''}${e.cand?' · <span style="color:var(--green)">ya está en Para probar</span>':''}</div>
         <div style="font-size:.64rem">${/^https:\/\//.test(e.l||'')?`<a href="${e.l}" target="_blank" rel="noopener" style="color:var(--green)">🇵🇾 comprasparaguay</a>`:''}${e.mi?` · <a href="https://www.mercadolibre.com.ar/p/${e.mi}" target="_blank" rel="noopener" style="color:var(--green)">🔗 ML</a>`:''}</div></div>
       <div style="text-align:right;flex:0 0 auto">${est}${loc!=null?`<div>${perfLocalHTML(loc)}</div>`:''}</div></div>`;}}
 // ── TODO LO QUE EL ROBOT REVISÓ Y NO DA, ABAJO DE TODO (17/10/2026, pedido suyo) ──────────────────────────
@@ -17873,7 +17874,7 @@ async function renderListas(){
     return `<div style="display:flex;gap:8px;align-items:center;padding:6px 8px;background:var(--surface);border:1px solid ${arm[cod]>0?'var(--blue)':'var(--border)'};border-radius:8px">
       ${fML?`<img src="${fML}" loading="lazy" onclick="_mostrarLightbox('${fML}','')" onerror="this.style.visibility='hidden'" style="width:44px;height:44px;object-fit:contain;background:#fff;border-radius:6px;cursor:zoom-in">`:''}
       <div style="flex:1;min-width:0;font-size:.72rem;line-height:1.45"><div style="font-weight:600">${escHtml(e.n)}</div>
-        <div style="color:var(--muted);font-size:.64rem">🔖 ${escHtml(cod)} · te sale <b style="color:var(--text)">${fmt(pc)}</b>${rec?` (${fmt(Number(e.p)||0)} + ${rec}%)`:''}${e.mp?` · en ML ${fmt(e.mp)}${e.mv?' · '+e.mv+' vend.':''}`:''}${e.mt?` · <span title="el catálogo de ML contra el que se midió">"${escHtml(String(e.mt).slice(0,60))}"</span>`:''}${e.pAnt?` · antes ${fmt(e.pAnt)}`:''}</div>
+        <div style="color:var(--muted);font-size:.64rem">🔖 ${escHtml(cod)} · te sale <b style="color:var(--text)">${fmt(pc)}</b>${rec?` (${fmt(Number(e.p)||0)} + ${rec}%)`:''}${e.mp?` · en ML ${fmt(e.mp)}${e.mv?' · '+e.mv+(e.mv==1?' vendedor':' vendedores'):''}`:''}${e.mt?` · <span title="el catálogo de ML contra el que se midió">"${escHtml(String(e.mt).slice(0,60))}"</span>`:''}${e.pAnt?` · antes ${fmt(e.pAnt)}`:''}</div>
         ${e.mi?`<div style="font-size:.64rem"><a href="https://www.mercadolibre.com.ar/p/${e.mi}" target="_blank" rel="noopener" style="color:var(--green)">🔗 verlo en ML</a>${e.rp?` <span style="color:var(--amber)">· ⚠️ ${escHtml(String(e.rp).slice(0,80))}</span>`:''}</div>`:''}</div>
       <div style="text-align:right;flex:0 0 auto">${est}${uBox}</div></div>`;};
   const ord=(a,b)=>((b[1].m??-999)-(a[1].m??-999));
