@@ -2662,7 +2662,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.45';
+const APP_VERSION='24.46';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2673,6 +2673,7 @@ const APP_VERSION='24.45';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.46',f:'18/10/2026',h:'12:50',c:[{n:1,t:'📋 Listas: botón "⏸️ sacar … por ahora" esconde una lista (no la borra); se vuelve desde "⏸️ sacadas por ahora". Las listas sin productos que den ya no aparecen, ni en el buscador.'}]},
   {v:'24.45',f:'18/10/2026',h:'12:35',c:[{n:1,t:'📋 Listas: arriba hay un buscador que busca un producto en TODAS las listas a la vez (por nombre o código), con el proveedor, lo que te sale, el % en ML y para cargar unidades ahí mismo.'}]},
   {v:'24.44',f:'18/10/2026',h:'12:20',c:[{n:1,t:'📋 Listas → 🧾 Pedido: "📋 Copiar pedido" arma el mensaje igual que Paulvic: el nombre tal cual la lista y x unidades, uno por renglón, y al final "SÓLO estos productos: si no hay, no reemplazar por otro".'}]},
   {v:'24.43',f:'18/10/2026',h:'12:05',c:[{n:1,t:'📋 Listas: cada producto tiene "📄 verlo en la lista": muestra el renglón tal cual está en el archivo del proveedor (archivo, hoja, fila y el título de la sección), para ver si dice tester u otra cosa.'}]},
@@ -17818,13 +17819,22 @@ let _listaVista=(()=>{try{const v=localStorage.getItem('cycListaVista');return [
 function listaSetVista(v){_listaVista=v;try{localStorage.setItem('cycListaVista',v);}catch(e){}renderListas();}
 // BUSCAR EN TODAS LAS LISTAS (18/10/2026, pedido suyo: *"botón para buscar entre productos entre listas"*). Busca por nombre o
 // código en las listas de todos los proveedores a la vez (todas las palabras tienen que estar), y deja cargar unidades ahí mismo.
+async function listaPausar(k,sacar){
+  const provs=(state.mlconfig&&state.mlconfig.listasProv)||{};const nom=(provs[k]||{}).nombre||k;
+  try{await db.ref('cyc/mlconfig/listasProv/'+k+'/pausa').set(sacar?Date.now():null);}catch(e){toast('No se guardó: '+(e.message||e),'err',5000);return;}
+  if(provs[k]){if(sacar)provs[k].pausa=Date.now();else delete provs[k].pausa;}
+  if(sacar&&_listaSel===k)_listaSel=null;else if(!sacar)_listaSel=k;
+  toast(sacar?'⏸️ '+nom+' sacada por ahora':'↩︎ '+nom+' de vuelta');renderListas();
+}
 let _listaBusqT=null;
 function listaBuscar(q){window._listaQ=q;clearTimeout(_listaBusqT);_listaBusqT=setTimeout(()=>_listaBuscarYa(q),250);}
 async function _listaBuscarYa(q){
   const out=document.getElementById('lista-busq');if(!out)return;
   const pal=normTxt(String(q||'')).split(/\s+/).filter(w=>w.length>=2);
   if(!pal.length){out.innerHTML='';return;}
-  const provs=(state.mlconfig&&state.mlconfig.listasProv)||{};const ks=Object.keys(provs).filter(k=>!provs[k].desc);
+  const provs=(state.mlconfig&&state.mlconfig.listasProv)||{};
+  const _prob=x=>(state.products||[]).some(p=>p.listaProv===x);
+  const ks=Object.keys(provs).filter(k=>{const v=provs[k];return !v.desc&&!v.pausa&&!(v.dan!=null&&v.pend!=null&&!(v.dan>0)&&!(v.pend>0)&&!_prob(k));});
   if(ks.some(k=>!_listaCache[k]))out.innerHTML='<div style="font-size:.7rem;color:var(--muted);padding:6px 2px">⏳ bajando las listas…</div>';
   await Promise.all(ks.filter(k=>!_listaCache[k]).map(async k=>{try{_listaCache[k]=(await db.ref('mlapi/listas/'+k).once('value')).val()||{};}catch(e){}}));
   if(window._listaQ!==q)return;
@@ -17920,8 +17930,14 @@ async function renderListas(){
   // ninguno que dé (lo de "para revisar" no cuenta), salvo que tenga probados (ya le compraste). "ver ocultos" los muestra.
   const _tieneProb=x=>(state.products||[]).some(p=>p.listaProv===x);
   const _oculto=x=>{const v=provs[x];return v.dan!=null&&v.pend!=null&&!(v.dan>0)&&!(v.pend>0)&&!_tieneProb(x);};
-  const ocultos=ks.filter(_oculto),visibles=window._listaVerOcultos?ks:ks.filter(x=>!_oculto(x));
-  if(!_listaSel||!provs[_listaSel]||!visibles.includes(_listaSel))_listaSel=visibles[0]||ks[0];
+  // SACAR UNA LISTA POR AHORA (18/10/2026, pedido suyo: *"agregar botón para sacar lista, no para siempre, sino por ahora, para que no
+  // haya tanto, y los que están ocultos que no se vean"*): `cyc/mlconfig/listasProv/<prov>/pausa` = fecha. Las sacadas van a un
+  // desplegable cerrado para volverlas; las que no tienen nada que dé (`_oculto`) ya no se muestran (se sacó el botón de verlas).
+  const _pausa=x=>!!provs[x].pausa;
+  const pausadas=ks.filter(_pausa),visibles=ks.filter(x=>!_oculto(x)&&!_pausa(x));
+  const _volverHtml=pausadas.length?`<details style="margin-bottom:10px"><summary style="cursor:pointer;font-size:.64rem;color:var(--muted)">⏸️ ${pausadas.length} lista${pausadas.length===1?'':'s'} sacada${pausadas.length===1?'':'s'} por ahora</summary><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${pausadas.map(x=>`<button class="btn" style="font-size:.64rem;padding:4px 10px" onclick="listaPausar('${x}',false)">↩︎ ${escHtml(provs[x].nombre||x)}</button>`).join('')}</div></details>`:'';
+  if(!visibles.length){el.innerHTML=_volverHtml+`<div class="empty-msg">No hay listas a la vista.</div>`;return;}
+  if(!_listaSel||!provs[_listaSel]||!visibles.includes(_listaSel))_listaSel=visibles[0];
   const k=_listaSel,v=provs[k],nom=v.nombre||k;
   const _num=x=>{const q=provs[x];if(q.dan==null)return `<span style="opacity:.75">· ${q.n||0}</span>`;
     return `<span style="opacity:.85">· ✅ ${q.dan}</span>${q.pend>0?` <span style="opacity:.6;font-size:.85em">⏳${q.pend}</span>`:''}`;};
@@ -17929,7 +17945,7 @@ async function renderListas(){
   const nArm=_listaArmado(k).length;
   const _tab=(t,txt,tit)=>`<button class="btn" style="font-size:.64rem;padding:5px 13px;${_listaVista===t?'background:var(--blue);color:#fff;font-weight:700':''}" title="${tit}" onclick="listaSetVista('${t}')">${txt}</button>`;
   const cab=`<div style="margin-bottom:10px"><input id="lista-buscar" type="search" value="${escHtml(window._listaQ||'')}" placeholder="🔎 Buscar un producto en TODAS las listas…" oninput="listaBuscar(this.value)" style="width:100%;padding:9px 12px;font-size:.85rem;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--text)"><div id="lista-busq"></div></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px"><span style="font-size:.68rem;color:var(--muted)">Proveedor:</span>${visibles.map(_provBtn).join('')}${ocultos.length?`<button class="btn" style="font-size:.64rem;padding:4px 10px;opacity:.7" title="${ocultos.map(x=>provs[x].nombre||x).join(', ')}" onclick="window._listaVerOcultos=!window._listaVerOcultos;renderListas()">${window._listaVerOcultos?'🙈 esconder los que no dan':'🙈 '+ocultos.length+' sin productos que den'}</button>`:''}</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px"><span style="font-size:.68rem;color:var(--muted)">Proveedor:</span>${visibles.map(_provBtn).join('')}<button class="btn" style="font-size:.64rem;padding:4px 10px;opacity:.8" title="La esconde de acá hasta que la vuelvas a poner (desde ⏸️ sacadas por ahora). No borra nada." onclick="listaPausar('${k}',true)">⏸️ sacar ${escHtml(nom)} por ahora</button></div>${_volverHtml}
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${_tab('probados','✅ Productos probados','Lo que ya le compraste a este proveedor: cuánto reponer.')}${_tab('nuevos','🆕 Productos nuevos','Lo de su lista que todavía no vendés y da 25% o más en ML.')}${_tab('hechos','🧾 Pedido'+(nArm?' ('+nArm+' cargados)':''),'El pedido del momento, el mensaje con código y unidades, y los pedidos ya hechos.')}</div>`;
   let cat=_listaCache[k];
   if(!cat){el.innerHTML=cab+`<div style="font-size:.72rem;color:var(--muted)">⏳ bajando la lista…</div>`;
