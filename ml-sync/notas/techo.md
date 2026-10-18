@@ -104,3 +104,9 @@ Escalera de escasez: Talonera Triples Beige $11.990→$8.990 · Brisa Marina $32
 GANAN y siguen (todavía sin 7 días): Lupa 100mm, Cubreasiento x5, Mazos Azul y Rojo, Talonera Común Beige ($10.490, 2/día), Talonera Común Negro, Espejo 5", Cartas Españolas, Almohadilla Triples Negro.
 EN DUDA: Joystick Bluetooth $32.990 (6 d sin vender, 9% de azar): si sigue en 0 vuelve a $29.790.
 PAULVIC a $21.990: el fin de semana del Día de la Madre casi no vendió (Persea 1 contra 9 en el mismo tiempo antes) pero el control a $14.360 tampoco. Juicio mañana 20/10 en la completa.
+
+## 18/10 · Pendrive 128gb (MLA1782602199, Matías) · descuento propio a $35.940 (stock antiguo)
+- 44 u. en Full (entraron 18/08: stock antiguo desde ~mediados de diciembre). Vendió 4 el 18/10 con el descuento (antes 0,27/día).
+- Deja ~$3.600/u (13%). El mejor tramo sin descuento: $40.640 → $2.588/día. Con el descuento empata vendiendo 0,72/día.
+- Seguir con el descuento mientras venda 0,5/día o más. Con ~25 u. en Full: sacar el descuento y volver a $40.640 (0,47/día alcanza antes de diciembre).
+- Si en 7 días con el descuento vende menos de 0,5/día: dejarlo (es stock antiguo) y mirar la caja (ML pedía $35.828).
