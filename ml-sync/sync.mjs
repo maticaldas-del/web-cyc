@@ -31029,6 +31029,46 @@ async function main() {
     // un cálculo de lo que vamos a cobrar a fin de mes"). SOLO LEE. Misma cuenta que la web (`_puntGananciaMes`):
     // neto − costo (armarCostoWeb) − gastos cargados del mes, ÷ 3. Proyecta lo de las ventas al mes entero y muestra
     // los gastos que faltan cargar comparando con el mes anterior.
+    // BILLING_PROBE=cierrevs → ¿CIERRA CADA MES? (18/10/2026, él: "a veces no da el arqueo con el ingreso esperado. podés comparar los
+    // cierres de los meses con los ingresos?"). SOLO LEE. Para cada par de cierres seguidos: cuánto creció el patrimonio (al dólar del
+    // cierre, como "¿Cierra el mes?") contra lo que generó el negocio (neto − costo de la web − gastos cargados) menos el retiro cargado,
+    // y de qué renglón del arqueo sale la diferencia.
+    if (/^cierrevs(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const snaps = (await db.get('cyc/snapshots')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
+      const cw = await armarCostoWeb(db, vp);
+      const compras = (await db.get('cyc/compras')) || {};
+      const retM = (await db.get('cyc/retiro_mes')) || {};
+      const $ = (n) => (n < 0 ? '−$' : '$') + Math.abs(Math.round(n)).toLocaleString('es-AR');
+      const u = (n) => (n < 0 ? '−US$ ' : 'US$ ') + Math.abs(Math.round(n)).toLocaleString('es-AR');
+      const F = (s, ks) => ks.reduce((a, k) => a + (parseFloat((s.finanzas || {})[k]) || 0), 0);
+      const FA = (s, ks) => ks.reduce((a, k) => a + Math.abs(parseFloat((s.finanzas || {})[k]) || 0), 0);
+      const keys = Object.keys(snaps).filter((k) => snaps[k] && snaps[k].total != null).sort();
+      console.log(`=== 🔍 ¿CIERRA CADA MES? · ${keys.length} cierres · SOLO LEE ===`);
+      console.log('(creció = patrimonio de este cierre − el anterior, al dólar de este cierre · debería = neto − costo − gastos − retiro)\n');
+      for (let i = 1; i < keys.length; i++) {
+        const k0 = keys[i - 1], k1 = keys[i], A = snaps[k0], B = snaps[k1];
+        const tc = parseFloat(B.tipoCambio) || 0, tc0 = parseFloat(A.tipoCambio) || 0;
+        let neto = 0, costo = 0, canc = 0, sinC = 0;
+        for (const [dk, ents] of Object.entries(vp)) { if (!dk.startsWith(k1)) continue;
+          for (const v of Object.values(ents || {})) { if (!v) continue; if (v.cancelada) { canc++; continue; } const c = cw(v, dk); if (c.sinCosto) sinC++; neto += Number(v.neto) || 0; costo += c.costo || 0; } }
+        let gastos = 0, nG = 0; for (const x of Object.values(compras)) if (x && x.tipo !== 'mercaderia' && String(x.dayKey || '').startsWith(k1)) { gastos += Number(x.monto) || 0; nG++; }
+        const rr = retM[k1]; const ret = rr != null && rr !== '' ? Number(rr) : null;
+        const genera = neto - costo - gastos, esperado = genera - (ret || 0);
+        const crecioU = Number(B.total) - Number(A.total), crecio = crecioU * tc;
+        console.log(`■ ${k1} (contra ${k0}) · dólar ${tc}${tc0 && tc0 !== tc ? ` (el anterior ${tc0})` : ''}`);
+        console.log(`   el negocio generó ${$(genera)} (neto ${$(neto)} − costo ${$(costo)} − gastos ${$(gastos)} en ${nG}) · retiro ${ret == null ? 'SIN CARGAR' : $(ret)} → debería crecer ${$(esperado)}`);
+        console.log(`   creció el patrimonio ${$(crecio)} (${u(crecioU)}) · DIFERENCIA ${$(crecio - esperado)} (${u((crecio - esperado) / (tc || 1))})${canc ? ` · ${canc} canceladas afuera` : ''}${sinC ? ` · ${sinC} ventas sin costo` : ''}`);
+        const d = (a, b) => u(b - a);
+        const efA = F(A, ['efectivo', 'mp_disp', 'mp_liq']), efB = F(B, ['efectivo', 'mp_disp', 'mp_liq']);
+        const deA = FA(A, ['tarjeta', 'deuda_cyc', 'dolares_mati', 'dolares_tito']), deB = FA(B, ['tarjeta', 'deuda_cyc', 'dolares_mati', 'dolares_tito']);
+        const arA = (Number(A.arcaARS) || 0) / (tc0 || tc || 1), arB = (Number(B.arcaARS) || 0) / (tc || 1);
+        console.log(`   de dónde: stock ${d(Number(A.stock) || 0, Number(B.stock) || 0)} (ML ${d(Number(A.stockML) || 0, Number(B.stockML) || 0)}) · plata ${d(efA, efB)} (efectivo ${d(F(A, ['efectivo']), F(B, ['efectivo']))} · MP disp ${d(F(A, ['mp_disp']), F(B, ['mp_disp']))} · a liquidar ${d(F(A, ['mp_liq']), F(B, ['mp_liq']))}) · nos deben ${d(F(A, ['deben_cyc']), F(B, ['deben_cyc']))} · oficina (Mati, CYC, vendedores) ${d(F(A, ['of_mia', 'of_viejo', 'vendedores']), F(B, ['of_mia', 'of_viejo', 'vendedores']))} · deudas ${u(-(deB - deA))} · ARCA ${u(-(arB - arA))} · corregir ${d(F(A, ['corregir']), F(B, ['corregir']))}`);
+        if (tc0 && tc && tc0 !== tc) console.log(`   ojo: el dólar pasó de ${tc0} a ${tc}: lo que está en pesos (MP, efectivo) cambia en dólares sin que pase nada`);
+        console.log('');
+      }
+      return;
+    }
     if (/^cobromes(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const nAR = new Date(Date.now() - 3 * 36e5);
       const ym = (String(process.env.BILLING_PROBE).split(':')[1]) || `${nAR.getUTCFullYear()}_${String(nAR.getUTCMonth() + 1).padStart(2, '0')}`;
