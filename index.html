@@ -2662,7 +2662,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.38';
+const APP_VERSION='24.39';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2673,6 +2673,7 @@ const APP_VERSION='24.38';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.39',f:'18/10/2026',h:'23:50',c:[{n:2,t:'📋 Listas: lo que mira el chat de compras en ML se ve en cada producto: 🛒 cuántas vendidas tiene, ✓ mismo producto (pasa a ✅ Dan) o ✗ otro producto (sale de la lista).'}]},
   {v:'24.38',f:'18/10/2026',h:'23:23',c:[{n:1,t:'📋 Listas: también se esconde el proveedor que sólo tiene productos "para revisar" (casi siempre son otro producto). Hoy: Cadam y Wels.'}]},
   {v:'24.37',f:'18/10/2026',h:'23:22',c:[{n:2,t:'📋 Listas: cada proveedor dice ✅ cuántos productos dan 25% o más en ML (y ⏳ cuántos falta medir). Los que ya se midieron enteros y no tienen ninguno que dé se esconden; "🙈 N sin productos que den" los muestra.'}]},
   {v:'24.36',f:'18/10/2026',h:'23:13',c:[{n:1,t:'📋 Listas: "1 vend." decía cuántos VENDEDORES tiene ese producto en ML, no cuántas ventas. Ahora dice "1 vendedor".'}]},
@@ -17790,8 +17791,9 @@ function _listaRec(k){const v=((state.mlconfig&&state.mlconfig.listasProv)||{})[
 function _listaPuesto(k,e){return Math.round((Number(e&&e.p)||0)*(1+_listaRec(k)/100));}
 // DA = 25% a 80% en ML, con la foto de ML y SIN reparo de nombre (18/10/2026). Con Saint Julien ML emparejaba "Body Lotion Geisha"
 // con un set de Cher o con un Angel de $425.000 (faltaba el aroma = `rp`) y daba 600%: eso va a "🔎 Para revisar", sin casilla.
-function _listaMed25(e){return e&&e.m!=null&&isFinite(e.m)&&Number(e.m)>=25&&/^https:\/\//.test(e.mf||'');}
-function _listaDa(e){return _listaMed25(e)&&!e.rp&&Number(e.m)<80;}
+// `ok`/`noEs`/`vend` los carga el chat de compras mirando ML (`listadato`): ok = mismo producto confirmado, noEs = otro producto.
+function _listaMed25(e){return e&&!e.noEs&&e.m!=null&&isFinite(e.m)&&Number(e.m)>=25&&/^https:\/\//.test(e.mf||'');}
+function _listaDa(e){return _listaMed25(e)&&(e.ok||(!e.rp&&Number(e.m)<80));}
 function _listaRevisar(e){return _listaMed25(e)&&!_listaDa(e);}
 function _listaArmado(k){return Object.entries(((state.listaPed||{})[k])||{}).map(([cod,u])=>({cod,u:parseInt(u)||0})).filter(x=>x.u>0);}
 function _listaViajando(k){const s=new Set();Object.values(state.comprasLista||{}).forEach(c=>{if(c&&c.prov===k&&c.estado==='camino')(c.items||[]).forEach(it=>s.add(String(it.cod)));});return s;}
@@ -17884,7 +17886,7 @@ async function renderListas(){
     return `<div style="display:flex;gap:8px;align-items:center;padding:6px 8px;background:var(--surface);border:1px solid ${arm[cod]>0?'var(--blue)':'var(--border)'};border-radius:8px">
       ${fML?`<img src="${fML}" loading="lazy" onclick="_mostrarLightbox('${fML}','')" onerror="this.style.visibility='hidden'" style="width:44px;height:44px;object-fit:contain;background:#fff;border-radius:6px;cursor:zoom-in">`:''}
       <div style="flex:1;min-width:0;font-size:.72rem;line-height:1.45"><div style="font-weight:600">${escHtml(e.n)}</div>
-        <div style="color:var(--muted);font-size:.64rem">🔖 ${escHtml(cod)} · te sale <b style="color:var(--text)">${fmt(pc)}</b>${rec?` (${fmt(Number(e.p)||0)} + ${rec}%)`:''}${e.mp?` · en ML ${fmt(e.mp)}${e.mv?' · '+e.mv+(e.mv==1?' vendedor':' vendedores'):''}`:''}${e.mt?` · <span title="el catálogo de ML contra el que se midió">"${escHtml(String(e.mt).slice(0,60))}"</span>`:''}${e.pAnt?` · antes ${fmt(e.pAnt)}`:''}</div>
+        <div style="color:var(--muted);font-size:.64rem">🔖 ${escHtml(cod)} · te sale <b style="color:var(--text)">${fmt(pc)}</b>${rec?` (${fmt(Number(e.p)||0)} + ${rec}%)`:''}${e.mp?` · en ML ${fmt(e.mp)}${e.mv?' · '+e.mv+(e.mv==1?' vendedor':' vendedores'):''}`:''}${e.vend!=null?` · <b style="color:${e.vend>=100?'var(--green)':'var(--amber)'}">🛒 ${e.vend>=1000?'+1000':e.vend} vendidas</b>`:''}${e.ok?' · <span style="color:var(--green)">✓ mismo producto</span>':''}${e.noEs?' · <span style="color:var(--red)">✗ otro producto</span>':''}${e.mt?` · <span title="el catálogo de ML contra el que se midió">"${escHtml(String(e.mt).slice(0,60))}"</span>`:''}${e.pAnt?` · antes ${fmt(e.pAnt)}`:''}</div>
         ${e.mi?`<div style="font-size:.64rem"><a href="https://www.mercadolibre.com.ar/p/${e.mi}" target="_blank" rel="noopener" style="color:var(--green)">🔗 verlo en ML</a>${e.rp?` <span style="color:var(--amber)">· ⚠️ ${escHtml(String(e.rp).slice(0,80))}</span>`:''}</div>`:''}</div>
       <div style="text-align:right;flex:0 0 auto">${est}${uBox}</div></div>`;};
   const ord=(a,b)=>((b[1].m??-999)-(a[1].m??-999));
