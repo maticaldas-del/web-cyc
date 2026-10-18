@@ -1990,7 +1990,7 @@ async function reputacionML(db, accounts, labels, DRY) {
   return out;
 }
 
-async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
+async function activarPausadasFull(db, links, tokensRun, DRY, products, piso, opt = {}) {
   const PISO = piso != null ? piso : 0.30;
   const fin = (await db.get('cyc/finanzas')) || {};
   const tc = parseFloat(fin.tipo_cambio) || 1500;
@@ -2289,6 +2289,24 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
     + ` → ${conteo.activas} ya están activas · ${conteo.noFull} no son de Full · ${conteo.sinStock} están pausadas pero sin stock adentro`
     + ` → quedaron ${conteo.conStock} PAUSADAS CON MERCADERÍA ADENTRO DE FULL.`);
   if (fueraFull.length) { console.log(`   📤 ACTIVAS FUERA DE FULL (${fueraFull.length}): si alguien compra hay que mandarla a mano · pausalas o pasalas a Full`); for (const x of fueraFull) console.log(`      ${x.mla} · ${x.label} · ${x.nom} · ${x.q} u. (${x.log})`); }
+  // REGLA SUYA DEL 18/10/2026: *"Pausá todo lo que esté en depósito. No podemos mandar a mano. Siempre Full"*. Lo activo
+  // fuera de Full con unidades se PAUSA solo (mecánico, también con Claude decidiendo). NO se le pone `noAutoActivar`: cuando
+  // la mercadería llega a Full, la vuelta la activa como cualquier pausada con stock (si deja el piso). Se relee de ML.
+  if (opt.pausarFuera && fueraFull.length) {
+    for (const x of fueraFull) {
+      const tok = tokensRun[x.label]; if (!tok) continue;
+      let ok = false, det = '';
+      try {
+        const r = await fetch(ML_API + '/items/' + x.mla, { method: 'PUT', headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'paused' }) });
+        if (!r.ok) { try { det = (await r.text() || '').slice(0, 200); } catch { det = ''; } }
+        _anotarEscrituraML(r, x.mla, 'pausar lo que está fuera de Full', det);
+        if (r.ok) { const q = (await mlGet('/items/' + x.mla + '?attributes=id,status', tok)).status; ok = q === 'paused'; if (!ok) det = 'quedó ' + q; }
+        else det = r.status + ' ' + det;
+      } catch (e) { det = e.message; }
+      console.log(`   ⏸️ ${ok ? 'PAUSADA' : '✗ NO la pude pausar'} (fuera de Full): ${x.mla} · ${x.label} · ${x.nom}${ok ? '' : ' · ' + det}`);
+      if (ok) { try { await db.patch('cyc/mllinks/' + x.mla, { pausaFueraFull: Date.now() }); } catch { /* */ } }
+    }
+  }
   if (conteo.sinLeer || conteo.lotesFallidos) console.log(`   ⚠️ Sin leer esta vuelta: ${conteo.sinLeer} pausada(s) de Full cuyo stock ML no contestó${sinLeerStock.length ? ' (' + sinLeerStock.slice(0, 10).join(' · ') + ')' : ''}${conteo.lotesFallidos ? ` · ${conteo.lotesFallidos} tanda(s) de 20 publicaciones que ML no devolvió` : ''}. Se miran en la vuelta siguiente.`);
   // Chequeo duro: toda pausada con stock termina activada o avisada. Si esto no cierra, hay un
   // `continue` nuevo saliendo callado — que es exactamente el bug del 16/09 y el de los P47.
@@ -34364,7 +34382,7 @@ async function main() {
       }
       console.log(`=== ACTIVAR PAUSADAS CON STOCK EN FULL · piso ${(PISO * 100).toFixed(0)}% · ${APLICAR ? 'SE APLICA' : 'PRUEBA (sin :go no activa nada)'} ===`);
       console.log('Es la misma cuenta que la vuelta de cada hora. No sube precios.\n');
-      await activarPausadasFull(db, links, toks, !APLICAR, products, PISO);
+      await activarPausadasFull(db, links, toks, !APLICAR, products, PISO, { pausarFuera: APLICAR });
       return;
     }
     // BILLING_PROBE=prodpubs[:<palabra>][:<días>] → ¿POR QUÉ UN PRODUCTO QUE VENDE NO TIENE
@@ -45078,7 +45096,7 @@ async function main() {
       // log y en `pausadas`/`informe`) y la decisión la toma Claude en su revisión con `decido:<MLA>=…!activar`.
       const claudeDecide = String(cfgP.autoPrecios || 'on') === 'off';
       if (claudeDecide) console.log('Pausadas con stock en Full: decide Claude (sólo las mido, no activo ninguna)');
-      const rAct = await activarPausadasFull(db, map, tokensRun, DRY || claudeDecide, products, piso);
+      const rAct = await activarPausadasFull(db, map, tokensRun, DRY || claudeDecide, products, piso, { pausarFuera: !DRY });
       let okAct = true;
       if (!claudeDecide) for (const a of rAct.avisos) if (!(await sendAlerta(a))) okAct = false;
       // Se anota SÓLO si el mensaje salió. Anotarlo igual dejaría esas publicaciones calladas una

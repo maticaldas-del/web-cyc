@@ -9109,3 +9109,8 @@ de mes al ritmo del mes (v24.21-24.22; la línea de 7 días la sacó él).
 **ARCA, categoría H (eligió la a):** la ganancia ya descuenta H en las 4 cuentas, así que cobran ~$142.500 menos cada uno
 por mes y esa plata queda en CYC para pagarle a ARCA. El Arqueo la muestra como deuda (`arcaDeudaARS`, $427.498/mes desde
 `cyc/mlconfig/arcaHDesde`=2026_05). Al pagar, cargar `arcaHPagadoHasta`. Intereses/multas: falta que el contador diga.
+
+## ⏸️ LO QUE ESTÁ EN DEPÓSITO SE PAUSA SOLO (18/10/2026, regla suya)
+Él: *"Pausá todo lo que esté en depósito. No podemos mandar a mano. Siempre Full"*. Toda publicación ACTIVA fuera de Full con unidades
+la pausa el robot cada hora (`activarPausadasFull`, `pausarFuera`), sin freno: cuando la mercadería llega a Full se activa como
+cualquier pausada con stock. Primeros: los 3 Sony de Ayelen (MLA2202585953, MLA4087804994, MLA4087805018).
