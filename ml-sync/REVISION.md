@@ -1423,3 +1423,8 @@ Se cruzaron las versiones de `APP_CAMBIOS` y los commits del robot desde el 13/1
    `_candFiltro` (el mismo de Nuevos; se sacó el desplegable "Ver"). En Probados filtra lo que DA: ML = `pyProbVeredicto` 'da' sin
    `via:'local'` · Perfumería = `pyProbLocalOk` (el local deja 25%+) · Los dos = ambas. Lo que el filtro esconde se cuenta abajo.
  · Qué chequear: `pyProbLocalOk` repite la cuenta del % azul de la tarjeta (`_locP`); si cambia una, cambiar la otra.
+
+### 18/10/2026 · v24.32 · cartel falso "No se guardó: Attempt to get records… in-progress transaction" (etapa 5)
+Qué: en el iPhone, al volver a la app, el guardado de la sesión de Firebase (IndexedDB del navegador) tira ese error; el aviso de
+`unhandledrejection` lo leía como "No se guardó" porque el texto dice "database". Ahora se ignora (sólo errores de IndexedDB).
+Dónde: `index.html`, listener `unhandledrejection`. Chequear: que un rechazo real de la base (PERMISSION_DENIED) siga avisando.
