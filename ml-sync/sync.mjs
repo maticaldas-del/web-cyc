@@ -8580,6 +8580,14 @@ async function pycatResumenEscribir(db, cat, cands, products) {
     if (e.fz) { r.fz++; continue; } if (e.sc) { r.sc++; continue; } if (e.sv) { r.sv++; continue; }
     r.nomed++;
   }
+  // CUÁNTOS SE ANALIZARON HOY (18/10/2026, él: "cuántas se analizaron hoy en no medidos, un número en verde -x"). `dia` guarda
+  // cuántos quedaban sin medir al terminar el día anterior (la última cuenta antes de hoy); la web resta el de ahora.
+  try {
+    const prev = (await db.get('cyc/pycatres')) || {};
+    const hoy = new Date(Date.now() - 3 * 36e5).toISOString().slice(0, 10).replace(/-/g, '_');
+    if (prev.dia && prev.dia.d === hoy) r.dia = prev.dia;
+    else if (prev.nomed != null) r.dia = { d: hoy, nomed: Number(prev.nomed), tot: Number(prev.tot) || 0 };
+  } catch { /* sin el de ayer no se muestra el número del día */ }
   await db.set('cyc/pycatres', r);
   console.log(`📊 catálogo dividido (cyc/pycatres): ${r.tot} = ${r.cand} candidatos + ${r.ficha} fichas + ${r.fz} afuera por regla + ${r.bajo} abajo del ${CAND_PISO_PCT}% + ${r.sc} sin catálogo exacto + ${r.sv} nadie lo vende + ${r.nomed} sin medir`);
   return r;

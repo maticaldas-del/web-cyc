@@ -2656,7 +2656,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.27';
+const APP_VERSION='24.28';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2667,6 +2667,7 @@ const APP_VERSION='24.27';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.28',f:'18/10/2026',h:'21:14',c:[{n:1,t:'❔ Paraguay → No medidos: al lado del número, en verde, cuántos analizó el robot hoy (−N hoy). Se cuenta desde el último conteo de ayer.'}]},
   {v:'24.27',f:'18/10/2026',h:'21:06',c:[{n:1,t:'🇵🇾 Paraguay en el celu (Nuevos y Probados): cada producto en una tarjeta chica (foto, nombre en 2 renglones, precio puesto y vendidas, el % y pedir). El código, los dólares y el % del local van adentro de "detalle".'}]},
   {v:'24.26',f:'17/10/2026',h:'19:46',c:[{n:1,t:'📈 Ventas de hoy: la línea de hoy en el gráfico contra la semana pasada se cortaba a mitad de camino en el celular. Ahora llega hasta el punto de la hora actual.'}]},
   {v:'24.25',f:'17/10/2026',h:'18:34',c:[{n:3,t:'🧾 Meses cerrados: cada cierre desde mayo lleva la deuda con ARCA que tenía a esa fecha (como si se hubiera pagado H). El patrimonio de cada mes baja lo que corresponde y la comparación mes a mes sigue pareja.'}]},
@@ -14995,7 +14996,7 @@ function candidatosHTML(){
       +((_rojos.length||R)?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--red)">🔻 No llegan al ${CAND_PISO_TXT()} · <b>${_rojos.length}</b> candidatos${mas('bajo')}</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_rojos.map(_card).join('')}</div>${pycatNoDanHTML(['bajo'],'pycat-nodan-bajo','📦 Del catálogo: medidos por el robot, abajo del piso')}</details>`:'')
       +candDescartadosHTML(null,true)
       +(R&&n('ficha')?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--green)">✅ Ya son productos tuyos · <b>${f(n('ficha'))}</b> del catálogo</summary>${pycatNoDanHTML(['ficha'],'pycat-nodan-ficha','📦 Del catálogo: ya tienen ficha en CYC')}</details>`:''))
-      +carp('❔ No medidos',totN,'var(--muted)',''
+      +carp('❔ No medidos'+(()=>{const hoy=new Date(Date.now()-3*36e5).toISOString().slice(0,10).replace(/-/g,'_');const d=R&&R.dia;if(!d||d.d!==hoy)return '';const x=Number(d.nomed)-n('nomed');return x>0?` <span style="color:var(--green)" title="Los que el robot analizó hoy: salieron de sin medir desde el último conteo de ayer.">−${f(x)} hoy</span>`:'';})(),totN,'var(--muted)',''
       +((_sinAnalizar.length||R)?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--muted)" title="Falta la medición de ML o alguna de las dos fotos. Suben solos cuando estén completos y den.">⏳ Falta analizar · <b>${_sinAnalizar.length}</b> candidatos${mas('nomed')}</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_sinAnalizar.map(_card).join('')}</div>${pycatNoDanHTML(['nomed'],'pycat-nodan-nomed','📦 Del catálogo: todavía sin medir')}</details>`:'')
       +candDescartadosHTML(R?n('sc')+n('sv')+n('fz'):null,false))
       +`</details>`;})();
