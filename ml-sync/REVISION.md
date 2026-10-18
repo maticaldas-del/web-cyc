@@ -270,6 +270,9 @@ no deje naranja algo con meses de stock (tope 60) · que el pedido en camino se 
 
 - **Notas del 🧠 de variantes reescritas (13/10/2026), pedido suyo.** Las 117 que decían "se mira solo, no con el resto del producto" (lote del 12/10) se rehicieron con la planilla del día (`ml-sync/notas/variantes_1310.txt`): precio, último cambio con motivo (sacado de los `decido` guardados), ventas y "HOY NO LO TOCO PORQUE…". Comando nuevo `vernotas[:texto]` (solo lee) para ver las notas como están. Chequear: ninguna nota con "se mira solo" (`vernotas:se mira solo` da 0) y que ninguna pase los 600 caracteres.
 
+- **`!bajocero` (18/10/2026).** Excepción al "nunca abajo de 0%" en `calcCerebro` (forzar) y `entrarpromo`, sólo si él pide rematar
+  a cualquier precio (Tira Led). Qué chequear: que ninguna regla automática ni comando lo ponga solo.
+
 ## 2 · PLATA
 - **Cada lugar, su nota (08/10/2026, v22.71):** él: *"en ventas por qué aumentó el precio o por qué no, y en pedidos por qué
   pide x unidades"*. `cerebroAbrir`: con `ped` o `ctx:'caja'` muestra SÓLO las notas `ped__`/`caja__`; con `ctx:'venta'`

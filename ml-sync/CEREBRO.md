@@ -385,3 +385,8 @@ probado, no queda ningún vendedor ajeno, pasamos a ganar la caja, o pasaron 30 
 **Paraguay: el piso para pedir es 25%, no 24%** (17/10/2026, regla suya: *"tienen que llegar a 25, no a 24"*). Nuevos, perfumes y probados.
 
 - **Escasez con mercadería en la oficina: decidir la caja en la MISMA vuelta (17/10/2026, él con la Piedra Gua Sha).** Si un producto entra en escasez y hay unidades en la oficina, además del precio se decide la caja (`decido:caja`) en esa vuelta. Si venía lento (días con stock sin vender), se manda poco (lo justo para no quedar en cero y medir si el ritmo nuevo se sostiene), no todo lo de la oficina.
+
+## 🧨 REMATAR A CUALQUIER PRECIO: `!bajocero` (18/10/2026, regla suya)
+Él, con las 10 Tiras Led de Luciana que pagan stock antiguo: *"liquidá las 10 tiras led. al precio que sea"*. El "nunca abajo de 0%"
+sigue siendo la regla; la única excepción es cuando ÉL pide rematar algo a cualquier precio: `entrarpromo:<MLA>=<precio>@PRICE_DISCOUNT!piso!bajocero|motivo;go`.
+Nunca se usa por decisión propia.
