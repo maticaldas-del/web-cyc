@@ -1428,3 +1428,9 @@ Se cruzaron las versiones de `APP_CAMBIOS` y los commits del robot desde el 13/1
 Qué: en el iPhone, al volver a la app, el guardado de la sesión de Firebase (IndexedDB del navegador) tira ese error; el aviso de
 `unhandledrejection` lo leía como "No se guardó" porque el texto dice "database". Ahora se ignora (sólo errores de IndexedDB).
 Dónde: `index.html`, listener `unhandledrejection`. Chequear: que un rechazo real de la base (PERMISSION_DENIED) siga avisando.
+
+### 18/10/2026 · lo activo FUERA de Full se pausa solo (etapa 1/3)
+Regla suya: *"Pausá todo lo que esté en depósito. No podemos mandar a mano. Siempre Full"*. `activarPausadasFull(…, {pausarFuera})`:
+toda publicación activa, no `fulfillment`, con unidades, se pausa (PUT + relectura) en la vuelta de cada hora (aunque decida
+Claude) y con `activarfull:go`. Sin `noAutoActivar`: al llegar a Full se activa como cualquier pausada con stock. Marca
+`mllinks/<MLA>/pausaFueraFull`. Chequear: que no pause publicaciones de Full sin stock (filtro `available_quantity>0` y logistic ≠ fulfillment).
