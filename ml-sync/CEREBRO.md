@@ -83,6 +83,12 @@ archivo son AYUDA, no la decisión: si sólo se siguen las reglas, lo que nadie 
   regalables antes de su fecha, frenadas por ML.
   Lo que cambió de precio en 7 días (subas del peor caso) espera los primeros juicios y entra desde el 15-16/10 en su
   SEGUNDO escalón, juzgado antes contra esa suba (decisión suya del 13/10).
+- **🪜 SI LA PRUEBA DE TECHO SALE MAL, SE BAJA EN ESCALERA (18/10/2026, eligió la a).** Caso Hub 8 en 1: $19.990 → $27.990 →
+  volvió directo a $19.990 (que nunca se había medido) → se frenó → $17.990. Ahora: (1) **cada escalón se juzga con certeza
+  ANTES de dar el siguiente**, nunca un salto sobre un escalón sin medir; (2) si el precio probado no rinde, no se vuelve
+  directo: se baja de a ~10-15% (ej. $27.990 → $23.990 → $21.990), cada escalón medido unos días con la misma certeza, y
+  **nunca abajo del último precio que vendía**. Donde la plata por día deja de mejorar, ése es el techo (`techofreno` con ese
+  precio). Si las visitas se caen a la mitad en un escalón (regla 4 de 🔬), se corta antes y se baja al siguiente.
 - **Venta barata ≠ remate**: remate sólo si antes estuvo parado de verdad (línea de tiempo `mlapi/linea`).
 - **Juzgar los resultados de precios todos los días** (08:52: `supervisor:medir:go` + `juzgo:`). Lo que perdió no se
   vuelve atrás por regla: se piensa.
