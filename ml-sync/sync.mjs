@@ -3862,7 +3862,9 @@ async function calcCerebro(db, o) {
           }
           const gF = await gan(P);
           if (!gF) { nada(`${motF} · ML no contestó la comisión a ${money(P)}`); continue; }
-          if (!sube && gF.mg < 0) { nada(`${motF} · a ${money(P)} queda en ${gF.mg.toFixed(1)}%: abajo de cero no se baja nunca`); continue; }
+          // `!bajocero` (18/10/2026, él con la Tira Led: *"liquidá las 10 tiras led. al precio que sea"*): única excepción al
+          // "nunca abajo de 0%", sólo cuando ÉL pide rematar algo a cualquier precio. Nunca la usa una regla automática.
+          if (!sube && gF.mg < 0 && !fz.bajocero) { nada(`${motF} · a ${money(P)} queda en ${gF.mg.toFixed(1)}%: abajo de cero no se baja nunca`); continue; }
           // El piso se mide en el PEOR CASO, igual que la planilla (13/10/2026, revisión 9).
           if (!sube && gF.mgP < PISO && !fz.piso) { nada(`${motF} · a ${money(P)} queda en normal ${gF.mg.toFixed(1)}% · peor caso ${gF.mgP.toFixed(1)}%, abajo del piso del ${PISO}%: para bajar igual va con !piso`); continue; }
           Object.assign(D, { accion: sube ? 'sube' : 'baja', a: P, motivo: motF, cruza, mgA: r1(gF.mg), mgPA: r1(gF.mgP), pisoAut: !sube && gF.mgP < PISO,
@@ -38159,7 +38161,7 @@ async function main() {
         if (ms) { pedidos.push({ mla: ms[1].toUpperCase(), salir: true, motivo: mot.join('|').trim() }); continue; }
         const mm = String(izq).match(/^\s*(MLA\d+)\s*=\s*([\d.,$\s]+)@([\w-]+)((?:!\w+)*)\s*$/i);
         if (!mm) { malos.push(x); continue; }
-        pedidos.push({ mla: mm[1].toUpperCase(), p: Math.round(pesosArg(mm[2])), id: mm[3], piso: /!piso/i.test(mm[4] || ''), motivo: mot.join('|').trim() });
+        pedidos.push({ mla: mm[1].toUpperCase(), p: Math.round(pesosArg(mm[2])), id: mm[3], piso: /!piso/i.test(mm[4] || ''), bajocero: /!bajocero/i.test(mm[4] || ''), motivo: mot.join('|').trim() });
       }
       if (malos.length || !pedidos.length) { console.log(`No entendí: ${malos.join(' · ') || '(nada)'}\nVa así: entrarpromo:MLA123=21360@P-MLA18067012|ya la iba a bajar;MLA456=salir|terminó;go`); return; }
       const links = (await db.get('cyc/mllinks')) || {};
@@ -38176,7 +38178,7 @@ async function main() {
       const leerPromos = async (mla, tk) => { const r = await mlGet('/seller-promotions/items/' + mla + '?app_version=v2', tk); return Array.isArray(r) ? r : (r.results || []); };
       const PISOe = await pisoConfig(db);
       // El margen al precio de la promo, una sola corrida de calcCerebro para todas.
-      const forzarE = {}; for (const q of pedidos) if (!q.salir) forzarE[q.mla] = { p: q.p, piso: true, motivo: q.motivo || 'promo' };
+      const forzarE = {}; for (const q of pedidos) if (!q.salir) forzarE[q.mla] = { p: q.p, piso: true, bajocero: !!q.bajocero, motivo: q.motivo || 'promo' };
       const cz = Object.keys(forzarE).length ? await calcCerebro(db, { tokens: tokE, forzar: forzarE, soloMla: new Set(Object.keys(forzarE)) }) : { dec: [] };
       if (cz.err) { console.log('⚠️ ' + cz.err); return; }
       const decM = {}; for (const d of cz.dec) decM[d.mla] = d;
@@ -38221,7 +38223,7 @@ async function main() {
         if (!d) { console.log('   ✗ no la puedo medir (sin stock en Full, con variantes, liquidando o sin ficha): no entro'); continue; }
         if (d.accion === 'nada' && !d.mismoPrecio) { console.log(`   ✗ ${d.motivo}`); continue; }
         const mg = d.accion !== 'nada' ? d.mgA : d.mg0;
-        if (!(mg >= 0)) { console.log(`   ✗ a ${money(q.p)} queda en ${mg}%: nunca abajo de cero`); continue; }
+        if (!(mg >= 0) && !(q.bajocero && mg != null && isFinite(mg))) { console.log(`   ✗ a ${money(q.p)} queda en ${mg}%: nunca abajo de cero (sólo con !bajocero, cuando él pide rematar a cualquier precio)`); continue; }
         if (esPD && pr.status === 'candidate' && !(Number(pr.max_discounted_price) > 0) && q.p > d.p0 * 0.95 + 0.5) { console.log(`   ✗ ${money(q.p)} es menos de 5% de descuento sobre ${money(d.p0)}: ML no deja un descuento más chico (o ${money(Math.floor(d.p0 * 0.95 / 10) * 10)} con 5%, o bajar la lista con decido)`); continue; }
         if (mg < PISOe && !q.piso) { console.log(`   ✗ a ${money(q.p)} queda en ${mg}%, abajo del piso del ${PISOe}%: para entrar igual va con !piso`); continue; }
         const hastaPD = new Date(Date.now() + 14 * 864e5);
