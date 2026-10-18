@@ -2044,6 +2044,10 @@ let _cycSinDatos=false; // Etapa 5: Firebase canceló la lectura de cyc/ (ver el
 // que nadie atrapó sale como aviso rojo.
 window.addEventListener('unhandledrejection',ev=>{
   const r=ev&&ev.reason;const m=(r&&(r.message||r.code))||String(r||'error');
+  // 18/10/2026: en el iPhone, al volver a la app, el guardado de la SESIÓN (IndexedDB del navegador) tira
+  // 'Attempt to get records from database without an in-progress transaction'. No es la base de CYC ni
+  // ningún dato: Firebase reabre solo esa conexión. Se ignora para que no salga un 'No se guardó' falso.
+  if(/in-progress transaction|IDBDatabase|IndexedDB|database connection is closing|InvalidStateError/i.test(m)){try{console.warn('IndexedDB (sesión) ignorado:',m);}catch(_){}return;}
   // Sólo los errores de la base son 'no se guardó'; cualquier otro se dice como falla a secas.
   const _db=/PERMISSION|permission|firebase|database|network|disconnect/i.test(String((r&&(r.code||r.message))||''));
   try{toast((_db?'⚠️ No se guardó: ':'⚠️ Algo falló: ')+m,'err',6000);}catch(_){}
@@ -2656,7 +2660,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.31';
+const APP_VERSION='24.32';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2667,6 +2671,7 @@ const APP_VERSION='24.31';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.32',f:'18/10/2026',h:'21:50',c:[{n:1,t:'Sale de más el cartel "⚠️ No se guardó: Attempt to get records from database…". Era el iPhone reabriendo el guardado de la sesión al volver a la app, no un dato de CYC sin guardar. Ya no aparece.'}]},
   {v:'24.31',f:'18/10/2026',h:'21:46',c:[{n:2,t:'🇵🇾 Paraguay: arriba, abajo de "Mostrar", los botones "Vender en": Todo · 🛒 ML · 🏪 Perfumería · ✅ Los dos. Filtran Probados y Nuevos a la vez (en Probados: con ML se esconden los que dan sólo por el local, como VS, Cabotine y Lapidus).'}]},
   {v:'24.30',f:'18/10/2026',h:'21:28',c:[{n:2,t:'🚫 Paraguay → Nuevos: botón "en ML no se puede (marca)" adentro del detalle. Lo marcado sale de "los que dan en ML" y queda sólo para la perfumería del local (si ahí da). Se deshace con "volver a ML". No se marca nada solo.'}]},
   {v:'24.29',f:'18/10/2026',h:'21:27',c:[{n:1,t:'🇵🇾 Paraguay en el celu: vuelve a verse el 🏪 % del local en la tarjeta. Los perfumes que en ML no llegan pero en la perfumería sí (VS, Cabotine, Lapidus) estaban arriba con el % de ML en rojo y no se veía por qué daban.'}]},
