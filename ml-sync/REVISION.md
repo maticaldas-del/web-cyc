@@ -802,6 +802,9 @@ nota con el motivo adentro + el mismo cambio en claudecambios → sale una sola 
 - **Qué es:** el nombre en Productos pasó de casilla de una línea a texto que corta en renglones (`pname-area`); en ≤640px va primero y a todo el ancho. Enter guarda (no mete saltos de línea).
 - **Qué chequear:** que renombrar siga guardando igual (`updProdName`) y que en la PC no quede un renglón vacío de más.
 
+- **Barra de costado arriba de las tablas (18/10/2026, v24.47).** `_tblTopbars` (cada 1 s) pone una `.tbl-topbar` sincronizada arriba de
+  cada `.tbl-outer` que no entra a lo ancho (Rotación y las demás). Qué chequear: que no aparezca en el teléfono cuando la tabla es tarjetas.
+
 ## 8 · DATOS E HISTORIAL (nueva, 08/10/2026)
 - **Reloj de los 4 meses en la línea de tiempo (16/10/2026, v23.92 · corregido en v23.93: EDAD DE LA UNIDAD MÁS VIEJA, primero
   entra primero sale — lotes armados con stock de hoy − el de antes + lo vendido; él: "el stock va rotando").** Carril de stock: barra roja por día = edad del lote más viejo
