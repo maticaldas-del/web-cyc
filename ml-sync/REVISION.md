@@ -711,6 +711,8 @@ el precio de un candidato distinto con código parecido (se compara también por
 
 ## 7 · DISEÑO
 
+- **Ventas x Producto (PC), tarjetas del mismo alto (18/10/2026, v24.58, pedido suyo: "quiero que todas las tarjetas sean iguales de grandes").** La fila de arriba (`.vp-pc-cab`) va sin saltos (`nowrap`) y la promo se resume en "🏷️ promo" / "🏷️ desc. ML" (el texto entero sigue en el detalle y en el globito). Cada renglón de producto (`.vp-pc-txt`) en una línea con "…"; 🧠 y 📈 fijos a la derecha. Chequear: ninguna tarjeta crece por un nombre largo, una promo o un cambio de precio; en ≤640px sigue la tarjeta del celu.
+
 - **Proyección a fin de mes en Métricas (18/10/2026, v24.57, pedido suyo).** `renderLineChartFromScope`: dataset punteado "≈ Proyección" desde hoy al último día. Ritmo = promedio diario del período SIN hoy y sin los cargos del día 1 (retiro + gastos, `barDet`) si el campo es Ganancia CYC. Sólo vista general, una métrica, buckets diarios. Chequear: que en acumulativo arranque en el valor de hoy y no salga en meses cerrados.
 
 - **Sin % de diferencia con números negativos (18/10/2026, v24.56).** El globito de Métricas decía "+45,4%" entre −$149.012 y −$272.977: era perder menos, no ganar 45% más. Con algún lado negativo dice sólo la plata y mejor/peor.

@@ -2664,7 +2664,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.57';
+const APP_VERSION='24.58';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2675,6 +2675,7 @@ const APP_VERSION='24.57';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.58',f:'18/10/2026',h:'19:15',c:[{n:1,t:'Ventas x Producto (PC): todas las ventas del mismo alto. Arriba, una sola línea (la promo se resume en "🏷️ promo"; el texto entero está en el detalle). Cada producto, en una sola línea: lo que no entra se corta con "…" y los botones 🧠/📈 quedan siempre a la derecha.'}]},
   {v:'24.57',f:'18/10/2026',h:'19:50',c:[{n:2,t:'Métricas: línea punteada y tenue con la proyección de a cuánto termina el mes, al ritmo promedio por día de lo que va (sin contar hoy, que está a medias, ni el retiro y los gastos, que ya salieron el día 1). Sale en la vista general con una sola métrica.'}]},
   {v:'24.56',f:'18/10/2026',h:'19:30',c:[{n:1,t:'Métricas: cuando el día o el anterior están en negativo, la diferencia ya no muestra un % (sobre un número negativo engaña: "+45%" era perder menos, no ganar más). Dice la plata y si vas mejor o peor.'}]},
   {v:'24.55',f:'18/10/2026',h:'19:15',c:[{n:2,t:'Armar caja: el número de cada cuenta (y el de Todas) ahora es lo que se puede MANDAR con el cupo de Full de esa cuenta, no todo lo sugerido. Chicos y grandes cada uno contra su cupo. El color sigue igual: verde si la caja ya se justifica, rojo si no.'}]},
@@ -11481,15 +11482,18 @@ function renderVentaProd(){
       // (.vp-pc / .vp-cel, corte 640px) muestra una sola.
       // Compra de varios productos: cada renglón trae su propia 📈 línea de tiempo (09/10/2026, él: "quiero poder elegir qué línea mirar").
       const _varios=new Set(grp.items.map(v=>(prodDeVenta(v)||{}).id).filter(Boolean)).size>1;
-      const lines=grp.items.map(v=>`<div style="display:flex;justify-content:space-between;font-size:.72rem;padding:2px 0;align-items:center;${isCancelled?'opacity:.45;text-decoration:line-through':''}"><span>${fotoVentaHTML(v,30)}${v.qty}× ${nombreDeVenta(v)}${estrategiaVentaHTML(v)}${v.variante?` <span style="padding:1px 5px;border-radius:3px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.62rem">${v.variante}</span>`:''}${isCancelled?'':(()=>{const x=cambioVentaHTML(v,Number(v.ts)||0);return x?' '+x:'';})()}${(()=>{const _pp=prodDeVenta(v);return _pp?' '+cerebroBtn(_pp.id,{mla:v.mla,ctx:'venta'})+(_varios?' '+lineaBtn(_pp.id):''):'';})()}</span></div>`).join('');
+      // TODAS LAS TARJETAS DEL MISMO ALTO (18/10/2026, él: "se agrandan las tarjetas porque no entran las cosas"): cada
+      // renglón va en UNA línea; lo que no entra se corta con "…" (el texto entero está en el detalle y en el globito) y
+      // los botones 🧠/📈 quedan siempre a la vista a la derecha.
+      const lines=grp.items.map(v=>{const _cv=isCancelled?'':cambioVentaHTML(v,Number(v.ts)||0);const _pp=prodDeVenta(v);return `<div style="display:flex;gap:6px;font-size:.72rem;padding:2px 0;align-items:center;white-space:nowrap;${isCancelled?'opacity:.45;text-decoration:line-through':''}"><span style="flex-shrink:0">${fotoVentaHTML(v,30)}</span><span class="vp-pc-txt" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis" title="${String(nombreDeVenta(v)).replace(/"/g,'&quot;')}${v.variante?' · '+v.variante:''}">${v.qty}× ${nombreDeVenta(v)}${estrategiaVentaHTML(v)}${v.variante?` <span style="padding:1px 5px;border-radius:3px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.62rem">${v.variante}</span>`:''}${_cv?' '+_cv:''}</span><span style="flex-shrink:0">${_pp?cerebroBtn(_pp.id,{mla:v.mla,ctx:'venta'})+(_varios?' '+lineaBtn(_pp.id):''):''}</span></div>`;}).join('');
       const _pcHtml=`<div class="ingreso-item vp-pc" style="flex-direction:column;align-items:stretch;gap:4px;${isCancelled?'border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.04)':''}">
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <div class="vp-pc-cab" style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;white-space:nowrap;overflow:hidden">
           <span class="who-badge" style="font-size:.6rem;${isCancelled?'opacity:.6':''}">${cuenta}</span>
           ${fechaTag}
           ${cancelBadge}
           ${grp.items.length>1?`<span style="font-size:.64rem;color:var(--muted)">${grp.items.length} prod.</span>`:''}
           <span style="flex:1"></span>
-          ${promoLabel}
+          ${promoLabel?promoLabel.replace(/>🏷️ [^<]*</,'>🏷️ '+(promoLabel.includes('vp-promo-ml')?'desc. ML':'promo')+'<'):''}
           ${entLabel}
           ${rescLabel}
           ${(!isCancelled&&_tot>0)?`<span style="font-size:.66rem;color:var(--muted)">total ${fmt(_tot)} · neto ${fmt(gn)}</span>`:''}
