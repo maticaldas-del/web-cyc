@@ -1435,6 +1435,13 @@ toda publicación activa, no `fulfillment`, con unidades, se pausa (PUT + relect
 Claude) y con `activarfull:go`. Sin `noAutoActivar`: al llegar a Full se activa como cualquier pausada con stock. Marca
 `mllinks/<MLA>/pausaFueraFull`. Chequear: que no pause publicaciones de Full sin stock (filtro `available_quantity>0` y logistic ≠ fulfillment).
 
+### 18/10/2026 · v24.39 · el chat de compras completa las listas (etapa 3)
+ML no le deja al robot ver ventas de otros ni la página del producto. `listarevisar[:<prov>]` (solo lee) arma la lista para el chat
+(lo que da o está "para revisar", sin ventas cargadas) entre @@LISTA y @@FIN; el chat la mira en ML y devuelve
+`listadato:<prov>;<cód>=<vendidas>[,ok|,no][,mi=<MLA>];…;go` (ml-consulta): `vend`, `ok` (mismo producto → ✅ aunque falte palabra o dé
+80%+), `noEs` (otro producto → afuera), `miFijo` (catálogo correcto: `listamedir` lo mide con ése sin buscar). Recuenta el botón.
+**Chequear:** que un `ok` con margen nuevo abajo del 25% no quede en ✅ (manda el margen).
+
 ### 18/10/2026 · v24.37 · el botón de cada proveedor dice cuántos dan (etapa 3)
 Pedido suyo: *"que ponga la cantidad de productos más de 25%. Y los que no tengan, sacarlos de la lista. Ocultarlos"*. `cuentaLista`
 (sync.mjs, misma regla que `_listaDa`) guarda en `listasProv/<prov>` {n, med, pend, dan, revisar}; lo escriben `listamedir` y
