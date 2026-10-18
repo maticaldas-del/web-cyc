@@ -2656,7 +2656,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.28';
+const APP_VERSION='24.29';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2667,6 +2667,7 @@ const APP_VERSION='24.28';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.29',f:'18/10/2026',h:'21:27',c:[{n:1,t:'🇵🇾 Paraguay en el celu: vuelve a verse el 🏪 % del local en la tarjeta. Los perfumes que en ML no llegan pero en la perfumería sí (VS, Cabotine, Lapidus) estaban arriba con el % de ML en rojo y no se veía por qué daban.'}]},
   {v:'24.28',f:'18/10/2026',h:'21:14',c:[{n:1,t:'❔ Paraguay → No medidos: al lado del número, en verde, cuántos analizó el robot hoy (−N hoy). Se cuenta desde el último conteo de ayer.'}]},
   {v:'24.27',f:'18/10/2026',h:'21:06',c:[{n:1,t:'🇵🇾 Paraguay en el celu (Nuevos y Probados): cada producto en una tarjeta chica (foto, nombre en 2 renglones, precio puesto y vendidas, el % y pedir). El código, los dólares y el % del local van adentro de "detalle".'}]},
   {v:'24.26',f:'17/10/2026',h:'19:46',c:[{n:1,t:'📈 Ventas de hoy: la línea de hoy en el gráfico contra la semana pasada se cortaba a mitad de camino en el celular. Ahora llega hasta el punto de la hora actual.'}]},
@@ -14878,7 +14879,7 @@ function candidatosHTML(){
           :`<div style="width:56px;height:56px;border:1px dashed var(--border);border-radius:8px;flex:0 0 auto;font-size:.55rem;color:var(--muted);display:flex;align-items:center;justify-content:center">sin foto</div>`}
         <div style="flex:1;min-width:0">
           <div class="cand-nom" style="font-size:.8rem;font-weight:600;line-height:1.3">${c.nombre}</div>
-          <div class="cand-cel" style="font-size:.66rem;color:var(--muted);margin-top:2px">${pesos?fmt(pesos):usd>0?'US$ '+puesto.toFixed(2):'sin precio'}${(()=>{const _v=candVentasDe(c);return _v!=null?` · ${_v>=1000?'+1000':_v} vend.`:'';})()}</div>
+          <div class="cand-cel" style="font-size:.66rem;color:var(--muted);margin-top:2px">${pesos?fmt(pesos):usd>0?'US$ '+puesto.toFixed(2):'sin precio'}${(()=>{const _v=candVentasDe(c);return _v!=null?` · ${_v>=1000?'+1000':_v} vend.`:'';})()}${tieneCuenta&&_loc!=null?` · ${perfLocalHTML(_loc)}`:''}</div>
           <div class="cand-sub" style="font-size:.68rem;color:var(--muted);margin-top:3px">${c.cod?`🔖 ${c.cod} · `:''}${usd>0?`US$ ${usd.toFixed(2)} → <b style="color:var(--text)">US$ ${puesto.toFixed(2)}</b> puesto${pesos?` · ${fmt(pesos)}`:''}`:'<span style="color:var(--red)">sin precio</span>'}${(()=>{const _v=candVentasDe(c);return _v!=null?` · <b style="color:${_v>=CAND_MIN_VENT?'var(--green)':'var(--amber)'}">🛒 ${_v>=1000?'+1000':_v} vendidas</b>`:' · <span style="color:var(--amber)">🛒 sin dato de ventas</span>';})()}</div>
         </div>
         <div class="cand-der" style="display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap;flex:0 1 auto">
@@ -17642,7 +17643,7 @@ function _pedidoItemHtml(p,opts){
         :`<div style="width:56px;height:56px;border:1px dashed var(--border);border-radius:8px;flex:0 0 auto;font-size:.55rem;color:var(--muted);display:flex;align-items:center;justify-content:center">sin foto</div>`}
       <div style="flex:1;min-width:0">
         <div class="cand-nom" style="font-size:.8rem;font-weight:600;line-height:1.3">${p.producto||'—'}${p.variante?` <span style="color:#a78bfa;font-size:.7rem">· ${p.variante}</span>`:''}</div>
-        <div class="cand-cel" style="font-size:.66rem;color:var(--muted);margin-top:2px">comprar <b style="color:var(--text)">${fmtN(p.cantidad||0)}</b> u.${_ps?` · ${fmt(_ps)}`:''}</div>
+        <div class="cand-cel" style="font-size:.66rem;color:var(--muted);margin-top:2px">comprar <b style="color:var(--text)">${fmtN(p.cantidad||0)}</b> u.${_ps?` · ${fmt(_ps)}`:''}${_locP!=null?` · ${perfLocalHTML(_locP)}`:''}</div>
         <div class="cand-sub" style="font-size:.68rem;color:var(--muted);margin-top:3px">${_prod.codPy?`🔖 ${_prod.codPy} · `:'<span style="color:var(--amber)">🔖 sin código</span> · '}${_nu>0?`US$ ${_nu.toFixed(2)} → <b style="color:var(--text)">US$ ${_pu.toFixed(2)}</b> puesto${_ps?` · ${fmt(_ps)}`:''}`:'<span style="color:var(--red)">sin precio de Paraguay</span>'}${p.cVend!=null?` · <b style="color:var(--green)">🛒 vendiste ${fmtN(p.cVend)}${p.cDias?` en ${p.cDias} d`:''}</b>`:''}</div>
       </div>
       <div class="cand-der" style="display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap;flex:0 1 auto">
