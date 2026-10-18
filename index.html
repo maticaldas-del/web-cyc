@@ -2662,7 +2662,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.41';
+const APP_VERSION='24.42';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2673,6 +2673,7 @@ const APP_VERSION='24.41';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.42',f:'18/10/2026',h:'01:46',c:[{n:2,t:'📋 Listas: cada producto tiene "detalle ▾" con ✕ sacar producto (va a 🗑️ Sacados, de donde se puede volver).'},{n:3,t:'🇵🇾 Paraguay → 🧾 Pedido no se dibujaba desde la 24.35: un bloque de Listas había quedado metido ahí. Arreglado.'}]},
   {v:'24.41',f:'18/10/2026',h:'01:43',c:[{n:2,t:'📋 Listas: para estar en ✅ Dan hace falta, además del 25%, tener 100 ventas o más en ML. Lo que todavía no tiene las ventas mirada va a 🔎 Para revisar; lo de menos de 100 queda abajo.'}]},
   {v:'24.40',f:'18/10/2026',h:'00:44',c:[{n:1,t:'🧴 Paulvic: "📋 Copiar pedido" redondea cada aroma para arriba a 3, 5, 10, 20, 50 o 100 (si hacen falta 1, pide 3). La tarjeta sigue mostrando lo que hace falta.'}]},
   {v:'24.39',f:'18/10/2026',h:'23:50',c:[{n:2,t:'📋 Listas: lo que mira el chat de compras en ML se ve en cada producto: 🛒 cuántas vendidas tiene, ✓ mismo producto (pasa a ✅ Dan) o ✗ otro producto (sale de la lista).'}]},
@@ -14220,7 +14221,6 @@ function pyHechosHTML(){
   const camino=todas.filter(c=>c.estado==='camino'), resto=todas.filter(c=>c.estado!=='camino');
   const tarjeta=(c,enCamino)=>pyPedidoTarjeta(c,enCamino);
   return `${camino.length?`<div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:4px 0 8px">En camino · ${camino.length}</div>${camino.map(c=>tarjeta(c,true)).join('')}`:''}
-    ${revis.length?`<details style="margin-top:14px;background:var(--surface);border:1px solid var(--amber);border-radius:var(--r);padding:10px 12px"><summary style="cursor:pointer;font-size:.82rem;font-weight:700;color:var(--amber)">🔎 Para revisar con los ojos (${revis.length}) <span style="font-weight:400;color:var(--muted);font-size:.66rem">— darían 25%+, pero falta saber si tienen 100 ventas (lo mira el chat), o ML no nombra alguna palabra (⚠️), o da 80% o más</span></summary><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${revis.slice(0,150).map(f=>fila(f,false)).join('')}</div></details>`:''}
     ${resto.length?`<details style="margin-top:14px"><summary style="cursor:pointer;list-style:none;font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Ya llegaron · ${resto.length} <span style="font-weight:400">▾</span></summary>${resto.map(c=>tarjeta(c,false)).join('')}</details>`:''}
 `;
 }
@@ -17801,7 +17801,7 @@ function _listaPuesto(k,e){return Math.round((Number(e&&e.p)||0)*(1+_listaRec(k)
 // `ok`/`noEs`/`vend` los carga el chat de compras mirando ML (`listadato`): ok = mismo producto confirmado, noEs = otro producto.
 // MÍNIMO 100 VENTAS, EN TODAS LAS LISTAS (18/10/2026, regla suya). Las ventas las carga el chat (`vend`); sin ese dato no se sabe y
 // va a "🔎 Para revisar" (que el chat lo mire). Con menos de 100 vendidas sale de las dos (queda abajo, con su número).
-function _listaMed25(e){return e&&!e.noEs&&e.m!=null&&isFinite(e.m)&&Number(e.m)>=25&&/^https:\/\//.test(e.mf||'')&&!(e.vend!=null&&Number(e.vend)<100);}
+function _listaMed25(e){return e&&!e.noEs&&!e.sacado&&e.m!=null&&isFinite(e.m)&&Number(e.m)>=25&&/^https:\/\//.test(e.mf||'')&&!(e.vend!=null&&Number(e.vend)<100);}
 function _listaDa(e){return _listaMed25(e)&&Number(e.vend)>=100&&(e.ok||(!e.rp&&Number(e.m)<80));}
 function _listaRevisar(e){return _listaMed25(e)&&!_listaDa(e);}
 function _listaArmado(k){return Object.entries(((state.listaPed||{})[k])||{}).map(([cod,u])=>({cod,u:parseInt(u)||0})).filter(x=>x.u>0);}
@@ -17813,6 +17813,16 @@ async function listaSetU(k,cod,val){
   try{await db.ref('cyc/listas_pedido/'+k+'/'+cod).set(u>0?u:null);}catch(err){toast('No se guardó: '+(err.message||err),'err',5000);return;}
   state.listaPed=state.listaPed||{};state.listaPed[k]=state.listaPed[k]||{};if(u>0)state.listaPed[k][cod]=u;else delete state.listaPed[k][cod];
   renderListas();
+}
+// ✕ SACAR UN PRODUCTO DE LA LISTA (18/10/2026, pedido suyo: "agregar botones de sacar producto en detalle desplegable en todos"):
+// `mlapi/listas/<prov>/<cód>/sacado`. No sale en ✅ Dan ni en Para revisar ni en lo de abajo; queda en "🗑️ Sacados" para volverlo.
+async function listaSacar(k,cod,sacar){
+  try{await db.ref('mlapi/listas/'+k+'/'+cod+'/sacado').set(sacar?Date.now():null);
+    if(sacar&&((state.listaPed||{})[k]||{})[cod])await db.ref('cyc/listas_pedido/'+k+'/'+cod).set(null);}
+  catch(err){toast('No se guardó: '+(err.message||err),'err',5000);return;}
+  const e=(_listaCache[k]||{})[cod];if(e){if(sacar)e.sacado=Date.now();else delete e.sacado;}
+  if(sacar&&state.listaPed&&state.listaPed[k])delete state.listaPed[k][cod];
+  toast(sacar?'Sacado ✓ (queda en 🗑️ Sacados)':'Volvió a la lista ✓');renderListas();
 }
 async function listaVaciar(k){if(!confirm('¿Vaciar el pedido de este proveedor? (no borra nada de la lista)'))return;
   try{await db.ref('cyc/listas_pedido/'+k).set(null);}catch(err){toast('No se guardó: '+(err.message||err),'err',5000);return;}
@@ -17897,6 +17907,7 @@ async function renderListas(){
       <div style="flex:1;min-width:0;font-size:.72rem;line-height:1.45"><div style="font-weight:600">${escHtml(e.n)}</div>
         <div style="color:var(--muted);font-size:.64rem">🔖 ${escHtml(cod)} · te sale <b style="color:var(--text)">${fmt(pc)}</b>${rec?` (${fmt(Number(e.p)||0)} + ${rec}%)`:''}${e.mp?` · en ML ${fmt(e.mp)}${e.mv?' · '+e.mv+(e.mv==1?' vendedor':' vendedores'):''}`:''}${e.vend!=null?` · <b style="color:${e.vend>=100?'var(--green)':'var(--amber)'}">🛒 ${e.vend>=1000?'+1000':e.vend} vendidas</b>`:''}${e.ok?' · <span style="color:var(--green)">✓ mismo producto</span>':''}${e.noEs?' · <span style="color:var(--red)">✗ otro producto</span>':''}${e.mt?` · <span title="el catálogo de ML contra el que se midió">"${escHtml(String(e.mt).slice(0,60))}"</span>`:''}${e.pAnt?` · antes ${fmt(e.pAnt)}`:''}</div>
         ${e.mi?`<div style="font-size:.64rem"><a href="https://www.mercadolibre.com.ar/p/${e.mi}" target="_blank" rel="noopener" style="color:var(--green)">🔗 verlo en ML</a>${e.rp?` <span style="color:var(--amber)">· ⚠️ ${escHtml(String(e.rp).slice(0,80))}</span>`:''}</div>`:''}</div>
+        <details style="margin-top:3px"><summary style="cursor:pointer;font-size:.62rem;color:var(--muted)">detalle ▾</summary><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">${e.sacado?`<button class="btn" style="font-size:.64rem;padding:3px 10px" onclick="listaSacar('${k}','${String(cod).replace(/'/g,"\\'")}',false)">↩︎ volver a la lista</button>`:`<button class="btn" style="font-size:.64rem;padding:3px 10px;color:var(--red);border-color:var(--red)" onclick="listaSacar('${k}','${String(cod).replace(/'/g,"\\'")}',true)">✕ sacar producto</button>`}</div></details>
       <div style="text-align:right;flex:0 0 auto">${est}${uBox}</div></div>`;};
   const ord=(a,b)=>((b[1].m??-999)-(a[1].m??-999));
   // ── PEDIDO ──
@@ -17923,14 +17934,17 @@ async function renderListas(){
   const nuevos=filas.filter(([cod])=>!yaFicha.has(String(cod)));
   const dan=nuevos.filter(([,e])=>_listaDa(e)).sort(ord);
   const revis=nuevos.filter(([,e])=>_listaRevisar(e)).sort(ord);
-  const resto=nuevos.filter(([,e])=>!_listaMed25(e)).sort(ord);
+  const resto=nuevos.filter(([,e])=>!_listaMed25(e)&&!e.sacado).sort(ord);
+  const sacados=nuevos.filter(([,e])=>e.sacado);
   const med=filas.filter(([,e])=>e.m!=null).length, sinMed=filas.filter(([,e])=>e.m==null&&!e.sc&&!e.sv&&!e.fz).length;
   const q=_listaQ;
   let res=[];if(q.length>=2){const pal=_pycNorm(q).split(/\s+/).filter(Boolean);res=filas.filter(([cod,e])=>{const t=_pycNorm(e.n+' '+cod);return pal.every(w=>t.includes(w));}).sort(ord);}
   el.innerHTML=cab+`<div style="font-size:.7rem;color:var(--muted);margin-bottom:8px">${filas.length} productos en la lista · ${med} medidos · ${sinMed} sin medir todavía${rec?` · recargo del proveedor ${rec}%`:''}${v.ts?` · lista del ${new Date(v.ts).toLocaleDateString('es-AR')}`:''}</div>
     <div style="font-size:.85rem;font-weight:700;color:var(--green);margin:4px 0 8px">✅ Dan 25% o más en ML y tienen 100+ ventas · ${dan.length}</div>
     <div style="display:flex;flex-direction:column;gap:6px">${dan.length?dan.map(f=>fila(f,true)).join(''):'<div class="empty-msg">Todavía ninguno (o falta medirlos).</div>'}</div>
+    ${revis.length?`<details style="margin-top:14px;background:var(--surface);border:1px solid var(--amber);border-radius:var(--r);padding:10px 12px"><summary style="cursor:pointer;font-size:.82rem;font-weight:700;color:var(--amber)">🔎 Para revisar con los ojos (${revis.length}) <span style="font-weight:400;color:var(--muted);font-size:.66rem">— darían 25%+, pero falta saber si tienen 100 ventas (lo mira el chat), o ML no nombra alguna palabra (⚠️), o da 80% o más</span></summary><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${revis.slice(0,150).map(f=>fila(f,false)).join('')}</div></details>`:''}
     ${resto.length?`<details style="margin-top:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px"><summary style="cursor:pointer;font-size:.82rem;font-weight:700">⬇️ No dan, sin catálogo en ML o sin medir (${resto.length})</summary><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${resto.slice(0,150).map(f=>fila(f,false)).join('')}</div>${resto.length>150?`<div style="font-size:.62rem;color:var(--muted);margin-top:6px">muestro 150 · el resto con el buscador</div>`:''}</details>`:''}
+    ${sacados.length?`<details style="margin-top:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px"><summary style="cursor:pointer;font-size:.82rem;font-weight:700;color:var(--muted)">🗑️ Sacados por vos (${sacados.length})</summary><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${sacados.map(f=>fila(f,false)).join('')}</div></details>`:''}
     <div style="margin-top:14px"><input id="lista-q" type="search" value="${escHtml(q)}" placeholder="🔎 buscar en toda la lista" oninput="clearTimeout(window._listaT);window._listaT=setTimeout(()=>{_listaQ=this.value.trim();renderListas();setTimeout(()=>{const i=document.getElementById('lista-q');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length);}},0);},400)" style="width:100%;padding:8px 10px;font-size:.85rem;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--text)">
     ${q.length>=2?`<div style="font-size:.64rem;color:var(--muted);margin:6px 0">${res.length} encontrado${res.length===1?'':'s'}${res.length>60?' · muestro 60':''}</div><div style="display:flex;flex-direction:column;gap:6px">${res.slice(0,60).map(f=>fila(f,true)).join('')}</div>`:''}</div>`;
 }

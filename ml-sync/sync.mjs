@@ -8071,7 +8071,7 @@ const RE_CAND_PERF = /perfum|parfum|\bedp\b|\bedt\b|eau de|fragan|fragr|body spl
 function cuentaLista(cat) {
   const v = Object.values(cat || {}).filter((e) => e && e.n);
   // Mínimo 100 ventas en ML (18/10/2026, regla suya): sin `vend` cargado va a revisar; con menos de 100 queda afuera.
-  const m25 = (e) => !e.noEs && e.m != null && Number(e.m) >= 25 && /^https:\/\//.test(e.mf || '') && !(e.vend != null && Number(e.vend) < 100);
+  const m25 = (e) => !e.noEs && !e.sacado && e.m != null && Number(e.m) >= 25 && /^https:\/\//.test(e.mf || '') && !(e.vend != null && Number(e.vend) < 100);
   const da = (e) => m25(e) && Number(e.vend) >= 100 && (e.ok || (!e.rp && Number(e.m) < 80));   // `ok`/`noEs` = lo miró el chat de compras (`listadato`)
   return { n: v.length, med: v.filter((e) => e.m != null).length, pend: v.filter((e) => !e.t).length, dan: v.filter(da).length, revisar: v.filter((e) => m25(e) && !da(e)).length, tMed: Date.now() };
 }
@@ -19289,7 +19289,7 @@ async function main() {
       let tot = 0; console.log('@@LISTA');
       for (const [k, pv] of Object.entries(provs)) { if (pv.desc || (solo && k !== solo.toLowerCase())) continue;
         const cat = (await db.get('mlapi/listas/' + k)) || {}; const rec = Number(pv.rec) || 0;
-        for (const [cod, e] of Object.entries(cat)) { if (!e || e.noEs || e.vend != null || !(e.m != null && Number(e.m) >= 25 && e.mi)) continue;
+        for (const [cod, e] of Object.entries(cat)) { if (!e || e.noEs || e.sacado || e.vend != null || !(e.m != null && Number(e.m) >= 25 && e.mi)) continue;
           const est = (e.ok || (!e.rp && Number(e.m) < 80)) ? 'DA' : 'REVISAR';   // DA = margen y nombre bien; falta saber las ventas
           console.log([k, cod, String(e.n).replace(/\|/g, '/'), Math.round((Number(e.p) || 0) * (1 + rec / 100)), e.mi, String(e.mt || '').replace(/\|/g, '/').slice(0, 80), e.mp || '', Math.round(e.m) + '%', est].join('|')); tot++; } }
       console.log('@@FIN'); console.log(`${tot} productos para mirar (los que ya tienen ventas cargadas no salen).`); return;
