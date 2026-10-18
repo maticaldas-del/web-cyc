@@ -712,6 +712,39 @@ const UMBRAL_ENVIO_GRATIS = 33000;
 // envío a ese pedido. Dividido por unidad parece una venta de abajo de la barrera con un envío caro,
 // y pasaba a ser el "peor envío" de toda la publicación: el robot subía +16% un producto sano. Esas
 // ventas quedan AFUERA de la cuenta del envío (se usan igual para todo lo demás).
+// EL NETO DE UN PRODUCTO VENDIDO SOLO (18/10/2026, regla suya: *"no podés subir el % de un producto por venderse con otro"*).
+// En un carrito ML cobra el cargo fijo una vez y el robot reparte el neto por lo que vale cada producto, así que cada uno se
+// ve más rentable. Para juzgar un PRODUCTO (línea de tiempo, ficha, techo, pedidos) se usa lo que deja vendido SOLO: el total
+// de la venta × la relación neto/precio de sus ventas sueltas al precio unitario más cercano (misma publicación, si no la
+// ficha). Sin ventas sueltas para comparar queda el neto del carrito. La venta en sí (y los totales) siguen con el neto real.
+// Es la misma cuenta que `netoProductoVP` de index.html: si se toca una, se toca la otra.
+function prepNetoSolo(vp) {
+  const cnt = {}, ref = {};
+  for (const [dk0, ents] of Object.entries(vp || {})) {
+    for (const v of Object.values(ents || {})) { if (v && v.numVenta) { const k = dk0.slice(0, 10) + '|' + (v.cuenta || '') + '|' + v.numVenta; cnt[k] = (cnt[k] || 0) + 1; } }
+  }
+  const enCarrito = (v, dk) => !!(v && v.numVenta && cnt[String(dk).slice(0, 10) + '|' + (v.cuenta || '') + '|' + v.numVenta] > 1);
+  for (const [dk0, ents] of Object.entries(vp || {})) {
+    for (const v of Object.values(ents || {})) {
+      if (!v || v.cancelada || v.netoEstimado || enCarrito(v, dk0)) continue;
+      const tot = Number(v.total) || 0, net = Number(v.neto) || 0, q = Number(v.qty) || 1;
+      if (tot <= 0 || net <= 0) continue;
+      const it = { pu: tot / q, r: net / tot };
+      if (v.mla) (ref['m:' + v.mla] = ref['m:' + v.mla] || []).push(it);
+      if (v.prodId) (ref['p:' + v.prodId] = ref['p:' + v.prodId] || []).push(it);
+    }
+  }
+  const neto = (v, dk) => {
+    const n = Number(v && v.neto) || 0;
+    if (!enCarrito(v, dk)) return n;
+    const tot = Number(v.total) || 0, q = Number(v.qty) || 1; if (tot <= 0) return n;
+    const lista = ref['m:' + v.mla] || ref['p:' + v.prodId]; if (!lista || !lista.length) return n;
+    const pu = tot / q; let mej = null; for (const it of lista) if (!mej || Math.abs(it.pu - pu) < Math.abs(mej.pu - pu)) mej = it;
+    return Math.round(tot * mej.r);
+  };
+  return { neto, enCarrito };
+}
+
 function compraCruzaBarrera(v, ents) {
   const q = Number(v && v.qty) || 1, unit = (Number(v && v.total) || 0) / q;
   if (!(unit > 0) || unit >= UMBRAL_ENVIO_GRATIS) return false;
@@ -18011,13 +18044,13 @@ async function main() {
         }
       } else { try { vRem = (await db.get('cyc/ventaremate')) || {}; } catch { vRem = {}; } }
       // Ventas del panel por MLA y día (desde mayo, con neto y remate).
-      const ventasPanel = {}; let primerDiaPanel = null;
+      const ventasPanel = {}; let primerDiaPanel = null; const _ns = prepNetoSolo(vp);
       for (const [dk0, ents] of Object.entries(vp)) {
         const dk = dk0.slice(0, 10); if (!primerDiaPanel || dk < primerDiaPanel) primerDiaPanel = dk;
         for (const [id, v] of Object.entries(ents || {})) {
           if (!v || v.cancelada || !v.mla) continue;
           const x = ((ventasPanel[v.mla] = ventasPanel[v.mla] || {})[dk] = ventasPanel[v.mla][dk] || { u: 0, tot: 0, neto: 0, uR: 0 });
-          const q = Number(v.qty) || 1; x.u += q; x.tot += Number(v.total) || 0; x.neto += Number(v.neto) || 0;
+          const q = Number(v.qty) || 1; x.u += q; x.tot += Number(v.total) || 0; x.neto += _ns.neto(v, dk0);   // vendido SOLO, no el reparto del carrito
           if (vRem[dk] && vRem[dk][v.id || id]) x.uR += q;
         }
       }
@@ -29784,14 +29817,14 @@ async function main() {
       const sobraUsada = {};
 
       // Ventas por publicación, con la hora REAL de la venta.
-      const porMla = {};
-      for (const ents of Object.values(vpS)) {
+      const porMla = {}; const _nsS = prepNetoSolo(vpS);   // vendido SOLO: un carrito no infla lo que dejó el cambio
+      for (const [dkS, ents] of Object.entries(vpS)) {
         for (const v of Object.values(ents || {})) {
           if (!v || v.cancelada || !v.mla) continue;
           const ts = v.ts ? new Date(v.ts).getTime() : NaN;
           if (!isFinite(ts)) continue;
           const q = v.qty || 1;
-          (porMla[v.mla] = porMla[v.mla] || []).push({ ts, q, neto: Number(v.neto) || 0, tot: Number(v.total) || 0 });
+          (porMla[v.mla] = porMla[v.mla] || []).push({ ts, q, neto: _nsS.neto(v, dkS), tot: Number(v.total) || 0 });
         }
       }
       // EL COSTO Y LOS IMPUESTOS DEL MES DEL CAMBIO, no los de hoy (etapa 8, 12/10/2026). Con el costo y el dólar
@@ -39594,6 +39627,51 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=carritos[:<días>] → ¿QUÉ PRODUCTOS SE VEÍAN MEJOR POR VENDERSE EN CARRITO? SOLO LEE (18/10/2026).
+    // Regla suya: *"no podés subir el % de un producto por venderse con otro"*. Por producto, en los últimos N días (60): el %
+    // con el neto que guardó la venta (el carrito reparte el cargo fijo y el envío) contra el % vendido SOLO (`prepNetoSolo`).
+    // Lista los que tuvieron ventas en carrito, cuánto bajan y cuáles quedan abajo del piso medidos solos.
+    if (/^carritos(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const dias = parseFloat(String(process.env.BILLING_PROBE).split(':')[1]) || 60;
+      const vp = await db.get('cyc/ventaprod').catch(() => null);
+      if (!vp) { console.log('⚠️ no pude leer las ventas: no opino'); return; }
+      setDevLive(vp);
+      const costoDe = await armarCostoWeb(db, vp);
+      const PISO_C = await pisoConfig(db, 25);
+      const ns = prepNetoSolo(vp);
+      const desde = new Date(Date.now() - dias * 864e5).toISOString().slice(0, 10).replace(/-/g, '_');
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      const agg = {};
+      for (const [dk, dia] of Object.entries(vp)) {
+        if (dk.slice(0, 10) < desde) continue;
+        for (const v of Object.values(dia || {})) {
+          if (!v || v.cancelada || !v.prodId) continue;
+          const c = costoDe(v, dk); if (c.sinCosto) continue;
+          const a = (agg[v.prodId] = agg[v.prodId] || { u: 0, uC: 0, neto: 0, solo: 0, costo: 0, gest: 0 });
+          const q = Number(v.qty) || 1, enC = ns.enCarrito(v, dk);
+          a.u += q; if (enC) a.uC += q;
+          a.neto += Number(v.neto) || 0; a.solo += ns.neto(v, dk); a.costo += c.costo; a.gest += v.netoEstimado ? 0 : c.gest;
+        }
+      }
+      const filas = [];
+      for (const [id, a] of Object.entries(agg)) {
+        if (!a.uC) continue;
+        const div = a.costo + a.gest; if (!(div > 0)) continue;
+        const pR = (a.neto - a.costo) / div * 100, pS = (a.solo - a.costo) / div * 100;
+        filas.push({ id, nom: (pIdx[id] || {}).name || id, u: a.u, uC: a.uC, pR, pS });
+      }
+      filas.sort((x, y) => (x.pS - x.pR) - (y.pS - y.pR));
+      console.log(`=== PRODUCTOS CON VENTAS EN CARRITO · últimos ${dias} días · piso ${PISO_C}% ===`);
+      console.log(`(% con el reparto del carrito → % vendido SOLO · u. en carrito / u. totales)\n`);
+      const caen = filas.filter((f) => f.pR >= PISO_C && f.pS < PISO_C);
+      const abajo = filas.filter((f) => f.pS < PISO_C);
+      for (const f of filas) {
+        const marca = f.pR >= PISO_C && f.pS < PISO_C ? '🔴 CAE ABAJO DEL PISO' : f.pS < PISO_C ? '🟠 ya estaba abajo' : '';
+        console.log(`  ${f.pR.toFixed(1).padStart(6)}% → ${f.pS.toFixed(1).padStart(6)}% (${(f.pS - f.pR >= 0 ? '+' : '') + (f.pS - f.pR).toFixed(1)}) · ${f.uC}/${f.u} u. · ${String(f.nom).slice(0, 50)} ${marca}`);
+      }
+      console.log(`\n${filas.length} productos con ventas en carrito · ${caen.length} pasan a estar abajo del ${PISO_C}% medidos solos · ${abajo.length} abajo en total.`);
+      return;
+    }
     // BILLING_PROBE=ventasraras[:<horas>] → CADA VENTA DEL PERÍODO, Y LAS QUE SALIERON RARAS CON SU MOTIVO (09/10/2026). SOLO LEE.
     // Regla suya, después de la Muñequera (29,8% en la nota y 15% en la venta por una retención de Santa Fe): *"en cada
     // corrida también analizá las ventas del día para ver si pasó algo"*. Junta cada compra (un carrito = una), saca el %
