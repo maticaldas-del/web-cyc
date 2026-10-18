@@ -89,6 +89,12 @@ archivo son AYUDA, no la decisión: si sólo se siguen las reglas, lo que nadie 
   directo: se baja de a ~10-15% (ej. $27.990 → $23.990 → $21.990), cada escalón medido unos días con la misma certeza, y
   **nunca abajo del último precio que vendía**. Donde la plata por día deja de mejorar, ése es el techo (`techofreno` con ese
   precio). Si las visitas se caen a la mitad en un escalón (regla 4 de 🔬), se corta antes y se baja al siguiente.
+- **⬇️ NUNCA SE BAJA UN PRECIO SI NO ES EN ESCALERA (18/10/2026, regla suya: *"nunca bajar si no es con escalera. salvo alguna
+  excepción"*).** Vale para TODA baja (vuelta de techo, caja, sobra, promo): escalones de ~10-15% y cada uno medido con certeza
+  antes del siguiente. La escasez sigue con su propia escalera (25/20/15%). **Excepciones, cada una dicha en el 🧠:** un precio
+  mal puesto (error) · stock antiguo con fecha de cobro encima (no da tiempo a medir) · ML pausó la publicación por el precio ·
+  un remate o precio que pide él · la última unidad. El 18/10 se corrigieron las que habían bajado de golpe
+  (`notas/escalera_1810.txt`).
 - **Venta barata ≠ remate**: remate sólo si antes estuvo parado de verdad (línea de tiempo `mlapi/linea`).
 - **Juzgar los resultados de precios todos los días** (08:52: `supervisor:medir:go` + `juzgo:`). Lo que perdió no se
   vuelve atrás por regla: se piensa.

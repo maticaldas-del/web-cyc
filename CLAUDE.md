@@ -9095,6 +9095,8 @@ ya no hay ajenos abajo del precio probado, ganamos la caja o pasan 30 días. Det
 ## 🪜 PRUEBA DE TECHO QUE SALE MAL: BAJAR EN ESCALERA (18/10/2026, eligió la a)
 Con el Hub 8 en 1 (saltó a $27.990 sin medir $19.990 y volvió directo). Ahora cada escalón se juzga antes del siguiente y, si el
 precio probado no rinde, se baja de a ~10-15% midiendo cada escalón, nunca abajo del último que vendía. Detalle en `ml-sync/CEREBRO.md`.
+**Y vale para TODA baja de precio** (él: *"nunca bajar si no es con escalera. salvo alguna excepción"*): excepciones sólo error de
+precio, stock antiguo con fecha encima, ML pausó por el precio, lo que pide él o la última unidad, dichas en el 🧠.
 
 ## 🎯 AL LLEGAR LA CAJA NO SE ELIGE ENTRE DOS PRECIOS: SE BUSCA EL MEDIO (17/10/2026, eligió la a)
 Si el precio de escasez deja menos plata por día que el normal, no se vuelve directo al normal: pasos al medio, arrancando por
