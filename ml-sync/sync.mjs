@@ -19257,7 +19257,7 @@ async function main() {
       const n = parseInt(args.find((a) => /^\d+$/.test(a)), 10) || 200;
       const solo = args.find((a) => !/^\d+$/.test(a));
       const provs = (await db.get('cyc/mlconfig/listasProv')) || {};
-      const ks = Object.keys(provs).filter((k) => !solo || k === solo);
+      const ks = Object.keys(provs).filter((k) => !solo || k === solo || k.toLowerCase() === solo.toLowerCase() || String(provs[k].nombre || '').toLowerCase() === solo.toLowerCase());
       if (!ks.length) { console.log('No hay listas guardadas.'); return; }
       const cada = Math.max(20, Math.floor(n / ks.length));
       for (const k of ks) { await correrPyCatMedir(db, products, labels, accounts, cada, aplicar, null, { lista: k, nombre: provs[k].nombre, rec: provs[k].rec });
