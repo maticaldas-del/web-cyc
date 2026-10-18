@@ -711,6 +711,8 @@ el precio de un candidato distinto con código parecido (se compara también por
 
 ## 7 · DISEÑO
 
+- **Proyección a fin de mes en Métricas (18/10/2026, v24.57, pedido suyo).** `renderLineChartFromScope`: dataset punteado "≈ Proyección" desde hoy al último día. Ritmo = promedio diario del período SIN hoy y sin los cargos del día 1 (retiro + gastos, `barDet`) si el campo es Ganancia CYC. Sólo vista general, una métrica, buckets diarios. Chequear: que en acumulativo arranque en el valor de hoy y no salga en meses cerrados.
+
 - **Sin % de diferencia con números negativos (18/10/2026, v24.56).** El globito de Métricas decía "+45,4%" entre −$149.012 y −$272.977: era perder menos, no ganar 45% más. Con algún lado negativo dice sólo la plata y mejor/peor.
 
 - **Los números de las cuentas en Armar caja con el tope del cupo (18/10/2026, v24.55, pedido suyo).** `renderOfiCaja`: `porCtaCupo` = lo sugerido limitado por `cupoRestante` (chicos contra `estPeq`, grandes contra `estGra`); "Todas" suma eso. Sin cupo cargado queda lo sugerido. El color sigue con `convieneCaja`. Chequear: Ayelen con 142 sugeridas y cupo 38 → dice 38.

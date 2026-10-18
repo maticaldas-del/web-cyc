@@ -2664,7 +2664,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.56';
+const APP_VERSION='24.57';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2675,6 +2675,7 @@ const APP_VERSION='24.56';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.57',f:'18/10/2026',h:'19:50',c:[{n:2,t:'Métricas: línea punteada y tenue con la proyección de a cuánto termina el mes, al ritmo promedio por día de lo que va (sin contar hoy, que está a medias, ni el retiro y los gastos, que ya salieron el día 1). Sale en la vista general con una sola métrica.'}]},
   {v:'24.56',f:'18/10/2026',h:'19:30',c:[{n:1,t:'Métricas: cuando el día o el anterior están en negativo, la diferencia ya no muestra un % (sobre un número negativo engaña: "+45%" era perder menos, no ganar más). Dice la plata y si vas mejor o peor.'}]},
   {v:'24.55',f:'18/10/2026',h:'19:15',c:[{n:2,t:'Armar caja: el número de cada cuenta (y el de Todas) ahora es lo que se puede MANDAR con el cupo de Full de esa cuenta, no todo lo sugerido. Chicos y grandes cada uno contra su cupo. El color sigue igual: verde si la caja ya se justifica, rojo si no.'}]},
   {v:'24.54',f:'18/10/2026',h:'19:00',c:[{n:2,t:'Cupo de Full en Armar caja: ya no suma lo vendido después de leerlo. ML no devuelve cupo al vender (Ayelen: leíste 38, vendió 16 y ML sigue en 38). Ahora es lo leído menos lo que mandaste.'}]},
@@ -19523,6 +19524,32 @@ function renderLineChartFromScope(scope){
       {type:'bar',label:'Gastos del día',data:gasB.map(v=>v||0),backgroundColor:'rgba(239,68,68,.22)',borderColor:'rgba(239,68,68,.45)',borderWidth:1,borderRadius:3,order:5,_barra:true,hidden:!_metBarraOn('gas')});
   }
   metCortarEnHoy(datasets,buckets);
+  // LA PROYECCIÓN A FIN DE PERÍODO (18/10/2026, pedido suyo: "una línea media transparente que marque un aprox de a
+  // cuánto vamos a terminar el mes"). Sólo en la vista general, una métrica, período en curso por días. El ritmo es el
+  // promedio por día de lo que va del período SIN el día de hoy (todavía incompleto) y sin el retiro y los gastos, que
+  // ya salieron enteros el primer día y no se repiten. Se dibuja punteada y tenue desde hoy hasta el último día.
+  if(!multi&&metChartLineView==='general'&&(buckets||[]).every(b=>(b||[]).length===1)){
+    const hoyK=dateToKey(new Date());
+    let ult=-1;buckets.forEach((keys,i)=>{if(keys[0]<=hoyK)ult=i;});
+    const dsCur=datasets.find(d=>d.label===CMP_LBL_CUR);
+    if(dsCur&&ult>=1&&ult<buckets.length-1){
+      const crudo=totOf(buckets);
+      const sinCargo=crudo.map((v,i)=>v+(metViewField==='gananciaCYC'&&barDet?(barDet[i]||[]).reduce((a,x)=>a+x.m,0):0));
+      const base=sinCargo.slice(0,ult);
+      const ritmo=base.reduce((a,v)=>a+(v||0),0)/base.length;
+      const ahora=new Date(), fracHoy=(ahora.getHours()*60+ahora.getMinutes())/1440;
+      const hoyEsp=Math.max(crudo[ult]||0,ritmo*fracHoy)+(ritmo*(1-fracHoy));
+      const proy=buckets.map(()=>null);
+      if(metChartAccum){
+        const v0=dsCur.data[ult]||0;proy[ult]=v0;
+        let a=v0-(crudo[ult]||0)+hoyEsp; // cómo termina hoy
+        for(let i=ult+1;i<buckets.length;i++){a+=ritmo;proy[i]=a;}
+      } else {
+        for(let i=ult;i<buckets.length;i++)proy[i]=ritmo;
+      }
+      datasets.push({label:'≈ Proyección (al ritmo de lo que va)',data:proy,borderColor:CMP_CUR+'88',backgroundColor:'transparent',borderWidth:2,borderDash:[6,5],tension:0,pointRadius:0,fill:false,spanGaps:true,order:0});
+    }
+  }
   // "Desde el primer registro" no tiene período anterior: antes del primer dato no hay nada.
   // Dibujar esa línea en 0 haría parecer que un año entero no vendió nada.
   if(sinPrev)datasets=datasets.filter(ds=>ds.label!==CMP_LBL_PREV);
