@@ -1397,3 +1397,9 @@ Se cruzaron las versiones de `APP_CAMBIOS` y los commits del robot desde el 13/1
    la primera escritura del día). La carpeta ❔ No medidos muestra en verde "−N hoy" = dia.nomed − nomed de ahora. Sin el dato de
    ayer no muestra nada.
  · Qué chequear: si se cargan productos nuevos al catálogo en el día, el número puede quedar más chico de lo analizado (entran a sin medir).
+### Etapa 3 · 18/10/2026 · el catálogo de Paraguay se mide cada hora (ml-pycat)
+ · Qué: él vio que no se revisaban ~300 cada 3 h. Medido: cada vuelta mide 700 (tope 40 min), pero GitHub atrasa el reloj de "cada 2 h"
+   y el 17/10 salieron 5 vueltas (≈3.500). Cron pasa a cada hora; `concurrency: ml-pycat` no deja que se pisen.
+   Ojo al leer "❔ No medidos": incluye los ya analizados sin catálogo exacto o que nadie vende (sc/sv), por eso el total baja menos que lo
+   analizado; el "−N hoy" cuenta sólo lo que salió de "sin medir".
+ · Qué chequear: que ML no corte por cupo (429) con más vueltas; si corta, volver a cada 2 h.

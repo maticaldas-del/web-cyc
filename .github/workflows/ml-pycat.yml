@@ -2,11 +2,12 @@ name: ml-pycat
 
 # EL CATÁLOGO DE PARAGUAY MEDIDO CONTRA ML (15/10/2026). El chat de compras copia el catálogo de Nissei a
 # `mlapi/pycat` (comando `pycat`) y esto lo busca en el catálogo de ML y le mide el margen, de a 700 por vuelta (era 300, 16/10/2026),
-# cada 2 horas (era 3). Lo que da el piso pasa solo a "Para probar"; lo demás queda guardado y escondido.
+# cada 2 horas (era 3). 18/10/2026: cada HORA. GitHub atrasa el reloj y con cada 2 h salían ~5 vueltas por día (~3.500);
+# como cada vuelta dura ~40 min y no se pisan (concurrency), por hora salen más. Lo que da el piso pasa solo a "Para probar"; lo demás queda guardado y escondido.
 # NO TOCA NINGÚN PRECIO NI COMPRA NADA. No usa el candado de `ml-sync`, así que no corta el ciclo.
 on:
   schedule:
-    - cron: '23 */2 * * *'
+    - cron: '23 * * * *'
   workflow_dispatch:
 
 concurrency:
