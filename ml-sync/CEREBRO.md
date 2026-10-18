@@ -394,6 +394,6 @@ Nunca se usa por decisión propia.
 ## ⚖️ LA PLATA POR DÍA ES NETA DE TRABAJO, TOPE Y CAPITAL (18/10/2026, eligió la a)
 Él: *"al vender menos se trabaja menos (…) se llena menos el monotributo (…) más plata que se invierte en otro lado (…) prefiero ganar
 menos en ese producto pero nos da por otro lado"*. Toda comparación de precios (techo, escasez, volver, bajar) se hace con la plata por
-día MENOS: **$300 por unidad vendida** (caja, armado, reclamos, tiempo) · **3% de lo facturado** (lo que gasta del tope de H) · y,
+día MENOS: **$100 por unidad vendida** (sólo el TIEMPO: comprar, contar, etiquetar, armar cajas; la caja y los reclamos ya están en el costo de cada ficha, contarlos de nuevo sería doble) · **3% de lo facturado** (lo que gasta del tope de H) · y,
 al decidir, **2% por mes sobre el costo del stock** que queda parado. A igual plata neta gana el precio alto. La ficha médica ya mide
 así (`PD_TRABAJO_U`, `PD_TOPE_PCT` en sync.mjs). Los números se pueden ajustar si él dice otra cosa.
