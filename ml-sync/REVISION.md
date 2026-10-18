@@ -1392,3 +1392,8 @@ Se cruzaron las versiones de `APP_CAMBIOS` y los commits del robot desde el 13/1
    (`cand-cel`: precio puesto · vendidas en Nuevos; comprar N u. · pesos en Probados), pedir y el %. Código, US$ y el % del local
    (`cand-sub`, `cand-loc`) se esconden y aparecen arriba del detalle (`cand-solocel`). En la PC no cambia.
  · Qué chequear: al agregar algo a la fila de arriba de estas tarjetas, decidir si va en el celu o al detalle.
+### Etapa 3 · 18/10/2026 · cuántos se analizaron hoy en "No medidos" (v24.28)
+ · Qué: `pycatResumenEscribir` guarda en `cyc/pycatres/dia` {d, nomed, tot}: la última cuenta de "sin medir" antes de hoy (se fija en
+   la primera escritura del día). La carpeta ❔ No medidos muestra en verde "−N hoy" = dia.nomed − nomed de ahora. Sin el dato de
+   ayer no muestra nada.
+ · Qué chequear: si se cargan productos nuevos al catálogo en el día, el número puede quedar más chico de lo analizado (entran a sin medir).
