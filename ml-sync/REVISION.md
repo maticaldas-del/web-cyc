@@ -273,7 +273,7 @@ no deje naranja algo con meses de stock (tope 60) · que el pedido en camino se 
 - **`!bajocero` (18/10/2026).** Excepción al "nunca abajo de 0%" en `calcCerebro` (forzar) y `entrarpromo`, sólo si él pide rematar
   a cualquier precio (Tira Led). Qué chequear: que ninguna regla automática ni comando lo ponga solo.
 
-- **Plata por día neta (18/10/2026).** `armarFicha` resta `PD_TRABAJO_U` ($300/u) y `PD_TOPE_PCT` (3% de lo facturado) en tramos y
+- **Plata por día neta (18/10/2026).** `armarFicha` resta `PD_TRABAJO_U` ($100/u, sólo tiempo: caja y reclamos ya están en el costo) y `PD_TOPE_PCT` (3% de lo facturado) en tramos y
   juicios de cambios. Qué chequear: que los "rindió/no rindió" de la ficha sigan teniendo sentido con el descuento.
 
 ## 2 · PLATA

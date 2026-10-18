@@ -9115,7 +9115,7 @@ por mes y esa plata queda en CYC para pagarle a ARCA. El Arqueo la muestra como 
 la pausa el robot cada hora (`activarPausadasFull`, `pausarFuera`), sin freno: cuando la mercadería llega a Full se activa como
 cualquier pausada con stock. Primeros: los 3 Sony de Ayelen (MLA2202585953, MLA4087804994, MLA4087805018).
 
-## ⚖️ PLATA POR DÍA NETA: −$300/u · −3% facturado · −2%/mes del stock (18/10/2026, eligió la a)
+## ⚖️ PLATA POR DÍA NETA: −$100/u · −3% facturado · −2%/mes del stock (18/10/2026, eligió la a)
 Al comparar precios, a la plata por día se le resta el trabajo por unidad, el tope de H que gasta lo facturado y la plata parada.
 A igual plata neta, gana el precio alto (menos trabajo, menos tope). Detalle en `ml-sync/CEREBRO.md` (⚖️).
 

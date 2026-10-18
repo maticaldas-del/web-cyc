@@ -3475,7 +3475,10 @@ const FICHA_VENCE_DIAS = 60;
 // el monotributo (…) prefiero ganar menos en ese producto pero nos da por otro lado"*. A la ganancia de cada tramo se le resta:
 // trabajo por unidad (caja, armado, reclamos, tiempo) y el lugar que gasta en el tope de H cada peso facturado. La plata parada
 // (2%/mes sobre el costo del stock) se mira aparte al decidir, porque depende del stock y no del precio del tramo.
-const PD_TRABAJO_U = 300, PD_TOPE_PCT = 0.03;
+// Medido el mismo día: la caja ($17.500 repartida en "Envío+embalaje" de cada ficha) y los reclamos (% de reclamos) YA están en el
+// costo de cada producto, así que contarlos acá sería cobrarlos dos veces. Lo que no está es el TIEMPO (comprar, contar, etiquetar,
+// armar cajas): ~1 minuto por unidad a ~$6.000 la hora ≈ $100 por unidad.
+const PD_TRABAJO_U = 100, PD_TOPE_PCT = 0.03;
 function poissonCdfF(k, lam) { if (!(lam > 0)) return 1; let p = Math.exp(-lam), s = p; for (let i = 1; i <= k; i++) { p *= lam / i; s += p; } return Math.min(1, s); }
 function armarFicha({ mla, d, e, cu, imp, cambios, notas, hoyK }) {
   const ks = Object.keys(d || {}).filter((k) => /^\d{4}_\d{2}_\d{2}$/.test(k) && k < hoyK && d[k] && typeof d[k] === 'object').sort();
