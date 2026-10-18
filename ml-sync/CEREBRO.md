@@ -417,3 +417,8 @@ Se acepta sólo cuando la alternativa es peor (stock antiguo, parado de verdad),
 pérdida: "deja $X, contra el 25% pierde $Y por unidad". Ejemplo: Pendrive 128gb a $35.940 deja ~$3.600/u; al 25% serían
 ~$5.200/u → ~$1.600/u perdidos por haber mandado 48 de algo que vende 1 cada 4 días (≈$70.000 las 44). La causa se
 arregla en la cantidad que se manda (37 días, tope 90), no en el precio.
+**Corrección suya del mismo día: esa pérdida NO es del cerebro.** *"si hay algo que el cerebro bajó porque seguir como estaba iba a
+ocasionar más pérdidas, entonces el cerebro ganó plata aunque esté por debajo del 25% (…) la culpa no fue del cerebro, fue mía al
+mandar mucho"*. O sea, son DOS cuentas separadas: (1) la decisión del cerebro se juzga contra NO HACER NADA (stock antiguo +
+plata parada 2%/mes + ventas perdidas): si deja más que seguir igual, GANÓ, aunque esté abajo del 25%. (2) Lo que falta para el
+25% es el costo del error de origen (mandar o comprar de más) y se anota a ESA causa, no al precio.
