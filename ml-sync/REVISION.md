@@ -1435,6 +1435,10 @@ toda publicación activa, no `fulfillment`, con unidades, se pausa (PUT + relect
 Claude) y con `activarfull:go`. Sin `noAutoActivar`: al llegar a Full se activa como cualquier pausada con stock. Marca
 `mllinks/<MLA>/pausaFueraFull`. Chequear: que no pause publicaciones de Full sin stock (filtro `available_quantity>0` y logistic ≠ fulfillment).
 
+### 18/10/2026 · v24.40 · Paulvic: el mensaje copiado en cantidades redondas (etapa 3)
+Él: *"que al copiar el mensaje siempre las unidades pedidas sean 3, 5, 10, 20, 50, 100. si hay que pedir 1 que diga 3"*. `_pvPaso` en
+`_pedidoItemHtml` (sólo si `esPedidoPaulvic`): para arriba al escalón siguiente, arriba de 100 a la centena. Sólo el texto copiado.
+
 ### 18/10/2026 · v24.39 · el chat de compras completa las listas (etapa 3)
 ML no le deja al robot ver ventas de otros ni la página del producto. `listarevisar[:<prov>]` (solo lee) arma la lista para el chat
 (lo que da o está "para revisar", sin ventas cargadas) entre @@LISTA y @@FIN; el chat la mira en ML y devuelve
