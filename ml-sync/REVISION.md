@@ -1435,6 +1435,12 @@ toda publicación activa, no `fulfillment`, con unidades, se pausa (PUT + relect
 Claude) y con `activarfull:go`. Sin `noAutoActivar`: al llegar a Full se activa como cualquier pausada con stock. Marca
 `mllinks/<MLA>/pausaFueraFull`. Chequear: que no pause publicaciones de Full sin stock (filtro `available_quantity>0` y logistic ≠ fulfillment).
 
+### 18/10/2026 · v24.42 · ✕ sacar producto de una lista · y Paraguay → Pedido arreglado (etapa 3)
+Pedido suyo: botón de sacar en un "detalle ▾" de cada producto de 📋 Listas. `listaSacar` escribe `mlapi/listas/<prov>/<cód>/sacado`
+(y lo saca del pedido); no cuenta en ✅/🔎 (`_listaMed25`, `cuentaLista`), no sale en `listarevisar`; va a "🗑️ Sacados" con ↩︎ volver.
+**ERROR MÍO de la v24.35:** el bloque "🔎 Para revisar" se insertó en `pyHechosHTML` (Paraguay → 🧾 Pedido) en vez de `renderListas`:
+`revis` no existe ahí y esa solapa tiraba error. Se movió. **Chequear:** abrir Paraguay → 🧾 Pedido después de tocar Listas.
+
 ### 18/10/2026 · v24.41 · listas: mínimo 100 ventas (etapa 3)
 Él: *"el mínimo es 100 ventas. para todas las listas"*. ✅ Dan = 25%+ (con nombre y foto bien, o `ok` del chat) Y `vend` ≥ 100.
 Sin `vend` → 🔎 Para revisar (lo mira el chat con `listarevisar`/`listadato`); `vend` < 100 → afuera. Misma regla en `_listaDa` (web)
