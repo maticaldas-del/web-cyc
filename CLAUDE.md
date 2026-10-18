@@ -9114,3 +9114,9 @@ por mes y esa plata queda en CYC para pagarle a ARCA. El Arqueo la muestra como 
 Él: *"Pausá todo lo que esté en depósito. No podemos mandar a mano. Siempre Full"*. Toda publicación ACTIVA fuera de Full con unidades
 la pausa el robot cada hora (`activarPausadasFull`, `pausarFuera`), sin freno: cuando la mercadería llega a Full se activa como
 cualquier pausada con stock. Primeros: los 3 Sony de Ayelen (MLA2202585953, MLA4087804994, MLA4087805018).
+
+## 📁 LISTA PRECIO NEGOCIO: LOS PROVEEDORES DE LA PERFUMERÍA (18/10/2026, pedido suyo)
+Él: *"hacé una carpeta que se llame lista precio negocio. Y todos los proveedores que te paso van ahí, de la perfumería"*. Toda lista de
+proveedor que me pase va con `lista:<prov>|negocio;…;go` (o `lista:<prov>|negocio;go` para pasarla). Primero: Wels (colonias, body splash,
+jabones, Benaré, Florida). Lo que en ML da 25%+ igual se muestra (jabón líquido 500 ml 55%, crema de ordeñe Florida 27%).
+Y 18/10: Tira Led de Luciana → él pide el retiro de Full (paga $39.000/mes de stock antiguo) · Paulvic Scarf de Adriana → descuento fuerte para que salga antes del 10/11.
