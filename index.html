@@ -2663,7 +2663,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.47';
+const APP_VERSION='24.48';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2674,6 +2674,7 @@ const APP_VERSION='24.47';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.48',f:'18/10/2026',h:'13:20',c:[{n:1,t:'Ventas de hoy: la línea punteada y el % ahora comparan contra el PROMEDIO de los últimos 5 días iguales (ej. los 5 domingos anteriores), a la misma hora, en vez de uno solo.'}]},
   {v:'24.47',f:'18/10/2026',h:'13:05',c:[{n:1,t:'Rotación (y toda tabla que no entra a lo ancho): barra para moverse de costado ARRIBA de la tabla, que se queda fija al bajar.'}]},
   {v:'24.46',f:'18/10/2026',h:'12:50',c:[{n:1,t:'📋 Listas: botón "⏸️ sacar … por ahora" esconde una lista (no la borra); se vuelve desde "⏸️ sacadas por ahora". Las listas sin productos que den ya no aparecen, ni en el buscador.'}]},
   {v:'24.45',f:'18/10/2026',h:'12:35',c:[{n:1,t:'📋 Listas: arriba hay un buscador que busca un producto en TODAS las listas a la vez (por nombre o código), con el proveedor, lo que te sale, el % en ML y para cargar unidades ahí mismo.'}]},
@@ -20384,11 +20385,17 @@ function _homeCurva(k){
 }
 let _homeCurvaAnim=true;
 function _homeCurvaHTML(dia){
-  const k=dateToKey(dia),d7=new Date(dia);d7.setDate(d7.getDate()-7);const k7=dateToKey(d7);
-  if(!(state.ventaprod||{})[k7])return '';
-  const A=_homeCurva(k),B=_homeCurva(k7);if(!A.n&&!B.n)return '';
+  // CONTRA EL PROMEDIO DE LOS ÚLTIMOS 5 DEL MISMO DÍA (18/10/2026, pedido suyo: *"que se compare con los últimos sábados mejor,
+  // un promedio de los 5 últimos"*): un solo día de la semana pasada puede haber sido malo o bueno de casualidad.
+  const k=dateToKey(dia);const prev=[];
+  for(let w=1;w<=5;w++){const d=new Date(dia);d.setDate(d.getDate()-7*w);if((state.ventaprod||{})[dateToKey(d)])prev.push(d);}
+  if(!prev.length)return '';
+  const A=_homeCurva(k),Bs=prev.map(d=>_homeCurva(dateToKey(d)));
+  const B={c:Array.from({length:25},(_,h)=>Bs.reduce((t,b)=>t+b.c[h],0)/Bs.length),hasta:m=>Bs.reduce((t,b)=>t+b.hasta(m),0)/Bs.length,n:Bs.reduce((t,b)=>t+b.n,0)};
+  if(!A.n&&!B.n)return '';
+  const d7=prev[0],dN=prev[prev.length-1],nP=prev.length;
   const esHoy=_homeHoyOff===0,now=new Date(),nm=now.getHours()*60+now.getMinutes();
-  const lim=esHoy?nm:1439;
+const lim=esHoy?nm:1439;
   const gA=A.hasta(lim),gB=B.hasta(lim);
   const W=240,H=54,ymax=Math.max(1,...A.c,...B.c,gA),ymin=Math.min(0,...A.c,...B.c);
   const X=h=>(h/24*W).toFixed(1),Y=g=>(H-2-(g-ymin)/(ymax-ymin)*(H-6)).toFixed(1);
@@ -20400,9 +20407,9 @@ function _homeCurvaHTML(dia){
   const dif=gB>0?Math.round((gA-gB)/gB*100):null;
   const difTxt=dif==null?'':`<b style="color:${dif>=0?'var(--green)':'var(--red)'}">${dif>=0?'+':''}${dif}%</b>`;
   const anim=_homeCurvaAnim?' hoy-sp-anim':'';_homeCurvaAnim=false;
-  return `<div class="hoy-sp" title="Ganancia acumulada hora por hora. Línea de color: ${esHoy?'hoy':'este día'} · punteada: el ${DIAS[d7.getDay()]} ${p2(d7.getDate())}/${p2(d7.getMonth()+1)}. ${esHoy?'Se compara hasta la misma hora.':'Se comparan los dos días enteros.'}">
+  return `<div class="hoy-sp" title="Ganancia acumulada hora por hora. Línea de color: ${esHoy?'hoy':'este día'} · punteada: el promedio de los últimos ${nP} ${DIAS[d7.getDay()]}${nP===1?'':'s'} (del ${p2(dN.getDate())}/${p2(dN.getMonth()+1)} al ${p2(d7.getDate())}/${p2(d7.getMonth()+1)}). ${esHoy?'Se compara hasta la misma hora.':'Se comparan los días enteros.'}">
     <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" class="${anim.trim()}"><polyline class="sp-b" points="${lin(B.c,24)}"/><polyline class="sp-a" points="${pA}"/>${esHoy&&A.n?`<circle class="sp-dot" cx="${X(hFin)}" cy="${Y(gA)}" r="3"/>`:''}</svg>
-    <div class="sp-txt">${esHoy?`A esta hora, el ${DIAS[d7.getDay()]} pasado`:`El ${DIAS[d7.getDay()]} anterior`} (${p2(d7.getDate())}/${p2(d7.getMonth()+1)}) iba <b style="color:var(--text)">${fmt(gB)}</b> de ganancia${difTxt?` · ${esHoy?'hoy':'este día'} ${difTxt}`:''}</div></div>`;
+    <div class="sp-txt">${esHoy?'A esta hora, ':''}${nP===1?`el ${DIAS[d7.getDay()]} anterior (${p2(d7.getDate())}/${p2(d7.getMonth()+1)})`:`el promedio de los últimos ${nP} ${DIAS[d7.getDay()]}s`} ${esHoy?'iba':'hizo'} <b style="color:var(--text)">${fmt(Math.round(gB))}</b> de ganancia${difTxt?` · ${esHoy?'hoy':'este día'} ${difTxt}`:''}</div></div>`;
 }
 // ── CUANDO ENTRA UNA VENTA CON INICIO ABIERTO (etapa 6, idea 4, 14/10/2026, eligió la a) ─────────────
 // El total sube rodando, sale una pastilla con el color de su % y el teléfono vibra un instante. Sólo con "Ventas
