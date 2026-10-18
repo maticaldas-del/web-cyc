@@ -559,6 +559,9 @@ el precio de un candidato distinto con código parecido (se compara también por
   buscador; vuelve desde "⏸️ sacadas por ahora" (`listaPausar`). Las listas sin nada que dé ya no se pueden ver (se sacó el botón).
   Qué chequear: que el robot (`lista`, `listacuenta`) siga haciendo patch y no pise `pausa`.
 
+- **Nunca una lista vieja (18/10/2026).** `lista:<prov>|fecha=AAAA-MM-DD` guarda la fecha en `listasProv/<prov>/fecha` y rechaza
+  una lista con fecha anterior. Qué chequear: que cada carga nueva lleve `|fecha=`.
+
 ## 4 · CHOQUES
 - `mlapi/lineatodo` lo escriben `ritmo:go` (noche) y `lineatodo:go` (ml-consulta): los dos con la
   misma función `calcLineaTodo`.

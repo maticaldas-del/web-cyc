@@ -19226,6 +19226,13 @@ async function main() {
       if (!provK) { console.log('❌ Falta el nombre del proveedor: lista:<proveedor>;<producto>=<pesos>;…'); return; }
       let rec = provs[provK] && provs[provK].rec != null ? Number(provs[provK].rec) : 0;
       for (const o of opc) { const m = o.match(/^rec=([\d.,]+)$/); if (m) rec = parseFloat(m[1].replace(',', '.')) || 0; }
+      // NUNCA CARGAR UNA LISTA VIEJA (18/10/2026, regla suya: *"nunca cargues listas viejas"*). `|fecha=AAAA-MM-DD` es la
+      // fecha de la lista (vigencia o emisión); se guarda en `cyc/mlconfig/listasProv/<prov>/fecha` y una lista con fecha
+      // ANTERIOR a la guardada no se carga. Sin productos y con fecha, sólo anota la fecha de la que ya está.
+      let fechaL = null; for (const o of opc) { const m = o.trim().match(/^fecha=(\d{4}-\d{2}-\d{2})$/); if (m) fechaL = m[1]; }
+      const fechaG = provs[provK] && provs[provK].fecha;
+      if (fechaL && fechaG && fechaL < fechaG) { console.log(`❌ NO CARGO: esta lista de ${provNom} es del ${fechaL} y la guardada es del ${fechaG} (más nueva). Regla: nunca cargar listas viejas.`); return; }
+      if (fechaL && !partes.length) { console.log(`${provNom}: fecha de la lista guardada = ${fechaL}${APLICAR ? '' : ' · PRUEBA: agregá ;go'}`); if (APLICAR) await db.patch('cyc/mlconfig/listasProv/' + provK, { fecha: fechaL }); return; }
       // DESCARTAR UN PROVEEDOR (15/10/2026, él: "si todos están muy lejos del % descartamos el proveedor"): `lista:<prov>|descartar;go`
       // lo esconde de la pestaña (los datos quedan); `|volver;go` lo devuelve.
       const _dsc = opc.some((o) => o.trim() === 'descartar'), _vlv = opc.some((o) => o.trim() === 'volver');
@@ -19264,7 +19271,7 @@ async function main() {
       if (!APLICAR) { console.log('\nPRUEBA. Para guardar, agregá ";go" al final.'); return; }
       await db.patch('mlapi/listas/' + provK, upd);
       const total = Object.keys({ ...cat, ...upd }).length;
-      await db.patch('cyc/mlconfig/listasProv/' + provK, { nombre: provNom, rec, n: total, ts: ahora, ...(_neg ? { negocio: true } : {}) });
+      await db.patch('cyc/mlconfig/listasProv/' + provK, { nombre: provNom, rec, n: total, ts: ahora, ...(fechaL ? { fecha: fechaL } : {}), ...(_neg ? { negocio: true } : {}) });
       const r = (await db.get('mlapi/listas/' + provK + '/' + filas[filas.length - 1].cod)) || {};
       console.log(`\n${Math.abs((Number(r.p) || 0) - filas[filas.length - 1].p) < 1 ? '✓' : '❌'} guardado (${total} productos en la lista). Medila con \`listamedir:<proveedor>:<cuántos>:go\`.`);
       return;
