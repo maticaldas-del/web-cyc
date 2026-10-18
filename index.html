@@ -2662,7 +2662,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.40';
+const APP_VERSION='24.41';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2673,6 +2673,7 @@ const APP_VERSION='24.40';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.41',f:'18/10/2026',h:'01:43',c:[{n:2,t:'📋 Listas: para estar en ✅ Dan hace falta, además del 25%, tener 100 ventas o más en ML. Lo que todavía no tiene las ventas mirada va a 🔎 Para revisar; lo de menos de 100 queda abajo.'}]},
   {v:'24.40',f:'18/10/2026',h:'00:44',c:[{n:1,t:'🧴 Paulvic: "📋 Copiar pedido" redondea cada aroma para arriba a 3, 5, 10, 20, 50 o 100 (si hacen falta 1, pide 3). La tarjeta sigue mostrando lo que hace falta.'}]},
   {v:'24.39',f:'18/10/2026',h:'23:50',c:[{n:2,t:'📋 Listas: lo que mira el chat de compras en ML se ve en cada producto: 🛒 cuántas vendidas tiene, ✓ mismo producto (pasa a ✅ Dan) o ✗ otro producto (sale de la lista).'}]},
   {v:'24.38',f:'18/10/2026',h:'23:23',c:[{n:1,t:'📋 Listas: también se esconde el proveedor que sólo tiene productos "para revisar" (casi siempre son otro producto). Hoy: Cadam y Wels.'}]},
@@ -14219,7 +14220,7 @@ function pyHechosHTML(){
   const camino=todas.filter(c=>c.estado==='camino'), resto=todas.filter(c=>c.estado!=='camino');
   const tarjeta=(c,enCamino)=>pyPedidoTarjeta(c,enCamino);
   return `${camino.length?`<div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:4px 0 8px">En camino · ${camino.length}</div>${camino.map(c=>tarjeta(c,true)).join('')}`:''}
-    ${revis.length?`<details style="margin-top:14px;background:var(--surface);border:1px solid var(--amber);border-radius:var(--r);padding:10px 12px"><summary style="cursor:pointer;font-size:.82rem;font-weight:700;color:var(--amber)">🔎 Para revisar con los ojos (${revis.length}) <span style="font-weight:400;color:var(--muted);font-size:.66rem">— darían 25%+, pero ML no nombra alguna palabra (⚠️) o da 80% o más: casi siempre es OTRO producto</span></summary><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${revis.slice(0,150).map(f=>fila(f,false)).join('')}</div></details>`:''}
+    ${revis.length?`<details style="margin-top:14px;background:var(--surface);border:1px solid var(--amber);border-radius:var(--r);padding:10px 12px"><summary style="cursor:pointer;font-size:.82rem;font-weight:700;color:var(--amber)">🔎 Para revisar con los ojos (${revis.length}) <span style="font-weight:400;color:var(--muted);font-size:.66rem">— darían 25%+, pero falta saber si tienen 100 ventas (lo mira el chat), o ML no nombra alguna palabra (⚠️), o da 80% o más</span></summary><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${revis.slice(0,150).map(f=>fila(f,false)).join('')}</div></details>`:''}
     ${resto.length?`<details style="margin-top:14px"><summary style="cursor:pointer;list-style:none;font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Ya llegaron · ${resto.length} <span style="font-weight:400">▾</span></summary>${resto.map(c=>tarjeta(c,false)).join('')}</details>`:''}
 `;
 }
@@ -17798,8 +17799,10 @@ function _listaPuesto(k,e){return Math.round((Number(e&&e.p)||0)*(1+_listaRec(k)
 // DA = 25% a 80% en ML, con la foto de ML y SIN reparo de nombre (18/10/2026). Con Saint Julien ML emparejaba "Body Lotion Geisha"
 // con un set de Cher o con un Angel de $425.000 (faltaba el aroma = `rp`) y daba 600%: eso va a "🔎 Para revisar", sin casilla.
 // `ok`/`noEs`/`vend` los carga el chat de compras mirando ML (`listadato`): ok = mismo producto confirmado, noEs = otro producto.
-function _listaMed25(e){return e&&!e.noEs&&e.m!=null&&isFinite(e.m)&&Number(e.m)>=25&&/^https:\/\//.test(e.mf||'');}
-function _listaDa(e){return _listaMed25(e)&&(e.ok||(!e.rp&&Number(e.m)<80));}
+// MÍNIMO 100 VENTAS, EN TODAS LAS LISTAS (18/10/2026, regla suya). Las ventas las carga el chat (`vend`); sin ese dato no se sabe y
+// va a "🔎 Para revisar" (que el chat lo mire). Con menos de 100 vendidas sale de las dos (queda abajo, con su número).
+function _listaMed25(e){return e&&!e.noEs&&e.m!=null&&isFinite(e.m)&&Number(e.m)>=25&&/^https:\/\//.test(e.mf||'')&&!(e.vend!=null&&Number(e.vend)<100);}
+function _listaDa(e){return _listaMed25(e)&&Number(e.vend)>=100&&(e.ok||(!e.rp&&Number(e.m)<80));}
 function _listaRevisar(e){return _listaMed25(e)&&!_listaDa(e);}
 function _listaArmado(k){return Object.entries(((state.listaPed||{})[k])||{}).map(([cod,u])=>({cod,u:parseInt(u)||0})).filter(x=>x.u>0);}
 function _listaViajando(k){const s=new Set();Object.values(state.comprasLista||{}).forEach(c=>{if(c&&c.prov===k&&c.estado==='camino')(c.items||[]).forEach(it=>s.add(String(it.cod)));});return s;}
@@ -17925,7 +17928,7 @@ async function renderListas(){
   const q=_listaQ;
   let res=[];if(q.length>=2){const pal=_pycNorm(q).split(/\s+/).filter(Boolean);res=filas.filter(([cod,e])=>{const t=_pycNorm(e.n+' '+cod);return pal.every(w=>t.includes(w));}).sort(ord);}
   el.innerHTML=cab+`<div style="font-size:.7rem;color:var(--muted);margin-bottom:8px">${filas.length} productos en la lista · ${med} medidos · ${sinMed} sin medir todavía${rec?` · recargo del proveedor ${rec}%`:''}${v.ts?` · lista del ${new Date(v.ts).toLocaleDateString('es-AR')}`:''}</div>
-    <div style="font-size:.85rem;font-weight:700;color:var(--green);margin:4px 0 8px">✅ Dan 25% o más en ML · ${dan.length}</div>
+    <div style="font-size:.85rem;font-weight:700;color:var(--green);margin:4px 0 8px">✅ Dan 25% o más en ML y tienen 100+ ventas · ${dan.length}</div>
     <div style="display:flex;flex-direction:column;gap:6px">${dan.length?dan.map(f=>fila(f,true)).join(''):'<div class="empty-msg">Todavía ninguno (o falta medirlos).</div>'}</div>
     ${resto.length?`<details style="margin-top:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px"><summary style="cursor:pointer;font-size:.82rem;font-weight:700">⬇️ No dan, sin catálogo en ML o sin medir (${resto.length})</summary><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${resto.slice(0,150).map(f=>fila(f,false)).join('')}</div>${resto.length>150?`<div style="font-size:.62rem;color:var(--muted);margin-top:6px">muestro 150 · el resto con el buscador</div>`:''}</details>`:''}
     <div style="margin-top:14px"><input id="lista-q" type="search" value="${escHtml(q)}" placeholder="🔎 buscar en toda la lista" oninput="clearTimeout(window._listaT);window._listaT=setTimeout(()=>{_listaQ=this.value.trim();renderListas();setTimeout(()=>{const i=document.getElementById('lista-q');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length);}},0);},400)" style="width:100%;padding:8px 10px;font-size:.85rem;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--text)">
