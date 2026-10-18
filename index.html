@@ -2662,7 +2662,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.39';
+const APP_VERSION='24.40';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2673,6 +2673,7 @@ const APP_VERSION='24.39';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.40',f:'18/10/2026',h:'00:44',c:[{n:1,t:'🧴 Paulvic: "📋 Copiar pedido" redondea cada aroma para arriba a 3, 5, 10, 20, 50 o 100 (si hacen falta 1, pide 3). La tarjeta sigue mostrando lo que hace falta.'}]},
   {v:'24.39',f:'18/10/2026',h:'23:50',c:[{n:2,t:'📋 Listas: lo que mira el chat de compras en ML se ve en cada producto: 🛒 cuántas vendidas tiene, ✓ mismo producto (pasa a ✅ Dan) o ✗ otro producto (sale de la lista).'}]},
   {v:'24.38',f:'18/10/2026',h:'23:23',c:[{n:1,t:'📋 Listas: también se esconde el proveedor que sólo tiene productos "para revisar" (casi siempre son otro producto). Hoy: Cadam y Wels.'}]},
   {v:'24.37',f:'18/10/2026',h:'23:22',c:[{n:2,t:'📋 Listas: cada proveedor dice ✅ cuántos productos dan 25% o más en ML (y ⏳ cuántos falta medir). Los que ya se midieron enteros y no tienen ninguno que dé se esconden; "🙈 N sin productos que den" los muestra.'}]},
@@ -17581,7 +17582,12 @@ function _pedidoItemHtml(p,opts){
   const _prod=(state.products||[]).find(x=>x.id===p.prodId||(x.name&&normTxt(x.name)===normTxt(p.producto||'')));
   // El botón sale con CUALQUIER foto, no sólo con la cargada a mano: antes miraba `_prod.foto`,
   // que sólo se prende al subir una, así que con la foto automática de ML el botón no aparecía.
-  const _aCopiar=varsSorted?varsSorted.filter(x=>(x.q||0)>0).map(x=>`${x.v} x${x.q}`):[];
+  // PAULVIC: EL MENSAJE VA EN CANTIDADES REDONDAS (18/10/2026, pedido suyo: "que al copiar el mensaje siempre las unidades pedidas
+  // sean 3, 5, 10, 20, 50, 100. si hay que pedir 1 que diga 3. total si me paso por un poco no pasa nada"). Se redondea PARA ARRIBA
+  // al escalón siguiente; arriba de 100, a la centena siguiente. Sólo el texto copiado: la tarjeta sigue diciendo lo que hace falta.
+  const _pvPaso=q=>{for(const t of [3,5,10,20,50,100])if(q<=t)return t;return Math.ceil(q/100)*100;};
+  const _esPv=esPedidoPaulvic(p);
+  const _aCopiar=varsSorted?varsSorted.filter(x=>(x.q||0)>0).map(x=>`${x.v} x${_esPv?_pvPaso(x.q):x.q}`):[];
   // SÓLO ESTOS COLORES (16/10/2026, idea 11 del análisis): llegaban colores lentos en lugar de los que se agotan.
   if(_aCopiar.length)_pedCopiaTxt[p.id]=_aCopiar.join('\n')+'\nSÓLO estos colores: si no hay, no reemplazar por otro.';else delete _pedCopiaTxt[p.id];
   const copiarBtn=_aCopiar.length?`<button class="pi-var-toggle" style="background:rgba(34,197,94,.12);color:var(--green);border-color:rgba(34,197,94,.3)" onclick="pedCopiarVars('${p.id}')" title="Copia sólo el nombre y las unidades a pedir de cada variante, para pegarlo en WhatsApp">📋 Copiar pedido</button>`:'';
