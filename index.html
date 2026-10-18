@@ -2662,7 +2662,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.36';
+const APP_VERSION='24.37';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2673,6 +2673,7 @@ const APP_VERSION='24.36';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.37',f:'18/10/2026',h:'23:22',c:[{n:2,t:'📋 Listas: cada proveedor dice ✅ cuántos productos dan 25% o más en ML (y ⏳ cuántos falta medir). Los que ya se midieron enteros y no tienen ninguno que dé se esconden; "🙈 N sin productos que den" los muestra.'}]},
   {v:'24.36',f:'18/10/2026',h:'23:13',c:[{n:1,t:'📋 Listas: "1 vend." decía cuántos VENDEDORES tiene ese producto en ML, no cuántas ventas. Ahora dice "1 vendedor".'}]},
   {v:'24.35',f:'18/10/2026',h:'23:12',c:[{n:2,t:'📋 Listas → Nuevos: arriba sólo lo que da 25% a 80% en ML y con el mismo nombre. Lo que da 80% o más, o donde ML no nombra alguna palabra (el aroma, la marca), va a "🔎 Para revisar con los ojos", sin casilla: casi siempre es otro producto.'}]},
   {v:'24.34',f:'18/10/2026',h:'22:26',c:[{n:2,t:'📦 Pedidos queda en este orden: 🇦🇷 Bs As · 🇵🇾 Paraguay · 🧴 Paulvic · 📋 Listas.'},{n:2,t:'📋 Listas funciona como Paraguay: arriba el proveedor y tres solapas — ✅ Probados (lo que ya le compraste), 🆕 Nuevos (lo de su lista que da 25% o más en ML, con la casilla de unidades) y 🧾 Pedido (mensaje con código y unidades, Ya lo pedí, y al llegar crea las fichas).'},{n:1,t:'📋 Listas es sólo para ML: se fue la carpeta Lista precio negocio y el % de la perfumería del local.'}]},
@@ -17843,12 +17844,20 @@ async function renderListas(){
   const provs=(state.mlconfig&&state.mlconfig.listasProv)||{};
   const ks=Object.keys(provs).filter(k=>!provs[k].desc).sort((a,b)=>String(provs[a].nombre||a).localeCompare(String(provs[b].nombre||b)));
   if(!ks.length){el.innerHTML=`<div class="empty-msg">Todavía no hay listas. Pasale a Claude la lista de precios del proveedor (foto, PDF o texto): la guarda acá y la mide contra ML.</div>`;return;}
-  if(!_listaSel||!provs[_listaSel])_listaSel=ks[0];
+  // EL NÚMERO DEL BOTÓN = CUÁNTOS DAN (18/10/2026, pedido suyo: "que ponga la cantidad de productos más de 25%, y los que no tengan,
+  // ocultarlos"). Lo cuenta el robot con la misma regla que ✅ Dan (`cuentaLista`). Se esconde el que ya está medido entero y no tiene
+  // ninguno que dé ni para revisar, salvo que tenga probados (ya le compraste). "ver ocultos" los muestra.
+  const _tieneProb=x=>(state.products||[]).some(p=>p.listaProv===x);
+  const _oculto=x=>{const v=provs[x];return v.dan!=null&&v.pend!=null&&!(v.dan>0)&&!(v.revisar>0)&&!(v.pend>0)&&!_tieneProb(x);};
+  const ocultos=ks.filter(_oculto),visibles=window._listaVerOcultos?ks:ks.filter(x=>!_oculto(x));
+  if(!_listaSel||!provs[_listaSel]||!visibles.includes(_listaSel))_listaSel=visibles[0]||ks[0];
   const k=_listaSel,v=provs[k],nom=v.nombre||k;
-  const _provBtn=x=>`<button class="btn" style="font-size:.72rem;padding:6px 16px;${x===k?'background:#7c3aed;color:#fff;border-color:#7c3aed;font-weight:700':''}" title="Cada proveedor tiene sus probados, sus nuevos y sus pedidos (no se juntan)." onclick="_listaSel='${x}';_listaQ='';renderListas()">${provs[x].nombre||x} <span style="opacity:.75">· ${provs[x].n||0}</span></button>`;
+  const _num=x=>{const q=provs[x];if(q.dan==null)return `<span style="opacity:.75">· ${q.n||0}</span>`;
+    return `<span style="opacity:.85">· ✅ ${q.dan}</span>${q.pend>0?` <span style="opacity:.6;font-size:.85em">⏳${q.pend}</span>`:''}`;};
+  const _provBtn=x=>`<button class="btn" style="font-size:.72rem;padding:6px 16px;${x===k?'background:#7c3aed;color:#fff;border-color:#7c3aed;font-weight:700':''}" title="✅ cuántos dan 25% o más en ML${provs[x].pend>0?' · ⏳ cuántos falta medir':''} · ${provs[x].n||0} en la lista" onclick="_listaSel='${x}';_listaQ='';renderListas()">${provs[x].nombre||x} ${_num(x)}</button>`;
   const nArm=_listaArmado(k).length;
   const _tab=(t,txt,tit)=>`<button class="btn" style="font-size:.64rem;padding:5px 13px;${_listaVista===t?'background:var(--blue);color:#fff;font-weight:700':''}" title="${tit}" onclick="listaSetVista('${t}')">${txt}</button>`;
-  const cab=`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px"><span style="font-size:.68rem;color:var(--muted)">Proveedor:</span>${ks.map(_provBtn).join('')}</div>
+  const cab=`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px"><span style="font-size:.68rem;color:var(--muted)">Proveedor:</span>${visibles.map(_provBtn).join('')}${ocultos.length?`<button class="btn" style="font-size:.64rem;padding:4px 10px;opacity:.7" title="${ocultos.map(x=>provs[x].nombre||x).join(', ')}" onclick="window._listaVerOcultos=!window._listaVerOcultos;renderListas()">${window._listaVerOcultos?'🙈 esconder los que no dan':'🙈 '+ocultos.length+' sin productos que den'}</button>`:''}</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${_tab('probados','✅ Productos probados','Lo que ya le compraste a este proveedor: cuánto reponer.')}${_tab('nuevos','🆕 Productos nuevos','Lo de su lista que todavía no vendés y da 25% o más en ML.')}${_tab('hechos','🧾 Pedido'+(nArm?' ('+nArm+' cargados)':''),'El pedido del momento, el mensaje con código y unidades, y los pedidos ya hechos.')}</div>`;
   let cat=_listaCache[k];
   if(!cat){el.innerHTML=cab+`<div style="font-size:.72rem;color:var(--muted)">⏳ bajando la lista…</div>`;
