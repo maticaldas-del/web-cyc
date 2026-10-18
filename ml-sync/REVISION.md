@@ -552,6 +552,10 @@ el precio de un candidato distinto con código parecido (se compara también por
   proveedores (todas las palabras), con proveedor, lo que te sale, % ML, links y casilla para pedir (`listaBuscar`/`_listaBuscarYa`).
   Baja todas las listas la primera vez (Dai Nippon son ~7.800 renglones). El buscador de abajo sigue siendo sólo del proveedor elegido.
 
+- **Sacar una lista por ahora (18/10/2026, v24.46).** `cyc/mlconfig/listasProv/<prov>/pausa` (fecha) la esconde de 📋 Listas y del
+  buscador; vuelve desde "⏸️ sacadas por ahora" (`listaPausar`). Las listas sin nada que dé ya no se pueden ver (se sacó el botón).
+  Qué chequear: que el robot (`lista`, `listacuenta`) siga haciendo patch y no pise `pausa`.
+
 ## 4 · CHOQUES
 - `mlapi/lineatodo` lo escriben `ritmo:go` (noche) y `lineatodo:go` (ml-consulta): los dos con la
   misma función `calcLineaTodo`.
