@@ -2664,7 +2664,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.51';
+const APP_VERSION='24.52';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2675,6 +2675,7 @@ const APP_VERSION='24.51';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.52',f:'18/10/2026',h:'18:20',c:[{n:1,t:'Ventas x Producto en la PC: el renglón quedó con lo básico. El número de venta y el total y neto de cada producto de una compra con varios pasaron a "detalle ▾" (el mismo de la tarjeta del teléfono). Arriba queda una sola vez el total y neto de la compra entera.'}]},
   {v:'24.51',f:'18/10/2026',h:'17:45',c:[{n:2,t:'Estrategia nueva "📦 sobra stock": lo que se baja (aunque quede abajo del 25%) porque sobra mercadería y va a pagar stock antiguo. Las promos que pone el cerebro ahora anotan su estrategia (antes quedaban como 🎯 base).'}]},
   {v:'24.50',f:'18/10/2026',h:'15:16',c:[{n:1,t:'Línea de tiempo: el techo son dos rayas. Roja "🚧 a $X ya no vende" (el precio probado) y verde "✓ a $Y sí vende" (al que se volvió). El techo está entre las dos.'}]},
   {v:'24.49',f:'18/10/2026',h:'15:15',c:[{n:1,t:'Línea de tiempo: una raya roja punteada "🚧 techo $X" marca el precio que se probó y no se vendía (arriba de eso no conviene). Al pasar el mouse dice cuándo y por qué.'}]},
@@ -11460,25 +11461,27 @@ function renderVentaProd(){
       // (.vp-pc / .vp-cel, corte 640px) muestra una sola.
       // Compra de varios productos: cada renglón trae su propia 📈 línea de tiempo (09/10/2026, él: "quiero poder elegir qué línea mirar").
       const _varios=new Set(grp.items.map(v=>(prodDeVenta(v)||{}).id).filter(Boolean)).size>1;
-      const lines=grp.items.map(v=>`<div style="display:flex;justify-content:space-between;font-size:.72rem;padding:2px 0;align-items:center;${isCancelled?'opacity:.45;text-decoration:line-through':''}"><span>${fotoVentaHTML(v,30)}${v.qty}× ${nombreDeVenta(v)}${estrategiaVentaHTML(v)}${v.variante?` <span style="padding:1px 5px;border-radius:3px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.62rem">${v.variante}</span>`:''}${isCancelled?'':(()=>{const x=cambioVentaHTML(v,Number(v.ts)||0);return x?' '+x:'';})()}${(()=>{const _pp=prodDeVenta(v);return _pp?' '+cerebroBtn(_pp.id,{mla:v.mla,ctx:'venta'})+(_varios?' '+lineaBtn(_pp.id):''):'';})()}</span><span style="color:var(--muted)">${(!isCancelled&&(v.total||0)>0)?`total ${fmt(v.total)} · `:''}${isCancelled?'':'neto '+fmt(v.neto||0)}</span></div>`).join('');
+      const lines=grp.items.map(v=>`<div style="display:flex;justify-content:space-between;font-size:.72rem;padding:2px 0;align-items:center;${isCancelled?'opacity:.45;text-decoration:line-through':''}"><span>${fotoVentaHTML(v,30)}${v.qty}× ${nombreDeVenta(v)}${estrategiaVentaHTML(v)}${v.variante?` <span style="padding:1px 5px;border-radius:3px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.62rem">${v.variante}</span>`:''}${isCancelled?'':(()=>{const x=cambioVentaHTML(v,Number(v.ts)||0);return x?' '+x:'';})()}${(()=>{const _pp=prodDeVenta(v);return _pp?' '+cerebroBtn(_pp.id,{mla:v.mla,ctx:'venta'})+(_varios?' '+lineaBtn(_pp.id):''):'';})()}</span></div>`).join('');
       const _pcHtml=`<div class="ingreso-item vp-pc" style="flex-direction:column;align-items:stretch;gap:4px;${isCancelled?'border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.04)':''}">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <span class="who-badge" style="font-size:.6rem;${isCancelled?'opacity:.6':''}">${cuenta}</span>
-          ${fechaTag}${numTag}
+          ${fechaTag}
           ${cancelBadge}
           ${grp.items.length>1?`<span style="font-size:.64rem;color:var(--muted)">${grp.items.length} prod.</span>`:''}
           <span style="flex:1"></span>
           ${promoLabel}
           ${entLabel}
           ${rescLabel}
+          ${(!isCancelled&&_tot>0)?`<span style="font-size:.66rem;color:var(--muted)">total ${fmt(_tot)} · neto ${fmt(gn)}</span>`:''}
           ${costLabel}
           ${ganLabel}
           ${pctBox}
           ${(()=>{if(_varios)return'';const _pp=prodDeVenta(grp.items[0]);return _pp?lineaBtn(_pp.id,null,_lineaVarDeVentas(grp.items,_pp.id)):'';})()}
           <button class="ii-del" style="background:rgba(124,58,237,.15);color:#a78bfa;border-color:rgba(124,58,237,.3)" onclick="vpToggleEdit('${grp.gid}')">✎</button>
-          ${delBtn}
+          <button class="btn" style="font-size:.66rem;padding:3px 10px;background:var(--surface2);color:var(--muted);border:1px solid var(--border)" onclick="vpToggleDet('${grp.gid}')">${_abierto?'ocultar ▴':'detalle ▾'}</button>
         </div>
         ${lines}
+        ${_det}
       </div>`;
       const _celHtml=`<div class="ingreso-item vp-cel" style="flex-direction:column;align-items:stretch;gap:6px;padding:12px 14px;${isCancelled?'border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.04)':''}">
         <div style="display:flex;align-items:center;gap:8px">

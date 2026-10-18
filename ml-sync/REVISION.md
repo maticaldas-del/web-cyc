@@ -710,6 +710,8 @@ el precio de un candidato distinto con código parecido (se compara también por
     decisión de compra, no código. 11 (dinero que rinde en MP) lo mira él en la app.
 
 ## 7 · DISEÑO
+
+- **Ventas x Producto en la PC, lo básico (18/10/2026, v24.52).** Él: *"hay muchas letras y numeros, quiero que todo eso este en el detalle al clickear"*. El renglón `.vp-pc` ya no muestra el N° de venta ni el total/neto de CADA producto; arriba va una vez el total y neto de la compra (`_tot`, `gn`) y el botón "detalle ▾" abre el mismo `_det` del teléfono (N°, cobrado·neto, costo, ganancia, total/neto por producto si son varios, cambios de precio). Chequear: carrito de 2+ productos (total arriba = suma), venta cancelada (sin total), y que el detalle abierto se recuerde (`vpDetOpen`).
 - **Modo discreto (16/10/2026, v23.95).** Ajustes → Apariencia → `toggleDiscreto` (clase `body.discreto`, `localStorage cycDiscreto`):
   ventas vivas sin movimiento, figuras, fuego, brillo ni fondo de color; las que tenían efecto quedan con rayita izquierda de su
   color y las que temblaban/ardían con ✦. `_vivaPaso` no dibuja. Chequear: un nivel nuevo de `.viva` no puede volver a pintar
