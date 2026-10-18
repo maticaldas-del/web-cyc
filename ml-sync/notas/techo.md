@@ -97,3 +97,10 @@ Siguen ganando a precio nuevo: Talonera Beige (4 contra 8 con +52%), Mazos Azul 
 La vuelta del 16/10 fue con poca certeza (0 ventas con ~2,4 esperadas, ~9% de azar) y con un +10% chico. Queda en $8.840
 hasta después del Día de la Madre. El 20/10 (completa) se prueba directo a ~$10.990 y se juzga con más días antes de volver.
 El freno de `techofreno` se fechó para que se reabra solo ese día.
+
+## 18/10 08:52 · revisión completa (Día de la Madre)
+VUELVEN (certeza): Pendrive 32gb $28.990→$24.990 (5 d sin vender, visitas −79%) · Pendrive 64gb $32.990→$26.990 (7 d sin vender, escasez hasta que llegue Paraguay) · Hub 8 en 1 → $17.990 · Aromatizantes Rosas y Lavanda $29.990→$21.990 (techo de los Aer ~$21.000-22.000: Berry y Limón a $21.490 volaban) · Sábanas 2½ Gris $27.990→$22.990 · Separador x2 $7.690→$6.490 (las dos publicaciones) · Talonera Triples Rosa $6.590→$4.490 (le sobra stock). Todas con `techofreno` y foto del mercado.
+Escalera de escasez: Talonera Triples Beige $11.990→$8.990 · Brisa Marina $32.990→$26.990.
+GANAN y siguen (todavía sin 7 días): Lupa 100mm, Cubreasiento x5, Mazos Azul y Rojo, Talonera Común Beige ($10.490, 2/día), Talonera Común Negro, Espejo 5", Cartas Españolas, Almohadilla Triples Negro.
+EN DUDA: Joystick Bluetooth $32.990 (6 d sin vender, 9% de azar): si sigue en 0 vuelve a $29.790.
+PAULVIC a $21.990: el fin de semana del Día de la Madre casi no vendió (Persea 1 contra 9 en el mismo tiempo antes) pero el control a $14.360 tampoco. Juicio mañana 20/10 en la completa.
