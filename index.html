@@ -2656,7 +2656,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.30';
+const APP_VERSION='24.31';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2667,6 +2667,7 @@ const APP_VERSION='24.30';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.31',f:'18/10/2026',h:'21:46',c:[{n:2,t:'🇵🇾 Paraguay: arriba, abajo de "Mostrar", los botones "Vender en": Todo · 🛒 ML · 🏪 Perfumería · ✅ Los dos. Filtran Probados y Nuevos a la vez (en Probados: con ML se esconden los que dan sólo por el local, como VS, Cabotine y Lapidus).'}]},
   {v:'24.30',f:'18/10/2026',h:'21:28',c:[{n:2,t:'🚫 Paraguay → Nuevos: botón "en ML no se puede (marca)" adentro del detalle. Lo marcado sale de "los que dan en ML" y queda sólo para la perfumería del local (si ahí da). Se deshace con "volver a ML". No se marca nada solo.'}]},
   {v:'24.29',f:'18/10/2026',h:'21:27',c:[{n:1,t:'🇵🇾 Paraguay en el celu: vuelve a verse el 🏪 % del local en la tarjeta. Los perfumes que en ML no llegan pero en la perfumería sí (VS, Cabotine, Lapidus) estaban arriba con el % de ML en rojo y no se veía por qué daban.'}]},
   {v:'24.28',f:'18/10/2026',h:'21:14',c:[{n:1,t:'❔ Paraguay → No medidos: al lado del número, en verde, cuántos analizó el robot hoy (−N hoy). Se cuenta desde el último conteo de ayer.'}]},
@@ -14982,7 +14983,7 @@ function candidatosHTML(){
   // verde hay, así voy viendo cuando sube productos nuevos"*). Verde = medido y en el piso o arriba.
   const _verdes=_arriba.filter(c=>c.margen!=null&&isFinite(c.margen)).length, _sinMed=_arriba.length-_verdes;
   const _sel=(arr,cur,fn)=>`<select onchange="${fn}(this.value)" style="font-size:.72rem;padding:4px 8px;border-radius:6px;background:var(--surface);color:var(--text);border:1px solid var(--border)">${arr.map(([k,t])=>`<option value="${k}"${cur===k?' selected':''}>${t}</option>`).join('')}</select>`;
-  const _orden=`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 10px"><span style="font-size:.66rem;color:var(--muted)">Ver:</span>${_sel([['todos','todos'],['ml','🛒 los que dan en ML'],['local','🏪 los que dan en el local'],['ambos','✅ los que dan en los dos']],_candFiltro,'candFiltrar')}<span style="font-size:.66rem;color:var(--muted)">Ordenar:</span>${_sel([['pct','% de ganancia'],['vend','🛒 más vendidos'],['gan','$ por unidad'],['usd','$ por dólar invertido'],['barato','más barato']],_candOrden,'candOrdenar')}</div>`;
+  const _orden=`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 10px"><span style="font-size:.66rem;color:var(--muted)">Ordenar:</span>${_sel([['pct','% de ganancia'],['vend','🛒 más vendidos'],['gan','$ por unidad'],['usd','$ por dólar invertido'],['barato','más barato']],_candOrden,'candOrdenar')}</div>`;
   // 03/10/2026, él: el simulador y el historial "ahí no se usan y molestan": el simulador va al final y el
   // historial de pedidos vive en la pestaña 🧾 Pedido.
   return cab(_verdes)+pycatBuscarHTML()+_orden+_arriba.map(_card).join('')
@@ -17471,6 +17472,11 @@ function pyNuDePedido(pr,ped){
   for(const c of cols){const d=pv[sid(String(c||'').toLowerCase())];if(d&&Number(d.usd)>0)mx=Math.max(mx,Number(d.usd));}
   return mx>0?mx:(parseFloat(pr&&pr.nisseiUSD)||0);
 }
+function pyProbLocalOk(ped){
+  try{const pr=(state.products||[]).find(x=>x.id===ped.prodId)||prodByName(ped.producto);if(!pr||pr.noLocal||!esPerfumeNom(pr.name||ped.producto))return false;
+    const nu=pyNuDePedido(pr,ped),mx=maxCompraDe(pr,PY_PROB_PISO);if(!mx||mx.motivo||!(nu>0)||!(mx.tc>0))return false;
+    const l=perfLocalPct((nu*RECARGO_PY*(1+(mx.dev||0)/100)+(mx.ship||0))*mx.tc,mx.P);return l!=null&&l>=PERF_LOCAL_GAN;}catch(e){return false;}
+}
 function pyProbVeredicto(ped){
   const pr=(state.products||[]).find(x=>x.id===ped.prodId)||prodByName(ped.producto);
   if(!pr)return{k:'sinrev',txt:'sin ficha'};
@@ -17491,7 +17497,7 @@ function pyProbVeredicto(ped){
   if(nu>mxW+0.005){
     // Perfume que en ML no llega pero en la perfumería del local deja 25%+: da igual (15/10/2026).
     const loc=(esPerfumeNom(pr.name||ped.producto)&&!pr.noLocal)?perfLocalPct((nu*RECARGO_PY*(1+(mx.dev||0)/100)+(mx.ship||0))*mx.tc,mx.P):null;
-    if(loc!=null&&loc>=PERF_LOCAL_GAN)return{k:'da',corto:corto+` · 🏪 local ${Math.round(loc)}%`,txt:`en ML no llega (máx US$ ${mxW.toFixed(2)}), pero en la perfumería del local deja ${Math.round(loc)}%`};
+    if(loc!=null&&loc>=PERF_LOCAL_GAN)return{k:'da',via:'local',corto:corto+` · 🏪 local ${Math.round(loc)}%`,txt:`en ML no llega (máx US$ ${mxW.toFixed(2)}), pero en la perfumería del local deja ${Math.round(loc)}%`};
     return{k:'noda',corto,txt:`Nissei US$ ${nu.toFixed(2)}${pedTxt} · máx para ${PY_PROB_PISO}%: US$ ${mxW.toFixed(2)}${fullTxt}`};}
   return{k:'da',corto,txt:`Nissei US$ ${nu.toFixed(2)} · máx US$ ${mxW.toFixed(2)} · mirado hace ${dias} d${fullTxt}`};
 }
@@ -17937,7 +17943,13 @@ function renderPedidos(){
     // PARAGUAY · PROBADOS: arriba sólo lo que DA (precio de Nissei de esta semana y al 20%); lo demás abajo,
     // en un desplegable, con el motivo (ver pyProbVeredicto).
     const G={da:[],noda:[],notiene:[],sinrev:[]};
-    peds.slice().sort(_pedSortFnRiesgo).forEach(p=>{const v=pyProbVeredicto(p);G[v.k].push({p,v});});
+    // "VENDER EN" (18/10/2026, él: "poner el filtro de perfumería, ML, todos arriba, en general para probados y nuevos"):
+    // en Probados filtra lo que da arriba: ML = da en ML (no sólo por el local) · Perfumería = el local deja 25%+.
+    let _ocultosF=0;
+    peds.slice().sort(_pedSortFnRiesgo).forEach(p=>{const v=pyProbVeredicto(p);
+      if(v.k==='da'&&_candFiltro!=='todos'){const ml=v.via!=='local',lo=pyProbLocalOk(p);
+        const ok=_candFiltro==='ml'?ml:_candFiltro==='local'?lo:(ml&&lo);if(!ok){_ocultosF++;return;}}
+      G[v.k].push({p,v});});
     // SIMPLE A LA VISTA, EL DETALLE ADENTRO (06/10/2026, él: "lo quiero más simple, el detalle al abrir el
     // detalle en el producto"). Arriba de la tarjeta sólo el veredicto y en cuánto queda; el renglón largo
     // (precio de Nissei, máximo, Full, cuotas) va adentro de la tarjeta, al lado del máximo de compra.
@@ -17949,7 +17961,8 @@ function renderPedidos(){
     const grupo=(t,arr,col)=>arr.length?`<div style="font-size:.76rem;font-weight:700;color:${col};margin:12px 0 6px">${t} (${arr.length})</div>`+arr.map(card).join(''):'';
     const resto=G.noda.length+G.notiene.length+G.sinrev.length;
     el.innerHTML=''
-      +(G.da.length?G.da.map(card).join(''):`<div class="empty-msg">Todavía ninguno confirmado: falta revisar los precios de ${pyProvNom()}.</div>`)
+      +(G.da.length?G.da.map(card).join(''):`<div class="empty-msg">${_ocultosF?'Ninguno con este filtro.':'Todavía ninguno confirmado: falta revisar los precios de '+pyProvNom()+'.'}</div>`)
+      +(_ocultosF?`<div style="font-size:.64rem;color:var(--muted);margin:6px 0">${_ocultosF} que dan quedan ocultos por el filtro "Vender en".</div>`:'')
       +(resto?`<details style="margin-top:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px"><summary style="cursor:pointer;font-size:.82rem;font-weight:700">⬇️ No da, no hay o falta revisar (${resto})</summary>
         ${grupo('❔ Falta revisar el precio en '+pyProvNom(),G.sinrev,'var(--amber)')}${grupo('🔴 No da el precio',G.noda,'var(--red)')}${grupo('⚪ '+pyProvNom()+' no lo tiene',G.notiene,'var(--muted)')}</details>`:'');
   }
@@ -17974,7 +17987,7 @@ function renderPedidos(){
       ${_tab('probados','✅ Productos probados','Lo que YA vendés: cuánto hay que reponer para no quedarte sin stock, y lo que dejó de convenir al precio de Paraguay de hoy.')}
       ${_tab('nuevos','🆕 Productos nuevos','Lo que todavía NO vendés: los candidatos que trae el chat de Paraguay y el armado de ese pedido.')}
       ${_tab('hechos',`🧾 Pedido${(()=>{const n=pyArmadoFilas().length+pedNuevos(candList().filter(candEnArmado).filter(c=>candEnPedido(c)!=='viajando')).filas.length;return n?' ('+n+' cargados)':'';})()}`,'El pedido del momento (probados + nuevos juntos, con el mensaje para Nissei) y abajo los pedidos ya hechos: en camino y llegados.')}
-    </div>`+(pyVista!=='hechos'?`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:-4px 0 12px"><span style="font-size:.66rem;color:var(--muted)">Mostrar:</span>${[['todos','Todo'],['perf','🧴 Perfumes, belleza y salud'],['resto','📦 Resto']].map(([v,t])=>`<button class="btn" style="font-size:.64rem;padding:4px 11px;${_pyRubro===v?'background:#7c3aed;color:#fff;border-color:#7c3aed;font-weight:700':''}" onclick="pySetRubro('${v}')">${t}</button>`).join('')}</div>`:'');
+    </div>`+(pyVista!=='hechos'?`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:-4px 0 12px"><span style="font-size:.66rem;color:var(--muted)">Mostrar:</span>${[['todos','Todo'],['perf','🧴 Perfumes, belleza y salud'],['resto','📦 Resto']].map(([v,t])=>`<button class="btn" style="font-size:.64rem;padding:4px 11px;${_pyRubro===v?'background:#7c3aed;color:#fff;border-color:#7c3aed;font-weight:700':''}" onclick="pySetRubro('${v}')">${t}</button>`).join('')}</div><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:-6px 0 12px"><span style="font-size:.66rem;color:var(--muted)">Vender en:</span>${[['todos','Todo'],['ml','🛒 ML'],['local','🏪 Perfumería'],['ambos','✅ Los dos']].map(([v,t])=>`<button class="btn" style="font-size:.64rem;padding:4px 11px;${_candFiltro===v?'background:#7c3aed;color:#fff;border-color:#7c3aed;font-weight:700':''}" onclick="candFiltrar('${v}')">${t}</button>`).join('')}</div>`:'');
     // PROBADOS = IDÉNTICO A BS AS (01/10/2026, pedido suyo): sólo la lista de pedidos, sin canasta ni precios.
     el.innerHTML=_tabs+(pyVista==='nuevos'?candidatosHTML():pyVista==='ambos'?el.innerHTML+candidatosHTML():pyVista==='hechos'?pedidoMomentoHTML()+`<div style="font-size:.85rem;font-weight:800;margin:10px 0 10px">Pedidos hechos <span style="color:var(--muted);font-weight:400">· ${pyCompras().length}</span></div>`+pyHechosHTML():el.innerHTML);
     if(window._pycatQ&&pyVista!=='probados'&&pyVista!=='hechos')setTimeout(()=>pycatBuscar(window._pycatQ),0);   // el buscador conserva lo buscado al redibujar
