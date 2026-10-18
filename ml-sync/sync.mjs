@@ -19290,7 +19290,7 @@ async function main() {
         const cat = (await db.get('mlapi/listas/' + k)) || {}; const rec = Number(pv.rec) || 0;
         for (const [cod, e] of Object.entries(cat)) { if (!e || e.noEs || e.vend != null || !(e.m != null && Number(e.m) >= 25 && e.mi)) continue;
           const est = (e.ok || (!e.rp && Number(e.m) < 80)) ? 'DA' : 'REVISAR';
-          console.log([k, cod, e.n, Math.round((Number(e.p) || 0) * (1 + rec / 100)), e.mi, String(e.mt || '').slice(0, 80), e.mp || '', Math.round(e.m) + '%', est].join('|')); tot++; } }
+          console.log([k, cod, String(e.n).replace(/\|/g, '/'), Math.round((Number(e.p) || 0) * (1 + rec / 100)), e.mi, String(e.mt || '').replace(/\|/g, '/').slice(0, 80), e.mp || '', Math.round(e.m) + '%', est].join('|')); tot++; } }
       console.log('@@FIN'); console.log(`${tot} productos para mirar (los que ya tienen ventas cargadas no salen).`); return;
     }
     // BILLING_PROBE=listadato:<prov>;<cód>=<vendidas>[,ok|,no][,mi=<MLA catálogo>];…[;go] → lo que trae el chat de compras de ML.
