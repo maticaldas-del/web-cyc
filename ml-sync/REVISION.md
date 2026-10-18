@@ -1435,6 +1435,14 @@ toda publicación activa, no `fulfillment`, con unidades, se pausa (PUT + relect
 Claude) y con `activarfull:go`. Sin `noAutoActivar`: al llegar a Full se activa como cualquier pausada con stock. Marca
 `mllinks/<MLA>/pausaFueraFull`. Chequear: que no pause publicaciones de Full sin stock (filtro `available_quantity>0` y logistic ≠ fulfillment).
 
+### 18/10/2026 · v24.35 · 7 listas nuevas y "🔎 Para revisar" (etapa 3)
+Cargadas con `lista:` (costo con IVA por unidad): Cadam/Estrella (unitario c/IVA) · Qsoft (precio nuevo s/IVA ×1,21) · Unilever (precio
+final) · Saint Julien (U/c IVA) · Rofina/lista 58 (precio al canal ×1,21) · Iscos (todas las hojas, ×1,21; fuera MAYBELLINE 2018, COTY,
+MERCLIN 2023, PREAL, COVID, PEDIDO, y lo de menos de $1.000) · Dai Nippon L1309 (CTDO c/IVA; la columna OFERTA es del salón y no se usa).
+Las promos del PDF de Estrella y las del salón de Dai Nippon no se cargaron (son del salón o vencen el 30-31/10).
+Saint Julien dio 50 "dan" falsos (ML emparejaba con otro producto cuando faltaba el aroma). La web ahora: ✅ Dan = 25% a 80% sin `rp`;
+🔎 Para revisar = 25%+ con `rp` o 80%+ (sin casilla). **Chequear:** que lo de "Dan" sea de verdad el mismo producto (mirar la foto).
+
 ### 18/10/2026 · lista Godrej (solares Villeneuve) · medida y descartada (etapa 3)
 21 productos, costo = "P. Neto S/IVA" (con el 9% de pie de factura) × 1,21. La lista dice "VN": cargada como "Villeneuve" (con "VN"
 ML emparejaba con Dermaglós y Bagóvit). `lista:` ahora borra la medición cuando cambia el nombre (se vuelve a medir) y `listamedir`

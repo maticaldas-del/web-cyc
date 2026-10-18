@@ -2662,7 +2662,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.34';
+const APP_VERSION='24.35';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2673,6 +2673,7 @@ const APP_VERSION='24.34';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.35',f:'18/10/2026',h:'23:12',c:[{n:2,t:'📋 Listas → Nuevos: arriba sólo lo que da 25% a 80% en ML y con el mismo nombre. Lo que da 80% o más, o donde ML no nombra alguna palabra (el aroma, la marca), va a "🔎 Para revisar con los ojos", sin casilla: casi siempre es otro producto.'}]},
   {v:'24.34',f:'18/10/2026',h:'22:26',c:[{n:2,t:'📦 Pedidos queda en este orden: 🇦🇷 Bs As · 🇵🇾 Paraguay · 🧴 Paulvic · 📋 Listas.'},{n:2,t:'📋 Listas funciona como Paraguay: arriba el proveedor y tres solapas — ✅ Probados (lo que ya le compraste), 🆕 Nuevos (lo de su lista que da 25% o más en ML, con la casilla de unidades) y 🧾 Pedido (mensaje con código y unidades, Ya lo pedí, y al llegar crea las fichas).'},{n:1,t:'📋 Listas es sólo para ML: se fue la carpeta Lista precio negocio y el % de la perfumería del local.'}]},
   {v:'24.33',f:'18/10/2026',h:'22:20',c:[{n:1,t:'📋 Pedidos → Listas: carpeta "📁 Lista precio negocio" con los proveedores de la perfumería del local (el primero, Wels). Ahí se ve el % del local en todos los productos, no sólo en perfumes.'}]},
   {v:'24.32',f:'18/10/2026',h:'21:50',c:[{n:1,t:'Sale de más el cartel "⚠️ No se guardó: Attempt to get records from database…". Era el iPhone reabriendo el guardado de la sesión al volver a la app, no un dato de CYC sin guardar. Ya no aparece.'}]},
@@ -14213,6 +14214,7 @@ function pyHechosHTML(){
   const camino=todas.filter(c=>c.estado==='camino'), resto=todas.filter(c=>c.estado!=='camino');
   const tarjeta=(c,enCamino)=>pyPedidoTarjeta(c,enCamino);
   return `${camino.length?`<div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:4px 0 8px">En camino · ${camino.length}</div>${camino.map(c=>tarjeta(c,true)).join('')}`:''}
+    ${revis.length?`<details style="margin-top:14px;background:var(--surface);border:1px solid var(--amber);border-radius:var(--r);padding:10px 12px"><summary style="cursor:pointer;font-size:.82rem;font-weight:700;color:var(--amber)">🔎 Para revisar con los ojos (${revis.length}) <span style="font-weight:400;color:var(--muted);font-size:.66rem">— darían 25%+, pero ML no nombra alguna palabra (⚠️) o da 80% o más: casi siempre es OTRO producto</span></summary><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${revis.slice(0,150).map(f=>fila(f,false)).join('')}</div></details>`:''}
     ${resto.length?`<details style="margin-top:14px"><summary style="cursor:pointer;list-style:none;font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Ya llegaron · ${resto.length} <span style="font-weight:400">▾</span></summary>${resto.map(c=>tarjeta(c,false)).join('')}</details>`:''}
 `;
 }
@@ -17783,7 +17785,11 @@ let _listaVista=(()=>{try{const v=localStorage.getItem('cycListaVista');return [
 function listaSetVista(v){_listaVista=v;try{localStorage.setItem('cycListaVista',v);}catch(e){}renderListas();}
 function _listaRec(k){const v=((state.mlconfig&&state.mlconfig.listasProv)||{})[k]||{};return Number(v.rec)||0;}
 function _listaPuesto(k,e){return Math.round((Number(e&&e.p)||0)*(1+_listaRec(k)/100));}
-function _listaDa(e){return e&&e.m!=null&&isFinite(e.m)&&Number(e.m)>=25&&/^https:\/\//.test(e.mf||'');}
+// DA = 25% a 80% en ML, con la foto de ML y SIN reparo de nombre (18/10/2026). Con Saint Julien ML emparejaba "Body Lotion Geisha"
+// con un set de Cher o con un Angel de $425.000 (faltaba el aroma = `rp`) y daba 600%: eso va a "🔎 Para revisar", sin casilla.
+function _listaMed25(e){return e&&e.m!=null&&isFinite(e.m)&&Number(e.m)>=25&&/^https:\/\//.test(e.mf||'');}
+function _listaDa(e){return _listaMed25(e)&&!e.rp&&Number(e.m)<80;}
+function _listaRevisar(e){return _listaMed25(e)&&!_listaDa(e);}
 function _listaArmado(k){return Object.entries(((state.listaPed||{})[k])||{}).map(([cod,u])=>({cod,u:parseInt(u)||0})).filter(x=>x.u>0);}
 function _listaViajando(k){const s=new Set();Object.values(state.comprasLista||{}).forEach(c=>{if(c&&c.prov===k&&c.estado==='camino')(c.items||[]).forEach(it=>s.add(String(it.cod)));});return s;}
 async function listaSetU(k,cod,val){
@@ -17894,7 +17900,8 @@ async function renderListas(){
   // ── NUEVOS ── sólo ML: arriba lo que da 25%+ (medido y con la foto de ML); abajo el resto y el buscador.
   const nuevos=filas.filter(([cod])=>!yaFicha.has(String(cod)));
   const dan=nuevos.filter(([,e])=>_listaDa(e)).sort(ord);
-  const resto=nuevos.filter(([,e])=>!_listaDa(e)).sort(ord);
+  const revis=nuevos.filter(([,e])=>_listaRevisar(e)).sort(ord);
+  const resto=nuevos.filter(([,e])=>!_listaMed25(e)).sort(ord);
   const med=filas.filter(([,e])=>e.m!=null).length, sinMed=filas.filter(([,e])=>e.m==null&&!e.sc&&!e.sv&&!e.fz).length;
   const q=_listaQ;
   let res=[];if(q.length>=2){const pal=_pycNorm(q).split(/\s+/).filter(Boolean);res=filas.filter(([cod,e])=>{const t=_pycNorm(e.n+' '+cod);return pal.every(w=>t.includes(w));}).sort(ord);}
