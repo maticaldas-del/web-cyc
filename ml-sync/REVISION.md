@@ -1386,3 +1386,9 @@ Se cruzaron las versiones de `APP_CAMBIOS` y los commits del robot desde el 13/1
    en Safari ese largo no coincide y la línea quedaba cortada (en la captura, a las ~13 h con el punto a las ~19 h). Se sacó
    `pathLength` y el trazo usa 4000. El número (−53%) estaba bien: compara el punto de ahora contra la punteada a la misma hora.
  · Qué chequear: en el teléfono la línea de color llega hasta el punto.
+### Etapa 7 · 18/10/2026 · Paraguay en el celu: tarjeta mínima (v24.27)
+ · Qué: él, con captura: *"no se entiende nada en el celu. minimizá todo a lo mínimo. el resto a detalles"*. En ≤640px las tarjetas de
+   Nuevos (`candidatosPyHTML`) y Probados (tarjeta de pedido PY) muestran sólo: foto chica, nombre en 2 renglones (`cand-nom`), una línea
+   (`cand-cel`: precio puesto · vendidas en Nuevos; comprar N u. · pesos en Probados), pedir y el %. Código, US$ y el % del local
+   (`cand-sub`, `cand-loc`) se esconden y aparecen arriba del detalle (`cand-solocel`). En la PC no cambia.
+ · Qué chequear: al agregar algo a la fila de arriba de estas tarjetas, decidir si va en el celu o al detalle.

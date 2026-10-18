@@ -479,6 +479,17 @@ input.qty:focus{border-color:var(--accent2)}
 .caja-vis{margin-top:8px;cursor:pointer}
 .ped-card[open] .cer-vis .cv-t,.cer-vis.abierta .cv-t{-webkit-line-clamp:unset;display:block}
 .ped-head{flex-wrap:wrap}
+/* Paraguay en el celu (18/10/2026, él: "minimizá todo a lo mínimo, el resto a detalles"): foto, nombre en 2 renglones, precio puesto · vendidas, el % y pedir. Código, US$ y el % del local van adentro de "detalle". */
+.cand-cel,.cand-solocel{display:none}
+@media (max-width:640px){
+  .cand-sum{gap:8px!important}
+  .cand-sum .cand-foto{width:44px!important;height:44px!important}
+  .cand-sum .cand-nom{font-size:.74rem!important;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .cand-sum .cand-sub,.cand-sum .cand-loc{display:none!important}
+  .cand-sum .cand-cel{display:block}
+  .cand-solocel{display:block}
+  .cand-sum .cand-der{flex-direction:column;align-items:flex-end!important;gap:4px!important;flex-wrap:nowrap!important}
+}
 .hoy-sp{margin-top:12px}.hoy-sp svg{width:100%;height:54px;display:block;overflow:visible}
 .hoy-sp .sp-b{fill:none;stroke:var(--muted);stroke-width:1.4;stroke-dasharray:3 3;vector-effect:non-scaling-stroke;opacity:.8}
 .hoy-sp .sp-a{fill:none;stroke:var(--c,var(--green));stroke-width:2.4;vector-effect:non-scaling-stroke;stroke-linejoin:round}
@@ -2645,7 +2656,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.26';
+const APP_VERSION='24.27';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2656,6 +2667,7 @@ const APP_VERSION='24.26';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.27',f:'18/10/2026',h:'21:06',c:[{n:1,t:'🇵🇾 Paraguay en el celu (Nuevos y Probados): cada producto en una tarjeta chica (foto, nombre en 2 renglones, precio puesto y vendidas, el % y pedir). El código, los dólares y el % del local van adentro de "detalle".'}]},
   {v:'24.26',f:'17/10/2026',h:'19:46',c:[{n:1,t:'📈 Ventas de hoy: la línea de hoy en el gráfico contra la semana pasada se cortaba a mitad de camino en el celular. Ahora llega hasta el punto de la hora actual.'}]},
   {v:'24.25',f:'17/10/2026',h:'18:34',c:[{n:3,t:'🧾 Meses cerrados: cada cierre desde mayo lleva la deuda con ARCA que tenía a esa fecha (como si se hubiera pagado H). El patrimonio de cada mes baja lo que corresponde y la comparación mes a mes sigue pareja.'}]},
   {v:'24.24',f:'17/10/2026',h:'18:09',c:[{n:3,t:'🔍 ¿Cierra el mes?: la deuda con ARCA de los meses anteriores ya no se le cobra a octubre. Es un ajuste de una sola vez; el mes sólo carga con lo que H suma ese mes (que la ganancia ya descuenta). Cada cierre guarda la deuda que tenía adentro.'}]},
@@ -14860,20 +14872,23 @@ function candidatosHTML(){
     const fotoBox=(u,lbl)=>u?`<div style="text-align:center;font-size:.66rem;color:var(--muted)"><img src="${u}" loading="lazy" onclick="event.stopPropagation();_mostrarLightbox('${u}',${_tq})" onerror="this.style.display='none'" style="width:150px;height:150px;object-fit:contain;background:#fff;border-radius:8px;display:block;cursor:zoom-in">${lbl}</div>`
       :`<div style="width:150px;height:150px;border:1px dashed var(--border);border-radius:8px;font-size:.66rem;color:var(--muted);display:flex;align-items:center;justify-content:center;text-align:center">${lbl}<br>sin foto</div>`;
     return `<details class="ingreso-item" style="display:block;border-left:3px solid ${col}"${_candAbiertos.has(c.id)?' open':''} ontoggle="candToggle('${c.id}',this.open)">
-      <summary style="list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px">
-        ${fotoMini?`<img src="${fotoMini}" loading="lazy" onclick="event.preventDefault();event.stopPropagation();_mostrarLightbox('${fotoMini}',${_tq})" onerror="this.style.visibility='hidden'" style="width:56px;height:56px;object-fit:contain;background:#fff;border-radius:8px;flex:0 0 auto;cursor:zoom-in">`
+      <summary class="cand-sum" style="list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px">
+        ${fotoMini?`<img src="${fotoMini}" loading="lazy" onclick="event.preventDefault();event.stopPropagation();_mostrarLightbox('${fotoMini}',${_tq})" onerror="this.style.visibility='hidden'" class="cand-foto" style="width:56px;height:56px;object-fit:contain;background:#fff;border-radius:8px;flex:0 0 auto;cursor:zoom-in">`
           :`<div style="width:56px;height:56px;border:1px dashed var(--border);border-radius:8px;flex:0 0 auto;font-size:.55rem;color:var(--muted);display:flex;align-items:center;justify-content:center">sin foto</div>`}
         <div style="flex:1;min-width:0">
-          <div style="font-size:.8rem;font-weight:600;line-height:1.3">${c.nombre}</div>
-          <div style="font-size:.68rem;color:var(--muted);margin-top:3px">${c.cod?`🔖 ${c.cod} · `:''}${usd>0?`US$ ${usd.toFixed(2)} → <b style="color:var(--text)">US$ ${puesto.toFixed(2)}</b> puesto${pesos?` · ${fmt(pesos)}`:''}`:'<span style="color:var(--red)">sin precio</span>'}${(()=>{const _v=candVentasDe(c);return _v!=null?` · <b style="color:${_v>=CAND_MIN_VENT?'var(--green)':'var(--amber)'}">🛒 ${_v>=1000?'+1000':_v} vendidas</b>`:' · <span style="color:var(--amber)">🛒 sin dato de ventas</span>';})()}</div>
+          <div class="cand-nom" style="font-size:.8rem;font-weight:600;line-height:1.3">${c.nombre}</div>
+          <div class="cand-cel" style="font-size:.66rem;color:var(--muted);margin-top:2px">${pesos?fmt(pesos):usd>0?'US$ '+puesto.toFixed(2):'sin precio'}${(()=>{const _v=candVentasDe(c);return _v!=null?` · ${_v>=1000?'+1000':_v} vend.`:'';})()}</div>
+          <div class="cand-sub" style="font-size:.68rem;color:var(--muted);margin-top:3px">${c.cod?`🔖 ${c.cod} · `:''}${usd>0?`US$ ${usd.toFixed(2)} → <b style="color:var(--text)">US$ ${puesto.toFixed(2)}</b> puesto${pesos?` · ${fmt(pesos)}`:''}`:'<span style="color:var(--red)">sin precio</span>'}${(()=>{const _v=candVentasDe(c);return _v!=null?` · <b style="color:${_v>=CAND_MIN_VENT?'var(--green)':'var(--amber)'}">🛒 ${_v>=1000?'+1000':_v} vendidas</b>`:' · <span style="color:var(--amber)">🛒 sin dato de ventas</span>';})()}</div>
         </div>
-        <div style="display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap;flex:0 1 auto">
-          ${tieneCuenta&&_loc!=null?`<div>${perfLocalHTML(_loc)}${perfNoLocalBtn('c',c.id,false)}</div>`:tieneCuenta&&candEsPerf(c)&&c.noLocal?`<div style="font-size:.6rem;color:var(--muted)">🏪 no da en el local${perfNoLocalBtn('c',c.id,true)}</div>`:''}
+        <div class="cand-der" style="display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap;flex:0 1 auto">
+          ${tieneCuenta&&_loc!=null?`<div class="cand-loc">${perfLocalHTML(_loc)}${perfNoLocalBtn('c',c.id,false)}</div>`:tieneCuenta&&candEsPerf(c)&&c.noLocal?`<div class="cand-loc" style="font-size:.6rem;color:var(--muted)">🏪 no da en el local${perfNoLocalBtn('c',c.id,true)}</div>`:''}
           ${(()=>{const Q=candPuedePedir(c),uu=Math.max(0,parseInt(c.pedirU)||0);if(!(Q.ok||Q.bajoPiso)&&!uu)return '';return `<span onclick="event.preventDefault();event.stopPropagation()" style="display:inline-flex;align-items:center;gap:4px;font-size:.66rem;color:${uu>0?'var(--green)':'var(--muted)'}">🧾 pedir <input type="number" min="0" step="1" value="${uu||''}" placeholder="0" onchange="candSetPedir('${c.id}',this.value)" style="width:54px;font-size:.95rem;padding:3px 5px;text-align:center;background:var(--surface2);border:1px solid ${uu>0?'var(--green)':'var(--border)'};border-radius:6px;color:var(--text)"></span>`;})()}
           <div style="text-align:right">${tieneCuenta?`<div style="font-size:1.35rem;font-weight:700;color:${col};line-height:1">${c.margen.toFixed(0)}%${dudas?' <span title="Hay dudas de que sea el mismo producto: abrilo y mirá las dos fotos" style="font-size:.8em">⚠️</span>':''}</div>`:'<div style="font-size:.68rem;color:var(--muted)">⏳ sin medir</div>'}<div style="font-size:.6rem;color:var(--muted);margin-top:3px">detalle ▾</div></div>
         </div>
       </summary>
       <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
+      <div class="cand-solocel" style="font-size:.72rem;color:var(--muted);line-height:1.6">${c.cod?`🔖 ${c.cod} · `:''}${usd>0?`US$ ${usd.toFixed(2)} → <b style="color:var(--text)">US$ ${puesto.toFixed(2)}</b> puesto${pesos?` · ${fmt(pesos)}`:''}`:'sin precio'}${(()=>{const _v=candVentasDe(c);return _v!=null?` · 🛒 ${_v>=1000?'+1000':_v} vendidas`:' · 🛒 sin dato de ventas';})()}
+        ${tieneCuenta&&_loc!=null?`<div style="margin-top:4px">${perfLocalHTML(_loc)}${perfNoLocalBtn('c',c.id,false)}</div>`:tieneCuenta&&candEsPerf(c)&&c.noLocal?`<div style="margin-top:4px">🏪 no da en el local${perfNoLocalBtn('c',c.id,true)}</div>`:''}</div>
       <div style="display:flex;gap:10px;flex-wrap:wrap">${fotoBox(RP.fotoPY,'🇵🇾 Paraguay')}${fotoBox(RP.fotoML,'🏷️ ML')}</div>
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:.72rem" onclick="event.stopPropagation()">🛒 Vendidas en ML (mirá la publicación más barata):
         <input type="number" min="0" step="1" inputmode="numeric" value="${c.vendCarga!=null&&isFinite(c.vendCarga)?Number(c.vendCarga):''}" placeholder="ej. 150" style="width:90px;font-size:16px;padding:3px 6px" onchange="candSetVend('${c.id}',this.value)">
@@ -17621,20 +17636,22 @@ function _pedidoItemHtml(p,opts){
   const _ft=fotoDeProducto(_prod,p.variante||''), _fu=_ft&&_ft.url;
   const _tq=JSON.stringify(String(p.producto||'')).replace(/"/g,'&quot;');
   return `<details class="ingreso-item" style="display:block;border-left:3px solid ${_colP};margin-bottom:8px"${_abierto?' open':''} ontoggle="_setPedCardOpen('${p.id}',this.open)">
-    <summary style="list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px">
-      ${_fu?`<img src="${_fu}" loading="lazy" onclick="event.preventDefault();event.stopPropagation();_mostrarLightbox('${_fu}',${_tq})" onerror="this.style.visibility='hidden'" style="width:56px;height:56px;object-fit:contain;background:#fff;border-radius:8px;flex:0 0 auto;cursor:zoom-in">`
+    <summary class="cand-sum" style="list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px">
+      ${_fu?`<img src="${_fu}" loading="lazy" onclick="event.preventDefault();event.stopPropagation();_mostrarLightbox('${_fu}',${_tq})" onerror="this.style.visibility='hidden'" class="cand-foto" style="width:56px;height:56px;object-fit:contain;background:#fff;border-radius:8px;flex:0 0 auto;cursor:zoom-in">`
         :`<div style="width:56px;height:56px;border:1px dashed var(--border);border-radius:8px;flex:0 0 auto;font-size:.55rem;color:var(--muted);display:flex;align-items:center;justify-content:center">sin foto</div>`}
       <div style="flex:1;min-width:0">
-        <div style="font-size:.8rem;font-weight:600;line-height:1.3">${p.producto||'—'}${p.variante?` <span style="color:#a78bfa;font-size:.7rem">· ${p.variante}</span>`:''}</div>
-        <div style="font-size:.68rem;color:var(--muted);margin-top:3px">${_prod.codPy?`🔖 ${_prod.codPy} · `:'<span style="color:var(--amber)">🔖 sin código</span> · '}${_nu>0?`US$ ${_nu.toFixed(2)} → <b style="color:var(--text)">US$ ${_pu.toFixed(2)}</b> puesto${_ps?` · ${fmt(_ps)}`:''}`:'<span style="color:var(--red)">sin precio de Paraguay</span>'}${p.cVend!=null?` · <b style="color:var(--green)">🛒 vendiste ${fmtN(p.cVend)}${p.cDias?` en ${p.cDias} d`:''}</b>`:''}</div>
+        <div class="cand-nom" style="font-size:.8rem;font-weight:600;line-height:1.3">${p.producto||'—'}${p.variante?` <span style="color:#a78bfa;font-size:.7rem">· ${p.variante}</span>`:''}</div>
+        <div class="cand-cel" style="font-size:.66rem;color:var(--muted);margin-top:2px">comprar <b style="color:var(--text)">${fmtN(p.cantidad||0)}</b> u.${_ps?` · ${fmt(_ps)}`:''}</div>
+        <div class="cand-sub" style="font-size:.68rem;color:var(--muted);margin-top:3px">${_prod.codPy?`🔖 ${_prod.codPy} · `:'<span style="color:var(--amber)">🔖 sin código</span> · '}${_nu>0?`US$ ${_nu.toFixed(2)} → <b style="color:var(--text)">US$ ${_pu.toFixed(2)}</b> puesto${_ps?` · ${fmt(_ps)}`:''}`:'<span style="color:var(--red)">sin precio de Paraguay</span>'}${p.cVend!=null?` · <b style="color:var(--green)">🛒 vendiste ${fmtN(p.cVend)}${p.cDias?` en ${p.cDias} d`:''}</b>`:''}</div>
       </div>
-      <div style="display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap;flex:0 1 auto">
-        ${_locP!=null?`<div>${perfLocalHTML(_locP)}${perfNoLocalBtn('p',_prod.id,false)}</div>`:_esPerfP&&_prod.noLocal?`<div style="font-size:.6rem;color:var(--muted)">🏪 no da en el local${perfNoLocalBtn('p',_prod.id,true)}</div>`:''}
-        <div style="font-size:.8rem;color:var(--text);white-space:nowrap">comprar <b style="font-size:1.15rem">${fmtN(p.cantidad||0)}</b> u.</div>
+      <div class="cand-der" style="display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap;flex:0 1 auto">
+        ${_locP!=null?`<div class="cand-loc">${perfLocalHTML(_locP)}${perfNoLocalBtn('p',_prod.id,false)}</div>`:_esPerfP&&_prod.noLocal?`<div class="cand-loc" style="font-size:.6rem;color:var(--muted)">🏪 no da en el local${perfNoLocalBtn('p',_prod.id,true)}</div>`:''}
+        <div class="cand-sub" style="font-size:.8rem;color:var(--text);white-space:nowrap">comprar <b style="font-size:1.15rem">${fmtN(p.cantidad||0)}</b> u.</div>
         ${_armU!=null?`<span onclick="event.preventDefault();event.stopPropagation()" style="display:inline-flex;align-items:center;gap:4px;font-size:.66rem;color:${_armU>0?'var(--green)':'var(--muted)'}">🧾 pedir <input type="number" min="0" step="1" value="${_armU||''}" placeholder="0" onchange="pyArmSet('${_prod.id}',this.value)" style="width:54px;font-size:.95rem;padding:3px 5px;text-align:center;background:var(--surface2);border:1px solid ${_armU>0?'var(--green)':'var(--border)'};border-radius:6px;color:var(--text)"></span>`:''}
         <div style="text-align:right">${_mgP!=null?`<div style="font-size:1.35rem;font-weight:700;color:${_colP};line-height:1">${Math.round(_mgP)}%</div>`:'<div style="font-size:.68rem;color:var(--amber)">sin medir</div>'}<div style="font-size:.6rem;color:var(--muted);margin-top:3px">detalle ▾</div></div>
       </div>
     </summary>
+    <div class="cand-solocel" style="font-size:.72rem;color:var(--muted);line-height:1.6;margin-top:10px">${_prod.codPy?`🔖 ${_prod.codPy} · `:'🔖 sin código · '}${_nu>0?`US$ ${_nu.toFixed(2)} → <b style="color:var(--text)">US$ ${_pu.toFixed(2)}</b> puesto${_ps?` · ${fmt(_ps)}`:''}`:'sin precio de Paraguay'}${_locP!=null?`<div style="margin-top:4px">${perfLocalHTML(_locP)}${perfNoLocalBtn('p',_prod.id,false)}</div>`:_esPerfP&&_prod.noLocal?`<div style="margin-top:4px">🏪 no da en el local${perfNoLocalBtn('p',_prod.id,true)}</div>`:''}</div>
     <div style="margin-top:10px">${_pyVis?`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:8px 10px;margin-bottom:8px;background:var(--surface);border:1px solid var(--border);border-radius:10px">${_pyVis}</div>`:''}${_armHTML?_card.slice(0,-_armHTML.length):_card}</div>
   </details>`;
 }
