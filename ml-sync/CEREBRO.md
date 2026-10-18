@@ -424,3 +424,6 @@ plata parada 2%/mes + ventas perdidas): si deja más que seguir igual, GANÓ, au
 25% es el costo del error de origen (mandar o comprar de más) y se anota a ESA causa, no al precio.
 
 **Etiqueta (18/10, pedido suyo):** lo que se baja por eso va con 📦 `sobra` (sobra stock), nunca 🎯 base: base es sólo 25%+ sin otra estrategia.
+
+## 🛒 EL % DE UN PRODUCTO NO SE MIDE CON CARRITOS (18/10/2026, regla suya)
+Él: *"no podés subir el % de un producto, por venderse con otro. se tiene que poner siempre el % de ese producto. no por venta"*. En un carrito ML cobra el cargo fijo una vez y el neto se reparte, así que cada producto se ve más rentable. Para juzgar un producto (precio, techo, pedido) se usa lo que deja vendido SOLO; el ahorro del carrito no es mérito del producto. En la web: `netoProductoVP` (línea de tiempo y ranking).

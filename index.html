@@ -2664,7 +2664,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.58';
+const APP_VERSION='24.59';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2675,6 +2675,7 @@ const APP_VERSION='24.58';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.59',f:'18/10/2026',h:'20:45',c:[{n:2,t:'El % de un producto ya no sube por venderse en carrito con otros: en la línea de tiempo y en el ranking por producto, un carrito cuenta con lo que habría dejado ese producto vendido solo (ML cobra el cargo fijo una vez por compra, y eso no es mérito del producto). La plata total del día y del mes no cambia.'}]},
   {v:'24.58',f:'18/10/2026',h:'19:15',c:[{n:1,t:'Ventas x Producto (PC): todas las ventas del mismo alto. Arriba, una sola línea (la promo se resume en "🏷️ promo"; el texto entero está en el detalle). Cada producto, en una sola línea: lo que no entra se corta con "…" y los botones 🧠/📈 quedan siempre a la derecha.'}]},
   {v:'24.57',f:'18/10/2026',h:'19:50',c:[{n:2,t:'Métricas: línea punteada y tenue con la proyección de a cuánto termina el mes, al ritmo promedio por día de lo que va (sin contar hoy, que está a medias, ni el retiro y los gastos, que ya salieron el día 1). Sale en la vista general con una sola métrica.'}]},
   {v:'24.56',f:'18/10/2026',h:'19:30',c:[{n:1,t:'Métricas: cuando el día o el anterior están en negativo, la diferencia ya no muestra un % (sobre un número negativo engaña: "+45%" era perder menos, no ganar más). Dice la plata y si vas mejor o peor.'}]},
@@ -9654,7 +9655,7 @@ function lineaPintar(prodId){
   // La GANANCIA de cada día sale de las ventas del panel con la MISMA cuenta que Ventas e Inicio
   // (efectivoCostoVP, gestDivVP, pctGananciaVP), no de la línea del robot: así no puede decir otro número.
   const gd={}; for(const k of ks){const ents=Object.values((state.ventaprod||{})[k]||{}).filter(v=>v&&!v.cancelada&&(prodDeVenta(v)||{}).id===prodId&&_vOk(v)).map(v=>({...v,_dateKey:k}));
-    if(!ents.length)continue;let neto=0,costo=0,gest=0,q=0,mer=0,imp=0,tot=0;ents.forEach(v=>{neto+=v.neto||0;costo+=efectivoCostoVP(v);gest+=gestDivVP(v);q+=Number(v.qty)||0;
+    if(!ents.length)continue;let neto=0,costo=0,gest=0,q=0,mer=0,imp=0,tot=0;ents.forEach(v=>{neto+=netoProductoVP(v);costo+=efectivoCostoVP(v);gest+=gestDivVP(v);q+=Number(v.qty)||0;
       // Para la LÍNEA del costo va sólo la MERCADERÍA (costo × dólar del mes): el costo de la ganancia trae además
       // IIBB + monotributo como % del precio cobrado, y eso hacía que la línea se moviera con cada venta (03/10/2026).
       const vv={...v,_dateKey:k};const ex=_efectivoCostoVP(vv),im=impuestosDeVenta(vv);mer+=Math.max(0,ex-im);imp+=im;tot+=Number(v.total)||0;});gd[k]={gan:neto-costo,costo,gest,cu:q>0&&mer>0?mer/q:null,ct:q>0&&mer>0?(mer+imp)/q:null,impPct:tot>0?imp/tot*100:null};}
@@ -9664,7 +9665,7 @@ function lineaPintar(prodId){
   // MISMA cuenta (efectivoCostoVP: costo del mes o el de hoy hacia atrás, dólar del mes, IIBB y monotributo), y lo que
   // deposita ML sale de la venta del panel de ESA publicación con el precio más parecido (misma proporción, así el cargo
   // fijo y el envío se parecen). Sin ninguna venta del panel para comparar no se inventa nada. Queda marcado `est`.
-  {const ref={};for(const [k,dd] of Object.entries(state.ventaprod||{}))for(const v of Object.values(dd||{})){if(!v||v.cancelada||!(Number(v.total)>0)||!(Number(v.neto)>0)||v.netoEstimado||(prodDeVenta(v)||{}).id!==prodId||!_vOk(v))continue;
+  {const ref={};for(const [k,dd] of Object.entries(state.ventaprod||{}))for(const v of Object.values(dd||{})){if(!v||v.cancelada||!(Number(v.total)>0)||!(Number(v.neto)>0)||v.netoEstimado||(prodDeVenta(v)||{}).id!==prodId||!_vOk(v)||ventaEnCarritoVP({...v,_dateKey:k}))continue;
       const q=Number(v.qty)||1;(ref[v.mla||'*']=ref[v.mla||'*']||[]).push({pu:Number(v.total)/q,r:Number(v.neto)/Number(v.total)});(ref['*']=ref['*']||[]).push({pu:Number(v.total)/q,r:Number(v.neto)/Number(v.total)});}
     const ratioDe=(mla,pu)=>{const L0=(ref[mla]&&ref[mla].length?ref[mla]:ref['*'])||[];if(!L0.length)return null;let b=null;for(const x of L0)if(!b||Math.abs(Math.log(x.pu/pu))<Math.abs(Math.log(b.pu/pu)))b=x;return b.r;};
     for(const k of ks){if(gd[k])continue;let neto=0,costo=0,gest=0,q=0,mer=0,imp=0,tot=0;
@@ -10801,6 +10802,35 @@ function gestDeVenta(v){
 // descontado y sumarlo a los dos lados lo cobraría dos veces (el error del renglón del 22/09).
 // Lo único que cambia es el DIVISOR del porcentaje. La ganancia en pesos no se mueve ni un peso.
 // Vive en UNA función a propósito: estaba escrito suelto en seis lugares y por eso se separaron.
+// EL % DE UN PRODUCTO NO SUBE POR VENDERSE EN CARRITO (18/10/2026, él: *"no podes subir el % de un producto, por venderse
+// con otro. se tiene que poner siempre el % de ese producto. no por venta"*). En un carrito ML cobra el cargo fijo UNA vez, y el
+// robot reparte el neto de la compra por lo que vale cada producto: unas Cartas Casino de $3.310 quedaban en 141% por ir con
+// otras 3 cartas. En las vistas POR PRODUCTO (línea de tiempo, ranking) el renglón de un carrito usa el neto que habría dejado
+// SOLO: lo cobrado × la proporción neto/precio de una venta suelta de ESA publicación al precio más parecido (si no hay, del
+// producto). Sin ninguna venta suelta con qué comparar, queda el neto repartido. La plata total (Inicio, Ventas, mes) no se toca:
+// el ahorro del carrito es real, sólo que no es mérito del producto.
+let _nsCache=null,_nsSrc=null;
+function _nsPrep(){
+  const src=state.ventaprod||{};if(_nsSrc===src&&_nsCache)return _nsCache;
+  const cart={},ref={};
+  for(const [k,dd] of Object.entries(src)){const cnt={};for(const v of Object.values(dd||{})){if(!v||v.cancelada||!v.numVenta)continue;const c=(v.cuenta||'')+'|'+v.numVenta;cnt[c]=(cnt[c]||0)+1;}
+    for(const [c,n] of Object.entries(cnt))if(n>1)cart[k+'|'+c]=1;}
+  for(const [k,dd] of Object.entries(src))for(const v of Object.values(dd||{})){
+    if(!v||v.cancelada||v.netoEstimado||!(Number(v.total)>0)||!(Number(v.neto)>0))continue;
+    if(v.numVenta&&cart[k+'|'+(v.cuenta||'')+'|'+v.numVenta])continue;
+    const q=Number(v.qty)||1,x={pu:Number(v.total)/q,r:Number(v.neto)/Number(v.total)};
+    if(v.mla)(ref['m:'+v.mla]=ref['m:'+v.mla]||[]).push(x);
+    const pp=prodDeVenta(v);if(pp)(ref['p:'+pp.id]=ref['p:'+pp.id]||[]).push(x);}
+  _nsSrc=src;_nsCache={cart,ref};return _nsCache;
+}
+function ventaEnCarritoVP(v){if(!v||!v.numVenta||!v._dateKey)return false;return !!_nsPrep().cart[v._dateKey+'|'+(v.cuenta||'')+'|'+v.numVenta];}
+function netoProductoVP(v){
+  const n=Number(v&&v.neto)||0;if(!ventaEnCarritoVP(v)||!(Number(v.total)>0))return n;
+  const {ref}=_nsPrep();const pp=prodDeVenta(v);const L=(v.mla&&ref['m:'+v.mla]&&ref['m:'+v.mla].length?ref['m:'+v.mla]:(pp&&ref['p:'+pp.id]))||[];
+  if(!L.length)return n;const pu=Number(v.total)/(Number(v.qty)||1);let b=null;
+  for(const x of L)if(!b||Math.abs(Math.log(x.pu/pu))<Math.abs(Math.log(b.pu/pu)))b=x;
+  return Math.round(Number(v.total)*b.r);
+}
 function pctGananciaVP(ganancia, costoSinGest, gest) {
   const div = (Number(costoSinGest) || 0) + (Number(gest) || 0);
   return div > 0 ? ganancia / div * 100 : null;
@@ -11856,7 +11886,7 @@ function renderVPRanking(){
   vpEntries(sk.keys).filter(ctaFilter).filter(v=>!v.cancelada).forEach(v=>{
     const gk=grpKeyOf(v);
     if(!agg[gk])agg[gk]={total:0,byAcc:{},byVariante:{},neto:0,costo:0,gest:0,prod:nombreDeVenta(v),pid:(prodDeVenta(v)||{}).id||null};
-    agg[gk].total+=v.qty||0;agg[gk].neto+=v.neto||0;agg[gk].costo+=efectivoCostoVP(v);agg[gk].gest+=gestDivVP(v);
+    agg[gk].total+=v.qty||0;agg[gk].neto+=netoProductoVP(v);agg[gk].costo+=efectivoCostoVP(v);agg[gk].gest+=gestDivVP(v);
     agg[gk].byAcc[v.cuenta]=(agg[gk].byAcc[v.cuenta]||0)+(v.qty||0);
     if(v.variante)agg[gk].byVariante[v.variante]=(agg[gk].byVariante[v.variante]||0)+(v.qty||0);
   });
@@ -11865,7 +11895,7 @@ function renderVPRanking(){
   vpEntries(sk.prevKeys||[]).filter(ctaFilter).forEach(v=>{
     const gk=grpKeyOf(v);
     if(!prevAgg[gk])prevAgg[gk]={total:0,neto:0};
-    prevAgg[gk].total+=v.qty||0;prevAgg[gk].neto+=v.neto||0;
+    prevAgg[gk].total+=v.qty||0;prevAgg[gk].neto+=netoProductoVP(v);
   });
   // El score ROI (ganancia²/costo) crece con la cantidad de días del período. Para que el MISMO
   // producto no salte de categoría según mires 1 día o 60, el UMBRAL de cada categoría se adapta al
