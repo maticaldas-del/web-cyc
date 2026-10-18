@@ -2662,7 +2662,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.44';
+const APP_VERSION='24.45';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2673,6 +2673,7 @@ const APP_VERSION='24.44';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.45',f:'18/10/2026',h:'12:35',c:[{n:1,t:'📋 Listas: arriba hay un buscador que busca un producto en TODAS las listas a la vez (por nombre o código), con el proveedor, lo que te sale, el % en ML y para cargar unidades ahí mismo.'}]},
   {v:'24.44',f:'18/10/2026',h:'12:20',c:[{n:1,t:'📋 Listas → 🧾 Pedido: "📋 Copiar pedido" arma el mensaje igual que Paulvic: el nombre tal cual la lista y x unidades, uno por renglón, y al final "SÓLO estos productos: si no hay, no reemplazar por otro".'}]},
   {v:'24.43',f:'18/10/2026',h:'12:05',c:[{n:1,t:'📋 Listas: cada producto tiene "📄 verlo en la lista": muestra el renglón tal cual está en el archivo del proveedor (archivo, hoja, fila y el título de la sección), para ver si dice tester u otra cosa.'}]},
   {v:'24.42',f:'18/10/2026',h:'01:46',c:[{n:2,t:'📋 Listas: cada producto tiene "detalle ▾" con ✕ sacar producto (va a 🗑️ Sacados, de donde se puede volver).'},{n:3,t:'🇵🇾 Paraguay → 🧾 Pedido no se dibujaba desde la 24.35: un bloque de Listas había quedado metido ahí. Arreglado.'}]},
@@ -17815,6 +17816,32 @@ function pedSinDecidirHTML(sec){
 let _listaSel=null,_listaCache={},_listaQ='';
 let _listaVista=(()=>{try{const v=localStorage.getItem('cycListaVista');return ['probados','nuevos','hechos'].includes(v)?v:'nuevos';}catch(e){return 'nuevos';}})();
 function listaSetVista(v){_listaVista=v;try{localStorage.setItem('cycListaVista',v);}catch(e){}renderListas();}
+// BUSCAR EN TODAS LAS LISTAS (18/10/2026, pedido suyo: *"botón para buscar entre productos entre listas"*). Busca por nombre o
+// código en las listas de todos los proveedores a la vez (todas las palabras tienen que estar), y deja cargar unidades ahí mismo.
+let _listaBusqT=null;
+function listaBuscar(q){window._listaQ=q;clearTimeout(_listaBusqT);_listaBusqT=setTimeout(()=>_listaBuscarYa(q),250);}
+async function _listaBuscarYa(q){
+  const out=document.getElementById('lista-busq');if(!out)return;
+  const pal=normTxt(String(q||'')).split(/\s+/).filter(w=>w.length>=2);
+  if(!pal.length){out.innerHTML='';return;}
+  const provs=(state.mlconfig&&state.mlconfig.listasProv)||{};const ks=Object.keys(provs).filter(k=>!provs[k].desc);
+  if(ks.some(k=>!_listaCache[k]))out.innerHTML='<div style="font-size:.7rem;color:var(--muted);padding:6px 2px">⏳ bajando las listas…</div>';
+  await Promise.all(ks.filter(k=>!_listaCache[k]).map(async k=>{try{_listaCache[k]=(await db.ref('mlapi/listas/'+k).once('value')).val()||{};}catch(e){}}));
+  if(window._listaQ!==q)return;
+  const R=[];
+  for(const k of ks){const cat=_listaCache[k]||{};for(const [cod,e] of Object.entries(cat)){if(!e||!e.n||e.sacado)continue;
+    const t=normTxt(e.n+' '+cod);if(pal.every(w=>t.includes(w)))R.push({k,cod,e});}}
+  R.sort((a,b)=>(_listaDa(b.e)-_listaDa(a.e))||((b.e.m??-999)-(a.e.m??-999)));
+  const arm=state.listaPed||{};
+  const fila=({k,cod,e})=>{const m=(e.m!=null&&isFinite(e.m))?Math.round(e.m):null;const c=String(cod).replace(/'/g,"\\'");
+    return `<div style="display:flex;gap:8px;align-items:center;padding:6px 8px;background:var(--surface);border:1px solid ${(arm[k]||{})[cod]>0?'var(--blue)':'var(--border)'};border-radius:8px;margin-top:5px">
+      <div style="flex:1;min-width:0;font-size:.72rem;line-height:1.45"><span style="font-size:.6rem;padding:1px 7px;border-radius:9px;background:#7c3aed;color:#fff">${escHtml(provs[k].nombre||k)}</span> <b>${escHtml(e.n)}</b>
+        <div style="color:var(--muted);font-size:.64rem">🔖 ${escHtml(cod)} · te sale <b style="color:var(--text)">${fmt(_listaPuesto(k,e))}</b>${e.mp?` · en ML ${fmt(e.mp)}`:''}${e.vend!=null?` · 🛒 ${e.vend>=1000?'+1000':e.vend} vendidas`:''}</div>
+        <div style="font-size:.64rem">${e.mi?`<a href="https://www.mercadolibre.com.ar/p/${e.mi}" target="_blank" rel="noopener" style="color:var(--green)">🔗 verlo en ML</a> · `:''}<a href="#" onclick="listaVerOri('${k}','${c}');return false" style="color:var(--blue)">📄 verlo en la lista</a> · <a href="#" onclick="_listaSel='${k}';_listaVista='nuevos';renderListas();return false" style="color:var(--muted)">ir a ${escHtml(provs[k].nombre||k)}</a></div></div>
+      <div style="text-align:right;flex:0 0 auto">${m!=null?`<b style="color:${m>=25?'var(--green)':'var(--red)'}">${m}%</b>`:'<span style="font-size:.6rem;color:var(--muted)">sin medir</span>'}
+        ${_listaDa(e)?`<div style="font-size:.62rem;color:var(--muted)">pedir <input type="number" min="0" inputmode="numeric" value="${(arm[k]||{})[cod]||''}" placeholder="0" onchange="listaSetU('${k}','${c}',this.value)" style="width:48px;padding:2px 4px;font-size:.78rem;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text)"></div>`:''}</div></div>`;};
+  out.innerHTML=`<div style="font-size:.66rem;color:var(--muted);margin-top:6px">${R.length?R.length+' resultado'+(R.length===1?'':'s')+(R.length>60?' · muestro los 60 mejores':''):'Nada en ninguna lista con eso.'}</div>`+R.slice(0,60).map(fila).join('');
+}
 function _listaRec(k){const v=((state.mlconfig&&state.mlconfig.listasProv)||{})[k]||{};return Number(v.rec)||0;}
 function _listaPuesto(k,e){return Math.round((Number(e&&e.p)||0)*(1+_listaRec(k)/100));}
 // DA = 25% a 80% en ML, con la foto de ML y SIN reparo de nombre (18/10/2026). Con Saint Julien ML emparejaba "Body Lotion Geisha"
@@ -17884,6 +17911,7 @@ async function listaLlego(id){
 }
 async function renderListas(){
   const el=document.getElementById('listas-body');if(!el)return;
+  if(window._listaQ)setTimeout(()=>_listaBuscarYa(window._listaQ),60);
   const provs=(state.mlconfig&&state.mlconfig.listasProv)||{};
   const ks=Object.keys(provs).filter(k=>!provs[k].desc).sort((a,b)=>String(provs[a].nombre||a).localeCompare(String(provs[b].nombre||b)));
   if(!ks.length){el.innerHTML=`<div class="empty-msg">Todavía no hay listas. Pasale a Claude la lista de precios del proveedor (foto, PDF o texto): la guarda acá y la mide contra ML.</div>`;return;}
@@ -17900,7 +17928,8 @@ async function renderListas(){
   const _provBtn=x=>`<button class="btn" style="font-size:.72rem;padding:6px 16px;${x===k?'background:#7c3aed;color:#fff;border-color:#7c3aed;font-weight:700':''}" title="✅ cuántos dan 25% o más en ML${provs[x].pend>0?' · ⏳ cuántos falta medir':''} · ${provs[x].n||0} en la lista" onclick="_listaSel='${x}';_listaQ='';renderListas()">${provs[x].nombre||x} ${_num(x)}</button>`;
   const nArm=_listaArmado(k).length;
   const _tab=(t,txt,tit)=>`<button class="btn" style="font-size:.64rem;padding:5px 13px;${_listaVista===t?'background:var(--blue);color:#fff;font-weight:700':''}" title="${tit}" onclick="listaSetVista('${t}')">${txt}</button>`;
-  const cab=`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px"><span style="font-size:.68rem;color:var(--muted)">Proveedor:</span>${visibles.map(_provBtn).join('')}${ocultos.length?`<button class="btn" style="font-size:.64rem;padding:4px 10px;opacity:.7" title="${ocultos.map(x=>provs[x].nombre||x).join(', ')}" onclick="window._listaVerOcultos=!window._listaVerOcultos;renderListas()">${window._listaVerOcultos?'🙈 esconder los que no dan':'🙈 '+ocultos.length+' sin productos que den'}</button>`:''}</div>
+  const cab=`<div style="margin-bottom:10px"><input id="lista-buscar" type="search" value="${escHtml(window._listaQ||'')}" placeholder="🔎 Buscar un producto en TODAS las listas…" oninput="listaBuscar(this.value)" style="width:100%;padding:9px 12px;font-size:.85rem;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--text)"><div id="lista-busq"></div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px"><span style="font-size:.68rem;color:var(--muted)">Proveedor:</span>${visibles.map(_provBtn).join('')}${ocultos.length?`<button class="btn" style="font-size:.64rem;padding:4px 10px;opacity:.7" title="${ocultos.map(x=>provs[x].nombre||x).join(', ')}" onclick="window._listaVerOcultos=!window._listaVerOcultos;renderListas()">${window._listaVerOcultos?'🙈 esconder los que no dan':'🙈 '+ocultos.length+' sin productos que den'}</button>`:''}</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${_tab('probados','✅ Productos probados','Lo que ya le compraste a este proveedor: cuánto reponer.')}${_tab('nuevos','🆕 Productos nuevos','Lo de su lista que todavía no vendés y da 25% o más en ML.')}${_tab('hechos','🧾 Pedido'+(nArm?' ('+nArm+' cargados)':''),'El pedido del momento, el mensaje con código y unidades, y los pedidos ya hechos.')}</div>`;
   let cat=_listaCache[k];
   if(!cat){el.innerHTML=cab+`<div style="font-size:.72rem;color:var(--muted)">⏳ bajando la lista…</div>`;

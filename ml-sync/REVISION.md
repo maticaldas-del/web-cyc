@@ -548,6 +548,10 @@ el precio de un candidato distinto con código parecido (se compara también por
 - **Copiar pedido de Listas igual que Paulvic (18/10/2026, v24.44).** En 🧾 Pedido el mensaje es "<nombre tal cual la lista> x<u>"
   por renglón + "SÓLO estos productos…". Sin redondeo (las unidades son las que él carga). Vive en el armado de `_listaVista==='hechos'`.
 
+- **Buscador en todas las listas (18/10/2026, v24.45).** Arriba de 📋 Listas: busca por nombre o código en las listas de todos los
+  proveedores (todas las palabras), con proveedor, lo que te sale, % ML, links y casilla para pedir (`listaBuscar`/`_listaBuscarYa`).
+  Baja todas las listas la primera vez (Dai Nippon son ~7.800 renglones). El buscador de abajo sigue siendo sólo del proveedor elegido.
+
 ## 4 · CHOQUES
 - `mlapi/lineatodo` lo escriben `ritmo:go` (noche) y `lineatodo:go` (ml-consulta): los dos con la
   misma función `calcLineaTodo`.
