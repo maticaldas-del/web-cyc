@@ -40,7 +40,7 @@ process.on('SIGTERM', () => _alCortar('SIGTERM'));
 // los que escriben en cantidad o en plata se niegan de entrada, y cualquier otro corre con la base,
 // ML, Mercado Pago y Telegram en sólo lectura (se deja renovar y guardar el token de ML, que ML rota).
 const EN_CONSULTA = process.env.GITHUB_WORKFLOW === 'ml-consulta' || process.env.ML_CONSULTA === '1';
-const CONSULTA_ESCRIBE = new Set(['pycat', 'pycatres', 'lista', 'listamedir', 'pycatprobados', 'candprecio', 'lineatodo', 'revcand', 'vincular', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull']);
+const CONSULTA_ESCRIBE = new Set(['pycat', 'pycatres', 'lista', 'listamedir', 'listacuenta', 'pycatprobados', 'candprecio', 'lineatodo', 'revcand', 'vincular', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull']);
 const CONSULTA_NIEGA = new Set(['cajaitems', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'promoventas', 'cargosmes', 'arcacierres']);
@@ -8066,6 +8066,14 @@ const RE_CAND_PERF = /perfum|parfum|\bedp\b|\bedt\b|eau de|fragan|fragr|body spl
 // lo mismo o parecido que ML. O sea: vendiendo al precio de ML, la perfumería se queda su 30% y a CYC le queda
 // (precio ML ÷ 1,30 − costo) ÷ costo. Si eso da 25% o más, el perfume sirve aunque en ML no llegue, y ahí se puede
 // cualquier marca (las que ML frena se venden en el local). Misma cuenta en index.html (`perfLocalPct`).
+// LOS NÚMEROS DE CADA PROVEEDOR DE 📋 LISTAS (18/10/2026, pedido suyo: "que ponga la cantidad de productos de más de 25%, y los que no
+// tengan, ocultarlos"). Misma regla que la web (`_listaDa`): 25% a 80% en ML, con foto de ML y sin reparo de nombre. `pend` = nunca medidos.
+function cuentaLista(cat) {
+  const v = Object.values(cat || {}).filter((e) => e && e.n);
+  const m25 = (e) => e.m != null && Number(e.m) >= 25 && /^https:\/\//.test(e.mf || '');
+  const da = (e) => m25(e) && !e.rp && Number(e.m) < 80;
+  return { n: v.length, med: v.filter((e) => e.m != null).length, pend: v.filter((e) => !e.t).length, dan: v.filter(da).length, revisar: v.filter((e) => m25(e) && !da(e)).length, tMed: Date.now() };
+}
 const PERF_LOCAL_TIENDA = 30, PERF_LOCAL_GAN = 25;
 function perfLocalPct(costoPesos, precioML) {
   if (!(costoPesos > 0) || !(precioML > 0)) return null;
@@ -19265,9 +19273,16 @@ async function main() {
       if (!ks.length) { console.log('No hay listas guardadas.'); return; }
       const cada = Math.max(20, Math.floor(n / ks.length));
       for (const k of ks) { await correrPyCatMedir(db, products, labels, accounts, cada, aplicar, null, { lista: k, nombre: provs[k].nombre, rec: provs[k].rec });
-        if (aplicar) { const c = (await db.get('mlapi/listas/' + k)) || {}; const v = Object.values(c);
-          await db.patch('cyc/mlconfig/listasProv/' + k, { n: v.length, med: v.filter((e) => e && e.m != null).length, dan: v.filter((e) => e && e.m >= 25).length, tMed: Date.now() }); } }
+        if (aplicar) await db.patch('cyc/mlconfig/listasProv/' + k, cuentaLista((await db.get('mlapi/listas/' + k)) || {})); }
       return;
+    }
+    // BILLING_PROBE=listacuenta[:go] → vuelve a contar, sin medir nada, cuántos de cada lista dan (los números de los botones de proveedor).
+    if (/^listacuenta(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const aplicar = /:go$/.test(String(process.env.BILLING_PROBE)); const provs = (await db.get('cyc/mlconfig/listasProv')) || {};
+      for (const k of Object.keys(provs)) { const c = cuentaLista((await db.get('mlapi/listas/' + k)) || {});
+        console.log(`  ${String(provs[k].nombre || k).padEnd(16)} · ${c.n} productos · ${c.med} medidos · ${c.pend} sin medir · ✅ dan ${c.dan} · 🔎 para revisar ${c.revisar}`);
+        if (aplicar) await db.patch('cyc/mlconfig/listasProv/' + k, c); }
+      if (!aplicar) console.log('PRUEBA: agregá :go para guardar.'); return;
     }
     // BILLING_PROBE=pycatmedir[:<cuántos>][:go] → MIDE CONTRA ML LO GUARDADO EN `mlapi/pycat` (15/10/2026). Ver `correrPyCatMedir`.
     // Corre solo en `ml-pycat.yml`. Sin `:go` muestra sin escribir.
