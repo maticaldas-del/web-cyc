@@ -2662,7 +2662,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.37';
+const APP_VERSION='24.38';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2673,6 +2673,7 @@ const APP_VERSION='24.37';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.38',f:'18/10/2026',h:'23:23',c:[{n:1,t:'📋 Listas: también se esconde el proveedor que sólo tiene productos "para revisar" (casi siempre son otro producto). Hoy: Cadam y Wels.'}]},
   {v:'24.37',f:'18/10/2026',h:'23:22',c:[{n:2,t:'📋 Listas: cada proveedor dice ✅ cuántos productos dan 25% o más en ML (y ⏳ cuántos falta medir). Los que ya se midieron enteros y no tienen ninguno que dé se esconden; "🙈 N sin productos que den" los muestra.'}]},
   {v:'24.36',f:'18/10/2026',h:'23:13',c:[{n:1,t:'📋 Listas: "1 vend." decía cuántos VENDEDORES tiene ese producto en ML, no cuántas ventas. Ahora dice "1 vendedor".'}]},
   {v:'24.35',f:'18/10/2026',h:'23:12',c:[{n:2,t:'📋 Listas → Nuevos: arriba sólo lo que da 25% a 80% en ML y con el mismo nombre. Lo que da 80% o más, o donde ML no nombra alguna palabra (el aroma, la marca), va a "🔎 Para revisar con los ojos", sin casilla: casi siempre es otro producto.'}]},
@@ -17846,9 +17847,9 @@ async function renderListas(){
   if(!ks.length){el.innerHTML=`<div class="empty-msg">Todavía no hay listas. Pasale a Claude la lista de precios del proveedor (foto, PDF o texto): la guarda acá y la mide contra ML.</div>`;return;}
   // EL NÚMERO DEL BOTÓN = CUÁNTOS DAN (18/10/2026, pedido suyo: "que ponga la cantidad de productos más de 25%, y los que no tengan,
   // ocultarlos"). Lo cuenta el robot con la misma regla que ✅ Dan (`cuentaLista`). Se esconde el que ya está medido entero y no tiene
-  // ninguno que dé ni para revisar, salvo que tenga probados (ya le compraste). "ver ocultos" los muestra.
+  // ninguno que dé (lo de "para revisar" no cuenta), salvo que tenga probados (ya le compraste). "ver ocultos" los muestra.
   const _tieneProb=x=>(state.products||[]).some(p=>p.listaProv===x);
-  const _oculto=x=>{const v=provs[x];return v.dan!=null&&v.pend!=null&&!(v.dan>0)&&!(v.revisar>0)&&!(v.pend>0)&&!_tieneProb(x);};
+  const _oculto=x=>{const v=provs[x];return v.dan!=null&&v.pend!=null&&!(v.dan>0)&&!(v.pend>0)&&!_tieneProb(x);};
   const ocultos=ks.filter(_oculto),visibles=window._listaVerOcultos?ks:ks.filter(x=>!_oculto(x));
   if(!_listaSel||!provs[_listaSel]||!visibles.includes(_listaSel))_listaSel=visibles[0]||ks[0];
   const k=_listaSel,v=provs[k],nom=v.nombre||k;
