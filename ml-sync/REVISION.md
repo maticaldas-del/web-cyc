@@ -711,6 +711,8 @@ el precio de un candidato distinto con código parecido (se compara también por
 
 ## 7 · DISEÑO
 
+- **El cupo de Full ya no suma lo vendido (18/10/2026, v24.54).** `cupoRestante` daba 54 en Ayelen (leído 38 + 16 vendidas) y ML seguía diciendo 38: el cupo no se libera al vender. Queda lo leído − lo mandado después. Chequear contra la pantalla de ML la próxima vez que lea el cupo.
+
 - **La etiqueta de techo dice "2ª suba" en vez de "×2" (18/10/2026, v24.53, pedido suyo).** `estrategiaChip` en index.html (`e.n` = número de suba seguida).
 
 - **Ventas x Producto en la PC, lo básico (18/10/2026, v24.52).** Él: *"hay muchas letras y numeros, quiero que todo eso este en el detalle al clickear"*. El renglón `.vp-pc` ya no muestra el N° de venta ni el total/neto de CADA producto; arriba va una vez el total y neto de la compra (`_tot`, `gn`) y el botón "detalle ▾" abre el mismo `_det` del teléfono (N°, cobrado·neto, costo, ganancia, total/neto por producto si son varios, cambios de precio). Chequear: carrito de 2+ productos (total arriba = suma), venta cancelada (sin total), y que el detalle abierto se recuerde (`vpDetOpen`).

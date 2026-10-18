@@ -2664,7 +2664,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.53';
+const APP_VERSION='24.54';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2675,6 +2675,7 @@ const APP_VERSION='24.53';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.54',f:'18/10/2026',h:'19:00',c:[{n:2,t:'Cupo de Full en Armar caja: ya no suma lo vendido después de leerlo. ML no devuelve cupo al vender (Ayelen: leíste 38, vendió 16 y ML sigue en 38). Ahora es lo leído menos lo que mandaste.'}]},
   {v:'24.53',f:'18/10/2026',h:'18:40',c:[{n:1,t:'La etiqueta "buscando techo ×2" ahora dice "buscando techo · 2ª suba": es la segunda suba seguida probando el techo.'}]},
   {v:'24.52',f:'18/10/2026',h:'18:20',c:[{n:1,t:'Ventas x Producto en la PC: el renglón quedó con lo básico. El número de venta y el total y neto de cada producto de una compra con varios pasaron a "detalle ▾" (el mismo de la tarjeta del teléfono). Arriba queda una sola vez el total y neto de la compra entera.'}]},
   {v:'24.51',f:'18/10/2026',h:'17:45',c:[{n:2,t:'Estrategia nueva "📦 sobra stock": lo que se baja (aunque quede abajo del 25%) porque sobra mercadería y va a pagar stock antiguo. Las promos que pone el cerebro ahora anotan su estrategia (antes quedaban como 🎯 base).'}]},
@@ -6050,7 +6051,8 @@ function cupoRestante(cta){
       if(esGrandeFull(pIdx[it.prodId]))mandGra+=it.u; else mandPeq+=it.u;
     }
   });
-  // Lo vendido después: esa mercadería salió de Full, así que devuelve cupo.
+  // Lo vendido después: se cuenta para mostrar, pero NO devuelve cupo (18/10/2026, medido con Ayelen:
+  // leído 38, vendió 16 y ML seguía diciendo "podés enviar hasta 38"). El cupo de ML no se libera al vender.
   let vendPeq=0,vendGra=0;
   const desdeK=dateToKey(new Date(cfg.ts));
   Object.keys(state.ventaprod||{}).filter(k=>k>=desdeK).forEach(k=>{
@@ -6061,7 +6063,7 @@ function cupoRestante(cta){
     });
   });
   const dias=Math.floor((Date.now()-cfg.ts)/86400000);
-  const est=(base,mand,vend)=>isFinite(base)?Math.max(0,Math.round(base-mand+vend)):null;
+  const est=(base,mand,vend)=>isFinite(base)?Math.max(0,Math.round(base-mand)):null;
   return {peq:isFinite(peqCargado)?peqCargado:null,gra:isFinite(graCargado)?graCargado:null,
     mandPeq,mandGra,vendPeq,vendGra,dias,ts:cfg.ts,
     estPeq:est(peqCargado,mandPeq,vendPeq),estGra:est(graCargado,mandGra,vendGra),
@@ -6464,7 +6466,7 @@ function renderOfiCaja(){
             <span style="min-width:120px">${tit}</span>
             <strong style="font-family:'DM Mono',monospace;font-size:.78rem;color:${col}">${fmtN(uCaja)} u.</strong>
             <span>de <strong style="color:var(--text)">${est==null?'?':fmtN(est)}</strong> que te quedan</span>
-            <span style="opacity:.8">(leíste ${fmtN(cargado)}${mand?` − ${fmtN(mand)} que mandaste`:''}${vend?` + ${fmtN(vend)} que vendiste`:''})</span>
+            <span style="opacity:.8">(leíste ${fmtN(cargado)}${mand?` − ${fmtN(mand)} que mandaste`:''})</span>
             ${pasa?`<strong style="color:var(--red)">se pasa por ${fmtN(uCaja-est)} u.</strong>`:''}
           </div>`;
         };

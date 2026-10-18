@@ -6957,6 +6957,8 @@ momento**, no el cupo total: baja al despachar y sube al vender. El panel descue
 suma lo vendido desde la lectura, **muestra los tres términos** (si la resta que invita la pantalla
 no es la que hace el sistema, la pantalla está mal) y **a los 7 días pide mirarlo de nuevo**.
 
+**LO VENDIDO NO DEVUELVE CUPO (18/10/2026):** Ayelen leída en 38, vendió 16 y ML seguía en 38. El panel ya no lo suma (v24.54): cupo = leído − lo mandado después.
+
 **AVISA, NO FRENA.** Al cerrar la caja, si se pasa, pregunta y deja seguir. El cupo se carga a mano
 y puede estar viejo: trabar un despacho con un número que quizá ya no es el de hoy sería peor.
 Mismo criterio que el tope del pedido de Paraguay. **El único freno duro de este panel sigue siendo
