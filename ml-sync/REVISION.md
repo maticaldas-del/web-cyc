@@ -808,6 +808,9 @@ nota con el motivo adentro + el mismo cambio en claudecambios → sale una sola 
 - **Barra de costado arriba de las tablas (18/10/2026, v24.47).** `_tblTopbars` (cada 1 s) pone una `.tbl-topbar` sincronizada arriba de
   cada `.tbl-outer` que no entra a lo ancho (Rotación y las demás). Qué chequear: que no aparezca en el teléfono cuando la tabla es tarjetas.
 
+- **Ventas de hoy contra el promedio de 5 (18/10/2026, v24.48).** `_homeCurvaHTML` compara la ganancia acumulada a la misma hora
+  contra el PROMEDIO de los últimos 5 días iguales que tengan ventas (antes uno solo, el de la semana pasada).
+
 ## 8 · DATOS E HISTORIAL (nueva, 08/10/2026)
 - **Reloj de los 4 meses en la línea de tiempo (16/10/2026, v23.92 · corregido en v23.93: EDAD DE LA UNIDAD MÁS VIEJA, primero
   entra primero sale — lotes armados con stock de hoy − el de antes + lo vendido; él: "el stock va rotando").** Carril de stock: barra roja por día = edad del lote más viejo
