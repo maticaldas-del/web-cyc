@@ -2031,6 +2031,7 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
   // Lo que sigue saliendo callado es lo que no tiene nada adentro (activa, no es Full, sin
   // stock), que es como tiene que ser: ahí no hay nada esperando.
   const conteo = { enCuenta: 0, miradas: 0, activas: 0, noFull: 0, sinStock: 0, conStock: 0, sinLeer: 0, lotesFallidos: 0 };
+  const fueraFull = [];
   const sinLeerStock = [];   // pausadas de Full cuyo stock ML no contestó (revisión max #24)
   for (const [label, tok] of Object.entries(tokensRun)) {
     const feeAt = async (site, price, lt, cat) => {
@@ -2057,13 +2058,19 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
       .map(([mla]) => mla);
     for (let k = 0; k < ids.length; k += 20) {
       let arr;
-      try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,sub_status,price,variations,title,listing_type_id,category_id,site_id,shipping,inventory_id', tok); }
+      try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,sub_status,price,variations,title,listing_type_id,category_id,site_id,shipping,inventory_id,available_quantity', tok); }
       catch { conteo.lotesFallidos++; continue; }
       for (const row of (arr || [])) {
         const b = row.body || {}; const mla = b.id;
         if (!mla || !links[mla] || b.error || typeof b.status === 'number') continue;
         conteo.miradas++;
-        if (b.status !== 'paused') { conteo.activas++; continue; }
+        if (b.status !== 'paused') {
+          conteo.activas++;
+          // ACTIVA Y FUERA DE FULL (auditoría del 18/10/2026): él no vende nada fuera de Full; si alguien compra, hay que mandarla
+          // a mano. El chequeo lo ponía en 🔴 PARA HOY y el informe no lo decía.
+          if (b.status === 'active' && ((b.shipping && b.shipping.logistic_type) || '') !== 'fulfillment' && (Number(b.available_quantity) || 0) > 0) fueraFull.push({ mla, label: links[mla].cuenta, nom: String(b.title || '').slice(0, 45), q: Number(b.available_quantity) || 0, log: (b.shipping && b.shipping.logistic_type) || '?' });
+          continue;
+        }
         // Los DOS únicos descartes que siguen siendo callados, y está bien que lo sean: si no es
         // Full o no tiene stock adentro, no hay mercadería esperando y no hay nada que avisar.
         if (((b.shipping && b.shipping.logistic_type) || '') !== 'fulfillment') { conteo.noFull++; continue; }
@@ -2281,6 +2288,7 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso) {
   console.log(`   De dónde sale ese número: ${conteo.enCuenta} publicación(es) de ${ctasSin.length ? `${ctasLinks.length - ctasSin.length} cuenta(s) (SIN MIRAR: ${ctasSin.join(', ')}, no tuve permiso esta vuelta)` : 'las ' + ctasLinks.length + ' cuentas'} · ${conteo.miradas} contestó ML`
     + ` → ${conteo.activas} ya están activas · ${conteo.noFull} no son de Full · ${conteo.sinStock} están pausadas pero sin stock adentro`
     + ` → quedaron ${conteo.conStock} PAUSADAS CON MERCADERÍA ADENTRO DE FULL.`);
+  if (fueraFull.length) { console.log(`   📤 ACTIVAS FUERA DE FULL (${fueraFull.length}): si alguien compra hay que mandarla a mano · pausalas o pasalas a Full`); for (const x of fueraFull) console.log(`      ${x.mla} · ${x.label} · ${x.nom} · ${x.q} u. (${x.log})`); }
   if (conteo.sinLeer || conteo.lotesFallidos) console.log(`   ⚠️ Sin leer esta vuelta: ${conteo.sinLeer} pausada(s) de Full cuyo stock ML no contestó${sinLeerStock.length ? ' (' + sinLeerStock.slice(0, 10).join(' · ') + ')' : ''}${conteo.lotesFallidos ? ` · ${conteo.lotesFallidos} tanda(s) de 20 publicaciones que ML no devolvió` : ''}. Se miran en la vuelta siguiente.`);
   // Chequeo duro: toda pausada con stock termina activada o avisada. Si esto no cierra, hay un
   // `continue` nuevo saliendo callado — que es exactamente el bug del 16/09 y el de los P47.
