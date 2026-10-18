@@ -1408,3 +1408,9 @@ Se cruzaron las versiones de `APP_CAMBIOS` y los commits del robot desde el 13/1
    `perfLocalPct` ≥ 25%: VS 12%, Cabotine 4%, Lapidus 18% en ML) quedaban arriba con el % de ML en rojo sin explicación. Ahora la línea
    chica (`cand-cel`) lleva el 🏪 % del local en Probados y Nuevos.
  · Qué chequear: al esconder algo en el celu, mirar si es el motivo por el que el renglón está donde está.
+### Etapa 3 · 18/10/2026 · botón "🚫 en ML no se puede (marca)" en Nuevos (v24.30)
+ · Qué: él: *"botón para sacarlo de vender en ML, ya que son marcas que no se puede. que aparezcan en perfumería pero en ML no. no hagas
+   nada automático"*. `candNoML` pone `candidatos_py/<id>/noML` (sólo él, con el botón del detalle). Con la marca: no entra en "los que
+   dan en ML" ni en "los dos"; en "perfumería" sólo si da en el local; el % grande dice "🚫 ML"; `_esRojo` la juzga sólo por el local.
+   El robot no la toca (los candidatos existentes se actualizan por campo).
+ · Qué chequear: que una marca nueva frenada por ML no se pida para ML (el robot sigue midiendo el % de ML, pero la web lo ignora).
