@@ -1439,7 +1439,7 @@ Claude) y con `activarfull:go`. Sin `noAutoActivar`: al llegar a Full se activa 
 Pedido suyo: *"que ponga la cantidad de productos más de 25%. Y los que no tengan, sacarlos de la lista. Ocultarlos"*. `cuentaLista`
 (sync.mjs, misma regla que `_listaDa`) guarda en `listasProv/<prov>` {n, med, pend, dan, revisar}; lo escriben `listamedir` y
 `listacuenta[:go]` (sólo cuenta). La web muestra "✅ N" (y ⏳ los sin medir) y esconde el proveedor medido entero sin ninguno que dé
-ni para revisar, salvo que tenga probados. **Chequear:** que un proveedor a medio medir no se esconda (pend > 0).
+(lo "para revisar" no cuenta), salvo que tenga probados. **Chequear:** que un proveedor a medio medir no se esconda (pend > 0).
 
 ### 18/10/2026 · v24.35 · 7 listas nuevas y "🔎 Para revisar" (etapa 3)
 Cargadas con `lista:` (costo con IVA por unidad): Cadam/Estrella (unitario c/IVA) · Qsoft (precio nuevo s/IVA ×1,21) · Unilever (precio
