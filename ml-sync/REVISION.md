@@ -711,6 +711,8 @@ el precio de un candidato distinto con código parecido (se compara también por
 
 ## 7 · DISEÑO
 
+- **Sin % de diferencia con números negativos (18/10/2026, v24.56).** El globito de Métricas decía "+45,4%" entre −$149.012 y −$272.977: era perder menos, no ganar 45% más. Con algún lado negativo dice sólo la plata y mejor/peor.
+
 - **Los números de las cuentas en Armar caja con el tope del cupo (18/10/2026, v24.55, pedido suyo).** `renderOfiCaja`: `porCtaCupo` = lo sugerido limitado por `cupoRestante` (chicos contra `estPeq`, grandes contra `estGra`); "Todas" suma eso. Sin cupo cargado queda lo sugerido. El color sigue con `convieneCaja`. Chequear: Ayelen con 142 sugeridas y cupo 38 → dice 38.
 
 - **El cupo de Full ya no suma lo vendido (18/10/2026, v24.54).** `cupoRestante` daba 54 en Ayelen (leído 38 + 16 vendidas) y ML seguía diciendo 38: el cupo no se libera al vender. Queda lo leído − lo mandado después. Chequear contra la pantalla de ML la próxima vez que lea el cupo.

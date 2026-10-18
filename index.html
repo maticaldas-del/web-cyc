@@ -2664,7 +2664,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.55';
+const APP_VERSION='24.56';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2675,6 +2675,7 @@ const APP_VERSION='24.55';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.56',f:'18/10/2026',h:'19:30',c:[{n:1,t:'Métricas: cuando el día o el anterior están en negativo, la diferencia ya no muestra un % (sobre un número negativo engaña: "+45%" era perder menos, no ganar más). Dice la plata y si vas mejor o peor.'}]},
   {v:'24.55',f:'18/10/2026',h:'19:15',c:[{n:2,t:'Armar caja: el número de cada cuenta (y el de Todas) ahora es lo que se puede MANDAR con el cupo de Full de esa cuenta, no todo lo sugerido. Chicos y grandes cada uno contra su cupo. El color sigue igual: verde si la caja ya se justifica, rojo si no.'}]},
   {v:'24.54',f:'18/10/2026',h:'19:00',c:[{n:2,t:'Cupo de Full en Armar caja: ya no suma lo vendido después de leerlo. ML no devuelve cupo al vender (Ayelen: leíste 38, vendió 16 y ML sigue en 38). Ahora es lo leído menos lo que mandaste.'}]},
   {v:'24.53',f:'18/10/2026',h:'18:40',c:[{n:1,t:'La etiqueta "buscando techo ×2" ahora dice "buscando techo · 2ª suba": es la segunda suba seguida probando el techo.'}]},
@@ -19532,7 +19533,7 @@ function renderLineChartFromScope(scope){
   if(multi)scales.y.beginAtZero=true; // arrancar en 0, si no las diferencias se ven infladas
   if(barDet)scales.x.offset=true; // si no, la primera y la última barra salen cortadas a la mitad
   metChartLine=new Chart(canvas,{type:'line',data:{labels,datasets},
-    options:{responsive:true,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{boxWidth:12,font:{size:11}},onClick:_metLegendClick},tooltip:{callbacks:{title:items=>{const total=items.reduce((s,i)=>s+(i.raw||0),0);return metChartLineView==='cuentas'?[items[0].label,'Total: $'+Math.round(total).toLocaleString('es-AR')]:[items[0].label];},label:item=>' '+item.dataset.label+': $'+Math.round(item.raw||0).toLocaleString('es-AR'),afterBody:items=>{if(metChartLineView!=='general'||metViewFields.length>1)return '';const det=(barDet&&barDet[items[0].dataIndex])||[];const detL=det.length?['','Gastos de ese día:',...det.map(x=>'  · '+x.t+': −$'+Math.round(x.m).toLocaleString('es-AR'))]:[];const find=l=>{const it=items.find(i=>i.dataset.label===l);return it?(it.raw||0):null;};const cur=find(CMP_LBL_CUR),prev=find(CMP_LBL_PREV);if(cur==null||prev==null)return detL;const diff=cur-prev,pct=prev!==0?(diff/Math.abs(prev)*100):(cur!==0?100:0),s=diff>=0?'+':'−';return ['','Diferencia vs anterior: '+s+'$'+Math.abs(Math.round(diff)).toLocaleString('es-AR')+'  ('+s+Math.abs(pct).toFixed(1)+'%)',...detL];}},titleFont:{size:13,weight:'bold'},bodyFont:{size:11},titleColor:'#f1f1f3',bodyColor:'#9b9ba8'}},scales}
+    options:{responsive:true,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{boxWidth:12,font:{size:11}},onClick:_metLegendClick},tooltip:{callbacks:{title:items=>{const total=items.reduce((s,i)=>s+(i.raw||0),0);return metChartLineView==='cuentas'?[items[0].label,'Total: $'+Math.round(total).toLocaleString('es-AR')]:[items[0].label];},label:item=>' '+item.dataset.label+': $'+Math.round(item.raw||0).toLocaleString('es-AR'),afterBody:items=>{if(metChartLineView!=='general'||metViewFields.length>1)return '';const det=(barDet&&barDet[items[0].dataIndex])||[];const detL=det.length?['','Gastos de ese día:',...det.map(x=>'  · '+x.t+': −$'+Math.round(x.m).toLocaleString('es-AR'))]:[];const find=l=>{const it=items.find(i=>i.dataset.label===l);return it?(it.raw||0):null;};const cur=find(CMP_LBL_CUR),prev=find(CMP_LBL_PREV);if(cur==null||prev==null)return detL;const diff=cur-prev,pct=prev!==0?(diff/Math.abs(prev)*100):(cur!==0?100:0),s=diff>=0?'+':'−';const _neg=prev<=0||cur<0;return ['','Diferencia vs anterior: '+s+'$'+Math.abs(Math.round(diff)).toLocaleString('es-AR')+(_neg?'  ('+(diff>=0?'mejor':'peor')+' que el anterior · sin % porque hay un número negativo)':'  ('+s+Math.abs(pct).toFixed(1)+'%)'),...detL];}},titleFont:{size:13,weight:'bold'},bodyFont:{size:11},titleColor:'#f1f1f3',bodyColor:'#9b9ba8'}},scales}
   });
 }
 
