@@ -1418,3 +1418,8 @@ Se cruzaron las versiones de `APP_CAMBIOS` y los commits del robot desde el 13/1
  · Qué: `activarPausadasFull` pide `available_quantity` y junta las activas con `logistic_type` distinto de `fulfillment` y stock > 0
    (`fueraFull`); las imprime como "📤 ACTIVAS FUERA DE FULL" (sección 5 del informe y `pausadas`). El chequeo ya lo tenía en 🔴.
  · Qué chequear: que no aparezca nada ahí (él no vende fuera de Full); lo nuevo que él crea con envío propio sale acá hasta que entra a Full.
+### Etapa 3 · 18/10/2026 · "Vender en" arriba, para Probados y Nuevos (v24.31)
+ · Qué: él: *"poner el filtro de perfumería, ML, todos arriba, en general para probados y nuevos"*. Botones abajo de "Mostrar" que usan
+   `_candFiltro` (el mismo de Nuevos; se sacó el desplegable "Ver"). En Probados filtra lo que DA: ML = `pyProbVeredicto` 'da' sin
+   `via:'local'` · Perfumería = `pyProbLocalOk` (el local deja 25%+) · Los dos = ambas. Lo que el filtro esconde se cuenta abajo.
+ · Qué chequear: `pyProbLocalOk` repite la cuenta del % azul de la tarjeta (`_locP`); si cambia una, cambiar la otra.
