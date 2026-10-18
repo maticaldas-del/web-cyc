@@ -2662,7 +2662,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.43';
+const APP_VERSION='24.44';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2673,6 +2673,7 @@ const APP_VERSION='24.43';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.44',f:'18/10/2026',h:'12:20',c:[{n:1,t:'📋 Listas → 🧾 Pedido: "📋 Copiar pedido" arma el mensaje igual que Paulvic: el nombre tal cual la lista y x unidades, uno por renglón, y al final "SÓLO estos productos: si no hay, no reemplazar por otro".'}]},
   {v:'24.43',f:'18/10/2026',h:'12:05',c:[{n:1,t:'📋 Listas: cada producto tiene "📄 verlo en la lista": muestra el renglón tal cual está en el archivo del proveedor (archivo, hoja, fila y el título de la sección), para ver si dice tester u otra cosa.'}]},
   {v:'24.42',f:'18/10/2026',h:'01:46',c:[{n:2,t:'📋 Listas: cada producto tiene "detalle ▾" con ✕ sacar producto (va a 🗑️ Sacados, de donde se puede volver).'},{n:3,t:'🇵🇾 Paraguay → 🧾 Pedido no se dibujaba desde la 24.35: un bloque de Listas había quedado metido ahí. Arreglado.'}]},
   {v:'24.41',f:'18/10/2026',h:'01:43',c:[{n:2,t:'📋 Listas: para estar en ✅ Dan hace falta, además del 25%, tener 100 ventas o más en ML. Lo que todavía no tiene las ventas mirada va a 🔎 Para revisar; lo de menos de 100 queda abajo.'}]},
@@ -17934,7 +17935,9 @@ async function renderListas(){
   if(_listaVista==='hechos'){
     const A=_listaArmado(k).map(x=>({...x,e:cat[x.cod]||{n:x.cod}}));
     const tot=A.reduce((t,x)=>t+_listaPuesto(k,x.e)*x.u,0),uT=A.reduce((t,x)=>t+x.u,0);
-    const msg=A.map(x=>`${x.cod} x${x.u}  ${x.e.n}`).join('\n');
+    // COPIAR PEDIDO IGUAL QUE PAULVIC (18/10/2026, pedido suyo con Iscos: *"poneme para copiar el pedido, se pone el nombre idéntico
+    // a paulvic"*): un renglón por producto, "<nombre tal cual la lista> x<unidades>", y al final que no reemplacen.
+    const msg=A.map(x=>`${x.e.n} x${x.u}`).join('\n')+'\nSÓLO estos productos: si no hay, no reemplazar por otro.';
     const C=Object.entries(state.comprasLista||{}).map(([id,c])=>({...c,id})).filter(c=>c.prov===k).sort((a,b)=>(b.ts||0)-(a.ts||0));
     const comp=c=>{const t=(c.items||[]).reduce((s,i)=>s+(i.pc||0)*(i.u||0),0);const cam=c.estado==='camino';
       return `<details style="background:var(--surface);border:1px solid ${cam?'var(--amber)':'var(--border)'};border-radius:8px;padding:8px 10px;margin-bottom:6px"><summary style="cursor:pointer;font-size:.74rem">${cam?'🚚 en camino':'✅ llegó'} · <b>${c.fecha}</b> · ${(c.items||[]).length} productos · ${fmt(t)}</summary>
@@ -17945,7 +17948,7 @@ async function renderListas(){
         <div style="display:flex;flex-direction:column;gap:6px;margin-top:10px">${A.map(x=>fila([x.cod,x.e],true)).join('')}</div>
         <div style="font-size:.64rem;color:var(--muted);margin:10px 0 4px">Para mandarle a <b>${escHtml(nom)}</b> — código y unidades</div>
         <textarea readonly id="lista-msg" style="width:100%;min-height:${Math.min(220,40+A.length*18)}px;font-family:'DM Mono',monospace;font-size:.7rem;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--text);padding:8px">${escHtml(msg)}</textarea>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button class="btn" onclick="copiarTexto(document.getElementById('lista-msg'))">📋 Copiar</button><button class="btn" style="background:var(--green);color:#fff" onclick="listaYaLoPedi('${k}')">✅ Ya lo pedí</button><button class="btn" onclick="listaVaciar('${k}')">🗑️ Vaciar</button></div></div>`
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button class="btn" onclick="copiarTexto(document.getElementById('lista-msg'))">📋 Copiar pedido</button><button class="btn" style="background:var(--green);color:#fff" onclick="listaYaLoPedi('${k}')">✅ Ya lo pedí</button><button class="btn" onclick="listaVaciar('${k}')">🗑️ Vaciar</button></div></div>`
       :`<div class="empty-msg">No hay nada cargado. En 🆕 Productos nuevos poné las unidades de lo que quieras pedirle a ${escHtml(nom)}.</div>`)
       +`<div style="font-size:.85rem;font-weight:800;margin:10px 0">Pedidos hechos <span style="color:var(--muted);font-weight:400">· ${C.length}</span></div>`+(C.length?C.map(comp).join(''):'<div class="empty-msg">Todavía ninguno.</div>');
     return;
