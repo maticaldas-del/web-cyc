@@ -1435,6 +1435,13 @@ toda publicación activa, no `fulfillment`, con unidades, se pausa (PUT + relect
 Claude) y con `activarfull:go`. Sin `noAutoActivar`: al llegar a Full se activa como cualquier pausada con stock. Marca
 `mllinks/<MLA>/pausaFueraFull`. Chequear: que no pause publicaciones de Full sin stock (filtro `available_quantity>0` y logistic ≠ fulfillment).
 
+### 18/10/2026 · lista Godrej (solares Villeneuve) · medida y descartada (etapa 3)
+21 productos, costo = "P. Neto S/IVA" (con el 9% de pie de factura) × 1,21. La lista dice "VN": cargada como "Villeneuve" (con "VN"
+ML emparejaba con Dermaglós y Bagóvit). `lista:` ahora borra la medición cuando cambia el nombre (se vuelve a medir) y `listamedir`
+busca el proveedor sin mirar mayúsculas. Resultado: Villeneuve se vende en ML MÁS BARATO que este costo (−20% a −66%); los dos "dan"
+eran emparejados mal (Dermaglós; 50 ml contra 250 ml). Descartado con `lista:Godrej|descartar;go` (regla suya del 15/10: si todos están
+lejos se descarta). Se devuelve con `|volver;go`. **Chequear:** el chequeo de tamaño no ve "50 ml" contra "250 ml" cuando hay "FPS 50".
+
 ### 18/10/2026 · v24.34 · 📋 Listas = otro Paraguay, sólo ML (etapa 3)
 Él: *"queda así bs as / paraguay / paulvic / listas (ahí van todas las listas que te paso de la perfumería…) quiero que en listas se
 trate igual que en paraguay. Y va a ser solo mercadería para ml"*.
