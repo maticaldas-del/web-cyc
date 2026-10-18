@@ -19238,7 +19238,11 @@ async function main() {
       const cat = (await db.get('mlapi/listas/' + provK)) || {};
       const ahora = Date.now(); const upd = {}; let nuevos = 0, cambio = 0, igual = 0;
       for (const f of filas) { const v = cat[f.cod]; if (!v) nuevos++; else if (Math.abs((Number(v.p) || 0) - f.p) >= 1) cambio++; else igual++;
-        upd[f.cod] = { ...(v || {}), n: f.n, p: f.p, ts: ahora, ...(v && Math.abs((Number(v.p) || 0) - f.p) >= 1 ? { pAnt: Number(v.p) || null } : {}) }; }
+        // Nombre nuevo = otra búsqueda en ML: se borra la medición vieja para que `listamedir` lo vuelva a medir (18/10/2026,
+        // la lista de Godrej decía "VN" y ML emparejó con otras marcas; con "Villeneuve" se busca bien).
+        const _nomCambio = v && String(v.n || '') !== f.n;
+        const _sinMed = _nomCambio ? { t: null, m: null, mi: null, mt: null, mp: null, mv: null, mf: null, sc: null, sv: null, rp: null } : {};
+        upd[f.cod] = { ...(v || {}), ..._sinMed, n: f.n, p: f.p, ts: ahora, ...(v && Math.abs((Number(v.p) || 0) - f.p) >= 1 ? { pAnt: Number(v.p) || null } : {}) }; }
       console.log(`=== LISTA DE ${provNom.toUpperCase()} · carga ${APLICAR ? '' : '(PRUEBA: no escribo nada)'} ===`);
       console.log(`${filas.length} productos · ${nuevos} nuevos · ${cambio} cambiaron de precio · ${igual} iguales · recargo del proveedor ${rec}%`);
       filas.slice(0, 15).forEach((f) => console.log(`  · ${f.n.slice(0, 70)} · ${money(f.p)}`));
