@@ -409,3 +409,11 @@ menos en ese producto pero nos da por otro lado"*. Toda comparación de precios 
 día MENOS: **$100 por unidad vendida** (sólo el TIEMPO: comprar, contar, etiquetar, armar cajas; la caja y los reclamos ya están en el costo de cada ficha, contarlos de nuevo sería doble) · **3% de lo facturado** (lo que gasta del tope de H) · y,
 al decidir, **2% por mes sobre el costo del stock** que queda parado. A igual plata neta gana el precio alto. La ficha médica ya mide
 así (`PD_TRABAJO_U`, `PD_TOPE_PCT` en sync.mjs). Los números se pueden ajustar si él dice otra cosa.
+
+## 📉 ABAJO DEL 25% ES PÉRDIDA, AUNQUE DEJE GANANCIA (18/10/2026, regla suya)
+Él, con el Pendrive 128gb rematado al 13% por haber mandado de más: *"todo lo que es menos del 25% es pérdida en el contexto del
+que estamos hablando"*. O sea: el 25% es lo que el negocio necesita; vender abajo es perder la diferencia contra lo que se podía.
+Se acepta sólo cuando la alternativa es peor (stock antiguo, parado de verdad), y en el 🧠 y en los juicios se cuenta como
+pérdida: "deja $X, contra el 25% pierde $Y por unidad". Ejemplo: Pendrive 128gb a $35.940 deja ~$3.600/u; al 25% serían
+~$5.200/u → ~$1.600/u perdidos por haber mandado 48 de algo que vende 1 cada 4 días (≈$70.000 las 44). La causa se
+arregla en la cantidad que se manda (37 días, tope 90), no en el precio.

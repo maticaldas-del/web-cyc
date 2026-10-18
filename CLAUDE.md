@@ -9139,3 +9139,7 @@ arriba, ✅ Probados (fichas `listaProv`) · 🆕 Nuevos (casilla de unidades) �
 fichas). Lo de Listas no sale en Bs As. Primero: Wels.
 Y 18/10: Tira Led de Luciana → él pide el retiro de Full (paga $39.000/mes de stock antiguo) · Paulvic Scarf de Adriana → descuento fuerte para que salga antes del 10/11.
 
+
+## 📉 ABAJO DEL 25% ES PÉRDIDA (18/10/2026, regla suya)
+Él: *"todo lo que es menos del 25% es pérdida en el contexto del que estamos hablando"*. Una venta abajo del 25% deja ganancia pero
+se cuenta como pérdida contra lo que se podía; se acepta sólo cuando no hacerlo es peor (stock antiguo). Detalle en `ml-sync/CEREBRO.md` (📉).
