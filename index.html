@@ -163,6 +163,7 @@ html,body{overflow-x:hidden;max-width:100%}html{overflow-x:clip}body{overscroll-
 .search-box:focus{border-color:var(--accent2)}
 .inp-name{flex:2;min-width:150px}.inp-cost{flex:1;min-width:120px}
 .tbl-outer{overflow-x:auto;border:1px solid var(--border);border-radius:var(--r);background:var(--surface);-webkit-overflow-scrolling:touch}
+.tbl-topbar{overflow-x:auto;overflow-y:hidden;height:16px;margin-bottom:4px;position:sticky;top:0;z-index:5;background:var(--bg)}.tbl-topbar>div{height:1px}
 table{width:100%;border-collapse:collapse;font-size:.74rem}
 thead th{padding:10px 12px;text-align:right;font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap;background:var(--surface)}
 thead th:first-child{text-align:left}
@@ -2662,7 +2663,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.46';
+const APP_VERSION='24.47';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2673,6 +2674,7 @@ const APP_VERSION='24.46';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.47',f:'18/10/2026',h:'13:05',c:[{n:1,t:'Rotación (y toda tabla que no entra a lo ancho): barra para moverse de costado ARRIBA de la tabla, que se queda fija al bajar.'}]},
   {v:'24.46',f:'18/10/2026',h:'12:50',c:[{n:1,t:'📋 Listas: botón "⏸️ sacar … por ahora" esconde una lista (no la borra); se vuelve desde "⏸️ sacadas por ahora". Las listas sin productos que den ya no aparecen, ni en el buscador.'}]},
   {v:'24.45',f:'18/10/2026',h:'12:35',c:[{n:1,t:'📋 Listas: arriba hay un buscador que busca un producto en TODAS las listas a la vez (por nombre o código), con el proveedor, lo que te sale, el % en ML y para cargar unidades ahí mismo.'}]},
   {v:'24.44',f:'18/10/2026',h:'12:20',c:[{n:1,t:'📋 Listas → 🧾 Pedido: "📋 Copiar pedido" arma el mensaje igual que Paulvic: el nombre tal cual la lista y x unidades, uno por renglón, y al final "SÓLO estos productos: si no hay, no reemplazar por otro".'}]},
@@ -3913,6 +3915,19 @@ function pegarFotoUrl(prodId){
 // mide ~90 px y "max-width" no la agranda) y ML guarda la miniatura, no la foto. Ahora la caja
 // ocupa la pantalla (object-fit:contain la estira sin deformarla) y, si es de ML, se pide la
 // versión ORIGINAL (sufijo -O en vez de -I/-V); si esa no existe, vuelve a la de antes.
+// BARRA PARA DESPLAZARSE DE COSTADO ARRIBA DE LAS TABLAS (18/10/2026, pedido suyo con Rotación: *"agregar barra para desplazarme
+// lateralmente acá arriba"*). Cada `.tbl-outer` que no entra a lo ancho lleva arriba una barra que se mueve junto con la tabla.
+function _tblTopbars(){
+  document.querySelectorAll('.tbl-outer').forEach(o=>{
+    let b=o.previousElementSibling;
+    if(!b||!b.classList||!b.classList.contains('tbl-topbar')){b=document.createElement('div');b.className='tbl-topbar';b.appendChild(document.createElement('div'));o.parentNode.insertBefore(b,o);
+      b.addEventListener('scroll',()=>{if(Math.abs(o.scrollLeft-b.scrollLeft)>1)o.scrollLeft=b.scrollLeft;});
+      o.addEventListener('scroll',()=>{if(Math.abs(o.scrollLeft-b.scrollLeft)>1)b.scrollLeft=o.scrollLeft;});}
+    const sobra=o.scrollWidth>o.clientWidth+2;b.style.display=sobra?'block':'none';b.firstChild.style.width=o.scrollWidth+'px';
+  });
+}
+setInterval(()=>{try{_tblTopbars();}catch(e){}},1000);
+window.addEventListener('resize',()=>{try{_tblTopbars();}catch(e){}});
 function _fotoGrandeSrc(src){
   try{const u=new URL(src);if(!(u.hostname==='mlstatic.com'||u.hostname.endsWith('.mlstatic.com')))return src;
     return src.replace(/-[A-Z](\.(?:jpg|jpeg|png|webp))(\?.*)?$/i,'-O$1');}catch(e){return src;}
