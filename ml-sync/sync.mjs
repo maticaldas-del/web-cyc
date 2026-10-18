@@ -38919,7 +38919,7 @@ async function main() {
       const ac = await aplicarCerebro(db, cz, { tokens: tokP, aplica: true, autoprecio: apP });
       console.log(`\n✓ hechos: ${ac.hechos.length} · no se pudo: ${ac.fallidos.length} · sin anotar: ${ac.sinAnotar.length}`);
       // LA ESTRATEGIA DE ESTE PRECIO (17/10/2026): `#tag` si lo puse, si no se deduce del motivo.
-      for (const h of ac.hechos) { const fz = forzar[h.f.mla] || {}; const tg = fz.tag || tagDeMotivo(fz.motivo); const okT = await guardarEstrategia(db, h.f.mla, tg, fz.motivo, Date.now()); console.log(`   ${okT ? '🏷' : '⚠️ no quedó la'} estrategia ${ESTRATEGIAS[tg]} · ${h.f.mla}`); }
+      for (const h of ac.hechos) { const fz = forzar[h.f.mla] || {}; const tg0 = fz.tag || tagDeMotivo(fz.motivo); const tg = (tg0 === 'base' && fz.piso) ? 'excepcion' : tg0; const okT = await guardarEstrategia(db, h.f.mla, tg, fz.motivo, Date.now()); console.log(`   ${okT ? '🏷' : '⚠️ no quedó la'} estrategia ${ESTRATEGIAS[tg]} · ${h.f.mla}`); }
       for (const h of ac.hechos) { const fz = forzar[h.f.mla] || {}; await escribirNota(h.f.mla, `${Number(h.a) > Number(h.de) ? 'Lo subí' : 'Lo bajé'} de ${money(h.de)} a ${money(h.a)}. ${fz.motivo || ''}`.trim(), { tipo: 'precio', de: h.de, a: h.a }); }
       // EXCEPCIONES A PROPÓSITO (12/10/2026): un precio que dejé abajo del 25% con `!piso` (remate, liquidar, sobrestock)
       // queda anotado con el precio exacto, para que el chequeo del peor caso de `planilla` no lo marque. Si después
