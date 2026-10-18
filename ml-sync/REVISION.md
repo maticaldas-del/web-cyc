@@ -820,7 +820,7 @@ nota con el motivo adentro + el mismo cambio en claudecambios → sale una sola 
   contra el PROMEDIO de los últimos 5 días iguales que tengan ventas (antes uno solo, el de la semana pasada).
 
 ## 8 · DATOS E HISTORIAL (nueva, 08/10/2026)
-- **🚧 El techo en la línea de tiempo (18/10/2026, v24.49).** `lineaPintar` dibuja una raya roja punteada en el carril del precio por cada `cyc/techofreno/<MLA>` (`probado`) de las publicaciones del gráfico (respeta el color elegido), desde el día que se anotó; entra en la escala. Qué chequear: que todo techo encontrado se anote con `techofreno:<MLA>=<precio>|motivo;go` (si no, no aparece).
+- **🚧 El techo en la línea de tiempo (18/10/2026, v24.49).** `lineaPintar` dibuja una raya roja punteada en el carril del precio por cada `cyc/techofreno/<MLA>` (`probado`, roja "ya no vende") y otra verde en `volvio` ("sí vende") de las publicaciones del gráfico (respeta el color elegido), desde el día que se anotó; entra en la escala. Qué chequear: que todo techo encontrado se anote con `techofreno:<MLA>=<precio>|motivo;go` (si no, no aparece).
 - **Reloj de los 4 meses en la línea de tiempo (16/10/2026, v23.92 · corregido en v23.93: EDAD DE LA UNIDAD MÁS VIEJA, primero
   entra primero sale — lotes armados con stock de hoy − el de antes + lo vendido; él: "el stock va rotando").** Carril de stock: barra roja por día = edad del lote más viejo
   (v23.94: el día del Excel de lotes de ML, `cyc/lotesfull` `ref`, los lotes se reemplazan por las edades reales de ML)

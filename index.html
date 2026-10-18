@@ -2664,7 +2664,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.49';
+const APP_VERSION='24.50';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2675,6 +2675,7 @@ const APP_VERSION='24.49';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.50',f:'18/10/2026',h:'15:16',c:[{n:1,t:'Línea de tiempo: el techo son dos rayas. Roja "🚧 a $X ya no vende" (el precio probado) y verde "✓ a $Y sí vende" (al que se volvió). El techo está entre las dos.'}]},
   {v:'24.49',f:'18/10/2026',h:'15:15',c:[{n:1,t:'Línea de tiempo: una raya roja punteada "🚧 techo $X" marca el precio que se probó y no se vendía (arriba de eso no conviene). Al pasar el mouse dice cuándo y por qué.'}]},
   {v:'24.48',f:'18/10/2026',h:'13:20',c:[{n:1,t:'Ventas de hoy: la línea punteada y el % ahora comparan contra el PROMEDIO de los últimos 5 días iguales (ej. los 5 domingos anteriores), a la misma hora, en vez de uno solo.'}]},
   {v:'24.47',f:'18/10/2026',h:'13:05',c:[{n:1,t:'Rotación (y toda tabla que no entra a lo ancho): barra para moverse de costado ARRIBA de la tabla, que se queda fija al bajar.'}]},
@@ -9698,7 +9699,7 @@ function lineaPintar(prodId){
   // volver una prueba que no rindió. Una por precio distinto; entra en la escala del carril para que siempre se vea.
   const _techos=(()=>{const TF=state.techofreno||{},vis={};Object.keys(porMlaF).forEach(mla=>{const t=TF[mla];const pr=t&&Number(t.probado);
     if(!(pr>0))return;if(!vis[pr]||Number(t.ts)>Number(vis[pr].ts))vis[pr]={...t,mla};});return Object.values(vis).sort((a,b)=>a.probado-b.probado);})();
-  const _pcv=ps.concat(cvs).concat(_techos.map(t=>Number(t.probado)));const [pcMin,pcMax]=_pcv.length?_esc(Math.min(..._pcv),Math.max(..._pcv)):[0,1];
+  const _pcv=ps.concat(cvs).concat(_techos.map(t=>Number(t.probado))).concat(_techos.map(t=>Number(t.volvio)).filter(v=>v>0));const [pcMin,pcMax]=_pcv.length?_esc(Math.min(..._pcv),Math.max(..._pcv)):[0,1];
   const hayEst=ks.some(k=>dias[k]&&(dias[k].rem||dias[k].esc!=null)), hayCaja=ks.some(k=>dias[k]&&dias[k].caja), hayVis=ks.some(k=>dias[k]&&dias[k].vis>0), hayGan=Object.keys(gd).length>0;
   // Los carriles que no tienen NADA en el rango no se dibujan (una franja toda gris no dice nada).
   const L={};let _y=0;const _lane=(n,h0,si)=>{if(!si)return;const h=Math.round(h0*1.45);L[n]=[_y,h];_y+=h+8;};
@@ -9847,9 +9848,13 @@ function lineaPintar(prodId){
     {const _kh=ks[ks.length-1],_ch=_alC[_kh];svg+=`<text x="${W-2}" y="${L.st[0]+21}" font-size="10" text-anchor="end" fill="var(--red)">${_ch?(_ch>=_alD?'⏳ ya paga almacenamiento':'⏳ faltan '+(_alD-_ch)+' d para '+Math.round(_alD/30)+' meses'):'⏳ reloj en 0'}</text>`;}}
   _techos.forEach(t=>{const y=L.pr[0]+L.pr[1]-(pcMax>pcMin?(t.probado-pcMin)/(pcMax-pcMin):.5)*L.pr[1];
     const tk=t.ts?dateToKey(new Date(Number(t.ts))):null,ti=tk?ks.indexOf(tk):-1,x0=ti>=0?X(ti):0;
-    const tt=`🚧 Techo: ${fmt(t.probado)}\nSe probó a ese precio${tk?' (vuelto el '+_lineaFmtDia(tk)+')':''} y no se vendía: arriba de eso no conviene.${t.volvio?'\nVolvió a '+fmt(t.volvio)+'.':''}${t.motivo?'\n🧠 '+t.motivo:''}`.replace(/[<>&]/g,'');
+    const tt=`🚧 A ${fmt(t.probado)} ya no vende\nSe probó a ese precio${tk?' (vuelto el '+_lineaFmtDia(tk)+')':''} y no se vendía: arriba de eso no conviene.${t.volvio?'\nVolvió a '+fmt(t.volvio)+'.':''}${t.motivo?'\n🧠 '+t.motivo:''}`.replace(/[<>&]/g,'');
     svg+=`<g style="cursor:help"><title>${tt}</title><line x1="${x0.toFixed(1)}" y1="${y.toFixed(1)}" x2="${W}" y2="${y.toFixed(1)}" stroke="var(--red)" stroke-width="1.5" stroke-dasharray="6,3" opacity=".85"/>`+
-      `<text x="${(x0+3).toFixed(1)}" y="${(y-3).toFixed(1)}" font-size="10" fill="var(--red)">🚧 techo ${fmt(t.probado)}</text></g>`;});
+      `<text x="${(x0+3).toFixed(1)}" y="${(y-3).toFixed(1)}" font-size="10" fill="var(--red)">🚧 a ${fmt(t.probado)} ya no vende</text></g>`;
+    // Y el último precio que SÍ vendía (al que se volvió), en verde: el techo útil está entre las dos rayas.
+    const vv=Number(t.volvio);if(vv>0&&vv<t.probado){const y2=L.pr[0]+L.pr[1]-(pcMax>pcMin?(vv-pcMin)/(pcMax-pcMin):.5)*L.pr[1];
+      svg+=`<g style="cursor:help"><title>✓ ${fmt(vv)}: el precio que sí vendía, al que se volvió después de la prueba.</title><line x1="${x0.toFixed(1)}" y1="${y2.toFixed(1)}" x2="${W}" y2="${y2.toFixed(1)}" stroke="var(--green)" stroke-width="1.2" stroke-dasharray="2,3" opacity=".85"/>`+
+        `<text x="${(x0+3).toFixed(1)}" y="${(y2+11).toFixed(1)}" font-size="10" fill="var(--green)">✓ a ${fmt(vv)} sí vende</text></g>`;}});
   // Cada tramo toma el color de la estrategia del día al que llega (la línea cambia de color el día que cambió la estrategia).
   if(ptsPK.length>1)for(let j=1;j<ptsPK.length;j++){const a=ptsPK[j-1],b=ptsPK[j];svg+=`<line x1="${a[0].toFixed(1)}" y1="${a[1].toFixed(1)}" x2="${b[0].toFixed(1)}" y2="${b[1].toFixed(1)}" stroke="${_estCol(b[2])}" stroke-width="2" stroke-linecap="round"/>`;}
   // marcas de cambios de precio
