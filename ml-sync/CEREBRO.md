@@ -390,3 +390,10 @@ probado, no queda ningún vendedor ajeno, pasamos a ganar la caja, o pasaron 30 
 Él, con las 10 Tiras Led de Luciana que pagan stock antiguo: *"liquidá las 10 tiras led. al precio que sea"*. El "nunca abajo de 0%"
 sigue siendo la regla; la única excepción es cuando ÉL pide rematar algo a cualquier precio: `entrarpromo:<MLA>=<precio>@PRICE_DISCOUNT!piso!bajocero|motivo;go`.
 Nunca se usa por decisión propia.
+
+## ⚖️ LA PLATA POR DÍA ES NETA DE TRABAJO, TOPE Y CAPITAL (18/10/2026, eligió la a)
+Él: *"al vender menos se trabaja menos (…) se llena menos el monotributo (…) más plata que se invierte en otro lado (…) prefiero ganar
+menos en ese producto pero nos da por otro lado"*. Toda comparación de precios (techo, escasez, volver, bajar) se hace con la plata por
+día MENOS: **$300 por unidad vendida** (caja, armado, reclamos, tiempo) · **3% de lo facturado** (lo que gasta del tope de H) · y,
+al decidir, **2% por mes sobre el costo del stock** que queda parado. A igual plata neta gana el precio alto. La ficha médica ya mide
+así (`PD_TRABAJO_U`, `PD_TOPE_PCT` en sync.mjs). Los números se pueden ajustar si él dice otra cosa.

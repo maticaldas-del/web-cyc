@@ -3471,6 +3471,11 @@ function fechasEspeciales(y) {
 // fecha de regalo, competidor, costo). La ganancia es la misma cuenta aproximada de `lupa`/`escmedir` (neto − mercadería
 // − IIBB de la cuenta − ~2% de monotributo). Vive en `mlapi/ficha/<MLA>` (fuera de `cyc/`: la web la lee al abrirla).
 const FICHA_VENCE_DIAS = 60;
+// LA PLATA POR DÍA DESCUENTA LO QUE NO SE VE (18/10/2026, eligió la a). Él: *"al vender menos se trabaja menos (…) se llena menos
+// el monotributo (…) prefiero ganar menos en ese producto pero nos da por otro lado"*. A la ganancia de cada tramo se le resta:
+// trabajo por unidad (caja, armado, reclamos, tiempo) y el lugar que gasta en el tope de H cada peso facturado. La plata parada
+// (2%/mes sobre el costo del stock) se mira aparte al decidir, porque depende del stock y no del precio del tramo.
+const PD_TRABAJO_U = 300, PD_TOPE_PCT = 0.03;
 function poissonCdfF(k, lam) { if (!(lam > 0)) return 1; let p = Math.exp(-lam), s = p; for (let i = 1; i <= k; i++) { p *= lam / i; s += p; } return Math.min(1, s); }
 function armarFicha({ mla, d, e, cu, imp, cambios, notas, hoyK }) {
   const ks = Object.keys(d || {}).filter((k) => /^\d{4}_\d{2}_\d{2}$/.test(k) && k < hoyK && d[k] && typeof d[k] === 'object').sort();
@@ -3478,7 +3483,7 @@ function armarFicha({ mla, d, e, cu, imp, cambios, notas, hoyK }) {
   const kTs = (k) => Date.parse(k.replace(/_/g, '-') + 'T15:00:00Z');
   const fK = (k) => k ? k.slice(8, 10) + '/' + k.slice(5, 7) + '/' + k.slice(2, 4) : '?';
   const $ = (x) => (x == null || !isFinite(x)) ? '—' : '$' + Math.round(x).toLocaleString('es-AR');
-  const tramoDe = (a, b) => { let dias = 0, u = 0, neto = 0, tot = 0, agot = 0, vis = 0, nv = 0; for (const k of ks) { if (k < a || k >= b) continue; const x = d[k]; if (x.vis != null) { vis += Number(x.vis) || 0; nv++; } if (!conSt(x)) { agot++; continue; } dias++; u += Number(x.u) || 0; neto += Number(x.neto) || 0; tot += Number(x.tot) || 0; } const gan = neto - u * cu - tot * imp; return { dias, agot, u, r: dias ? u / dias : null, gu: u ? gan / u : null, pd: dias ? gan / dias : null, vd: nv ? vis / nv : null }; };
+  const tramoDe = (a, b) => { let dias = 0, u = 0, neto = 0, tot = 0, agot = 0, vis = 0, nv = 0; for (const k of ks) { if (k < a || k >= b) continue; const x = d[k]; if (x.vis != null) { vis += Number(x.vis) || 0; nv++; } if (!conSt(x)) { agot++; continue; } dias++; u += Number(x.u) || 0; neto += Number(x.neto) || 0; tot += Number(x.tot) || 0; } const gan = neto - u * cu - tot * imp - u * PD_TRABAJO_U - tot * PD_TOPE_PCT; return { dias, agot, u, r: dias ? u / dias : null, gu: u ? gan / u : null, pd: dias ? gan / dias : null, vd: nv ? vis / nv : null }; };
   // 1 · TRAMOS DE PRECIO (precio de lista de cada día; un día sin precio sigue el anterior)
   const tramos = []; let cur = null, pAnt = null;
   for (const k of ks) {
@@ -3497,7 +3502,7 @@ function armarFicha({ mla, d, e, cu, imp, cambios, notas, hoyK }) {
     cur.diasSt++; cur.u += Number(x.u) || 0; cur.neto += Number(x.neto) || 0; cur.tot += Number(x.tot) || 0; cur.uR += Number(x.uR) || 0;
   }
   if (cur) tramos.push(cur);
-  const T = tramos.map((t) => { const gan = t.neto - t.u * cu - t.tot * imp; const caja = Object.entries(t.cajas).sort((a, b) => b[1] - a[1])[0]; return { p: t.p || null, desde: t.desde, hasta: t.hasta, dias: t.dias, diasSt: t.diasSt, agot: t.agot, u: t.u, uR: t.uR, r: t.diasSt ? +(t.u / t.diasSt).toFixed(3) : null, gu: t.u ? Math.round(gan / t.u) : null, pd: t.diasSt ? Math.round(gan / t.diasSt) : null, vd: t.nv ? +(t.vis / t.nv).toFixed(1) : null, caja: caja ? caja[0] : null, pausada: (t.est.paused || 0) > (t.est.active || 0) }; });
+  const T = tramos.map((t) => { const gan = t.neto - t.u * cu - t.tot * imp - t.u * PD_TRABAJO_U - t.tot * PD_TOPE_PCT; const caja = Object.entries(t.cajas).sort((a, b) => b[1] - a[1])[0]; return { p: t.p || null, desde: t.desde, hasta: t.hasta, dias: t.dias, diasSt: t.diasSt, agot: t.agot, u: t.u, uR: t.uR, r: t.diasSt ? +(t.u / t.diasSt).toFixed(3) : null, gu: t.u ? Math.round(gan / t.u) : null, pd: t.diasSt ? Math.round(gan / t.diasSt) : null, vd: t.nv ? +(t.vis / t.nv).toFixed(1) : null, caja: caja ? caja[0] : null, pausada: (t.est.paused || 0) > (t.est.active || 0) }; });
   // 2 · MIS CAMBIOS Y CÓMO LES FUE
   const cc = (cambios || []).filter((c) => c && Number(c.ts) > 0).sort((a, b) => a.ts - b.ts);
   const C = [];
