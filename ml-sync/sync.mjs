@@ -8734,7 +8734,8 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
       console.log(`  · ${String(upd.m.toFixed(1)).padStart(6)}% · ${e.n.slice(0, 55)} · ${esLista ? money(Number(e.p)) : 'US$ ' + e.u} → ${upd.mi} "${upd.mt.slice(0, 50)}" a ${money(upd.mp)}${upd.rp ? ' · ⚠️ ' + upd.rp.slice(0, 60) : ''}`);
       const piso = candPisoDe({ nombre: e.n, mlTit: upd.mt });
       const loc = RE_CAND_PERF.test(`${e.n} ${upd.mt}`) ? perfLocalPct(puesto * tc, upd.mp) : null;
-      if (upd.m >= piso || (loc != null && loc >= PERF_LOCAL_GAN)) { res.b25++; res.pasan.push({ cod, e, upd }); if (upd.m < piso) console.log(`     🏪 en ML no llega, pero en la perfumería del local deja ${loc.toFixed(0)}%: pasa`); } else if (upd.m >= 15) res.b15++; else res.bajo++;
+      // 📋 Listas son SÓLO para ML (18/10/2026, regla suya): ahí el % del local no hace pasar nada.
+      if (upd.m >= piso || (!esLista && loc != null && loc >= PERF_LOCAL_GAN)) { res.b25++; res.pasan.push({ cod, e, upd }); if (upd.m < piso) console.log(`     🏪 en ML no llega, pero en la perfumería del local deja ${loc.toFixed(0)}%: pasa`); } else if (upd.m >= 15) res.b15++; else res.bajo++;
       if (aplicar) await db.patch(RUTA + '/' + cod, upd);
     } catch (err) { res.err++; console.log(`  ✗ ${e.n.slice(0, 60)}: ${String(err.message || err).slice(-120)}`); if (/429/.test(String(err.message || err))) await espera(60000); }
   }

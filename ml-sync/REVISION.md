@@ -1435,6 +1435,18 @@ toda publicación activa, no `fulfillment`, con unidades, se pausa (PUT + relect
 Claude) y con `activarfull:go`. Sin `noAutoActivar`: al llegar a Full se activa como cualquier pausada con stock. Marca
 `mllinks/<MLA>/pausaFueraFull`. Chequear: que no pause publicaciones de Full sin stock (filtro `available_quantity>0` y logistic ≠ fulfillment).
 
+### 18/10/2026 · v24.34 · 📋 Listas = otro Paraguay, sólo ML (etapa 3)
+Él: *"queda así bs as / paraguay / paulvic / listas (ahí van todas las listas que te paso de la perfumería…) quiero que en listas se
+trate igual que en paraguay. Y va a ser solo mercadería para ml"*.
+ · Pedidos: 🇦🇷 Bs As · 🇵🇾 Paraguay · 🧴 Paulvic · 📋 Listas · 🗑️ Papelera.
+ · `renderListas` (index.html): proveedor arriba y tres solapas (`_listaVista`): ✅ Probados (fichas con `listaProv`, con su pedido de
+   reposición de `state.pedidos`; Bs As los saca) · 🆕 Nuevos (dan = medido ≥25% en ML y con foto de ML, `_listaDa`; casilla de unidades
+   → `cyc/listas_pedido/<prov>/<cód>`, `listaSetU` no deja cargar lo que no da ni lo que ya viaja) · 🧾 Pedido (mensaje cód × u, "Ya lo
+   pedí" → `cyc/compraslista/<id>` estado camino; "Llegó" → `listaLlego` crea fichas con costo = lista + recargo en US$ del día del
+   pedido, `origen:'bsas'`, `proveedor`, `listaProv`, `codLista`; si ya hay una con el mismo nombre/código la engancha).
+ · Se fueron la carpeta "Lista precio negocio" y el % del local en Listas. Robot: `correrPyCatMedir` con lista ya no hace pasar por el local.
+ · **Qué chequear:** que un probado de Listas no aparezca también en Bs As; que el robot de pedidos decida esas fichas (origen bsas).
+
 ### 18/10/2026 · v24.33 · carpeta "📁 Lista precio negocio" (etapa 3)
 Pedido suyo: los proveedores de la perfumería del local van en una carpeta aparte en Pedidos → 📋 Listas. `lista:<prov>|negocio;go`
 pone `cyc/mlconfig/listasProv/<prov>/negocio` (`|sinnegocio;go` lo saca; también se puede pasar al cargar la lista). En la web
