@@ -38652,13 +38652,17 @@ async function main() {
       if (pon.length) {
         console.log(`=== 🏷 PONER ESTRATEGIA ${GOt ? '' : '(PRUEBA · agregá ;go)'} ===`);
         for (const x of pon) {
-          const mt = x.match(/^\s*(MLA\d+)\s*=\s*(\w+)\s*(?:\|(.*))?$/i);
+          // `@AAAA-MM-DDTHH:MM` (hora de acá) = desde cuándo vale (18/10/2026: si la estrategia empezó antes, las ventas de ese rato
+          // tienen que mostrarla). Sin `@`, desde ahora.
+          const mt = x.match(/^\s*(MLA\d+)\s*=\s*(\w+)(?:@(\d{4}-\d\d-\d\dT\d\d:\d\d))?\s*(?:\|(.*))?$/i);
           if (!mt || !ESTRATEGIAS[mt[2].toLowerCase()]) { console.log(`✗ no entendí "${x}" · va así: tag:MLA123=escasez|motivo;go · estrategias: ${Object.keys(ESTRATEGIAS).join(', ')}`); continue; }
           const m = mt[1].toUpperCase(), t = mt[2].toLowerCase();
           if (!links[m]) { console.log(`✗ ${m} no está vinculada`); continue; }
           const a = actual(m);
-          console.log(`· ${nomDe(m)}: ${a ? ESTRATEGIAS[a.t] : 'sin estrategia'} → ${ESTRATEGIAS[t]}${mt[3] ? ' · ' + mt[3].trim() : ''}`);
-          if (GOt) console.log((await guardarEstrategia(db, m, t, (mt[3] || '').trim(), Date.now())) ? '   ✓ guardada' : '   ✗ no quedó');
+          const desde = mt[3] ? new Date(mt[3] + ':00-03:00').getTime() : Date.now();
+          if (!(desde > 0) || desde > Date.now() + 60e3) { console.log(`✗ la fecha "${mt[3]}" no sirve`); continue; }
+          console.log(`· ${nomDe(m)}: ${a ? ESTRATEGIAS[a.t] : 'sin estrategia'} → ${ESTRATEGIAS[t]}${mt[3] ? ' desde ' + mt[3] : ''}${mt[4] ? ' · ' + mt[4].trim() : ''}`);
+          if (GOt) console.log((await guardarEstrategia(db, m, t, (mt[4] || '').trim(), desde)) ? '   ✓ guardada' : '   ✗ no quedó');
         }
         return;
       }
