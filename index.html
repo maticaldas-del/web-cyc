@@ -2664,7 +2664,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.52';
+const APP_VERSION='24.53';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2675,6 +2675,7 @@ const APP_VERSION='24.52';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.53',f:'18/10/2026',h:'18:40',c:[{n:1,t:'La etiqueta "buscando techo ×2" ahora dice "buscando techo · 2ª suba": es la segunda suba seguida probando el techo.'}]},
   {v:'24.52',f:'18/10/2026',h:'18:20',c:[{n:1,t:'Ventas x Producto en la PC: el renglón quedó con lo básico. El número de venta y el total y neto de cada producto de una compra con varios pasaron a "detalle ▾" (el mismo de la tarjeta del teléfono). Arriba queda una sola vez el total y neto de la compra entera.'}]},
   {v:'24.51',f:'18/10/2026',h:'17:45',c:[{n:2,t:'Estrategia nueva "📦 sobra stock": lo que se baja (aunque quede abajo del 25%) porque sobra mercadería y va a pagar stock antiguo. Las promos que pone el cerebro ahora anotan su estrategia (antes quedaban como 🎯 base).'}]},
   {v:'24.50',f:'18/10/2026',h:'15:16',c:[{n:1,t:'Línea de tiempo: el techo son dos rayas. Roja "🚧 a $X ya no vende" (el precio probado) y verde "✓ a $Y sí vende" (al que se volvió). El techo está entre las dos.'}]},
@@ -10503,7 +10504,7 @@ function estrategiaDe(mla,ts){
 }
 function estrategiaChip(e){if(!e)return'';const u=ESTRATEGIA_UI[e.t];if(!u)return'';const d=e.ts?new Date(e.ts).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}):'';
   const tit=(u[3]+(e.n>1?' Es la suba n.º '+e.n+' seguida buscando el techo.':'')+(e.m?' · '+e.m:'')+(d?' · desde el '+d:'')).replace(/"/g,'&quot;');
-  return ` <span title="${tit}" style="padding:1px 6px;border-radius:4px;border:1px solid ${u[2]}55;background:${u[2]}1f;color:${u[2]};font-size:.62rem;white-space:nowrap">${u[0]} ${u[1]}${e.n>1?' ×'+e.n:''}</span>`;}
+  return ` <span title="${tit}" style="padding:1px 6px;border-radius:4px;border:1px solid ${u[2]}55;background:${u[2]}1f;color:${u[2]};font-size:.62rem;white-space:nowrap">${u[0]} ${u[1]}${e.n>1?' · '+e.n+'ª suba':''}</span>`;}
 function estrategiaVentaHTML(v){return v&&v.mla?estrategiaChip(estrategiaDe(v.mla,Number(v.ts)||0)):'';}
 function nombreDeVenta(v){const p=prodDeVenta(v);return p?p.name:((v&&v.prod)||'');}
 // ── LOS CAMBIOS DE PRECIO DE ESA PUBLICACIÓN, AL LADO DE CADA VENTA (24/09/2026) ──
