@@ -539,6 +539,12 @@ candidato de ese código (`cyc/candidatos_py`, precio de la lista de Nissei con 
 el precio de un candidato distinto con código parecido (se compara también por el final).
 - **`buscacosto` por código (11/10/2026):** si todo lo que se le pasa son números (`buscacosto:137567+164712`), busca el código de Nissei en fichas, candidatos y compras (también por el final). Para cruzar el pedido que Matías pasa como "código x unidades". Chequear: que un código corto no agarre otro producto.
 
+- **📄 Verlo en la lista (18/10/2026, v24.43).** Cada producto de 📋 Listas tiene el link que muestra el renglón TEXTUAL del
+  archivo del proveedor (archivo, hoja, fila, título de la sección). Datos: `ml-sync/listasori.json.gz` (lo arma Claude cruzando
+  cada código con el archivo que él pasó) → probe `listaori:go` → `mlapi/listasori/<prov>/<código>` → `listaVerOri` en index.html.
+  Qué chequear: al cargar una lista NUEVA hay que regenerar el .gz y correr `listaori:go`, si no el link dice "no tengo el renglón".
+  Wels vino en fotos (no hay renglón). Iscos: 44 de 3475 no se ubicaron (hojas Hombre/Mujer con códigos armados por talle).
+
 ## 4 · CHOQUES
 - `mlapi/lineatodo` lo escriben `ritmo:go` (noche) y `lineatodo:go` (ml-consulta): los dos con la
   misma función `calcLineaTodo`.

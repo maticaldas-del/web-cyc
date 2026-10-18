@@ -40,7 +40,7 @@ process.on('SIGTERM', () => _alCortar('SIGTERM'));
 // los que escriben en cantidad o en plata se niegan de entrada, y cualquier otro corre con la base,
 // ML, Mercado Pago y Telegram en sólo lectura (se deja renovar y guardar el token de ML, que ML rota).
 const EN_CONSULTA = process.env.GITHUB_WORKFLOW === 'ml-consulta' || process.env.ML_CONSULTA === '1';
-const CONSULTA_ESCRIBE = new Set(['pycat', 'pycatres', 'lista', 'listamedir', 'listacuenta', 'listadato', 'pycatprobados', 'candprecio', 'lineatodo', 'revcand', 'vincular', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull']);
+const CONSULTA_ESCRIBE = new Set(['pycat', 'pycatres', 'lista', 'listamedir', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'revcand', 'vincular', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull']);
 const CONSULTA_NIEGA = new Set(['cajaitems', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'promoventas', 'cargosmes', 'arcacierres']);
@@ -19265,6 +19265,24 @@ async function main() {
       await db.patch('cyc/mlconfig/listasProv/' + provK, { nombre: provNom, rec, n: total, ts: ahora, ...(_neg ? { negocio: true } : {}) });
       const r = (await db.get('mlapi/listas/' + provK + '/' + filas[filas.length - 1].cod)) || {};
       console.log(`\n${Math.abs((Number(r.p) || 0) - filas[filas.length - 1].p) < 1 ? '✓' : '❌'} guardado (${total} productos en la lista). Medila con \`listamedir:<proveedor>:<cuántos>:go\`.`);
+      return;
+    }
+    // BILLING_PROBE=listaori[:go] (18/10/2026) → carga en `mlapi/listasori/<prov>/<código>` el renglón TEXTUAL de cada producto en el
+    // archivo del proveedor ({a archivo, h hoja, r fila, s sección de arriba, x celdas}), desde `ml-sync/listasori.json.gz` (lo arma
+    // Claude con los archivos que él pasa). La web lo muestra con "📄 verlo en la lista" (pedido suyo: ver si dice tester, etc.).
+    if (/^listaori(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const APLICAR = /:go\s*$/.test(String(process.env.BILLING_PROBE));
+      const { gunzipSync } = await import('node:zlib');
+      const data = JSON.parse(gunzipSync(readFileSync(new URL('./listasori.json.gz', import.meta.url))).toString('utf8'));
+      for (const [prov, items] of Object.entries(data)) {
+        const n = Object.keys(items).length; console.log(`  ${prov}: ${n} renglones`);
+        if (!APLICAR || !n) continue;
+        const ks = Object.keys(items);
+        for (let i = 0; i < ks.length; i += 1500) { const upd = {}; for (const k of ks.slice(i, i + 1500)) upd[k] = items[k]; await db.patch('mlapi/listasori/' + prov, upd); }
+        const k0 = ks[ks.length - 1]; const r = (await db.get('mlapi/listasori/' + prov + '/' + k0)) || {};
+        console.log(`    ${r.r === items[k0].r ? '✓ releído' : '❌ no quedó'}`);
+      }
+      if (!APLICAR) console.log('PRUEBA: agregá :go para guardar.');
       return;
     }
     // BILLING_PROBE=listamedir[:<proveedor>][:<cuántos>][:go] → mide contra ML las listas guardadas (la misma cuenta que Paraguay).
