@@ -545,6 +545,9 @@ el precio de un candidato distinto con código parecido (se compara también por
   Qué chequear: al cargar una lista NUEVA hay que regenerar el .gz y correr `listaori:go`, si no el link dice "no tengo el renglón".
   Wels vino en fotos (no hay renglón). Iscos: 44 de 3475 no se ubicaron (hojas Hombre/Mujer con códigos armados por talle).
 
+- **Copiar pedido de Listas igual que Paulvic (18/10/2026, v24.44).** En 🧾 Pedido el mensaje es "<nombre tal cual la lista> x<u>"
+  por renglón + "SÓLO estos productos…". Sin redondeo (las unidades son las que él carga). Vive en el armado de `_listaVista==='hechos'`.
+
 ## 4 · CHOQUES
 - `mlapi/lineatodo` lo escriben `ritmo:go` (noche) y `lineatodo:go` (ml-consulta): los dos con la
   misma función `calcLineaTodo`.
