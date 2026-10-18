@@ -39433,7 +39433,7 @@ async function main() {
 
     if (/^planilla(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const ctaF = String(process.env.BILLING_PROBE).slice('planilla'.length).replace(/^:/, '').trim().toLowerCase();
-      const [lk, inv, vp, np, ap, sh, cfgM, mono, fin, cuoC, prodsO, nosub, cPiso, pClaude] = await Promise.all(['cyc/mllinks', 'cyc/inventory', 'cyc/ventaprod', 'cyc/netopub', 'cyc/autoprecio', 'cyc/stockhist', 'cyc/mlconfig', 'cyc/monotributo', 'cyc/finanzas', 'cyc/mlcuotas', 'cyc/products', 'cyc/nosubir', 'cyc/claudepiso', 'cyc/promoclaude']
+      const [lk, inv, vp, np, ap, sh, cfgM, mono, fin, cuoC, prodsO, nosub, cPiso, pClaude, estrat] = await Promise.all(['cyc/mllinks', 'cyc/inventory', 'cyc/ventaprod', 'cyc/netopub', 'cyc/autoprecio', 'cyc/stockhist', 'cyc/mlconfig', 'cyc/monotributo', 'cyc/finanzas', 'cyc/mlcuotas', 'cyc/products', 'cyc/nosubir', 'cyc/claudepiso', 'cyc/promoclaude', 'cyc/estrategia']
         .map((r) => db.get(r).then((x) => x || {}).catch(() => null)));
       // Todas las que deciden algo (13/10/2026, revisión 9): una lectura fallida de las excepciones (liquidando, `!piso`, mis
       // promos), del piso, del monotributo o de los cambios se leía como "no hay ninguna" y la planilla salía igual, mal.
@@ -39555,6 +39555,10 @@ async function main() {
           }
         }
       }
+      // LA ESTRATEGIA DE HOY DE CADA UNA (18/10/2026, él: "fijate si hay más productos con tags equivocados"). Misma regla que
+      // `estrategiaDe` de la web: la última anotada; si no hay y está marcada liquidando, 📉; si no, 🎯 base.
+      const estHoy = (mla) => { const h = (estrat || {})[mla] || {}; let b = null; for (const [k, x] of Object.entries(h)) { const n = Number(k); if (!(n > 0) || n > hoy + 60e3 || !x || !ESTRATEGIAS[x.t]) continue; if (!b || n > b.ts) b = { t: x.t, m: x.m, ts: n }; } if (!b && (nosub || {})[mla]) b = { t: 'liquidando', ts: 0, m: 'marcada liquidando' }; return b || { t: 'base', ts: 0, m: 'sin estrategia anotada' }; };
+      for (const r of filas) r.est2 = estHoy(r.mla);
       filas.sort((x, y) => (y.u30 - x.u30) || (y.st - x.st));
       console.log(`=== 📋 PLANILLA · ${filas.length} publicaciones con ficha (activas y pausadas)${ctaF ? ' · ' + ctaF : ''} · objetivo ${PISO}% ===`);
       console.log(`Cuenta completa: ${esperadas} vivas con ficha para leer = ${filas.length} leídas + ${nSinLeer} sin leer + ${fuera.cerradaML} que ML ya da cerradas + ${fuera.errorML} con error de ML${esperadas !== filas.length + nSinLeer + fuera.cerradaML + fuera.errorML ? '  ⚠️ NO CIERRA' : '  ✓ cierra'}`);
@@ -39565,8 +39569,14 @@ async function main() {
         const cajaT = r.caja ? `caja ${r.caja}${r.ptw && r.caja !== 'winning' ? ' ML pide ' + f(r.ptw) : ''}` : '';
         console.log([r.mla, r.cta, r.nom, r.est, f(r.P), mgT, `Full ${r.stDesc ? '? (stock del color: no sé)' : r.st}${r.cero ? ' (cero hace ' + Math.round((hoy - r.cero) / 864e5) + ' d)' : ''}`,
           `v ${r.u7}/${r.u30}/${r.u60}`, r.ult ? `últ hace ${Math.round((hoy - r.ult) / 864e5)} d` : 'sin ventas 60 d',
-          r.tanda != null ? `tanda duró ${r.tanda.toFixed(1)} d` : '', r.var ? `${r.var} variantes` : '', cajaT, r.cambio ? 'cambio ' + r.cambio : ''].filter(Boolean).join(' · '));
+          r.tanda != null ? `tanda duró ${r.tanda.toFixed(1)} d` : '', r.var ? `${r.var} variantes` : '', cajaT, r.cambio ? 'cambio ' + r.cambio : '', '🏷 ' + ESTRATEGIAS[r.est2.t]].filter(Boolean).join(' · '));
       }
+      // Las que no cuadran: 🎯 base abajo del 25% (base es sólo 25%+ sin otra estrategia) · en promo mía y anotada base · y al revés,
+      // una estrategia de precio bajo (sobra, liquidando, excepción, caja) con el precio ya de vuelta arriba del 25%+5.
+      const malTag = filas.filter((r) => (r.est2.t === 'base' && r.mg != null && r.mg < PISO) || (r.est2.t === 'base' && /en promo mía/.test(r.exc || ''))
+        || (['sobra', 'liquidando', 'excepcion', 'caja'].includes(r.est2.t) && r.mg != null && r.mg >= PISO + 5 && !/en promo mía|liquidando/.test(r.exc || '')));
+      console.log(`\n── 🏷 ETIQUETAS QUE NO CUADRAN CON EL PRECIO DE HOY: ${malTag.length} ──`);
+      for (const r of malTag) console.log(`🏷 ${r.mla} · ${r.cta} · ${r.nom} · ${f(r.P)} · ${r.mg == null ? 'margen ?' : r.mg.toFixed(0) + '%'} · anotada ${ESTRATEGIAS[r.est2.t]}${r.est2.ts ? ' desde ' + new Date(r.est2.ts).toISOString().slice(5, 10) : ''}${r.exc ? ' · ' + r.exc : ''}${r.est2.m ? ' · «' + String(r.est2.m).slice(0, 90) + '»' : ''}`);
       if (nSinLeer) console.log(`\n⚠️ sin leer (${nSinLeer}): ${sinLeer.slice(0, 40).join(' · ')}`);
       if (errMLs.length) console.log(`⚠️ con error de ML (${errMLs.length}): ${errMLs.slice(0, 40).join(' · ')}`);
       const bajo = filas.filter((r) => r.mg != null && r.mg < PISO), sinMg = filas.filter((r) => r.mg == null);

@@ -395,7 +395,8 @@ Chequear: que las dos listas coincidan, que `tagDeMotivo` no ponga "base" a moti
 **18/10/2026 (v24.51), pedido suyo con el Pendrive 128gb (salía 🎯 base a 13%):** estrategia nueva `sobra` (📦 sobra stock: se baja abajo
 del 25% porque sobra mercadería y va a pagar stock antiguo; vuelve al normal con lo justo). `tagDeMotivo`: "stock antiguo/sobrestock/sobran"
 → sobra antes que liquidando. `entrarpromo` ahora guarda la estrategia (si el motivo da base, queda 🏷️ promo). Chequear: ninguna
-publicación abajo del 25% con 🎯 base.
+publicación abajo del 25% con 🎯 base. `planilla` ahora dice la estrategia de cada renglón (🏷) y abajo lista **🏷 ETIQUETAS QUE NO CUADRAN**
+(base abajo del 25%, promo mía anotada base, o sobra/liquidando/excepción/caja con el precio ya 30%+). Mirarla en cada completa.
 
 ### Todo lo que el robot revisó y no da, en Nuevos (17/10/2026, v23.99, pedido suyo)
 Qué: abajo de todo en Pedidos → Paraguay → Nuevos (sólo Nissei), desplegable `pycatNoDanHTML`/`pycatNoDan` que lee `mlapi/pycat` al
