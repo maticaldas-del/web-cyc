@@ -2664,7 +2664,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.50';
+const APP_VERSION='24.51';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2675,6 +2675,7 @@ const APP_VERSION='24.50';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.51',f:'18/10/2026',h:'17:45',c:[{n:2,t:'Estrategia nueva "📦 sobra stock": lo que se baja (aunque quede abajo del 25%) porque sobra mercadería y va a pagar stock antiguo. Las promos que pone el cerebro ahora anotan su estrategia (antes quedaban como 🎯 base).'}]},
   {v:'24.50',f:'18/10/2026',h:'15:16',c:[{n:1,t:'Línea de tiempo: el techo son dos rayas. Roja "🚧 a $X ya no vende" (el precio probado) y verde "✓ a $Y sí vende" (al que se volvió). El techo está entre las dos.'}]},
   {v:'24.49',f:'18/10/2026',h:'15:15',c:[{n:1,t:'Línea de tiempo: una raya roja punteada "🚧 techo $X" marca el precio que se probó y no se vendía (arriba de eso no conviene). Al pasar el mouse dice cuándo y por qué.'}]},
   {v:'24.48',f:'18/10/2026',h:'13:20',c:[{n:1,t:'Ventas de hoy: la línea punteada y el % ahora comparan contra el PROMEDIO de los últimos 5 días iguales (ej. los 5 domingos anteriores), a la misma hora, en vez de uno solo.'}]},
@@ -10487,7 +10488,7 @@ function prodDeVenta(v){return (v&&v.prodId)?(prodById(v.prodId)||prodByName(v&&
 // *"quiero que cada precio tenga un tag (…) y que al venderse ese producto en ventas x producto diga qué tag tiene"*. La pone
 // Claude con cada precio (`cyc/estrategia/<MLA>/<ts>`, historia). Cada venta muestra la última estrategia ANTERIOR a esa venta,
 // así una venta vieja dice la estrategia que tenía ese día. MISMA LISTA EN sync.mjs (ESTRATEGIAS).
-const ESTRATEGIA_UI={base:['🎯','base','#60a5fa','Precio normal: el 25% en el peor caso.'],escasez:['🔥','escasez','#f97316','Se estira el stock hasta que llegue la próxima caja: precio alto para que dure.'],sinrepo:['⏳','sin reposición','#eab308','No se consigue: el precio va para que el stock se venda en 4 meses al máximo posible.'],techo:['📈','buscando techo','#22c55e','Prueba de suba: se busca el precio que más plata por día deja.'],liquidando:['📉','liquidando','#ef4444','Se remata a propósito (sobra stock, stock antiguo o no vende): el % bajo es buscado.'],caja:['🥊','ganar la caja','#a78bfa','Bajado para ganar la caja de compra de ML.'],promo:['🏷️','promo','#c084fc','En promo o descuento puesto por Claude.'],fecha:['🎁','fecha especial','#f472b6','Precio pensado para una fecha (Día de la Madre, Navidad…).'],excepcion:['🛡️','excepción','#94a3b8','Abajo del 25% a propósito (barrera de $33.000 u otro motivo explicado en el 🧠).'],nuevo:['🆕','lanzamiento','#2dd4bf','Producto nuevo: primer precio.'],correccion:['↩️','corrección','#94a3b8','Vuelta atrás de un precio que no funcionó.']};
+const ESTRATEGIA_UI={base:['🎯','base','#60a5fa','Precio normal: el 25% en el peor caso.'],escasez:['🔥','escasez','#f97316','Se estira el stock hasta que llegue la próxima caja: precio alto para que dure.'],sinrepo:['⏳','sin reposición','#eab308','No se consigue: el precio va para que el stock se venda en 4 meses al máximo posible.'],techo:['📈','buscando techo','#22c55e','Prueba de suba: se busca el precio que más plata por día deja.'],liquidando:['📉','liquidando','#ef4444','Se remata a propósito (sobra stock, stock antiguo o no vende): el % bajo es buscado.'],caja:['🥊','ganar la caja','#a78bfa','Bajado para ganar la caja de compra de ML.'],promo:['🏷️','promo','#c084fc','En promo o descuento puesto por Claude.'],fecha:['🎁','fecha especial','#f472b6','Precio pensado para una fecha (Día de la Madre, Navidad…).'],excepcion:['🛡️','excepción','#94a3b8','Abajo del 25% a propósito (barrera de $33.000 u otro motivo explicado en el 🧠).'],sobra:['📦','sobra stock','#fb923c','Hay más stock del que se vende antes de que ML cobre stock antiguo: se baja (aunque quede abajo del 25%) para que salga lo que sobra, y vuelve al precio normal cuando queda lo justo. El cerebro se juzga contra no hacer nada.'],nuevo:['🆕','lanzamiento','#2dd4bf','Producto nuevo: primer precio.'],correccion:['↩️','corrección','#94a3b8','Vuelta atrás de un precio que no funcionó.']};
 function estrategiaDe(mla,ts){
   if(!mla)return null;const h=(state.estrategia||{})[mla]||{};const t=Number(ts)||Date.now();
   let best=null;for(const [k,x] of Object.entries(h)){const n=Number(k);if(!(n>0)||n>t+60e3||!x||!ESTRATEGIA_UI[x.t])continue;if(!best||n>best.ts)best={...x,ts:n};}

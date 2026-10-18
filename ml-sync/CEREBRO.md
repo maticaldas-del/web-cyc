@@ -422,3 +422,5 @@ ocasionar más pérdidas, entonces el cerebro ganó plata aunque esté por debaj
 mandar mucho"*. O sea, son DOS cuentas separadas: (1) la decisión del cerebro se juzga contra NO HACER NADA (stock antiguo +
 plata parada 2%/mes + ventas perdidas): si deja más que seguir igual, GANÓ, aunque esté abajo del 25%. (2) Lo que falta para el
 25% es el costo del error de origen (mandar o comprar de más) y se anota a ESA causa, no al precio.
+
+**Etiqueta (18/10, pedido suyo):** lo que se baja por eso va con 📦 `sobra` (sobra stock), nunca 🎯 base: base es sólo 25%+ sin otra estrategia.
