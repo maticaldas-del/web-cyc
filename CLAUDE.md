@@ -9118,7 +9118,7 @@ cualquier pausada con stock. Primeros: los 3 Sony de Ayelen (MLA2202585953, MLA4
 ## 📋 LISTAS = OTRO PARAGUAY, SÓLO PARA ML (18/10/2026, regla suya · reemplaza "Lista precio negocio")
 Él: *"queda así bs as / paraguay / paulvic / listas (ahí van todas las listas que te paso de la perfumería, que son todas las que te
 mando, excepto que te diga lo contrario) quiero que en listas se trate igual que en paraguay. Y va a ser solo mercadería para ml"*.
-Toda lista de proveedor que me pase va con `lista:<prov>;…;go` (sin `|negocio`) y se mide sólo contra ML (25%). En la web: proveedor
+Toda lista de proveedor que me pase va con `lista:<prov>;…;go` (sin `|negocio`) y se mide sólo contra ML (25%). **Mínimo 100 ventas en ML para que dé (regla suya del 18/10)**: las ventas las mira el chat de compras (`listarevisar` → `listadato`). En la web: proveedor
 arriba, ✅ Probados (fichas `listaProv`) · 🆕 Nuevos (casilla de unidades) · 🧾 Pedido (Ya lo pedí → `cyc/compraslista`, Llegó crea las
 fichas). Lo de Listas no sale en Bs As. Primero: Wels.
 Y 18/10: Tira Led de Luciana → él pide el retiro de Full (paga $39.000/mes de stock antiguo) · Paulvic Scarf de Adriana → descuento fuerte para que salga antes del 10/11.

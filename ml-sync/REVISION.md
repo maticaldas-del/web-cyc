@@ -1435,6 +1435,11 @@ toda publicación activa, no `fulfillment`, con unidades, se pausa (PUT + relect
 Claude) y con `activarfull:go`. Sin `noAutoActivar`: al llegar a Full se activa como cualquier pausada con stock. Marca
 `mllinks/<MLA>/pausaFueraFull`. Chequear: que no pause publicaciones de Full sin stock (filtro `available_quantity>0` y logistic ≠ fulfillment).
 
+### 18/10/2026 · v24.41 · listas: mínimo 100 ventas (etapa 3)
+Él: *"el mínimo es 100 ventas. para todas las listas"*. ✅ Dan = 25%+ (con nombre y foto bien, o `ok` del chat) Y `vend` ≥ 100.
+Sin `vend` → 🔎 Para revisar (lo mira el chat con `listarevisar`/`listadato`); `vend` < 100 → afuera. Misma regla en `_listaDa` (web)
+y `cuentaLista` (robot).
+
 ### 18/10/2026 · v24.40 · Paulvic: el mensaje copiado en cantidades redondas (etapa 3)
 Él: *"que al copiar el mensaje siempre las unidades pedidas sean 3, 5, 10, 20, 50, 100. si hay que pedir 1 que diga 3"*. `_pvPaso` en
 `_pedidoItemHtml` (sólo si `esPedidoPaulvic`): para arriba al escalón siguiente, arriba de 100 a la centena. Sólo el texto copiado.
