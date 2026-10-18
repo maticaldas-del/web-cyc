@@ -3474,7 +3474,7 @@ const FICHA_VENCE_DIAS = 60;
 // LA PLATA POR DÍA DESCUENTA LO QUE NO SE VE (18/10/2026, eligió la a). Él: *"al vender menos se trabaja menos (…) se llena menos
 // el monotributo (…) prefiero ganar menos en ese producto pero nos da por otro lado"*. A la ganancia de cada tramo se le resta:
 // trabajo por unidad (caja, armado, reclamos, tiempo) y el lugar que gasta en el tope de H cada peso facturado. La plata parada
-// (2%/mes sobre el costo del stock) se mira aparte al decidir, porque depende del stock y no del precio del tramo.
+// (2%/mes sobre el costo del stock) también se resta, día por día con el stock de ese día.
 // Medido el mismo día: la caja ($17.500 repartida en "Envío+embalaje" de cada ficha) y los reclamos (% de reclamos) YA están en el
 // costo de cada producto, así que contarlos acá sería cobrarlos dos veces. Lo que no está es el TIEMPO (comprar, contar, etiquetar,
 // armar cajas): ~1 minuto por unidad a ~$6.000 la hora ≈ $100 por unidad.
