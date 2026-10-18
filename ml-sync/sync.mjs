@@ -19216,6 +19216,12 @@ async function main() {
       if (_dsc || _vlv) { if (!provs[provK]) { console.log(`❌ No hay ninguna lista "${provNom}".`); return; }
         console.log(`${provNom}: ${_dsc ? 'DESCARTADO (no se muestra más en 📋 Listas)' : 'vuelve a la pestaña 📋 Listas'}${APLICAR ? '' : ' · PRUEBA: agregá ;go'}`);
         if (APLICAR) await db.patch('cyc/mlconfig/listasProv/' + provK, { desc: _dsc ? true : null, descTs: _dsc ? Date.now() : null }); return; }
+      // CARPETA "LISTA PRECIO NEGOCIO" (18/10/2026, pedido suyo: *"todos los proveedores que te paso van ahí, de la perfumería"*):
+      // `lista:<prov>|negocio;go` lo pasa a la carpeta (en la web se agrupa aparte y se mira el % del local); `|sinnegocio;go` lo saca.
+      const _neg = opc.some((o) => o.trim() === 'negocio'), _sneg = opc.some((o) => o.trim() === 'sinnegocio');
+      if ((_neg || _sneg) && !partes.length) { if (!provs[provK]) { console.log(`❌ No hay ninguna lista "${provNom}".`); return; }
+        console.log(`${provNom}: ${_neg ? 'va a la carpeta 📁 Lista precio negocio' : 'sale de la carpeta 📁 Lista precio negocio'}${APLICAR ? '' : ' · PRUEBA: agregá ;go'}`);
+        if (APLICAR) { await db.patch('cyc/mlconfig/listasProv/' + provK, { negocio: _neg ? true : null }); const rr = (await db.get('cyc/mlconfig/listasProv/' + provK)) || {}; console.log(!!rr.negocio === _neg ? '✓ releído' : '❌ no quedó'); } return; }
       const filas = [], malos = [];
       for (const x of partes) {
         const i = x.lastIndexOf('='); if (i < 1) { malos.push(x); continue; }
@@ -19238,7 +19244,7 @@ async function main() {
       if (!APLICAR) { console.log('\nPRUEBA. Para guardar, agregá ";go" al final.'); return; }
       await db.patch('mlapi/listas/' + provK, upd);
       const total = Object.keys({ ...cat, ...upd }).length;
-      await db.patch('cyc/mlconfig/listasProv/' + provK, { nombre: provNom, rec, n: total, ts: ahora });
+      await db.patch('cyc/mlconfig/listasProv/' + provK, { nombre: provNom, rec, n: total, ts: ahora, ...(_neg ? { negocio: true } : {}) });
       const r = (await db.get('mlapi/listas/' + provK + '/' + filas[filas.length - 1].cod)) || {};
       console.log(`\n${Math.abs((Number(r.p) || 0) - filas[filas.length - 1].p) < 1 ? '✓' : '❌'} guardado (${total} productos en la lista). Medila con \`listamedir:<proveedor>:<cuántos>:go\`.`);
       return;

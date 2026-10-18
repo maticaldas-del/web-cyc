@@ -1434,3 +1434,10 @@ Regla suya: *"Pausá todo lo que esté en depósito. No podemos mandar a mano. S
 toda publicación activa, no `fulfillment`, con unidades, se pausa (PUT + relectura) en la vuelta de cada hora (aunque decida
 Claude) y con `activarfull:go`. Sin `noAutoActivar`: al llegar a Full se activa como cualquier pausada con stock. Marca
 `mllinks/<MLA>/pausaFueraFull`. Chequear: que no pause publicaciones de Full sin stock (filtro `available_quantity>0` y logistic ≠ fulfillment).
+
+### 18/10/2026 · v24.33 · carpeta "📁 Lista precio negocio" (etapa 3)
+Pedido suyo: los proveedores de la perfumería del local van en una carpeta aparte en Pedidos → 📋 Listas. `lista:<prov>|negocio;go`
+pone `cyc/mlconfig/listasProv/<prov>/negocio` (`|sinnegocio;go` lo saca; también se puede pasar al cargar la lista). En la web
+(`renderListas`) esos proveedores van en un desplegable y en ellos el % del local se calcula para TODO (no sólo perfumes).
+Primero: Wels (89 productos, precio con IVA; los 13 "Internacional" son imitaciones y no se cargaron).
+Chequear: que un proveedor de la carpeta siga apareciendo si es el único.
