@@ -1403,3 +1403,8 @@ Se cruzaron las versiones de `APP_CAMBIOS` y los commits del robot desde el 13/1
    Ojo al leer "❔ No medidos": incluye los ya analizados sin catálogo exacto o que nadie vende (sc/sv), por eso el total baja menos que lo
    analizado; el "−N hoy" cuenta sólo lo que salió de "sin medir".
  · Qué chequear: que ML no corte por cupo (429) con más vueltas; si corta, volver a cada 2 h.
+### Etapa 7 · 18/10/2026 · el % del local se había escondido en el celu (v24.29)
+ · Qué: v24.27 escondió `cand-loc` en ≤640px y los probados que dan SÓLO por la perfumería del local (`pyProbVeredicto` → 'da' por
+   `perfLocalPct` ≥ 25%: VS 12%, Cabotine 4%, Lapidus 18% en ML) quedaban arriba con el % de ML en rojo sin explicación. Ahora la línea
+   chica (`cand-cel`) lleva el 🏪 % del local en Probados y Nuevos.
+ · Qué chequear: al esconder algo en el celu, mirar si es el motivo por el que el renglón está donde está.
