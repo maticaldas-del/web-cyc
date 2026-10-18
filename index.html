@@ -2664,7 +2664,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.54';
+const APP_VERSION='24.55';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2675,6 +2675,7 @@ const APP_VERSION='24.54';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.55',f:'18/10/2026',h:'19:15',c:[{n:2,t:'Armar caja: el número de cada cuenta (y el de Todas) ahora es lo que se puede MANDAR con el cupo de Full de esa cuenta, no todo lo sugerido. Chicos y grandes cada uno contra su cupo. El color sigue igual: verde si la caja ya se justifica, rojo si no.'}]},
   {v:'24.54',f:'18/10/2026',h:'19:00',c:[{n:2,t:'Cupo de Full en Armar caja: ya no suma lo vendido después de leerlo. ML no devuelve cupo al vender (Ayelen: leíste 38, vendió 16 y ML sigue en 38). Ahora es lo leído menos lo que mandaste.'}]},
   {v:'24.53',f:'18/10/2026',h:'18:40',c:[{n:1,t:'La etiqueta "buscando techo ×2" ahora dice "buscando techo · 2ª suba": es la segunda suba seguida probando el techo.'}]},
   {v:'24.52',f:'18/10/2026',h:'18:20',c:[{n:1,t:'Ventas x Producto en la PC: el renglón quedó con lo básico. El número de venta y el total y neto de cada producto de una compra con varios pasaron a "detalle ▾" (el mismo de la tarjeta del teléfono). Arriba queda una sola vez el total y neto de la compra entera.'}]},
@@ -6308,6 +6309,18 @@ function renderOfiCaja(){
   // "41 hay que mandar" no dice cuántas van en la caja que estás armando ahora.
   const porCta={};LOCS.forEach(l=>porCta[l]=0);
   filas.forEach(f=>(f.sug||[]).forEach(x=>{if(porCta[x.cuenta]!==undefined)porCta[x.cuenta]+=x.mandar;}));
+  // LO QUE SE PUEDE MANDAR DE VERDAD: tope del cupo de Full de cada cuenta (18/10/2026, pedido suyo:
+  // "que aparezcan solo las unidades que puedo mandar teniendo en cuenta el cupo de cada cuenta").
+  // Chicos y grandes por separado, cada uno contra su cupo. Sin cupo cargado, queda lo sugerido.
+  const porCtaCupo={};
+  LOCS.forEach(l=>{
+    const cr=cupoRestante(l); if(!cr){porCtaCupo[l]=porCta[l];return;}
+    let pq=0,gr=0;
+    filas.forEach(f=>(f.sug||[]).forEach(x=>{if(x.cuenta!==l)return;if(esGrandeFull(f.p))gr+=x.mandar;else pq+=x.mandar;}));
+    const tp=cr.estPeq!=null?Math.min(pq,cr.estPeq):pq, tg=cr.estGra!=null?Math.min(gr,cr.estGra):gr;
+    porCtaCupo[l]=tp+tg;
+  });
+  const aMandarCupo=LOCS.reduce((a,l)=>a+(porCtaCupo[l]||0),0);
   const uCta=ofiFiltroCuenta?(porCta[ofiFiltroCuenta]||0):0;
   const res=document.getElementById('ofi-resumen');
   if(res)res.innerHTML=(ofiFiltroCuenta
@@ -6333,12 +6346,14 @@ function renderOfiCaja(){
     const d=cv.diasPago;
     _listo[l]=(d!=null&&d<=7)||cv.porTamano;
   });
-  if(fc)fc.innerHTML=`<button class="pf-btn${ofiFiltroCuenta===''?' active-all':''}" onclick="setOfiFiltro('')">Todas${aMandar?` <strong>${aMandar}</strong>`:''}</button>`
+  if(fc)fc.innerHTML=`<button class="pf-btn${ofiFiltroCuenta===''?' active-all':''}" onclick="setOfiFiltro('')">Todas${aMandarCupo?` <strong title="Lo que se puede mandar hoy entre las 4 cuentas, con el tope del cupo de Full de cada una">${aMandarCupo}</strong>`:''}</button>`
     +LOCS.map(l=>{
       const u=Object.values(cajaDe(l)).reduce((a,x)=>a+x,0);
-      const col=porCta[l]?(_listo[l]?'var(--green)':'var(--red)'):'';
-      const tit=porCta[l]?(_listo[l]?`La caja de ${l} ya se justifica: mandala`:`Todavía no da: juntá más antes de pagar los ${fmt(costoCaja())} del envío`):'';
-      return `<button class="pf-btn${ofiFiltroCuenta===l?' active-all':''}" onclick="setOfiFiltro('${l}')">${l}${porCta[l]?` <strong style="color:${col}" title="${tit}">${porCta[l]}</strong>`:''}${u?` <span style="color:var(--accent2)" title="caja a medio armar">📦${u}</span>`:''}</button>`;
+      const nC=porCtaCupo[l]||0;
+      const col=nC?(_listo[l]?'var(--green)':'var(--red)'):'';
+      const _corte=porCta[l]>nC?` · se sugieren ${porCta[l]} pero el cupo de Full deja mandar ${nC}`:'';
+      const tit=nC?((_listo[l]?`La caja de ${l} ya se justifica: mandala`:`Todavía no da: juntá más antes de pagar los ${fmt(costoCaja())} del envío`)+_corte):'';
+      return `<button class="pf-btn${ofiFiltroCuenta===l?' active-all':''}" onclick="setOfiFiltro('${l}')">${l}${nC?` <strong style="color:${col}" title="${tit}">${nC}</strong>`:''}${u?` <span style="color:var(--accent2)" title="caja a medio armar">📦${u}</span>`:''}</button>`;
     }).join('');
   // Con una cuenta elegida se entra en MODO ARMAR CAJA: se listan TODOS los productos que hay en
   // casa (no solo los que la cuenta "necesita"), cada uno con una casilla para poner cuántos van

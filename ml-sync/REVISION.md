@@ -711,6 +711,8 @@ el precio de un candidato distinto con código parecido (se compara también por
 
 ## 7 · DISEÑO
 
+- **Los números de las cuentas en Armar caja con el tope del cupo (18/10/2026, v24.55, pedido suyo).** `renderOfiCaja`: `porCtaCupo` = lo sugerido limitado por `cupoRestante` (chicos contra `estPeq`, grandes contra `estGra`); "Todas" suma eso. Sin cupo cargado queda lo sugerido. El color sigue con `convieneCaja`. Chequear: Ayelen con 142 sugeridas y cupo 38 → dice 38.
+
 - **El cupo de Full ya no suma lo vendido (18/10/2026, v24.54).** `cupoRestante` daba 54 en Ayelen (leído 38 + 16 vendidas) y ML seguía diciendo 38: el cupo no se libera al vender. Queda lo leído − lo mandado después. Chequear contra la pantalla de ML la próxima vez que lea el cupo.
 
 - **La etiqueta de techo dice "2ª suba" en vez de "×2" (18/10/2026, v24.53, pedido suyo).** `estrategiaChip` en index.html (`e.n` = número de suba seguida).
