@@ -9115,6 +9115,12 @@ por mes y esa plata queda en CYC para pagarle a ARCA. El Arqueo la muestra como 
 la pausa el robot cada hora (`activarPausadasFull`, `pausarFuera`), sin freno: cuando la mercadería llega a Full se activa como
 cualquier pausada con stock. Primeros: los 3 Sony de Ayelen (MLA2202585953, MLA4087804994, MLA4087805018).
 
+## 🗓️ NUNCA CARGAR UNA LISTA VIEJA (18/10/2026, regla suya)
+Él: *"nunca cargues listas viejas"* (me pasó L1307 de Dai Nippon y la Unilever del 25/09, más viejas que las cargadas). Antes de
+cargar, mirar la fecha (vigencia o emisión) contra la guardada: si es anterior, no se carga y se le dice. El comando lo frena solo:
+`lista:<prov>|fecha=AAAA-MM-DD;…;go` no carga si la fecha es anterior a `cyc/mlconfig/listasProv/<prov>/fecha`. Fechas al 18/10:
+Dai Nippon 19/10 (L1309) · Unilever 08/10 · Iscos 01/10 (octubre) · Cadam 26/09 · Qsoft 23/09 · Godrej 01/08.
+
 ## 📋 LISTAS = OTRO PARAGUAY, SÓLO PARA ML (18/10/2026, regla suya · reemplaza "Lista precio negocio")
 Él: *"queda así bs as / paraguay / paulvic / listas (ahí van todas las listas que te paso de la perfumería, que son todas las que te
 mando, excepto que te diga lo contrario) quiero que en listas se trate igual que en paraguay. Y va a ser solo mercadería para ml"*.
