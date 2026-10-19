@@ -863,6 +863,8 @@ nota con el motivo adentro + el mismo cambio en claudecambios → sale una sola 
 
  · **Detalle de la venta al tocar la tarjeta (v24.66):** `vpCardClick` (no abre si el toque fue en un botón, link, casilla o algo con su propio onclick).
 
+ · **Ventas sin lápiz, 🧠 adentro del detalle (v24.67).** `vpToggleEdit` queda en el código sin botón.
+
 ## 8 · DATOS E HISTORIAL (nueva, 08/10/2026)
 - **🚧 El techo en la línea de tiempo (18/10/2026, v24.49).** `lineaPintar` dibuja una raya roja punteada en el carril del precio por cada `cyc/techofreno/<MLA>` (`probado`, roja "ya no vende") y otra verde en `volvio` ("sí vende") de las publicaciones del gráfico (respeta el color elegido), desde el día que se anotó; entra en la escala. Qué chequear: que todo techo encontrado se anote con `techofreno:<MLA>=<precio>|motivo;go` (si no, no aparece).
 - **Reloj de los 4 meses en la línea de tiempo (16/10/2026, v23.92 · corregido en v23.93: EDAD DE LA UNIDAD MÁS VIEJA, primero

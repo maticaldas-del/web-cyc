@@ -2665,7 +2665,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.66';
+const APP_VERSION='24.67';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2676,6 +2676,7 @@ const APP_VERSION='24.66';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.67',f:'18/10/2026',h:'23:30',c:[{n:1,t:'Ventas: se sacó el lápiz de modificar. El 🧠 pasó adentro del detalle (se abre tocando la tarjeta); la 📈 línea queda a la vista.'}]},
   {v:'24.66',f:'18/10/2026',h:'23:15',c:[{n:1,t:'Ventas: el detalle de cada venta se abre tocando la tarjeta (se sacó la flechita).'}]},
   {v:'24.65',f:'18/10/2026',h:'23:05',c:[{n:1,t:'Ventas: a la vista sólo los tags con ventas; los demás se abren con "＋N sin ventas ▾".'}]},
   {v:'24.64',f:'18/10/2026',h:'22:55',c:[{n:1,t:'Ventas: el botón del detalle es sólo la flechita ▾ (sin la palabra).'}]},
@@ -11531,7 +11532,7 @@ function renderVentaProd(){
           ${isCancelled?reclamoMotivoHTML(grp):''}
           <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px">
             ${(()=>{const _ids=[...new Set(grp.items.map(v=>(prodDeVenta(v)||{}).id).filter(Boolean))];return _ids.map(id=>{const _vs=_lineaVarDeVentas(grp.items,id);return lineaBtn(id,_ids.length>1?'📈 '+((prodById(id)||{}).name||'línea').slice(0,18):(_vs?'📈 línea '+_vs.slice(0,16):'📈 línea'),_vs);}).join(' ');})()}
-            <button class="btn" style="font-size:.68rem;padding:4px 12px;background:rgba(124,58,237,.15);color:#a78bfa;border:1px solid rgba(124,58,237,.3)" onclick="vpToggleEdit('${grp.gid}')">✎ Editar</button>
+            ${grp.items.map(v=>{const _pp=prodDeVenta(v);return _pp?cerebroBtn(_pp.id,{mla:v.mla,ctx:'venta'}):'';}).join(' ')}
             ${delBtn}
           </div>
         </div>`;
@@ -11543,7 +11544,7 @@ function renderVentaProd(){
       // TODAS LAS TARJETAS DEL MISMO ALTO (18/10/2026, él: "se agrandan las tarjetas porque no entran las cosas"): cada
       // renglón va en UNA línea; lo que no entra se corta con "…" (el texto entero está en el detalle y en el globito) y
       // los botones 🧠/📈 quedan siempre a la vista a la derecha.
-      const lines=grp.items.map(v=>{const _cv=isCancelled?'':cambioVentaHTML(v,Number(v.ts)||0);const _pp=prodDeVenta(v);return `<div style="display:flex;gap:6px;font-size:.72rem;padding:2px 0;align-items:center;white-space:nowrap;${isCancelled?'opacity:.45;text-decoration:line-through':''}"><span style="flex-shrink:0">${fotoVentaHTML(v,30)}</span><span class="vp-pc-txt" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis" title="${String(nombreDeVenta(v)).replace(/"/g,'&quot;')}${v.variante?' · '+v.variante:''}">${v.qty}× ${nombreDeVenta(v)}${estrategiaVentaHTML(v)}${v.variante?` <span style="padding:1px 5px;border-radius:3px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.62rem">${v.variante}</span>`:''}${_cv?' '+_cv:''}</span><span style="flex-shrink:0">${_pp?cerebroBtn(_pp.id,{mla:v.mla,ctx:'venta'})+(_varios?' '+lineaBtn(_pp.id):''):''}</span></div>`;}).join('');
+      const lines=grp.items.map(v=>{const _cv=isCancelled?'':cambioVentaHTML(v,Number(v.ts)||0);const _pp=prodDeVenta(v);return `<div style="display:flex;gap:6px;font-size:.72rem;padding:2px 0;align-items:center;white-space:nowrap;${isCancelled?'opacity:.45;text-decoration:line-through':''}"><span style="flex-shrink:0">${fotoVentaHTML(v,30)}</span><span class="vp-pc-txt" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis" title="${String(nombreDeVenta(v)).replace(/"/g,'&quot;')}${v.variante?' · '+v.variante:''}">${v.qty}× ${nombreDeVenta(v)}${estrategiaVentaHTML(v)}${v.variante?` <span style="padding:1px 5px;border-radius:3px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.62rem">${v.variante}</span>`:''}${_cv?' '+_cv:''}</span><span style="flex-shrink:0">${_pp&&_varios?lineaBtn(_pp.id):''}</span></div>`;}).join('');
       const _pcHtml=`<div class="ingreso-item vp-pc" onclick="vpCardClick(event,'${grp.gid}')" title="Tocá para ver u ocultar el detalle" style="cursor:pointer;flex-direction:column;align-items:stretch;gap:4px;${isCancelled?'border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.04)':''}">
         <div class="vp-pc-cab" style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;white-space:nowrap;overflow:hidden">
           <span class="who-badge" style="font-size:.6rem;${isCancelled?'opacity:.6':''}">${cuenta}</span>
@@ -11559,7 +11560,6 @@ function renderVentaProd(){
           ${ganLabel}
           ${pctBox}
           ${(()=>{if(_varios)return'';const _pp=prodDeVenta(grp.items[0]);return _pp?lineaBtn(_pp.id,null,_lineaVarDeVentas(grp.items,_pp.id)):'';})()}
-          <button class="ii-del" style="background:rgba(124,58,237,.15);color:#a78bfa;border-color:rgba(124,58,237,.3)" onclick="vpToggleEdit('${grp.gid}')">✎</button>
         </div>
         ${lines}
         ${_det}
