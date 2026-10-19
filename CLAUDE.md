@@ -9238,3 +9238,8 @@ salvo sobrestock, stock antiguo u otro problema dicho en el 🧠. Arriba la 🔴
 *"solo tienen en stock lo que hay en la web de ellos. No en la lista que te pasé en Excel"*. **El precio también sale de la web: menos 30% y después menos 5% (×0,665; "si ves 100.000 queda 66.500").** Lo que no está en la web
 (app.peiperless.com/iscos, catálogos de iscos.com.ar) se marca `noWeb` con `listaweb:iscos;go` y no se puede pedir. El cruce lo hago
 yo y queda en `ml-sync/notas/listaweb_iscos.txt`; al cambiar la web se rehace. Del pedido del 19/10, los dos Nina Ricci 50 ml NO están.
+
+## ⚠️ UN SOLO VENDEDOR EN ML NO VALE COMO PRECIO (19/10/2026, regla suya)
+Él: *"hay un flaco que vende los perfumes re caros. Y es el único (…) es un precio inflado que no sabemos si vende"*. En Listas (y al
+juzgar cualquier producto nuevo): si el catálogo de ML tiene un solo vendedor, ese precio no se usa para decir que "da"; se mira a mano
+(ventas de ESA publicación y si el precio es creíble contra otros tamaños). Web y robot lo mandan a 🔎 Para revisar.

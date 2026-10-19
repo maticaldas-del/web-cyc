@@ -1682,3 +1682,8 @@ revisar / buscador, no deja cargar unidades y va a "🚫 No está en la web"; en
 - 19/10 (mismo día): `listaweb` también toma el PRECIO de la web (archivo `cód|precio`) y lo deja como costo con los descuentos de la
   web (`listasProv/<prov>/dtoWeb`, Iscos por defecto [30, 5] = ×0,665, él: *"si ves 100.000 queda 66.500"*). Guarda `pl` = precio
   web, `dto`, `p` y `precioWeb`. `correrPyCatMedir` no mide lo `noWeb`. Chequear: que `p` = round(pl × 0,665) y que `listamedir` re-mida.
+
+### Etapa 3 · 19/10/2026 · v24.99 · Listas: un solo vendedor en ML no confirma el precio
+Él: *"hay un flaco que vende los perfumes re caros. Y es el único (…) es un precio inflado que no sabemos si vende"*. Con `mv`==1 el
+producto nunca va solo a ✅ Dan (web `_listaDa`, robot `cuentaLista`): va a 🔎 Para revisar hasta que el chat lo marque `ok`.
+`listarevisar` lo lista como REVISAR-1VEND. La fila y Pedidos hechos dicen "⚠️ 1 solo vendedor". Chequear: que ningún Dan tenga mv 1 sin ok.
