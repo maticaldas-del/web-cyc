@@ -1626,3 +1626,4 @@ Chequear: que un proveedor de la carpeta siga apareciendo si es el único.
 - v24.81: Paraguay arranca en `pyVista='probados'` (antes 'ambos'): los Nuevos se dibujan al tocar el botón, por lentitud.
 - v24.82: "🗂️ Lo que no entra en el pedido" de Paraguay → Nuevos se arma al abrirlo (`window._pyNoEntraFn`, ontoggle). Chequear que al abrirlo aparezcan las dos carpetas.
 - v24.83: `pedVendTxt` en el pedido del momento: vendidas con días con stock y lo vendido desde el último cambio de precio o caja (`ritmonormal.ra`). Chequear que coincida con la línea de tiempo.
+- v24.84: línea de tiempo: "escasez" sólo si `escasezDe` da escasez (se sube el precio); poco en Full pero cubierto por caja en camino u oficina = "🚚 cubierto" (celeste); el gráfico dice "poco en Full". Regla en CEREBRO.md (🔥). Chequear con Cartas Casino.

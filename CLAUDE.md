@@ -9177,3 +9177,10 @@ del día): subir con `decido` (escasez + techo, directo al precio que pienso) o,
 `planilla` termina con **📦 SOBRA STOCK Y NO LO DECIDÍ** (más de 90 d de stock en Full al ritmo de hoy, o sin ventas en 60 d, sin
 tag sobra/liquidando/promo ni nota mía en 7 d). Se decide en la completa (promo/escalera, retiro o nota con motivo) y la lista queda vacía.
 Detalle en `ml-sync/CEREBRO.md` (📦).
+
+## 🔥 "ESCASEZ" QUIERE DECIR QUE SE SUBE EL PRECIO (19/10/2026, regla suya con las Cartas Casino)
+Él: *"quiero que cada vez que diga escasez el precio aumente, si no aumenta por x o por y quiero que sea otro nombre/tag/estrategia"*.
+Escasez = se corta antes de que llegue lo de camino u oficina (o antes de poder comprar) → el precio SE SUBE en esa vuelta y el
+tag es `escasez`. Si hay poco en Full pero la caja en camino o la oficina llegan a tiempo, NO es escasez: la línea de tiempo
+dice "🚚 cubierto" y el precio no se toca. Si algo sale como escasez y decido NO subirlo, el tag no puede quedar `escasez`:
+va otro (base, techo, sobra…) con el motivo en el 🧠.
