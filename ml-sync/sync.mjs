@@ -7900,7 +7900,9 @@ async function calcAntiguoFilas(db, products, labels, soloA) {
         // hace meses (19/10/2026, el Joystick Xbox Velocity de Matías: ML avisaba descarte por 120 d sin vender y acá decía 24 d).
         // Se toma también la fecha del producto en esa cuenta, que es más vieja.
         const hP = colS ? (histA || {})[k.slice(0, k.indexOf('__v__'))] : null;
-        const fb = Math.min(...[h && h.desde, hP && hP.desde, eL.altaTs].map(Number).filter((x) => x > 0), Infinity);
+        // Pero si el color tiene fecha REAL (se vio entrar), manda ésa: los VS Sizzling/Wild Neroli/Love Addict llegaron hace
+        // ~2 semanas y con la del producto salían de 61 d.
+        const fb = (h && h.aprox === false && Number(h.desde) > 0) ? Number(h.desde) : Math.min(...[h && h.desde, hP && hP.desde, eL.altaTs].map(Number).filter((x) => x > 0), Infinity);
         // Las cajas llegadas no dicen de qué color eran: por color sólo el Excel y la fecha del color.
         const lotes = lotesFifo(st, eL.inv ? (lotesA || {})[eL.inv] : null, colS ? [] : (cajasA[m[1] + '__' + (e ? e.cuenta : cta)] || cajasA[m[1] + '__' + cta]), isFinite(fb) ? fb : 0);
         const rn = (rnA || {})[k]; const rDia = rn && rn.pd > 0 ? rn.pd : (v60[k] || 0) / 60;
