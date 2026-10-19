@@ -1659,6 +1659,7 @@ body.light .vp-promo.vp-promo-ml{color:#0369a1;background:color-mix(in srgb,#036
     <button id="vpf-Ayelen" class="vbtn" onclick="setVpCuenta('Ayelen',this)">Ayelen</button>
     <button id="vpf-Matias" class="vbtn" onclick="setVpCuenta('Matias',this)">Matias</button>
   </div>
+  <div id="vp-tag-chips" style="display:flex;gap:5px;flex-wrap:wrap;margin:-4px 0 10px"></div>
   <div id="vp-day-list" class="ingreso-list" style="margin-bottom:6px;max-height:570px;overflow-y:auto;overflow-x:hidden"><div class="empty-msg">Sin ventas cargadas.</div></div>
 
   <div class="stitle" style="margin-top:22px">Análisis <span id="vp-scope-lbl-main" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace"></span></div>
@@ -2664,7 +2665,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.59';
+const APP_VERSION='24.60';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2675,6 +2676,7 @@ const APP_VERSION='24.59';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.60',f:'18/10/2026',h:'21:20',c:[{n:1,t:'Ventas: arriba de la lista salen los tags (🎯 base, 🔥 escasez, 📈 buscando techo…) con cuántas ventas tiene cada uno. Al tocar uno quedan sólo esas ventas; tocándolo de nuevo vuelven todas.'}]},
   {v:'24.59',f:'18/10/2026',h:'20:45',c:[{n:2,t:'El % de un producto ya no sube por venderse en carrito con otros: en la línea de tiempo y en el ranking por producto, un carrito cuenta con lo que habría dejado ese producto vendido solo (ML cobra el cargo fijo una vez por compra, y eso no es mérito del producto). La plata total del día y del mes no cambia.'}]},
   {v:'24.58',f:'18/10/2026',h:'19:15',c:[{n:1,t:'Ventas x Producto (PC): todas las ventas del mismo alto. Arriba, una sola línea (la promo se resume en "🏷️ promo"; el texto entero está en el detalle). Cada producto, en una sola línea: lo que no entra se corta con "…" y los botones 🧠/📈 quedan siempre a la derecha.'}]},
   {v:'24.57',f:'18/10/2026',h:'19:50',c:[{n:2,t:'Métricas: línea punteada y tenue con la proyección de a cuánto termina el mes, al ritmo promedio por día de lo que va (sin contar hoy, que está a medias, ni el retiro y los gastos, que ya salieron el día 1). Sale en la vista general con una sola métrica.'}]},
@@ -9177,6 +9179,12 @@ document.addEventListener('click',(e)=>{const w=document.getElementById('vp-dd-w
 document.addEventListener('keydown',(e)=>{if(e.key==='Escape')closeVpPeriodMenu();});
 const VP_ACCTS=['Adriana','Luciana','Ayelen','Matias'];
 let vpFilterCuenta=null;
+// LOS TAGS ARRIBA DE LA LISTA DE VENTAS (19/10/2026, pedido suyo: "quiero que aparezcan los tags y al clickear que aparezcan
+// las ventas con ese tag"). Un botón por estrategia con cuántas ventas del período (y de la cuenta y búsqueda elegidas) la
+// tenían al venderse (`estrategiaDe`, la misma del chip de cada venta). Tocar uno deja sólo esas; tocarlo de nuevo, todas.
+let vpFilterTag=null;
+function setVpTag(t){vpFilterTag=(vpFilterTag===t?null:t);renderVentaProd();}
+function vpTagsDeGrupo(grp){const s=new Set();for(const v of grp.items){if(!v.mla)continue;const e=estrategiaDe(v.mla,Number(v.ts)||0);if(e)s.add(e.t);}return s;}
 function setVpCuenta(cuenta,btn){
   vpFilterCuenta=cuenta;
   document.querySelectorAll('[id^="vpf-"]').forEach(b=>b.classList.remove('active'));
@@ -11323,6 +11331,13 @@ function renderVentaProd(){
       const matchC=!vpFilterCuenta||grp.items[0].cuenta===vpFilterCuenta;
       return matchQ&&matchC;
     });
+    // Los tags: se cuentan sobre lo que ya filtran la búsqueda y la cuenta, y recién después se filtra por el elegido.
+    {const cnt={};for(const grp of filteredGroups){if(grp.cancelada)continue;for(const t of vpTagsDeGrupo(grp))cnt[t]=(cnt[t]||0)+1;}
+     if(vpFilterTag&&!cnt[vpFilterTag])cnt[vpFilterTag]=0;
+     const box=document.getElementById('vp-tag-chips');
+     if(box){box.innerHTML=Object.keys(ESTRATEGIA_UI).filter(t=>cnt[t]!=null).map(t=>{const u=ESTRATEGIA_UI[t],on=vpFilterTag===t;
+       return `<button onclick="setVpTag('${t}')" title="${String(u[3]).replace(/"/g,'&quot;')}" style="cursor:pointer;padding:3px 9px;border-radius:6px;border:1px solid ${u[2]}${on?'':'55'};background:${on?u[2]+'40':u[2]+'14'};color:${u[2]};font-size:.68rem;font-family:inherit;white-space:nowrap${on?';font-weight:700':''}">${u[0]} ${u[1]} · ${cnt[t]}${on?' ✕':''}</button>`;}).join('');}
+     if(vpFilterTag){for(let i=filteredGroups.length-1;i>=0;i--)if(!vpTagsDeGrupo(filteredGroups[i]).has(vpFilterTag))filteredGroups.splice(i,1);}}
     const mesLabel=(MONTHS[parseInt(vm)-1]||'')+' '+vy;
     // Tope de dibujado: con miles de ventas, meter todos los bloques en el DOM cuelga
     // el celular. Mostramos los 200 más recientes; los totales/KPIs de abajo igual
