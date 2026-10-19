@@ -1667,3 +1667,8 @@ Lo decidido por Claude (`claudedecide/ped`) mandaba y no restaba lo pedido despu
 `ts` posterior a la decisión y sin `desc` se resta aroma por aroma (no lo que él cambió a mano). El botón "pedido hecho" de la tarjeta
 ya descuenta y marca `desc:true`. Se da por hecho que llega todo; lo que falte se corrige con `pvped:llego`.
 **Chequear:** que un pedido hecho desde el botón no se reste dos veces; que al re-decidir (ts nuevo) no se reste de nuevo.
+
+### Etapa 3 · 19/10/2026 · v24.97 · Links en los pedidos hechos de Listas
+Pedido suyo: cada renglón de un pedido hecho (📋 Listas → 🧾 Pedido → Pedidos hechos) tiene "📄 verlo en la lista" (`listaVerOri`,
+el renglón original en `mlapi/listasori/<prov>/<cód>`) y "🔗 verlo en ML" (`i.mi`, el catálogo contra el que se midió, guardado
+por `listaYaLoPedi`). Sin `mi` dice "sin link de ML". Chequear: que el link de ML sea el mismo producto (sobre todo lo de 80%+).
