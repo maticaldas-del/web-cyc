@@ -1621,3 +1621,4 @@ Chequear: que un proveedor de la carpeta siga apareciendo si es el único.
 - v24.78: Paulvic: cada aroma recomendado se redondea al más cercano de 3·5·10·20·50·100 (`pvRedondo`, empate para arriba, más de 100 a la centena); total, copiar y pedido hecho usan el mismo. Se sacó "SÓLO estos colores/productos…" del copiar, de Listas, de `decide_pedidos.py` y de las notas mostradas (`_sinSoloTxt`).
 - v24.79: Paulvic con pestañas 📦 A comprar / 🧾 Pedidos hechos (`_pvVista`, `pvEnCaminoHTML` va sólo en la segunda).
 - 19/10: regla nueva en CEREBRO.md (📤 retiro de Full → rehacer la promo con lo que queda y los días al stock antiguo). Pendrive 128 a $39.890.
+- v24.80: listas que compra Tito en Bs As (`listasProv/<prov>/bsas`, comando `lista:<prov>|bsas;go` / `|nobsas`): se dibujan en Pedidos → Bs As (`bsas-listas-body`) y no en Listas; sus probados quedan en Bs As. Pedido Paulvic pv20261019 (114 u., 19 aromas) cargado.

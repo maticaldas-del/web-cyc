@@ -19329,6 +19329,12 @@ async function main() {
       if ((_neg || _sneg) && !partes.length) { if (!provs[provK]) { console.log(`❌ No hay ninguna lista "${provNom}".`); return; }
         console.log(`${provNom}: ${_neg ? 'va a la carpeta 📁 Lista precio negocio' : 'sale de la carpeta 📁 Lista precio negocio'}${APLICAR ? '' : ' · PRUEBA: agregá ;go'}`);
         if (APLICAR) { await db.patch('cyc/mlconfig/listasProv/' + provK, { negocio: _neg ? true : null }); const rr = (await db.get('cyc/mlconfig/listasProv/' + provK)) || {}; console.log(!!rr.negocio === _neg ? '✓ releído' : '❌ no quedó'); } return; }
+      // LISTA QUE COMPRA TITO EN BS AS (19/10/2026, él con Dai Nippon: "ponelas en Bs As, ya que esos los compra mi viejo cuando viaja"):
+      // `lista:<prov>|bsas;go` la muestra en Pedidos → Bs As (no en 📋 Listas); `|nobsas;go` la devuelve.
+      const _bsa = opc.some((o) => o.trim() === 'bsas'), _nbsa = opc.some((o) => o.trim() === 'nobsas');
+      if ((_bsa || _nbsa) && !partes.length) { if (!provs[provK]) { console.log(`❌ No hay ninguna lista "${provNom}".`); return; }
+        console.log(`${provNom}: ${_bsa ? 'pasa a Pedidos → Bs As' : 'vuelve a 📋 Listas'}${APLICAR ? '' : ' · PRUEBA: agregá ;go'}`);
+        if (APLICAR) { await db.patch('cyc/mlconfig/listasProv/' + provK, { bsas: _bsa ? true : null }); const rr = (await db.get('cyc/mlconfig/listasProv/' + provK)) || {}; console.log(!!rr.bsas === _bsa ? '✓ releído' : '❌ no quedó'); } return; }
       const filas = [], malos = [];
       for (const x of partes) {
         const i = x.lastIndexOf('='); if (i < 1) { malos.push(x); continue; }
