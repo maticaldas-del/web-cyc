@@ -8744,6 +8744,7 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
     if (!esLista && fichas.some((p) => _pyCodIg(p.codPy, cod))) { cuenta.ficha++; continue; }
     const _uNow = esLista ? Number(e.p) : Number(e.u);
     if (esLista && !(_uNow > 0)) continue;
+    if (esLista && e.noWeb) { cuenta.fuera++; continue; }   // no está en la web del proveedor: no lo tienen (`listaweb`)
     if (e.t && ahora - e.t < PYCAT_REMEDIR_DIAS * 864e5 && !(e.uMed != null && Math.abs(e.uMed - _uNow) >= 0.005)) { cuenta.frescos++; continue; }
     cola.push([cod, e]);
   }
@@ -19456,17 +19457,27 @@ async function main() {
       const _r = String(process.env.BILLING_PROBE).slice('listaweb:'.length); const GOw = /(^|;)go\s*$/.test(_r) && !DRY;
       const k = _r.replace(/(^|;)go\s*$/, '').trim().toLowerCase();
       let txt = ''; try { txt = readFileSync('ml-sync/notas/listaweb_' + k + '.txt', 'utf8'); } catch { console.log(`❌ No está ml-sync/notas/listaweb_${k}.txt`); return; }
-      const enWeb = new Set(txt.split(/\r?\n/).map((x) => x.trim()).filter(Boolean));
-      const cat = (await db.get('mlapi/listas/' + k)) || {}; const upd = {}; let si = 0, no = 0, cambia = 0;
+      // Renglón `cód|precio de la web`: el costo pasa a ser ESE precio con los descuentos de la web (`dtoWeb`, Iscos 30 y después 5 =
+      // ×0,665, dicho por él el 19/10: "si ves 100.000 queda 66.500"). Guarda `pl` (precio de la web), `dto` y `p`; `listamedir` lo
+      // vuelve a medir solo porque cambió `p`.
+      const web = new Map(txt.split(/\r?\n/).map((x) => x.trim()).filter(Boolean).map((x) => { const [c, pr] = x.split('|'); return [c.trim(), Number(pr) || 0]; }));
+      const enWeb = new Set(web.keys());
+      const pvW = ((await db.get('cyc/mlconfig/listasProv')) || {})[k] || {}; const dtos = (pvW.dtoWeb || (k === 'iscos' ? [30, 5] : [])).map(Number);
+      const fac = dtos.reduce((f, d) => f * (1 - d / 100), 1), dtoTot = Math.round((1 - fac) * 1000) / 10;
+      const cat = (await db.get('mlapi/listas/' + k)) || {}; const upd = {}; let si = 0, no = 0, cambia = 0, conPrecio = 0, ej = 0;
       for (const [cod, e] of Object.entries(cat)) { if (!e || !e.n) continue; const esta = enWeb.has(cod); esta ? si++ : no++;
-        if (esta && e.noWeb) { upd[cod + '/noWeb'] = null; cambia++; } else if (!esta && !e.noWeb) { upd[cod + '/noWeb'] = Date.now(); cambia++; } }
+        if (esta && e.noWeb) { upd[cod + '/noWeb'] = null; cambia++; } else if (!esta && !e.noWeb) { upd[cod + '/noWeb'] = Date.now(); cambia++; }
+        const pw = web.get(cod); if (esta && pw > 0) { const np = Math.round(pw * fac); conPrecio++;
+          if (Number(e.p) !== np || Number(e.pl) !== pw) { upd[cod + '/pl'] = pw; upd[cod + '/dto'] = dtoTot; upd[cod + '/p'] = np; upd[cod + '/precioWeb'] = true;
+            if (ej++ < 10) console.log(`  ${cod} · ${String(e.n).slice(0, 50)} · era $${e.p} → web $${pw} −${dtos.join('% −')}% = $${np}`); } } }
+      console.log(`precio de la web en ${conPrecio} · descuento ${dtos.join('% y ')}% = −${dtoTot}%`);
       const faltan = [...enWeb].filter((c) => !cat[c]).length;
       console.log(`${k}: ${si + no} en la lista · ${si} están en la web · ${no} NO (sin stock) · ${cambia} cambian${faltan ? ` · ⚠️ ${faltan} códigos del archivo no existen en la lista` : ''}${GOw ? '' : ' · PRUEBA: agregá ;go'}`);
       const arm = (await db.get('cyc/listas_pedido/' + k)) || {};
       for (const [cod, u] of Object.entries(arm)) if (Number(u) > 0 && !enWeb.has(cod)) console.log(`  ⚠️ cargado en el pedido y NO está en la web: ${cod} · ${String((cat[cod] || {}).n || '').slice(0, 60)} x${u}`);
       if (!GOw) return;
       const ks = Object.keys(upd); for (let i = 0; i < ks.length; i += 600) await db.patch('mlapi/listas/' + k, Object.fromEntries(ks.slice(i, i + 600).map((x) => [x, upd[x]])));
-      const re = (await db.get('mlapi/listas/' + k)) || {}; let ok = 0; for (const x of ks) { const c = x.slice(0, -6); if (!!(re[c] || {}).noWeb === !!upd[x]) ok++; }
+      const re = (await db.get('mlapi/listas/' + k)) || {}; let ok = 0; for (const x of ks) { const c = x.slice(0, x.lastIndexOf('/')), f = x.slice(x.lastIndexOf('/') + 1); const v = (re[c] || {})[f]; if (f === 'noWeb' ? !!v === !!upd[x] : v === upd[x]) ok++; }
       const pv = ((await db.get('cyc/mlconfig/listasProv')) || {})[k] || {}; await db.patch('cyc/mlconfig/listasProv/' + k, { ...cuentaLista(re), webTs: Date.now(), enWeb: si });
       console.log(`✓ releído: ${ok} de ${ks.length} · ${pv.nombre || k} ahora cuenta sólo lo que está en la web.`); return;
     }

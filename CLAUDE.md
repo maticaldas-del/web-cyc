@@ -9235,6 +9235,6 @@ salvo sobrestock, stock antiguo u otro problema dicho en el 🧠. Arriba la 🔴
 **📈 DICE TECHO/ESCASEZ Y NO SUBE**, que se vacía en cada vuelta (subir otro escalón o poner el tag que corresponde).
 
 ## 🌐 ISCOS: SÓLO TIENEN LO QUE ESTÁ EN SU WEB (19/10/2026, dicho por él)
-*"solo tienen en stock lo que hay en la web de ellos. No en la lista que te pasé en Excel"*. Lo que no está en la web
+*"solo tienen en stock lo que hay en la web de ellos. No en la lista que te pasé en Excel"*. **El precio también sale de la web: menos 30% y después menos 5% (×0,665; "si ves 100.000 queda 66.500").** Lo que no está en la web
 (app.peiperless.com/iscos, catálogos de iscos.com.ar) se marca `noWeb` con `listaweb:iscos;go` y no se puede pedir. El cruce lo hago
 yo y queda en `ml-sync/notas/listaweb_iscos.txt`; al cambiar la web se rehace. Del pedido del 19/10, los dos Nina Ricci 50 ml NO están.
