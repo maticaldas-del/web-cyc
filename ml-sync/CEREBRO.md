@@ -477,3 +477,15 @@ va otro (base, techo, sobra…) con el motivo en el 🧠.
 Él: *"promo que sea cuando ml tambien pone plata, si ponemos solo nosotros es descuento un tag nuevo"*. Tag 🏷️ `promo` sólo cuando
 ML pone parte del descuento; el descuento propio (PRICE_DISCOUNT) o una promo de ML donde ML no pone nada es 💸 `descuento`.
 `entrarpromo` lo elige solo; en cada venta manda lo que pasó en esa venta (`cyc/promoventa`).
+
+## 🏷️ LOS PASAJES DE PRECIO TIENEN NOMBRE · Y NADA QUEDA SIN AFINAR (19/10/2026, eligió 1a 2a 3a)
+Tags nuevos: 🏔️ techo encontrado · 🪜 bajando (escalera) · ↘️ volviendo al normal (llegó la caja / pasó la fecha / se consigue de
+nuevo) · ↗️ volviendo de sobra · 🧨 remate total (abajo de 0%, sólo si lo pide él). "↩️ corrección" desaparece: lo que "vuelve" se
+nombra según el tag anterior (`pasajeDe` en sync.mjs = `estrategiaPasaje` en index.html). Cada chip dice "· de X" cuando venía de
+otra estrategia (no se muestra si venía de 🎯 base) y la escasez lleva escalón como el techo. Al poner un tag con `decido`, usar
+`#techook`, `#bajando`, `#volviendo`, `#desobra`, `#remate` cuando corresponda.
+**Y la lista 🔎 SIN AFINAR de `planilla`** (pregunta suya: *"¿con eso vamos a evitar que dejes pasar productos que no estén afinados
+al máximo? (…) productos que nunca se buscó techo"*): toda activa que vende (2+ en 30 d), con stock para 14-90 días, en 🎯 base o
+🆕 lanzamiento y sin prueba de techo (📈/🏔️/🪜) en 60 días. Se decide en la completa (probar techo o nota con motivo, vale 7 días)
+y tiene que quedar vacía, igual que 🚨 escasez y 📦 sobra. Las tres listas juntas cubren: lo que se agota, lo que sobra y lo que
+está quieto en su precio normal.
