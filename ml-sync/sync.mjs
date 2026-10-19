@@ -39905,6 +39905,33 @@ async function main() {
         if (!sinAf.length) console.log(pens.length ? 'ninguna sin pensar' : 'ninguna: todo lo que vende tiene estrategia o ya probó techo');
         if (pens.length) console.log(`   (${pens.length} ya pensadas en los últimos 7 días: ${pens.map((x) => x.nom.slice(0, 24)).join(' · ')})`);
       } catch (eA) { console.log('⚠️ la lista sin afinar falló: ' + eA.message); }
+      // ── 📈 DICE TECHO/ESCASEZ Y NO ESTÁ SUBIENDO (19/10/2026, él con la Batidora negro: "dice buscando techo, pero no aumentó
+      // nada"). El tag tiene que corresponder al precio: 📈 techo y 🔥 escasez quieren decir que el precio SUBE. Sale acá toda
+      // activa con uno de esos tags cuyo último cambio mío desde el tag fue una BAJA, o que no subió en 2 días desde el tag.
+      // Se decide EN ESTA VUELTA: subir (otro escalón) o cambiar el tag por el que corresponde (🪜 bajando, 🏔️ si ya hay 95%,
+      // ↘️ volviendo…). La lista tiene que quedar vacía.
+      try {
+        let ccT = null; try { ccT = (await db.get('cyc/claudecambios')) || {}; } catch { ccT = null; }
+        if (!ccT) console.log('\n⚠️ no pude leer mis cambios: la lista 📈 de tags que no suben no se armó');
+        else {
+          const porMla = {}; for (const c of Object.values(ccT)) { if (c && c.mla && Number(c.ts) > 0) (porMla[c.mla] = porMla[c.mla] || []).push(c); }
+          const malos = [];
+          for (const r of filas) {
+            if (!/^active/.test(r.est) || !['techo', 'escasez'].includes(r.est2.t)) continue;
+            const desde = Number(r.est2.ts) || 0;
+            const cs = (porMla[r.mla] || []).filter((c) => Number(c.ts) >= desde - 30 * 60e3).sort((a, b) => a.ts - b.ts);
+            const ult = cs[cs.length - 1];
+            const subio = cs.some((c) => Number(c.a) > Number(c.de));
+            let por = null;
+            if (ult && Number(ult.a) < Number(ult.de)) por = `el último cambio BAJÓ ${f(ult.de)}→${f(ult.a)}`;
+            else if (!subio && hoy - desde > 2 * 864e5) por = `no subió en ${Math.round((hoy - desde) / 864e5)} d desde el tag`;
+            if (por) malos.push({ ...r, por });
+          }
+          console.log(`\n── 📈 DICE TECHO/ESCASEZ Y NO SUBE (${malos.length}) · subir otro escalón o cambiar el tag por el que corresponde · EN ESTA VUELTA ──`);
+          for (const r of malos) console.log(`📈 ${r.mla} · ${r.cta} · ${r.nom} · ${f(r.P)} · ${r.mg == null ? "?" : r.mg.toFixed(0)}% · v ${r.u7}/${r.u30} · Full ${r.st} · 🏷 ${ESTRATEGIAS[r.est2.t]} · ${r.por}`);
+          if (!malos.length) console.log('ninguna: todo lo que dice techo o escasez está subiendo');
+        }
+      } catch (eT) { console.log('⚠️ la lista de tags que no suben falló: ' + eT.message); }
       if (sinMgTxt(filas)) console.log(sinMgTxt(filas));
       console.log(`\nResumen: ${filas.length} miradas · ${bajo.length} abajo de ${PISO}% · ${sinMg.length} sin margen medible · ${rap.length} cuya última tanda duró 3 días o menos (probablemente baratas)`);
       return;
