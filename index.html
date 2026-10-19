@@ -2665,7 +2665,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.78';
+const APP_VERSION='24.79';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2676,6 +2676,7 @@ const APP_VERSION='24.78';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.79',f:'19/10/2026',h:'15:05',c:[{n:1,t:'Pedidos → Paulvic con dos pestañas, como Paraguay y Listas: 📦 A comprar (las tarjetas de los aromas) y 🧾 Pedidos hechos (en camino, llegados que falta pagar y pagados). La pestaña dice cuántos hay en camino y sin pagar.'}]},
   {v:'24.78',f:'19/10/2026',h:'14:45',c:[{n:2,t:'Paulvic: lo recomendado de cada aroma va redondeado al más cercano de 3, 5, 10, 20, 50 o 100 (antes sólo el texto copiado, y para arriba). El total, el copiar y el pedido hecho usan el mismo número. Lo cambiado a mano queda como lo pusiste.'},{n:1,t:'Se sacó "SÓLO estos colores/productos: si no hay, no reemplazar por otro" del copiar pedido, de las listas y de las explicaciones del 🧠.'}]},
   {v:'24.77',f:'19/10/2026',h:'14:20',c:[{n:2,t:'Pedidos: las unidades de cada color se pueden cambiar a mano (tocá el número). Lo cambiado dice "✋ a mano", manda sobre lo que decidí yo y el 📋 Copiar pedido se actualiza.'},{n:2,t:'Paulvic: botón "✅ Pedido hecho". Pasa a En camino con las mismas unidades que se copian (redondeadas), las descuenta de lo pedido y borra lo cambiado a mano.'}]},
   {v:'24.76',f:'19/10/2026',h:'12:50',c:[{n:2,t:'Escasez: el ritmo "normal" del año (sin remates) se usa sólo cuando el precio se subió a propósito (escasez, techo, sin reposición). Antes se usaba siempre y el Chispero, que había BAJADO de precio, salía en escasez con 34 días de stock.'}]},
@@ -15483,6 +15484,16 @@ function pvPedidoTarjeta(id,c){
       ${comps||debe?`<div style="margin-top:8px">${comps}${debe?`<button class="btn btn-ghost btn-sm" style="font-size:.66rem;padding:2px 8px;margin:4px 0 0" onclick="pvSubirComprob('${id}')">📎 subir comprobante</button>`:''}</div>`:''}
     </div></details>`;
 }
+// PAULVIC CON PESTAÑAS COMO PARAGUAY Y LISTAS (19/10/2026, él: "que paulvic tenga la misma forma de pedido, una tarjeta para
+// mirar los pedidos hechos"): 📦 A comprar (las tarjetas de siempre) · 🧾 Pedidos hechos (en camino, falta pagar, pagados).
+let _pvVista='comprar';
+function pvSetVista(v){_pvVista=v;renderPedidos();}
+function _pvTabs(){
+  const todos=Object.values(state.pedidospv||{}).filter(c=>c&&c.fecha);
+  const nCam=todos.filter(c=>c.estado==='camino').length,nImp=todos.filter(c=>c.estado==='llego'&&!c.pagado).length;
+  const t=(v,txt,tit)=>`<button class="btn" style="font-size:.64rem;padding:5px 13px;${_pvVista===v?'background:var(--blue);color:#fff;font-weight:700':''}" title="${tit}" onclick="pvSetVista('${v}')">${txt}</button>`;
+  return `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${t('comprar','📦 A comprar','Lo que hay que pedirle al Paulvic, aroma por aroma.')}${t('hechos','🧾 Pedidos hechos'+(nCam||nImp?` (${[nCam?nCam+' en camino':'',nImp?nImp+' sin pagar':''].filter(Boolean).join(' · ')})`:''),'Los pedidos ya hechos: en camino, llegados que falta pagar y pagados.')}</div>`;
+}
 function pvEnCaminoHTML(){
   const todos=Object.entries(state.pedidospv||{}).filter(([,c])=>c&&c.fecha);
   const cam=todos.filter(([,c])=>c.estado==='camino').sort((a,b)=>String(a[1].fecha).localeCompare(String(b[1].fecha)));
@@ -18328,10 +18339,10 @@ function renderPedidos(){
       const hayPaulvicProd=(state.products||[]).some(x=>normTxt(x.name||'').includes('paulvic')||(x.proveedorId&&(state.proveedores||[]).find(pv=>pv.id===x.proveedorId&&normTxt(pv.nombre||'').includes('paulvic'))));
       let msg='Sin pedidos paulvic'+(pedidoFilter!=='todos'?' en esta categoría':'')+'.';
       if(!hayPaulvicProd)msg='No hay productos Paulvic cargados en el catálogo.';
-      el.innerHTML=pvEnCaminoHTML()+`<div class="empty-msg">${msg}</div>`;
+      el.innerHTML=_pvTabs()+(_pvVista==='hechos'?(pvEnCaminoHTML()||'<div class="empty-msg">Todavía no hay pedidos hechos al Paulvic.</div>'):`<div class="empty-msg">${msg}</div>`);
       return;
     }
-    el.innerHTML=pvEnCaminoHTML()+peds.slice().sort(_pedSortFnRiesgo).map(p=>_pedidoItemHtml(p,{showRiesgo:true})).join('');
+    el.innerHTML=_pvTabs()+(_pvVista==='hechos'?(pvEnCaminoHTML()||'<div class="empty-msg">Todavía no hay pedidos hechos al Paulvic.</div>'):peds.slice().sort(_pedSortFnRiesgo).map(p=>_pedidoItemHtml(p,{showRiesgo:true})).join(''));
     return;
   }
   const isBsas=pedidoSection==='bsas';
