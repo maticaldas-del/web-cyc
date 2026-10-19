@@ -1672,3 +1672,10 @@ ya descuenta y marca `desc:true`. Se da por hecho que llega todo; lo que falte s
 Pedido suyo: cada renglón de un pedido hecho (📋 Listas → 🧾 Pedido → Pedidos hechos) tiene "📄 verlo en la lista" (`listaVerOri`,
 el renglón original en `mlapi/listasori/<prov>/<cód>`) y "🔗 verlo en ML" (`i.mi`, el catálogo contra el que se midió, guardado
 por `listaYaLoPedi`). Sin `mi` dice "sin link de ML". Chequear: que el link de ML sea el mismo producto (sobre todo lo de 80%+).
+
+### Etapa 3 · 19/10/2026 · v24.98 · Listas: sólo lo que está en la web del proveedor (`listaweb`)
+Él: *"solo tienen en stock lo que hay en la web de ellos. No en la lista que te pasé en Excel. Solo la web de Iscos"*. Cruce hecho en
+el chat (web de Iscos relevada el 19/10, código sin el prefijo de la lista, o el mismo nombre): 1.494 de 3.475 están. `listaweb:<prov>;go`
+lee `ml-sync/notas/listaweb_<prov>.txt` (los códigos que SÍ están) y marca `noWeb` en el resto. Web: `noWeb` no entra en Dan / Para
+revisar / buscador, no deja cargar unidades y va a "🚫 No está en la web"; en Pedidos hechos el renglón lo dice en rojo. `cuentaLista` y
+`listarevisar` lo excluyen. Qué chequear: rehacer el cruce cuando cambie la web (el archivo no se actualiza solo).
