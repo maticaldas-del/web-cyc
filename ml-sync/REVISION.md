@@ -1633,3 +1633,4 @@ Chequear: que un proveedor de la carpeta siga apareciendo si es el único.
 - v24.87 (19/10/2026) · Sin 🎯 base: ⚪ sin estrategia / ⏸️ sin stock, `decido` exige estrategia, `pasajeDe` cae en ↘️ volviendo. Chequear: que ninguna activa con stock quede ⚪ al terminar la completa.
 - v24.88 (19/10/2026) · Pedidos de Listas: precio de lista por renglón, total a precio de lista y en el mensaje para copiar (pedido suyo con Iscos). Chequear: que el mensaje y el pedido hecho muestren lista y lo que te sale.
 - v24.89 (19/10/2026) · `techo95`: 🏔️ sólo con 95% (Poisson con plata por día), raya 🏔️ en la línea de tiempo con el porqué. Chequear: que cada 🏔️ diga su % y que ninguna se haya anotado a mano.
+- v24.90 (19/10/2026) · Sin cartel dorado de promo en la venta cuando la estrategia ya es promo/descuento (`vpPromoLabel`).
