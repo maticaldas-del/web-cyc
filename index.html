@@ -2666,7 +2666,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.97';
+const APP_VERSION='24.98';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2677,6 +2677,7 @@ const APP_VERSION='24.97';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.98',f:'19/10/2026',h:'22:10',c:[{n:2,t:'📋 Listas: lo que NO está en la web del proveedor (Iscos: sólo tienen lo que muestra su web) ya no se puede pedir ni sale en Dan / Para revisar. Queda abajo en "🚫 No está en la web". En Pedidos hechos, el producto que no está en su web lo dice en rojo.'}]},
   {v:'24.97',f:'19/10/2026',h:'21:40',c:[{n:1,t:'📋 Listas → Pedidos hechos: cada producto tiene "📄 verlo en la lista" (el renglón tal cual la lista del proveedor) y "🔗 verlo en ML" (la publicación de ML contra la que se midió).'}]},
   {v:'24.96',f:'19/10/2026',h:'18:39',c:[{n:2,t:'Pedidos → Paulvic: lo pedido que viene en camino se descuenta aroma por aroma de lo que falta comprar (se da por hecho que llega todo; si falta algo, se corrige al llegar).'}]},
   {v:'24.95',f:'19/10/2026',h:'18:29',c:[{n:1,t:'Línea de tiempo: la línea del precio más gruesa, para que se vea bien el color de cada estrategia (gris = sin estrategia, verde = buscando techo, amarillo = bajando, naranja = sobra…).'}]},
@@ -18167,7 +18168,7 @@ async function _listaBuscarYa(q){
   await Promise.all(ks.filter(k=>!_listaCache[k]).map(async k=>{try{_listaCache[k]=(await db.ref('mlapi/listas/'+k).once('value')).val()||{};}catch(e){}}));
   if(window._listaQ!==q)return;
   const R=[];
-  for(const k of ks){const cat=_listaCache[k]||{};for(const [cod,e] of Object.entries(cat)){if(!e||!e.n||e.sacado)continue;
+  for(const k of ks){const cat=_listaCache[k]||{};for(const [cod,e] of Object.entries(cat)){if(!e||!e.n||e.sacado||e.noWeb)continue;
     const t=normTxt(e.n+' '+cod);if(pal.every(w=>t.includes(w)))R.push({k,cod,e});}}
   R.sort((a,b)=>(_listaDa(b.e)-_listaDa(a.e))||((b.e.m??-999)-(a.e.m??-999)));
   const arm=state.listaPed||{};
@@ -18187,14 +18188,14 @@ function _listaPuesto(k,e){return Math.round((Number(e&&e.p)||0)*(1+_listaRec(k)
 // `ok`/`noEs`/`vend` los carga el chat de compras mirando ML (`listadato`): ok = mismo producto confirmado, noEs = otro producto.
 // MÍNIMO 100 VENTAS, EN TODAS LAS LISTAS (18/10/2026, regla suya). Las ventas las carga el chat (`vend`); sin ese dato no se sabe y
 // va a "🔎 Para revisar" (que el chat lo mire). Con menos de 100 vendidas sale de las dos (queda abajo, con su número).
-function _listaMed25(e){return e&&!e.noEs&&!e.sacado&&e.m!=null&&isFinite(e.m)&&Number(e.m)>=25&&/^https:\/\//.test(e.mf||'')&&!(e.vend!=null&&Number(e.vend)<100);}
+function _listaMed25(e){return e&&!e.noEs&&!e.sacado&&!e.noWeb&&e.m!=null&&isFinite(e.m)&&Number(e.m)>=25&&/^https:\/\//.test(e.mf||'')&&!(e.vend!=null&&Number(e.vend)<100);}
 function _listaDa(e){return _listaMed25(e)&&Number(e.vend)>=100&&(e.ok||(!e.rp&&Number(e.m)<80));}
 function _listaRevisar(e){return _listaMed25(e)&&!_listaDa(e);}
 function _listaArmado(k){return Object.entries(((state.listaPed||{})[k])||{}).map(([cod,u])=>({cod,u:parseInt(u)||0})).filter(x=>x.u>0);}
 function _listaViajando(k){const s=new Set();Object.values(state.comprasLista||{}).forEach(c=>{if(c&&c.prov===k&&c.estado==='camino')(c.items||[]).forEach(it=>s.add(String(it.cod)));});return s;}
 async function listaSetU(k,cod,val){
   const u=Math.max(0,parseInt(val)||0);const e=(_listaCache[k]||{})[cod];
-  if(u>0&&!_listaDa(e)){toast('No se puede cargar: '+(e&&e.m!=null?'en ML da '+Math.round(e.m)+'%, abajo del 25%':'todavía no está medido contra ML (o le falta la foto de ML)'),'err',5000);renderListas();return;}
+  if(u>0&&!_listaDa(e)){toast('No se puede cargar: '+(e&&e.noWeb?'no está en la web del proveedor: no lo tienen en stock':e&&e.m!=null?'en ML da '+Math.round(e.m)+'%, abajo del 25%':'todavía no está medido contra ML (o le falta la foto de ML)'),'err',5000);renderListas();return;}
   if(u>0&&_listaViajando(k).has(String(cod))){toast('Ya está viajando en un pedido de este proveedor','err',4000);renderListas();return;}
   try{await db.ref('cyc/listas_pedido/'+k+'/'+cod).set(u>0?u:null);}catch(err){toast('No se guardó: '+(err.message||err),'err',5000);return;}
   state.listaPed=state.listaPed||{};state.listaPed[k]=state.listaPed[k]||{};if(u>0)state.listaPed[k][cod]=u;else delete state.listaPed[k][cod];
@@ -18327,7 +18328,7 @@ async function renderListas(){
     const C=Object.entries(state.comprasLista||{}).map(([id,c])=>({...c,id})).filter(c=>c.prov===k).sort((a,b)=>(b.ts||0)-(a.ts||0));
     const comp=c=>{const t=(c.items||[]).reduce((s,i)=>s+(i.pc||0)*(i.u||0),0),tL=(c.items||[]).reduce((s,i)=>s+(i.p||0)*(i.u||0),0);const cam=c.estado==='camino';
       return `<details style="background:var(--surface);border:1px solid ${cam?'var(--amber)':'var(--border)'};border-radius:8px;padding:8px 10px;margin-bottom:6px"><summary style="cursor:pointer;font-size:.74rem">${cam?'🚚 en camino':'✅ llegó'} · <b>${c.fecha}</b> · ${(c.items||[]).length} productos · ${tL?'lista '+fmt(tL)+' · ':''}te sale ${fmt(t)}</summary>
-        <div style="font-size:.66rem;margin-top:6px;line-height:1.6">${(c.items||[]).map(i=>`· ${i.u} × ${escHtml(i.n)} <span style="color:var(--muted)">(${escHtml(i.cod)} · ${i.p?'<b style="color:var(--text)">lista '+fmt(i.p)+' c/u</b> · ':''}te sale ${fmt(i.pc)} c/u${i.m!=null?' · '+Math.round(i.m)+'% en ML':''})</span><br><span style="padding-left:10px"><a href="#" onclick="listaVerOri('${c.prov}','${String(i.cod).replace(/'/g,"\\'")}');return false" style="color:var(--blue)">📄 verlo en la lista</a>${i.mi?` · <a href="https://www.mercadolibre.com.ar/p/${escHtml(i.mi)}" target="_blank" rel="noopener" style="color:var(--green)">🔗 verlo en ML</a>`:' · <span style="color:var(--muted)">sin link de ML</span>'}</span>`).join('<br>')}</div>
+        <div style="font-size:.66rem;margin-top:6px;line-height:1.6">${(c.items||[]).map(i=>`· ${i.u} × ${escHtml(i.n)} <span style="color:var(--muted)">(${escHtml(i.cod)} · ${i.p?'<b style="color:var(--text)">lista '+fmt(i.p)+' c/u</b> · ':''}te sale ${fmt(i.pc)} c/u${i.m!=null?' · '+Math.round(i.m)+'% en ML':''})</span>${((_listaCache[c.prov]||{})[i.cod]||{}).noWeb?' <b style="color:var(--red)">🚫 no está en su web</b>':''}<br><span style="padding-left:10px"><a href="#" onclick="listaVerOri('${c.prov}','${String(i.cod).replace(/'/g,"\\'")}');return false" style="color:var(--blue)">📄 verlo en la lista</a>${i.mi?` · <a href="https://www.mercadolibre.com.ar/p/${escHtml(i.mi)}" target="_blank" rel="noopener" style="color:var(--green)">🔗 verlo en ML</a>`:' · <span style="color:var(--muted)">sin link de ML</span>'}</span>`).join('<br>')}</div>
         ${cam?`<button class="btn" style="margin-top:8px;font-size:.7rem" onclick="listaLlego('${c.id}')">📦 Llegó · crear las fichas</button>`:''}</details>`;};
     el.innerHTML=cab+(A.length?`<div style="background:var(--surface);border:1px solid var(--blue);border-radius:var(--r);padding:12px;margin-bottom:14px">
         <div style="font-size:1.3rem;font-weight:800">${fmt(tot)} <span style="font-size:.7rem;font-weight:400;color:var(--muted)">· ${A.length} productos · ${uT} u.${rec?' · con el '+rec+'% del proveedor':''}${totL?' · a precio de lista '+fmt(totL)+' (lo que tiene que facturar)':''}</span></div>
@@ -18343,8 +18344,11 @@ async function renderListas(){
   const nuevos=filas.filter(([cod])=>!yaFicha.has(String(cod)));
   const dan=nuevos.filter(([,e])=>_listaDa(e)).sort(ord);
   const revis=nuevos.filter(([,e])=>_listaRevisar(e)).sort(ord);
-  const resto=nuevos.filter(([,e])=>!_listaMed25(e)&&!e.sacado).sort(ord);
+  const resto=nuevos.filter(([,e])=>!_listaMed25(e)&&!e.sacado&&!e.noWeb).sort(ord);
   const sacados=nuevos.filter(([,e])=>e.sacado);
+  // SIN STOCK = NO ESTÁ EN LA WEB DEL PROVEEDOR (19/10/2026, él con Iscos: "sólo tienen en stock lo que hay en la web de ellos, no en la
+  // lista en Excel"). `noWeb` lo pone el robot (`listaweb`): no sale en ninguna sección para pedir, queda abajo cerrado.
+  const sinWeb=nuevos.filter(([,e])=>e.noWeb&&!e.sacado);
   const med=filas.filter(([,e])=>e.m!=null).length, sinMed=filas.filter(([,e])=>e.m==null&&!e.sc&&!e.sv&&!e.fz).length;
   const q=_listaQ;
   let res=[];if(q.length>=2){const pal=_pycNorm(q).split(/\s+/).filter(Boolean);res=filas.filter(([cod,e])=>{const t=_pycNorm(e.n+' '+cod);return pal.every(w=>t.includes(w));}).sort(ord);}
@@ -18353,6 +18357,7 @@ async function renderListas(){
     <div style="display:flex;flex-direction:column;gap:6px">${dan.length?dan.map(f=>fila(f,true)).join(''):'<div class="empty-msg">Todavía ninguno (o falta medirlos).</div>'}</div>
     ${revis.length?`<details style="margin-top:14px;background:var(--surface);border:1px solid var(--amber);border-radius:var(--r);padding:10px 12px"><summary style="cursor:pointer;font-size:.82rem;font-weight:700;color:var(--amber)">🔎 Para revisar con los ojos (${revis.length}) <span style="font-weight:400;color:var(--muted);font-size:.66rem">— darían 25%+, pero falta saber si tienen 100 ventas (lo mira el chat), o ML no nombra alguna palabra (⚠️), o da 80% o más</span></summary><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${revis.slice(0,150).map(f=>fila(f,false)).join('')}</div></details>`:''}
     ${resto.length?`<details style="margin-top:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px"><summary style="cursor:pointer;font-size:.82rem;font-weight:700">⬇️ No dan, sin catálogo en ML o sin medir (${resto.length})</summary><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${resto.slice(0,150).map(f=>fila(f,false)).join('')}</div>${resto.length>150?`<div style="font-size:.62rem;color:var(--muted);margin-top:6px">muestro 150 · el resto con el buscador</div>`:''}</details>`:''}
+    ${sinWeb.length?`<details style="margin-top:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px"><summary style="cursor:pointer;font-size:.82rem;font-weight:700;color:var(--muted)">🚫 No está en la web de ${escHtml(nom)}: no lo tienen (${sinWeb.length})</summary><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${sinWeb.slice(0,150).map(f=>fila(f,false)).join('')}${sinWeb.length>150?`<div style="font-size:.64rem;color:var(--muted)">… y ${sinWeb.length-150} más (usá el buscador)</div>`:''}</div></details>`:''}
     ${sacados.length?`<details style="margin-top:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px"><summary style="cursor:pointer;font-size:.82rem;font-weight:700;color:var(--muted)">🗑️ Sacados por vos (${sacados.length})</summary><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${sacados.map(f=>fila(f,false)).join('')}</div></details>`:''}
     <div style="margin-top:14px"><input id="lista-q" type="search" value="${escHtml(q)}" placeholder="🔎 buscar en toda la lista" oninput="clearTimeout(window._listaT);window._listaT=setTimeout(()=>{_listaQ=this.value.trim();renderListas();setTimeout(()=>{const i=document.getElementById('lista-q');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length);}},0);},400)" style="width:100%;padding:8px 10px;font-size:.85rem;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--text)">
     ${q.length>=2?`<div style="font-size:.64rem;color:var(--muted);margin:6px 0">${res.length} encontrado${res.length===1?'':'s'}${res.length>60?' · muestro 60':''}</div><div style="display:flex;flex-direction:column;gap:6px">${res.slice(0,60).map(f=>fila(f,true)).join('')}</div>`:''}</div>`;

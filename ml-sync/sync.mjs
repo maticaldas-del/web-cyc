@@ -8159,7 +8159,7 @@ const RE_CAND_PERF = /perfum|parfum|\bedp\b|\bedt\b|eau de|fragan|fragr|body spl
 function cuentaLista(cat) {
   const v = Object.values(cat || {}).filter((e) => e && e.n);
   // Mínimo 100 ventas en ML (18/10/2026, regla suya): sin `vend` cargado va a revisar; con menos de 100 queda afuera.
-  const m25 = (e) => !e.noEs && !e.sacado && e.m != null && Number(e.m) >= 25 && /^https:\/\//.test(e.mf || '') && !(e.vend != null && Number(e.vend) < 100);
+  const m25 = (e) => !e.noEs && !e.sacado && !e.noWeb && e.m != null && Number(e.m) >= 25 && /^https:\/\//.test(e.mf || '') && !(e.vend != null && Number(e.vend) < 100);
   const da = (e) => m25(e) && Number(e.vend) >= 100 && (e.ok || (!e.rp && Number(e.m) < 80));   // `ok`/`noEs` = lo miró el chat de compras (`listadato`)
   return { n: v.length, med: v.filter((e) => e.m != null).length, pend: v.filter((e) => !e.t).length, dan: v.filter(da).length, revisar: v.filter((e) => m25(e) && !da(e)).length, tMed: Date.now() };
 }
@@ -19448,6 +19448,28 @@ async function main() {
       await db.patch('cyc/mlconfig/listasProv/' + k, { costo: 'lista − descuento', dtoTs: Date.now() });
       console.log(`✓ releído: ${ok} de ${n} con el costo nuevo. Ahora: listamedir:${k}:<cuántos>:go`); return;
     }
+    // BILLING_PROBE=listaweb:<proveedor>[;go] (19/10/2026, él con Iscos: "sólo tienen en stock lo que hay en la web de ellos. No en la
+    // lista que te pasé en Excel"). Lee `ml-sync/notas/listaweb_<prov>.txt` (un código de NUESTRA lista por renglón: los que SÍ están en
+    // la web del proveedor) y marca `noWeb` en todos los demás de `mlapi/listas/<prov>` (y lo saca de los que están). Sin `;go` muestra.
+    // Avisa si algo cargado en el pedido del momento (`cyc/listas_pedido/<prov>`) quedó sin stock. El cruce lo hago yo en el chat.
+    if (/^listaweb:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _r = String(process.env.BILLING_PROBE).slice('listaweb:'.length); const GOw = /(^|;)go\s*$/.test(_r) && !DRY;
+      const k = _r.replace(/(^|;)go\s*$/, '').trim().toLowerCase();
+      let txt = ''; try { txt = readFileSync('ml-sync/notas/listaweb_' + k + '.txt', 'utf8'); } catch { console.log(`❌ No está ml-sync/notas/listaweb_${k}.txt`); return; }
+      const enWeb = new Set(txt.split(/\r?\n/).map((x) => x.trim()).filter(Boolean));
+      const cat = (await db.get('mlapi/listas/' + k)) || {}; const upd = {}; let si = 0, no = 0, cambia = 0;
+      for (const [cod, e] of Object.entries(cat)) { if (!e || !e.n) continue; const esta = enWeb.has(cod); esta ? si++ : no++;
+        if (esta && e.noWeb) { upd[cod + '/noWeb'] = null; cambia++; } else if (!esta && !e.noWeb) { upd[cod + '/noWeb'] = Date.now(); cambia++; } }
+      const faltan = [...enWeb].filter((c) => !cat[c]).length;
+      console.log(`${k}: ${si + no} en la lista · ${si} están en la web · ${no} NO (sin stock) · ${cambia} cambian${faltan ? ` · ⚠️ ${faltan} códigos del archivo no existen en la lista` : ''}${GOw ? '' : ' · PRUEBA: agregá ;go'}`);
+      const arm = (await db.get('cyc/listas_pedido/' + k)) || {};
+      for (const [cod, u] of Object.entries(arm)) if (Number(u) > 0 && !enWeb.has(cod)) console.log(`  ⚠️ cargado en el pedido y NO está en la web: ${cod} · ${String((cat[cod] || {}).n || '').slice(0, 60)} x${u}`);
+      if (!GOw) return;
+      const ks = Object.keys(upd); for (let i = 0; i < ks.length; i += 600) await db.patch('mlapi/listas/' + k, Object.fromEntries(ks.slice(i, i + 600).map((x) => [x, upd[x]])));
+      const re = (await db.get('mlapi/listas/' + k)) || {}; let ok = 0; for (const x of ks) { const c = x.slice(0, -6); if (!!(re[c] || {}).noWeb === !!upd[x]) ok++; }
+      const pv = ((await db.get('cyc/mlconfig/listasProv')) || {})[k] || {}; await db.patch('cyc/mlconfig/listasProv/' + k, { ...cuentaLista(re), webTs: Date.now(), enWeb: si });
+      console.log(`✓ releído: ${ok} de ${ks.length} · ${pv.nombre || k} ahora cuenta sólo lo que está en la web.`); return;
+    }
     // BILLING_PROBE=listaver:<proveedor> → SOLO LEE (19/10/2026). La lista guardada ENTERA de un proveedor, para compararla contra
     // otra (ej. el catálogo web de Iscos): una línea por producto, cód|nombre|pesos|fecha de carga. Nada de compradores: es la lista del proveedor.
     if (/^listaver:/.test(String(process.env.BILLING_PROBE || ''))) {
@@ -19464,7 +19486,7 @@ async function main() {
       let tot = 0; console.log('@@LISTA');
       for (const [k, pv] of Object.entries(provs)) { if (pv.desc || (solo && k !== solo.toLowerCase())) continue;
         const cat = (await db.get('mlapi/listas/' + k)) || {}; const rec = Number(pv.rec) || 0;
-        for (const [cod, e] of Object.entries(cat)) { if (!e || e.noEs || e.sacado || e.vend != null || !(e.m != null && Number(e.m) >= 25 && e.mi)) continue;
+        for (const [cod, e] of Object.entries(cat)) { if (!e || e.noEs || e.sacado || e.noWeb || e.vend != null || !(e.m != null && Number(e.m) >= 25 && e.mi)) continue;
           const est = (e.ok || (!e.rp && Number(e.m) < 80)) ? 'DA' : 'REVISAR';   // DA = margen y nombre bien; falta saber las ventas
           console.log([k, cod, String(e.n).replace(/\|/g, '/'), Math.round((Number(e.p) || 0) * (1 + rec / 100)), e.mi, String(e.mt || '').replace(/\|/g, '/').slice(0, 80), e.mp || '', Math.round(e.m) + '%', est].join('|')); tot++; } }
       console.log('@@FIN'); console.log(`${tot} productos para mirar (los que ya tienen ventas cargadas no salen).`); return;
