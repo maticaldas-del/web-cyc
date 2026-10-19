@@ -37321,6 +37321,10 @@ async function main() {
       const RIT = {};
       {
         let rnE = {}; try { rnE = (await db.get('cyc/ritmonormal')) || {}; } catch { /* sin ritmo normal */ }
+        // 19/10/2026 (Chispero, bajado de precio y "en escasez" con 34 d): el ritmo normal manda sólo si alguna publicación
+        // está hoy en una estrategia que sube el precio (escasez, techo, sin reposición). Misma regla que `escasezDe` de la web.
+        let esE = null; try { esE = (await db.get('cyc/estrategia')) || {}; } catch { esE = null; }
+        const subeE = (m) => { if (!esE) return true; const h = esE[m] || {}; const k = Object.keys(h).map(Number).filter((n) => n > 0 && n <= ahora).sort((a, b) => b - a)[0]; return !!(k && ['escasez', 'techo', 'sinrepo'].includes((h[k] || {}).t)); };
         const mlasK = {};
         for (const k of unidades) {
           const i = k.indexOf('__'), iv = k.indexOf('__v__'), pid = k.slice(0, i), cta = iv > 0 ? k.slice(i + 2, iv) : k.slice(i + 2), col = iv > 0 ? k.slice(iv + 5) : '';
@@ -37338,7 +37342,7 @@ async function main() {
           let u = 0, dc = 0; for (const dk of ult) { const d = dias[dk]; if (d.u > 0 || d.st > 0 || (d.vis > 0 && d.st == null)) { dc++; u += Math.max(0, d.u - d.uR); } }
           // 2a (16/10/2026, él: el bucle "no vende porque está caro, y no se compra porque hay para un montón de días"): la
           // escasez se mide con el ritmo NORMAL; si la suba frenó las ventas, el ritmo de estos 30 días no puede ser menor que él.
-          if (u >= 3 && dc >= 7) { const rn0 = rnE[k], pdN = rn0 && !rn0.f ? Number(rn0.pd) || 0 : 0; RIT[k] = pdN > u / dc ? { r: pdN, d: dc, cal: false, normal: true } : { r: u / dc, d: dc, cal: false }; }
+          if (u >= 3 && dc >= 7) { const rn0 = mlasK[k].some(subeE) ? rnE[k] : null, pdN = rn0 && !rn0.f ? Number(rn0.pd) || 0 : 0; RIT[k] = pdN > u / dc ? { r: pdN, d: dc, cal: false, normal: true } : { r: u / dc, d: dc, cal: false }; }
           else { const rn = rnE[k]; if (rn && Number(rn.pd) > 0) RIT[k] = { r: Number(rn.pd), d: dc, cal: false, normal: true }; }
         }
         if (sinLin) console.log(`(${sinLin} producto×cuenta sin línea de tiempo: su ritmo sale del registro de stock)`);

@@ -88,6 +88,7 @@ PAULVIC a $21.990: 0 ventas desde la suba (~3 días, esperadas ~4 al ritmo de an
 
 ## 16/10 08:52 · revisión completa
 Kit Limpia MLA1477737961 a $8.690 vendió 1 en 3 días contra 9 antes: perdió. Está en escasez (17 u., compra a ~17 días): descuento a $6.990, en el medio, para que salga a ~1 por día. 60 días sin probar más caro.
+Kit Limpia MLA1477737961 (19/10): el freno de $8.690 se juzgó con 3 días y estuvo MAL. En escasez a $9.990 vendió 2 compras (una de 3 u.) desde el 16/10: el techo no es $8.690. Freno sacado; en escasez se prueba $12.990 (19/10). Una sola compra no dice dónde está el techo: falta medir.
 Sábanas 2½ Terracota MLA3886916158 a $32.790 (cerebro viejo 07/10): 1 venta en 9 días contra 4 a $25.030 → perdió por día. Descuento a $27.990.
 Siguen ganando a precio nuevo: Talonera Beige (4 contra 8 con +52%), Mazos Azul y Rojo, Cartas Españolas, Zapatillas protector, Espejo redondo, Lupa 100mm, Cubreasiento x5. Almohadilla Triples (1 contra 3): en duda, se mira en las cortas. Paulvic a $21.990: se juzga 19-20/10 (después del Día de la Madre).
 - 16/10 · Ted Lapidus Rumba (Adriana): $69.999 → $104.990 (+50%) y vendió a las 2 h · deja 83% (antes 28%) · +$26.954 en esa venta. Era la ÚLTIMA unidad (dicho por él): no se puede seguir midiendo. Cuando vuelva a tener stock, arranca en $104.990 o más (no en $69.999).
