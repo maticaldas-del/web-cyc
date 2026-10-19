@@ -19411,6 +19411,44 @@ async function main() {
           console.log([k, cod, String(e.n).replace(/\|/g, '/'), Math.round((Number(e.p) || 0) * (1 + rec / 100)), e.mi, String(e.mt || '').replace(/\|/g, '/').slice(0, 80), e.mp || '', Math.round(e.m) + '%', est].join('|')); tot++; } }
       console.log('@@FIN'); console.log(`${tot} productos para mirar (los que ya tienen ventas cargadas no salen).`); return;
     }
+    // BILLING_PROBE=lista2py:<prov>[;go] (19/10/2026, él: "atacado va en Paraguay dentro de Elegancia, son productos de ahí. No hagas
+    // una tarjeta nueva, metelos como mercadería de ahí") → pasa cada producto de la lista `mlapi/listas/<prov>` a candidato de Elegancia
+    // (`cyc/candidatos_py`, prov 'elegancia'), con su código, su precio en US$ (si la lista no lo trae, los pesos ÷ el dólar del panel),
+    // el catálogo de ML con el que se midió y la foto. No duplica (mismo código o nombre ya candidato o ficha de Elegancia). Con `;go`
+    // escribe y descarta la lista (`desc`), así no queda como tarjeta aparte. Sin `;go` muestra el plan y 3 renglones crudos.
+    if (/^lista2py:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _r = String(process.env.BILLING_PROBE).slice('lista2py:'.length); const GOl = /(^|;)go\s*$/.test(_r) && !DRY;
+      const prov = _r.replace(/(^|;)go\s*$/, '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+      const pv = ((await db.get('cyc/mlconfig/listasProv')) || {})[prov]; if (!pv) { console.log(`❌ No hay ninguna lista "${prov}".`); return; }
+      const cat = (await db.get('mlapi/listas/' + prov)) || {}; const tc = Number(await db.get('cyc/finanzas/tipo_cambio')) || 0;
+      const cands = (await db.get('cyc/candidatos_py')) || {};
+      const _n = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+      const ent = Object.entries(cat).filter(([, e]) => e && e.n);
+      console.log(`=== ${pv.nombre || prov} → 🟣 ELEGANCIA ${GOl ? '(APLICANDO)' : '(PRUEBA)'} · ${ent.length} productos · dólar ${tc} ===`);
+      for (const [cod, e] of ent.slice(0, 3)) console.log('crudo ' + cod + ': ' + JSON.stringify(e).slice(0, 400));
+      const plan = []; let ya = 0, sinP = 0;
+      for (const [cod, e] of ent) {
+        if (e.sacado) continue;
+        const dup = Object.values(cands).some((c) => c && c.prov === 'elegancia' && (String(c.cod) === String(cod) || _n(c.nombre) === _n(e.n))) || products.some((p) => p.provPy === 'elegancia' && (String(p.codPy || '') === String(cod) || _n(p.name) === _n(e.n)));
+        if (dup) { ya++; continue; }
+        const usd = Number(e.usd) > 0 ? Number(e.usd) : (tc > 0 && Number(e.p) > 0 ? Math.round(Number(e.p) / tc * 100) / 100 : 0);
+        if (!(usd > 0)) { sinP++; continue; }
+        const c = { nombre: String(e.n).slice(0, 160), cod: String(cod), usd, enNissei: true, fuente: 'lista', prov: 'elegancia', ts: Date.now() };
+        if (e.mi) c.mlId = String(e.mi);
+        const foto = [e.fp, e.foto, e.f].find((u) => /^https:\/\//.test(String(u || ''))); if (foto) c.foto = foto;
+        if (/^https:\/\//.test(String(e.mf || ''))) c.mlFoto = e.mf;
+        if (Number(e.vend) > 0) c.vendCarga = Number(e.vend);
+        plan.push(c);
+      }
+      console.log(`${plan.length} para cargar · ${ya} ya estaban en Elegancia · ${sinP} sin precio`);
+      for (const c of plan.slice(0, 60)) console.log(`+ ${c.cod} · ${c.nombre.slice(0, 60)} · US$ ${c.usd.toFixed(2)} · ML ${c.mlId || '—'}${c.foto ? '' : ' · sin foto'}`);
+      if (!GOl) { console.log('\nPRUEBA: agregá ;go'); return; }
+      let ok = 0; const base = Date.now();
+      for (let i = 0; i < plan.length; i++) { const id = 'c' + base + 'e' + i; await db.set('cyc/candidatos_py/' + id, plan[i]); const r = await db.get('cyc/candidatos_py/' + id); if (r && r.cod === plan[i].cod) ok++; }
+      await db.patch('cyc/mlconfig/listasProv/' + prov, { desc: true, descTs: Date.now(), aElegancia: Date.now() });
+      console.log(`\n✓ ${ok} de ${plan.length} candidatos de Elegancia escritos y releídos · la lista "${pv.nombre || prov}" queda descartada (ya no se ve en 📋 Listas). Los mide \`candidatos\` en su vuelta.`);
+      return;
+    }
     // BILLING_PROBE=listadato:<prov>;<cód>=<vendidas>[,ok|,no][,mi=<MLA catálogo>];…[;go] → lo que trae el chat de compras de ML.
     //  · vendidas = las del vendedor MÁS BARATO CON FULL (o el más barato si nadie tiene Full) · ok = es el mismo producto (pasa a ✅ aunque
     //    falte una palabra o dé 80%+) · no = es otro producto (sale de las dos listas) · mi= el catálogo correcto (se vuelve a medir con ése).
