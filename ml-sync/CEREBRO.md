@@ -511,3 +511,6 @@ se busca techo (primero sale lo que sobra). **Todo producto tiene que llegar a t
 **PISO = EL PRECIO DE MÁS PLATA (19/10/2026, él: *"el piso es para decir no bajemos más que esto, excepto que haya un problema (…)
 quizás lo mejor es unificarlas"*).** Una sola raya 💰 piso: el precio que más plata por día dejó (5+ días con stock). No se baja de ahí
 salvo sobrestock, stock antiguo u otro problema dicho en el 🧠. Arriba la 🔴 techo; entre las dos es lo que falta probar.
+**STOCK ANTIGUO: CONFIRMAR ANTES DE BAJAR (19/10/2026, error del Paulvic Scarf).** Antes de bajar por stock antiguo, mirar en la línea de
+tiempo que el stock NO haya estado en cero después de la fecha del lote: si estuvo en cero, esas unidades ya se vendieron y lo que hay es
+nuevo. El robot ya lo descarta (`lotesFifo` con `desdeCero`), pero la decisión se revisa igual.
