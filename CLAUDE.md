@@ -9217,3 +9217,6 @@ lee; `;go` anota): techo = precio de hoy; arriba = días con stock a un precio 2
 tenía que vender r0 × gan0/gan1; si vendió tan poco que eso tiene menos de 5% de chance (Poisson) → 🏔️ anotado el día que terminó la
 prueba de arriba, con el porqué (la línea de tiempo lo marca con una raya 🏔️). Si no llega → 📈 buscando techo y en la vuelta pongo
 la prueba con `decido`. **Nunca anotar #techook a mano sin pasar por `techo95`.** Corre en cada completa sobre todas las 🏔️.
+**LAS TRES RAYAS DE CADA PRECIO (19/10/2026, pedido suyo):** la línea de tiempo marca 🔴 techo (donde ya no rinde, 95%), 🟢 piso (el
+precio más alto que sí vende) y 💰 el que más plata por día dejó. Lo que no se sabe se dice ("falta probar más caro"); con sobrestock no
+se busca techo (primero sale lo que sobra). **Todo producto tiene que llegar a tener las tres**: si falta el 🔴, la estrategia es buscar techo.

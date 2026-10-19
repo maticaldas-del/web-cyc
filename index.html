@@ -2666,7 +2666,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.90';
+const APP_VERSION='24.91';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2677,6 +2677,7 @@ const APP_VERSION='24.90';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.91',f:'19/10/2026',h:'16:50',c:[{n:2,t:'Línea de tiempo: en el precio, tres rayas: 🔴 techo (donde ya no rinde, 95% seguro), 🟢 piso (el precio más alto que sí vende) y 💰 el precio que más plata por día dejó. Si no se sabe, lo dice; con stock de sobra no se busca techo.'},{n:3,t:'Todas las publicaciones quedaron con estrategia: las que vendían sin una van a buscar techo, las que sobran o no venden bajan con descuento, lo recién llegado es lanzamiento y lo sin stock ⏸️.'}]},
   {v:'24.90',f:'19/10/2026',h:'16:20',c:[{n:1,t:'Ventas: se sacó el cartel dorado "promo" cuando la etiqueta de estrategia ya dice 🏷️ promo o 💸 descuento.'}]},
   {v:'24.89',f:'19/10/2026',h:'16:00',c:[{n:2,t:'🏔️ Techo encontrado sólo con 95% de seguridad medida con las ventas, y la línea de tiempo marca el día donde se encontró con el porqué. Lo que no llega al 95% vuelve a 📈 buscando techo.'}]},
   {v:'24.88',f:'19/10/2026',h:'15:40',c:[{n:2,t:'Pedidos de Listas (Iscos y las demás): cada producto muestra el precio de la lista y el total a precio de lista, y el mensaje para copiar lo lleva, así se compara contra lo que factura el mayorista.'}]},
@@ -9767,7 +9768,25 @@ function lineaPintar(prodId){
   // volver una prueba que no rindió. Una por precio distinto; entra en la escala del carril para que siempre se vea.
   const _techos=(()=>{const TF=state.techofreno||{},vis={};Object.keys(porMlaF).forEach(mla=>{const t=TF[mla];const pr=t&&Number(t.probado);
     if(!(pr>0))return;if(!vis[pr]||Number(t.ts)>Number(vis[pr].ts))vis[pr]={...t,mla};});return Object.values(vis).sort((a,b)=>a.probado-b.probado);})();
-  const _pcv=ps.concat(cvs).concat(_techos.map(t=>Number(t.probado))).concat(_techos.map(t=>Number(t.volvio)).filter(v=>v>0));const [pcMin,pcMax]=_pcv.length?_esc(Math.min(..._pcv),Math.max(..._pcv)):[0,1];
+  // LAS TRES RAYAS DEL PRECIO (19/10/2026, él: "todos los productos tienen que tener marcado la línea de techo y la línea de piso
+  // (donde sí vende) y la línea de ganancia máxima (donde más se gana $) (…) hay productos que no se saben esas líneas ya que hay
+  // sobrestock"). Salen de los días CON stock agrupados por precio de lista: 💰 el precio que más plata por día dejó (5+ días con
+  // stock); 🟢 piso = el precio más alto que vendió de verdad (5+ días con stock y 3+ ventas); 🔴 techo = el precio más bajo por
+  // arriba del 💰 donde, con 95% de seguridad (Poisson), no deja la misma plata por día. Lo que no se sabe no se dibuja (y se
+  // dice). En 📦 sobra / 📉 liquidando no se busca techo: se dice.
+  const _rayas=(()=>{const est=Object.keys(porMlaF).map(m=>estrategiaDe(m)).filter(Boolean);
+    if(est.length&&est.every(e=>['sobra','liquidando','remate'].includes(e.t)))return {sobra:true};
+    const G={};ks.forEach(k=>{const d=dias[k];if(!d)return;const con=d.st>0||d.u>0;if(!con)return;const pl=Number(d.pLista||d.p)||0;if(!(pl>0))return;
+      const b=Math.round(pl/10)*10;const g=(G[b]=G[b]||{p:b,dias:0,u:0,gan:0});g.dias++;g.u+=Math.max(0,(d.u||0)-(d.uR||0));g.gan+=(gd[k]&&gd[k].gan)||0;});
+    const L=Object.values(G).map(g=>({...g,r:g.u/g.dias,pd:g.gan/g.dias,gu:g.u?g.gan/g.u:null}));
+    const med=L.filter(g=>g.dias>=5);if(!med.length)return {};
+    const best=med.reduce((a,b)=>b.pd>a.pd?b:a);
+    const piso=med.filter(g=>g.u>=3).reduce((a,b)=>!a||b.p>a.p?b:a,null);
+    const pois=(k,lam)=>{if(!(lam>0))return 1;let p=Math.exp(-lam),s=p;for(let i=1;i<=k;i++){p*=lam/i;s+=p;}return Math.min(1,s);};
+    let techo=null;if(best.u>=3&&best.gu>0)L.filter(g=>g.p>best.p*1.02).sort((a,b)=>a.p-b.p).some(g=>{const gu1=g.gu!=null?g.gu:best.gu+(g.p-best.p)*0.7;if(!(gu1>best.gu))return false;
+      const lam=best.r*(best.gu/gu1)*g.dias,seg=1-pois(g.u,lam);if(seg>=0.95){techo={...g,seg,lam};return true;}return false;});
+    return {best,piso,techo};})();
+  const _pcv=ps.concat(cvs).concat(_techos.map(t=>Number(t.probado))).concat([_rayas.best,_rayas.piso,_rayas.techo].filter(Boolean).map(g=>g.p)).concat(_techos.map(t=>Number(t.volvio)).filter(v=>v>0));const [pcMin,pcMax]=_pcv.length?_esc(Math.min(..._pcv),Math.max(..._pcv)):[0,1];
   const hayEst=ks.some(k=>dias[k]&&(dias[k].rem||dias[k].esc!=null)), hayCaja=ks.some(k=>dias[k]&&dias[k].caja), hayVis=ks.some(k=>dias[k]&&dias[k].vis>0), hayGan=Object.keys(gd).length>0;
   // Los carriles que no tienen NADA en el rango no se dibujan (una franja toda gris no dice nada).
   const L={};let _y=0;const _lane=(n,h0,si)=>{if(!si)return;const h=Math.round(h0*1.45);L[n]=[_y,h];_y+=h+8;};
@@ -9924,6 +9943,14 @@ function lineaPintar(prodId){
     const vv=Number(t.volvio);if(vv>0&&vv<t.probado){const y2=L.pr[0]+L.pr[1]-(pcMax>pcMin?(vv-pcMin)/(pcMax-pcMin):.5)*L.pr[1];
       svg+=`<g style="cursor:help"><title>✓ ${fmt(vv)}: el precio que sí vendía, al que se volvió después de la prueba.</title><line x1="${x0.toFixed(1)}" y1="${y2.toFixed(1)}" x2="${W}" y2="${y2.toFixed(1)}" stroke="var(--green)" stroke-width="1.2" stroke-dasharray="2,3" opacity=".85"/>`+
         `<text x="${(x0+3).toFixed(1)}" y="${(y2+11).toFixed(1)}" font-size="10" fill="var(--green)">✓ a ${fmt(vv)} sí vende</text></g>`;}});
+  {const _yP=v=>L.pr[0]+L.pr[1]-(pcMax>pcMin?(v-pcMin)/(pcMax-pcMin):.5)*L.pr[1];const _ray=(v,col,dash,lbl,tt,dy)=>{const y=_yP(v);
+      svg+=`<g style="cursor:help"><title>${tt.replace(/[<>&]/g,'')}</title><line x1="0" y1="${y.toFixed(1)}" x2="${W}" y2="${y.toFixed(1)}" stroke="${col}" stroke-width="1.4" stroke-dasharray="${dash}" opacity=".9"/><text x="4" y="${(y+dy).toFixed(1)}" font-size="10" fill="${col}">${lbl}</text></g>`;};
+    if(_rayas.sobra)svg+=`<text x="4" y="${(L.pr[0]+10).toFixed(1)}" font-size="10" fill="#fb923c">📦 sobra stock: no se busca techo, primero sale lo que sobra</text>`;
+    else{const R=_rayas;
+      if(R.techo)_ray(R.techo.p,'#ef4444','6,3',`🔴 techo ${fmt(R.techo.p)}`,`🔴 Techo ${fmt(R.techo.p)}: a ese precio vendió ${R.techo.u} en ${R.techo.dias} días con stock; para dejar la misma plata por día que a ${fmt(R.best.p)} tenía que vender ~${R.techo.lam.toFixed(1)}. ${Math.round(R.techo.seg*100)}% seguro.`,-3);
+      if(R.best)_ray(R.best.p,'#eab308','2,0',`💰 más plata ${fmt(R.best.p)}`,`💰 El precio que más plata por día dejó: ${fmt(R.best.p)} → ${fmt(Math.round(R.best.pd))} por día (${R.best.u} vendidas en ${R.best.dias} días con stock).`,-3);
+      if(R.piso&&(!R.best||R.piso.p!==R.best.p))_ray(R.piso.p,'#22c55e','2,3',`🟢 piso ${fmt(R.piso.p)} (sí vende)`,`🟢 Piso ${fmt(R.piso.p)}: el precio más alto que vendió de verdad (${R.piso.u} en ${R.piso.dias} días con stock).`,11);
+      if(!R.techo&&R.best)svg+=`<text x="${W-4}" y="${(L.pr[0]+10).toFixed(1)}" font-size="10" text-anchor="end" fill="var(--muted)">techo: todavía no se sabe (falta probar más caro)</text>`;}}
   // 🏔️ DÓNDE SE ENCONTRÓ EL TECHO (19/10/2026, él: "todos los que digan techo encontrado tienen que marcar en la línea dónde se encontró
   // el techo y por qué estás seguro"). Raya vertical verde el día de la anotación 🏔️ (la anota `techo95` sólo con 95% de seguridad)
   // y el porqué en el globito.
