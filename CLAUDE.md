@@ -771,6 +771,11 @@ agotados contra su último tramo con stock · Tito: "SÓLO estos colores". Detal
 `cyc/estrategia/<MLA>/<ts>` (historia). `decido:<MLA>=<precio>#<tag>|motivo` (sin `#` se deduce del motivo) · `tag:<MLA>=<tag>|motivo;go` ·
 `tag` lista. Cada venta muestra la estrategia que tenía cuando se vendió. Detalle en `ml-sync/CEREBRO.md`.
 
+## 🇵🇾 NISSEI: DOS PEDIDOS DEL MOMENTO, PERFUMERÍA Y RESTO (19/10/2026, v24.72, pedido suyo)
+Él: *"en nissei que haya dos pedidos del momento, uno de resto y otro de perf y esas cosas"*. 🌸 Perfumería (perfumes, belleza y
+salud, `esBellezaNom`) y 📦 Resto, cada uno con su total, tope, Llenar, Vaciar y "Ya lo pedí". Viajan aparte: perfumería =
+`compraspy/pyb<fecha>`, resto = `py<fecha>`. En `compray`, con los dos el mismo día va `|perf` o `|resto`. Elegancia sigue con uno.
+
 ## 🇵🇾 DOS PROVEEDORES EN PARAGUAY: NISSEI Y ELEGANCIA (16/10/2026, v23.82)
 Él: *"separar por proveedor dentro de paraguay (…) los pedidos no se pueden juntar y los productos son distintos, precios
 distintos (…) que sea idéntico a como está armado nissei"*. **El proveedor del catálogo "Atacado" se llama Elegancia.**
