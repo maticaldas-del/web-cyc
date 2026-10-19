@@ -499,3 +499,9 @@ estrategia se ve ⚪ sin estrategia (para decidir) y lo que no tiene stock en Fu
 rechaza un precio nuevo sin estrategia (`#tag` o un motivo que la nombre; `!piso` solo = 🛡️ excepción). Las anotaciones viejas
 "base" se leen como ⚪. Lo vendido estable en su mejor precio es 🏔️ techo encontrado, no "base". La lista 🔎 de `planilla` saca
 TODO lo activo con stock en ⚪ (y 🆕) sin prueba de techo en 60 días, venda o no; lo que no vende y sobra va por la 📦.
+**🏔️ SÓLO CON 95% DE SEGURIDAD (19/10/2026, regla suya: *"tenés que estar 95% seguro de que el techo es ese antes de marcarlo como
+techo encontrado (…) los que no tienen suficiente info volver a buscar techo hasta estar 95% seguro"*).** Se mide con `techo95` (solo
+lee; `;go` anota): techo = precio de hoy; arriba = días con stock a un precio 2%+ más alto. Para dejar la misma plata por día arriba
+tenía que vender r0 × gan0/gan1; si vendió tan poco que eso tiene menos de 5% de chance (Poisson) → 🏔️ anotado el día que terminó la
+prueba de arriba, con el porqué (la línea de tiempo lo marca con una raya 🏔️). Si no llega → 📈 buscando techo y en la vuelta pongo
+la prueba con `decido`. **Nunca anotar #techook a mano sin pasar por `techo95`.** Corre en cada completa sobre todas las 🏔️.

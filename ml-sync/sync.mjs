@@ -134,7 +134,7 @@ async function guardarEstrategia(db, mla, t, m, ts) {
   // "correccion" ya no es un tag: se nombra según el tag anterior de esa publicación (2a, 19/10/2026).
   if (t === 'correccion') { let prev = null; try { const h = (await db.get(`cyc/estrategia/${mla}`)) || {}; const ks = Object.keys(h).map(Number).filter((n) => n > 0 && n < k).sort((a, b) => b - a); for (const x of ks) { const tt = h[x] && h[x].t; if (tt && tt !== 'correccion') { prev = tt; break; } } } catch { } t = pasajeDe(prev); }
   if (!ESTRATEGIAS[t] || t === 'sindecidir' || t === 'base') return false;
-  try { await db.set(`cyc/estrategia/${mla}/${k}`, { t, m: String(m || '').slice(0, 160) }); const r = await db.get(`cyc/estrategia/${mla}/${k}`); return !!(r && r.t === t); } catch { return false; }
+  try { await db.set(`cyc/estrategia/${mla}/${k}`, { t, m: String(m || '').slice(0, 400) }); const r = await db.get(`cyc/estrategia/${mla}/${k}`); return !!(r && r.t === t); } catch { return false; }
 }
 function precioRedondoAviso(p0, p1) {
   const a = [];
@@ -38797,6 +38797,68 @@ async function main() {
       const rl = (await db.get('cyc/supervisor/juicio')) || {};
       const ok = Object.entries(up).filter(([k, v]) => v === null ? !rl[k] : rl[k] && rl[k].v === v.v).length;
       console.log(`\nGuardados ${ok} de ${Object.keys(up).length} (releídos).`);
+      return;
+    }
+    // BILLING_PROBE=techo95[:<MLA>,<MLA>…][;go] → ¿EL TECHO ENCONTRADO ESTÁ 95% SEGURO? (19/10/2026, regla suya: *"tenés que estar
+    // 95% seguro de que el techo es ese antes de marcarlo como techo encontrado (…) los que no tienen suficiente info volver a buscar
+    // techo"*). Sin lista mira todas las que hoy están en 🏔️. Con la línea de tiempo (`mlapi/linea/<MLA>`, `armarFicha`): el techo P0 =
+    // el precio de hoy; arriba = todos los días con stock a un precio 2%+ más alto. Para que arriba dejara IGUAL plata por día que en
+    // P0 tenía que vender r0 × gan0/gan1 por día; si vendió tan poco que eso tiene menos de 5% de chance (Poisson) → 95% seguro.
+    // Con `;go`: lo seguro se vuelve a anotar 🏔️ el día que se encontró (fin de la prueba de arriba) con el porqué; lo que no llega
+    // pasa a 📈 buscando techo con lo que falta (el precio de la prueba lo pongo yo con `decido`).
+    if (/^techo95(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const raw = String(process.env.BILLING_PROBE).replace(/^techo95:?/, ''); const GOt = /(^|;)go$/.test(raw) && !DRY;
+      const lista = raw.replace(/;?go$/, '').split(/[,;]/).map((x) => x.trim().toUpperCase()).filter((x) => /^MLA\d+$/.test(x));
+      const links = (await db.get('cyc/mllinks')) || {}; const es = (await db.get('cyc/estrategia')) || {};
+      const tc = parseFloat(await db.get('cyc/finanzas/tipo_cambio')) || 0; if (!(tc > 0)) { console.log('⚠️ sin dólar no se puede medir'); process.exit(1); }
+      const pIdx = {}; for (const pr of products) pIdx[pr.id] = pr;
+      const ultT = (m) => { const h = es[m] || {}; let b = null, pv = null; for (const k of Object.keys(h).map(Number).filter((n) => n > 0).sort((a, b) => a - b)) { const x = h[k]; if (!x || !x.t) continue; const tt = x.t === 'correccion' ? pasajeDe(pv) : x.t; pv = tt; b = { t: tt, ts: k }; } return b; };
+      const sel = lista.length ? lista : Object.keys(es).filter((m) => (ultT(m) || {}).t === 'techook');
+      const hoyK = dayKeyFromISO(Date.now());
+      const $ = (x) => (x == null || !isFinite(x)) ? '—' : '$' + Math.round(x).toLocaleString('es-AR');
+      const fK = (k) => k ? k.slice(8, 10) + '/' + k.slice(5, 7) : '?';
+      console.log(`=== 🏔️ TECHO AL 95% · ${sel.length} publicación(es) · ${GOt ? 'SE ANOTA' : 'prueba (agregá ;go)'} ===`);
+      const res = [];
+      for (const mla of sel) {
+        const e = links[mla]; const pr = e && pIdx[e.prodId]; if (!pr) { console.log(`✗ ${mla}: sin ficha`); continue; }
+        let d; try { d = (await db.get('mlapi/linea/' + mla)) || {}; } catch { console.log(`✗ ${mla}: no leí la línea`); continue; }
+        const cta = String(e.cuenta || '').toLowerCase();
+        const f = armarFicha({ mla, d, e, cu: costoPesos(pr, 1, tc).costo, imp: ((ML_EXTRA_PCT[cta] || 4) + 2) / 100, cambios: [], notas: {}, hoyK });
+        const P0 = Number(f.res.p) || 0; const T = (f.tramos || []).filter((t) => t.p && t.diasSt > 0);
+        const sum = (ts) => { const a = { dias: 0, u: 0, g: 0, desde: null, hasta: null, ps: new Set() }; for (const t of ts) { a.dias += t.diasSt; a.u += t.u; a.g += (t.gu || 0) * t.u; a.ps.add(t.p); if (!a.desde || t.desde < a.desde) a.desde = t.desde; if (!a.hasta || t.hasta > a.hasta) a.hasta = t.hasta; } a.gu = a.u ? a.g / a.u : null; return a; };
+        const B = sum(T.filter((t) => Math.abs(t.p - P0) <= P0 * 0.02)), H = sum(T.filter((t) => t.p > P0 * 1.02));
+        const nom = `${String(pr.name || e.title || '').slice(0, 38)}${e.variant ? ' #' + e.variant : ''} (${e.cuenta || '?'})`;
+        let seg = null, txt = '', falta = '';
+        const r0 = B.dias ? B.u / B.dias : 0;
+        // Ganancia por unidad arriba: la medida si vendió; si no vendió nada, la de P0 más lo que sube el precio (neto ~70% de la suba).
+        const pH = H.ps.size ? Math.min(...H.ps) : null;
+        const gu0 = B.gu, gu1 = H.gu != null ? H.gu : (gu0 != null && pH ? gu0 + (pH - P0) * 0.7 : null);
+        if (!H.dias) falta = 'nunca se probó un precio más alto (con stock)';
+        else if (B.dias < 5 || B.u < 5) falta = `al precio de hoy hay poco medido (${B.u} u. en ${B.dias} días con stock)`;
+        else if (!(gu0 > 0) || !(gu1 > gu0)) falta = 'no se puede comparar la ganancia por unidad';
+        else {
+          const lam = r0 * (gu0 / gu1) * H.dias; seg = 1 - poissonCdfF(H.u, lam);
+          // Días más con stock que harían falta arriba, vendiendo al mismo ritmo, para llegar al 95%.
+          let dx = 0; if (seg < 0.95) { const rH = H.u / H.dias; for (dx = 1; dx <= 120; dx++) { const D = H.dias + dx; if (1 - poissonCdfF(Math.round(rH * D), r0 * (gu0 / gu1) * D) >= 0.95) break; } }
+          txt = `a ${$(pH)}${H.ps.size > 1 ? ' y más' : ''} vendió ${H.u} en ${H.dias} días con stock (${fK(H.desde)}-${fK(H.hasta)}); para dejar la misma plata por día que a ${$(P0)} (${r0.toFixed(2)}/día, ${$(gu0)}/u) tenía que vender ~${(lam).toFixed(1)}`;
+          if (seg < 0.95) falta = `${Math.round(seg * 100)}% seguro: faltan ~${dx > 120 ? '120+' : dx} días con stock más a ${$(pH)}`;
+        }
+        const ok = seg != null && seg >= 0.95;
+        console.log(`${ok ? '🏔️ SEGURO' : '📈 VOLVER A BUSCAR'} · ${mla} · ${nom} · techo ${$(P0)}${seg != null ? ' · ' + (seg * 100).toFixed(1) + '% seguro' : ''}${txt ? ' · ' + txt : ''}${falta ? ' · ' + falta : ''}`);
+        res.push({ mla, ok, seg, txt, falta, P0, pH, hasta: H.hasta });
+      }
+      const nOk = res.filter((r) => r.ok).length; console.log(`\nResumen: ${nOk} seguros al 95% · ${res.length - nOk} vuelven a buscar techo`);
+      if (GOt) {
+        let g = 0;
+        for (const r of res) {
+          // Las 🏔️ anteriores (sin medir al 95%) se borran: queda una sola, la medida.
+          try { const h = (await db.get(`cyc/estrategia/${r.mla}`)) || {}; const pz = {}; for (const [k, x] of Object.entries(h)) if (x && x.t === 'techook') pz[k] = null; if (Object.keys(pz).length) await db.patch(`cyc/estrategia/${r.mla}`, pz); } catch { console.log(`⚠️ ${r.mla}: no pude borrar la 🏔️ anterior`); }
+          const ts = r.ok && r.hasta ? Date.parse(r.hasta.replace(/_/g, '-') + 'T23:00:00-03:00') : Date.now();
+          const m = r.ok ? `Techo encontrado, ${(r.seg * 100).toFixed(0)}% seguro: ${r.txt}` : `Volver a buscar techo (no llega al 95%): ${r.falta}${r.txt ? '. ' + r.txt : ''}`;
+          if (await guardarEstrategia(db, r.mla, r.ok ? 'techook' : 'techo', m.replace(/;/g, ','), Math.min(ts, Date.now()))) g++;
+        }
+        console.log(`✓ ${g} de ${res.length} anotadas y releídas`);
+      }
       return;
     }
     // BILLING_PROBE=tag[:<MLA>=<tag>[|motivo];…][;go] · tag:semilla[;go] → LA ESTRATEGIA DE CADA PRECIO (17/10/2026)
