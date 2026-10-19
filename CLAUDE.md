@@ -9254,5 +9254,5 @@ yo con el peor caso, sin bajar del costo; si algo no deja ni eso, se le avisa.
 ## 🏷️ AL VINCULAR, LA FICHA TOMA EL NOMBRE DE ML (19/10/2026, regla suya)
 Él: *"siempre que vincules cambia el nombre al que esta en ml"*. `vincular:<MLA>=<ficha>:go` ahora le pone a la ficha el título
 de esa publicación (guarda el viejo en `nombreViejo`); con variantes no se cambia (el título nombra un solo color). Para las ya
-vinculadas: `nombreml:<id>,<id>:go` (si la ficha tiene publicaciones con títulos distintos, no adivina). Reemplaza la idea vieja
+vinculadas de Paraguay: `nombreml[:go]` (19/10: 17 renombradas). Reemplaza la idea vieja
 de nombrar las fichas como comprasparaguay: el código Nissei (`codPy`) sigue siendo lo que empareja con Paraguay.
