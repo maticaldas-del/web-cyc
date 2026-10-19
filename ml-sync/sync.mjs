@@ -20939,6 +20939,23 @@ async function main() {
     //    tienen internet abierto. Puede andar o puede no andar — si la página se arma con
     //    JavaScript en el navegador, lo que baja es un cascarón sin precios.
     // SOLO LEE. No toca ML, no toca la base, no escribe nada.
+    // BILLING_PROBE=catbusca:<texto>[;<texto>…] → SOLO LEE (19/10/2026). Los catálogos de ML que trae una búsqueda (hasta 15), cada uno
+    // con cuántos vendedores tiene, el más barato, el más caro y cuántos son Full. Para elegir a mano el catálogo correcto cuando el
+    // emparejado por nombre agarró un set u otro tamaño (él con el Cheeky: "está tomando dos productos distintos").
+    if (/^catbusca:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const label = labels.find((l) => accounts[l]?.refresh_token); if (!label) { console.log('Sin token.'); return; }
+      let tok; try { const tR = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, accounts[label].refresh_token); await db.patch('mlapi/tokens/' + label, { refresh_token: tR.refresh_token, updated_ts: Date.now() }); tok = tR.access_token; } catch { console.log('No pude renovar el token.'); return; }
+      for (const busca of String(process.env.BILLING_PROBE).slice('catbusca:'.length).split(';').map((x) => x.trim()).filter(Boolean)) {
+        console.log(`\n=== "${busca}" ===`);
+        let d; try { d = await mlGet(`/products/search?site_id=MLA&status=active&q=${encodeURIComponent(busca)}&limit=15`, tok); } catch (e) { console.log('  ❌ ' + String(e.message || e).slice(0, 100)); continue; }
+        for (const r of (d.results || [])) {
+          let of = []; try { const x = await mlGet(`/products/${r.id}/items`, tok); of = x.results || []; } catch { /* sin vendedores */ }
+          const ps = of.map((o) => Number(o.price) || 0).filter((x) => x > 0); const full = of.filter((o) => o.shipping?.logistic_type === 'fulfillment').length;
+          console.log(`  ${String(r.id).padEnd(13)} · ${of.length} vend.${full ? ' (' + full + ' Full)' : ''} · ${ps.length ? money(Math.min(...ps)) + (ps.length > 1 ? ' a ' + money(Math.max(...ps)) : '') : 'sin precio'} · ${String(r.name || '').slice(0, 80)}`);
+        }
+      }
+      return;
+    }
     if (String(process.env.BILLING_PROBE || '').startsWith('probarweb')) {
       const _pw = String(process.env.BILLING_PROBE).split(':');
       const busca = (_pw.slice(1).join(':') || 'perfume azzaro').trim();

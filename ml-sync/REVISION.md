@@ -1697,3 +1697,7 @@ todo corta renglón; `html{text-size-adjust:100%}`. Probado con una maqueta a 39
 Pedido suyo. `_pvPrecioUnitAnt`: lo que salió cada unidad en el último pedido con monto (calculadora ÷ llegadas, sin flete); la
 tarjeta en camino muestra unidades pedidas × eso como "≈ $X · aprox" (y arriba a la derecha). No se guarda en ningún lado: es sólo
 para mirar. Chequear: que no se use como deuda en el Arqueo (la deuda sigue siendo sólo lo llegado sin pagar).
+
+### Etapa 3 · 19/10/2026 · `catbusca:<texto>[;…]` (solo lee)
+Lista los catálogos de ML de una búsqueda (15) con vendedores, rango de precio y cuántos Full, para elegir a mano el catálogo correcto
+cuando el emparejado por nombre agarra un set u otro tamaño (caso Cheeky Cool Boys → "perfume + espuma"). No escribe nada.
