@@ -445,3 +445,11 @@ escasez, ahí SÍ O SÍ hay que aumentar, por escasez y para buscar techo. No lo
 `escasez` termina con la lista **🚨 ESCASEZ QUE VENDIÓ DESPUÉS DE MI ÚLTIMA DECISIÓN**. Cada renglón se decide EN ESA VUELTA (las 4
 del día): subir con `decido` (escasez + techo, directo al precio que pienso) o, si a propósito se queda, una nota con el motivo
 (`decido:<MLA>=nota|…`). La lista tiene que quedar vacía al terminar la vuelta. En el chat: "🚨 N → N decididas".
+
+## 📦 SOBRA STOCK: SE DETECTA SOLO, COMO LA ESCASEZ (19/10/2026, regla suya con el Timer)
+Él: *"este no lo habías puesto como sobra stock cuando claramente sí lo estaba. Lo pusiste porque te dije yo (…) la idea es que sea
+automático y sin errores y dándose cuenta de las situaciones"*. La `planilla` termina con **📦 SOBRA STOCK Y NO LO DECIDÍ**: más de
+90 días de stock en Full al ritmo de hoy (o sin ventas en 60), sin estrategia de sobra/liquidando/promo y sin nota mía en 7 días.
+Cada renglón se decide EN ESA VUELTA de la completa: promo propia o de ML (escalera, mismo neto), retiro si conviene, o nota con el
+motivo (ej. "1 u., no llega al cobro de stock antiguo"). Lo llegado hace menos de 30 días va aparte como lanzamiento. La lista tiene
+que quedar vacía. Y al revés de lo que ya hacía: *ningún* producto espera a que él lo vea.

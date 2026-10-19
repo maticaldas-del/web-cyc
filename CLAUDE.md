@@ -9166,3 +9166,9 @@ escasez, ahí SÍ O SÍ hay que aumentar, por escasez y para buscar techo. No lo
 `escasez` termina con la lista **🚨 ESCASEZ QUE VENDIÓ DESPUÉS DE MI ÚLTIMA DECISIÓN**. Cada renglón se decide EN ESA VUELTA (las 4
 del día): subir con `decido` (escasez + techo, directo al precio que pienso) o, si a propósito se queda, una nota con el motivo
 (`decido:<MLA>=nota|…`). La lista tiene que quedar vacía al terminar la vuelta. En el chat: "🚨 N → N decididas".
+
+## 📦 NUNCA MÁS UNA SOBRA SIN DECIDIR (19/10/2026, regla suya con el Timer)
+Él: *"la idea es que sea automático y sin errores y dándose cuenta de las situaciones. Sino lo pienso yo y te tengo que decir todo"*.
+`planilla` termina con **📦 SOBRA STOCK Y NO LO DECIDÍ** (más de 90 d de stock en Full al ritmo de hoy, o sin ventas en 60 d, sin
+tag sobra/liquidando/promo ni nota mía en 7 d). Se decide en la completa (promo/escalera, retiro o nota con motivo) y la lista queda vacía.
+Detalle en `ml-sync/CEREBRO.md` (📦).
