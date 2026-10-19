@@ -7261,6 +7261,9 @@ function promoPermitida(permitidas, itemId, pr, ahora = Date.now()) {
   if (!a || !pr) return false;
   const hasta = a.hasta ? Date.parse(a.hasta) : NaN;
   if (Number.isFinite(hasta) && ahora > hasta + 864e5) return false;   // ya terminó: si sigue puesta, se saca
+  // El descuento propio (PRICE_DISCOUNT) sólo lo ponemos nosotros: si ML le cambió el id (pasó con el Pendrive 128 el
+  // 19/10, sacado a las 10:38 con la promo mía vigente hasta el 01/11), sigue siendo el mío. Vale por tipo.
+  if (pr.type === 'PRICE_DISCOUNT' && String(a.tipo || '') === 'PRICE_DISCOUNT') return true;
   if (a.id) return String(pr.id || '') === String(a.id);
   return !!a.tipo && pr.type === a.tipo && !pr.id;
 }
