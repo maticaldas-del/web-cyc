@@ -2666,7 +2666,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.82';
+const APP_VERSION='24.83';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2677,6 +2677,7 @@ const APP_VERSION='24.82';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.83',f:'19/10/2026',h:'16:40',c:[{n:1,t:'Pedido del momento (probados): las ventas dicen los días que tuvo stock ("1 en 17 d con stock") y, si cambió el precio o la caja, cuántas vendió desde ese día ("desde el 13/10 ($34.990 → $29.990): 1 en 6 d").'}]},
   {v:'24.82',f:'19/10/2026',h:'16:20',c:[{n:1,t:'Paraguay → Nuevos: "🗂️ Lo que no entra en el pedido" (miles de productos) se arma recién al tocarlo. Antes se dibujaba entero aunque estuviera cerrado y por eso Nuevos tardaba.'}]},
   {v:'24.81',f:'19/10/2026',h:'16:05',c:[{n:1,t:'Pedidos → Paraguay abre más rápido: arranca sólo con ✅ Productos probados. Los 🆕 Productos nuevos (cientos de candidatos) se cargan recién al tocar su botón; tocando los dos se ven juntos como antes.'}]},
   {v:'24.80',f:'19/10/2026',h:'15:30',c:[{n:2,t:'Dai Nippon pasó a Pedidos → Bs As (la compra Tito cuando viaja): la lista se ve abajo de los pedidos de Bs As, con sus Nuevos y su 🧾 Pedido, y ya no en 📋 Listas. Lo que se le compre queda en los pedidos de Bs As.'}]},
@@ -12221,6 +12222,19 @@ function _raTexto(c){
   const qu=c.por==='caja'?(c.a==='p'?'perdió la caja de compra':'recuperó la caja de compra'):`cambió el precio (${fmt(c.de)} → ${fmt(c.a)})`;
   return `${c.l}: ${qu} el ${f} · desde ahí vende ${(c.pd*30).toFixed(1)}/mes${c.pdA!=null?` (antes ${(c.pdA*30).toFixed(1)}/mes)`:''}`;
 }
+// LO VENDIDO DICHO CON SUS DÍAS (19/10/2026, él con el Corsair: "dice que vendí uno en 30 días, dando a entender que cada 30 días se
+// vende 1. Pero se vendió 1 en 17 días, 12 estuvo a un precio alto y al bajarlo se vendió en 6"): los días que tuvo stock, y si el
+// precio o la caja cambiaron, lo vendido desde ese cambio (`ritmonormal.ra` del robot) con la fecha y el precio.
+function pedVendTxt(pr){
+  if(!pr)return '';const v=pedVentasNorm(pr).vendidos||0;const dcs=Math.min(30,Math.max(0,Math.round(diasConStockProd(pr.id)||0)));
+  let t=`🛒 vendiste ${fmtN(v)} en ${dcs<30?dcs+' d con stock':'30 d'}`;
+  const rn=state.ritmonormal||{};
+  for(const l of LOCS){const r=rn[pr.id+'__'+sid(l)];const ra=r&&r.ra;if(!ra||!ra.desde||ra.d==null)continue;
+    const d=String(ra.desde).split('_');const fch=d.length===3?d[2]+'/'+d[1]:'';
+    const qu=ra.por==='caja'?(ra.a==='p'?'perdió la caja':'ganó la caja'):`${fmt(ra.de)} → ${fmt(ra.a)}`;
+    t+=` · desde el ${fch} (${qu}): ${fmtN(ra.u||0)} en ${fmtN(ra.d)} d`;}
+  return t;
+}
 function pedVentasNorm(prodOrName){
   const target=(prodOrName&&typeof prodOrName==='object')?prodOrName:prodByName(prodOrName);
   const tname=target?target.name:(prodOrName||'');
@@ -14563,7 +14577,7 @@ function pedidoMomentoHTML(g){
     +(f.maxWeb!=null?` · <span style="color:${f.caro?'var(--red)':'var(--green)'}">máx ${u2(f.maxWeb)}${f.caro?' · 🔴 a este precio no da':' · ✅ da'}</span>`:''),
     ft&&ft.url?ft.url:'', f.maxWeb==null?null:(f.caro?'🔴':'✅'), f.caro?'var(--red)':'var(--green)',
     f.pr?`<div style="margin-top:6px">${pyProbVisHTML(f.pr)}</div><div style="margin-top:4px">${maxCompraHTML(f.pr)}</div>`:'',
-    (()=>{const v=f.pr?pedVentasNorm(f.pr).vendidos:null;return v==null?'':` · <span style="color:var(--text)">🛒 vendiste ${fmtN(v)} en 30 d</span>`;})());});
+    f.pr?` · <span style="color:var(--text)">${pedVendTxt(f.pr)}</span>`:'');});
   const maxU=pedMaxU(), minV=pedMinVent();
   const filasN=Ns.map(f=>{const R=candPreciosPartes(f.c);const m=R.margenPct;const P=candPuedePedir(f.c);
     return fila(f.c.nombre,String(f.c.cod||'').trim(),f.u,f.usd,`candSetPedir('${f.c.id}',this.value)`,`candSetPedir('${f.c.id}',0)`,

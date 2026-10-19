@@ -1625,3 +1625,4 @@ Chequear: que un proveedor de la carpeta siga apareciendo si es el único.
 - 19/10: `lista2py:<prov>[;go]` pasa una lista de 📋 Listas a candidatos de 🟣 Elegancia (US$ = pesos ÷ dólar si la lista no trae US$, foto de `elegancia/<cód>.jpg` publicada en Pages) y descarta la lista. Aplicado a "atacado bf" (regla suya: atacado = Elegancia, sin tarjeta aparte). Chequear que no queden candidatos duplicados entre Nissei y Elegancia.
 - v24.81: Paraguay arranca en `pyVista='probados'` (antes 'ambos'): los Nuevos se dibujan al tocar el botón, por lentitud.
 - v24.82: "🗂️ Lo que no entra en el pedido" de Paraguay → Nuevos se arma al abrirlo (`window._pyNoEntraFn`, ontoggle). Chequear que al abrirlo aparezcan las dos carpetas.
+- v24.83: `pedVendTxt` en el pedido del momento: vendidas con días con stock y lo vendido desde el último cambio de precio o caja (`ritmonormal.ra`). Chequear que coincida con la línea de tiempo.
