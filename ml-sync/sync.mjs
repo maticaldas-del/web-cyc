@@ -23370,7 +23370,7 @@ async function main() {
       if (okN && okV && MLA) console.log('Después corré netoweb, si no el producto sigue mostrando "—".');
       return;
     }
-    // La ficha toma el nombre de la publicación de ML (regla suya del 19/10/2026). Se usa al vincular y en `nombreml`.
+    // La ficha toma el nombre de la publicación de ML (regla suya del 19/10/2026). Se usa al vincular (el `nombreml` de arriba hace lo mismo con las de Paraguay ya vinculadas).
     const nombreDeML = async (p, titulo) => {
       const t = String(titulo || '').trim();
       if (!t || /^MLA\d+$/i.test(t)) { console.log('  nombre: ML no dio título, queda como está.'); return false; }
@@ -23395,23 +23395,6 @@ async function main() {
         const pubCta = pubs.some(([, e]) => (e.status || '') !== 'closed' && e.cuenta === cta);
         console.log(`   web: publica ${cta}=${pubCta} · pasara=${!!RX[p.id + '__' + sidW(cta)]} · nomandar=${!!NR[p.id + '__' + sidW(cta)]} → ${hay > 0 && (pubCta || RX[p.id + '__' + sidW(cta)]) && !NR[p.id + '__' + sidW(cta)] ? 'TENDRÍA QUE APARECER' : 'NO aparece'}`);
         if ((p.variantes || []).length) console.log(`   variantes: ${JSON.stringify(p.variantes).slice(0, 300)}`);
-      }
-      return;
-    }
-    // BILLING_PROBE=nombreml:<id>[,<id>…][:go] → les pone a esas fichas el nombre de su publicación de ML (19/10/2026).
-    // Si la ficha tiene más de una publicación viva, no adivina cuál: lo dice.
-    if (/^nombreml(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
-      const _r = String(process.env.BILLING_PROBE).slice(9); const GO = /:go$/i.test(_r);
-      const ids = _r.replace(/:go$/i, '').split(',').map((x) => x.trim()).filter(Boolean);
-      const L = (await db.get('cyc/mllinks')) || {};
-      for (const id of ids) {
-        const p = products.find((x) => x.id === id); if (!p) { console.log(`${id}: no existe`); continue; }
-        const pubs = Object.entries(L).filter(([m, e]) => e && e.prodId === id && (e.status || '') !== 'closed' && e.title);
-        const tits = [...new Set(pubs.map(([, e]) => e.title))];
-        if (!tits.length) { console.log(`${p.name}: sin publicación vinculada`); continue; }
-        if (tits.length > 1) { console.log(`${p.name}: ${tits.length} publicaciones con títulos distintos, no adivino → ${tits.join(' | ')}`); continue; }
-        if (!GO) { console.log(`${p.name} → "${tits[0]}" (prueba)`); continue; }
-        console.log(p.name); await nombreDeML(p, tits[0]);
       }
       return;
     }
