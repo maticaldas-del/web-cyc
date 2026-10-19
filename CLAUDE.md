@@ -9161,3 +9161,8 @@ escasez, ahí SÍ O SÍ hay que aumentar, por escasez y para buscar techo. No lo
  · Lo que tiene pocas unidades se rejuzga con CADA venta: la 1ª dice que a ese precio vende → si lo que queda se vende en pocos días
    contra lo que tarda reponer (o contra los 4 meses si no hay reposición), se sube a buscar el techo; la 2ª que confirma el ritmo
    y deja el stock en escasez → se sube SÍ O SÍ en esa vuelta (escasez + techo). No se espera a la completa.
+
+## 🚨 NUNCA MÁS UNA ESCASEZ SIN DECIDIR (19/10/2026, regla suya: *"quiero que nunca más vuelva a suceder eso"*)
+`escasez` termina con la lista **🚨 ESCASEZ QUE VENDIÓ DESPUÉS DE MI ÚLTIMA DECISIÓN**. Cada renglón se decide EN ESA VUELTA (las 4
+del día): subir con `decido` (escasez + techo, directo al precio que pienso) o, si a propósito se queda, una nota con el motivo
+(`decido:<MLA>=nota|…`). La lista tiene que quedar vacía al terminar la vuelta. En el chat: "🚨 N → N decididas".

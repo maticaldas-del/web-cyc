@@ -280,6 +280,8 @@ no deje naranja algo con meses de stock (tope 60) · que el pedido en camino se 
 
  · **Escasez con el ritmo rápido (18/10/2026, eligió la a).** En `escasez` (sync.mjs, junto a `ritmo14`): si en 7 días con stock vendió 2+ u. y el doble o más del ritmo de 30 d, manda ese ritmo (⚡ en el renglón). Chequear: que no dispare con 1 sola venta.
 
+ · **🚨 Escasez que vendió después de mi última decisión (19/10/2026, con el Cabotine Turquoise).** Al final de `escasez`: toda publicación en escasez con stock cuya última venta es posterior a mi último cambio de precio (`cyc/claudecambios`) o nota (`mlapi/fichanotas`) sale en la lista 🚨 y se decide en esa vuelta. Chequear: que una nota con motivo la saque de la lista.
+
 ## 2 · PLATA
 - **Cada lugar, su nota (08/10/2026, v22.71):** él: *"en ventas por qué aumentó el precio o por qué no, y en pedidos por qué
   pide x unidades"*. `cerebroAbrir`: con `ped` o `ctx:'caja'` muestra SÓLO las notas `ped__`/`caja__`; con `ctx:'venta'`

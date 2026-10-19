@@ -37495,6 +37495,32 @@ async function main() {
         }
       }
       if (!filas.length) console.log('Nada se queda sin stock en ese plazo.');
+      // ── 🚨 ESCASEZ QUE VENDIÓ DESPUÉS DE MI ÚLTIMA DECISIÓN (19/10/2026, regla suya con el Cabotine Turquoise: vendió 4 en
+      // 10 días, entró en escasez y nunca se subió; él: "quiero que nunca más vuelva a suceder"). Cada venta es un dato: si
+      // algo está en escasez y vendió DESPUÉS de mi última decisión de precio en esa publicación (o nunca decidí nada), sale
+      // acá arriba de todo y en esa vuelta se decide SÍ O SÍ (subir, o dejarlo con motivo con `decido`). No se saltea.
+      try {
+        let ccS = null; try { ccS = (await db.get('cyc/claudecambios')) || {}; } catch { ccS = null; }
+        if (!ccS) console.log('\n⚠️ no pude leer mis decisiones: el control "vendió y no decidí" NO se hizo');
+        else {
+          const ultDec = {}; for (const d of Object.values(ccS)) { if (d && d.mla && Number(d.ts) > (ultDec[d.mla] || 0)) ultDec[d.mla] = Number(d.ts); }
+          // Una nota mía (decido:…=nota|motivo, o la de una promo) también es decidir: "lo dejo así porque…".
+          try { const nts = (await db.get('mlapi/fichanotas')) || {}; for (const [m, h] of Object.entries(nts)) for (const t of Object.keys(h || {})) { const n = Number(t); if (n > (ultDec[m] || 0)) ultDec[m] = n; } } catch { console.log('   (no leí las notas: cuenta sólo los cambios de precio)'); }
+          const alarma = [];
+          for (const f of filas) {
+            if (!(f.escFull || f.escComp) || !(f.st > 0)) continue;
+            const vts = ((V[f.k] || {}).vts || []).map(([t]) => t); if (!vts.length) continue;
+            const ultV = Math.max(...vts);
+            for (const m of (pubs[f.k] || [])) {
+              const dec = ultDec[m] || 0;
+              if (ultV > dec) { const nDesp = vts.filter((t) => t > dec).length; alarma.push(`🚨 ${m} · ${pName[f.pid] || f.pid}${f.color ? ' · ' + f.color.replace(/_/g, ' ') : ''} · ${f.cta} · ${f.st} u. · ${f.r14.toFixed(2)}/día${f.rapido ? ' ⚡' : ''} · vendió ${nDesp} ${dec ? 'desde mi última decisión (' + new Date(dec - 3 * 3600e3).toISOString().slice(8, 10) + '/' + new Date(dec - 3 * 3600e3).toISOString().slice(5, 7) + ')' : 'y nunca decidí su precio'}`); }
+            }
+          }
+          console.log(`\n── 🚨 ESCASEZ QUE VENDIÓ DESPUÉS DE MI ÚLTIMA DECISIÓN (${alarma.length}) · decidir EN ESTA VUELTA: subir, o dejar con motivo ──`);
+          for (const a of alarma) console.log(a);
+          if (!alarma.length) console.log('ninguna: todo lo que está en escasez ya tiene decisión posterior a su última venta');
+        }
+      } catch (eA) { console.log('⚠️ el control "vendió y no decidí" falló: ' + eA.message); }
       // Lo que quedó afuera, con nombre (revisión 9: un cero sin explicación parece una buena noticia).
       const sinColTxt = Object.entries(sinColorU).filter(([k]) => conColor.has(k));
       console.log(`\nMiré ${juzgadas} de ${unidades.length} producto×cuenta (o color) con ventas en 30 d · afuera: ${fueraPocas.length} con menos de 2 ventas en 14 d · ${fueraSinClave.length} sin clave de stock en el inventario`);
