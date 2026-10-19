@@ -9250,3 +9250,9 @@ pedido"*. 8 productos x2 (Cheeky Cool Boys y Sweet Baby, Cocot Magic Romance y S
 Rouge y Rose 50 — los Nina no están en la web de Iscos, pueden no venir). Precio real de mercado ~$20.000-23.000 (el % del pedido se
 midió contra un vendedor inflado de $96.000): se esperan ~5-10%. Al llegar: fichas con el costo de la web ×0,665 y el precio lo decido
 yo con el peor caso, sin bajar del costo; si algo no deja ni eso, se le avisa.
+
+## 🏷️ AL VINCULAR, LA FICHA TOMA EL NOMBRE DE ML (19/10/2026, regla suya)
+Él: *"siempre que vincules cambia el nombre al que esta en ml"*. `vincular:<MLA>=<ficha>:go` ahora le pone a la ficha el título
+de esa publicación (guarda el viejo en `nombreViejo`); con variantes no se cambia (el título nombra un solo color). Para las ya
+vinculadas: `nombreml:<id>,<id>:go` (si la ficha tiene publicaciones con títulos distintos, no adivina). Reemplaza la idea vieja
+de nombrar las fichas como comprasparaguay: el código Nissei (`codPy`) sigue siendo lo que empareja con Paraguay.

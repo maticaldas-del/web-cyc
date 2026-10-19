@@ -120,6 +120,7 @@ archivo son AYUDA, no la decisión: si sólo se siguen las reglas, lo que nadie 
 - **Activar lo pausado es PRIORIDAD** en todas las vueltas (`pausadas:25` + `activarfull:go:25`). Lo que no se activa
   va al `pregunto:` con motivo y propuesta. Nunca pausada en silencio.
 - Publicaciones nuevas sin ficha: las vinculo yo (`vincular`). Él crea la publicación en ML; yo la ficha y el vínculo.
+  **Al vincular, la ficha toma el nombre de la publicación de ML** (regla suya del 19/10; `vincular` lo hace solo, `nombreml` para las viejas).
 - Frenadas por ML (`under_review`, documentación): no se puede tocar precio; si hay que arreglar algo en ML, se le avisa.
 
 ## 4 · Ventas y preguntas
