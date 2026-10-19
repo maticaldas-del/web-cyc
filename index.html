@@ -2665,7 +2665,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.72';
+const APP_VERSION='24.73';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2676,6 +2676,7 @@ const APP_VERSION='24.72';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.73',f:'19/10/2026',h:'11:41',c:[{n:1,t:'Pedido del momento (Paraguay): cada producto dice cuántas se vendieron, al lado del precio. En los nuevos, las vendidas en ML (verde si llega al mínimo); en los probados, las que vendiste vos en 30 días.'}]},
   {v:'24.72',f:'19/10/2026',h:'11:29',c:[{n:2,t:'Paraguay · Nissei: ahora hay DOS pedidos del momento, 🌸 Perfumería (perfumes, belleza y salud) y 📦 Resto. Cada uno con su total, su tope, Llenar, Vaciar y «Ya lo pedí», y viajan como pedidos separados.'}]},
   {v:'24.71',f:'19/10/2026',h:'00:55',c:[{n:1,t:'Paraguay · Probados: lo que cargás en el 🧾 Pedido sale de la lista (como ya pasaba en Nuevos). Si lo sacás del pedido, vuelve solo.'}]},
   {v:'24.70',f:'19/10/2026',h:'00:13',c:[{n:1,t:'Ventas en la PC: el renglón de arriba ya no se corta (el «Bien» y la 📈 quedaban afuera). El neto y el costo pasaron al detalle; si igual no entra, baja a una segunda línea.'}]},
