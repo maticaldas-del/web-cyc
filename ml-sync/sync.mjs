@@ -94,11 +94,25 @@ function umbralRedondoCruzado(p0, p1) {
 // (historia: no se pisa). La web toma, para cada venta, la última estrategia anterior a esa venta. `decido` acepta `#<tag>`
 // después del precio; si no va, se deduce del motivo con `tagDeMotivo`. A mano: `tag:<MLA>=<tag>|motivo;go`.
 // MISMA LISTA EN index.html (ESTRATEGIA_UI): si se agrega una, va en los dos.
-const ESTRATEGIAS = { base: '🎯 base', escasez: '🔥 escasez', sinrepo: '⏳ sin reposición', techo: '📈 buscando techo', liquidando: '📉 liquidando', caja: '🥊 ganar la caja', promo: '🏷️ promo', descuento: '💸 descuento', fecha: '🎁 fecha especial', excepcion: '🛡️ excepción', sobra: '📦 sobra stock', nuevo: '🆕 lanzamiento', correccion: '↩️ corrección' };
+// 19/10/2026, eligió 1a 2a 3a: los PASAJES tienen nombre. 5 tags nuevos (🪜 bajando · ↘️ volviendo al normal · ↗️ volviendo de
+// sobra · 🏔️ techo encontrado · 🧨 remate total); "↩️ corrección" se elimina: lo que "vuelve" se nombra según de dónde venía
+// (`pasajeDe`) y la web muestra "venía de X" en el chip. Escasez lleva escalón como el techo.
+const ESTRATEGIAS = { base: '🎯 base', escasez: '🔥 escasez', sinrepo: '⏳ sin reposición', techo: '📈 buscando techo', techook: '🏔️ techo encontrado', bajando: '🪜 bajando', volviendo: '↘️ volviendo al normal', desobra: '↗️ volviendo de sobra', liquidando: '📉 liquidando', remate: '🧨 remate total', caja: '🥊 ganar la caja', promo: '🏷️ promo', descuento: '💸 descuento', fecha: '🎁 fecha especial', excepcion: '🛡️ excepción', sobra: '📦 sobra stock', nuevo: '🆕 lanzamiento' };
+// Lo que "vuelve" (motivo "vuelvo", o una anotación vieja ↩️ corrección) toma nombre según el tag ANTERIOR. MISMA tabla en index.html.
+function pasajeDe(prev) {
+  if (prev === 'techo' || prev === 'techook') return 'techook';
+  if (['escasez', 'sinrepo', 'fecha', 'bajando'].includes(prev)) return 'volviendo';
+  if (['sobra', 'liquidando', 'remate'].includes(prev)) return 'desobra';
+  return 'base';
+}
 function tagDeMotivo(m) {
   const t = String(m || '').toLowerCase();
+  if (/remate total|a cualquier precio|abajo de 0 ?%|debajo de 0 ?%/.test(t)) return 'remate';
   if (/no se consigue|sin reposici|4 meses|cuatro meses|nissei no|no lo consigo|no da en paraguay/.test(t)) return 'sinrepo';
-  if (/termin[oó] la escasez|fin de la escasez|sali[oó] de la escasez|ya no hay escasez/.test(t)) return 'base';
+  if (/techo encontrado|encontr[eé] el techo|ya es el techo|[uú]ltimo (precio )?que rindi/.test(t)) return 'techook';
+  if (/escalera|bajo de a poco|bajando de a poco|baja un escal[oó]n|bajo un escal[oó]n/.test(t)) return 'bajando';
+  if (/ya no sobra|qued[oó] lo justo|vuelve a subir de la sobra|vuelvo de la sobra/.test(t)) return 'desobra';
+  if (/termin[oó] la escasez|fin de la escasez|sali[oó] de la escasez|ya no hay escasez|lleg[oó] la caja|vuelvo al normal|volviendo al normal|vuelve al normal|pas[oó] la fecha/.test(t)) return 'volviendo';
   if (/escasez|estir|hasta que llegue|se agota|se acaba|quedan pocas/.test(t)) return 'escasez';
   // 18/10/2026, él con el Pendrive 128gb: lo que se baja abajo del 25% porque sobra stock y va a pagar stock antiguo NO es
   // base ni liquidación total: es 📦 sobra stock (se vuelve al precio normal cuando queda lo justo).
@@ -114,8 +128,11 @@ function tagDeMotivo(m) {
   return 'base';
 }
 async function guardarEstrategia(db, mla, t, m, ts) {
-  if (!/^MLA\d+$/.test(String(mla)) || !ESTRATEGIAS[t]) return false;
+  if (!/^MLA\d+$/.test(String(mla))) return false;
   const k = Math.round(Number(ts) || Date.now());
+  // "correccion" ya no es un tag: se nombra según el tag anterior de esa publicación (2a, 19/10/2026).
+  if (t === 'correccion') { let prev = null; try { const h = (await db.get(`cyc/estrategia/${mla}`)) || {}; const ks = Object.keys(h).map(Number).filter((n) => n > 0 && n < k).sort((a, b) => b - a); for (const x of ks) { const tt = h[x] && h[x].t; if (tt && tt !== 'correccion') { prev = tt; break; } } } catch { } t = pasajeDe(prev); }
+  if (!ESTRATEGIAS[t]) return false;
   try { await db.set(`cyc/estrategia/${mla}/${k}`, { t, m: String(m || '').slice(0, 160) }); const r = await db.get(`cyc/estrategia/${mla}/${k}`); return !!(r && r.t === t); } catch { return false; }
 }
 function precioRedondoAviso(p0, p1) {
@@ -38804,8 +38821,8 @@ async function main() {
         const pc = (await db.get('cyc/promoclaude')) || {};
         for (const [m, x] of Object.entries(pc)) { if (!/^MLA\d+$/.test(m) || !x) continue; const ts = Number(x.ts || x.desde) || Date.now(); if (ya(m, ts)) continue; nuevas.push({ mla: m, ts, t: 'promo', m: x.motivo || 'en promo' }); }
         const cuenta = {}; for (const n of nuevas) cuenta[n.t] = (cuenta[n.t] || 0) + 1;
-        console.log(`${nuevas.length} renglones nuevos · ${Object.entries(cuenta).map(([t, n]) => `${ESTRATEGIAS[t]} ${n}`).join(' · ')}`);
-        for (const n of nuevas.slice(0, 40)) console.log(`· ${new Date(n.ts).toISOString().slice(0, 10)} ${ESTRATEGIAS[n.t]} · ${nomDe(n.mla)} · ${String(n.m || '').slice(0, 70)}`);
+        console.log(`${nuevas.length} renglones nuevos · ${Object.entries(cuenta).map(([t, n]) => `${ESTRATEGIAS[t] || '↩️ vuelta (se nombra al guardar)'} ${n}`).join(' · ')}`);
+        for (const n of nuevas.slice(0, 40)) console.log(`· ${new Date(n.ts).toISOString().slice(0, 10)} ${ESTRATEGIAS[n.t] || '↩️ vuelta'} · ${nomDe(n.mla)} · ${String(n.m || '').slice(0, 70)}`);
         if (nuevas.length > 40) console.log(`… y ${nuevas.length - 40} más`);
         if (GOt) { let ok = 0; for (const n of nuevas) if (await guardarEstrategia(db, n.mla, n.t, n.m, n.ts)) ok++; console.log(`\n✓ ${ok} de ${nuevas.length} guardadas y releídas`); }
         return;
@@ -38817,13 +38834,13 @@ async function main() {
           // `@AAAA-MM-DDTHH:MM` (hora de acá) = desde cuándo vale (18/10/2026: si la estrategia empezó antes, las ventas de ese rato
           // tienen que mostrarla). Sin `@`, desde ahora.
           const mt = x.match(/^\s*(MLA\d+)\s*=\s*(\w+)(?:@(\d{4}-\d\d-\d\dT\d\d:\d\d))?\s*(?:\|(.*))?$/i);
-          if (!mt || !ESTRATEGIAS[mt[2].toLowerCase()]) { console.log(`✗ no entendí "${x}" · va así: tag:MLA123=escasez|motivo;go · estrategias: ${Object.keys(ESTRATEGIAS).join(', ')}`); continue; }
+          if (!mt || !(ESTRATEGIAS[mt[2].toLowerCase()] || mt[2].toLowerCase() === 'correccion')) { console.log(`✗ no entendí "${x}" · va así: tag:MLA123=escasez|motivo;go · estrategias: ${Object.keys(ESTRATEGIAS).join(', ')}`); continue; }
           const m = mt[1].toUpperCase(), t = mt[2].toLowerCase();
           if (!links[m]) { console.log(`✗ ${m} no está vinculada`); continue; }
           const a = actual(m);
           const desde = mt[3] ? new Date(mt[3] + ':00-03:00').getTime() : Date.now();
           if (!(desde > 0) || desde > Date.now() + 60e3) { console.log(`✗ la fecha "${mt[3]}" no sirve`); continue; }
-          console.log(`· ${nomDe(m)}: ${a ? ESTRATEGIAS[a.t] : 'sin estrategia'} → ${ESTRATEGIAS[t]}${mt[3] ? ' desde ' + mt[3] : ''}${mt[4] ? ' · ' + mt[4].trim() : ''}`);
+          console.log(`· ${nomDe(m)}: ${a ? (ESTRATEGIAS[a.t] || a.t) : 'sin estrategia'} → ${ESTRATEGIAS[t] || 'vuelta: ' + ESTRATEGIAS[pasajeDe(a && a.t)]}${mt[3] ? ' desde ' + mt[3] : ''}${mt[4] ? ' · ' + mt[4].trim() : ''}`);
           if (GOt) console.log((await guardarEstrategia(db, m, t, (mt[4] || '').trim(), desde)) ? '   ✓ guardada' : '   ✗ no quedó');
         }
         return;
@@ -38925,7 +38942,7 @@ async function main() {
         }
         // `MLA=7550`, `MLA=7550!activar`, `MLA=activar` (deja el precio y la activa), banderas `!piso` `!cruza`.
         const mm = String(izq).match(/^\s*(MLA\d+)\s*=\s*(activar|[\d.,$\s]+)?((?:!\w+)*)(?:#(\w+))?\s*$/i);
-        if (mm && mm[4] && !ESTRATEGIAS[mm[4].toLowerCase()]) { malos.push(x + ` (la estrategia #${mm[4]} no existe: ${Object.keys(ESTRATEGIAS).join(', ')})`); continue; }
+        if (mm && mm[4] && !ESTRATEGIAS[mm[4].toLowerCase()] && mm[4].toLowerCase() !== 'correccion') { malos.push(x + ` (la estrategia #${mm[4]} no existe: ${Object.keys(ESTRATEGIAS).join(', ')})`); continue; }
         if (!mm || (!mm[2] && !/!activar/i.test(mm[3] || ''))) { malos.push(x); continue; }
         const banderas = String(mm[3] || '').toLowerCase();
         const soloAct = /^activar$/i.test(String(mm[2] || '').trim()) || !mm[2];
@@ -39081,7 +39098,7 @@ async function main() {
       const ac = await aplicarCerebro(db, cz, { tokens: tokP, aplica: true, autoprecio: apP });
       console.log(`\n✓ hechos: ${ac.hechos.length} · no se pudo: ${ac.fallidos.length} · sin anotar: ${ac.sinAnotar.length}`);
       // LA ESTRATEGIA DE ESTE PRECIO (17/10/2026): `#tag` si lo puse, si no se deduce del motivo.
-      for (const h of ac.hechos) { const fz = forzar[h.f.mla] || {}; const tg0 = fz.tag || tagDeMotivo(fz.motivo); const tg = (tg0 === 'base' && fz.piso) ? 'excepcion' : tg0; const okT = await guardarEstrategia(db, h.f.mla, tg, fz.motivo, Date.now()); console.log(`   ${okT ? '🏷' : '⚠️ no quedó la'} estrategia ${ESTRATEGIAS[tg]} · ${h.f.mla}`); }
+      for (const h of ac.hechos) { const fz = forzar[h.f.mla] || {}; const tg0 = fz.tag || tagDeMotivo(fz.motivo); const tg = (tg0 === 'base' && fz.piso) ? 'excepcion' : tg0; const okT = await guardarEstrategia(db, h.f.mla, tg, fz.motivo, Date.now()); console.log(`   ${okT ? '🏷' : '⚠️ no quedó la'} estrategia ${ESTRATEGIAS[tg] || '↩️ vuelta (nombrada por la anterior)'} · ${h.f.mla}`); }
       for (const h of ac.hechos) { const fz = forzar[h.f.mla] || {}; await escribirNota(h.f.mla, `${Number(h.a) > Number(h.de) ? 'Lo subí' : 'Lo bajé'} de ${money(h.de)} a ${money(h.a)}. ${fz.motivo || ''}`.trim(), { tipo: 'precio', de: h.de, a: h.a }); }
       // EXCEPCIONES A PROPÓSITO (12/10/2026): un precio que dejé abajo del 25% con `!piso` (remate, liquidar, sobrestock)
       // queda anotado con el precio exacto, para que el chequeo del peor caso de `planilla` no lo marque. Si después
@@ -39719,7 +39736,8 @@ async function main() {
       }
       // LA ESTRATEGIA DE HOY DE CADA UNA (18/10/2026, él: "fijate si hay más productos con tags equivocados"). Misma regla que
       // `estrategiaDe` de la web: la última anotada; si no hay y está marcada liquidando, 📉; si no, 🎯 base.
-      const estHoy = (mla) => { const h = (estrat || {})[mla] || {}; let b = null; for (const [k, x] of Object.entries(h)) { const n = Number(k); if (!(n > 0) || n > hoy + 60e3 || !x || !ESTRATEGIAS[x.t]) continue; if (!b || n > b.ts) b = { t: x.t, m: x.m, ts: n }; } if (!b && (nosub || {})[mla]) b = { t: 'liquidando', ts: 0, m: 'marcada liquidando' }; return b || { t: 'base', ts: 0, m: 'sin estrategia anotada' }; };
+      const estHoy = (mla) => { const h = (estrat || {})[mla] || {}; let b = null; for (const [k, x] of Object.entries(h)) { const n = Number(k); if (!(n > 0) || n > hoy + 60e3 || !x || !(ESTRATEGIAS[x.t] || x.t === 'correccion')) continue; if (!b || n > b.ts) b = { t: x.t, m: x.m, ts: n }; }
+        if (b && b.t === 'correccion') { const ks = Object.keys(h).map(Number).filter((n) => n > 0 && n < b.ts).sort((p, q) => q - p); let pv = null; for (const x of ks) { if (h[x] && h[x].t && h[x].t !== 'correccion') { pv = h[x].t; break; } } b.t = pasajeDe(pv); } if (!b && (nosub || {})[mla]) b = { t: 'liquidando', ts: 0, m: 'marcada liquidando' }; return b || { t: 'base', ts: 0, m: 'sin estrategia anotada' }; };
       for (const r of filas) r.est2 = estHoy(r.mla);
       filas.sort((x, y) => (y.u30 - x.u30) || (y.st - x.st));
       console.log(`=== 📋 PLANILLA · ${filas.length} publicaciones con ficha (activas y pausadas)${ctaF ? ' · ' + ctaF : ''} · objetivo ${PISO}% ===`);
@@ -39736,7 +39754,7 @@ async function main() {
       // Las que no cuadran: 🎯 base abajo del 25% (base es sólo 25%+ sin otra estrategia) · en promo mía y anotada base · y al revés,
       // una estrategia de precio bajo (sobra, liquidando, excepción, caja) con el precio ya de vuelta arriba del 25%+5.
       const malTag = filas.filter((r) => (r.est2.t === 'base' && r.mg != null && r.mg < PISO) || (r.est2.t === 'base' && /en promo mía/.test(r.exc || ''))
-        || (['sobra', 'liquidando', 'excepcion', 'caja'].includes(r.est2.t) && r.mg != null && r.mg >= PISO + 5 && !/en promo mía|liquidando/.test(r.exc || '')));
+        || (['sobra', 'liquidando', 'remate', 'excepcion', 'caja'].includes(r.est2.t) && r.mg != null && r.mg >= PISO + 5 && !/en promo mía|liquidando/.test(r.exc || '')));
       console.log(`\n── 🏷 ETIQUETAS QUE NO CUADRAN CON EL PRECIO DE HOY: ${malTag.length} ──`);
       for (const r of malTag) console.log(`🏷 ${r.mla} · ${r.cta} · ${r.nom} · ${f(r.P)} · ${r.mg == null ? 'margen ?' : r.mg.toFixed(0) + '%'} · anotada ${ESTRATEGIAS[r.est2.t]}${r.est2.ts ? ' desde ' + new Date(r.est2.ts).toISOString().slice(5, 10) : ''}${r.exc ? ' · ' + r.exc : ''}${r.est2.m ? ' · «' + String(r.est2.m).slice(0, 90) + '»' : ''}`);
       if (nSinLeer) console.log(`\n⚠️ sin leer (${nSinLeer}): ${sinLeer.slice(0, 40).join(' · ')}`);
@@ -39787,6 +39805,33 @@ async function main() {
         if (pensadas.length) console.log(`   (${pensadas.length} sobran pero ya les escribí nota en los últimos 7 días: ${pensadas.map((x) => x.rs[0].nom.slice(0, 24)).join(' · ')})`);
         if (filas.some((r) => !r.kSt && r.st === 0 && r.stDesc)) console.log(`   (afuera: ${filas.filter((r) => r.stDesc).length} con el stock del color sin saber)`);
       } catch (eS) { console.log('⚠️ la lista de sobra stock falló: ' + eS.message); }
+      // ── 🔎 SIN AFINAR (19/10/2026, él: "¿con eso vamos a evitar que dejes pasar productos que no estén afinados al máximo? (…)
+      // productos que nunca se buscó techo, entonces perdemos saber techos y ganancia"). Los tags dicen qué estrategia tiene cada
+      // precio; esta lista es la que obliga a que NADIE quede sin estrategia: toda publicación ACTIVA que vende (2+ en 30 d), con
+      // stock para 14 a 90 días (menos va por la 🚨 de escasez, más por la 📦 de sobra), que está en 🎯 base o 🆕 lanzamiento y
+      // que NO tuvo una prueba de techo (📈/🏔️/🪜) en 60 días, sale acá. Se decide EN ESTA VUELTA: probar techo (`decido` #techo,
+      // directo al precio que pienso) o dejarla con motivo (`decido:<MLA>=nota|…`, vale 7 días). La lista tiene que quedar vacía.
+      try {
+        let nts2 = null; try { nts2 = (await db.get('mlapi/fichanotas')) || {}; } catch { nts2 = null; }
+        const ultN = (m) => Math.max(0, ...Object.keys((nts2 || {})[m] || {}).map(Number).filter((n) => n > 0));
+        const techoReciente = (m) => Object.entries((estrat || {})[m] || {}).some(([k, x]) => Number(k) > hoy - 60 * 864e5 && x && ['techo', 'techook', 'bajando'].includes(x.t));
+        const sinAf = [], pens = [];
+        for (const r of filas) {
+          if (!/^active/.test(r.est) || r.stDesc || !(r.st > 0) || (r.u30 || 0) < 2 || r.mg == null) continue;
+          if (r.exc || !['base', 'nuevo'].includes(r.est2.t)) continue;
+          const dias = r.st / Math.max(r.u30 / 30, (r.u60 || 0) / 60);
+          if (dias < 14 || dias > 90) continue;
+          if (techoReciente(r.mla)) continue;
+          const nota = ultN(r.mla); const fila = { ...r, dias };
+          if (nota && hoy - nota < 7 * 864e5) pens.push(fila); else sinAf.push(fila);
+        }
+        const cajaTxt = (r) => r.caja ? `caja ${r.caja}${r.ptw && r.caja !== 'winning' ? ' ML pide ' + f(r.ptw) : ''}` : 'sin catálogo';
+        sinAf.sort((x, y) => (y.u30 * (y.g || 0)) - (x.u30 * (x.g || 0)));
+        console.log(`\n── 🔎 SIN AFINAR (${sinAf.length}) · venden, stock para 14-90 días, en 🎯 base y sin prueba de techo en 60 días · decidir EN ESTA VUELTA: probar techo o dejar con motivo ──`);
+        for (const r of sinAf) console.log(`🔎 ${r.mla} · ${r.cta} · ${r.nom} · ${f(r.P)} · ${r.mg.toFixed(0)}% (${f(r.g)}/u) · v ${r.u7}/${r.u30}/${r.u60} · Full ${r.st} (${Math.round(r.dias)} d) · ${cajaTxt(r)}${r.var ? ' · CON VARIANTES' : ''} · 🏷 ${ESTRATEGIAS[r.est2.t]}`);
+        if (!sinAf.length) console.log(pens.length ? 'ninguna sin pensar' : 'ninguna: todo lo que vende tiene estrategia o ya probó techo');
+        if (pens.length) console.log(`   (${pens.length} ya pensadas en los últimos 7 días: ${pens.map((x) => x.nom.slice(0, 24)).join(' · ')})`);
+      } catch (eA) { console.log('⚠️ la lista sin afinar falló: ' + eA.message); }
       if (sinMgTxt(filas)) console.log(sinMgTxt(filas));
       console.log(`\nResumen: ${filas.length} miradas · ${bajo.length} abajo de ${PISO}% · ${sinMg.length} sin margen medible · ${rap.length} cuya última tanda duró 3 días o menos (probablemente baratas)`);
       return;
