@@ -94,7 +94,7 @@ function umbralRedondoCruzado(p0, p1) {
 // (historia: no se pisa). La web toma, para cada venta, la última estrategia anterior a esa venta. `decido` acepta `#<tag>`
 // después del precio; si no va, se deduce del motivo con `tagDeMotivo`. A mano: `tag:<MLA>=<tag>|motivo;go`.
 // MISMA LISTA EN index.html (ESTRATEGIA_UI): si se agrega una, va en los dos.
-const ESTRATEGIAS = { base: '🎯 base', escasez: '🔥 escasez', sinrepo: '⏳ sin reposición', techo: '📈 buscando techo', liquidando: '📉 liquidando', caja: '🥊 ganar la caja', promo: '🏷️ promo', fecha: '🎁 fecha especial', excepcion: '🛡️ excepción', sobra: '📦 sobra stock', nuevo: '🆕 lanzamiento', correccion: '↩️ corrección' };
+const ESTRATEGIAS = { base: '🎯 base', escasez: '🔥 escasez', sinrepo: '⏳ sin reposición', techo: '📈 buscando techo', liquidando: '📉 liquidando', caja: '🥊 ganar la caja', promo: '🏷️ promo', descuento: '💸 descuento', fecha: '🎁 fecha especial', excepcion: '🛡️ excepción', sobra: '📦 sobra stock', nuevo: '🆕 lanzamiento', correccion: '↩️ corrección' };
 function tagDeMotivo(m) {
   const t = String(m || '').toLowerCase();
   if (/no se consigue|sin reposici|4 meses|cuatro meses|nissei no|no lo consigo|no da en paraguay/.test(t)) return 'sinrepo';
@@ -38433,7 +38433,10 @@ async function main() {
           : (pQuedo > 0 && Math.abs(pQuedo - q.p) > 10) ? `   ✗ releído de ML: ${quedo.status} pero a ${money(pQuedo)}, no a ${money(q.p)}: mirarla en la próxima revisión`
           : `   ✓ ADENTRO · releído de ML: ${quedo.status} a ${money(pQuedo || q.p)}`);
         // La promo también es un precio: queda su estrategia (18/10/2026, él: "¿por qué está anotado como precio base?").
-        { const tg = q.tag && ESTRATEGIAS[q.tag] ? q.tag : (tagDeMotivo(q.motivo) === 'base' ? 'promo' : tagDeMotivo(q.motivo)); const okT = await guardarEstrategia(db, q.mla, tg, q.motivo, Date.now()); console.log(`   ${okT ? '🏷' : '⚠️ no quedó la'} estrategia ${ESTRATEGIAS[tg]}`); }
+        { let tg = q.tag && ESTRATEGIAS[q.tag] ? q.tag : (tagDeMotivo(q.motivo) === 'base' ? 'promo' : tagDeMotivo(q.motivo));
+          // 19/10/2026, él: "promo que sea cuando ml también pone plata, si ponemos sólo nosotros es descuento". El descuento
+          // propio (PRICE_DISCOUNT) o una promo donde ML no pone nada es 💸 descuento; 🏷️ promo sólo si ML pone parte.
+          if (tg === 'promo' && !(pr.type !== 'PRICE_DISCOUNT' && Number(pr.meli_percentage) > 0)) tg = 'descuento'; const okT = await guardarEstrategia(db, q.mla, tg, q.motivo, Date.now()); console.log(`   ${okT ? '🏷' : '⚠️ no quedó la'} estrategia ${ESTRATEGIAS[tg]}`); }
         await nota(q.mla, `Entré en la promo de Mercado Libre "${pr.name || (pr.type === 'PRICE_DISCOUNT' ? 'descuento' : pr.type)}" a ${money(q.p)}${hasta ? ` hasta el ${String(hasta).slice(8, 10)}/${String(hasta).slice(5, 7)}` : ''} (antes ${money(d.p0)}, queda en ${mg}%). ${q.motivo || ''}`.trim());
       }
       if (!aplicar) console.log('\nPRUEBA: no toqué nada. Para aplicar, el mismo comando con ;go al final (por ml-sync).');

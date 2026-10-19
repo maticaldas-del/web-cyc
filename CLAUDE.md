@@ -9184,3 +9184,8 @@ Escasez = se corta antes de que llegue lo de camino u oficina (o antes de poder 
 tag es `escasez`. Si hay poco en Full pero la caja en camino o la oficina llegan a tiempo, NO es escasez: la línea de tiempo
 dice "🚚 cubierto" y el precio no se toca. Si algo sale como escasez y decido NO subirlo, el tag no puede quedar `escasez`:
 va otro (base, techo, sobra…) con el motivo en el 🧠.
+
+## 💸 PROMO ES CUANDO ML PONE PLATA; SI PONEMOS SÓLO NOSOTROS ES DESCUENTO (19/10/2026, regla suya)
+Él: *"promo que sea cuando ml tambien pone plata, si ponemos solo nosotros es descuento un tag nuevo"*. Tag 🏷️ `promo` sólo cuando
+ML pone parte del descuento; el descuento propio (PRICE_DISCOUNT) o una promo de ML donde ML no pone nada es 💸 `descuento`.
+`entrarpromo` lo elige solo; en cada venta manda lo que pasó en esa venta (`cyc/promoventa`).
