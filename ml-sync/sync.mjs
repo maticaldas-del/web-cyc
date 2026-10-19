@@ -19435,7 +19435,10 @@ async function main() {
         if (!(usd > 0)) { sinP++; continue; }
         const c = { nombre: String(e.n).slice(0, 160), cod: String(cod), usd, enNissei: true, fuente: 'lista', prov: 'elegancia', ts: Date.now() };
         if (e.mi) c.mlId = String(e.mi);
-        const foto = [e.fp, e.foto, e.f].find((u) => /^https:\/\//.test(String(u || ''))); if (foto) c.foto = foto;
+        let foto = [e.fp, e.foto, e.f].find((u) => /^https:\/\//.test(String(u || '')));
+        // La foto del catálogo de Elegancia (recortada del PDF) vive en el repo, `elegancia/<cód>.jpg`, y se publica en GitHub Pages.
+        if (!foto) { try { readFileSync('elegancia/' + cod + '.jpg'); foto = 'https://maticaldas-del.github.io/web-cyc/elegancia/' + cod + '.jpg'; } catch { /* sin foto */ } }
+        if (foto) c.foto = foto;
         if (/^https:\/\//.test(String(e.mf || ''))) c.mlFoto = e.mf;
         if (Number(e.vend) > 0) c.vendCarga = Number(e.vend);
         plan.push(c);
