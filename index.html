@@ -2665,7 +2665,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.67';
+const APP_VERSION='24.68';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2676,6 +2676,7 @@ const APP_VERSION='24.67';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.68',f:'19/10/2026',h:'22:18',c:[{n:1,t:'Ventas en la PC: el cambio de precio ($antes→$ahora, cuántos cambios) ya no se sale de la tarjeta: en el renglón queda la flecha ▲/▼ y el texto entero está en el detalle.'}]},
   {v:'24.67',f:'18/10/2026',h:'23:30',c:[{n:1,t:'Ventas: se sacó el lápiz de modificar. El 🧠 pasó adentro del detalle (se abre tocando la tarjeta); la 📈 línea queda a la vista.'}]},
   {v:'24.66',f:'18/10/2026',h:'23:15',c:[{n:1,t:'Ventas: el detalle de cada venta se abre tocando la tarjeta (se sacó la flechita).'}]},
   {v:'24.65',f:'18/10/2026',h:'23:05',c:[{n:1,t:'Ventas: a la vista sólo los tags con ventas; los demás se abren con "＋N sin ventas ▾".'}]},
@@ -11544,7 +11545,10 @@ function renderVentaProd(){
       // TODAS LAS TARJETAS DEL MISMO ALTO (18/10/2026, él: "se agrandan las tarjetas porque no entran las cosas"): cada
       // renglón va en UNA línea; lo que no entra se corta con "…" (el texto entero está en el detalle y en el globito) y
       // los botones 🧠/📈 quedan siempre a la vista a la derecha.
-      const lines=grp.items.map(v=>{const _cv=isCancelled?'':cambioVentaHTML(v,Number(v.ts)||0);const _pp=prodDeVenta(v);return `<div style="display:flex;gap:6px;font-size:.72rem;padding:2px 0;align-items:center;white-space:nowrap;${isCancelled?'opacity:.45;text-decoration:line-through':''}"><span style="flex-shrink:0">${fotoVentaHTML(v,30)}</span><span class="vp-pc-txt" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis" title="${String(nombreDeVenta(v)).replace(/"/g,'&quot;')}${v.variante?' · '+v.variante:''}">${v.qty}× ${nombreDeVenta(v)}${estrategiaVentaHTML(v)}${v.variante?` <span style="padding:1px 5px;border-radius:3px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.62rem">${v.variante}</span>`:''}${_cv?' '+_cv:''}</span><span style="flex-shrink:0">${_pp&&_varios?lineaBtn(_pp.id):''}</span></div>`;}).join('');
+      // El texto del cambio de precio ($de→$a, cuántos cambios, % antes→después) quedaba afuera de la tarjeta: en el
+      // renglón va sólo la flecha y lo demás vive en el detalle (19/10/2026, él: "queda afuera de la tarjeta. que eso salga en el detalle").
+      const _flechaCambio=cv=>`<span style="font-size:.66rem" title="Cambió de precio antes de esta venta · mirá el detalle">${cv.includes('▲')?'<b style="color:var(--green)">▲</b>':'<b style="color:var(--red)">▼</b>'}</span>`;
+      const lines=grp.items.map(v=>{const _cv=isCancelled?'':cambioVentaHTML(v,Number(v.ts)||0);const _pp=prodDeVenta(v);return `<div style="display:flex;gap:6px;font-size:.72rem;padding:2px 0;align-items:center;white-space:nowrap;${isCancelled?'opacity:.45;text-decoration:line-through':''}"><span style="flex-shrink:0">${fotoVentaHTML(v,30)}</span><span class="vp-pc-txt" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis" title="${String(nombreDeVenta(v)).replace(/"/g,'&quot;')}${v.variante?' · '+v.variante:''}">${v.qty}× ${nombreDeVenta(v)}${estrategiaVentaHTML(v)}${v.variante?` <span style="padding:1px 5px;border-radius:3px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.62rem">${v.variante}</span>`:''}${_cv?' '+_flechaCambio(_cv):''}</span><span style="flex-shrink:0">${_pp&&_varios?lineaBtn(_pp.id):''}</span></div>`;}).join('');
       const _pcHtml=`<div class="ingreso-item vp-pc" onclick="vpCardClick(event,'${grp.gid}')" title="Tocá para ver u ocultar el detalle" style="cursor:pointer;flex-direction:column;align-items:stretch;gap:4px;${isCancelled?'border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.04)':''}">
         <div class="vp-pc-cab" style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;white-space:nowrap;overflow:hidden">
           <span class="who-badge" style="font-size:.6rem;${isCancelled?'opacity:.6':''}">${cuenta}</span>

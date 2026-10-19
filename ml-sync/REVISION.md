@@ -1577,3 +1577,7 @@ pone `cyc/mlconfig/listasProv/<prov>/negocio` (`|sinnegocio;go` lo saca; tambié
 (`renderListas`) esos proveedores van en un desplegable y en ellos el % del local se calcula para TODO (no sólo perfumes).
 Primero: Wels (89 productos, precio con IVA; los 13 "Internacional" son imitaciones y no se cargaron).
 Chequear: que un proveedor de la carpeta siga apareciendo si es el único.
+
+### Etapa 7 · 19/10/2026 · el cambio de precio se salía de la tarjeta de Ventas en la PC (v24.68)
+- Qué: en el renglón de la PC (`.vp-pc`) el texto de `cambioVentaHTML` ($antes→$ahora, N cambios, % antes→después) se salía de la tarjeta. Ahora el renglón muestra sólo la flecha ▲/▼ (`_flechaCambio`) y el texto entero queda en el detalle (`_det`), igual que en el celu.
+- Chequear: en la PC ningún renglón de venta pasa el borde de la tarjeta; al tocarla, el detalle muestra el cambio de precio completo.
