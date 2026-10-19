@@ -41669,20 +41669,25 @@ async function main() {
         const esRepo = (id, g) => /^pyr/.test(id) || (g && g.tipo === 'repo');
         const delTipo = ([id, g]) => !tipoPed || (tipoPed === 'repo' ? esRepo(id, g) : !esRepo(id, g));
         const fk = String(fecha).replace(/-/g, '');
-        const exactos = [['py' + fk, guardadas['py' + fk]], ['pyr' + fk, guardadas['pyr' + fk]]].filter(([, g]) => g).filter(delTipo);
+        // NISSEI PERFUMERÍA APARTE (19/10/2026): la web guarda el pedido de perfumería, belleza y salud como `pyb<fecha>`.
+        // `|perf` lo elige, `|resto` lo deja afuera; si el día tiene los dos y no se dijo, no se adivina.
+        const rubroPed = partes.some((x) => /^perf/i.test(x)) ? 'perf' : (partes.some((x) => /^resto$/i.test(x)) ? 'resto' : null);
+        const delRubro = ([id]) => !rubroPed || (rubroPed === 'perf' ? /^pyb/.test(id) : !/^pyb/.test(id));
+        const exactos = [['py' + fk, guardadas['py' + fk]], ['pyr' + fk, guardadas['pyr' + fk]], ['pyb' + fk, guardadas['pyb' + fk]]].filter(([, g]) => g).filter(delTipo).filter(delRubro);
         let idCompra = null;
         if (exactos.length === 1) idCompra = exactos[0][0];
+        else if (exactos.length > 1 && exactos.some(([id]) => /^pyb/.test(id))) { console.log(`El ${fecha} hay DOS pedidos de Nissei: perfumería y resto. Decí cuál con \`|perf\` o \`|resto\`. No escribí nada.`); return; }
         else if (exactos.length > 1) { console.log(`El ${fecha} hay DOS pedidos: uno de nuevos y una reposición. Decí cuál con \`|nuevos\` o \`|repo\`. No escribí nada.`); return; }
         else {
           const cerca = Object.entries(guardadas).filter(([, g]) => g && g.fecha
             && Math.abs(Date.parse(g.fecha) - Date.parse(fecha)) <= 10 * 864e5
-            && !(g.pagos && Number(g.pagos.mercaderia) > 0)).filter(delTipo);
+            && !(g.pagos && Number(g.pagos.mercaderia) > 0)).filter(delTipo).filter(delRubro);
           const hayDosTipos = !tipoPed && cerca.some(([id, g]) => esRepo(id, g)) && cerca.some(([id, g]) => !esRepo(id, g));
           if (hayDosTipos) { console.log(`Cerca de esa fecha hay pedidos de nuevos Y reposiciones sin pesos (${cerca.map(([id, g]) => `${g.fecha} ${esRepo(id, g) ? 'repo' : 'nuevos'}`).join(', ')}). Decí cuál con \`|nuevos\` o \`|repo\`. No escribí nada.`); return; }
           if (cerca.length === 1) { idCompra = cerca[0][0]; console.log(`  (no hay pedido del ${fecha}: uso ${esRepo(idCompra, cerca[0][1]) ? 'la reposición' : 'el pedido de nuevos'} del ${cerca[0][1].fecha}, que todavía no tenía los pesos)`); }
           else if (cerca.length > 1) { console.log(`Hay ${cerca.length} pedidos sin pesos cerca de esa fecha (${cerca.map(([, g]) => g.fecha).join(', ')}). Pasá la fecha exacta del pedido.`); return; }
           else if (tipoPed === 'repo') { console.log(`No hay ninguna reposición guardada cerca del ${fecha}. Primero va el "Ya lo pedí" de la reposición (\`pyped:repo:…\`); después los pesos. No escribí nada.`); return; }
-          else idCompra = 'py' + fk;
+          else idCompra = (rubroPed === 'perf' ? 'pyb' : 'py') + fk;
         }
         const yaG = guardadas[idCompra] || null;
         const yaP = (yaG && yaG.pagos) || {};

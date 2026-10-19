@@ -1602,3 +1602,9 @@ Chequear: que un proveedor de la carpeta siga apareciendo si es el único.
 - Pedidos y cajas rehechos con `pedidostodo` del día (`ml-sync/notas/pedidos.txt`, 35 renglones cambiaron). Blush sigue en 0: no tiene publicación en ML.
 - Chequear: que `decido:archivo=pedidos;go` aplique todo y que Pedidos/Armar caja muestren lo nuevo.
 - **📦 SOBRA STOCK Y NO LO DECIDÍ (planilla, 19/10/2026, regla suya con el Timer):** todo stock de Full que al ritmo de hoy (mayor entre 30 y 60 d, sumando las publicaciones que comparten la mercadería) dura más de 90 días o no vendió en 60, sin anotar 📦 sobra / 📉 liquidando / promo mía / !piso y sin nota mía en 7 días, sale en la lista y se decide en esa vuelta. Lo llegado hace menos de 30 días (fecha real) va aparte como lanzamiento. Chequear: que la lista quede vacía al cerrar cada completa.
+
+### Etapa 3 · 19/10/2026 · v24.72 · Nissei: dos pedidos del momento (perfumería / resto)
+- Pedido suyo: *"en nissei que haya dos pedidos del momento, uno de resto y otro de perf y esas cosas"*. `pedidoMomentoHTML(g)` dibuja uno por grupo (`pyMomGrupos`: Nissei = perf/resto, Elegancia = uno solo). Grupo = `esBellezaNom` (la misma regla del mensaje para Nissei), filtro `pyMomEs`.
+- Cada uno tiene su total, su tope (`pedTopeUSD`, el mismo número para los dos), 🪄 Llenar, Vaciar y "Ya lo pedí". Perfumería se guarda como `compraspy/pyb<fecha>`, el resto como `py<fecha>` (`pyIdHoy(hoy,g)`, campo `rubro`). Los botones viejos sin grupo (Ya lo pedí de 🆕 Nuevos y de la canasta) parten solos en los dos.
+- Robot: `compray` busca también `pyb<fecha>`; con los dos el mismo día pide `|perf` o `|resto` (no adivina).
+- Chequear: que un producto no aparezca en los dos pedidos, que "Ya llegó" de un `pyb` cree las fichas igual que un `py`, y que `pyped:llego:pyb<fecha>` ande.
