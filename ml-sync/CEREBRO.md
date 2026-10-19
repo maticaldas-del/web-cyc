@@ -493,3 +493,9 @@ está quieto en su precio normal.
 línea de techo o alguna otra explicación como sobrestock, tiene que entrar en buscar techo"*. Todo techo encontrado se anota SIEMPRE
 con `#techook` (la línea de tiempo lo pinta 🏔️) y la lista 🔎 ya no deja afuera lo de menos de 14 días: lo único que la saca es un
 tag que explique el precio (escasez, sobra, promo, etc.) o una prueba de techo en 60 días.
+**Y SE ELIMINÓ 🎯 BASE (19/10/2026, él: *"la forma más fácil es eliminar el tag de base, entonces obliga a tomar alguna estrategia sí o
+sí"* y *"todos los productos tienen que tener tag/estrategia"*).** No existe más un precio "normal" sin nombre. Lo que no tiene
+estrategia se ve ⚪ sin estrategia (para decidir) y lo que no tiene stock en Full ⏸️ sin stock (el precio espera la caja). `decido`
+rechaza un precio nuevo sin estrategia (`#tag` o un motivo que la nombre; `!piso` solo = 🛡️ excepción). Las anotaciones viejas
+"base" se leen como ⚪. Lo vendido estable en su mejor precio es 🏔️ techo encontrado, no "base". La lista 🔎 de `planilla` saca
+TODO lo activo con stock en ⚪ (y 🆕) sin prueba de techo en 60 días, venda o no; lo que no vende y sobra va por la 📦.

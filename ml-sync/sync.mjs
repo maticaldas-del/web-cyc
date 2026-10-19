@@ -97,13 +97,13 @@ function umbralRedondoCruzado(p0, p1) {
 // 19/10/2026, eligió 1a 2a 3a: los PASAJES tienen nombre. 5 tags nuevos (🪜 bajando · ↘️ volviendo al normal · ↗️ volviendo de
 // sobra · 🏔️ techo encontrado · 🧨 remate total); "↩️ corrección" se elimina: lo que "vuelve" se nombra según de dónde venía
 // (`pasajeDe`) y la web muestra "venía de X" en el chip. Escasez lleva escalón como el techo.
-const ESTRATEGIAS = { base: '🎯 base', escasez: '🔥 escasez', sinrepo: '⏳ sin reposición', techo: '📈 buscando techo', techook: '🏔️ techo encontrado', bajando: '🪜 bajando', volviendo: '↘️ volviendo al normal', desobra: '↗️ volviendo de sobra', liquidando: '📉 liquidando', remate: '🧨 remate total', caja: '🥊 ganar la caja', promo: '🏷️ promo', descuento: '💸 descuento', fecha: '🎁 fecha especial', excepcion: '🛡️ excepción', sobra: '📦 sobra stock', nuevo: '🆕 lanzamiento' };
+const ESTRATEGIAS = { sindecidir: '⚪ sin estrategia', agotado: '⏸️ sin stock', escasez: '🔥 escasez', sinrepo: '⏳ sin reposición', techo: '📈 buscando techo', techook: '🏔️ techo encontrado', bajando: '🪜 bajando', volviendo: '↘️ volviendo al normal', desobra: '↗️ volviendo de sobra', liquidando: '📉 liquidando', remate: '🧨 remate total', caja: '🥊 ganar la caja', promo: '🏷️ promo', descuento: '💸 descuento', fecha: '🎁 fecha especial', excepcion: '🛡️ excepción', sobra: '📦 sobra stock', nuevo: '🆕 lanzamiento' };
 // Lo que "vuelve" (motivo "vuelvo", o una anotación vieja ↩️ corrección) toma nombre según el tag ANTERIOR. MISMA tabla en index.html.
 function pasajeDe(prev) {
   if (prev === 'techo' || prev === 'techook') return 'techook';
   if (['escasez', 'sinrepo', 'fecha', 'bajando'].includes(prev)) return 'volviendo';
   if (['sobra', 'liquidando', 'remate'].includes(prev)) return 'desobra';
-  return 'base';
+  return 'volviendo';
 }
 function tagDeMotivo(m) {
   const t = String(m || '').toLowerCase();
@@ -125,14 +125,15 @@ function tagDeMotivo(m) {
   if (/33\.?000|barrera|excepci/.test(t)) return 'excepcion';
   if (/lanzamiento|reci[eé]n lleg|producto nuevo|primera venta/.test(t)) return 'nuevo';
   if (/vuelvo|volver al|corrijo|correcci|deshago/.test(t)) return 'correccion';
-  return 'base';
+  // 19/10/2026, él: "eliminar el tag de base, entonces obliga a tomar alguna estrategia sí o sí". Sin estrategia deducible = null.
+  return null;
 }
 async function guardarEstrategia(db, mla, t, m, ts) {
   if (!/^MLA\d+$/.test(String(mla))) return false;
   const k = Math.round(Number(ts) || Date.now());
   // "correccion" ya no es un tag: se nombra según el tag anterior de esa publicación (2a, 19/10/2026).
   if (t === 'correccion') { let prev = null; try { const h = (await db.get(`cyc/estrategia/${mla}`)) || {}; const ks = Object.keys(h).map(Number).filter((n) => n > 0 && n < k).sort((a, b) => b - a); for (const x of ks) { const tt = h[x] && h[x].t; if (tt && tt !== 'correccion') { prev = tt; break; } } } catch { } t = pasajeDe(prev); }
-  if (!ESTRATEGIAS[t]) return false;
+  if (!ESTRATEGIAS[t] || t === 'sindecidir' || t === 'base') return false;
   try { await db.set(`cyc/estrategia/${mla}/${k}`, { t, m: String(m || '').slice(0, 160) }); const r = await db.get(`cyc/estrategia/${mla}/${k}`); return !!(r && r.t === t); } catch { return false; }
 }
 function precioRedondoAviso(p0, p1) {
@@ -38450,7 +38451,7 @@ async function main() {
           : (pQuedo > 0 && Math.abs(pQuedo - q.p) > 10) ? `   ✗ releído de ML: ${quedo.status} pero a ${money(pQuedo)}, no a ${money(q.p)}: mirarla en la próxima revisión`
           : `   ✓ ADENTRO · releído de ML: ${quedo.status} a ${money(pQuedo || q.p)}`);
         // La promo también es un precio: queda su estrategia (18/10/2026, él: "¿por qué está anotado como precio base?").
-        { let tg = q.tag && ESTRATEGIAS[q.tag] ? q.tag : (tagDeMotivo(q.motivo) === 'base' ? 'promo' : tagDeMotivo(q.motivo));
+        { let tg = q.tag && ESTRATEGIAS[q.tag] ? q.tag : (tagDeMotivo(q.motivo) || 'promo');
           // 19/10/2026, él: "promo que sea cuando ml también pone plata, si ponemos sólo nosotros es descuento". El descuento
           // propio (PRICE_DISCOUNT) o una promo donde ML no pone nada es 💸 descuento; 🏷️ promo sólo si ML pone parte.
           if (tg === 'promo' && !(pr.type !== 'PRICE_DISCOUNT' && Number(pr.meli_percentage) > 0)) tg = 'descuento'; const okT = await guardarEstrategia(db, q.mla, tg, q.motivo, Date.now()); console.log(`   ${okT ? '🏷' : '⚠️ no quedó la'} estrategia ${ESTRATEGIAS[tg]}`); }
@@ -38815,7 +38816,7 @@ async function main() {
         const nuevas = [];
         const ya = (m, ts) => Object.keys(es[m] || {}).some((k) => Math.abs(Number(k) - ts) < 15 * 60e3);
         const cc = (await db.get('cyc/claudecambios')) || {};
-        for (const c of Object.values(cc)) { if (!c || !/^MLA\d+$/.test(c.mla) || !(Number(c.ts) > 0) || ya(c.mla, Number(c.ts))) continue; nuevas.push({ mla: c.mla, ts: Number(c.ts), t: tagDeMotivo(c.motivo), m: c.motivo }); }
+        for (const c of Object.values(cc)) { if (!c || !/^MLA\d+$/.test(c.mla) || !(Number(c.ts) > 0) || ya(c.mla, Number(c.ts))) continue; const tt = tagDeMotivo(c.motivo); if (tt) nuevas.push({ mla: c.mla, ts: Number(c.ts), t: tt, m: c.motivo }); }
         const ns = (await db.get('cyc/nosubir')) || {};
         for (const [m, x] of Object.entries(ns)) { if (!/^MLA\d+$/.test(m)) continue; const ts = Number((x || {}).ts || (x || {}).desde) || Date.now(); if (ya(m, ts)) continue; nuevas.push({ mla: m, ts, t: 'liquidando', m: (x && (x.motivo || x.por)) || 'marcada liquidando' }); }
         const pc = (await db.get('cyc/promoclaude')) || {};
@@ -38948,6 +38949,8 @@ async function main() {
         const soloAct = /^activar$/i.test(String(mm[2] || '').trim()) || !mm[2];
         forzar[mm[1].toUpperCase()] = { p: soloAct ? 0 : Math.round(pesosArg(mm[2]) / 10) * 10, motivo: mot.join('|').trim(), piso: banderas.includes('!piso'), cruza: banderas.includes('!cruza'),
           activar: soloAct || banderas.includes('!activar'), salto: banderas.includes('!salto'), sinstock: banderas.includes('!sinstock'), tag: mm[4] ? mm[4].toLowerCase() : '' };
+        // Sin 🎯 base (19/10/2026): un precio nuevo tiene que decir su estrategia (#tag o un motivo que la nombre).
+        { const fz = forzar[mm[1].toUpperCase()]; if (!soloAct && !fz.tag && !tagDeMotivo(fz.motivo) && !fz.piso) { delete forzar[mm[1].toUpperCase()]; malos.push(x + ` (falta la estrategia: agregá #techo, #techook, #escasez, #sobra… · ${Object.keys(ESTRATEGIAS).filter((k) => k !== 'sindecidir').join(', ')})`); continue; } }
       }
       if (malos.length) { console.log(`No entendí: ${malos.join(' · ')}\nVa así: decido:MLA123=7550|vende igual a este precio;MLA456=4190!piso|motivo;MLA789=nota|lo que pensé;ped:pendrive 8gb=nota|por qué pido;caja:pendrive 8gb@matias=nota|por qué mando;ped:pendrive 8gb=u|120|por qué esas;ped:paulvic#Persea=u|6|motivo;ped:pendrive 8gb=venta|4990|precio normal;caja:pendrive 8gb@matias=u|50|motivo;ped:pendrive 8gb=auto;dia:2026-10-08=nota|qué pasó ese día;revisado;go`); return; }
       // MIS EXPLICACIONES PARA EL 🧠 (08/10/2026, él: *"todas las anotaciones del cerebro las escribís vos"*):
@@ -39098,7 +39101,7 @@ async function main() {
       const ac = await aplicarCerebro(db, cz, { tokens: tokP, aplica: true, autoprecio: apP });
       console.log(`\n✓ hechos: ${ac.hechos.length} · no se pudo: ${ac.fallidos.length} · sin anotar: ${ac.sinAnotar.length}`);
       // LA ESTRATEGIA DE ESTE PRECIO (17/10/2026): `#tag` si lo puse, si no se deduce del motivo.
-      for (const h of ac.hechos) { const fz = forzar[h.f.mla] || {}; const tg0 = fz.tag || tagDeMotivo(fz.motivo); const tg = (tg0 === 'base' && fz.piso) ? 'excepcion' : tg0; const okT = await guardarEstrategia(db, h.f.mla, tg, fz.motivo, Date.now()); console.log(`   ${okT ? '🏷' : '⚠️ no quedó la'} estrategia ${ESTRATEGIAS[tg] || '↩️ vuelta (nombrada por la anterior)'} · ${h.f.mla}`); }
+      for (const h of ac.hechos) { const fz = forzar[h.f.mla] || {}; const tg0 = fz.tag || tagDeMotivo(fz.motivo); const tg = (!tg0 && fz.piso) ? 'excepcion' : tg0; const okT = await guardarEstrategia(db, h.f.mla, tg, fz.motivo, Date.now()); console.log(`   ${okT ? '🏷' : '⚠️ no quedó la'} estrategia ${ESTRATEGIAS[tg] || '↩️ vuelta (nombrada por la anterior)'} · ${h.f.mla}`); }
       for (const h of ac.hechos) { const fz = forzar[h.f.mla] || {}; await escribirNota(h.f.mla, `${Number(h.a) > Number(h.de) ? 'Lo subí' : 'Lo bajé'} de ${money(h.de)} a ${money(h.a)}. ${fz.motivo || ''}`.trim(), { tipo: 'precio', de: h.de, a: h.a }); }
       // EXCEPCIONES A PROPÓSITO (12/10/2026): un precio que dejé abajo del 25% con `!piso` (remate, liquidar, sobrestock)
       // queda anotado con el precio exacto, para que el chequeo del peor caso de `planilla` no lo marque. Si después
@@ -39736,9 +39739,10 @@ async function main() {
       }
       // LA ESTRATEGIA DE HOY DE CADA UNA (18/10/2026, él: "fijate si hay más productos con tags equivocados"). Misma regla que
       // `estrategiaDe` de la web: la última anotada; si no hay y está marcada liquidando, 📉; si no, 🎯 base.
-      const estHoy = (mla) => { const h = (estrat || {})[mla] || {}; let b = null; for (const [k, x] of Object.entries(h)) { const n = Number(k); if (!(n > 0) || n > hoy + 60e3 || !x || !(ESTRATEGIAS[x.t] || x.t === 'correccion')) continue; if (!b || n > b.ts) b = { t: x.t, m: x.m, ts: n }; }
-        if (b && b.t === 'correccion') { const ks = Object.keys(h).map(Number).filter((n) => n > 0 && n < b.ts).sort((p, q) => q - p); let pv = null; for (const x of ks) { if (h[x] && h[x].t && h[x].t !== 'correccion') { pv = h[x].t; break; } } b.t = pasajeDe(pv); } if (!b && (nosub || {})[mla]) b = { t: 'liquidando', ts: 0, m: 'marcada liquidando' }; return b || { t: 'base', ts: 0, m: 'sin estrategia anotada' }; };
-      for (const r of filas) r.est2 = estHoy(r.mla);
+      const estHoy = (mla) => { const h = (estrat || {})[mla] || {}; let b = null; for (const [k, x] of Object.entries(h)) { const n = Number(k); if (!(n > 0) || n > hoy + 60e3 || !x || !(ESTRATEGIAS[x.t] || x.t === 'correccion' || x.t === 'base')) continue; if (!b || n > b.ts) b = { t: x.t, m: x.m, ts: n }; }
+        if (b && b.t === 'correccion') { const ks = Object.keys(h).map(Number).filter((n) => n > 0 && n < b.ts).sort((p, q) => q - p); let pv = null; for (const x of ks) { if (h[x] && h[x].t && h[x].t !== 'correccion') { pv = h[x].t; break; } } b.t = pasajeDe(pv); } if (!b && (nosub || {})[mla]) b = { t: 'liquidando', ts: 0, m: 'marcada liquidando' }; if (b && b.t === 'base') b.t = 'sindecidir'; return b || { t: 'sindecidir', ts: 0, m: 'sin estrategia anotada' }; };
+      // Sin estrategia y sin stock en Full (sabido): ⏸️ sin stock, el precio espera la reposición. Con stock, ⚪ hay que decidir.
+      for (const r of filas) { r.est2 = estHoy(r.mla); if (r.est2.t === 'sindecidir' && !r.stDesc && !(r.st > 0)) r.est2 = { ...r.est2, t: 'agotado' }; }
       filas.sort((x, y) => (y.u30 - x.u30) || (y.st - x.st));
       console.log(`=== 📋 PLANILLA · ${filas.length} publicaciones con ficha (activas y pausadas)${ctaF ? ' · ' + ctaF : ''} · objetivo ${PISO}% ===`);
       console.log(`Cuenta completa: ${esperadas} vivas con ficha para leer = ${filas.length} leídas + ${nSinLeer} sin leer + ${fuera.cerradaML} que ML ya da cerradas + ${fuera.errorML} con error de ML${esperadas !== filas.length + nSinLeer + fuera.cerradaML + fuera.errorML ? '  ⚠️ NO CIERRA' : '  ✓ cierra'}`);
@@ -39753,7 +39757,7 @@ async function main() {
       }
       // Las que no cuadran: 🎯 base abajo del 25% (base es sólo 25%+ sin otra estrategia) · en promo mía y anotada base · y al revés,
       // una estrategia de precio bajo (sobra, liquidando, excepción, caja) con el precio ya de vuelta arriba del 25%+5.
-      const malTag = filas.filter((r) => (r.est2.t === 'base' && r.mg != null && r.mg < PISO) || (r.est2.t === 'base' && /en promo mía/.test(r.exc || ''))
+      const malTag = filas.filter((r) => (r.est2.t === 'sindecidir' && r.mg != null && r.mg < PISO) || (r.est2.t === 'sindecidir' && /en promo mía/.test(r.exc || ''))
         || (['sobra', 'liquidando', 'remate', 'excepcion', 'caja'].includes(r.est2.t) && r.mg != null && r.mg >= PISO + 5 && !/en promo mía|liquidando/.test(r.exc || '')));
       console.log(`\n── 🏷 ETIQUETAS QUE NO CUADRAN CON EL PRECIO DE HOY: ${malTag.length} ──`);
       for (const r of malTag) console.log(`🏷 ${r.mla} · ${r.cta} · ${r.nom} · ${f(r.P)} · ${r.mg == null ? 'margen ?' : r.mg.toFixed(0) + '%'} · anotada ${ESTRATEGIAS[r.est2.t]}${r.est2.ts ? ' desde ' + new Date(r.est2.ts).toISOString().slice(5, 10) : ''}${r.exc ? ' · ' + r.exc : ''}${r.est2.m ? ' · «' + String(r.est2.m).slice(0, 90) + '»' : ''}`);
@@ -39817,8 +39821,8 @@ async function main() {
         const techoReciente = (m) => { const h = (estrat || {})[m] || {}; let pv = null; for (const k of Object.keys(h).map(Number).filter((n) => n > 0).sort((a, b) => a - b)) { const x = h[k]; if (!x || !x.t) continue; const tt = x.t === 'correccion' ? pasajeDe(pv) : x.t; pv = tt; if (k > hoy - 60 * 864e5 && ['techo', 'techook', 'bajando'].includes(tt)) return true; } return false; };
         const sinAf = [], pens = [];
         for (const r of filas) {
-          if (!/^active/.test(r.est) || r.stDesc || !(r.st > 0) || (r.u30 || 0) < 2 || r.mg == null) continue;
-          if (r.exc || !['base', 'nuevo'].includes(r.est2.t)) continue;
+          if (!/^active/.test(r.est) || r.stDesc || !(r.st > 0) || r.mg == null) continue;
+          if (r.exc || !['sindecidir', 'nuevo'].includes(r.est2.t)) continue;
           const dias = r.st / Math.max(r.u30 / 30, (r.u60 || 0) / 60);
           // Menos de 14 días sin tag 🔥: o es escasez sin decidir (sale en la 🚨) o la caja llega a tiempo: igual entra acá
           // (19/10, él: "si no tiene línea de techo o alguna otra explicación como sobre stock, tiene que entrar en buscar techo").
@@ -39829,7 +39833,7 @@ async function main() {
         }
         const cajaTxt = (r) => r.caja ? `caja ${r.caja}${r.ptw && r.caja !== 'winning' ? ' ML pide ' + f(r.ptw) : ''}` : 'sin catálogo';
         sinAf.sort((x, y) => (y.u30 * (y.g || 0)) - (x.u30 * (x.g || 0)));
-        console.log(`\n── 🔎 SIN AFINAR (${sinAf.length}) · venden, stock para menos de 90 días, en 🎯 base y sin prueba de techo en 60 días · decidir EN ESTA VUELTA: probar techo o dejar con motivo ──`);
+        console.log(`\n── 🔎 SIN AFINAR (${sinAf.length}) · activas con stock para menos de 90 días, ⚪ sin estrategia (o 🆕) y sin prueba de techo en 60 días · decidir EN ESTA VUELTA: probar techo o dejar con motivo ──`);
         for (const r of sinAf) console.log(`🔎 ${r.mla} · ${r.cta} · ${r.nom} · ${f(r.P)} · ${r.mg.toFixed(0)}% (${f(r.g)}/u) · v ${r.u7}/${r.u30}/${r.u60} · Full ${r.st} (${Math.round(r.dias)} d) · ${cajaTxt(r)}${r.var ? ' · CON VARIANTES' : ''} · 🏷 ${ESTRATEGIAS[r.est2.t]}`);
         if (!sinAf.length) console.log(pens.length ? 'ninguna sin pensar' : 'ninguna: todo lo que vende tiene estrategia o ya probó techo');
         if (pens.length) console.log(`   (${pens.length} ya pensadas en los últimos 7 días: ${pens.map((x) => x.nom.slice(0, 24)).join(' · ')})`);
