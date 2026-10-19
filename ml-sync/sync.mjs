@@ -7904,7 +7904,7 @@ async function calcAntiguoFilas(db, products, labels, soloA) {
         // ~2 semanas y con la del producto salían de 61 d.
         const fb = (h && h.aprox === false && Number(h.desde) > 0) ? Number(h.desde) : Math.min(...[h && h.desde, hP && hP.desde, eL.altaTs].map(Number).filter((x) => x > 0), Infinity);
         // Las cajas llegadas no dicen de qué color eran: por color sólo el Excel y la fecha del color.
-        const lotes = lotesFifo(st, eL.inv ? (lotesA || {})[eL.inv] : null, colS ? [] : (cajasA[m[1] + '__' + (e ? e.cuenta : cta)] || cajasA[m[1] + '__' + cta]), isFinite(fb) ? fb : 0);
+        const lotes = lotesFifo(st, eL.inv ? (lotesA || {})[eL.inv] : null, colS ? (cajasA[m[1] + '__' + (e ? e.cuenta : cta) + '__v__' + colS] || cajasA[m[1] + '__' + cta + '__v__' + colS] || []) : (cajasA[m[1] + '__' + (e ? e.cuenta : cta)] || cajasA[m[1] + '__' + cta]), isFinite(fb) ? fb : 0);
         const rn = (rnA || {})[k]; const rDia = rn && rn.pd > 0 ? rn.pd : (v60[k] || 0) / 60;
         const { tam, tabla } = tablaAntiguoDe(eL, pIdxA[m[1]], lotesA, cfgA);
         const cg = cargoAntiguoProy(lotes, rDia, tabla, DIA_CIERRE_ALM_CTA[_ctaSinTilde(cta)] || 12);
@@ -7982,6 +7982,11 @@ function cajasLlegadasPorClave(envios) {
       const falt = {}; for (const f of (Array.isArray(c.faltan) ? c.faltan : [])) if (f && f.prodId) falt[f.prodId] = (falt[f.prodId] || 0) + Math.max(0, (Number(f.pide) || 0) - (Number(f.llego) || 0));
       const porP = {}; for (const it of (c.items || [])) if (it && it.prodId && it.u > 0) porP[it.prodId] = (porP[it.prodId] || 0) + Number(it.u);
       for (const [pid, u] of Object.entries(porP)) { const uu = u - (falt[pid] || 0); if (uu > 0) (out[pid + '__' + env.cuenta] = out[pid + '__' + env.cuenta] || []).push({ ts, u: uu }); }
+      // Y por COLOR (19/10/2026): la caja dice la variante de cada renglón. Sin esto el stock antiguo por color no veía las
+      // cajas y daba de 61 d a los VS Sizzling/Wild Neroli/Love Addict que llegaron el 07/10.
+      const porV = {}; for (const it of (c.items || [])) if (it && it.prodId && it.u > 0 && it.variante) { const kv = it.prodId + '__' + env.cuenta + '__v__' + String(it.variante).replace(/[^a-z0-9]/gi, '_'); porV[kv] = (porV[kv] || 0) + Number(it.u); }
+      const faltV = {}; for (const f of (Array.isArray(c.faltan) ? c.faltan : [])) if (f && f.prodId && f.variante) { const kv = f.prodId + '__' + env.cuenta + '__v__' + String(f.variante).replace(/[^a-z0-9]/gi, '_'); faltV[kv] = (faltV[kv] || 0) + Math.max(0, (Number(f.pide) || 0) - (Number(f.llego) || 0)); }
+      for (const [kv, u] of Object.entries(porV)) { const uu = u - (faltV[kv] || 0); if (uu > 0) (out[kv] = out[kv] || []).push({ ts, u: uu }); }
     }
   }
   return out;

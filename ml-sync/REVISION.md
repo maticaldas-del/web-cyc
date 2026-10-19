@@ -1584,7 +1584,7 @@ Chequear: que un proveedor de la carpeta siga apareciendo si es el único.
 
 ### Etapa 8 · 19/10/2026 · stock antiguo: lo que no vendió con fecha aproximada ya no es "recién llegado"
 - Qué: `calcAntiguoFilas` (sync.mjs) por color usaba sólo la fecha del registro del color (arrancó ~25/09) y daba por "recién llegado" el Joystick Xbox Velocity de Matías, que ML iba a descartar por 120 d sin vender. Ahora toma también la fecha del producto en la cuenta, y lo que no vendió con fecha que no es de caja, Excel ni registro real sale como `sinFechaReal`: en `antiguo` (⚠️ SIN VENTAS Y NO SÉ DESDE CUÁNDO ESTÁN) y en el 💸 del expediente, para decidir en la vuelta.
-- Chequear: el Joystick Velocity sale en la lista ⚠️ y no en "recién llegados".
+- Chequear: el Joystick Velocity sale con cargo y no en "recién llegados". Y por color también cuentan las cajas que dicen la variante (`cajasLlegadasPorClave` arma claves `__v__`): los VS de la caja del 07/10 salen con 12 d, no 61.
 
 ### Etapa 7 · 19/10/2026 · el puntaje de Rotación no entraba en su círculo (v24.69)
 - Qué: en la tarjeta de Inicio (`nc-rot-score`) el número (ej. 9.5) en Syne no entraba en el círculo de 26px. Ahora es una píldora de 36px mínimo con letra mono; 10 se muestra sin decimal.
