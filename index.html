@@ -2665,7 +2665,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.75';
+const APP_VERSION='24.76';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2676,6 +2676,7 @@ const APP_VERSION='24.75';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.76',f:'19/10/2026',h:'12:50',c:[{n:2,t:'Escasez: el ritmo "normal" del año (sin remates) se usa sólo cuando el precio se subió a propósito (escasez, techo, sin reposición). Antes se usaba siempre y el Chispero, que había BAJADO de precio, salía en escasez con 34 días de stock.'}]},
   {v:'24.75',f:'19/10/2026',h:'12:05',c:[{n:2,t:'Ventas: en el detalle de cada venta hay "🚫 no se consigue más" (del color de esa venta si lo tiene). Es la misma marca que el botón de Pedidos: el producto sigue en Pedidos y pasa a escasez sin reposición. Se deshace con "se consigue de nuevo".'}]},
   {v:'24.74',f:'19/10/2026',h:'11:52',c:[{n:2,t:'Paraguay → Nuevos: botón "🛒✕ no da en ML" arriba, al lado del % (antes estaba sólo adentro del detalle y decía "en ML no se puede (marca)"). Lo marcado sale de lo que da en ML y queda sólo para la perfumería del local. Se deshace con "volver a ML".'}]},
   {v:'24.73',f:'19/10/2026',h:'11:41',c:[{n:1,t:'Pedido del momento (Paraguay): cada producto dice cuántas se vendieron, al lado del precio. En los nuevos, las vendidas en ML (verde si llega al mínimo); en los probados, las que vendiste vos en 30 días.'}]},
@@ -7501,7 +7502,12 @@ const pedDiasRojoDe=p=>reponerDe(p).d;
 function escasezDe(p,o){
   // 2a (16/10/2026): la escasez se mide con el ritmo NORMAL (`cyc/ritmonormal`, sin remate). Si una suba frenó las ventas,
   // el ritmo de hoy no puede achicar la cuenta: si no, "hay para un montón de días" y Tito no compra nunca (el bucle).
-  const _rn=p&&p.id?ritmoNormalDe(p.id):null;
+  // PERO SÓLO SI EL PRECIO SE SUBIÓ A PROPÓSITO (19/10/2026, él con el Chispero: "¿por qué dice escasez? con las que hay
+  // duran más de 30 días y hay 12 en la oficina"). El Chispero había BAJADO de $7.000 a $6.490 y el ritmo normal del año
+  // (1,3/día) le ganaba al de hoy (0,4/día): decía "en ML alcanza 10 d" con 34 d reales. El ritmo normal se usa sólo si
+  // alguna publicación del producto está hoy en una estrategia que sube el precio (escasez, techo, sin reposición).
+  const _subido=p&&p.id&&Object.entries(state.mllinks||{}).some(([m,e])=>e&&e.prodId===p.id&&!e.ignored&&['escasez','techo','sinrepo'].includes((estrategiaDe(m)||{}).t));
+  const _rn=p&&p.id&&_subido?ritmoNormalDe(p.id):null;
   const r=reponerDe(p,o&&o.vari),v=Math.max(Number(o.vDia)||0,_rn&&!_rn.f&&!o.sinNormal?_rn.pd:0),ml=Math.max(0,o.ml||0),cam=Math.max(0,o.cam||0),casa=Math.max(0,o.casa||0);
   const leadFull=cam>0?Math.max(1,Math.ceil(8-(Number(o.camDias)||0))):casa>0?10:r.d;
   const tot=v>0?(ml+cam+casa)/v:Infinity,dMl=v>0?ml/v:Infinity;
