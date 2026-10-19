@@ -1704,3 +1704,4 @@ cuando el emparejado por nombre agarra un set u otro tamaño (caso Cheeky Cool B
 
 ### 19/10/2026 · Revisión de cajas con el cupo de Full
 `decide_cajas.py` pedía 200 u. para Ayelen y 16 para Matías con cupo de 38 y 11. Se recortó a mano por urgencia (días hasta cortarse) × ganancia por unidad, y lo que no entra queda en la nota con "NO ENTRA". El Blush de Paulvic no va: no tiene publicación. **Qué chequear:** que el script no proponga más que el cupo de cada cuenta (hoy no lo mira: se recorta a mano).
+· **19/10 · Armar caja busca también por el título de ML** (v25.02): `_coincide` en `renderOfiCaja` suma los títulos de `cyc/mllinks` del producto (renglones sin variante). Las fichas de Paraguay quedan en portugués y él busca en castellano. Qué chequear: que un aroma siga trayendo sólo ese aroma (los renglones con variante no miran el título).
