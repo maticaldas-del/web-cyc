@@ -1608,3 +1608,8 @@ Chequear: que un proveedor de la carpeta siga apareciendo si es el único.
 - Cada uno tiene su total, su tope (`pedTopeUSD`, el mismo número para los dos), 🪄 Llenar, Vaciar y "Ya lo pedí". Perfumería se guarda como `compraspy/pyb<fecha>`, el resto como `py<fecha>` (`pyIdHoy(hoy,g)`, campo `rubro`). Los botones viejos sin grupo (Ya lo pedí de 🆕 Nuevos y de la canasta) parten solos en los dos.
 - Robot: `compray` busca también `pyb<fecha>`; con los dos el mismo día pide `|perf` o `|resto` (no adivina).
 - Chequear: que un producto no aparezca en los dos pedidos, que "Ya llegó" de un `pyb` cree las fichas igual que un `py`, y que `pyped:llego:pyb<fecha>` ande.
+
+### Etapa 3 · 19/10/2026 · v24.73 · vendidas en el pedido del momento y fichas sin colores
+- Pedido del momento: cada renglón muestra las vendidas (nuevos: `candVentasDe`, verde desde `pedMinVent`; probados: `pedVentasNorm` 30 d). Chequear que no falte en ninguno de los dos bloques.
+- La Pizarra 12" tenía 3 publicaciones de colores y la ficha sin colores: Pedidos pedía 10 sin decir de cuál. Cargados Rojo/Negro/Azul, `fijarvar` en las 3 de Luciana, pedido color por color (juicios.txt). Las 2 Calculadoras de Matías estaban en esa ficha: vinculadas a Calculadora.
+- Comando nuevo `variantes:*sincolor` (solo lee): fichas sin colores cuyas publicaciones nombran 2+ colores. Corrido el 19/10: 21, casi todas el mismo producto repetido entre cuentas. Colores reales cargados: Linterna Multifunción (Naranja/Azul), Juguete Gato Bola (Celeste/Rosa). Para mirar: Cortapelo 4 en 1 (mezcla modelos), balanza equipaje (Negro/Celeste/Amarillo), Pendrive 16gb con un Kingston Exodia vinculado (MLA1681419417).
