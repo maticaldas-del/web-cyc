@@ -14514,11 +14514,11 @@ function pedidoMomentoHTML(g){
   // MINIMALISTA (03/10/2026, él: "como en los otros lados, con las cosas básicas y si quiero data clickear en el
   // producto"): a la vista foto, nombre, %, unidades y subtotal; el detalle se abre tocando el producto.
   // Las unidades y la ✕ van AFUERA del <details> para que tocarlas no lo abra.
-  const fila=(nom,cod,u,usd,on,quitar,extra,foto,pct,pctCol,det)=>`<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px dashed var(--border)">
+  const fila=(nom,cod,u,usd,on,quitar,extra,foto,pct,pctCol,det,vend)=>`<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px dashed var(--border)">
       <details style="flex:1;min-width:0"><summary style="cursor:pointer;list-style:none;display:flex;align-items:center;gap:9px">
         ${foto?`<img src="${foto}" loading="lazy" onerror="this.style.visibility='hidden'" style="width:40px;height:40px;object-fit:contain;background:#fff;border-radius:7px;flex-shrink:0">`:`<div style="width:40px;height:40px;border:1px dashed var(--border);border-radius:7px;flex-shrink:0"></div>`}
         <div style="min-width:0;flex:1"><div style="font-size:.84rem;font-weight:600;line-height:1.3">${nom}</div>
-          <div style="font-size:.66rem;color:var(--muted)">${cod?'🔖 '+cod:'<span style="color:var(--amber)">🔖 sin código</span>'} · ${usd>0?u2(usd)+' c/u':'<span style="color:var(--red)">sin precio</span>'} · detalle ▾</div></div>
+          <div style="font-size:.66rem;color:var(--muted)">${cod?'🔖 '+cod:'<span style="color:var(--amber)">🔖 sin código</span>'} · ${usd>0?u2(usd)+' c/u':'<span style="color:var(--red)">sin precio</span>'}${vend||''} · detalle ▾</div></div>
         ${pct!=null?`<b style="font-size:1.05rem;color:${pctCol}">${pct}</b>`:''}
       </summary><div style="padding:6px 0 4px 49px;font-size:.72rem;color:var(--muted);line-height:1.6">${extra||''}${det||''}</div></details>
       <div style="display:flex;align-items:center;gap:6px;white-space:nowrap">${inp(u,on)}<span style="font-size:.7rem">u.</span>
@@ -14542,14 +14542,16 @@ function pedidoMomentoHTML(g){
     (f.sinHoy?'<span style="color:var(--amber)">sin precio de hoy: es lo que pagaste</span>':'precio de '+pyProvNom()+' de hoy')
     +(f.maxWeb!=null?` · <span style="color:${f.caro?'var(--red)':'var(--green)'}">máx ${u2(f.maxWeb)}${f.caro?' · 🔴 a este precio no da':' · ✅ da'}</span>`:''),
     ft&&ft.url?ft.url:'', f.maxWeb==null?null:(f.caro?'🔴':'✅'), f.caro?'var(--red)':'var(--green)',
-    f.pr?`<div style="margin-top:6px">${pyProbVisHTML(f.pr)}</div><div style="margin-top:4px">${maxCompraHTML(f.pr)}</div>`:'');});
+    f.pr?`<div style="margin-top:6px">${pyProbVisHTML(f.pr)}</div><div style="margin-top:4px">${maxCompraHTML(f.pr)}</div>`:'',
+    (()=>{const v=f.pr?pedVentasNorm(f.pr).vendidos:null;return v==null?'':` · <span style="color:var(--text)">🛒 vendiste ${fmtN(v)} en 30 d</span>`;})());});
   const maxU=pedMaxU(), minV=pedMinVent();
   const filasN=Ns.map(f=>{const R=candPreciosPartes(f.c);const m=R.margenPct;const P=candPuedePedir(f.c);
     return fila(f.c.nombre,String(f.c.cod||'').trim(),f.u,f.usd,`candSetPedir('${f.c.id}',this.value)`,`candSetPedir('${f.c.id}',0)`,
       (P.ok?'':`<div style="color:var(--red);font-weight:700">${P.bajoPiso?'⚠️ no da: '+P.motivo+' · lo agregaste igual':'🚫 '+P.motivo}</div>`)+(R.dudas.length?'<div style="color:var(--red);font-weight:700">🚨 revisá si es el mismo producto (adentro el detalle)</div>':''),
       R.fotoPY||R.fotoML||'', m!=null?m.toFixed(0)+'%':null,
       m==null?'var(--muted)':(typeof pctColor==='function'?pctColor(m):'var(--green)'),
-      pedNuevoFilaHTML(f,maxU,tc,true));});
+      pedNuevoFilaHTML(f,maxU,tc,true),
+      (()=>{const v=candVentasDe(f.c);return v==null?' · <span style="color:var(--amber)">🛒 ventas sin cargar</span>':` · <span style="color:${v>=minV?'var(--green)':'var(--amber)'}">🛒 ${fmtN(v)} vendidas en ML</span>`;})());});
   const cfg=`<details style="margin:8px 0 2px"><summary style="cursor:pointer;font-size:.68rem;color:var(--muted)">⚙️ tope, máximo por producto y mínimo de vendidas</summary><div style="display:flex;gap:7px;flex-wrap:wrap;align-items:flex-end;margin:8px 0 4px">
       ${[['pedTopeUSD',tope,'Tope del pedido (US$, probados + nuevos)'],['pedMaxU',maxU,'U. por nuevo (barato que vende: 3-4 · caro: 1)'],['pedMinVent',minV,'Mín. vendidas en ML']]
         .map(([k,v,t])=>`<label style="flex:1;min-width:105px"><div style="font-size:.6rem;color:var(--muted);margin-bottom:3px">${t}</div>
