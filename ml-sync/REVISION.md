@@ -1679,3 +1679,6 @@ el chat (web de Iscos relevada el 19/10, código sin el prefijo de la lista, o e
 lee `ml-sync/notas/listaweb_<prov>.txt` (los códigos que SÍ están) y marca `noWeb` en el resto. Web: `noWeb` no entra en Dan / Para
 revisar / buscador, no deja cargar unidades y va a "🚫 No está en la web"; en Pedidos hechos el renglón lo dice en rojo. `cuentaLista` y
 `listarevisar` lo excluyen. Qué chequear: rehacer el cruce cuando cambie la web (el archivo no se actualiza solo).
+- 19/10 (mismo día): `listaweb` también toma el PRECIO de la web (archivo `cód|precio`) y lo deja como costo con los descuentos de la
+  web (`listasProv/<prov>/dtoWeb`, Iscos por defecto [30, 5] = ×0,665, él: *"si ves 100.000 queda 66.500"*). Guarda `pl` = precio
+  web, `dto`, `p` y `precioWeb`. `correrPyCatMedir` no mide lo `noWeb`. Chequear: que `p` = round(pl × 0,665) y que `listamedir` re-mida.
