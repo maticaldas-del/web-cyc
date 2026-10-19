@@ -1635,3 +1635,4 @@ Chequear: que un proveedor de la carpeta siga apareciendo si es el único.
 - v24.89 (19/10/2026) · `techo95`: 🏔️ sólo con 95% (Poisson con plata por día), raya 🏔️ en la línea de tiempo con el porqué. Chequear: que cada 🏔️ diga su % y que ninguna se haya anotado a mano.
 - v24.90 (19/10/2026) · Sin cartel dorado de promo en la venta cuando la estrategia ya es promo/descuento (`vpPromoLabel`).
 - v24.91 (19/10/2026) · Línea de tiempo con 🔴 techo (95%, Poisson con plata por día), 🟢 piso (precio más alto con 3+ ventas en 5+ días con stock) y 💰 máxima plata por día (`_rayas`). En 📦 sobra / 📉 liquidando no se dibujan y se dice. Chequear: que la cuenta del 🔴 dé igual que `techo95` del robot.
+- v24.92 (19/10/2026) · 💰 piso unificado (el de más plata por día); se sacó la raya 🟢. Chequear: que no se baje abajo del 💰 sin motivo de sobra/problema.

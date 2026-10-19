@@ -508,3 +508,6 @@ la prueba con `decido`. **Nunca anotar #techook a mano sin pasar por `techo95`.*
 **LAS TRES RAYAS DE CADA PRECIO (19/10/2026, pedido suyo):** la línea de tiempo marca 🔴 techo (donde ya no rinde, 95%), 🟢 piso (el
 precio más alto que sí vende) y 💰 el que más plata por día dejó. Lo que no se sabe se dice ("falta probar más caro"); con sobrestock no
 se busca techo (primero sale lo que sobra). **Todo producto tiene que llegar a tener las tres**: si falta el 🔴, la estrategia es buscar techo.
+**PISO = EL PRECIO DE MÁS PLATA (19/10/2026, él: *"el piso es para decir no bajemos más que esto, excepto que haya un problema (…)
+quizás lo mejor es unificarlas"*).** Una sola raya 💰 piso: el precio que más plata por día dejó (5+ días con stock). No se baja de ahí
+salvo sobrestock, stock antiguo u otro problema dicho en el 🧠. Arriba la 🔴 techo; entre las dos es lo que falta probar.
