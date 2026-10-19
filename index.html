@@ -2665,7 +2665,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.76';
+const APP_VERSION='24.77';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2676,6 +2676,7 @@ const APP_VERSION='24.76';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.77',f:'19/10/2026',h:'14:20',c:[{n:2,t:'Pedidos: las unidades de cada color se pueden cambiar a mano (tocá el número). Lo cambiado dice "✋ a mano", manda sobre lo que decidí yo y el 📋 Copiar pedido se actualiza.'},{n:2,t:'Paulvic: botón "✅ Pedido hecho". Pasa a En camino con las mismas unidades que se copian (redondeadas), las descuenta de lo pedido y borra lo cambiado a mano.'}]},
   {v:'24.76',f:'19/10/2026',h:'12:50',c:[{n:2,t:'Escasez: el ritmo "normal" del año (sin remates) se usa sólo cuando el precio se subió a propósito (escasez, techo, sin reposición). Antes se usaba siempre y el Chispero, que había BAJADO de precio, salía en escasez con 34 días de stock.'}]},
   {v:'24.75',f:'19/10/2026',h:'12:05',c:[{n:2,t:'Ventas: en el detalle de cada venta hay "🚫 no se consigue más" (del color de esa venta si lo tiene). Es la misma marca que el botón de Pedidos: el producto sigue en Pedidos y pasa a escasez sin reposición. Se deshace con "se consigue de nuevo".'}]},
   {v:'24.74',f:'19/10/2026',h:'11:52',c:[{n:2,t:'Paraguay → Nuevos: botón "🛒✕ no da en ML" arriba, al lado del % (antes estaba sólo adentro del detalle y decía "en ML no se puede (marca)"). Lo marcado sale de lo que da en ML y queda sólo para la perfumería del local. Se deshace con "volver a ML".'}]},
@@ -12839,17 +12840,20 @@ async function syncPedidosAuto(){
     // Si Claude decidió cuántas comprar, manda lo suyo (la cuenta automática queda al lado, para comparar).
     let clInfo=null,_sinDec=false;
     {const _cl=clPedDe(p.id);
-      if(_cl&&(_cl.u!=null||_cl.vars)){
+      if(_cl&&(_cl.u!=null||_cl.vars||_cl.mano)){
         const formU=aComprar;
-        if(hasVars&&_cl.vars){
-          const cv={};for(const [k,v] of Object.entries(_cl.vars))cv[k]=Math.max(0,parseInt(v)||0);
+        if(hasVars&&(_cl.vars||_cl.mano)){
+          const cv={};for(const [k,v] of Object.entries(_cl.vars||{}))cv[k]=Math.max(0,parseInt(v)||0);
+          // LO QUE CAMBIÓ ÉL A MANO (19/10/2026, "poder modificar lo pedido"): `mano/<color>` manda sobre lo mío hasta el pedido hecho.
+          const _mano=_cl.mano&&typeof _cl.mano==='object'?_cl.mano:{};for(const [k,o] of Object.entries(_mano))if(o&&o.u!=null)cv[k]=Math.max(0,parseInt(o.u)||0);
           const _mv=_cl.motVars||{};const _mvDe=k=>_mv[k]?{mot:String(_mv[k]).slice(0,2500)}:{};
-          const vn=(variantesNec||[]).map(x=>{const k=sid(String(x.v).toLowerCase());return k in cv?{...x,q:cv[k],cl:1,..._mvDe(k)}:(SOLO_CLAUDE?{...x,q:0}:x);});
-          for(const v of (p.variantes||[])){const k=sid(String(v).toLowerCase());if(k in cv&&!vn.some(x=>sid(String(x.v).toLowerCase())===k))vn.push({v,q:cv[k],cl:1,..._mvDe(k)});}
+          const _mk=k=>(k in _mano)?{mano:1}:{};
+          const vn=(variantesNec||[]).map(x=>{const k=sid(String(x.v).toLowerCase());return k in cv?{...x,q:cv[k],cl:1,..._mvDe(k),..._mk(k)}:(SOLO_CLAUDE?{...x,q:0}:x);});
+          for(const v of (p.variantes||[])){const k=sid(String(v).toLowerCase());if(k in cv&&!vn.some(x=>sid(String(x.v).toLowerCase())===k))vn.push({v,q:cv[k],cl:1,..._mvDe(k),..._mk(k)});}
           variantesNec=vn.length?vn:null;
           aComprar=vn.reduce((a,x)=>a+(x.q||0),0);
         }else if(_cl.u!=null&&(!hasVars||SOLO_CLAUDE)){aComprar=Math.max(0,parseInt(_cl.u)||0);if(hasVars)variantesNec=null;}
-        if(aComprar!==formU||_cl.u!=null||_cl.vars){
+        if(aComprar!==formU||_cl.u!=null||_cl.vars||_cl.mano){
           clInfo={u:aComprar,formU,mot:String(_cl.mot||''),ts:_cl.ts||null};
           if(_cl.motPv)clInfo.motPv=String(_cl.motPv).slice(0,2500);   // por qué ese precio para el máximo de compra
           if(hasVars&&_cl.motVars&&typeof _cl.motVars==='object'){   // el motivo de cada color (decidido color por color)
@@ -17371,7 +17375,8 @@ function pedVarFila(x,p){
   return `<div class="ped-var-fila sem-${sem}" style="border-left-color:${col}">
     <div class="ped-var-txt"><b>${x.v}</b>${x.hist?' <span style="color:var(--amber);font-size:.8em">· ritmo viejo</span>':''}<i>${[dTxt,lug,pedVarMaxTxt(x,p)].filter(Boolean).join(' · ')}</i></div>
     ${p&&p.prodId?`<span onclick="event.stopPropagation()">${cerebroBtn(p.prodId,{ped:p.id,variante:x.v})}${noConsigoBtn((state.products||[]).find(z=>z.id===p.prodId),x.v)}</span>`:''}
-    ${q>0?`<span class="ped-var-u" style="color:${col}"><b>${n(q)}</b><i>u. a comprar</i></span>`:`<span class="ped-var-u" style="color:var(--green)"><b>✓</b><i>mandar de casa</i></span>`}
+    ${p&&p.prodId?`<span class="ped-var-u" style="color:${q>0?col:'var(--green)'}" onclick="event.stopPropagation()"><input type="number" min="0" step="1" value="${q}" onchange="pedSetVarU('${p.prodId}','${String(x.v).replace(/'/g,"\\'")}',this.value)" title="${x.mano?'Lo cambiaste vos a mano: manda sobre lo que decidí yo hasta que marques el pedido hecho':'Tocá para cambiar cuántas pedir de este color'}" style="width:62px;font:inherit;font-weight:700;font-size:1.3rem;text-align:right;background:transparent;border:1px ${x.mano?'solid':'dashed'} ${x.mano?'var(--amber)':'var(--border)'};border-radius:6px;color:inherit;padding:0 4px"><i>${x.mano?'✋ a mano':q>0?'u. a comprar':'mandar de casa'}</i></span>`
+      :q>0?`<span class="ped-var-u" style="color:${col}"><b>${n(q)}</b><i>u. a comprar</i></span>`:`<span class="ped-var-u" style="color:var(--green)"><b>✓</b><i>mandar de casa</i></span>`}
   </div>`;
 }
 function pedVarChip(x){
@@ -17735,7 +17740,36 @@ function maxCompraChip(p){
 // COPIAR EL PEDIDO PARA WHATSAPP (01/10/2026, pedido suyo con el Paulvic: "yo lo paso por wsp, me
 // podés poner un botón para copiar? (…) que sólo aparezca nombre y unidades a pedir"). Se copian SÓLO
 // las variantes que hay que comprar (las de "✓ mandar" no), en el mismo orden que se ven en pantalla.
-const _pedCopiaTxt={};
+const _pedCopiaTxt={},_pedHechoItems={};
+// CAMBIAR A MANO CUÁNTAS PEDIR DE UN COLOR (19/10/2026). Va a `claudedecide/ped/<id>/mano/<color>` ({u,ts}): el robot no lo toca
+// y manda sobre lo mío hasta que se marca el pedido hecho (ahí se borra).
+async function pedSetVarU(pid,v,val){
+  const u=Math.max(0,parseInt(val)||0),k=sid(String(v).toLowerCase());
+  try{await db.ref('cyc/claudedecide/ped/'+pid+'/mano/'+k).set({u,ts:Date.now()});}catch(e){toast('No se guardó: '+e.message,'err');return;}
+  const cd=state.claudedecide=state.claudedecide||{},pd=cd.ped=cd.ped||{},o=pd[pid]=pd[pid]||{ts:Date.now()};(o.mano=o.mano||{})[k]={u,ts:Date.now()};
+  toast(`${v}: ${u} u. ✓`);try{await syncPedidosAuto();}catch(e){}renderPedidos();
+}
+// PEDIDO HECHO AL PAULVIC DESDE LA TARJETA (19/10/2026). Mismo registro que `pvped` del robot: `cyc/pedidospv/pv<fecha>`
+// {prodId, fecha, ts, estado:'camino', items:[{v,u}]}; si ya hay uno de hoy en camino, se suma. Lo pedido sale de lo decidido
+// y se borra lo cambiado a mano.
+async function pvPedidoHecho(pedId){
+  const P=_pedHechoItems[pedId];if(!P||!P.items.length){toast('No hay nada para pedir');return;}
+  const tot=P.items.reduce((a,x)=>a+x.u,0);
+  if(!confirm(`Marcar el pedido al Paulvic como HECHO\n\n${P.items.map(x=>x.v+' x'+x.u).join('\n')}\n\n${tot} u. en ${P.items.length} aroma(s). Pasa a "En camino" y cuenta en Pedidos y Armar caja.`))return;
+  const hoy=dateToKey(new Date()).replace(/_/g,'-'),id='pv'+hoy.replace(/-/g,'');
+  let prev=null;try{prev=(await db.ref('cyc/pedidospv/'+id).once('value')).val();}catch(e){}
+  if(prev&&prev.estado!=='camino'){alert('Ya hay un pedido de hoy marcado como llegado: no lo piso. Pasámelo por el chat.');return;}
+  if(prev&&prev.prodId&&prev.prodId!==P.prodId){alert('Ya hay un pedido de hoy de otra ficha: pasámelo por el chat.');return;}
+  const its=(prev&&Array.isArray(prev.items)?prev.items:[]).filter(Boolean).map(x=>({...x}));
+  for(const it of P.items){const o=its.find(x=>x.v===it.v);if(o)o.u=(parseInt(o.u)||0)+it.u;else its.push({v:it.v,u:it.u});}
+  const rec={prodId:P.prodId,fecha:hoy,ts:(prev&&prev.ts)||Date.now(),estado:'camino',items:its,origen:'panel'};
+  try{await db.ref('cyc/pedidospv/'+id).set(rec);}catch(e){toast('No se guardó: '+e.message,'err');return;}
+  (state.pedidospv=state.pedidospv||{})[id]=rec;
+  for(const it of P.items){await clDescontarPed(P.prodId,it.v,it.u);try{await db.ref('cyc/noconsigo/'+P.prodId+'/nunca/'+sid(it.v)).remove();}catch(e){}}
+  try{await db.ref('cyc/claudedecide/ped/'+P.prodId+'/mano').remove();const o=((state.claudedecide||{}).ped||{})[P.prodId];if(o)delete o.mano;}catch(e){}
+  await log('Pedido al Paulvic hecho: '+id+' · '+tot+' u.');
+  toast('Pedido al Paulvic en camino ✓');try{await syncPedidosAuto();}catch(e){}renderPedidos();
+}
 function pedCopiarVars(id){
   const t=_pedCopiaTxt[id]; if(!t){toast('No hay nada para copiar');return;}
   const ok=()=>toast('📋 Copiado · '+t.split('\n').length+' renglones');
@@ -17777,6 +17811,9 @@ function _pedidoItemHtml(p,opts){
   const _aCopiar=varsSorted?varsSorted.filter(x=>(x.q||0)>0).map(x=>`${x.v} x${_esPv?_pvPaso(x.q):x.q}`):[];
   // SÓLO ESTOS COLORES (16/10/2026, idea 11 del análisis): llegaban colores lentos en lugar de los que se agotan.
   if(_aCopiar.length)_pedCopiaTxt[p.id]=_aCopiar.join('\n')+'\nSÓLO estos colores: si no hay, no reemplazar por otro.';else delete _pedCopiaTxt[p.id];
+  // LO QUE SE PIDE AL PAULVIC = LO QUE SE COPIA (19/10/2026, "agregar botón de pedido hecho"): mismas unidades redondeadas.
+  if(_esPv&&_aCopiar.length&&p.prodId)_pedHechoItems[p.id]={prodId:p.prodId,items:varsSorted.filter(x=>(x.q||0)>0).map(x=>({v:x.v,u:_pvPaso(x.q),q:x.q}))};else delete _pedHechoItems[p.id];
+  const hechoBtn=(_esPv&&_aCopiar.length&&p.prodId)?`<button class="pi-var-toggle" style="background:rgba(59,130,246,.14);color:#60a5fa;border-color:rgba(59,130,246,.35)" onclick="pvPedidoHecho('${p.id}')" title="Ya mandé el pedido al Paulvic: pasa a En camino con las mismas unidades que se copian">✅ Pedido hecho</button>`:'';
   const copiarBtn=_aCopiar.length?`<button class="pi-var-toggle" style="background:rgba(34,197,94,.12);color:var(--green);border-color:rgba(34,197,94,.3)" onclick="pedCopiarVars('${p.id}')" title="Copia sólo el nombre y las unidades a pedir de cada variante, para pegarlo en WhatsApp">📋 Copiar pedido</button>`:'';
   const fotoBtn=(_prod&&fotoDeProducto(_prod))?`<button class="pi-var-toggle" style="background:rgba(56,189,248,.12);color:#38bdf8;border-color:rgba(56,189,248,.3)" onclick="verFoto('${_prod.id}')" title="Ver foto del producto">📷 Foto</button>`:'';
   // UN SOLO NÚMERO: lo que queda en riesgo DESPUÉS de mandar lo que ya tenés en casa o viajando.
@@ -17835,7 +17872,7 @@ function _pedidoItemHtml(p,opts){
     </summary>
     <div class="ped-body">
       ${varToggle}
-      ${copiarBtn}${_prod?cerebroBtn(_prod.id,{ped:p.id,variante:p.variante||''}):''}${_prod?noConsigoBtn(_prod):''}
+      ${copiarBtn}${hechoBtn}${_prod?cerebroBtn(_prod.id,{ped:p.id,variante:p.variante||''}):''}${_prod?noConsigoBtn(_prod):''}
       ${varsSorted?'<details class="ped-mas" style="flex-basis:100%"><summary style="cursor:pointer;font-size:.7rem;color:var(--muted)">más datos ▾</summary><div class="ped-body" style="padding:6px 0 0">':''}
       ${fotoBtn}
       ${_tanque}${(()=>{const n=_tanque?String(p.nota||'').replace(/ · ~\d+d cubiertos/,'').replace(/ · 📦[\s\S]*$/,''):p.nota;return n?`<span class="pi-nota">${n}</span>`:'<span class="pi-nota" style="flex:0"></span>';})()}
