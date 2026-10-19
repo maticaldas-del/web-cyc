@@ -37,6 +37,9 @@ archivo son AYUDA, no la decisión: si sólo se siguen las reglas, lo que nadie 
   que diga SIN DECIDIR se decide en esa vuelta** (promo/remate para que salga antes del cierre, retirar, o por qué se deja,
   con su número en el 🧠). Nunca subirle el precio a algo que paga stock antiguo sin decir por qué. Lo recién llegado sin
   ventas no se proyecta.
+  **Ojo (19/10, el Joystick Xbox Velocity de Matías, que ML iba a descartar por 120 d sin vender y acá decía 24 d):** una fecha
+  aproximada (`antes`, de cuando empezamos a mirar) no es "recién llegado". Esos salen como **⚠️ NO VENDIÓ Y NO SÉ DESDE
+  CUÁNDO ESTÁ** y se deciden igual: retirar, remate o por qué se deja.
 - **Varios comandos en UNA corrida** (14/10): en `comando` (ml-consulta) o `billing_probe` (ml-sync) van uno por renglón.
   Las lecturas de la vuelta (planilla, informe, pedidostodo, escasez, ventasraras…) van juntas en una sola ml-consulta, y
   las escrituras juntas en una sola ml-sync. El registro los separa con `##### <comando>`.

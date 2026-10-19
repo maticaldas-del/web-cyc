@@ -1581,3 +1581,7 @@ Chequear: que un proveedor de la carpeta siga apareciendo si es el único.
 ### Etapa 7 · 19/10/2026 · el cambio de precio se salía de la tarjeta de Ventas en la PC (v24.68)
 - Qué: en el renglón de la PC (`.vp-pc`) el texto de `cambioVentaHTML` ($antes→$ahora, N cambios, % antes→después) se salía de la tarjeta. Ahora el renglón muestra sólo la flecha ▲/▼ (`_flechaCambio`) y el texto entero queda en el detalle (`_det`), igual que en el celu.
 - Chequear: en la PC ningún renglón de venta pasa el borde de la tarjeta; al tocarla, el detalle muestra el cambio de precio completo.
+
+### Etapa 8 · 19/10/2026 · stock antiguo: lo que no vendió con fecha aproximada ya no es "recién llegado"
+- Qué: `calcAntiguoFilas` (sync.mjs) por color usaba sólo la fecha del registro del color (arrancó ~25/09) y daba por "recién llegado" el Joystick Xbox Velocity de Matías, que ML iba a descartar por 120 d sin vender. Ahora toma también la fecha del producto en la cuenta, y lo que no vendió con fecha que no es de caja, Excel ni registro real sale como `sinFechaReal`: en `antiguo` (⚠️ SIN VENTAS Y NO SÉ DESDE CUÁNDO ESTÁN) y en el 💸 del expediente, para decidir en la vuelta.
+- Chequear: el Joystick Velocity sale en la lista ⚠️ y no en "recién llegados".

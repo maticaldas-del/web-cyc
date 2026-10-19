@@ -7896,7 +7896,11 @@ async function calcAntiguoFilas(db, products, labels, soloA) {
         const e = linkDe[k]; if (!e) sinLink++;
         const eL = e || { prodId: m[1], cuenta: cta };
         const h = (histA || {})[k];
-        const fb = Math.min(...[h && h.desde, eL.altaTs].map(Number).filter((x) => x > 0), Infinity);
+        // Por color, el registro del color arrancó después (25/09): sola, esa fecha hacía ver "recién llegado" lo que estaba
+        // hace meses (19/10/2026, el Joystick Xbox Velocity de Matías: ML avisaba descarte por 120 d sin vender y acá decía 24 d).
+        // Se toma también la fecha del producto en esa cuenta, que es más vieja.
+        const hP = colS ? (histA || {})[k.slice(0, k.indexOf('__v__'))] : null;
+        const fb = Math.min(...[h && h.desde, hP && hP.desde, eL.altaTs].map(Number).filter((x) => x > 0), Infinity);
         // Las cajas llegadas no dicen de qué color eran: por color sólo el Excel y la fecha del color.
         const lotes = lotesFifo(st, eL.inv ? (lotesA || {})[eL.inv] : null, colS ? [] : (cajasA[m[1] + '__' + (e ? e.cuenta : cta)] || cajasA[m[1] + '__' + cta]), isFinite(fb) ? fb : 0);
         const rn = (rnA || {})[k]; const rDia = rn && rn.pd > 0 ? rn.pd : (v60[k] || 0) / 60;
@@ -7906,6 +7910,10 @@ async function calcAntiguoFilas(db, products, labels, soloA) {
         const prox = (cg.meses[0] || {}).cargo || 0, tres = cg.meses.slice(0, 3).reduce((s2, x) => s2 + x.cargo, 0);
         // Sin ritmo (nunca vendió ahí) la cuenta da "no se vende nunca" y suma 3 años de cargo: no es una proyección.
         // Lo recién llegado sin ventas va aparte y no suma (vuelve a la lista cuando tenga ritmo o cumpla 60 días).
+        // Una fecha que no es de una caja ni del Excel de ML, y que el registro marca aproximada, dice desde cuándo MIRAMOS, no
+        // desde cuándo está: eso no es "recién llegado". Va aparte, como "no sé desde cuándo está".
+        const _real = lotes[0].f === 'excel' || lotes[0].f === 'caja' || [h, hP].some((x) => x && x.aprox === false && Number(x.desde) === lotes[0].ts);
+        if (!(rDia > 0) && edad < 60 && !_real) { filas.push({ k, n: ((pIdxA[m[1]] || {}).name || m[1]) + (colS ? ' · ' + ((e && e.variant) || colS) : ''), cta, st, edad, f: lotes[0].f, rDia: 0, tam, prox: 0, tres: 0, tot: 0, sinFechaReal: true }); continue; }
         if (!(rDia > 0) && edad < 60) { filas.push({ k, n: ((pIdxA[m[1]] || {}).name || m[1]) + (colS ? ' · ' + ((e && e.variant) || colS) : ''), cta, st, edad, f: lotes[0].f, rDia: 0, tam, prox: 0, tres: 0, tot: 0, nuevo: true }); continue; }
         const doce = cg.meses.slice(0, 12).reduce((s2, x) => s2 + x.cargo, 0);
         const r30A = (v30A[k] || 0) / 30; let t30 = null;
@@ -13900,6 +13908,7 @@ async function main() {
       console.log(`Proyectado a 12 cierres: ${$(conCargo.reduce((s2, x) => s2 + x.tot, 0))} · en el próximo cierre: ${$(filas.reduce((s2, x) => s2 + x.prox, 0))} · en los próximos 3: ${$(filas.reduce((s2, x) => s2 + x.tres, 0))}`);
       console.log('Fecha de la unidad más vieja: excel = lote del Excel de ML (`lotesfull`) · caja = caja marcada llegada · antes = más vieja que todo lo que tiene fecha (stockhist o alta) · sinfecha = no se sabe (cuenta como hoy)\n');
       for (const x of conCargo) console.log(`· ${String(x.n).slice(0, 42)} · ${x.cta} · ${x.st} u. · la más vieja ${x.edad} d (${x.f}) · ${x.tam} · vende ${(x.rDia * 30).toFixed(1)}/mes${x.rnF ? '' : ' (60 d, sin ritmo normal)'} · cierre ${x.cierre}: ${$(x.prox)} · 3 cierres: ${$(x.tres)} · 12 cierres: ${$(x.tot)}${x.t30 != null ? ` · con las ventas de 30 d (${(x.r30 * 30).toFixed(1)}/mes): ${$(x.t30)} en 12 cierres` : ''}${x.sinVenta ? ' ⚠️ no vendió en 60 d' : ''}`);
+      const dud = filas.filter((x) => x.sinFechaReal); if (dud.length) console.log(`\n⚠️ SIN VENTAS Y NO SÉ DESDE CUÁNDO ESTÁN (pueden ser viejos: mirar en ML si avisa descarte · ${dud.length}): ${dud.map((x) => String(x.n).slice(0, 34) + ' ' + x.cta + ' ' + x.st + ' u.').join(' · ')}`);
       const nuevos = filas.filter((x) => x.nuevo); if (nuevos.length) console.log(`\nRecién llegados que todavía no vendieron (no se proyectan: ${nuevos.length}): ${nuevos.map((x) => String(x.n).slice(0, 28) + ' ' + x.cta + ' ' + x.edad + 'd').join(' · ')}`);
       const cerca = filas.filter((x) => !x.nuevo && !(x.tot > 0) && x.edad >= 90).sort((a, b) => b.edad - a.edad);
       if (cerca.length) { console.log(`\nCon 90+ días en Full que al ritmo de hoy se venden antes de pagar (${cerca.length}):`); for (const x of cerca.slice(0, 25)) console.log(`· ${String(x.n).slice(0, 42)} · ${x.cta} · ${x.st} u. · ${x.edad} d (${x.f}) · vende ${(x.rDia * 30).toFixed(1)}/mes`); if (cerca.length > 25) console.log(`  (y ${cerca.length - 25} más)`); }
@@ -37416,7 +37425,7 @@ async function main() {
           if (rA.error) console.log(`⚠️ STOCK ANTIGUO: ${rA.error} · esta vuelta no lo puedo mirar`);
           else {
             for (const f of rA.filas) antK[f.k] = f;
-            const pag = rA.filas.filter((f) => !f.nuevo && (f.tot > 0 || f.t30 > 0 || f.edad >= 90));
+            const pag = rA.filas.filter((f) => !f.nuevo && (f.tot > 0 || f.t30 > 0 || f.edad >= 90 || f.sinFechaReal));
             console.log(`=== 💸 PAGA O VA A PAGAR STOCK ANTIGUO · ${pag.length} (de ${rA.mirados} con stock en Full) · cada uno se decide HOY ===`);
             for (const f of pag) {
               const iv = f.k.indexOf('__v__'), base = iv > 0 ? f.k.slice(0, iv) : f.k, pid = base.split('__')[0], ctaS = base.slice(pid.length + 2);
@@ -37425,6 +37434,7 @@ async function main() {
               const reciente = dec && Number(dec.ts) >= ahora - 7 * 864e5;
               // Una SUBA en algo que paga no cuenta como decidido (la Tira Led "decidida" el 12/10 era una suba por el peor caso).
               const subaQuePaga = dec && Number(dec.a) > Number(dec.de) && (f.prox > 0 || f.tot > 0);
+              if (f.sinFechaReal) console.log(`   ⚠️ NO VENDIÓ Y NO SÉ DESDE CUÁNDO ESTÁ (la fecha es de cuando empecé a mirarlo): puede ser viejo · mirar en ML si avisa descarte`);
               if (subaQuePaga) console.log(`   ⚠️ LA ÚLTIMA FUE UNA SUBA (${dd(dec.ts)} ${money(dec.de || 0)} → ${money(dec.a || 0)}) y esto paga stock antiguo: revisarla hoy`);
               console.log(`💸 ${f.n} · ${f.cta} · ${f.st} u. · la más vieja ${f.edad} d (${f.f}) · vende ${(f.rDia * 30).toFixed(1)}/mes · próximo cierre ${money(f.prox || 0)} · 12 cierres ${money(f.tot || 0)}${f.t30 > 0 ? ` (al ritmo de 30 d: ${money(f.t30)})` : ''} · ${ms.join(', ') || 'sin publicación viva'}`);
               console.log(`   ${reciente && !subaQuePaga ? `mi decisión ${dd(dec.ts)}: ${money(dec.de || 0)} → ${money(dec.a || 0)} · ${String(dec.motivo || '').replace(/\s+/g, ' ').slice(0, 200)}` : (subaQuePaga ? '⚠️ SIN DECIDIR (la suba no resuelve el stock antiguo)' : '⚠️ SIN DECIDIR (ninguna decisión mía en 7 días)') + ': decidir hoy · promo/remate para que salga antes del cierre, o por qué se deja'}`);
