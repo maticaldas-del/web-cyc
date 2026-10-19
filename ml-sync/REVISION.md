@@ -1637,3 +1637,9 @@ Chequear: que un proveedor de la carpeta siga apareciendo si es el único.
 - v24.91 (19/10/2026) · Línea de tiempo con 🔴 techo (95%, Poisson con plata por día), 🟢 piso (precio más alto con 3+ ventas en 5+ días con stock) y 💰 máxima plata por día (`_rayas`). En 📦 sobra / 📉 liquidando no se dibujan y se dice. Chequear: que la cuenta del 🔴 dé igual que `techo95` del robot.
 - v24.92 (19/10/2026) · 💰 piso unificado (el de más plata por día); se sacó la raya 🟢. Chequear: que no se baje abajo del 💰 sin motivo de sobra/problema.
 - v24.92+ (19/10/2026) · `lotesFifo` ignora lotes del Excel y cajas anteriores a la vuelta del stock desde cero (`stockhist.desde` real). Error que lo disparó: descuento al Paulvic Scarf por stock antiguo con unidades nuevas. Chequear: `antiguo` no muestra lotes viejos en productos que estuvieron en cero.
+
+### 19/10/2026 · tags techo/escasez que no suben (etapa 1, precios)
+- Qué: `decido` que baja con #techo/#escasez guarda 🪜 bajando; `planilla` lista 📈 DICE TECHO/ESCASEZ Y NO SUBE (cyc/claudecambios desde el tag).
+- Dónde: sync.mjs, `decido` (guardado del tag) y `planilla` (después de 🔎 SIN AFINAR).
+- Chequear: la lista sale vacía al final de cada vuelta; una baja de escalera nunca queda como 🔥.
+- Stock antiguo: con `lotesFifo` corregido (desdeCero), se revisaron mis descuentos por stock antiguo: Pendrive 128 salió del descuento (de 48 quedan 8). Timer y auricular vincha siguen por sobra.
