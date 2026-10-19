@@ -4058,7 +4058,7 @@ async function calcCerebro(db, o) {
             const ratio = g0.g / gpx.g;
             const hs = (stockhist || {})[kV && stockhist[kV] ? kV : kP];
             const fb = Math.min(...[hs && hs.desde, e.altaTs].map(Number).filter((x) => x > 0), Infinity);
-            const lotes = lotesFifo(st, e.inv ? lotesFull[e.inv] : null, cajasPC[e.prodId + '__' + e.cuenta], isFinite(fb) ? fb : 0);
+            const lotes = lotesFifo(st, e.inv ? lotesFull[e.inv] : null, cajasPC[e.prodId + '__' + e.cuenta], isFinite(fb) ? fb : 0, hs && hs.aprox === false ? Number(hs.desde) : 0);
             const { tabla } = tablaAntiguoDe(e, p, lotesFull, cfg);
             const cierre = DIA_CIERRE_ALM_CTA[_ctaSinTilde(cta)] || 12;
             const ant0 = cargoAntiguoProy(lotes, rPrev, tabla, cierre, hoyTs).pesos;
@@ -5421,7 +5421,7 @@ async function calcCajaBarata(db, o) {
         const kS = e.prodId + '__' + sidCb(e.cuenta);
         const hS = histCb[kS];
         const fbS = Math.min(...[hS && hS.desde, e.altaTs].map(Number).filter((x) => x > 0), Infinity);
-        const lotesS = lotesFifo(ds.st, e.inv ? lotesCb[e.inv] : null, cajasPCb[e.prodId + '__' + e.cuenta], isFinite(fbS) ? fbS : 0);
+        const lotesS = lotesFifo(ds.st, e.inv ? lotesCb[e.inv] : null, cajasPCb[e.prodId + '__' + e.cuenta], isFinite(fbS) ? fbS : 0, hS && hS.aprox === false ? Number(hS.desde) : 0);
         const rDiaS = ds.pd != null ? ds.pd : (ds.dias > 0 ? ds.st / ds.dias : 0);
         const { tam: tamS, tabla: tablaS } = tablaAntiguoDe(e, pIdx[e.prodId], lotesCb, cfgCbS);
         const cargoS = cargoAntiguoProy(lotesS, rDiaS, tablaS, DIA_CIERRE_ALM_CTA[_ctaSinTilde(e.cuenta)] || 12);
@@ -7925,7 +7925,7 @@ async function calcAntiguoFilas(db, products, labels, soloA) {
         // ~2 semanas y con la del producto salían de 61 d.
         const fb = (h && h.aprox === false && Number(h.desde) > 0) ? Number(h.desde) : Math.min(...[h && h.desde, hP && hP.desde, eL.altaTs].map(Number).filter((x) => x > 0), Infinity);
         // Las cajas llegadas no dicen de qué color eran: por color sólo el Excel y la fecha del color.
-        const lotes = lotesFifo(st, eL.inv ? (lotesA || {})[eL.inv] : null, colS ? (cajasA[m[1] + '__' + (e ? e.cuenta : cta) + '__v__' + colS] || cajasA[m[1] + '__' + cta + '__v__' + colS] || []) : (cajasA[m[1] + '__' + (e ? e.cuenta : cta)] || cajasA[m[1] + '__' + cta]), isFinite(fb) ? fb : 0);
+        const lotes = lotesFifo(st, eL.inv ? (lotesA || {})[eL.inv] : null, colS ? (cajasA[m[1] + '__' + (e ? e.cuenta : cta) + '__v__' + colS] || cajasA[m[1] + '__' + cta + '__v__' + colS] || []) : (cajasA[m[1] + '__' + (e ? e.cuenta : cta)] || cajasA[m[1] + '__' + cta]), isFinite(fb) ? fb : 0, h && h.aprox === false ? Number(h.desde) : 0);
         const rn = (rnA || {})[k]; const rDia = rn && rn.pd > 0 ? rn.pd : (v60[k] || 0) / 60;
         const { tam, tabla } = tablaAntiguoDe(eL, pIdxA[m[1]], lotesA, cfgA);
         const cg = cargoAntiguoProy(lotes, rDia, tabla, DIA_CIERRE_ALM_CTA[_ctaSinTilde(cta)] || 12);
@@ -7972,15 +7972,20 @@ function tablaAntiguoDe(e, p, lotes, cfg) {
 // Entradas con fecha de un producto×cuenta, de la más nueva a la más vieja. `cajas` = [{ts, u}] (cajas
 // marcadas llegadas), `L` = lote del Excel {ref, lotes:[{dias,u}]}. Las cajas anteriores al Excel ya están
 // adentro de él (no se cuentan dos veces).
-function lotesFifo(st, L, cajas, fallbackTs) {
+// 19/10/2026 (error del Paulvic Scarf: le puse un descuento fuerte por "4 u. de 200 días" y esas 4 habían entrado el 16/10,
+// después de 5 días sin stock): `desdeCero` = la fecha REAL en que el stock volvió de cero (`stockhist.desde` con
+// aprox:false). Todo lo que entró antes de esa fecha ya se vendió: no se cuenta, y lo que falta tiene esa fecha como mínimo.
+function lotesFifo(st, L, cajas, fallbackTs, desdeCero) {
   st = Math.max(0, Math.round(Number(st) || 0));
+  const dc = Number(desdeCero) > 0 ? Number(desdeCero) : 0;
   const ent = [];
   let refL = 0;
   if (L && Array.isArray(L.lotes)) {
     refL = Date.parse(String(L.ref || '') + 'T03:00:00Z') || 0;
-    if (refL > 0) for (const x of L.lotes) if (Number(x.u) > 0 && Number(x.dias) >= 0) ent.push({ ts: refL - Number(x.dias) * 864e5, u: Number(x.u), f: 'excel' });
+    if (refL > 0) for (const x of L.lotes) if (Number(x.u) > 0 && Number(x.dias) >= 0) { const t = refL - Number(x.dias) * 864e5; if (!dc || t >= dc - 864e5) ent.push({ ts: t, u: Number(x.u), f: 'excel' }); }
   }
-  for (const c of cajas || []) if (c && c.ts > 0 && c.u > 0 && c.ts > refL) ent.push({ ts: c.ts, u: c.u, f: 'caja' });
+  if (dc) fallbackTs = Math.max(Number(fallbackTs) || 0, dc);
+  for (const c of cajas || []) if (c && c.ts > 0 && c.u > 0 && c.ts > refL && (!dc || c.ts >= dc - 864e5)) ent.push({ ts: c.ts, u: c.u, f: 'caja' });
   ent.sort((a, b) => b.ts - a.ts);
   const out = []; let falta = st;
   for (const x of ent) { if (falta <= 0) break; const u = Math.min(falta, x.u); out.push({ ts: x.ts, u, f: x.f }); falta -= u; }
@@ -18604,7 +18609,7 @@ async function main() {
         if (auto && porSobra && lotesR && histR && st > 0 && pd) {
           const hR = histR[kP];
           const fbR = Math.min(...[hR && hR.desde, e.altaTs].map(Number).filter((x) => x > 0), Infinity);
-          const lotesX = lotesFifo(st, e.inv ? lotesR[e.inv] : null, (cajasR || {})[e.prodId + '__' + e.cuenta], isFinite(fbR) ? fbR : 0);
+          const lotesX = lotesFifo(st, e.inv ? lotesR[e.inv] : null, (cajasR || {})[e.prodId + '__' + e.cuenta], isFinite(fbR) ? fbR : 0, hR && hR.aprox === false ? Number(hR.desde) : 0);
           const { tabla: tablaX } = tablaAntiguoDe(e, pIdxR[e.prodId], lotesR, cfgR);
           const cgX = cargoAntiguoProy(lotesX, pd, tablaX, DIA_CIERRE_ALM_CTA[_ctaSinTilde(e.cuenta)] || 12);
           const ed = Math.floor((ahoraR - lotesX[0].ts) / 864e5);
