@@ -1687,3 +1687,8 @@ revisar / buscador, no deja cargar unidades y va a "🚫 No está en la web"; en
 Él: *"hay un flaco que vende los perfumes re caros. Y es el único (…) es un precio inflado que no sabemos si vende"*. Con `mv`==1 el
 producto nunca va solo a ✅ Dan (web `_listaDa`, robot `cuentaLista`): va a 🔎 Para revisar hasta que el chat lo marque `ok`.
 `listarevisar` lo lista como REVISAR-1VEND. La fila y Pedidos hechos dicen "⚠️ 1 solo vendedor". Chequear: que ningún Dan tenga mv 1 sin ok.
+
+### Etapa 7 · 19/10/2026 · v25.00 · La tarjeta de venta del teléfono no se sale al abrir el detalle
+Captura suya: al abrir "detalle" la tarjeta (`.vp-cel`) se ensanchaba (chips, el renglón del cambio de precio y los botones con
+`nowrap`), se cortaban el % y los botones, y el iPhone agrandaba la letra (text-size-adjust). CSS en ≤640px: nada pasa del ancho,
+todo corta renglón; `html{text-size-adjust:100%}`. Probado con una maqueta a 390px (scrollWidth 390). Chequear en cada cambio de la tarjeta.

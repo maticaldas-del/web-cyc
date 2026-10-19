@@ -9243,3 +9243,10 @@ yo y queda en `ml-sync/notas/listaweb_iscos.txt`; al cambiar la web se rehace. D
 Él: *"hay un flaco que vende los perfumes re caros. Y es el único (…) es un precio inflado que no sabemos si vende"*. En Listas (y al
 juzgar cualquier producto nuevo): si el catálogo de ML tiene un solo vendedor, ese precio no se usa para decir que "da"; se mira a mano
 (ventas de ESA publicación y si el precio es creíble contra otros tamaños). Web y robot lo mandan a 🔎 Para revisar.
+
+## 🧴 EL PEDIDO A ISCOS DEL 19/10 SE PUBLICA EN ML Y EL PRECIO LO MIRO YO (19/10/2026)
+Él: *"lo de los productos voy a publicarlos en ML esperando la ganancia que me dijiste. Porque eso tenés que mirarlo vos. Ya hice el
+pedido"*. 8 productos x2 (Cheeky Cool Boys y Sweet Baby, Cocot Magic Romance y Secret Love, Kevingston "7" colonia y EDT, Nina Extra
+Rouge y Rose 50 — los Nina no están en la web de Iscos, pueden no venir). Precio real de mercado ~$20.000-23.000 (el % del pedido se
+midió contra un vendedor inflado de $96.000): se esperan ~5-10%. Al llegar: fichas con el costo de la web ×0,665 y el precio lo decido
+yo con el peor caso, sin bajar del costo; si algo no deja ni eso, se le avisa.
