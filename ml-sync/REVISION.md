@@ -1643,3 +1643,7 @@ Chequear: que un proveedor de la carpeta siga apareciendo si es el único.
 - Dónde: sync.mjs, `decido` (guardado del tag) y `planilla` (después de 🔎 SIN AFINAR).
 - Chequear: la lista sale vacía al final de cada vuelta; una baja de escalera nunca queda como 🔥.
 - Stock antiguo: con `lotesFifo` corregido (desdeCero), se revisaron mis descuentos por stock antiguo: Pendrive 128 salió del descuento (de 48 quedan 8). Timer y auricular vincha siguen por sobra.
+
+### Etapa 3 · 19/10/2026 · `listaver:<proveedor>` (solo lee)
+Imprime la lista guardada ENTERA de un proveedor (`mlapi/listas/<prov>`: cód|nombre|pesos|fecha) para compararla contra otra fuente
+(primer uso: el catálogo web de Iscos, septiembre, contra la lista de octubre). Qué chequear: que no escriba nada y que no imprima datos de terceros.
