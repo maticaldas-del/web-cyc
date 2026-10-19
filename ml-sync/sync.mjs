@@ -39820,14 +39820,16 @@ async function main() {
           if (!/^active/.test(r.est) || r.stDesc || !(r.st > 0) || (r.u30 || 0) < 2 || r.mg == null) continue;
           if (r.exc || !['base', 'nuevo'].includes(r.est2.t)) continue;
           const dias = r.st / Math.max(r.u30 / 30, (r.u60 || 0) / 60);
-          if (dias < 14 || dias > 90) continue;
+          // Menos de 14 días sin tag 🔥: o es escasez sin decidir (sale en la 🚨) o la caja llega a tiempo: igual entra acá
+          // (19/10, él: "si no tiene línea de techo o alguna otra explicación como sobre stock, tiene que entrar en buscar techo").
+          if (dias > 90) continue;
           if (techoReciente(r.mla)) continue;
           const nota = ultN(r.mla); const fila = { ...r, dias };
           if (nota && hoy - nota < 7 * 864e5) pens.push(fila); else sinAf.push(fila);
         }
         const cajaTxt = (r) => r.caja ? `caja ${r.caja}${r.ptw && r.caja !== 'winning' ? ' ML pide ' + f(r.ptw) : ''}` : 'sin catálogo';
         sinAf.sort((x, y) => (y.u30 * (y.g || 0)) - (x.u30 * (x.g || 0)));
-        console.log(`\n── 🔎 SIN AFINAR (${sinAf.length}) · venden, stock para 14-90 días, en 🎯 base y sin prueba de techo en 60 días · decidir EN ESTA VUELTA: probar techo o dejar con motivo ──`);
+        console.log(`\n── 🔎 SIN AFINAR (${sinAf.length}) · venden, stock para menos de 90 días, en 🎯 base y sin prueba de techo en 60 días · decidir EN ESTA VUELTA: probar techo o dejar con motivo ──`);
         for (const r of sinAf) console.log(`🔎 ${r.mla} · ${r.cta} · ${r.nom} · ${f(r.P)} · ${r.mg.toFixed(0)}% (${f(r.g)}/u) · v ${r.u7}/${r.u30}/${r.u60} · Full ${r.st} (${Math.round(r.dias)} d) · ${cajaTxt(r)}${r.var ? ' · CON VARIANTES' : ''} · 🏷 ${ESTRATEGIAS[r.est2.t]}`);
         if (!sinAf.length) console.log(pens.length ? 'ninguna sin pensar' : 'ninguna: todo lo que vende tiene estrategia o ya probó techo');
         if (pens.length) console.log(`   (${pens.length} ya pensadas en los últimos 7 días: ${pens.map((x) => x.nom.slice(0, 24)).join(' · ')})`);
