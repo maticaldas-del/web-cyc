@@ -19453,7 +19453,7 @@ async function main() {
     if (/^listaver:/.test(String(process.env.BILLING_PROBE || ''))) {
       const k = String(process.env.BILLING_PROBE).split(':')[1].trim().toLowerCase(); const pv = ((await db.get('cyc/mlconfig/listasProv')) || {})[k] || {};
       const cat = (await db.get('mlapi/listas/' + k)) || {}; console.log(`${pv.nombre || k} · fecha ${pv.fecha || '?'} · ${Object.keys(cat).length} productos`); console.log('@@LISTA');
-      for (const [cod, e] of Object.entries(cat)) if (e) console.log([cod, String(e.n || '').replace(/\|/g, '/'), Number(e.p) || 0, e.ts ? new Date(e.ts).toISOString().slice(0, 10) : ''].join('|'));
+      for (const [cod, e] of Object.entries(cat)) if (e) console.log([cod, String(e.n || '').replace(/\|/g, '/'), Number(e.p) || 0, e.ts ? new Date(e.ts).toISOString().slice(0, 10) : '', e.m != null ? Math.round(e.m) + '%' : '', e.mp || '', e.mi || '', String(e.mt || '').replace(/\|/g, '/').slice(0, 70), e.t ? new Date(e.t).toISOString().slice(0, 16) : '', e.mv || '', e.rp ? 'rp' : ''].join('|'));
       console.log('@@FIN'); return;
     }
     // BILLING_PROBE=listarevisar[:<proveedor>] → SOLO LEE. La lista para el chat de compras (18/10/2026, pedido suyo: "un prompt para el chat
