@@ -2666,7 +2666,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.93';
+const APP_VERSION='24.94';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2677,6 +2677,7 @@ const APP_VERSION='24.93';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.94',f:'19/10/2026',h:'18:28',c:[{n:2,t:'Ventas: se sacó el cartel 🏷️ promo de arriba a la derecha. Ahora lo dice sólo el tag de cada venta: 🏷️ promo si ML puso plata, 💸 descuento si el precio tachado lo pusimos nosotros, y al lado "· de" la estrategia que tenía el precio.'}]},
   {v:'24.93',f:'19/10/2026',h:'18:14',c:[{n:3,t:'Listas → Iscos: el costo estaba casi el doble de lo que pagás (se había tomado el P. Lista como si fuera sin IVA y se le sumó 21%). Ahora cada producto cuesta el P. Lista menos el descuento del remito: 30%, y 33,5% en Cher y Bensimon. Cada renglón dice la lista y el descuento, y el pedido sigue mostrando el precio de lista.'}]},
   {v:'24.92',f:'19/10/2026',h:'17:20',c:[{n:1,t:'Línea de tiempo: el piso y el precio de más plata quedaron unificados en una sola raya 💰 piso (de ahí no se baja salvo un problema). Arriba, la 🔴 techo.'}]},
   {v:'24.91',f:'19/10/2026',h:'16:50',c:[{n:2,t:'Línea de tiempo: en el precio, tres rayas: 🔴 techo (donde ya no rinde, 95% seguro), 🟢 piso (el precio más alto que sí vende) y 💰 el precio que más plata por día dejó. Si no se sabe, lo dice; con stock de sobra no se busca techo.'},{n:3,t:'Todas las publicaciones quedaron con estrategia: las que vendían sin una van a buscar techo, las que sobran o no venden bajan con descuento, lo recién llegado es lanzamiento y lo sin stock ⏸️.'}]},
@@ -10632,7 +10633,12 @@ function estrategiaPromoAjuste(e,mla,v){if(!e||(e.t!=='promo'&&e.t!=='descuento'
   const pv=v?vpPromoDe([v]):null;if(pv)return {...e,t:pv.ml>0?'promo':'descuento'};
   const pc=(state.promoclaude||{})[mla];if(pc&&String(pc.tipo||'').toUpperCase()==='PRICE_DISCOUNT')return {...e,t:'descuento'};
   return e;}
-function estrategiaVentaHTML(v){return v&&v.mla?estrategiaChip(estrategiaPromoAjuste(estrategiaDe(v.mla,Number(v.ts)||0),v.mla,v)):'';}
+// 19/10/2026, él: "que sólo salgan tags: si es precio tachado y ponemos todo nosotros es descuento, si es promo y ml pone algo es
+// promo". Si la venta tuvo promo o cupón (`cyc/promoventa`), el tag de ESA venta es 🏷️ promo (ML puso algo) o 💸 descuento (sólo
+// nosotros), y la estrategia que tenía el precio queda como "· de X". El cartel dorado ya no sale (vpPromoLabel devuelve '').
+function estrategiaVentaHTML(v){if(!v||!v.mla)return'';let e=estrategiaPromoAjuste(estrategiaDe(v.mla,Number(v.ts)||0),v.mla,v);
+  const pv=vpPromoDe([v]);if(pv&&e&&e.t!=='promo'&&e.t!=='descuento'){const de=e.t!=='sindecidir'?e.t:(e.de||null);e={t:pv.ml>0?'promo':'descuento',m:'vendida con '+(pv.ml>0?'promo (ML puso '+fmt(Math.round(pv.ml))+')':'descuento nuestro')+(e.m?' · '+e.m:''),ts:e.ts,de};}
+  return estrategiaChip(e);}
 function nombreDeVenta(v){const p=prodDeVenta(v);return p?p.name:((v&&v.prod)||'');}
 // ── LOS CAMBIOS DE PRECIO DE ESA PUBLICACIÓN, AL LADO DE CADA VENTA (24/09/2026) ──
 // Pedido suyo: *"yo quiero ver los aumentos diarios que efecto tienen en las ventas diarias"*.
@@ -10705,6 +10711,7 @@ function vpPromoTotalHTML(entries){
   return `<div style="font-size:.7rem;margin-top:8px;padding:7px 10px;border-radius:8px;background:color-mix(in srgb,var(--green) 10%,transparent)">🏷️ <strong>${n}</strong> venta${n!==1?'s':''} con promo o cupón · <strong style="color:var(--green)">ML puso ${fmt(Math.round(ml))}</strong>${nos>0?` · <span style="color:var(--amber)">nosotros ${fmt(Math.round(nos))}</span>`:''} <span style="color:var(--muted)">· lo de ML no sale de nuestro neto</span></div>`;
 }
 function vpPromoLabel(items){
+  return '';  // 19/10/2026: lo dice el tag de estrategia de cada venta (🏷️ promo / 💸 descuento), el cartel dorado se sacó
   const p=vpPromoDe(items);if(!p)return '';
   // 19/10/2026, él: "sacar el promo en dorado, ya que si es promo aparece como tag/estrategia". Si la etiqueta de la venta ya es
   // 🏷️ promo o 💸 descuento, el cartel sobra. Sale sólo cuando la venta tuvo un cupón o promo de ML con otra estrategia.
