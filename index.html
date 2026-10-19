@@ -2666,7 +2666,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.89';
+const APP_VERSION='24.90';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2677,6 +2677,7 @@ const APP_VERSION='24.89';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.90',f:'19/10/2026',h:'16:20',c:[{n:1,t:'Ventas: se sacó el cartel dorado "promo" cuando la etiqueta de estrategia ya dice 🏷️ promo o 💸 descuento.'}]},
   {v:'24.89',f:'19/10/2026',h:'16:00',c:[{n:2,t:'🏔️ Techo encontrado sólo con 95% de seguridad medida con las ventas, y la línea de tiempo marca el día donde se encontró con el porqué. Lo que no llega al 95% vuelve a 📈 buscando techo.'}]},
   {v:'24.88',f:'19/10/2026',h:'15:40',c:[{n:2,t:'Pedidos de Listas (Iscos y las demás): cada producto muestra el precio de la lista y el total a precio de lista, y el mensaje para copiar lo lleva, así se compara contra lo que factura el mayorista.'}]},
   {v:'24.87',f:'19/10/2026',h:'15:20',c:[{n:3,t:'Se eliminó la etiqueta 🎯 base: todo precio tiene que tener su estrategia. Lo que todavía no tiene se ve como ⚪ sin estrategia (para decidir) y lo que no tiene stock en Full como ⏸️ sin stock.'},{n:2,t:'Los techos ya encontrados quedan marcados 🏔️ en la línea de tiempo (Centímetro Gris, Naipes Casino, Filtros, Adaptador, Metatarso, Lupa 90, Rebarbador, Pizarra).'}]},
@@ -10675,6 +10676,9 @@ function vpPromoTotalHTML(entries){
 }
 function vpPromoLabel(items){
   const p=vpPromoDe(items);if(!p)return '';
+  // 19/10/2026, él: "sacar el promo en dorado, ya que si es promo aparece como tag/estrategia". Si la etiqueta de la venta ya es
+  // 🏷️ promo o 💸 descuento, el cartel sobra. Sale sólo cuando la venta tuvo un cupón o promo de ML con otra estrategia.
+  if((items||[]).some(v=>v&&v.mla&&['promo','descuento'].includes((estrategiaPromoAjuste(estrategiaDe(v.mla,Number(v.ts)||0),v.mla,v)||{}).t)))return '';
   // EN DORADO (12/10/2026, pedido suyo: "al venderse un producto en promoción que diga en dorado vendido en
   // promoción o descuento ML"). Si el descuento lo puso ML entero dice "Descuento ML"; si pusimos algo
   // nosotros, "Vendido en promoción". El detalle (cupón/promo, cuánto cada uno) sigue en el globito.
