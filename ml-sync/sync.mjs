@@ -40,7 +40,7 @@ process.on('SIGTERM', () => _alCortar('SIGTERM'));
 // los que escriben en cantidad o en plata se niegan de entrada, y cualquier otro corre con la base,
 // ML, Mercado Pago y Telegram en sólo lectura (se deja renovar y guardar el token de ML, que ML rota).
 const EN_CONSULTA = process.env.GITHUB_WORKFLOW === 'ml-consulta' || process.env.ML_CONSULTA === '1';
-const CONSULTA_ESCRIBE = new Set(['pycat', 'pycatres', 'lista', 'listamedir', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'revcand', 'vincular', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull']);
+const CONSULTA_ESCRIBE = new Set(['pycat', 'pycatres', 'lista', 'listamedir', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull']);
 const CONSULTA_NIEGA = new Set(['cajaitems', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'promoventas', 'cargosmes', 'arcacierres']);
@@ -23370,6 +23370,51 @@ async function main() {
       if (okN && okV && MLA) console.log('Después corré netoweb, si no el producto sigue mostrando "—".');
       return;
     }
+    // La ficha toma el nombre de la publicación de ML (regla suya del 19/10/2026). Se usa al vincular y en `nombreml`.
+    const nombreDeML = async (p, titulo) => {
+      const t = String(titulo || '').trim();
+      if (!t || /^MLA\d+$/i.test(t)) { console.log('  nombre: ML no dio título, queda como está.'); return false; }
+      if ((p.variantes || []).length) { console.log(`  nombre: tiene ${p.variantes.length} variantes, no se cambia (el título es de un solo color).`); return false; }
+      if ((p.name || '') === t) { console.log('  nombre: ya es el de ML.'); return false; }
+      await db.patch('cyc/products/' + p.id, { name: t, nombreViejo: p.name || null });
+      const v = (await db.get('cyc/products/' + p.id + '/name')) || '';
+      console.log(`  nombre: "${p.name}" → "${t}" ${v === t ? '✓' : '✗ no quedó'}`);
+      return v === t;
+    };
+    // BILLING_PROBE=cajaweb:<cuenta>:<palabra> → SOLO LEE. Por qué Armar caja de la web muestra o no un producto: repite
+    // los filtros de la web (oficina > 0, publica la cuenta, sin `nomandar`) con los datos crudos (19/10/2026).
+    if (/^cajaweb:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const [, cta, ...pw] = String(process.env.BILLING_PROBE).split(':'); const q = norm(pw.join(':'));
+      const L = (await db.get('cyc/mllinks')) || {}, I = (await db.get('cyc/inventory')) || {}, RX = (await db.get('cyc/repoextra')) || {}, NR = (await db.get('cyc/norepo')) || {};
+      const sidW = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
+      for (const p of products.filter((x) => norm(x.name || '').includes(q) || x.id === pw.join(':'))) {
+        const hay = parseInt(I[p.id + '__Oficina_Mati']) || 0;
+        const pubs = Object.entries(L).filter(([, e]) => e && e.prodId === p.id);
+        console.log(`\n${p.id} · ${p.name} · variantes ${(p.variantes || []).length} · oficina ${hay}`);
+        for (const [m, e] of pubs) console.log(`   ${m} · cuenta=${JSON.stringify(e.cuenta)} · status=${JSON.stringify(e.status)} · ignored=${!!e.ignored} · variant=${JSON.stringify(e.variant || null)} · title="${e.title || ''}"`);
+        const pubCta = pubs.some(([, e]) => (e.status || '') !== 'closed' && e.cuenta === cta);
+        console.log(`   web: publica ${cta}=${pubCta} · pasara=${!!RX[p.id + '__' + sidW(cta)]} · nomandar=${!!NR[p.id + '__' + sidW(cta)]} → ${hay > 0 && (pubCta || RX[p.id + '__' + sidW(cta)]) && !NR[p.id + '__' + sidW(cta)] ? 'TENDRÍA QUE APARECER' : 'NO aparece'}`);
+        if ((p.variantes || []).length) console.log(`   variantes: ${JSON.stringify(p.variantes).slice(0, 300)}`);
+      }
+      return;
+    }
+    // BILLING_PROBE=nombreml:<id>[,<id>…][:go] → les pone a esas fichas el nombre de su publicación de ML (19/10/2026).
+    // Si la ficha tiene más de una publicación viva, no adivina cuál: lo dice.
+    if (/^nombreml(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _r = String(process.env.BILLING_PROBE).slice(9); const GO = /:go$/i.test(_r);
+      const ids = _r.replace(/:go$/i, '').split(',').map((x) => x.trim()).filter(Boolean);
+      const L = (await db.get('cyc/mllinks')) || {};
+      for (const id of ids) {
+        const p = products.find((x) => x.id === id); if (!p) { console.log(`${id}: no existe`); continue; }
+        const pubs = Object.entries(L).filter(([m, e]) => e && e.prodId === id && (e.status || '') !== 'closed' && e.title);
+        const tits = [...new Set(pubs.map(([, e]) => e.title))];
+        if (!tits.length) { console.log(`${p.name}: sin publicación vinculada`); continue; }
+        if (tits.length > 1) { console.log(`${p.name}: ${tits.length} publicaciones con títulos distintos, no adivino → ${tits.join(' | ')}`); continue; }
+        if (!GO) { console.log(`${p.name} → "${tits[0]}" (prueba)`); continue; }
+        console.log(p.name); await nombreDeML(p, tits[0]);
+      }
+      return;
+    }
     if (String(process.env.BILLING_PROBE || '').startsWith('vincular:')) {
       const _vcRaw = String(process.env.BILLING_PROBE).slice(9);
       const APLICAR = /:go$/i.test(_vcRaw);
@@ -23439,6 +23484,10 @@ async function main() {
       const okP = ver.prodId === p.id, okI = !ver.ignored, okN = !ver.noVendemosMas;
       console.log(`\n  releído del panel: producto ${ver.prodId || '(ninguno)'} ${okP ? '✓' : '✗'} · oculta ${ver.ignored ? 'SÍ ✗' : 'no ✓'} · "no la vendemos más" ${ver.noVendemosMas ? 'SÍ ✗' : 'no ✓'}`);
       if (e.noVendemosMas && okN) console.log('  estaba marcada "no la vendemos más": se la saqué.');
+      // AL VINCULAR, LA FICHA TOMA EL NOMBRE DE ML (19/10/2026, regla suya: "siempre que vincules cambia el nombre al que
+      // está en ml"). Las de Paraguay quedaban en portugués y él no las encontraba. Con variantes no: el título de UNA
+      // publicación nombra un solo color/aroma y la ficha tiene varios.
+      if (okP) await nombreDeML(p, e.title);
       console.log(okP && okI && okN ? '\n✓ Vinculada.' : '\n✗ NO quedó como pedí — revisalo.');
       console.log('Después corré netoweb, si no el producto sigue mostrando "—".');
       return;
