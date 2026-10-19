@@ -1601,3 +1601,4 @@ Chequear: que un proveedor de la carpeta siga apareciendo si es el único.
 ### 19/10/2026 · cerebro completo
 - Pedidos y cajas rehechos con `pedidostodo` del día (`ml-sync/notas/pedidos.txt`, 35 renglones cambiaron). Blush sigue en 0: no tiene publicación en ML.
 - Chequear: que `decido:archivo=pedidos;go` aplique todo y que Pedidos/Armar caja muestren lo nuevo.
+- **📦 SOBRA STOCK Y NO LO DECIDÍ (planilla, 19/10/2026, regla suya con el Timer):** todo stock de Full que al ritmo de hoy (mayor entre 30 y 60 d, sumando las publicaciones que comparten la mercadería) dura más de 90 días o no vendió en 60, sin anotar 📦 sobra / 📉 liquidando / promo mía / !piso y sin nota mía en 7 días, sale en la lista y se decide en esa vuelta. Lo llegado hace menos de 30 días (fecha real) va aparte como lanzamiento. Chequear: que la lista quede vacía al cerrar cada completa.
