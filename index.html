@@ -2665,7 +2665,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.69';
+const APP_VERSION='24.70';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2676,6 +2676,7 @@ const APP_VERSION='24.69';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.70',f:'19/10/2026',h:'00:13',c:[{n:1,t:'Ventas en la PC: el renglón de arriba ya no se corta (el «Bien» y la 📈 quedaban afuera). El neto y el costo pasaron al detalle; si igual no entra, baja a una segunda línea.'}]},
   {v:'24.69',f:'19/10/2026',h:'22:59',c:[{n:1,t:'Inicio: el puntaje de Rotación de Stock ya no se sale de su círculo (ahora es una píldora más ancha).'}]},
   {v:'24.68',f:'19/10/2026',h:'22:18',c:[{n:1,t:'Ventas en la PC: el cambio de precio ($antes→$ahora, cuántos cambios) ya no se sale de la tarjeta: en el renglón queda la flecha ▲/▼ y el texto entero está en el detalle.'}]},
   {v:'24.67',f:'18/10/2026',h:'23:30',c:[{n:1,t:'Ventas: se sacó el lápiz de modificar. El 🧠 pasó adentro del detalle (se abre tocando la tarjeta); la 📈 línea queda a la vista.'}]},
@@ -11551,7 +11552,7 @@ function renderVentaProd(){
       const _flechaCambio=cv=>`<span style="font-size:.66rem" title="Cambió de precio antes de esta venta · mirá el detalle">${cv.includes('▲')?'<b style="color:var(--green)">▲</b>':'<b style="color:var(--red)">▼</b>'}</span>`;
       const lines=grp.items.map(v=>{const _cv=isCancelled?'':cambioVentaHTML(v,Number(v.ts)||0);const _pp=prodDeVenta(v);return `<div style="display:flex;gap:6px;font-size:.72rem;padding:2px 0;align-items:center;white-space:nowrap;${isCancelled?'opacity:.45;text-decoration:line-through':''}"><span style="flex-shrink:0">${fotoVentaHTML(v,30)}</span><span class="vp-pc-txt" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis" title="${String(nombreDeVenta(v)).replace(/"/g,'&quot;')}${v.variante?' · '+v.variante:''}">${v.qty}× ${nombreDeVenta(v)}${estrategiaVentaHTML(v)}${v.variante?` <span style="padding:1px 5px;border-radius:3px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.62rem">${v.variante}</span>`:''}${_cv?' '+_flechaCambio(_cv):''}</span><span style="flex-shrink:0">${_pp&&_varios?lineaBtn(_pp.id):''}</span></div>`;}).join('');
       const _pcHtml=`<div class="ingreso-item vp-pc" onclick="vpCardClick(event,'${grp.gid}')" title="Tocá para ver u ocultar el detalle" style="cursor:pointer;flex-direction:column;align-items:stretch;gap:4px;${isCancelled?'border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.04)':''}">
-        <div class="vp-pc-cab" style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;white-space:nowrap;overflow:hidden">
+        <div class="vp-pc-cab" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;row-gap:4px;white-space:nowrap">
           <span class="who-badge" style="font-size:.6rem;${isCancelled?'opacity:.6':''}">${cuenta}</span>
           ${fechaTag}
           ${cancelBadge}
@@ -11560,8 +11561,7 @@ function renderVentaProd(){
           ${promoLabel?promoLabel.replace(/>🏷️ [^<]*</,'>🏷️ '+(promoLabel.includes('vp-promo-ml')?'desc. ML':'promo')+'<'):''}
           ${entLabel}
           ${rescLabel}
-          ${(!isCancelled&&_tot>0)?`<span style="font-size:.66rem;color:var(--muted)">total <b style="color:var(--text);font-weight:600">${fmt(_tot)}</b> · neto ${fmt(gn)}</span>`:''}
-          ${costLabel}
+          ${(!isCancelled&&_tot>0)?`<span style="font-size:.66rem;color:var(--muted)">total <b style="color:var(--text);font-weight:600">${fmt(_tot)}</b></span>`:''}
           ${ganLabel}
           ${pctBox}
           ${(()=>{if(_varios)return'';const _pp=prodDeVenta(grp.items[0]);return _pp?lineaBtn(_pp.id,null,_lineaVarDeVentas(grp.items,_pp.id)):'';})()}

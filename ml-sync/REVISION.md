@@ -1589,3 +1589,7 @@ Chequear: que un proveedor de la carpeta siga apareciendo si es el único.
 ### Etapa 7 · 19/10/2026 · el puntaje de Rotación no entraba en su círculo (v24.69)
 - Qué: en la tarjeta de Inicio (`nc-rot-score`) el número (ej. 9.5) en Syne no entraba en el círculo de 26px. Ahora es una píldora de 36px mínimo con letra mono; 10 se muestra sin decimal.
 - Chequear: 9.5 y 10 se ven enteros en la tarjeta, en el teléfono y en la PC.
+
+### Etapa 7 · 19/10/2026 · la cabecera de la venta se cortaba en la PC (v24.70)
+- Qué: en `.vp-pc-cab` (Ventas x Producto, PC) con `overflow:hidden` se perdía lo de la derecha ("Bien", 📈). Salieron el neto y el costo (están en el detalle: "Cobrado · neto" y "Costo") y la fila puede pasar a dos líneas en vez de cortarse.
+- Chequear: en una ventana de ~1000px se ven el % con su etiqueta y la 📈; nada queda afuera de la tarjeta.
