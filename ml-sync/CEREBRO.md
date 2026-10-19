@@ -489,3 +489,7 @@ al máximo? (…) productos que nunca se buscó techo"*): toda activa que vende 
 🆕 lanzamiento y sin prueba de techo (📈/🏔️/🪜) en 60 días. Se decide en la completa (probar techo o nota con motivo, vale 7 días)
 y tiene que quedar vacía, igual que 🚨 escasez y 📦 sobra. Las tres listas juntas cubren: lo que se agota, lo que sobra y lo que
 está quieto en su precio normal.
+**Corrección suya del mismo día:** *"si el modista encontró techo que lo marque en la línea de tiempo (…) aplicarlos a todos. Si no tiene
+línea de techo o alguna otra explicación como sobrestock, tiene que entrar en buscar techo"*. Todo techo encontrado se anota SIEMPRE
+con `#techook` (la línea de tiempo lo pinta 🏔️) y la lista 🔎 ya no deja afuera lo de menos de 14 días: lo único que la saca es un
+tag que explique el precio (escasez, sobra, promo, etc.) o una prueba de techo en 60 días.
