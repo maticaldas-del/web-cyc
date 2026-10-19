@@ -1597,3 +1597,7 @@ Chequear: que un proveedor de la carpeta siga apareciendo si es el único.
 ### Etapa 3 · 19/10/2026 · Paraguay Probados: lo cargado en el pedido sale de la lista (v24.71)
 - Qué: en Pedidos → Paraguay → Probados, las fichas con unidades en `state.pyArmado` no se dibujan (se cuenta "N ya están en el 🧾 Pedido"). Nuevos ya lo hacía con `candEnPedido`. Al poner 0 en el pedido vuelven solas (se mira en cada dibujado).
 - Chequear: cargar un probado → desaparece de Probados y aparece en 🧾 Pedido; sacarlo → vuelve a Probados.
+
+### 19/10/2026 · cerebro completo
+- Pedidos y cajas rehechos con `pedidostodo` del día (`ml-sync/notas/pedidos.txt`, 35 renglones cambiaron). Blush sigue en 0: no tiene publicación en ML.
+- Chequear: que `decido:archivo=pedidos;go` aplique todo y que Pedidos/Armar caja muestren lo nuevo.
