@@ -13007,6 +13007,26 @@ async function main() {
       const kw = String(process.env.BILLING_PROBE).split(':')[1].trim().toLowerCase();
       if (!kw) { console.log('Usá: variantes:paulvic'); return; }
       const links = (await db.get('cyc/mllinks')) || {};
+      // variantes:*sincolor (19/10/2026, la Pizarra 12": 3 publicaciones de colores y la ficha sin ninguno, así Pedidos
+      // no podía pedir color por color). Barre las fichas SIN variantes cuyas publicaciones nombran 2+ colores distintos
+      // en el título guardado. Solo lee, no le pregunta nada a ML.
+      if (kw === '*sincolor') {
+        const COL = ['negro','negra','blanco','blanca','rojo','roja','azul','verde','rosa','gris','amarillo','amarilla','violeta','lila','naranja','celeste','dorado','dorada','plateado','plateada','beige','marron','fucsia','turquesa','bordo','preto','branco'];
+        const nrm = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        let n = 0;
+        for (const p of products) {
+          if (Array.isArray(p.variantes) && p.variantes.length) continue;
+          const mlas = Object.entries(links).filter(([id, e]) => id.startsWith('MLA') && e && e.prodId === p.id && !e.ignored);
+          const cols = new Set();
+          for (const [, e] of mlas) { const w = nrm(e.title).split(/[^a-z]+/); for (const c of COL) if (w.includes(c)) cols.add(({ negra: 'negro', blanca: 'blanco', roja: 'rojo', amarilla: 'amarillo', dorada: 'dorado', plateada: 'plateado', preto: 'negro', branco: 'blanco' })[c] || c); }
+          if (cols.size < 2) continue;
+          n++;
+          console.log(`\n${p.id} · ${p.name} · colores en los títulos: ${[...cols].join(', ')}`);
+          for (const [id, e] of mlas) console.log(`    ${id} · ${String(e.cuenta || '?').padEnd(8)} · ${String(e.title || '').slice(0, 90)}`);
+        }
+        console.log(`\n${n} ficha(s) sin colores cargados con publicaciones de colores distintos.`);
+        return;
+      }
       const pIdx = {}; for (const p of products) pIdx[p.id] = p;
       const prodIds = new Set();
       for (const [id, e] of Object.entries(links)) {
