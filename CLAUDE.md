@@ -9223,3 +9223,7 @@ se busca techo (primero sale lo que sobra). **Todo producto tiene que llegar a t
 **PISO = EL PRECIO DE MÁS PLATA (19/10/2026, él: *"el piso es para decir no bajemos más que esto, excepto que haya un problema (…)
 quizás lo mejor es unificarlas"*).** Una sola raya 💰 piso: el precio que más plata por día dejó (5+ días con stock). No se baja de ahí
 salvo sobrestock, stock antiguo u otro problema dicho en el 🧠. Arriba la 🔴 techo; entre las dos es lo que falta probar.
+
+## 📈 TECHO Y ESCASEZ = EL PRECIO SUBE (19/10/2026, él con la Batidora negro)
+*"dice buscando techo, pero no aumentó nada"*. `decido` que baja con #techo/#escasez queda 🪜 bajando, y `planilla` lista
+**📈 DICE TECHO/ESCASEZ Y NO SUBE**, que se vacía en cada vuelta (subir otro escalón o poner el tag que corresponde).

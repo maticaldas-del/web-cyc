@@ -514,3 +514,10 @@ salvo sobrestock, stock antiguo u otro problema dicho en el 🧠. Arriba la 🔴
 **STOCK ANTIGUO: CONFIRMAR ANTES DE BAJAR (19/10/2026, error del Paulvic Scarf).** Antes de bajar por stock antiguo, mirar en la línea de
 tiempo que el stock NO haya estado en cero después de la fecha del lote: si estuvo en cero, esas unidades ya se vendieron y lo que hay es
 nuevo. El robot ya lo descarta (`lotesFifo` con `desdeCero`), pero la decisión se revisa igual.
+
+## 📈 TECHO Y ESCASEZ QUIEREN DECIR QUE EL PRECIO SUBE (19/10/2026, él con la Batidora negro)
+Él: *"dice buscando techo, pero no aumentó nada"*. Un tag 📈 techo o 🔥 escasez con el precio bajando o quieto es mentira.
+`decido` que BAJA con #techo/#escasez lo guarda como 🪜 bajando (la escalera de escasez es bajando). `planilla` termina con
+**📈 DICE TECHO/ESCASEZ Y NO SUBE** (último cambio fue baja, o 2 días sin subir desde el tag): se decide en la vuelta (otro
+escalón para arriba, o el tag que corresponde) y la lista queda vacía. Primeros 3: Batidora negro → $19.990 a probar ·
+Talonera Triples y Brisa Marina → 🪜 bajando.
