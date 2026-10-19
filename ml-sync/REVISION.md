@@ -855,6 +855,8 @@ nota con el motivo adentro + el mismo cambio en claudecambios → sale una sola 
 
  · **Total en blanco (v24.62):** en el renglón de la venta el total va en `var(--text)`, el neto sigue gris.
 
+ · **Todos los tags en Ventas (v24.63):** los que no tienen ventas en el período salen apagados con 0 (no se pueden tocar).
+
 ## 8 · DATOS E HISTORIAL (nueva, 08/10/2026)
 - **🚧 El techo en la línea de tiempo (18/10/2026, v24.49).** `lineaPintar` dibuja una raya roja punteada en el carril del precio por cada `cyc/techofreno/<MLA>` (`probado`, roja "ya no vende") y otra verde en `volvio` ("sí vende") de las publicaciones del gráfico (respeta el color elegido), desde el día que se anotó; entra en la escala. Qué chequear: que todo techo encontrado se anote con `techofreno:<MLA>=<precio>|motivo;go` (si no, no aparece).
 - **Reloj de los 4 meses en la línea de tiempo (16/10/2026, v23.92 · corregido en v23.93: EDAD DE LA UNIDAD MÁS VIEJA, primero
