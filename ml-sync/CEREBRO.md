@@ -465,3 +465,10 @@ promo para sacarlos"*. Cada retiro (sale en la planilla como `withdrawal`) se mi
 cada precio (el de promo y el normal, medidos) contra los días que faltan para el stock antiguo. La promo es la justa para
 vaciarlas antes de esa fecha, no la de antes del retiro. Si a precio normal ya salen a tiempo, sin promo.
 Caso: 8 u., 57 días, a $35.940 vendía 6 por día (se iban en 2 días) y a $41.990 ninguna en 6 días → descuento mínimo a $39.890.
+
+## 🔥 "ESCASEZ" QUIERE DECIR QUE SE SUBE EL PRECIO (19/10/2026, regla suya con las Cartas Casino)
+Él: *"quiero que cada vez que diga escasez el precio aumente, si no aumenta por x o por y quiero que sea otro nombre/tag/estrategia"*.
+Escasez = se corta antes de que llegue lo de camino u oficina (o antes de poder comprar) → el precio SE SUBE en esa vuelta y el
+tag es `escasez`. Si hay poco en Full pero la caja en camino o la oficina llegan a tiempo, NO es escasez: la línea de tiempo
+dice "🚚 cubierto" y el precio no se toca. Si algo sale como escasez y decido NO subirlo, el tag no puede quedar `escasez`:
+va otro (base, techo, sobra…) con el motivo en el 🧠.
