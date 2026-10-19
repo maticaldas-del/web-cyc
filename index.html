@@ -2665,7 +2665,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.74';
+const APP_VERSION='24.75';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2676,6 +2676,7 @@ const APP_VERSION='24.74';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.75',f:'19/10/2026',h:'12:05',c:[{n:2,t:'Ventas: en el detalle de cada venta hay "🚫 no se consigue más" (del color de esa venta si lo tiene). Es la misma marca que el botón de Pedidos: el producto sigue en Pedidos y pasa a escasez sin reposición. Se deshace con "se consigue de nuevo".'}]},
   {v:'24.74',f:'19/10/2026',h:'11:52',c:[{n:2,t:'Paraguay → Nuevos: botón "🛒✕ no da en ML" arriba, al lado del % (antes estaba sólo adentro del detalle y decía "en ML no se puede (marca)"). Lo marcado sale de lo que da en ML y queda sólo para la perfumería del local. Se deshace con "volver a ML".'}]},
   {v:'24.73',f:'19/10/2026',h:'11:41',c:[{n:1,t:'Pedido del momento (Paraguay): cada producto dice cuántas se vendieron, al lado del precio. En los nuevos, las vendidas en ML (verde si llega al mínimo); en los probados, las que vendiste vos en 30 días.'}]},
   {v:'24.72',f:'19/10/2026',h:'11:29',c:[{n:2,t:'Paraguay · Nissei: ahora hay DOS pedidos del momento, 🌸 Perfumería (perfumes, belleza y salud) y 📦 Resto. Cada uno con su total, su tope, Llenar, Vaciar y «Ya lo pedí», y viajan como pedidos separados.'}]},
@@ -11539,6 +11540,7 @@ function renderVentaProd(){
           ${isCancelled?reclamoMotivoHTML(grp):''}
           <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px">
             ${(()=>{const _ids=[...new Set(grp.items.map(v=>(prodDeVenta(v)||{}).id).filter(Boolean))];return _ids.map(id=>{const _vs=_lineaVarDeVentas(grp.items,id);return lineaBtn(id,_ids.length>1?'📈 '+((prodById(id)||{}).name||'línea').slice(0,18):(_vs?'📈 línea '+_vs.slice(0,16):'📈 línea'),_vs);}).join(' ');})()}
+            ${grp.items.map(v=>{const _pp=prodDeVenta(v);return _pp?vpNoConsigoBtn(_pp,v.variante||''):'';}).join(' ')}
             ${grp.items.map(v=>{const _pp=prodDeVenta(v);return _pp?cerebroBtn(_pp.id,{mla:v.mla,ctx:'venta'}):'';}).join(' ')}
             ${delBtn}
           </div>
@@ -18444,6 +18446,17 @@ function noConsigoBtn(prod,vari){
     ?`<button class="pi-var-toggle" style="background:rgba(239,68,68,.14);color:var(--red);border-color:rgba(239,68,68,.35)" onclick="${onc}" title="Marcado: no se consigue${vari?' este color':''}. Cuenta como sin reposición (escasez: se estira el precio para que dure hasta ~4 meses). Se saca solo cuando entra mercadería a la oficina. Tocá para sacarlo ya.">🚫 ${vari?'no se consigue':'no se consigue · deshacer'}</button>`
     :`<button class="pi-var-toggle" onclick="${onc}" title="${vari?'Si Tito no consigue ESTE color: tocá acá. Sólo este color pasa a escasez.':'Si Tito no consigue NINGÚN color (o el producto): tocá acá. Pasa a escasez (sin reposición) y el precio se estira para que el stock dure.'} Se saca solo cuando entra mercadería a la oficina.">🚫 ${vari?'no lo consigo':'No lo consigo'}</button>`;
 }
+// "NO SE CONSIGUE MÁS" DESDE LA VENTA (19/10/2026, él: "en detalle agregar botón 'no se consigue más'"). Es la MISMA marca
+// que el botón de Pedidos (`cyc/noconsigo`), del color de esa venta si lo tiene. El producto SIGUE en Pedidos (regla suya:
+// "deben seguir estando en pedidos, para saber que sí se necesitan"); sólo pasa a escasez sin reposición. Paraguay no:
+// ahí está "Nissei no lo tiene".
+function vpNoConsigoBtn(prod,vari){
+  if(!prod||(prod.origen==='py'&&!esPedidoPaulvic({prodId:prod.id})))return'';
+  const nc=_noConsigoActivo(prod.id,vari||undefined),deTodo=!!(vari&&nc&&!nc.v);
+  if(deTodo)return`<span style="font-size:.68rem;color:var(--red)" title="Está marcado el producto entero">🚫 no se consigue</span>`;
+  const va=vari?String(vari).replace(/'/g,"\\'"):'';
+  return`<button class="btn" style="font-size:.68rem;padding:3px 10px;${nc?'color:var(--red);border-color:rgba(239,68,68,.35)':''}" onclick="event.stopPropagation();toggleNoConsigo('${prod.id}','${va}')" title="${nc?'Marcado: no se consigue'+(vari?' este color':'')+'. Tocá para sacarlo':'Tito no lo consigue más'+(vari?' (este color)':'')+': pasa a escasez sin reposición. Sigue en Pedidos'}">${nc?'↩︎ se consigue de nuevo':'🚫 no se consigue más'}${vari?' · '+escHtml(String(vari).slice(0,14)):''}</button>`;
+}
 async function toggleNoConsigo(prodId,vari){
   const act=_noConsigoActivo(prodId,vari||undefined),val=act?null:Date.now();
   if(act&&act.nunca){if(!confirm(`${vari}: se pidió y no vino. ¿Volver a pedirlo?`))return;
@@ -18462,6 +18475,7 @@ async function toggleNoConsigo(prodId,vari){
   _repoMemo={};
   toast(val?`Marcado: no se consigue${vari?' '+vari:''} · entra en escasez`:'Sacado: vuelve a reponerse normal','ok');
   renderPedidos();
+  if(typeof renderVentaProd==='function'&&document.getElementById('page-ventaprod')&&document.getElementById('page-ventaprod').classList.contains('active'))renderVentaProd();
 }
 
 
