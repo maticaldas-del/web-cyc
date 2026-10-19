@@ -453,3 +453,7 @@ automático y sin errores y dándose cuenta de las situaciones"*. La `planilla` 
 Cada renglón se decide EN ESA VUELTA de la completa: promo propia o de ML (escalera, mismo neto), retiro si conviene, o nota con el
 motivo (ej. "1 u., no llega al cobro de stock antiguo"). Lo llegado hace menos de 30 días va aparte como lanzamiento. La lista tiene
 que quedar vacía. Y al revés de lo que ya hacía: *ningún* producto espera a que él lo vea.
+
+## 🧴 PAULVIC: PEDIDO REDONDO (19/10/2026, regla suya)
+"Siempre el pedido recomendado redondearlo al número más cercano: 3, 5, 10, 20, 50". La web lo redondea sola por aroma
+(`pvRedondo`); lo que él cambia a mano no se toca. Y nunca más "Sólo este color: si no hay, no lo cambies por otro" en los motivos ni en el copiar ("queda feo").
