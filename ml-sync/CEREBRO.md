@@ -457,3 +457,11 @@ que quedar vacía. Y al revés de lo que ya hacía: *ningún* producto espera a 
 ## 🧴 PAULVIC: PEDIDO REDONDO (19/10/2026, regla suya)
 "Siempre el pedido recomendado redondearlo al número más cercano: 3, 5, 10, 20, 50". La web lo redondea sola por aroma
 (`pvRedondo`); lo que él cambia a mano no se toca. Y nunca más "Sólo este color: si no hay, no lo cambies por otro" en los motivos ni en el copiar ("queda feo").
+
+## 📤 CUANDO ÉL RETIRA UNIDADES DE FULL, SE REHACE EL PRECIO (19/10/2026, regla suya)
+Con el Pendrive 128 (sacó 34 de Full para defender el precio y yo dejé el descuento de antes): *"ya sabés cuántas se venden en
+promo, entonces mirá las unidades, mirá cuántos días de stock quedan en promo y cuántos días faltan para pagar stock. Ahí poné la
+promo para sacarlos"*. Cada retiro (sale en la planilla como `withdrawal`) se mira en esa vuelta: unidades que quedan ÷ ritmo a
+cada precio (el de promo y el normal, medidos) contra los días que faltan para el stock antiguo. La promo es la justa para
+vaciarlas antes de esa fecha, no la de antes del retiro. Si a precio normal ya salen a tiempo, sin promo.
+Caso: 8 u., 57 días, a $35.940 vendía 6 por día (se iban en 2 días) y a $41.990 ninguna en 6 días → descuento mínimo a $39.890.
