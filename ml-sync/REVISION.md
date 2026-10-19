@@ -1701,3 +1701,6 @@ para mirar. Chequear: que no se use como deuda en el Arqueo (la deuda sigue sien
 ### Etapa 3 · 19/10/2026 · `catbusca:<texto>[;…]` (solo lee)
 Lista los catálogos de ML de una búsqueda (15) con vendedores, rango de precio y cuántos Full, para elegir a mano el catálogo correcto
 cuando el emparejado por nombre agarra un set u otro tamaño (caso Cheeky Cool Boys → "perfume + espuma"). No escribe nada.
+
+### 19/10/2026 · Revisión de cajas con el cupo de Full
+`decide_cajas.py` pedía 200 u. para Ayelen y 16 para Matías con cupo de 38 y 11. Se recortó a mano por urgencia (días hasta cortarse) × ganancia por unidad, y lo que no entra queda en la nota con "NO ENTRA". El Blush de Paulvic no va: no tiene publicación. **Qué chequear:** que el script no proponga más que el cupo de cada cuenta (hoy no lo mira: se recorta a mano).
