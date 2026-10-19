@@ -2666,7 +2666,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.81';
+const APP_VERSION='24.82';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2677,6 +2677,7 @@ const APP_VERSION='24.81';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.82',f:'19/10/2026',h:'16:20',c:[{n:1,t:'Paraguay → Nuevos: "🗂️ Lo que no entra en el pedido" (miles de productos) se arma recién al tocarlo. Antes se dibujaba entero aunque estuviera cerrado y por eso Nuevos tardaba.'}]},
   {v:'24.81',f:'19/10/2026',h:'16:05',c:[{n:1,t:'Pedidos → Paraguay abre más rápido: arranca sólo con ✅ Productos probados. Los 🆕 Productos nuevos (cientos de candidatos) se cargan recién al tocar su botón; tocando los dos se ven juntos como antes.'}]},
   {v:'24.80',f:'19/10/2026',h:'15:30',c:[{n:2,t:'Dai Nippon pasó a Pedidos → Bs As (la compra Tito cuando viaja): la lista se ve abajo de los pedidos de Bs As, con sus Nuevos y su 🧾 Pedido, y ya no en 📋 Listas. Lo que se le compre queda en los pedidos de Bs As.'}]},
   {v:'24.79',f:'19/10/2026',h:'15:05',c:[{n:1,t:'Pedidos → Paulvic con dos pestañas, como Paraguay y Listas: 📦 A comprar (las tarjetas de los aromas) y 🧾 Pedidos hechos (en camino, llegados que falta pagar y pagados). La pestaña dice cuántos hay en camino y sin pagar.'}]},
@@ -15205,6 +15206,9 @@ function candidatosHTML(){
       const mas=k=>R?` <span style="color:var(--muted);font-weight:400">+ <b>${f(n(k))}</b> del catálogo</span>`:'';
       const nDesc=candList().filter(c=>c.no).length;
       const tot=_flojas.length+_rojos.length+_sinAnalizar.length+nDesc+(R?n('ficha')+n('bajo')+n('nomed')+n('sc')+n('sv')+n('fz'):0);
+      // SE ARMA AL ABRIRLO (19/10/2026, él: "el problema de Nissei es que carga eso también, que cargue al clickearlo"): son miles de
+      // tarjetas; antes se dibujaban todas al entrar a Nuevos aunque el desplegable estuviera cerrado.
+      window._pyNoEntraFn=()=>{
       const cuenta=R?`<div style="font-size:.64rem;color:var(--muted);margin:8px 0 2px;line-height:1.5">📊 comprasparaguay tiene <b>${f(R.tot)}</b>: <b>${f(n('cand'))}</b> ya son candidatos (para probar, en el pedido y los de acá abajo) · <b>${f(n('ficha'))}</b> ya son productos tuyos · <b>${f(n('bajo'))}</b> medidos que no llegan al ${CAND_PISO_TXT()} · <b>${f(n('sc')+n('sv')+n('fz'))}</b> sin catálogo exacto, que nadie vende o afuera por regla · <b>${f(n('nomed'))}</b> todavía sin medir. <span title="Los números los arma el robot cada vez que mide (cada 2 h).">(contado el ${new Date(R.t).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})})</span></div>`:'';
       // DOS CARPETAS: MEDIDOS Y NO MEDIDOS (17/10/2026, él: "quiero dos carpetas, medidos y no medidos y dentro de cada una que
       // esté lo mismo que ahora"). Medidos = el robot ya sabe el margen (pocas ventas, no llegan, descartados con margen, ya son
@@ -15213,7 +15217,7 @@ function candidatosHTML(){
       const descM=candList().filter(c=>c.no&&_candMedido(c)).length,descN=nDesc-descM;
       const totM=_flojas.length+_rojos.length+descM+(R?n('bajo')+n('ficha'):0),totN=_sinAnalizar.length+descN+(R?n('nomed')+n('sc')+n('sv')+n('fz'):0);
       const carp=(t,nn,col,html)=>`<details style="margin-top:10px;border:1px solid var(--border2);border-radius:8px;padding:6px 10px;background:var(--surface2)"><summary style="cursor:pointer;font-size:.74rem;font-weight:700;color:${col}">${t} · ${f(nn)}</summary>${html}</details>`;
-      return `<details style="margin-top:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:8px 12px"><summary style="cursor:pointer;font-size:.74rem;font-weight:700;color:var(--muted)">🗂️ Lo que no entra en el pedido · ${f(tot)} <span style="font-weight:400">· tocá para abrir</span></summary>`+cuenta
+      return cuenta
       +carp('📏 Medidos',totM,'var(--text)',''
       +(_flojas.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--amber)">🟠 Pocas ventas en ML (menos de ${CAND_MIN_VENT} o sin el dato) · <b>${_flojas.length}</b></summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_flojas.map(_card).join('')}</div></details>`:'')
       +((_rojos.length||R)?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--red)">🔻 No llegan al ${CAND_PISO_TXT()} · <b>${_rojos.length}</b> candidatos${mas('bajo')}</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_rojos.map(_card).join('')}</div>${pycatNoDanHTML(['bajo'],'pycat-nodan-bajo','📦 Del catálogo: medidos por el robot, abajo del piso')}</details>`:'')
@@ -15222,7 +15226,8 @@ function candidatosHTML(){
       +carp('❔ No medidos'+(()=>{const hoy=new Date(Date.now()-3*36e5).toISOString().slice(0,10).replace(/-/g,'_');const d=R&&R.dia;if(!d||d.d!==hoy)return '';const x=Number(d.nomed)-n('nomed');return x>0?` <span style="color:var(--green)" title="Los que el robot analizó hoy: salieron de sin medir desde el último conteo de ayer.">−${f(x)} hoy</span>`:'';})(),totN,'var(--muted)',''
       +((_sinAnalizar.length||R)?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--muted)" title="Falta la medición de ML o alguna de las dos fotos. Suben solos cuando estén completos y den.">⏳ Falta analizar · <b>${_sinAnalizar.length}</b> candidatos${mas('nomed')}</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_sinAnalizar.map(_card).join('')}</div>${pycatNoDanHTML(['nomed'],'pycat-nodan-nomed','📦 Del catálogo: todavía sin medir')}</details>`:'')
       +candDescartadosHTML(R?n('sc')+n('sv')+n('fz'):null,false))
-      +`</details>`;})();
+      ;};
+      return `<details ontoggle="if(this.open&&!this.dataset.ok){this.dataset.ok=1;const b=this.querySelector('.nx-body');setTimeout(()=>{b.innerHTML=window._pyNoEntraFn();},0);}" style="margin-top:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:8px 12px"><summary style="cursor:pointer;font-size:.74rem;font-weight:700;color:var(--muted)">🗂️ Lo que no entra en el pedido · ${f(tot)} <span style="font-weight:400">· tocá para abrir</span></summary>`+`<div class="nx-body"><div style="font-size:.7rem;color:var(--muted);padding:8px 0">⏳ cargando…</div></div></details>`;})();
 }
 // LO DESCARTADO NO SE ESCONDE. Una lista que saca renglones sin decirlo es una lista que miente —
 // la misma regla que el desplegable de `nomandar` en Armar caja.
