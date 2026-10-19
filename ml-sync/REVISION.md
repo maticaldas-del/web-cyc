@@ -1631,3 +1631,4 @@ Chequear: que un proveedor de la carpeta siga apareciendo si es el único.
 
 - v24.86 (19/10/2026) · Tags de pasaje (🏔️ 🪜 ↘️ ↗️ 🧨), sin ↩️ corrección (se nombra por el anterior: `pasajeDe`/`estrategiaPasaje`, las dos iguales), chip "de X", escalón de escasez, y lista 🔎 SIN AFINAR en `planilla`. Qué chequear: que una vieja "correccion" se vea con el nombre del pasaje y que la lista nueva salga vacía al final de cada completa.
 - v24.87 (19/10/2026) · Sin 🎯 base: ⚪ sin estrategia / ⏸️ sin stock, `decido` exige estrategia, `pasajeDe` cae en ↘️ volviendo. Chequear: que ninguna activa con stock quede ⚪ al terminar la completa.
+- v24.88 (19/10/2026) · Pedidos de Listas: precio de lista por renglón, total a precio de lista y en el mensaje para copiar (pedido suyo con Iscos). Chequear: que el mensaje y el pedido hecho muestren lista y lo que te sale.

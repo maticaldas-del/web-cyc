@@ -2666,7 +2666,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.87';
+const APP_VERSION='24.88';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2677,6 +2677,7 @@ const APP_VERSION='24.87';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.88',f:'19/10/2026',h:'15:40',c:[{n:2,t:'Pedidos de Listas (Iscos y las demás): cada producto muestra el precio de la lista y el total a precio de lista, y el mensaje para copiar lo lleva, así se compara contra lo que factura el mayorista.'}]},
   {v:'24.87',f:'19/10/2026',h:'15:20',c:[{n:3,t:'Se eliminó la etiqueta 🎯 base: todo precio tiene que tener su estrategia. Lo que todavía no tiene se ve como ⚪ sin estrategia (para decidir) y lo que no tiene stock en Full como ⏸️ sin stock.'},{n:2,t:'Los techos ya encontrados quedan marcados 🏔️ en la línea de tiempo (Centímetro Gris, Naipes Casino, Filtros, Adaptador, Metatarso, Lupa 90, Rebarbador, Pizarra).'}]},
   {v:'24.86',f:'19/10/2026',h:'15:00',c:[{n:2,t:'Los pasajes de precio tienen nombre: 🏔️ techo encontrado · 🪜 bajando · ↘️ volviendo al normal · ↗️ volviendo de sobra · 🧨 remate total. Cada etiqueta dice además de dónde venía ("📦 sobra · de 🔥").'},{n:2,t:'"↩️ corrección" desaparece: lo viejo toma el nombre del pasaje según la estrategia anterior.'},{n:1,t:'La escasez muestra en qué escalón va, igual que el techo.'},{n:3,t:'Robot: lista nueva 🔎 SIN AFINAR en la planilla: todo lo que vende y nunca probó techo sale ahí hasta que se decide.'}]},
   {v:'24.85',f:'19/10/2026',h:'17:30',c:[{n:2,t:'Tag nuevo 💸 descuento: cuando el descuento lo ponemos sólo nosotros (precio tachado). 🏷️ promo queda para cuando Mercado Libre también pone plata. En cada venta lo decide lo que pasó en esa venta.'}]},
@@ -18261,16 +18262,19 @@ async function renderListas(){
     const tot=A.reduce((t,x)=>t+_listaPuesto(k,x.e)*x.u,0),uT=A.reduce((t,x)=>t+x.u,0);
     // COPIAR PEDIDO IGUAL QUE PAULVIC (18/10/2026, pedido suyo con Iscos: *"poneme para copiar el pedido, se pone el nombre idéntico
     // a paulvic"*): un renglón por producto, "<nombre tal cual la lista> x<unidades>", y al final que no reemplacen.
-    const msg=A.map(x=>`${x.e.n} x${x.u}`).join('\n');
+    // 19/10/2026, él: "en los pedidos de iscos agregar el precio que dice, para ver si el precio que dice es el que nos vende el
+    // mayorista": cada renglón lleva el precio de la LISTA (sin el recargo nuestro), así se compara contra la factura.
+    const msg=A.map(x=>`${x.e.n} x${x.u}${Number(x.e.p)>0?' · '+fmt(Number(x.e.p))+' c/u':''}`).join('\n');
+    const totL=A.reduce((t,x)=>t+(Number(x.e.p)||0)*x.u,0);
     const C=Object.entries(state.comprasLista||{}).map(([id,c])=>({...c,id})).filter(c=>c.prov===k).sort((a,b)=>(b.ts||0)-(a.ts||0));
-    const comp=c=>{const t=(c.items||[]).reduce((s,i)=>s+(i.pc||0)*(i.u||0),0);const cam=c.estado==='camino';
-      return `<details style="background:var(--surface);border:1px solid ${cam?'var(--amber)':'var(--border)'};border-radius:8px;padding:8px 10px;margin-bottom:6px"><summary style="cursor:pointer;font-size:.74rem">${cam?'🚚 en camino':'✅ llegó'} · <b>${c.fecha}</b> · ${(c.items||[]).length} productos · ${fmt(t)}</summary>
-        <div style="font-size:.66rem;margin-top:6px;line-height:1.6">${(c.items||[]).map(i=>`· ${i.u} × ${escHtml(i.n)} <span style="color:var(--muted)">(${escHtml(i.cod)} · ${fmt(i.pc)} c/u${i.m!=null?' · '+Math.round(i.m)+'% en ML':''})</span>`).join('<br>')}</div>
+    const comp=c=>{const t=(c.items||[]).reduce((s,i)=>s+(i.pc||0)*(i.u||0),0),tL=(c.items||[]).reduce((s,i)=>s+(i.p||0)*(i.u||0),0);const cam=c.estado==='camino';
+      return `<details style="background:var(--surface);border:1px solid ${cam?'var(--amber)':'var(--border)'};border-radius:8px;padding:8px 10px;margin-bottom:6px"><summary style="cursor:pointer;font-size:.74rem">${cam?'🚚 en camino':'✅ llegó'} · <b>${c.fecha}</b> · ${(c.items||[]).length} productos · ${tL?'lista '+fmt(tL)+' · ':''}te sale ${fmt(t)}</summary>
+        <div style="font-size:.66rem;margin-top:6px;line-height:1.6">${(c.items||[]).map(i=>`· ${i.u} × ${escHtml(i.n)} <span style="color:var(--muted)">(${escHtml(i.cod)} · ${i.p?'<b style="color:var(--text)">lista '+fmt(i.p)+' c/u</b> · ':''}te sale ${fmt(i.pc)} c/u${i.m!=null?' · '+Math.round(i.m)+'% en ML':''})</span>`).join('<br>')}</div>
         ${cam?`<button class="btn" style="margin-top:8px;font-size:.7rem" onclick="listaLlego('${c.id}')">📦 Llegó · crear las fichas</button>`:''}</details>`;};
     el.innerHTML=cab+(A.length?`<div style="background:var(--surface);border:1px solid var(--blue);border-radius:var(--r);padding:12px;margin-bottom:14px">
-        <div style="font-size:1.3rem;font-weight:800">${fmt(tot)} <span style="font-size:.7rem;font-weight:400;color:var(--muted)">· ${A.length} productos · ${uT} u.${rec?' · con el '+rec+'% del proveedor':''}</span></div>
+        <div style="font-size:1.3rem;font-weight:800">${fmt(tot)} <span style="font-size:.7rem;font-weight:400;color:var(--muted)">· ${A.length} productos · ${uT} u.${rec?' · con el '+rec+'% del proveedor':''}${totL?' · a precio de lista '+fmt(totL)+' (lo que tiene que facturar)':''}</span></div>
         <div style="display:flex;flex-direction:column;gap:6px;margin-top:10px">${A.map(x=>fila([x.cod,x.e],true)).join('')}</div>
-        <div style="font-size:.64rem;color:var(--muted);margin:10px 0 4px">Para mandarle a <b>${escHtml(nom)}</b> — código y unidades</div>
+        <div style="font-size:.64rem;color:var(--muted);margin:10px 0 4px">Para mandarle a <b>${escHtml(nom)}</b> — nombre, unidades y el precio de su lista (para comparar con lo que te cobra)</div>
         <textarea readonly id="lista-msg" style="width:100%;min-height:${Math.min(220,40+A.length*18)}px;font-family:'DM Mono',monospace;font-size:.7rem;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--text);padding:8px">${escHtml(msg)}</textarea>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button class="btn" onclick="copiarTexto(document.getElementById('lista-msg'))">📋 Copiar pedido</button><button class="btn" style="background:var(--green);color:#fff" onclick="listaYaLoPedi('${k}')">✅ Ya lo pedí</button><button class="btn" onclick="listaVaciar('${k}')">🗑️ Vaciar</button></div></div>`
       :`<div class="empty-msg">No hay nada cargado. En 🆕 Productos nuevos poné las unidades de lo que quieras pedirle a ${escHtml(nom)}.</div>`)
