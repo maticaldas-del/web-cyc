@@ -2665,7 +2665,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.64';
+const APP_VERSION='24.65';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2676,6 +2676,7 @@ const APP_VERSION='24.64';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.65',f:'18/10/2026',h:'23:05',c:[{n:1,t:'Ventas: a la vista sólo los tags con ventas; los demás se abren con "＋N sin ventas ▾".'}]},
   {v:'24.64',f:'18/10/2026',h:'22:55',c:[{n:1,t:'Ventas: el botón del detalle es sólo la flechita ▾ (sin la palabra).'}]},
   {v:'24.63',f:'18/10/2026',h:'22:35',c:[{n:1,t:'Ventas: aparecen todos los tags; los que no tienen ventas en el período salen apagados con 0.'}]},
   {v:'24.62',f:'18/10/2026',h:'22:10',c:[{n:1,t:'Ventas: el total de cada venta se ve en blanco.'}]},
@@ -9186,7 +9187,7 @@ let vpFilterCuenta=null;
 // LOS TAGS ARRIBA DE LA LISTA DE VENTAS (19/10/2026, pedido suyo: "quiero que aparezcan los tags y al clickear que aparezcan
 // las ventas con ese tag"). Un botón por estrategia con cuántas ventas del período (y de la cuenta y búsqueda elegidas) la
 // tenían al venderse (`estrategiaDe`, la misma del chip de cada venta). Tocar uno deja sólo esas; tocarlo de nuevo, todas.
-let vpFilterTag=null;
+let vpFilterTag=null,vpTagsCero=false;
 function setVpTag(t){vpFilterTag=(vpFilterTag===t?null:t);renderVentaProd();}
 function vpTagsDeGrupo(grp){const s=new Set();for(const v of grp.items){if(!v.mla)continue;const e=estrategiaDe(v.mla,Number(v.ts)||0);if(e)s.add(e.t);}return s;}
 function setVpCuenta(cuenta,btn){
@@ -11337,11 +11338,14 @@ function renderVentaProd(){
     });
     // Los tags: se cuentan sobre lo que ya filtran la búsqueda y la cuenta, y recién después se filtra por el elegido.
     {const cnt={};for(const grp of filteredGroups){if(grp.cancelada)continue;for(const t of vpTagsDeGrupo(grp))cnt[t]=(cnt[t]||0)+1;}
-     // 19/10, él: "¿están todos los tags o sólo los que vendieron?" → todos; los que no tienen ventas en el período van apagados.
+     // 19/10, él: primero "¿están todos los tags?" y después "mostrar sólo las que tienen venta, las que no que haya un
+     // desplegable para que aparezcan" → a la vista los que tienen ventas; los de 0 atrás de "＋N sin ventas" (vpTagsCero).
      const box=document.getElementById('vp-tag-chips');
-     if(box){box.innerHTML=Object.keys(ESTRATEGIA_UI).map(t=>{cnt[t]=cnt[t]||0;const u=ESTRATEGIA_UI[t],on=vpFilterTag===t;
+     if(box){const chip=t=>{cnt[t]=cnt[t]||0;const u=ESTRATEGIA_UI[t],on=vpFilterTag===t;
        if(!cnt[t]&&!on)return `<span title="${String(u[3]).replace(/"/g,'&quot;')} · ninguna venta con este tag en el período" style="padding:3px 9px;border-radius:6px;border:1px dashed var(--border,#333);color:var(--muted);opacity:.55;font-size:.68rem;white-space:nowrap">${u[0]} ${u[1]} · 0</span>`;
-       return `<button onclick="setVpTag('${t}')" title="${String(u[3]).replace(/"/g,'&quot;')}" style="cursor:pointer;padding:3px 9px;border-radius:6px;border:1px solid ${u[2]}${on?'':'55'};background:${on?u[2]+'40':u[2]+'14'};color:${u[2]};font-size:.68rem;font-family:inherit;white-space:nowrap${on?';font-weight:700':''}">${u[0]} ${u[1]} · ${cnt[t]}${on?' ✕':''}</button>`;}).join('');}
+       return `<button onclick="setVpTag('${t}')" title="${String(u[3]).replace(/"/g,'&quot;')}" style="cursor:pointer;padding:3px 9px;border-radius:6px;border:1px solid ${u[2]}${on?'':'55'};background:${on?u[2]+'40':u[2]+'14'};color:${u[2]};font-size:.68rem;font-family:inherit;white-space:nowrap${on?';font-weight:700':''}">${u[0]} ${u[1]} · ${cnt[t]}${on?' ✕':''}</button>`;};
+      const ts=Object.keys(ESTRATEGIA_UI),con=ts.filter(t=>cnt[t]>0||vpFilterTag===t),sin=ts.filter(t=>!(cnt[t]>0)&&vpFilterTag!==t);
+      box.innerHTML=con.map(chip).join('')+(sin.length?`<button onclick="vpTagsCero=!vpTagsCero;renderVentaProd()" style="cursor:pointer;padding:3px 9px;border-radius:6px;border:1px dashed var(--border,#333);background:transparent;color:var(--muted);font-size:.68rem;font-family:inherit;white-space:nowrap">${vpTagsCero?'ocultar los sin ventas ▴':'＋'+sin.length+' sin ventas ▾'}</button>`+(vpTagsCero?sin.map(chip).join(''):''):'');}
      if(vpFilterTag){for(let i=filteredGroups.length-1;i>=0;i--)if(!vpTagsDeGrupo(filteredGroups[i]).has(vpFilterTag))filteredGroups.splice(i,1);}}
     const mesLabel=(MONTHS[parseInt(vm)-1]||'')+' '+vy;
     // Tope de dibujado: con miles de ventas, meter todos los bloques en el DOM cuelga
