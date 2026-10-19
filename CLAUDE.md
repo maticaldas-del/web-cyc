@@ -1308,7 +1308,7 @@ también (siempre que sean perfumes)"*. Costo c/u = (pagado o calculadora + flet
 `pvped:costo:<id>;apagar=;flete=;tester=;regalo=;go` (también lo corren `llego` y `pago`). Y Pedidos → Paulvic muestra cada
 pedido en una tarjeta como la de Paraguay (`pvPedidoTarjeta`).
 
-## ⏰ PAULVIC DEL 06/10: LLEGÓ EL 17/10 (remito del 07/10), FALTA PAGAR
+## ⏰ PAULVIC DEL 06/10: LLEGÓ EL 17/10 (remito del 07/10), PAGADO EL 19/10 ($246.284, comprobante cargado)
 Llegaron 38 u. (37 + 1 tester de Blush, el tester NO se sumó a la oficina). Faltaron Acqua, Indigo Mujer y Miss Mujer (3 c/u):
 **Regla suya del mismo día: lo que se pide al Paulvic y no viene queda anotado en el pedido y NO SE PIDE MÁS** (`cyc/noconsigo/<prod>/nunca/<aroma>`, lo marca `pvped:llego`; se saca pidiéndolo de nuevo o con `pvped:nunca:-<aroma>;go`). Vinieron 6 Blush que no se pidieron: aroma nuevo, agregado a la ficha "Paulvic TODOS", SIN publicación
 en ML todavía. A pagar $246.283,77 (calculadora) · valor declarado del remito $214.252,95 · flete (Transporte Oballe) $8.500 (cargado el 17/10: costo c/u $6.705).
