@@ -39634,7 +39634,7 @@ async function main() {
             const a = ap[mla];
             // Mi promo cuenta como excepción sólo MIENTRAS dure (13/10/2026, revisión 9): vencida se juzga como cualquiera.
             const pcV = promoClaudeVigente(pClaude[mla], hoy);
-            filas.push({ mla, cta, nom: String(e.title || p.name || '').slice(0, 42) + (e.variant ? ' #' + e.variant : ''), est: b.status + ((b.sub_status || []).length ? '(' + b.sub_status.join(',') + ')' : ''),
+            filas.push({ mla, cta, kSt: stDesc ? null : kSt, nom: String(e.title || p.name || '').slice(0, 42) + (e.variant ? ' #' + e.variant : ''), est: b.status + ((b.sub_status || []).length ? '(' + b.sub_status.join(',') + ')' : ''),
               P, mg, g, mgP, meta, nota, st, stDesc, exc: (nosub || {})[mla] ? 'liquidando' : (cPiso && cPiso[mla] && Math.abs((Number(cPiso[mla].a) || 0) - P) <= 10) ? 'la dejé así con !piso' : pcV.vig ? `en promo mía${pcV.hasta ? ' hasta ' + pcV.hasta : ''}` : (P >= 32900 && P < UMBRAL_ENVIO_GRATIS && meta && meta.barrera) ? 'frenada en la barrera de $33.000 (regla 2)' : '', pcVen: pClaude[mla] && !pcV.vig ? (pcV.hasta || '?') : '', ...vv, cero: h.cero && st === 0 && !stDesc ? h.cero : null, tanda, caja: e.caja || '', ptw: e.cajaPtw || null, var: (b.variations || []).length,
               cambio: a && a.ts ? `${f(a.de)}→${f(a.a)} hace ${Math.round((hoy - a.ts) / 864e5)} d${a.por ? ' (' + a.por + ')' : ''}` : '' });
           }
@@ -39674,6 +39674,38 @@ async function main() {
       console.log(`\n── 🛡️ ABAJO DEL ${PISO}% EN EL PEOR CASO (retención de otra provincia ${(PEOR_RET_PCT * 100).toFixed(1)}% + el envío más caro visto + cuotas): ${peorNo.length} para subir · ${peorExc.length} excepciones mías ──`);
       for (const r of peorNo.sort((x, y) => x.mgP - y.mgP)) console.log(`🛡️ ${r.mla} · ${r.cta} · ${r.nom} · ${r.est} · ${f(r.P)} · peor caso ${r.mgP.toFixed(0)}% (normal ${r.mg.toFixed(0)}%) · Full ${r.stDesc ? '? (stock del color: no sé)' : r.st} · v30 ${r.u30}${r.pcVen ? ` · (mi promo venció el ${r.pcVen})` : ''} · ${r.var ? 'CON VARIANTES: a mano' : r.meta ? `→ ${f(r.meta.P)} (${r.meta.mg.toFixed(1)}% peor caso, +${((r.meta.P / r.P - 1) * 100).toFixed(0)}%)${r.meta.P > r.P * 1.25 ? ' · más de +25%: va DE UNA (llevar al piso no es por escalones)' : ''}${r.meta.barrera ? ` ⚠️ cruza $33.000 (a $32.990 queda ${r.meta.barrera.mg == null ? '?' : r.meta.barrera.mg.toFixed(0) + '%'})` : ''}` : 'sin precio que llegue'}`);
       for (const r of peorExc) console.log(`   (excepción: ${r.exc}) ${r.mla} · ${r.nom} · ${f(r.P)} · peor caso ${r.mgP.toFixed(0)}%`);
+      // ── 📦 SOBRA STOCK Y NADIE LO DECIDIÓ (19/10/2026, regla suya con el Timer: "este no lo habías puesto como sobra stock cuando
+      // claramente sí lo estaba (…) la idea es que sea automático y dándose cuenta de las situaciones"). Igual que la 🚨 de escasez,
+      // pero del otro lado: todo stock de Full que al ritmo de hoy (el mayor entre 30 y 60 días, sumando las publicaciones que
+      // comparten esa mercadería) dura más de SOBRA_DIAS_PL días, o que no vendió en 60, sale acá si no está anotado 📦 sobra,
+      // 📉 liquidando, en promo mía o !piso, y si no le escribí una nota en los últimos 7 días. Se decide EN ESA VUELTA (promo,
+      // escalera, retiro) o se deja con motivo (`decido:<MLA>=nota|…`). La lista tiene que quedar vacía.
+      try {
+        const SOBRA_DIAS_PL = 90;
+        let nts = null; try { nts = (await db.get('mlapi/fichanotas')) || {}; } catch { nts = null; }
+        if (!nts) console.log('\n⚠️ no pude leer mis notas: la lista de sobra stock sale sin descontar lo ya pensado');
+        const ultNota = (m) => Math.max(0, ...Object.keys((nts || {})[m] || {}).map(Number).filter((n) => n > 0));
+        const grupos = {};
+        for (const r of filas) { if (!r.kSt) continue; (grupos[r.kSt] = grupos[r.kSt] || []).push(r); }
+        const sobra = [], pensadas = [];
+        for (const [k, rs] of Object.entries(grupos)) {
+          const st = Math.max(...rs.map((r) => r.st || 0)); if (!(st > 0)) continue;
+          const u30 = rs.reduce((a, r) => a + (r.u30 || 0), 0), u60 = rs.reduce((a, r) => a + (r.u60 || 0), 0);
+          const rit = Math.max(u30 / 30, u60 / 60), dias = rit > 0 ? st / rit : Infinity;
+          if (dias <= SOBRA_DIAS_PL) continue;
+          const yaTag = rs.find((r) => ['sobra', 'liquidando'].includes(r.est2.t) || /promo mía|liquidando|!piso/.test(r.exc || ''));
+          if (yaTag) continue;
+          const nota = Math.max(...rs.map((r) => ultNota(r.mla)));
+          const fila = { k, rs, st, u30, u60, dias };
+          if (nota && hoy - nota < 7 * 864e5) pensadas.push(fila); else sobra.push(fila);
+        }
+        sobra.sort((x, y) => y.st - x.st);
+        console.log(`\n── 📦 SOBRA STOCK Y NO LO DECIDÍ (${sobra.length}) · más de ${SOBRA_DIAS_PL} días de stock en Full al ritmo de hoy · decidir EN ESTA VUELTA: promo/escalera, retiro, o dejar con motivo ──`);
+        for (const x of sobra) console.log(`📦 ${x.rs.map((r) => r.mla).join(' ')} · ${x.rs[0].cta} · ${x.rs[0].nom} · ${x.st} u. en Full · vendió ${x.u30} en 30 d y ${x.u60} en 60 d · ${x.dias === Infinity ? 'no vendió en 60 d' : 'alcanza ' + Math.round(x.dias) + ' d'} · ${f(x.rs[0].P)} · ${x.rs[0].mg == null ? 'margen ?' : x.rs[0].mg.toFixed(0) + '%'} · ${x.rs[0].est} · 🏷 ${ESTRATEGIAS[x.rs[0].est2.t]}`);
+        if (!sobra.length) console.log('ninguna: todo lo que sobra ya está anotado o pensado');
+        if (pensadas.length) console.log(`   (${pensadas.length} sobran pero ya les escribí nota en los últimos 7 días: ${pensadas.map((x) => x.rs[0].nom.slice(0, 24)).join(' · ')})`);
+        if (filas.some((r) => !r.kSt && r.st === 0 && r.stDesc)) console.log(`   (afuera: ${filas.filter((r) => r.stDesc).length} con el stock del color sin saber)`);
+      } catch (eS) { console.log('⚠️ la lista de sobra stock falló: ' + eS.message); }
       if (sinMgTxt(filas)) console.log(sinMgTxt(filas));
       console.log(`\nResumen: ${filas.length} miradas · ${bajo.length} abajo de ${PISO}% · ${sinMg.length} sin margen medible · ${rap.length} cuya última tanda duró 3 días o menos (probablemente baratas)`);
       return;
