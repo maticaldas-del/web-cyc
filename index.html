@@ -2666,7 +2666,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.88';
+const APP_VERSION='24.89';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2677,6 +2677,7 @@ const APP_VERSION='24.88';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.89',f:'19/10/2026',h:'16:00',c:[{n:2,t:'🏔️ Techo encontrado sólo con 95% de seguridad medida con las ventas, y la línea de tiempo marca el día donde se encontró con el porqué. Lo que no llega al 95% vuelve a 📈 buscando techo.'}]},
   {v:'24.88',f:'19/10/2026',h:'15:40',c:[{n:2,t:'Pedidos de Listas (Iscos y las demás): cada producto muestra el precio de la lista y el total a precio de lista, y el mensaje para copiar lo lleva, así se compara contra lo que factura el mayorista.'}]},
   {v:'24.87',f:'19/10/2026',h:'15:20',c:[{n:3,t:'Se eliminó la etiqueta 🎯 base: todo precio tiene que tener su estrategia. Lo que todavía no tiene se ve como ⚪ sin estrategia (para decidir) y lo que no tiene stock en Full como ⏸️ sin stock.'},{n:2,t:'Los techos ya encontrados quedan marcados 🏔️ en la línea de tiempo (Centímetro Gris, Naipes Casino, Filtros, Adaptador, Metatarso, Lupa 90, Rebarbador, Pizarra).'}]},
   {v:'24.86',f:'19/10/2026',h:'15:00',c:[{n:2,t:'Los pasajes de precio tienen nombre: 🏔️ techo encontrado · 🪜 bajando · ↘️ volviendo al normal · ↗️ volviendo de sobra · 🧨 remate total. Cada etiqueta dice además de dónde venía ("📦 sobra · de 🔥").'},{n:2,t:'"↩️ corrección" desaparece: lo viejo toma el nombre del pasaje según la estrategia anterior.'},{n:1,t:'La escasez muestra en qué escalón va, igual que el techo.'},{n:3,t:'Robot: lista nueva 🔎 SIN AFINAR en la planilla: todo lo que vende y nunca probó techo sale ahí hasta que se decide.'}]},
@@ -9922,6 +9923,13 @@ function lineaPintar(prodId){
     const vv=Number(t.volvio);if(vv>0&&vv<t.probado){const y2=L.pr[0]+L.pr[1]-(pcMax>pcMin?(vv-pcMin)/(pcMax-pcMin):.5)*L.pr[1];
       svg+=`<g style="cursor:help"><title>✓ ${fmt(vv)}: el precio que sí vendía, al que se volvió después de la prueba.</title><line x1="${x0.toFixed(1)}" y1="${y2.toFixed(1)}" x2="${W}" y2="${y2.toFixed(1)}" stroke="var(--green)" stroke-width="1.2" stroke-dasharray="2,3" opacity=".85"/>`+
         `<text x="${(x0+3).toFixed(1)}" y="${(y2+11).toFixed(1)}" font-size="10" fill="var(--green)">✓ a ${fmt(vv)} sí vende</text></g>`;}});
+  // 🏔️ DÓNDE SE ENCONTRÓ EL TECHO (19/10/2026, él: "todos los que digan techo encontrado tienen que marcar en la línea dónde se encontró
+  // el techo y por qué estás seguro"). Raya vertical verde el día de la anotación 🏔️ (la anota `techo95` sólo con 95% de seguridad)
+  // y el porqué en el globito.
+  {const vistos=new Set();Object.keys(porMlaF).forEach(mla=>{const h=(state.estrategia||{})[mla]||{};Object.entries(h).forEach(([k,x])=>{if(!x||x.t!=='techook')return;const n=Number(k);if(!(n>0))return;
+    const kk=dateToKey(new Date(n)),i=ks.indexOf(kk);if(i<0||vistos.has(kk))return;vistos.add(kk);const xx=X(i)+bw/2;
+    const tt=`🏔️ Techo encontrado (${_lineaFmtDia?_lineaFmtDia(kk):kk})\n${x.m||''}`.replace(/[<>&]/g,'');
+    svg+=`<g style="cursor:help"><title>${tt}</title><line x1="${xx.toFixed(1)}" y1="${L.pr[0]}" x2="${xx.toFixed(1)}" y2="${(L.pr[0]+L.pr[1]).toFixed(1)}" stroke="#16a34a" stroke-width="1.5" stroke-dasharray="3,3"/><text x="${(xx+3).toFixed(1)}" y="${(L.pr[0]+10).toFixed(1)}" font-size="10" fill="#16a34a">🏔️ techo</text></g>`;});});}
   // Cada tramo toma el color de la estrategia del día al que llega (la línea cambia de color el día que cambió la estrategia).
   if(ptsPK.length>1)for(let j=1;j<ptsPK.length;j++){const a=ptsPK[j-1],b=ptsPK[j];svg+=`<line x1="${a[0].toFixed(1)}" y1="${a[1].toFixed(1)}" x2="${b[0].toFixed(1)}" y2="${b[1].toFixed(1)}" stroke="${_estCol(b[2])}" stroke-width="2" stroke-linecap="round"/>`;}
   // marcas de cambios de precio
