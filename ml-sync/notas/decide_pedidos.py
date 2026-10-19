@@ -192,7 +192,6 @@ for p,q,d,rent in res:
             # SÓLO ESTOS COLORES (16/10/2026, idea 11 del análisis): llegaban colores lentos en vez de los que se agotan.
             # NO VIENE MÁS (17/10/2026, regla suya): un aroma que se pidió al Paulvic y no vino no se vuelve a pedir.
             if v.get('nunca'): qq,mot=0,f"Hola Tito! {v['v']}: no te lo pido más. Lo pedimos y no vino, así que lo damos por que no viene más."
-            if qq>0: mot+=' Sólo este color: si no hay, no lo cambies por otro.'
             N.append(f"ped:{pid}#{v['v']}=u|{qq}|{mot}")
         if not filas:
             # Producto con colores sin ningún color con datos: no se puede escribir sin color (decido lo rechaza). Si había

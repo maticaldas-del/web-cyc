@@ -2069,7 +2069,7 @@ function startApp(){
   db.ref('mlapi/claudeexp').on('value',snap=>{
     const v=snap.val()||{};_cerNotas=new Set(Object.keys(v).filter(k=>v[k]&&v[k].simple));
     // El TEXTO de las notas de unidades (ped__/caja__) queda en memoria para mostrarlo a la vista (etapa 6, idea 2).
-    _cerTxt={};for(const k of _cerNotas)if(k.startsWith('ped__')||k.startsWith('caja__'))_cerTxt[k]={s:String(v[k].simple),ts:v[k].ts||0};
+    _cerTxt={};for(const k of _cerNotas)if(k.startsWith('ped__')||k.startsWith('caja__'))_cerTxt[k]={s:_sinSoloTxt(v[k].simple),ts:v[k].ts||0};
     if(typeof renderPronto==='function')renderPronto();
   },()=>{_cerNotas=null;});
   db.ref('cyc').on('value',snap=>{
@@ -2665,7 +2665,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.77';
+const APP_VERSION='24.78';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2676,6 +2676,7 @@ const APP_VERSION='24.77';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.78',f:'19/10/2026',h:'14:45',c:[{n:2,t:'Paulvic: lo recomendado de cada aroma va redondeado al más cercano de 3, 5, 10, 20, 50 o 100 (antes sólo el texto copiado, y para arriba). El total, el copiar y el pedido hecho usan el mismo número. Lo cambiado a mano queda como lo pusiste.'},{n:1,t:'Se sacó "SÓLO estos colores/productos: si no hay, no reemplazar por otro" del copiar pedido, de las listas y de las explicaciones del 🧠.'}]},
   {v:'24.77',f:'19/10/2026',h:'14:20',c:[{n:2,t:'Pedidos: las unidades de cada color se pueden cambiar a mano (tocá el número). Lo cambiado dice "✋ a mano", manda sobre lo que decidí yo y el 📋 Copiar pedido se actualiza.'},{n:2,t:'Paulvic: botón "✅ Pedido hecho". Pasa a En camino con las mismas unidades que se copian (redondeadas), las descuenta de lo pedido y borra lo cambiado a mano.'}]},
   {v:'24.76',f:'19/10/2026',h:'12:50',c:[{n:2,t:'Escasez: el ritmo "normal" del año (sin remates) se usa sólo cuando el precio se subió a propósito (escasez, techo, sin reposición). Antes se usaba siempre y el Chispero, que había BAJADO de precio, salía en escasez con 34 días de stock.'}]},
   {v:'24.75',f:'19/10/2026',h:'12:05',c:[{n:2,t:'Ventas: en el detalle de cada venta hay "🚫 no se consigue más" (del color de esa venta si lo tiene). Es la misma marca que el botón de Pedidos: el producto sigue en Pedidos y pasa a escasez sin reposición. Se deshace con "se consigue de nuevo".'}]},
@@ -10320,7 +10321,7 @@ async function cerebroAbrir(el,ev){
       if(o.n===undefined){falla=true;continue;}
       if(!o.n||!o.n.simple||vistos.has(o.cab))continue;vistos.add(o.cab);nn++;
       if(_repetido(o.n.simple))continue;_decir(o.n.simple);
-      h+=par(`${o.cab&&(ctxK.length>2||o.esVar)?`<b>${_cerEsc(o.cab)}:</b> `:''}💭 ${_cerEsc(_cerFecha(o.n.ts))}: ${_cerEsc(o.n.simple)}`);
+      h+=par(`${o.cab&&(ctxK.length>2||o.esVar)?`<b>${_cerEsc(o.cab)}:</b> `:''}💭 ${_cerEsc(_cerFecha(o.n.ts))}: ${_cerEsc(_sinSoloTxt(o.n.simple))}`);
     }
     // CADA LUGAR, SU NOTA (08/10/2026, él: *"en ventas quiero que digas por qué aumentó el precio o por qué no, y en
     // pedidos por qué pide x unidades"*): en Pedidos y Armar caja van SÓLO las notas de unidades (ped/caja); las de
@@ -17260,6 +17261,7 @@ function pedSinSentido(p){
 // El motivo de la caja violeta (09/10/2026): si se decidió color por color, cada color con su motivo
 // (los que tienen renglón lo dicen en su renglón; acá van los que no lo tienen: los de 0 u.), y el motivo
 // del precio para el máximo de compra aparte y en chico.
+function _sinSoloTxt(t){return String(t||'').replace(/\s*Sólo este color: si no hay, no lo cambies por otro\.?/g,'');}
 function _clMotH(p){
   const c=p.cClaude||{};let h='';
   const mv=c.motVars&&typeof c.motVars==='object'?Object.values(c.motVars):[];
@@ -17267,8 +17269,8 @@ function _clMotH(p){
     const conFila=new Set((p.variantesNec||[]).filter(x=>(x.q||0)>0&&x.mot).map(x=>sid(String(x.v).toLowerCase())));
     const sinFila=mv.filter(m=>!conFila.has(sid(String(m.v).toLowerCase())));
     h+=`<div style="color:var(--muted);margin-top:2px">Decidido color por color${conFila.size?': el motivo de cada color a comprar está en su renglón':''}.</div>`;
-    if(sinFila.length)h+=`<div style="margin-top:3px">${sinFila.map(m=>`<div style="color:var(--muted)">· <b style="color:var(--text)">${escHtml(m.v)}</b>${m.q!=null?` (${fmtN(m.q)} u.)`:''}: ${escHtml(m.t)}</div>`).join('')}</div>`;
-  }else if(c.mot)h+=`<div style="color:var(--muted);margin-top:2px">${escHtml(c.mot)}</div>`;
+    if(sinFila.length)h+=`<div style="margin-top:3px">${sinFila.map(m=>`<div style="color:var(--muted)">· <b style="color:var(--text)">${escHtml(m.v)}</b>${m.q!=null?` (${fmtN(m.q)} u.)`:''}: ${escHtml(_sinSoloTxt(m.t))}</div>`).join('')}</div>`;
+  }else if(c.mot)h+=`<div style="color:var(--muted);margin-top:2px">${escHtml(_sinSoloTxt(c.mot))}</div>`;
   if(c.motPv)h+=`<div style="color:var(--muted);margin-top:3px;font-size:.92em">💰 Precio para el máximo de compra: ${escHtml(c.motPv)}</div>`;
   return h;
 }
@@ -17741,6 +17743,7 @@ function maxCompraChip(p){
 // podés poner un botón para copiar? (…) que sólo aparezca nombre y unidades a pedir"). Se copian SÓLO
 // las variantes que hay que comprar (las de "✓ mandar" no), en el mismo orden que se ven en pantalla.
 const _pedCopiaTxt={},_pedHechoItems={};
+function pvRedondo(q){q=Number(q)||0;if(q<=0)return 0;const P=[3,5,10,20,50,100];if(q>100)return Math.round(q/100)*100;let b=P[0];for(const t of P)if(Math.abs(t-q)<Math.abs(b-q)||(Math.abs(t-q)===Math.abs(b-q)&&t>b))b=t;return b;}
 // CAMBIAR A MANO CUÁNTAS PEDIR DE UN COLOR (19/10/2026). Va a `claudedecide/ped/<id>/mano/<color>` ({u,ts}): el robot no lo toca
 // y manda sobre lo mío hasta que se marca el pedido hecho (ahí se borra).
 async function pedSetVarU(pid,v,val){
@@ -17785,7 +17788,11 @@ function _pedidoItemHtml(p,opts){
   // marcado así se trata como pendiente normal (lo destildó la limpieza de estados).
   const _enCam=false, _diasCam=0;
   const vars=Array.isArray(p.variantesNec)&&p.variantesNec.length?p.variantesNec:null;
-  const varsSorted=vars?[...vars].sort((a,b)=>b.q-a.q):null;
+  // PAULVIC: LO RECOMENDADO VA REDONDEADO AL MÁS CERCANO DE 3·5·10·20·50·100 (19/10/2026, él: "siempre el pedido recomendado
+  // redondearlo al número más cercano"; antes sólo el texto copiado y para arriba). Lo cambiado a mano (✋) queda como lo puso él.
+  const _esPvR=esPedidoPaulvic(p);
+  const varsSorted=vars?[...vars].map(x=>(_esPvR&&!x.mano&&(x.q||0)>0)?{...x,q:pvRedondo(x.q)}:x).sort((a,b)=>b.q-a.q):null;
+  const _cantShow=(varsSorted&&_esPvR)?varsSorted.reduce((a,x)=>a+(x.q||0),0):(p.cantidad||1);
   const _vOpen=varsSorted&&_openPedVars.has(p.id);
   void _vOpen;
   // LAS VARIANTES A LA VISTA (06/10/2026, pedido suyo: "al hacer click aparezcan las variantes directamente
@@ -17806,11 +17813,11 @@ function _pedidoItemHtml(p,opts){
   // PAULVIC: EL MENSAJE VA EN CANTIDADES REDONDAS (18/10/2026, pedido suyo: "que al copiar el mensaje siempre las unidades pedidas
   // sean 3, 5, 10, 20, 50, 100. si hay que pedir 1 que diga 3. total si me paso por un poco no pasa nada"). Se redondea PARA ARRIBA
   // al escalón siguiente; arriba de 100, a la centena siguiente. Sólo el texto copiado: la tarjeta sigue diciendo lo que hace falta.
-  const _pvPaso=q=>{for(const t of [3,5,10,20,50,100])if(q<=t)return t;return Math.ceil(q/100)*100;};
-  const _esPv=esPedidoPaulvic(p);
+  const _pvPaso=q=>q;   // ya viene redondeado (pvRedondo, arriba)
+  const _esPv=_esPvR;
   const _aCopiar=varsSorted?varsSorted.filter(x=>(x.q||0)>0).map(x=>`${x.v} x${_esPv?_pvPaso(x.q):x.q}`):[];
   // SÓLO ESTOS COLORES (16/10/2026, idea 11 del análisis): llegaban colores lentos en lugar de los que se agotan.
-  if(_aCopiar.length)_pedCopiaTxt[p.id]=_aCopiar.join('\n')+'\nSÓLO estos colores: si no hay, no reemplazar por otro.';else delete _pedCopiaTxt[p.id];
+  if(_aCopiar.length)_pedCopiaTxt[p.id]=_aCopiar.join('\n');else delete _pedCopiaTxt[p.id];   // sin el "SÓLO estos colores" (19/10/2026, él: "queda feo")
   // LO QUE SE PIDE AL PAULVIC = LO QUE SE COPIA (19/10/2026, "agregar botón de pedido hecho"): mismas unidades redondeadas.
   if(_esPv&&_aCopiar.length&&p.prodId)_pedHechoItems[p.id]={prodId:p.prodId,items:varsSorted.filter(x=>(x.q||0)>0).map(x=>({v:x.v,u:_pvPaso(x.q),q:x.q}))};else delete _pedHechoItems[p.id];
   const hechoBtn=(_esPv&&_aCopiar.length&&p.prodId)?`<button class="pi-var-toggle" style="background:rgba(59,130,246,.14);color:#60a5fa;border-color:rgba(59,130,246,.35)" onclick="pvPedidoHecho('${p.id}')" title="Ya mandé el pedido al Paulvic: pasa a En camino con las mismas unidades que se copian">✅ Pedido hecho</button>`:'';
@@ -17867,7 +17874,7 @@ function _pedidoItemHtml(p,opts){
       ${_prod?fotoChipHTML(_prod,38,p.variante||''):''}
       <span class="ped-name">${p.producto||'—'}${p.variante?` <span style="padding:1px 6px;border-radius:4px;background:rgba(124,58,237,.15);color:#a78bfa;font-size:.65rem;font-family:'DM Mono',monospace;font-weight:400">${p.variante}</span>`:''}${opts.etiqueta||''}</span>
       ${_prod?maxCompraChip(_prod):''}
-      <span class="ped-buy"><b>${fmtN(p.cantidad||1)}</b><i>u. a comprar${p.auto===false?' · a mano':''}</i>${_semTxt?`<i class="ped-sem" title="Cuenta lo que hay en ML + en camino + en tu oficina, al ritmo de venta">${_semTxt}</i>`:''}</span>
+      <span class="ped-buy"><b>${fmtN(_cantShow)}</b><i>u. a comprar${p.auto===false?' · a mano':''}</i>${_semTxt?`<i class="ped-sem" title="Cuenta lo que hay en ML + en camino + en tu oficina, al ritmo de venta">${_semTxt}</i>`:''}</span>
       <span class="ped-caret">▼</span>
     </summary>
     <div class="ped-body">
@@ -18182,7 +18189,7 @@ async function renderListas(){
     const tot=A.reduce((t,x)=>t+_listaPuesto(k,x.e)*x.u,0),uT=A.reduce((t,x)=>t+x.u,0);
     // COPIAR PEDIDO IGUAL QUE PAULVIC (18/10/2026, pedido suyo con Iscos: *"poneme para copiar el pedido, se pone el nombre idéntico
     // a paulvic"*): un renglón por producto, "<nombre tal cual la lista> x<unidades>", y al final que no reemplacen.
-    const msg=A.map(x=>`${x.e.n} x${x.u}`).join('\n')+'\nSÓLO estos productos: si no hay, no reemplazar por otro.';
+    const msg=A.map(x=>`${x.e.n} x${x.u}`).join('\n');
     const C=Object.entries(state.comprasLista||{}).map(([id,c])=>({...c,id})).filter(c=>c.prov===k).sort((a,b)=>(b.ts||0)-(a.ts||0));
     const comp=c=>{const t=(c.items||[]).reduce((s,i)=>s+(i.pc||0)*(i.u||0),0);const cam=c.estado==='camino';
       return `<details style="background:var(--surface);border:1px solid ${cam?'var(--amber)':'var(--border)'};border-radius:8px;padding:8px 10px;margin-bottom:6px"><summary style="cursor:pointer;font-size:.74rem">${cam?'🚚 en camino':'✅ llegó'} · <b>${c.fecha}</b> · ${(c.items||[]).length} productos · ${fmt(t)}</summary>
