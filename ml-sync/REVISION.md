@@ -1654,3 +1654,9 @@ el total del remito es la suma de los netos, sin IVA encima). La lista se había
 entre 73% y 82% más caro que lo real. `listadto:<prov>;base=;dto=;<prefijo>=<%>;go` guarda en cada producto `pl` (P. Lista), `dto` y
 `p` = pl × (1 − dto), y `listamedir` lo vuelve a medir solo. La web muestra "lista $X −N%" y el pedido sigue con el precio de lista.
 **Chequear:** que una marca de Iscos con otro descuento no quede con el 30% general; que re-correr `listadto` no descuente dos veces.
+
+### Etapa 7 · 19/10/2026 · v24.94 · ventas: la promo sólo como tag
+Pedido suyo con el Timer (ML puso $0 y decía "🏷️ promo" arriba y "⚪ sin estrategia" en el tag). `vpPromoLabel` ya no dibuja nada;
+`estrategiaVentaHTML` usa lo que pasó en esa venta (`cyc/promoventa`): ML puso algo = 🏷️ promo, sólo nosotros = 💸 descuento, con la
+estrategia del precio como "· de X". Además el tag del Timer (`MLA3735058390`, 📦 sobra) se anotó desde el 18/10 con `tag:…@fecha`:
+se había guardado después de la venta. **Chequear:** que una venta en promo nunca muestre ⚪ sin estrategia.
