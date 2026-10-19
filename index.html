@@ -2666,7 +2666,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.94';
+const APP_VERSION='24.95';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2677,6 +2677,7 @@ const APP_VERSION='24.94';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.95',f:'19/10/2026',h:'18:29',c:[{n:1,t:'Línea de tiempo: la línea del precio más gruesa, para que se vea bien el color de cada estrategia (gris = sin estrategia, verde = buscando techo, amarillo = bajando, naranja = sobra…).'}]},
   {v:'24.94',f:'19/10/2026',h:'18:28',c:[{n:2,t:'Ventas: se sacó el cartel 🏷️ promo de arriba a la derecha. Ahora lo dice sólo el tag de cada venta: 🏷️ promo si ML puso plata, 💸 descuento si el precio tachado lo pusimos nosotros, y al lado "· de" la estrategia que tenía el precio.'}]},
   {v:'24.93',f:'19/10/2026',h:'18:14',c:[{n:3,t:'Listas → Iscos: el costo estaba casi el doble de lo que pagás (se había tomado el P. Lista como si fuera sin IVA y se le sumó 21%). Ahora cada producto cuesta el P. Lista menos el descuento del remito: 30%, y 33,5% en Cher y Bensimon. Cada renglón dice la lista y el descuento, y el pedido sigue mostrando el precio de lista.'}]},
   {v:'24.92',f:'19/10/2026',h:'17:20',c:[{n:1,t:'Línea de tiempo: el piso y el precio de más plata quedaron unificados en una sola raya 💰 piso (de ahí no se baja salvo un problema). Arriba, la 🔴 techo.'}]},
@@ -9963,7 +9964,7 @@ function lineaPintar(prodId){
     const tt=`🏔️ Techo encontrado (${_lineaFmtDia?_lineaFmtDia(kk):kk})\n${x.m||''}`.replace(/[<>&]/g,'');
     svg+=`<g style="cursor:help"><title>${tt}</title><line x1="${xx.toFixed(1)}" y1="${L.pr[0]}" x2="${xx.toFixed(1)}" y2="${(L.pr[0]+L.pr[1]).toFixed(1)}" stroke="#16a34a" stroke-width="1.5" stroke-dasharray="3,3"/><text x="${(xx+3).toFixed(1)}" y="${(L.pr[0]+10).toFixed(1)}" font-size="10" fill="#16a34a">🏔️ techo</text></g>`;});});}
   // Cada tramo toma el color de la estrategia del día al que llega (la línea cambia de color el día que cambió la estrategia).
-  if(ptsPK.length>1)for(let j=1;j<ptsPK.length;j++){const a=ptsPK[j-1],b=ptsPK[j];svg+=`<line x1="${a[0].toFixed(1)}" y1="${a[1].toFixed(1)}" x2="${b[0].toFixed(1)}" y2="${b[1].toFixed(1)}" stroke="${_estCol(b[2])}" stroke-width="2" stroke-linecap="round"/>`;}
+  if(ptsPK.length>1)for(let j=1;j<ptsPK.length;j++){const a=ptsPK[j-1],b=ptsPK[j];svg+=`<line x1="${a[0].toFixed(1)}" y1="${a[1].toFixed(1)}" x2="${b[0].toFixed(1)}" y2="${b[1].toFixed(1)}" stroke="${_estCol(b[2])}" stroke-width="3.5" stroke-linecap="round"/>`;}
   // marcas de cambios de precio
   const motivoTxt={rescate:'🛟 rescate después de una venta baja',rescatep:'🛟 rescate antes de vender (cuenta)',subir:'📈 suba del robot',bajar:'📉 baja del robot',remate:'🔻 remate',escalera:'🪜 escalera',prueba:'🧪 prueba +5%',promo:'🏷️ promo (precio tachado)',mano:'✋ a mano',volver:'↩️ vuelto atrás'};
   const evK={}; for(const e of C.evP){if(!e.ts||!_mlaOk(e.mla))continue;const kk=dateToKey(new Date(e.ts));(evK[kk]=evK[kk]||[]).push(e);}
