@@ -2665,7 +2665,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.70';
+const APP_VERSION='24.71';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2676,6 +2676,7 @@ const APP_VERSION='24.70';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.71',f:'19/10/2026',h:'00:55',c:[{n:1,t:'Paraguay · Probados: lo que cargás en el 🧾 Pedido sale de la lista (como ya pasaba en Nuevos). Si lo sacás del pedido, vuelve solo.'}]},
   {v:'24.70',f:'19/10/2026',h:'00:13',c:[{n:1,t:'Ventas en la PC: el renglón de arriba ya no se corta (el «Bien» y la 📈 quedaban afuera). El neto y el costo pasaron al detalle; si igual no entra, baja a una segunda línea.'}]},
   {v:'24.69',f:'19/10/2026',h:'22:59',c:[{n:1,t:'Inicio: el puntaje de Rotación de Stock ya no se sale de su círculo (ahora es una píldora más ancha).'}]},
   {v:'24.68',f:'19/10/2026',h:'22:18',c:[{n:1,t:'Ventas en la PC: el cambio de precio ($antes→$ahora, cuántos cambios) ya no se sale de la tarjeta: en el renglón queda la flecha ▲/▼ y el texto entero está en el detalle.'}]},
@@ -18294,6 +18295,12 @@ function renderPedidos(){
     // "VENDER EN" (18/10/2026, él: "poner el filtro de perfumería, ML, todos arriba, en general para probados y nuevos"):
     // en Probados filtra lo que da arriba: ML = da en ML (no sólo por el local) · Perfumería = el local deja 25%+.
     let _ocultosF=0;
+    // LO QUE YA ESTÁ EN EL PEDIDO SALE DE ACÁ (19/10/2026, él: "al cargar unidades al pedido que salgan de ahí de nuevos o
+    // probados. pero si una vez en el pedido los saco, que vuelvan donde estaban"). Igual que Nuevos con candEnPedido: se
+    // mira state.pyArmado en cada dibujado, así que sacarlo del pedido (u = 0) lo devuelve solo.
+    const _enArm=new Set(Object.entries(state.pyArmado||{}).filter(([,v])=>(parseInt(v&&v.u)||0)>0).map(([k])=>k));
+    const _nEnPed=peds.filter(p=>p.prodId&&_enArm.has(p.prodId)).length;
+    peds=peds.filter(p=>!(p.prodId&&_enArm.has(p.prodId)));
     peds.slice().sort(_pedSortFnRiesgo).forEach(p=>{const v=pyProbVeredicto(p);
       if(v.k==='da'&&_candFiltro!=='todos'){const ml=v.via!=='local',lo=pyProbLocalOk(p);
         const ok=_candFiltro==='ml'?ml:_candFiltro==='local'?lo:(ml&&lo);if(!ok){_ocultosF++;return;}}
@@ -18311,6 +18318,7 @@ function renderPedidos(){
     el.innerHTML=''
       +(G.da.length?G.da.map(card).join(''):`<div class="empty-msg">${_ocultosF?'Ninguno con este filtro.':'Todavía ninguno confirmado: falta revisar los precios de '+pyProvNom()+'.'}</div>`)
       +(_ocultosF?`<div style="font-size:.64rem;color:var(--muted);margin:6px 0">${_ocultosF} que dan quedan ocultos por el filtro "Vender en".</div>`:'')
+      +(_nEnPed?`<div style="font-size:.64rem;color:var(--muted);margin:6px 0">${_nEnPed} ya ${_nEnPed===1?'está':'están'} en el 🧾 Pedido (si lo${_nEnPed===1?'':'s'} sacás de ahí, vuelve${_nEnPed===1?'':'n'} acá).</div>`:'')
       +(resto?`<details style="margin-top:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px"><summary style="cursor:pointer;font-size:.82rem;font-weight:700">⬇️ No da, no hay o falta revisar (${resto})</summary>
         ${grupo('❔ Falta revisar el precio en '+pyProvNom(),G.sinrev,'var(--amber)')}${grupo('🔴 No da el precio',G.noda,'var(--red)')}${grupo('⚪ '+pyProvNom()+' no lo tiene',G.notiene,'var(--muted)')}</details>`:'');
   }

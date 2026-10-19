@@ -1593,3 +1593,7 @@ Chequear: que un proveedor de la carpeta siga apareciendo si es el único.
 ### Etapa 7 · 19/10/2026 · la cabecera de la venta se cortaba en la PC (v24.70)
 - Qué: en `.vp-pc-cab` (Ventas x Producto, PC) con `overflow:hidden` se perdía lo de la derecha ("Bien", 📈). Salieron el neto y el costo (están en el detalle: "Cobrado · neto" y "Costo") y la fila puede pasar a dos líneas en vez de cortarse.
 - Chequear: en una ventana de ~1000px se ven el % con su etiqueta y la 📈; nada queda afuera de la tarjeta.
+
+### Etapa 3 · 19/10/2026 · Paraguay Probados: lo cargado en el pedido sale de la lista (v24.71)
+- Qué: en Pedidos → Paraguay → Probados, las fichas con unidades en `state.pyArmado` no se dibujan (se cuenta "N ya están en el 🧾 Pedido"). Nuevos ya lo hacía con `candEnPedido`. Al poner 0 en el pedido vuelven solas (se mira en cada dibujado).
+- Chequear: cargar un probado → desaparece de Probados y aparece en 🧾 Pedido; sacarlo → vuelve a Probados.
