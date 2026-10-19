@@ -19421,6 +19421,14 @@ async function main() {
         if (aplicar) await db.patch('cyc/mlconfig/listasProv/' + k, cuentaLista((await db.get('mlapi/listas/' + k)) || {})); }
       return;
     }
+    // BILLING_PROBE=listaver:<proveedor> → SOLO LEE (19/10/2026). La lista guardada ENTERA de un proveedor, para compararla contra
+    // otra (ej. el catálogo web de Iscos): una línea por producto, cód|nombre|pesos|fecha de carga. Nada de compradores: es la lista del proveedor.
+    if (/^listaver:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const k = String(process.env.BILLING_PROBE).split(':')[1].trim().toLowerCase(); const pv = ((await db.get('cyc/mlconfig/listasProv')) || {})[k] || {};
+      const cat = (await db.get('mlapi/listas/' + k)) || {}; console.log(`${pv.nombre || k} · fecha ${pv.fecha || '?'} · ${Object.keys(cat).length} productos`); console.log('@@LISTA');
+      for (const [cod, e] of Object.entries(cat)) if (e) console.log([cod, String(e.n || '').replace(/\|/g, '/'), Number(e.p) || 0, e.ts ? new Date(e.ts).toISOString().slice(0, 10) : ''].join('|'));
+      console.log('@@FIN'); return;
+    }
     // BILLING_PROBE=listarevisar[:<proveedor>] → SOLO LEE. La lista para el chat de compras (18/10/2026, pedido suyo: "un prompt para el chat
     // local que saque toda la info que ella puede y vos no"): de cada lista, lo que da o está "para revisar", con el catálogo de ML contra
     // el que se midió. Una línea por producto: prov|cód|nombre de la lista|costo|MLA catálogo|título en ML|precio ML|margen|estado.
