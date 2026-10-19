@@ -2678,7 +2678,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.02';
+const APP_VERSION='25.03';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2689,6 +2689,7 @@ const APP_VERSION='25.02';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.03',f:'19/10/2026',h:'21:05',c:[{n:2,t:'Armar caja: al buscar, el desplegable "Sin recomendación para mandar" se abre solo. Lo que estaba en 0 quedaba adentro, cerrado, y parecía que no existía'}]},
   {v:'25.02',f:'19/10/2026',h:'20:45',c:[{n:1,t:'Armar caja: el buscador también encuentra por el título de la publicación de ML (las fichas de Paraguay se llaman en portugués: ahora "micrófono" encuentra el "Microfone Fifine")'}]},
   {v:'25.01',f:'19/10/2026',h:'23:10',c:[{n:1,t:'Paulvic → Pedidos hechos: un pedido en camino muestra "a pagar ≈ $X · aprox" (unidades pedidas × lo que salió cada una en el último pedido, sin flete). El número real lo da la calculadora al llegar.'}]},
   {v:'25.00',f:'19/10/2026',h:'22:55',c:[{n:1,t:'Ventas en el teléfono: al abrir el detalle de una venta la tarjeta ya no se sale de la pantalla (antes se cortaban el %, los chips y los botones y la letra se agrandaba).'}]},
@@ -6795,7 +6796,8 @@ function renderOfiCaja(){
   const _arriba=verLista.filter(_conRec), _abajo=verLista.filter(f=>!_conRec(f));
   let _abOpen=false;try{_abOpen=localStorage.getItem('cycCajaSinRec')==='1'}catch{}
   cont.innerHTML=cartel+(_arriba.length?_arriba.map(_fila).join(''):'<div class="empty-msg">Nada recomendado para mandar.</div>')
-    +(_abajo.length?`<details style="margin-top:6px"${_abOpen?' open':''} ontoggle="try{localStorage.setItem('cycCajaSinRec',this.open?'1':'0')}catch{}">
+    // BUSCANDO, EL DESPLEGABLE SE ABRE SOLO (19/10/2026): escribió "micro" y el Fifine quedaba adentro, cerrado, y parecía no estar.
+    +(_abajo.length?`<details style="margin-top:6px"${(_abOpen||_q)?' open':''} ontoggle="if(!${_q?1:0})try{localStorage.setItem('cycCajaSinRec',this.open?'1':'0')}catch{}">
       <summary style="cursor:pointer;font-size:.78rem;color:var(--muted);padding:8px 4px">Sin recomendación para mandar (${_abajo.length}) ▾</summary>
       ${_abajo.map(_fila).join('')}</details>`:'')
     +_noRepoPie()+_repoExtraPie();
