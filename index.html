@@ -2665,7 +2665,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.68';
+const APP_VERSION='24.69';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2676,6 +2676,7 @@ const APP_VERSION='24.68';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.69',f:'19/10/2026',h:'22:59',c:[{n:1,t:'Inicio: el puntaje de Rotación de Stock ya no se sale de su círculo (ahora es una píldora más ancha).'}]},
   {v:'24.68',f:'19/10/2026',h:'22:18',c:[{n:1,t:'Ventas en la PC: el cambio de precio ($antes→$ahora, cuántos cambios) ya no se sale de la tarjeta: en el renglón queda la flecha ▲/▼ y el texto entero está en el detalle.'}]},
   {v:'24.67',f:'18/10/2026',h:'23:30',c:[{n:1,t:'Ventas: se sacó el lápiz de modificar. El 🧠 pasó adentro del detalle (se abre tocando la tarjeta); la 📈 línea queda a la vista.'}]},
   {v:'24.66',f:'18/10/2026',h:'23:15',c:[{n:1,t:'Ventas: el detalle de cada venta se abre tocando la tarjeta (se sacó la flechita).'}]},
@@ -16658,7 +16659,7 @@ function renderRotCardScore(){
   const el=document.getElementById('nc-rot-score');if(!el)return;
   const sc=calcRotScore();
   if(!sc){el.innerHTML='';return;}
-  el.innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin-top:2px"><span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:${sc.col};color:#0f0f11;font-family:'Syne',sans-serif;font-weight:800;font-size:.72rem;flex-shrink:0">${sc.score.toFixed(1)}</span><span style="color:${sc.col};font-weight:700;font-size:.68rem">${sc.nivel}</span></div><div style="font-size:.6rem;color:var(--muted);margin-top:3px">${sc.pct.toFixed(1)}% en stock muerto · ${fmt(sc.capMuerto)}</div>`;
+  el.innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin-top:2px"><span style="display:inline-flex;align-items:center;justify-content:center;min-width:36px;height:26px;padding:0 7px;box-sizing:border-box;border-radius:13px;background:${sc.col};color:#0f0f11;font-family:'DM Mono',monospace;font-weight:700;font-size:.74rem;white-space:nowrap;flex-shrink:0">${sc.score>=9.95?'10':sc.score.toFixed(1)}</span><span style="color:${sc.col};font-weight:700;font-size:.68rem">${sc.nivel}</span></div><div style="font-size:.6rem;color:var(--muted);margin-top:3px">${sc.pct.toFixed(1)}% en stock muerto · ${fmt(sc.capMuerto)}</div>`;
 }
 /* ═══════════ FACTURAS ═══════════
    Muestra las facturas que emitió solo el facturador de ML, tal como las devuelve ML.
