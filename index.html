@@ -2665,7 +2665,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.63';
+const APP_VERSION='24.64';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2676,6 +2676,7 @@ const APP_VERSION='24.63';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.64',f:'18/10/2026',h:'22:55',c:[{n:1,t:'Ventas: el botón del detalle es sólo la flechita ▾ (sin la palabra).'}]},
   {v:'24.63',f:'18/10/2026',h:'22:35',c:[{n:1,t:'Ventas: aparecen todos los tags; los que no tienen ventas en el período salen apagados con 0.'}]},
   {v:'24.62',f:'18/10/2026',h:'22:10',c:[{n:1,t:'Ventas: el total de cada venta se ve en blanco.'}]},
   {v:'24.61',f:'18/10/2026',h:'21:55',c:[{n:2,t:'Escasez y Pedidos: el ritmo normal ya no suma lo que vendía una cuenta que dejó el producto (pausado a mano o cerrado). El F9 decía "alcanza 13 días" por las ventas viejas de Luciana; en Matías vende 1 cada 2 semanas.'}]},
@@ -11551,7 +11552,7 @@ function renderVentaProd(){
           ${pctBox}
           ${(()=>{if(_varios)return'';const _pp=prodDeVenta(grp.items[0]);return _pp?lineaBtn(_pp.id,null,_lineaVarDeVentas(grp.items,_pp.id)):'';})()}
           <button class="ii-del" style="background:rgba(124,58,237,.15);color:#a78bfa;border-color:rgba(124,58,237,.3)" onclick="vpToggleEdit('${grp.gid}')">✎</button>
-          <button class="btn" style="font-size:.66rem;padding:3px 10px;background:var(--surface2);color:var(--muted);border:1px solid var(--border)" onclick="vpToggleDet('${grp.gid}')">${_abierto?'ocultar ▴':'detalle ▾'}</button>
+          <button class="btn" style="font-size:.66rem;padding:3px 10px;background:var(--surface2);color:var(--muted);border:1px solid var(--border)" onclick="vpToggleDet('${grp.gid}')" title="${_abierto?'Ocultar el detalle':'Ver el detalle'}">${_abierto?'▴':'▾'}</button>
         </div>
         ${lines}
         ${_det}
@@ -11570,7 +11571,7 @@ function renderVentaProd(){
           ${isCancelled?'':(gc>0?`<span style="font-size:.8rem;font-weight:600;color:${gg>=0?'var(--green)':'var(--red)'}">${gg>=0?'+'+fmt(gg):'−'+fmt(-gg)}</span>`:'')}
           ${(!isCancelled&&_tot>0)?`<span style="font-size:.7rem;color:var(--muted)">de ${fmt(_tot)}</span>`:''}${_avisoIco}
           <span style="flex:1"></span>
-          <button class="btn" style="font-size:.66rem;padding:3px 10px;background:var(--surface2);color:var(--muted);border:1px solid var(--border)" onclick="vpToggleDet('${grp.gid}')">${_abierto?'ocultar ▴':'detalle ▾'}</button>
+          <button class="btn" style="font-size:.66rem;padding:3px 10px;background:var(--surface2);color:var(--muted);border:1px solid var(--border)" onclick="vpToggleDet('${grp.gid}')" title="${_abierto?'Ocultar el detalle':'Ver el detalle'}">${_abierto?'▴':'▾'}</button>
         </div>
         ${_det}
       </div>`;
