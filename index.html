@@ -2666,7 +2666,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.91';
+const APP_VERSION='24.92';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2677,6 +2677,7 @@ const APP_VERSION='24.91';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.92',f:'19/10/2026',h:'17:20',c:[{n:1,t:'Línea de tiempo: el piso y el precio de más plata quedaron unificados en una sola raya 💰 piso (de ahí no se baja salvo un problema). Arriba, la 🔴 techo.'}]},
   {v:'24.91',f:'19/10/2026',h:'16:50',c:[{n:2,t:'Línea de tiempo: en el precio, tres rayas: 🔴 techo (donde ya no rinde, 95% seguro), 🟢 piso (el precio más alto que sí vende) y 💰 el precio que más plata por día dejó. Si no se sabe, lo dice; con stock de sobra no se busca techo.'},{n:3,t:'Todas las publicaciones quedaron con estrategia: las que vendían sin una van a buscar techo, las que sobran o no venden bajan con descuento, lo recién llegado es lanzamiento y lo sin stock ⏸️.'}]},
   {v:'24.90',f:'19/10/2026',h:'16:20',c:[{n:1,t:'Ventas: se sacó el cartel dorado "promo" cuando la etiqueta de estrategia ya dice 🏷️ promo o 💸 descuento.'}]},
   {v:'24.89',f:'19/10/2026',h:'16:00',c:[{n:2,t:'🏔️ Techo encontrado sólo con 95% de seguridad medida con las ventas, y la línea de tiempo marca el día donde se encontró con el porqué. Lo que no llega al 95% vuelve a 📈 buscando techo.'}]},
@@ -9948,8 +9949,9 @@ function lineaPintar(prodId){
     if(_rayas.sobra)svg+=`<text x="4" y="${(L.pr[0]+10).toFixed(1)}" font-size="10" fill="#fb923c">📦 sobra stock: no se busca techo, primero sale lo que sobra</text>`;
     else{const R=_rayas;
       if(R.techo)_ray(R.techo.p,'#ef4444','6,3',`🔴 techo ${fmt(R.techo.p)}`,`🔴 Techo ${fmt(R.techo.p)}: a ese precio vendió ${R.techo.u} en ${R.techo.dias} días con stock; para dejar la misma plata por día que a ${fmt(R.best.p)} tenía que vender ~${R.techo.lam.toFixed(1)}. ${Math.round(R.techo.seg*100)}% seguro.`,-3);
-      if(R.best)_ray(R.best.p,'#eab308','2,0',`💰 más plata ${fmt(R.best.p)}`,`💰 El precio que más plata por día dejó: ${fmt(R.best.p)} → ${fmt(Math.round(R.best.pd))} por día (${R.best.u} vendidas en ${R.best.dias} días con stock).`,-3);
-      if(R.piso&&(!R.best||R.piso.p!==R.best.p))_ray(R.piso.p,'#22c55e','2,3',`🟢 piso ${fmt(R.piso.p)} (sí vende)`,`🟢 Piso ${fmt(R.piso.p)}: el precio más alto que vendió de verdad (${R.piso.u} en ${R.piso.dias} días con stock).`,11);
+      // 19/10, él: "el piso es un parámetro para decir no bajemos más que esto, excepto que haya un problema (…) quizás lo mejor es
+      // unificarlas". Unificadas: el 💰 (el que más plata por día dejó) ES el piso: más abajo vende más pero deja menos.
+      if(R.best)_ray(R.best.p,'#eab308','2,0',`💰 piso ${fmt(R.best.p)} · más plata`,`💰 Piso = el precio que más plata por día dejó: ${fmt(R.best.p)} → ${fmt(Math.round(R.best.pd))} por día (${R.best.u} vendidas en ${R.best.dias} días con stock). No se baja de acá salvo un problema (sobra stock, stock antiguo, ML lo pide). Entre el piso y el 🔴 techo es lo que falta probar.`,-3);
       if(!R.techo&&R.best)svg+=`<text x="${W-4}" y="${(L.pr[0]+10).toFixed(1)}" font-size="10" text-anchor="end" fill="var(--muted)">techo: todavía no se sabe (falta probar más caro)</text>`;}}
   // 🏔️ DÓNDE SE ENCONTRÓ EL TECHO (19/10/2026, él: "todos los que digan techo encontrado tienen que marcar en la línea dónde se encontró
   // el techo y por qué estás seguro"). Raya vertical verde el día de la anotación 🏔️ (la anota `techo95` sólo con 95% de seguridad)
