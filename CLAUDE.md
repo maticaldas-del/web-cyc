@@ -9132,6 +9132,12 @@ cualquier pausada con stock. Primeros: los 3 Sony de Ayelen (MLA2202585953, MLA4
 Al comparar precios, a la plata por día se le resta el trabajo por unidad, el tope de H que gasta lo facturado y la plata parada.
 A igual plata neta, gana el precio alto (menos trabajo, menos tope). Detalle en `ml-sync/CEREBRO.md` (⚖️).
 
+## 🧾 ISCOS: SE PAGA EL NETO, NO EL P. LISTA (19/10/2026, eligió la a)
+El remito del 16/09 lo mostró: "P. Lista" es el precio al público y se paga el neto, −30% en general y −33,5% en Cher y Bensimon,
+sin IVA encima (el total del remito = suma de netos). La lista se había cargado ×1,21 y el costo quedó ~1,8 veces el real. Arreglado
+con `listadto` (guarda `pl` y `dto`; `p` = neto). **Antes de cargar la lista de un proveedor, preguntar si ese precio es lo que se
+paga o un precio de lista con descuento**, y cargar el neto.
+
 ## 🗓️ NUNCA CARGAR UNA LISTA VIEJA (18/10/2026, regla suya)
 Él: *"nunca cargues listas viejas"* (me pasó L1307 de Dai Nippon y la Unilever del 25/09, más viejas que las cargadas). Antes de
 cargar, mirar la fecha (vigencia o emisión) contra la guardada: si es anterior, no se carga y se le dice. El comando lo frena solo:

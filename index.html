@@ -2666,7 +2666,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.92';
+const APP_VERSION='24.93';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2677,6 +2677,7 @@ const APP_VERSION='24.92';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.93',f:'19/10/2026',h:'18:14',c:[{n:3,t:'Listas → Iscos: el costo estaba casi el doble de lo que pagás (se había tomado el P. Lista como si fuera sin IVA y se le sumó 21%). Ahora cada producto cuesta el P. Lista menos el descuento del remito: 30%, y 33,5% en Cher y Bensimon. Cada renglón dice la lista y el descuento, y el pedido sigue mostrando el precio de lista.'}]},
   {v:'24.92',f:'19/10/2026',h:'17:20',c:[{n:1,t:'Línea de tiempo: el piso y el precio de más plata quedaron unificados en una sola raya 💰 piso (de ahí no se baja salvo un problema). Arriba, la 🔴 techo.'}]},
   {v:'24.91',f:'19/10/2026',h:'16:50',c:[{n:2,t:'Línea de tiempo: en el precio, tres rayas: 🔴 techo (donde ya no rinde, 95% seguro), 🟢 piso (el precio más alto que sí vende) y 💰 el precio que más plata por día dejó. Si no se sabe, lo dice; con stock de sobra no se busca techo.'},{n:3,t:'Todas las publicaciones quedaron con estrategia: las que vendían sin una van a buscar techo, las que sobran o no venden bajan con descuento, lo recién llegado es lanzamiento y lo sin stock ⏸️.'}]},
   {v:'24.90',f:'19/10/2026',h:'16:20',c:[{n:1,t:'Ventas: se sacó el cartel dorado "promo" cuando la etiqueta de estrategia ya dice 🏷️ promo o 💸 descuento.'}]},
@@ -18292,7 +18293,7 @@ async function renderListas(){
     return `<div style="display:flex;gap:8px;align-items:center;padding:6px 8px;background:var(--surface);border:1px solid ${arm[cod]>0?'var(--blue)':'var(--border)'};border-radius:8px">
       ${fML?`<img src="${fML}" loading="lazy" onclick="_mostrarLightbox('${fML}','')" onerror="this.style.visibility='hidden'" style="width:44px;height:44px;object-fit:contain;background:#fff;border-radius:6px;cursor:zoom-in">`:''}
       <div style="flex:1;min-width:0;font-size:.72rem;line-height:1.45"><div style="font-weight:600">${escHtml(e.n)}</div>
-        <div style="color:var(--muted);font-size:.64rem">🔖 ${escHtml(cod)} · te sale <b style="color:var(--text)">${fmt(pc)}</b>${rec?` (${fmt(Number(e.p)||0)} + ${rec}%)`:''}${e.mp?` · en ML ${fmt(e.mp)}${e.mv?' · '+e.mv+(e.mv==1?' vendedor':' vendedores'):''}`:''}${e.vend!=null?` · <b style="color:${e.vend>=100?'var(--green)':'var(--amber)'}">🛒 ${e.vend>=1000?'+1000':e.vend} vendidas</b>`:''}${e.ok?' · <span style="color:var(--green)">✓ mismo producto</span>':''}${e.noEs?' · <span style="color:var(--red)">✗ otro producto</span>':''}${e.mt?` · <span title="el catálogo de ML contra el que se midió">"${escHtml(String(e.mt).slice(0,60))}"</span>`:''}${e.pAnt?` · antes ${fmt(e.pAnt)}`:''}</div>
+        <div style="color:var(--muted);font-size:.64rem">🔖 ${escHtml(cod)} · te sale <b style="color:var(--text)">${fmt(pc)}</b>${rec?` (${fmt(Number(e.p)||0)} + ${rec}%)`:''}${Number(e.pl)>0?` · lista ${fmt(Number(e.pl))} −${e.dto}%`:''}${e.mp?` · en ML ${fmt(e.mp)}${e.mv?' · '+e.mv+(e.mv==1?' vendedor':' vendedores'):''}`:''}${e.vend!=null?` · <b style="color:${e.vend>=100?'var(--green)':'var(--amber)'}">🛒 ${e.vend>=1000?'+1000':e.vend} vendidas</b>`:''}${e.ok?' · <span style="color:var(--green)">✓ mismo producto</span>':''}${e.noEs?' · <span style="color:var(--red)">✗ otro producto</span>':''}${e.mt?` · <span title="el catálogo de ML contra el que se midió">"${escHtml(String(e.mt).slice(0,60))}"</span>`:''}${e.pAnt?` · antes ${fmt(e.pAnt)}`:''}</div>
         <div style="font-size:.64rem">${e.mi?`<a href="https://www.mercadolibre.com.ar/p/${e.mi}" target="_blank" rel="noopener" style="color:var(--green)">🔗 verlo en ML</a> · `:''}<a href="#" onclick="listaVerOri('${k}','${String(cod).replace(/'/g,"\\'")}');return false" style="color:var(--blue)">📄 verlo en la lista</a>${e.rp?` <span style="color:var(--amber)">· ⚠️ ${escHtml(String(e.rp).slice(0,80))}</span>`:''}</div></div>
         <details style="margin-top:3px"><summary style="cursor:pointer;font-size:.62rem;color:var(--muted)">detalle ▾</summary><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">${e.sacado?`<button class="btn" style="font-size:.64rem;padding:3px 10px" onclick="listaSacar('${k}','${String(cod).replace(/'/g,"\\'")}',false)">↩︎ volver a la lista</button>`:`<button class="btn" style="font-size:.64rem;padding:3px 10px;color:var(--red);border-color:var(--red)" onclick="listaSacar('${k}','${String(cod).replace(/'/g,"\\'")}',true)">✕ sacar producto</button>`}</div></details>
       <div style="text-align:right;flex:0 0 auto">${est}${uBox}</div></div>`;};
@@ -18305,8 +18306,8 @@ async function renderListas(){
     // a paulvic"*): un renglón por producto, "<nombre tal cual la lista> x<unidades>", y al final que no reemplacen.
     // 19/10/2026, él: "en los pedidos de iscos agregar el precio que dice, para ver si el precio que dice es el que nos vende el
     // mayorista": cada renglón lleva el precio de la LISTA (sin el recargo nuestro), así se compara contra la factura.
-    const msg=A.map(x=>`${x.e.n} x${x.u}${Number(x.e.p)>0?' · '+fmt(Number(x.e.p))+' c/u':''}`).join('\n');
-    const totL=A.reduce((t,x)=>t+(Number(x.e.p)||0)*x.u,0);
+    const msg=A.map(x=>`${x.e.n} x${x.u}${Number(x.e.pl||x.e.p)>0?' · '+fmt(Number(x.e.pl||x.e.p))+' c/u':''}`).join('\n');
+    const totL=A.reduce((t,x)=>t+(Number(x.e.pl||x.e.p)||0)*x.u,0);  // pl = P. Lista del proveedor (Iscos: el costo es la lista menos el descuento)
     const C=Object.entries(state.comprasLista||{}).map(([id,c])=>({...c,id})).filter(c=>c.prov===k).sort((a,b)=>(b.ts||0)-(a.ts||0));
     const comp=c=>{const t=(c.items||[]).reduce((s,i)=>s+(i.pc||0)*(i.u||0),0),tL=(c.items||[]).reduce((s,i)=>s+(i.p||0)*(i.u||0),0);const cam=c.estado==='camino';
       return `<details style="background:var(--surface);border:1px solid ${cam?'var(--amber)':'var(--border)'};border-radius:8px;padding:8px 10px;margin-bottom:6px"><summary style="cursor:pointer;font-size:.74rem">${cam?'🚚 en camino':'✅ llegó'} · <b>${c.fecha}</b> · ${(c.items||[]).length} productos · ${tL?'lista '+fmt(tL)+' · ':''}te sale ${fmt(t)}</summary>
