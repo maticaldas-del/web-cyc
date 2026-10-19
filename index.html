@@ -2666,7 +2666,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.95';
+const APP_VERSION='24.96';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2677,6 +2677,7 @@ const APP_VERSION='24.95';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.96',f:'19/10/2026',h:'18:39',c:[{n:2,t:'Pedidos → Paulvic: lo pedido que viene en camino se descuenta aroma por aroma de lo que falta comprar (se da por hecho que llega todo; si falta algo, se corrige al llegar).'}]},
   {v:'24.95',f:'19/10/2026',h:'18:29',c:[{n:1,t:'Línea de tiempo: la línea del precio más gruesa, para que se vea bien el color de cada estrategia (gris = sin estrategia, verde = buscando techo, amarillo = bajando, naranja = sobra…).'}]},
   {v:'24.94',f:'19/10/2026',h:'18:28',c:[{n:2,t:'Ventas: se sacó el cartel 🏷️ promo de arriba a la derecha. Ahora lo dice sólo el tag de cada venta: 🏷️ promo si ML puso plata, 💸 descuento si el precio tachado lo pusimos nosotros, y al lado "· de" la estrategia que tenía el precio.'}]},
   {v:'24.93',f:'19/10/2026',h:'18:14',c:[{n:3,t:'Listas → Iscos: el costo estaba casi el doble de lo que pagás (se había tomado el P. Lista como si fuera sin IVA y se le sumó 21%). Ahora cada producto cuesta el P. Lista menos el descuento del remito: 30%, y 33,5% en Cher y Bensimon. Cada renglón dice la lista y el descuento, y el pedido sigue mostrando el precio de lista.'}]},
@@ -12946,6 +12947,11 @@ async function syncPedidosAuto(){
           const cv={};for(const [k,v] of Object.entries(_cl.vars||{}))cv[k]=Math.max(0,parseInt(v)||0);
           // LO QUE CAMBIÓ ÉL A MANO (19/10/2026, "poder modificar lo pedido"): `mano/<color>` manda sobre lo mío hasta el pedido hecho.
           const _mano=_cl.mano&&typeof _cl.mano==='object'?_cl.mano:{};for(const [k,o] of Object.entries(_mano))if(o&&o.u!=null)cv[k]=Math.max(0,parseInt(o.u)||0);
+          // 19/10/2026, él: "al realizar el pedido no sacó los productos de paulvic que pedí". Un pedido al Paulvic en camino
+          // hecho DESPUÉS de mi decisión y que no se descontó al hacerlo (`desc`, lo marca el botón de la tarjeta) se resta aroma por aroma:
+          // se da por hecho que llega todo; si falta algo, él avisa y se corrige al llegar.
+          {const _dts=Number(_cl.ts)||0;for(const c of Object.values(state.pedidospv||{})){if(!c||c.estado!=='camino'||c.prodId!==p.id||c.desc||!(Number(c.ts||Date.parse(String(c.fecha||'')+'T12:00:00-03:00'))>_dts))continue;
+            for(const it of (c.items||[])){if(!it||!it.v)continue;const k=sid(String(it.v).toLowerCase());if(k in cv&&!(k in _mano))cv[k]=Math.max(0,cv[k]-(parseInt(it.u)||0));}}}
           const _mv=_cl.motVars||{};const _mvDe=k=>_mv[k]?{mot:String(_mv[k]).slice(0,2500)}:{};
           const _mk=k=>(k in _mano)?{mano:1}:{};
           const vn=(variantesNec||[]).map(x=>{const k=sid(String(x.v).toLowerCase());return k in cv?{...x,q:cv[k],cl:1,..._mvDe(k),..._mk(k)}:(SOLO_CLAUDE?{...x,q:0}:x);});
@@ -17882,6 +17888,7 @@ async function pvPedidoHecho(pedId){
   try{await db.ref('cyc/pedidospv/'+id).set(rec);}catch(e){toast('No se guardó: '+e.message,'err');return;}
   (state.pedidospv=state.pedidospv||{})[id]=rec;
   for(const it of P.items){await clDescontarPed(P.prodId,it.v,it.u);try{await db.ref('cyc/noconsigo/'+P.prodId+'/nunca/'+sid(it.v)).remove();}catch(e){}}
+  try{await db.ref('cyc/pedidospv/'+id+'/desc').set(true);rec.desc=true;}catch(e){}   // ya descontado de lo decidido: Pedidos no lo vuelve a restar
   try{await db.ref('cyc/claudedecide/ped/'+P.prodId+'/mano').remove();const o=((state.claudedecide||{}).ped||{})[P.prodId];if(o)delete o.mano;}catch(e){}
   await log('Pedido al Paulvic hecho: '+id+' · '+tot+' u.');
   toast('Pedido al Paulvic en camino ✓');try{await syncPedidosAuto();}catch(e){}renderPedidos();

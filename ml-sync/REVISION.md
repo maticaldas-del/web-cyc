@@ -1660,3 +1660,10 @@ Pedido suyo con el Timer (ML puso $0 y decía "🏷️ promo" arriba y "⚪ sin 
 `estrategiaVentaHTML` usa lo que pasó en esa venta (`cyc/promoventa`): ML puso algo = 🏷️ promo, sólo nosotros = 💸 descuento, con la
 estrategia del precio como "· de X". Además el tag del Timer (`MLA3735058390`, 📦 sobra) se anotó desde el 18/10 con `tag:…@fecha`:
 se había guardado después de la venta. **Chequear:** que una venta en promo nunca muestre ⚪ sin estrategia.
+
+### Etapa 3 · 19/10/2026 · v24.96 · Pedidos: el pedido al Paulvic en camino se descuenta de lo decidido
+Él: *"al realizar el pedido no sacó los productos de paulvic que pedí"* (pedido del 19/10, 114 u., y Pedidos seguía pidiendo 104).
+Lo decidido por Claude (`claudedecide/ped`) mandaba y no restaba lo pedido después. Ahora: cada pedido en camino (`cyc/pedidospv`) con
+`ts` posterior a la decisión y sin `desc` se resta aroma por aroma (no lo que él cambió a mano). El botón "pedido hecho" de la tarjeta
+ya descuenta y marca `desc:true`. Se da por hecho que llega todo; lo que falte se corrige con `pvped:llego`.
+**Chequear:** que un pedido hecho desde el botón no se reste dos veces; que al re-decidir (ts nuevo) no se reste de nuevo.
