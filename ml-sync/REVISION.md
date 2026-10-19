@@ -574,6 +574,8 @@ el precio de un candidato distinto con código parecido (se compara también por
 - **Nunca una lista vieja (18/10/2026).** `lista:<prov>|fecha=AAAA-MM-DD` guarda la fecha en `listasProv/<prov>/fecha` y rechaza
   una lista con fecha anterior. Qué chequear: que cada carga nueva lleve `|fecha=`.
 
+ · **Ritmo normal sólo de las cuentas que venden el producto (v24.61, 19/10/2026, con el F9).** `ritmoNormalDe` (web) saltea las cuentas donde todas sus publicaciones de ese producto están pausadas a mano, cerradas o "no la vendemos más" (`_ctaVendeProd`). Chequear: un producto agotado en su cuenta (pausado por falta de stock) sigue contando.
+
 ## 4 · CHOQUES
 - `mlapi/lineatodo` lo escriben `ritmo:go` (noche) y `lineatodo:go` (ml-consulta): los dos con la
   misma función `calcLineaTodo`.

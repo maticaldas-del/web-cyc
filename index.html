@@ -2665,7 +2665,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='24.60';
+const APP_VERSION='24.61';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2676,6 +2676,7 @@ const APP_VERSION='24.60';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'24.61',f:'18/10/2026',h:'21:55',c:[{n:2,t:'Escasez y Pedidos: el ritmo normal ya no suma lo que vendía una cuenta que dejó el producto (pausado a mano o cerrado). El F9 decía "alcanza 13 días" por las ventas viejas de Luciana; en Matías vende 1 cada 2 semanas.'}]},
   {v:'24.60',f:'18/10/2026',h:'21:20',c:[{n:1,t:'Ventas: arriba de la lista salen los tags (🎯 base, 🔥 escasez, 📈 buscando techo…) con cuántas ventas tiene cada uno. Al tocar uno quedan sólo esas ventas; tocándolo de nuevo vuelven todas.'}]},
   {v:'24.59',f:'18/10/2026',h:'20:45',c:[{n:2,t:'El % de un producto ya no sube por venderse en carrito con otros: en la línea de tiempo y en el ranking por producto, un carrito cuenta con lo que habría dejado ese producto vendido solo (ML cobra el cargo fijo una vez por compra, y eso no es mérito del producto). La plata total del día y del mes no cambia.'}]},
   {v:'24.58',f:'18/10/2026',h:'19:15',c:[{n:1,t:'Ventas x Producto (PC): todas las ventas del mismo alto. Arriba, una sola línea (la promo se resume en "🏷️ promo"; el texto entero está en el detalle). Cada producto, en una sola línea: lo que no entra se corta con "…" y los botones 🧠/📈 quedan siempre a la derecha.'}]},
@@ -12150,9 +12151,19 @@ function ventaEnRemate(v,dk){
   return !!(r&&v.id&&r[v.id]);
 }
 // Ritmo normal por día de un producto, sumando las cuentas (o una sola). null si el robot no lo tiene.
+// LA CUENTA SIGUE VENDIENDO ESE PRODUCTO (19/10/2026, con el F9): una cuenta que lo dejó (publicaciones pausadas a mano,
+// cerradas o "no la vendemos más") no suma su ritmo viejo. El F9 sumaba lo que Luciana vendía en junio a $7.000 y la
+// escasez decía "alcanza 13 d" con 10 u. que se venden 1 cada 2 semanas. Sin ninguna publicación vinculada se cuenta (no se sabe).
+function _ctaVendeProd(pid,l){
+  let hay=false,viva=false;const cs=sid(l).toLowerCase();
+  for(const e of Object.values(state.mllinks||{})){if(!e||e.prodId!==pid||sid(e.cuenta||'').toLowerCase()!==cs)continue;hay=true;
+    if(e.noVendemosMas||e.ignored)continue;const st=String(e.status||''),sub=String(e.subStatus||'');
+    if(st==='active'||(st==='paused'&&/out_of_stock/.test(sub))){viva=true;break;}}
+  return !hay||viva;
+}
 function ritmoNormalDe(pid,loc){
   const rn=state.ritmonormal||{};let pd=0,hay=false,f=false;
-  (loc?[loc]:LOCS).forEach(l=>{const r=rn[pid+'__'+sid(l)];if(r&&Number(r.pd)>0){pd+=Number(r.pd);hay=true;if(r.f)f=true;}});
+  (loc?[loc]:LOCS).filter(l=>loc||_ctaVendeProd(pid,l)).forEach(l=>{const r=rn[pid+'__'+sid(l)];if(r&&Number(r.pd)>0){pd+=Number(r.pd);hay=true;if(r.f)f=true;}});
   return hay?{pd,f}:null;
 }
 // ── EL RITMO DESDE QUE CAMBIÓ LA CAJA O EL PRECIO (03/10/2026) ──────────────────────────────────
