@@ -39814,7 +39814,7 @@ async function main() {
       try {
         let nts2 = null; try { nts2 = (await db.get('mlapi/fichanotas')) || {}; } catch { nts2 = null; }
         const ultN = (m) => Math.max(0, ...Object.keys((nts2 || {})[m] || {}).map(Number).filter((n) => n > 0));
-        const techoReciente = (m) => Object.entries((estrat || {})[m] || {}).some(([k, x]) => Number(k) > hoy - 60 * 864e5 && x && ['techo', 'techook', 'bajando'].includes(x.t));
+        const techoReciente = (m) => { const h = (estrat || {})[m] || {}; let pv = null; for (const k of Object.keys(h).map(Number).filter((n) => n > 0).sort((a, b) => a - b)) { const x = h[k]; if (!x || !x.t) continue; const tt = x.t === 'correccion' ? pasajeDe(pv) : x.t; pv = tt; if (k > hoy - 60 * 864e5 && ['techo', 'techook', 'bajando'].includes(tt)) return true; } return false; };
         const sinAf = [], pens = [];
         for (const r of filas) {
           if (!/^active/.test(r.est) || r.stDesc || !(r.st > 0) || (r.u30 || 0) < 2 || r.mg == null) continue;
