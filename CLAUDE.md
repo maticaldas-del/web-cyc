@@ -9151,3 +9151,13 @@ se cuenta como pérdida contra lo que se podía; se acepta sólo cuando no hacer
 **Corrección suya del mismo día:** si el cerebro baja porque seguir igual iba a perder más (stock antiguo, plata parada), **el
 cerebro GANÓ**: su decisión se juzga contra no hacer nada. Lo que falta para el 25% es el costo de haber mandado/comprado de más,
 no del cerebro (caso Pendrive 128gb: el error fue mandar 48).
+
+## ⚡ CADA VENTA ES UN DATO: SI SE ACELERA, MANDA EL RITMO RÁPIDO (18/10/2026, eligió la a, con el Cabotine Turquoise)
+Él: *"en 10 días de stock vendió 4, no era lento (…) la primera venta te dio info de que a ese precio vende (…) tenías dos opciones,
+aumentarlo para buscar el techo o mantenerlo, la mejor era aumentar (…) en la segunda venta ya confirmaste (…) y el producto entró en
+escasez, ahí SÍ O SÍ hay que aumentar, por escasez y para buscar techo. No lo hiciste"*. Error mío: lo medí con el ritmo de 2 meses
+(1 cada 10 días) y no con lo que estaba pasando. Desde hoy:
+ · `escasez` mide con el ritmo de los últimos 7 días (con stock) si vendió 2+ u. y el doble o más que el de 30 d (⚡ en el renglón).
+ · Lo que tiene pocas unidades se rejuzga con CADA venta: la 1ª dice que a ese precio vende → si lo que queda se vende en pocos días
+   contra lo que tarda reponer (o contra los 4 meses si no hay reposición), se sube a buscar el techo; la 2ª que confirma el ritmo
+   y deja el stock en escasez → se sube SÍ O SÍ en esa vuelta (escasez + techo). No se espera a la completa.

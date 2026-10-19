@@ -278,6 +278,8 @@ no deje naranja algo con meses de stock (tope 60) · que el pedido en camino se 
   Y `PD_CAPITAL_DIA` (2%/mes ÷ 30 × stock del día × costo): la plata parada también se resta. Qué chequear: que `st` de la
   línea de tiempo sea el stock de ESA publicación (si suma colores, el capital sale de más).
 
+ · **Escasez con el ritmo rápido (18/10/2026, eligió la a).** En `escasez` (sync.mjs, junto a `ritmo14`): si en 7 días con stock vendió 2+ u. y el doble o más del ritmo de 30 d, manda ese ritmo (⚡ en el renglón). Chequear: que no dispare con 1 sola venta.
+
 ## 2 · PLATA
 - **Cada lugar, su nota (08/10/2026, v22.71):** él: *"en ventas por qué aumentó el precio o por qué no, y en pedidos por qué
   pide x unidades"*. `cerebroAbrir`: con `ped` o `ctx:'caja'` muestra SÓLO las notas `ped__`/`caja__`; con `ctx:'venta'`
@@ -626,6 +628,8 @@ el precio de un candidato distinto con código parecido (se compara también por
   pregunta a ML los reclamos abiertos de las 4 cuentas (producto, días, motivo, qué te deja hacer ML; ⏰ los que
   esperan respuesta) y cuántos mensajes de posventa hay sin leer. Chequear: sin número de orden ni texto del
   comprador en el registro; que un 429 diga "no pude leer" y no "0 reclamos".
+
+ · **Informe 7b (auditoría 19/10/2026):** los mensajes de compradores sin leer salen por cuenta (sin el texto). Chequear: que la suma coincida con el título.
 
 ## 6 · IDEAS NUEVAS
 - **QUÉ TIENE QUE PROPONER, regla suya del 09/10/2026:** *"lo que hicimos hoy con los colores y movimientos y

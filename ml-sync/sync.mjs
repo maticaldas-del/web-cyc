@@ -37323,7 +37323,14 @@ async function main() {
         }
         juzgadas++;
         const st = Math.max(0, parseInt(inv[k]) || 0);
-        const rr = RIT[k] || ritmo14(k, vv), r14 = rr.r, r3 = vv.u3 / 3;
+        let rr = RIT[k] || ritmo14(k, vv);
+        // SE ACELERÓ: MANDA EL RITMO RÁPIDO (18/10/2026, eligió la a, con el Cabotine Turquoise: 4 u. en 10 d con stock y
+        // no se subió). Si en los últimos 7 días (con stock) vendió 2+ u. y el doble o más del ritmo de 30 d, la escasez se
+        // mide con ese ritmo: lo que se está por acabar rápido no espera a que el promedio largo se entere.
+        { const t7 = ahora - 7 * 864e5, u7 = vv.vts.filter(([t]) => t >= t7).reduce((s2, [, q]) => s2 + q, 0);
+          const d7 = Math.max(1, Math.min(7, diasStockE(k, t7, ahora) ?? 7)), r7 = u7 / d7;
+          if (u7 >= 2 && r7 >= 2 * rr.r) rr = { ...rr, r: r7, d: d7, rapido: true }; }
+        const r14 = rr.r, r3 = vv.u3 / 3;
         const alc = r14 > 0 ? st / r14 : Infinity;
         const ofiK = iv > 0 ? pid + '__' + sidE('Oficina Mati') + '__v__' + k.slice(iv + 5) : pid + '__' + sidE('Oficina Mati');
         const ofi = Math.max(0, parseInt(inv[ofiK]) || 0);
@@ -37354,7 +37361,7 @@ async function main() {
         const escFull = !escComp && alc < lead && lead !== Infinity;
         todasE[k] = { k, pid, cta, color: iv > 0 ? k.slice(iv + 5) : '', st, r14, cal: rr.cal, dCon: rr.d, rn: !!rr.normal, r3, u14: vv.u14, u30: vv.u30, alc, lead, leadTxt, tot, comp, escFull, escComp, ofi, cam: camK, camU: camK.reduce((a, c) => a + c.u, 0), vts: vv.vts };
         if (alc > dMax && !escFull && !escComp) continue;
-        filas.push({ k, pid, cta, color: iv > 0 ? k.slice(iv + 5) : '', st, r14, dCon: rr.d, cal: rr.cal, r3, alc, u14: vv.u14, u30: vv.u30, ofi, cam: camK, lead, leadTxt, tot, comp, escFull, escComp });
+        filas.push({ k, pid, cta, color: iv > 0 ? k.slice(iv + 5) : '', st, r14, dCon: rr.d, cal: rr.cal, rapido: !!rr.rapido, r3, alc, u14: vv.u14, u30: vv.u30, ofi, cam: camK, lead, leadTxt, tot, comp, escFull, escComp });
       }
       filas.sort((a, b) => (Number(b.escFull || b.escComp) - Number(a.escFull || a.escComp)) || (a.alc - b.alc));
       // ── 📂 EXPEDIENTE POR PRODUCTO (16/10/2026, eligió la b). Él: "quiero que sea vivo el pensamiento, que gaste
@@ -37473,7 +37480,7 @@ async function main() {
       for (const f of filas) {
         const camU = f.cam.reduce((s2, c) => s2 + c.u, 0);
         const camTxt = camU ? `🚚 despachadas sin marcar ${camU} u. (${f.cam.map((c) => c.fecha + (c.v ? ' ' + c.v : '') + ' ' + c.u + (c.fecha !== '?' && (ahora - Date.parse(c.fecha)) / 864e5 > 9 ? ' ⚠️ +9 d: ¿ya llegó? mirar cajasllegaron' : '')).join(' · ')})` : '🚫 sin caja despachada';
-        console.log(`■ ${pName[f.pid] || f.pid}${f.color ? ' · 🎨 ' + f.color.replace(/_/g, ' ') : ''} · ${f.cta} · ${f.st} u. en Full · ${f.r14.toFixed(2)}/día${f.cal ? ' 📅' : ''} (${f.u14} u. en 14 d · ${f.dCon.toFixed(1)} d ${f.cal ? 'corridos' : 'con stock'} · ${f.u30} en 30 d · últimos 3 d ${f.r3.toFixed(1)}/día) · alcanza ${f.alc === Infinity ? '∞' : f.alc.toFixed(1)} d`);
+        console.log(`■ ${pName[f.pid] || f.pid}${f.color ? ' · 🎨 ' + f.color.replace(/_/g, ' ') : ''} · ${f.cta} · ${f.st} u. en Full · ${f.r14.toFixed(2)}/día${f.cal ? ' 📅' : ''}${f.rapido ? ' ⚡ritmo de 7 d (se aceleró)' : ''} (${f.u14} u. en 14 d · ${f.dCon.toFixed(1)} d ${f.cal ? 'corridos' : 'con stock'} · ${f.u30} en 30 d · últimos 3 d ${f.r3.toFixed(1)}/día) · alcanza ${f.alc === Infinity ? '∞' : f.alc.toFixed(1)} d`);
         console.log(`   ${camTxt}${f.ofi ? ' · oficina ' + f.ofi + ' u.' : ''}`);
         const dTx = (x) => x === Infinity ? 'sin fecha' : x.toFixed(0) + ' d';
         console.log(`   ⏱️ vuelve a haber en Full: ${f.leadTxt}${f.escFull ? ` → 🔥 ESCASEZ: Full alcanza ${dTx(f.alc)} y reponer tarda ${dTx(f.lead)}` : ''}`);
@@ -37658,7 +37665,7 @@ async function main() {
       // canceladas de estas horas, y un reclamo abierto hace días que espera respuesta no es eso).
       // Mismo pedido que el chequeo. Sin número de orden ni texto del comprador (registro público).
       try {
-        const recl = []; let msgsI = 0; const errR = [];
+        const recl = []; let msgsI = 0; const errR = []; const msgsCta = [];
         for (const label of labels) {
           const tk = tokI[label]; if (!tk) { errR.push(`${label}: sin entrar`); continue; }
           try {
@@ -37674,12 +37681,14 @@ async function main() {
               recl.push({ label, dias, razon: x.reason_id || x.type || '?', etapa: x.stage || '', acc2, prodR });
             }
           } catch (eC) { errR.push(`${label} reclamos: ${String(eC.message || eC).slice(0, 50)}`); }
-          try { msgsI += (await mlGet('/messages/unread?role=seller&tag=post_sale', tk))?.total || 0; }
+          try { const nM = (await mlGet('/messages/unread?role=seller&tag=post_sale', tk))?.total || 0; msgsI += nM; if (nM) msgsCta.push(`${label} ${nM}`); }
           catch (eM) { errR.push(`${label} mensajes: ${String(eM.message || eM).slice(0, 50)}`); }
         }
         const esperan = recl.filter((r) => r.acc2.length);
         console.log(`\n── 7b · RECLAMOS ABIERTOS (${recl.length} · ${esperan.length} esperan respuesta tuya) · MENSAJES DE COMPRADORES SIN LEER (${msgsI}) ──`);
         for (const r of recl.sort((a, b) => b.acc2.length - a.acc2.length)) console.log(`${r.acc2.length ? '⏰' : '·'} ${r.label} · ${r.prodR || '?'} · ${r.dias == null ? '?' : r.dias + ' d'} · ${r.razon}${r.etapa ? ' · ' + r.etapa : ''} · ${r.acc2.length ? 'podés: ' + r.acc2.join(', ') : 'lo maneja ML'}`);
+        // Auditoría 19/10: el título contaba los mensajes sin decir de qué cuenta (se contestan entrando a esa cuenta).
+        if (msgsI) console.log(`· mensajes sin leer por cuenta: ${msgsCta.join(' · ')} (el texto no se imprime: el registro es público)`);
         if (errR.length) console.log('   ⚠️ no pude leer todo: ' + errR.join(' | '));
       } catch (eR) { console.log('reclamos: no pude mirarlos · ' + eR.message); }
       // 8) Pedidos: lo que más plata pone en riesgo si no se compra

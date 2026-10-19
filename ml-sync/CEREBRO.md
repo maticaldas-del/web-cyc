@@ -427,3 +427,13 @@ plata parada 2%/mes + ventas perdidas): si deja más que seguir igual, GANÓ, au
 
 ## 🛒 EL % DE UN PRODUCTO NO SE MIDE CON CARRITOS (18/10/2026, regla suya)
 Él: *"no podés subir el % de un producto, por venderse con otro. se tiene que poner siempre el % de ese producto. no por venta"*. En un carrito ML cobra el cargo fijo una vez y el neto se reparte, así que cada producto se ve más rentable. Para juzgar un producto (precio, techo, pedido) se usa lo que deja vendido SOLO; el ahorro del carrito no es mérito del producto. En la web: `netoProductoVP` (línea de tiempo y ranking).
+
+## ⚡ CADA VENTA ES UN DATO: SI SE ACELERA, MANDA EL RITMO RÁPIDO (18/10/2026, eligió la a, con el Cabotine Turquoise)
+Él: *"en 10 días de stock vendió 4, no era lento (…) la primera venta te dio info de que a ese precio vende (…) tenías dos opciones,
+aumentarlo para buscar el techo o mantenerlo, la mejor era aumentar (…) en la segunda venta ya confirmaste (…) y el producto entró en
+escasez, ahí SÍ O SÍ hay que aumentar, por escasez y para buscar techo. No lo hiciste"*. Error mío: lo medí con el ritmo de 2 meses
+(1 cada 10 días) y no con lo que estaba pasando. Desde hoy:
+ · `escasez` mide con el ritmo de los últimos 7 días (con stock) si vendió 2+ u. y el doble o más que el de 30 d (⚡ en el renglón).
+ · Lo que tiene pocas unidades se rejuzga con CADA venta: la 1ª dice que a ese precio vende → si lo que queda se vende en pocos días
+   contra lo que tarda reponer (o contra los 4 meses si no hay reposición), se sube a buscar el techo; la 2ª que confirma el ritmo
+   y deja el stock en escasez → se sube SÍ O SÍ en esa vuelta (escasez + techo). No se espera a la completa.
