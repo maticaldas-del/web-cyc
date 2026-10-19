@@ -19421,6 +19421,33 @@ async function main() {
         if (aplicar) await db.patch('cyc/mlconfig/listasProv/' + k, cuentaLista((await db.get('mlapi/listas/' + k)) || {})); }
       return;
     }
+    // BILLING_PROBE=listadto:<prov>;base=<divisor>;dto=<%>[;<prefijo de código>=<%>…][;go] (19/10/2026, eligió la a). El costo de
+    // una lista como P. LISTA menos el descuento del proveedor. Iscos se había cargado ×1,21 tomando el P. Lista como si fuera sin IVA:
+    // el remito del 16/09 mostró que el P. Lista es el precio al público y que se paga el neto (30%, Cher y Bensimon 33,5%). Guarda
+    // `pl` (P. Lista) y `dto` en cada producto y `p` = pl × (1 − dto). Si `pl` ya existe parte de ahí (correrlo dos veces no descuenta dos
+    // veces); si no, pl = p ÷ base. El prefijo se compara con el código sin la marca de hoja (CDI-CHER18E → CHER18E). Cambiar `p` hace
+    // que `listamedir` lo vuelva a medir solo (uMed distinto). Sin ;go sólo muestra.
+    if (/^listadto:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const partes = String(process.env.BILLING_PROBE).slice('listadto:'.length).split(';').map((x) => x.trim()).filter(Boolean);
+      const APLICAR = partes[partes.length - 1] === 'go'; if (APLICAR) partes.pop();
+      const k = String(partes.shift() || '').toLowerCase(); let base = 1, dto = null; const pref = [];
+      for (const x of partes) { const m = x.match(/^([^=]+)=([\d.,]+)$/); if (!m) { console.log('❌ no entiendo: ' + x); return; }
+        const v = parseFloat(m[2].replace(',', '.')); if (m[1] === 'base') base = v; else if (m[1] === 'dto') dto = v; else pref.push([m[1].toUpperCase(), v]); }
+      if (!k || dto == null || !(base > 0)) { console.log('Uso: listadto:<prov>;base=1.21;dto=30;CHER=33.5;BEN1=33.5[;go]'); return; }
+      const cat = (await db.get('mlapi/listas/' + k)) || {}; const upd = {}; const cnt = {}; let ej = 0;
+      for (const [cod, e] of Object.entries(cat)) { if (!e || !(Number(e.p) > 0)) continue;
+        const sc = cod.replace(/^[A-Z]{2,4}-/, '').toUpperCase(); const hit = pref.find(([pp]) => sc.startsWith(pp)); const d = hit ? hit[1] : dto;
+        const pl = Number(e.pl) > 0 ? Number(e.pl) : Math.round(Number(e.p) / base); const np = Math.round(pl * (1 - d / 100));
+        cnt[d] = (cnt[d] || 0) + 1; if (ej++ < 12) console.log(`  ${cod} · ${String(e.n).slice(0, 50)} · era $${e.p} → lista $${pl} −${d}% = $${np}`);
+        upd[cod + '/pl'] = pl; upd[cod + '/dto'] = d; upd[cod + '/p'] = np; }
+      console.log(`\n${k}: ${Object.values(cnt).reduce((a, b) => a + b, 0)} productos · ` + Object.entries(cnt).map(([d, n]) => `${n} con −${d}%`).join(' · ') + (APLICAR ? '' : ' · PRUEBA: agregá ;go'));
+      if (!APLICAR) return;
+      const ks = Object.keys(upd); for (let i = 0; i < ks.length; i += 600) await db.patch('mlapi/listas/' + k, Object.fromEntries(ks.slice(i, i + 600).map((x) => [x, upd[x]])));
+      const re = (await db.get('mlapi/listas/' + k)) || {}; let ok = 0, n = 0;
+      for (const x of ks) if (x.endsWith('/p')) { n++; const c = x.slice(0, -2); if (re[c] && Number(re[c].p) === upd[x]) ok++; }
+      await db.patch('cyc/mlconfig/listasProv/' + k, { costo: 'lista − descuento', dtoTs: Date.now() });
+      console.log(`✓ releído: ${ok} de ${n} con el costo nuevo. Ahora: listamedir:${k}:<cuántos>:go`); return;
+    }
     // BILLING_PROBE=listaver:<proveedor> → SOLO LEE (19/10/2026). La lista guardada ENTERA de un proveedor, para compararla contra
     // otra (ej. el catálogo web de Iscos): una línea por producto, cód|nombre|pesos|fecha de carga. Nada de compradores: es la lista del proveedor.
     if (/^listaver:/.test(String(process.env.BILLING_PROBE || ''))) {

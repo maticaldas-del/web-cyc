@@ -1647,3 +1647,10 @@ Chequear: que un proveedor de la carpeta siga apareciendo si es el único.
 ### Etapa 3 · 19/10/2026 · `listaver:<proveedor>` (solo lee)
 Imprime la lista guardada ENTERA de un proveedor (`mlapi/listas/<prov>`: cód|nombre|pesos|fecha) para compararla contra otra fuente
 (primer uso: el catálogo web de Iscos, septiembre, contra la lista de octubre). Qué chequear: que no escriba nada y que no imprima datos de terceros.
+
+### Etapa 3 · 19/10/2026 · v24.93 · Iscos: el costo es el P. Lista menos el descuento (eligió la a)
+El remito de Iscos del 16/09 mostró que el "P. Lista" es el precio al público y que se paga el NETO (−30%; Cher y Bensimon −33,5%;
+el total del remito es la suma de los netos, sin IVA encima). La lista se había cargado ×1,21 (como si fuera sin IVA): el costo quedó
+entre 73% y 82% más caro que lo real. `listadto:<prov>;base=;dto=;<prefijo>=<%>;go` guarda en cada producto `pl` (P. Lista), `dto` y
+`p` = pl × (1 − dto), y `listamedir` lo vuelve a medir solo. La web muestra "lista $X −N%" y el pedido sigue con el precio de lista.
+**Chequear:** que una marca de Iscos con otro descuento no quede con el 30% general; que re-correr `listadto` no descuente dos veces.
