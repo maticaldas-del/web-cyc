@@ -2678,7 +2678,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.00';
+const APP_VERSION='25.01';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2689,6 +2689,7 @@ const APP_VERSION='25.00';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.01',f:'19/10/2026',h:'23:10',c:[{n:1,t:'Paulvic → Pedidos hechos: un pedido en camino muestra "a pagar ≈ $X · aprox" (unidades pedidas × lo que salió cada una en el último pedido, sin flete). El número real lo da la calculadora al llegar.'}]},
   {v:'25.00',f:'19/10/2026',h:'22:55',c:[{n:1,t:'Ventas en el teléfono: al abrir el detalle de una venta la tarjeta ya no se sale de la pantalla (antes se cortaban el %, los chips y los botones y la letra se agrandaba).'}]},
   {v:'24.99',f:'19/10/2026',h:'22:35',c:[{n:3,t:'📋 Listas: si en ML hay UN SOLO vendedor, su precio no lo confirma nadie (puede estar inflado). Ese producto ya no entra solo en ✅ Dan: va a 🔎 Para revisar, y en la lista y en los pedidos hechos dice "⚠️ 1 solo vendedor".'}]},
   {v:'24.98',f:'19/10/2026',h:'22:10',c:[{n:2,t:'📋 Listas: lo que NO está en la web del proveedor (Iscos: sólo tienen lo que muestra su web) ya no se puede pedir ni sale en Dan / Para revisar. Queda abajo en "🚫 No está en la web". En Pedidos hechos, el producto que no está en su web lo dice en rojo.'}]},
@@ -15569,6 +15570,16 @@ function pvSubirComprob(id){
 // a pedidos paraguay, que tiene una tarjeta de pedido"*). Una tarjeta por pedido: arriba la fecha y en qué está (en camino ·
 // llegó, falta pagar · pagado) y la plata; adentro la plata (a pagar, flete, testers y regalos, costo c/u que va a la ficha),
 // los días, aroma por aroma (pedidas · llegaron · faltaron, con "no viene más") y los comprobantes.
+// "A PAGAR APROX" DE UN PEDIDO EN CAMINO (19/10/2026, pedido suyo: "quiero que muestre aprox a pagar"): unidades pedidas × lo que
+// salió cada unidad en el último pedido con monto (lo de la calculadora ÷ las que llegaron, sin flete). Es una estimación: el número
+// real lo dice la calculadora del Paulvic al llegar.
+function _pvPrecioUnitAnt(exceptoId){
+  const uDe=a=>(a||[]).filter(Boolean).reduce((s,x)=>s+(parseInt(x.u)||0),0);
+  const v=Object.entries(state.pedidospv||{}).filter(([k,c])=>k!==exceptoId&&c&&(Number(c.montoPago)||Number(c.aPagar))>0&&uDe(c.llego)>0)
+    .sort((a,b)=>String(b[1].fecha).localeCompare(String(a[1].fecha)));
+  if(!v.length)return null;const c=v[0][1];
+  return {cu:(Number(c.montoPago)||Number(c.aPagar))/uDe(c.llego),fecha:c.fecha};
+}
 function pvPedidoTarjeta(id,c){
   const dm=f=>{const m=String(f||'').match(/^\d{4}-(\d{2})-(\d{2})/);return m?m[2]+'/'+m[1]:(f||'—');};
   const esc=t=>String(t).replace(/[<>&"]/g,'');
@@ -15589,14 +15600,16 @@ function pvPedidoTarjeta(id,c){
     return `<div style="display:flex;justify-content:space-between;gap:8px;font-size:.66rem;padding:2px 0;border-bottom:1px dashed var(--border)"><span>${esc(v)}${nun[sid(v)]?' <span style="color:var(--red)" title="Se pidió y no vino: no se vuelve a pedir">🚫 no viene más</span>':''}</span><span style="white-space:nowrap">${cam?`${pe} pedidas`:ex?`<span style="color:var(--green)">+${ll} no pedidas</span>`:`${pe} → ${ll||0}${f?` <b style="color:var(--red)">faltaron ${f}</b>`:' ✓'}`}</span></div>`;};
   const n=parseInt(c.comprobantes)||0;
   const comps=n?Array.from({length:n},(_,i)=>`<button class="btn btn-ghost btn-sm" style="font-size:.66rem;padding:2px 8px;margin:4px 4px 0 0" onclick="pvVerComprob('${id}',${i})">🧾 comprobante${n>1?' '+(i+1):''}</button>`).join(''):'';
-  const plata=(tot>0?fila(c.pagado?'pagado':'a pagar','<b>'+fmt(Math.round(tot))+'</b>',c.pagado?'Lo que se transfirió.':'Lo que dice la calculadora del Paulvic.'):fila('a pagar',cam?'<span style="color:var(--muted)">se paga al llegar</span>':'<span style="color:var(--amber)">sin dato</span>'))
+  const _ant=(!(tot>0)&&cam)?_pvPrecioUnitAnt(id):null,_aprox=_ant?Math.round(uDe(c.items)*_ant.cu/100)*100:0;
+  const plata=(tot>0?fila(c.pagado?'pagado':'a pagar','<b>'+fmt(Math.round(tot))+'</b>',c.pagado?'Lo que se transfirió.':'Lo que dice la calculadora del Paulvic.'):fila('a pagar',_aprox?`<b>≈ ${fmt(_aprox)}</b> <span style="color:var(--muted)">· aprox</span>`:cam?'<span style="color:var(--muted)">se paga al llegar</span>':'<span style="color:var(--amber)">sin dato</span>',_aprox?`Aproximado: ${uDe(c.items)} u. pedidas × ${fmt(Math.round(_ant.cu))} c/u (lo que salió cada una en el pedido del ${dm(_ant.fecha)}, sin flete). El número real lo da la calculadora del Paulvic cuando llega; si no viene todo, es menos.`:''))
+    +(_aprox?fila('','<span style="color:var(--muted);font-size:.6rem">'+uDe(c.items)+' u. × '+fmt(Math.round(_ant.cu))+' (como el pedido del '+dm(_ant.fecha)+') · + flete</span>'):'')
     +(cam?'':fila('flete',fl?fmt(fl):'<span style="color:var(--amber)">falta</span>','Lo que cobra el transporte. Sin esto el costo c/u queda corto.'))
     +(uT?fila('testers',uT+' u.','Se venden al costo: entran en la cuenta del costo c/u.'):'')
     +(uR?fila('regalos (perfume)',uR+' u.','Los regalos que son perfume se venden al costo: entran en la cuenta del costo c/u.'):'')
     +(cu?fila('costo c/u','<b style="color:var(--green)">'+fmt(cu)+'</b>',`(${fmt(Math.round(tot))}${fl?' + flete '+fmt(fl):''}) ÷ ${uLl+uT+uR} u. (${uLl} llegadas${uT?' + '+uT+' tester':''}${uR?' + '+uR+' regalo':''}). Es el costo que va a la ficha del Paulvic si es el último pedido.`)+(c.costoAplicado?fila('','<span style="color:var(--muted)">✓ puesto en la ficha</span>'):''):'');
   const dias=fila('pedido el',dm(c.fecha))+(cam?'':fila('llegó el',dm(c.fechaLlego)+(c.fechaLlego?' <span style="color:var(--muted)">· '+Math.max(0,Math.round((Date.parse(c.fechaLlego+'T12:00:00-03:00')-Date.parse(c.fecha+'T12:00:00-03:00'))/864e5))+' d</span>':'')))+(c.pagado?fila('pagado el',dm(c.fechaPago)):'')
     +fila('unidades',cam?uDe(c.items)+' pedidas':`${uDe(c.items)} pedidas · ${uLl} llegaron`);
-  const der=tot>0?fmt(Math.round(tot)):`${cam?uDe(c.items):uLl} u.`;
+  const der=tot>0?fmt(Math.round(tot)):_aprox?`≈ ${fmt(_aprox)}`:`${cam?uDe(c.items):uLl} u.`;
   return `<details style="margin-bottom:8px;background:var(--surface2);border:1px solid var(--border2);border-left:4px solid ${col};border-radius:9px">
     <summary style="cursor:pointer;padding:11px 13px;display:flex;align-items:center;gap:12px;list-style:none">
       <div style="min-width:0"><div style="font-size:.95rem;font-weight:800;color:var(--text)">${dm(c.fecha)}</div><div style="font-size:.66rem;font-weight:700;color:${col};margin-top:2px;white-space:nowrap">${est}</div></div>

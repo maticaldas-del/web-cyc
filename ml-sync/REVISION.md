@@ -1692,3 +1692,8 @@ producto nunca va solo a ✅ Dan (web `_listaDa`, robot `cuentaLista`): va a �
 Captura suya: al abrir "detalle" la tarjeta (`.vp-cel`) se ensanchaba (chips, el renglón del cambio de precio y los botones con
 `nowrap`), se cortaban el % y los botones, y el iPhone agrandaba la letra (text-size-adjust). CSS en ≤640px: nada pasa del ancho,
 todo corta renglón; `html{text-size-adjust:100%}`. Probado con una maqueta a 390px (scrollWidth 390). Chequear en cada cambio de la tarjeta.
+
+### Etapa 2 · 19/10/2026 · v25.01 · Paulvic: "a pagar ≈" en el pedido en camino
+Pedido suyo. `_pvPrecioUnitAnt`: lo que salió cada unidad en el último pedido con monto (calculadora ÷ llegadas, sin flete); la
+tarjeta en camino muestra unidades pedidas × eso como "≈ $X · aprox" (y arriba a la derecha). No se guarda en ningún lado: es sólo
+para mirar. Chequear: que no se use como deuda en el Arqueo (la deuda sigue siendo sólo lo llegado sin pagar).
