@@ -634,6 +634,12 @@ tachado contra liso al mismo precio. Antes de decidir se lee y se usa: si **vend
 (recuperarla o cambiar de plan); si **vende igual perdiendo**, no se baja por la caja; si las ventas **no siguen a las visitas**,
 el freno es el precio o la ficha, no la visibilidad; si en una fecha **subió de verdad**, en la próxima se sube antes y se manda
 stock antes. Con pocos días la frase lo dice ("todavía es una pista") y no se concluye.
+Y **"Más datos para decidir"** (mismo día, pedido suyo): de dónde se repone y si reponerlo hoy sale más caro (→ si sube el costo de
+reponer, el precio de hoy se defiende), reclamos con motivo (2+ del producto → mirar calidad antes de subir o pedir más), cuánto se
+queda ML, competencia (si ML pide un precio abajo del costo, la caja no se pelea), día de la semana y mes (cuándo conviene probar un
+precio y cuándo se vende más), la edad de la unidad más vieja en Full (a los 120 días paga stock antiguo: se decide antes), las
+opiniones y preguntas de ML (muchas de 1-2 estrellas → no es el precio) y las otras publicaciones del mismo producto (no competir
+contra uno mismo). Y "cada 10% de suba vende X% menos": si es menos de 10%, subir deja más plata por día.
 
 ## 🔬 EL ANÁLISIS A FONDO: LAS 11, "LO QUE RECOMIENDES" (16/10/2026, eligió la (a) en todas)
 Él: *"podemos hacer un análisis en profundo para ver si hay algo más que podamos hacer para hacer rendir al máximo a cada

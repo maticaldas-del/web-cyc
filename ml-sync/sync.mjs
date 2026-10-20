@@ -3721,6 +3721,7 @@ function reaccionesDe(d, ks, tach, parc) {
     }
     reac.fechas = F;
     for (const x of F) {
+      if (!x.w.u && !x.base.u) continue;   // sin ventas ni antes ni en la ventana: no dice nada
       const lam = (x.base.r || 0) * x.w.dias, alto = x.w.u > lam && 1 - pois(x.w.u - 1, lam) < 0.05, bajo = pois(x.w.u, lam) < 0.05;
       txt.push(`🎁 ${x.nom} ${x.y}: vendió ${ritmo(x.w.r)} en la ventana (${x.w.dias} d) contra ${ritmo(x.base.r)} antes${x.x != null ? ` (×${String(x.x).replace('.', ',')})` : ''}${alto ? ' · subió de verdad' : bajo ? ' · vendió MENOS' : ' · sin diferencia segura'}${x.w.vd != null && x.base.vd != null ? ` · visitas ${fV(x.base.vd)} → ${fV(x.w.vd)} por día` : ''}.`);
     }
@@ -3747,7 +3748,7 @@ function reaccionesDe(d, ks, tach, parc) {
 // este precio (`cyc/netopub`), la competencia (`cyc/techofull` y la caja de la línea de tiempo), el día de la semana y el mes en que
 // más vende y la edad de la unidad más vieja en Full (la línea de tiempo, primero entra primero sale), y las otras publicaciones del
 // mismo producto (`cyc/mllinks`). Frases simples en `datosTxt`; con pocos días lo dice y no concluye.
-function fichaExtras({ mla, e, pr, d, ks, links, reclamos, techo, netopub, noconsigo, tc, cu }) {
+function fichaExtras({ mla, e, pr, d, ks, links, reclamos, techo, netopub, noconsigo, opiniones, tc, cu }) {
   const txt = [], ext = {};
   const $ = (x) => (x == null || !isFinite(x) ? '—' : '$' + Math.round(x).toLocaleString('es-AR'));
   const conSt = (x) => x && ((x.st != null && (Number(x.st) > 0 || Number(x.u) > 0)) || (x.st == null && x.est === 'active'));
@@ -3781,7 +3782,7 @@ function fichaExtras({ mla, e, pr, d, ks, links, reclamos, techo, netopub, nocon
   // 4 · COMPETENCIA: el precio que pide ML para la caja (línea de tiempo) y el competidor más barato con Full
   { const ult = [...ks].reverse().find((k) => d[k] && d[k].caja); const x = ult ? d[ult] : null; const T = techo && techo[mla]; const pHoy = Number((x && x.p) || (e && e.precio)) || 0;
     const parts = [];
-    if (x && x.caja) { const nomC = { g: 'la gana', c: 'la comparte', p: 'la pierde', n: 'no es de catálogo' }[x.caja] || x.caja; parts.push(`caja: ${nomC}${x.ptw > 0 && x.caja !== 'g' ? ` (ML pide ${$(x.ptw)}${pHoy ? `, ${Math.round((1 - x.ptw / pHoy) * 100)}% abajo del tuyo` : ''})` : ''}`); }
+    if (x && x.caja) { const nomC = { g: 'la gana', c: 'la comparte', p: 'la pierde', n: 'no es de catálogo' }[x.caja] || x.caja; parts.push(`caja: ${nomC}${x.ptw > 0 && x.caja !== 'g' ? (cu > 0 && x.ptw < cu ? ` (ML pide ${$(x.ptw)}: abajo de lo que cuesta la mercadería, no es un precio posible)` : ` (ML pide ${$(x.ptw)}${pHoy ? `, ${Math.round((1 - x.ptw / pHoy) * 100)}% abajo del tuyo` : ''})`) : ''}`); }
     if (e && e.cajaVis) parts.push(`visitas de la ficha del catálogo: ${{ maximum: 'las más', medium: 'parte', minimum: 'casi nada' }[e.cajaVis] || e.cajaVis}`);
     if (e && Number(e.cajaComp) > 0) parts.push(`${e.cajaComp} comparten el primer puesto`);
     if (T && (T.cF || T.cS)) parts.push(`competidor más barato con Full ${T.cF ? $(T.cF) : '—'}${T.cS ? ` · sin Full ${$(T.cS)}` : ''} (${(T.nF || 0) + (T.nS || 0)} vendedores)`);
@@ -3806,6 +3807,13 @@ function fichaExtras({ mla, e, pr, d, ks, links, reclamos, techo, netopub, nocon
     const enStock = lotes.reduce((a, l) => a + l.q, 0);
     if (ok && enStock > 0 && lotes.length) { const l0 = lotes[0]; const dias = Math.round((Date.now() - Date.parse(l0.k.replace(/_/g, '-') + 'T15:00:00Z')) / 864e5); const lim = 120; ext.edad = { dias, desde: l0.k, aprox: !!l0.aprox, u: Math.round(l0.q) };
       txt.push(`⏳ La unidad más vieja en Full entró ${l0.aprox ? 'por lo menos ' : ''}hace ${dias} días (${Math.round(l0.q)} u. de esa tanda)${dias >= lim ? ' · YA paga stock antiguo' : dias >= lim - 30 ? ` · empieza a pagar stock antiguo en ${lim - dias} días` : ''}.`); } }
+  // 8 · LO QUE DICE ML DE LA PUBLICACIÓN (opiniones del producto, preguntas, tipo, foto) · `mlapi/opiniones/<MLA>`, se relee cada 7 días
+  { const o = opiniones && opiniones[mla]; if (o && (o.n != null || o.lt)) { ext.ml2 = o; const parts = [];
+    if (o.n > 0) { const malas = o.n ? Math.round(((o.e1 || 0) + (o.e2 || 0)) / o.n * 100) : 0; parts.push(`opiniones ${String(o.prom).replace('.', ',')} de 5 (${o.n})${malas >= 8 ? ` · ${malas}% con 1-2 estrellas: hay quejas, mirar qué dicen` : malas ? ` · ${malas}% con 1-2 estrellas` : ''}`); } else if (o.n === 0) parts.push('sin opiniones todavía');
+    if (o.preg != null) parts.push(`${o.preg} preguntas en la vida`);
+    if (o.lt) parts.push(o.lt === 'gold_pro' ? 'Premium' : o.lt === 'gold_special' ? 'Clásica' : o.lt);
+    if (o.fotoOk === false) parts.push('⚠️ ML no marca la foto como de buena calidad (puede verse menos)');
+    if (parts.length) txt.push(`⭐ Mercado Libre dice: ${parts.join(' · ')}${o.cat ? ' · las opiniones son del producto del catálogo (todos los vendedores)' : ''}.`); } }
   // 7 · LAS OTRAS PUBLICACIONES DEL MISMO PRODUCTO (y del mismo color si la publicación es de un color)
   { const H = Object.entries(links || {}).filter(([m, x]) => m !== mla && x && x.prodId && x.prodId === e.prodId && !x.ignored && !x.noVendemosMas && (!e.variant || !x.variant || x.variant === e.variant) && x.status !== 'closed');
     if (H.length) { const np = netopub || {}; ext.hermanas = H.map(([m, x]) => ({ mla: m, cuenta: x.cuenta || '', st: x.status || '', p: (np[m] && np[m].precio) || null }));
@@ -31932,6 +31940,27 @@ async function main() {
       // Lo que la ficha suma para decidir (20/10/2026): reclamos con motivo, lo que se queda ML, competencia, "no lo consigo".
       const leerX = async (r) => { try { return (await db.get(r)) || {}; } catch { console.log(`⚠️ no leí ${r}: esa parte de la ficha sale sin eso`); return {}; } };
       const [recF, npF, tfF, ncF] = await Promise.all([leerX('cyc/reclamomotivo'), leerX('cyc/netopub'), leerX('cyc/techofull'), leerX('cyc/noconsigo')]);
+      // LO QUE DICE ML DE CADA PUBLICACIÓN (20/10/2026, medido con `fichaml`): las opiniones del producto (`/reviews/item`), cuántas
+      // preguntas tuvo, el tipo (Clásica/Premium) y si ML marca la foto como de buena calidad (`good_quality_thumbnail`). La calidad
+      // de la publicación (`/health`, `/performance`) ML no la da para catálogo: no se pide. Vive en `mlapi/opiniones/<MLA>` y con `:go`
+      // se relee cada 7 días, hasta 150 por corrida y espaciado (si ML corta por cupo, sigue la noche siguiente). Sólo números.
+      const opF = await leerX('mlapi/opiniones');
+      if (GO) {
+        const tokO = {}; const tokDeO = async (cta) => { const lab = labels.find((l) => l.toLowerCase() === String(cta || '').toLowerCase()); if (!lab || !accounts[lab]?.refresh_token) return null; if (tokO[lab] !== undefined) return tokO[lab]; try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, accounts[lab].refresh_token); await db.patch('mlapi/tokens/' + lab, { refresh_token: t.refresh_token, updated_ts: Date.now() }); tokO[lab] = t.access_token; } catch { tokO[lab] = null; } return tokO[lab]; };
+        const prIds = new Set(products.map((pp) => pp.id));
+        const viejas = Object.entries(links).filter(([m, x]) => x && x.prodId && prIds.has(x.prodId) && !x.ignored && x.status !== 'closed' && (!opF[m] || Date.now() - (Number(opF[m].ts) || 0) > 7 * 864e5)).sort((a, b) => (Number((opF[a[0]] || {}).ts) || 0) - (Number((opF[b[0]] || {}).ts) || 0)).slice(0, 150);
+        let okO = 0, cupo = 0; const updO = {};
+        for (const [m, x] of viejas) {
+          if (cupo >= 5) break; const tk = await tokDeO(x.cuenta); if (!tk) continue; const r = { ts: Date.now() }; let alguno = false;
+          try { const rv = await mlGet(`/reviews/item/${m}`, tk); const lv = rv.rating_levels || {}; Object.assign(r, { prom: Number(rv.rating_average) || 0, n: Number(rv.paging && rv.paging.total) || 0, e1: Number(lv.one_star) || 0, e2: Number(lv.two_star) || 0, cat: !!rv.user_product_id || undefined }); alguno = true; } catch (er) { if (/429/.test(String(er.message))) cupo++; }
+          try { const q = await mlGet(`/questions/search?item=${m}&limit=1`, tk); r.preg = Number(q.total ?? (q.paging && q.paging.total)) || 0; alguno = true; } catch (er) { if (/429/.test(String(er.message))) cupo++; }
+          try { const it = await mlGet(`/items/${m}?attributes=listing_type_id,tags`, tk); r.lt = it.listing_type_id || null; r.fotoOk = (it.tags || []).includes('good_quality_thumbnail'); alguno = true; } catch (er) { if (/429/.test(String(er.message))) cupo++; }
+          if (alguno) { updO[m] = JSON.parse(JSON.stringify(r)); opF[m] = updO[m]; okO++; }
+          await new Promise((res) => setTimeout(res, 300));
+        }
+        if (Object.keys(updO).length) { try { await db.patch('mlapi/opiniones', updO); } catch { console.log('⚠️ no pude guardar las opiniones: la ficha las usa igual esta vez'); } }
+        console.log(`⭐ Opiniones y preguntas de ML: ${okO} leídas ahora de ${viejas.length} que tocaba releer${cupo >= 5 ? ' · ML cortó por cupo: el resto sigue mañana' : ''}`);
+      }
       const pIdx = {}; for (const pr of products) pIdx[pr.id] = pr;
       const hoyK = dayKeyFromISO(Date.now());
       const camb = {};
@@ -31953,7 +31982,7 @@ async function main() {
           const pr = pIdx[e.prodId]; const cta = String(e.cuenta || '').toLowerCase();
           const notas = { ...(notasT[mla] || {}) };
           const ex = expC[mla]; if (ex && ex.simple && Number(ex.ts) > 0 && !notas[ex.ts]) notas[ex.ts] = { t: ex.simple, tipo: ex.tipo || 'nota' };
-          const f = armarFicha({ mla, d, e, cu: costoPesos(pr, 1, tc).costo, imp: ((ML_EXTRA_PCT[cta] || 4) + 2) / 100, cambios: camb[mla] || [], notas, hoyK, tach: TCH.tach[mla], parc: TCH.parc[mla], extra: { pr, links, reclamos: recF, techo: tfF, netopub: npF, noconsigo: ncF, tc } });
+          const f = armarFicha({ mla, d, e, cu: costoPesos(pr, 1, tc).costo, imp: ((ML_EXTRA_PCT[cta] || 4) + 2) / 100, cambios: camb[mla] || [], notas, hoyK, tach: TCH.tach[mla], parc: TCH.parc[mla], extra: { pr, links, reclamos: recF, techo: tfF, netopub: npF, noconsigo: ncF, opiniones: opF, tc } });
           f.producto = String(pr.name || '').slice(0, 80);
           out[mla] = f; ok++;
         }));

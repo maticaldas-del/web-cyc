@@ -9323,3 +9323,6 @@ tomar decisiones más finas"*. La ficha (`mlapi/ficha/<MLA>`, sección "Cómo re
 perdiendo la caja, si las ventas siguen a las visitas, qué pasó al bajar o subir el precio, cada fecha especial contra antes,
 visitas sin stock y tachado contra liso. Se usa antes de decidir (detalle en `ml-sync/CEREBRO.md`, 📋). Lo medido para todo el
 catálogo junto sale de `vistas` (solo lee).
+Y **"Más datos para decidir"** (mismo día): reposición y costo de reponer hoy, reclamos con motivo, lo que se queda ML, competencia,
+día de la semana y mes, edad del stock en Full, opiniones y preguntas de ML (`mlapi/opiniones`, se releen cada 7 días), las otras
+publicaciones del mismo producto y cuánto le pega el precio a las ventas. `fichaml:<MLA>` mide qué más da ML (solo lee).

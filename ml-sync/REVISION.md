@@ -928,6 +928,13 @@ producto") dice por publicación: caja ganando/perdiendo, ventas contra visitas,
 tachado. Los días con tachado salen de `diasTachado` (la misma función de `vistas`). `vistas` suma la sección F (fechas
 especiales, lo regalable contra lo demás). Qué chequear: que con pocos días diga "pista" y no concluya, que "vende sólo ganando"
 pida certeza (Poisson < 5%), y que las fechas comparen sólo días con stock.
+- 20/10/2026 · la ficha suma "Más datos para decidir" (`fichaExtras`, `datos`/`datosTxt`): reposición y costo de reponer hoy,
+"no lo consigo", reclamos de 90 días con motivo, lo que se queda ML (`cyc/netopub`), competencia (caja de la línea, `cyc/techofull`,
+visitas de la ficha del catálogo), día de la semana y mes, edad de la unidad más vieja en Full (primero entra primero sale con la
+línea de tiempo), opiniones/preguntas/tipo/foto de ML (`mlapi/opiniones`, `ficha:go` relee 150 por noche cada 7 días; medido con
+`fichaml`: `/health` y `/performance` ML no los da para catálogo) y las otras publicaciones del mismo producto. Y la elasticidad
+(cada 10% de suba, cuánto vende menos) con 3+ cambios. Qué chequear: que "ML pide $1.000" abajo del costo no se lea como precio
+posible, que las fechas sin ventas de ningún lado no salgan, que la edad del stock diga "por lo menos" cuando no se vio entrar.
 - 20/10/2026 · planilla 🛡️: lo que ML tiene en revisión (`under_review`) pasa a excepción ("no deja cambiar el precio") en vez de
 "para subir": no se puede tocar y quedaba en la lista para siempre. Qué chequear: que al liberarla vuelva a la lista.
 - **🚧 El techo en la línea de tiempo (18/10/2026, v24.49).** `lineaPintar` dibuja una raya roja punteada en el carril del precio por cada `cyc/techofreno/<MLA>` (`probado`, roja "ya no vende") y otra verde en `volvio` ("sí vende") de las publicaciones del gráfico (respeta el color elegido), desde el día que se anotó; entra en la escala. Qué chequear: que todo techo encontrado se anote con `techofreno:<MLA>=<precio>|motivo;go` (si no, no aparece).
