@@ -9363,7 +9363,7 @@ tag 🧪 `prueba`, no se tocan mientras dura. Detalle en `ml-sync/CEREBRO.md` (�
 
 ## 💳 CADA VENTA DICE CLÁSICA O PREMIUM Y EN CUÁNTAS CUOTAS (20/10/2026, v25.27, pedido suyo)
 El robot guarda `tipoPub`, `cuotas` y `cuotasSI` (el interés lo pagamos nosotros) en cada venta; Ventas x Producto lo muestra
-(Clásica en azul, Premium en dorado). Las viejas: `tipoventa[:días][:go]` por ml-sync. Sirve para medir si las 💳 gemelas venden.
+(Premium en dorado, Clásica en gris). Las viejas: `tipoventa[:días][:go]` por ml-sync. Sirve para medir si las 💳 gemelas venden.
 
 ## 🔢 CADA PEDIDO HECHO TIENE NÚMERO DE 4 CIFRAS (20/10/2026, v25.29, pedido suyo)
 Él: *"poner número a los pedidos, así es más fácil referirse a ellos. de 4 dígitos"*. Paraguay, Paulvic y Listas: `num` en el
