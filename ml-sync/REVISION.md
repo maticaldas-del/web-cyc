@@ -1848,3 +1848,9 @@ Dos fórmulas para el mismo número: la raya 🔴 de la web (desde el 💰, todo
 hoy, por tramos). Ahora las dos usan `rayasPrecioLinea` / `_rayas`: sólo días con 3+ u. en Full y con visitas. `techo95` da 🏔️ sólo
 si el precio de hoy es el 💰 y hay 🔴 al 95%. La línea avisa "hoy probando" si el precio está arriba del 🔴 con estrategia techo/escasez.
 **Chequear:** que las dos copias sigan iguales (si se toca una, la otra) y que un producto con pocos días medibles diga eso y no invente rayas.
+
+### Etapa 5 · 20/10/2026 · v25.18 · línea de tiempo: ganancia por semana
+Él: *"que haya otra línea que vea por semana en vez de por día"*. Renglón nuevo "$ ganancia/semana" en las dos líneas de tiempo
+(producto y todas juntas): suma de lunes a domingo (`_lineaSemanas`, `_lineaSemSvg`), misma ganancia que la línea por día
+(`_ganK` / `vd`). La semana incompleta va punteada y lo dice. **Chequear:** que la suma de las semanas enteras coincida con la
+ganancia de Ventas en período Semana.
