@@ -23,6 +23,12 @@ va TODO JUNTO en un solo `pregunto:` numerado (a)/(b) y en `REV_PENDIENTE`. Al t
 `REV_HIST` (index.html). Inicio dice la etapa de hoy, si ya quedó hecha o si no terminó. **En el archivo el orden de las secciones
 quedó 0·1·2·3·4·6·7·5** (la 5 nueva está abajo de todo, donde vivían la 8 y la 9).
 
+**DESDE EL 20/10/2026 A LA TARDE NO VA POR DÍA DE LA SEMANA: TOCA LA QUE HACE MÁS QUE NO SE REVISA** (él: *"que las revisiones
+automáticas diarias miren hasta qué revisión se hizo, así no repite"*). Última corrida de cada etapa = la fecha más nueva entre
+`REV_HIST[n]` y `REV_HECHAS[n]` (`revUltCorrida` en index.html); toca la más vieja, empate → número menor, nunca una corrida en los
+últimos 6 días ni una que esté corriendo. Cada corrida termina SIEMPRE con un renglón en `REV_HIST` (aunque queden decisiones), si
+no se repite. Inicio (`revProxima`) y Ajustes (`revAgenda`) usan la misma regla. Los días de la semana de arriba quedan como historia.
+
 ## SIEMPRE, EN CUALQUIER ETAPA
 - **Contar dos (o cuatro) veces lo mismo.** El caso de la línea del Centímetro (08/10): el stock se
   sumaba por clave de producto Y por cada clave de color → 413 en vez de ~107. Cada vez que algo
@@ -1973,7 +1979,7 @@ y el disponible no salte; que un pedido de lista llegado aparezca en Deudas hast
   sobra/liquidando también muestran el piso (sin techo). El 🔴 techo y `techo95` del robot no cambian. **Chequear:** que el
   provisorio no se use para marcar 🏔️ ni para decidir un precio sin mirarlo.
 
-- 20/10/2026 · Etapa 7 (diseño) · v25.34: **las ventas vivas estaban apagadas desde la v24.86 (19/10).** `vivaEnvolver` buscaba
+- 20/10/2026 · Etapa 7 (diseño) · v25.35: **las ventas vivas estaban apagadas desde la v24.86 (19/10).** `vivaEnvolver` buscaba
   `class="ingreso-item vp-pc" style="` pegados, y la v24.86 metió `onclick`/`title` en el medio: no encontraba la tarjeta y
   devolvía la venta sin efecto, sin avisar. Ahora busca el `style="` dentro de la misma etiqueta. **Chequear:** al tocar el
   markup de una tarjeta de Ventas, que siga apareciendo el color/efecto (prueba: una venta de 25%+ tiene que verse con tinte).

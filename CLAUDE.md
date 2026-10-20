@@ -621,6 +621,9 @@ retiro + gastos del mes ("por cada peso que sale, otro se queda"; editable en �
 aparte (ya están en la ganancia). Falta que él lo mire y diga si el objetivo le cierra.
 
 ### LAS 7 ETAPAS, UNA POR DÍA, CORREN SOLAS (20/10/2026, pedido suyo, ya con el plan 20x)
+**CAMBIO DEL MISMO 20/10 A LA TARDE (él: *"que miren hasta qué revisión se hizo, así no repite"*): ya NO va por día de la
+semana. Cada madrugada toca la etapa que hace más que no se revisa (última fecha en `REV_HIST`/`REV_HECHAS`, empate → número
+menor, nunca una de los últimos 6 días ni una que esté corriendo). Toda corrida termina con su renglón en `REV_HIST`.**
 **lun 1 Precios · mar 2 Plata · mié 3 Mercadería · jue 4 Choques y fallas mudas (viejas 4+5) · vie 5 Datos, historial y cerebro
 (viejas 8+9) · sáb 6 Ideas nuevas · dom 7 Diseño.** Tarea programada diaria a las **04:00** de acá (pedido suyo del 20/10: *"quiero que siempre las revisiones diarias se hagan a las 4am de argentina"*; antes 22:13) que entra a esta sesión (`trig_01TT94wnEKk299d85Sj6ePWw`). **Los 4 revisores de cada etapa van con esfuerzo MÁXIMO** (20/10, con el plan 20x; reemplaza el "Alto" del 25/09). Cómo corre
 cada una: arriba de todo en `ml-sync/REVISION.md` ("EL CALENDARIO"). En `index.html`: `REV_ETAPAS` (con `dia`), `REV_HORA`,

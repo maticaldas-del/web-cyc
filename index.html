@@ -2684,7 +2684,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.34';
+const APP_VERSION='25.35';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2695,7 +2695,8 @@ const APP_VERSION='25.34';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
-  {v:'25.34',f:'20/10',h:'15:37',c:[{n:1,t:'🔥 Vuelven las ventas vivas (color por %, formas que se mueven, temblor y fuego). Se habían apagado el 19/10 sin querer, cuando se agregó el tocar la venta para ver el detalle.'}]},
+  {v:'25.35',f:'20/10',h:'15:37',c:[{n:1,t:'🔥 Vuelven las ventas vivas (color por %, formas que se mueven, temblor y fuego). Se habían apagado el 19/10 sin querer, cuando se agregó el tocar la venta para ver el detalle.'}]},
+  {v:'25.34',f:'20/10',h:'15:45',c:[{n:1,t:'🔎 La revisión diaria ya no va por día de la semana: cada madrugada toca la etapa que hace más tiempo que no se revisa. Si una se hizo antes, no se repite. Inicio dice cuál es la próxima.'}]},
   {v:'25.33',f:'20/10',h:'15:35',c:[{n:3,t:'💵 Listas: lo que llega de un proveedor cuenta como deuda en el Arqueo hasta que tocás "💵 Ya lo pagué" en el pedido (Pedidos → Listas → 🧾 Pedido). Al pedir no cuenta nada.'},{n:3,t:'💲 Si recomprás algo de una lista más caro, al llegar la ficha toma el costo nuevo (las ventas viejas quedan con el viejo).'},{n:2,t:'⚖️ Tope de H: el ritmo de los 30 días cuenta también las ventas canceladas, como las cuenta ARCA.'},{n:2,t:'🇵🇾 El recargo de Paraguay se mide contra el precio de la web, y el promedio deja afuera el adelanto ocasional (el pedido lo sigue pagando).'},{n:2,t:'📈 Las rayas de techo y piso de la línea de tiempo comparan todos los precios con el costo, el dólar y el monotributo de hoy.'},{n:3,t:'💳 Mercado Pago: la fila diaria sin venta y sin fecha de liberación ya no suma a "a liquidar": es plata que ya está en la cuenta.'}]},
   {v:'25.32',f:'20/10',h:'15:34',c:[{n:1,t:'💳 Ventas: la Clásica vuelve a gris (como antes); la Premium queda en dorado.'}]},
   {v:'25.31',f:'20/10',h:'15:33',c:[{n:1,t:'💳 Ventas: Clásica en azul y Premium en dorado.'}]},
@@ -4247,16 +4248,13 @@ const REV_HIST={
   7:[{f:'2026-09-29',t:'4 revisores (teléfono, lo que sobra, lo que cuesta encontrar, parejo): lo chico hecho.'},
      {f:'2026-10-01',t:'Cerrada: eligió 13 de 15 ideas (Inicio, Rotación en el teléfono, colores del %, Ventas por semana, Métricas con índice).'}],
 };
-// Las etapas en el orden en que van a tocar: una por día de la semana (20/10/2026), arrancando por la de hoy.
-// Si la de hoy ya quedó resuelta hoy, la próxima vez que le toca es dentro de una semana.
+// Las etapas en el orden en que van a tocar (20/10/2026): una por día, primero la que hace más que no se revisa (`revProxima`).
 function _revHoyISO(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function revAgenda(){
   const hoy=new Date();hoy.setHours(12,0,0,0);const hoyISO=_revHoyISO();
-  return REV_ETAPAS.map(et=>{
-    let k=(et.dia-hoy.getDay()+7)%7;
-    if(k===0&&REV_HECHAS[et.n]===hoyISO)k=7;
-    return {et,k,ult:REV_HECHAS[et.n]?_revFecha(REV_HECHAS[et.n]):null,toca:new Date(hoy.getTime()+k*864e5)};
-  }).sort((x,y)=>x.k-y.k);
+  const hecha=REV_ETAPAS.some(x=>revUltCorrida(x.n)===hoyISO);   // si hoy ya corrió una, la próxima es mañana
+  const ord=REV_ETAPAS.slice().sort((a,b)=>((revUltCorrida(a.n)===hoyISO)-(revUltCorrida(b.n)===hoyISO))||(revUltCorrida(a.n)||'').localeCompare(revUltCorrida(b.n)||'')||a.n-b.n);
+  return ord.map((et,i)=>{const k=i+(hecha?1:0);const u=revUltCorrida(et.n);return {et,k,ult:u?_revFecha(u):null,toca:new Date(hoy.getTime()+k*864e5)};});
 }
 function renderRevPanel(){
   const el=document.getElementById('aj-revisiones');if(!el)return;
@@ -4269,7 +4267,7 @@ function renderRevPanel(){
     const tocaTxt=!toca?'':dT<=0?`<b style="color:var(--amber)">toca hoy a las ${REV_HORA}</b>`:`toca el ${_revFmt(toca)} (en ${dT} d)`;
     const hist=(REV_HIST[et.n]||[]).slice().reverse();
     return `<details style="border-top:1px solid var(--border);padding:8px 0">
-      <summary style="cursor:pointer;font-size:.8rem"><b>${i===0?'👉 ':''}${['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][et.dia]} · etapa ${et.n} · ${esc(et.nom)}</b> <span style="color:var(--muted);font-size:.7rem">· ${ult?`última ${_revFmt(ult)} (hace ${hace} d)`:'nunca se hizo'} · ${tocaTxt}</span></summary>
+      <summary style="cursor:pointer;font-size:.8rem"><b>${i===0?'👉 ':''}Etapa ${et.n} · ${esc(et.nom)}</b> <span style="color:var(--muted);font-size:.7rem">· ${ult?`última ${_revFmt(ult)} (hace ${hace} d)`:'nunca se hizo'} · ${tocaTxt}</span></summary>
       <div style="font-size:.72rem;line-height:1.55;padding:6px 0 0 4px">
         <div><b>Qué mira:</b> ${esc(et.que)}</div>
         <div style="color:var(--muted)">Esfuerzo ${esc(et.esf)} · se pide en el chat: <i>"etapa ${et.n}"</i></div>
@@ -4279,19 +4277,26 @@ function renderRevPanel(){
 }
 function _revFecha(iso){const d=new Date(iso+'T12:00:00');return isNaN(d)?null:d;}
 function _revFmt(d){return ['dom','lun','mar','mié','jue','vie','sáb'][d.getDay()]+' '+String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0');}
+// LA QUE TOCA ES LA QUE HACE MÁS TIEMPO QUE NO SE REVISA (20/10/2026, pedido suyo: *"que las revisiones automáticas diarias
+// miren hasta qué revisión se hizo. así no repite"*). Antes iba por día de la semana: si una etapa se corría a mano un día
+// antes, a la madrugada se repetía. Ahora: última corrida de cada etapa = la fecha más nueva entre REV_HIST y REV_HECHAS;
+// toca la más vieja (empate → número menor), nunca una que ya corrió hoy. La tarea de las 04:00 elige con la MISMA regla.
+function revUltCorrida(n){let u=REV_HECHAS[n]||'';(REV_HIST[n]||[]).forEach(x=>{if(x&&x.f>u)u=x.f;});return u;}
 function revProxima(){
-  // La de hoy (una por día de la semana). `hecha` = ya quedó resuelta hoy.
-  const hoy=new Date();const et=REV_ETAPAS.find(x=>x.dia===hoy.getDay())||REV_ETAPAS[0];
+  const hoy=new Date(),hoyISO=_revHoyISO();
+  const hoyEt=REV_ETAPAS.find(x=>revUltCorrida(x.n)===hoyISO)||null;
+  const cand=REV_ETAPAS.filter(x=>revUltCorrida(x.n)!==hoyISO).sort((a,b)=>(revUltCorrida(a.n)||'').localeCompare(revUltCorrida(b.n)||'')||a.n-b.n);
+  const et=cand[0]||REV_ETAPAS[0];
   let ult=null;
   for(const [n,iso] of Object.entries(REV_HECHAS)){const f=_revFecha(iso);if(f&&(!ult||f>ult.f))ult={n:Number(n),f};}
   const [hh,mm]=REV_HORA.split(':').map(Number);
   const yaCorrio=hoy.getHours()*60+hoy.getMinutes()>=hh*60+mm+90;   // le doy 1 h 30 para terminar
-  return {et,hecha:REV_HECHAS[et.n]===_revHoyISO(),yaCorrio,ultima:ult};
+  return {et,hecha:!!hoyEt,hoyEt,yaCorrio,ultima:ult};
 }
 function renderHomeRevision(){
   const el=document.getElementById('home-revision');if(!el)return;
   const esc=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;');
-  const {et,hecha,yaCorrio,ultima}=revProxima();
+  const {et,hecha,hoyEt,yaCorrio,ultima}=revProxima();
   const ult=ultima?`última resuelta: ${esc((REV_ETAPAS.find(x=>x.n===ultima.n)||{}).nom||'')} el ${_revFmt(ultima.f)}`:'todavía no se resolvió ninguna etapa';
   if(REV_PENDIENTE.length){
     const col='#f59e0b';
@@ -4303,12 +4308,12 @@ function renderHomeRevision(){
     return;
   }
   if(hecha){
-    el.innerHTML=`<div style="max-width:760px;margin:0 auto 10px;text-align:center;font-size:.62rem;color:var(--green)">✅ Revisión de hoy hecha: etapa ${et.n} · ${esc(et.nom)} · mañana toca ${esc((REV_ETAPAS.find(x=>x.dia===(et.dia+1)%7)||{}).nom||'')}</div>`;
+    el.innerHTML=`<div style="max-width:760px;margin:0 auto 10px;text-align:center;font-size:.62rem;color:var(--green)">✅ Revisión de hoy hecha: etapa ${hoyEt.n} · ${esc(hoyEt.nom)} · la próxima es la ${et.n} · ${esc(et.nom)} (la que hace más que no se mira)</div>`;
     return;
   }
   if(!yaCorrio){
     // Todavía no corrió: un renglón chico, sin color. Un cartel que está siempre prendido no se lee.
-    el.innerHTML=`<div style="max-width:760px;margin:0 auto 10px;text-align:center;font-size:.62rem;color:var(--muted)">🔎 Revisión de hoy: etapa ${et.n} · ${esc(et.nom)} · corre sola a las <b style="color:var(--text)">${REV_HORA}</b> · ${ult}</div>`;
+    el.innerHTML=`<div style="max-width:760px;margin:0 auto 10px;text-align:center;font-size:.62rem;color:var(--muted)">🔎 Próxima revisión: etapa ${et.n} · ${esc(et.nom)} (la que hace más que no se mira) · corre sola a las <b style="color:var(--text)">${REV_HORA}</b> · ${ult}</div>`;
     return;
   }
   const col='#f59e0b';
