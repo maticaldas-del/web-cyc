@@ -11,6 +11,7 @@ const KC = "cyc_widget_refresh";
 const BG = new Color("#1d1a1e"), TXT = new Color("#f4f4f5"), MUTED = new Color("#9a98a3"), BORDE = new Color("#3a3438");
 
 function fmt(n) { n = Math.round(Number(n) || 0); return (n < 0 ? "-" : "") + "$" + String(Math.abs(n)).replace(/\B(?=(\d{3})+(?!\d))/g, "."); }
+function pl(d) { d = String(d || ""); return /s$/.test(d) ? d : d + "s"; }
 function hhmm(ts) { const d = new Date(ts); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 
 async function login() {
@@ -77,7 +78,7 @@ function comparacion(d) {
   const f = nm / 15, i = Math.floor(f), a = d.prom[Math.min(96, i)] || 0, b = d.prom[Math.min(96, i + 1)] || 0;
   const gB = a + (b - a) * (f - i);
   const dif = gB > 0 ? Math.round(((Number(d.gan) || 0) - gB) / gB * 100) : null;
-  return { gB, dif, txt: `A esta hora, ${d.nP === 1 ? "el " + d.diaSem + " anterior" : "el promedio de los últimos " + d.nP + " " + d.diaSem + "s"} iba ${fmt(gB)}` };
+  return { gB, dif, txt: `A esta hora, ${d.nP === 1 ? "el " + d.diaSem + " anterior" : "el promedio de los últimos " + d.nP + " " + pl(d.diaSem)} iba ${fmt(gB)}` };
 }
 
 function caja(w, d, grande) {
@@ -145,7 +146,7 @@ function armar(d, fam) {
     w.addSpacer();
   } else {
     const c = comparacion(d);
-    if (c && c.dif != null) { w.addSpacer(2); const t = w.addText(`vs ${d.nP} ${d.diaSem}s a esta hora: ${c.dif >= 0 ? "+" : ""}${c.dif}%`); t.font = Font.regularMonospacedSystemFont(9); t.textColor = c.dif >= 0 ? new Color("#22c55e") : new Color("#ef4444"); }
+    if (c && c.dif != null) { w.addSpacer(2); const t = w.addText(`vs ${d.nP} ${pl(d.diaSem)} a esta hora: ${c.dif >= 0 ? "+" : ""}${c.dif}%`); t.font = Font.regularMonospacedSystemFont(9); t.textColor = c.dif >= 0 ? new Color("#22c55e") : new Color("#ef4444"); }
   }
   return w;
 }

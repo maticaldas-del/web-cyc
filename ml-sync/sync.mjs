@@ -20473,7 +20473,7 @@ async function main() {
       const o = await escribirWidgetHoy(db, go ? { forzar: true } : { soloMirar: true });
       if (!o) { console.log('No escribí nada (corrida de prueba o de sólo lectura).'); return; }
       console.log(`Widget ${o.dia}: ${o.ventas} ventas · ${o.u} u. · facturado ${money(o.bruto)} · ganancia ${money(o.gan)} · ${o.pct}% · puntaje ${o.score} ${o.nivel} · color ${o.color}`);
-      console.log(`  sin costo ${o.sinCosto} · contra ${o.nP} ${o.diaSem}s · hoy al final ${money(o.hoy[96])} · promedio día entero ${o.prom ? money(o.prom[96]) : '—'}`);
+      console.log(`  sin costo ${o.sinCosto} · contra ${o.nP} ${/s$/.test(o.diaSem) ? o.diaSem : o.diaSem + 's'} · hoy al final ${money(o.hoy[96])} · promedio día entero ${o.prom ? money(o.prom[96]) : '—'}`);
       console.log(go ? '✓ escrito en mlapi/widget/hoy' : '(prueba: no escribí)');
       return;
     }

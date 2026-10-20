@@ -2685,7 +2685,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.52';
+const APP_VERSION='25.53';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2698,6 +2698,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.53',f:'20/10',h:'20:40',c:[{n:1,t:'🏷️ Ventas de hoy: dice "los últimos 5 martes" (antes "martess").'}]},
   {v:'25.52',f:'20/10',h:'19:53',c:[{n:2,t:'🔁 Nissei y cada 📋 lista dicen arriba su última vuelta completa (cuándo terminó y cuántos midió) y si se está midiendo ahora. El robot va lista por lista: termina una entera y pasa a la siguiente. Lo que no está en ML ya no se vuelve a buscar.'}]},
   {v:'25.51',f:'20/10',h:'19:33',c:[{n:2,t:'🛒 Productos nuevos (Paraguay y 📋 Listas): ya no hacen falta las 100 vendidas en ML. Alcanza con que el catálogo de ML tenga 2 o más vendedores (lo mide el robot solo) y que esté confirmado que es el mismo producto. Con 1 solo vendedor no se puede pedir. Cada tarjeta dice 🏪 cuántos vendedores tiene.'}]},
   {v:'25.50',f:'20/10',h:'18:56',c:[{n:2,t:'📈 La línea de tiempo vuelve a abrir en la PC: desde la 25.44 (el giro de costado del teléfono) la ventana se abría fuera de la pantalla, muy abajo.'}]},
@@ -21910,6 +21911,8 @@ function _homeCurva(k){
   return {c,hasta,n:pts.length};
 }
 let _homeCurvaAnim=true;
+// lunes, martes, miércoles, jueves y viernes no llevan otra s en plural (20/10/2026: decía "martess").
+function _diaPl(d){return /s$/.test(d)?d:d+'s';}
 function _homeCurvaHTML(dia){
   // CONTRA EL PROMEDIO DE LOS ÚLTIMOS 5 DEL MISMO DÍA (18/10/2026, pedido suyo: *"que se compare con los últimos sábados mejor,
   // un promedio de los 5 últimos"*): un solo día de la semana pasada puede haber sido malo o bueno de casualidad.
@@ -21933,9 +21936,9 @@ const lim=esHoy?nm:1439;
   const dif=gB>0?Math.round((gA-gB)/gB*100):null;
   const difTxt=dif==null?'':`<b style="color:${dif>=0?'var(--green)':'var(--red)'}">${dif>=0?'+':''}${dif}%</b>`;
   const anim=_homeCurvaAnim?' hoy-sp-anim':'';_homeCurvaAnim=false;
-  return `<div class="hoy-sp" title="Ganancia acumulada hora por hora. Línea de color: ${esHoy?'hoy':'este día'} · punteada: el promedio de los últimos ${nP} ${DIAS[d7.getDay()]}${nP===1?'':'s'} (del ${p2(dN.getDate())}/${p2(dN.getMonth()+1)} al ${p2(d7.getDate())}/${p2(d7.getMonth()+1)}). ${esHoy?'Se compara hasta la misma hora.':'Se comparan los días enteros.'}">
+  return `<div class="hoy-sp" title="Ganancia acumulada hora por hora. Línea de color: ${esHoy?'hoy':'este día'} · punteada: el promedio de los últimos ${nP} ${nP===1?DIAS[d7.getDay()]:_diaPl(DIAS[d7.getDay()])} (del ${p2(dN.getDate())}/${p2(dN.getMonth()+1)} al ${p2(d7.getDate())}/${p2(d7.getMonth()+1)}). ${esHoy?'Se compara hasta la misma hora.':'Se comparan los días enteros.'}">
     <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" class="${anim.trim()}"><polyline class="sp-b" points="${lin(B.c,24)}"/><polyline class="sp-a" points="${pA}"/>${esHoy&&A.n?`<circle class="sp-dot" cx="${X(hFin)}" cy="${Y(gA)}" r="3"/>`:''}</svg>
-    <div class="sp-txt">${esHoy?'A esta hora, ':''}${nP===1?`el ${DIAS[d7.getDay()]} anterior (${p2(d7.getDate())}/${p2(d7.getMonth()+1)})`:`el promedio de los últimos ${nP} ${DIAS[d7.getDay()]}s`} ${esHoy?'iba':'hizo'} <b style="color:var(--text)">${fmt(Math.round(gB))}</b> de ganancia${difTxt?` · ${esHoy?'hoy':'este día'} ${difTxt}`:''}</div></div>`;
+    <div class="sp-txt">${esHoy?'A esta hora, ':''}${nP===1?`el ${DIAS[d7.getDay()]} anterior (${p2(d7.getDate())}/${p2(d7.getMonth()+1)})`:`el promedio de los últimos ${nP} ${_diaPl(DIAS[d7.getDay()])}`} ${esHoy?'iba':'hizo'} <b style="color:var(--text)">${fmt(Math.round(gB))}</b> de ganancia${difTxt?` · ${esHoy?'hoy':'este día'} ${difTxt}`:''}</div></div>`;
 }
 // ── CUANDO ENTRA UNA VENTA CON INICIO ABIERTO (etapa 6, idea 4, 14/10/2026, eligió la a) ─────────────
 // El total sube rodando, sale una pastilla con el color de su % y el teléfono vibra un instante. Sólo con "Ventas
