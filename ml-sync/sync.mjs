@@ -3647,7 +3647,10 @@ function diasTachado({ notas, pcl, est, pven, ahora }) {
 // simples en `reacTxt`. Sin corregir por el catálogo (eso lo mide `vistas` para todos juntos). Con pocos días dice que
 // todavía no se sabe en vez de concluir.
 function reaccionesDe(d, ks, tach, parc) {
-  const conSt = (x) => x && !(x.st != null && Number(x.st) <= 0 && !(Number(x.u) > 0));
+  // Un día cuenta como "con stock" sólo si se SABE (20/10/2026, primera corrida: en los días viejos sin dato de stock contaba como
+  // "no vendió nada" días en que no había mercadería, y salía "Navidad 2025: vendió nada"). Stock sabido > 0, o vendió ese día con
+  // stock sabido, o sin dato de stock pero la noche la vio activa (en Full, activa = con stock).
+  const conSt = (x) => x && ((x.st != null && (Number(x.st) > 0 || Number(x.u) > 0)) || (x.st == null && x.est === 'active'));
   const num = (x) => (x == null || !isFinite(Number(x)) ? null : Number(x));
   const r2 = (x) => (x == null || !isFinite(x) ? null : Math.round(x * 100) / 100);
   const pois = (k, lam) => { if (!(lam > 0)) return 1; let p = Math.exp(-lam), s = p; for (let i = 1; i <= k; i++) { p *= lam / i; s += p; } return Math.min(1, s); };
@@ -3679,7 +3682,7 @@ function reaccionesDe(d, ks, tach, parc) {
       txt.push(frase);
       const ult = V.length ? conStock.filter((k) => num(d[k].vis) != null).slice(-7) : [], ant = conStock.filter((k) => num(d[k].vis) != null).slice(-28, -7);
       if (ult.length >= 5 && ant.length >= 10) { const a = grupo(ant).vd, b = grupo(ult).vd; reac.visTend = { antes: a, ahora: b }; if (a > 0 && (b / a > 1.3 || b / a < 0.7)) txt.push(`👀 Las visitas ${b > a ? 'subieron' : 'bajaron'} la última semana: ${fV(a)} → ${fV(b)} por día.`); }
-    } else txt.push(`👀 Visitas: sólo ${V.length} días con stock y visitas sabidas · todavía no alcanza para ver si las ventas siguen a las visitas.`);
+    } else if (V.length) txt.push(`👀 Visitas: sólo ${V.length} días con stock y visitas sabidas · todavía no alcanza para ver si las ventas siguen a las visitas.`);
   }
   // 3 · LOS CAMBIOS DE PRECIO DE ESTA PUBLICACIÓN: visitas y ventas 7 días antes contra 7 después (sin el día del cambio).
   { const P = ks.map((k) => (Number(d[k].p) > 0 ? Number(d[k].p) : null)); const ev = [];
@@ -32067,11 +32070,11 @@ async function main() {
           const G = { regalo: { wd: 0, wu: 0, wv: 0, wn: 0, bd: 0, bu: 0, bv: 0, bn: 0, n: 0 }, resto: { wd: 0, wu: 0, wv: 0, wn: 0, bd: 0, bu: 0, bv: 0, bn: 0, n: 0 } };
           for (const [m, s] of Object.entries(S)) {
             const g = G[RE_REGALO.test(String(links[m].title || '')) ? 'regalo' : 'resto']; let usa = false;
-            let wd = 0; for (const i of wi) { if (s.ST[i] != null ? s.ST[i] > 0 || s.U[i] > 0 : s.U[i] > 0 || s.E[i] === 'active') { wd++; } }
-            let bd = 0; for (const i of bi) { if (s.ST[i] != null ? s.ST[i] > 0 || s.U[i] > 0 : s.U[i] > 0 || s.E[i] === 'active') { bd++; } }
+            let wd = 0; for (const i of wi) { if (s.ST[i] != null ? s.ST[i] > 0 || s.U[i] > 0 : s.E[i] === 'active') { wd++; } }
+            let bd = 0; for (const i of bi) { if (s.ST[i] != null ? s.ST[i] > 0 || s.U[i] > 0 : s.E[i] === 'active') { bd++; } }
             if (wd < wi.length / 2 || bd < 7) continue;
-            for (const i of wi) { if (!(s.ST[i] != null ? s.ST[i] > 0 || s.U[i] > 0 : s.U[i] > 0 || s.E[i] === 'active')) continue; g.wd++; g.wu += s.U[i]; if (s.V[i] != null) { g.wv += s.V[i]; g.wn++; } usa = true; }
-            for (const i of bi) { if (!(s.ST[i] != null ? s.ST[i] > 0 || s.U[i] > 0 : s.U[i] > 0 || s.E[i] === 'active')) continue; g.bd++; g.bu += s.U[i]; if (s.V[i] != null) { g.bv += s.V[i]; g.bn++; } }
+            for (const i of wi) { if (!(s.ST[i] != null ? s.ST[i] > 0 || s.U[i] > 0 : s.E[i] === 'active')) continue; g.wd++; g.wu += s.U[i]; if (s.V[i] != null) { g.wv += s.V[i]; g.wn++; } usa = true; }
+            for (const i of bi) { if (!(s.ST[i] != null ? s.ST[i] > 0 || s.U[i] > 0 : s.E[i] === 'active')) continue; g.bd++; g.bu += s.U[i]; if (s.V[i] != null) { g.bv += s.V[i]; g.bn++; } }
             if (usa) g.n++;
           }
           const lin = (nom, g) => { const rw = g.wd ? g.wu / g.wd : null, rb = g.bd ? g.bu / g.bd : null, vw = g.wn ? g.wv / g.wn : null, vb = g.bn ? g.bv / g.bn : null; return `${nom} (${g.n} publ.): ventas ${pc(rb > 0 ? rw / rb : null)} · visitas ${pc(vb > 0 && g.wn >= 10 && g.bn >= 10 ? vw / vb : null)}`; };
