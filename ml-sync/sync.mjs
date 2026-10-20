@@ -97,7 +97,7 @@ function umbralRedondoCruzado(p0, p1) {
 // 19/10/2026, eligió 1a 2a 3a: los PASAJES tienen nombre. 5 tags nuevos (🪜 bajando · ↘️ volviendo al normal · ↗️ volviendo de
 // sobra · 🏔️ techo encontrado · 🧨 remate total); "↩️ corrección" se elimina: lo que "vuelve" se nombra según de dónde venía
 // (`pasajeDe`) y la web muestra "venía de X" en el chip. Escasez lleva escalón como el techo.
-const ESTRATEGIAS = { sindecidir: '⚪ sin estrategia', agotado: '⏸️ sin stock', escasez: '🔥 escasez', sinrepo: '⏳ sin reposición', techo: '📈 buscando techo', techook: '🏔️ techo encontrado', bajando: '🪜 bajando', volviendo: '↘️ volviendo al normal', desobra: '↗️ volviendo de sobra', liquidando: '📉 liquidando', remate: '🧨 remate total', caja: '🥊 ganar la caja', promo: '🏷️ promo', descuento: '💸 descuento', fecha: '🎁 fecha especial', excepcion: '🛡️ excepción', sobra: '📦 sobra stock', nuevo: '🆕 lanzamiento' };
+const ESTRATEGIAS = { sindecidir: '⚪ sin estrategia', agotado: '⏸️ sin stock', escasez: '🔥 escasez', sinrepo: '⏳ sin reposición', techo: '📈 buscando techo', techook: '🏔️ techo encontrado', bajando: '🪜 bajando', volviendo: '↘️ volviendo al normal', desobra: '↗️ volviendo de sobra', liquidando: '📉 liquidando', remate: '🧨 remate total', caja: '🥊 ganar la caja', promo: '🏷️ promo', descuento: '💸 descuento', fecha: '🎁 fecha especial', excepcion: '🛡️ excepción', sobra: '📦 sobra stock', nuevo: '🆕 lanzamiento', prueba: '🧪 prueba tachado' };
 // Lo que "vuelve" (motivo "vuelvo", o una anotación vieja ↩️ corrección) toma nombre según el tag ANTERIOR. MISMA tabla en index.html.
 function pasajeDe(prev) {
   if (prev === 'techo' || prev === 'techook') return 'techook';
@@ -120,6 +120,8 @@ function tagDeMotivo(m) {
   if (/liquid|remat|sobra|parad[oa]|vender todo/.test(t)) return 'liquidando';
   if (/d[ií]a de la madre|d[ií]a del padre|navidad|reyes|black friday|cyber|d[ií]a del ni[nñ]o|san valent/.test(t)) return 'fecha';
   if (/caja de compra|ganar la caja|gana la caja|perd[ií]a la caja|perdiendo la caja/.test(t)) return 'caja';
+  // 20/10/2026, eligió 3a+3b: la prueba de 2 semanas tachado contra liso (10 publicaciones) tiene su tag, para no mezclarla con techo.
+  if (/prueba (de(l)? )?tachad|tachado contra liso|grupo liso|grupo tachado/.test(t)) return 'prueba';
   if (/techo|prueba|probar|probando|para ver si/.test(t)) return 'techo';
   if (/promo|descuento|tachad/.test(t)) return 'promo';
   if (/33\.?000|barrera|excepci/.test(t)) return 'excepcion';
@@ -39164,9 +39166,9 @@ async function main() {
         const [izq, ...mot] = x.split('|');
         const ms = String(izq).match(/^\s*(MLA\d+)\s*=\s*salir\s*$/i);
         if (ms) { pedidos.push({ mla: ms[1].toUpperCase(), salir: true, motivo: mot.join('|').trim() }); continue; }
-        const mm = String(izq).match(/^\s*(MLA\d+)\s*=\s*([\d.,$\s]+)@([\w-]+)((?:!\w+)*)\s*$/i);
+        const mm = String(izq).match(/^\s*(MLA\d+)\s*=\s*([\d.,$\s]+)@([\w-]+)((?:!\w+)*)(?:#(\w+))?\s*$/i);
         if (!mm) { malos.push(x); continue; }
-        pedidos.push({ mla: mm[1].toUpperCase(), p: Math.round(pesosArg(mm[2])), id: mm[3], piso: /!piso/i.test(mm[4] || ''), bajocero: /!bajocero/i.test(mm[4] || ''), motivo: mot.join('|').trim() });
+        pedidos.push({ mla: mm[1].toUpperCase(), p: Math.round(pesosArg(mm[2])), id: mm[3], piso: /!piso/i.test(mm[4] || ''), bajocero: /!bajocero/i.test(mm[4] || ''), tag: mm[5] ? mm[5].toLowerCase() : null, motivo: mot.join('|').trim() });
       }
       if (malos.length || !pedidos.length) { console.log(`No entendí: ${malos.join(' · ') || '(nada)'}\nVa así: entrarpromo:MLA123=21360@P-MLA18067012|ya la iba a bajar;MLA456=salir|terminó;go`); return; }
       const links = (await db.get('cyc/mllinks')) || {};
@@ -40706,8 +40708,13 @@ async function main() {
           const rit = Math.max(rs.reduce((a, x) => a + (x.u30 || 0), 0) / 30, rs.reduce((a, x) => a + (x.u60 || 0), 0) / 60);
           const dias = r.stDesc ? null : (rit > 0 ? st / rit : (st > 0 ? Infinity : 0));
           const por = [];
-          if (dias != null && dias <= 90) por.push(`no sobra (${st} u. = ${Math.round(dias)} d)`);
-          if (r.desde && hoy - r.desde < 30 * 864e5) por.push(`recién llegado (${Math.round((hoy - r.desde) / 864e5)} d)`);
+          // 20/10/2026, eligió 2a: el descuento de un escalón de LANZAMIENTO (lista real 7+ días y no vendió) y el de la prueba de
+          // tachado (3b) no tienen que sobrar ni tener 30 días en Full; sólo el 25% en el peor caso. Se reconocen por el motivo
+          // guardado en cyc/promoclaude o por la estrategia anotada.
+          const motPC = String(((pClaude || {})[r.mla] || {}).motivo || '') + ' ' + String((r.est2 || {}).m || '');
+          const excD = /lanzamiento|prueba (de(l)? )?tachad|grupo tachado/i.test(motPC) || (r.est2 && r.est2.t === 'prueba');
+          if (!excD && dias != null && dias <= 90) por.push(`no sobra (${st} u. = ${Math.round(dias)} d)`);
+          if (!excD && r.desde && hoy - r.desde < 30 * 864e5) por.push(`recién llegado (${Math.round((hoy - r.desde) / 864e5)} d)`);
           if (r.mgP != null && r.mgP < PISO) por.push(`peor caso ${r.mgP.toFixed(0)}%`);
           if (!por.length) continue;
           const n = ultD(r.mla); const fila = { ...r, por };

@@ -850,6 +850,30 @@ caja. Antes de `entrarpromo` (propio o de ML) se chequean las tres, y si alguna 
  2. **No es recién llegado:** menos de 30 días desde que entró la caja = no se descuenta (todavía no se sabe a qué ritmo vende).
  3. **Queda en 25% o más en el peor caso.** Abajo de 25% sólo con un motivo dicho en el 🧠 (stock antiguo con fecha encima, remate que él pidió).
 Ganar la caja y vender bien sin descuento = no hay nada que descontar.
+**Excepción, 20/10/2026 (eligió la 2a): los escalones de LANZAMIENTO y la prueba del tachado.** Ver 🆕 abajo. Ahí no se pide
+que sobre ni 30 días en Full; sigue valiendo el 25% en el peor caso. El motivo del `entrarpromo` tiene que decir "lanzamiento"
+(o "prueba de tachado") para que la lista 🤔 lo reconozca.
+
+## 🆕 LANZAMIENTO: ARRANCA ARRIBA Y BAJA CON TACHADO REAL (20/10/2026, eligió 1a y 2a)
+Él: *"pondría lo de aumentarlo (del precio correcto previamente fijado) y ponerle un descuento así aparece tachado"*. Para que el
+tachado sea verdadero (ML compara contra el precio de los días anteriores, y un descuento inventado es engañar al comprador):
+ 1. **Arranque:** ~20% arriba del precio que creo correcto (25%+ en el peor caso), tag 🆕 `nuevo`, **7 días con stock a ese precio de lista**.
+    Sirve además como primera prueba de techo.
+ 2. **Si vende:** frena la escalera y pasa a 📈 buscar techo desde ahí.
+ 3. **Si no vende en 7 días (y lo ve gente):** cada escalón baja ~5-8% como **descuento propio** (`entrarpromo:<MLA>=<precio>@PRICE_DISCOUNT|lanzamiento …`),
+    con el precio de lanzamiento tachado. Otro escalón a los 7 días sin venta. Nunca abajo del 25% en el peor caso: ahí, si no vende,
+    pasa a las reglas de 📦 sobra.
+ 4. **Si casi no lo ve nadie** (menos de ~1 visita/día), bajar no lo arregla: se mira título, fotos, caja.
+**Los 5 que lo dispararon (20/10):** Halloween Man, Ferrari Rojo, Adyan Oud, microSD Pokémon, WD 480. Como ya estaban semanas a su
+precio actual sin vender, ese precio cuenta como el de arranque (lista real desde el 20/10, cuando saqué los descuentos viejos): el
+primer escalón con descuento va el **27/10** si no vendieron.
+
+## 🧪 PRUEBA: ¿EL TACHADO VENDE MÁS? (21/10 → 04/11/2026, eligió 3a + 3b)
+ · **3a:** el 28/10 se miden las 12 publicaciones que el 20/10 pasaron de descuento a precio liso al mismo precio final (`vistas`).
+ · **3b:** 10 publicaciones que venden parejo bajan ~5% durante 2 semanas, 5 con precio tachado (descuento propio) y 5 con precio de
+   lista liso, emparejadas por volumen. Tag 🧪 `prueba`. Mientras dura, esas 10 **no se tocan** (ni techo ni escalera), salvo escasez
+   real (se corta y se dice). El 04/11 se compara cuánto subió la venta por día en cada grupo contra sus 14 días anteriores con stock, y
+   se vuelve cada una a su precio. Con 10 productos y 2 semanas el resultado es una pista, no una prueba: sólo una diferencia grande dice algo.
 
 ### 🤔 Y TODOS LOS DÍAS SE REVISAN LOS DESCUENTOS QUE YA ESTÁN PUESTOS (20/10/2026)
 `planilla` saca la lista **🤔 MIS DESCUENTOS QUE YA NO TIENEN SENTIDO**: todo descuento mío vigente que hoy falla alguna de las tres (sobra +90 d · 30+ d desde la caja · 25%+ en el peor caso). Se saca o se deja con nota en esa vuelta; la lista queda vacía.

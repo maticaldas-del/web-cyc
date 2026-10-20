@@ -9332,3 +9332,10 @@ publicaciones del mismo producto y cuánto le pega el precio a las ventas. `fich
 pedidos de Bs As) y 📋 Dai Nippon (las listas con `bsas`, con sus ✅ Probados, 🆕 Nuevos y 🧾 Pedido). Lo ya comprado a una lista
 (`listaProv`) no sale en "De siempre". La solapa elegida queda en `localStorage` (`cycBsasVista`). Si no hay listas de Bs As, no hay solapas.
 **v25.14 (mismo día):** *"dame poder elegir si son de bs as de siempre o de nippon"* → cada pedido de Bs As tiene el botón 🏬 De siempre / 📋 Dai Nippon (`pedCambiarGrupo`: pone o saca `listaProv`, el viejo queda en `listaProvViejo`). Y *"sacar ese de dai nippon"* → en la solapa Dai Nippon no se dibuja el ⏸️ sacar por ahora (sigue en 📋 Listas).
+
+## 🆕 LANZAMIENTO CON TACHADO REAL Y 🧪 PRUEBA DEL TACHADO (20/10/2026, eligió 1a 2a 3a+3b)
+Lo nuevo arranca ~20% arriba del precio correcto, 7 días con stock a esa lista real; si no vende, cada escalón baja como descuento
+propio con el precio de lanzamiento tachado (excepción a "no descuento en lo recién llegado"; el 25% peor caso sigue). Los 5 de hoy
+(Halloween Man, Ferrari Rojo, Adyan, microSD, WD 480) cuentan su precio actual como arranque: primer escalón el 27/10. Y además de
+medir el 28/10 las 12 que pasaron a liso, hay una prueba de 2 semanas (21/10→04/11): 10 publicaciones −5%, 5 tachadas y 5 lisas,
+tag 🧪 `prueba`, no se tocan mientras dura. Detalle en `ml-sync/CEREBRO.md` (🆕 y 🧪).

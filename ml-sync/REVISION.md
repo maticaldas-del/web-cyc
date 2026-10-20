@@ -292,6 +292,14 @@ no deje naranja algo con meses de stock (tope 60) · que el pedido en camino se 
 
  · **🚨 Escasez que vendió después de mi última decisión (19/10/2026, con el Cabotine Turquoise).** Al final de `escasez`: toda publicación en escasez con stock cuya última venta es posterior a mi último cambio de precio (`cyc/claudecambios`) o nota (`mlapi/fichanotas`) sale en la lista 🚨 y se decide en esa vuelta. Chequear: que una nota con motivo la saque de la lista.
 
+### 🆕 Lanzamiento con tachado real y 🧪 prueba del tachado (20/10/2026, v25.16)
+Qué es: escalera de lanzamiento (arranca ~20% arriba, 7 días de lista real, después escalones como descuento) y la prueba de 2 semanas
+tachado contra liso (10 publicaciones, tag nuevo `prueba` 🧪). Dónde vive: `ESTRATEGIAS`/`tagDeMotivo` (sync.mjs) y `ESTRATEGIA_UI`
+(index.html) · `entrarpromo` acepta `#tag` después del id (`=3690@PRICE_DISCOUNT#prueba`) · la lista 🤔 de `planilla` no marca
+"no sobra" ni "recién llegado" si el motivo de la promo dice lanzamiento/prueba de tachado o la estrategia es 🧪. Qué chequear: que
+las 10 de la prueba no se toquen hasta el 04/11 · que el 27/10 se haga el primer escalón de los 5 lanzamientos · que un descuento
+abajo del 25% peor caso igual salga en 🤔.
+
 ## 2 · PLATA (martes)
 - **Cada lugar, su nota (08/10/2026, v22.71):** él: *"en ventas por qué aumentó el precio o por qué no, y en pedidos por qué
   pide x unidades"*. `cerebroAbrir`: con `ped` o `ctx:'caja'` muestra SÓLO las notas `ped__`/`caja__`; con `ctx:'venta'`
