@@ -876,6 +876,10 @@ cada publicación contra su propio año sin regla por caso · (1b) un ayudante "
 (3a) CEREBRO reescrito ordenado con la tabla de QUIÉN MANDA (`ml-sync/CEREBRO_borrador.md`, **falta su OK** para reemplazar) ·
 (4a/b) lo que vende poco se juzga en familia, por visitas y por parecidas, y dice "💭 sin certeza, falta X". Detalle en
 `ml-sync/CEREBRO.md` (🧭). Y la meta para medir si sirve: bajar de 2-4 correcciones por día a 1-2 por semana en un mes.
+**Quién piensa los raros (eligió la a, mismo día):** en la completa, el ayudante de cada cuenta (en máximo) recibe los raros de
+su cuenta; en las cortas, hasta ~8 renglones los miro yo y con más, un ayudante en Alto. Los ayudantes proponen; decidir y aplicar
+es del chat (ve todas las cuentas, resuelve choques, mira que no haya otra corrida y relee de ML). Él preguntó si así se
+ahorraba: no ahorra plata (un ayudante gasta igual), ahorra atención.
 
 ## 📋 LA LISTA ÚNICA DEL CEREBRO: `ml-sync/CEREBRO.md` (13/10/2026, pedido suyo)
 

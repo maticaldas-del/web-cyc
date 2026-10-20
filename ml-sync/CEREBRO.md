@@ -21,6 +21,10 @@ nombran. Desde hoy, además de las reglas:
       parecidas del rubro a precio parecido. Lo que sola no se sabe nunca (falta 30+ días) se juzga en familia, por visitas o
       por las parecidas: nunca se deja colgado. No se vuelve atrás ni se da otro escalón sin un motivo de esa lista.
     En el chat: "raros: 🧭 N → N · 🔀 N → N · ⚠️ N sin tocar · 💭 N midiendo (familias que ya se saben: …)".
+    **QUIÉN PIENSA CADA RENGLÓN (20/10/2026, eligió la a):** en la COMPLETA, los renglones de `raros` de cada cuenta van al
+    ayudante que ya juzga esa cuenta (no hay ayudante extra): devuelve qué haría con cada uno y por qué. En las CORTAS, hasta ~8
+    renglones los miro yo directo; con más, un ayudante en esfuerzo **Alto** con esa lista. Los ayudantes SÓLO PROPONEN: juntar,
+    resolver choques entre cuentas, mirar si hay otra corrida de ml-sync andando, aplicar y releer de ML lo hago yo, siempre.
  2. **EL REVISOR EN CONTRA (1b)** en la completa: con las decisiones de los 4 ayudantes ya juntas y ANTES de aplicar, un sexto
     ayudante (esfuerzo max, sólo lee) abre la ficha de cada publicación que cambia y busca en qué me equivoco: un dato que no
     cierra, una regla de mayor prioridad que pisé, una pregunta de `notas/preguntas.md` sin contestar, una decisión de menos de 7

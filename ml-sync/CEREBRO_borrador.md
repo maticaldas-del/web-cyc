@@ -37,7 +37,7 @@ tema acá, en `CLAUDE.md` (historia) y en `REVISION.md` (su etapa), en el mismo 
 1. Leer este archivo y `notas/preguntas.md`.
 2. Lecturas juntas en UNA ml-consulta (uno por renglón): `planilla` · `escasez` · `raros` · `lupa` · `ventasraras:5` · `pausadas:25` · `analizapromo:7`.
 3. **Listas que tienen que quedar VACÍAS al terminar:** 🛡️ abajo del 25% peor caso · 🚨 escasez que vendió después de mi decisión · 📈 dice techo/escasez y no sube · 🧭 fuera de lo normal · 🔀 no cierra. Cada renglón: decisión o nota con motivo.
-4. ⚠️ dato dudoso: no tocar precio; anotar.
+4. ⚠️ dato dudoso: no tocar precio; anotar. Si 🧭 + 🔀 + 💭 traen más de ~8 renglones, un ayudante en Alto los piensa y propone; si no, los miro yo. Aplicar siempre es mío.
 5. Cada venta nueva contra su ficha (¿confirma o desmiente la prueba? ¿se aceleró ⚡? ¿la dejó en escasez?). Escasez nueva se trata en ESTA vuelta (precio + caja si hay oficina).
 6. Activar pausadas con stock en Full (`activarfull:go:25`); lo que no se activa va al `pregunto:`.
 7. Preguntas de compradores que sé sin duda (`contesto:`). Promos mías que vencen en 2 días.
@@ -45,7 +45,7 @@ tema acá, en `CLAUDE.md` (historia) y en `REVISION.md` (su etapa), en el mismo 
 
 **Completa (08:52), además de todo lo anterior:**
 1. `historia` · `escasez:expediente` · `informe:24` · `ficha:cuenta=<c>` ×4 · `pedidostodo` · `techo95` · `techofreno` · `supervisor:medir:go` · `analizapromo` entero.
-2. **Cuatro ayudantes (uno por cuenta, esfuerzo max)** juzgan cada publicación con su ficha entera y le hacen las preguntas de `notas/preguntas.md`. **Un quinto** busca ideas nuevas en el negocio entero.
+2. **Cuatro ayudantes (uno por cuenta, esfuerzo max)** juzgan cada publicación con su ficha entera y le hacen las preguntas de `notas/preguntas.md`. Cada uno recibe también los renglones de `raros` de su cuenta y propone qué hacer con cada uno. **Un quinto** busca ideas nuevas en el negocio entero.
 3. **Un sexto, EL REVISOR EN CONTRA (1b, 20/10):** con todas las decisiones propuestas ya juntas, ANTES de aplicar, lee la ficha de cada publicación que cambia y busca en qué me equivoco (dato que no cierra, regla de la tabla 0 que pisé, pregunta sin contestar, choque con una decisión de menos de 7 días). No propone precios: marca. Lo que marca lo miro yo; si no lo puedo resolver, no se aplica esa vuelta.
 4. Listas de la completa que se vacían: 📦 sobra sin decidir · 🔎 sin afinar · 💸 stock antiguo SIN DECIDIR · ⚠️ no vendió y no sé desde cuándo · 🔁 subas cuya razón cambió.
 5. Pedidos (`decide_pedidos.py`) Y cajas (`decide_cajas.py`) sobre el mismo log, revisados, `decido:archivo=pedidos;go` + `cajas`.

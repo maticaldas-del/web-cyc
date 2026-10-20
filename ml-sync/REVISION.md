@@ -907,6 +907,9 @@ como pregunta general. (4) `ml-sync/CEREBRO_borrador.md`: CEREBRO ordenado con l
 Qué chequear: que 🧭 y 🔀 no salten en la mitad del catálogo (un aviso que suena siempre no se mira: el 20/10 el primer intento
 daba ⚠️ en 156 de 235 por la marca `inc`, y "cobra distinto" en todo lo subido a propósito; se sacaron) · que lo que está en ⚠️
 de verdad no se toque · que las familias del 💭 se juzguen cuando ya se sabe · que cada corrección nueva sume su pregunta.
+Y quién piensa cada renglón (20/10/2026, eligió la a): en la completa, los de cada cuenta van a su ayudante; en las cortas, hasta
+~8 los miro yo y con más, un ayudante en Alto. Los ayudantes sólo proponen; aplicar es mío. Qué chequear: que en el chat de cada
+vuelta diga quién miró los raros, y que ningún ayudante haya corrido algo que escribe.
 
 ## 8 · DATOS E HISTORIAL (nueva, 08/10/2026)
 - **🚧 El techo en la línea de tiempo (18/10/2026, v24.49).** `lineaPintar` dibuja una raya roja punteada en el carril del precio por cada `cyc/techofreno/<MLA>` (`probado`, roja "ya no vende") y otra verde en `volvio` ("sí vende") de las publicaciones del gráfico (respeta el color elegido), desde el día que se anotó; entra en la escala. Qué chequear: que todo techo encontrado se anote con `techofreno:<MLA>=<precio>|motivo;go` (si no, no aparece).
