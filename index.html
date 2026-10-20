@@ -2683,7 +2683,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.20';
+const APP_VERSION='25.21';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2694,6 +2694,7 @@ const APP_VERSION='25.20';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.21',f:'20/10/2026',h:'14:05',c:[{n:1,t:'📈 Línea de tiempo (producto y todas juntas): ganancia por día y por semana van en el MISMO renglón (la semana en violeta detrás, con su número abajo del de por día), y las visitas van en el renglón de ventas, en celeste detrás de las barras verdes. Ocupa menos lugar.'}]},
   {v:'25.20',f:'20/10/2026',h:'13:45',c:[{n:1,t:'🔎 La revisión diaria del panel ahora corre sola a las 4 de la mañana (antes 22:13). Cada mañana toca la etapa del día: lun Precios · mar Plata · mié Mercadería · jue Choques · vie Datos · sáb Ideas · dom Diseño.'}]},
   {v:'25.19',f:'20/10/2026',h:'18:10',c:[{n:1,t:'📈 Línea de tiempo: los cambios de precio del cerebro tienen su flecha ▲▼ al instante. Antes aparecían recién después de la foto de precios de la noche, así que una suba de ayer (ej. Cartas Casino $3.310 → $3.890) no se veía.'}]},
   {v:'25.18',f:'20/10/2026',h:'18:00',c:[{n:1,t:'📈 Línea de tiempo (producto y todas juntas): abajo de "$ ganancia/día" hay una línea nueva "$ ganancia/semana", con la ganancia de cada semana de lunes a domingo. La semana que no está entera (la de hoy) va punteada.'}]},
@@ -9876,7 +9877,7 @@ function lineaPintar(prodId){
   const _ganK=k=>gd[k]?gd[k].gan:(_ganPre[k]||0);
   const g7={};ks.forEach((k,i)=>{const ia=i+6;let t=0;for(let j=ia-6;j<=ia;j++)t+=_ganK(_ksAll[j]);g7[k]=t/7;});
   const g7v=Object.values(g7);const gMax=g7v.length?Math.max(0,...g7v):1,gMin=g7v.length?Math.min(0,...g7v):0;
-  _lane('vent',64,true);_lane('st',suv.length?54:14,true);_lane('gan',40,g7v.some(x=>x!==0));_lane('ganS',34,g7v.some(x=>x!==0));_lane('pct',46,pvs.length>0);_lane('vis',26,hayVis);_lane('pr',cvs.length?60:46,true);_lane('est',14,hayEst);_lane('caja',14,hayCaja);
+  _lane('vent',64,true);_lane('st',suv.length?54:14,true);_lane('gan',52,g7v.some(x=>x!==0));_lane('pct',46,pvs.length>0);_lane('pr',cvs.length?60:46,true);_lane('est',14,hayEst);_lane('caja',14,hayCaja);
   const H=_y-8;
   // STOCK UNIFICADO (03/10/2026, él: "hay dos stock, unifiquémoslo"): la línea de unidades arriba y, abajo,
   // la franja finita de con/sin stock para los días sin el número exacto.
@@ -9963,12 +9964,12 @@ function lineaPintar(prodId){
   const ptsPK=[];
   ks.forEach((k,i)=>{
     const d=dias[k]; const x=X(i);
+    // visitas, DETRÁS de las ventas y con su propia escala (20/10/2026, él: "juntar las barras")
+    if(hayVis&&d&&d.vis!=null&&d.vis>0){const h=d.vis/maxV*L.vent[1];svg+=`<rect x="${x}" y="${L.vent[0]+L.vent[1]-h}" width="${bw}" height="${h}" fill="#60a5fa" opacity=".35"/>`;}
     // ventas
     if(d&&d.u!=null&&d.u>0){const hN=(d.u-(d.uR||0))/maxU*L.vent[1], hR=(d.uR||0)/maxU*L.vent[1];
       if(hN>0)svg+=`<rect x="${x}" y="${L.vent[0]+L.vent[1]-hN}" width="${bw}" height="${hN}" fill="var(--green)"/>`;
       if(hR>0)svg+=`<rect x="${x}" y="${L.vent[0]+L.vent[1]-hN-hR}" width="${bw}" height="${hR}" fill="#f59e0b"/>`;}
-    // visitas
-    if(L.vis&&d&&d.vis!=null&&d.vis>0){const h=d.vis/maxV*L.vis[1];svg+=`<rect x="${x}" y="${L.vis[0]+L.vis[1]-h}" width="${bw}" height="${h}" fill="#60a5fa" opacity=".7"/>`;}
     // stock: verde con, rojo sin, gris no se sabe. Si vendió ese día, había stock.
     // STOCK (03/10/2026, él con las Cartas Casino: "dice que no hay stock, está en rojo y vendió siempre").
     // Si ese día vendió, había stock, diga lo que diga el registro. Y "sin stock" sólo si TODAS las
@@ -9999,7 +10000,11 @@ function lineaPintar(prodId){
     let prev=null;ks.forEach((k,i)=>{if(g7[k]==null)return;const pt=[X(i)+bw/2,yg(g7[k])];
       if(prev)svg+=`<line x1="${prev[0].toFixed(1)}" y1="${prev[1].toFixed(1)}" x2="${pt[0].toFixed(1)}" y2="${pt[1].toFixed(1)}" stroke="${ganColor(g7[k])}" stroke-width="2"/>`;prev=pt;});
     svg+=`<text x="${W-2}" y="${L.gan[0]+9}" font-size="10" text-anchor="end" fill="var(--muted)">${fmt(Math.round(gMax))}/día</text>`;}
-  if(L.ganS)svg+=_lineaSemSvg(L.ganS,ks,X,bw,W,_lineaSemanas(ks,_ganK));
+  if(L.gan){svg+=_lineaSemSvg(L.gan,ks,X,bw,W,_lineaSemanas(ks,_ganK),true);
+    // la línea del día va ARRIBA de la de la semana: se redibuja encima
+    const yg=v=>L.gan[0]+L.gan[1]-(gMax>gMin?(v-gMin)/(gMax-gMin):.5)*L.gan[1];let prev=null;ks.forEach((k,i)=>{if(g7[k]==null)return;const pt=[X(i)+bw/2,yg(g7[k])];
+      if(prev)svg+=`<line x1="${prev[0].toFixed(1)}" y1="${prev[1].toFixed(1)}" x2="${pt[0].toFixed(1)}" y2="${pt[1].toFixed(1)}" stroke="${ganColor(g7[k])}" stroke-width="2"/>`;prev=pt;});}
+  if(hayVis)svg+=`<text x="${W-2}" y="${L.vent[0]+9}" font-size="10" text-anchor="end" fill="#60a5fa">${maxV} visitas</text>`;
   if(cvs.length){const yc=c=>L.pr[0]+L.pr[1]-(pcMax>pcMin?(c-pcMin)/(pcMax-pcMin):.5)*L.pr[1];
     const ptT=[];ks.forEach((k,i)=>{if(ct[k]>0)ptT.push(`${(X(i)+bw/2).toFixed(1)},${yc(ct[k]).toFixed(1)}`);});
     if(ptT.length>1)svg+=`<polyline points="${ptT.join(' ')}" fill="none" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4,3"/>`;}
@@ -10142,7 +10147,7 @@ function lineaPintar(prodId){
     ${_vars.length>1?`<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px">${['',..._vars].map((v,i)=>`<button class="btn" onclick="lineaVar(_lineaVarsL[${i}],'${prodId}')" style="font-size:.62rem;padding:2px 9px;${_lineaVar===v?'background:#7c3aed;color:#fff;border-color:#7c3aed':''}">${v||'Todas juntas'}</button>`).join('')}</div>`:''}
     <div style="font-size:.7rem;color:var(--muted);margin:6px 0 8px;line-height:1.6">${_lineaRango} días · <b style="color:var(--text)">${uT} u. vendidas</b>${uRT?` (${uRT} en remate)`:''}${hayGan&&gPct!=null&&isFinite(gPct)?` · ganancia <b style="color:${pctColor(gPct)}">${gPct.toFixed(0)}%</b>`:''} · ${vT} visitas · ${_stHoy} · historial: <span style="color:var(--green)">${dCon} d con</span> · <span style="color:var(--red)">${dSin} d sin</span> · ${dNo} d sin dato${dRem?` · ${dRem} d rematando`:''}${pIni&&pFin?` · precio ${fmt(pIni)} → ${fmt(pFin)}`:''} · ${Object.keys(porMlaF).length} publicación(es)${C.fallo?' · <span style="color:var(--amber)">alguna publicación no se pudo leer</span>':''}</div>
     <div style="position:relative;padding-left:58px">
-      ${lab(L.vent[0]+28,'ventas')}${L.gan?lab(L.gan[0]+15,'$ ganancia/día'):''}${L.ganS?lab(L.ganS[0]+15,'$ ganancia/semana'):''}${L.pct?lab(L.pct[0]+18,'% ganancia'):''}${L.vis?lab(L.vis[0]+9,'visitas'):''}${lab(L.st[0]+(suv.length?20:2),'stock')}${lab(L.pr[0]+18,cvs.length?'precio · <span style="color:#f59e0b">costo</span>':'precio')}${L.est?lab(L.est[0]+2,'remate'):''}${L.caja?lab(L.caja[0]+2,'caja'):''}
+      ${lab(L.vent[0]+28,'ventas'+(hayVis?' · <span style="color:#60a5fa">visitas</span>':''))}${L.gan?lab(L.gan[0]+15,'$ ganancia/día · <span style="color:#a78bfa">semana</span>'):''}${L.pct?lab(L.pct[0]+18,'% ganancia'):''}${lab(L.st[0]+(suv.length?20:2),'stock')}${lab(L.pr[0]+18,cvs.length?'precio · <span style="color:#f59e0b">costo</span>':'precio')}${L.est?lab(L.est[0]+2,'remate'):''}${L.caja?lab(L.caja[0]+2,'caja'):''}
       <svg viewBox="0 0 ${W} ${H+16}" preserveAspectRatio="none" style="width:100%;height:${Math.round((H+16)*1.1)}px;display:block">${svg}</svg>
     </div>
     ${_adHTML?`<div style="margin-top:8px;font-size:.7rem;line-height:1.5"><div style="font-weight:700;margin-bottom:2px">💵 ¿Cada cambio de precio dejó más plata por día?</div>${_adHTML}</div>`:''}
@@ -10226,15 +10231,15 @@ function lineaTodoPintar(){
   const suv=Object.values(stU),g7v=Object.values(g7),pvs=Object.values(pd),ivs=Object.values(idx);
   const hayVis=ks.some(k=>R[k]&&R[k].vis>0),hayCaja=ks.some(k=>{const r=RD(k);return r&&((r.g||0)+(r.c||0)+(r.p||0))>0;}),hayRem=ks.some(k=>{const r=RD(k);return r&&((r.rem||0)+(r.esc||0))>0;});
   const L={};let _y=0;const _lane=(n,h0,si)=>{if(!si)return;const h=Math.round(h0*1.45);L[n]=[_y,h];_y+=h+8;};
-  _lane('vent',64,true);_lane('st',46,suv.length>0);_lane('gan',40,g7v.length>0);_lane('ganS',34,g7v.length>0);_lane('pct',40,pvs.length>0);_lane('vis',26,hayVis);_lane('pr',40,ivs.length>0);_lane('cam',44,true);_lane('rem',16,hayRem);_lane('caja',22,hayCaja);
+  _lane('vent',64,true);_lane('st',46,suv.length>0);_lane('gan',52,g7v.length>0);_lane('pct',40,pvs.length>0);_lane('pr',40,ivs.length>0);_lane('cam',44,true);_lane('rem',16,hayRem);_lane('caja',22,hayCaja);
   const H=_y-8;let svg='';
   let lastM='';ks.forEach((k,i)=>{const mm=k.slice(0,7);if(mm!==lastM){lastM=mm;svg+=`<line x1="${X(i)}" y1="0" x2="${X(i)}" y2="${H}" stroke="rgba(128,128,128,.25)" stroke-width="1"/><text x="${X(i)+2}" y="${H+12}" font-size="10" fill="var(--muted)">${['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'][Number(k.slice(5,7))-1]}</text>`;}});
   const yMid=L.cam[0]+L.cam[1]/2;svg+=`<line x1="0" y1="${yMid}" x2="${W}" y2="${yMid}" stroke="rgba(128,128,128,.35)"/>`;
   ks.forEach((k,i)=>{const x=X(i);const u=uDe(k),uR=Math.min(u||0,uRDe(k));
+    const r=R[k];if(hayVis&&r&&r.vis>0){const h=r.vis/maxV*L.vent[1];svg+=`<rect x="${x}" y="${L.vent[0]+L.vent[1]-h}" width="${bw}" height="${h}" fill="#60a5fa" opacity=".35"/>`;}
     if(u>0){const hN=(u-uR)/maxU*L.vent[1],hR=uR/maxU*L.vent[1];const col=vd[k]?'var(--green)':'#4ade80';
       if(hN>0)svg+=`<rect x="${x}" y="${L.vent[0]+L.vent[1]-hN}" width="${bw}" height="${hN}" fill="${col}" ${vd[k]?'':'opacity=".55"'}/>`;
       if(hR>0)svg+=`<rect x="${x}" y="${L.vent[0]+L.vent[1]-hN-hR}" width="${bw}" height="${hR}" fill="#f59e0b"/>`;}
-    const r=R[k];if(L.vis&&r&&r.vis>0){const h=r.vis/maxV*L.vis[1];svg+=`<rect x="${x}" y="${L.vis[0]+L.vis[1]-h}" width="${bw}" height="${h}" fill="#60a5fa" opacity=".7"/>`;}
     // subas (arriba) y bajadas (abajo): las registradas, llenas; las que sólo se ven en el precio guardado, en gris detrás.
     const hc=n=>n/maxC*(L.cam[1]/2-2);
     if(r&&r.sb)svg+=`<rect x="${x}" y="${yMid-hc(r.sb)}" width="${bw}" height="${hc(r.sb)}" fill="rgba(148,163,184,.35)"/>`;
@@ -10258,12 +10263,11 @@ function lineaTodoPintar(){
     const _lc=q=>typeof col==='function'?col(q):'var(--muted)', _fw=typeof col==='function'?' font-weight="700"':'';
     svg+=`<text x="${W-2}" y="${lane[0]+9}" font-size="10" text-anchor="end"${_fw} fill="${_lc(Math.max(...v))}">${fmtT(Math.max(...v))}</text><text x="${W-2}" y="${lane[0]+lane[1]}" font-size="10" text-anchor="end"${_fw} fill="${_lc(Math.min(...v))}">${fmtT(Math.min(...v))}</text>`;};
   if(L.st)linea(L.st,stU,'#eab308',q=>Math.round(q)+' u.');
-  if(L.gan)linea(L.gan,g7,ganColor,q=>fmt(Math.round(q))+'/día');
-  if(L.ganS)svg+=_lineaSemSvg(L.ganS,ks,X,bw,W,_lineaSemanas(ks.filter(k=>k>=pv0),k=>(vd[k]||{}).gan||0));
+  if(L.gan){svg+=_lineaSemSvg(L.gan,ks,X,bw,W,_lineaSemanas(ks.filter(k=>k>=pv0),k=>(vd[k]||{}).gan||0),true);linea(L.gan,g7,ganColor,q=>fmt(Math.round(q))+'/día');}
   if(L.pct)linea(L.pct,pd,q=>pctColor(q),q=>Math.round(q)+'%');
   if(L.pr)linea(L.pr,idx,'var(--text)',q=>q.toFixed(1));
   svg+=`<text x="${W-2}" y="${L.cam[0]+9}" font-size="10" text-anchor="end" fill="var(--muted)">▲ ${maxC}</text><text x="${W-2}" y="${L.cam[0]+L.cam[1]}" font-size="10" text-anchor="end" fill="var(--muted)">▼ ${maxC}</text>`;
-  svg+=`<text x="${W-2}" y="${L.vent[0]+9}" font-size="10" text-anchor="end" fill="var(--muted)">${maxU} u.</text>`;
+  svg+=`<text x="${W-2}" y="${L.vent[0]+9}" font-size="10" text-anchor="end" fill="var(--muted)">${maxU} u.</text>`+(hayVis?`<text x="${W-2}" y="${L.vent[0]+20}" font-size="10" text-anchor="end" fill="#60a5fa">${maxV} visitas</text>`:'');
   // globito por día
   ks.forEach((k,i)=>{const r=R[k],rr=RD(k),v=vd[k],s=cS(k),b=cB(k);const u=uDe(k);
     const lst=(arr,sg)=>arr.slice(0,8).map(c=>`   ${sg} ${c.nom}${c.cta?' ('+c.cta+')':''} ${fmt(c.de)} → ${fmt(c.a)} (${c.a>c.de?'+':''}${((c.a/c.de-1)*100).toFixed(1)}%) · ${_LT_MOT[c.mot]||c.mot||'cambio'}`).concat(arr.length>8?[`   … y ${arr.length-8} más`]:[]);
@@ -10298,7 +10302,7 @@ function lineaTodoPintar(){
     </div>
     <div style="font-size:.7rem;color:var(--muted);margin:6px 0 8px;line-height:1.6">${_ltRango} días · <b style="color:var(--text)">${uT.toLocaleString('es-AR')} u. vendidas</b>${gT?` · ganancia <b style="color:var(--text)">${fmt(Math.round(gT))}</b>`:''}${gPct!=null&&isFinite(gPct)?` (<b style="color:${pctColor(gPct)}">${gPct.toFixed(0)}%</b>)`:''} · ${vT.toLocaleString('es-AR')} visitas · stock hoy: <b style="color:var(--text)">${hoyR.st.toLocaleString('es-AR')} u.</b> · cambios de precio: <span style="color:var(--green)">▲ ${sT}</span> · <span style="color:var(--red)">▼ ${bT}</span>${iIni!=null&&iFin!=null?` · índice de precio ${iIni.toFixed(0)} → ${iFin.toFixed(1)}`:''} · caja hoy: <span style="color:var(--green)">${hoyR.g} ganan</span> · <span style="color:#f59e0b">${hoyR.c} comparten</span> · <span style="color:var(--red)">${hoyR.p} pierden</span>${_ltC.fallo?` · <span style="color:var(--amber)">no pude leer la línea del robot (${_ltC.fallo}): sólo lo del panel</span>`:(!Object.keys(R).length?' · <span style="color:var(--amber)">el robot todavía no armó la línea de todos: stock, visitas y precio salen desde la próxima noche</span>':(viejo>2?` · <span style="color:var(--amber)">la línea del robot es de hace ${Math.floor(viejo)} días</span>`:''))}</div>
     <div style="position:relative;padding-left:58px">
-      ${lab(L.vent[0]+28,'ventas')}${L.st?lab(L.st[0]+15,'stock'):''}${L.gan?lab(L.gan[0]+15,'$ ganancia/día'):''}${L.ganS?lab(L.ganS[0]+15,'$ ganancia/semana'):''}${L.pct?lab(L.pct[0]+15,'% ganancia'):''}${L.vis?lab(L.vis[0]+9,'visitas'):''}${L.pr?lab(L.pr[0]+15,'precio (índice)'):''}${lab(L.cam[0]+20,'subas / bajadas')}${L.rem?lab(L.rem[0]+4,'remate'):''}${L.caja?lab(L.caja[0]+6,'caja'):''}
+      ${lab(L.vent[0]+28,'ventas'+(hayVis?' · <span style="color:#60a5fa">visitas</span>':''))}${L.st?lab(L.st[0]+15,'stock'):''}${L.gan?lab(L.gan[0]+15,'$ ganancia/día · <span style="color:#a78bfa">semana</span>'):''}${L.pct?lab(L.pct[0]+15,'% ganancia'):''}${L.pr?lab(L.pr[0]+15,'precio (índice)'):''}${lab(L.cam[0]+20,'subas / bajadas')}${L.rem?lab(L.rem[0]+4,'remate'):''}${L.caja?lab(L.caja[0]+6,'caja'):''}
       <svg viewBox="0 0 ${W} ${H+16}" preserveAspectRatio="none" style="width:100%;height:${Math.round((H+16)*1.1)}px;display:block">${svg}</svg>
     </div>
     ${motHTML?`<div style="margin-top:8px;font-size:.68rem;line-height:1.7"><b>Cambios de precio del período, por motivo:</b> ${motHTML}</div>`:''}
@@ -10694,14 +10698,14 @@ function estrategiaPasaje(prev){if(prev==='techo'||prev==='techook')return 'tech
 // en el gráfico (la de hoy, o la primera cortada) va punteada y dice cuántos días tiene: no se compara con una entera.
 function _lineaSemanas(ks,ganK){const S={};ks.forEach(k=>{const d=new Date(k.replace(/_/g,'-')+'T12:00:00');const m=new Date(d.getTime()-((d.getDay()+6)%7)*864e5);
   const w=m.getFullYear()+'-'+String(m.getMonth()+1).padStart(2,'0')+'-'+String(m.getDate()).padStart(2,'0');const o=(S[w]=S[w]||{t:0,n:0,ks:[]});o.t+=Number(ganK(k))||0;o.n++;o.ks.push(k);});return S;}
-function _lineaSemSvg(lane,ks,X,bw,Wd,S){const ws=Object.keys(S).sort();if(!ws.length)return '';const tot=ws.map(w=>S[w].t);
+function _lineaSemSvg(lane,ks,X,bw,Wd,S,junto){const ws=Object.keys(S).sort();if(!ws.length)return '';const tot=ws.map(w=>S[w].t);
   const mx=Math.max(0,...tot),mn=Math.min(0,...tot);const y=v=>lane[0]+lane[1]-(mx>mn?(v-mn)/(mx-mn):.5)*lane[1];
   const ix={};ks.forEach((k,i)=>ix[k]=i);let out='',prevY=null;const fw=w=>w.slice(8,10)+'/'+w.slice(5,7);
   if(mn<0)out+=`<line x1="0" y1="${y(0).toFixed(1)}" x2="${Wd}" y2="${y(0).toFixed(1)}" stroke="rgba(128,128,128,.4)" stroke-dasharray="3,3"/>`;
   ws.forEach(w=>{const o=S[w];const x0=X(ix[o.ks[0]]),x1=X(ix[o.ks[o.ks.length-1]])+bw,yy=y(o.t),inc=o.n<7;
     if(prevY!=null)out+=`<line x1="${x0.toFixed(1)}" y1="${prevY.toFixed(1)}" x2="${x0.toFixed(1)}" y2="${yy.toFixed(1)}" stroke="#a78bfa" stroke-width="1" opacity=".5"/>`;
-    out+=`<g style="cursor:help"><title>Semana del lunes ${fw(w)}: ganancia ${fmt(Math.round(o.t))}${inc?` · ${o.n} de 7 días en el gráfico (incompleta)`:''}</title><rect x="${x0.toFixed(1)}" y="${lane[0]}" width="${Math.max(1,x1-x0).toFixed(1)}" height="${lane[1]}" fill="transparent"/><line x1="${x0.toFixed(1)}" y1="${yy.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${yy.toFixed(1)}" stroke="${o.t<0?'var(--red)':'#a78bfa'}" stroke-width="2.4"${inc?' stroke-dasharray="4,3" opacity=".7"':''}/></g>`;prevY=yy;});
-  out+=`<text x="${Wd-2}" y="${lane[0]+9}" font-size="10" text-anchor="end" fill="var(--muted)">${fmt(Math.round(mx))}/semana</text>`;return out;}
+    out+=`<g style="cursor:help"><title>Semana del lunes ${fw(w)}: ganancia ${fmt(Math.round(o.t))}${inc?` · ${o.n} de 7 días en el gráfico (incompleta)`:''}</title><rect x="${x0.toFixed(1)}" y="${lane[0]}" width="${Math.max(1,x1-x0).toFixed(1)}" height="${lane[1]}" fill="transparent"/><line x1="${x0.toFixed(1)}" y1="${yy.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${yy.toFixed(1)}" stroke="${o.t<0?'var(--red)':'#a78bfa'}" stroke-width="2.4"${inc?' stroke-dasharray="4,3" opacity=".7"':junto?' opacity=".75"':''}/></g>`;prevY=yy;});
+  out+=`<text x="${Wd-2}" y="${lane[0]+(junto?20:9)}" font-size="10" text-anchor="end" fill="${junto?'#a78bfa':'var(--muted)'}">${fmt(Math.round(mx))}/semana</text>`;return out;}
 function estrategiaDe(mla,ts){
   if(!mla)return null;const h=(state.estrategia||{})[mla]||{};const t=Number(ts)||Date.now();
   const okT=x=>x&&(ESTRATEGIA_UI[x.t]||x.t==='correccion'||x.t==='base');

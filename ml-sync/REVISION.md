@@ -1045,6 +1045,12 @@ Todo lo que guarda la historia día por día y las pantallas que la dibujan.
     el robot (`armarCostoWeb`, `costomes`) usan `tcMes` y, en cierres viejos sin él, `tipoCambio`. Chequear: cerrar un
     mes no cambia su ganancia en Resumen.
 
+### Línea de tiempo: renglones juntos (20/10/2026, v25.21, pedido suyo: *"juntar las líneas, así no ocupan tanto lugar. lo mismo con ventas y visitas"*)
+Ganancia/día y ganancia/semana comparten el carril `gan` (`_lineaSemSvg(...,junto=true)`: la semana en violeta detrás, su número en
+el 2º renglón de la derecha); las visitas van en el carril `vent`, en celeste detrás de las ventas, cada una con SU escala (`maxU` y
+`maxV`). Ya no existen los carriles `ganS` ni `vis`. **Chequear:** que las dos escalas no se mezclen (una barra de visitas no es una
+venta) y que el globito de cada día siga diciendo los números.
+
 ### Línea de tiempo: sin stock el precio no baja solo (12/10/2026, v23.19)
 Él: *"al quedar sin stock el precio de venta baja. ¿está bien eso?"*. En `_lineaJunta`, una publicación
 PAUSADA ya no entra al "más barato de todas": se trata como un día sin estado (vale la que vendió más
