@@ -22123,6 +22123,78 @@ async function main() {
       if (guardar) { await db.set('cyc/vigilancia', { ts: Date.now(), filas: pz.vig }); console.log('\n✓ Foto guardada en cyc/vigilancia'); }
       return;
     }
+    // GEMELA PREMIUM (20/10/2026, él con el Ferrari Rojo: "al tener la premium vendimos 2 en 30 días"). SOLO LEE.
+    // Las Clásicas activas con stock en Full, de $50.000 para arriba, que no tienen una Premium hermana (misma ficha y
+    // cuenta), y el precio Premium que deja la MISMA plata neta por venta: comisión Premium (+ cuotas si ML no las mete
+    // adentro) + IIBB/mono al precio nuevo + 3% del facturado de más (tope de H, regla ⚖️). Ordena las que menos venden
+    // primero: ésas son las que una Premium puede despertar. La publicación nueva la crea él en ML.
+    if (String(process.env.BILLING_PROBE || '').startsWith('gemela')) {
+      const DIAS = 60, PMIN = parseFloat(String(process.env.BILLING_PROBE).split(':')[1]) || 50000;
+      const links = (await db.get('cyc/mllinks')) || {};
+      const cuotasM = (await db.get('cyc/mlcuotas')) || {};
+      const netopub = (await db.get('cyc/netopub')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
+      const tc = parseFloat((await db.get('cyc/finanzas/tipo_cambio')) || 0) || 0;
+      const monoPct = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      // Cuotas cuando ML NO las mete en la comisión: el peor % medido (nunca inventar uno más bajo).
+      let cuoPeor = 0; for (const c of Object.values(cuotasM)) { const v = parseFloat(c && c.pct); if (isFinite(v) && v > cuoPeor) cuoPeor = v; }
+      if (!(cuoPeor > 0)) cuoPeor = 21.6;
+      const desdeK = new Date(Date.now() - DIAS * 864e5).toISOString().slice(0, 10).replace(/-/g, '_');
+      const uds = {}, ult = {};
+      for (const [dk, ents] of Object.entries(vp)) for (const v of Object.values(ents || {})) { if (!v || v.cancelada || !v.mla) continue; if (!ult[v.mla] || dk > ult[v.mla]) ult[v.mla] = dk; if (dk >= desdeK) uds[v.mla] = (uds[v.mla] || 0) + (Number(v.qty) || 1); }
+      const r90 = (x) => { if (x >= 100000) return Math.ceil((x + 10) / 1000) * 1000 - 10; return Math.ceil((x + 10) / 100) * 100 - 10; };
+      const filas = [], premHermana = new Set(), sinLeer = [];
+      const vivos = [];
+      for (const label of labels) {
+        const acc = accounts[label]; if (!acc?.refresh_token) continue;
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { console.log(`⚠️ ${label}: no pude renovar el permiso`); continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const ids = Object.entries(links).filter(([mla, e]) => e && e.cuenta === label && /^MLA/i.test(mla) && e.status !== 'closed' && !e.ignored).map(([mla]) => mla);
+        for (let k = 0; k < ids.length; k += 20) {
+          let arr; try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,listing_type_id,status,price,category_id,site_id,title,available_quantity,shipping,variations,catalog_listing', t.access_token); } catch { sinLeer.push(label + ' (un lote)'); continue; }
+          for (const row of (arr || [])) { const b = row.body || {}; if (!b.id) continue; vivos.push({ b, label, t }); const L = links[b.id] || {};
+            if (b.listing_type_id === 'gold_pro' && (b.status === 'active' || b.status === 'paused') && L.prodId) premHermana.add(L.prodId + '__' + label); }
+        }
+      }
+      for (const { b, label, t } of vivos) {
+        if (b.listing_type_id !== 'gold_special' || b.status !== 'active') continue;
+        const precio = Math.round(b.price || 0); if (!(precio >= PMIN)) continue;
+        const full = (b.shipping || {}).logistic_type === 'fulfillment'; const st = full ? (b.available_quantity || 0) : 0; if (!(st > 0)) continue;
+        const L = links[b.id] || {}; const p = pIdx[L.prodId]; if (!p) continue;
+        if (premHermana.has(L.prodId + '__' + label)) continue;
+        const costo = tc ? costoPesos(p, 1, tc).costo : 0; if (!(costo > 0)) continue;
+        const envio = Number((netopub[b.id] || {}).envio) || 0;
+        const impPct = (mlExtraPct(label) + monoPct) / 100;
+        const fee = async (lt, pr) => { try { const d = await mlGet(`/sites/${b.site_id || 'MLA'}/listing_prices?price=${pr}&listing_type_id=${lt}&category_id=${b.category_id}`, t.access_token); const o = Array.isArray(d) ? d[0] : d; return typeof o?.sale_fee_amount === 'number' ? { f: o.sale_fee_amount, fin: Number(o?.sale_fee_details?.financing_add_on_fee) > 0 } : null; } catch { return null; } };
+        const fC = await fee('gold_special', precio); if (!fC) { sinLeer.push(b.id); continue; }
+        const ganCla = precio - fC.f - envio - precio * impPct - costo;
+        const netaCla = ganCla - precio * PD_TOPE_PCT;
+        // Premium: probar desde el precio de hoy subiendo hasta que la plata neta iguale a la Clásica.
+        let P = precio, fP = null, ganP = null, netaP = null, cuo = 0, ok = false;
+        for (let i = 0; i < 4; i++) {
+          fP = await fee('gold_pro', P); if (!fP) break;
+          cuo = fP.fin ? 0 : (parseFloat((cuotasM[b.id] || {}).pct) || cuoPeor);
+          ganP = P - fP.f - P * cuo / 100 - envio - P * impPct - costo; netaP = ganP - P * PD_TOPE_PCT;
+          if (netaP >= netaCla - 1) { ok = true; break; }
+          const pct = (fP.f + P * cuo / 100) / P; const den = 1 - pct - impPct - PD_TOPE_PCT; if (!(den > 0.05)) break;
+          P = r90((netaCla + envio + costo) / den);
+          if (P > 650000) { P = null; break; }
+        }
+        const u = uds[b.id] || 0, ud = ult[b.id] ? Math.round((Date.now() - new Date(ult[b.id].replace(/_/g, '-') + 'T12:00:00-03:00')) / 864e5) : null;
+        filas.push({ mla: b.id, label, nom: String(L.title || b.title || '').slice(0, 46), precio, st, u, ud, ganCla, netaCla, P, ganP, netaP, ok, finEn: fP && fP.fin, cuo, caja: L.caja || '', cat: !!b.catalog_listing, vars: Array.isArray(b.variations) && b.variations.length > 1, margen: costo > 0 ? ganCla / (costo + precio * impPct + envio) * 100 : null });
+      }
+      filas.sort((a, b) => (a.u - b.u) || (b.st * b.precio - a.st * a.precio));
+      console.log(`\n══ GEMELA PREMIUM · ${filas.length} Clásica(s) activa(s) con stock en Full, desde $${PMIN.toLocaleString('es-AR')}, sin Premium hermana ══`);
+      console.log('   (solo lee · "misma plata neta" = misma ganancia por venta menos el 3% del facturado de más por el tope de H)\n');
+      for (const f of filas) {
+        console.log(`• ${f.label.padEnd(8)} ${f.mla} · ${f.nom}${f.vars ? ' · CON VARIANTES' : ''}${f.cat ? ' · catálogo' : ''}${f.caja ? ' · caja ' + f.caja : ''}`);
+        console.log(`    Clásica $${f.precio.toLocaleString('es-AR')} · ${f.st} u. Full · vendió ${f.u} en ${DIAS} d · última ${f.ud != null ? 'hace ' + f.ud + ' d' : 'nunca'} · deja $${Math.round(f.ganCla).toLocaleString('es-AR')}/venta${f.margen != null ? ' (' + f.margen.toFixed(1) + '%)' : ''}`);
+        console.log(`    Premium ${f.P && f.ok ? '$' + f.P.toLocaleString('es-AR') + ` (+${((f.P / f.precio - 1) * 100).toFixed(1)}%) · deja $${Math.round(f.ganP).toLocaleString('es-AR')}/venta · neta $${Math.round(f.netaP).toLocaleString('es-AR')} vs $${Math.round(f.netaCla).toLocaleString('es-AR')} · cuotas ${f.finEn ? 'adentro de la comisión' : f.cuo + '% aparte'}` : '? (ML no dio la comisión o pasa el techo)'}`);
+      }
+      if (sinLeer.length) console.log(`\n⚠️ sin leer: ${sinLeer.join(', ')}`);
+      return;
+    }
     if (String(process.env.BILLING_PROBE || '').startsWith('premiumvs')) {
       const DIAS = 60;
       const links = (await db.get('cyc/mllinks')) || {};
