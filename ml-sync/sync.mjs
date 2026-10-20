@@ -22416,7 +22416,9 @@ async function main() {
       }
       console.log(`\n══ ¿ML CAMBIÓ PRECIOS? · ${miradas} publicaciones miradas ══`);
       console.log(`   distintas de la última foto (netoweb) y sin una decisión mía posterior: ${cambios.length}`);
-      for (const c of cambios) console.log(`   • ${c.label.padEnd(8)} ${c.mla} ${c.tipo === 'gold_pro' ? 'PREMIUM' : 'clásica'} ${c.st} · foto $${c.prev.toLocaleString('es-AR')} (${c.fotoTs ? new Date(c.fotoTs - 3 * 36e5).toISOString().slice(5, 16).replace('T', ' ') : '?'}) → ML hoy $${c.precio.toLocaleString('es-AR')} (${((c.precio / c.prev - 1) * 100).toFixed(1)}%)${c.orig ? ' · tachado $' + Math.round(c.orig).toLocaleString('es-AR') : ''} · ML lo tocó ${String(c.upd || '').slice(0, 16)} · ${c.tit}`);
+      for (const c of cambios) { console.log(`   • ${c.label.padEnd(8)} ${c.mla} ${c.tipo === 'gold_pro' ? 'PREMIUM' : 'clásica'} ${c.st} · foto $${c.prev.toLocaleString('es-AR')} (${c.fotoTs ? new Date(c.fotoTs - 3 * 36e5).toISOString().slice(5, 16).replace('T', ' ') : '?'}) → ML hoy $${c.precio.toLocaleString('es-AR')} (${((c.precio / c.prev - 1) * 100).toFixed(1)}%)${c.orig ? ' · tachado $' + Math.round(c.orig).toLocaleString('es-AR') : ''} · ML lo tocó ${String(c.upd || '').slice(0, 16)} · ${c.tit}`);
+        for (const k of Object.keys(estr[c.mla] || {}).map(Number).sort((a, z) => z - a).slice(0, 3)) { const e = estr[c.mla][k] || {}; console.log(`       estrategia ${new Date(k - 3 * 36e5).toISOString().slice(5, 16).replace('T', ' ')} · ${e.t} · ${String(e.m || '').slice(0, 160)}`); }
+        { const lin = (await db.get('mlapi/linea/' + c.mla)) || {}; const dias = Object.keys(lin).sort().slice(-6); console.log(`       precio por día: ${dias.map((d) => d.slice(5).replace('_', '/') + ' $' + (Number((lin[d] || {}).p) || '?')).join(' · ')}`); } }
       console.log(`\n══ PREMIUM: lo que pide ML HOY a su precio · ${prem.length} publicaciones ══`);
       for (const p of prem) {
         const tot = p.fee != null ? (p.fee / p.precio * 100).toFixed(1) + '%' : '?';
