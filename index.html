@@ -2685,7 +2685,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.46';
+const APP_VERSION='25.47';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2698,6 +2698,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.47',f:'20/10',h:'18:55',c:[{n:2,t:'🇦🇷 Dai Nippon funciona igual que el resto de Bs As: ya no tiene 🧾 Pedido ni casillas de "pedir". Lo probado sale como cualquier tarjeta de Pedidos (lo compra Tito en persona) y en 🆕 Nuevos lo que da dice "lo trae Tito".'}]},
   {v:'25.46',f:'20/10',h:'18:35',c:[{n:2,t:'📋 Listas: la línea de arriba separa tres grupos que antes se mezclaban: ✅ encontrados en ML y medidos · 🔍 buscados y no encontrados · ⏳ por buscar (los que se buscaron con el nombre abreviado y el robot todavía no volvió a buscar traducidos cuentan acá).'}]},
   {v:'25.45',f:'20/10',h:'18:20',c:[{n:2,t:'🔒 Una venta que canceló Mercado Libre queda cancelada: ya no tiene el botón ↩ Reactivar (dice "la canceló Mercado Libre"). Reactivar queda sólo para las que cancelaste vos a mano.'},{n:1,t:'🔐 Las listas de precios de los proveedores ya no están legibles en el repositorio público: viajan cifradas y sólo el robot las abre.'},{n:1,t:'🔎 La revisión de choques y fallas mudas quedó cerrada: no queda nada para decidir.'}]},
   {v:'25.44',f:'20/10',h:'17:40',c:[{n:1,t:'📈 La línea de tiempo en el teléfono se abre de costado aunque tengas bloqueado el giro: acostá el teléfono para leerla. El botón ⤾ parada la vuelve a la normal (queda guardado).'}]},
@@ -18966,7 +18967,7 @@ async function _listaBuscarYa(q){
         <div style="color:var(--muted);font-size:.64rem">🔖 ${escHtml(cod)} · te sale <b style="color:var(--text)">${fmt(_listaPuesto(k,e))}</b>${e.mp?` · en ML ${fmt(e.mp)}`:''}${e.vend!=null?` · 🛒 ${e.vend>=1000?'+1000':e.vend} vendidas`:''}</div>
         <div style="font-size:.64rem">${e.mi?`<a href="https://www.mercadolibre.com.ar/p/${e.mi}" target="_blank" rel="noopener" style="color:var(--green)">🔗 verlo en ML</a> · `:''}<a href="#" onclick="listaVerOri('${k}','${c}');return false" style="color:var(--blue)">📄 verlo en la lista</a> · <a href="#" onclick="_listaSel='${k}';_listaVista='nuevos';renderListas();return false" style="color:var(--muted)">ir a ${escHtml(provs[k].nombre||k)}</a></div></div>
       <div style="text-align:right;flex:0 0 auto">${m!=null&&!_listaCostoVigente(e)?'<span style="font-size:.6rem;color:var(--amber)">⏳ costo nuevo, falta medir</span>':m!=null?`<b style="color:${m>=25?'var(--green)':'var(--red)'}">${m}%</b>`:'<span style="font-size:.6rem;color:var(--muted)">sin medir</span>'}
-        ${_listaFichaDe(k,cod,e)?'<div style="font-size:.6rem;color:var(--green)" title="Ya es una ficha: se pide desde la tarjeta de Pedidos (📋 pedir a la lista) o en ✅ Probados">ya es probado</div>':_listaDa(e)?`<div style="font-size:.62rem;color:var(--muted)">pedir <input type="number" min="0" inputmode="numeric" value="${(arm[k]||{})[cod]||''}" placeholder="0" onchange="listaSetU('${k}','${c}',this.value)" style="width:48px;padding:2px 4px;font-size:.78rem;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text)"></div>`:''}</div></div>`;};
+        ${_listaFichaDe(k,cod,e)?'<div style="font-size:.6rem;color:var(--green)" title="Ya es una ficha: se pide desde la tarjeta de Pedidos (📋 pedir a la lista) o en ✅ Probados">ya es probado</div>':(_listaDa(e)&&_listaEsBsas(k))?'<div style="font-size:.6rem;color:var(--green)">da · lo trae Tito</div>':_listaDa(e)?`<div style="font-size:.62rem;color:var(--muted)">pedir <input type="number" min="0" inputmode="numeric" value="${(arm[k]||{})[cod]||''}" placeholder="0" onchange="listaSetU('${k}','${c}',this.value)" style="width:48px;padding:2px 4px;font-size:.78rem;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text)"></div>`:''}</div></div>`;};
   out.innerHTML=`<div style="font-size:.66rem;color:var(--muted);margin-top:6px">${R.length?R.length+' resultado'+(R.length===1?'':'s')+(R.length>60?' · muestro los 60 mejores':''):'Nada en ninguna lista con eso.'}</div>`+R.slice(0,60).map(fila).join('');
 }
 function _listaRec(k){const v=((state.mlconfig&&state.mlconfig.listasProv)||{})[k]||{};return Number(v.rec)||0;}
@@ -19088,6 +19089,7 @@ function _listaRepintar(){try{renderPedidos();}catch(e){}try{renderListas();}cat
 function listaProbCasillaHTML(p,pr){
   const k=pr&&pr.listaProv;const pv=((state.mlconfig||{}).listasProv||{})[k];
   if(!k||!pv||pv.desc)return '';
+  if(pv.bsas)return '';   // Dai Nippon y las listas de Bs As no tienen pedido: las compra Tito en persona (20/10/2026)
   const nomP=escHtml(pv.nombre||k);
   const cur=_listaProbDe(k)[pr.id]||null;const u=parseInt(cur&&cur.u)||0;const vv=_pyArmV(cur);
   const cols=(p.variantesNec||[]).filter(x=>x&&x.v&&(parseInt(x.q)||0)>0).map(x=>[String(x.v),parseInt(x.q)||0]);
@@ -19330,10 +19332,14 @@ async function renderListas(){
     return `<span style="opacity:.85">· ✅ ${q.dan}</span>${q.pend>0?` <span style="opacity:.6;font-size:.85em">⏳${q.pend}</span>`:''}`;};
   const _provBtn=x=>`<button class="btn" style="font-size:.72rem;padding:6px 16px;${x===k?'background:#7c3aed;color:#fff;border-color:#7c3aed;font-weight:700':''}" title="✅ cuántos dan 25% o más en ML${provs[x].pend>0?' · ⏳ cuántos falta medir':''} · ${provs[x].n||0} en la lista" onclick="_listaSel='${x}';_listaQ='';renderListas()">${provs[x].nombre||x} ${_num(x)}</button>`;
   const nArm=_listaArmado(k).length+listaProbFilas(k).length;
+  // LAS LISTAS DE BS AS NO TIENEN PEDIDO (20/10/2026, él: "en dai nippon no se hacen pedidos, se trabajan igual que en resto de bs
+  // as. eso lo trae mi viejo personalmente"): sin 🧾 Pedido, sin casillas de "pedir" ni "📋 pedir a …" en las tarjetas. Los probados
+  // son tarjetas de Pedidos como las de "De siempre" y los nuevos se miran para que Tito los traiga.
+  if(_enB&&_listaVista==='hechos')_listaVista='nuevos';
   const _tab=(t,txt,tit)=>`<button class="btn" style="font-size:.64rem;padding:5px 13px;${_listaVista===t?'background:var(--blue);color:#fff;font-weight:700':''}" title="${tit}" onclick="listaSetVista('${t}')">${txt}</button>`;
   const cab=(_enB?`<div style="font-size:.8rem;font-weight:700;margin:18px 0 8px;padding-top:12px;border-top:2px solid var(--border2)">📋 Listas que compra Tito en Bs As <span style="font-size:.66rem;font-weight:400;color:var(--muted)">· lo que ya compraste está arriba, en los pedidos</span></div>`:'')+`<div style="margin-bottom:10px"><input id="lista-buscar" type="search" value="${escHtml(window._listaQ||'')}" placeholder="🔎 Buscar un producto en TODAS las listas…" oninput="listaBuscar(this.value)" style="width:100%;padding:9px 12px;font-size:.85rem;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--text)"><div id="lista-busq"></div></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px"><span style="font-size:.68rem;color:var(--muted)">Proveedor:</span>${visibles.map(_provBtn).join('')}${_enB?'':`<button class="btn" style="font-size:.64rem;padding:4px 10px;opacity:.8" title="La esconde de acá hasta que la vuelvas a poner (desde ⏸️ sacadas por ahora). No borra nada." onclick="listaPausar('${k}',true)">⏸️ sacar ${escHtml(nom)} por ahora</button>`}</div>${_volverHtml}
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${_tab('probados','✅ Productos probados','Lo que ya le compraste a este proveedor: cuánto reponer.')}${_tab('nuevos','🆕 Productos nuevos','Lo de su lista que todavía no vendés y da 25% o más en ML.')}${_tab('hechos','🧾 Pedido'+(nArm?' ('+nArm+' cargados)':''),'El pedido del momento, el mensaje con código y unidades, y los pedidos ya hechos.')}</div>`;
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${_tab('probados','✅ Productos probados','Lo que ya le compraste a este proveedor: cuánto reponer.')}${_tab('nuevos','🆕 Productos nuevos','Lo de su lista que todavía no vendés y da 25% o más en ML.')}${_enB?'':_tab('hechos','🧾 Pedido'+(nArm?' ('+nArm+' cargados)':''),'El pedido del momento, el mensaje con código y unidades, y los pedidos ya hechos.')}</div>`;
   _listaCacheRevisar();   // etapa 4 (20/10/2026): la que cambió el robot se vuelve a bajar
   let cat=_listaCache[k];
   if(!cat){el.innerHTML=cab+`<div style="font-size:.72rem;color:var(--muted)">⏳ bajando la lista…</div>`;
@@ -19348,7 +19354,7 @@ async function renderListas(){
   if(_listaVista==='probados'){
     const ids=new Set((state.products||[]).filter(p=>p.listaProv===k).map(p=>p.id));
     const peds=(state.pedidos||[]).filter(p=>ids.has(p.prodId)).sort(_pedSortFnRiesgo);
-    el.innerHTML=cab+(ids.size?`<div style="font-size:.66rem;color:var(--muted);margin-bottom:8px">${ids.size} producto${ids.size===1?'':'s'} de ${escHtml(nom)} · ${peds.length} con pedido de reposición · cargalos con "📋 pedir a ${escHtml(nom)}" debajo de cada tarjeta: van al 🧾 Pedido</div>`+(peds.length?peds.map(p=>_pedidoItemHtml(p,{showRiesgo:true})).join(''):'<div class="empty-msg">Ninguno necesita reposición hoy.</div>')
+    el.innerHTML=cab+(ids.size?`<div style="font-size:.66rem;color:var(--muted);margin-bottom:8px">${ids.size} producto${ids.size===1?'':'s'} de ${escHtml(nom)} · ${peds.length} con pedido de reposición · ${_enB?'Tito los compra en persona, igual que el resto de Bs As':`cargalos con "📋 pedir a ${escHtml(nom)}" debajo de cada tarjeta: van al 🧾 Pedido`}</div>`+(peds.length?peds.map(p=>_pedidoItemHtml(p,{showRiesgo:true})).join(''):'<div class="empty-msg">Ninguno necesita reposición hoy.</div>')
       :`<div class="empty-msg">Todavía no le compraste nada a ${escHtml(nom)}: lo que llegue de un pedido suyo aparece acá como probado.</div>`);
     return;
   }
@@ -19357,7 +19363,7 @@ async function renderListas(){
       :m!=null?`<b style="font-size:1rem;color:${m>=25?'var(--green)':'var(--red)'}">${Math.round(m)}%</b> <span style="font-size:.6rem;color:var(--muted)">ML</span>`
       :e.sc?'<span style="font-size:.62rem;color:var(--muted)">sin catálogo exacto en ML</span>':e.sv?'<span style="font-size:.62rem;color:var(--muted)">en ML no lo vende nadie</span>':e.fz?`<span style="font-size:.62rem;color:var(--muted)">afuera: ${escHtml(e.fz)}</span>`:'<span style="font-size:.62rem;color:var(--muted)">⏳ sin medir</span>';
     const fML=/^https:\/\//.test(e.mf||'')?e.mf:'';const vj=viaj.has(String(cod)),fi=yaFicha.has(String(cod));
-    const uBox=!conU?'':fi?'<div style="font-size:.6rem;color:var(--green)" title="Ya es una ficha: se pide desde la tarjeta de Pedidos (📋 pedir a la lista) o en ✅ Probados">ya es probado</div>':vj?'<div style="font-size:.6rem;color:var(--amber)">🚚 viajando</div>'
+    const uBox=!conU?'':(_enB&&!fi)?(_listaDa(e)?'<div style="font-size:.6rem;color:var(--green)" title="No hay pedido: lo trae Tito en persona. Cuando llegue, avisale a Claude y lo da de alta.">da · lo trae Tito</div>':''):fi?'<div style="font-size:.6rem;color:var(--green)" title="Ya es una ficha: se pide desde la tarjeta de Pedidos (📋 pedir a la lista) o en ✅ Probados">ya es probado</div>':vj?'<div style="font-size:.6rem;color:var(--amber)">🚚 viajando</div>'
       :_listaDa(e)?`<div style="margin-top:4px;font-size:.62rem;color:var(--muted)">pedir <input type="number" min="0" inputmode="numeric" value="${arm[cod]||''}" placeholder="0" onchange="listaSetU('${k}','${String(cod).replace(/'/g,"\\'")}',this.value)" style="width:52px;padding:3px 5px;font-size:.8rem;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text)"> u.</div>`:'';
     return `<div style="display:flex;gap:8px;align-items:center;padding:6px 8px;background:var(--surface);border:1px solid ${arm[cod]>0?'var(--blue)':'var(--border)'};border-radius:8px">
       ${fML?`<img src="${fML}" loading="lazy" onclick="_mostrarLightbox('${fML}','')" onerror="this.style.visibility='hidden'" style="width:44px;height:44px;object-fit:contain;background:#fff;border-radius:6px;cursor:zoom-in">`:''}
