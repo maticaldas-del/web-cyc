@@ -9286,3 +9286,8 @@ días, no 30, así llega antes del 15/12 y no se corta en la semana fuerte. Reco
 ## 💾 YA NO HAY TARJETAS TRUCHAS (20/10/2026, dicho por él)
 *"nunca mas trajimos truchas. son todas originales ahora"*. La SanDisk 32GB (`MLA1809285407`, Matías) es original y queda activa.
 Lo de "las tiró por truchas" (19/09) vale sólo para aquel lote viejo: una tarjeta de memoria se trata como cualquier producto.
+
+## 🤔 ANTES DE CUALQUIER DESCUENTO: ¿TIENE SENTIDO? (20/10/2026, eligió la 2.1a)
+Con los Victoria's Secret (9 en descuento abajo del 25% y 3 recién llegadas con descuento por error): ningún descuento sin que se
+cumplan las tres: sobra de verdad (+90 d de stock al ritmo con stock), no es recién llegado (30+ d desde la caja) y queda en 25%+ en
+el peor caso. Abajo de 25% sólo con motivo dicho en el 🧠. Los 12 se sacaron ese día. Detalle en `ml-sync/CEREBRO.md` (🤔).
