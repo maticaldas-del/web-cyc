@@ -886,6 +886,11 @@ precio actual sin vender, ese precio cuenta como el de arranque (lista real desd
 el **27/10** se mide con `techo95` y baja sólo el que llegue al 95%.
 
 ## 🧪 PRUEBA: ¿EL TACHADO VENDE MÁS? (21/10 → 04/11/2026, eligió 3a + 3b)
+**⛔ LA 3b SE CANCELÓ EL 20/10/2026 A LA TARDE (él):** *"perdemos ganancia de productos que venden bien solo por la prueba. ya hay
+historial de productos con tachado y si no son suficiente, esperá, ya que va a haber más. salvo que lo hayas tachado por otra cosa y
+con causa justificable"*. Las 10 vuelven a su precio y estrategia de antes. **No se baja el precio de algo que vende bien sólo para
+medir.** Lo del tachado se mide con lo que ya pasó (`vistas`, la 3a del 28/10) y con lo que vaya pasando. Un descuento sigue siendo
+válido sólo si tiene su propia causa (sobra, lanzamiento, fecha) y pasa las tres de la regla 🤔.
  · **3a:** el 28/10 se miden las 12 publicaciones que el 20/10 pasaron de descuento a precio liso al mismo precio final (`vistas`).
  · **3b:** 10 publicaciones que venden parejo bajan ~5% durante 2 semanas, 5 con precio tachado (descuento propio) y 5 con precio de
    lista liso, emparejadas por volumen. Tag 🧪 `prueba`. Mientras dura, esas 10 **no se tocan** (ni techo ni escalera), salvo escasez
