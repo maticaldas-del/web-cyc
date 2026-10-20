@@ -2684,7 +2684,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.30';
+const APP_VERSION='25.31';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2695,6 +2695,7 @@ const APP_VERSION='25.30';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.31',f:'20/10',h:'15:33',c:[{n:1,t:'💳 Ventas: Clásica en azul y Premium en dorado.'}]},
   {v:'25.30',f:'20/10',h:'15:25',c:[{n:2,t:'💰 Línea de tiempo: el piso aparece desde la primera venta en todos los productos. Con pocos días va punteado y dice "provisorio": es el precio que más plata por día dejó hasta ahora y se corrige con cada venta. Los que sobran stock también lo muestran. El 🔴 techo sigue pidiendo estar seguro.'}]},
   {v:'25.29',f:'20/10',h:'14:56',c:[{n:1,t:'🔢 Cada pedido hecho (Paraguay, Paulvic y Listas) tiene su número de 4 cifras (#1001, #1002…), al lado de la fecha. Así podés decir "el pedido 1003". El número no cambia nunca.'}]},
   {v:'25.28',f:'20/10',h:'15:10',c:[{n:1,t:'Revisión de la etapa 2 (Plata): en Inicio quedan las 8 decisiones que te mandé por Telegram'}]},
@@ -11881,9 +11882,10 @@ function renderVentaProd(){
         const tn=lt==='gold_pro'?'Premium':lt==='gold_special'?'Clásica':'';
         const ct=c>1?`${c} cuotas${v.cuotasSI?' s/interés':''}`:c===1?'1 pago':'';
         return [tn,ct].filter(Boolean).join(' · ')+'|'+(lt==='gold_pro'?1:0)+'|'+(v.cuotasSI?1:0);}).filter(Boolean))];
-        return vs.map(x=>{const [t,pr,si]=x.split('|');const col=pr==='1'?'#c084fc':'var(--muted)';
+        // Colores (20/10/2026, él: "clásica en azul, premium en dorado").
+        return vs.map(x=>{const [t,pr,si]=x.split('|');const esC=t.startsWith('Clásica');const col=pr==='1'?'#eab308':esC?'#60a5fa':'var(--muted)';
           const tt=(pr==='1'?'Se vendió por la publicación PREMIUM (con cuotas). ':t.startsWith('Clásica')?'Se vendió por la publicación CLÁSICA. ':'')+(si==='1'?'El interés de las cuotas lo pagamos nosotros (cuotas sin interés).':/cuotas/.test(t)?'Pagó en cuotas con interés: el interés lo pagó el comprador.':'');
-          return `<span style="font-size:.62rem;padding:1px 6px;border-radius:4px;border:1px solid ${pr==='1'?'rgba(192,132,252,.45)':'var(--border2)'};color:${col};white-space:nowrap" title="${tt}">💳 ${t}</span>`;}).join(' ');})();
+          return `<span style="font-size:.62rem;padding:1px 6px;border-radius:4px;border:1px solid ${pr==='1'?'rgba(234,179,8,.5)':esC?'rgba(96,165,250,.5)':'var(--border2)'};color:${col};white-space:nowrap" title="${tt}">💳 ${t}</span>`;}).join(' ');})();
       const _pcHtml=`<div class="ingreso-item vp-pc" onclick="vpCardClick(event,'${grp.gid}')" title="Tocá para ver u ocultar el detalle" style="cursor:pointer;flex-direction:column;align-items:stretch;gap:4px;${isCancelled?'border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.04)':''}">
         <div class="vp-pc-cab" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;row-gap:4px;white-space:nowrap">
           <span class="who-badge" style="font-size:.6rem;${isCancelled?'opacity:.6':''}">${cuenta}</span>
