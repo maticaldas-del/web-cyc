@@ -1978,3 +1978,23 @@ y el disponible no salte; que un pedido de lista llegado aparezca en Deudas hast
   entre los días con stock que vendieron (`aprox:true`, raya punteada "provisorio"); con 5+ días medibles, como antes. Los de
   sobra/liquidando también muestran el piso (sin techo). El 🔴 techo y `techo95` del robot no cambian. **Chequear:** que el
   provisorio no se use para marcar 🏔️ ni para decidir un precio sin mirarlo.
+
+- 20/10/2026 · Etapa 7 (diseño) · v25.35: **las ventas vivas estaban apagadas desde la v24.86 (19/10).** `vivaEnvolver` buscaba
+  `class="ingreso-item vp-pc" style="` pegados, y la v24.86 metió `onclick`/`title` en el medio: no encontraba la tarjeta y
+  devolvía la venta sin efecto, sin avisar. Ahora busca el `style="` dentro de la misma etiqueta. **Chequear:** al tocar el
+  markup de una tarjeta de Ventas, que siga apareciendo el color/efecto (prueba: una venta de 25%+ tiene que verse con tinte).
+
+- 20/10/2026 · Etapa 7 (diseño) · v25.36: en la línea de tiempo de un producto el **costo** salió del carril del precio y va en el
+  del **% de ganancia** (escala propia `cMin/cMax`, etiqueta "costo $X" abajo a la izquierda, globito del costo en ese carril).
+  El precio ya no mete el costo en su escala (`_pcv` sin `cvs`). **Chequear:** que el carril del % aparezca aunque no haya %
+  (sólo costo) y que las rayas de piso/techo sigan en el del precio.
+
+- 20/10/2026 · Etapa 5 (datos) · v25.37: **Métricas → de dónde viene la mercadería, con 📋 Listas y por score.** `metGrupoDeProd`
+  manda lo de `listaProv` a 'lista' (antes contaba en Bs As, como en Pedidos ya no). El botón 📋 Listas muestra cada proveedor
+  de lista con ventas en el período (`provs` de `metPorOrigen`); los que no vendieron no salen. Todo se ordena por
+  `metScoreDe`: el score del ranking de Ventas (gan²/costo por producto) PROMEDIADO por producto vendido, con la escala
+  `scoreColor/scoreLabel` llevada a 30 días. **Chequear:** que la suma de los grupos siga cerrando contra los KPIs de arriba.
+
+- 20/10/2026 · v25.38: `metScoreDe` promedia por COLOR/AROMA (`vars`, ficha + variante de la venta), no por ficha: el Paulvic (una ficha, ~70 aromas) salía como un solo producto gigante. Y las cajas de la vista de un origen no se pisan (min 140px, sin cortar).
+
+- 20/10/2026 · Etapa 7 (diseño) · v25.39: botón **📋 ficha** en el detalle de cada venta (Ventas x Producto), al lado de 📈 línea: `fichaAbrir(<MLA de la venta>)`, uno por publicación del carrito. **Chequear:** que una venta sin MLA no muestre el botón.

@@ -2684,7 +2684,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.34';
+const APP_VERSION='25.39';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2695,6 +2695,11 @@ const APP_VERSION='25.34';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.39',f:'20/10',h:'15:56',c:[{n:1,t:'📋 Ventas: en el detalle de cada venta, al lado de 📈 línea, el botón 📋 ficha abre la ficha médica de esa publicación con toda su información.'}]},
+  {v:'25.38',f:'20/10',h:'15:55',c:[{n:2,t:'📊 Métricas → de dónde viene la mercadería: el score se promedia por color/aroma, no por ficha (el Paulvic es una sola ficha con todos los aromas y salía inflado). Y los números de arriba ya no se pisan.'}]},
+  {v:'25.37',f:'20/10',h:'15:52',c:[{n:2,t:'📊 Métricas → de dónde viene la mercadería: botón nuevo 📋 Listas (cada proveedor de lista que ya vendió, uno al lado del otro). Ahora todo se compara por ⚡ score (el mismo del ranking de Ventas), promediado por producto, para ver dónde conviene meter plata. Lo de listas ya no se cuenta adentro de Bs As.'}]},
+  {v:'25.36',f:'20/10',h:'15:42',c:[{n:1,t:'📈 Línea de tiempo: el precio queda solo en su carril (usa toda la altura) y el costo pasa al carril del % de ganancia, con su propia escala y el número a la izquierda.'}]},
+  {v:'25.35',f:'20/10',h:'15:37',c:[{n:1,t:'🔥 Vuelven las ventas vivas (color por %, formas que se mueven, temblor y fuego). Se habían apagado el 19/10 sin querer, cuando se agregó el tocar la venta para ver el detalle.'}]},
   {v:'25.34',f:'20/10',h:'15:45',c:[{n:1,t:'🔎 La revisión diaria ya no va por día de la semana: cada madrugada toca la etapa que hace más tiempo que no se revisa. Si una se hizo antes, no se repite. Inicio dice cuál es la próxima.'}]},
   {v:'25.33',f:'20/10',h:'15:35',c:[{n:3,t:'💵 Listas: lo que llega de un proveedor cuenta como deuda en el Arqueo hasta que tocás "💵 Ya lo pagué" en el pedido (Pedidos → Listas → 🧾 Pedido). Al pedir no cuenta nada.'},{n:3,t:'💲 Si recomprás algo de una lista más caro, al llegar la ficha toma el costo nuevo (las ventas viejas quedan con el viejo).'},{n:2,t:'⚖️ Tope de H: el ritmo de los 30 días cuenta también las ventas canceladas, como las cuenta ARCA.'},{n:2,t:'🇵🇾 El recargo de Paraguay se mide contra el precio de la web, y el promedio deja afuera el adelanto ocasional (el pedido lo sigue pagando).'},{n:2,t:'📈 Las rayas de techo y piso de la línea de tiempo comparan todos los precios con el costo, el dólar y el monotributo de hoy.'},{n:3,t:'💳 Mercado Pago: la fila diaria sin venta y sin fecha de liberación ya no suma a "a liquidar": es plata que ya está en la cuenta.'}]},
   {v:'25.32',f:'20/10',h:'15:34',c:[{n:1,t:'💳 Ventas: la Clásica vuelve a gris (como antes); la Premium queda en dorado.'}]},
@@ -9605,8 +9610,12 @@ function vivaVenta(o){
 // La tarjeta de una venta adentro de su envoltorio (el fuego necesita salir por afuera de la tarjeta).
 function vivaEnvolver(html,cual,v){
   if(!v)return html;
-  const a=`class="ingreso-item ${cual}" style="`;
-  if(html.indexOf(a)<0)return html;
+  // La tarjeta puede traer otros atributos entre `class` y `style` (el onclick del detalle, v24.86): se busca el `style="` dentro
+  // de la MISMA etiqueta. Antes se exigía `class="…" style="` pegados y desde el 19/10 las ventas vivas no aparecían (20/10/2026).
+  const a=`class="ingreso-item ${cual}"`,_i=html.indexOf(a);
+  if(_i<0)return html;
+  const _fin=html.indexOf('>',_i),_j=html.indexOf('style="',_i);
+  if(_j<0||(_fin>=0&&_j>_fin))return html;
   // Fondo, borde y halo también van con el neto (09/10/2026, él: "las cartas que dan 1.500 de neto parecen lo mismo
   // que el aromatizante que da 10 veces más"): las variables del nivel (.viva.lv-*) se pisan acá, en la tarjeta.
   // Desde el 09/10 a la tarde el COLOR se ve siempre según el nivel (base del nivel) y el puntaje sólo lo intensifica.
@@ -9616,7 +9625,7 @@ function vivaEnvolver(html,cual,v){
   // color lo pone el puntaje. Una venta chica se ve casi neutra con un toque de su color; la JOYA conserva su borde dorado.
   const B={bajo:[3,18],justo:[3,18],bien:[4,22],bueno:[6,30],exc:[8,40],estr:[9,45],joya:[11,55]}[v.k]||[3,18];
   const vars=`--tint:${f(B[0]+vi*14)}%;--bd:${f(Math.min(100,B[1]+vi*45))}%;--bw:${v.k==='joya'||vi>=.7?2:1}px;--halo:${f(Math.max(0,vi-.45)*30)}px;`;
-  html=html.replace(a,`class="ingreso-item viva lv-${v.k}" style="--c:${v.c};${vars}`);
+  html=html.slice(0,_i)+`class="ingreso-item viva lv-${v.k}"`+html.slice(_i+a.length,_j)+`style="--c:${v.c};${vars}`+html.slice(_j+7);
   // $100.000 de neto o más tiembla siempre; arde sólo desde "Bueno" (09/10/2026, él con 2 Ferrari de $112.000 de neto).
   const mv=v.ef==='fuego'||v.ef==='tiembla'?'mv-tiembla':v.ef==='flota2'?'mv-flota2':v.ef==='flota'?'mv-flota':'';
   const gl=v.ef?('gl'+(v.ef==='fuego'||v.ef==='tiembla'?' fuerte':'')):'';
@@ -10086,7 +10095,7 @@ function lineaPintar(prodId){
     let techo=null;if(best.u>=3&&best.gu>0)L.filter(g=>g.p>best.p*1.02).sort((a,b)=>a.p-b.p).some(g=>{const gu1=g.gu!=null?g.gu:best.gu+(g.p-best.p)*0.7;if(!(gu1>best.gu))return false;
       const lam=best.r*(best.gu/gu1)*g.dias,seg=1-pois(g.u,lam);if(seg>=0.95){techo={...g,seg,lam};return true;}return false;});
     return {best,piso,techo};})());
-  const _pcv=ps.concat(cvs).concat(_techos.map(t=>Number(t.probado))).concat([_rayas.best,_rayas.piso,_rayas.techo].filter(Boolean).map(g=>g.p)).concat(_techos.map(t=>Number(t.volvio)).filter(v=>v>0));const [pcMin,pcMax]=_pcv.length?_esc(Math.min(..._pcv),Math.max(..._pcv)):[0,1];
+  const _pcv=ps.concat(_techos.map(t=>Number(t.probado))).concat([_rayas.best,_rayas.piso,_rayas.techo].filter(Boolean).map(g=>g.p)).concat(_techos.map(t=>Number(t.volvio)).filter(v=>v>0));const [pcMin,pcMax]=_pcv.length?_esc(Math.min(..._pcv),Math.max(..._pcv)):[0,1];
   const hayEst=ks.some(k=>dias[k]&&(dias[k].rem||dias[k].esc!=null)), hayCaja=ks.some(k=>dias[k]&&dias[k].caja), hayVis=ks.some(k=>dias[k]&&dias[k].vis>0), hayGan=Object.keys(gd).length>0;
   // Los carriles que no tienen NADA en el rango no se dibujan (una franja toda gris no dice nada).
   const L={};let _y=0,_lSc=0,_lFx=0;const _lane=(n,h0,si)=>{if(!si)return;const big=h0>=30,h0p=Math.round(h0*1.45),h=big?Math.round(h0p*_lineaFac):h0p;if(big)_lSc+=h0p;else _lFx+=h0p;_lFx+=8;L[n]=[_y,h];_y+=h+8;};
@@ -10102,7 +10111,7 @@ function lineaPintar(prodId){
   const _ganK=k=>gd[k]?gd[k].gan:(_ganPre[k]||0);
   const g7={};ks.forEach((k,i)=>{const ia=i+6;let t=0;for(let j=ia-6;j<=ia;j++)t+=_ganK(_ksAll[j]);g7[k]=t/7;});
   const g7v=Object.values(g7);const gMax=g7v.length?Math.max(0,...g7v):1,gMin=g7v.length?Math.min(0,...g7v):0;
-  _lane('vent',64,true);_lane('st',suv.length?54:14,true);_lane('gan',52,g7v.some(x=>x!==0));_lane('pct',46,pvs.length>0);_lane('pr',cvs.length?60:46,true);_lane('est',14,hayEst);_lane('caja',14,hayCaja);
+  _lane('vent',64,true);_lane('st',suv.length?54:14,true);_lane('gan',52,g7v.some(x=>x!==0));_lane('pct',cvs.length?56:46,pvs.length>0||cvs.length>0);_lane('pr',46,true);_lane('est',14,hayEst);_lane('caja',14,hayCaja);
   const H=_y-8;_lineaDim={fx:_lFx-8,sc:_lSc};
   // STOCK UNIFICADO (03/10/2026, él: "hay dos stock, unifiquémoslo"): la línea de unidades arriba y, abajo,
   // la franja finita de con/sin stock para los días sin el número exacto.
@@ -10219,7 +10228,7 @@ function lineaPintar(prodId){
     ks.forEach((k,i)=>{if(pd[k]==null)return;const pt=[X(i)+bw/2,yq(pd[k])];
       if(prev)svg+=`<line x1="${prev[0].toFixed(1)}" y1="${prev[1].toFixed(1)}" x2="${pt[0].toFixed(1)}" y2="${pt[1].toFixed(1)}" stroke="${pctColor(pd[k])}" stroke-width="2"/>`;
       else svg+=`<circle cx="${pt[0].toFixed(1)}" cy="${pt[1].toFixed(1)}" r="1.5" fill="${pctColor(pd[k])}"/>`;prev=pt;});
-    svg+=`<text x="${W-2}" y="${L.pct[0]+9}" font-size="10" text-anchor="end" font-weight="700" fill="${pctColor(qMax)}">${Math.round(qMax)}%</text>`+(qMax>qMin?`<text x="${W-2}" y="${L.pct[0]+L.pct[1]}" font-size="10" text-anchor="end" font-weight="700" fill="${pctColor(qMin)}">${Math.round(qMin)}%</text>`:'');}
+    if(pvs.length)svg+=`<text x="${W-2}" y="${L.pct[0]+9}" font-size="10" text-anchor="end" font-weight="700" fill="${pctColor(qMax)}">${Math.round(qMax)}%</text>`+(qMax>qMin?`<text x="${W-2}" y="${L.pct[0]+L.pct[1]}" font-size="10" text-anchor="end" font-weight="700" fill="${pctColor(qMin)}">${Math.round(qMin)}%</text>`:'');}
   if(L.gan){const yg=v=>L.gan[0]+L.gan[1]-(gMax>gMin?(v-gMin)/(gMax-gMin):.5)*L.gan[1];
     if(gMin<0)svg+=`<line x1="0" y1="${yg(0).toFixed(1)}" x2="${W}" y2="${yg(0).toFixed(1)}" stroke="rgba(128,128,128,.4)" stroke-dasharray="3,3"/>`;
     let prev=null;ks.forEach((k,i)=>{if(g7[k]==null)return;const pt=[X(i)+bw/2,yg(g7[k])];
@@ -10230,9 +10239,12 @@ function lineaPintar(prodId){
     const yg=v=>L.gan[0]+L.gan[1]-(gMax>gMin?(v-gMin)/(gMax-gMin):.5)*L.gan[1];let prev=null;ks.forEach((k,i)=>{if(g7[k]==null)return;const pt=[X(i)+bw/2,yg(g7[k])];
       if(prev)svg+=`<line x1="${prev[0].toFixed(1)}" y1="${prev[1].toFixed(1)}" x2="${pt[0].toFixed(1)}" y2="${pt[1].toFixed(1)}" stroke="${ganColor(g7[k])}" stroke-width="2"/>`;prev=pt;});}
   if(hayVis)svg+=`<text x="${W-2}" y="${L.vent[0]+9}" font-size="10" text-anchor="end" fill="#60a5fa">${maxV} visitas</text>`;
-  if(cvs.length){const yc=c=>L.pr[0]+L.pr[1]-(pcMax>pcMin?(c-pcMin)/(pcMax-pcMin):.5)*L.pr[1];
-    const ptT=[];ks.forEach((k,i)=>{if(ct[k]>0)ptT.push(`${(X(i)+bw/2).toFixed(1)},${yc(ct[k]).toFixed(1)}`);});
-    if(ptT.length>1)svg+=`<polyline points="${ptT.join(' ')}" fill="none" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4,3"/>`;}
+  // EL COSTO VA CON EL % DE GANANCIA, NO CON EL PRECIO (20/10/2026, él: "separar precio de costo y dejar precio solo, y juntar
+  // costo con % de ganancia"). Con su propia escala adentro del carril del %: así el precio usa toda su altura.
+  if(cvs.length&&L.pct){const yc=c=>L.pct[0]+L.pct[1]-(cMax>cMin?(c-cMin)/(cMax-cMin):.5)*L.pct[1];
+    const ptT=[];let _cU=0;ks.forEach((k,i)=>{if(ct[k]>0){ptT.push(`${(X(i)+bw/2).toFixed(1)},${yc(ct[k]).toFixed(1)}`);_cU=ct[k];}});
+    if(ptT.length>1)svg+=`<polyline points="${ptT.join(' ')}" fill="none" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4,3"/>`;
+    if(_cU>0)svg+=`<text x="4" y="${(L.pct[0]+L.pct[1]-2).toFixed(1)}" font-size="10" fill="#f59e0b">costo ${fmt(Math.round(_cU))}</text>`;}
   if(suv.length){const ys=v=>L.st[0]+(L.st[1]-9)-v/sMax*(L.st[1]-9);let prev=null,prevI=-9;
     ks.forEach((k,i)=>{if(stU[k]==null){prev=null;return;}const pt=[X(i)+bw/2,ys(stU[k])];const c=_stCol(stD[k]);
       if(prev&&i-prevI<=3)svg+=`<line x1="${prev[0].toFixed(1)}" y1="${prev[1].toFixed(1)}" x2="${pt[0].toFixed(1)}" y2="${pt[1].toFixed(1)}" stroke="${c}" stroke-width="2"/>`;
@@ -10311,7 +10323,7 @@ function lineaPintar(prodId){
     const _caja=d&&d.caja?`🥊 caja: ${(d.hoy?{g:'la ganamos (última lectura del robot)',c:'compartida (última lectura del robot)',p:'la perdemos (última lectura del robot)',n:'no es de catálogo: no hay caja que ganar',s:'ML no informa caja en ese catálogo',z:'ninguna publicación activa (pausadas): no pelea la caja'}:{g:'la ganábamos',c:'compartida',p:'la perdíamos',n:'no es de catálogo',s:'ML no informaba caja'})[d.caja]||d.caja}`:'';
     const _ent=stIn[k]!=null?`📥 llegaron ~${stIn[k]} u.`:'';
     const _ev=es.map(e=>cambioTxt(e).replace(/[<>&]/g,''));
-    const por={vent:[_vent,_gan],gan:[_g7],pct:[_gan||_pctU,_mg],st:[_ent,_st||_tuvo],vis:[_vis],pr:[_pr,_estD[k]?'🎨 '+_estTxt(_estD[k]):'',_cos,..._ev],est:[_est||'sin remate ni escalera'],caja:[_caja]};
+    const por={vent:[_vent,_gan],gan:[_g7],pct:[_gan||_pctU,_mg,_cos],st:[_ent,_st||_tuvo],vis:[_vis],pr:[_pr,_estD[k]?'🎨 '+_estTxt(_estD[k]):'',..._ev],est:[_est||'sin remate ni escalera'],caja:[_caja]};
     for(const [n,arr] of Object.entries(por)){if(!L[n])continue;const t=[_h,...arr].filter(Boolean).join('\n');
       svg+=`<rect x="${X(i)}" y="${Math.max(0,L[n][0]-4)}" width="${Math.max(bw,1)}" height="${L[n][1]+8}" fill="transparent"><title>${t}</title></rect>`;}});
   // Las flechitas van ARRIBA de los rectángulos del globito: si no, el mouse nunca llega a su explicación.
@@ -10375,7 +10387,7 @@ function lineaPintar(prodId){
     ${_vars.length>1?`<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px">${['',..._vars].map((v,i)=>`<button class="btn" onclick="lineaVar(_lineaVarsL[${i}],'${prodId}')" style="font-size:.62rem;padding:2px 9px;${_lineaVar===v?'background:#7c3aed;color:#fff;border-color:#7c3aed':''}">${v||'Todas juntas'}</button>`).join('')}</div>`:''}
     <div style="font-size:.7rem;color:var(--muted);margin:6px 0 8px;line-height:1.6">${_lineaRango} días · <b style="color:var(--text)">${uT} u. vendidas</b>${uRT?` (${uRT} en remate)`:''}${hayGan&&gPct!=null&&isFinite(gPct)?` · ganancia <b style="color:${pctColor(gPct)}">${gPct.toFixed(0)}%</b>`:''} · ${vT} visitas · ${_stHoy} · historial: <span style="color:var(--green)">${dCon} d con</span> · <span style="color:var(--red)">${dSin} d sin</span> · ${dNo} d sin dato${dRem?` · ${dRem} d rematando`:''}${pIni&&pFin?` · precio ${fmt(pIni)} → ${fmt(pFin)}`:''} · ${Object.keys(porMlaF).length} publicación(es)${C.fallo?' · <span style="color:var(--amber)">alguna publicación no se pudo leer</span>':''}</div>
     <div style="position:relative;padding-left:58px">
-      ${lab(L.vent[0]+28,'ventas'+(hayVis?' · <span style="color:#60a5fa">visitas</span>':''))}${L.gan?lab(L.gan[0]+15,'$ ganancia/día · <span style="color:#a78bfa">semana</span>'):''}${L.pct?lab(L.pct[0]+18,'% ganancia'):''}${lab(L.st[0]+(suv.length?20:2),'stock')}${lab(L.pr[0]+18,cvs.length?'precio · <span style="color:#f59e0b">costo</span>':'precio')}${L.est?lab(L.est[0]+2,'remate'):''}${L.caja?lab(L.caja[0]+2,'caja'):''}
+      ${lab(L.vent[0]+28,'ventas'+(hayVis?' · <span style="color:#60a5fa">visitas</span>':''))}${L.gan?lab(L.gan[0]+15,'$ ganancia/día · <span style="color:#a78bfa">semana</span>'):''}${L.pct?lab(L.pct[0]+18,pvs.length?('% ganancia'+(cvs.length?' · <span style="color:#f59e0b">costo</span>':'')):'<span style="color:#f59e0b">costo</span>'):''}${lab(L.st[0]+(suv.length?20:2),'stock')}${lab(L.pr[0]+18,'precio')}${L.est?lab(L.est[0]+2,'remate'):''}${L.caja?lab(L.caja[0]+2,'caja'):''}
       <svg class="linea-svg" viewBox="0 0 ${W} ${H+16}" preserveAspectRatio="none" style="width:100%;height:${Math.round((H+16)*1.1)}px;display:block">${svg}</svg>
     </div>
     ${_adHTML?`<div style="margin-top:8px;font-size:.7rem;line-height:1.5"><div style="font-weight:700;margin-bottom:2px">💵 ¿Cada cambio de precio dejó más plata por día?</div>${_adHTML}</div>`:''}
@@ -11966,6 +11978,7 @@ function renderVentaProd(){
           ${isCancelled?reclamoMotivoHTML(grp):''}
           <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px">
             ${(()=>{const _ids=[...new Set(grp.items.map(v=>(prodDeVenta(v)||{}).id).filter(Boolean))];return _ids.map(id=>{const _vs=_lineaVarDeVentas(grp.items,id);return lineaBtn(id,_ids.length>1?'📈 '+((prodById(id)||{}).name||'línea').slice(0,18):(_vs?'📈 línea '+_vs.slice(0,16):'📈 línea'),_vs);}).join(' ');})()}
+            ${(()=>{const _ms=[...new Set(grp.items.map(v=>String(v.mla||'')).filter(m=>/^MLA\d+$/.test(m)))];return _ms.map(m=>`<button class="btn" style="font-size:.68rem;padding:3px 10px" onclick="event.stopPropagation();fichaAbrir('${m}',event)" title="La ficha médica de esta publicación: todo lo que se sabe de ella (cambios de precio y cómo le fue, cada precio que tuvo, cómo reacciona, mis notas y la línea de tiempo día por día)">📋 ficha${_ms.length>1?' '+escHtml(String(((state.mllinks||{})[m]||{}).variant||m.slice(-4)).slice(0,12)):''}</button>`).join(' ');})()}
             ${grp.items.map(v=>{const _pp=prodDeVenta(v);return _pp?vpNoConsigoBtn(_pp,v.variante||''):'';}).join(' ')}
             ${grp.items.map(v=>{const _pp=prodDeVenta(v);return _pp?cerebroBtn(_pp.id,{mla:v.mla,ctx:'venta'}):'';}).join(' ')}
             ${delBtn}
@@ -19807,16 +19820,34 @@ function metVentasPorHora(keys){
 function metGrupoDeProd(p){
   if(!p)return null;                                   // sin ficha no se puede decir de dónde vino
   if(esProductoPaulvic(p))return 'paulvic';            // el Paulvic sale ANTES: es proveedor de Bs As
+  // 📋 LISTAS (20/10/2026, él: "quiero agregar listas y al clickear que aparezcan los proveedores que ya tienen ventas"): lo
+  // comprado a una lista de proveedor (`listaProv`) va aparte, igual que en Pedidos (no sale en Bs As).
+  if(p.listaProv)return 'lista';
   return (p.origen==='py')?'py':'bsas';                // el origen por defecto es Bs As, igual que la ficha
 }
-const MET_ORIG={bsas:{nom:'🇦🇷 Bs As',col:'#60a5fa'},py:{nom:'🇵🇾 Paraguay',col:'#f87171'},paulvic:{nom:'🧴 Paulvic',col:'#c084fc'}};
+const MET_ORIG={bsas:{nom:'🇦🇷 Bs As',col:'#60a5fa'},py:{nom:'🇵🇾 Paraguay',col:'#f87171'},paulvic:{nom:'🧴 Paulvic',col:'#c084fc'},lista:{nom:'📋 Listas',col:'#34d399'}};
+// EL SCORE DE UN GRUPO (20/10/2026, él: "que se comparen ahora no por ganancia, sino por score como lo vemos siempre. el
+// objetivo es saber dónde conviene más meter plata"). Es el MISMO score del ranking de Ventas (ganancia² ÷ costo, por
+// producto), con la MISMA escala de colores llevada a 30 días. Para comparar orígenes de distinto tamaño se usa el PROMEDIO
+// por producto vendido: dice cuánto rinde, en general, un producto de ese origen (que es lo que se compra con la plata nueva),
+// no cuántos productos tiene. Un producto que perdió plata cuenta como 0, igual que en el ranking.
+// POR COLOR/AROMA, NO POR FICHA (20/10/2026, él con el Paulvic en 117.074 "Estrella"): el Paulvic es UNA ficha con todos los
+// aromas, y promediando por ficha valía como un solo producto gigante contra los 57 de Bs As. Cada variante es lo que se compra.
+function metScoreDe(a,dias){
+  const ps=Object.values(a.vars||a.prods||{});if(!ps.length)return null;
+  const sc=ps.reduce((s,t)=>s+((t.costo>0&&t.gan>0)?t.gan*t.gan/t.costo:0),0)/ps.length;
+  return {sc,cat:sc*30/Math.max(1,dias||30)};
+}
 // LA CUENTA ES LA MISMA QUE LA DE TODO EL PANEL, igual que en el margen por rubro: la ganancia en
 // PESOS va contra el costo SIN la gestión de Full (el neto de ML ya la trae descontada) y lo único
 // que cambia es el DIVISOR del %. Con una cuenta propia, esta tarjeta diría un margen y la de
 // arriba otro sobre las MISMAS ventas.
 function metPorOrigen(keys){
-  const vacio=()=>({neto:0,costo:0,gest:0,total:0,u:0,ventas:0,prods:{}});
-  const g={bsas:vacio(),py:vacio(),paulvic:vacio()};
+  const vacio=()=>({neto:0,costo:0,gest:0,total:0,u:0,ventas:0,prods:{},vars:{}});
+  const _suma=(d,nom,vk,v,costo)=>{for(const [m,k] of [[d.prods,nom],[d.vars,vk]]){const t=m[k]||(m[k]={nom:k,gan:0,u:0,costo:0,gest:0,neto:0});
+      t.gan+=(v.neto||0)-costo;t.u+=v.qty||0;t.costo+=costo;t.gest+=gestDivVP(v);t.neto+=v.neto||0;}};
+  const g={bsas:vacio(),py:vacio(),paulvic:vacio(),lista:vacio()};
+  const provs={};   // 📋 Listas, cada proveedor por separado (sólo los que vendieron en el período)
   // Las dos salidas se cuentan y se dicen, nunca se esconden: si estas ventas desaparecieran, el
   // total de la tarjeta no cerraría contra los KPIs de arriba sin que nada lo avise.
   let sinFicha={u:0,ventas:0,total:0}, sinCosto={u:0,ventas:0,total:0};
@@ -19833,20 +19864,25 @@ function metPorOrigen(keys){
       d.neto+=v.neto||0;d.costo+=costo;d.gest+=gestDivVP(v);d.total+=v.total||0;
       d.u+=v.qty||0;d.ventas++;
       const nom=(p&&p.name)||v.prod||'—';
-      const t=d.prods[nom]||(d.prods[nom]={nom,gan:0,u:0,costo:0,gest:0,neto:0});
-      t.gan+=(v.neto||0)-costo;t.u+=v.qty||0;t.costo+=costo;t.gest+=gestDivVP(v);t.neto+=v.neto||0;
+      const vk=nom+(v.variante?' · '+String(v.variante).trim():'');
+      _suma(d,nom,vk,v,costo);
+      if(gr==='lista'){const pk=p.listaProv,pv=provs[pk]||(provs[pk]={...vacio(),nom:p.proveedor||pk});
+        pv.neto+=v.neto||0;pv.costo+=costo;pv.gest+=gestDivVP(v);pv.total+=v.total||0;pv.u+=v.qty||0;pv.ventas++;
+        _suma(pv,nom,vk,v,costo);}
     });
   });
   // EL STOCK NO DEPENDE DEL PERÍODO y por eso se devuelve aparte y el renglón lo aclara: un número
   // que no se mueve al cambiar el período, metido en una pantalla que sí lo hace, se lee mal.
   // Usa `stockOf` y `costFullP`, las MISMAS que Rotación de Stock, no una cuenta propia.
-  const stk={bsas:{u:0,cap:0,prods:0},py:{u:0,cap:0,prods:0},paulvic:{u:0,cap:0,prods:0}};
+  const stk={bsas:{u:0,cap:0,prods:0},py:{u:0,cap:0,prods:0},paulvic:{u:0,cap:0,prods:0},lista:{u:0,cap:0,prods:0}};
   (state.products||[]).forEach(p=>{
     const gr=metGrupoDeProd(p);if(!gr)return;
     stk[gr].prods++;
     const u=stockOf(p);if(!(u>0))return;
     stk[gr].u+=u;stk[gr].cap+=u*(costFullP(p)||0);
   });
+  const _cierra=a=>{const div=a.costo+a.gest;a.ganancia=a.neto-a.costo;a.margen=div>0?a.ganancia/div*100:null;a.distintos=Object.keys(a.prods).length;a.score=metScoreDe(a,keys.length);};
+  Object.values(provs).forEach(_cierra);
   Object.keys(g).forEach(k=>{
     const a=g[k],div=a.costo+a.gest;
     a.ganancia=a.neto-a.costo;
@@ -19856,8 +19892,9 @@ function metPorOrigen(keys){
     a.distintos=Object.keys(a.prods).length;
     a.top=Object.values(a.prods).sort((x,y)=>y.gan-x.gan);
     a.stock=stk[k];
+    a.score=metScoreDe(a,keys.length);
   });
-  return {g,sinFicha,sinCosto};
+  return {g,sinFicha,sinCosto,provs};
 }
 let metOrigenSel='todo';
 function setMetOrigen(v){metOrigenSel=v;renderMetOrigen(getAllMetKeys(metScopeMode));}
@@ -19865,10 +19902,10 @@ function renderMetOrigen(keys){
   const el=document.getElementById('met-origen');if(!el)return;
   const per=document.getElementById('met-origen-period');
   if(per)per.textContent='· '+getMetScopeLabel(metScopeMode);
-  const {g,sinFicha,sinCosto}=metPorOrigen(keys);
+  const {g,sinFicha,sinCosto,provs}=metPorOrigen(keys);
   const meta=metaMargenML();
   const colM=m=>m==null?'var(--muted)':(m>=meta?'var(--green)':m>=0?'#fbbf24':'var(--red)');
-  const orden=['bsas','py','paulvic'];
+  const orden=['bsas','py','paulvic','lista'];
   const ganTot=orden.reduce((s,k)=>s+g[k].ganancia,0);
   const btns=[['todo','Todos juntos']].concat(orden.map(k=>[k,MET_ORIG[k].nom]))
     .map(([v,n])=>`<button class="pf-btn${metOrigenSel===v?' active-all':''}" onclick="setMetOrigen('${v}')">${n}</button>`).join('');
@@ -19876,7 +19913,19 @@ function renderMetOrigen(keys){
       ${sinFicha.ventas?`⚠️ ${sinFicha.ventas} venta${sinFicha.ventas===1?'':'s'} (${sinFicha.u} u.) sin ficha: no se sabe de dónde vino la mercadería.`:''}
       ${sinCosto.ventas?` ⚠️ ${sinCosto.ventas} venta${sinCosto.ventas===1?'':'s'} (${sinCosto.u} u.) sin costo cargado: no entran, porque contarlas daría 100% de margen.`:''}
     </div>`:'';
-  const pie=`<div style="margin-top:8px;font-size:.6rem;color:var(--muted)">El Paulvic va aparte y NO está contado adentro de Bs As, igual que en Pedidos: es un proveedor de Bs As, y sumándolo en los dos lados la misma plata aparecería dos veces. El % es el mismo margen que usa el resto del panel (ganancia sobre el costo total, con lo que cobra Full adentro del divisor).</div>`;
+  const pie=`<div style="margin-top:8px;font-size:.6rem;color:var(--muted)">⚡ Se ordenan por <b>score</b>, el mismo del ranking de Ventas (ganancia × % de ganancia), promediado por producto vendido: dice cuánto rinde un producto típico de ese origen, que es donde conviene poner la plata nueva. Cada color o aroma cuenta como un producto (el Paulvic es una sola ficha con todos los aromas). El Paulvic y las Listas van aparte y NO están contados adentro de Bs As, igual que en Pedidos. El % es el mismo margen que usa el resto del panel.</div>`;
+  const scTxt=a=>a.score?`<span style="color:${scoreColor(a.score.cat)}">⚡ ${fmtN(Math.round(a.score.sc))} · ${scoreLabel(a.score.cat)}</span>`:'<span style="color:var(--muted)">⚡ —</span>';
+  // Un renglón de comparación (orígenes en "Todos juntos" y proveedores en "Listas"): barra = score.
+  const filaCmp=(nom,col,a,maxSc,parte)=>{const c=colM(a.margen);const w=Math.max(2,Math.round(((a.score&&a.score.sc)||0)/maxSc*100));
+    return `<div style="margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:.74rem">
+          <span>${nom}</span><span style="font-size:.72rem;font-weight:700">${scTxt(a)}</span>
+        </div>
+        <div style="height:6px;border-radius:3px;background:rgba(148,163,184,.14);margin:4px 0 3px">
+          <div style="height:6px;border-radius:3px;width:${w}%;background:${a.score?scoreColor(a.score.cat):col};opacity:.85"></div>
+        </div>
+        <div style="font-size:.6rem;color:var(--muted)">gan. <b>${fmt(a.ganancia)}</b> (<b style="color:${c}">${a.margen==null?'—':a.margen.toFixed(1)+'%'}</b>)${parte||''} · ${a.u} u. en ${a.ventas} venta${a.ventas===1?'':'s'} · ${a.distintos} producto${a.distintos===1?'':'s'}${a.vars&&Object.keys(a.vars).length>a.distintos?` (${Object.keys(a.vars).length} con colores/aromas)`:''}</div>
+      </div>`;};
   if(!ganTot&&!orden.some(k=>g[k].ventas)){
     el.innerHTML=`<div class="chart-box"><div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">${btns}</div>
       <div style="color:var(--muted);font-size:.72rem">No hay ventas con costo cargado en este período.</div>${nota}</div>`;
@@ -19884,30 +19933,25 @@ function renderMetOrigen(keys){
   }
   let cuerpo;
   if(metOrigenSel==='todo'){
-    // Los tres al lado, ordenados por la plata que dejan. La barra es la ganancia en pesos.
-    const max=Math.max(1,...orden.map(k=>Math.abs(g[k].ganancia)));
-    cuerpo=orden.slice().sort((a,b)=>g[b].ganancia-g[a].ganancia).map(k=>{
-      const a=g[k],c=colM(a.margen);
-      const w=Math.max(2,Math.round(Math.abs(a.ganancia)/max*100));
-      const parte=ganTot>0?` · ${(a.ganancia/ganTot*100).toFixed(0)}% de la ganancia`:'';
-      return `<div style="margin-bottom:12px">
-        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:.74rem">
-          <span>${MET_ORIG[k].nom}</span>
-          <span><b style="font-family:'Syne',sans-serif;font-weight:800;color:${c}">${a.margen==null?'—':a.margen.toFixed(1)+'%'}</b></span>
-        </div>
-        <div style="height:6px;border-radius:3px;background:rgba(148,163,184,.14);margin:4px 0 3px">
-          <div style="height:6px;border-radius:3px;width:${w}%;background:${MET_ORIG[k].col};opacity:.8"></div>
-        </div>
-        <div style="font-size:.6rem;color:var(--muted)">gan. <b>${fmt(a.ganancia)}</b>${parte} · ${a.u} u. en ${a.ventas} venta${a.ventas===1?'':'s'} · ${a.distintos} producto${a.distintos===1?'':'s'}</div>
-      </div>`;
-    }).join('');
+    // Todos al lado, ordenados por SCORE (20/10/2026; antes por la ganancia en pesos). La barra es el score.
+    const conV=orden.filter(k=>g[k].ventas);
+    const maxSc=Math.max(1,...conV.map(k=>(g[k].score&&g[k].score.sc)||0));
+    cuerpo=conV.sort((a,b)=>((g[b].score&&g[b].score.sc)||0)-((g[a].score&&g[a].score.sc)||0)).map(k=>filaCmp(MET_ORIG[k].nom,MET_ORIG[k].col,g[k],maxSc,ganTot>0?` · ${(g[k].ganancia/ganTot*100).toFixed(0)}% de la ganancia`:'')).join('');
+  }else if(metOrigenSel==='lista'){
+    // 📋 Cada proveedor de lista que YA VENDIÓ en el período, comparados por score. Los que no vendieron no aparecen.
+    const P=Object.values(provs).filter(x=>x.ventas>0).sort((a,b)=>((b.score&&b.score.sc)||0)-((a.score&&a.score.sc)||0));
+    const maxSc=Math.max(1,...P.map(x=>(x.score&&x.score.sc)||0));
+    const gl=g.lista;
+    cuerpo=P.length?`<div style="font-size:.62rem;color:var(--muted);margin-bottom:10px">Todas las listas juntas: ${scTxt(gl)} · gan. <b>${fmt(gl.ganancia)}</b> · ${gl.u} u.</div>`+P.map(x=>filaCmp('📋 '+escHtml(x.nom),'#34d399',x,maxSc,'')).join('')
+      :'<div style="color:var(--muted);font-size:.7rem">Ningún proveedor de lista vendió en este período.</div>';
   }else{
     const a=g[metOrigenSel],c=colM(a.margen);
-    const dato=(lbl,val,col)=>`<div style="flex:1 1 104px;min-width:104px">
+    const dato=(lbl,val,col)=>`<div style="flex:1 1 140px;min-width:140px">
         <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">${lbl}</div>
-        <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.02rem;color:${col||'var(--fg)'}">${val}</div>
+        <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;white-space:nowrap;color:${col||'var(--fg)'}">${val}</div>
       </div>`;
     const cajas=[
+      dato('⚡ Score por producto',a.score?fmtN(Math.round(a.score.sc))+' '+scoreLabel(a.score.cat):'—',a.score?scoreColor(a.score.cat):null),
       dato('Ganancia',fmt(a.ganancia),a.ganancia>=0?'var(--green)':'var(--red)'),
       dato('% de ganancia',a.margen==null?'—':a.margen.toFixed(1)+'%',c),
       dato('Unidades',a.u),
@@ -19915,7 +19959,7 @@ function renderMetOrigen(keys){
       dato('Facturado',fmt(a.total)),
       dato('Gana por unidad',a.ganU==null?'—':fmt(Math.round(a.ganU))),
       dato('Venta promedio',a.ticket==null?'—':fmt(Math.round(a.ticket))),
-      dato('Productos vendidos',a.distintos),
+      dato('Productos vendidos',a.distintos+(a.vars&&Object.keys(a.vars).length>a.distintos?` · ${Object.keys(a.vars).length} var.`:'')),
     ].join('');
     // El top NO se corta en silencio: dice cuántos quedaron afuera.
     const TOP=6;

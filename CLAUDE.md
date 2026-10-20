@@ -9377,3 +9377,14 @@ pedido (#1001…), lo pone la web por fecha y no cambia nunca. Cuando él diga "
 Él, con el Joystick Velocity Green: *"siempre que venta tiene que tener ese piso, que va variando con cada venta"* y *"fijate que
 todos tengan eso"*. Sin días medibles la línea de tiempo muestra un 💰 piso PROVISORIO (punteado): el precio que más plata por día
 dejó entre los días con stock que vendieron. Es apurado: no marca 🏔️ ni reemplaza a `techo95`.
+
+## ⛔ LA PRUEBA DEL TACHADO (3b) SE CANCELÓ (20/10/2026, regla suya)
+Él: *"perdemos ganancia de productos que venden bien solo por la prueba. ya hay historial de productos con tachado y si no son
+suficiente, esperá"*. Las 10 en 🧪 vuelven a su precio de antes. **Nunca bajar el precio de algo que vende bien sólo para medir**;
+un tachado sólo con causa propia (sobra, lanzamiento, fecha). La 3a (medir con lo que ya pasó, 28/10) sigue.
+
+## 📊 MÉTRICAS: DE DÓNDE VIENE LA MERCADERÍA, CON 📋 LISTAS Y POR SCORE (20/10/2026, v25.37, pedido suyo)
+Él: *"quiero agregar listas y al clickear que aparezcan los proveedores que ya tienen ventas (…) que se comparen no por ganancia,
+sino por score (…) el objetivo es saber dónde conviene más meter plata"*. Bs As · Paraguay · Paulvic · 📋 Listas (lo de
+`listaProv`, ya no adentro de Bs As). Se ordena por ⚡ score del ranking de Ventas promediado por producto vendido (elegí el
+promedio para que un origen con muchos productos no gane sólo por tamaño). Se promedia por COLOR/AROMA, no por ficha (el Paulvic es una sola ficha).

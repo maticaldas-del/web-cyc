@@ -32561,6 +32561,23 @@ async function main() {
     // en `mlapi/ficha/<MLA>` (corre sola cada noche en ml-daily, después de la línea de tiempo). Los cambios salen de mis
     // decisiones (`cyc/claudecambios`), mis promos (`cyc/promoclaude`) y los cambios viejos del robot o a mano que vio el
     // supervisor (`cyc/supervisor/eventos`), sin repetir el mismo cambio.
+    // `pruebatachado` (20/10/2026, SOLO LEE): las publicaciones con estrategia 🧪 prueba, con el precio y la estrategia que
+    // tenían ANTES de la prueba (de `cyc/estrategia`, `cyc/claudecambios` y `cyc/promoclaude`), para devolverlas exacto.
+    if (/^pruebatachado$/.test(String(process.env.BILLING_PROBE || ''))) {
+      const est = (await db.get('cyc/estrategia')) || {}, cc = (await db.get('cyc/claudecambios')) || {}, pc = (await db.get('cyc/promoclaude')) || {}, links = (await db.get('cyc/mllinks')) || {};
+      let n = 0;
+      for (const [mla, h] of Object.entries(est)) {
+        const ks = Object.keys(h || {}).map(Number).filter((x) => x > 0).sort((a, b) => a - b); if (!ks.length) continue;
+        const ult = h[ks[ks.length - 1]]; if (!ult || ult.t !== 'prueba') continue; n++;
+        const kP = ks.filter((k) => h[k] && h[k].t === 'prueba')[0]; const antes = ks.filter((k) => k < kP).map((k) => h[k]).filter((x) => x && x.t !== 'prueba').pop();
+        const camb = Object.values(cc).filter((r) => r && r.mla === mla && Number(r.ts) >= kP - 6 * 3600e3).sort((a, b) => a.ts - b.ts)[0];
+        const pr = pc[mla];
+        console.log(`${mla} · ${(links[mla] || {}).cuenta || '?'} · ${String((links[mla] || {}).title || (camb && camb.nom) || '').slice(0, 45)}`);
+        console.log(`   antes: ${antes ? antes.t : '(sin estrategia)'}${camb ? ` · decido ${camb.de} → ${camb.a}` : ''}${pr ? ` · DESCUENTO puesto: precio ${pr.precio} (lista ${pr.de}) tipo ${pr.tipo} id ${pr.id || '-'} hasta ${pr.hasta || '-'}` : ''}`);
+      }
+      console.log(`\n${n} en prueba`);
+      return;
+    }
     if (/^ficha(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const partes = String(process.env.BILLING_PROBE).split(':').slice(1);
       const GO = partes.includes('go');
