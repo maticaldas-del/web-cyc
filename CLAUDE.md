@@ -856,7 +856,10 @@ las 08:52 reparte las 4 cuentas entre 4 ayudantes que leen la ficha ENTERA de ca
 leen) y devuelven un juicio por publicación; yo junto, miro lo dudoso y aplico. (2) Cada venta, en todas las vueltas, contra su
 ficha. (3) Vueltas cortas cada 2 h, 10:52 a 20:52. (4) El porqué de cada juicio queda en la nota de la ficha con qué mirar
 mañana. Detalle en `ml-sync/CEREBRO.md` (🔭). Él preguntó si con eso no iba a tener que corregirme nada con 95% de seguridad:
-**se le dijo que no se puede prometer** (ver la respuesta en el chat del 20/10).
+**se le dijo que no se puede prometer** (ver la respuesta en el chat del 20/10). Y el mismo día: los ayudantes van con esfuerzo **max**
+(lo sugirió él), la regla 🧐 **¿tiene sentido?** (cruzar cada número con otro tamaño, otra cuenta, el costo, parecidos: *"quiero que
+eso se te ocurra a vos"*) y las correcciones se cuentan en `ml-sync/notas/correcciones.md` (*"tu objetivo es que no tenga que
+corregirte en nada"*).
 
 ## 📋 LA LISTA ÚNICA DEL CEREBRO: `ml-sync/CEREBRO.md` (13/10/2026, pedido suyo)
 
