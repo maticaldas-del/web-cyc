@@ -2033,3 +2033,5 @@ y el disponible no salte; que un pedido de lista llegado aparezca en Deudas hast
 - 20/10/2026 · v25.38: `metScoreDe` promedia por COLOR/AROMA (`vars`, ficha + variante de la venta), no por ficha: el Paulvic (una ficha, ~70 aromas) salía como un solo producto gigante. Y las cajas de la vista de un origen no se pisan (min 140px, sin cortar).
 
 - 20/10/2026 · Etapa 7 (diseño) · v25.39: botón **📋 ficha** en el detalle de cada venta (Ventas x Producto), al lado de 📈 línea: `fichaAbrir(<MLA de la venta>)`, uno por publicación del carrito. **Chequear:** que una venta sin MLA no muestre el botón.
+
+- **20/10/2026 · v25.50 · la línea de tiempo no abría en la PC.** `_lineaAplicarGiro` (v25.44), sin giro, ponía `inset:'0'` y después `top/left/right/bottom:''`, que BORRAN el inset: la ventana fija quedaba en su lugar natural, al final de la página (medido: 3.008 px abajo). Ahora se limpian primero y el `inset` va último. Qué chequear: abrir la línea en la PC y en el teléfono acostado; un estilo que se arma con `Object.assign` no puede poner un atajo (`inset`) y después sus partes.
