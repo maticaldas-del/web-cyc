@@ -23352,8 +23352,8 @@ async function main() {
     //
     // OJO CON QUÉ NÚMERO ES: "podés enviar hasta N" es lo que te QUEDA libre en ese momento, no el
     // cupo total. Por eso se guarda con la FECHA y el panel lo trata como una lectura que envejece:
-    // descuenta lo despachado y suma lo vendido desde entonces, y a los 7 días avisa que lo vuelvas
-    // a mirar. Un cupo de hace un mes no es un cupo.
+    // descuenta lo despachado desde entonces (lo vendido NO devuelve cupo: medido el 18/10/2026, Ayelen leída
+    // en 38 vendió 16 y ML seguía en 38), y a los 7 días avisa que lo vuelvas a mirar. Un cupo de hace un mes no es un cupo.
     //
     // QUÉ ES "GRANDE": regla suya, textual — *"el único producto que es 'grande' son los tenders.
     // nada más"*. La lista vive en `cyc/mlconfig/cupoGrandes` y cada ficha la puede pisar con
@@ -23438,8 +23438,8 @@ async function main() {
         console.log(`  ${x.cta.padEnd(8)} releído: ${g.peq}/${g.gra} ${bien ? '✓' : '✗ NO quedó como pedí'}`);
       }
       console.log(`\n✓ ${ok} de ${plan.length} guardados.`);
-      console.log('Ya sale en Armar caja: abajo de las dos barras, con lo que mandaste y vendiste desde hoy');
-      console.log('descontado, y avisa antes de cerrar si la caja se pasa. A los 7 días te pide mirarlo de nuevo.');
+      console.log('Ya sale en Armar caja: abajo de las dos barras, con lo que mandes desde hoy descontado (lo vendido');
+      console.log('NO devuelve cupo: ML no lo libera al vender), y avisa antes de cerrar si la caja se pasa. A los 7 días te pide mirarlo de nuevo.');
       return;
     }
     // BILLING_PROBE=cajacosto[:<pesos>] → LO QUE SALE MANDAR UNA CAJA A FULL.
@@ -42812,6 +42812,12 @@ async function main() {
     // Fija las unidades de cada renglón (lo que no está, lo agrega; `=0` lo saca) y mueve la DIFERENCIA contra la oficina: si salió
     // más de lo anotado, baja la oficina; si salió menos, vuelve a la oficina. Así el patrimonio no se mueve (sólo pasa de un lado al
     // otro). Si la oficina no tiene para cubrir lo que salió de más, lo dice y la deja en 0. Sin `go` sólo muestra. Caja recibida: no.
+    // IGUAL QUE "CERRAR CAJA" DE LA WEB (20/10/2026 · etapa 3): lo que sale de más se resta de mi decisión de cuántas mandar
+    // (`cyc/claudedecide/caja/<id>__<cuenta>[__v__<color>]/u`, la clave de `_clCajaKey`) y lo que sale de menos se le devuelve;
+    // lo que salió se descuenta de la caja a medio armar de esa cuenta (`cyc/cajas_armando/<cuenta>`, clave `_ck` de la web);
+    // y queda anotado en `cyc/history` como lo anota la web. Antes no hacía nada de eso: Armar caja seguía pidiendo mandar lo que
+    // ya viajaba. Cada uno se relee justo antes de escribir y se escribe sólo esa clave (el robot no tiene transacciones).
+    // Lo que vuelve a la oficina NO se anota en `cyc/ofientro`: es una devolución, no una compra (no apaga "No lo consigo").
     if (/^cajaitems(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const _raw = String(process.env.BILLING_PROBE).replace(/^cajaitems:?/, '');
       const GO = /(^|;)go$/.test(_raw) && !DRY;
@@ -42861,6 +42867,7 @@ async function main() {
         const j = items.findIndex((it) => it && it.prodId === o.p.id && String(it.variante || '') === String(o.va || ''));
         const antes = j >= 0 ? (parseInt(items[j].u) || 0) : 0; const d = o.u - antes;
         if (j >= 0) { if (o.u > 0) items[j].u = o.u; else items.splice(j, 1); } else if (o.u > 0) items.push({ prodId: o.p.id, nombre: o.p.name, variante: o.va || '', u: o.u });
+        o.antes = antes; o.d = d;
         let ofTxt = '';
         if (d) {
           const kv = o.va ? kVar(o.p.id, o.va) : kTot(o.p.id);
@@ -42877,6 +42884,53 @@ async function main() {
       if (Object.keys(upd).length) await db.patch('cyc/inventory', upd);
       const rel = (await db.get(`cyc/envios_full/${envId}/cajasDet/${ci}/items`)) || [];
       console.log(rel.length === items.length && rel.reduce((a, x) => a + (parseInt(x.u) || 0), 0) === items.reduce((a, x) => a + (parseInt(x.u) || 0), 0) ? '\n✓ Guardado y releído (caja y oficina).' : '\n⚠️ Al releer la caja no coincide: mirar a mano.');
+      // Etapa 3 (20/10/2026): lo mismo que hace "Cerrar caja" en la web después de despachar. Si algo falla se dice y se sigue:
+      // la caja y la oficina ya quedaron bien, esto es lo de alrededor.
+      const _ctaL = String(env.cuenta || '').toLowerCase().replace(/í/g, 'i');
+      const _clKey = (pid, va) => pid + '__' + _ctaL + (va ? '__v__' + sid(String(va).toLowerCase()) : '');   // = _clCajaKey de la web
+      const _ckSafe = (x) => String(x || '').replace(/[.#$\[\]\/]/g, (c) => '%' + c.charCodeAt(0).toString(16).toUpperCase());
+      const _ck = (pid, va) => pid + '|' + _ckSafe(va);   // = _ck de la web (clave de la caja a medio armar)
+      const _cambios = ops.filter((o) => o.d);
+      // 1) MI DECISIÓN DE CUÁNTAS MANDAR: salió de más → se resta; salió de menos → vuelve. Sólo si la decisión existe.
+      for (const o of _cambios) {
+        const k = _clKey(o.p.id, o.va);
+        try {
+          const dec = await db.get('cyc/claudedecide/caja/' + k);   // lectura fresca
+          if (!dec || typeof dec !== 'object' || !Number.isFinite(Number(dec.u))) continue;
+          const u0 = Math.max(0, parseInt(dec.u) || 0);
+          const u1 = o.d > 0 ? Math.max(0, u0 - o.d) : u0 + (-o.d);
+          if (u1 === u0) continue;
+          await db.set('cyc/claudedecide/caja/' + k + '/u', u1);   // sólo esa hoja
+          console.log(`  🧠 decisión ${o.p.name}${o.va ? ' · ' + o.va : ''} (${env.cuenta}): mandar ${u0} → ${u1}`);
+        } catch (eD) { console.log(`  ⚠️ no pude ${o.d > 0 ? 'restar' : 'devolver'} la decisión de ${o.p.name}${o.va ? ' · ' + o.va : ''}: ${String(eD.message || eD).slice(0, 60)}`); }
+      }
+      // 2) LA CAJA A MEDIO ARMAR DE ESA CUENTA: lo que salió ya no puede ir en la caja siguiente. Sólo se descuenta (lo que
+      //    vuelve a la oficina no se agrega solo a la caja que se arma). Si queda vacía, se borra entera, como al cerrarla.
+      const _sale = _cambios.filter((o) => o.d > 0);
+      if (_sale.length) {
+        try {
+          const arm = await db.get('cyc/cajas_armando/' + env.cuenta);   // lectura fresca
+          const its = (arm && arm.items && typeof arm.items === 'object') ? { ...arm.items } : {};
+          const parche = {}; const txt = [];
+          for (const o of _sale) {
+            const ck = _ck(o.p.id, o.va); const a0 = parseInt(its[ck]) || 0; if (!(a0 > 0)) continue;
+            const a1 = Math.max(0, a0 - o.d); its[ck] = a1; parche['items/' + ck] = a1 || null;
+            txt.push(`${o.p.name}${o.va ? ' · ' + o.va : ''} ${a0} → ${a1}`);
+          }
+          if (txt.length) {
+            const quedan = Object.values(its).some((x) => (parseInt(x) || 0) > 0);
+            if (quedan) await db.patch('cyc/cajas_armando/' + env.cuenta, { ...parche, ts: Date.now() });   // ts nuevo: la web ve que cambió
+            else await db.set('cyc/cajas_armando/' + env.cuenta, null);
+            console.log(`  📦 caja a medio armar de ${env.cuenta}: ${txt.join(' · ')}${quedan ? '' : ' → quedó vacía'}`);
+          }
+        } catch (eA) { console.log(`  ⚠️ no pude descontar la caja a medio armar de ${env.cuenta}: ${String(eA.message || eA).slice(0, 60)}`); }
+      }
+      // 3) EL HISTORIAL ("Última actividad"), con la misma forma que `log()` de la web. Una corrección que no cambió nada no se anota.
+      if (_nueva || _cambios.length) try {
+        const uA = (caja.items || []).reduce((a, x) => a + (parseInt(x.u) || 0), 0); const uD = items.reduce((a, x) => a + (parseInt(x.u) || 0), 0);
+        const desc = _nueva ? `Caja despachada a ${env.cuenta}: ${uD} u. · ${track} (desde el chat)` : `Caja ${track} de ${env.cuenta} corregida desde el chat: ${uA} → ${uD} u.`;
+        await db.set('cyc/history/h' + Date.now(), { who: 'Claude (chat)', desc, ts: Date.now() });
+      } catch (eH) { console.log(`  ⚠️ no pude anotarlo en el historial: ${String(eH.message || eH).slice(0, 60)}`); }
       return;
     }
 

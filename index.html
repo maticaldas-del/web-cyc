@@ -6634,7 +6634,7 @@ function renderOfiCaja(){
         // intentos), así que lo único que evita que él confíe en un número viejo es este aviso.
         const pie=_cu.viejo
           ? `<div style="font-size:.6rem;color:var(--amber);margin-top:4px">⚠️ Este cupo lo cargaste hace ${_cu.dias} día${_cu.dias===1?'':'s'}: miralo de nuevo en ML. Se carga a mano porque ML no lo da por API.</div>`
-          : `<div style="font-size:.6rem;color:var(--muted);margin-top:4px;opacity:.8">Cupo leído en ML hace ${_cu.dias===0?'menos de un día':_cu.dias+' día'+(_cu.dias===1?'':'s')}. Lo que se mandó y se vendió desde entonces es una estimación del panel.</div>`;
+          : `<div style="font-size:.6rem;color:var(--muted);margin-top:4px;opacity:.8">Cupo leído en ML hace ${_cu.dias===0?'menos de un día':_cu.dias+' día'+(_cu.dias===1?'':'s')}. Ya está descontado lo que mandaste desde entonces; lo vendido NO devuelve cupo (ML no lo libera al vender).</div>`;
         // LO QUE LA ÚLTIMA CARGA POR CUPO DEJÓ AFUERA. No es un detalle: son unidades que el panel
         // dice que hay que mandar y que no entraron por el límite de ML. Sin esto, la caja se ve
         // completa y no lo es.
@@ -6668,7 +6668,7 @@ function renderOfiCaja(){
     barra.innerHTML=armando?`<button class="pf-btn" onclick="cajaSugerida()">Cargar lo sugerido</button>`
       +(cupoRestante(ofiFiltroCuenta)?`<button class="pf-btn" style="border-color:var(--accent2);color:var(--accent2)" onclick="cajaSugeridaCupo()" title="Lo mismo, pero sin pasarse del cupo de Full de esta cuenta. Reparte en dos vueltas: primero que ningún producto quede sin nada, y después llena con los que más plata dejan por unidad.">🎯 Cargar lo que entra en el cupo</button>`:'')
       +`<button class="pf-btn" onclick="cajaVaciar()">Vaciar caja</button>`
-      +`<span style="font-size:.66rem;color:var(--muted);align-self:center">Poné cuántas unidades van en ESTA caja. Si no entra todo, cerrás ésta y armás la siguiente. Se guarda sola: podés dejarla a medias.<br>Lo sugerido deja <strong>${REPO_DIAS_COBERTURA} días de stock en total</strong>, contando lo que ya está en Full y lo que va en camino.</span>`:'';
+      +`<span style="font-size:.66rem;color:var(--muted);align-self:center">Poné cuántas unidades van en ESTA caja. Si no entra todo, cerrás ésta y armás la siguiente. Se guarda sola: podés dejarla a medias.<br>Lo sugerido es lo que decidí yo para esta cuenta: cubre <strong>${REPO_DIAS_TOTAL} días de venta</strong> (${REPO_DIAS_COBERTURA} de stock + ${REPO_DIAS_DEMORA} de viaje; 60 en lo que vende parejo, y nada pasa los 90), contando lo que ya está en Full y lo que va en camino.</span>`:'';
   }
   if(!vis.length){
     // El vacío tiene que decir QUÉ HACER, no sólo que está vacío. Pedido suyo del 18/08/2026:
@@ -7167,7 +7167,10 @@ function renderOfiContar(){
 // Se hace con una transacción de Firebase, que reintenta sola si otro aparato escribió en el medio.
 // `fijo` = poner ese número exacto (lo que él contó); si no, `delta` suma o resta. Nunca baja de 0.
 // Devuelve {antes, ahora} tal como quedó en la base.
-async function ofiTx(key,{delta=0,fijo=null}={}){
+// `entra:false` (20/10/2026 · etapa 3): es una DEVOLUCIÓN (deshacer una caja), no mercadería nueva. No se anota en
+// `cyc/ofientro`: si se anotara, apagaba "🚫 No lo consigo" y reiniciaba el reloj de 10 días de Bs As como si
+// hubiera llegado una compra, cuando son las mismas unidades que ya estaban en casa antes de cerrar la caja.
+async function ofiTx(key,{delta=0,fijo=null,entra=true}={}){
   let antes=0,ahora=0;
   if(!db){antes=parseInt(state.inventory[key])||0;ahora=fijo!=null?Math.max(0,fijo):Math.max(0,antes+delta);}
   else{
@@ -7175,7 +7178,7 @@ async function ofiTx(key,{delta=0,fijo=null}={}){
     ahora=parseInt(r&&r.snapshot&&r.snapshot.val())||0;
   }
   state.inventory[key]=ahora;
-  _ofiEntro(key,antes,ahora);
+  if(entra!==false)_ofiEntro(key,antes,ahora);
   return {antes,ahora};
 }
 // 1b (16/10/2026): entró mercadería a la oficina → se anota el día (la regla de Bs As mide 10 días desde el pedido o desde esto).
@@ -7187,19 +7190,20 @@ function _ofiEntro(key,antes,ahora){
 // Mueve unidades de la oficina: con variante toca la clave de la variante y le aplica al total del
 // producto EXACTAMENTE lo que cambió la variante (así lo "sin aroma" no se toca); sin variante, el
 // total del producto.
-async function ofiMover(pid,variante,{delta=0,fijo=null}={}){
+// `entra:false` = devolución, no compra (ver ofiTx): pasa a las tres escrituras.
+async function ofiMover(pid,variante,{delta=0,fijo=null,entra=true}={}){
   if(variante){
-    const r=await ofiTx(invKeyV(pid,OFI,variante),{delta,fijo});
+    const r=await ofiTx(invKeyV(pid,OFI,variante),{delta,fijo,entra});
     const dv=r.ahora-r.antes;
-    if(dv)await ofiTx(invKey(pid,OFI),{delta:dv});
+    if(dv)await ofiTx(invKey(pid,OFI),{delta:dv,entra});
     // Etapa 3 (29/09): el total nunca queda abajo de la suma de sus variantes. Si venía desfasado (un
     // conteo viejo que tocó sólo el total), clavarlo en 0 al despachar inventaba unidades en "en camino"
     // y dejaba invisibles las de los otros aromas.
     const _sv=ofiSumaVars(pid),_tot=parseInt(state.inventory[invKey(pid,OFI)])||0;
-    if(_tot<_sv){await ofiTx(invKey(pid,OFI),{fijo:_sv});console.warn('oficina: el total de '+pid+' estaba abajo de la suma de sus variantes ('+_tot+' < '+_sv+'), lo subí');}
+    if(_tot<_sv){await ofiTx(invKey(pid,OFI),{fijo:_sv,entra});console.warn('oficina: el total de '+pid+' estaba abajo de la suma de sus variantes ('+_tot+' < '+_sv+'), lo subí');}
     return r;
   }
-  return ofiTx(invKey(pid,OFI),{delta,fijo});
+  return ofiTx(invKey(pid,OFI),{delta,fijo,entra});
 }
 async function ofiSumar(prodId,inputId){
   const e=document.getElementById(inputId);if(!e)return;
@@ -7984,7 +7988,8 @@ async function deshacerCaja(id,i){
     if(!r||!r.committed||!quedan){toast('No la deshice: la caja '+(motivo||'cambió mientras tanto'),'err');renderCajasEnCamino();return;}
   }catch(err){toast('No la deshice: '+(err.message||err),'err');return;}
   // Devolver a la oficina, con la misma cuenta que se usó al descontar.
-  for(const it of items)await ofiMover(it.prodId,it.variante||'',{delta:it.u});    // c3: sobre la base
+  // entra:false (20/10/2026 · etapa 3): es la misma mercadería volviendo, no una compra: no apaga "No lo consigo" ni el reloj de Bs As.
+  for(const it of items)await ofiMover(it.prodId,it.variante||'',{delta:it.u,entra:false});    // c3: sobre la base
   // Lo que se descontó de mis decisiones al cerrarla vuelve (16/10/2026: él deshizo la caja de Adriana y
   // Armar caja quedó vacía, porque cerrar resta lo mandado y deshacer no lo devolvía).
   for(const it of items)await clDevolverCaja(it.prodId,e.cuenta,it.variante||'',it.u);
