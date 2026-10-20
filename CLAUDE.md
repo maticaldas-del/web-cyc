@@ -9256,3 +9256,8 @@ yo con el peor caso, sin bajar del costo; si algo no deja ni eso, se le avisa.
 de esa publicación (guarda el viejo en `nombreViejo`); con variantes no se cambia (el título nombra un solo color). Para las ya
 vinculadas de Paraguay: `nombreml[:go]` (19/10: 17 renombradas). Reemplaza la idea vieja
 de nombrar las fichas como comprasparaguay: el código Nissei (`codPy`) sigue siendo lo que empareja con Paraguay.
+
+## 💸 PAULVIC: 7 DÍAS HÁBILES PARA PAGAR DESDE QUE LLEGA, SI NO +10% (20/10/2026, regla suya)
+Él: *"desde que llegan tenemos 7 dias habiles para pagar, sino nos cobran un 10% mas"*. La tarjeta de cada pedido (Pedidos → Paulvic →
+Pedidos hechos) dice cuándo llega aprox (lo que tardaron los anteriores: el del 06/10 tardó 11 días) y hasta cuándo pagar. Al llegar,
+avisarle los días hábiles que le quedan.

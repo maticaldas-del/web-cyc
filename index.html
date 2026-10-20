@@ -2678,7 +2678,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.03';
+const APP_VERSION='25.04';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2689,6 +2689,7 @@ const APP_VERSION='25.03';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.04',f:'20/10/2026',h:'21:20',c:[{n:2,t:'Pedidos Paulvic: cada pedido en camino dice cuándo llega aprox (lo que tardaron los anteriores) y hasta cuándo pagar; el que llegó dice cuántos días hábiles quedan para pagar antes del 10% de recargo.'}]},
   {v:'25.03',f:'19/10/2026',h:'21:05',c:[{n:2,t:'Armar caja: al buscar, el desplegable "Sin recomendación para mandar" se abre solo. Lo que estaba en 0 quedaba adentro, cerrado, y parecía que no existía'}]},
   {v:'25.02',f:'19/10/2026',h:'20:45',c:[{n:1,t:'Armar caja: el buscador también encuentra por el título de la publicación de ML (las fichas de Paraguay se llaman en portugués: ahora "micrófono" encuentra el "Microfone Fifine")'}]},
   {v:'25.01',f:'19/10/2026',h:'23:10',c:[{n:1,t:'Paulvic → Pedidos hechos: un pedido en camino muestra "a pagar ≈ $X · aprox" (unidades pedidas × lo que salió cada una en el último pedido, sin flete). El número real lo da la calculadora al llegar.'}]},
@@ -15586,6 +15587,22 @@ function _pvPrecioUnitAnt(exceptoId){
   if(!v.length)return null;const c=v[0][1];
   return {cu:(Number(c.montoPago)||Number(c.aPagar))/uDe(c.llego),fecha:c.fecha};
 }
+// CUÁNDO LLEGA Y HASTA CUÁNDO SE PAGA (20/10/2026, pedido suyo: "mirá cuánto tardan en llegar, así sacar una fecha aprox, y desde
+// que llegan tenemos 7 días hábiles para pagar, si no nos cobran un 10% más"). La demora sale de los pedidos ya llegados (mediana
+// de pedido→llegada); sin ninguno, 11 días (el del 06/10). Los días hábiles son lunes a viernes, sin feriados: el día que llega no cuenta.
+const PV_DIAS_PAGO=7,PV_RECARGO_TARDE=10;
+function _pvDemoraDias(){
+  const ds=Object.values(state.pedidospv||{}).filter(c=>c&&c.fecha&&c.fechaLlego).map(c=>Math.round((Date.parse(c.fechaLlego+'T12:00:00-03:00')-Date.parse(c.fecha+'T12:00:00-03:00'))/864e5)).filter(d=>d>=0&&d<90).sort((a,b)=>a-b);
+  if(!ds.length)return {d:11,n:0};
+  return {d:ds[Math.floor((ds.length-1)/2)],n:ds.length};
+}
+function _pvSumarHabiles(f,n){const d=new Date(f+'T12:00:00-03:00');let k=0;while(k<n){d.setTime(d.getTime()+864e5);const w=d.getUTCDay();if(w!==0&&w!==6)k++;}return d.toISOString().slice(0,10);}
+function _pvHabilesHasta(f){const hoy=new Date(Date.now()-3*3600e3).toISOString().slice(0,10);if(f<=hoy)return f===hoy?0:-1;let n=0,x=hoy;while(x<f){const d=new Date(x+'T12:00:00-03:00');d.setTime(d.getTime()+864e5);x=d.toISOString().slice(0,10);const w=d.getUTCDay();if(w!==0&&w!==6)n++;}return n;}
+function _pvLimitePago(c){
+  if(c.estado==='llego'&&c.fechaLlego)return {lim:_pvSumarHabiles(c.fechaLlego,PV_DIAS_PAGO),aprox:false};
+  if(c.estado==='camino'&&c.fecha){const dm=_pvDemoraDias(),lleg=new Date(Date.parse(c.fecha+'T12:00:00-03:00')+dm.d*864e5).toISOString().slice(0,10);return {lleg,dem:dm,lim:_pvSumarHabiles(lleg,PV_DIAS_PAGO),aprox:true};}
+  return null;
+}
 function pvPedidoTarjeta(id,c){
   const dm=f=>{const m=String(f||'').match(/^\d{4}-(\d{2})-(\d{2})/);return m?m[2]+'/'+m[1]:(f||'—');};
   const esc=t=>String(t).replace(/[<>&"]/g,'');
@@ -15593,6 +15610,9 @@ function pvPedidoTarjeta(id,c){
   const cam=c.estado==='camino',debe=c.estado==='llego'&&!c.pagado;
   const col=cam?'#38bdf8':debe?'var(--amber)':'var(--green)';
   const est=cam?`en camino · hace ${Math.max(0,Math.floor((Date.now()-Date.parse(c.fecha+'T12:00:00-03:00'))/864e5))} d`:debe?`llegó ${dm(c.fechaLlego)} · falta pagar`:`pagado ${dm(c.fechaPago)}`;
+  const _lp=(cam||debe)?_pvLimitePago(c):null,_hab=_lp?_pvHabilesHasta(_lp.lim):null;
+  const _pagoTxt=!_lp?'':_hab<0?`<span style="color:var(--red)">venció el ${dm(_lp.lim)}: cobran ${PV_RECARGO_TARDE}% más</span>`:`<span style="color:${_lp.aprox?'var(--muted)':_hab<=2?'var(--red)':'var(--amber)'}">pagar ${_lp.aprox?'aprox ':''}antes del ${dm(_lp.lim)} · ${_lp.aprox?'7 días hábiles desde que llega':_hab===0?'vence HOY':'te quedan '+_hab+' días hábiles'}</span>`;
+  const _llegTxt=(cam&&_lp)?`llega aprox ${dm(_lp.lleg)}`:'';
   const tot=Number(c.montoPago)||Number(c.aPagar)||0,fl=Number(c.flete)||0;
   const uLl=uDe(c.llego),uT=parseInt(c.testers)||0,uR=parseInt(c.regalos)||0;
   const cu=c.costoUnit||((tot>0&&(uLl+uT+uR)>0)?Math.round((tot+fl)/(uLl+uT+uR)):0);
@@ -15613,12 +15633,12 @@ function pvPedidoTarjeta(id,c){
     +(uT?fila('testers',uT+' u.','Se venden al costo: entran en la cuenta del costo c/u.'):'')
     +(uR?fila('regalos (perfume)',uR+' u.','Los regalos que son perfume se venden al costo: entran en la cuenta del costo c/u.'):'')
     +(cu?fila('costo c/u','<b style="color:var(--green)">'+fmt(cu)+'</b>',`(${fmt(Math.round(tot))}${fl?' + flete '+fmt(fl):''}) ÷ ${uLl+uT+uR} u. (${uLl} llegadas${uT?' + '+uT+' tester':''}${uR?' + '+uR+' regalo':''}). Es el costo que va a la ficha del Paulvic si es el último pedido.`)+(c.costoAplicado?fila('','<span style="color:var(--muted)">✓ puesto en la ficha</span>'):''):'');
-  const dias=fila('pedido el',dm(c.fecha))+(cam?'':fila('llegó el',dm(c.fechaLlego)+(c.fechaLlego?' <span style="color:var(--muted)">· '+Math.max(0,Math.round((Date.parse(c.fechaLlego+'T12:00:00-03:00')-Date.parse(c.fecha+'T12:00:00-03:00'))/864e5))+' d</span>':'')))+(c.pagado?fila('pagado el',dm(c.fechaPago)):'')
+  const dias=fila('pedido el',dm(c.fecha))+((cam&&_lp)?fila('llega aprox',dm(_lp.lleg)+' <span style="color:var(--muted)">· '+_lp.dem.d+' d'+(_lp.dem.n?' (como '+(_lp.dem.n===1?'el pedido anterior':'los '+_lp.dem.n+' anteriores')+')':' (estimado)')+'</span>','Cuánto tardaron en llegar los pedidos anteriores (la mitad del medio). Es aproximado: depende del transporte.'):'')+(_lp?fila('pagar hasta',dm(_lp.lim)+(_lp.aprox?' aprox':''),'7 días hábiles (lunes a viernes) desde que llega. Si se paga después, el Paulvic cobra '+PV_RECARGO_TARDE+'% más.'):'')+(cam?'':fila('llegó el',dm(c.fechaLlego)+(c.fechaLlego?' <span style="color:var(--muted)">· '+Math.max(0,Math.round((Date.parse(c.fechaLlego+'T12:00:00-03:00')-Date.parse(c.fecha+'T12:00:00-03:00'))/864e5))+' d</span>':'')))+(c.pagado?fila('pagado el',dm(c.fechaPago)):'')
     +fila('unidades',cam?uDe(c.items)+' pedidas':`${uDe(c.items)} pedidas · ${uLl} llegaron`);
   const der=tot>0?fmt(Math.round(tot)):_aprox?`≈ ${fmt(_aprox)}`:`${cam?uDe(c.items):uLl} u.`;
   return `<details style="margin-bottom:8px;background:var(--surface2);border:1px solid var(--border2);border-left:4px solid ${col};border-radius:9px">
     <summary style="cursor:pointer;padding:11px 13px;display:flex;align-items:center;gap:12px;list-style:none">
-      <div style="min-width:0"><div style="font-size:.95rem;font-weight:800;color:var(--text)">${dm(c.fecha)}</div><div style="font-size:.66rem;font-weight:700;color:${col};margin-top:2px;white-space:nowrap">${est}</div></div>
+      <div style="min-width:0"><div style="font-size:.95rem;font-weight:800;color:var(--text)">${dm(c.fecha)}</div><div style="font-size:.66rem;font-weight:700;color:${col};margin-top:2px;white-space:nowrap">${est}${_llegTxt?' · '+_llegTxt:''}</div>${_pagoTxt?`<div style="font-size:.64rem;font-weight:700;margin-top:2px">${_pagoTxt}</div>`:''}</div>
       <div style="margin-left:auto;text-align:right"><div style="font-size:1.05rem;font-weight:800;color:var(--text);white-space:nowrap">${der}</div><div style="font-size:.62rem;color:var(--muted);margin-top:2px;white-space:nowrap">${cu?'costo '+fmt(cu)+' c/u':(cam?uDe(c.items)+' u. en '+Object.keys(ped).length+' aromas':'')}</div></div>
       <span style="font-size:.7rem;color:var(--muted);margin-left:4px">▾</span></summary>
     <div style="padding:4px 11px 11px">
