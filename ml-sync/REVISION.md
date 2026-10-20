@@ -313,6 +313,12 @@ Qué es: las ▲▼ del precio salían sólo de `cyc/supervisor/eventos` (foto d
 `cyc/claudecambios` y saca el evento de la foto que es el mismo cambio (misma publicación, mismo precio final, menos de 2 días).
 Qué chequear: que un cambio no salga dos veces (foto + decisión) y que un `decido` de hoy tenga flecha.
 
+### Comandos de sólo lectura del 20/10/2026 que no se habían anotado (agregados el mismo día)
+- `verpromo:<MLA>` (ml-consulta): las promos de una publicación según ML, lo anotado en `cyc/promoclaude` y las últimas notas de su ficha. **Chequear:** no imprime datos de compradores.
+- `bajacuotas` (ml-consulta): si ML cambió precios con la baja de cuotas del 20/10; compara las 💳 gemelas contra el precio decidido y muestra la historia de precio y estrategia de lo que cambió. **Chequear:** sólo lee.
+- `pruebatachado` (ml-consulta): las publicaciones en 🧪 prueba con su precio de antes (sirvió para cancelar la prueba 3b). **Chequear:** sólo lee.
+- v25.31/v25.32 (Ventas): la Clásica se ve en gris como siempre y la Premium en dorado (`tipoPub`, ver etapa 5). **Chequear:** en los dos temas se distinguen.
+
 ## 2 · PLATA (martes)
 - **Cada lugar, su nota (08/10/2026, v22.71):** él: *"en ventas por qué aumentó el precio o por qué no, y en pedidos por qué
   pide x unidades"*. `cerebroAbrir`: con `ped` o `ctx:'caja'` muestra SÓLO las notas `ped__`/`caja__`; con `ctx:'venta'`
