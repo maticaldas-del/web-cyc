@@ -8195,23 +8195,36 @@ async function calcAntiguoFilas(db, products, labels, soloA) {
       // o sea por COLOR. Sumando el producto entero, los colores que venden tapaban a los parados (el P47 de Matías no salía:
       // blanco 12 u. de 195 d y azul 10 u. de 157 d en el Excel). Si el producto×cuenta tiene stock por color, va color por color,
       // cada uno con su código, su Excel, su ritmo y su fecha.
+      // Y la publicación SIN color (20/10/2026 · etapa 3): la que el título no deja saber de qué color es (la 5ª del Centímetro).
+      // Su stock entra al total del producto y a ningún color: es la del renglón "sin color" de abajo.
+      const linkSinCol = {};
       for (const [mla, e] of Object.entries(linksA || {})) { if (!e || !e.prodId || !e.cuenta || e.ignored) continue; const pV = pIdxA[e.prodId];
-        const va = e.variant || ((pV && Array.isArray(pV.variantes) && pV.variantes.length) ? varianteDeTitulo(e.title || '', pV.variantes) : ''); if (!va) continue;
+        const va = e.variant || ((pV && Array.isArray(pV.variantes) && pV.variantes.length) ? varianteDeTitulo(e.title || '', pV.variantes) : '');
+        if (!va) { const k0 = e.prodId + '__' + sidA(e.cuenta); if (!linkSinCol[k0] || (e.inv && !linkSinCol[k0].inv)) linkSinCol[k0] = { ...e, mla }; continue; }
         const kv = e.prodId + '__' + sidA(e.cuenta) + '__v__' + sidA(va); if (!linkDe[kv] || (e.inv && !linkDe[kv].inv)) linkDe[kv] = { ...e, variant: va, mla }; }
-      const filas = []; let mirados = 0, sinLink = 0;
+      const filas = []; let mirados = 0, sinLink = 0, uTotal = 0;
       const _filasDe = [];
       for (const [k0, v0] of Object.entries(invA)) {
         const m0 = k0.match(/^(.+?)__([^_].*?)$/); if (!m0 || /__v__/.test(k0)) continue;
+        // Lo que hay en Full según la clave TOTAL (lo que la CUENTA del final compara contra la suma de las filas).
+        { const ctaT = ctaDeSid[m0[2]]; if (ctaT && !(soloA && _ctaSinTilde(ctaT) !== soloA)) uTotal += Math.max(0, Math.round(Number(v0) || 0)); }
         const colores = Object.entries(invA).filter(([kk, vv]) => kk.startsWith(k0 + '__v__') && Number(vv) > 0);
-        if (colores.length) for (const [kk, vv] of colores) _filasDe.push([kk, vv, m0, kk.slice((k0 + '__v__').length)]);
-        else _filasDe.push([k0, v0, m0, null]);
+        if (colores.length) {
+          for (const [kk, vv] of colores) _filasDe.push([kk, vv, m0, kk.slice((k0 + '__v__').length), false]);
+          // LO QUE ESTÁ EN EL TOTAL Y EN NINGÚN COLOR (20/10/2026 · etapa 3): antes, con stock por color, sólo se armaban filas de
+          // colores y lo de la publicación sin color (las 40 u. de la 5ª del Centímetro) no se evaluaba nunca: no pagaba stock
+          // antiguo para nadie. Ahora va su propia fila: total − Σ colores, con el código y el Excel de esa publicación.
+          const resto = Math.round(Number(v0) || 0) - colores.reduce((a, [, vv]) => a + Math.max(0, Math.round(Number(vv) || 0)), 0);
+          if (resto > 0) _filasDe.push([k0, resto, m0, null, true]);
+        } else _filasDe.push([k0, v0, m0, null, false]);
       }
-      for (const [k, v, m, colS] of _filasDe) {
+      for (const [k, v, m, colS, resto] of _filasDe) {
         const cta = ctaDeSid[m[2]]; if (!cta) continue;                       // la oficina y lo que no es de ML no
         if (soloA && _ctaSinTilde(cta) !== soloA) continue;
         const st = Math.max(0, Math.round(Number(v) || 0)); if (!st) continue;
         mirados++;
-        const e = linkDe[k]; if (!e) sinLink++;
+        const e = resto ? linkSinCol[k] : linkDe[k]; if (!e) sinLink++;
+        const nomF = ((pIdxA[m[1]] || {}).name || m[1]) + (colS ? ' · ' + ((e && e.variant) || colS) : resto ? ' · sin color' + (e && e.inv ? ' (' + e.inv + ')' : '') : '');
         const eL = e || { prodId: m[1], cuenta: cta };
         const h = (histA || {})[k];
         // Por color, el registro del color arrancó después (25/09): sola, esa fecha hacía ver "recién llegado" lo que estaba
@@ -8222,8 +8235,11 @@ async function calcAntiguoFilas(db, products, labels, soloA) {
         // ~2 semanas y con la del producto salían de 61 d.
         const fb = (h && h.aprox === false && Number(h.desde) > 0) ? Number(h.desde) : Math.min(...[h && h.desde, hP && hP.desde, eL.altaTs].map(Number).filter((x) => x > 0), Infinity);
         // Las cajas llegadas no dicen de qué color eran: por color sólo el Excel y la fecha del color.
-        const lotes = lotesFifo(st, eL.inv ? (lotesA || {})[eL.inv] : null, colS ? (cajasA[m[1] + '__' + (e ? e.cuenta : cta) + '__v__' + colS] || cajasA[m[1] + '__' + cta + '__v__' + colS] || []) : (cajasA[m[1] + '__' + (e ? e.cuenta : cta)] || cajasA[m[1] + '__' + cta]), isFinite(fb) ? fb : 0, h && h.aprox === false ? Number(h.desde) : 0);
-        const rn = (rnA || {})[k]; const rDia = rn && rn.pd > 0 ? rn.pd : (v60[k] || 0) / 60;
+        const lotes = lotesFifo(st, eL.inv ? (lotesA || {})[eL.inv] : null, resto ? [] : colS ? (cajasA[m[1] + '__' + (e ? e.cuenta : cta) + '__v__' + colS] || cajasA[m[1] + '__' + cta + '__v__' + colS] || []) : (cajasA[m[1] + '__' + (e ? e.cuenta : cta)] || cajasA[m[1] + '__' + cta]), isFinite(fb) ? fb : 0, h && h.aprox === false ? Number(h.desde) : 0);
+        // El renglón sin color vende lo que vendió sin color anotado (ventas del total − las de los colores); el ritmo normal
+        // del producto es de TODOS los colores y no sirve para él.
+        const vSinCol = resto ? Math.max(0, (v60[k] || 0) - Object.entries(v60).filter(([kk]) => kk.startsWith(k + '__v__')).reduce((a, [, q]) => a + q, 0)) : 0;
+        const rn = resto ? null : (rnA || {})[k]; const rDia = resto ? vSinCol / 60 : rn && rn.pd > 0 ? rn.pd : (v60[k] || 0) / 60;
         const { tam, tabla } = tablaAntiguoDe(eL, pIdxA[m[1]], lotesA, cfgA);
         const cg = cargoAntiguoProy(lotes, rDia, tabla, DIA_CIERRE_ALM_CTA[_ctaSinTilde(cta)] || 12);
         const edad = Math.floor((Date.now() - lotes[0].ts) / 864e5);
@@ -8233,17 +8249,17 @@ async function calcAntiguoFilas(db, products, labels, soloA) {
         // Una fecha que no es de una caja ni del Excel de ML, y que el registro marca aproximada, dice desde cuándo MIRAMOS, no
         // desde cuándo está: eso no es "recién llegado". Va aparte, como "no sé desde cuándo está".
         const _real = lotes[0].f === 'excel' || lotes[0].f === 'caja' || [h, hP].some((x) => x && x.aprox === false && Number(x.desde) === lotes[0].ts);
-        if (!(rDia > 0) && edad < 60 && !_real) { filas.push({ k, n: ((pIdxA[m[1]] || {}).name || m[1]) + (colS ? ' · ' + ((e && e.variant) || colS) : ''), cta, st, edad, f: lotes[0].f, rDia: 0, tam, prox: 0, tres: 0, tot: 0, sinFechaReal: true }); continue; }
-        if (!(rDia > 0) && edad < 60) { filas.push({ k, n: ((pIdxA[m[1]] || {}).name || m[1]) + (colS ? ' · ' + ((e && e.variant) || colS) : ''), cta, st, edad, f: lotes[0].f, rDia: 0, tam, prox: 0, tres: 0, tot: 0, nuevo: true }); continue; }
+        if (!(rDia > 0) && edad < 60 && !_real) { filas.push({ k, n: nomF, sinColor: !!resto, cta, st, edad, f: lotes[0].f, rDia: 0, tam, prox: 0, tres: 0, tot: 0, sinFechaReal: true }); continue; }
+        if (!(rDia > 0) && edad < 60) { filas.push({ k, n: nomF, sinColor: !!resto, cta, st, edad, f: lotes[0].f, rDia: 0, tam, prox: 0, tres: 0, tot: 0, nuevo: true }); continue; }
         const doce = cg.meses.slice(0, 12).reduce((s2, x) => s2 + x.cargo, 0);
         const r30A = (v30A[k] || 0) / 30; let t30 = null;
         // Por color, el ritmo de 30 días sólo vale si casi todas las ventas de 30 días traen el color anotado (si no, sale bajo de mentira).
         const _k0 = colS ? k.slice(0, k.indexOf('__v__')) : k, _cob = colS ? (conVar30[_k0] || 0) / Math.max(1, v30A[_k0] || 0) : 1;
-        if (rDia > 0 && r30A < rDia * 0.7 && _cob >= 0.8) { const cg30 = cargoAntiguoProy(lotes, r30A, tabla, DIA_CIERRE_ALM_CTA[_ctaSinTilde(cta)] || 12); t30 = cg30.meses.slice(0, 12).reduce((s2, x) => s2 + x.cargo, 0); }
-        filas.push({ k, t30, r30: r30A, n: ((pIdxA[m[1]] || {}).name || m[1]) + (colS ? ' · ' + ((e && e.variant) || colS) : ''), cta, st, edad, f: lotes[0].f, rDia, tam, prox, tres, tot: doce, sinVenta: !(rDia > 0), cierre: cg.meses[0] ? new Date(cg.meses[0].T - 3 * 36e5).toISOString().slice(5, 10) : '?', rnF: !!(rn && rn.pd > 0) });
+        if (!resto && rDia > 0 && r30A < rDia * 0.7 && _cob >= 0.8) { const cg30 = cargoAntiguoProy(lotes, r30A, tabla, DIA_CIERRE_ALM_CTA[_ctaSinTilde(cta)] || 12); t30 = cg30.meses.slice(0, 12).reduce((s2, x) => s2 + x.cargo, 0); }
+        filas.push({ k, t30, r30: r30A, n: nomF, sinColor: !!resto, cta, st, edad, f: lotes[0].f, rDia, tam, prox, tres, tot: doce, sinVenta: !(rDia > 0), cierre: cg.meses[0] ? new Date(cg.meses[0].T - 3 * 36e5).toISOString().slice(5, 10) : '?', rnF: !!(rn && rn.pd > 0) });
       }
   filas.sort((a, b) => b.tot - a.tot || b.edad - a.edad);
-  return { filas, mirados, sinLink };
+  return { filas, mirados, sinLink, uTotal, uFilas: filas.reduce((a, x) => a + (x.st || 0), 0) };
 }
 const STOCK_ANTIGUO_TABLA = {
   pequeno: [[0, 120, 0], [120, 180, 350], [180, 365, 3250], [365, 1e9, 7900]],
@@ -14308,6 +14324,10 @@ async function main() {
       if (cerca.length) { console.log(`\nCon 90+ días en Full que al ritmo de hoy se venden antes de pagar (${cerca.length}):`); for (const x of cerca.slice(0, 25)) console.log(`· ${String(x.n).slice(0, 42)} · ${x.cta} · ${x.st} u. · ${x.edad} d (${x.f}) · vende ${(x.rDia * 30).toFixed(1)}/mes`); if (cerca.length > 25) console.log(`  (y ${cerca.length - 25} más)`); }
       const sinF = filas.filter((x) => x.f === 'sinfecha'); if (sinF.length) console.log(`\n⚠️ ${sinF.length} sin ninguna fecha (cuentan como entradas hoy: el cargo real puede ser MAYOR): ${sinF.slice(0, 10).map((x) => String(x.n).slice(0, 25) + ' ' + x.cta).join(' · ')}`);
       console.log(`\nCUENTA: ${mirados} = ${conCargo.length} con cargo + ${mirados - conCargo.length} sin cargo ${filas.length === mirados ? '✓' : '⚠️ NO CIERRA'}`);
+      // 20/10/2026 · etapa 3: la cuenta de filas cerraba sola (cuenta lo que ella misma armó). Ésta compara UNIDADES contra
+      // la clave total de cada producto×cuenta: si un color tiene más que el total, o algo no se mira, no cierra y lo dice.
+      { const sc = filas.filter((x) => x.sinColor); if (sc.length) console.log(`(${sc.length} renglón(es) "sin color": lo que está en el total y en ningún color, con el código de la publicación sin color: ${sc.map((x) => String(x.n).slice(0, 40) + ' ' + x.cta + ' ' + x.st + ' u.').join(' · ')})`); }
+      console.log(`UNIDADES: ${_rA.uFilas} en las filas = ${_rA.uTotal} en Full (claves totales) ${_rA.uFilas === _rA.uTotal ? '✓' : '⚠️ NO CIERRA (hay colores con más que el total, o stock que no se mira)'}`);
       return;
     }
     // BILLING_PROBE=cargosmes[:<AAAA_MM>][:<meses>][:go] → LA FACTURA DE ML POR TIPO DE CARGO, DE LAS 4 CUENTAS
@@ -38660,11 +38680,15 @@ async function main() {
       try { repoE = (await db.get('cyc/reponer')) || {}; } catch { console.log('(no pude leer cyc/reponer: lo que tarda comprar va por el respaldo 📅)'); }
       try { sinStE = (await db.get('cyc/py_sinstock')) || {}; } catch { /* respaldo sin la marca */ }
       let noConsE = {}, ofiEntE = {}; try { noConsE = (await db.get('cyc/noconsigo')) || {}; ofiEntE = (await db.get('cyc/ofientro')) || {}; } catch { /* sin la marca */ }
+      // 20/10/2026 · etapa 3: el respaldo también sabe de "no traer más" (`cyc/notraer`, igual que `noTraerDe` de la web):
+      // un producto marcado no se repone, y sin esto pasaba a "Bs As 14 d" en cuanto `cyc/reponer` tenía más de 3 días.
+      let notraerE = {}; try { notraerE = (await db.get('cyc/notraer')) || {}; } catch { /* sin la marca */ }
       try { for (const c of Object.values((await db.get('cyc/compraspy')) || {})) if (c && c.estado === 'camino') for (const it of (c.items || [])) if (it && it.prodId) compPyE[it.prodId] = c.fecha; } catch { /* */ }
       // Respaldo si la web todavía no escribió `cyc/reponer` de ese producto (o es de hace más de 3 días).
       const repoFallback = (pid) => {
         const p = pById[pid] || {};
         if (compPyE[pid]) { const e = (ahora - Date.parse(compPyE[pid] + 'T12:00:00-03:00')) / 864e5; const f = Math.max(0, Math.ceil(7 - (e || 0))); return { d: f + 10, txt: `📅 viene en el pedido de Paraguay del ${compPyE[pid]} (${f > 0 ? '~' + f + ' d' : 'ya debería haber llegado'}) + 10 d de caja` }; }
+        { const nt = notraerE[pid]; if (nt && !nt.permitido) return { d: REPO_SIN_FECHA_E, inf: true, txt: '📅 marcado "no traer más": no se repone' }; }
         if (p.origen === 'py' && sinStE[pid]) return { d: REPO_SIN_FECHA_E, inf: true, txt: '📅 Nissei no lo tiene: sin fecha' };
         { const r0 = noConsE[pid], nc = typeof r0 === 'number' ? r0 : Number(r0 && r0.todo) || 0; if (p.origen !== 'py' && nc && !(Number(ofiEntE[pid]) > nc)) return { d: REPO_SIN_FECHA_E, inf: true, txt: '📅 no se consigue (marcado en Pedidos): sin fecha' }; }
         return p.origen === 'py' ? { d: 17, txt: '📅 Paraguay 17 d (sin el dato de la web: no sé si el precio da)' } : { d: 14, txt: '📅 Bs As/Paulvic 14 d' };
@@ -38735,18 +38759,33 @@ async function main() {
         // que tarda COMPRAR según la situación del producto (`cyc/reponer`, lo escribe la web con la misma
         // cuenta del semáforo de Pedidos): pedido en camino, precio de Paraguay que no da (sin fecha), etc.
         const camK = cam[k] || [];
-        const fCam = camK.map((c) => Date.parse(c.fecha)).filter((t) => t > 0);
         let comp = repoE[pid] || repoFallback(pid);
         // "🚫 no lo consigo" de UN color (16/10/2026, él: "si clickeo en una variante es porque esa sola no se consigue"):
         // ese color va sin reposición hasta que entre algo a la oficina después de la marca y ese color tenga unidades ahí.
+        // 20/10/2026 · etapa 3: también "NO VIENE MÁS" (`cyc/noconsigo/<prod>/nunca/<aroma>`, lo pone `pvped:llego` cuando un
+        // aroma del Paulvic se pidió y no vino), igual que `_noConsigoActivo` de la web: no se cae al entrar mercadería. Antes
+        // el robot sólo miraba `v` y ese aroma seguía con "Paulvic ~1 semana + caja" (no era escasez).
         if (iv > 0 && !comp.inf && (pById[pid] || {}).origen !== 'py') {
-          const r0 = noConsE[pid], vt = r0 && typeof r0 === 'object' ? Number((r0.v || {})[k.slice(iv + 5)]) || 0 : 0;
-          if (vt && !(Number(ofiEntE[pid]) > vt && ofi > 0)) comp = { d: REPO_SIN_FECHA_E, inf: true, txt: 'no se consigue este color (marcado en Pedidos): sin fecha' };
+          const r0 = noConsE[pid], ck = k.slice(iv + 5), vt = r0 && typeof r0 === 'object' ? Number((r0.v || {})[ck]) || 0 : 0;
+          const nu = r0 && typeof r0 === 'object' ? (r0.nunca || {})[ck] : null;
+          if (nu) comp = { d: REPO_SIN_FECHA_E, inf: true, txt: 'no viene más este color (se pidió y el proveedor no lo mandó): sin fecha' };
+          else if (vt && !(Number(ofiEntE[pid]) > vt && ofi > 0)) comp = { d: REPO_SIN_FECHA_E, inf: true, txt: 'no se consigue este color (marcado en Pedidos): sin fecha' };
+        }
+        // 20/10/2026 · etapa 3: `cyc/reponer` es del PRODUCTO. Si dice "mandar caja" desde la oficina pero de ESTE color no hay
+        // nada en la oficina, para este color no vale: se repone comprando (el respaldo, que mira no traer / no lo consigo).
+        if (iv > 0 && !comp.inf && ofi === 0 && /en la oficina → mandar caja/.test(String(comp.txt || ''))) {
+          const fb = repoFallback(pid); comp = { ...fb, txt: fb.txt + ' (la oficina tiene de otros colores, no de éste)' };
         }
         let lead, leadTxt;
-        if (camK.length) { const e = fCam.length ? (ahora - Math.min(...fCam)) / 864e5 : 0; lead = Math.max(1, Math.ceil(8 - e)); leadTxt = `caja despachada: llega en ~${lead} d`; }
-        else if (ofi > 0) { lead = 10; leadTxt = `hay ${ofi} u. en la oficina: armar y mandar ~10 d`; }
-        else { lead = comp.inf ? Infinity : comp.d; leadTxt = `sin caja ni oficina · comprar: ${comp.txt}`; }
+        // LA CAJA VIEJA NO TAPA LA ESCASEZ (20/10/2026 · etapa 3, misma regla que `escasezDe` de la web): el plazo sale sólo
+        // de las cajas de MENOS de 8 días (la más nueva de ésas). Antes salía de la más VIEJA (`Math.min`): una caja de hace
+        // 20 d con 1 u. que ML no dio de alta decía "llega en 1 d" y la escasez de Full no saltaba. Las vencidas siguen
+        // sumando unidades en `tot`, pero el plazo pasa a la oficina o a comprar. Caja sin fecha = recién despachada (como antes).
+        const eCam = camK.map((c) => { const t = Date.parse(c.fecha); return t > 0 ? (ahora - t) / 864e5 : 0; });
+        const eFresca = eCam.filter((e) => e < 8);
+        if (eFresca.length) { const e = Math.min(...eFresca); lead = Math.max(1, Math.ceil(8 - e)); leadTxt = `caja despachada: llega en ~${lead} d`; }
+        else if (ofi > 0) { lead = 10; leadTxt = `hay ${ofi} u. en la oficina: armar y mandar ~10 d${camK.length ? ' (la caja en camino tiene 8+ días: no cuenta como que llega)' : ''}`; }
+        else { lead = comp.inf ? Infinity : comp.d; leadTxt = `${camK.length ? 'la caja en camino tiene 8+ días y no hay oficina' : 'sin caja ni oficina'} · comprar: ${comp.txt}`; }
         // Y lo que hay en total (Full + camino + oficina) tiene que durar hasta que llegue una COMPRA nueva.
         const tot = r14 > 0 ? (st + camK.reduce((a, c) => a + c.u, 0) + ofi) / r14 : Infinity;
         const leadComp = comp.inf ? Infinity : comp.d;
@@ -41250,6 +41289,12 @@ async function main() {
         let nts2 = null; try { nts2 = (await db.get('mlapi/fichanotas')) || {}; } catch { nts2 = null; }
         const ultN = (m) => Math.max(0, ...Object.keys((nts2 || {})[m] || {}).map(Number).filter((n) => n > 0));
         const techoReciente = (m) => { const h = (estrat || {})[m] || {}; let pv = null; for (const k of Object.keys(h).map(Number).filter((n) => n > 0).sort((a, b) => a - b)) { const x = h[k]; if (!x || !x.t) continue; const tt = x.t === 'correccion' ? pasajeDe(pv) : x.t; pv = tt; if (k > hoy - 60 * 864e5 && ['techo', 'techook', 'bajando'].includes(tt)) return true; } return false; };
+        // 20/10/2026 · etapa 3: los días se miden con el GRUPO que comparte el stock (`kSt`), igual que la 📦: antes cada
+        // publicación se medía sola contra el stock compartido, así que una Clásica + su gemela Premium con 82 días juntas
+        // daban 150 días cada una (fuera de la 🔎) y 82 en la 📦 (fuera de la 📦): no salían en ninguna lista.
+        const grA = {}; for (const r of filas) if (r.kSt) (grA[r.kSt] = grA[r.kSt] || []).push(r);
+        const diasGrupo = (r) => { const rs = r.kSt ? grA[r.kSt] : [r]; const st = Math.max(...rs.map((x) => x.st || 0));
+          const rit = Math.max(rs.reduce((a, x) => a + (x.u30 || 0), 0) / 30, rs.reduce((a, x) => a + (x.u60 || 0), 0) / 60); return rit > 0 ? st / rit : Infinity; };
         const sinAf = [], pens = [];
         for (const r of filas) {
           if (!/^active/.test(r.est) || r.stDesc || !(r.st > 0) || r.mg == null) continue;
@@ -41257,9 +41302,10 @@ async function main() {
           // con 7 días en ese tag ya volvió, y entra acá igual que lo sin estrategia.
           const volvViejo = ['desobra', 'volviendo'].includes(r.est2.t) && r.est2.ts && hoy - r.est2.ts > 7 * 864e5;
           if (r.exc || (!['sindecidir', 'nuevo', 'agotado'].includes(r.est2.t) && !volvViejo)) continue;
-          const dias = r.st / Math.max(r.u30 / 30, (r.u60 || 0) / 60);
+          const dias = diasGrupo(r);
           // Menos de 14 días sin tag 🔥: o es escasez sin decidir (sale en la 🚨) o la caja llega a tiempo: igual entra acá
           // (19/10, él: "si no tiene línea de techo o alguna otra explicación como sobre stock, tiene que entrar en buscar techo").
+          // Más de 90 (del grupo) es terreno de la 📦: ahí sale (o está anotado/pensado/recién llegado, y lo dice).
           if (dias > 90) continue;
           if (techoReciente(r.mla)) continue;
           const nota = ultN(r.mla); const fila = { ...r, dias };
