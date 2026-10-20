@@ -2683,7 +2683,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.16';
+const APP_VERSION='25.17';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2694,6 +2694,7 @@ const APP_VERSION='25.16';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.17',f:'20/10/2026',h:'17:50',c:[{n:1,t:'📈 Línea de tiempo: los cambios de precio del cerebro tienen su flecha ▲▼ al instante. Antes aparecían recién después de la foto de precios de la noche, así que una suba de ayer (ej. Cartas Casino $3.310 → $3.890) no se veía.'}]},
   {v:'25.16',f:'20/10/2026',h:'17:30',c:[{n:2,t:'Etiqueta nueva 🧪 prueba tachado: 10 publicaciones bajan 5% por 2 semanas, 5 con precio tachado y 5 liso, para saber si el tachado vende más. Y 🆕 lanzamiento ahora explica la escalera: arranca arriba, 7 días, y si no vende baja con descuento tachado.'}]},
   {v:'25.15',f:'20/10/2026',h:'15:40',c:[{n:1,t:'🇵🇾 En la tarjeta de un pedido de Paraguay, los productos ya probados (ej. el Mouse Corsair) muestran los links "ver en ML" y "ver en comprasparaguay" sacados de su ficha. Antes decían "sin links guardados".'}]},
   {v:'25.14',f:'20/10/2026',h:'15:10',c:[{n:1,t:'🇦🇷 Pedidos → Bs As: cada pedido tiene un botón 🏬 De siempre / 📋 Dai Nippon para pasarlo de solapa. Y en la solapa Dai Nippon ya no está el botón "⏸️ sacar por ahora".'}]},
@@ -9696,6 +9697,13 @@ async function lineaAbrir(prodId,ev,varSel){
       const evP=Object.values(evs).filter(e=>e&&mlas.includes(e.mla));
       // UNA PROMO MÍA TAMBIÉN ES UNA BAJA DE PRECIO (13/10/2026, él: "porque no aparece que bajamos de precio? esta en
       // promo es lo mismo no?"). Sale de `cyc/promoclaude/<MLA>` {de, precio, ts, nombre}.
+      // MIS CAMBIOS AL INSTANTE (20/10/2026, él con las Cartas Casino: "no muestra flecha de suba de precio"). Los eventos del
+      // supervisor salen de la foto de precios de la noche, así que una suba de ayer no tenía flecha. Cada `decido` queda en
+      // `cyc/claudecambios` con hora y motivo exactos: se suman, y se saca el evento de la foto que es el MISMO cambio (misma
+      // publicación, mismo precio final, menos de 2 días de diferencia).
+      for(const c of Object.values(state.claudecambios||{})){if(!c||!mlas.includes(c.mla)||!(Number(c.ts)>0)||!(Number(c.de)>0)||!(Number(c.a)>0)||Number(c.de)===Number(c.a))continue;
+        for(let j=evP.length-1;j>=0;j--){const e=evP[j];if(e.mla===c.mla&&Math.abs(Number(e.a)-Number(c.a))<1&&Math.abs(Number(e.ts)-Number(c.ts))<2*864e5)evP.splice(j,1);}
+        evP.push({mla:c.mla,ts:Number(c.ts),de:Number(c.de),a:Number(c.a),motivo:'claude',nota:c.motivo||''});}
       for(const mla of mlas){const pc=(state.promoclaude||{})[mla];if(pc&&Number(pc.ts)>0&&Number(pc.de)>0&&Number(pc.precio)>0&&Number(pc.precio)!==Number(pc.de))evP.push({mla,ts:Number(pc.ts),de:Number(pc.de),a:Number(pc.precio),origen:promoNombreDe(pc),motivo:'promo'});}
       _lineaCache[prodId]={porMla,evP,ts:Date.now(),fallo:Object.values(porMla).some(x=>x===null)};
     }
@@ -10023,7 +10031,7 @@ function lineaPintar(prodId){
   // Cada tramo toma el color de la estrategia del día al que llega (la línea cambia de color el día que cambió la estrategia).
   if(ptsPK.length>1)for(let j=1;j<ptsPK.length;j++){const a=ptsPK[j-1],b=ptsPK[j];svg+=`<line x1="${a[0].toFixed(1)}" y1="${a[1].toFixed(1)}" x2="${b[0].toFixed(1)}" y2="${b[1].toFixed(1)}" stroke="${_estCol(b[2])}" stroke-width="3.5" stroke-linecap="round"/>`;}
   // marcas de cambios de precio
-  const motivoTxt={rescate:'🛟 rescate después de una venta baja',rescatep:'🛟 rescate antes de vender (cuenta)',subir:'📈 suba del robot',bajar:'📉 baja del robot',remate:'🔻 remate',escalera:'🪜 escalera',prueba:'🧪 prueba +5%',promo:'🏷️ promo (precio tachado)',mano:'✋ a mano',volver:'↩️ vuelto atrás'};
+  const motivoTxt={rescate:'🛟 rescate después de una venta baja',rescatep:'🛟 rescate antes de vender (cuenta)',subir:'📈 suba del robot',bajar:'📉 baja del robot',remate:'🔻 remate',escalera:'🪜 escalera',prueba:'🧪 prueba +5%',promo:'🏷️ promo (precio tachado)',mano:'✋ a mano',volver:'↩️ vuelto atrás',claude:'🧠 decisión del cerebro'};
   const evK={}; for(const e of C.evP){if(!e.ts||!_mlaOk(e.mla))continue;const kk=dateToKey(new Date(e.ts));(evK[kk]=evK[kk]||[]).push(e);}
   let _flechasSvg='';
   ks.forEach((k,i)=>{const es=evK[k];if(!es)return;const e0=es[es.length-1];const sube=Number(e0.a)>Number(e0.de);const col=(FLECHA_TIPOS[flechaTipo(e0.mla,Number(e0.ts),e0.motivo,sube)]||FLECHA_TIPOS.otro)[0];

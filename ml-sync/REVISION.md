@@ -300,6 +300,11 @@ tachado contra liso (10 publicaciones, tag nuevo `prueba` 🧪). Dónde vive: `E
 las 10 de la prueba no se toquen hasta el 04/11 · que el 27/10 se haga el primer escalón de los 5 lanzamientos · que un descuento
 abajo del 25% peor caso igual salga en 🤔.
 
+### Línea de tiempo: flechas de precio con `cyc/claudecambios` (20/10/2026, v25.17)
+Qué es: las ▲▼ del precio salían sólo de `cyc/supervisor/eventos` (foto de la noche); ahora `lineaAbrir` suma cada decisión de
+`cyc/claudecambios` y saca el evento de la foto que es el mismo cambio (misma publicación, mismo precio final, menos de 2 días).
+Qué chequear: que un cambio no salga dos veces (foto + decisión) y que un `decido` de hoy tenga flecha.
+
 ## 2 · PLATA (martes)
 - **Cada lugar, su nota (08/10/2026, v22.71):** él: *"en ventas por qué aumentó el precio o por qué no, y en pedidos por qué
   pide x unidades"*. `cerebroAbrir`: con `ped` o `ctx:'caja'` muestra SÓLO las notas `ped__`/`caja__`; con `ctx:'venta'`
