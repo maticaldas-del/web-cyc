@@ -8123,8 +8123,9 @@ async function avisarVentasNuevas(db, lista) {
 // de hoy y del promedio de los últimos 5 mismos días de la semana (`_homeCurvaHTML`). Si se toca la tarjeta, se toca esto.
 // Sólo se reescribe si cambiaron las ventas de hoy, cambió el día o pasaron 20 minutos.
 const WIDGET_NIV = [['bajo', -1e12, '#ef4444'], ['justo', 90000, '#f97316'], ['bien', 115000, '#22c55e'], ['bueno', 150000, '#14b8a6'], ['exc', 190000, '#60a5fa'], ['estr', 230000, '#a78bfa'], ['joya', 300000, '#eab308']];
-async function escribirWidgetHoy(db) {
-  if (DRY || CONSULTA_SOLO_LEE) return;
+async function escribirWidgetHoy(db, opts = {}) {
+  const soloMirar = !!opts.soloMirar;
+  if (!soloMirar && (CONSULTA_SOLO_LEE || (DRY && !opts.forzar))) return null;
   const ahora = Date.now(), ar = new Date(ahora - 3 * 36e5);
   const dk = (d) => `${d.getUTCFullYear()}_${String(d.getUTCMonth() + 1).padStart(2, '0')}_${String(d.getUTCDate()).padStart(2, '0')}`;
   const kHoy = dk(ar);
@@ -8132,7 +8133,7 @@ async function escribirWidgetHoy(db) {
   const vivas = Object.values(hoyO).filter((v) => v && !v.cancelada);
   const firma = `${kHoy}|${vivas.length}|${vivas.reduce((a, v) => a + (Number(v.total) || 0) + (Number(v.neto) || 0), 0)}|${Object.values(hoyO).length}`;
   let prev = null; try { prev = await db.get('mlapi/widget/hoy'); } catch { prev = null; }
-  if (prev && prev.firma === firma && ahora - (Number(prev.ts) || 0) < 20 * 6e4) return;
+  if (!soloMirar && !opts.forzar && prev && prev.firma === firma && ahora - (Number(prev.ts) || 0) < 20 * 6e4) return null;
   const vp = { [kHoy]: hoyO }, prevKs = [];
   for (let w = 1; w <= 5; w++) { const k = dk(new Date(ar.getTime() - 7 * w * 864e5)); const o = await db.get('cyc/ventaprod/' + k); if (o && Object.keys(o).length) { vp[k] = o; prevKs.push(k); } }
   const cw = await armarCostoWeb(db, vp);
@@ -8169,7 +8170,8 @@ async function escribirWidgetHoy(db) {
   const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
   const out = { dia: kHoy, ts: ahora, firma, bruto: Math.round(bruto), ventas: grupos.size, u, gan: Math.round(gan), pct: pct == null ? null : Math.round(pct * 10) / 10,
     score, nivel, scoreColor: sCol, color, ult: ult || null, sinCosto, hoy: cHoy, prom, nP: cs.length, diaSem: DIAS[ar.getUTCDay()] };
-  await db.set('mlapi/widget/hoy', out);
+  if (!soloMirar) await db.set('mlapi/widget/hoy', out);
+  return out;
 }
 
 const TG_PERMITIDO = new Set(['resumen', 'baja', 'dolar', 'venta']);   // 'venta': aviso de cada venta nueva (15/10/2026, pedido suyo)
