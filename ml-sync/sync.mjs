@@ -320,6 +320,39 @@ function costoPesos(p, qty, tc) {
   }
   return { costo: Math.round(fullUSD * tc * qty), costBaseUSD: costUSD, shipUSD };
 }
+// ── LAS VENTAS VIEJAS SE MUEVEN CON LA VINCULACIÓN (20/10/2026 · etapa 4) ──────────────────────
+// La web, al guardar una vinculación (`saveMlLink`), llama a `reasignVentasMla` y pasa las ventas ya
+// cargadas de esa publicación a la ficha nueva. `vincular` y `fijarvar` del chat sólo tocaban
+// `cyc/mllinks`: las ventas viejas se quedaban en la ficha de antes (con su costo) y la ficha nueva
+// arrancaba sin historia. COPIA de `reasignVentasMla` (index.html): nombre, prodId, variante,
+// `sinVincular`, y el costo sólo si la venta NO está cancelada. Además saltea las que él tocó a mano
+// (`manualTs`), que el ciclo tampoco reescribe. Escribe campo por campo (nunca la venta entera).
+// `soloVariante` = `fijarvar` que no cambió la ficha: sólo se corrige la variante.
+// Si se toca una, se toca la otra.
+async function reasignVentasMlaBot(db, mla, p, variant, { tc = 0, soloVariante = false } = {}) {
+  const vp = (await db.get('cyc/ventaprod')) || {};
+  setDevLive(vp);   // el % de reclamos en vivo, igual que el ciclo, para que el costo salga como el de la web
+  const newVar = variant || '';
+  const upd = {}; let n = 0, aMano = 0;
+  for (const [dk, day] of Object.entries(vp)) for (const [id, v] of Object.entries(day || {})) {
+    if (!v || typeof v !== 'object' || v.mla !== mla) continue;
+    const yaOk = soloVariante ? (v.variante || '') === newVar
+      : (v.prodId || null) === ((p && p.id) || null) && (v.variante || '') === newVar && (p ? !v.sinVincular : !!v.sinVincular);
+    if (yaOk) continue;
+    if (Number(v.manualTs) > 0) { aMano++; continue; }
+    const b = `${dk}/${id}/`;
+    upd[b + 'variante'] = newVar || null;
+    if (!soloVariante) {
+      upd[b + 'prod'] = p ? p.name : (v.title || v.prod || '');
+      upd[b + 'prodId'] = p ? p.id : null;
+      upd[b + 'sinVincular'] = p ? null : true;
+      if (p && !v.cancelada && tc > 0) upd[b + 'costo'] = costoPesos(p, Number(v.qty) || 1, tc).costo;
+    }
+    n++;
+  }
+  if (n) await db.patch('cyc/ventaprod', upd);
+  return { n, aMano, sinTc: !soloVariante && !!p && !(tc > 0) };
+}
 // Etapa 2 (20/10/2026): EL MONOTRIBUTO VIGENTE (`cyc/monotributo/pct`), leído igual que los ~15 lugares que ya lo usan. Seis
 // comandos (ficha, techo95, escasez, raros, lupa, escmedir) usaban 2% escrito a mano. Si no se puede leer o está en 0, queda
 // el 2% de antes y se dice en el log (con 0 el costo saldría más barato de lo real, que es el lado peligroso).
@@ -19190,6 +19223,9 @@ async function main() {
         const puede = c.no ? 'está descartado de la lista'
           : _viaja(c) ? `ya está viajando en el pedido del ${_viaja(c)}`
           : (c.margen == null || !isFinite(mg)) ? 'todavía no está medido en ML'
+          // 20/10/2026 · etapa 4: `candprecio`/`pycat`/`candalta` cambiaron el precio de Paraguay (`usdAntes`, `calcTs:null`)
+          // y el margen guardado es el del precio de antes. Misma regla que `candPrecioViejo` de la web.
+          : (c.calcTs == null && Number(c.usdAntes) > 0) ? `cambió el precio de Paraguay (de US$ ${Number(c.usdAntes).toFixed(2)} a US$ ${(parseFloat(c.usd) || 0).toFixed(2)}): falta medirlo`
           : (mg < candPisoDe(c) && !(_tcP > 0 && !c.noLocal && RE_CAND_PERF.test(`${c.nombre || ''} ${c.mlTit || ''}`) && (perfLocalPct((parseFloat(c.usd) || 0) * RECARGO_PAR * _tcP, Number(c.mlPrecio) || 0) || 0) >= PERF_LOCAL_GAN)) ? `da ${mg.toFixed(1)}% y tu piso es ${candPisoDe(c)}%`
           : !(_vendP(c) >= CAND_MIN_VENT) ? (_vendP(c) == null ? `no tiene cargadas las vendidas en ML (mínimo ${CAND_MIN_VENT})` : `vendió ${_vendP(c)} en ML y el mínimo es ${CAND_MIN_VENT}`)
           // Sin las dos fotos no se compra (regla suya del 07/10, "sin foto tampoco acepto"; etapa 3, 20/10/2026): la web ya lo
@@ -24187,6 +24223,14 @@ async function main() {
       // está en ml"). Las de Paraguay quedaban en portugués y él no las encontraba. Con variantes no: el título de UNA
       // publicación nombra un solo color/aroma y la ficha tiene varios.
       if (okP) await nombreDeML(p, e.title);
+      // Las ventas viejas de esta publicación pasan a la ficha nueva, igual que en la web (20/10/2026 · etapa 4).
+      if (okP) {
+        let _tcV = 0; try { _tcV = parseFloat((await db.get('cyc/finanzas/tipo_cambio')) || 0) || 0; } catch { _tcV = 0; }
+        try {
+          const r = await reasignVentasMlaBot(db, MLA, p, ver.variant || '', { tc: _tcV });
+          console.log(`  ventas ya cargadas de ${MLA}: ${r.n} pasadas a "${p.name}"${r.aMano ? ` · ${r.aMano} tocadas a mano en la web, no las moví` : ''}${r.sinTc ? ' · ⚠️ sin dólar cargado: no les cambié el costo' : ''}`);
+        } catch (err) { console.log(`  ⚠️ no pude mover las ventas viejas de ${MLA} (${err.message || err}): siguen en la ficha anterior. Volvé a correr el comando.`); }
+      }
       console.log(okP && okI && okN ? '\n✓ Vinculada.' : '\n✗ NO quedó como pedí — revisalo.');
       console.log('Después corré netoweb, si no el producto sigue mostrando "—".');
       return;
@@ -24271,13 +24315,25 @@ async function main() {
       }
       if (!plan.length) { console.log(`\nNo quedó nada para cambiar.`); return; }
       if (!APLICAR) { console.log(`\nPRUEBA: no escribí nada. Son ${plan.length} para cambiar. Para aplicar, mandá lo mismo con |go al final.`); return; }
-      let ok = 0;
+      let ok = 0, _tcF = null;
       for (const x of plan) {
+        const _antes = linksF[x.mla] || {};
         await db.patch('cyc/mllinks/' + x.mla, { prodId: x.prodId, variant: x.variant, ignored: null, manual: true });
         const ver = (await db.get('cyc/mllinks/' + x.mla)) || {};
         const bien = ver.prodId === x.prodId && ver.variant === x.variant && !ver.ignored;
         if (bien) ok++;
         console.log(`  releído ${x.mla}: ${ver.prod || ''} producto ${ver.prodId === x.prodId ? '✓' : '✗'} · variante "${ver.variant || ''}" ${ver.variant === x.variant ? '✓' : '✗'}`);
+        // Las ventas viejas de esta publicación siguen a la vinculación, como en la web (20/10/2026 · etapa 4): si cambió
+        // la ficha se mueven enteras; si sólo cambió la variante, sólo la variante.
+        if (bien) {
+          const cambioFicha = (_antes.prodId || null) !== x.prodId;
+          if (cambioFicha && _tcF == null) { try { _tcF = parseFloat((await db.get('cyc/finanzas/tipo_cambio')) || 0) || 0; } catch { _tcF = 0; } }
+          const pD = products.find((pp) => pp.id === x.prodId) || null;
+          try {
+            const r = await reasignVentasMlaBot(db, x.mla, pD, x.variant, { tc: _tcF || 0, soloVariante: !cambioFicha });
+            if (r.n || r.aMano) console.log(`      ventas ya cargadas: ${r.n} ${cambioFicha ? `pasadas a "${x.prod}"` : `con la variante "${x.variant}"`}${r.aMano ? ` · ${r.aMano} tocadas a mano, no las moví` : ''}${r.sinTc ? ' · ⚠️ sin dólar cargado: no les cambié el costo' : ''}`);
+          } catch (err) { console.log(`      ⚠️ no pude actualizar las ventas viejas de ${x.mla} (${err.message || err}): volvé a correr el comando.`); }
+        }
       }
       console.log(`\n${ok === plan.length ? '✓' : '✗'} ${ok} de ${plan.length} quedaron fijadas.`);
       console.log(`El stock de Full se reacomoda en la próxima vuelta del robot (1 vez por hora).`);
@@ -44055,7 +44111,10 @@ async function main() {
           ...(itemsDet ? { ticket: { ts: Date.now(), productos: itemsDet.length, usdWeb: Math.round(itemsDet.reduce((a, x) => a + (x.usdWeb > 0 ? x.usdWeb : x.usd) * x.u, 0) * 100) / 100, usdPagado: Math.round(itemsDet.reduce((a, x) => a + x.usd * x.u, 0) * 100) / 100 } } : {}),
           // Qué gastos se cargaron A PROPÓSITO (aunque sea 0): un 0 escrito no es lo mismo que uno que falta.
           pagosOk: [...new Set([...(((ya && ya.pagosOk) || [])), ...PY_GASTOS.filter((g) => campos[g.campo] != null).map((g) => g.k)])],
-          incompleto: !(envio > 0) || !(merc > 0), ts: Date.now(),
+          // `ts` es la hora en que se hizo el pedido y la web la usa para saber qué viajaba ANTES de cada decisión de Pedidos:
+          // pisarla con la hora de `compray` hacía restar dos veces lo que viaja (20/10/2026 · etapa 4). La hora del ticket va
+          // en `ticket.ts`.
+          incompleto: !(envio > 0) || !(merc > 0), ts: (ya && ya.ts) || Date.now(),
           // Revisión max #21: lo que crea compray por su cuenta es HISTORIAL (guarda los pesos y el
           // recargo, no cuenta "en camino" en el Arqueo). Con |camino queda viajando y lleva "Ya llegó".
           estado: (ya && ya.estado) || (partes.some((x) => /^camino$/i.test(x)) ? 'camino' : 'historial'),
@@ -45320,6 +45379,14 @@ async function main() {
     const fromISO = new Date(Date.now() - days * 864e5).toISOString().replace(/\.\d+Z$/, '.000-00:00');
     const map = (await db.get('cyc/mllinks')) || {}; // mismo mapa que usa el cargador principal
     const onlyAcc = (process.env.ACCOUNT || '').trim().toLowerCase();
+    // SÓLO CREA LAS QUE NO EXISTEN (20/10/2026 · etapa 4). Antes hacía `set` de la venta ENTERA y borraba lo que él
+    // le había puesto: `sinCargo` ("no fue culpa del producto"), `manualTs` y `antesCancel` de una que reactivó,
+    // `canceladaTs`… Una venta que ya está la maneja el ciclo (o él a mano): acá no se toca. Tampoco se crea una que
+    // él borró en la web (`cyc/ventaborrada`). Si no se puede leer lo que hay, no se escribe nada.
+    let vpYa, vbYa;
+    try { vpYa = (await db.get('cyc/ventaprod')) || {}; vbYa = (await db.get('cyc/ventaborrada')) || {}; }
+    catch (err) { console.log(`❌ no pude leer las ventas guardadas (${err.message || err}): no escribo nada (si no, pisaría lo que ya está)`); process.exitCode = 1; return; }
+    const _kvbB = (x) => String(x || '').replace(/[.#$\[\]\/]/g, '_');
     for (const label of labels) {
       if (onlyAcc && label.toLowerCase() !== onlyAcc) continue;
       const acc = accounts[label];
@@ -45327,7 +45394,7 @@ async function main() {
       const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
       await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
       const cancelled = await fetchCancelled(acc.seller_id, t.access_token, fromISO);
-      let nRecl = 0, nDev = 0, nSkip = 0;
+      let nRecl = 0, nDev = 0, nSkip = 0, nYa = 0, nBorr = 0;
       for (const o of cancelled) {
         // la recibió el comprador y se le devolvió el dinero.
         if (!(await wasDelivered(o, t.access_token))) { nSkip++; continue; }
@@ -45346,6 +45413,8 @@ async function main() {
           if (typeof e === 'string') e = { prodId: e };
           const p = (e && e.prodId) ? (products.find((pp) => pp.id === e.prodId) || null) : matchProduct(title, index);
           const id = 'v' + o.id + '_' + idx;
+          if (vpYa[dayKey] && vpYa[dayKey][id]) { nYa++; continue; }                       // ya existe: no se toca
+          if (vbYa[_kvbB(id)] || vbYa[_kvbB(saleId)]) { nBorr++; continue; }               // la borró él en la web
           const obj = {
             id, saleId, prod: p ? p.name : title, prodId: p ? p.id : null,
             cuenta: label, qty, total: 0, neto: 0, costo: 0,
@@ -45359,7 +45428,7 @@ async function main() {
           if (tipo === 'reclamo') nRecl++; else nDev++;
         }
       }
-      console.log(`${label}: reclamos con pérdida ${nRecl} · devoluciones (volvió al stock) ${nDev} · sin entregar omitidas ${nSkip}`);
+      console.log(`${label}: reclamos con pérdida ${nRecl} · devoluciones (volvió al stock) ${nDev} · sin entregar omitidas ${nSkip} · ya cargadas (no las toco) ${nYa}${nBorr ? ` · borradas por vos en la web ${nBorr}` : ''}`);
     }
     return;
   }
@@ -45914,6 +45983,7 @@ async function main() {
     for (const [dk, day] of Object.entries(vp)) {
       for (const [id, v] of Object.entries(day || {})) {
         if (!v || !v.sinVincular || !v.mla) continue;
+        if (Number(v.manualTs) > 0) continue;   // tocada a mano en la web: no se reescribe (20/10/2026 · etapa 4, igual que el RETRO-RELLENO)
         const e = map[v.mla]; if (!e || !e.prodId) continue;
         const p = products.find((pp) => pp.id === e.prodId); if (!p) continue;
         const { costo, costBaseUSD, shipUSD } = costoPesos(p, v.qty || 1, v.tcSale || tc);
@@ -46745,7 +46815,11 @@ async function main() {
         // existen: otra línea de la misma orden que él dejó se sigue actualizando.
         const _kvb = (x) => String(x || '').replace(/[.#$\[\]\/]/g, '_');
         if (ventaBorrada == null ? !_prevV : (ventaBorrada[_kvb(id)] || (!_prevV && ventaBorrada[_kvb(saleId)]))) {
-          if (!DRY) console.log(`  🗑️ venta ${id}: ${ventaBorrada == null ? 'no sé si la borraste (no pude leer la lista)' : 'la borraste en la web'}, no la vuelvo a crear`);
+          // 20/10/2026 · etapa 4: si la venta EXISTE y tiene la marca de borrada, es una que una vuelta
+          // vieja resucitó (la borró en la web mientras la vuelta corría). No se reescribe y se dice en el
+          // log para que la borre de nuevo: el robot NO borra ventas solo.
+          if (!DRY && _prevV && ventaBorrada && ventaBorrada[_kvb(id)]) console.log(`  🧟 venta ${id} (${_prevV.prod || title}, ${_prevV.cuenta || label}): está marcada como BORRADA en la web y sigue en la lista: resucitada, borrala de nuevo (no la toco)`);
+          else if (!DRY) console.log(`  🗑️ venta ${id}: ${ventaBorrada == null ? 'no sé si la borraste (no pude leer la lista)' : 'la borraste en la web'}, no la vuelvo a crear`);
           continue;
         }
         const obj = {
@@ -46786,6 +46860,9 @@ async function main() {
           try { _vHoy = await db.get(`cyc/ventaprod/${dayKey}/${id}`); }
           catch { _vHoyOk = false; _aMano = true; console.log(`  ⚠️ venta ${id}: no pude releer si la tocó a mano, no la reescribo esta vuelta`); }
           if (_vHoy && Number(_vHoy.manualTs) > 0) _aMano = true;
+          // 20/10/2026 · etapa 4: existía al EMPEZAR la vuelta y la relectura (buena) dice que ya no está:
+          // la borró él en la web mientras la vuelta le pedía cosas a ML. Escribirla ahora la resucitaba.
+          if (_vHoyOk && _prevV && !_vHoy) { console.log(`  🗑️ venta ${id}: la borraste en la web durante esta vuelta, no la vuelvo a crear`); continue; }
         }
         const _yaCancel = !!(_vHoyOk && _vHoy && _vHoy.cancelada && !(Number(_vHoy.manualTs) > 0));
         if (DRY) console.log(`  [${label}] #${num} ${obj.prod}${p ? '' : ' (SIN PRODUCTO)'} x${qty} · total ${obj.total} · neto ${obj.neto}`);
@@ -47597,6 +47674,9 @@ async function main() {
     for (const [dayKey, day] of Object.entries(ventaprod)) {
       for (const [id, v] of Object.entries(day || {})) {
         if (!v || !v.sinVincular || !v.mla) continue;
+        // La que él tocó a mano en la web (eligió la ficha, editó, marcó) no se reescribe (20/10/2026 · etapa 4),
+        // igual que en la vuelta de ventas: le cambiaba el producto que eligió por el de la publicación.
+        if (Number(v.manualTs) > 0) continue;
         const e = map[v.mla];
         if (!e || !e.prodId) continue;                 // sigue sin mapear
         const p = products.find((pp) => pp.id === e.prodId);

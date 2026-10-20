@@ -11577,7 +11577,9 @@ async function vpSaveEdit(grpId,grpKey){
     if(camNum){if(numVenta&&numVenta!==o.numVenta)upd.numVenta=numVenta;else if(!numVenta&&o.numVenta)upd.numVenta=null;}
     if(upd.qty!=null||newProd!==o.prod){
       const p=prodByName(newProd);
-      if(newProd!==o.prod){upd.prod=newProd;upd.prodId=p?p.id:(o.prodId||null);upd.costBaseUSD=p?costUSDof(p):0;upd.shipUSD=p?(parseFloat(p.shipUSD)||0):0;}
+      // Al elegir una ficha la venta deja de estar "sin vincular" (20/10/2026 · etapa 4): con la marca puesta, el
+      // RETRO-RELLENO del robot se la cambiaba por la ficha de la publicación.
+      if(newProd!==o.prod){upd.prod=newProd;upd.prodId=p?p.id:(o.prodId||null);upd.costBaseUSD=p?costUSDof(p):0;upd.shipUSD=p?(parseFloat(p.shipUSD)||0):0;if(p&&o.sinVincular)upd.sinVincular=null;}
       if(p)upd.costo=costFullP(p)*newQty;
       if(VENTAS_TOCAN_STOCK&&p){
         const oldK=invKey(p.id,oldCuenta);const newK=invKey(p.id,newCuenta);
@@ -14083,6 +14085,14 @@ function candVentasDe(c){
   const vBot=(c.mlVendidas!=null&&isFinite(c.mlVendidas))?Number(c.mlVendidas):null;
   return vChat!=null?vChat:vBot;
 }
+// PRECIO NUEVO DE PARAGUAY CON EL MARGEN VIEJO (20/10/2026 · etapa 4). `candprecio`, `pycat` y `candalta` cambian
+// `usd`, guardan el anterior en `usdAntes` y ponen `calcTs:null`, pero el `margen`/`ganancia` quedan los medidos con el
+// precio de antes hasta que corra `candidatos`. Mientras tanto ese % no vale: no se pide ni entra en 🪄 Llenar, y la
+// tarjeta lo muestra en gris "medido a US$ X". Devuelve el precio con el que se midió, o null si está al día.
+function candPrecioViejo(c){
+  if(!c||c.calcTs!=null||c.usdAntes==null)return null;
+  const u=Number(c.usdAntes);return isFinite(u)&&u>0?u:null;
+}
 function candPuedePedir(c){
   if(!c)return{ok:false,motivo:'no existe'};
   if(c.no)return{ok:false,motivo:'está descartado de la lista'};
@@ -14092,6 +14102,7 @@ function candPuedePedir(c){
   if(candEnPedido(c)==='viajando'){const pe=(state.compraspy||{})[c.pedidoEn]||{};return{ok:false,motivo:`ya está viajando en el pedido del ${pe.fecha||'?'}`};}
   const m=Number(c.margen);
   if(c.margen==null||!isFinite(m))return{ok:false,motivo:'todavía no está medido en ML'};
+  {const _uv=candPrecioViejo(c);if(_uv!=null)return{ok:false,motivo:`cambió el precio de Paraguay (de US$ ${_uv.toFixed(2)} a US$ ${(parseFloat(c.usd)||0).toFixed(2)}): falta medirlo`};}
   // ABAJO DEL PISO YA NO ES UN FRENO DURO (16/10/2026, él: "que deje agregar productos que no dan. pero que tenga que
   // confirmar al agregar uno de esos. asi no agrego sin querer"). Se siguen mirando los otros frenos (fotos, vendidas)
   // y, si sólo falla el margen, sale `bajoPiso:true`: candSetPedir pregunta antes de cargar. Llenar no los mete nunca.
@@ -14302,6 +14313,7 @@ function candPreciosPartes(c){
     R.ventas=`🛒 <span style="color:var(--amber)">faltan las ventas</span> <span style="color:var(--muted)">— las carga el chat</span>`;
   }
   if(mMin!=null){R.margenPct=mMin;R.margenContra=(sinF&&min&&sinF<min)?'el más barato CON Full':'el más barato';}
+  R.margenViejo=candPrecioViejo(c);   // ≠ null: el % es del precio de Paraguay de antes (se muestra en gris)
   R.medido=!!min;
   // ── LOS DOS ENLACES, PARA MIRARLO CON LOS OJOS (19/09/2026, pedido suyo) ──────────────────
   // Textual: *"quiero que acá aparezcan los url del producto de ml y de compras paraguay, así
@@ -14374,7 +14386,9 @@ function candPreciosHTML(c){
     if(R.full)L.push(R.full);
     if(R.comPct)L.push(`ML se queda ${R.comPct} <span style="color:var(--muted)">(${R.comDet})</span>`);
     L.push(R.ventas);
-    if(R.margenPct!=null)L.push(`contra ${R.margenContra} → <b style="color:${R.margenPct>=25?'var(--green)':'var(--amber)'}">${R.margenPct.toFixed(0)}%</b>`);
+    if(R.margenPct!=null)L.push(R.margenViejo!=null
+      ?`contra ${R.margenContra} → <b style="color:var(--muted)">${R.margenPct.toFixed(0)}%</b> <span style="color:var(--muted)">(medido a US$ ${R.margenViejo.toFixed(2)} · cambió el precio de Paraguay: falta medirlo)</span>`
+      :`contra ${R.margenContra} → <b style="color:${R.margenPct>=25?'var(--green)':'var(--amber)'}">${R.margenPct.toFixed(0)}%</b>`);
   }
   const dud=R.dudas.length?`<br><span style="color:var(--red);font-weight:700">🚨 ¿Es el mismo producto? Abrí los dos links: ${R.dudas.join(' · ')}</span>`:'';
   return L.join(' &nbsp;·&nbsp; ')+dud+'<br>'+R.links.join(' &nbsp;·&nbsp; ');
@@ -14441,6 +14455,7 @@ function pedLlenarPlan(vivos,tope,maxU,minV){
     // siguiente y se compraba dos veces. A mano sigue permitido: el que decide es él.
     if(c.pedidoEn&&((state.compraspy||{})[c.pedidoEn]||{}).estado==='camino'){viajando++;return false;}
     if(!candPuedePedir(c).ok)return false;
+    if(candPrecioViejo(c)!=null)return false;   // precio de Paraguay nuevo sin medir (candPuedePedir ya lo frena; por las dudas)
     if(!((parseFloat(c.usd)||0)>0)||!(Number(c.ganancia)>0))return false;
     const v=candVentasDe(c);
     if(v==null){sinVentas++;return false;}
@@ -15273,8 +15288,8 @@ function pedidoMomentoHTML(g){
   const filasN=Ns.map(f=>{const R=candPreciosPartes(f.c);const m=R.margenPct;const P=candPuedePedir(f.c);
     return fila(f.c.nombre,String(f.c.cod||'').trim(),f.u,f.usd,`candSetPedir('${f.c.id}',this.value)`,`candSetPedir('${f.c.id}',0)`,
       (P.ok?'':`<div style="color:var(--red);font-weight:700">${P.bajoPiso?'⚠️ no da: '+P.motivo+' · lo agregaste igual':'🚫 '+P.motivo}</div>`)+(R.dudas.length?'<div style="color:var(--red);font-weight:700">🚨 revisá si es el mismo producto (adentro el detalle)</div>':''),
-      R.fotoPY||R.fotoML||'', m!=null?m.toFixed(0)+'%':null,
-      m==null?'var(--muted)':(typeof pctColor==='function'?pctColor(m):'var(--green)'),
+      R.fotoPY||R.fotoML||'', m!=null?m.toFixed(0)+'%'+(R.margenViejo!=null?' (medido a US$ '+R.margenViejo.toFixed(2)+')':''):null,
+      (m==null||R.margenViejo!=null)?'var(--muted)':(typeof pctColor==='function'?pctColor(m):'var(--green)'),
       pedNuevoFilaHTML(f,maxU,tc,true),
       (()=>{const v=candVentasDe(f.c);return v==null?' · <span style="color:var(--amber)">🛒 ventas sin cargar</span>':` · <span style="color:${v>=minV?'var(--green)':'var(--amber)'}">🛒 ${fmtN(v)} vendidas en ML</span>`;})());});
   const cfg=`<details style="margin:8px 0 2px"><summary style="cursor:pointer;font-size:.68rem;color:var(--muted)">⚙️ tope, máximo por producto y mínimo de vendidas</summary><div style="display:flex;gap:7px;flex-wrap:wrap;align-items:flex-end;margin:8px 0 4px">
@@ -15374,7 +15389,7 @@ function pedNuevoFilaHTML(f,maxU,tc,sinCab){
   const cod=String(c.cod||'').trim();
   const puesto=f.usd>0?Math.round(f.usd*RECARGO_PY*100)/100:0;
   const mg=R.margenPct;
-  const mgCol=mg==null?'var(--muted)':(typeof pctColor==='function'?pctColor(mg):(mg>=25?'var(--green)':'var(--amber)'));
+  const mgCol=(mg==null||R.margenViejo!=null)?'var(--muted)':(typeof pctColor==='function'?pctColor(mg):(mg>=25?'var(--green)':'var(--amber)'));
   const caja=(t,v,sub)=>`<div style="background:var(--surface2);border-radius:8px;padding:7px 10px;min-width:0">
       <div style="font-size:.66rem;color:var(--muted);margin-bottom:2px">${t}</div>
       <div style="font-size:.92rem;line-height:1.3">${v}</div>
@@ -15386,7 +15401,7 @@ function pedNuevoFilaHTML(f,maxU,tc,sinCab){
     caja('🏷️ se vende en ML',R.medido?R.rango:'<span style="color:var(--amber)">sin medir</span>',R.vend||''),
     caja('💸 ML se queda',R.comPct||'—',R.comDet||''),
     caja('🛒 vendidas en ML',R.ventasN||'<span style="color:var(--amber)">faltan</span>',R.ventasN?(R.ventasExtra?`<span style="color:var(--amber)">${R.ventasExtra}</span>`:''):'las carga el chat'),
-    caja('📈 te queda',mg!=null?`<b style="font-size:1.25em;color:${mgCol}">${mg.toFixed(0)}%</b>`:'<span style="color:var(--amber)">sin medir</span>',mg!=null?'contra '+R.margenContra:''),
+    caja('📈 te queda',mg!=null?`<b style="font-size:1.25em;color:${mgCol}">${mg.toFixed(0)}%</b>`:'<span style="color:var(--amber)">sin medir</span>',mg!=null?(R.margenViejo!=null?`medido a US$ ${R.margenViejo.toFixed(2)} · falta medirlo con el precio nuevo`:'contra '+R.margenContra):''),
   ].join('');
   const P=candPuedePedir(c);
   return `<div class="ingreso-item" style="display:block;padding:11px 12px${R.dudas.length?';border-color:rgba(239,68,68,.55)':''}${sinCab?';border:none;background:none;padding:6px 0 0':''}">
