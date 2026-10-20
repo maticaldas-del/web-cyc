@@ -2,7 +2,7 @@
 # Uso: python3 decide_cajas.py <log de pedidostodo>  → escribe cajas.txt
 # La cuenta de cada producto sale de las cuentas que PUEDEN recibirlo (el "ctas [..]" del log: publican, sin `nomandar`,
 # más las marcadas `pasara`; la misma regla que Armar caja y `cajasnotas`, revisión 9 del 13/10/2026). Si puede ir a más
-# de una, no adivino: va a la lista "decidir a mano". Por color: cubrir 20 días (REPO_DIAS_COBERTURA) con el ritmo de
+# de una, no adivino: va a la lista "decidir a mano". Por color: cubrir 37 días (30 + 7 de viaje, 60 si vende parejo) con el ritmo de
 # 30 d por día CON stock (o 60 d si vendió poco, o 180 d si está agotado) menos Full y camino; si está en cero y vende,
 # mínimo 4; nunca más de lo que hay en la oficina. Nuevo (nunca vendió, nada en Full): 4. Nada pasa los 90 días
 # de venta (tope para lo lento: Full cobra a los 120). 15/10/2026. Paulvic: todo a Adriana menos Persea (Luciana). Remates no cuentan.
@@ -26,10 +26,12 @@ def dias_de(nombre,v30,v60,dcs):
 AB={'Ad':'Adriana','Lu':'Luciana','Ay':'Ayelen','Ma':'Matias'}
 def r_de(v30,v60,v180,tiene,dcs=30):
     d=max(7,min(30,dcs))
-    if v30>=3: return max(v30/d,v60/60*0.8),f"vende {v30} en {d} d con stock" if d<30 else f"vende {v30} en 30 d"
+    if v30>=3: return max(v30/d,v60/60*0.8),(f"vende {v30} en {d} d con stock" if d<30 else f"vende {v30} en 30 d")
     if v60>=3: return v60/60,f"vendió {v60} en 60 d"
     if v180>=4 and tiene==0: return v180/180,f"agotado, vendía {v180} en 180 d"
-    if v30>0: return v30/d,f"vendió {v30} en 30 d"
+    # C8 (29/09/2026, la misma regla que Armar caja de la web): con 1 o 2 ventas no se saca un ritmo. Sólo el piso si la
+    # cuenta está en cero (lo pone `calc`). Antes 2 ventas en 7 días con stock pedían 8 u. (etapa 3, 20/10/2026).
+    if v30>0 or v60>0: return 0,f"pocas ventas ({v30} en {d} d con stock, {v60} en 60 d): sin ritmo, sólo el mínimo si está en cero"
     return 0,"no vende"
 PISO_CERO=4     # cuenta en cero que vende: mínimo para no quedar sin vender
 TOPE_LENTO=90   # lo que se manda nunca pasa los 90 días de venta (Full cobra a los 120 en lo chico). Eligió la a, 15/10/2026
@@ -39,7 +41,7 @@ def calc(v30,v60,v180,full,cam,casa,dcs=30,dias=T):
     # para que pueda arrancar. Antes daba "no vende" y no salía nada (15/10/2026, eligió la a).
     if v30==v60==v180==0 and t==0: return max(0,min(PISO_CERO,casa)),0,'nuevo: nunca vendió, va el mínimo para arrancar'
     q=math.ceil(r*dias-t-0.25) if r*dias>t else 0
-    if t==0 and r>0: q=max(q,PISO_CERO)
+    if t==0 and (r>0 or v30>0 or v60>0): q=max(q,PISO_CERO)
     if r>0:
         tope=math.floor(r*TOPE_LENTO-t)
         if q>0 and q>max(tope,0):

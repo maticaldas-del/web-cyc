@@ -138,6 +138,30 @@ async function guardarEstrategia(db, mla, t, m, ts) {
   if (!ESTRATEGIAS[t] || t === 'sindecidir' || t === 'base') return false;
   try { await db.set(`cyc/estrategia/${mla}/${k}`, { t, m: String(m || '').slice(0, 400) }); const r = await db.get(`cyc/estrategia/${mla}/${k}`); return !!(r && r.t === t); } catch { return false; }
 }
+// LO PEDIDO SALE DE LO DECIDIDO, TAMBIÉN DESDE EL CHAT (etapa 3, 20/10/2026). `pvped` (Paulvic) y `pyped:repo` (Paraguay) no
+// descontaban nada de `cyc/claudedecide/ped/<id>`, y un color cambiado A MANO en Pedidos (`mano/<color>`, manda en la web sobre lo
+// mío) seguía pidiendo lo mismo después de comprarlo. Misma cuenta que `clDescontarPed` de index.html (si se toca una, se toca la
+// otra): con color, si ese color está a mano se resta de lo de mano y la marca se borra; si no, se resta de lo decidido. Sin color
+// (Paraguay no anota color): de `u`, o de los colores decididos el más grande primero (lo de mano cuenta con su número). Nunca abajo
+// de 0, y sólo si la decisión existe. Devuelve lo que hizo, para el log.
+async function clDescontarPedBot(db, pid, va, u) {
+  let left = Math.max(0, parseInt(u) || 0); if (!left || !pid) return '';
+  const base = 'cyc/claudedecide/ped/' + pid;
+  const o = await db.get(base); if (!o || typeof o !== 'object') return '';
+  const vars = o.vars && typeof o.vars === 'object' ? o.vars : {}, mano = o.mano && typeof o.mano === 'object' ? o.mano : {};
+  const k = va ? sid(String(va).toLowerCase()) : '', upd = {};
+  if (k && mano[k] && mano[k].u != null) { upd['vars/' + k] = Math.max(0, (parseInt(mano[k].u) || 0) - left); upd['mano/' + k] = null; }
+  else if (k) { if (!(k in vars)) return ''; upd['vars/' + k] = Math.max(0, (parseInt(vars[k]) || 0) - left); }
+  else if (o.u != null) upd.u = Math.max(0, (parseInt(o.u) || 0) - left);
+  else {
+    const ef = {}; for (const [kk, n] of Object.entries(vars)) ef[kk] = Math.max(0, parseInt(n) || 0);
+    for (const [kk, m] of Object.entries(mano)) if (m && m.u != null) ef[kk] = Math.max(0, parseInt(m.u) || 0);
+    for (const [kk, n] of Object.entries(ef).sort((a, b) => b[1] - a[1])) { if (left <= 0) break; const q = Math.min(left, n); if (!q) continue; upd['vars/' + kk] = n - q; if (kk in mano) upd['mano/' + kk] = null; left -= q; }
+  }
+  if (!Object.keys(upd).length) return '';
+  await db.patch(base, upd);
+  return Object.entries(upd).filter(([kk]) => !kk.startsWith('mano/')).map(([kk, v]) => `${kk.replace(/^vars\//, '')} → ${v}${upd['mano/' + kk.replace(/^vars\//, '')] === null ? ' (era a mano)' : ''}`).join(' · ');
+}
 function precioRedondoAviso(p0, p1) {
   const a = [];
   if (p1 >= 1000 && p1 % 1000 === 0) a.push(`termina redondo (${'$' + p1.toLocaleString('es-AR')}): mejor ${'$' + (p1 - 10).toLocaleString('es-AR')}`);
@@ -1083,7 +1107,9 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY, soloAnotar 
             // nuevo, `offset` no está haciendo nada y NO se puede seguir leyendo → el renglón
             // queda marcado como no leído y la caja no se marca. FALTA DE DATO NO ES FALTA DE
             // MERCADERÍA: es la misma regla que ya estaba para el 429.
-            const PAG = 50, MAX_PAG = 20;            // hasta 1.000 movimientos por inventario
+            // Etapa 3 (20/10/2026): con la ventana estirada por una caja marcada a mano (lee desde SU despacho) lo que más
+            // vende pasaba los 1.000 movimientos y quedaba "sin leer". Si la ventana arranca más de 20 días atrás, hasta 3.000.
+            const PAG = 50, MAX_PAG = (Date.now() - (new Date(desdeDe(p.id)).getTime() || Date.now()) > 20 * 864e5) ? 60 : 20;   // 1.000 (o 3.000) movimientos
             const opsInv = [], vistosOp = new Set();
             let cortado = false;
             for (let pag = 0; ; pag++) {
@@ -1112,7 +1138,7 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY, soloAnotar 
               if (!nuevos) { cortado = true; break; }// ML ignora `offset`: no se puede leer más
               if (pag + 1 >= MAX_PAG) { cortado = true; break; }
             }
-            if (cortado) sinLeer[kR(cta, p.id, par.va)] = true;
+            if (cortado) { const _kc = kR(cta, p.id, par.va); sinLeer[_kc] = true; if (!motivoSL[_kc]) motivoSL[_kc] = 'tope'; }
             for (const x of opsInv) {
               const tipo = String(x.type || x.operation_type || '').toLowerCase();
               // Guardar TODO lo que contesta ML, aceptado o no. Sin esto, un filtro de tipo que no
@@ -1527,8 +1553,11 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY, soloAnotar 
   const aGuardar = marcadasAntes.filter((mb) => mb.calc);
   let manoGuardadas = 0;
   if (aGuardar.length) {
-    console.log(`🧾 ${aGuardar.length} caja(s) marcada(s) a mano: ubicadas sus entradas de Full${DRY || soloAnotar ? ' (no se guarda)' : ''} → ` + aGuardar.map((mb) => `${mb.e.cuenta} ${mb.fecha}${mb.c.track ? ' (' + mb.c.track + ')' : ''}`).join(' · '));
-    if (!DRY && !soloAnotar) {
+    console.log(`🧾 ${aGuardar.length} caja(s) marcada(s) a mano: ubicadas sus entradas de Full${DRY ? ' (no se guarda)' : ''} → ` + aGuardar.map((mb) => `${mb.e.cuenta} ${mb.fecha}${mb.c.track ? ' (' + mb.c.track + ')' : ''}`).join(' · '));
+    // Con SOLO_DATOS también se guarda (etapa 3, 20/10/2026): es un DATO (qué entradas son de una caja que ya marqué yo), no
+    // una decisión. Sin esto la vuelta de cada hora leía desde el despacho de la marcada (hasta 60 días) y lo que más vende
+    // pasaba el tope de movimientos y quedaba "sin leer".
+    if (!DRY) {
       const porEnv = {};
       for (const mb of aGuardar) (porEnv[mb.id] = porEnv[mb.id] || []).push(mb);
       for (const [id, ms] of Object.entries(porEnv)) {
@@ -8190,23 +8219,36 @@ async function calcAntiguoFilas(db, products, labels, soloA) {
       // o sea por COLOR. Sumando el producto entero, los colores que venden tapaban a los parados (el P47 de Matías no salía:
       // blanco 12 u. de 195 d y azul 10 u. de 157 d en el Excel). Si el producto×cuenta tiene stock por color, va color por color,
       // cada uno con su código, su Excel, su ritmo y su fecha.
+      // Y la publicación SIN color (20/10/2026 · etapa 3): la que el título no deja saber de qué color es (la 5ª del Centímetro).
+      // Su stock entra al total del producto y a ningún color: es la del renglón "sin color" de abajo.
+      const linkSinCol = {};
       for (const [mla, e] of Object.entries(linksA || {})) { if (!e || !e.prodId || !e.cuenta || e.ignored) continue; const pV = pIdxA[e.prodId];
-        const va = e.variant || ((pV && Array.isArray(pV.variantes) && pV.variantes.length) ? varianteDeTitulo(e.title || '', pV.variantes) : ''); if (!va) continue;
+        const va = e.variant || ((pV && Array.isArray(pV.variantes) && pV.variantes.length) ? varianteDeTitulo(e.title || '', pV.variantes) : '');
+        if (!va) { const k0 = e.prodId + '__' + sidA(e.cuenta); if (!linkSinCol[k0] || (e.inv && !linkSinCol[k0].inv)) linkSinCol[k0] = { ...e, mla }; continue; }
         const kv = e.prodId + '__' + sidA(e.cuenta) + '__v__' + sidA(va); if (!linkDe[kv] || (e.inv && !linkDe[kv].inv)) linkDe[kv] = { ...e, variant: va, mla }; }
-      const filas = []; let mirados = 0, sinLink = 0;
+      const filas = []; let mirados = 0, sinLink = 0, uTotal = 0;
       const _filasDe = [];
       for (const [k0, v0] of Object.entries(invA)) {
         const m0 = k0.match(/^(.+?)__([^_].*?)$/); if (!m0 || /__v__/.test(k0)) continue;
+        // Lo que hay en Full según la clave TOTAL (lo que la CUENTA del final compara contra la suma de las filas).
+        { const ctaT = ctaDeSid[m0[2]]; if (ctaT && !(soloA && _ctaSinTilde(ctaT) !== soloA)) uTotal += Math.max(0, Math.round(Number(v0) || 0)); }
         const colores = Object.entries(invA).filter(([kk, vv]) => kk.startsWith(k0 + '__v__') && Number(vv) > 0);
-        if (colores.length) for (const [kk, vv] of colores) _filasDe.push([kk, vv, m0, kk.slice((k0 + '__v__').length)]);
-        else _filasDe.push([k0, v0, m0, null]);
+        if (colores.length) {
+          for (const [kk, vv] of colores) _filasDe.push([kk, vv, m0, kk.slice((k0 + '__v__').length), false]);
+          // LO QUE ESTÁ EN EL TOTAL Y EN NINGÚN COLOR (20/10/2026 · etapa 3): antes, con stock por color, sólo se armaban filas de
+          // colores y lo de la publicación sin color (las 40 u. de la 5ª del Centímetro) no se evaluaba nunca: no pagaba stock
+          // antiguo para nadie. Ahora va su propia fila: total − Σ colores, con el código y el Excel de esa publicación.
+          const resto = Math.round(Number(v0) || 0) - colores.reduce((a, [, vv]) => a + Math.max(0, Math.round(Number(vv) || 0)), 0);
+          if (resto > 0) _filasDe.push([k0, resto, m0, null, true]);
+        } else _filasDe.push([k0, v0, m0, null, false]);
       }
-      for (const [k, v, m, colS] of _filasDe) {
+      for (const [k, v, m, colS, resto] of _filasDe) {
         const cta = ctaDeSid[m[2]]; if (!cta) continue;                       // la oficina y lo que no es de ML no
         if (soloA && _ctaSinTilde(cta) !== soloA) continue;
         const st = Math.max(0, Math.round(Number(v) || 0)); if (!st) continue;
         mirados++;
-        const e = linkDe[k]; if (!e) sinLink++;
+        const e = resto ? linkSinCol[k] : linkDe[k]; if (!e) sinLink++;
+        const nomF = ((pIdxA[m[1]] || {}).name || m[1]) + (colS ? ' · ' + ((e && e.variant) || colS) : resto ? ' · sin color' + (e && e.inv ? ' (' + e.inv + ')' : '') : '');
         const eL = e || { prodId: m[1], cuenta: cta };
         const h = (histA || {})[k];
         // Por color, el registro del color arrancó después (25/09): sola, esa fecha hacía ver "recién llegado" lo que estaba
@@ -8217,8 +8259,11 @@ async function calcAntiguoFilas(db, products, labels, soloA) {
         // ~2 semanas y con la del producto salían de 61 d.
         const fb = (h && h.aprox === false && Number(h.desde) > 0) ? Number(h.desde) : Math.min(...[h && h.desde, hP && hP.desde, eL.altaTs].map(Number).filter((x) => x > 0), Infinity);
         // Las cajas llegadas no dicen de qué color eran: por color sólo el Excel y la fecha del color.
-        const lotes = lotesFifo(st, eL.inv ? (lotesA || {})[eL.inv] : null, colS ? (cajasA[m[1] + '__' + (e ? e.cuenta : cta) + '__v__' + colS] || cajasA[m[1] + '__' + cta + '__v__' + colS] || []) : (cajasA[m[1] + '__' + (e ? e.cuenta : cta)] || cajasA[m[1] + '__' + cta]), isFinite(fb) ? fb : 0, h && h.aprox === false ? Number(h.desde) : 0);
-        const rn = (rnA || {})[k]; const rDia = rn && rn.pd > 0 ? rn.pd : (v60[k] || 0) / 60;
+        const lotes = lotesFifo(st, eL.inv ? (lotesA || {})[eL.inv] : null, resto ? [] : colS ? (cajasA[m[1] + '__' + (e ? e.cuenta : cta) + '__v__' + colS] || cajasA[m[1] + '__' + cta + '__v__' + colS] || []) : (cajasA[m[1] + '__' + (e ? e.cuenta : cta)] || cajasA[m[1] + '__' + cta]), isFinite(fb) ? fb : 0, h && h.aprox === false ? Number(h.desde) : 0);
+        // El renglón sin color vende lo que vendió sin color anotado (ventas del total − las de los colores); el ritmo normal
+        // del producto es de TODOS los colores y no sirve para él.
+        const vSinCol = resto ? Math.max(0, (v60[k] || 0) - Object.entries(v60).filter(([kk]) => kk.startsWith(k + '__v__')).reduce((a, [, q]) => a + q, 0)) : 0;
+        const rn = resto ? null : (rnA || {})[k]; const rDia = resto ? vSinCol / 60 : rn && rn.pd > 0 ? rn.pd : (v60[k] || 0) / 60;
         const { tam, tabla } = tablaAntiguoDe(eL, pIdxA[m[1]], lotesA, cfgA);
         const cg = cargoAntiguoProy(lotes, rDia, tabla, DIA_CIERRE_ALM_CTA[_ctaSinTilde(cta)] || 12);
         const edad = Math.floor((Date.now() - lotes[0].ts) / 864e5);
@@ -8228,22 +8273,25 @@ async function calcAntiguoFilas(db, products, labels, soloA) {
         // Una fecha que no es de una caja ni del Excel de ML, y que el registro marca aproximada, dice desde cuándo MIRAMOS, no
         // desde cuándo está: eso no es "recién llegado". Va aparte, como "no sé desde cuándo está".
         const _real = lotes[0].f === 'excel' || lotes[0].f === 'caja' || [h, hP].some((x) => x && x.aprox === false && Number(x.desde) === lotes[0].ts);
-        if (!(rDia > 0) && edad < 60 && !_real) { filas.push({ k, n: ((pIdxA[m[1]] || {}).name || m[1]) + (colS ? ' · ' + ((e && e.variant) || colS) : ''), cta, st, edad, f: lotes[0].f, rDia: 0, tam, prox: 0, tres: 0, tot: 0, sinFechaReal: true }); continue; }
-        if (!(rDia > 0) && edad < 60) { filas.push({ k, n: ((pIdxA[m[1]] || {}).name || m[1]) + (colS ? ' · ' + ((e && e.variant) || colS) : ''), cta, st, edad, f: lotes[0].f, rDia: 0, tam, prox: 0, tres: 0, tot: 0, nuevo: true }); continue; }
+        if (!(rDia > 0) && edad < 60 && !_real) { filas.push({ k, n: nomF, sinColor: !!resto, cta, st, edad, f: lotes[0].f, rDia: 0, tam, prox: 0, tres: 0, tot: 0, sinFechaReal: true }); continue; }
+        if (!(rDia > 0) && edad < 60) { filas.push({ k, n: nomF, sinColor: !!resto, cta, st, edad, f: lotes[0].f, rDia: 0, tam, prox: 0, tres: 0, tot: 0, nuevo: true }); continue; }
         const doce = cg.meses.slice(0, 12).reduce((s2, x) => s2 + x.cargo, 0);
         const r30A = (v30A[k] || 0) / 30; let t30 = null;
         // Por color, el ritmo de 30 días sólo vale si casi todas las ventas de 30 días traen el color anotado (si no, sale bajo de mentira).
         const _k0 = colS ? k.slice(0, k.indexOf('__v__')) : k, _cob = colS ? (conVar30[_k0] || 0) / Math.max(1, v30A[_k0] || 0) : 1;
-        if (rDia > 0 && r30A < rDia * 0.7 && _cob >= 0.8) { const cg30 = cargoAntiguoProy(lotes, r30A, tabla, DIA_CIERRE_ALM_CTA[_ctaSinTilde(cta)] || 12); t30 = cg30.meses.slice(0, 12).reduce((s2, x) => s2 + x.cargo, 0); }
-        filas.push({ k, t30, r30: r30A, n: ((pIdxA[m[1]] || {}).name || m[1]) + (colS ? ' · ' + ((e && e.variant) || colS) : ''), cta, st, edad, f: lotes[0].f, rDia, tam, prox, tres, tot: doce, sinVenta: !(rDia > 0), cierre: cg.meses[0] ? new Date(cg.meses[0].T - 3 * 36e5).toISOString().slice(5, 10) : '?', rnF: !!(rn && rn.pd > 0) });
+        if (!resto && rDia > 0 && r30A < rDia * 0.7 && _cob >= 0.8) { const cg30 = cargoAntiguoProy(lotes, r30A, tabla, DIA_CIERRE_ALM_CTA[_ctaSinTilde(cta)] || 12); t30 = cg30.meses.slice(0, 12).reduce((s2, x) => s2 + x.cargo, 0); }
+        filas.push({ k, t30, r30: r30A, n: nomF, sinColor: !!resto, cta, st, edad, f: lotes[0].f, rDia, tam, prox, tres, tot: doce, sinVenta: !(rDia > 0), cierre: cg.meses[0] ? new Date(cg.meses[0].T - 3 * 36e5).toISOString().slice(5, 10) : '?', rnF: !!(rn && rn.pd > 0) });
       }
   filas.sort((a, b) => b.tot - a.tot || b.edad - a.edad);
-  return { filas, mirados, sinLink };
+  return { filas, mirados, sinLink, uTotal, uFilas: filas.reduce((a, x) => a + (x.st || 0), 0) };
 }
 const STOCK_ANTIGUO_TABLA = {
   pequeno: [[0, 120, 0], [120, 180, 350], [180, 365, 3250], [365, 1e9, 7900]],
   mediano: [[0, 120, 0], [120, 180, 470], [180, 365, 4485], [365, 1e9, 10930]],
-  grande: [[0, 120, 0], [120, 180, 1355], [180, 365, 18280], [365, 1e9, 39365]],
+  // Lo GRANDE (los Tenders) paga desde los 60 días, igual que la web (`almacDiasDe`): decisión suya 2a del 20/10/2026 ("casi
+  // seguro 60"). La factura de ML trae el almacenamiento por cuenta y no por producto, así que no confirma el día exacto; entre
+  // 60 y 120 se usa la tarifa del primer escalón ($1.355) como estimación. Si ML muestra otra cosa, se cambia acá y en la web.
+  grande: [[0, 60, 0], [60, 180, 1355], [180, 365, 18280], [365, 1e9, 39365]],
   extragrande: [[0, 120, 0], [120, 180, 4680], [180, 365, 47840], [365, 1e9, 92400]],
 };
 const DIA_CIERRE_ALM_CTA = { adriana: 10, luciana: 12, matias: 12, ayelen: 12 };
@@ -8477,13 +8525,19 @@ const RE_CAND_PERF = /perfum|parfum|\bedp\b|\bedt\b|eau de|fragan|fragr|body spl
 function cuentaLista(cat) {
   const v = Object.values(cat || {}).filter((e) => e && e.n);
   // Mínimo 100 ventas en ML (18/10/2026, regla suya): sin `vend` cargado va a revisar; con menos de 100 queda afuera.
-  const m25 = (e) => !e.noEs && !e.sacado && !e.noWeb && e.m != null && Number(e.m) >= 25 && /^https:\/\//.test(e.mf || '') && !(e.vend != null && Number(e.vend) < 100);
+  const m25 = (e) => !e.noEs && !e.sacado && !e.noWeb && e.m != null && Number(e.m) >= 25 && listaCostoVigente(e) && /^https:\/\//.test(e.mf || '') && !(e.vend != null && Number(e.vend) < 100);
   // DESDE EL 20/10/2026 (eligió la a) sólo da lo que el chat de compras confirmó mirando ML (`ok`, de `listadato`) para ESE catálogo
   // (`okCat`, o el catálogo fijado con `mi=`). Antes también entraba lo que el robot emparejó solo y "parecía" bien: 21 de 36 estaban mal.
   const da = (e) => m25(e) && Number(e.vend) >= 100 && listaOkVale(e);
-  return { n: v.length, med: v.filter((e) => e.m != null).length, pend: v.filter((e) => !e.t).length, dan: v.filter(da).length, revisar: v.filter((e) => m25(e) && !da(e)).length, tMed: Date.now() };
+  // `pend` = falta medir: nunca medidos y también los medidos con un costo que ya cambió (etapa 3, 20/10/2026; si no, una lista a la que
+  // le cambió el costo entero quedaba con 0 que dan y 0 pendientes, y la web la escondía).
+  return { n: v.length, med: v.filter((e) => e.m != null).length, pend: v.filter((e) => !e.t || (e.m != null && !e.noWeb && !e.sacado && !listaCostoVigente(e))).length, dan: v.filter(da).length, revisar: v.filter((e) => m25(e) && !da(e)).length, tMed: Date.now() };
 }
 function listaOkVale(e) { return !!(e && e.ok && (e.miFijo || !e.okCat || String(e.okCat).toUpperCase() === String(e.mi || '').toUpperCase())); }
+// EL MARGEN TIENE QUE SER DEL COSTO DE HOY (etapa 3, 20/10/2026): `lista:`, `listadto` y `listaweb` cambian el costo `p` y el margen `m`
+// (y el `ok`) quedaban los medidos con el costo viejo. `uMed` = el costo con el que se midió; si no es el de hoy, no "da" hasta que
+// `listamedir` lo vuelva a medir (lo hace solo: ve `uMed` distinto). Misma regla en index.html (`_listaCostoVigente`).
+function listaCostoVigente(e) { return !!e && e.uMed != null && Math.abs(Number(e.uMed) - Number(e.p)) < 1; }
 const PERF_LOCAL_TIENDA = 30, PERF_LOCAL_GAN = 25;
 function perfLocalPct(costoPesos, precioML) {
   if (!(costoPesos > 0) || !(precioML > 0)) return null;
@@ -8995,6 +9049,11 @@ function pyCatFuera(nombre, usd, marcasNo) {
 // dígitos los confundía con otro código que termine igual.
 const _pyDg = (x) => { const s = String(x || ''); return /[a-z]/i.test(s) ? s.replace(/[^a-z0-9]/gi, '').toUpperCase() : s.replace(/\D/g, ''); };
 const _pyCodIg = (a, b) => { const x = _pyDg(a), y = _pyDg(b); if (!x || !y) return false; if (x === y) return true; if (/[A-Z]/.test(x + y)) return false; const [c1, c2] = x.length < y.length ? [x, y] : [y, x]; return c1.length >= 5 && c2.endsWith(c1); };
+// EL MISMO CÓDIGO SÓLO DENTRO DEL MISMO PROVEEDOR (20/10/2026 · etapa 3). `_pyCodIg` compara también por el final, y un
+// código de Elegancia (`100572`) "terminaba igual" que uno de Nissei (`7100572`): la carga del catálogo de Nissei le pisaba
+// el precio al candidato o a la ficha de Elegancia, y una llegada enganchaba la ficha del otro proveedor. Todo lo que
+// compara códigos de Paraguay mira antes el proveedor con esto (misma regla que `pyProvDe` de la web).
+const provPyDeBot = (x) => (String((x && (x.prov || x.provPy)) || 'nissei').toLowerCase() === 'elegancia' ? 'elegancia' : 'nissei');
 // Lee renglones `código|nombre|US$|link|foto` y marcas de página `#<n>` (opcional `#<n>@<orden>`). Devuelve lo leído y los malos.
 function pyCatParse(lineas) {
   const filas = [], malos = []; let pg = null, orden = null;
@@ -9022,8 +9081,9 @@ function pyCodMatcher(codes) {
     if (y.length >= 5 && suf.has(y)) return true; for (let k = 5; k < y.length; k++) if (full.has(y.slice(-k))) return true; return false; };
 }
 async function pycatResumenEscribir(db, cat, cands, products) {
-  const esCand = pyCodMatcher(Object.values(cands || {}).map((c) => c && c.cod).filter(Boolean));
-  const esFicha = pyCodMatcher((products || []).map((p) => p && p.codPy).filter(Boolean));
+  // El catálogo es de NISSEI: sólo cuentan candidatos y fichas de Nissei (etapa 3, 20/10/2026, ver `provPyDeBot`).
+  const esCand = pyCodMatcher(Object.values(cands || {}).filter((c) => c && provPyDeBot(c) === 'nissei').map((c) => c.cod).filter(Boolean));
+  const esFicha = pyCodMatcher((products || []).filter((p) => p && provPyDeBot(p) === 'nissei').map((p) => p.codPy).filter(Boolean));
   const r = { t: Date.now(), tot: 0, cand: 0, ficha: 0, fz: 0, bajo: 0, sc: 0, sv: 0, nomed: 0 };
   for (const [cod, e] of Object.entries(cat || {})) {
     if (!e || !e.n) continue; r.tot++;
@@ -9063,8 +9123,10 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
   const tc = parseFloat(fin.tipo_cambio) || 0;
   if (!(tc > 0)) { console.log('❌ No hay dólar cargado: sin costo en pesos no se puede medir.'); return; }
   const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
-  const candList = Object.entries(cands).filter(([, c]) => c && c.cod);
-  const fichas = products.filter((p) => p && p.codPy);
+  // Sólo los de NISSEI (etapa 3, 20/10/2026): el catálogo es de Nissei y un código de Elegancia que "termina igual" no es
+  // el mismo producto (`provPyDeBot`).
+  const candList = Object.entries(cands).filter(([, c]) => c && c.cod && provPyDeBot(c) === 'nissei');
+  const fichas = products.filter((p) => p && p.codPy && provPyDeBot(p) === 'nissei');
   const ahora = Date.now();
   const todos = Object.entries(cat);
   const cola = [], cuenta = { fuera: 0, cand: 0, ficha: 0, frescos: 0 };
@@ -9143,28 +9205,32 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
       if (!okB.length) { upd.sc = 1; upd.mt = resB[0] ? String(resB[0].name || '').slice(0, 120) : ''; upd.m = null; res.sinCat++;
         console.log(`  · sin catálogo exacto · ${e.n.slice(0, 60)}${resB[0] ? ` (lo más parecido: "${upd.mt.slice(0, 60)}" · ${duros(chequeoMismoProducto(e.n, upd.mt)).join(' · ').slice(0, 90)})` : ' (ML no trajo nada)'}`);
         if (aplicar) await db.patch(RUTA + '/' + cod, upd); continue; }
-      let prod = null, rpBlando = null, ofertas = [], pi = null;
+      let prod = null, rpBlando = null, ofertas = [], pi = null, piAfuera = false;
       for (const [r, rr] of okB.slice(0, 5)) {
         let ofs = [];
-        try { await espera(250); const it = await mlGetR(`/products/${r.id}/items`); ofs = ((it && it.results) || []).filter((o) => !esOfertaDeAfuera(o)); }
+        // LOS DE AFUERA, CON LA MISMA REGLA QUE `candidatos` (20/10/2026 · etapa 3). Acá se sacaban siempre, y si TODOS eran
+        // del exterior quedaba "en ML no lo vende nadie" y nunca pasaba a Para probar. Regla suya del 16/10: con algún vendedor
+        // de acá se sacan; si sólo lo venden de afuera, se mide contra ellos + 20% (`ofertasParaMedir`, la misma función).
+        let _soloAfuera = false;
+        try { await espera(250); const it = await mlGetR(`/products/${r.id}/items`); const _om = ofertasParaMedir((it && it.results) || []); ofs = _om.ofs; _soloAfuera = _om.soloAfuera; }
         catch (e2) { if (!/404/.test(String(e2.message || e2))) throw e2; ofs = []; }
         const p2 = precioAIgualar(ofs);
-        if (prueba) console.log(`      prueba ${r.id} "${String(r.name || '').slice(0, 60)}" · ${ofs.length} vendedor(es)${rr.length ? ' · ' + rr.join(' · ').slice(0, 60) : ''}`);
+        if (prueba) console.log(`      prueba ${r.id} "${String(r.name || '').slice(0, 60)}" · ${ofs.length} vendedor(es)${_soloAfuera ? ' (sólo de afuera: +' + Math.round(RECARGO_INTER * 100) + '%)' : ''}${rr.length ? ' · ' + rr.join(' · ').slice(0, 60) : ''}`);
         if (!prod) { prod = r; rpBlando = rr.length ? rr.join(' · ') : null; }
-        if (p2 && p2.precio > 0 && p2.ref && p2.ref.category_id) { prod = r; rpBlando = rr.length ? rr.join(' · ') : null; ofertas = ofs; pi = p2; break; }
+        if (p2 && p2.precio > 0 && p2.ref && p2.ref.category_id) { prod = r; rpBlando = rr.length ? rr.join(' · ') : null; ofertas = ofs; pi = p2; piAfuera = _soloAfuera; break; }
       }
       upd.sc = null; upd.mi = prod.id; upd.mt = String(prod.name || prod.title || '').slice(0, 120); upd.rp = rpBlando;
       { const pic = Array.isArray(prod.pictures) && prod.pictures[0]; const u = String((pic && (pic.secure_url || pic.url)) || '').replace(/^http:\/\//, 'https://');
         let h = ''; try { h = new URL(u).hostname.toLowerCase(); } catch { h = ''; } upd.mf = (h === 'mlstatic.com' || h.endsWith('.mlstatic.com')) ? u : null; }
       if (!pi) { upd.m = null; upd.sv = 1; res.sinVend++; console.log(`  · catálogo sin vendedores · ${e.n.slice(0, 60)} → ${upd.mi}`); if (aplicar) await db.patch(RUTA + '/' + cod, upd); continue; }
-      upd.sv = null; upd.mp = Math.round(pi.precio); upd.mv = ofertas.length;
+      upd.sv = null; upd.mp = Math.round(pi.precio); upd.mv = ofertas.length; upd.afu = piAfuera ? 1 : null;   // 1 = medido contra los de afuera +20%
       const cuoA = cuotasDeOferta(pi.ref); const cuoPct = cuoA ? CUOTAS_PCT_ML[cuoA] || 0 : 0;
       const puesto = esLista ? Math.round(Number(e.p) * (1 + (Number(opts.rec) || 0) / 100) / tc * 100) / 100 : Math.round(e.u * RECARGO_PAR * 100) / 100;
       const cn = cuentaNuevoDe({ nombre: e.n, mlTit: upd.mt });
       const r = await cuentaCandidatoMejor(Math.min(pi.precio, TECHO_DURO), pi.ref.category_id, puesto, tc, monoP, feeAt, cuoPct, cn);
       if (!r) { res.err++; continue; }
       upd.m = Math.round(r.margen * 10) / 10; res.medidos++;
-      console.log(`  · ${String(upd.m.toFixed(1)).padStart(6)}% · ${e.n.slice(0, 55)} · ${esLista ? money(Number(e.p)) : 'US$ ' + e.u} → ${upd.mi} "${upd.mt.slice(0, 50)}" a ${money(upd.mp)}${upd.rp ? ' · ⚠️ ' + upd.rp.slice(0, 60) : ''}`);
+      console.log(`  · ${String(upd.m.toFixed(1)).padStart(6)}% · ${e.n.slice(0, 55)} · ${esLista ? money(Number(e.p)) : 'US$ ' + e.u} → ${upd.mi} "${upd.mt.slice(0, 50)}" a ${money(upd.mp)}${upd.afu ? ' · 🌎 sólo lo venden de afuera: medido contra ellos +' + Math.round(RECARGO_INTER * 100) + '%' : ''}${upd.rp ? ' · ⚠️ ' + upd.rp.slice(0, 60) : ''}`);
       const piso = candPisoDe({ nombre: e.n, mlTit: upd.mt });
       const loc = RE_CAND_PERF.test(`${e.n} ${upd.mt}`) ? perfLocalPct(puesto * tc, upd.mp) : null;
       // 📋 Listas son SÓLO para ML (18/10/2026, regla suya): ahí el % del local no hace pasar nada.
@@ -9497,7 +9563,17 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
         continue;
       }
       if (/^MLA\d+$/.test(idFijo)) {
-        try { prod = await mlGet(`/products/${idFijo}`, tok); } catch { prod = null; }
+        // 429 / 5xx / corte ≠ "no existe" (etapa 3, 20/10/2026): antes el `catch` vacío dejaba cualquier falla como "el código
+        // de ML no existe. Revisalo." en el candidato. Sólo un 404 dice eso; lo demás es ML que no contestó: se reintenta la
+        // vuelta siguiente y no se escribe ningún motivo.
+        let _errProd = '';
+        try { prod = await mlGet(`/products/${idFijo}`, tok); } catch (eP) { prod = null; _errProd = String((eP && eP.message) || eP || ''); }
+        if (_errProd && !/:\s*404\b/.test(_errProd)) {
+          const _st = (_errProd.match(/:\s*(\d{3})\b/) || [])[1] || 'sin respuesta';
+          console.log(`  · ${c.nombre}\n      → ML no contestó el catálogo ${idFijo} (${_st}): no es que no exista. Lo vuelvo a mirar la vuelta siguiente.`);
+          sinDato.push(`${c.nombre} → ML no contestó el catálogo (${_st}): se reintenta`);
+          continue;
+        }
         if (!prod || !prod.id) {
           console.log(`  · ${c.nombre}\n      → el código de ML que trae (${idFijo}) no existe o no es un catálogo. No invento otro.`);
           if (!soloPrueba) await db.set(`cyc/candidatos_py/${id}/motivo`, `El código de ML ${idFijo} no existe. Revisalo.`);
@@ -9807,7 +9883,11 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       await db.set(`cyc/candidatos_py/${id}/noTipo`, null);
       await db.set(`cyc/candidatos_py/${id}/bajasLejos`, null);
     }
-    if (c.no) console.log(`      \u{1F504} estaba descartado y hoy da ${margen.toFixed(1)}%: vuelve a la lista.`);
+    // QUE EL LOG DIGA LO QUE PASÓ (etapa 3, 20/10/2026): con SOLO_DATOS la corrida automática NO le saca la cruz (lo decide
+    // Claude), y el log decía "vuelve a la lista" igual. Ahora lo dice como es, y el `informe` (sección 8b) los lista para decidir.
+    if (c.no) console.log((SOLO_DATOS && CORRIDA_AUTOMATICA && !soloPrueba)
+      ? `      \u{1F504} estaba descartado y hoy da ${margen.toFixed(1)}%: SIGUE TACHADO (el robot sólo junta datos). Sale en el informe, "dan de nuevo": decidir si vuelve.`
+      : `      \u{1F504} estaba descartado y hoy da ${margen.toFixed(1)}%: ${soloPrueba ? 'volvería a la lista (prueba, no escribo)' : 'vuelve a la lista.'}`);
     nuevosQueDan.push({ id, c, margen, ganancia, mlPrecio, mlTit, puesto, mlMax, mlVendedores: vendedores });
   }
   console.log(`\n── ${entradas.length} en la lista = ${mirados} mirados + ${yaNo} ya descartados antes + ${yaFicha} que ya tienen ficha ──`);
@@ -14303,6 +14383,10 @@ async function main() {
       if (cerca.length) { console.log(`\nCon 90+ días en Full que al ritmo de hoy se venden antes de pagar (${cerca.length}):`); for (const x of cerca.slice(0, 25)) console.log(`· ${String(x.n).slice(0, 42)} · ${x.cta} · ${x.st} u. · ${x.edad} d (${x.f}) · vende ${(x.rDia * 30).toFixed(1)}/mes`); if (cerca.length > 25) console.log(`  (y ${cerca.length - 25} más)`); }
       const sinF = filas.filter((x) => x.f === 'sinfecha'); if (sinF.length) console.log(`\n⚠️ ${sinF.length} sin ninguna fecha (cuentan como entradas hoy: el cargo real puede ser MAYOR): ${sinF.slice(0, 10).map((x) => String(x.n).slice(0, 25) + ' ' + x.cta).join(' · ')}`);
       console.log(`\nCUENTA: ${mirados} = ${conCargo.length} con cargo + ${mirados - conCargo.length} sin cargo ${filas.length === mirados ? '✓' : '⚠️ NO CIERRA'}`);
+      // 20/10/2026 · etapa 3: la cuenta de filas cerraba sola (cuenta lo que ella misma armó). Ésta compara UNIDADES contra
+      // la clave total de cada producto×cuenta: si un color tiene más que el total, o algo no se mira, no cierra y lo dice.
+      { const sc = filas.filter((x) => x.sinColor); if (sc.length) console.log(`(${sc.length} renglón(es) "sin color": lo que está en el total y en ningún color, con el código de la publicación sin color: ${sc.map((x) => String(x.n).slice(0, 40) + ' ' + x.cta + ' ' + x.st + ' u.').join(' · ')})`); }
+      console.log(`UNIDADES: ${_rA.uFilas} en las filas = ${_rA.uTotal} en Full (claves totales) ${_rA.uFilas === _rA.uTotal ? '✓' : '⚠️ NO CIERRA (hay colores con más que el total, o stock que no se mira)'}`);
       return;
     }
     // BILLING_PROBE=cargosmes[:<AAAA_MM>][:<meses>][:go] → LA FACTURA DE ML POR TIPO DE CARGO, DE LAS 4 CUENTAS
@@ -14421,7 +14505,11 @@ async function main() {
     if (String(process.env.BILLING_PROBE || '').startsWith('cargosfull')) {
       const _ps = String(process.env.BILLING_PROBE).split(':').map((s) => s.trim());
       const GO = _ps.includes('go');
-      const soloCta = _ps.slice(1).find((s) => s && s !== 'go') || null;
+      // `:multa` (20/10/2026, él: "mirá la multa de Matías por envíos a Full"): del Excel de Full imprime el encabezado de cada
+      // hoja y TODOS los renglones que hablan de multa/penalidad (no sólo los 14 primeros). `:AAAA_MM` elige el período.
+      const MULTA = _ps.includes('multa');
+      const ymP = _ps.find((x) => /^\d{4}_\d{2}$/.test(x)) || null;
+      const soloCta = _ps.slice(1).find((s) => s && s !== 'go' && s !== 'multa' && !/^\d{4}_\d{2}$/.test(s)) || null;
       const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
       const raw = async (path, tok, opt = {}) => {
         for (let i = 0; ; i++) {
@@ -14464,7 +14552,7 @@ async function main() {
         // El período es el primer día del mes. Se toma el mes ANTERIOR (ya cerrado: trae el cobro de
         // almacenamiento del cierre). Sin pedir la lista de períodos, que gasta cupo de facturación.
         const _d = new Date(); _d.setUTCDate(1); _d.setUTCMonth(_d.getUTCMonth() - 1);
-        const kc = _d.toISOString().slice(0, 8) + '01';
+        const kc = ymP ? ymP.replace('_', '-') + '-01' : _d.toISOString().slice(0, 8) + '01';
         await dormir(13000);
 
         // 1) Resumen por tipo de cargo
@@ -14523,7 +14611,13 @@ async function main() {
             return inl ? dec(inl[1]) : v ? (isT ? ss[+v[1]] : v[1]) : '';
           }));
           console.log(`\n    hoja ${h}: ${filas.length} renglones`);
-          for (const f of filas.slice(0, 14)) console.log('      | ' + f.map((x) => String(x).slice(0, 28)).join(' | ').slice(0, 400));
+          if (MULTA) {
+            const enc = filas.findIndex((f) => f.filter((x) => String(x).trim()).length >= 3);
+            if (enc >= 0) console.log('      ENCABEZADO | ' + filas[enc].map((x) => String(x).slice(0, 40)).join(' | ').slice(0, 900));
+            const hits = filas.filter((f) => /multa|penal|incumpl|CFPB|sanci/i.test(f.join(' ')));
+            console.log(`      renglones con multa/penalidad: ${hits.length}`);
+            for (const f of hits.slice(0, 60)) console.log('      | ' + f.map((x) => String(x).slice(0, 60)).join(' | ').slice(0, 900));
+          } else for (const f of filas.slice(0, 14)) console.log('      | ' + f.map((x) => String(x).slice(0, 28)).join(' | ').slice(0, 400));
         }
       }
       return;
@@ -19065,6 +19159,10 @@ async function main() {
           : (c.margen == null || !isFinite(mg)) ? 'todavía no está medido en ML'
           : (mg < candPisoDe(c) && !(_tcP > 0 && !c.noLocal && RE_CAND_PERF.test(`${c.nombre || ''} ${c.mlTit || ''}`) && (perfLocalPct((parseFloat(c.usd) || 0) * RECARGO_PAR * _tcP, Number(c.mlPrecio) || 0) || 0) >= PERF_LOCAL_GAN)) ? `da ${mg.toFixed(1)}% y tu piso es ${candPisoDe(c)}%`
           : !(_vendP(c) >= CAND_MIN_VENT) ? (_vendP(c) == null ? `no tiene cargadas las vendidas en ML (mínimo ${CAND_MIN_VENT})` : `vendió ${_vendP(c)} en ML y el mínimo es ${CAND_MIN_VENT}`)
+          // Sin las dos fotos no se compra (regla suya del 07/10, "sin foto tampoco acepto"; etapa 3, 20/10/2026): la web ya lo
+          // frenaba (`candPuedePedir`) y este comando no.
+          : !/^https:\/\//.test(String(c.foto || '')) ? 'falta la foto de comprasparaguay'
+          : !/^https:\/\//.test(String(c.mlFoto || '')) ? 'falta la foto de ML'
           : !candCatChequeado(c) ? 'nadie confirmó todavía que el catálogo de ML sea el mismo producto (✅ en el panel o la revisión de fotos)' : '';
         if (puede && p.u > antes) { problemas.push(`"${p.busca}" → ${c.nombre}: NO se puede pedir, ${puede}`); continue; }
         cambios.push({ id, c, antes, u: p.u, baja: !!p.baja });
@@ -19083,11 +19181,20 @@ async function main() {
         for (const x of problemas) console.log(`   ${x}`);
         return;
       }
+      // EL TOPE Y EL MÁXIMO SON LOS DEL PANEL (etapa 3, 20/10/2026): `cyc/mlconfig/pedTopeUSD` y `pedMaxU` (los que él tipea en
+      // ⚙️ del pedido del momento) y el máximo de CADA producto con la misma regla que `candMaxU` de la web (barato que vende
+      // mucho con pocos vendedores 3-4, caro 1). Antes decía "US$ 500" y "2 u." fijos aunque él los hubiera cambiado.
+      // COPIA de `candMaxU` / `PED_BARATO_USD` / `PED_CARO_USD` / `PED_POCOS_VEND` de index.html: si se toca una, se toca la otra.
+      let _cfgP = {}; try { _cfgP = (await db.get('cyc/mlconfig')) || {}; } catch { _cfgP = {}; }
+      const _topeP = (() => { const v = parseFloat(_cfgP.pedTopeUSD); return isFinite(v) && v > 0 ? v : 500; })();
+      const _maxUP = (() => { const v = parseInt(_cfgP.pedMaxU); return isFinite(v) && v > 0 ? v : 2; })();
+      const candMaxUBot = (c) => { const usd = parseFloat(c && c.usd) || 0, v = _vendP(c || {}), nv = Number(c && c.mlVendedores);
+        if (usd > 60) return 1; if (usd > 0 && usd <= 15 && v != null && v >= 100 && (!isFinite(nv) || nv <= 5)) return Math.max(_maxUP, v >= 300 ? 4 : 3); return _maxUP; };
       for (const x of cambios) {
         const usd = parseFloat(x.c.usd) || 0;
         console.log(`  ${x.antes} u. → ${x.u} u.  ·  US$ ${(usd * x.u).toFixed(2)}  ·  ${x.c.nombre}`
           + (x.c.no ? '   ❌ OJO: este candidato está DESCARTADO' : '')
-          + (x.u > 2 ? '   ⚠️ pasa tu máximo de 2 u. por producto' : '')
+          + (x.u > candMaxUBot(x.c) ? `   ⚠️ pasa el máximo de ${candMaxUBot(x.c)} u. para este producto` : '')
           + (x.baja ? '   👎 y lo DOY DE BAJA de la lista (se puede devolver desde el panel)' : ''));
       }
       // El total se arma con la lista ENTERA, no sólo con lo que se toca: lo que ya estaba cargado
@@ -19106,7 +19213,7 @@ async function main() {
       const colgados = vivos.filter(([id, c]) => c.no && ((cambios.find((x) => x.id === id) || {}).u ?? (Number(c.pedirU) || 0)) > 0);
       const crudo = final.reduce((s, x) => s + (parseFloat(x.c.usd) || 0) * x.u, 0);
       console.log(`\n🧾 EL PEDIDO QUEDA EN: ${final.length} producto(s) · ${final.reduce((s, x) => s + x.u, 0)} u. · US$ ${crudo.toFixed(2)} crudos · US$ ${(crudo * RECARGO_PAR).toFixed(2)} puestos · ${money(Math.round(crudo * RECARGO_PAR * tcp))}`);
-      if (crudo > 500) console.log(`   ⚠️ pasa tu tope de US$ 500 crudos por US$ ${(crudo - 500).toFixed(2)}`);
+      if (crudo > _topeP) console.log(`   ⚠️ pasa tu tope de US$ ${_topeP} crudos por US$ ${(crudo - _topeP).toFixed(2)} (sólo nuevos: lo de probados cargado en el pedido del momento también cuenta en el tope del panel)`);
       if (colgados.length) console.log(`   (aparte: ${colgados.length} candidato(s) DESCARTADO(s) tienen unidades viejas cargadas. El panel no los muestra y no van en el pedido: ${colgados.map(([, c]) => c.nombre).slice(0, 6).join(' · ')}${colgados.length > 6 ? ' …' : ''})`);
       if (!APLICAR) { console.log('\nPRUEBA: no escribí nada. Para aplicar, agregá  ;go  al final.'); return; }
       let ok = 0;
@@ -19556,15 +19663,22 @@ async function main() {
       if (!filas.length) { console.log('Nada para cargar.'); return; }
       const cat = (await db.get('mlapi/pycat')) || {};
       const cands = (await db.get('cyc/candidatos_py')) || {};
-      const ahora = Date.now(); const upd = {}; let nuevos = 0, cambio = 0, igual = 0; const candUpd = [], fichaUpd = [];
+      const ahora = Date.now(); const upd = {}; let nuevos = 0, cambio = 0, igual = 0; const candUpd = [], fichaUpd = [], candVisto = [];
       for (const f of filas) {
         const viejo = cat[f.cod];
         const e = { ...(viejo || {}), n: f.n, u: f.u, ts: ahora, ...(f.pg != null ? { pg: f.pg } : {}), ...(f.l ? { l: f.l } : {}), ...(f.f ? { f: f.f } : {}) };
         if (!viejo) nuevos++; else if (Math.abs((Number(viejo.u) || 0) - f.u) >= 0.005) { cambio++; e.uAnt = Number(viejo.u) || null; } else igual++;
         upd[f.cod] = e;
-        const yc = Object.entries(cands).find(([, c]) => c && _pyCodIg(c.cod, f.cod));
-        if (yc && Math.abs((Number(yc[1].usd) || 0) - f.u) >= 0.005) candUpd.push([yc[0], yc[1], f]);
-        const yp = products.find((p) => p && p.codPy && _pyCodIg(p.codPy, f.cod));
+        // Etapa 3 (20/10/2026): el catálogo es de NISSEI, así que sólo se tocan candidatos y fichas de Nissei (`provPyDeBot`): un
+        // código de Elegancia que "terminaba igual" recibía el precio de otro producto. Y todos los candidatos con ese código,
+        // no sólo el primero.
+        // LA FECHA SE RENUEVA AUNQUE EL PRECIO SEA EL MISMO (etapa 3, 20/10/2026): un candidato que da y sigue en el catálogo
+        // con el precio de siempre vencía a los 60 días (`CAND_VENCE_DIAS` de la web) sin que nadie lo dijera. Si el código
+        // sigue en Nissei, el precio se miró hoy: `ts` (y `visto`) al día.
+        for (const yc of Object.entries(cands).filter(([, c]) => c && !c.prodId && provPyDeBot(c) === 'nissei' && _pyCodIg(c.cod, f.cod))) {
+          if (Math.abs((Number(yc[1].usd) || 0) - f.u) >= 0.005) candUpd.push([yc[0], yc[1], f]); else candVisto.push(yc[0]);
+        }
+        const yp = products.find((p) => p && p.codPy && provPyDeBot(p) === 'nissei' && _pyCodIg(p.codPy, f.cod));
         // La ficha se toca aunque el precio sea el mismo: así `nisseiTs` dice que se miró hoy (antes quedaba "hace 12 d").
         if (yp) fichaUpd.push([yp, f]);
       }
@@ -19572,10 +19686,12 @@ async function main() {
       console.log(`=== CATÁLOGO DE PARAGUAY · carga ${APLICAR ? '' : '(PRUEBA: no escribo nada)'} ===`);
       console.log(`${filas.length} renglones · ${nuevos} nuevos · ${cambio} cambiaron de precio · ${igual} iguales · páginas ${[...new Set(filas.map((f) => f.pg).filter((x) => x != null))].join(', ') || '(sin número)'}`);
       for (const [id, c, f] of candUpd) console.log(`  ↻ candidato ${c.nombre.slice(0, 60)}: US$ ${Number(c.usd || 0).toFixed(2)} → ${f.u.toFixed(2)}`);
+      if (candVisto.length) console.log(`  ✓ ${candVisto.length} candidato(s) siguen en el catálogo con el mismo precio: se renueva la fecha (no vencen)`);
       for (const [p, f] of fichaUpd) if (Math.abs((Number(p.nisseiUSD) || 0) - f.u) >= 0.005) console.log(`  ↻ ficha ${p.name.slice(0, 60)}: Paraguay US$ ${p.nisseiUSD ?? '—'} → ${f.u.toFixed(2)} (el costo no se toca)`);
       if (!APLICAR) { console.log('\nPRUEBA. Para guardar, agregá ";go" al final.'); return; }
       await db.patch('mlapi/pycat', upd);
-      for (const [id, c, f] of candUpd) await db.patch('cyc/candidatos_py/' + id, { usd: f.u, ts: ahora, calcTs: null, usdAntes: Number(c.usd) || null });
+      for (const [id, c, f] of candUpd) await db.patch('cyc/candidatos_py/' + id, { usd: f.u, ts: ahora, visto: ahora, calcTs: null, usdAntes: Number(c.usd) || null });
+      if (candVisto.length) { const _vu = {}; for (const id of candVisto) { _vu[id + '/ts'] = ahora; _vu[id + '/visto'] = ahora; } await db.patch('cyc/candidatos_py', _vu); }
       { const sinStP = (await db.get('cyc/py_sinstock')) || {};
         for (const [p, f] of fichaUpd) { await db.patch('cyc/products/' + p.id, { nisseiUSD: f.u, nisseiTs: ahora });
           if (sinStP[p.id]) { try { await db.set('cyc/py_sinstock/' + p.id, null); console.log(`  ↺ ${p.name.slice(0, 60)}: Nissei lo volvió a listar, le saco la marca "no había"`); } catch { /* sigue */ } } } }
@@ -19622,7 +19738,9 @@ async function main() {
       const cat = (await db.get('mlapi/pycat')) || {};
       const ents = Object.entries(cat).filter(([, e]) => e && e.n && Number(e.u) > 0);
       if (ents.length < 1000) { console.log(`❌ El catálogo tiene sólo ${ents.length} productos: no comparo contra algo incompleto.`); return; }
-      const fichas = products.filter((p) => p && p.id && (p.origen === 'py' || p.codPy));
+      // Sólo las fichas de NISSEI (etapa 3, 20/10/2026): el catálogo es de Nissei y una de Elegancia no está ni puede estar
+      // ahí (con el código comparado por el final, la de Elegancia recibía el precio de otro producto de Nissei).
+      const fichas = products.filter((p) => p && p.id && (p.origen === 'py' || p.codPy) && provPyDeBot(p) === 'nissei');
       const toks = (t) => new Set(_rvNorm(t).split(' ').filter((w) => w.length >= 3 || /^\d+$/.test(w)));
       const catToks = ents.map(([cod, e]) => [cod, e, toks(e.n)]);
       const alDia = [], cambia = [], noEsta = [], sinCod = [];
@@ -19678,6 +19796,9 @@ async function main() {
       let fechaL = null; for (const o of opc) { const m = o.trim().match(/^fecha=(\d{4}-\d{2}-\d{2})$/); if (m) fechaL = m[1]; }
       const fechaG = provs[provK] && provs[provK].fecha;
       if (fechaL && fechaG && fechaL < fechaG) { console.log(`❌ NO CARGO: esta lista de ${provNom} es del ${fechaL} y la guardada es del ${fechaG} (más nueva). Regla: nunca cargar listas viejas.`); return; }
+      // Y SIN FECHA NO SE CARGA si el proveedor ya tiene una guardada (etapa 3, 20/10/2026): sin `|fecha=` no hay cómo saber si la que
+      // viene es más vieja, y el freno de arriba no actuaba. Las opciones que no cargan productos (descartar, negocio, bsas) siguen igual.
+      if (!fechaL && fechaG && partes.length) { console.log(`❌ NO CARGO: ${provNom} ya tiene guardada la lista del ${fechaG}. Pasá la fecha de ésta con |fecha=AAAA-MM-DD (si es anterior no se carga: nunca cargar listas viejas).`); return; }
       if (fechaL && !partes.length) { console.log(`${provNom}: fecha de la lista guardada = ${fechaL}${APLICAR ? '' : ' · PRUEBA: agregá ;go'}`); if (APLICAR) await db.patch('cyc/mlconfig/listasProv/' + provK, { fecha: fechaL }); return; }
       // DESCARTAR UN PROVEEDOR (15/10/2026, él: "si todos están muy lejos del % descartamos el proveedor"): `lista:<prov>|descartar;go`
       // lo esconde de la pestaña (los datos quedan); `|volver;go` lo devuelve.
@@ -19723,7 +19844,8 @@ async function main() {
       if (!APLICAR) { console.log('\nPRUEBA. Para guardar, agregá ";go" al final.'); return; }
       await db.patch('mlapi/listas/' + provK, upd);
       const total = Object.keys({ ...cat, ...upd }).length;
-      await db.patch('cyc/mlconfig/listasProv/' + provK, { nombre: provNom, rec, n: total, ts: ahora, ...(fechaL ? { fecha: fechaL } : {}), ...(_neg ? { negocio: true } : {}) });
+      // Los números del botón (cuántos dan / falta medir) se rehacen: un costo nuevo deja de "dar" hasta medirlo (etapa 3, 20/10/2026).
+      await db.patch('cyc/mlconfig/listasProv/' + provK, { nombre: provNom, rec, n: total, ts: ahora, ...(fechaL ? { fecha: fechaL } : {}), ...(_neg ? { negocio: true } : {}), ...cuentaLista({ ...cat, ...upd }) });
       const r = (await db.get('mlapi/listas/' + provK + '/' + filas[filas.length - 1].cod)) || {};
       console.log(`\n${Math.abs((Number(r.p) || 0) - filas[filas.length - 1].p) < 1 ? '✓' : '❌'} guardado (${total} productos en la lista). Medila con \`listamedir:<proveedor>:<cuántos>:go\`.`);
       return;
@@ -19784,7 +19906,7 @@ async function main() {
       const ks = Object.keys(upd); for (let i = 0; i < ks.length; i += 600) await db.patch('mlapi/listas/' + k, Object.fromEntries(ks.slice(i, i + 600).map((x) => [x, upd[x]])));
       const re = (await db.get('mlapi/listas/' + k)) || {}; let ok = 0, n = 0;
       for (const x of ks) if (x.endsWith('/p')) { n++; const c = x.slice(0, -2); if (re[c] && Number(re[c].p) === upd[x]) ok++; }
-      await db.patch('cyc/mlconfig/listasProv/' + k, { costo: 'lista − descuento', dtoTs: Date.now() });
+      await db.patch('cyc/mlconfig/listasProv/' + k, { costo: 'lista − descuento', dtoTs: Date.now(), ...cuentaLista(re) });   // los números del botón, con el costo nuevo (etapa 3, 20/10/2026)
       console.log(`✓ releído: ${ok} de ${n} con el costo nuevo. Ahora: listamedir:${k}:<cuántos>:go`); return;
     }
     // BILLING_PROBE=listaweb:<proveedor>[;go] (19/10/2026, él con Iscos: "sólo tienen en stock lo que hay en la web de ellos. No en la
@@ -19853,7 +19975,7 @@ async function main() {
       let tot = 0; console.log('@@LISTA');
       for (const [k, pv] of Object.entries(provs)) { if (pv.desc || (solo && k !== solo.toLowerCase())) continue;
         const cat = (await db.get('mlapi/listas/' + k)) || {}; const rec = Number(pv.rec) || 0;
-        for (const [cod, e] of Object.entries(cat)) { if (!e || e.noEs || e.sacado || e.noWeb || e.vend != null || !(e.m != null && Number(e.m) >= 25 && e.mi)) continue;
+        for (const [cod, e] of Object.entries(cat)) { if (!e || e.noEs || e.sacado || e.noWeb || e.vend != null || !(e.m != null && Number(e.m) >= 25 && e.mi) || !listaCostoVigente(e)) continue;   // costo nuevo sin medir: el margen no vale (etapa 3, 20/10/2026)
           const est = (e.ok || (!e.rp && Number(e.m) < 80 && Number(e.mv) !== 1)) ? 'DA' : (Number(e.mv) === 1 ? 'REVISAR-1VEND' : 'REVISAR');   // DA = margen y nombre bien; falta saber las ventas
           console.log([k, cod, String(e.n).replace(/\|/g, '/'), Math.round((Number(e.p) || 0) * (1 + rec / 100)), e.mi, String(e.mt || '').replace(/\|/g, '/').slice(0, 80), e.mp || '', Math.round(e.m) + '%', est].join('|')); tot++; } }
       console.log('@@FIN'); console.log(`${tot} productos para mirar (los que ya tienen ventas cargadas no salen).`); return;
@@ -20100,7 +20222,9 @@ async function main() {
           console.log(`↻ ya es candidato: precio ${Number(cC.usd || 0).toFixed(2)} → ${usd.toFixed(2)}${upd.vendCarga ? ' · vendidas ' + upd.vendCarga : ''} · ${nom.slice(0, 60)} (${idC})${cC.no ? ' · sigue descartado (' + String(cC.noTipo || cC.motivo || '').slice(0, 40) + '): el robot lo vuelve a medir si es por margen' : ''}`);
           plan.push({ _upd: idC, ...upd }); continue;
         }
-        const yaP = products.find((p) => (PROV ? String(p.provPy || '') === PROV && codIg(p.codPy, cod) : codIg(p.codPy, cod)) || _n(p.name) === _n(nom));
+        // Etapa 3 (20/10/2026): el código se compara SIEMPRE contra fichas del mismo proveedor, también en Nissei (antes un
+        // Nissei `7100572` chocaba con la ficha de Elegancia `100572` y no se cargaba). El nombre igual sigue frenando.
+        const yaP = products.find((p) => (provPyDeBot(p) === (PROV || 'nissei') && codIg(p.codPy, cod)) || _n(p.name) === _n(nom));
         if (yaP) { console.log(`= ya es producto probado, no lo cargo: ${nom} → ${yaP.name} (${yaP.id})`); continue; }
         const v = parseInt(String(vend).replace(/\D/g, ''), 10);
         const okHttps = (u) => /^https:\/\//.test(u) ? u.slice(0, 300) : '';
@@ -23415,8 +23539,8 @@ async function main() {
     //
     // OJO CON QUÉ NÚMERO ES: "podés enviar hasta N" es lo que te QUEDA libre en ese momento, no el
     // cupo total. Por eso se guarda con la FECHA y el panel lo trata como una lectura que envejece:
-    // descuenta lo despachado y suma lo vendido desde entonces, y a los 7 días avisa que lo vuelvas
-    // a mirar. Un cupo de hace un mes no es un cupo.
+    // descuenta lo despachado desde entonces (lo vendido NO devuelve cupo: medido el 18/10/2026, Ayelen leída
+    // en 38 vendió 16 y ML seguía en 38), y a los 7 días avisa que lo vuelvas a mirar. Un cupo de hace un mes no es un cupo.
     //
     // QUÉ ES "GRANDE": regla suya, textual — *"el único producto que es 'grande' son los tenders.
     // nada más"*. La lista vive en `cyc/mlconfig/cupoGrandes` y cada ficha la puede pisar con
@@ -23501,8 +23625,8 @@ async function main() {
         console.log(`  ${x.cta.padEnd(8)} releído: ${g.peq}/${g.gra} ${bien ? '✓' : '✗ NO quedó como pedí'}`);
       }
       console.log(`\n✓ ${ok} de ${plan.length} guardados.`);
-      console.log('Ya sale en Armar caja: abajo de las dos barras, con lo que mandaste y vendiste desde hoy');
-      console.log('descontado, y avisa antes de cerrar si la caja se pasa. A los 7 días te pide mirarlo de nuevo.');
+      console.log('Ya sale en Armar caja: abajo de las dos barras, con lo que mandes desde hoy descontado (lo vendido');
+      console.log('NO devuelve cupo: ML no lo libera al vender), y avisa antes de cerrar si la caja se pasa. A los 7 días te pide mirarlo de nuevo.');
       return;
     }
     // BILLING_PROBE=cajacosto[:<pesos>] → LO QUE SALE MANDAR UNA CAJA A FULL.
@@ -30945,7 +31069,7 @@ async function main() {
         // Tabla completa de ML (captura suya del 04/10/2026): 4-6 meses · 6-12 meses · más de 12 meses.
         pequeno: [[0, 120, 0], [120, 180, 350], [180, 365, 3250], [365, 1e9, 7900]],
         mediano: [[0, 120, 0], [120, 180, 470], [180, 365, 4485], [365, 1e9, 10930]],
-        grande: [[0, 120, 0], [120, 180, 1355], [180, 365, 18280], [365, 1e9, 39365]],
+        grande: [[0, 60, 0], [60, 180, 1355], [180, 365, 18280], [365, 1e9, 39365]],   // 60 d, igual que STOCK_ANTIGUO_TABLA (decisión 2a, 20/10/2026)
         extragrande: [[0, 120, 0], [120, 180, 4680], [180, 365, 47840], [365, 1e9, 92400]],
       };
       // Los lotes que ML informa en su Excel "Cargos por stock antiguo" (`cyc/lotesfull/<código de Full>`, comando
@@ -38740,11 +38864,18 @@ async function main() {
       try { repoE = (await db.get('cyc/reponer')) || {}; } catch { console.log('(no pude leer cyc/reponer: lo que tarda comprar va por el respaldo 📅)'); }
       try { sinStE = (await db.get('cyc/py_sinstock')) || {}; } catch { /* respaldo sin la marca */ }
       let noConsE = {}, ofiEntE = {}; try { noConsE = (await db.get('cyc/noconsigo')) || {}; ofiEntE = (await db.get('cyc/ofientro')) || {}; } catch { /* sin la marca */ }
+      // 20/10/2026 · etapa 3: el respaldo también sabe de "no traer más" (`cyc/notraer`, igual que `noTraerDe` de la web):
+      // un producto marcado no se repone, y sin esto pasaba a "Bs As 14 d" en cuanto `cyc/reponer` tenía más de 3 días.
+      let notraerE = {}; try { notraerE = (await db.get('cyc/notraer')) || {}; } catch { /* sin la marca */ }
       try { for (const c of Object.values((await db.get('cyc/compraspy')) || {})) if (c && c.estado === 'camino') for (const it of (c.items || [])) if (it && it.prodId) compPyE[it.prodId] = c.fecha; } catch { /* */ }
+      // 📋 Listas (20/10/2026, decisión 1a): un probado pedido a una lista que viaja (como `_pedidoViaja` de la web: ~7 días).
+      const compLiE = {}; try { for (const c of Object.values((await db.get('cyc/compraslista')) || {})) if (c && c.estado === 'camino') for (const it of (c.items || [])) if (it && it.prodId) compLiE[it.prodId] = { f: c.fecha, de: String(c.provNom || c.prov || 'la lista') }; } catch { /* */ }
       // Respaldo si la web todavía no escribió `cyc/reponer` de ese producto (o es de hace más de 3 días).
       const repoFallback = (pid) => {
         const p = pById[pid] || {};
+        if (compLiE[pid]) { const e = (ahora - Date.parse(compLiE[pid].f + 'T12:00:00-03:00')) / 864e5; const f = Math.max(0, Math.ceil(7 - (e || 0))); return { d: f + 10, txt: `📅 viene en el pedido a ${compLiE[pid].de} del ${compLiE[pid].f} (${f > 0 ? '~' + f + ' d' : 'ya debería haber llegado'}) + 10 d de caja a Full` }; }
         if (compPyE[pid]) { const e = (ahora - Date.parse(compPyE[pid] + 'T12:00:00-03:00')) / 864e5; const f = Math.max(0, Math.ceil(7 - (e || 0))); return { d: f + 10, txt: `📅 viene en el pedido de Paraguay del ${compPyE[pid]} (${f > 0 ? '~' + f + ' d' : 'ya debería haber llegado'}) + 10 d de caja` }; }
+        { const nt = notraerE[pid]; if (nt && !nt.permitido) return { d: REPO_SIN_FECHA_E, inf: true, txt: '📅 marcado "no traer más": no se repone' }; }
         if (p.origen === 'py' && sinStE[pid]) return { d: REPO_SIN_FECHA_E, inf: true, txt: '📅 Nissei no lo tiene: sin fecha' };
         { const r0 = noConsE[pid], nc = typeof r0 === 'number' ? r0 : Number(r0 && r0.todo) || 0; if (p.origen !== 'py' && nc && !(Number(ofiEntE[pid]) > nc)) return { d: REPO_SIN_FECHA_E, inf: true, txt: '📅 no se consigue (marcado en Pedidos): sin fecha' }; }
         return p.origen === 'py' ? { d: 17, txt: '📅 Paraguay 17 d (sin el dato de la web: no sé si el precio da)' } : { d: 14, txt: '📅 Bs As/Paulvic 14 d' };
@@ -38815,18 +38946,33 @@ async function main() {
         // que tarda COMPRAR según la situación del producto (`cyc/reponer`, lo escribe la web con la misma
         // cuenta del semáforo de Pedidos): pedido en camino, precio de Paraguay que no da (sin fecha), etc.
         const camK = cam[k] || [];
-        const fCam = camK.map((c) => Date.parse(c.fecha)).filter((t) => t > 0);
         let comp = repoE[pid] || repoFallback(pid);
         // "🚫 no lo consigo" de UN color (16/10/2026, él: "si clickeo en una variante es porque esa sola no se consigue"):
         // ese color va sin reposición hasta que entre algo a la oficina después de la marca y ese color tenga unidades ahí.
+        // 20/10/2026 · etapa 3: también "NO VIENE MÁS" (`cyc/noconsigo/<prod>/nunca/<aroma>`, lo pone `pvped:llego` cuando un
+        // aroma del Paulvic se pidió y no vino), igual que `_noConsigoActivo` de la web: no se cae al entrar mercadería. Antes
+        // el robot sólo miraba `v` y ese aroma seguía con "Paulvic ~1 semana + caja" (no era escasez).
         if (iv > 0 && !comp.inf && (pById[pid] || {}).origen !== 'py') {
-          const r0 = noConsE[pid], vt = r0 && typeof r0 === 'object' ? Number((r0.v || {})[k.slice(iv + 5)]) || 0 : 0;
-          if (vt && !(Number(ofiEntE[pid]) > vt && ofi > 0)) comp = { d: REPO_SIN_FECHA_E, inf: true, txt: 'no se consigue este color (marcado en Pedidos): sin fecha' };
+          const r0 = noConsE[pid], ck = k.slice(iv + 5), vt = r0 && typeof r0 === 'object' ? Number((r0.v || {})[ck]) || 0 : 0;
+          const nu = r0 && typeof r0 === 'object' ? (r0.nunca || {})[ck] : null;
+          if (nu) comp = { d: REPO_SIN_FECHA_E, inf: true, txt: 'no viene más este color (se pidió y el proveedor no lo mandó): sin fecha' };
+          else if (vt && !(Number(ofiEntE[pid]) > vt && ofi > 0)) comp = { d: REPO_SIN_FECHA_E, inf: true, txt: 'no se consigue este color (marcado en Pedidos): sin fecha' };
+        }
+        // 20/10/2026 · etapa 3: `cyc/reponer` es del PRODUCTO. Si dice "mandar caja" desde la oficina pero de ESTE color no hay
+        // nada en la oficina, para este color no vale: se repone comprando (el respaldo, que mira no traer / no lo consigo).
+        if (iv > 0 && !comp.inf && ofi === 0 && /en la oficina → mandar caja/.test(String(comp.txt || ''))) {
+          const fb = repoFallback(pid); comp = { ...fb, txt: fb.txt + ' (la oficina tiene de otros colores, no de éste)' };
         }
         let lead, leadTxt;
-        if (camK.length) { const e = fCam.length ? (ahora - Math.min(...fCam)) / 864e5 : 0; lead = Math.max(1, Math.ceil(8 - e)); leadTxt = `caja despachada: llega en ~${lead} d`; }
-        else if (ofi > 0) { lead = 10; leadTxt = `hay ${ofi} u. en la oficina: armar y mandar ~10 d`; }
-        else { lead = comp.inf ? Infinity : comp.d; leadTxt = `sin caja ni oficina · comprar: ${comp.txt}`; }
+        // LA CAJA VIEJA NO TAPA LA ESCASEZ (20/10/2026 · etapa 3, misma regla que `escasezDe` de la web): el plazo sale sólo
+        // de las cajas de MENOS de 8 días (la más nueva de ésas). Antes salía de la más VIEJA (`Math.min`): una caja de hace
+        // 20 d con 1 u. que ML no dio de alta decía "llega en 1 d" y la escasez de Full no saltaba. Las vencidas siguen
+        // sumando unidades en `tot`, pero el plazo pasa a la oficina o a comprar. Caja sin fecha = recién despachada (como antes).
+        const eCam = camK.map((c) => { const t = Date.parse(c.fecha); return t > 0 ? (ahora - t) / 864e5 : 0; });
+        const eFresca = eCam.filter((e) => e < 8);
+        if (eFresca.length) { const e = Math.min(...eFresca); lead = Math.max(1, Math.ceil(8 - e)); leadTxt = `caja despachada: llega en ~${lead} d`; }
+        else if (ofi > 0) { lead = 10; leadTxt = `hay ${ofi} u. en la oficina: armar y mandar ~10 d${camK.length ? ' (la caja en camino tiene 8+ días: no cuenta como que llega)' : ''}`; }
+        else { lead = comp.inf ? Infinity : comp.d; leadTxt = `${camK.length ? 'la caja en camino tiene 8+ días y no hay oficina' : 'sin caja ni oficina'} · comprar: ${comp.txt}`; }
         // Y lo que hay en total (Full + camino + oficina) tiene que durar hasta que llegue una COMPRA nueva.
         const tot = r14 > 0 ? (st + camK.reduce((a, c) => a + c.u, 0) + ofi) / r14 : Infinity;
         const leadComp = comp.inf ? Infinity : comp.d;
@@ -39202,6 +39348,18 @@ async function main() {
         for (const x of peds.slice(0, 12)) console.log(`· ${x._c} · ${corta(x.producto, 40)} · comprar ${x.cantidad} · ${x.estado || '?'} · en riesgo ${money(Math.round(Number(x.riesgoComprar ?? x.riesgo) || 0))}/mes${x.auto === false ? ' · a mano' : ''}`);
         if (peds.length > 12) console.log(`  (y ${peds.length - 12} pedidos más…)`);
       } catch (eP2) { console.log('pedidos: no pude leerlos · ' + eP2.message); }
+      // 8b) Candidatos de Paraguay descartados POR MARGEN que hoy vuelven a dar (etapa 3, 20/10/2026). Con SOLO_DATOS el robot no
+      // les saca la cruz: quedaban escondidos en Descartados aunque el último número del robot (después del descarte) diera el piso.
+      try {
+        const candsI = (await db.get('cyc/candidatos_py')) || {};
+        const blandoI = (c) => c.noTipo === 'margen' || (!c.noTipo && /abajo de tu piso|no llega|da -?\d/i.test(String(c.motivo || '')));
+        const dan = Object.entries(candsI).filter(([, c]) => c && c.no && !c.prodId && !c.nunca && blandoI(c) && c.margen != null && isFinite(c.margen)
+          && Number(c.margen) >= candPisoDe(c) && Number(c.calcTs) > (Number(c.noTs) || 0));
+        console.log(`\n── 8b · CANDIDATOS DE PARAGUAY QUE DAN DE NUEVO (${dan.length}) · descartados por margen, hoy pasan el piso: decidir si vuelven ──`);
+        for (const [cid, c] of dan.sort((a, b) => Number(b[1].margen) - Number(a[1].margen)).slice(0, 15)) console.log(`· ${cid} · ${provPyDeBot(c)} · ${corta(c.nombre, 50)} · cód ${c.cod || '?'} · ${Number(c.margen).toFixed(1)}% (piso ${candPisoDe(c)}%) · US$ ${(Number(c.usd) || 0).toFixed(2)}`);
+        if (dan.length > 15) console.log(`  (y ${dan.length - 15} más…)`);
+        if (!dan.length) console.log('· ninguno');
+      } catch (eDN) { console.log('candidatos que dan de nuevo: no pude leerlos · ' + eDN.message); }
       // 9) Cajas en camino a Full: las viejas o con faltantes
       try {
         const envs = (await db.get('cyc/envios_full')) || {}; const abiertas = []; let nAb = 0; const completas = [];
@@ -39231,7 +39389,7 @@ async function main() {
         // de la hora en `mlapi/cajasciegas`; sólo se muestran las que siguen abiertas con el mismo seguimiento.
         try {
           const cg = (await db.get('mlapi/cajasciegas')) || {}; const MOT = { sinpub: 'sin publicación de Full con código en esa cuenta (normal si es la 1ª caja de un producto nuevo: se lee cuando ML la da de alta) · si no, vincular',
-            color: 'ninguna publicación de Full de esa cuenta nombra ese color → fijarvar', sincolor: 'renglón sin color de un producto con colores', ml: 'ML no contestó (429): se reintenta sola' };
+            color: 'ninguna publicación de Full de esa cuenta nombra ese color → fijarvar', sincolor: 'renglón sin color de un producto con colores', ml: 'ML no contestó (429): se reintenta sola', tope: 'demasiados movimientos para leer de una vez (vende mucho): si ML ya la dio entera → cajallego' };
           const vivas = Object.entries(cg.cajas || {}).filter(([k, x]) => { const [eid, ci] = k.split('__'); const c = ((envs[eid] || {}).cajasDet || [])[Number(ci)]; return c && !c.recibida && String(c.track || '') === String(x.track || ''); });
           if (cg.ts) console.log(`  lectura de la hora (${new Date(cg.ts - 3 * 36e5).toISOString().slice(5, 16).replace('T', ' ')}): ${cg.fallos || 0} consultas de movimientos fallaron${cg.error ? ' · ' + cg.error.slice(0, 70) : ''}`);
           for (const [, x] of vivas) {
@@ -39836,14 +39994,15 @@ async function main() {
     // 140 Pedidos sale casi vacío. Por producto (y color): ventas 30/60/180 d, última venta, días con stock en 30, Full por
     // cuenta, oficina, en camino a Full, viajando de Paraguay y del Paulvic, neto y costo. No decide nada: los números para decidir.
     if (/^pedidostodo$/.test(String(process.env.BILLING_PROBE || ''))) {
-      const ks = ['cyc/inventory', 'cyc/mllinks', 'cyc/ventaprod', 'cyc/envios_full', 'cyc/products', 'cyc/stockhist', 'cyc/compraspy', 'cyc/pedidospv', 'cyc/pedidos_papelera', 'cyc/notraer', 'cyc/proveedores', 'cyc/finanzas/tipo_cambio', 'cyc/claudedecide/ped', 'cyc/cajasentrado', 'cyc/autoprecio'];
+      // `cyc/compraslista` al final (20/10/2026, decisión 1a): lo ya probado pedido a una lista viaja como Paraguay (`LIviaja`).
+      const ks = ['cyc/inventory', 'cyc/mllinks', 'cyc/ventaprod', 'cyc/envios_full', 'cyc/products', 'cyc/stockhist', 'cyc/compraspy', 'cyc/pedidospv', 'cyc/pedidos_papelera', 'cyc/notraer', 'cyc/proveedores', 'cyc/finanzas/tipo_cambio', 'cyc/claudedecide/ped', 'cyc/cajasentrado', 'cyc/autoprecio', 'cyc/compraslista'];
       // Una lectura que FALLA no es un nodo vacío (revisión 9, 13/10/2026): con `{}` salían 0 ventas o 0 en camino y los
       // scripts pedían de más. Si algo no se leyó, se dice y no se imprime nada (decide_pedidos.py rechaza un log con ⚠️ NO LEÍ).
       const FALLO = Symbol('fallo');
       const R = await Promise.all(ks.map((k) => db.get(k).catch(() => FALLO)));
       const noLei = ks.filter((k, i) => R[i] === FALLO);
       if (noLei.length) { console.log(`⚠️ NO LEÍ: ${noLei.join(' · ')} — no armo la lista a medias`); return; }
-      const [I, L, VP, ENV, PR, SH, CPY, PV, PAP, NT, PROV, TC, CD, CE, AP] = R.map((x) => x || {});
+      const [I, L, VP, ENV, PR, SH, CPY, PV, PAP, NT, PROV, TC, CD, CE, AP, CLI] = R.map((x) => x || {});
       // Lo que no vino del Paulvic "no viene más" (17/10/2026): `cyc/noconsigo/<prod>/nunca/<aroma>` → el renglón dice NUNCA y no se pide.
       let NCp; try { NCp = (await db.get('cyc/noconsigo')) || {}; } catch { console.log('⚠️ NO LEÍ: cyc/noconsigo — no armo la lista a medias'); return; }
       const nuncaPD = {}; for (const [pid, r] of Object.entries(NCp)) for (const k of Object.keys((r && r.nunca) || {})) nuncaPD[pid + '#' + k] = true;
@@ -39863,7 +40022,11 @@ async function main() {
       const S = {};   // pid -> {t30,t60,t180,ult, v:{var:{t30,t60,t180,ult}}}
       const addVenta = (v, k, q) => {
         const s = S[v.prodId] || (S[v.prodId] = { t30: 0, t60: 0, t180: 0, ult: '', v: {}, rem: 0, barata: 0 });
-        const add = (o) => { o.t180 += q; if (k >= k60) o.t60 += q; if (k >= k30) o.t30 += q; if (k > o.ult) o.ult = k; };
+        // De la PRIMERA a la ÚLTIMA venta en 180 d (t0/t1, sólo con la hora real de la venta, `v.ts`): lo mismo que mide
+        // `ventasHistoricas` de la web (etapa 3, 20/10/2026). Lo agotado se dividía por 180 fijo: el Adaptador 8 en 1 (35 en junio,
+        // agotado desde julio) daba 6 por mes cuando vendía más de 1 por día mientras tuvo.
+        const t = Number(v.ts) || 0;
+        const add = (o) => { o.t180 += q; if (k >= k60) o.t60 += q; if (k >= k30) o.t30 += q; if (k > o.ult) o.ult = k; if (t > 0) { if (!(o.t0 <= t)) o.t0 = t; if (!(o.t1 >= t)) o.t1 = t; } };
         add(s); const va = varDe(v); if (va) add(s.v[va] || (s.v[va] = { t30: 0, t60: 0, t180: 0, ult: '' }));
       };
       // ¿VENTA BARATA = REMATE? Con la regla ÚNICA del robot y la web (`clasificarRemates`, 12/10/2026, él eligió 1a):
@@ -39874,13 +40037,18 @@ async function main() {
       // (sin remates). El precio de hoy puede estar subido por escasez y el máximo saldría inflado.
       const pU = {}, med = (a) => { if (!a || !a.length) return 0; const b = [...a].sort((x, y) => x - y); return Math.round(b.length % 2 ? b[(b.length - 1) / 2] : (b[b.length / 2 - 1] + b[b.length / 2]) / 2); };
       const lineaDe = async (mla) => { if (!(mla in LIN)) { try { LIN[mla] = (await db.get('mlapi/linea/' + mla)) || {}; } catch { LIN[mla] = null; } } return LIN[mla]; };
-      const [nsP, rvP, apP, nrP, rxP] = await Promise.all(['cyc/nosubir', 'cyc/rescateventa', 'cyc/autoprecio', 'cyc/norepo', 'cyc/repoextra'].map((k) => db.get(k).catch(() => FALLO)));
-      if ([nsP, rvP, apP, nrP, rxP].includes(FALLO)) { console.log('⚠️ NO LEÍ: cyc/nosubir, rescateventa, autoprecio, norepo o repoextra — no armo la lista a medias'); return; }
+      const [nsP, rvP, apP, nrP, rxP, esP, ccP, ofP] = await Promise.all(['cyc/nosubir', 'cyc/rescateventa', 'cyc/autoprecio', 'cyc/norepo', 'cyc/repoextra', 'cyc/estrategia', 'cyc/claudecambios', 'cyc/ofientro'].map((k) => db.get(k).catch(() => FALLO)));
+      if ([nsP, rvP, apP, nrP, rxP, esP, ccP, ofP].includes(FALLO)) { console.log('⚠️ NO LEÍ: cyc/nosubir, rescateventa, autoprecio, norepo, repoextra, estrategia, claudecambios u ofientro — no armo la lista a medias'); return; }
       const clP = await clasificarRemates(db, VP, { nosubir: nsP || {}, rescv: rvP || {}, autoprecio: apP || {}, lineaDe, desde: k180 });
+      // EL MISMO FILTRO QUE LA WEB (etapa 3, 20/10/2026): sólo se saltean las canceladas de verdad (`_esCancelada`: cancelada o
+      // devolución); un RECLAMO cuenta como venta, igual que en Pedidos de la web. Y `ventasDesde` (la ficha se reusó para otro
+      // producto: las ventas de antes son del anterior). Antes se salteaba toda `cancelada` y no se miraba `ventasDesde`.
+      const _esCancW = (v) => !!(v && v.cancelada && (v.tipoCancelacion === 'cancelada' || v.tipoCancelacion === 'devolucion'));
       for (const [k, ents] of Object.entries(VP)) {
         if (k < k180) continue;
         for (const [id0, v] of Object.entries(ents || {})) {
-          if (!v || !v.prodId || v.cancelada) continue;
+          if (!v || !v.prodId || _esCancW(v)) continue;
+          { const pD = byId[v.prodId]; if (pD && Number(pD.ventasDesde) > 0 && (Number(v.ts) || Date.parse(k.slice(0, 10).replace(/_/g, '-') + 'T12:00:00-03:00')) < Number(pD.ventasDesde)) continue; }
           const q = Number(v.qty) || 1, inf = clP.info[k.slice(0, 10) + '|' + (v.id || id0)];
           const s = S[v.prodId] || (S[v.prodId] = { t30: 0, t60: 0, t180: 0, ult: '', v: {}, rem: 0, barata: 0 });
           if (inf && inf.remate) { if (k >= k60) s.rem += q; rematesVistos[v.prodId] = inf.porque; continue; }
@@ -39913,6 +40081,18 @@ async function main() {
           if (falta > 0) viaPy[pid] = (viaPy[pid] || 0) + falta; }
       }
       const viaPv = {}; for (const c of Object.values(PV)) if (c && c.estado === 'camino' && c.prodId) for (const it of (c.items || [])) if (it && it.v) { const o = viaPv[c.prodId] || (viaPv[c.prodId] = {}); o[it.v] = (o[it.v] || 0) + (Number(it.u) || 0); }
+      // 📋 LO PEDIDO A UNA LISTA QUE VIAJA (20/10/2026, decisión 1a): la misma cuenta que `listaEnCamino` de la web. Renglones con
+      // prodId (probados) de `cyc/compraslista` en camino, por color (clave sin acentos), y lo llegado que falta contar en la oficina
+      // (7 días, `ofiAlLlegar`, como Paraguay). Sale como `LIviaja N` (total del producto y de cada color) y decide_pedidos.py lo resta.
+      const viaLi = {}; const addLi = (pid, va, u) => { if (!pid || !(u > 0)) return; const o = viaLi[pid] || (viaLi[pid] = { tot: 0, v: {} }); o.tot += u; const k = va ? sid(String(va).toLowerCase()) : ''; if (k) o.v[k] = (o.v[k] || 0) + u; };
+      for (const c of Object.values(CLI)) {
+        if (!c) continue;
+        if (c.estado === 'camino') { for (const it of (c.items || [])) if (it && it.prodId) addLi(it.prodId, String(it.variante || ''), parseInt(it.u) || 0); continue; }
+        if (c.estado !== 'llegado' || !c.ofiAlLlegar || !(Number(c.llegoTs) > 0) || hoy - Number(c.llegoTs) > 7 * 864e5) continue;
+        const uP = {}; for (const it of (c.items || [])) if (it && it.prodId) uP[it.prodId] = (uP[it.prodId] || 0) + (parseInt(it.u) || 0);
+        for (const [pid, u] of Object.entries(uP)) { if (!(pid in c.ofiAlLlegar)) continue;
+          const subio = Math.max(0, (parseInt(I[pid + '__Oficina_Mati']) || 0) - (parseInt(c.ofiAlLlegar[pid]) || 0)); addLi(pid, '', Math.max(0, u - subio)); }
+      }
       // DÍAS CON STOCK EN 30 (revisión 9, 13/10/2026): del registro hora por hora (`cyc/stocklog/cambios`, la misma cuenta que
       // `escasez` y el cerebro), los días que el registro todavía no miraba (antes del 24/09) cuentan con stock; pide 7+ días de registro. El
       // `stockhist` solo mira desde la ÚLTIMA vez que volvió el stock: un corte de un día hacía "5 días con stock" a algo que
@@ -39954,25 +40134,70 @@ async function main() {
         const pv = /paulvic/i.test(provN[p.proveedorId] || '') || /paulvic/i.test(p.name || '');
         (pv ? grupos.paulvic : p.origen === 'py' ? grupos.py : grupos.bsas).push(p);
       }
+      // LAS SUBAS POR ESCASEZ Y POR PRUEBA DE TECHO, PUBLICACIÓN POR PUBLICACIÓN (etapa 3, 20/10/2026). Se marcaban buscando
+      // palabras en el motivo de `cyc/autoprecio` ("escas", "techo"), pero las que pongo con `decido …#escasez` / `#techo` no las
+      // llevan: 0 de 7 escasez y 0 de 12 techo se reconocían, y `decide_pedidos.py` tomaba el ritmo frenado por la suba como el
+      // normal (compraba de menos). Ahora cada cambio de precio sale de `cyc/autoprecio` (el último) Y de `cyc/claudecambios`
+      // (todos, no se pisan) y su tipo de la ESTRATEGIA que tenía la publicación en ese momento (`cyc/estrategia/<MLA>`); sin
+      // estrategia, del motivo (`tagDeMotivo`). Todos los de 45 días (antes sólo 3) y cada color con SUS publicaciones.
+      const ESC_TAGS = new Set(['escasez', 'sinrepo']), PRU_TAGS = new Set(['techo', 'nuevo']);
+      const tagEnMomento = (mla, ts) => {
+        const h = (esP || {})[mla] || {}; let best = null, dBest = Infinity, antes = null, tAntes = -Infinity;
+        for (const [k0, x] of Object.entries(h)) { const kt = Number(k0); if (!(kt > 0) || !x || !x.t) continue;
+          const d = Math.abs(kt - ts); if (d <= 30 * 60e3 && d < dBest) { best = x.t; dBest = d; }   // la que se anotó con ese mismo cambio
+          if (kt <= ts && kt > tAntes) { antes = x.t; tAntes = kt; } }   // si no, la vigente en ese momento
+        return best || antes;
+      };
+      const marcaCambio = (mla, ev) => {
+        if (!(ev.a > ev.de)) return '';
+        let t = tagEnMomento(mla, ev.ts); if (!t || t === 'sindecidir') t = tagDeMotivo(ev.motivo);
+        if (ESC_TAGS.has(t) || /escas|estir/i.test(String(ev.motivo || ''))) return 'ESC';
+        if (PRU_TAGS.has(t) || /techo|prueba|probar/i.test(String(ev.motivo || ''))) return 'PRU';
+        return '';
+      };
+      const ccPorMla = {}; for (const x of Object.values(ccP || {})) if (x && x.mla && x.de != null && x.a != null) (ccPorMla[x.mla] = ccPorMla[x.mla] || []).push(x);
+      const cambiosDe = (mlas) => {
+        const evs = [];
+        for (const mla of mlas) {
+          const lst = [...(ccPorMla[mla] || []).map((x) => ({ de: Number(x.de), a: Number(x.a), ts: Number(x.ts) || 0, motivo: x.motivo }))];
+          const a = AP[mla]; if (a && a.de != null && a.a != null) { const ev = { de: Number(a.de), a: Number(a.a), ts: Number(a.ts) || 0, motivo: a.motivo };
+            if (!lst.some((y) => y.a === ev.a && Math.abs(y.ts - ev.ts) < 10 * 60e3)) lst.push(ev); }   // el mismo cambio anotado en los dos lados va una vez
+          for (const ev of lst) { const d = Math.round((hoy - ev.ts) / 864e5); if (ev.ts > 0 && d <= 45) evs.push({ ...ev, d, m: marcaCambio(mla, ev) }); }
+        }
+        return evs.sort((x, y) => y.ts - x.ts).map((ev) => `${ev.a > ev.de ? '⬆️' : '⬇️'}$${ev.de}→$${ev.a} ${ev.d}d${ev.m}`);
+      };
+      // De la primera a la última venta en 180 d, con piso de 7 días (el `dias` de `ventasHistoricas` de la web). Sin hora de venta, nada.
+      const histD = (o) => (o && o.t0 > 0 && o.t1 > 0) ? Math.round(Math.max(7, (o.t1 - o.t0) / 864e5 + 1) * 10) / 10 : null;
       const ln = (p) => {
         const s = S[p.id] || { t30: 0, t60: 0, t180: 0, ult: '', v: {}, rem: 0 };
         const full = C4.map((c) => n0(I[p.id + '__' + c])), ft = full.reduce((a, b) => a + b, 0), casa = n0(I[p.id + '__' + OF]);
-        const cm = (cam[p.id] || {}).tot || 0, py = viaPy[p.id] || 0, pvv = Object.values(viaPv[p.id] || {}).reduce((a, b) => a + b, 0);
+        const cm = (cam[p.id] || {}).tot || 0, py = viaPy[p.id] || 0, pvv = Object.values(viaPv[p.id] || {}).reduce((a, b) => a + b, 0), liv = (viaLi[p.id] || {}).tot || 0;
         const cost = Math.round((Number(p.costFullUSD) || Number(p.costUSD) || 0) * tc);
-        const pr = Math.round(Number(p.netoCalcPrecio) || 0), cam45 = [];
-        for (const [mla, e] of Object.entries(L)) { if (!e || e.prodId !== p.id || e.ignored) continue; const a = AP[mla]; if (!a || a.de == null || a.a == null) continue;
-          const d = Math.round((hoy - (Number(a.ts) || 0)) / 864e5); if (d <= 45) cam45.push(`${a.a > a.de ? '⬆️' : '⬇️'}$${a.de}→$${a.a} ${d}d${a.a > a.de && /escas|estir/i.test(String(a.motivo || '')) ? 'ESC' : a.a > a.de && /techo|prueba|probar/i.test(String(a.motivo || '')) ? 'PRU' : ''}`); }
-        const dec0 = ` · precio $${pr}${cam45.length ? ' (' + cam45.slice(0, 3).join(' ') + ')' : ''}`;
+        const pr = Math.round(Number(p.netoCalcPrecio) || 0);
+        const mlasP = Object.entries(L).filter(([mla, e]) => e && e.prodId === p.id && !e.ignored && /^MLA/i.test(mla));
+        const colorMla = (mla, e) => e.variant ? String(e.variant) : varianteDeTitulo(e.title || '', p.variantes || []);
+        const cam45 = cambiosDe(mlasP.map(([mla]) => mla));
+        const dec0 = ` · precio $${pr}${cam45.length ? ' (' + cam45.join(' ') + ')' : ''}`;
+        const hP = histD(s);
+        const esBsasP = p.origen !== 'py' && !(/paulvic/i.test(provN[p.proveedorId] || '') || /paulvic/i.test(p.name || ''));   // el mismo grupo que BSAS de abajo
         const m60 = med(pU[p.id]);
         const dec = dec0 + (m60 ? ` · med60 $${m60}` : '') + ` · ctas [${ctasDe(p.id).map((c) => c.slice(0, 2)).join(' ')}]` + (CD[p.id] ? ` · YA DECIDÍ ${CD[p.id].u != null ? CD[p.id].u : JSON.stringify(CD[p.id].vars || {})}` : '');
-        console.log(`\n${p.id} · ${String(p.name).slice(0, 55)} · v30 ${s.t30} v60 ${s.t60} v180 ${s.t180} · últ ${s.ult ? s.ult.slice(8, 10) + '/' + s.ult.slice(5, 7) : '—'}${s.rem ? ' · REMATE ' + s.rem : ''}${s.barata ? ' · BARATA ' + s.barata : ''} · dCS ${dCS(p.id)}${cortes60(p.id) ? ' · cortes ' + cortes60(p.id) : ''} · Full ${ft} [${C4.map((c, i) => full[i] ? c.slice(0, 2) + full[i] : '').filter(Boolean).join(' ')}] · casa ${casa} · camino ${cm}${py ? ' · PYviaja ' + py : ''}${pvv ? ' · PVviaja ' + pvv : ''} ${(p.variantes || []).length ? ' · colores ' + p.variantes.length : ''} · neto $${Math.round(Number(p.netoCalc) || 0)} costo $${cost}${p.nisseiUSD ? ' · PY US$' + p.nisseiUSD : ''}${dec}`);
+        console.log(`\n${p.id} · ${String(p.name).slice(0, 55)} · v30 ${s.t30} v60 ${s.t60} v180 ${s.t180} · últ ${s.ult ? s.ult.slice(8, 10) + '/' + s.ult.slice(5, 7) : '—'}${s.rem ? ' · REMATE ' + s.rem : ''}${s.barata ? ' · BARATA ' + s.barata : ''} · dCS ${dCS(p.id)}${cortes60(p.id) ? ' · cortes ' + cortes60(p.id) : ''} · Full ${ft} [${C4.map((c, i) => full[i] ? c.slice(0, 2) + full[i] : '').filter(Boolean).join(' ')}] · casa ${casa} · camino ${cm}${py ? ' · PYviaja ' + py : ''}${pvv ? ' · PVviaja ' + pvv : ''}${liv ? ' · LIviaja ' + liv : ''} ${(p.variantes || []).length ? ' · colores ' + p.variantes.length : ''} · neto $${Math.round(Number(p.netoCalc) || 0)} costo $${cost}${p.nisseiUSD ? ' · PY US$' + p.nisseiUSD : ''}${hP ? ' · hist ' + hP + 'd' : ''}${dec}`);
+        // Los colores de la FICHA (etapa 3, 20/10/2026): un color sin ventas ni mercadería no tiene renglón, y un juicio de ese color
+        // (ej. Pizarra 12" Rojo=4) se perdía sin aviso. Con esta lista `decide_pedidos.py` lo aplica igual y avisa si el color no existe.
+        if ((p.variantes || []).length) console.log(`   ## colores ${JSON.stringify((p.variantes || []).map(String))}`);
         if (rematesVistos[p.id]) console.log(`   (remate: ${rematesVistos[p.id]})`);
         for (const va of (p.variantes || [])) {
           const sv = s.v[va] || { t30: 0, t60: 0, t180: 0, ult: '' };
           const fv = C4.reduce((a, c) => a + n0(I[p.id + '__' + c + '__v__' + sid(va)]), 0), cv = n0(I[p.id + '__' + OF + '__v__' + sid(va)]);
-          const mv = ((cam[p.id] || {}).v || {})[va] || 0, pvx = (viaPv[p.id] || {})[va] || 0;
-          if (!sv.t180 && !fv && !cv && !mv && !pvx) continue;
-          console.log(`   # ${va} · v30 ${sv.t30} v60 ${sv.t60} v180 ${sv.t180} · últ ${sv.ult ? sv.ult.slice(8, 10) + '/' + sv.ult.slice(5, 7) : '—'} · dCS ${dCS(p.id, '__v__' + sid(va), dCS(p.id))}${cortes60(p.id, '__v__' + sid(va)) ? ' · cortes ' + cortes60(p.id, '__v__' + sid(va)) : ''} · Full ${fv} · casa ${cv} · camino ${mv}${pvx ? ' · PVviaja ' + pvx : ''}${nuncaPD[p.id + '#' + sid(va)] ? ' · NUNCA' : ''}`);
+          const mv = ((cam[p.id] || {}).v || {})[va] || 0, pvx = (viaPv[p.id] || {})[va] || 0, lix = ((viaLi[p.id] || {}).v || {})[sid(String(va).toLowerCase())] || 0;
+          // ✋ LO QUE CAMBIÓ ÉL A MANO EN PEDIDOS (`claudedecide/ped/<id>/mano/<color>`, manda en la web sobre lo mío). En Bs As vence
+          // cuando entra mercadería a la oficina DESPUÉS del cambio (`cyc/ofientro`, misma regla que la web): sale "vencida".
+          const mo = (((CD[p.id] || {}).mano) || {})[sid(String(va).toLowerCase())];
+          const manoTxt = mo && mo.u != null ? ` · mano ${Math.max(0, parseInt(mo.u) || 0)}${esBsasP && Number((ofP || {})[p.id]) > (Number(mo.ts) || 0) ? ' vencida' : ''}` : '';
+          if (!sv.t180 && !fv && !cv && !mv && !pvx && !lix && !manoTxt) continue;
+          const camV = cambiosDe(mlasP.filter(([mla, e]) => colorMla(mla, e) === va).map(([mla]) => mla)), hV = histD(sv);
+          console.log(`   # ${va} · v30 ${sv.t30} v60 ${sv.t60} v180 ${sv.t180} · últ ${sv.ult ? sv.ult.slice(8, 10) + '/' + sv.ult.slice(5, 7) : '—'} · dCS ${dCS(p.id, '__v__' + sid(va), dCS(p.id))}${cortes60(p.id, '__v__' + sid(va)) ? ' · cortes ' + cortes60(p.id, '__v__' + sid(va)) : ''} · Full ${fv} · casa ${cv} · camino ${mv}${pvx ? ' · PVviaja ' + pvx : ''}${lix ? ' · LIviaja ' + lix : ''}${nuncaPD[p.id + '#' + sid(va)] ? ' · NUNCA' : ''}${hV ? ' · hist ' + hV + 'd' : ''}${manoTxt}${camV.length ? ' · cambios (' + camV.join(' ') + ')' : ''}`);
         }
       };
       console.log(`dólar ${tc} · ventana 30 d desde ${k30} · ${prods.length} fichas`);
@@ -40439,6 +40664,12 @@ async function main() {
       if (notasCtx.length) {
         const prodsD = Object.values((await db.get('cyc/products')) || {});
         const _limpiosDec = new Set(); let _cajaDecViejas = null;
+        // DESDE CUÁNDO PEDIDOS PIDE COMPRAR, UNA VEZ POR PRODUCTO (etapa 3, 20/10/2026): se recalculaba después de CADA renglón, y en un
+        // producto con colores el primero borra los colores viejos: si pedía 0 se borraba `desde` y el siguiente lo ponía HOY. Así los
+        // 10 días de "Bs As no se consigue" no llegaban nunca. Ahora se guarda cómo estaba el producto la primera vez que esta corrida
+        // lo toca (`desde` y si pedía algo) y se decide UNA vez al final: si sigue pidiendo y ya pedía, se conserva el `desde` viejo.
+        const _desdePed = new Map();
+        const _totPed = (bo) => bo ? (Number(bo.u) || 0) + Object.values(bo.vars || {}).reduce((a, x) => a + (Number(x) || 0), 0) : 0;
         const CTAS = ['adriana', 'luciana', 'ayelen', 'matias'];
         console.log(`\n=== 📝 NOTAS DE PEDIDOS Y CAJAS PARA EL 🧠 ${GOp && !DRY ? '' : '(PRUEBA)'} ===`);
         for (const n of notasCtx) {
@@ -40482,6 +40713,7 @@ async function main() {
             console.log(`· 🧠 ${n.tipo === 'ped' ? 'pedido' : 'caja ' + ctaL} · ${p.name}${n.vari ? ' · ' + n.vari : ''}: ${qTxt}${n.t ? ' · ' + n.t : ''}`);
             if (GOp && !DRY) {
               try {
+                if (n.tipo === 'ped' && n.dec !== 'venta' && !_desdePed.has(p.id)) { const b0 = (await db.get(base)) || null; _desdePed.set(p.id, { base, desde: Number(b0 && b0.desde) || 0, tot0: _totPed(b0) }); }
                 // LO VIEJO NO QUEDA COLGADO (09/10/2026, revisión 9 · cerebro): la primera vez que esta corrida decide colores
                 // de un producto (o la caja de un producto en una cuenta) se borra lo anterior, así un color que ya no se
                 // nombra no sigue pidiendo/mandando las unidades de una decisión vieja. `=auto` sin color borra todo el producto.
@@ -40505,17 +40737,7 @@ async function main() {
                 }
                 const rl = await db.get(base + '/' + leaf);
                 console.log(marcaG(n.dec === 'auto' ? rl == null : Number(rl) === n.val, '   ✓ guardado'));
-                // DESDE CUÁNDO PEDIDOS LE PIDE COMPRAR (16/10/2026, 1b): con algo para comprar y sin `desde`, se anota hoy;
-                // si ya no pide nada, se borra. La web lo usa para Bs As: 10 días pidiendo sin que entre nada a la oficina
-                // = no se consigue → recién ahí cuenta como sin reposición (escasez).
-                if (n.tipo === 'ped' && n.dec !== 'venta') {
-                  try {
-                    const bo = (await db.get(base)) || null;
-                    const tot = bo ? (Number(bo.u) || 0) + Object.values(bo.vars || {}).reduce((a, x) => a + (Number(x) || 0), 0) : 0;
-                    if (bo && tot > 0 && !(Number(bo.desde) > 0)) await db.set(base + '/desde', Date.now());
-                    else if (bo && tot <= 0 && bo.desde != null) await db.set(base + '/desde', null);
-                  } catch { /* sin la marca, la web lo da por repuesto */ }
-                }
+                // DESDE CUÁNDO PEDIDOS LE PIDE COMPRAR (16/10/2026, 1b): se decide al final, una vez por producto (ver `_desdePed`).
                 if (n.dec !== 'auto' && n.dec !== 'venta') await db.set('mlapi/claudeexp/' + key, { ts: Date.now(), simple: String(n.t).slice(0, 2500), nom: String(p.name || '').slice(0, 60), cuenta: ctaL, variante: n.vari || '', tipo: n.tipo });
               } catch (eN) { TAL.no++; console.log(`   ⚠️ no pude guardarlo: ${String(eN.message || eN).slice(0, 60)}`); }
             }
@@ -40527,6 +40749,17 @@ async function main() {
               const rl = await db.get('mlapi/claudeexp/' + key); console.log(marcaG(!!(rl && rl.simple))); }
             catch (eN) { TAL.no++; console.log(`   ⚠️ no pude guardarla: ${String(eN.message || eN).slice(0, 60)}`); }
           }
+        }
+        // DESDE CUÁNDO PEDIDOS LE PIDE COMPRAR (16/10/2026, 1b; una vez por producto desde el 20/10/2026, etapa 3): con algo para comprar,
+        // `desde` = el de antes si ya pedía, o HOY si recién empieza; si ya no pide nada, se borra. La web lo usa para Bs As: 10 días
+        // pidiendo sin que entre nada a la oficina = no se consigue → recién ahí cuenta como sin reposición (escasez).
+        for (const [, d0] of _desdePed) {
+          try {
+            const bo = (await db.get(d0.base)) || null; if (!bo) continue;   // `=auto` borró la decisión entera: no hay nada que marcar
+            const tot = _totPed(bo);
+            if (tot > 0) { const des = d0.tot0 > 0 && d0.desde > 0 ? d0.desde : Date.now(); if (Number(bo.desde) !== des) await db.set(d0.base + '/desde', des); }
+            else if (bo.desde != null) await db.set(d0.base + '/desde', null);
+          } catch { /* sin la marca, la web lo da por repuesto */ }
         }
       }
       if (Object.keys(notas).length) {
@@ -41330,6 +41563,12 @@ async function main() {
         let nts2 = null; try { nts2 = (await db.get('mlapi/fichanotas')) || {}; } catch { nts2 = null; }
         const ultN = (m) => Math.max(0, ...Object.keys((nts2 || {})[m] || {}).map(Number).filter((n) => n > 0));
         const techoReciente = (m) => { const h = (estrat || {})[m] || {}; let pv = null; for (const k of Object.keys(h).map(Number).filter((n) => n > 0).sort((a, b) => a - b)) { const x = h[k]; if (!x || !x.t) continue; const tt = x.t === 'correccion' ? pasajeDe(pv) : x.t; pv = tt; if (k > hoy - 60 * 864e5 && ['techo', 'techook', 'bajando'].includes(tt)) return true; } return false; };
+        // 20/10/2026 · etapa 3: los días se miden con el GRUPO que comparte el stock (`kSt`), igual que la 📦: antes cada
+        // publicación se medía sola contra el stock compartido, así que una Clásica + su gemela Premium con 82 días juntas
+        // daban 150 días cada una (fuera de la 🔎) y 82 en la 📦 (fuera de la 📦): no salían en ninguna lista.
+        const grA = {}; for (const r of filas) if (r.kSt) (grA[r.kSt] = grA[r.kSt] || []).push(r);
+        const diasGrupo = (r) => { const rs = r.kSt ? grA[r.kSt] : [r]; const st = Math.max(...rs.map((x) => x.st || 0));
+          const rit = Math.max(rs.reduce((a, x) => a + (x.u30 || 0), 0) / 30, rs.reduce((a, x) => a + (x.u60 || 0), 0) / 60); return rit > 0 ? st / rit : Infinity; };
         const sinAf = [], pens = [];
         for (const r of filas) {
           if (!/^active/.test(r.est) || r.stDesc || !(r.st > 0) || r.mg == null) continue;
@@ -41337,9 +41576,10 @@ async function main() {
           // con 7 días en ese tag ya volvió, y entra acá igual que lo sin estrategia.
           const volvViejo = ['desobra', 'volviendo'].includes(r.est2.t) && r.est2.ts && hoy - r.est2.ts > 7 * 864e5;
           if (r.exc || (!['sindecidir', 'nuevo', 'agotado'].includes(r.est2.t) && !volvViejo)) continue;
-          const dias = r.st / Math.max(r.u30 / 30, (r.u60 || 0) / 60);
+          const dias = diasGrupo(r);
           // Menos de 14 días sin tag 🔥: o es escasez sin decidir (sale en la 🚨) o la caja llega a tiempo: igual entra acá
           // (19/10, él: "si no tiene línea de techo o alguna otra explicación como sobre stock, tiene que entrar en buscar techo").
+          // Más de 90 (del grupo) es terreno de la 📦: ahí sale (o está anotado/pensado/recién llegado, y lo dice).
           if (dias > 90) continue;
           if (techoReciente(r.mla)) continue;
           const nota = ultN(r.mla); const fila = { ...r, dias };
@@ -42545,7 +42785,7 @@ async function main() {
     //   pvped:<aroma>=<u>[;<aroma>=<u>][;fecha=AAAA-MM-DD][;go]  → "ya lo pedí" (`=` adelante = nombre exacto)
     //   pvped:costo:<id|ultimo>[;apagar=$][;flete=$][;tester=u][;regalo=u][;go] → costo c/u del último pedido a la ficha
     //   pvped:nunca[:<aroma>;-<aroma>][;go]          → "no viene más" (lo que se pidió y no vino)
-    //   pvped:llego:<id|ultimo>[;<aroma>=<u>…][;tester=u][;regalo=u][;apagar=$][;go]   → llegó. Sin aromas = llegó TODO lo pedido; con aromas,
+    //   pvped:llego:<id|ultimo>[;<aroma>=<u>…][;tester=u][;regalo=u][;apagar=$][;fecha=AAAA-MM-DD][;go]   → llegó (fecha = el día que llegó de verdad). Sin aromas = llegó TODO lo pedido; con aromas,
     //                                                   lo que se nombra reemplaza lo pedido (0 = no vino) y lo
     //                                                   que no se nombra llegó completo. Lo que llegó se SUMA a
     //                                                   la oficina (misma cuenta que `ofi`) y lo que faltó se anota.
@@ -42734,7 +42974,12 @@ async function main() {
         const cambios = {}, problemas = [], extraLl = {};
         const _OPT = /^(tester|regalo|apagar|flete)=(.+)$/i;
         for (const x of rest2) { const m = String(x).trim().match(_OPT); if (m) { const k = m[1].toLowerCase(), n = parseFloat(String(m[2]).replace(/\./g, '').replace(',', '.')) || 0; extraLl[k === 'tester' ? 'testers' : k === 'regalo' ? 'regalos' : k === 'apagar' ? 'aPagar' : 'flete'] = n; } }
-        for (const pr of leerPares(rest2.filter((x) => !_OPT.test(String(x).trim())).join(';'))) {
+        // LA FECHA REAL DE LLEGADA (etapa 3, 20/10/2026): `fecha=AAAA-MM-DD`. Los 7 días hábiles para pagar se cuentan desde ahí; sin
+        // ella quedaba la fecha en que se corrió el comando.
+        let fechaLl = hoyAR; const _F = /^fecha=(\d{4}-\d{2}-\d{2})$/i;
+        for (const x of rest2) { const m = String(x).trim().match(_F); if (m) fechaLl = m[1]; }
+        if (fechaLl > hoyAR || (c.fecha && fechaLl < c.fecha)) { console.log(`❌ fecha=${fechaLl}: no puede ser después de hoy (${hoyAR}) ni antes del pedido (${c.fecha}). No escribo nada.`); return; }
+        for (const pr of leerPares(rest2.filter((x) => !_OPT.test(String(x).trim()) && !_F.test(String(x).trim())).join(';'))) {
           if (pr.u == null) { problemas.push(`"${pr.busca}" → se espera <aroma>=<unidades>`); continue; }
           const vs = buscaVar(P, pr.busca);
           if (vs.length !== 1) { problemas.push(`"${pr.busca}" → ${vs.length ? 'agarra ' + vs.length + ': ' + vs.join(' | ') : 'no es un aroma de ' + P.name}`); continue; }
@@ -42748,12 +42993,12 @@ async function main() {
           if (vino < pedido) falto.push({ v: it.v, u: pedido - vino });
         }
         for (const v of Object.keys(cambios)) if (!lista(c).some((x) => x.v === v) && cambios[v] > 0) llego.push({ v, u: cambios[v], extra: true });
-        console.log(`=== LLEGÓ EL PEDIDO AL PAULVIC ${id} (del ${c.fecha}) ${GO ? '' : '(PRUEBA — no escribo nada)'} ===`);
+        console.log(`=== LLEGÓ EL PEDIDO AL PAULVIC ${id} (del ${c.fecha}) · llegó el ${fechaLl} ${GO ? '' : '(PRUEBA — no escribo nada)'} ===`);
         for (const x of llego) { const pe = (lista(c).find((y) => y.v === x.v) || {}).u || 0; console.log(`  ${x.v}: pedidas ${pe} · llegaron ${x.u}${x.extra ? ' (no estaba en el pedido)' : x.u < pe ? '  ⚠️ faltaron ' + (pe - x.u) : ''}`); }
         if (!GO) { console.log('\nNo se guardó nada (falta ;go). Con ;go las que llegaron se SUMAN a la oficina.'); return; }
         // Primero se cierra el pedido (que deje de restar en Pedidos) y recién después se suma a la oficina,
         // releyendo cada clave justo antes: si la corrida se corta en el medio, se ve qué faltó.
-        await db.patch('cyc/pedidospv/' + id, { estado: 'llego', fechaLlego: hoyAR, llego, falto: falto.length ? falto : null, ...extraLl });
+        await db.patch('cyc/pedidospv/' + id, { estado: 'llego', fechaLlego: fechaLl, llego, falto: falto.length ? falto : null, ...extraLl });
         // LO QUE NO VINO NO VIENE MÁS (17/10/2026, regla suya: *"los que pido de paulvic y no llegan que quede registro en el
         // pedido y tomarlos como que no vienen nunca más"*). Queda en el pedido (`falto`) y el aroma se marca para siempre en
         // `cyc/noconsigo/<prod>/nunca/<aroma>`: Pedidos no lo vuelve a pedir y cuenta como sin reposición (escasez). No se cae
@@ -42793,7 +43038,16 @@ async function main() {
       for (const it of items) console.log(`  ${it.u} u. · ${it.v}`);
       console.log(`  total: ${its.reduce((a, x) => a + x.u, 0)} u. en ${its.length} aroma(s)`);
       if (!GO) { console.log('\nNo se guardó nada (falta ;go).'); return; }
-      await db.set('cyc/pedidospv/' + id, { prodId: P.id, fecha, ts: (prev && prev.ts) || Date.now(), estado: 'camino', items: its, ...(prev && prev.num ? { num: prev.num } : {}) });   // el número del pedido (20/10/2026) no se pierde
+      // Lo que hace el botón "✅ Pedido hecho" de la tarjeta (etapa 3, 20/10/2026): el registro se CONSERVA (antes `set` sin `desc`
+      // ni lo demás: un pedido ya descontado se volvía a restar), lo pedido sale de lo decidido aroma por aroma (y lo cambiado a mano
+      // de ese aroma se borra) y queda `desc` (la web ya no lo resta). Si el pedido de ese día ya estaba y la web lo venía restando
+      // (sin `desc` y más nuevo que mi decisión), también se descuenta lo de antes: con `desc` la web deja de restarlo.
+      const decP = (await db.get('cyc/claudedecide/ped/' + P.id)) || null;
+      const aDesc = items.map((it) => ({ ...it }));
+      if (prev && !prev.desc && Number(prev.ts || Date.parse(String(prev.fecha || '') + 'T12:00:00-03:00')) > (Number(decP && decP.ts) || 0)) for (const it of lista(prev)) aDesc.push({ v: it.v, u: parseInt(it.u) || 0 });
+      await db.set('cyc/pedidospv/' + id, { ...(prev || {}), prodId: P.id, fecha, ts: (prev && prev.ts) || Date.now(), estado: 'camino', items: its });   // el número del pedido (20/10/2026) y lo demás no se pierden
+      for (const it of aDesc) { const r = await clDescontarPedBot(db, P.id, it.v, it.u); if (r) console.log(`  🧠 sale de lo decidido · ${r}`); }
+      await db.patch('cyc/pedidospv/' + id, { desc: true });
       { const NC = (await db.get('cyc/noconsigo/' + P.id + '/nunca')) || {}; const vuelve = items.filter((it) => NC[sid(it.v)]);
         if (vuelve.length) { await db.patch('cyc/noconsigo/' + P.id + '/nunca', Object.fromEntries(vuelve.map((it) => [sid(it.v), null]))); console.log(`  ↩︎ lo volviste a pedir: se saca "no viene más" de ${vuelve.map((it) => it.v).join(', ')}`); } }
       const rel = await db.get('cyc/pedidospv/' + id);
@@ -42892,6 +43146,12 @@ async function main() {
     // Fija las unidades de cada renglón (lo que no está, lo agrega; `=0` lo saca) y mueve la DIFERENCIA contra la oficina: si salió
     // más de lo anotado, baja la oficina; si salió menos, vuelve a la oficina. Así el patrimonio no se mueve (sólo pasa de un lado al
     // otro). Si la oficina no tiene para cubrir lo que salió de más, lo dice y la deja en 0. Sin `go` sólo muestra. Caja recibida: no.
+    // IGUAL QUE "CERRAR CAJA" DE LA WEB (20/10/2026 · etapa 3): lo que sale de más se resta de mi decisión de cuántas mandar
+    // (`cyc/claudedecide/caja/<id>__<cuenta>[__v__<color>]/u`, la clave de `_clCajaKey`) y lo que sale de menos se le devuelve;
+    // lo que salió se descuenta de la caja a medio armar de esa cuenta (`cyc/cajas_armando/<cuenta>`, clave `_ck` de la web);
+    // y queda anotado en `cyc/history` como lo anota la web. Antes no hacía nada de eso: Armar caja seguía pidiendo mandar lo que
+    // ya viajaba. Cada uno se relee justo antes de escribir y se escribe sólo esa clave (el robot no tiene transacciones).
+    // Lo que vuelve a la oficina NO se anota en `cyc/ofientro`: es una devolución, no una compra (no apaga "No lo consigo").
     if (/^cajaitems(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const _raw = String(process.env.BILLING_PROBE).replace(/^cajaitems:?/, '');
       const GO = /(^|;)go$/.test(_raw) && !DRY;
@@ -42941,6 +43201,7 @@ async function main() {
         const j = items.findIndex((it) => it && it.prodId === o.p.id && String(it.variante || '') === String(o.va || ''));
         const antes = j >= 0 ? (parseInt(items[j].u) || 0) : 0; const d = o.u - antes;
         if (j >= 0) { if (o.u > 0) items[j].u = o.u; else items.splice(j, 1); } else if (o.u > 0) items.push({ prodId: o.p.id, nombre: o.p.name, variante: o.va || '', u: o.u });
+        o.antes = antes; o.d = d;
         let ofTxt = '';
         if (d) {
           const kv = o.va ? kVar(o.p.id, o.va) : kTot(o.p.id);
@@ -42957,6 +43218,53 @@ async function main() {
       if (Object.keys(upd).length) await db.patch('cyc/inventory', upd);
       const rel = (await db.get(`cyc/envios_full/${envId}/cajasDet/${ci}/items`)) || [];
       console.log(rel.length === items.length && rel.reduce((a, x) => a + (parseInt(x.u) || 0), 0) === items.reduce((a, x) => a + (parseInt(x.u) || 0), 0) ? '\n✓ Guardado y releído (caja y oficina).' : '\n⚠️ Al releer la caja no coincide: mirar a mano.');
+      // Etapa 3 (20/10/2026): lo mismo que hace "Cerrar caja" en la web después de despachar. Si algo falla se dice y se sigue:
+      // la caja y la oficina ya quedaron bien, esto es lo de alrededor.
+      const _ctaL = String(env.cuenta || '').toLowerCase().replace(/í/g, 'i');
+      const _clKey = (pid, va) => pid + '__' + _ctaL + (va ? '__v__' + sid(String(va).toLowerCase()) : '');   // = _clCajaKey de la web
+      const _ckSafe = (x) => String(x || '').replace(/[.#$\[\]\/]/g, (c) => '%' + c.charCodeAt(0).toString(16).toUpperCase());
+      const _ck = (pid, va) => pid + '|' + _ckSafe(va);   // = _ck de la web (clave de la caja a medio armar)
+      const _cambios = ops.filter((o) => o.d);
+      // 1) MI DECISIÓN DE CUÁNTAS MANDAR: salió de más → se resta; salió de menos → vuelve. Sólo si la decisión existe.
+      for (const o of _cambios) {
+        const k = _clKey(o.p.id, o.va);
+        try {
+          const dec = await db.get('cyc/claudedecide/caja/' + k);   // lectura fresca
+          if (!dec || typeof dec !== 'object' || !Number.isFinite(Number(dec.u))) continue;
+          const u0 = Math.max(0, parseInt(dec.u) || 0);
+          const u1 = o.d > 0 ? Math.max(0, u0 - o.d) : u0 + (-o.d);
+          if (u1 === u0) continue;
+          await db.set('cyc/claudedecide/caja/' + k + '/u', u1);   // sólo esa hoja
+          console.log(`  🧠 decisión ${o.p.name}${o.va ? ' · ' + o.va : ''} (${env.cuenta}): mandar ${u0} → ${u1}`);
+        } catch (eD) { console.log(`  ⚠️ no pude ${o.d > 0 ? 'restar' : 'devolver'} la decisión de ${o.p.name}${o.va ? ' · ' + o.va : ''}: ${String(eD.message || eD).slice(0, 60)}`); }
+      }
+      // 2) LA CAJA A MEDIO ARMAR DE ESA CUENTA: lo que salió ya no puede ir en la caja siguiente. Sólo se descuenta (lo que
+      //    vuelve a la oficina no se agrega solo a la caja que se arma). Si queda vacía, se borra entera, como al cerrarla.
+      const _sale = _cambios.filter((o) => o.d > 0);
+      if (_sale.length) {
+        try {
+          const arm = await db.get('cyc/cajas_armando/' + env.cuenta);   // lectura fresca
+          const its = (arm && arm.items && typeof arm.items === 'object') ? { ...arm.items } : {};
+          const parche = {}; const txt = [];
+          for (const o of _sale) {
+            const ck = _ck(o.p.id, o.va); const a0 = parseInt(its[ck]) || 0; if (!(a0 > 0)) continue;
+            const a1 = Math.max(0, a0 - o.d); its[ck] = a1; parche['items/' + ck] = a1 || null;
+            txt.push(`${o.p.name}${o.va ? ' · ' + o.va : ''} ${a0} → ${a1}`);
+          }
+          if (txt.length) {
+            const quedan = Object.values(its).some((x) => (parseInt(x) || 0) > 0);
+            if (quedan) await db.patch('cyc/cajas_armando/' + env.cuenta, { ...parche, ts: Date.now() });   // ts nuevo: la web ve que cambió
+            else await db.set('cyc/cajas_armando/' + env.cuenta, null);
+            console.log(`  📦 caja a medio armar de ${env.cuenta}: ${txt.join(' · ')}${quedan ? '' : ' → quedó vacía'}`);
+          }
+        } catch (eA) { console.log(`  ⚠️ no pude descontar la caja a medio armar de ${env.cuenta}: ${String(eA.message || eA).slice(0, 60)}`); }
+      }
+      // 3) EL HISTORIAL ("Última actividad"), con la misma forma que `log()` de la web. Una corrección que no cambió nada no se anota.
+      if (_nueva || _cambios.length) try {
+        const uA = (caja.items || []).reduce((a, x) => a + (parseInt(x.u) || 0), 0); const uD = items.reduce((a, x) => a + (parseInt(x.u) || 0), 0);
+        const desc = _nueva ? `Caja despachada a ${env.cuenta}: ${uD} u. · ${track} (desde el chat)` : `Caja ${track} de ${env.cuenta} corregida desde el chat: ${uA} → ${uD} u.`;
+        await db.set('cyc/history/h' + Date.now(), { who: 'Claude (chat)', desc, ts: Date.now() });
+      } catch (eH) { console.log(`  ⚠️ no pude anotarlo en el historial: ${String(eH.message || eH).slice(0, 60)}`); }
       return;
     }
 
@@ -43042,8 +43350,11 @@ async function main() {
     // Hace lo MISMO que los botones de la web (pyCanastaYaLoPedi, pyPedidoHecho, pyPedidoLlego), con
     // los mismos registros en `cyc/compraspy`, para que la pantalla lo muestre igual. Sin `go` SOLO MUESTRA.
     //   pyped                                   → los pedidos en camino
-    //   pyped:repo:<palabra>=<u>[;<palabra>=<u>][;go]   → "✅ Ya lo pedí" de REPOSICIÓN (productos con ficha;
-    //                                              `=` adelante de la palabra = nombre exacto)
+    //   pyped:repo:<palabra>[#<color>]=<u>[;<palabra>=<u>][;go]   → "✅ Ya lo pedí" de REPOSICIÓN (productos con ficha;
+    //                                              `=` adelante de la palabra = nombre exacto; `#color` = ese color con SU
+    //                                              código y precio de Paraguay). Como el botón: saca lo pedido del pedido del
+    //                                              momento (`py_armado`), descuenta de lo decidido y pasa lo de uso personal
+    //                                              al historial (20/10/2026 · etapa 3).
     //   pyped:nuevos[:go]                       → "✅ Ya lo pedí" de PRODUCTOS NUEVOS (lo cargado en el armado)
     //   pyped:llego:<id|AAAA-MM-DD>[:go]        → "Ya llegó". Reposición: sólo la cierra (hay que contar en la
     //                                              oficina). Nuevos: además crea las fichas (costo = precio × recargo,
@@ -43121,7 +43432,9 @@ async function main() {
           const its = (Array.isArray(prev.items) ? prev.items : []).map((x) => ({ ...x }));
           // Un renglón de reposición (prodId sin id) sólo se suma con otro de reposición: un nuevo puede
           // traer prodId (det=) y no es el mismo renglón.
-          for (const it of items) { const o = its.find((x) => x && x[sumarPor] === it[sumarPor] && (sumarPor !== 'prodId' || !x.id)); if (o) o.u = (parseInt(o.u) || 0) + it.u; else its.push(it); }
+          // Etapa 3 (20/10/2026): un renglón de reposición se suma sólo con el del MISMO color y la misma marca de descuento
+          // (`desc`): uno sin descontar sumado a uno descontado haría que Pedidos restara de más (o de menos).
+          for (const it of items) { const o = its.find((x) => x && x[sumarPor] === it[sumarPor] && (sumarPor !== 'prodId' || (!x.id && String(x.variante || '') === String(it.variante || '') && !!x.desc === !!it.desc))); if (o) o.u = (parseInt(o.u) || 0) + it.u; else its.push(it); }
           const upd = { items: its, usdCrudo: r2((parseFloat(prev.usdCrudo) || 0) + rec.usdCrudo), productos: its.length, unidades: (parseInt(prev.unidades) || 0) + rec.unidades };
           await db.patch('cyc/compraspy/' + id, upd);
         } else await db.set('cyc/compraspy/' + id, rec);
@@ -43144,22 +43457,75 @@ async function main() {
         for (const [gid] of G) { const st = await previoHoy(gid); if (st.bloqueado) { console.log('No escribo ninguno de los pedidos de hoy.'); return null; } est[gid] = st; }
         return est;
       };
+      // LO QUE HACE EL BOTÓN "✅ YA LO PEDÍ" DE LA WEB, TAMBIÉN DESDE EL CHAT (20/10/2026 · etapa 3, `pyMomentoYaLoPedi`).
+      // (1) Lo pedido sale del pedido del momento (`cyc/py_armado`): color por color si estaba cargado por color, y si no del
+      // total; lo que queda en cero se borra. Sin esto, el pedido del momento seguía mostrando lo ya pedido y se volvía a pedir.
+      const armadoDescontar = async (items) => {
+        let arm = null; try { arm = (await db.get('cyc/py_armado')) || {}; } catch { console.log('⚠️ no pude leer el pedido del momento (py_armado): sacá a mano lo pedido'); return; }
+        const tocados = {};
+        for (const it of items) {
+          const pid = it.prodId; if (!pid || !arm[pid]) continue;
+          const e = tocados[pid] || (tocados[pid] = JSON.parse(JSON.stringify(arm[pid])));
+          const v = e.v && typeof e.v === 'object' ? e.v : null, q = parseInt(it.u) || 0;
+          if (v && Object.keys(v).length) {
+            const k = it.variante ? sid(String(it.variante).toLowerCase()) : '';
+            if (k && v[k]) { v[k].u = Math.max(0, (parseInt(v[k].u) || 0) - q); if (!(v[k].u > 0)) delete v[k]; }
+            else if (k) continue;   // ese color no estaba en el pedido del momento: se pidió aparte, no se toca otro color
+            else { let left = q; for (const kk of Object.keys(v).sort((a, b) => (parseInt(v[b].u) || 0) - (parseInt(v[a].u) || 0))) { if (left <= 0) break; const t = Math.min(left, parseInt(v[kk].u) || 0); v[kk].u = (parseInt(v[kk].u) || 0) - t; left -= t; if (!(v[kk].u > 0)) delete v[kk]; } }
+            e.u = Object.values(v).reduce((a, x) => a + (parseInt(x && x.u) || 0), 0);
+          } else e.u = Math.max(0, (parseInt(e.u) || 0) - q);
+        }
+        for (const [pid, e] of Object.entries(tocados)) {
+          try { await db.set('cyc/py_armado/' + pid, (parseInt(e.u) || 0) > 0 ? { ...e, ts: Date.now() } : null); console.log(`  🧾 pedido del momento: ${(prodsAll.find((x) => x.id === pid) || {}).name || pid} → ${(parseInt(e.u) || 0) > 0 ? e.u + ' u. siguen cargadas' : 'sale'}`); }
+          catch { console.log(`⚠️ no pude sacar ${pid} del pedido del momento: sacalo a mano`); }
+        }
+      };
+      // (2) Lo de uso personal del mismo proveedor (y, en Nissei, del mismo rubro) pasa al historial (`cyc/py_personal_hist/<ts>`),
+      // como en la web: va en el mensaje al proveedor pero no es de CYC.
+      const personalAlHist = async (G, X) => {
+        let per = null; try { per = (await db.get('cyc/py_personal')) || {}; } catch { console.log('⚠️ no pude leer lo de uso personal: sacalo a mano si ya va en este pedido'); return; }
+        const mov = {};
+        for (const [k, v] of Object.entries(per)) { if (!v || !(parseInt(v.u) > 0)) continue; const g = grupoPy(provPyDe(v), v.nom || '', X); if (G.has(g.id)) mov[k] = v; }
+        if (!Object.keys(mov).length) return;
+        try {
+          await db.set('cyc/py_personal_hist/' + Date.now(), mov);
+          const up = {}; for (const k of Object.keys(mov)) up[k] = null; await db.patch('cyc/py_personal', up);
+          console.log(`  🙋 uso personal al historial: ${Object.values(mov).map((v) => (v.cod || '?') + ' x' + v.u).join(', ')}`);
+        } catch { console.log('⚠️ no pude pasar lo de uso personal al historial: sacalo a mano'); }
+      };
+      const prodsAll = Object.values((await db.get('cyc/products')) || {}).filter((p) => p && p.id);
 
       if (sub === 'repo') {
         const prods = Object.values((await db.get('cyc/products')) || {}).filter((p) => p && p.name);
-        const pares = arg.split(';').map((x) => x.trim()).filter(Boolean).map((x) => { const m = x.match(/^(.+?)=(\d+)$/); return m ? { busca: m[1].trim(), u: parseInt(m[2], 10) } : { busca: x, u: null }; });
-        if (!pares.length || pares.some((p) => !(p.u > 0))) { console.log('Usá: pyped:repo:<palabra>=<unidades>[;<otra>=<u>][;go]  (=<nombre exacto> con un = adelante)'); return; }
-        const items = [], problemas = [];
+        // POR COLOR (20/10/2026 · etapa 3): `<palabra>#<color>=<u>` pide ESE color con SU código y SU precio de Paraguay (`pyVar`,
+        // lo carga `pyprecio:<ficha>#<color>=…`), igual que el pedido del momento de la web. Sin `#color` va el código de la
+        // ficha; si la ficha tiene varios colores se avisa (a Nissei le llega el código de uno solo).
+        const pares = arg.split(';').map((x) => x.trim()).filter(Boolean).map((x) => { const m = x.match(/^(.+?)=(\d+)$/); if (!m) return { busca: x, u: null }; const [b0, ...cc] = m[1].split('#'); return { busca: b0.trim(), color: cc.join('#').trim(), u: parseInt(m[2], 10) }; });
+        if (!pares.length || pares.some((p) => !(p.u > 0))) { console.log('Usá: pyped:repo:<palabra>[#<color>]=<unidades>[;<otra>=<u>][;go]  (=<nombre exacto> con un = adelante)'); return; }
+        const items = [], problemas = [], avisosColor = [];
         for (const pr of pares) {
           const exacto = pr.busca.startsWith('=');
           const q = nrm(pr.busca.replace(/^=/, ''));
           const hits = prods.filter((p) => exacto ? nrm(p.name) === q : nrm(p.name).includes(q));
           if (hits.length !== 1) { problemas.push(`"${pr.busca}" → ${hits.length ? `agarra ${hits.length}: ${hits.slice(0, 8).map((p) => p.name).join(' | ')}` : 'ninguna ficha'}`); continue; }
           const p = hits[0];
-          const usd = parseFloat(p.nisseiUSD) > 0 ? r2(parseFloat(p.nisseiUSD)) : r2((parseFloat(p.costUSD) || 0) / RECARGO_PAR);
-          items.push({ prodId: p.id, nom: String(p.name).slice(0, 120), cod: String(p.codPy || ''), u: pr.u, usd });
+          let color = '', pv = null;
+          if (pr.color) {
+            const vs = Array.isArray(p.variantes) ? p.variantes : Object.values(p.variantes || {});
+            const vMatch = vs.find((v) => nrm(v) === nrm(pr.color));
+            const pvAll = p.pyVar && typeof p.pyVar === 'object' ? p.pyVar : {};
+            const kc = sid(String(vMatch || pr.color).toLowerCase());
+            if (!vMatch && !pvAll[kc]) { problemas.push(`"${pr.busca}#${pr.color}" → ${p.name} no tiene ese color (tiene: ${vs.slice(0, 12).join(' | ') || 'ninguno'})`); continue; }
+            color = vMatch || pr.color; pv = pvAll[kc] || null;
+            if (!(pv && pv.cod)) avisosColor.push(`${p.name} · ${color}: sin código propio de Paraguay, va el de la ficha (${p.codPy || 'sin código'}). Cargalo con pyprecio:${p.name.slice(0, 20)}#${color}=<código>/<US$>`);
+          } else if ((Array.isArray(p.variantes) ? p.variantes : Object.values(p.variantes || {})).length > 1) avisosColor.push(`${p.name}: tiene varios colores y no dijiste cuál (#color): va el código de la ficha (${p.codPy || 'sin código'})`);
+          const usdBase = (pv && parseFloat(pv.usd) > 0) ? parseFloat(pv.usd) : parseFloat(p.nisseiUSD);
+          const usd = usdBase > 0 ? r2(usdBase) : r2((parseFloat(p.costUSD) || 0) / RECARGO_PAR);
+          // `desc:1` = se descuenta de lo decidido al pedirlo (abajo, `clDescontarPedBot`): Pedidos no lo vuelve a restar.
+          items.push({ prodId: p.id, nom: String(p.name).slice(0, 120), cod: String((pv && pv.cod) || p.codPy || ''), u: pr.u, usd, ...(color ? { variante: color } : {}), desc: 1, ts: Date.now() });
           if (p.origen !== 'py') problemas.push(`"${pr.busca}" → ${p.name} no es de Paraguay (origen ${p.origen || 'bsas'}). Si es correcto, cambiale el origen primero.`);
         }
+        { const vistos = new Set(); for (const it of items) { const k = it.prodId + '|' + (it.variante || ''); if (vistos.has(k)) problemas.push(`${it.nom}${it.variante ? ' · ' + it.variante : ''}: lo nombraste dos veces. Dejá uno solo.`); vistos.add(k); } }
         if (problemas.length) { console.log('❌ NO ESCRIBO NADA:'); problemas.forEach((x) => console.log('   ' + x)); return; }
         // UN SOLO PEDIDO (05/10/2026, él: *"el pedido quiero que sea uno solo, no separar por nuevos de
         // probados"*): la reposición va al MISMO registro del día que los nuevos (`py<fecha>`); adentro se
@@ -43174,14 +43540,20 @@ async function main() {
         for (const [gid, g] of G) {
           const crudo = r2(g.items.reduce((a, x) => a + x.usd * x.u, 0)), uds = g.items.reduce((a, x) => a + x.u, 0);
           console.log(`\n  ── ${g.tit} · ${gid}`);
-          g.items.forEach((x) => console.log(`  ${x.u} u. · US$ ${x.usd.toFixed(2)} · ${x.nom}${x.cod ? ' · cód ' + x.cod : ' · ⚠️ sin código'}`));
+          g.items.forEach((x) => console.log(`  ${x.u} u. · US$ ${x.usd.toFixed(2)} · ${x.nom}${x.variante ? ' · 🎨 ' + x.variante : ''}${x.cod ? ' · cód ' + x.cod : ' · ⚠️ sin código'}`));
           console.log(`  TOTAL ${g.items.length} producto(s) · ${uds} u. · US$ ${crudo.toFixed(2)} crudos${est[gid].prev ? ' · se SUMA al pedido de hoy que ya estaba en camino' : ''}`);
         }
+        for (const a of avisosColor) console.log(`  🎨 ${a}`);
         if (!GO) { console.log('\nNo se guardó nada (falta ;go).'); return; }
         for (const [gid, g] of G) {
           const crudo = r2(g.items.reduce((a, x) => a + x.usd * x.u, 0)), uds = g.items.reduce((a, x) => a + x.u, 0);
           await guardar(gid, est[gid].prev, { fecha: hoyAR, ts: Date.now(), estado: 'camino', origen: 'chat', prov: g.prov, ...(g.rubro ? { rubro: g.rubro } : {}), usdCrudo: crudo, recargo: RECARGO_PAR, tcPedido: tc || null, productos: g.items.length, unidades: uds, items: g.items }, g.items, 'prodId');
         }
+        // Lo pedido sale de lo decidido, igual que el "Ya lo pedí" de la web (`pyRepoRegistrar`), y lo cambiado a mano se borra
+        // (etapa 3, 20/10/2026): antes desde el chat no se descontaba nada y Pedidos lo seguía pidiendo. Con color, de ESE color.
+        for (const it of items) { const r = await clDescontarPedBot(db, it.prodId, it.variante || '', it.u); if (r) console.log(`  🧠 ${it.nom.slice(0, 50)}${it.variante ? ' · ' + it.variante : ''}: sale de lo decidido · ${r}`); }
+        await armadoDescontar(items);
+        await personalAlHist(G, X);
         return;
       }
 
@@ -43193,6 +43565,8 @@ async function main() {
           const it = { id: cid, nom: String(c.nombre || '').slice(0, 120), cod: String(c.cod || '').trim(), u: parseInt(c.pedirU) || 0, usd: parseFloat(c.usd) || null };
           if (c.mlId) it.mlId = String(c.mlId).slice(0, 200);
           if (c.link) it.link = String(c.link).slice(0, 300);
+          if (/^https:\/\//.test(String(c.foto || ''))) it.foto = String(c.foto).slice(0, 300);   // etapa 3 (20/10/2026): para la ficha al llegar
+          if (c.prov) it.prov = String(c.prov);
           if (c.margen != null && isFinite(c.margen)) it.margen = Math.round(c.margen * 10) / 10;
           if (Number(c.ganancia) > 0) it.ganancia = Math.round(Number(c.ganancia));
           return it;
@@ -43219,6 +43593,9 @@ async function main() {
             catch { console.log(`⚠️ no pude marcar el candidato ${it.id}: revisalo`); }
           }
         }
+        // Los nuevos no tienen decisión que descontar (no son fichas todavía); lo de uso personal sí pasa al historial,
+        // igual que en la web (etapa 3, 20/10/2026).
+        await personalAlHist(G, X);
         return;
       }
 
@@ -43252,7 +43629,10 @@ async function main() {
           for (const it of (c.items || [])) {
             if (!it || !it.id) continue;
             const k = cands[it.id];
-            const src = { id: it.id, nombre: (k && k.nombre) || it.nom || '', usd: parseFloat(it.usd) > 0 ? it.usd : (k && k.usd), cod: (k && k.cod) || it.cod || '', ts: k && k.ts };
+            // Etapa 3 (20/10/2026): el proveedor, el link y la foto viajan con el renglón (del candidato si sigue vivo; si no, del
+            // pedido). Sin esto la ficha de Elegancia nacía como Nissei y sin las fotos para comparar.
+            const src = { id: it.id, nombre: (k && k.nombre) || it.nom || '', usd: parseFloat(it.usd) > 0 ? it.usd : (k && k.usd), cod: (k && k.cod) || it.cod || '', ts: k && k.ts,
+              prov: (k && k.prov) ? provPyDe(k) : it.prov ? provPyDe(it) : (/^pyel/.test(id) ? 'elegancia' : provPyDe(c)), link: (k && k.link) || it.link || '', foto: (k && k.foto) || it.foto || '' };
             if (k && k.prodId && prods.some((p) => p.id === k.prodId)) { plan.push({ src, estado: 'ya' }); continue; }
             if (!String(src.nombre).trim()) { plan.push({ src, estado: 'nonombre' }); continue; }
             // D2 (etapa 3, 29/09): sólo frena la MISMA ficha —mismo código de Nissei (también por el
@@ -43261,7 +43641,9 @@ async function main() {
             const _dg = (x) => String(x || '').replace(/\D/g, '');
             const codIg = (a, b) => { const x = _dg(a), y = _dg(b); if (!x || !y) return false; if (x === y) return true; const [c1, c2] = x.length < y.length ? [x, y] : [y, x]; return c1.length >= 5 && c2.endsWith(c1); };
             const nN = nrm(src.nombre);
-            const misma = prods.find((p) => (src.cod && codIg(p.codPy, src.cod)) || (nN && nrm(p.name) === nN));
+            // El código, sólo contra fichas del MISMO proveedor (etapa 3, 20/10/2026, `provPyDeBot`): por el final, `100572`
+            // de Elegancia "era" el `7100572` de Nissei y el nuevo se enganchaba a la ficha del otro proveedor.
+            const misma = prods.find((p) => (src.cod && provPyDeBot(p) === src.prov && codIg(p.codPy, src.cod)) || (nN && nrm(p.name) === nN));
             const q = nrm(String(src.nombre).split(' ').slice(0, 2).join(' '));
             const par = q ? prods.filter((p) => nrm(p.name).includes(q)) : [];
             plan.push(misma ? { src, estado: 'repe', rep: [misma] } : { src, estado: 'crear', par });
@@ -43298,6 +43680,11 @@ async function main() {
           const p = { id: 'p' + Date.now() + String(i++), name: String(((cands[x.src.id] || {}).mlTit && !((cands[x.src.id] || {}).mlReparos || '').length) ? cands[x.src.id].mlTit : x.src.nombre).trim().slice(0, 90), costUSD: puesto, cost: puesto * (tc || 0), origen: 'py', costFullUSD: puesto, altaChat: Date.now() };
           if (x.src.cod) p.codPy = String(x.src.cod);
           if (usd > 0) { p.nisseiUSD = usd; p.nisseiTs = x.src.ts || Date.now(); }
+          // Etapa 3 (20/10/2026): igual que `candFichaDesde` de la web: la ficha queda del proveedor que la vendió y con el link
+          // y la foto de comprasparaguay (sin eso, lo de Elegancia quedaba como Nissei y Probados no mostraba la foto de Paraguay).
+          if (x.src.prov && x.src.prov !== 'nissei') p.provPy = x.src.prov;
+          if (/^https:\/\//.test(String(x.src.link || ''))) p.pyLink = String(x.src.link).slice(0, 300);
+          if (/^https:\/\//.test(String(x.src.foto || ''))) p.pyFoto = String(x.src.foto).slice(0, 300);
           try {
             await db.set('cyc/products/' + p.id, p);
             if (x.src.id && cands[x.src.id]) await db.set(`cyc/candidatos_py/${x.src.id}/prodId`, p.id);
@@ -43536,12 +43923,18 @@ async function main() {
         let itemsDet = null;
         if (campos.det) {
           const yaIt0 = (ya && Array.isArray(ya.items)) ? ya.items : [];
-          const pool = [...yaIt0.map((x) => ({ cod: String(x.cod || ''), src: x })),
-                        ...Object.entries(cands).map(([cid, c]) => ({ cod: String(c.cod || c.codPy || ''), src: { ...c, id: cid, nom: c.nombre || c.nom } }))];
+          // Etapa 3 (20/10/2026): los candidatos se buscan SÓLO del proveedor de este pedido (`provPyDeBot`), y por el final
+          // sólo con 5 dígitos o más del lado corto: `100572` de Elegancia "terminaba igual" que `7100572` de Nissei, y un
+          // código corto (`20139`) pegaba con cualquiera que terminara así.
+          const _provDet = (ya && (/^pyel/.test(id) || String(ya.prov || '').toLowerCase() === 'elegancia')) || (!ya && provPed === 'elegancia') ? 'elegancia' : 'nissei';
+          const _finIg = (a, b) => { if (!a || !b) return false; if (a === b) return true; const [c1, c2] = a.length < b.length ? [a, b] : [b, a]; return c1.length >= 5 && c2.endsWith(c1); };
+          const _candsProv = Object.entries(cands).filter(([, c]) => c && provPyDeBot(c) === _provDet);
+          const pool = [...yaIt0.map((x) => ({ cod: String(x.cod || ''), src: x, ped: true })),
+                        ..._candsProv.map(([cid, c]) => ({ cod: String(c.cod || c.codPy || ''), src: { ...c, id: cid, nom: c.nombre || c.nom } }))];
           const buscar = (cod) => {
             const c = String(cod).replace(/\D/g, '');
             return pool.find((x) => x.cod.replace(/\D/g, '') === c)
-                || pool.find((x) => { const a = x.cod.replace(/\D/g, ''); return a && (c.endsWith(a) || a.endsWith(c)); }) || null;
+                || pool.find((x) => _finIg(x.cod.replace(/\D/g, ''), c)) || null;
           };
           itemsDet = []; const sinNombre = [];
           for (const tr of String(campos.det).split(';').map((x) => x.trim()).filter(Boolean)) {
@@ -43557,15 +43950,22 @@ async function main() {
             const o = { ...(_esRepoHit ? {} : { id: (hit && hit.src.id) || ('x' + cod) }), nom: (hit && String(hit.src.nom || hit.src.nombre || '').slice(0, 120)) || nomTk || cod, cod, u, usd: pu };
             if (!hit && nomTk) o.agregado = true;   // no estaba en el pedido ni en los candidatos: se agregó en Nissei
             if (hit) {
-              for (const k of ['mlId', 'link', 'margen', 'ganancia', 'pesoKg', 'pesoTxt', 'prodId']) if (hit.src[k] != null) o[k] = hit.src[k];
+              // `variante`, `desc` y `ts` también (etapa 3, 20/10/2026): sin ellos el renglón perdía el color pedido y la marca de
+              // "ya se descontó de lo decidido", y Pedidos lo volvía a restar.
+              for (const k of ['mlId', 'link', 'foto', 'prov', 'margen', 'ganancia', 'pesoKg', 'pesoTxt', 'prodId', 'variante', 'desc', 'ts']) if (hit.src[k] != null) o[k] = hit.src[k];
               // EL PRECIO DE LA WEB QUEDA AL LADO DEL PAGADO (10/10/2026, él: "los pedidos que cargo en paraguay siempre
               // tienen descuento de lo que aparece en la web (…) quizás hay productos con más descuento que otro, o
               // algunos quizás nada"). El de la web es el que se guardó al hacer el pedido; si el ticket ya se había
               // cargado antes, se conserva el `usdWeb` de esa vez (no el pagado).
               // Si el renglón guardado ya traía el precio del ticket (pedidos cargados antes del 10/10), el de la web
               // sale del CANDIDATO de ese código, que guarda el precio de la lista de Nissei con que se armó el pedido.
+              // EL ORDEN (etapa 3, 20/10/2026): el `usdWeb` ya guardado → el `usd` del renglón del PEDIDO (el precio de la web el día
+              // que se pidió) → `nisseiUSD`. El candidato de HOY sólo para pedidos de antes del 10/10/2026 (ahí el renglón podía
+              // traer ya el pagado) y del mismo proveedor: antes iba primero, y un precio que cambió después del pedido le
+              // torcía la base del recargo real (`ticket.usdWeb`, decisión 4a).
               const _cDig = String(cod).replace(/\D/g, '');
-              const _cand = Object.values(cands).find((c) => { const a = String(c.cod || c.codPy || '').replace(/\D/g, ''); return a && (a === _cDig || _cDig.endsWith(a) || a.endsWith(_cDig)); });
+              const _viejoPed = !!(ya && ya.fecha && String(ya.fecha) < '2026-10-10');
+              const _cand = _viejoPed ? _candsProv.map(([, c]) => c).find((c) => _finIg(String(c.cod || c.codPy || '').replace(/\D/g, ''), _cDig)) : null;
               const _wCand = _cand ? (parseFloat(_cand.usd) > 0 ? parseFloat(_cand.usd) : (parseFloat(_cand.nisseiUSD) > 0 ? parseFloat(_cand.nisseiUSD) : 0)) : 0;
               const _w = parseFloat(hit.src.usdWeb) > 0 ? parseFloat(hit.src.usdWeb) : (_wCand > 0 ? _wCand : (parseFloat(hit.src.usd) > 0 ? parseFloat(hit.src.usd) : (parseFloat(hit.src.nisseiUSD) > 0 ? parseFloat(hit.src.nisseiUSD) : 0)));
               if (_w > 0) o.usdWeb = Math.round(_w * 100) / 100;
@@ -43582,7 +43982,7 @@ async function main() {
           // modificar el pedido"). Lo que estaba en el pedido y no figura en el ticket sale del pedido y su candidato vuelve a la
           // lista (se le saca `pedidoEn`); lo agregado que coincide con un candidato queda marcado viajando en este pedido.
           { const enDet = new Set(itemsDet.map((x) => String(x.cod).replace(/\D/g, '')));
-            const fuera = (ya && Array.isArray(ya.items) ? ya.items : []).filter((x) => x && !enDet.has(String(x.cod || '').replace(/\D/g, '')) && ![...enDet].some((c) => { const a = String(x.cod || '').replace(/\D/g, ''); return a && (c.endsWith(a) || a.endsWith(c)); }));
+            const fuera = (ya && Array.isArray(ya.items) ? ya.items : []).filter((x) => x && !enDet.has(String(x.cod || '').replace(/\D/g, '')) && ![...enDet].some((c) => _finIg(String(x.cod || '').replace(/\D/g, ''), c)));
             if (fuera.length) console.log(`  ✂️ No vinieron (salen del pedido${fuera.some((x) => x.id && cands[x.id]) ? ' y vuelven a la lista de candidatos' : ''}): ${fuera.map((x) => `${x.u} × ${String(x.nom || x.cod).slice(0, 40)}`).join(' · ')}`);
             const nuevos = itemsDet.filter((x) => !(ya && Array.isArray(ya.items) && ya.items.some((y) => y && String(y.cod || '').replace(/\D/g, '').slice(-5) === String(x.cod).replace(/\D/g, '').slice(-5))));
             if (nuevos.length) console.log(`  ➕ Agregados en el momento: ${nuevos.map((x) => `${x.u} × ${String(x.nom).slice(0, 40)}${x.agregado ? ' (nuevo, sin candidato)' : ''}`).join(' · ')}`);
