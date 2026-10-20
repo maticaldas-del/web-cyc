@@ -39670,7 +39670,7 @@ async function main() {
         const u30L = {}; const t30 = Date.now() - 30 * 864e5;
         for (const ents of Object.values(vpL)) for (const v of Object.values(ents || {})) { if (!v || v.cancelada || !v.mla) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ts >= t30) u30L[v.mla] = (u30L[v.mla] || 0) + (Number(v.qty) || 1); }
         const pubsL = Object.entries(links).filter(([m, e]) => e && !e.ignored && !esLanza(m) && Number(e.vis30) >= 30 && Date.now() - (Number(e.vis30Ts) || 0) < 7 * 864e5 && npL[m] && Number(npL[m].precio) > 0).map(([m, e]) => ({ p: Number(npL[m].precio), c: (u30L[m] || 0) / Number(e.vis30) }));
-        convRef = (P) => { const b = pubsL.filter((x) => x.p >= P / 2 && x.p <= P * 2).map((x) => x.c).sort((x, y) => x - y); return b.length >= 8 ? { c: b[Math.floor(b.length / 2)], n: b.length } : null; };
+        convRef = (P) => { for (const [lo, hi] of [[0.5, 2], [1 / 3, 3], [1 / 3, 99]]) { const b = pubsL.filter((x) => x.p >= P * lo && x.p <= P * hi).map((x) => x.c).sort((x, y) => x - y); if (b.length >= 8) return { c: b[Math.floor(b.length / 2)], n: b.length }; } return null; };   // lo caro tiene pocas parecidas: se abre la franja (un tercio a triple, después todo lo de un tercio para arriba)
       }
       const hoyK = dayKeyFromISO(Date.now());
       const $ = (x) => (x == null || !isFinite(x)) ? '—' : '$' + Math.round(x).toLocaleString('es-AR');
