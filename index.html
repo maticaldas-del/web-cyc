@@ -2685,7 +2685,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.49';
+const APP_VERSION='25.50';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2698,6 +2698,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.50',f:'20/10',h:'18:56',c:[{n:2,t:'📈 La línea de tiempo vuelve a abrir en la PC: desde la 25.44 (el giro de costado del teléfono) la ventana se abría fuera de la pantalla, muy abajo.'}]},
   {v:'25.49',f:'20/10',h:'19:20',c:[{n:1,t:'📋 Listas: arriba de cada lista, en vez de la línea larga, ✅ Evaluados (🟢 dan · 🔎 dan 25%+ y falta confirmar · 🔴 no dan · ⚫ no están en ML) y ⏳ Sin evaluar.'}]},
   {v:'25.48',f:'20/10',h:'19:05',c:[{n:2,t:'📋 Listas: el "✗ otro producto" que marcó el chat de compras vale sólo para el catálogo de ML que miró. El robot vuelve a buscar esos productos con el nombre traducido, sin ese catálogo, y si encuentra el correcto vuelven a contar (falta que el chat lo confirme).'}]},
   {v:'25.47',f:'20/10',h:'18:55',c:[{n:2,t:'🇦🇷 Dai Nippon funciona igual que el resto de Bs As: ya no tiene 🧾 Pedido ni casillas de "pedir". Lo probado sale como cualquier tarjeta de Pedidos (lo compra Tito en persona) y en 🆕 Nuevos lo que da dice "lo trae Tito".'}]},
@@ -9965,7 +9966,7 @@ function _lineaPuedeGirar(){try{return window.innerHeight>window.innerWidth&&win
 function _lineaAplicarGiro(m){
   if(!m)return;const g=_lineaGiro&&_lineaPuedeGirar();
   if(g){const W=window.innerHeight,H=window.innerWidth;Object.assign(m.style,{inset:'auto',top:'0',left:'0',right:'auto',bottom:'auto',width:W+'px',height:H+'px',transformOrigin:'top left',transform:`translateX(${H}px) rotate(90deg)`});m.dataset.giro='1';}
-  else{Object.assign(m.style,{inset:'0',top:'',left:'',right:'',bottom:'',width:'',height:'',transformOrigin:'',transform:''});m.dataset.giro='';}
+  else{Object.assign(m.style,{top:'',left:'',right:'',bottom:'',width:'',height:'',transformOrigin:'',transform:''});m.style.inset='0';m.dataset.giro='';}
 }
 function _lineaGiroBtn(){if(!_lineaPuedeGirar())return '';return `<button class="btn" onclick="lineaGiroCambiar()" style="font-size:.7rem;padding:3px 10px" title="${_lineaGiro?'Verla parada (normal)':'Verla de costado'}">${_lineaGiro?'⤾ parada':'⤿ de costado'}</button>`;}
 function lineaGiroCambiar(){_lineaGiro=!_lineaGiro;try{localStorage.setItem('cycLineaGiro',_lineaGiro?'1':'0');}catch(e){}const m=document.getElementById('linea-modal');_lineaAplicarGiro(m);_lineaFac=1;if(_lineaRepintar)_lineaRepintar();}
