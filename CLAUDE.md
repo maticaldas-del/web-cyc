@@ -9263,6 +9263,9 @@ la prueba con `decido`. **Nunca anotar #techook a mano sin pasar por `techo95`.*
 index.html = `rayasPrecioLinea` en sync.mjs): sólo días con 3+ u. en Full y con dato de visitas; 🏔️ seguro = el precio de hoy es el 💰
 y arriba hay un 🔴 medido al 95%. Si hay una prueba más cara en curso, la línea lo dice. Antes de cada prueba de techo, miro la raya
 y si subo por encima del 🔴 digo en el 🧠 por qué no le creo.
+**↗️/↘️ VOLVIENDO ES UN PASO, NO UN LUGAR (20/10/2026, él con el Pendrive 128: *"¿no debería ir a buscando techo?"*).** "Volviendo de
+sobra" o "volviendo al normal" dura hasta llegar al precio de antes. Con 7 días en ese tag ya volvió y entra en la lista 🔎 SIN AFINAR
+de `planilla`: se decide buscar techo (o escasez, si se va a cortar) o se deja con motivo.
 **LAS TRES RAYAS DE CADA PRECIO (19/10/2026, pedido suyo):** la línea de tiempo marca 🔴 techo (donde ya no rinde, 95%), 🟢 piso (el
 precio más alto que sí vende) y 💰 el que más plata por día dejó. Lo que no se sabe se dice ("falta probar más caro"); con sobrestock no
 se busca techo (primero sale lo que sobra). **Todo producto tiene que llegar a tener las tres**: si falta el 🔴, la estrategia es buscar techo.

@@ -1859,3 +1859,7 @@ si el precio de hoy es el 💰 y hay 🔴 al 95%. La línea avisa "hoy probando"
 (producto y todas juntas): suma de lunes a domingo (`_lineaSemanas`, `_lineaSemSvg`), misma ganancia que la línea por día
 (`_ganK` / `vd`). La semana incompleta va punteada y lo dice. **Chequear:** que la suma de las semanas enteras coincida con la
 ganancia de Ventas en período Semana.
+
+### Etapa 1 · 20/10/2026 · ↗️/↘️ volviendo de más de 7 días entra en 🔎 SIN AFINAR
+`planilla`: un precio con tag desobra/volviendo hace más de 7 días sale en la lista para decidir (buscar techo o motivo).
+**Chequear:** que la lista los muestre con su 🏷 y que con una nota de 7 días queden en "ya pensadas".

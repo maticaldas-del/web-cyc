@@ -40764,7 +40764,10 @@ async function main() {
         const sinAf = [], pens = [];
         for (const r of filas) {
           if (!/^active/.test(r.est) || r.stDesc || !(r.st > 0) || r.mg == null) continue;
-          if (r.exc || !['sindecidir', 'nuevo', 'agotado'].includes(r.est2.t)) continue;
+          // ↗️/↘️ volviendo es un PASO, no un lugar (20/10/2026, él con el Pendrive 128: "¿no debería ir a buscando techo?"):
+          // con 7 días en ese tag ya volvió, y entra acá igual que lo sin estrategia.
+          const volvViejo = ['desobra', 'volviendo'].includes(r.est2.t) && r.est2.ts && hoy - r.est2.ts > 7 * 864e5;
+          if (r.exc || (!['sindecidir', 'nuevo', 'agotado'].includes(r.est2.t) && !volvViejo)) continue;
           const dias = r.st / Math.max(r.u30 / 30, (r.u60 || 0) / 60);
           // Menos de 14 días sin tag 🔥: o es escasez sin decidir (sale en la 🚨) o la caja llega a tiempo: igual entra acá
           // (19/10, él: "si no tiene línea de techo o alguna otra explicación como sobre stock, tiene que entrar en buscar techo").
