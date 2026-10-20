@@ -1874,6 +1874,9 @@ Passion `MLA4103953976` Premium $64.490, comparte las 13 u. con la Clásica `MLA
 $182.990, 2 u.; a la Clásica se le sacó el descuento propio de $173.790). **Ojo:** Animale y Azzaro salieron recién creadas pausadas
 `out_of_stock` con 0 u. (Animale con envío drop_off); a los 5 minutos ML les pasó el stock y quedaron activas por Full. O sea: releer
 a los ~5 minutos antes de dar por mal una gemela recién creada. v25.22 (web: tag 💳 en `ESTRATEGIA_UI`).
+**Él: *"hacé las otras de la lista también"* (20/10 14:15):** `gemela` dio 21 más (desde $50.000, con stock en Full, sin Premium) y se
+crearon las 21 en una corrida (21 de 21 con 201). Releer todas juntas con `gemelacrea:ver:gemelas` (cada Premium al lado de su Clásica,
+dice cuántas quedaron activas por Full con stock).
 
 ### Etapa 5 · 20/10/2026 · v25.16 · techo: una sola cuenta para la raya y `techo95` (eligió la a)
 Dos fórmulas para el mismo número: la raya 🔴 de la web (desde el 💰, todos los días "con stock") y `techo95` (desde el precio de
