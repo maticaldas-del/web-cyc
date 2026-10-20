@@ -28,6 +28,16 @@ detenimiento"*. Antes, la completa miraba cada publicación de a un renglón y l
  1b. **LOS AYUDANTES VAN CON ESFUERZO `max`** (decisión suya del 20/10: *"una forma de minimizar errores es poner un esfuerzo más
     alto a las tareas que tirás vos al mirar los productos y precios"*). `Agent(…, effort:'max')`. Si un día se cortan por
     límite de uso, se rehacen y se dice en el chat; nunca se aplica un juicio a medias.
+ 1c. **UN QUINTO AYUDANTE SÓLO PARA IDEAS NUEVAS** (pedido suyo del 20/10: *"que te fijes ideas nuevas al tirar las revisiones
+    diarias, por si encontrás algún problema a mejorar o algo nuevo"*). Ya existía el paso 10 / 5b, pero en la práctica se
+    cortaba cuando el día venía pesado (la última idea anotada era del 18/10). Ahora en la completa va un ayudante aparte, con
+    esfuerzo `max`, en paralelo con los cuatro de las cuentas, que NO mira producto por producto sino el negocio entero: lee
+    `ml-sync/notas/ideas.md` (para no repetir), `correcciones.md`, el informe, la planilla, el expediente y las fichas de las 4
+    cuentas, y busca plata que se pierde o se puede ganar y nadie mira (costos pagados de más, patrones en las ventas, ventas
+    que se pierden, cosas que él hace a mano, errores del panel o del robot, cruces que no cierran). Cada idea viene MEDIDA con
+    los datos (cuánta plata, cuántos casos) y con (a)/(b); sólo lee. Yo hago lo chico y fácil de deshacer, lo grande va al
+    `pregunto:` con números, y todo se anota en `ideas.md`. En las vueltas cortas, el 5b sigue: una mirada rápida con lo de esa
+    vuelta. En el chat SIEMPRE: "ideas: N nuevas (H hechas · P propuestas)" o "ideas: ninguna nueva, miré X, Y, Z" — nunca callado.
  4. **EL PORQUÉ QUEDA EN LA FICHA.** Al terminar la completa, toda publicación juzgada lleva su nota (`decido:<MLA>=nota|…`,
     muchas con `ml-sync/notas/fichas_<fecha>.txt` y `decido:archivo=…;go`), con el razonamiento corto y QUÉ MIRAR MAÑANA. Al
     día siguiente el ayudante arranca leyendo esa nota (está en la ficha) y no de cero.
