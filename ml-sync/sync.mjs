@@ -22210,13 +22210,22 @@ async function main() {
         catch (e) { console.log(`   (no pude preguntar si hay otras del mismo producto: ${String(e.message).slice(0, 160)})`); }
         for (const h of hermanos) { try { const b = await mlGet('/items/' + h + '?attributes=id,listing_type_id,status,price', t.access_token); console.log(`     · ${h} · ${b.listing_type_id} · ${b.status} · $${Math.round(b.price || 0).toLocaleString('es-AR')}`); if (b.listing_type_id === 'gold_pro' && b.status !== 'closed') frenos.push(`ya existe la Premium ${h}`); } catch { } }
       }
-      const body = { price: P, currency_id: it.currency_id || 'ARS', buying_mode: 'buy_it_now', listing_type_id: 'gold_pro' };
+      // Campos obligatorios según la documentación (price, category_id, currency_id, buying_mode, listing_type_id); si la Clásica es de
+      // catálogo, también catalog_listing + catalog_product_id. Sin category_id ML contestó 500 "internal_error" (20/10, primer intento).
+      const body = { price: P, category_id: it.category_id, currency_id: it.currency_id || 'ARS', buying_mode: 'buy_it_now', listing_type_id: 'gold_pro' };
+      if (it.catalog_listing && it.catalog_product_id) { body.catalog_listing = true; body.catalog_product_id = it.catalog_product_id; }
       console.log(`\n   mandaría POST /user-products/${upid}/items ${JSON.stringify(body)}`);
       if (frenos.length) { console.log(`\n🛑 NO SE CREA: ${frenos.join(' · ')}`); return; }
       if (!go) { console.log('\n(prueba: sin :go no se crea nada)'); return; }
       const r = await fetch(`${ML_API}/user-products/${upid}/items`, { method: 'POST', headers: { Authorization: 'Bearer ' + t.access_token, 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(30000) });
       const txt = await r.text(); _anotarEscrituraML(r, mla, 'crear gemela Premium', txt);
-      if (!r.ok) { console.log(`\n❌ ML no la creó: ${r.status} ${txt.slice(0, 1500)}`); return; }
+      if (!r.ok) {
+        console.log(`\n❌ ML no la creó: ${r.status} ${txt.slice(0, 1500)}`);
+        // Un 500 no garantiza que no haya quedado nada a medias: se vuelve a preguntar.
+        await new Promise((ok) => setTimeout(ok, 4000));
+        try { const s2 = await mlGet(`/users/${acc.seller_id}/items/search?user_product_id=${upid}`, t.access_token); const otros = (s2.results || []).filter((x) => x !== mla); console.log(otros.length ? `   ⚠️ después del error aparecen otras del mismo producto: ${otros.join(', ')}` : '   ✓ releído: no quedó ninguna publicación nueva'); } catch { console.log('   (no pude volver a preguntar si quedó algo)'); }
+        return;
+      }
       let nuevo; try { nuevo = JSON.parse(txt); } catch { nuevo = {}; }
       const nid = nuevo.id; console.log(`\n✓ ML contestó ${r.status}: item nuevo ${nid || '¿?'}`);
       if (!/^MLA\d+$/.test(String(nid || ''))) { console.log(`   respuesta: ${txt.slice(0, 1500)}`); return; }
