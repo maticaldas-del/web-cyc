@@ -22166,6 +22166,17 @@ async function main() {
     // no; si ya hay una Premium de ese producto no; techo $650.000; Premium más barata que la Clásica no.
     if (String(process.env.BILLING_PROBE || '').startsWith('gemelacrea')) {
       const arg = String(process.env.BILLING_PROBE).slice('gemelacrea:'.length);
+      // `gemelacrea:ver:<MLA>,<MLA>…` (solo lee): tipo, producto de ML y marcas de cada una, para comparar con una gemela que ya existe.
+      if (arg.startsWith('ver:')) {
+        const links = (await db.get('cyc/mllinks')) || {}; const toks = {};
+        for (const mla of arg.slice(4).split(',').map((x) => x.trim().toUpperCase()).filter((x) => /^MLA\d+$/.test(x))) {
+          const L = links[mla] || {}; const acc = accounts[L.cuenta]; if (!acc?.refresh_token) { console.log(`${mla}: sin cuenta conocida`); continue; }
+          if (!toks[L.cuenta]) { try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + L.cuenta, { refresh_token: t.refresh_token, updated_ts: Date.now() }); toks[L.cuenta] = t.access_token; } catch { console.log(`${L.cuenta}: no pude renovar`); continue; } }
+          try { const b = await mlGet('/items/' + mla, toks[L.cuenta]); console.log(`${mla} · ${L.cuenta} · ${b.listing_type_id} · ${b.status} · $${Math.round(b.price || 0).toLocaleString('es-AR')} · ${b.available_quantity} u. · ${(b.shipping || {}).logistic_type} · upid ${b.user_product_id || '—'} · family ${b.family_id || '—'} · catálogo ${b.catalog_listing ? b.catalog_product_id : 'no'} · alta ${String(b.date_created || '').slice(0, 10)} · tags: ${(b.tags || []).join(',')} · ${String(b.title || '').slice(0, 50)}`); }
+          catch (e) { console.log(`${mla}: ML no contestó ${String(e.message).slice(0, 150)}`); }
+        }
+        return;
+      }
       const go = /:go$/.test(arg);
       const m = arg.replace(/:go$/, '').match(/^(MLA\d+)=(\d[\d.]*)$/i);
       if (!m) { console.log('Uso: gemelacrea:<MLA>=<precio>[:go]'); return; }
