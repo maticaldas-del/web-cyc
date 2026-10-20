@@ -20192,12 +20192,13 @@ async function main() {
       const solo = (String(process.env.BILLING_PROBE).split(':')[1] || '').toLowerCase(); const provs = (await db.get('cyc/mlconfig/listasProv')) || {};
       for (const [k, pv] of Object.entries(provs)) { if (solo && k !== solo && String(pv.nombre || '').toLowerCase() !== solo) continue;
         const cat = (await db.get('mlapi/listas/' + k)) || {}; const v = Object.values(cat).filter((e) => e && e.n);
-        const c = { med: 0, d25: 0, b25: 0, sc: 0, sv: 0, fz: 0, nunca: 0, sinRes: 0 }; const mot = {};
+        const c = { med: 0, d25: 0, b25: 0, sc: 0, sv: 0, fz: 0, nunca: 0, sinRes: 0, rebus: 0 }; const mot = {};
         for (const e of v) { if (e.m != null && isFinite(e.m)) { c.med++; if (Number(e.m) >= 25) c.d25++; else c.b25++; continue; }
           if (e.fz) { c.fz++; const r = String(e.fz).replace(/\d+/g, '#').slice(0, 50); mot[r] = (mot[r] || 0) + 1; continue; }
+          if ((e.sc || e.sv) && Number(e.qv || 0) !== LISTA_NOMBRE_VER) { c.rebus++; continue; }
           if (e.sc) { c.sc++; continue; } if (e.sv) { c.sv++; continue; } if (!e.t) c.nunca++; else c.sinRes++; }
         console.log(`\n== ${pv.nombre || k} (${k})${pv.desc ? ' · DESCARTADO' : ''}${pv.bsas ? ' · Bs As' : ''} · lista del ${pv.ts ? new Date(pv.ts).toISOString().slice(0, 10) : '?'} · ${v.length} productos ==`);
-        console.log(`   medidos ${c.med} (${c.d25} de 25%+ · ${c.b25} abajo) · sin catálogo exacto en ML ${c.sc} · en ML no lo vende nadie ${c.sv} · afuera por regla ${c.fz} · sin medir: ${c.nunca} nunca probados + ${c.sinRes} probados sin resultado`);
+        console.log(`   ✅ encontrados y medidos ${c.med} (${c.d25} de 25%+ · ${c.b25} abajo) · 🔍 buscados y no encontrados ${c.sc + c.sv} (${c.sc} sin el mismo producto en ML · ${c.sv} nadie lo vende) · ⏳ por buscar ${c.nunca + c.sinRes + c.rebus} (${c.nunca} nunca · ${c.sinRes} sin resultado · ${c.rebus} por volver a buscar con el nombre traducido) · 🚫 afuera por regla ${c.fz}`);
         const top = Object.entries(mot).sort((a, b) => b[1] - a[1]).slice(0, 8); if (top.length) console.log('   afuera por: ' + top.map(([r, n]) => `${r} ${n}`).join(' · '));
         // `listaestado:<prov>:sc:<n>` / `:sv:<n>`: una muestra pareja de N nombres de ese grupo con lo más parecido que trajo ML.
         { const pp = String(process.env.BILLING_PROBE).split(':'); const g = pp[2], nM = parseInt(pp[3], 10) || 150;

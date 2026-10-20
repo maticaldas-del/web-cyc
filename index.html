@@ -2685,7 +2685,9 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.45';
+const APP_VERSION='25.46';
+// Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
+const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2696,6 +2698,7 @@ const APP_VERSION='25.45';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.46',f:'20/10',h:'18:35',c:[{n:2,t:'📋 Listas: la línea de arriba separa tres grupos que antes se mezclaban: ✅ encontrados en ML y medidos · 🔍 buscados y no encontrados · ⏳ por buscar (los que se buscaron con el nombre abreviado y el robot todavía no volvió a buscar traducidos cuentan acá).'}]},
   {v:'25.45',f:'20/10',h:'18:20',c:[{n:2,t:'🔒 Una venta que canceló Mercado Libre queda cancelada: ya no tiene el botón ↩ Reactivar (dice "la canceló Mercado Libre"). Reactivar queda sólo para las que cancelaste vos a mano.'},{n:1,t:'🔐 Las listas de precios de los proveedores ya no están legibles en el repositorio público: viajan cifradas y sólo el robot las abre.'},{n:1,t:'🔎 La revisión de choques y fallas mudas quedó cerrada: no queda nada para decidir.'}]},
   {v:'25.44',f:'20/10',h:'17:40',c:[{n:1,t:'📈 La línea de tiempo en el teléfono se abre de costado aunque tengas bloqueado el giro: acostá el teléfono para leerla. El botón ⤾ parada la vuelve a la normal (queda guardado).'}]},
   {v:'25.43',f:'20/10',h:'18:10',c:[{n:3,t:'🔎 Revisión de choques y fallas mudas: los botones de pedidos y llegadas no se aprietan dos veces, una venta borrada no vuelve, el cambio de precio de Paraguay obliga a medir de nuevo, y el robot deja de escribir apenas se cancela una corrida.'},{n:2,t:'🌙 La corrida de la noche no se repite: la 2ª y 3ª dicen que ya terminó y no vuelven a hacer todo.'}]},
@@ -19406,11 +19409,17 @@ async function renderListas(){
   // SIN STOCK = NO ESTÁ EN LA WEB DEL PROVEEDOR (19/10/2026, él con Iscos: "sólo tienen en stock lo que hay en la web de ellos, no en la
   // lista en Excel"). `noWeb` lo pone el robot (`listaweb`): no sale en ninguna sección para pedir, queda abajo cerrado.
   const sinWeb=nuevos.filter(([,e])=>e.noWeb&&!e.sacado);
-  const _sinM=filas.filter(([,e])=>e.m==null),nFz=_sinM.filter(([,e])=>e.fz).length,nSc=_sinM.filter(([,e])=>!e.fz&&e.sc).length,nSv=_sinM.filter(([,e])=>!e.fz&&!e.sc&&e.sv).length;
+  // TRES GRUPOS QUE NO SE MEZCLAN (20/10/2026, él: "si mide 10 y 6 no están en ML, no quiere decir que no estén medidos, sino no
+  // encontrados. son otro grupo"): encontrados y medidos · buscados y NO encontrados en ML · por buscar. Lo que se buscó con el
+  // nombre viejo y no apareció cuenta como "por buscar" hasta que el robot lo vuelva a buscar traducido (`qv`, LISTA_NOMBRE_VER).
+  const _sinM=filas.filter(([,e])=>e.m==null),nFz=_sinM.filter(([,e])=>e.fz).length;
+  const _noEnc=_sinM.filter(([,e])=>!e.fz&&(e.sc||e.sv));
+  const _yaTrad=([,e])=>Number(e.qv||0)===LISTA_NOMBRE_VER;
+  const nSc=_noEnc.filter(x=>_yaTrad(x)&&x[1].sc).length,nSv=_noEnc.filter(x=>_yaTrad(x)&&!x[1].sc).length,nRebus=_noEnc.filter(x=>!_yaTrad(x)).length;
   const med=filas.filter(([,e])=>e.m!=null).length, sinMed=filas.filter(([,e])=>e.m==null&&!e.sc&&!e.sv&&!e.fz).length;
   const q=_listaQ;
   let res=[];if(q.length>=2){const pal=_pycNorm(q).split(/\s+/).filter(Boolean);res=filas.filter(([cod,e])=>{const t=_pycNorm(e.n+' '+cod);return pal.every(w=>t.includes(w));}).sort(ord);}
-  el.innerHTML=cab+`<div style="font-size:.7rem;color:var(--muted);margin-bottom:8px">${filas.length} productos en la lista = ${med} medidos + ${nSc} sin el mismo producto en ML + ${nSv} que en ML no vende nadie + ${nFz} afuera por regla (110V, marca que ML frena…) + ${sinMed} sin medir todavía${rec?` · recargo del proveedor ${rec}%`:''}${v.ts?` · lista del ${new Date(v.ts).toLocaleDateString('es-AR')}`:''}</div>
+  el.innerHTML=cab+`<div style="font-size:.7rem;color:var(--muted);margin-bottom:8px">${filas.length} productos en la lista = <b>✅ ${med} encontrados en ML y medidos</b> + <b>🔍 ${nSc+nSv} buscados y no encontrados</b> (${nSc} no está el mismo producto en ML · ${nSv} está pero no lo vende nadie) + <b>⏳ ${sinMed+nRebus} por buscar</b>${nRebus?` (${sinMed} nunca buscados · ${nRebus} por volver a buscar con el nombre traducido)`:''} + 🚫 ${nFz} afuera por regla (110V, marca que ML frena…)${rec?` · recargo del proveedor ${rec}%`:''}${v.ts?` · lista del ${new Date(v.ts).toLocaleDateString('es-AR')}`:''}</div>
     <div style="font-size:.85rem;font-weight:700;color:var(--green);margin:4px 0 8px">✅ Dan 25% o más en ML y tienen 100+ ventas · ${dan.length}</div>
     <div style="display:flex;flex-direction:column;gap:6px">${dan.length?dan.map(f=>fila(f,true)).join(''):'<div class="empty-msg">Todavía ninguno (o falta medirlos).</div>'}</div>
     ${revis.length?`<details style="margin-top:14px;background:var(--surface);border:1px solid var(--amber);border-radius:var(--r);padding:10px 12px"><summary style="cursor:pointer;font-size:.82rem;font-weight:700;color:var(--amber)">🔎 Para revisar con los ojos (${revis.length}) <span style="font-weight:400;color:var(--muted);font-size:.66rem">— darían 25%+, pero falta saber si tienen 100 ventas (lo mira el chat), o ML no nombra alguna palabra (⚠️), o da 80% o más</span></summary><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${revis.slice(0,150).map(f=>fila(f,false)).join('')}</div></details>`:''}
