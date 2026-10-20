@@ -40003,6 +40003,36 @@ async function main() {
         if (pensadas.length) console.log(`   (${pensadas.length} sobran pero ya les escribí nota en los últimos 7 días: ${pensadas.map((x) => x.rs[0].nom.slice(0, 24)).join(' · ')})`);
         if (filas.some((r) => !r.kSt && r.st === 0 && r.stDesc)) console.log(`   (afuera: ${filas.filter((r) => r.stDesc).length} con el stock del color sin saber)`);
       } catch (eS) { console.log('⚠️ la lista de sobra stock falló: ' + eS.message); }
+      // ── 🤔 MIS DESCUENTOS QUE YA NO TIENEN SENTIDO (20/10/2026, eligió la 2.1a, con los Victoria's Secret: 9 en descuento
+      // vendiendo entre 3% y pérdida y 3 recién llegadas que ganaban la caja). La regla 🤔 frena un descuento NUEVO; esta lista
+      // revisa TODOS LOS DÍAS los que ya están puestos, porque las condiciones cambian (vendió y ya no sobra, llegó una caja, subió
+      // el costo). Un descuento mío vigente sale acá si falla alguna de las tres: sobra de verdad (+90 d de stock al ritmo con
+      // stock, sumando las publicaciones de esa mercadería) · no es recién llegado (30+ d con fecha REAL) · 25%+ en el peor caso.
+      // Se decide EN ESTA VUELTA: sacarlo (`entrarpromo:<MLA>=salir|…`) o dejarlo con motivo (nota de 7 días). Tiene que quedar vacía.
+      try {
+        let ntsD = null; try { ntsD = (await db.get('mlapi/fichanotas')) || {}; } catch { ntsD = null; }
+        const ultD = (m) => Math.max(0, ...Object.keys((ntsD || {})[m] || {}).map(Number).filter((n) => n > 0));
+        const grD = {}; for (const r of filas) if (r.kSt) (grD[r.kSt] = grD[r.kSt] || []).push(r);
+        const malD = [], pensD = [];
+        for (const r of filas) {
+          if (!/en promo mía/.test(r.exc || '')) continue;
+          const rs = r.kSt ? grD[r.kSt] : [r];
+          const st = Math.max(...rs.map((x) => x.st || 0));
+          const rit = Math.max(rs.reduce((a, x) => a + (x.u30 || 0), 0) / 30, rs.reduce((a, x) => a + (x.u60 || 0), 0) / 60);
+          const dias = r.stDesc ? null : (rit > 0 ? st / rit : (st > 0 ? Infinity : 0));
+          const por = [];
+          if (dias != null && dias <= 90) por.push(`no sobra (${st} u. = ${Math.round(dias)} d)`);
+          if (r.desde && hoy - r.desde < 30 * 864e5) por.push(`recién llegado (${Math.round((hoy - r.desde) / 864e5)} d)`);
+          if (r.mgP != null && r.mgP < PISO) por.push(`peor caso ${r.mgP.toFixed(0)}%`);
+          if (!por.length) continue;
+          const n = ultD(r.mla); const fila = { ...r, por };
+          if (n && hoy - n < 7 * 864e5) pensD.push(fila); else malD.push(fila);
+        }
+        console.log(`\n── 🤔 MIS DESCUENTOS QUE YA NO TIENEN SENTIDO (${malD.length}) · sacarlo o dejarlo con motivo · EN ESTA VUELTA ──`);
+        for (const r of malD) console.log(`🤔 ${r.mla} · ${r.cta} · ${r.nom} · ${f(r.P)} · ${r.exc} · v ${r.u7}/${r.u30}/${r.u60} · ${r.por.join(' · ')}`);
+        if (!malD.length) console.log('ninguno: todos mis descuentos siguen teniendo sentido');
+        if (pensD.length) console.log(`   (${pensD.length} fallan alguna pero ya les escribí nota en 7 días: ${pensD.map((x) => x.nom.slice(0, 24)).join(' · ')})`);
+      } catch (eD) { console.log('⚠️ la lista de descuentos sin sentido falló: ' + eD.message); }
       // ── 🔎 SIN AFINAR (19/10/2026, él: "¿con eso vamos a evitar que dejes pasar productos que no estén afinados al máximo? (…)
       // productos que nunca se buscó techo, entonces perdemos saber techos y ganancia"). Los tags dicen qué estrategia tiene cada
       // precio; esta lista es la que obliga a que NADIE quede sin estrategia: toda publicación ACTIVA que vende (2+ en 30 d), con

@@ -1750,3 +1750,5 @@ cuando el emparejado por nombre agarra un set u otro tamaño (caso Cheeky Cool B
 
 - 20/10 · Navidad: pedir 45 días a mitad de noviembre lo que subió en dic-2025 (CEREBRO.md 🎄, recordatorio 14/11) · tarjetas SanDisk: todas originales, la 32GB queda activa · Bola de hielo MLA1754449117 desocultada para venderse (chequear margen 25% peor caso).
 - 20/10 · VS: salí del descuento propio en 12 publicaciones (9 abajo del 25% y Love Addict, Sizzling, Wild Neroli recién llegadas) · regla nueva 🤔 ¿tiene sentido el descuento? (CEREBRO.md): sobra real, no recién llegado, 25%+ peor caso. Qué chequear: que vuelvan al precio de lista y que el próximo `analizapromo` no proponga descuentos que fallen la regla.
+
+- 20/10/2026 · `planilla` · lista 🤔 de descuentos míos vigentes que ya no cumplen la regla (sobra, recién llegado, peor caso). Chequear: que la lista salga vacía al terminar cada completa.
