@@ -2684,7 +2684,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.39';
+const APP_VERSION='25.40';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2695,6 +2695,7 @@ const APP_VERSION='25.39';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.40',f:'20/10',h:'16:40',c:[{n:3,t:'📦 Revisión de Mercadería: Pedidos mide lo agotado por lo que se vendía cuando había stock (el Adaptador 8 en 1 pasa de 6 a 35), reconoce las subas por escasez o techo color por color, y lo cambiado a mano deja de pedirse cuando ya lo compraste.'},{n:3,t:'🇵🇾 Paraguay: el pedido de probados va color por color con el código y el precio de ese color; Nissei y Elegancia ya no se confunden por códigos parecidos; "Ya lo pedí" por el chat hace lo mismo que el botón.'},{n:3,t:'🔥 Escasez: una caja vieja con una unidad sin entrar ya no tapa la escasez; ⚡ "se aceleró" también en la web; la reposición se mira color por color.'},{n:2,t:'📦 Cajas: no se puede borrar un envío con cajas que llegaron hace menos de 60 días; deshacer una caja no cuenta como compra nueva; con 1-2 ventas Armar caja no pide de más.'},{n:2,t:'📋 Listas: si cambió el costo, dice "⏳ costo nuevo, falta medir" en vez del % viejo.'},{n:1,t:'🇵🇾 Nuevos: los candidatos vencidos se ven en "⌛ Vencidos" y se pueden devolver.'}]},
   {v:'25.39',f:'20/10',h:'15:56',c:[{n:1,t:'📋 Ventas: en el detalle de cada venta, al lado de 📈 línea, el botón 📋 ficha abre la ficha médica de esa publicación con toda su información.'}]},
   {v:'25.38',f:'20/10',h:'15:55',c:[{n:2,t:'📊 Métricas → de dónde viene la mercadería: el score se promedia por color/aroma, no por ficha (el Paulvic es una sola ficha con todos los aromas y salía inflado). Y los números de arriba ya no se pisan.'}]},
   {v:'25.37',f:'20/10',h:'15:52',c:[{n:2,t:'📊 Métricas → de dónde viene la mercadería: botón nuevo 📋 Listas (cada proveedor de lista que ya vendió, uno al lado del otro). Ahora todo se compara por ⚡ score (el mismo del ranking de Ventas), promediado por producto, para ver dónde conviene meter plata. Lo de listas ya no se cuenta adentro de Bs As.'}]},
@@ -4242,7 +4243,8 @@ const REV_HIST={
      {f:'2026-10-20',t:'Primera del calendario (máximo): Arqueo, cierre, cobro, monedas y robot de MP. Lo obvio arreglado (v25.23 a v25.26), 8 decisiones suyas.'},
      {f:'2026-10-20',t:'Cerrada: él eligió 1b 2b 3a 4a 5a 6a 7a 8a (listas como deuda al llegar, recargo contra la web, filas de MP sin venta = ya en la cuenta). v25.33.'}],
   3:[{f:'2026-09-29',t:'4 revisores (cajas, stock, pedidos, Paraguay): 29 hallazgos, las obvias hechas y 6 decididas por él.'},
-     {f:'2026-09-30',t:'Cerrada: el aviso de renglón que no cierra se mide color por color.'}],
+     {f:'2026-09-30',t:'Cerrada: el aviso de renglón que no cierra se mide color por color.'},
+     {f:'2026-10-20',t:'4 revisores (cajas, pedidos, Paraguay, escasez y patrimonio), máximo: 33 arreglos (v25.40). Eligió 2a (lo grande paga desde 60 d) y 1a (lo probado de una lista entra a su pedido, en curso).'}],
   4:[{f:'2026-09-30',t:'Choques web/robot y corridas a la vez: ~30 reales, todas arregladas (transacciones, relecturas, candados).'},
      {f:'2026-09-30',t:'Fallas mudas y privacidad: ~35 reales arregladas; él decidió aprobar a mano los chats nuevos de Telegram y cómo contar días con stock.'}],
   5:[{f:'2026-10-12',t:'Primera vuelta de las líneas de tiempo: que cada día cuente bien y coincida con Ventas y el Arqueo.'},
