@@ -97,7 +97,7 @@ function umbralRedondoCruzado(p0, p1) {
 // 19/10/2026, eligió 1a 2a 3a: los PASAJES tienen nombre. 5 tags nuevos (🪜 bajando · ↘️ volviendo al normal · ↗️ volviendo de
 // sobra · 🏔️ techo encontrado · 🧨 remate total); "↩️ corrección" se elimina: lo que "vuelve" se nombra según de dónde venía
 // (`pasajeDe`) y la web muestra "venía de X" en el chip. Escasez lleva escalón como el techo.
-const ESTRATEGIAS = { sindecidir: '⚪ sin estrategia', agotado: '⏸️ sin stock', escasez: '🔥 escasez', sinrepo: '⏳ sin reposición', techo: '📈 buscando techo', techook: '🏔️ techo encontrado', bajando: '🪜 bajando', volviendo: '↘️ volviendo al normal', desobra: '↗️ volviendo de sobra', liquidando: '📉 liquidando', remate: '🧨 remate total', caja: '🥊 ganar la caja', promo: '🏷️ promo', descuento: '💸 descuento', fecha: '🎁 fecha especial', excepcion: '🛡️ excepción', sobra: '📦 sobra stock', nuevo: '🆕 lanzamiento', prueba: '🧪 prueba tachado' };
+const ESTRATEGIAS = { sindecidir: '⚪ sin estrategia', agotado: '⏸️ sin stock', escasez: '🔥 escasez', sinrepo: '⏳ sin reposición', techo: '📈 buscando techo', techook: '🏔️ techo encontrado', bajando: '🪜 bajando', volviendo: '↘️ volviendo al normal', desobra: '↗️ volviendo de sobra', liquidando: '📉 liquidando', remate: '🧨 remate total', caja: '🥊 ganar la caja', promo: '🏷️ promo', descuento: '💸 descuento', fecha: '🎁 fecha especial', excepcion: '🛡️ excepción', sobra: '📦 sobra stock', nuevo: '🆕 lanzamiento', prueba: '🧪 prueba tachado', gemela: '💳 gemela con cuotas' };
 // Lo que "vuelve" (motivo "vuelvo", o una anotación vieja ↩️ corrección) toma nombre según el tag ANTERIOR. MISMA tabla en index.html.
 function pasajeDe(prev) {
   if (prev === 'techo' || prev === 'techook') return 'techook';
@@ -22154,6 +22154,73 @@ async function main() {
       console.log(`\nSin catálogo que NO se prueban, con el motivo (${noCat.length}):`);
       for (const [mla, v] of noCat.slice(0, 80)) console.log(`   · ${v.cuenta} ${mla} · ${v.nom.slice(0, 36)} · ${v.motivo}`);
       if (guardar) { await db.set('cyc/vigilancia', { ts: Date.now(), filas: pz.vig }); console.log('\n✓ Foto guardada en cyc/vigilancia'); }
+      return;
+    }
+    // CREAR LA GEMELA PREMIUM (20/10/2026, eligió la a: "probar primero con una sola"). `gemelacrea:<MLA>=<precio>[:go]`.
+    // Agrega a la MISMA publicación (User Product) una condición de venta Premium con cuotas, al precio que deja la misma
+    // plata neta que la Clásica (lo calcula `gemela`). ML la crea como un item nuevo que comparte el stock: no se crea una
+    // publicación nueva ni se mueve mercadería. POST /user-products/<upid>/items (documentación de ML, "Add a selling
+    // condition to a User Product"). Sin `:go` sólo lee y muestra lo que mandaría. Con `:go`: crea, relee de ML el item
+    // nuevo y el original (precio, tipo, stock compartido), lo vincula en cyc/mllinks a la misma ficha y color, y le pone
+    // la estrategia 💳 gemela. Frenos: sin user_product_id o sin la marca user_product_listing no hace nada; con variantes
+    // no; si ya hay una Premium de ese producto no; techo $650.000; Premium más barata que la Clásica no.
+    if (String(process.env.BILLING_PROBE || '').startsWith('gemelacrea')) {
+      const arg = String(process.env.BILLING_PROBE).slice('gemelacrea:'.length);
+      const go = /:go$/.test(arg);
+      const m = arg.replace(/:go$/, '').match(/^(MLA\d+)=(\d[\d.]*)$/i);
+      if (!m) { console.log('Uso: gemelacrea:<MLA>=<precio>[:go]'); return; }
+      const mla = m[1].toUpperCase(), P = Math.round(parseFloat(m[2].replace(/\./g, '')));
+      const links = (await db.get('cyc/mllinks')) || {};
+      const L = links[mla]; if (!L || !L.cuenta) { console.log(`${mla}: no está en cyc/mllinks (no sé de qué cuenta es)`); return; }
+      const acc = accounts[L.cuenta]; if (!acc?.refresh_token) { console.log(`${L.cuenta}: sin permiso cargado`); return; }
+      let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { console.log(`⚠️ ${L.cuenta}: no pude renovar el permiso`); return; }
+      await db.patch('mlapi/tokens/' + L.cuenta, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+      let it; try { it = await mlGet('/items/' + mla, t.access_token); } catch (e) { console.log(`⚠️ ${mla}: ML no contestó (${String(e.message).slice(0, 200)})`); return; }
+      const tags = it.tags || [], upid = it.user_product_id || null;
+      const vars = Array.isArray(it.variations) ? it.variations.length : 0;
+      console.log(`\n══ GEMELA PREMIUM · ${mla} · ${L.cuenta} · ${String(it.title || '').slice(0, 60)} ══`);
+      console.log(`   tipo ${it.listing_type_id} · estado ${it.status} · precio $${Math.round(it.price || 0).toLocaleString('es-AR')} · ${it.available_quantity} u. · envío ${(it.shipping || {}).logistic_type} · catálogo ${it.catalog_listing ? 'sí (' + it.catalog_product_id + ')' : 'no'}`);
+      console.log(`   user_product_id ${upid || '— NO TIENE'} · family_id ${it.family_id || '—'} · marca user_product_listing ${tags.includes('user_product_listing') ? 'sí' : 'NO'} · variantes ${vars}`);
+      console.log(`   tags: ${tags.join(', ')}`);
+      const frenos = [];
+      if (!upid) frenos.push('no tiene user_product_id: ML no la tiene en el modelo nuevo y no se le puede agregar otra condición de venta');
+      if (!tags.includes('user_product_listing')) frenos.push('no tiene la marca user_product_listing');
+      if (vars > 1) frenos.push('tiene variantes adentro');
+      if (it.listing_type_id === 'gold_pro') frenos.push('ya es Premium');
+      if (!(P > (it.price || 0))) frenos.push(`el Premium ($${P.toLocaleString('es-AR')}) tiene que ser más caro que la Clásica`);
+      if (P > 650000) frenos.push('pasa el techo de $650.000');
+      // ¿Ya hay otra condición de venta de este mismo producto en ML?
+      let hermanos = [];
+      if (upid) {
+        try { const s = await mlGet(`/users/${acc.seller_id}/items/search?user_product_id=${upid}`, t.access_token); hermanos = (s.results || []).filter((x) => x !== mla); console.log(`   otras publicaciones de este mismo producto en ML: ${hermanos.length ? hermanos.join(', ') : 'ninguna'}`); }
+        catch (e) { console.log(`   (no pude preguntar si hay otras del mismo producto: ${String(e.message).slice(0, 160)})`); }
+        for (const h of hermanos) { try { const b = await mlGet('/items/' + h + '?attributes=id,listing_type_id,status,price', t.access_token); console.log(`     · ${h} · ${b.listing_type_id} · ${b.status} · $${Math.round(b.price || 0).toLocaleString('es-AR')}`); if (b.listing_type_id === 'gold_pro' && b.status !== 'closed') frenos.push(`ya existe la Premium ${h}`); } catch { } }
+      }
+      const body = { price: P, currency_id: it.currency_id || 'ARS', buying_mode: 'buy_it_now', listing_type_id: 'gold_pro' };
+      console.log(`\n   mandaría POST /user-products/${upid}/items ${JSON.stringify(body)}`);
+      if (frenos.length) { console.log(`\n🛑 NO SE CREA: ${frenos.join(' · ')}`); return; }
+      if (!go) { console.log('\n(prueba: sin :go no se crea nada)'); return; }
+      const r = await fetch(`${ML_API}/user-products/${upid}/items`, { method: 'POST', headers: { Authorization: 'Bearer ' + t.access_token, 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(30000) });
+      const txt = await r.text(); _anotarEscrituraML(r, mla, 'crear gemela Premium', txt);
+      if (!r.ok) { console.log(`\n❌ ML no la creó: ${r.status} ${txt.slice(0, 1500)}`); return; }
+      let nuevo; try { nuevo = JSON.parse(txt); } catch { nuevo = {}; }
+      const nid = nuevo.id; console.log(`\n✓ ML contestó ${r.status}: item nuevo ${nid || '¿?'}`);
+      if (!/^MLA\d+$/.test(String(nid || ''))) { console.log(`   respuesta: ${txt.slice(0, 1500)}`); return; }
+      await new Promise((ok) => setTimeout(ok, 4000));
+      let b2 = null, b1 = null;
+      try { b2 = await mlGet('/items/' + nid, t.access_token); } catch (e) { console.log(`⚠️ no pude releer ${nid}: ${String(e.message).slice(0, 200)}`); }
+      try { b1 = await mlGet('/items/' + mla + '?attributes=id,listing_type_id,status,price,available_quantity', t.access_token); } catch { }
+      if (b2) console.log(`   releído ${nid}: tipo ${b2.listing_type_id} · ${b2.status}${(b2.sub_status || []).length ? ' (' + b2.sub_status.join(',') + ')' : ''} · $${Math.round(b2.price || 0).toLocaleString('es-AR')} · ${b2.available_quantity} u. · envío ${(b2.shipping || {}).logistic_type} · upid ${b2.user_product_id} · catálogo ${b2.catalog_listing ? 'sí' : 'no'} · ${b2.permalink || ''}`);
+      if (b1) console.log(`   la Clásica ${mla}: tipo ${b1.listing_type_id} · ${b1.status} · $${Math.round(b1.price || 0).toLocaleString('es-AR')} · ${b1.available_quantity} u.`);
+      const okRel = b2 && b2.listing_type_id === 'gold_pro' && Math.round(b2.price) === P && b2.user_product_id === upid;
+      console.log(okRel ? '   ✓ quedó Premium, al precio pedido y en el mismo producto' : '   ⚠️ NO coincide con lo pedido: mirarla en ML');
+      // Vincularla a la misma ficha y color (el robot de ventas la reconoce por cyc/mllinks).
+      const e2 = { title: (b2 && b2.title) || L.title || '', cuenta: L.cuenta, status: (b2 && b2.status) || 'active', gemelaDe: mla, altaTs: Date.now() };
+      for (const k of ['prodId', 'variant', 'upid', 'inv', 'categoria', 'rubro', 'foto']) if (L[k] != null) e2[k] = L[k];
+      if (upid) e2.upid = upid;
+      try { await db.patch('cyc/mllinks/' + nid, e2); const rl = await db.get('cyc/mllinks/' + nid); console.log(rl && rl.prodId === L.prodId ? `   ✓ vinculada a la ficha ${L.prodId}${L.variant ? ' · ' + L.variant : ''}` : '   ⚠️ no quedó vinculada: vincular a mano'); } catch { console.log('   ⚠️ no pude vincularla en cyc/mllinks'); }
+      const okE = await guardarEstrategia(db, nid, 'gemela', `Premium gemela de ${mla}: la misma publicación con cuotas sin interés, a $${P.toLocaleString('es-AR')}, que deja la misma plata neta que la Clásica (con lo que gasta del tope de H). Las ventas que traiga son ventas que la Clásica no hacía.`);
+      console.log(okE ? '   ✓ estrategia 💳 gemela anotada' : '   ⚠️ no pude anotar la estrategia');
       return;
     }
     // GEMELA PREMIUM (20/10/2026, él con el Ferrari Rojo: "al tener la premium vendimos 2 en 30 días"). SOLO LEE.
