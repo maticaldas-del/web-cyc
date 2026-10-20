@@ -1873,7 +1873,7 @@ Passion `MLA4103953976` Premium $64.490, comparte las 13 u. con la Clásica `MLA
 `MLA4103941572` ($164.990, Clásica `MLA1873659093` $139.990, 2 u.) y Joystick `MLA4103890882` ($214.990, Clásica `MLA3528837742`
 $182.990, 2 u.; a la Clásica se le sacó el descuento propio de $173.790). **Ojo:** Animale y Azzaro salieron recién creadas pausadas
 `out_of_stock` con 0 u. (Animale con envío drop_off); a los 5 minutos ML les pasó el stock y quedaron activas por Full. O sea: releer
-a los ~5 minutos antes de dar por mal una gemela recién creada. v25.20 (web: tag 💳 en `ESTRATEGIA_UI`).
+a los ~5 minutos antes de dar por mal una gemela recién creada. v25.22 (web: tag 💳 en `ESTRATEGIA_UI`).
 
 ### Etapa 5 · 20/10/2026 · v25.16 · techo: una sola cuenta para la raya y `techo95` (eligió la a)
 Dos fórmulas para el mismo número: la raya 🔴 de la web (desde el 💰, todos los días "con stock") y `techo95` (desde el precio de
