@@ -1693,6 +1693,13 @@ Captura suya: al abrir "detalle" la tarjeta (`.vp-cel`) se ensanchaba (chips, el
 `nowrap`), se cortaban el % y los botones, y el iPhone agrandaba la letra (text-size-adjust). CSS en ≤640px: nada pasa del ancho,
 todo corta renglón; `html{text-size-adjust:100%}`. Probado con una maqueta a 390px (scrollWidth 390). Chequear en cada cambio de la tarjeta.
 
+### Etapa 7 · 20/10/2026 · v25.05 · Las ventas del celu salían aplastadas (consecuencia de v25.00)
+Captura suya: cada tarjeta de Ventas se veía cortada por la mitad. La lista (`.ingreso-list`, `#vp-day-list`) es flex en columna
+con alto máximo (68vh en el celu) y el `overflow:hidden` de v25.00 le saca el piso de alto a cada tarjeta (min-height auto → 0):
+el navegador las achicaba hasta que entraran todas (5 px c/u). Arreglo: `#vp-day-list>*,.ingreso-list>*{flex-shrink:0}`.
+Probado con maqueta de 30 tarjetas a 390px: 5 px → 107 px. **Chequear: al poner overflow en algo que vive adentro de una lista
+flex con alto máximo, que no se achique; probar con muchas tarjetas, no con tres.**
+
 ### Etapa 2 · 19/10/2026 · v25.01 · Paulvic: "a pagar ≈" en el pedido en camino
 Pedido suyo. `_pvPrecioUnitAnt`: lo que salió cada unidad en el último pedido con monto (calculadora ÷ llegadas, sin flete); la
 tarjeta en camino muestra unidades pedidas × eso como "≈ $X · aprox" (y arriba a la derecha). No se guarda en ningún lado: es sólo

@@ -48,6 +48,8 @@ html{font-size:118%}
 @media(pointer:coarse){input,select,textarea{font-size:16px!important}input.qty{width:64px;min-height:36px}.ii-del{min-width:36px;min-height:36px;padding:6px 8px;font-size:.9rem}}
 /* Ventas en la PC (09/10/2026, él: "sacá esa barra de abajo, que me deje un lugar para poner el mouse y scrolear la web"): sin barra horizontal y un margen a la derecha, afuera de la lista, donde la rueda mueve la página. */
 @media(min-width:641px){#vp-day-list{margin-right:56px;padding:4px 26px}}   /* las ventas un poco adentro: el fuego sale por los costados sin cortarse (09/10/2026) */
+/* Las tarjetas de una lista con alto máximo no se achican: con overflow:hidden (v25.00) el celu las aplastaba (20/10/2026). */
+#vp-day-list>*,.ingreso-list>*{flex-shrink:0}
 @media(max-width:640px){#vp-day-list,.ingreso-list{max-height:68vh!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;border:1px solid var(--border);border-radius:10px;padding:4px}}
 #tt-toque{position:fixed;z-index:99990;max-width:min(320px,calc(100vw - 32px));background:var(--surface2);color:var(--text);border:1px solid var(--border2);border-radius:10px;padding:10px 12px;font-size:.78rem;line-height:1.45;box-shadow:0 6px 24px rgba(0,0,0,.35);white-space:pre-line}
 @media(max-width:900px){html{font-size:100%}}
@@ -2678,7 +2680,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.04';
+const APP_VERSION='25.05';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2689,6 +2691,7 @@ const APP_VERSION='25.04';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.05',f:'20/10/2026',h:'21:45',c:[{n:2,t:'📱 Ventas en el celu: las tarjetas volvían a salir cortadas por la mitad (el arreglo de ayer para que el detalle no se saliera de la pantalla hacía que la lista las aplastara). Arreglado.'}]},
   {v:'25.04',f:'20/10/2026',h:'21:20',c:[{n:2,t:'Pedidos Paulvic: cada pedido en camino dice cuándo llega aprox (lo que tardaron los anteriores) y hasta cuándo pagar; el que llegó dice cuántos días hábiles quedan para pagar antes del 10% de recargo.'}]},
   {v:'25.03',f:'19/10/2026',h:'21:05',c:[{n:2,t:'Armar caja: al buscar, el desplegable "Sin recomendación para mandar" se abre solo. Lo que estaba en 0 quedaba adentro, cerrado, y parecía que no existía'}]},
   {v:'25.02',f:'19/10/2026',h:'20:45',c:[{n:1,t:'Armar caja: el buscador también encuentra por el título de la publicación de ML (las fichas de Paraguay se llaman en portugués: ahora "micrófono" encuentra el "Microfone Fifine")'}]},
