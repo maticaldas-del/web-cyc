@@ -2680,7 +2680,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.08';
+const APP_VERSION='25.09';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2691,6 +2691,7 @@ const APP_VERSION='25.08';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.09',f:'20/10/2026',h:'00:20',c:[{n:1,t:'🔎 Las revisiones diarias corren con esfuerzo Máximo (con el plan 20x alcanza).'}]},
   {v:'25.08',f:'20/10/2026',h:'00:05',c:[{n:1,t:'🔎 La revisión del panel ahora tiene 7 etapas, una por día (lun Precios · mar Plata · mié Mercadería · jue Choques y fallas mudas · vie Datos, historial y cerebro · sáb Ideas · dom Diseño) y corre sola todas las noches a las 22:13. Inicio dice la de hoy y si ya quedó hecha.'}]},
   {v:'25.07',f:'20/10/2026',h:'22:20',c:[{n:1,t:'📦 En camino: el contenido de cada caja se abre al tocar el envío (cerrado dice cuántos renglones y unidades).'}]},
   {v:'25.06',f:'20/10/2026',h:'22:10',c:[{n:1,t:'📦 Mi oficina → En camino: el contenido de cada caja va uno abajo del otro con las unidades y el código de la etiqueta de Full de esa cuenta.'}]},
@@ -4133,13 +4134,13 @@ function updateHomeDolar(){
 // fallas mudas: las dos miran si el robot y la web escriben y leen bien) y 8+9 (datos e historial y cerebro: las dos miran que
 // todo quede ENTERO y contado una sola vez). `dia` = día de la semana (0 dom … 6 sáb). Corren solas a las REV_HORA de acá.
 const REV_ETAPAS=[
-  {n:1,dia:1,nom:'Precios',que:'los precios que decido yo en cada vuelta (escasez y su escalera, buscar el techo, peor caso del 25%, promos, estrategias), sus frenos (barrera $33.000, techo $650.000, variantes) y el robot de precios que mide si ganaron o perdieron',esf:'Alto'},
-  {n:2,dia:2,nom:'Plata',que:'Arqueo, Mercado Pago, a liquidar, dólares y pesos, gastos',esf:'Alto'},
-  {n:3,dia:3,nom:'Mercadería',que:'cajas, stock de Full, oficina, pedidos (Bs As, Paulvic, Paraguay Nissei y Elegancia, el catálogo de Paraguay y las listas de proveedores) y lo que no se consigue',esf:'Alto'},
-  {n:4,dia:4,nom:'Choques y fallas mudas',que:'la web y el robot escribiendo lo mismo, corridas a la vez, cuando ML no contesta y se guarda como dato, y datos de terceros en los registros públicos',esf:'Alto'},
-  {n:5,dia:5,nom:'Datos, historial y cerebro',que:'las líneas de tiempo, la ficha médica y la historia de estrategias (que cada día cuente bien y coincida con Ventas y el Arqueo), y lo que hace Claude en cada vuelta: que cada parte quede ENTERA, contando contra el total',esf:'Alto'},
-  {n:6,dia:6,nom:'Ideas nuevas',que:'datos que ML ya da y no usamos, cosas que hacés a mano y se pueden automatizar, y detalles que den gusto usar la web: efectos, comodidad, lo repetido y lo que falta (sólo propone)',esf:'Alto'},
-  {n:7,dia:0,nom:'Diseño',que:'la web más cómoda, sencilla y linda: qué sobra, qué cuesta encontrar, qué se ve mal en el teléfono, botones que se corren al cambiar un texto, y detalles lindos con sentido (sólo propone)',esf:'Alto'},
+  {n:1,dia:1,nom:'Precios',que:'los precios que decido yo en cada vuelta (escasez y su escalera, buscar el techo, peor caso del 25%, promos, estrategias), sus frenos (barrera $33.000, techo $650.000, variantes) y el robot de precios que mide si ganaron o perdieron',esf:'Máximo'},
+  {n:2,dia:2,nom:'Plata',que:'Arqueo, Mercado Pago, a liquidar, dólares y pesos, gastos',esf:'Máximo'},
+  {n:3,dia:3,nom:'Mercadería',que:'cajas, stock de Full, oficina, pedidos (Bs As, Paulvic, Paraguay Nissei y Elegancia, el catálogo de Paraguay y las listas de proveedores) y lo que no se consigue',esf:'Máximo'},
+  {n:4,dia:4,nom:'Choques y fallas mudas',que:'la web y el robot escribiendo lo mismo, corridas a la vez, cuando ML no contesta y se guarda como dato, y datos de terceros en los registros públicos',esf:'Máximo'},
+  {n:5,dia:5,nom:'Datos, historial y cerebro',que:'las líneas de tiempo, la ficha médica y la historia de estrategias (que cada día cuente bien y coincida con Ventas y el Arqueo), y lo que hace Claude en cada vuelta: que cada parte quede ENTERA, contando contra el total',esf:'Máximo'},
+  {n:6,dia:6,nom:'Ideas nuevas',que:'datos que ML ya da y no usamos, cosas que hacés a mano y se pueden automatizar, y detalles que den gusto usar la web: efectos, comodidad, lo repetido y lo que falta (sólo propone)',esf:'Máximo'},
+  {n:7,dia:0,nom:'Diseño',que:'la web más cómoda, sencilla y linda: qué sobra, qué cuesta encontrar, qué se ve mal en el teléfono, botones que se corren al cambiar un texto, y detalles lindos con sentido (sólo propone)',esf:'Máximo'},
 ];
 const REV_HORA='22:13';
 // ── LA REVISIÓN LA MANEJA CLAUDE, NO ÉL (26/09/2026, pedido suyo) ─────────────────────────────

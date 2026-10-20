@@ -18,7 +18,7 @@ todas las etapas.
 **lun 1 Precios · mar 2 Plata · mié 3 Mercadería · jue 4 Choques y fallas mudas (las viejas 4 y 5) · vie 5 Datos, historial y
 cerebro (las viejas 8 y 9) · sáb 6 Ideas nuevas · dom 7 Diseño.** Corre sola todas las noches a las 22:13 de acá (tarea programada
 que entra a esta sesión). Cada corrida: leer la etapa de hoy en este archivo + lo de SIEMPRE, 4 revisores en Alto, verificar cada
-hallazgo con el código real antes de contarlo, hacer lo obvio (probado, en las dos ramas, anotado acá), y lo que es decisión suya
+hallazgo con el código real antes de contarlo (**los 4 revisores van con esfuerzo MÁXIMO desde el 20/10, plan 20x; antes Alto**), hacer lo obvio (probado, en las dos ramas, anotado acá), y lo que es decisión suya
 va TODO JUNTO en un solo `pregunto:` numerado (a)/(b) y en `REV_PENDIENTE`. Al terminar: `REV_HECHAS[n]`=hoy y un renglón en
 `REV_HIST` (index.html). Inicio dice la etapa de hoy, si ya quedó hecha o si no terminó. **En el archivo el orden de las secciones
 quedó 0·1·2·3·4·6·7·5** (la 5 nueva está abajo de todo, donde vivían la 8 y la 9).
