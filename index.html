@@ -13300,6 +13300,15 @@ async function syncPedidosAuto(){
     // Si Claude decidió cuántas comprar, manda lo suyo (la cuenta automática queda al lado, para comparar).
     let clInfo=null,_sinDec=false;
     {const _cl=clPedDe(p.id);
+      // LO DE PARAGUAY PEDIDO DESPUÉS DE LA DECISIÓN Y QUE NO SE DESCONTÓ (20/10/2026 · etapa 3, misma idea que el Paulvic de abajo):
+      // renglones de reposición en camino (`compraspy`, prodId sin id) pedidos después de la decisión y sin `desc` (la web y
+      // `pyped:repo` los descuentan al pedirlos y lo marcan). Los registros que hizo la web antes de esta marca ya se habían
+      // descontado (pyRepoRegistrar lo hace desde el 09/10), así que sólo cuentan los que NO son de la web (`compray|camino`,
+      // `pyped:repo` viejo, `pyped:juntar`). Se da por hecho que llega todo; si falta algo, se corrige al llegar.
+      const _pyPost=[];
+      if(_cl&&p.origen==='py'){const _dts=Number(_cl.ts)||0;for(const c of Object.values(state.compraspy||{})){if(!c||c.estado!=='camino'||c.origen==='panel')continue;
+        for(const it of (Array.isArray(c.items)?c.items:[])){if(!it||it.id||it.prodId!==p.id||it.desc)continue;
+          const t=Number(it.ts||c.ts||Date.parse(String(c.fecha||'')+'T12:00:00-03:00'))||0;if(t>_dts)_pyPost.push(it);}}}
       if(_cl&&(_cl.u!=null||_cl.vars||_cl.mano)){
         const formU=aComprar;
         if(hasVars&&(_cl.vars||_cl.mano)){
@@ -13315,13 +13324,19 @@ async function syncPedidosAuto(){
           // se da por hecho que llega todo; si falta algo, él avisa y se corrige al llegar.
           {const _dts=Number(_cl.ts)||0;for(const c of Object.values(state.pedidospv||{})){if(!c||c.estado!=='camino'||c.prodId!==p.id||c.desc||!(Number(c.ts||Date.parse(String(c.fecha||'')+'T12:00:00-03:00'))>_dts))continue;
             for(const it of (c.items||[])){if(!it||!it.v)continue;const k=sid(String(it.v).toLowerCase());if(k in cv&&!(k in _mano))cv[k]=Math.max(0,cv[k]-(parseInt(it.u)||0));}}}
+          // Paraguay (ver `_pyPost` arriba): con color, de ese color; sin color, de los colores decididos, el más grande primero
+          // (la misma cuenta que `clDescontarPed`). Lo cambiado a mano no se toca: lo puso él después.
+          for(const it of _pyPost){let left=parseInt(it.u)||0;
+            const k=it.variante?sid(String(it.variante).toLowerCase()):'';
+            if(k){if(k in cv&&!(k in _mano))cv[k]=Math.max(0,cv[k]-left);continue;}
+            for(const kk of Object.keys(cv).filter(x=>!(x in _mano)).sort((a,b)=>cv[b]-cv[a])){if(left<=0)break;const q=Math.min(left,cv[kk]);cv[kk]-=q;left-=q;}}
           const _mv=_cl.motVars||{};const _mvDe=k=>_mv[k]?{mot:String(_mv[k]).slice(0,2500)}:{};
           const _mk=k=>(k in _mano)?{mano:1}:{};
           const vn=(variantesNec||[]).map(x=>{const k=sid(String(x.v).toLowerCase());return k in cv?{...x,q:cv[k],cl:1,..._mvDe(k),..._mk(k)}:(SOLO_CLAUDE?{...x,q:0}:x);});
           for(const v of (p.variantes||[])){const k=sid(String(v).toLowerCase());if(k in cv&&!vn.some(x=>sid(String(x.v).toLowerCase())===k))vn.push({v,q:cv[k],cl:1,..._mvDe(k),..._mk(k)});}
           variantesNec=vn.length?vn:null;
           aComprar=vn.reduce((a,x)=>a+(x.q||0),0);
-        }else if(_cl.u!=null&&(!hasVars||SOLO_CLAUDE)){aComprar=Math.max(0,parseInt(_cl.u)||0);if(hasVars)variantesNec=null;}
+        }else if(_cl.u!=null&&(!hasVars||SOLO_CLAUDE)){aComprar=Math.max(0,(parseInt(_cl.u)||0)-_pyPost.reduce((a,it)=>a+(parseInt(it.u)||0),0));if(hasVars)variantesNec=null;}
         if(aComprar!==formU||_cl.u!=null||_cl.vars||_cl.mano){
           clInfo={u:aComprar,formU,mot:String(_cl.mot||''),ts:_cl.ts||null};
           if(_cl.motPv)clInfo.motPv=String(_cl.motPv).slice(0,2500);   // por qué ese precio para el máximo de compra
@@ -14514,6 +14529,8 @@ async function pyPedidoHecho(opts){
     // siga existiendo: vence a los 45 días y el detalle se quedaría sin nombre ni links.
     if(f.c.mlId)it.mlId=String(f.c.mlId).slice(0,200);
     if(f.c.link)it.link=String(f.c.link).slice(0,300);
+    if(/^https:\/\//.test(String(f.c.foto||'')))it.foto=String(f.c.foto).slice(0,300);   // etapa 3 (20/10/2026): la ficha al llegar la necesita
+    if(f.c.prov)it.prov=String(f.c.prov);
     if(f.c.margen!=null&&isFinite(f.c.margen))it.margen=Math.round(f.c.margen*10)/10;
     if(Number(f.c.ganancia)>0)it.ganancia=Math.round(Number(f.c.ganancia));
     if(pk!=null)it.pesoKg=Math.round(pk*1000)/1000;
@@ -14618,7 +14635,10 @@ async function pyPedidoLlego(id){
     // EL PRECIO ES EL QUE SE PAGÓ, NO EL DE HOY (24/09/2026): el pedido lo guardó al hacerse (y
     // `compray det=` lo corrige con la factura). El del candidato se sigue moviendo después.
     const _uP=parseFloat(it.usd)>0?it.usd:(k&&k.usd!=null?k.usd:it.usd);
-    const src={id:it.id,nombre:(k&&k.nombre)||it.nom||'',usd:_uP,cod:(k&&k.cod)||it.cod||'',ts:k&&k.ts};
+    // Etapa 3 (20/10/2026): el proveedor, el link y la foto viajan con el renglón (del candidato si sigue vivo; si no, del
+    // pedido: los renglones agregados del ticket `x<cód>` no tienen candidato). Sin `prov` la ficha de Elegancia nacía Nissei.
+    const src={id:it.id,nombre:(k&&k.nombre)||it.nom||'',usd:_uP,cod:(k&&k.cod)||it.cod||'',ts:k&&k.ts,
+      prov:(k&&k.prov)?pyProvDe(k):it.prov?pyProvDe(it):(/^pyel/.test(id)?'elegancia':pyProvDe(c)),link:(k&&k.link)||it.link||'',foto:(k&&k.foto)||it.foto||''};
     if(k&&k.prodId)return{src,estado:'ya'};
     if(!String(src.nombre).trim())return{src,estado:'nonombre'};
     const misma=candFichaMisma(src);
@@ -14947,17 +14967,58 @@ function pyHechosHTML(){
 // (`pedidos_py` se recalcula solo y pisaría lo cargado a mano). Las de NUEVOS siguen en `pedirU` del
 // candidato, como siempre. Al tocar "Ya lo pedí" los probados van como REPOSICIÓN (`pyRepoRegistrar`,
 // la misma de la canasta) y los nuevos con `pyPedidoHecho`, cada uno a su registro.
+// POR COLOR (20/10/2026 · etapa 3). Antes `py_armado/<pid>` era sólo {u}: el mensaje a Nissei salía con el código y el precio de
+// la FICHA aunque Pedidos pidiera otro color (el Joystick azul se pedía con el código del negro). Ahora, si se pide por color,
+// `py_armado/<pid>` = {u (total), ts, v:{<color sin acentos>:{c:<color>, u}}}. `u` sigue siendo el total (lo leen la tarjeta,
+// el robot y "Ya lo pedí"); cada color va en su renglón del pedido con SU código, precio y máximo (`pyDeColor`).
+const _pyArmK=c=>sid(String(c||'').toLowerCase());
+function _pyArmV(e){return e&&e.v&&typeof e.v==='object'&&Object.keys(e.v).length?e.v:null;}
+// Nombres de color de lo que se dibujó (la casilla de un color nuevo manda sólo la clave: el nombre sale de acá).
+window._pyArmCol=window._pyArmCol||{};
+// "+ las N sugeridas" de cada tarjeta: qué colores y cuántos pide Pedidos (se llena al dibujar la tarjeta).
+window._pyArmSug=window._pyArmSug||{};
+async function _pyArmGuardar(pid,e){
+  try{
+    if(e&&(parseInt(e.u)||0)>0)await fbSet('py_armado/'+pid,e);
+    else await db.ref('cyc/py_armado/'+pid).remove();
+  }catch(err){toast('No se pudo guardar: '+(err.message||err),'err',5000);return false;}
+  state.pyArmado=state.pyArmado||{};
+  if(e&&(parseInt(e.u)||0)>0)state.pyArmado[pid]=e;else delete state.pyArmado[pid];
+  return true;
+}
 async function pyArmSet(pid,u){
   u=Math.max(0,parseInt(u)||0);
   const pr=(state.products||[]).find(x=>x.id===pid);
-  try{
-    if(u>0)await fbSet('py_armado/'+pid,{u,ts:Date.now()});
-    else await db.ref('cyc/py_armado/'+pid).remove();
-  }catch(e){toast('No se pudo guardar: '+(e.message||e),'err',5000);return;}
-  state.pyArmado=state.pyArmado||{};
-  if(u>0)state.pyArmado[pid]={u,ts:Date.now()};else delete state.pyArmado[pid];
+  const vv=_pyArmV((state.pyArmado||{})[pid]);
+  // Cargado por color: la casilla del total no adivina a qué color sumar. Con un solo color va a ése; con varios se cambia
+  // color por color (en la tarjeta o en el 🧾 Pedido). En 0 saca todo.
+  if(vv&&u>0){
+    const ks=Object.keys(vv);
+    if(ks.length===1)return pyArmSetVar(pid,ks[0],u);
+    toast('Este producto está cargado por color: cambiá cada color (en la tarjeta o en el 🧾 Pedido)','err',6000);renderPedidos();return;
+  }
+  if(!await _pyArmGuardar(pid,u>0?{u,ts:Date.now()}:null))return;
   if(u>0)toast(`🧾 ${u} u. de ${pr?pr.name:'ese producto'} en el pedido`);
   renderPedidos();
+}
+async function pyArmSetVar(pid,k,u){
+  u=Math.max(0,parseInt(u)||0);
+  const cur=(state.pyArmado||{})[pid]||{};
+  const vv={...(_pyArmV(cur)||{})};
+  const nom=(vv[k]&&vv[k].c)||window._pyArmCol[pid+'|'+k]||k;
+  if(u>0)vv[k]={c:nom,u};else delete vv[k];
+  const tot=Object.values(vv).reduce((a,x)=>a+(parseInt(x&&x.u)||0),0);
+  if(!_pyArmV(cur)&&(parseInt(cur.u)||0)>0&&u>0)toast('Lo que estaba cargado sin color se reemplaza por los colores','info',5000);
+  if(!await _pyArmGuardar(pid,tot>0?{u:tot,ts:Date.now(),v:vv}:null))return;
+  renderPedidos();
+}
+async function pyArmSugeridas(pedId){
+  const s=window._pyArmSug[pedId];if(!s)return;
+  if(!s.cols.length){await pyArmSet(s.pid,s.total);return;}
+  const vv={};for(const[c,q]of s.cols){const k=_pyArmK(c);vv[k]={c,u:((vv[k]&&vv[k].u)||0)+q};}
+  const tot=Object.values(vv).reduce((a,x)=>a+x.u,0);
+  if(!await _pyArmGuardar(s.pid,{u:tot,ts:Date.now(),v:vv}))return;
+  toast(`🧾 ${tot} u. en el pedido · ${s.cols.map(([c,q])=>c+' '+q).join(' · ')}`);renderPedidos();
 }
 function pyArmadoFilas(){
   const out=[];
@@ -14965,14 +15026,24 @@ function pyArmadoFilas(){
     const u=parseInt(v&&v.u)||0; if(u<=0)continue;
     const pr=(state.products||[]).find(x=>x.id===pid);
     if(pyProvDe(pr)!==pyProv)continue;   // sólo los del proveedor elegido
-    const nu=pr?(parseFloat(pr.nisseiUSD)||0):0;
-    const usd=nu>0?nu:(pr?Math.round((costUSDof(pr)||0)/RECARGO_PY*100)/100:0);
-    const mx=pr?maxCompraDe(pr,PY_PROB_PISO):null;   // probados: 20% (se sabe que se venden)
-    const maxWeb=(mx&&!mx.motivo&&mx.usdPy>0)?Math.floor(mx.usdPy*100)/100:null;
-    out.push({pid,pr,u,usd,sinHoy:!(nu>0),cod:(pr&&pr.codPy)?String(pr.codPy).trim():'',
-      nom:pr?pr.name:'(ficha borrada)',maxWeb,caro:maxWeb!=null&&usd>maxWeb+0.005});
+    const nuF=pr?(parseFloat(pr.nisseiUSD)||0):0;
+    const nVar=pr?(pr.variantes||[]).length:0;
+    const vv=_pyArmV(v);
+    const partes=vv?Object.entries(vv).map(([k,x])=>({k,c:String((x&&x.c)||k),u:parseInt(x&&x.u)||0})).filter(x=>x.u>0):[{k:'',c:'',u}];
+    for(const pa of partes){
+      // El código, el precio y el máximo del COLOR si están cargados (`pyVar`); si no, los de la ficha, avisando.
+      const pc=pa.c&&pr?pyDeColor(pr,[pa.c]):null;
+      const nu=pc&&Number(pc.usd)>0?Number(pc.usd):nuF;
+      const usd=nu>0?nu:(pr?Math.round((costUSDof(pr)||0)/RECARGO_PY*100)/100:0);
+      const mx=pr?maxCompraDe(pr,PY_PROB_PISO,pa.c||undefined):null;   // probados: 20% (se sabe que se venden)
+      const maxWeb=(mx&&!mx.motivo&&mx.usdPy>0)?Math.floor(mx.usdPy*100)/100:null;
+      const codC=pc&&pc.cod?String(pc.cod).trim():'';
+      out.push({pid,pr,u:pa.u,usd,sinHoy:!(nu>0),cod:codC||((pr&&pr.codPy)?String(pr.codPy).trim():''),
+        color:pa.c,key:pa.k,codFicha:nVar>1&&!codC,sinColor:!pa.c&&nVar>1,
+        nom:pr?pr.name:'(ficha borrada)',maxWeb,caro:maxWeb!=null&&usd>maxWeb+0.005});
+    }
   }
-  return out.sort((a,b)=>a.nom.localeCompare(b.nom,'es'));
+  return out.sort((a,b)=>a.nom.localeCompare(b.nom,'es')||String(a.color).localeCompare(String(b.color),'es'));
 }
 // EL MENSAJE PARA NISSEI SALE EN DOS BLOQUES: PERFUMERÍA Y EL RESTO (03/10/2026, lo pidió Nissei). Perfume = el
 // nombre dice perfume/EDP/EDT/parfum/eau de/body splash/colonia/fragrance (misma idea que `repartopy` del robot).
@@ -15057,7 +15128,7 @@ function pedidoMomentoHTML(g){
   const tc=curTC(), u2=n=>'US$ '+Number(n).toFixed(2);
   const crA=A.reduce((t,f)=>t+f.usd*f.u,0), crudoCYC=crA+N.crudo, crudo=crudoCYC+crP, uds=A.reduce((t,f)=>t+f.u,0)+N.unidades+Pp.reduce((t,f)=>t+f.u,0);
   const puesto=crudo*RECARGO_PY, tope=pedTopeUSD();
-  if(!A.length&&!N.filas.length&&!Pp.length)return `<div style="margin-bottom:16px;padding:12px 13px;background:var(--surface2);border:1px dashed var(--border2);border-radius:10px;font-size:.74rem;color:var(--muted)">🧾 <b style="color:var(--text)">Pedido del momento${gTxt}: vacío.</b> Cargá unidades en <b>✅ Productos probados</b> (la casilla "🧾 pedir" de cada tarjeta) o en <b>🆕 Productos nuevos</b>, y aparece todo acá junto. <button class="btn btn-add" style="font-size:.64rem;padding:4px 10px;margin-left:6px" onclick="pedNuevosLlenar()">🪄 Llenar con nuevos</button></div>`;
+  if(!A.length&&!N.filas.length&&!Pp.length)return `<div style="margin-bottom:16px;padding:12px 13px;background:var(--surface2);border:1px dashed var(--border2);border-radius:10px;font-size:.74rem;color:var(--muted)">🧾 <b style="color:var(--text)">Pedido del momento${gTxt}: vacío.</b> Cargá unidades en <b>✅ Productos probados</b> (la casilla "🧾 pedir" de cada tarjeta) o en <b>🆕 Productos nuevos</b>, y aparece todo acá junto. <button class="btn btn-add" style="font-size:.64rem;padding:4px 10px;margin-left:6px" onclick="pedNuevosLlenar(${gArg})">🪄 Llenar con nuevos</button></div>`;
   const inp=(val,on)=>`<input type="number" min="0" step="1" value="${val}" onchange="${on}" style="width:56px;font-size:.85rem;padding:4px 6px;text-align:center;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text)">`;
   // MINIMALISTA (03/10/2026, él: "como en los otros lados, con las cosas básicas y si quiero data clickear en el
   // producto"): a la vista foto, nombre, %, unidades y subtotal; el detalle se abre tocando el producto.
@@ -15085,12 +15156,16 @@ function pedidoMomentoHTML(g){
     return arr.slice().sort((a,b)=>{const va=f(a,n),vb=f(b,n),na=va==null||!isFinite(va),nb=vb==null||!isFinite(vb);
       if(na||nb)return na-nb; return asc?va-vb:vb-va;});};
   const As=_sort(A,false), Ns=_sort(N.filas,true);
-  const filasA=As.map(f=>{const ft=f.pr?fotoDeProducto(f.pr):null;
-    return fila(f.nom,f.cod,f.u,f.usd,`pyArmSet('${f.pid}',this.value)`,`pyArmSet('${f.pid}',0)`,
-    (f.sinHoy?'<span style="color:var(--amber)">sin precio de hoy: es lo que pagaste</span>':'precio de '+pyProvNom()+' de hoy')
-    +(f.maxWeb!=null?` · <span style="color:${f.caro?'var(--red)':'var(--green)'}">máx ${u2(f.maxWeb)}${f.caro?' · 🔴 a este precio no da':' · ✅ da'}</span>`:''),
+  // Un renglón por COLOR cuando se cargó por color (20/10/2026 · etapa 3): su casilla cambia sólo ese color.
+  const filasA=As.map(f=>{const ft=f.pr?fotoDeProducto(f.pr,f.color||''):null;
+    const on=f.key?`pyArmSetVar('${f.pid}','${f.key}',this.value)`:`pyArmSet('${f.pid}',this.value)`, qu=f.key?`pyArmSetVar('${f.pid}','${f.key}',0)`:`pyArmSet('${f.pid}',0)`;
+    return fila(f.nom+(f.color?` <span style="color:#a78bfa;font-size:.74rem">· ${f.color}</span>`:''),f.cod,f.u,f.usd,on,qu,
+    (f.sinHoy?'<span style="color:var(--amber)">sin precio de hoy: es lo que pagaste</span>':'precio de '+pyProvNom()+' de hoy'+(f.color&&!f.codFicha?' del '+f.color:''))
+    +(f.maxWeb!=null?` · <span style="color:${f.caro?'var(--red)':'var(--green)'}">máx ${u2(f.maxWeb)}${f.caro?' · 🔴 a este precio no da':' · ✅ da'}</span>`:'')
+    +(f.codFicha&&f.color?`<div style="color:var(--amber)">⚠️ el ${f.color} no tiene código propio de ${pyProvNom()}: va el de la ficha (cargalo con pyprecio:…#${f.color})</div>`:'')
+    +(f.sinColor?`<div style="color:var(--amber)">⚠️ este producto tiene colores y está cargado sin color: va el código de la ficha. Cargalo por color en su tarjeta.</div>`:''),
     ft&&ft.url?ft.url:'', f.maxWeb==null?null:(f.caro?'🔴':'✅'), f.caro?'var(--red)':'var(--green)',
-    f.pr?`<div style="margin-top:6px">${pyProbVisHTML(f.pr)}</div><div style="margin-top:4px">${maxCompraHTML(f.pr)}</div>`:'',
+    f.pr?`<div style="margin-top:6px">${pyProbVisHTML(f.pr,f.color?[f.color]:undefined)}</div><div style="margin-top:4px">${maxCompraHTML(f.pr)}</div>`:'',
     f.pr?` · <span style="color:var(--text)">${pedVendTxt(f.pr)}</span>`:'');});
   const maxU=pedMaxU(), minV=pedMinVent();
   const filasN=Ns.map(f=>{const R=candPreciosPartes(f.c);const m=R.margenPct;const P=candPuedePedir(f.c);
@@ -15105,7 +15180,9 @@ function pedidoMomentoHTML(g){
         .map(([k,v,t])=>`<label style="flex:1;min-width:105px"><div style="font-size:.6rem;color:var(--muted);margin-bottom:3px">${t}</div>
           <input type="number" min="0" step="${k==='pedTopeUSD'?'10':'1'}" value="${v}" onchange="pedNuevosCfg('${k}',this.value)" style="width:100%;font-size:.74rem;padding:5px 7px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text)"></label>`).join('')}
     </div></details>`;
-  const _itNis=[...Pp.filter(f=>f.cod).map(f=>({cod:f.cod,u:f.u,nom:f.nom})),...A.filter(f=>f.cod).map(f=>({cod:f.cod,u:f.u,nom:f.nom})),...N.filas.filter(f=>String(f.c.cod||'').trim()).map(f=>({cod:String(f.c.cod).trim(),u:f.u,nom:f.c.nombre}))];
+  const _itNis=[...Pp.filter(f=>f.cod).map(f=>({cod:f.cod,u:f.u,nom:f.nom})),...A.filter(f=>f.cod).map(f=>({cod:f.cod,u:f.u,nom:f.nom})),...N.filas.filter(f=>String(f.c.cod||'').trim()).map(f=>({cod:String(f.c.cod).trim(),u:f.u,nom:f.c.nombre}))]
+    // dos colores sin código propio caen en el MISMO código de ficha: una sola línea con las unidades sumadas (20/10/2026)
+    .reduce((acc,x)=>{const o=acc.find(y=>y.cod===x.cod&&esBellezaNom(y.nom)===esBellezaNom(x.nom));if(o)o.u+=x.u;else acc.push({...x});return acc;},[]);
   const conCod=nisseiMsgLineas(_itNis);
   const sinCod=A.filter(f=>!f.cod).length+N.sinCod.length;
   const pasa=crudoCYC-tope;   // el tope es de CYC: lo de uso personal no cuenta
@@ -15173,7 +15250,7 @@ async function pyMomentoYaLoPedi(g){
   if(Pp.length){try{const _pp={};for(const f of Pp)_pp[f.k]=state.pyPersonal[f.k];await db.ref('cyc/py_personal_hist/'+Date.now()).set(_pp);const _up={};for(const f of Pp)_up['py_personal/'+f.k]=null;await fbUpdate(_up);for(const f of Pp)delete state.pyPersonal[f.k];}catch(e){toast('No pude sacar lo de uso personal: sacalo a mano','err',6000);}}
   if(!A.length&&!N.filas.length){renderPedidos();return;}
   if(A.length){
-    const ok=await pyRepoRegistrar(A.map(f=>({prodId:f.pid,nom:String(f.nom).slice(0,120),cod:f.cod,u:f.u,usd:f.usd})),{sinConfirm:true,grupo:g});
+    const ok=await pyRepoRegistrar(A.map(f=>({prodId:f.pid,nom:String(f.nom).slice(0,120),cod:f.cod,u:f.u,usd:f.usd,...(f.color?{variante:f.color}:{})})),{sinConfirm:true,grupo:g});
     if(ok){try{await pyArmadoVaciarProv(g);}catch(e){toast('Se registró pero no pude vaciar los probados: sacalos a mano','err',6000);}}
     else if(!N.filas.length)return;
   }
@@ -15554,6 +15631,19 @@ function candidatosHTML(){
   const enVia=vivos0.filter(c=>candEnPedido(c)==='viajando').length;
   const vivos=vivos0.filter(c=>!candEnPedido(c)&&_pyRubroOk(c.nombre));
   const fuera=todos.length-vivos0.length;
+  // ⌛ LOS VENCIDOS NO DESAPARECEN CALLADOS (20/10/2026 · etapa 3). Un candidato sin precio nuevo en `CAND_VENCE_DIAS` días sale
+  // del armado (`candEnArmado`) y antes no aparecía en ningún lado: ni en Nuevos ni en Descartados. Ahora van en su desplegable,
+  // con un botón que les renueva la fecha (vuelven a la lista). La carga del catálogo de Nissei (`pycat`) ya la renueva sola
+  // si el código sigue con el mismo precio.
+  const _venc=todos.filter(c=>c&&!c.no&&!c.prodId&&!candEnArmado(c)).sort((a,b)=>(b.margen??-999)-(a.margen??-999));
+  const _vencHTML=_venc.length?`<details style="margin-top:12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:8px 12px"><summary style="cursor:pointer;font-size:.74rem;font-weight:700;color:var(--amber)" title="Hace más de ${CAND_VENCE_DIAS} días que nadie les miró el precio en comprasparaguay: salen del pedido hasta que se renueve. Devolverlos les pone la fecha de hoy.">⌛ Vencidos (${_venc.length}) · más de ${CAND_VENCE_DIAS} días sin precio nuevo</summary>
+    <div style="display:flex;flex-direction:column;gap:5px;margin-top:8px">
+    ${_venc.length>1?`<button class="btn" style="font-size:.62rem;padding:4px 10px;align-self:flex-start" onclick="candRenovar(null)">↩︎ Devolver los ${_venc.length}</button>`:''}
+    ${_venc.map(c=>`<div style="display:flex;align-items:center;gap:8px;font-size:.66rem;color:var(--muted)">
+      <span style="flex:1">${c.nombre}${c.cod?` · 🔖 ${c.cod}`:''}${c.usd?` · US$ ${parseFloat(c.usd).toFixed(2)}`:''}${c.margen!=null&&isFinite(c.margen)?` · <b style="color:${Number(c.margen)>=candPisoDe(c)?'var(--green)':'var(--red)'}">${Number(c.margen).toFixed(0)}%</b>`:''} · hace ${candDias(c)} d</span>
+      <button class="btn" style="font-size:.6rem;padding:3px 8px" onclick="candRenovar('${c.id}')">↩︎ Devolver</button>
+    </div>`).join('')}
+    </div></details>`:'';
   const chip=(txt,col,tit)=>`<span class="pi-var-toggle" style="cursor:default;background:color-mix(in srgb,${col} 12%,transparent);color:${col};border-color:color-mix(in srgb,${col} 35%,transparent)" title="${String(tit||'').replace(/"/g,'&quot;')}">${txt}</span>`;
   // SIMPLE (15/10/2026, él: "no quiero tantas letras ahi en el medio, ademas nunca clickeo ahi"): un solo renglón.
   // Se fueron "cómo funciona esto", la barra del pedido de nuevos (vive en 🧾 Pedido) y la caja de cuántos dan.
@@ -15569,7 +15659,7 @@ function candidatosHTML(){
       ? `<div class="empty-msg" style="font-size:.68rem;line-height:1.6">No queda ninguno para evaluar: ${enPed?`<b>${enPed}</b> está${enPed===1?'':'n'} en el pedido de arriba`:''}${enPed&&enVia?' y ':''}${enVia?`<b>${enVia}</b> ya ${enVia===1?'viaja':'viajan'}`:''}.</div>`
       : `<div class="empty-msg" style="font-size:.68rem;line-height:1.6">Todavía no hay ninguno.<br>
       ${pyProv==='nissei'?'El chat de Paraguay los carga cuando encuentra algo en comprasparaguay <b>que Nissei ofrezca</b>':'Se cargan de la lista de precios de <b>'+pyProvNom()+'</b> que me pasás'} (ahí salen juntos el código, el precio y que hay stock), cueste menos de US$ 250 puesto y no sea de una marca que ML frena.</div>`;
-    return cab(null)+pycatBuscarHTML()+vacio+pycatNoDanHTML();   // 15/10: el simulador no se usa, se sacó de la pantalla (la función queda)
+    return cab(null)+pycatBuscarHTML()+vacio+_vencHTML+pycatNoDanHTML();   // 15/10: el simulador no se usa, se sacó de la pantalla (la función queda)
   }
   // El que más margen deja, primero. Los que todavía no tienen la cuenta hecha van al final:
   // no se pueden comparar contra los medidos y ponerlos arriba sería invitar a decidir sin número.
@@ -15728,6 +15818,7 @@ function candidatosHTML(){
   // 03/10/2026, él: el simulador y el historial "ahí no se usan y molestan": el simulador va al final y el
   // historial de pedidos vive en la pestaña 🧾 Pedido.
   return cab(_verdes)+pycatBuscarHTML()+_orden+_arriba.map(_card).join('')
+    +_vencHTML
     +(_sinChequear.length?`<details style="margin-top:12px;background:var(--surface);border:1px solid var(--amber);border-radius:var(--r);padding:8px 12px"><summary style="cursor:pointer;font-size:.76rem;font-weight:700;color:var(--amber)" title="Dan el % y tienen las ventas, pero nadie confirmó todavía que el producto de ML sea el mismo. Abrí cada uno, mirá las dos fotos y tocá ✅ Es el mismo producto: ahí sube arriba y se puede pedir.">🔍 Dan, pero falta confirmar que es el mismo producto · ${_sinChequear.length}</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_sinChequear.map(_card).join('')}</div></details>`:'')
     +(()=>{
       // EL CATÁLOGO ENTERO, DIVIDIDO (17/10/2026, él: "quiero que estén todos los 13.000 divididos en todas las categorías").
@@ -15784,6 +15875,17 @@ function candDescartadosHTML(nCat,med){
       <button class="btn" style="font-size:.6rem;padding:3px 8px" onclick="candVolver('${c.id}')">↩︎ Devolver</button>
     </div>`).join('')}
     </div>${_cat}</details>`;
+}
+// Devuelve un vencido (o todos, con id null) a la lista: le pone la fecha de hoy (`ts` y `visto`). No toca el precio ni la
+// medición: si el precio cambió, lo carga el chat de compras o `pycat`, que además lo vuelve a medir (20/10/2026 · etapa 3).
+async function candRenovar(id){
+  const ids=id?[id]:candList().filter(c=>c&&!c.no&&!c.prodId&&!candEnArmado(c)).map(c=>c.id);
+  if(!ids.length)return;
+  if(!id&&!confirm(`¿Devolver los ${ids.length} vencidos a la lista?\n\nSe les pone la fecha de hoy. El precio sigue siendo el último que se miró: si cambió, lo actualiza la próxima carga del catálogo.`))return;
+  const now=Date.now(),up={};for(const k of ids){up['candidatos_py/'+k+'/ts']=now;up['candidatos_py/'+k+'/visto']=now;}
+  try{await fbUpdate(up);}catch(e){toast('No se pudo guardar: '+(e.message||e),'err',5000);return;}
+  for(const k of ids){const c=(state.candidatos||{})[k];if(c){c.ts=now;c.visto=now;}}
+  renderPedidos();toast(ids.length===1?'Vuelve a la lista ✓':ids.length+' vuelven a la lista ✓');
 }
 async function candDescartar(id){
   const c=(state.candidatos||{})[id];if(!c)return;
@@ -15842,7 +15944,10 @@ function candCodIgual(a,b){
 }
 function candFichaMisma(src){
   const n=normTxt(String(src&&src.nombre||'').trim());
-  return (state.products||[]).find(p=>(src.cod&&candCodIgual(p.codPy,src.cod))||(n&&normTxt(p.name||'').trim()===n))||null;
+  // El código, sólo contra fichas del MISMO proveedor (etapa 3, 20/10/2026): por el final, el `100572` de Elegancia "era" el
+  // `7100572` de Nissei y el nuevo se enganchaba a la ficha del otro. Misma regla en `pyped:llego` del robot.
+  const pv=pyProvDe(src);
+  return (state.products||[]).find(p=>(src.cod&&pyProvDe(p)===pv&&candCodIgual(p.codPy,src.cod))||(n&&normTxt(p.name||'').trim()===n))||null;
 }
 function candFichasParecidas(nombre){
   const q=normTxt(String(nombre||'').split(' ').slice(0,2).join(' '));
@@ -15886,7 +15991,7 @@ async function candCrearFicha(id){
   if(!confirm(`Crear la ficha de:\n\n${c.nombre}\n\nCosto US$ ${puesto.toFixed(2)} (precio de Paraguay ${usd.toFixed(2)} + recargo)\nCódigo de pedido: ${c.cod||'(sin código)'}\nOrigen: Paraguay\n`
     +(rep.length?`\n⚠️ OJO: ya hay ${rep.length} ficha(s) con un nombre parecido:\n${rep.slice(0,4).map(p=>'· '+p.name).join('\n')}\nSi es el mismo producto, no crees otra.\n`:'')
     +`\nNo publica nada en ML ni compra nada.`))return;
-  const r=await candFichaDesde({id,nombre:c.nombre,usd:c.usd,cod:c.cod,ts:c.ts});
+  const r=await candFichaDesde({id,nombre:c.nombre,usd:c.usd,cod:c.cod,ts:c.ts,prov:pyProvDe(c),link:c.link||'',foto:c.foto||''});
   if(!r.ok){toast('No se pudo crear: '+r.motivo,'err',5000);return;}
   await log('Ficha nueva desde Para probar: '+r.p.name+' · US$'+puesto);
   renderPedidos();toast('Ficha creada ✓ · cargale el envío y las medidas cuando las tengas');
@@ -16209,7 +16314,9 @@ async function pyCanastaYaLoPedi(){
 async function pyRepoRegistrar(items,opts){
   opts=opts||{};
   if(opts.grupo===undefined&&pyProv==='nissei'){let ok=false;for(const g of ['perf','resto']){const it=(items||[]).filter(x=>pyMomEs(g,x.nom));if(it.length&&await pyRepoRegistrar(it,{...opts,grupo:g}))ok=true;}return ok;}
-  items=(items||[]).filter(x=>x&&x.prodId&&(parseInt(x.u)||0)>0);
+  // `desc:1` (20/10/2026 · etapa 3): este renglón se descuenta de lo decidido al pedirlo (abajo, `clDescontarPed`), así Pedidos
+  // no lo vuelve a restar. `ts`: cuándo se pidió ESTE renglón (puede sumarse a un registro del día hecho antes de la decisión).
+  items=(items||[]).filter(x=>x&&x.prodId&&(parseInt(x.u)||0)>0).map(x=>({...x,desc:1,ts:Date.now()}));
   if(!items.length)return false;
   const hoy=new Date(Date.now()-3*3600e3).toISOString().slice(0,10);
   const id=pyIdHoy(hoy,opts.grupo);
@@ -16223,7 +16330,9 @@ async function pyRepoRegistrar(items,opts){
     +`Pasa a "En camino": el patrimonio la cuenta mientras viaja y la canasta deja de pedirla. Cuando llegue tocás "Ya llegó" y la contás en la oficina.`))return false;
   if(prev){
     const its=(Array.isArray(prev.items)?prev.items:[]).map(x=>({...x}));
-    for(const it of items){const o=its.find(x=>x&&!x.id&&x.prodId===it.prodId);if(o)o.u=(parseInt(o.u)||0)+it.u;else its.push(it);}
+    // Se suma sólo con el renglón del MISMO color y la misma marca de descuento (un renglón viejo sin `desc` sumado a uno
+    // descontado haría que Pedidos restara de más o de menos). Misma regla que `guardar` de `pyped` en el robot.
+    for(const it of items){const o=its.find(x=>x&&!x.id&&x.prodId===it.prodId&&String(x.variante||'')===String(it.variante||'')&&!!x.desc===!!it.desc);if(o)o.u=(parseInt(o.u)||0)+it.u;else its.push(it);}
     const upd={items:its,usdCrudo:Math.round(((parseFloat(prev.usdCrudo)||0)+crudo)*100)/100,productos:its.length,unidades:(parseInt(prev.unidades)||0)+uds};
     const up={};for(const k in upd)up['compraspy/'+id+'/'+k]=upd[k];
     await fbUpdate(up);
@@ -18456,10 +18565,20 @@ function _pedidoItemHtml(p,opts){
   // ML: la foto y el link de su publicación viva. Paraguay: `pyLink`/`pyFoto` de la ficha (los carga Guay con
   // updPyLink) o, si no, los del candidato del que salió la ficha.
   const _pyVis=_armU==null?'':pyProbVisHTML(_prod,(p.variantesNec||[]).filter(x=>x&&(parseInt(x.q)||0)>0).map(x=>x.v));
+  // POR COLOR (20/10/2026 · etapa 3): "+ las N sugeridas" carga los colores que pide Pedidos (`variantesNec`), cada uno con su
+  // casilla; así el mensaje a Nissei lleva el código y el precio de ESE color. Sin colores sugeridos, como antes (el total).
+  const _armVV=_armU==null?null:_pyArmV((state.pyArmado||{})[_prod.id]);
+  const _armCols=_armU==null?[]:(p.variantesNec||[]).filter(x=>x&&x.v&&(parseInt(x.q)||0)>0).map(x=>[String(x.v),parseInt(x.q)||0]);
+  if(_armU!=null){window._pyArmSug[p.id]={pid:_prod.id,total:parseInt(p.cantidad)||1,cols:_armCols};
+    for(const[c]of _armCols)window._pyArmCol[_prod.id+'|'+_pyArmK(c)]=c;}
+  const _armColRows=_armU==null?[]:(()=>{const m=new Map();for(const[c]of _armCols)m.set(_pyArmK(c),c);for(const[k,x]of Object.entries(_armVV||{}))if(!m.has(k))m.set(k,String((x&&x.c)||k));return[...m.entries()];})();
+  const _armPorColor=_armU!=null&&(!!_armVV||(_armCols.length>0&&(_prod.variantes||[]).length>1));
   const _armHTML=_armU==null?'':`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 12px 8px;margin:-4px 0 10px;font-size:.78rem;background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px">
       <span style="font-weight:700;color:${_armU>0?'var(--green)':'var(--muted)'}">🧾 pedir</span>
-      <input type="number" min="0" step="1" value="${_armU||''}" placeholder="0" onchange="pyArmSet('${_prod.id}',this.value)" style="width:58px;font-size:.88rem;padding:4px 6px;text-align:center;background:var(--surface2);border:1px solid ${_armU>0?'var(--green)':'var(--border)'};border-radius:6px;color:var(--text)"> u.
-      ${_armU>0?`<span style="color:var(--green)">✓ en el pedido</span>`:`<button class="btn" style="font-size:.66rem;padding:3px 9px" onclick="pyArmSet('${_prod.id}',${parseInt(p.cantidad)||1})">+ las ${fmtN(p.cantidad||1)} sugeridas</button>`}
+      ${_armPorColor
+        ?_armColRows.map(([k,c])=>{const q=parseInt(((_armVV||{})[k]||{}).u)||0;return `<label style="display:inline-flex;align-items:center;gap:4px;color:${q>0?'var(--green)':'var(--muted)'}">${c} <input type="number" min="0" step="1" value="${q||''}" placeholder="0" onchange="pyArmSetVar('${_prod.id}','${k}',this.value)" style="width:52px;font-size:.84rem;padding:3px 5px;text-align:center;background:var(--surface2);border:1px solid ${q>0?'var(--green)':'var(--border)'};border-radius:6px;color:var(--text)"></label>`;}).join('')+(_armU>0?` <span style="color:var(--green)">✓ ${_armU} u. en el pedido</span>`:'')
+        :`<input type="number" min="0" step="1" value="${_armU||''}" placeholder="0" onchange="pyArmSet('${_prod.id}',this.value)" style="width:58px;font-size:.88rem;padding:4px 6px;text-align:center;background:var(--surface2);border:1px solid ${_armU>0?'var(--green)':'var(--border)'};border-radius:6px;color:var(--text)"> u.`}
+      ${_armU>0?(_armPorColor?'':`<span style="color:var(--green)">✓ en el pedido</span>`):`<button class="btn" style="font-size:.66rem;padding:3px 9px" onclick="pyArmSugeridas('${p.id}')">+ las ${fmtN(p.cantidad||1)} sugeridas${_armCols.length?' ('+_armCols.map(([c,q])=>c+' '+q).join(' · ')+')':''}</button>`}
       ${''/* 15/10/2026, él: "oculta el hola tito": el por qué ya no va a la vista, está en el 🧠 de la tarjeta. */}
     </div>`;
   const _sem=_enCam?null:_pedSem(p);
@@ -18515,7 +18634,7 @@ function _pedidoItemHtml(p,opts){
       <div class="cand-der" style="display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap;flex:0 1 auto">
         ${_locP!=null?`<div class="cand-loc">${perfLocalHTML(_locP)}${perfNoLocalBtn('p',_prod.id,false)}</div>`:_esPerfP&&_prod.noLocal?`<div class="cand-loc" style="font-size:.6rem;color:var(--muted)">🏪 no da en el local${perfNoLocalBtn('p',_prod.id,true)}</div>`:''}
         <div class="cand-sub" style="font-size:.8rem;color:var(--text);white-space:nowrap">comprar <b style="font-size:1.15rem">${fmtN(p.cantidad||0)}</b> u.</div>
-        ${_armU!=null?`<span onclick="event.preventDefault();event.stopPropagation()" style="display:inline-flex;align-items:center;gap:4px;font-size:.66rem;color:${_armU>0?'var(--green)':'var(--muted)'}">🧾 pedir <input type="number" min="0" step="1" value="${_armU||''}" placeholder="0" onchange="pyArmSet('${_prod.id}',this.value)" style="width:54px;font-size:.95rem;padding:3px 5px;text-align:center;background:var(--surface2);border:1px solid ${_armU>0?'var(--green)':'var(--border)'};border-radius:6px;color:var(--text)"></span>`:''}
+        ${_armU!=null?(_armPorColor?`<span style="font-size:.66rem;color:${_armU>0?'var(--green)':'var(--muted)'}" title="Se pide por color: abrí el detalle para cargar cada uno">🧾 pedir ${_armU>0?'<b>'+_armU+'</b> u.':''} por color ▾</span>`:`<span onclick="event.preventDefault();event.stopPropagation()" style="display:inline-flex;align-items:center;gap:4px;font-size:.66rem;color:${_armU>0?'var(--green)':'var(--muted)'}">🧾 pedir <input type="number" min="0" step="1" value="${_armU||''}" placeholder="0" onchange="pyArmSet('${_prod.id}',this.value)" style="width:54px;font-size:.95rem;padding:3px 5px;text-align:center;background:var(--surface2);border:1px solid ${_armU>0?'var(--green)':'var(--border)'};border-radius:6px;color:var(--text)"></span>`):''}
         <div style="text-align:right">${_mgP!=null?`<div style="font-size:1.35rem;font-weight:700;color:${_colP};line-height:1">${Math.round(_mgP)}%</div>`:'<div style="font-size:.68rem;color:var(--amber)">sin medir</div>'}<div style="font-size:.6rem;color:var(--muted);margin-top:3px">detalle ▾</div></div>
       </div>
     </summary>
