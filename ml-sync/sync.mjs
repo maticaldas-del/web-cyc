@@ -51,7 +51,7 @@ const _cortarCiclo = (donde) => {
 // los que escriben en cantidad o en plata se niegan de entrada, y cualquier otro corre con la base,
 // ML, Mercado Pago y Telegram en sólo lectura (se deja renovar y guardar el token de ML, que ML rota).
 const EN_CONSULTA = process.env.GITHUB_WORKFLOW === 'ml-consulta' || process.env.ML_CONSULTA === '1';
-const CONSULTA_ESCRIBE = new Set(['pycat', 'pycatres', 'lista', 'listamedir', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull']);
+const CONSULTA_ESCRIBE = new Set(['pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull']);
 const CONSULTA_NIEGA = new Set(['cajaitems', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'promoventas', 'cargosmes', 'arcacierres', 'webpush']);
@@ -9257,7 +9257,7 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
   console.log(`(de los ${cola.length} para medir, ${cola.filter(([, e]) => !rubro(e.n)).length} son de los rubros que ya vendemos y van primero)`);
   console.log(`=== ${esLista ? 'LISTA DE ' + String(opts.nombre || opts.lista).toUpperCase() : 'CATÁLOGO DE PARAGUAY'} · medir contra ML ${aplicar ? '' : '(PRUEBA: no escribo nada)'} ===`);
   console.log(`${todos.length} guardados · ${cuenta.fuera} fuera por regla · ${cuenta.cand} ya son candidatos · ${cuenta.ficha} ya son fichas · ${cuenta.frescos} medidos hace menos de ${PYCAT_REMEDIR_DIAS} días · ${cuenta.noDeja} que ML no deja medir (se reintentan a los ${PYCAT_REMEDIR_DIAS} días) · ${cola.length} para medir · esta vuelta ${toca.length}`);
-  if (!toca.length) return;
+  if (!toca.length) return esLista ? { quedan: 0 } : undefined;
   let tok = null;
   for (const label of labels) {
     const acc = accounts[label]; if (!acc?.refresh_token) continue;
@@ -9284,7 +9284,9 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
       try { return await mlGet(ruta, tok); } catch (e) { const _m = String((e && e.message) || e); if (!(/429/.test(_m) || (e && e.name === 'SyntaxError') || /not valid JSON|Unexpected token/.test(_m)) || w === 30000) throw e; }
     }
   };
-  const res = { medidos: 0, sinCat: 0, sinVend: 0, err: 0, b25: 0, b15: 0, bajo: 0, noDeja: 0, pasan: [] };
+  const res = { medidos: 0, sinCat: 0, sinVend: 0, err: 0, b25: 0, b15: 0, bajo: 0, noDeja: 0, pasan: [], quedan: cola.length };
+  // Minutos por vuelta: 40 de día (el cupo de ML lo comparte el ciclo de las ventas); de noche (`opts.maxMin`) más.
+  const maxMin = Number(opts.maxMin) || 40;
   // FALLAS SEGUIDAS POR PRODUCTO (etapa 4, 20/10/2026). `ef` = cuántas vueltas seguidas ML no dejó medirlo (403, 5xx, HTML,
   // sin respuesta; el 429 es cupo y no cuenta) y `nm` el motivo con el código. A la 3ª queda "ML no deja medirlo (<código>)" con
   // `t` de hoy, así sale del frente de la cola y se reintenta a los PYCAT_REMEDIR_DIAS días. Una medición que anda borra las dos.
@@ -9300,9 +9302,10 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
   };
   const t0 = Date.now();
   for (const [cod, e] of toca) {
-    if (Date.now() - t0 > 40 * 60e3) { console.log('⏱️ 40 minutos: corto acá, sigue la próxima vuelta.'); break; }
+    if (Date.now() - t0 > maxMin * 60e3) { console.log(`⏱️ ${maxMin} minutos: corto acá, sigue la próxima vuelta.`); break; }
     if (CORTAR) { console.log('✋ Cancelaron la corrida: no mido más (lo que falta, la vuelta siguiente).'); break; }
     const upd = { t: Date.now(), uMed: esLista ? Number(e.p) : e.u, ef: null, nm: null };
+    res.quedan--;
     try {
       // BÚSQUEDA: primero marca + modelo, después el nombre sin el relleno en portugués, después el nombre entero. comprasparaguay
       // escribe "Fone de Ouvido JBL Tune 520BT - Preto" y buscando eso ML trae el 730BT; con "jbl 520bt" trae el correcto.
@@ -9372,7 +9375,7 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
     } catch (err) { res.err++; console.log(`  ✗ ${e.n.slice(0, 60)}: ${String(err.message || err).slice(-120)}`); await fallaMedir(cod, e, err); if (/429/.test(String(err.message || err))) await espera(60000); }
   }
   console.log(`\nMedidos ${res.medidos} · dan el piso ${res.b25} · entre 15% y el piso ${res.b15} · menos de 15% ${res.bajo} · sin catálogo exacto en ML ${res.sinCat} · catálogo sin vendedores ${res.sinVend} · errores ${res.err} (se reintentan)${res.noDeja ? ` · ${res.noDeja} pasaron a "ML no deja medirlo"` : ''}`);
-  if (esLista) return res;
+  if (esLista) { console.log(`(quedan ${res.quedan} de esta lista para la vuelta siguiente)`); return res; }
   // LOS QUE DAN PASAN SOLOS A "PARA PROBAR", con el catálogo de ML fijo. Ahí `candidatos` los vuelve a medir (dos veces
   // antes de descartar) y la revisión de fotos confirma que son el mismo producto. Sin foto de Paraguay no pasan (regla del 07/10).
   let alta = 0;
@@ -20283,7 +20286,47 @@ async function main() {
       const mP = _pm.match(/^pycatmedir:prueba:(.+)$/);
       if (mP) { const pr = {}; mP[1].split(';').forEach((x, i) => { const [nom, u] = x.split('|'); if (nom && parseFloat(u) > 0) pr['9999990' + i] = { n: nom.trim(), u: parseFloat(u), f: 'x' }; });
         await correrPyCatMedir(db, products, labels, accounts, 20, false, pr); return; }
-      await correrPyCatMedir(db, products, labels, accounts, n, /:go$/.test(_pm));
+      // LISTA CON PRIORIDAD (20/10/2026, pedido suyo: "nippon es la más importante ahora" y "en las horas de 02am y 08am nadie
+      // mira las ventas. ahí podés utilizar el 100%"). Con `cyc/mlconfig/listaPrioridad` = <proveedor>, esta vuelta de cada hora
+      // mide ESA lista en vez del catálogo de Paraguay (los dos comparten el cupo de ML, y antes cada uno iba a media máquina).
+      // Cuando la lista no tiene nada pendiente se borra la marca y la misma vuelta sigue con Paraguay. De 02 a 08 de acá la
+      // vuelta dura 50 minutos en vez de 40 (el job corta a los 55).
+      const _hAr = (new Date().getUTCHours() + 21) % 24;
+      const _maxMin = _hAr >= 2 && _hAr < 8 ? 50 : 40;
+      const _go = /:go$/.test(_pm);
+      const _pri = String((await db.get('cyc/mlconfig/listaPrioridad')) || '');
+      if (_pri) {
+        const _pv = (await db.get('cyc/mlconfig/listasProv/' + _pri)) || null;
+        if (!_pv) console.log(`(la lista con prioridad "${_pri}" no existe: sigo con Paraguay)`);
+        else {
+          console.log(`=== PRIORIDAD: lista ${_pv.nombre || _pri} (${_maxMin} min) ===`);
+          const _t0 = Date.now();
+          const _r = await correrPyCatMedir(db, products, labels, accounts, 5000, _go, null, { lista: _pri, nombre: _pv.nombre, rec: _pv.rec, maxMin: _maxMin });
+          if (_go) await db.patch('cyc/mlconfig/listasProv/' + _pri, cuentaLista((await db.get('mlapi/listas/' + _pri)) || {}));
+          if (_r && _r.quedan > 0) return;
+          if (_go) { await db.set('cyc/mlconfig/listaPrioridad', null); console.log(`✓ la lista ${_pv.nombre || _pri} no tiene nada pendiente: saco la prioridad y sigo con Paraguay.`); }
+          const _resta = _maxMin - Math.ceil((Date.now() - _t0) / 60e3);
+          if (_resta < 5) return;
+          await correrPyCatMedir(db, products, labels, accounts, n, _go, null, { maxMin: _resta });
+          return;
+        }
+      }
+      await correrPyCatMedir(db, products, labels, accounts, n, _go, null, { maxMin: _maxMin });
+      return;
+    }
+    // BILLING_PROBE=listaprioridad[:<proveedor>|:-][:go] (20/10/2026) → qué lista mide la vuelta de cada hora antes que Paraguay
+    // (ver pycatmedir). Sin proveedor muestra la que hay; `-` la saca.
+    if (/^listaprioridad(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _a = String(process.env.BILLING_PROBE).replace(/:go$/, '').split(':')[1] || '';
+      const _go = /:go$/.test(String(process.env.BILLING_PROBE));
+      const _hoy = String((await db.get('cyc/mlconfig/listaPrioridad')) || '');
+      if (!_a) { console.log(`Lista con prioridad: ${_hoy || '(ninguna: la vuelta de cada hora mide Paraguay)'}`); return; }
+      const _v = _a === '-' ? null : _a;
+      if (_v && !(await db.get('cyc/mlconfig/listasProv/' + _v))) { console.log(`❌ no hay una lista "${_v}" (mirá \`lista\`).`); return; }
+      if (!_go) { console.log(`(prueba) pondría: ${_v || 'ninguna'} · hoy: ${_hoy || 'ninguna'}. Para aplicar, ;go al final.`); return; }
+      await db.set('cyc/mlconfig/listaPrioridad', _v);
+      const _rr = (await db.get('cyc/mlconfig/listaPrioridad')) || null;
+      console.log(_rr === _v ? `✓ releído: lista con prioridad = ${_v || 'ninguna'}` : `❌ no quedó (releí ${_rr})`);
       return;
     }
     if (/^candidatos(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
