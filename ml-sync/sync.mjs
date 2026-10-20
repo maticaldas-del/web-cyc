@@ -9106,6 +9106,47 @@ async function pycatResumenEscribir(db, cat, cands, products) {
   console.log(`📊 catálogo dividido (cyc/pycatres): ${r.tot} = ${r.cand} candidatos + ${r.ficha} fichas + ${r.fz} afuera por regla + ${r.bajo} abajo del ${CAND_PISO_PCT}% + ${r.sc} sin catálogo exacto + ${r.sv} nadie lo vende + ${r.nomed} sin medir`);
   return r;
 }
+// LOS NOMBRES ABREVIADOS DE LAS LISTAS (20/10/2026, con Dai Nippon: 4.605 de 7.777 sin medir). Dai Nippon escribe
+// "COMFORT CONC.CuidESENC.(DOY) 450 ml. 4" o "COLGATE CrDEN.UltraBLANCO 2x90 Grs 2x9": palabras pegadas, abreviaturas, el código
+// interno entre paréntesis y la columna del tamaño repetida y cortada al final. Así ML no lo encuentra o el chequeo lo descarta
+// por un "tamaño 4" que no existe. Esto arma el nombre para BUSCAR y COMPARAR (el de la lista no se toca).
+const LISTA_NOMBRE_VER = 1;
+const LISTA_MARCAS = [[/^RV\.\s*/i, 'Revlon '], [/^RML\b\.?\s*/i, 'Rimmel '], [/^MB\.\s*/i, 'Maybelline '], [/^S\.H\.?\s+/i, 'Sally Hansen '],
+  [/^A\.W\.\s*/i, 'Artez Westerley '], [/^DRMGLOS\b/i, 'Dermaglos'], [/^H\.PRAVIA\b/i, 'Heno de Pravia'], [/^S\.L\.\s*/i, 'Siempre Libre '],
+  [/^MedNRJ\b/i, 'Media Naranja'], [/^TioNACHO\b/i, 'Tio Nacho'], [/^nic\b/, 'Nic'], [/^GinoBOGANI\b/i, 'Gino Bogani'], [/^KR\s+/i, 'Kevin '],
+  [/^PepeJ\b/i, 'Pepe Jeans'], [/^NatSPIRIT\b/i, 'Natural Spirit'], [/^CaroCuore\b/i, 'Caro Cuore'], [/^RAYITOdSOL\b/i, 'Rayito de Sol'],
+  [/^AirePur\b/i, 'Aire Pur'], [/^NewSCENT\b/i, 'New Scent'], [/^BlueSEDUC\b/i, 'Blue Seduction'], [/^IndiaSTYLE\b/i, 'India Style'],
+  [/^MagicRETOUCH\b/i, 'Magic Retouch'], [/^KeyKOLOR\b/i, 'Key Kolor'], [/^EstereoC\b/i, 'Estereo Color'], [/^L'eauVIVE\b/i, "L'eau Vive"]];
+const LISTA_ABREV = { conc: 'concentrado', cuid: 'cuidado', esenc: 'esencial', arom: 'aromatizante', aroma: 'aromatizante', lq: 'liquido', liq: 'liquido',
+  jb: 'jabon', jab: 'jabon', cr: 'crema', den: 'dental', dent: 'dental', sh: 'shampoo', ac: 'acondicionador', ant: 'antitranspirante', aer: 'aerosol',
+  des: 'desodorante', esm: 'esmalte', lab: 'labial', cep: 'cepillo', toa: 'toallitas', toall: 'toallitas', hum: 'humedas', humed: 'humedas',
+  pvo: 'polvo', corp: 'corporal', ag: 'agua', delin: 'delineador', del: 'delineador', sombr: 'sombra', brill: 'brillo', lap: 'lapiz', bronc: 'bronceador',
+  emul: 'emulsion', prot: 'protector', rep: 'repuesto', lvdn: 'lavandina', lvdina: 'lavandina', deter: 'detergente', desinf: 'desinfectante',
+  past: 'pastillas', vid: 'vidrios', mult: 'multiuso', multi: 'multiuso', tint: 'tintura', kerat: 'keratina', hid: 'hidratante', hidra: 'hidratante',
+  inten: 'intensa', restaurac: 'restauracion', bb: 'bebe', pd: 'protectores diarios', enj: 'enjuague', csty: 'colorstay', sstay: 'superstay',
+  mirac: 'miracles', illum: 'iluminador', correc: 'corrector', conceal: 'corrector', found: 'base', msk: 'mascarilla', neum: 'neumatico',
+  sacapunt: 'sacapuntas', portacosm: 'portacosmeticos', dispen: 'dispensador', fem: 'femenino', perf: 'perfume', vp: 'vaporizador', cc: 'ml',
+  antib: 'antibacterial', fresc: 'frescura', fac: 'facial', limp: 'limpieza', nutritiv: 'nutritiva', antpol: 'antipolillas',
+  naftalin: 'naftalina', tela: 'telas', camp: 'campos', ambient: 'ambiental', aut: 'auto' };
+// Lo que no ayuda a buscar: el envase y el "x" de "x 500 ml".
+const LISTA_SACAR = new Set(['doy', 'bot', 'bt', 'gat', 'plast', 'pote', 'x', 'new', 'old', 'estuc', 'neces', 'flw', 'fliptop', 'dy']);
+function limpiarNombreLista(n0) {
+  let s = String(n0 || '').trim();
+  for (const [re, rep] of LISTA_MARCAS) s = s.replace(re, rep);
+  // El tamaño: cortar lo que viene después de la ÚLTIMA medida (la columna repetida y cortada: "450 ml. 4", "70 Grs 7").
+  const med = /(\d+(?:[.,]\d+)?(?:\s*x\s*\d+)?)\s*(ml|cc|grs?|gr|g|un|lt|l|kg)\b\.?/i.exec(s);
+  if (med) s = s.slice(0, med.index + med[0].length);
+  else { const t = s.split(/\s+/); const b = (t[t.length - 1] || '').toLowerCase(); if (t.length >= 3 && t.slice(0, -1).some((a) => a.toLowerCase().startsWith(b))) t.pop(); s = t.join(' '); }
+  s = s.replace(/\(F\s*(\d{2})\+?\)/gi, ' fps $1 ').replace(/\bF(\d{2})\+?\b/g, ' fps $1 ');
+  s = s.replace(/\(([A-Z]{0,4}\d{3,}[A-Z]?|[A-Z]{1,3}\d{1,3}[A-Z]?)\)/g, ' ');     // código interno: (4499) (JZ11) (A7502) (DMK6215)
+  s = s.replace(/'([A-Za-z ]+)'\s*[A-Z]{0,3}\d{3,}\b/g, ' $1 ');                     // 'JES'P5679 · 'MOON'DM3341
+  s = s.replace(/\(([^)]*)$/, ' $1');                                                    // "(NECES" cortado
+  s = s.replace(/([A-Z]{2,})y([A-Z])/g, '$1 y $2');
+  s = s.replace(/([a-záéíóúñ])([A-Z])/g, '$1 $2').replace(/[.()'/+]/g, ' ').replace(/&/g, ' & ');
+  const out = [];
+  for (const w of s.split(/\s+/).filter(Boolean)) { const k = w.toLowerCase(); if (LISTA_SACAR.has(k)) continue; out.push(LISTA_ABREV[k] || w); }
+  return out.join(' ').replace(/\s+/g, ' ').trim();
+}
 async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, prueba = null, opts = {}) {
   // `prueba`: productos inventados ({cod: {n, u, f}}) para correr el camino entero sin escribir nada.
   // `opts.lista` (15/10/2026): mide una LISTA DE PRECIOS de otro proveedor (`mlapi/listas/<prov>`), con el costo en PESOS
@@ -9138,7 +9179,10 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
     const _uNow = esLista ? Number(e.p) : Number(e.u);
     if (esLista && !(_uNow > 0)) continue;
     if (esLista && e.noWeb) { cuenta.fuera++; continue; }   // no está en la web del proveedor: no lo tienen (`listaweb`)
-    if (e.t && ahora - e.t < PYCAT_REMEDIR_DIAS * 864e5 && !(e.uMed != null && Math.abs(e.uMed - _uNow) >= 0.005)) { cuenta.frescos++; continue; }
+    // Lo que no se encontró en ML con el nombre viejo (sin catálogo exacto / nadie lo vende) se vuelve a buscar con el nombre
+    // traducido aunque esté fresco (`qv` = versión del traductor con que se buscó).
+    const _rebuscar = esLista && (e.sc || e.sv) && Number(e.qv || 0) !== LISTA_NOMBRE_VER;
+    if (!_rebuscar && e.t && ahora - e.t < PYCAT_REMEDIR_DIAS * 864e5 && !(e.uMed != null && Math.abs(e.uMed - _uNow) >= 0.005)) { cuenta.frescos++; continue; }
     cola.push([cod, e]);
   }
   // 15/10/2026, eligió la (a): primero los RUBROS QUE YA VENDEMOS (perfumes, auriculares, pendrives y memorias, relojes) y después
@@ -9184,8 +9228,10 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
     try {
       // BÚSQUEDA: primero marca + modelo, después el nombre sin el relleno en portugués, después el nombre entero. comprasparaguay
       // escribe "Fone de Ouvido JBL Tune 520BT - Preto" y buscando eso ML trae el 730BT; con "jbl 520bt" trae el correcto.
-      const mods = _rvMod(e.n); const pal = _rvNorm(e.n).split(' ').filter((w) => (w.length >= 2 || /^\d$/.test(w)) && !RV_VACIAS.has(w) && !PYCAT_RELLENO.has(w));
-      const qs = [...new Set([mods.length ? [pal[0], ...mods].filter(Boolean).join(' ') : null, pal.slice(0, 7).join(' '), String(e.n).slice(0, 80)].filter((x) => x && x.length >= 3))];
+      const nB = esLista ? limpiarNombreLista(e.n) || e.n : e.n;   // listas: el nombre traducido (ver limpiarNombreLista)
+      if (esLista) upd.qv = LISTA_NOMBRE_VER;
+      const mods = _rvMod(nB); const pal = _rvNorm(nB).split(' ').filter((w) => (w.length >= 2 || /^\d$/.test(w)) && !RV_VACIAS.has(w) && !PYCAT_RELLENO.has(w));
+      const qs = [...new Set([mods.length ? [pal[0], ...mods].filter(Boolean).join(' ') : null, pal.slice(0, 7).join(' '), String(nB).slice(0, 80)].filter((x) => x && x.length >= 3))];
       const vistosB = new Map();
       // CATÁLOGO FIJADO A MANO (`listadato`, 18/10/2026): el chat de compras miró ML y dijo cuál es el producto correcto. Se usa ése
       // y no se busca nada; el chequeo de nombre no lo descarta (ya lo confirmó una persona mirando la foto).
@@ -9202,8 +9248,8 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
       // palabra no frena: el portugués no está en ML. Ese reparo blando queda anotado (`rp`) y lo mira la revisión de fotos.
       // Si el primero es un catálogo viejo sin vendedores, se prueba el siguiente (hasta 5).
       const duros = (rr) => rr.filter((x) => !/^en ML no está/.test(x));
-      const okB = _fijo ? [[_fijo, []]] : resB.map((r) => [r, chequeoMismoProducto(e.n, r.name || r.title)]).filter(([, rr]) => !duros(rr).length);
-      if (prueba) { console.log(`    ${e.n.slice(0, 60)} · busqué: ${qs.join(' | ')}`); for (const r of resB) { const rr = duros(chequeoMismoProducto(e.n, r.name || r.title)); if (rr.length) console.log(`      descarto ${r.id} "${String(r.name || '').slice(0, 60)}" · ${rr.join(' · ').slice(0, 70)}`); } }
+      const okB = _fijo ? [[_fijo, []]] : resB.map((r) => [r, chequeoMismoProducto(nB, r.name || r.title)]).filter(([, rr]) => !duros(rr).length);
+      if (prueba) { console.log(`    ${e.n.slice(0, 60)} · busqué: ${qs.join(' | ')}`); for (const r of resB) { const rr = duros(chequeoMismoProducto(nB, r.name || r.title)); if (rr.length) console.log(`      descarto ${r.id} "${String(r.name || '').slice(0, 60)}" · ${rr.join(' · ').slice(0, 70)}`); } }
       if (!okB.length) { upd.sc = 1; upd.mt = resB[0] ? String(resB[0].name || '').slice(0, 120) : ''; upd.m = null; res.sinCat++;
         console.log(`  · sin catálogo exacto · ${e.n.slice(0, 60)}${resB[0] ? ` (lo más parecido: "${upd.mt.slice(0, 60)}" · ${duros(chequeoMismoProducto(e.n, upd.mt)).join(' · ').slice(0, 90)})` : ' (ML no trajo nada)'}`);
         if (aplicar) await db.patch(RUTA + '/' + cod, upd); continue; }
