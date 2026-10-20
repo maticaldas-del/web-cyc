@@ -38037,8 +38037,10 @@ async function main() {
       // AUDITORÍA 17/10/2026: se ordenaba por UNIDADES y se cortaba en 15, así que lo caro que vende poco (Watch S5,
       // Redmi Pad 2: 2 u. en 30 d, ~$27.000 por día de venta cada uno) quedaba escondido en "y 26 más", mientras el
       // chequeo los ponía primeros. Ahora va por la PLATA de venta por día (lo facturado en 30 d ÷ 30) y salen TODAS.
+      // AUDITORÍA 20/10/2026: pedía 2+ unidades y se comía lo caro que vendió UNA (Joystick Xbox Azul, Sennheiser, Mercedes
+      // Club Black: ~$5.000 por día cada uno) que el chequeo sí mostraba. Ahora entra también con $60.000+ vendidos en 30 d.
       const f30 = {}; for (const v of vtsTodas) if (v.ts >= ahoraI - 30 * 864e5) f30[v.mla] = (f30[v.mla] || 0) + v.tot;
-      const quie = Object.entries(links).filter(([m, e]) => e && !e.ignored && !e.noVendemosMas && /out_of_stock/.test(e.subStatus || '') && (u30[m] || 0) >= 2).sort((a, b) => (f30[b[0]] || 0) - (f30[a[0]] || 0));
+      const quie = Object.entries(links).filter(([m, e]) => e && !e.ignored && !e.noVendemosMas && /out_of_stock/.test(e.subStatus || '') && ((u30[m] || 0) >= 2 || (f30[m] || 0) >= 60000)).sort((a, b) => (f30[b[0]] || 0) - (f30[a[0]] || 0));
       console.log(`── 12b · SIN STOCK Y VENDÍAN (${quie.length} · ${quie.reduce((s2, [m]) => s2 + (u30[m] || 0), 0)} u. vendidas en 30 d · ${money(Math.round(quie.reduce((s2, [m]) => s2 + (f30[m] || 0), 0) / 30))} de venta por día) ──`);
       for (const [m, e] of quie) console.log(`· ${m} · ${e.cuenta} · ${tit(m)} · ${u30[m]} u. en 30 d · ${money(Math.round((f30[m] || 0) / 30))}/día`);
       // 12c) CON STOCK EN FULL Y SIN VENDER EN 30 DÍAS (auditoría del 12/10/2026): el chequeo de la mañana lo mostraba
