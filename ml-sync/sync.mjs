@@ -20613,7 +20613,9 @@ async function main() {
       return;
     }
     if (String(process.env.BILLING_PROBE || '').startsWith('verweb:')) {
-      const _vwUrl = String(process.env.BILLING_PROBE).slice('verweb:'.length).trim();
+      // `verweb:<url> busca=<palabra>,<palabra>` (20/10/2026): sólo los renglones con esas palabras (y 3 alrededor), para páginas largas.
+      const _vwRaw = String(process.env.BILLING_PROBE).slice('verweb:'.length).trim();
+      const _vwBus = (/\sbusca=(.+)$/i.exec(_vwRaw) || [])[1]; const _vwUrl = _vwRaw.replace(/\sbusca=.+$/i, '').trim();
       if (!/^https?:\/\//i.test(_vwUrl)) { console.log('Falta la dirección. Se usa así: verweb:https://...'); return; }
       const _vwH = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
@@ -20662,6 +20664,12 @@ async function main() {
         if (_vwTxt.length < 400) {
           console.log('\n⚠️ Casi no hay texto adentro: la página se arma con JavaScript en el navegador.');
           console.log('   Lo que baja es un cascarón vacío, así que esto NO alcanza para leerla.');
+        }
+        if (_vwBus) {
+          const pal = _vwBus.split(',').map((x) => x.trim().toLowerCase()).filter(Boolean); const rs = _vwTxt.split('\n'); const ver = new Set();
+          rs.forEach((r, i) => { if (pal.some((w) => r.toLowerCase().includes(w))) for (let j = Math.max(0, i - 3); j <= Math.min(rs.length - 1, i + 3); j++) ver.add(j); });
+          console.log(`\n── RENGLONES CON ${pal.join(' / ')} (${ver.size}) ──`); let ant = -2; for (const j of [...ver].sort((a, b) => a - b)) { if (j > ant + 1) console.log('   ⋯'); console.log(rs[j].slice(0, 400)); ant = j; }
+          return;
         }
         console.log(`\n── TEXTO (${_vwTxt.length} caracteres, se muestran hasta 12.000) ──`);
         console.log(_vwTxt.slice(0, 12000));
