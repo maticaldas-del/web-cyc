@@ -1828,3 +1828,9 @@ los nuevos sigan usando su `mlId`/`link` propio. Era el único lugar que dibuja 
 Al proponer una gemela con cuotas (Premium) y otra sin cuotas (Clásica), se comparan con la plata neta de ⚖️ (el 3% del facturado
 de más que gasta tope de H), no sólo con el %. Vive en `ml-sync/CEREBRO.md` (⚖️). **Chequear:** que ninguna propuesta Premium/Clásica
 diga "mismo margen" sin la cuenta neta.
+
+### Etapa 1 · 20/10/2026 · `gemela[:precio mínimo]` (solo lee) · candidatos a una gemela Premium
+Él, con el Ferrari Rojo (la Premium vendió 2 en 30 d y las Clásicas 0 en 88): *"armalo ahora"*. Lista las Clásicas activas con stock
+en Full, desde $50.000, sin Premium hermana (misma ficha y cuenta), y el precio Premium que deja la misma plata neta (comisión Premium,
+cuotas aparte si ML no las mete en la comisión con el peor % medido, IIBB/mono, 3% del facturado de más por tope de H). La publicación
+la crea él. **Chequear:** que la neta Premium ≥ neta Clásica, que no proponga arriba de $650.000 y que avise variantes/catálogo.
