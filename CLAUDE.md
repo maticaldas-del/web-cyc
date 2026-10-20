@@ -9394,3 +9394,8 @@ promedio para que un origen con muchos productos no gane sólo por tamaño). Se 
 En Paraguay y en 📋 Listas un producto nuevo se puede pedir si da 25%, el catálogo de ML medido tiene **2 o más vendedores** (`mlVendedores`
 / `mv`, lo mide el robot solo) y está confirmado que es el mismo producto. Las vendidas ya no se cargan (el chat de compras sólo dice ok/no).
 Reemplaza la regla de las 100 ventas del 03/10 y del 18/10 y la vara "+100" del 19/09.
+
+## 📋 LAS LISTAS LAS CONFIRMO YO · EL CHAT LOCAL SÓLO COPIA COMPRASPARAGUAY (20/10/2026, eligió la a)
+En cada vuelta: `listarevisar` → nombre de la lista contra el título del catálogo de ML → `listadato:<prov>;<cód>=ok|no|mi=MLA…;go`
+(con duda no se toca). El chat local queda sólo para copiar precios y códigos de comprasparaguay una vez por mes (Cloudflare).
+Y Paraguay/Listas se vuelven a medir según qué tan cerca están (15%+ cada 7 días · abajo de 15% o fuera de ML cada 30), eligió la a.

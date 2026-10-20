@@ -42,6 +42,11 @@ tema acá (y su detalle en el anexo si hace falta), en `CLAUDE.md` (historia) y 
 5. Cada venta nueva contra su ficha (¿confirma o desmiente la prueba? ¿se aceleró ⚡? ¿la dejó en escasez?). Escasez nueva se trata en ESTA vuelta (precio + caja si hay oficina).
 6. Activar pausadas con stock en Full (`activarfull:go:25`); lo que no se activa va al `pregunto:`.
 7. Preguntas de compradores que sé sin duda (`contesto:`). Promos mías que vencen en 2 días.
+7b. **📋 LISTAS: confirmar el mismo producto (20/10/2026, eligió la a):** las confirmaciones las hago yo, ya no el chat local
+   (que queda sólo para copiar comprasparaguay una vez por mes). `listarevisar` por ml-consulta → cada renglón: nombre de la lista
+   contra el título del catálogo de ML (marca, línea, aroma/color/tono, tamaño, pack o suelto; los nombres de Dai Nippon vienen
+   abreviados). Seguro igual → `ok` · seguro otro → `no` (o `mi=MLA…` si encuentro el correcto buscando con `probarweb:<texto>`) · con
+   duda → no lo toco y queda en 🔎. Se carga con `listadato:<prov>;<cód>=ok;<cód>=no;…;go` por ml-consulta. En el chat: "listas: N ok · M no · D duda".
 8. Escrituras juntas en UNA ml-sync. En el chat: "🚨 N → N · 🧭 N → N · 🔀 N → N · ventas N miradas · ideas …".
 
 **Completa (08:52), además de todo lo anterior:**
