@@ -20200,6 +20200,13 @@ async function main() {
         console.log(`\n== ${pv.nombre || k} (${k})${pv.desc ? ' · DESCARTADO' : ''}${pv.bsas ? ' · Bs As' : ''} · lista del ${pv.ts ? new Date(pv.ts).toISOString().slice(0, 10) : '?'} · ${v.length} productos ==`);
         console.log(`   ✅ encontrados y medidos ${c.med} (${c.d25} de 25%+ · ${c.b25} abajo) · 🔍 buscados y no encontrados ${c.sc + c.sv} (${c.sc} sin el mismo producto en ML · ${c.sv} nadie lo vende) · ⏳ por buscar ${c.nunca + c.sinRes + c.rebus} (${c.nunca} nunca · ${c.sinRes} sin resultado · ${c.rebus} por volver a buscar con el nombre traducido) · 🚫 afuera por regla ${c.fz}`);
         const top = Object.entries(mot).sort((a, b) => b[1] - a[1]).slice(0, 8); if (top.length) console.log('   afuera por: ' + top.map(([r, n]) => `${r} ${n}`).join(' · '));
+        // Los de 25%+ por dónde están (20/10/2026): qué les falta para "dar" de verdad.
+        { const q = { ok: 0, sinVend: 0, sinOk: 0, menos100: 0, noEs: 0, viejo: 0, sinMi: 0, sacado: 0 };
+          for (const e of v) { if (!(e.m != null && Number(e.m) >= 25)) continue;
+            if (e.sacado || e.noWeb) { q.sacado++; continue; } if (e.noEs) { q.noEs++; continue; } if (!e.mi) { q.sinMi++; continue; }
+            if (!listaCostoVigente(e)) { q.viejo++; continue; } if (e.vend != null && Number(e.vend) < 100) { q.menos100++; continue; }
+            if (e.vend != null && listaOkVale(e)) q.ok++; else if (e.vend == null) q.sinVend++; else q.sinOk++; }
+          console.log(`   de los ${c.d25} de 25%+: ${q.ok} confirmados (ventas 100+ y ✅) · ${q.sinVend} sin ventas cargadas · ${q.sinOk} con ventas y sin ✅ · ${q.menos100} con menos de 100 ventas · ${q.noEs} otro producto · ${q.viejo} medidos con un costo viejo · ${q.sinMi} sin catálogo · ${q.sacado} sacados o fuera de la web`); }
         // `listaestado:<prov>:sc:<n>` / `:sv:<n>`: una muestra pareja de N nombres de ese grupo con lo más parecido que trajo ML.
         { const pp = String(process.env.BILLING_PROBE).split(':'); const g = pp[2], nM = parseInt(pp[3], 10) || 150;
           if (g === 'sc' || g === 'sv') { const gv = v.filter((e) => e.m == null && !e.fz && (g === 'sc' ? e.sc : (!e.sc && e.sv))); const paso = Math.max(1, Math.floor(gv.length / nM));
