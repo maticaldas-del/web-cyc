@@ -1940,3 +1940,9 @@ fuera del promedio · 8 filas de MP sin fecha.
   guardado. Las viejas: `tipoventa[:días][:go]` (ml-sync, patch de esos 3 campos sólo en ventas que existen; sin `:go`
   cuenta Clásica/Premium por cuotas). Web: chip `tipoLabel` en Ventas x Producto (PC y teléfono).
   **Chequear:** que una venta de una gemela Premium diga "Premium · N cuotas s/interés" y que una con `manualTs` no pierda el dato.
+
+- 20/10/2026 · Etapa 3 (mercadería) · v25.29: **número de 4 cifras en cada pedido hecho** (`compraspy`, `pedidospv`,
+  `compraslista`). `pedNumerar` (web, después de cargar los datos) numera por fecha los que no tienen `num`, desde 1001, con el
+  contador `cyc/mlconfig/pedNumUlt` reservado por transacción; `pedNumTag` lo pinta al lado de la fecha. El número no se toca
+  nunca. `pvped` conserva `num` al reescribir el pedido. **Chequear:** que ninguna escritura del robot o de la web reemplace un
+  pedido entero sin arrastrar `num` (si pasa, recibe un número nuevo y el viejo queda "perdido").

@@ -42683,7 +42683,7 @@ async function main() {
       for (const it of items) console.log(`  ${it.u} u. · ${it.v}`);
       console.log(`  total: ${its.reduce((a, x) => a + x.u, 0)} u. en ${its.length} aroma(s)`);
       if (!GO) { console.log('\nNo se guardó nada (falta ;go).'); return; }
-      await db.set('cyc/pedidospv/' + id, { prodId: P.id, fecha, ts: (prev && prev.ts) || Date.now(), estado: 'camino', items: its });
+      await db.set('cyc/pedidospv/' + id, { prodId: P.id, fecha, ts: (prev && prev.ts) || Date.now(), estado: 'camino', items: its, ...(prev && prev.num ? { num: prev.num } : {}) });   // el número del pedido (20/10/2026) no se pierde
       { const NC = (await db.get('cyc/noconsigo/' + P.id + '/nunca')) || {}; const vuelve = items.filter((it) => NC[sid(it.v)]);
         if (vuelve.length) { await db.patch('cyc/noconsigo/' + P.id + '/nunca', Object.fromEntries(vuelve.map((it) => [sid(it.v), null]))); console.log(`  ↩︎ lo volviste a pedir: se saca "no viene más" de ${vuelve.map((it) => it.v).join(', ')}`); } }
       const rel = await db.get('cyc/pedidospv/' + id);

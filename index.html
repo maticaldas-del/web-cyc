@@ -2124,6 +2124,7 @@ function startApp(){
     state.pycatres=d.pycatres||null;          // 17/10/2026: los números del catálogo de Paraguay dividido (los arma el robot)
     state.pedidospv=d.pedidospv||{};          // los pedidos al Paulvic en camino (06/10/2026, los carga el robot con `pvped`)
     _limpiarEnCamino(); // borra los "en camino" que hayan quedado marcados (la función ya no existe)
+    setTimeout(()=>pedNumerar(),1500); // los pedidos hechos sin número reciben el suyo (20/10/2026)
     state.proveedores=d.proveedores?Object.values(d.proveedores).sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{sensitivity:'base'})).map(pv=>({...pv,condiciones:pv.condiciones?Object.values(pv.condiciones).sort((a,b)=>(a.minUSD||0)-(b.minUSD||0)):[]})):[];
     state.metricas =d.metricas ||{};
     state.local    =d.local    ||{};
@@ -2683,7 +2684,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.28';
+const APP_VERSION='25.29';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2694,6 +2695,7 @@ const APP_VERSION='25.28';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.29',f:'20/10',h:'14:56',c:[{n:1,t:'🔢 Cada pedido hecho (Paraguay, Paulvic y Listas) tiene su número de 4 cifras (#1001, #1002…), al lado de la fecha. Así podés decir "el pedido 1003". El número no cambia nunca.'}]},
   {v:'25.28',f:'20/10',h:'15:10',c:[{n:1,t:'Revisión de la etapa 2 (Plata): en Inicio quedan las 8 decisiones que te mandé por Telegram'}]},
   {v:'25.27',f:'20/10',h:'14:43',c:[{n:2,t:'💳 Ventas: cada venta dice si se vendió por la publicación Clásica o la Premium y en cuántas cuotas ("1 pago", "3 cuotas" o "6 cuotas s/interés" cuando el interés lo pagamos nosotros). Las Premium van en violeta. Las ventas viejas se completan solas con el robot.'}]},
   {v:'25.26',f:'20/10',h:'15:00',c:[
@@ -14300,6 +14302,30 @@ function pyPesoKg(txt){
   if(/^g/.test(u))return n/1000;
   return null;
 }
+// ── CADA PEDIDO HECHO TIENE SU NÚMERO DE 4 CIFRAS (20/10/2026, pedido suyo: "poner número a los pedidos, así es más fácil
+// referirse a ellos. de 4 dígitos"). Vale para los tres: Paraguay (`compraspy`), Paulvic (`pedidospv`) y Listas (`compraslista`).
+// Se guarda en el pedido (`num`) y NO cambia nunca: si se borra uno, los demás no se corren. Los que no tienen se numeran por
+// fecha, del más viejo al más nuevo, desde 1001; el contador vive en `cyc/mlconfig/pedNumUlt` y se reserva con transacción, así
+// dos teléfonos no dan el mismo número. Los que crea el robot (pyped, pvped, compray) se numeran la próxima vez que se abre la web.
+function pedNumTag(c,st){const n=c&&Number(c.num);return n>0?`<span style="font-family:'DM Mono',monospace;font-size:.72rem;font-weight:700;padding:1px 6px;border-radius:5px;background:var(--surface);border:1px solid var(--border2);color:var(--text);${st||''}" title="Número del pedido: decí 'el pedido ${n}' para referirte a éste">#${n}</span>`:'';}
+let _pedNumCorriendo=false;
+async function pedNumerar(){
+  if(_pedNumCorriendo)return;_pedNumCorriendo=true;
+  try{
+    const cols=[['compraspy',state.compraspy],['pedidospv',state.pedidospv],['compraslista',state.comprasLista]];
+    const todos=[];let maxN=1000;
+    for(const [col,o] of cols)for(const [id,c] of Object.entries(o||{})){if(!c||typeof c!=='object')continue;const n=Number(c.num)||0;if(n>maxN)maxN=n;if(!n)todos.push({col,id,c,t:Number(c.ts)||Date.parse(String(c.fecha||'')+'T12:00:00-03:00')||0});}
+    if(!todos.length)return;
+    todos.sort((a,b)=>a.t-b.t||String(a.id).localeCompare(String(b.id)));
+    let ini=null;
+    const r=await db.ref('cyc/mlconfig/pedNumUlt').transaction(v=>{const base=Math.max(Number(v)||1000,maxN);ini=base+1;return base+todos.length;});
+    if(!r||!r.committed||ini==null)return;
+    let n=ini;
+    for(const x of todos){if(n>9999)break;const num=n++;await db.ref(`cyc/${x.col}/${x.id}/num`).set(num);x.c.num=num;}
+    try{if(typeof renderAll==='function')renderAll();}catch(e){}
+  }catch(e){console.warn('pedNumerar',e);}
+  finally{_pedNumCorriendo=false;}
+}
 function pyCompras(){
   return Object.entries(state.compraspy||{}).map(([id,c])=>({...c,id})).filter(c=>pyProvDe(c)===pyProv).sort((a,b)=>(b.ts||0)-(a.ts||0));
 }
@@ -14666,7 +14692,7 @@ function pyPedidoResumenHTML(c,enCamino,dias,tarde){
   const tk=c.ticket?(()=>{const w=Number(c.ticket.usdWeb)||0,d=w-(Number(c.ticket.usdPagado)||0);return d>0.004&&w>0?` · ticket −${(d/w*100).toFixed(1).replace('.',',')}%`:'';})():(c.estado==='camino'?' · <b style="color:var(--red)">falta ticket</b>':'');
   const usd=(Math.round((parseFloat(c.usdCrudo)||0)*(R.r||RECARGO_PY)*100)/100).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
   return `<div style="min-width:0">
-      <div style="font-size:.95rem;font-weight:800;color:var(--text)">${dm(c.fecha)}</div>
+      <div style="font-size:.95rem;font-weight:800;color:var(--text)">${pedNumTag(c,'margin-right:6px')}${dm(c.fecha)}</div>
       <div style="font-size:.66rem;font-weight:700;color:${col};margin-top:2px;white-space:nowrap">${est}</div>
     </div>
     <div style="margin-left:auto;text-align:right">
@@ -15865,7 +15891,7 @@ function pvPedidoTarjeta(id,c){
   const der=tot>0?fmt(Math.round(tot)):_aprox?`≈ ${fmt(_aprox)}`:`${cam?uDe(c.items):uLl} u.`;
   return `<details style="margin-bottom:8px;background:var(--surface2);border:1px solid var(--border2);border-left:4px solid ${col};border-radius:9px">
     <summary style="cursor:pointer;padding:11px 13px;display:flex;align-items:center;gap:12px;list-style:none">
-      <div style="min-width:0"><div style="font-size:.95rem;font-weight:800;color:var(--text)">${dm(c.fecha)}</div><div style="font-size:.66rem;font-weight:700;color:${col};margin-top:2px;white-space:nowrap">${est}${_llegTxt?' · '+_llegTxt:''}</div>${_pagoTxt?`<div style="font-size:.64rem;font-weight:700;margin-top:2px">${_pagoTxt}</div>`:''}</div>
+      <div style="min-width:0"><div style="font-size:.95rem;font-weight:800;color:var(--text)">${pedNumTag(c,'margin-right:6px')}${dm(c.fecha)}</div><div style="font-size:.66rem;font-weight:700;color:${col};margin-top:2px;white-space:nowrap">${est}${_llegTxt?' · '+_llegTxt:''}</div>${_pagoTxt?`<div style="font-size:.64rem;font-weight:700;margin-top:2px">${_pagoTxt}</div>`:''}</div>
       <div style="margin-left:auto;text-align:right"><div style="font-size:1.05rem;font-weight:800;color:var(--text);white-space:nowrap">${der}</div><div style="font-size:.62rem;color:var(--muted);margin-top:2px;white-space:nowrap">${cu?'costo '+fmt(cu)+' c/u':(cam?uDe(c.items)+' u. en '+Object.keys(ped).length+' aromas':'')}</div></div>
       <span style="font-size:.7rem;color:var(--muted);margin-left:4px">▾</span></summary>
     <div style="padding:4px 11px 11px">
@@ -18653,7 +18679,7 @@ async function renderListas(){
     const totL=A.reduce((t,x)=>t+(Number(x.e.pl||x.e.p)||0)*x.u,0);  // pl = P. Lista del proveedor (Iscos: el costo es la lista menos el descuento)
     const C=Object.entries(state.comprasLista||{}).map(([id,c])=>({...c,id})).filter(c=>c.prov===k).sort((a,b)=>(b.ts||0)-(a.ts||0));
     const comp=c=>{const t=(c.items||[]).reduce((s,i)=>s+(i.pc||0)*(i.u||0),0),tL=(c.items||[]).reduce((s,i)=>s+(i.p||0)*(i.u||0),0);const cam=c.estado==='camino';
-      return `<details style="background:var(--surface);border:1px solid ${cam?'var(--amber)':'var(--border)'};border-radius:8px;padding:8px 10px;margin-bottom:6px"><summary style="cursor:pointer;font-size:.74rem">${cam?'🚚 en camino':'✅ llegó'} · <b>${c.fecha}</b> · ${(c.items||[]).length} productos · ${tL?'lista '+fmt(tL)+' · ':''}te sale ${fmt(t)}</summary>
+      return `<details style="background:var(--surface);border:1px solid ${cam?'var(--amber)':'var(--border)'};border-radius:8px;padding:8px 10px;margin-bottom:6px"><summary style="cursor:pointer;font-size:.74rem">${pedNumTag(c,'margin-right:4px')}${cam?'🚚 en camino':'✅ llegó'} · <b>${c.fecha}</b> · ${(c.items||[]).length} productos · ${tL?'lista '+fmt(tL)+' · ':''}te sale ${fmt(t)}</summary>
         <div style="font-size:.66rem;margin-top:6px;line-height:1.6">${(c.items||[]).map(i=>`· ${i.u} × ${escHtml(i.n)} <span style="color:var(--muted)">(${escHtml(i.cod)} · ${i.p?'<b style="color:var(--text)">lista '+fmt(i.p)+' c/u</b> · ':''}te sale ${fmt(i.pc)} c/u${i.m!=null?' · '+Math.round(i.m)+'% en ML':''})</span>${((_listaCache[c.prov]||{})[i.cod]||{}).noWeb?' <b style="color:var(--red)">🚫 no está en su web</b>':''}${_listaUnVend((_listaCache[c.prov]||{})[i.cod])?' <b style="color:var(--amber)">⚠️ 1 solo vendedor en ML: el % puede estar inflado</b>':''}<br><span style="padding-left:10px"><a href="#" onclick="listaVerOri('${c.prov}','${String(i.cod).replace(/'/g,"\\'")}');return false" style="color:var(--blue)">📄 verlo en la lista</a>${i.mi?` · <a href="https://www.mercadolibre.com.ar/p/${escHtml(i.mi)}" target="_blank" rel="noopener" style="color:var(--green)">🔗 verlo en ML</a>`:' · <span style="color:var(--muted)">sin link de ML</span>'}</span>`).join('<br>')}</div>
         ${cam?`<button class="btn" style="margin-top:8px;font-size:.7rem" onclick="listaLlego('${c.id}')">📦 Llegó · crear las fichas</button>`:''}</details>`;};
     el.innerHTML=cab+(A.length?`<div style="background:var(--surface);border:1px solid var(--blue);border-radius:var(--r);padding:12px;margin-bottom:14px">
