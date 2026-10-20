@@ -11,6 +11,11 @@ if any('NO LEÍ' in l for l in L):
 tc=next((float(m.group(1)) for l in L for m in [re.match(r'^dólar ([\d.]+) ·',l)] if m),0)
 if not tc>0: print('⚠️ el log no trae el dólar (o está en 0): sin dólar los costos dan 0. No armo nada.'); sys.exit(1)
 prods=[];grupo='';cur=None;esper={};nfichas=None
+# `hist N d` (etapa 3, 20/10/2026): días de la PRIMERA a la ÚLTIMA venta en 180 d, con piso de 7 (lo mismo que `ventasHistoricas`
+# de la web). Un log viejo no lo trae: ahí lo agotado se sigue midiendo ÷180.
+def hist_de(t):
+    mh=re.search(r' · hist ([\d.]+)d',t)
+    return float(mh.group(1)) if mh else None
 for l in L:
     m=re.match(r'^dólar \S+ · ventana .* · (\d+) fichas',l)
     if m: nfichas=int(m.group(1))
@@ -23,12 +28,19 @@ for l in L:
         cm=re.search(r'precio \$\d+ \((.*?)\)',rest)
         cur=dict(id=m.group(1),n=m.group(2),g=grupo,v30=int(m.group(3)),v60=int(m.group(4)),v180=int(m.group(5)),ult=m.group(6),rem=int(m.group(7) or 0),barata=int(m.group(8) or 0),dcs=int(m.group(9)),cortes=int(m.group(10) or 0),full=int(m.group(11)),casa=int(m.group(12)),cam=int(m.group(13)),
           py=g(r'PYviaja (\d+)'),pv=g(r'PVviaja (\d+)'),colores=g(r'colores (\d+)'),neto=g(r'neto \$(\d+)'),costo=g(r'costo \$(\d+)'),precio=g(r'precio \$(\d+)'),med60=g(r'med60 \$(\d+)'),
-          cambios=(cm.group(1) if cm else ''),decidido=(' YA DECIDÍ ' in rest),vars=[])
+          cambios=(cm.group(1) if cm else ''),decidido=(' YA DECIDÍ ' in rest),vars=[],hist=hist_de(rest),colFicha=None)
         prods.append(cur); continue
+    # Los colores de la ficha (etapa 3, 20/10/2026): también los que no tienen renglón (sin ventas ni mercadería).
+    m=re.match(r'^   ## colores (\[.*\])\s*$',l)
+    if m and cur:
+        try: cur['colFicha']=[str(x) for x in json.loads(m.group(1))]
+        except ValueError: pass
+        continue
     m=re.match(r'^   # (.*?) · v30 (\d+) v60 (\d+) v180 (\d+) · últ (\S+)(?: · dCS (\d+))?(?: · cortes (\d+))? · Full (\d+) · casa (\d+) · camino (\d+)(.*)$',l)
     if m and cur:
-        pv=re.search(r'PVviaja (\d+)',m.group(11))
-        cur['vars'].append(dict(v=m.group(1),v30=int(m.group(2)),v60=int(m.group(3)),v180=int(m.group(4)),ult=m.group(5),dcs=int(m.group(6)) if m.group(6) else cur['dcs'],cortes=int(m.group(7) or 0),full=int(m.group(8)),casa=int(m.group(9)),cam=int(m.group(10)),pv=int(pv.group(1)) if pv else 0,nunca=(' · NUNCA' in m.group(11))))
+        rv=m.group(11); pv=re.search(r'PVviaja (\d+)',rv); cv=re.search(r' · cambios \((.*?)\)',rv); mn=re.search(r' · mano (\d+)( vencida)?',rv)
+        cur['vars'].append(dict(v=m.group(1),v30=int(m.group(2)),v60=int(m.group(3)),v180=int(m.group(4)),ult=m.group(5),dcs=int(m.group(6)) if m.group(6) else cur['dcs'],cortes=int(m.group(7) or 0),full=int(m.group(8)),casa=int(m.group(9)),cam=int(m.group(10)),pv=int(pv.group(1)) if pv else 0,nunca=(' · NUNCA' in rv),
+          hist=hist_de(rv),cambios=(cv.group(1) if cv else None),mano=(int(mn.group(1)) if mn else None),manoVenc=bool(mn and mn.group(2))))
 # N DE M: que se hayan leído TODAS las fichas que imprimió pedidostodo (si no, un renglón con otro formato se pierde callado).
 for gr,n in esper.items():
     if gr in('BSAS','PY','PAULVIC'):
@@ -39,9 +51,17 @@ def ritmo(x,dcs=30):
     tiene=x['full']+x['casa']+x['cam']+x.get('py',0)+x.get('pv',0)
     d=max(7,min(30,dcs)); R=lambda n: f"{round(n):d}"   # con ventas sin color repartidas las cuentas pueden tener decimales   # días con stock en 30 (con piso de 7: con 1-2 días una venta suelta pediría una caja entera)
     r30=x['v30']/d; r60=x['v60']/60; r180=x['v180']/180
+    # LO AGOTADO SE MIDE MIENTRAS SE VENDÍA (etapa 3, 20/10/2026): unidades ÷ los días de la primera a la última venta en 180 d
+    # (`hist`, piso 7), como `ventasHistoricas` de la web. Antes ÷180 o ÷60 fijos: el Adaptador 8 en 1 (35 en un mes, agotado desde
+    # julio) pedía 6 cuando vendía más de 1 por día. Sin `hist` (log viejo) queda la cuenta de antes.
+    hs=x.get('hist'); agot=x['full']==0
+    def _hist(): return f"agotado · vendía {R(x['v180'])} en {R(hs)} d (de la primera a la última venta)"
     if x['v30']>=3: r=max(r30,r60*0.8); base=f"vendió {R(x['v30'])} en {d} d con stock" if d<30 else f"vendió {R(x['v30'])} en 30 d"
+    elif agot and x['v30']==0 and x['v180']>=3 and hs: r=max(r60,x['v180']/hs); base=_hist()
     elif x['v60']>=3: r=r60; base=f"vendió {R(x['v60'])} en 60 d"
-    elif x['v180']>=4 and x['full']==0: r=r180; base=f"agotado · vendía {R(x['v180'])} en 180 d"
+    elif x['v180']>=4 and agot:
+        if hs: r=x['v180']/hs; base=_hist()
+        else: r=r180; base=f"agotado · vendía {R(x['v180'])} en 180 d"
     elif x['v30']>0: r=x['v30']/d; base=f"vendió {R(x['v30'])} en 30 d"
     else: r=0; base=f"{R(x['v180'])} en 180 d" if x['v180'] else "nunca vendió"
     # ESCASEZ (13/10/2026, él: "si subo por escasez se vende menos de lo normal; eso no debería achicar las unidades a
@@ -89,7 +109,10 @@ for p in prods:
                 p['sinColorV_'+f]=sobra
         dets=[]
         for v in p['vars']:
-            r,t,b=ritmo(dict(v,cambios=p['cambios']),v['dcs']); Tv,por=Tde(p,v,r); need=max(0.0,r*Tv-t)
+            # Cada color con SUS cambios de precio (etapa 3, 20/10/2026): un log nuevo los trae en el renglón del color; un log viejo no, y
+            # ahí se usan los del producto como antes. Sin hora de venta propia, el `hist` del producto.
+            vc=v['cambios'] if p.get('colFicha') is not None else p['cambios']
+            r,t,b=ritmo(dict(v,cambios=vc or '',hist=v.get('hist') or p.get('hist')),v['dcs']); Tv,por=Tde(p,v,r); need=max(0.0,r*Tv-t)
             if por: b+=f' · {Tv} días porque {por}'
             dets.append([v,need,r,t,r*Tv,b])
         # Lo que el producto tiene SIN COLOR (viajando de Paraguay, Full de publicaciones sin color, oficina o cajas sin color)
@@ -116,7 +139,8 @@ with open(out,'w') as f:
         if isinstance(d,list):
             f.write(f"{p['g']} {p['id']} {p['n'][:40]} TOTAL {q} {nr} precio {p['precio']} med60 {p['med60']} {p['cambios']}\n")
             for v,qq,r,t,obj,b in d:
-                if qq or v['v180']: f.write(f"    #{v['v']}: {qq}  (r {r*30:.1f}/mes · tiene {t} · obj {obj:.1f} · {b})\n")
+                mano=(f"  ✋ a mano {v['mano']}"+(' (vencida: entró mercadería a la oficina)' if v.get('manoVenc') else ' (manda en la web sobre esto)')) if v.get('mano') is not None else ''
+                if qq or v['v180'] or mano: f.write(f"    #{v['v']}: {qq}  (r {r*30:.1f}/mes · tiene {t} · obj {obj:.1f} · {b}){mano}\n")
         else:
             r,t,obj,b=d
             f.write(f"{p['g']} {p['id']} {p['n'][:40]} -> {q} (r {r*30:.1f}/mes · tiene {t} · obj {obj:.1f} · {b}) {nr} precio {p['precio']} med60 {p['med60']} {p['cambios']}\n")
@@ -133,9 +157,32 @@ if os.path.exists(_jp):
         k,r=l.split('=',1); n,_,mo=r.partition('|')
         try: JU[k.strip()]=(int(n),mo.strip())
         except ValueError: print(f"⚠️ juicio que no entiendo: {l[:80]}")
-_ids={p['id'] for p in prods}; _vars={p['id']+'#'+v['v'] for p in prods for v in p['vars']}
+# JUICIOS DE UN COLOR SIN RENGLÓN (etapa 3, 20/10/2026): `pedidostodo` no imprime los colores sin ventas ni mercadería, y el juicio
+# de uno de ésos (ej. Pizarra 12" Rojo=4) se perdía sin aviso. Ahora el color se busca en la FICHA (`## colores`, sin mirar mayúsculas)
+# y el juicio se aplica aunque no tenga renglón; si el color no existe en la ficha, se avisa y no se usa.
+_JUn={k.lower():k for k in JU}
+def juDe(pid,color=None):
+    k=_JUn.get((pid+('#'+color if color else '')).lower()); return JU[k] if k else None
+def colorFicha(p,c):
+    lst=p.get('colFicha') if p.get('colFicha') is not None else [v['v'] for v in p['vars']]
+    return next((x for x in lst if x.lower()==c.lower()),None)
+_ids={p['id']:p for p in prods}
 for k in JU:
-    if k not in _ids and k not in _vars: print(f"⚠️ el juicio {k} no coincide con ningún producto/color del log: no se usa")
+    pid,_,c=k.partition('#')
+    if pid not in _ids: print(f"⚠️ el juicio {k} no coincide con ningún producto del log: no se usa"); continue
+    if c and colorFicha(_ids[pid],c) is None:
+        if _ids[pid].get('colFicha') is None: print(f"⚠️ el juicio {k}: el log es viejo (sin la lista de colores de la ficha) y ese color no tiene renglón: no se usa")
+        else: print(f"⚠️ el juicio {k}: la ficha {_ids[pid]['n']} no tiene el color \"{c}\" (tiene: {' | '.join(_ids[pid]['colFicha'])}): no se usa")
+def juiciosSinRenglon(p,ya):
+    # los juicios de color de este producto cuyo color existe en la ficha y no está en `ya` (los colores con renglón)
+    out=[]
+    for k in JU:
+        pid,_,c=k.partition('#')
+        if pid!=p['id'] or not c: continue
+        cf=colorFicha(p,c)
+        if cf and cf.lower() not in {x.lower() for x in ya} and p.get('colFicha') is not None:
+            out.append(dict(v=cf,v30=0,v60=0,v180=0,full=0,casa=0,cam=0,nunca=False,mano=None))
+    return out
 # ---- notas para decido ----
 # PRECIO DE VENTA A MANO PARA EL MÁXIMO (20/10/2026): la mediana de 60 días arrastra ventas viejas baratas. El Ferrari Negro
 # quedaba en $68.510 (vendía barato y se agotaba) y con eso "el precio de Paraguay no da" cuando al precio que más plata dejó
@@ -194,12 +241,13 @@ for p,q,d,rent in res:
         ex=f"Ya desconté {p['sinColor']} que están sin color." if p.get('sinColor') else ''
         filas=[]
         for v,qq,r,t,obj,b in d:
-            if not (qq or v['v180'] or v['full'] or v['casa']): continue
+            if not (qq or v['v180'] or v['full'] or v['casa'] or juDe(pid,v['v'])): continue
             filas.append([v,qq,r,t,obj,b])
+        for v in juiciosSinRenglon(p,[f[0]['v'] for f in filas]): filas.append([v,0,0,0,0,'nunca vendió'])
         # Juicio del producto ENTERO en un producto con colores: el total del juicio se reparte entre los colores según lo que
         # pedía cada uno (antes cambiaba el motivo y dejaba las unidades de la cuenta).
-        if pid in JU and not any(f"{pid}#{f[0]['v']}" in JU for f in filas):
-            nJ,moJ=JU[pid]; pes=[f[1] or f[0]['v30'] or f[0]['v180'] for f in filas]
+        if juDe(pid) and not any(juDe(pid,f[0]['v']) for f in filas):
+            nJ,moJ=juDe(pid); pes=[f[1] or f[0]['v30'] or f[0]['v180'] for f in filas]
             nJ,moJ=juicioQ(nJ,sum(f[3] or 0 for f in filas),moJ,p['n'])
             moJ=moJ[len('Hola Tito! '):]
             if nJ>0 and sum(pes)==0: avisos.append(f"{p['n']}: juicio de {nJ} sin colores que vendan: poné el color (p…#color)")
@@ -208,11 +256,12 @@ for p,q,d,rent in res:
         else: moJt=None
         for v,qq,r,t,obj,b in filas:
             mot=moJt or tito(qq,r,t,obj,b,rent,p['neto'],v['v'],ex,p['motNoRenta'])
-            kj=f"{pid}#{v['v']}"
-            if kj in JU: qq,mot=juicioQ(JU[kj][0],t,JU[kj][1],p['n']+' #'+v['v'])
+            jv=juDe(pid,v['v'])
+            if jv: qq,mot=juicioQ(jv[0],t,jv[1],p['n']+' #'+v['v'])
             # SÓLO ESTOS COLORES (16/10/2026, idea 11 del análisis): llegaban colores lentos en vez de los que se agotan.
             # NO VIENE MÁS (17/10/2026, regla suya): un aroma que se pidió al Paulvic y no vino no se vuelve a pedir.
             if v.get('nunca'): qq,mot=0,f"Hola Tito! {v['v']}: no te lo pido más. Lo pedimos y no vino, así que lo damos por que no viene más."
+            if v.get('mano') is not None and not v.get('manoVenc'): avisos.append(f"{p['n']} #{v['v']}: ✋ él lo cambió a mano a {v['mano']} en Pedidos: en la web manda eso (no lo que decido) hasta el pedido hecho")
             N.append(f"ped:{pid}#{v['v']}=u|{qq}|{mot}")
         if not filas:
             # Producto con colores sin ningún color con datos: no se puede escribir sin color (decido lo rechaza). Si había
@@ -224,6 +273,12 @@ for p,q,d,rent in res:
         # siempre se escribe (aunque sea 0): si no, una decisión vieja queda colgada (el Ultra Shift del 09/10).
         if p.get('colores'):
             # Un producto con colores sin ningún dato por color no se puede escribir sin color (decido lo rechaza).
+            jc=juiciosSinRenglon(p,[])
+            if jc:   # pero un juicio de color sí (etapa 3, 20/10/2026): va color por color
+                for v in jc:
+                    jv=juDe(pid,v['v']); qq,mot=juicioQ(jv[0],0,jv[1],p['n']+' #'+v['v']); N.append(f"ped:{pid}#{v['v']}=u|{qq}|{mot}")
+                if p['precio'] or p.get('med60'): N.append(f"ped:{pid}=venta|{venta(p)}|precio normal de venta para el maximo de compra")
+                continue
             if p['decidido']: N.append(f"ped:{pid}=auto"); avisos.append(f"{p['n']}: tiene colores sin datos por color y una decisión vieja: la borro (=auto)")
             elif q>0: avisos.append(f"{p['n']}: la cuenta pide {q} pero no sé de qué colores: decidilo a mano")
             continue
@@ -231,7 +286,7 @@ for p,q,d,rent in res:
         if p.get('rem'): ex+=f"No cuento {p['rem']} que se remataron porque estaban parados. "
         if p.get('barata'): ex+=f"Cuento {p['barata']} que se vendieron baratas porque salían al toque. "
         mot=tito(q,r,t,obj,b,rent,p['neto'],None,ex.strip(),p['motNoRenta'])
-        if pid in JU: q,mot=juicioQ(JU[pid][0],t,JU[pid][1],p['n'])
+        if juDe(pid): q,mot=juicioQ(juDe(pid)[0],t,juDe(pid)[1],p['n'])
         N.append(f"ped:{pid}=u|{q}|{mot}")
         if p['precio'] or p.get('med60'): N.append(f"ped:{pid}=venta|{venta(p)}|precio normal de venta para el maximo de compra")
 bad=[n for n in N if ';' in n]
