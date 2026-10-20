@@ -2685,7 +2685,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.43';
+const APP_VERSION='25.44';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2696,6 +2696,7 @@ const APP_VERSION='25.43';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.44',f:'20/10',h:'17:40',c:[{n:1,t:'📈 La línea de tiempo en el teléfono se abre de costado aunque tengas bloqueado el giro: acostá el teléfono para leerla. El botón ⤾ parada la vuelve a la normal (queda guardado).'}]},
   {v:'25.43',f:'20/10',h:'18:10',c:[{n:3,t:'🔎 Revisión de choques y fallas mudas: los botones de pedidos y llegadas no se aprietan dos veces, una venta borrada no vuelve, el cambio de precio de Paraguay obliga a medir de nuevo, y el robot deja de escribir apenas se cancela una corrida.'},{n:2,t:'🌙 La corrida de la noche no se repite: la 2ª y 3ª dicen que ya terminó y no vuelven a hacer todo.'}]},
   {v:'25.42',f:'20/10',h:'17:20',c:[{n:1,t:'📋 Listas: la línea de arriba suma entera (medidos + sin el mismo producto en ML + nadie lo vende en ML + afuera por regla + sin medir), así se ve dónde está cada uno de la lista.'}]},
   {v:'25.41',f:'20/10',h:'17:05',c:[{n:3,t:'📋 Listas como Paraguay: lo ya probado de una lista se carga al 🧾 Pedido de esa lista desde su tarjeta de Pedidos ("📋 pedir a …", color por color). "Ya lo pedí" lo descuenta de lo que hay que comprar y, mientras viaja, Pedidos no lo vuelve a pedir. Al llegar no crea fichas repetidas.'}]},
@@ -9909,6 +9910,7 @@ async function lineaAbrir(prodId,ev,varSel){
   let m=document.getElementById('linea-modal');
   if(!m){m=document.createElement('div');m.id='linea-modal';m.style.cssText='position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.6);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:16px';
     m.onclick=e=>{if(e.target===m)m.remove();};document.body.appendChild(m);}
+  _lineaAplicarGiro(m);
   m.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;max-width:1100px;width:100%;padding:14px 16px;margin-top:20px"><div style="font-size:.8rem;color:var(--muted)">📈 Cargando la línea de tiempo de <b>${p.name}</b>…</div></div>`;
   const mlas=Object.entries(state.mllinks||{}).filter(([,e])=>e&&e.prodId===prodId&&!e.ignored).map(([k])=>k);
   try{
@@ -9950,12 +9952,27 @@ function _lineaVarDeVenta(v){return String(v.variante||_lineaVarMap[v.mla]||'').
 // stock, ganancia, %, precio, subas) para que el gráfico termine justo en el borde de abajo; los finitos (remate, caja)
 // quedan igual y las letras no se deforman (se agranda el dibujo, no se estira la imagen). Nunca achica: en una pantalla
 // chica queda como antes. Al cambiar el tamaño de la ventana se vuelve a medir.
+// DE COSTADO EN EL TELÉFONO (20/10/2026, él: "en el celu, cuando abro la línea de tiempo, que abra de costado aunque tenga bloqueado
+// el girar"). Una página no puede girar la pantalla con el giro bloqueado, así que se gira el CONTENIDO: en un teléfono parado, la
+// ventana se dibuja de costado (el ancho del dibujo es el alto de la pantalla) y se lee poniendo el teléfono acostado. El botón
+// "⤾" lo apaga (queda guardado en este teléfono). En la PC o con el teléfono acostado no cambia nada.
+let _lineaGiro=(()=>{try{return localStorage.getItem('cycLineaGiro')!=='0';}catch(e){return true;}})();
+function _lineaPuedeGirar(){try{return window.innerHeight>window.innerWidth&&window.innerWidth<=700&&matchMedia('(pointer:coarse)').matches;}catch(e){return false;}}
+function _lineaAplicarGiro(m){
+  if(!m)return;const g=_lineaGiro&&_lineaPuedeGirar();
+  if(g){const W=window.innerHeight,H=window.innerWidth;Object.assign(m.style,{inset:'auto',top:'0',left:'0',right:'auto',bottom:'auto',width:W+'px',height:H+'px',transformOrigin:'top left',transform:`translateX(${H}px) rotate(90deg)`});m.dataset.giro='1';}
+  else{Object.assign(m.style,{inset:'0',top:'',left:'',right:'',bottom:'',width:'',height:'',transformOrigin:'',transform:''});m.dataset.giro='';}
+}
+function _lineaGiroBtn(){if(!_lineaPuedeGirar())return '';return `<button class="btn" onclick="lineaGiroCambiar()" style="font-size:.7rem;padding:3px 10px" title="${_lineaGiro?'Verla parada (normal)':'Verla de costado'}">${_lineaGiro?'⤾ parada':'⤿ de costado'}</button>`;}
+function lineaGiroCambiar(){_lineaGiro=!_lineaGiro;try{localStorage.setItem('cycLineaGiro',_lineaGiro?'1':'0');}catch(e){}const m=document.getElementById('linea-modal');_lineaAplicarGiro(m);_lineaFac=1;if(_lineaRepintar)_lineaRepintar();}
 let _lineaFac=1,_lineaDim=null,_lineaRepintar=null,_lineaResizeOk=false;
 function _lineaLlenar(m,repintar){
-  _lineaRepintar=repintar;
+  _lineaRepintar=repintar;_lineaAplicarGiro(m);
   if(!_lineaResizeOk){_lineaResizeOk=true;let t=null;window.addEventListener('resize',()=>{clearTimeout(t);t=setTimeout(()=>{if(document.getElementById('linea-modal')&&_lineaRepintar)_lineaRepintar();},150);});}
   const s=m&&m.querySelector('svg.linea-svg');if(!s||!_lineaDim||!(_lineaDim.sc>0))return;
-  const top=s.getBoundingClientRect().top-m.getBoundingClientRect().top+m.scrollTop;
+  // Girada, el "arriba" del dibujo es el borde derecho de la pantalla: la distancia se mide desde ahí.
+  const rS=s.getBoundingClientRect(),rM=m.getBoundingClientRect();
+  const top=(m.dataset.giro?rM.right-rS.right:rS.top-rM.top)+m.scrollTop;
   const px=m.clientHeight-top-18;                 // 16 de padding del fondo + un respiro
   let fac=((px/1.1-16)-_lineaDim.fx)/_lineaDim.sc;
   fac=Math.max(1,Math.min(4,fac));
@@ -10420,7 +10437,7 @@ function lineaPintar(prodId){
   m.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;max-width:1500px;width:100%;padding:14px 16px;margin-top:20px">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
       <div style="font-size:.9rem;font-weight:700">📈 ${p.name}${_lineaVar?` · <span style="color:#a78bfa">${_lineaVar}</span>`:''}</div>
-      <div style="display:flex;gap:6px;align-items:center"><button class="btn" onclick="lineaTodoAbrir(event)" style="font-size:.66rem;padding:3px 10px" title="La misma línea con TODOS los productos juntos">📈 Todos</button>${btn(365)}${btn(90)}${btn(30)}<button class="btn" onclick="document.getElementById('linea-modal').remove()" style="font-size:.7rem;padding:3px 10px">✕</button></div>
+      <div style="display:flex;gap:6px;align-items:center"><button class="btn" onclick="lineaTodoAbrir(event)" style="font-size:.66rem;padding:3px 10px" title="La misma línea con TODOS los productos juntos">📈 Todos</button>${btn(365)}${btn(90)}${btn(30)}${_lineaGiroBtn()}<button class="btn" onclick="document.getElementById('linea-modal').remove()" style="font-size:.7rem;padding:3px 10px">✕</button></div>
     </div>
     ${_vars.length>1?`<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px">${['',..._vars].map((v,i)=>`<button class="btn" onclick="lineaVar(_lineaVarsL[${i}],'${prodId}')" style="font-size:.62rem;padding:2px 9px;${_lineaVar===v?'background:#7c3aed;color:#fff;border-color:#7c3aed':''}">${v||'Todas juntas'}</button>`).join('')}</div>`:''}
     <div style="font-size:.7rem;color:var(--muted);margin:6px 0 8px;line-height:1.6">${_lineaRango} días · <b style="color:var(--text)">${uT} u. vendidas</b>${uRT?` (${uRT} en remate)`:''}${hayGan&&gPct!=null&&isFinite(gPct)?` · ganancia <b style="color:${pctColor(gPct)}">${gPct.toFixed(0)}%</b>`:''} · ${vT} visitas · ${_stHoy} · historial: <span style="color:var(--green)">${dCon} d con</span> · <span style="color:var(--red)">${dSin} d sin</span> · ${dNo} d sin dato${dRem?` · ${dRem} d rematando`:''}${pIni&&pFin?` · precio ${fmt(pIni)} → ${fmt(pFin)}`:''} · ${Object.keys(porMlaF).length} publicación(es)${C.fallo?' · <span style="color:var(--amber)">alguna publicación no se pudo leer</span>':''}</div>
@@ -10457,6 +10474,7 @@ async function lineaTodoAbrir(ev){
   let m=document.getElementById('linea-modal');
   if(!m){m=document.createElement('div');m.id='linea-modal';m.style.cssText='position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.6);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:16px';
     m.onclick=e=>{if(e.target===m)m.remove();};document.body.appendChild(m);}
+  _lineaAplicarGiro(m);
   m.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;max-width:1100px;width:100%;padding:14px 16px;margin-top:20px"><div style="font-size:.8rem;color:var(--muted)">📈 Cargando la línea de tiempo de todos los productos…</div></div>`;
   if(!_ltC||Date.now()-_ltC.at>10*60e3){
     try{const sn=await db.ref('mlapi/lineatodo').once('value');const v=sn.val()||{};_ltC={dias:v.dias||{},ts:Number(v.ts)||0,at:Date.now()};}
@@ -10577,7 +10595,7 @@ function lineaTodoPintar(){
   m.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;max-width:1500px;width:100%;padding:14px 16px;margin-top:20px">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
       <div style="font-size:.9rem;font-weight:700">📈 Todos los productos</div>
-      <div style="display:flex;gap:6px;align-items:center">${btn(365)}${btn(90)}${btn(30)}<button class="btn" onclick="document.getElementById('linea-modal').remove()" style="font-size:.7rem;padding:3px 10px">✕</button></div>
+      <div style="display:flex;gap:6px;align-items:center">${btn(365)}${btn(90)}${btn(30)}${_lineaGiroBtn()}<button class="btn" onclick="document.getElementById('linea-modal').remove()" style="font-size:.7rem;padding:3px 10px">✕</button></div>
     </div>
     <div style="font-size:.7rem;color:var(--muted);margin:6px 0 8px;line-height:1.6">${_ltRango} días · <b style="color:var(--text)">${uT.toLocaleString('es-AR')} u. vendidas</b>${gT?` · ganancia <b style="color:var(--text)">${fmt(Math.round(gT))}</b>`:''}${gPct!=null&&isFinite(gPct)?` (<b style="color:${pctColor(gPct)}">${gPct.toFixed(0)}%</b>)`:''} · ${vT.toLocaleString('es-AR')} visitas · stock hoy: <b style="color:var(--text)">${hoyR.st.toLocaleString('es-AR')} u.</b> · cambios de precio: <span style="color:var(--green)">▲ ${sT}</span> · <span style="color:var(--red)">▼ ${bT}</span>${iIni!=null&&iFin!=null?` · índice de precio ${iIni.toFixed(0)} → ${iFin.toFixed(1)}`:''} · caja hoy: <span style="color:var(--green)">${hoyR.g} ganan</span> · <span style="color:#f59e0b">${hoyR.c} comparten</span> · <span style="color:var(--red)">${hoyR.p} pierden</span>${_ltC.fallo?` · <span style="color:var(--amber)">no pude leer la línea del robot (${_ltC.fallo}): sólo lo del panel</span>`:(!Object.keys(R).length?' · <span style="color:var(--amber)">el robot todavía no armó la línea de todos: stock, visitas y precio salen desde la próxima noche</span>':(viejo>2?` · <span style="color:var(--amber)">la línea del robot es de hace ${Math.floor(viejo)} días</span>`:''))}</div>
     <div style="position:relative;padding-left:58px">

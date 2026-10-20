@@ -971,6 +971,8 @@ tachado al mismo precio final. Corrige cada comparación con un panel: las otras
 días y sin cambio de precio en el medio (el índice encadenado del primer intento se infló ×19 con el ruido). Qué chequear: que los días con tachado salgan de mis promos y de ventas en promo sin cupón, que cada grupo
 diga cuántos cambios midió (con pocos no se concluye) y que no imprima nada de compradores.
 
+- **20/10/2026 · v25.44 · la línea de tiempo de costado en el teléfono** (etapa 7, diseño). Pedido suyo: que abra de costado aunque tenga el giro bloqueado. Una página no puede girar la pantalla con el giro bloqueado, así que se gira el contenido (`_lineaAplicarGiro`: en un teléfono parado, `linea-modal` mide alto×ancho y va rotada 90°). Botón "⤾ parada" lo apaga (`localStorage` `cycLineaGiro`). `_lineaLlenar` mide la altura desde el borde derecho cuando está girada. Chequear: que en la PC y con el teléfono acostado no cambie nada; que el gráfico llegue hasta el borde; que el scroll ande.
+
 ## 8 · DATOS E HISTORIAL (nueva, 08/10/2026)
 - 20/10/2026 · la ficha (`armarFicha` → `reaccionesDe`, `mlapi/ficha/<MLA>.reac` y `.reacTxt`; en la web "Cómo reacciona este
 producto") dice por publicación: caja ganando/perdiendo, ventas contra visitas, cambios de precio, fechas especiales, sin stock y
