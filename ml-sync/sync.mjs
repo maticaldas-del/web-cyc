@@ -40152,8 +40152,9 @@ async function main() {
       // Se decide EN ESTA VUELTA: sacarlo (`entrarpromo:<MLA>=salir|…`) o dejarlo con motivo (nota de 7 días). Tiene que quedar vacía.
       try {
         let ntsD = null; try { ntsD = (await db.get('mlapi/fichanotas')) || {}; } catch { ntsD = null; }
-        // Sólo cuenta una nota que hable del descuento (que lo piense de nuevo), no cualquier nota de precio del día.
-        const ultD = (m) => { const h = (ntsD || {})[m] || {}; return Math.max(0, ...Object.keys(h).map(Number).filter((n) => n > 0 && /descuento|promo/i.test(String((h[n] || {}).t || '')))); };
+        // Sólo cuenta una nota que hable del descuento (que lo piense de nuevo), no cualquier nota de precio del día, y escrita
+        // después de la regla 🤔 (20/10): las de antes justificaron descuentos sin mirar estas tres condiciones.
+        const ultD = (m) => { const h = (ntsD || {})[m] || {}; return Math.max(0, ...Object.keys(h).map(Number).filter((n) => n > Date.parse('2026-10-20T06:00:00Z') && /descuento|promo/i.test(String((h[n] || {}).t || '')))); };
         const grD = {}; for (const r of filas) if (r.kSt) (grD[r.kSt] = grD[r.kSt] || []).push(r);
         const malD = [], pensD = [];
         for (const r of filas) {
@@ -40174,7 +40175,7 @@ async function main() {
         malD.sort((x, y) => y.por.length - x.por.length);
         for (const r of malD) console.log(`🤔 ${r.mla} · ${r.cta} · ${r.nom} · ${f(r.P)} · ${r.exc} · v ${r.u7}/${r.u30}/${r.u60} · ${r.por.join(' · ')}`);
         if (!malD.length) console.log('ninguno: todos mis descuentos siguen teniendo sentido');
-        if (pensD.length) console.log(`   (${pensD.length} fallan alguna pero ya les escribí nota en 7 días: ${pensD.map((x) => x.nom.slice(0, 24)).join(' · ')})`);
+        for (const r of pensD) console.log(`   (pensado en 7 días) ${r.mla} · ${r.nom} · ${r.por.join(' · ')}`);
       } catch (eD) { console.log('⚠️ la lista de descuentos sin sentido falló: ' + eD.message); }
       // ── 🔎 SIN AFINAR (19/10/2026, él: "¿con eso vamos a evitar que dejes pasar productos que no estén afinados al máximo? (…)
       // productos que nunca se buscó techo, entonces perdemos saber techos y ganancia"). Los tags dicen qué estrategia tiene cada
