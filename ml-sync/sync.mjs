@@ -43437,12 +43437,15 @@ async function main() {
           for (const tr of String(campos.det).split(';').map((x) => x.trim()).filter(Boolean)) {
             const m = tr.split('*').map((x) => x.trim());
             const cod = m[0] || '', u = parseInt(m[1]) || 0, pu = num(m[2]);
+            // 4º campo opcional: el NOMBRE del ticket, para lo que se agregó en el momento y no estaba en el panel (20/10/2026).
+            const nomTk = String(m.slice(3).join(' ') || '').trim().slice(0, 120);
             if (!cod || !(u > 0) || !(pu > 0)) { console.log(`  ⚠️ No entiendo "${tr}" — se espera codigo*unidades*precio. No guardo NADA.`); return; }
             const hit = buscar(cod);
             // Un renglón de reposición (prodId sin id) sigue siendo de reposición: no se le inventa un id,
             // si no "Llegó" lo trataría como nuevo y le crearía otra ficha (05/10/2026, pedido único).
             const _esRepoHit = hit && !hit.src.id && hit.src.prodId;
-            const o = { ...(_esRepoHit ? {} : { id: (hit && hit.src.id) || ('x' + cod) }), nom: (hit && String(hit.src.nom || hit.src.nombre || '').slice(0, 120)) || cod, cod, u, usd: pu };
+            const o = { ...(_esRepoHit ? {} : { id: (hit && hit.src.id) || ('x' + cod) }), nom: (hit && String(hit.src.nom || hit.src.nombre || '').slice(0, 120)) || nomTk || cod, cod, u, usd: pu };
+            if (!hit && nomTk) o.agregado = true;   // no estaba en el pedido ni en los candidatos: se agregó en Nissei
             if (hit) {
               for (const k of ['mlId', 'link', 'margen', 'ganancia', 'pesoKg', 'pesoTxt', 'prodId']) if (hit.src[k] != null) o[k] = hit.src[k];
               // EL PRECIO DE LA WEB QUEDA AL LADO DEL PAGADO (10/10/2026, él: "los pedidos que cargo en paraguay siempre
@@ -43465,6 +43468,15 @@ async function main() {
           console.log(`  Detalle de la factura: ${itemsDet.length} producto(s) · ${uDet} unidades · US$ ${sumDet.toFixed(2)}`);
           if (Math.abs(sumDet - usd) > 0.5) console.log(`  ⚠️ NO CIERRA: el detalle suma US$ ${sumDet.toFixed(2)} y pusiste usd=${usd.toFixed(2)}. Se guarda igual, pero uno de los dos está mal.`);
           if (sinNombre.length) console.log(`  ⚠️ ${sinNombre.length} código(s) sin emparejar (quedan con el código de nombre): ${sinNombre.join(', ')}`);
+          // LO QUE NO VINO Y LO QUE SE AGREGÓ (20/10/2026, él: "algunas cosas no tenían y entonces agregué otras. Vas a tener que
+          // modificar el pedido"). Lo que estaba en el pedido y no figura en el ticket sale del pedido y su candidato vuelve a la
+          // lista (se le saca `pedidoEn`); lo agregado que coincide con un candidato queda marcado viajando en este pedido.
+          { const enDet = new Set(itemsDet.map((x) => String(x.cod).replace(/\D/g, '')));
+            const fuera = (ya && Array.isArray(ya.items) ? ya.items : []).filter((x) => x && !enDet.has(String(x.cod || '').replace(/\D/g, '')) && ![...enDet].some((c) => { const a = String(x.cod || '').replace(/\D/g, ''); return a && (c.endsWith(a) || a.endsWith(c)); }));
+            if (fuera.length) console.log(`  ✂️ No vinieron (salen del pedido${fuera.some((x) => x.id && cands[x.id]) ? ' y vuelven a la lista de candidatos' : ''}): ${fuera.map((x) => `${x.u} × ${String(x.nom || x.cod).slice(0, 40)}`).join(' · ')}`);
+            const nuevos = itemsDet.filter((x) => !(ya && Array.isArray(ya.items) && ya.items.some((y) => y && String(y.cod || '').replace(/\D/g, '').slice(-5) === String(x.cod).replace(/\D/g, '').slice(-5))));
+            if (nuevos.length) console.log(`  ➕ Agregados en el momento: ${nuevos.map((x) => `${x.u} × ${String(x.nom).slice(0, 40)}${x.agregado ? ' (nuevo, sin candidato)' : ''}`).join(' · ')}`);
+            campos._fuera = fuera; campos._nuevos = nuevos; }
           const _webT = itemsDet.reduce((a, x) => a + (x.usdWeb > 0 ? x.usdWeb : x.usd) * x.u, 0);
           for (const x of itemsDet) if (x.usdWeb > 0 && Math.abs(x.usdWeb - x.usd) >= 0.005) console.log(`    ${String(x.nom).slice(0, 50)}: web US$ ${x.usdWeb.toFixed(2)} → pagado US$ ${x.usd.toFixed(2)} (${x.usd < x.usdWeb ? '−' : '+'}${Math.abs((1 - x.usd / x.usdWeb) * 100).toFixed(1)}%)`);
           console.log(`  Descuento contra la web: US$ ${(_webT - sumDet).toFixed(2)} (${_webT > 0 ? ((1 - sumDet / _webT) * 100).toFixed(1) : '0'}%) · web US$ ${_webT.toFixed(2)} → pagado US$ ${sumDet.toFixed(2)}`);
@@ -43564,6 +43576,10 @@ async function main() {
         console.log(rel && rel.usdCrudo === usd ? `\n✓ Guardado y releído: cyc/compraspy/${id}` : `\n⚠️ Se escribió pero al releer no coincide. Mirar a mano.`);
         // Con TODOS los gastos cargados, el costo de lo que aumentó se actualiza solo (05/10/2026).
         if (rel && rel.usdCrudo === usd) await aplicarCostosPedido(db, id, rel, true);
+        if (rel && itemsDet) {
+          for (const x of (campos._fuera || [])) { const k = x && x.id && cands[x.id]; if (k && k.pedidoEn === id) { try { await db.set(`cyc/candidatos_py/${x.id}/pedidoEn`, null); } catch { console.log(`  ⚠️ no pude devolver a la lista: ${x.nom}`); } } }
+          for (const x of (campos._nuevos || [])) { if (x.id && cands[x.id] && cands[x.id].pedidoEn !== id) { try { await db.set(`cyc/candidatos_py/${x.id}/pedidoEn`, id); await db.set(`cyc/candidatos_py/${x.id}/pedirU`, 0); } catch { /* se ve igual en el pedido */ } } }
+        }
         return;
       }
 

@@ -1946,3 +1946,9 @@ fuera del promedio · 8 filas de MP sin fecha.
   contador `cyc/mlconfig/pedNumUlt` reservado por transacción; `pedNumTag` lo pinta al lado de la fecha. El número no se toca
   nunca. `pvped` conserva `num` al reescribir el pedido. **Chequear:** que ninguna escritura del robot o de la web reemplace un
   pedido entero sin arrastrar `num` (si pasa, recibe un número nuevo y el viejo queda "perdido").
+
+- 20/10/2026 · Etapa 3 (mercadería): **`compray … |det=` arregla el pedido cuando Nissei no tenía algo y se agregó otra cosa.**
+  `det=<cód>*<u>*<precio>[*<nombre>]`: el 4º campo es el nombre del ticket para lo agregado que no estaba en el panel (queda
+  `agregado:true` y "Llegó" crea la ficha con ese nombre). Lo que estaba en el pedido y no figura en el ticket sale del pedido y su
+  candidato vuelve a la lista (`pedidoEn` en null); lo agregado que coincide con un candidato queda viajando. El log lo dice
+  (✂️ no vinieron · ➕ agregados). **Chequear:** que un candidato que no vino vuelva a "Para probar" y no quede "viajando".
