@@ -22174,12 +22174,17 @@ async function main() {
       // `gemelacrea:ver:<MLA>,<MLA>…` (solo lee): tipo, producto de ML y marcas de cada una, para comparar con una gemela que ya existe.
       if (arg.startsWith('ver:')) {
         const links = (await db.get('cyc/mllinks')) || {}; const toks = {};
-        for (const mla of arg.slice(4).split(',').map((x) => x.trim().toUpperCase()).filter((x) => /^MLA\d+$/.test(x))) {
+        // `ver:gemelas` = todas las Premium gemelas anotadas en cyc/mllinks (gemelaDe), cada una al lado de su Clásica.
+        let lista = arg.slice(4).split(',').map((x) => x.trim().toUpperCase()).filter((x) => /^MLA\d+$/.test(x));
+        if (/^ver:gemelas/i.test(arg)) { lista = []; for (const [k, e] of Object.entries(links)) if (e && e.gemelaDe) lista.push(e.gemelaDe, k); console.log(`${lista.length / 2} gemela(s) anotadas`); }
+        let okN = 0, malN = 0;
+        for (const mla of lista) {
           const L = links[mla] || {}; const acc = accounts[L.cuenta]; if (!acc?.refresh_token) { console.log(`${mla}: sin cuenta conocida`); continue; }
           if (!toks[L.cuenta]) { try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + L.cuenta, { refresh_token: t.refresh_token, updated_ts: Date.now() }); toks[L.cuenta] = t.access_token; } catch { console.log(`${L.cuenta}: no pude renovar`); continue; } }
-          try { const b = await mlGet('/items/' + mla, toks[L.cuenta]); console.log(`${mla} · ${L.cuenta} · ${b.listing_type_id} · ${b.status} · $${Math.round(b.price || 0).toLocaleString('es-AR')} · ${b.available_quantity} u. · ${(b.shipping || {}).logistic_type} · upid ${b.user_product_id || '—'} · family ${b.family_id || '—'} · catálogo ${b.catalog_listing ? b.catalog_product_id : 'no'} · alta ${String(b.date_created || '').slice(0, 10)} · tags: ${(b.tags || []).join(',')}${(b.sub_status || []).length ? ' · sub ' + b.sub_status.join(',') : ''} · ${String(b.title || '').slice(0, 50)}\n     ${b.permalink || ''}`); }
+          try { const b = await mlGet('/items/' + mla, toks[L.cuenta]); if (L.gemelaDe) { const bien = b.listing_type_id === 'gold_pro' && b.status === 'active' && (b.shipping || {}).logistic_type === 'fulfillment' && b.available_quantity > 0; if (bien) okN++; else malN++; console.log(bien ? '   ✓ Premium bien' : '   ⚠️ Premium NO está activa por Full con stock'); } console.log(`${mla} · ${L.cuenta} · ${b.listing_type_id} · ${b.status} · $${Math.round(b.price || 0).toLocaleString('es-AR')} · ${b.available_quantity} u. · ${(b.shipping || {}).logistic_type} · upid ${b.user_product_id || '—'} · family ${b.family_id || '—'} · catálogo ${b.catalog_listing ? b.catalog_product_id : 'no'} · alta ${String(b.date_created || '').slice(0, 10)} · tags: ${(b.tags || []).join(',')}${(b.sub_status || []).length ? ' · sub ' + b.sub_status.join(',') : ''} · ${String(b.title || '').slice(0, 50)}\n     ${b.permalink || ''}`); }
           catch (e) { console.log(`${mla}: ML no contestó ${String(e.message).slice(0, 150)}`); }
         }
+        if (okN + malN) console.log(`\nPremium gemelas: ${okN} bien · ${malN} con algo raro`);
         return;
       }
       const go = /:go$/.test(arg);
