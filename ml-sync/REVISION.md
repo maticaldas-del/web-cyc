@@ -1842,3 +1842,9 @@ diga "mismo margen" sin la cuenta neta.
 en Full, desde $50.000, sin Premium hermana (misma ficha y cuenta), y el precio Premium que deja la misma plata neta (comisión Premium,
 cuotas aparte si ML no las mete en la comisión con el peor % medido, IIBB/mono, 3% del facturado de más por tope de H). La publicación
 la crea él. **Chequear:** que la neta Premium ≥ neta Clásica, que no proponga arriba de $650.000 y que avise variantes/catálogo.
+
+### Etapa 5 · 20/10/2026 · v25.16 · techo: una sola cuenta para la raya y `techo95` (eligió la a)
+Dos fórmulas para el mismo número: la raya 🔴 de la web (desde el 💰, todos los días "con stock") y `techo95` (desde el precio de
+hoy, por tramos). Ahora las dos usan `rayasPrecioLinea` / `_rayas`: sólo días con 3+ u. en Full y con visitas. `techo95` da 🏔️ sólo
+si el precio de hoy es el 💰 y hay 🔴 al 95%. La línea avisa "hoy probando" si el precio está arriba del 🔴 con estrategia techo/escasez.
+**Chequear:** que las dos copias sigan iguales (si se toca una, la otra) y que un producto con pocos días medibles diga eso y no invente rayas.
