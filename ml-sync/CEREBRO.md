@@ -768,3 +768,6 @@ caja. Antes de `entrarpromo` (propio o de ML) se chequean las tres, y si alguna 
  2. **No es recién llegado:** menos de 30 días desde que entró la caja = no se descuenta (todavía no se sabe a qué ritmo vende).
  3. **Queda en 25% o más en el peor caso.** Abajo de 25% sólo con un motivo dicho en el 🧠 (stock antiguo con fecha encima, remate que él pidió).
 Ganar la caja y vender bien sin descuento = no hay nada que descontar.
+
+### 🤔 Y TODOS LOS DÍAS SE REVISAN LOS DESCUENTOS QUE YA ESTÁN PUESTOS (20/10/2026)
+`planilla` saca la lista **🤔 MIS DESCUENTOS QUE YA NO TIENEN SENTIDO**: todo descuento mío vigente que hoy falla alguna de las tres (sobra +90 d · 30+ d desde la caja · 25%+ en el peor caso). Se saca o se deja con nota en esa vuelta; la lista queda vacía.
