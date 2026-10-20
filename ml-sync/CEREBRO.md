@@ -822,6 +822,11 @@ lee; `;go` anota): techo = precio de hoy; arriba = días con stock a un precio 2
 tenía que vender r0 × gan0/gan1; si vendió tan poco que eso tiene menos de 5% de chance (Poisson) → 🏔️ anotado el día que terminó la
 prueba de arriba, con el porqué (la línea de tiempo lo marca con una raya 🏔️). Si no llega → 📈 buscando techo y en la vuelta pongo
 la prueba con `decido`. **Nunca anotar #techook a mano sin pasar por `techo95`.** Corre en cada completa sobre todas las 🏔️.
+**UNA SOLA CUENTA PARA EL TECHO (20/10/2026, eligió la a, con las Sábanas 140 Blanco: la raya decía techo $20.180 y la estrategia
+"buscando techo" a $21.990, que vendió hoy al 38%).** La raya de la línea de tiempo y `techo95` usan la MISMA cuenta (`_rayas` en
+index.html = `rayasPrecioLinea` en sync.mjs): sólo días con 3+ u. en Full y con dato de visitas; 🏔️ seguro = el precio de hoy es el 💰
+y arriba hay un 🔴 medido al 95%. Si hay una prueba más cara en curso, la línea lo dice. Antes de cada prueba de techo, miro la raya
+y si subo por encima del 🔴 digo en el 🧠 por qué no le creo.
 **LAS TRES RAYAS DE CADA PRECIO (19/10/2026, pedido suyo):** la línea de tiempo marca 🔴 techo (donde ya no rinde, 95%), 🟢 piso (el
 precio más alto que sí vende) y 💰 el que más plata por día dejó. Lo que no se sabe se dice ("falta probar más caro"); con sobrestock no
 se busca techo (primero sale lo que sobra). **Todo producto tiene que llegar a tener las tres**: si falta el 🔴, la estrategia es buscar techo.
