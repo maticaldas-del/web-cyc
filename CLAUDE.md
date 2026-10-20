@@ -850,6 +850,14 @@ la prueba se cierra). Todo lo demás, 37. El cupo de cada cuenta lo sigue frenan
 180 d → 2) y un producto NUEVO (nunca vendió en 180 d, nada en Full ni camino) recibe el mínimo de 4 (`PISO_CERO`); antes
 daba "no vende" y no salía. Medido ese día: de 43 renglones a mandar, ninguno pasaba los 90 días.
 
+## 🔭 PLAN 20X: CADA PRODUCTO Y CADA VENTA, A FONDO (20/10/2026, eligió 1a 2a 3a 4a)
+Él: *"tengo el plan 20x. aprovechemos (…) cuando analices las ventas y productos le des más detenimiento"*. (1) La completa de
+las 08:52 reparte las 4 cuentas entre 4 ayudantes que leen la ficha ENTERA de cada publicación (`ficha:cuenta=<cuenta>`, sólo
+leen) y devuelven un juicio por publicación; yo junto, miro lo dudoso y aplico. (2) Cada venta, en todas las vueltas, contra su
+ficha. (3) Vueltas cortas cada 2 h, 10:52 a 20:52. (4) El porqué de cada juicio queda en la nota de la ficha con qué mirar
+mañana. Detalle en `ml-sync/CEREBRO.md` (🔭). Él preguntó si con eso no iba a tener que corregirme nada con 95% de seguridad:
+**se le dijo que no se puede prometer** (ver la respuesta en el chat del 20/10).
+
 ## 📋 LA LISTA ÚNICA DEL CEREBRO: `ml-sync/CEREBRO.md` (13/10/2026, pedido suyo)
 
 Él: *"no quiero que te olvides las cosas que agregamos a cerebro (...) me gustaría que tengas una lista de TODO lo que

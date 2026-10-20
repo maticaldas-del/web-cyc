@@ -1,9 +1,33 @@
 # 🧠 CEREBRO · TODO LO QUE HAY QUE TENER EN CUENTA
 
 Pedido suyo del 13/10/2026: *"no quiero que te olvides las cosas que agregamos a cerebro (...) me gustaría que tengas
-una lista de TODO lo que tener en cuenta"*. **Cada vuelta (08:52 completa · 12:52, 16:52 y 20:52 cortas) arranca
+una lista de TODO lo que tener en cuenta"*. **Cada vuelta (08:52 completa · 10:52, 12:52, 14:52, 16:52, 18:52 y 20:52 cortas) arranca
 leyendo este archivo.** Cada regla nueva que él dé se agrega ACÁ en el mismo commit (además de CLAUDE.md, que tiene
 la historia y el porqué). Si algo de acá choca con CLAUDE.md, manda lo más nuevo y se corrige el otro.
+
+## 🔭 PLAN 20X: CADA PRODUCTO Y CADA VENTA, A FONDO (20/10/2026, eligió 1a 2a 3a 4a) · MANDA SOBRE LO DE ABAJO
+Él: *"tengo el plan 20x. aprovechemos. lo primero que quiero es que cuando analices las ventas y productos le des más
+detenimiento"*. Antes, la completa miraba cada publicación de a un renglón y la ficha sólo cuando algo llamaba la atención.
+ 1. **COMPLETA (08:52): CUATRO AYUDANTES, UNO POR CUENTA, A LA VEZ.** Después de bajar `planilla`, `historia`, `escasez:expediente`
+    e `informe:24` (de a uno), corro `ficha:cuenta=adriana`, `…=ayelen`, `…=luciana`, `…=matias` por ml-consulta (de a dos) y
+    guardo cada log limpio en el scratchpad. Lanzo 4 agentes (`Agent`, en un solo mensaje) y a cada uno le paso: su archivo
+    de fichas, los pedazos de planilla/historia/expediente/informe de su cuenta, y la ruta de `ml-sync/CEREBRO.md` y
+    `ml-sync/notas/techo.md` para que los lea. Cada ayudante abre la ficha ENTERA de cada publicación de su cuenta (activas, con
+    stock o agotadas que vendían): el año, cada cambio de precio y cómo le fue, cada tanda de stock y cuánto duró, fechas,
+    competencia y caja, la prueba en curso. Y devuelve, por publicación, UN juicio razonado: estrategia (tag), precio que
+    propone (o "igual"), pedido/caja si corresponde, y el porqué con números, más "no estoy seguro" cuando lo está. **Los
+    ayudantes SÓLO LEEN: no corren nada que escriba.** Yo junto los cuatro, miro yo mismo todo lo dudoso, lo que cambia más
+    de 20% el precio y lo que contradice una decisión mía de menos de 7 días, y recién ahí aplico con `decido`.
+    En el chat: "ayudantes: N publicaciones juzgadas · C cambios · D dudosas que miré yo".
+ 2. **CADA VENTA, EN TODAS LAS VUELTAS, CONTRA SU FICHA** (no sólo las raras de `ventasraras`). Para cada compra desde la vuelta
+    anterior: ¿es la 1ª o 2ª venta después de un cambio de precio? ¿confirma o desmiente la prueba de techo? ¿cambió el
+    ritmo (⚡)? ¿deja el stock en escasez? ¿se vendió en promo? Si hay que tocar algo se decide en ESA vuelta (regla ⚡ del
+    18/10). Si son muchas, la ficha se abre de las que tienen poco stock, prueba en curso o salieron raras; el resto se mira
+    con la línea de su publicación en la planilla. En el chat: "ventas: N miradas · A acciones".
+ 3. **VUELTAS CORTAS CADA 2 HORAS**: 10:52, 12:52, 14:52, 16:52, 18:52 y 20:52 (rutina `trig_01FCaQqzU5MA422N6Z8nH63Z`).
+ 4. **EL PORQUÉ QUEDA EN LA FICHA.** Al terminar la completa, toda publicación juzgada lleva su nota (`decido:<MLA>=nota|…`,
+    muchas con `ml-sync/notas/fichas_<fecha>.txt` y `decido:archivo=…;go`), con el razonamiento corto y QUÉ MIRAR MAÑANA. Al
+    día siguiente el ayudante arranca leyendo esa nota (está en la ficha) y no de cero.
 
 ## 📂 PASO OBLIGATORIO DE LA COMPLETA (08:52): EL EXPEDIENTE, PRODUCTO POR PRODUCTO, PENSADO (16/10/2026, eligió la b)
 Él: *"quiero que sea 'vivo' el pensamiento, que gaste tokens, no que sea mecánico, sino que sea como que te lo pregunte por

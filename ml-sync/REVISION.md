@@ -877,6 +877,11 @@ eran el mismo producto, y "ok" a dos Kundal que no lo eran. Arreglo: el script a
 corta el candidato anterior; `revcand` acepta esos ids y, con `ok`/`duda` sobre uno que sacó Claude por ese catálogo, lo devuelve
 a la lista. Chequear: que cada hoja muestre el nombre del mismo id que se marca (mirar `sel.json` si dudás).
 
+### Etapa 9 · 20/10/2026 · plan 20x: ayudantes por cuenta en la completa
+`ficha:cuenta=<cuenta>` (sólo lee) imprime las fichas ENTERAS de una cuenta (activas, con stock o agotadas que vendían): Luciana
+71 publicaciones, ~158 KB. La completa reparte las 4 cuentas entre 4 agentes que sólo leen; las vueltas cortas pasan a cada 2 h.
+Chequear: que los ayudantes no corran nada que escriba y que cada publicación activa tenga juicio.
+
 ## 8 · DATOS E HISTORIAL (nueva, 08/10/2026)
 - **🚧 El techo en la línea de tiempo (18/10/2026, v24.49).** `lineaPintar` dibuja una raya roja punteada en el carril del precio por cada `cyc/techofreno/<MLA>` (`probado`, roja "ya no vende") y otra verde en `volvio` ("sí vende") de las publicaciones del gráfico (respeta el color elegido), desde el día que se anotó; entra en la escala. Qué chequear: que todo techo encontrado se anote con `techofreno:<MLA>=<precio>|motivo;go` (si no, no aparece).
 - **Reloj de los 4 meses en la línea de tiempo (16/10/2026, v23.92 · corregido en v23.93: EDAD DE LA UNIDAD MÁS VIEJA, primero
