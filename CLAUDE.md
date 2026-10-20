@@ -9346,7 +9346,7 @@ pedidos de Bs As) y 📋 Dai Nippon (las listas con `bsas`, con sus ✅ Probados
 muchísimo"*. `gemela` (solo lee) lista las Clásicas de $50.000+ con stock en Full sin Premium y el precio Premium de igual plata neta;
 `gemelacrea:<MLA>=<precio>:go` (ml-sync) agrega la Premium al mismo producto de ML (comparte stock), la relee, la vincula a la ficha y
 le pone el tag 💳 `gemela`. Hechas el 20/10: Coconut Passion `MLA4103953976`, Animale `MLA4103966984`, Azzaro `MLA4103941572`, Joystick
-`MLA4103890882` (todas activas por Full, releídas). Recién creada puede salir pausada sin stock: releer a los ~5 min. ML bloquea ver la
+`MLA4103890882` (todas activas por Full, releídas), y ese mismo día las otras 21 de la lista (`gemelacrea:ver:gemelas` las relee todas). Recién creada puede salir pausada sin stock: releer a los ~5 min. ML bloquea ver la
 página desde el robot (pide verificación): capturas de ML no se pueden sacar, se le pasan los links. Detalle en `ml-sync/REVISION.md`.
 
 ## 🆕 LANZAMIENTO CON TACHADO REAL Y 🧪 PRUEBA DEL TACHADO (20/10/2026, eligió 1a 2a 3a+3b)
