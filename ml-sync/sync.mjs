@@ -9171,7 +9171,9 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
   const mlGetR = async (ruta) => {
     for (const w of [0, 5000, 15000, 30000]) {
       if (w) await espera(w);
-      try { return await mlGet(ruta, tok); } catch (e) { if (!/429/.test(String(e.message || e)) || w === 30000) throw e; }
+      // 20/10/2026: ML también corta devolviendo una PÁGINA (HTML) en vez de datos: "Unexpected token '<'". Pasó con los 18 de Dai
+      // Nippon y los 6 de otras listas en la misma vuelta: se trata igual que el 429 (esperar y reintentar), no como producto fallado.
+      try { return await mlGet(ruta, tok); } catch (e) { const _m = String((e && e.message) || e); if (!(/429/.test(_m) || (e && e.name === 'SyntaxError') || /not valid JSON|Unexpected token/.test(_m)) || w === 30000) throw e; }
     }
   };
   const res = { medidos: 0, sinCat: 0, sinVend: 0, err: 0, b25: 0, b15: 0, bajo: 0, pasan: [] };
@@ -19971,6 +19973,7 @@ async function main() {
           for (const p of vivas) console.log(`   · ${p.type} · ${p.status} · id ${p.id || '—'} · precio ${p.price || '—'} · original ${p.original_price || '—'} · ${String(p.start_date || '').slice(0, 16)} → ${String(p.finish_date || '').slice(0, 16)} · ML pone ${p.meli_percentage ?? '—'}%`);
         } catch (e) { console.log(`   promos: no contestó ${String(e.message).slice(0, 120)}`); }
         console.log(`   promoclaude: ${JSON.stringify((await db.get('cyc/promoclaude/' + mla)) || null).slice(0, 300)}`);
+        { const fn = (await db.get('mlapi/fichanotas/' + mla)) || {}; for (const k of Object.keys(fn).map(Number).sort((a, z) => z - a).slice(0, 4)) console.log(`   nota ${new Date(k - 3 * 36e5).toISOString().slice(5, 16).replace('T', ' ')} · ${String((fn[k] || {}).t || '').slice(0, 220)}`); }
       }
       return;
     }
