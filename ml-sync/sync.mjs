@@ -14505,7 +14505,11 @@ async function main() {
     if (String(process.env.BILLING_PROBE || '').startsWith('cargosfull')) {
       const _ps = String(process.env.BILLING_PROBE).split(':').map((s) => s.trim());
       const GO = _ps.includes('go');
-      const soloCta = _ps.slice(1).find((s) => s && s !== 'go') || null;
+      // `:multa` (20/10/2026, él: "mirá la multa de Matías por envíos a Full"): del Excel de Full imprime el encabezado de cada
+      // hoja y TODOS los renglones que hablan de multa/penalidad (no sólo los 14 primeros). `:AAAA_MM` elige el período.
+      const MULTA = _ps.includes('multa');
+      const ymP = _ps.find((x) => /^\d{4}_\d{2}$/.test(x)) || null;
+      const soloCta = _ps.slice(1).find((s) => s && s !== 'go' && s !== 'multa' && !/^\d{4}_\d{2}$/.test(s)) || null;
       const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
       const raw = async (path, tok, opt = {}) => {
         for (let i = 0; ; i++) {
@@ -14548,7 +14552,7 @@ async function main() {
         // El período es el primer día del mes. Se toma el mes ANTERIOR (ya cerrado: trae el cobro de
         // almacenamiento del cierre). Sin pedir la lista de períodos, que gasta cupo de facturación.
         const _d = new Date(); _d.setUTCDate(1); _d.setUTCMonth(_d.getUTCMonth() - 1);
-        const kc = _d.toISOString().slice(0, 8) + '01';
+        const kc = ymP ? ymP.replace('_', '-') + '-01' : _d.toISOString().slice(0, 8) + '01';
         await dormir(13000);
 
         // 1) Resumen por tipo de cargo
@@ -14607,7 +14611,13 @@ async function main() {
             return inl ? dec(inl[1]) : v ? (isT ? ss[+v[1]] : v[1]) : '';
           }));
           console.log(`\n    hoja ${h}: ${filas.length} renglones`);
-          for (const f of filas.slice(0, 14)) console.log('      | ' + f.map((x) => String(x).slice(0, 28)).join(' | ').slice(0, 400));
+          if (MULTA) {
+            const enc = filas.findIndex((f) => f.filter((x) => String(x).trim()).length >= 3);
+            if (enc >= 0) console.log('      ENCABEZADO | ' + filas[enc].map((x) => String(x).slice(0, 40)).join(' | ').slice(0, 900));
+            const hits = filas.filter((f) => /multa|penal|incumpl|CFPB|sanci/i.test(f.join(' ')));
+            console.log(`      renglones con multa/penalidad: ${hits.length}`);
+            for (const f of hits.slice(0, 60)) console.log('      | ' + f.map((x) => String(x).slice(0, 60)).join(' | ').slice(0, 900));
+          } else for (const f of filas.slice(0, 14)) console.log('      | ' + f.map((x) => String(x).slice(0, 28)).join(' | ').slice(0, 400));
         }
       }
       return;
