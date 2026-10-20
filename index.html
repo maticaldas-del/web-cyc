@@ -2680,7 +2680,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.05';
+const APP_VERSION='25.06';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2691,6 +2691,7 @@ const APP_VERSION='25.05';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.06',f:'20/10/2026',h:'22:10',c:[{n:1,t:'📦 Mi oficina → En camino: el contenido de cada caja va uno abajo del otro con las unidades y el código de la etiqueta de Full de esa cuenta.'}]},
   {v:'25.05',f:'20/10/2026',h:'21:45',c:[{n:2,t:'📱 Ventas en el celu: las tarjetas volvían a salir cortadas por la mitad (el arreglo de ayer para que el detalle no se saliera de la pantalla hacía que la lista las aplastara). Arreglado.'}]},
   {v:'25.04',f:'20/10/2026',h:'21:20',c:[{n:2,t:'Pedidos Paulvic: cada pedido en camino dice cuándo llega aprox (lo que tardaron los anteriores) y hasta cuándo pagar; el que llegó dice cuántos días hábiles quedan para pagar antes del 10% de recargo.'}]},
   {v:'25.03',f:'19/10/2026',h:'21:05',c:[{n:2,t:'Armar caja: al buscar, el desplegable "Sin recomendación para mandar" se abre solo. Lo que estaba en 0 quedaba adentro, cerrado, y parecía que no existía'}]},
@@ -8052,7 +8053,15 @@ function renderCajasEnCamino(){
           onclick="marcarCajaRecibida('${e.id}',${i},${c.recibida?'false':'true'}).then(renderCajasEnCamino)">${c.recibida?'no llegó':'llegó'}</button>
         ${c.recibida?'':uEnt>0?`<span style="font-size:.62rem;color:var(--muted)" title="Lo que ya entró a Full no puede volver a la oficina: se contaría dos veces">ya entraron ${uEnt} a Full: marcala como llegada (o esperá al robot)</span>`:`<button class="btn btn-del" style="padding:7px 12px;font-size:.66rem" title="Deshacer: las unidades vuelven a tu oficina" onclick="deshacerCaja('${e.id}',${i})">deshacer</button>`}
       </div>
-      ${items.length?`<div style="font-size:.64rem;color:var(--muted);line-height:1.7">${items.map(x=>`<span style="display:inline-block;background:var(--surface2);border:1px solid var(--border2);border-radius:5px;padding:1px 7px;margin:0 5px 4px 0"><strong style="color:var(--text)">${x.u}×</strong> ${x.nombre||x.prodId}${x.variante?' · '+x.variante:''}</span>`).join('')}</div>`
+      ${items.length?`<div style="display:flex;flex-direction:column;gap:4px">${items.map(x=>{
+        // Uno abajo del otro con las unidades y el código de la etiqueta de Full de esa cuenta (20/10/2026, pedido suyo:
+        // "así es más fácil el armado del celu una vez pedido"). Sin código no se inventa: dice "sin código".
+        const cod=(()=>{try{return etiquetaFullDe(x.prodId,e.cuenta,x.variante||'');}catch(_){return null;}})();
+        return `<div style="display:flex;align-items:center;gap:9px;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:6px 9px">
+          <strong style="font-size:.95rem;min-width:34px;text-align:right;color:var(--text)">${x.u}</strong>
+          <span style="font-family:'DM Mono',monospace;font-size:.74rem;min-width:84px;color:${cod?'var(--blue,#38bdf8)':'var(--muted)'}">${cod?String(cod).replace(/[^A-Za-z0-9]/g,''):'sin código'}</span>
+          <span style="font-size:.7rem;color:var(--text);flex:1;min-width:0;overflow-wrap:anywhere">${x.nombre||x.prodId}${x.variante?' · <strong>'+x.variante+'</strong>':''}</span>
+        </div>`;}).join('')}</div>`
         :'<div style="font-size:.64rem;color:var(--amber)">Sin contenido cargado: el robot no la va a poder marcar solo.</div>'}
       ${cajaFaltan(c)?`<div style="margin-top:7px;padding-top:7px;border-top:1px solid var(--border2);font-size:.64rem;line-height:1.7">
         <strong style="color:var(--amber)">Lo que no entró a Full:</strong>
