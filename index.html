@@ -2680,7 +2680,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.09';
+const APP_VERSION='25.10';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2691,6 +2691,7 @@ const APP_VERSION='25.09';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.10',f:'20/10/2026',h:'11:00',c:[{n:3,t:'🔍 Paraguay y Listas: un producto nuevo sólo "da" (y se puede pedir) si alguien confirmó que la publicación de ML es el mismo producto. En Paraguay: tocá ✅ Es el mismo producto o lo confirma la revisión de fotos; mientras tanto queda en "🔍 Dan, pero falta confirmar". En Listas lo confirma el chat de compras; lo demás queda en 🔎 Para revisar.'}]},
   {v:'25.09',f:'20/10/2026',h:'00:20',c:[{n:1,t:'🔎 Las revisiones diarias corren con esfuerzo Máximo (con el plan 20x alcanza).'}]},
   {v:'25.08',f:'20/10/2026',h:'00:05',c:[{n:1,t:'🔎 La revisión del panel ahora tiene 7 etapas, una por día (lun Precios · mar Plata · mié Mercadería · jue Choques y fallas mudas · vie Datos, historial y cerebro · sáb Ideas · dom Diseño) y corre sola todas las noches a las 22:13. Inicio dice la de hoy y si ya quedó hecha.'}]},
   {v:'25.07',f:'20/10/2026',h:'22:20',c:[{n:1,t:'📦 En camino: el contenido de cada caja se abre al tocar el envío (cerrado dice cuántos renglones y unidades).'}]},
@@ -13669,6 +13670,7 @@ function candPuedePedir(c){
   const v=candVentasDe(c);
   if(v==null)return{ok:false,motivo:`no tiene cargadas las vendidas en ML (mínimo ${CAND_MIN_VENT})`};
   if(v<CAND_MIN_VENT)return{ok:false,motivo:`vendió ${v} en ML y el mínimo es ${CAND_MIN_VENT}`};
+  if(!candCatChequeado(c))return{ok:false,motivo:'falta confirmar que el producto de ML es el mismo (abrí las dos fotos y tocá ✅ Es el mismo producto)'};
   if(_bajo)return{ok:false,bajoPiso:true,motivo:_bajo};
   return{ok:true,motivo:''};
 }
@@ -13736,6 +13738,14 @@ function candEnArmado(c){
 // cuántos vendedores hay, y el margen medido contra **el más barato**, que es el peor caso.
 // ACÁ NO SE CALCULA NINGÚN MARGEN: lo mide el robot con `cuentaCand` y esta pantalla sólo lo
 // muestra — con una cuenta propia la tarjeta podría decir un número y el robot otro.
+// NINGÚN "DA" SIN CHEQUEAR EL CATÁLOGO (20/10/2026, eligió la a). El chat de compras encontró 67 de 344 candidatos medidos contra
+// OTRO producto de ML. Se puede pedir (y va arriba en Nuevos) sólo si alguien confirmó que el catálogo medido es el mismo: él con
+// ✅ Es el mismo producto (`mismoOk`) o la revisión de fotos (`revClaude` ok), atados a ESE catálogo. Misma función en el robot.
+function candCatChequeado(c){
+  const cat=candCatId(c);if(!cat)return false;
+  if(c.mismoOk&&String(c.mismoOk).toUpperCase()===cat)return true;
+  const rc=c.revClaude;return !!(rc&&rc.v==='ok'&&String(rc.cat||'').toUpperCase()===cat);
+}
 function candCatId(c){
   const m=String(c&&c.mlLink||'').match(/\/p\/(MLA\d+)/i);
   if(m)return m[1].toUpperCase();
@@ -15302,7 +15312,7 @@ function candidatosHTML(){
           return `<span style="font-size:.64rem;color:var(--red);font-weight:600" title="Tu piso es ${candPisoDe(c)}%. El robot lo vuelve a medir todas las noches: si el precio de ML cambia y pasa el piso, la casilla se abre sola.">🚫 no se puede pedir: ${Q.motivo}</span>`
             +(uu>0?` <span style="font-size:.64rem;color:var(--red);font-weight:700">· tiene ${uu} u. cargadas</span> <button class="btn" style="font-size:.62rem;padding:4px 10px;color:var(--red);border-color:rgba(239,68,68,.35)" onclick="candSetPedir('${c.id}',0)">✕ sacarlo del pedido</button>`:'');
         })()}
-        ${(dudas&&!RP.mismoOk)?`<button class="btn" style="font-size:.66rem;padding:5px 12px;color:var(--green);border-color:rgba(34,197,94,.45)" onclick="candMismoOk('${c.id}')" title="Miraste las dos fotos y es el mismo producto: saca los avisos rojos de este candidato (vale para este catálogo de ML).">✅ Es el mismo producto</button>`:''}
+        ${((dudas||!candCatChequeado(c))&&!RP.mismoOk&&candCatId(c))?`<button class="btn" style="font-size:.66rem;padding:5px 12px;color:var(--green);border-color:rgba(34,197,94,.45)" onclick="candMismoOk('${c.id}')" title="Miraste las dos fotos y es el mismo producto: saca los avisos rojos de este candidato (vale para este catálogo de ML).">✅ Es el mismo producto</button>`:''}
         ${(c.mlTit||candCatId(c))?`<button class="btn" style="font-size:.66rem;padding:5px 12px;color:var(--red);border-color:rgba(239,68,68,.45)" onclick="candNoEsMismo('${c.id}')" title="El producto de ML no es éste (otro modelo, tamaño, pack…). Saca la medición, el robot deja de usar ese catálogo y el caso queda guardado para ver por qué se equivocó.">❌ No es el mismo producto</button>`:''}
         ${c.mlGemelo&&c.mlGemelo.id?`<button class="btn" style="font-size:.66rem;padding:5px 12px;color:var(--amber);border-color:rgba(245,158,11,.45)" onclick="candUsarGemelo('${c.id}')" title="Hay otro catálogo del mismo producto más barato. Medirlo contra ése (el peor caso).">🔁 Medir contra el más barato (${c.mlGemelo.margen}%)</button>`:''}
         <button class="btn btn-add" style="font-size:.66rem;padding:5px 12px" onclick="candCrearFicha('${c.id}')" title="Crea la ficha del producto con su costo y su código ya cargados, marcada como Paraguay. No compra nada ni publica nada en ML.">👍 Crear ficha</button>
@@ -15326,7 +15336,8 @@ function candidatosHTML(){
   // 🚫 "en ML no se puede" (marca que ML frena, 18/10/2026): sólo cuenta para la perfumería del local.
   const _fOk=c=>c.noML?(_candFiltro==='local'?candLocalOk(c):_candFiltro==='todos'):_candFiltro==='ml'?_daML(c):_candFiltro==='local'?candLocalOk(c):_candFiltro==='ambos'?(_daML(c)&&candLocalOk(c)):true;
   const _sinAnalizar=vivos.filter(c=>!_medido(c)&&_fOk(c));
-  const _arriba=vivos.filter(c=>_fOk(c)&&_medido(c)&&!_esRojo(c)&&!_pocas(c)), _rojos=vivos.filter(c=>_fOk(c)&&_medido(c)&&_esRojo(c)), _flojas=vivos.filter(c=>_fOk(c)&&_medido(c)&&!_esRojo(c)&&_pocas(c));
+  const _sinChequear=vivos.filter(c=>_fOk(c)&&_medido(c)&&!_esRojo(c)&&!_pocas(c)&&!c.noML&&!candCatChequeado(c));
+  const _arriba=vivos.filter(c=>_fOk(c)&&_medido(c)&&!_esRojo(c)&&!_pocas(c)&&(c.noML||candCatChequeado(c))), _rojos=vivos.filter(c=>_fOk(c)&&_medido(c)&&_esRojo(c)), _flojas=vivos.filter(c=>_fOk(c)&&_medido(c)&&!_esRojo(c)&&_pocas(c));
   // ORDENAR (03/10/2026, pedido suyo: "poder buscar de mayor a menor los que más unidades vendieron, mayor
   // porcentaje y eso"). Los sin dato van siempre al final.
   {const k=_candOrden, val=c=>{const n=x=>(x!=null&&isFinite(x))?Number(x):null;
@@ -15336,7 +15347,7 @@ function candidatosHTML(){
       if(k==='barato')return parseFloat(c.usd)>0?-parseFloat(c.usd):null;
       return n(c.margen);};
     const ord=(a,b)=>{const va=val(a),vb=val(b);if(va==null&&vb==null)return 0;if(va==null)return 1;if(vb==null)return -1;return vb-va;};
-    _arriba.sort(ord);_rojos.sort(ord);_flojas.sort(ord);_sinAnalizar.sort(ord);}
+    _arriba.sort(ord);_sinChequear.sort(ord);_rojos.sort(ord);_flojas.sort(ord);_sinAnalizar.sort(ord);}
   // CUÁNTOS DAN (02/10/2026, pedido suyo: *"antes de arrancar la lista poné cuántos candidatos con % positivo en
   // verde hay, así voy viendo cuando sube productos nuevos"*). Verde = medido y en el piso o arriba.
   const _verdes=_arriba.filter(c=>c.margen!=null&&isFinite(c.margen)).length, _sinMed=_arriba.length-_verdes;
@@ -15345,6 +15356,7 @@ function candidatosHTML(){
   // 03/10/2026, él: el simulador y el historial "ahí no se usan y molestan": el simulador va al final y el
   // historial de pedidos vive en la pestaña 🧾 Pedido.
   return cab(_verdes)+pycatBuscarHTML()+_orden+_arriba.map(_card).join('')
+    +(_sinChequear.length?`<details style="margin-top:12px;background:var(--surface);border:1px solid var(--amber);border-radius:var(--r);padding:8px 12px"><summary style="cursor:pointer;font-size:.76rem;font-weight:700;color:var(--amber)" title="Dan el % y tienen las ventas, pero nadie confirmó todavía que el producto de ML sea el mismo. Abrí cada uno, mirá las dos fotos y tocá ✅ Es el mismo producto: ahí sube arriba y se puede pedir.">🔍 Dan, pero falta confirmar que es el mismo producto · ${_sinChequear.length}</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_sinChequear.map(_card).join('')}</div></details>`:'')
     +(()=>{
       // EL CATÁLOGO ENTERO, DIVIDIDO (17/10/2026, él: "quiero que estén todos los 13.000 divididos en todas las categorías").
       // Los números del catálogo los deja el robot en `cyc/pycatres`; las filas se bajan recién al abrir cada grupo (~4 MB).
@@ -18268,7 +18280,11 @@ function _listaMed25(e){return e&&!e.noEs&&!e.sacado&&!e.noWeb&&e.m!=null&&isFin
 // sabemos si vende"). Con 1 vendedor en ML el precio no lo confirma nadie: nunca va a ✅ Dan solo, va a 🔎 Para revisar hasta que el
 // chat de compras lo mire (`ok` = mismo producto Y precio creíble).
 function _listaUnVend(e){return !!e&&Number(e.mv)===1;}
-function _listaDa(e){return _listaMed25(e)&&Number(e.vend)>=100&&(e.ok||(!e.rp&&Number(e.m)<80&&!_listaUnVend(e)));}
+// NINGÚN "DA" SIN CHEQUEAR EL CATÁLOGO (20/10/2026, eligió la a): sólo entra a ✅ Dan lo que el chat de compras confirmó mirando ML
+// (`ok` de `listadato`) para ESE catálogo (`okCat`, o el fijado con `mi=`). Antes entraba también lo que el robot emparejó solo y
+// "parecía" bien: 21 de 36 eran otro producto. Lo demás de 25%+ queda en 🔎 Para revisar. Misma regla en el robot (`cuentaLista`).
+function _listaOkVale(e){return !!(e&&e.ok&&(e.miFijo||!e.okCat||String(e.okCat).toUpperCase()===String(e.mi||'').toUpperCase()));}
+function _listaDa(e){return _listaMed25(e)&&Number(e.vend)>=100&&_listaOkVale(e);}
 function _listaRevisar(e){return _listaMed25(e)&&!_listaDa(e);}
 function _listaArmado(k){return Object.entries(((state.listaPed||{})[k])||{}).map(([cod,u])=>({cod,u:parseInt(u)||0})).filter(x=>x.u>0);}
 function _listaViajando(k){const s=new Set();Object.values(state.comprasLista||{}).forEach(c=>{if(c&&c.prov===k&&c.estado==='camino')(c.items||[]).forEach(it=>s.add(String(it.cod)));});return s;}
