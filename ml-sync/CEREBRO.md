@@ -579,3 +579,7 @@ nuevo. El robot ya lo descarta (`lotesFifo` con `desdeCero`), pero la decisión 
 **📈 DICE TECHO/ESCASEZ Y NO SUBE** (último cambio fue baja, o 2 días sin subir desde el tag): se decide en la vuelta (otro
 escalón para arriba, o el tag que corresponde) y la lista queda vacía. Primeros 3: Batidora negro → $19.990 a probar ·
 Talonera Triples y Brisa Marina → 🪜 bajando.
+
+## 🎄 NAVIDAD: PEDIR PARA 45 DÍAS A MEDIADOS DE NOVIEMBRE (20/10/2026)
+En la completa del 14/11 (y las de esa semana): medir qué subió en Navidad 2025 (17-30/12 contra el ritmo normal) y pedir esos
+productos para 45 días en vez de 30. Lo demás sigue con 30.
