@@ -1,9 +1,243 @@
-# 🧠 CEREBRO · TODO LO QUE HAY QUE TENER EN CUENTA
+# 🧠 CEREBRO · ORDENADO (aprobado por él el 20/10/2026: *"1a"*)
 
-Pedido suyo del 13/10/2026: *"no quiero que te olvides las cosas que agregamos a cerebro (...) me gustaría que tengas
-una lista de TODO lo que tener en cuenta"*. **Cada vuelta (08:52 completa · 10:52, 12:52, 14:52, 16:52, 18:52 y 20:52 cortas) arranca
-leyendo este archivo.** Cada regla nueva que él dé se agrega ACÁ en el mismo commit (además de CLAUDE.md, que tiene
-la historia y el porqué). Si algo de acá choca con CLAUDE.md, manda lo más nuevo y se corrige el otro.
+Primero QUIÉN MANDA cuando dos reglas chocan, después QUÉ SE CORRE en cada vuelta, después las reglas por tema, y al final el
+ANEXO con el detalle de cada regla (comandos, números, casos). **Si algo del anexo choca con la parte de arriba, manda la de
+arriba** (sección 0). La historia de cada regla (fecha, frase suya, el caso) queda en `CLAUDE.md`. **Cada vuelta (08:52 completa ·
+10:52, 12:52, 14:52, 16:52, 18:52 y 20:52 cortas) arranca leyendo este archivo y `notas/preguntas.md`.** Regla nueva → va en su
+tema acá (y su detalle en el anexo si hace falta), en `CLAUDE.md` (historia) y en `REVISION.md` (su etapa), en el mismo commit.
+
+---------------------------------------------------------------------------------------------------------------------------
+## 0 · QUIÉN MANDA (cuando dos reglas dicen cosas distintas, gana la de más arriba)
+
+| # | qué | por qué está acá |
+|---|---|---|
+| 1 | **Lo que pide él para ESE producto** (un precio, rematar, "no lo vendemos más", "no lo consigo") | es su decisión; se anota en el 🧠 que vino de él |
+| 2 | **Dato dudoso → no se toca el precio esa vuelta** (sección ⚠️ de `raros`) | una buena decisión sobre un dato malo es una mala decisión |
+| 3 | **Frenos que no se discuten:** ML la tiene frenada (no se toca) · variantes todas o ninguna · techo $650.000 · releer de ML después de cambiar | si se rompen, ML borra variantes o pausa |
+| 4 | **Nunca abajo de 0%** (sólo él lo abre: `!bajocero`) | vender perdiendo por decisión propia no |
+| 5 | **No llegar a pagar stock antiguo** (vender antes de que ML cobre: 120 d lo chico, 60 lo grande; apuntar a ~100) | es plata que se va sin vender nada |
+| 6 | **Escasez: se sube** para que dure hasta que vuelva a haber (y "escasez" siempre = precio que sube) | lo que no se vende ahora se vende después; quedarse corto pierde |
+| 7 | **Sobra: se baja en escalera, primero como descuento** | plata parada y riesgo de stock antiguo |
+| 8 | **Objetivo 25% en el PEOR caso** (🛡️) | lo que el negocio necesita; abajo sólo por 4-7, dicho en el 🧠 y contado como pérdida contra el 25% |
+| 9 | **Buscar el techo** en todo lo demás | subir es casi gratis, no subir es caro |
+| 10 | **Formas:** bajar siempre en escalera · descuento antes que bajar lista · 90/990 · barrera $33.000 salvo que cruzar deje más · una suba no se deshace por casualidad (Poisson, 7 d en lo que se compra de a muchos) | cómo se hace, no qué se hace |
+
+**Choques conocidos y cómo se resuelven:**
+- *25% vs stock antiguo* → gana 5: se baja abajo del 25% para que salga a tiempo. El 🧠 lo dice y la pérdida contra el 25% se anota al error de origen (mandar/comprar de más), no al precio. El cerebro se juzga contra NO hacer nada.
+- *Escasez vs techo conocido* → gana 6, pero no con ×3/×4: con el precio que pienso (ya se sabe que más arriba no rinde).
+- *Escasez vs sobra en el mismo producto* (poco en Full, mucho en la oficina) → no es escasez: es mandar la caja (el tag dice "🚚 cubierto").
+- *Buscar techo vs sobra* → con sobrestock no se busca techo: primero sale lo que sobra.
+- *Descuento vigente vs suba de lista* → primero se sale del descuento (`entrarpromo:…=salir`), nunca inflar el tachado.
+- *Bajar en escalera vs urgencia* → excepciones a la escalera: precio mal puesto · stock antiguo con fecha encima · ML pausó por el precio · lo pide él · la última unidad.
+- *Una regla dice A y la otra B y ninguna tabla lo resuelve* → no se hace nada esa vuelta, se anota el choque y va al `pregunto:` con (a)/(b). Después se agrega la fila acá.
+
+---------------------------------------------------------------------------------------------------------------------------
+## 1 · CADA VUELTA, EN ESTE ORDEN
+
+**Cortas (10:52, 12:52, 14:52, 16:52, 18:52, 20:52):**
+1. Leer este archivo y `notas/preguntas.md`.
+2. Lecturas juntas en UNA ml-consulta (uno por renglón): `planilla` · `escasez` · `raros` · `lupa` · `ventasraras:5` · `pausadas:25` · `analizapromo:7`.
+3. **Listas que tienen que quedar VACÍAS al terminar:** 🛡️ abajo del 25% peor caso · 🚨 escasez que vendió después de mi decisión · 📈 dice techo/escasez y no sube · 🧭 fuera de lo normal · 🔀 no cierra. Cada renglón: decisión o nota con motivo.
+4. ⚠️ dato dudoso: no tocar precio; anotar. Si 🧭 + 🔀 + 💭 traen más de ~8 renglones, un ayudante en Alto los piensa y propone; si no, los miro yo. Aplicar siempre es mío.
+5. Cada venta nueva contra su ficha (¿confirma o desmiente la prueba? ¿se aceleró ⚡? ¿la dejó en escasez?). Escasez nueva se trata en ESTA vuelta (precio + caja si hay oficina).
+6. Activar pausadas con stock en Full (`activarfull:go:25`); lo que no se activa va al `pregunto:`.
+7. Preguntas de compradores que sé sin duda (`contesto:`). Promos mías que vencen en 2 días.
+8. Escrituras juntas en UNA ml-sync. En el chat: "🚨 N → N · 🧭 N → N · 🔀 N → N · ventas N miradas · ideas …".
+
+**Completa (08:52), además de todo lo anterior:**
+1. `historia` · `escasez:expediente` · `informe:24` · `ficha:cuenta=<c>` ×4 · `pedidostodo` · `techo95` · `techofreno` · `supervisor:medir:go` · `analizapromo` entero.
+2. **Cuatro ayudantes (uno por cuenta, esfuerzo max)** juzgan cada publicación con su ficha entera y le hacen las preguntas de `notas/preguntas.md`. Cada uno recibe también los renglones de `raros` de su cuenta y propone qué hacer con cada uno. **Un quinto** busca ideas nuevas en el negocio entero.
+3. **Un sexto, EL REVISOR EN CONTRA (1b, 20/10):** con todas las decisiones propuestas ya juntas, ANTES de aplicar, lee la ficha de cada publicación que cambia y busca en qué me equivoco (dato que no cierra, regla de la tabla 0 que pisé, pregunta sin contestar, choque con una decisión de menos de 7 días). No propone precios: marca. Lo que marca lo miro yo; si no lo puedo resolver, no se aplica esa vuelta.
+4. Listas de la completa que se vacían: 📦 sobra sin decidir · 🔎 sin afinar · 💸 stock antiguo SIN DECIDIR · ⚠️ no vendió y no sé desde cuándo · 🔁 subas cuya razón cambió.
+5. Pedidos (`decide_pedidos.py`) Y cajas (`decide_cajas.py`) sobre el mismo log, revisados, `decido:archivo=pedidos;go` + `cajas`.
+6. Juicios de precio (`juzgo:`), techo95 `;go`, frenos de techo a reabrir.
+7. El porqué de cada publicación juzgada queda en su nota del 🧠 con QUÉ MIRAR MAÑANA.
+8. Los lunes: contar `notas/correcciones.md` de la semana contra la anterior.
+
+---------------------------------------------------------------------------------------------------------------------------
+## 2 · QUIÉN HACE QUÉ
+- El robot SÓLO junta datos. Yo decido todo. Él no marca nada a mano: me lo dice y lo hago por comando.
+- Nunca tomar como dato una marca vieja del robot (escalera, liquidando automático, expediente). Dato crudo.
+- Él no toca precios ni promos; no hace falta que avise.
+- Lo grande o sin respuesta clara lo decide él: todo junto, numerado, (a) sugerida y (b).
+- Varios comandos en una corrida: lecturas en una ml-consulta, escrituras en una ml-sync, uno por renglón.
+
+- **Esfuerzo de cada parte (20/10/2026, regla suya: "3a"; no se cambia sin que él lo diga):** los 4 ayudantes de cuenta, el
+  de ideas y el revisor en contra de la completa van con esfuerzo **max**; el ayudante de los raros en las cortas (cuando hay más
+  de ~8 renglones) va en **Alto**; el chat que junta, decide y aplica usa el nivel que él le ponga a la sesión.
+
+## 3 · PENSAR, NO SÓLO SEGUIR REGLAS
+- **🧐 ¿Tiene sentido?** Antes de usar un número, cruzarlo: otro tamaño, otra cuenta, otra fecha, parecidos del rubro, el costo, cuántos lo venden. Si no cierra, no se usa y se dice por qué.
+- **Las preguntas de `notas/preguntas.md`** a cada publicación; la 20 ("¿qué me preguntaría él?") siempre.
+- **El expediente es pensado, no mecánico:** por bloque, ¿lo de hoy sigue teniendo sentido? ¿qué cambió? ¿hay algo raro que ninguna regla nombra? Si no cambió nada, una línea; el pensamiento largo va donde algo se movió.
+- **Toda decisión tiene su salida:** al crear algo que cambia un precio o un pedido, escribir qué lo deshace y dónde se mira.
+- **Cada vuelta busca algo nuevo** (ideas medidas con plata y casos, en `notas/ideas.md`). En el chat nunca callado.
+- **Correcciones:** cada una a `notas/correcciones.md` y su pregunta a `notas/preguntas.md`.
+
+## 4 · CÓMO SE ESCRIBE CADA DECISIÓN
+- Todo precio lleva estrategia (`#tag`); no existe "base". Sin estrategia = ⚪ para decidir; sin stock = ⏸️.
+- Tags: 🔥 escasez · ⏳ sinrepo · 📈 techo · 🏔️ techook (sólo vía `techo95`, 95%) · 🪜 bajando · ↘️ volviendo · ↗️ desobra · 📦 sobra · 💸 descuento (sólo nosotros) · 🏷️ promo (ML pone plata) · 🔒 liquidando · 🧨 remate (sólo él) · 🛡️ excepcion · 🆕 nuevo/lanzamiento · 🎁 fecha · caja.
+- La nota en 4 partes: QUÉ HICE (de $X a $Y) · POR QUÉ (estrategia + dato) · QUÉ ESPERO VER (números) · SI NO PASA (días y qué hago). Si no se toca: HOY NO LO TOCO PORQUE … Sin `;`, sin repetir oraciones, una por variante.
+- `decido` mide el peor caso, rechaza saltos de más del doble sin `!salto`, rechaza precio sin estrategia.
+
+## 5 · PRECIOS
+**Objetivo y peor caso:** 25% con retención de otra provincia 2% + el peor envío visto + cuotas (≈28% en el número normal). Paso 🛡️ de todas las vueltas: subir de una al precio del 25% peor caso, o `!piso` con motivo. Lo barato (hasta ~$5.500): cada unidad deja ~$1.000+. Nunca abajo de 0%.
+**Cada variante sola:** su precio, stock, ventas y caja. Nunca el promedio. El % del producto vendido SOLO (carritos no cuentan).
+**Plata por día neta:** − $100 por unidad (trabajo) − 3% de lo facturado (tope de H) − 2%/mes del costo del stock parado. A igual plata neta, gana el precio alto.
+**Techo:** todo lo que vende sin techo conocido, todas juntas, directo al precio que pienso (ML deja +100%). Juicio por certeza (Poisson: 3 esperadas y 0 = 5% · 6 y 0-1 = 2% · 10 y ≤2 = 0,3%), nunca un solo día, máximo 30 días. Cada escalón se mide antes del siguiente. Si sale mal, se baja en escalera (~10-15%, nunca abajo del último que vendía). Visitas a la mitad + caja cambiada → se vuelve en esa vuelta (con hermana de control). Fuera de escasez, saltos de +30 a +50%.
+**Las tres rayas:** 🔴 techo (95%) · 💰 piso = el precio que más plata por día dejó (5+ días con stock; no se baja salvo sobra, stock antiguo u otro problema dicho) · lo de en medio es lo que falta probar. Si falta el 🔴, la estrategia es buscar techo.
+**Techo encontrado:** sólo con `techo95` (95%). Freno de techo con foto del mercado (`techofreno`): se reabre si el más barato ajeno sube 8%+, ya no hay ajenos abajo, ganamos la caja o pasan 30 días.
+**Escasez = se corta antes de que vuelva a haber** (caja despachada ~8 d · oficina ~10 d · Paraguay ~16-17 d · Bs As ~1 semana + caja salvo que Pedidos lo pida hace 10+ días sin que entre nada · sin reposición = sin fecha). Se mide con el ritmo NORMAL (no el de después de una suba) y con el de 7 días si se aceleró (⚡). Primer salto por ritmo de ESA publicación: 3+/día ×4 · 1-3 ×3 · <1 ×2 · <1 cada 2 días ×1,5. Escalera de bajada 25%/12 h · 20%/24 h · 15%/2-3 d; si vende de más, sube un escalón. Nunca abajo del normal. La caja de compra no frena. Barrera: se cruza sólo si cada unidad deja más con el envío restado. Lo que ya falló más arriba (techo conocido) va con el precio que pienso, no ×3. Se trata en la MISMA vuelta en que aparece, y se decide la caja si hay oficina (poco si venía lento). Pocas unidades: se rejuzga con cada venta; la 2ª que confirma el ritmo → se sube sí o sí. Se juzga sólo por lo cobrado de más; la única pérdida es stock caro al llegar la caja (por eso, si al ritmo normal alcanza, vuelve al normal antes).
+**Al terminar la escasez:** no volver a ciegas. Si deja igual o más plata que el normal, se queda; si no, se busca el medio arrancando por el tramo de la escalera que mejor anduvo, con la misma certeza, cada baja como descuento.
+**Sin reposición (⏳):** vender TODO en ~100 días (nunca 120) al precio más alto que lo vacía: ritmo objetivo = (Full+camino+oficina) ÷ 100. Nissei no lo tiene, el precio no da, Bs As "no se consigue", "no lo consigo" marcado, Paulvic que no vino. Si aparece mercadería nueva o vuelve a poder comprarse, se rehace (y se le pregunta si ese proveedor sirve). 1-2 unidades no se tocan más.
+**Sobra (📦):** más de 90 d de stock (o sin ventas en 60). Antes de un descuento por sobra: 30+ días con stock desde la última entrada y ~100+ días de stock. Lo que paga o va a pagar stock antiguo: descuento para vaciarlo antes del cierre (confirmar en la línea que no estuvo en cero después del lote; fecha aproximada ≠ recién llegado). Antes de retirar, comparar el retiro contra rematar al 0%. Cuando él retira de Full, rehacer la cuenta con lo que queda.
+**Bajar:** siempre en escalera, primero como descuento propio (mínimo 5%, 14 días, mismo neto) o promo de ML si pone plata. Nunca subir la lista para inflar el tachado.
+**Otros:** barrera $33.000 (se frena en $32.999 salvo `!cruza`) · techo $650.000 · terminaciones 90/990 (cruzar redondos NO se frena, medido) · comisión con escalones (mirar la ganancia al precio nuevo) · la caja de compra orienta, no decide (Full vale ~19%) · venta barata ≠ remate (remate sólo si estuvo parado de verdad) · Premium que gana la caja se queda en Premium · nuevos arrancan en su precio final y en la primera semana se mira la caja · lo nuevo que vuela se sube al toque · lo que vuelve de agotado se compara contra su último tramo con stock · los pendrives de Matías se juzgan como familia (el de 32 el conveniente) · Paulvic: prueba de $21.990, si pierde vuelve a $14.950.
+**Juzgar resultados todos los días:** `supervisor:medir:go` + `juzgo:`; lo que perdió no vuelve por regla, se piensa. Nada en `espera` más de 30 días.
+
+## 6 · PROMOS Y DESCUENTOS
+- Las analizo yo en cada completa (`analizapromo` entero) y entro si deja más plata. Las mías en `cyc/promoclaude`; el guardián saca las que nadie analizó.
+- 🏷️ promo = ML pone plata · 💸 descuento = sólo nosotros. Cupón de ML (lo paga ML) en azul; promo nuestra en dorado.
+- **¿Tiene sentido este descuento?** Antes de cualquier `entrarpromo`: sobra de verdad (90+ días al ritmo con stock), no es
+  recién llegado (30+ días desde la caja) y queda en 25%+ en el peor caso (abajo sólo con motivo en el 🧠). Si falla una, no va.
+- Medir si la promo vende más (plata por día antes vs durante). No suponerlo. CyberMonday 02/11. El ×1,4 de regalo no está confirmado.
+
+## 7 · PAUSADAS, PUBLICACIONES, VÍNCULOS
+- Activar lo pausado con stock en Full es prioridad; lo que no se activa va al `pregunto:` con motivo. Lo que está en depósito (fuera de Full) se pausa solo.
+- Publicaciones nuevas: las crea él en ML; yo la ficha y el vínculo (la ficha toma el nombre de ML).
+- Frenadas por ML: no se toca precio; si hay que arreglar algo, se le avisa.
+- Visitas que caen sin cambio de precio: mirar preguntas sin responder y la descripción (lo arregla él).
+
+## 8 · VENTAS Y PREGUNTAS
+- Cada venta contra su ficha en cada vuelta. Lo de una sola vez (retención, cuotas, carrito) no toca el precio.
+- Preguntas: sólo las que sé sin duda, cortas, sin teléfonos ni links. Nada de más de 7 días. Reclamos que esperan su respuesta: una vez por día.
+
+## 9 · PEDIDOS Y CAJAS
+- **Pedidos completos, todo el catálogo**, en la completa: objetivo 30 días (45 en Bs As que se corta 2+ veces y vende 0,5+/día), ritmo por día con stock, stock de las 4 cuentas sumado, sin costo no se pide, precio para el máximo = mediana cobrada en 60 d (no el de escasez), máximo por color con `pvVars`. Si el log dice NO LEÍ o el script NO CIERRA, no se carga nada.
+- Motivos de Pedidos para Tito ("Hola Tito!", cortos). Los de cajas, para Matías.
+- **Cajas:** 37 días (30 de venta + 7 de viaje), 60 sólo en lo parejo sin prueba abierta, nada pasa 90 días, lo nuevo sale con el mínimo de 4, cuenta en cero recibe el mínimo salvo que otra tenga stock de ese color. Respetar el cupo (lo vendido no devuelve cupo). Marco yo las que ML dio por entradas (`cajallego`).
+- **Paraguay:** pedidos de ~US$1.000 cada 2-3 semanas, piso 25% (no 24), mínimo 100 ventas en ML. Ticket real obligatorio para cerrar (`compray|det=`). Recargo medido (respaldo 20%). Al llegar: ficha (pagado × recargo), cuenta por rubro (perfumes → Adriana) y equilibrio, vínculo. Cuántas de cada nuevo: barato con 100+ ventas → 3-4 · caro (+US$60) → 1 · resto 2. Dos proveedores (Nissei, Elegancia) y dos pedidos en Nissei (perfumería y resto).
+- **Listas** (otros proveedores): se miden contra ML TODAS, también las que compra Tito en Bs As (Dai Nippon): *"el objetivo es venderlo por ahí, si no cómo sabemos qué da"*; mínimo 100 ventas, un solo vendedor no vale como precio, nunca cargar una lista vieja, Iscos sólo lo de su web (×0,665).
+- **Navidad:** en la completa del 14/11 (y esa semana) medir qué subió en Navidad 2025 (17-30/12) y pedir esos productos para 45 días.
+- **Paulvic:** pedido cada 15 días para 45 días por aroma, redondeado (3, 5, 10, 20, 50). Costo = el del último pedido (con testers y regalos). Lo que no vino no se pide más. Pagar en 7 días hábiles desde que llega.
+- **No se consigue más** (De la Patagonia y lo marcado): no se pide; se vende a precio lleno hasta cerca del cobro de stock.
+
+## 10 · PLATA
+- El 1º de cada mes el retiro = lo que dice "💸 cuánto cobrar" del mes cerrado (`cobromes`). La deuda de H con ARCA queda en CYC.
+- Gasto de Full del mes: `cargosmes` en la completa del 15 (el período va como gasto del mes siguiente).
+- Gastos que se cargan a mano: la lista de Gastos dice qué falta; recordárselo a fin de mes.
+
+## 11 · TELEGRAM
+- Sólo `pregunto:` con decisiones suyas o lo importante que sólo puede hacer él y cuesta plata. Nunca "subí/bajé/activé". Sin datos de compradores. `resumen:` no se manda.
+
+## 12 · AL CAMBIAR ALGO DEL SISTEMA
+- Anotarlo en `REVISION.md` en su etapa, en el mismo commit; subir a la rama de la sesión y a `claude/add-folder-78ysyb`. Web: `APP_VERSION`, `APP_CAMBIOS`, `CACHE` de `sw.js`. Workflows: opciones repetidas en un paso.
+
+## 13 · PENDIENTES VIVOS (se borran al cerrarse)
+- Paraguay 08/10: falta sólo el correo (monto y kilos). Paraguay 08/09: pesos de los dólares, ticket, retira, correo.
+  Transferencia de $50.000 del 29/09: preguntar de qué es.
+- Paulvic del 06/10 (40 u.): al llegar, `pvped:llego`, rehacer la cuenta con el flete y ofrecer `poncosto`.
+- Idea propuesta: probar un Paulvic de hombre a ~$17.990 después del Día de la Madre (escalón de comisión de $15.000).
+- Medir promos en el CyberMonday 02/11.
+- Descuentos del 13/10 y 14/10: CONFIRMADOS puestos (vencen 26-29/10), se juzgan desde el 20/10. El Asher quedó sin descuento a propósito (De la Patagonia a precio lleno).
+- Tarifa de almacenamiento (`almactarifa`) sigue sin pasarla él.
+- **Dinero que rinde en MP (idea 11):** lo revisa él en la app de cada cuenta.
+- **Completa del 17/10 (eligió 2a el 16/10):** revisar los 4 perfumes Cuba de Adriana (Prestige Platinum $50.000, Blue $45.000, Gold $67.174, Prestige Classic $50.000; nunca vendieron, 2 u. cada uno): costo de la ficha contra el margen aprox de 98-169%, precio contra la competencia de catálogo, terminación 90/990. Juicio en el 🧠 de cada uno.
+- **9 pedidos puestos en 0 el 16/10 (eligió 1a)** por no poder reponerse (Ferrari Negro, Halloween Kiss Sexy y Kiss, Ted Lapidus Rumba, Cool Water, Sony ZX310, SSD 1TB, Buds Core, VS STARLIT Bare Vanilla): si vuelve Nissei o baja el precio, se vuelven a pedir; cuando entre stock, regla ⏳.
+
+
+===========================================================================================================================
+# 📚 ANEXO · EL DETALLE DE CADA REGLA (el CEREBRO de antes, entero)
+Lo de acá es el cómo: comandos, números y casos. **Manda la parte de arriba** si algo choca. Las secciones numeradas viejas
+("0 · Quién hace qué" … "10 · Pendientes vivos") quedan sólo como referencia: los pendientes que valen son los de la sección 13.
+===========================================================================================================================
+
+## 🧭 LO QUE NINGUNA REGLA NOMBRA (20/10/2026, eligió 1abc 2a 4ab) · MANDA SOBRE LO DE ABAJO
+Él: *"el problema principal son cosas que no tenías en cuenta. ese es el problema real"*. Las reglas sólo encuentran lo que
+nombran. Desde hoy, además de las reglas:
+ 1. **`raros` en TODAS las vueltas** (ml-consulta, solo lee, va junto con planilla/escasez/lupa). Compara cada publicación contra
+    SU PROPIO AÑO (semanas con stock), sin regla por caso, y saca cuatro listas:
+    · **🧭 FUERA DE LO NORMAL** (vende mucho menos o más rápido que nunca con la certeza de Poisson, visitas muy distintas a lo
+      normal, la ven y no compran). Lo que yo cambié de precio en 21 días no entra acá (va a 💭). **Se vacía en esa vuelta.**
+    · **🔀 NO CIERRA** (el mismo producto a otro precio en otra publicación, margen de más de 120% o negativo, la estrategia que
+      dice una cosa y el stock otra, descuento que ya no hace falta). **Se vacía en esa vuelta.**
+    · **⚠️ DATO DUDOSO (2a)**: stock o precio sin leer en 3 días, línea que no se escribe, margen sin medir o viejo, sin costo.
+      **Sobre esas NO se toca el precio esa vuelta** (salvo que él lo pida) y se anota por qué en el 🧠.
+    · **💭 SIN CERTEZA (4a/4b)**: precio cambiado en 30 días que todavía no se puede juzgar. Dice cuánto falta, la señal temprana
+      de las visitas, el juicio EN FAMILIA (las del mismo producto cambiadas el mismo día, ej. los aromas del Paulvic) y las
+      parecidas del rubro a precio parecido. Lo que sola no se sabe nunca (falta 30+ días) se juzga en familia, por visitas o
+      por las parecidas: nunca se deja colgado. No se vuelve atrás ni se da otro escalón sin un motivo de esa lista.
+    En el chat: "raros: 🧭 N → N · 🔀 N → N · ⚠️ N sin tocar · 💭 N midiendo (familias que ya se saben: …)".
+    **QUIÉN PIENSA CADA RENGLÓN (20/10/2026, eligió la a):** en la COMPLETA, los renglones de `raros` de cada cuenta van al
+    ayudante que ya juzga esa cuenta (no hay ayudante extra): devuelve qué haría con cada uno y por qué. En las CORTAS, hasta ~8
+    renglones los miro yo directo; con más, un ayudante en esfuerzo **Alto** con esa lista. Los ayudantes SÓLO PROPONEN: juntar,
+    resolver choques entre cuentas, mirar si hay otra corrida de ml-sync andando, aplicar y releer de ML lo hago yo, siempre.
+ 2. **EL REVISOR EN CONTRA (1b)** en la completa: con las decisiones de los 4 ayudantes ya juntas y ANTES de aplicar, un sexto
+    ayudante (esfuerzo max, sólo lee) abre la ficha de cada publicación que cambia y busca en qué me equivoco: un dato que no
+    cierra, una regla de mayor prioridad que pisé, una pregunta de `notas/preguntas.md` sin contestar, una decisión de menos de 7
+    días que deshago, un ⚠️ dato dudoso. No propone precios: marca. Lo marcado lo miro yo; si no lo puedo resolver, ESA no se
+    aplica esa vuelta. En el chat: "revisor en contra: N marcadas · R resueltas · F frenadas".
+ 3. **LAS PREGUNTAS (1c)**: `ml-sync/notas/preguntas.md`. Cada corrección suya se convierte ahí en una pregunta general que se le
+    hace a TODAS las publicaciones (no una regla para ese caso). Los ayudantes y yo se las hacemos a cada ficha; la 20 siempre:
+    *"si él mirara esta ficha ahora, ¿qué me preguntaría?"*. Corrección nueva → su pregunta en el mismo commit que `correcciones.md`.
+ 4. **LAS REGLAS SE ORDENAN (3a):** hecho el 20/10 (él aprobó "1a"): este archivo arranca con la tabla de QUIÉN MANDA y el detalle va en el anexo.
+
+## 🔭 PLAN 20X: CADA PRODUCTO Y CADA VENTA, A FONDO (20/10/2026, eligió 1a 2a 3a 4a) · MANDA SOBRE LO DE ABAJO
+Él: *"tengo el plan 20x. aprovechemos. lo primero que quiero es que cuando analices las ventas y productos le des más
+detenimiento"*. Antes, la completa miraba cada publicación de a un renglón y la ficha sólo cuando algo llamaba la atención.
+ 1. **COMPLETA (08:52): CUATRO AYUDANTES, UNO POR CUENTA, A LA VEZ.** Después de bajar `planilla`, `historia`, `escasez:expediente`
+    e `informe:24` (de a uno), corro `ficha:cuenta=adriana`, `…=ayelen`, `…=luciana`, `…=matias` por ml-consulta (de a dos) y
+    guardo cada log limpio en el scratchpad. Lanzo 4 agentes (`Agent`, en un solo mensaje) y a cada uno le paso: su archivo
+    de fichas, los pedazos de planilla/historia/expediente/informe de su cuenta, y la ruta de `ml-sync/CEREBRO.md` y
+    `ml-sync/notas/techo.md` para que los lea. Cada ayudante abre la ficha ENTERA de cada publicación de su cuenta (activas, con
+    stock o agotadas que vendían): el año, cada cambio de precio y cómo le fue, cada tanda de stock y cuánto duró, fechas,
+    competencia y caja, la prueba en curso. Y devuelve, por publicación, UN juicio razonado: estrategia (tag), precio que
+    propone (o "igual"), pedido/caja si corresponde, y el porqué con números, más "no estoy seguro" cuando lo está. **Los
+    ayudantes SÓLO LEEN: no corren nada que escriba.** Yo junto los cuatro, miro yo mismo todo lo dudoso, lo que cambia más
+    de 20% el precio y lo que contradice una decisión mía de menos de 7 días, y recién ahí aplico con `decido`.
+    En el chat: "ayudantes: N publicaciones juzgadas · C cambios · D dudosas que miré yo".
+ 2. **CADA VENTA, EN TODAS LAS VUELTAS, CONTRA SU FICHA** (no sólo las raras de `ventasraras`). Para cada compra desde la vuelta
+    anterior: ¿es la 1ª o 2ª venta después de un cambio de precio? ¿confirma o desmiente la prueba de techo? ¿cambió el
+    ritmo (⚡)? ¿deja el stock en escasez? ¿se vendió en promo? Si hay que tocar algo se decide en ESA vuelta (regla ⚡ del
+    18/10). Si son muchas, la ficha se abre de las que tienen poco stock, prueba en curso o salieron raras; el resto se mira
+    con la línea de su publicación en la planilla. En el chat: "ventas: N miradas · A acciones".
+ 3. **VUELTAS CORTAS CADA 2 HORAS**: 10:52, 12:52, 14:52, 16:52, 18:52 y 20:52 (rutina `trig_01FCaQqzU5MA422N6Z8nH63Z`).
+ 1b. **LOS AYUDANTES VAN CON ESFUERZO `max`** (decisión suya del 20/10: *"una forma de minimizar errores es poner un esfuerzo más
+    alto a las tareas que tirás vos al mirar los productos y precios"*). `Agent(…, effort:'max')`. Si un día se cortan por
+    límite de uso, se rehacen y se dice en el chat; nunca se aplica un juicio a medias.
+ 1c. **UN QUINTO AYUDANTE SÓLO PARA IDEAS NUEVAS** (pedido suyo del 20/10: *"que te fijes ideas nuevas al tirar las revisiones
+    diarias, por si encontrás algún problema a mejorar o algo nuevo"*). Ya existía el paso 10 / 5b, pero en la práctica se
+    cortaba cuando el día venía pesado (la última idea anotada era del 18/10). Ahora en la completa va un ayudante aparte, con
+    esfuerzo `max`, en paralelo con los cuatro de las cuentas, que NO mira producto por producto sino el negocio entero: lee
+    `ml-sync/notas/ideas.md` (para no repetir), `correcciones.md`, el informe, la planilla, el expediente y las fichas de las 4
+    cuentas, y busca plata que se pierde o se puede ganar y nadie mira (costos pagados de más, patrones en las ventas, ventas
+    que se pierden, cosas que él hace a mano, errores del panel o del robot, cruces que no cierran). Cada idea viene MEDIDA con
+    los datos (cuánta plata, cuántos casos) y con (a)/(b); sólo lee. Yo hago lo chico y fácil de deshacer, lo grande va al
+    `pregunto:` con números, y todo se anota en `ideas.md`. En las vueltas cortas, el 5b sigue: una mirada rápida con lo de esa
+    vuelta. En el chat SIEMPRE: "ideas: N nuevas (H hechas · P propuestas)" o "ideas: ninguna nueva, miré X, Y, Z" — nunca callado.
+ 4. **EL PORQUÉ QUEDA EN LA FICHA.** Al terminar la completa, toda publicación juzgada lleva su nota (`decido:<MLA>=nota|…`,
+    muchas con `ml-sync/notas/fichas_<fecha>.txt` y `decido:archivo=…;go`), con el razonamiento corto y QUÉ MIRAR MAÑANA. Al
+    día siguiente el ayudante arranca leyendo esa nota (está en la ficha) y no de cero.
+
+## 🧐 ¿TIENE SENTIDO? ANTES DE CREERLE A UN NÚMERO (20/10/2026, pedido suyo · vale para mí y para los ayudantes)
+Él: *"miras que el de 50 ml está a 20.000 y el de 100 ml a 100.000: ahí ya tenés una idea que el precio es más cercano a 40.000
+(…) no fue una regla mía, simplemente se me ocurrió, quiero que eso se te ocurra a vos"*. No es una regla más: es preguntarse
+SIEMPRE, antes de decidir con un número (precio de ML, margen, ritmo, costo, stock), **¿esto tiene sentido contra lo que ya sé?**
+Cruzarlo con lo que tenga cerca:
+ · **el mismo producto en otro tamaño o presentación** (50 ml contra 100 ml, pack contra suelto, mini contra grande): el precio
+   por ml o por unidad tiene que ser parecido; si uno da el doble, el raro está mal o es otro producto;
+ · **el mismo producto en otra cuenta o en otra fecha** (lo que vendíamos, lo que pagamos, lo que pide la caja);
+ · **productos parecidos de la misma marca o rubro** (un perfume árabe de US$ 10 no se vende a $150.000);
+ · **el costo**: un margen de 150% o un precio abajo del costo casi siempre es un error de emparejado o de dato;
+ · **cuántos lo venden y cuánto venden**: un solo vendedor caro o sin ventas no es "el precio de mercado".
+Si no cierra, no se usa: se busca la razón (otro producto, otro tamaño, dato viejo, vendedor inflado) y se dice en el motivo.
+Cuando él me corrija algo que podía haber visto así, va a `ml-sync/notas/correcciones.md` (abajo) con QUÉ CRUCE me faltó.
+
+## 📉 LAS CORRECCIONES SE CUENTAN (20/10/2026, pedido suyo: *"tu objetivo en ese punto es que no tenga que corregirte en nada"*)
+Cada vez que él me corrige (un precio, un pedido, una regla que no apliqué, un error de pantalla) se anota en
+`ml-sync/notas/correcciones.md`: fecha · qué · por qué pasó (faltó un dato, faltó un cruce de sentido común, error de herramienta,
+regla nueva suya) · qué cambié para que no vuelva. Los lunes, en la completa, cuento las de la semana contra la anterior y lo
+digo en el chat. Lo que es dato de ML tarde o mal (cupos, stock que tarda) NO cuenta como corrección mía.
 
 ## 🔭 PLAN 20X: CADA PRODUCTO Y CADA VENTA, A FONDO (20/10/2026, eligió 1a 2a 3a 4a) · MANDA SOBRE LO DE ABAJO
 Él: *"tengo el plan 20x. aprovechemos. lo primero que quiero es que cuando analices las ventas y productos le des más

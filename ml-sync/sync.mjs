@@ -31805,6 +31805,147 @@ async function main() {
       }
       process.exit(0);
     }
+    // BILLING_PROBE=raros[:<palabras>] → LO QUE NINGUNA REGLA NOMBRA (20/10/2026, eligió 1a 2a 4a 4b). SOLO LEE.
+    // Él: *"el problema principal son cosas que no tenías en cuenta"*. La `lupa` y las listas de la planilla encuentran lo
+    // que una regla nombra; esto busca lo que se sale de LO NORMAL DE ESA PUBLICACIÓN, sin regla por caso. Cuatro listas:
+    //  🧭 FUERA DE LO NORMAL: la última semana contra las semanas con stock de su propio año (ritmo con la certeza de
+    //     Poisson, visitas, conversión, lo cobrado por unidad).
+    //  🔀 NO CIERRA: cruces de sentido común (el mismo producto en otra cuenta a otro precio, margen imposible, la
+    //     estrategia que dice una cosa y el stock otra, parecidas del mismo rubro muy lejos de precio).
+    //  ⚠️ DATO DUDOSO (2a): datos sin leer, viejos o incompletos. Sobre esas NO se toca el precio esa vuelta.
+    //  💭 SIN CERTEZA (4a/4b): precio cambiado hace poco que todavía no se puede juzgar; dice cuánto falta, la señal
+    //     temprana de las visitas y cómo les fue a las parecidas.
+    // Cada renglón de 🧭 y 🔀 se piensa en esa vuelta y se decide o se anota por qué no (la lista se vacía).
+    if (/^raros(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const q = String(process.env.BILLING_PROBE).slice('raros'.length).replace(/^:/, '').trim().toLowerCase();
+      const noLeidoR = [];
+      const leerR = async (ruta) => { try { return (await db.get(ruta)) || {}; } catch { noLeidoR.push(ruta); return {}; } };
+      const links = await leerR('cyc/mllinks');
+      const tc = parseFloat(await db.get('cyc/finanzas/tipo_cambio')) || 0;
+      const esL = await leerR('cyc/estrategia'), npL = await leerR('cyc/netopub');
+      const pIdx = {}; for (const pr of products) pIdx[pr.id] = pr;
+      const hoyK = dayKeyFromISO(Date.now());
+      const kAgo = (n) => dayKeyFromISO(Date.now() - n * 864e5);
+      const k7 = kAgo(7), k14 = kAgo(14), k30 = kAgo(30), k3 = kAgo(3);
+      const fm = (n) => (n == null || !isFinite(n)) ? '—' : '$' + Math.round(n).toLocaleString('es-AR');
+      const tagDe = (mla) => { const h = esL[mla] || {}; const ks = Object.keys(h).map(Number).filter((n) => n > 0).sort((a, b) => b - a); return ks.length ? { t: String((h[ks[0]] || {}).t || ''), ts: ks[0] } : null; };
+      const conSt = (x) => x && !(x.st != null && Number(x.st) <= 0 && !(Number(x.u) > 0));
+      const med = (arr) => { const a = arr.filter((v) => v != null && isFinite(v)).sort((p, r) => p - r); return a.length ? a[Math.floor(a.length / 2)] : null; };
+      const pMenos = (obs, lam) => poissonCdfF(obs, lam);                       // chance de vender obs o menos
+      const pMas = (obs, lam) => obs <= 0 ? 1 : 1 - poissonCdfF(obs - 1, lam); // chance de vender obs o más
+      const fuera = [], noCierra = [], dudoso = [], sinCert = [];
+      const porProd = {}, porDom = {};
+      let miradas = 0, sinLinea = 0;
+      for (const [mla, e] of Object.entries(links)) {
+        if (!e || e.ignored || e.noVendemosMas || !e.prodId || (e.status || '') === 'closed') continue;
+        if (q && !String(e.title || '').toLowerCase().includes(q)) continue;
+        const pr = pIdx[e.prodId]; if (!pr) continue;
+        const tit = String(e.title || pr.name).slice(0, 46), cta = e.cuenta || '?';
+        const cab = `${cta} · ${mla} · ${tit}`;
+        let d; try { d = (await db.get('mlapi/linea/' + mla)) || {}; } catch { d = null; }
+        const ks = d ? Object.keys(d).filter((k) => /^\d{4}_\d{2}_\d{2}$/.test(k) && k < hoyK).sort() : [];
+        if (!ks.length) { sinLinea++; if ((e.status || 'active') === 'active') dudoso.push({ cab, m: ['sin línea de tiempo leíble'] }); continue; }
+        const ultK = ks[ks.length - 1], ult = d[ultK] || {};
+        let stHoy = null; for (let i = ks.length - 1; i >= 0; i--) if (d[ks[i]].st != null) { stHoy = Number(d[ks[i]].st) || 0; break; }
+        const pPub = (x) => x && Number(x.p) > 0 && x.pF !== 'venta' ? Number(x.p) : 0;   // el cobrado (promo, carrito) no es el publicado
+        let pHoy = 0; for (let i = ks.length - 1; i >= 0; i--) if (pPub(d[ks[i]])) { pHoy = pPub(d[ks[i]]); break; }
+        if (!pHoy) for (let i = ks.length - 1; i >= 0; i--) if (Number(d[ks[i]].p) > 0) { pHoy = Number(d[ks[i]].p); break; }
+        let u30 = 0, dS30 = 0; for (const k of ks) { if (k < k30) continue; if (conSt(d[k])) dS30++; u30 += Number(d[k].u) || 0; }
+        if (!(stHoy > 0) && !u30) continue;
+        miradas++;
+        const est = String(ult.est || e.status || 'active');
+        const tag = tagDe(mla); const t = tag ? tag.t : '';
+        const cu = tc > 0 ? costoPesos(pr, 1, tc).costo : 0;
+        const imp = ((ML_EXTRA_PCT[String(cta).toLowerCase()] || 4) + 2) / 100;
+        // ── ⚠️ DATO DUDOSO (2a) ──
+        { const m = [];
+          if (ultK < kAgo(2)) m.push(`la línea de tiempo no se escribe desde ${ultK}`);
+          const rec = ks.filter((k) => k >= k3);
+          // `inc` sale en casi todos los días (caja y margen viejos no se guardan): no alcanza. Lo que decide es stock y precio.
+          if (rec.length && rec.every((k) => d[k].st == null)) m.push('sin stock leído en 3 días');
+          if (rec.length && rec.every((k) => !(Number(d[k].p) > 0) || d[k].pF === 'arrastre')) m.push('el precio de los últimos 3 días no se leyó de ML (es el último conocido)');
+          const np = npL[mla];
+          if (np && Number(np.sinMedir) > 0 && Date.now() - Number(np.sinMedir) < 2 * 864e5) m.push('el margen no se pudo medir anoche (ML no contestó la comisión)');
+          else if (np && Number(np.ts) > 0 && est === 'active' && Date.now() - Number(np.ts) > 3 * 864e5) m.push(`el margen es de hace ${Math.floor((Date.now() - Number(np.ts)) / 864e5)} d`);
+          if (!(cu > 0)) m.push(tc > 0 ? 'la ficha no tiene costo' : 'sin dólar cargado: no hay costo en pesos');
+          if (m.length) dudoso.push({ cab, m }); }
+        // ── 🧭 FUERA DE LO NORMAL: la última semana contra las semanas con stock de su año ──
+        const sem = (desde, hasta) => { let dias = 0, u = 0, tot = 0, vis = 0, nv = 0; for (const k of ks) { if (k < desde || k >= hasta) continue; const x = d[k]; if (!conSt(x)) continue; dias++; u += Number(x.u) || 0; tot += Number(x.tot) || 0; if (x.vis != null) { vis += Number(x.vis) || 0; nv++; } } return { dias, u, tot, vis, nv }; };
+        const B = sem(k7, hoyK);
+        const pasadas = []; for (let w = 2; w <= 52; w++) { const s = sem(kAgo(7 * (w + 1)), kAgo(7 * w)); if (s.dias >= 4) pasadas.push(s); }
+        const fl = [];
+        // Si yo cambié el precio en 21 días, vender menos o convertir menos es lo que se está midiendo: va a 💭, no acá.
+        let cambioReciente = false; { let pRef = 0; for (const k of ks) { if (k < kAgo(21)) { if (pPub(d[k])) pRef = pPub(d[k]); continue; } const pk = pPub(d[k]); if (pk && pRef && Math.abs(pk / pRef - 1) > 0.02) { cambioReciente = true; break; } if (pk) pRef = pk; } }
+        if (pasadas.length >= 6 && B.dias >= 3) {
+          const rN = med(pasadas.map((s) => s.u / s.dias)), rMax = Math.max(...pasadas.map((s) => s.u / s.dias));
+          const lam = (rN || 0) * B.dias;
+          if (!cambioReciente && lam >= 3 && pMenos(B.u, lam) < 0.05) fl.push(`vende mucho menos que en su año: ${B.u} en ${B.dias} d con stock, lo normal ~${lam.toFixed(1)} (${Math.round(pMenos(B.u, lam) * 100)}% de chance de casualidad)`);
+          if (B.u >= 3 && B.u / B.dias > rMax && pMas(B.u, Math.max(lam, 0.2)) < 0.05) fl.push(`vende más rápido que nunca en el año: ${B.u} en ${B.dias} d (lo normal ~${lam.toFixed(1)}, la mejor semana ${(rMax * B.dias).toFixed(1)})`);
+          const vN = med(pasadas.filter((s) => s.nv >= 4).map((s) => s.vis / s.nv));
+          if (vN != null && vN >= 5 && B.nv >= 3) { const vB = B.vis / B.nv; if (vB < vN * 0.4) fl.push(`visitas mucho más bajas que en su año: ${vB.toFixed(0)}/d contra ${vN.toFixed(0)}/d normal`); else if (vB > vN * 2.5) fl.push(`visitas mucho más altas que en su año: ${vB.toFixed(0)}/d contra ${vN.toFixed(0)}/d normal (¿un competidor se quedó sin stock?)`); }
+          const cN = med(pasadas.filter((s) => s.vis >= 20).map((s) => s.u / s.vis));
+          if (!cambioReciente && cN != null && cN > 0 && B.vis >= 20 && B.u / B.vis < cN * 0.4) fl.push(`la ven pero no compran: conversión ${(B.u / B.vis * 100).toFixed(1)}% contra ${(cN * 100).toFixed(1)}% normal`);
+        }
+        if (fl.length) fuera.push({ cab: cab + ` · ${fm(pHoy)} · ${stHoy ?? '?'} u. · ${t || 'sin estrategia'}`, m: fl });
+        // ── 🔀 NO CIERRA ──
+        const nc = [];
+        const r30 = dS30 >= 5 ? u30 / dS30 : null;
+        const diasSt = r30 > 0 && stHoy > 0 ? stHoy / r30 : null;
+        { const mg = Number(ult.mg); if (ult.mg != null && isFinite(mg)) { if (mg > 120) nc.push(`margen ${mg.toFixed(0)}%: casi seguro un costo mal cargado o el producto emparejado con otro`); else if (mg < 0 && !/remate|liquidando|descuento|sobra/.test(t)) nc.push(`margen ${mg.toFixed(1)}% sin estrategia de remate: vende perdiendo`); } }
+        if (t === 'escasez' && diasSt != null && diasSt > 60) nc.push(`dice escasez pero tiene stock para ~${Math.round(diasSt)} d`);
+        if ((t === 'sobra' || t === 'desobra') && diasSt != null && diasSt < 30) nc.push(`dice sobra pero se va en ~${Math.round(diasSt)} d`);
+        if ((t === 'descuento' || t === 'liquidando' || t === 'promo') && diasSt != null && diasSt < 20) nc.push(`está en ${t} y se va en ~${Math.round(diasSt)} d: ¿sigue haciendo falta?`);
+        if (t === 'techook' && stHoy > 0) { const s14 = sem(k14, hoyK); if (s14.dias >= 10 && !s14.u && u30 === 0 && pasadas.length) nc.push(`techo encontrado pero ${s14.dias} d con stock sin vender`); }
+        if ((t === 'techo' || t === 'escasez') && tag && Date.now() - tag.ts > 2 * 864e5) { let pTag = 0; for (const k of ks) if (k <= dayKeyFromISO(tag.ts) && Number(d[k].p) > 0) pTag = Number(d[k].p); if (pTag && pHoy && pHoy < pTag * 0.98) nc.push(`dice ${t} y el precio bajó desde el tag (${fm(pTag)} → ${fm(pHoy)})`); }
+        if (nc.length) noCierra.push({ cab: cab + ` · ${fm(pHoy)} · ${stHoy ?? '?'} u. · ${t || 'sin estrategia'}`, m: nc });
+        if (est === 'active' && pHoy > 0 && stHoy > 0) { const kp = e.prodId + '|' + (e.variant || ''); (porProd[kp] = porProd[kp] || []).push({ mla, cta, pHoy, tit }); }
+        if (e.dom && pHoy > 0) (porDom[e.dom] = porDom[e.dom] || []).push({ mla, cta, tit, t, pHoy, mg: Number(ult.mg) });
+        // ── 💭 SIN CERTEZA: precio cambiado hace poco, todavía no se puede juzgar ──
+        if (pHoy > 0) {
+          let kCambio = null, pAntes = 0; for (let i = ks.length - 1; i >= 0; i--) { const p = pPub(d[ks[i]]); if (p > 0 && Math.abs(p / pHoy - 1) > 0.02) { pAntes = p; kCambio = ks[i + 1] || null; break; } }
+          if (kCambio && kCambio >= k30) {
+            const kDesp = dayKeyFromISO(Date.parse(kCambio.replace(/_/g, '-') + 'T12:00:00Z') + 864e5);
+            const Dp = sem(kDesp, hoyK), A = sem(dayKeyFromISO(Date.parse(kCambio.replace(/_/g, '-') + 'T12:00:00Z') - 30 * 864e5), kCambio);
+            const rA = A.dias >= 5 ? A.u / A.dias : null;
+            let netoA = 0, totA = 0; for (const k of ks) { if (k < kAgo(90) || k >= kCambio) continue; netoA += Number(d[k].neto) || 0; totA += Number(d[k].tot) || 0; }
+            const fNeto = totA > 0 ? netoA / totA : null;
+            const ganU = (p) => fNeto != null && cu > 0 ? p * fNeto - cu - p * imp : null;
+            const gA = ganU(pAntes), gB = ganU(pHoy);
+            if (rA > 0 && gA > 0 && gB > 0 && Dp.dias >= 1) {
+              const rEq = rA * gA / gB;                    // ritmo que deja la misma plata por día al precio nuevo
+              const lam = rEq * Dp.dias;
+              const pierde = pMenos(Dp.u, lam) < 0.05, gana = pMas(Dp.u, lam) < 0.05 && Dp.u > lam;
+              if (!pierde && !gana) {
+                const falta = Dp.u === 0 ? Math.max(1, Math.ceil(3 / rEq) - Dp.dias) : Math.max(1, Math.ceil((Dp.u + 3) / rEq) - Dp.dias);
+                const m = [`${fm(pAntes)} → ${fm(pHoy)} desde ${kCambio} · ${Dp.u} vendidas en ${Dp.dias} d con stock · para dejar la misma plata tenía que vender ~${lam.toFixed(1)} · ${falta > 30 ? `sola no se sabe nunca (falta ~${falta} d): juzgarla en familia, por visitas o por sus parecidas` : `falta ~${falta} d con stock para saber`}`];
+                const vA = A.nv >= 4 ? A.vis / A.nv : null, vB = Dp.nv >= 2 ? Dp.vis / Dp.nv : null;
+                if (vA != null && vB != null && vA >= 3) m.push(`señal temprana, visitas: ${vA.toFixed(0)}/d antes → ${vB.toFixed(0)}/d ahora${vB < vA * 0.5 ? ' ⚠️ cayeron a la mitad (regla 4 de 🔬)' : vB >= vA * 0.9 ? ' (la siguen viendo igual)' : ''}`);
+                sinCert.push({ cab: cab + ` · ${t || 'sin estrategia'}`, m, dom: e.dom || null, mla, pHoy, fam: e.prodId + '|' + cta + '|' + kCambio, u: Dp.u, lam, rEq, dias: Dp.dias });
+              }
+            }
+          }
+        }
+      }
+      // mismo producto (y color) en otra cuenta a un precio muy distinto
+      for (const arr of Object.values(porProd)) { if (arr.length < 2) continue; const mn = arr.reduce((a, b) => (b.pHoy < a.pHoy ? b : a)), mx = arr.reduce((a, b) => (b.pHoy > a.pHoy ? b : a)); if (mx.pHoy > mn.pHoy * 1.25) noCierra.push({ cab: `${mx.tit}`, m: [`el mismo producto está a ${fm(mx.pHoy)} en ${mx.cta} (${mx.mla}) y a ${fm(mn.pHoy)} en ${mn.cta} (${mn.mla}): uno de los dos está mal o es a propósito (decirlo)`] }); }
+      // EN FAMILIA (4a): las del mismo producto y cuenta cambiadas el mismo día se juzgan juntas (los aromas del Paulvic).
+      { const fams = {}; for (const s of sinCert) (fams[s.fam] = fams[s.fam] || []).push(s);
+        for (const arr of Object.values(fams)) { if (arr.length < 2) continue; const U = arr.reduce((a, x) => a + x.u, 0), L = arr.reduce((a, x) => a + x.lam, 0), R = arr.reduce((a, x) => a + x.rEq, 0), Dm = Math.min(...arr.map((x) => x.dias));
+          const txt = pMenos(U, L) < 0.05 ? `YA SE SABE QUE NO RINDE (${Math.round(pMenos(U, L) * 100)}% de casualidad): decidir en esta vuelta` : (pMas(U, L) < 0.05 && U > L) ? 'YA SE SABE QUE RINDE: dar el escalón siguiente o anotar techo' : `falta ~${Math.max(1, Math.ceil((U === 0 ? 3 : U + 3) / R) - Dm)} d con stock`;
+          for (const s of arr) s.m.push(`en familia (${arr.length} del mismo producto cambiadas ese día): ${U} vendidas, tenía que vender ~${L.toFixed(1)} → ${txt}`); } }
+      // parecidas del mismo rubro y precio parecido (±50%) para las que no tienen certeza (4a)
+      for (const s of sinCert) { if (!s.dom || !porDom[s.dom]) continue; const otros = porDom[s.dom].filter((x) => x.mla !== s.mla && x.pHoy >= s.pHoy / 1.5 && x.pHoy <= s.pHoy * 1.5); if (!otros.length) continue; const cnt = {}; for (const x of otros) cnt[x.t || 'sin estrategia'] = (cnt[x.t || 'sin estrategia'] || 0) + 1; const mgs = otros.map((x) => x.mg).filter((v) => isFinite(v)); s.m.push(`parecidas (${s.dom}, precio ±50%): ${otros.length} (${Object.entries(cnt).map(([k, v]) => `${k} ${v}`).join(' · ')})${mgs.length ? ` · margen mediano ${med(mgs).toFixed(0)}%` : ''}`); }
+      const imprimir = (titulo, arr) => { console.log(`\n── ${titulo} · ${arr.length} ──`); for (const f of arr) { console.log('@@ ' + f.cab); for (const x of f.m) console.log('     · ' + x); } };
+      console.log(`=== 🧭 RAROS · lo que se sale de lo normal de cada publicación, sin regla por caso · SOLO LEE ===`);
+      console.log(`(ganancia aprox: neto − mercadería − IIBB − 2% mono · Poisson: chance de que sea casualidad)`);
+      imprimir('🧭 FUERA DE LO NORMAL (contra su propio año) · se piensa y se decide en esta vuelta', fuera);
+      imprimir('🔀 NO CIERRA (cruces de sentido común) · se decide en esta vuelta', noCierra);
+      imprimir('⚠️ DATO DUDOSO · NO tocar el precio esta vuelta, anotar por qué', dudoso);
+      imprimir('💭 SIN CERTEZA TODAVÍA · no volver atrás ni dar otro escalón sin motivo, mirar la señal temprana', sinCert);
+      console.log(`\nMiradas ${miradas} publicaciones con stock o ventas en 30 d · ${sinLinea} sin línea de tiempo`);
+      if (noLeidoR.length) console.log(`⚠️ no pude leer: ${noLeidoR.join(', ')} · esos controles faltan en esta corrida`);
+      return;
+    }
     if (/^lupa(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const q = String(process.env.BILLING_PROBE).slice('lupa'.length).replace(/^:/, '').trim().toLowerCase();
       const links = (await db.get('cyc/mllinks')) || {};

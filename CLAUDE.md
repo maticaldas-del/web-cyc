@@ -620,6 +620,12 @@ retiro + gastos del mes ("por cada peso que sale, otro se queda"; editable en �
 35) · faltantes 2 · capital parado 1 (`calcRotScore`, nuevo) · reclamos 1. Se sacaron retiro vs piso (es fijo) y gastos
 aparte (ya están en la ganancia). Falta que él lo mire y diga si el objetivo le cierra.
 
+### LAS 7 ETAPAS, UNA POR DÍA, CORREN SOLAS (20/10/2026, pedido suyo, ya con el plan 20x)
+**lun 1 Precios · mar 2 Plata · mié 3 Mercadería · jue 4 Choques y fallas mudas (viejas 4+5) · vie 5 Datos, historial y cerebro
+(viejas 8+9) · sáb 6 Ideas nuevas · dom 7 Diseño.** Tarea programada diaria a las 22:13 de acá que entra a esta sesión (`trig_01TT94wnEKk299d85Sj6ePWw`). **Los 4 revisores de cada etapa van con esfuerzo MÁXIMO** (20/10, con el plan 20x; reemplaza el "Alto" del 25/09). Cómo corre
+cada una: arriba de todo en `ml-sync/REVISION.md` ("EL CALENDARIO"). En `index.html`: `REV_ETAPAS` (con `dia`), `REV_HORA`,
+`REV_HECHAS`/`REV_HIST` ya con la numeración nueva. **La numeración vieja (8 y 9) que aparece más abajo es historia.**
+
 ### LA REVISIÓN POR ETAPAS (propuesta del 25/09, falta que confirme el ritmo)
 Pedido suyo: que cada revisión entre en una ventana de 5 h de tokens (plan de US$100, Opus 5.5). Seis
 etapas, una por semana (ciclo de 6 semanas) y la del tema tocado cuando haya un cambio grande. Se
@@ -860,6 +866,24 @@ mañana. Detalle en `ml-sync/CEREBRO.md` (🔭). Él preguntó si con eso no iba
 (lo sugirió él), la regla 🧐 **¿tiene sentido?** (cruzar cada número con otro tamaño, otra cuenta, el costo, parecidos: *"quiero que
 eso se te ocurra a vos"*) y las correcciones se cuentan en `ml-sync/notas/correcciones.md` (*"tu objetivo es que no tenga que
 corregirte en nada"*).
+
+## 🧭 LO QUE NO TENÍA EN CUENTA: CÓMO SE ATACA (20/10/2026, eligió 1abc 2a 3a 4ab)
+Él: *"claro el problema principal son cosas que no tenias en cuenta. ese es el problema real, como podemos hacer para mejorar
+eso?"*. Le dije que por decisión acierto ~85-90% pero que "que no se me pase nada" está hoy cerca de 0% por semana (2-4
+correcciones por día del 16 al 19/10), y que no se puede prometer 95%. Eligió todo: (1a) `raros` en cada vuelta, que compara
+cada publicación contra su propio año sin regla por caso · (1b) un ayudante "revisor en contra" antes de aplicar la completa ·
+(1c) cada corrección se vuelve pregunta general en `ml-sync/notas/preguntas.md` · (2a) ⚠️ dato dudoso = no tocar el precio ·
+(3a) CEREBRO reescrito ordenado con la tabla de QUIÉN MANDA (**aprobado el 20/10: "1a"**, ya es `ml-sync/CEREBRO.md`, con el detalle viejo en su ANEXO) ·
+(4a/b) lo que vende poco se juzga en familia, por visitas y por parecidas, y dice "💭 sin certeza, falta X". Detalle en
+`ml-sync/CEREBRO.md` (🧭). Y la meta para medir si sirve: bajar de 2-4 correcciones por día a 1-2 por semana en un mes.
+**Quién piensa los raros (eligió la a, mismo día):** en la completa, el ayudante de cada cuenta (en máximo) recibe los raros de
+su cuenta; en las cortas, hasta ~8 renglones los miro yo y con más, un ayudante en Alto. Los ayudantes proponen; decidir y aplicar
+es del chat (ve todas las cuentas, resuelve choques, mira que no haya otra corrida y relee de ML). Él preguntó si así se
+ahorraba: no ahorra plata (un ayudante gasta igual), ahorra atención.
+**Y sus otras dos del mismo día:** *"todo lo de nippon tiene que medirse con ml, ya que el objetivo es venderlo por ahí. sino como
+sabemos que da y que no"* → toda lista se mide contra ML, también las que compra Tito en Bs As (`|bsas` sólo cambia dónde se ve) ·
+y el esfuerzo de cada parte queda fijo (CEREBRO sección 2): ayudantes de la completa y revisor en contra en max, ayudante de raros
+de las cortas en Alto, el chat con el nivel que él elija. No se cambia sin que él lo diga.
 
 ## 📋 LA LISTA ÚNICA DEL CEREBRO: `ml-sync/CEREBRO.md` (13/10/2026, pedido suyo)
 
