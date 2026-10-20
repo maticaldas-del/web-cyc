@@ -1994,3 +1994,5 @@ y el disponible no salte; que un pedido de lista llegado aparezca en Deudas hast
   de lista con ventas en el período (`provs` de `metPorOrigen`); los que no vendieron no salen. Todo se ordena por
   `metScoreDe`: el score del ranking de Ventas (gan²/costo por producto) PROMEDIADO por producto vendido, con la escala
   `scoreColor/scoreLabel` llevada a 30 días. **Chequear:** que la suma de los grupos siga cerrando contra los KPIs de arriba.
+
+- 20/10/2026 · v25.38: `metScoreDe` promedia por COLOR/AROMA (`vars`, ficha + variante de la venta), no por ficha: el Paulvic (una ficha, ~70 aromas) salía como un solo producto gigante. Y las cajas de la vista de un origen no se pisan (min 140px, sin cortar).

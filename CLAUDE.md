@@ -9387,4 +9387,4 @@ un tachado sólo con causa propia (sobra, lanzamiento, fecha). La 3a (medir con 
 Él: *"quiero agregar listas y al clickear que aparezcan los proveedores que ya tienen ventas (…) que se comparen no por ganancia,
 sino por score (…) el objetivo es saber dónde conviene más meter plata"*. Bs As · Paraguay · Paulvic · 📋 Listas (lo de
 `listaProv`, ya no adentro de Bs As). Se ordena por ⚡ score del ranking de Ventas promediado por producto vendido (elegí el
-promedio para que un origen con muchos productos no gane sólo por tamaño).
+promedio para que un origen con muchos productos no gane sólo por tamaño). Se promedia por COLOR/AROMA, no por ficha (el Paulvic es una sola ficha).

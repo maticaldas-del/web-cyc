@@ -2684,7 +2684,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.37';
+const APP_VERSION='25.38';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2695,6 +2695,7 @@ const APP_VERSION='25.37';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.38',f:'20/10',h:'15:55',c:[{n:2,t:'📊 Métricas → de dónde viene la mercadería: el score se promedia por color/aroma, no por ficha (el Paulvic es una sola ficha con todos los aromas y salía inflado). Y los números de arriba ya no se pisan.'}]},
   {v:'25.37',f:'20/10',h:'15:52',c:[{n:2,t:'📊 Métricas → de dónde viene la mercadería: botón nuevo 📋 Listas (cada proveedor de lista que ya vendió, uno al lado del otro). Ahora todo se compara por ⚡ score (el mismo del ranking de Ventas), promediado por producto, para ver dónde conviene meter plata. Lo de listas ya no se cuenta adentro de Bs As.'}]},
   {v:'25.36',f:'20/10',h:'15:42',c:[{n:1,t:'📈 Línea de tiempo: el precio queda solo en su carril (usa toda la altura) y el costo pasa al carril del % de ganancia, con su propia escala y el número a la izquierda.'}]},
   {v:'25.35',f:'20/10',h:'15:37',c:[{n:1,t:'🔥 Vuelven las ventas vivas (color por %, formas que se mueven, temblor y fuego). Se habían apagado el 19/10 sin querer, cuando se agregó el tocar la venta para ver el detalle.'}]},
@@ -19571,8 +19572,10 @@ const MET_ORIG={bsas:{nom:'🇦🇷 Bs As',col:'#60a5fa'},py:{nom:'🇵🇾 Para
 // producto), con la MISMA escala de colores llevada a 30 días. Para comparar orígenes de distinto tamaño se usa el PROMEDIO
 // por producto vendido: dice cuánto rinde, en general, un producto de ese origen (que es lo que se compra con la plata nueva),
 // no cuántos productos tiene. Un producto que perdió plata cuenta como 0, igual que en el ranking.
+// POR COLOR/AROMA, NO POR FICHA (20/10/2026, él con el Paulvic en 117.074 "Estrella"): el Paulvic es UNA ficha con todos los
+// aromas, y promediando por ficha valía como un solo producto gigante contra los 57 de Bs As. Cada variante es lo que se compra.
 function metScoreDe(a,dias){
-  const ps=Object.values(a.prods||{});if(!ps.length)return null;
+  const ps=Object.values(a.vars||a.prods||{});if(!ps.length)return null;
   const sc=ps.reduce((s,t)=>s+((t.costo>0&&t.gan>0)?t.gan*t.gan/t.costo:0),0)/ps.length;
   return {sc,cat:sc*30/Math.max(1,dias||30)};
 }
@@ -19581,7 +19584,9 @@ function metScoreDe(a,dias){
 // que cambia es el DIVISOR del %. Con una cuenta propia, esta tarjeta diría un margen y la de
 // arriba otro sobre las MISMAS ventas.
 function metPorOrigen(keys){
-  const vacio=()=>({neto:0,costo:0,gest:0,total:0,u:0,ventas:0,prods:{}});
+  const vacio=()=>({neto:0,costo:0,gest:0,total:0,u:0,ventas:0,prods:{},vars:{}});
+  const _suma=(d,nom,vk,v,costo)=>{for(const [m,k] of [[d.prods,nom],[d.vars,vk]]){const t=m[k]||(m[k]={nom:k,gan:0,u:0,costo:0,gest:0,neto:0});
+      t.gan+=(v.neto||0)-costo;t.u+=v.qty||0;t.costo+=costo;t.gest+=gestDivVP(v);t.neto+=v.neto||0;}};
   const g={bsas:vacio(),py:vacio(),paulvic:vacio(),lista:vacio()};
   const provs={};   // 📋 Listas, cada proveedor por separado (sólo los que vendieron en el período)
   // Las dos salidas se cuentan y se dicen, nunca se esconden: si estas ventas desaparecieran, el
@@ -19600,12 +19605,11 @@ function metPorOrigen(keys){
       d.neto+=v.neto||0;d.costo+=costo;d.gest+=gestDivVP(v);d.total+=v.total||0;
       d.u+=v.qty||0;d.ventas++;
       const nom=(p&&p.name)||v.prod||'—';
-      const t=d.prods[nom]||(d.prods[nom]={nom,gan:0,u:0,costo:0,gest:0,neto:0});
-      t.gan+=(v.neto||0)-costo;t.u+=v.qty||0;t.costo+=costo;t.gest+=gestDivVP(v);t.neto+=v.neto||0;
+      const vk=nom+(v.variante?' · '+String(v.variante).trim():'');
+      _suma(d,nom,vk,v,costo);
       if(gr==='lista'){const pk=p.listaProv,pv=provs[pk]||(provs[pk]={...vacio(),nom:p.proveedor||pk});
         pv.neto+=v.neto||0;pv.costo+=costo;pv.gest+=gestDivVP(v);pv.total+=v.total||0;pv.u+=v.qty||0;pv.ventas++;
-        const t2=pv.prods[nom]||(pv.prods[nom]={nom,gan:0,u:0,costo:0,gest:0,neto:0});
-        t2.gan+=(v.neto||0)-costo;t2.u+=v.qty||0;t2.costo+=costo;t2.gest+=gestDivVP(v);t2.neto+=v.neto||0;}
+        _suma(pv,nom,vk,v,costo);}
     });
   });
   // EL STOCK NO DEPENDE DEL PERÍODO y por eso se devuelve aparte y el renglón lo aclara: un número
@@ -19650,7 +19654,7 @@ function renderMetOrigen(keys){
       ${sinFicha.ventas?`⚠️ ${sinFicha.ventas} venta${sinFicha.ventas===1?'':'s'} (${sinFicha.u} u.) sin ficha: no se sabe de dónde vino la mercadería.`:''}
       ${sinCosto.ventas?` ⚠️ ${sinCosto.ventas} venta${sinCosto.ventas===1?'':'s'} (${sinCosto.u} u.) sin costo cargado: no entran, porque contarlas daría 100% de margen.`:''}
     </div>`:'';
-  const pie=`<div style="margin-top:8px;font-size:.6rem;color:var(--muted)">⚡ Se ordenan por <b>score</b>, el mismo del ranking de Ventas (ganancia × % de ganancia), promediado por producto vendido: dice cuánto rinde un producto típico de ese origen, que es donde conviene poner la plata nueva. El Paulvic y las Listas van aparte y NO están contados adentro de Bs As, igual que en Pedidos. El % es el mismo margen que usa el resto del panel.</div>`;
+  const pie=`<div style="margin-top:8px;font-size:.6rem;color:var(--muted)">⚡ Se ordenan por <b>score</b>, el mismo del ranking de Ventas (ganancia × % de ganancia), promediado por producto vendido: dice cuánto rinde un producto típico de ese origen, que es donde conviene poner la plata nueva. Cada color o aroma cuenta como un producto (el Paulvic es una sola ficha con todos los aromas). El Paulvic y las Listas van aparte y NO están contados adentro de Bs As, igual que en Pedidos. El % es el mismo margen que usa el resto del panel.</div>`;
   const scTxt=a=>a.score?`<span style="color:${scoreColor(a.score.cat)}">⚡ ${fmtN(Math.round(a.score.sc))} · ${scoreLabel(a.score.cat)}</span>`:'<span style="color:var(--muted)">⚡ —</span>';
   // Un renglón de comparación (orígenes en "Todos juntos" y proveedores en "Listas"): barra = score.
   const filaCmp=(nom,col,a,maxSc,parte)=>{const c=colM(a.margen);const w=Math.max(2,Math.round(((a.score&&a.score.sc)||0)/maxSc*100));
@@ -19661,7 +19665,7 @@ function renderMetOrigen(keys){
         <div style="height:6px;border-radius:3px;background:rgba(148,163,184,.14);margin:4px 0 3px">
           <div style="height:6px;border-radius:3px;width:${w}%;background:${a.score?scoreColor(a.score.cat):col};opacity:.85"></div>
         </div>
-        <div style="font-size:.6rem;color:var(--muted)">gan. <b>${fmt(a.ganancia)}</b> (<b style="color:${c}">${a.margen==null?'—':a.margen.toFixed(1)+'%'}</b>)${parte||''} · ${a.u} u. en ${a.ventas} venta${a.ventas===1?'':'s'} · ${a.distintos} producto${a.distintos===1?'':'s'}</div>
+        <div style="font-size:.6rem;color:var(--muted)">gan. <b>${fmt(a.ganancia)}</b> (<b style="color:${c}">${a.margen==null?'—':a.margen.toFixed(1)+'%'}</b>)${parte||''} · ${a.u} u. en ${a.ventas} venta${a.ventas===1?'':'s'} · ${a.distintos} producto${a.distintos===1?'':'s'}${a.vars&&Object.keys(a.vars).length>a.distintos?` (${Object.keys(a.vars).length} con colores/aromas)`:''}</div>
       </div>`;};
   if(!ganTot&&!orden.some(k=>g[k].ventas)){
     el.innerHTML=`<div class="chart-box"><div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">${btns}</div>
@@ -19683,12 +19687,12 @@ function renderMetOrigen(keys){
       :'<div style="color:var(--muted);font-size:.7rem">Ningún proveedor de lista vendió en este período.</div>';
   }else{
     const a=g[metOrigenSel],c=colM(a.margen);
-    const dato=(lbl,val,col)=>`<div style="flex:1 1 104px;min-width:104px">
+    const dato=(lbl,val,col)=>`<div style="flex:1 1 140px;min-width:140px">
         <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">${lbl}</div>
-        <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.02rem;color:${col||'var(--fg)'}">${val}</div>
+        <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;white-space:nowrap;color:${col||'var(--fg)'}">${val}</div>
       </div>`;
     const cajas=[
-      dato('⚡ Score por producto',a.score?fmtN(Math.round(a.score.sc))+' · '+scoreLabel(a.score.cat):'—',a.score?scoreColor(a.score.cat):null),
+      dato('⚡ Score por producto',a.score?fmtN(Math.round(a.score.sc))+' '+scoreLabel(a.score.cat):'—',a.score?scoreColor(a.score.cat):null),
       dato('Ganancia',fmt(a.ganancia),a.ganancia>=0?'var(--green)':'var(--red)'),
       dato('% de ganancia',a.margen==null?'—':a.margen.toFixed(1)+'%',c),
       dato('Unidades',a.u),
@@ -19696,7 +19700,7 @@ function renderMetOrigen(keys){
       dato('Facturado',fmt(a.total)),
       dato('Gana por unidad',a.ganU==null?'—':fmt(Math.round(a.ganU))),
       dato('Venta promedio',a.ticket==null?'—':fmt(Math.round(a.ticket))),
-      dato('Productos vendidos',a.distintos),
+      dato('Productos vendidos',a.distintos+(a.vars&&Object.keys(a.vars).length>a.distintos?` · ${Object.keys(a.vars).length} var.`:'')),
     ].join('');
     // El top NO se corta en silencio: dice cuántos quedaron afuera.
     const TOP=6;
