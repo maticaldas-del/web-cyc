@@ -9292,3 +9292,16 @@ de nombrar las fichas como comprasparaguay: el código Nissei (`codPy`) sigue si
 Él: *"desde que llegan tenemos 7 dias habiles para pagar, sino nos cobran un 10% mas"*. La tarjeta de cada pedido (Pedidos → Paulvic →
 Pedidos hechos) dice cuándo llega aprox (lo que tardaron los anteriores: el del 06/10 tardó 11 días) y hasta cuándo pagar. Al llegar,
 avisarle los días hábiles que le quedan.
+
+## 🎄 NAVIDAD: A MEDIADOS DE NOVIEMBRE SE PIDE PARA 45 DÍAS (20/10/2026, eligió la 4a)
+Lo que subió en Navidad 2025 (ventas del 17 al 30/12 contra el ritmo normal) se pide a mediados de noviembre para cubrir 45
+días, no 30, así llega antes del 15/12 y no se corta en la semana fuerte. Recordatorio agendado para el 14/11.
+
+## 💾 YA NO HAY TARJETAS TRUCHAS (20/10/2026, dicho por él)
+*"nunca mas trajimos truchas. son todas originales ahora"*. La SanDisk 32GB (`MLA1809285407`, Matías) es original y queda activa.
+Lo de "las tiró por truchas" (19/09) vale sólo para aquel lote viejo: una tarjeta de memoria se trata como cualquier producto.
+
+## 🤔 ANTES DE CUALQUIER DESCUENTO: ¿TIENE SENTIDO? (20/10/2026, eligió la 2.1a)
+Con los Victoria's Secret (9 en descuento abajo del 25% y 3 recién llegadas con descuento por error): ningún descuento sin que se
+cumplan las tres: sobra de verdad (+90 d de stock al ritmo con stock), no es recién llegado (30+ d desde la caja) y queda en 25%+ en
+el peor caso. Abajo de 25% sólo con motivo dicho en el 🧠. Los 12 se sacaron ese día. Detalle en `ml-sync/CEREBRO.md` (🤔).
