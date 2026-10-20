@@ -1823,3 +1823,8 @@ en la solapa Dai Nippon. Chequear: al tocarlo el pedido cambia de solapa; con va
 que la tarjeta decía "sin links guardados". Ahora `_pyLinksProd(prodId)` los saca de la ficha: `pyLink` y la publicación de ML
 vinculada (activa primero, sin las ocultas). **Chequear:** que un probado sin `pyLink` cargado igual muestre "ver en ML", y que
 los nuevos sigan usando su `mlId`/`link` propio. Era el único lugar que dibuja esos renglones (`_pyItsHTML`).
+
+### Etapa 1 · 20/10/2026 · Premium contra Clásica con la plata neta (regla suya)
+Al proponer una gemela con cuotas (Premium) y otra sin cuotas (Clásica), se comparan con la plata neta de ⚖️ (el 3% del facturado
+de más que gasta tope de H), no sólo con el %. Vive en `ml-sync/CEREBRO.md` (⚖️). **Chequear:** que ninguna propuesta Premium/Clásica
+diga "mismo margen" sin la cuenta neta.
