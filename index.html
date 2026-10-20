@@ -7553,17 +7553,25 @@ const PED_DIAS_ROJO_PY=PY_DIAS_VIAJE+PY_DIAS_PREPARAR+REPO_DIAS_DEMORA;
 // La oficina y las cajas a Full no entran acá: ya están sumadas en los días que alcanza (ML + camino + oficina).
 // La misma cuenta la escribe syncPedidosAuto en `cyc/reponer/<prodId>` y la lee el robot (`escasez`).
 const REPO_SIN_FECHA_DIAS=60, REPO_ARMAR_CAJA=PY_DIAS_PREPARAR+8;
-function _pedidoViaja(pid){
+function _pedidoViaja(pid,vari){
   // El pedido en camino más cercano que trae este producto (Paraguay o Paulvic), con los días que le faltan.
+  // `vari` (20/10/2026 · etapa 3): sólo un pedido que trae ESE color. Antes un pedido al Paulvic con otros aromas
+  // hacía decir "viene en el pedido del 20/10" de un aroma que no estaba en el pedido (y que no viene más).
+  // Un renglón sin color anotado no descarta nada: si ningún renglón del producto dice color, el pedido vale para todos.
   const dd=f=>{const t=Date.parse(String(f||'')+'T12:00:00-03:00');return t>0?(Date.now()-t)/864e5:null;};
+  const vk=x=>sid(String(x||'').toLowerCase().trim());
+  const traeColor=(its,esDe)=>{if(!vari)return true;const mios=(its||[]).filter(it=>it&&esDe(it));const conCol=mios.filter(it=>String(it.v||it.variante||'').trim());
+    return !conCol.length||conCol.some(it=>vk(it.v||it.variante)===vk(vari));};
   let mejor=null;
   for(const c of Object.values(state.compraspy||{})){
     if(!c||c.estado!=='camino'||!(c.items||[]).some(it=>it&&it.prodId===pid))continue;
+    if(!traeColor(c.items,it=>it.prodId===pid))continue;
     const e=dd(c.fecha),falta=Math.max(0,Math.ceil(PY_DIAS_VIAJE-(e==null?0:e)));
     if(!mejor||falta<mejor.falta)mejor={falta,fecha:c.fecha,de:'Paraguay'};
   }
   for(const c of Object.values(state.pedidospv||{})){
     if(!c||c.estado!=='camino'||c.prodId!==pid)continue;
+    if(!traeColor(c.items,()=>true))continue;
     const e=dd(c.fecha),falta=Math.max(0,Math.ceil(7-(e==null?0:e)));
     if(!mejor||falta<mejor.falta)mejor={falta,fecha:c.fecha,de:'Paulvic'};
   }
@@ -7589,10 +7597,14 @@ function reponerDe(p,vari){
 const BSAS_NO_SE_CONSIGUE_DIAS=10;   // 1b (16/10/2026): Bs As pedido 10 días sin que entre nada = no se consigue
 function _reponerCalc(p,vari){
   const dm=s=>String(s||'').split('-').reverse().slice(0,2).join('/');
-  const v=_pedidoViaja(p.id);
+  const py=p.origen==='py'&&!esPedidoPaulvic({prodId:p.id});
+  // 20/10/2026 · etapa 3: el color que no se consigue o que "no viene más" se mira ANTES del pedido en camino: un pedido
+  // con otros aromas no lo repone (antes el Acqua del Paulvic, marcado "no viene más", decía "viene en el pedido del 20/10").
+  if(!py&&vari){const ncV=_noConsigoActivo(p.id,vari);
+    if(ncV&&ncV.v)return{d:REPO_SIN_FECHA_DIAS,inf:true,txt:ncV.nunca?`no viene más este color (se pidió y no vino): sin fecha`:`no se consigue este color (marcado el ${new Date(ncV.ts).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'})}): sin fecha`};}
+  const v=_pedidoViaja(p.id,vari);
   if(v)return{d:v.falta+REPO_ARMAR_CAJA,txt:`viene en el pedido de ${v.de} del ${dm(v.fecha)} (${v.falta>0?'~'+v.falta+' d':'ya debería haber llegado'}) + ${REPO_ARMAR_CAJA} d de caja a Full`};
   if(noTraerDe(p.id))return{d:REPO_SIN_FECHA_DIAS,inf:true,txt:'marcado "no traer más": no se repone'};
-  const py=p.origen==='py'&&!esPedidoPaulvic({prodId:p.id});
   // "🚫 NO LO CONSIGO" (17/10/2026, él con las Sábanas: "no está el botón de no lo consigo, para que entre en escasez"):
   // en Bs As o Paulvic, marcado a mano desde Pedidos = sin reposición (escasez, estirar hasta ~4 meses) hasta que entre
   // mercadería a la oficina después de la marca (`cyc/ofientro`), que lo saca solo. Lo lee el robot por `cyc/reponer`.
@@ -7607,7 +7619,9 @@ function _reponerCalc(p,vari){
   // Pedidos veía muchos días de stock y Tito no compraba nunca. Ahora Bs As se da por repuesto (~1 semana + caja) y pasa a
   // "no se consigue" recién cuando Pedidos le pide comprarlo hace 10+ días (`claudedecide/ped/<id>/desde`) y desde ese
   // pedido no entró nada a la oficina (`cyc/ofientro/<id>`).
-  if(!py){const of=parseInt(state.inventory[invKey(p.id,OFI)])||0;
+  // Con color (20/10/2026 · etapa 3): la oficina de ESE color. Antes 30 Grises en la oficina hacían decir "mandar caja"
+  // de la Terracota, que no tenía ninguna.
+  if(!py){const of=vari?Math.max(0,Number(getQV(p.id,OFI,vari))||0):parseInt(state.inventory[invKey(p.id,OFI)])||0;
     if(of>0)return{d:REPO_ARMAR_CAJA,txt:`Bs As: ${of} u. en la oficina → mandar caja (~${REPO_ARMAR_CAJA} d)`};
     const pd=((state.claudedecide||{}).ped||{})[p.id],desde=Number(pd&&pd.desde)||0,ent=Number((state.ofientro||{})[p.id])||0;
     const dPid=desde?Math.floor((Date.now()-Math.max(desde,ent))/864e5):0;
@@ -7627,6 +7641,45 @@ const pedDiasRojoDe=p=>reponerDe(p).d;
 //    (`reponerDe`; sin reposición el corte es REPO_SIN_FECHA_DIAS).
 //  · Full se corta antes de que llegue lo de casa: lo de ML dura menos que la caja en camino (8 d desde el despacho),
 //    o que armar y mandar lo de la oficina (10 d), o que comprar si no hay nada.
+// ⚡ SE ACELERÓ: MANDA EL RITMO RÁPIDO (20/10/2026 · etapa 3). Es la MISMA regla del robot `escasez` (18/10/2026, eligió la
+// a, con el Cabotine Turquoise: 4 u. en 10 d con stock y no se subió): si en los últimos 7 días con stock vendió 2+ u. y el
+// doble o más del ritmo base, la escasez se mide con el de 7 días. Antes estaba sólo en el robot: el mismo producto era
+// 🔥 escasez allá y "alcanza" en la línea de tiempo y en Pedidos. Días con stock sin dato = 7; nunca menos de 1 (igual que
+// el robot). La usan `escasezDe`, `_pdiaAntes` de la línea de tiempo y el semáforo de Pedidos.
+function ritmoRapido(base,u7,d7){
+  const b=Math.max(0,Number(base)||0),u=Math.max(0,Number(u7)||0);
+  const d=Math.max(1,Math.min(7,(d7==null||!isFinite(Number(d7)))?7:Number(d7)));
+  const r7=u/d;
+  return (u>=2&&r7>=2*b)?{r:r7,rapido:true,u7:u,d7:d}:{r:b,rapido:false,u7:u,d7:d};
+}
+// Lo que vendió el producto (o ese color) en los últimos 7 días, en las 4 cuentas, y cuántos de esos días tuvo stock según
+// `cyc/stockhist` (sin registro: null = 7). Las ventas son las mismas que cuenta el robot (todas menos las canceladas).
+function ventas7De(p,vari){
+  if(!p||!p.id)return{u7:0,d7:null};
+  const now=Date.now(),t7=now-7*864e5,fk=dateToKey(new Date(t7)),vm=vari?_varPorMla(p):null,vs=vari?sid(String(vari)):'';
+  let u=0;
+  Object.keys(state.ventaprod||{}).filter(k=>k>=fk).forEach(k=>{
+    Object.values(state.ventaprod[k]||{}).forEach(v=>{
+      if(!v||v.cancelada||!ventaEsDe(v,p))return;
+      const ts=Number(v.ts)||Date.parse(v.ts||'')||0;if(ts&&ts<t7)return;
+      if(vari){const c=v.variante||(vm&&vm[v.mla])||'';if(sid(String(c))!==vs)return;}
+      u+=Number(v.qty)||1;
+    });
+  });
+  // Días con stock en la semana: el máximo entre las cuentas que tienen registro (como `diasConStockProd`), con la fecha
+  // REAL de entrada (`aprox:false`); una fecha aproximada o sin registro no achica la semana.
+  let d=null;
+  for(const l of LOCS){
+    const sh=state.stockhist||{},h=(vari&&sh[invKey(p.id,l)+'__v__'+vs])||sh[invKey(p.id,l)];
+    if(!h)continue;
+    let ms;
+    if(h.desde){if(h.aprox!==false){d=7;continue;}ms=now-Math.max(Number(h.desde),t7);const c0=Number(h.cero);if(c0>t7&&c0<=h.desde)ms+=c0-t7;}
+    else if(h.cero)ms=Math.max(0,Number(h.cero)-t7);
+    else continue;
+    const dd=Math.max(0,Math.min(7,ms/864e5));if(d==null||dd>d)d=dd;
+  }
+  return{u7:u,d7:d};
+}
 function escasezDe(p,o){
   // 2a (16/10/2026): la escasez se mide con el ritmo NORMAL (`cyc/ritmonormal`, sin remate). Si una suba frenó las ventas,
   // el ritmo de hoy no puede achicar la cuenta: si no, "hay para un montón de días" y Tito no compra nunca (el bucle).
@@ -7636,15 +7689,26 @@ function escasezDe(p,o){
   // alguna publicación del producto está hoy en una estrategia que sube el precio (escasez, techo, sin reposición).
   const _subido=p&&p.id&&Object.entries(state.mllinks||{}).some(([m,e])=>e&&e.prodId===p.id&&!e.ignored&&['escasez','techo','sinrepo'].includes((estrategiaDe(m)||{}).t));
   const _rn=p&&p.id&&_subido?ritmoNormalDe(p.id):null;
-  const r=reponerDe(p,o&&o.vari),v=Math.max(Number(o.vDia)||0,_rn&&!_rn.f&&!o.sinNormal?_rn.pd:0),ml=Math.max(0,o.ml||0),cam=Math.max(0,o.cam||0),casa=Math.max(0,o.casa||0);
-  const leadFull=cam>0?Math.max(1,Math.ceil(8-(Number(o.camDias)||0))):casa>0?10:r.d;
+  const r=reponerDe(p,o&&o.vari),v0=Math.max(Number(o.vDia)||0,_rn&&!_rn.f&&!o.sinNormal?_rn.pd:0),ml=Math.max(0,o.ml||0),cam=Math.max(0,o.cam||0),casa=Math.max(0,o.casa||0);
+  // ⚡ (20/10/2026 · etapa 3): si se aceleró, manda el ritmo de 7 días (misma regla que el robot). El que llama puede pasar
+  // las ventas de la semana (`u7`/`d7`, la línea de tiempo usa las suyas); si no, salen de las ventas guardadas.
+  const _s7=o.u7!=null?{u7:o.u7,d7:o.d7}:ventas7De(p,o&&o.vari),_rk=ritmoRapido(v0,_s7.u7,_s7.d7),v=_rk.r;
+  // LA CAJA VIEJA NO TAPA LA ESCASEZ (20/10/2026 · etapa 3): el plazo de "lo que viene en camino" sale sólo de una caja
+  // de MENOS de 8 días (`camDias` = la más nueva de ésas, `transitoInfoDe().diasLead`). Antes salía de la más VIEJA: una
+  // caja de hace 20 d con 1 u. que ML nunca dio de alta decía "llega en 1 d" y la escasez de Full no saltaba. Una caja
+  // vencida sigue sumando sus unidades (en `cam`), pero el plazo pasa a la oficina (10 d) o a comprar. `camDias: null` =
+  // hay unidades viajando pero ninguna caja reciente.
+  const camFresca=cam>0&&o.camDias!==null&&(Number(o.camDias)||0)<8;
+  const leadDe=camFresca?'caja':casa>0?'oficina':'compra';
+  const leadFull=camFresca?Math.max(1,Math.ceil(8-(Number(o.camDias)||0))):casa>0?10:r.d;
   const tot=v>0?(ml+cam+casa)/v:Infinity,dMl=v>0?ml/v:Infinity;
   // Sin reposición (Nissei no lo tiene, el precio no da, no traer más) es escasez SIEMPRE que quede algo (16/10, él:
   // "no tenemos fecha siquiera para recuperar stock, va en rojo (…) agrandar el % de ganancia lo máximo posible").
   const comp=r.inf?(ml+cam+casa>0):tot<r.d,full=dMl<leadFull&&!comp;
-  return{r,comp,full,leadFull,tot,dMl,corte:r.d,sinRepo:!!r.inf,
-    txt:comp?(r.inf?`no se puede reponer (${r.txt.replace(/: sin fecha$/,'')})${isFinite(tot)?' y se termina en ~'+Math.round(tot)+' d':''}: subir el % lo máximo posible`:`se corta a los ${Math.round(tot)} d y reponer tarda ${r.d} d · ${r.txt}`)
-      :full?`en ML alcanza ${Math.round(dMl)} d y lo de ${cam>0?'la caja en camino':casa>0?'la oficina':'una compra'} tarda ${leadFull} d`:''};
+  return{r,comp,full,leadFull,leadDe,tot,dMl,corte:r.d,sinRepo:!!r.inf,rapido:_rk.rapido,vDia:v,
+    txt:(comp?(r.inf?`no se puede reponer (${r.txt.replace(/: sin fecha$/,'')})${isFinite(tot)?' y se termina en ~'+Math.round(tot)+' d':''}: subir el % lo máximo posible`:`se corta a los ${Math.round(tot)} d y reponer tarda ${r.d} d · ${r.txt}`)
+      :full?`en ML alcanza ${Math.round(dMl)} d y lo de ${leadDe==='caja'?'la caja en camino':leadDe==='oficina'?'la oficina':'una compra'} tarda ${leadFull} d${cam>0&&!camFresca?' (la caja en camino tiene 8+ días: no se cuenta como que llega)':''}`:'')
+      +((comp||full)&&_rk.rapido?` · ⚡ se aceleró: ${_rk.u7} u. en ${Math.round(_rk.d7)} d con stock`:'')};
 }
 // EL SEMÁFORO CON LA REGLA DE ESCASEZ (16/10/2026, él: "escasez significa lo mismo siempre: rojo. Naranja es que
 // compramos y recuperamos el stock"). 🔴 no hay en ningún lado, o escasez (se termina antes de poder reponer, o no se
@@ -9895,11 +9959,16 @@ function lineaPintar(prodId){
   // parejo, la plata por día de cada precio se calcula con el costo, el dólar y el monotributo de HOY (`ganHoy`), igual que
   // `rayasPrecioLinea` del robot (costoPesos de hoy + IIBB de la cuenta + monotributo vigente). La línea de ganancia sigue con los del mes.
   const _cfHoy=costFullP(p),_monoHoy=monoPctVigente();
+  // La plata de HOY de UNA venta (la misma cuenta que `ganHoy`, o `gan` sin costo de hoy), para guardar la del día POR
+  // PUBLICACIÓN (`porMla`): las rayas de una publicación sola la necesitan (20/10/2026 · etapa 3, ver `_mlaRaya`).
+  const _gmV=(v,neto)=>{const q=Number(v.qty)||0;return _cfHoy>0?neto-(q*_cfHoy+(Number(v.total)||0)*(mlExtraPct(v.cuenta)+_monoHoy)/100):neto-efectivoCostoVP(v);};
+  const _gmSum=(o,mla,x)=>{o[mla||'?']=(o[mla||'?']||0)+x;return o;};
   const gd={}; for(const k of ks){const ents=Object.values((state.ventaprod||{})[k]||{}).filter(v=>v&&!v.cancelada&&(prodDeVenta(v)||{}).id===prodId&&_vOk(v)).map(v=>({...v,_dateKey:k}));
     if(!ents.length)continue;let neto=0,costo=0,gest=0,q=0,mer=0,imp=0,tot=0,cHoy=0;ents.forEach(v=>{neto+=netoProductoVP(v);costo+=efectivoCostoVP(v);gest+=gestDivVP(v);q+=Number(v.qty)||0;cHoy+=(Number(v.qty)||0)*_cfHoy+(Number(v.total)||0)*(mlExtraPct(v.cuenta)+_monoHoy)/100;
       // Para la LÍNEA del costo va sólo la MERCADERÍA (costo × dólar del mes): el costo de la ganancia trae además
       // IIBB + monotributo como % del precio cobrado, y eso hacía que la línea se moviera con cada venta (03/10/2026).
-      const vv={...v,_dateKey:k};const ex=_efectivoCostoVP(vv),im=impuestosDeVenta(vv);mer+=Math.max(0,ex-im);imp+=im;tot+=Number(v.total)||0;});gd[k]={gan:neto-costo,ganHoy:_cfHoy>0?neto-cHoy:null,costo,gest,cu:q>0&&mer>0?mer/q:null,ct:q>0&&mer>0?(mer+imp)/q:null,impPct:tot>0?imp/tot*100:null};}
+      const vv={...v,_dateKey:k};const ex=_efectivoCostoVP(vv),im=impuestosDeVenta(vv);mer+=Math.max(0,ex-im);imp+=im;tot+=Number(v.total)||0;});gd[k]={gan:neto-costo,ganHoy:_cfHoy>0?neto-cHoy:null,costo,gest,cu:q>0&&mer>0?mer/q:null,ct:q>0&&mer>0?(mer+imp)/q:null,impPct:tot>0?imp/tot*100:null,
+      porMla:ents.reduce((o,v)=>_gmSum(o,v.mla,_gmV(v,netoProductoVP(v))),{})};}
   // LOS DÍAS VIEJOS, ESTIMADOS (07/10/2026, él con el Pack Cubreasiento: "no hiciste que el costo vaya hacia atrás en
   // el tiempo así tenemos un aprox de cuánta ganancia se hizo"). Las ventas de antes de que el panel las guarde salen de
   // la línea del robot (unidades y lo cobrado, SIN lo que depositó ML). Se arma una venta igual a las del panel, con la
@@ -9909,12 +9978,12 @@ function lineaPintar(prodId){
   {const ref={};for(const [k,dd] of Object.entries(state.ventaprod||{}))for(const v of Object.values(dd||{})){if(!v||v.cancelada||!(Number(v.total)>0)||!(Number(v.neto)>0)||v.netoEstimado||(prodDeVenta(v)||{}).id!==prodId||!_vOk(v)||ventaEnCarritoVP({...v,_dateKey:k}))continue;
       const q=Number(v.qty)||1;(ref[v.mla||'*']=ref[v.mla||'*']||[]).push({pu:Number(v.total)/q,r:Number(v.neto)/Number(v.total)});(ref['*']=ref['*']||[]).push({pu:Number(v.total)/q,r:Number(v.neto)/Number(v.total)});}
     const ratioDe=(mla,pu)=>{const L0=(ref[mla]&&ref[mla].length?ref[mla]:ref['*'])||[];if(!L0.length)return null;let b=null;for(const x of L0)if(!b||Math.abs(Math.log(x.pu/pu))<Math.abs(Math.log(b.pu/pu)))b=x;return b.r;};
-    for(const k of ks){if(gd[k])continue;let neto=0,costo=0,gest=0,q=0,mer=0,imp=0,tot=0,cHoy=0;
+    for(const k of ks){if(gd[k])continue;let neto=0,costo=0,gest=0,q=0,mer=0,imp=0,tot=0,cHoy=0;const pm={};
       for(const [mla,d] of Object.entries(porMlaF)){const x=d&&d[k];if(!x||!(Number(x.u)>0)||!(Number(x.tot)>0))continue;
         const u=Number(x.u),t=Number(x.tot);const r=Number(x.neto)>0?Number(x.neto)/t:ratioDe(mla,t/u);if(r==null)continue;
         const lk=(state.mllinks||{})[mla]||{};const v={prodId,prod:'',mla,cuenta:lk.cuenta||'',qty:u,total:t,neto:Math.round(t*r),_dateKey:k};
-        neto+=v.neto;costo+=efectivoCostoVP(v);gest+=gestDivVP(v);q+=u;cHoy+=u*_cfHoy+t*(mlExtraPct(v.cuenta)+_monoHoy)/100;const ex=_efectivoCostoVP(v),im=impuestosDeVenta(v);mer+=Math.max(0,ex-im);imp+=im;tot+=t;}
-      if(q>0)gd[k]={gan:neto-costo,ganHoy:_cfHoy>0?neto-cHoy:null,costo,gest,cu:mer>0?mer/q:null,ct:mer>0?(mer+imp)/q:null,impPct:tot>0?imp/tot*100:null,est:true};}}
+        neto+=v.neto;costo+=efectivoCostoVP(v);gest+=gestDivVP(v);q+=u;cHoy+=u*_cfHoy+t*(mlExtraPct(v.cuenta)+_monoHoy)/100;const ex=_efectivoCostoVP(v),im=impuestosDeVenta(v);mer+=Math.max(0,ex-im);imp+=im;tot+=t;_gmSum(pm,mla,_gmV(v,v.neto));}
+      if(q>0)gd[k]={gan:neto-costo,ganHoy:_cfHoy>0?neto-cHoy:null,costo,gest,cu:mer>0?mer/q:null,ct:mer>0?(mer+imp)/q:null,impPct:tot>0?imp/tot*100:null,est:true,porMla:pm};}}
   // EL % DE GANANCIA COMO LÍNEA (03/10/2026, él: "sacá la ganancia y el % ponelo como una línea, idéntico
   // al precio, del color del nivel de % que vendió ese día"). Cada tramo toma el color de su día con la MISMA
   // tabla de niveles que todo el panel (pctColor: Bajo, Justo, Bien, Bueno, Excelente, Estrella, JOYA).
@@ -9940,7 +10009,12 @@ function lineaPintar(prodId){
   // suponía, y el ritmo le daba menor. Ahora el resumen y la línea usan `_pdiaAntes(i)`: los 30 días antes del índice i,
   // contando sólo los días que vendió o tuvieron stock anotado.
   const _conSR=k=>{const d=dias[k];return !!d&&(d.u>0||d.st>0||(d.vis>0&&d.st==null));};
-  const _pdiaAntes=i=>{let u=0,dc=0;for(let j=Math.max(0,i-30);j<i;j++){const kk=ks[j],dd=dias[kk];if(_conSR(kk)){dc++;u+=Math.max(0,(dd.u||0)-(dd.uR||0));}}return (u>=3&&dc>=7)?u/dc:_rnP;};
+  // ⚡ (20/10/2026 · etapa 3): si en los 7 días antes del índice vendió 2+ u. y el doble del ritmo de 30, manda el de 7
+  // (`ritmoRapido`, la misma regla que `escasezDe` y el robot). Ventas de la semana = todas (como el robot); días = los que
+  // vendieron o tuvieron stock anotado.
+  const _u7d7=i=>{let u=0,d=0;for(let j=Math.max(0,i-7);j<i;j++){const kk=ks[j],dd=dias[kk];if(dd)u+=Number(dd.u)||0;if(_conSR(kk))d++;}return{u7:u,d7:d};};
+  const _pdiaBase=i=>{let u=0,dc=0;for(let j=Math.max(0,i-30);j<i;j++){const kk=ks[j],dd=dias[kk];if(_conSR(kk)){dc++;u+=Math.max(0,(dd.u||0)-(dd.uR||0));}}return (u>=3&&dc>=7)?u/dc:_rnP;};
+  const _pdiaAntes=i=>{const base=_pdiaBase(i),s7=_u7d7(i),rk=ritmoRapido(base,s7.u7,s7.d7);return rk.rapido?rk.r:base;};
   const stU={},stD={};{
     ks.forEach((k,i)=>{const d=dias[k];if(!d||d.st==null||!(d.stN>=d.pubs))return;stU[k]=d.st;
       const pdia=_pdiaAntes(i);stD[k]=pdia>0?d.st/pdia:(d.st>0?null:0);});}
@@ -9972,12 +10046,23 @@ function lineaPintar(prodId){
   // dice). En 📦 sobra / 📉 liquidando no se busca techo: se dice.
   // Con sobra stock el piso también se muestra ("fijate que todos tengan eso", 20/10/2026); lo que no se busca es el techo.
   const _rayasSob=(()=>{const est=Object.keys(porMlaF).map(m=>estrategiaDe(m)).filter(Boolean);return est.length&&est.every(e=>['sobra','liquidando','remate'].includes(e.t));})();
-  const _ganRaya=k=>{const g=gd[k];if(!g)return 0;return g.ganHoy!=null?g.ganHoy:(g.gan||0);};
+  // LAS RAYAS DE UNA SOLA PUBLICACIÓN CUANDO HAY VARIAS ACTIVAS A PRECIOS DISTINTOS (20/10/2026 · etapa 3). La línea junta
+  // (`_lineaJunta`) suma las ventas de todas y toma el precio MÁS BARATO del día: con la Clásica a $50.000 y su gemela Premium a
+  // $55.000, las ventas de las dos caían en el escalón de $50.000 y la raya decía otra cosa que `techo95` del robot, que mide la
+  // línea de UNA publicación (`mlapi/linea/<MLA>`). Ahora, con 2+ activas a precios distintos, las rayas salen de la línea de la
+  // publicación activa MÁS BARATA (la que manda el precio de lista del día) y con la plata de SUS ventas (`gd[k].porMla`).
+  // `_ganRaya(k)` (ganancia con el costo de hoy, decisión 5a) se conserva: sólo se le pasa la publicación.
+  const _mlaRaya=(()=>{const act=[];for(const [m,d] of Object.entries(porMlaF)){const kk=Object.keys(d||{}).filter(x=>d[x]&&typeof d[x]==='object').sort();
+      const u=kk.length?d[kk[kk.length-1]]:null;const lk=(state.mllinks||{})[m]||{};const est=(u&&u.est)||lk.status||'';if(!/^active/.test(String(est)))continue;
+      const pr=Number(u&&(u.pLista||u.p))||0;if(pr>0)act.push({m,p:Math.round(pr/10)*10});}
+    return new Set(act.map(x=>x.p)).size>=2?act.sort((a,b)=>a.p-b.p)[0].m:null;})();
+  const _rayasDias=_mlaRaya?_lineaJunta({[_mlaRaya]:porMlaF[_mlaRaya]},state.mllinks||{},_lineaVar||''):dias;
+  const _ganRaya=k=>{const g=gd[k];if(!g)return 0;if(_mlaRaya)return Number((g.porMla||{})[_mlaRaya])||0;return g.ganHoy!=null?g.ganHoy:(g.gan||0);};
   const _rayas=(R=>_rayasSob?{best:R.best,sobra:true}:R)((()=>{
     // UNA SOLA CUENTA CON `techo95` (20/10/2026, él con las Sábanas 140 Blanco: la raya decía techo $20.180 y la estrategia
     // "buscando techo" a $21.990). Sólo cuentan los días MEDIBLES: con 3+ u. en Full y con dato de visitas. Con 1-2 u. o sin
     // visitas, vender poco no prueba que el precio esté alto. La misma regla vive en `rayasPrecioLinea` (sync.mjs): si se toca una, la otra.
-    const G={};ks.forEach(k=>{const d=dias[k];if(!d)return;if(!(d.st!=null&&d.st>=3&&d.vis!=null))return;const pl=Number(d.pLista||d.p)||0;if(!(pl>0))return;
+    const G={};ks.forEach(k=>{const d=_rayasDias[k];if(!d)return;if(!(d.st!=null&&d.st>=3&&d.vis!=null))return;const pl=Number(d.pLista||d.p)||0;if(!(pl>0))return;
       const b=Math.round(pl/10)*10;const g=(G[b]=G[b]||{p:b,dias:0,u:0,gan:0});g.dias++;g.u+=Math.max(0,(d.u||0)-(d.uR||0));g.gan+=_ganRaya(k);});
     const L=Object.values(G).map(g=>({...g,r:g.u/g.dias,pd:g.gan/g.dias,gu:g.u?g.gan/g.u:null}));
     const med=L.filter(g=>g.dias>=5);
@@ -9986,7 +10071,7 @@ function lineaPintar(prodId){
     // venta" y "fijate que todos tengan eso"). Sin 5 días medibles se toma un piso PROVISORIO con todos los días con stock (aunque
     // sean 1-2 u. o sin dato de visitas): el precio que más plata por día dejó entre los que vendieron. Va punteado y dice
     // "provisorio". El 🔴 techo sigue pidiendo días medibles y 95% (eso no se apura), igual que `rayasPrecioLinea` del robot.
-    if(!med.length){const G2={};ks.forEach(k=>{const d=dias[k];if(!d)return;if(!((d.st!=null&&d.st>0)||(d.u||0)>0))return;const pl=Number(d.pLista||d.p)||0;if(!(pl>0))return;
+    if(!med.length){const G2={};ks.forEach(k=>{const d=_rayasDias[k];if(!d)return;if(!((d.st!=null&&d.st>0)||(d.u||0)>0))return;const pl=Number(d.pLista||d.p)||0;if(!(pl>0))return;
         const b=Math.round(pl/10)*10;const g=(G2[b]=G2[b]||{p:b,dias:0,u:0,gan:0});g.dias++;g.u+=Math.max(0,(d.u||0)-(d.uR||0));g.gan+=_ganRaya(k);});
       const L2=Object.values(G2).filter(g=>g.u>0).map(g=>({...g,r:g.u/g.dias,pd:g.gan/g.dias,gu:g.gan/g.u,aprox:true}));
       return L2.length?{best:L2.reduce((a,b)=>b.pd>a.pd?b:a)}:{};}
@@ -10163,7 +10248,8 @@ function lineaPintar(prodId){
       svg+=`<g style="cursor:help"><title>${tt.replace(/[<>&]/g,'')}</title><line x1="0" y1="${y.toFixed(1)}" x2="${W}" y2="${y.toFixed(1)}" stroke="${col}" stroke-width="1.4" stroke-dasharray="${dash}" opacity=".9"/><text x="4" y="${(y+dy).toFixed(1)}" font-size="10" fill="${col}">${lbl}</text></g>`;};
     if(_rayas.sobra)svg+=`<text x="${W-4}" y="${(L.pr[0]+10).toFixed(1)}" font-size="10" text-anchor="end" fill="#fb923c">📦 sobra stock: no se busca techo, primero sale lo que sobra</text>`;
     {const R=_rayas;
-      const _pHoy=(()=>{for(let i=ks.length-1;i>=0;i--){const d=dias[ks[i]];const v=d&&Number(d.pLista||d.p);if(v>0)return v;}return 0;})();
+      const _pHoy=(()=>{for(let i=ks.length-1;i>=0;i--){const d=_rayasDias[ks[i]]||dias[ks[i]];const v=d&&Number(d.pLista||d.p);if(v>0)return v;}return 0;})();
+      if(_mlaRaya&&(R.best||R.techo))svg+=`<text x="4" y="${(L.pr[0]+10).toFixed(1)}" font-size="9" fill="var(--muted)"><title>Hay más de una publicación activa a precios distintos (por ejemplo la Clásica y su gemela Premium): las rayas se miden con la de precio más bajo sola, como el robot (techo95).</title>rayas de ${_mlaRaya}</text>`;
       const _prueba=R.techo&&_pHoy>R.techo.p*1.02&&Object.keys(porMlaF).some(m=>{const e=estrategiaDe(m);return e&&(e.t==='techo'||e.t==='escasez');});
       if(_prueba)svg+=`<text x="${W-4}" y="${(L.pr[0]+10).toFixed(1)}" font-size="10" text-anchor="end" fill="#fb923c">🔴 techo medido antes ${fmt(R.techo.p)} · hoy probando ${fmt(_pHoy)}</text>`;
       if(R.techo)_ray(R.techo.p,'#ef4444','6,3',`🔴 techo ${fmt(R.techo.p)}`,`🔴 Techo ${fmt(R.techo.p)}: a ese precio vendió ${R.techo.u} en ${R.techo.dias} días con stock; para dejar la misma plata por día que a ${fmt(R.best.p)} tenía que vender ~${R.techo.lam.toFixed(1)}. ${Math.round(R.techo.seg*100)}% seguro.`,-3);
@@ -10238,7 +10324,8 @@ function lineaPintar(prodId){
     // regla que Pedidos y el robot (`escasezDe`), con la oficina y la caja en camino (con color elegido, sólo la de ese color).
     const _cs=Math.max(0,Number(_lineaVar?getQV(prodId,OFI,_lineaVar):getQ(prodId,OFI))||0);
     const _tr=transitoInfoDe(prodId,_lineaVar||null);
-    const _ez=escasezDe(p,{ml:q,cam:_tr?_tr.u:0,casa:_cs,vDia:pdia,camDias:_tr?_tr.diasMax:0,sinNormal:!!_lineaVar,vari:_lineaVar||undefined});
+    const _s7=_u7d7(N-1);
+    const _ez=escasezDe(p,{ml:q,cam:_tr?_tr.u:0,casa:_cs,vDia:_pdiaBase(N-1),camDias:_tr?_tr.diasLead:0,sinNormal:!!_lineaVar,vari:_lineaVar||undefined,u7:_s7.u7,d7:_s7.d7});
     const _esc=q>0&&(_ez.comp||_ez.full)?`<b style="color:var(--red)">🔥 escasez</b>: ${_ez.txt}`:'';
     const _sr=_ez.sinRepo?` · <b style="color:var(--amber)">sin reposición</b>: estirar para venderlo en ~100 días`:'';
     // "ESCASEZ" = SE SUBE EL PRECIO (19/10/2026, él con las Cartas Casino: "quiero que cada vez que diga escasez el precio
@@ -13261,7 +13348,11 @@ async function syncPedidosAuto(){
     // 🟠 naranja = alcanza 14 días o menos, o algún color que vende está en cero (se va a cortar) ·
     // 🟡 amarillo = más de 14 días (hasta los 20 del objetivo). No toca `estado`, puntaje ni riesgo.
     const semTot=stock+enOficina+enCamino;
-    const semDias=varSemDias!=null?Math.min(cubreCasa,varSemDias):cubreCasa;
+    let semDias=varSemDias!=null?Math.min(cubreCasa,varSemDias):cubreCasa;
+    // ⚡ (20/10/2026 · etapa 3): el semáforo mide la escasez con la misma regla que `escasezDe` y el robot: si en la
+    // semana vendió 2+ u. y el doble del ritmo, los días que alcanza salen del ritmo de 7 días (sólo el semáforo: las
+    // unidades a comprar siguen con el ritmo de siempre).
+    {const _s7=ventas7De(p),_rk=ritmoRapido(vDia,_s7.u7,_s7.d7);if(_rk.rapido&&semTot>0)semDias=Math.min(semDias,Math.round(semTot/_rk.r));}
     // Con colores: si UN color que vende está en cero en todos lados, el producto es rojo (06/10/2026, él: "si hay rojo en una publicación con variantes que sea rojo").
     const sem=varSemCero>0?'rojo':pedSemDe(semTot,semDias,reponerDe(p));
     // LO QUE VENDE Y CLAUDE TODAVÍA NO DECIDIÓ (09/10/2026): no se crea el pedido (la web no propone
@@ -13371,9 +13462,13 @@ async function syncPedidosAuto(){
   if(currentPage==='pedidos')renderPedidos();
   updatePedidosCosto();
   // Persistir TODO en una sola escritura → un solo eco del listener (no redibuja de a uno).
-  // Lo que tarda en volver a haber cada producto, para el robot (`escasez`): sólo lo que cambió.
+  // Lo que tarda en volver a haber cada producto, para el robot (`escasez`): lo que cambió Y lo que tiene más de 1 día.
+  // 20/10/2026 · etapa 3: antes sólo se escribía al CAMBIAR, y el robot descarta todo `cyc/reponer` de más de 3 días
+  // (lo da por viejo) y cae a un respaldo que no sabe de "el precio de Paraguay no da" ni de "no traer más": un
+  // producto sin reposición desde hace una semana pasaba a "Paraguay 17 d" y dejaba de ser escasez. Ahora `ts` dice
+  // cuándo se MIRÓ por última vez, no cuándo cambió.
   try{for(const pr of (state.products||[])){if(!pr||!pr.id)continue;const rp=reponerDe(pr),ant=(state.reponer||{})[pr.id]||{};
-    if(ant.d!==rp.d||!!ant.inf!==!!rp.inf||ant.txt!==rp.txt){const o={d:rp.d,inf:!!rp.inf,txt:rp.txt,ts:Date.now()};updates['reponer/'+pr.id]=o;(state.reponer=state.reponer||{})[pr.id]=o;}}}catch(e){console.warn('reponer',e);}
+    if(ant.d!==rp.d||!!ant.inf!==!!rp.inf||ant.txt!==rp.txt||!(Date.now()-(Number(ant.ts)||0)<864e5)){const o={d:rp.d,inf:!!rp.inf,txt:rp.txt,ts:Date.now()};updates['reponer/'+pr.id]=o;(state.reponer=state.reponer||{})[pr.id]=o;}}}catch(e){console.warn('reponer',e);}
   if(Object.keys(updates).length)await db.ref('cyc').update(updates);
   // Foto diaria del stock: guarda el riesgo total y la ganancia 30d de hoy, para que los meses cerrados
   // muestren en el puntaje cómo estaba el stock DE VERDAD (y no un valor neutro inventado).
@@ -17793,7 +17888,7 @@ function pedTanqueHTML(p){
   const comp=Math.max(0,parseInt(p.cClaude&&p.cClaude.u!=null?p.cClaude.u:p.cantidad)||0);
   const dMl=ml/v,dCam=cam/v,dCasa=casa/v,dComp=comp/v;
   const _pr=(state.products||[]).find(x=>x.id===p.prodId);const _rp=reponerDe(_pr),corte=_rp.d;
-  const _trE=p.prodId?transitoInfoDe(p.prodId):null;const _ez=escasezDe(_pr,{ml,cam,casa,vDia:v,camDias:_trE?_trE.diasMax:0});
+  const _trE=p.prodId?transitoInfoDe(p.prodId):null;const _ez=escasezDe(_pr,{ml,cam,casa,vDia:v,camDias:_trE?_trE.diasLead:0});
   const tot=dMl+dCam+dCasa;
   const escala=Math.max(30,corte*1.6,Math.min(120,tot+dComp));
   const w=d=>Math.max(0,Math.min(100,d/escala*100));
@@ -17807,7 +17902,7 @@ function pedTanqueHTML(p){
     `<span><i class="tq-casa"></i>oficina ${fmtN(casa)} u. · ${r(dCasa)} d</span>`,
     comp>0?`<span><i class="tq-buy"></i>con lo que pido ${r(tot+dComp)} d</span>`:''].filter(Boolean).join('');
   const msg=tot<=0?'<b style="color:var(--red)">no hay en ningún lado</b>'
-    :(_ez.full?`<b style="color:var(--amber)">alcanza ${r(tot)} d, pero en ML sólo ${r(dMl)} d y lo de ${cam>0?'la caja en camino':'la oficina'} tarda ${_ez.leadFull} d: hay que MANDAR</b>`
+    :(_ez.full?`<b style="color:var(--amber)">alcanza ${r(tot)} d, pero en ML sólo ${r(_ez.dMl)} d y lo de ${_ez.leadDe==='caja'?'la caja en camino':_ez.leadDe==='oficina'?'la oficina':'una compra'} tarda ${_ez.leadFull} d: hay que MANDAR</b>`
     :_ez.comp?`<b style="color:var(--red)">🔥 escasez: ${_ez.txt}</b>`:`alcanza ~${r(tot)} d`);
   return `<div class="ped-tanque" title="Días que cubre cada lugar al ritmo de ${fmtN(Math.round(v*30))} por mes. La raya roja es el corte: lo que tarda reponer (${corte} días).">
     <div class="tq-bar">${barra}<span class="tq-corte" style="left:${w(corte).toFixed(1)}%"></span></div>
@@ -18448,7 +18543,9 @@ function transitoInfoDe(pid,vari){
   // `vari` (16/10/2026): sólo lo de ESE color. Sin esto la línea de tiempo de un color no veía la caja en camino
   // y marcaba escasez de compra que no era (Protector talón Común Beige: 18 viajando no contaban).
   const _vn=x=>String(x||'').toLowerCase().trim();
-  let u=0,cajas=0,diasMax=0;const ctas={},lista=[];
+  // `diasLead` (20/10/2026 · etapa 3): los días de la caja MÁS NUEVA de las que tienen menos de 8 días (null si todas
+  // son más viejas). Es el plazo que usa la escasez: una caja vencida sigue sumando unidades pero ya no dice "llega pronto".
+  let u=0,cajas=0,diasMax=0,diasLead=null;const ctas={},lista=[];
   Object.entries(state.envios_full||{}).forEach(([eid,e])=>{
     const cta=e.cuenta;if(!cta||!LOCS.includes(cta))return;
     const d=envDias(e);
@@ -18459,10 +18556,11 @@ function transitoInfoDe(pid,vari){
       if(uc<=0)return;
       u+=uc;cajas++;ctas[cta]=(ctas[cta]||0)+uc;
       if(d>diasMax)diasMax=d;
+      if((Number(d)||0)<8&&(diasLead==null||d<diasLead))diasLead=Number(d)||0;
       lista.push({u:uc,d,cta});
     });
   });
-  return u>0?{u,cajas,diasMax,ctas,lista}:null;
+  return u>0?{u,cajas,diasMax,diasLead,ctas,lista}:null;
 }
 // ── LO QUE VENDE Y CLAUDE TODAVÍA NO DECIDIÓ (09/10/2026) ──────────────────────────────
 // Con SOLO_CLAUDE un producto sin decisión no arma pedido. Antes desaparecía en silencio: un renglón
