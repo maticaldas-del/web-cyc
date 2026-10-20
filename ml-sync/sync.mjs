@@ -19830,6 +19830,24 @@ async function main() {
     // BILLING_PROBE=listarevisar[:<proveedor>] → SOLO LEE. La lista para el chat de compras (18/10/2026, pedido suyo: "un prompt para el chat
     // local que saque toda la info que ella puede y vos no"): de cada lista, lo que da o está "para revisar", con el catálogo de ML contra
     // el que se midió. Una línea por producto: prov|cód|nombre de la lista|costo|MLA catálogo|título en ML|precio ML|margen|estado.
+    // BILLING_PROBE=listaestado[:<proveedor>] (20/10/2026, solo lee). Cómo se reparte cada lista: cuántos medidos, cuántos dan, cuántos
+    // sin catálogo exacto en ML, cuántos nadie los vende, cuántos afuera por regla (y por qué) y cuántos sin medir todavía. Lo pidió él:
+    // "dice 7777 productos, 3154 medidos y 18 sin medir ¿y el resto?".
+    if (/^listaestado(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const solo = (String(process.env.BILLING_PROBE).split(':')[1] || '').toLowerCase(); const provs = (await db.get('cyc/mlconfig/listasProv')) || {};
+      for (const [k, pv] of Object.entries(provs)) { if (solo && k !== solo && String(pv.nombre || '').toLowerCase() !== solo) continue;
+        const cat = (await db.get('mlapi/listas/' + k)) || {}; const v = Object.values(cat).filter((e) => e && e.n);
+        const c = { med: 0, d25: 0, b25: 0, sc: 0, sv: 0, fz: 0, nunca: 0, sinRes: 0 }; const mot = {};
+        for (const e of v) { if (e.m != null && isFinite(e.m)) { c.med++; if (Number(e.m) >= 25) c.d25++; else c.b25++; continue; }
+          if (e.fz) { c.fz++; const r = String(e.fz).replace(/\d+/g, '#').slice(0, 50); mot[r] = (mot[r] || 0) + 1; continue; }
+          if (e.sc) { c.sc++; continue; } if (e.sv) { c.sv++; continue; } if (!e.t) c.nunca++; else c.sinRes++; }
+        console.log(`\n== ${pv.nombre || k} (${k})${pv.desc ? ' · DESCARTADO' : ''}${pv.bsas ? ' · Bs As' : ''} · lista del ${pv.ts ? new Date(pv.ts).toISOString().slice(0, 10) : '?'} · ${v.length} productos ==`);
+        console.log(`   medidos ${c.med} (${c.d25} de 25%+ · ${c.b25} abajo) · sin catálogo exacto en ML ${c.sc} · en ML no lo vende nadie ${c.sv} · afuera por regla ${c.fz} · sin medir: ${c.nunca} nunca probados + ${c.sinRes} probados sin resultado`);
+        const top = Object.entries(mot).sort((a, b) => b[1] - a[1]).slice(0, 8); if (top.length) console.log('   afuera por: ' + top.map(([r, n]) => `${r} ${n}`).join(' · '));
+        const ej = v.filter((e) => e.m == null && !e.fz && !e.sc && !e.sv).slice(0, 18); if (ej.length) console.log('   sin medir: ' + ej.map((e) => String(e.n).slice(0, 40)).join(' · '));
+      }
+      return;
+    }
     if (/^listarevisar(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const solo = String(process.env.BILLING_PROBE).split(':')[1] || ''; const provs = (await db.get('cyc/mlconfig/listasProv')) || {};
       let tot = 0; console.log('@@LISTA');
@@ -22405,6 +22423,8 @@ async function main() {
             const ks = Object.keys(estr[b.id] || {}).map(Number).filter((n) => n > 0).sort((a, z) => z - a);
             const ultE = ks[0] || 0;
             const prev = Number(np.precio) || 0;
+            // Sin foto (las gemelas de hoy): se compara contra el precio que dice mi última estrategia ("a $X").
+            if (!(prev > 0) && ultE) { const mm = String((estr[b.id][ultE] || {}).m || '').match(/a \$([\d.]+)/); const pe = mm ? Number(mm[1].replace(/\./g, '')) : 0; if (pe > 0 && Math.abs(precio - pe) >= 1) cambios.push({ mla: b.id, label, tipo: b.listing_type_id, st: b.status, prev: pe, precio, fotoTs: ultE, upd: b.last_updated, orig: b.original_price, tit: String(b.title || '').slice(0, 45) }); }
             if (prev > 0 && Math.abs(precio - prev) >= 1 && !(ultE > (Number(np.ts) || 0))) cambios.push({ mla: b.id, label, tipo: b.listing_type_id, st: b.status, prev, precio, fotoTs: np.ts, upd: b.last_updated, orig: b.original_price, tit: String(b.title || '').slice(0, 45) });
             if (b.listing_type_id === 'gold_pro' && (b.status === 'active' || b.status === 'paused') && precio > 0) {
               let o = null; try { const d = await mlGet(`/sites/${b.site_id || 'MLA'}/listing_prices?price=${precio}&listing_type_id=gold_pro&category_id=${b.category_id}`, t.access_token); o = Array.isArray(d) ? d[0] : d; } catch { }
