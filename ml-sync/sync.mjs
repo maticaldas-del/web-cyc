@@ -10313,7 +10313,8 @@ async function main() {
             mN += v.qty || 0;
             mFact += v.total || 0;
             const cw = costoWeb(v, dk);
-            if (cw.sinCosto) { mSinN += v.qty || 0; mSinFact += v.total || 0; mCuenta[v.cuenta || '?'] = (mCuenta[v.cuenta || '?'] || 0) + (v.total || 0); continue; }
+            // Sin costo: $0 de ganancia pero entra en el divisor con el neto como costo, igual que la web (etapa 2, 20/10/2026).
+            if (cw.sinCosto) { mSinN += v.qty || 0; mSinFact += v.total || 0; mBase += Math.max(Number(v.neto) || 0, cw.costo || 0); mCuenta[v.cuenta || '?'] = (mCuenta[v.cuenta || '?'] || 0) + (v.total || 0); continue; }
             mFactCon += v.total || 0;
             const g = (v.neto || 0) - cw.costo;
             mGan += g;
@@ -14308,7 +14309,9 @@ async function main() {
       if (faltan.length) { console.log(`\n✗ No cargo el gasto: falta leer ${faltan.length} cuenta(s). Un gasto a medias se lee como completo.`); return; }
       const compras = (await db.get('cyc/compras')) || {};
       const aMano = Object.entries(compras).filter(([id, g]) => g && !id.startsWith('fullml_') && String(g.dayKey || '').startsWith(ym)
-        && /almacenamiento|stock antiguo|cargos? de full|retiro de stock/i.test(String(g.desc || '') + ' ' + String(g.cat || '')));
+        && (/almacenamiento|stock antiguo|cargos? de full|retiro de stock/i.test(String(g.desc || '') + ' ' + String(g.cat || ''))
+          // + la regla de la lista de Gastos de la web (categoría Envios con full/almacenamiento/stock antiguo/retiro), etapa 2 20/10/2026
+          || (String(g.cat || '') === 'Envios' && /almacenamiento|full|stock antiguo|retiro/i.test(String(g.desc || '')))));
       if (aMano.length) { console.log(`\n✗ No cargo: ya hay ${aMano.length} gasto(s) de Full cargado(s) a mano en ${ym} (${aMano.map(([, g]) => money(g.monto || 0) + ' ' + String(g.desc || '').slice(0, 30)).join(' · ')}). Sería contarlo dos veces.`); return; }
       const upd = {};
       for (const label of labels) { const o = (full[label] || {})[k] || {}; const t = Math.round(Object.values(o).reduce((a, b) => a + b, 0));
@@ -29466,9 +29469,28 @@ async function main() {
         console.log(`\nPRUEBA: no se escribió nada.`);
         return;
       }
+      // retiromes:<AAAA_MM>=<pesos>[:go] → CARGA EL RETIRO DE ESE MES (etapa 2, 20/10/2026). Con SOLO_DATOS la carga
+      // automática del 1º no corre nunca y `retiromes:<monto>` sólo cambiaba la config: el mes quedaba sin retiro y la web
+      // usaba el supuesto. Escribe cyc/retiro_mes/<mes> (la MISMA casilla que "💸 Retiro cobrado" del Arqueo) y lo relee.
+      const _mm = String(_r[1] || '').match(/^(\d{4}_\d{2})=(.+)$/);
+      if (_mm) {
+        const ymR = _mm[1], montoR = Math.round(parseFloat(String(_mm[2]).replace(/[^\d]/g, '')) || 0);
+        const goR = _r.slice(2).includes('go');
+        if (!(montoR > 0)) { console.log('Usá: retiromes:2026_11=2400000:go'); return; }
+        const antes = await db.get('cyc/retiro_mes/' + ymR);
+        console.log(`=== RETIRO DE ${ymR.replace('_', '/')} ===`);
+        console.log(`  hoy cargado: ${antes != null && antes !== '' ? money(Number(antes)) : '(nada)'} → ${money(montoR)} · ${money(Math.round(montoR / 2))} cada uno`);
+        if (!goR) { console.log('\nPRUEBA: no se escribió nada. Agregá ":go".'); return; }
+        await db.set('cyc/retiro_mes/' + ymR, montoR);
+        try { await db.set('cyc/retiroauto/' + ymR, Date.now()); } catch { /* sólo la marca */ }
+        const rel = await db.get('cyc/retiro_mes/' + ymR);
+        console.log(Number(rel) === montoR ? `\u2713 Cargado y releído de la base: ${money(montoR)}.` : `\u26a0\ufe0f No pude guardarlo: la base dice ${rel}`);
+        return;
+      }
       if (_r[1]) {
         const nuevoM = Math.round(parseFloat(String(_r[1]).replace(/[^\d]/g, '')) || 0);
         if (!(nuevoM > 0)) { console.log('Usá: retiromes:1800000'); return; }
+        if (SOLO_DATOS) console.log('\u26a0\ufe0f Ojo: con el robot en "sólo datos" la carga automática del 1º NO corre. Para cargar el retiro de un mes: retiromes:<AAAA_MM>=<pesos>:go');
         await db.patch('cyc/mlconfig', { retiroMes: nuevoM });
         const rel = ((await db.get('cyc/mlconfig')) || {}).retiroMes;
         console.log(Number(rel) === nuevoM
@@ -31872,7 +31894,7 @@ async function main() {
         const tc = parseFloat(B.tipoCambio) || 0, tc0 = parseFloat(A.tipoCambio) || 0;
         let neto = 0, costo = 0, canc = 0, sinC = 0;
         for (const [dk, ents] of Object.entries(vp)) { if (!dk.startsWith(k1)) continue;
-          for (const v of Object.values(ents || {})) { if (!v) continue; if (v.cancelada) { canc++; continue; } const c = cw(v, dk); if (c.sinCosto) sinC++; neto += Number(v.neto) || 0; costo += c.costo || 0; } }
+          for (const v of Object.values(ents || {})) { if (!v) continue; if (v.cancelada) { canc++; continue; } const c = cw(v, dk); if (c.sinCosto) sinC++; neto += Number(v.neto) || 0; costo += c.sinCosto ? Math.max(Number(v.neto) || 0, c.costo || 0) : (c.costo || 0); } }
         let gastos = 0, nG = 0; for (const x of Object.values(compras)) if (x && x.tipo !== 'mercaderia' && String(x.dayKey || '').startsWith(k1)) { gastos += Number(x.monto) || 0; nG++; }
         const rr = retM[k1]; const ret = rr != null && rr !== '' ? Number(rr) : null;
         const genera = neto - costo - gastos, esperado = genera - (ret || 0);
@@ -31907,8 +31929,11 @@ async function main() {
         for (const v of Object.values(ents || {})) {
           if (!v) continue; if (v.cancelada) { canc++; continue; }
           const c = cw(v, dk); if (c.sinCosto) sinC++;
-          const g = (Number(v.neto) || 0) - (c.costo || 0);
-          neto += Number(v.neto) || 0; costo += c.costo || 0; porDia[dk] = (porDia[dk] || 0) + g;
+          // Sin ficha o sin costo: $0 de ganancia, igual que la web (`efectivoCostoVP` devuelve el neto). Etapa 2, 20/10/2026:
+          // antes sólo restaba los impuestos y cada venta así sumaba ~60% de su precio al cobro.
+          const cc = c.sinCosto ? Math.max(Number(v.neto) || 0, c.costo || 0) : (c.costo || 0);
+          const g = (Number(v.neto) || 0) - cc;
+          neto += Number(v.neto) || 0; costo += cc; porDia[dk] = (porDia[dk] || 0) + g;
         }
       }
       const diasMes = new Date(Date.UTC(Y, M, 0)).getUTCDate();
@@ -31923,7 +31948,9 @@ async function main() {
       console.log(`Días: ${diasTr.toFixed(2)} de ${diasMes} · ventas: neto ${$(neto)} − mercadería ${$(costo)} = ${$(nc)} (${canc} canceladas fuera · ${sinC} sin costo cuentan $0 de ganancia)`);
       console.log(`Gastos cargados del mes: ${$(gastos)} (${gA.length}) · el mes anterior: ${$(gastosPrev)} (${gP.length})`);
       for (const x of gP) { const ya = gA.some((y) => (y.cat || y.categoria) === (x.cat || x.categoria)); console.log(`   ${ya ? '✓' : '⏳ falta'} ${String(x.cat || x.categoria || '?').slice(0, 28)} · ${String(x.desc || x.descripcion || '').replace(/\d{6,}/g, '…').slice(0, 30)} · ${$(x.monto || 0)}`); }
-      console.log(`Hasta hoy: (${$(nc)} − ${$(gastos)}) ÷ 3 = ${$((nc - gastos) / 3)} c/u`);
+      // Redondeado a $1.000 y nunca negativo, igual que la tarjeta "💸 cuánto cobrar" (`cobroProxMes`).
+      const tercio = (x) => (x > 0 ? Math.round(x / 3 / 1000) * 1000 : 0);
+      console.log(`Hasta hoy: (${$(nc)} − ${$(gastos)}) ÷ 3 = ${$(tercio(nc - gastos))} c/u (lo que dice la tarjeta · ×2 = ${$(2 * tercio(nc - gastos))} de retiro)`);
       const gEsp = Math.max(gastos, gastosPrev);
       const p1 = nc / diasTr * diasMes;
       console.log(`Proyección al ritmo del mes (${$(nc / diasTr)}/día): ventas ${$(p1)} − gastos esperados ${$(gEsp)} = ${$(p1 - gEsp)} → ${$((p1 - gEsp) / 3)} c/u`);
@@ -32835,7 +32862,9 @@ async function main() {
     if (String(process.env.BILLING_PROBE || '') === 'capital') {
       const fin = (await db.get('cyc/finanzas')) || {};
       const inv = (await db.get('cyc/inventory')) || {};
-      const tc = parseFloat(fin.tipo_cambio) || 1500;
+      // Etapa 2 (20/10/2026): sin dólar no opina (antes inventaba $1.500).
+      const tc = parseFloat(fin.tipo_cambio) || 0;
+      if (!(tc > 0)) { console.log('Sin dólar cargado en el Arqueo: no se puede pasar el stock a dólares. Cargalo y volvé a correrlo.'); return; }
       const pIdx = {}; for (const p of products) pIdx[p.id] = p;
       let stock = 0, unidades = 0;
       for (const [k, v] of Object.entries(inv)) {
@@ -32875,7 +32904,11 @@ async function main() {
       console.log(`  ${'─'.repeat(36)}`);
       console.log(`  TOTAL deudas:        ${u(deudas).padStart(14)}   (${money(Math.round(deudas * tc))})`);
       const patr = stockUSD + otros - deudas;
-      console.log(`\n  PATRIMONIO NETO:     ${u(patr).padStart(14)}   (${money(Math.round(patr * tc))})`);
+      console.log(`\n  CAPITAL (cuenta propia): ${u(patr).padStart(14)}   (${money(Math.round(patr * tc))})`);
+      // NO ES EL PATRIMONIO DEL ARQUEO (etapa 2, 20/10/2026): acá el stock va a costo full (con envío y reclamos) y no
+      // cuenta lo en camino a Full, Paraguay pagado sin llegar, publicaciones ocultas, lo vendido sin reporte, el Paulvic
+      // sin pagar ni la deuda con ARCA. El número que vale es el "Patrimonio total" del Arqueo de la web.
+      console.log('  ⚠️ No es el "Patrimonio total" del Arqueo: acá falta lo en camino, lo oculto, lo vendido sin reporte, el Paulvic sin pagar y ARCA, y el stock va a costo full. El que vale es el de la web.');
       const propio = Math.abs(n('dolares_mati')) + Math.abs(n('dolares_tito'));
       if (propio) console.log(`  De las deudas, ${u(propio)} son los dólares de ustedes (no es plata de terceros).`);
       // Cuánto dura el stock al ritmo de compra actual

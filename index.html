@@ -1475,7 +1475,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
       <button class="vbtn active" id="met-field-total"    onclick="setMetField('total')"    title="Precio total de venta (lo que pagó el comprador)">💵 Total</button>
       <button class="vbtn"        id="met-field-neto"     onclick="setMetField('neto')"     title="Neto que queda después de comisiones ML">💚 Neto</button>
       <button class="vbtn"        id="met-field-ganancia" onclick="setMetField('ganancia')" title="Ganancia = Neto − Costo">💰 Ganancia</button>
-      <button class="vbtn"        id="met-field-gananciaCYC" onclick="setMetField('gananciaCYC')" title="Ganancia de CYC = Ganancia − Gastos − Retiro de los dueños. Es el mismo número que 'Ganancia real CYC' del Resumen. El retiro se resta entero el primer día del mes y cada gasto el día que se pagó: no se reparte nada. OJO: sólo resta los gastos CARGADOS — lo que falta cargar (intereses, obra social, lo que cobra Full por almacenamiento) hace que se vea MÁS ALTA de la real.">🏢 Ganancia CYC</button>
+      <button class="vbtn"        id="met-field-gananciaCYC" onclick="setMetField('gananciaCYC')" title="Ganancia de CYC = Ganancia − Gastos − Retiro de los dueños. Es el mismo número que 'Ganancia real CYC' del Resumen. El retiro y los gastos del mes se restan enteros el primer día del mes con ventas: no se reparte nada. OJO: sólo resta los gastos CARGADOS — lo que falta cargar (intereses, obra social, lo que cobra Full por almacenamiento) hace que se vea MÁS ALTA de la real.">🏢 Ganancia CYC</button>
     </div>
     <!-- Para comparar: se clickean las métricas de arriba. Cada una prendida dibuja su línea. -->
     <div id="ms-ctrl-dia" style="display:none;align-items:center;gap:8px">
@@ -2683,7 +2683,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.22';
+const APP_VERSION='25.23';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2694,6 +2694,16 @@ const APP_VERSION='25.22';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.23',f:'20/10/2026',h:'14:20',c:[
+    {n:3,t:'Etapa 2 (Plata): el cierre del mes guarda la deuda con ARCA hasta ESE mes (cerrando octubre el 02/11 contaba noviembre también y "¿Cierra el mes?" daba Falta plata de mentira).'},
+    {n:3,t:'"¿Cierra el mes?" con un mes sin cerrar en el medio suma la ganancia de todos esos meses (antes daba "Sobra" lo de todo el mes sin cerrar).'},
+    {n:3,t:'El retiro supuesto, desde noviembre, es "cuánto cobrar" del mes anterior × 2 (ya no los $1.800.000 fijos ni el texto del 15%).'},
+    {n:2,t:'Las flechitas de Deudas y Efectivo comparan contra lo mismo (ARCA, Paulvic y lo vendido sin reporte del cierre anterior), y mirando un mes cerrado las tarjetas suman el total.'},
+    {n:2,t:'Comparar meses: la oficina ya no se cuenta dos veces en Activos y las barras suman el patrimonio. Stock ML por cuenta suma lo de publicaciones ocultas.'},
+    {n:2,t:'Si la oficina queda en 0 después de contarse, "Oficina Mati" vale 0 (antes revivía el número viejo y el patrimonio se duplicaba).'},
+    {n:2,t:'Resumen en 30/60 días, Día o Año: los gastos van con la misma regla que Métricas (los del mes, el primer día con ventas): "Ganancia real CYC" = "Ganancia CYC".'},
+    {n:2,t:'La tarjeta "💸 cuánto cobrar" avisa en ámbar si al mes le faltan gastos por cargar.'},
+    {n:1,t:'Los montos en dólares del Arqueo, Comparar, la agenda "Se libera de ML", el encabezado y Capital del Resumen dicen US$ (antes "$").'}]},
   {v:'25.22',f:'20/10/2026',h:'14:10',c:[{n:2,t:'💳 Estrategia nueva "gemela con cuotas": la Premium que agrega el cerebro a la MISMA publicación (comparte el stock con la Clásica), al precio que deja la misma plata neta. Primeras 4: VS Coconut Passion, Animale, Azzaro y Joystick Xbox.'}]},
   {v:'25.21',f:'20/10/2026',h:'14:05',c:[{n:1,t:'📈 Línea de tiempo (producto y todas juntas): ganancia por día y por semana van en el MISMO renglón (la semana en violeta detrás, con su número abajo del de por día), y las visitas van en el renglón de ventas, en celeste detrás de las barras verdes. Ocupa menos lugar.'}]},
   {v:'25.20',f:'20/10/2026',h:'13:45',c:[{n:1,t:'🔎 La revisión diaria del panel ahora corre sola a las 4 de la mañana (antes 22:13). Cada mañana toca la etapa del día: lun Precios · mar Plata · mié Mercadería · jue Choques · vie Datos · sáb Ideas · dom Diseño.'}]},
@@ -3715,8 +3725,26 @@ const impProm=p=>impPromDet(p).imp;
 // que es la tarifa de $10.000/hora × 90 hs × 2), NO un % del neto. Antes de esa fecha se sigue
 // usando el 15% del neto para no desarmar el historial de mayo/junio/julio. Si el mes tiene el
 // retiro anotado a mano en Finanzas, ESE manda siempre — esto es solo el supuesto cuando falta.
-const RETIRO_FIJO=1800000, RETIRO_FIJO_DESDE='2026_08';
-const retiroDefMes=(ym,neto)=>(ym&&ym>=RETIRO_FIJO_DESDE)?RETIRO_FIJO:Math.round((neto||0)*0.15);
+// DESDE NOVIEMBRE 2026 EL SUPUESTO ES LA TARJETA (etapa 2, 20/10/2026): regla suya del 17/10, *"siempre vamos a
+// cobrar lo que dice ahí la tarjeta cuando se cierra el mes"* → el retiro de un mes = "cuánto cobrar" del mes anterior
+// × 2 (Matías y su padre). La cuenta es la de `cobroProxMes` sin pasar por el retiro (no se llama a sí misma).
+// Sin ventas en el mes anterior queda el fijo de $1.800.000.
+const RETIRO_FIJO=1800000, RETIRO_FIJO_DESDE='2026_08', RETIRO_TARJETA_DESDE='2026_11';
+function _retiroTarjetaDe(ym){
+  try{
+    const pr=_puntMesPrev(ym);let neto=0,costo=0,hay=false;
+    Object.keys(state.ventaprod||{}).filter(k=>k.startsWith(pr)).forEach(k=>Object.values(state.ventaprod[k]||{}).forEach(v=>{hay=true;neto+=(v.neto||0);costo+=efectivoCostoVP({...v,_dateKey:k});}));
+    if(!hay)return null;
+    const gan=Math.round(neto-costo-_gastosMes(pr));
+    return 2*(gan>0?Math.round(gan/3/1000)*1000:0);
+  }catch(_){return null;}
+}
+const retiroDefMes=(ym,neto)=>{
+  if(ym&&ym>=RETIRO_TARJETA_DESDE){const t=_retiroTarjetaDe(ym);if(t!=null)return t;}
+  return (ym&&ym>=RETIRO_FIJO_DESDE)?RETIRO_FIJO:Math.round((neto||0)*0.15);
+};
+// Cómo se llama el supuesto de ese mes, para los textos.
+const retiroDefTxt=ym=>(ym&&ym>=RETIRO_TARJETA_DESDE)?'"cuánto cobrar" del mes anterior × 2':(ym&&ym>=RETIRO_FIJO_DESDE)?'el fijo de $1.800.000':'el 15% del neto';
 const sid=s=>s.replace(/[^a-z0-9]/gi,'_');
 const ts2s=t=>{const d=new Date(t);return d.toLocaleDateString('es-AR')+' '+d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});};
 const invKey=(pid,loc)=>pid+'__'+sid(loc);
@@ -4117,13 +4145,13 @@ function deltaBadge(cur,prev,invert=false){
   if(prev===undefined||prev===null)return'';
   if(prev===0&&cur===0)return'<span class="db nc">—</span>';
   const diff=cur-prev;
-  if(prev===0)return`<span class="db ${invert?'dn':'up'}">${invert?'▼':'▲'} nuevo · ${diff>=0?'+':''}${fmt(diff)}</span>`;
+  if(prev===0)return`<span class="db ${invert?'dn':'up'}">${invert?'▼':'▲'} nuevo · ${diff>=0?'+':''}${fmtUS(diff)}</span>`;
   const pct=(diff)/Math.abs(prev)*100;
   const good=invert?(pct<0):(pct>0);
   const cls=pct===0?'nc':good?'up':'dn';
   const arrow=pct>0?'▲':pct<0?'▼':'=';
   const pctStr=Math.abs(pct)<0.1?Math.abs(pct).toFixed(2):Math.abs(pct).toFixed(1);
-  return`<span class="db ${cls}">${arrow} ${pctStr}% · ${diff>=0?'+':''}${fmt(diff)}</span>`;
+  return`<span class="db ${cls}">${arrow} ${pctStr}% · ${diff>=0?'+':''}${fmtUS(diff)}</span>`;
 }
 
 function getLatestSnapshot(){
@@ -5706,7 +5734,7 @@ function renderRetirosPorMes(){
       <input class="fin-input money" type="text" inputmode="numeric" value="" placeholder="${fmt(sug)}" onchange="saveRetiroMesYM('${ym}',this.value)" style="width:130px">
     </div>`;
   }).join('');
-  el.innerHTML=`<div style="font-size:.66rem;color:var(--amber);margin-bottom:6px">💸 <strong>Meses sin cargar el retiro</strong> — anotá lo que sacaron (vacío = usa el 15%).</div>${rows}`;
+  el.innerHTML=`<div style="font-size:.66rem;color:var(--amber);margin-bottom:6px">💸 <strong>Meses sin cargar el retiro</strong> — anotá lo que sacaron (vacío = usa el sugerido).</div>${rows}`;
 }
 // CUÁNDO SE CARGÓ CADA COSA A MANO.
 // El efectivo se cuenta en un momento (se abre la caja y se cuenta) y MercadoPago en otro (se mira
@@ -6920,6 +6948,9 @@ async function migrarOficina(){
 // no solo se muestra: si quedara solo en pantalla, el cierre de mes guardaría el número viejo.
 async function syncOfiMati(){
   const val=Math.round((state.products||[]).reduce((s,p)=>s+stockOficina(p)*costP(p),0));
+  // Desde que se cuenta por unidades, "Oficina Mati" ya no vuelve al número a mano (etapa 2, 20/10/2026):
+  // si la oficina quedaba en 0 (todo salió en cajas), el último valor sincronizado se volvía a sumar.
+  if(val>0&&!(state.mlconfig||{}).ofiPorUnidades){state.mlconfig=state.mlconfig||{};state.mlconfig.ofiPorUnidades=true;try{await fbSet('mlconfig/ofiPorUnidades',true);}catch(_){}}
   if((parseFloat(state.finanzas.of_mia)||0)===val)return;
   state.finanzas.of_mia=val;
   await fbSet('finanzas/of_mia',val);
@@ -8176,7 +8207,7 @@ function calcArqueo(){
   const _uOfiMati=(state.products||[]).reduce((s,p)=>s+stockOficina(p),0);
   FIN_FIELDS.forEach(f=>{
     if(f.detalle)return;                        /* desglose de otro campo: ya está sumado ahí */
-    if(f.k==='of_mia'&&_uOfiMati>0)return;      /* ya contado como stock local, por unidades */
+    if(f.k==='of_mia'&&(_uOfiMati>0||(state.mlconfig||{}).ofiPorUnidades))return;      /* ya contado como stock local, por unidades */
     const raw=parseFloat(state.finanzas[f.k])||0;
     if(f.neutral){corregir+=raw;return;}        /* neutro y con signo */
     // Etapa 2 (28/09): lo que escribe el ROBOT (disponible y a liquidar de MP) va con su signo: un
@@ -8184,12 +8215,14 @@ function calcArqueo(){
     const v=(f.pos&&FIN_CON_SIGNO.has(f.k))?raw:Math.abs(raw);
     if(f.pos)activos+=v;else deudas+=v;
   });
-  const vsr=_arqViewYM?0:vendidoSinReporte().usd;
+  // Mirando un mes cerrado, lo de ese cierre (etapa 2, 20/10/2026): sin esto las tarjetas no sumaban el total.
+  const _snV=_arqViewYM&&state.snapshots&&state.snapshots[_arqViewYM];
+  const vsr=_arqViewYM?(Number((_snV||{}).vsrUSD)||0):vendidoSinReporte().usd;
   activos+=vsr;
   // Lo que llegó del Paulvic y todavía no se pagó (06/10/2026): la mercadería ya está contada en la
   // oficina, así que lo que se le debe va como deuda. Sin esto el patrimonio subía de golpe el día que
   // llega y volvía a bajar al pagar, sin que pasara nada.
-  const pvDeuda=_arqViewYM?0:pvDeudaUSD();
+  const pvDeuda=_arqViewYM?(Number((_snV||{}).pvUSD)||0):pvDeudaUSD();
   deudas+=pvDeuda;
   // Un mes cerrado lleva la deuda con ARCA que tenía a ESE cierre (`arcaARS`, 17/10/2026), pasada con su dólar.
   const _snA=_arqViewYM&&state.snapshots&&state.snapshots[_arqViewYM];
@@ -8220,7 +8253,12 @@ function renderReconciliacion(){
   const snapKey=(state.snapshots&&state.snapshots[prevYm])?prevYm:(_prevKeys.length?_prevKeys[_prevKeys.length-1]:null);
   const snap=snapKey?state.snapshots[snapKey]:null;
   if(!snap||snap.total==null){el.innerHTML=card(`<div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.9rem;margin-bottom:4px">🔍 ¿Cierra el mes?</div><div style="font-size:.66rem;color:var(--muted)">Cerrá un mes con 📸 para tener un punto de comparación del patrimonio.</div>`,'#6b6b7a');return;}
-  const P=_puntGananciaMes(ym);                 // neto/costo/retiro/gastos/ganancia (pesos)
+  // MESES SIN CERRAR EN EL MEDIO (etapa 2, 20/10/2026): el 02/11 con octubre sin cerrar, la base es septiembre y
+  // el patrimonio creció octubre + noviembre; contar sólo noviembre daba "Sobra" lo de todo octubre. Se suman todos
+  // los meses desde el cierre de la base hasta el evaluado.
+  const _mesesEval=[];{let k=ym;while(k>snapKey&&_mesesEval.length<24){_mesesEval.unshift(k);k=_puntMesPrev(k);}}
+  const _Ps=_mesesEval.map(m=>({m,P:_puntGananciaMes(m)}));
+  const P=_Ps.reduce((a,x)=>({neto:a.neto+x.P.neto,costo:a.costo+x.P.costo,gastos:a.gastos+x.P.gastos,retiro:a.retiro+x.P.retiro}),{neto:0,costo:0,gastos:0,retiro:0});
   const cArq=calcArqueo();
   // Si el mes que evaluás YA está cerrado, uso su cierre guardado como "fin"; si todavía no, el valor en vivo.
   const endSnap=(state.snapshots&&state.snapshots[ym]&&state.snapshots[ym].total!=null)?state.snapshots[ym]:null;
@@ -8239,9 +8277,10 @@ function renderReconciliacion(){
   const arcaPrevFalta=(snap.arcaARS==null&&(endSnap?Number(endSnap.arcaARS)>0:cArq.arcaDeuda>0))?arcaDeudaARS(snapKey).ars:0;
   const dP=Math.round((arqNow-snap.total)*tc)+arcaPrevFalta;  // cuánto creció el patrimonio (pesos, aprox)
   const genera=P.neto-P.costo-P.gastos;         // lo que generó el negocio
-  const rmRaw=state.retiro_mes&&state.retiro_mes[ym];
-  const retReal=(rmRaw!=null&&rmRaw!=='')?Number(rmRaw):null;      // lo que cobraron de verdad
-  const retiroUsado=retReal!=null?retReal:P.retiro;               // real si lo cargaste, si no el 15%
+  // Retiro de cada mes: el cargado, o el supuesto de ese mes (`retiroDefMes`).
+  let retiroUsado=0,_retFaltan=0;
+  for(const x of _Ps){const rr=state.retiro_mes&&state.retiro_mes[x.m];if(rr!=null&&rr!==''){retiroUsado+=Number(rr)||0;}else{retiroUsado+=x.P.retiro;_retFaltan++;}}
+  const retReal=_retFaltan===0?retiroUsado:null;      // null = algún mes usa el supuesto
   const esperado=genera-retiroUsado;            // lo que debería quedar en el negocio
   const dif=dP-esperado;                         // <0 falta · >0 sobra
   const umbral=Math.max(300000,Math.abs(esperado)*0.15);
@@ -8261,7 +8300,7 @@ function renderReconciliacion(){
       ${row('Creció el patrimonio (arqueo)',fmt(dP))}
       <div style="border-top:1px solid var(--border);margin-top:3px;padding-top:6px">${row('Diferencia',fmt(dif),`font-weight:700;color:${col}`)}</div>
     </div>
-    <div style="font-size:.6rem;color:var(--muted);margin-top:10px;line-height:1.5">${expl}<br>El negocio generó ${fmt(genera)} · retiro ${retReal!=null?'cobrado':'estimado 15%'} ${fmt(retiroUsado)}${retReal==null?' <span style="color:var(--amber)">(cargá el retiro real arriba para precisión)</span>':''}. Patrimonio pasado a pesos al dólar ${fmt(tc)} (aprox).${arcaPrevFalta>0?`<br><span style="color:var(--amber)">La deuda con ARCA de los meses anteriores (${fmt(arcaPrevFalta)}) no se le cobra a este mes: es un ajuste de una sola vez. Acá cuenta sólo lo que H suma este mes.</span>`:''}</div>
+    <div style="font-size:.6rem;color:var(--muted);margin-top:10px;line-height:1.5">${expl}<br>${_mesesEval.length>1?`<span style="color:var(--amber)">Suma ${_mesesEval.length} meses (${_mesesEval.map(m=>MONTHS[parseInt(m.split('_')[1],10)-1]).join(' + ')}): el último cierre es ${state.snapshots[snapKey].label||snapKey}. Cerrá el mes anterior para ver uno solo.</span><br>`:''}El negocio generó ${fmt(genera)} · retiro ${retReal!=null?'cobrado':'supuesto ('+retiroDefTxt(ym)+')'} ${fmt(retiroUsado)}${retReal==null?' <span style="color:var(--amber)">(cargá el retiro real arriba para precisión)</span>':''}. Patrimonio pasado a pesos al dólar ${fmt(tc)} (aprox).${arcaPrevFalta>0?`<br><span style="color:var(--amber)">La deuda con ARCA de los meses anteriores (${fmt(arcaPrevFalta)}) no se le cobra a este mes: es un ajuste de una sola vez. Acá cuenta sólo lo que H suma este mes.</span>`:''}</div>
   `,col);
 }
 
@@ -8367,7 +8406,7 @@ function renderAgenda(){
       +`<div style="width:64px;font-size:.66rem;color:var(--muted);font-family:'DM Mono',monospace">${dia} ${dd}</div>`
       +`<div style="flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden">`
       +`<div style="width:${pct}%;height:100%;background:${colorBarra}"></div></div>`
-      +`<div style="width:86px;text-align:right;font-size:.7rem;font-family:'DM Mono',monospace${neg?';color:var(--red)':''}">${fmt(Math.round(x.usd))}</div>`
+      +`<div style="width:86px;text-align:right;font-size:.7rem;font-family:'DM Mono',monospace${neg?';color:var(--red)':''}">${fmtUS(Math.round(x.usd))}</div>`
       +'</div>';
   }).join('');
   const resto=a.dias.length>14?`<div style="font-size:.64rem;color:var(--muted);margin-top:6px">y ${a.dias.length-14} día(s) más, hasta el ${a.ultimo.slice(8,10)}/${a.ultimo.slice(5,7)}</div>`:'';
@@ -8379,13 +8418,13 @@ function renderAgenda(){
     +(rhA?` · ${rhA.viejo?'⚠️ ':''}reporte de MP hasta el ${rhA.txt}`:'')+'</div></div>'
     +(rhA&&rhA.viejo?`<div style="font-size:.64rem;color:var(--amber);margin-top:4px">Mercado Pago no generó un reporte nuevo: lo vendido después del ${rhA.txt} todavía no está acá ni en «A liquidar».</div>`:'')
     +'<div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:8px">'
-    +`<div><div style="font-size:.62rem;color:var(--muted)">hoy</div><div style="font-size:1.25rem;font-weight:600${rojoSiNeg(a.hoy)}">${fmt(Math.round(a.hoy))}${enPesos(a.hoy)}</div></div>`
-    +`<div><div style="font-size:.62rem;color:var(--muted)">mañana</div><div style="font-size:1.25rem;font-weight:600${rojoSiNeg(a.manana)}">${fmt(Math.round(a.manana))}${enPesos(a.manana)}</div></div>`
-    +`<div><div style="font-size:.62rem;color:var(--muted)">7 días</div><div style="font-size:1.25rem;font-weight:600${rojoSiNeg(a.semana)}">${fmt(Math.round(a.semana))}${enPesos(a.semana)}</div></div>`
-    +`<div><div style="font-size:.62rem;color:var(--muted)">todo lo pendiente</div><div style="font-size:1.25rem;font-weight:600${rojoSiNeg(a.total)}">${fmt(Math.round(a.total))}${enPesos(a.total)}</div></div>`
+    +`<div><div style="font-size:.62rem;color:var(--muted)">hoy</div><div style="font-size:1.25rem;font-weight:600${rojoSiNeg(a.hoy)}">${fmtUS(Math.round(a.hoy))}${enPesos(a.hoy)}</div></div>`
+    +`<div><div style="font-size:.62rem;color:var(--muted)">mañana</div><div style="font-size:1.25rem;font-weight:600${rojoSiNeg(a.manana)}">${fmtUS(Math.round(a.manana))}${enPesos(a.manana)}</div></div>`
+    +`<div><div style="font-size:.62rem;color:var(--muted)">7 días</div><div style="font-size:1.25rem;font-weight:600${rojoSiNeg(a.semana)}">${fmtUS(Math.round(a.semana))}${enPesos(a.semana)}</div></div>`
+    +`<div><div style="font-size:.62rem;color:var(--muted)">todo lo pendiente</div><div style="font-size:1.25rem;font-weight:600${rojoSiNeg(a.total)}">${fmtUS(Math.round(a.total))}${enPesos(a.total)}</div></div>`
     +'</div>'
-    +(a.sinDia>0?`<div style="font-size:.64rem;color:var(--muted);margin-top:6px">Adentro de "todo lo pendiente" hay ${fmt(Math.round(a.sinDia))} que ML todavía no dijo qué día libera.</div>`:'')
-    +(a.nPasados?`<div style="font-size:.64rem;color:var(--muted);margin-top:6px">Ya se liberó desde que se calculó: ${fmt(Math.round(a.yaLiberado))} en ${a.nPasados} día(s). Eso ya está en el disponible.</div>`:'')
+    +(a.sinDia>0?`<div style="font-size:.64rem;color:var(--muted);margin-top:6px">Adentro de "todo lo pendiente" hay ${fmtUS(Math.round(a.sinDia))} que ML todavía no dijo qué día libera.</div>`:'')
+    +(a.nPasados?`<div style="font-size:.64rem;color:var(--muted);margin-top:6px">Ya se liberó desde que se calculó: ${fmtUS(Math.round(a.yaLiberado))} en ${a.nPasados} día(s). Eso ya está en el disponible.</div>`:'')
     // El día por día va adentro del desplegable y los CUATRO NÚMEROS quedan siempre a la vista.
     // No es lo mismo esconder el detalle que esconder la conclusión: «cuánto entra hoy» y «cuánto
     // mañana» son justo lo que él pidió poder preguntar, y las barras son el detalle que casi
@@ -8535,7 +8574,8 @@ function updateArqueo(){try{if(!_arqViewYM)_btnCerrarTxt();}catch(_){}
       // muestran las dos cosas y el orden va por plata, que es lo que importa para el arqueo.
       const filas=ML_LOCS.map(l=>{
         let v=0,u=0;
-        (state.products||[]).forEach(p=>{const q=getQ(p.id,l);if(q){v+=q*efectivoCostP(p);u+=q;}});
+        // Misma suma que la tarjeta (etapa 2, 20/10/2026): sin negativos y con lo de publicaciones ocultas.
+        (state.products||[]).forEach(p=>{const q=Math.max(0,getQ(p.id,l))+Math.max(0,parseInt((state.stockoculto||{})[invKey(p.id,l)])||0);if(q){v+=q*efectivoCostP(p);u+=q;}});
         return{l,v,u};
       }).sort((a,b)=>b.v-a.v);
       const tot=filas.reduce((a,f)=>a+f.v,0);
@@ -8548,7 +8588,7 @@ function updateArqueo(){try{if(!_arqViewYM)_btnCerrarTxt();}catch(_){}
         <span style="color:var(--muted);opacity:.6;font-size:.6rem;text-transform:uppercase;letter-spacing:.06em;text-align:right">del total</span>
         ${filas.map(f=>`
           <span style="color:var(--text)">${f.l}<span style="color:var(--muted);opacity:.75"> · ${fmtN(f.u)} u.</span></span>
-          <span style="font-family:'DM Mono',monospace;white-space:nowrap;text-align:right">${fmt(f.v)}</span>
+          <span style="font-family:'DM Mono',monospace;white-space:nowrap;text-align:right">${fmtUS(f.v)}</span>
           <span style="font-family:'DM Mono',monospace;white-space:nowrap;text-align:right;color:var(--muted)">${tot>0?Math.round(f.v/tot*100):0}%</span>
           <span style="grid-column:1/-1;height:3px;border-radius:2px;background:var(--border);margin:0 0 4px;overflow:hidden">
             <span style="display:block;height:100%;width:${maxV>0?Math.round(f.v/maxV*100):0}%;background:var(--accent2);opacity:.55"></span>
@@ -8558,9 +8598,11 @@ function updateArqueo(){try{if(!_arqViewYM)_btnCerrarTxt();}catch(_){}
   }
   const dbkLoc=document.getElementById('dbk_stock_local');
   if(dbkLoc)dbkLoc.innerHTML=prevLocalFin!==undefined?deltaBadge(stockLocalFin,prevLocalFin):'';
-  const prevEfect=prev?['efectivo','mp_disp','mp_liq'].reduce((s,k)=>s+(parseFloat(prev.finanzas?.[k])||0),0):null;
+  // Contra LO MISMO (etapa 2, 20/10/2026): el efectivo de hoy lleva lo vendido sin reporte y la deuda lleva
+  // ARCA y el Paulvic; el cierre anterior los tiene guardados aparte (los viejos, sólo ARCA).
+  const prevEfect=prev?['efectivo','mp_disp','mp_liq'].reduce((s,k)=>s+(parseFloat(prev.finanzas?.[k])||0),0)+(Number(prev.vsrUSD)||0):null;
   const prevDeben=prev?['deben_cyc'].reduce((s,k)=>s+(parseFloat(prev.finanzas?.[k])||0),0):null;
-  const prevDeuda=prev?['tarjeta','deuda_cyc','dolares_mati','dolares_tito'].reduce((s,k)=>s+(Math.abs(parseFloat(prev.finanzas?.[k])||0)),0):null;
+  const prevDeuda=prev?['tarjeta','deuda_cyc','dolares_mati','dolares_tito'].reduce((s,k)=>s+(Math.abs(parseFloat(prev.finanzas?.[k])||0)),0)+(Number(prev.pvUSD)||0)+((Number(prev.arcaARS)>0&&Number(prev.tipoCambio)>0)?Number(prev.arcaARS)/Number(prev.tipoCambio):0):null;
   const dbkEf=document.getElementById('dbk_efectivo');if(dbkEf)dbkEf.innerHTML=prevEfect!==null?deltaBadge(c.efect,prevEfect):'';
   const dbkDb=document.getElementById('dbk_deben');if(dbkDb)dbkDb.innerHTML=prevDeben!==null?deltaBadge(c.deben,prevDeben):'';
   const dbkDd=document.getElementById('dbk_deudas');if(dbkDd)dbkDd.innerHTML=(prevDeuda!==null?deltaBadge(c.deuda,prevDeuda,true):'')+(c.pvDeuda>0?`<div style="font-size:.62rem;color:var(--amber);margin-top:3px">incluye ${fmtUS(c.pvDeuda)} del Paulvic · llegó, falta pagar</div>`:'')+(c.arcaDeuda>0?(()=>{const _s=_arqViewYM&&state.snapshots&&state.snapshots[_arqViewYM];const a=_s&&_s.arcaARS>0?{ars:Number(_s.arcaARS),meses:Math.round(Number(_s.arcaARS)/(Number((state.mlconfig||{}).arcaHMes)||427498))}:arcaDeudaARS();return `<div style="font-size:.62rem;color:var(--amber);margin-top:3px">incluye ${fmtUS(c.arcaDeuda)} (${fmt(a.ars)}) para ARCA · categoría H de ${a.meses} mes${a.meses===1?'':'es'} · sin intereses</div>`;})():'');
@@ -8617,6 +8659,12 @@ function updateArqueo(){try{if(!_arqViewYM)_btnCerrarTxt();}catch(_){}
       // tarjeta "Stock Local" lee la base, así que quedaban dos números distintos en pantalla.
       // syncOfiMati() no hace nada si ya coincide, así que esto no cuesta ni entra en loop.
       syncOfiMati();
+    }else if((state.mlconfig||{}).ofiPorUnidades){
+      // La oficina quedó en 0 después de haberse contado: vale 0, no el número viejo.
+      _inpMati.readOnly=true;_inpMati.style.opacity='.75';_inpMati.style.cursor='default';
+      if(document.activeElement!==_inpMati)setMoneyVal(_inpMati,0);
+      if(_notaMati)_notaMati.textContent=' · 0 u. en Mi oficina';
+      syncOfiMati();
     }else{
       _inpMati.readOnly=false;_inpMati.style.opacity='';_inpMati.style.cursor='';
       if(_notaMati)_notaMati.textContent=' · contá las unidades en Mi oficina';
@@ -8641,7 +8689,7 @@ function updateArqueo(){try{if(!_arqViewYM)_btnCerrarTxt();}catch(_){}
   }
   const dtEl=document.getElementById('db_total');
   if(dtEl){
-    if(prev){const diff=dispTotal-(prev.total||0);const pct=prev.total?((diff/Math.abs(prev.total))*100).toFixed(1):'—';const cls=diff>=0?'up':'dn';dtEl.innerHTML=`<span class="db ${cls}" title="vs ${prev.label||'cierre anterior'}">${diff>=0?'▲':'▼'} ${Math.abs(pct)}% · ${diff>=0?'+':''}${fmt(diff)}</span>`;}
+    if(prev){const diff=dispTotal-(prev.total||0);const pct=prev.total?((diff/Math.abs(prev.total))*100).toFixed(1):'—';const cls=diff>=0?'up':'dn';dtEl.innerHTML=`<span class="db ${cls}" title="vs ${prev.label||'cierre anterior'}">${diff>=0?'▲':'▼'} ${Math.abs(pct)}% · ${diff>=0?'+':''}${fmtUS(diff)}</span>`;}
     else dtEl.innerHTML='';
   }
   const lbl=document.getElementById('arqueo-prev-label');
@@ -8684,7 +8732,7 @@ function updateArqueo(){try{if(!_arqViewYM)_btnCerrarTxt();}catch(_){}
 function updateHeaderTotal(){
   const c=calcArqueo();
   const el=document.getElementById('total-val');if(!el)return;
-  el.textContent=fmt(c.total);el.className='val'+(c.total<0?' negative':'');
+  el.textContent=fmtUS(c.total);el.className='val'+(c.total<0?' negative':'');
 }
 
 let dailySnapTimer,_ultDailySnap='';
@@ -8745,7 +8793,12 @@ async function saveSnapshot(){
   // `renderAgenda` no la muestra cuando se mira un mes cerrado.
   const {agenda:_sinAgenda, ...finSnap}=state.finanzas||{};
   // La deuda con ARCA que ya está ADENTRO de este total, en pesos: el mes siguiente la resta para medir sólo lo suyo.
-  const snap={label,ts:Date.now(),stock:c.stockVal,stockML:c.stockML,stockLocal:c.stockLocal,total:c.total,tipoCambio,tcMes,arcaARS:c.arcaDeuda>0?arcaDeudaARS().ars:0,
+  // ARCA HASTA EL MES QUE SE CIERRA (etapa 2, 20/10/2026): cerrando octubre el 02/11, `arcaDeudaARS()` ya sumaba
+  // noviembre y el cierre quedaba un mes de H más abajo (misma regla que `arcacierres` del robot).
+  const _tcA=curTC(), arcaARS=c.arcaDeuda>0?arcaDeudaARS(key).ars:0;
+  const totalSnap=c.total+((c.arcaDeuda>0&&_tcA>0)?c.arcaDeuda-arcaARS/_tcA:0);
+  const snap={label,ts:Date.now(),stock:c.stockVal,stockML:c.stockML,stockLocal:c.stockLocal,total:totalSnap,tipoCambio,tcMes,arcaARS,
+    vsrUSD:c.vsr||0,pvUSD:c.pvDeuda||0,
     finanzas:finSnap,
     locValues:Object.fromEntries(LOCS.map(l=>{let v=0;(state.products||[]).forEach(p=>v+=Math.max(0,getQ(p.id,l))*costP(p));return[sid(l),v];})),
     prodValues};
@@ -9180,7 +9233,9 @@ function renderCompMes(el){
   else{
     const cur=calcArqueo();
     const prodValues={};(state.products||[]).forEach(p=>{let v=0;LOCS.forEach(l=>v+=Math.max(0,getQ(p.id,l))*costP(p));prodValues[p.id]={name:p.name,value:v};});
-    dataB={label:'Actual',stock:cur.stockVal,total:cur.total,finanzas:{...state.finanzas},
+    // Con lo mismo que guarda un cierre (etapa 2, 20/10/2026): sin stockLocal la oficina se sumaba dos veces en Activos.
+    dataB={label:'Actual',stock:cur.stockVal,stockLocal:cur.stockLocal,total:cur.total,finanzas:{...state.finanzas},
+      vsrUSD:cur.vsr||0,pvUSD:cur.pvDeuda||0,arcaUSD:cur.arcaDeuda||0,
       locValues:Object.fromEntries(LOCS.map(l=>{let v=0;(state.products||[]).forEach(p=>v+=Math.max(0,getQ(p.id,l))*costP(p));return[sid(l),v];})),prodValues};
     labelB='Mes actual';
   }
@@ -9193,9 +9248,11 @@ function renderCompAnio(el){
   const snaps=state.snapshots||{};
   function aggregateYear(y){
     const keys=Object.keys(snaps).filter(k=>k.startsWith(y+'_'));if(!keys.length)return null;
-    const agg={label:y,total:0,stock:0,finanzas:{},locValues:{},prodValues:{},months:keys.length};
+    const agg={label:y,total:0,stock:0,stockLocal:0,vsrUSD:0,pvUSD:0,arcaUSD:0,finanzas:{},locValues:{},prodValues:{},months:keys.length};
     FIN_FIELDS.forEach(f=>agg.finanzas[f.k]=0);LOCS.forEach(l=>agg.locValues[sid(l)]=0);
     keys.forEach(k=>{const s=snaps[k];agg.stock+=s.stock||0;agg.total+=s.total||0;
+      agg.stockLocal+=Number(s.stockLocal)||0;agg.vsrUSD+=Number(s.vsrUSD)||0;agg.pvUSD+=Number(s.pvUSD)||0;
+      agg.arcaUSD+=(Number(s.arcaARS)>0&&Number(s.tipoCambio)>0)?Number(s.arcaARS)/Number(s.tipoCambio):0;
       FIN_FIELDS.forEach(f=>agg.finanzas[f.k]+=(parseFloat(s.finanzas?.[f.k])||0));
       LOCS.forEach(l=>agg.locValues[sid(l)]+=(s.locValues?.[sid(l)]||0));
       if(s.prodValues)Object.entries(s.prodValues).forEach(([id,pv])=>{
@@ -9218,14 +9275,14 @@ function buildCompHTML(dataA,dataB,labelB,isYearly=false){
   const dRow=(label,va,vb,isNeg=false)=>{
     const dv=isNeg?-Math.abs(va):(va||0);const dp=hasB?(isNeg?-Math.abs(vb||0):(vb||0)):null;
     const badge=hasB?`<span class="delta ${getDeltaCls(dv,dp)}">${getDeltaTxt(dv,dp)}</span>`:'—';
-    return`<tr><td>${label}</td><td>${hasB?fmt(dp):'—'}</td><td style="color:${isNeg?'var(--red)':'var(--green)'}">${fmt(dv)}</td><td>${badge}</td></tr>`;
+    return`<tr><td>${label}</td><td>${hasB?fmtUS(dp):'—'}</td><td style="color:${isNeg?'var(--red)':'var(--green)'}">${fmtUS(dv)}</td><td>${badge}</td></tr>`;
   };
   const totA=dataA.total||0;const totB=hasB?(dataB.total||0):null;const diff=hasB?totA-totB:0;
   const lbDisplay=hasB&&dataB.tipoCambio?labelB+' (USD $'+dataB.tipoCambio.toLocaleString('es-AR')+')':labelB;
   const summaryHTML=`<div class="summary-cards">
-    <div class="sc"><div class="sc-lbl">${hasB?lbDisplay:'—'}</div><div class="sc-val neu">${hasB?fmt(totB):'—'}</div>${isYearly&&hasB?`<div class="sc-sub">${dataB.months||'?'} meses</div>`:''}</div>
-    <div class="sc"><div class="sc-lbl">${la}</div><div class="sc-val ${totA>=0?'pos':'neg'}">${fmt(totA)}</div>${isYearly?`<div class="sc-sub">${dataA.months||'?'} meses</div>`:''}</div>
-    <div class="sc"><div class="sc-lbl">Diferencia</div><div class="sc-val ${diff>=0?'pos':'neg'}">${hasB?fmt(diff):'—'}</div></div>
+    <div class="sc"><div class="sc-lbl">${hasB?lbDisplay:'—'}</div><div class="sc-val neu">${hasB?fmtUS(totB):'—'}</div>${isYearly&&hasB?`<div class="sc-sub">${dataB.months||'?'} meses</div>`:''}</div>
+    <div class="sc"><div class="sc-lbl">${la}</div><div class="sc-val ${totA>=0?'pos':'neg'}">${fmtUS(totA)}</div>${isYearly?`<div class="sc-sub">${dataA.months||'?'} meses</div>`:''}</div>
+    <div class="sc"><div class="sc-lbl">Diferencia</div><div class="sc-val ${diff>=0?'pos':'neg'}">${hasB?fmtUS(diff):'—'}</div></div>
     <div class="sc"><div class="sc-lbl">Variación</div><div class="sc-val ${diff>=0?'pos':'neg'}">${hasB&&totB!==0?(diff>=0?'▲ +':'▼ ')+Math.abs((diff/Math.abs(totB))*100).toFixed(1)+'%':'—'}</div></div>
   </div>`;
   // ── Comparación visual con barras ──
@@ -9233,8 +9290,11 @@ function buildCompHTML(dataA,dataB,labelB,isYearly=false){
   // y sumarlos contaría la misma plata dos veces.
   // Etapa 2 (28/09): la oficina de Mati ya está dentro de "Stock" cuando el cierre la tiene contada
   // por unidades (stockLocal): sumarla también acá la contaba dos veces.
-  const sumPos=d=>FIN_FIELDS.filter(f=>f.pos&&!f.detalle&&!(f.k==='of_mia'&&Number(d?.stockLocal)>0)).reduce((s,f)=>s+(parseFloat(d?.finanzas?.[f.k])||0),0);
-  const sumNeg=d=>FIN_FIELDS.filter(f=>!f.pos&&!f.detalle).reduce((s,f)=>s+Math.abs(parseFloat(d?.finanzas?.[f.k])||0),0);
+  // Y las barras suman lo mismo que el patrimonio (etapa 2, 20/10/2026): vendido sin reporte en Activos,
+  // Paulvic y ARCA en Deudas (los cierres viejos no tienen los dos primeros).
+  const sumPos=d=>FIN_FIELDS.filter(f=>f.pos&&!f.detalle&&!(f.k==='of_mia'&&Number(d?.stockLocal)>0)).reduce((s,f)=>s+(parseFloat(d?.finanzas?.[f.k])||0),0)+(Number(d?.vsrUSD)||0);
+  const _arcaUSDde=d=>d?.arcaUSD!=null?Number(d.arcaUSD)||0:((Number(d?.arcaARS)>0&&Number(d?.tipoCambio)>0)?Number(d.arcaARS)/Number(d.tipoCambio):0);
+  const sumNeg=d=>FIN_FIELDS.filter(f=>!f.pos&&!f.detalle).reduce((s,f)=>s+Math.abs(parseFloat(d?.finanzas?.[f.k])||0),0)+(Number(d?.pvUSD)||0)+_arcaUSDde(d);
   const stockA=dataA.stock||Object.values(dataA.locValues||{}).reduce((a,b)=>a+(b||0),0);
   const stockB=hasB?(dataB.stock||Object.values(dataB.locValues||{}).reduce((a,b)=>a+(b||0),0)):0;
   const mets=[{l:'Patrimonio',a:totA,b:totB||0},{l:'Stock',a:stockA,b:stockB},{l:'Activos',a:sumPos(dataA),b:hasB?sumPos(dataB):0},{l:'Deudas',a:sumNeg(dataA),b:hasB?sumNeg(dataB):0}];
@@ -9242,9 +9302,9 @@ function buildCompHTML(dataA,dataB,labelB,isYearly=false){
   const metricsHTML=hasB?`<div class="stitle">Comparación visual</div><div style="display:flex;flex-direction:column;gap:15px;margin-bottom:20px">`+
     mets.map(m=>{const max=Math.max(Math.abs(m.a),Math.abs(m.b),1);const d=m.a-m.b;const dc=d>=0?'var(--green)':'var(--red)';
       return`<div>
-        <div style="display:flex;justify-content:space-between;font-size:.68rem;margin-bottom:6px"><span style="color:var(--text);font-weight:600">${m.l}</span><span style="color:${dc}">${(d>=0?'▲ +':'▼ ')+fmt(Math.abs(d))}</span></div>
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px"><span style="width:110px;font-size:.6rem;color:var(--muted)">${labelB}</span>${bar(m.b,max,'#3a3a42')}<span style="width:110px;text-align:right;font-size:.64rem;color:var(--muted)">${fmt(m.b)}</span></div>
-        <div style="display:flex;align-items:center;gap:8px"><span style="width:110px;font-size:.6rem;color:#a78bfa">${dataA.label}</span>${bar(m.a,max,'linear-gradient(90deg,#7c3aed,#a855f7)')}<span style="width:110px;text-align:right;font-size:.64rem">${fmt(m.a)}</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:.68rem;margin-bottom:6px"><span style="color:var(--text);font-weight:600">${m.l}</span><span style="color:${dc}">${(d>=0?'▲ +':'▼ ')+fmtUS(Math.abs(d))}</span></div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px"><span style="width:110px;font-size:.6rem;color:var(--muted)">${labelB}</span>${bar(m.b,max,'#3a3a42')}<span style="width:110px;text-align:right;font-size:.64rem;color:var(--muted)">${fmtUS(m.b)}</span></div>
+        <div style="display:flex;align-items:center;gap:8px"><span style="width:110px;font-size:.6rem;color:#a78bfa">${dataA.label}</span>${bar(m.a,max,'linear-gradient(90deg,#7c3aed,#a855f7)')}<span style="width:110px;text-align:right;font-size:.64rem">${fmtUS(m.a)}</span></div>
       </div>`;}).join('')+`</div>`:'';
   const finRows=FIN_FIELDS.map(f=>dRow(f.label,parseFloat(dataA.finanzas?.[f.k])||0,parseFloat(dataB?.finanzas?.[f.k])||0,!f.pos)).join('');
   const locRows=VAL_ORDER.map(l=>dRow('Stock '+l,dataA.locValues?.[sid(l)]||0,dataB?.locValues?.[sid(l)]||0)).join('');
@@ -9259,7 +9319,7 @@ function buildCompHTML(dataA,dataB,labelB,isYearly=false){
       <tr class="sep-row"><td colspan="4">Stock por cuenta</td></tr>${locRows}
       <tr class="sep-row"><td colspan="4">Activos financieros</td></tr>${finRows}
       <tr class="sep-row"><td colspan="4">Productos</td></tr>${prodRows}
-      <tr class="total-row"><td>PATRIMONIO TOTAL</td><td>${hasB?fmt(totB):'—'}</td><td>${fmt(totA)}</td><td><span class="delta ${getDeltaCls(totA,totB)}">${getDeltaTxt(totA,totB)}</span></td></tr>
+      <tr class="total-row"><td>PATRIMONIO TOTAL</td><td>${hasB?fmtUS(totB):'—'}</td><td>${fmtUS(totA)}</td><td><span class="delta ${getDeltaCls(totA,totB)}">${getDeltaTxt(totA,totB)}</span></td></tr>
     </tbody>
   </table></div>`;
 }
@@ -21094,15 +21154,16 @@ function _homeCobroHtml(f){
     const antLbl=MONTHS[(pm+10)%12],mesCorto=MONTHS[pm-1];
     let cbAnt=null;try{cbAnt=cobroProxMes(calcPuntajeMes(antYM));}catch(e){}
     const falta=cbAnt?cbAnt.tercio-cb.yaPorSocio:null;
+    const _avAnt=cbAnt?_gastosFaltanAviso(antYM,antLbl):'',_avEste=P.esActual?'':_gastosFaltanAviso(ym,mesCorto);
     const pr=P.esActual?cobroProyMes(ym):null;
     if(pr)return `<div style="font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)">Para cobrar en ${sigLbl} · cada uno · proyección a fin de ${mesCorto.toLowerCase()}</div>
       <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.5rem;color:${pr.mes>0?'var(--text)':'var(--red)'}">${fmt(pr.mes)}</div>
       <div style="font-size:.66rem;color:var(--muted);line-height:1.45">Ventas al ritmo de ${mesCorto} (${fmt(pr.rMes)}/día) hasta el ${pr.diasMes} · menos los gastos del mes (${fmt(pr.gEsp)}${pr.gEsp>pr.gastos?', lo del mes pasado: faltan cargar':''}) · ÷ 3<br>Ya ganado hasta hoy: ${fmt(cb.tercio)} c/u (${fmt(cb.gan)} ÷ 3)</div>
-      ${cbAnt?`<div style="font-size:.7rem;margin-top:6px;line-height:1.45">En ${mesCorto} cobran lo que dejó ${antLbl}: <b>${fmt(cbAnt.tercio)} c/u</b>${cb.yaPorSocio>0?` · ya retiraron ${fmt(cb.yaPorSocio)} c/u · ${falta>=0?`<span style="color:var(--green)">quedan ${fmt(falta)} c/u</span>`:`<span style="color:var(--red)">se retiró de más ${fmt(-falta)} c/u</span>`}`:''}</div>`:''}`;
+      ${cbAnt?`<div style="font-size:.7rem;margin-top:6px;line-height:1.45">En ${mesCorto} cobran lo que dejó ${antLbl}: <b>${fmt(cbAnt.tercio)} c/u</b>${cb.yaPorSocio>0?` · ya retiraron ${fmt(cb.yaPorSocio)} c/u · ${falta>=0?`<span style="color:var(--green)">quedan ${fmt(falta)} c/u</span>`:`<span style="color:var(--red)">se retiró de más ${fmt(-falta)} c/u</span>`}`:''}</div>${_avAnt}`:''}${_avEste}`;
     return `<div style="font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)">Para cobrar en ${sigLbl} · cada uno${P.esActual?' · va hasta hoy':''}</div>
       <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.5rem;color:${cb.tercio>0?'var(--text)':'var(--red)'}">${fmt(cb.tercio)}</div>
       <div style="font-size:.66rem;color:var(--muted);line-height:1.45">Ganancia real de CYC en ${mesCorto}${P.esActual?' hasta hoy':''} ${fmt(cb.gan)} ÷ 3 (CYC, vos y tu papá)</div>
-      ${cbAnt?`<div style="font-size:.7rem;margin-top:6px;line-height:1.45">En ${mesCorto} cobran lo que dejó ${antLbl}: <b>${fmt(cbAnt.tercio)} c/u</b>${cb.yaPorSocio>0?` · ya retiraron ${fmt(cb.yaPorSocio)} c/u · ${falta>=0?`<span style="color:var(--green)">quedan ${fmt(falta)} c/u</span>`:`<span style="color:var(--red)">se retiró de más ${fmt(-falta)} c/u</span>`}`:''}</div>`:''}`;
+      ${cbAnt?`<div style="font-size:.7rem;margin-top:6px;line-height:1.45">En ${mesCorto} cobran lo que dejó ${antLbl}: <b>${fmt(cbAnt.tercio)} c/u</b>${cb.yaPorSocio>0?` · ya retiraron ${fmt(cb.yaPorSocio)} c/u · ${falta>=0?`<span style="color:var(--green)">quedan ${fmt(falta)} c/u</span>`:`<span style="color:var(--red)">se retiró de más ${fmt(-falta)} c/u</span>`}`:''}</div>${_avAnt}`:''}${_avEste}`;
   }catch(e){return '<span style="color:var(--muted);font-size:.7rem">No pude calcularlo.</span>';}
 }
 // PARA RETIRAR HASTA HOY (30/09/2026). Regla suya: "los 3 cobremos lo mismo: CYC, papá y yo". Corrección suya
@@ -21266,23 +21327,25 @@ function setPuntajeMeta(ym){
 function renderResumen_page(){
   const c=calcArqueo();
   const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=fmt(v);};
+  // Capital y patrimonio salen del Arqueo, que está en DÓLARES (etapa 2, 20/10/2026): antes con "$".
+  const setUS=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=fmtUS(v);};
   const setTxt=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
-  const setComp=(id,cur,prev,label='mes anterior')=>{
+  const setComp=(id,cur,prev,label='mes anterior',_f=fmt)=>{
     const el=document.getElementById(id);if(!el)return;
     if(prev===null||prev===undefined){el.textContent='sin comparacion';return;}
     const diff=cur-prev;
     const pct=prev?` (${diff>=0?'+':''}${((diff/Math.abs(prev))*100).toFixed(1)}%)`:'';
-    el.textContent=(diff>=0?'▲ ':'▼ ')+fmt(diff)+pct+' vs '+label;
+    el.textContent=(diff>=0?'▲ ':'▼ ')+_f(diff)+pct+' vs '+label;
     el.style.color=diff>=0?'var(--green)':'var(--red)';
     el.title='Comparación vs '+label;
   };
-  set('res-patrimonio',c.total);
-  set('res-stock',c.stockVal);
-  set('res-efect',c.efect);
+  setUS('res-patrimonio',c.total);
+  setUS('res-stock',c.stockVal);
+  setUS('res-efect',c.efect);
   const prevSnap=getLatestSnapshot();
-  setComp('res-patrimonio-comp',c.total,prevSnap?.total,'cierre anterior');
-  setComp('res-stock-comp',c.stockVal,prevSnap?.stock,'cierre anterior');
-  setComp('res-efect-comp',c.efect,prevSnap?['efectivo','mp_disp','mp_liq'].reduce((s,k)=>s+(parseFloat(prevSnap.finanzas?.[k])||0),0):null,'cierre anterior');
+  setComp('res-patrimonio-comp',c.total,prevSnap?.total,'cierre anterior',fmtUS);
+  setComp('res-stock-comp',c.stockVal,prevSnap?.stock,'cierre anterior',fmtUS);
+  setComp('res-efect-comp',c.efect,prevSnap?['efectivo','mp_disp','mp_liq'].reduce((s,k)=>s+(parseFloat(prevSnap.finanzas?.[k])||0),0)+(Number(prevSnap.vsrUSD)||0):null,'cierre anterior',fmtUS);
 
   _initScopeDefaults('res');
 
@@ -21298,6 +21361,15 @@ function renderResumen_page(){
   const _retiroDeKeys=keys=>{const ks=new Set(keys);let t=0;[...new Set(keys.map(k=>k.substring(0,7)))].forEach(ym=>{
     const dias=allVpKeys.filter(k=>k.startsWith(ym)).sort();if(!dias.length||!ks.has(dias[0]))return;
     const rm=_retiroMesVal(ym);t+=(rm!=null?rm:retiroDefMes(ym,_netoMesData(ym).tot));});return t;};
+  // LOS GASTOS FUERA DE "MES", CON LA MISMA REGLA (etapa 2, 20/10/2026): desde el 15/10 Métricas pone todos los
+  // gastos del mes el primer día con ventas; acá se seguían tomando por su fecha y "Ganancia real CYC" no daba
+  // lo mismo que "Ganancia CYC" en 30/60 días, Día o Año. Ahora: los gastos de cada mes cuyo primer día con
+  // ventas cae adentro del período.
+  const _mesesDeKeys=keys=>{const ks=new Set(keys);return[...new Set(keys.map(k=>k.substring(0,7)))].filter(ym=>{
+    const dias=allVpKeys.filter(k=>k.startsWith(ym)).sort();return dias.length&&ks.has(dias[0]);});};
+  const _gastosItemsDeKeys=keys=>{const ms=_mesesDeKeys(keys);return Object.values(state.compras||{}).filter(x=>getCompraTipo(x)==='gasto'&&ms.some(ym=>(x.dayKey||'').startsWith(ym)));};
+  const _gastosDeKeys=keys=>_gastosItemsDeKeys(keys).reduce((s,x)=>s+(x.monto||0),0);
+  const _catsDeKeys=keys=>{const cats={};_gastosItemsDeKeys(keys).forEach(x=>{const c=x.cat||'Otros';cats[c]=(cats[c]||0)+(x.monto||0);});return cats;};
   const _vpGest=keys=>{let t=0;keys.forEach(k=>{Object.values(state.ventaprod[k]||{}).forEach(v=>{t+=gestDivVP(v);});});return t;};
   const _cmpTot=(keys,tipo)=>Object.values(state.compras||{}).filter(x=>keys.includes(x.dayKey)&&getCompraTipo(x)===tipo).reduce((s,x)=>s+(x.monto||0),0);
   // revisión max (rev4): sólo las compras de tipo GASTO, igual que _gastosMes; la mercadería no es gasto fijo.
@@ -21358,7 +21430,7 @@ function renderResumen_page(){
   // Mismo orden que la cascada: neto − costo = Ganancia (idéntica a Métricas), después gastos,
   // y recién al final el retiro de los dueños. El total no cambia.
   const gananciaBruta=netoML-costoMerch;
-  const gastosMes=Math.round((_isMonth?_gastosMes(mesKey):comprasTot(null,'gasto'))*_propM);
+  const gastosMes=Math.round((_isMonth?_gastosMes(mesKey):_gastosDeKeys(periodKeys))*_propM);
   const quedaML=gananciaBruta-gastosMes;
   const gananciaReal=quedaML-retiro;
 
@@ -21368,7 +21440,7 @@ function renderResumen_page(){
   const _isMonthP=(resScopeMode==='mes'&&!!prevMesKey);
   const _rmMonthP=_isMonthP?_retiroMesVal(prevMesKey):null;
   const retiroP=_rmMonthP!=null?_rmMonthP:(_isMonthP?retiroDefMes(prevMesKey,netoMLp):_retiroDeKeys(prevPeriodKeys));
-  const gastosP=_isMonthP?_gastosMes(prevMesKey):_cmpTot(prevPeriodKeys._cmpKeys||[],'gasto');
+  const gastosP=_isMonthP?_gastosMes(prevMesKey):_gastosDeKeys(prevPeriodKeys);
   const gananciaRealP=(netoMLp-retiroP)-costoMerchP-gastosP;
 
   // Hero
@@ -21401,7 +21473,7 @@ function renderResumen_page(){
   const impPer=_vpImpuestos(periodKeys);
   setTxt('casc-costo-sub',`mercadería ${fmt(Math.round(costoMerch-impPer))} + impuestos ${fmt(Math.round(impPer))} `
     +`(IIBB de cada cuenta + monotributo ${brutoPer>0?(monoEnCosto/brutoPer*100).toFixed(2):monoPct().toFixed(2)}%)`);
-  const catsPer=_cmpCats(periodKeys._cmpKeys||[]);
+  const catsPer=_isMonth?_cmpCats(periodKeys._cmpKeys||[]):_catsDeKeys(periodKeys);
   const monoEnGastos=Object.entries(catsPer).filter(([c])=>/monotributo|impuesto/i.test(c)).reduce((s,[,v])=>s+v,0);
   setTxt('casc-gastos-sub',`monotributo contado: ${fmt(monoEnCosto+Math.round(monoEnGastos))} `
     +`(${fmt(monoEnCosto)} dentro del costo + ${fmt(Math.round(monoEnGastos))} acá) · contador, alquiler…`);
@@ -21409,7 +21481,7 @@ function renderResumen_page(){
   // Gastos fijos por categoría
   const gcEl=document.getElementById('res-gastos-cats');
   if(gcEl){
-    const cats=_cmpCats(periodKeys._cmpKeys||[]);
+    const cats=_isMonth?_cmpCats(periodKeys._cmpKeys||[]):_catsDeKeys(periodKeys);
     const rows=Object.entries(cats).sort((a,b)=>b[1]-a[1]);
     if(!rows.length)gcEl.innerHTML='<div class="empty-msg">Sin gastos en este período. Cargalos en "Gastos".</div>';
     else{const maxG=rows[0][1]||1;
@@ -21474,7 +21546,7 @@ function loadFinView(){
     const snap=state.snapshots[key];if(!snap)return;
     if(banner){banner.textContent='📋 Cierre de '+snap.label+' — solo lectura';banner.style.display='block';}
     if(btnCerrar)btnCerrar.style.display='none'; // viendo un cierre pasado: no se puede cerrar
-    FIN_FIELDS.forEach(f=>{const el=document.getElementById('f_'+f.k);if(el){const raw=parseFloat(snap.finanzas?.[f.k])||0;setMoneyVal(el,f.neutral?raw:Math.abs(raw));el.disabled=true;}});
+    FIN_FIELDS.forEach(f=>{const el=document.getElementById('f_'+f.k);if(el){const raw=parseFloat(snap.finanzas?.[f.k])||0;setMoneyVal(el,(f.neutral||(f.pos&&FIN_CON_SIGNO.has(f.k)))?raw:Math.abs(raw));el.disabled=true;}});   /* con su signo, igual que calcArqueo (etapa 2, 20/10/2026) */
     const tc=document.getElementById('f_tipo_cambio');if(tc){setMoneyVal(tc,snap.tipoCambio||0);tc.disabled=true;}
     disableAll(true);
     // Sincronizar panel de precios históricos con el mes del snapshot y recalcular
@@ -21661,14 +21733,10 @@ function renderComprasRetiro(){
     <input class="fin-input money" type="text" inputmode="numeric" placeholder="${fmt(sug)}" value="${rv!=null?Math.round(rv).toLocaleString('es-AR'):''}" onchange="saveRetiroGastos('${ym}',this.value)" style="width:150px">
   </div>`;
 }
-function renderComprasChecklist(){
-  try{renderComprasRetiro();}catch(e){}
-  const el=document.getElementById('compras-checklist');if(!el)return;
-  // Sólo tiene sentido por MES: "los gastos de este mes" no significa nada mirando un día o un año.
-  if(cmpScopeMode!=='mes'){el.innerHTML='';return;}
-  const pref=getKey('cmp','mes');
-  const gastos=getComprasByPrefix(pref).filter(x=>getCompraTipo(x)==='gasto');
-  const ymL=String(pref).substring(0,7);
+// La lista de gastos que se cargan a mano, de UN mes: la usan la lista de Gastos y la tarjeta "💸 cuánto cobrar"
+// (etapa 2, 20/10/2026: la tarjeta no avisaba si al mes cerrado le faltaban gastos, y ese número es el retiro).
+function gastosChecklistMes(ym){
+  const gastos=getComprasByPrefix(ym).filter(x=>getCompraTipo(x)==='gasto');
   const norm=(t)=>String(t||'').toLowerCase();
   const buscar=(g)=>gastos.filter(x=>{
     if(g.cat&&(x.cat||'')!==g.cat)return false;
@@ -21679,12 +21747,32 @@ function renderComprasChecklist(){
   });
   // `min` = cuántos renglones se esperan en el mes (por defecto 1). Si hay alguno pero no llegan a
   // ese número, la fila queda PARCIAL: ámbar, no verde, y cuenta como faltante arriba.
-  const filas=GASTOS_DEL_MES.map(g=>{
+  return GASTOS_DEL_MES.map(g=>{
     const m=buscar(g), min=g.min||1;
-    const noVa=!m.length&&!!((state.gastosNoVa||{})[ymL]||{})[_gnvKey(g.n)];
+    const noVa=!m.length&&!!((state.gastosNoVa||{})[ym]||{})[_gnvKey(g.n)];
     return{g,min,n:m.length,hay:m.length>=min||noVa,noVa,parcial:m.length>0&&m.length<min,monto:m.reduce((s,x)=>s+(x.monto||0),0)};
   });
+}
+function _gastosFaltanAviso(ym,lbl){
+  try{const f=gastosChecklistMes(ym).filter(x=>!x.hay);if(!f.length)return'';
+    return `<div style="font-size:.64rem;color:var(--amber);margin-top:4px;line-height:1.45">⚠️ A ${lbl} le falta${f.length>1?'n':''} cargar ${f.length} gasto${f.length>1?'s':''} (${f.map(x=>x.g.n.split(' — ')[0]).join(', ')}): este número puede bajar.</div>`;}catch(_){return'';}
+}
+function renderComprasChecklist(){
+  try{renderComprasRetiro();}catch(e){}
+  const el=document.getElementById('compras-checklist');if(!el)return;
+  // Sólo tiene sentido por MES: "los gastos de este mes" no significa nada mirando un día o un año.
+  if(cmpScopeMode!=='mes'){el.innerHTML='';return;}
+  const pref=getKey('cmp','mes');
+  const ymL=String(pref).substring(0,7);
+  const filas=gastosChecklistMes(ymL);
   const faltan=filas.filter(f=>!f.hay).length;
+  const buscar=(g)=>gastos.filter(x=>{
+    if(g.cat&&(x.cat||'')!==g.cat)return false;
+    const d=norm(x.desc);
+    if(g.pal&&!g.pal.some(w=>d.includes(norm(w))))return false;
+    if(g.no&&g.no.some(w=>d.includes(norm(w))))return false;
+    return true;
+  });
   const col=faltan?'var(--red)':'var(--green)';
   el.innerHTML=`<div style="background:var(--surface);border:1px solid ${faltan?'var(--red)':'var(--border)'};border-radius:var(--r);padding:14px">
     <div style="font-size:.86rem;font-weight:700;color:${col};margin-bottom:10px">

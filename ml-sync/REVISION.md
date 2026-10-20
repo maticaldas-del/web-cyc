@@ -1890,3 +1890,19 @@ ganancia de Ventas en período Semana.
 ### Etapa 1 · 20/10/2026 · ↗️/↘️ volviendo de más de 7 días entra en 🔎 SIN AFINAR
 `planilla`: un precio con tag desobra/volviendo hace más de 7 días sale en la lista para decidir (buscar techo o motivo).
 **Chequear:** que la lista los muestre con su 🏷 y que con una nota de 7 días queden en "ya pensadas".
+
+### Etapa 2 · 20/10/2026 · v25.23 · revisión de la etapa (4 revisores, esfuerzo máximo) · arreglos obvios
+Arqueo: `saveSnapshot` guarda `arcaARS = arcaDeudaARS(key)` (hasta el mes que se cierra, como `arcacierres`) y ajusta el total;
+el cierre guarda `vsrUSD` y `pvUSD` y `calcArqueo` los usa mirando un mes cerrado; las flechitas de Efectivo/Deudas comparan contra
+el cierre con ARCA, Paulvic y vendido sin reporte; Comparar ("Mes actual" y "Por año") con `stockLocal` y esos tres montos;
+`loadFinView` con `FIN_CON_SIGNO`; Stock ML por cuenta con `stockoculto` y sin negativos; `of_mia` no revive (`mlconfig/ofiPorUnidades`);
+"¿Cierra el mes?" suma todos los meses desde el último cierre si falta uno en el medio; US$ en Arqueo, Comparar, agenda, encabezado
+y Capital del Resumen (`deltaBadge` ahora en dólares: todas sus llamadas son del Arqueo/inventario).
+Mes/cobro: `retiroDefMes` desde 2026_11 = "cuánto cobrar" del mes anterior × 2 (`_retiroTarjetaDe`, sin recursión) · Resumen fuera
+de "Mes" toma los gastos de los meses cuyo primer día con ventas cae en el período (= Métricas) · la tarjeta 💸 avisa gastos sin
+cargar (`gastosChecklistMes`, la MISMA que la lista de Gastos) · robot: `retiromes:<AAAA_MM>=<pesos>:go` carga el retiro del mes
+(con SOLO_DATOS la carga del 1º no corre) · `cobromes`/`cierrevs`: venta sin costo = $0 de ganancia como la web, tercio redondeado
+a $1.000 · resumen mensual de Telegram con la sin costo en el divisor · `cargosmes` frena con la regla de la lista de Gastos ·
+`capital` no opina sin dólar y avisa que no es el patrimonio del Arqueo.
+**Chequear:** que el cierre de octubre (02/11) guarde 6 meses de ARCA; que "¿Cierra el mes?" sume meses sólo si falta un cierre;
+que el retiro supuesto de noviembre = 2 × tercio de octubre; que Resumen y Métricas den la misma ganancia CYC en 30 días.
