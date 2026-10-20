@@ -300,6 +300,11 @@ tachado contra liso (10 publicaciones, tag nuevo `prueba` 🧪). Dónde vive: `E
 las 10 de la prueba no se toquen hasta el 04/11 · que el 27/10 se haga el primer escalón de los 5 lanzamientos · que un descuento
 abajo del 25% peor caso igual salga en 🤔.
 
+### Línea de tiempo: flechas de precio con `cyc/claudecambios` (20/10/2026, v25.19)
+Qué es: las ▲▼ del precio salían sólo de `cyc/supervisor/eventos` (foto de la noche); ahora `lineaAbrir` suma cada decisión de
+`cyc/claudecambios` y saca el evento de la foto que es el mismo cambio (misma publicación, mismo precio final, menos de 2 días).
+Qué chequear: que un cambio no salga dos veces (foto + decisión) y que un `decido` de hoy tenga flecha.
+
 ## 2 · PLATA (martes)
 - **Cada lugar, su nota (08/10/2026, v22.71):** él: *"en ventas por qué aumentó el precio o por qué no, y en pedidos por qué
   pide x unidades"*. `cerebroAbrir`: con `ped` o `ctx:'caja'` muestra SÓLO las notas `ped__`/`caja__`; con `ctx:'venta'`
@@ -1848,3 +1853,13 @@ Dos fórmulas para el mismo número: la raya 🔴 de la web (desde el 💰, todo
 hoy, por tramos). Ahora las dos usan `rayasPrecioLinea` / `_rayas`: sólo días con 3+ u. en Full y con visitas. `techo95` da 🏔️ sólo
 si el precio de hoy es el 💰 y hay 🔴 al 95%. La línea avisa "hoy probando" si el precio está arriba del 🔴 con estrategia techo/escasez.
 **Chequear:** que las dos copias sigan iguales (si se toca una, la otra) y que un producto con pocos días medibles diga eso y no invente rayas.
+
+### Etapa 5 · 20/10/2026 · v25.18 · línea de tiempo: ganancia por semana
+Él: *"que haya otra línea que vea por semana en vez de por día"*. Renglón nuevo "$ ganancia/semana" en las dos líneas de tiempo
+(producto y todas juntas): suma de lunes a domingo (`_lineaSemanas`, `_lineaSemSvg`), misma ganancia que la línea por día
+(`_ganK` / `vd`). La semana incompleta va punteada y lo dice. **Chequear:** que la suma de las semanas enteras coincida con la
+ganancia de Ventas en período Semana.
+
+### Etapa 1 · 20/10/2026 · ↗️/↘️ volviendo de más de 7 días entra en 🔎 SIN AFINAR
+`planilla`: un precio con tag desobra/volviendo hace más de 7 días sale en la lista para decidir (buscar techo o motivo).
+**Chequear:** que la lista los muestre con su 🏷 y que con una nota de 7 días queden en "ya pensadas".
