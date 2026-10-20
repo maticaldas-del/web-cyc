@@ -13,6 +13,16 @@ todas las etapas.
 
 - **informe 12d (13/10/2026, auditoría):** unidades `not_available` adentro de Full (perdidas = las paga ML, `notSupported` = retirar), sólo con `informe:12` o más. Y el `chequeo` no cuenta como sin ficha las publicaciones cerradas. Chequear: que 12d coincida con "Full: N u. con problema" del chequeo.
 
+## EL CALENDARIO: 7 ETAPAS, UNA POR DÍA, CORREN SOLAS (20/10/2026, pedido suyo)
+Él: *"organiza las etapas para que sean 7 una para cada dia. pueden correrse sola?"* y *"ahora tengo 20x. asi que me va a alcanzar"*.
+**lun 1 Precios · mar 2 Plata · mié 3 Mercadería · jue 4 Choques y fallas mudas (las viejas 4 y 5) · vie 5 Datos, historial y
+cerebro (las viejas 8 y 9) · sáb 6 Ideas nuevas · dom 7 Diseño.** Corre sola todas las noches a las 22:13 de acá (tarea programada
+que entra a esta sesión). Cada corrida: leer la etapa de hoy en este archivo + lo de SIEMPRE, 4 revisores en Alto, verificar cada
+hallazgo con el código real antes de contarlo, hacer lo obvio (probado, en las dos ramas, anotado acá), y lo que es decisión suya
+va TODO JUNTO en un solo `pregunto:` numerado (a)/(b) y en `REV_PENDIENTE`. Al terminar: `REV_HECHAS[n]`=hoy y un renglón en
+`REV_HIST` (index.html). Inicio dice la etapa de hoy, si ya quedó hecha o si no terminó. **En el archivo el orden de las secciones
+quedó 0·1·2·3·4·6·7·5** (la 5 nueva está abajo de todo, donde vivían la 8 y la 9).
+
 ## SIEMPRE, EN CUALQUIER ETAPA
 - **Contar dos (o cuatro) veces lo mismo.** El caso de la línea del Centímetro (08/10): el stock se
   sumaba por clave de producto Y por cada clave de color → 413 en vez de ~107. Cada vez que algo
@@ -56,7 +66,7 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
 - **Qué chequear:** que ninguna corrida automática escriba precios, marcas o decisiones; que los avisos lleguen a Claude
   por `informe`/`alertas` y no a Telegram; que las cajas que ML da por entradas las marque Claude y no queden contadas dos veces.
 
-## 1 · PRECIOS
+## 1 · PRECIOS (lunes)
 - **El expediente trae el stock antiguo (16/10/2026).** `calcAntiguoFilas` (una sola cuenta para `antiguo` y el expediente):
   sección 💸 arriba de todo con lo que paga o va a pagar (por color), mi última decisión o SIN DECIDIR, y una línea 💸 en cada
   bloque. Caso: P47 blanco pagaba y le subí el precio; Tira Led paga ~$39.000/cierre. Chequear: la sección sale aunque el
@@ -282,7 +292,7 @@ no deje naranja algo con meses de stock (tope 60) · que el pedido en camino se 
 
  · **🚨 Escasez que vendió después de mi última decisión (19/10/2026, con el Cabotine Turquoise).** Al final de `escasez`: toda publicación en escasez con stock cuya última venta es posterior a mi último cambio de precio (`cyc/claudecambios`) o nota (`mlapi/fichanotas`) sale en la lista 🚨 y se decide en esa vuelta. Chequear: que una nota con motivo la saque de la lista.
 
-## 2 · PLATA
+## 2 · PLATA (martes)
 - **Cada lugar, su nota (08/10/2026, v22.71):** él: *"en ventas por qué aumentó el precio o por qué no, y en pedidos por qué
   pide x unidades"*. `cerebroAbrir`: con `ped` o `ctx:'caja'` muestra SÓLO las notas `ped__`/`caja__`; con `ctx:'venta'`
   (Ventas x Producto) y en Productos/Rotación, las notas de precio (`claudeexp/<MLA>`). **Chequear:** el mismo producto
@@ -332,7 +342,7 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 **Qué chequear:** que no aparezca ningún gasto con categoría o descripción "retiro de socios"
 (sería doble), y que el número de Gastos y el del Arqueo sean el mismo para cada mes.
 
-## 3 · MERCADERÍA
+## 3 · MERCADERÍA (miércoles)
 - **El catálogo de Paraguay se mide más rápido (16/10/2026).** Él: *"no veo ni cerca los 13.000"*. Medido: 13.467 guardados,
   1.436 medidos en 7 días, 10.595 esperando; GitHub corrió `ml-pycat` 8 veces en ~2 días. `PYCAT_POR_VUELTA` 300 → 700 y cada
   2 h (era 3). Chequear en el log de `ml-pycat`: que no aparezcan 429 de ML y que la vuelta termine antes de 55 min.
@@ -578,11 +588,11 @@ el precio de un candidato distinto con código parecido (se compara también por
 
  · **Ritmo normal sólo de las cuentas que venden el producto (v24.61, 19/10/2026, con el F9).** `ritmoNormalDe` (web) saltea las cuentas donde todas sus publicaciones de ese producto están pausadas a mano, cerradas o "no la vendemos más" (`_ctaVendeProd`). Chequear: un producto agotado en su cuenta (pausado por falta de stock) sigue contando.
 
-## 4 · CHOQUES
+## 4 · CHOQUES Y FALLAS MUDAS (jueves · junta las viejas 4 y 5)
 - `mlapi/lineatodo` lo escriben `ritmo:go` (noche) y `lineatodo:go` (ml-consulta): los dos con la
   misma función `calcLineaTodo`.
 
-## 5 · FALLAS MUDAS Y PRIVACIDAD
+### 4b · FALLAS MUDAS Y PRIVACIDAD (antes etapa 5)
 - **Visitas de la noche** (`linea:go`): el pedido en lote falló callado desde ~01/10. Ahora hay
   respaldo publicación por publicación y el log dice "visitas: N con dato". Chequear que el número
   no caiga a 0.
@@ -595,7 +605,7 @@ el precio de un candidato distinto con código parecido (se compara también por
 ### Aviso de venta: suma la compra entera (16/10/2026)
 `avisarVentasNuevas` agrupa por cuenta + `numVenta` (también órdenes de otra vuelta) antes del corte de $10.000. Qué chequear: un carrito de 2+ productos que pasa $10.000 avisa.
 
-## 5 bis · AVISOS DE TELEGRAM QUE LEE CLAUDE (08/10/2026)
+### 4c · AVISOS DE TELEGRAM QUE LEE CLAUDE (antes 5 bis, 08/10/2026)
 - `sendAlerta` guarda copia de cada aviso que SALIÓ en `mlapi/alertaslog/<ts>`; probe `alertas[:horas]` (solo lee,
   tapa números largos). Una rutina de Claude los lee y resuelve lo que puede
   (2 por día, 10:47 y 22:47, `alertas:12`: la ventana tiene que tapar las 12 h entre vueltas) · desde el 08/10 a la tarde (reemplaza la 2a) la rutina ES la que decide los precios (ver etapa 1, `decido`). Chequear: que sólo se guarde lo que
@@ -635,7 +645,7 @@ el precio de un candidato distinto con código parecido (se compara también por
 
  · **Informe 7b (auditoría 19/10/2026):** los mensajes de compradores sin leer salen por cuenta (sin el texto). Chequear: que la suma coincida con el título.
 
-## 6 · IDEAS NUEVAS
+## 6 · IDEAS NUEVAS (sábado)
 - **QUÉ TIENE QUE PROPONER, regla suya del 09/10/2026:** *"lo que hicimos hoy con los colores y movimientos y
   efectos de las tarjetas son detalles que quiero que estén en la revisión de diseño o ideas para ir mejorando la
   web. no puede ser que no me lo haya recomendado cuando está tan bueno (…) que piense cosas así. detalles o mejoras
@@ -717,7 +727,7 @@ el precio de un candidato distinto con código parecido (se compara también por
     decir que ML le devolvió al comprador con su programa, no que nos repuso. El % de reclamos en el costo está bien. 8 (juntar pedidos de Paraguay a ~US$1.000) es una
     decisión de compra, no código. 11 (dinero que rinde en MP) lo mira él en la app.
 
-## 7 · DISEÑO
+## 7 · DISEÑO (domingo)
 
 - **El % de un producto no sube por ir en carrito (18/10/2026, v24.59, regla suya: *"no podés subir el % de un producto por venderse con otro… siempre el % de ese producto, no por venta"*).** `netoProductoVP(v)` (index.html): si la venta es parte de un carrito (misma cuenta y `numVenta` con 2+ renglones ese día) usa lo cobrado × la proporción neto/precio de una venta SUELTA de esa publicación al precio más parecido (o del producto); sin venta suelta, el neto repartido. Lo usan la línea de tiempo (ganancia y % por día; las referencias de los días viejos ya excluyen carritos) y el ranking por producto. Totales de plata (Inicio, Ventas, mes, cuentas, origen) siguen con el neto real. Chequear: un carrito no sube la línea del % · los totales no cambian.
 
@@ -882,7 +892,7 @@ a la lista. Chequear: que cada hoja muestre el nombre del mismo id que se marca 
 71 publicaciones, ~158 KB. La completa reparte las 4 cuentas entre 4 agentes que sólo leen; las vueltas cortas pasan a cada 2 h.
 Chequear: que los ayudantes no corran nada que escriba y que cada publicación activa tenga juicio.
 
-## 8 · DATOS E HISTORIAL (nueva, 08/10/2026)
+## 5 · DATOS, HISTORIAL Y CEREBRO (viernes · junta las viejas 8 y 9; datos e historial nació el 08/10/2026)
 - **🚧 El techo en la línea de tiempo (18/10/2026, v24.49).** `lineaPintar` dibuja una raya roja punteada en el carril del precio por cada `cyc/techofreno/<MLA>` (`probado`, roja "ya no vende") y otra verde en `volvio` ("sí vende") de las publicaciones del gráfico (respeta el color elegido), desde el día que se anotó; entra en la escala. Qué chequear: que todo techo encontrado se anote con `techofreno:<MLA>=<precio>|motivo;go` (si no, no aparece).
 - **Reloj de los 4 meses en la línea de tiempo (16/10/2026, v23.92 · corregido en v23.93: EDAD DE LA UNIDAD MÁS VIEJA, primero
   entra primero sale — lotes armados con stock de hoy − el de antes + lo vendido; él: "el stock va rotando").** Carril de stock: barra roja por día = edad del lote más viejo
@@ -1026,7 +1036,7 @@ versiones nuevas. Restaurado en v23.21 (`cyc-v601`). **Antes de cada commit: `wc
   nueva quede en la historia · que la ficha se arme cada noche (el paso entra en `avisonoche` si falla) · que "lo que
   sabemos" no diga algo con $0 · que la ganancia use la misma cuenta que `lupa`/`escmedir`.
 
-## 9 · CEREBRO (nueva, 09/10/2026, pedido suyo)
+### 5b · CEREBRO (antes etapa 9, nueva 09/10/2026, pedido suyo)
 
 ### Una suba por escasez no se mide como pérdida por vender menos (16/10/2026, él con el Barbarella)
 - **Qué es:** él: *"el objetivo no fue ganar más, sino ganar lo mismo manteniendo stock (…) sería pérdida si llegó la otra

@@ -620,6 +620,12 @@ retiro + gastos del mes ("por cada peso que sale, otro se queda"; editable en �
 35) · faltantes 2 · capital parado 1 (`calcRotScore`, nuevo) · reclamos 1. Se sacaron retiro vs piso (es fijo) y gastos
 aparte (ya están en la ganancia). Falta que él lo mire y diga si el objetivo le cierra.
 
+### LAS 7 ETAPAS, UNA POR DÍA, CORREN SOLAS (20/10/2026, pedido suyo, ya con el plan 20x)
+**lun 1 Precios · mar 2 Plata · mié 3 Mercadería · jue 4 Choques y fallas mudas (viejas 4+5) · vie 5 Datos, historial y cerebro
+(viejas 8+9) · sáb 6 Ideas nuevas · dom 7 Diseño.** Tarea programada diaria a las 22:13 de acá que entra a esta sesión. Cómo corre
+cada una: arriba de todo en `ml-sync/REVISION.md` ("EL CALENDARIO"). En `index.html`: `REV_ETAPAS` (con `dia`), `REV_HORA`,
+`REV_HECHAS`/`REV_HIST` ya con la numeración nueva. **La numeración vieja (8 y 9) que aparece más abajo es historia.**
+
 ### LA REVISIÓN POR ETAPAS (propuesta del 25/09, falta que confirme el ritmo)
 Pedido suyo: que cada revisión entre en una ventana de 5 h de tokens (plan de US$100, Opus 5.5). Seis
 etapas, una por semana (ciclo de 6 semanas) y la del tema tocado cuando haya un cambio grande. Se
