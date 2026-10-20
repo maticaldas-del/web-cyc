@@ -1856,6 +1856,18 @@ en Full, desde $50.000, sin Premium hermana (misma ficha y cuenta), y el precio 
 cuotas aparte si ML no las mete en la comisión con el peor % medido, IIBB/mono, 3% del facturado de más por tope de H). La publicación
 la crea él. **Chequear:** que la neta Premium ≥ neta Clásica, que no proponga arriba de $650.000 y que avise variantes/catálogo.
 
+### Etapa 1 · 20/10/2026 · `gemelacrea:<MLA>=<precio>[:go]` · crear la Premium gemela (eligió la a: primero una)
+Él: *"podés hacerlo vos? no hay que crear publicación nueva, hay que crear un método distinto de pago"*. Agrega a la MISMA publicación
+(User Product de ML) una condición de venta Premium con cuotas: `POST /user-products/<upid>/items` con precio, `gold_pro`, ARS y
+buy_it_now. ML crea un item nuevo (otro MLA) que comparte el stock. Sin `:go` sólo lee y muestra el envío. Con `:go` relee de ML la
+nueva y la Clásica, la vincula en `cyc/mllinks` a la misma ficha/color (`gemelaDe`) y le anota la estrategia 💳 `gemela` (tag nuevo,
+en `ESTRATEGIAS` del robot y `ESTRATEGIA_UI` de la web). `gemelacrea:ver:<MLA>,…` (solo lee) muestra tipo, upid, family y marcas.
+**Medido antes:** la Premium del Ferrari Rojo (`MLA1841629747`) y sus dos Clásicas comparten upid `MLAU3928954599` y las mismas 9 u.,
+y ninguna tiene la marca `user_product_listing` → esa marca NO frena (primera versión frenaba por eso). Frenos que quedan: sin upid,
+variantes, ya Premium, Premium más barata que la Clásica, techo $650.000, otra Premium del mismo producto.
+**Chequear:** que la nueva quede `gold_pro`, al precio pedido, en el mismo upid, con el stock compartido y vinculada a la ficha; y que
+sus ventas entren a la ficha (el ciclo la reconoce por `cyc/mllinks`).
+
 ### Etapa 5 · 20/10/2026 · v25.16 · techo: una sola cuenta para la raya y `techo95` (eligió la a)
 Dos fórmulas para el mismo número: la raya 🔴 de la web (desde el 💰, todos los días "con stock") y `techo95` (desde el precio de
 hoy, por tramos). Ahora las dos usan `rayasPrecioLinea` / `_rayas`: sólo días con 3+ u. en Full y con visitas. `techo95` da 🏔️ sólo

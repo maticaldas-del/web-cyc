@@ -729,6 +729,9 @@ así (`PD_TRABAJO_U`, `PD_TOPE_PCT` en sync.mjs). Los números se pueden ajustar
 más rápido"*):** "mismo margen" no alcanza. La Premium factura más por la misma venta, así que paga más IIBB y monotributo (ya entran
 en el margen) y gasta más tope de H (el 3% de lo facturado de MÁS). Se comparan las dos con esta plata neta: la Premium vale la pena
 sólo si, descontado eso, deja lo mismo o más por día que la Clásica sola. Ferrari Rojo: $4.000 más caro = ~$120 más de tope por venta.
+**💳 La gemela Premium la creo yo** (20/10/2026, él: *"no hay que crear publicación nueva, hay que crear un método distinto de pago"*):
+`gemela` (solo lee) dice cuáles y a qué precio · `gemelacrea:<MLA>=<precio>:go` la agrega a la MISMA publicación (comparte stock) y le
+pone el tag 💳 `gemela`. Se juzga por las ventas que hace la Premium que la Clásica sola no hacía; las dos se miran juntas por color.
 
 ## 📉 ABAJO DEL 25% ES PÉRDIDA, AUNQUE DEJE GANANCIA (18/10/2026, regla suya)
 Él, con el Pendrive 128gb rematado al 13% por haber mandado de más: *"todo lo que es menos del 25% es pérdida en el contexto del

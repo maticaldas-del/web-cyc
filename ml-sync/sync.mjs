@@ -20665,6 +20665,8 @@ async function main() {
           console.log('\n⚠️ Casi no hay texto adentro: la página se arma con JavaScript en el navegador.');
           console.log('   Lo que baja es un cascarón vacío, así que esto NO alcanza para leerla.');
         }
+        // `busca=desde:<texto>`: 5.000 caracteres seguidos desde donde aparece ese texto (para leer una sección entera).
+        if (_vwBus && /^desde:/i.test(_vwBus)) { const q = _vwBus.slice(6).trim().toLowerCase(); const i = _vwTxt.toLowerCase().indexOf(q); console.log(i < 0 ? `\n(no aparece "${q}")` : `\n── DESDE "${q}" ──\n` + _vwTxt.slice(i, i + 5000)); return; }
         if (_vwBus) {
           const pal = _vwBus.split(',').map((x) => x.trim().toLowerCase()).filter(Boolean); const rs = _vwTxt.split('\n'); const ver = new Set();
           rs.forEach((r, i) => { if (pal.some((w) => r.toLowerCase().includes(w))) for (let j = Math.max(0, i - 3); j <= Math.min(rs.length - 1, i + 3); j++) ver.add(j); });
