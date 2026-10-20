@@ -28,3 +28,4 @@ Cada renglón: fecha · idea · plata estimada · estado (hecha / propuesta / de
 | 20/10 | Fichas: precios de antes del 01/05 cuentan con neto $0 y muestran pérdidas falsas (138 publicaciones, ensucia techo95) | sin plata directa | propuesta (a) estimado marcado "≈" |
 | 20/10 | Navidad 2025: +25% de unidades del 17 al 30/12 y en enero se cortó lo que más subió | hasta ~$1,1M | propuesta: a mitad de noviembre pedir para 45 días lo que subió |
 | 20/10 | 36 de mis descuentos vencen el 01-02/11, justo cuando arranca CyberMonday | ~$10.300/día | hacer: decidir antes del 31/10 cuáles pasan al evento |
+| 20/10 | Cada producto reacciona distinto (caja, visitas, precio, fechas): medido en la ficha. Ej. Cartas Casino vende igual perdiendo la caja; el Infusor cajita no | sin plata directa: decisiones más finas | hecha: "Cómo reacciona" en la ficha + `vistas` (F: fechas). Navidad 2025 lo regalable +142%, Día de la Madre 2026 lo regalable 20 puntos mejor que lo demás |
