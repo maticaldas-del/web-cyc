@@ -31799,17 +31799,30 @@ async function main() {
         if (hay) S[m] = { P, V, U, ST, E, C };
       }
       const n = DK.length;
-      // Índice de visitas de todo el catálogo, encadenado día a día: cada día se compara contra el anterior SÓLO con las
-      // publicaciones que tienen visitas sabidas los dos días (si no, el índice subiría sólo porque se rellenaron más).
-      const IDX = new Array(n).fill(0); IDX[0] = 100; let estables = 0;
-      // Las que cambiaron de precio esos días no entran en el salto de ese día: si no, el índice se tragaría el efecto que se mide.
-      const cambio = (s, i) => { for (let j = Math.max(1, i - 2); j <= i; j++) if (s.P[j - 1] > 0 && s.P[j] > 0 && Math.abs(s.P[j] / s.P[j - 1] - 1) > 0.02) return true; return false; };
-      for (let i = 1; i < n; i++) { let a = 0, b = 0; for (const s of Object.values(S)) if (s.V[i - 1] != null && s.V[i] != null && !cambio(s, i)) { a += s.V[i - 1]; b += s.V[i]; } IDX[i] = IDX[i - 1] * (a > 0 && b > 0 ? b / a : 1); }
-      for (const s of Object.values(S)) if (s.V.filter((v) => v != null).length >= n * 0.85) estables++;
+      // Corrección por el catálogo (20/10/2026, primera corrida: un índice encadenado día a día se infló ×19 con el ruido).
+      // Para cada comparación se toma un PANEL: las otras publicaciones con visitas sabidas en casi todos los días de los dos
+      // lados y SIN cambio de precio en el medio, y se mide cuánto se movieron ELLAS. Si con ese panel el catálogo entero
+      // tuvo 20% más visitas, al cambio se le descuenta ese 20%. Con menos de 8 publicaciones en el panel no se corrige.
+      const CHG = {};
+      for (const [m, s] of Object.entries(S)) { const c = new Array(n + 1).fill(0); let last = null; for (let i = 0; i < n; i++) { let x = 0; if (s.P[i] > 0) { if (last > 0 && Math.abs(s.P[i] / last - 1) > 0.02) x = 1; last = s.P[i]; } c[i + 1] = c[i] + x; } CHG[m] = c; }
+      let estables = 0; for (const s of Object.values(S)) if (s.V.filter((v) => v != null).length >= n * 0.85) estables++;
+      const panel = (m, ja, jb) => {
+        if (!ja.length || !jb.length) return { f: 1, k: 0 };
+        const lo = Math.min(...ja, ...jb), hi = Math.max(...ja, ...jb); let a = 0, b = 0, k = 0;
+        for (const [mm, s] of Object.entries(S)) {
+          if (mm === m || CHG[mm][hi + 1] - CHG[mm][lo] > 0) continue;
+          let ca = 0, sa = 0, cb = 0, sb = 0; for (const j of ja) if (s.V[j] != null) { ca++; sa += s.V[j]; } for (const j of jb) if (s.V[j] != null) { cb++; sb += s.V[j]; }
+          if (!ca || !cb || ca < ja.length * 0.8 || cb < jb.length * 0.8) continue; a += sa / ca; b += sb / cb; k++;
+        }
+        return k >= 8 && a > 0 && b > 0 ? { f: b / a, k } : { f: 1, k };
+      };
+      // Nivel del catálogo por día (visitas por publicación sabida, sin la propia): para comparar días sueltos (stock, caja).
+      const NIV = new Array(n).fill(0); { for (let i = 0; i < n; i++) { let t = 0, c = 0; for (const s of Object.values(S)) if (s.V[i] != null) { t += s.V[i]; c++; } NIV[i] = c ? t / c : 0; } }
       // Un día cuenta si se saben sus visitas y tenía stock (o, sin dato de stock, estaba activa o vendió).
       const ok = (s, i) => s.V[i] != null && ((s.ST[i] != null && s.ST[i] > 0) || (s.ST[i] == null && (s.E[i] === 'active' || s.U[i] > 0)));
-      const ventana = (s, js) => { let dias = 0, vis = 0, u = 0, ix = 0; for (const j of js) { if (!ok(s, j)) continue; dias++; vis += s.V[j]; u += s.U[j]; ix += IDX[j]; } return { dias, vis, u, ix }; };
-      const razon = (A, B) => { if (!(A.dias && B.dias)) return null; const rA = A.vis / A.dias, rB = B.vis / B.dias, iA = A.ix / A.dias, iB = B.ix / B.dias; const adj = iA > 0 && iB > 0 ? iB / iA : 1; return rA > 0 ? (rB / adj) / rA : null; };
+      const ventana = (s, js) => { let dias = 0, vis = 0, u = 0; const usados = []; for (const j of js) { if (!ok(s, j)) continue; dias++; vis += s.V[j]; u += s.U[j]; usados.push(j); } return { dias, vis, u, js: usados }; };
+      let sinPanel = 0;
+      const razon = (m, A, B) => { if (!(A.dias && B.dias)) return { r: null, f: 1 }; const rA = A.vis / A.dias, rB = B.vis / B.dias; const pn = panel(m, A.js, B.js); if (pn.k < 8) sinPanel++; return { r: rA > 0 ? (rB / pn.f) / rA : null, f: pn.f }; };
       // ── Días con TACHADO por publicación ──
       const TACH = {}, INI = {}, FIN = {}, PARC = {};
       const marca = (m, t0, t1) => { const a = _rnDia(t0), b = _rnDia(Math.min(t1, Date.now())); (INI[m] = INI[m] || new Set()).add(a); (FIN[m] = FIN[m] || new Set()).add(b); (PARC[m] = PARC[m] || new Set()).add(a).add(b); const T = (TACH[m] = TACH[m] || new Set()); for (let k = kMas(a, 1); k < b; k = kMas(k, 1)) T.add(k); };
@@ -31840,7 +31853,7 @@ async function main() {
       console.log(`Días sabidos: ${diasTot} · con visitas ${diasVis} (${Math.round(diasVis / Math.max(1, diasTot) * 100)}%) · con stock sabido ${diasSt} (${Math.round(diasSt / Math.max(1, diasTot) * 100)}%) · ${estables} publicaciones con visitas sabidas casi todos los días.`);
       console.log(`Tachado: ${Object.keys(TACH).filter((m) => TACH[m].size).length} publicaciones con algún día tachado · tipos de descuento en ventas: ${Object.entries(tiposPV).map(([t, c]) => `${t} ${c}`).join(' · ') || 'ninguno'} (${pvTach} días marcados por ventas en promo)`);
       // Contexto: visitas de todo el catálogo por semana.
-      { const sem = []; for (let i = 0; i < n; i += 7) { const sl = IDX.slice(i, i + 7); let tv = 0; for (const s of Object.values(S)) for (let j = i; j < Math.min(n, i + 7); j++) tv += s.V[j] || 0; sem.push({ k: DK[i], v: sl.reduce((a, b) => a + b, 0) / sl.length, tv: tv / sl.length }); } const base = sem.length ? sem[0].v : 0; console.log(`\n── 📅 VISITAS DE TODO EL CATÁLOGO POR SEMANA (índice: la primera semana = 100 · entre paréntesis, visitas por día sabidas) ──`); console.log(sem.map((w) => `${w.k.slice(8, 10)}/${w.k.slice(5, 7)} ${Math.round(w.v / base * 100)} (${Math.round(w.tv)})`).join(' · ')); }
+      { const sem = []; for (let i = 0; i < n; i += 7) { let tv = 0, c = 0; for (const s of Object.values(S)) for (let j = i; j < Math.min(n, i + 7); j++) if (s.V[j] != null) { tv += s.V[j]; c++; } sem.push({ k: DK[i], v: c ? tv / c : 0, c: c / Math.min(7, n - i) }); } console.log(`\n── 📅 VISITAS POR PUBLICACIÓN Y POR DÍA, SEMANA A SEMANA (entre paréntesis, cuántas publicaciones tienen el dato) ──`); console.log(sem.map((w) => `${w.k.slice(8, 10)}/${w.k.slice(5, 7)} ${f1(w.v)} (${Math.round(w.c)})`).join(' · ')); }
       // ── A · CAMBIOS DE PRECIO ──
       const EV = [];
       for (const [m, s] of Object.entries(S)) {
@@ -31857,12 +31870,12 @@ async function main() {
           const conT = ch < 0 && ((INI[m] && (INI[m].has(k) || INI[m].has(kp))) || (enT(m, k) && !enT(m, kp)));
           const salT = ch > 0 && ((FIN[m] && (FIN[m].has(k) || FIN[m].has(kp))) || (enT(m, kp) && !enT(m, k)));
           const g = conT ? 'baja con tachado (entró en descuento/promo)' : salT ? 'suba por salir del tachado' : ch < 0 ? (ch > -0.10 ? 'baja chica (3-10%)' : ch > -0.25 ? 'baja mediana (10-25%)' : 'baja grande (+25%)') : (ch < 0.10 ? 'suba chica (3-10%)' : ch < 0.25 ? 'suba mediana (10-25%)' : 'suba grande (+25%)');
-          EV.push({ m, k, ch, p0, p1, A, B, r: A.vis >= 7 ? razon(A, B) : null, g });
+          const rz = A.vis >= 7 ? razon(m, A, B) : { r: null, f: 1 }; EV.push({ m, k, ch, p0, p1, A, B, r: rz.r, f: rz.f, g });
         }
       }
       const resumen = (nom, L) => {
         const R = L.filter((e) => e.r != null).map((e) => e.r);
-        let sA = 0, sB = 0, vA = 0, vB = 0, uA = 0, uB = 0, dA = 0, dB = 0; for (const e of L) { if (e.r == null) continue; const iA = e.A.ix / e.A.dias, iB = e.B.ix / e.B.dias, adj = iA > 0 && iB > 0 ? iB / iA : 1; sA += e.A.vis / e.A.dias; sB += e.B.vis / e.B.dias / adj; vA += e.A.vis; vB += e.B.vis; uA += e.A.u; uB += e.B.u; dA += e.A.dias; dB += e.B.dias; }
+        let sA = 0, sB = 0, vA = 0, vB = 0, uA = 0, uB = 0, dA = 0, dB = 0; for (const e of L) { if (e.r == null) continue; sA += e.A.vis / e.A.dias; sB += e.B.vis / e.B.dias / (e.f || 1); vA += e.A.vis; vB += e.B.vis; uA += e.A.u; uB += e.B.u; dA += e.A.dias; dB += e.B.dias; }
         const sube = R.filter((x) => x > 1.15).length, baja = R.filter((x) => x < 0.85).length;
         console.log(`• ${nom}: ${L.length} cambio(s), ${R.length} con tráfico para medir · visitas/día ${pc(med(R))} (mediana) · ${pc(sA > 0 ? sB / sA : null)} (todas juntas) · subieron ${sube} · bajaron ${baja} · iguales ${R.length - sube - baja}`);
         if (vA > 0 && vB > 0) console.log(`    ventas cada 100 visitas: antes ${f1(uA / vA * 100)} → después ${f1(uB / vB * 100)} · ventas/día ${f1(uA / dA, 2)} → ${f1(uB / dB, 2)}`);
@@ -31882,13 +31895,13 @@ async function main() {
         const ja = []; for (let j = i + 1; j < Math.min(n, i + 6) && (!s.C[j] || s.C[j] === c1); j++) ja.push(j);
         const A = ventana(s, jb), B = ventana(s, ja); if (A.dias < 2 || B.dias < 2) continue;
         const rk = { g: 2, c: 1, p: 0 }; const g = rk[c1] > rk[c0] ? 'la GANÓ (o pasó a compartir)' : 'la PERDIÓ (o pasó a compartir)';
-        CEV.push({ m, k: DK[i], A, B, r: A.vis >= 5 ? razon(A, B) : null, g, c0, c1 });
+        const rz = A.vis >= 5 ? razon(m, A, B) : { r: null, f: 1 }; CEV.push({ m, k: DK[i], A, B, r: rz.r, f: rz.f, g, c0, c1 });
       }
       for (const g of ['la PERDIÓ (o pasó a compartir)', 'la GANÓ (o pasó a compartir)']) { const L = CEV.filter((e) => e.g === g); if (L.length) resumen(g, L); else console.log(`• ${g}: ningún cambio medible (la caja se guarda día por día recién desde el 02/10)`); }
       // Nivel: días ganando contra días perdiendo, misma publicación y mismo precio.
-      { const R = []; for (const [m, s] of Object.entries(S)) { const pr = med(s.P.filter((p) => p > 0)); if (!pr) continue; let gD = 0, gV = 0, pD = 0, pV = 0; for (let i = 0; i < n; i++) { if (!ok(s, i) || !(s.P[i] > 0) || Math.abs(s.P[i] / pr - 1) > 0.04) continue; if (s.C[i] === 'g') { gD++; gV += s.V[i] / (IDX[i] || 1); } else if (s.C[i] === 'p') { pD++; pV += s.V[i] / (IDX[i] || 1); } } if (gD >= 3 && pD >= 3 && gV > 0) R.push((pV / pD) / (gV / gD)); } console.log(`• misma publicación, mismo precio: días PERDIENDO contra días GANANDO · ${R.length} publicaciones · visitas ${pc(med(R))} (mediana)`); }
+      { const R = []; for (const [m, s] of Object.entries(S)) { const pr = med(s.P.filter((p) => p > 0)); if (!pr) continue; let gD = 0, gV = 0, pD = 0, pV = 0; for (let i = 0; i < n; i++) { if (!ok(s, i) || !(s.P[i] > 0) || Math.abs(s.P[i] / pr - 1) > 0.04) continue; if (s.C[i] === 'g') { gD++; gV += s.V[i] / (NIV[i] || 1); } else if (s.C[i] === 'p') { pD++; pV += s.V[i] / (NIV[i] || 1); } } if (gD >= 3 && pD >= 3 && gV > 0) R.push((pV / pD) / (gV / gD)); } console.log(`• misma publicación, mismo precio: días PERDIENDO contra días GANANDO · ${R.length} publicaciones · visitas ${pc(med(R))} (mediana)`); }
       // ── C · SIN STOCK ──
-      { const R = []; let sD = 0, zD = 0; for (const [m, s] of Object.entries(S)) { let a = 0, av = 0, z = 0, zv = 0; for (let i = 0; i < n; i++) { if (s.V[i] == null || s.ST[i] == null) continue; const iv = s.V[i] / (IDX[i] || 1); if (s.ST[i] > 0) { a++; av += iv; } else { z++; zv += iv; } } if (a >= 3 && z >= 3 && av > 0) { R.push((zv / z) / (av / a)); sD += a; zD += z; } } console.log(`\n── 📦 C · SIN STOCK EN FULL contra CON STOCK (misma publicación) ──\n• ${R.length} publicaciones que pasaron por las dos · visitas sin stock ${pc(med(R))} (mediana) · ${R.filter((x) => x < 0.5).length} perdieron más de la mitad · días ${sD} con stock / ${zD} sin`); }
+      { const R = []; let sD = 0, zD = 0; for (const [m, s] of Object.entries(S)) { let a = 0, av = 0, z = 0, zv = 0; for (let i = 0; i < n; i++) { if (s.V[i] == null || s.ST[i] == null) continue; const iv = s.V[i] / (NIV[i] || 1); if (s.ST[i] > 0) { a++; av += iv; } else { z++; zv += iv; } } if (a >= 3 && z >= 3 && av > 0) { R.push((zv / z) / (av / a)); sD += a; zD += z; } } console.log(`\n── 📦 C · SIN STOCK EN FULL contra CON STOCK (misma publicación) ──\n• ${R.length} publicaciones que pasaron por las dos · visitas sin stock ${pc(med(R))} (mediana) · ${R.filter((x) => x < 0.5).length} perdieron más de la mitad · días ${sD} con stock / ${zD} sin`); }
       // ── D · LANZAMIENTO ──
       { const W = [[0, 6], [7, 13], [14, 20], [21, 27], [28, 55]], R = W.map(() => []), uw = W.map(() => 0); let nL = 0; const ejL = [];
         for (const [m, s] of Object.entries(S)) {
@@ -31896,7 +31909,7 @@ async function main() {
           let L0 = -1; for (let i = pos[ak] != null ? pos[ak] : 0; i < n; i++) if (ok(s, i) && (s.ST[i] > 0 || s.U[i] > 0)) { L0 = i; break; } if (L0 < 0) continue;
           const sem = W.map(([a, b]) => { const js = []; for (let j = L0 + a; j <= Math.min(n - 1, L0 + b); j++) js.push(j); return ventana(s, js); });
           if (sem[0].dias < 4 || !(sem[0].vis >= 7)) continue; nL++;
-          for (let w = 1; w < W.length; w++) { const r = sem[w].dias >= 4 ? razon(sem[0], sem[w]) : null; if (r != null) R[w].push(r); }
+          for (let w = 1; w < W.length; w++) { const r = sem[w].dias >= 4 ? razon(m, sem[0], sem[w]).r : null; if (r != null) R[w].push(r); }
           for (let w = 0; w < W.length; w++) uw[w] += sem[w].u;
           ejL.push(`${tit(m)} (${DK[L0].slice(8, 10)}/${DK[L0].slice(5, 7)}): ${sem.map((x) => x.dias ? f1(x.vis / x.dias) : '—').join(' → ')} visitas/día`);
         }
@@ -31911,15 +31924,16 @@ async function main() {
           if (iT.length < 2) continue; const pT = med(iT.map((i) => s.P[i]));
           const iL = []; for (let i = 0; i < n; i++) if (!enT(m, DK[i]) && !parc(m, DK[i]) && ok(s, i) && s.P[i] > 0 && Math.abs(s.P[i] / pT - 1) <= 0.04) iL.push(i);
           const T = ventana(s, iT), L = ventana(s, iL);
-          const fila = { m, pT, T, L, r: L.dias >= 3 && L.vis >= 5 ? razon(L, T) : null };
+          const rz = L.dias >= 3 && L.vis >= 5 ? razon(m, L, T) : { r: null, f: 1 }; const fila = { m, pT, T, L, r: rz.r, f: rz.f };
           filas.push(fila);
-          if (fila.r != null) { const iTx = T.ix / T.dias, iLx = L.ix / L.dias, adj = iTx > 0 && iLx > 0 ? iTx / iLx : 1; tV += T.vis / adj; tD += T.dias; tU += T.u; lV += L.vis; lD += L.dias; lU += L.u; }
+          if (fila.r != null) { const adj = fila.f || 1; tV += T.vis / adj; tD += T.dias; tU += T.u; lV += L.vis; lD += L.dias; lU += L.u; }
         }
         const R = filas.filter((f) => f.r != null);
         console.log(`• ${filas.length} publicaciones tuvieron días tachados con stock · ${R.length} también se vendieron SIN tachado a ese mismo precio (las que se pueden comparar)`);
         if (R.length) { console.log(`• visitas/día con tachado contra sin tachado: ${pc(med(R.map((f) => f.r)))} (mediana) · ${pc(lD && tD && lV > 0 ? (tV / tD) / (lV / lD) : null)} (todas juntas)`); if (tV > 0 && lV > 0) console.log(`• ventas cada 100 visitas: con tachado ${f1(tU / tV * 100)} · sin tachado ${f1(lU / lV * 100)} · ventas/día ${f1(tU / tD, 2)} contra ${f1(lU / lD, 2)}`); }
         for (const f of filas.sort((a, b) => (b.T.dias + b.L.dias) - (a.T.dias + a.L.dias)).slice(0, 25)) console.log(`    ${tit(f.m)} · ${$(f.pT)} · tachado ${f.T.dias} d: ${f1(f.T.dias ? f.T.vis / f.T.dias : null)} vis/d, ${f.T.u} vend · liso ${f.L.dias} d: ${f1(f.L.dias ? f.L.vis / f.L.dias : null)} vis/d, ${f.L.u} vend${f.r != null ? ` · ${pc(f.r)} visitas con tachado` : ' · sin días lisos a ese precio para comparar'}`);
       }
+      console.log(`\n(${sinPanel} comparación(es) sin un panel de 8+ publicaciones para corregir: ésas van sin corregir.)`);
       console.log('\nSOLO LEE: no toqué nada.');
       return;
     }
