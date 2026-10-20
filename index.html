@@ -10803,6 +10803,8 @@ async function fichaAbrir(mla,ev){
   let h=`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><b style="font-size:.95rem">📋 Ficha · ${tit}</b><div style="color:var(--muted)">${esc(mla)} · "${esc(e.title||'')}"</div></div><div style="display:flex;gap:6px;flex-wrap:wrap">${e.prodId?`<button class="btn" onclick="lineaAbrir('${e.prodId}',event,${JSON.stringify(e.variant||'').replace(/"/g,'&quot;')})">📈 Gráfico</button>`:''}<button class="btn" onclick="document.getElementById('ficha-modal').remove()">Cerrar</button></div></div>`;
   if(falla)h+=`<p style="color:var(--amber)">No pude leer ${falla}. Probá de nuevo en un rato.</p>`;
   if(F){const r=F.res||{};
+    // 20/10/2026 · etapa 4: la noche que la armó no pudo leer algo (notas, supervisor, estrategias…): se dice arriba.
+    if(F.incompleta)h+=`<p style="color:var(--amber);margin:6px 0 0">⚠️ Ficha incompleta: ${esc(F.incompleta)}. Se completa la próxima noche.</p>`;
     h+=`<p style="margin:8px 0 0">Hoy: <b>${$(r.p)}</b> · ${esc(_FICHA_EST[r.est]||r.est||'?')} · ${r.st!=null?r.st+' u. en Full':'stock ?'} · últimos 30 días: ${r.u30||0} u. (${r.r30??'—'} por día con stock, ${$(r.pd30)} de ganancia por día) · costo ${$(r.cu)} · ficha armada ${_cerFecha(F.ts)}</p>`;
     const ico={perdio:'⛔',gano:'✅',mejor:'🏆',curso:'🧪'};
     h+=sec('Lo que ya sabemos',(F.sabemos||[]).length?(F.sabemos||[]).map(s=>`<div style="margin:3px 0">${ico[s.t]||'·'} ${esc(s.txt)}</div>`).join(''):'<div style="color:var(--muted)">Todavía no hay nada medido: ningún cambio de precio con días suficientes después.</div>');
@@ -18847,7 +18849,8 @@ function _listaUnVend(e){return !!e&&Number(e.mv)===1;}
 // NINGÚN "DA" SIN CHEQUEAR EL CATÁLOGO (20/10/2026, eligió la a): sólo entra a ✅ Dan lo que el chat de compras confirmó mirando ML
 // (`ok` de `listadato`) para ESE catálogo (`okCat`, o el fijado con `mi=`). Antes entraba también lo que el robot emparejó solo y
 // "parecía" bien: 21 de 36 eran otro producto. Lo demás de 25%+ queda en 🔎 Para revisar. Misma regla en el robot (`cuentaLista`).
-function _listaOkVale(e){return !!(e&&e.ok&&(e.miFijo||!e.okCat||String(e.okCat).toUpperCase()===String(e.mi||'').toUpperCase()));}
+// 20/10/2026 · etapa 4: con `miFijo`, vale sólo si lo medido (`mi`) es ese catálogo (misma regla que `listaOkVale` del robot).
+function _listaOkVale(e){return !!(e&&e.ok&&(e.miFijo?String(e.miFijo).toUpperCase()===String(e.mi||'').toUpperCase():(!e.okCat||String(e.okCat).toUpperCase()===String(e.mi||'').toUpperCase())));}
 function _listaDa(e){return _listaMed25(e)&&Number(e.vend)>=100&&_listaOkVale(e);}
 function _listaRevisar(e){return _listaMed25(e)&&!_listaDa(e);}
 function _listaArmado(k){return Object.entries(((state.listaPed||{})[k])||{}).map(([cod,u])=>({cod,u:parseInt(u)||0})).filter(x=>x.u>0);}
