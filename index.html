@@ -2683,7 +2683,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.26';
+const APP_VERSION='25.27';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2694,7 +2694,12 @@ const APP_VERSION='25.26';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
-  {v:'25.26',f:'20/10',h:'14:43',c:[{n:2,t:'💳 Ventas: cada venta dice si se vendió por la publicación Clásica o la Premium y en cuántas cuotas ("1 pago", "3 cuotas" o "6 cuotas s/interés" cuando el interés lo pagamos nosotros). Las Premium van en violeta. Las ventas viejas se completan solas con el robot.'}]},
+  {v:'25.27',f:'20/10',h:'14:43',c:[{n:2,t:'💳 Ventas: cada venta dice si se vendió por la publicación Clásica o la Premium y en cuántas cuotas ("1 pago", "3 cuotas" o "6 cuotas s/interés" cuando el interés lo pagamos nosotros). Las Premium van en violeta. Las ventas viejas se completan solas con el robot.'}]},
+  {v:'25.26',f:'20/10',h:'15:00',c:[
+    {n:3,t:'Disponible de MP: el robot corta el disponible en el mismo momento que "a liquidar", así lo liberado no se cuenta dos veces'},
+    {n:3,t:'Cargar el disponible por el chat (ancla) recalcula "a liquidar" y el disponible en la misma corrida, y acepta la hora en que lo leíste'},
+    {n:2,t:'Cerrar el mes avisa si el disponible se cargó después del último "a liquidar"'},
+    {n:1,t:'Si el permiso de ML de una cuenta no renueva, el robot reintenta y dice por qué'}]},
   {v:'25.25',f:'20/10',h:'14:40',c:[{n:1,t:'📈 Línea de tiempo: el gráfico llega hasta abajo de la pantalla (arriba queda el encabezado como estaba). Los carriles se agrandan, las letras no se deforman, y lo que estaba abajo (cada cambio de precio, los colores) aparece al bajar.'}]},
   {v:'25.24',f:'20/10',h:'14:30',c:[
     {n:3,t:'Paraguay y Elegancia: cada pedido queda con su proveedor (Nissei, Elegancia, perfumería) y "compray" no mezcla pedidos de dos proveedores'},
@@ -8784,9 +8789,18 @@ async function saveSnapshot(){
   const _mc=_mesACerrar();
   const key=_mc.key, label=_mc.label;
   if(state.snapshots&&state.snapshots[key]){alert('Ya existe un cierre de '+label+'. Si necesitás corregirlo, primero borrá ese cierre desde "Meses cerrados" y volvé a cerrarlo.');return;}
-  if(!confirm(_mc.anterior
+  // EL DISPONIBLE CARGADO DESPUÉS DEL ÚLTIMO "A LIQUIDAR" (etapa 2, 20/10/2026): lo liberado entre las dos
+  // cosas está en el número que cargaste Y en "a liquidar" (que lo sigue teniendo como futuro). Cerrar así
+  // congela esa plata dos veces en el mes. Se avisa en el mismo cartel.
+  const _agC=(state.finanzas&&state.finanzas.agenda)||{};
+  const _corteC=parseFloat(_agC._corte)||parseFloat(_agC._ts)||0;
+  const _ancNuevas=_corteC>0?Object.entries(state.saldoancla||{}).filter(([,a])=>a&&(parseFloat(a.ts)||0)>_corteC).map(([k])=>k):[];
+  const _avisoAncla=_ancNuevas.length
+    ?'⚠️ Cargaste el disponible de '+_ancNuevas.join(', ')+' después del último "a liquidar" ('+new Date(_corteC).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+'): lo liberado entre medio puede estar contado dos veces. Esperá a la próxima corrida del robot (o pedime que lo cargue con ancla, que recalcula todo en el momento) antes de cerrar.\n\n'
+    :'';
+  if(!confirm(_avisoAncla+(_mc.anterior
     ?'¿Cerrar '+label+' con los valores de HOY del arqueo?\n\nEstamos en el día '+_mc.dia+' del mes nuevo: lo que se movió en estos días queda adentro del cierre de '+label+'. Conviene cargar antes el disponible de MP y lo demás que leés a mano.'
-    :'¿Cerrar '+label+' y guardar los valores actuales del arqueo?'))return;
+    :'¿Cerrar '+label+' y guardar los valores actuales del arqueo?')))return;
   const c=calcArqueo();
   const prodValues={};
   (state.products||[]).forEach(p=>{let v=0;LOCS.forEach(l=>v+=Math.max(0,getQ(p.id,l))*costP(p));prodValues[p.id]={name:p.name,value:v};});

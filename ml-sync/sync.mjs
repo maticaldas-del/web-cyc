@@ -530,6 +530,32 @@ async function pedirReporteMP(H, dias) {
   } catch (e) { return { ok: false, txt: String(e.message || e).slice(0, 90), desde, hasta }; }
 }
 
+// RENOVAR EL PERMISO DE UNA CUENTA PARA LEER MERCADO PAGO, CON EL MISMO REINTENTO QUE EL CICLO (etapa 2,
+// 20/10/2026). El 02/10 `saldoml` no escribió porque el token de Matías no renovó una vez, y `dispo` sí
+// escribió: lo liberado quedó en los dos lados. ML rota el refresh_token en cada uso, así que si otra
+// corrida lo renovó un instante antes, el que tenemos en memoria ya no sirve: se relee de la base y se
+// reintenta a los 5 s (igual que la vuelta del ciclo). Devuelve { t, motivo }: `t` null si no se pudo, y
+// `motivo` dice por qué, SIN el token (el registro es público).
+async function _mpTokenReintento(db, label, acc) {
+  const limpio = (e) => String((e && e.message) || e).replace(/(access|refresh)_token["':=\s]+[^"',\s}]+/gi, '$1_token=…').slice(0, 140);
+  if (!acc || !acc.refresh_token) return { t: null, motivo: 'sin token guardado' };
+  let t = null;
+  try {
+    t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+  } catch (e1) {
+    await new Promise((r) => setTimeout(r, 5000));
+    let fresco = {};
+    try { fresco = (await db.get('mlapi/tokens/' + label)) || {}; } catch { fresco = {}; }
+    try {
+      t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, fresco.refresh_token || acc.refresh_token);
+      console.log(`   ℹ️ ${label}: la renovación del permiso falló una vez (${limpio(e1)}) y anduvo al reintentar${fresco.refresh_token && fresco.refresh_token !== acc.refresh_token ? ' (otra corrida lo había renovado)' : ''}`);
+    } catch (e2) { return { t: null, motivo: limpio(e2) }; }
+  }
+  try { await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() }); acc.refresh_token = t.refresh_token; }
+  catch (e) { console.log(`   ⚠️ ${label}: renové el permiso pero no pude guardarlo (${limpio(e)}): la próxima corrida puede fallar`); }
+  return { t, motivo: null };
+}
+
 async function avisarBloqueoML(db, DRY) {
   const hoy = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
   let marca = '';
@@ -26184,8 +26210,22 @@ async function main() {
     // este reporte**. Son ~$2.200.000 por mes entre las cuatro. O sea que el número se va yendo
     // para ARRIBA con el correr de las semanas, y por eso el ancla **se vuelve a cargar una vez por
     // mes** — decisión suya del 20/09. El panel avisa cuando está vieja.
+    //
+    // EL CORTE ES EL DE "A LIQUIDAR" (etapa 2, 20/10/2026). Antes cada uno cortaba en su propio
+    // Date.now(): lo liberado entre la corrida de `saldoml` y la de `dispo` (o TODO lo liberado desde la
+    // última vez que `saldoml` escribió, si esa noche no pudo: pasó el 02/10 con el token de Matías) quedaba
+    // en el disponible Y en "a liquidar". Ahora `dispo` corta en el MISMO momento con el que `saldoml`
+    // escribió por última vez (`cyc/finanzas/agenda/_corte`) y anota ese momento en `_dispTs`: lo que se
+    // liberó después sigue en "a liquidar" hasta la próxima vuelta de los dos, nunca en los dos lados.
+    // Vive en una función porque `ancla` la corre en la misma vuelta, después de `saldoml`.
     if (String(process.env.BILLING_PROBE || '').startsWith('dispo')) {
-      const APLICAR = String(process.env.BILLING_PROBE).split(':').includes('go');
+      await _probeDispo(String(process.env.BILLING_PROBE));
+      return;
+    }
+    // `estado` sale con { escribio, motivo }: lo lee `ancla` para decir si el disponible quedó o no.
+    async function _probeDispo(probe, estado = {}) {
+      estado.escribio = false; estado.motivo = 'no llegó a escribir';
+      const APLICAR = String(probe).split(':').includes('go');
       const MP = 'https://api.mercadopago.com';
       const hoy = Date.now();
       console.log('=== EL DISPONIBLE DE ML, A PARTIR DE TU NÚMERO ===');
@@ -26194,6 +26234,7 @@ async function main() {
       // de partida…) quedaba sólo en el log. Ahora se cuenta en cyc/saldoml/_alerta (una por día de
       // acá) y con 2 noches seguidas va un aviso, una vez por día. `null` = escribió bien.
       const _notaDispo = async (motivo) => {
+        estado.escribio = !motivo; estado.motivo = motivo || null;
         if (!APLICAR || DRY) return;
         const hoyD = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
         try {
@@ -26210,6 +26251,20 @@ async function main() {
       };
 
       const anclas = (await db.get('cyc/saldoancla')) || {};
+      // HASTA DÓNDE SE SUMA: el momento con el que `saldoml` escribió "a liquidar" por última vez. Lo
+      // posterior todavía figura ahí como futuro; sumarlo acá lo contaría dos veces.
+      let corte = hoy, corteDe = '';
+      try {
+        const ag = (await db.get('cyc/finanzas/agenda')) || {};
+        const c1 = parseFloat(ag._corte) || 0, c2 = parseFloat(ag._ts) || 0;
+        if (c1 > 0 && c1 <= hoy) { corte = c1; corteDe = 'corte'; }
+        else if (c2 > 0 && c2 <= hoy) { corte = c2; corteDe = 'ts'; }
+      } catch { corteDe = ''; }
+      const _hLoc = (t) => new Date(t - 3 * 36e5).toISOString().slice(0, 16).replace('T', ' ');
+      if (corteDe === 'corte') console.log(`   corte: ${_hLoc(corte)} (hora de acá), el mismo con el que se escribió "a liquidar" · lo liberado después queda allá`);
+      else if (corteDe === 'ts') console.log(`   corte: ${_hLoc(corte)} (hora de acá), la última escritura de "a liquidar" (sin la marca exacta de corte: puede haber minutos de diferencia)`);
+      else console.log('   ⚠️ no pude leer cuándo se escribió "a liquidar" por última vez: corto en la hora de esta corrida (lo liberado desde esa escritura puede quedar contado dos veces hasta la próxima vuelta)');
+      if (corteDe && hoy - corte > 2 * 864e5) console.log(`   ⚠️ "a liquidar" no se escribe hace ${Math.round((hoy - corte) / 864e5)} días: el disponible llega sólo hasta ese momento (el total no se duplica, pero queda atrasado)`);
       const tc = parseFloat((await db.get('cyc/finanzas/tipo_cambio')) || 0) || 0;
       if (!tc) {
         console.log('❌ No hay tipo de cambio cargado en el panel, y el Arqueo está en DÓLARES.');
@@ -26231,9 +26286,9 @@ async function main() {
         const diasAnc = Math.round((hoy - anc.ts) / 864e5);
         const acc = accounts[label];
         if (!acc?.refresh_token) { console.log('   ❌ sin token'); problemas++; continue; }
-        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); }
-        catch { console.log('   ❌ no pude renovar el token'); problemas++; continue; }
-        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const { t, motivo: _mTk } = await _mpTokenReintento(db, label, acc);
+        if (!t) { console.log(`   ❌ no pude renovar el permiso de ML: ${_mTk}`); problemas++; continue; }
+        if (anc.ts >= corte) console.log('   tu número es posterior al último "a liquidar": se toma tal cual (lo liberado entre medio puede figurar también allá hasta que corra saldoml)');
         const H = { Authorization: `Bearer ${t.access_token}` };
         let arch = null, desdeRep = 0;
         try {
@@ -26282,7 +26337,7 @@ async function main() {
             const ts = fechaMov(f, iL, iS, iD);
             if (ts == null) { sinFecha++; continue; }
             if (ts <= anc.ts) { nAntes++; continue; }      // ya estaba adentro del número que él dio
-            if (ts > hoy) { nFuturo++; continue; }          // todavía no pasó: eso es "a liquidar"
+            if (ts > corte) { nFuturo++; continue; }        // después del corte de "a liquidar": sigue allá
             const v = csvNum(f[iR]);
             if (v == null) { sinNeto++; continue; }
             // PLATA QUE ENTRA SIN FECHA DE LIBERACIÓN TODAVÍA NO ESTÁ DISPONIBLE (24/09/2026). Antes
@@ -26337,11 +26392,13 @@ async function main() {
         if (_cambio == null || _cambio.length) {
           console.log(`   ⚠️ NO se escribe: ${_cambio == null ? 'no pude releer el punto de partida' : 'cargaste el disponible de ' + _cambio.join(', ') + ' mientras esto corría'} (etapa 4). Lo tuyo manda; se recalcula en la próxima vuelta.`);
           if (_cambio == null) await _notaDispo('no pude releer el punto de partida');
+          else { estado.escribio = false; estado.motivo = 'cambió el punto de partida mientras corría'; }
           return;
         }
       }
       await db.patch('cyc/finanzas', patch);
-      await db.patch('cyc/saldoml', { _dispTs: Date.now() });
+      // El disponible llega hasta el corte, no hasta ahora: `saldoml` cuenta lo liberado desde acá.
+      await db.patch('cyc/saldoml', { _dispTs: corte });
       // Revisión final: si lo liberado pasó al disponible, también se vacía lo de CADA cuenta
       // (`liberadoSinDisp`). Si no, cargar el disponible a mano (ancla) lo volvía a restar de "a liquidar".
       if (patch.liq_liberado === 0) {
@@ -26495,9 +26552,132 @@ async function main() {
     // tiene cargado hoy; los montos se guardan en la base, que es donde ya vive su plata.
     //
     // SIN `:go` NO ESCRIBE NADA.
-    if (String(process.env.BILLING_PROBE || '').startsWith('saldoml')) {
-      const APLICAR = String(process.env.BILLING_PROBE).split(':').includes('go');
+    // BILLING_PROBE=sinfecha[:<cuenta>] → LA PLATA "POR COBRAR" QUE NO TIENE FECHA DE LIBERACIÓN · SOLO LEE
+    //
+    // POR QUÉ (etapa 2, 20/10/2026). `saldoml` suma a "a liquidar" (y a `agenda.sinDia`) toda fila POSITIVA
+    // sin MONEY_RELEASE_DATE, y `dispo` no las suma al disponible. El revisor vio ~62 por cuenta, una por
+    // día hábil, tipo SETTLEMENT, que nunca reciben fecha: si son acreditaciones que YA están en la cuenta,
+    // están contadas dos veces (en el número que él carga y en "a liquidar"). Antes de cambiar cómo se
+    // tratan, se mide qué son. Baja el MISMO reporte que `saldoml` (mismo `elegirReporte` y largo mínimo).
+    //
+    // EL REGISTRO ES PÚBLICO: no imprime ni un peso ni un id. Sólo cantidades, tipos, si/no de cada id,
+    // fechas por día y el PORCENTAJE que esas filas son de "a liquidar".
+    if (String(process.env.BILLING_PROBE || '').startsWith('sinfecha')) {
+      const soloCta = String(process.env.BILLING_PROBE).split(':')[1] || '';
+      const nrmC = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
       const MP = 'https://api.mercadopago.com';
+      const hoy = Date.now();
+      const ES_RETIRO = /withdraw|payout|retir|transfer/i;   // el mismo criterio que `saldoml`
+      const diaAca = (t) => new Date(t - 3 * 36e5).toISOString().slice(0, 10);
+      const tapar = (v) => String(v == null || v === '' ? '(vacío)' : v).replace(/\d{5,}/g, '#').slice(0, 28);
+      const top = (m) => Object.entries(m).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k, n]) => `${tapar(k)} ${n}`).join(' · ') || '—';
+      let anclas = {};
+      try { anclas = (await db.get('cyc/saldoancla')) || {}; } catch { anclas = {}; }
+      console.log('=== "POR COBRAR" SIN FECHA DE LIBERACIÓN · qué son (solo lee, sin montos ni ids) ===\n');
+      for (const label of labels) {
+        if (soloCta && !nrmC(label).startsWith(nrmC(soloCta))) continue;
+        console.log(`── ${label} ──`);
+        const acc = accounts[label];
+        const { t, motivo: _mTk } = await _mpTokenReintento(db, label, acc);
+        if (!t) { console.log(`   ❌ no pude renovar el permiso de ML: ${_mTk}`); continue; }
+        const H = { Authorization: `Bearer ${t.access_token}` };
+        let csv = '';
+        try {
+          const r = await fetch(`${MP}/v1/account/settlement_report/list`, { headers: H, signal: AbortSignal.timeout(20000) });
+          const arr = await r.json();
+          if (!r.ok || !Array.isArray(arr)) { console.log(`   ❌ no pude listar los reportes (HTTP ${r.status})`); continue; }
+          const u = elegirReporte(arr, { minDias: 20 });
+          if (!u) { console.log('   ❌ no hay ningún reporte listo'); continue; }
+          console.log(`   reporte: ${String(u.begin_date || '').slice(0, 10)} → ${String(u.end_date || '').slice(0, 10)} (el mismo criterio que saldoml)`);
+          const r2 = await fetch(`${MP}/v1/account/settlement_report/${encodeURIComponent(u.file_name)}`, { headers: H, signal: AbortSignal.timeout(30000) });
+          if (!r2.ok) { console.log(`   ❌ no pude abrirlo (HTTP ${r2.status})`); continue; }
+          csv = await r2.text();
+        } catch (e) { console.log(`   ❌ ${String(e.message || e).slice(0, 80)}`); continue; }
+        const li = csv.split('\n').filter((x) => x.trim());
+        const sep = (li[0] || '').includes(';') ? ';' : ',';
+        const cols = csvPartir(li[0] || '', sep).map((x) => x.replace(/^"|"$/g, ''));
+        const ix = (n) => cols.indexOf(n);
+        const iTipo = ix('TRANSACTION_TYPE'), iReal = ix('REAL_AMOUNT'), iLib = ix('MONEY_RELEASE_DATE');
+        const iSetl = ix('SETTLEMENT_DATE'), iTx = ix('TRANSACTION_DATE');
+        const iOrd = ix('ORDER_ID'), iSrc = ix('SOURCE_ID'), iRel = ix('IS_RELEASED');
+        const iSub = ix('SUB_UNIT'), iBu = ix('BUSINESS_UNIT'), iPm = ix('PAYMENT_METHOD_TYPE');
+        if (iTipo < 0 || iReal < 0 || iLib < 0) { console.log('   ❌ le falta una columna clave (tipo, neto o liberación)'); continue; }
+        console.log(`   columnas que trae: ORDER_ID ${iOrd >= 0 ? 'sí' : 'no'} · SOURCE_ID ${iSrc >= 0 ? 'sí' : 'no'} · IS_RELEASED ${iRel >= 0 ? 'sí' : 'no'} · SUB_UNIT ${iSub >= 0 ? 'sí' : 'no'} · BUSINESS_UNIT ${iBu >= 0 ? 'sí' : 'no'} · PAYMENT_METHOD_TYPE ${iPm >= 0 ? 'sí' : 'no'}`);
+        const filas = li.slice(1).map((x) => csvPartir(x, sep));
+        // Los ids de las filas que SÍ tienen fecha de liberación: si una fila sin fecha comparte id con una
+        // de ésas, probablemente es la misma plata vista de otro lado (sólo se cuenta, el id no se imprime).
+        const srcConFecha = new Set(), ordConFecha = new Set();
+        for (const f of filas) {
+          if (!String(f[iLib] || '').trim()) continue;
+          if (iSrc >= 0 && String(f[iSrc] || '').trim()) srcConFecha.add(String(f[iSrc]).trim());
+          if (iOrd >= 0 && String(f[iOrd] || '').trim()) ordConFecha.add(String(f[iOrd]).trim());
+        }
+        const anc = anclas[label], ancTs = parseFloat(anc && anc.ts) || 0;
+        let liq = 0, sfSum = 0, n = 0, nRetPos = 0, conOrd = 0, conSrc = 0, srcComp = 0, ordComp = 0, antesAncla = 0, finde = 0, sinMov = 0;
+        let fMin = Infinity, fMax = -Infinity;
+        const tipos = {}, rel = {}, sub = {}, bu = {}, pm = {}, dias = new Set();
+        for (const f of filas) {
+          const tp = String(f[iTipo] || '').trim();
+          const txt = String(f[iLib] || '').trim();
+          const v = csvNum(f[iReal]);
+          if (ES_RETIRO.test(tp)) { if (!txt && v != null && v > 0) nRetPos++; continue; }
+          if (txt) { const tsL = new Date(txt).getTime(); if (Number.isFinite(tsL) && tsL > hoy && v != null) liq += v; continue; }
+          if (!(v != null && v > 0)) continue;
+          // Ésta es una de las que `saldoml` suma a "a liquidar" sin día.
+          n++; liq += v; sfSum += v;
+          tipos[tp || '(vacío)'] = (tipos[tp || '(vacío)'] || 0) + 1;
+          if (iRel >= 0) { const k = String(f[iRel] || '').trim() || '(vacío)'; rel[k] = (rel[k] || 0) + 1; }
+          if (iSub >= 0) { const k = String(f[iSub] || '').trim() || '(vacío)'; sub[k] = (sub[k] || 0) + 1; }
+          if (iBu >= 0) { const k = String(f[iBu] || '').trim() || '(vacío)'; bu[k] = (bu[k] || 0) + 1; }
+          if (iPm >= 0) { const k = String(f[iPm] || '').trim() || '(vacío)'; pm[k] = (pm[k] || 0) + 1; }
+          const o = iOrd >= 0 ? String(f[iOrd] || '').trim() : '', sId = iSrc >= 0 ? String(f[iSrc] || '').trim() : '';
+          if (o) { conOrd++; if (ordConFecha.has(o)) ordComp++; }
+          if (sId) { conSrc++; if (srcConFecha.has(sId)) srcComp++; }
+          const ts = fechaMov(f, -1, iSetl, iTx);
+          if (ts == null) { sinMov++; continue; }
+          if (ts < fMin) fMin = ts; if (ts > fMax) fMax = ts;
+          const d = diaAca(ts); dias.add(d);
+          const wd = new Date(d + 'T12:00:00Z').getUTCDay(); if (wd === 0 || wd === 6) finde++;
+          if (ancTs && ts <= ancTs) antesAncla++;
+        }
+        console.log(`   filas positivas SIN fecha de liberación (las que saldoml suma a "a liquidar"): ${n}`);
+        if (nRetPos) console.log(`   (aparte: ${nRetPos} positivas sin fecha con tipo de retiro/transferencia, que saldoml NO suma)`);
+        if (!n) { console.log('   ✅ ninguna: en esta cuenta no hay nada que medir.\n'); continue; }
+        console.log(`   tipos: ${top(tipos)}`);
+        console.log(`   traen ORDER_ID: ${conOrd} sí · ${n - conOrd} no${conOrd ? ` · de ésas, ${ordComp} con la misma orden en una fila que SÍ tiene fecha de liberación` : ''}`);
+        console.log(`   traen SOURCE_ID: ${conSrc} sí · ${n - conSrc} no${conSrc ? ` · de ésas, ${srcComp} con el mismo id en una fila que SÍ tiene fecha de liberación` : ''}`);
+        if (iRel >= 0) console.log(`   IS_RELEASED: ${top(rel)}`);
+        if (iSub >= 0) console.log(`   SUB_UNIT: ${top(sub)}`);
+        if (iBu >= 0) console.log(`   BUSINESS_UNIT: ${top(bu)}`);
+        if (iPm >= 0) console.log(`   PAYMENT_METHOD_TYPE: ${top(pm)}`);
+        if (Number.isFinite(fMin)) {
+          console.log(`   fechas (de movimiento o acreditación): del ${diaAca(fMin)} al ${diaAca(fMax)} · la más vieja tiene ${Math.round((hoy - fMin) / 864e5)} días, la más nueva ${Math.round((hoy - fMax) / 864e5)}`);
+          console.log(`   días distintos: ${dias.size} (${finde} fila(s) en sábado o domingo) · ${(n / Math.max(1, dias.size)).toFixed(1)} por día`);
+        }
+        if (sinMov) console.log(`   ⚠️ ${sinMov} sin ninguna fecha de movimiento`);
+        console.log(ancTs ? `   anteriores a tu punto de partida (${diaAca(ancTs)}): ${antesAncla} de ${n}${antesAncla ? ' · si ya estaban en la cuenta, ésas están en tu número Y en "a liquidar"' : ''}` : '   sin punto de partida cargado: no se puede decir cuántas son anteriores');
+        console.log(`   en plata son el ${liq > 0 ? (sfSum / liq * 100).toFixed(1) : '?'}% de "a liquidar" de esta cuenta (lo con fecha futura + esto) · los montos no se imprimen\n`);
+      }
+      console.log('(Solo se leyó: no se escribió nada en la base, ni en ML, ni en Mercado Pago. El paso siguiente —cómo tratar estas filas— se decide con esto.)');
+      return;
+    }
+    // Vive en una función porque `ancla` la corre en la misma vuelta (etapa 2, 20/10/2026): el número que
+    // él carga ya incluye lo liberado hasta ese momento, y "a liquidar" escrito a la mañana lo seguía
+    // teniendo como futuro (doble hasta la mañana siguiente; congelado si cerraba el mes ese día).
+    // `estado` sale con { escribio, motivo, sinCuentas }.
+    if (String(process.env.BILLING_PROBE || '').startsWith('saldoml')) {
+      const _stSm = {};
+      await _probeSaldoml(String(process.env.BILLING_PROBE), _stSm);
+      // sin ninguna cuenta calculada el paso no midió nada: sale con error (avisonoche lo nombra).
+      if (_stSm.sinCuentas) process.exitCode = 1;
+      return;
+    }
+    async function _probeSaldoml(probe, estado = {}) {
+      estado.escribio = false; estado.motivo = 'no llegó a escribir'; estado.sinCuentas = false;
+      const APLICAR = String(probe).split(':').includes('go');
+      const MP = 'https://api.mercadopago.com';
+      // `hoy` ES EL CORTE: lo liberado hasta acá sale de "a liquidar"; lo posterior queda. Se guarda con
+      // la agenda (`_corte`) y `dispo` corta en el mismo momento, así la plata nunca está en los dos lados.
       const hoy = Date.now();
       console.log('=== LO QUE FALTA COBRAR DE ML, POR CUENTA ===');
       console.log(APLICAR ? '(APLICANDO · se guarda en la base)\n' : '(PRUEBA · no se escribe nada · agregá ":go")\n');
@@ -26540,12 +26720,13 @@ async function main() {
       try { tsMpMano = parseFloat((await db.get('cyc/finanzas/_ts/mp')) || 0) || 0; } catch { /* */ }
       let libSinDisp = 0, libSinDesde = 0;
       const res = {}; let totalLiq = 0, cuentasOk = 0, cuentasMal = 0;
+      const _tkSm = {};   // el permiso de cada cuenta, para pedir el reporte de mañana sin volver a rotarlo
       for (const label of labels) {
         const acc = accounts[label];
         if (!acc?.refresh_token) { console.log(`── ${label} ── sin token`); cuentasMal++; continue; }
-        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); }
-        catch { console.log(`── ${label} ── ❌ no pude renovar el token`); cuentasMal++; continue; }
-        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const { t, motivo: _mTk } = await _mpTokenReintento(db, label, acc);
+        if (!t) { console.log(`── ${label} ── ❌ no pude renovar el permiso de ML: ${_mTk}`); cuentasMal++; continue; }
+        _tkSm[label] = t.access_token;
         const H = { Authorization: `Bearer ${t.access_token}` };
         console.log(`── ${label} ──`);
         // El reporte MÁS NUEVO por fecha de creación, no el último del arreglo: el orden no está
@@ -26781,7 +26962,7 @@ async function main() {
           const dias = Object.keys(agenda).sort();
           const porDiaUSD = {};
           for (const d of dias) porDiaUSD[d] = Math.round(agenda[d] / tc);
-          await db.set('cyc/finanzas/agenda', { dias: porDiaUSD, sinDia: Math.round(sinDiaTot / tc), _ts: Date.now(), _moneda: 'usd', _hasta: dias[dias.length - 1] || '', _repHasta: repHasta || '', _repHastaCta: repHastaCta });
+          await db.set('cyc/finanzas/agenda', { dias: porDiaUSD, sinDia: Math.round(sinDiaTot / tc), _ts: Date.now(), _corte: hoy, _moneda: 'usd', _hasta: dias[dias.length - 1] || '', _repHasta: repHasta || '', _repHastaCta: repHastaCta });
           const rel = (await db.get('cyc/finanzas/agenda')) || {};
           const nrel = Object.keys(rel.dias || {}).length;
           console.log(`   agenda de liberaciones: ${nrel} día(s) guardado(s) y releído(s) ${nrel === dias.length ? '✅' : '❌'}`);
@@ -26811,12 +26992,14 @@ async function main() {
         let ped = 0;
         for (const label of (_yaPedidoHoy ? [] : labels)) {
           const acc = accounts[label]; if (!acc?.refresh_token) continue;
-          try {
-            const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
-            await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
-            const q = await pedirReporteMP({ Authorization: `Bearer ${t.access_token}` }, 90);
-            if (q.ok) ped++; else console.log(`   reporte de mañana · ${label}: ❌ ${q.txt}`);
-          } catch { console.log(`   reporte de mañana · ${label}: ❌ no pude renovar el token`); }
+          let tk = _tkSm[label] || null;
+          if (!tk) {
+            const { t, motivo: _mTk } = await _mpTokenReintento(db, label, acc);
+            if (!t) { console.log(`   reporte de mañana · ${label}: ❌ no pude renovar el permiso de ML: ${_mTk}`); continue; }
+            tk = t.access_token;
+          }
+          const q = await pedirReporteMP({ Authorization: `Bearer ${tk}` }, 90);
+          if (q.ok) ped++; else console.log(`   reporte de mañana · ${label}: ❌ ${q.txt}`);
         }
         console.log(_yaPedidoHoy ? '   reporte para la próxima vuelta: ya se pidió hoy en otra corrida' : `   reporte para la próxima vuelta: ${ped} de ${labels.length} pedidos`);
         // AVISO SI SE QUEDA VIEJO (revisión max #20). Dos cosas, una vez por día cada una:
@@ -26856,7 +27039,9 @@ async function main() {
         } catch (e) { console.log('   aviso de reporte viejo: ❌ ' + String(e.message || e).slice(0, 80)); }
       }
       // Etapa 5: sin ninguna cuenta calculada el paso no midió nada: sale con error (avisonoche lo nombra).
-      if (!cuentasOk) process.exitCode = 1;
+      if (!cuentasOk) estado.sinCuentas = true;
+      estado.escribio = APLICAR && !noEscribio;
+      estado.motivo = !APLICAR ? 'prueba (sin :go)' : (noEscribio || null);
       console.log('\n   OJO: esto es lo que FALTA COBRAR, no el disponible. El disponible necesita un');
       console.log('   punto de partida que el reporte no da, así que ése se sigue cargando a mano.');
       console.log('   (No se movió un peso, no se tocó ML y no se tocó ningún precio.)');
@@ -42111,6 +42296,15 @@ async function main() {
     // Hace lo mismo que escribirlo en el Arqueo: guarda el punto de partida en PESOS
     // (`cyc/saldoancla/<Cuenta>` {ars, usd, tc, ts}), la casilla en DÓLARES (`finanzas/mp_<cuenta>`),
     // el total `mp_disp` y la fecha. De ahí `dispo` sigue solo cada noche. Sin dólar cargado no escribe.
+    //
+    // LA HORA EN QUE LO LEYÓ (etapa 2, 20/10/2026): `ancla:<cuenta>=<pesos>@<AAAA-MM-DD HH:MM>` (hora de
+    // acá) guarda ESA hora como punto de partida. Antes se guardaba la hora de la corrida: lo liberado
+    // entre que él miró Mercado Pago y que corrió el comando no quedaba en ningún lado. No puede ser futura
+    // ni de más de 7 días atrás. Sin `@` se usa la hora de la corrida y el log lo dice.
+    // Y EN LA MISMA CORRIDA, `saldoml` y después `dispo` (las MISMAS funciones de la noche): el número que
+    // él carga ya incluye lo liberado hasta ese momento, y "a liquidar" escrito a la mañana lo seguía
+    // teniendo como futuro: quedaba contado dos veces hasta la mañana siguiente (y congelado si ese día
+    // se cerraba el mes).
     if (/^ancla(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const _raw = String(process.env.BILLING_PROBE).replace(/^ancla:?/, '');
       const GO = /(^|;)go$/.test(_raw);
@@ -42119,33 +42313,44 @@ async function main() {
       const nrmC = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
       const fin = (await db.get('cyc/finanzas')) || {};
       const tc = parseFloat(fin.tipo_cambio) || 0;
-      if (!pares.length) { console.log('Usá: ancla:<cuenta>=<pesos>[;<cuenta>=<pesos>][;go]   ej. ancla:adriana=1250000;matias=830500;go'); return; }
+      if (!pares.length) { console.log('Usá: ancla:<cuenta>=<pesos>[@<AAAA-MM-DD HH:MM>][;<cuenta>=<pesos>…][;go]   ej. ancla:adriana=1250000@2026-10-20 14:35;matias=830500@2026-10-20 14:40;go  (la hora en que lo miraste en MP, hora de acá)'); return; }
       if (!(tc > 0)) { console.log('❌ No hay dólar cargado en Finanzas: no escribo nada (convertir con un número adivinado se mete en todo el patrimonio).'); return; }
-      const cargas = [], mal = [];
+      const ahora = Date.now();
+      const _hAca = (t) => new Date(t - 3 * 36e5).toISOString().slice(0, 16).replace('T', ' ');
+      const cargas = [], mal = [], sinHora = [];
       for (const x of pares) {
-        const m = x.match(/^([a-zA-ZáéíóúÁÉÍÓÚ]+)\s*=\s*\$?\s*([\d.,]+)$/);
+        const m = x.match(/^([a-zA-ZáéíóúÁÉÍÓÚ]+)\s*=\s*\$?\s*([\d.,]+)(?:\s*@\s*(\d{4}-\d{2}-\d{2})[ T_](\d{1,2}):(\d{2}))?$/);
         const c = m && CT[nrmC(m[1])];
         const ars = m ? pesosArg(m[2]) : null;
         if (!c || !(ars >= 0) || ars == null) { mal.push(x); continue; }
-        cargas.push({ key: 'mp_' + nrmC(m[1]), cta: c, ars: Math.round(ars), usd: Math.round(ars / tc * 100) / 100 });
+        let ts = ahora;
+        if (m[3]) {
+          const hh = String(m[4]).padStart(2, '0');
+          ts = Date.parse(`${m[3]}T${hh}:${m[5]}:00-03:00`);
+          const back = Number.isFinite(ts) ? _hAca(ts) : '';
+          if (!Number.isFinite(ts) || back !== `${m[3]} ${hh}:${m[5]}`) { mal.push(x + ' (fecha u hora imposible)'); continue; }
+          if (ts > ahora + 2 * 60e3) { mal.push(x + ' (la hora es FUTURA)'); continue; }
+          if (ts < ahora - 7 * 864e5) { mal.push(x + ' (más de 7 días atrás: mirá MP de nuevo)'); continue; }
+        } else sinHora.push(c);
+        cargas.push({ key: 'mp_' + nrmC(m[1]), cta: c, ars: Math.round(ars), usd: Math.round(ars / tc * 100) / 100, ts: Math.min(ts, ahora) });
       }
-      if (mal.length) { console.log('❌ NO ESCRIBO NADA. No entendí: ' + mal.join(' · ') + '  (cuenta=pesos)'); return; }
-      const ahora = Date.now();
+      if (mal.length) { console.log('❌ NO ESCRIBO NADA. No entendí: ' + mal.join(' · ') + '  (cuenta=pesos o cuenta=pesos@AAAA-MM-DD HH:MM)'); return; }
+      if (sinHora.length) console.log(`⚠️ ${sinHora.join(', ')}: sin "@<AAAA-MM-DD HH:MM>" uso la hora de esta corrida (${_hAca(ahora)}) como el momento en que leíste MP. Si lo miraste antes, lo liberado en el medio queda afuera: pasá la hora.`);
       const nuevo = { ...fin };
       console.log(`=== DISPONIBLE DE MERCADO PAGO ${GO ? '' : '(PRUEBA — no escribo nada)'} · dólar ${tc} ===`);
-      for (const c of cargas) { console.log(`  ${c.cta}: ${money(c.ars)} = US$ ${c.usd.toFixed(2)}  (antes US$ ${(parseFloat(fin[c.key]) || 0).toFixed(2)})`); nuevo[c.key] = c.usd; }
+      for (const c of cargas) { console.log(`  ${c.cta}: ${money(c.ars)} = US$ ${c.usd.toFixed(2)}  (antes US$ ${(parseFloat(fin[c.key]) || 0).toFixed(2)}) · leído ${_hAca(c.ts)}`); nuevo[c.key] = c.usd; }
       const tot = Math.round(['mp_adriana', 'mp_luciana', 'mp_ayelen', 'mp_matias'].reduce((a, k) => a + (parseFloat(nuevo[k]) || 0), 0) * 100) / 100;
       const faltan = ['mp_adriana', 'mp_luciana', 'mp_ayelen', 'mp_matias'].filter((k) => !cargas.some((c) => c.key === k));
       console.log(`  total MercadoPago disponible: US$ ${tot.toFixed(2)}${faltan.length ? `  (las que no pasaste quedan como estaban: ${faltan.map((k) => k.slice(3)).join(', ')})` : ''}`);
       if (!GO) { console.log('\nNo se guardó nada (falta ;go).'); return; }
       for (const c of cargas) {
-        await db.set('cyc/saldoancla/' + c.cta, { ars: c.ars, usd: c.usd, tc, ts: ahora });
+        await db.set('cyc/saldoancla/' + c.cta, { ars: c.ars, usd: c.usd, tc, ts: c.ts });
         await db.set('cyc/finanzas/' + c.key, c.usd);
         await db.set('cyc/finanzas/_seen/' + c.key, c.usd);
       }
       await db.set('cyc/finanzas/mp_disp', tot);
       await db.set('cyc/finanzas/_seen/mp_disp', tot);
-      await db.set('cyc/finanzas/_ts/mp', ahora);
+      await db.set('cyc/finanzas/_ts/mp', Math.max(...cargas.map((c) => c.ts)));
       // Etapa 2 (28/09): el número que él lee en MP YA incluye lo liberado que `saldoml` había dejado
       // en "a liquidar" para esa cuenta. Se saca de ahí en el mismo paso; si no, la plata se cuenta
       // dos veces hasta la noche siguiente (o para siempre si esa noche saldoml no escribe).
@@ -42163,6 +42368,16 @@ async function main() {
       } catch (e) { console.log('  ⚠️ no pude sacar lo liberado de "a liquidar" (' + String(e.message || e).slice(0, 60) + '): se corrige cuando corra saldoml'); }
       const rel = await db.get('cyc/finanzas/mp_disp');
       console.log(Math.abs((parseFloat(rel) || 0) - tot) < 0.01 ? '\n✓ Guardado y releído. Desde acá `dispo` lo sigue cada noche.' : '\n⚠️ Se escribió pero al releer no coincide. Mirar a mano.');
+      // "A LIQUIDAR" Y EL DISPONIBLE, YA, CON ESTE PUNTO DE PARTIDA (ver arriba). Mismas funciones que la noche.
+      console.log('\n════ "a liquidar" con tu número (saldoml:go) ════');
+      const _stS = {}, _stD = {};
+      try { await _probeSaldoml('saldoml:go', _stS); } catch (e) { _stS.escribio = false; _stS.motivo = 'se cortó: ' + String(e.message || e).slice(0, 80); }
+      console.log('\n════ el disponible desde tu número (dispo:go) ════');
+      try { await _probeDispo('dispo:go', _stD); } catch (e) { _stD.escribio = false; _stD.motivo = 'se cortó: ' + String(e.message || e).slice(0, 80); }
+      console.log('\n── CON TU NÚMERO ──');
+      console.log(`   "A liquidar en ML": ${_stS.escribio ? '✅ recalculado' : '❌ NO se escribió · ' + (_stS.motivo || '?')}`);
+      console.log(`   disponible de ML:   ${_stD.escribio ? '✅ recalculado' : '❌ NO se escribió · ' + (_stD.motivo || '?')}`);
+      if (!_stS.escribio) console.log('   ⚠️ hasta que "a liquidar" se recalcule, lo liberado entre su última escritura y tu número puede figurar en los dos lados: no cierres el mes hasta la próxima corrida (o corré saldoml:go y dispo:go).');
       return;
     }
 
