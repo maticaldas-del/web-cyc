@@ -22381,6 +22381,52 @@ async function main() {
     // cuenta), y el precio Premium que deja la MISMA plata neta por venta: comisión Premium (+ cuotas si ML no las mete
     // adentro) + IIBB/mono al precio nuevo + 3% del facturado de más (tope de H, regla ⚖️). Ordena las que menos venden
     // primero: ésas son las que una Premium puede despertar. La publicación nueva la crea él en ML.
+    // ¿ML NOS CAMBIÓ PRECIOS CON LO DE LAS CUOTAS? (20/10/2026). `bajacuotas` (solo lee). Desde el 20/10 ML baja el costo de las cuotas
+    // (3: 8,5% · 6: 10,9% · 9: 17,3% · 12: 20,8%) y dice que pasa PARTE de la baja al precio de las publicaciones. Esto mira: (1) toda
+    // publicación cuyo precio en ML no es el de la última foto (`cyc/netopub`) ni el que puse yo después (`cyc/estrategia`), y
+    // (2) cada Premium: la comisión que pide ML hoy a su precio y cuánto de eso son cuotas, contra el % medido en `cyc/mlcuotas`.
+    if (String(process.env.BILLING_PROBE || '') === 'bajacuotas') {
+      const links = (await db.get('cyc/mllinks')) || {};
+      const netopub = (await db.get('cyc/netopub')) || {};
+      const cuotasM = (await db.get('cyc/mlcuotas')) || {};
+      const estr = (await db.get('cyc/estrategia')) || {};
+      const cambios = [], prem = [], sinLeer = [];
+      let miradas = 0;
+      for (const label of labels) {
+        const acc = accounts[label]; if (!acc?.refresh_token) continue;
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { console.log(`⚠️ ${label}: no pude renovar el permiso`); continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const ids = Object.entries(links).filter(([mla, e]) => e && e.cuenta === label && /^MLA/i.test(mla) && e.status !== 'closed').map(([mla]) => mla);
+        for (let k = 0; k < ids.length; k += 20) {
+          let arr; try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,listing_type_id,status,price,original_price,category_id,site_id,title,last_updated', t.access_token); } catch { sinLeer.push(label + ' (un lote)'); continue; }
+          for (const row of (arr || [])) {
+            const b = row.body || {}; if (!b.id || b.status === 'closed') continue; miradas++;
+            const precio = Math.round(b.price || 0); const np = netopub[b.id] || {};
+            const ks = Object.keys(estr[b.id] || {}).map(Number).filter((n) => n > 0).sort((a, z) => z - a);
+            const ultE = ks[0] || 0;
+            const prev = Number(np.precio) || 0;
+            if (prev > 0 && Math.abs(precio - prev) >= 1 && !(ultE > (Number(np.ts) || 0))) cambios.push({ mla: b.id, label, tipo: b.listing_type_id, st: b.status, prev, precio, fotoTs: np.ts, upd: b.last_updated, orig: b.original_price, tit: String(b.title || '').slice(0, 45) });
+            if (b.listing_type_id === 'gold_pro' && (b.status === 'active' || b.status === 'paused') && precio > 0) {
+              let o = null; try { const d = await mlGet(`/sites/${b.site_id || 'MLA'}/listing_prices?price=${precio}&listing_type_id=gold_pro&category_id=${b.category_id}`, t.access_token); o = Array.isArray(d) ? d[0] : d; } catch { }
+              const sd = (o && o.sale_fee_details) || {};
+              prem.push({ mla: b.id, label, st: b.status, precio, fee: o && typeof o.sale_fee_amount === 'number' ? o.sale_fee_amount : null, fin: Number(sd.financing_add_on_fee) || 0, pctFee: Number(sd.percentage_fee) || null, med: cuotasM[b.id] || null, gem: !!(links[b.id] || {}).gemelaDe, tit: String(b.title || '').slice(0, 40) });
+            }
+          }
+        }
+      }
+      console.log(`\n══ ¿ML CAMBIÓ PRECIOS? · ${miradas} publicaciones miradas ══`);
+      console.log(`   distintas de la última foto (netoweb) y sin una decisión mía posterior: ${cambios.length}`);
+      for (const c of cambios) console.log(`   • ${c.label.padEnd(8)} ${c.mla} ${c.tipo === 'gold_pro' ? 'PREMIUM' : 'clásica'} ${c.st} · foto $${c.prev.toLocaleString('es-AR')} (${c.fotoTs ? new Date(c.fotoTs - 3 * 36e5).toISOString().slice(5, 16).replace('T', ' ') : '?'}) → ML hoy $${c.precio.toLocaleString('es-AR')} (${((c.precio / c.prev - 1) * 100).toFixed(1)}%)${c.orig ? ' · tachado $' + Math.round(c.orig).toLocaleString('es-AR') : ''} · ML lo tocó ${String(c.upd || '').slice(0, 16)} · ${c.tit}`);
+      console.log(`\n══ PREMIUM: lo que pide ML HOY a su precio · ${prem.length} publicaciones ══`);
+      for (const p of prem) {
+        const tot = p.fee != null ? (p.fee / p.precio * 100).toFixed(1) + '%' : '?';
+        const fin = p.fin ? (p.fin / p.precio * 100).toFixed(1) + '% cuotas adentro' : 'cuotas NO adentro';
+        const med = p.med ? `medido ${p.med.enComision ? 'adentro (' + (parseFloat(p.med.pctPago) || 0).toFixed(1) + '% en el pago)' : (parseFloat(p.med.pct) || 0).toFixed(1) + '% aparte'}${p.med.estimado ? ' estimado' : ''}` : 'sin medir';
+        console.log(`   • ${p.label.padEnd(8)} ${p.mla}${p.gem ? ' 💳gemela' : ''} ${p.st} · $${p.precio.toLocaleString('es-AR')} · ML pide ${tot} (${fin}${p.pctFee ? ' · base ' + p.pctFee + '%' : ''}) · ${med} · ${p.tit}`);
+      }
+      if (sinLeer.length) console.log(`\n⚠️ sin leer: ${sinLeer.join(', ')}`);
+      return;
+    }
     if (String(process.env.BILLING_PROBE || '').startsWith('gemela')) {
       const DIAS = 60, PMIN = parseFloat(String(process.env.BILLING_PROBE).split(':')[1]) || 50000;
       const links = (await db.get('cyc/mllinks')) || {};
