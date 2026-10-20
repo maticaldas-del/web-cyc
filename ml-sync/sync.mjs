@@ -3535,6 +3535,29 @@ const FICHA_VENCE_DIAS = 60;
 // Y la plata parada: 2% por mes sobre el costo del stock que hay cada día (st × costo × 0,02 ÷ 30).
 const PD_TRABAJO_U = 100, PD_TOPE_PCT = 0.03, PD_CAPITAL_DIA = 0.02 / 30;
 function poissonCdfF(k, lam) { if (!(lam > 0)) return 1; let p = Math.exp(-lam), s = p; for (let i = 1; i <= k; i++) { p *= lam / i; s += p; } return Math.min(1, s); }
+// LAS RAYAS DEL PRECIO, UNA SOLA CUENTA (20/10/2026, él con las Sábanas 140 Blanco: la raya de la web decía techo $20.180 y la
+// estrategia "buscando techo" a $21.990). Copia de `_rayas` de la línea de tiempo (index.html): si se toca una, se toca la otra.
+// Sólo días MEDIBLES (3+ u. en Full y con dato de visitas), agrupados por precio de lista: 💰 best = el que más plata por día dejó
+// (5+ días) · 🔴 techo = el precio más bajo arriba del best (2%+) donde, con 95% (Poisson), no deja la misma plata por día.
+function rayasPrecioLinea(d, cu, imp, hoyK) {
+  const G = {};
+  for (const k of Object.keys(d || {})) {
+    if (!/^\d{4}_\d{2}_\d{2}$/.test(k) || (hoyK && k >= hoyK)) continue; const x = d[k]; if (!x || typeof x !== 'object') continue;
+    if (!(x.st != null && Number(x.st) >= 3 && x.vis != null)) continue;
+    const pl = Number(x.p) || 0; if (!(pl > 0)) continue; const b = Math.round(pl / 10) * 10;
+    const u = Math.max(0, (Number(x.u) || 0) - (Number(x.uR) || 0));
+    const gan = (Number(x.neto) || 0) - (Number(x.u) || 0) * cu - (Number(x.tot) || 0) * imp;
+    const g = (G[b] = G[b] || { p: b, dias: 0, u: 0, gan: 0, desde: k, hasta: k }); g.dias++; g.u += u; g.gan += gan; if (k < g.desde) g.desde = k; if (k > g.hasta) g.hasta = k;
+  }
+  const L = Object.values(G).map((g) => ({ ...g, r: g.u / g.dias, pd: g.gan / g.dias, gu: g.u ? g.gan / g.u : null }));
+  const med = L.filter((g) => g.dias >= 5); if (!med.length) return { medibles: L.reduce((a, g) => a + g.dias, 0) };
+  const best = med.reduce((a, b) => (b.pd > a.pd ? b : a));
+  let techo = null;
+  if (best.u >= 3 && best.gu > 0) L.filter((g) => g.p > best.p * 1.02).sort((a, b) => a.p - b.p).some((g) => {
+    const gu1 = g.gu != null ? g.gu : best.gu + (g.p - best.p) * 0.7; if (!(gu1 > best.gu)) return false;
+    const lam = best.r * (best.gu / gu1) * g.dias, seg = 1 - poissonCdfF(g.u, lam); if (seg >= 0.95) { techo = { ...g, seg, lam }; return true; } return false; });
+  return { best, techo, medibles: L.reduce((a, g) => a + g.dias, 0) };
+}
 function armarFicha({ mla, d, e, cu, imp, cambios, notas, hoyK, tach, parc, extra }) {
   const ks = Object.keys(d || {}).filter((k) => /^\d{4}_\d{2}_\d{2}$/.test(k) && k < hoyK && d[k] && typeof d[k] === 'object').sort();
   const conSt = (x) => x && !(x.st != null && Number(x.st) <= 0 && !(Number(x.u) > 0));
@@ -39633,28 +39656,22 @@ async function main() {
         let d; try { d = (await db.get('mlapi/linea/' + mla)) || {}; } catch { console.log(`✗ ${mla}: no leí la línea`); continue; }
         const cta = String(e.cuenta || '').toLowerCase();
         const f = armarFicha({ mla, d, e, cu: costoPesos(pr, 1, tc).costo, imp: ((ML_EXTRA_PCT[cta] || 4) + 2) / 100, cambios: [], notas: {}, hoyK });
-        const P0 = Number(f.res.p) || 0; const T = (f.tramos || []).filter((t) => t.p && t.diasSt > 0);
-        const sum = (ts) => { const a = { dias: 0, u: 0, g: 0, desde: null, hasta: null, ps: new Set() }; for (const t of ts) { a.dias += t.diasSt; a.u += t.u; a.g += (t.gu || 0) * t.u; a.ps.add(t.p); if (!a.desde || t.desde < a.desde) a.desde = t.desde; if (!a.hasta || t.hasta > a.hasta) a.hasta = t.hasta; } a.gu = a.u ? a.g / a.u : null; return a; };
-        const B = sum(T.filter((t) => Math.abs(t.p - P0) <= P0 * 0.02)), H = sum(T.filter((t) => t.p > P0 * 1.02));
+        const P0 = Number(f.res.p) || 0;
         const nom = `${String(pr.name || e.title || '').slice(0, 38)}${e.variant ? ' #' + e.variant : ''} (${e.cuenta || '?'})`;
-        let seg = null, txt = '', falta = '';
-        const r0 = B.dias ? B.u / B.dias : 0;
-        // Ganancia por unidad arriba: la medida si vendió; si no vendió nada, la de P0 más lo que sube el precio (neto ~70% de la suba).
-        const pH = H.ps.size ? Math.min(...H.ps) : null;
-        const gu0 = B.gu, gu1 = H.gu != null ? H.gu : (gu0 != null && pH ? gu0 + (pH - P0) * 0.7 : null);
-        if (!H.dias) falta = 'nunca se probó un precio más alto (con stock)';
-        else if (B.dias < 5 || B.u < 5) falta = `al precio de hoy hay poco medido (${B.u} u. en ${B.dias} días con stock)`;
-        else if (!(gu0 > 0) || !(gu1 > gu0)) falta = 'no se puede comparar la ganancia por unidad';
+        // UNA SOLA CUENTA CON LA RAYA DE LA WEB (20/10/2026): 🏔️ seguro = el precio de hoy es el 💰 (el que más plata por día dejó)
+        // y arriba hay un 🔴 techo medido al 95%. Arriba del 🔴 o sin 🔴 = buscar techo. Días medibles: 3+ u. en Full y con visitas.
+        const R = rayasPrecioLinea(d, costoPesos(pr, 1, tc).costo, ((ML_EXTRA_PCT[cta] || 4) + 2) / 100, hoyK);
+        let seg = null, txt = '', falta = '', pH = null, hastaT = null;
+        if (!R.best) falta = `pocos días medibles (3+ u. en Full y con visitas): ${R.medibles || 0}`;
+        else if (!R.techo) falta = `💰 ${$(R.best.p)} (${R.best.u} en ${R.best.dias} días); falta probar más caro con stock (nunca se midió un 🔴 al 95%)`;
         else {
-          const lam = r0 * (gu0 / gu1) * H.dias; seg = 1 - poissonCdfF(H.u, lam);
-          // Días más con stock que harían falta arriba, vendiendo al mismo ritmo, para llegar al 95%.
-          let dx = 0; if (seg < 0.95) { const rH = H.u / H.dias; for (dx = 1; dx <= 120; dx++) { const D = H.dias + dx; if (1 - poissonCdfF(Math.round(rH * D), r0 * (gu0 / gu1) * D) >= 0.95) break; } }
-          txt = `a ${$(pH)}${H.ps.size > 1 ? ' y más' : ''} vendió ${H.u} en ${H.dias} días con stock (${fK(H.desde)}-${fK(H.hasta)}); para dejar la misma plata por día que a ${$(P0)} (${r0.toFixed(2)}/día, ${$(gu0)}/u) tenía que vender ~${(lam).toFixed(1)}`;
-          if (seg < 0.95) falta = `${Math.round(seg * 100)}% seguro: faltan ~${dx > 120 ? '120+' : dx} días con stock más a ${$(pH)}`;
+          seg = R.techo.seg; pH = R.techo.p; hastaT = R.techo.hasta;
+          txt = `a ${$(R.techo.p)} vendió ${R.techo.u} en ${R.techo.dias} días medibles (${fK(R.techo.desde)}-${fK(R.techo.hasta)}); para dejar la misma plata por día que a ${$(R.best.p)} (${R.best.r.toFixed(2)}/día, ${$(R.best.gu)}/u) tenía que vender ~${R.techo.lam.toFixed(1)}`;
+          if (Math.abs(P0 - R.best.p) > R.best.p * 0.02) { falta = P0 > R.techo.p * 0.98 ? `hoy está a ${$(P0)}, arriba del 🔴 techo medido (${$(R.techo.p)}): si es una prueba nueva, que se juzgue; si no, volver al 💰 ${$(R.best.p)}` : `hoy está a ${$(P0)}, entre el 💰 ${$(R.best.p)} y el 🔴 ${$(R.techo.p)}: se sigue probando`; seg = Math.min(seg, 0.94); }
         }
         const ok = seg != null && seg >= 0.95;
         console.log(`${ok ? '🏔️ SEGURO' : '📈 VOLVER A BUSCAR'} · ${mla} · ${nom} · techo ${$(P0)}${seg != null ? ' · ' + (seg * 100).toFixed(1) + '% seguro' : ''}${txt ? ' · ' + txt : ''}${falta ? ' · ' + falta : ''}`);
-        res.push({ mla, ok, seg, txt, falta, P0, pH, hasta: H.hasta });
+        res.push({ mla, ok, seg, txt, falta, P0, pH, hasta: hastaT });
       }
       const nOk = res.filter((r) => r.ok).length; console.log(`\nResumen: ${nOk} seguros al 95% · ${res.length - nOk} vuelven a buscar techo`);
       if (GOt) {

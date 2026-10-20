@@ -2683,7 +2683,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.15';
+const APP_VERSION='25.16';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2694,6 +2694,7 @@ const APP_VERSION='25.15';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.16',f:'20/10/2026',h:'17:00',c:[{n:2,t:'📈 Línea de tiempo: las rayas 💰 piso y 🔴 techo sólo cuentan los días con 3+ unidades en Full y con dato de visitas (con 1-2 u. vender poco no prueba nada). Es la misma cuenta que usa el cerebro para decir "techo encontrado". Si hay una prueba más cara en curso, la línea dice "techo medido antes $X · hoy probando $Y".'}]},
   {v:'25.15',f:'20/10/2026',h:'15:40',c:[{n:1,t:'🇵🇾 En la tarjeta de un pedido de Paraguay, los productos ya probados (ej. el Mouse Corsair) muestran los links "ver en ML" y "ver en comprasparaguay" sacados de su ficha. Antes decían "sin links guardados".'}]},
   {v:'25.14',f:'20/10/2026',h:'15:10',c:[{n:1,t:'🇦🇷 Pedidos → Bs As: cada pedido tiene un botón 🏬 De siempre / 📋 Dai Nippon para pasarlo de solapa. Y en la solapa Dai Nippon ya no está el botón "⏸️ sacar por ahora".'}]},
   {v:'25.13',f:'20/10/2026',h:'14:30',c:[{n:1,t:'🇦🇷 Pedidos → Bs As se abre en dos solapas: 🏬 De siempre (los pedidos de Bs As) y 📋 Dai Nippon (lo que compra Tito con esa lista, con sus Probados, Nuevos y 🧾 Pedido). Lo ya comprado a Nippon va en su solapa y no se repite en la otra.'}]},
@@ -9836,7 +9837,10 @@ function lineaPintar(prodId){
   // dice). En 📦 sobra / 📉 liquidando no se busca techo: se dice.
   const _rayas=(()=>{const est=Object.keys(porMlaF).map(m=>estrategiaDe(m)).filter(Boolean);
     if(est.length&&est.every(e=>['sobra','liquidando','remate'].includes(e.t)))return {sobra:true};
-    const G={};ks.forEach(k=>{const d=dias[k];if(!d)return;const con=d.st>0||d.u>0;if(!con)return;const pl=Number(d.pLista||d.p)||0;if(!(pl>0))return;
+    // UNA SOLA CUENTA CON `techo95` (20/10/2026, él con las Sábanas 140 Blanco: la raya decía techo $20.180 y la estrategia
+    // "buscando techo" a $21.990). Sólo cuentan los días MEDIBLES: con 3+ u. en Full y con dato de visitas. Con 1-2 u. o sin
+    // visitas, vender poco no prueba que el precio esté alto. La misma regla vive en `rayasPrecioLinea` (sync.mjs): si se toca una, la otra.
+    const G={};ks.forEach(k=>{const d=dias[k];if(!d)return;if(!(d.st!=null&&d.st>=3&&d.vis!=null))return;const pl=Number(d.pLista||d.p)||0;if(!(pl>0))return;
       const b=Math.round(pl/10)*10;const g=(G[b]=G[b]||{p:b,dias:0,u:0,gan:0});g.dias++;g.u+=Math.max(0,(d.u||0)-(d.uR||0));g.gan+=(gd[k]&&gd[k].gan)||0;});
     const L=Object.values(G).map(g=>({...g,r:g.u/g.dias,pd:g.gan/g.dias,gu:g.u?g.gan/g.u:null}));
     const med=L.filter(g=>g.dias>=5);if(!med.length)return {};
@@ -10007,10 +10011,14 @@ function lineaPintar(prodId){
       svg+=`<g style="cursor:help"><title>${tt.replace(/[<>&]/g,'')}</title><line x1="0" y1="${y.toFixed(1)}" x2="${W}" y2="${y.toFixed(1)}" stroke="${col}" stroke-width="1.4" stroke-dasharray="${dash}" opacity=".9"/><text x="4" y="${(y+dy).toFixed(1)}" font-size="10" fill="${col}">${lbl}</text></g>`;};
     if(_rayas.sobra)svg+=`<text x="4" y="${(L.pr[0]+10).toFixed(1)}" font-size="10" fill="#fb923c">📦 sobra stock: no se busca techo, primero sale lo que sobra</text>`;
     else{const R=_rayas;
+      const _pHoy=(()=>{for(let i=ks.length-1;i>=0;i--){const d=dias[ks[i]];const v=d&&Number(d.pLista||d.p);if(v>0)return v;}return 0;})();
+      const _prueba=R.techo&&_pHoy>R.techo.p*1.02&&Object.keys(porMlaF).some(m=>{const e=estrategiaDe(m);return e&&(e.t==='techo'||e.t==='escasez');});
+      if(_prueba)svg+=`<text x="${W-4}" y="${(L.pr[0]+10).toFixed(1)}" font-size="10" text-anchor="end" fill="#fb923c">🔴 techo medido antes ${fmt(R.techo.p)} · hoy probando ${fmt(_pHoy)}</text>`;
       if(R.techo)_ray(R.techo.p,'#ef4444','6,3',`🔴 techo ${fmt(R.techo.p)}`,`🔴 Techo ${fmt(R.techo.p)}: a ese precio vendió ${R.techo.u} en ${R.techo.dias} días con stock; para dejar la misma plata por día que a ${fmt(R.best.p)} tenía que vender ~${R.techo.lam.toFixed(1)}. ${Math.round(R.techo.seg*100)}% seguro.`,-3);
       // 19/10, él: "el piso es un parámetro para decir no bajemos más que esto, excepto que haya un problema (…) quizás lo mejor es
       // unificarlas". Unificadas: el 💰 (el que más plata por día dejó) ES el piso: más abajo vende más pero deja menos.
       if(R.best)_ray(R.best.p,'#eab308','2,0',`💰 piso ${fmt(R.best.p)} · más plata`,`💰 Piso = el precio que más plata por día dejó: ${fmt(R.best.p)} → ${fmt(Math.round(R.best.pd))} por día (${R.best.u} vendidas en ${R.best.dias} días con stock). No se baja de acá salvo un problema (sobra stock, stock antiguo, ML lo pide). Entre el piso y el 🔴 techo es lo que falta probar.`,-3);
+      if(!R.best)svg+=`<text x="${W-4}" y="${(L.pr[0]+10).toFixed(1)}" font-size="10" text-anchor="end" fill="var(--muted)">piso y techo: pocos días medibles (3+ u. en Full y con visitas)</text>`;
       if(!R.techo&&R.best)svg+=`<text x="${W-4}" y="${(L.pr[0]+10).toFixed(1)}" font-size="10" text-anchor="end" fill="var(--muted)">techo: todavía no se sabe (falta probar más caro)</text>`;}}
   // 🏔️ DÓNDE SE ENCONTRÓ EL TECHO (19/10/2026, él: "todos los que digan techo encontrado tienen que marcar en la línea dónde se encontró
   // el techo y por qué estás seguro"). Raya vertical verde el día de la anotación 🏔️ (la anota `techo95` sólo con 95% de seguridad)
