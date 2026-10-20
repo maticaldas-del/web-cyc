@@ -2683,7 +2683,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.23';
+const APP_VERSION='25.24';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2694,6 +2694,12 @@ const APP_VERSION='25.23';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.24',f:'20/10',h:'14:30',c:[
+    {n:3,t:'Paraguay y Elegancia: cada pedido queda con su proveedor (Nissei, Elegancia, perfumería) y "compray" no mezcla pedidos de dos proveedores'},
+    {n:3,t:'El costo de las fichas de un pedido nuevo usa el recargo contra lo que se pagó de verdad, no contra la lista'},
+    {n:2,t:'El monotributo de los comandos del robot sale de la configuración, no de un 2% fijo'},
+    {n:2,t:'Sin dólar cargado, el robot no mide candidatos ni crea fichas de listas (antes medía con un dólar vacío)'},
+    {n:2,t:'El % de reclamos se aplica también en los comandos que juzgan precios (ficha, escasez, techo, raros)'}]},
   {v:'25.23',f:'20/10/2026',h:'14:20',c:[
     {n:3,t:'Etapa 2 (Plata): el cierre del mes guarda la deuda con ARCA hasta ESE mes (cerrando octubre el 02/11 contaba noviembre también y "¿Cierra el mes?" daba Falta plata de mentira).'},
     {n:3,t:'"¿Cierra el mes?" con un mes sin cerrar en el medio suma la ganancia de todos esos meses (antes daba "Sobra" lo de todo el mes sin cerrar).'},
@@ -9934,7 +9940,8 @@ function lineaPintar(prodId){
   // sin ellos la línea arrancaba recién el 7º día del gráfico. Misma cuenta que `gd` (neto − efectivoCostoVP).
   const _ksAll=_lineaDias(ks.length+6).slice(0,6).concat(ks);
   const _ganPre={};_ksAll.slice(0,6).forEach(k=>{const ents=Object.values((state.ventaprod||{})[k]||{}).filter(v=>v&&!v.cancelada&&(prodDeVenta(v)||{}).id===prodId&&_vOk(v));
-    if(ents.length)_ganPre[k]=ents.reduce((a,v)=>a+(v.neto||0)-efectivoCostoVP({...v,_dateKey:k}),0);});
+    // Etapa 2 (20/10/2026): el neto "vendido solo" (`netoProductoVP`), igual que `gd`: un carrito no infla la ganancia de antes.
+    if(ents.length)_ganPre[k]=ents.reduce((a,v)=>a+netoProductoVP({...v,_dateKey:k})-efectivoCostoVP({...v,_dateKey:k}),0);});
   const _ganK=k=>gd[k]?gd[k].gan:(_ganPre[k]||0);
   const g7={};ks.forEach((k,i)=>{const ia=i+6;let t=0;for(let j=ia-6;j<=ia;j++)t+=_ganK(_ksAll[j]);g7[k]=t/7;});
   const g7v=Object.values(g7);const gMax=g7v.length?Math.max(0,...g7v):1,gMin=g7v.length?Math.min(0,...g7v):0;
@@ -14415,7 +14422,7 @@ async function pyPedidoLlego(id){
     // El id lleva el número de orden porque varias se crean en el MISMO milisegundo: sin eso la
     // segunda pisaría a la primera y se perdería una ficha sin que nada lo dijera.
     try{
-      const r=await candFichaDesde(crear[i].src,{idSuf:i,recargo:pyRecargoReal(c).r});
+      const r=await candFichaDesde(crear[i].src,{idSuf:i,recargo:pyRecargoFichas(c).r});   // etapa 2 (20/10/2026): con ticket, contra lo pagado
       if(r.ok)hechas.push(r.p.name); else fallaron.push(crear[i].src.nombre+' ('+r.motivo+')');
     }catch(e){fallaron.push(crear[i].src.nombre+' (no se pudo guardar)');}
   }
@@ -14478,6 +14485,18 @@ function pyRecargoReal(c){
   const p=c.pagos||{};const tot=(Number(p.mercaderia)||0)+(Number(p.cambista)||0)+(Number(p.envio)||0)+(Number(p.retira)||0)+(Number(p.otros)||0)+(Number(p.adelanto)||0);
   const r=tot/tc/usd;if(!(r>=1&&r<=1.6))return{r:null,falta:['el recargo da '+((r-1)*100).toFixed(1)+'%: algún número está mal']};
   return{r:Math.round(r*10000)/10000,falta:[]};
+}
+// Etapa 2 (20/10/2026): EL RECARGO PARA LAS FICHAS DE UN PEDIDO CON TICKET. Cada renglón guarda el precio PAGADO, pero
+// `usdCrudo` puede ser el de la WEB: pagado × recargo-contra-la-web daba fichas que sumaban menos de lo que costó el pedido.
+// Para las fichas se mide contra lo pagado (pesos ÷ dólar ÷ `ticket.usdPagado`). `pyRecargoReal` no cambia (lo usan "en
+// camino" con `usdCrudo` y el promedio del robot). Misma cuenta que `recargoFichasPedido` de sync.mjs: si se toca una, la otra.
+function pyRecargoFichas(c){
+  const R=pyRecargoReal(c);if(!R.r)return R;
+  const pag=parseFloat(c&&c.ticket&&c.ticket.usdPagado)||0,tc=parseFloat(c&&c.tcPedido)||parseFloat(c&&c.tcPanel)||0;
+  if(!(pag>0)||!(tc>0))return R;
+  const p=c.pagos||{};const tot=(Number(p.mercaderia)||0)+(Number(p.cambista)||0)+(Number(p.envio)||0)+(Number(p.retira)||0)+(Number(p.otros)||0)+(Number(p.adelanto)||0);
+  const r=tot/tc/pag;if(!(r>=1&&r<=1.6))return R;
+  return{r:Math.round(r*10000)/10000,falta:[],contraPagado:true};
 }
 function pyGastosChecklistHTML(c){
   // UNA SOLA CAJA con todos los gastos del pedido (08/10/2026, pedidos suyos: "unificá eso de los gastos"
@@ -14653,7 +14672,7 @@ function pyPedidoDetalleHTML(c){
     <details style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 11px">
       <summary style="cursor:pointer;font-size:.68rem;font-weight:700;list-style:none">🧾 La mercadería · ${pyPedidoCuenta(c).p} producto${pyPedidoCuenta(c).p===1?'':'s'} · ${pyPedidoCuenta(c).u} u. · US$ ${(c.usdCrudo||0).toFixed(2)} <span style="color:var(--muted);font-weight:400">▾ tocá para ver</span></summary>
     ${(()=>{const P=pyPedidoPartes(c);const grp=[['✅ Probados',P.prob],['🆕 Nuevos',P.nuev]].filter(g=>g[1].length);
-      return grp.map(([t,its])=>`<div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:8px 0 5px">${grp.length>1?t:'Los productos'} · ${its.length}</div>`+_pyItsHTML(its,pyRecargoReal(c).r)).join('')||'<div style="font-size:.63rem;color:var(--muted)">Sin detalle por producto.</div>';})()}
+      return grp.map(([t,its])=>`<div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:8px 0 5px">${grp.length>1?t:'Los productos'} · ${its.length}</div>`+_pyItsHTML(its,pyRecargoFichas(c).r)).join('')||'<div style="font-size:.63rem;color:var(--muted)">Sin detalle por producto.</div>';})()}
     </details>
 
     <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:10px">
@@ -18453,6 +18472,8 @@ async function listaLlego(id){
   const tc=Number(c.tc)||curTC();
   const plan=(c.items||[]).map(it=>{const nombre=String(it.mt||it.n||'').trim();const n=normTxt(nombre),n2=normTxt(String(it.n||''));
     const misma=(state.products||[]).find(p=>(p.codLista&&String(p.codLista)===String(it.cod)&&p.listaProv===c.prov)||normTxt(p.name||'')===n||normTxt(p.name||'')===n2);return{it,nombre,misma};});
+  // Etapa 2 (20/10/2026): sin dólar no se crean fichas (nacerían con costo US$ 0 y se verían como todo ganancia). Como `updCostPesos`.
+  if(!(tc>0)&&plan.some(x=>!x.misma&&x.nombre)){toast('Falta el dólar en Finanzas: sin eso las fichas nuevas nacerían con costo US$ 0. No marqué nada.','err',6000);return;}
   if(!confirm(`Marcar como LLEGADO el pedido a ${c.provNom||c.prov} del ${c.fecha}:\n\n${plan.map(x=>x.misma?'· ya existe: '+x.misma.name:'· ficha nueva: '+x.nombre+' · '+fmt(x.it.pc)).join('\n')}\n\nDespués contá lo que llegó en Mi oficina.`))return;
   let n=0;
   for(const [i,x] of plan.entries()){

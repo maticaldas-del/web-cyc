@@ -1906,3 +1906,10 @@ a $1.000 · resumen mensual de Telegram con la sin costo en el divisor · `cargo
 `capital` no opina sin dólar y avisa que no es el patrimonio del Arqueo.
 **Chequear:** que el cierre de octubre (02/11) guarde 6 meses de ARCA; que "¿Cierra el mes?" sume meses sólo si falta un cierre;
 que el retiro supuesto de noviembre = 2 × tercio de octubre; que Resumen y Métricas den la misma ganancia CYC en 30 días.
+**v25.24 (mismo día), monedas y costos:** `pyped` guarda proveedor y rubro (ids `pyel`/`pyb`/`py`) y `compray` frena si hay
+pedidos de dos proveedores sin decir cuál, o si el ticket no empareja ningún código · el costo de las fichas de un pedido usa el
+recargo contra lo pagado (`recargoFichasPedido` robot = `pyRecargoFichas` web) · `leerMonoPct(db)` reemplaza el 2% fijo en ficha,
+escmedir, raros, lupa, escasez y techo95 (si no se lee, 2% y lo dice) · `setDevLive` en 10 comandos más · `prepNetoSolo` =
+`netoProductoVP` · sin dólar: ni `tcSale`, ni `candidatos`, ni fichas de `listaLlego`.
+**Chequear:** que un pedido de Elegancia y uno de Nissei el mismo día queden separados y `compray` pida `|eleg`/`|nissei`.
+
