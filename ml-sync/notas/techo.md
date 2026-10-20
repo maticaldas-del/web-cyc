@@ -111,3 +111,11 @@ PAULVIC a $21.990: el fin de semana del Día de la Madre casi no vendió (Persea
 - Deja ~$3.600/u (13%). El mejor tramo sin descuento: $40.640 → $2.588/día. Con el descuento empata vendiendo 0,72/día.
 - Seguir con el descuento mientras venda 0,5/día o más. Con ~25 u. en Full: sacar el descuento y volver a $40.640 (0,47/día alcanza antes de diciembre).
 - Si en 7 días con el descuento vende menos de 0,5/día: dejarlo (es stock antiguo) y mirar la caja (ML pedía $35.828).
+
+## 20/10 20:52 · PAULVIC DE ADRIANA A $21.990: NO HAY CERTEZA TODAVÍA, SE JUZGA AROMA POR AROMA EN LA COMPLETA
+- Los 8 de la primera prueba (13/10, 7 días): 8 ventas contra ~12 esperadas al ritmo de antes → plata ~$59.000 contra ~$34.600. GANAN (Good 3 · Witch Night 4 · L'extase 1).
+- Los ~36 extendidos el 16/10 (4,1 días): 2 ventas contra 15 en el mismo tiempo antes → ~$14.700 contra ~$42.700. Pierden, pero
+  parte de esas 15 eran de aromas que después se agotaron (Flores Rojas, Bella) y la ventana de antes era la previa al Día de la Madre.
+  Para dejar la misma plata hacían falta ~5,8 ventas: con 2, P ≈ 7% → todavía no es 95%.
+- Luciana (Persea, Rosé) ya volvió a $14.950 en la completa del 20/10. Para la completa del 21/10: juzgar los extendidos de a uno
+  (los que nunca vendieron a $21.990 y vendían 3+/mes antes), y dejar los 8 originales que ganan.
