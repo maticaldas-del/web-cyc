@@ -32,6 +32,7 @@ en que se anota en `correcciones.md`.** El número entre corchetes es de qué ca
 ## Datos
 18. ¿Los datos de esta publicación son de hoy y están completos? Si no, no se toca el precio (va a ⚠️ dato dudoso). [2a, 20/10]
 19. ¿El número tiene sentido contra el costo (margen de 150% o negativo = casi seguro un dato mal)? [🧐 20/10]
+21. ¿Contra qué comparo? Una publicación nueva (Premium, color, tamaño) se juzga contra lo que pasaba SIN ella, no contra sus hermanas. [Ferrari Premium 20/10]
 
 ## La pregunta que cubre las demás
 20. **Si él mirara esta ficha ahora, ¿qué me preguntaría?** Si se me ocurre una pregunta que no está acá, la contesto y la agrego.
