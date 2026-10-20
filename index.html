@@ -1115,6 +1115,8 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 
   <!-- ── SECCIÓN BS AS ── -->
   <div id="ped-section-bsas" style="display:none">
+    <div id="bsas-subtabs"></div>
+    <div id="bsas-siempre-wrap">
     <div class="pedidos-count" id="pedidos-count"></div>
     <input class="search-box" id="ped-search" type="search" placeholder="Buscar pedido..." oninput="renderPedidos()" style="margin-bottom:10px">
     <div class="pedido-filters">
@@ -1124,6 +1126,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
       <button class="pf-btn" id="pf-amarillo" onclick="setPedidoFilter('amarillo',this)">🟡 Hay tiempo</button>
     </div>
     <div id="pedidos-list"><div class="empty-msg">Sin pedidos cargados.</div></div>
+    </div>
     <div id="bsas-listas-body"></div>
   </div>
 
@@ -2680,7 +2683,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.12';
+const APP_VERSION='25.13';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2691,6 +2694,7 @@ const APP_VERSION='25.12';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.13',f:'20/10/2026',h:'14:30',c:[{n:1,t:'🇦🇷 Pedidos → Bs As se abre en dos solapas: 🏬 De siempre (los pedidos de Bs As) y 📋 Dai Nippon (lo que compra Tito con esa lista, con sus Probados, Nuevos y 🧾 Pedido). Lo ya comprado a Nippon va en su solapa y no se repite en la otra.'}]},
   {v:'25.12',f:'20/10/2026',h:'11:55',c:[{n:2,t:'📋 La ficha suma "Más datos para decidir": de dónde se repone y si reponerlo hoy sale más caro, los reclamos con su motivo, cuánto se queda Mercado Libre a ese precio, la competencia, qué día de la semana y qué mes vende más, hace cuánto entró la unidad más vieja en Full, las opiniones y preguntas que muestra ML, y en qué otras cuentas se publica. Y cuánto le pega el precio a las ventas (cada 10% de suba, cuánto vende menos).'}]},
   {v:'25.11',f:'20/10/2026',h:'11:40',c:[{n:2,t:'📋 La ficha de cada publicación dice cómo reacciona ese producto: si vende sólo ganando la caja o igual perdiéndola, si las ventas siguen a las visitas, qué pasó cuando se bajó o subió el precio, cómo le fue en cada fecha especial, cuánto lo siguen viendo sin stock y si el tachado le cambió algo. Se arma cada noche con su propia línea de tiempo.'}]},
   {v:'25.10',f:'20/10/2026',h:'11:00',c:[{n:3,t:'🔍 Paraguay y Listas: un producto nuevo sólo "da" (y se puede pedir) si alguien confirmó que la publicación de ML es el mismo producto. En Paraguay: tocá ✅ Es el mismo producto o lo confirma la revisión de fotos; mientras tanto queda en "🔍 Dan, pero falta confirmar". En Listas lo confirma el chat de compras; lo demás queda en 🔎 Para revisar.'}]},
@@ -18357,12 +18361,18 @@ async function listaLlego(id){
 // viaja"). `cyc/mlconfig/listasProv/<prov>/bsas = true`: la lista se ve en Pedidos → Bs As (abajo de los pedidos) y no en 📋 Listas,
 // y sus probados van en la lista de Bs As como cualquier otro. Se dibuja una sola de las dos (los `id` adentro son los mismos).
 let _listaSelB=null;
+// BS AS EN DOS SOLAPAS (20/10/2026, él: "en pedidos bs as quiero se abran dos. todos los de siempre y nippon por otra tarjeta"):
+// 🏬 De siempre = los pedidos de Bs As de siempre · la otra = las listas que compra Tito (Dai Nippon), con sus Probados, Nuevos y
+// 🧾 Pedido. Los probados de esas listas salen de "De siempre" y van a su solapa (no se ven dos veces).
+let _bsasVista=(()=>{try{return localStorage.getItem('cycBsasVista')==='listas'?'listas':'siempre';}catch(e){return 'siempre';}})();
+function bsasSetVista(v){_bsasVista=v;try{localStorage.setItem('cycBsasVista',v);}catch(e){}renderPedidos();}
+function _bsasProvs(){const p=(state.mlconfig&&state.mlconfig.listasProv)||{};return Object.keys(p).filter(k=>p[k].bsas&&!p[k].desc);}
 const _listaEsBsas=k=>!!((((state.mlconfig||{}).listasProv||{})[k])||{}).bsas;
 async function renderListas(){
   const _enB=pedidoSection==='bsas';
+  if(_enB&&_bsasVista!=='listas'){const b=document.getElementById('bsas-listas-body');if(b)b.innerHTML='';return;}
   const el=document.getElementById(_enB?'bsas-listas-body':'listas-body');if(!el)return;
   {const otro=document.getElementById(_enB?'listas-body':'bsas-listas-body');if(otro)otro.innerHTML='';}
-  if(_enB&&_listaVista==='probados')_listaVista='nuevos';
   if(window._listaQ)setTimeout(()=>_listaBuscarYa(window._listaQ),60);
   const provs=(state.mlconfig&&state.mlconfig.listasProv)||{};
   const ks=Object.keys(provs).filter(k=>!provs[k].desc&&!!provs[k].bsas===_enB).sort((a,b)=>String(provs[a].nombre||a).localeCompare(String(provs[b].nombre||b)));
@@ -18390,7 +18400,7 @@ async function renderListas(){
   const _tab=(t,txt,tit)=>`<button class="btn" style="font-size:.64rem;padding:5px 13px;${_listaVista===t?'background:var(--blue);color:#fff;font-weight:700':''}" title="${tit}" onclick="listaSetVista('${t}')">${txt}</button>`;
   const cab=(_enB?`<div style="font-size:.8rem;font-weight:700;margin:18px 0 8px;padding-top:12px;border-top:2px solid var(--border2)">📋 Listas que compra Tito en Bs As <span style="font-size:.66rem;font-weight:400;color:var(--muted)">· lo que ya compraste está arriba, en los pedidos</span></div>`:'')+`<div style="margin-bottom:10px"><input id="lista-buscar" type="search" value="${escHtml(window._listaQ||'')}" placeholder="🔎 Buscar un producto en TODAS las listas…" oninput="listaBuscar(this.value)" style="width:100%;padding:9px 12px;font-size:.85rem;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--text)"><div id="lista-busq"></div></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px"><span style="font-size:.68rem;color:var(--muted)">Proveedor:</span>${visibles.map(_provBtn).join('')}<button class="btn" style="font-size:.64rem;padding:4px 10px;opacity:.8" title="La esconde de acá hasta que la vuelvas a poner (desde ⏸️ sacadas por ahora). No borra nada." onclick="listaPausar('${k}',true)">⏸️ sacar ${escHtml(nom)} por ahora</button></div>${_volverHtml}
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${_enB?'':_tab('probados','✅ Productos probados','Lo que ya le compraste a este proveedor: cuánto reponer.')}${_tab('nuevos','🆕 Productos nuevos','Lo de su lista que todavía no vendés y da 25% o más en ML.')}${_tab('hechos','🧾 Pedido'+(nArm?' ('+nArm+' cargados)':''),'El pedido del momento, el mensaje con código y unidades, y los pedidos ya hechos.')}</div>`;
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${_tab('probados','✅ Productos probados','Lo que ya le compraste a este proveedor: cuánto reponer.')}${_tab('nuevos','🆕 Productos nuevos','Lo de su lista que todavía no vendés y da 25% o más en ML.')}${_tab('hechos','🧾 Pedido'+(nArm?' ('+nArm+' cargados)':''),'El pedido del momento, el mensaje con código y unidades, y los pedidos ya hechos.')}</div>`;
   let cat=_listaCache[k];
   if(!cat){el.innerHTML=cab+`<div style="font-size:.72rem;color:var(--muted)">⏳ bajando la lista…</div>`;
     try{const sn=await db.ref('mlapi/listas/'+k).once('value');cat=_listaCache[k]=sn.val()||{};}catch(e){el.innerHTML=cab+`<div style="color:var(--red);font-size:.72rem">No pude leer la lista: ${escHtml(String(e.message||e).slice(0,120))}</div>`;return;}}
@@ -18579,6 +18589,17 @@ function renderPedidos(){
     return;
   }
   const isBsas=pedidoSection==='bsas';
+  if(isBsas){
+    const bp=_bsasProvs(),pv=(state.mlconfig&&state.mlconfig.listasProv)||{};
+    if(!bp.length)_bsasVista='siempre';
+    const st=document.getElementById('bsas-subtabs');
+    if(st){const nomL=bp.length===1?(pv[bp[0]].nombre||bp[0]):'Listas de Tito';
+      const b=(v,t)=>`<button class="btn" style="font-size:.72rem;padding:6px 16px;${_bsasVista===v?'background:var(--blue);color:#fff;font-weight:700':''}" onclick="bsasSetVista('${v}')">${t}</button>`;
+      st.innerHTML=bp.length?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${b('siempre','🏬 De siempre')}${b('listas','📋 '+escHtml(nomL))}</div>`:'';}
+    const wr=document.getElementById('bsas-siempre-wrap');if(wr)wr.style.display=_bsasVista==='listas'?'none':'';
+    if(_bsasVista==='listas'){renderListas();return;}
+    {const b=document.getElementById('bsas-listas-body');if(b)b.innerHTML='';}
+  }
   const listId=isBsas?'pedidos-list':'pedidos-py-list';
   const countId=isBsas?'pedidos-count':'pedidos-py-count';
   const el=document.getElementById(listId);if(!el)return;
@@ -18588,7 +18609,7 @@ function renderPedidos(){
   // lo contaba dos veces.
   let peds=((isBsas?state.pedidos:state.pedidos_py)||[]).filter(x=>!esPedidoPaulvic(x));
   // Lo que se le compró a un proveedor de 📋 Listas va en Listas → Probados, no en Bs As (18/10/2026).
-  if(isBsas){const _li=new Set((state.products||[]).filter(p=>p.listaProv&&!_listaEsBsas(p.listaProv)).map(p=>p.id));if(_li.size)peds=peds.filter(x=>!_li.has(x.prodId));}
+  if(isBsas){const _li=new Set((state.products||[]).filter(p=>p.listaProv).map(p=>p.id));if(_li.size)peds=peds.filter(x=>!_li.has(x.prodId));}
   const cnt={pendiente:0,poco_stock:0,suficiente:0};peds.forEach(p=>{const e=p.estado==='en_camino'?'pendiente':(p.estado||'pendiente');cnt[e]=(cnt[e]||0)+1;});
   const cntEl=document.getElementById(countId);
   if(cntEl)cntEl.innerHTML=`
@@ -18606,7 +18627,6 @@ function renderPedidos(){
   // volumen de cada uno; nunca se apretó el botón. La lista va siempre ordenada por la plata que
   // se pierde si no se repone a tiempo, que es la única forma en que se usa.
   if(isBsas)el.innerHTML=peds.slice().sort(_pedSortFnRiesgo).map(p=>_pedidoItemHtml(p,{showRiesgo:true})).join('');
-  if(isBsas)renderListas();
   else if(peds.length){
     // PARAGUAY · PROBADOS: arriba sólo lo que DA (precio de Nissei de esta semana y al 20%); lo demás abajo,
     // en un desplegable, con el motivo (ver pyProbVeredicto).

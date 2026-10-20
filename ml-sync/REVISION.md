@@ -1810,3 +1810,8 @@ cuando el emparejado por nombre agarra un set u otro tamaño (caso Cheeky Cool B
 
 - 20/10/2026 · `planilla` · lista 🤔 de descuentos míos vigentes que ya no cumplen la regla (sobra, recién llegado, peor caso). Chequear: que la lista salga vacía al terminar cada completa.
 - 20/10/2026 · `entrarpromo` salir y el guardián de promos mandan `offer_id` (las SMART/compartidas daban 400 "Offer id is required" y no salían). Y las promos con plata de ML pasan por las mismas tres condiciones (eligió la a). Chequear: que una SMART salga con ✓.
+
+### Etapa 3 · 20/10/2026 · Pedidos → Bs As en dos solapas (v25.13)
+Qué: 🏬 De siempre / 📋 Dai Nippon (listas con `bsas`). Dónde: `index.html` (`_bsasVista`, `bsasSetVista`, `_bsasProvs`, `renderPedidos`
+rama Bs As, `renderListas` con `_enB`). Chequear: un producto con `listaProv` nunca sale en "De siempre" ni falta en su solapa; sin listas
+de Bs As no se dibujan solapas; los ✅ Probados de Nippon muestran sus pedidos de reposición.

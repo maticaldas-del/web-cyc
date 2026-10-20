@@ -9326,3 +9326,8 @@ catálogo junto sale de `vistas` (solo lee).
 Y **"Más datos para decidir"** (mismo día): reposición y costo de reponer hoy, reclamos con motivo, lo que se queda ML, competencia,
 día de la semana y mes, edad del stock en Full, opiniones y preguntas de ML (`mlapi/opiniones`, se releen cada 7 días), las otras
 publicaciones del mismo producto y cuánto le pega el precio a las ventas. `fichaml:<MLA>` mide qué más da ML (solo lee).
+
+## 🇦🇷 PEDIDOS → BS AS EN DOS SOLAPAS (20/10/2026, v25.13, pedido suyo)
+Él: *"en pedidos bs as quiero se abran dos. todos los de siempre y nippon por otra tarjeta"*. Arriba de Bs As: 🏬 De siempre (los
+pedidos de Bs As) y 📋 Dai Nippon (las listas con `bsas`, con sus ✅ Probados, 🆕 Nuevos y 🧾 Pedido). Lo ya comprado a una lista
+(`listaProv`) no sale en "De siempre". La solapa elegida queda en `localStorage` (`cycBsasVista`). Si no hay listas de Bs As, no hay solapas.
