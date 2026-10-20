@@ -1867,6 +1867,9 @@ y ninguna tiene la marca `user_product_listing` → esa marca NO frena (primera 
 variantes, ya Premium, Premium más barata que la Clásica, techo $650.000, otra Premium del mismo producto.
 **Chequear:** que la nueva quede `gold_pro`, al precio pedido, en el mismo upid, con el stock compartido y vinculada a la ficha; y que
 sus ventas entren a la ficha (el ciclo la reconoce por `cyc/mllinks`).
+**Primer intento:** sin `category_id` ML contestó 500 "internal_error" y no creó nada. Campos obligatorios de la documentación: price,
+category_id, currency_id, buying_mode, listing_type_id (+ catalog_listing y catalog_product_id si es de catálogo). Con eso: **VS Coconut
+Passion `MLA4103953976` Premium $64.490, comparte las 13 u. con la Clásica `MLA1771197881` ($54.990)**, releída y vinculada (20/10 17:00).
 
 ### Etapa 5 · 20/10/2026 · v25.16 · techo: una sola cuenta para la raya y `techo95` (eligió la a)
 Dos fórmulas para el mismo número: la raya 🔴 de la web (desde el 💰, todos los días "con stock") y `techo95` (desde el precio de
