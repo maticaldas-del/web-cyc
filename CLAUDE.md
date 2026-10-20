@@ -9331,3 +9331,4 @@ publicaciones del mismo producto y cuánto le pega el precio a las ventas. `fich
 Él: *"en pedidos bs as quiero se abran dos. todos los de siempre y nippon por otra tarjeta"*. Arriba de Bs As: 🏬 De siempre (los
 pedidos de Bs As) y 📋 Dai Nippon (las listas con `bsas`, con sus ✅ Probados, 🆕 Nuevos y 🧾 Pedido). Lo ya comprado a una lista
 (`listaProv`) no sale en "De siempre". La solapa elegida queda en `localStorage` (`cycBsasVista`). Si no hay listas de Bs As, no hay solapas.
+**v25.14 (mismo día):** *"dame poder elegir si son de bs as de siempre o de nippon"* → cada pedido de Bs As tiene el botón 🏬 De siempre / 📋 Dai Nippon (`pedCambiarGrupo`: pone o saca `listaProv`, el viejo queda en `listaProvViejo`). Y *"sacar ese de dai nippon"* → en la solapa Dai Nippon no se dibuja el ⏸️ sacar por ahora (sigue en 📋 Listas).

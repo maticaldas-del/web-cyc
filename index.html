@@ -2683,7 +2683,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.13';
+const APP_VERSION='25.14';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2694,6 +2694,7 @@ const APP_VERSION='25.13';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.14',f:'20/10/2026',h:'15:10',c:[{n:1,t:'🇦🇷 Pedidos → Bs As: cada pedido tiene un botón 🏬 De siempre / 📋 Dai Nippon para pasarlo de solapa. Y en la solapa Dai Nippon ya no está el botón "⏸️ sacar por ahora".'}]},
   {v:'25.13',f:'20/10/2026',h:'14:30',c:[{n:1,t:'🇦🇷 Pedidos → Bs As se abre en dos solapas: 🏬 De siempre (los pedidos de Bs As) y 📋 Dai Nippon (lo que compra Tito con esa lista, con sus Probados, Nuevos y 🧾 Pedido). Lo ya comprado a Nippon va en su solapa y no se repite en la otra.'}]},
   {v:'25.12',f:'20/10/2026',h:'11:55',c:[{n:2,t:'📋 La ficha suma "Más datos para decidir": de dónde se repone y si reponerlo hoy sale más caro, los reclamos con su motivo, cuánto se queda Mercado Libre a ese precio, la competencia, qué día de la semana y qué mes vende más, hace cuánto entró la unidad más vieja en Full, las opiniones y preguntas que muestra ML, y en qué otras cuentas se publica. Y cuánto le pega el precio a las ventas (cada 10% de suba, cuánto vende menos).'}]},
   {v:'25.11',f:'20/10/2026',h:'11:40',c:[{n:2,t:'📋 La ficha de cada publicación dice cómo reacciona ese producto: si vende sólo ganando la caja o igual perdiéndola, si las ventas siguen a las visitas, qué pasó cuando se bajó o subió el precio, cómo le fue en cada fecha especial, cuánto lo siguen viendo sin stock y si el tachado le cambió algo. Se arma cada noche con su propia línea de tiempo.'}]},
@@ -18109,6 +18110,7 @@ function _pedidoItemHtml(p,opts){
       ${_enCam?'':riesgoBadge}
       ${(()=>{const _r=pedSinSentido(p);return _r?`<span class="pi-var-toggle" style="background:rgba(245,158,11,.14);color:var(--amber);border-color:rgba(245,158,11,.35);cursor:default" title="${_r.det.join(' · ').replace(/"/g,'&quot;')}">⚠️ este renglón no cierra${_r.n>1?' ('+_r.n+')':''}</span>`:'';})()}
       ${origenBtn}
+      ${_grupoBsasBtn(_prod)}
       ${cuentaPedidoHTML(p)}
       ${opts.verdDet?`<div style="flex-basis:100%;font-size:.62rem;line-height:1.5;color:var(--muted)">🇵🇾 ${opts.verdDet}</div>`:''}${_prod?maxCompraHTML(_prod):''}
       <button class="pi-prov ${p.proveedor?'':'sin-prov'}" onclick="setPedidoProveedor('${p.id}')">${p.proveedor?p.proveedor.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'):'+ proveedor'}</button>
@@ -18366,6 +18368,35 @@ let _listaSelB=null;
 // 🧾 Pedido. Los probados de esas listas salen de "De siempre" y van a su solapa (no se ven dos veces).
 let _bsasVista=(()=>{try{return localStorage.getItem('cycBsasVista')==='listas'?'listas':'siempre';}catch(e){return 'siempre';}})();
 function bsasSetVista(v){_bsasVista=v;try{localStorage.setItem('cycBsasVista',v);}catch(e){}renderPedidos();}
+// DE SIEMPRE O DAI NIPPON (20/10/2026, pedido suyo: *"dame poder elegir si son de bs as de siempre o de nippon"*). Cada pedido de
+// Bs As lleva un botón que lo pasa de solapa: a Dai Nippon le pone `listaProv` (la lista de Bs As), a De siempre se lo saca (queda en
+// `listaProvViejo`). Sólo en Bs As y sólo si hay alguna lista de Bs As.
+function _grupoBsasBtn(p){
+  if(!p||p.origen==='py'||pedidoSection!=='bsas')return '';
+  const bp=_bsasProvs();if(!bp.length)return '';
+  const pv=(state.mlconfig&&state.mlconfig.listasProv)||{};
+  if(p.listaProv&&!bp.includes(p.listaProv))return '';
+  const nom=k=>(pv[k]&&pv[k].nombre)||k;
+  const lab=p.listaProv?'📋 '+escHtml(nom(p.listaProv)):'🏬 De siempre';
+  return `<button class="pi-var-toggle" style="background:rgba(168,85,247,.12);color:#c084fc;border-color:rgba(168,85,247,.3)" onclick="pedCambiarGrupo('${p.id}')" title="Tocá para pasarlo a la otra solapa de Bs As (De siempre ↔ ${escHtml(bp.map(nom).join(' / '))}).">${lab}</button>`;
+}
+async function pedCambiarGrupo(id){
+  const p=(state.products||[]).find(x=>x.id===id);if(!p)return;
+  const bp=_bsasProvs(),pv=(state.mlconfig&&state.mlconfig.listasProv)||{};const nom=k=>(pv[k]&&pv[k].nombre)||k;
+  let nuevo=null;
+  if(!p.listaProv){
+    if(bp.length===1)nuevo=bp[0];
+    else{const r=prompt('¿A qué lista lo paso?\n'+bp.map((k,i)=>(i+1)+') '+nom(k)).join('\n'),'1');if(r===null)return;const i=parseInt(r,10)-1;if(!(i>=0&&i<bp.length))return;nuevo=bp[i];}
+  }
+  const viejo=p.listaProv||null;
+  try{
+    if(nuevo)await fbSet('products/'+id+'/listaProv',nuevo);
+    else{await fbSet('products/'+id+'/listaProv',null);await fbSet('products/'+id+'/listaProvViejo',viejo);}
+    p.listaProv=nuevo||undefined;if(!nuevo)p.listaProvViejo=viejo;
+    toast(nuevo?'📋 '+(p.name||'')+' → '+nom(nuevo):'🏬 '+(p.name||'')+' → De siempre');
+  }catch(e){toast('No se pudo guardar: '+(e.message||e));}
+  renderPedidos();
+}
 function _bsasProvs(){const p=(state.mlconfig&&state.mlconfig.listasProv)||{};return Object.keys(p).filter(k=>p[k].bsas&&!p[k].desc);}
 const _listaEsBsas=k=>!!((((state.mlconfig||{}).listasProv||{})[k])||{}).bsas;
 async function renderListas(){
@@ -18399,7 +18430,7 @@ async function renderListas(){
   const nArm=_listaArmado(k).length;
   const _tab=(t,txt,tit)=>`<button class="btn" style="font-size:.64rem;padding:5px 13px;${_listaVista===t?'background:var(--blue);color:#fff;font-weight:700':''}" title="${tit}" onclick="listaSetVista('${t}')">${txt}</button>`;
   const cab=(_enB?`<div style="font-size:.8rem;font-weight:700;margin:18px 0 8px;padding-top:12px;border-top:2px solid var(--border2)">📋 Listas que compra Tito en Bs As <span style="font-size:.66rem;font-weight:400;color:var(--muted)">· lo que ya compraste está arriba, en los pedidos</span></div>`:'')+`<div style="margin-bottom:10px"><input id="lista-buscar" type="search" value="${escHtml(window._listaQ||'')}" placeholder="🔎 Buscar un producto en TODAS las listas…" oninput="listaBuscar(this.value)" style="width:100%;padding:9px 12px;font-size:.85rem;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--text)"><div id="lista-busq"></div></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px"><span style="font-size:.68rem;color:var(--muted)">Proveedor:</span>${visibles.map(_provBtn).join('')}<button class="btn" style="font-size:.64rem;padding:4px 10px;opacity:.8" title="La esconde de acá hasta que la vuelvas a poner (desde ⏸️ sacadas por ahora). No borra nada." onclick="listaPausar('${k}',true)">⏸️ sacar ${escHtml(nom)} por ahora</button></div>${_volverHtml}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px"><span style="font-size:.68rem;color:var(--muted)">Proveedor:</span>${visibles.map(_provBtn).join('')}${_enB?'':`<button class="btn" style="font-size:.64rem;padding:4px 10px;opacity:.8" title="La esconde de acá hasta que la vuelvas a poner (desde ⏸️ sacadas por ahora). No borra nada." onclick="listaPausar('${k}',true)">⏸️ sacar ${escHtml(nom)} por ahora</button>`}</div>${_volverHtml}
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${_tab('probados','✅ Productos probados','Lo que ya le compraste a este proveedor: cuánto reponer.')}${_tab('nuevos','🆕 Productos nuevos','Lo de su lista que todavía no vendés y da 25% o más en ML.')}${_tab('hechos','🧾 Pedido'+(nArm?' ('+nArm+' cargados)':''),'El pedido del momento, el mensaje con código y unidades, y los pedidos ya hechos.')}</div>`;
   let cat=_listaCache[k];
   if(!cat){el.innerHTML=cab+`<div style="font-size:.72rem;color:var(--muted)">⏳ bajando la lista…</div>`;

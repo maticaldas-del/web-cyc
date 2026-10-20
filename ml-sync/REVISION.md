@@ -1815,3 +1815,5 @@ cuando el emparejado por nombre agarra un set u otro tamaño (caso Cheeky Cool B
 Qué: 🏬 De siempre / 📋 Dai Nippon (listas con `bsas`). Dónde: `index.html` (`_bsasVista`, `bsasSetVista`, `_bsasProvs`, `renderPedidos`
 rama Bs As, `renderListas` con `_enB`). Chequear: un producto con `listaProv` nunca sale en "De siempre" ni falta en su solapa; sin listas
 de Bs As no se dibujan solapas; los ✅ Probados de Nippon muestran sus pedidos de reposición.
+v25.14: botón 🏬/📋 en cada pedido de Bs As (`_grupoBsasBtn`, `pedCambiarGrupo`, pone/saca `listaProv`); el ⏸️ sacar por ahora no sale
+en la solapa Dai Nippon. Chequear: al tocarlo el pedido cambia de solapa; con varias listas de Bs As pregunta a cuál; no sale en Paraguay.
