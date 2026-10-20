@@ -918,11 +918,18 @@ Y quién piensa cada renglón (20/10/2026, eligió la a): en la completa, los de
 vuelta diga quién miró los raros, y que ningún ayudante haya corrido algo que escribe.
 - 20/10/2026 · `vistas[:días]` (solo lee, ml-consulta): cómo reaccionan las visitas con la línea de tiempo de todas las
 publicaciones: cambios de precio (sin y con tachado), caja, sin stock, lo nuevo por semana, y días con tachado contra días sin
-tachado al mismo precio final. Corrige por un índice de visitas del catálogo encadenado día a día (sin las que cambiaron de
-precio esos días). Qué chequear: que los días con tachado salgan de mis promos y de ventas en promo sin cupón, que cada grupo
+tachado al mismo precio final. Corrige cada comparación con un panel: las otras publicaciones con visitas sabidas esos mismos
+días y sin cambio de precio en el medio (el índice encadenado del primer intento se infló ×19 con el ruido). Qué chequear: que los días con tachado salgan de mis promos y de ventas en promo sin cupón, que cada grupo
 diga cuántos cambios midió (con pocos no se concluye) y que no imprima nada de compradores.
 
 ## 8 · DATOS E HISTORIAL (nueva, 08/10/2026)
+- 20/10/2026 · la ficha (`armarFicha` → `reaccionesDe`, `mlapi/ficha/<MLA>.reac` y `.reacTxt`; en la web "Cómo reacciona este
+producto") dice por publicación: caja ganando/perdiendo, ventas contra visitas, cambios de precio, fechas especiales, sin stock y
+tachado. Los días con tachado salen de `diasTachado` (la misma función de `vistas`). `vistas` suma la sección F (fechas
+especiales, lo regalable contra lo demás). Qué chequear: que con pocos días diga "pista" y no concluya, que "vende sólo ganando"
+pida certeza (Poisson < 5%), y que las fechas comparen sólo días con stock.
+- 20/10/2026 · planilla 🛡️: lo que ML tiene en revisión (`under_review`) pasa a excepción ("no deja cambiar el precio") en vez de
+"para subir": no se puede tocar y quedaba en la lista para siempre. Qué chequear: que al liberarla vuelva a la lista.
 - **🚧 El techo en la línea de tiempo (18/10/2026, v24.49).** `lineaPintar` dibuja una raya roja punteada en el carril del precio por cada `cyc/techofreno/<MLA>` (`probado`, roja "ya no vende") y otra verde en `volvio` ("sí vende") de las publicaciones del gráfico (respeta el color elegido), desde el día que se anotó; entra en la escala. Qué chequear: que todo techo encontrado se anote con `techofreno:<MLA>=<precio>|motivo;go` (si no, no aparece).
 - **Reloj de los 4 meses en la línea de tiempo (16/10/2026, v23.92 · corregido en v23.93: EDAD DE LA UNIDAD MÁS VIEJA, primero
   entra primero sale — lotes armados con stock de hoy − el de antes + lo vendido; él: "el stock va rotando").** Carril de stock: barra roja por día = edad del lote más viejo

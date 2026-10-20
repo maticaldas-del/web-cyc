@@ -9316,3 +9316,10 @@ Con los Victoria's Secret (9 en descuento abajo del 25% y 3 recién llegadas con
 cumplan las tres: sobra de verdad (+90 d de stock al ritmo con stock), no es recién llegado (30+ d desde la caja) y queda en 25%+ en
 el peor caso. Abajo de 25% sólo con motivo dicho en el 🧠. Los 12 se sacaron ese día. Detalle en `ml-sync/CEREBRO.md` (🤔).
 **Y las promos donde pone plata ML también (20/10/2026, eligió la a):** pasan por las mismas tres condiciones; que ML ponga parte no alcanza.
+
+## 🩺 LA FICHA DICE CÓMO REACCIONA CADA PRODUCTO (20/10/2026, pedido suyo)
+Él: *"un producto vende sólo cuando gana y otro puede vender cuando pierde (…) todo eso a la ficha médica de cada producto, para
+tomar decisiones más finas"*. La ficha (`mlapi/ficha/<MLA>`, sección "Cómo reacciona este producto") dice: ventas ganando y
+perdiendo la caja, si las ventas siguen a las visitas, qué pasó al bajar o subir el precio, cada fecha especial contra antes,
+visitas sin stock y tachado contra liso. Se usa antes de decidir (detalle en `ml-sync/CEREBRO.md`, 📋). Lo medido para todo el
+catálogo junto sale de `vistas` (solo lee).

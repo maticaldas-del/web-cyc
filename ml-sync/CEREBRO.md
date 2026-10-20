@@ -626,6 +626,14 @@ y, si hace falta el detalle, `ficha:<MLA o palabras>` por ml-consulta (cada camb
 con su ganancia por día, mis notas). **Un precio que no rindió no se repite hasta que cambie la razón** (ver 🔓 abajo; máximo 30 días), salvo que
 cambie algo grande (escasez, fecha de regalo, competidor sin stock o más caro, costo nuevo) y lo digo en el motivo. Si ya
 venció, se puede volver a probar. Él ve lo mismo tocando "📋 Ficha completa" en el 🧠.
+**Y CÓMO REACCIONA ESE PRODUCTO (20/10/2026, pedido suyo: *"un producto vende sólo cuando gana y otro puede vender cuando pierde
+(…) todo eso a la ficha médica de cada producto, para tomar decisiones más finas"*).** La ficha trae `CÓMO REACCIONA` (en la web,
+la sección de ese nombre): ventas ganando / compartiendo / perdiendo la caja, si las ventas siguen a las visitas, qué pasó con sus
+visitas y ventas cada vez que se bajó o subió el precio, cada fecha especial contra los 28 días de antes, visitas sin stock y
+tachado contra liso al mismo precio. Antes de decidir se lee y se usa: si **vende sólo ganando**, perder la caja es urgente
+(recuperarla o cambiar de plan); si **vende igual perdiendo**, no se baja por la caja; si las ventas **no siguen a las visitas**,
+el freno es el precio o la ficha, no la visibilidad; si en una fecha **subió de verdad**, en la próxima se sube antes y se manda
+stock antes. Con pocos días la frase lo dice ("todavía es una pista") y no se concluye.
 
 ## 🔬 EL ANÁLISIS A FONDO: LAS 11, "LO QUE RECOMIENDES" (16/10/2026, eligió la (a) en todas)
 Él: *"podemos hacer un análisis en profundo para ver si hay algo más que podamos hacer para hacer rendir al máximo a cada

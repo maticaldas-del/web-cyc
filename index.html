@@ -2680,7 +2680,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.10';
+const APP_VERSION='25.11';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2691,6 +2691,7 @@ const APP_VERSION='25.10';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.11',f:'20/10/2026',h:'11:40',c:[{n:2,t:'📋 La ficha de cada publicación dice cómo reacciona ese producto: si vende sólo ganando la caja o igual perdiéndola, si las ventas siguen a las visitas, qué pasó cuando se bajó o subió el precio, cómo le fue en cada fecha especial, cuánto lo siguen viendo sin stock y si el tachado le cambió algo. Se arma cada noche con su propia línea de tiempo.'}]},
   {v:'25.10',f:'20/10/2026',h:'11:00',c:[{n:3,t:'🔍 Paraguay y Listas: un producto nuevo sólo "da" (y se puede pedir) si alguien confirmó que la publicación de ML es el mismo producto. En Paraguay: tocá ✅ Es el mismo producto o lo confirma la revisión de fotos; mientras tanto queda en "🔍 Dan, pero falta confirmar". En Listas lo confirma el chat de compras; lo demás queda en 🔎 Para revisar.'}]},
   {v:'25.09',f:'20/10/2026',h:'00:20',c:[{n:1,t:'🔎 Las revisiones diarias corren con esfuerzo Máximo (con el plan 20x alcanza).'}]},
   {v:'25.08',f:'20/10/2026',h:'00:05',c:[{n:1,t:'🔎 La revisión del panel ahora tiene 7 etapas, una por día (lun Precios · mar Plata · mié Mercadería · jue Choques y fallas mudas · vie Datos, historial y cerebro · sáb Ideas · dom Diseño) y corre sola todas las noches a las 22:13. Inicio dice la de hoy y si ya quedó hecha.'}]},
@@ -10517,6 +10518,10 @@ async function fichaAbrir(mla,ev){
     h+=`<p style="margin:8px 0 0">Hoy: <b>${$(r.p)}</b> · ${esc(_FICHA_EST[r.est]||r.est||'?')} · ${r.st!=null?r.st+' u. en Full':'stock ?'} · últimos 30 días: ${r.u30||0} u. (${r.r30??'—'} por día con stock, ${$(r.pd30)} de ganancia por día) · costo ${$(r.cu)} · ficha armada ${_cerFecha(F.ts)}</p>`;
     const ico={perdio:'⛔',gano:'✅',mejor:'🏆',curso:'🧪'};
     h+=sec('Lo que ya sabemos',(F.sabemos||[]).length?(F.sabemos||[]).map(s=>`<div style="margin:3px 0">${ico[s.t]||'·'} ${esc(s.txt)}</div>`).join(''):'<div style="color:var(--muted)">Todavía no hay nada medido: ningún cambio de precio con días suficientes después.</div>');
+    // CÓMO REACCIONA ESTE PRODUCTO (20/10/2026, él: "un producto vende sólo cuando gana y otro puede vender cuando pierde (…) todo eso
+    // a la ficha médica de cada producto, para tomar decisiones más finas"). Lo arma el robot cada noche (`reacTxt`): caja, visitas,
+    // cambios de precio, fechas especiales, sin stock y tachado, sólo con la línea de tiempo de ESTA publicación.
+    h+=sec('Cómo reacciona este producto (caja, visitas, precio, fechas, sin stock, tachado)',(F.reacTxt||[]).length?(F.reacTxt||[]).map(t=>`<div style="margin:3px 0">${esc(t)}</div>`).join(''):'<div style="color:var(--muted)">Todavía no se armó: sale en la ficha de la próxima noche.</div>');
     const vC={'ganó':'var(--green)','perdió':'var(--red)'};
     h+=sec('Cada cambio de precio y cómo le fue (21 días antes contra después, días con stock)',(F.cambios||[]).length?tb(['Fecha','Precio','Antes','Después','Vendió','Resultado','Situación','Por qué'],(F.cambios||[]).slice().reverse().map(c=>[fK(c.k),`${$(c.de)} → <b>${$(c.a)}</b>`,`${c.A.r??'—'}/día · ${$(c.A.pd)}/día<br><span style="color:var(--muted)">${c.A.dias} d</span>`,`${c.B.r??'—'}/día · ${$(c.B.pd)}/día<br><span style="color:var(--muted)">${c.B.dias} d${c.B.agot?' · '+c.B.agot+' agotado':''}</span>`,`${c.B.u}${c.esp!=null?' de '+c.esp+' esperadas':''}`,`<b style="color:${vC[c.ver]||'var(--muted)'}">${esc(c.ver)}</b>${c.vence?'<br><span style="color:var(--muted)">no repetir hasta '+fK(c.vence)+'</span>':''}`,esc([c.sit&&c.sit.st!=null?c.sit.st+' u. en Full':'',c.sit&&c.sit.esc?'escasez':'',c.sit&&c.sit.fecha?'cerca de '+c.sit.fecha:'',c.sit&&c.sit.caja?'caja: '+(_FICHA_CAJA[c.sit.caja]||c.sit.caja):''].filter(Boolean).join(', ')),esc(c.motivo||'')])):'<div style="color:var(--muted)">No hay cambios de precio anotados.</div>');
     h+=sec('Cada precio que tuvo (tramos)',(F.tramos||[]).length?tb(['Desde','Hasta','Precio','Días con stock','Vendió','Por día','Ganancia por día','Gana por unidad','Visitas/día','Caja'],(F.tramos||[]).slice().reverse().map(t=>[fK(t.desde),fK(t.hasta),`<b>${$(t.p)}</b>${t.pausada?' <span style="color:var(--muted)">pausada</span>':''}`,`${t.diasSt} de ${t.dias}${t.agot?' ('+t.agot+' agotado)':''}`,t.u+(t.uR?` (${t.uR} en remate)`:''),t.r??'—',$(t.pd),$(t.gu),t.vd??'—',esc(_FICHA_CAJA[t.caja]||t.caja||'—')])):'<div style="color:var(--muted)">Sin tramos todavía.</div>');

@@ -3535,7 +3535,7 @@ const FICHA_VENCE_DIAS = 60;
 // Y la plata parada: 2% por mes sobre el costo del stock que hay cada día (st × costo × 0,02 ÷ 30).
 const PD_TRABAJO_U = 100, PD_TOPE_PCT = 0.03, PD_CAPITAL_DIA = 0.02 / 30;
 function poissonCdfF(k, lam) { if (!(lam > 0)) return 1; let p = Math.exp(-lam), s = p; for (let i = 1; i <= k; i++) { p *= lam / i; s += p; } return Math.min(1, s); }
-function armarFicha({ mla, d, e, cu, imp, cambios, notas, hoyK }) {
+function armarFicha({ mla, d, e, cu, imp, cambios, notas, hoyK, tach, parc }) {
   const ks = Object.keys(d || {}).filter((k) => /^\d{4}_\d{2}_\d{2}$/.test(k) && k < hoyK && d[k] && typeof d[k] === 'object').sort();
   const conSt = (x) => x && !(x.st != null && Number(x.st) <= 0 && !(Number(x.u) > 0));
   const kTs = (k) => Date.parse(k.replace(/_/g, '-') + 'T15:00:00Z');
@@ -3604,7 +3604,132 @@ function armarFicha({ mla, d, e, cu, imp, cambios, notas, hoyK }) {
   const vig = sab.filter((s) => s.t === 'perdio' && !(s.vence <= hoyK));
   const linea1 = [vig.length ? '⛔ ' + vig.map((s) => s.txt.split(' NO rindió')[0] + ' no rindió · hasta ' + fK(s.vence)).join(' | ') : '', (sab.find((s) => s.t === 'mejor') || {}).txt || '', enCurso ? 'en prueba ' + $(enCurso.a) + ' (' + enCurso.ver + ')' : ''].filter(Boolean).join(' · ');
   const N = (notas && typeof notas === 'object') ? Object.entries(notas).map(([ts, n]) => ({ ts: Number(ts), t: String((n && n.t) || '').slice(0, 1200), tipo: (n && n.tipo) || '' })).filter((n) => n.t).sort((a, b) => b.ts - a.ts).slice(0, 60) : [];
-  return { ts: Date.now(), mla, nom: String(e.title || '').slice(0, 80), cuenta: e.cuenta || '', variante: e.variant || '', prodId: e.prodId || '', res, tramos: T.slice(-60), cambios: C.slice(-40), sabemos: sab, notas: N, linea1 };
+  // 5 · CÓMO REACCIONA ESTE PRODUCTO (caja, visitas, precio, fechas, sin stock, tachado) · 20/10/2026
+  const RX = reaccionesDe(d, ks, tach, parc);
+  return { ts: Date.now(), mla, nom: String(e.title || '').slice(0, 80), cuenta: e.cuenta || '', variante: e.variant || '', prodId: e.prodId || '', res, tramos: T.slice(-60), cambios: C.slice(-40), sabemos: sab, notas: N, linea1, reac: RX.reac, reacTxt: RX.txt };
+}
+// ── LOS DÍAS CON TACHADO DE CADA PUBLICACIÓN (20/10/2026) ── Los usan `vistas` y la ficha. Salen de mis promos (notas
+// "Entré/Salí de la promo" de `mlapi/fichanotas`, `cyc/promoclaude`), de la estrategia descuento/promo (`cyc/estrategia`) y de
+// las ventas hechas en promo (`cyc/promoventa`, sin las de sólo cupón: el cupón no se ve en la publicación). Devuelve, por
+// publicación, los días ENTEROS con tachado (`tach`) y los días en que entró o salió (`parc`: tienen horas de cada lado, no
+// cuentan para ninguno), más los días de entrada y salida (`ini`, `fin`).
+function diasTachado({ notas, pcl, est, pven, ahora }) {
+  const tach = {}, parc = {}, ini = {}, fin = {}, tipos = {}; let pvDias = 0;
+  const dk = (t) => dayKeyFromISO(t), sig = (k, n) => dayKeyFromISO(Date.parse(k.replace(/_/g, '-') + 'T15:00:00Z') + n * 864e5);
+  const marca = (m, t0, t1) => { const a = dk(t0), b = dk(Math.min(t1, ahora)); (ini[m] = ini[m] || new Set()).add(a); (fin[m] = fin[m] || new Set()).add(b); (parc[m] = parc[m] || new Set()).add(a).add(b); const T = (tach[m] = tach[m] || new Set()); for (let k = sig(a, 1); k < b; k = sig(k, 1)) T.add(k); };
+  const hastaDe = (txt, t0) => { const mm = String(txt).match(/hasta el (\d{2})\/(\d{2})/); if (!mm) return t0 + 14 * 864e5; const y0 = new Date(t0).getUTCFullYear(); let t = Date.parse(`${y0}-${mm[2]}-${mm[1]}T23:00:00-03:00`); if (t < t0 - 864e5) t = Date.parse(`${y0 + 1}-${mm[2]}-${mm[1]}T23:00:00-03:00`); return t; };
+  for (const [m, h] of Object.entries(notas || {})) {
+    const ns = Object.entries(h || {}).map(([t, x]) => ({ t: Number(t), x: String((x && x.t) || '') })).filter((z) => z.t > 0 && /promo|descuento/i.test(z.x)).sort((a, b) => a.t - b.t);
+    for (let i = 0; i < ns.length; i++) {
+      if (!/^Entr[ée] en la promo/i.test(ns[i].x)) continue;
+      let f = hastaDe(ns[i].x, ns[i].t);
+      for (let j = i + 1; j < ns.length; j++) if (/^Sal[ií] de la promo|^Entr[ée] en la promo/i.test(ns[j].x)) { f = Math.min(f, ns[j].t); break; }
+      marca(m, ns[i].t, f);
+    }
+  }
+  for (const [m, x] of Object.entries(pcl || {})) { if (!x || !(Number(x.ts) > 0)) continue; const h = x.hasta ? Date.parse(String(x.hasta).slice(0, 19) + '-03:00') : ahora; marca(m, Number(x.ts), isFinite(h) ? h : ahora); }
+  for (const [m, h] of Object.entries(est || {})) {
+    const es = Object.entries(h || {}).map(([t, x]) => ({ t: Number(t), g: x && x.t })).filter((z) => z.t > 0).sort((a, b) => a.t - b.t);
+    for (let i = 0; i < es.length; i++) { if (es[i].g !== 'descuento' && es[i].g !== 'promo') continue; let j = i + 1; while (j < es.length && (es[j].g === 'descuento' || es[j].g === 'promo')) j++; marca(m, es[i].t, j < es.length ? es[j].t : ahora); i = j - 1; }
+  }
+  for (const [k, dia] of Object.entries(pven || {})) for (const rec of Object.values(dia || {})) {
+    if (!rec || typeof rec !== 'object') continue;
+    const tps = String(rec.tipo || '').toLowerCase().split(',').filter(Boolean); for (const t of tps) tipos[t] = (tipos[t] || 0) + 1;
+    if (!tps.some((t) => t !== 'coupon')) continue;
+    for (const m of Object.keys(rec.mla || {})) { (tach[m] = tach[m] || new Set()).add(k); pvDias++; }
+  }
+  return { tach, parc, ini, fin, tipos, pvDias };
+}
+// ── CÓMO REACCIONA ESTE PRODUCTO (20/10/2026, él: "evaluar qué pasa cuando hay fechas especiales, cuando las vistas suben o
+// bajan, cuando la caja se gana o pierde. Todo eso puede depender por producto. Quizás un producto vende sólo cuando gana y
+// otro puede vender cuando pierde. Entonces todo eso se lo agrega a la ficha médica de cada producto. Para tomar decisiones
+// más finas"). Sale SÓLO de la línea de tiempo de ESA publicación (días con stock) y va a la ficha en `reac`, con frases
+// simples en `reacTxt`. Sin corregir por el catálogo (eso lo mide `vistas` para todos juntos). Con pocos días dice que
+// todavía no se sabe en vez de concluir.
+function reaccionesDe(d, ks, tach, parc) {
+  const conSt = (x) => x && !(x.st != null && Number(x.st) <= 0 && !(Number(x.u) > 0));
+  const num = (x) => (x == null || !isFinite(Number(x)) ? null : Number(x));
+  const r2 = (x) => (x == null || !isFinite(x) ? null : Math.round(x * 100) / 100);
+  const pois = (k, lam) => { if (!(lam > 0)) return 1; let p = Math.exp(-lam), s = p; for (let i = 1; i <= k; i++) { p *= lam / i; s += p; } return Math.min(1, s); };
+  const grupo = (lista) => { let dias = 0, u = 0, vis = 0, nv = 0; for (const k of lista) { const x = d[k]; dias++; u += Number(x.u) || 0; if (num(x.vis) != null) { vis += Number(x.vis); nv++; } } return { dias, u, r: dias ? r2(u / dias) : null, vd: nv ? r2(vis / nv) : null, conv: vis > 0 ? r2(u / vis * 100) : null }; };
+  const sig = (k, n) => dayKeyFromISO(Date.parse(k.replace(/_/g, '-') + 'T15:00:00Z') + n * 864e5);
+  const conStock = ks.filter((k) => conSt(d[k]));
+  const txt = [], reac = {};
+  const fV = (x) => (x == null || !isFinite(x) ? '—' : x >= 10 ? String(Math.round(x)) : String(Math.round(x * 10) / 10).replace('.', ','));
+  const ritmo = (r) => (r == null ? '—' : r >= 1 ? `${String(Math.round(r * 10) / 10).replace('.', ',')} por día` : r * 7 >= 1 ? `${Math.round(r * 7)} por semana` : r > 0 ? `${Math.max(1, Math.round(r * 30))} por mes` : 'nada');
+  // 1 · LA CAJA DE COMPRA: cómo vende ganando, compartiendo y perdiendo.
+  { const G = {}; for (const c of ['g', 'c', 'p']) G[c] = grupo(conStock.filter((k) => d[k].caja === c)); reac.caja = G;
+    const g = G.g, p = G.p;
+    if (g.dias >= 5 && p.dias >= 5 && g.r > 0) {
+      const lam = g.r * p.dias, cert = pois(p.u, lam);
+      if (p.u <= lam * 0.4 && cert < 0.05) txt.push(`🥊 Vende SÓLO ganando la caja: ganando ${ritmo(g.r)} (${g.dias} d), perdiendo ${ritmo(p.r)} (${p.dias} d). Perderla le cuesta casi todas las ventas.`);
+      else if (p.r >= g.r * 0.7) txt.push(`🥊 Vende igual perdiendo la caja: ganando ${ritmo(g.r)} (${g.dias} d), perdiendo ${ritmo(p.r)} (${p.dias} d). La caja no decide acá.`);
+      else txt.push(`🥊 Perdiendo la caja vende menos: ganando ${ritmo(g.r)} (${g.dias} d), perdiendo ${ritmo(p.r)} (${p.dias} d)${cert < 0.05 ? '' : ', todavía sin certeza'}.`);
+    } else if (g.dias + p.dias + G.c.dias > 0) txt.push(`🥊 Caja: ${g.dias} d ganando (${ritmo(g.r)}), ${G.c.dias} d compartiendo, ${p.dias} d perdiendo (${ritmo(p.r)}) · pocos días de un lado para saber si la caja le cambia las ventas.`);
+  }
+  // 2 · LAS VISITAS: ¿las ventas siguen a las visitas? Días con stock y visitas sabidas, partidos en tercios.
+  { const V = conStock.filter((k) => num(d[k].vis) != null).sort((a, b) => Number(d[a].vis) - Number(d[b].vis));
+    if (V.length >= 12) {
+      const t = Math.floor(V.length / 3), lo = grupo(V.slice(0, t)), hi = grupo(V.slice(-t)), tot = grupo(V);
+      reac.vis = { dias: V.length, pocas: lo, muchas: hi, conv: tot.conv };
+      const rv = lo.vd > 0 ? hi.vd / lo.vd : null, ru = lo.r > 0 ? hi.r / lo.r : null;
+      let frase = `👀 Con muchas visitas (${fV(hi.vd)} por día) vende ${ritmo(hi.r)}; con pocas (${fV(lo.vd)}) vende ${ritmo(lo.r)} · de cada 100 que la ven compran ${fV(tot.conv)}.`;
+      if (rv && hi.r > 0 && (ru == null || ru >= rv * 0.6)) frase += ' Las ventas siguen a las visitas: lo que la hace ver más (caja, precio, fecha) le suma ventas.';
+      else if (rv && rv > 1.5 && ru != null && ru < 1.3) frase += ' Más visitas casi no le suman ventas: el freno es el precio o la ficha, no que no la vean.';
+      txt.push(frase);
+      const ult = V.length ? conStock.filter((k) => num(d[k].vis) != null).slice(-7) : [], ant = conStock.filter((k) => num(d[k].vis) != null).slice(-28, -7);
+      if (ult.length >= 5 && ant.length >= 10) { const a = grupo(ant).vd, b = grupo(ult).vd; reac.visTend = { antes: a, ahora: b }; if (a > 0 && (b / a > 1.3 || b / a < 0.7)) txt.push(`👀 Las visitas ${b > a ? 'subieron' : 'bajaron'} la última semana: ${fV(a)} → ${fV(b)} por día.`); }
+    } else txt.push(`👀 Visitas: sólo ${V.length} días con stock y visitas sabidas · todavía no alcanza para ver si las ventas siguen a las visitas.`);
+  }
+  // 3 · LOS CAMBIOS DE PRECIO DE ESTA PUBLICACIÓN: visitas y ventas 7 días antes contra 7 después (sin el día del cambio).
+  { const P = ks.map((k) => (Number(d[k].p) > 0 ? Number(d[k].p) : null)); const ev = [];
+    for (let i = 1; i < ks.length; i++) {
+      const p0 = P[i - 1], p1 = P[i]; if (!(p0 > 0 && p1 > 0) || Math.abs(p1 / p0 - 1) < 0.03) continue;
+      if (P.slice(Math.max(0, i - 4), i).some((x) => x && Math.abs(x / p0 - 1) > 0.02) || P.slice(i, i + 4).some((x) => x && Math.abs(x / p1 - 1) > 0.02)) continue;
+      const jb = [], ja = []; for (let j = i - 1; j >= Math.max(0, i - 7); j--) { if (P[j] && Math.abs(P[j] / p0 - 1) > 0.02) break; if (conSt(d[ks[j]])) jb.push(ks[j]); } for (let j = i + 1; j < Math.min(ks.length, i + 8); j++) { if (P[j] && Math.abs(P[j] / p1 - 1) > 0.02) break; if (conSt(d[ks[j]])) ja.push(ks[j]); }
+      if (jb.length < 3 || ja.length < 3) continue;
+      const A = grupo(jb), B = grupo(ja); ev.push({ k: ks[i], de: p0, a: p1, A, B });
+    }
+    reac.precio = ev.slice(-12);
+    const med = (a) => { const s = a.filter((x) => x != null && isFinite(x)).sort((x, y) => x - y); return s.length ? s[Math.floor((s.length - 1) / 2)] : null; };
+    for (const [nom, L] of [['bajar', ev.filter((e) => e.a < e.de)], ['subir', ev.filter((e) => e.a > e.de)]]) {
+      if (!L.length) continue;
+      const mv = med(L.map((e) => (e.A.vd > 0 && e.B.vd != null ? e.B.vd / e.A.vd : null))), mu = med(L.map((e) => (e.A.r > 0 && e.B.r != null ? e.B.r / e.A.r : null)));
+      const pc = (x) => (x == null ? '—' : (x >= 1 ? '+' : '') + Math.round((x - 1) * 100) + '%');
+      txt.push(`💲 Al ${nom} el precio (${L.length} ${L.length === 1 ? 'vez' : 'veces'}, 7 días antes contra 7 después): visitas ${pc(mv)}, ventas por día ${pc(mu)}${L.length < 3 ? ' · pocas veces, todavía es una pista' : ''}.`);
+    }
+  }
+  // 4 · FECHAS ESPECIALES: lo que vende en la ventana de cada fecha contra los 28 días con stock de antes.
+  { const F = []; const y0 = ks.length ? Number(ks[0].slice(0, 4)) : 0, y1 = ks.length ? Number(ks[ks.length - 1].slice(0, 4)) : 0;
+    const fechas = []; for (let y = y0; y <= y1 && y0; y++) fechas.push(...fechasEspeciales(y));
+    for (const f of fechas) {
+      const a = dayKeyFromISO(f.ts - f.pre * 864e5), b = dayKeyFromISO(f.ts + ((f.dur || 1) - 1) * 864e5);
+      if (!ks.length || a < ks[0] || b > ks[ks.length - 1]) continue;
+      const W = conStock.filter((k) => k >= a && k <= b), base = conStock.filter((k) => k < a && k >= sig(a, -42)).slice(-28);
+      if (W.length < Math.ceil((f.pre + (f.dur || 1)) / 2) || base.length < 7) continue;
+      const w = grupo(W), bs = grupo(base); F.push({ nom: f.nom, y: Number(b.slice(0, 4)), w, base: bs, x: bs.r > 0 ? r2(w.r / bs.r) : null });
+    }
+    reac.fechas = F;
+    for (const x of F) {
+      const lam = (x.base.r || 0) * x.w.dias, alto = x.w.u > lam && 1 - pois(x.w.u - 1, lam) < 0.05, bajo = pois(x.w.u, lam) < 0.05;
+      txt.push(`🎁 ${x.nom} ${x.y}: vendió ${ritmo(x.w.r)} en la ventana (${x.w.dias} d) contra ${ritmo(x.base.r)} antes${x.x != null ? ` (×${String(x.x).replace('.', ',')})` : ''}${alto ? ' · subió de verdad' : bajo ? ' · vendió MENOS' : ' · sin diferencia segura'}${x.w.vd != null && x.base.vd != null ? ` · visitas ${fV(x.base.vd)} → ${fV(x.w.vd)} por día` : ''}.`);
+    }
+  }
+  // 5 · SIN STOCK: cuánto lo siguen viendo cuando no hay.
+  { const Z = ks.filter((k) => num(d[k].st) != null && Number(d[k].st) <= 0 && num(d[k].vis) != null && !(Number(d[k].u) > 0)), S = conStock.filter((k) => num(d[k].vis) != null);
+    if (Z.length >= 3 && S.length >= 3) { const z = grupo(Z), s = grupo(S); reac.sinStock = { dias: Z.length, vd: z.vd, vdConStock: s.vd }; txt.push(`📦 Sin stock la siguen viendo ${fV(z.vd)} por día (con stock ${fV(s.vd)}): ${s.vd > 0 && z.vd / s.vd < 0.5 ? 'pierde la mitad o más de las visitas al quedarse sin' : 'mantiene buena parte de las visitas aunque no haya'}.`); }
+  }
+  // 6 · TACHADO CONTRA PRECIO LISO, al mismo precio final (±4%).
+  if (tach && tach.size) {
+    const T = conStock.filter((k) => tach.has(k) && !(parc && parc.has(k)) && Number(d[k].p) > 0);
+    if (T.length >= 2) {
+      const ps = T.map((k) => Number(d[k].p)).sort((a, b) => a - b), pT = ps[Math.floor((ps.length - 1) / 2)];
+      const L = conStock.filter((k) => !tach.has(k) && !(parc && parc.has(k)) && Number(d[k].p) > 0 && Math.abs(Number(d[k].p) / pT - 1) <= 0.04);
+      const t = grupo(T), l = grupo(L); reac.tachado = { p: pT, tach: t, liso: l };
+      txt.push(L.length >= 3 ? `🏷️ Con tachado a ${'$' + Math.round(pT).toLocaleString('es-AR')}: ${ritmo(t.r)} y ${fV(t.vd)} visitas por día (${t.dias} d) · sin tachado al mismo precio: ${ritmo(l.r)} y ${fV(l.vd)} visitas (${l.dias} d)${t.dias < 7 || l.dias < 7 ? ' · pocos días, todavía es una pista' : ''}.` : `🏷️ Tuvo ${t.dias} días con tachado a ${'$' + Math.round(pT).toLocaleString('es-AR')} (${ritmo(t.r)}) y ningún día sin tachado a ese precio para comparar.`);
+    }
+  }
+  return { reac, txt };
 }
 // LOS EVENTOS QUE ARMA ML (08/10/2026). Él: *"el 10/10 ML hace un evento. eso no lo viste"*. Se leen de las promociones
 // que ML le ofrece a cada cuenta (`/seller-promotions/users/<id>`): nombre, tipo, fechas y estado. SOLO LEE: no se acepta
@@ -31720,6 +31845,9 @@ async function main() {
       let expC = {}; try { expC = (await db.get('mlapi/claudeexp')) || {}; } catch { /* sigue */ }
       const tc = parseFloat(await db.get('cyc/finanzas/tipo_cambio')) || 0;
       if (!(tc > 0)) { console.log('⚠️ sin dólar cargado no se puede calcular la ganancia: no armo fichas'); process.exit(1); }
+      // Los días con tachado de cada publicación, para la sección "cómo reacciona" (20/10/2026).
+      let estF = {}, pvF = {}; try { estF = (await db.get('cyc/estrategia')) || {}; } catch { console.log('⚠️ no leí las estrategias: el tachado sale incompleto'); } try { pvF = (await db.get('cyc/promoventa')) || {}; } catch { console.log('⚠️ no leí las ventas en promo: el tachado sale incompleto'); }
+      const TCH = diasTachado({ notas: notasT, pcl: prC, est: estF, pven: pvF, ahora: Date.now() });
       const pIdx = {}; for (const pr of products) pIdx[pr.id] = pr;
       const hoyK = dayKeyFromISO(Date.now());
       const camb = {};
@@ -31741,7 +31869,7 @@ async function main() {
           const pr = pIdx[e.prodId]; const cta = String(e.cuenta || '').toLowerCase();
           const notas = { ...(notasT[mla] || {}) };
           const ex = expC[mla]; if (ex && ex.simple && Number(ex.ts) > 0 && !notas[ex.ts]) notas[ex.ts] = { t: ex.simple, tipo: ex.tipo || 'nota' };
-          const f = armarFicha({ mla, d, e, cu: costoPesos(pr, 1, tc).costo, imp: ((ML_EXTRA_PCT[cta] || 4) + 2) / 100, cambios: camb[mla] || [], notas, hoyK });
+          const f = armarFicha({ mla, d, e, cu: costoPesos(pr, 1, tc).costo, imp: ((ML_EXTRA_PCT[cta] || 4) + 2) / 100, cambios: camb[mla] || [], notas, hoyK, tach: TCH.tach[mla], parc: TCH.parc[mla] });
           f.producto = String(pr.name || '').slice(0, 80);
           out[mla] = f; ok++;
         }));
@@ -31757,6 +31885,7 @@ async function main() {
         for (const c of f.cambios) console.log(`    · ${fK(c.k)} ${$(c.de)} → ${$(c.a)} · antes ${c.A.r ?? '—'}/día ${$(c.A.pd)}/día (${c.A.dias} d) · después ${c.B.r ?? '—'}/día ${$(c.B.pd)}/día (${c.B.dias} d${c.B.agot ? ', ' + c.B.agot + ' agotado' : ''}) · vendió ${c.B.u}${c.esp != null ? ' de ' + c.esp + ' esperadas' : ''} · ${c.ver.toUpperCase()}${c.vence ? ' · vence ' + fK(c.vence) : ''} · ${c.motivo.slice(0, 160)}`);
         console.log('   TRAMOS DE PRECIO (con stock):');
         for (const t of f.tramos.slice(-15)) console.log(`    · ${fK(t.desde)}-${fK(t.hasta)} ${$(t.p)} · ${t.diasSt}/${t.dias} d con stock · ${t.u} u. (${t.r ?? '—'}/día) · ${$(t.pd)}/día · gana ${$(t.gu)}/u${t.vd != null ? ' · ' + t.vd + ' visitas/día' : ''}${t.caja ? ' · caja ' + t.caja : ''}${t.pausada ? ' · pausada' : ''}`);
+        if ((f.reacTxt || []).length) { console.log('   CÓMO REACCIONA:'); for (const t of f.reacTxt) console.log(`    · ${t}`); }
         if (f.notas.length) { console.log('   MIS NOTAS (últimas 5):'); for (const n of f.notas.slice(0, 5)) console.log(`    · ${new Date(n.ts - 3 * 3600e3).toISOString().slice(5, 16).replace('T', ' ')} ${n.t.replace(/\s+/g, ' ').slice(0, 300)}`); }
       }
       if (GO) {
@@ -31839,31 +31968,9 @@ async function main() {
       const ventana = (s, js) => { let dias = 0, vis = 0, u = 0; const usados = []; for (const j of js) { if (!ok(s, j)) continue; dias++; vis += s.V[j]; u += s.U[j]; usados.push(j); } return { dias, vis, u, js: usados }; };
       let sinPanel = 0;
       const razon = (m, A, B) => { if (!(A.dias && B.dias)) return { r: null, f: 1 }; const rA = A.vis / A.dias, rB = B.vis / B.dias; const pn = panel(m, A.js, B.js); if (pn.k < 8) sinPanel++; return { r: rA > 0 ? (rB / pn.f) / rA : null, f: pn.f }; };
-      // ── Días con TACHADO por publicación ──
-      const TACH = {}, INI = {}, FIN = {}, PARC = {};
-      const marca = (m, t0, t1) => { const a = _rnDia(t0), b = _rnDia(Math.min(t1, Date.now())); (INI[m] = INI[m] || new Set()).add(a); (FIN[m] = FIN[m] || new Set()).add(b); (PARC[m] = PARC[m] || new Set()).add(a).add(b); const T = (TACH[m] = TACH[m] || new Set()); for (let k = kMas(a, 1); k < b; k = kMas(k, 1)) T.add(k); };
-      const hastaDe = (txt, t0) => { const mm = String(txt).match(/hasta el (\d{2})\/(\d{2})/); if (!mm) return t0 + 14 * 864e5; const y0 = new Date(t0).getUTCFullYear(); let t = Date.parse(`${y0}-${mm[2]}-${mm[1]}T23:00:00-03:00`); if (t < t0 - 864e5) t = Date.parse(`${y0 + 1}-${mm[2]}-${mm[1]}T23:00:00-03:00`); return t; };
-      for (const [m, h] of Object.entries(notas || {})) {
-        const ns = Object.entries(h || {}).map(([t, x]) => ({ t: Number(t), x: String((x && x.t) || '') })).filter((z) => z.t > 0 && /promo|descuento/i.test(z.x)).sort((a, b) => a.t - b.t);
-        for (let i = 0; i < ns.length; i++) {
-          if (!/^Entr[ée] en la promo/i.test(ns[i].x)) continue;
-          let fin = hastaDe(ns[i].x, ns[i].t);
-          for (let j = i + 1; j < ns.length; j++) if (/^Sal[ií] de la promo|^Entr[ée] en la promo/i.test(ns[j].x)) { fin = Math.min(fin, ns[j].t); break; }
-          marca(m, ns[i].t, fin);
-        }
-      }
-      for (const [m, x] of Object.entries(pcl || {})) { if (!x || !(Number(x.ts) > 0)) continue; const h = x.hasta ? Date.parse(String(x.hasta).slice(0, 19) + '-03:00') : Date.now(); marca(m, Number(x.ts), isFinite(h) ? h : Date.now()); }
-      for (const [m, h] of Object.entries(est || {})) {
-        const es = Object.entries(h || {}).map(([t, x]) => ({ t: Number(t), g: x && x.t })).filter((z) => z.t > 0).sort((a, b) => a.t - b.t);
-        for (let i = 0; i < es.length; i++) { if (es[i].g !== 'descuento' && es[i].g !== 'promo') continue; let j = i + 1; while (j < es.length && (es[j].g === 'descuento' || es[j].g === 'promo')) j++; marca(m, es[i].t, j < es.length ? es[j].t : Date.now()); i = j - 1; }
-      }
-      const tiposPV = {}; let pvTach = 0;
-      for (const [dk, dia] of Object.entries(pven || {})) for (const rec of Object.values(dia || {})) {
-        if (!rec || typeof rec !== 'object') continue;
-        const tps = String(rec.tipo || '').toLowerCase().split(',').filter(Boolean); for (const t of tps) tiposPV[t] = (tiposPV[t] || 0) + 1;
-        if (!tps.some((t) => t !== 'coupon')) continue;   // sólo cupón: el comprador no vio tachado
-        for (const m of Object.keys(rec.mla || {})) { (TACH[m] = TACH[m] || new Set()).add(dk); pvTach++; }
-      }
+      // ── Días con TACHADO por publicación (la misma cuenta que usa la ficha) ──
+      const DT = diasTachado({ notas, pcl, est, pven, ahora: Date.now() });
+      const TACH = DT.tach, INI = DT.ini, FIN = DT.fin, PARC = DT.parc, tiposPV = DT.tipos, pvTach = DT.pvDias;
       const enT = (m, k) => !!(TACH[m] && TACH[m].has(k)), parc = (m, k) => !!(PARC[m] && PARC[m].has(k));
       console.log(`=== 👀 VISITAS · ${DK[0]} → ${DK[n - 1]} (${n} días) · ${Object.keys(S).length} publicaciones con línea de tiempo${fallas ? ` · ${fallas} no se pudieron leer` : ''} ===`);
       console.log(`Días sabidos: ${diasTot} · con visitas ${diasVis} (${Math.round(diasVis / Math.max(1, diasTot) * 100)}%) · con stock sabido ${diasSt} (${Math.round(diasSt / Math.max(1, diasTot) * 100)}%) · ${estables} publicaciones con visitas sabidas casi todos los días.`);
@@ -31948,6 +32055,29 @@ async function main() {
         console.log(`• ${filas.length} publicaciones tuvieron días tachados con stock · ${R.length} también se vendieron SIN tachado a ese mismo precio (las que se pueden comparar)`);
         if (R.length) { console.log(`• visitas/día con tachado contra sin tachado: ${pc(med(R.map((f) => f.r)))} (mediana) · ${pc(lD && tD && lV > 0 ? (tV / tD) / (lV / lD) : null)} (todas juntas)`); if (tV > 0 && lV > 0) console.log(`• ventas cada 100 visitas: con tachado ${f1(tU / tV * 100)} · sin tachado ${f1(lU / lV * 100)} · ventas/día ${f1(tU / tD, 2)} contra ${f1(lU / lD, 2)}`); }
         for (const f of filas.sort((a, b) => (b.T.dias + b.L.dias) - (a.T.dias + a.L.dias)).slice(0, 25)) console.log(`    ${tit(f.m)} · ${$(f.pT)} · tachado ${f.T.dias} d: ${f1(f.T.dias ? f.T.vis / f.T.dias : null)} vis/d, ${f.T.u} vend · liso ${f.L.dias} d: ${f1(f.L.dias ? f.L.vis / f.L.dias : null)} vis/d, ${f.L.u} vend${f.r != null ? ` · ${pc(f.r)} visitas con tachado` : ' · sin días lisos a ese precio para comparar'}`);
+      }
+      // ── F · FECHAS ESPECIALES: la ventana de cada fecha contra los 28 días de antes, lo regalable contra el resto ──
+      { const y0 = Number(DK[0].slice(0, 4)), y1 = Number(DK[n - 1].slice(0, 4)); const fs = []; for (let y = y0; y <= y1; y++) fs.push(...fechasEspeciales(y));
+        console.log(`\n── 🎁 F · FECHAS ESPECIALES (ventana de la fecha contra los 28 días de antes · por publicación y por día con stock) ──`);
+        let alguna = false;
+        for (const f of fs.sort((a, b) => a.ts - b.ts)) {
+          const a = dayKeyFromISO(f.ts - f.pre * 864e5), b = dayKeyFromISO(f.ts + ((f.dur || 1) - 1) * 864e5); if (pos[a] == null || pos[b] == null) continue;
+          const wi = []; for (let i = pos[a]; i <= pos[b]; i++) wi.push(i); const bi = []; for (let i = Math.max(0, pos[a] - 28); i < pos[a]; i++) bi.push(i);
+          if (bi.length < 14) continue; alguna = true;
+          const G = { regalo: { wd: 0, wu: 0, wv: 0, wn: 0, bd: 0, bu: 0, bv: 0, bn: 0, n: 0 }, resto: { wd: 0, wu: 0, wv: 0, wn: 0, bd: 0, bu: 0, bv: 0, bn: 0, n: 0 } };
+          for (const [m, s] of Object.entries(S)) {
+            const g = G[RE_REGALO.test(String(links[m].title || '')) ? 'regalo' : 'resto']; let usa = false;
+            let wd = 0; for (const i of wi) { if (s.ST[i] != null ? s.ST[i] > 0 || s.U[i] > 0 : s.U[i] > 0 || s.E[i] === 'active') { wd++; } }
+            let bd = 0; for (const i of bi) { if (s.ST[i] != null ? s.ST[i] > 0 || s.U[i] > 0 : s.U[i] > 0 || s.E[i] === 'active') { bd++; } }
+            if (wd < wi.length / 2 || bd < 7) continue;
+            for (const i of wi) { if (!(s.ST[i] != null ? s.ST[i] > 0 || s.U[i] > 0 : s.U[i] > 0 || s.E[i] === 'active')) continue; g.wd++; g.wu += s.U[i]; if (s.V[i] != null) { g.wv += s.V[i]; g.wn++; } usa = true; }
+            for (const i of bi) { if (!(s.ST[i] != null ? s.ST[i] > 0 || s.U[i] > 0 : s.U[i] > 0 || s.E[i] === 'active')) continue; g.bd++; g.bu += s.U[i]; if (s.V[i] != null) { g.bv += s.V[i]; g.bn++; } }
+            if (usa) g.n++;
+          }
+          const lin = (nom, g) => { const rw = g.wd ? g.wu / g.wd : null, rb = g.bd ? g.bu / g.bd : null, vw = g.wn ? g.wv / g.wn : null, vb = g.bn ? g.bv / g.bn : null; return `${nom} (${g.n} publ.): ventas ${pc(rb > 0 ? rw / rb : null)} · visitas ${pc(vb > 0 && g.wn >= 10 && g.bn >= 10 ? vw / vb : null)}`; };
+          console.log(`• ${f.nom} ${b.slice(0, 4)} (${a.slice(8, 10)}/${a.slice(5, 7)} → ${b.slice(8, 10)}/${b.slice(5, 7)}) · ${lin('🎁 lo regalable', G.regalo)} · ${lin('lo demás', G.resto)}`);
+        }
+        if (!alguna) console.log('• ninguna fecha con 28 días de antes adentro de los datos');
       }
       console.log(`\n(${sinPanel} comparación(es) sin un panel de 8+ publicaciones para corregir: ésas van sin corregir.)`);
       console.log('\nSOLO LEE: no toqué nada.');
@@ -40269,7 +40399,7 @@ async function main() {
             // Mi promo cuenta como excepción sólo MIENTRAS dure (13/10/2026, revisión 9): vencida se juzga como cualquiera.
             const pcV = promoClaudeVigente(pClaude[mla], hoy);
             filas.push({ mla, cta, kSt: stDesc ? null : kSt, desde: (h.aprox === false && Number(h.desde) > 0) ? Number(h.desde) : 0, nom: String(e.title || p.name || '').slice(0, 42) + (e.variant ? ' #' + e.variant : ''), est: b.status + ((b.sub_status || []).length ? '(' + b.sub_status.join(',') + ')' : ''),
-              P, mg, g, mgP, meta, nota, st, stDesc, exc: (nosub || {})[mla] ? 'liquidando' : (cPiso && cPiso[mla] && Math.abs((Number(cPiso[mla].a) || 0) - P) <= 10) ? 'la dejé así con !piso' : pcV.vig ? `en promo mía${pcV.hasta ? ' hasta ' + pcV.hasta : ''}` : (P >= 32900 && P < UMBRAL_ENVIO_GRATIS && meta && meta.barrera) ? 'frenada en la barrera de $33.000 (regla 2)' : '', pcVen: pClaude[mla] && !pcV.vig ? (pcV.hasta || '?') : '', ...vv, cero: h.cero && st === 0 && !stDesc ? h.cero : null, tanda, caja: e.caja || '', ptw: e.cajaPtw || null, var: (b.variations || []).length,
+              P, mg, g, mgP, meta, nota, st, stDesc, exc: b.status === 'under_review' ? 'ML la tiene en revisión: no deja cambiar el precio (se sube al liberarla)' : (nosub || {})[mla] ? 'liquidando' : (cPiso && cPiso[mla] && Math.abs((Number(cPiso[mla].a) || 0) - P) <= 10) ? 'la dejé así con !piso' : pcV.vig ? `en promo mía${pcV.hasta ? ' hasta ' + pcV.hasta : ''}` : (P >= 32900 && P < UMBRAL_ENVIO_GRATIS && meta && meta.barrera) ? 'frenada en la barrera de $33.000 (regla 2)' : '', pcVen: pClaude[mla] && !pcV.vig ? (pcV.hasta || '?') : '', ...vv, cero: h.cero && st === 0 && !stDesc ? h.cero : null, tanda, caja: e.caja || '', ptw: e.cajaPtw || null, var: (b.variations || []).length,
               cambio: a && a.ts ? `${f(a.de)}→${f(a.a)} hace ${Math.round((hoy - a.ts) / 864e5)} d${a.por ? ' (' + a.por + ')' : ''}` : '' });
           }
         }
