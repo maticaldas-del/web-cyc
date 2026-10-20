@@ -2683,7 +2683,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.17';
+const APP_VERSION='25.18';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2694,6 +2694,7 @@ const APP_VERSION='25.17';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.18',f:'20/10/2026',h:'13:45',c:[{n:1,t:'🔎 La revisión diaria del panel ahora corre sola a las 4 de la mañana (antes 22:13). Cada mañana toca la etapa del día: lun Precios · mar Plata · mié Mercadería · jue Choques · vie Datos · sáb Ideas · dom Diseño.'}]},
   {v:'25.17',f:'20/10/2026',h:'17:40',c:[{n:2,t:'📈 Línea de tiempo: las rayas 💰 piso y 🔴 techo sólo cuentan los días con 3+ unidades en Full y con dato de visitas (con 1-2 u. vender poco no prueba nada). Es la misma cuenta que usa el cerebro para decir "techo encontrado". Si hay una prueba más cara en curso, la línea dice "techo medido antes $X · hoy probando $Y".'}]},
   {v:'25.16',f:'20/10/2026',h:'17:30',c:[{n:2,t:'Etiqueta nueva 🧪 prueba tachado: 10 publicaciones bajan 5% por 2 semanas, 5 con precio tachado y 5 liso, para saber si el tachado vende más. Y 🆕 lanzamiento ahora explica la escalera: arranca arriba, 7 días, y si no vende baja con descuento tachado.'}]},
   {v:'25.15',f:'20/10/2026',h:'15:40',c:[{n:1,t:'🇵🇾 En la tarjeta de un pedido de Paraguay, los productos ya probados (ej. el Mouse Corsair) muestran los links "ver en ML" y "ver en comprasparaguay" sacados de su ficha. Antes decían "sin links guardados".'}]},
@@ -4153,7 +4154,7 @@ const REV_ETAPAS=[
   {n:6,dia:6,nom:'Ideas nuevas',que:'datos que ML ya da y no usamos, cosas que hacés a mano y se pueden automatizar, y detalles que den gusto usar la web: efectos, comodidad, lo repetido y lo que falta (sólo propone)',esf:'Máximo'},
   {n:7,dia:0,nom:'Diseño',que:'la web más cómoda, sencilla y linda: qué sobra, qué cuesta encontrar, qué se ve mal en el teléfono, botones que se corren al cambiar un texto, y detalles lindos con sentido (sólo propone)',esf:'Máximo'},
 ];
-const REV_HORA='22:13';
+const REV_HORA='04:00';
 // ── LA REVISIÓN LA MANEJA CLAUDE, NO ÉL (26/09/2026, pedido suyo) ─────────────────────────────
 // Textual: *"quiero que manejes vos eso de revision del panel, que me marque lo que realmente falte,
 // entonces cuando lo veo te mando a vos que lo hagas y vos lo marcas como hecho cuando se termine de
