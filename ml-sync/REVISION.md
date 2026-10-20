@@ -870,6 +870,13 @@ La sección 12b (sin stock y vendían) pedía 2+ u. en 30 d y escondía lo caro 
 Mercedes Club Black). Ahora entra con 2+ u. **o** $60.000+ vendidos en 30 d. Chequear: que el número de 12b se parezca al
 "sin stock" del chequeo de la mañana.
 
+### Etapa 3 · 20/10/2026 · fotos de "Para probar": los ids de Elegancia mezclaban candidatos
+`revfotos.py` no entendía los ids de Elegancia (`c…e27`): el renglón `@@` se salteaba y el nombre y las fotos de ese candidato
+quedaban pegados al id del de arriba (un Kundal). Así marqué "no" a un reproductor Fiio, una placa madre y una barra de sonido que
+eran el mismo producto, y "ok" a dos Kundal que no lo eran. Arreglo: el script acepta `c\d+[a-z]\d+` y un `@@` que no entiende
+corta el candidato anterior; `revcand` acepta esos ids y, con `ok`/`duda` sobre uno que sacó Claude por ese catálogo, lo devuelve
+a la lista. Chequear: que cada hoja muestre el nombre del mismo id que se marca (mirar `sel.json` si dudás).
+
 ## 8 · DATOS E HISTORIAL (nueva, 08/10/2026)
 - **🚧 El techo en la línea de tiempo (18/10/2026, v24.49).** `lineaPintar` dibuja una raya roja punteada en el carril del precio por cada `cyc/techofreno/<MLA>` (`probado`, roja "ya no vende") y otra verde en `volvio` ("sí vende") de las publicaciones del gráfico (respeta el color elegido), desde el día que se anotó; entra en la escala. Qué chequear: que todo techo encontrado se anote con `techofreno:<MLA>=<precio>|motivo;go` (si no, no aparece).
 - **Reloj de los 4 meses en la línea de tiempo (16/10/2026, v23.92 · corregido en v23.93: EDAD DE LA UNIDAD MÁS VIEJA, primero
