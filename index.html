@@ -2685,7 +2685,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.44';
+const APP_VERSION='25.45';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2696,6 +2696,7 @@ const APP_VERSION='25.44';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.45',f:'20/10',h:'18:20',c:[{n:2,t:'🔒 Una venta que canceló Mercado Libre queda cancelada: ya no tiene el botón ↩ Reactivar (dice "la canceló Mercado Libre"). Reactivar queda sólo para las que cancelaste vos a mano.'},{n:1,t:'🔐 Las listas de precios de los proveedores ya no están legibles en el repositorio público: viajan cifradas y sólo el robot las abre.'},{n:1,t:'🔎 La revisión de choques y fallas mudas quedó cerrada: no queda nada para decidir.'}]},
   {v:'25.44',f:'20/10',h:'17:40',c:[{n:1,t:'📈 La línea de tiempo en el teléfono se abre de costado aunque tengas bloqueado el giro: acostá el teléfono para leerla. El botón ⤾ parada la vuelve a la normal (queda guardado).'}]},
   {v:'25.43',f:'20/10',h:'18:10',c:[{n:3,t:'🔎 Revisión de choques y fallas mudas: los botones de pedidos y llegadas no se aprietan dos veces, una venta borrada no vuelve, el cambio de precio de Paraguay obliga a medir de nuevo, y el robot deja de escribir apenas se cancela una corrida.'},{n:2,t:'🌙 La corrida de la noche no se repite: la 2ª y 3ª dicen que ya terminó y no vuelven a hacer todo.'}]},
   {v:'25.42',f:'20/10',h:'17:20',c:[{n:1,t:'📋 Listas: la línea de arriba suma entera (medidos + sin el mismo producto en ML + nadie lo vende en ML + afuera por regla + sin medir), así se ve dónde está cada uno de la lista.'}]},
@@ -4239,10 +4240,7 @@ const REV_HORA='04:00';
 //   · REV_PENDIENTE → lo que falta de verdad. Mientras haya algo, el cartel lo muestra.
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel dice la etapa
 //                     de HOY (una por día de la semana, corre sola a las REV_HORA) y si ya quedó hecha.
-const REV_PENDIENTE=[
-  {t:'Etapa 4 · listas de proveedores en el repositorio público',que:'(a) pasarlas a la base o (b) dejarlas',pedi:'1a'},
-  {t:'Etapa 4 · reactivar una venta que canceló Mercado Libre',que:'(a) botón "es cancelación / es reclamo" o (b) que el robot respete la reactivación',pedi:'2a'},
-];
+const REV_PENDIENTE=[];
 // Etapa 7 (diseño) cerrada el 01/10/2026: hechas 1-9, 11, 13, 14 y 15; la 10 (Pedidos) y la 12 (sacar
 // "Participación por cuenta") él eligió dejarlas como están.
 // Choques (4) y fallas mudas/privacidad (5): verificadas las 15 del 26/09 de madrugada (rev4, lotes 6-8) y
@@ -4250,7 +4248,7 @@ const REV_PENDIENTE=[
 // por una nota vieja.
 // 30/09 a la tarde: la revisión completa final (6 revisores) cubrió precios, plata, mercadería, ventas,
 // corridas del robot y la web; lo obvio quedó arreglado en la v20.88.
-const REV_HECHAS={1:'2026-10-08',2:'2026-10-20',3:'2026-10-20',4:'2026-09-30',5:'2026-10-12',6:'2026-10-15',7:'2026-10-01'};
+const REV_HECHAS={1:'2026-10-08',2:'2026-10-20',3:'2026-10-20',4:'2026-10-20',5:'2026-10-12',6:'2026-10-15',7:'2026-10-01'};
 // LO QUE PASÓ EN CADA ETAPA (15/10/2026, para el panel de Ajustes). Lo escribe Claude al cerrar cada vuelta: fecha y una línea.
 const REV_HIST={
   1:[{f:'2026-09-24',t:'Primera vuelta: el rescate, la espera de las bajas y los frenos de suba.'},
@@ -4266,7 +4264,7 @@ const REV_HIST={
      {f:'2026-10-20',t:'4 revisores (cajas, pedidos, Paraguay, escasez y patrimonio), máximo: 33 arreglos (v25.40). Eligió 2a (lo grande paga desde 60 d) y 1a (lo probado de una lista entra a su pedido como Paraguay, v25.41). Cerrada.'}],
   4:[{f:'2026-09-30',t:'Choques web/robot y corridas a la vez: ~30 reales, todas arregladas (transacciones, relecturas, candados).'},
      {f:'2026-09-30',t:'Fallas mudas y privacidad: ~35 reales arregladas; él decidió aprobar a mano los chats nuevos de Telegram y cómo contar días con stock.'},
-     {f:'2026-10-20',t:'Choques y fallas mudas: 4 revisores; arreglados doble toque, ventas borradas que volvían, descuentos mudos, corridas canceladas que seguían escribiendo, errores de ML sin código y ml-daily dos veces por noche. Quedan 2 decisiones suyas.'}],
+     {f:'2026-10-20',t:'Choques y fallas mudas: 4 revisores; arreglados doble toque, ventas borradas que volvían, descuentos mudos, corridas canceladas que seguían escribiendo, errores de ML sin código y ml-daily dos veces por noche. Sus 2 decisiones: listas de proveedores cifradas (1a) y lo que cancela ML no se reactiva.'}],
   5:[{f:'2026-10-12',t:'Primera vuelta de las líneas de tiempo: que cada día cuente bien y coincida con Ventas y el Arqueo.'},
      {f:'2026-10-13',t:'Revisión del cerebro: cada parte entera contra el total; se midieron los precios redondos y la regla se sacó.'}],
   6:[{f:'2026-09-27',t:'Ideas 1-10: eligió Premium vs Clásica, visitas en Rotación, caja ML, tope de H, prueba de suba y motivo de reclamos.'},
@@ -11675,6 +11673,7 @@ async function vpCancelarGrupo(grpId,grpKey,tipo){
 async function vpReactivarGrupo(grpId,grpKey){
   const entries=Object.values(state.ventaprod[grpKey]||{}).filter(v=>vpEsDelGrupo(v,grpId));
   if(!entries.length){toast('Venta no encontrada','err');return;}
+  if(entries.some(v=>v.canceladaML||!v.manualTs)){toast('La canceló Mercado Libre: queda cancelada','err');return;} // regla suya del 20/10/2026
   const invUpdates={};const afectados=new Set();const eraCancelada=_esCancelada(entries[0]);
   for(const o of entries){
     const p=prodDeVenta(o);
@@ -11920,8 +11919,11 @@ function renderVentaProd(){
             <button class="btn" style="font-size:.66rem;padding:3px 8px;background:var(--surface2)" onclick="document.getElementById('vpcancel-${grp.gid}').style.display='none'">✕</button>
           </div>
         </div>`;
+        // Regla suya del 20/10/2026 (etapa 4): "cuando se cancela una venta se cancela y listo". La que canceló Mercado Libre
+        // (`canceladaML`, o una cancelada sin `manualTs`: la web siempre lo pone al cancelar a mano) no se reactiva.
+        const canceloML=isCancelled&&grp.items.some(v=>v.canceladaML||!v.manualTs);
         const actionBtns=isCancelled
-          ?`<button class="btn" style="font-size:.68rem;padding:4px 10px;background:rgba(34,197,94,.12);color:var(--green);border:1px solid rgba(34,197,94,.3)" onclick="vpReactivarGrupo('${grp.gid}','${grpKey}')">↩ Reactivar venta</button>`
+          ?(canceloML?`<span style="font-size:.68rem;color:var(--muted)" title="La canceló Mercado Libre: queda cancelada.">🔒 la canceló Mercado Libre</span>`:`<button class="btn" style="font-size:.68rem;padding:4px 10px;background:rgba(34,197,94,.12);color:var(--green);border:1px solid rgba(34,197,94,.3)" onclick="vpReactivarGrupo('${grp.gid}','${grpKey}')">↩ Reactivar venta</button>`)
           :`<button class="btn btn-del" style="font-size:.68rem;padding:4px 10px" onclick="document.getElementById('vpcancel-${grp.gid}').style.display='flex'">🚫 Cancelar venta</button>`;
         return`<div class="ingreso-item" id="vpgrp-${grp.gid}" style="flex-direction:column;align-items:stretch;gap:8px;border-color:${isCancelled?'rgba(239,68,68,.4)':'rgba(124,58,237,.5)'}">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">

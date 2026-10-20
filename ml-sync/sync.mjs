@@ -9,6 +9,25 @@
 import { fbSignIn, makeDB, mlRefresh, mlGet, ML_API, tapaIdsLargos } from './lib.mjs';
 import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 
+// LO PRIVADO VIAJA CIFRADO (20/10/2026, etapa 4, él eligió la 1a): el repo y sus registros son PÚBLICOS, así que las listas de
+// precios de los proveedores no se suben legibles. Claude las cifra con `ml-sync/tools/cifrar.mjs` y la llave pública
+// (`ml-sync/tools/comprob.pub.pem`, la misma de los comprobantes del Paulvic) y quedan en `ml-sync/privado/<nombre>.enc`; acá se
+// abren con la privada, que vive SÓLO en la base (`mlapi/comprobkey`). Devuelve el Buffer, o null si falta o no se pudo abrir.
+async function leerPrivado(db, nombre) {
+  let e;
+  try { e = JSON.parse(readFileSync(new URL('./privado/' + nombre + '.enc', import.meta.url), 'utf8')); } catch { return null; }
+  const k = await db.get('mlapi/comprobkey');
+  if (!k || !k.priv) { console.log('❌ No hay llave en la base (pvped:clave;go): no puedo abrir ' + nombre + '.'); return null; }
+  try {
+    const { privateDecrypt, createDecipheriv, constants } = await import('node:crypto');
+    const aes = privateDecrypt({ key: k.priv, padding: constants.RSA_PKCS1_OAEP_PADDING, oaepHash: 'sha256' }, Buffer.from(e.k, 'base64'));
+    const ct = Buffer.from(e.ct, 'base64');
+    const d = createDecipheriv('aes-256-gcm', aes, Buffer.from(e.iv, 'base64'));
+    d.setAuthTag(ct.subarray(ct.length - 16));
+    return Buffer.concat([d.update(ct.subarray(0, ct.length - 16)), d.final()]);
+  } catch (err) { console.log('❌ ' + nombre + ' no se pudo abrir (' + err.message + ').'); return null; }
+}
+
 const {
   ML_CLIENT_ID, ML_CLIENT_SECRET,
   FIREBASE_API_KEY, FIREBASE_DB_URL, FIREBASE_BOT_EMAIL, FIREBASE_BOT_PASSWORD,
@@ -20036,12 +20055,15 @@ async function main() {
       return;
     }
     // BILLING_PROBE=listaori[:go] (18/10/2026) → carga en `mlapi/listasori/<prov>/<código>` el renglón TEXTUAL de cada producto en el
-    // archivo del proveedor ({a archivo, h hoja, r fila, s sección de arriba, x celdas}), desde `ml-sync/listasori.json.gz` (lo arma
+    // archivo del proveedor ({a archivo, h hoja, r fila, s sección de arriba, x celdas}), desde `ml-sync/privado/listasori.json.gz.enc` (lo arma
     // Claude con los archivos que él pasa). La web lo muestra con "📄 verlo en la lista" (pedido suyo: ver si dice tester, etc.).
     if (/^listaori(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const APLICAR = /:go\s*$/.test(String(process.env.BILLING_PROBE));
       const { gunzipSync } = await import('node:zlib');
-      const data = JSON.parse(gunzipSync(readFileSync(new URL('./listasori.json.gz', import.meta.url))).toString('utf8'));
+      // Desde el 20/10/2026 (etapa 4, eligió la 1a) el archivo viaja CIFRADO: `ml-sync/privado/listasori.json.gz.enc`.
+      const crudo = await leerPrivado(db, 'listasori.json.gz');
+      if (!crudo) { console.log('❌ No está ml-sync/privado/listasori.json.gz.enc (o no se pudo abrir). No escribo nada.'); return; }
+      const data = JSON.parse(gunzipSync(crudo).toString('utf8'));
       for (const [prov, items] of Object.entries(data)) {
         const n = Object.keys(items).length; console.log(`  ${prov}: ${n} renglones`);
         if (!APLICAR || !n) continue;
@@ -20095,13 +20117,16 @@ async function main() {
       console.log(`✓ releído: ${ok} de ${n} con el costo nuevo. Ahora: listamedir:${k}:<cuántos>:go`); return;
     }
     // BILLING_PROBE=listaweb:<proveedor>[;go] (19/10/2026, él con Iscos: "sólo tienen en stock lo que hay en la web de ellos. No en la
-    // lista que te pasé en Excel"). Lee `ml-sync/notas/listaweb_<prov>.txt` (un código de NUESTRA lista por renglón: los que SÍ están en
+    // lista que te pasé en Excel"). Lee `ml-sync/privado/listaweb_<prov>.txt.enc` (cifrado) (un código de NUESTRA lista por renglón: los que SÍ están en
     // la web del proveedor) y marca `noWeb` en todos los demás de `mlapi/listas/<prov>` (y lo saca de los que están). Sin `;go` muestra.
     // Avisa si algo cargado en el pedido del momento (`cyc/listas_pedido/<prov>`) quedó sin stock. El cruce lo hago yo en el chat.
     if (/^listaweb:/.test(String(process.env.BILLING_PROBE || ''))) {
       const _r = String(process.env.BILLING_PROBE).slice('listaweb:'.length); const GOw = /(^|;)go\s*$/.test(_r) && !DRY;
       const k = _r.replace(/(^|;)go\s*$/, '').trim().toLowerCase();
-      let txt = ''; try { txt = readFileSync('ml-sync/notas/listaweb_' + k + '.txt', 'utf8'); } catch { console.log(`❌ No está ml-sync/notas/listaweb_${k}.txt`); return; }
+      // Desde el 20/10/2026 (etapa 4, 1a) el cruce viaja CIFRADO en `ml-sync/privado/listaweb_<prov>.txt.enc`: son precios del proveedor.
+      const _bw = await leerPrivado(db, 'listaweb_' + k + '.txt');
+      if (!_bw) { console.log(`❌ No está ml-sync/privado/listaweb_${k}.txt.enc (o no se pudo abrir). No escribo nada.`); return; }
+      const txt = _bw.toString('utf8');
       // Renglón `cód|precio de la web`: el costo pasa a ser ESE precio con los descuentos de la web (`dtoWeb`, Iscos 30 y después 5 =
       // ×0,665, dicho por él el 19/10: "si ves 100.000 queda 66.500"). Guarda `pl` (precio de la web), `dto` y `p`; `listamedir` lo
       // vuelve a medir solo porque cambió `p`.
@@ -45628,7 +45653,7 @@ async function main() {
             cuenta: label, qty, total: 0, neto: 0, costo: 0,
             numVenta: num, mla: mla || '',
             ts: new Date(o.date_created || o.date_closed).getTime(),
-            origen: 'ml-api', cancelada: true, tipoCancelacion: tipo,
+            origen: 'ml-api', cancelada: true, tipoCancelacion: tipo, canceladaML: true,
           };
           if (!p) obj.sinVincular = true;
           if (DRY) console.log(`  [${label}] ${tipo.toUpperCase()} #${num} ${obj.prod} x${qty}`);
@@ -47335,7 +47360,9 @@ async function main() {
           // para que "reactivar" devuelva total y neto. Si no se puede leer la fila se cancela igual.
           let cur = null;
           try { cur = await db.get(`cyc/ventaprod/${h.dayKey}/${h.id}`); } catch { cur = null; }
-          const _pc = { cancelada: true, tipoCancelacion: tipo, total: 0, neto: 0, costo: 0, costBaseUSD: 0 };
+          // `canceladaML` (20/10/2026, etapa 4, regla suya: "cuando se cancela una venta se cancela y listo"): la canceló ML, así que
+          // en la web no se puede reactivar. "Reactivar" queda sólo para las que canceló él a mano.
+          const _pc = { cancelada: true, tipoCancelacion: tipo, canceladaML: true, total: 0, neto: 0, costo: 0, costBaseUSD: 0 };
           // Revisión 9 (13/10/2026): cuándo se canceló. El informe y `ventasraras` filtraban las canceladas por el día de
           // la VENTA, así que una venta de hace 5 días cancelada hoy no salía nunca. Se guarda la primera vez y no se pisa.
           if (!(cur && Number(cur.canceladaTs) > 0)) _pc.canceladaTs = Date.now();

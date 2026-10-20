@@ -1,9 +1,10 @@
-// uso: node cifrar.mjs <llave_publica.pem> <imagen> <salida.enc>
+// uso: node cifrar.mjs <llave_publica.pem> <archivo> <salida.enc>
+// Imágenes (comprobantes) van con su mime; cualquier otro archivo (listas de proveedores, 20/10/2026) va como
+// application/octet-stream. El robot lo abre con la llave privada que vive SÓLO en la base (`mlapi/comprobkey`).
 import c from 'node:crypto'; import fs from 'node:fs';
 const [pubF, imgF, outF] = process.argv.slice(2);
 const data = fs.readFileSync(imgF);
-const mime = data.subarray(0,8).equals(Buffer.from([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a])) ? 'image/png' : (data[0]===0xff&&data[1]===0xd8) ? 'image/jpeg' : data.subarray(8,12).toString()==='WEBP' ? 'image/webp' : null;
-if (!mime) throw new Error('no es png/jpg/webp');
+const mime = data.subarray(0,8).equals(Buffer.from([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a])) ? 'image/png' : (data[0]===0xff&&data[1]===0xd8) ? 'image/jpeg' : data.subarray(8,12).toString()==='WEBP' ? 'image/webp' : 'application/octet-stream';
 const k = c.randomBytes(32), iv = c.randomBytes(12);
 const ci = c.createCipheriv('aes-256-gcm', k, iv);
 const ct = Buffer.concat([ci.update(data), ci.final(), ci.getAuthTag()]);
