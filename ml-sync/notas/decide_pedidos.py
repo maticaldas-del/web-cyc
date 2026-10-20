@@ -169,6 +169,15 @@ def tito(q,r,t,obj,b,rent,neto,color=None,extra='',motNo=''):
         x=f"Hola Tito! {quien} no hace falta: {base} y ya hay {tt}"+(f", alcanza para unos {dias:.0f} días." if dias and dias<999 else ".")
     return x+(' '+extra if extra else '')
 def titoJ(mo): return "Hola Tito! "+mo
+# EL JUICIO ES UN OBJETIVO, NO UNA COMPRA FIJA (20/10/2026, idea 1 del ayudante de ideas, chica y alta confianza): pedía la
+# cantidad tal cual aunque la mercadería ya hubiera llegado (Cortapelos 2 en 1 y 1 en 1 con 10 y 15 en la oficina, Lupa 75mm
+# con 10 en Full). Ahora pide lo que falta para TENER N (Full + oficina + camino); si ya está, avisa que se cumplió.
+def juicioQ(nJ,tiene,mo,quien=''):
+    q=max(0,nJ-int(round(tiene or 0)))
+    if nJ>0 and q==0:
+        avisos.append(f"✅ juicio cumplido{(' · '+quien) if quien else ''}: pedía tener {nJ} y ya hay {round(tiene)}. Sacarlo de juicios.txt o renovarlo")
+        return 0,f"Hola Tito! No hace falta: ya hay {round(tiene)} entre Full, la oficina y lo que viene."
+    return q,("Hola Tito! "+mo if q==nJ else f"Hola Tito! Te pido {q}: quiero tener {nJ} y ya hay {round(tiene)}. ({mo})")
 for p,q,d,rent in res:
     pid=p['id']
     if isinstance(d,list):
@@ -181,6 +190,8 @@ for p,q,d,rent in res:
         # pedía cada uno (antes cambiaba el motivo y dejaba las unidades de la cuenta).
         if pid in JU and not any(f"{pid}#{f[0]['v']}" in JU for f in filas):
             nJ,moJ=JU[pid]; pes=[f[1] or f[0]['v30'] or f[0]['v180'] for f in filas]
+            nJ,moJ=juicioQ(nJ,sum(f[3] or 0 for f in filas),moJ,p['n'])
+            moJ=moJ[len('Hola Tito! '):]
             if nJ>0 and sum(pes)==0: avisos.append(f"{p['n']}: juicio de {nJ} sin colores que vendan: poné el color (p…#color)")
             for f,qq in zip(filas,reparto(nJ,pes) if nJ>0 else [0]*len(filas)): f[1]=qq
             moJt=titoJ(moJ)
@@ -188,7 +199,7 @@ for p,q,d,rent in res:
         for v,qq,r,t,obj,b in filas:
             mot=moJt or tito(qq,r,t,obj,b,rent,p['neto'],v['v'],ex,p['motNoRenta'])
             kj=f"{pid}#{v['v']}"
-            if kj in JU: qq,mot=JU[kj][0],titoJ(JU[kj][1])
+            if kj in JU: qq,mot=juicioQ(JU[kj][0],t,JU[kj][1],p['n']+' #'+v['v'])
             # SÓLO ESTOS COLORES (16/10/2026, idea 11 del análisis): llegaban colores lentos en vez de los que se agotan.
             # NO VIENE MÁS (17/10/2026, regla suya): un aroma que se pidió al Paulvic y no vino no se vuelve a pedir.
             if v.get('nunca'): qq,mot=0,f"Hola Tito! {v['v']}: no te lo pido más. Lo pedimos y no vino, así que lo damos por que no viene más."
@@ -210,7 +221,7 @@ for p,q,d,rent in res:
         if p.get('rem'): ex+=f"No cuento {p['rem']} que se remataron porque estaban parados. "
         if p.get('barata'): ex+=f"Cuento {p['barata']} que se vendieron baratas porque salían al toque. "
         mot=tito(q,r,t,obj,b,rent,p['neto'],None,ex.strip(),p['motNoRenta'])
-        if pid in JU: q,mot=JU[pid][0],titoJ(JU[pid][1])
+        if pid in JU: q,mot=juicioQ(JU[pid][0],t,JU[pid][1],p['n'])
         N.append(f"ped:{pid}=u|{q}|{mot}")
         if p['precio'] or p.get('med60'): N.append(f"ped:{pid}=venta|{venta(p)}|precio normal de venta para el maximo de compra")
 bad=[n for n in N if ';' in n]

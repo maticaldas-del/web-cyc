@@ -882,6 +882,12 @@ a la lista. Chequear: que cada hoja muestre el nombre del mismo id que se marca 
 71 publicaciones, ~158 KB. La completa reparte las 4 cuentas entre 4 agentes que sólo leen; las vueltas cortas pasan a cada 2 h.
 Chequear: que los ayudantes no corran nada que escriba y que cada publicación activa tenga juicio.
 
+### Etapa 3 · 20/10/2026 · los juicios de pedidos son un objetivo ("tener N"), no una compra fija
+Idea 1 del ayudante de ideas: `decide_pedidos.py` copiaba la cantidad de `juicios.txt` aunque ya hubiera llegado la mercadería
+(Cortapelo 2 en 1 con 10 en la oficina, 1 en 1 con 15, Lupa 75mm con 10 en Full: $185.034 de compra repetida). Ahora `juicioQ`
+pide N − (Full + oficina + camino) y, si da 0, avisa "✅ juicio cumplido" para sacarlo o renovarlo. Se sacaron los 3 cumplidos.
+Chequear: lo agotado pide lo mismo que antes; cada aviso de cumplido se resuelve en la completa.
+
 ## 8 · DATOS E HISTORIAL (nueva, 08/10/2026)
 - **🚧 El techo en la línea de tiempo (18/10/2026, v24.49).** `lineaPintar` dibuja una raya roja punteada en el carril del precio por cada `cyc/techofreno/<MLA>` (`probado`, roja "ya no vende") y otra verde en `volvio` ("sí vende") de las publicaciones del gráfico (respeta el color elegido), desde el día que se anotó; entra en la escala. Qué chequear: que todo techo encontrado se anote con `techofreno:<MLA>=<precio>|motivo;go` (si no, no aparece).
 - **Reloj de los 4 meses en la línea de tiempo (16/10/2026, v23.92 · corregido en v23.93: EDAD DE LA UNIDAD MÁS VIEJA, primero
