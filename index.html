@@ -2685,7 +2685,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.51';
+const APP_VERSION='25.52';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2698,6 +2698,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.52',f:'20/10',h:'19:53',c:[{n:2,t:'🔁 Nissei y cada 📋 lista dicen arriba su última vuelta completa (cuándo terminó y cuántos midió) y si se está midiendo ahora. El robot va lista por lista: termina una entera y pasa a la siguiente. Lo que no está en ML ya no se vuelve a buscar.'}]},
   {v:'25.51',f:'20/10',h:'19:33',c:[{n:2,t:'🛒 Productos nuevos (Paraguay y 📋 Listas): ya no hacen falta las 100 vendidas en ML. Alcanza con que el catálogo de ML tenga 2 o más vendedores (lo mide el robot solo) y que esté confirmado que es el mismo producto. Con 1 solo vendedor no se puede pedir. Cada tarjeta dice 🏪 cuántos vendedores tiene.'}]},
   {v:'25.50',f:'20/10',h:'18:56',c:[{n:2,t:'📈 La línea de tiempo vuelve a abrir en la PC: desde la 25.44 (el giro de costado del teléfono) la ventana se abría fuera de la pantalla, muy abajo.'}]},
   {v:'25.49',f:'20/10',h:'19:20',c:[{n:1,t:'📋 Listas: arriba de cada lista, en vez de la línea larga, ✅ Evaluados (🟢 dan · 🔎 dan 25%+ y falta confirmar · 🔴 no dan · ⚫ no están en ML) y ⏳ Sin evaluar.'}]},
@@ -16004,7 +16005,7 @@ function candidatosHTML(){
       +((_sinAnalizar.length||R)?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--muted)" title="Falta la medición de ML o alguna de las dos fotos. Suben solos cuando estén completos y den.">⏳ Falta analizar · <b>${_sinAnalizar.length}</b> candidatos${mas('nomed')}</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_sinAnalizar.map(_card).join('')}</div>${pycatNoDanHTML(['nomed'],'pycat-nodan-nomed','📦 Del catálogo: todavía sin medir')}</details>`:'')
       +candDescartadosHTML(R?n('sc')+n('sv')+n('fz'):null,false))
       ;};
-      return `<details ontoggle="if(this.open&&!this.dataset.ok){this.dataset.ok=1;const b=this.querySelector('.nx-body');setTimeout(()=>{b.innerHTML=window._pyNoEntraFn();},0);}" style="margin-top:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:8px 12px"><summary style="cursor:pointer;font-size:.74rem;font-weight:700;color:var(--muted)">🗂️ Lo que no entra en el pedido · ${f(tot)} <span style="font-weight:400">· tocá para abrir</span></summary>`+`<div class="nx-body"><div style="font-size:.7rem;color:var(--muted);padding:8px 0">⏳ cargando…</div></div></details>`;})();
+      return (R?medirVueltaHTML('nissei'):'')+`<details ontoggle="if(this.open&&!this.dataset.ok){this.dataset.ok=1;const b=this.querySelector('.nx-body');setTimeout(()=>{b.innerHTML=window._pyNoEntraFn();},0);}" style="margin-top:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:8px 12px"><summary style="cursor:pointer;font-size:.74rem;font-weight:700;color:var(--muted)">🗂️ Lo que no entra en el pedido · ${f(tot)} <span style="font-weight:400">· tocá para abrir</span></summary>`+`<div class="nx-body"><div style="font-size:.7rem;color:var(--muted);padding:8px 0">⏳ cargando…</div></div></details>`;})();
 }
 // LO DESCARTADO NO SE ESCONDE. Una lista que saca renglones sin decirlo es una lista que miente —
 // la misma regla que el desplegable de `nomandar` en Armar caja.
@@ -18976,6 +18977,16 @@ async function _listaBuscarYa(q){
         ${_listaFichaDe(k,cod,e)?'<div style="font-size:.6rem;color:var(--green)" title="Ya es una ficha: se pide desde la tarjeta de Pedidos (📋 pedir a la lista) o en ✅ Probados">ya es probado</div>':(_listaDa(e)&&_listaEsBsas(k))?'<div style="font-size:.6rem;color:var(--green)">da · lo trae Tito</div>':_listaDa(e)?`<div style="font-size:.62rem;color:var(--muted)">pedir <input type="number" min="0" inputmode="numeric" value="${(arm[k]||{})[cod]||''}" placeholder="0" onchange="listaSetU('${k}','${c}',this.value)" style="width:48px;padding:2px 4px;font-size:.78rem;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text)"></div>`:''}</div></div>`;};
   out.innerHTML=`<div style="font-size:.66rem;color:var(--muted);margin-top:6px">${R.length?R.length+' resultado'+(R.length===1?'':'s')+(R.length>60?' · muestro los 60 mejores':''):'Nada en ninguna lista con eso.'}</div>`+R.slice(0,60).map(fila).join('');
 }
+// LA ÚLTIMA VUELTA COMPLETA DE CADA FUENTE (20/10/2026, pedido suyo: "que haga todo nissei y avise cuál fue la última vuelta
+// completa. así con todas las listas y proveedores"). El robot mide de a una fuente por turno (`cyc/mlconfig/medirTurno`) y al
+// terminar anota `cyc/mlconfig/vueltas/<fuente>` = { fin, desde, med, alDia }. `k` = 'nissei' o la clave de la lista.
+function medirVueltaHTML(k){
+  const mc=state.mlconfig||{},v=(mc.vueltas||{})[k]||null,t=mc.medirTurno||null;
+  const dt=x=>new Date(Number(x)).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+  const a=v&&v.fin?`🔁 Última vuelta completa: <b style="color:var(--text)">${dt(v.fin)}</b> (${Number(v.med||0).toLocaleString('es-AR')} medidos)`:'🔁 Todavía no terminó una vuelta completa';
+  const b=t&&t.k===k?` · <span style="color:var(--amber)">midiendo ahora (${Number(t.med||0).toLocaleString('es-AR')} en esta vuelta)</span>`:(v&&v.alDia&&(!v.fin||Number(v.alDia)>Number(v.fin))?` · al día el ${dt(v.alDia)}`:'');
+  return `<div style="font-size:.66rem;color:var(--muted);margin:4px 0" title="El robot mide una lista por vez, entera, y después pasa a la siguiente. Cada producto se vuelve a medir según qué tan cerca está: 15%+ cada 7 días, menos de 15% cada 30, y lo que no está en ML no se vuelve a buscar.">${a}${b}</div>`;
+}
 function _listaRec(k){const v=((state.mlconfig&&state.mlconfig.listasProv)||{})[k]||{};return Number(v.rec)||0;}
 function _listaPuesto(k,e){return Math.round((Number(e&&e.p)||0)*(1+_listaRec(k)/100));}
 // DA = 25% a 80% en ML, con la foto de ML y SIN reparo de nombre (18/10/2026). Con Saint Julien ML emparejaba "Body Lotion Geisha"
@@ -19442,7 +19453,7 @@ async function renderListas(){
   const q=_listaQ;
   let res=[];if(q.length>=2){const pal=_pycNorm(q).split(/\s+/).filter(Boolean);res=filas.filter(([cod,e])=>{const t=_pycNorm(e.n+' '+cod);return pal.every(w=>t.includes(w));}).sort(ord);}
   el.innerHTML=cab+`<div style="font-size:.72rem;line-height:1.7;margin-bottom:10px;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:8px">
-    <div><b>${filas.length} productos</b> en la lista${v.ts?` <span style="color:var(--muted)">· lista del ${new Date(v.ts).toLocaleDateString('es-AR')}</span>`:''}${rec?` <span style="color:var(--muted)">· recargo del proveedor ${rec}%</span>`:''}</div>
+    ${medirVueltaHTML(k)}<div><b>${filas.length} productos</b> en la lista${v.ts?` <span style="color:var(--muted)">· lista del ${new Date(v.ts).toLocaleDateString('es-AR')}</span>`:''}${rec?` <span style="color:var(--muted)">· recargo del proveedor ${rec}%</span>`:''}</div>
     <div><b>✅ Evaluados ${_ev}</b>: <span style="color:var(--green)">🟢 ${_grp.da} dan</span> · <span style="color:var(--amber)">🔎 ${_grp.rev} dan 25%+ y falta confirmar</span> · <span style="color:var(--red)">🔴 ${_grp.noDa} no dan</span> · <span style="color:var(--muted)">⚫ ${_grp.noML} no están en ML o nadie los vende</span></div>
     <div><b>⏳ Sin evaluar ${_grp.sinEv}</b>${_grp.sinEv?' <span style="color:var(--muted)">· el robot los está midiendo</span>':''}</div>
     ${_grp.ficha||_grp.afuera?`<div style="color:var(--muted)">${_grp.ficha?`✔️ ${_grp.ficha} ya los vendés`:''}${_grp.ficha&&_grp.afuera?' · ':''}${_grp.afuera?`🚫 ${_grp.afuera} afuera (sacados, no están en la web del proveedor o regla)`:''}</div>`:''}

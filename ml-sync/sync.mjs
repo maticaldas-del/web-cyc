@@ -9103,12 +9103,15 @@ function c_link(c) {
 const PYCAT_REMEDIR_DIAS = 7;
 // SE VUELVE A MEDIR SEGÚN QUÉ TAN CERCA ESTÁ (20/10/2026, eligió la 1a). Todo cada 7 días gastaba cupo de ML (el mismo de ventas y
 // cajas) en productos que dan 5% o no están en ML: que lleguen a 25% en una semana es muy raro. Ahora: lo que dio 15% o más, cada 7
-// días · lo que dio menos de 15%, cada 30 · lo que no está en ML (sin catálogo exacto o nadie lo vende), cada 30. Un costo nuevo o el
+// días · lo que dio menos de 15%, cada 30 · lo que no está en ML (sin catálogo exacto o nadie lo vende): ya no (ver abajo). Un costo nuevo o el
 // nombre traducido lo vuelven a medir igual. Vale para Paraguay y para las listas (`pycatRemedirDias`).
 const PYCAT_REMEDIR_LEJOS = 30, PYCAT_CERCA_PCT = 15;
 function pycatRemedirDias(e) {
   if (e && e.m != null && isFinite(Number(e.m))) return Number(e.m) >= PYCAT_CERCA_PCT ? PYCAT_REMEDIR_DIAS : PYCAT_REMEDIR_LEJOS;
-  if (e && (e.sc || e.sv)) return PYCAT_REMEDIR_LEJOS;
+  // LO QUE NO ESTÁ EN ML NO SE VUELVE A BUSCAR (20/10/2026, él: "los que no encontraron productos en ml, no los van a encontrar.
+  // esos sacalos de la revisión"). Sin catálogo exacto o nadie lo vende = afuera de la vuelta. Sólo vuelven si cambia el nombre o
+  // el costo (lista nueva) o con la búsqueda única con el nombre traducido (`qv`, Dai Nippon).
+  if (e && (e.sc || e.sv)) return Infinity;
   return PYCAT_REMEDIR_DIAS;
 }
 const PYCAT_POR_VUELTA = 700;   // 16/10/2026: era 300 (13 min); con 10.595 por medir y GitHub salteando corridas tardaba semanas
@@ -9294,8 +9297,8 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
   const toca = cola.slice(0, maxN);
   console.log(`(de los ${cola.length} para medir, ${cola.filter(([, e]) => !rubro(e.n)).length} son de los rubros que ya vendemos y van primero)`);
   console.log(`=== ${esLista ? 'LISTA DE ' + String(opts.nombre || opts.lista).toUpperCase() : 'CATÁLOGO DE PARAGUAY'} · medir contra ML ${aplicar ? '' : '(PRUEBA: no escribo nada)'} ===`);
-  console.log(`${todos.length} guardados · ${cuenta.fuera} fuera por regla · ${cuenta.cand} ya son candidatos · ${cuenta.ficha} ya son fichas · ${cuenta.frescos} medidos hace poco (15%+ cada ${PYCAT_REMEDIR_DIAS} días · abajo de ${PYCAT_CERCA_PCT}% o fuera de ML cada ${PYCAT_REMEDIR_LEJOS}) · ${cuenta.noDeja} que ML no deja medir (se reintentan a los ${PYCAT_REMEDIR_DIAS} días) · ${cola.length} para medir · esta vuelta ${toca.length}`);
-  if (!toca.length) return esLista ? { quedan: 0 } : undefined;
+  console.log(`${todos.length} guardados · ${cuenta.fuera} fuera por regla · ${cuenta.cand} ya son candidatos · ${cuenta.ficha} ya son fichas · ${cuenta.frescos} medidos hace poco (15%+ cada ${PYCAT_REMEDIR_DIAS} días · abajo de ${PYCAT_CERCA_PCT}% cada ${PYCAT_REMEDIR_LEJOS} · fuera de ML no se vuelve a buscar) · ${cuenta.noDeja} que ML no deja medir (se reintentan a los ${PYCAT_REMEDIR_DIAS} días) · ${cola.length} para medir · esta vuelta ${toca.length}`);
+  if (!toca.length) return { quedan: 0, medidos: 0 };
   let tok = null;
   for (const label of labels) {
     const acc = accounts[label]; if (!acc?.refresh_token) continue;
@@ -9430,6 +9433,7 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
     if (rr && rr.cod === c.cod) { alta++; await db.patch('mlapi/pycat/' + x.cod, { cand: id }); }
   }
   if (aplicar && res.pasan.length) console.log(`\n${alta} pasaron a "Para probar" (los mide \`candidatos\` y después la revisión de fotos).`);
+  return res;
 }
 // `prueba` es un candidato INVENTADO que se le pasa desde el probe para correr el camino entero
 // —consulta al catálogo de ML, comisión al precio real, la cuenta— sin tener que cargar nada en la
@@ -20358,30 +20362,48 @@ async function main() {
       const _hAr = (new Date().getUTCHours() + 21) % 24;
       const _maxMin = _hAr >= 2 && _hAr < 8 ? 48 : 40;
       const _go = /:go$/.test(_pm);
+      // LISTA POR LISTA (20/10/2026, pedido suyo: "quiero que vaya lista por lista. o sea que haga todo nissei y avise cuál fue la
+      // última vuelta completa. así con todas las listas y proveedores"). Las fuentes van en turno: Nissei (`mlapi/pycat`) y después
+      // cada lista de `cyc/mlconfig/listasProv` (no las descartadas). Se mide la del turno hasta que no le queda nada pendiente
+      // (lo que vence según `pycatRemedirDias`); ahí se anota su VUELTA COMPLETA en `cyc/mlconfig/vueltas/<fuente>` = { fin, desde,
+      // med } y pasa a la siguiente en la misma corrida si queda tiempo. El turno vive en `cyc/mlconfig/medirTurno` = { k, desde, med }.
+      // Una lista con prioridad (`listaprioridad`) toma el turno antes que las demás.
+      const _provs = (await db.get('cyc/mlconfig/listasProv')) || {};
+      const _fuentes = ['nissei', ...Object.keys(_provs).filter((k) => _provs[k] && !_provs[k].desc).sort()];
       const _pri = String((await db.get('cyc/mlconfig/listaPrioridad')) || '');
-      if (_pri) {
-        const _pv = (await db.get('cyc/mlconfig/listasProv/' + _pri)) || null;
-        if (!_pv) console.log(`(la lista con prioridad "${_pri}" no existe: sigo con Paraguay)`);
-        else {
-          console.log(`=== PRIORIDAD: lista ${_pv.nombre || _pri} (${_maxMin} min) ===`);
-          const _t0 = Date.now();
-          const _r = await correrPyCatMedir(db, products, labels, accounts, 5000, _go, null, { lista: _pri, nombre: _pv.nombre, rec: _pv.rec, maxMin: _maxMin });
-          if (_go) await db.patch('cyc/mlconfig/listasProv/' + _pri, cuentaLista((await db.get('mlapi/listas/' + _pri)) || {}));
-          // DE NOCHE NO SE ESPERA AL RELOJ DE GITHUB (que saltea la mayoría de las corridas de cada hora): si a la lista le queda
-          // algo y son entre las 02 y las 08 de acá, se deja la marca para que `ml-pycat.yml` largue la vuelta siguiente al terminar.
-          if (_r && _r.quedan > 0) {
-            const _hFin = (new Date().getUTCHours() + 21) % 24;
-            if (_go && _hFin >= 2 && _hFin < 8) { try { writeFileSync('/tmp/pycat_seguir', String(_r.quedan)); console.log(`(de noche: largo la vuelta siguiente al toque · quedan ${_r.quedan})`); } catch { /* sigue el reloj */ } }
-            return;
-          }
-          if (_go) { await db.set('cyc/mlconfig/listaPrioridad', null); console.log(`✓ la lista ${_pv.nombre || _pri} no tiene nada pendiente: saco la prioridad y sigo con Paraguay.`); }
-          const _resta = _maxMin - Math.ceil((Date.now() - _t0) / 60e3);
-          if (_resta < 5) return;
-          await correrPyCatMedir(db, products, labels, accounts, n, _go, null, { maxMin: _resta });
+      let _tu = (await db.get('cyc/mlconfig/medirTurno')) || null;
+      if (_pri && _fuentes.includes(_pri) && (!_tu || _tu.k !== _pri)) _tu = { k: _pri, desde: Date.now(), med: 0 };
+      if (!_tu || !_fuentes.includes(_tu.k)) _tu = { k: _fuentes[0], desde: Date.now(), med: 0 };
+      const _t0 = Date.now(); const _vistas = new Set();
+      while (!_vistas.has(_tu.k)) {
+        _vistas.add(_tu.k);
+        const _resta = _maxMin - Math.ceil((Date.now() - _t0) / 60e3);
+        if (_resta < 5) break;
+        const _esN = _tu.k === 'nissei'; const _pv = _esN ? null : _provs[_tu.k];
+        console.log(`\n=== TURNO: ${_esN ? 'Nissei (Paraguay)' : (_pv.nombre || _tu.k)} · vuelta empezada el ${new Date(_tu.desde).toISOString().slice(0, 16).replace('T', ' ')} UTC · ${_tu.med || 0} medidos en esta vuelta · ${_resta} min ===`);
+        const _r = (_esN ? await correrPyCatMedir(db, products, labels, accounts, n, _go, null, { maxMin: _resta })
+          : await correrPyCatMedir(db, products, labels, accounts, 5000, _go, null, { lista: _tu.k, nombre: _pv.nombre, rec: _pv.rec, maxMin: _resta })) || { quedan: 0, medidos: 0 };
+        if (!_esN && _go) await db.patch('cyc/mlconfig/listasProv/' + _tu.k, cuentaLista((await db.get('mlapi/listas/' + _tu.k)) || {}));
+        _tu.med = (Number(_tu.med) || 0) + (Number(_r.medidos) || 0);
+        if (_r.quedan > 0) {
+          if (_go) await db.set('cyc/mlconfig/medirTurno', _tu);
+          // DE NOCHE NO SE ESPERA AL RELOJ DE GITHUB: entre las 02 y las 08 de acá `ml-pycat.yml` larga la vuelta siguiente al terminar.
+          const _hFin = (new Date().getUTCHours() + 21) % 24;
+          if (_go && _hFin >= 2 && _hFin < 8) { try { writeFileSync('/tmp/pycat_seguir', String(_r.quedan)); console.log(`(de noche: largo la vuelta siguiente al toque · quedan ${_r.quedan})`); } catch { /* sigue el reloj */ } }
+          console.log(`(quedan ${_r.quedan} de ${_esN ? 'Nissei' : (_pv.nombre || _tu.k)}: sigue la próxima vuelta)`);
           return;
         }
+        const _sig = _fuentes[(_fuentes.indexOf(_tu.k) + 1) % _fuentes.length];
+        if (_go) {
+          // Una vuelta que no midió nada (no vencía ninguno) no pisa la fecha de la última de verdad: sólo anota que está al día.
+          if (_tu.med > 0) await db.set('cyc/mlconfig/vueltas/' + _tu.k, { fin: Date.now(), desde: _tu.desde, med: _tu.med, alDia: Date.now() });
+          else await db.patch('cyc/mlconfig/vueltas/' + _tu.k, { alDia: Date.now() });
+          if (_pri === _tu.k) await db.set('cyc/mlconfig/listaPrioridad', null);
+        }
+        console.log(`✓ VUELTA COMPLETA de ${_esN ? 'Nissei' : (_pv.nombre || _tu.k)}: ${_tu.med} medidos desde el ${new Date(_tu.desde).toISOString().slice(0, 10)}. Sigue ${_sig}.`);
+        _tu = { k: _sig, desde: Date.now(), med: 0 };
       }
-      await correrPyCatMedir(db, products, labels, accounts, n, _go, null, { maxMin: _maxMin });
+      if (_go) await db.set('cyc/mlconfig/medirTurno', _tu);
       return;
     }
     // BILLING_PROBE=listaprioridad[:<proveedor>|:-][:go] (20/10/2026) → qué lista mide la vuelta de cada hora antes que Paraguay

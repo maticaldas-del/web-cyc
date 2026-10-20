@@ -9399,3 +9399,8 @@ Reemplaza la regla de las 100 ventas del 03/10 y del 18/10 y la vara "+100" del 
 En cada vuelta: `listarevisar` → nombre de la lista contra el título del catálogo de ML → `listadato:<prov>;<cód>=ok|no|mi=MLA…;go`
 (con duda no se toca). El chat local queda sólo para copiar precios y códigos de comprasparaguay una vez por mes (Cloudflare).
 Y Paraguay/Listas se vuelven a medir según qué tan cerca están (15%+ cada 7 días · abajo de 15% o fuera de ML cada 30), eligió la a.
+
+## 🔁 LISTA POR LISTA Y LA ÚLTIMA VUELTA COMPLETA (20/10/2026, pedido suyo, v25.52)
+Él: *"quiero que vaya lista por lista. o sea que haga todo nissei y avise cuál fue la última vuelta completa. así con todas"*.
+El robot mide una fuente por vez (Nissei, después cada lista) hasta terminarla, anota la vuelta completa (`cyc/mlconfig/vueltas`) y pasa
+a la siguiente. La web lo muestra arriba de cada una. Lo que no está en ML no se vuelve a buscar (él: *"no los van a encontrar"*).
