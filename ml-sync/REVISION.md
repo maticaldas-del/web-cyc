@@ -1988,3 +1988,9 @@ y el disponible no salte; que un pedido de lista llegado aparezca en Deudas hast
   del **% de ganancia** (escala propia `cMin/cMax`, etiqueta "costo $X" abajo a la izquierda, globito del costo en ese carril).
   El precio ya no mete el costo en su escala (`_pcv` sin `cvs`). **Chequear:** que el carril del % aparezca aunque no haya %
   (sólo costo) y que las rayas de piso/techo sigan en el del precio.
+
+- 20/10/2026 · Etapa 5 (datos) · v25.37: **Métricas → de dónde viene la mercadería, con 📋 Listas y por score.** `metGrupoDeProd`
+  manda lo de `listaProv` a 'lista' (antes contaba en Bs As, como en Pedidos ya no). El botón 📋 Listas muestra cada proveedor
+  de lista con ventas en el período (`provs` de `metPorOrigen`); los que no vendieron no salen. Todo se ordena por
+  `metScoreDe`: el score del ranking de Ventas (gan²/costo por producto) PROMEDIADO por producto vendido, con la escala
+  `scoreColor/scoreLabel` llevada a 30 días. **Chequear:** que la suma de los grupos siga cerrando contra los KPIs de arriba.
