@@ -33,6 +33,17 @@ const _alCortar = (sig) => {
 };
 process.on('SIGINT', () => _alCortar('SIGINT'));
 process.on('SIGTERM', () => _alCortar('SIGTERM'));
+// ETAPA 4 (20/10/2026): el ciclo de 2 minutos mira `CORTAR` ANTES de empezar cada tanda de escrituras
+// (ventas de cada cuenta · vínculos · stock · etiquetas · cajas) y, si cancelaron la corrida, sale con 130
+// sin empezar la siguiente. Entre una tanda y otra no hay ninguna escritura a medias: lo que falta lo hace
+// la vuelta siguiente (las ventas se releen desde `mlapi/state`, que sólo avanza al terminar cada cuenta).
+// Hasta hoy `CORTAR` nunca se prendía: GitHub le manda SIGINT sólo al bash del paso y node quedaba
+// huérfano hasta el SIGKILL. Ahora los workflows y ciclo.sh le pasan la señal a node (función `corre`).
+const _cortarCiclo = (donde) => {
+  if (!CORTAR) return;
+  console.log(`✋ Cancelaron la corrida: no empiezo ${donde}. Lo que falta lo hace la vuelta siguiente.`);
+  process.exit(130);
+};
 
 // ── ml-consulta: SÓLO LECTURA, SALVO LOS COMANDOS CHICOS (etapa 4, 30/09/2026) ──────────────────
 // ml-consulta corre sin candado, a la par del ciclo. GitHub pone el nombre del workflow en
@@ -43,13 +54,16 @@ const EN_CONSULTA = process.env.GITHUB_WORKFLOW === 'ml-consulta' || process.env
 const CONSULTA_ESCRIBE = new Set(['pycat', 'pycatres', 'lista', 'listamedir', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull']);
 const CONSULTA_NIEGA = new Set(['cajaitems', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
-  'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'promoventas', 'cargosmes', 'arcacierres']);
+  'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'promoventas', 'cargosmes', 'arcacierres', 'webpush']);
 let CONSULTA_SOLO_LEE = false;
 if (EN_CONSULTA) {
   const _cmd = String(process.env.BILLING_PROBE || '').trim();
   const _nom = _cmd.split(/[:;|=]/)[0].trim().toLowerCase();
   const _conGo = /(^|[:;|])go($|[:;|])/i.test(_cmd);
-  if (!_cmd || (CONSULTA_NIEGA.has(_nom) && (_conGo || _nom === 'responder' || _nom === 'ciclo'))) {
+  // `webpush:probar` no lleva `go` pero manda un aviso de verdad a los teléfonos (web-push usa https.request, no fetch, así que
+  // el freno de sólo lectura no lo ve): se niega igual (etapa 4, 20/10/2026). `webpush` solo (cuántos teléfonos) sí corre.
+  const _pushManda = _nom === 'webpush' && /:(probar|go)\b/i.test(_cmd);
+  if (!_cmd || (CONSULTA_NIEGA.has(_nom) && (_conGo || _pushManda || _nom === 'responder' || _nom === 'ciclo'))) {
     console.log(`❌ "${_nom || '(vacío)'}" no corre por ml-consulta: escribe en cantidad o en plata y ml-consulta no tiene candado. Va por ml-sync.`);
     process.exit(1);
   }
@@ -7909,6 +7923,9 @@ async function vapidKeys(db, crear) {
   return k;
 }
 async function enviarPush(db, payload) {
+  // Etapa 4 (20/10/2026): web-push manda con `https.request`, no con `fetch`, así que el freno de sólo lectura de ml-consulta
+  // (que envuelve `fetch`) no lo frenaba: `webpush:probar` por ml-consulta mandaba un aviso real a los teléfonos.
+  if (CONSULTA_SOLO_LEE) { console.log('Aviso al teléfono: ml-consulta es de sólo lectura, no mando nada.'); return 0; }
   const wp = await _wp(); if (!wp) return 0;
   const k = await vapidKeys(db, true); if (!k) return 0;
   const subs = (await db.get('cyc/pushsubs')) || {};
@@ -9093,7 +9110,7 @@ async function pycatResumenEscribir(db, cat, cands, products) {
   // El catálogo es de NISSEI: sólo cuentan candidatos y fichas de Nissei (etapa 3, 20/10/2026, ver `provPyDeBot`).
   const esCand = pyCodMatcher(Object.values(cands || {}).filter((c) => c && provPyDeBot(c) === 'nissei').map((c) => c.cod).filter(Boolean));
   const esFicha = pyCodMatcher((products || []).filter((p) => p && provPyDeBot(p) === 'nissei').map((p) => p.codPy).filter(Boolean));
-  const r = { t: Date.now(), tot: 0, cand: 0, ficha: 0, fz: 0, bajo: 0, sc: 0, sv: 0, nomed: 0 };
+  const r = { t: Date.now(), tot: 0, cand: 0, ficha: 0, fz: 0, bajo: 0, sc: 0, sv: 0, nomed: 0, nm: 0 };
   for (const [cod, e] of Object.entries(cat || {})) {
     if (!e || !e.n) continue; r.tot++;
     if (e.cand || esCand(cod)) { r.cand++; continue; }
@@ -9101,7 +9118,7 @@ async function pycatResumenEscribir(db, cat, cands, products) {
     const m = e.m != null && isFinite(e.m) ? Number(e.m) : null;
     if (m != null) { if (m < CAND_PISO_PCT) r.bajo++; else r.nomed++; continue; }
     if (e.fz) { r.fz++; continue; } if (e.sc) { r.sc++; continue; } if (e.sv) { r.sv++; continue; }
-    r.nomed++;
+    r.nomed++; if (e.nm) r.nm++;   // etapa 4 (20/10/2026): de los sin medir, los que ML no deja medir (siguen en `nomed`: la web suma así)
   }
   // CUÁNTOS SE ANALIZARON HOY (18/10/2026, él: "cuántas se analizaron hoy en no medidos, un número en verde -x"). `dia` guarda
   // cuántos quedaban sin medir al terminar el día anterior (la última cuenta antes de hoy); la web resta el de ahora.
@@ -9112,7 +9129,7 @@ async function pycatResumenEscribir(db, cat, cands, products) {
     else if (prev.nomed != null) r.dia = { d: hoy, nomed: Number(prev.nomed), tot: Number(prev.tot) || 0 };
   } catch { /* sin el de ayer no se muestra el número del día */ }
   await db.set('cyc/pycatres', r);
-  console.log(`📊 catálogo dividido (cyc/pycatres): ${r.tot} = ${r.cand} candidatos + ${r.ficha} fichas + ${r.fz} afuera por regla + ${r.bajo} abajo del ${CAND_PISO_PCT}% + ${r.sc} sin catálogo exacto + ${r.sv} nadie lo vende + ${r.nomed} sin medir`);
+  console.log(`📊 catálogo dividido (cyc/pycatres): ${r.tot} = ${r.cand} candidatos + ${r.ficha} fichas + ${r.fz} afuera por regla + ${r.bajo} abajo del ${CAND_PISO_PCT}% + ${r.sc} sin catálogo exacto + ${r.sv} nadie lo vende + ${r.nomed} sin medir${r.nm ? ` (${r.nm} de ésos ML no deja medirlos)` : ''}`);
   return r;
 }
 async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, prueba = null, opts = {}) {
@@ -9138,7 +9155,7 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
   const fichas = products.filter((p) => p && p.codPy && provPyDeBot(p) === 'nissei');
   const ahora = Date.now();
   const todos = Object.entries(cat);
-  const cola = [], cuenta = { fuera: 0, cand: 0, ficha: 0, frescos: 0 };
+  const cola = [], cuenta = { fuera: 0, cand: 0, ficha: 0, frescos: 0, noDeja: 0 };
   for (const [cod, e] of todos) {
     if (!e || !e.n) continue;
     const fz = pyCatFuera(e.n, Number(e.u) || 0, marcasNo); if (fz) { cuenta.fuera++; if (aplicar && e.fz !== fz) await db.patch(RUTA + '/' + cod, { fz }); continue; }
@@ -9147,6 +9164,10 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
     const _uNow = esLista ? Number(e.p) : Number(e.u);
     if (esLista && !(_uNow > 0)) continue;
     if (esLista && e.noWeb) { cuenta.fuera++; continue; }   // no está en la web del proveedor: no lo tienen (`listaweb`)
+    // ML NO DEJA MEDIRLO (etapa 4, 20/10/2026): 3 fallas seguidas (403/5xx/HTML, no el 429 de cupo) lo sacan del frente de la cola
+    // hasta dentro de PYCAT_REMEDIR_DIAS días; se cuenta aparte. Antes 12 productos que ML contestaba 403 encabezaban la cola
+    // en cada vuelta y gastaban la tanda.
+    if (e.nm && e.t && ahora - e.t < PYCAT_REMEDIR_DIAS * 864e5 && !(e.uMed != null && Math.abs(e.uMed - _uNow) >= 0.005)) { cuenta.noDeja++; continue; }
     if (e.t && ahora - e.t < PYCAT_REMEDIR_DIAS * 864e5 && !(e.uMed != null && Math.abs(e.uMed - _uNow) >= 0.005)) { cuenta.frescos++; continue; }
     cola.push([cod, e]);
   }
@@ -9157,7 +9178,7 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
   const toca = cola.slice(0, maxN);
   console.log(`(de los ${cola.length} para medir, ${cola.filter(([, e]) => !rubro(e.n)).length} son de los rubros que ya vendemos y van primero)`);
   console.log(`=== ${esLista ? 'LISTA DE ' + String(opts.nombre || opts.lista).toUpperCase() : 'CATÁLOGO DE PARAGUAY'} · medir contra ML ${aplicar ? '' : '(PRUEBA: no escribo nada)'} ===`);
-  console.log(`${todos.length} guardados · ${cuenta.fuera} fuera por regla · ${cuenta.cand} ya son candidatos · ${cuenta.ficha} ya son fichas · ${cuenta.frescos} medidos hace menos de ${PYCAT_REMEDIR_DIAS} días · ${cola.length} para medir · esta vuelta ${toca.length}`);
+  console.log(`${todos.length} guardados · ${cuenta.fuera} fuera por regla · ${cuenta.cand} ya son candidatos · ${cuenta.ficha} ya son fichas · ${cuenta.frescos} medidos hace menos de ${PYCAT_REMEDIR_DIAS} días · ${cuenta.noDeja} que ML no deja medir (se reintentan a los ${PYCAT_REMEDIR_DIAS} días) · ${cola.length} para medir · esta vuelta ${toca.length}`);
   if (!toca.length) return;
   let tok = null;
   for (const label of labels) {
@@ -9183,11 +9204,25 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
       try { return await mlGet(ruta, tok); } catch (e) { if (!/429/.test(String(e.message || e)) || w === 30000) throw e; }
     }
   };
-  const res = { medidos: 0, sinCat: 0, sinVend: 0, err: 0, b25: 0, b15: 0, bajo: 0, pasan: [] };
+  const res = { medidos: 0, sinCat: 0, sinVend: 0, err: 0, b25: 0, b15: 0, bajo: 0, noDeja: 0, pasan: [] };
+  // FALLAS SEGUIDAS POR PRODUCTO (etapa 4, 20/10/2026). `ef` = cuántas vueltas seguidas ML no dejó medirlo (403, 5xx, HTML,
+  // sin respuesta; el 429 es cupo y no cuenta) y `nm` el motivo con el código. A la 3ª queda "ML no deja medirlo (<código>)" con
+  // `t` de hoy, así sale del frente de la cola y se reintenta a los PYCAT_REMEDIR_DIAS días. Una medición que anda borra las dos.
+  const PYCAT_FALLAS_NM = 3;
+  const fallaMedir = async (cod, e, err) => {
+    const m = String((err && err.message) || err || '');
+    if (/\b429\b|local_rate_limited|over_quota/.test(m)) return;
+    const codigo = (m.match(/^ML GET \S+: (\d{3})\b/) || [])[1] || (/timeout|abort/i.test(m) ? 'sin respuesta' : 'error');
+    const ef = (Number(e.ef) || 0) + 1;
+    const u = { ef };
+    if (ef >= PYCAT_FALLAS_NM) { u.nm = `ML no deja medirlo (${codigo})`; u.t = Date.now(); u.uMed = esLista ? Number(e.p) : e.u; res.noDeja++; console.log(`     ⛔ ${ef}ª falla seguida: queda "${u.nm}" y se reintenta en ${PYCAT_REMEDIR_DIAS} días`); }
+    if (aplicar) { try { await db.patch(RUTA + '/' + cod, u); } catch { /* se cuenta en la vuelta siguiente */ } }
+  };
   const t0 = Date.now();
   for (const [cod, e] of toca) {
     if (Date.now() - t0 > 40 * 60e3) { console.log('⏱️ 40 minutos: corto acá, sigue la próxima vuelta.'); break; }
-    const upd = { t: Date.now(), uMed: esLista ? Number(e.p) : e.u };
+    if (CORTAR) { console.log('✋ Cancelaron la corrida: no mido más (lo que falta, la vuelta siguiente).'); break; }
+    const upd = { t: Date.now(), uMed: esLista ? Number(e.p) : e.u, ef: null, nm: null };
     try {
       // BÚSQUEDA: primero marca + modelo, después el nombre sin el relleno en portugués, después el nombre entero. comprasparaguay
       // escribe "Fone de Ouvido JBL Tune 520BT - Preto" y buscando eso ML trae el 730BT; con "jbl 520bt" trae el correcto.
@@ -9196,13 +9231,13 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
       const vistosB = new Map();
       // CATÁLOGO FIJADO A MANO (`listadato`, 18/10/2026): el chat de compras miró ML y dijo cuál es el producto correcto. Se usa ése
       // y no se busca nada; el chequeo de nombre no lo descarta (ya lo confirmó una persona mirando la foto).
-      let _fijo = null;
+      let _fijo = null, eF_ultimo = null;
       // 20/10/2026 · etapa 4: si ML no contesta ese catálogo (5xx, corte), NO se cae a la búsqueda por nombre: eso medía OTRO
       // catálogo (el vendedor inflado de $96.000) y lo guardaba como `mi`, que `listaOkVale` seguía dando por confirmado. Se cuenta
       // como error, no se escribe nada y se reintenta la próxima vuelta.
       if (esLista && e.miFijo) {
-        try { await espera(250); _fijo = await mlGetR(`/products/${e.miFijo}`); } catch (eF) { _fijo = null; console.log(`  ✗ ${e.n.slice(0, 60)}: no pude leer su catálogo fijado ${e.miFijo} (${String(eF.message || eF).slice(-80)}) · no lo mido contra otro, se reintenta`); }
-        if (!(_fijo && _fijo.id)) { res.err++; continue; }
+        try { await espera(250); _fijo = await mlGetR(`/products/${e.miFijo}`); } catch (eF) { _fijo = null; eF_ultimo = eF; console.log(`  ✗ ${e.n.slice(0, 60)}: no pude leer su catálogo fijado ${e.miFijo} (${String(eF.message || eF).slice(-80)}) · no lo mido contra otro, se reintenta`); }
+        if (!(_fijo && _fijo.id)) { res.err++; await fallaMedir(cod, e, eF_ultimo); continue; }
         vistosB.set(_fijo.id, _fijo);
       }
       for (const q of (_fijo ? [] : qs)) {
@@ -9252,9 +9287,9 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
       // 📋 Listas son SÓLO para ML (18/10/2026, regla suya): ahí el % del local no hace pasar nada.
       if (upd.m >= piso || (!esLista && loc != null && loc >= PERF_LOCAL_GAN)) { res.b25++; res.pasan.push({ cod, e, upd }); if (upd.m < piso) console.log(`     🏪 en ML no llega, pero en la perfumería del local deja ${loc.toFixed(0)}%: pasa`); } else if (upd.m >= 15) res.b15++; else res.bajo++;
       if (aplicar) await db.patch(RUTA + '/' + cod, upd);
-    } catch (err) { res.err++; console.log(`  ✗ ${e.n.slice(0, 60)}: ${String(err.message || err).slice(-120)}`); if (/429/.test(String(err.message || err))) await espera(60000); }
+    } catch (err) { res.err++; console.log(`  ✗ ${e.n.slice(0, 60)}: ${String(err.message || err).slice(-120)}`); await fallaMedir(cod, e, err); if (/429/.test(String(err.message || err))) await espera(60000); }
   }
-  console.log(`\nMedidos ${res.medidos} · dan el piso ${res.b25} · entre 15% y el piso ${res.b15} · menos de 15% ${res.bajo} · sin catálogo exacto en ML ${res.sinCat} · catálogo sin vendedores ${res.sinVend} · errores ${res.err} (se reintentan)`);
+  console.log(`\nMedidos ${res.medidos} · dan el piso ${res.b25} · entre 15% y el piso ${res.b15} · menos de 15% ${res.bajo} · sin catálogo exacto en ML ${res.sinCat} · catálogo sin vendedores ${res.sinVend} · errores ${res.err} (se reintentan)${res.noDeja ? ` · ${res.noDeja} pasaron a "ML no deja medirlo"` : ''}`);
   if (esLista) return res;
   // LOS QUE DAN PASAN SOLOS A "PARA PROBAR", con el catálogo de ML fijo. Ahí `candidatos` los vuelve a medir (dos veces
   // antes de descartar) y la revisión de fotos confirma que son el mismo producto. Sin foto de Paraguay no pasan (regla del 07/10).
@@ -11305,13 +11340,15 @@ async function main() {
     //
     // NO TOCA NINGÚN PRECIO, NI CON `:go`. `:go` sólo quiere decir "mandá el mensaje". Las
     // decisiones de precio siguen siendo suyas — regla del 13/08/2026.
-    // ── `lista` · VOLVER A VER EL AVISO CON SUS NÚMEROS ───────────────────────────────
+    // ── `avisolista` · VOLVER A VER EL AVISO CON SUS NÚMEROS ───────────────────────────────
     // Pedido suyo del 14/09/2026: *"¿cómo hago para decirte que subas o bajes lo que quiero?"*.
     // El aviso diario ahora numera cada renglón, pero un mensaje de Telegram se pierde abajo de
     // otros mensajes. Esto lo vuelve a imprimir igual, con el mismo número, para que "el 4"
     // siga queriendo decir la misma publicación cuando se lo pide.
     // SOLO LEE: no toca precios, no manda nada.
-    if (/^lista$/.test(String(process.env.BILLING_PROBE || ''))) {
+    // Etapa 4 (20/10/2026): se llamaba `lista` y le ganaba al `lista` de las listas de proveedores (15/10/2026), que sin
+    // argumentos nunca se alcanzaba. Ahora es `avisolista`; `lista` solo muestra las listas de proveedores guardadas.
+    if (/^avisolista$/.test(String(process.env.BILLING_PROBE || ''))) {
       const g = (await db.get('cyc/avisolista')) || {};
       const filas = Array.isArray(g.filas) ? g.filas : [];
       if (!filas.length) { console.log('No hay ninguna lista guardada todavía. Sale sola con el aviso de las 00:03, o a mano con `avisos`.'); return; }
@@ -12763,7 +12800,7 @@ async function main() {
       // EL NÚMERO DE CADA RENGLÓN es para que pueda contestar "aplicá el 3 y el 7" sin tener
       // que copiar nombres largos. Y la lista se GUARDA en `cyc/avisolista` con ese mismo
       // número: un mensaje de Telegram se pierde entre otros mensajes, y si el número sólo
-      // viviera ahí no habría forma de saber a qué publicación apuntaba. Se lee con `lista`.
+      // viviera ahí no habría forma de saber a qué publicación apuntaba. Se lee con `avisolista` (etapa 4, 20/10/2026: antes `lista`).
       const L = [];
       const guardaFilas = [];
       let nro = 0;
@@ -13226,6 +13263,36 @@ async function main() {
       // algo falló. Se grita en el log y el paso sale con error (se ve rojo en GitHub).
       if (ok) console.log('✓ aviso mandado');
       else { console.log('❌❌ NO PUDE MANDAR EL AVISO DE LOS PASOS FALLADOS — nadie se entera por Telegram. Pasos: ' + fl.join(' · ')); process.exitCode = 1; }
+      return;
+    }
+    // BILLING_PROBE=nochehecha[:anotar] → ¿LA NOCHE DE ml-daily YA TERMINÓ BIEN? (etapa 4, 20/10/2026). Los 3 crons de
+    // ml-daily hacían correr la noche ENTERA dos veces (GitHub deja una sola en espera: la 3ª descarta la que esperaba y corre
+    // todo de nuevo). `nochehecha` (primer paso de ml-daily) lee `mlapi/daily/<día de acá>` y, si una corrida de hoy ya terminó
+    // sin pasos fallados y ésta es PROGRAMADA, escribe `hecha=1` en la salida del paso: los demás pasos se saltean menos la
+    // línea para atrás. Una corrida a mano corre siempre; si la lectura falla, `hecha=0` (corre todo: los pasos tienen sus
+    // propias marcas para no repetir avisos ni precios). `nochehecha:anotar` (último paso, sólo si ningún paso falló) lo anota.
+    if (/^nochehecha(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _diaN = new Date(Date.now() - 3 * 36e5).toISOString().slice(0, 10).replace(/-/g, '_');
+      const _salida = async (k, v) => { const f = process.env.GITHUB_OUTPUT; if (!f) return; const fs = await import('node:fs'); fs.appendFileSync(f, `${k}=${v}\n`); };
+      if (/^nochehecha:anotar$/.test(String(process.env.BILLING_PROBE))) {
+        if (DRY) { console.log(`(prueba) anotaría mlapi/daily/${_diaN} = terminó bien`); return; }
+        const marca = { ok: true, ts: Date.now(), run: String(process.env.GITHUB_RUN_ID || ''), ev: String(process.env.GITHUB_EVENT_NAME || '') };
+        await db.set('mlapi/daily/' + _diaN, marca);
+        const rr = (await db.get('mlapi/daily/' + _diaN)) || {};
+        if (rr.ok === true && rr.ts === marca.ts) console.log(`✓ La noche del ${_diaN.replace(/_/g, '-')} terminó bien: anotado (las corridas programadas que vengan detrás sólo hacen la línea para atrás).`);
+        else { console.log('❌ No quedó anotada la noche (releí y no coincide): la corrida que venga detrás corre entera.'); process.exitCode = 1; }
+        return;
+      }
+      const programada = String(process.env.GITHUB_EVENT_NAME || '') === 'schedule';
+      let m = null;
+      try { m = await db.get('mlapi/daily/' + _diaN); } catch (e) { console.log(`⚠️ No pude leer si la noche ya terminó (${String(e.message || e).slice(0, 80)}): corro todo.`); await _salida('hecha', '0'); return; }
+      if (m && m.ok === true && programada) {
+        console.log(`⏭️ La noche del ${_diaN.replace(/_/g, '-')} ya terminó bien (corrida ${m.run || '?'}, ${new Date(m.ts).toISOString().slice(11, 16)} UTC): salteo todo menos la línea de tiempo para atrás.`);
+        await _salida('hecha', '1');
+      } else {
+        console.log(m && m.ok === true ? `ℹ️ La noche de hoy ya terminó bien, pero ésta es a mano: corre entera.` : `ℹ️ La noche del ${_diaN.replace(/_/g, '-')} todavía no terminó bien: corre entera.`);
+        await _salida('hecha', '0');
+      }
       return;
     }
     // BILLING_PROBE=tgaprobar:<últimos números del chat>[:go] → deja que un chat PENDIENTE reciba el
@@ -19682,7 +19749,7 @@ async function main() {
         const cat = (await db.get('mlapi/pycat')) || {}; const v = Object.values(cat);
         const med = v.filter((e) => e && e.t), cnt = (f) => v.filter(f).length;
         console.log(`=== CATÁLOGO DE PARAGUAY EN CYC ===\n${v.length} productos guardados · última página guardada: ${prog.pg ?? '—'}${prog.orden ? ' (orden ' + prog.orden + ')' : ''} · último código ${prog.cod ?? '—'} · ${prog.ts ? new Date(prog.ts).toISOString().slice(0, 16).replace('T', ' ') + ' UTC' : ''}`);
-        console.log(`medidos ${med.length} · fuera por regla ${cnt((e) => e && e.fz)} · dan el piso ${cnt((e) => e && e.m >= 24)} · 15% a 24% ${cnt((e) => e && e.m >= 15 && e.m < 24)} · menos de 15% ${cnt((e) => e && e.m != null && e.m < 15)} · sin catálogo exacto ${cnt((e) => e && e.sc)} · pasaron a Para probar ${cnt((e) => e && e.cand)}`);
+        console.log(`medidos ${med.length} · fuera por regla ${cnt((e) => e && e.fz)} · dan el piso ${cnt((e) => e && e.m >= 24)} · 15% a 24% ${cnt((e) => e && e.m >= 15 && e.m < 24)} · menos de 15% ${cnt((e) => e && e.m != null && e.m < 15)} · sin catálogo exacto ${cnt((e) => e && e.sc)} · pasaron a Para probar ${cnt((e) => e && e.cand)} · ML no deja medirlos ${cnt((e) => e && e.nm)}${cnt((e) => e && e.ef && !e.nm) ? ` (y ${cnt((e) => e && e.ef && !e.nm)} con 1-2 fallas seguidas)` : ''}`);
         return;
       }
       let lineas;
@@ -46509,6 +46576,7 @@ async function main() {
     if (onlyAcc && label.toLowerCase() !== onlyAcc) continue;
     const acc = accounts[label];
     if (!acc?.refresh_token) continue;
+    _cortarCiclo(`a leer y escribir las ventas de ${label}`);   // etapa 4 (20/10/2026)
 
     // 1) renovar token y guardar el nuevo refresh_token (ML lo rota)
     // Revisión final: si la renovación (o guardar el token nuevo) falla en UNA cuenta, antes se cortaba
@@ -46618,6 +46686,7 @@ async function main() {
 
     // 3) transformar cada venta → entradas ventaprod (solo las que enganchan)
     for (const o of orders) {
+      _cortarCiclo(`la venta siguiente de ${label}`);   // etapa 4 (20/10/2026): entre una venta y otra no queda nada a medias
       const num = String(o.id);                       // ID interno de la orden (para dedup/cancelaciones)
       const numDisplay = String(o.pack_id || o.id);   // número que muestra ML en la web (el "Venta #")
       if (seenManual.has(num)) continue; // ya cargada a mano/cowork
@@ -47381,6 +47450,7 @@ async function main() {
   // Ahora se relee cada renglón y, si cambió desde el arranque (lo tocó él), no se toca. Si no,
   // se escriben sólo los campos del auto-match. Si la relectura falla, no se escribe: la vuelta
   // siguiente lo vuelve a intentar.
+  _cortarCiclo('a guardar los vínculos de publicaciones');   // etapa 4 (20/10/2026)
   if (!DRY && Object.keys(mapUpd).length) {
     const campos = {}; const respetadas = [];
     for (const [mla, entry] of Object.entries(mapUpd)) {
@@ -47447,6 +47517,7 @@ async function main() {
     }
     console.log(`⚠️ ${stockCiego.size} producto×cuenta con alguna publicación que ML no contestó: no se toca su stock esta vuelta (${nSac} clave(s) quedan con el número anterior).`);
   }
+  _cortarCiclo('a escribir el stock');   // etapa 4 (20/10/2026): inventario, historial y registro van juntos
   if (!DRY) {
     const invUpd = { ...stockVar, ...stockTot };
     // ── LA FICHA QUE SE QUEDÓ SIN PUBLICACIÓN VUELVE A CERO (24/09/2026, arreglo 2 del paso 2) ──
@@ -47575,6 +47646,7 @@ async function main() {
       } catch (e) { console.log('⚠️ No pude anotar el registro de stock hora por hora: ' + String(e.message || e).slice(0, 80)); }
       // El código de la etiqueta de Full, uno por publicación. Va con patch por MLA y no con un
       // patch al padre, para no pisar el resto del renglón de mllinks.
+      _cortarCiclo('a guardar los códigos de etiqueta de Full');   // etapa 4 (20/10/2026)
       if (Object.keys(etiqUpd).length) {
         for (const [mla, v] of Object.entries(etiqUpd)) await db.patch('cyc/mllinks/' + mla, v);
         console.log(`🏷️  Código de etiqueta de Full guardado en ${Object.keys(etiqUpd).length} publicación(es).`);
@@ -47590,6 +47662,7 @@ async function main() {
     }
   }
 
+  _cortarCiclo('a completar las ventas sin vincular');   // etapa 4 (20/10/2026)
   // RETRO-RELLENO: ventas que quedaron "sin producto" cuya publicación ya
   // mapeaste después → les completamos el producto y el costo (una vez).
   if (!DRY) {
@@ -47611,6 +47684,7 @@ async function main() {
     if (rf) console.log(`✓ Completé el producto en ${rf} ventas que estaban sin vincular.`);
   }
 
+  _cortarCiclo('lo de la vuelta horaria (precios, pausadas, cajas)');   // etapa 4 (20/10/2026)
   // NIVELAR GRUPOS DE PRECIO (ej: todos los Paulvic al mismo precio). Va al final, después
   // de que el robot pudo haber subido alguno: así se empareja igual quién lo haya movido.
   // En backfills no corre, para no tocar precios mientras se reprocesa el historial.
@@ -47653,6 +47727,7 @@ async function main() {
   // las operaciones de cada inventario todo el tiempo sería mucha llamada para un dato que cambia
   // una vez por día. Va FUERA del bloque de arriba a propósito: eso está apagado por `robot:off`,
   // que corta lo que ESCRIBE PRECIOS en ML. Esto no toca ML, solo marca cajas en el panel.
+  _cortarCiclo('a revisar las cajas que llegaron');   // etapa 4 (20/10/2026)
   if (parseInt(process.env.BACKFILL_DAYS || '0', 10) === 0 && !onlyAcc && process.env.SKIP_PRICES !== '1') {
     try {
       const rc = await cajasQueLlegaron(db, accounts, labels, products, DRY, SOLO_DATOS);

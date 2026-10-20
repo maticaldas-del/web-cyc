@@ -179,6 +179,13 @@ nombran. Desde hoy, además de las reglas:
     ayudante que ya juzga esa cuenta (no hay ayudante extra): devuelve qué haría con cada uno y por qué. En las CORTAS, hasta ~8
     renglones los miro yo directo; con más, un ayudante en esfuerzo **Alto** con esa lista. Los ayudantes SÓLO PROPONEN: juntar,
     resolver choques entre cuentas, mirar si hay otra corrida de ml-sync andando, aplicar y releer de ML lo hago yo, siempre.
+    **CÓMO SE MIRA "OTRA CORRIDA ANDANDO" (20/10/2026, etapa 4, opción a):** antes de disparar ml-sync miro el job **`sync`**
+    de la ÚLTIMA corrida de ml-sync (el job `ciclo` no cuenta: se puede cortar, es el ciclo que se prende solo). Si el `sync`
+    sigue corriendo, espero. **Un solo disparo por turno**, con TODOS los comandos de la vuelta en renglones (uno por renglón),
+    no varios disparos seguidos (cada disparo a mano cancela la corrida de ml-sync que esté andando). Después confirmo que el `sync` de MI corrida
+    terminó **`success`**; si quedó **`cancelled`**, leo en su registro hasta qué `#####` llegó (cada comando que terminó deja
+    `##### ✓ terminó: <comando>`; el cancelado, `##### ✋ cancelaron la corrida`) y repito SÓLO los que faltan. No se toca
+    `cancel-in-progress`.
  2. **EL REVISOR EN CONTRA (1b)** en la completa: con las decisiones de los 4 ayudantes ya juntas y ANTES de aplicar, un sexto
     ayudante (esfuerzo max, sólo lee) abre la ficha de cada publicación que cambia y busca en qué me equivoco: un dato que no
     cierra, una regla de mayor prioridad que pisé, una pregunta de `notas/preguntas.md` sin contestar, una decisión de menos de 7

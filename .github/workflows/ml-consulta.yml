@@ -48,13 +48,18 @@ jobs:
         # demás y la corrida termina en error. Un solo renglón corre igual que antes.
         run: |
           if [ -z "$BILLING_PROBE" ]; then echo "Falta el comando."; exit 1; fi
+          # Etapa 4 (20/10/2026): al cancelar, GitHub le manda la señal SÓLO a este bash; `corre` se la pasa a node y
+          # lo espera, y no se arranca el comando siguiente (antes node quedaba huérfano hasta el SIGKILL).
+          CANCELADO=0
+          corre() { "$@" & local h=$! rc=0; trap "CANCELADO=1; kill -INT $h 2>/dev/null; kill -TERM $h 2>/dev/null" INT TERM; while :; do wait $h; rc=$?; kill -0 $h 2>/dev/null || break; done; trap - INT TERM; return $rc; }
           CMDS="$(printf '%s\n' "$BILLING_PROBE" | tr -d '\r' | sed '/^[[:space:]]*$/d')"
           rc=0; n=0
           while IFS= read -r c; do
             n=$((n+1))
             if [ "$c" = "ciclo" ]; then echo "##### ciclo: va por ml-sync, no por ml-consulta"; rc=1; continue; fi
             echo "##### $c"
-            BILLING_PROBE="$c" node ml-sync/sync.mjs || { echo "##### ✗ falló: $c"; rc=1; }
+            if corre env BILLING_PROBE="$c" node ml-sync/sync.mjs; then echo "##### ✓ terminó: $c"; else echo "##### ✗ falló: $c"; rc=1; fi
+            if [ "$CANCELADO" = 1 ]; then echo "##### ✋ cancelaron la corrida: no arranco los comandos que faltan"; exit 130; fi
           done <<< "$CMDS"
           echo "##### $n comando(s) · $([ $rc -eq 0 ] && echo 'todos bien' || echo 'alguno falló')"
           exit $rc
