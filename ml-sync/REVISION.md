@@ -1929,6 +1929,16 @@ sin unidad ni medio de pago; 0,8% a 1,6% de "a liquidar"; ~51 anteriores al punt
 **Decisiones mandadas por Telegram (20/10):** 1 deuda ARCA del mes prorrateada · 2 listas en camino o deuda · 3 canceladas en el
 ritmo del tope de H · 4 base del recargo de Paraguay · 5 rayas con costo de hoy · 6 costo de recompras de listas · 7 adelanto
 fuera del promedio · 8 filas de MP sin fecha.
+**Eligió el 20/10 (v25.33 · `cyc-v814`): 1b 2b 3a 4a 5a 6a 7a 8a.** 1b: la deuda de ARCA del mes queda entera desde el día 1
+(ya era así, no se tocó). 2b: `listaLlego` pone `pagado:false`; `listaDeudaUSD` (adentro de `pvDeudaUSD`, así el cierre la guarda
+en `pvUSD`) cuenta lo llegado sin pagar a `pc`; botón "💵 Ya lo pagué" (`listaPagado`). Los pedidos viejos (sin `pagado`) se dan por
+pagados. 3a: `parejoDatos` suma `antesCancel.total` de las canceladas. 4a: `recargoRealPedido` (robot) y `pyRecargoReal` (web) miden
+contra `ticket.usdWeb` si hay ticket, si no `usdCrudo`; "en camino" y la caja de gastos usan la misma base (`pyBaseUSD`). 7a:
+`paramcompra` promedia con `{sinAdelanto:true}`. 5a: `_rayas` usa `gd[k].ganHoy` (costo full de hoy × u + total × (IIBB de la
+cuenta + monotributo vigente)), igual que `rayasPrecioLinea`. 6a: `listaLlego` sube el costo de una ficha existente si la recompra
+sale más cara (congela el viejo; nunca baja). 8a: `saldoml` saltea la fila sin `ORDER_ID` y sin fecha de liberación y `dispo` la
+suma si es posterior al punto de partida (misma condición en los dos). **Chequear:** que "a liquidar" baje ~1% en la próxima noche
+y el disponible no salte; que un pedido de lista llegado aparezca en Deudas hasta tocar "pagado".
 
 
 - 20/10/2026 · Etapa 7 (diseño) · v25.25: la línea de tiempo (de un producto y de todos) llega hasta abajo de la pantalla

@@ -4662,7 +4662,7 @@ async function medirParamCompra(db, accounts, labels, GO) {
   out.envioN = env.length;
   // 2 · RECARGO de Paraguay: promedio de los últimos 3 pedidos con TODOS los gastos (mínimo 2).
   const compras = (await db.get('cyc/compraspy')) || {};
-  const recs = Object.entries(compras).map(([k, c]) => ({ k, f: String((c && c.fecha) || k), r: recargoRealPedido(c || {}).r }))
+  const recs = Object.entries(compras).map(([k, c]) => ({ k, f: String((c && c.fecha) || k), r: recargoRealPedido(c || {}, { sinAdelanto: true }).r }))
     .filter((x) => x.r).sort((a, b) => b.f.localeCompare(a.f)).slice(0, 3);
   console.log(`\n🇵🇾 RECARGO REAL DE PARAGUAY · pedidos con todos los gastos: ${recs.map((x) => `${x.f} ${((x.r - 1) * 100).toFixed(1)}%`).join(' · ') || 'ninguno'}`);
   if (recs.length >= 2) {
@@ -8358,15 +8358,20 @@ function pyGastoCargado(c, g) {
   return !!(g.cero && Array.isArray(c && c.pagosOk) && c.pagosOk.includes(g.k));
 }
 // null si falta algo (con la lista de lo que falta en `falta`).
-function recargoRealPedido(c) {
+// Decisión 4a del 20/10/2026: la base es el precio de la WEB (contra lo que calcula todo el panel). Con ticket, `ticket.usdWeb`
+// (lo que decía la web de lo que vino de verdad); sin ticket, `usdCrudo` (lo que guardó "Ya lo pedí"). Decisión 7a: con
+// `{ sinAdelanto: true }` el adelanto ocasional no entra (lo usa el PROMEDIO de `paramcompra`); el pedido lo sigue pagando.
+// Misma cuenta que `pyRecargoReal` de index.html: si se toca una, la otra.
+function recargoRealPedido(c, opt) {
   const falta = PY_GASTOS.filter((g) => !pyGastoCargado(c, g)).map((g) => g.nom);
   const tc = parseFloat(c && c.tcPedido) || parseFloat(c && c.tcPanel) || 0;
-  const usd = parseFloat(c && c.usdCrudo) || 0;
+  const _uw = parseFloat(c && c.ticket && c.ticket.usdWeb) || 0;
+  const usd = _uw > 0 ? _uw : (parseFloat(c && c.usdCrudo) || 0);
   if (!(tc > 0)) falta.push('el dólar del día del pedido');
   if (!(usd > 0)) falta.push('los dólares crudos');
   if (falta.length) return { r: null, falta };
   const p = c.pagos || {};
-  const tot = (Number(p.mercaderia) || 0) + (Number(p.cambista) || 0) + (Number(p.envio) || 0) + (Number(p.retira) || 0) + (Number(p.otros) || 0) + (Number(p.adelanto) || 0);
+  const tot = (Number(p.mercaderia) || 0) + (Number(p.cambista) || 0) + (Number(p.envio) || 0) + (Number(p.retira) || 0) + (Number(p.otros) || 0) + (opt && opt.sinAdelanto ? 0 : (Number(p.adelanto) || 0));
   const r = tot / tc / usd;
   // Un recargo abajo de 1 o arriba de 1,6 no es un pedido: es un dato mal cargado. No se usa.
   if (!(r >= 1 && r <= 1.6)) return { r: null, falta: [`el recargo da ${((r - 1) * 100).toFixed(1)}%: algún número está mal`] };
@@ -26339,6 +26344,7 @@ async function main() {
           const sep = (li[0] || '').includes(';') ? ';' : ',';
           const cols = csvPartir(li[0] || '', sep).map((x) => x.replace(/^"|"$/g, ''));
           const iR = cols.indexOf('REAL_AMOUNT'), iL = cols.indexOf('MONEY_RELEASE_DATE');
+          const iO = cols.indexOf('ORDER_ID');
           const iS = cols.indexOf('SETTLEMENT_DATE'), iD = cols.indexOf('TRANSACTION_DATE');
           if (iR < 0 || (iL < 0 && iS < 0 && iD < 0)) { console.log('   ❌ le falta una columna clave'); problemas++; continue; }
           let mov = 0, nMov = 0, nAntes = 0, nFuturo = 0, sinFecha = 0, sinNeto = 0;
@@ -26354,7 +26360,9 @@ async function main() {
             // caía a la fecha de la venta y se contaba como disponible; `saldoml` la cuenta como
             // "a liquidar", así que era la misma plata en los dos lados. Lo que SALE sin esa fecha
             // (retiros, devoluciones) sí se descuenta: ya salió.
-            if (v > 0 && iL >= 0 && !String(f[iL] || '').trim()) { nFuturo++; continue; }
+            // Decisión 8a (20/10/2026): la fila diaria SIN orden y sin fecha no es por cobrar: ya está en la cuenta y se suma acá
+            // (`saldoml` ya no la cuenta en "a liquidar"). Misma condición en los dos lados.
+            if (v > 0 && iL >= 0 && !String(f[iL] || '').trim() && !(iO >= 0 && !String(f[iO] || '').trim())) { nFuturo++; continue; }
             mov += v; nMov++;
           }
           const sucias = sinFecha + sinNeto;
@@ -26776,12 +26784,13 @@ async function main() {
           const iTipo = cols.indexOf('TRANSACTION_TYPE');
           const iReal = cols.indexOf('REAL_AMOUNT');
           const iLib = cols.indexOf('MONEY_RELEASE_DATE');
+          const iOrd = cols.indexOf('ORDER_ID');
           const iSetl = cols.indexOf('SETTLEMENT_DATE'), iTx = cols.indexOf('TRANSACTION_DATE');
           if (iTipo < 0 || iReal < 0 || iLib < 0) {
             console.log(`   ❌ le falta una columna clave (tipo ${iTipo} · neto ${iReal} · liberación ${iLib})`);
             cuentasMal++; continue;
           }
-          let liq = 0, nLiq = 0, nLib = 0, nSinFecha = 0, nRetiro = 0, nSinNeto = 0, nFechaMala = 0, nSinFechaLiq = 0;
+          let liq = 0, nLiq = 0, nLib = 0, nSinFecha = 0, nRetiro = 0, nSinNeto = 0, nFechaMala = 0, nSinFechaLiq = 0, nSinOrden = 0;
           let ultima = 0;
           // Desde cuándo el disponible de ESTA cuenta ya incluye lo liberado (ver arriba).
           const ancL = anclasLib[label];
@@ -26806,6 +26815,10 @@ async function main() {
             // Va al total, no a la agenda (no tiene día). Lo que sale sin fecha no es "a liquidar".
             if (!txt) {
               const v0 = csvNum(f[iReal]);
+              // DECISIÓN 8a DEL 20/10/2026: la fila diaria SIN número de orden y sin fecha de liberación (medida con `sinfecha`:
+              // ~62 por cuenta, todas SETTLEMENT, una por día hábil, nunca reciben fecha) NO es una venta por cobrar: se toma como
+              // plata que ya está en la cuenta (`dispo` la suma sola si es posterior al punto de partida). Las de una venta sí siguen.
+              if (iOrd >= 0 && !String(f[iOrd] || '').trim()) { nSinOrden++; continue; }
               if (v0 != null && v0 > 0) { liq += v0; nLiq++; nSinFechaLiq++; sinDiaTot += v0; } else { nSinFecha++; salidaEnVentana(); }
               continue;
             }
@@ -26831,6 +26844,8 @@ async function main() {
           console.log(`   filas: ${li.length - 1} · por cobrar ${nLiq} · ya liberadas ${nLib} · retiros ${nRetiro} · sin fecha ${nSinFecha}`);
           if (ultima) console.log(`   la última se libera el ${new Date(ultima).toISOString().slice(0, 10)}`);
           if (nSinFechaLiq) console.log(`   ${nSinFechaLiq} por cobrar SIN fecha de liberación todavía: entran al total, no a la agenda por día`);
+          if (nSinOrden) console.log(`   ${nSinOrden} fila(s) sin orden y sin fecha de liberación: ya están en la cuenta, no van a "a liquidar" (decisión 8a)`);
+          if (iOrd < 0) console.log('   ⚠️ el reporte no trae ORDER_ID: no se pueden separar las filas diarias sin orden (quedan en "a liquidar")');
           if (sucias) console.log(`   ⚠️ ${sucias} filas no se pudieron leer (${nSinNeto} sin neto · ${nFechaMala} con fecha rara): el total queda CORTO`);
           if (!desdeLib) { libSinDesde++; console.log('   ⚠️ no sé desde cuándo el disponible incluye lo liberado: no se agrega nada a "a liquidar"'); }
           else if (nLibCta) console.log(`   liberado después del disponible: ${nLibCta} fila(s) · se quedan en "a liquidar" hasta que el disponible las sume`);
@@ -38462,7 +38477,7 @@ async function main() {
           if (!it || !hitI(it)) continue; k++;
           const pg = r.pagos || {};
           const merc = Number(pg.mercaderia) || 0, envio = Number(pg.envio) || 0, ret = Number(pg.retira) || 0, otros = (Number(pg.cambista) || 0) + (Number(pg.otros) || 0) + (Number(pg.adelanto) || 0);
-          const usdC = Number(r.usdCrudo) || 0;
+          const usdC = (Number(r.ticket && r.ticket.usdWeb) || 0) > 0 ? Number(r.ticket.usdWeb) : (Number(r.usdCrudo) || 0);  // base = la web (decisión 4a)
           const rec = merc > 0 && usdC > 0 && (r.tcPedido || tc) ? ((merc + envio + ret + otros) / (usdC * (r.tcPedido || tc))) : null;
           console.log(`   ${id} (${r.fecha || '?'} · ${r.estado || '?'}) · ${it.nom} · ${it.u} u. · US$ ${it.usd} crudo c/u · código ${it.cod || '—'}`);
           console.log(`      con el recargo del panel (${RECARGO_PAR_PCT}%): US$ ${(it.usd * RECARGO_PAR).toFixed(2)}${rec ? ` · con el recargo real de ESA compra (${((rec - 1) * 100).toFixed(1)}%): US$ ${(it.usd * rec).toFixed(2)}` : ' · recargo real de esa compra: sin medir'}`);

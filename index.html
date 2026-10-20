@@ -2684,7 +2684,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.32';
+const APP_VERSION='25.33';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2695,6 +2695,7 @@ const APP_VERSION='25.32';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.33',f:'20/10',h:'15:35',c:[{n:3,t:'💵 Listas: lo que llega de un proveedor cuenta como deuda en el Arqueo hasta que tocás "💵 Ya lo pagué" en el pedido (Pedidos → Listas → 🧾 Pedido). Al pedir no cuenta nada.'},{n:3,t:'💲 Si recomprás algo de una lista más caro, al llegar la ficha toma el costo nuevo (las ventas viejas quedan con el viejo).'},{n:2,t:'⚖️ Tope de H: el ritmo de los 30 días cuenta también las ventas canceladas, como las cuenta ARCA.'},{n:2,t:'🇵🇾 El recargo de Paraguay se mide contra el precio de la web, y el promedio deja afuera el adelanto ocasional (el pedido lo sigue pagando).'},{n:2,t:'📈 Las rayas de techo y piso de la línea de tiempo comparan todos los precios con el costo, el dólar y el monotributo de hoy.'},{n:3,t:'💳 Mercado Pago: la fila diaria sin venta y sin fecha de liberación ya no suma a "a liquidar": es plata que ya está en la cuenta.'}]},
   {v:'25.32',f:'20/10',h:'15:34',c:[{n:1,t:'💳 Ventas: la Clásica vuelve a gris (como antes); la Premium queda en dorado.'}]},
   {v:'25.31',f:'20/10',h:'15:33',c:[{n:1,t:'💳 Ventas: Clásica en azul y Premium en dorado.'}]},
   {v:'25.30',f:'20/10',h:'15:25',c:[{n:2,t:'💰 Línea de tiempo: el piso aparece desde la primera venta en todos los productos. Con pocos días va punteado y dice "provisorio": es el precio que más plata por día dejó hasta ahora y se corrige con cada venta. Los que sobran stock también lo muestran. El 🔴 techo sigue pidiendo estar seguro.'}]},
@@ -4215,7 +4216,6 @@ const REV_HORA='04:00';
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel dice la etapa
 //                     de HOY (una por día de la semana, corre sola a las REV_HORA) y si ya quedó hecha.
 const REV_PENDIENTE=[
-  {t:'Etapa 2 (Plata): 8 decisiones tuyas',que:'te las mandé por Telegram el 20/10 (deuda de ARCA del mes, listas en camino, ritmo del tope de H, recargo de Paraguay, rayas de la línea de tiempo, costo de recompras, adelanto, filas de MP sin fecha)',pedi:'1a 2a 3a…'},
 ];
 // Etapa 7 (diseño) cerrada el 01/10/2026: hechas 1-9, 11, 13, 14 y 15; la 10 (Pedidos) y la 12 (sacar
 // "Participación por cuenta") él eligió dejarlas como están.
@@ -4224,7 +4224,7 @@ const REV_PENDIENTE=[
 // por una nota vieja.
 // 30/09 a la tarde: la revisión completa final (6 revisores) cubrió precios, plata, mercadería, ventas,
 // corridas del robot y la web; lo obvio quedó arreglado en la v20.88.
-const REV_HECHAS={1:'2026-10-08',2:'2026-09-30',3:'2026-09-30',4:'2026-09-30',5:'2026-10-12',6:'2026-10-15',7:'2026-10-01'};
+const REV_HECHAS={1:'2026-10-08',2:'2026-10-20',3:'2026-09-30',4:'2026-09-30',5:'2026-10-12',6:'2026-10-15',7:'2026-10-01'};
 // LO QUE PASÓ EN CADA ETAPA (15/10/2026, para el panel de Ajustes). Lo escribe Claude al cerrar cada vuelta: fecha y una línea.
 const REV_HIST={
   1:[{f:'2026-09-24',t:'Primera vuelta: el rescate, la espera de las bajas y los frenos de suba.'},
@@ -4233,7 +4233,8 @@ const REV_HIST={
   2:[{f:'2026-09-28',t:'4 revisores (Arqueo, Mercado Pago, gastos, monedas): 17 reales, las obvias arregladas.'},
      {f:'2026-09-29',t:'Cerrada: lo vendido después del reporte de MP suma al patrimonio (A1) y el Telegram usa la misma cuenta que la web (D4).'},
      {f:'2026-09-30',t:'Revisión completa final: lo de plata quedó sin pendientes.'},
-     {f:'2026-10-20',t:'Primera del calendario (máximo): Arqueo, cierre, cobro, monedas y robot de MP. Lo obvio arreglado (v25.23 a v25.26), 8 decisiones suyas.'}],
+     {f:'2026-10-20',t:'Primera del calendario (máximo): Arqueo, cierre, cobro, monedas y robot de MP. Lo obvio arreglado (v25.23 a v25.26), 8 decisiones suyas.'},
+     {f:'2026-10-20',t:'Cerrada: él eligió 1b 2b 3a 4a 5a 6a 7a 8a (listas como deuda al llegar, recargo contra la web, filas de MP sin venta = ya en la cuenta). v25.33.'}],
   3:[{f:'2026-09-29',t:'4 revisores (cajas, stock, pedidos, Paraguay): 29 hallazgos, las obvias hechas y 6 decididas por él.'},
      {f:'2026-09-30',t:'Cerrada: el aviso de renglón que no cierra se mide color por color.'}],
   4:[{f:'2026-09-30',t:'Choques web/robot y corridas a la vez: ~30 reales, todas arregladas (transacciones, relecturas, candados).'},
@@ -8163,7 +8164,7 @@ function pyEnCaminoUSD(){
     // Sólo lo que de verdad viaja (revisión max #21): lo que cargó compray como historial no cuenta.
     if(!c||c.estado!=='camino')return t;
     const r=pyRecargoReal(c).r||(parseFloat(c.recargo)>1?parseFloat(c.recargo):RECARGO_PY);
-    return t+(parseFloat(c.usdCrudo)||0)*r;
+    return t+pyBaseUSD(c)*r;
   },0);
 }
 // LO VENDIDO DESPUÉS DEL ÚLTIMO REPORTE DE MERCADO PAGO (etapa 2 · A1, 29/09/2026, eligió la a).
@@ -8626,7 +8627,7 @@ function updateArqueo(){try{if(!_arqViewYM)_btnCerrarTxt();}catch(_){}
   const prevDeuda=prev?['tarjeta','deuda_cyc','dolares_mati','dolares_tito'].reduce((s,k)=>s+(Math.abs(parseFloat(prev.finanzas?.[k])||0)),0)+(Number(prev.pvUSD)||0)+((Number(prev.arcaARS)>0&&Number(prev.tipoCambio)>0)?Number(prev.arcaARS)/Number(prev.tipoCambio):0):null;
   const dbkEf=document.getElementById('dbk_efectivo');if(dbkEf)dbkEf.innerHTML=prevEfect!==null?deltaBadge(c.efect,prevEfect):'';
   const dbkDb=document.getElementById('dbk_deben');if(dbkDb)dbkDb.innerHTML=prevDeben!==null?deltaBadge(c.deben,prevDeben):'';
-  const dbkDd=document.getElementById('dbk_deudas');if(dbkDd)dbkDd.innerHTML=(prevDeuda!==null?deltaBadge(c.deuda,prevDeuda,true):'')+(c.pvDeuda>0?`<div style="font-size:.62rem;color:var(--amber);margin-top:3px">incluye ${fmtUS(c.pvDeuda)} del Paulvic · llegó, falta pagar</div>`:'')+(c.arcaDeuda>0?(()=>{const _s=_arqViewYM&&state.snapshots&&state.snapshots[_arqViewYM];const a=_s&&_s.arcaARS>0?{ars:Number(_s.arcaARS),meses:Math.round(Number(_s.arcaARS)/(Number((state.mlconfig||{}).arcaHMes)||427498))}:arcaDeudaARS();return `<div style="font-size:.62rem;color:var(--amber);margin-top:3px">incluye ${fmtUS(c.arcaDeuda)} (${fmt(a.ars)}) para ARCA · categoría H de ${a.meses} mes${a.meses===1?'':'es'} · sin intereses</div>`;})():'');
+  const dbkDd=document.getElementById('dbk_deudas');if(dbkDd)dbkDd.innerHTML=(prevDeuda!==null?deltaBadge(c.deuda,prevDeuda,true):'')+(c.pvDeuda>0?(()=>{const ls=_arqViewYM?0:listaDeudaUSD(),pv=c.pvDeuda-ls;return `<div style="font-size:.62rem;color:var(--amber);margin-top:3px">incluye ${fmtUS(c.pvDeuda)} de proveedores · llegó, falta pagar${ls>0.005?` (${pv>0.005?'Paulvic '+fmtUS(pv)+' · ':''}listas ${fmtUS(ls)})`:''}</div>`;})():'')+(c.arcaDeuda>0?(()=>{const _s=_arqViewYM&&state.snapshots&&state.snapshots[_arqViewYM];const a=_s&&_s.arcaARS>0?{ars:Number(_s.arcaARS),meses:Math.round(Number(_s.arcaARS)/(Number((state.mlconfig||{}).arcaHMes)||427498))}:arcaDeudaARS();return `<div style="font-size:.62rem;color:var(--amber);margin-top:3px">incluye ${fmtUS(c.arcaDeuda)} (${fmt(a.ars)}) para ARCA · categoría H de ${a.meses} mes${a.meses===1?'':'es'} · sin intereses</div>`;})():'');
   const dbkT=document.getElementById('dbk_total_day');
   if(dbkT)dbkT.innerHTML='';
   if(!_arqViewYM)saveDailySnap();
@@ -9880,11 +9881,15 @@ function lineaPintar(prodId){
   // Carriles: y y alto
   // La GANANCIA de cada día sale de las ventas del panel con la MISMA cuenta que Ventas e Inicio
   // (efectivoCostoVP, gestDivVP, pctGananciaVP), no de la línea del robot: así no puede decir otro número.
+  // LAS RAYAS SE MIDEN CON EL COSTO DE HOY (etapa 2, decisión 5a del 20/10/2026): para comparar precios de meses distintos
+  // parejo, la plata por día de cada precio se calcula con el costo, el dólar y el monotributo de HOY (`ganHoy`), igual que
+  // `rayasPrecioLinea` del robot (costoPesos de hoy + IIBB de la cuenta + monotributo vigente). La línea de ganancia sigue con los del mes.
+  const _cfHoy=costFullP(p),_monoHoy=monoPctVigente();
   const gd={}; for(const k of ks){const ents=Object.values((state.ventaprod||{})[k]||{}).filter(v=>v&&!v.cancelada&&(prodDeVenta(v)||{}).id===prodId&&_vOk(v)).map(v=>({...v,_dateKey:k}));
-    if(!ents.length)continue;let neto=0,costo=0,gest=0,q=0,mer=0,imp=0,tot=0;ents.forEach(v=>{neto+=netoProductoVP(v);costo+=efectivoCostoVP(v);gest+=gestDivVP(v);q+=Number(v.qty)||0;
+    if(!ents.length)continue;let neto=0,costo=0,gest=0,q=0,mer=0,imp=0,tot=0,cHoy=0;ents.forEach(v=>{neto+=netoProductoVP(v);costo+=efectivoCostoVP(v);gest+=gestDivVP(v);q+=Number(v.qty)||0;cHoy+=(Number(v.qty)||0)*_cfHoy+(Number(v.total)||0)*(mlExtraPct(v.cuenta)+_monoHoy)/100;
       // Para la LÍNEA del costo va sólo la MERCADERÍA (costo × dólar del mes): el costo de la ganancia trae además
       // IIBB + monotributo como % del precio cobrado, y eso hacía que la línea se moviera con cada venta (03/10/2026).
-      const vv={...v,_dateKey:k};const ex=_efectivoCostoVP(vv),im=impuestosDeVenta(vv);mer+=Math.max(0,ex-im);imp+=im;tot+=Number(v.total)||0;});gd[k]={gan:neto-costo,costo,gest,cu:q>0&&mer>0?mer/q:null,ct:q>0&&mer>0?(mer+imp)/q:null,impPct:tot>0?imp/tot*100:null};}
+      const vv={...v,_dateKey:k};const ex=_efectivoCostoVP(vv),im=impuestosDeVenta(vv);mer+=Math.max(0,ex-im);imp+=im;tot+=Number(v.total)||0;});gd[k]={gan:neto-costo,ganHoy:_cfHoy>0?neto-cHoy:null,costo,gest,cu:q>0&&mer>0?mer/q:null,ct:q>0&&mer>0?(mer+imp)/q:null,impPct:tot>0?imp/tot*100:null};}
   // LOS DÍAS VIEJOS, ESTIMADOS (07/10/2026, él con el Pack Cubreasiento: "no hiciste que el costo vaya hacia atrás en
   // el tiempo así tenemos un aprox de cuánta ganancia se hizo"). Las ventas de antes de que el panel las guarde salen de
   // la línea del robot (unidades y lo cobrado, SIN lo que depositó ML). Se arma una venta igual a las del panel, con la
@@ -9894,12 +9899,12 @@ function lineaPintar(prodId){
   {const ref={};for(const [k,dd] of Object.entries(state.ventaprod||{}))for(const v of Object.values(dd||{})){if(!v||v.cancelada||!(Number(v.total)>0)||!(Number(v.neto)>0)||v.netoEstimado||(prodDeVenta(v)||{}).id!==prodId||!_vOk(v)||ventaEnCarritoVP({...v,_dateKey:k}))continue;
       const q=Number(v.qty)||1;(ref[v.mla||'*']=ref[v.mla||'*']||[]).push({pu:Number(v.total)/q,r:Number(v.neto)/Number(v.total)});(ref['*']=ref['*']||[]).push({pu:Number(v.total)/q,r:Number(v.neto)/Number(v.total)});}
     const ratioDe=(mla,pu)=>{const L0=(ref[mla]&&ref[mla].length?ref[mla]:ref['*'])||[];if(!L0.length)return null;let b=null;for(const x of L0)if(!b||Math.abs(Math.log(x.pu/pu))<Math.abs(Math.log(b.pu/pu)))b=x;return b.r;};
-    for(const k of ks){if(gd[k])continue;let neto=0,costo=0,gest=0,q=0,mer=0,imp=0,tot=0;
+    for(const k of ks){if(gd[k])continue;let neto=0,costo=0,gest=0,q=0,mer=0,imp=0,tot=0,cHoy=0;
       for(const [mla,d] of Object.entries(porMlaF)){const x=d&&d[k];if(!x||!(Number(x.u)>0)||!(Number(x.tot)>0))continue;
         const u=Number(x.u),t=Number(x.tot);const r=Number(x.neto)>0?Number(x.neto)/t:ratioDe(mla,t/u);if(r==null)continue;
         const lk=(state.mllinks||{})[mla]||{};const v={prodId,prod:'',mla,cuenta:lk.cuenta||'',qty:u,total:t,neto:Math.round(t*r),_dateKey:k};
-        neto+=v.neto;costo+=efectivoCostoVP(v);gest+=gestDivVP(v);q+=u;const ex=_efectivoCostoVP(v),im=impuestosDeVenta(v);mer+=Math.max(0,ex-im);imp+=im;tot+=t;}
-      if(q>0)gd[k]={gan:neto-costo,costo,gest,cu:mer>0?mer/q:null,ct:mer>0?(mer+imp)/q:null,impPct:tot>0?imp/tot*100:null,est:true};}}
+        neto+=v.neto;costo+=efectivoCostoVP(v);gest+=gestDivVP(v);q+=u;cHoy+=u*_cfHoy+t*(mlExtraPct(v.cuenta)+_monoHoy)/100;const ex=_efectivoCostoVP(v),im=impuestosDeVenta(v);mer+=Math.max(0,ex-im);imp+=im;tot+=t;}
+      if(q>0)gd[k]={gan:neto-costo,ganHoy:_cfHoy>0?neto-cHoy:null,costo,gest,cu:mer>0?mer/q:null,ct:mer>0?(mer+imp)/q:null,impPct:tot>0?imp/tot*100:null,est:true};}}
   // EL % DE GANANCIA COMO LÍNEA (03/10/2026, él: "sacá la ganancia y el % ponelo como una línea, idéntico
   // al precio, del color del nivel de % que vendió ese día"). Cada tramo toma el color de su día con la MISMA
   // tabla de niveles que todo el panel (pctColor: Bajo, Justo, Bien, Bueno, Excelente, Estrella, JOYA).
@@ -9957,12 +9962,13 @@ function lineaPintar(prodId){
   // dice). En 📦 sobra / 📉 liquidando no se busca techo: se dice.
   // Con sobra stock el piso también se muestra ("fijate que todos tengan eso", 20/10/2026); lo que no se busca es el techo.
   const _rayasSob=(()=>{const est=Object.keys(porMlaF).map(m=>estrategiaDe(m)).filter(Boolean);return est.length&&est.every(e=>['sobra','liquidando','remate'].includes(e.t));})();
+  const _ganRaya=k=>{const g=gd[k];if(!g)return 0;return g.ganHoy!=null?g.ganHoy:(g.gan||0);};
   const _rayas=(R=>_rayasSob?{best:R.best,sobra:true}:R)((()=>{
     // UNA SOLA CUENTA CON `techo95` (20/10/2026, él con las Sábanas 140 Blanco: la raya decía techo $20.180 y la estrategia
     // "buscando techo" a $21.990). Sólo cuentan los días MEDIBLES: con 3+ u. en Full y con dato de visitas. Con 1-2 u. o sin
     // visitas, vender poco no prueba que el precio esté alto. La misma regla vive en `rayasPrecioLinea` (sync.mjs): si se toca una, la otra.
     const G={};ks.forEach(k=>{const d=dias[k];if(!d)return;if(!(d.st!=null&&d.st>=3&&d.vis!=null))return;const pl=Number(d.pLista||d.p)||0;if(!(pl>0))return;
-      const b=Math.round(pl/10)*10;const g=(G[b]=G[b]||{p:b,dias:0,u:0,gan:0});g.dias++;g.u+=Math.max(0,(d.u||0)-(d.uR||0));g.gan+=(gd[k]&&gd[k].gan)||0;});
+      const b=Math.round(pl/10)*10;const g=(G[b]=G[b]||{p:b,dias:0,u:0,gan:0});g.dias++;g.u+=Math.max(0,(d.u||0)-(d.uR||0));g.gan+=_ganRaya(k);});
     const L=Object.values(G).map(g=>({...g,r:g.u/g.dias,pd:g.gan/g.dias,gu:g.u?g.gan/g.u:null}));
     const med=L.filter(g=>g.dias>=5);
     // EL PISO APARECE DESDE LA PRIMERA VENTA (20/10/2026, él con el Joystick Velocity Green: "acá debería aparecer la línea con el
@@ -9971,7 +9977,7 @@ function lineaPintar(prodId){
     // sean 1-2 u. o sin dato de visitas): el precio que más plata por día dejó entre los que vendieron. Va punteado y dice
     // "provisorio". El 🔴 techo sigue pidiendo días medibles y 95% (eso no se apura), igual que `rayasPrecioLinea` del robot.
     if(!med.length){const G2={};ks.forEach(k=>{const d=dias[k];if(!d)return;if(!((d.st!=null&&d.st>0)||(d.u||0)>0))return;const pl=Number(d.pLista||d.p)||0;if(!(pl>0))return;
-        const b=Math.round(pl/10)*10;const g=(G2[b]=G2[b]||{p:b,dias:0,u:0,gan:0});g.dias++;g.u+=Math.max(0,(d.u||0)-(d.uR||0));g.gan+=(gd[k]&&gd[k].gan)||0;});
+        const b=Math.round(pl/10)*10;const g=(G2[b]=G2[b]||{p:b,dias:0,u:0,gan:0});g.dias++;g.u+=Math.max(0,(d.u||0)-(d.uR||0));g.gan+=_ganRaya(k);});
       const L2=Object.values(G2).filter(g=>g.u>0).map(g=>({...g,r:g.u/g.dias,pd:g.gan/g.dias,gu:g.gan/g.u,aprox:true}));
       return L2.length?{best:L2.reduce((a,b)=>b.pd>a.pd?b:a)}:{};}
     const best=med.reduce((a,b)=>b.pd>a.pd?b:a);
@@ -14569,9 +14575,13 @@ async function pyPedidoBorrar(id){
 const PY_GASTOS=[{k:'mercaderia',nom:'Pesos de los dólares',campo:'merc'},{k:'envio',nom:'Correo',campo:'envio'},
   {k:'retira',nom:'El que retira y despacha',campo:'retira'},{k:'cambista',alt:'otros',nom:'Comisión del cambista y envío de los dólares',campo:'cambio',cero:true}];
 function pyGastoCargado(c,g){const _p=(c&&c.pagos)||{};const v=(Number(_p[g.k])||0)+(g.alt?(Number(_p[g.alt])||0):0);if(v>0)return true;return!!(g.cero&&Array.isArray(c&&c.pagosOk)&&c.pagosOk.includes(g.k));}
+// Base = precio de la WEB (decisión 4a del 20/10/2026): con ticket `ticket.usdWeb`, sin ticket `usdCrudo`. Misma cuenta que
+// `recargoRealPedido` de sync.mjs (el promedio de allá deja afuera el adelanto, decisión 7a; acá es el de ESE pedido y va).
+function pyBaseUSD(c){const w=parseFloat(c&&c.ticket&&c.ticket.usdWeb)||0;return w>0?w:(parseFloat(c&&c.usdCrudo)||0);}
 function pyRecargoReal(c){
   const falta=PY_GASTOS.filter(g=>!pyGastoCargado(c,g)).map(g=>g.nom);
-  const tc=parseFloat(c&&c.tcPedido)||parseFloat(c&&c.tcPanel)||0,usd=parseFloat(c&&c.usdCrudo)||0;
+  const _uw=parseFloat(c&&c.ticket&&c.ticket.usdWeb)||0;
+  const tc=parseFloat(c&&c.tcPedido)||parseFloat(c&&c.tcPanel)||0,usd=_uw>0?_uw:(parseFloat(c&&c.usdCrudo)||0);
   if(!(tc>0))falta.push('el dólar del día del pedido');if(!(usd>0))falta.push('los dólares crudos');
   if(falta.length)return{r:null,falta};
   const p=c.pagos||{};const tot=(Number(p.mercaderia)||0)+(Number(p.cambista)||0)+(Number(p.envio)||0)+(Number(p.retira)||0)+(Number(p.otros)||0)+(Number(p.adelanto)||0);
@@ -14596,7 +14606,7 @@ function pyGastosChecklistHTML(c){
   // La mercadería va al dólar del panel (lo que vale la factura) y lo que el dólar salió más caro es un
   // gasto más. Así los % de los gastos suman EXACTO el recargo real y se comparan pedido contra pedido.
   const p=c.pagos||{};const R=pyRecargoReal(c);
-  const _m=Number(p.mercaderia)||0,_usd=parseFloat(c.usdCrudo)||0,_tc=parseFloat(c.tcPedido)||parseFloat(c.tcPanel)||0;
+  const _m=Number(p.mercaderia)||0,_usd=pyBaseUSD(c),_tc=parseFloat(c.tcPedido)||parseFloat(c.tcPanel)||0;
   const _dolPag=_m>0&&_usd>0?_m/_usd:0;
   const _base=_usd>0&&_tc>0?_usd*_tc:_m;            // la mercadería al dólar del panel
   const _dif=_m>0&&_usd>0&&_tc>0?_m-_base:0;          // lo que el dólar salió más caro (o más barato)
@@ -14705,7 +14715,7 @@ function pyPedidoResumenHTML(c,enCamino,dias,tarde){
   const R=pyRecargoReal(c);
   const rec=R.r?`<span style="color:${(R.r-1)*100>(RECARGO_PY-1)*100+0.05?'var(--amber)':'var(--green)'}">+${((R.r-1)*100).toFixed(1).replace('.',',')}%</span> recargo`:`<span title="Faltan gastos: ${R.falta.join(', ').replace(/"/g,'&quot;')}">+${Math.round((RECARGO_PY-1)*100)}% estimado</span>`;
   const tk=c.ticket?(()=>{const w=Number(c.ticket.usdWeb)||0,d=w-(Number(c.ticket.usdPagado)||0);return d>0.004&&w>0?` · ticket −${(d/w*100).toFixed(1).replace('.',',')}%`:'';})():(c.estado==='camino'?' · <b style="color:var(--red)">falta ticket</b>':'');
-  const usd=(Math.round((parseFloat(c.usdCrudo)||0)*(R.r||RECARGO_PY)*100)/100).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const usd=(Math.round(pyBaseUSD(c)*(R.r||RECARGO_PY)*100)/100).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
   return `<div style="min-width:0">
       <div style="font-size:.95rem;font-weight:800;color:var(--text)">${pedNumTag(c,'margin-right:6px')}${dm(c.fecha)}</div>
       <div style="font-size:.66rem;font-weight:700;color:${col};margin-top:2px;white-space:nowrap">${est}</div>
@@ -14727,7 +14737,7 @@ function pyPedidoTarjeta(c,enCamino){
 }
 function pyPedidoDetalleHTML(c){
   const tc=c.tcPedido||0;
-  const puesto=Math.round((c.usdCrudo||0)*(pyRecargoReal(c).r||RECARGO_PY)*100)/100;
+  const puesto=Math.round(pyBaseUSD(c)*(pyRecargoReal(c).r||RECARGO_PY)*100)/100;
   const pagos=c.pagos||{};
   const totARS=(Number(pagos.mercaderia)||0)+(Number(pagos.cambista)||0)+(Number(pagos.envio)||0)+(Number(pagos.retira)||0)+(Number(pagos.otros)||0)+(Number(pagos.adelanto)||0);
   const hayPagos=totARS>0;
@@ -14740,7 +14750,7 @@ function pyPedidoDetalleHTML(c){
         <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">La plata</div>
         ${c.ticket?(()=>{const w=Number(c.ticket.usdWeb)||0,pg=Number(c.ticket.usdPagado)||0,d=w-pg;return fila('🧾 ticket','<b style="color:var(--green)">cargado</b>','El ticket real del mayorista, renglón por renglón. Cada producto guarda lo que se pagó y lo que decía la web.')+fila('precio de la web','US$ '+w.toFixed(2))+fila('pagado (ticket)','US$ '+pg.toFixed(2))+fila('descuento',`<b style="color:${d>0?'var(--green)':d<0?'var(--red)':'var(--muted)'}">${d>0?'−':d<0?'+':''}US$ ${Math.abs(d).toFixed(2)}${w>0?' ('+Math.abs(d/w*100).toFixed(1).replace('.',',')+'%)':''}</b>`,'Lo que pagaste de menos (o de más) contra el precio de la web. Producto por producto, abajo en La mercadería.');})()
           :fila('🧾 ticket','<b style="color:var(--red)">falta</b>','Sin el ticket real el pedido no se puede cerrar: pasáselo a Claude por el chat.')}
-        ${fila('mercadería cruda','US$ '+(c.usdCrudo||0).toFixed(2),'El precio de comprasparaguay, sin el recargo.')}
+        ${fila('mercadería cruda','US$ '+pyBaseUSD(c).toFixed(2),'El precio de comprasparaguay, sin el recargo.')}
         ${fila('con el '+(pyRecargoReal(c).r?((pyRecargoReal(c).r-1)*100).toFixed(1)+'% real':Math.round((RECARGO_PY-1)*100)+'% estimado'),'US$ '+puesto.toFixed(2),'Incluye comprar los dólares, el correo y el que despacha. Con todos los gastos cargados es el recargo REAL de este pedido; si no, el estimado.')}
         ${tc?fila('en pesos',fmt(Math.round(puesto*tc))+' <span style="color:var(--muted);font-size:.9em">· dólar '+fmt(Math.round(tc))+'</span>','Con el dólar del DÍA del pedido, no el de hoy: lo que compraste a un precio no cambia solo.'):fila('en pesos','<span style="color:var(--amber)">no había dólar cargado ese día</span>')}
         ${c.gananciaEst?fila('si se vende todo deja','<b style="color:var(--green)">'+fmt(c.gananciaEst)+'</b>','Estimado con el margen medido de cada producto al momento del pedido.'):''}
@@ -15791,8 +15801,20 @@ function arcaDeudaARS(hastaYm){
   return{ars:t,meses};
 }
 function arcaDeudaUSD(){const tc=curTC();return tc>0?arcaDeudaARS().ars/tc:0;}
+// LO DE UNA LISTA QUE LLEGÓ Y FALTA PAGAR (decisión 2b del 20/10/2026): al pedir no cuenta nada; desde que llega (la
+// mercadería entra en la oficina) es deuda con el proveedor hasta que se toca "💵 Ya lo pagué" (`pagado:true`). Sólo los que
+// llegaron desde esta regla (`pagado===false`, lo pone `listaLlego`): los viejos se dan por pagados. Va en la misma deuda
+// "de proveedores" que el Paulvic (`pvDeudaUSD` la suma), así los cierres (`pvUSD`) la guardan sin campo nuevo.
+function listaDeudaUSD(){
+  const tc=curTC();if(!(tc>0))return 0;let t=0;
+  for(const c of Object.values(state.comprasLista||{})){
+    if(!c||c.estado!=='llegado'||c.pagado!==false)continue;
+    t+=(c.items||[]).reduce((s,i)=>s+(Number(i.pc)||0)*(parseInt(i.u)||0),0);
+  }
+  return t/tc;
+}
 function pvDeudaUSD(){
-  let t=0;
+  let t=listaDeudaUSD();
   for(const c of Object.values(state.pedidospv||{})){
     if(!c||c.estado!=='llego'||c.pagado||!c.prodId)continue;
     const p=prodById(c.prodId);if(!p)continue;
@@ -18566,19 +18588,32 @@ async function listaLlego(id){
     const misma=(state.products||[]).find(p=>(p.codLista&&String(p.codLista)===String(it.cod)&&p.listaProv===c.prov)||normTxt(p.name||'')===n||normTxt(p.name||'')===n2);return{it,nombre,misma};});
   // Etapa 2 (20/10/2026): sin dólar no se crean fichas (nacerían con costo US$ 0 y se verían como todo ganancia). Como `updCostPesos`.
   if(!(tc>0)&&plan.some(x=>!x.misma&&x.nombre)){toast('Falta el dólar en Finanzas: sin eso las fichas nuevas nacerían con costo US$ 0. No marqué nada.','err',6000);return;}
-  if(!confirm(`Marcar como LLEGADO el pedido a ${c.provNom||c.prov} del ${c.fecha}:\n\n${plan.map(x=>x.misma?'· ya existe: '+x.misma.name:'· ficha nueva: '+x.nombre+' · '+fmt(x.it.pc)).join('\n')}\n\nDespués contá lo que llegó en Mi oficina.`))return;
-  let n=0;
+  if(!confirm(`Marcar como LLEGADO el pedido a ${c.provNom||c.prov} del ${c.fecha}:\n\n${plan.map(x=>x.misma?'· ya existe: '+x.misma.name+((tc>0&&x.it.pc/tc>costUSDof(x.misma)+0.005)?' (costo sube a '+fmt(x.it.pc)+')':''):'· ficha nueva: '+x.nombre+' · '+fmt(x.it.pc)).join('\n')}\n\nDespués contá lo que llegó en Mi oficina.`))return;
+  let n=0;const subio=[];
   for(const [i,x] of plan.entries()){
-    if(x.misma){if(!x.misma.listaProv)try{await fbSet('products/'+x.misma.id+'/listaProv',c.prov);x.misma.listaProv=c.prov;}catch(e){}continue;}
+    if(x.misma){if(!x.misma.listaProv)try{await fbSet('products/'+x.misma.id+'/listaProv',c.prov);x.misma.listaProv=c.prov;}catch(e){}
+      // RECOMPRA MÁS CARA (decisión 6a del 20/10/2026, como Paraguay): la ficha toma el costo nuevo; el viejo queda congelado
+      // en los meses con ventas (`congelarCostoAnterior`). Sólo sube, nunca baja (misma regla que el robot en Paraguay).
+      const nu=tc>0?Math.round(x.it.pc/tc*100)/100:0,an=costUSDof(x.misma);
+      if(nu>an+0.005)try{const cg=await congelarCostoAnterior(x.misma,an);x.misma.costUSD=nu;x.misma.cost=x.it.pc;
+        await fbSet('products/'+x.misma.id+'/costUSD',nu);await fbSet('products/'+x.misma.id+'/cost',x.it.pc);await recalcAndSaveFullUSD(x.misma);
+        subio.push(x.misma.name+' US$ '+an.toFixed(2)+' → '+nu.toFixed(2));await log('Costo '+x.misma.name+': US$'+nu+' (recompra a '+(c.provNom||c.prov)+(cg?', se congeló US$'+an+' en '+cg+' mes/es':'')+')');}catch(e){toast('No pude subir el costo de '+x.misma.name+': '+(e.message||e),'err',5000);}
+      continue;}
     if(!x.nombre)continue;
     const usd=tc>0?Math.round(x.it.pc/tc*100)/100:0;
     const p={id:'p'+Date.now()+'l'+i,name:x.nombre.slice(0,90),costUSD:usd,cost:x.it.pc,costFullUSD:usd,origen:'bsas',proveedor:c.provNom||c.prov,listaProv:c.prov,codLista:String(x.it.cod)};
     if(x.it.mi)p.mlCatalogo=x.it.mi;
     try{await fbSet('products/'+p.id,p);(state.products=state.products||[]).push(p);n++;}catch(e){toast('No se pudo crear '+x.nombre+': '+(e.message||e),'err',5000);return;}
   }
-  try{await db.ref('cyc/compraslista/'+id).update({estado:'llegado',llegoTs:Date.now()});c.estado='llegado';}catch(e){toast('No se guardó: '+(e.message||e),'err',5000);return;}
+  try{await db.ref('cyc/compraslista/'+id).update({estado:'llegado',llegoTs:Date.now(),pagado:false});c.estado='llegado';c.pagado=false;}catch(e){toast('No se guardó: '+(e.message||e),'err',5000);return;}
   await log('Llegó el pedido a '+(c.provNom||c.prov)+' del '+c.fecha+': '+n+' ficha(s) nueva(s)');
-  toast(`✓ Llegó · ${n} ficha(s) nueva(s). Contá las unidades en Mi oficina.`,'ok',6000);renderListas();
+  toast(`✓ Llegó · ${n} ficha(s) nueva(s)${subio.length?' · costo subido: '+subio.join(' · '):''}. Contá las unidades en Mi oficina.`,'ok',8000);renderListas();
+}
+async function listaPagado(id){
+  const c=(state.comprasLista||{})[id];if(!c||c.estado!=='llegado'||c.pagado!==false)return;
+  if(!confirm(`¿Ya le pagaste a ${c.provNom||c.prov} el pedido del ${c.fecha}? Deja de contar como deuda en el Arqueo.`))return;
+  try{await db.ref('cyc/compraslista/'+id).update({pagado:true,pagoTs:Date.now()});c.pagado=true;}catch(e){toast('No se guardó: '+(e.message||e),'err',5000);return;}
+  await log('Pagado el pedido a '+(c.provNom||c.prov)+' del '+c.fecha);toast('✓ Pagado');renderListas();
 }
 // LISTAS QUE COMPRA TITO EN BS AS (19/10/2026, él: "las listas de Nippon ponelas en Bs As, ya que esos los compra mi viejo cuando
 // viaja"). `cyc/mlconfig/listasProv/<prov>/bsas = true`: la lista se ve en Pedidos → Bs As (abajo de los pedidos) y no en 📋 Listas,
@@ -18694,9 +18729,9 @@ async function renderListas(){
     const totL=A.reduce((t,x)=>t+(Number(x.e.pl||x.e.p)||0)*x.u,0);  // pl = P. Lista del proveedor (Iscos: el costo es la lista menos el descuento)
     const C=Object.entries(state.comprasLista||{}).map(([id,c])=>({...c,id})).filter(c=>c.prov===k).sort((a,b)=>(b.ts||0)-(a.ts||0));
     const comp=c=>{const t=(c.items||[]).reduce((s,i)=>s+(i.pc||0)*(i.u||0),0),tL=(c.items||[]).reduce((s,i)=>s+(i.p||0)*(i.u||0),0);const cam=c.estado==='camino';
-      return `<details style="background:var(--surface);border:1px solid ${cam?'var(--amber)':'var(--border)'};border-radius:8px;padding:8px 10px;margin-bottom:6px"><summary style="cursor:pointer;font-size:.74rem">${pedNumTag(c,'margin-right:4px')}${cam?'🚚 en camino':'✅ llegó'} · <b>${c.fecha}</b> · ${(c.items||[]).length} productos · ${tL?'lista '+fmt(tL)+' · ':''}te sale ${fmt(t)}</summary>
+      return `<details style="background:var(--surface);border:1px solid ${cam?'var(--amber)':'var(--border)'};border-radius:8px;padding:8px 10px;margin-bottom:6px"><summary style="cursor:pointer;font-size:.74rem">${pedNumTag(c,'margin-right:4px')}${cam?'🚚 en camino':c.pagado===false?'💵 llegó, falta pagar':'✅ llegó'} · <b>${c.fecha}</b> · ${(c.items||[]).length} productos · ${tL?'lista '+fmt(tL)+' · ':''}te sale ${fmt(t)}</summary>
         <div style="font-size:.66rem;margin-top:6px;line-height:1.6">${(c.items||[]).map(i=>`· ${i.u} × ${escHtml(i.n)} <span style="color:var(--muted)">(${escHtml(i.cod)} · ${i.p?'<b style="color:var(--text)">lista '+fmt(i.p)+' c/u</b> · ':''}te sale ${fmt(i.pc)} c/u${i.m!=null?' · '+Math.round(i.m)+'% en ML':''})</span>${((_listaCache[c.prov]||{})[i.cod]||{}).noWeb?' <b style="color:var(--red)">🚫 no está en su web</b>':''}${_listaUnVend((_listaCache[c.prov]||{})[i.cod])?' <b style="color:var(--amber)">⚠️ 1 solo vendedor en ML: el % puede estar inflado</b>':''}<br><span style="padding-left:10px"><a href="#" onclick="listaVerOri('${c.prov}','${String(i.cod).replace(/'/g,"\\'")}');return false" style="color:var(--blue)">📄 verlo en la lista</a>${i.mi?` · <a href="https://www.mercadolibre.com.ar/p/${escHtml(i.mi)}" target="_blank" rel="noopener" style="color:var(--green)">🔗 verlo en ML</a>`:' · <span style="color:var(--muted)">sin link de ML</span>'}</span>`).join('<br>')}</div>
-        ${cam?`<button class="btn" style="margin-top:8px;font-size:.7rem" onclick="listaLlego('${c.id}')">📦 Llegó · crear las fichas</button>`:''}</details>`;};
+        ${cam?`<button class="btn" style="margin-top:8px;font-size:.7rem" onclick="listaLlego('${c.id}')">📦 Llegó · crear las fichas</button>`:''}${c.estado==='llegado'&&c.pagado===false?`<div style="font-size:.66rem;color:var(--amber);margin-top:8px">💵 Llegó y falta pagar: cuenta como deuda en el Arqueo.</div><button class="btn" style="margin-top:6px;font-size:.7rem" onclick="listaPagado('${c.id}')">💵 Ya lo pagué</button>`:''}</details>`;};
     el.innerHTML=cab+(A.length?`<div style="background:var(--surface);border:1px solid var(--blue);border-radius:var(--r);padding:12px;margin-bottom:14px">
         <div style="font-size:1.3rem;font-weight:800">${fmt(tot)} <span style="font-size:.7rem;font-weight:400;color:var(--muted)">· ${A.length} productos · ${uT} u.${rec?' · con el '+rec+'% del proveedor':''}${totL?' · a precio de lista '+fmt(totL)+' (lo que tiene que facturar)':''}</span></div>
         <div style="display:flex;flex-direction:column;gap:6px;margin-top:10px">${A.map(x=>fila([x.cod,x.e],true)).join('')}</div>
@@ -20738,9 +20773,11 @@ function parejoDatos(){
   const desde=new Date(hoy); desde.setDate(desde.getDate()-30);
   const dK=dateToKey(desde), hK=dateToKey(ayer);
   const m30={}; MET_ACCTS.forEach(a=>m30[a]=0);
-  // Canceladas adentro: para ARCA son facturado (misma regla que _facVentana).
+  // Canceladas adentro: para ARCA son facturado (misma regla que _facVentana). Una cancelada guarda `total` en 0 y lo de
+  // antes en `antesCancel` (decisión 3a del 20/10/2026): se cuenta ese número, si no el ritmo las dejaba afuera sin decirlo.
   Object.keys(state.ventaprod||{}).filter(k=>k>=dK&&k<=hK).forEach(k=>Object.values(state.ventaprod[k]||{}).forEach(v=>{
-    const a=(v&&v.cuenta||'').toLowerCase(); if(!v||!(a in m30))return; m30[a]+=Number(v.total)||0;}));
+    const a=(v&&v.cuenta||'').toLowerCase(); if(!v||!(a in m30))return; const t=Number(v.total)||0;
+    m30[a]+=t>0?t:(v.cancelada&&v.antesCancel?Number(v.antesCancel.total)||0:0);}));
   const filas=MET_ACCTS.map(a=>{
     const diario=m30[a]/30, fac=real[a]||0, futuro=diario*faltan, proy=fac+futuro;
     return {a,fac,futuro,proy,diario,pct:proy/topeH*100,resta:topeH-proy,pctReal:fac/topeH*100,ofi:ofi[a]};
