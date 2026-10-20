@@ -42022,7 +42022,9 @@ async function main() {
           if (r.mgP != null && r.mgP < PISO) por.push(`peor caso ${r.mgP.toFixed(0)}%`);
           if (!por.length) continue;
           const n = ultD(r.mla); const fila = { ...r, por };
-          if (n && hoy - n < 7 * 864e5) pensD.push(fila); else malD.push(fila);
+          // 20/10/2026, con el Cuba Platinum: una nota NO tapa un descuento sobre algo recién llegado. Lo nuevo no se baja hasta
+          // que `techo95` diga 95% que su precio es el techo (decisión 3a); una nota "nada que hacer" lo dejaba escondido.
+          if (n && hoy - n < 7 * 864e5 && !por.some((p) => p.startsWith('recién llegado'))) pensD.push(fila); else malD.push(fila);
         }
         console.log(`\n── 🤔 MIS DESCUENTOS QUE YA NO TIENEN SENTIDO (${malD.length}) · sacarlo o dejarlo con motivo · EN ESTA VUELTA ──`);
         malD.sort((x, y) => y.por.length - x.por.length);
