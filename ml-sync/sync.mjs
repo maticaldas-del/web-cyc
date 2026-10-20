@@ -22162,7 +22162,7 @@ async function main() {
     // publicación nueva ni se mueve mercadería. POST /user-products/<upid>/items (documentación de ML, "Add a selling
     // condition to a User Product"). Sin `:go` sólo lee y muestra lo que mandaría. Con `:go`: crea, relee de ML el item
     // nuevo y el original (precio, tipo, stock compartido), lo vincula en cyc/mllinks a la misma ficha y color, y le pone
-    // la estrategia 💳 gemela. Frenos: sin user_product_id o sin la marca user_product_listing no hace nada; con variantes
+    // la estrategia 💳 gemela. Frenos: sin user_product_id no hace nada; con variantes
     // no; si ya hay una Premium de ese producto no; techo $650.000; Premium más barata que la Clásica no.
     if (String(process.env.BILLING_PROBE || '').startsWith('gemelacrea')) {
       const arg = String(process.env.BILLING_PROBE).slice('gemelacrea:'.length);
@@ -22195,7 +22195,8 @@ async function main() {
       console.log(`   tags: ${tags.join(', ')}`);
       const frenos = [];
       if (!upid) frenos.push('no tiene user_product_id: ML no la tiene en el modelo nuevo y no se le puede agregar otra condición de venta');
-      if (!tags.includes('user_product_listing')) frenos.push('no tiene la marca user_product_listing');
+      // La marca user_product_listing NO frena: medido el 20/10 con `gemelacrea:ver`, la Premium del Ferrari Rojo (MLA1841629747) y sus
+      // dos Clásicas comparten el mismo user_product_id y las mismas 9 u., y ninguna de las tres tiene esa marca.
       if (vars > 1) frenos.push('tiene variantes adentro');
       if (it.listing_type_id === 'gold_pro') frenos.push('ya es Premium');
       if (!(P > (it.price || 0))) frenos.push(`el Premium ($${P.toLocaleString('es-AR')}) tiene que ser más caro que la Clásica`);
