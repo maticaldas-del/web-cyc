@@ -2685,7 +2685,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.41';
+const APP_VERSION='25.42';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2696,6 +2696,7 @@ const APP_VERSION='25.41';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.42',f:'20/10',h:'17:20',c:[{n:1,t:'📋 Listas: la línea de arriba suma entera (medidos + sin el mismo producto en ML + nadie lo vende en ML + afuera por regla + sin medir), así se ve dónde está cada uno de la lista.'}]},
   {v:'25.41',f:'20/10',h:'17:05',c:[{n:3,t:'📋 Listas como Paraguay: lo ya probado de una lista se carga al 🧾 Pedido de esa lista desde su tarjeta de Pedidos ("📋 pedir a …", color por color). "Ya lo pedí" lo descuenta de lo que hay que comprar y, mientras viaja, Pedidos no lo vuelve a pedir. Al llegar no crea fichas repetidas.'}]},
   {v:'25.40',f:'20/10',h:'16:40',c:[{n:3,t:'📦 Revisión de Mercadería: Pedidos mide lo agotado por lo que se vendía cuando había stock (el Adaptador 8 en 1 pasa de 6 a 35), reconoce las subas por escasez o techo color por color, y lo cambiado a mano deja de pedirse cuando ya lo compraste.'},{n:3,t:'🇵🇾 Paraguay: el pedido de probados va color por color con el código y el precio de ese color; Nissei y Elegancia ya no se confunden por códigos parecidos; "Ya lo pedí" por el chat hace lo mismo que el botón.'},{n:3,t:'🔥 Escasez: una caja vieja con una unidad sin entrar ya no tapa la escasez; ⚡ "se aceleró" también en la web; la reposición se mira color por color.'},{n:2,t:'📦 Cajas: no se puede borrar un envío con cajas que llegaron hace menos de 60 días; deshacer una caja no cuenta como compra nueva; con 1-2 ventas Armar caja no pide de más.'},{n:2,t:'📋 Listas: si cambió el costo, dice "⏳ costo nuevo, falta medir" en vez del % viejo.'},{n:1,t:'🇵🇾 Nuevos: los candidatos vencidos se ven en "⌛ Vencidos" y se pueden devolver.'}]},
   {v:'25.39',f:'20/10',h:'15:56',c:[{n:1,t:'📋 Ventas: en el detalle de cada venta, al lado de 📈 línea, el botón 📋 ficha abre la ficha médica de esa publicación con toda su información.'}]},
@@ -19227,10 +19228,11 @@ async function renderListas(){
   // SIN STOCK = NO ESTÁ EN LA WEB DEL PROVEEDOR (19/10/2026, él con Iscos: "sólo tienen en stock lo que hay en la web de ellos, no en la
   // lista en Excel"). `noWeb` lo pone el robot (`listaweb`): no sale en ninguna sección para pedir, queda abajo cerrado.
   const sinWeb=nuevos.filter(([,e])=>e.noWeb&&!e.sacado);
+  const _sinM=filas.filter(([,e])=>e.m==null),nFz=_sinM.filter(([,e])=>e.fz).length,nSc=_sinM.filter(([,e])=>!e.fz&&e.sc).length,nSv=_sinM.filter(([,e])=>!e.fz&&!e.sc&&e.sv).length;
   const med=filas.filter(([,e])=>e.m!=null).length, sinMed=filas.filter(([,e])=>e.m==null&&!e.sc&&!e.sv&&!e.fz).length;
   const q=_listaQ;
   let res=[];if(q.length>=2){const pal=_pycNorm(q).split(/\s+/).filter(Boolean);res=filas.filter(([cod,e])=>{const t=_pycNorm(e.n+' '+cod);return pal.every(w=>t.includes(w));}).sort(ord);}
-  el.innerHTML=cab+`<div style="font-size:.7rem;color:var(--muted);margin-bottom:8px">${filas.length} productos en la lista · ${med} medidos · ${sinMed} sin medir todavía${rec?` · recargo del proveedor ${rec}%`:''}${v.ts?` · lista del ${new Date(v.ts).toLocaleDateString('es-AR')}`:''}</div>
+  el.innerHTML=cab+`<div style="font-size:.7rem;color:var(--muted);margin-bottom:8px">${filas.length} productos en la lista = ${med} medidos + ${nSc} sin el mismo producto en ML + ${nSv} que en ML no vende nadie + ${nFz} afuera por regla (110V, marca que ML frena…) + ${sinMed} sin medir todavía${rec?` · recargo del proveedor ${rec}%`:''}${v.ts?` · lista del ${new Date(v.ts).toLocaleDateString('es-AR')}`:''}</div>
     <div style="font-size:.85rem;font-weight:700;color:var(--green);margin:4px 0 8px">✅ Dan 25% o más en ML y tienen 100+ ventas · ${dan.length}</div>
     <div style="display:flex;flex-direction:column;gap:6px">${dan.length?dan.map(f=>fila(f,true)).join(''):'<div class="empty-msg">Todavía ninguno (o falta medirlos).</div>'}</div>
     ${revis.length?`<details style="margin-top:14px;background:var(--surface);border:1px solid var(--amber);border-radius:var(--r);padding:10px 12px"><summary style="cursor:pointer;font-size:.82rem;font-weight:700;color:var(--amber)">🔎 Para revisar con los ojos (${revis.length}) <span style="font-weight:400;color:var(--muted);font-size:.66rem">— darían 25%+, pero falta saber si tienen 100 ventas (lo mira el chat), o ML no nombra alguna palabra (⚠️), o da 80% o más</span></summary><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${revis.slice(0,150).map(f=>fila(f,false)).join('')}</div></details>`:''}

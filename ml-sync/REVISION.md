@@ -631,6 +631,8 @@ el precio de un candidato distinto con código parecido (se compara también por
 
  · **Ritmo normal sólo de las cuentas que venden el producto (v24.61, 19/10/2026, con el F9).** `ritmoNormalDe` (web) saltea las cuentas donde todas sus publicaciones de ese producto están pausadas a mano, cerradas o "no la vendemos más" (`_ctaVendeProd`). Chequear: un producto agotado en su cuenta (pausado por falta de stock) sigue contando.
 
+- **20/10/2026 · v25.42 · Listas: la línea de arriba suma entera** (etapa 3, mercadería). Él vio "7777 productos · 3154 medidos · 18 sin medir" y preguntó por el resto: los otros ~4.600 estaban clasificados (sin el mismo producto en ML `sc`, nadie lo vende `sv`, afuera por regla `fz`) y la línea no lo decía. Ahora dice las cinco partes y suman el total. `listaestado[:prov]` (solo lee) da lo mismo por proveedor, con los motivos de "afuera" y los que faltan medir. Chequear: que las cinco partes sumen el total; que "sin medir" baje a 0 después de `listamedir`.
+
 ## 4 · CHOQUES Y FALLAS MUDAS (jueves · junta las viejas 4 y 5)
 - `mlapi/lineatodo` lo escriben `ritmo:go` (noche) y `lineatodo:go` (ml-consulta): los dos con la
   misma función `calcLineaTodo`.
