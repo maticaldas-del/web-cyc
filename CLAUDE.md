@@ -9356,3 +9356,7 @@ propio con el precio de lanzamiento tachado (hay 4 meses, pero cuanto antes se e
 (Halloween Man, Ferrari Rojo, Adyan, microSD, WD 480) cuentan su precio actual como arranque: primer escalón el 27/10. Y además de
 medir el 28/10 las 12 que pasaron a liso, hay una prueba de 2 semanas (21/10→04/11): 10 publicaciones −5%, 5 tachadas y 5 lisas,
 tag 🧪 `prueba`, no se tocan mientras dura. Detalle en `ml-sync/CEREBRO.md` (🆕 y 🧪).
+
+## 📈 LA LÍNEA DE TIEMPO OCUPA TODA LA PANTALLA (20/10/2026, v25.25, pedido suyo)
+Él: *"que el gráfico sea pantalla completa (…) que arriba quede lo que está y que el gráfico llegue hasta abajo de la pantalla"*.
+`_lineaLlenar` estira los carriles altos hasta el borde de abajo (sin deformar letras); lo de abajo aparece al bajar.

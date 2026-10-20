@@ -1915,9 +1915,15 @@ recargo contra lo pagado (`recargoFichasPedido` robot = `pyRecargoFichas` web) �
 escmedir, raros, lupa, escasez y techo95 (si no se lee, 2% y lo dice) · `setDevLive` en 10 comandos más · `prepNetoSolo` =
 `netoProductoVP` · sin dólar: ni `tcSale`, ni `candidatos`, ni fichas de `listaLlego`.
 **Chequear:** que un pedido de Elegancia y uno de Nissei el mismo día queden separados y `compray` pida `|eleg`/`|nissei`.
-**v25.25, robot de MP:** `saldoml` guarda `agenda/_corte` y `dispo` corta en ese mismo momento (y lo anota en `_dispTs`) ·
+**v25.26, robot de MP:** `saldoml` guarda `agenda/_corte` y `dispo` corta en ese mismo momento (y lo anota en `_dispTs`) ·
 `ancla:<cuenta>=<pesos>@AAAA-MM-DD HH:MM` (hora en que leyó, ≤7 días) y después corre `saldoml:go` + `dispo:go` en la misma corrida ·
 token con reintento y motivo (`_mpTokenReintento`) · "Cerrar el mes" avisa si un ancla es más nueva que el corte · probe `sinfecha`
 (solo lee, sin montos) mide las ~62 filas por cuenta sin fecha de liberación que `saldoml` suma a "a liquidar".
 **Chequear:** que `ancla` termine con ✅ saldoml y ✅ dispo; resultado de `sinfecha` y qué se hace con esas filas.
 
+
+- 20/10/2026 · Etapa 7 (diseño) · v25.25: la línea de tiempo (de un producto y de todos) llega hasta abajo de la pantalla
+  (`_lineaLlenar`): después de dibujar mide el lugar que queda debajo del encabezado y estira SÓLO los carriles altos
+  (`_lineaFac`, entre 1 y 4; remate y caja quedan igual), así las letras del SVG no se deforman. Nunca achica. Al cambiar el
+  tamaño de la ventana se vuelve a medir. **Chequear:** que el gráfico termine en el borde de abajo en PC y en el teléfono, y
+  que lo de abajo (cambios de precio, colores) aparezca al bajar. Carril nuevo: si es alto (h0 ≥ 30) se estira solo.
