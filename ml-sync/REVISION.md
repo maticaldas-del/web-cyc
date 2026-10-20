@@ -1916,3 +1916,9 @@ escmedir, raros, lupa, escasez y techo95 (si no se lee, 2% y lo dice) · `setDev
 `netoProductoVP` · sin dólar: ni `tcSale`, ni `candidatos`, ni fichas de `listaLlego`.
 **Chequear:** que un pedido de Elegancia y uno de Nissei el mismo día queden separados y `compray` pida `|eleg`/`|nissei`.
 
+
+- 20/10/2026 · Etapa 7 (diseño) · v25.25: la línea de tiempo (de un producto y de todos) llega hasta abajo de la pantalla
+  (`_lineaLlenar`): después de dibujar mide el lugar que queda debajo del encabezado y estira SÓLO los carriles altos
+  (`_lineaFac`, entre 1 y 4; remate y caja quedan igual), así las letras del SVG no se deforman. Nunca achica. Al cambiar el
+  tamaño de la ventana se vuelve a medir. **Chequear:** que el gráfico termine en el borde de abajo en PC y en el teléfono, y
+  que lo de abajo (cambios de precio, colores) aparezca al bajar. Carril nuevo: si es alto (h0 ≥ 30) se estira solo.
