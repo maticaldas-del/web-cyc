@@ -8600,11 +8600,11 @@ const RE_CAND_PERF = /perfum|parfum|\bedp\b|\bedt\b|eau de|fragan|fragr|body spl
 // tengan, ocultarlos"). Misma regla que la web (`_listaDa`): 25% a 80% en ML, con foto de ML y sin reparo de nombre. `pend` = nunca medidos.
 function cuentaLista(cat) {
   const v = Object.values(cat || {}).filter((e) => e && e.n);
-  // Mínimo 100 ventas en ML (18/10/2026, regla suya): sin `vend` cargado va a revisar; con menos de 100 queda afuera.
-  const m25 = (e) => !listaNoEsVale(e) && !e.sacado && !e.noWeb && e.m != null && Number(e.m) >= 25 && listaCostoVigente(e) && /^https:\/\//.test(e.mf || '') && !(e.vend != null && Number(e.vend) < 100);
+  // 2+ vendedores en el catálogo de ML (20/10/2026, eligió la 1a; reemplaza el mínimo de 100 ventas del 18/10): con 1 solo queda afuera.
+  const m25 = (e) => !listaNoEsVale(e) && !e.sacado && !e.noWeb && e.m != null && Number(e.m) >= 25 && listaCostoVigente(e) && /^https:\/\//.test(e.mf || '') && !(e.mv != null && Number(e.mv) < CAND_MIN_VENDEDORES);
   // DESDE EL 20/10/2026 (eligió la a) sólo da lo que el chat de compras confirmó mirando ML (`ok`, de `listadato`) para ESE catálogo
   // (`okCat`, o el catálogo fijado con `mi=`). Antes también entraba lo que el robot emparejó solo y "parecía" bien: 21 de 36 estaban mal.
-  const da = (e) => m25(e) && Number(e.vend) >= 100 && listaOkVale(e);
+  const da = (e) => m25(e) && Number(e.mv) >= CAND_MIN_VENDEDORES && listaOkVale(e);
   // `pend` = falta medir: nunca medidos y también los medidos con un costo que ya cambió (etapa 3, 20/10/2026; si no, una lista a la que
   // le cambió el costo entero quedaba con 0 que dan y 0 pendientes, y la web la escondía).
   return { n: v.length, med: v.filter((e) => e.m != null).length, pend: v.filter((e) => !e.t || (e.m != null && !e.noWeb && !e.sacado && !listaCostoVigente(e))).length, dan: v.filter(da).length, revisar: v.filter((e) => m25(e) && !da(e)).length, tMed: Date.now() };
@@ -8626,7 +8626,12 @@ function perfLocalPct(costoPesos, precioML) {
   return (precioML / (1 + PERF_LOCAL_TIENDA / 100) / costoPesos - 1) * 100;
 }
 function candPisoDe(c) { return c && RE_CAND_PERF.test(`${c.nombre || ''} ${c.mlTit || ''}`) ? CAND_PISO_PERFUME : CAND_PISO_PCT; }
-const CAND_MIN_VENT = 100;      // suyo, 03/10/2026: "100 unidades mínimo vendidas, sino no sirve" para entrar al pedido
+const CAND_MIN_VENT = 100;      // 03/10/2026: "100 unidades mínimo vendidas". Desde el 20/10/2026 ya no frena (ver abajo); queda para contar
+// EN CATÁLOGO CON 2+ VENDEDORES EN VEZ DE 100 VENTAS (20/10/2026, eligió la 1a). Él: *"sacar las 100 ventas y que ahora sean todos productos
+// que estén en catálogo. no está en catálogo es como si vendiera menos de 100"*. ML no deja leer ventas ajenas (403) y el chat de compras las
+// cargaba a mano: el paso más lento, y no protegía (del pedido del 21/09, 10 de 12 no vendieron en 17 días). Ahora alcanza con que el
+// catálogo medido tenga 2+ vendedores con precio (`mlVendedores` en Paraguay, `mv` en Listas). Misma regla en index.html.
+const CAND_MIN_VENDEDORES = 2;
 // NINGÚN "DA" SIN CHEQUEAR EL CATÁLOGO (20/10/2026, eligió la a). El chat de compras encontró mal emparejados 67 de 344 en Paraguay y
 // 21 de 36 en las listas: un margen medido contra OTRO producto. Un candidato de Paraguay se puede pedir sólo si alguien confirmó que el
 // catálogo de ML que se midió es el mismo producto: él con ✅ (`mismoOk`) o la revisión de fotos (`revClaude` ok), los dos atados a ESE
@@ -15330,10 +15335,10 @@ async function main() {
       const vivos = Object.values(cands).filter((c) => c && c.nombre && !c.no && !c.prodId);
       const med = vivos.filter((c) => c.margen != null && isFinite(c.margen) && Number(c.calcVer) === CAND_CALC_VER);
       const dan = med.filter((c) => Number(c.margen) >= candPisoDe(c));
-      const v100 = dan.filter((c) => (Number(c.vendCarga ?? c.mlVendidas) || 0) >= CAND_MIN_VENT);
+      const v100 = dan.filter((c) => Number(c.mlVendedores) >= CAND_MIN_VENDEDORES);
       const descart = Object.values(cands).filter((c) => c && c.no);
       console.log(`=== CANDIDATOS · ${vivos.length} vivos · ${med.length} medidos · ${vivos.length - med.length} sin medir · ${descart.length} descartados en total ===`);
-      console.log(`Dan ${CAND_PISO_PCT}% o más: ${dan.length} (con ${CAND_MIN_VENT}+ vendidas: ${v100.length}) · abajo del piso esperando 2ª medición: ${med.length - dan.length}`);
+      console.log(`Dan ${CAND_PISO_PCT}% o más: ${dan.length} (con ${CAND_MIN_VENDEDORES}+ vendedores en ML: ${v100.length}) · abajo del piso esperando 2ª medición: ${med.length - dan.length}`);
       const tramos = [[80, 1e9], [50, 80], [35, 50], [25, 35]];
       for (const [lo, hi] of tramos) console.log(`  ${lo}%${hi < 1e9 ? '-' + hi + '%' : '+'}: ${dan.filter((c) => c.margen >= lo && c.margen < hi).length}`);
       console.log('\n80%+ (mirar con el precio de hoy):');
@@ -18580,8 +18585,7 @@ async function main() {
         if (!/^MLA\d+$/.test(idL)) p.push('SIN LINK DE ML');
         if (!String(c.cod || c.codPy || '').trim()) p.push('sin código');
         if (!(Number(c.usd || c.precioUSD || c.nisseiUSD) > 0)) p.push('sin precio');
-        if (!isFinite(Number(c.vendCarga)) || c.vendCarga === '' || c.vendCarga == null) p.push('sin ventas cargadas');
-        else if (Number(c.vendCarga) < 25) p.push(`pocas ventas (${c.vendCarga})`);
+        if (c.margen != null && !(Number(c.mlVendedores) >= CAND_MIN_VENDEDORES)) p.push(Number(c.mlVendedores) === 1 ? '1 solo vendedor en ML' : 'sin vendedores en ML');
         const m = (c.margen != null && isFinite(c.margen)) ? Number(c.margen) : null;
         if (m == null) p.push('sin medir todavía');
         else if (m < candPisoDe(c)) p.push(`abajo del piso (${m}%)`);
@@ -19371,7 +19375,7 @@ async function main() {
           // y el margen guardado es el del precio de antes. Misma regla que `candPrecioViejo` de la web.
           : (c.calcTs == null && Number(c.usdAntes) > 0) ? `cambió el precio de Paraguay (de US$ ${Number(c.usdAntes).toFixed(2)} a US$ ${(parseFloat(c.usd) || 0).toFixed(2)}): falta medirlo`
           : (mg < candPisoDe(c) && !(_tcP > 0 && !c.noLocal && RE_CAND_PERF.test(`${c.nombre || ''} ${c.mlTit || ''}`) && (perfLocalPct((parseFloat(c.usd) || 0) * RECARGO_PAR * _tcP, Number(c.mlPrecio) || 0) || 0) >= PERF_LOCAL_GAN)) ? `da ${mg.toFixed(1)}% y tu piso es ${candPisoDe(c)}%`
-          : !(_vendP(c) >= CAND_MIN_VENT) ? (_vendP(c) == null ? `no tiene cargadas las vendidas en ML (mínimo ${CAND_MIN_VENT})` : `vendió ${_vendP(c)} en ML y el mínimo es ${CAND_MIN_VENT}`)
+          : !(Number(c.mlVendedores) >= CAND_MIN_VENDEDORES) ? (Number(c.mlVendedores) === 1 ? 'en ML lo vende 1 solo vendedor: ese precio no lo confirma nadie (mínimo 2)' : 'no está medido contra un catálogo de ML con vendedores')
           // Sin las dos fotos no se compra (regla suya del 07/10, "sin foto tampoco acepto"; etapa 3, 20/10/2026): la web ya lo
           // frenaba (`candPuedePedir`) y este comando no.
           : !/^https:\/\//.test(String(c.foto || '')) ? 'falta la foto de comprasparaguay'
@@ -20207,12 +20211,12 @@ async function main() {
         console.log(`   ✅ encontrados y medidos ${c.med} (${c.d25} de 25%+ · ${c.b25} abajo) · 🔍 buscados y no encontrados ${c.sc + c.sv} (${c.sc} sin el mismo producto en ML · ${c.sv} nadie lo vende) · ⏳ por buscar ${c.nunca + c.sinRes + c.rebus} (${c.nunca} nunca · ${c.sinRes} sin resultado · ${c.rebus} por volver a buscar con el nombre traducido) · 🚫 afuera por regla ${c.fz}`);
         const top = Object.entries(mot).sort((a, b) => b[1] - a[1]).slice(0, 8); if (top.length) console.log('   afuera por: ' + top.map(([r, n]) => `${r} ${n}`).join(' · '));
         // Los de 25%+ por dónde están (20/10/2026): qué les falta para "dar" de verdad.
-        { const q = { ok: 0, sinVend: 0, sinOk: 0, menos100: 0, noEs: 0, viejo: 0, sinMi: 0, sacado: 0 };
+        { const q = { ok: 0, sinOk: 0, unVend: 0, noEs: 0, viejo: 0, sinMi: 0, sacado: 0 };
           for (const e of v) { if (!(e.m != null && Number(e.m) >= 25)) continue;
             if (e.sacado || e.noWeb) { q.sacado++; continue; } if (listaNoEsVale(e)) { q.noEs++; continue; } if (!e.mi) { q.sinMi++; continue; }
-            if (!listaCostoVigente(e)) { q.viejo++; continue; } if (e.vend != null && Number(e.vend) < 100) { q.menos100++; continue; }
-            if (e.vend != null && listaOkVale(e)) q.ok++; else if (e.vend == null) q.sinVend++; else q.sinOk++; }
-          console.log(`   de los ${c.d25} de 25%+: ${q.ok} confirmados (ventas 100+ y ✅) · ${q.sinVend} sin ventas cargadas · ${q.sinOk} con ventas y sin ✅ · ${q.menos100} con menos de 100 ventas · ${q.noEs} otro producto · ${q.viejo} medidos con un costo viejo · ${q.sinMi} sin catálogo · ${q.sacado} sacados o fuera de la web`); }
+            if (!listaCostoVigente(e)) { q.viejo++; continue; } if (!(Number(e.mv) >= CAND_MIN_VENDEDORES)) { q.unVend++; continue; }
+            if (listaOkVale(e)) q.ok++; else q.sinOk++; }
+          console.log(`   de los ${c.d25} de 25%+: ${q.ok} confirmados (2+ vendedores y ✅) · ${q.sinOk} sin ✅ · ${q.unVend} con 1 solo vendedor · ${q.noEs} otro producto · ${q.viejo} medidos con un costo viejo · ${q.sinMi} sin catálogo · ${q.sacado} sacados o fuera de la web`); }
         // `listaestado:<prov>:sc:<n>` / `:sv:<n>`: una muestra pareja de N nombres de ese grupo con lo más parecido que trajo ML.
         { const pp = String(process.env.BILLING_PROBE).split(':'); const g = pp[2], nM = parseInt(pp[3], 10) || 150;
           if (g === 'sc' || g === 'sv') { const gv = v.filter((e) => e.m == null && !e.fz && (g === 'sc' ? e.sc : (!e.sc && e.sv))); const paso = Math.max(1, Math.floor(gv.length / nM));
@@ -20223,8 +20227,8 @@ async function main() {
     }
     if (/^listarevisar(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const solo = String(process.env.BILLING_PROBE).split(':')[1] || ''; const provs = (await db.get('cyc/mlconfig/listasProv')) || {};
-      // Salen los que dan 25%+ y les falta algo para "dar" de verdad: las ventas (vend) o el ✅ de que el catálogo medido es el mismo
-      // producto (listaOkVale). 20/10/2026: antes salían sólo los sin ventas, y los que tenían ventas de antes de la regla del ✅
+      // Salen los que dan 25%+ y les falta el ✅ de que el catálogo medido es el mismo producto (listaOkVale). Desde el 20/10/2026 (1a) las
+      // ventas ya no hacen falta (2+ vendedores, lo mide el robot) y los de 1 solo vendedor no salen. Historia: 20/10/2026: antes salían sólo los sin ventas, y los que tenían ventas de antes de la regla del ✅
       // quedaban en "Para revisar" sin que nadie los mirara. Los de menos de 100 ventas ya están afuera y no salen. Orden: DA primero,
       // del margen más alto al más bajo. La última columna dice qué falta.
       let tot = 0; const filas = []; const porProv = {};
@@ -20232,8 +20236,9 @@ async function main() {
         const cat = (await db.get('mlapi/listas/' + k)) || {}; const rec = Number(pv.rec) || 0;
         for (const [cod, e] of Object.entries(cat)) { if (!e || listaNoEsVale(e) || e.sacado || e.noWeb || !(e.m != null && Number(e.m) >= 25 && e.mi) || !listaCostoVigente(e)) continue;   // costo nuevo sin medir: el margen no vale (etapa 3, 20/10/2026)
           const okV = listaOkVale(e);
-          if (e.vend != null && (Number(e.vend) < 100 || okV)) continue;
-          const falta = e.vend == null ? (okV ? 'ventas' : 'ventas+ok') : 'ok';
+          // 20/10/2026 (eligió la 1a): ya no hacen falta las ventas; sólo el ✅, y con 1 solo vendedor no da (no sale).
+          if (okV || !(Number(e.mv) >= CAND_MIN_VENDEDORES)) continue;
+          const falta = 'ok';
           const est = (okV || (!e.rp && Number(e.m) < 80 && Number(e.mv) !== 1)) ? 'DA' : (Number(e.mv) === 1 ? 'REVISAR-1VEND' : 'REVISAR');   // DA = margen y nombre bien
           filas.push({ o: est === 'DA' ? 0 : 1, m: Number(e.m), t: [k, cod, String(e.n).replace(/\|/g, '/'), Math.round((Number(e.p) || 0) * (1 + rec / 100)), e.mi, String(e.mt || '').replace(/\|/g, '/').slice(0, 80), e.mp || '', Math.round(e.m) + '%', est, falta].join('|') });
           porProv[pv.nombre || k] = (porProv[pv.nombre || k] || 0) + 1; tot++; } }

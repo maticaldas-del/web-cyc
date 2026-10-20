@@ -9388,3 +9388,9 @@ un tachado sólo con causa propia (sobra, lanzamiento, fecha). La 3a (medir con 
 sino por score (…) el objetivo es saber dónde conviene más meter plata"*. Bs As · Paraguay · Paulvic · 📋 Listas (lo de
 `listaProv`, ya no adentro de Bs As). Se ordena por ⚡ score del ranking de Ventas promediado por producto vendido (elegí el
 promedio para que un origen con muchos productos no gane sólo por tamaño). Se promedia por COLOR/AROMA, no por ficha (el Paulvic es una sola ficha).
+
+## 🏪 PRODUCTOS NUEVOS: EN CATÁLOGO CON 2+ VENDEDORES, YA NO 100 VENTAS (20/10/2026, eligió la 1a, v25.51)
+Él: *"sacar las 100 ventas y que ahora sean todos productos que estén en catálogo. no está en catálogo es como si vendiera menos de 100"*.
+En Paraguay y en 📋 Listas un producto nuevo se puede pedir si da 25%, el catálogo de ML medido tiene **2 o más vendedores** (`mlVendedores`
+/ `mv`, lo mide el robot solo) y está confirmado que es el mismo producto. Las vendidas ya no se cargan (el chat de compras sólo dice ok/no).
+Reemplaza la regla de las 100 ventas del 03/10 y del 18/10 y la vara "+100" del 19/09.

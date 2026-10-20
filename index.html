@@ -2685,7 +2685,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.50';
+const APP_VERSION='25.51';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2698,6 +2698,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.51',f:'20/10',h:'19:33',c:[{n:2,t:'🛒 Productos nuevos (Paraguay y 📋 Listas): ya no hacen falta las 100 vendidas en ML. Alcanza con que el catálogo de ML tenga 2 o más vendedores (lo mide el robot solo) y que esté confirmado que es el mismo producto. Con 1 solo vendedor no se puede pedir. Cada tarjeta dice 🏪 cuántos vendedores tiene.'}]},
   {v:'25.50',f:'20/10',h:'18:56',c:[{n:2,t:'📈 La línea de tiempo vuelve a abrir en la PC: desde la 25.44 (el giro de costado del teléfono) la ventana se abría fuera de la pantalla, muy abajo.'}]},
   {v:'25.49',f:'20/10',h:'19:20',c:[{n:1,t:'📋 Listas: arriba de cada lista, en vez de la línea larga, ✅ Evaluados (🟢 dan · 🔎 dan 25%+ y falta confirmar · 🔴 no dan · ⚫ no están en ML) y ⏳ Sin evaluar.'}]},
   {v:'25.48',f:'20/10',h:'19:05',c:[{n:2,t:'📋 Listas: el "✗ otro producto" que marcó el chat de compras vale sólo para el catálogo de ML que miró. El robot vuelve a buscar esos productos con el nombre traducido, sin ese catálogo, y si encuentra el correcto vuelven a contar (falta que el chat lo confirme).'}]},
@@ -14082,7 +14083,14 @@ function perfLocalHTML(pct,grande){if(pct==null||!isFinite(pct))return'';const o
   return `<span title="🏪 Perfumería del local: vendiendo al precio de ML, la perfumería se queda su ${PERF_LOCAL_TIENDA}% y a CYC le queda esto. Sin comisión de ML ni impuestos. Da con ${PERF_LOCAL_GAN}% o más." style="font-size:${grande?'1.05rem':'.8rem'};font-weight:700;color:${ok?'#60a5fa':'var(--muted)'};white-space:nowrap">🏪 ${Math.round(pct)}%</span>`;}
 function candPisoDe(c){if(!c)return CAND_PISO_PCT;const t=String(c.nombre||c.nom||'');return (esPerfumeNom(t)||_PERF_RE.test(String(c.mlTit||'')))?CAND_PISO_PERFUME:CAND_PISO_PCT;}
 const CAND_PISO_TXT=()=>`${CAND_PISO_PCT}%`;
-const CAND_MIN_VENT=100; // suyo, 03/10/2026: "100 unidades mínimo vendidas, sino no sirve" para cargar unidades
+const CAND_MIN_VENT=100; // 03/10/2026: "100 unidades mínimo vendidas" · DESDE EL 20/10/2026 YA NO FRENA (ver CAND_MIN_VENDEDORES); queda para candMaxU y para mostrar
+// EN CATÁLOGO CON 2 O MÁS VENDEDORES EN VEZ DE 100 VENTAS (20/10/2026, eligió la 1a). Él: *"sacar las 100 ventas y que ahora sean todos
+// productos que estén en catálogo. no está en catálogo es como si vendiera menos de 100"*. ML no deja leer las ventas de otros (403) y
+// el chat de compras las cargaba a mano: era el paso más lento, y no protegía (del pedido del 21/09, 10 de 12 no vendieron en 17 días).
+// Ahora alcanza con que el catálogo medido tenga 2+ vendedores con precio (`mlVendedores`; en Listas `mv`). Uno solo no vale como precio
+// (regla del 19/10). Lo de mismo producto confirmado (✅ / fotos) sigue igual. Misma regla en sync.mjs.
+const CAND_MIN_VENDEDORES=2;
+function candVendOk(c){return Number(c&&c.mlVendedores)>=CAND_MIN_VENDEDORES;}
 // ── LOS TRES NÚMEROS DEL PEDIDO LOS ELIGE ÉL, Y VIVEN EN LA BASE (19/09/2026) ────────
 // Pedido suyo: *"tope del pedido (…) poder elegir tope de unidades por producto"*.
 // ESTO DA VUELTA SU DECISIÓN DEL 18/09 —*"sin tope solo una barra que marque el total del pedido,
@@ -14142,11 +14150,10 @@ function candPuedePedir(c){
   // Sin las dos fotos no se compra (07/10/2026, "sin foto tampoco acepto"): no se puede ver que sea el mismo producto.
   if(!/^https:\/\//.test(String(c.foto||'')))return{ok:false,motivo:'falta la foto de comprasparaguay'};
   if(!/^https:\/\//.test(String(c.mlFoto||'')))return{ok:false,motivo:'falta la foto de ML'};
-  // Regla suya del 03/10/2026: "100 unidades mínimo vendidas, sino no sirve". Sin el dato tampoco entra:
-  // de lo que no se sabe si se vende no se compra. (El mismo freno está en el comando `pedir`.)
-  const v=candVentasDe(c);
-  if(v==null)return{ok:false,motivo:`no tiene cargadas las vendidas en ML (mínimo ${CAND_MIN_VENT})`};
-  if(v<CAND_MIN_VENT)return{ok:false,motivo:`vendió ${v} en ML y el mínimo es ${CAND_MIN_VENT}`};
+  // EN CATÁLOGO CON 2+ VENDEDORES (20/10/2026, reemplaza las 100 vendidas): con 1 solo vendedor el precio no lo confirma nadie.
+  // (El mismo freno está en el comando `pedir`.)
+  {const nv=Number(c.mlVendedores);
+  if(!(nv>=CAND_MIN_VENDEDORES))return{ok:false,motivo:nv===1?'en ML lo vende 1 solo vendedor: ese precio no lo confirma nadie (mínimo 2)':'no está medido contra un catálogo de ML con vendedores'};}
   if(!candCatChequeado(c))return{ok:false,motivo:'falta confirmar que el producto de ML es el mismo (abrí las dos fotos y tocá ✅ Es el mismo producto)'};
   if(_bajo)return{ok:false,bajoPiso:true,motivo:_bajo};
   return{ok:true,motivo:''};
@@ -14337,7 +14344,7 @@ function candPreciosPartes(c){
   const vBot=(c.mlVendidas!=null&&isFinite(c.mlVendidas))?Number(c.mlVendidas):null;
   const vUsa=candVentasDe(c);
   if(vUsa!=null){
-    R.ventasN=`<b style="color:${vUsa>=CAND_MIN_VENT?'var(--green)':'var(--amber)'}">${vUsa}</b>`;
+    R.ventasN=`<b style="color:var(--text)">${vUsa}</b>`;
     R.ventas=`🛒 ${R.ventasN} vendida${vUsa===1?'':'s'} en ML`
       +(vChat!=null&&vBot!=null&&vBot!==vChat?` <span style="color:var(--amber)">(el robot ve ${vBot})</span>`:'');
     R.ventasExtra=(vChat!=null&&vBot!=null&&vBot!==vChat)?`el robot ve ${vBot}`:'';
@@ -14486,12 +14493,10 @@ function pedLlenarPlan(vivos,tope,maxU,minV){
     // candidato queda con `pedidoEn`; sin este filtro el botón lo volvía a meter en el pedido
     // siguiente y se compraba dos veces. A mano sigue permitido: el que decide es él.
     if(c.pedidoEn&&((state.compraspy||{})[c.pedidoEn]||{}).estado==='camino'){viajando++;return false;}
+    if(c.margen!=null&&!candVendOk(c)){flojos++;return false;}   // 20/10/2026: catálogo con 2+ vendedores (antes, 100 vendidas)
     if(!candPuedePedir(c).ok)return false;
     if(candPrecioViejo(c)!=null)return false;   // precio de Paraguay nuevo sin medir (candPuedePedir ya lo frena; por las dudas)
     if(!((parseFloat(c.usd)||0)>0)||!(Number(c.ganancia)>0))return false;
-    const v=candVentasDe(c);
-    if(v==null){sinVentas++;return false;}
-    if(v<minV){flojos++;return false;}
     return true;
   }).sort((a,b)=>(Number(b.ganancia)/parseFloat(b.usd))-(Number(a.ganancia)/parseFloat(a.usd)));
   let total=(vivos||[]).reduce((t,c)=>t+(parseFloat(c.usd)||0)*Math.max(0,parseInt(c.pedirU)||0),0);
@@ -14518,8 +14523,7 @@ async function pedNuevosLlenar(g){
   const {suma,total,sinVentas,flojos,viajando}=pedLlenarPlan(vivos,tope,maxU,minV);
   if(!suma.length){
     alert(`No hay nada para agregar.\n\nTope: US$ ${tope.toFixed(2)} · ya cargado: US$ ${total.toFixed(2)}\n\n`
-      +(sinVentas?`${sinVentas} candidato(s) quedaron afuera porque no tienen cargadas las ventas de ML.\n`:'')
-      +(flojos?`${flojos} no llegan a tus ${minV} ventas.\n`:'')
+      +(flojos?`${flojos} tienen 1 solo vendedor (o ninguno) en el catálogo de ML.\n`:'')
       +(viajando?`${viajando} ya están en un pedido en camino (a mano los podés cargar igual).\n`:'')
       +`\nSi querés más, subí el tope o el máximo por producto.`);
     return;
@@ -15323,9 +15327,9 @@ function pedidoMomentoHTML(g){
       R.fotoPY||R.fotoML||'', m!=null?m.toFixed(0)+'%'+(R.margenViejo!=null?' (medido a US$ '+R.margenViejo.toFixed(2)+')':''):null,
       (m==null||R.margenViejo!=null)?'var(--muted)':(typeof pctColor==='function'?pctColor(m):'var(--green)'),
       pedNuevoFilaHTML(f,maxU,tc,true),
-      (()=>{const v=candVentasDe(f.c);return v==null?' · <span style="color:var(--amber)">🛒 ventas sin cargar</span>':` · <span style="color:${v>=minV?'var(--green)':'var(--amber)'}">🛒 ${fmtN(v)} vendidas en ML</span>`;})());});
-  const cfg=`<details style="margin:8px 0 2px"><summary style="cursor:pointer;font-size:.68rem;color:var(--muted)">⚙️ tope, máximo por producto y mínimo de vendidas</summary><div style="display:flex;gap:7px;flex-wrap:wrap;align-items:flex-end;margin:8px 0 4px">
-      ${[['pedTopeUSD',tope,'Tope del pedido (US$, probados + nuevos)'],['pedMaxU',maxU,'U. por nuevo (barato que vende: 3-4 · caro: 1)'],['pedMinVent',minV,'Mín. vendidas en ML']]
+      (()=>{const nv=Number(f.c.mlVendedores);return ` · <span style="color:${nv>=CAND_MIN_VENDEDORES?'var(--green)':'var(--amber)'}">🏪 ${nv>0?nv+(nv===1?' vendedor':' vendedores')+' en ML':'sin vendedores medidos'}</span>`;})());});
+  const cfg=`<details style="margin:8px 0 2px"><summary style="cursor:pointer;font-size:.68rem;color:var(--muted)">⚙️ tope y máximo por producto</summary><div style="display:flex;gap:7px;flex-wrap:wrap;align-items:flex-end;margin:8px 0 4px">
+      ${[['pedTopeUSD',tope,'Tope del pedido (US$, probados + nuevos)'],['pedMaxU',maxU,'U. por nuevo (barato que vende: 3-4 · caro: 1)']]
         .map(([k,v,t])=>`<label style="flex:1;min-width:105px"><div style="font-size:.6rem;color:var(--muted);margin-bottom:3px">${t}</div>
           <input type="number" min="0" step="${k==='pedTopeUSD'?'10':'1'}" value="${v}" onchange="pedNuevosCfg('${k}',this.value)" style="width:100%;font-size:.74rem;padding:5px 7px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text)"></label>`).join('')}
     </div></details>`;
@@ -15516,8 +15520,7 @@ function pedNuevosHTML(vivos){
     </div>
     <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:flex-end;margin-bottom:9px">
       ${[['pedTopeUSD',tope,'Tope del pedido (US$)','Hasta cuántos dólares de mercadería CRUDA (sin el recargo) querés gastar. No frena: si te pasás lo dice en rojo y seguís.'],
-         ['pedMaxU',maxU,'Máx. u. por producto','Cuántas unidades como mucho de cada producto pone el botón de llenar. A mano podés cargar más: sólo avisa.'],
-         ['pedMinVent',minV,'Mín. vendidas en ML','Tu vara para este pedido. El botón de llenar no agarra nada que venda menos, ni nada sin el dato cargado.']]
+         ['pedMaxU',maxU,'Máx. u. por producto','Cuántas unidades como mucho de cada producto pone el botón de llenar. A mano podés cargar más: sólo avisa.']]
         .map(([k,v,t,ay])=>`<label style="flex:1;min-width:105px" title="${ay}">
           <div style="font-size:.6rem;color:var(--muted);line-height:1.3;margin-bottom:3px">${t}</div>
           <input type="number" min="0" step="${k==='pedTopeUSD'?'10':'1'}" value="${v}" onchange="pedNuevosCfg('${k}',this.value)"
@@ -15871,7 +15874,7 @@ function candidatosHTML(){
         <div style="flex:1;min-width:0">
           <div class="cand-nom" style="font-size:.8rem;font-weight:600;line-height:1.3">${c.nombre}</div>
           <div class="cand-cel" style="font-size:.66rem;color:var(--muted);margin-top:2px">${pesos?fmt(pesos):usd>0?'US$ '+puesto.toFixed(2):'sin precio'}${(()=>{const _v=candVentasDe(c);return _v!=null?` · ${_v>=1000?'+1000':_v} vend.`:'';})()}${tieneCuenta&&_loc!=null?` · ${perfLocalHTML(_loc)}`:''}</div>
-          <div class="cand-sub" style="font-size:.68rem;color:var(--muted);margin-top:3px">${c.cod?`🔖 ${c.cod} · `:''}${usd>0?`US$ ${usd.toFixed(2)} → <b style="color:var(--text)">US$ ${puesto.toFixed(2)}</b> puesto${pesos?` · ${fmt(pesos)}`:''}`:'<span style="color:var(--red)">sin precio</span>'}${(()=>{const _v=candVentasDe(c);return _v!=null?` · <b style="color:${_v>=CAND_MIN_VENT?'var(--green)':'var(--amber)'}">🛒 ${_v>=1000?'+1000':_v} vendidas</b>`:' · <span style="color:var(--amber)">🛒 sin dato de ventas</span>';})()}</div>
+          <div class="cand-sub" style="font-size:.68rem;color:var(--muted);margin-top:3px">${c.cod?`🔖 ${c.cod} · `:''}${usd>0?`US$ ${usd.toFixed(2)} → <b style="color:var(--text)">US$ ${puesto.toFixed(2)}</b> puesto${pesos?` · ${fmt(pesos)}`:''}`:'<span style="color:var(--red)">sin precio</span>'}${(()=>{const _v=candVentasDe(c);const _nv=Number(c.mlVendedores);return (_v!=null?` · 🛒 ${_v>=1000?'+1000':_v} vendidas`:'')+` · <b style="color:${_nv>=CAND_MIN_VENDEDORES?'var(--green)':'var(--amber)'}">🏪 ${_nv>0?_nv+(_nv===1?' vendedor':' vend.'):'sin vendedores'}</b>`;})()}</div>
         </div>
         <div class="cand-der" style="display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap;flex:0 1 auto">
           ${tieneCuenta&&_loc!=null?`<div class="cand-loc">${perfLocalHTML(_loc)}${perfNoLocalBtn('c',c.id,false)}</div>`:tieneCuenta&&candEsPerf(c)&&c.noLocal?`<div class="cand-loc" style="font-size:.6rem;color:var(--muted)">🏪 no da en el local${perfNoLocalBtn('c',c.id,true)}</div>`:''}
@@ -15881,7 +15884,7 @@ function candidatosHTML(){
         </div>
       </summary>
       <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
-      <div class="cand-solocel" style="font-size:.72rem;color:var(--muted);line-height:1.6">${c.cod?`🔖 ${c.cod} · `:''}${usd>0?`US$ ${usd.toFixed(2)} → <b style="color:var(--text)">US$ ${puesto.toFixed(2)}</b> puesto${pesos?` · ${fmt(pesos)}`:''}`:'sin precio'}${(()=>{const _v=candVentasDe(c);return _v!=null?` · 🛒 ${_v>=1000?'+1000':_v} vendidas`:' · 🛒 sin dato de ventas';})()}
+      <div class="cand-solocel" style="font-size:.72rem;color:var(--muted);line-height:1.6">${c.cod?`🔖 ${c.cod} · `:''}${usd>0?`US$ ${usd.toFixed(2)} → <b style="color:var(--text)">US$ ${puesto.toFixed(2)}</b> puesto${pesos?` · ${fmt(pesos)}`:''}`:'sin precio'}${(()=>{const _v=candVentasDe(c);const _nv=Number(c.mlVendedores);return (_v!=null?` · 🛒 ${_v>=1000?'+1000':_v} vendidas`:'')+` · 🏪 ${_nv>0?_nv+(_nv===1?' vendedor':' vend.'):'sin vendedores'}`;})()}
         ${tieneCuenta&&_loc!=null?`<div style="margin-top:4px">${perfLocalHTML(_loc)}${perfNoLocalBtn('c',c.id,false)}</div>`:tieneCuenta&&candEsPerf(c)&&c.noLocal?`<div style="margin-top:4px">🏪 no da en el local${perfNoLocalBtn('c',c.id,true)}</div>`:''}</div>
       <div onclick="event.stopPropagation()"><button class="btn" style="font-size:.66rem;padding:3px 10px" onclick="event.preventDefault();event.stopPropagation();candNoML('${c.id}',${c.noML?'false':'true'})" title="${c.noML?'Volver a considerarlo para vender en ML':'Marca que ML no deja vender: deja de contarlo para ML y queda sólo para la perfumería del local'}">${c.noML?'↩︎ volver a ML':'🛒✕ no da en ML'}</button></div>
       <div style="display:flex;gap:10px;flex-wrap:wrap">${fotoBox(RP.fotoPY,'🇵🇾 Paraguay')}${fotoBox(RP.fotoML,'🏷️ ML')}</div>
@@ -15937,9 +15940,9 @@ function candidatosHTML(){
       </div>
     </details>`;
   };
-  // MENOS DE 100 VENDIDAS = NO SE PUEDE PEDIR (03/10/2026, él: "¿por qué hay de menos de 100 ventas?"): van
+  // 1 SOLO VENDEDOR (O NINGUNO) EN EL CATÁLOGO = NO SE PUEDE PEDIR (20/10/2026; antes, menos de 100 vendidas, 03/10/2026): van
   // abajo en su propio desplegable, igual que los que no llegan al %. Arriba sólo lo que se puede comprar.
-  const _pocas=c=>{const v=candVentasDe(c);return v==null||v<CAND_MIN_VENT;};
+  const _pocas=c=>!candVendOk(c);
   // SIN MEDIR NO VA ARRIBA (07/10/2026, él: *"quiero que lo que me quede ahí en la lista sean productos que estén
   // completos y que pasaron por análisis (...) yo no los quiero ver, o que estén en la lista de abajo"*). Lo que el robot
   // todavía no midió contra ML (o se le sacó el catálogo por no ser el mismo) va a un desplegable cerrado abajo.
@@ -15993,7 +15996,7 @@ function candidatosHTML(){
       const carp=(t,nn,col,html)=>`<details style="margin-top:10px;border:1px solid var(--border2);border-radius:8px;padding:6px 10px;background:var(--surface2)"><summary style="cursor:pointer;font-size:.74rem;font-weight:700;color:${col}">${t} · ${f(nn)}</summary>${html}</details>`;
       return cuenta
       +carp('📏 Medidos',totM,'var(--text)',''
-      +(_flojas.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--amber)">🟠 Pocas ventas en ML (menos de ${CAND_MIN_VENT} o sin el dato) · <b>${_flojas.length}</b></summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_flojas.map(_card).join('')}</div></details>`:'')
+      +(_flojas.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--amber)">🟠 1 solo vendedor en ML (o sin catálogo con vendedores) · <b>${_flojas.length}</b></summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_flojas.map(_card).join('')}</div></details>`:'')
       +((_rojos.length||R)?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--red)">🔻 No llegan al ${CAND_PISO_TXT()} · <b>${_rojos.length}</b> candidatos${mas('bajo')}</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_rojos.map(_card).join('')}</div>${pycatNoDanHTML(['bajo'],'pycat-nodan-bajo','📦 Del catálogo: medidos por el robot, abajo del piso')}</details>`:'')
       +candDescartadosHTML(null,true)
       +(R&&n('ficha')?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--green)">✅ Ya son productos tuyos · <b>${f(n('ficha'))}</b> del catálogo</summary>${pycatNoDanHTML(['ficha'],'pycat-nodan-ficha','📦 Del catálogo: ya tienen ficha en CYC')}</details>`:''))
@@ -18978,8 +18981,8 @@ function _listaPuesto(k,e){return Math.round((Number(e&&e.p)||0)*(1+_listaRec(k)
 // DA = 25% a 80% en ML, con la foto de ML y SIN reparo de nombre (18/10/2026). Con Saint Julien ML emparejaba "Body Lotion Geisha"
 // con un set de Cher o con un Angel de $425.000 (faltaba el aroma = `rp`) y daba 600%: eso va a "🔎 Para revisar", sin casilla.
 // `ok`/`noEs`/`vend` los carga el chat de compras mirando ML (`listadato`): ok = mismo producto confirmado, noEs = otro producto.
-// MÍNIMO 100 VENTAS, EN TODAS LAS LISTAS (18/10/2026, regla suya). Las ventas las carga el chat (`vend`); sin ese dato no se sabe y
-// va a "🔎 Para revisar" (que el chat lo mire). Con menos de 100 vendidas sale de las dos (queda abajo, con su número).
+// 2+ VENDEDORES EN EL CATÁLOGO, EN TODAS LAS LISTAS (20/10/2026, eligió la 1a; reemplaza las 100 ventas del 18/10). `mv` lo mide
+// el robot solo: con 1 solo vendedor (o ninguno) no da y sale de las dos (queda abajo, con su número). Las ventas ya no hacen falta.
 // EL MARGEN TIENE QUE SER DEL COSTO DE HOY (etapa 3, 20/10/2026): `lista:`, `listadto` y `listaweb` cambian el costo `p` y dejaban el
 // margen `m` y el `ok` medidos con el costo VIEJO (Iscos: medido con $10.000, el costo pasó a $14.000 y seguía "dando 40%"). `uMed` es
 // el costo con el que se midió: si no es el de hoy, el margen no vale hasta que `listamedir` lo vuelva a medir (lo hace solo).
@@ -18987,7 +18990,7 @@ function _listaPuesto(k,e){return Math.round((Number(e&&e.p)||0)*(1+_listaRec(k)
 function _listaCostoVigente(e){return !!e&&e.uMed!=null&&Math.abs(Number(e.uMed)-Number(e.p))<1;}
 // "Otro producto" vale para el catálogo que se miró (`noEsCat`); misma regla que `listaNoEsVale` de sync.mjs (20/10/2026).
 function _listaNoEsVale(e){return !!(e&&e.noEs&&(!e.noEsCat||String(e.noEsCat).toUpperCase()===String(e.mi||'').toUpperCase()));}
-function _listaMed25(e){return e&&!_listaNoEsVale(e)&&!e.sacado&&!e.noWeb&&e.m!=null&&isFinite(e.m)&&Number(e.m)>=25&&_listaCostoVigente(e)&&/^https:\/\//.test(e.mf||'')&&!(e.vend!=null&&Number(e.vend)<100);}
+function _listaMed25(e){return e&&!_listaNoEsVale(e)&&!e.sacado&&!e.noWeb&&e.m!=null&&isFinite(e.m)&&Number(e.m)>=25&&_listaCostoVigente(e)&&/^https:\/\//.test(e.mf||'')&&!(e.mv!=null&&Number(e.mv)<CAND_MIN_VENDEDORES);}
 // UN SOLO VENDEDOR NO ALCANZA (19/10/2026, él: "hay un flaco que vende los perfumes re caros y es el único (…) es un precio inflado que no
 // sabemos si vende"). Con 1 vendedor en ML el precio no lo confirma nadie: nunca va a ✅ Dan solo, va a 🔎 Para revisar hasta que el
 // chat de compras lo mire (`ok` = mismo producto Y precio creíble).
@@ -18997,7 +19000,7 @@ function _listaUnVend(e){return !!e&&Number(e.mv)===1;}
 // "parecía" bien: 21 de 36 eran otro producto. Lo demás de 25%+ queda en 🔎 Para revisar. Misma regla en el robot (`cuentaLista`).
 // 20/10/2026 · etapa 4: con `miFijo`, vale sólo si lo medido (`mi`) es ese catálogo (misma regla que `listaOkVale` del robot).
 function _listaOkVale(e){return !!(e&&e.ok&&(e.miFijo?String(e.miFijo).toUpperCase()===String(e.mi||'').toUpperCase():(!e.okCat||String(e.okCat).toUpperCase()===String(e.mi||'').toUpperCase())));}
-function _listaDa(e){return _listaMed25(e)&&Number(e.vend)>=100&&_listaOkVale(e);}
+function _listaDa(e){return _listaMed25(e)&&Number(e.mv)>=CAND_MIN_VENDEDORES&&_listaOkVale(e);}
 function _listaRevisar(e){return _listaMed25(e)&&!_listaDa(e);}
 function _listaArmado(k){return Object.entries(((state.listaPed||{})[k])||{}).map(([cod,u])=>({cod,u:parseInt(u)||0})).filter(x=>x.u>0);}
 function _listaViajando(k){const s=new Set();Object.values(state.comprasLista||{}).forEach(c=>{if(c&&c.prov===k&&c.estado==='camino')(c.items||[]).forEach(it=>{if(!it.prodId)s.add(String(it.cod));});});return s;}
@@ -19373,7 +19376,7 @@ async function renderListas(){
     return `<div style="display:flex;gap:8px;align-items:center;padding:6px 8px;background:var(--surface);border:1px solid ${arm[cod]>0?'var(--blue)':'var(--border)'};border-radius:8px">
       ${fML?`<img src="${fML}" loading="lazy" onclick="_mostrarLightbox('${fML}','')" onerror="this.style.visibility='hidden'" style="width:44px;height:44px;object-fit:contain;background:#fff;border-radius:6px;cursor:zoom-in">`:''}
       <div style="flex:1;min-width:0;font-size:.72rem;line-height:1.45"><div style="font-weight:600">${escHtml(e.n)}</div>
-        <div style="color:var(--muted);font-size:.64rem">🔖 ${escHtml(cod)} · te sale <b style="color:var(--text)">${fmt(pc)}</b>${rec?` (${fmt(Number(e.p)||0)} + ${rec}%)`:''}${Number(e.pl)>0?` · lista ${fmt(Number(e.pl))} −${e.dto}%`:''}${e.mp?` · en ML ${fmt(e.mp)}${e.mv?' · '+(e.mv==1?'<b style="color:var(--amber)">⚠️ 1 solo vendedor: precio que nadie más confirma</b>':e.mv+' vendedores'):''}`:''}${e.vend!=null?` · <b style="color:${e.vend>=100?'var(--green)':'var(--amber)'}">🛒 ${e.vend>=1000?'+1000':e.vend} vendidas</b>`:''}${e.ok?' · <span style="color:var(--green)">✓ mismo producto</span>':''}${_listaNoEsVale(e)?' · <span style="color:var(--red)">✗ otro producto</span>':e.noEs?' · <span style="color:var(--muted)" title="El chat de compras dijo que el catálogo de antes era otro producto; éste es otro catálogo y falta confirmarlo.">catálogo nuevo, falta confirmar</span>':''}${e.mt?` · <span title="el catálogo de ML contra el que se midió">"${escHtml(String(e.mt).slice(0,60))}"</span>`:''}${e.pAnt?` · antes ${fmt(e.pAnt)}`:''}</div>
+        <div style="color:var(--muted);font-size:.64rem">🔖 ${escHtml(cod)} · te sale <b style="color:var(--text)">${fmt(pc)}</b>${rec?` (${fmt(Number(e.p)||0)} + ${rec}%)`:''}${Number(e.pl)>0?` · lista ${fmt(Number(e.pl))} −${e.dto}%`:''}${e.mp?` · en ML ${fmt(e.mp)}${e.mv?' · '+(e.mv==1?'<b style="color:var(--amber)">⚠️ 1 solo vendedor: precio que nadie más confirma</b>':e.mv+' vendedores'):''}`:''}${e.vend!=null?` · 🛒 ${e.vend>=1000?'+1000':e.vend} vendidas`:''}${e.ok?' · <span style="color:var(--green)">✓ mismo producto</span>':''}${_listaNoEsVale(e)?' · <span style="color:var(--red)">✗ otro producto</span>':e.noEs?' · <span style="color:var(--muted)" title="El chat de compras dijo que el catálogo de antes era otro producto; éste es otro catálogo y falta confirmarlo.">catálogo nuevo, falta confirmar</span>':''}${e.mt?` · <span title="el catálogo de ML contra el que se midió">"${escHtml(String(e.mt).slice(0,60))}"</span>`:''}${e.pAnt?` · antes ${fmt(e.pAnt)}`:''}</div>
         <div style="font-size:.64rem">${e.mi?`<a href="https://www.mercadolibre.com.ar/p/${e.mi}" target="_blank" rel="noopener" style="color:var(--green)">🔗 verlo en ML</a> · `:''}<a href="#" onclick="listaVerOri('${k}','${String(cod).replace(/'/g,"\\'")}');return false" style="color:var(--blue)">📄 verlo en la lista</a>${e.rp?` <span style="color:var(--amber)">· ⚠️ ${escHtml(String(e.rp).slice(0,80))}</span>`:''}</div></div>
         <details style="margin-top:3px"><summary style="cursor:pointer;font-size:.62rem;color:var(--muted)">detalle ▾</summary><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">${e.sacado?`<button class="btn" style="font-size:.64rem;padding:3px 10px" onclick="listaSacar('${k}','${String(cod).replace(/'/g,"\\'")}',false)">↩︎ volver a la lista</button>`:`<button class="btn" style="font-size:.64rem;padding:3px 10px;color:var(--red);border-color:var(--red)" onclick="listaSacar('${k}','${String(cod).replace(/'/g,"\\'")}',true)">✕ sacar producto</button>`}</div></details>
       <div style="text-align:right;flex:0 0 auto">${est}${uBox}</div></div>`;};
@@ -19444,9 +19447,9 @@ async function renderListas(){
     <div><b>⏳ Sin evaluar ${_grp.sinEv}</b>${_grp.sinEv?' <span style="color:var(--muted)">· el robot los está midiendo</span>':''}</div>
     ${_grp.ficha||_grp.afuera?`<div style="color:var(--muted)">${_grp.ficha?`✔️ ${_grp.ficha} ya los vendés`:''}${_grp.ficha&&_grp.afuera?' · ':''}${_grp.afuera?`🚫 ${_grp.afuera} afuera (sacados, no están en la web del proveedor o regla)`:''}</div>`:''}
   </div>
-    <div style="font-size:.85rem;font-weight:700;color:var(--green);margin:4px 0 8px">✅ Dan 25% o más en ML y tienen 100+ ventas · ${dan.length}</div>
+    <div style="font-size:.85rem;font-weight:700;color:var(--green);margin:4px 0 8px">✅ Dan 25% o más en ML, con 2+ vendedores y el mismo producto confirmado · ${dan.length}</div>
     <div style="display:flex;flex-direction:column;gap:6px">${dan.length?dan.map(f=>fila(f,true)).join(''):'<div class="empty-msg">Todavía ninguno (o falta medirlos).</div>'}</div>
-    ${revis.length?`<details style="margin-top:14px;background:var(--surface);border:1px solid var(--amber);border-radius:var(--r);padding:10px 12px"><summary style="cursor:pointer;font-size:.82rem;font-weight:700;color:var(--amber)">🔎 Para revisar con los ojos (${revis.length}) <span style="font-weight:400;color:var(--muted);font-size:.66rem">— darían 25%+, pero falta saber si tienen 100 ventas (lo mira el chat), o ML no nombra alguna palabra (⚠️), o da 80% o más</span></summary><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${revis.slice(0,150).map(f=>fila(f,false)).join('')}</div></details>`:''}
+    ${revis.length?`<details style="margin-top:14px;background:var(--surface);border:1px solid var(--amber);border-radius:var(--r);padding:10px 12px"><summary style="cursor:pointer;font-size:.82rem;font-weight:700;color:var(--amber)">🔎 Para revisar con los ojos (${revis.length}) <span style="font-weight:400;color:var(--muted);font-size:.66rem">— darían 25%+, pero falta confirmar que es el mismo producto (lo mira el chat), o ML no nombra alguna palabra (⚠️), o da 80% o más</span></summary><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${revis.slice(0,150).map(f=>fila(f,false)).join('')}</div></details>`:''}
     ${resto.length?`<details style="margin-top:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px"><summary style="cursor:pointer;font-size:.82rem;font-weight:700">⬇️ No dan, sin catálogo en ML o sin medir (${resto.length})</summary><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${resto.slice(0,150).map(f=>fila(f,false)).join('')}</div>${resto.length>150?`<div style="font-size:.62rem;color:var(--muted);margin-top:6px">muestro 150 · el resto con el buscador</div>`:''}</details>`:''}
     ${sinWeb.length?`<details style="margin-top:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px"><summary style="cursor:pointer;font-size:.82rem;font-weight:700;color:var(--muted)">🚫 No está en la web de ${escHtml(nom)}: no lo tienen (${sinWeb.length})</summary><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${sinWeb.slice(0,150).map(f=>fila(f,false)).join('')}${sinWeb.length>150?`<div style="font-size:.64rem;color:var(--muted)">… y ${sinWeb.length-150} más (usá el buscador)</div>`:''}</div></details>`:''}
     ${sacados.length?`<details style="margin-top:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px"><summary style="cursor:pointer;font-size:.82rem;font-weight:700;color:var(--muted)">🗑️ Sacados por vos (${sacados.length})</summary><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${sacados.map(f=>fila(f,false)).join('')}</div></details>`:''}

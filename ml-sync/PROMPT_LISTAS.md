@@ -25,13 +25,13 @@ PASO 2 · MIRAR CADA PRODUCTO EN ML (de a uno, en orden)
      · Es el mismo → ok
      · Es otro (otro tamaño, otro aroma, pack, otra línea) → no
      · Es otro, pero encontrás el catálogo correcto en ML (buscalo en ML con la marca + producto + tamaño, tiene que ser una página /p/MLA…) → mi=MLA… (el catálogo correcto)
- - VENDIDAS: mirá el vendedor ARGENTINO más barato del catálogo (los de envío internacional no cuentan) y anotá cuántos vendió. Si dice "+1000 vendidos" poné 1000; si no muestra el número, poné 0. Si es "no", no hace falta.
- - Si el estado dice REVISAR-1VEND (un solo vendedor), fijate si el precio es creíble contra otros tamaños o publicaciones parecidas; si te parece inflado, anotalo para el resumen (igual cargá las ventas).
+ - LAS VENDIDAS YA NO HACEN FALTA (20/10/2026): alcanza con que el catálogo tenga 2 o más vendedores, y eso lo mide el robot solo. Lo único que hay que decir es si es el mismo producto.
+ - Un catálogo con 1 solo vendedor ya no sale en esta lista (no da).
 
 PASO 3 · CARGAR LO QUE VISTE (cada ~30 productos, no esperes al final)
  - Mismo lugar que el paso 1 (Run workflow, rama claude/add-folder-78ysyb), en "comando" una sola línea así:
-     listadato:<proveedor>;<código>=<vendidas>,ok;<código>=no;<código>=<vendidas>,mi=MLA12345678;go
-   El proveedor va una vez antes de sus códigos (como viene en la 1ª columna, ej. dai_nippon). Si hay de varios proveedores, poné el otro proveedor y seguís: listadato:dai_nippon;111=250,ok;222=no;iscos;333=1000,ok;go
+     listadato:<proveedor>;<código>=ok;<código>=no;<código>=mi=MLA12345678;go
+   El proveedor va una vez antes de sus códigos (como viene en la 1ª columna, ej. dai_nippon). Si hay de varios proveedores, poné el otro proveedor y seguís: listadato:dai_nippon;111=ok;222=no;iscos;333=ok;go
    El código, exactamente como viene en la 2ª columna.
  - Abrí la corrida y fijate que diga "✓ guardado". Si dice "❌ … mal escritos", corregí esos renglones y volvé a correrlo.
 

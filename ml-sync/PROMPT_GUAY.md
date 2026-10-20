@@ -53,13 +53,10 @@ En la pestaña de GitHub (workflow ml-consulta): "Run workflow" → rama claude/
 Esperá que termine (1 minuto) y abrí el resultado: tiene que decir "✓ guardado" y "Quedó en la página N". Si dice "❌", corregí lo que diga y volvelo a correr.
 Plan B si GitHub no te deja: pasale los comandos a Matías para que los pegue en el chat CYC.
 
-== LAS VENTAS DE LOS QUE DAN (cuando el chat CYC te pase la lista) ==
-El robot de CYC no puede ver cuánto vende otro vendedor en ML. Cuando el chat CYC te pase la lista "VENTAS QUE FALTAN"
-(código|US$|link de ML|nombre), abrí cada link de ML (pestaña de ML con la sesión iniciada) y anotá las vendidas de la publicación
-MÁS BARATA. Antes, abrí también el link de comprasparaguay: si dice "no disponible", ése va con =nohay en vez de vendidas.
-Cargalas por ml-consulta igual que el catálogo:
-  candprecio:<código>=<US$>/<vendidas>;<código>=<US$>/<vendidas>;…;go
-Con 100 o más aparecen en "Para probar"; con menos quedan guardados y escondidos.
+== LAS VENTAS YA NO SE CARGAN (20/10/2026) ==
+Antes había que anotar las vendidas en ML de cada uno que daba (100 o más). Ya no: alcanza con que el catálogo de ML tenga 2 o más
+vendedores, y eso lo mide el robot solo. Si igual ves que algo de comprasparaguay dice "no disponible", cargalo con
+  candprecio:<código>=nohay;…;go
 
 == CADA 15 MINUTOS, ALGO ==
 Cada 15 minutos como máximo, un renglón: "voy por la página N de M, cargado hasta la N". Si te trabás, avisá enseguida.
