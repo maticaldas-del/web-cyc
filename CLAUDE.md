@@ -2272,7 +2272,7 @@ Los que más se usan:
 | `competencia:<MLA>` | los vendedores del catálogo con sus precios y **si la pelea se puede ganar** |
 | `subirpuede[:días]` | **dónde hay lugar para SUBIR sin perder ventas**: las que ganan la caja y tienen un competidor arriba · solo lee |
 | `avisos[:go]` | **el aviso diario al canal privado**: qué subir, qué bajar y qué está parado · sin `:go` no manda nada · `avisos:reset[:go]` olvida lo ya avisado y vuelve a mandar TODO |
-| `lista` | **vuelve a imprimir el último aviso con sus números**, para saber a qué publicación apunta "el 4" · solo lee |
+| `avisolista` | **vuelve a imprimir el último aviso con sus números**, para saber a qué publicación apunta "el 4" · solo lee · hasta el 20/10/2026 se llamaba `lista` (ahora `lista` son las listas de proveedores) |
 | `tgalertas[:<chat>]` | **el segundo canal de Telegram**, sólo para Mati · sin número muestra los chats que el bot conoce |
 | `verescalon:<MLA\|palabra>[:marcar]` | **¿ML cobró menos de verdad al bajar?** agrupa las ventas por precio y muestra lo que ML se quedó en cada uno |
 | `envioml:<MLA>` | el envío que **dice ML** (por destino) vs el que deducimos de las ventas · `envioreal` es OTRO comando |

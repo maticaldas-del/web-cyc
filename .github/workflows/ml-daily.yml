@@ -39,8 +39,25 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+      # ¿LA NOCHE YA TERMINÓ BIEN? (etapa 4, 20/10/2026). Los 3 crons hacen que ml-daily corra ENTERA dos veces por
+      # noche: la 2ª espera a la 1ª y la 3ª descarta a la que esperaba y corre todo de nuevo. Si una corrida PROGRAMADA de
+      # hoy (día de acá) ya terminó sin ningún paso fallado (`mlapi/daily/<día>`, lo anota el último paso), ésta saltea
+      # todo menos "Línea de tiempo para atrás". Una corrida a mano corre siempre. Si no se puede leer, corre todo.
+      - name: ¿La noche ya terminó?
+        id: noche
+        continue-on-error: true
+        env:
+          ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
+          ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
+          FIREBASE_BOT_EMAIL: ${{ secrets.FIREBASE_BOT_EMAIL }}
+          FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
+          BILLING_PROBE: nochehecha
+        run: exec node ml-sync/sync.mjs
       - name: Resumen diario
         id: resumen
+        if: steps.noche.outputs.hecha != '1'
         continue-on-error: true
         env:
           ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
@@ -52,12 +69,13 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           DAILY_SUMMARY: ${{ github.event.inputs.dia != '' && github.event.inputs.dia || '1' }}
-        run: node ml-sync/sync.mjs
+        run: exec node ml-sync/sync.mjs
       # Guarda las facturas reales que emitió el facturador de ML, cuenta por cuenta, y marca las
       # ventas que quedaron SIN factura. Va acá y no en el ciclo de 2 minutos porque pide una
       # consulta por venta: una vez por día alcanza y no castiga la API de ML.
       - name: Facturas emitidas
         id: facturas
+        if: steps.noche.outputs.hecha != '1'
         continue-on-error: true
         env:
           ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
@@ -69,12 +87,13 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           BILLING_PROBE: facsync:3:go
-        run: node ml-sync/sync.mjs
+        run: exec node ml-sync/sync.mjs
       # Las ventas de 3 a 7 días que quedaron con el neto ESTIMADO (ML no contestó en la última
       # lectura del ciclo) se vuelven a leer de Mercado Pago y se corrigen, repartiendo los
       # carritos por paquete. Va antes de netoweb porque ése deduce el envío de las ventas.
       - name: Neto real de las ventas que quedaron estimadas
         id: netoreal
+        if: steps.noche.outputs.hecha != '1'
         continue-on-error: true
         env:
           ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
@@ -84,12 +103,13 @@ jobs:
           FIREBASE_BOT_EMAIL: ${{ secrets.FIREBASE_BOT_EMAIL }}
           FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
           BILLING_PROBE: netoreal:7:estimadas:go
-        run: node ml-sync/sync.mjs
+        run: exec node ml-sync/sync.mjs
       # Las cuotas sin interés de las publicaciones PREMIUM (25/09/2026, el Salvador Dalí: el panel
       # decía 31% y la venta dio 16%, porque ML se quedó 21,6% de cuotas que la comisión no trae).
       # Mide cuánto cobra ML de cuotas en cada Premium y lo deja en cyc/mlcuotas; netoweb lo descuenta.
       - name: Cuotas de las publicaciones Premium
         id: cuotas
+        if: steps.noche.outputs.hecha != '1'
         continue-on-error: true
         env:
           ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
@@ -99,13 +119,14 @@ jobs:
           FIREBASE_BOT_EMAIL: ${{ secrets.FIREBASE_BOT_EMAIL }}
           FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
           BILLING_PROBE: cuotas:90
-        run: node ml-sync/sync.mjs
+        run: exec node ml-sync/sync.mjs
       # Recalcula el neto de cada producto al precio que tiene HOY en ML y lo carga en "Margen ML".
       # Va acá porque esa pantalla NO lee ML en vivo: muestra lo último que se calculó. Si no se
       # recalcula, después de tocar precios sigue mostrando números viejos que parecen actuales —
       # y así un producto puede figurar arriba del piso estando abajo, o al revés, sin que se note.
       - name: Margen ML al precio de hoy
         id: netoweb
+        if: steps.noche.outputs.hecha != '1'
         continue-on-error: true
         env:
           ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
@@ -115,7 +136,7 @@ jobs:
           FIREBASE_BOT_EMAIL: ${{ secrets.FIREBASE_BOT_EMAIL }}
           FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
           BILLING_PROBE: netoweb
-        run: node ml-sync/sync.mjs
+        run: exec node ml-sync/sync.mjs
       # Trae las visitas de los ultimos 30 dias de cada publicacion y las guarda en cyc/visitas,
       # que es de donde las lee la columna "Lo miran" de Margen ML. Sin este paso la columna se
       # queda con el dato del dia que alguien corrio el probe a mano, y una visita vieja es peor
@@ -123,6 +144,7 @@ jobs:
       # Solo LEE de ML: no toca ningun precio.
       - name: Visitas de las publicaciones
         id: visitas
+        if: steps.noche.outputs.hecha != '1'
         continue-on-error: true
         env:
           ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
@@ -132,10 +154,11 @@ jobs:
           FIREBASE_BOT_EMAIL: ${{ secrets.FIREBASE_BOT_EMAIL }}
           FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
           BILLING_PROBE: visitas
-        run: node ml-sync/sync.mjs
+        run: exec node ml-sync/sync.mjs
       # Refresca la facturación de canceladas/devueltas (para el monotributo = "Ventas brutas" ML).
       - name: Facturación de canceladas
         id: canceladas
+        if: steps.noche.outputs.hecha != '1'
         continue-on-error: true
         env:
           ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
@@ -145,7 +168,7 @@ jobs:
           FIREBASE_BOT_EMAIL: ${{ secrets.FIREBASE_BOT_EMAIL }}
           FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
           CANCEL_AGG: '400'
-        run: node ml-sync/sync.mjs
+        run: exec node ml-sync/sync.mjs
       # CUÁNDO LLEGÓ CADA VENTA Y CUÁLES VOLVIERON (21/09/2026).
       #
       # ML lo manda adentro del envío (`status_history` y `return_details`) y nunca se guardaba:
@@ -157,6 +180,7 @@ jobs:
       # teléfono y dirección, y se leen sólo las fechas.
       - name: Cuándo llegó cada venta
         id: entregas
+        if: steps.noche.outputs.hecha != '1'
         continue-on-error: true
         env:
           ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
@@ -166,11 +190,12 @@ jobs:
           FIREBASE_BOT_EMAIL: ${{ secrets.FIREBASE_BOT_EMAIL }}
           FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
           BILLING_PROBE: entregas:30:go
-        run: node ml-sync/sync.mjs
+        run: exec node ml-sync/sync.mjs
       # EL MOTIVO DE CADA RECLAMO (27/09/2026, idea 8): guarda el motivo que da ML (nunca el texto del
       # comprador) y una vez por semana avisa los que no fueron culpa del producto.
       - name: Motivo de los reclamos
         id: motivoreclamo
+        if: steps.noche.outputs.hecha != '1'
         continue-on-error: true
         env:
           ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
@@ -181,11 +206,12 @@ jobs:
           FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           BILLING_PROBE: motivoreclamo:60:go
-        run: node ml-sync/sync.mjs
+        run: exec node ml-sync/sync.mjs
       # LA LÍNEA DE TIEMPO DE CADA PUBLICACIÓN (01/10/2026): stock, precio, estado, caja, visitas,
       # ventas, remate y margen de AYER, leído de ML en el momento (mlapi/linea).
       - name: Línea de tiempo de ayer
         id: linea
+        if: steps.noche.outputs.hecha != '1'
         continue-on-error: true
         env:
           ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
@@ -196,11 +222,12 @@ jobs:
           FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           BILLING_PROBE: linea:go
-        run: node ml-sync/sync.mjs
+        run: exec node ml-sync/sync.mjs
       # LA FICHA MÉDICA DE CADA PUBLICACIÓN (16/10/2026): junta la línea de tiempo, mis cambios con su
       # resultado y mis notas en `mlapi/ficha/<MLA>`. Va después de la línea de ayer para usarla.
       - name: Ficha de cada publicación
         id: ficha
+        if: steps.noche.outputs.hecha != '1'
         continue-on-error: true
         env:
           ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
@@ -211,13 +238,14 @@ jobs:
           FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           BILLING_PROBE: ficha:go
-        run: node ml-sync/sync.mjs
+        run: exec node ml-sync/sync.mjs
       # EL DIARIO DE CADA PRODUCTO Y EL RITMO NORMAL (01/10/2026). Anota stock, precio, caja y
       # remate de ayer, calcula cuánto vende cada producto SIN remate y sobre días con stock (hasta
       # 365 días), y saca el remate de lo que ya quedó con 30 días de venta normal. Va ANTES de los
       # avisos de precio: así el rescate de esta misma noche vuelve esos precios a la base.
       - name: Diario y ritmo normal
         id: ritmo
+        if: steps.noche.outputs.hecha != '1'
         continue-on-error: true
         env:
           ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
@@ -229,12 +257,13 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           BILLING_PROBE: ritmo:go
-        run: node ml-sync/sync.mjs
+        run: exec node ml-sync/sync.mjs
       # LOS NÚMEROS DE COMPRA SE MIDEN SOLOS (06/10/2026): envío de Full arriba de $33.000, recargo
       # real de Paraguay, cuenta/IIBB de lo nuevo y cuánto más barato tiene que estar uno sin cuotas.
       # Va después de netoweb (el envío sale de cyc/netopub) y antes de candidatos, que los usa.
       - name: Números de compra
         id: paramcompra
+        if: steps.noche.outputs.hecha != '1'
         continue-on-error: true
         env:
           ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
@@ -246,11 +275,12 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           BILLING_PROBE: paramcompra:go
-        run: node ml-sync/sync.mjs
+        run: exec node ml-sync/sync.mjs
       # A CUÁNTO SE PUEDE VENDER TENIENDO FULL (04/10/2026): el más barato con Full ×0,99 o el
       # más barato SIN Full +10%. Lo usa Pedidos Paraguay para el máximo de compra. Sólo lee de ML.
       - name: Techo con Full
         id: techofull
+        if: steps.noche.outputs.hecha != '1'
         continue-on-error: true
         env:
           ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
@@ -262,7 +292,7 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           BILLING_PROBE: techofull:go
-        run: node ml-sync/sync.mjs
+        run: exec node ml-sync/sync.mjs
       # EL AVISO DE QUÉ SUBIR Y QUÉ BAJAR, al canal privado de Telegram (13/09/2026).
       #
       # Va ACÁ, al final y no al principio, porque necesita el "Margen ML al precio de hoy" ya
@@ -278,7 +308,7 @@ jobs:
         id: avisos
         # Sólo con el margen de ESTA noche: si netoweb falló, el robot de precios no decide con
         # los números de ayer (revisión max #21).
-        if: steps.netoweb.outcome == 'success'
+        if: steps.noche.outputs.hecha != '1' && steps.netoweb.outcome == 'success'
         continue-on-error: true
         env:
           ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
@@ -290,7 +320,7 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           BILLING_PROBE: avisos:go
-        run: node ml-sync/sync.mjs
+        run: exec node ml-sync/sync.mjs
       # EL SUPERVISOR DE PRECIOS (23/09/2026). Pedido suyo: "si se modifica un producto quiero que
       # se evalúe cómo le fue en los próximos 7, 15 y 30 días". Saca la foto de los precios de hoy
       # (de lo que netoweb acaba de recalcular) para ver también los cambios a mano, y evalúa los
@@ -298,6 +328,7 @@ jobs:
       # Con el cerebro prendido NO TOCA NINGÚN PRECIO (el "volver atrás" lo hace el cerebro, 08/10/2026).
       - name: Supervisor de precios
         id: supervisor
+        if: steps.noche.outputs.hecha != '1'
         # si falla no se lleva puesto el resto del paso nocturno
         continue-on-error: true
         env:
@@ -310,7 +341,7 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           BILLING_PROBE: supervisor:go
-        run: node ml-sync/sync.mjs
+        run: exec node ml-sync/sync.mjs
 
       # "PARA PROBAR": LA CUENTA DE ML DE LOS PRODUCTOS QUE TODAVÍA NO VENDEMOS (17/09/2026).
       #
@@ -326,6 +357,7 @@ jobs:
       # NO COMPRA NADA NI TOCA NINGÚN PRECIO: sólo calcula y avisa.
       - name: Para probar · candidatos de Paraguay
         id: candidatos
+        if: steps.noche.outputs.hecha != '1'
         continue-on-error: true
         env:
           ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
@@ -337,7 +369,7 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           BILLING_PROBE: candidatos:go
-        run: node ml-sync/sync.mjs
+        run: exec node ml-sync/sync.mjs
 
       # EL SALDO DE ML Y LA AGENDA DE LIBERACIONES (21/09/2026).
       #
@@ -358,6 +390,7 @@ jobs:
       # público.
       - name: Saldo a liquidar y agenda de liberaciones
         id: saldoml
+        if: steps.noche.outputs.hecha != '1'
         continue-on-error: true
         env:
           ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
@@ -369,7 +402,7 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           BILLING_PROBE: saldoml:go
-        run: node ml-sync/sync.mjs
+        run: exec node ml-sync/sync.mjs
 
       # EL DISPONIBLE, JUSTO DESPUÉS (24/09/2026, error m01 de la revisión del patrimonio).
       # `saldoml` saca de "A liquidar" lo que ML ya liberó, y hasta hoy NADIE lo sumaba al disponible
@@ -378,6 +411,7 @@ jobs:
       # Si no cargó el disponible de las 4 cuentas, no toca nada (lo dice en el log).
       - name: Disponible de ML (lo liberado pasa de "a liquidar" al disponible)
         id: dispo
+        if: steps.noche.outputs.hecha != '1'
         continue-on-error: true
         env:
           ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
@@ -387,7 +421,7 @@ jobs:
           FIREBASE_BOT_EMAIL: ${{ secrets.FIREBASE_BOT_EMAIL }}
           FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
           BILLING_PROBE: dispo:go
-        run: node ml-sync/sync.mjs
+        run: exec node ml-sync/sync.mjs
 
       # (Las percepciones de IIBB se descuentan como un % por cuenta sobre cada venta (ML_EXTRA_PCT).
       # Los cargos de Full —almacenamiento, stock antiguo, retiro, multas— van como GASTO del mes, a mano.
@@ -397,7 +431,9 @@ jobs:
       # que sólo junta datos ya no corta la noche, pero tampoco puede fallar callado: acá se junta
       # cuáles fallaron y va un Telegram al canal privado.
       - name: Aviso si falló algún paso
-        if: always()
+        id: avisonoche
+        # !cancelled() y no always() (etapa 4, 20/10/2026): una corrida cancelada no manda "fallaron N pasos".
+        if: ${{ !cancelled() && steps.noche.outputs.hecha != '1' }}
         env:
           ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
           ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
@@ -410,7 +446,24 @@ jobs:
           BILLING_PROBE: avisonoche
           FALLOS_NOCHE: "${{ steps.resumen.outcome == 'failure' && 'Resumen diario · ' || '' }} ${{ steps.facturas.outcome == 'failure' && 'Facturas emitidas · ' || '' }} ${{ steps.netoreal.outcome == 'failure' && 'Neto real de las ventas que quedaron estimadas · ' || '' }} ${{ steps.cuotas.outcome == 'failure' && 'Cuotas de las publicaciones Premium · ' || '' }} ${{ steps.netoweb.outcome == 'failure' && 'Margen ML al precio de hoy · ' || '' }} ${{ steps.visitas.outcome == 'failure' && 'Visitas de las publicaciones · ' || '' }} ${{ steps.canceladas.outcome == 'failure' && 'Facturación de canceladas · ' || '' }} ${{ steps.entregas.outcome == 'failure' && 'Cuándo llegó cada venta · ' || '' }} ${{ steps.motivoreclamo.outcome == 'failure' && 'Motivo de los reclamos · ' || '' }} ${{ steps.linea.outcome == 'failure' && 'Línea de tiempo de ayer · ' || '' }} ${{ steps.ficha.outcome == 'failure' && 'Ficha de cada publicación · ' || '' }} ${{ steps.ritmo.outcome == 'failure' && 'Diario y ritmo normal · ' || '' }} ${{ steps.paramcompra.outcome == 'failure' && 'Números de compra · ' || '' }} ${{ steps.techofull.outcome == 'failure' && 'Techo con Full · ' || '' }} ${{ steps.avisos.outcome == 'failure' && 'Avisos de precio al canal privado · ' || '' }} ${{ steps.supervisor.outcome == 'failure' && 'Supervisor de precios · ' || '' }} ${{ steps.candidatos.outcome == 'failure' && 'Para probar · candidatos de Paraguay · ' || '' }} ${{ steps.saldoml.outcome == 'failure' && 'Saldo a liquidar y agenda de liberaciones · ' || '' }} ${{ steps.dispo.outcome == 'failure' && 'Disponible de ML (lo liberado pasa de a liquidar al disponible) · ' || '' }}"
         run: |
-          if [ -n "$(echo "$FALLOS_NOCHE" | tr -d ' ')" ]; then node ml-sync/sync.mjs; else echo "Ningún paso falló."; fi
+          if [ -n "$(echo "$FALLOS_NOCHE" | tr -d ' ')" ]; then echo "hubo=1" >> "$GITHUB_OUTPUT"; node ml-sync/sync.mjs; else echo "Ningún paso falló."; fi
+
+      # LA NOCHE TERMINÓ BIEN (etapa 4, 20/10/2026): sólo si ningún paso falló, se anota `mlapi/daily/<día de acá>` y la
+      # corrida que viene detrás (la 3ª del cron) saltea todo menos la línea para atrás. Si algo falló no se anota: la
+      # siguiente lo vuelve a intentar entero, como siempre.
+      - name: Anotar que la noche terminó bien
+        id: nocheanota
+        if: ${{ !cancelled() && steps.noche.outputs.hecha != '1' && steps.avisonoche.outputs.hubo != '1' }}
+        continue-on-error: true
+        env:
+          ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
+          ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
+          FIREBASE_BOT_EMAIL: ${{ secrets.FIREBASE_BOT_EMAIL }}
+          FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
+          BILLING_PROBE: nochehecha:anotar
+        run: exec node ml-sync/sync.mjs
 
       # LA LÍNEA DE TIEMPO PARA ATRÁS (02/10/2026): sigue rellenando el año viejo (stock de Full mes por
       # mes, precio) hasta 35 min por corrida. Va AL FINAL para no atrasar nada de lo de la noche; ML corta
@@ -428,4 +481,4 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           LINEA_TOPE_MIN: '35'
           BILLING_PROBE: linea:atras:go
-        run: node ml-sync/sync.mjs
+        run: exec node ml-sync/sync.mjs

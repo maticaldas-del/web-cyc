@@ -60,7 +60,8 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           # nomandar = no va a Telegram. El chequeo se lee desde el chat, no desde el celular.
           BILLING_PROBE: chequeo:${{ github.event.inputs.dias || '7' }}:nomandar
-        run: node ml-sync/sync.mjs
+        # exec (etapa 4, 20/10/2026): node (o el ciclo) pasa a ser el proceso del paso y recibe la señal de cancelar de GitHub; antes quedaba huérfano hasta el SIGKILL.
+        run: exec node ml-sync/sync.mjs
       # El chequeo queda guardado en el repo. Es para poder leerlo después desde un chat nuevo, que
       # no tiene las claves de ML ni de Firebase y por lo tanto no puede correr el chequeo por su
       # cuenta. El archivo NO lleva números de orden ni el texto de las preguntas: el repo es
@@ -117,4 +118,5 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: bash ml-sync/ciclo.sh
+        # exec (etapa 4, 20/10/2026): node (o el ciclo) pasa a ser el proceso del paso y recibe la señal de cancelar de GitHub; antes quedaba huérfano hasta el SIGKILL.
+        run: exec bash ml-sync/ciclo.sh

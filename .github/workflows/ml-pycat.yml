@@ -34,4 +34,5 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           BILLING_PROBE: pycatmedir:go
-        run: node ml-sync/sync.mjs
+        # exec (etapa 4, 20/10/2026): node (o el ciclo) pasa a ser el proceso del paso y recibe la señal de cancelar de GitHub; antes quedaba huérfano hasta el SIGKILL.
+        run: exec node ml-sync/sync.mjs

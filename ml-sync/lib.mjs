@@ -71,8 +71,12 @@ export async function mlRefresh(clientId, clientSecret, refreshToken) {
     // Sin tope, una renovación colgada frenaba la vuelta entera ~5 min (revisión final, 30/09).
     signal: AbortSignal.timeout(25000),
   });
-  const d = await r.json();
-  if (!r.ok) throw new Error('ML refresh falló: ' + JSON.stringify(d));
+  // Etapa 4 (20/10/2026): se lee como TEXTO y después se intenta JSON. Un 429/403/5xx que viene en HTML (borde o
+  // proxy de ML) tiraba "Unexpected token '<'" sin el código, y no se sabía qué había pasado. El error no lleva el
+  // cuerpo entero (podría traer el token): código y los primeros 120 caracteres, sin tokens.
+  const txt = await r.text();
+  let d = null; try { d = JSON.parse(txt); } catch { d = null; }
+  if (!r.ok || !d) throw new Error('ML refresh falló: ' + r.status + ' ' + _recorte(txt).replace(/(access|refresh)_token["':=\s]+[^"',\s}]+/gi, '$1_token=…'));
   return d; // { access_token, refresh_token (NUEVO), user_id, ... }
 }
 
@@ -90,10 +94,17 @@ export async function mlGet(path, accessToken, ms = 25000) {
     headers: { Authorization: `Bearer ${accessToken}` },
     signal: AbortSignal.timeout(ms),
   });
-  const d = await r.json();
-  if (!r.ok) throw new Error(tapaIdsLargos(`ML GET ${path}: ${r.status} ${JSON.stringify(d)}`));
+  // Etapa 4 (20/10/2026): primero el TEXTO, después JSON. Antes se hacía `r.json()` antes de mirar `r.ok`: un 429,
+  // 403 o 5xx que ML (o su borde) contesta en HTML tiraba "Unexpected token '<'" SIN el código, y los reintentos que
+  // buscan "429" en el mensaje no lo veían. Ahora el error es siempre `ML GET <ruta>: <código> <120 caracteres>`.
+  const txt = await r.text();
+  let d; try { d = JSON.parse(txt); } catch { d = undefined; }
+  if (!r.ok) throw new Error(tapaIdsLargos(`ML GET ${path}: ${r.status} ${_recorte(d !== undefined ? JSON.stringify(d) : txt)}`));
+  if (d === undefined) throw new Error(tapaIdsLargos(`ML GET ${path}: ${r.status} contestó algo que no es JSON: ${_recorte(txt)}`));
   return d;
 }
+// Los primeros 120 caracteres de una respuesta, en una línea (un HTML entero no sirve en el registro).
+function _recorte(t) { return String(t == null ? '' : t).replace(/\s+/g, ' ').trim().slice(0, 120); }
 // ETAPA 4 (20/10/2026): EL MENSAJE DE ERROR LLEVABA LA RUTA ENTERA, y `posventa`, `unreclamo` y `campos` lo imprimen en el registro
 // de GitHub, que es PÚBLICO: el número de orden o de paquete del comprador salía entero aunque arriba se tapara con `_idPub`.
 // Acá se tapan los números de 10 cifras o más que NO vienen pegados a letras (`MLA1234567890` queda: es la publicación, pública),

@@ -195,19 +195,25 @@ jobs:
             # Corrida a mano: se ejecuta y listo. Varios comandos, uno por renglón (etapa 6, 14/10/2026): corren
             # en fila en esta misma corrida (una sola renovación de candado), separados por "##### <comando>";
             # si uno falla siguen los demás y la corrida termina en error. Sin comando (otras opciones) corre una vez.
-            if [ -z "$BILLING_PROBE" ]; then node ml-sync/sync.mjs; exit $?; fi
+            if [ -z "$BILLING_PROBE" ]; then exec node ml-sync/sync.mjs; fi
+            # CANCELAR SIN DEJAR A NODE HUÉRFANO (etapa 4, 20/10/2026): al cancelar, GitHub le manda SIGINT SÓLO
+            # a este bash (a los 7,5 s SIGTERM). `corre` se la pasa a node (que termina la escritura en curso y sale
+            # con 130) y lo espera; y no se arranca el comando siguiente. Así el registro dice hasta dónde llegó.
+            CANCELADO=0
+            corre() { "$@" & local h=$! rc=0; trap "CANCELADO=1; kill -INT $h 2>/dev/null; kill -TERM $h 2>/dev/null" INT TERM; while :; do wait $h; rc=$?; kill -0 $h 2>/dev/null || break; done; trap - INT TERM; return $rc; }
             CMDS="$(printf '%s\n' "$BILLING_PROBE" | tr -d '\r' | sed '/^[[:space:]]*$/d')"
             rc=0; n=0
             while IFS= read -r c; do
               n=$((n+1))
               if [ "$c" = "ciclo" ]; then echo "##### ciclo: se prende solo al final"; continue; fi
               echo "##### $c"
-              BILLING_PROBE="$c" node ml-sync/sync.mjs || { echo "##### ✗ falló: $c"; rc=1; }
+              if corre env BILLING_PROBE="$c" node ml-sync/sync.mjs; then echo "##### ✓ terminó: $c"; else echo "##### ✗ falló: $c"; rc=1; fi
+              if [ "$CANCELADO" = 1 ]; then echo "##### ✋ cancelaron la corrida: no arranco los comandos que faltan"; exit 130; fi
             done <<< "$CMDS"
             echo "##### $n comando(s) · $([ $rc -eq 0 ] && echo 'todos bien' || echo 'alguno falló')"
             exit $rc
           fi
-          bash ml-sync/ciclo.sh
+          exec bash ml-sync/ciclo.sh
 
   # ── EL CICLO SE VUELVE A PRENDER SOLO DESPUÉS DE CADA COMANDO A MANO (26/09/2026) ──────────────
   # Cada comando a mano corta el ciclo (mismo candado) y había que acordarse de disparar "ciclo"
@@ -241,4 +247,4 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: bash ml-sync/ciclo.sh
+        run: exec bash ml-sync/ciclo.sh
