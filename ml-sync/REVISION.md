@@ -1956,3 +1956,9 @@ fuera del promedio · 8 filas de MP sin fecha.
   `agregado:true` y "Llegó" crea la ficha con ese nombre). Lo que estaba en el pedido y no figura en el ticket sale del pedido y su
   candidato vuelve a la lista (`pedidoEn` en null); lo agregado que coincide con un candidato queda viajando. El log lo dice
   (✂️ no vinieron · ➕ agregados). **Chequear:** que un candidato que no vino vuelva a "Para probar" y no quede "viajando".
+
+- 20/10/2026 · Etapa 5 (datos y cerebro) · v25.30: **💰 piso provisorio desde la primera venta** en la línea de tiempo de cada
+  producto (`_rayas`, index.html). Sin 5 días medibles (3+ u. en Full y con visitas) se toma el precio que más plata por día dejó
+  entre los días con stock que vendieron (`aprox:true`, raya punteada "provisorio"); con 5+ días medibles, como antes. Los de
+  sobra/liquidando también muestran el piso (sin techo). El 🔴 techo y `techo95` del robot no cambian. **Chequear:** que el
+  provisorio no se use para marcar 🏔️ ni para decidir un precio sin mirarlo.

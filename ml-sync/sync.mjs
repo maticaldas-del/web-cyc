@@ -3578,6 +3578,8 @@ function poissonCdfF(k, lam) { if (!(lam > 0)) return 1; let p = Math.exp(-lam),
 // estrategia "buscando techo" a $21.990). Copia de `_rayas` de la línea de tiempo (index.html): si se toca una, se toca la otra.
 // Sólo días MEDIBLES (3+ u. en Full y con dato de visitas), agrupados por precio de lista: 💰 best = el que más plata por día dejó
 // (5+ días) · 🔴 techo = el precio más bajo arriba del best (2%+) donde, con 95% (Poisson), no deja la misma plata por día.
+// (20/10/2026) La web además muestra un 💰 piso PROVISORIO desde la primera venta cuando no hay 5 días medibles; es sólo para
+// mirar: acá (`techo95`) el piso y el techo siguen pidiendo días medibles, y el 🏔️ sigue pidiendo 95%.
 function rayasPrecioLinea(d, cu, imp, hoyK) {
   const G = {};
   for (const k of Object.keys(d || {})) {

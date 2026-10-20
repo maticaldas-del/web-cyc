@@ -9369,3 +9369,8 @@ El robot guarda `tipoPub`, `cuotas` y `cuotasSI` (el interés lo pagamos nosotro
 Él: *"poner número a los pedidos, así es más fácil referirse a ellos. de 4 dígitos"*. Paraguay, Paulvic y Listas: `num` en el
 pedido (#1001…), lo pone la web por fecha y no cambia nunca. Cuando él diga "el pedido 1003", buscarlo por `num` en
 `cyc/compraspy`, `cyc/pedidospv` o `cyc/compraslista`.
+
+## 💰 EL PISO APARECE DESDE LA PRIMERA VENTA (20/10/2026, v25.30, pedido suyo)
+Él, con el Joystick Velocity Green: *"siempre que venta tiene que tener ese piso, que va variando con cada venta"* y *"fijate que
+todos tengan eso"*. Sin días medibles la línea de tiempo muestra un 💰 piso PROVISORIO (punteado): el precio que más plata por día
+dejó entre los días con stock que vendieron. Es apurado: no marca 🏔️ ni reemplaza a `techo95`.
