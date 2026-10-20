@@ -296,7 +296,9 @@ no deje naranja algo con meses de stock (tope 60) · que el pedido en camino se 
 Qué es: escalera de lanzamiento (arranca ~20% arriba, 7 días de lista real, después escalones como descuento) y la prueba de 2 semanas
 tachado contra liso (10 publicaciones, tag nuevo `prueba` 🧪). Dónde vive: `ESTRATEGIAS`/`tagDeMotivo` (sync.mjs) y `ESTRATEGIA_UI`
 (index.html) · `entrarpromo` acepta `#tag` después del id (`=3690@PRICE_DISCOUNT#prueba`) · la lista 🤔 de `planilla` no marca
-"no sobra" ni "recién llegado" si el motivo de la promo dice lanzamiento/prueba de tachado o la estrategia es 🧪. Qué chequear: que
+"no sobra" ni "recién llegado" si el motivo de la promo dice lanzamiento/prueba de tachado o la estrategia es 🧪. `techo95` mide también las 🆕 (conversión de referencia: mediana de nuestras de precio parecido, λ ≥ 3 sin venta = 95%) y
+sólo anota 🏔️ cuando llega. Qué chequear: que un lanzamiento con 1 venta no se marque techo · que la conversión de referencia
+tenga 8+ publicaciones · que
 las 10 de la prueba no se toquen hasta el 04/11 · que el 27/10 se haga el primer escalón de los 5 lanzamientos · que un descuento
 abajo del 25% peor caso igual salga en 🤔.
 

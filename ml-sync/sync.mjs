@@ -39655,7 +39655,23 @@ async function main() {
       const tc = parseFloat(await db.get('cyc/finanzas/tipo_cambio')) || 0; if (!(tc > 0)) { console.log('⚠️ sin dólar no se puede medir'); process.exit(1); }
       const pIdx = {}; for (const pr of products) pIdx[pr.id] = pr;
       const ultT = (m) => { const h = es[m] || {}; let b = null, pv = null; for (const k of Object.keys(h).map(Number).filter((n) => n > 0).sort((a, b) => a - b)) { const x = h[k]; if (!x || !x.t) continue; const tt = x.t === 'correccion' ? pasajeDe(pv) : x.t; pv = tt; b = { t: tt, ts: k }; } return b; };
-      const sel = lista.length ? lista : Object.keys(es).filter((m) => (ultT(m) || {}).t === 'techook');
+      // 🆕 LANZAMIENTOS (20/10/2026, él: "en los lanzamientos tenemos que tirar un precio alto para buscar techo o sacar ganancia.
+      // cuando estés 95% que en ese precio es un techo marcarlo y comenzar a bajar con precio tachado. tranquilo, tenemos 4 meses").
+      // Sin la lista entran también las 🆕. Un lanzamiento no tiene un precio más bajo con ventas contra el cual medir, así que la
+      // vara es la CONVERSIÓN: las visitas que tuvo a su precio de arranque o más caro (días con stock en Full) × la conversión
+      // típica (mediana de ventas/visitas de 30 días) de NUESTRAS publicaciones de precio parecido (mitad a doble, 8+ con 30+
+      // visitas). Si con eso tendría que haber vendido λ y vendió 0, la chance de que fuera casualidad es e^-λ: 95% seguro con
+      // λ ≥ 3. Si vendió, no es techo: sigue buscando para arriba. Sin conversión de referencia o con pocas visitas: esperar.
+      const esLanza = (m) => (ultT(m) || {}).t === 'nuevo';
+      const sel = lista.length ? lista : Object.keys(es).filter((m) => ['techook', 'nuevo'].includes((ultT(m) || {}).t));
+      let convRef = () => null;
+      if (sel.some(esLanza)) {
+        const npL = (await db.get('cyc/netopub')) || {}; const vpL = (await db.get('cyc/ventaprod')) || {};
+        const u30L = {}; const t30 = Date.now() - 30 * 864e5;
+        for (const ents of Object.values(vpL)) for (const v of Object.values(ents || {})) { if (!v || v.cancelada || !v.mla) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ts >= t30) u30L[v.mla] = (u30L[v.mla] || 0) + (Number(v.qty) || 1); }
+        const pubsL = Object.entries(links).filter(([m, e]) => e && !e.ignored && !esLanza(m) && Number(e.vis30) >= 30 && Date.now() - (Number(e.vis30Ts) || 0) < 7 * 864e5 && npL[m] && Number(npL[m].precio) > 0).map(([m, e]) => ({ p: Number(npL[m].precio), c: (u30L[m] || 0) / Number(e.vis30) }));
+        convRef = (P) => { const b = pubsL.filter((x) => x.p >= P / 2 && x.p <= P * 2).map((x) => x.c).sort((x, y) => x - y); return b.length >= 8 ? { c: b[Math.floor(b.length / 2)], n: b.length } : null; };
+      }
       const hoyK = dayKeyFromISO(Date.now());
       const $ = (x) => (x == null || !isFinite(x)) ? '—' : '$' + Math.round(x).toLocaleString('es-AR');
       const fK = (k) => k ? k.slice(8, 10) + '/' + k.slice(5, 7) : '?';
@@ -39668,6 +39684,22 @@ async function main() {
         const f = armarFicha({ mla, d, e, cu: costoPesos(pr, 1, tc).costo, imp: ((ML_EXTRA_PCT[cta] || 4) + 2) / 100, cambios: [], notas: {}, hoyK });
         const P0 = Number(f.res.p) || 0;
         const nom = `${String(pr.name || e.title || '').slice(0, 38)}${e.variant ? ' #' + e.variant : ''} (${e.cuenta || '?'})`;
+        if (esLanza(mla)) {
+          let dias = 0, u = 0, vis = 0, nv = 0, desde = null, hasta = null;
+          for (const k of Object.keys(d).filter((k) => /^\d{4}_\d{2}_\d{2}$/.test(k) && k < hoyK).sort()) {
+            const x = d[k]; if (!x || typeof x !== 'object') continue; const pl = Number(x.p) || 0;
+            if (!(pl >= P0 * 0.98) || !(Number(x.st) >= 1 || Number(x.u) > 0)) continue;
+            dias++; u += Math.max(0, (Number(x.u) || 0) - (Number(x.uR) || 0)); if (x.vis != null) { vis += Number(x.vis) || 0; nv++; } desde = desde || k; hasta = k;
+          }
+          const visE = nv ? vis / nv * dias : (Number(e.vis30) >= 0 && e.vis30 != null ? Number(e.vis30) / 30 * Math.min(dias, 30) : null);
+          const cr = convRef(P0); const lam = cr && visE != null ? visE * cr.c : null;
+          const segL = u === 0 && lam != null ? 1 - Math.exp(-lam) : null; const okL = segL != null && segL >= 0.95;
+          const txtL = `a ${$(P0)} o más: ${dias} días con stock (${fK(desde)}-${fK(hasta)}), ~${visE == null ? '?' : Math.round(visE)} visitas, ${u} vendidas` + (cr ? `; una nuestra típica a ese precio convierte ${(cr.c * 100).toFixed(1)}% (${cr.n} publicaciones) y habría vendido ~${lam == null ? '?' : lam.toFixed(1)}` : '; sin conversión de referencia para ese precio');
+          const faltaL = u > 0 ? `vendió ${u} a este precio: no es techo, sigue la búsqueda para arriba` : okL ? '' : (visE != null && visE < dias * 0.7 ? 'casi no lo ve nadie (menos de 1 visita por día): bajar no lo arregla, mirar título, fotos y caja' : `todavía no alcanza: hacen falta ~${cr && cr.c > 0 ? Math.ceil(3 / cr.c) : '?'} visitas sin venta para estar 95% seguro`);
+          console.log(`${okL ? '🔴 TECHO DE LANZAMIENTO · bajar con tachado' : '🆕 ESPERAR'} · ${mla} · ${nom} · ${$(P0)}${segL != null ? ' · ' + (segL * 100).toFixed(1) + '% seguro' : ''} · ${txtL}${faltaL ? ' · ' + faltaL : ''}`);
+          res.push({ mla, ok: okL, seg: segL, txt: txtL, falta: faltaL, P0, lanza: true, hasta });
+          continue;
+        }
         // UNA SOLA CUENTA CON LA RAYA DE LA WEB (20/10/2026): 🏔️ seguro = el precio de hoy es el 💰 (el que más plata por día dejó)
         // y arriba hay un 🔴 techo medido al 95%. Arriba del 🔴 o sin 🔴 = buscar techo. Días medibles: 3+ u. en Full y con visitas.
         const R = rayasPrecioLinea(d, costoPesos(pr, 1, tc).costo, ((ML_EXTRA_PCT[cta] || 4) + 2) / 100, hoyK);
@@ -39687,6 +39719,8 @@ async function main() {
       if (GOt) {
         let g = 0;
         for (const r of res) {
+          // Lanzamiento: sólo se anota cuando es 95% (🏔️ en la línea = 🔴 techo de lanzamiento). Si no, queda 🆕 como está.
+          if (r.lanza) { if (r.ok && await guardarEstrategia(db, r.mla, 'techook', `🔴 Techo de lanzamiento, ${(r.seg * 100).toFixed(0)}% seguro: ${r.txt}. Empieza a bajar con precio tachado (entrarpromo con #bajando y "lanzamiento" en el motivo)`.replace(/;/g, ','), Date.now())) g++; continue; }
           // Las 🏔️ anteriores (sin medir al 95%) se borran: queda una sola, la medida.
           try { const h = (await db.get(`cyc/estrategia/${r.mla}`)) || {}; const pz = {}; for (const [k, x] of Object.entries(h)) if (x && x.t === 'techook') pz[k] = null; if (Object.keys(pz).length) await db.patch(`cyc/estrategia/${r.mla}`, pz); } catch { console.log(`⚠️ ${r.mla}: no pude borrar la 🏔️ anterior`); }
           const ts = r.ok && r.hasta ? Date.parse(r.hasta.replace(/_/g, '-') + 'T23:00:00-03:00') : Date.now();

@@ -868,13 +868,19 @@ tachado sea verdadero (ML compara contra el precio de los días anteriores, y un
  1. **Arranque:** ~20% arriba del precio que creo correcto (25%+ en el peor caso), tag 🆕 `nuevo`, **7 días con stock a ese precio de lista**.
     Sirve además como primera prueba de techo.
  2. **Si vende:** frena la escalera y pasa a 📈 buscar techo desde ahí.
- 3. **Si no vende en 7 días (y lo ve gente):** cada escalón baja ~5-8% como **descuento propio** (`entrarpromo:<MLA>=<precio>@PRICE_DISCOUNT|lanzamiento …`),
-    con el precio de lanzamiento tachado. Otro escalón a los 7 días sin venta. Nunca abajo del 25% en el peor caso: ahí, si no vende,
-    pasa a las reglas de 📦 sobra.
+ 3. **Se baja recién con 95% de seguridad de que ese precio es el techo** (corrección suya del 20/10: *"cuando estés 95% que en ese
+    precio es un techo marcarlo y comenzar a bajar con precio tachado. Pero tranquilo, tenemos 4 meses para averiguar. Igualmente lo
+    ideal es entender el producto lo antes posible así no perdemos ganancia"*). Lo mide `techo95` (las 🆕 entran solas): visitas a
+    ese precio o más × la conversión típica de nuestras publicaciones de precio parecido = lo que tendría que haber vendido (λ); con
+    0 ventas y λ ≥ 3 es 95% seguro. Con `;go` lo marca 🏔️ en la línea ("🔴 techo de lanzamiento") y ahí arranca la escalera: cada
+    escalón ~5-8% como **descuento propio** (`entrarpromo:<MLA>=<precio>@PRICE_DISCOUNT#bajando|lanzamiento …`) con el precio de
+    arranque tachado; el siguiente escalón también con 95% (o 7 días sin venta con visitas). Nunca abajo del 25% en el peor caso:
+    ahí, si no vende, pasa a las reglas de 📦 sobra. Los 7 días mínimos siguen: ML no muestra el tachado si el precio no estuvo ~7 días.
+    **El reloj de fondo son los 4 meses** antes del stock antiguo: sin certeza no se baja, pero a los ~60 días sin venta entra la 📦.
  4. **Si casi no lo ve nadie** (menos de ~1 visita/día), bajar no lo arregla: se mira título, fotos, caja.
 **Los 5 que lo dispararon (20/10):** Halloween Man, Ferrari Rojo, Adyan Oud, microSD Pokémon, WD 480. Como ya estaban semanas a su
 precio actual sin vender, ese precio cuenta como el de arranque (lista real desde el 20/10, cuando saqué los descuentos viejos): el
-primer escalón con descuento va el **27/10** si no vendieron.
+el **27/10** se mide con `techo95` y baja sólo el que llegue al 95%.
 
 ## 🧪 PRUEBA: ¿EL TACHADO VENDE MÁS? (21/10 → 04/11/2026, eligió 3a + 3b)
  · **3a:** el 28/10 se miden las 12 publicaciones que el 20/10 pasaron de descuento a precio liso al mismo precio final (`vistas`).
