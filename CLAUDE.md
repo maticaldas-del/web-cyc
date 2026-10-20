@@ -9292,6 +9292,12 @@ de esa publicación (guarda el viejo en `nombreViejo`); con variantes no se camb
 vinculadas de Paraguay: `nombreml[:go]` (19/10: 17 renombradas). Reemplaza la idea vieja
 de nombrar las fichas como comprasparaguay: el código Nissei (`codPy`) sigue siendo lo que empareja con Paraguay.
 
+## 🔍 NINGÚN "DA" SIN CHEQUEAR EL CATÁLOGO DE ML (20/10/2026, eligió la a, v25.10)
+El chat de compras encontró mal emparejados 67 de 344 candidatos de Paraguay y 21 de 36 de las listas (margen medido contra OTRO
+producto). Ahora un producto nuevo sólo "da" y se puede pedir si alguien confirmó que la publicación de ML es el mismo: en Paraguay
+✅ Es el mismo producto o la revisión de fotos (`revcand` ok) de ESE catálogo; en Listas el `ok` de `listadato` (o `mi=`). Lo demás
+queda en "🔍 Dan, pero falta confirmar" (Paraguay) o 🔎 Para revisar (Listas). Detalle en `ml-sync/REVISION.md` etapa 3.
+
 ## 💸 PAULVIC: 7 DÍAS HÁBILES PARA PAGAR DESDE QUE LLEGA, SI NO +10% (20/10/2026, regla suya)
 Él: *"desde que llegan tenemos 7 dias habiles para pagar, sino nos cobran un 10% mas"*. La tarjeta de cada pedido (Pedidos → Paulvic →
 Pedidos hechos) dice cuándo llega aprox (lo que tardaron los anteriores: el del 06/10 tardó 11 días) y hasta cuándo pagar. Al llegar,

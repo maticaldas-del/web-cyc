@@ -343,6 +343,12 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 (sería doble), y que el número de Gastos y el del Arqueo sean el mismo para cada mes.
 
 ## 3 · MERCADERÍA (miércoles)
+- **Ningún "da" sin chequear el catálogo de ML (20/10/2026, v25.10, eligió la a).** El chat de compras encontró mal emparejados
+  67 de 344 candidatos de Paraguay y 21 de 36 de las listas. Paraguay: `candCatChequeado` (index.html y sync.mjs) pide `mismoOk` o
+  `revClaude` ok atados al catálogo que se midió; sin eso `candPuedePedir` y el comando `pedir` no dejan cargar, y la tarjeta va a
+  "🔍 Dan, pero falta confirmar". Listas: `_listaDa`/`cuentaLista` piden `ok` de `listadato` (`listaOkVale`); `listadato` guarda
+  `okCat` = el catálogo que se miró, y si el robot mide contra otro el ✅ deja de valer. Chequear: que lo confirmado suba solo y que
+  un cambio de catálogo lo baje.
 - **El catálogo de Paraguay se mide más rápido (16/10/2026).** Él: *"no veo ni cerca los 13.000"*. Medido: 13.467 guardados,
   1.436 medidos en 7 días, 10.595 esperando; GitHub corrió `ml-pycat` 8 veces en ~2 días. `PYCAT_POR_VUELTA` 300 → 700 y cada
   2 h (era 3). Chequear en el log de `ml-pycat`: que no aparezcan 429 de ML y que la vuelta termine antes de 55 min.

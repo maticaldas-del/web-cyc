@@ -8161,9 +8161,12 @@ function cuentaLista(cat) {
   const v = Object.values(cat || {}).filter((e) => e && e.n);
   // Mínimo 100 ventas en ML (18/10/2026, regla suya): sin `vend` cargado va a revisar; con menos de 100 queda afuera.
   const m25 = (e) => !e.noEs && !e.sacado && !e.noWeb && e.m != null && Number(e.m) >= 25 && /^https:\/\//.test(e.mf || '') && !(e.vend != null && Number(e.vend) < 100);
-  const da = (e) => m25(e) && Number(e.vend) >= 100 && (e.ok || (!e.rp && Number(e.m) < 80 && Number(e.mv) !== 1));   // 1 solo vendedor = precio sin confirmar (19/10)   // `ok`/`noEs` = lo miró el chat de compras (`listadato`)
+  // DESDE EL 20/10/2026 (eligió la a) sólo da lo que el chat de compras confirmó mirando ML (`ok`, de `listadato`) para ESE catálogo
+  // (`okCat`, o el catálogo fijado con `mi=`). Antes también entraba lo que el robot emparejó solo y "parecía" bien: 21 de 36 estaban mal.
+  const da = (e) => m25(e) && Number(e.vend) >= 100 && listaOkVale(e);
   return { n: v.length, med: v.filter((e) => e.m != null).length, pend: v.filter((e) => !e.t).length, dan: v.filter(da).length, revisar: v.filter((e) => m25(e) && !da(e)).length, tMed: Date.now() };
 }
+function listaOkVale(e) { return !!(e && e.ok && (e.miFijo || !e.okCat || String(e.okCat).toUpperCase() === String(e.mi || '').toUpperCase())); }
 const PERF_LOCAL_TIENDA = 30, PERF_LOCAL_GAN = 25;
 function perfLocalPct(costoPesos, precioML) {
   if (!(costoPesos > 0) || !(precioML > 0)) return null;
@@ -8171,6 +8174,16 @@ function perfLocalPct(costoPesos, precioML) {
 }
 function candPisoDe(c) { return c && RE_CAND_PERF.test(`${c.nombre || ''} ${c.mlTit || ''}`) ? CAND_PISO_PERFUME : CAND_PISO_PCT; }
 const CAND_MIN_VENT = 100;      // suyo, 03/10/2026: "100 unidades mínimo vendidas, sino no sirve" para entrar al pedido
+// NINGÚN "DA" SIN CHEQUEAR EL CATÁLOGO (20/10/2026, eligió la a). El chat de compras encontró mal emparejados 67 de 344 en Paraguay y
+// 21 de 36 en las listas: un margen medido contra OTRO producto. Un candidato de Paraguay se puede pedir sólo si alguien confirmó que el
+// catálogo de ML que se midió es el mismo producto: él con ✅ (`mismoOk`) o la revisión de fotos (`revClaude` ok), los dos atados a ESE
+// catálogo. Misma función en index.html (`candCatChequeado`).
+const candCatDe = (c) => ((String((c && c.mlLink) || '').match(/\/p\/(MLA\d+)/i) || [])[1] || String((c && c.mlId) || '').toUpperCase().replace(/^.*\/P\//, '').split(/[?#]/)[0] || '').toUpperCase();
+function candCatChequeado(c) {
+  const cat = candCatDe(c); if (!cat) return false;
+  if (c.mismoOk && String(c.mismoOk).toUpperCase() === cat) return true;
+  const rc = c.revClaude; return !!(rc && rc.v === 'ok' && String(rc.cat || '').toUpperCase() === cat);
+}
 // Peor caso razonable de retención de IIBB de otra provincia al vender (12/10/2026): casi todas las ventas traen 0,5-2%.
 const PEOR_RET_PCT = 0.02;
 // Las que no tienen margen medible también son un agujero: se nombran (sin costo, Premium sin cuotas, ML no contestó).
@@ -18728,7 +18741,8 @@ async function main() {
           : _viaja(c) ? `ya está viajando en el pedido del ${_viaja(c)}`
           : (c.margen == null || !isFinite(mg)) ? 'todavía no está medido en ML'
           : (mg < candPisoDe(c) && !(_tcP > 0 && !c.noLocal && RE_CAND_PERF.test(`${c.nombre || ''} ${c.mlTit || ''}`) && (perfLocalPct((parseFloat(c.usd) || 0) * RECARGO_PAR * _tcP, Number(c.mlPrecio) || 0) || 0) >= PERF_LOCAL_GAN)) ? `da ${mg.toFixed(1)}% y tu piso es ${candPisoDe(c)}%`
-          : !(_vendP(c) >= CAND_MIN_VENT) ? (_vendP(c) == null ? `no tiene cargadas las vendidas en ML (mínimo ${CAND_MIN_VENT})` : `vendió ${_vendP(c)} en ML y el mínimo es ${CAND_MIN_VENT}`) : '';
+          : !(_vendP(c) >= CAND_MIN_VENT) ? (_vendP(c) == null ? `no tiene cargadas las vendidas en ML (mínimo ${CAND_MIN_VENT})` : `vendió ${_vendP(c)} en ML y el mínimo es ${CAND_MIN_VENT}`)
+          : !candCatChequeado(c) ? 'nadie confirmó todavía que el catálogo de ML sea el mismo producto (✅ en el panel o la revisión de fotos)' : '';
         if (puede && p.u > antes) { problemas.push(`"${p.busca}" → ${c.nombre}: NO se puede pedir, ${puede}`); continue; }
         cambios.push({ id, c, antes, u: p.u, baja: !!p.baja });
       }
@@ -19378,7 +19392,7 @@ async function main() {
         // Nombre nuevo = otra búsqueda en ML: se borra la medición vieja para que `listamedir` lo vuelva a medir (18/10/2026,
         // la lista de Godrej decía "VN" y ML emparejó con otras marcas; con "Villeneuve" se busca bien).
         const _nomCambio = v && String(v.n || '') !== f.n;
-        const _sinMed = _nomCambio ? { t: null, m: null, mi: null, mt: null, mp: null, mv: null, mf: null, sc: null, sv: null, rp: null } : {};
+        const _sinMed = _nomCambio ? { t: null, m: null, mi: null, mt: null, mp: null, mv: null, mf: null, sc: null, sv: null, rp: null, ok: null, okCat: null } : {};
         upd[f.cod] = { ...(v || {}), ..._sinMed, n: f.n, p: f.p, ts: ahora, ...(v && Math.abs((Number(v.p) || 0) - f.p) >= 1 ? { pAnt: Number(v.p) || null } : {}) }; }
       console.log(`=== LISTA DE ${provNom.toUpperCase()} · carga ${APLICAR ? '' : '(PRUEBA: no escribo nada)'} ===`);
       console.log(`${filas.length} productos · ${nuevos} nuevos · ${cambio} cambiaron de precio · ${igual} iguales · recargo del proveedor ${rec}%`);
@@ -19565,6 +19579,8 @@ async function main() {
       const tocados = new Set();
       for (const [path, u] of Object.entries(upd)) { const [pk, cod] = path.split('/'); const e = await db.get('mlapi/listas/' + pk + '/' + cod);
         if (!e) { console.log(`  ✗ ${pk}/${cod}: no está en la lista`); continue; }
+        // El ✅ vale para el catálogo que se miró (20/10/2026): si después el robot mide contra otro, deja de valer solo.
+        if (u.ok) u.okCat = u.miFijo || e.miFijo || e.mi || null; else if (u.noEs) u.okCat = null;
         console.log(`  · ${pk} · ${String(e.n).slice(0, 60)} → ${u.vend != null ? u.vend + ' vendidas' : ''}${u.ok ? ' · ✅ mismo producto' : ''}${u.noEs ? ' · ❌ otro producto' : ''}${u.miFijo ? ' · catálogo ' + u.miFijo + ' (se vuelve a medir)' : ''}`);
         if (APLICAR) { await db.patch('mlapi/listas/' + pk + '/' + cod, u); tocados.add(pk); } }
       if (APLICAR) for (const pk of tocados) await db.patch('cyc/mlconfig/listasProv/' + pk, cuentaLista((await db.get('mlapi/listas/' + pk)) || {}));
