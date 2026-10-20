@@ -12553,17 +12553,31 @@ async function clDescontarCaja(pid,cta,va,u){
     if(o)o.u=Math.max(0,(parseInt(o.u)||0)-(parseInt(u)||0));
   }catch(e){console.warn('clDescontarCaja',e);}
 }
+// ✋ LO CAMBIADO A MANO TAMBIÉN SE DESCUENTA (etapa 3, 20/10/2026). `mano/<color>` manda sobre lo decidido, y sólo el botón
+// "✅ Pedido hecho" del Paulvic lo borraba: después del "Ya lo pedí" de Paraguay (y de `pvped`/`pyped` por el chat) ese color seguía
+// pidiendo lo mismo. Ahora acá, para todos: si el color está a mano, lo que queda es (lo de mano − lo pedido) y la marca se borra.
+// MISMA CUENTA que `clDescontarPedBot` de sync.mjs: si se toca una, se toca la otra.
+async function _clSetVarSinMano(pid,k,resto,o){
+  await db.ref('cyc/claudedecide/ped/'+pid+'/vars/'+k).set(resto);await db.ref('cyc/claudedecide/ped/'+pid+'/mano/'+k).remove();
+  (o.vars=o.vars&&typeof o.vars==='object'?o.vars:{})[k]=resto;if(o.mano)delete o.mano[k];
+}
 async function clDescontarPed(pid,va,u){
   try{
     const o=clPedDe(pid);if(!o)return;
     let left=Math.max(0,parseInt(u)||0);if(!left)return;
     const vars=o.vars&&typeof o.vars==='object'?o.vars:null;
+    const mano=o.mano&&typeof o.mano==='object'?o.mano:{};
+    if(va){const k=sid(String(va).toLowerCase());if(mano[k]&&mano[k].u!=null){await _clSetVarSinMano(pid,k,Math.max(0,(parseInt(mano[k].u)||0)-left),o);return;}}
     if(va&&vars){const k=sid(String(va).toLowerCase());if(k in vars){await _clRestar('ped/'+pid+'/vars/'+k,left);vars[k]=Math.max(0,(parseInt(vars[k])||0)-left);}return;}
     if(o.u!=null){await _clRestar('ped/'+pid+'/u',left);o.u=Math.max(0,(parseInt(o.u)||0)-left);return;}
-    if(vars){   // pedido sin color (Paraguay no anota color): se descuenta de los colores decididos, el más grande primero
-      for(const [k,n] of Object.entries(vars).sort((a,b)=>(parseInt(b[1])||0)-(parseInt(a[1])||0))){
-        if(left<=0)break;const q=Math.min(left,Math.max(0,parseInt(n)||0));if(!q)continue;
-        await _clRestar('ped/'+pid+'/vars/'+k,q);vars[k]=Math.max(0,(parseInt(vars[k])||0)-q);left-=q;}
+    if(vars||Object.keys(mano).length){   // pedido sin color (Paraguay no anota color): se descuenta de los colores decididos, el más grande primero (lo de mano cuenta con su número)
+      const ef={};for(const [k,n] of Object.entries(vars||{}))ef[k]=Math.max(0,parseInt(n)||0);
+      for(const [k,m] of Object.entries(mano))if(m&&m.u!=null)ef[k]=Math.max(0,parseInt(m.u)||0);
+      for(const [k,n] of Object.entries(ef).sort((a,b)=>b[1]-a[1])){
+        if(left<=0)break;const q=Math.min(left,n);if(!q)continue;
+        if(k in mano)await _clSetVarSinMano(pid,k,n-q,o);
+        else{await _clRestar('ped/'+pid+'/vars/'+k,q);vars[k]=Math.max(0,(parseInt(vars[k])||0)-q);}
+        left-=q;}
     }
   }catch(e){console.warn('clDescontarPed',e);}
 }
@@ -13291,7 +13305,11 @@ async function syncPedidosAuto(){
         if(hasVars&&(_cl.vars||_cl.mano)){
           const cv={};for(const [k,v] of Object.entries(_cl.vars||{}))cv[k]=Math.max(0,parseInt(v)||0);
           // LO QUE CAMBIÓ ÉL A MANO (19/10/2026, "poder modificar lo pedido"): `mano/<color>` manda sobre lo mío hasta el pedido hecho.
-          const _mano=_cl.mano&&typeof _cl.mano==='object'?_cl.mano:{};for(const [k,o] of Object.entries(_mano))if(o&&o.u!=null)cv[k]=Math.max(0,parseInt(o.u)||0);
+          // En Bs As (no Paraguay, no Paulvic) lo de mano VENCE cuando entra mercadería a la oficina después del cambio (`cyc/ofientro`,
+          // etapa 3, 20/10/2026): Tito compró y lo contó; Bs As no tiene "Pedido hecho" que lo borre. Misma regla en `pedidostodo`.
+          const _ofiE=Number((state.ofientro||{})[p.id])||0,_bsasM=p.origen!=='py'&&!esProductoPaulvic(p);
+          const _mano={};for(const [k,o] of Object.entries(_cl.mano&&typeof _cl.mano==='object'?_cl.mano:{}))if(o&&o.u!=null&&!(_bsasM&&_ofiE>(Number(o.ts)||0)))_mano[k]=o;
+          for(const [k,o] of Object.entries(_mano))cv[k]=Math.max(0,parseInt(o.u)||0);
           // 19/10/2026, él: "al realizar el pedido no sacó los productos de paulvic que pedí". Un pedido al Paulvic en camino
           // hecho DESPUÉS de mi decisión y que no se descontó al hacerlo (`desc`, lo marca el botón de la tarjeta) se resta aroma por aroma:
           // se da por hecho que llega todo; si falta algo, él avisa y se corrige al llegar.
@@ -18339,9 +18357,13 @@ async function pvPedidoHecho(pedId){
   if(prev&&prev.prodId&&prev.prodId!==P.prodId){alert('Ya hay un pedido de hoy de otra ficha: pasámelo por el chat.');return;}
   const its=(prev&&Array.isArray(prev.items)?prev.items:[]).filter(Boolean).map(x=>({...x}));
   for(const it of P.items){const o=its.find(x=>x.v===it.v);if(o)o.u=(parseInt(o.u)||0)+it.u;else its.push({v:it.v,u:it.u});}
-  const rec={prodId:P.prodId,fecha:hoy,ts:(prev&&prev.ts)||Date.now(),estado:'camino',items:its,origen:'panel'};
+  // Etapa 3 (20/10/2026): el registro se conserva (antes `set` sin `desc` ni lo demás) y, si el pedido de hoy ya estaba sin `desc` y es
+  // más nuevo que mi decisión (Pedidos lo venía restando en el momento), lo de antes también sale de lo decidido: con `desc` deja de restarse.
+  const _clD=clPedDe(P.prodId),_prevSinDesc=prev&&!prev.desc&&Number(prev.ts||Date.parse(String(prev.fecha||'')+'T12:00:00-03:00'))>(Number(_clD&&_clD.ts)||0);
+  const rec={...(prev||{}),prodId:P.prodId,fecha:hoy,ts:(prev&&prev.ts)||Date.now(),estado:'camino',items:its,origen:(prev&&prev.origen)||'panel'};delete rec.desc;
   try{await db.ref('cyc/pedidospv/'+id).set(rec);}catch(e){toast('No se guardó: '+e.message,'err');return;}
   (state.pedidospv=state.pedidospv||{})[id]=rec;
+  if(_prevSinDesc)for(const it of (prev.items||[]).filter(Boolean))await clDescontarPed(P.prodId,it.v,parseInt(it.u)||0);
   for(const it of P.items){await clDescontarPed(P.prodId,it.v,it.u);try{await db.ref('cyc/noconsigo/'+P.prodId+'/nunca/'+sid(it.v)).remove();}catch(e){}}
   try{await db.ref('cyc/pedidospv/'+id+'/desc').set(true);rec.desc=true;}catch(e){}   // ya descontado de lo decidido: Pedidos no lo vuelve a restar
   try{await db.ref('cyc/claudedecide/ped/'+P.prodId+'/mano').remove();const o=((state.claudedecide||{}).ped||{})[P.prodId];if(o)delete o.mano;}catch(e){}
@@ -18634,7 +18656,7 @@ async function _listaBuscarYa(q){
       <div style="flex:1;min-width:0;font-size:.72rem;line-height:1.45"><span style="font-size:.6rem;padding:1px 7px;border-radius:9px;background:#7c3aed;color:#fff">${escHtml(provs[k].nombre||k)}</span> <b>${escHtml(e.n)}</b>
         <div style="color:var(--muted);font-size:.64rem">🔖 ${escHtml(cod)} · te sale <b style="color:var(--text)">${fmt(_listaPuesto(k,e))}</b>${e.mp?` · en ML ${fmt(e.mp)}`:''}${e.vend!=null?` · 🛒 ${e.vend>=1000?'+1000':e.vend} vendidas`:''}</div>
         <div style="font-size:.64rem">${e.mi?`<a href="https://www.mercadolibre.com.ar/p/${e.mi}" target="_blank" rel="noopener" style="color:var(--green)">🔗 verlo en ML</a> · `:''}<a href="#" onclick="listaVerOri('${k}','${c}');return false" style="color:var(--blue)">📄 verlo en la lista</a> · <a href="#" onclick="_listaSel='${k}';_listaVista='nuevos';renderListas();return false" style="color:var(--muted)">ir a ${escHtml(provs[k].nombre||k)}</a></div></div>
-      <div style="text-align:right;flex:0 0 auto">${m!=null?`<b style="color:${m>=25?'var(--green)':'var(--red)'}">${m}%</b>`:'<span style="font-size:.6rem;color:var(--muted)">sin medir</span>'}
+      <div style="text-align:right;flex:0 0 auto">${m!=null&&!_listaCostoVigente(e)?'<span style="font-size:.6rem;color:var(--amber)">⏳ costo nuevo, falta medir</span>':m!=null?`<b style="color:${m>=25?'var(--green)':'var(--red)'}">${m}%</b>`:'<span style="font-size:.6rem;color:var(--muted)">sin medir</span>'}
         ${_listaDa(e)?`<div style="font-size:.62rem;color:var(--muted)">pedir <input type="number" min="0" inputmode="numeric" value="${(arm[k]||{})[cod]||''}" placeholder="0" onchange="listaSetU('${k}','${c}',this.value)" style="width:48px;padding:2px 4px;font-size:.78rem;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text)"></div>`:''}</div></div>`;};
   out.innerHTML=`<div style="font-size:.66rem;color:var(--muted);margin-top:6px">${R.length?R.length+' resultado'+(R.length===1?'':'s')+(R.length>60?' · muestro los 60 mejores':''):'Nada en ninguna lista con eso.'}</div>`+R.slice(0,60).map(fila).join('');
 }
@@ -18645,7 +18667,12 @@ function _listaPuesto(k,e){return Math.round((Number(e&&e.p)||0)*(1+_listaRec(k)
 // `ok`/`noEs`/`vend` los carga el chat de compras mirando ML (`listadato`): ok = mismo producto confirmado, noEs = otro producto.
 // MÍNIMO 100 VENTAS, EN TODAS LAS LISTAS (18/10/2026, regla suya). Las ventas las carga el chat (`vend`); sin ese dato no se sabe y
 // va a "🔎 Para revisar" (que el chat lo mire). Con menos de 100 vendidas sale de las dos (queda abajo, con su número).
-function _listaMed25(e){return e&&!e.noEs&&!e.sacado&&!e.noWeb&&e.m!=null&&isFinite(e.m)&&Number(e.m)>=25&&/^https:\/\//.test(e.mf||'')&&!(e.vend!=null&&Number(e.vend)<100);}
+// EL MARGEN TIENE QUE SER DEL COSTO DE HOY (etapa 3, 20/10/2026): `lista:`, `listadto` y `listaweb` cambian el costo `p` y dejaban el
+// margen `m` y el `ok` medidos con el costo VIEJO (Iscos: medido con $10.000, el costo pasó a $14.000 y seguía "dando 40%"). `uMed` es
+// el costo con el que se midió: si no es el de hoy, el margen no vale hasta que `listamedir` lo vuelva a medir (lo hace solo).
+// Misma regla en el robot (`listaCostoVigente`).
+function _listaCostoVigente(e){return !!e&&e.uMed!=null&&Math.abs(Number(e.uMed)-Number(e.p))<1;}
+function _listaMed25(e){return e&&!e.noEs&&!e.sacado&&!e.noWeb&&e.m!=null&&isFinite(e.m)&&Number(e.m)>=25&&_listaCostoVigente(e)&&/^https:\/\//.test(e.mf||'')&&!(e.vend!=null&&Number(e.vend)<100);}
 // UN SOLO VENDEDOR NO ALCANZA (19/10/2026, él: "hay un flaco que vende los perfumes re caros y es el único (…) es un precio inflado que no
 // sabemos si vende"). Con 1 vendedor en ML el precio no lo confirma nadie: nunca va a ✅ Dan solo, va a 🔎 Para revisar hasta que el
 // chat de compras lo mire (`ok` = mismo producto Y precio creíble).
@@ -18660,7 +18687,7 @@ function _listaArmado(k){return Object.entries(((state.listaPed||{})[k])||{}).ma
 function _listaViajando(k){const s=new Set();Object.values(state.comprasLista||{}).forEach(c=>{if(c&&c.prov===k&&c.estado==='camino')(c.items||[]).forEach(it=>s.add(String(it.cod)));});return s;}
 async function listaSetU(k,cod,val){
   const u=Math.max(0,parseInt(val)||0);const e=(_listaCache[k]||{})[cod];
-  if(u>0&&!_listaDa(e)){toast('No se puede cargar: '+(e&&e.noWeb?'no está en la web del proveedor: no lo tienen en stock':e&&e.m!=null?'en ML da '+Math.round(e.m)+'%, abajo del 25%':'todavía no está medido contra ML (o le falta la foto de ML)'),'err',5000);renderListas();return;}
+  if(u>0&&!_listaDa(e)){toast('No se puede cargar: '+(e&&e.noWeb?'no está en la web del proveedor: no lo tienen en stock':e&&e.m!=null&&!_listaCostoVigente(e)?'⏳ el costo cambió y el margen es del costo viejo: falta volver a medirlo contra ML':e&&e.m!=null?'en ML da '+Math.round(e.m)+'%, abajo del 25%':'todavía no está medido contra ML (o le falta la foto de ML)'),'err',5000);renderListas();return;}
   if(u>0&&_listaViajando(k).has(String(cod))){toast('Ya está viajando en un pedido de este proveedor','err',4000);renderListas();return;}
   try{await db.ref('cyc/listas_pedido/'+k+'/'+cod).set(u>0?u:null);}catch(err){toast('No se guardó: '+(err.message||err),'err',5000);return;}
   state.listaPed=state.listaPed||{};state.listaPed[k]=state.listaPed[k]||{};if(u>0)state.listaPed[k][cod]=u;else delete state.listaPed[k][cod];
@@ -18817,7 +18844,8 @@ async function renderListas(){
     return;
   }
   const fila=([cod,e],conU)=>{const pc=_listaPuesto(k,e);const m=(e.m!=null&&isFinite(e.m))?Number(e.m):null;
-    const est=m!=null?`<b style="font-size:1rem;color:${m>=25?'var(--green)':'var(--red)'}">${Math.round(m)}%</b> <span style="font-size:.6rem;color:var(--muted)">ML</span>`
+    const est=m!=null&&!_listaCostoVigente(e)?`<span style="font-size:.62rem;color:var(--amber)" title="Se midió con un costo de ${fmt(Number(e.uMed)||0)} y hoy es ${fmt(Number(e.p)||0)}: el ${Math.round(m)}% de antes ya no vale.">⏳ costo nuevo, falta medir</span>`
+      :m!=null?`<b style="font-size:1rem;color:${m>=25?'var(--green)':'var(--red)'}">${Math.round(m)}%</b> <span style="font-size:.6rem;color:var(--muted)">ML</span>`
       :e.sc?'<span style="font-size:.62rem;color:var(--muted)">sin catálogo exacto en ML</span>':e.sv?'<span style="font-size:.62rem;color:var(--muted)">en ML no lo vende nadie</span>':e.fz?`<span style="font-size:.62rem;color:var(--muted)">afuera: ${escHtml(e.fz)}</span>`:'<span style="font-size:.62rem;color:var(--muted)">⏳ sin medir</span>';
     const fML=/^https:\/\//.test(e.mf||'')?e.mf:'';const vj=viaj.has(String(cod)),fi=yaFicha.has(String(cod));
     const uBox=!conU?'':fi?'<div style="font-size:.6rem;color:var(--green)">ya es probado</div>':vj?'<div style="font-size:.6rem;color:var(--amber)">🚚 viajando</div>'
@@ -19009,7 +19037,9 @@ function renderPedidos(){
   // lo contaba dos veces.
   let peds=((isBsas?state.pedidos:state.pedidos_py)||[]).filter(x=>!esPedidoPaulvic(x));
   // Lo que se le compró a un proveedor de 📋 Listas va en Listas → Probados, no en Bs As (18/10/2026).
-  if(isBsas){const _li=new Set((state.products||[]).filter(p=>p.listaProv).map(p=>p.id));if(_li.size)peds=peds.filter(x=>!_li.has(x.prodId));}
+  // Sólo lo de una lista que SE VE en Listas (etapa 3, 20/10/2026): una lista descartada o sacada por ahora no se dibuja, y sus probados
+  // no salían en ninguna solapa. Ésos vuelven a Bs As "De siempre" hasta que la lista vuelva.
+  if(isBsas){const _lp=(state.mlconfig&&state.mlconfig.listasProv)||{};const _li=new Set((state.products||[]).filter(p=>p.listaProv&&_lp[p.listaProv]&&!_lp[p.listaProv].desc&&!_lp[p.listaProv].pausa).map(p=>p.id));if(_li.size)peds=peds.filter(x=>!_li.has(x.prodId));}
   const cnt={pendiente:0,poco_stock:0,suficiente:0};peds.forEach(p=>{const e=p.estado==='en_camino'?'pendiente':(p.estado||'pendiente');cnt[e]=(cnt[e]||0)+1;});
   const cntEl=document.getElementById(countId);
   if(cntEl)cntEl.innerHTML=`
