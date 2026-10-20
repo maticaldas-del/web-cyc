@@ -1922,3 +1922,11 @@ escmedir, raros, lupa, escasez y techo95 (si no se lee, 2% y lo dice) · `setDev
   (`_lineaFac`, entre 1 y 4; remate y caja quedan igual), así las letras del SVG no se deforman. Nunca achica. Al cambiar el
   tamaño de la ventana se vuelve a medir. **Chequear:** que el gráfico termine en el borde de abajo en PC y en el teléfono, y
   que lo de abajo (cambios de precio, colores) aparezca al bajar. Carril nuevo: si es alto (h0 ≥ 30) se estira solo.
+
+- 20/10/2026 · Etapa 5 (datos) · v25.26: **Clásica o Premium y cuántas cuotas en cada venta.** El ciclo guarda en la venta
+  `tipoPub` (`listing_type_id` de la orden: gold_special/gold_pro), `cuotas` (`installments` del pago de MP, si no el de la
+  orden) y `cuotasSI` (hubo cargo `financing` del vendedor = cuotas sin interés pagadas por nosotros). `orderNet` devuelve
+  `cuotas` y `finan`; en carritos sale de `ordPago` (una lectura por orden). Si el pago no se pudo leer se conserva lo
+  guardado. Las viejas: `tipoventa[:días][:go]` (ml-sync, patch de esos 3 campos sólo en ventas que existen; sin `:go`
+  cuenta Clásica/Premium por cuotas). Web: chip `tipoLabel` en Ventas x Producto (PC y teléfono).
+  **Chequear:** que una venta de una gemela Premium diga "Premium · N cuotas s/interés" y que una con `manualTs` no pierda el dato.

@@ -9360,3 +9360,7 @@ tag 🧪 `prueba`, no se tocan mientras dura. Detalle en `ml-sync/CEREBRO.md` (�
 ## 📈 LA LÍNEA DE TIEMPO OCUPA TODA LA PANTALLA (20/10/2026, v25.25, pedido suyo)
 Él: *"que el gráfico sea pantalla completa (…) que arriba quede lo que está y que el gráfico llegue hasta abajo de la pantalla"*.
 `_lineaLlenar` estira los carriles altos hasta el borde de abajo (sin deformar letras); lo de abajo aparece al bajar.
+
+## 💳 CADA VENTA DICE CLÁSICA O PREMIUM Y EN CUÁNTAS CUOTAS (20/10/2026, v25.26, pedido suyo)
+El robot guarda `tipoPub`, `cuotas` y `cuotasSI` (el interés lo pagamos nosotros) en cada venta; Ventas x Producto lo muestra
+(Premium en violeta). Las viejas: `tipoventa[:días][:go]` por ml-sync. Sirve para medir si las 💳 gemelas venden.

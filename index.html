@@ -2683,7 +2683,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.25';
+const APP_VERSION='25.26';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2694,6 +2694,7 @@ const APP_VERSION='25.25';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.26',f:'20/10',h:'14:43',c:[{n:2,t:'💳 Ventas: cada venta dice si se vendió por la publicación Clásica o la Premium y en cuántas cuotas ("1 pago", "3 cuotas" o "6 cuotas s/interés" cuando el interés lo pagamos nosotros). Las Premium van en violeta. Las ventas viejas se completan solas con el robot.'}]},
   {v:'25.25',f:'20/10',h:'14:40',c:[{n:1,t:'📈 Línea de tiempo: el gráfico llega hasta abajo de la pantalla (arriba queda el encabezado como estaba). Los carriles se agrandan, las letras no se deforman, y lo que estaba abajo (cada cambio de precio, los colores) aparece al bajar.'}]},
   {v:'25.24',f:'20/10',h:'14:30',c:[
     {n:3,t:'Paraguay y Elegancia: cada pedido queda con su proveedor (Nissei, Elegancia, perfumería) y "compray" no mezcla pedidos de dos proveedores'},
@@ -11841,6 +11842,17 @@ function renderVentaProd(){
       // renglón va sólo la flecha y lo demás vive en el detalle (19/10/2026, él: "queda afuera de la tarjeta. que eso salga en el detalle").
       const _flechaCambio=cv=>`<span style="font-size:.66rem" title="Cambió de precio antes de esta venta · mirá el detalle">${cv.includes('▲')?'<b style="color:var(--green)">▲</b>':'<b style="color:var(--red)">▼</b>'}</span>`;
       const lines=grp.items.map(v=>{const _cv=isCancelled?'':cambioVentaHTML(v,Number(v.ts)||0);const _pp=prodDeVenta(v);return `<div style="display:flex;gap:6px;font-size:.72rem;padding:2px 0;align-items:center;white-space:nowrap;${isCancelled?'opacity:.45;text-decoration:line-through':''}"><span style="flex-shrink:0">${fotoVentaHTML(v,30)}</span><span class="vp-pc-txt" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis" title="${String(nombreDeVenta(v)).replace(/"/g,'&quot;')}${v.variante?' · '+v.variante:''}">${v.qty}× ${nombreDeVenta(v)}${estrategiaVentaHTML(v)}${v.variante?` <span style="padding:1px 5px;border-radius:3px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.62rem">${v.variante}</span>`:''}${_cv?' '+_flechaCambio(_cv):''}</span><span style="flex-shrink:0">${_pp&&_varios?lineaBtn(_pp.id):''}</span></div>`;}).join('');
+      // CLÁSICA O PREMIUM Y EN CUÁNTAS CUOTAS (20/10/2026, pedido suyo: "quiero que en las ventas muestre si se vendió como
+      // clásica o premium y en cuántas cuotas"). Lo anota el robot en cada venta (`tipoPub`, `cuotas`, `cuotasSI`); las viejas
+      // las completa `tipoventa:go`. Una venta sin el dato no muestra nada (no se adivina). En un carrito con tipos distintos
+      // sale uno por cada combinación.
+      const tipoLabel=(()=>{const vs=[...new Set(grp.items.map(v=>{const lt=v.tipoPub,c=Number(v.cuotas)||0;if(!lt&&!c)return'';
+        const tn=lt==='gold_pro'?'Premium':lt==='gold_special'?'Clásica':'';
+        const ct=c>1?`${c} cuotas${v.cuotasSI?' s/interés':''}`:c===1?'1 pago':'';
+        return [tn,ct].filter(Boolean).join(' · ')+'|'+(lt==='gold_pro'?1:0)+'|'+(v.cuotasSI?1:0);}).filter(Boolean))];
+        return vs.map(x=>{const [t,pr,si]=x.split('|');const col=pr==='1'?'#c084fc':'var(--muted)';
+          const tt=(pr==='1'?'Se vendió por la publicación PREMIUM (con cuotas). ':t.startsWith('Clásica')?'Se vendió por la publicación CLÁSICA. ':'')+(si==='1'?'El interés de las cuotas lo pagamos nosotros (cuotas sin interés).':/cuotas/.test(t)?'Pagó en cuotas con interés: el interés lo pagó el comprador.':'');
+          return `<span style="font-size:.62rem;padding:1px 6px;border-radius:4px;border:1px solid ${pr==='1'?'rgba(192,132,252,.45)':'var(--border2)'};color:${col};white-space:nowrap" title="${tt}">💳 ${t}</span>`;}).join(' ');})();
       const _pcHtml=`<div class="ingreso-item vp-pc" onclick="vpCardClick(event,'${grp.gid}')" title="Tocá para ver u ocultar el detalle" style="cursor:pointer;flex-direction:column;align-items:stretch;gap:4px;${isCancelled?'border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.04)':''}">
         <div class="vp-pc-cab" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;row-gap:4px;white-space:nowrap">
           <span class="who-badge" style="font-size:.6rem;${isCancelled?'opacity:.6':''}">${cuenta}</span>
@@ -11849,6 +11861,7 @@ function renderVentaProd(){
           ${grp.items.length>1?`<span style="font-size:.64rem;color:var(--muted)">${grp.items.length} prod.</span>`:''}
           <span style="flex:1"></span>
           ${promoLabel?promoLabel.replace(/>🏷️ [^<]*</,'>🏷️ '+(promoLabel.includes('vp-promo-ml')?'desc. ML':'promo')+'<'):''}
+          ${tipoLabel}
           ${entLabel}
           ${rescLabel}
           ${(!isCancelled&&_tot>0)?`<span style="font-size:.66rem;color:var(--muted)">total <b style="color:var(--text);font-weight:600">${fmt(_tot)}</b></span>`:''}
@@ -11868,6 +11881,7 @@ function renderVentaProd(){
           ${_pill}
         </div>
         ${_items}
+        ${tipoLabel?`<div>${tipoLabel}</div>`:''}
         ${promoLabel?`<div>${promoLabel}</div>`:''}
         <div style="display:flex;align-items:center;gap:10px;margin-top:2px">
           ${isCancelled?'':(gc>0?`<span style="font-size:.8rem;font-weight:600;color:${gg>=0?'var(--green)':'var(--red)'}">${gg>=0?'+'+fmt(gg):'−'+fmt(-gg)}</span>`:'')}

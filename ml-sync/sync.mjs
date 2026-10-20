@@ -7654,7 +7654,7 @@ async function anotarPromoVenta(db, o, token, dayKey) {
 // fallback (precio − comisión de la orden), que es mucho más cercano. En la próxima corrida, ya
 // con el pago liquidado, la venta se vuelve a escribir con el neto exacto.
 async function orderNet(order, token, feeOut) {
-  let net = 0, ok = false, mlfee = 0, tieneCargosML = false, envio = 0, fallo = false;
+  let net = 0, ok = false, mlfee = 0, tieneCargosML = false, envio = 0, fallo = false, cuotas = 0, finan = 0;
   for (const p of (order.payments || [])) {
     if (!p.id) continue;
     try {
@@ -7667,6 +7667,9 @@ async function orderNet(order, token, feeOut) {
       const b = await r.json();
       const nr = b.transaction_details?.net_received_amount;
       if (typeof nr === 'number') { net += nr; ok = true; }
+      // EN CUÁNTAS CUOTAS PAGÓ (20/10/2026, pedido suyo: "que en las ventas muestre si se vendió como clásica o premium y en
+      // cuántas cuotas"). Sólo el número; del comprador no se guarda nada.
+      if (Number(b.installments) > cuotas) cuotas = Number(b.installments);
       // Cargos de ML por venta (comisión + costo fijo + envío Full + financiación), SIN impuestos.
       // Guardarlo por venta permite calcular el almacenamiento del mes al instante (factura − Σ estos).
       for (const c of (b.charges_details || [])) {
@@ -7679,11 +7682,13 @@ async function orderNet(order, token, feeOut) {
         // arma el `gestFull` de cada ficha, o sea el MISMO número que él ve en "Costo vender en
         // Full". Abajo de los $33.000 ML no lo cobra y viene en cero, que también es correcto.
         if (n.includes('shp_fulfillment')) envio += c.amounts?.original || 0;
+        // el interés de las cuotas que pagamos NOSOTROS (cuotas sin interés): mismo criterio que el probe `cuotas`
+        if (n.includes('financing') && (!c.accounts?.from || String(c.accounts.from) === String(b.collector_id || ''))) finan += c.amounts?.original || 0;
         tieneCargosML = true;   // apareció al menos un cargo propio de ML → el pago ya está liquidado
       }
     } catch { fallo = true; }
   }
-  if (feeOut) { feeOut.mlfee = Math.round(mlfee); feeOut.envio = Math.round(envio); feeOut.liquidado = tieneCargosML && !fallo; feeOut.fallo = fallo; }
+  if (feeOut) { feeOut.cuotas = cuotas; feeOut.finan = Math.round(finan); feeOut.mlfee = Math.round(mlfee); feeOut.envio = Math.round(envio); feeOut.liquidado = tieneCargosML && !fallo; feeOut.fallo = fallo; }
   // Sin cargos de ML el neto no sirve todavía: mejor el fallback que un número inflado.
   return (ok && tieneCargosML && !fallo) ? net : null;
 }
@@ -22204,6 +22209,47 @@ async function main() {
     // nuevo y el original (precio, tipo, stock compartido), lo vincula en cyc/mllinks a la misma ficha y color, y le pone
     // la estrategia 💳 gemela. Frenos: sin user_product_id no hace nada; con variantes
     // no; si ya hay una Premium de ese producto no; techo $650.000; Premium más barata que la Clásica no.
+    // ── CLÁSICA O PREMIUM Y CUÁNTAS CUOTAS, PARA LAS VENTAS YA GUARDADAS (20/10/2026) ──────────────────────────────────
+    // `tipoventa[:días][:go]`. El ciclo lo anota en cada venta nueva (`tipoPub`, `cuotas`, `cuotasSI`); esto completa las de
+    // los últimos días (60 por defecto). Sin `:go` sólo cuenta. Escribe con patch SÓLO esos tres campos, y sólo en ventas que
+    // ya existen (no crea ninguna). El pago de Mercado Pago se lee sólo si pagó en cuotas (para saber quién pagó el interés).
+    // En el registro van sólo cantidades: ni números de orden ni datos del comprador.
+    if (/^tipoventa(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const partes = String(process.env.BILLING_PROBE).split(':').slice(1);
+      const go = partes.includes('go'); const dias = parseInt(partes.find((x) => /^\d+$/.test(x)) || '60', 10);
+      const desde = Date.now() - dias * 864e5;
+      const tot = { gold_special: { n: 0, c: {} }, gold_pro: { n: 0, c: {} }, otro: { n: 0, c: {} } };
+      let escritas = 0, sinVenta = 0, fallos = 0;
+      for (const label of labels) {
+        const acc = accounts[label]; if (!acc?.refresh_token) continue;
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() }); } catch { console.log(`⚠️ ${label}: no pude renovar el permiso`); continue; }
+        const orders = await fetchOrdersRange(acc.seller_id, t.access_token, desde, Date.now());
+        let nC = 0;
+        for (const o of orders) {
+          const dayKey = dayKeyFromISO(o.date_created || o.date_closed);
+          let cuo = Math.max(0, ...(o.payments || []).map((pp) => Number(pp && pp.installments) || 0));
+          let si = false;
+          if (cuo > 1) { const fo = {}; try { await orderNet(o, t.access_token, fo); } catch { fo.fallo = true; } if (fo.fallo) fallos++; if (fo.cuotas > cuo) cuo = fo.cuotas; si = fo.finan > 0; }
+          let idx = 0;
+          for (const it of (o.order_items || [])) {
+            const lt = String(it.listing_type_id || ''); const k = tot[lt] || tot.otro;
+            k.n++; k.c[cuo || '?'] = (k.c[cuo || '?'] || 0) + 1; nC++;
+            const path = `cyc/ventaprod/${dayKey}/v${o.id}_${idx}`; idx++;
+            if (!go) continue;
+            let v = null; try { v = await db.get(path); } catch { fallos++; continue; }
+            if (!v) { sinVenta++; continue; }
+            const upd = {}; if (lt) upd.tipoPub = lt; if (cuo > 0) upd.cuotas = cuo; if (si) upd.cuotasSI = true;
+            if (Object.keys(upd).length) { try { await db.patch(path, upd); escritas++; } catch { fallos++; } }
+          }
+        }
+        console.log(`${label}: ${nC} renglones de venta en ${dias} días${orders.incompleto ? ' (lista CORTADA por ML)' : ''}`);
+      }
+      const linea = (n, o) => `${n}: ${o.n} · cuotas ${Object.entries(o.c).sort((a, b) => (parseInt(a[0]) || 99) - (parseInt(b[0]) || 99)).map(([c, q]) => `${c}=${q}`).join(' ')}`;
+      console.log(`\n${linea('Clásica', tot.gold_special)}\n${linea('Premium', tot.gold_pro)}${tot.otro.n ? '\n' + linea('otro tipo', tot.otro) : ''}`);
+      console.log(go ? `\n✓ ${escritas} ventas completadas · ${sinVenta} no estaban en el panel · ${fallos} lecturas fallidas` : '\n(prueba: con :go se completan las ventas guardadas)');
+      if (go && escritas) { try { const q = await db.get(`cyc/ventaprod/${dayKeyFromISO(new Date().toISOString())}`); console.log(`relectura: ${Object.values(q || {}).filter((v) => v && v.tipoPub).length} ventas de hoy con el tipo anotado`); } catch { /* informativo */ } }
+      return;
+    }
     if (String(process.env.BILLING_PROBE || '').startsWith('gemelacrea')) {
       const arg = String(process.env.BILLING_PROBE).slice('gemelacrea:'.length);
       // `gemelacrea:ver:<MLA>,<MLA>…` (solo lee): tipo, producto de ML y marcas de cada una, para comparar con una gemela que ya existe.
@@ -45797,12 +45843,14 @@ async function main() {
     // "perdiendo" (el bug de los Ferrari). Se conserva lo guardado o, si es la primera vez, queda
     // ESTIMADA y marcada, sin disparar subas, hasta que el paquete cierre o la relea la noche.
     const packFallo = new Set();
+    const ordPago = new Map();   // orden → cuotas y si pagamos el interés (para el chip de Ventas)
     for (const [pk, list] of packOrders) {
       if (list.length < 2) continue;   // paquete de un solo producto: no hay nada que repartir
       let net = 0, fee = 0, env = 0, gross = 0, ok = true;
       for (const o of list) {
         const fo = {};
         const n = await orderNet(o, t.access_token, fo);
+        ordPago.set(String(o.id), { cuotas: fo.cuotas || 0, finan: fo.finan || 0 });
         // Si una sola de las órdenes todavía no está liquidada, el reparto saldría torcido:
         // mejor no juntar nada y que cada una use su propia cuenta (se corrige en la próxima vuelta).
         if (n == null) { ok = false; break; }
@@ -45897,7 +45945,7 @@ async function main() {
           else if (o.pack_id && packFallo.has(String(o.pack_id))) {
             orderNetAmt = null;   // carrito sin cerrar: no se usa el pago suelto (queda lo guardado o estimada)
             if (!DRY) console.log(`  · venta …${String(o.id).slice(-4)}: su carrito …${String(o.pack_id).slice(-4)} no se pudo leer entero esta vuelta — no la reparto con su pago suelto`);
-          } else { orderNetAmt = await orderNet(o, t.access_token, fo); orderFeeAmt = fo.mlfee || 0; orderEnvAmt = fo.envio || 0; }
+          } else { orderNetAmt = await orderNet(o, t.access_token, fo); orderFeeAmt = fo.mlfee || 0; orderEnvAmt = fo.envio || 0; ordPago.set(String(o.id), { cuotas: fo.cuotas || 0, finan: fo.finan || 0 }); }
           netFetched = true;
           // Si ML todavía no descontó lo suyo, se avisa: la venta queda con el neto estimado y se
           // corrige sola en cuanto el pago se liquide (la ventana de sincronización son 2 días).
@@ -45959,6 +46007,17 @@ async function main() {
           origen: 'ml-api',
         };
         if (netoEst) obj.netoEstimado = true;   // lo busca el repaso de la noche (netoreal:…:estimadas)
+        // CLÁSICA O PREMIUM, Y EN CUÁNTAS CUOTAS (20/10/2026, pedido suyo). `tipoPub` sale de la orden (la publicación
+        // con la que se vendió: con las gemelas, el mismo producto se vende por las dos). Las cuotas salen del pago de
+        // Mercado Pago y, si no se pudo leer, de la orden; `cuotasSI` = el interés lo pagamos nosotros (cuotas sin interés).
+        // Si esta vuelta no se pudo leer el pago, se conserva lo que ya estaba guardado.
+        { const _lt = String(it.listing_type_id || '');
+          if (_lt) obj.tipoPub = _lt; else if (_prevV && _prevV.tipoPub) obj.tipoPub = _prevV.tipoPub;
+          const _op = ordPago.get(String(o.id)) || {};
+          const _cuoO = Math.max(0, ...(o.payments || []).map((pp) => Number(pp && pp.installments) || 0));
+          const _cuo = Math.max(_op.cuotas || 0, _cuoO);
+          if (_cuo > 0) obj.cuotas = _cuo; else if (_prevV && Number(_prevV.cuotas) > 0) obj.cuotas = Number(_prevV.cuotas);
+          if (_op.finan > 0) obj.cuotasSI = true; else if (!(_op.cuotas > 0) && _prevV && _prevV.cuotasSI) obj.cuotasSI = true; }
         if (!p) obj.sinVincular = true;    // marca: venta cargada sin producto
         if (variant) obj.variante = variant;
         // c2 de la segunda vuelta (25/09/2026): una venta que él tocó a mano en la web (editada, o
