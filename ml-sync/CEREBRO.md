@@ -827,3 +827,4 @@ Ganar la caja y vender bien sin descuento = no hay nada que descontar.
 
 ### 🤔 Y TODOS LOS DÍAS SE REVISAN LOS DESCUENTOS QUE YA ESTÁN PUESTOS (20/10/2026)
 `planilla` saca la lista **🤔 MIS DESCUENTOS QUE YA NO TIENEN SENTIDO**: todo descuento mío vigente que hoy falla alguna de las tres (sobra +90 d · 30+ d desde la caja · 25%+ en el peor caso). Se saca o se deja con nota en esa vuelta; la lista queda vacía.
+**Y vale también para las promos donde pone plata ML (20/10/2026, eligió la a):** una promo de ML (SMART, compartida, evento) pasa por las mismas tres condiciones que un descuento propio. Que ML ponga parte no la justifica sola.
