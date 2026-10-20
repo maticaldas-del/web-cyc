@@ -1996,3 +1996,5 @@ y el disponible no salte; que un pedido de lista llegado aparezca en Deudas hast
   `scoreColor/scoreLabel` llevada a 30 días. **Chequear:** que la suma de los grupos siga cerrando contra los KPIs de arriba.
 
 - 20/10/2026 · v25.38: `metScoreDe` promedia por COLOR/AROMA (`vars`, ficha + variante de la venta), no por ficha: el Paulvic (una ficha, ~70 aromas) salía como un solo producto gigante. Y las cajas de la vista de un origen no se pisan (min 140px, sin cortar).
+
+- 20/10/2026 · Etapa 7 (diseño) · v25.39: botón **📋 ficha** en el detalle de cada venta (Ventas x Producto), al lado de 📈 línea: `fichaAbrir(<MLA de la venta>)`, uno por publicación del carrito. **Chequear:** que una venta sin MLA no muestre el botón.
