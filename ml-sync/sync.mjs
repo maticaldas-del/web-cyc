@@ -39664,9 +39664,9 @@ async function main() {
       // λ ≥ 3. Si vendió, no es techo: sigue buscando para arriba. Sin conversión de referencia o con pocas visitas: esperar.
       const esLanza = (m) => (ultT(m) || {}).t === 'nuevo';
       const sel = lista.length ? lista : Object.keys(es).filter((m) => ['techook', 'nuevo'].includes((ultT(m) || {}).t));
-      let convRef = () => null;
+      let convRef = () => null, npL = {};
       if (sel.some(esLanza)) {
-        const npL = (await db.get('cyc/netopub')) || {}; const vpL = (await db.get('cyc/ventaprod')) || {};
+        npL = (await db.get('cyc/netopub')) || {}; const vpL = (await db.get('cyc/ventaprod')) || {};
         const u30L = {}; const t30 = Date.now() - 30 * 864e5;
         for (const ents of Object.values(vpL)) for (const v of Object.values(ents || {})) { if (!v || v.cancelada || !v.mla) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ts >= t30) u30L[v.mla] = (u30L[v.mla] || 0) + (Number(v.qty) || 1); }
         const pubsL = Object.entries(links).filter(([m, e]) => e && !e.ignored && !esLanza(m) && Number(e.vis30) >= 30 && Date.now() - (Number(e.vis30Ts) || 0) < 7 * 864e5 && npL[m] && Number(npL[m].precio) > 0).map(([m, e]) => ({ p: Number(npL[m].precio), c: (u30L[m] || 0) / Number(e.vis30) }));
@@ -39685,6 +39685,9 @@ async function main() {
         const P0 = Number(f.res.p) || 0;
         const nom = `${String(pr.name || e.title || '').slice(0, 38)}${e.variant ? ' #' + e.variant : ''} (${e.cuenta || '?'})`;
         if (esLanza(mla)) {
+          // El precio que ve hoy el comprador (netopub, al día). La línea guarda el de lista: con un descuento puesto queda más alto, y
+          // esos días cuentan igual (el comprador pagaba esto o más).
+          const P0 = Number((npL[mla] || {}).precio) || Number(f.res.p) || 0;
           let dias = 0, u = 0, vis = 0, nv = 0, desde = null, hasta = null;
           for (const k of Object.keys(d).filter((k) => /^\d{4}_\d{2}_\d{2}$/.test(k) && k < hoyK).sort()) {
             const x = d[k]; if (!x || typeof x !== 'object') continue; const pl = Number(x.p) || 0;
