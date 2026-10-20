@@ -31752,6 +31752,177 @@ async function main() {
       console.log(`\n${ok} fichas armadas · ${sinLinea} sin línea de tiempo todavía · ${mal} que no pude leer`);
       process.exit(mal && !ok ? 1 : 0);
     }
+    // BILLING_PROBE=vistas[:<días>] · ¿CÓMO REACCIONAN LAS VISITAS? (20/10/2026, él: "al bajar precio es muy probable que lo
+    // vean más. Podés analizar eso de las vistas con todos los productos? (…) Agregale cómo reaccionan los productos a venderse
+    // al mismo precio, pero uno tachado y otro no"). SOLO LEE. Con la línea de tiempo de TODAS las publicaciones
+    // (`mlapi/linea/<MLA>`: vis, p, st, est, caja, u) compara visitas por día y ventas cada 100 visitas: antes y después de cada
+    // cambio de precio (sin y con tachado), de cada cambio de caja, con y sin stock, las primeras semanas de lo nuevo, y los
+    // días con tachado contra los días sin tachado AL MISMO PRECIO FINAL. Los días con tachado salen de mis promos (notas
+    // "Entré/Salí de la promo", `cyc/promoclaude`, estrategia descuento/promo) y de las ventas en promo (`cyc/promoventa`,
+    // sin cupones: el cupón no se ve en la publicación). Cada comparación se corrige por cómo se movieron las visitas de
+    // TODO el catálogo en esas mismas fechas (si ML entero tuvo más visitas esa semana, no es mérito del precio).
+    // Sólo números agregados y títulos propios: nada de compradores.
+    if (/^vistas(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const nDias = parseInt(String(process.env.BILLING_PROBE).split(':')[1]) || 120;
+      const links = (await db.get('cyc/mllinks')) || {};
+      const hoyK = _rnDia(Date.now()), desdeK = _rnDia(Date.now() - nDias * 864e5);
+      const k2t = (k) => Date.parse(k.replace(/_/g, '-') + 'T12:00:00-03:00');
+      const kMas = (k, n) => _rnDia(k2t(k) + n * 864e5);
+      const DK = []; for (let k = desdeK; k < hoyK; k = kMas(k, 1)) DK.push(k);
+      const pos = {}; DK.forEach((k, i) => { pos[k] = i; });
+      const mlas = Object.keys(links).filter((m) => /^MLA\d+$/.test(m) && links[m] && links[m].cuenta);
+      const LIN = {}; let fallas = 0;
+      for (let j = 0; j < mlas.length; j += 25) await Promise.all(mlas.slice(j, j + 25).map(async (m) => { try { LIN[m] = (await db.get('mlapi/linea/' + m)) || {}; } catch { fallas++; } }));
+      const leer = async (r) => { try { return (await db.get(r)) || {}; } catch { console.log(`⚠️ no pude leer ${r}: esa parte sale sin eso`); return {}; } };
+      const [notas, pcl, est, pven] = await Promise.all([leer('mlapi/fichanotas'), leer('cyc/promoclaude'), leer('cyc/estrategia'), leer('cyc/promoventa')]);
+      const tit = (m) => String((links[m] && links[m].title) || m).slice(0, 38);
+      const med = (a) => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y); const n = s.length; return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2; };
+      const pc = (x) => (x == null || !isFinite(x)) ? '—' : (x >= 1 ? '+' : '') + Math.round((x - 1) * 100) + '%';
+      const f1 = (x, n = 1) => (x == null || !isFinite(x)) ? '—' : x.toFixed(n);
+      const $ = (x) => (x == null || !isFinite(x)) ? '—' : '$' + Math.round(x).toLocaleString('es-AR');
+      // Series por publicación, alineadas a los días DK.
+      const S = {}; let diasVis = 0, diasSt = 0, diasTot = 0;
+      for (const m of mlas) {
+        const d = LIN[m]; if (!d) continue;
+        const P = [], V = [], U = [], ST = [], E = [], C = [];
+        let hay = false;
+        for (const k of DK) {
+          const x = d[k] || null;
+          P.push(x && Number(x.p) > 0 ? Number(x.p) : null);
+          V.push(x && x.vis != null && isFinite(Number(x.vis)) ? Number(x.vis) : null);
+          U.push(x && Number(x.u) > 0 ? Number(x.u) : 0);
+          ST.push(x && x.st != null && isFinite(Number(x.st)) ? Number(x.st) : null);
+          E.push(x && x.est ? String(x.est) : null);
+          C.push(x && x.caja ? String(x.caja) : null);
+          if (x) { hay = true; diasTot++; if (x.vis != null) diasVis++; if (x.st != null) diasSt++; }
+        }
+        if (hay) S[m] = { P, V, U, ST, E, C };
+      }
+      const n = DK.length;
+      // Índice de visitas de todo el catálogo, encadenado día a día: cada día se compara contra el anterior SÓLO con las
+      // publicaciones que tienen visitas sabidas los dos días (si no, el índice subiría sólo porque se rellenaron más).
+      const IDX = new Array(n).fill(0); IDX[0] = 100; let estables = 0;
+      // Las que cambiaron de precio esos días no entran en el salto de ese día: si no, el índice se tragaría el efecto que se mide.
+      const cambio = (s, i) => { for (let j = Math.max(1, i - 2); j <= i; j++) if (s.P[j - 1] > 0 && s.P[j] > 0 && Math.abs(s.P[j] / s.P[j - 1] - 1) > 0.02) return true; return false; };
+      for (let i = 1; i < n; i++) { let a = 0, b = 0; for (const s of Object.values(S)) if (s.V[i - 1] != null && s.V[i] != null && !cambio(s, i)) { a += s.V[i - 1]; b += s.V[i]; } IDX[i] = IDX[i - 1] * (a > 0 && b > 0 ? b / a : 1); }
+      for (const s of Object.values(S)) if (s.V.filter((v) => v != null).length >= n * 0.85) estables++;
+      // Un día cuenta si se saben sus visitas y tenía stock (o, sin dato de stock, estaba activa o vendió).
+      const ok = (s, i) => s.V[i] != null && ((s.ST[i] != null && s.ST[i] > 0) || (s.ST[i] == null && (s.E[i] === 'active' || s.U[i] > 0)));
+      const ventana = (s, js) => { let dias = 0, vis = 0, u = 0, ix = 0; for (const j of js) { if (!ok(s, j)) continue; dias++; vis += s.V[j]; u += s.U[j]; ix += IDX[j]; } return { dias, vis, u, ix }; };
+      const razon = (A, B) => { if (!(A.dias && B.dias)) return null; const rA = A.vis / A.dias, rB = B.vis / B.dias, iA = A.ix / A.dias, iB = B.ix / B.dias; const adj = iA > 0 && iB > 0 ? iB / iA : 1; return rA > 0 ? (rB / adj) / rA : null; };
+      // ── Días con TACHADO por publicación ──
+      const TACH = {}, INI = {}, FIN = {}, PARC = {};
+      const marca = (m, t0, t1) => { const a = _rnDia(t0), b = _rnDia(Math.min(t1, Date.now())); (INI[m] = INI[m] || new Set()).add(a); (FIN[m] = FIN[m] || new Set()).add(b); (PARC[m] = PARC[m] || new Set()).add(a).add(b); const T = (TACH[m] = TACH[m] || new Set()); for (let k = kMas(a, 1); k < b; k = kMas(k, 1)) T.add(k); };
+      const hastaDe = (txt, t0) => { const mm = String(txt).match(/hasta el (\d{2})\/(\d{2})/); if (!mm) return t0 + 14 * 864e5; const y0 = new Date(t0).getUTCFullYear(); let t = Date.parse(`${y0}-${mm[2]}-${mm[1]}T23:00:00-03:00`); if (t < t0 - 864e5) t = Date.parse(`${y0 + 1}-${mm[2]}-${mm[1]}T23:00:00-03:00`); return t; };
+      for (const [m, h] of Object.entries(notas || {})) {
+        const ns = Object.entries(h || {}).map(([t, x]) => ({ t: Number(t), x: String((x && x.t) || '') })).filter((z) => z.t > 0 && /promo|descuento/i.test(z.x)).sort((a, b) => a.t - b.t);
+        for (let i = 0; i < ns.length; i++) {
+          if (!/^Entr[ée] en la promo/i.test(ns[i].x)) continue;
+          let fin = hastaDe(ns[i].x, ns[i].t);
+          for (let j = i + 1; j < ns.length; j++) if (/^Sal[ií] de la promo|^Entr[ée] en la promo/i.test(ns[j].x)) { fin = Math.min(fin, ns[j].t); break; }
+          marca(m, ns[i].t, fin);
+        }
+      }
+      for (const [m, x] of Object.entries(pcl || {})) { if (!x || !(Number(x.ts) > 0)) continue; const h = x.hasta ? Date.parse(String(x.hasta).slice(0, 19) + '-03:00') : Date.now(); marca(m, Number(x.ts), isFinite(h) ? h : Date.now()); }
+      for (const [m, h] of Object.entries(est || {})) {
+        const es = Object.entries(h || {}).map(([t, x]) => ({ t: Number(t), g: x && x.t })).filter((z) => z.t > 0).sort((a, b) => a.t - b.t);
+        for (let i = 0; i < es.length; i++) { if (es[i].g !== 'descuento' && es[i].g !== 'promo') continue; let j = i + 1; while (j < es.length && (es[j].g === 'descuento' || es[j].g === 'promo')) j++; marca(m, es[i].t, j < es.length ? es[j].t : Date.now()); i = j - 1; }
+      }
+      const tiposPV = {}; let pvTach = 0;
+      for (const [dk, dia] of Object.entries(pven || {})) for (const rec of Object.values(dia || {})) {
+        if (!rec || typeof rec !== 'object') continue;
+        const tps = String(rec.tipo || '').toLowerCase().split(',').filter(Boolean); for (const t of tps) tiposPV[t] = (tiposPV[t] || 0) + 1;
+        if (!tps.some((t) => t !== 'coupon')) continue;   // sólo cupón: el comprador no vio tachado
+        for (const m of Object.keys(rec.mla || {})) { (TACH[m] = TACH[m] || new Set()).add(dk); pvTach++; }
+      }
+      const enT = (m, k) => !!(TACH[m] && TACH[m].has(k)), parc = (m, k) => !!(PARC[m] && PARC[m].has(k));
+      console.log(`=== 👀 VISITAS · ${DK[0]} → ${DK[n - 1]} (${n} días) · ${Object.keys(S).length} publicaciones con línea de tiempo${fallas ? ` · ${fallas} no se pudieron leer` : ''} ===`);
+      console.log(`Días sabidos: ${diasTot} · con visitas ${diasVis} (${Math.round(diasVis / Math.max(1, diasTot) * 100)}%) · con stock sabido ${diasSt} (${Math.round(diasSt / Math.max(1, diasTot) * 100)}%) · ${estables} publicaciones con visitas sabidas casi todos los días.`);
+      console.log(`Tachado: ${Object.keys(TACH).filter((m) => TACH[m].size).length} publicaciones con algún día tachado · tipos de descuento en ventas: ${Object.entries(tiposPV).map(([t, c]) => `${t} ${c}`).join(' · ') || 'ninguno'} (${pvTach} días marcados por ventas en promo)`);
+      // Contexto: visitas de todo el catálogo por semana.
+      { const sem = []; for (let i = 0; i < n; i += 7) { const sl = IDX.slice(i, i + 7); let tv = 0; for (const s of Object.values(S)) for (let j = i; j < Math.min(n, i + 7); j++) tv += s.V[j] || 0; sem.push({ k: DK[i], v: sl.reduce((a, b) => a + b, 0) / sl.length, tv: tv / sl.length }); } const base = sem.length ? sem[0].v : 0; console.log(`\n── 📅 VISITAS DE TODO EL CATÁLOGO POR SEMANA (índice: la primera semana = 100 · entre paréntesis, visitas por día sabidas) ──`); console.log(sem.map((w) => `${w.k.slice(8, 10)}/${w.k.slice(5, 7)} ${Math.round(w.v / base * 100)} (${Math.round(w.tv)})`).join(' · ')); }
+      // ── A · CAMBIOS DE PRECIO ──
+      const EV = [];
+      for (const [m, s] of Object.entries(S)) {
+        for (let i = 1; i < n; i++) {
+          const p1 = s.P[i], p0 = s.P[i - 1]; if (!(p0 > 0 && p1 > 0)) continue;
+          const ch = p1 / p0 - 1; if (Math.abs(ch) < 0.03) continue;
+          let kb = 0, malb = false; for (let j = Math.max(0, i - 5); j < i; j++) if (s.P[j] != null) { if (Math.abs(s.P[j] / p0 - 1) > 0.02) malb = true; else kb++; }
+          let ka = 0, mala = false; for (let j = i; j < Math.min(n, i + 5); j++) if (s.P[j] != null) { if (Math.abs(s.P[j] / p1 - 1) > 0.02) mala = true; else ka++; }
+          if (malb || mala || kb < 2 || ka < 2) continue;
+          const jb = []; for (let j = i - 1; j >= Math.max(0, i - 7); j--) { if (s.P[j] != null && Math.abs(s.P[j] / p0 - 1) > 0.02) break; jb.push(j); }
+          const ja = []; for (let j = i + 1; j < Math.min(n, i + 8); j++) { if (s.P[j] != null && Math.abs(s.P[j] / p1 - 1) > 0.02) break; ja.push(j); }
+          const A = ventana(s, jb), B = ventana(s, ja); if (A.dias < 3 || B.dias < 3) continue;
+          const k = DK[i], kp = DK[i - 1];
+          const conT = ch < 0 && ((INI[m] && (INI[m].has(k) || INI[m].has(kp))) || (enT(m, k) && !enT(m, kp)));
+          const salT = ch > 0 && ((FIN[m] && (FIN[m].has(k) || FIN[m].has(kp))) || (enT(m, kp) && !enT(m, k)));
+          const g = conT ? 'baja con tachado (entró en descuento/promo)' : salT ? 'suba por salir del tachado' : ch < 0 ? (ch > -0.10 ? 'baja chica (3-10%)' : ch > -0.25 ? 'baja mediana (10-25%)' : 'baja grande (+25%)') : (ch < 0.10 ? 'suba chica (3-10%)' : ch < 0.25 ? 'suba mediana (10-25%)' : 'suba grande (+25%)');
+          EV.push({ m, k, ch, p0, p1, A, B, r: A.vis >= 7 ? razon(A, B) : null, g });
+        }
+      }
+      const resumen = (nom, L) => {
+        const R = L.filter((e) => e.r != null).map((e) => e.r);
+        let sA = 0, sB = 0, vA = 0, vB = 0, uA = 0, uB = 0, dA = 0, dB = 0; for (const e of L) { if (e.r == null) continue; const iA = e.A.ix / e.A.dias, iB = e.B.ix / e.B.dias, adj = iA > 0 && iB > 0 ? iB / iA : 1; sA += e.A.vis / e.A.dias; sB += e.B.vis / e.B.dias / adj; vA += e.A.vis; vB += e.B.vis; uA += e.A.u; uB += e.B.u; dA += e.A.dias; dB += e.B.dias; }
+        const sube = R.filter((x) => x > 1.15).length, baja = R.filter((x) => x < 0.85).length;
+        console.log(`• ${nom}: ${L.length} cambio(s), ${R.length} con tráfico para medir · visitas/día ${pc(med(R))} (mediana) · ${pc(sA > 0 ? sB / sA : null)} (todas juntas) · subieron ${sube} · bajaron ${baja} · iguales ${R.length - sube - baja}`);
+        if (vA > 0 && vB > 0) console.log(`    ventas cada 100 visitas: antes ${f1(uA / vA * 100)} → después ${f1(uB / vB * 100)} · ventas/día ${f1(uA / dA, 2)} → ${f1(uB / dB, 2)}`);
+      };
+      console.log(`\n── 💲 A · CAMBIOS DE PRECIO (7 días antes contra 7 después, sólo días con stock; el día del cambio no cuenta) ──`);
+      const GRS = ['baja chica (3-10%)', 'baja mediana (10-25%)', 'baja grande (+25%)', 'baja con tachado (entró en descuento/promo)', 'suba chica (3-10%)', 'suba mediana (10-25%)', 'suba grande (+25%)', 'suba por salir del tachado'];
+      for (const g of GRS) { const L = EV.filter((e) => e.g === g); if (L.length) resumen(g, L); }
+      for (const g of GRS) { const L = EV.filter((e) => e.g === g && e.r != null).sort((a, b) => b.A.vis - a.A.vis).slice(0, 6); if (!L.length) continue; console.log(`  ejemplos · ${g}:`); for (const e of L) console.log(`    ${e.k.slice(8, 10)}/${e.k.slice(5, 7)} ${tit(e.m)} ${$(e.p0)}→${$(e.p1)} (${pc(e.p1 / e.p0)}) · visitas/día ${f1(e.A.vis / e.A.dias)}→${f1(e.B.vis / e.B.dias)} (${pc(e.r)} corregido) · ventas ${e.A.u}→${e.B.u}`); }
+      // ── B · CAMBIOS DE CAJA ──
+      console.log(`\n── 🥊 B · CAJA DE COMPRA (5 días antes contra 5 después, mismo precio ±2%) ──`);
+      const CEV = [];
+      for (const [m, s] of Object.entries(S)) for (let i = 2; i < n - 2; i++) {
+        const c0 = s.C[i - 1], c1 = s.C[i]; if (!c0 || !c1 || c0 === c1 || c0 === 'n' || c1 === 'n') continue;
+        if (s.C[i - 2] && s.C[i - 2] !== c0) continue; if (s.C[i + 1] && s.C[i + 1] !== c1) continue;
+        const pr = s.P[i - 1] || s.P[i]; let mueve = false; for (let j = Math.max(0, i - 5); j < Math.min(n, i + 6); j++) if (pr && s.P[j] != null && Math.abs(s.P[j] / pr - 1) > 0.02) mueve = true; if (mueve) continue;
+        const jb = []; for (let j = i - 1; j >= Math.max(0, i - 5) && (!s.C[j] || s.C[j] === c0); j--) jb.push(j);
+        const ja = []; for (let j = i + 1; j < Math.min(n, i + 6) && (!s.C[j] || s.C[j] === c1); j++) ja.push(j);
+        const A = ventana(s, jb), B = ventana(s, ja); if (A.dias < 2 || B.dias < 2) continue;
+        const rk = { g: 2, c: 1, p: 0 }; const g = rk[c1] > rk[c0] ? 'la GANÓ (o pasó a compartir)' : 'la PERDIÓ (o pasó a compartir)';
+        CEV.push({ m, k: DK[i], A, B, r: A.vis >= 5 ? razon(A, B) : null, g, c0, c1 });
+      }
+      for (const g of ['la PERDIÓ (o pasó a compartir)', 'la GANÓ (o pasó a compartir)']) { const L = CEV.filter((e) => e.g === g); if (L.length) resumen(g, L); else console.log(`• ${g}: ningún cambio medible (la caja se guarda día por día recién desde el 02/10)`); }
+      // Nivel: días ganando contra días perdiendo, misma publicación y mismo precio.
+      { const R = []; for (const [m, s] of Object.entries(S)) { const pr = med(s.P.filter((p) => p > 0)); if (!pr) continue; let gD = 0, gV = 0, pD = 0, pV = 0; for (let i = 0; i < n; i++) { if (!ok(s, i) || !(s.P[i] > 0) || Math.abs(s.P[i] / pr - 1) > 0.04) continue; if (s.C[i] === 'g') { gD++; gV += s.V[i] / (IDX[i] || 1); } else if (s.C[i] === 'p') { pD++; pV += s.V[i] / (IDX[i] || 1); } } if (gD >= 3 && pD >= 3 && gV > 0) R.push((pV / pD) / (gV / gD)); } console.log(`• misma publicación, mismo precio: días PERDIENDO contra días GANANDO · ${R.length} publicaciones · visitas ${pc(med(R))} (mediana)`); }
+      // ── C · SIN STOCK ──
+      { const R = []; let sD = 0, zD = 0; for (const [m, s] of Object.entries(S)) { let a = 0, av = 0, z = 0, zv = 0; for (let i = 0; i < n; i++) { if (s.V[i] == null || s.ST[i] == null) continue; const iv = s.V[i] / (IDX[i] || 1); if (s.ST[i] > 0) { a++; av += iv; } else { z++; zv += iv; } } if (a >= 3 && z >= 3 && av > 0) { R.push((zv / z) / (av / a)); sD += a; zD += z; } } console.log(`\n── 📦 C · SIN STOCK EN FULL contra CON STOCK (misma publicación) ──\n• ${R.length} publicaciones que pasaron por las dos · visitas sin stock ${pc(med(R))} (mediana) · ${R.filter((x) => x < 0.5).length} perdieron más de la mitad · días ${sD} con stock / ${zD} sin`); }
+      // ── D · LANZAMIENTO ──
+      { const W = [[0, 6], [7, 13], [14, 20], [21, 27], [28, 55]], R = W.map(() => []), uw = W.map(() => 0); let nL = 0; const ejL = [];
+        for (const [m, s] of Object.entries(S)) {
+          const alta = Number(links[m].altaTs) || 0; if (!(alta > 0)) continue; const ak = _rnDia(alta); if (ak < kMas(desdeK, 3) || ak > kMas(hoyK, -14)) continue;
+          let L0 = -1; for (let i = pos[ak] != null ? pos[ak] : 0; i < n; i++) if (ok(s, i) && (s.ST[i] > 0 || s.U[i] > 0)) { L0 = i; break; } if (L0 < 0) continue;
+          const sem = W.map(([a, b]) => { const js = []; for (let j = L0 + a; j <= Math.min(n - 1, L0 + b); j++) js.push(j); return ventana(s, js); });
+          if (sem[0].dias < 4 || !(sem[0].vis >= 7)) continue; nL++;
+          for (let w = 1; w < W.length; w++) { const r = sem[w].dias >= 4 ? razon(sem[0], sem[w]) : null; if (r != null) R[w].push(r); }
+          for (let w = 0; w < W.length; w++) uw[w] += sem[w].u;
+          ejL.push(`${tit(m)} (${DK[L0].slice(8, 10)}/${DK[L0].slice(5, 7)}): ${sem.map((x) => x.dias ? f1(x.vis / x.dias) : '—').join(' → ')} visitas/día`);
+        }
+        console.log(`\n── 🆕 D · LO NUEVO: visitas por semana desde que tiene stock (contra la 1ª semana, corregido por el catálogo) ──\n• ${nL} publicaciones nuevas medibles · 2ª semana ${pc(med(R[1]))} · 3ª ${pc(med(R[2]))} · 4ª ${pc(med(R[3]))} · 2º mes ${pc(med(R[4]))} · ventas (todas juntas) sem 1 ${uw[0]} · sem 2 ${uw[1]} · sem 3 ${uw[2]} · sem 4 ${uw[3]} · semanas 5 a 8 ${uw[4]}`);
+        for (const x of ejL.slice(0, 12)) console.log(`    ${x}`); }
+      // ── E · MISMO PRECIO FINAL, CON TACHADO Y SIN TACHADO ──
+      console.log(`\n── 🏷️ E · MISMO PRECIO FINAL (±4%): DÍAS CON TACHADO contra DÍAS SIN TACHADO (misma publicación, con stock) ──`);
+      { const filas = []; let tV = 0, tD = 0, tU = 0, lV = 0, lD = 0, lU = 0;
+        for (const [m, s] of Object.entries(S)) {
+          if (!TACH[m] || !TACH[m].size) continue;
+          const iT = []; for (let i = 0; i < n; i++) if (enT(m, DK[i]) && !parc(m, DK[i]) && ok(s, i) && s.P[i] > 0) iT.push(i);
+          if (iT.length < 2) continue; const pT = med(iT.map((i) => s.P[i]));
+          const iL = []; for (let i = 0; i < n; i++) if (!enT(m, DK[i]) && !parc(m, DK[i]) && ok(s, i) && s.P[i] > 0 && Math.abs(s.P[i] / pT - 1) <= 0.04) iL.push(i);
+          const T = ventana(s, iT), L = ventana(s, iL);
+          const fila = { m, pT, T, L, r: L.dias >= 3 && L.vis >= 5 ? razon(L, T) : null };
+          filas.push(fila);
+          if (fila.r != null) { const iTx = T.ix / T.dias, iLx = L.ix / L.dias, adj = iTx > 0 && iLx > 0 ? iTx / iLx : 1; tV += T.vis / adj; tD += T.dias; tU += T.u; lV += L.vis; lD += L.dias; lU += L.u; }
+        }
+        const R = filas.filter((f) => f.r != null);
+        console.log(`• ${filas.length} publicaciones tuvieron días tachados con stock · ${R.length} también se vendieron SIN tachado a ese mismo precio (las que se pueden comparar)`);
+        if (R.length) { console.log(`• visitas/día con tachado contra sin tachado: ${pc(med(R.map((f) => f.r)))} (mediana) · ${pc(lD && tD && lV > 0 ? (tV / tD) / (lV / lD) : null)} (todas juntas)`); if (tV > 0 && lV > 0) console.log(`• ventas cada 100 visitas: con tachado ${f1(tU / tV * 100)} · sin tachado ${f1(lU / lV * 100)} · ventas/día ${f1(tU / tD, 2)} contra ${f1(lU / lD, 2)}`); }
+        for (const f of filas.sort((a, b) => (b.T.dias + b.L.dias) - (a.T.dias + a.L.dias)).slice(0, 25)) console.log(`    ${tit(f.m)} · ${$(f.pT)} · tachado ${f.T.dias} d: ${f1(f.T.dias ? f.T.vis / f.T.dias : null)} vis/d, ${f.T.u} vend · liso ${f.L.dias} d: ${f1(f.L.dias ? f.L.vis / f.L.dias : null)} vis/d, ${f.L.u} vend${f.r != null ? ` · ${pc(f.r)} visitas con tachado` : ' · sin días lisos a ese precio para comparar'}`);
+      }
+      console.log('\nSOLO LEE: no toqué nada.');
+      return;
+    }
     // BILLING_PROBE=escmedir[:<días>] · ¿CUÁNTO CONVIENE SUBIR UN PRODUCTO EN ESCASEZ? (16/10/2026, él: "y cuánto lo aumenta?
     // está bien pensado eso? (...) pensalo"). SOLO LEE. Toma cada SUBA que decidí yo (`cyc/claudecambios`, a > de) en los
     // últimos <días> (def 30) y, con la línea de tiempo de esa publicación (`mlapi/linea/<MLA>`), compara ritmo con stock y

@@ -910,6 +910,11 @@ de verdad no se toque · que las familias del 💭 se juzguen cuando ya se sabe 
 Y quién piensa cada renglón (20/10/2026, eligió la a): en la completa, los de cada cuenta van a su ayudante; en las cortas, hasta
 ~8 los miro yo y con más, un ayudante en Alto. Los ayudantes sólo proponen; aplicar es mío. Qué chequear: que en el chat de cada
 vuelta diga quién miró los raros, y que ningún ayudante haya corrido algo que escribe.
+- 20/10/2026 · `vistas[:días]` (solo lee, ml-consulta): cómo reaccionan las visitas con la línea de tiempo de todas las
+publicaciones: cambios de precio (sin y con tachado), caja, sin stock, lo nuevo por semana, y días con tachado contra días sin
+tachado al mismo precio final. Corrige por un índice de visitas del catálogo encadenado día a día (sin las que cambiaron de
+precio esos días). Qué chequear: que los días con tachado salgan de mis promos y de ventas en promo sin cupón, que cada grupo
+diga cuántos cambios midió (con pocos no se concluye) y que no imprima nada de compradores.
 
 ## 8 · DATOS E HISTORIAL (nueva, 08/10/2026)
 - **🚧 El techo en la línea de tiempo (18/10/2026, v24.49).** `lineaPintar` dibuja una raya roja punteada en el carril del precio por cada `cyc/techofreno/<MLA>` (`probado`, roja "ya no vende") y otra verde en `volvio` ("sí vende") de las publicaciones del gráfico (respeta el color elegido), desde el día que se anotó; entra en la escala. Qué chequear: que todo techo encontrado se anote con `techofreno:<MLA>=<precio>|motivo;go` (si no, no aparece).
