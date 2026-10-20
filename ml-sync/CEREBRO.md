@@ -912,3 +912,6 @@ válido sólo si tiene su propia causa (sobra, lanzamiento, fecha) y pasa las tr
 ### 🤔 Y TODOS LOS DÍAS SE REVISAN LOS DESCUENTOS QUE YA ESTÁN PUESTOS (20/10/2026)
 `planilla` saca la lista **🤔 MIS DESCUENTOS QUE YA NO TIENEN SENTIDO**: todo descuento mío vigente que hoy falla alguna de las tres (sobra +90 d · 30+ d desde la caja · 25%+ en el peor caso). Se saca o se deja con nota en esa vuelta; la lista queda vacía.
 **Y vale también para las promos donde pone plata ML (20/10/2026, eligió la a):** una promo de ML (SMART, compartida, evento) pasa por las mismas tres condiciones que un descuento propio. Que ML ponga parte no la justifica sola.
+
+### 🆕 Lo nuevo no se baja sin techo — y el código lo frena (20/10/2026, con el Cuba Platinum)
+Él: *"bajó el precio para ganar caja y quedó sin techo. ¿no era que no podía bajar si no había techo definido? salvo que esté 95% seguro"*. Lo recién llegado (menos de 30 días en Full) o en 🆕 lanzamiento NO se baja —ni por promo, ni por descuento, ni por precio de lista, ni para ganar la caja— hasta que `techo95` anote 🏔️ (95% seguro de que a ese precio no vende). `decido` lo frena solo; `!sintecho` sólo para excepciones dichas en el 🧠 (error de precio, ML lo pausó, lo pidió él). Ganar la caja NO es excepción.

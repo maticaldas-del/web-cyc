@@ -41005,7 +41005,7 @@ async function main() {
       for (const [t, l] of Object.entries(ESTRATEGIAS)) { const arr = cnt[t] || []; console.log(`${l}: ${arr.length}`); for (const m of arr.slice(0, 15)) console.log(`   · ${nomDe(m)}`); }
       return;
     }
-    // BILLING_PROBE=decido:<MLA>=<precio>[!piso][!cruza][!salto]|<motivo>[;<MLA>=…][;go] → LOS PRECIOS QUE DECIDE CLAUDE
+    // BILLING_PROBE=decido:<MLA>=<precio>[!piso][!cruza][!salto][!sintecho]|<motivo>[;<MLA>=…][;go] → LOS PRECIOS QUE DECIDE CLAUDE
     // (08/10/2026). Regla suya: *"que haya solo robots automáticos de api para cosas que no hay que pensar, como
     // ventas y cosas así de datos. TODO lo que sea pensar lo veas exclusivamente vos"*. El robot ya no mueve
     // precios solo (`autoPrecios: off`): junta los datos y de noche calcula lo que HARÍA (el expediente 🧠), y
@@ -41102,7 +41102,7 @@ async function main() {
         const banderas = String(mm[3] || '').toLowerCase();
         const soloAct = /^activar$/i.test(String(mm[2] || '').trim()) || !mm[2];
         forzar[mm[1].toUpperCase()] = { p: soloAct ? 0 : Math.round(pesosArg(mm[2]) / 10) * 10, motivo: mot.join('|').trim(), piso: banderas.includes('!piso'), cruza: banderas.includes('!cruza'),
-          activar: soloAct || banderas.includes('!activar'), salto: banderas.includes('!salto'), sinstock: banderas.includes('!sinstock'), tag: mm[4] ? mm[4].toLowerCase() : '' };
+          activar: soloAct || banderas.includes('!activar'), salto: banderas.includes('!salto'), sinstock: banderas.includes('!sinstock'), sintecho: banderas.includes('!sintecho'), tag: mm[4] ? mm[4].toLowerCase() : '' };
         // Sin 🎯 base (19/10/2026): un precio nuevo tiene que decir su estrategia (#tag o un motivo que la nombre).
         { const fz = forzar[mm[1].toUpperCase()]; if (!soloAct && !fz.tag && !tagDeMotivo(fz.motivo) && !fz.piso) { delete forzar[mm[1].toUpperCase()]; malos.push(x + ` (falta la estrategia: agregá #techo, #techook, #escasez, #sobra… · ${Object.keys(ESTRATEGIAS).filter((k) => k !== 'sindecidir').join(', ')})`); continue; } }
       }
@@ -41244,6 +41244,31 @@ async function main() {
       }
       const cz = await calcCerebro(db, { tokens: tokP, forzar, soloMla: new Set(Object.keys(forzar)) });
       if (cz.err) { console.log('⚠️ ' + cz.err); return; }
+      // LO NUEVO NO SE BAJA SIN TECHO (20/10/2026, él con el Cuba Platinum: "bajó el precio para ganar caja y quedó sin techo. ¿no
+      // era que no podía bajar si no había techo definido? salvo que esté 95% seguro"). Decisión 3a del 20/10: lo recién llegado
+      // (menos de 30 días en Full con fecha real) o con estrategia 🆕 lanzamiento baja SÓLO si `techo95` anotó 🏔️ después de que
+      // llegó. Si no, la baja no se hace y lo dice. `!sintecho` la deja pasar a propósito (error de precio, ML lo pausó, lo pidió él)
+      // y el motivo tiene que decir por qué.
+      try {
+        const bajas = cz.dec.filter((d) => d.accion === 'baja' && !(forzar[d.mla] || {}).sintecho);
+        if (bajas.length) {
+          let shD = null; try { shD = (await db.get('cyc/stockhist')) || {}; } catch { shD = null; }
+          for (const d of bajas) {
+            const e = linksD[d.mla] || {};
+            let est = {}; try { est = (await db.get('cyc/estrategia/' + d.mla)) || {}; } catch { est = null; }
+            if (shD == null || est == null) { d.accion = 'nada'; d.motivo = 'no pude leer desde cuándo está en Full o su estrategia: no bajo a ciegas lo que puede ser nuevo'; continue; }
+            const cta = String(e.cuenta || ''), vk = e.variant ? '__v__' + sid(String(e.variant).toLowerCase()) : '';
+            const ks = [e.prodId + '__' + cta + vk, e.prodId + '__' + cta.toLowerCase() + vk, e.prodId + '__' + cta, e.prodId + '__' + cta.toLowerCase()];
+            const h = ks.map((k) => shD[k]).find(Boolean) || {};
+            const desde = h.aprox === false && Number(h.desde) > 0 ? Number(h.desde) : 0;
+            const tags = Object.entries(est).map(([k, x]) => ({ ts: Number(k), t: x && x.t })).filter((x) => x.ts > 0 && x.t).sort((x, y) => x.ts - y.ts);
+            const ult = tags.length ? tags[tags.length - 1].t : '';
+            const recien = (desde && Date.now() - desde < 30 * 864e5) || ult === 'nuevo';
+            const conTecho = tags.some((x) => x.t === 'techook' && x.ts >= (desde || 0));
+            if (recien && !conTecho) { d.accion = 'nada'; d.motivo = `es nuevo (${desde ? 'llegó hace ' + Math.round((Date.now() - desde) / 864e5) + ' d' : 'en 🆕 lanzamiento'}) y techo95 no dijo 95% que ${money(d.p0)} es el techo: lo nuevo no se baja sin techo (si es a propósito, !sintecho con el porqué)`; }
+          }
+        }
+      } catch (eT) { console.log('⚠️ el freno de lo nuevo sin techo falló: ' + eT.message + ' · no aplico ninguna baja'); for (const d of cz.dec) if (d.accion === 'baja') { d.accion = 'nada'; d.motivo = 'el freno de lo nuevo sin techo falló'; } }
       console.log(`\n=== 💭 PRECIOS QUE DECIDIÓ CLAUDE ${GOp && !DRY ? '· SE APLICAN' : '(PRUEBA: no toco nada)'} ===`);
       const vistos = new Set(cz.dec.map((d) => d.mla));
       for (const m of Object.keys(forzar)) if (!vistos.has(m)) console.log(`\n${m} · no la miré: no está vinculada, no está activa o es de otra cosa (sin ficha, oculta, "no la vendemos más")`);
