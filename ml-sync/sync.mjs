@@ -19955,6 +19955,25 @@ async function main() {
     // BILLING_PROBE=listaestado[:<proveedor>] (20/10/2026, solo lee). Cómo se reparte cada lista: cuántos medidos, cuántos dan, cuántos
     // sin catálogo exacto en ML, cuántos nadie los vende, cuántos afuera por regla (y por qué) y cuántos sin medir todavía. Lo pidió él:
     // "dice 7777 productos, 3154 medidos y 18 sin medir ¿y el resto?".
+    // BILLING_PROBE=verpromo:<MLA>,<MLA>… (20/10/2026, solo lee): precio de la publicación, las promociones que ML le tiene
+    // (estado, tipo, precio, fechas, cuánto pone ML) y lo que anoté en cyc/promoclaude. Para ver por qué se cayó un descuento.
+    if (/^verpromo:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const lista = String(process.env.BILLING_PROBE).slice(9).split(',').map((x) => x.trim().toUpperCase()).filter((x) => /^MLA\d+$/.test(x));
+      const links = (await db.get('cyc/mllinks')) || {}; const toks = {};
+      for (const mla of lista) {
+        const L = links[mla] || {}; const acc = accounts[L.cuenta]; if (!acc?.refresh_token) { console.log(`${mla}: sin cuenta`); continue; }
+        if (!toks[L.cuenta]) { try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + L.cuenta, { refresh_token: t.refresh_token, updated_ts: Date.now() }); toks[L.cuenta] = t.access_token; } catch { console.log(`${L.cuenta}: no pude renovar`); continue; } }
+        const t = toks[L.cuenta];
+        try { const b = await mlGet('/items/' + mla + '?attributes=price,original_price,base_price,status,listing_type_id,last_updated,title', t); console.log(`\n${mla} · ${L.cuenta} · ${b.listing_type_id} · ${b.status} · precio $${Math.round(b.price || 0)} · original ${b.original_price || '—'} · base ${b.base_price || '—'} · ${String(b.title || '').slice(0, 50)}`); } catch (e) { console.log(`${mla}: /items no contestó ${String(e.message).slice(0, 120)}`); }
+        try { const sp = await mlGet('/items/' + mla + '/sale_price?context=channel_marketplace', t); console.log(`   sale_price: ${JSON.stringify(sp).slice(0, 300)}`); } catch (e) { console.log(`   sale_price: ${String(e.message).slice(0, 100)}`); }
+        try { const r = await mlGet('/seller-promotions/items/' + mla + '?app_version=v2', t); const arr = Array.isArray(r) ? r : (r.results || []);
+          const vivas = arr.filter((p) => p.status !== 'candidate'); console.log(`   promos: ${arr.length} (${arr.length - vivas.length} candidatas)`);
+          for (const p of vivas) console.log(`   · ${p.type} · ${p.status} · id ${p.id || '—'} · precio ${p.price || '—'} · original ${p.original_price || '—'} · ${String(p.start_date || '').slice(0, 16)} → ${String(p.finish_date || '').slice(0, 16)} · ML pone ${p.meli_percentage ?? '—'}%`);
+        } catch (e) { console.log(`   promos: no contestó ${String(e.message).slice(0, 120)}`); }
+        console.log(`   promoclaude: ${JSON.stringify((await db.get('cyc/promoclaude/' + mla)) || null).slice(0, 300)}`);
+      }
+      return;
+    }
     if (/^listaestado(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const solo = (String(process.env.BILLING_PROBE).split(':')[1] || '').toLowerCase(); const provs = (await db.get('cyc/mlconfig/listasProv')) || {};
       for (const [k, pv] of Object.entries(provs)) { if (solo && k !== solo && String(pv.nombre || '').toLowerCase() !== solo) continue;
