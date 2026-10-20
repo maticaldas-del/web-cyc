@@ -38790,9 +38790,12 @@ async function main() {
       // un producto marcado no se repone, y sin esto pasaba a "Bs As 14 d" en cuanto `cyc/reponer` tenía más de 3 días.
       let notraerE = {}; try { notraerE = (await db.get('cyc/notraer')) || {}; } catch { /* sin la marca */ }
       try { for (const c of Object.values((await db.get('cyc/compraspy')) || {})) if (c && c.estado === 'camino') for (const it of (c.items || [])) if (it && it.prodId) compPyE[it.prodId] = c.fecha; } catch { /* */ }
+      // 📋 Listas (20/10/2026, decisión 1a): un probado pedido a una lista que viaja (como `_pedidoViaja` de la web: ~7 días).
+      const compLiE = {}; try { for (const c of Object.values((await db.get('cyc/compraslista')) || {})) if (c && c.estado === 'camino') for (const it of (c.items || [])) if (it && it.prodId) compLiE[it.prodId] = { f: c.fecha, de: String(c.provNom || c.prov || 'la lista') }; } catch { /* */ }
       // Respaldo si la web todavía no escribió `cyc/reponer` de ese producto (o es de hace más de 3 días).
       const repoFallback = (pid) => {
         const p = pById[pid] || {};
+        if (compLiE[pid]) { const e = (ahora - Date.parse(compLiE[pid].f + 'T12:00:00-03:00')) / 864e5; const f = Math.max(0, Math.ceil(7 - (e || 0))); return { d: f + 10, txt: `📅 viene en el pedido a ${compLiE[pid].de} del ${compLiE[pid].f} (${f > 0 ? '~' + f + ' d' : 'ya debería haber llegado'}) + 10 d de caja a Full` }; }
         if (compPyE[pid]) { const e = (ahora - Date.parse(compPyE[pid] + 'T12:00:00-03:00')) / 864e5; const f = Math.max(0, Math.ceil(7 - (e || 0))); return { d: f + 10, txt: `📅 viene en el pedido de Paraguay del ${compPyE[pid]} (${f > 0 ? '~' + f + ' d' : 'ya debería haber llegado'}) + 10 d de caja` }; }
         { const nt = notraerE[pid]; if (nt && !nt.permitido) return { d: REPO_SIN_FECHA_E, inf: true, txt: '📅 marcado "no traer más": no se repone' }; }
         if (p.origen === 'py' && sinStE[pid]) return { d: REPO_SIN_FECHA_E, inf: true, txt: '📅 Nissei no lo tiene: sin fecha' };
@@ -39913,14 +39916,15 @@ async function main() {
     // 140 Pedidos sale casi vacío. Por producto (y color): ventas 30/60/180 d, última venta, días con stock en 30, Full por
     // cuenta, oficina, en camino a Full, viajando de Paraguay y del Paulvic, neto y costo. No decide nada: los números para decidir.
     if (/^pedidostodo$/.test(String(process.env.BILLING_PROBE || ''))) {
-      const ks = ['cyc/inventory', 'cyc/mllinks', 'cyc/ventaprod', 'cyc/envios_full', 'cyc/products', 'cyc/stockhist', 'cyc/compraspy', 'cyc/pedidospv', 'cyc/pedidos_papelera', 'cyc/notraer', 'cyc/proveedores', 'cyc/finanzas/tipo_cambio', 'cyc/claudedecide/ped', 'cyc/cajasentrado', 'cyc/autoprecio'];
+      // `cyc/compraslista` al final (20/10/2026, decisión 1a): lo ya probado pedido a una lista viaja como Paraguay (`LIviaja`).
+      const ks = ['cyc/inventory', 'cyc/mllinks', 'cyc/ventaprod', 'cyc/envios_full', 'cyc/products', 'cyc/stockhist', 'cyc/compraspy', 'cyc/pedidospv', 'cyc/pedidos_papelera', 'cyc/notraer', 'cyc/proveedores', 'cyc/finanzas/tipo_cambio', 'cyc/claudedecide/ped', 'cyc/cajasentrado', 'cyc/autoprecio', 'cyc/compraslista'];
       // Una lectura que FALLA no es un nodo vacío (revisión 9, 13/10/2026): con `{}` salían 0 ventas o 0 en camino y los
       // scripts pedían de más. Si algo no se leyó, se dice y no se imprime nada (decide_pedidos.py rechaza un log con ⚠️ NO LEÍ).
       const FALLO = Symbol('fallo');
       const R = await Promise.all(ks.map((k) => db.get(k).catch(() => FALLO)));
       const noLei = ks.filter((k, i) => R[i] === FALLO);
       if (noLei.length) { console.log(`⚠️ NO LEÍ: ${noLei.join(' · ')} — no armo la lista a medias`); return; }
-      const [I, L, VP, ENV, PR, SH, CPY, PV, PAP, NT, PROV, TC, CD, CE, AP] = R.map((x) => x || {});
+      const [I, L, VP, ENV, PR, SH, CPY, PV, PAP, NT, PROV, TC, CD, CE, AP, CLI] = R.map((x) => x || {});
       // Lo que no vino del Paulvic "no viene más" (17/10/2026): `cyc/noconsigo/<prod>/nunca/<aroma>` → el renglón dice NUNCA y no se pide.
       let NCp; try { NCp = (await db.get('cyc/noconsigo')) || {}; } catch { console.log('⚠️ NO LEÍ: cyc/noconsigo — no armo la lista a medias'); return; }
       const nuncaPD = {}; for (const [pid, r] of Object.entries(NCp)) for (const k of Object.keys((r && r.nunca) || {})) nuncaPD[pid + '#' + k] = true;
@@ -39999,6 +40003,18 @@ async function main() {
           if (falta > 0) viaPy[pid] = (viaPy[pid] || 0) + falta; }
       }
       const viaPv = {}; for (const c of Object.values(PV)) if (c && c.estado === 'camino' && c.prodId) for (const it of (c.items || [])) if (it && it.v) { const o = viaPv[c.prodId] || (viaPv[c.prodId] = {}); o[it.v] = (o[it.v] || 0) + (Number(it.u) || 0); }
+      // 📋 LO PEDIDO A UNA LISTA QUE VIAJA (20/10/2026, decisión 1a): la misma cuenta que `listaEnCamino` de la web. Renglones con
+      // prodId (probados) de `cyc/compraslista` en camino, por color (clave sin acentos), y lo llegado que falta contar en la oficina
+      // (7 días, `ofiAlLlegar`, como Paraguay). Sale como `LIviaja N` (total del producto y de cada color) y decide_pedidos.py lo resta.
+      const viaLi = {}; const addLi = (pid, va, u) => { if (!pid || !(u > 0)) return; const o = viaLi[pid] || (viaLi[pid] = { tot: 0, v: {} }); o.tot += u; const k = va ? sid(String(va).toLowerCase()) : ''; if (k) o.v[k] = (o.v[k] || 0) + u; };
+      for (const c of Object.values(CLI)) {
+        if (!c) continue;
+        if (c.estado === 'camino') { for (const it of (c.items || [])) if (it && it.prodId) addLi(it.prodId, String(it.variante || ''), parseInt(it.u) || 0); continue; }
+        if (c.estado !== 'llegado' || !c.ofiAlLlegar || !(Number(c.llegoTs) > 0) || hoy - Number(c.llegoTs) > 7 * 864e5) continue;
+        const uP = {}; for (const it of (c.items || [])) if (it && it.prodId) uP[it.prodId] = (uP[it.prodId] || 0) + (parseInt(it.u) || 0);
+        for (const [pid, u] of Object.entries(uP)) { if (!(pid in c.ofiAlLlegar)) continue;
+          const subio = Math.max(0, (parseInt(I[pid + '__Oficina_Mati']) || 0) - (parseInt(c.ofiAlLlegar[pid]) || 0)); addLi(pid, '', Math.max(0, u - subio)); }
+      }
       // DÍAS CON STOCK EN 30 (revisión 9, 13/10/2026): del registro hora por hora (`cyc/stocklog/cambios`, la misma cuenta que
       // `escasez` y el cerebro), los días que el registro todavía no miraba (antes del 24/09) cuentan con stock; pide 7+ días de registro. El
       // `stockhist` solo mira desde la ÚLTIMA vez que volvió el stock: un corte de un día hacía "5 días con stock" a algo que
@@ -40077,7 +40093,7 @@ async function main() {
       const ln = (p) => {
         const s = S[p.id] || { t30: 0, t60: 0, t180: 0, ult: '', v: {}, rem: 0 };
         const full = C4.map((c) => n0(I[p.id + '__' + c])), ft = full.reduce((a, b) => a + b, 0), casa = n0(I[p.id + '__' + OF]);
-        const cm = (cam[p.id] || {}).tot || 0, py = viaPy[p.id] || 0, pvv = Object.values(viaPv[p.id] || {}).reduce((a, b) => a + b, 0);
+        const cm = (cam[p.id] || {}).tot || 0, py = viaPy[p.id] || 0, pvv = Object.values(viaPv[p.id] || {}).reduce((a, b) => a + b, 0), liv = (viaLi[p.id] || {}).tot || 0;
         const cost = Math.round((Number(p.costFullUSD) || Number(p.costUSD) || 0) * tc);
         const pr = Math.round(Number(p.netoCalcPrecio) || 0);
         const mlasP = Object.entries(L).filter(([mla, e]) => e && e.prodId === p.id && !e.ignored && /^MLA/i.test(mla));
@@ -40088,7 +40104,7 @@ async function main() {
         const esBsasP = p.origen !== 'py' && !(/paulvic/i.test(provN[p.proveedorId] || '') || /paulvic/i.test(p.name || ''));   // el mismo grupo que BSAS de abajo
         const m60 = med(pU[p.id]);
         const dec = dec0 + (m60 ? ` · med60 $${m60}` : '') + ` · ctas [${ctasDe(p.id).map((c) => c.slice(0, 2)).join(' ')}]` + (CD[p.id] ? ` · YA DECIDÍ ${CD[p.id].u != null ? CD[p.id].u : JSON.stringify(CD[p.id].vars || {})}` : '');
-        console.log(`\n${p.id} · ${String(p.name).slice(0, 55)} · v30 ${s.t30} v60 ${s.t60} v180 ${s.t180} · últ ${s.ult ? s.ult.slice(8, 10) + '/' + s.ult.slice(5, 7) : '—'}${s.rem ? ' · REMATE ' + s.rem : ''}${s.barata ? ' · BARATA ' + s.barata : ''} · dCS ${dCS(p.id)}${cortes60(p.id) ? ' · cortes ' + cortes60(p.id) : ''} · Full ${ft} [${C4.map((c, i) => full[i] ? c.slice(0, 2) + full[i] : '').filter(Boolean).join(' ')}] · casa ${casa} · camino ${cm}${py ? ' · PYviaja ' + py : ''}${pvv ? ' · PVviaja ' + pvv : ''} ${(p.variantes || []).length ? ' · colores ' + p.variantes.length : ''} · neto $${Math.round(Number(p.netoCalc) || 0)} costo $${cost}${p.nisseiUSD ? ' · PY US$' + p.nisseiUSD : ''}${hP ? ' · hist ' + hP + 'd' : ''}${dec}`);
+        console.log(`\n${p.id} · ${String(p.name).slice(0, 55)} · v30 ${s.t30} v60 ${s.t60} v180 ${s.t180} · últ ${s.ult ? s.ult.slice(8, 10) + '/' + s.ult.slice(5, 7) : '—'}${s.rem ? ' · REMATE ' + s.rem : ''}${s.barata ? ' · BARATA ' + s.barata : ''} · dCS ${dCS(p.id)}${cortes60(p.id) ? ' · cortes ' + cortes60(p.id) : ''} · Full ${ft} [${C4.map((c, i) => full[i] ? c.slice(0, 2) + full[i] : '').filter(Boolean).join(' ')}] · casa ${casa} · camino ${cm}${py ? ' · PYviaja ' + py : ''}${pvv ? ' · PVviaja ' + pvv : ''}${liv ? ' · LIviaja ' + liv : ''} ${(p.variantes || []).length ? ' · colores ' + p.variantes.length : ''} · neto $${Math.round(Number(p.netoCalc) || 0)} costo $${cost}${p.nisseiUSD ? ' · PY US$' + p.nisseiUSD : ''}${hP ? ' · hist ' + hP + 'd' : ''}${dec}`);
         // Los colores de la FICHA (etapa 3, 20/10/2026): un color sin ventas ni mercadería no tiene renglón, y un juicio de ese color
         // (ej. Pizarra 12" Rojo=4) se perdía sin aviso. Con esta lista `decide_pedidos.py` lo aplica igual y avisa si el color no existe.
         if ((p.variantes || []).length) console.log(`   ## colores ${JSON.stringify((p.variantes || []).map(String))}`);
@@ -40096,14 +40112,14 @@ async function main() {
         for (const va of (p.variantes || [])) {
           const sv = s.v[va] || { t30: 0, t60: 0, t180: 0, ult: '' };
           const fv = C4.reduce((a, c) => a + n0(I[p.id + '__' + c + '__v__' + sid(va)]), 0), cv = n0(I[p.id + '__' + OF + '__v__' + sid(va)]);
-          const mv = ((cam[p.id] || {}).v || {})[va] || 0, pvx = (viaPv[p.id] || {})[va] || 0;
+          const mv = ((cam[p.id] || {}).v || {})[va] || 0, pvx = (viaPv[p.id] || {})[va] || 0, lix = ((viaLi[p.id] || {}).v || {})[sid(String(va).toLowerCase())] || 0;
           // ✋ LO QUE CAMBIÓ ÉL A MANO EN PEDIDOS (`claudedecide/ped/<id>/mano/<color>`, manda en la web sobre lo mío). En Bs As vence
           // cuando entra mercadería a la oficina DESPUÉS del cambio (`cyc/ofientro`, misma regla que la web): sale "vencida".
           const mo = (((CD[p.id] || {}).mano) || {})[sid(String(va).toLowerCase())];
           const manoTxt = mo && mo.u != null ? ` · mano ${Math.max(0, parseInt(mo.u) || 0)}${esBsasP && Number((ofP || {})[p.id]) > (Number(mo.ts) || 0) ? ' vencida' : ''}` : '';
-          if (!sv.t180 && !fv && !cv && !mv && !pvx && !manoTxt) continue;
+          if (!sv.t180 && !fv && !cv && !mv && !pvx && !lix && !manoTxt) continue;
           const camV = cambiosDe(mlasP.filter(([mla, e]) => colorMla(mla, e) === va).map(([mla]) => mla)), hV = histD(sv);
-          console.log(`   # ${va} · v30 ${sv.t30} v60 ${sv.t60} v180 ${sv.t180} · últ ${sv.ult ? sv.ult.slice(8, 10) + '/' + sv.ult.slice(5, 7) : '—'} · dCS ${dCS(p.id, '__v__' + sid(va), dCS(p.id))}${cortes60(p.id, '__v__' + sid(va)) ? ' · cortes ' + cortes60(p.id, '__v__' + sid(va)) : ''} · Full ${fv} · casa ${cv} · camino ${mv}${pvx ? ' · PVviaja ' + pvx : ''}${nuncaPD[p.id + '#' + sid(va)] ? ' · NUNCA' : ''}${hV ? ' · hist ' + hV + 'd' : ''}${manoTxt}${camV.length ? ' · cambios (' + camV.join(' ') + ')' : ''}`);
+          console.log(`   # ${va} · v30 ${sv.t30} v60 ${sv.t60} v180 ${sv.t180} · últ ${sv.ult ? sv.ult.slice(8, 10) + '/' + sv.ult.slice(5, 7) : '—'} · dCS ${dCS(p.id, '__v__' + sid(va), dCS(p.id))}${cortes60(p.id, '__v__' + sid(va)) ? ' · cortes ' + cortes60(p.id, '__v__' + sid(va)) : ''} · Full ${fv} · casa ${cv} · camino ${mv}${pvx ? ' · PVviaja ' + pvx : ''}${lix ? ' · LIviaja ' + lix : ''}${nuncaPD[p.id + '#' + sid(va)] ? ' · NUNCA' : ''}${hV ? ' · hist ' + hV + 'd' : ''}${manoTxt}${camV.length ? ' · cambios (' + camV.join(' ') + ')' : ''}`);
         }
       };
       console.log(`dólar ${tc} · ventana 30 d desde ${k30} · ${prods.length} fichas`);

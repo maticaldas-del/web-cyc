@@ -27,7 +27,7 @@ for l in L:
         g=lambda r: int(re.search(r,rest).group(1)) if re.search(r,rest) else 0
         cm=re.search(r'precio \$\d+ \((.*?)\)',rest)
         cur=dict(id=m.group(1),n=m.group(2),g=grupo,v30=int(m.group(3)),v60=int(m.group(4)),v180=int(m.group(5)),ult=m.group(6),rem=int(m.group(7) or 0),barata=int(m.group(8) or 0),dcs=int(m.group(9)),cortes=int(m.group(10) or 0),full=int(m.group(11)),casa=int(m.group(12)),cam=int(m.group(13)),
-          py=g(r'PYviaja (\d+)'),pv=g(r'PVviaja (\d+)'),colores=g(r'colores (\d+)'),neto=g(r'neto \$(\d+)'),costo=g(r'costo \$(\d+)'),precio=g(r'precio \$(\d+)'),med60=g(r'med60 \$(\d+)'),
+          py=g(r'PYviaja (\d+)'),pv=g(r'PVviaja (\d+)'),li=g(r'LIviaja (\d+)'),colores=g(r'colores (\d+)'),neto=g(r'neto \$(\d+)'),costo=g(r'costo \$(\d+)'),precio=g(r'precio \$(\d+)'),med60=g(r'med60 \$(\d+)'),
           cambios=(cm.group(1) if cm else ''),decidido=(' YA DECIDÍ ' in rest),vars=[],hist=hist_de(rest),colFicha=None)
         prods.append(cur); continue
     # Los colores de la ficha (etapa 3, 20/10/2026): también los que no tienen renglón (sin ventas ni mercadería).
@@ -38,8 +38,8 @@ for l in L:
         continue
     m=re.match(r'^   # (.*?) · v30 (\d+) v60 (\d+) v180 (\d+) · últ (\S+)(?: · dCS (\d+))?(?: · cortes (\d+))? · Full (\d+) · casa (\d+) · camino (\d+)(.*)$',l)
     if m and cur:
-        rv=m.group(11); pv=re.search(r'PVviaja (\d+)',rv); cv=re.search(r' · cambios \((.*?)\)',rv); mn=re.search(r' · mano (\d+)( vencida)?',rv)
-        cur['vars'].append(dict(v=m.group(1),v30=int(m.group(2)),v60=int(m.group(3)),v180=int(m.group(4)),ult=m.group(5),dcs=int(m.group(6)) if m.group(6) else cur['dcs'],cortes=int(m.group(7) or 0),full=int(m.group(8)),casa=int(m.group(9)),cam=int(m.group(10)),pv=int(pv.group(1)) if pv else 0,nunca=(' · NUNCA' in rv),
+        rv=m.group(11); pv=re.search(r'PVviaja (\d+)',rv); li=re.search(r'LIviaja (\d+)',rv); cv=re.search(r' · cambios \((.*?)\)',rv); mn=re.search(r' · mano (\d+)( vencida)?',rv)
+        cur['vars'].append(dict(v=m.group(1),v30=int(m.group(2)),v60=int(m.group(3)),v180=int(m.group(4)),ult=m.group(5),dcs=int(m.group(6)) if m.group(6) else cur['dcs'],cortes=int(m.group(7) or 0),full=int(m.group(8)),casa=int(m.group(9)),cam=int(m.group(10)),pv=int(pv.group(1)) if pv else 0,li=int(li.group(1)) if li else 0,nunca=(' · NUNCA' in rv),
           hist=hist_de(rv),cambios=(cv.group(1) if cv else None),mano=(int(mn.group(1)) if mn else None),manoVenc=bool(mn and mn.group(2))))
 # N DE M: que se hayan leído TODAS las fichas que imprimió pedidostodo (si no, un renglón con otro formato se pierde callado).
 for gr,n in esper.items():
@@ -48,7 +48,8 @@ for gr,n in esper.items():
         print(f"{gr}: leí {k} de {n}"+(' ✓' if k==n else ' ⚠️ NO CIERRA: hay renglones que no entendí'))
 if not esper: print('⚠️ no encontré ningún grupo (════ BSAS ════…): ¿es el log de pedidostodo?'); sys.exit(1)
 def ritmo(x,dcs=30):
-    tiene=x['full']+x['casa']+x['cam']+x.get('py',0)+x.get('pv',0)
+    # `li` (20/10/2026, decisión 1a): lo ya probado pedido a una lista que viaja (o llegó y falta contar), igual que Paraguay y el Paulvic.
+    tiene=x['full']+x['casa']+x['cam']+x.get('py',0)+x.get('pv',0)+x.get('li',0)
     d=max(7,min(30,dcs)); R=lambda n: f"{round(n):d}"   # con ventas sin color repartidas las cuentas pueden tener decimales   # días con stock en 30 (con piso de 7: con 1-2 días una venta suelta pediría una caja entera)
     r30=x['v30']/d; r60=x['v60']/60; r180=x['v180']/180
     # LO AGOTADO SE MIDE MIENTRAS SE VENDÍA (etapa 3, 20/10/2026): unidades ÷ los días de la primera a la última venta en 180 d
@@ -117,7 +118,7 @@ for p in prods:
             dets.append([v,need,r,t,r*Tv,b])
         # Lo que el producto tiene SIN COLOR (viajando de Paraguay, Full de publicaciones sin color, oficina o cajas sin color)
         # también cubre: se descuenta de los colores que más piden (revisión 9, 09/10/2026).
-        sc=p.get('py',0)+max(0,p['full']-sum(v['full'] for v in p['vars']))+max(0,p['casa']-sum(v['casa'] for v in p['vars']))+max(0,p['cam']-sum(v['cam'] for v in p['vars']))
+        sc=p.get('py',0)+max(0,p.get('li',0)-sum(v.get('li',0) for v in p['vars']))+max(0,p['full']-sum(v['full'] for v in p['vars']))+max(0,p['casa']-sum(v['casa'] for v in p['vars']))+max(0,p['cam']-sum(v['cam'] for v in p['vars']))
         sc0=sc
         while sc>0 and any(d[1]>0 for d in dets):
             d=max(dets,key=lambda d:d[1]); u=min(1,d[1],sc); d[1]-=u; sc-=u
