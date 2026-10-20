@@ -8114,6 +8114,64 @@ async function avisarVentasNuevas(db, lista) {
   else console.log(`Aviso de ventas: no salió el mensaje (${nuevas.length}), lo reintento la vuelta que viene.`);
 }
 
+// ── EL WIDGET DEL IPHONE: "VENTAS DE HOY" EN LA PANTALLA DE INICIO (20/10/2026, pedido suyo) ──
+// Él: *"quiero que me aparezca algo muy parecido a eso (la tarjeta Ventas de hoy) … cuando desbloqueo, pum, que ahí aparezcan
+// las ventas, los colores, todo eso"*. El widget (app Scriptable, `ml-sync/widget/cyc-hoy.js`) no puede bajar todas las
+// ventas cada 15 minutos, así que el ciclo deja acá un resumen chico: `mlapi/widget/hoy`. Fuera de `cyc/` a propósito (la
+// web lee `cyc` entero). La cuenta es la de la tarjeta: `armarCostoWeb` (copia de `efectivoCostoVP`), puntaje de
+// `_puntajeDia` (7 en $115.000, 10 en $230.000), color de `VIVA_DIA_NIV`, y la curva de ganancia acumulada cada 15 min
+// de hoy y del promedio de los últimos 5 mismos días de la semana (`_homeCurvaHTML`). Si se toca la tarjeta, se toca esto.
+// Sólo se reescribe si cambiaron las ventas de hoy, cambió el día o pasaron 20 minutos.
+const WIDGET_NIV = [['bajo', -1e12, '#ef4444'], ['justo', 90000, '#f97316'], ['bien', 115000, '#22c55e'], ['bueno', 150000, '#14b8a6'], ['exc', 190000, '#60a5fa'], ['estr', 230000, '#a78bfa'], ['joya', 300000, '#eab308']];
+async function escribirWidgetHoy(db) {
+  if (DRY || CONSULTA_SOLO_LEE) return;
+  const ahora = Date.now(), ar = new Date(ahora - 3 * 36e5);
+  const dk = (d) => `${d.getUTCFullYear()}_${String(d.getUTCMonth() + 1).padStart(2, '0')}_${String(d.getUTCDate()).padStart(2, '0')}`;
+  const kHoy = dk(ar);
+  const hoyO = (await db.get('cyc/ventaprod/' + kHoy)) || {};
+  const vivas = Object.values(hoyO).filter((v) => v && !v.cancelada);
+  const firma = `${kHoy}|${vivas.length}|${vivas.reduce((a, v) => a + (Number(v.total) || 0) + (Number(v.neto) || 0), 0)}|${Object.values(hoyO).length}`;
+  let prev = null; try { prev = await db.get('mlapi/widget/hoy'); } catch { prev = null; }
+  if (prev && prev.firma === firma && ahora - (Number(prev.ts) || 0) < 20 * 6e4) return;
+  const vp = { [kHoy]: hoyO }, prevKs = [];
+  for (let w = 1; w <= 5; w++) { const k = dk(new Date(ar.getTime() - 7 * w * 864e5)); const o = await db.get('cyc/ventaprod/' + k); if (o && Object.keys(o).length) { vp[k] = o; prevKs.push(k); } }
+  const cw = await armarCostoWeb(db, vp);
+  // la ganancia de una venta como la web: neto − costo (sin costo cargado deja $0, igual que `efectivoCostoVP`)
+  const ganV = (v, k) => { const c = cw(v, k); return c.sinCosto ? 0 : (Number(v.neto) || 0) - c.costo; };
+  let u = 0, bruto = 0, gan = 0, costo = 0, gest = 0, ult = 0, sinCosto = 0;
+  const grupos = new Set();
+  for (const v of vivas) {
+    const c = cw(v, kHoy);
+    u += Number(v.qty) || 0; bruto += Number(v.total) || 0; if (c.sinCosto) sinCosto++;
+    const cc = c.sinCosto ? (Number(v.neto) || 0) : c.costo;
+    costo += cc; gan += (Number(v.neto) || 0) - cc; gest += v.netoEstimado ? 0 : c.gest;
+    grupos.add((v.cuenta || '') + '|' + (v.numVenta || v.saleId || v.id));
+    if (Number(v.ts) > ult) ult = Number(v.ts);
+  }
+  const div = costo + gest, pct = div > 0 ? gan / div * 100 : null;
+  const curva = (o, k) => {   // ganancia acumulada cada 15 minutos (97 puntos, 00:00 → 24:00), hora de Argentina
+    const pts = Object.values(o || {}).filter((v) => v && !v.cancelada && Number(v.ts) > 0).map((v) => { const d = new Date(Number(v.ts) - 3 * 36e5); return { m: d.getUTCHours() * 60 + d.getUTCMinutes(), g: ganV(v, k) }; });
+    const c = []; for (let i = 0; i <= 96; i++) c.push(Math.round(pts.reduce((a, x) => a + (x.m <= i * 15 - 1 ? x.g : 0), 0)));
+    return c;
+  };
+  const cHoy = curva(hoyO, kHoy);
+  const cs = prevKs.map((k) => curva(vp[k], k));
+  const prom = cs.length ? cHoy.map((_, i) => Math.round(cs.reduce((a, c) => a + c[i], 0) / cs.length)) : null;
+  let score = null, nivel = 'sin ventas todavía';
+  if (grupos.size > 0) {
+    const t = 115000, t2 = 230000;
+    score = gan <= 0 ? 0 : gan <= t ? 7 * gan / t : Math.min(10, 7 + 3 * (gan - t) / (t2 - t));
+    score = Math.round(score * 10) / 10;
+    nivel = score >= 9 ? '🏆 Día excelente' : score >= 8 ? '🌟 Muy buen día' : score >= 7 ? '✅ Buen día' : score >= 6 ? '🟢 Aprobado' : score >= 5 ? '🟠 A mejorar' : '🔴 Flojo';
+  }
+  const sCol = score == null ? '#8a8a99' : score >= 9 ? '#fbbf24' : score >= 7 ? '#22c55e' : score >= 6 ? '#84cc16' : score >= 5 ? '#f59e0b' : '#ef4444';
+  let color = WIDGET_NIV[0][2]; for (const [, m, c] of WIDGET_NIV) if (gan >= m) color = c;
+  const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+  const out = { dia: kHoy, ts: ahora, firma, bruto: Math.round(bruto), ventas: grupos.size, u, gan: Math.round(gan), pct: pct == null ? null : Math.round(pct * 10) / 10,
+    score, nivel, scoreColor: sCol, color, ult: ult || null, sinCosto, hoy: cHoy, prom, nP: cs.length, diaSem: DIAS[ar.getUTCDay()] };
+  await db.set('mlapi/widget/hoy', out);
+}
+
 const TG_PERMITIDO = new Set(['resumen', 'baja', 'dolar', 'venta']);   // 'venta': aviso de cada venta nueva (15/10/2026, pedido suyo)
 async function sendTelegram(text, tipo) {
   if (!TG_TOKEN || TG_SILENCIO) return false;
@@ -20367,6 +20425,17 @@ async function main() {
         }
       }
       await correrPyCatMedir(db, products, labels, accounts, n, _go, null, { maxMin: _maxMin });
+      return;
+    }
+    // BILLING_PROBE=widgethoy[:go] (20/10/2026): el resumen de "Ventas de hoy" que lee el widget del iPhone (mlapi/widget/hoy).
+    // Sin :go sólo muestra; con :go (por ml-sync) lo escribe ya, sin esperar la vuelta del ciclo.
+    if (/^widgethoy(:go)?$/.test(String(process.env.BILLING_PROBE || ''))) {
+      const go = String(process.env.BILLING_PROBE).endsWith(':go');
+      const o = await escribirWidgetHoy(db, go ? { forzar: true } : { soloMirar: true });
+      if (!o) { console.log('No escribí nada (corrida de prueba o de sólo lectura).'); return; }
+      console.log(`Widget ${o.dia}: ${o.ventas} ventas · ${o.u} u. · facturado ${money(o.bruto)} · ganancia ${money(o.gan)} · ${o.pct}% · puntaje ${o.score} ${o.nivel} · color ${o.color}`);
+      console.log(`  sin costo ${o.sinCosto} · contra ${o.nP} ${o.diaSem}s · hoy al final ${money(o.hoy[96])} · promedio día entero ${o.prom ? money(o.prom[96]) : '—'}`);
+      console.log(go ? '✓ escrito en mlapi/widget/hoy' : '(prueba: no escribí)');
       return;
     }
     // BILLING_PROBE=listaprioridad[:<proveedor>|:-][:go] (20/10/2026) → qué lista mide la vuelta de cada hora antes que Paraguay
@@ -48137,6 +48206,8 @@ async function main() {
 
   // ── AVISO DE CADA VENTA NUEVA (15/10/2026, pedido suyo: 1a 2a 3a) ──
   try { await avisarVentasNuevas(db, _avisoVentas); } catch (e) { console.log('No pude avisar las ventas nuevas: ' + e.message); }
+  // ── EL WIDGET DEL IPHONE (20/10/2026): el resumen de "Ventas de hoy" en mlapi/widget/hoy ──
+  try { await escribirWidgetHoy(db); } catch (e) { console.log('No pude escribir el widget de hoy: ' + e.message); }
 
   // ── ¿ML ME DEJÓ TRABAJAR? ───────────────────────────────────────────────
   // Va al FINAL, después de todo lo que escribe en ML, y fuera de cualquier `if`: un aviso que
