@@ -31847,7 +31847,9 @@ async function main() {
         if (!ks.length) { sinLinea++; if ((e.status || 'active') === 'active') dudoso.push({ cab, m: ['sin línea de tiempo leíble'] }); continue; }
         const ultK = ks[ks.length - 1], ult = d[ultK] || {};
         let stHoy = null; for (let i = ks.length - 1; i >= 0; i--) if (d[ks[i]].st != null) { stHoy = Number(d[ks[i]].st) || 0; break; }
-        let pHoy = 0; for (let i = ks.length - 1; i >= 0; i--) if (Number(d[ks[i]].p) > 0) { pHoy = Number(d[ks[i]].p); break; }
+        const pPub = (x) => x && Number(x.p) > 0 && x.pF !== 'venta' ? Number(x.p) : 0;   // el cobrado (promo, carrito) no es el publicado
+        let pHoy = 0; for (let i = ks.length - 1; i >= 0; i--) if (pPub(d[ks[i]])) { pHoy = pPub(d[ks[i]]); break; }
+        if (!pHoy) for (let i = ks.length - 1; i >= 0; i--) if (Number(d[ks[i]].p) > 0) { pHoy = Number(d[ks[i]].p); break; }
         let u30 = 0, dS30 = 0; for (const k of ks) { if (k < k30) continue; if (conSt(d[k])) dS30++; u30 += Number(d[k].u) || 0; }
         if (!(stHoy > 0) && !u30) continue;
         miradas++;
@@ -31859,8 +31861,9 @@ async function main() {
         { const m = [];
           if (ultK < kAgo(2)) m.push(`la línea de tiempo no se escribe desde ${ultK}`);
           const rec = ks.filter((k) => k >= k3);
-          const inc = rec.filter((k) => d[k].inc).length; if (inc) m.push(`${inc} de los últimos 3 días incompletos (ML no contestó todo)`);
+          // `inc` sale en casi todos los días (caja y margen viejos no se guardan): no alcanza. Lo que decide es stock y precio.
           if (rec.length && rec.every((k) => d[k].st == null)) m.push('sin stock leído en 3 días');
+          if (rec.length && rec.every((k) => !(Number(d[k].p) > 0) || d[k].pF === 'arrastre')) m.push('el precio de los últimos 3 días no se leyó de ML (es el último conocido)');
           const np = npL[mla];
           if (np && Number(np.sinMedir) > 0 && Date.now() - Number(np.sinMedir) < 2 * 864e5) m.push('el margen no se pudo medir anoche (ML no contestó la comisión)');
           else if (np && Number(np.ts) > 0 && est === 'active' && Date.now() - Number(np.ts) > 3 * 864e5) m.push(`el margen es de hace ${Math.floor((Date.now() - Number(np.ts)) / 864e5)} d`);
@@ -31871,17 +31874,17 @@ async function main() {
         const B = sem(k7, hoyK);
         const pasadas = []; for (let w = 2; w <= 52; w++) { const s = sem(kAgo(7 * (w + 1)), kAgo(7 * w)); if (s.dias >= 4) pasadas.push(s); }
         const fl = [];
+        // Si yo cambié el precio en 21 días, vender menos o convertir menos es lo que se está midiendo: va a 💭, no acá.
+        let cambioReciente = false; { let pRef = 0; for (const k of ks) { if (k < kAgo(21)) { if (pPub(d[k])) pRef = pPub(d[k]); continue; } const pk = pPub(d[k]); if (pk && pRef && Math.abs(pk / pRef - 1) > 0.02) { cambioReciente = true; break; } if (pk) pRef = pk; } }
         if (pasadas.length >= 6 && B.dias >= 3) {
           const rN = med(pasadas.map((s) => s.u / s.dias)), rMax = Math.max(...pasadas.map((s) => s.u / s.dias));
           const lam = (rN || 0) * B.dias;
-          if (lam >= 3 && pMenos(B.u, lam) < 0.05) fl.push(`vende mucho menos que en su año: ${B.u} en ${B.dias} d con stock, lo normal ~${lam.toFixed(1)} (${Math.round(pMenos(B.u, lam) * 100)}% de chance de casualidad)`);
+          if (!cambioReciente && lam >= 3 && pMenos(B.u, lam) < 0.05) fl.push(`vende mucho menos que en su año: ${B.u} en ${B.dias} d con stock, lo normal ~${lam.toFixed(1)} (${Math.round(pMenos(B.u, lam) * 100)}% de chance de casualidad)`);
           if (B.u >= 3 && B.u / B.dias > rMax && pMas(B.u, Math.max(lam, 0.2)) < 0.05) fl.push(`vende más rápido que nunca en el año: ${B.u} en ${B.dias} d (lo normal ~${lam.toFixed(1)}, la mejor semana ${(rMax * B.dias).toFixed(1)})`);
           const vN = med(pasadas.filter((s) => s.nv >= 4).map((s) => s.vis / s.nv));
           if (vN != null && vN >= 5 && B.nv >= 3) { const vB = B.vis / B.nv; if (vB < vN * 0.4) fl.push(`visitas mucho más bajas que en su año: ${vB.toFixed(0)}/d contra ${vN.toFixed(0)}/d normal`); else if (vB > vN * 2.5) fl.push(`visitas mucho más altas que en su año: ${vB.toFixed(0)}/d contra ${vN.toFixed(0)}/d normal (¿un competidor se quedó sin stock?)`); }
           const cN = med(pasadas.filter((s) => s.vis >= 20).map((s) => s.u / s.vis));
-          if (cN != null && cN > 0 && B.vis >= 20 && B.u / B.vis < cN * 0.4) fl.push(`la ven pero no compran: conversión ${(B.u / B.vis * 100).toFixed(1)}% contra ${(cN * 100).toFixed(1)}% normal`);
-          const pcN = med(pasadas.filter((s) => s.u > 0).map((s) => s.tot / s.u));
-          if (pcN && B.u >= 2) { const pcB = B.tot / B.u; if (Math.abs(pcB / pcN - 1) > 0.15) fl.push(`se cobra por unidad ${fm(pcB)} contra ${fm(pcN)} normal (${pcB > pcN ? '+' : ''}${Math.round((pcB / pcN - 1) * 100)}%)`); }
+          if (!cambioReciente && cN != null && cN > 0 && B.vis >= 20 && B.u / B.vis < cN * 0.4) fl.push(`la ven pero no compran: conversión ${(B.u / B.vis * 100).toFixed(1)}% contra ${(cN * 100).toFixed(1)}% normal`);
         }
         if (fl.length) fuera.push({ cab: cab + ` · ${fm(pHoy)} · ${stHoy ?? '?'} u. · ${t || 'sin estrategia'}`, m: fl });
         // ── 🔀 NO CIERRA ──
@@ -31899,7 +31902,7 @@ async function main() {
         if (e.dom && pHoy > 0) (porDom[e.dom] = porDom[e.dom] || []).push({ mla, cta, tit, t, pHoy, mg: Number(ult.mg) });
         // ── 💭 SIN CERTEZA: precio cambiado hace poco, todavía no se puede juzgar ──
         if (pHoy > 0) {
-          let kCambio = null, pAntes = 0; for (let i = ks.length - 1; i >= 0; i--) { const p = Number(d[ks[i]].p); if (p > 0 && Math.abs(p / pHoy - 1) > 0.02) { pAntes = p; kCambio = ks[i + 1] || null; break; } }
+          let kCambio = null, pAntes = 0; for (let i = ks.length - 1; i >= 0; i--) { const p = pPub(d[ks[i]]); if (p > 0 && Math.abs(p / pHoy - 1) > 0.02) { pAntes = p; kCambio = ks[i + 1] || null; break; } }
           if (kCambio && kCambio >= k30) {
             const kDesp = dayKeyFromISO(Date.parse(kCambio.replace(/_/g, '-') + 'T12:00:00Z') + 864e5);
             const Dp = sem(kDesp, hoyK), A = sem(dayKeyFromISO(Date.parse(kCambio.replace(/_/g, '-') + 'T12:00:00Z') - 30 * 864e5), kCambio);
@@ -31914,10 +31917,10 @@ async function main() {
               const pierde = pMenos(Dp.u, lam) < 0.05, gana = pMas(Dp.u, lam) < 0.05 && Dp.u > lam;
               if (!pierde && !gana) {
                 const falta = Dp.u === 0 ? Math.max(1, Math.ceil(3 / rEq) - Dp.dias) : Math.max(1, Math.ceil((Dp.u + 3) / rEq) - Dp.dias);
-                const m = [`${fm(pAntes)} → ${fm(pHoy)} desde ${kCambio} · ${Dp.u} vendidas en ${Dp.dias} d con stock · para dejar la misma plata tenía que vender ~${lam.toFixed(1)} · falta ~${falta} d con stock para saber`];
+                const m = [`${fm(pAntes)} → ${fm(pHoy)} desde ${kCambio} · ${Dp.u} vendidas en ${Dp.dias} d con stock · para dejar la misma plata tenía que vender ~${lam.toFixed(1)} · ${falta > 30 ? `sola no se sabe nunca (falta ~${falta} d): juzgarla en familia, por visitas o por sus parecidas` : `falta ~${falta} d con stock para saber`}`];
                 const vA = A.nv >= 4 ? A.vis / A.nv : null, vB = Dp.nv >= 2 ? Dp.vis / Dp.nv : null;
                 if (vA != null && vB != null && vA >= 3) m.push(`señal temprana, visitas: ${vA.toFixed(0)}/d antes → ${vB.toFixed(0)}/d ahora${vB < vA * 0.5 ? ' ⚠️ cayeron a la mitad (regla 4 de 🔬)' : vB >= vA * 0.9 ? ' (la siguen viendo igual)' : ''}`);
-                sinCert.push({ cab: cab + ` · ${t || 'sin estrategia'}`, m, dom: e.dom || null, mla });
+                sinCert.push({ cab: cab + ` · ${t || 'sin estrategia'}`, m, dom: e.dom || null, mla, pHoy, fam: e.prodId + '|' + cta + '|' + kCambio, u: Dp.u, lam, rEq, dias: Dp.dias });
               }
             }
           }
@@ -31925,8 +31928,13 @@ async function main() {
       }
       // mismo producto (y color) en otra cuenta a un precio muy distinto
       for (const arr of Object.values(porProd)) { if (arr.length < 2) continue; const mn = arr.reduce((a, b) => (b.pHoy < a.pHoy ? b : a)), mx = arr.reduce((a, b) => (b.pHoy > a.pHoy ? b : a)); if (mx.pHoy > mn.pHoy * 1.25) noCierra.push({ cab: `${mx.tit}`, m: [`el mismo producto está a ${fm(mx.pHoy)} en ${mx.cta} (${mx.mla}) y a ${fm(mn.pHoy)} en ${mn.cta} (${mn.mla}): uno de los dos está mal o es a propósito (decirlo)`] }); }
-      // parecidas del mismo rubro para las que no tienen certeza (4a)
-      for (const s of sinCert) { if (!s.dom || !porDom[s.dom]) continue; const otros = porDom[s.dom].filter((x) => x.mla !== s.mla); if (!otros.length) continue; const cnt = {}; for (const x of otros) cnt[x.t || 'sin estrategia'] = (cnt[x.t || 'sin estrategia'] || 0) + 1; const mgs = otros.map((x) => x.mg).filter((v) => isFinite(v)); s.m.push(`parecidas del rubro ${s.dom}: ${otros.length} (${Object.entries(cnt).map(([k, v]) => `${k} ${v}`).join(' · ')})${mgs.length ? ` · margen mediano ${med(mgs).toFixed(0)}%` : ''}`); }
+      // EN FAMILIA (4a): las del mismo producto y cuenta cambiadas el mismo día se juzgan juntas (los aromas del Paulvic).
+      { const fams = {}; for (const s of sinCert) (fams[s.fam] = fams[s.fam] || []).push(s);
+        for (const arr of Object.values(fams)) { if (arr.length < 2) continue; const U = arr.reduce((a, x) => a + x.u, 0), L = arr.reduce((a, x) => a + x.lam, 0), R = arr.reduce((a, x) => a + x.rEq, 0), Dm = Math.min(...arr.map((x) => x.dias));
+          const txt = pMenos(U, L) < 0.05 ? `YA SE SABE QUE NO RINDE (${Math.round(pMenos(U, L) * 100)}% de casualidad): decidir en esta vuelta` : (pMas(U, L) < 0.05 && U > L) ? 'YA SE SABE QUE RINDE: dar el escalón siguiente o anotar techo' : `falta ~${Math.max(1, Math.ceil((U === 0 ? 3 : U + 3) / R) - Dm)} d con stock`;
+          for (const s of arr) s.m.push(`en familia (${arr.length} del mismo producto cambiadas ese día): ${U} vendidas, tenía que vender ~${L.toFixed(1)} → ${txt}`); } }
+      // parecidas del mismo rubro y precio parecido (±50%) para las que no tienen certeza (4a)
+      for (const s of sinCert) { if (!s.dom || !porDom[s.dom]) continue; const otros = porDom[s.dom].filter((x) => x.mla !== s.mla && x.pHoy >= s.pHoy / 1.5 && x.pHoy <= s.pHoy * 1.5); if (!otros.length) continue; const cnt = {}; for (const x of otros) cnt[x.t || 'sin estrategia'] = (cnt[x.t || 'sin estrategia'] || 0) + 1; const mgs = otros.map((x) => x.mg).filter((v) => isFinite(v)); s.m.push(`parecidas (${s.dom}, precio ±50%): ${otros.length} (${Object.entries(cnt).map(([k, v]) => `${k} ${v}`).join(' · ')})${mgs.length ? ` · margen mediano ${med(mgs).toFixed(0)}%` : ''}`); }
       const imprimir = (titulo, arr) => { console.log(`\n── ${titulo} · ${arr.length} ──`); for (const f of arr) { console.log('@@ ' + f.cab); for (const x of f.m) console.log('     · ' + x); } };
       console.log(`=== 🧭 RAROS · lo que se sale de lo normal de cada publicación, sin regla por caso · SOLO LEE ===`);
       console.log(`(ganancia aprox: neto − mercadería − IIBB − 2% mono · Poisson: chance de que sea casualidad)`);
