@@ -40152,7 +40152,8 @@ async function main() {
       // Se decide EN ESTA VUELTA: sacarlo (`entrarpromo:<MLA>=salir|…`) o dejarlo con motivo (nota de 7 días). Tiene que quedar vacía.
       try {
         let ntsD = null; try { ntsD = (await db.get('mlapi/fichanotas')) || {}; } catch { ntsD = null; }
-        const ultD = (m) => Math.max(0, ...Object.keys((ntsD || {})[m] || {}).map(Number).filter((n) => n > 0));
+        // Sólo cuenta una nota que hable del descuento (que lo piense de nuevo), no cualquier nota de precio del día.
+        const ultD = (m) => { const h = (ntsD || {})[m] || {}; return Math.max(0, ...Object.keys(h).map(Number).filter((n) => n > 0 && /descuento|promo/i.test(String((h[n] || {}).t || '')))); };
         const grD = {}; for (const r of filas) if (r.kSt) (grD[r.kSt] = grD[r.kSt] || []).push(r);
         const malD = [], pensD = [];
         for (const r of filas) {
@@ -40170,6 +40171,7 @@ async function main() {
           if (n && hoy - n < 7 * 864e5) pensD.push(fila); else malD.push(fila);
         }
         console.log(`\n── 🤔 MIS DESCUENTOS QUE YA NO TIENEN SENTIDO (${malD.length}) · sacarlo o dejarlo con motivo · EN ESTA VUELTA ──`);
+        malD.sort((x, y) => y.por.length - x.por.length);
         for (const r of malD) console.log(`🤔 ${r.mla} · ${r.cta} · ${r.nom} · ${f(r.P)} · ${r.exc} · v ${r.u7}/${r.u30}/${r.u60} · ${r.por.join(' · ')}`);
         if (!malD.length) console.log('ninguno: todos mis descuentos siguen teniendo sentido');
         if (pensD.length) console.log(`   (${pensD.length} fallan alguna pero ya les escribí nota en 7 días: ${pensD.map((x) => x.nom.slice(0, 24)).join(' · ')})`);
