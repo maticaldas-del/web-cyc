@@ -1716,6 +1716,8 @@ flex con alto máximo, que no se achique; probar con muchas tarjetas, no con tre
 Pedido suyo ("uno arriba del otro con unidad y código, así es más fácil el armado del celu"). `renderCajasEnCamino`: cada renglón
 = unidades grandes · código de la etiqueta de Full de esa cuenta (`etiquetaFullDe`, la misma de Armar caja; sin código dice
 "sin código", no adivina) · producto y variante. Chequear: que el código sea el de la cuenta de la caja y de esa variante.
+v25.07: el contenido arranca cerrado y se abre tocando el encabezado del envío (`_cajaAbierta`, `cajaToggle`; cerrado dice
+renglones y unidades). Se recuerda mientras la app está abierta.
 
 ### Etapa 2 · 19/10/2026 · v25.01 · Paulvic: "a pagar ≈" en el pedido en camino
 Pedido suyo. `_pvPrecioUnitAnt`: lo que salió cada unidad en el último pedido con monto (calculadora ÷ llegadas, sin flete); la
