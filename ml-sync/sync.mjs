@@ -19985,6 +19985,10 @@ async function main() {
         console.log(`\n== ${pv.nombre || k} (${k})${pv.desc ? ' · DESCARTADO' : ''}${pv.bsas ? ' · Bs As' : ''} · lista del ${pv.ts ? new Date(pv.ts).toISOString().slice(0, 10) : '?'} · ${v.length} productos ==`);
         console.log(`   medidos ${c.med} (${c.d25} de 25%+ · ${c.b25} abajo) · sin catálogo exacto en ML ${c.sc} · en ML no lo vende nadie ${c.sv} · afuera por regla ${c.fz} · sin medir: ${c.nunca} nunca probados + ${c.sinRes} probados sin resultado`);
         const top = Object.entries(mot).sort((a, b) => b[1] - a[1]).slice(0, 8); if (top.length) console.log('   afuera por: ' + top.map(([r, n]) => `${r} ${n}`).join(' · '));
+        // `listaestado:<prov>:sc:<n>` / `:sv:<n>`: una muestra pareja de N nombres de ese grupo con lo más parecido que trajo ML.
+        { const pp = String(process.env.BILLING_PROBE).split(':'); const g = pp[2], nM = parseInt(pp[3], 10) || 150;
+          if (g === 'sc' || g === 'sv') { const gv = v.filter((e) => e.m == null && !e.fz && (g === 'sc' ? e.sc : (!e.sc && e.sv))); const paso = Math.max(1, Math.floor(gv.length / nM));
+            console.log(`   muestra ${g} (${gv.length}):`); for (let i = 0; i < gv.length && i / paso < nM; i += paso) console.log(`     ${String(gv[i].n).slice(0, 60)} ⇒ ${String(gv[i].mt || '—').slice(0, 60)}${gv[i].mi ? ' ' + gv[i].mi : ''}`); } }
         const ej = v.filter((e) => e.m == null && !e.fz && !e.sc && !e.sv).slice(0, 18); if (ej.length) console.log('   sin medir: ' + ej.map((e) => String(e.n).slice(0, 40)).join(' · '));
       }
       return;
