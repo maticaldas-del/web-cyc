@@ -20210,13 +20210,23 @@ async function main() {
     }
     if (/^listarevisar(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const solo = String(process.env.BILLING_PROBE).split(':')[1] || ''; const provs = (await db.get('cyc/mlconfig/listasProv')) || {};
-      let tot = 0; console.log('@@LISTA');
+      // Salen los que dan 25%+ y les falta algo para "dar" de verdad: las ventas (vend) o el ✅ de que el catálogo medido es el mismo
+      // producto (listaOkVale). 20/10/2026: antes salían sólo los sin ventas, y los que tenían ventas de antes de la regla del ✅
+      // quedaban en "Para revisar" sin que nadie los mirara. Los de menos de 100 ventas ya están afuera y no salen. Orden: DA primero,
+      // del margen más alto al más bajo. La última columna dice qué falta.
+      let tot = 0; const filas = []; const porProv = {};
       for (const [k, pv] of Object.entries(provs)) { if (pv.desc || (solo && k !== solo.toLowerCase())) continue;
         const cat = (await db.get('mlapi/listas/' + k)) || {}; const rec = Number(pv.rec) || 0;
-        for (const [cod, e] of Object.entries(cat)) { if (!e || e.noEs || e.sacado || e.noWeb || e.vend != null || !(e.m != null && Number(e.m) >= 25 && e.mi) || !listaCostoVigente(e)) continue;   // costo nuevo sin medir: el margen no vale (etapa 3, 20/10/2026)
-          const est = (e.ok || (!e.rp && Number(e.m) < 80 && Number(e.mv) !== 1)) ? 'DA' : (Number(e.mv) === 1 ? 'REVISAR-1VEND' : 'REVISAR');   // DA = margen y nombre bien; falta saber las ventas
-          console.log([k, cod, String(e.n).replace(/\|/g, '/'), Math.round((Number(e.p) || 0) * (1 + rec / 100)), e.mi, String(e.mt || '').replace(/\|/g, '/').slice(0, 80), e.mp || '', Math.round(e.m) + '%', est].join('|')); tot++; } }
-      console.log('@@FIN'); console.log(`${tot} productos para mirar (los que ya tienen ventas cargadas no salen).`); return;
+        for (const [cod, e] of Object.entries(cat)) { if (!e || e.noEs || e.sacado || e.noWeb || !(e.m != null && Number(e.m) >= 25 && e.mi) || !listaCostoVigente(e)) continue;   // costo nuevo sin medir: el margen no vale (etapa 3, 20/10/2026)
+          const okV = listaOkVale(e);
+          if (e.vend != null && (Number(e.vend) < 100 || okV)) continue;
+          const falta = e.vend == null ? (okV ? 'ventas' : 'ventas+ok') : 'ok';
+          const est = (okV || (!e.rp && Number(e.m) < 80 && Number(e.mv) !== 1)) ? 'DA' : (Number(e.mv) === 1 ? 'REVISAR-1VEND' : 'REVISAR');   // DA = margen y nombre bien
+          filas.push({ o: est === 'DA' ? 0 : 1, m: Number(e.m), t: [k, cod, String(e.n).replace(/\|/g, '/'), Math.round((Number(e.p) || 0) * (1 + rec / 100)), e.mi, String(e.mt || '').replace(/\|/g, '/').slice(0, 80), e.mp || '', Math.round(e.m) + '%', est, falta].join('|') });
+          porProv[pv.nombre || k] = (porProv[pv.nombre || k] || 0) + 1; tot++; } }
+      filas.sort((a, b) => a.o - b.o || b.m - a.m);
+      console.log('@@LISTA'); for (const f of filas) console.log(f.t);
+      console.log('@@FIN'); console.log(`${tot} productos para mirar: ${Object.entries(porProv).map(([n, c]) => n + ' ' + c).join(' · ') || 'ninguno'}`); return;
     }
     // BILLING_PROBE=lista2py:<prov>[;go] (19/10/2026, él: "atacado va en Paraguay dentro de Elegancia, son productos de ahí. No hagas
     // una tarjeta nueva, metelos como mercadería de ahí") → pasa cada producto de la lista `mlapi/listas/<prov>` a candidato de Elegancia
