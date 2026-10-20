@@ -3347,6 +3347,17 @@ function _pintarVersion(){
     chip.title='Versión de la app que estás usando ahora. Tocá para buscar actualizaciones.';
   }
 }
+// ── CANDADO POR BOTÓN Y OPERACIONES EN CURSO (20/10/2026 · etapa 4) ──
+// Doble toque con la red lenta (o un segundo toque porque "no pasó nada") volvía a correr "Ya lo pedí", "Pedido hecho",
+// "Llegó", cerrar o deshacer una caja: pedidos duplicados, fichas creadas dos veces, unidades sumadas dos veces. Mientras
+// una de ésas corre, el mismo botón no vuelve a arrancar. Y `_opsEnCurso` cuenta las que están corriendo: la recarga sola
+// por versión nueva (`_vigilarVersion`) espera a que terminen (si no, cortaba un "Llegó" a mitad de crear las fichas).
+const _candados=new Set();let _opsEnCurso=0;
+async function conCandado(clave,fn){
+  if(_candados.has(clave)){if(typeof toast==='function')toast('Ya se está guardando: esperá un momento','err',3000);return;}
+  _candados.add(clave);_opsEnCurso++;
+  try{return await fn();}finally{_candados.delete(clave);_opsEnCurso=Math.max(0,_opsEnCurso-1);}
+}
 // Le pregunta al navegador si ya tiene bajada una versión más nueva. `waiting` es una que ya se
 // descargó y está esperando; `updatefound` es una que se está bajando en este momento.
 function _vigilarVersion(){
@@ -3359,7 +3370,8 @@ function _vigilarVersion(){
     // Ahora, cuando hay versión nueva, la app se recarga SOLA en cuanto vuelve a estar a la vista y no
     // estás escribiendo en ninguna casilla. Y al volver a la app se pregunta si hay versión nueva.
     // Etapa final: tampoco con algo por guardar (una casilla que se guarda 0,9 s después, o pendiente de la base).
-    const _porGuardar=()=>Object.keys(_finPending||{}).length||Object.keys(_invPending||{}).length;
+    // Etapa 4 (20/10/2026): también mientras corre un "Llegó", "Ya lo pedí", "Pedido hecho" o una caja (`_opsEnCurso`).
+    const _porGuardar=()=>Object.keys(_finPending||{}).length||Object.keys(_invPending||{}).length||_opsEnCurso>0;
     // 29/09/2026, él: "que no se pueda usar una versión antigua". Se busca versión nueva cada 2 minutos
     // (sólo con la app a la vista: sw.js pesa 1 KB) y al volver a la app o a internet. Si hay una nueva:
     // se recarga sola al instante; si justo estás escribiendo o hay algo por guardar, espera a que termines
@@ -7268,7 +7280,9 @@ async function setOfiVar(pid,variante,val){
 // la deja "en camino". El seguimiento se puede poner ahora o después (cuando llega el comprobante
 // del correo). Si no entra todo en una caja, se cierra ésta y se arma la siguiente con lo que
 // quedó: el stock de la oficina ya bajó, así que la pantalla se acomoda sola.
-async function cerrarCaja(cuenta){
+// Etapa 4 (20/10/2026): candado (doble toque) y contador de operaciones en curso (la recarga por versión nueva espera).
+async function cerrarCaja(cuenta){return conCandado('cerrarCaja:'+cuenta,()=>_cerrarCaja(cuenta));}
+async function _cerrarCaja(cuenta){
   if(!cuenta)return;
   const filas=repartoOficina();
   const idx={};filas.forEach(f=>{idx[_ck(f.p.id,f.variante)]={p:f.p,variante:f.variante||'',hay:f.hay};});
@@ -7387,7 +7401,9 @@ async function cerrarCaja(cuenta){
   }
   if(_fallo.length)alert('⚠️ Se cortó la conexión: estos renglones NO se descontaron de la oficina (contalos de nuevo):\n\n'+_fallo.join('\n'));
   await _guardarCajaArmando(cuenta,{});   // la caja se cerró: deja de estar a medio armar
-  for(const it of items)if(it.u>0)await clDescontarCaja(it.prodId,cuenta,it.variante||'',it.u);   // lo mandado sale de lo decidido (09/10/2026)
+  // Lo mandado sale de lo decidido (09/10/2026). Etapa 4 (20/10/2026): si falla se dice (antes sólo la consola: Armar caja lo volvía a pedir).
+  {const _malC=[];for(const it of items)if(it.u>0&&!await clDescontarCaja(it.prodId,cuenta,it.variante||'',it.u))_malC.push(`${it.nombre||it.prodId}${it.variante?' · '+it.variante:''}`);
+   clAvisarFallo(_malC,'descontar','Armar caja');}
   await log('Caja despachada a '+cuenta+': '+uTot+' u.'+(track?' · '+track:''));
   toast('Caja cerrada ✓ · está en "En camino"','ok',5000);
   syncOfiMati();renderOfiCaja();renderOfiContar();renderCajasEnCamino();
@@ -8040,7 +8056,9 @@ async function _guardarCajas(id,cajas){
 // cerrar está a un toque de distancia y cerrar una caja por error saca mercadería de la oficina: si
 // solo se pudiera borrar el envío, esas unidades desaparecerían del panel sin haber salido nunca
 // de tu casa. Una caja YA RECIBIDA no se deshace: esa mercadería está en ML, no en la oficina.
-async function deshacerCaja(id,i){
+// Etapa 4 (20/10/2026): candado (doble toque) y contador de operaciones en curso.
+async function deshacerCaja(id,i){return conCandado('deshacerCaja:'+id+':'+i,()=>_deshacerCaja(id,i));}
+async function _deshacerCaja(id,i){
   const e=(state.envios_full||{})[id];if(!e)return;
   const cajas=cajasDe(e).map(c=>({...c}));
   const c=cajas[i];if(!c)return;
@@ -8075,7 +8093,8 @@ async function deshacerCaja(id,i){
   for(const it of items)await ofiMover(it.prodId,it.variante||'',{delta:it.u,entra:false});    // c3: sobre la base
   // Lo que se descontó de mis decisiones al cerrarla vuelve (16/10/2026: él deshizo la caja de Adriana y
   // Armar caja quedó vacía, porque cerrar resta lo mandado y deshacer no lo devolvía).
-  for(const it of items)await clDevolverCaja(it.prodId,e.cuenta,it.variante||'',it.u);
+  {const _malC=[];for(const it of items)if(!await clDevolverCaja(it.prodId,e.cuenta,it.variante||'',it.u))_malC.push(`${((state.products||[]).find(p=>p.id===it.prodId)||{}).name||it.prodId}${it.variante?' · '+it.variante:''}`);
+   clAvisarFallo(_malC,'devolver','Armar caja');}   // etapa 4 (20/10/2026): si no se pudo devolver, se dice
   if(!quedan.length){
     // Era la única caja del envío: se borra el envío entero, si no queda un renglón vacío.
     await fbSet('envios_full/'+id,null);
@@ -12571,14 +12590,18 @@ async function _clRestar(path,u){
   u=Math.max(0,parseInt(u)||0);if(!u||!db)return;
   await db.ref('cyc/claudedecide/'+path).transaction(cur=>cur==null?cur:Math.max(0,(parseInt(cur)||0)-u));
 }
+// Etapa 4 (20/10/2026): las tres (descontar caja, descontar pedido, devolver caja) DEVUELVEN si salió bien (true también cuando no
+// había nada que descontar). Antes el error quedaba en la consola y el que llamaba decía "✓": lo decidido quedaba entero y Armar caja
+// o Pedidos lo volvían a pedir. Ahora el que llama avisa en pantalla y sólo marca `desc` en lo que se descontó de verdad.
 async function clDescontarCaja(pid,cta,va,u){
   try{
     let key=_clCajaKey(pid,cta,va);
-    if(!clCajaDe(pid,cta,va))return;
+    if(!clCajaDe(pid,cta,va))return true;
     const o=((state.claudedecide||{}).caja||{})[key];
     await _clRestar('caja/'+key+'/u',u);
     if(o)o.u=Math.max(0,(parseInt(o.u)||0)-(parseInt(u)||0));
-  }catch(e){console.warn('clDescontarCaja',e);}
+    return true;
+  }catch(e){console.warn('clDescontarCaja',e);return false;}
 }
 // ✋ LO CAMBIADO A MANO TAMBIÉN SE DESCUENTA (etapa 3, 20/10/2026). `mano/<color>` manda sobre lo decidido, y sólo el botón
 // "✅ Pedido hecho" del Paulvic lo borraba: después del "Ya lo pedí" de Paraguay (y de `pvped`/`pyped` por el chat) ese color seguía
@@ -12590,13 +12613,13 @@ async function _clSetVarSinMano(pid,k,resto,o){
 }
 async function clDescontarPed(pid,va,u){
   try{
-    const o=clPedDe(pid);if(!o)return;
-    let left=Math.max(0,parseInt(u)||0);if(!left)return;
+    const o=clPedDe(pid);if(!o)return true;
+    let left=Math.max(0,parseInt(u)||0);if(!left)return true;
     const vars=o.vars&&typeof o.vars==='object'?o.vars:null;
     const mano=o.mano&&typeof o.mano==='object'?o.mano:{};
-    if(va){const k=sid(String(va).toLowerCase());if(mano[k]&&mano[k].u!=null){await _clSetVarSinMano(pid,k,Math.max(0,(parseInt(mano[k].u)||0)-left),o);return;}}
-    if(va&&vars){const k=sid(String(va).toLowerCase());if(k in vars){await _clRestar('ped/'+pid+'/vars/'+k,left);vars[k]=Math.max(0,(parseInt(vars[k])||0)-left);}return;}
-    if(o.u!=null){await _clRestar('ped/'+pid+'/u',left);o.u=Math.max(0,(parseInt(o.u)||0)-left);return;}
+    if(va){const k=sid(String(va).toLowerCase());if(mano[k]&&mano[k].u!=null){await _clSetVarSinMano(pid,k,Math.max(0,(parseInt(mano[k].u)||0)-left),o);return true;}}
+    if(va&&vars){const k=sid(String(va).toLowerCase());if(k in vars){await _clRestar('ped/'+pid+'/vars/'+k,left);vars[k]=Math.max(0,(parseInt(vars[k])||0)-left);}return true;}
+    if(o.u!=null){await _clRestar('ped/'+pid+'/u',left);o.u=Math.max(0,(parseInt(o.u)||0)-left);return true;}
     if(vars||Object.keys(mano).length){   // pedido sin color (Paraguay no anota color): se descuenta de los colores decididos, el más grande primero (lo de mano cuenta con su número)
       const ef={};for(const [k,n] of Object.entries(vars||{}))ef[k]=Math.max(0,parseInt(n)||0);
       for(const [k,m] of Object.entries(mano))if(m&&m.u!=null)ef[k]=Math.max(0,parseInt(m.u)||0);
@@ -12606,15 +12629,38 @@ async function clDescontarPed(pid,va,u){
         else{await _clRestar('ped/'+pid+'/vars/'+k,q);vars[k]=Math.max(0,(parseInt(vars[k])||0)-q);}
         left-=q;}
     }
-  }catch(e){console.warn('clDescontarPed',e);}
+    return true;
+  }catch(e){console.warn('clDescontarPed',e);return false;}
 }
 async function clDevolverCaja(pid,cta,va,u){
   try{
-    u=Math.max(0,parseInt(u)||0);if(!u||!db)return;
-    const key=_clCajaKey(pid,cta,va);const o=((state.claudedecide||{}).caja||{})[key];if(!o)return;
+    u=Math.max(0,parseInt(u)||0);if(!u||!db)return true;
+    const key=_clCajaKey(pid,cta,va);const o=((state.claudedecide||{}).caja||{})[key];if(!o)return true;
     await db.ref('cyc/claudedecide/caja/'+key+'/u').transaction(cur=>cur==null?cur:(parseInt(cur)||0)+u);
     o.u=(parseInt(o.u)||0)+u;
-  }catch(e){console.warn('clDevolverCaja',e);}
+    return true;
+  }catch(e){console.warn('clDevolverCaja',e);return false;}
+}
+// Avisa en pantalla lo que no se pudo descontar/devolver de lo decidido (etapa 4, 20/10/2026). `que` = 'descontar'|'devolver'.
+function clAvisarFallo(nombres,que,donde){
+  if(!nombres||!nombres.length)return;
+  const t=`⚠️ No pude ${que==='devolver'?'devolver a':'descontar de'} lo decidido: ${nombres.slice(0,6).join(' · ')}${nombres.length>6?' y '+(nombres.length-6)+' más':''}. ${donde||'Pedidos'} puede ${que==='devolver'?'pedir de menos':'volver a pedirlo'}: avisale a Claude.`;
+  // Con `alert` y no con toast: un toast lo tapa el "✓" que sale enseguida (hay un solo cartelito) y esto no se puede perder.
+  if(typeof alert==='function')alert(t);else if(typeof toast==='function')toast(t,'err',9000);else console.warn(t);
+}
+// Marca `desc:1` SÓLO en los renglones que se descontaron bien (etapa 4, 20/10/2026). Se buscan por producto, color y la hora de
+// este pedido (`ts`), con transacción sobre `items`: un renglón viejo o de otro pedido no se toca. Devuelve si se pudo escribir.
+async function _marcarDescItems(ruta,ok){
+  if(!ok||!ok.length||!db)return true;
+  try{
+    const r=await db.ref(ruta).transaction(cur=>{
+      if(cur==null||typeof cur!=='object')return;   // el pedido ya no tiene renglones (lo borraron): no se inventa nada
+      const f=x=>{if(!(x&&!x.desc&&x.dp&&ok.some(o=>o.prodId===x.prodId&&String(o.variante||'')===String(x.variante||'')&&Number(o.ts)===Number(x.ts))))return x;const y={...x,desc:1};delete y.dp;return y;};
+      if(Array.isArray(cur))return cur.map(f);
+      const o2={};for(const [k,v] of Object.entries(cur))o2[k]=f(v);return o2;
+    });
+    return !!(r&&r.committed);
+  }catch(e){console.warn('_marcarDescItems',e);return false;}
 }
 function clCajaDe(pid,cta,va){
   const k=_clCajaKey(pid,cta,va);
@@ -13344,9 +13390,12 @@ async function syncPedidosAuto(){
       // `pyped:repo` los descuentan al pedirlos y lo marcan). Los registros que hizo la web antes de esta marca ya se habían
       // descontado (pyRepoRegistrar lo hace desde el 09/10), así que sólo cuentan los que NO son de la web (`compray|camino`,
       // `pyped:repo` viejo, `pyped:juntar`). Se da por hecho que llega todo; si falta algo, se corrige al llegar.
+      // Etapa 4 (20/10/2026): la web ahora escribe cada renglón con `dp:1` y le pone `desc` SÓLO si el descuento salió bien. Un renglón
+      // de la web (`origen:'panel'`) con `dp` y sin `desc` = el descuento falló → se resta acá. Los de la web viejos (sin `dp`) se siguen
+      // salteando: ésos ya se habían descontado al pedirlos. Nada se cuenta dos veces: con `desc` no entra nunca.
       const _pyPost=[];
-      if(_cl&&p.origen==='py'){const _dts=Number(_cl.ts)||0;for(const c of Object.values(state.compraspy||{})){if(!c||c.estado!=='camino'||c.origen==='panel')continue;
-        for(const it of (Array.isArray(c.items)?c.items:[])){if(!it||it.id||it.prodId!==p.id||it.desc)continue;
+      if(_cl&&p.origen==='py'){const _dts=Number(_cl.ts)||0;for(const c of Object.values(state.compraspy||{})){if(!c||c.estado!=='camino')continue;const _pan=c.origen==='panel';
+        for(const it of (Array.isArray(c.items)?c.items:Object.values(c.items||{}))){if(!it||it.id||it.prodId!==p.id||it.desc||(_pan&&!it.dp))continue;
           const t=Number(it.ts||c.ts||Date.parse(String(c.fecha||'')+'T12:00:00-03:00'))||0;if(t>_dts)_pyPost.push(it);}}}
       // 📋 Listas (20/10/2026, decisión 1a): lo mismo con un pedido a una lista. El "Ya lo pedí" de la web descuenta y marca `desc`;
       // un renglón sin `desc` pedido después de la decisión (si algún día se carga por otro lado) se resta acá, igual que Paraguay.
@@ -13367,7 +13416,7 @@ async function syncPedidosAuto(){
           // hecho DESPUÉS de mi decisión y que no se descontó al hacerlo (`desc`, lo marca el botón de la tarjeta) se resta aroma por aroma:
           // se da por hecho que llega todo; si falta algo, él avisa y se corrige al llegar.
           {const _dts=Number(_cl.ts)||0;for(const c of Object.values(state.pedidospv||{})){if(!c||c.estado!=='camino'||c.prodId!==p.id||c.desc||!(Number(c.ts||Date.parse(String(c.fecha||'')+'T12:00:00-03:00'))>_dts))continue;
-            for(const it of (c.items||[])){if(!it||!it.v)continue;const k=sid(String(it.v).toLowerCase());if(k in cv&&!(k in _mano))cv[k]=Math.max(0,cv[k]-(parseInt(it.u)||0));}}}
+            for(const it of (c.items||[])){if(!it||!it.v||it.desc)continue;const k=sid(String(it.v).toLowerCase());if(k in cv&&!(k in _mano))cv[k]=Math.max(0,cv[k]-(parseInt(it.u)||0));}}}   // etapa 4: un aroma ya descontado (`desc` en el renglón) no se vuelve a restar
           // Paraguay (ver `_pyPost` arriba): con color, de ese color; sin color, de los colores decididos, el más grande primero
           // (la misma cuenta que `clDescontarPed`). Lo cambiado a mano no se toca: lo puso él después.
           for(const it of _pyPost){let left=parseInt(it.u)||0;
@@ -14529,7 +14578,13 @@ async function pedNumerar(){
     const r=await db.ref('cyc/mlconfig/pedNumUlt').transaction(v=>{const base=Math.max(Number(v)||1000,maxN);ini=base+1;return base+todos.length;});
     if(!r||!r.committed||ini==null)return;
     let n=ini;
-    for(const x of todos){if(n>9999)break;const num=n++;await db.ref(`cyc/${x.col}/${x.id}/num`).set(num);x.c.num=num;}
+    // Etapa 4 (20/10/2026): cada número se escribe con una TRANSACCIÓN sobre el pedido: sólo si el pedido sigue existiendo y todavía
+    // no tiene número. Antes, con dos aparatos abiertos, cada uno ponía el suyo y quedaba el último (el número que vio uno cambiaba), y
+    // un pedido borrado en el medio (`pyped:juntar`) revivía como `{num}` suelto. Se muestra el número que QUEDÓ en la base.
+    for(const x of todos){if(n>9999)break;const num=n++;
+      try{const r=await db.ref(`cyc/${x.col}/${x.id}`).transaction(cur=>{if(!cur||typeof cur!=='object')return;if(Number(cur.num)>0)return;return {...cur,num};});
+        const v=r&&r.snapshot&&r.snapshot.val();if(v&&Number(v.num)>0)x.c.num=Number(v.num);}
+      catch(e){console.warn('pedNumerar',x.id,e);}}
     try{if(typeof renderAll==='function')renderAll();}catch(e){}
   }catch(e){console.warn('pedNumerar',e);}
   finally{_pedNumCorriendo=false;}
@@ -14538,10 +14593,12 @@ function pyCompras(){
   return Object.entries(state.compraspy||{}).map(([id,c])=>({...c,id})).filter(c=>pyProvDe(c)===pyProv).sort((a,b)=>(b.ts||0)-(a.ts||0));
 }
 // "Ya lo pedí": congela lo que está cargado y lo saca de la lista de armado.
-async function pyPedidoHecho(opts){
+// Etapa 4 (20/10/2026): candado (doble toque = el pedido sumado dos veces) y contador de operaciones en curso.
+async function pyPedidoHecho(opts){return conCandado('pyPedido',()=>_pyPedidoHecho(opts));}
+async function _pyPedidoHecho(opts){
   opts=opts||{};
   // Nissei sin grupo (botón de 🆕 Nuevos): cada grupo va a su pedido (perfumería / resto, 19/10/2026).
-  if(opts.grupo===undefined&&pyProv==='nissei'){let n=0;for(const g of ['perf','resto']){if(pedNuevos(candList().filter(candEnArmado).filter(c=>candEnPedido(c)!=='viajando').filter(c=>pyMomEs(g,c.nombre))).filas.length){n++;await pyPedidoHecho({...opts,grupo:g});}}if(!n)toast('No hay nada cargado en el pedido','err');return;}
+  if(opts.grupo===undefined&&pyProv==='nissei'){let n=0;for(const g of ['perf','resto']){if(pedNuevos(candList().filter(candEnArmado).filter(c=>candEnPedido(c)!=='viajando').filter(c=>pyMomEs(g,c.nombre))).filas.length){n++;await _pyPedidoHecho({...opts,grupo:g});}}if(!n)toast('No hay nada cargado en el pedido','err');return;}
   // Etapa 4 (30/09/2026): lo que ya viaja en otro pedido no entra en éste aunque tenga unidades
   // cargadas (quedaría en dos pedidos en camino y se pagaría dos veces). Se avisa cuántos quedaron.
   const _arm=candList().filter(candEnArmado).filter(c=>pyMomEs(opts.grupo||null,c.nombre));
@@ -14598,21 +14655,18 @@ async function pyPedidoHecho(opts){
       gananciaEst:((Number(prev.gananciaEst)||0)+(P.ganancia>0?P.ganancia:0))>0?Math.round((Number(prev.gananciaEst)||0)+(P.ganancia>0?P.ganancia:0)):null,
       pesoKg:uKgP>0?Math.round(kgP*1000)/1000:null, pesoUnidades:uKgP};
     const up={};for(const k in upd)up['compraspy/'+id+'/'+k]=upd[k];
-    await fbUpdate(up);
+    // Etapa 4 (20/10/2026): el registro y la marca de cada candidato (`pedidoEn`, unidades a 0) van en UN solo `update()`: o queda
+    // todo o nada. Antes eran escrituras sueltas y un corte a mitad dejaba candidatos con unidades que se volvían a pedir.
+    for(const f of P.filas){up['candidatos_py/'+f.c.id+'/pedidoEn']=id;up['candidatos_py/'+f.c.id+'/pedirU']=0;}
+    try{await fbUpdate(up);}catch(e){toast('No se guardó el pedido: '+(e.message||e),'err',6000);return;}
     state.compraspy=state.compraspy||{};state.compraspy[id]={...prev,...upd};
   } else {
-    await fbSet('compraspy/'+id,rec);
+    const up={['compraspy/'+id]:rec};
+    for(const f of P.filas){up['candidatos_py/'+f.c.id+'/pedidoEn']=id;up['candidatos_py/'+f.c.id+'/pedirU']=0;}
+    try{await fbUpdate(up);}catch(e){toast('No se guardó el pedido: '+(e.message||e),'err',6000);return;}
     state.compraspy=state.compraspy||{};state.compraspy[id]=rec;
   }
-  // Marcar y vaciar. Si la marca falla se dice: un candidato sin marcar lo vuelve a cargar el
-  // botón de llenar y se compra dos veces.
-  for(const f of P.filas){
-    try{
-      await fbSet('candidatos_py/'+f.c.id+'/pedidoEn',id);
-      await fbSet('candidatos_py/'+f.c.id+'/pedirU',0);
-      f.c.pedidoEn=id;f.c.pedirU=0;
-    }catch(e){toast('No se pudo marcar "'+f.c.nombre+'": revisalo','err',5000);}
-  }
+  for(const f of P.filas){f.c.pedidoEn=id;f.c.pedirU=0;}
   await log('Pedido a Paraguay marcado como hecho: '+id+' · US$'+P.crudo.toFixed(2)+(prev?' (sumado al pedido de hoy)':''));
   renderPedidos();toast(prev?'Sumado al pedido de hoy ✓':'Pedido en camino ✓');
 }
@@ -14643,7 +14697,9 @@ async function pyReclamarLlegada(id){
   alert('Ese pedido ya figura como LLEGADO (lo marcó otro aparato o el chat). No toco nada.');
   renderPedidos();return false;
 }
-async function pyPedidoLlego(id){
+// Etapa 4 (20/10/2026): candado (doble toque) y contador de operaciones en curso (la recarga por versión nueva espera a que termine).
+async function pyPedidoLlego(id){return conCandado('pyLlego:'+id,()=>_pyPedidoLlego(id));}
+async function _pyPedidoLlego(id){
   const c=(state.compraspy||{})[id];if(!c)return;
   if(c.estado!=='camino'){toast('Ese pedido ya figura como llegado','err');return;}
   // EL TICKET ES OBLIGATORIO PARA CERRARLO (10/10/2026, regla suya): sin el ticket real del mayorista, el costo de
@@ -15279,7 +15335,9 @@ async function pyArmadoVaciarProv(g){
   if(Object.keys(up).length)await fbUpdate(up);
   for(const k of Object.keys(up))delete (state.pyArmado||{})[k.slice('py_armado/'.length)];
 }
-async function pyMomentoYaLoPedi(g){
+// Etapa 4 (20/10/2026): candado por botón (doble toque = dos reposiciones y el pedido de nuevos sumado dos veces).
+async function pyMomentoYaLoPedi(g){return conCandado('pyMomento:'+(g||''),()=>_pyMomentoYaLoPedi(g));}
+async function _pyMomentoYaLoPedi(g){
   g=g||null;
   const A=pyArmadoFilas().filter(f=>pyMomEs(g,f.nom));
   const N=pedNuevos(candList().filter(candEnArmado).filter(c=>candEnPedido(c)!=='viajando').filter(c=>pyMomEs(g,c.nombre)));
@@ -15294,8 +15352,10 @@ async function pyMomentoYaLoPedi(g){
   if(Pp.length){try{const _pp={};for(const f of Pp)_pp[f.k]=state.pyPersonal[f.k];await db.ref('cyc/py_personal_hist/'+Date.now()).set(_pp);const _up={};for(const f of Pp)_up['py_personal/'+f.k]=null;await fbUpdate(_up);for(const f of Pp)delete state.pyPersonal[f.k];}catch(e){toast('No pude sacar lo de uso personal: sacalo a mano','err',6000);}}
   if(!A.length&&!N.filas.length){renderPedidos();return;}
   if(A.length){
-    const ok=await pyRepoRegistrar(A.map(f=>({prodId:f.pid,nom:String(f.nom).slice(0,120),cod:f.cod,u:f.u,usd:f.usd,...(f.color?{variante:f.color}:{})})),{sinConfirm:true,grupo:g});
-    if(ok){try{await pyArmadoVaciarProv(g);}catch(e){toast('Se registró pero no pude vaciar los probados: sacalos a mano','err',6000);}}
+    // Etapa 4 (20/10/2026): el vaciado de los probados va en el MISMO `update()` que la reposición (`opts.vaciar`): o las dos o ninguna.
+    const _vac={};for(const f of A)_vac['py_armado/'+f.pid]=null;
+    const ok=await pyRepoRegistrar(A.map(f=>({prodId:f.pid,nom:String(f.nom).slice(0,120),cod:f.cod,u:f.u,usd:f.usd,...(f.color?{variante:f.color}:{})})),{sinConfirm:true,grupo:g,vaciar:_vac});
+    if(ok){for(const k of Object.keys(_vac))delete (state.pyArmado||{})[k.slice('py_armado/'.length)];}
     else if(!N.filas.length)return;
   }
   if(N.filas.length)await pyPedidoHecho({sinConfirm:true,grupo:g});
@@ -16355,12 +16415,18 @@ async function pyCanastaYaLoPedi(){
 // UN SOLO PEDIDO (05/10/2026, él: *"el pedido quiero que sea uno solo, no separar por nuevos de probados"*):
 // la reposición va al MISMO registro del día que los nuevos (`py<fecha>`). Adentro se separan por renglón:
 // prodId sin id = probado, id = nuevo. Los `pyr<fecha>` viejos (tipo repo) se siguen leyendo igual.
-async function pyRepoRegistrar(items,opts){
+// Etapa 4 (20/10/2026): candado (doble toque = dos reposiciones) y el contador de operaciones en curso. La de adentro es `_pyRepoRegistrar`.
+async function pyRepoRegistrar(items,opts){return conCandado('pyRepo',()=>_pyRepoRegistrar(items,opts));}
+async function _pyRepoRegistrar(items,opts){
   opts=opts||{};
-  if(opts.grupo===undefined&&pyProv==='nissei'){let ok=false;for(const g of ['perf','resto']){const it=(items||[]).filter(x=>pyMomEs(g,x.nom));if(it.length&&await pyRepoRegistrar(it,{...opts,grupo:g}))ok=true;}return ok;}
-  // `desc:1` (20/10/2026 · etapa 3): este renglón se descuenta de lo decidido al pedirlo (abajo, `clDescontarPed`), así Pedidos
+  if(opts.grupo===undefined&&pyProv==='nissei'){let ok=false;for(const g of ['perf','resto']){const it=(items||[]).filter(x=>pyMomEs(g,x.nom));if(it.length&&await _pyRepoRegistrar(it,{...opts,grupo:g}))ok=true;}return ok;}
+  // `desc:1` (20/10/2026 · etapa 3): este renglón se descontó de lo decidido al pedirlo (abajo, `clDescontarPed`), así Pedidos
   // no lo vuelve a restar. `ts`: cuándo se pidió ESTE renglón (puede sumarse a un registro del día hecho antes de la decisión).
-  items=(items||[]).filter(x=>x&&x.prodId&&(parseInt(x.u)||0)>0).map(x=>({...x,desc:1,ts:Date.now()}));
+  // Etapa 4 (20/10/2026): se escribe con `dp:1` (descuento pendiente) y `desc:1` recién DESPUÉS de descontar bien (`_marcarDescItems`).
+  // Si el descuento falla queda `dp` sin `desc` y Pedidos lo resta (`syncPedidosAuto`), en vez de quedar lo decidido entero sin que nadie
+  // lo reste. Por eso los renglones nuevos no se suman a uno viejo: cada uno lleva su propia marca.
+  const _ts=Date.now();
+  items=(items||[]).filter(x=>x&&x.prodId&&(parseInt(x.u)||0)>0).map(x=>{const y={...x,dp:1,ts:_ts};delete y.desc;return y;});
   if(!items.length)return false;
   const hoy=new Date(Date.now()-3*3600e3).toISOString().slice(0,10);
   const id=pyIdHoy(hoy,opts.grupo);
@@ -16374,21 +16440,27 @@ async function pyRepoRegistrar(items,opts){
     +`Pasa a "En camino": el patrimonio la cuenta mientras viaja y la canasta deja de pedirla. Cuando llegue tocás "Ya llegó" y la contás en la oficina.`))return false;
   if(prev){
     const its=(Array.isArray(prev.items)?prev.items:[]).map(x=>({...x}));
-    // Se suma sólo con el renglón del MISMO color y la misma marca de descuento (un renglón viejo sin `desc` sumado a uno
-    // descontado haría que Pedidos restara de más o de menos). Misma regla que `guardar` de `pyped` en el robot.
-    for(const it of items){const o=its.find(x=>x&&!x.id&&x.prodId===it.prodId&&String(x.variante||'')===String(it.variante||'')&&!!x.desc===!!it.desc);if(o)o.u=(parseInt(o.u)||0)+it.u;else its.push(it);}
+    // Etapa 4 (20/10/2026): el renglón nuevo va APARTE (con su `dp` y su hora), no sumado a uno viejo: si se sumara, al marcar `desc`
+    // quedarían marcadas también unidades que nunca se descontaron (o al revés).
+    for(const it of items)its.push(it);
     const upd={items:its,usdCrudo:Math.round(((parseFloat(prev.usdCrudo)||0)+crudo)*100)/100,productos:its.length,unidades:(parseInt(prev.unidades)||0)+uds};
-    const up={};for(const k in upd)up['compraspy/'+id+'/'+k]=upd[k];
-    await fbUpdate(up);
+    const up={...(opts.vaciar||{})};for(const k in upd)up['compraspy/'+id+'/'+k]=upd[k];
+    try{await fbUpdate(up);}catch(e){toast('No se guardó la reposición: '+(e.message||e),'err',6000);return false;}
     state.compraspy=state.compraspy||{};state.compraspy[id]={...prev,...upd};
   } else {
     const rec={fecha:hoy,ts:Date.now(),estado:'camino',origen:'panel',prov:pyProv,...(opts.grupo?{rubro:opts.grupo}:{}),
       usdCrudo:Math.round(crudo*100)/100,recargo:RECARGO_PY,tcPedido:curTC()||null,
       productos:items.length,unidades:uds,items};
-    await fbSet('compraspy/'+id,rec);
+    try{await fbUpdate({...(opts.vaciar||{}),['compraspy/'+id]:rec});}catch(e){toast('No se guardó la reposición: '+(e.message||e),'err',6000);return false;}
     state.compraspy=state.compraspy||{};state.compraspy[id]=rec;
   }
-  for(const it of items)await clDescontarPed(it.prodId,it.variante||'',it.u);   // lo pedido sale de lo decidido (09/10/2026)
+  // Lo pedido sale de lo decidido (09/10/2026). Etapa 4: sólo lo que salió bien se marca `desc`; lo demás se avisa y lo resta Pedidos.
+  const _okD=[],_malD=[];
+  for(const it of items){if(await clDescontarPed(it.prodId,it.variante||'',it.u))_okD.push(it);else _malD.push(String(it.nom||it.prodId).slice(0,40)+(it.variante?' · '+it.variante:''));}
+  if(_okD.length&&!await _marcarDescItems('cyc/compraspy/'+id+'/items',_okD))
+    alert('⚠️ Descontado de lo decidido pero no pude marcarlo en el pedido: Pedidos puede pedir de menos hasta que Claude lo corrija. Avisale a Claude.');
+  else if(_okD.length){const r=(state.compraspy||{})[id];if(r&&Array.isArray(r.items))for(const x of r.items)if(x&&x.dp&&x.ts===_ts&&_okD.some(o=>o.prodId===x.prodId&&String(o.variante||'')===String(x.variante||''))){x.desc=1;delete x.dp;}}
+  clAvisarFallo(_malD,'descontar','Pedidos');
   await log('Reposición a Paraguay marcada como pedida: '+id+' · US$'+crudo.toFixed(2));
   if(!opts.sinConfirm){renderPedidos();toast(prev?'Sumado al pedido de hoy ✓':'Reposición en camino ✓');}
   return true;
@@ -18500,7 +18572,9 @@ async function pedSetVarU(pid,v,val){
 // PEDIDO HECHO AL PAULVIC DESDE LA TARJETA (19/10/2026). Mismo registro que `pvped` del robot: `cyc/pedidospv/pv<fecha>`
 // {prodId, fecha, ts, estado:'camino', items:[{v,u}]}; si ya hay uno de hoy en camino, se suma. Lo pedido sale de lo decidido
 // y se borra lo cambiado a mano.
-async function pvPedidoHecho(pedId){
+// Etapa 4 (20/10/2026): candado (doble toque = el pedido sumado dos veces: Luna 10 en vez de 5) y contador de operaciones en curso.
+async function pvPedidoHecho(pedId){return conCandado('pvPedido:'+pedId,()=>_pvPedidoHecho(pedId));}
+async function _pvPedidoHecho(pedId){
   const P=_pedHechoItems[pedId];if(!P||!P.items.length){toast('No hay nada para pedir');return;}
   const tot=P.items.reduce((a,x)=>a+x.u,0);
   if(!confirm(`Marcar el pedido al Paulvic como HECHO\n\n${P.items.map(x=>x.v+' x'+x.u).join('\n')}\n\n${tot} u. en ${P.items.length} aroma(s). Pasa a "En camino" y cuenta en Pedidos y Armar caja.`))return;
@@ -18508,18 +18582,33 @@ async function pvPedidoHecho(pedId){
   let prev=null;try{prev=(await db.ref('cyc/pedidospv/'+id).once('value')).val();}catch(e){}
   if(prev&&prev.estado!=='camino'){alert('Ya hay un pedido de hoy marcado como llegado: no lo piso. Pasámelo por el chat.');return;}
   if(prev&&prev.prodId&&prev.prodId!==P.prodId){alert('Ya hay un pedido de hoy de otra ficha: pasámelo por el chat.');return;}
-  const its=(prev&&Array.isArray(prev.items)?prev.items:[]).filter(Boolean).map(x=>({...x}));
-  for(const it of P.items){const o=its.find(x=>x.v===it.v);if(o)o.u=(parseInt(o.u)||0)+it.u;else its.push({v:it.v,u:it.u});}
   // Etapa 3 (20/10/2026): el registro se conserva (antes `set` sin `desc` ni lo demás) y, si el pedido de hoy ya estaba sin `desc` y es
   // más nuevo que mi decisión (Pedidos lo venía restando en el momento), lo de antes también sale de lo decidido: con `desc` deja de restarse.
+  // Etapa 4 (20/10/2026): `desc` se marca RENGLÓN POR RENGLÓN (aroma) y sólo en lo que se descontó bien; el `desc` del pedido entero,
+  // sólo si salió todo. Lo que falló queda sin `desc` y Pedidos lo resta (`syncPedidosAuto`), y se avisa en pantalla. Antes un error al
+  // descontar se perdía en la consola y el de `desc` en un catch vacío: lo pedido se restaba dos veces o ninguna.
   const _clD=clPedDe(P.prodId),_prevSinDesc=prev&&!prev.desc&&Number(prev.ts||Date.parse(String(prev.fecha||'')+'T12:00:00-03:00'))>(Number(_clD&&_clD.ts)||0);
-  const rec={...(prev||{}),prodId:P.prodId,fecha:hoy,ts:(prev&&prev.ts)||Date.now(),estado:'camino',items:its,origen:(prev&&prev.origen)||'panel'};delete rec.desc;
+  // Cada renglón de antes: ¿ya estaba cubierto? (el pedido o el renglón con `desc`, o anterior a mi decisión: no hace falta descontarlo)
+  const its=(prev&&Array.isArray(prev.items)?prev.items:[]).filter(Boolean).map(x=>{const y={...x,_ok:!!(prev.desc||x.desc||!_prevSinDesc),_prevU:parseInt(x.u)||0};delete y.desc;return y;});
+  for(const it of P.items){const o=its.find(x=>x.v===it.v);if(o){o.u=(parseInt(o.u)||0)+it.u;o._nuevo=(o._nuevo||0)+it.u;}else its.push({v:it.v,u:it.u,_ok:true,_prevU:0,_nuevo:it.u});}
+  const limpio=x=>{const y={...x};delete y._ok;delete y._prevU;delete y._nuevo;return y;};
+  const rec={...(prev||{}),prodId:P.prodId,fecha:hoy,ts:(prev&&prev.ts)||Date.now(),estado:'camino',items:its.map(limpio),origen:(prev&&prev.origen)||'panel'};delete rec.desc;
   try{await db.ref('cyc/pedidospv/'+id).set(rec);}catch(e){toast('No se guardó: '+e.message,'err');return;}
   (state.pedidospv=state.pedidospv||{})[id]=rec;
-  if(_prevSinDesc)for(const it of (prev.items||[]).filter(Boolean))await clDescontarPed(P.prodId,it.v,parseInt(it.u)||0);
-  for(const it of P.items){await clDescontarPed(P.prodId,it.v,it.u);try{await db.ref('cyc/noconsigo/'+P.prodId+'/nunca/'+sid(it.v)).remove();}catch(e){}}
-  try{await db.ref('cyc/pedidospv/'+id+'/desc').set(true);rec.desc=true;}catch(e){}   // ya descontado de lo decidido: Pedidos no lo vuelve a restar
-  try{await db.ref('cyc/claudedecide/ped/'+P.prodId+'/mano').remove();const o=((state.claudedecide||{}).ped||{})[P.prodId];if(o)delete o.mano;}catch(e){}
+  const _malD=[];
+  for(const x of its){
+    if(!x._ok&&x._prevU>0){if(await clDescontarPed(P.prodId,x.v,x._prevU))x._ok=true;else _malD.push(x.v+' (lo de antes)');}
+    if(x._nuevo>0){if(!await clDescontarPed(P.prodId,x.v,x._nuevo)){x._ok=false;_malD.push(x.v);}
+      try{await db.ref('cyc/noconsigo/'+P.prodId+'/nunca/'+sid(x.v)).remove();}catch(e){}}
+  }
+  // `desc` en cada aroma que salió bien y en el pedido entero si salió todo, en UN update. Si no se pudo escribir, se dice.
+  const todos=its.every(x=>x._ok),upD={};its.forEach((x,i)=>{if(x._ok)upD['items/'+i+'/desc']=1;});if(todos)upD.desc=true;
+  let _descOk=true;
+  try{if(Object.keys(upD).length)await db.ref('cyc/pedidospv/'+id).update(upD);rec.items.forEach((x,i)=>{if(its[i]._ok)x.desc=1;});if(todos)rec.desc=true;}
+  catch(e){_descOk=false;alert('⚠️ Descontado de lo decidido pero NO pude marcarlo en el pedido ('+String(e.message||e).slice(0,60)+'): Pedidos lo va a restar otra vez y pedir de menos. Avisale a Claude.');}
+  clAvisarFallo(_malD,'descontar','Pedidos');
+  // Lo cambiado a mano se borra sólo si se descontó todo (si no, borrarlo volvería a la decisión vieja y pediría de más).
+  if(todos&&_descOk)try{await db.ref('cyc/claudedecide/ped/'+P.prodId+'/mano').remove();const o=((state.claudedecide||{}).ped||{})[P.prodId];if(o)delete o.mano;}catch(e){}
   await log('Pedido al Paulvic hecho: '+id+' · '+tot+' u.');
   toast('Pedido al Paulvic en camino ✓');try{await syncPedidosAuto();}catch(e){}renderPedidos();
 }
@@ -18790,6 +18879,13 @@ function pedSinDecidirHTML(sec){
 //    las fichas, como Paraguay). Unidades del armado en `cyc/listas_pedido/<prov>/<cód>`; pedidos en `cyc/compraslista/<id>`.
 // La carpeta "Lista precio negocio" de la v24.33 se sacó: todas las listas van acá.
 let _listaSel=null,_listaCache={},_listaQ='';
+// LA LISTA BAJADA SE TIRA CUANDO EL ROBOT LA CAMBIA (etapa 4, 20/10/2026). `_listaCache` se bajaba UNA vez por sesión: si el robot
+// cargaba una lista nueva, el descuento (`listadto`), la web (`listaweb`) o volvía a medir (`listamedir`), la pantalla abierta seguía
+// con precios y márgenes viejos. Cada uno de ésos toca `cyc/mlconfig/listasProv/<prov>` (ts, dtoTs, webTs, tMed, conteos): si esa
+// firma cambió desde que se bajó, se vuelve a bajar.
+const _listaCacheFirma={};
+function _listaFirma(k){const v=(((state.mlconfig||{}).listasProv||{})[k])||{};return JSON.stringify([v.ts,v.dtoTs,v.webTs,v.tMed,v.n,v.med,v.pend,v.dan,v.revisar,v.rec,v.fecha]);}
+function _listaCacheRevisar(){for(const k of Object.keys(_listaCache)){const f=_listaFirma(k);if(_listaCacheFirma[k]==null)_listaCacheFirma[k]=f;else if(_listaCacheFirma[k]!==f){delete _listaCache[k];delete _listaCacheFirma[k];}}}
 let _listaVista=(()=>{try{const v=localStorage.getItem('cycListaVista');return ['probados','nuevos','hechos'].includes(v)?v:'nuevos';}catch(e){return 'nuevos';}})();
 function listaSetVista(v){_listaVista=v;try{localStorage.setItem('cycListaVista',v);}catch(e){}renderListas();}
 // BUSCAR EN TODAS LAS LISTAS (18/10/2026, pedido suyo: *"botón para buscar entre productos entre listas"*). Busca por nombre o
@@ -18810,8 +18906,9 @@ async function _listaBuscarYa(q){
   const provs=(state.mlconfig&&state.mlconfig.listasProv)||{};
   const _prob=x=>(state.products||[]).some(p=>p.listaProv===x);
   const ks=Object.keys(provs).filter(k=>{const v=provs[k];return !v.desc&&!v.pausa&&!(v.dan!=null&&v.pend!=null&&!(v.dan>0)&&!(v.pend>0)&&!_prob(k));});
+  _listaCacheRevisar();   // etapa 4 (20/10/2026): la que cambió el robot se vuelve a bajar
   if(ks.some(k=>!_listaCache[k]))out.innerHTML='<div style="font-size:.7rem;color:var(--muted);padding:6px 2px">⏳ bajando las listas…</div>';
-  await Promise.all(ks.filter(k=>!_listaCache[k]).map(async k=>{try{_listaCache[k]=(await db.ref('mlapi/listas/'+k).once('value')).val()||{};}catch(e){}}));
+  await Promise.all(ks.filter(k=>!_listaCache[k]).map(async k=>{try{_listaCacheFirma[k]=_listaFirma(k);_listaCache[k]=(await db.ref('mlapi/listas/'+k).once('value')).val()||{};}catch(e){}}));
   if(window._listaQ!==q)return;
   const R=[];
   for(const k of ks){const cat=_listaCache[k]||{};for(const [cod,e] of Object.entries(cat)){if(!e||!e.n||e.sacado||e.noWeb)continue;
@@ -19008,17 +19105,23 @@ async function listaSacar(k,cod,sacar){
 async function listaVaciar(k){if(!confirm('¿Vaciar el pedido de este proveedor? (no borra nada de la lista)'))return;
   try{await db.ref('cyc/listas_pedido/'+k).set(null);await db.ref('cyc/listas_pedido_prob/'+k).set(null);}catch(err){toast('No se guardó: '+(err.message||err),'err',5000);return;}
   if(state.listaPed)delete state.listaPed[k];if(state.listaProb)delete state.listaProb[k];renderListas();}
-async function listaYaLoPedi(k){
+// Etapa 4 (20/10/2026): candado (doble toque = dos pedidos "en camino" iguales) y contador de operaciones en curso.
+async function listaYaLoPedi(k){return conCandado('listaPedi:'+k,()=>_listaYaLoPedi(k));}
+async function _listaYaLoPedi(k){
+  // Etapa 4 (20/10/2026): la lista se RELEE de la base antes de armar el pedido. `_listaCache` se baja una vez por sesión y el robot
+  // (listadto, listaweb, listadato) puede haber cambiado precios, `noWeb` o el margen mientras tanto: el pedido saldría con datos viejos.
+  try{const _f=_listaFirma(k);const sn=await db.ref('mlapi/listas/'+k).once('value');const v=sn.val();if(v&&typeof v==='object'){_listaCache[k]=v;_listaCacheFirma[k]=_f;}}catch(e){}
   const cat=_listaCache[k]||{},A=_listaArmado(k),PB=listaProbFilas(k),nom=(((state.mlconfig||{}).listasProv||{})[k]||{}).nombre||k;
   if(!A.length&&!PB.length){toast('No hay nada cargado','err');return;}
   const ahora=Date.now();
   // PROBADOS (20/10/2026, decisión 1a): cada renglón con su `prodId` (y `variante`), `desc:1` (se descuenta de lo decidido acá
   // abajo, así Pedidos no lo vuelve a restar) y `ts` (cuándo se pidió), como `pyRepoRegistrar` de Paraguay.
-  const itemsP=PB.filter(f=>f.pr).map(f=>({prodId:f.pid,...(f.color?{variante:f.color}:{}),cod:String(f.cod||''),n:String(f.nomL||f.nom).slice(0,120),mt:'',mi:f.mi||'',mf:'',u:f.u,p:f.p,pc:f.pc,mp:0,m:null,desc:1,ts:ahora}));
+  // Etapa 4 (20/10/2026): se escribe `dp:1` (descuento pendiente) y `desc:1` recién después de descontar bien (`_marcarDescItems`).
+  const itemsP=PB.filter(f=>f.pr).map(f=>({prodId:f.pid,...(f.color?{variante:f.color}:{}),cod:String(f.cod||''),n:String(f.nomL||f.nom).slice(0,120),mt:'',mi:f.mi||'',mf:'',u:f.u,p:f.p,pc:f.pc,mp:0,m:null,dp:1,ts:ahora}));
   // Un NUEVO que ya es ficha (cargado antes de esta regla) va como probado: con su prodId y descontado (no se crea otra ficha al llegar).
   const itemsN=A.map(x=>{const e=cat[x.cod]||{};const fi=_listaFichaDe(k,x.cod,e);
     return{cod:x.cod,n:String(e.n||x.cod).slice(0,120),mt:e.rp?'':String(e.mt||'').slice(0,120),mi:e.mi||'',mf:e.mf||'',u:x.u,p:Number(e.p)||0,pc:_listaPuesto(k,e),mp:Number(e.mp)||0,m:e.m!=null?Number(e.m):null,
-      ...(fi&&(!fi.listaProv||fi.listaProv===k)?{prodId:fi.id,desc:1,ts:ahora}:{})};});
+      ...(fi&&(!fi.listaProv||fi.listaProv===k)?{prodId:fi.id,dp:1,ts:ahora}:{})};});
   const items=[...itemsP,...itemsN];
   const sinFicha=PB.filter(f=>!f.pr);
   const tot=items.reduce((t,i)=>t+i.pc*i.u,0);
@@ -19030,15 +19133,24 @@ async function listaYaLoPedi(k){
   if(!items.length)return;
   const hoy=new Date(ahora-3*3600e3).toISOString().slice(0,10),id='li'+k.slice(0,6)+hoy.replace(/-/g,'')+'_'+ahora.toString(36).slice(-4);
   const rec={prov:k,provNom:nom,fecha:hoy,ts:ahora,estado:'camino',tc:curTC(),rec:_listaRec(k),items};
-  try{await db.ref('cyc/compraslista/'+id).set(rec);await db.ref('cyc/listas_pedido/'+k).set(null);await db.ref('cyc/listas_pedido_prob/'+k).set(null);}catch(err){toast('No se guardó: '+(err.message||err),'err',5000);return;}
+  // Etapa 4 (20/10/2026): el pedido y el vaciado del armado en UN solo `update()` multi-ruta: o queda todo o nada (antes, un corte
+  // entre el `set` del pedido y el vaciado dejaba el pedido en camino Y las unidades cargadas para pedirlas de nuevo).
+  try{await db.ref('cyc').update({['compraslista/'+id]:rec,['listas_pedido/'+k]:null,['listas_pedido_prob/'+k]:null});}catch(err){toast('No se guardó: '+(err.message||err),'err',5000);return;}
   state.comprasLista=state.comprasLista||{};state.comprasLista[id]=rec;if(state.listaPed)delete state.listaPed[k];if(state.listaProb)delete state.listaProb[k];
-  for(const it of items)if(it.prodId&&it.desc)await clDescontarPed(it.prodId,it.variante||'',it.u);   // lo pedido sale de lo decidido (como Paraguay)
+  // Lo pedido sale de lo decidido (como Paraguay). Etapa 4: `desc` sólo en lo que se descontó bien; lo demás se avisa y lo resta Pedidos.
+  const _okD=[],_malD=[];
+  for(const it of items)if(it.prodId&&it.dp){if(await clDescontarPed(it.prodId,it.variante||'',it.u))_okD.push(it);else _malD.push(String(it.n||it.prodId).slice(0,40)+(it.variante?' · '+it.variante:''));}
+  if(_okD.length){if(await _marcarDescItems('cyc/compraslista/'+id+'/items',_okD)){for(const x of rec.items)if(x&&x.dp&&_okD.includes(x)){x.desc=1;delete x.dp;}}
+    else alert('⚠️ Descontado de lo decidido pero no pude marcarlo en el pedido: Pedidos puede pedir de menos hasta que Claude lo corrija. Avisale a Claude.');}
+  clAvisarFallo(_malD,'descontar','Pedidos');
   await log('Pedido a '+nom+' en camino: '+items.length+' productos'+(itemsP.length?' ('+itemsP.length+' probados)':'')+' · '+fmt(tot));
   toast('✓ En camino');_listaRepintar();
 }
 // LLEGÓ: crea la ficha de cada producto (costo = precio de la lista + recargo, en dólares del día del pedido), del proveedor
 // de esa lista (`listaProv`, así queda en Probados de Listas y no en Bs As), o la engancha si ya existe una con el mismo nombre.
-async function listaLlego(id){
+// Etapa 4 (20/10/2026): candado (doble toque) y contador de operaciones en curso. La de adentro es `_listaLlego`.
+async function listaLlego(id){return conCandado('listaLlego:'+id,()=>_listaLlego(id));}
+async function _listaLlego(id){
   const c=(state.comprasLista||{})[id];if(!c||c.estado!=='camino')return;
   const tc=Number(c.tc)||curTC();
   // PROBADOS (20/10/2026, decisión 1a): el renglón con `prodId` YA tiene ficha: no se crea nada, sólo se marca llegado (y sube el
@@ -19052,6 +19164,30 @@ async function listaLlego(id){
   let n=0;const subio=[];
   // La oficina de cada probado al llegar: hasta que se cuente (7 días como mucho) Pedidos lo sigue restando (`listaEnCamino`).
   const ofiAl={};for(const x of plan)if(x.prob&&x.misma&&!(x.misma.id in ofiAl))ofiAl[x.misma.id]=getQ(x.misma.id,OFI);
+  // SE ADUEÑA DEL PEDIDO ANTES DE CREAR NADA (etapa 4, 20/10/2026, como `pyReclamarLlegada` de Paraguay): una transacción pasa el
+  // pedido de 'camino' a 'llegado'. Si ya no estaba en camino (doble toque, otro aparato, el chat) no se hace nada. Antes un doble
+  // toque o dos aparatos creaban las fichas dos veces, y el segundo `update` pisaba `pagado:true` (volvía a contar como deuda) y la
+  // foto de la oficina. `pagado:false` sólo si no estaba pagado; `ofiAlLlegar` sólo la primera vez.
+  const llegoTs=Date.now();let _puso={pagado:false,ofi:false};
+  try{
+    const r=await db.ref('cyc/compraslista/'+id).transaction(cur=>{
+      if(!cur||cur.estado!=='camino')return;   // ya no está en camino: no se toca
+      const nu={...cur,estado:'llegado',llegoTs};
+      _puso={pagado:cur.pagado!==true&&cur.pagado!==false,ofi:!cur.ofiAlLlegar&&Object.keys(ofiAl).length>0};
+      if(cur.pagado!==true)nu.pagado=false;
+      if(_puso.ofi)nu.ofiAlLlegar=ofiAl;
+      return nu;
+    });
+    if(!r||!r.committed){alert('Ese pedido ya figura como LLEGADO (lo marcó otro aparato o el chat). No toco nada.');_listaRepintar();return;}
+    const fin=r.snapshot.val()||{};c.estado='llegado';c.llegoTs=llegoTs;c.pagado=fin.pagado;if(fin.ofiAlLlegar)c.ofiAlLlegar=fin.ofiAlLlegar;
+  }catch(e){toast('No pude marcarlo: '+(e.message||e),'err',6000);return;}
+  // Si una ficha no se puede crear, el pedido vuelve a 'camino' (sólo si sigue siendo la marca de este toque) para poder reintentar:
+  // las fichas ya creadas se encuentran solas la próxima vez (mismo código de la lista), no se duplican.
+  const _devolver=async()=>{try{await db.ref('cyc/compraslista/'+id).transaction(cur=>{
+      if(!cur||cur.estado!=='llegado'||Number(cur.llegoTs)!==llegoTs)return;
+      const nu={...cur,estado:'camino'};delete nu.llegoTs;if(_puso.pagado)delete nu.pagado;if(_puso.ofi)delete nu.ofiAlLlegar;return nu;});
+      c.estado='camino';delete c.llegoTs;if(_puso.pagado)delete c.pagado;if(_puso.ofi)delete c.ofiAlLlegar;}
+    catch(e){alert('⚠️ No pude volver el pedido a "en camino" ('+String(e.message||e).slice(0,60)+'): avisale a Claude.');}};
   for(const [i,x] of plan.entries()){
     if(x.borrada)continue;
     if(x.misma){if(!x.misma.listaProv)try{await fbSet('products/'+x.misma.id+'/listaProv',c.prov);x.misma.listaProv=c.prov;}catch(e){}
@@ -19067,10 +19203,9 @@ async function listaLlego(id){
     const usd=tc>0?Math.round(x.it.pc/tc*100)/100:0;
     const p={id:'p'+Date.now()+'l'+i,name:x.nombre.slice(0,90),costUSD:usd,cost:x.it.pc,costFullUSD:usd,origen:'bsas',proveedor:c.provNom||c.prov,listaProv:c.prov,codLista:String(x.it.cod)};
     if(x.it.mi)p.mlCatalogo=x.it.mi;
-    try{await fbSet('products/'+p.id,p);(state.products=state.products||[]).push(p);n++;}catch(e){toast('No se pudo crear '+x.nombre+': '+(e.message||e),'err',5000);return;}
+    try{await fbSet('products/'+p.id,p);(state.products=state.products||[]).push(p);n++;}catch(e){await _devolver();alert('No se pudo crear '+x.nombre+': '+(e.message||e)+'\n\nEl pedido sigue "en camino": tocá Llegó de nuevo cuando vuelva la conexión (las fichas ya creadas no se repiten).');_listaRepintar();return;}
   }
-  const llegoTs=Date.now(),nProb=plan.filter(x=>x.prob&&!x.borrada).length;
-  try{await db.ref('cyc/compraslista/'+id).update({estado:'llegado',llegoTs,pagado:false,...(Object.keys(ofiAl).length?{ofiAlLlegar:ofiAl}:{})});c.estado='llegado';c.pagado=false;c.llegoTs=llegoTs;if(Object.keys(ofiAl).length)c.ofiAlLlegar=ofiAl;}catch(e){toast('No se guardó: '+(e.message||e),'err',5000);return;}
+  const nProb=plan.filter(x=>x.prob&&!x.borrada).length;
   await log('Llegó el pedido a '+(c.provNom||c.prov)+' del '+c.fecha+': '+n+' ficha(s) nueva(s)'+(nProb?' · '+nProb+' probado(s)':''));
   toast(`✓ Llegó · ${n} ficha(s) nueva(s)${nProb?' · '+nProb+' probado(s): contalos en Mi oficina':''}${subio.length?' · costo subido: '+subio.join(' · '):''}. Contá las unidades en Mi oficina.`,'ok',8000);_listaRepintar();
 }
@@ -19153,9 +19288,10 @@ async function renderListas(){
   const cab=(_enB?`<div style="font-size:.8rem;font-weight:700;margin:18px 0 8px;padding-top:12px;border-top:2px solid var(--border2)">📋 Listas que compra Tito en Bs As <span style="font-size:.66rem;font-weight:400;color:var(--muted)">· lo que ya compraste está arriba, en los pedidos</span></div>`:'')+`<div style="margin-bottom:10px"><input id="lista-buscar" type="search" value="${escHtml(window._listaQ||'')}" placeholder="🔎 Buscar un producto en TODAS las listas…" oninput="listaBuscar(this.value)" style="width:100%;padding:9px 12px;font-size:.85rem;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--text)"><div id="lista-busq"></div></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px"><span style="font-size:.68rem;color:var(--muted)">Proveedor:</span>${visibles.map(_provBtn).join('')}${_enB?'':`<button class="btn" style="font-size:.64rem;padding:4px 10px;opacity:.8" title="La esconde de acá hasta que la vuelvas a poner (desde ⏸️ sacadas por ahora). No borra nada." onclick="listaPausar('${k}',true)">⏸️ sacar ${escHtml(nom)} por ahora</button>`}</div>${_volverHtml}
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${_tab('probados','✅ Productos probados','Lo que ya le compraste a este proveedor: cuánto reponer.')}${_tab('nuevos','🆕 Productos nuevos','Lo de su lista que todavía no vendés y da 25% o más en ML.')}${_tab('hechos','🧾 Pedido'+(nArm?' ('+nArm+' cargados)':''),'El pedido del momento, el mensaje con código y unidades, y los pedidos ya hechos.')}</div>`;
+  _listaCacheRevisar();   // etapa 4 (20/10/2026): la que cambió el robot se vuelve a bajar
   let cat=_listaCache[k];
   if(!cat){el.innerHTML=cab+`<div style="font-size:.72rem;color:var(--muted)">⏳ bajando la lista…</div>`;
-    try{const sn=await db.ref('mlapi/listas/'+k).once('value');cat=_listaCache[k]=sn.val()||{};}catch(e){el.innerHTML=cab+`<div style="color:var(--red);font-size:.72rem">No pude leer la lista: ${escHtml(String(e.message||e).slice(0,120))}</div>`;return;}}
+    try{_listaCacheFirma[k]=_listaFirma(k);const sn=await db.ref('mlapi/listas/'+k).once('value');cat=_listaCache[k]=sn.val()||{};}catch(e){el.innerHTML=cab+`<div style="color:var(--red);font-size:.72rem">No pude leer la lista: ${escHtml(String(e.message||e).slice(0,120))}</div>`;return;}}
   const rec=_listaRec(k);
   const filas=Object.entries(cat).filter(([,e])=>e&&e.n);
   const viaj=_listaViajando(k),arm=(state.listaPed||{})[k]||{};

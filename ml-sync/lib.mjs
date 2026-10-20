@@ -91,8 +91,13 @@ export async function mlGet(path, accessToken, ms = 25000) {
     signal: AbortSignal.timeout(ms),
   });
   const d = await r.json();
-  if (!r.ok) throw new Error(`ML GET ${path}: ${r.status} ${JSON.stringify(d)}`);
+  if (!r.ok) throw new Error(tapaIdsLargos(`ML GET ${path}: ${r.status} ${JSON.stringify(d)}`));
   return d;
 }
+// ETAPA 4 (20/10/2026): EL MENSAJE DE ERROR LLEVABA LA RUTA ENTERA, y `posventa`, `unreclamo` y `campos` lo imprimen en el registro
+// de GitHub, que es PÚBLICO: el número de orden o de paquete del comprador salía entero aunque arriba se tapara con `_idPub`.
+// Acá se tapan los números de 10 cifras o más que NO vienen pegados a letras (`MLA1234567890` queda: es la publicación, pública),
+// dejando los últimos 3 para poder seguirlo. Sin espacios, así `ML GET <ruta>: <status>` se sigue leyendo igual (lo usan dos lugares).
+export function tapaIdsLargos(t) { return String(t).replace(/(^|[^A-Za-z0-9])(\d{7,})(\d{3})(?!\d)/g, '$1…$3'); }
 
 export { ML_API };
