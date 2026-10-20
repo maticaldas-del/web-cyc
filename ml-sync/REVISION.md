@@ -1861,7 +1861,11 @@ variantes, ya Premium, Premium más barata que la Clásica, techo $650.000, otra
 sus ventas entren a la ficha (el ciclo la reconoce por `cyc/mllinks`).
 **Primer intento:** sin `category_id` ML contestó 500 "internal_error" y no creó nada. Campos obligatorios de la documentación: price,
 category_id, currency_id, buying_mode, listing_type_id (+ catalog_listing y catalog_product_id si es de catálogo). Con eso: **VS Coconut
-Passion `MLA4103953976` Premium $64.490, comparte las 13 u. con la Clásica `MLA1771197881` ($54.990)**, releída y vinculada (20/10 17:00).
+Passion `MLA4103953976` Premium $64.490, comparte las 13 u. con la Clásica `MLA1771197881` ($54.990)**, releída y vinculada (20/10 17:00). Después Animale `MLA4103966984` ($110.990, Clásica `MLA1869295391` $93.990, 8 u.), Azzaro
+`MLA4103941572` ($164.990, Clásica `MLA1873659093` $139.990, 2 u.) y Joystick `MLA4103890882` ($214.990, Clásica `MLA3528837742`
+$182.990, 2 u.; a la Clásica se le sacó el descuento propio de $173.790). **Ojo:** Animale y Azzaro salieron recién creadas pausadas
+`out_of_stock` con 0 u. (Animale con envío drop_off); a los 5 minutos ML les pasó el stock y quedaron activas por Full. O sea: releer
+a los ~5 minutos antes de dar por mal una gemela recién creada. v25.20 (web: tag 💳 en `ESTRATEGIA_UI`).
 
 ### Etapa 5 · 20/10/2026 · v25.16 · techo: una sola cuenta para la raya y `techo95` (eligió la a)
 Dos fórmulas para el mismo número: la raya 🔴 de la web (desde el 💰, todos los días "con stock") y `techo95` (desde el precio de
