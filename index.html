@@ -2684,7 +2684,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.33';
+const APP_VERSION='25.34';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2695,6 +2695,7 @@ const APP_VERSION='25.33';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.34',f:'20/10',h:'15:37',c:[{n:1,t:'🔥 Vuelven las ventas vivas (color por %, formas que se mueven, temblor y fuego). Se habían apagado el 19/10 sin querer, cuando se agregó el tocar la venta para ver el detalle.'}]},
   {v:'25.33',f:'20/10',h:'15:35',c:[{n:3,t:'💵 Listas: lo que llega de un proveedor cuenta como deuda en el Arqueo hasta que tocás "💵 Ya lo pagué" en el pedido (Pedidos → Listas → 🧾 Pedido). Al pedir no cuenta nada.'},{n:3,t:'💲 Si recomprás algo de una lista más caro, al llegar la ficha toma el costo nuevo (las ventas viejas quedan con el viejo).'},{n:2,t:'⚖️ Tope de H: el ritmo de los 30 días cuenta también las ventas canceladas, como las cuenta ARCA.'},{n:2,t:'🇵🇾 El recargo de Paraguay se mide contra el precio de la web, y el promedio deja afuera el adelanto ocasional (el pedido lo sigue pagando).'},{n:2,t:'📈 Las rayas de techo y piso de la línea de tiempo comparan todos los precios con el costo, el dólar y el monotributo de hoy.'},{n:3,t:'💳 Mercado Pago: la fila diaria sin venta y sin fecha de liberación ya no suma a "a liquidar": es plata que ya está en la cuenta.'}]},
   {v:'25.32',f:'20/10',h:'15:34',c:[{n:1,t:'💳 Ventas: la Clásica vuelve a gris (como antes); la Premium queda en dorado.'}]},
   {v:'25.31',f:'20/10',h:'15:33',c:[{n:1,t:'💳 Ventas: Clásica en azul y Premium en dorado.'}]},
@@ -9526,8 +9527,12 @@ function vivaVenta(o){
 // La tarjeta de una venta adentro de su envoltorio (el fuego necesita salir por afuera de la tarjeta).
 function vivaEnvolver(html,cual,v){
   if(!v)return html;
-  const a=`class="ingreso-item ${cual}" style="`;
-  if(html.indexOf(a)<0)return html;
+  // La tarjeta puede traer otros atributos entre `class` y `style` (el onclick del detalle, v24.86): se busca el `style="` dentro
+  // de la MISMA etiqueta. Antes se exigía `class="…" style="` pegados y desde el 19/10 las ventas vivas no aparecían (20/10/2026).
+  const a=`class="ingreso-item ${cual}"`,_i=html.indexOf(a);
+  if(_i<0)return html;
+  const _fin=html.indexOf('>',_i),_j=html.indexOf('style="',_i);
+  if(_j<0||(_fin>=0&&_j>_fin))return html;
   // Fondo, borde y halo también van con el neto (09/10/2026, él: "las cartas que dan 1.500 de neto parecen lo mismo
   // que el aromatizante que da 10 veces más"): las variables del nivel (.viva.lv-*) se pisan acá, en la tarjeta.
   // Desde el 09/10 a la tarde el COLOR se ve siempre según el nivel (base del nivel) y el puntaje sólo lo intensifica.
@@ -9537,7 +9542,7 @@ function vivaEnvolver(html,cual,v){
   // color lo pone el puntaje. Una venta chica se ve casi neutra con un toque de su color; la JOYA conserva su borde dorado.
   const B={bajo:[3,18],justo:[3,18],bien:[4,22],bueno:[6,30],exc:[8,40],estr:[9,45],joya:[11,55]}[v.k]||[3,18];
   const vars=`--tint:${f(B[0]+vi*14)}%;--bd:${f(Math.min(100,B[1]+vi*45))}%;--bw:${v.k==='joya'||vi>=.7?2:1}px;--halo:${f(Math.max(0,vi-.45)*30)}px;`;
-  html=html.replace(a,`class="ingreso-item viva lv-${v.k}" style="--c:${v.c};${vars}`);
+  html=html.slice(0,_i)+`class="ingreso-item viva lv-${v.k}"`+html.slice(_i+a.length,_j)+`style="--c:${v.c};${vars}`+html.slice(_j+7);
   // $100.000 de neto o más tiembla siempre; arde sólo desde "Bueno" (09/10/2026, él con 2 Ferrari de $112.000 de neto).
   const mv=v.ef==='fuego'||v.ef==='tiembla'?'mv-tiembla':v.ef==='flota2'?'mv-flota2':v.ef==='flota'?'mv-flota':'';
   const gl=v.ef?('gl'+(v.ef==='fuego'||v.ef==='tiembla'?' fuerte':'')):'';

@@ -1972,3 +1972,8 @@ y el disponible no salte; que un pedido de lista llegado aparezca en Deudas hast
   entre los días con stock que vendieron (`aprox:true`, raya punteada "provisorio"); con 5+ días medibles, como antes. Los de
   sobra/liquidando también muestran el piso (sin techo). El 🔴 techo y `techo95` del robot no cambian. **Chequear:** que el
   provisorio no se use para marcar 🏔️ ni para decidir un precio sin mirarlo.
+
+- 20/10/2026 · Etapa 7 (diseño) · v25.34: **las ventas vivas estaban apagadas desde la v24.86 (19/10).** `vivaEnvolver` buscaba
+  `class="ingreso-item vp-pc" style="` pegados, y la v24.86 metió `onclick`/`title` en el medio: no encontraba la tarjeta y
+  devolvía la venta sin efecto, sin avisar. Ahora busca el `style="` dentro de la misma etiqueta. **Chequear:** al tocar el
+  markup de una tarjeta de Ventas, que siga apareciendo el color/efecto (prueba: una venta de 25%+ tiene que verse con tinte).
