@@ -873,13 +873,17 @@ eso?"*. Le dije que por decisión acierto ~85-90% pero que "que no se me pase na
 correcciones por día del 16 al 19/10), y que no se puede prometer 95%. Eligió todo: (1a) `raros` en cada vuelta, que compara
 cada publicación contra su propio año sin regla por caso · (1b) un ayudante "revisor en contra" antes de aplicar la completa ·
 (1c) cada corrección se vuelve pregunta general en `ml-sync/notas/preguntas.md` · (2a) ⚠️ dato dudoso = no tocar el precio ·
-(3a) CEREBRO reescrito ordenado con la tabla de QUIÉN MANDA (`ml-sync/CEREBRO_borrador.md`, **falta su OK** para reemplazar) ·
+(3a) CEREBRO reescrito ordenado con la tabla de QUIÉN MANDA (**aprobado el 20/10: "1a"**, ya es `ml-sync/CEREBRO.md`, con el detalle viejo en su ANEXO) ·
 (4a/b) lo que vende poco se juzga en familia, por visitas y por parecidas, y dice "💭 sin certeza, falta X". Detalle en
 `ml-sync/CEREBRO.md` (🧭). Y la meta para medir si sirve: bajar de 2-4 correcciones por día a 1-2 por semana en un mes.
 **Quién piensa los raros (eligió la a, mismo día):** en la completa, el ayudante de cada cuenta (en máximo) recibe los raros de
 su cuenta; en las cortas, hasta ~8 renglones los miro yo y con más, un ayudante en Alto. Los ayudantes proponen; decidir y aplicar
 es del chat (ve todas las cuentas, resuelve choques, mira que no haya otra corrida y relee de ML). Él preguntó si así se
 ahorraba: no ahorra plata (un ayudante gasta igual), ahorra atención.
+**Y sus otras dos del mismo día:** *"todo lo de nippon tiene que medirse con ml, ya que el objetivo es venderlo por ahí. sino como
+sabemos que da y que no"* → toda lista se mide contra ML, también las que compra Tito en Bs As (`|bsas` sólo cambia dónde se ve) ·
+y el esfuerzo de cada parte queda fijo (CEREBRO sección 2): ayudantes de la completa y revisor en contra en max, ayudante de raros
+de las cortas en Alto, el chat con el nivel que él elija. No se cambia sin que él lo diga.
 
 ## 📋 LA LISTA ÚNICA DEL CEREBRO: `ml-sync/CEREBRO.md` (13/10/2026, pedido suyo)
 

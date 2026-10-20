@@ -903,7 +903,7 @@ Chequear: lo agotado pide lo mismo que antes; cada aviso de cumplido se resuelve
 Qué es: (1) probe `raros` (sync.mjs, solo lee, va en todas las vueltas): cada publicación contra su propio año (🧭), cruces de
 sentido común (🔀), dato dudoso que frena tocar el precio (⚠️), y precio sin certeza con familia, visitas y parecidas (💭).
 (2) Un sexto ayudante "revisor en contra" en la completa, antes de aplicar. (3) `ml-sync/notas/preguntas.md`: cada corrección
-como pregunta general. (4) `ml-sync/CEREBRO_borrador.md`: CEREBRO ordenado con la tabla de quién manda (pendiente de su OK).
+como pregunta general. (4) CEREBRO ordenado con la tabla de quién manda: aprobado el 20/10 y reemplazó a `CEREBRO.md` (el detalle viejo quedó en su ANEXO). Qué chequear: que una regla nueva entre en su tema arriba y no sólo en el anexo, y que el anexo no contradiga la sección 0. Dai Nippon y toda lista de Bs As también se mide contra ML (20/10, suyo). Esfuerzo de cada parte fijo (sección 2 del CEREBRO).
 Qué chequear: que 🧭 y 🔀 no salten en la mitad del catálogo (un aviso que suena siempre no se mira: el 20/10 el primer intento
 daba ⚠️ en 156 de 235 por la marca `inc`, y "cobra distinto" en todo lo subido a propósito; se sacaron) · que lo que está en ⚠️
 de verdad no se toque · que las familias del 💭 se juzguen cuando ya se sabe · que cada corrección nueva sume su pregunta.
