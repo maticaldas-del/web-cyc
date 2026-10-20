@@ -1083,7 +1083,9 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY, soloAnotar 
             // nuevo, `offset` no está haciendo nada y NO se puede seguir leyendo → el renglón
             // queda marcado como no leído y la caja no se marca. FALTA DE DATO NO ES FALTA DE
             // MERCADERÍA: es la misma regla que ya estaba para el 429.
-            const PAG = 50, MAX_PAG = 20;            // hasta 1.000 movimientos por inventario
+            // Etapa 3 (20/10/2026): con la ventana estirada por una caja marcada a mano (lee desde SU despacho) lo que más
+            // vende pasaba los 1.000 movimientos y quedaba "sin leer". Si la ventana arranca más de 20 días atrás, hasta 3.000.
+            const PAG = 50, MAX_PAG = (Date.now() - (new Date(desdeDe(p.id)).getTime() || Date.now()) > 20 * 864e5) ? 60 : 20;   // 1.000 (o 3.000) movimientos
             const opsInv = [], vistosOp = new Set();
             let cortado = false;
             for (let pag = 0; ; pag++) {
@@ -1112,7 +1114,7 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY, soloAnotar 
               if (!nuevos) { cortado = true; break; }// ML ignora `offset`: no se puede leer más
               if (pag + 1 >= MAX_PAG) { cortado = true; break; }
             }
-            if (cortado) sinLeer[kR(cta, p.id, par.va)] = true;
+            if (cortado) { const _kc = kR(cta, p.id, par.va); sinLeer[_kc] = true; if (!motivoSL[_kc]) motivoSL[_kc] = 'tope'; }
             for (const x of opsInv) {
               const tipo = String(x.type || x.operation_type || '').toLowerCase();
               // Guardar TODO lo que contesta ML, aceptado o no. Sin esto, un filtro de tipo que no
@@ -1527,8 +1529,11 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY, soloAnotar 
   const aGuardar = marcadasAntes.filter((mb) => mb.calc);
   let manoGuardadas = 0;
   if (aGuardar.length) {
-    console.log(`🧾 ${aGuardar.length} caja(s) marcada(s) a mano: ubicadas sus entradas de Full${DRY || soloAnotar ? ' (no se guarda)' : ''} → ` + aGuardar.map((mb) => `${mb.e.cuenta} ${mb.fecha}${mb.c.track ? ' (' + mb.c.track + ')' : ''}`).join(' · '));
-    if (!DRY && !soloAnotar) {
+    console.log(`🧾 ${aGuardar.length} caja(s) marcada(s) a mano: ubicadas sus entradas de Full${DRY ? ' (no se guarda)' : ''} → ` + aGuardar.map((mb) => `${mb.e.cuenta} ${mb.fecha}${mb.c.track ? ' (' + mb.c.track + ')' : ''}`).join(' · '));
+    // Con SOLO_DATOS también se guarda (etapa 3, 20/10/2026): es un DATO (qué entradas son de una caja que ya marqué yo), no
+    // una decisión. Sin esto la vuelta de cada hora leía desde el despacho de la marcada (hasta 60 días) y lo que más vende
+    // pasaba el tope de movimientos y quedaba "sin leer".
+    if (!DRY) {
       const porEnv = {};
       for (const mb of aGuardar) (porEnv[mb.id] = porEnv[mb.id] || []).push(mb);
       for (const [id, ms] of Object.entries(porEnv)) {
@@ -39146,7 +39151,7 @@ async function main() {
         // de la hora en `mlapi/cajasciegas`; sólo se muestran las que siguen abiertas con el mismo seguimiento.
         try {
           const cg = (await db.get('mlapi/cajasciegas')) || {}; const MOT = { sinpub: 'sin publicación de Full con código en esa cuenta (normal si es la 1ª caja de un producto nuevo: se lee cuando ML la da de alta) · si no, vincular',
-            color: 'ninguna publicación de Full de esa cuenta nombra ese color → fijarvar', sincolor: 'renglón sin color de un producto con colores', ml: 'ML no contestó (429): se reintenta sola' };
+            color: 'ninguna publicación de Full de esa cuenta nombra ese color → fijarvar', sincolor: 'renglón sin color de un producto con colores', ml: 'ML no contestó (429): se reintenta sola', tope: 'demasiados movimientos para leer de una vez (vende mucho): si ML ya la dio entera → cajallego' };
           const vivas = Object.entries(cg.cajas || {}).filter(([k, x]) => { const [eid, ci] = k.split('__'); const c = ((envs[eid] || {}).cajasDet || [])[Number(ci)]; return c && !c.recibida && String(c.track || '') === String(x.track || ''); });
           if (cg.ts) console.log(`  lectura de la hora (${new Date(cg.ts - 3 * 36e5).toISOString().slice(5, 16).replace('T', ' ')}): ${cg.fallos || 0} consultas de movimientos fallaron${cg.error ? ' · ' + cg.error.slice(0, 70) : ''}`);
           for (const [, x] of vivas) {

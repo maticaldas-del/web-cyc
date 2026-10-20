@@ -8067,6 +8067,11 @@ async function delEnvioFull(id){
   // marcarla como llegada.
   const _uPend=cajasDe(e).filter(c=>!c.recibida).reduce((a,c)=>a+(c.items||[]).reduce((b,x)=>b+(parseInt(x&&x.u)||0),0),0);
   if(_uPend>0){alert(`Este envío tiene ${_uPend} unidad(es) en cajas que todavía no llegaron.\n\nSi lo borro, esa mercadería desaparece del patrimonio.\n\n· Si no salió: tocá "deshacer" en cada caja (las unidades vuelven a tu oficina).\n· Si ya llegó: marcala como llegada.`);return;}
+  // UNA CAJA QUE LLEGÓ HACE MENOS DE 60 DÍAS TAMPOCO (etapa 3, 20/10/2026): el robot descuenta sus entradas de Full para no
+  // acreditárselas a la caja siguiente del mismo producto. Borrándola, esas entradas pasaban a la caja que sigue en el camión
+  // y el Arqueo la daba por llegada. Pasados los 60 días el robot ya no lee tan atrás y se puede borrar.
+  const _recien=cajasDe(e).filter(c=>c.recibida&&(Date.now()-(new Date(c.recFecha||e.fecha||0).getTime()||0))<60*864e5);
+  if(_recien.length){alert(`Este envío tiene ${_recien.length} caja(s) que llegaron hace menos de 60 días.\n\nNo lo borro: el robot usa esas cajas para no confundir lo que entró a Full con la caja siguiente del mismo producto. Se puede borrar pasados los 60 días.`);return;}
   if(!confirm(`¿Borrar el envío del ${e.fecha} (${e.cajas} caja/s de ${e.cuenta})?`))return;
   await fbSet('envios_full/'+id,null);
   delete state.envios_full[id];
