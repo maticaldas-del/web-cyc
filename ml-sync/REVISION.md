@@ -1817,3 +1817,9 @@ rama Bs As, `renderListas` con `_enB`). Chequear: un producto con `listaProv` nu
 de Bs As no se dibujan solapas; los ✅ Probados de Nippon muestran sus pedidos de reposición.
 v25.14: botón 🏬/📋 en cada pedido de Bs As (`_grupoBsasBtn`, `pedCambiarGrupo`, pone/saca `listaProv`); el ⏸️ sacar por ahora no sale
 en la solapa Dai Nippon. Chequear: al tocarlo el pedido cambia de solapa; con varias listas de Bs As pregunta a cuál; no sale en Paraguay.
+
+### Etapa 3 · 20/10/2026 · v25.15 · links de los probados en la tarjeta del pedido de Paraguay
+Él, con el Mouse Corsair: *"porque no tiene link"*. Los renglones de reposición (sin `id`) se guardan sin `mlId` ni `link`, así
+que la tarjeta decía "sin links guardados". Ahora `_pyLinksProd(prodId)` los saca de la ficha: `pyLink` y la publicación de ML
+vinculada (activa primero, sin las ocultas). **Chequear:** que un probado sin `pyLink` cargado igual muestre "ver en ML", y que
+los nuevos sigan usando su `mlId`/`link` propio. Era el único lugar que dibuja esos renglones (`_pyItsHTML`).

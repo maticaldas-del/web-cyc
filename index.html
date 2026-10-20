@@ -2683,7 +2683,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.14';
+const APP_VERSION='25.15';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2694,6 +2694,7 @@ const APP_VERSION='25.14';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.15',f:'20/10/2026',h:'15:40',c:[{n:1,t:'🇵🇾 En la tarjeta de un pedido de Paraguay, los productos ya probados (ej. el Mouse Corsair) muestran los links "ver en ML" y "ver en comprasparaguay" sacados de su ficha. Antes decían "sin links guardados".'}]},
   {v:'25.14',f:'20/10/2026',h:'15:10',c:[{n:1,t:'🇦🇷 Pedidos → Bs As: cada pedido tiene un botón 🏬 De siempre / 📋 Dai Nippon para pasarlo de solapa. Y en la solapa Dai Nippon ya no está el botón "⏸️ sacar por ahora".'}]},
   {v:'25.13',f:'20/10/2026',h:'14:30',c:[{n:1,t:'🇦🇷 Pedidos → Bs As se abre en dos solapas: 🏬 De siempre (los pedidos de Bs As) y 📋 Dai Nippon (lo que compra Tito con esa lista, con sus Probados, Nuevos y 🧾 Pedido). Lo ya comprado a Nippon va en su solapa y no se repite en la otra.'}]},
   {v:'25.12',f:'20/10/2026',h:'11:55',c:[{n:2,t:'📋 La ficha suma "Más datos para decidir": de dónde se repone y si reponerlo hoy sale más caro, los reclamos con su motivo, cuánto se queda Mercado Libre a ese precio, la competencia, qué día de la semana y qué mes vende más, hace cuánto entró la unidad más vieja en Full, las opiniones y preguntas que muestra ML, y en qué otras cuentas se publica. Y cuánto le pega el precio a las ventas (cada 10% de suba, cuánto vende menos).'}]},
@@ -14451,10 +14452,18 @@ function pyRecargoChip(c){const R=pyRecargoReal(c);
 function pyPedidoPartes(c){const its=(c&&c.items)||[];return{prob:its.filter(x=>x&&!x.id),nuev:its.filter(x=>x&&x.id)};}
 function pyPedidoEtiqueta(c){const P=pyPedidoPartes(c);
   return P.prob.length&&P.nuev.length?`Pedido (${P.prob.length} probado${P.prob.length===1?'':'s'} + ${P.nuev.length} nuevo${P.nuev.length===1?'':'s'})`:P.prob.length?'Pedido · probados':'Pedido · nuevos';}
+// Links de un producto ya probado: su publicación de ML (primero una activa, después una pausada) y su página de comprasparaguay.
+function _pyLinksProd(prodId){const o={ml:'',py:''};if(!prodId)return o;
+  const p=(state.products||[]).find(x=>x.id===prodId);if(p&&/^https:\/\//.test(p.pyLink||''))o.py=p.pyLink;
+  let best=null;for(const [mla,e] of Object.entries(state.mllinks||{})){if(!e||e.prodId!==prodId||e.ignored||!/^MLA\d+$/.test(mla))continue;
+    const sc=(e.status==='active'?2:e.status==='paused'?1:0);if(!best||sc>best.sc)best={mla,sc};}
+  if(best)o.ml='https://articulo.mercadolibre.com.ar/MLA-'+best.mla.slice(3);return o;}
 function _pyItsHTML(its,rec){const _r=rec>=1?rec:RECARGO_PY;
   return its.slice().sort((a,b)=>((b.usd||0)*b.u)-((a.usd||0)*a.u)).map(it=>{
       const sub=(it.usd||0)*it.u;
-      const lML=it.mlId?(/^https?:/i.test(it.mlId)?it.mlId:'https://www.mercadolibre.com.ar/p/'+String(it.mlId).trim()):'';
+      let lML=it.mlId?(/^https?:/i.test(it.mlId)?it.mlId:'https://www.mercadolibre.com.ar/p/'+String(it.mlId).trim()):'';
+      // Probados (20/10/2026, él con el Corsair: "porque no tiene link"): el renglón no guarda links; se toman de la ficha.
+      const _pl=_pyLinksProd(it.prodId); if(!lML)lML=_pl.ml; const _lPy=it.link||_pl.py;
       return `<div class="ingreso-item" style="gap:8px;align-items:flex-start">
         <div style="flex:1;min-width:150px">
           <div style="font-size:.7rem;font-weight:600;line-height:1.3">${it.nom||'—'}</div>
@@ -14463,7 +14472,7 @@ function _pyItsHTML(its,rec){const _r=rec>=1?rec:RECARGO_PY;
             ${it.usd?` · ${it.usdWeb>0&&Math.abs(it.usdWeb-it.usd)>=0.005?`<s style="opacity:.7">web US$ ${it.usdWeb.toFixed(2)}</s> → pagado <b style="color:${it.usd<it.usdWeb?'var(--green)':'var(--red)'}">US$ ${it.usd.toFixed(2)}</b> (${it.usd<it.usdWeb?'−':'+'}${Math.abs((1-it.usd/it.usdWeb)*100).toFixed(1).replace('.',',')}%)`:`US$ ${it.usd.toFixed(2)}${it.usdWeb>0?' (sin descuento)':''}`} + ${((_r-1)*100).toFixed(rec>=1?1:0)}%${rec>=1?' real':''} = US$ ${(Math.round(it.usd*_r*100)/100).toFixed(2)} c/u`:' · <span style="color:var(--amber)">sin precio</span>'}
             ${it.margen!=null?` · margen medido al pedirlo <b style="color:${it.margen>=candPisoDe(it)?'var(--green)':'var(--amber)'}">${it.margen.toFixed(1)}%</b>`:' · <span style="color:var(--muted)">sin margen medido</span>'}
             ${it.pesoKg!=null?` · ${it.pesoKg.toFixed(3)} kg c/u`:(it.pesoTxt?` · peso "${it.pesoTxt}" <span style="color:var(--amber)">(sin unidad, no lo cuento)</span>`:'')}
-            ${(lML||it.link)?`<br>${lML?`<a href="${lML}" target="_blank" rel="noopener" style="color:#60a5fa">ver en ML</a>`:''}${lML&&it.link?' · ':''}${it.link?`<a href="${it.link}" target="_blank" rel="noopener" style="color:#60a5fa">ver en comprasparaguay</a>`:''}`:'<br><span style="color:var(--amber)">sin links guardados</span>'}
+            ${(lML||_lPy)?`<br>${lML?`<a href="${lML}" target="_blank" rel="noopener" style="color:#60a5fa">ver en ML</a>`:''}${lML&&_lPy?' · ':''}${_lPy?`<a href="${_lPy}" target="_blank" rel="noopener" style="color:#60a5fa">ver en comprasparaguay</a>`:''}`:'<br><span style="color:var(--amber)">sin links guardados</span>'}
           </div>
         </div>
         <div style="text-align:right;font-size:.68rem;white-space:nowrap">
