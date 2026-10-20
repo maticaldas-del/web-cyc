@@ -6,7 +6,7 @@
 // Requiere secrets: ML_CLIENT_ID, ML_CLIENT_SECRET,
 //   FIREBASE_API_KEY, FIREBASE_DB_URL, FIREBASE_BOT_EMAIL, FIREBASE_BOT_PASSWORD
 
-import { fbSignIn, makeDB, mlRefresh, mlGet, ML_API } from './lib.mjs';
+import { fbSignIn, makeDB, mlRefresh, mlGet, ML_API, tapaIdsLargos } from './lib.mjs';
 import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 
 const {
@@ -10315,7 +10315,7 @@ async function main() {
     if (!TG_TOKEN) { console.log('✗ Falta el secret TELEGRAM_BOT_TOKEN.'); return; }
     if (!TG_CHATS.length) { console.log('✗ Nadie suscripto todavía. Mandale un "hola" al bot y reintento.'); return; }
     console.log(`Suscriptos (${TG_CHATS.length}):`);
-    TG_CHATS.forEach((id) => console.log(`  · ${id}${TG_NAMES[id] ? ' — ' + TG_NAMES[id] : ''}`));
+    TG_CHATS.forEach((id) => console.log(`  · ${_tgMask(id, TG_NAMES[id])}`));   // etapa 4 (20/10/2026): el registro es público: sin nombre ni número entero
     const ok = await sendTelegram('✅ <b>CYC</b>: prueba de avisos. Si ves esto, ¡los avisos ya funcionan! 🎉', 'resumen');
     console.log(ok ? `✓ Prueba enviada a ${TG_CHATS.length} chat(s).`
       : '✗ No se pudo enviar. ¿Apretaron Start en el bot?');
@@ -13109,7 +13109,9 @@ async function main() {
     // importantes como por ejemplo esas, subir precios, bajar precios"*.
     //
     // Sin número: muestra cómo está y LISTA los chats que el bot conoce, para elegir.
-    // Con número: lo guarda en `cyc/mlconfig/tgAlertas`.
+    // Con número: lo guarda en `cyc/mlconfig/tgAlertas`. Etapa 4 (20/10/2026): el registro de GitHub es PÚBLICO, así que la lista
+    // muestra sólo la inicial y los últimos 3 números (`_tgMask`, como `tgchats`/`tgaprobar`), y el chat se elige por sus últimos
+    // números (tiene que agarrar UNO solo de los que el bot conoce). El número entero sigue andando como antes.
     // Con `-`: lo saca (y los avisos dejan de mandarse a nadie).
     //
     // CÓMO CONSEGUIR EL NÚMERO DE UN CHAT NUEVO: el bot sólo ve los chats donde alguien le
@@ -13118,11 +13120,11 @@ async function main() {
     // Un chat privado con el bot NO sirve como segundo canal: es el mismo donde ya llega el
     // resumen, y entonces no habría dos canales sino uno repetido.
     if (/^tgalertas(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
-      const arg = String(process.env.BILLING_PROBE).split(':').slice(1).join(':').trim();
+      let arg = String(process.env.BILLING_PROBE).split(':').slice(1).join(':').trim();
       console.log('=== EL CANAL PRIVADO DE AVISOS (subir/bajar precios) ===\n');
       if (!TG_TOKEN) { console.log('✗ Falta el secret TELEGRAM_BOT_TOKEN.'); return; }
       const actual = String(((await db.get('cyc/mlconfig')) || {}).tgAlertas || '');
-      console.log(actual ? `Hoy los avisos van a: ${actual}${TG_NAMES[actual] ? ' (' + TG_NAMES[actual] + ')' : ''}`
+      console.log(actual ? `Hoy los avisos van a: ${_tgMask(actual, TG_NAMES[actual])}`
         : 'Hoy NO hay canal de avisos: los avisos de subir/bajar precio no se mandan a nadie.');
       console.log(`El resumen del día sigue yendo a: ${TG_CHATS.length} chat(s)`
         + (TG_CHATS.length ? ' · ' + TG_CHATS.map((id) => _tgMask(id, TG_NAMES[id])).join(' · ') : ''));
@@ -13131,11 +13133,10 @@ async function main() {
         const guardados = (await db.get('mlapi/telegram/chats')) || {};
         console.log('\n── Chats que el bot conoce ──');
         for (const [id, v] of Object.entries(guardados)) {
-          const quien = (v && v.name) || '(sin nombre)';
-          const rol = id === actual ? '  ← AVISOS' : '  (resumen del día)';
-          console.log(`   ${id}   ${quien}${rol}`);
+          const rol = id === actual ? '  ← AVISOS' : (v && v.pendiente) ? '  (pendiente de aprobar)' : '  (resumen del día)';
+          console.log(`   ${_tgMask(id, v && v.name)}${rol}`);
         }
-        console.log('\nPara elegir uno:  tgalertas:<número>');
+        console.log('\nPara elegir uno:  tgalertas:<últimos números>  (o el número entero)');
         console.log('Para sacarlo:     tgalertas:-');
         console.log('\nSI EL QUE QUERÉS NO ESTÁ EN LA LISTA: creá un GRUPO de Telegram, metelo al bot');
         console.log('adentro, mandale cualquier mensaje al grupo, y volvé a correr este comando.');
@@ -13148,6 +13149,19 @@ async function main() {
         return;
       }
       if (!/^-?\d+$/.test(arg)) { console.log(`\n✗ "${arg}" no parece un número de chat.`); return; }
+      // Por los últimos números (etapa 4, 20/10/2026): si no es exactamente un chat conocido, se busca por el final entre los que el
+      // bot conoce y tiene que agarrar UNO solo. Si no agarra ninguno y es un número entero de chat (8+ cifras), se usa tal cual.
+      { const guardados = (await db.get('mlapi/telegram/chats')) || {};
+        if (guardados[arg] && guardados[arg].pendiente) { console.log(`\n✗ ${_tgMask(arg, guardados[arg].name)} está PENDIENTE de aprobar (alguien nuevo): primero tgaprobar.`); return; }
+        if (!guardados[arg]) {
+          // Los PENDIENTES no se eligen (como `tgaprobar`: mandarle los avisos al equivocado le pasa la plata del negocio a un desconocido).
+          const cands = Object.keys(guardados).filter((id) => id.endsWith(arg.replace(/^-/, '')) && !(guardados[id] || {}).pendiente);
+          if (cands.length === 1) arg = cands[0];
+          else if (cands.length > 1) { console.log(`\n✗ "${arg}" agarra ${cands.length} chats: ${cands.map((id) => _tgMask(id, (guardados[id] || {}).name)).join(' · ')}. Poné más números.`); return; }
+          else { const pen = Object.keys(guardados).filter((id) => id.endsWith(arg.replace(/^-/, '')) && (guardados[id] || {}).pendiente);
+            if (pen.length) { console.log(`\n✗ "${arg}" sólo agarra chat(s) PENDIENTE(S) de aprobar (${pen.map((id) => _tgMask(id, (guardados[id] || {}).name)).join(' · ')}): primero tgaprobar.`); return; }
+            if (arg.replace(/^-/, '').length < 8) { console.log(`\n✗ "${arg}" no coincide con ningún chat que el bot conozca.`); return; } }
+        } }
       // Se PRUEBA antes de guardar: si el bot no puede escribir ahí, guardarlo dejaría un canal
       // que no manda nada y nadie se enteraría hasta que faltara un aviso.
       const r = await tgApi('sendMessage', {
@@ -13156,7 +13170,7 @@ async function main() {
       });
       if (!(r && r.ok)) { console.log(`\n✗ No pude escribir en ese chat: ${r && r.description ? r.description : 'sin respuesta'}. NO lo guardo.`); return; }
       await db.patch('cyc/mlconfig', { tgAlertas: arg });
-      console.log(`\n✓ Listo: los avisos van a ${arg}. Te mandé un mensaje de prueba ahí.`);
+      console.log(`\n✓ Listo: los avisos van a ${_tgMask(arg, TG_NAMES[arg])}. Te mandé un mensaje de prueba ahí.`);
       console.log('   Ese chat queda FUERA del resumen del día, así no se mezclan.');
       return;
     }
@@ -16533,7 +16547,7 @@ async function main() {
               } else if (arr.length) {
                 console.log(`  acciones que ML me deja hacer: ${arr.map((a) => a.action || a.id || a).join(', ')}`);
               }
-            } catch (e) { if (CRUDO) console.log(`  (${ruta}: ${String(e.message || e).slice(0, 90)})`); }
+            } catch (e) { if (CRUDO) console.log(`  (${tapaIdsLargos(ruta)}: ${String(e.message || e).slice(0, 90)})`); }   // etapa 4 (20/10/2026): sin el número de reclamo entero
           }
           if (CRUDO) console.log('  CRUDO (sólo nombres de campo, el registro es público): ' + Object.keys(c || {}).join(', '));
         }
@@ -16646,7 +16660,7 @@ async function main() {
           const rr = Array.isArray(r) ? (r[0] || {}) : (r?.data?.[0] || r || {});
           console.log(`\n── ¿VUELVE EL PRODUCTO? ──\n  estado ${rr.status || '?'}${rr.subtype ? ' · ' + rr.subtype : ''}${rr.status_money ? ' · plata ' + rr.status_money : ''} · campos: ${Object.keys(rr).join(', ')}`);
           break;
-        } catch (e) { console.log(`\n(${ruta}: ${String(e.message || e).slice(0, 100)})`); }
+        } catch (e) { console.log(`\n(${tapaIdsLargos(ruta)}: ${String(e.message || e).slice(0, 100)})`); }   // etapa 4 (20/10/2026): sin el número de reclamo entero
       }
       // La plata: qué se cobró y qué se devolvió.
       try {
@@ -18024,7 +18038,7 @@ async function main() {
         return fuenteRobot.includes(hoja) || fuenteWeb.includes(hoja);
       };
       const mirar = async (nombre, ruta) => {
-        console.log(`\n── ${nombre} ──  ${ruta}`);
+        console.log(`\n── ${nombre} ──  ${tapaIdsLargos(ruta)}`);   // etapa 4 (20/10/2026): el número de orden/envío no va entero al registro público
         let d;
         try { d = await mlGet(ruta, tok); } catch (e) { console.log(`   ✗ ${String(e.message || e).slice(0, 120)}`); return; }
         const raiz = Array.isArray(d) ? (d[0] || {}) : ((d.results && d.results[0]) || d);
@@ -43041,7 +43055,7 @@ async function main() {
       // (sin `desc` y más nuevo que mi decisión), también se descuenta lo de antes: con `desc` la web deja de restarlo.
       const decP = (await db.get('cyc/claudedecide/ped/' + P.id)) || null;
       const aDesc = items.map((it) => ({ ...it }));
-      if (prev && !prev.desc && Number(prev.ts || Date.parse(String(prev.fecha || '') + 'T12:00:00-03:00')) > (Number(decP && decP.ts) || 0)) for (const it of lista(prev)) aDesc.push({ v: it.v, u: parseInt(it.u) || 0 });
+      if (prev && !prev.desc && Number(prev.ts || Date.parse(String(prev.fecha || '') + 'T12:00:00-03:00')) > (Number(decP && decP.ts) || 0)) for (const it of lista(prev)) if (!it.desc) aDesc.push({ v: it.v, u: parseInt(it.u) || 0 });   // etapa 4 (20/10/2026): un aroma que la web ya descontó (`desc` en el renglón) no se descuenta dos veces
       await db.set('cyc/pedidospv/' + id, { ...(prev || {}), prodId: P.id, fecha, ts: (prev && prev.ts) || Date.now(), estado: 'camino', items: its });   // el número del pedido (20/10/2026) y lo demás no se pierden
       for (const it of aDesc) { const r = await clDescontarPedBot(db, P.id, it.v, it.u); if (r) console.log(`  🧠 sale de lo decidido · ${r}`); }
       await db.patch('cyc/pedidospv/' + id, { desc: true });
