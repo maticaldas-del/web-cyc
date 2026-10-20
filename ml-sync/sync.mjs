@@ -39458,7 +39458,7 @@ async function main() {
         if (!sacar.length) { console.log('No hay candidatos marcados "no es el mismo" para sacar.'); return; }
       }
       for (const parte of (/^aplicarno(;|$)/i.test(raw.trim()) ? [] : raw.split(';').map((x) => x.trim()).filter((x) => x && x.toLowerCase() !== 'go'))) {
-        const m = parte.match(/^(c\d+(?:p\d+)?)\s*=\s*(ok|no|duda|mismo)(?:!(.*))?$/i);
+        const m = parte.match(/^(c\d+(?:[a-z]\d+)?)\s*=\s*(ok|no|duda|mismo)(?:!(.*))?$/i);  // [a-z]: los de Elegancia son c…e27 (20/10/2026)
         if (!m) { console.log(`  ✗ no entiendo "${parte}"`); mal++; continue; }
         const c = cands[m[1]]; const cat = c && catDe(c);
         if (!c || !cat) { console.log(`  ✗ ${m[1]}: no existe o no está medido contra un catálogo`); mal++; continue; }
@@ -39470,6 +39470,12 @@ async function main() {
         if (v.v === 'ok' && !up[`${m[1]}/mismoOk`] && (!/^https:\/\//.test(String(c.foto || '')) || !/^https:\/\//.test(String(c.mlFoto || '')))) { v.v = 'duda'; v.nota = ('falta ' + (!/^https:\/\//.test(String(c.foto || '')) ? 'la foto de comprasparaguay' : 'la foto de ML') + (v.nota ? ' · ' + v.nota : '')).slice(0, 200); }
         up[`${m[1]}/revClaude`] = v;
         if (v.v === 'no' && !c.prodId && c.mismoOk !== cat) _sacar(m[1], c, cat, v.nota, v.ts);
+        // Un `no` mío puesto por error se deshace con `ok`/`duda` (20/10/2026: las hojas de fotos mezclaron ids y saqué tres
+        // que eran el mismo producto). Sólo si lo sacó Claude por ESTE catálogo; lo que tachó él a mano no se toca.
+        if (v.v !== 'no' && c.no && c.noTipo === 'claude' && (c.mlNoEs || {})[cat]) {
+          up[`${m[1]}/no`] = null; up[`${m[1]}/noTs`] = null; up[`${m[1]}/noTipo`] = null; up[`${m[1]}/motivo`] = null; up[`${m[1]}/mlNoEs/${cat}`] = null;
+          console.log(`  ↩️ ${m[1]} vuelve a "Para probar" (el "no" anterior era un error)`);
+        }
         console.log(`  ${v.v === 'ok' ? '✓' : v.v === 'no' ? '❌' : '🤔'} ${m[1]} · ${String(c.nombre).slice(0, 60)} → ${v.v}${v.nota ? ' (' + v.nota + ')' : ''}`);
       }
       if (mal) { console.log(`\n${mal} renglón(es) con problema: NO escribo nada.`); return; }
