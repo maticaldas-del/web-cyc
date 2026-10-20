@@ -18,6 +18,9 @@ jobs:
   medir:
     runs-on: ubuntu-latest
     timeout-minutes: 55
+    permissions:
+      contents: read
+      actions: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -36,3 +39,11 @@ jobs:
           BILLING_PROBE: pycatmedir:go
         # exec (etapa 4, 20/10/2026): node (o el ciclo) pasa a ser el proceso del paso y recibe la señal de cancelar de GitHub; antes quedaba huérfano hasta el SIGKILL.
         run: exec node ml-sync/sync.mjs
+      # De 02 a 08 (20/10/2026, pedido suyo: "en esas horas nadie mira las ventas, usá el 100%"): si la lista con prioridad no
+      # terminó, el robot deja /tmp/pycat_seguir y acá se larga la vuelta siguiente sin esperar al reloj de GitHub.
+      - name: Seguir de noche
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -f /tmp/pycat_seguir ]; then gh workflow run ml-pycat.yml --ref "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" && echo "largada la vuelta siguiente"; else echo "nada que seguir"; fi

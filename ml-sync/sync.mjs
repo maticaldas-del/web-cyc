@@ -20290,9 +20290,9 @@ async function main() {
       // mira las ventas. ahí podés utilizar el 100%"). Con `cyc/mlconfig/listaPrioridad` = <proveedor>, esta vuelta de cada hora
       // mide ESA lista en vez del catálogo de Paraguay (los dos comparten el cupo de ML, y antes cada uno iba a media máquina).
       // Cuando la lista no tiene nada pendiente se borra la marca y la misma vuelta sigue con Paraguay. De 02 a 08 de acá la
-      // vuelta dura 50 minutos en vez de 40 (el job corta a los 55).
+      // vuelta dura 48 minutos en vez de 40 (el job corta a los 55 y después tiene que largar la siguiente).
       const _hAr = (new Date().getUTCHours() + 21) % 24;
-      const _maxMin = _hAr >= 2 && _hAr < 8 ? 50 : 40;
+      const _maxMin = _hAr >= 2 && _hAr < 8 ? 48 : 40;
       const _go = /:go$/.test(_pm);
       const _pri = String((await db.get('cyc/mlconfig/listaPrioridad')) || '');
       if (_pri) {
@@ -20303,7 +20303,13 @@ async function main() {
           const _t0 = Date.now();
           const _r = await correrPyCatMedir(db, products, labels, accounts, 5000, _go, null, { lista: _pri, nombre: _pv.nombre, rec: _pv.rec, maxMin: _maxMin });
           if (_go) await db.patch('cyc/mlconfig/listasProv/' + _pri, cuentaLista((await db.get('mlapi/listas/' + _pri)) || {}));
-          if (_r && _r.quedan > 0) return;
+          // DE NOCHE NO SE ESPERA AL RELOJ DE GITHUB (que saltea la mayoría de las corridas de cada hora): si a la lista le queda
+          // algo y son entre las 02 y las 08 de acá, se deja la marca para que `ml-pycat.yml` largue la vuelta siguiente al terminar.
+          if (_r && _r.quedan > 0) {
+            const _hFin = (new Date().getUTCHours() + 21) % 24;
+            if (_go && _hFin >= 2 && _hFin < 8) { try { writeFileSync('/tmp/pycat_seguir', String(_r.quedan)); console.log(`(de noche: largo la vuelta siguiente al toque · quedan ${_r.quedan})`); } catch { /* sigue el reloj */ } }
+            return;
+          }
           if (_go) { await db.set('cyc/mlconfig/listaPrioridad', null); console.log(`✓ la lista ${_pv.nombre || _pri} no tiene nada pendiente: saco la prioridad y sigo con Paraguay.`); }
           const _resta = _maxMin - Math.ceil((Date.now() - _t0) / 60e3);
           if (_resta < 5) return;
