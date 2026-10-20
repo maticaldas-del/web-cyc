@@ -9101,6 +9101,16 @@ function c_link(c) {
 // pasa solo a "Para probar" (`cyc/candidatos_py`), donde se vuelve a medir dos veces y pasa por la revisión de fotos.
 // Lo demás queda guardado y escondido, y se vuelve a medir cada `PYCAT_REMEDIR_DIAS`.
 const PYCAT_REMEDIR_DIAS = 7;
+// SE VUELVE A MEDIR SEGÚN QUÉ TAN CERCA ESTÁ (20/10/2026, eligió la 1a). Todo cada 7 días gastaba cupo de ML (el mismo de ventas y
+// cajas) en productos que dan 5% o no están en ML: que lleguen a 25% en una semana es muy raro. Ahora: lo que dio 15% o más, cada 7
+// días · lo que dio menos de 15%, cada 30 · lo que no está en ML (sin catálogo exacto o nadie lo vende), cada 30. Un costo nuevo o el
+// nombre traducido lo vuelven a medir igual. Vale para Paraguay y para las listas (`pycatRemedirDias`).
+const PYCAT_REMEDIR_LEJOS = 30, PYCAT_CERCA_PCT = 15;
+function pycatRemedirDias(e) {
+  if (e && e.m != null && isFinite(Number(e.m))) return Number(e.m) >= PYCAT_CERCA_PCT ? PYCAT_REMEDIR_DIAS : PYCAT_REMEDIR_LEJOS;
+  if (e && (e.sc || e.sv)) return PYCAT_REMEDIR_LEJOS;
+  return PYCAT_REMEDIR_DIAS;
+}
 const PYCAT_POR_VUELTA = 700;   // 16/10/2026: era 300 (13 min); con 10.595 por medir y GitHub salteando corridas tardaba semanas
 // Los rubros que ya vendemos (nombres de comprasparaguay, en portugués y castellano): se miden antes que el resto.
 const PYCAT_RUBRO_RE = /\b(perfume|perf\.?|col[oô]nia|eau\s+de|edp|edt|body\s+splash|fone|auricular(es)?|aud[ií]fonos?|headset|earbuds|buds|pen\s*-?drive|cart[aã]o\s+de\s+mem[oó]ria|micro\s*-?sd|tarjeta\s+de\s+memoria|rel[oó]gio|reloj|smartwatch|smart\s*band|watch)\b/i;
@@ -9272,7 +9282,7 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
     // Lo que no se encontró en ML con el nombre viejo (sin catálogo exacto / nadie lo vende) se vuelve a buscar con el nombre
     // traducido aunque esté fresco (`qv` = versión del traductor con que se buscó).
     const _rebuscar = esLista && (e.sc || e.sv || e.noEs) && Number(e.qv || 0) !== LISTA_NOMBRE_VER;   // noEs: se busca de nuevo, sin el catálogo rechazado
-    const _fresco = e.t && ahora - e.t < PYCAT_REMEDIR_DIAS * 864e5 && !(e.uMed != null && Math.abs(e.uMed - _uNow) >= 0.005);
+    const _fresco = e.t && ahora - e.t < (e.nm ? PYCAT_REMEDIR_DIAS : pycatRemedirDias(e)) * 864e5 && !(e.uMed != null && Math.abs(e.uMed - _uNow) >= 0.005);
     if (e.nm && _fresco) { cuenta.noDeja++; continue; }
     if (!_rebuscar && _fresco) { cuenta.frescos++; continue; }
     cola.push([cod, e]);
@@ -9284,7 +9294,7 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
   const toca = cola.slice(0, maxN);
   console.log(`(de los ${cola.length} para medir, ${cola.filter(([, e]) => !rubro(e.n)).length} son de los rubros que ya vendemos y van primero)`);
   console.log(`=== ${esLista ? 'LISTA DE ' + String(opts.nombre || opts.lista).toUpperCase() : 'CATÁLOGO DE PARAGUAY'} · medir contra ML ${aplicar ? '' : '(PRUEBA: no escribo nada)'} ===`);
-  console.log(`${todos.length} guardados · ${cuenta.fuera} fuera por regla · ${cuenta.cand} ya son candidatos · ${cuenta.ficha} ya son fichas · ${cuenta.frescos} medidos hace menos de ${PYCAT_REMEDIR_DIAS} días · ${cuenta.noDeja} que ML no deja medir (se reintentan a los ${PYCAT_REMEDIR_DIAS} días) · ${cola.length} para medir · esta vuelta ${toca.length}`);
+  console.log(`${todos.length} guardados · ${cuenta.fuera} fuera por regla · ${cuenta.cand} ya son candidatos · ${cuenta.ficha} ya son fichas · ${cuenta.frescos} medidos hace poco (15%+ cada ${PYCAT_REMEDIR_DIAS} días · abajo de ${PYCAT_CERCA_PCT}% o fuera de ML cada ${PYCAT_REMEDIR_LEJOS}) · ${cuenta.noDeja} que ML no deja medir (se reintentan a los ${PYCAT_REMEDIR_DIAS} días) · ${cola.length} para medir · esta vuelta ${toca.length}`);
   if (!toca.length) return esLista ? { quedan: 0 } : undefined;
   let tok = null;
   for (const label of labels) {
