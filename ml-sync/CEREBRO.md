@@ -101,6 +101,13 @@ tema acá (y su detalle en el anexo si hace falta), en `CLAUDE.md` (historia) y 
 - **¿Tiene sentido este descuento?** Antes de cualquier `entrarpromo`: sobra de verdad (90+ días al ritmo con stock), no es
   recién llegado (30+ días desde la caja) y queda en 25%+ en el peor caso (abajo sólo con motivo en el 🧠). Si falla una, no va.
 - Medir si la promo vende más (plata por día antes vs durante). No suponerlo. CyberMonday 02/11. El ×1,4 de regalo no está confirmado.
+- **Lo medido de las visitas (20/10/2026, `vistas:150`, 150 días; las visitas se saben en 29% de los días):** bajar 3-25% sube
+  las visitas +22% a +56% y las ventas por día ×1,5 o más (pocos casos: 26) · subir 3-10% baja visitas ~12% pero casi no las
+  ventas (+6%) · subir +25% baja ventas ~30% · perder la caja: visitas −11% a −33% y ventas −40% · sin stock en Full: visitas
+  −26% · **tachado contra liso al mismo precio final: SIN PRUEBA todavía** (7 casos de 2-6 días: visitas −4% la mediana,
+  ventas por día +13%, pura casualidad posible). Lo nuevo: no hay visitas guardadas de las primeras semanas para decir nada.
+  Se vuelve a correr `vistas` a fin de mes (las 12 que el 20/10 pasaron de descuento a precio liso al mismo precio son la
+  primera comparación limpia).
 
 ## 7 · PAUSADAS, PUBLICACIONES, VÍNCULOS
 - Activar lo pausado con stock en Full es prioridad; lo que no se activa va al `pregunto:` con motivo. Lo que está en depósito (fuera de Full) se pausa solo.
