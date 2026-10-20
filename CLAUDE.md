@@ -9341,6 +9341,14 @@ pedidos de Bs As) y 📋 Dai Nippon (las listas con `bsas`, con sus ✅ Probados
 (`listaProv`) no sale en "De siempre". La solapa elegida queda en `localStorage` (`cycBsasVista`). Si no hay listas de Bs As, no hay solapas.
 **v25.14 (mismo día):** *"dame poder elegir si son de bs as de siempre o de nippon"* → cada pedido de Bs As tiene el botón 🏬 De siempre / 📋 Dai Nippon (`pedCambiarGrupo`: pone o saca `listaProv`, el viejo queda en `listaProvViejo`). Y *"sacar ese de dai nippon"* → en la solapa Dai Nippon no se dibuja el ⏸️ sacar por ahora (sigue en 📋 Listas).
 
+## 💳 LA PREMIUM GEMELA LA CREO YO, EN LA MISMA PUBLICACIÓN (20/10/2026, eligió la a)
+Él: *"no hay que crear publicación nueva, hay que crear un método distinto de pago"* y *"si tengo que crear las premium a mano tardo
+muchísimo"*. `gemela` (solo lee) lista las Clásicas de $50.000+ con stock en Full sin Premium y el precio Premium de igual plata neta;
+`gemelacrea:<MLA>=<precio>:go` (ml-sync) agrega la Premium al mismo producto de ML (comparte stock), la relee, la vincula a la ficha y
+le pone el tag 💳 `gemela`. Hechas el 20/10: Coconut Passion `MLA4103953976`, Animale `MLA4103966984`, Azzaro `MLA4103941572`, Joystick
+`MLA4103890882` (todas activas por Full, releídas). Recién creada puede salir pausada sin stock: releer a los ~5 min. ML bloquea ver la
+página desde el robot (pide verificación): capturas de ML no se pueden sacar, se le pasan los links. Detalle en `ml-sync/REVISION.md`.
+
 ## 🆕 LANZAMIENTO CON TACHADO REAL Y 🧪 PRUEBA DEL TACHADO (20/10/2026, eligió 1a 2a 3a+3b)
 Lo nuevo arranca ~20% arriba del precio correcto (buscar techo y sacar ganancia) y baja recién cuando `techo95` dice 95% que ese
 precio es el techo (visitas × conversión típica a ese precio, sin ventas); ahí se marca 🏔️ y cada escalón baja como descuento
