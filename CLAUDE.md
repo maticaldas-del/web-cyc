@@ -9309,3 +9309,4 @@ Lo de "las tiró por truchas" (19/09) vale sólo para aquel lote viejo: una tarj
 Con los Victoria's Secret (9 en descuento abajo del 25% y 3 recién llegadas con descuento por error): ningún descuento sin que se
 cumplan las tres: sobra de verdad (+90 d de stock al ritmo con stock), no es recién llegado (30+ d desde la caja) y queda en 25%+ en
 el peor caso. Abajo de 25% sólo con motivo dicho en el 🧠. Los 12 se sacaron ese día. Detalle en `ml-sync/CEREBRO.md` (🤔).
+**Y las promos donde pone plata ML también (20/10/2026, eligió la a):** pasan por las mismas tres condiciones; que ML ponga parte no alcanza.

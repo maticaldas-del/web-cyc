@@ -1775,3 +1775,4 @@ cuando el emparejado por nombre agarra un set u otro tamaño (caso Cheeky Cool B
 - 20/10 · VS: salí del descuento propio en 12 publicaciones (9 abajo del 25% y Love Addict, Sizzling, Wild Neroli recién llegadas) · regla nueva 🤔 ¿tiene sentido el descuento? (CEREBRO.md): sobra real, no recién llegado, 25%+ peor caso. Qué chequear: que vuelvan al precio de lista y que el próximo `analizapromo` no proponga descuentos que fallen la regla.
 
 - 20/10/2026 · `planilla` · lista 🤔 de descuentos míos vigentes que ya no cumplen la regla (sobra, recién llegado, peor caso). Chequear: que la lista salga vacía al terminar cada completa.
+- 20/10/2026 · `entrarpromo` salir y el guardián de promos mandan `offer_id` (las SMART/compartidas daban 400 "Offer id is required" y no salían). Y las promos con plata de ML pasan por las mismas tres condiciones (eligió la a). Chequear: que una SMART salga con ✓.

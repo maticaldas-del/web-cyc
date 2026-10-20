@@ -7327,6 +7327,7 @@ async function removeStartedPromos(itemId, token, permitidas) {
     const qs = new URLSearchParams({ app_version: 'v2' });
     if (pr.id) qs.set('promotion_id', pr.id);
     if (pr.type) qs.set('promotion_type', pr.type);
+    if (pr.ref_id || pr.offer_id) qs.set('offer_id', pr.ref_id || pr.offer_id);   // las SMART/compartidas lo piden
     try {
       const r = await fetch(ML_API + '/seller-promotions/items/' + itemId + '?' + qs.toString(), {
         method: 'DELETE', headers: { Authorization: 'Bearer ' + token },
@@ -38657,7 +38658,7 @@ async function main() {
           console.log(`   saldría de ${perm.tipo} ${perm.id || ''}${pr ? ` (${pr.status}, ${money(Math.round(Number(pr.price) || 0))})` : ' (ML ya no la muestra puesta)'}`);
           if (!aplicar) continue;
           if (pr) {
-            const qs = new URLSearchParams({ app_version: 'v2' }); if (pr.id) qs.set('promotion_id', pr.id); if (pr.type) qs.set('promotion_type', pr.type);
+            const qs = new URLSearchParams({ app_version: 'v2' }); if (pr.id) qs.set('promotion_id', pr.id); if (pr.type) qs.set('promotion_type', pr.type); if (pr.ref_id || pr.offer_id) qs.set('offer_id', pr.ref_id || pr.offer_id);   // las SMART/compartidas: sin esto ML contesta 400 "Offer id is required"
             const r = await fetch(ML_API + '/seller-promotions/items/' + q.mla + '?' + qs.toString(), { method: 'DELETE', headers: { Authorization: 'Bearer ' + tk } });
             let det = ''; if (!r.ok) { try { det = (await r.text() || '').slice(0, 200); } catch { det = ''; } }
             _anotarEscrituraML(r, q.mla, 'salir de una promoción de ML', det);
