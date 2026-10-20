@@ -9272,3 +9272,11 @@ de nombrar las fichas como comprasparaguay: el código Nissei (`codPy`) sigue si
 Él: *"desde que llegan tenemos 7 dias habiles para pagar, sino nos cobran un 10% mas"*. La tarjeta de cada pedido (Pedidos → Paulvic →
 Pedidos hechos) dice cuándo llega aprox (lo que tardaron los anteriores: el del 06/10 tardó 11 días) y hasta cuándo pagar. Al llegar,
 avisarle los días hábiles que le quedan.
+
+## 🎄 NAVIDAD: A MEDIADOS DE NOVIEMBRE SE PIDE PARA 45 DÍAS (20/10/2026, eligió la 4a)
+Lo que subió en Navidad 2025 (ventas del 17 al 30/12 contra el ritmo normal) se pide a mediados de noviembre para cubrir 45
+días, no 30, así llega antes del 15/12 y no se corta en la semana fuerte. Recordatorio agendado para el 14/11.
+
+## 💾 YA NO HAY TARJETAS TRUCHAS (20/10/2026, dicho por él)
+*"nunca mas trajimos truchas. son todas originales ahora"*. La SanDisk 32GB (`MLA1809285407`, Matías) es original y queda activa.
+Lo de "las tiró por truchas" (19/09) vale sólo para aquel lote viejo: una tarjeta de memoria se trata como cualquier producto.
