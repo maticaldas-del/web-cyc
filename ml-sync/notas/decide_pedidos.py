@@ -137,7 +137,17 @@ _ids={p['id'] for p in prods}; _vars={p['id']+'#'+v['v'] for p in prods for v in
 for k in JU:
     if k not in _ids and k not in _vars: print(f"⚠️ el juicio {k} no coincide con ningún producto/color del log: no se usa")
 # ---- notas para decido ----
+# PRECIO DE VENTA A MANO PARA EL MÁXIMO (20/10/2026): la mediana de 60 días arrastra ventas viejas baratas. El Ferrari Negro
+# quedaba en $68.510 (vendía barato y se agotaba) y con eso "el precio de Paraguay no da" cuando al precio que más plata dejó
+# ($75.360) da ~27%. ml-sync/notas/venta_max.txt · <prodId>=<precio>|<motivo> · manda sobre la cuenta de abajo.
+VM={}
+_vp=os.path.join(os.path.dirname(os.path.abspath(__file__)),'venta_max.txt')
+if os.path.exists(_vp):
+    for _l in open(_vp):
+        _m=re.match(r'^(p\d+)=(\d+)\|',_l.strip())
+        if _m: VM[_m.group(1)]=int(_m.group(2))
 def venta(p):
+    if p['id'] in VM: return VM[p['id']]
     # El precio NORMAL para el máximo de compra: el menor entre el de hoy y la mediana de lo cobrado en 60 días (sin remates).
     # Un precio subido por escasez no infla el máximo (revisión 9, 13/10/2026). Sin ventas en 60 d, el de hoy menos las subas recientes.
     pr=p['precio']; best=pr

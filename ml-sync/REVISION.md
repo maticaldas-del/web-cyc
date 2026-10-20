@@ -361,6 +361,15 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
   código (`mllinks.variant` o el título), su Excel, su ritmo (`ritmonormal`/ventas con `variante`) y su `stockhist`. Las cajas
   llegadas no tienen color: por color no se usan. Chequear: la `CUENTA` del final sigue cerrando.
 
+### Pedidos: precio de venta a mano para el máximo (`notas/venta_max.txt`, 20/10/2026)
+`decide_pedidos.py` mide si reponer da con el menor entre el precio de hoy y la mediana de 60 días. En lo que vendía barato y
+se agotaba, esa mediana tira para abajo y da "el precio de Paraguay no da" cuando sí da. Caso: Ferrari Negro, medido a $68.510
+(14%) cuando al precio que más plata dejó, $75.360, deja ~27%. El 16/10 quedó en "no se repone" por eso. Ahora
+`ml-sync/notas/venta_max.txt` (`<prodId>=<precio>|<motivo>`) manda sobre esa cuenta. **Qué chequear:** que cada renglón sea un
+precio al que ya vendió con 5+ días de stock, nunca uno de escasez ni de prueba sin ventas. Y en los juicios de
+"no se repone" de `juicios.txt`, que el motivo diga cuál de las dos cosas pasa (Nissei no lo tiene / el precio no da) y con qué
+precio de venta se midió.
+
 ### El análisis a fondo aplicado (16/10/2026, eligió "lo que recomiendes" en las 11)
 Qué es: reglas nuevas del cerebro (`ml-sync/CEREBRO.md`, sección 🔬). Código: `pedidostodo` imprime `cortes N` (veces que
 quedó en 0 en Full en 60 d, `cortes60`) y `decide_pedidos.py` compra 45 días lo de Bs As que se corta 2+ veces, vende 0,5+/día
