@@ -1712,6 +1712,11 @@ el navegador las achicaba hasta que entraran todas (5 px c/u). Arreglo: `#vp-day
 Probado con maqueta de 30 tarjetas a 390px: 5 px → 107 px. **Chequear: al poner overflow en algo que vive adentro de una lista
 flex con alto máximo, que no se achique; probar con muchas tarjetas, no con tres.**
 
+### Etapa 7 · 20/10/2026 · v25.06 · En camino: el contenido de la caja en lista con el código de Full
+Pedido suyo ("uno arriba del otro con unidad y código, así es más fácil el armado del celu"). `renderCajasEnCamino`: cada renglón
+= unidades grandes · código de la etiqueta de Full de esa cuenta (`etiquetaFullDe`, la misma de Armar caja; sin código dice
+"sin código", no adivina) · producto y variante. Chequear: que el código sea el de la cuenta de la caja y de esa variante.
+
 ### Etapa 2 · 19/10/2026 · v25.01 · Paulvic: "a pagar ≈" en el pedido en camino
 Pedido suyo. `_pvPrecioUnitAnt`: lo que salió cada unidad en el último pedido con monto (calculadora ÷ llegadas, sin flete); la
 tarjeta en camino muestra unidades pedidas × eso como "≈ $X · aprox" (y arriba a la derecha). No se guarda en ningún lado: es sólo
