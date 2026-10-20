@@ -899,6 +899,15 @@ Idea 1 del ayudante de ideas: `decide_pedidos.py` copiaba la cantidad de `juicio
 pide N − (Full + oficina + camino) y, si da 0, avisa "✅ juicio cumplido" para sacarlo o renovarlo. Se sacaron los 3 cumplidos.
 Chequear: lo agotado pide lo mismo que antes; cada aviso de cumplido se resuelve en la completa.
 
+### Lo que ninguna regla nombra: `raros`, revisor en contra y preguntas (20/10/2026, eligió 1abc 2a 3a 4ab)
+Qué es: (1) probe `raros` (sync.mjs, solo lee, va en todas las vueltas): cada publicación contra su propio año (🧭), cruces de
+sentido común (🔀), dato dudoso que frena tocar el precio (⚠️), y precio sin certeza con familia, visitas y parecidas (💭).
+(2) Un sexto ayudante "revisor en contra" en la completa, antes de aplicar. (3) `ml-sync/notas/preguntas.md`: cada corrección
+como pregunta general. (4) `ml-sync/CEREBRO_borrador.md`: CEREBRO ordenado con la tabla de quién manda (pendiente de su OK).
+Qué chequear: que 🧭 y 🔀 no salten en la mitad del catálogo (un aviso que suena siempre no se mira: el 20/10 el primer intento
+daba ⚠️ en 156 de 235 por la marca `inc`, y "cobra distinto" en todo lo subido a propósito; se sacaron) · que lo que está en ⚠️
+de verdad no se toque · que las familias del 💭 se juzguen cuando ya se sabe · que cada corrección nueva sume su pregunta.
+
 ## 8 · DATOS E HISTORIAL (nueva, 08/10/2026)
 - **🚧 El techo en la línea de tiempo (18/10/2026, v24.49).** `lineaPintar` dibuja una raya roja punteada en el carril del precio por cada `cyc/techofreno/<MLA>` (`probado`, roja "ya no vende") y otra verde en `volvio` ("sí vende") de las publicaciones del gráfico (respeta el color elegido), desde el día que se anotó; entra en la escala. Qué chequear: que todo techo encontrado se anote con `techofreno:<MLA>=<precio>|motivo;go` (si no, no aparece).
 - **Reloj de los 4 meses en la línea de tiempo (16/10/2026, v23.92 · corregido en v23.93: EDAD DE LA UNIDAD MÁS VIEJA, primero

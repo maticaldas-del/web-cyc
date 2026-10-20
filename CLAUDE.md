@@ -867,6 +867,16 @@ mañana. Detalle en `ml-sync/CEREBRO.md` (🔭). Él preguntó si con eso no iba
 eso se te ocurra a vos"*) y las correcciones se cuentan en `ml-sync/notas/correcciones.md` (*"tu objetivo es que no tenga que
 corregirte en nada"*).
 
+## 🧭 LO QUE NO TENÍA EN CUENTA: CÓMO SE ATACA (20/10/2026, eligió 1abc 2a 3a 4ab)
+Él: *"claro el problema principal son cosas que no tenias en cuenta. ese es el problema real, como podemos hacer para mejorar
+eso?"*. Le dije que por decisión acierto ~85-90% pero que "que no se me pase nada" está hoy cerca de 0% por semana (2-4
+correcciones por día del 16 al 19/10), y que no se puede prometer 95%. Eligió todo: (1a) `raros` en cada vuelta, que compara
+cada publicación contra su propio año sin regla por caso · (1b) un ayudante "revisor en contra" antes de aplicar la completa ·
+(1c) cada corrección se vuelve pregunta general en `ml-sync/notas/preguntas.md` · (2a) ⚠️ dato dudoso = no tocar el precio ·
+(3a) CEREBRO reescrito ordenado con la tabla de QUIÉN MANDA (`ml-sync/CEREBRO_borrador.md`, **falta su OK** para reemplazar) ·
+(4a/b) lo que vende poco se juzga en familia, por visitas y por parecidas, y dice "💭 sin certeza, falta X". Detalle en
+`ml-sync/CEREBRO.md` (🧭). Y la meta para medir si sirve: bajar de 2-4 correcciones por día a 1-2 por semana en un mes.
+
 ## 📋 LA LISTA ÚNICA DEL CEREBRO: `ml-sync/CEREBRO.md` (13/10/2026, pedido suyo)
 
 Él: *"no quiero que te olvides las cosas que agregamos a cerebro (...) me gustaría que tengas una lista de TODO lo que

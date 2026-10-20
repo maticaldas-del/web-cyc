@@ -2,8 +2,35 @@
 
 Pedido suyo del 13/10/2026: *"no quiero que te olvides las cosas que agregamos a cerebro (...) me gustaría que tengas
 una lista de TODO lo que tener en cuenta"*. **Cada vuelta (08:52 completa · 10:52, 12:52, 14:52, 16:52, 18:52 y 20:52 cortas) arranca
-leyendo este archivo.** Cada regla nueva que él dé se agrega ACÁ en el mismo commit (además de CLAUDE.md, que tiene
+leyendo este archivo y `notas/preguntas.md`.** Cada regla nueva que él dé se agrega ACÁ en el mismo commit (además de CLAUDE.md, que tiene
 la historia y el porqué). Si algo de acá choca con CLAUDE.md, manda lo más nuevo y se corrige el otro.
+
+## 🧭 LO QUE NINGUNA REGLA NOMBRA (20/10/2026, eligió 1abc 2a 4ab) · MANDA SOBRE LO DE ABAJO
+Él: *"el problema principal son cosas que no tenías en cuenta. ese es el problema real"*. Las reglas sólo encuentran lo que
+nombran. Desde hoy, además de las reglas:
+ 1. **`raros` en TODAS las vueltas** (ml-consulta, solo lee, va junto con planilla/escasez/lupa). Compara cada publicación contra
+    SU PROPIO AÑO (semanas con stock), sin regla por caso, y saca cuatro listas:
+    · **🧭 FUERA DE LO NORMAL** (vende mucho menos o más rápido que nunca con la certeza de Poisson, visitas muy distintas a lo
+      normal, la ven y no compran). Lo que yo cambié de precio en 21 días no entra acá (va a 💭). **Se vacía en esa vuelta.**
+    · **🔀 NO CIERRA** (el mismo producto a otro precio en otra publicación, margen de más de 120% o negativo, la estrategia que
+      dice una cosa y el stock otra, descuento que ya no hace falta). **Se vacía en esa vuelta.**
+    · **⚠️ DATO DUDOSO (2a)**: stock o precio sin leer en 3 días, línea que no se escribe, margen sin medir o viejo, sin costo.
+      **Sobre esas NO se toca el precio esa vuelta** (salvo que él lo pida) y se anota por qué en el 🧠.
+    · **💭 SIN CERTEZA (4a/4b)**: precio cambiado en 30 días que todavía no se puede juzgar. Dice cuánto falta, la señal temprana
+      de las visitas, el juicio EN FAMILIA (las del mismo producto cambiadas el mismo día, ej. los aromas del Paulvic) y las
+      parecidas del rubro a precio parecido. Lo que sola no se sabe nunca (falta 30+ días) se juzga en familia, por visitas o
+      por las parecidas: nunca se deja colgado. No se vuelve atrás ni se da otro escalón sin un motivo de esa lista.
+    En el chat: "raros: 🧭 N → N · 🔀 N → N · ⚠️ N sin tocar · 💭 N midiendo (familias que ya se saben: …)".
+ 2. **EL REVISOR EN CONTRA (1b)** en la completa: con las decisiones de los 4 ayudantes ya juntas y ANTES de aplicar, un sexto
+    ayudante (esfuerzo max, sólo lee) abre la ficha de cada publicación que cambia y busca en qué me equivoco: un dato que no
+    cierra, una regla de mayor prioridad que pisé, una pregunta de `notas/preguntas.md` sin contestar, una decisión de menos de 7
+    días que deshago, un ⚠️ dato dudoso. No propone precios: marca. Lo marcado lo miro yo; si no lo puedo resolver, ESA no se
+    aplica esa vuelta. En el chat: "revisor en contra: N marcadas · R resueltas · F frenadas".
+ 3. **LAS PREGUNTAS (1c)**: `ml-sync/notas/preguntas.md`. Cada corrección suya se convierte ahí en una pregunta general que se le
+    hace a TODAS las publicaciones (no una regla para ese caso). Los ayudantes y yo se las hacemos a cada ficha; la 20 siempre:
+    *"si él mirara esta ficha ahora, ¿qué me preguntaría?"*. Corrección nueva → su pregunta en el mismo commit que `correcciones.md`.
+ 4. **LAS REGLAS SE ORDENAN (3a)**: `ml-sync/CEREBRO_borrador.md` es este archivo ordenado con la tabla de QUIÉN MANDA. Mientras
+    él no lo apruebe, éste sigue mandando; cuando lo apruebe, lo reemplaza.
 
 ## 🔭 PLAN 20X: CADA PRODUCTO Y CADA VENTA, A FONDO (20/10/2026, eligió 1a 2a 3a 4a) · MANDA SOBRE LO DE ABAJO
 Él: *"tengo el plan 20x. aprovechemos. lo primero que quiero es que cuando analices las ventas y productos le des más
