@@ -8288,7 +8288,10 @@ async function calcAntiguoFilas(db, products, labels, soloA) {
 const STOCK_ANTIGUO_TABLA = {
   pequeno: [[0, 120, 0], [120, 180, 350], [180, 365, 3250], [365, 1e9, 7900]],
   mediano: [[0, 120, 0], [120, 180, 470], [180, 365, 4485], [365, 1e9, 10930]],
-  grande: [[0, 120, 0], [120, 180, 1355], [180, 365, 18280], [365, 1e9, 39365]],
+  // Lo GRANDE (los Tenders) paga desde los 60 días, igual que la web (`almacDiasDe`): decisión suya 2a del 20/10/2026 ("casi
+  // seguro 60"). La factura de ML trae el almacenamiento por cuenta y no por producto, así que no confirma el día exacto; entre
+  // 60 y 120 se usa la tarifa del primer escalón ($1.355) como estimación. Si ML muestra otra cosa, se cambia acá y en la web.
+  grande: [[0, 60, 0], [60, 180, 1355], [180, 365, 18280], [365, 1e9, 39365]],
   extragrande: [[0, 120, 0], [120, 180, 4680], [180, 365, 47840], [365, 1e9, 92400]],
 };
 const DIA_CIERRE_ALM_CTA = { adriana: 10, luciana: 12, matias: 12, ayelen: 12 };
@@ -30936,7 +30939,7 @@ async function main() {
         // Tabla completa de ML (captura suya del 04/10/2026): 4-6 meses · 6-12 meses · más de 12 meses.
         pequeno: [[0, 120, 0], [120, 180, 350], [180, 365, 3250], [365, 1e9, 7900]],
         mediano: [[0, 120, 0], [120, 180, 470], [180, 365, 4485], [365, 1e9, 10930]],
-        grande: [[0, 120, 0], [120, 180, 1355], [180, 365, 18280], [365, 1e9, 39365]],
+        grande: [[0, 60, 0], [60, 180, 1355], [180, 365, 18280], [365, 1e9, 39365]],   // 60 d, igual que STOCK_ANTIGUO_TABLA (decisión 2a, 20/10/2026)
         extragrande: [[0, 120, 0], [120, 180, 4680], [180, 365, 47840], [365, 1e9, 92400]],
       };
       // Los lotes que ML informa en su Excel "Cargos por stock antiguo" (`cyc/lotesfull/<código de Full>`, comando
