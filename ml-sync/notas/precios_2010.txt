@@ -32,3 +32,6 @@ MLA1642997777=14950#volviendo|Paulvic Rose Mujer vuelve a $14.950 con la Persea
 MLA1464372041=4290#techo|QUÉ HICE: Infusor barato de $3.490 a $4.290. POR QUÉ: a $3.490 casi no deja ganancia y le saca ventas a la cajita. SI NO PASA: vuelve
 MLA1852539309=23990#bajando|QUÉ HICE: Pendrive 8gb a $23.990. POR QUÉ: 0 ventas en 3 días a $26.990 cuando se esperaban 3. Escalón de la escalera
 MLA3568724892=5990#techo|QUÉ HICE: Tapón de vino de $4.670 a $5.990. POR QUÉ: las dos subas anteriores rindieron y tiene 30 u.
+MLA1699834745=4290#bajando|QUÉ HICE: Centímetro Blanco a $4.290 (ML no dejó ponerlo como descuento). POR QUÉ: terminó la escasez, llega la caja de 148 en 4 días y a $4.990 vendió 1 cuando se esperaban 7
+MLA3393594608=21990#bajando|QUÉ HICE: Cubreasiento x5 a $21.990 (ML no dejó descuento). POR QUÉ: 0 ventas en 3,5 días a $25.990
+MLA3039525568=6490#bajando|QUÉ HICE: Pizarra Rosa a $6.490 (ML no dejó descuento). POR QUÉ: 0 ventas en 3,5 días a $7.490
