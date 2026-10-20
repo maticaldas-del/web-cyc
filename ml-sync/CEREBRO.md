@@ -725,6 +725,10 @@ menos en ese producto pero nos da por otro lado"*. Toda comparación de precios 
 día MENOS: **$100 por unidad vendida** (sólo el TIEMPO: comprar, contar, etiquetar, armar cajas; la caja y los reclamos ya están en el costo de cada ficha, contarlos de nuevo sería doble) · **3% de lo facturado** (lo que gasta del tope de H) · y,
 al decidir, **2% por mes sobre el costo del stock** que queda parado. A igual plata neta gana el precio alto. La ficha médica ya mide
 así (`PD_TRABAJO_U`, `PD_TOPE_PCT` en sync.mjs). Los números se pueden ajustar si él dice otra cosa.
+**Premium contra Clásica (20/10/2026, él: *"tené en cuenta los gastos extras por vender más caro y llenar el cupo del monotributo
+más rápido"*):** "mismo margen" no alcanza. La Premium factura más por la misma venta, así que paga más IIBB y monotributo (ya entran
+en el margen) y gasta más tope de H (el 3% de lo facturado de MÁS). Se comparan las dos con esta plata neta: la Premium vale la pena
+sólo si, descontado eso, deja lo mismo o más por día que la Clásica sola. Ferrari Rojo: $4.000 más caro = ~$120 más de tope por venta.
 
 ## 📉 ABAJO DEL 25% ES PÉRDIDA, AUNQUE DEJE GANANCIA (18/10/2026, regla suya)
 Él, con el Pendrive 128gb rematado al 13% por haber mandado de más: *"todo lo que es menos del 25% es pérdida en el contexto del
