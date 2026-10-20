@@ -8601,7 +8601,7 @@ const RE_CAND_PERF = /perfum|parfum|\bedp\b|\bedt\b|eau de|fragan|fragr|body spl
 function cuentaLista(cat) {
   const v = Object.values(cat || {}).filter((e) => e && e.n);
   // Mínimo 100 ventas en ML (18/10/2026, regla suya): sin `vend` cargado va a revisar; con menos de 100 queda afuera.
-  const m25 = (e) => !e.noEs && !e.sacado && !e.noWeb && e.m != null && Number(e.m) >= 25 && listaCostoVigente(e) && /^https:\/\//.test(e.mf || '') && !(e.vend != null && Number(e.vend) < 100);
+  const m25 = (e) => !listaNoEsVale(e) && !e.sacado && !e.noWeb && e.m != null && Number(e.m) >= 25 && listaCostoVigente(e) && /^https:\/\//.test(e.mf || '') && !(e.vend != null && Number(e.vend) < 100);
   // DESDE EL 20/10/2026 (eligió la a) sólo da lo que el chat de compras confirmó mirando ML (`ok`, de `listadato`) para ESE catálogo
   // (`okCat`, o el catálogo fijado con `mi=`). Antes también entraba lo que el robot emparejó solo y "parecía" bien: 21 de 36 estaban mal.
   const da = (e) => m25(e) && Number(e.vend) >= 100 && listaOkVale(e);
@@ -8611,6 +8611,10 @@ function cuentaLista(cat) {
 }
 // 20/10/2026 · etapa 4: con el catálogo fijado a mano (`miFijo`) vale sólo si lo MEDIDO (`mi`) es ese catálogo: si una vuelta midió
 // otro (ML no contestó el fijado y se buscó por nombre), el margen es de otro producto y no se da por confirmado. Misma regla en la web.
+// EL "OTRO PRODUCTO" VALE PARA EL CATÁLOGO QUE SE MIRÓ (20/10/2026): `noEs` lo pone el chat de compras con `listadato …=no` mirando el
+// catálogo `mi` de ese momento. Si después el robot encuentra OTRO catálogo (p. ej. con el nombre traducido), el "no" ya no vale.
+// `noEsCat` = el catálogo rechazado; las marcas viejas sin él se anotan con el `mi` de antes la primera vez que se vuelve a medir.
+function listaNoEsVale(e) { return !!(e && e.noEs && (!e.noEsCat || String(e.noEsCat).toUpperCase() === String(e.mi || '').toUpperCase())); }
 function listaOkVale(e) { return !!(e && e.ok && (e.miFijo ? String(e.miFijo).toUpperCase() === String(e.mi || '').toUpperCase() : (!e.okCat || String(e.okCat).toUpperCase() === String(e.mi || '').toUpperCase()))); }
 // EL MARGEN TIENE QUE SER DEL COSTO DE HOY (etapa 3, 20/10/2026): `lista:`, `listadto` y `listaweb` cambian el costo `p` y el margen `m`
 // (y el `ok`) quedaban los medidos con el costo viejo. `uMed` = el costo con el que se midió; si no es el de hoy, no "da" hasta que
@@ -9262,7 +9266,7 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
     // en cada vuelta y gastaban la tanda.
     // Lo que no se encontró en ML con el nombre viejo (sin catálogo exacto / nadie lo vende) se vuelve a buscar con el nombre
     // traducido aunque esté fresco (`qv` = versión del traductor con que se buscó).
-    const _rebuscar = esLista && (e.sc || e.sv) && Number(e.qv || 0) !== LISTA_NOMBRE_VER;
+    const _rebuscar = esLista && (e.sc || e.sv || e.noEs) && Number(e.qv || 0) !== LISTA_NOMBRE_VER;   // noEs: se busca de nuevo, sin el catálogo rechazado
     const _fresco = e.t && ahora - e.t < PYCAT_REMEDIR_DIAS * 864e5 && !(e.uMed != null && Math.abs(e.uMed - _uNow) >= 0.005);
     if (e.nm && _fresco) { cuenta.noDeja++; continue; }
     if (!_rebuscar && _fresco) { cuenta.frescos++; continue; }
@@ -9330,6 +9334,8 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
       // escribe "Fone de Ouvido JBL Tune 520BT - Preto" y buscando eso ML trae el 730BT; con "jbl 520bt" trae el correcto.
       const nB = esLista ? limpiarNombreLista(e.n) || e.n : e.n;   // listas: el nombre traducido (ver limpiarNombreLista)
       if (esLista) upd.qv = LISTA_NOMBRE_VER;
+      const _rechazado = esLista && e.noEs ? String(e.noEsCat || e.mi || '').toUpperCase() : '';
+      if (esLista && e.noEs && !e.noEsCat && e.mi) upd.noEsCat = e.mi;
       const mods = _rvMod(nB); const pal = _rvNorm(nB).split(' ').filter((w) => (w.length >= 2 || /^\d$/.test(w)) && !RV_VACIAS.has(w) && !PYCAT_RELLENO.has(w));
       const qs = [...new Set([mods.length ? [pal[0], ...mods].filter(Boolean).join(' ') : null, pal.slice(0, 7).join(' '), String(nB).slice(0, 80)].filter((x) => x && x.length >= 3))];
       const vistosB = new Map();
@@ -9348,7 +9354,7 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
         if (vistosB.size >= 15) break;
         await espera(250);
         const bus = await mlGetR(`/products/search?site_id=MLA&q=${encodeURIComponent(q.slice(0, 80))}&limit=8`);
-        for (const r of ((bus && bus.results) || [])) if (r && r.id && !vistosB.has(r.id)) vistosB.set(r.id, r);
+        for (const r of ((bus && bus.results) || [])) if (r && r.id && !vistosB.has(r.id) && String(r.id).toUpperCase() !== _rechazado) vistosB.set(r.id, r);
       }
       const resB = [...vistosB.values()];
       // Se prueban los que no tienen reparos DUROS (otro modelo, otro tamaño, otro color, edición/pack/lite…). Que falte alguna
@@ -20203,7 +20209,7 @@ async function main() {
         // Los de 25%+ por dónde están (20/10/2026): qué les falta para "dar" de verdad.
         { const q = { ok: 0, sinVend: 0, sinOk: 0, menos100: 0, noEs: 0, viejo: 0, sinMi: 0, sacado: 0 };
           for (const e of v) { if (!(e.m != null && Number(e.m) >= 25)) continue;
-            if (e.sacado || e.noWeb) { q.sacado++; continue; } if (e.noEs) { q.noEs++; continue; } if (!e.mi) { q.sinMi++; continue; }
+            if (e.sacado || e.noWeb) { q.sacado++; continue; } if (listaNoEsVale(e)) { q.noEs++; continue; } if (!e.mi) { q.sinMi++; continue; }
             if (!listaCostoVigente(e)) { q.viejo++; continue; } if (e.vend != null && Number(e.vend) < 100) { q.menos100++; continue; }
             if (e.vend != null && listaOkVale(e)) q.ok++; else if (e.vend == null) q.sinVend++; else q.sinOk++; }
           console.log(`   de los ${c.d25} de 25%+: ${q.ok} confirmados (ventas 100+ y ✅) · ${q.sinVend} sin ventas cargadas · ${q.sinOk} con ventas y sin ✅ · ${q.menos100} con menos de 100 ventas · ${q.noEs} otro producto · ${q.viejo} medidos con un costo viejo · ${q.sinMi} sin catálogo · ${q.sacado} sacados o fuera de la web`); }
@@ -20224,7 +20230,7 @@ async function main() {
       let tot = 0; const filas = []; const porProv = {};
       for (const [k, pv] of Object.entries(provs)) { if (pv.desc || (solo && k !== solo.toLowerCase())) continue;
         const cat = (await db.get('mlapi/listas/' + k)) || {}; const rec = Number(pv.rec) || 0;
-        for (const [cod, e] of Object.entries(cat)) { if (!e || e.noEs || e.sacado || e.noWeb || !(e.m != null && Number(e.m) >= 25 && e.mi) || !listaCostoVigente(e)) continue;   // costo nuevo sin medir: el margen no vale (etapa 3, 20/10/2026)
+        for (const [cod, e] of Object.entries(cat)) { if (!e || listaNoEsVale(e) || e.sacado || e.noWeb || !(e.m != null && Number(e.m) >= 25 && e.mi) || !listaCostoVigente(e)) continue;   // costo nuevo sin medir: el margen no vale (etapa 3, 20/10/2026)
           const okV = listaOkVale(e);
           if (e.vend != null && (Number(e.vend) < 100 || okV)) continue;
           const falta = e.vend == null ? (okV ? 'ventas' : 'ventas+ok') : 'ok';
@@ -20289,7 +20295,7 @@ async function main() {
         if (!prov) { malos.push(x + ' (falta el proveedor antes)'); continue; }
         const i = x.indexOf('='); const cod = x.slice(0, i).trim().replace(/[.#$\[\]\/]/g, '_'); const ops = x.slice(i + 1).split(',').map((o) => o.trim());
         const u = {}; for (const o of ops) { if (/^\d+$/.test(o)) u.vend = parseInt(o, 10); else if (/^\+?\d+$/.test(o.replace('+', ''))) u.vend = parseInt(o.replace('+', ''), 10);
-          else if (o === 'ok') { u.ok = 1; u.noEs = null; } else if (o === 'no') { u.noEs = 1; u.ok = null; } else if (/^mi=MLA\d+$/i.test(o)) { u.miFijo = o.slice(3).toUpperCase(); u.t = null; u.ok = 1; u.noEs = null; } else if (o) { malos.push(x); } }
+          else if (o === 'ok') { u.ok = 1; u.noEs = null; u.noEsCat = null; } else if (o === 'no') { u.noEs = 1; u.ok = null; } else if (/^mi=MLA\d+$/i.test(o)) { u.miFijo = o.slice(3).toUpperCase(); u.t = null; u.ok = 1; u.noEs = null; u.noEsCat = null; } else if (o) { malos.push(x); } }
         upd[prov + '/' + cod] = u; n++;
       }
       if (malos.length) { console.log(`❌ ${malos.length} mal escritos, no escribo nada:`); malos.slice(0, 10).forEach((m) => console.log('   ' + m)); return; }
@@ -20298,7 +20304,7 @@ async function main() {
       for (const [path, u] of Object.entries(upd)) { const [pk, cod] = path.split('/'); const e = await db.get('mlapi/listas/' + pk + '/' + cod);
         if (!e) { console.log(`  ✗ ${pk}/${cod}: no está en la lista`); continue; }
         // El ✅ vale para el catálogo que se miró (20/10/2026): si después el robot mide contra otro, deja de valer solo.
-        if (u.ok) u.okCat = u.miFijo || e.miFijo || e.mi || null; else if (u.noEs) u.okCat = null;
+        if (u.ok) u.okCat = u.miFijo || e.miFijo || e.mi || null; else if (u.noEs) { u.okCat = null; u.noEsCat = e.miFijo || e.mi || null; }
         console.log(`  · ${pk} · ${String(e.n).slice(0, 60)} → ${u.vend != null ? u.vend + ' vendidas' : ''}${u.ok ? ' · ✅ mismo producto' : ''}${u.noEs ? ' · ❌ otro producto' : ''}${u.miFijo ? ' · catálogo ' + u.miFijo + ' (se vuelve a medir)' : ''}`);
         if (APLICAR) { await db.patch('mlapi/listas/' + pk + '/' + cod, u); tocados.add(pk); } }
       if (APLICAR) for (const pk of tocados) await db.patch('cyc/mlconfig/listasProv/' + pk, cuentaLista((await db.get('mlapi/listas/' + pk)) || {}));

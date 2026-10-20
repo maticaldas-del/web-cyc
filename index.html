@@ -2685,7 +2685,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.47';
+const APP_VERSION='25.48';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2698,6 +2698,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.48',f:'20/10',h:'19:05',c:[{n:2,t:'📋 Listas: el "✗ otro producto" que marcó el chat de compras vale sólo para el catálogo de ML que miró. El robot vuelve a buscar esos productos con el nombre traducido, sin ese catálogo, y si encuentra el correcto vuelven a contar (falta que el chat lo confirme).'}]},
   {v:'25.47',f:'20/10',h:'18:55',c:[{n:2,t:'🇦🇷 Dai Nippon funciona igual que el resto de Bs As: ya no tiene 🧾 Pedido ni casillas de "pedir". Lo probado sale como cualquier tarjeta de Pedidos (lo compra Tito en persona) y en 🆕 Nuevos lo que da dice "lo trae Tito".'}]},
   {v:'25.46',f:'20/10',h:'18:35',c:[{n:2,t:'📋 Listas: la línea de arriba separa tres grupos que antes se mezclaban: ✅ encontrados en ML y medidos · 🔍 buscados y no encontrados · ⏳ por buscar (los que se buscaron con el nombre abreviado y el robot todavía no volvió a buscar traducidos cuentan acá).'}]},
   {v:'25.45',f:'20/10',h:'18:20',c:[{n:2,t:'🔒 Una venta que canceló Mercado Libre queda cancelada: ya no tiene el botón ↩ Reactivar (dice "la canceló Mercado Libre"). Reactivar queda sólo para las que cancelaste vos a mano.'},{n:1,t:'🔐 Las listas de precios de los proveedores ya no están legibles en el repositorio público: viajan cifradas y sólo el robot las abre.'},{n:1,t:'🔎 La revisión de choques y fallas mudas quedó cerrada: no queda nada para decidir.'}]},
@@ -18982,7 +18983,9 @@ function _listaPuesto(k,e){return Math.round((Number(e&&e.p)||0)*(1+_listaRec(k)
 // el costo con el que se midió: si no es el de hoy, el margen no vale hasta que `listamedir` lo vuelva a medir (lo hace solo).
 // Misma regla en el robot (`listaCostoVigente`).
 function _listaCostoVigente(e){return !!e&&e.uMed!=null&&Math.abs(Number(e.uMed)-Number(e.p))<1;}
-function _listaMed25(e){return e&&!e.noEs&&!e.sacado&&!e.noWeb&&e.m!=null&&isFinite(e.m)&&Number(e.m)>=25&&_listaCostoVigente(e)&&/^https:\/\//.test(e.mf||'')&&!(e.vend!=null&&Number(e.vend)<100);}
+// "Otro producto" vale para el catálogo que se miró (`noEsCat`); misma regla que `listaNoEsVale` de sync.mjs (20/10/2026).
+function _listaNoEsVale(e){return !!(e&&e.noEs&&(!e.noEsCat||String(e.noEsCat).toUpperCase()===String(e.mi||'').toUpperCase()));}
+function _listaMed25(e){return e&&!_listaNoEsVale(e)&&!e.sacado&&!e.noWeb&&e.m!=null&&isFinite(e.m)&&Number(e.m)>=25&&_listaCostoVigente(e)&&/^https:\/\//.test(e.mf||'')&&!(e.vend!=null&&Number(e.vend)<100);}
 // UN SOLO VENDEDOR NO ALCANZA (19/10/2026, él: "hay un flaco que vende los perfumes re caros y es el único (…) es un precio inflado que no
 // sabemos si vende"). Con 1 vendedor en ML el precio no lo confirma nadie: nunca va a ✅ Dan solo, va a 🔎 Para revisar hasta que el
 // chat de compras lo mire (`ok` = mismo producto Y precio creíble).
@@ -19368,7 +19371,7 @@ async function renderListas(){
     return `<div style="display:flex;gap:8px;align-items:center;padding:6px 8px;background:var(--surface);border:1px solid ${arm[cod]>0?'var(--blue)':'var(--border)'};border-radius:8px">
       ${fML?`<img src="${fML}" loading="lazy" onclick="_mostrarLightbox('${fML}','')" onerror="this.style.visibility='hidden'" style="width:44px;height:44px;object-fit:contain;background:#fff;border-radius:6px;cursor:zoom-in">`:''}
       <div style="flex:1;min-width:0;font-size:.72rem;line-height:1.45"><div style="font-weight:600">${escHtml(e.n)}</div>
-        <div style="color:var(--muted);font-size:.64rem">🔖 ${escHtml(cod)} · te sale <b style="color:var(--text)">${fmt(pc)}</b>${rec?` (${fmt(Number(e.p)||0)} + ${rec}%)`:''}${Number(e.pl)>0?` · lista ${fmt(Number(e.pl))} −${e.dto}%`:''}${e.mp?` · en ML ${fmt(e.mp)}${e.mv?' · '+(e.mv==1?'<b style="color:var(--amber)">⚠️ 1 solo vendedor: precio que nadie más confirma</b>':e.mv+' vendedores'):''}`:''}${e.vend!=null?` · <b style="color:${e.vend>=100?'var(--green)':'var(--amber)'}">🛒 ${e.vend>=1000?'+1000':e.vend} vendidas</b>`:''}${e.ok?' · <span style="color:var(--green)">✓ mismo producto</span>':''}${e.noEs?' · <span style="color:var(--red)">✗ otro producto</span>':''}${e.mt?` · <span title="el catálogo de ML contra el que se midió">"${escHtml(String(e.mt).slice(0,60))}"</span>`:''}${e.pAnt?` · antes ${fmt(e.pAnt)}`:''}</div>
+        <div style="color:var(--muted);font-size:.64rem">🔖 ${escHtml(cod)} · te sale <b style="color:var(--text)">${fmt(pc)}</b>${rec?` (${fmt(Number(e.p)||0)} + ${rec}%)`:''}${Number(e.pl)>0?` · lista ${fmt(Number(e.pl))} −${e.dto}%`:''}${e.mp?` · en ML ${fmt(e.mp)}${e.mv?' · '+(e.mv==1?'<b style="color:var(--amber)">⚠️ 1 solo vendedor: precio que nadie más confirma</b>':e.mv+' vendedores'):''}`:''}${e.vend!=null?` · <b style="color:${e.vend>=100?'var(--green)':'var(--amber)'}">🛒 ${e.vend>=1000?'+1000':e.vend} vendidas</b>`:''}${e.ok?' · <span style="color:var(--green)">✓ mismo producto</span>':''}${_listaNoEsVale(e)?' · <span style="color:var(--red)">✗ otro producto</span>':e.noEs?' · <span style="color:var(--muted)" title="El chat de compras dijo que el catálogo de antes era otro producto; éste es otro catálogo y falta confirmarlo.">catálogo nuevo, falta confirmar</span>':''}${e.mt?` · <span title="el catálogo de ML contra el que se midió">"${escHtml(String(e.mt).slice(0,60))}"</span>`:''}${e.pAnt?` · antes ${fmt(e.pAnt)}`:''}</div>
         <div style="font-size:.64rem">${e.mi?`<a href="https://www.mercadolibre.com.ar/p/${e.mi}" target="_blank" rel="noopener" style="color:var(--green)">🔗 verlo en ML</a> · `:''}<a href="#" onclick="listaVerOri('${k}','${String(cod).replace(/'/g,"\\'")}');return false" style="color:var(--blue)">📄 verlo en la lista</a>${e.rp?` <span style="color:var(--amber)">· ⚠️ ${escHtml(String(e.rp).slice(0,80))}</span>`:''}</div></div>
         <details style="margin-top:3px"><summary style="cursor:pointer;font-size:.62rem;color:var(--muted)">detalle ▾</summary><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">${e.sacado?`<button class="btn" style="font-size:.64rem;padding:3px 10px" onclick="listaSacar('${k}','${String(cod).replace(/'/g,"\\'")}',false)">↩︎ volver a la lista</button>`:`<button class="btn" style="font-size:.64rem;padding:3px 10px;color:var(--red);border-color:var(--red)" onclick="listaSacar('${k}','${String(cod).replace(/'/g,"\\'")}',true)">✕ sacar producto</button>`}</div></details>
       <div style="text-align:right;flex:0 0 auto">${est}${uBox}</div></div>`;};
