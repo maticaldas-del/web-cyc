@@ -2683,7 +2683,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.27';
+const APP_VERSION='25.28';
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
 // muestre la versión y la fecha de actualización y que tenga un desplegable predeterminado cerrado".
 // Y el mismo día: "que ponga fecha de cada modificación y haya una barrita para scrollear y que
@@ -2694,6 +2694,7 @@ const APP_VERSION='25.27';
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.28',f:'20/10',h:'15:10',c:[{n:1,t:'Revisión de la etapa 2 (Plata): en Inicio quedan las 8 decisiones que te mandé por Telegram'}]},
   {v:'25.27',f:'20/10',h:'14:43',c:[{n:2,t:'💳 Ventas: cada venta dice si se vendió por la publicación Clásica o la Premium y en cuántas cuotas ("1 pago", "3 cuotas" o "6 cuotas s/interés" cuando el interés lo pagamos nosotros). Las Premium van en violeta. Las ventas viejas se completan solas con el robot.'}]},
   {v:'25.26',f:'20/10',h:'15:00',c:[
     {n:3,t:'Disponible de MP: el robot corta el disponible en el mismo momento que "a liquidar", así lo liberado no se cuenta dos veces'},
@@ -4209,6 +4210,7 @@ const REV_HORA='04:00';
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel dice la etapa
 //                     de HOY (una por día de la semana, corre sola a las REV_HORA) y si ya quedó hecha.
 const REV_PENDIENTE=[
+  {t:'Etapa 2 (Plata): 8 decisiones tuyas',que:'te las mandé por Telegram el 20/10 (deuda de ARCA del mes, listas en camino, ritmo del tope de H, recargo de Paraguay, rayas de la línea de tiempo, costo de recompras, adelanto, filas de MP sin fecha)',pedi:'1a 2a 3a…'},
 ];
 // Etapa 7 (diseño) cerrada el 01/10/2026: hechas 1-9, 11, 13, 14 y 15; la 10 (Pedidos) y la 12 (sacar
 // "Participación por cuenta") él eligió dejarlas como están.
@@ -4225,7 +4227,8 @@ const REV_HIST={
      {f:'2026-10-08',t:'Después del cerebro y la regla del 20%: 27 reales, 21 arreglados y 6 decisiones suyas (manda el cerebro, sin rescate al vender).'}],
   2:[{f:'2026-09-28',t:'4 revisores (Arqueo, Mercado Pago, gastos, monedas): 17 reales, las obvias arregladas.'},
      {f:'2026-09-29',t:'Cerrada: lo vendido después del reporte de MP suma al patrimonio (A1) y el Telegram usa la misma cuenta que la web (D4).'},
-     {f:'2026-09-30',t:'Revisión completa final: lo de plata quedó sin pendientes.'}],
+     {f:'2026-09-30',t:'Revisión completa final: lo de plata quedó sin pendientes.'},
+     {f:'2026-10-20',t:'Primera del calendario (máximo): Arqueo, cierre, cobro, monedas y robot de MP. Lo obvio arreglado (v25.23 a v25.26), 8 decisiones suyas.'}],
   3:[{f:'2026-09-29',t:'4 revisores (cajas, stock, pedidos, Paraguay): 29 hallazgos, las obvias hechas y 6 decididas por él.'},
      {f:'2026-09-30',t:'Cerrada: el aviso de renglón que no cierra se mide color por color.'}],
   4:[{f:'2026-09-30',t:'Choques web/robot y corridas a la vez: ~30 reales, todas arregladas (transacciones, relecturas, candados).'},

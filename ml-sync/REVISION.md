@@ -1920,6 +1920,11 @@ escmedir, raros, lupa, escasez y techo95 (si no se lee, 2% y lo dice) · `setDev
 token con reintento y motivo (`_mpTokenReintento`) · "Cerrar el mes" avisa si un ancla es más nueva que el corte · probe `sinfecha`
 (solo lee, sin montos) mide las ~62 filas por cuenta sin fecha de liberación que `saldoml` suma a "a liquidar".
 **Chequear:** que `ancla` termine con ✅ saldoml y ✅ dispo; resultado de `sinfecha` y qué se hace con esas filas.
+**`sinfecha` medido el 20/10:** ~62 filas por cuenta, todas SETTLEMENT, una por día hábil, sin ORDER_ID, IS_RELEASED false,
+sin unidad ni medio de pago; 0,8% a 1,6% de "a liquidar"; ~51 anteriores al punto de partida. Qué hacer: decisión 8 suya.
+**Decisiones mandadas por Telegram (20/10):** 1 deuda ARCA del mes prorrateada · 2 listas en camino o deuda · 3 canceladas en el
+ritmo del tope de H · 4 base del recargo de Paraguay · 5 rayas con costo de hoy · 6 costo de recompras de listas · 7 adelanto
+fuera del promedio · 8 filas de MP sin fecha.
 
 
 - 20/10/2026 · Etapa 7 (diseño) · v25.25: la línea de tiempo (de un producto y de todos) llega hasta abajo de la pantalla
