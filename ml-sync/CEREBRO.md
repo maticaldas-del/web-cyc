@@ -25,9 +25,32 @@ detenimiento"*. Antes, la completa miraba cada publicación de a un renglón y l
     18/10). Si son muchas, la ficha se abre de las que tienen poco stock, prueba en curso o salieron raras; el resto se mira
     con la línea de su publicación en la planilla. En el chat: "ventas: N miradas · A acciones".
  3. **VUELTAS CORTAS CADA 2 HORAS**: 10:52, 12:52, 14:52, 16:52, 18:52 y 20:52 (rutina `trig_01FCaQqzU5MA422N6Z8nH63Z`).
+ 1b. **LOS AYUDANTES VAN CON ESFUERZO `max`** (decisión suya del 20/10: *"una forma de minimizar errores es poner un esfuerzo más
+    alto a las tareas que tirás vos al mirar los productos y precios"*). `Agent(…, effort:'max')`. Si un día se cortan por
+    límite de uso, se rehacen y se dice en el chat; nunca se aplica un juicio a medias.
  4. **EL PORQUÉ QUEDA EN LA FICHA.** Al terminar la completa, toda publicación juzgada lleva su nota (`decido:<MLA>=nota|…`,
     muchas con `ml-sync/notas/fichas_<fecha>.txt` y `decido:archivo=…;go`), con el razonamiento corto y QUÉ MIRAR MAÑANA. Al
     día siguiente el ayudante arranca leyendo esa nota (está en la ficha) y no de cero.
+
+## 🧐 ¿TIENE SENTIDO? ANTES DE CREERLE A UN NÚMERO (20/10/2026, pedido suyo · vale para mí y para los ayudantes)
+Él: *"miras que el de 50 ml está a 20.000 y el de 100 ml a 100.000: ahí ya tenés una idea que el precio es más cercano a 40.000
+(…) no fue una regla mía, simplemente se me ocurrió, quiero que eso se te ocurra a vos"*. No es una regla más: es preguntarse
+SIEMPRE, antes de decidir con un número (precio de ML, margen, ritmo, costo, stock), **¿esto tiene sentido contra lo que ya sé?**
+Cruzarlo con lo que tenga cerca:
+ · **el mismo producto en otro tamaño o presentación** (50 ml contra 100 ml, pack contra suelto, mini contra grande): el precio
+   por ml o por unidad tiene que ser parecido; si uno da el doble, el raro está mal o es otro producto;
+ · **el mismo producto en otra cuenta o en otra fecha** (lo que vendíamos, lo que pagamos, lo que pide la caja);
+ · **productos parecidos de la misma marca o rubro** (un perfume árabe de US$ 10 no se vende a $150.000);
+ · **el costo**: un margen de 150% o un precio abajo del costo casi siempre es un error de emparejado o de dato;
+ · **cuántos lo venden y cuánto venden**: un solo vendedor caro o sin ventas no es "el precio de mercado".
+Si no cierra, no se usa: se busca la razón (otro producto, otro tamaño, dato viejo, vendedor inflado) y se dice en el motivo.
+Cuando él me corrija algo que podía haber visto así, va a `ml-sync/notas/correcciones.md` (abajo) con QUÉ CRUCE me faltó.
+
+## 📉 LAS CORRECCIONES SE CUENTAN (20/10/2026, pedido suyo: *"tu objetivo en ese punto es que no tenga que corregirte en nada"*)
+Cada vez que él me corrige (un precio, un pedido, una regla que no apliqué, un error de pantalla) se anota en
+`ml-sync/notas/correcciones.md`: fecha · qué · por qué pasó (faltó un dato, faltó un cruce de sentido común, error de herramienta,
+regla nueva suya) · qué cambié para que no vuelva. Los lunes, en la completa, cuento las de la semana contra la anterior y lo
+digo en el chat. Lo que es dato de ML tarde o mal (cupos, stock que tarda) NO cuenta como corrección mía.
 
 ## 📂 PASO OBLIGATORIO DE LA COMPLETA (08:52): EL EXPEDIENTE, PRODUCTO POR PRODUCTO, PENSADO (16/10/2026, eligió la b)
 Él: *"quiero que sea 'vivo' el pensamiento, que gaste tokens, no que sea mecánico, sino que sea como que te lo pregunte por
