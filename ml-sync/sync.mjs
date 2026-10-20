@@ -7575,7 +7575,7 @@ function promoClaudeVigente(a, ahora = Date.now()) {
 // 15/10/2026 (auditoría): ML contesta 400 a la consulta de promos de una publicación cerrada, inactiva o en revisión.
 // Esas no pueden tener una promo andando: no se cuentan como "sin leer" (eran 55 fijas, "hace 388 horas seguidas").
 const PROMO_NO_APLICA = /^(closed|inactive|under_review)$/;
-async function removeStartedPromos(itemId, token, permitidas) {
+async function removeStartedPromos(itemId, token, permitidas, db = null) {
   let arr;
   try {
     const r = await mlGet('/seller-promotions/items/' + itemId + '?app_version=v2', token);
@@ -7600,6 +7600,14 @@ async function removeStartedPromos(itemId, token, permitidas) {
     // campañas, pero si algún día lo manda, no se saca.
     if (typeof pr.meli_percentage === 'number' && pr.meli_percentage >= 100) continue;
     if (promoPermitida(permitidas, itemId, pr)) continue;   // la puso Claude a propósito (cyc/promoclaude)
+    // 20/10/2026: la vuelta completa lee cyc/promoclaude UNA vez al arrancar y tarda; una promo que entré durante la vuelta
+    // (el Mazo Poker azul de la prueba del tachado, entrada 13:37 y sacada 13:44) no estaba en esa copia. Antes de sacar,
+    // se relee la de ESA publicación; si no se puede leer, no se saca (una ajena una hora más se corrige sola).
+    if (db) {
+      let fresca;
+      try { fresca = await db.get('cyc/promoclaude/' + itemId); } catch { console.log(`  (promo de ${itemId}: no pude releer cyc/promoclaude, no la saco esta vuelta)`); continue; }
+      if (fresca && promoPermitida({ [itemId]: fresca }, itemId, pr)) { if (permitidas) permitidas[itemId] = fresca; continue; }
+    }
     const qs = new URLSearchParams({ app_version: 'v2' });
     if (pr.id) qs.set('promotion_id', pr.id);
     if (pr.type) qs.set('promotion_type', pr.type);
@@ -46774,7 +46782,7 @@ async function main() {
             const discounted = (b.original_price != null && b.original_price > b.price)
               || (Array.isArray(b.deal_ids) && b.deal_ids.length > 0);
             if (discounted || !SKIP_PRICES) {
-              const { removed, failed, sinLeer: promoSinLeer, err: promoErr } = await removeStartedPromos(mla, t.access_token, promoClaude);
+              const { removed, failed, sinLeer: promoSinLeer, err: promoErr } = await removeStartedPromos(mla, t.access_token, promoClaude, db);
               if (promoSinLeer && !SKIP_PRICES && !(/^400/.test(String(promoErr || '')) && PROMO_NO_APLICA.test(String(b.status || '')))) { promoNoLeidas.push(mla); promoErrs[promoErr || '?'] = (promoErrs[promoErr || '?'] || 0) + 1; if (promoNoLeidas.length <= 5) console.log(`  (promos de ${mla}: ML no contestó · ${promoErr || '?'})`); }
               if (removed.length) {
                 await sendAlerta(`🏷️ <b>Descuento sacado</b>\n`

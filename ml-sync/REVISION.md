@@ -621,6 +621,10 @@ el precio de un candidato distinto con código parecido (se compara también por
 ## 4 · CHOQUES Y FALLAS MUDAS (jueves · junta las viejas 4 y 5)
 - `mlapi/lineatodo` lo escriben `ritmo:go` (noche) y `lineatodo:go` (ml-consulta): los dos con la
   misma función `calcLineaTodo`.
+- **El guardián de promos relee mis promos antes de sacar una (20/10/2026).** La vuelta completa leía `cyc/promoclaude`
+  una vez al arrancar: el descuento del Mazo Poker azul (prueba del tachado) se entró a las 13:37 con la vuelta ya andando
+  y a las 13:44 lo sacó. Ahora `removeStartedPromos` relee `cyc/promoclaude/<MLA>` antes del DELETE; si no puede leer,
+  no saca. Chequear: una promo entrada con `entrarpromo` durante la vuelta de la hora sigue puesta en la siguiente.
 
 ### 4b · FALLAS MUDAS Y PRIVACIDAD (antes etapa 5)
 - **Visitas de la noche** (`linea:go`): el pedido en lote falló callado desde ~01/10. Ahora hay
