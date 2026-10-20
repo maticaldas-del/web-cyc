@@ -1983,3 +1983,8 @@ y el disponible no salte; que un pedido de lista llegado aparezca en Deudas hast
   `class="ingreso-item vp-pc" style="` pegados, y la v24.86 metió `onclick`/`title` en el medio: no encontraba la tarjeta y
   devolvía la venta sin efecto, sin avisar. Ahora busca el `style="` dentro de la misma etiqueta. **Chequear:** al tocar el
   markup de una tarjeta de Ventas, que siga apareciendo el color/efecto (prueba: una venta de 25%+ tiene que verse con tinte).
+
+- 20/10/2026 · Etapa 7 (diseño) · v25.36: en la línea de tiempo de un producto el **costo** salió del carril del precio y va en el
+  del **% de ganancia** (escala propia `cMin/cMax`, etiqueta "costo $X" abajo a la izquierda, globito del costo en ese carril).
+  El precio ya no mete el costo en su escala (`_pcv` sin `cvs`). **Chequear:** que el carril del % aparezca aunque no haya %
+  (sólo costo) y que las rayas de piso/techo sigan en el del precio.
