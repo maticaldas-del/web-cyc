@@ -9165,6 +9165,47 @@ async function pycatResumenEscribir(db, cat, cands, products) {
   console.log(`📊 catálogo dividido (cyc/pycatres): ${r.tot} = ${r.cand} candidatos + ${r.ficha} fichas + ${r.fz} afuera por regla + ${r.bajo} abajo del ${CAND_PISO_PCT}% + ${r.sc} sin catálogo exacto + ${r.sv} nadie lo vende + ${r.nomed} sin medir${r.nm ? ` (${r.nm} de ésos ML no deja medirlos)` : ''}`);
   return r;
 }
+// LOS NOMBRES ABREVIADOS DE LAS LISTAS (20/10/2026, con Dai Nippon: 4.605 de 7.777 sin medir). Dai Nippon escribe
+// "COMFORT CONC.CuidESENC.(DOY) 450 ml. 4" o "COLGATE CrDEN.UltraBLANCO 2x90 Grs 2x9": palabras pegadas, abreviaturas, el código
+// interno entre paréntesis y la columna del tamaño repetida y cortada al final. Así ML no lo encuentra o el chequeo lo descarta
+// por un "tamaño 4" que no existe. Esto arma el nombre para BUSCAR y COMPARAR (el de la lista no se toca).
+const LISTA_NOMBRE_VER = 1;
+const LISTA_MARCAS = [[/^RV\.\s*/i, 'Revlon '], [/^RML\b\.?\s*/i, 'Rimmel '], [/^MB\.\s*/i, 'Maybelline '], [/^S\.H\.?\s+/i, 'Sally Hansen '],
+  [/^A\.W\.\s*/i, 'Artez Westerley '], [/^DRMGLOS\b/i, 'Dermaglos'], [/^H\.PRAVIA\b/i, 'Heno de Pravia'], [/^S\.L\.\s*/i, 'Siempre Libre '],
+  [/^MedNRJ\b/i, 'Media Naranja'], [/^TioNACHO\b/i, 'Tio Nacho'], [/^nic\b/, 'Nic'], [/^GinoBOGANI\b/i, 'Gino Bogani'], [/^KR\s+/i, 'Kevin '],
+  [/^PepeJ\b/i, 'Pepe Jeans'], [/^NatSPIRIT\b/i, 'Natural Spirit'], [/^CaroCuore\b/i, 'Caro Cuore'], [/^RAYITOdSOL\b/i, 'Rayito de Sol'],
+  [/^AirePur\b/i, 'Aire Pur'], [/^NewSCENT\b/i, 'New Scent'], [/^BlueSEDUC\b/i, 'Blue Seduction'], [/^IndiaSTYLE\b/i, 'India Style'],
+  [/^MagicRETOUCH\b/i, 'Magic Retouch'], [/^KeyKOLOR\b/i, 'Key Kolor'], [/^EstereoC\b/i, 'Estereo Color'], [/^L'eauVIVE\b/i, "L'eau Vive"]];
+const LISTA_ABREV = { conc: 'concentrado', cuid: 'cuidado', esenc: 'esencial', arom: 'aromatizante', aroma: 'aromatizante', lq: 'liquido', liq: 'liquido',
+  jb: 'jabon', jab: 'jabon', cr: 'crema', den: 'dental', dent: 'dental', sh: 'shampoo', ac: 'acondicionador', ant: 'antitranspirante', aer: 'aerosol',
+  des: 'desodorante', esm: 'esmalte', lab: 'labial', cep: 'cepillo', toa: 'toallitas', toall: 'toallitas', hum: 'humedas', humed: 'humedas',
+  pvo: 'polvo', corp: 'corporal', ag: 'agua', delin: 'delineador', del: 'delineador', sombr: 'sombra', brill: 'brillo', lap: 'lapiz', bronc: 'bronceador',
+  emul: 'emulsion', prot: 'protector', rep: 'repuesto', lvdn: 'lavandina', lvdina: 'lavandina', deter: 'detergente', desinf: 'desinfectante',
+  past: 'pastillas', vid: 'vidrios', mult: 'multiuso', multi: 'multiuso', tint: 'tintura', kerat: 'keratina', hid: 'hidratante', hidra: 'hidratante',
+  inten: 'intensa', restaurac: 'restauracion', bb: 'bebe', pd: 'protectores diarios', enj: 'enjuague', csty: 'colorstay', sstay: 'superstay',
+  mirac: 'miracles', illum: 'iluminador', correc: 'corrector', conceal: 'corrector', found: 'base', msk: 'mascarilla', neum: 'neumatico',
+  sacapunt: 'sacapuntas', portacosm: 'portacosmeticos', dispen: 'dispensador', fem: 'femenino', perf: 'perfume', vp: 'vaporizador', cc: 'ml',
+  antib: 'antibacterial', fresc: 'frescura', fac: 'facial', limp: 'limpieza', nutritiv: 'nutritiva', antpol: 'antipolillas',
+  naftalin: 'naftalina', tela: 'telas', camp: 'campos', ambient: 'ambiental', aut: 'auto' };
+// Lo que no ayuda a buscar: el envase y el "x" de "x 500 ml".
+const LISTA_SACAR = new Set(['doy', 'bot', 'bt', 'gat', 'plast', 'pote', 'x', 'new', 'old', 'estuc', 'neces', 'flw', 'fliptop', 'dy']);
+function limpiarNombreLista(n0) {
+  let s = String(n0 || '').trim();
+  for (const [re, rep] of LISTA_MARCAS) s = s.replace(re, rep);
+  // El tamaño: cortar lo que viene después de la ÚLTIMA medida (la columna repetida y cortada: "450 ml. 4", "70 Grs 7").
+  const med = /(\d+(?:[.,]\d+)?(?:\s*x\s*\d+)?)\s*(ml|cc|grs?|gr|g|un|lt|l|kg)\b\.?/i.exec(s);
+  if (med) s = s.slice(0, med.index + med[0].length);
+  else { const t = s.split(/\s+/); const b = (t[t.length - 1] || '').toLowerCase(); if (t.length >= 3 && t.slice(0, -1).some((a) => a.toLowerCase().startsWith(b))) t.pop(); s = t.join(' '); }
+  s = s.replace(/\(F\s*(\d{2})\+?\)/gi, ' fps $1 ').replace(/\bF(\d{2})\+?\b/g, ' fps $1 ');
+  s = s.replace(/\(([A-Z]{0,4}\d{3,}[A-Z]?|[A-Z]{1,3}\d{1,3}[A-Z]?)\)/g, ' ');     // código interno: (4499) (JZ11) (A7502) (DMK6215)
+  s = s.replace(/'([A-Za-z ]+)'\s*[A-Z]{0,3}\d{3,}\b/g, ' $1 ');                     // 'JES'P5679 · 'MOON'DM3341
+  s = s.replace(/\(([^)]*)$/, ' $1');                                                    // "(NECES" cortado
+  s = s.replace(/([A-Z]{2,})y([A-Z])/g, '$1 y $2');
+  s = s.replace(/([a-záéíóúñ])([A-Z])/g, '$1 $2').replace(/[.()'/+]/g, ' ').replace(/&/g, ' & ');
+  const out = [];
+  for (const w of s.split(/\s+/).filter(Boolean)) { const k = w.toLowerCase(); if (LISTA_SACAR.has(k)) continue; out.push(LISTA_ABREV[k] || w); }
+  return out.join(' ').replace(/\s+/g, ' ').trim();
+}
 async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, prueba = null, opts = {}) {
   // `prueba`: productos inventados ({cod: {n, u, f}}) para correr el camino entero sin escribir nada.
   // `opts.lista` (15/10/2026): mide una LISTA DE PRECIOS de otro proveedor (`mlapi/listas/<prov>`), con el costo en PESOS
@@ -9200,8 +9241,12 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
     // ML NO DEJA MEDIRLO (etapa 4, 20/10/2026): 3 fallas seguidas (403/5xx/HTML, no el 429 de cupo) lo sacan del frente de la cola
     // hasta dentro de PYCAT_REMEDIR_DIAS días; se cuenta aparte. Antes 12 productos que ML contestaba 403 encabezaban la cola
     // en cada vuelta y gastaban la tanda.
-    if (e.nm && e.t && ahora - e.t < PYCAT_REMEDIR_DIAS * 864e5 && !(e.uMed != null && Math.abs(e.uMed - _uNow) >= 0.005)) { cuenta.noDeja++; continue; }
-    if (e.t && ahora - e.t < PYCAT_REMEDIR_DIAS * 864e5 && !(e.uMed != null && Math.abs(e.uMed - _uNow) >= 0.005)) { cuenta.frescos++; continue; }
+    // Lo que no se encontró en ML con el nombre viejo (sin catálogo exacto / nadie lo vende) se vuelve a buscar con el nombre
+    // traducido aunque esté fresco (`qv` = versión del traductor con que se buscó).
+    const _rebuscar = esLista && (e.sc || e.sv) && Number(e.qv || 0) !== LISTA_NOMBRE_VER;
+    const _fresco = e.t && ahora - e.t < PYCAT_REMEDIR_DIAS * 864e5 && !(e.uMed != null && Math.abs(e.uMed - _uNow) >= 0.005);
+    if (e.nm && _fresco) { cuenta.noDeja++; continue; }
+    if (!_rebuscar && _fresco) { cuenta.frescos++; continue; }
     cola.push([cod, e]);
   }
   // 15/10/2026, eligió la (a): primero los RUBROS QUE YA VENDEMOS (perfumes, auriculares, pendrives y memorias, relojes) y después
@@ -9234,7 +9279,9 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
   const mlGetR = async (ruta) => {
     for (const w of [0, 5000, 15000, 30000]) {
       if (w) await espera(w);
-      try { return await mlGet(ruta, tok); } catch (e) { if (!/429/.test(String(e.message || e)) || w === 30000) throw e; }
+      // 20/10/2026: ML también corta devolviendo una PÁGINA (HTML) en vez de datos: "Unexpected token '<'". Pasó con los 18 de Dai
+      // Nippon y los 6 de otras listas en la misma vuelta: se trata igual que el 429 (esperar y reintentar), no como producto fallado.
+      try { return await mlGet(ruta, tok); } catch (e) { const _m = String((e && e.message) || e); if (!(/429/.test(_m) || (e && e.name === 'SyntaxError') || /not valid JSON|Unexpected token/.test(_m)) || w === 30000) throw e; }
     }
   };
   const res = { medidos: 0, sinCat: 0, sinVend: 0, err: 0, b25: 0, b15: 0, bajo: 0, noDeja: 0, pasan: [] };
@@ -9259,8 +9306,10 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
     try {
       // BÚSQUEDA: primero marca + modelo, después el nombre sin el relleno en portugués, después el nombre entero. comprasparaguay
       // escribe "Fone de Ouvido JBL Tune 520BT - Preto" y buscando eso ML trae el 730BT; con "jbl 520bt" trae el correcto.
-      const mods = _rvMod(e.n); const pal = _rvNorm(e.n).split(' ').filter((w) => (w.length >= 2 || /^\d$/.test(w)) && !RV_VACIAS.has(w) && !PYCAT_RELLENO.has(w));
-      const qs = [...new Set([mods.length ? [pal[0], ...mods].filter(Boolean).join(' ') : null, pal.slice(0, 7).join(' '), String(e.n).slice(0, 80)].filter((x) => x && x.length >= 3))];
+      const nB = esLista ? limpiarNombreLista(e.n) || e.n : e.n;   // listas: el nombre traducido (ver limpiarNombreLista)
+      if (esLista) upd.qv = LISTA_NOMBRE_VER;
+      const mods = _rvMod(nB); const pal = _rvNorm(nB).split(' ').filter((w) => (w.length >= 2 || /^\d$/.test(w)) && !RV_VACIAS.has(w) && !PYCAT_RELLENO.has(w));
+      const qs = [...new Set([mods.length ? [pal[0], ...mods].filter(Boolean).join(' ') : null, pal.slice(0, 7).join(' '), String(nB).slice(0, 80)].filter((x) => x && x.length >= 3))];
       const vistosB = new Map();
       // CATÁLOGO FIJADO A MANO (`listadato`, 18/10/2026): el chat de compras miró ML y dijo cuál es el producto correcto. Se usa ése
       // y no se busca nada; el chequeo de nombre no lo descarta (ya lo confirmó una persona mirando la foto).
@@ -9284,8 +9333,8 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
       // palabra no frena: el portugués no está en ML. Ese reparo blando queda anotado (`rp`) y lo mira la revisión de fotos.
       // Si el primero es un catálogo viejo sin vendedores, se prueba el siguiente (hasta 5).
       const duros = (rr) => rr.filter((x) => !/^en ML no está/.test(x));
-      const okB = _fijo ? [[_fijo, []]] : resB.map((r) => [r, chequeoMismoProducto(e.n, r.name || r.title)]).filter(([, rr]) => !duros(rr).length);
-      if (prueba) { console.log(`    ${e.n.slice(0, 60)} · busqué: ${qs.join(' | ')}`); for (const r of resB) { const rr = duros(chequeoMismoProducto(e.n, r.name || r.title)); if (rr.length) console.log(`      descarto ${r.id} "${String(r.name || '').slice(0, 60)}" · ${rr.join(' · ').slice(0, 70)}`); } }
+      const okB = _fijo ? [[_fijo, []]] : resB.map((r) => [r, chequeoMismoProducto(nB, r.name || r.title)]).filter(([, rr]) => !duros(rr).length);
+      if (prueba) { console.log(`    ${e.n.slice(0, 60)} · busqué: ${qs.join(' | ')}`); for (const r of resB) { const rr = duros(chequeoMismoProducto(nB, r.name || r.title)); if (rr.length) console.log(`      descarto ${r.id} "${String(r.name || '').slice(0, 60)}" · ${rr.join(' · ').slice(0, 70)}`); } }
       if (!okB.length) { upd.sc = 1; upd.mt = resB[0] ? String(resB[0].name || '').slice(0, 120) : ''; upd.m = null; res.sinCat++;
         console.log(`  · sin catálogo exacto · ${e.n.slice(0, 60)}${resB[0] ? ` (lo más parecido: "${upd.mt.slice(0, 60)}" · ${duros(chequeoMismoProducto(e.n, upd.mt)).join(' · ').slice(0, 90)})` : ' (ML no trajo nada)'}`);
         if (aplicar) await db.patch(RUTA + '/' + cod, upd); continue; }
@@ -20088,6 +20137,48 @@ async function main() {
     // BILLING_PROBE=listarevisar[:<proveedor>] → SOLO LEE. La lista para el chat de compras (18/10/2026, pedido suyo: "un prompt para el chat
     // local que saque toda la info que ella puede y vos no"): de cada lista, lo que da o está "para revisar", con el catálogo de ML contra
     // el que se midió. Una línea por producto: prov|cód|nombre de la lista|costo|MLA catálogo|título en ML|precio ML|margen|estado.
+    // BILLING_PROBE=listaestado[:<proveedor>] (20/10/2026, solo lee). Cómo se reparte cada lista: cuántos medidos, cuántos dan, cuántos
+    // sin catálogo exacto en ML, cuántos nadie los vende, cuántos afuera por regla (y por qué) y cuántos sin medir todavía. Lo pidió él:
+    // "dice 7777 productos, 3154 medidos y 18 sin medir ¿y el resto?".
+    // BILLING_PROBE=verpromo:<MLA>,<MLA>… (20/10/2026, solo lee): precio de la publicación, las promociones que ML le tiene
+    // (estado, tipo, precio, fechas, cuánto pone ML) y lo que anoté en cyc/promoclaude. Para ver por qué se cayó un descuento.
+    if (/^verpromo:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const lista = String(process.env.BILLING_PROBE).slice(9).split(',').map((x) => x.trim().toUpperCase()).filter((x) => /^MLA\d+$/.test(x));
+      const links = (await db.get('cyc/mllinks')) || {}; const toks = {};
+      for (const mla of lista) {
+        const L = links[mla] || {}; const acc = accounts[L.cuenta]; if (!acc?.refresh_token) { console.log(`${mla}: sin cuenta`); continue; }
+        if (!toks[L.cuenta]) { try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + L.cuenta, { refresh_token: t.refresh_token, updated_ts: Date.now() }); toks[L.cuenta] = t.access_token; } catch { console.log(`${L.cuenta}: no pude renovar`); continue; } }
+        const t = toks[L.cuenta];
+        try { const b = await mlGet('/items/' + mla + '?attributes=price,original_price,base_price,status,listing_type_id,last_updated,title', t); console.log(`\n${mla} · ${L.cuenta} · ${b.listing_type_id} · ${b.status} · precio $${Math.round(b.price || 0)} · original ${b.original_price || '—'} · base ${b.base_price || '—'} · ${String(b.title || '').slice(0, 50)}`); } catch (e) { console.log(`${mla}: /items no contestó ${String(e.message).slice(0, 120)}`); }
+        try { const sp = await mlGet('/items/' + mla + '/sale_price?context=channel_marketplace', t); console.log(`   sale_price: ${JSON.stringify(sp).slice(0, 300)}`); } catch (e) { console.log(`   sale_price: ${String(e.message).slice(0, 100)}`); }
+        try { const r = await mlGet('/seller-promotions/items/' + mla + '?app_version=v2', t); const arr = Array.isArray(r) ? r : (r.results || []);
+          const vivas = arr.filter((p) => p.status !== 'candidate'); console.log(`   promos: ${arr.length} (${arr.length - vivas.length} candidatas)`);
+          for (const p of vivas) console.log(`   · ${p.type} · ${p.status} · id ${p.id || '—'} · precio ${p.price || '—'} · original ${p.original_price || '—'} · ${String(p.start_date || '').slice(0, 16)} → ${String(p.finish_date || '').slice(0, 16)} · ML pone ${p.meli_percentage ?? '—'}%`);
+        } catch (e) { console.log(`   promos: no contestó ${String(e.message).slice(0, 120)}`); }
+        console.log(`   promoclaude: ${JSON.stringify((await db.get('cyc/promoclaude/' + mla)) || null).slice(0, 300)}`);
+        { const fn = (await db.get('mlapi/fichanotas/' + mla)) || {}; for (const k of Object.keys(fn).map(Number).sort((a, z) => z - a).slice(0, 4)) console.log(`   nota ${new Date(k - 3 * 36e5).toISOString().slice(5, 16).replace('T', ' ')} · ${String((fn[k] || {}).t || '').slice(0, 220)}`); }
+      }
+      return;
+    }
+    if (/^listaestado(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const solo = (String(process.env.BILLING_PROBE).split(':')[1] || '').toLowerCase(); const provs = (await db.get('cyc/mlconfig/listasProv')) || {};
+      for (const [k, pv] of Object.entries(provs)) { if (solo && k !== solo && String(pv.nombre || '').toLowerCase() !== solo) continue;
+        const cat = (await db.get('mlapi/listas/' + k)) || {}; const v = Object.values(cat).filter((e) => e && e.n);
+        const c = { med: 0, d25: 0, b25: 0, sc: 0, sv: 0, fz: 0, nunca: 0, sinRes: 0 }; const mot = {};
+        for (const e of v) { if (e.m != null && isFinite(e.m)) { c.med++; if (Number(e.m) >= 25) c.d25++; else c.b25++; continue; }
+          if (e.fz) { c.fz++; const r = String(e.fz).replace(/\d+/g, '#').slice(0, 50); mot[r] = (mot[r] || 0) + 1; continue; }
+          if (e.sc) { c.sc++; continue; } if (e.sv) { c.sv++; continue; } if (!e.t) c.nunca++; else c.sinRes++; }
+        console.log(`\n== ${pv.nombre || k} (${k})${pv.desc ? ' · DESCARTADO' : ''}${pv.bsas ? ' · Bs As' : ''} · lista del ${pv.ts ? new Date(pv.ts).toISOString().slice(0, 10) : '?'} · ${v.length} productos ==`);
+        console.log(`   medidos ${c.med} (${c.d25} de 25%+ · ${c.b25} abajo) · sin catálogo exacto en ML ${c.sc} · en ML no lo vende nadie ${c.sv} · afuera por regla ${c.fz} · sin medir: ${c.nunca} nunca probados + ${c.sinRes} probados sin resultado`);
+        const top = Object.entries(mot).sort((a, b) => b[1] - a[1]).slice(0, 8); if (top.length) console.log('   afuera por: ' + top.map(([r, n]) => `${r} ${n}`).join(' · '));
+        // `listaestado:<prov>:sc:<n>` / `:sv:<n>`: una muestra pareja de N nombres de ese grupo con lo más parecido que trajo ML.
+        { const pp = String(process.env.BILLING_PROBE).split(':'); const g = pp[2], nM = parseInt(pp[3], 10) || 150;
+          if (g === 'sc' || g === 'sv') { const gv = v.filter((e) => e.m == null && !e.fz && (g === 'sc' ? e.sc : (!e.sc && e.sv))); const paso = Math.max(1, Math.floor(gv.length / nM));
+            console.log(`   muestra ${g} (${gv.length}):`); for (let i = 0; i < gv.length && i / paso < nM; i += paso) console.log(`     ${String(gv[i].n).slice(0, 60)} ⇒ ${String(gv[i].mt || '—').slice(0, 60)}${gv[i].mi ? ' ' + gv[i].mi : ''}`); } }
+        const ej = v.filter((e) => e.m == null && !e.fz && !e.sc && !e.sv).slice(0, 18); if (ej.length) console.log('   sin medir: ' + ej.map((e) => String(e.n).slice(0, 40)).join(' · '));
+      }
+      return;
+    }
     if (/^listarevisar(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const solo = String(process.env.BILLING_PROBE).split(':')[1] || ''; const provs = (await db.get('cyc/mlconfig/listasProv')) || {};
       let tot = 0; console.log('@@LISTA');
@@ -22641,6 +22732,56 @@ async function main() {
     // cuenta), y el precio Premium que deja la MISMA plata neta por venta: comisión Premium (+ cuotas si ML no las mete
     // adentro) + IIBB/mono al precio nuevo + 3% del facturado de más (tope de H, regla ⚖️). Ordena las que menos venden
     // primero: ésas son las que una Premium puede despertar. La publicación nueva la crea él en ML.
+    // ¿ML NOS CAMBIÓ PRECIOS CON LO DE LAS CUOTAS? (20/10/2026). `bajacuotas` (solo lee). Desde el 20/10 ML baja el costo de las cuotas
+    // (3: 8,5% · 6: 10,9% · 9: 17,3% · 12: 20,8%) y dice que pasa PARTE de la baja al precio de las publicaciones. Esto mira: (1) toda
+    // publicación cuyo precio en ML no es el de la última foto (`cyc/netopub`) ni el que puse yo después (`cyc/estrategia`), y
+    // (2) cada Premium: la comisión que pide ML hoy a su precio y cuánto de eso son cuotas, contra el % medido en `cyc/mlcuotas`.
+    if (String(process.env.BILLING_PROBE || '') === 'bajacuotas') {
+      const links = (await db.get('cyc/mllinks')) || {};
+      const netopub = (await db.get('cyc/netopub')) || {};
+      const cuotasM = (await db.get('cyc/mlcuotas')) || {};
+      const estr = (await db.get('cyc/estrategia')) || {};
+      const cambios = [], prem = [], sinLeer = [];
+      let miradas = 0;
+      for (const label of labels) {
+        const acc = accounts[label]; if (!acc?.refresh_token) continue;
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { console.log(`⚠️ ${label}: no pude renovar el permiso`); continue; }
+        await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+        const ids = Object.entries(links).filter(([mla, e]) => e && e.cuenta === label && /^MLA/i.test(mla) && e.status !== 'closed').map(([mla]) => mla);
+        for (let k = 0; k < ids.length; k += 20) {
+          let arr; try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,listing_type_id,status,price,original_price,category_id,site_id,title,last_updated', t.access_token); } catch { sinLeer.push(label + ' (un lote)'); continue; }
+          for (const row of (arr || [])) {
+            const b = row.body || {}; if (!b.id || b.status === 'closed') continue; miradas++;
+            const precio = Math.round(b.price || 0); const np = netopub[b.id] || {};
+            const ks = Object.keys(estr[b.id] || {}).map(Number).filter((n) => n > 0).sort((a, z) => z - a);
+            const ultE = ks[0] || 0;
+            const prev = Number(np.precio) || 0;
+            // Sin foto (las gemelas de hoy): se compara contra el precio que dice mi última estrategia ("a $X").
+            if (!(prev > 0) && ultE) { const mm = String((estr[b.id][ultE] || {}).m || '').match(/a \$([\d.]+)/); const pe = mm ? Number(mm[1].replace(/\./g, '')) : 0; if (pe > 0 && Math.abs(precio - pe) >= 1) cambios.push({ mla: b.id, label, tipo: b.listing_type_id, st: b.status, prev: pe, precio, fotoTs: ultE, upd: b.last_updated, orig: b.original_price, tit: String(b.title || '').slice(0, 45) }); }
+            if (prev > 0 && Math.abs(precio - prev) >= 1 && !(ultE > (Number(np.ts) || 0))) cambios.push({ mla: b.id, label, tipo: b.listing_type_id, st: b.status, prev, precio, fotoTs: np.ts, upd: b.last_updated, orig: b.original_price, tit: String(b.title || '').slice(0, 45) });
+            if (b.listing_type_id === 'gold_pro' && (b.status === 'active' || b.status === 'paused') && precio > 0) {
+              let o = null; try { const d = await mlGet(`/sites/${b.site_id || 'MLA'}/listing_prices?price=${precio}&listing_type_id=gold_pro&category_id=${b.category_id}`, t.access_token); o = Array.isArray(d) ? d[0] : d; } catch { }
+              const sd = (o && o.sale_fee_details) || {};
+              prem.push({ mla: b.id, label, st: b.status, precio, fee: o && typeof o.sale_fee_amount === 'number' ? o.sale_fee_amount : null, fin: Number(sd.financing_add_on_fee) || 0, pctFee: Number(sd.percentage_fee) || null, med: cuotasM[b.id] || null, gem: !!(links[b.id] || {}).gemelaDe, tit: String(b.title || '').slice(0, 40) });
+            }
+          }
+        }
+      }
+      console.log(`\n══ ¿ML CAMBIÓ PRECIOS? · ${miradas} publicaciones miradas ══`);
+      console.log(`   distintas de la última foto (netoweb) y sin una decisión mía posterior: ${cambios.length}`);
+      for (const c of cambios) { console.log(`   • ${c.label.padEnd(8)} ${c.mla} ${c.tipo === 'gold_pro' ? 'PREMIUM' : 'clásica'} ${c.st} · foto $${c.prev.toLocaleString('es-AR')} (${c.fotoTs ? new Date(c.fotoTs - 3 * 36e5).toISOString().slice(5, 16).replace('T', ' ') : '?'}) → ML hoy $${c.precio.toLocaleString('es-AR')} (${((c.precio / c.prev - 1) * 100).toFixed(1)}%)${c.orig ? ' · tachado $' + Math.round(c.orig).toLocaleString('es-AR') : ''} · ML lo tocó ${String(c.upd || '').slice(0, 16)} · ${c.tit}`);
+        for (const k of Object.keys(estr[c.mla] || {}).map(Number).sort((a, z) => z - a).slice(0, 3)) { const e = estr[c.mla][k] || {}; console.log(`       estrategia ${new Date(k - 3 * 36e5).toISOString().slice(5, 16).replace('T', ' ')} · ${e.t} · ${String(e.m || '').slice(0, 160)}`); }
+        { const lin = (await db.get('mlapi/linea/' + c.mla)) || {}; const dias = Object.keys(lin).sort().slice(-6); console.log(`       precio por día: ${dias.map((d) => d.slice(5).replace('_', '/') + ' $' + (Number((lin[d] || {}).p) || '?')).join(' · ')}`); } }
+      console.log(`\n══ PREMIUM: lo que pide ML HOY a su precio · ${prem.length} publicaciones ══`);
+      for (const p of prem) {
+        const tot = p.fee != null ? (p.fee / p.precio * 100).toFixed(1) + '%' : '?';
+        const fin = p.fin ? (p.fin / p.precio * 100).toFixed(1) + '% cuotas adentro' : 'cuotas NO adentro';
+        const med = p.med ? `medido ${p.med.enComision ? 'adentro (' + (parseFloat(p.med.pctPago) || 0).toFixed(1) + '% en el pago)' : (parseFloat(p.med.pct) || 0).toFixed(1) + '% aparte'}${p.med.estimado ? ' estimado' : ''}` : 'sin medir';
+        console.log(`   • ${p.label.padEnd(8)} ${p.mla}${p.gem ? ' 💳gemela' : ''} ${p.st} · $${p.precio.toLocaleString('es-AR')} · ML pide ${tot} (${fin}${p.pctFee ? ' · base ' + p.pctFee + '%' : ''}) · ${med} · ${p.tit}`);
+      }
+      if (sinLeer.length) console.log(`\n⚠️ sin leer: ${sinLeer.join(', ')}`);
+      return;
+    }
     if (String(process.env.BILLING_PROBE || '').startsWith('gemela')) {
       const DIAS = 60, PMIN = parseFloat(String(process.env.BILLING_PROBE).split(':')[1]) || 50000;
       const links = (await db.get('cyc/mllinks')) || {};
