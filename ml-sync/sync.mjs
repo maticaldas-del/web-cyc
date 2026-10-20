@@ -20477,6 +20477,31 @@ async function main() {
       console.log(go ? '✓ escrito en mlapi/widget/hoy' : '(prueba: no escribí)');
       return;
     }
+    // BILLING_PROBE=bajasnuevas[:<días>] (20/10/2026, solo lee): mis bajas de precio (`cyc/claudecambios`) de los últimos N días (7
+    // por defecto) sobre publicaciones que estaban recién llegadas (menos de 30 d en Full con fecha real) o en 🆕 lanzamiento,
+    // sin 🏔️ de `techo95` antes de la baja. Es lo que `decido` frena desde el 20/10 (Cuba Platinum): sirve para encontrar las
+    // que se bajaron antes del freno. Dice el precio de hoy en la base para saber si sigue bajo.
+    if (/^bajasnuevas(:\d+)?$/.test(String(process.env.BILLING_PROBE || ''))) {
+      const dias = Number(String(process.env.BILLING_PROBE).split(':')[1]) || 7, desdeT = Date.now() - dias * 864e5;
+      const [cc, sh, est, links, npub] = await Promise.all(['cyc/claudecambios', 'cyc/stockhist', 'cyc/estrategia', 'cyc/mllinks', 'cyc/netopub'].map((k) => db.get(k)));
+      const malas = [];
+      for (const c of Object.values(cc || {})) {
+        if (!c || !(Number(c.ts) >= desdeT) || !(Number(c.a) < Number(c.de))) continue;
+        const e = (links || {})[c.mla] || {}; const cta = String(e.cuenta || c.cuenta || ''), vk = e.variant ? '__v__' + sid(String(e.variant).toLowerCase()) : '';
+        const h = [e.prodId + '__' + cta + vk, e.prodId + '__' + cta.toLowerCase() + vk, e.prodId + '__' + cta, e.prodId + '__' + cta.toLowerCase()].map((k) => (sh || {})[k]).find(Boolean) || {};
+        const llego = h.aprox === false && Number(h.desde) > 0 ? Number(h.desde) : 0;
+        const tags = Object.entries((est || {})[c.mla] || {}).map(([k, x]) => ({ ts: Number(k), t: x && x.t })).filter((x) => x.ts > 0 && x.t && x.ts < Number(c.ts)).sort((x, y) => x.ts - y.ts);
+        const ult = tags.length ? tags[tags.length - 1].t : '';
+        const recien = (llego && Number(c.ts) - llego < 30 * 864e5) || ult === 'nuevo';
+        const conTecho = tags.some((x) => x.t === 'techook' && x.ts >= (llego || 0));
+        if (recien && !conTecho) malas.push({ ...c, llego, ult });
+      }
+      malas.sort((x, y) => x.ts - y.ts);
+      console.log(`=== BAJAS MÍAS DE LO NUEVO SIN TECHO · últimos ${dias} días · ${malas.length} ===`);
+      for (const m of malas) console.log(`${m.mla} · ${m.cuenta || '?'} · ${String(m.nom || '').slice(0, 40)} · ${new Date(m.ts - 3 * 36e5).toISOString().slice(5, 16).replace('T', ' ')} · ${money(m.de)} → ${money(m.a)} · ${m.llego ? 'llegó hace ' + Math.round((m.ts - m.llego) / 864e5) + ' d' : 'en lanzamiento'} · precio anoche ${money(Number(((npub || {})[m.mla] || {}).precio) || 0)} · ${String(m.motivo || '').slice(0, 90)}`);
+      if (!malas.length) console.log('ninguna');
+      return;
+    }
     // BILLING_PROBE=listaprioridad[:<proveedor>|:-][:go] (20/10/2026) → qué lista mide la vuelta de cada hora antes que Paraguay
     // (ver pycatmedir). Sin proveedor muestra la que hay; `-` la saca.
     if (/^listaprioridad(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
