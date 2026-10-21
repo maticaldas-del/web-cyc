@@ -2349,3 +2349,9 @@ se resetea en `goPage('pedidos')` y al salir de la solapa) · la tarjeta entera 
 summary = la tarjeta; la casilla de pedir y la foto no la abren) · sin el código a la vista (queda en "verlo en la lista") · ⚠️ sólo con
 duda de verdad: `_listaNoEsVale` o, sin el ✓ del chat, 1 solo vendedor o un reparo de nombre. Qué chequear: que en el teléfono la
 casilla de pedir se pueda tocar sin que se abra/cierre la tarjeta.
+
+**v25.70 (21/10/2026) · etapa 7 · Listas → Nuevos: arriba sólo los que dan, todo lo demás en "📂 Toda la lista".** Él: *"en nippon saca
+eso o metelo en el detalle"* (el aviso de vendidas sin mirar: en Bs As ya no sale arriba, va en el detalle de cada producto que da) y
+*"unifica toda la info de los productos vistos y los que no etc. todos abajo. junto con catálogo y sin catálogo"*. El resumen (vuelta,
+evaluados, sin evaluar, afuera) y las carpetas (con/sin catálogo, sin medir, regla, viajando, no está en su web, sacados) van adentro de
+un solo `<details>` cerrado debajo de ✅ Dan. Qué chequear: que las etiquetas se cierren bien (prueba con datos de ejemplo: 9/9 details).
