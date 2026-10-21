@@ -7152,7 +7152,7 @@ function renderOfiCaja(){
         ${casilla}
       </div>
       <div ${_tog} style="margin-top:6px;font-size:.75rem;cursor:pointer">${_resum||'<span style="color:var(--muted)">no hace falta mandar</span>'}${!_ab&&_hayAviso?' <span style="color:var(--amber);font-size:.65rem">⚠️ ver detalle</span>':''}</div>
-      ${_ab?`<div style="margin-top:6px">${cerebroBtn(f.p.id,{variante:f.variante||'',cuenta:ofiFiltroCuenta&&ofiFiltroCuenta!=='todas'?ofiFiltroCuenta:'',ctx:'caja'})}
+      ${_ab?`<div style="margin-top:6px">${cerebroBtn(f.p.id,{variante:f.variante||'',cuenta:ofiFiltroCuenta&&ofiFiltroCuenta!=='todas'?ofiFiltroCuenta:'',ctx:'caja'})} ${lineaBtn(f.p.id,'📈 línea',f.variante||'')}
       ${_cerNotaVisHTML(_cerNotaCtx('caja',f.p.id,ofiFiltroCuenta&&ofiFiltroCuenta!=='todas'?ofiFiltroCuenta:'',f.variante||''),'caja-vis')}
       ${lineas}${pie}</div>`:''}
     </div>`;
@@ -10821,7 +10821,7 @@ function lineaPintar(prodId){
   // ancho fijo): elegir un color (título más largo) o cambiar "⤿ de costado"/"⤾ parada" ya no corre el ✕ ni los botones de días.
   m.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;max-width:1500px;width:100%;padding:14px 16px;margin-top:20px">
     <div style="font-size:.9rem;font-weight:700;line-height:1.35;overflow-wrap:anywhere">📈 ${p.name}${_lineaVar?` · <span style="color:#a78bfa">${_lineaVar}</span>`:''}</div>
-    <div class="linea-btns" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;margin-top:6px"><button class="btn" onclick="lineaTodoAbrir(event)" style="font-size:.66rem;padding:3px 10px" title="La misma línea con TODOS los productos juntos">📈 Todos</button>${btn(365)}${btn(90)}${btn(30)}${_lineaGiroBtn()}<button class="btn" onclick="document.getElementById('linea-modal').remove()" style="font-size:.7rem;padding:3px 10px">✕</button></div>
+    <div class="linea-btns" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;margin-top:6px">${_lineaFichaMlas(prodId,_lineaVar).length?`<button class="btn" onclick="lineaFichaAbrir('${prodId}',event)" style="font-size:.66rem;padding:3px 10px" title="La ficha completa de la publicación: lo que ya sabemos, cada cambio de precio y cómo le fue">📋 Ficha</button>`:''}<button class="btn" onclick="lineaTodoAbrir(event)" style="font-size:.66rem;padding:3px 10px" title="La misma línea con TODOS los productos juntos">📈 Todos</button>${btn(365)}${btn(90)}${btn(30)}${_lineaGiroBtn()}<button class="btn" onclick="document.getElementById('linea-modal').remove()" style="font-size:.7rem;padding:3px 10px">✕</button></div>
     ${_vars.length>1?`<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px">${['',..._vars].map((v,i)=>`<button class="btn" onclick="lineaVar(_lineaVarsL[${i}],'${prodId}')" style="font-size:.62rem;padding:2px 9px;${_lineaVar===v?'background:#7c3aed;color:#fff;border-color:#7c3aed':''}">${v||'Todas juntas'}</button>`).join('')}</div>`:''}
     <div style="font-size:.7rem;color:var(--muted);margin:6px 0 8px;line-height:1.6">${_lineaRango} días · <b style="color:var(--text)">${uT} u. vendidas</b>${uRT?` (${uRT} en remate)`:''}${hayGan&&gPct!=null&&isFinite(gPct)?` · ganancia <b style="color:${pctColor(gPct)}">${gPct.toFixed(0)}%</b>`:''} · ${vT} visitas · ${_stHoy} · historial: <span style="color:var(--green)">${dCon} d con</span> · <span style="color:var(--red)">${dSin} d sin</span> · ${dNo} d sin dato${dRem?` · ${dRem} d rematando`:''}${pIni&&pFin?` · precio ${fmt(pIni)} → ${fmt(pFin)}`:''} · ${Object.keys(porMlaF).length} publicación(es)${C.fallo?' · <span style="color:var(--amber)">alguna publicación no se pudo leer</span>':''}</div>
     <div style="position:relative;padding-left:58px">
@@ -11253,6 +11253,32 @@ async function fichaAbrir(mla,ev){
   const v=(x,f)=>x==null?'<span style="color:var(--muted)">—</span>':f?f(x):esc(String(x));
   h+=sec(`Línea de tiempo, día por día (${dias.length} días guardados)`,dias.length?`<details${dias.length<=45?' open':''}><summary style="cursor:pointer;color:var(--muted)">ver los ${dias.length} días</summary>${tb(['Día','Estado','Stock Full','Precio','Vendió','Cobrado','Neto','En remate','Caja','ML pide','Visitas','Margen','Vendidas (vida)','Falta algo'],dias.map(k=>{const x=L[k];return[fK(k),v(x.est,s=>esc(_FICHA_EST[s]||s)+(x.sub?' <span style="color:var(--muted)">('+esc(x.sub)+')</span>':'')),v(x.st),v(x.p,$),v(x.u),v(x.tot,$),v(x.neto,$),v(x.uR),v(x.caja,c=>esc(_FICHA_CAJA[c]||c)),v(x.ptw,$),v(x.vis),v(x.mg,g=>g+'%'),v(x.vend),x.inc?'<span style="color:var(--amber)">incompleto</span>':''];}))}</details>`:'<div style="color:var(--muted)">Sin línea de tiempo guardada.</div>');
   m.innerHTML=caja(h);
+}
+// 7.19 · ATAJOS (21/10/2026, eligió la a): 📈 en Pedidos y Armar caja, 📋 Ficha desde la línea de tiempo, y "mandar" que lleva a
+// Armar caja. Sólo navegan: no calculan nada.
+function _irCajaLink(t){return `<a role="button" onclick="irACaja('',event)" title="Ir a Mi oficina → Armar caja" style="color:inherit;text-decoration:underline;cursor:pointer">${t}</a>`;}
+// Las publicaciones de la línea abierta (del color elegido si hay uno), activas primero: las que tienen ficha para abrir.
+function _lineaFichaMlas(prodId,vari){
+  const L=state.mllinks||{};const v=String(vari||'').toLowerCase();
+  return Object.entries(L).filter(([m,e])=>/^MLA\d+$/.test(m)&&e&&e.prodId===prodId&&!e.ignored&&(!v||String(e.variant||'').toLowerCase()===v))
+    .sort((a,b)=>((b[1].status==='active')-(a[1].status==='active'))||String(a[0]).localeCompare(String(b[0]))).map(([m])=>m);
+}
+let _lineaFichaSube=()=>{};
+function lineaFichaAbrir(prodId,ev){
+  if(ev)ev.stopPropagation();
+  const ms=_lineaFichaMlas(prodId,typeof _lineaVar!=='undefined'?_lineaVar:'');if(!ms.length)return;
+  // La ficha va ADELANTE de la línea (la línea abre en z 9200).
+  // Y si desde la ficha se toca "📈 Gráfico", la línea vuelve adelante.
+  const sube=()=>{const f=document.getElementById('ficha-modal');if(!f)return;f.style.zIndex='9300';if(!f._baja){f._baja=true;f.addEventListener('click',e=>{if(e.target.closest('button[onclick*="lineaAbrir"]'))f.style.zIndex='';},true);}};
+  _lineaFichaSube=sube;
+  if(ms.length===1){Promise.resolve(fichaAbrir(ms[0])).then(sube,sube);setTimeout(sube,60);return;}
+  // Varias publicaciones: se elige cuál (los mismos botones del 🧠).
+  let m=document.getElementById('linea-ficha-elige');if(m)m.remove();
+  m=document.createElement('div');m.id='linea-ficha-elige';
+  m.style.cssText='position:fixed;inset:0;z-index:9250;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px';
+  m.onclick=e=>{if(e.target===m)m.remove();};
+  m.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:14px 16px;max-width:420px;width:100%;max-height:88vh;overflow-y:auto"><div style="display:flex;justify-content:space-between;gap:10px;font-size:.8rem;font-weight:700">📋 ¿La ficha de cuál publicación?<button class="btn" onclick="document.getElementById('linea-ficha-elige').remove()">✕</button></div><div onclick="setTimeout(()=>{_lineaFichaSube();const x=document.getElementById('linea-ficha-elige');if(x)x.remove();},80)">${_fichaBotones(ms)}</div></div>`;
+  document.body.appendChild(m);
 }
 function _fichaBotones(mlas){
   const L=state.mllinks||{};const ok=(mlas||[]).filter(k=>/^MLA\d+$/.test(k));if(!ok.length)return '';
@@ -18707,7 +18733,7 @@ function pedTanqueHTML(p){
   return `<div class="ped-tanque" title="Días que cubre cada lugar al ritmo de ${fmtN(Math.round(v*30))} por mes. La raya roja es el corte: lo que tarda reponer (${corte} días).">
     <div class="tq-bar">${barra}<span class="tq-corte" style="left:${w(corte).toFixed(1)}%"></span></div>
     <div class="tq-leg">${leg}</div>
-    <div class="tq-msg">${msg} · corte ${_rp.inf?'sin fecha (cuento '+corte+' d)':corte+' d'}${colMin}</div><div class="tq-msg" style="color:${_rp.inf?'var(--red)':'var(--muted)'}">⏱️ reponer: ${_rp.txt}</div></div>`;
+    <div class="tq-msg">${msg} · corte ${_rp.inf?'sin fecha (cuento '+corte+' d)':corte+' d'}${colMin}</div><div class="tq-msg" style="color:${_rp.inf?'var(--red)':'var(--muted)'}">⏱️ reponer: ${_rp.txt}</div>${casa>0?`<div class="tq-msg">📦 ${_irCajaLink('mandar lo de la oficina → Armar caja')}</div>`:''}</div>`;
 }
 // ── EL CHIP DE CADA VARIANTE: QUÉ COMPRAR Y DÓNDE ESTÁ LO QUE YA TENÉS ─────────────
 // Pedido suyo del 14/09/2026. Los tres lugares van SIEMPRE, aunque sean cero: un chip sin el
@@ -18745,9 +18771,9 @@ function pedVarFila(x,p){
   const dTxt=sem==='rojo'?((x.ml!=null&&(x.ml||0)+(x.cam||0)+(x.casa||0)+(x.pv||0)<=0)?'🔴 sin stock en ningún lado':`🔴 escasez${x.dias!=null&&x.dias<999?': alcanza ~'+x.dias+' d':''}`):(x.dias!=null&&x.dias<999?`${sem==='naranja'?'🟠':'🟡'} alcanza ~${x.dias} d`:'');
   return `<div class="ped-var-fila sem-${sem}" style="border-left-color:${col}">
     <div class="ped-var-txt"><b>${x.v}</b>${x.hist?' <span style="color:var(--amber);font-size:.8em">· ritmo viejo</span>':''}<i>${[dTxt,lug,pedVarMaxTxt(x,p)].filter(Boolean).join(' · ')}</i></div>
-    ${p&&p.prodId?`<span style="display:inline-flex;gap:6px;align-items:center" onclick="event.stopPropagation()">${cerebroBtn(p.prodId,{ped:p.id,variante:x.v})}${noConsigoBtn((state.products||[]).find(z=>z.id===p.prodId),x.v)}</span>`:''}
-    ${p&&p.prodId?`<span class="ped-var-u" style="color:${q>0?col:'var(--green)'}" onclick="event.stopPropagation()"><input type="number" min="0" step="1" value="${q}" onchange="pedSetVarU('${p.prodId}','${String(x.v).replace(/'/g,"\\'")}',this.value)" title="${x.mano?'Lo cambiaste vos a mano: manda sobre lo que decidí yo hasta que marques el pedido hecho':'Tocá para cambiar cuántas pedir de este color'}" style="width:62px;font:inherit;font-weight:700;font-size:1.3rem;text-align:right;background:transparent;border:1px ${x.mano?'solid':'dashed'} ${x.mano?'var(--amber)':'var(--border)'};border-radius:6px;color:inherit;padding:0 4px"><i>${x.mano?'✋ a mano':q>0?'u. a comprar':'mandar de casa'}</i></span>`
-      :q>0?`<span class="ped-var-u" style="color:${col}"><b>${n(q)}</b><i>u. a comprar</i></span>`:`<span class="ped-var-u" style="color:var(--green)"><b>✓</b><i>mandar de casa</i></span>`}
+    ${p&&p.prodId?`<span style="display:inline-flex;gap:6px;align-items:center" onclick="event.stopPropagation()">${lineaBtn(p.prodId,'📈',x.v)}${cerebroBtn(p.prodId,{ped:p.id,variante:x.v})}${noConsigoBtn((state.products||[]).find(z=>z.id===p.prodId),x.v)}</span>`:''}
+    ${p&&p.prodId?`<span class="ped-var-u" style="color:${q>0?col:'var(--green)'}" onclick="event.stopPropagation()"><input type="number" min="0" step="1" value="${q}" onchange="pedSetVarU('${p.prodId}','${String(x.v).replace(/'/g,"\\'")}',this.value)" title="${x.mano?'Lo cambiaste vos a mano: manda sobre lo que decidí yo hasta que marques el pedido hecho':'Tocá para cambiar cuántas pedir de este color'}" style="width:62px;font:inherit;font-weight:700;font-size:1.3rem;text-align:right;background:transparent;border:1px ${x.mano?'solid':'dashed'} ${x.mano?'var(--amber)':'var(--border)'};border-radius:6px;color:inherit;padding:0 4px"><i>${x.mano?'✋ a mano':q>0?'u. a comprar':_irCajaLink('mandar de casa')}</i></span>`
+      :q>0?`<span class="ped-var-u" style="color:${col}"><b>${n(q)}</b><i>u. a comprar</i></span>`:`<span class="ped-var-u" style="color:var(--green)"><b>✓</b><i>${_irCajaLink('mandar de casa')}</i></span>`}
   </div>`;
 }
 function pedVarChip(x){
@@ -19201,7 +19227,7 @@ function _pedidoItemHtml(p,opts){
   // va en su propia línea "🧠 sin decidir" (09/10/2026). Los que sí decidió en 0 siguen en la línea de "no hace falta".
   const _vSinDec=(varsSorted&&SOLO_CLAUDE)?varsSorted.filter(x=>!((x.q||0)>0)&&!x.cl):[];
   const _vMand=varsSorted?varsSorted.filter(x=>!((x.q||0)>0)&&!_vSinDec.includes(x)):[];
-  const varToggle=varsSorted?`<div class="ped-vars">${[..._vComp].sort((a,b)=>(_PED_SEM_ORD[pedVarSem(a)]-_PED_SEM_ORD[pedVarSem(b)])||((b.q||0)-(a.q||0))).map(x=>pedVarFila(x,p)).join('')}${_vSinDec.length?`<div style="font-size:.68rem;color:var(--amber);padding:2px 4px">🧠 sin decidir ${_vSinDec.length===1?'este color':'estos '+_vSinDec.length+' colores'} (Claude todavía no dijo cuántas comprar): ${_vSinDec.map(x=>escHtml(x.v)+(x.dias!=null&&x.dias<999?' ~'+x.dias+' d':'')).join(' · ')}</div>`:''}${_vMand.length?`<div style="font-size:.68rem;color:var(--muted);padding:2px 4px">✓ no hace falta comprar ${_vMand.length===1?'este color':'estos '+_vMand.length+' colores'} (${SOLO_CLAUDE?'Claude decidió 0 · el motivo está en el 🧠':'alcanza con lo de casa y lo que viaja, mandalos desde Armar caja'}): ${_vMand.map(x=>x.v+(x.dias!=null&&x.dias<999?' ~'+x.dias+' d':'')).join(' · ')}</div>`:''}</div>`:'';
+  const varToggle=varsSorted?`<div class="ped-vars">${[..._vComp].sort((a,b)=>(_PED_SEM_ORD[pedVarSem(a)]-_PED_SEM_ORD[pedVarSem(b)])||((b.q||0)-(a.q||0))).map(x=>pedVarFila(x,p)).join('')}${_vSinDec.length?`<div style="font-size:.68rem;color:var(--amber);padding:2px 4px">🧠 sin decidir ${_vSinDec.length===1?'este color':'estos '+_vSinDec.length+' colores'} (Claude todavía no dijo cuántas comprar): ${_vSinDec.map(x=>escHtml(x.v)+(x.dias!=null&&x.dias<999?' ~'+x.dias+' d':'')).join(' · ')}</div>`:''}${_vMand.length?`<div style="font-size:.68rem;color:var(--muted);padding:2px 4px">✓ no hace falta comprar ${_vMand.length===1?'este color':'estos '+_vMand.length+' colores'} (${SOLO_CLAUDE?'Claude decidió 0 · el motivo está en el 🧠':'alcanza con lo de casa y lo que viaja, mandalos desde '+_irCajaLink('Armar caja')}): ${_vMand.map(x=>x.v+(x.dias!=null&&x.dias<999?' ~'+x.dias+' d':'')).join(' · ')}</div>`:''}</div>`:'';
   const _prod=(state.products||[]).find(x=>x.id===p.prodId||(x.name&&normTxt(x.name)===normTxt(p.producto||'')));
   // El botón sale con CUALQUIER foto, no sólo con la cargada a mano: antes miraba `_prod.foto`,
   // que sólo se prende al subir una, así que con la foto automática de ML el botón no aparecía.
@@ -19288,7 +19314,7 @@ function _pedidoItemHtml(p,opts){
     </summary>
     <div class="ped-body">
       ${varToggle}
-      ${copiarBtn}${hechoBtn}${_prod?cerebroBtn(_prod.id,{ped:p.id,variante:p.variante||''}):''}${_prod?noConsigoBtn(_prod):''}
+      ${copiarBtn}${hechoBtn}${_prod?cerebroBtn(_prod.id,{ped:p.id,variante:p.variante||''}):''}${_prod?lineaBtn(_prod.id,'📈 línea',p.variante||''):''}${_prod?noConsigoBtn(_prod):''}
       ${varsSorted?'<details class="ped-mas" style="flex-basis:100%"><summary style="cursor:pointer;font-size:.7rem;color:var(--muted)">más datos ▾</summary><div class="ped-body" style="padding:6px 0 0">':''}
       ${fotoBtn}
       ${_tanque}${(()=>{const n=_tanque?String(p.nota||'').replace(/ · ~\d+d cubiertos/,'').replace(/ · 📦[\s\S]*$/,''):p.nota;return n?`<span class="pi-nota">${n}</span>`:'<span class="pi-nota" style="flex:0"></span>';})()}
