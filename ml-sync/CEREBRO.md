@@ -6,6 +6,22 @@ archivo de antes quedó en `notas/cerebro_viejo_20261021.md`, sólo como histori
 frase suya, el caso) está en `CLAUDE.md`. **Regla nueva → va en su tema acá, en `CLAUDE.md` y en `REVISION.md`, en el mismo commit.**
 Si una regla nueva choca con una de acá, se REEMPLAZA la de acá (no se agrega abajo): así no vuelven a convivir dos versiones.
 
+**🔬 TODAS LAS VUELTAS SON PESADAS Y LAS VENTAS SE ANALIZAN AL MÁXIMO (21/10/2026, regla suya; manda sobre cualquier prompt de tarea
+que diga "liviana" o "gastá poco"):** *"necesito análisis máximo en las ventas"* y *"todas las revisiones son pesadas con esfuerzo más alto,
+se quita eso de gasta poco"*. **Y CADA VENTA SE ANALIZA UNA SOLA VEZ** (*"no quiero que una venta se evalúe dos veces. para no
+gastar tokens de más. que cada venta tenga un análisis profundo con esfuerzo máximo y listo"*). Cada vuelta (las de cada 2 h, 11:52 a 23:52 desde el 21/10, y la de
+las 08:52) arranca con **`ventasraras:nuevas`**, que trae SÓLO las ventas posteriores a la última analizada; cada publicación de esas
+ventas se mira con su FICHA COMPLETA (`ficha:<MLA>`, varias en un disparo): año entero, reacción al precio, caja, competencia, stock,
+reposición, fechas, rayas, y queda con estrategia bien pensada (🧭 sin ⚠️). Al terminar la vuelta, `ventasvistas:<ts>|esf=<esfuerzo>|<MLA>=<qué pasó y qué resolví>|…;go`
+(el número que imprime el 📌; `esf` = el esfuerzo que usé de verdad: max, xhigh, high…) marca hasta dónde se analizó y deja en
+CADA venta su análisis (`cyc/ventaanalisis`): la tarjeta lo muestra gris si no cambió nada y del color de la estrategia si cambió
+(21/10, pedido suyo). El texto por MLA va siempre que hubo algo que contar (sin `;` ni `|`); sin texto sale el motivo de la estrategia; la vuelta siguiente no las vuelve a ver. Si la vuelta se corta antes de anotar, la
+siguiente las retoma: nunca quedan sin analizar. Si vendieron más de ~5 publicaciones distintas, las piensa un ayudante con esfuerzo
+MÁXIMO que propone; decidir y aplicar es mío. Una publicación que vuelve a vender en otra vuelta se mira por esa venta NUEVA (lo que
+cambió desde la decisión anterior, que ya está en su ficha), no se rehace el análisis de la venta vieja.
+La de las 08:52 además mira lo que no depende de las ventas (pedidos de todo el catálogo, cajas, lo que no vende 📏/🔎/📦, juicios del
+supervisor, promos a fondo, fotos de candidatos): eso NO se saca, porque lo que no vende nunca dispara una revisión de venta.
+
 **Las marcas:**
 - 🔒 **freno en el código**: no se puede romper. `decido`/`entrarpromo`/`tag` lo rechazan solos y dicen la regla. Para pasar
   a propósito hay una bandera (`!…`) que vale SÓLO si el motivo dice **"EXCEPCIÓN: …"** con el porqué.
@@ -64,6 +80,11 @@ La etapa 8 de la revisión (Reglas del cerebro, cada 7 días) mira que esto qued
    Si 🧭 + 🔀 + 💭 traen más de ~8 renglones, un ayudante en Alto los piensa y propone; si no, los miro yo. Aplicar siempre es mío.
 5. Cada venta nueva contra su ficha: ¿1ª o 2ª después de un cambio? ¿confirma o desmiente la prueba? ¿se aceleró ⚡? ¿la dejó en
    escasez? ¿se vendió en promo? Escasez nueva se trata en ESTA vuelta (precio + caja si hay oficina).
+   🔒 **Y cada venta deja su producto con estrategia pensada** (21/10/2026, él: *"quiero que siempre se mire con detenimiento venta x
+   venta, así todos los productos quedan con estrategias siempre y con estrategias bien pensadas"*): `ventasraras` termina con
+   **🧭 ESTRATEGIA DE LO QUE VENDIÓ**; cada ⚠️ (sin estrategia, promo, descuento, excepción, caja, o volviendo 7+ días sin techo
+   anotado) se decide EN ESTA VUELTA con la ficha abierta: buscar techo (salto grande), anotar el techo probado, o sobra/escasez/
+   sin reposición con su motivo. La lista queda vacía. Lo que NO vende no pasa por acá: eso lo barre la completa (📏/🔎/📦).
 6. Activar pausadas con stock en Full (`activarfull:go:25`); lo que no se activa va al `pregunto:` con motivo.
 7. Preguntas de compradores que sé sin duda (`contesto:`). Mis descuentos que vencen en 2 días: renovar o dejar terminar.
 8. 📋 Listas: confirmar el mismo producto (`listarevisar` → `listadato:<prov>;<cód>=ok|no|mi=MLA…;go`); con duda no se toca.

@@ -9421,3 +9421,17 @@ Y Paraguay/Listas se vuelven a medir según qué tan cerca están (15%+ cada 7 d
 Él: *"quiero que vaya lista por lista. o sea que haga todo nissei y avise cuál fue la última vuelta completa. así con todas"*.
 El robot mide una fuente por vez (Nissei, después cada lista) hasta terminarla, anota la vuelta completa (`cyc/mlconfig/vueltas`) y pasa
 a la siguiente. La web lo muestra arriba de cada una. ~~Lo que no está en ML no se vuelve a buscar~~ **CORREGIDO EL 21/10 (él: *"puede que se creen catálogo para los productos (…) si los descartamos para siempre, puede que después lo dejemos afuera"*): sin catálogo se vuelve a buscar cada 60 días y sin vendedores cada 30 (v25.53).** Y lo de 1 solo vendedor nunca se descarta: se vuelve a medir (Paraguay ~cada 20 h, listas 7/30 días) y entra solo cuando hay 2+.
+
+## 🔬 CADA VENTA DICE QUE LA ANALICÉ Y CON QUÉ ESFUERZO (21/10/2026, v25.74, pedido suyo)
+Él: *"en la tarjeta de venta aparezca que fue analizada por el robot y el nivel de esfuerzo utilizado (…) si no hizo ningún cambio que
+aparezca como las cuotas transparente, si hubo algún cambio el color de la estrategia (…) y al poner el cursor que explique lo sucedido
+y qué resolución se tomó"*. Al cerrar cada vuelta: `ventasvistas:<ts>|esf=<nivel real>|<MLA>=<qué pasó y qué resolví>|…;go`
+(ml-consulta). Escribe `cyc/ventaanalisis` en cada venta del tramo; el cambio lo detecta solo (estrategia o precio mío después de la
+venta). Detalle en `ml-sync/REVISION.md` etapa 5 y `ml-sync/CEREBRO.md` (🔬).
+
+
+## 🕐 LAS VUELTAS VAN SEGÚN CÓMO ENTRAN LAS VENTAS (21/10/2026, eligió la a)
+Medido con `ventashora:30` (1.534 compras, 51 por día): de 21 a 23 h se vende tanto como a la tarde y la completa de las 08:52
+cargaba ~15 ventas de la noche. Ahora: completa **08:52** (cubre 00 a 08 h) y cortas a las **11:52, 13:52, 15:52, 17:52, 19:52,
+21:52 y 23:52** (`trig_01FCaQqzU5MA422N6Z8nH63Z`), ~6 a 8 ventas por vuelta. Las dos tareas ya dicen `ventasraras:nuevas` → ficha
+de cada publicación que vendió → `ventasvistas:<ts>|esf=…|<MLA>=…;go`, y ninguna dice más "liviana".

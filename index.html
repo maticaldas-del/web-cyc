@@ -2395,6 +2395,7 @@ function startApp(){
     // uno que se hundió solo, porque el remedio es opuesto (a uno se lo deja, al otro se lo sube).
     state.nosubir=d.nosubir||{};
     state.estrategia=d.estrategia||{};   // 17/10: la estrategia de cada precio (historia por publicación)
+    state.ventaanalisis=d.ventaanalisis||{};   // 21/10: el análisis de cada venta (esfuerzo, cambio, estrategia y motivo)
     state.mlconfig=d.mlconfig||{};   // config del robot (auto-precio, meta, umbral)
     state.pushsubs=d.pushsubs||{};   // teléfonos anotados para el aviso de cada venta (15/10/2026)
     try{_aplicarParamCompra();}catch(e){}
@@ -2915,7 +2916,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.73';
+const APP_VERSION='25.74';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2928,6 +2929,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.74',f:'21/10',h:'02:10',c:[{n:2,t:'🔬 Cada venta dice que la analizó el robot y con qué esfuerzo. Si no hizo falta cambiar nada sale en gris como las cuotas; si cambió algo, del color de la estrategia que se tomó. Pasando el mouse (o tocando) explica qué pasó y qué se resolvió.'}]},
   {v:'25.73',f:'21/10',h:'00:51',c:[{n:2,t:'💰 Línea de tiempo: el piso ("más plata") ya no puede ser un precio donde no se vendió nada. Pasaba con el Aer Jasmín: $19.490 salía de piso con 0 ventas en 5 días, sólo porque era el único precio con 5 días medidos. Sin un precio que vendió con 5 días, queda el piso provisorio de lo que sí vendió.'}]},
   {v:'25.72',f:'21/10',h:'00:48',c:[{n:1,t:'🗑️ La papelera de Pedidos pasó a Ajustes (tarjeta "🗑️ Papelera de pedidos", con lo que sacaste y lo que no se trae más). En Pedidos ya no está la solapa.'}]},
   {v:'25.71',f:'21/10',h:'00:46',c:[{n:1,t:'📋 Dai Nippon más limpio: sin el título "Listas que compra Tito en Bs As", sin la línea de cuántos probados hay y sin el título verde de los que dan.'}]},
@@ -12101,6 +12103,24 @@ function estrategiaChip(e){if(!e)return'';const u=ESTRATEGIA_UI[e.t];if(!u)retur
   const de=e.de&&ESTRATEGIA_UI[e.de]?ESTRATEGIA_UI[e.de]:null;
   const tit=(u[3]+(e.n>1?(e.t==='escasez'?' Es el escalón n.º '+e.n+' seguido de escasez.':' Es la suba n.º '+e.n+' seguida buscando el techo.'):'')+(de?' Venía de '+de[0]+' '+de[1]+'.':'')+(e.m?' · '+e.m:'')+(d?' · desde el '+d:'')).replace(/"/g,'&quot;');
   return ` <span class="est-chip" title="${tit}" style="--ec:${u[2]};padding:1px 6px;border-radius:4px;border:1px solid color-mix(in srgb,${u[2]} 33%,transparent);background:color-mix(in srgb,${u[2]} 12%,transparent);font-size:.62rem">${u[0]} ${u[1]}${e.n>1?' · '+e.n+(e.t==='escasez'?'º escalón':'ª suba'):''}${de?' <span style="opacity:.7">· de '+de[0]+'</span>':''}</span>`;}
+// 21/10/2026, él: "quiero que en la tarjeta de venta aparezca que fue analizada por el robot y el nivel de esfuerzo utilizado, si
+// no hizo ningún cambio y todo estaba correcto que aparezca como las cuotas transparente. si hubo algún cambio poner el color del
+// cambio relacionado a la estrategia que se tomó y al poner el cursor arriba que explique lo sucedido y qué resolución se tomó".
+// Lo escribe el robot en `cyc/ventaanalisis/<día>/<id>` al cerrar cada vuelta (`ventasvistas`). Una venta sin análisis no muestra nada.
+const ESF_NOMBRE={low:'bajo',medium:'medio',high:'alto',xhigh:'muy alto',max:'máximo'};
+let _vaIdx={ref:null,m:new WeakMap()};
+function _ventaAnalisisDe(v){const VP=state.ventaprod||{};if(_vaIdx.ref!==VP){const m=new WeakMap();for(const [dk,dd] of Object.entries(VP))for(const [id,x] of Object.entries(dd||{}))if(x&&typeof x==='object')m.set(x,dk+'/'+id);_vaIdx={ref:VP,m};}
+  const k=_vaIdx.m.get(v);if(!k)return null;const [dk,id]=k.split('/');return ((state.ventaanalisis||{})[dk]||{})[id]||null;}
+function analisisVentaHTML(items){const vs=[];const vistos=new Set();
+  for(const v of (items||[])){const a=_ventaAnalisisDe(v);if(!a)continue;const key=[a.cambio?1:0,a.t||'',a.m||'',a.esf||''].join('|');if(vistos.has(key))continue;vistos.add(key);vs.push({a,v});}
+  return vs.map(({a,v})=>{const esf=ESF_NOMBRE[a.esf]||a.esf||'';const u=a.t&&ESTRATEGIA_UI[a.t]?ESTRATEGIA_UI[a.t]:null;
+    const cuando=a.ts?new Date(a.ts).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+    const nom=items.length>1?String(nombreDeVenta(v)||'').slice(0,40)+': ':'';
+    const precio=(a.de&&a.a)?` Precio ${fmt(a.de)} → ${fmt(a.a)}.`:'';
+    const tit=(`${nom}Analizada por el robot${cuando?' el '+cuando:''} con esfuerzo ${esf}. `+(a.cambio?`Hubo cambio después de esta venta${u?': '+u[0]+' '+u[1]:''}.${precio} `:`No hizo falta cambiar nada${u?' (estrategia '+u[0]+' '+u[1]+')':''}. `)+(a.m||'')).replace(/"/g,'&quot;');
+    const txt=`🔬 ${a.cambio&&u?u[0]+' ':''}${a.cambio?(u?u[1]:'cambio'):'analizada'} · ${esf}`;
+    if(a.cambio){const col=u?u[2]:'#38bdf8';return `<span style="font-size:.62rem;padding:1px 6px;border-radius:4px;border:1px solid color-mix(in srgb,${col} 40%,transparent);background:color-mix(in srgb,${col} 12%,transparent);color:${col};white-space:nowrap;cursor:help" title="${tit}">${txt}</span>`;}
+    return `<span style="font-size:.62rem;padding:1px 6px;border-radius:4px;border:1px solid var(--border2);color:var(--muted);white-space:nowrap;cursor:help" title="${tit}">${txt}</span>`;}).join(' ');}
 // 19/10/2026, él: "promo que sea cuando ml también pone plata, si ponemos sólo nosotros es descuento". En la venta manda lo que
 // pasó EN ESA venta (`cyc/promoventa`): ML puso algo = 🏷️ promo · sólo nosotros = 💸 descuento. Sin ese dato, el tipo de la promo
 // que entré (descuento propio = descuento).
@@ -13280,6 +13300,7 @@ function renderVentaProd(){
         return vs.map(x=>{const [t,pr,si]=x.split('|');const col=pr==='1'?'#eab308':'var(--muted)';
           const tt=(pr==='1'?'Se vendió por la publicación PREMIUM (con cuotas). ':t.startsWith('Clásica')?'Se vendió por la publicación CLÁSICA. ':'')+(si==='1'?'El interés de las cuotas lo pagamos nosotros (cuotas sin interés).':/cuotas/.test(t)?'Pagó en cuotas con interés: el interés lo pagó el comprador.':'');
           return `<span style="font-size:.62rem;padding:1px 6px;border-radius:4px;border:1px solid ${pr==='1'?'rgba(234,179,8,.5)':'var(--border2)'};color:${col};white-space:nowrap" title="${tt}">💳 ${t}</span>`;}).join(' ');})();
+      const analisisLabel=analisisVentaHTML(grp.items);   // 🔬 análisis del robot (otra sesión, 21/10)
       const nroLabel=isCancelled?'':ventaNroHTML(grp.items);   // A5 (21/10/2026): 🥇 1ª / 🥈 2ª venta desde el último cambio de precio
       const _esAv=!!(_vpAvisoIds&&grp.items.some(v=>_vpAvisoIds.has(v.id))),_avSt=_esAv?`--avc:${gpct!=null?pctColor(gpct):'var(--green)'};`:'';
       const _avTag=_esAv?`<span class="vp-aviso-tag">🔔 la del aviso</span>`:'';
@@ -13292,6 +13313,7 @@ function renderVentaProd(){
           <span style="flex:1"></span>
           ${promoLabel?promoLabel.replace(/>🏷️ [^<]*</,'>🏷️ '+(promoLabel.includes('vp-promo-ml')?'desc. ML':'promo')+'<'):''}
           ${tipoLabel}${nroLabel?' '+nroLabel:''}
+          ${analisisLabel}
           ${entLabel}
           ${rescLabel}
           ${(!isCancelled&&_tot>0)?`<span style="font-size:.66rem;color:var(--muted)">total <b style="color:var(--text);font-weight:600">${fmt(_tot)}</b></span>`:''}
@@ -13313,7 +13335,7 @@ function renderVentaProd(){
         </div>
         ${_items}
         ${_hechoV}
-        ${(tipoLabel||nroLabel)?`<div>${[tipoLabel,nroLabel].filter(Boolean).join(' ')}</div>`:''}
+        ${(tipoLabel||nroLabel||analisisLabel)?`<div>${[tipoLabel,nroLabel,analisisLabel].filter(Boolean).join(' ')}</div>`:''}
         ${promoLabel?`<div>${promoLabel}</div>`:''}
         <div style="display:flex;align-items:center;gap:10px;margin-top:2px">
           ${isCancelled?'':(gc>0?`<span style="font-size:.8rem;font-weight:600;color:${gg>=0?'var(--green)':'var(--red)'}">${gg>=0?'+'+fmt(gg):'−'+fmt(-gg)}</span>`:'')}

@@ -1126,6 +1126,13 @@ a la lista. Chequear: que cada hoja muestre el nombre del mismo id que se marca 
 Chequear: que los ayudantes no corran nada que escriba y que cada publicación activa tenga juicio.
 
 ## 5 · DATOS, HISTORIAL Y CEREBRO (viernes · junta las viejas 8 y 9; datos e historial nació el 08/10/2026)
+- **🔬 EL ANÁLISIS DE CADA VENTA EN SU TARJETA (21/10/2026, v25.74, pedido suyo).** `ventasvistas:<ts>|esf=<nivel>|<MLA>=<texto>;go`
+  escribe `cyc/ventaanalisis/<día>/<id>` (mismas claves que `cyc/ventaprod`) para cada venta no cancelada del tramo (marca anterior, ts]:
+  `{ts, esf, cambio, t, m, de, a}`. Hay cambio si después de la venta hay estrategia nueva (`cyc/estrategia/<MLA>`) o precio mío
+  (`cyc/claudecambios`). Si un análisis no se anota, la marca NO se mueve. La web (`analisisVentaHTML`, en Ventas x Producto PC y celular):
+  gris si no cambió, color de la estrategia si cambió, globito con qué pasó y qué se resolvió. **Chequear:** que el `esf` sea el que
+  se usó de verdad, que el texto no traiga datos del comprador (la base la lee la web, el log es público) y que ninguna venta del
+  tramo quede sin su análisis.
 - **✅ LAS 2 DECISIONES DE LA ETAPA 5: ELIGIÓ LAS DOS (a) EL 21/10/2026.** Antes decía: ESPERAN SU RESPUESTA (junto con las 6 de precios y las 30 de diseño).
   (a) = la recomendada. 1 un remate decidido por mí con `decido …#liquidando/#remate/#sobra` no prueba remate: sus ventas abajo de
   20% cuentan como demanda (Pedidos vuelve a comprar lo que se liquida) → (a) la estrategia liquidando/remate vigente al venderse
@@ -2371,3 +2378,20 @@ Qué chequear: que "↩︎ Devolver" y "Volver a traer" funcionen desde Ajustes.
 ventas, −$63/día) era el único con 5 días y ganaba por descarte → la línea decía "bajando desde $19.490 · no baja de $19.490" con el precio
 en $18.190, y el freno F5 habría frenado volver a su precio real. Ahora `med` pide `u > 0`; sin eso queda el piso provisorio de lo que
 vendió. Qué chequear: que ningún 💰 tenga 0 vendidas.
+
+**21/10/2026 · etapa 8 (reglas del cerebro) · cada venta deja su producto con estrategia.** Él: *"quiero que siempre se mire con
+detenimiento venta x venta, así todos los productos quedan con estrategias siempre y con estrategias bien pensadas"*. `ventasraras` termina
+con "🧭 ESTRATEGIA DE LO QUE VENDIÓ": cada publicación vendida en la ventana con su estrategia (`cyc/estrategia`) y si tiene techo probado
+(`cyc/techofreno`); ⚠️ las que no tienen una con techo. CEREBRO.md sección 1 paso 5. Qué chequear: que la lista ⚠️ quede vacía en cada
+vuelta y que lo que no vende siga barrido por la completa.
+
+**21/10/2026 · etapa 8 · todas las vueltas pesadas, ventas al máximo.** Él: *"necesito análisis máximo en las ventas"* y *"todas las
+revisiones son pesadas con esfuerzo más alto, se quita eso de gasta poco"*. Arriba de todo en CEREBRO.md (manda sobre el prompt de la
+tarea de cada 2 h, que todavía dice "liviana": la tarea sólo se puede editar desde su conversación). La completa de las 08:52 sigue
+(pedidos, cajas, lo que no vende). Qué chequear: que cada vuelta corta abra la ficha de cada publicación que vendió y deje la 🧭 sin ⚠️.
+
+**21/10/2026 · etapa 8 · cada venta se analiza UNA sola vez.** Él: *"no quiero que una venta se evalúe dos veces. para no gastar tokens
+de más. que cada venta tenga un análisis profundo con esfuerzo máximo y listo"*. `ventasraras:nuevas` trae sólo las ventas posteriores a
+`mlapi/ventasvistas/hasta` (sin marca: últimas 24 h) e imprime 📌 con el `ventasvistas:<ts>;go` para anotar al terminar la vuelta;
+`ventasvistas` nunca retrocede y corre también por ml-consulta. `ventasraras:<horas>` sigue para mirar a mano. Qué chequear: que cada
+vuelta use `:nuevas` y anote al final; que una vuelta cortada no deje ventas sin ver (la marca sólo avanza al terminar).
