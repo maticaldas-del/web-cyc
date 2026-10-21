@@ -11496,6 +11496,10 @@ async function cerebroAbrir(el,ev){
     const cab=(varias||_col)?`<b>${_cerEsc(e.cuenta||'')}${_col?' · '+_cerEsc(_col):''}${e.status&&e.status!=='active'?' · pausada':''}:</b> `:'';
       if(_repetido(c.simple))continue;_decir(c.simple);
       h+=par(`${cab}💭 ${_cerEsc(_cerFecha(c.ts))}: ${_cerEsc(c.simple)}`);
+      // UNA VENTA NUEVA NO QUEDA TAPADA POR UNA NOTA VIEJA (etapa 6 · A5, 21/10/2026, eligió la a): si después de la nota vendió,
+      // se dice cuántas y cuándo fue la última, para no leer la nota como si ya las hubiera mirado.
+      {const _vd=Number(c.ts)>0?_comprasEntre(k,Number(c.ts),Date.now()+60e3):{n:0};
+        if(_vd.n>0)h+=par(`<span style="color:var(--amber)">⚠️ Esta nota es del ${_cerEsc(_cerFecha(c.ts))} y después vendió ${_vd.n} ${_vd.n===1?'vez':'veces'} (la última el ${_cerEsc(_cerFecha(_vd.ult))}): todavía no la revisé con ${_vd.n===1?'esa venta':'esas ventas'}.</span>`);}
     }
     // POR QUÉ CAMBIÓ EL PRECIO (13/10/2026, él con el Paulvic Barbarella: "no explica por qué aumentó de 58 a 97%"): la nota
     // de la publicación dice cómo está hoy; el motivo de cada suba o baja vive en `cyc/claudecambios`. Van los últimos 3.
@@ -11923,6 +11927,44 @@ function cambioTxt(e){const de=Number(e.de)||0,a=Number(e.a)||0,sube=a>de,ts=Num
   if(!mot&&e.motivo==='promo')mot=e.origen||'promo';
   return `${sube?'▲':'▼'} ${FLECHA_TIPOS[tipo][1]}: ${fmt(de)} → ${fmt(a)} (${sube?'+':''}${de?((a/de-1)*100).toFixed(1):'?'}%)${mot?' · '+mot:' · sin motivo anotado'}`;}
 const flechaLeyenda=()=>Object.entries(FLECHA_TIPOS).map(([k,[c,n]])=>`<span style="margin-right:8px;white-space:nowrap"><b style="color:${c}">${k==='promo'||k==='remate'||k==='volver'||k==='caja'?'▼':'▲'}</b> ${n}</span>`).join('');
+// ── LA 1ª Y LA 2ª VENTA DESDE EL ÚLTIMO CAMBIO DE PRECIO (etapa 6 · A5, 21/10/2026, eligió la a) ──
+// Regla del cerebro (⚡, 18/10/2026): cada venta es un dato. La 1ª a un precio nuevo dice que a ese precio vende; la 2ª lo confirma.
+// Cada venta dice cuál es, contando COMPRAS (no renglones: un carrito es una) de ESA publicación, no canceladas, desde el último
+// cambio de precio (la misma lista que las flechas y la línea de tiempo: `cambiosPrecioLista`). De la 3ª en adelante no dice nada.
+// El índice por publicación se arma una vez y se rehace si cambia la base o pasan 5 s (la lista de ventas lo pide renglón por renglón).
+let _vMlaIdx=null,_vMlaRef=null,_vMlaTs=0;
+function _ventasDeMla(mla){
+  const vp=state.ventaprod||{};
+  if(!_vMlaIdx||_vMlaRef!==vp||Date.now()-_vMlaTs>5000){
+    _vMlaRef=vp;_vMlaTs=Date.now();_vMlaIdx=new Map();
+    for(const o of Object.values(vp))for(const [id,v] of Object.entries(o||{})){
+      if(!v||!v.mla||v.cancelada)continue;const ts=Number(v.ts)||Date.parse(v.ts||'')||0;if(!ts)continue;
+      let a=_vMlaIdx.get(v.mla);if(!a)_vMlaIdx.set(v.mla,a=[]);a.push({ts,g:v.numVenta?'n'+v.numVenta:(v.saleId||id)});
+    }
+    for(const a of _vMlaIdx.values())a.sort((x,y)=>x.ts-y.ts);
+  }
+  return _vMlaIdx.get(mla)||[];
+}
+// Compras de esa publicación con fecha en (desde, hasta]. La última es la de más tarde.
+function _comprasEntre(mla,desde,hasta){const g=new Map();for(const x of _ventasDeMla(mla))if(x.ts>desde&&x.ts<=hasta)g.set(x.g,Math.max(g.get(x.g)||0,x.ts));return {n:g.size,ult:g.size?Math.max(...g.values()):0};}
+function ventaNroDesdeCambio(v){
+  if(!v||!v.mla||v.cancelada)return null;
+  const ts=Number(v.ts)||Date.parse(v.ts||'')||0;if(!ts)return null;
+  const cs=cambiosPrecioLista([v.mla]).filter(c=>c.ts<ts);if(!cs.length)return null;
+  const c=cs[cs.length-1],r=_comprasEntre(v.mla,c.ts,ts);
+  return r.n>0?{n:r.n,c}:null;
+}
+function ventaNroHTML(items){
+  const vistos=new Set(),out=[];
+  for(const v of (items||[])){
+    if(!v||vistos.has(v.mla))continue;vistos.add(v.mla);
+    const r=ventaNroDesdeCambio(v);if(!r||r.n>2)continue;
+    const d=new Date(r.c.ts),f=String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0');
+    const tt=`El precio cambió el ${f} de ${fmt(r.c.de)} a ${fmt(r.c.a)}: ésta es la ${r.n===1?'primera':'segunda'} compra a ese precio. Cada venta es un dato: la 1ª dice que a ese precio vende, la 2ª lo confirma.`;
+    out.push(`<span style="font-size:.62rem;padding:1px 6px;border-radius:4px;border:1px solid ${r.n===1?'rgba(34,197,94,.45)':'rgba(56,189,248,.45)'};color:${r.n===1?'var(--green)':'#38bdf8'};white-space:nowrap" title="${tt.replace(/"/g,'&quot;')}">${r.n===1?'🥇 1ª':'🥈 2ª'} venta desde el cambio</span>`);
+  }
+  return out.join(' ');
+}
 function cambioVentaHTML(v,tsVenta){
   const cs=cambiosPrecioDe(v&&v.mla,tsVenta);
   if(!cs.length)return'';
@@ -12851,6 +12893,7 @@ function renderVentaProd(){
         return vs.map(x=>{const [t,pr,si]=x.split('|');const col=pr==='1'?'#eab308':'var(--muted)';
           const tt=(pr==='1'?'Se vendió por la publicación PREMIUM (con cuotas). ':t.startsWith('Clásica')?'Se vendió por la publicación CLÁSICA. ':'')+(si==='1'?'El interés de las cuotas lo pagamos nosotros (cuotas sin interés).':/cuotas/.test(t)?'Pagó en cuotas con interés: el interés lo pagó el comprador.':'');
           return `<span style="font-size:.62rem;padding:1px 6px;border-radius:4px;border:1px solid ${pr==='1'?'rgba(234,179,8,.5)':'var(--border2)'};color:${col};white-space:nowrap" title="${tt}">💳 ${t}</span>`;}).join(' ');})();
+      const nroLabel=isCancelled?'':ventaNroHTML(grp.items);   // A5 (21/10/2026): 🥇 1ª / 🥈 2ª venta desde el último cambio de precio
       const _pcHtml=`<div class="ingreso-item vp-pc" onclick="vpCardClick(event,'${grp.gid}')" title="Tocá para ver u ocultar el detalle" style="cursor:pointer;flex-direction:column;align-items:stretch;gap:4px;${isCancelled?'border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.04)':''}">
         <div class="vp-pc-cab" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;row-gap:4px;white-space:nowrap">
           ${_esNueva?_dot:''}<span class="who-badge" style="font-size:.6rem;${isCancelled?'opacity:.6':''}">${cuenta}</span>
@@ -12859,7 +12902,7 @@ function renderVentaProd(){
           ${grp.items.length>1?`<span style="font-size:.64rem;color:var(--muted)">${grp.items.length} prod.</span>`:''}
           <span style="flex:1"></span>
           ${promoLabel?promoLabel.replace(/>🏷️ [^<]*</,'>🏷️ '+(promoLabel.includes('vp-promo-ml')?'desc. ML':'promo')+'<'):''}
-          ${tipoLabel}
+          ${tipoLabel}${nroLabel?' '+nroLabel:''}
           ${entLabel}
           ${rescLabel}
           ${(!isCancelled&&_tot>0)?`<span style="font-size:.66rem;color:var(--muted)">total <b style="color:var(--text);font-weight:600">${fmt(_tot)}</b></span>`:''}
@@ -12881,7 +12924,7 @@ function renderVentaProd(){
         </div>
         ${_items}
         ${_hechoV}
-        ${tipoLabel?`<div>${tipoLabel}</div>`:''}
+        ${(tipoLabel||nroLabel)?`<div>${[tipoLabel,nroLabel].filter(Boolean).join(' ')}</div>`:''}
         ${promoLabel?`<div>${promoLabel}</div>`:''}
         <div style="display:flex;align-items:center;gap:10px;margin-top:2px">
           ${isCancelled?'':(gc>0?`<span style="font-size:.8rem;font-weight:600;color:${gg>=0?'var(--green)':'var(--red)'}">${gg>=0?'+'+fmt(gg):'−'+fmt(-gg)}</span>`:'')}
@@ -15493,6 +15536,33 @@ async function _pyPedidoHecho(opts){
 // 'llego' en una sola operación). Si ya había llegado —un botón viejo en pantalla, otro aparato, o
 // `pyped:llego` por el chat— no se hace nada: antes reescribía la fecha y la foto de la oficina ya
 // contada, y la canasta volvía a restar esas unidades 7 días más.
+// ── "LLEGÓ" SUMA A LA OFICINA (etapa 6 · A3, 21/10/2026, eligió la a) ──
+// Paraguay y Listas suman solos lo que llegó, como ya hacía el Paulvic: al tocar "Llegó" se pregunta si llegó TODO; si sí, cada
+// renglón entra a Mi oficina con `ofiMover` (la misma cuenta de "Contar lo que hay"). Lo que faltó se avisa (a Claude, o se resta en
+// Contar lo que hay). No se suma lo que no se sabe dónde va: un producto con colores y el renglón sin color (sale en el cartel para
+// contarlo a mano). Misma regla que `ofiSumarBot` del robot (`pyped:llego`, `listaped:llego`).
+function _ofiColorDe(p,va){
+  const vs=Array.isArray(p&&p.variantes)?p.variantes:Object.values((p&&p.variantes)||{});
+  if(!va)return vs.length?null:'';
+  const h=vs.filter(v=>normTxt(v)===normTxt(va));return h.length===1?h[0]:null;
+}
+// renglones: [{p (la ficha), variante, u, nom}] → {sum:[{prodId,v,u}], mano:[{nom,variante,u,why}]}
+async function llegadaSumarOfi(renglones){
+  const sum=[],mano=[];
+  for(const r of renglones){
+    if(!(r.u>0))continue;
+    if(!r.p){mano.push({...r,why:'sin ficha'});continue;}
+    const col=_ofiColorDe(r.p,r.variante||'');
+    if(col==null){mano.push({...r,nom:r.p.name,why:r.variante?'la ficha no tiene el color '+r.variante:'tiene colores y el pedido no dice cuál'});continue;}
+    try{await ofiMover(r.p.id,col,{delta:r.u});sum.push({prodId:r.p.id,...(col?{v:col}:{}),u:r.u});}
+    catch(e){mano.push({...r,nom:r.p.name,why:'no se guardó ('+String((e&&e.message)||e).slice(0,40)+')'});}
+  }
+  try{await syncOfiMati();}catch(_){}
+  return {sum,mano};
+}
+const _llegadaTxt=(R)=>(R.sum.length?`🏠 Sumé a Mi oficina ${R.sum.reduce((a,x)=>a+x.u,0)} u. (${R.sum.length} renglón/es).`:'')
+  +(R.mano.length?`\n\n⚠️ NO lo sumé, contalo en Mi oficina:\n${R.mano.map(x=>'· '+x.u+' u. '+(x.nom||'')+(x.variante?' · '+x.variante:'')+' ('+x.why+')').join('\n')}`:'');
+const _llegoTodoPreg=(n)=>confirm(`¿Llegó TODO lo del pedido (${n} u.)?\n\nAceptar = lo sumo solo a Mi oficina. Si después ves que faltó algo, decíselo a Claude (o restalo en Contar lo que hay).\nCancelar = no sumo nada: lo contás vos en Mi oficina.`);
 async function pyReclamarLlegada(id){
   if(!db)return false;
   try{
@@ -15515,18 +15585,23 @@ async function _pyPedidoLlego(id){
     // Reposición: los productos YA tienen ficha. No se crea nada; sólo se cierra y se recuerda
     // contar en la oficina (si no, esas unidades desaparecen del patrimonio hasta contarlas).
     if(!confirm(`Marcar como LLEGADA la reposición del ${c.fecha}\n\n${c.productos||0} producto(s) · ${c.unidades||0} u.\n\nSale de "En camino". Después contalas en Mi oficina → Contar lo que hay: hasta que las cuentes no suman en el patrimonio.\n\nNo crea fichas: ya las tienen.`))return;
+    const _todo=_llegoTodoPreg((c.items||[]).reduce((a,it)=>a+(parseInt(it&&it.u)||0),0));
     if(!await pyReclamarLlegada(id))return;
     const hoyR=new Date(Date.now()-3*3600e3).toISOString().slice(0,10);
     await fbSet('compraspy/'+id+'/estado','llego');
     await fbSet('compraspy/'+id+'/fechaLlego',hoyR);
     // D6 (29/09, eligió la b): la foto de la oficina al llegar. Hasta que suba (o 7 días), la canasta
     // sigue restando lo llegado: si no, lo volvería a pedir mientras está en casa sin contar.
+    // A3 (21/10/2026): la foto es de ANTES de sumar y queda sólo de lo que no se sumó.
     const _ofiLl={};for(const it of (c.items||[]))if(it&&it.prodId&&!(it.prodId in _ofiLl))_ofiLl[it.prodId]=getQ(it.prodId,OFI);
-    await fbSet('compraspy/'+id+'/ofiAlLlegar',_ofiLl);
-    c.estado='llego';c.fechaLlego=hoyR;c.ofiAlLlegar=_ofiLl;
-    await log('Reposición de Paraguay llegada: '+id);
+    const R=_todo?await llegadaSumarOfi((c.items||[]).filter(it=>it&&it.prodId).map(it=>({p:prodById(it.prodId),variante:it.variante||'',u:parseInt(it.u)||0,nom:it.nom||''}))):{sum:[],mano:[]};
+    const _quedan={};for(const [pid,q] of Object.entries(_ofiLl))if(!_todo||!R.sum.some(x=>x.prodId===pid)||R.mano.some(x=>x.p&&x.p.id===pid))_quedan[pid]=q;
+    await fbSet('compraspy/'+id+'/ofiAlLlegar',Object.keys(_quedan).length?_quedan:null);
+    if(_todo)try{await fbSet('compraspy/'+id+'/sumoOfi',{ts:Date.now(),por:'panel',items:R.sum});}catch(e){}
+    c.estado='llego';c.fechaLlego=hoyR;c.ofiAlLlegar=Object.keys(_quedan).length?_quedan:undefined;
+    await log('Reposición de Paraguay llegada: '+id+(_todo?' · sumada a la oficina':''));
     renderPedidos();
-    alert('Llegó ✓\n\nAhora contá estas unidades en Mi oficina:\n'+(c.items||[]).map(it=>'· '+it.u+' u. '+(it.nom||'')).join('\n'));
+    alert('Llegó ✓\n\n'+(_todo?_llegadaTxt(R):'Ahora contá estas unidades en Mi oficina:\n'+(c.items||[]).map(it=>'· '+it.u+' u. '+(it.nom||'')+(it.variante?' · '+it.variante:'')).join('\n')));
     return;
   }
   // Pedido con nuevos (y quizá probados adentro, desde el 05/10 es uno solo): los nuevos se vuelven fichas
@@ -15566,15 +15641,16 @@ async function _pyPedidoLlego(id){
     +(sinNom.length?`\n⚠️ ${sinNom.length} sin nombre: no se puede crear.\n`:'')
     +(_repIts.length?`\nProbados (${_repIts.length}): no crean ficha, después los contás en Mi oficina.\n`:'')
     +`\nNo publica nada en ML ni compra nada.`))return;
+  const _todo=_llegoTodoPreg([...items,..._repIts].reduce((a,it)=>a+(parseInt(it&&it.u)||0),0));
   if(!await pyReclamarLlegada(id))return;
   const hoy=new Date(Date.now()-3*3600e3).toISOString().slice(0,10);
-  const hechas=[],fallaron=[];
+  const hechas=[],fallaron=[],hechasP={};
   for(let i=0;i<crear.length;i++){
     // El id lleva el número de orden porque varias se crean en el MISMO milisegundo: sin eso la
     // segunda pisaría a la primera y se perdería una ficha sin que nada lo dijera.
     try{
       const r=await candFichaDesde(crear[i].src,{idSuf:i,recargo:pyRecargoFichas(c).r});   // etapa 2 (20/10/2026): con ticket, contra lo pagado
-      if(r.ok)hechas.push(r.p.name); else fallaron.push(crear[i].src.nombre+' ('+r.motivo+')');
+      if(r.ok){hechas.push(r.p.name);hechasP[crear[i].src.id]=r.p;} else fallaron.push(crear[i].src.nombre+' ('+r.motivo+')');
     }catch(e){fallaron.push(crear[i].src.nombre+' (no se pudo guardar)');}
   }
   // El que ya tenía la MISMA ficha queda enganchado a ella: sin prodId volvería a "Para probar".
@@ -15585,10 +15661,15 @@ async function _pyPedidoLlego(id){
   await fbSet('compraspy/'+id+'/estado','llego');
   await fbSet('compraspy/'+id+'/fechaLlego',hoy);
   c.estado='llego';c.fechaLlego=hoy;
+  // A3 (21/10/2026): la foto de la oficina es de ANTES de sumar, y queda sólo de lo que no se sumó.
+  const _ofiLl={};for(const it of _repIts)if(!(it.prodId in _ofiLl))_ofiLl[it.prodId]=getQ(it.prodId,OFI);
+  const _fichaDe=it=>it.id?(hechasP[it.id]||(repe.find(x=>x.src.id===it.id)||{rep:[]}).rep[0]||prodById(((state.candidatos||{})[it.id]||{}).prodId)||null):prodById(it.prodId);
+  const R=_todo?await llegadaSumarOfi([...items,..._repIts].map(it=>({p:_fichaDe(it),variante:it.variante||'',u:parseInt(it.u)||0,nom:it.nom||''}))):{sum:[],mano:[]};
   if(_repIts.length){
-    const _ofiLl={};for(const it of _repIts)if(!(it.prodId in _ofiLl))_ofiLl[it.prodId]=getQ(it.prodId,OFI);
-    try{await fbSet('compraspy/'+id+'/ofiAlLlegar',_ofiLl);c.ofiAlLlegar=_ofiLl;}catch(e){}
+    const _quedan={};for(const [pid,q] of Object.entries(_ofiLl))if(!_todo||!R.sum.some(x=>x.prodId===pid)||R.mano.some(x=>x.p&&x.p.id===pid))_quedan[pid]=q;
+    try{await fbSet('compraspy/'+id+'/ofiAlLlegar',Object.keys(_quedan).length?_quedan:null);c.ofiAlLlegar=Object.keys(_quedan).length?_quedan:undefined;}catch(e){}
   }
+  if(_todo)try{await fbSet('compraspy/'+id+'/sumoOfi',{ts:Date.now(),por:'panel',items:R.sum});}catch(e){}
   for(const it of items){
     const k=(state.candidatos||{})[it.id];
     if(k&&k.pedidoEn===id){try{await fbDel('candidatos_py/'+it.id+'/pedidoEn');delete k.pedidoEn;}catch(e){}}
@@ -15599,8 +15680,8 @@ async function _pyPedidoLlego(id){
   // aparecer en ningún lado hasta que alguien los mire.
   // Y SE RECUERDA CONTAR (etapa 3, 29/09/2026): las fichas nacen con 0 en la oficina y el pedido deja
   // de contar "en camino", así que hasta contarlas el patrimonio baja lo que costó el pedido.
-  const _contar=`\n\nAhora contá estas unidades en Mi oficina (hasta que las cuentes no suman en el patrimonio):\n`
-    +[...items,..._repIts].map(it=>'· '+(it.u||'?')+' u. '+(it.nom||'')).join('\n');
+  const _contar=_todo?'\n\n'+_llegadaTxt(R):`\n\nAhora contá estas unidades en Mi oficina (hasta que las cuentes no suman en el patrimonio):\n`
+    +[...items,..._repIts].map(it=>'· '+(it.u||'?')+' u. '+(it.nom||'')+(it.variante?' · '+it.variante:'')).join('\n');
   {
     alert(`Pedido marcado como llegado ✓ · ${hechas.length} ficha(s) creada(s)\n\n`
       +(repe.length?`Estos ya tenían ficha (mismo código o mismo nombre) y quedaron enganchados a ella:\n${repe.map(x=>'· '+x.src.nombre+' → '+x.rep[0].name).join('\n')}\n\n`:'')
@@ -16887,6 +16968,9 @@ async function candFichaDesde(src,opts){
   if(usd>0){p.nisseiUSD=usd;p.nisseiTs=src.ts||Date.now();}
   if(/^https:\/\//.test(String(src.link||'')))p.pyLink=String(src.link).slice(0,300);
   if(/^https:\/\//.test(String(src.foto||'')))p.pyFoto=String(src.foto).slice(0,300);
+  // A2 (etapa 6, 21/10/2026): el catálogo de ML confirmado del candidato (✅ o revisión de fotos) viaja a la ficha. El robot activa
+  // lo nuevo sólo si la publicación está en ESE catálogo. Misma regla en `pyped:llego` del robot.
+  if(_cML&&candCatChequeado(_cML))p.mlCatalogo=candCatId(_cML);
   await fbSet('products/'+p.id,p);
   if(src.id&&(state.candidatos||{})[src.id]){
     await fbSet('candidatos_py/'+src.id+'/prodId',p.id);
@@ -20011,8 +20095,9 @@ async function _listaLlego(id){
     const misma=(state.products||[]).find(p=>(p.codLista&&String(p.codLista)===String(it.cod)&&p.listaProv===c.prov)||normTxt(p.name||'')===n||normTxt(p.name||'')===n2);return{it,nombre,misma};});
   // Etapa 2 (20/10/2026): sin dólar no se crean fichas (nacerían con costo US$ 0 y se verían como todo ganancia). Como `updCostPesos`.
   if(!(tc>0)&&plan.some(x=>!x.misma&&!x.prob&&x.nombre)){toast('Falta el dólar en Finanzas: sin eso las fichas nuevas nacerían con costo US$ 0. No marqué nada.','err',6000);return;}
-  if(!confirm(`Marcar como LLEGADO el pedido a ${c.provNom||c.prov} del ${c.fecha}:\n\n${plan.map(x=>x.borrada?'· probado con la ficha BORRADA: no se crea nada ('+x.it.u+' × '+x.it.n+')':x.misma?(x.prob?'· probado: ':'· ya existe: ')+x.misma.name+(x.it.variante?' · '+x.it.variante:'')+(x.prob?' · '+x.it.u+' u. a contar en Mi oficina':'')+((tc>0&&x.it.pc/tc>costUSDof(x.misma)+0.005)?' (costo sube a '+fmt(x.it.pc)+')':''):'· ficha nueva: '+x.nombre+' · '+fmt(x.it.pc)).join('\n')}\n\nDespués contá lo que llegó en Mi oficina.`))return;
-  let n=0;const subio=[];
+  if(!confirm(`Marcar como LLEGADO el pedido a ${c.provNom||c.prov} del ${c.fecha}:\n\n${plan.map(x=>x.borrada?'· probado con la ficha BORRADA: no se crea nada ('+x.it.u+' × '+x.it.n+')':x.misma?(x.prob?'· probado: ':'· ya existe: ')+x.misma.name+(x.it.variante?' · '+x.it.variante:'')+(x.prob?' · '+x.it.u+' u. a contar en Mi oficina':'')+((tc>0&&x.it.pc/tc>costUSDof(x.misma)+0.005)?' (costo sube a '+fmt(x.it.pc)+')':''):'· ficha nueva: '+x.nombre+' · '+fmt(x.it.pc)).join('\n')}\n\nDespués te pregunto si llegó todo, para sumarlo a Mi oficina.`))return;
+  const _todo=_llegoTodoPreg(plan.reduce((a,x)=>a+(parseInt(x.it&&x.it.u)||0),0));
+  let n=0;const subio=[];const _fichaDeI={};
   // La oficina de cada probado al llegar: hasta que se cuente (7 días como mucho) Pedidos lo sigue restando (`listaEnCamino`).
   const ofiAl={};for(const x of plan)if(x.prob&&x.misma&&!(x.misma.id in ofiAl))ofiAl[x.misma.id]=getQ(x.misma.id,OFI);
   // SE ADUEÑA DEL PEDIDO ANTES DE CREAR NADA (etapa 4, 20/10/2026, como `pyReclamarLlegada` de Paraguay): una transacción pasa el
@@ -20041,7 +20126,7 @@ async function _listaLlego(id){
     catch(e){alert('⚠️ No pude volver el pedido a "en camino" ('+String(e.message||e).slice(0,60)+'): avisale a Claude.');}};
   for(const [i,x] of plan.entries()){
     if(x.borrada)continue;
-    if(x.misma){if(!x.misma.listaProv)try{await fbSet('products/'+x.misma.id+'/listaProv',c.prov);x.misma.listaProv=c.prov;}catch(e){}
+    if(x.misma){_fichaDeI[i]=x.misma;if(!x.misma.listaProv)try{await fbSet('products/'+x.misma.id+'/listaProv',c.prov);x.misma.listaProv=c.prov;}catch(e){}
       if(x.prob&&!x.misma.codLista&&x.it.cod)try{await fbSet('products/'+x.misma.id+'/codLista',String(x.it.cod));x.misma.codLista=String(x.it.cod);}catch(e){}
       // RECOMPRA MÁS CARA (decisión 6a del 20/10/2026, como Paraguay): la ficha toma el costo nuevo; el viejo queda congelado
       // en los meses con ventas (`congelarCostoAnterior`). Sólo sube, nunca baja (misma regla que el robot en Paraguay).
@@ -20054,11 +20139,19 @@ async function _listaLlego(id){
     const usd=tc>0?Math.round(x.it.pc/tc*100)/100:0;
     const p={id:'p'+Date.now()+'l'+i,name:x.nombre.slice(0,90),costUSD:usd,cost:x.it.pc,costFullUSD:usd,origen:'bsas',proveedor:c.provNom||c.prov,listaProv:c.prov,codLista:String(x.it.cod)};
     if(x.it.mi)p.mlCatalogo=x.it.mi;
-    try{await fbSet('products/'+p.id,p);(state.products=state.products||[]).push(p);n++;}catch(e){await _devolver();alert('No se pudo crear '+x.nombre+': '+(e.message||e)+'\n\nEl pedido sigue "en camino": tocá Llegó de nuevo cuando vuelva la conexión (las fichas ya creadas no se repiten).');_listaRepintar();return;}
+    try{await fbSet('products/'+p.id,p);(state.products=state.products||[]).push(p);n++;_fichaDeI[i]=p;}catch(e){await _devolver();alert('No se pudo crear '+x.nombre+': '+(e.message||e)+'\n\nEl pedido sigue "en camino": tocá Llegó de nuevo cuando vuelva la conexión (las fichas ya creadas no se repiten).');_listaRepintar();return;}
   }
   const nProb=plan.filter(x=>x.prob&&!x.borrada).length;
-  await log('Llegó el pedido a '+(c.provNom||c.prov)+' del '+c.fecha+': '+n+' ficha(s) nueva(s)'+(nProb?' · '+nProb+' probado(s)':''));
-  toast(`✓ Llegó · ${n} ficha(s) nueva(s)${nProb?' · '+nProb+' probado(s): contalos en Mi oficina':''}${subio.length?' · costo subido: '+subio.join(' · '):''}. Contá las unidades en Mi oficina.`,'ok',8000);_listaRepintar();
+  // A3 (21/10/2026): si llegó todo, se suma a Mi oficina; la foto `ofiAlLlegar` queda sólo de lo que no se pudo sumar.
+  let R={sum:[],mano:[]};
+  if(_todo){
+    R=await llegadaSumarOfi(plan.map((x,i)=>({p:x.borrada?null:_fichaDeI[i]||null,variante:x.it.variante||'',u:parseInt(x.it.u)||0,nom:x.nombre||x.it.n||''})));
+    const _quedan={};for(const [pid,q] of Object.entries(c.ofiAlLlegar||{}))if(!R.sum.some(y=>y.prodId===pid)||R.mano.some(y=>y.p&&y.p.id===pid))_quedan[pid]=q;
+    try{await db.ref('cyc/compraslista/'+id).update({sumoOfi:{ts:Date.now(),por:'panel',items:R.sum},ofiAlLlegar:Object.keys(_quedan).length?_quedan:null});c.ofiAlLlegar=Object.keys(_quedan).length?_quedan:undefined;}catch(e){}
+  }
+  await log('Llegó el pedido a '+(c.provNom||c.prov)+' del '+c.fecha+': '+n+' ficha(s) nueva(s)'+(nProb?' · '+nProb+' probado(s)':'')+(_todo?' · sumado a la oficina':''));
+  if(_todo&&R.mano.length)alert('Llegó ✓\n\n'+_llegadaTxt(R));
+  toast(`✓ Llegó · ${n} ficha(s) nueva(s)${nProb?' · '+nProb+' probado(s)':''}${subio.length?' · costo subido: '+subio.join(' · '):''}. ${_todo?_llegadaTxt({sum:R.sum,mano:[]}):'Contá las unidades en Mi oficina.'}`,'ok',8000);_listaRepintar();
 }
 async function listaPagado(id){
   const c=(state.comprasLista||{})[id];if(!c||c.estado!=='llegado'||c.pagado!==false)return;

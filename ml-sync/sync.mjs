@@ -6,7 +6,7 @@
 // Requiere secrets: ML_CLIENT_ID, ML_CLIENT_SECRET,
 //   FIREBASE_API_KEY, FIREBASE_DB_URL, FIREBASE_BOT_EMAIL, FIREBASE_BOT_PASSWORD
 
-import { fbSignIn, makeDB, mlRefresh, mlGet, ML_API, tapaIdsLargos } from './lib.mjs';
+import { fbSignIn, makeDB, mlRefresh, mlGet, ML_API, tapaIdsLargos, mlConteo, mlConteoTxt } from './lib.mjs';
 import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 
 // LO PRIVADO VIAJA CIFRADO (20/10/2026, etapa 4, él eligió la 1a): el repo y sus registros son PÚBLICOS, así que las listas de
@@ -44,6 +44,8 @@ const DRY = !!process.env.DRY_RUN;
 // comandos que escriben en tanda (ofi, pyped, cajallego, abrircaja) terminan la escritura en curso
 // y salen, y a los 6 s se sale igual (GitHub mata a los 10 s).
 let CORTAR = false;
+// A4 (21/10/2026): cada cuánto se hace la vuelta pesada del ciclo (ver `mlapi/vueltapesada` en main).
+const VUELTA_PESADA_CADA_MIN = 60, VUELTA_PESADA_MIN_MIN = 45;
 const _alCortar = (sig) => {
   if (CORTAR) return;
   CORTAR = true;
@@ -52,6 +54,8 @@ const _alCortar = (sig) => {
 };
 process.on('SIGINT', () => _alCortar('SIGINT'));
 process.on('SIGTERM', () => _alCortar('SIGTERM'));
+// A4 (21/10/2026): al terminar, toda corrida (vuelta del ciclo o comando) dice cuántas consultas le hizo a ML. Sólo si hizo alguna.
+process.on('exit', () => { try { if (mlConteo.get || mlConteo.refresh) console.log('\n' + mlConteoTxt()); } catch { /* informativo */ } });
 // ETAPA 4 (20/10/2026): el ciclo de 2 minutos mira `CORTAR` ANTES de empezar cada tanda de escrituras
 // (ventas de cada cuenta · vínculos · stock · etiquetas · cajas) y, si cancelaron la corrida, sale con 130
 // sin empezar la siguiente. Entre una tanda y otra no hay ninguna escritura a medias: lo que falta lo hace
@@ -71,7 +75,7 @@ const _cortarCiclo = (donde) => {
 // ML, Mercado Pago y Telegram en sólo lectura (se deja renovar y guardar el token de ML, que ML rota).
 const EN_CONSULTA = process.env.GITHUB_WORKFLOW === 'ml-consulta' || process.env.ML_CONSULTA === '1';
 const CONSULTA_ESCRIBE = new Set(['pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull']);
-const CONSULTA_NIEGA = new Set(['cajaitems', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
+const CONSULTA_NIEGA = new Set(['cajaitems', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'listaped', 'publicar', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'promoventas', 'cargosmes', 'arcacierres', 'webpush']);
 let CONSULTA_SOLO_LEE = false;
@@ -212,6 +216,57 @@ async function clDescontarPedBot(db, pid, va, u) {
   if (!Object.keys(upd).length) return '';
   await db.patch(base, upd);
   return Object.entries(upd).filter(([kk]) => !kk.startsWith('mano/')).map(([kk, v]) => `${kk.replace(/^vars\//, '')} → ${v}${upd['mano/' + kk.replace(/^vars\//, '')] === null ? ' (era a mano)' : ''}`).join(' · ');
+}
+// ── LO QUE LLEGÓ SE SUMA A LA OFICINA (etapa 6 · A3, 21/10/2026, eligió la a) ─────────────────────────────────────────────
+// "Llegó" de Paraguay y de Listas suma solo lo que vino (como ya hacía `pvped:llego` del Paulvic): él avisa lo que faltó y se resta
+// antes. Misma cuenta que el comando `ofi` y que `ofiMover` de la web: con color, la clave de ESE color y al total del producto lo
+// que cambió el color (nunca abajo de la suma de sus colores); sin color, el total. Se relee la clave justo antes y va en UN patch.
+// Devuelve null sin escribir cuando no se puede saber dónde va: un producto con colores y un renglón sin color (o con un color que
+// la ficha no tiene). `inv` es la foto de `cyc/inventory` de la corrida (se actualiza con lo escrito, para la suma de colores).
+function ofiColorDeFicha(p, va) {
+  const vs = Array.isArray(p && p.variantes) ? p.variantes : Object.values((p && p.variantes) || {});
+  if (!va) return vs.length ? null : '';
+  const n = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+  const hit = vs.filter((v) => n(v) === n(va));
+  return hit.length === 1 ? hit[0] : null;
+}
+async function ofiSumarBot(db, p, va, delta, inv) {
+  const OFI_LOC = 'Oficina Mati';
+  const vs = Array.isArray(p && p.variantes) ? p.variantes : Object.values((p && p.variantes) || {});
+  const color = ofiColorDeFicha(p, va);
+  if (color == null || !(delta > 0)) return null;
+  const kTot = p.id + '__' + sid(OFI_LOC), kVar = (v) => kTot + '__v__' + sid(v);
+  const tA = parseInt(await db.get('cyc/inventory/' + kTot)) || 0;
+  const upd = {};
+  let antes = tA, ahora = tA + delta, tN = tA + delta;
+  if (color) {
+    antes = parseInt(await db.get('cyc/inventory/' + kVar(color))) || 0; ahora = antes + delta;
+    const sumV = vs.reduce((a, v) => a + (v === color ? ahora : (parseInt(inv && inv[kVar(v)]) || 0)), 0);
+    tN = Math.max(0, tA + delta, sumV);
+    upd[kVar(color)] = ahora;
+  }
+  upd[kTot] = tN;
+  await db.patch('cyc/inventory', upd);
+  if (inv) Object.assign(inv, upd);
+  try { await db.set('cyc/ofientro/' + p.id, Date.now()); } catch { /* no frena */ }
+  return { color, antes, ahora, tA, tN };
+}
+// Lo que FALTÓ de un pedido, desde el chat: `<palabra>[#<color>]=<unidades que LLEGARON>` (`=` adelante = nombre exacto). Cada uno
+// tiene que agarrar UN renglón del pedido. Devuelve { llegan: Map(índice → u), problemas }.
+function faltoDePedido(items, args, nomDe) {
+  const n = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+  const llegan = new Map(), problemas = [];
+  for (const a of args) {
+    const m = String(a).trim().match(/^(.+?)(?:#(.+?))?=(\d+)$/);
+    if (!m) { problemas.push(`"${a}" → se espera <palabra>[#<color>]=<unidades que llegaron>`); continue; }
+    const ex = m[1].trim().startsWith('='), q = n(m[1].trim().replace(/^=/, '')), col = m[2] ? n(m[2]) : '';
+    const hits = items.map((it, i) => ({ it, i })).filter(({ it }) => it && (ex ? n(nomDe(it)) === q : n(nomDe(it)).includes(q)) && (!col || n(it.variante || it.v || '') === col));
+    if (hits.length !== 1) { problemas.push(`"${m[1]}${m[2] ? '#' + m[2] : ''}" → ${hits.length ? 'agarra ' + hits.length + ': ' + hits.slice(0, 6).map(({ it }) => nomDe(it) + (it.variante ? ' · ' + it.variante : '')).join(' | ') : 'ningún renglón del pedido'}`); continue; }
+    const u = parseInt(m[3], 10), ped = parseInt(hits[0].it.u) || 0;
+    if (u > ped) { problemas.push(`"${m[1]}": dijiste que llegaron ${u} y se pidieron ${ped}`); continue; }
+    llegan.set(hits[0].i, u);
+  }
+  return { llegan, problemas };
 }
 function precioRedondoAviso(p0, p1) {
   const a = [];
@@ -2228,6 +2283,18 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso, op
   // Ventas para deducir el descuento real (comisión aparte) de cada publicación.
   const vtaMla = {}, vtaProd = {};
   const desde = Date.now() - 120 * 864e5;
+  // LO NUEVO (etapa 6 · A2, 21/10/2026): qué publicaciones y qué fichas vendieron ALGUNA vez (no sólo en 120 días).
+  const vendioMla = new Set(), vendioProd = new Set();
+  for (const ents of Object.values(vp)) for (const v of Object.values(ents || {})) { if (!v || v.cancelada) continue; if (v.mla) vendioMla.add(v.mla); if (v.prodId) vendioProd.add(v.prodId); }
+  // El catálogo CONFIRMADO de cada ficha: el de la lista (`mlCatalogo`, que pone "Llegó" con el `mi` confirmado) y el de los
+  // candidatos de Paraguay chequeados (`candCatChequeado`: ✅ suyo o la revisión de fotos, atado a ESE catálogo). Se lee una vez.
+  let _candsConf = undefined;
+  const catConfDe = async (p) => {
+    const out = new Set(); if (p && p.mlCatalogo) out.add(String(p.mlCatalogo).toUpperCase());
+    if (_candsConf === undefined) { try { _candsConf = (await db.get('cyc/candidatos_py')) || {}; } catch { _candsConf = null; } }
+    if (_candsConf) for (const c of Object.values(_candsConf)) if (c && c.prodId === (p && p.id) && candCatChequeado(c)) out.add(candCatDe(c));
+    return { cats: out, leido: _candsConf !== null };
+  };
   for (const ents of Object.values(vp)) {
     for (const v of Object.values(ents || {})) {
       // Revisión final: una venta con neto ESTIMADO no sirve para deducir el envío (tot − net − com ≈ 0).
@@ -2285,7 +2352,7 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso, op
       .map(([mla]) => mla);
     for (let k = 0; k < ids.length; k += 20) {
       let arr;
-      try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,sub_status,price,variations,title,listing_type_id,category_id,site_id,shipping,inventory_id,available_quantity', tok); }
+      try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,sub_status,price,variations,title,listing_type_id,category_id,site_id,shipping,inventory_id,available_quantity,catalog_product_id', tok); }
       catch { conteo.lotesFallidos++; continue; }
       for (const row of (arr || [])) {
         const b = row.body || {}; const mla = b.id;
@@ -2354,6 +2421,29 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso, op
         // Freno: ¿llega al piso con el precio de hoy?
         const p = linkRow.prodId ? pIdx[linkRow.prodId] : null;
         if (!p) { noVa(linkRow.prodId ? 'su ficha ya no existe en la web' : 'no está pegada a ninguna ficha: sin costo no puedo medir el margen'); continue; }
+        // ── LO NUEVO NO SE ACTIVA SOLO SIN PRECIO DE LANZAMIENTO Y SIN EL CATÁLOGO CONFIRMADO (etapa 6 · A2, 21/10/2026, eligió la a) ──
+        // Nuevo = ni esta publicación ni su ficha vendieron nunca. Antes una caja que llegaba a Full activaba la publicación al
+        // precio que él puso al crearla, sin que nadie lo pensara, y en el catálogo que él eligió (puede no ser el que se midió).
+        // Hace falta: (1) una estrategia mía anotada (`decido:<MLA>=<precio>#nuevo|…` o cualquier otra decidida) y (2) que la
+        // publicación esté en el catálogo confirmado de la ficha, o que él/yo lo hayamos confirmado (`catok:<MLA>=ok|sincat;go`).
+        if (!vendioMla.has(mla) && !vendioProd.has(p.id)) {
+          let hE;
+          try { hE = (await db.get('cyc/estrategia/' + mla)) || {}; } catch { noVa('es NUEVA y no pude leer su estrategia: no la activo a ciegas'); continue; }
+          let ultE = null; for (const [k0, x] of Object.entries(hE)) { const kt = Number(k0); if (kt > 0 && x && x.t && (!ultE || kt > ultE.ts)) ultE = { t: x.t, ts: kt }; }
+          if (!ultE || ['sindecidir', 'agotado', 'base'].includes(ultE.t)) { noVa(`es NUEVA (nunca vendió) y no tiene el precio de lanzamiento decidido: decido:${mla}=<precio>#nuevo|<motivo>;go`, b.price || 0); continue; }
+          const catPub = String(b.catalog_product_id || '').toUpperCase();
+          const okMano = linkRow.catOk && ((catPub && String(linkRow.catOk).toUpperCase() === catPub) || (!catPub && linkRow.catOk === 'sincat'));
+          if (!okMano) {
+            const cc = await catConfDe(p);
+            if (!cc.leido) { noVa('es NUEVA y no pude leer los candidatos para saber su catálogo confirmado: no la activo a ciegas', b.price || 0); continue; }
+            if (!(catPub && cc.cats.has(catPub))) {
+              noVa(catPub
+                ? (cc.cats.size ? `es NUEVA y está publicada en el catálogo ${catPub}, pero el confirmado de la ficha es ${[...cc.cats].join(' / ')}: revisarla (si está bien, catok:${mla}=ok;go)` : `es NUEVA y nadie confirmó que su catálogo (${catPub}) sea el mismo producto: catok:${mla}=ok;go`)
+                : `es NUEVA y no está en catálogo: si va sin catálogo a propósito, catok:${mla}=sincat;go`, b.price || 0);
+              continue;
+            }
+          }
+        }
         if (!(tc > 0)) { noVa('sin dólar cargado: no puedo medir el margen'); continue; }
         const costo = costoPesos(p, 1, tc).costo;
         if (!costo) { noVa('sin costo cargado'); continue; }
@@ -2550,6 +2640,8 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso, op
     // `simple`: la frase clara que muestra el 🧠 (pedido suyo del 08/10: "sin cosas técnicas").
     const simpleNo = (w) => {
       w = String(w || '');
+      if (/es NUEVA.*precio de lanzamiento/.test(w)) return 'es nueva (nunca vendió): no la activo hasta que Claude decida el precio de lanzamiento.';
+      if (/es NUEVA/.test(w)) return 'es nueva (nunca vendió): no la activo hasta confirmar que está publicada en el catálogo correcto de Mercado Libre.';
       if (/pausó ML/.test(w)) return 'la pausó Mercado Libre: no la puedo activar yo, hay que mirarla en ML.';
       if (/no la vendemos más/.test(w)) return 'la marcaste "no la vendemos más".';
       if (/ocultaste del panel/.test(w)) return 'la ocultaste del panel.';
@@ -6768,7 +6860,7 @@ async function altaDeNuevas(db, accounts, labels, map, index, DRY) {
     if (!faltan.length) continue;
     for (let k = 0; k < faltan.length; k += 20) {
       let arr;
-      try { arr = await mlGet('/items?ids=' + faltan.slice(k, k + 20).join(',') + '&attributes=id,title,status,sub_status,price,shipping,user_product_id', tok); }
+      try { arr = await mlGet('/items?ids=' + faltan.slice(k, k + 20).join(',') + '&attributes=id,title,status,sub_status,price,shipping,user_product_id,catalog_product_id,catalog_listing', tok); }
       catch { continue; }
       for (const row of (arr || [])) {
         const b = row.body || {}; const mla = b.id;
@@ -6809,12 +6901,17 @@ async function altaDeNuevas(db, accounts, labels, map, index, DRY) {
           // El freno: no vendió nunca todavía, así que su costo no está probado. Se va solo en
           // cuanto venda (la vuelta de las ventas reescribe el renglón entero).
           altaSinVender: true,
+          // EL CATÁLOGO EXACTO EN QUE SE PUBLICÓ (etapa 6 · A2, 21/10/2026, eligió la a): el código de ML (`catalog_product_id`)
+          // o null si no es de catálogo. `activarPausadasFull` lo compara contra el catálogo confirmado de la ficha antes de
+          // activar algo nuevo (que no se active publicado en OTRO catálogo, el error de los 67 de 344 de Paraguay).
+          catalogo: b.catalog_product_id || null,
+          catalogoListing: b.catalog_listing === true,
           candidatos: p ? null : candidatesFor(title, index),
         };
         upd[mla] = entry; map[mla] = entry;
         // La hermana recién dada de alta ya sirve para la siguiente del mismo lote.
         if (upid && p) porUpid[label + '|' + upid] = p.id;
-        (p ? nuevas : sinFicha).push({ mla, label, title, prod: p ? p.name : '', variant: entry.variant, como: comoSeEmparejo });
+        (p ? nuevas : sinFicha).push({ mla, label, title, prod: p ? p.name : '', variant: entry.variant, como: comoSeEmparejo, catalogo: entry.catalogo });
       }
     }
   }
@@ -25197,6 +25294,171 @@ async function main() {
       }
       return;
     }
+    // BILLING_PROBE=publicar:<ficha>|cuenta=<cuenta>|precio=<pesos>[|catalogo=<MLA…>][|color=<variante>][|!piso][|go]
+    // (etapa 6 · A1, 21/10/2026, él: "probemos y me decís") → CLAUDE PUBLICA EN ML LO NUEVO DE UN PEDIDO, UNA POR VEZ.
+    // Hasta hoy la publicación la creaba él (*"solo armar la publicacion en cyc. ml la hago yo"*, 26/09). Esto la crea PAUSADA, en el
+    // catálogo CONFIRMADO de la ficha (el ✅ o la revisión de fotos del candidato de Paraguay, el `mi` confirmado de la lista, o el que
+    // le paso con `catalogo=` después de mirarlo), Clásica, con el precio de lanzamiento que decido. Sin `|go`: muestra todo lo que
+    // mandaría y le pide a ML que lo VALIDE (`POST /items/validate`, no crea nada) — así se sabe qué campos pide ML sin arriesgar nada.
+    // Con `|go`: valida, crea, la PAUSA en el acto y la relee; la vincula a la ficha (`cyc/mllinks`, con `catOk` = el catálogo usado)
+    // y anota la estrategia 🆕 lanzamiento. Cuando la caja llega a Full, la vuelta de la hora la activa (freno A2: precio decidido +
+    // catálogo confirmado + el piso). Frenos: una sola por corrida · la ficha no puede tener ya una publicación viva en esa cuenta ·
+    // techo $650.000 · el margen al precio pedido en el PEOR caso (comisión preguntada a ML, envío del lado de la barrera, IIBB de la
+    // cuenta, monotributo, 2% de retención) no puede quedar abajo del piso salvo `!piso` · sin dólar o sin costo no publica.
+    // RIESGO CONOCIDO: ML no deja crear una publicación ya pausada; entre el alta y la pausa (un par de segundos) queda activa con 1 u.
+    // de depósito. Si la pausa falla, lo dice fuerte y la vuelta de la hora la pausa igual (`pausarFuera`: no vendemos fuera de Full).
+    if (/^publicar(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _raw = String(process.env.BILLING_PROBE).replace(/^publicar:?/, '');
+      const partes = _raw.split('|').map((x) => x.trim()).filter(Boolean);
+      const GO = partes.includes('go'), PISO_A_MANO = partes.includes('!piso');
+      const kv = {}; for (const x of partes) { const m = x.match(/^([a-z]+)=(.*)$/i); if (m) kv[m[1].toLowerCase()] = m[2].trim(); }
+      const busca = partes.find((x) => !/^[a-z]+=/i.test(x) && x !== 'go' && x !== '!piso') || '';
+      const uso = 'Usá: publicar:<ficha (=nombre exacto o id)>|cuenta=<cuenta>|precio=<pesos>[|catalogo=<MLA…>][|color=<variante>][|!piso][|go]';
+      if (!busca || !kv.cuenta || !kv.precio) { console.log(uso); return; }
+      const nrmP = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+      const productsP = (await db.get('cyc/products')) || {};
+      const prodsP = Object.values(productsP).filter((x) => x && x.name);
+      const ex = busca.startsWith('='), q = nrmP(busca.replace(/^=/, ''));
+      const hitsP = productsP[busca] ? [productsP[busca]] : prodsP.filter((x) => (ex ? nrmP(x.name) === q : nrmP(x.name).includes(q)));
+      if (hitsP.length !== 1) { console.log(`❌ "${busca}" agarra ${hitsP.length} ficha(s)${hitsP.length ? ': ' + hitsP.slice(0, 8).map((x) => x.name).join(' | ') : ''}. No hago nada.`); return; }
+      const P = hitsP[0];
+      const label = labels.find((l) => l.toLowerCase() === kv.cuenta.toLowerCase());
+      if (!label) { console.log(`❌ No conozco la cuenta "${kv.cuenta}" (son: ${labels.join(', ')}).`); return; }
+      const precio = pesosArg(kv.precio);
+      const frenos = [], avisos = [];
+      if (!(precio > 0)) { console.log('❌ precio inválido.'); return; }
+      if (precio > TECHO_DURO) frenos.push(`pasa el techo de ${money(TECHO_DURO)}`);
+      if (precio % 10 !== 0) avisos.push('el precio no termina en 0 (los míos terminan en 90 o 990)');
+      // El color: si la ficha tiene colores, hay que decir cuál (cada color es su publicación).
+      const vsP = Array.isArray(P.variantes) ? P.variantes : Object.values(P.variantes || {});
+      const color = kv.color ? ofiColorDeFicha(P, kv.color) : '';
+      if (vsP.length && !kv.color) frenos.push(`la ficha tiene colores (${vsP.slice(0, 8).join(', ')}): decime cuál con |color=`);
+      if (kv.color && color == null) frenos.push(`la ficha no tiene el color "${kv.color}"`);
+      // ¿Ya hay una publicación viva de esta ficha (y color) en esa cuenta?
+      const linksP = (await db.get('cyc/mllinks')) || {};
+      const yaHay = Object.entries(linksP).filter(([m, e]) => e && e.prodId === P.id && e.cuenta === label && e.status !== 'closed' && (!color || !e.variant || nrmP(e.variant) === nrmP(color)));
+      if (yaHay.length) frenos.push(`esa ficha ya tiene publicación en ${label}: ${yaHay.slice(0, 4).map(([m, e]) => m + ' (' + (e.status || '?') + ')').join(', ')}`);
+      // El catálogo CONFIRMADO.
+      const confP = new Set(); if (P.mlCatalogo) confP.add(String(P.mlCatalogo).toUpperCase());
+      try { for (const c of Object.values((await db.get('cyc/candidatos_py')) || {})) if (c && c.prodId === P.id && candCatChequeado(c)) confP.add(candCatDe(c)); }
+      catch { frenos.push('no pude leer los candidatos para saber el catálogo confirmado'); }
+      const catPedido = kv.catalogo ? String(kv.catalogo).toUpperCase().replace(/^.*\/P\//, '').split(/[?#]/)[0] : '';
+      let cat = '';
+      if (catPedido) { if (!/^MLA\d+$/.test(catPedido)) frenos.push(`catalogo=${kv.catalogo}: no es un código de catálogo (MLA…)`); else { cat = catPedido; if (confP.size && !confP.has(cat)) frenos.push(`catalogo=${cat} no es el confirmado de la ficha (${[...confP].join(' / ')})`); if (!confP.size) avisos.push(`el catálogo ${cat} lo confirmo yo (la ficha no tenía uno confirmado): miralo antes del :go`); } }
+      else if (confP.size === 1) cat = [...confP][0];
+      else if (confP.size > 1) frenos.push(`la ficha tiene ${confP.size} catálogos confirmados (${[...confP].join(' / ')}): decime cuál con |catalogo=`);
+      else frenos.push('la ficha no tiene catálogo confirmado: confirmalo (✅ en Paraguay, listadato ok en Listas) o pasámelo con |catalogo= después de mirarlo');
+      // Permiso de la cuenta.
+      const accP = accounts[label]; if (!accP?.refresh_token) { console.log(`❌ ${label}: sin permiso cargado.`); return; }
+      let tokP; try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, accP.refresh_token); await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() }); tokP = t.access_token; }
+      catch { console.log(`❌ ${label}: no pude renovar el permiso.`); return; }
+      // El catálogo de ML: nombre, fotos, y la categoría de las ofertas que ya hay.
+      let prodML = null, ofs = [];
+      if (cat) {
+        try { prodML = await mlGet('/products/' + cat, tokP); } catch (e) { frenos.push(`ML no me dio el catálogo ${cat} (${String(e.message || e).slice(0, 60)})`); }
+        try { ofs = ((await mlGet('/products/' + cat + '/items', tokP)) || {}).results || []; } catch { ofs = []; }
+      }
+      const catCnt = {}; for (const o of ofs) if (o && o.category_id) catCnt[o.category_id] = (catCnt[o.category_id] || 0) + 1;
+      let categoria = Object.entries(catCnt).sort((a, b) => b[1] - a[1]).map(([k]) => k)[0] || (prodML && prodML.category_id) || '';
+      if (cat && !categoria && prodML && prodML.name) { try { const d = await mlGet('/sites/MLA/domain_discovery/search?limit=1&q=' + encodeURIComponent(String(prodML.name).slice(0, 80)), tokP); categoria = (Array.isArray(d) && d[0] && d[0].category_id) || ''; } catch { /* sin categoría */ } }
+      if (cat && !categoria) frenos.push('no pude saber la categoría de ML de ese catálogo');
+      // El margen al precio pedido, en el PEOR caso (la misma cuenta de los candidatos: `cuentaCandidato`).
+      const tcP = parseFloat((await db.get('cyc/finanzas/tipo_cambio')) || 0) || 0;
+      const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+      const pisoP = await pisoConfig(db);
+      let cuenta = null;
+      if (!(tcP > 0)) frenos.push('sin dólar cargado: no mido el margen');
+      else if (!(monoP > 0)) frenos.push('no leí el monotributo: no mido el margen');
+      else {
+        const costoUSD = costoPesos(P, 1, tcP).costo / tcP;
+        if (!(costoUSD > 0)) frenos.push('la ficha no tiene costo');
+        else if (categoria) {
+          const feeAtP = async (pr, lt, cx) => { try { const d = await mlGet(`/sites/MLA/listing_prices?price=${Math.round(pr)}&listing_type_id=${lt}&category_id=${cx}`, tokP); const o = Array.isArray(d) ? d[0] : d; return typeof o?.sale_fee_amount === 'number' ? o.sale_fee_amount : null; } catch { return null; } };
+          cuenta = await cuentaCandidato(precio, 'gold_special', categoria, costoUSD, tcP, monoP, feeAtP, 0, label);
+          if (!cuenta) frenos.push('ML no contestó la comisión a ese precio: no lo mido a medias');
+          else {
+            const base = cuenta.costo + cuenta.impuestos + cuenta.envio;
+            cuenta.peor = base > 0 ? (cuenta.ganancia - precio * PEOR_RET_PCT) / base * 100 : 0;
+            if (cuenta.peor < pisoP && !PISO_A_MANO) frenos.push(`a ${money(precio)} queda en ${cuenta.peor.toFixed(1)}% en el peor caso, abajo del piso del ${pisoP}% (a propósito: |!piso)`);
+          }
+        }
+      }
+      // Lo que se mandaría. Título y fotos del catálogo (ML los toma del catálogo en una publicación de catálogo).
+      const fotos = ((prodML && prodML.pictures) || []).map((x) => x && (x.secure_url || x.url)).filter((u) => /^https:\/\//.test(String(u || ''))).slice(0, 6);
+      const body = { site_id: 'MLA', title: String((prodML && prodML.name) || P.name).slice(0, 60), category_id: categoria, price: precio, currency_id: 'ARS', available_quantity: 1, buying_mode: 'buy_it_now', listing_type_id: 'gold_special', condition: 'new', catalog_product_id: cat || undefined, catalog_listing: true, ...(fotos.length ? { pictures: fotos.map((u) => ({ source: u })) } : {}) };
+      console.log(`══ PUBLICAR EN ML (${GO ? 'DE VERDAD' : 'PRUEBA'}) · ${P.name}${color ? ' · ' + color : ''} · ${label} ══`);
+      console.log(`   catálogo ${cat || '—'}${prodML ? ' · «' + String(prodML.name || '').slice(0, 70) + '»' : ''} · categoría ${categoria || '—'} · ${ofs.length} oferta(s) en el catálogo${ofs.length ? ' · la más barata ' + money(Math.min(...ofs.map((o) => Number(o.price) || Infinity))) : ''}`);
+      if (cuenta) console.log(`   a ${money(precio)}: ML se queda ${money(Math.round(cuenta.fee))} · envío ${money(Math.round(cuenta.envio))} · IIBB+mono ${money(Math.round(cuenta.impuestos))} · costo ${money(Math.round(cuenta.costo))} → deja ${money(Math.round(cuenta.ganancia))} · ${cuenta.margen.toFixed(1)}% (peor caso ${cuenta.peor.toFixed(1)}%)`);
+      console.log(`   mandaría POST /items ${JSON.stringify({ ...body, pictures: fotos.length ? `[${fotos.length} fotos del catálogo]` : undefined })}`);
+      for (const a of avisos) console.log(`   ⚠️ ${a}`);
+      if (frenos.length) { console.log(`\n🛑 NO SE PUBLICA: ${frenos.join(' · ')}`); return; }
+      // VALIDAR antes (no crea nada): sirve también para aprender qué campos pide ML.
+      let val = null, valTxt = '';
+      try { const r = await fetch(ML_API + '/items/validate', { method: 'POST', headers: { Authorization: 'Bearer ' + tokP, 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(30000) }); val = r.status; valTxt = (await r.text()).slice(0, 1500); } catch (e) { valTxt = String(e.message || e).slice(0, 200); }
+      console.log(`   validación de ML: ${val === 204 || val === 200 ? '✓ la aceptaría' : '✗ ' + (val || 'sin respuesta') + ' ' + valTxt}`);
+      if (!(val === 204 || val === 200)) { console.log('\n🛑 NO SE PUBLICA: ML no valida el pedido (arriba dice qué falta).'); return; }
+      if (!GO) { console.log('\n(prueba: sin |go no se crea nada)'); return; }
+      const r = await fetch(ML_API + '/items', { method: 'POST', headers: { Authorization: 'Bearer ' + tokP, 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(30000) });
+      const txt = await r.text(); _anotarEscrituraML(r, P.id, 'publicar un producto nuevo', txt);
+      if (!r.ok) { console.log(`\n❌ ML no la creó: ${r.status} ${txt.slice(0, 1500)}`); return; }
+      let nuevo = {}; try { nuevo = JSON.parse(txt); } catch { nuevo = {}; }
+      const nid = String(nuevo.id || '');
+      if (!/^MLA\d+$/.test(nid)) { console.log(`⚠️ ML contestó ${r.status} sin un id que entienda: ${txt.slice(0, 600)}`); return; }
+      // PAUSARLA EN EL ACTO (no vendemos fuera de Full).
+      let pausada = false, detP = '';
+      try { const rp = await fetch(ML_API + '/items/' + nid, { method: 'PUT', headers: { Authorization: 'Bearer ' + tokP, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'paused' }) }); if (!rp.ok) detP = rp.status + ' ' + (await rp.text()).slice(0, 200); _anotarEscrituraML(rp, nid, 'pausar la publicación recién creada', detP); }
+      catch (e) { detP = String(e.message || e).slice(0, 120); }
+      await new Promise((ok) => setTimeout(ok, 3000));
+      let b2 = null; try { b2 = await mlGet('/items/' + nid, tokP); } catch (e) { console.log(`⚠️ no pude releer ${nid}: ${String(e.message || e).slice(0, 150)}`); }
+      pausada = !!(b2 && b2.status === 'paused');
+      console.log(`\n✓ Creada ${nid} · ${b2 ? b2.listing_type_id + ' · ' + b2.status + ' · ' + money(Math.round(b2.price || 0)) + ' · catálogo ' + (b2.catalog_product_id || 'no') + ' · ' + (b2.permalink || '') : 'sin releer'}`);
+      if (!pausada) console.log(`🚨 NO QUEDÓ PAUSADA${detP ? ' (' + detP + ')' : ''}: pausala YA en ML (está activa fuera de Full con 1 u.). La vuelta de la hora la pausa igual.`);
+      const e2 = { prodId: P.id, cuenta: label, title: (b2 && b2.title) || body.title, status: (b2 && b2.status) || 'paused', upid: (b2 && b2.user_product_id) || null, catalogo: (b2 && b2.catalog_product_id) || cat || null, catalogoListing: true, catOk: (b2 && b2.catalog_product_id) || cat, catOkTs: Date.now(), altaTs: Date.now(), altaClaude: true, altaSinVender: true, ...(color ? { variant: color } : {}) };
+      try { await db.patch('cyc/mllinks/' + nid, e2); const rl = await db.get('cyc/mllinks/' + nid); console.log(rl && rl.prodId === P.id ? `   ✓ vinculada a la ficha ${P.name}${color ? ' · ' + color : ''}` : '   ⚠️ no quedó vinculada: vincular a mano'); } catch { console.log('   ⚠️ no pude vincularla en cyc/mllinks'); }
+      const okE = await guardarEstrategia(db, nid, 'nuevo', `Lanzamiento a ${money(precio)}: la publiqué yo (Claude) en el catálogo confirmado ${e2.catOk}${cuenta ? ', deja ' + cuenta.margen.toFixed(0) + '% (' + cuenta.peor.toFixed(0) + '% en el peor caso)' : ''}. Se activa sola cuando llegue la caja a Full.`);
+      console.log(okE ? '   ✓ estrategia 🆕 lanzamiento anotada' : '   ⚠️ no pude anotar la estrategia');
+      return;
+    }
+    // BILLING_PROBE=catok:<MLA>=<ok|sincat|MLA…|->[;<MLA>=…][;go] (etapa 6 · A2, 21/10/2026) → "EL CATÁLOGO DE ESTA PUBLICACIÓN NUEVA
+    // ESTÁ BIEN". Lo nuevo (ni la publicación ni su ficha vendieron nunca) no se activa solo si no está en el catálogo confirmado de
+    // la ficha (`activarPausadasFull`). Cuando no hay uno confirmado (un producto de Bs As, una ficha vieja), lo confirmo yo acá
+    // mirando la publicación: `ok` = el catálogo que tiene HOY en ML (se lee en el momento) · `MLA…` = tiene que ser ése (si ML dice
+    // otro, no escribe) · `sincat` = va sin catálogo a propósito · `-` saca la marca. Queda en `cyc/mllinks/<MLA>/catOk` (+ `catOkTs`).
+    // Sin `;go` sólo muestra.
+    if (/^catok(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _raw = String(process.env.BILLING_PROBE).replace(/^catok:?/, '');
+      const GO = /(^|;)go$/.test(_raw);
+      const pares = _raw.replace(/(^|;)go$/, '').split(';').map((x) => x.trim()).filter(Boolean);
+      if (!pares.length) { console.log('Usá: catok:<MLA>=<ok|sincat|MLA…|->[;<MLA>=…][;go]'); return; }
+      const linksC = (await db.get('cyc/mllinks')) || {};
+      const toksC = {}, upd = {}, prob = [];
+      for (const x of pares) {
+        const m = x.match(/^(MLA\d+)=(ok|sincat|-|MLA\d+)$/i);
+        if (!m) { prob.push(`"${x}" → se espera <MLA>=<ok|sincat|MLA…|->`); continue; }
+        const mla = m[1].toUpperCase(), q = m[2].toLowerCase(), e = linksC[mla];
+        if (!e || !e.cuenta) { prob.push(`${mla}: no está en el panel (corré altanuevas o vincular primero)`); continue; }
+        if (q === '-') { upd[mla] = null; console.log(`  ${mla} · ${e.cuenta} · ${String(e.title || '').slice(0, 50)} → saco la marca (era ${e.catOk || 'nada'})`); continue; }
+        if (!toksC[e.cuenta]) {
+          const acc = accounts[e.cuenta]; if (!acc?.refresh_token) { prob.push(`${mla}: sin permiso de ${e.cuenta}`); continue; }
+          try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + e.cuenta, { refresh_token: t.refresh_token, updated_ts: Date.now() }); toksC[e.cuenta] = t.access_token; }
+          catch { prob.push(`${mla}: no pude renovar el permiso de ${e.cuenta}`); continue; }
+        }
+        let b; try { b = await mlGet('/items/' + mla + '?attributes=id,title,status,catalog_product_id,catalog_listing', toksC[e.cuenta]); } catch (er) { prob.push(`${mla}: ML no contestó la publicación (${String(er.message || er).slice(0, 60)})`); continue; }
+        const cat = String(b.catalog_product_id || '').toUpperCase();
+        let val = null;
+        if (q === 'sincat') { if (cat) { prob.push(`${mla}: dijiste sin catálogo y ML dice que está en el catálogo ${cat}`); continue; } val = 'sincat'; }
+        else if (q === 'ok') { if (!cat) { prob.push(`${mla}: no está en ningún catálogo (si es a propósito: =sincat)`); continue; } val = cat; }
+        else { if (cat !== q.toUpperCase()) { prob.push(`${mla}: dijiste ${q.toUpperCase()} y ML dice ${cat || 'sin catálogo'}`); continue; } val = cat; }
+        upd[mla] = val;
+        console.log(`  ${mla} · ${e.cuenta} · ${String(b.title || e.title || '').slice(0, 50)} · ${b.status} → catálogo confirmado: ${val === 'sincat' ? 'va sin catálogo a propósito' : val}`);
+      }
+      if (prob.length) { console.log('❌ NO ESCRIBO NADA:'); prob.forEach((x) => console.log('   ' + x)); return; }
+      if (!GO) { console.log('\nNo se guardó nada (falta ;go).'); return; }
+      for (const [mla, val] of Object.entries(upd)) await db.patch('cyc/mllinks/' + mla, { catOk: val, catOkTs: val ? Date.now() : null });
+      let ok = 0; for (const [mla, val] of Object.entries(upd)) { const r = await db.get('cyc/mllinks/' + mla + '/catOk'); if ((r || null) === val) ok++; }
+      console.log(`\n${ok === Object.keys(upd).length ? '✓' : '⚠️'} ${ok} de ${Object.keys(upd).length} guardada(s) y releída(s). La vuelta de la hora ya puede activarlas si tienen stock en Full, precio decidido y llegan al piso.`);
+      return;
+    }
     if (String(process.env.BILLING_PROBE || '').startsWith('vincular:')) {
       const _vcRaw = String(process.env.BILLING_PROBE).slice(9);
       const APLICAR = /:go$/i.test(_vcRaw);
@@ -38785,11 +39047,11 @@ async function main() {
         // user_product_id de una hermana, que está medido que no se equivoca) a que lo hayamos
         // adivinado por el título, que es el filtro que ya falló seis veces. Sin eso las dos se
         // leen igual y no hay forma de saber cuál mirar.
-        alt.nuevas.forEach((n) => console.log(`   ${n.mla}  ${n.label.padEnd(8)} → ${n.prod}${n.variant ? '  · variante: ' + n.variant : '  · SIN VARIANTE'}${n.como ? '  · lo dijo ' + n.como : ''}\n            título ML: ${n.title}`));
+        alt.nuevas.forEach((n) => console.log(`   ${n.mla}  ${n.label.padEnd(8)} → ${n.prod}${n.variant ? '  · variante: ' + n.variant : '  · SIN VARIANTE'}${n.como ? '  · lo dijo ' + n.como : ''}  · ${n.catalogo ? 'catálogo ' + n.catalogo : 'sin catálogo'}\n            título ML: ${n.title}`));
       }
       if (alt.sinFicha.length) {
         console.log(`\n🆕 ${alt.sinFicha.length} quedarían SIN producto (no hay ficha clara):`);
-        alt.sinFicha.forEach((n) => console.log(`   ${n.mla}  ${n.label.padEnd(8)} ${n.title}`));
+        alt.sinFicha.forEach((n) => console.log(`   ${n.mla}  ${n.label.padEnd(8)} ${n.title} · ${n.catalogo ? 'catálogo ' + n.catalogo : 'sin catálogo'}`));
         console.log('   Se vinculan a mano: vincular:<MLA>=<palabra o id>:go');
       }
       if (!APLICAR) { console.log('\nPRUEBA: no escribí nada. Para aplicarlo ahora: altanuevas:go'); return; }
@@ -44833,6 +45095,119 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=listaped[:llego:<id|número>[;<palabra>[#<color>]=<llegaron>…][;nosumar]][;go] (etapa 6 · A3, 21/10/2026, eligió la a)
+    // → "LLEGÓ" DE UN PEDIDO A UNA LISTA, DESDE EL CHAT (Listas no tenía comando: había que tocar el botón). Hace lo MISMO que
+    // `listaLlego` de la web, con los mismos registros en `cyc/compraslista/<id>`: los NUEVOS se vuelven ficha (costo = lo pagado a
+    // la lista ÷ el dólar del pedido, del proveedor de la lista, con su código y el catálogo confirmado), los PROBADOS se enganchan
+    // y suben el costo si salió más caro (nunca bajan; el viejo queda congelado en los meses con ventas), y lo que llegó se SUMA a la
+    // oficina (lo que no se nombra llegó entero; `nosumar` = lo contás vos). Sin `;go` sólo muestra. `listaped` solo = en camino.
+    if (/^listaped(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _raw = String(process.env.BILLING_PROBE).replace(/^listaped:?/, '');
+      const GO = /(^|[;:])go$/.test(_raw);
+      const cuerpo = _raw.replace(/([;:])?go$/, '');
+      const [sub, ...resto] = cuerpo.split(':');
+      const nrm = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+      const peds = (await db.get('cyc/compraslista')) || {};
+      if (!sub) {
+        const cam = Object.entries(peds).filter(([, c]) => c && c.estado === 'camino').sort((a, b) => String(a[1].fecha).localeCompare(String(b[1].fecha)));
+        console.log(`=== PEDIDOS A LISTAS EN CAMINO (${cam.length}) ===`);
+        for (const [id, c] of cam) { console.log(`\n· ${id}${c.num ? ' · #' + c.num : ''} · ${c.provNom || c.prov} · del ${c.fecha} · ${(c.items || []).length} renglón(es)`); for (const it of (c.items || [])) console.log(`    ${it.u} u. · ${it.n || it.cod}${it.variante ? ' · ' + it.variante : ''}${it.prodId ? ' (probado)' : ' (nuevo)'}`); }
+        if (!cam.length) console.log('Ninguno.');
+        return;
+      }
+      if (sub !== 'llego') { console.log('Usá: listaped · listaped:llego:<id|número>[;<palabra>[#<color>]=<unidades que llegaron>…][;nosumar][;go]'); return; }
+      const [_idA, ..._llA] = resto.join(':').split(';');
+      const idArg = String(_idA || '').trim().replace(/^#/, '');
+      const NOSUMAR = _llA.some((x) => /^nosumar$/i.test(String(x).trim()));
+      const _faltaArgs = _llA.map((x) => String(x).trim()).filter((x) => x && !/^nosumar$/i.test(x));
+      const hit = Object.entries(peds).filter(([id, c]) => c && (id === idArg || String(c.num || '') === idArg));
+      if (hit.length !== 1) { console.log(`❌ "${idArg}" agarra ${hit.length} pedido(s). Corré \`listaped\` para ver los que están en camino.`); return; }
+      const [id, c] = hit[0];
+      if (c.estado !== 'camino') { console.log(`El pedido ${id} está "${c.estado}", no en camino: no se toca.`); return; }
+      const fin = (await db.get('cyc/finanzas')) || {};
+      const tc = Number(c.tc) || parseFloat(fin.tipo_cambio) || 0;
+      const productsL = (await db.get('cyc/products')) || {};
+      const prods = Object.values(productsL).filter((x) => x && x.name);
+      const its = (c.items || []).filter(Boolean);
+      const plan = its.map((it) => {
+        const nombre = String(it.mt || it.n || '').trim(), n1 = nrm(nombre), n2 = nrm(it.n || '');
+        if (it.prodId) { const pr0 = productsL[it.prodId] || null; return { it, nombre, misma: pr0, prob: true, borrada: !pr0 }; }
+        const misma = prods.find((x) => (x.codLista && String(x.codLista) === String(it.cod) && x.listaProv === c.prov) || nrm(x.name) === n1 || nrm(x.name) === n2) || null;
+        return { it, nombre, misma };
+      });
+      if (!(tc > 0) && plan.some((x) => !x.misma && !x.prob && x.nombre)) { console.log('❌ Falta el dólar (del pedido o de Finanzas): las fichas nuevas nacerían con costo US$ 0. No escribo nada.'); return; }
+      const _nomIt = (it) => it.mt || it.n || it.cod || '?';
+      const F = faltoDePedido(its, _faltaArgs, _nomIt);
+      if (F.problemas.length) { console.log('❌ NO ESCRIBO NADA (lo que faltó no se entiende):'); F.problemas.forEach((x) => console.log('   ' + x)); return; }
+      const llegoU = (it) => { const i = its.indexOf(it); return F.llegan.has(i) ? F.llegan.get(i) : (parseInt(it.u) || 0); };
+      console.log(`=== LLEGÓ EL PEDIDO A ${c.provNom || c.prov} ${id} (del ${c.fecha}) ${GO ? '' : '(PRUEBA — no escribo nada)'} ===`);
+      for (const x of plan) {
+        const u = llegoU(x.it), pe = parseInt(x.it.u) || 0, nu = tc > 0 ? Math.round((Number(x.it.pc) || 0) / tc * 100) / 100 : 0;
+        const est = x.borrada ? 'probado con la ficha BORRADA: no se crea nada' : x.misma ? `${x.prob ? 'probado' : 'ya existe'}: ${x.misma.name}${nu > (parseFloat(x.misma.costUSD) || 0) + 0.005 ? ` (costo sube US$ ${(parseFloat(x.misma.costUSD) || 0).toFixed(2)} → ${nu.toFixed(2)})` : ''}` : `ficha nueva: ${String(x.nombre).slice(0, 60)} · US$ ${nu.toFixed(2)}${x.it.mi ? ' · catálogo ' + x.it.mi : ''}`;
+        console.log(`  ${u} de ${pe} u. · ${_nomIt(x.it)}${x.it.variante ? ' · 🎨 ' + x.it.variante : ''} → ${est}${u < pe ? '  ⚠️ faltaron ' + (pe - u) : ''}`);
+      }
+      console.log(NOSUMAR ? 'Oficina: NO se suma nada (nosumar).' : 'Oficina: se SUMA lo que llegó.');
+      if (!GO) { console.log('\nNo se guardó nada (falta ;go).'); return; }
+      // Primero se marca llegado (deja de contar "en camino") con la foto de la oficina de los probados, como la web.
+      const inv = (await db.get('cyc/inventory')) || {};
+      const ofiAl = {}; for (const x of plan) if (x.prob && x.misma && !(x.misma.id in ofiAl)) ofiAl[x.misma.id] = parseInt(inv[x.misma.id + '__' + sid('Oficina Mati')]) || 0;
+      const fresco = await db.get('cyc/compraslista/' + id);
+      if (!fresco || fresco.estado !== 'camino') { console.log(`⚠️ Mientras corría, el pedido ${id} dejó de estar en camino (lo marcó la web u otro comando): no toco nada.`); return; }
+      const llegoTs = Date.now();
+      await db.patch('cyc/compraslista/' + id, { estado: 'llegado', llegoTs, ...(fresco.pagado !== true ? { pagado: false } : {}), ...(!fresco.ofiAlLlegar && Object.keys(ofiAl).length ? { ofiAlLlegar: ofiAl } : {}) });
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
+      const php = (await db.get('cyc/precios_hist_prod')) || {};
+      const fichaDe = {}, subio = [], nuevas = [];
+      for (const [i, x] of plan.entries()) {
+        if (x.borrada) continue;
+        if (x.misma) {
+          fichaDe[i] = x.misma; const up = {};
+          if (!x.misma.listaProv) up.listaProv = c.prov;
+          if (x.prob && !x.misma.codLista && x.it.cod) up.codLista = String(x.it.cod);
+          const nu = tc > 0 ? Math.round((Number(x.it.pc) || 0) / tc * 100) / 100 : 0, an = parseFloat(x.misma.costUSD) || 0;
+          if (nu > an + 0.005) {
+            // RECOMPRA MÁS CARA (decisión 6a del 20/10/2026, como la web y Paraguay): sube; el costo viejo queda en los meses con ventas.
+            if (an > 0) { const meses = new Set(); for (const [dk, o] of Object.entries(vp)) for (const v of Object.values(o || {})) if (v && v.prodId === x.misma.id) meses.add(String(dk).slice(0, 7)); for (const ym of meses) if (!(php[ym] && php[ym][x.misma.id] != null)) await db.set(`cyc/precios_hist_prod/${ym}/${x.misma.id}`, an); }
+            const dev = DEV_LIVE[x.misma.id] != null ? DEV_LIVE[x.misma.id] : (parseFloat(x.misma.devPct) || 0);
+            Object.assign(up, { costUSD: nu, cost: Math.round(Number(x.it.pc) || 0), costFullUSD: Math.round((nu * (1 + dev / 100) + (parseFloat(x.misma.shipUSD) || 0)) * 100) / 100 });
+            subio.push(`${x.misma.name} US$ ${an.toFixed(2)} → ${nu.toFixed(2)}`);
+          }
+          if (Object.keys(up).length) await db.patch('cyc/products/' + x.misma.id, up);
+          continue;
+        }
+        if (!x.nombre) continue;
+        if (CORTAR) { console.log('⚠️ Cancelaron la corrida: el pedido ya figura llegado; las fichas que faltan se crean repitiendo el comando con la web (Listas → Llegó no aplica) o a mano.'); break; }
+        const usd = tc > 0 ? Math.round((Number(x.it.pc) || 0) / tc * 100) / 100 : 0;
+        const pN = { id: 'p' + Date.now() + 'l' + i, name: String(x.nombre).slice(0, 90), costUSD: usd, cost: Math.round(Number(x.it.pc) || 0), costFullUSD: usd, origen: 'bsas', proveedor: c.provNom || c.prov, listaProv: c.prov, codLista: String(x.it.cod || ''), altaChat: Date.now() };
+        if (x.it.mi) pN.mlCatalogo = x.it.mi;
+        try { await db.set('cyc/products/' + pN.id, pN); fichaDe[i] = pN; nuevas.push(pN); prods.push(pN); }
+        catch (e) { console.log(`⚠️ no pude crear ${pN.name}: ${(e && e.message) || e}`); }
+      }
+      // La oficina: lo que llegó, en su ficha y su color.
+      const sumados = [], aMano = [], faltoR = [];
+      for (const [i, x] of plan.entries()) { const u = llegoU(x.it), pe = parseInt(x.it.u) || 0; if (u < pe) faltoR.push({ nom: String(_nomIt(x.it)).slice(0, 80), ...(x.it.variante ? { v: x.it.variante } : {}), pedidas: pe, llegaron: u }); }
+      if (!NOSUMAR) for (const [i, x] of plan.entries()) {
+        const u = llegoU(x.it); if (!(u > 0)) continue;
+        const pf = fichaDe[i]; if (!pf) { aMano.push({ nom: _nomIt(x.it), u, why: x.borrada ? 'la ficha se borró' : 'no se creó la ficha' }); continue; }
+        let r = null; try { r = await ofiSumarBot(db, pf, x.it.variante || '', u, inv); } catch (e) { aMano.push({ nom: pf.name, u, pf, why: 'no se pudo escribir' }); continue; }
+        if (!r) { aMano.push({ nom: pf.name, u, pf, v: x.it.variante || '', why: x.it.variante ? `la ficha no tiene el color "${x.it.variante}"` : 'la ficha tiene colores y el renglón no dice cuál' }); continue; }
+        sumados.push({ prodId: pf.id, ...(r.color ? { v: r.color } : {}), u });
+        console.log(`  🏠 oficina · ${pf.name}${r.color ? ' · ' + r.color + ': ' + r.antes + ' → ' + r.ahora + ' (total ' + r.tA + ' → ' + r.tN + ')' : ': ' + r.antes + ' → ' + r.tN}`);
+      }
+      const quedan = {}; for (const [pid, q] of Object.entries(ofiAl)) if (NOSUMAR || !sumados.some((y) => y.prodId === pid) || aMano.some((y) => y.pf && y.pf.id === pid)) quedan[pid] = q;
+      await db.patch('cyc/compraslista/' + id, { sumoOfi: NOSUMAR ? null : { ts: Date.now(), por: 'chat', items: sumados }, ofiAlLlegar: Object.keys(quedan).length ? quedan : null, falto: faltoR.length ? faltoR : null });
+      const rel = await db.get('cyc/compraslista/' + id);
+      console.log(`\n${rel && rel.estado === 'llegado' ? '✓' : '⚠️ NO QUEDÓ'} Pedido ${id} llegado · ${nuevas.length} ficha(s) nueva(s)${nuevas.length ? ': ' + nuevas.map((x) => x.id + ' ' + x.name).join(' | ') : ''}${subio.length ? ' · costo subido: ' + subio.join(' · ') : ''}`);
+      if (sumados.length) console.log(`✓ Sumado a la oficina: ${sumados.reduce((a, x) => a + x.u, 0)} u.${faltoR.length ? ' · faltaron ' + faltoR.reduce((a, x) => a + x.pedidas - x.llegaron, 0) + ' u. (anotadas en el pedido)' : ''}`);
+      if (aMano.length || NOSUMAR) {
+        const lst = NOSUMAR ? plan.map((x, i) => ({ nom: (fichaDe[i] || {}).name || _nomIt(x.it), u: llegoU(x.it), pf: fichaDe[i], v: x.it.variante || '' })) : aMano;
+        const cmd = lst.filter((x) => x.u > 0 && x.pf && !/[;=@#]/.test(x.pf.name)).map((x) => { const col = ofiColorDeFicha(x.pf, x.v || ''); const vsP = Array.isArray(x.pf.variantes) ? x.pf.variantes : Object.values(x.pf.variantes || {}); return `=${x.pf.name}${col == null ? '@<color: ' + vsP.slice(0, 6).join(' | ') + '>' : col ? '@' + col : ''}=+${x.u}`; });
+        if (cmd.length) console.log(`⚠️ Esto NO se sumó: ofi:${cmd.join(';')};go`);
+        const sinC = lst.filter((x) => x.u > 0 && (!x.pf || /[;=@#]/.test(x.pf.name)));
+        if (sinC.length) console.log(`⚠️ Contalo a mano en Mi oficina: ${sinC.map((x) => x.u + ' u. ' + x.nom + (x.why ? ' (' + x.why + ')' : '')).join(' · ')}`);
+      }
+      return;
+    }
     // BILLING_PROBE=pyped[:...] → LOS PASOS DE UN PEDIDO A PARAGUAY, DESDE EL CHAT (26/09/2026).
     // Regla suya del 26/09: *"no quiero marcar a mano, todo te lo voy a decir para que lo hagas vos"*.
     // Hace lo MISMO que los botones de la web (pyCanastaYaLoPedi, pyPedidoHecho, pyPedidoLlego), con
@@ -45092,7 +45467,12 @@ async function main() {
       // `llego` (precio pagado × recargo real). No marca nada, no toca la oficina ni el estado del pedido.
       const SOLOFICHAS = sub === 'fichas';
       if (sub === 'llego' || SOLOFICHAS) {
-        let id = arg.trim();
+        // A3 (etapa 6, 21/10/2026): `pyped:llego:<id>[;<palabra>[#<color>]=<llegaron>…][;nosumar][;go]`. Lo que llegó se SUMA solo a
+        // la oficina (lo que no se dice, llegó entero); `nosumar` = lo contás vos en Mi oficina, como antes.
+        const [_idA, ..._llA] = arg.split(';');
+        let id = _idA.trim();
+        const NOSUMAR = _llA.some((x) => /^nosumar$/i.test(String(x).trim()));
+        const _faltaArgs = _llA.map((x) => String(x).trim()).filter((x) => x && !/^nosumar$/i.test(x));
         if (/^\d{4}-\d{2}-\d{2}$/.test(id)) {
           const m = Object.entries(compras).filter(([, c]) => c && c.fecha === id && c.estado === 'camino');
           if (m.length !== 1) { console.log(`Con la fecha ${id} hay ${m.length} pedido(s) en camino${m.length ? ': ' + m.map(([k]) => k).join(', ') : ''}. Pasá el id.`); return; }
@@ -45144,9 +45524,16 @@ async function main() {
           plan.filter((x) => x.estado === 'ya').forEach((x) => console.log(`  = ya tenía ficha: ${x.src.nombre}`));
           plan.filter((x) => x.estado === 'nonombre').forEach(() => console.log(`  ⚠️ un renglón sin nombre: no se puede crear`));
         }
-        if (_repIts.length) {
-          console.log('Probados (reposición): no crean fichas (ya las tienen). Hay que contar estas unidades en la oficina:');
-          _repIts.forEach((it) => console.log(`  ${it.u} u. · ${it.nom || it.cod || '?'}`));
+        if (_repIts.length) console.log(`Probados (reposición): no crean fichas (ya las tienen): ${_repIts.length} renglón(es).`);
+        // A3: qué llegó de cada renglón (lo que no se nombra, entero) y si se suma a la oficina.
+        const _itsP = (c.items || []).filter(Boolean);
+        const _nomIt = (it) => it.nom || it.cod || '?';
+        const _F = SOLOFICHAS ? { llegan: new Map(), problemas: [] } : faltoDePedido(_itsP, _faltaArgs, _nomIt);
+        if (_F.problemas.length) { console.log('❌ NO ESCRIBO NADA (lo que faltó no se entiende):'); _F.problemas.forEach((x) => console.log('   ' + x)); return; }
+        const _llegoU = (it) => { const i = _itsP.indexOf(it); return _F.llegan.has(i) ? _F.llegan.get(i) : (parseInt(it.u) || 0); };
+        if (!SOLOFICHAS) {
+          console.log(NOSUMAR ? 'Oficina: NO se suma nada (nosumar): contalo vos en Mi oficina.' : 'Oficina: se SUMA lo que llegó (lo que no dijiste que faltó, llegó entero):');
+          for (const it of _itsP) { const u = _llegoU(it), pe = parseInt(it.u) || 0; console.log(`  ${u} de ${pe} u. · ${_nomIt(it)}${it.variante ? ' · 🎨 ' + it.variante : ''}${u < pe ? '  ⚠️ faltaron ' + (pe - u) : ''}`); }
         }
         if (!GO) { console.log('\nNo se guardó nada (falta :go).'); return; }
         const hechas = [];
@@ -45173,10 +45560,13 @@ async function main() {
           if (x.src.prov && x.src.prov !== 'nissei') p.provPy = x.src.prov;
           if (/^https:\/\//.test(String(x.src.link || ''))) p.pyLink = String(x.src.link).slice(0, 300);
           if (/^https:\/\//.test(String(x.src.foto || ''))) p.pyFoto = String(x.src.foto).slice(0, 300);
+          // A2 (etapa 6, 21/10/2026): la ficha nace con el catálogo de ML CONFIRMADO del candidato (✅ o revisión de fotos, atado a
+          // ese catálogo). Con eso la publicación nueva se activa sola sólo si está en ESE catálogo (`activarPausadasFull`).
+          { const kC = cands[x.src.id]; if (kC && candCatChequeado(kC)) p.mlCatalogo = candCatDe(kC); }
           try {
             await db.set('cyc/products/' + p.id, p);
             if (x.src.id && cands[x.src.id]) await db.set(`cyc/candidatos_py/${x.src.id}/prodId`, p.id);
-            hechas.push(p);
+            hechas.push(Object.defineProperty(p, '_srcId', { value: x.src.id, enumerable: false }));   // A3: para sumar a la oficina en su ficha
             if (x.src.id) _fichaDeItem[x.src.id] = p.name;   // revisión final: para el comando `ofi` de abajo
           } catch (e) { console.log(`⚠️ no pude crear ${p.name}: ${(e && e.message) || e}`); }
         }
@@ -45191,24 +45581,55 @@ async function main() {
         await db.set('cyc/compraspy/' + id + '/fechaLlego', hoyAR);
         // D6 (29/09, eligió la b): foto de la oficina al llegar una reposición. La canasta sigue restando
         // lo llegado hasta que la oficina suba (o 7 días): si no, lo volvería a pedir sin contar.
-        if (_repIts.length) {
-          try {
-            const _inv = (await db.get('cyc/inventory')) || {};
-            const _ofiLl = {};
-            for (const it of _repIts) if (!(it.prodId in _ofiLl)) _ofiLl[it.prodId] = parseInt(_inv[it.prodId + '__' + sid('Oficina Mati')]) || 0;
-            await db.set('cyc/compraspy/' + id + '/ofiAlLlegar', _ofiLl);
-          } catch (eO) { console.log('⚠️ no pude guardar la foto de la oficina: la canasta puede volver a pedirla hasta que la cuentes'); }
+        // A3 (21/10/2026): la foto se toma ANTES de sumar y se guarda sólo de los productos que NO se pudieron sumar (los que se
+        // sumaron ya están contados: la canasta no tiene nada que esperar).
+        let _inv = null, _ofiLl = {};
+        try { _inv = (await db.get('cyc/inventory')) || {}; for (const it of _repIts) if (!(it.prodId in _ofiLl)) _ofiLl[it.prodId] = parseInt(_inv[it.prodId + '__' + sid('Oficina Mati')]) || 0; }
+        catch { _inv = null; console.log('⚠️ no pude leer la oficina: no sumo nada (contalo en Mi oficina) y la canasta puede volver a pedirlo hasta que lo cuentes'); }
+        const _sumados = [], _aMano = [], _faltoR = [];
+        const _fichaIdDe = (it) => it.id ? ((hechas.find((p) => p._srcId === it.id) || {}).id || (plan.find((x) => x.src && x.src.id === it.id && x.estado === 'repe') || {}).rep?.[0]?.id || (cands[it.id] || {}).prodId || null) : (it.prodId || null);
+        for (const it of _itsP) { const u = _llegoU(it), pe = parseInt(it.u) || 0; if (u < pe) _faltoR.push({ nom: String(_nomIt(it)).slice(0, 80), ...(it.variante ? { v: it.variante } : {}), pedidas: pe, llegaron: u }); }
+        if (!NOSUMAR && _inv) {
+          const _prodsAll = [...prods, ...hechas];
+          for (const it of _itsP) {
+            const u = _llegoU(it); if (!(u > 0)) continue;
+            const pid = _fichaIdDe(it), pf = pid && _prodsAll.find((pp) => pp.id === pid);
+            if (!pf) { _aMano.push({ it, u, why: 'sin ficha' }); continue; }
+            if (CORTAR) { _aMano.push({ it, u, pf, why: 'cancelaron la corrida' }); continue; }
+            let r = null; try { r = await ofiSumarBot(db, pf, it.variante || '', u, _inv); } catch (eS) { _aMano.push({ it, u, pf, why: 'no se pudo escribir (' + String((eS && eS.message) || eS).slice(0, 40) + ')' }); continue; }
+            if (!r) { _aMano.push({ it, u, pf, why: it.variante ? `la ficha no tiene el color "${it.variante}"` : 'la ficha tiene colores y el renglón no dice cuál' }); continue; }
+            _sumados.push({ prodId: pf.id, ...(r.color ? { v: r.color } : {}), u });
+            console.log(`  🏠 oficina · ${pf.name}${r.color ? ' · ' + r.color + ': ' + r.antes + ' → ' + r.ahora + ' (total ' + r.tA + ' → ' + r.tN + ')' : ': ' + r.antes + ' → ' + r.tN}`);
+          }
         }
+        if (_repIts.length && _inv) {
+          const _sinSumar = {}; for (const [pid, q0] of Object.entries(_ofiLl)) if (NOSUMAR || _aMano.some((x) => (x.pf ? x.pf.id : x.it.prodId) === pid)) _sinSumar[pid] = q0;
+          try { await db.set('cyc/compraspy/' + id + '/ofiAlLlegar', Object.keys(_sinSumar).length ? _sinSumar : null); }
+          catch (eO) { console.log('⚠️ no pude guardar la foto de la oficina: la canasta puede volver a pedirla hasta que la cuentes'); }
+        }
+        try { await db.patch('cyc/compraspy/' + id, { sumoOfi: NOSUMAR || !_inv ? null : { ts: Date.now(), por: 'chat', items: _sumados }, falto: _faltoR.length ? _faltoR : null }); } catch { console.log('⚠️ no pude anotar en el pedido lo que se sumó y lo que faltó'); }
         for (const it of (c.items || [])) { const k = it && it.id && cands[it.id]; if (k && k.pedidoEn === id) { try { await db.set(`cyc/candidatos_py/${it.id}/pedidoEn`, null); } catch {} } }
         const rel = await db.get('cyc/compraspy/' + id);
         console.log(`\n${rel && rel.estado === 'llego' ? '✓' : '⚠️ NO QUEDÓ'} Pedido ${id} marcado como llegado · ${hechas.length} ficha(s) creada(s)${hechas.length ? ': ' + hechas.map((p) => p.id + ' ' + p.name).join(' | ') : ''}`);
         if (hechas.length) console.log(`Siguiente paso: \`repartopy:${id}\` para ver en qué cuenta va cada una y \`pasara:<cuenta>:=<nombre>:go\` para marcarla. Después contar en la oficina.`);
         // Etapa 3 (29/09): hasta contarlas, el patrimonio baja lo que costó el pedido (dejó de estar
         // "en camino" y las fichas nacen en 0). El comando para cargarlas, listo (revisar las unidades).
+        // A3 (21/10/2026): lo que llegó ya se sumó. Lo que no se pudo (sin ficha, colores sin decir cuál, `nosumar`) sale con su
+        // comando `ofi` listo. ARREGLADO: antes salía sin `@color` y en una reposición con colores el comando fallaba ENTERO.
         { const _nomOfi = (it) => (it.id && _fichaDeItem[it.id])
             || (it.prodId && (prods.find((pp) => pp.id === it.prodId) || {}).name) || it.nom;
-          const _ofi = (c.items || []).filter((it) => it && _nomOfi(it) && (parseInt(it.u) || 0) > 0 && !/[;=]/.test(_nomOfi(it))).map((it) => `=${_nomOfi(it)}=+${parseInt(it.u)}`);
-          if (_ofi.length) console.log(`⚠️ Contalas en la oficina (hasta entonces no suman en el patrimonio). Si llegó todo: ofi:${_ofi.join(';')};go`); }
+          const _pend = NOSUMAR || !_inv ? _itsP.map((it) => ({ it, u: _llegoU(it), pf: [...prods, ...hechas].find((pp) => pp.id === _fichaIdDe(it)) })) : _aMano;
+          const _ofi = [], _sinCmd = [];
+          for (const x of _pend) {
+            if (!(x.u > 0)) continue;
+            const nom = (x.pf && x.pf.name) || _nomOfi(x.it); if (!nom || /[;=@#]/.test(nom)) { _sinCmd.push(`${x.u} u. · ${_nomOfi(x.it)}${x.why ? ' (' + x.why + ')' : ''}`); continue; }
+            const col = x.pf ? ofiColorDeFicha(x.pf, x.it.variante || '') : '';
+            if (col == null) { const vsP = Array.isArray(x.pf.variantes) ? x.pf.variantes : Object.values(x.pf.variantes || {}); _ofi.push(`=${nom}@<color: ${vsP.slice(0, 6).join(' | ')}>=+${x.u}`); continue; }
+            _ofi.push(`=${nom}${col ? '@' + col : ''}=+${x.u}`);
+          }
+          if (_sumados.length) console.log(`✓ Sumado a la oficina: ${_sumados.reduce((a, x) => a + x.u, 0)} u. en ${_sumados.length} renglón(es).${_faltoR.length ? ' Faltaron ' + _faltoR.reduce((a, x) => a + x.pedidas - x.llegaron, 0) + ' u. (quedan anotadas en el pedido).' : ''}`);
+          if (_ofi.length) console.log(`⚠️ Esto NO se sumó (hasta contarlo no suma en el patrimonio): ofi:${_ofi.join(';')};go${_ofi.some((x) => x.includes('<color')) ? '  ← cambiá <color…> por el color que llegó' : ''}`);
+          if (_sinCmd.length) console.log(`⚠️ Contalo a mano en Mi oficina: ${_sinCmd.join(' · ')}`); }
         // 05/10/2026: lo que ya tenía ficha (probados y nuevos enganchados) sube su costo si este pedido salió más caro.
         if (_recReal) { try { await aplicarCostosPedido(db, id, rel || c, true); } catch (eC) { console.log('⚠️ no pude revisar los costos: ' + ((eC && eC.message) || eC)); } }
         return;
@@ -47577,6 +47998,28 @@ async function main() {
   // las ventas se sincronizan cada 2 minutos, pero el robot de precios corre una vez por hora.
   // Sin esto, bajar el intervalo a 2 minutos haría que el robot evalúe 720 veces por día en vez
   // de 14, y una publicación que queda justo en el piso empezaría a subir de a poco sin parar.
+  // ── LA VUELTA PESADA SE RECUERDA (etapa 6 · A4, 21/10/2026, eligió la a) ─────────────────────────────────────────────
+  // Cada comando a mano reinicia el ciclo (job `ciclo`), y la 1ª vuelta del ciclo es la pesada (stock de Full, cajas, caja de
+  // compra, promos, alta de nuevas): con 5 comandos en una hora eran 5 vueltas pesadas seguidas, y ML cortaba por cupo justo
+  // lo que más hace falta (los movimientos de las cajas). Ahora se anota cuándo terminó la última (`mlapi/vueltapesada`):
+  //  · una vuelta pesada que arranca menos de VUELTA_PESADA_MIN_MIN después de la última se hace como liviana (sólo ventas);
+  //  · una liviana del ciclo (`PESADA_SI_TOCA=1`) se vuelve pesada si ya pasaron VUELTA_PESADA_CADA_MIN, así el reinicio no
+  //    corre la pesada una hora más.
+  // Si la memoria no se puede leer, manda lo que decidió el ciclo (como antes). `FORZAR_PESADA=1` la corre igual.
+  let _vueltaPesadaAnotar = false;
+  if (parseInt(process.env.BACKFILL_DAYS || '0', 10) === 0 && !DRY && !(process.env.ACCOUNT || '').trim() && process.env.FORZAR_PESADA !== '1') {
+    let _ultP = null;
+    try { const _vp = await db.get('mlapi/vueltapesada'); _ultP = _vp && Number(_vp.ts) > 0 ? Number(_vp.ts) : 0; } catch { _ultP = null; }
+    const _minP = _ultP ? (Date.now() - _ultP) / 60000 : Infinity;
+    if (_ultP != null && process.env.SKIP_PRICES !== '1' && _minP < VUELTA_PESADA_MIN_MIN) {
+      process.env.SKIP_PRICES = '1';
+      console.log(`⏩ La vuelta pesada se hizo hace ${Math.round(_minP)} min: ésta va como liviana (sólo ventas). La próxima pesada, a partir de los ${VUELTA_PESADA_CADA_MIN} min.`);
+    } else if (_ultP != null && process.env.SKIP_PRICES === '1' && process.env.PESADA_SI_TOCA === '1' && _minP >= VUELTA_PESADA_CADA_MIN) {
+      delete process.env.SKIP_PRICES;
+      console.log(`⏫ Pasaron ${_minP === Infinity ? 'más de ' + VUELTA_PESADA_CADA_MIN : Math.round(_minP)} min desde la última vuelta pesada: ésta va completa.`);
+    }
+  }
+  if (process.env.SKIP_PRICES !== '1' && parseInt(process.env.BACKFILL_DAYS || '0', 10) === 0 && !DRY && !(process.env.ACCOUNT || '').trim()) _vueltaPesadaAnotar = true;
   const SKIP_PRICES = process.env.SKIP_PRICES === '1';
   // INTERRUPTOR GENERAL. mlconfig.autoPrice=false apaga TODO lo que escribe precios en ML sin que
   // nadie lo pida: el robot que ajusta al piso, la nivelación de grupos y la reactivación de
@@ -47987,11 +48430,11 @@ async function main() {
       const alt = await altaDeNuevas(db, accounts, labels, map, index, DRY);
       if (alt.nuevas.length) {
         console.log(`\n🆕 ${alt.nuevas.length} publicación(es) nueva(s) dadas de alta y enganchadas solas:`);
-        alt.nuevas.forEach((n) => console.log(`   ${n.mla}  ${n.label.padEnd(8)} → ${n.prod}${n.variant ? ' · ' + n.variant : ''}${n.como ? ' · lo dijo ' + n.como : ''}   (${n.title.slice(0, 46)})`));
+        alt.nuevas.forEach((n) => console.log(`   ${n.mla}  ${n.label.padEnd(8)} → ${n.prod}${n.variant ? ' · ' + n.variant : ''}${n.como ? ' · lo dijo ' + n.como : ''} · ${n.catalogo ? 'catálogo ' + n.catalogo : 'sin catálogo'}   (${n.title.slice(0, 46)})`));
       }
       if (alt.sinFicha.length) {
         console.log(`\n🆕 ${alt.sinFicha.length} publicación(es) nueva(s) dadas de alta SIN producto (${SOLO_DATOS ? 'sólo datos: las vincula Claude' : 'no encontré una ficha clara'}):`);
-        alt.sinFicha.forEach((n) => console.log(`   ${n.mla}  ${n.label.padEnd(8)} ${n.title.slice(0, 60)}`));
+        alt.sinFicha.forEach((n) => console.log(`   ${n.mla}  ${n.label.padEnd(8)} ${n.title.slice(0, 60)} · ${n.catalogo ? 'catálogo ' + n.catalogo : 'sin catálogo'}`));
         console.log(`   Se vinculan con: vincular:<MLA>=<palabra o id>:go`);
       }
     } catch (e) { console.log('No pude buscar publicaciones nuevas: ' + e.message); }
@@ -49274,6 +49717,8 @@ async function main() {
   // depende de que el robot de precios esté prendido no serviría justo el día que se apague.
   try { await avisarBloqueoML(db, DRY); } catch (e) { console.log('No pude mirar si ML me frenó: ' + e.message); }
 
+  // A4: terminó entera la vuelta pesada → se anota (si se cortó a mitad, no: la próxima la repite).
+  if (_vueltaPesadaAnotar && !CORTAR) { try { await db.set('mlapi/vueltapesada', { ts: Date.now(), consultas: mlConteo.get, e429: mlConteo.e429 }); } catch (e) { console.log('⚠️ no pude anotar la vuelta pesada: ' + String((e && e.message) || e).slice(0, 60)); } }
   if (!precioAuto && !SKIP_PRICES) console.log('\n⏸️  Robot de precios APAGADO (mlconfig.autoPrice=false): no ajusté, no nivelé y no activé nada. Para prenderlo: robot:on');
   const pend = Object.values(map).filter((x) => x && !x.prodId).length;
   console.log(`\n✓ Listo. Renglones cargados: ${cargadas}. Publicaciones sin vincular: ${pend}.`);
