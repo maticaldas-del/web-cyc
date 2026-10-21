@@ -4209,8 +4209,19 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
     camb.sort((x, y) => y.ts - x.ts);
     const golpe = exc(fz, 'golpe');
     // ── F2 · escalera: tamaño del escalón
-    const maxB = enEscasez ? 0.25 : 0.15, baja = (p0 - a) / p0;
-    if (!golpe && baja > maxB + 0.005) { frenar(d, `baja ${Math.round(baja * 100)}% de una vez (${$(p0)} → ${$(a)}): toda baja va en escalera, como mucho ${Math.round(maxB * 100)}% por escalón${enEscasez ? ' en escasez' : ''} (el escalón llega hasta ${$(ceil90(p0 * (1 - maxB)))}). Excepciones (precio mal puesto, stock antiguo con fecha encima, ML pausó por el precio, lo pide él, la última unidad): !golpe y "EXCEPCIÓN: …"`); out.push(d); continue; }
+    // En un descuento (`promo`) el escalón se mide contra el ÚLTIMO PRECIO QUE VIO EL COMPRADOR, no contra la lista (21/10/2026,
+    // revisor en contra): `/items` devuelve la lista aunque haya un descuento mío puesto, y una escalera de descuentos se trababa en
+    // −15% de la lista. Ese precio es el de mi descuento puesto (`cyc/promoclaude`) o, si salí hace menos de 72 h para renovarlo o
+    // cambiarlo, el que tenía al salir (`cyc/promohist`). Sin eso, la lista.
+    let p0v = p0;
+    if (opts.promo) {
+      const pcV = prC && prC[d.mla]; if (pcV && Number(pcV.precio) > 0 && Number(pcV.precio) < p0) p0v = Number(pcV.precio);
+      else { let ph = null; try { ph = (await db.get('cyc/promohist/' + d.mla)) || {}; } catch { ph = null; }
+        const ul = ph ? Object.entries(ph).map(([k, x]) => ({ ts: Number(k), ...(x || {}) })).filter((x) => x.ts > 0).sort((x, y) => y.ts - x.ts)[0] : null;
+        if (ul && ul.accion === 'sale' && ahora - ul.ts < 72 * 3600e3 && Number(ul.a) > 0 && Number(ul.a) < p0) p0v = Number(ul.a); }
+    }
+    const maxB = enEscasez ? 0.25 : 0.15, baja = (p0v - a) / p0v;
+    if (!golpe && baja > maxB + 0.005) { frenar(d, `baja ${Math.round(baja * 100)}% de una vez (${$(p0v)}${p0v !== p0 ? " (lo que veía el comprador; lista " + $(p0) + ")" : ""} → ${$(a)}): toda baja va en escalera, como mucho ${Math.round(maxB * 100)}% por escalón${enEscasez ? ' en escasez' : ''} (el escalón llega hasta ${$(ceil90(p0v * (1 - maxB)))}). Excepciones (precio mal puesto, stock antiguo con fecha encima, ML pausó por el precio, lo pide él, la última unidad): !golpe y "EXCEPCIÓN: …"`); out.push(d); continue; }
     // ── F3 · escalón medido antes del siguiente
     const ultBaja = camb.find((c) => c.a < c.de);
     const espH = enEscasez ? 12 : 48;
