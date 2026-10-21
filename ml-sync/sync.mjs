@@ -4153,6 +4153,7 @@ function rayasPrecioLinea(d, cu, imp, hoyK, parte = 1) {
 //     por día que antes (decisión suya 2b del 21/10/2026) · `!sincerteza`
 //  F5 no abajo del 💰 piso (el precio que más plata por día dejó, `rayasPrecioLinea`) salvo sobra / sin reposición / liquidando /
 //     remate · `!bajopiso`. Si el redondeo a 90/990 lo empuja abajo, dice el precio redondeado PARA ARRIBA.
+//  F7 sin línea de techo (🔴 al 95% o 🏔️ de techo95) no se baja: se busca techo (21/10/2026, regla suya) · `!sinlinea`
 //  F6 🤔 un descuento o promo nuevo (fuera de una escalera de techo, escasez, lanzamiento, sin reposición o fecha) pide sobra de
 //     verdad (90+ d en Full al ritmo con stock) y no recién llegado (30+ d desde la última entrada) · `!nosobra`
 // Cada `!bandera` vale SÓLO si el motivo dice "EXCEPCIÓN" y por qué: una excepción sin decir cuál no es una excepción.
@@ -4231,6 +4232,22 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
     const cu = pr && tc > 0 ? costoPesos(pr, 1, tc).costo : 0;
     const imp = ((ML_EXTRA_PCT[String(e.cuenta || '').toLowerCase()] || 4) + (Number(mono) || 0)) / 100;
     const ks = lin ? Object.keys(lin).filter((k) => /^\d{4}_\d{2}_\d{2}$/.test(k) && k < hoyK && lin[k] && typeof lin[k] === 'object').sort() : [];
+    // ── F7 · SIN LÍNEA DE TECHO NO SE BAJA (21/10/2026, él con el Persea y el Aer Jasmín: "nunca puede bajar si no hay línea de
+    // techo y si no hay línea de techo tiene que buscar techo hasta que esté 95% o más seguro de que ése es el techo"). La línea es el
+    // 🔴 de `rayasPrecioLinea` (precio medido al 95% que no rinde, la misma raya de la web) o un 🏔️ de `techo95` de los últimos 60 días.
+    // No frena lo que tiene otra explicación de precio: sobra, sin reposición, liquidando, remate y la salida de una escasez (precio
+    // inflado a propósito). `!sinlinea` + "EXCEPCIÓN: …" en el motivo para un caso puntual (error de precio, ML lo pausó por el precio).
+    {
+      const sinLineaOk = ['sobra', 'sinrepo', 'liquidando', 'remate'];
+      if (!sinLineaOk.includes(tagNuevo) && !sinLineaOk.includes(ult) && !enEscasez && !exc(fz, 'sinlinea')) {
+        const t95 = tags.some((x) => techookDeTecho95(x) && x.ts > ahora - 60 * 864e5);
+        if (!t95) {
+          if (!lin || !(cu > 0)) { frenar(d, 'no pude leer la línea de tiempo o el costo: sin saber si tiene línea de techo no bajo'); out.push(d); continue; }
+          const R7 = rayasPrecioLinea(lin, cu, imp, hoyK);
+          if (!R7.techo) { frenar(d, `no tiene línea de techo 🔴 al 95% (${R7.best ? '💰 ' + $(R7.best.p) + ', nunca se midió más caro con certeza' : 'pocos días medibles todavía'}): sin techo no se baja, se busca techo (📈) hasta estar 95% seguro. Excepción puntual: !sinlinea + "EXCEPCIÓN: …"`); out.push(d); continue; }
+        }
+      }
+    }
     // ── F4 · una suba no se deshace por casualidad
     // sólo subas de 5%+ (una prueba de verdad): volver de $17.990 a $18.290 para quedar en el piso no es algo que proteger
     const ultSuba = camb.find((c) => c.a > c.de * 1.05);
@@ -43647,7 +43664,7 @@ async function main() {
             // Mi promo cuenta como excepción sólo MIENTRAS dure (13/10/2026, revisión 9): vencida se juzga como cualquiera.
             const pcV = promoClaudeVigente(pClaude[mla], hoy);
             filas.push({ mla, cta, kSt: stDesc ? null : kSt, desde: (h.aprox === false && Number(h.desde) > 0) ? Number(h.desde) : 0, nom: String(e.title || p.name || '').slice(0, 42) + (e.variant ? ' #' + e.variant : ''), est: b.status + ((b.sub_status || []).length ? '(' + b.sub_status.join(',') + ')' : ''),
-              P, mg, g, mgP, meta, nota, st, stDesc, exc: b.status === 'under_review' ? 'ML la tiene en revisión: no deja cambiar el precio (se sube al liberarla)' : (nosub || {})[mla] ? 'liquidando' : (cPiso && cPiso[mla] && Math.abs((Number(cPiso[mla].a) || 0) - P) <= 10) ? 'la dejé así con !piso' : pcV.vig ? `en promo mía${pcV.hasta ? ' hasta ' + pcV.hasta : ''}` : (P >= 32900 && P < UMBRAL_ENVIO_GRATIS && meta && meta.barrera) ? 'frenada en la barrera de $33.000 (regla 2)' : '', pcVen: pClaude[mla] && !pcV.vig ? (pcV.hasta || '?') : '', ...vv, cero: h.cero && st === 0 && !stDesc ? h.cero : null, tanda, caja: e.caja || '', ptw: e.cajaPtw || null, var: (b.variations || []).length,
+              P, mg, g, mgP, meta, nota, st, stDesc, exc: b.status === 'under_review' ? 'ML la tiene en revisión: no deja cambiar el precio (se sube al liberarla)' : (nosub || {})[mla] ? 'liquidando' : (cPiso && cPiso[mla] && Math.abs((Number(cPiso[mla].a) || 0) - P) <= 10) ? 'la dejé así con !piso' : pcV.vig ? `en promo mía${pcV.hasta ? ' hasta ' + pcV.hasta : ''}` : (P >= 32900 && P < UMBRAL_ENVIO_GRATIS && meta && meta.barrera) ? 'frenada en la barrera de $33.000 (regla 2)' : '', pcVen: pClaude[mla] && !pcV.vig ? (pcV.hasta || '?') : '', ...vv, cero: h.cero && st === 0 && !stDesc ? h.cero : null, tanda, cu: costo, imp: m, gemelaDe: e.gemelaDe || '', caja: e.caja || '', ptw: e.cajaPtw || null, var: (b.variations || []).length,
               cambio: a && a.ts ? `${f(a.de)}→${f(a.a)} hace ${Math.round((hoy - a.ts) / 864e5)} d${a.por ? ' (' + a.por + ')' : ''}` : '',
               escC, etq: String(e.etq || ''), salud: e.salud, catalogo: !!b.catalog_listing, sugP: Number(e.sugP) || null, sugMin: Number(e.sugMin) || null, sugTs: Number(e.sugTs) || 0,
               cajaPorCuotas: !!e.cajaPorCuotas, cajaGanP: Number(e.cajaGanP) || null, cajaGanPromo: Number(e.cajaGanPromo) || null, lt: b.listing_type_id || '' });
@@ -43816,22 +43833,32 @@ async function main() {
           // 21/10/2026 · etapa 1: un 💸/🏷️ sin promo mía vigente (venció o se sacó) y un 🧪 (la prueba 3b se canceló) no explican
           // el precio: cuentan como ⚪ sin estrategia.
           const sinPromo = ['descuento', 'promo'].includes(r.est2.t) && !promoClaudeVigente(pClaude[r.mla], hoy).vig;
-          if (r.exc || (!['sindecidir', 'nuevo', 'agotado', 'prueba'].includes(r.est2.t) && !volvViejo && !sinPromo && !venc)) continue;
+          // 21/10/2026, regla suya: "si no hay línea de techo tiene que buscar techo hasta que esté 95% seguro". Ya no alcanza con
+          // haber probado techo en 60 días (el Persea y el Aer Jasmín probaron, bajaron sin certeza y quedaron fuera de esta lista):
+          // entra todo lo que no tiene una estrategia que explique el precio y no tiene línea de techo 🔴 al 95% (se mira abajo).
+          // Explican el precio: 🔥 escasez · ⏳ sin reposición · 📦 sobra · 📉 liquidando · 🧨 remate · 📈 buscando techo (la 📈 de abajo
+          // controla que suba) · 🏔️ (sólo lo anota techo95) · 🎁 fecha y 💸/🏷️ vigentes · 🛡️ excepción. Las gemelas las alinea el robot.
+          if (r.gemelaDe) continue;
+          const explica = ['escasez', 'sinrepo', 'sobra', 'liquidando', 'remate', 'techo', 'techook', 'fecha', 'descuento', 'promo', 'excepcion'].includes(r.est2.t);
+          if (r.exc || (explica && !sinPromo && !venc)) continue;
           const dias = diasGrupo(r);
           // Menos de 14 días sin tag 🔥: o es escasez sin decidir (sale en la 🚨) o la caja llega a tiempo: igual entra acá
           // (19/10, él: "si no tiene línea de techo o alguna otra explicación como sobre stock, tiene que entrar en buscar techo").
           // Más de 90 (del grupo) es terreno de la 📦: ahí sale (o está anotado/pensado/recién llegado, y lo dice).
           if (dias > 90) continue;
-          if (!venc && techoReciente(r.mla)) continue;   // un 🪜 vencido no cuenta como "probó techo hace poco"
+          // ¿tiene línea de techo? (la misma raya de la web y de techo95). Con 🔴 al 95% está afinado; sin poder leer la línea, entra.
+          if (r.cu > 0) { let lr = null; try { lr = (await db.get('mlapi/linea/' + r.mla)) || null; } catch { lr = null; }
+            if (lr) { const R = rayasPrecioLinea(lr, r.cu, r.imp, dayKeyFromISO(hoy)); if (R.techo) continue; r.sinLinea = R.best ? `💰 ${f(R.best.p)}, sin 🔴 al 95%` : 'sin días medibles'; } else r.sinLinea = 'no leí la línea'; }
+          else r.sinLinea = 'sin costo';
           const nota = ultN(r.mla); const fila = { ...r, dias };
           if (nota && hoy - nota < 7 * 864e5) pens.push(fila); else sinAf.push(fila);
         }
         const cajaTxt = (r) => r.caja ? `caja ${r.caja}${r.ptw && r.caja !== 'winning' ? ' ML pide ' + f(r.ptw) : ''}` : 'sin catálogo';
         sinAf.sort((x, y) => (y.u30 * (y.g || 0)) - (x.u30 * (x.g || 0)));
-        console.log(`\n── 🔎 SIN AFINAR (${sinAf.length}) · activas con stock para menos de 90 días, ⚪ sin estrategia (o 🆕) y sin prueba de techo en 60 días · decidir EN ESTA VUELTA: probar techo o dejar con motivo${_faltaLeer} ──`);
-        for (const r of sinAf) console.log(`🔎 ${r.mla} · ${r.cta} · ${r.nom} · ${f(r.P)} · ${r.mg.toFixed(0)}% (${f(r.g)}/u) · v ${r.u7}/${r.u30}/${r.u60} · Full ${r.st} (${Math.round(r.dias)} d) · ${cajaTxt(r)}${r.var ? ' · CON VARIANTES' : ''} · 🏷 ${ESTRATEGIAS[r.est2.t]}${r.venc ? ' VENCIDO: ' + r.venc : ''}`);
+        console.log(`\n── 🔎 SIN AFINAR (${sinAf.length}) · activas con stock para menos de 90 días, ⚪ sin estrategia (o 🆕) y sin estrategia que explique el precio y SIN LÍNEA DE TECHO 🔴 al 95% · decidir EN ESTA VUELTA: buscar techo (📈, subir) o dejar con motivo${_faltaLeer} ──`);
+        for (const r of sinAf) console.log(`🔎 ${r.mla} · ${r.cta} · ${r.nom} · ${f(r.P)} · ${r.mg.toFixed(0)}% (${f(r.g)}/u) · v ${r.u7}/${r.u30}/${r.u60} · Full ${r.st} (${Math.round(r.dias)} d) · ${cajaTxt(r)}${r.var ? ' · CON VARIANTES' : ''} · 🏷 ${ESTRATEGIAS[r.est2.t]}${r.venc ? ' VENCIDO: ' + r.venc : ''} · techo: ${r.sinLinea || '?'}`);
         if (ccA == null) console.log('   ⚠️ no leí mis cambios: un 🪜 se da por vencido sólo por la fecha de su tag');
-        if (!sinAf.length) console.log(pens.length ? 'ninguna sin pensar' : 'ninguna: todo lo que vende tiene estrategia o ya probó techo');
+        if (!sinAf.length) console.log(pens.length ? 'ninguna sin pensar' : 'ninguna: todo lo que tiene stock tiene estrategia o línea de techo al 95%');
         if (pens.length) console.log(`   (${pens.length} ya pensadas en los últimos 7 días: ${pens.map((x) => x.nom.slice(0, 24)).join(' · ')})`);
       } catch (eA) { console.log('⚠️ la lista sin afinar falló: ' + eA.message); }
       // ── 📈 DICE TECHO/ESCASEZ Y NO ESTÁ SUBIENDO (19/10/2026, él con la Batidora negro: "dice buscando techo, pero no aumentó
