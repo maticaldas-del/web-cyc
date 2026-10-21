@@ -3942,7 +3942,8 @@ const stockOficina=p=>p?getQ(p.id,OFI):0;
 const stockOfVar=(p,variante)=>p?ML_LOCS.reduce((s,l)=>s+getQV(p.id,l,variante),0):0;
 const todayStr=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
 const yesterdayStr=()=>{const d=new Date();d.setDate(d.getDate()-1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
-const normTxt=s=>(s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+// Con `.trim()` (21/10/2026 · etapa 1): el robot compara los nombres recortados; "Ferrari " y "Ferrari" son la misma ficha.
+const normTxt=s=>(s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
 // UNA SOLA FORMA DE BUSCAR (20/10/2026, etapa 7): sin tildes y palabra por palabra, así "termometro" encuentra
 // "Termómetro pincha" y "sabanas gris" encuentra las Sábanas de color Gris. Todas las palabras tienen que estar en
 // alguno de los textos (nombre, código, colores, títulos y números de sus publicaciones). Vacío = todo coincide.
@@ -4593,6 +4594,12 @@ function _prodIncompletosBanner(){
   </div>`;
 }
 function metaMargenML(){return parseFloat((state.mlconfig||{}).minPct)||30;}
+// EL PEOR CASO DEL 25% (regla suya del 12/10/2026), el MISMO número que el robot (`PEOR_RET_PCT` de sync.mjs): una retención de
+// IIBB de otra provincia de 2% del precio. Lo que dice "se puede" o "hay aire" se juzga con el margen restándole eso.
+const PEOR_RET_PCT=0.02;
+// Un % al lado del piso NO se redondea: 24,7 mostrado como "25%" parece que llega y no llega (21/10/2026 · etapa 1). A menos de
+// 1,5 puntos del piso va con un decimal; lejos, entero.
+function _pctPiso(v,piso){const x=Number(v);if(!isFinite(x))return '—';return Math.abs(x-(Number(piso)||0))<1.5?x.toFixed(1):x.toFixed(0);}
 // ── CÓMO PASA LA PLATA, DE PUNTA A PUNTA ──────────────────────────────────────
 // Pedido suyo del 01/09/2026, textual: "me gustaría que sea una línea de cómo pasa el dinero desde
 // que el comprador paga hasta el dinero que me queda final después de pagar factura a ml a fin de
@@ -4654,6 +4661,10 @@ function simPrecioReset(id){delete _simPrecio[id];repintarFlujo(id);}
 // $35.600" le estaba recomendando cruzar la barrera, que por su regla del 13/08/2026 no se cruza
 // nunca. Va con el MISMO número que el robot: si algún día ML lo cambia, hay que tocar los dos.
 const UMBRAL_ENVIO_GRATIS=33000;
+// LA PLATA POR DÍA NETA (⚖️, regla suya del 18/10/2026), los MISMOS números que el robot (`PD_*` de sync.mjs): a la ganancia
+// de cada día se le resta el trabajo por unidad ($100), lo que gasta del tope de H cada peso facturado (3%) y la plata parada
+// (2% por mes sobre el costo del stock de ese día). Si se tocan acá, se tocan allá.
+const PD_TRABAJO_U=100,PD_TOPE_PCT=0.03,PD_CAPITAL_DIA=0.02/30;
 // ── LO QUE SE LE SUMA AL PRECIO DE PARAGUAY PARA LLEGAR A LA OFICINA (17/09/2026) ──────
 // Textual suyo: *"mercaderia + comprar dolar (siempre es mas por comisiones) + traslado =
 // mercaderia + el 15%"*. O sea que el 15% YA incluye la compra del dólar con sus comisiones y el
@@ -4793,17 +4804,31 @@ function simPrecioParaMargen(x){
   return {precio:ajB,gest:SIM_ENVIO_ARRIBA,cruza:true};
 }
 function precioParaMargen(p,pct){
+  // (21/10/2026 · etapa 1) La comisión NO es un % parejo: es % de la categoría + el cargo fijo de ML (`simComParams`, la misma
+  // separación que usa el simulador). Con el % parejo, al BAJAR el precio el cargo fijo pesaba más y "el 25% te da hasta $X" o
+  // "rematar al 12% · $X" quedaban abajo de lo que decían. El envío de Full va por el lado de la barrera de CADA precio (abajo de
+  // $33.000 cero; arriba el medido de hoy si ya está arriba, si no el peor medido). Y el precio se VERIFICA con `simMargen` de a $10.
   const r=margenMLDe(p);
   const precio=Math.round(Number(p.netoCalcPrecio)||0);
   if(!(precio>0)||r.netoCalc==null||!(r.costoBase>0))return null;
   const gest=r.gest||0;
-  const comPct=(precio-r.netoCalc-gest)/precio;   // comisión de ML como % del precio
-  const impPct=(r.mlExtra||0)/precio;             // IIBB + monotributo, también % del precio
+  const comHoy=precio-r.netoCalc-gest;             // lo que ML se queda hoy (sin el envío de Full)
+  const q=simComParams(comHoy,precio,0)||{b:Math.max(0,comHoy)/precio,F:0,plano:true};
+  const impPct=(r.mlExtra||0)/precio*100;          // IIBB + monotributo, % del precio
   const merc=Math.round(r.costoBase-(r.mlExtra||0));
-  const m=pct/100;
-  const den=1-comPct-impPct*(1+m);
+  const gArr=(precio>=UMBRAL_ENVIO_GRATIS&&gest>0)?gest:SIM_ENVIO_ARRIBA;
+  const gestEn=P=>P<UMBRAL_ENVIO_GRATIS?0:gArr;
+  const m=pct/100,i=impPct/100,den=1-q.b-i-m*i;
   if(!(den>0))return null;
-  return Math.ceil((merc+gest)*(1+m)/den/10)*10;
+  const llega=P=>{const rr=simMargen({precio:P,mercaderia:merc,gest:gestEn(P),comision:simComEn(P,q),impPct});return rr.margen!=null&&rr.margen>=pct;};
+  const uno=g=>Math.ceil(((merc+g)*(1+m)+q.F)/den/10)*10;
+  const ajusta=P=>{for(let k=0;k<300&&!llega(P);k++)P+=10;return P;};
+  const pA=uno(0);
+  if(isFinite(pA)&&pA>0&&pA<UMBRAL_ENVIO_GRATIS){const a=ajusta(pA);if(a<UMBRAL_ENVIO_GRATIS&&llega(a))return a;}
+  const pB=Math.max(uno(gArr),UMBRAL_ENVIO_GRATIS);
+  if(!isFinite(pB)||!(pB>0))return null;
+  const b=ajusta(pB);
+  return llega(b)?b:null;
 }
 
 // ── LIQUIDAR: CUANDO EL PORCENTAJE DEJA DE SER LA PREGUNTA ────────────────────────
@@ -7859,8 +7884,12 @@ function escasezDe(p,o){
   // duran más de 30 días y hay 12 en la oficina"). El Chispero había BAJADO de $7.000 a $6.490 y el ritmo normal del año
   // (1,3/día) le ganaba al de hoy (0,4/día): decía "en ML alcanza 10 d" con 34 d reales. El ritmo normal se usa sólo si
   // alguna publicación del producto está hoy en una estrategia que sube el precio (escasez, techo, sin reposición).
-  const _subido=p&&p.id&&Object.entries(state.mllinks||{}).some(([m,e])=>e&&e.prodId===p.id&&!e.ignored&&['escasez','techo','sinrepo'].includes((estrategiaDe(m)||{}).t));
-  const _rn=p&&p.id&&_subido?ritmoNormalDe(p.id):null;
+  // De UN color (`o.vari`, 21/10/2026 · etapa 1): sólo miran las publicaciones de ese color (o las que no tienen un color
+  // identificado), y el ritmo normal es el de ese color (`ritmoNormalDe(…, vari)`).
+  const _vE=o&&o.vari?String(o.vari):'';
+  const _subido=p&&p.id&&Object.entries(state.mllinks||{}).some(([m,e])=>{if(!e||e.prodId!==p.id||e.ignored)return false;
+    if(_vE){const c=_lineaColorDe(e);if(c&&c!==_vE)return false;}return ['escasez','techo','sinrepo'].includes((estrategiaDe(m)||{}).t);});
+  const _rn=p&&p.id&&_subido?ritmoNormalDe(p.id,undefined,_vE||undefined):null;
   const r=reponerDe(p,o&&o.vari),v0=Math.max(Number(o.vDia)||0,_rn&&!_rn.f&&!o.sinNormal?_rn.pd:0),ml=Math.max(0,o.ml||0),cam=Math.max(0,o.cam||0),casa=Math.max(0,o.casa||0);
   // ⚡ (20/10/2026 · etapa 3): si se aceleró, manda el ritmo de 7 días (misma regla que el robot). El que llama puede pasar
   // las ventas de la semana (`u7`/`d7`, la línea de tiempo usa las suyas); si no, salen de las ventas guardadas.
@@ -10037,6 +10066,9 @@ function _lineaJunta(porMla,lks,varSel){
       const o=dias[k]=dias[k]||{u:null,uR:null,vis:null,st:null,stN:0,p:null,caja:null,rem:false,esc:null,mg:null,tot:null,pubs:0};
       o.pubs++;
       if(x.u!=null){o.u=(o.u||0)+Number(x.u||0);}
+      // EL ESTADO DEL DÍA (21/10/2026 · etapa 1): 'active' si alguna publicación con estado estaba activa; si todas las que
+      // lo informan estaban pausadas/cerradas, ese estado. Sin estado en ninguna, no se sabe (queda sin `est`). Lo usan las rayas.
+      if(x.est!=null){o._eS=true;if(x.est==='active')o._eA=true;else if(!o._eO)o._eO=String(x.est);}
       if(x.uR!=null){o.uR=(o.uR||0)+Number(x.uR||0);}
       if(x.vis!=null){o.vis=(o.vis||0)+Number(x.vis||0);}
       if(x.tot!=null){o.tot=(o.tot||0)+Number(x.tot||0);}
@@ -10070,6 +10102,7 @@ function _lineaJunta(porMla,lks,varSel){
       if(r.length){const m=r.map(c=>c.ult).sort().pop();o.pA=Math.min(...r.filter(c=>c.ult===m).map(c=>c.p));}
       else{const v=o._c.filter(c=>c.viva);if(v.length)o.pA=Math.min(...v.map(c=>c.p));}}
     delete o._c;if(o.pA!=null)o.p=o.pA;
+    if(o._eS)o.est=o._eA?'active':o._eO;delete o._eS;delete o._eA;delete o._eO;
     if(o._st){let t=0,hay=false;for(const S of Object.values(o._st)){if(S.P!=null){t+=S.P;hay=true;}else{const vs=Object.values(S.V);if(vs.length){t+=vs.reduce((a,b)=>a+b,0);hay=true;}}}o.st=hay?t:null;if(!hay)o.stN=0;delete o._st;}}
   return dias;
 }
@@ -10241,7 +10274,7 @@ function lineaPintar(prodId){
   // falta o exceso, con intermedios, 5 colores"). El color son los DÍAS QUE ALCANZA ese stock al ritmo de ese
   // momento: ventas de los 30 días anteriores ÷ días con stock en esa ventana (3 ventas o más; si no, el ritmo
   // normal del año que mide el robot). 🔴 menos de 7 d · 🟠 7-20 · 🟢 20-45 · 🟡 45-90 · 🟣 más de 90.
-  const _rnP=(()=>{if(_lineaVar){const rn=state.ritmonormal||{};let pd=0;LOCS.forEach(l=>{const r=rn[prodId+'__'+sid(l)+'__v__'+sid(_lineaVar)];if(r&&Number(r.pd)>0)pd+=Number(r.pd);});return pd>0?pd:null;}const r=ritmoNormalDe(prodId);return r&&r.pd>0?r.pd:null;})();
+  const _rnP=(()=>{const r=ritmoNormalDe(prodId,undefined,_lineaVar||undefined);return r&&r.pd>0?r.pd:null;})();
   // EL RITMO PARA "CUÁNTOS DÍAS ALCANZA", UNA SOLA CUENTA (08/10/2026, él con el Pendrive 32gb: el resumen decía 52 d ·
   // sobra en amarillo y la línea terminaba en verde). El resumen contaba como días con stock también los que el historial
   // suponía, y el ritmo le daba menor. Ahora el resumen y la línea usan `_pdiaAntes(i)`: los 30 días antes del índice i,
@@ -10293,15 +10326,23 @@ function lineaPintar(prodId){
   const _mlaRaya=(()=>{const act=[];for(const [m,d] of Object.entries(porMlaF)){const kk=Object.keys(d||{}).filter(x=>d[x]&&typeof d[x]==='object').sort();
       const u=kk.length?d[kk[kk.length-1]]:null;const lk=(state.mllinks||{})[m]||{};const est=(u&&u.est)||lk.status||'';if(!/^active/.test(String(est)))continue;
       const pr=Number(u&&(u.pLista||u.p))||0;if(pr>0)act.push({m,p:Math.round(pr/10)*10});}
-    return new Set(act.map(x=>x.p)).size>=2?act.sort((a,b)=>a.p-b.p)[0].m:null;})();
+    // (21/10/2026 · etapa 1) Con 2+ activas aunque estén al MISMO precio, una sola (la más barata; empate → la de MLA menor),
+    // igual que `techo95`, que mide la línea de cada publicación sola: si no, las ventas de las dos se sumaban en un escalón.
+    return act.length>=2?act.sort((a,b)=>a.p-b.p||String(a.m).localeCompare(String(b.m)))[0].m:null;})();
   const _rayasDias=_mlaRaya?_lineaJunta({[_mlaRaya]:porMlaF[_mlaRaya]},state.mllinks||{},_lineaVar||''):dias;
   const _ganRaya=k=>{const g=gd[k];if(!g)return 0;if(_mlaRaya)return Number((g.porMla||{})[_mlaRaya])||0;return g.ganHoy!=null?g.ganHoy:(g.gan||0);};
+  // ⚖️ LO QUE SE RESTA DE CADA DÍA PARA LA PLATA POR DÍA NETA (21/10/2026 · etapa 1): la misma cuenta que `rayasPrecioLinea` del robot
+  // (u × $100 + lo cobrado × 3% + stock × costo de hoy × 2%/30). Sin lo cobrado anotado, unidades × precio de lista.
+  const _pdDed=d=>{if(!d)return 0;const u=Number(d.u)||0,t=d.tot!=null?(Number(d.tot)||0):u*(Number(d.pLista||d.p)||0);
+    return u*PD_TRABAJO_U+t*PD_TOPE_PCT+Math.max(0,Number(d.st)||0)*(_cfHoy>0?_cfHoy:0)*PD_CAPITAL_DIA;};
   const _rayas=(R=>_rayasSob?{best:R.best,sobra:true}:R)((()=>{
     // UNA SOLA CUENTA CON `techo95` (20/10/2026, él con las Sábanas 140 Blanco: la raya decía techo $20.180 y la estrategia
     // "buscando techo" a $21.990). Sólo cuentan los días MEDIBLES: con 3+ u. en Full y con dato de visitas. Con 1-2 u. o sin
     // visitas, vender poco no prueba que el precio esté alto. La misma regla vive en `rayasPrecioLinea` (sync.mjs): si se toca una, la otra.
-    const G={};ks.forEach(k=>{const d=_rayasDias[k];if(!d)return;if(!(d.st!=null&&d.st>=3&&d.vis!=null))return;const pl=Number(d.pLista||d.p)||0;if(!(pl>0))return;
-      const b=Math.round(pl/10)*10;const g=(G[b]=G[b]||{p:b,dias:0,u:0,gan:0});g.dias++;g.u+=Math.max(0,(d.u||0)-(d.uR||0));g.gan+=_ganRaya(k);});
+    // Un día con la publicación pausada o cerrada (`est` anotado y no 'active') no cuenta: no vender así no dice nada del precio.
+    // La ganancia de cada día es la NETA ⚖️ (`_pdDed`).
+    const G={};ks.forEach(k=>{const d=_rayasDias[k];if(!d)return;if(d.est!=null&&d.est!=='active')return;if(!(d.st!=null&&d.st>=3&&d.vis!=null))return;const pl=Number(d.pLista||d.p)||0;if(!(pl>0))return;
+      const b=Math.round(pl/10)*10;const g=(G[b]=G[b]||{p:b,dias:0,u:0,gan:0});g.dias++;g.u+=Math.max(0,(d.u||0)-(d.uR||0));g.gan+=_ganRaya(k)-_pdDed(d);});
     const L=Object.values(G).map(g=>({...g,r:g.u/g.dias,pd:g.gan/g.dias,gu:g.u?g.gan/g.u:null}));
     const med=L.filter(g=>g.dias>=5);
     // EL PISO APARECE DESDE LA PRIMERA VENTA (20/10/2026, él con el Joystick Velocity Green: "acá debería aparecer la línea con el
@@ -10309,8 +10350,8 @@ function lineaPintar(prodId){
     // venta" y "fijate que todos tengan eso"). Sin 5 días medibles se toma un piso PROVISORIO con todos los días con stock (aunque
     // sean 1-2 u. o sin dato de visitas): el precio que más plata por día dejó entre los que vendieron. Va punteado y dice
     // "provisorio". El 🔴 techo sigue pidiendo días medibles y 95% (eso no se apura), igual que `rayasPrecioLinea` del robot.
-    if(!med.length){const G2={};ks.forEach(k=>{const d=_rayasDias[k];if(!d)return;if(!((d.st!=null&&d.st>0)||(d.u||0)>0))return;const pl=Number(d.pLista||d.p)||0;if(!(pl>0))return;
-        const b=Math.round(pl/10)*10;const g=(G2[b]=G2[b]||{p:b,dias:0,u:0,gan:0});g.dias++;g.u+=Math.max(0,(d.u||0)-(d.uR||0));g.gan+=_ganRaya(k);});
+    if(!med.length){const G2={};ks.forEach(k=>{const d=_rayasDias[k];if(!d)return;if(d.est!=null&&d.est!=='active')return;if(!((d.st!=null&&d.st>0)||(d.u||0)>0))return;const pl=Number(d.pLista||d.p)||0;if(!(pl>0))return;
+        const b=Math.round(pl/10)*10;const g=(G2[b]=G2[b]||{p:b,dias:0,u:0,gan:0});g.dias++;g.u+=Math.max(0,(d.u||0)-(d.uR||0));g.gan+=_ganRaya(k)-_pdDed(d);});
       const L2=Object.values(G2).filter(g=>g.u>0).map(g=>({...g,r:g.u/g.dias,pd:g.gan/g.dias,gu:g.gan/g.u,aprox:true}));
       return L2.length?{best:L2.reduce((a,b)=>b.pd>a.pd?b:a)}:{};}
     const best=med.reduce((a,b)=>b.pd>a.pd?b:a);
@@ -10576,7 +10617,7 @@ function lineaPintar(prodId){
     const _cs=Math.max(0,Number(_lineaVar?getQV(prodId,OFI,_lineaVar):getQ(prodId,OFI))||0);
     const _tr=transitoInfoDe(prodId,_lineaVar||null);
     const _s7=_u7d7(N-1);
-    const _ez=escasezDe(p,{ml:q,cam:_tr?_tr.u:0,casa:_cs,vDia:_pdiaBase(N-1),camDias:_tr?_tr.diasLead:0,sinNormal:!!_lineaVar,vari:_lineaVar||undefined,u7:_s7.u7,d7:_s7.d7});
+    const _ez=escasezDe(p,{ml:q,cam:_tr?_tr.u:0,casa:_cs,vDia:_pdiaBase(N-1),camDias:_tr?_tr.diasLead:0,vari:_lineaVar||undefined,u7:_s7.u7,d7:_s7.d7});
     const _esc=q>0&&(_ez.comp||_ez.full)?`<b style="color:var(--red)">🔥 escasez</b>: ${_ez.txt}`:'';
     const _sr=_ez.sinRepo?` · <b style="color:var(--amber)">sin reposición</b>: estirar para venderlo en ~100 días`:'';
     // "ESCASEZ" = SE SUBE EL PRECIO (19/10/2026, él con las Cartas Casino: "quiero que cada vez que diga escasez el precio
@@ -10599,7 +10640,9 @@ function lineaPintar(prodId){
   const _evD=[];{const vistos=new Set();for(const e of C.evP){if(!e||!e.ts||!_mlaOk(e.mla)||!(Number(e.de)>0)||!(Number(e.a)>0))continue;
     const kk=dateToKey(new Date(e.ts));const i=ks.indexOf(kk);if(i<0||vistos.has(kk))continue;vistos.add(kk);_evD.push({i,k:kk,e});}}
   _evD.sort((a,b)=>a.i-b.i);
-  const _ven=(a,b)=>{let g=0,u=0,dc=0;for(let j=Math.max(0,a);j<=Math.min(N-1,b);j++){const kk=ks[j];if(!_conSt(dias[kk],kk))continue;dc++;if(gd[kk])g+=gd[kk].gan;if(dias[kk]&&dias[kk].u)u+=dias[kk].u;}return{g,u,dc};};
+  // ⚖️ (21/10/2026 · etapa 1) La plata de cada día con stock es la NETA: se le resta `_pdDed` (trabajo, tope de H y plata parada),
+  // la misma cuenta que las rayas y que el robot.
+  const _ven=(a,b)=>{let g=0,u=0,dc=0;for(let j=Math.max(0,a);j<=Math.min(N-1,b);j++){const kk=ks[j];if(!_conSt(dias[kk],kk))continue;dc++;if(gd[kk])g+=gd[kk].gan;g-=_pdDed(dias[kk]);if(dias[kk]&&dias[kk].u)u+=dias[kk].u;}return{g,u,dc};};
   const _adHTML=_evD.map((x,n)=>{const ant=n>0?_evD[n-1].i:-1,sig=n<_evD.length-1?_evD[n+1].i:N;
     const A=_ven(Math.max(ant+1,x.i-14),x.i-1),D=_ven(x.i+1,Math.min(sig-1,x.i+14));
     const e=x.e,sube=Number(e.a)>Number(e.de),pct=(Number(e.a)/Number(e.de)-1)*100;
@@ -10607,7 +10650,7 @@ function lineaPintar(prodId){
     const res=(gA==null||gDd==null||A.dc<5)?'<span style="color:var(--muted)">sin datos suficientes de antes</span>'
       :D.dc<7?`<span style="color:var(--muted)">todavía pocos días (${D.dc}) para juzgar</span>`
       :`<b style="color:${gDd>=gA?'var(--green)':'var(--red)'}">${gDd>=gA?'dejó más':'dejó menos'}: ${gDd>=gA?'+':''}${fmt(Math.round(gDd-gA))} por día</b>`;
-    const lin=(t,v)=>`${t} ${v.dc} d con stock · ${v.u} u. · ${fmt(Math.round(v.g))} (${v.dc?fmt(Math.round(v.g/v.dc)):'—'}/día)`;
+    const lin=(t,v)=>`${t} ${v.dc} d con stock · ${v.u} u. · ${fmt(Math.round(v.g))} (${v.dc?fmt(Math.round(v.g/v.dc)):'—'}/día neto ⚖️)`;
     return `<div style="padding:5px 0;border-top:1px solid var(--border)"><b>${_lineaFmtDia(x.k)}</b> ${sube?'▲':'▼'} ${motivoTxt[e.motivo]||'cambio de precio'} · ${fmt(e.de)} → ${fmt(e.a)} (${pct>=0?'+':''}${pct.toFixed(1)}%)<br>
       <span style="color:var(--muted)">${lin('antes:',A)} · ${lin('después:',D)}</span> → ${res}</div>`;}).join('');
   const btn=n=>`<button class="btn" onclick="lineaRango(${n},'${prodId}')" style="font-size:.66rem;padding:3px 10px;${_lineaRango===n?'background:var(--green);color:#000;border-color:var(--green)':''}">${n} días</button>`;
@@ -10847,9 +10890,12 @@ function cerebroBtn(prodId,o){
 function _cerMlas(prodId,cuenta,variante,mla){
   if(mla)return [mla];
   const vs=variante?sid(String(variante).toLowerCase()):'';
-  return Object.entries(state.mllinks||{}).filter(([k,e])=>e&&e.prodId===prodId&&!e.ignored&&/^MLA/i.test(k)
-    &&(!cuenta||String(e.cuenta||'').toLowerCase()===String(cuenta).toLowerCase())
-    &&(!vs||!e.variant||sid(String(e.variant).toLowerCase())===vs)).map(([k])=>k);
+  // EL COLOR DE CADA PUBLICACIÓN (21/10/2026 · etapa 1): el fijado a mano o el que nombra el título (`_lineaColorDe`, la misma
+  // regla que la línea de tiempo). Antes sólo miraba `variant`: una publicación de otro color sin color fijado entraba igual.
+  // Entra si no se identifica el color, o si es el pedido.
+  return Object.entries(state.mllinks||{}).filter(([k,e])=>{if(!e||e.prodId!==prodId||e.ignored||!/^MLA/i.test(k))return false;
+    if(cuenta&&String(e.cuenta||'').toLowerCase()!==String(cuenta).toLowerCase())return false;
+    if(!vs)return true;const c=_lineaColorDe(e);return !c||sid(String(c).toLowerCase())===vs;}).map(([k])=>k);
 }
 // Las notas que escribe Claude para un renglón de Pedidos o de Armar caja (08/10/2026): misma clave que arma
 // `decido:ped:…=nota|…` / `decido:caja:…@cuenta=nota|…` en sync.mjs.
@@ -10948,7 +10994,8 @@ async function cerebroAbrir(el,ev){
       const c=cl[k],e=L[k]||{};
       if(c===undefined){falla=true;continue;}
       if(!c||!c.simple)continue;nn++;
-      const cab=varias?`<b>${_cerEsc(e.cuenta||'')}${e.variant?' · '+_cerEsc(e.variant):''}${e.status&&e.status!=='active'?' · pausada':''}:</b> `:'';
+      const _col=_lineaColorDe(e);   // el color de la nota a la vista (21/10/2026 · etapa 1), también con una sola publicación
+    const cab=(varias||_col)?`<b>${_cerEsc(e.cuenta||'')}${_col?' · '+_cerEsc(_col):''}${e.status&&e.status!=='active'?' · pausada':''}:</b> `:'';
       if(_repetido(c.simple))continue;_decir(c.simple);
       h+=par(`${cab}💭 ${_cerEsc(_cerFecha(c.ts))}: ${_cerEsc(c.simple)}`);
     }
@@ -10993,7 +11040,8 @@ async function cerebroAbrir(el,ev){
     if(!x&&!fr.length)fr.push(x===undefined?'No pude leer lo que decidió el cerebro. Probá de nuevo en un rato.':'Todavía no la miró de noche. Mañana va a tener su explicación.');
     let mgTxt='';try{const _np=(state.netopub||{})[k];const mm=_np?margenMLDe(p,_np):null;if(mm&&mm.margen!=null)mgTxt=`Hoy deja ${Math.round(mm.margen)}% de ganancia.`;}catch(er){}
     if(mgTxt)fr.push(mgTxt);
-    const cab=varias?`<b>${_cerEsc(e.cuenta||'')}${e.variant?' · '+_cerEsc(e.variant):''}${e.status&&e.status!=='active'?' · pausada':''}:</b> `:'';
+    const _col=_lineaColorDe(e);   // el color de la nota a la vista (21/10/2026 · etapa 1), también con una sola publicación
+    const cab=(varias||_col)?`<b>${_cerEsc(e.cuenta||'')}${_col?' · '+_cerEsc(_col):''}${e.status&&e.status!=='active'?' · pausada':''}:</b> `:'';
     h+=par(cab+fr.map(_cerEsc).join(' '));
   }
   h+=_fichaBotones(mlas);
@@ -11244,7 +11292,8 @@ function cambiosPrecioDe(mla,tsVenta){
   const evs=((state.supervisor||{}).eventos)||{};
   for(const ev of Object.values(evs)){
     if(!ev||ev.mla!==mla)continue;
-    const c={ts:Number(ev.ts),de:Number(ev.de),a:Number(ev.a),quien:ev.origen||'?',aprox:!!ev.aprox};
+    // Lo que cambié yo (`por:'claude'`) dice "Claude", no el origen crudo del supervisor (21/10/2026 · etapa 1).
+    const c={ts:Number(ev.ts),de:Number(ev.de),a:Number(ev.a),quien:ev.por==='claude'?'Claude':(ev.origen||'?'),aprox:!!ev.aprox};
     if(ok(c))out.push(c);
   }
   const ap=(state.autoprecio||{})[mla];
@@ -12924,9 +12973,11 @@ function _ctaVendeProd(pid,l){
     if(st==='active'||(st==='paused'&&/out_of_stock/.test(sub))){viva=true;break;}}
   return !hay||viva;
 }
-function ritmoNormalDe(pid,loc){
-  const rn=state.ritmonormal||{};let pd=0,hay=false,f=false;
-  (loc?[loc]:LOCS).filter(l=>loc||_ctaVendeProd(pid,l)).forEach(l=>{const r=rn[pid+'__'+sid(l)];if(r&&Number(r.pd)>0){pd+=Number(r.pd);hay=true;if(r.f)f=true;}});
+// UN COLOR (21/10/2026 · etapa 1): con `vari` se lee la clave del color (`<prod>__<cuenta>__v__<color>`, la escribe el robot en
+// `cyc/ritmonormal`). Sin esa clave no hay ritmo del color: null (el del producto suma todos los colores y no sirve para uno).
+function ritmoNormalDe(pid,loc,vari){
+  const rn=state.ritmonormal||{};let pd=0,hay=false,f=false;const vs=vari?'__v__'+sid(vari):'';
+  (loc?[loc]:LOCS).filter(l=>loc||_ctaVendeProd(pid,l)).forEach(l=>{const r=rn[pid+'__'+sid(l)+vs];if(r&&Number(r.pd)>0){pd+=Number(r.pd);hay=true;if(r.f)f=true;}});
   return hay?{pd,f}:null;
 }
 // ── EL RITMO DESDE QUE CAMBIÓ LA CAJA O EL PRECIO (03/10/2026) ──────────────────────────────────
@@ -17220,6 +17271,8 @@ function cajaBajarDe(p,c,mg){
   out.barrera=(gest>0&&precio>=UMBRAL_ENVIO_GRATIS&&ptw<UMBRAL_ENVIO_GRATIS);
   const r=simMargen({precio:ptw,mercaderia:costFullP(p),gest,comision:c2.com,impPct,cuotasPct:0});
   out.margen=r.margen;
+  // El PEOR CASO (21/10/2026 · etapa 1): con 2% de retención de otra provincia. El "se puede" se juzga con éste, igual que el robot.
+  out.margenP=r.costo>0?((r.ganancia-PEOR_RET_PCT*ptw)/r.costo*100):null;
   out.dudoso=mg.sinEnvio===true||mg.envioML===true;
   return out;
 }
@@ -17268,16 +17321,19 @@ function rotCajaBajaHtml(r){
   if(b.margen==null)
     return `<div title="ML dice que la caja se gana a ${fmt(b.ptw)}, pero no se pudo calcular la comisión a ese precio, así que no se sabe en cuánto quedarías." style="${gris}">ML: ${fmt(b.ptw)} · <span style="color:var(--amber)">margen sin medir</span></div>`;
   const PISO=metaMargenML();
-  const ok=b.margen>=PISO;
+  // EL "SE PUEDE" CON EL PEOR CASO (21/10/2026 · etapa 1): verde sólo si con 2% de retención de otra provincia sigue arriba del piso.
+  const mP=b.margenP!=null?b.margenP:b.margen;
+  const ok=mP>=PISO;
   const baja=`bajar ${b.bajaPct.toFixed(0)}% → ${fmt(b.ptw)}`;
-  let t=`Para GANAR la caja ML pide ${fmt(b.ptw)}: es ${b.bajaPct.toFixed(1)}% abajo de tu precio de hoy. A ese precio te quedarías en ${b.margen.toFixed(1)}% de margen`;
-  t+=ok?`, arriba de tu piso de ${PISO}%. O sea que se puede — pero bajar un precio lo decidís vos, el robot no baja nada solo.`
-      :`, ABAJO de tu piso de ${PISO}%. A ese precio estarías vendiendo casi sin ganancia: el competidor la vende más barata de lo que te cuesta a vos, y ahí el precio no es el problema.`;
+  let t=`Para GANAR la caja ML pide ${fmt(b.ptw)}: es ${b.bajaPct.toFixed(1)}% abajo de tu precio de hoy. A ese precio te quedarías en ${b.margen.toFixed(1)}% de margen (${mP.toFixed(1)}% en el peor caso, con 2% de retención de otra provincia)`;
+  t+=ok?`, arriba de tu piso de ${PISO}% aun en el peor caso. O sea que se puede — pero bajar un precio lo decidís vos, el robot no baja nada solo.`
+      :`, ABAJO de tu piso de ${PISO}% en el peor caso. A ese precio estarías vendiendo casi sin ganancia: el competidor la vende más barata de lo que te cuesta a vos, y ahí el precio no es el problema.`;
   if(b.barrera)t+=` · Ojo: ese precio queda abajo de los ${fmt(UMBRAL_ENVIO_GRATIS)} y ahí ML deja de cobrarte el envío, así que el margen real sería un poco MEJOR que este. Se deja el número bajo a propósito, que es el lado seguro.`;
   if(b.dudoso)t+=` · Y el envío de este producto no está medido en ventas reales, así que el margen de verdad puede ser menor.`;
   t+=` · La cuenta es la misma que la del margen de al lado, con la comisión que ML cobra a ESE precio (no el mismo % — ML cobra un cargo fijo por venta que pesa más cuanto más barato).`;
   const col=ok?'var(--green)':'var(--red)';
-  return `<div title="${t}" style="${gris}">${baja}<br><span style="color:${col};font-weight:700">${ok?'queda en':'quedás en'} ${b.margen.toFixed(0)}%${ok?'':' ✕'}</span>${b.dudoso?' <span style="color:var(--amber)">⚠️</span>':''}</div>`;
+  const _pcTxt=Math.abs(mP-b.margen)>=0.05?` (peor caso ${_pctPiso(mP,PISO)}%)`:'';
+  return `<div title="${t}" style="${gris}">${baja}<br><span style="color:${col};font-weight:700">${ok?'queda en':'quedás en'} ${_pctPiso(b.margen,PISO)}%${_pcTxt}${ok?'':' ✕'}</span>${b.dudoso?' <span style="color:var(--amber)">⚠️</span>':''}</div>`;
 }
 // Idea 4 de la etapa 6 (27/09/2026): lo que ML dice de la ficha y el panel no mostraba.
 //  · "te ven": ML informa en palabras qué parte de las visitas de la ficha te llevás
@@ -17635,7 +17691,10 @@ function rotMargenHtml(r){
     return `<span title="${t}" style="font-weight:700;color:var(--red)">?</span>`
       +`<div style="font-size:.6rem;color:var(--red);margin-top:2px;white-space:nowrap">sin envío · ML sí cobra</div>`;
   }
-  const m=r.margen, aire=m-PISO;
+  // EL AIRE SE MIDE CON EL PEOR CASO (21/10/2026 · etapa 1): 2% del precio de retención de otra provincia (`PEOR_RET_PCT`, como el
+  // robot). Un 26% que en el peor caso queda en 24,5% no tiene aire: está abajo del 25% el día que toca esa retención.
+  const m=r.margen, _pcR=(Number(r.margenPrecio)>0&&Number(r.margenCosto)>0)?Number(r.margenPrecio)*PEOR_RET_PCT/Number(r.margenCosto)*100:0;
+  const mP=m-_pcR, aire=mP-PISO;
   let color,tit;
   if(m<PISO){color='var(--red)';tit=`ABAJO DEL PISO de ${PISO}%: no hay nada para bajar, este habría que SUBIRLO.`;}
   // EL VERDE ES SOLO PARA LO MEDIDO. Si el envío salió de la tarifa de ML, el margen real es
@@ -17643,8 +17702,9 @@ function rotMargenHtml(r){
   else if(dudoso==='corto'){color='var(--amber)';tit=`Daría ${aire.toFixed(0)} punto(s) de aire sobre el ${PISO}%, PERO el envío no está medido en tus ventas (ver abajo): el margen real es menor que este, así que no cuentes con ese aire.`;}
   else if(r.margenSinMedir!=null){color='var(--amber)';tit=`Anoche NO se pudo medir (ML no contestó una comisión): este número es de la última vez que se midió entero. Puede haber cambiado.`;}
   else if(margenViejoDe(r.margenTs)){color='var(--amber)';tit=`Este margen es del ${margenViejoDe(r.margenTs)}: el recálculo de la noche no lo actualizó desde entonces. Puede haber cambiado el precio o la comisión.`;} // Etapa 5
-  else if(aire<5){color='var(--amber)';tit=`Pegado al piso: solo ${aire.toFixed(0)} punto(s) de aire sobre el ${PISO}%. Casi no se puede bajar.`;}
-  else {color='var(--green)';tit=`${aire.toFixed(0)} puntos de aire sobre el piso de ${PISO}%. Acá sí hay margen para recortar si hace falta que rote.`;}
+  else if(mP<PISO){color='var(--amber)';tit=`Llega al ${PISO}%, pero en el PEOR CASO (2% de retención de otra provincia) queda en ${mP.toFixed(1)}%: abajo del piso. No se puede bajar.`;}
+  else if(aire<5){color='var(--amber)';tit=`Pegado al piso: en el peor caso queda en ${mP.toFixed(1)}%, solo ${aire.toFixed(1)} punto(s) de aire sobre el ${PISO}%. Casi no se puede bajar.`;}
+  else {color='var(--green)';tit=`${aire.toFixed(0)} puntos de aire sobre el piso de ${PISO}% aun en el peor caso (${mP.toFixed(1)}%). Acá sí hay margen para recortar si hace falta que rote.`;}
   tit+=` · Neto ML ${fmt(r.margenNeto)} contra un costo de ${fmt(r.margenCosto)}. Ojo: bajar el precio $100 NO baja el margen $100 (ML se queda con su comisión de lo que recortes).`;
   // El envío puede venir de dos lados y no es lo mismo. De nuestras ventas es el dato de la
   // realidad; de la tarifa de ML es lo que ML dice que cobra, y se usa en los que nunca vendieron
@@ -17654,6 +17714,7 @@ function rotMargenHtml(r){
   // O sea que NO miden lo mismo — la tarifa es el flete solo, y lo que se deduce de una venta es
   // todo lo que ML se queda además de la comisión (flete + SIRTAC + IIBB).
   let pie='';
+  if(m>=PISO&&mP<PISO)pie+=`<div style="font-size:.6rem;color:var(--amber);margin-top:2px;white-space:nowrap">peor caso ${_pctPiso(mP,PISO)}%</div>`;
   if(dudoso==='corto'){
     tit+=r.margenSinEnvio
       ? ' · SIN ENVÍO DESCONTADO: nunca vendió y ML tampoco dio la tarifa, así que acá no hay ningún envío descontado y el margen real va a ser MENOR que este.'
@@ -17678,7 +17739,7 @@ function rotMargenHtml(r){
   // EN PROMO (15/10/2026, él con el Galaxy A07: "¿por qué queda en 80%?"): el % de arriba es al precio de LISTA (el tachado);
   // si le puse una promo, abajo va a cuánto se vende de verdad y el % a ese precio, que es el que importa.
   if(r.promo)pie+=`<div title="Está en una promo que puse yo${r.promo.hasta?' hasta el '+r.promo.hasta:''}: el comprador ve ${fmt(r.margenPrecio)} tachado y paga ${fmt(r.promo.precio)}. El % de arriba es al precio tachado." style="font-size:.62rem;color:#a78bfa;margin-top:2px;white-space:nowrap">🏷️ en promo a ${fmt(r.promo.precio)}${r.promo.margen!=null?` · <b style="color:${pctColor(r.promo.margen)}">${Math.round(r.promo.margen)}%</b>`:''}</div>`;
-  return `<span title="${tit}" style="font-weight:700;color:${color}">${m>=0?'+':''}${m.toFixed(0)}%</span>${pie}`;
+  return `<span title="${tit}" style="font-weight:700;color:${color}">${m>=0?'+':''}${_pctPiso(m,PISO)}%</span>${pie}`;
 }
 function rotDiasSinVenderHtml(dias,sinStock){
   if(dias===null||dias===undefined)return '<span style="color:var(--muted)">Sin ventas</span>';
@@ -18647,15 +18708,19 @@ function maxCompraDe(p,metaPct,color){
   const m=(metaPct>0?metaPct:(parseFloat((state.mlconfig||{}).targetPct)||25))/100;
   const imp=Math.round(P*impPct/100);
   const cuo=Math.round(P*cuoPct/100);
-  const netoP=P-c2.com-gest-cuo;
+  // EL ENVÍO DE FULL DEL LADO DE LA BARRERA DE P (21/10/2026 · etapa 1): si se vende a otro precio que el de hoy (caja, techo de
+  // Full, el que decidí), el envío es el de ESE lado: abajo de $33.000 cero; arriba el medido de hoy si hoy ya está arriba, si no
+  // el peor medido en ventas reales (`envioEstimadoArriba`, o `SIM_ENVIO_ARRIBA`). La comisión de hoy (`comHoy`) sigue con el de hoy.
+  const gestP=P<UMBRAL_ENVIO_GRATIS?0:((precio>=UMBRAL_ENVIO_GRATIS&&gest>0)?gest:((envioEstimadoArriba()||{}).envio||SIM_ENVIO_ARRIBA));
+  const netoP=P-c2.com-gestP-cuo;
   // (netoP − merc − imp) / (merc + imp + gest) = m   →   merc = (netoP − imp·(1+m) − m·gest) / (1+m)
-  const merc=(netoP-imp*(1+m)-m*gest)/(1+m);
+  const merc=(netoP-imp*(1+m)-m*gestP)/(1+m);
   const tc=curTC();
   const ship=parseFloat(p.shipUSD)||0,dev=devPctCosto(p)||0;
   const usd=tc>0?(merc/tc-ship)/(1+dev/100):null;
-  const chk=simMargen({precio:P,mercaderia:merc,gest,comision:c2.com,impPct,cuotasPct:cuoPct});
+  const chk=simMargen({precio:P,mercaderia:merc,gest:gestP,comision:c2.com,impPct,cuotasPct:cuoPct});
   return {P,fuente,cuoN,cuoPct,cuo,merc:Math.round(merc),usd,usdPy:usd!=null?usd/RECARGO_PY:null,meta:Math.round(m*100),
-    chk:chk.margen,hoyUSD:costUSDof(p)||0,esPy:p.origen==='py',techo,netoP,imp,gest,ship,dev,tc,clMot,color:pubV?color:''};
+    chk:chk.margen,hoyUSD:costUSDof(p)||0,esPy:p.origen==='py',techo,netoP,imp,gest:gestP,ship,dev,tc,clMot,color:pubV?color:''};
 }
 // El % que quedaría comprando a un precio de Paraguay dado (06/10/2026, pedido suyo: "que los que no den
 // muestren el % que quedaría pidiendo"). Es maxCompraDe dada vuelta: mismo precio de venta, misma comisión,
