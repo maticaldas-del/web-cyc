@@ -94,6 +94,8 @@ La etapa 8 de la revisión (Reglas del cerebro, cada 7 días) mira que esto qued
 11. Los lunes: contar `notas/correcciones.md` de la semana contra la anterior.
 
 ===========================================================================================================================
+- **🆕 que vende → 📈 en la misma vuelta (21/10/2026, él con el Sony EX15AP Blanco: *"no se buscó techo? (…) hagamos que todas las publicaciones que se puedan busquen techo ya mismo, sacando las que ya estamos con descuento, sobrestock, bajando y todo eso"*).** Un lanzamiento que vendió al precio de hoy ya no baja: sube a buscar el techo (+30%). Y en cada vuelta, lo activo con stock que no está en ninguna estrategia que lo explique (descuento, promo, sobra, bajando, volviendo, escasez, sin reposición, 🥊, gemela, excepción) y vendió a su precio, busca techo.
+
 ## 2 · QUIÉN HACE QUÉ
 - El robot SÓLO junta datos. Yo decido todo. Él no marca nada a mano: me lo dice y lo hago por comando.
 - Nunca tomar como dato una marca vieja del robot (escalera, liquidando automático, expediente viejo). Dato crudo.
