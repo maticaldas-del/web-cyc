@@ -25146,6 +25146,131 @@ async function main() {
       }
       return;
     }
+    // BILLING_PROBE=publicar:<ficha>|cuenta=<cuenta>|precio=<pesos>[|catalogo=<MLA…>][|color=<variante>][|!piso][|go]
+    // (etapa 6 · A1, 21/10/2026, él: "probemos y me decís") → CLAUDE PUBLICA EN ML LO NUEVO DE UN PEDIDO, UNA POR VEZ.
+    // Hasta hoy la publicación la creaba él (*"solo armar la publicacion en cyc. ml la hago yo"*, 26/09). Esto la crea PAUSADA, en el
+    // catálogo CONFIRMADO de la ficha (el ✅ o la revisión de fotos del candidato de Paraguay, el `mi` confirmado de la lista, o el que
+    // le paso con `catalogo=` después de mirarlo), Clásica, con el precio de lanzamiento que decido. Sin `|go`: muestra todo lo que
+    // mandaría y le pide a ML que lo VALIDE (`POST /items/validate`, no crea nada) — así se sabe qué campos pide ML sin arriesgar nada.
+    // Con `|go`: valida, crea, la PAUSA en el acto y la relee; la vincula a la ficha (`cyc/mllinks`, con `catOk` = el catálogo usado)
+    // y anota la estrategia 🆕 lanzamiento. Cuando la caja llega a Full, la vuelta de la hora la activa (freno A2: precio decidido +
+    // catálogo confirmado + el piso). Frenos: una sola por corrida · la ficha no puede tener ya una publicación viva en esa cuenta ·
+    // techo $650.000 · el margen al precio pedido en el PEOR caso (comisión preguntada a ML, envío del lado de la barrera, IIBB de la
+    // cuenta, monotributo, 2% de retención) no puede quedar abajo del piso salvo `!piso` · sin dólar o sin costo no publica.
+    // RIESGO CONOCIDO: ML no deja crear una publicación ya pausada; entre el alta y la pausa (un par de segundos) queda activa con 1 u.
+    // de depósito. Si la pausa falla, lo dice fuerte y la vuelta de la hora la pausa igual (`pausarFuera`: no vendemos fuera de Full).
+    if (/^publicar(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _raw = String(process.env.BILLING_PROBE).replace(/^publicar:?/, '');
+      const partes = _raw.split('|').map((x) => x.trim()).filter(Boolean);
+      const GO = partes.includes('go'), PISO_A_MANO = partes.includes('!piso');
+      const kv = {}; for (const x of partes) { const m = x.match(/^([a-z]+)=(.*)$/i); if (m) kv[m[1].toLowerCase()] = m[2].trim(); }
+      const busca = partes.find((x) => !/^[a-z]+=/i.test(x) && x !== 'go' && x !== '!piso') || '';
+      const uso = 'Usá: publicar:<ficha (=nombre exacto o id)>|cuenta=<cuenta>|precio=<pesos>[|catalogo=<MLA…>][|color=<variante>][|!piso][|go]';
+      if (!busca || !kv.cuenta || !kv.precio) { console.log(uso); return; }
+      const nrmP = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+      const productsP = (await db.get('cyc/products')) || {};
+      const prodsP = Object.values(productsP).filter((x) => x && x.name);
+      const ex = busca.startsWith('='), q = nrmP(busca.replace(/^=/, ''));
+      const hitsP = productsP[busca] ? [productsP[busca]] : prodsP.filter((x) => (ex ? nrmP(x.name) === q : nrmP(x.name).includes(q)));
+      if (hitsP.length !== 1) { console.log(`❌ "${busca}" agarra ${hitsP.length} ficha(s)${hitsP.length ? ': ' + hitsP.slice(0, 8).map((x) => x.name).join(' | ') : ''}. No hago nada.`); return; }
+      const P = hitsP[0];
+      const label = labels.find((l) => l.toLowerCase() === kv.cuenta.toLowerCase());
+      if (!label) { console.log(`❌ No conozco la cuenta "${kv.cuenta}" (son: ${labels.join(', ')}).`); return; }
+      const precio = pesosArg(kv.precio);
+      const frenos = [], avisos = [];
+      if (!(precio > 0)) { console.log('❌ precio inválido.'); return; }
+      if (precio > TECHO_DURO) frenos.push(`pasa el techo de ${money(TECHO_DURO)}`);
+      if (precio % 10 !== 0) avisos.push('el precio no termina en 0 (los míos terminan en 90 o 990)');
+      // El color: si la ficha tiene colores, hay que decir cuál (cada color es su publicación).
+      const vsP = Array.isArray(P.variantes) ? P.variantes : Object.values(P.variantes || {});
+      const color = kv.color ? ofiColorDeFicha(P, kv.color) : '';
+      if (vsP.length && !kv.color) frenos.push(`la ficha tiene colores (${vsP.slice(0, 8).join(', ')}): decime cuál con |color=`);
+      if (kv.color && color == null) frenos.push(`la ficha no tiene el color "${kv.color}"`);
+      // ¿Ya hay una publicación viva de esta ficha (y color) en esa cuenta?
+      const linksP = (await db.get('cyc/mllinks')) || {};
+      const yaHay = Object.entries(linksP).filter(([m, e]) => e && e.prodId === P.id && e.cuenta === label && e.status !== 'closed' && (!color || !e.variant || nrmP(e.variant) === nrmP(color)));
+      if (yaHay.length) frenos.push(`esa ficha ya tiene publicación en ${label}: ${yaHay.slice(0, 4).map(([m, e]) => m + ' (' + (e.status || '?') + ')').join(', ')}`);
+      // El catálogo CONFIRMADO.
+      const confP = new Set(); if (P.mlCatalogo) confP.add(String(P.mlCatalogo).toUpperCase());
+      try { for (const c of Object.values((await db.get('cyc/candidatos_py')) || {})) if (c && c.prodId === P.id && candCatChequeado(c)) confP.add(candCatDe(c)); }
+      catch { frenos.push('no pude leer los candidatos para saber el catálogo confirmado'); }
+      const catPedido = kv.catalogo ? String(kv.catalogo).toUpperCase().replace(/^.*\/P\//, '').split(/[?#]/)[0] : '';
+      let cat = '';
+      if (catPedido) { if (!/^MLA\d+$/.test(catPedido)) frenos.push(`catalogo=${kv.catalogo}: no es un código de catálogo (MLA…)`); else { cat = catPedido; if (confP.size && !confP.has(cat)) frenos.push(`catalogo=${cat} no es el confirmado de la ficha (${[...confP].join(' / ')})`); if (!confP.size) avisos.push(`el catálogo ${cat} lo confirmo yo (la ficha no tenía uno confirmado): miralo antes del :go`); } }
+      else if (confP.size === 1) cat = [...confP][0];
+      else if (confP.size > 1) frenos.push(`la ficha tiene ${confP.size} catálogos confirmados (${[...confP].join(' / ')}): decime cuál con |catalogo=`);
+      else frenos.push('la ficha no tiene catálogo confirmado: confirmalo (✅ en Paraguay, listadato ok en Listas) o pasámelo con |catalogo= después de mirarlo');
+      // Permiso de la cuenta.
+      const accP = accounts[label]; if (!accP?.refresh_token) { console.log(`❌ ${label}: sin permiso cargado.`); return; }
+      let tokP; try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, accP.refresh_token); await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() }); tokP = t.access_token; }
+      catch { console.log(`❌ ${label}: no pude renovar el permiso.`); return; }
+      // El catálogo de ML: nombre, fotos, y la categoría de las ofertas que ya hay.
+      let prodML = null, ofs = [];
+      if (cat) {
+        try { prodML = await mlGet('/products/' + cat, tokP); } catch (e) { frenos.push(`ML no me dio el catálogo ${cat} (${String(e.message || e).slice(0, 60)})`); }
+        try { ofs = ((await mlGet('/products/' + cat + '/items', tokP)) || {}).results || []; } catch { ofs = []; }
+      }
+      const catCnt = {}; for (const o of ofs) if (o && o.category_id) catCnt[o.category_id] = (catCnt[o.category_id] || 0) + 1;
+      let categoria = Object.entries(catCnt).sort((a, b) => b[1] - a[1]).map(([k]) => k)[0] || (prodML && prodML.category_id) || '';
+      if (cat && !categoria && prodML && prodML.name) { try { const d = await mlGet('/sites/MLA/domain_discovery/search?limit=1&q=' + encodeURIComponent(String(prodML.name).slice(0, 80)), tokP); categoria = (Array.isArray(d) && d[0] && d[0].category_id) || ''; } catch { /* sin categoría */ } }
+      if (cat && !categoria) frenos.push('no pude saber la categoría de ML de ese catálogo');
+      // El margen al precio pedido, en el PEOR caso (la misma cuenta de los candidatos: `cuentaCandidato`).
+      const tcP = parseFloat((await db.get('cyc/finanzas/tipo_cambio')) || 0) || 0;
+      const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+      const pisoP = await pisoConfig(db);
+      let cuenta = null;
+      if (!(tcP > 0)) frenos.push('sin dólar cargado: no mido el margen');
+      else if (!(monoP > 0)) frenos.push('no leí el monotributo: no mido el margen');
+      else {
+        const costoUSD = costoPesos(P, 1, tcP).costo / tcP;
+        if (!(costoUSD > 0)) frenos.push('la ficha no tiene costo');
+        else if (categoria) {
+          const feeAtP = async (pr, lt, cx) => { try { const d = await mlGet(`/sites/MLA/listing_prices?price=${Math.round(pr)}&listing_type_id=${lt}&category_id=${cx}`, tokP); const o = Array.isArray(d) ? d[0] : d; return typeof o?.sale_fee_amount === 'number' ? o.sale_fee_amount : null; } catch { return null; } };
+          cuenta = await cuentaCandidato(precio, 'gold_special', categoria, costoUSD, tcP, monoP, feeAtP, 0, label);
+          if (!cuenta) frenos.push('ML no contestó la comisión a ese precio: no lo mido a medias');
+          else {
+            const base = cuenta.costo + cuenta.impuestos + cuenta.envio;
+            cuenta.peor = base > 0 ? (cuenta.ganancia - precio * PEOR_RET_PCT) / base * 100 : 0;
+            if (cuenta.peor < pisoP && !PISO_A_MANO) frenos.push(`a ${money(precio)} queda en ${cuenta.peor.toFixed(1)}% en el peor caso, abajo del piso del ${pisoP}% (a propósito: |!piso)`);
+          }
+        }
+      }
+      // Lo que se mandaría. Título y fotos del catálogo (ML los toma del catálogo en una publicación de catálogo).
+      const fotos = ((prodML && prodML.pictures) || []).map((x) => x && (x.secure_url || x.url)).filter((u) => /^https:\/\//.test(String(u || ''))).slice(0, 6);
+      const body = { site_id: 'MLA', title: String((prodML && prodML.name) || P.name).slice(0, 60), category_id: categoria, price: precio, currency_id: 'ARS', available_quantity: 1, buying_mode: 'buy_it_now', listing_type_id: 'gold_special', condition: 'new', catalog_product_id: cat || undefined, catalog_listing: true, ...(fotos.length ? { pictures: fotos.map((u) => ({ source: u })) } : {}) };
+      console.log(`══ PUBLICAR EN ML (${GO ? 'DE VERDAD' : 'PRUEBA'}) · ${P.name}${color ? ' · ' + color : ''} · ${label} ══`);
+      console.log(`   catálogo ${cat || '—'}${prodML ? ' · «' + String(prodML.name || '').slice(0, 70) + '»' : ''} · categoría ${categoria || '—'} · ${ofs.length} oferta(s) en el catálogo${ofs.length ? ' · la más barata ' + money(Math.min(...ofs.map((o) => Number(o.price) || Infinity))) : ''}`);
+      if (cuenta) console.log(`   a ${money(precio)}: ML se queda ${money(Math.round(cuenta.fee))} · envío ${money(Math.round(cuenta.envio))} · IIBB+mono ${money(Math.round(cuenta.impuestos))} · costo ${money(Math.round(cuenta.costo))} → deja ${money(Math.round(cuenta.ganancia))} · ${cuenta.margen.toFixed(1)}% (peor caso ${cuenta.peor.toFixed(1)}%)`);
+      console.log(`   mandaría POST /items ${JSON.stringify({ ...body, pictures: fotos.length ? `[${fotos.length} fotos del catálogo]` : undefined })}`);
+      for (const a of avisos) console.log(`   ⚠️ ${a}`);
+      if (frenos.length) { console.log(`\n🛑 NO SE PUBLICA: ${frenos.join(' · ')}`); return; }
+      // VALIDAR antes (no crea nada): sirve también para aprender qué campos pide ML.
+      let val = null, valTxt = '';
+      try { const r = await fetch(ML_API + '/items/validate', { method: 'POST', headers: { Authorization: 'Bearer ' + tokP, 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(30000) }); val = r.status; valTxt = (await r.text()).slice(0, 1500); } catch (e) { valTxt = String(e.message || e).slice(0, 200); }
+      console.log(`   validación de ML: ${val === 204 || val === 200 ? '✓ la aceptaría' : '✗ ' + (val || 'sin respuesta') + ' ' + valTxt}`);
+      if (!(val === 204 || val === 200)) { console.log('\n🛑 NO SE PUBLICA: ML no valida el pedido (arriba dice qué falta).'); return; }
+      if (!GO) { console.log('\n(prueba: sin |go no se crea nada)'); return; }
+      const r = await fetch(ML_API + '/items', { method: 'POST', headers: { Authorization: 'Bearer ' + tokP, 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(30000) });
+      const txt = await r.text(); _anotarEscrituraML(r, P.id, 'publicar un producto nuevo', txt);
+      if (!r.ok) { console.log(`\n❌ ML no la creó: ${r.status} ${txt.slice(0, 1500)}`); return; }
+      let nuevo = {}; try { nuevo = JSON.parse(txt); } catch { nuevo = {}; }
+      const nid = String(nuevo.id || '');
+      if (!/^MLA\d+$/.test(nid)) { console.log(`⚠️ ML contestó ${r.status} sin un id que entienda: ${txt.slice(0, 600)}`); return; }
+      // PAUSARLA EN EL ACTO (no vendemos fuera de Full).
+      let pausada = false, detP = '';
+      try { const rp = await fetch(ML_API + '/items/' + nid, { method: 'PUT', headers: { Authorization: 'Bearer ' + tokP, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'paused' }) }); if (!rp.ok) detP = rp.status + ' ' + (await rp.text()).slice(0, 200); _anotarEscrituraML(rp, nid, 'pausar la publicación recién creada', detP); }
+      catch (e) { detP = String(e.message || e).slice(0, 120); }
+      await new Promise((ok) => setTimeout(ok, 3000));
+      let b2 = null; try { b2 = await mlGet('/items/' + nid, tokP); } catch (e) { console.log(`⚠️ no pude releer ${nid}: ${String(e.message || e).slice(0, 150)}`); }
+      pausada = !!(b2 && b2.status === 'paused');
+      console.log(`\n✓ Creada ${nid} · ${b2 ? b2.listing_type_id + ' · ' + b2.status + ' · ' + money(Math.round(b2.price || 0)) + ' · catálogo ' + (b2.catalog_product_id || 'no') + ' · ' + (b2.permalink || '') : 'sin releer'}`);
+      if (!pausada) console.log(`🚨 NO QUEDÓ PAUSADA${detP ? ' (' + detP + ')' : ''}: pausala YA en ML (está activa fuera de Full con 1 u.). La vuelta de la hora la pausa igual.`);
+      const e2 = { prodId: P.id, cuenta: label, title: (b2 && b2.title) || body.title, status: (b2 && b2.status) || 'paused', upid: (b2 && b2.user_product_id) || null, catalogo: (b2 && b2.catalog_product_id) || cat || null, catalogoListing: true, catOk: (b2 && b2.catalog_product_id) || cat, catOkTs: Date.now(), altaTs: Date.now(), altaClaude: true, altaSinVender: true, ...(color ? { variant: color } : {}) };
+      try { await db.patch('cyc/mllinks/' + nid, e2); const rl = await db.get('cyc/mllinks/' + nid); console.log(rl && rl.prodId === P.id ? `   ✓ vinculada a la ficha ${P.name}${color ? ' · ' + color : ''}` : '   ⚠️ no quedó vinculada: vincular a mano'); } catch { console.log('   ⚠️ no pude vincularla en cyc/mllinks'); }
+      const okE = await guardarEstrategia(db, nid, 'nuevo', `Lanzamiento a ${money(precio)}: la publiqué yo (Claude) en el catálogo confirmado ${e2.catOk}${cuenta ? ', deja ' + cuenta.margen.toFixed(0) + '% (' + cuenta.peor.toFixed(0) + '% en el peor caso)' : ''}. Se activa sola cuando llegue la caja a Full.`);
+      console.log(okE ? '   ✓ estrategia 🆕 lanzamiento anotada' : '   ⚠️ no pude anotar la estrategia');
+      return;
+    }
     // BILLING_PROBE=catok:<MLA>=<ok|sincat|MLA…|->[;<MLA>=…][;go] (etapa 6 · A2, 21/10/2026) → "EL CATÁLOGO DE ESTA PUBLICACIÓN NUEVA
     // ESTÁ BIEN". Lo nuevo (ni la publicación ni su ficha vendieron nunca) no se activa solo si no está en el catálogo confirmado de
     // la ficha (`activarPausadasFull`). Cuando no hay uno confirmado (un producto de Bs As, una ficha vieja), lo confirmo yo acá
