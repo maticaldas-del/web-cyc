@@ -28,6 +28,9 @@
   --text:#f1f1f3;--muted:#8a8a99;--r:10px;
   /* Etapa 7 (20/10/2026): los colores de los niveles (% de ganancia, día, score, puntaje, semáforo). En oscuro, los de siempre. */
   --lv-justo:#f97316;--lv-bueno:#14b8a6;--lv-exc:#60a5fa;--lv-estr:#a78bfa;--lv-joya:#facc15;--lv-lima:#84cc16;
+  /* "Estás acá" (decisión 7.11 de diseño, 21/10/2026): UN solo verde para lo elegido (pestañas, solapas, rango, proveedor,
+     menú). En oscuro la letra va oscura: la blanca sobre el verde tenía contraste 2,3. */
+  --sel-bg:#22c55e;--sel-tx:#04210f;
 }
 body.light{
   --bg:#f4f4f6;--surface:#ffffff;--surface2:#ebebef;
@@ -37,6 +40,7 @@ body.light{
   --green:#15803d;--red:#dc2626;--amber:#b45309;--blue:#0369a1;--accent2:#16a34a;
   /* y en claro, los niveles más oscuros para que se lean sobre blanco (el JOYA amarillo tenía 1,5 de contraste) */
   --lv-justo:#c2410c;--lv-bueno:#0f766e;--lv-exc:#2563eb;--lv-estr:#7c3aed;--lv-joya:#a16207;--lv-lima:#4d7c0f;
+  --sel-bg:#15803d;--sel-tx:#fff;
 }
 #theme-toggle{position:fixed;bottom:80px;right:28px;z-index:300;background:var(--surface);border:1px solid var(--border2);border-radius:8px;width:36px;height:36px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;transition:background .15s,border .15s}
 #fnav-btn{position:fixed;bottom:22px;right:22px;z-index:400;width:48px;height:48px;border-radius:50%;background:var(--accent2);border:none;cursor:pointer;font-size:1.3rem;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 18px rgba(0,0,0,.45);transition:transform .15s,opacity .15s}
@@ -47,8 +51,7 @@ body.light{
 #fnav-menu.hidden{transform:scale(.85);opacity:0;pointer-events:none}
 .fnav-item{display:flex;align-items:center;gap:10px;padding:9px 14px;min-height:40px;border-radius:9px;border:none;background:transparent;color:var(--text);font-family:'DM Mono',monospace;font-size:.8rem;cursor:pointer;text-align:left;transition:background .12s}
 .fnav-item:hover{background:var(--surface2)}
-.fnav-item.active-page{background:rgba(124,58,237,.15);color:#a78bfa}
-body.light .fnav-item.active-page{color:#6d28d9;background:rgba(124,58,237,.12)}
+.fnav-item.active-page{background:var(--sel-bg);color:var(--sel-tx);font-weight:700}
 html{font-size:118%}
 /* Etapa 7 (29/09/2026): en pantallas táctiles, casillas con letra de 16px (el iPhone deja de agrandar la
    pantalla al tocarlas), botones chicos más grandes, y en el teléfono las listas no tienen scroll propio. */
@@ -160,11 +163,19 @@ html,body{overflow-x:hidden;max-width:100%}html{overflow-x:clip}body{overscroll-
 .tabs{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
 .tab{padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:var(--surface);font-size:.72rem;cursor:pointer;color:var(--muted);font-family:'DM Mono',monospace;transition:all .15s}
 .tab:hover:not(.active){border-color:var(--border2);color:var(--text)}
-.tab.active{background:var(--accent2);border-color:var(--accent2);color:#fff}
+.tab.active{background:var(--sel-bg);border-color:var(--sel-bg);color:var(--sel-tx);font-weight:700}
 .stitle{font-family:'Syne',sans-serif;font-size:.68rem;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin-bottom:10px;margin-top:18px;cursor:pointer;user-select:none}
 .stitle:hover{color:var(--text)}
 .stitle:first-child{margin-top:0}
 .btn{padding:8px 16px;border-radius:8px;border:none;cursor:pointer;font-family:'DM Mono',monospace;font-size:.72rem;font-weight:500;transition:all .15s;white-space:nowrap}
+/* BOTONES SIN FONDO (decisión 7.10 de diseño, 21/10/2026, eligió la a): ~90 .btn no traían fondo propio y el navegador les ponía
+   el suyo (gris claro con letra negra: manchas blancas en el tema oscuro). El que no trae fondo ni una clase de color toma el de
+   los botones de vista (.vbtn): fondo de tarjeta y borde fino, con tokens para claro y oscuro. Uno con style="background…"
+   (también si el JS se lo pone después) o con .btn-add/.btn-del/.btn-exp/.btn-snap queda como está. */
+.btn:not([style*="background"]):not(.btn-add):not(.btn-del):not(.btn-exp):not(.btn-snap){background:var(--surface2);color:var(--text);border:1px solid var(--border2)}
+.btn:not([style*="background"]):not(.btn-add):not(.btn-del):not(.btn-exp):not(.btn-snap):hover{border-color:var(--muted)}
+/* y todo botón se hunde un poquito al tocarlo: así se sabe que se tocó */
+.btn:active:not(:disabled),.vbtn:active,.pf-btn:active,.tab:active,.dd-opt:active,.back-btn:active,.fnav-item:active,.pi-status:active,.pi-var-toggle:active{transform:scale(.95)}
 .btn-add{background:var(--accent2);color:#fff}.btn-add:hover{opacity:.85}
 .btn-del{background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.2);padding:5px 10px;font-size:.66rem}.btn-del:hover{background:rgba(239,68,68,.2)}
 .btn-exp{background:rgba(56,189,248,.1);color:var(--blue);border:1px solid rgba(56,189,248,.2)}.btn-exp:hover{background:rgba(56,189,248,.2)}
@@ -290,7 +301,7 @@ input.qty:focus{border-color:var(--accent2)}
 .cal-select:focus{border-color:var(--accent2)}
 .view-toggle{display:flex;gap:6px;flex-wrap:wrap}
 .vbtn{padding:6px 14px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--muted);font-family:'DM Mono',monospace;font-size:.68rem;cursor:pointer;transition:all .15s}
-.vbtn.active{background:var(--accent2);border-color:var(--accent2);color:#fff}
+.vbtn.active{background:var(--sel-bg);border-color:var(--sel-bg);color:var(--sel-tx);font-weight:700}
 /* Menú desplegable del período (Métricas ML). En la barra queda UN solo botón con el período
    elegido; las diez opciones viven adentro y aparecen recién al tocarlo. Antes eran diez
    botones en fila y ocupaban media pantalla. */
@@ -301,7 +312,7 @@ input.qty:focus{border-color:var(--accent2)}
 .dd-grp{font-size:.6rem;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);padding:8px 10px 4px}
 .dd-opt{display:block;width:100%;text-align:left;padding:7px 10px;border:0;border-radius:6px;background:none;color:var(--text);font-family:'DM Mono',monospace;font-size:.68rem;cursor:pointer}
 .dd-opt:hover{background:var(--surface2)}
-.dd-opt.active{background:var(--accent2);color:#fff}
+.dd-opt.active{background:var(--sel-bg);color:var(--sel-tx);font-weight:700}
 .comp-table{width:100%;border-collapse:collapse;font-size:.74rem}
 .comp-table th{padding:10px 14px;text-align:right;font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);border-bottom:1px solid var(--border);background:var(--surface);white-space:nowrap}
 .comp-table th:first-child{text-align:left}
@@ -429,7 +440,7 @@ input.qty:focus{border-color:var(--accent2)}
 .pf-btn.active-pend{background:rgba(239,68,68,.12);color:var(--red);border-color:rgba(239,68,68,.25)}
 .pf-btn.active-ped{background:rgba(245,158,11,.12);color:var(--amber);border-color:rgba(245,158,11,.25)}
 .pf-btn.active-rec{background:rgba(34,197,94,.12);color:var(--green);border-color:rgba(34,197,94,.25)}
-.pf-btn.active-all{background:var(--accent2);color:#fff;border-color:var(--accent2)}
+.pf-btn.active-all{background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700}
 #ofi-filtro-cuentas .pf-btn.active-all strong,#ofi-filtro-cuentas .pf-btn.active-all span:not(.pf-badge){color:#fff!important}
 /* etapa 7: el 📦N de la caja a medio armar va como globito arriba del botón: así el botón no cambia de ancho */
 #ofi-filtro-cuentas{padding-top:8px}#ofi-filtro-cuentas .pf-btn{position:relative}
@@ -9781,6 +9792,11 @@ const VIVA_ORD={bajo:0,justo:1,bien:2,bueno:3,exc:4,estr:5,joya:6};
 const VIVA_SH={bajo:'sq',justo:'tri',bien:'circ',bueno:'ring',exc:'plus',estr:'star',joya:'dia',gris:'circ'};
 // [cantidad, tamaño, opacidad]: desde verde, pocas figuras y cada vez más según el nivel (09/10/2026, pedido suyo)
 const VIVA_NV={gris:[.8,.9,.8],bajo:[.8,.9,.8],justo:[.8,.9,.85],bien:[.3,1,1],bueno:[.65,1.2,1.2],exc:[1.1,1.4,1.35],estr:[1.7,1.6,1.45],joya:[2.4,1.8,1.55]};
+// LA TARJETA DEL DÍA EN UN SOLO IDIOMA (decisión 7.12 de diseño, 21/10/2026, eligió la a): antes el color salía de la ganancia
+// (estos niveles) y el cartel del puntaje usaba otra escala con otros nombres y colores ("tarjeta naranja, cartel verde Aprobado").
+// Ahora el cartel lleva el color y el NOMBRE del nivel de la tarjeta (el número de 0 a 10 queda igual) y abajo una escalerita dice
+// cuánto falta para el siguiente (_diaEscaleraHTML). Los nombres son los mismos del % (_pctNivel).
+const VIVA_DIA_NOM={bajo:'🔴 Bajo',justo:'🟠 Justo',bien:'🟢 Bien',bueno:'🩵 Bueno',exc:'🔵 Excelente',estr:'🟣 Estrella',joya:'💎 JOYA'};
 const VIVA_DIA_NIV=[['bajo',-1e12,'var(--red)'],['justo',90000,'var(--lv-justo)'],['bien',115000,'var(--green)'],['bueno',150000,'var(--lv-bueno)'],['exc',190000,'var(--lv-exc)'],['estr',230000,'var(--lv-estr)'],['joya',300000,'var(--lv-joya)']];
 // EL TOPE DE UNA VENTA (09/10/2026, él: "lo máximo que puede vender cyc es 650.000, el tope del neto es lo que deje esa
 // venta"): $650.000 menos lo que se queda ML ≈ $550.000 de neto. Velocidad y temblor llegan al máximo ahí, no antes.
@@ -9863,6 +9879,21 @@ function vivaDia(h){
   const mv=fuego?'mv-tiembla':t>=1400000?'mv-tiembla':t>=1000000?'mv-flota2':t>=600000?'mv-flota':'';
   const gl=VIVA_ORD[k]>=VIVA_ORD.bueno?('gl'+(VIVA_ORD[k]>=VIVA_ORD.estr?' fuerte':'')):'';
   return{k,c,vel:_vivaLog(t,100000,2500000),fuego,mv,gl,quieta:!(h.ventas>0)};
+}
+// La escalerita del día: un tramo por nivel (prendido el que ya se pasó) y cuánto falta para el siguiente. Con más de un día
+// (Mes/Año) el nivel sale del promedio por día, igual que el color de la tarjeta (vivaDia), y lo que falta se dice por día.
+function _diaEscaleraHTML(gan,dias){
+  const n=Math.max(1,Number(dias)||1),g=(Number(gan)||0)/n;
+  const niv=VIVA_DIA_NIV.slice(1);
+  let sig=null;for(const x of niv)if(g<x[1]){sig=x;break;}
+  const k1=x=>'$'+Math.round(x[1]/1000)+'k';
+  const segs=niv.map(x=>`<span title="${VIVA_DIA_NOM[x[0]]} desde ${fmt(x[1])}${n>1?' por día':''}" style="flex:1;height:8px;border-radius:99px;background:${x[2]};opacity:${g>=x[1]?1:.25}"></span>`).join('');
+  const marcas=niv.map(x=>`<span style="flex:1;min-width:0;overflow:hidden;white-space:nowrap">${k1(x)}</span>`).join('');
+  const falta=sig?`Faltan <b style="color:${sig[2]}">${fmt(sig[1]-g)}</b>${n>1?' por día':''} para ${VIVA_DIA_NOM[sig[0]]}${n>1?` <span style="color:var(--muted)">(promedio ${fmt(g)} por día)</span>`:''}`
+    :`${VIVA_DIA_NOM.joya}: arriba de todo${n>1?' (promedio por día)':''}`;
+  return `<div class="hoy-esc" style="margin-top:14px"><div style="display:flex;gap:3px">${segs}</div>
+    <div style="display:flex;gap:3px;font-size:.6rem;color:var(--muted);margin-top:3px;font-family:'DM Mono',monospace">${marcas}</div>
+    <div style="font-size:.76rem;margin-top:6px">${falta}</div></div>`;
 }
 const _viva={cards:[],on:false,last:0,tick:0,io:null};
 function vivaScan(root){
@@ -10691,7 +10722,7 @@ function lineaPintar(prodId){
     const lin=(t,v)=>`${t} ${v.dc} d con stock · ${v.u} u. · ${fmt(Math.round(v.g))} (${v.dc?fmt(Math.round(v.g/v.dc)):'—'}/día neto ⚖️)`;
     return `<div style="padding:5px 0;border-top:1px solid var(--border)"><b>${_lineaFmtDia(x.k)}</b> ${sube?'▲':'▼'} ${motivoTxt[e.motivo]||'cambio de precio'} · ${fmt(e.de)} → ${fmt(e.a)} (${pct>=0?'+':''}${pct.toFixed(1)}%)<br>
       <span style="color:var(--muted)">${lin('antes:',A)} · ${lin('después:',D)}</span> → ${res}</div>`;}).join('');
-  const btn=n=>`<button class="btn" onclick="lineaRango(${n},'${prodId}')" style="font-size:.66rem;padding:3px 10px;${_lineaRango===n?'background:var(--green);color:#000;border-color:var(--green)':''}">${n} días</button>`;
+  const btn=n=>`<button class="btn" onclick="lineaRango(${n},'${prodId}')" style="font-size:.66rem;padding:3px 10px;${_lineaRango===n?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}">${n} días</button>`;
   const ley=(c,t)=>`<span style="display:inline-flex;align-items:center;gap:4px;margin-right:10px"><span style="width:10px;height:10px;border-radius:2px;background:${c};display:inline-block"></span>${t}</span>`;
   const lab=(y,t)=>`<div style="position:absolute;left:0;top:${y/ (H+16)*100}%;font-size:.6rem;color:var(--muted);transform:translateY(-1px)">${t}</div>`;
   // LA CABECERA (21/10/2026 · etapa 5): el título va en su propio renglón y los botones abajo, pegados a la derecha (y el de giro con
@@ -10699,7 +10730,7 @@ function lineaPintar(prodId){
   m.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;max-width:1500px;width:100%;padding:14px 16px;margin-top:20px">
     <div style="font-size:.9rem;font-weight:700;line-height:1.35;overflow-wrap:anywhere">📈 ${p.name}${_lineaVar?` · <span style="color:#a78bfa">${_lineaVar}</span>`:''}</div>
     <div class="linea-btns" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;margin-top:6px"><button class="btn" onclick="lineaTodoAbrir(event)" style="font-size:.66rem;padding:3px 10px" title="La misma línea con TODOS los productos juntos">📈 Todos</button>${btn(365)}${btn(90)}${btn(30)}${_lineaGiroBtn()}<button class="btn" onclick="document.getElementById('linea-modal').remove()" style="font-size:.7rem;padding:3px 10px">✕</button></div>
-    ${_vars.length>1?`<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px">${['',..._vars].map((v,i)=>`<button class="btn" onclick="lineaVar(_lineaVarsL[${i}],'${prodId}')" style="font-size:.62rem;padding:2px 9px;${_lineaVar===v?'background:#7c3aed;color:#fff;border-color:#7c3aed':''}">${v||'Todas juntas'}</button>`).join('')}</div>`:''}
+    ${_vars.length>1?`<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px">${['',..._vars].map((v,i)=>`<button class="btn" onclick="lineaVar(_lineaVarsL[${i}],'${prodId}')" style="font-size:.62rem;padding:2px 9px;${_lineaVar===v?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}">${v||'Todas juntas'}</button>`).join('')}</div>`:''}
     <div style="font-size:.7rem;color:var(--muted);margin:6px 0 8px;line-height:1.6">${_lineaRango} días · <b style="color:var(--text)">${uT} u. vendidas</b>${uRT?` (${uRT} en remate)`:''}${hayGan&&gPct!=null&&isFinite(gPct)?` · ganancia <b style="color:${pctColor(gPct)}">${gPct.toFixed(0)}%</b>`:''} · ${vT} visitas · ${_stHoy} · historial: <span style="color:var(--green)">${dCon} d con</span> · <span style="color:var(--red)">${dSin} d sin</span> · ${dNo} d sin dato${dRem?` · ${dRem} d rematando`:''}${pIni&&pFin?` · precio ${fmt(pIni)} → ${fmt(pFin)}`:''} · ${Object.keys(porMlaF).length} publicación(es)${C.fallo?' · <span style="color:var(--amber)">alguna publicación no se pudo leer</span>':''}</div>
     <div style="position:relative;padding-left:58px">
       ${lab(L.vent[0]+28,'ventas'+(hayVis?' · <span style="color:#60a5fa">visitas</span>':''))}${L.gan?lab(L.gan[0]+15,'$ ganancia/día · <span style="color:#a78bfa">semana</span>'):''}${L.pct?lab(L.pct[0]+18,pvs.length?('% ganancia'+(cvs.length?' · <span style="color:#f59e0b">costo</span>':'')):'<span style="color:#f59e0b">costo</span>'):''}${lab(L.st[0]+(suv.length?20:2),'stock')}${lab(L.pr[0]+18,'precio')}${L.est?lab(L.est[0]+2,'remate'):''}${L.caja?lab(L.caja[0]+2,'caja'):''}
@@ -10846,7 +10877,7 @@ function lineaTodoPintar(){
   const porMot={};camR.forEach(c=>{const x=porMot[c.mot]=porMot[c.mot]||[0,0];x[c.a>c.de?0:1]++;});
   const motHTML=Object.entries(porMot).sort((a,b)=>(b[1][0]+b[1][1])-(a[1][0]+a[1][1])).map(([mo,[a,b2]])=>`<span style="margin-right:10px">${_LT_MOT[mo]||mo||'sin motivo'}: <span style="color:var(--green)">▲${a}</span> <span style="color:var(--red)">▼${b2}</span></span>`).join('');
   const LIM=400;const listHTML=camR.slice(0,LIM).map(c=>{const pc=(c.a/c.de-1)*100;return `<div style="padding:3px 0;border-top:1px solid var(--border)"><b>${_lineaFmtDia(c.k)}</b> <span style="color:${c.a>c.de?'var(--green)':'var(--red)'}">${c.a>c.de?'▲':'▼'} ${pc>=0?'+':''}${pc.toFixed(1)}%</span> · ${c.nom}${c.cta?` <span style="color:var(--muted)">(${c.cta})</span>`:''} · ${fmt(c.de)} → ${fmt(c.a)} · <span style="color:var(--muted)">${_LT_MOT[c.mot]||c.mot||'cambio de precio'}</span></div>`;}).join('')+(camR.length>LIM?`<div style="color:var(--muted);padding-top:4px">… y ${camR.length-LIM} más (los más viejos)</div>`:'');
-  const btn=n=>`<button class="btn" onclick="lineaTodoRango(${n})" style="font-size:.66rem;padding:3px 10px;${_ltRango===n?'background:var(--green);color:#000;border-color:var(--green)':''}">${n} días</button>`;
+  const btn=n=>`<button class="btn" onclick="lineaTodoRango(${n})" style="font-size:.66rem;padding:3px 10px;${_ltRango===n?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}">${n} días</button>`;
   const ley=(c,t)=>`<span style="display:inline-flex;align-items:center;gap:4px;margin-right:10px"><span style="width:10px;height:10px;border-radius:2px;background:${c};display:inline-block"></span>${t}</span>`;
   const lab=(y,t)=>`<div style="position:absolute;left:0;top:${y/(H+16)*100}%;font-size:.6rem;color:var(--muted);transform:translateY(-1px)">${t}</div>`;
   const viejo=_ltC.ts?(Date.now()-_ltC.ts)/864e5:null;
@@ -15626,7 +15657,7 @@ function pedidoMomentoHTML(g){
     <div style="font-size:.66rem;color:${pasa>0?'var(--amber)':'var(--muted)'};margin-top:2px">${pasa>0?`⚠️ te pasás ${u2(pasa)} de tu tope de ${u2(tope)}`:`tope ${u2(tope)} · te quedan ${u2(-pasa)}`}</div>
     ${cfg}
     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:8px 0 0;font-size:.68rem;color:var(--muted)">↕️ Ordenar:
-      ${[['orig','como se cargó'],['pct','% ganancia'],['gan','$ por unidad'],['costo','más barato'],['sub','subtotal'],['vend','ventas'],['nom','nombre']].map(([k,t])=>`<button class="btn" onclick="_pedOrdenSet('${k}')" style="font-size:.64rem;padding:3px 9px;${_ord===k?'background:var(--green);color:#000;border-color:var(--green)':''}">${t}</button>`).join('')}</div>
+      ${[['orig','como se cargó'],['pct','% ganancia'],['gan','$ por unidad'],['costo','más barato'],['sub','subtotal'],['vend','ventas'],['nom','nombre']].map(([k,t])=>`<button class="btn" onclick="_pedOrdenSet('${k}')" style="font-size:.64rem;padding:3px 9px;${_ord===k?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}">${t}</button>`).join('')}</div>
     ${A.length?tit('✅ Probados (reposición)',A.length,crA)+_perfGrupos(filasA,As.map(f=>f.nom)):''}
     ${N.filas.length?tit('🆕 Nuevos',N.filas.length,N.crudo)+_perfGrupos(filasN,Ns.map(f=>f.c.nombre)):''}
     ${Pp.length?tit('🙋 Uso personal (no es de CYC)',Pp.length,crP)+Pp.map(f=>fila(f.nom,f.cod,f.u,f.usd,`pyPersonalSet('${f.k}',this.value)`,`pyPersonalSet('${f.k}',0)`,'<span style="color:#a78bfa">para vos: va en el mensaje a '+pyProvNom()+' y en el total, pero no entra en CYC (sin margen, sin ficha, sin stock)</span>',f.foto,null,null,'')).join(''):''}
@@ -16600,7 +16631,7 @@ function pvSetVista(v){_pvVista=v;renderPedidos();}
 function _pvTabs(){
   const todos=Object.values(state.pedidospv||{}).filter(c=>c&&c.fecha);
   const nCam=todos.filter(c=>c.estado==='camino').length,nImp=todos.filter(c=>c.estado==='llego'&&!c.pagado).length;
-  const t=(v,txt,tit)=>`<button class="btn" style="font-size:.64rem;padding:5px 13px;${_pvVista===v?'background:var(--blue);color:#fff;font-weight:700':''}" title="${tit}" onclick="pvSetVista('${v}')">${txt}</button>`;
+  const t=(v,txt,tit)=>`<button class="btn" style="font-size:.64rem;padding:5px 13px;${_pvVista===v?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}" title="${tit}" onclick="pvSetVista('${v}')">${txt}</button>`;
   return `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${t('comprar','📦 A comprar','Lo que hay que pedirle al Paulvic, aroma por aroma.')}${t('hechos','🧾 Pedidos hechos'+(nCam||nImp?` (${[nCam?nCam+' en camino':'',nImp?nImp+' sin pagar':''].filter(Boolean).join(' · ')})`:''),'Los pedidos ya hechos: en camino, llegados que falta pagar y pagados.')}</div>`;
 }
 function pvEnCaminoHTML(){
@@ -19645,13 +19676,13 @@ async function renderListas(){
   const k=_listaSel,v=provs[k],nom=v.nombre||k;
   const _num=x=>{const q=provs[x];if(q.dan==null)return `<span style="opacity:.75">· ${q.n||0}</span>`;
     return `<span style="opacity:.85">· ✅ ${q.dan}</span>${q.pend>0?` <span style="opacity:.6;font-size:.85em">⏳${q.pend}</span>`:''}`;};
-  const _provBtn=x=>`<button class="btn" style="font-size:.72rem;padding:6px 16px;${x===k?'background:#7c3aed;color:#fff;border-color:#7c3aed;font-weight:700':''}" title="✅ cuántos dan 25% o más en ML${provs[x].pend>0?' · ⏳ cuántos falta medir':''} · ${provs[x].n||0} en la lista" onclick="_listaSel='${x}';_listaQ='';renderListas()">${provs[x].nombre||x} ${_num(x)}</button>`;
+  const _provBtn=x=>`<button class="btn" style="font-size:.72rem;padding:6px 16px;${x===k?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}" title="✅ cuántos dan 25% o más en ML${provs[x].pend>0?' · ⏳ cuántos falta medir':''} · ${provs[x].n||0} en la lista" onclick="_listaSel='${x}';_listaQ='';renderListas()">${provs[x].nombre||x} ${_num(x)}</button>`;
   const nArm=_listaArmado(k).length+listaProbFilas(k).length;
   // LAS LISTAS DE BS AS NO TIENEN PEDIDO (20/10/2026, él: "en dai nippon no se hacen pedidos, se trabajan igual que en resto de bs
   // as. eso lo trae mi viejo personalmente"): sin 🧾 Pedido, sin casillas de "pedir" ni "📋 pedir a …" en las tarjetas. Los probados
   // son tarjetas de Pedidos como las de "De siempre" y los nuevos se miran para que Tito los traiga.
   if(_enB&&_listaVista==='hechos')_listaVista='nuevos';
-  const _tab=(t,txt,tit)=>`<button class="btn" style="font-size:.64rem;padding:5px 13px;${_listaVista===t?'background:var(--blue);color:#fff;font-weight:700':''}" title="${tit}" onclick="listaSetVista('${t}')">${txt}</button>`;
+  const _tab=(t,txt,tit)=>`<button class="btn" style="font-size:.64rem;padding:5px 13px;${_listaVista===t?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}" title="${tit}" onclick="listaSetVista('${t}')">${txt}</button>`;
   const cab=(_enB?'<div style="height:10px"></div>':'')+(_enB?'':`<div style="margin-bottom:10px"><input id="lista-buscar" type="search" value="${escHtml(window._listaQ||'')}" placeholder="🔎 Buscar un producto en TODAS las listas…" oninput="listaBuscar(this.value)" style="width:100%;padding:9px 12px;font-size:.85rem;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--text)"><div id="lista-busq"></div></div>`)+`
     ${(_enB&&visibles.length===1)?'':`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px"><span style="font-size:.68rem;color:var(--muted)">Proveedor:</span>${visibles.map(_provBtn).join('')}${_enB?'':`<button class="btn" style="font-size:.64rem;padding:4px 10px;opacity:.8" title="La esconde de acá hasta que la vuelvas a poner (desde ⏸️ sacadas por ahora). No borra nada." onclick="listaPausar('${k}',true)">⏸️ sacar ${escHtml(nom)} por ahora</button>`}</div>`}${_volverHtml}
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${_tab('probados','✅ Productos probados','Lo que ya le compraste a este proveedor: cuánto reponer.')}${_tab('nuevos','🆕 Productos nuevos','Lo de su lista que todavía no vendés y da 25% o más en ML.')}${_enB?'':_tab('hechos','🧾 Pedido'+(nArm?' ('+nArm+' cargados)':''),'El pedido del momento, el mensaje con código y unidades, y los pedidos ya hechos.')}</div>`;
@@ -19922,7 +19953,7 @@ function renderPedidos(){
     if(!bp.length)_bsasVista='siempre';
     const st=document.getElementById('bsas-subtabs');
     if(st){const nomL=bp.length===1?(pv[bp[0]].nombre||bp[0]):'Listas de Tito';
-      const b=(v,t)=>`<button class="btn" style="font-size:.72rem;padding:6px 16px;${_bsasVista===v?'background:var(--blue);color:#fff;font-weight:700':''}" onclick="bsasSetVista('${v}')">${t}</button>`;
+      const b=(v,t)=>`<button class="btn" style="font-size:.72rem;padding:6px 16px;${_bsasVista===v?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}" onclick="bsasSetVista('${v}')">${t}</button>`;
       st.innerHTML=bp.length?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${b('siempre','🏬 De siempre')}${b('listas','📋 '+escHtml(nomL))}</div>`:'';}
     const wr=document.getElementById('bsas-siempre-wrap');if(wr)wr.style.display=_bsasVista==='listas'?'none':'';
     if(_bsasVista==='listas'){renderListas();return;}
@@ -20011,13 +20042,13 @@ function renderPedidos(){
   //  · PROBADOS → la canasta de US$ 1.000, los pedidos de reposición y lo que dejó de convenir
   //  · NUEVOS   → "Para probar" y el armado del pedido de productos nuevos
   if(!isBsas){
-    const _tab=(v,txt,tit)=>`<button class="btn" style="font-size:.64rem;padding:5px 13px;${(pyVista===v||(pyVista==='ambos'&&v!=='hechos'))?'background:var(--blue);color:#fff;font-weight:700':''}" title="${tit}" onclick="pySetVista('${v}')">${txt}</button>`;
-    const _provBtn=k=>`<button class="btn" style="font-size:.72rem;padding:6px 16px;${pyProv===k?'background:#7c3aed;color:#fff;border-color:#7c3aed;font-weight:700':''}" title="Proveedor de Paraguay: cada uno tiene sus productos probados, sus nuevos y sus pedidos (no se juntan)." onclick="pySetProv('${k}')">${PY_PROVS[k].e} ${PY_PROVS[k].n}</button>`;
+    const _tab=(v,txt,tit)=>`<button class="btn" style="font-size:.64rem;padding:5px 13px;${(pyVista===v||(pyVista==='ambos'&&v!=='hechos'))?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}" title="${tit}" onclick="pySetVista('${v}')">${txt}</button>`;
+    const _provBtn=k=>`<button class="btn" style="font-size:.72rem;padding:6px 16px;${pyProv===k?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}" title="Proveedor de Paraguay: cada uno tiene sus productos probados, sus nuevos y sus pedidos (no se juntan)." onclick="pySetProv('${k}')">${PY_PROVS[k].e} ${PY_PROVS[k].n}</button>`;
     const _tabs=`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px"><span style="font-size:.68rem;color:var(--muted)">Proveedor:</span>${Object.keys(PY_PROVS).map(_provBtn).join('')}</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
       ${_tab('probados','✅ Productos probados','Lo que YA vendés: cuánto hay que reponer para no quedarte sin stock, y lo que dejó de convenir al precio de Paraguay de hoy.')}
       ${_tab('nuevos','🆕 Productos nuevos','Lo que todavía NO vendés: los candidatos que trae el chat de Paraguay y el armado de ese pedido.')}
       ${_tab('hechos',`🧾 Pedido${(()=>{const n=pyArmadoFilas().length+pedNuevos(candList().filter(candEnArmado).filter(c=>candEnPedido(c)!=='viajando')).filas.length;return n?' ('+n+' cargados)':'';})()}`,'El pedido del momento (probados + nuevos juntos, con el mensaje para Nissei) y abajo los pedidos ya hechos: en camino y llegados.')}
-    </div>`+(pyVista!=='hechos'?`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:-4px 0 12px"><span style="font-size:.66rem;color:var(--muted)">Mostrar:</span>${[['todos','Todo'],['perf','🧴 Perfumes, belleza y salud'],['resto','📦 Resto']].map(([v,t])=>`<button class="btn" style="font-size:.64rem;padding:4px 11px;${_pyRubro===v?'background:#7c3aed;color:#fff;border-color:#7c3aed;font-weight:700':''}" onclick="pySetRubro('${v}')">${t}</button>`).join('')}</div><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:-6px 0 12px"><span style="font-size:.66rem;color:var(--muted)">Vender en:</span>${[['todos','Todo'],['ml','🛒 ML'],['local','🏪 Perfumería'],['ambos','✅ Los dos']].map(([v,t])=>`<button class="btn" style="font-size:.64rem;padding:4px 11px;${_candFiltro===v?'background:#7c3aed;color:#fff;border-color:#7c3aed;font-weight:700':''}" onclick="candFiltrar('${v}')">${t}</button>`).join('')}</div>`:'');
+    </div>`+(pyVista!=='hechos'?`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:-4px 0 12px"><span style="font-size:.66rem;color:var(--muted)">Mostrar:</span>${[['todos','Todo'],['perf','🧴 Perfumes, belleza y salud'],['resto','📦 Resto']].map(([v,t])=>`<button class="btn" style="font-size:.64rem;padding:4px 11px;${_pyRubro===v?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}" onclick="pySetRubro('${v}')">${t}</button>`).join('')}</div><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:-6px 0 12px"><span style="font-size:.66rem;color:var(--muted)">Vender en:</span>${[['todos','Todo'],['ml','🛒 ML'],['local','🏪 Perfumería'],['ambos','✅ Los dos']].map(([v,t])=>`<button class="btn" style="font-size:.64rem;padding:4px 11px;${_candFiltro===v?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}" onclick="candFiltrar('${v}')">${t}</button>`).join('')}</div>`:'');
     // PROBADOS = IDÉNTICO A BS AS (01/10/2026, pedido suyo): sólo la lista de pedidos, sin canasta ni precios.
     el.innerHTML=_tabs+(pyVista==='nuevos'?candidatosHTML():pyVista==='ambos'?el.innerHTML+candidatosHTML():pyVista==='hechos'?pedidoMomentoHTML()+`<div style="font-size:.85rem;font-weight:800;margin:10px 0 10px">Pedidos hechos <span style="color:var(--muted);font-weight:400">· ${pyCompras().length}</span></div>`+pyHechosHTML():el.innerHTML);
     if(window._pycatQ&&pyVista!=='probados'&&pyVista!=='hechos')setTimeout(()=>pycatBuscar(window._pycatQ),0);   // el buscador conserva lo buscado al redibujar
@@ -22309,10 +22340,11 @@ function renderHomeHoy(){
     <div style="display:flex;flex-wrap:wrap;gap:10px 34px;align-items:flex-end">
       <div><div id="hoy-bruto" style="font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(2rem,8vw,3.4rem);line-height:1;letter-spacing:-.01em">${fmt(h.bruto)}</div><div style="font-size:.78rem;color:var(--muted);margin-top:6px">facturado · <b style="color:var(--text)">${h.ventas}</b> venta${h.ventas===1?'':'s'} · <b style="color:var(--text)">${h.u}</b> u.</div></div>
       <div><div id="hoy-gan" style="font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(1.6rem,6vw,2.2rem);line-height:1;color:var(--c)">${fmt(h.gan)}</div><div style="font-size:.78rem;color:var(--muted);margin-top:6px">ganancia · <b style="color:var(--text)">${pctTxt}</b></div></div>
-      ${(()=>{const D=_puntajeDia(hoy,h,h.dias,esc);if(!D)return `<div style="align-self:center;padding:8px 14px;border-radius:12px;color:var(--muted);border:1px solid var(--border2);text-align:center"><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.35rem;line-height:1">—<span style="font-size:.6em;opacity:.7"> /10</span></div><div style="font-size:.74rem;font-weight:700;margin-top:4px">sin ventas todavía</div></div>`;const _c=puntColor(D.score);
-        return `<div style="align-self:center;padding:8px 14px;border-radius:12px;color:${_c};background:color-mix(in srgb,${_c} 12%,transparent);border:1px solid color-mix(in srgb,${_c} 35%,transparent);text-align:center" title="Puntaje ${esc==='dia'?'del día':esc==='mes'?'del mes':'del año'} (de 0 a 10), sólo por la ganancia en pesos: 7 en ${fmt(D.target)}${D.n>1?` ($115.000 × ${D.n} días)`:' por día'} (que a cada uno de los 3 le queden $900.000 por mes pagando todo) y 10 en ${fmt(D.target2)}.">
-          <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.35rem;line-height:1">${D.score.toFixed(1).replace('.',',')}<span style="font-size:.6em;opacity:.7"> /10</span></div><div style="font-size:.74rem;font-weight:700;margin-top:4px">${D.nivel}</div></div>`;})()}
+      ${(()=>{const D=_puntajeDia(hoy,h,h.dias,esc);if(!D)return `<div style="align-self:center;padding:8px 14px;border-radius:12px;color:var(--muted);border:1px solid var(--border2);text-align:center"><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.35rem;line-height:1">—<span style="font-size:.6em;opacity:.7"> /10</span></div><div style="font-size:.74rem;font-weight:700;margin-top:4px">sin ventas todavía</div></div>`;
+        return `<div style="align-self:center;padding:8px 14px;border-radius:12px;color:var(--c);background:color-mix(in srgb,var(--c) 12%,transparent);border:1px solid color-mix(in srgb,var(--c) 35%,transparent);text-align:center" title="Puntaje ${esc==='dia'?'del día':esc==='mes'?'del mes':'del año'} (de 0 a 10), sólo por la ganancia en pesos: 7 en ${fmt(D.target)}${D.n>1?` ($115.000 × ${D.n} días)`:' por día'} (que a cada uno de los 3 le queden $900.000 por mes pagando todo) y 10 en ${fmt(D.target2)}.">
+          <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.35rem;line-height:1">${D.score.toFixed(1).replace('.',',')}<span style="font-size:.6em;opacity:.7"> /10</span></div><div style="font-size:.74rem;font-weight:700;margin-top:4px">${VIVA_DIA_NOM[_vd.k]||D.nivel}</div></div>`;})()}
     </div>
+    ${h.ventas>0?_diaEscaleraHTML(h.gan,h.dias):''}
     ${esc==='dia'?(()=>{try{return _homeCurvaHTML(hoy);}catch(e){return '';}})():''}
     <details id="hoy-cobro" ${_hoyCobroAbierto()?'open':''} onclick="event.stopPropagation()" ontoggle="_hoyCobroToggle(this)" style="margin-top:14px;padding-top:9px;border-top:1px solid color-mix(in srgb,var(--c) 25%,transparent)">
       <summary style="cursor:pointer;font-size:.72rem;color:var(--muted)">💸 cuánto cobrar</summary>
