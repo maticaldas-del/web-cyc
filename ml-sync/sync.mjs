@@ -33348,6 +33348,49 @@ async function main() {
     // información que se pueda agregar a la ficha médica"). SOLO LEE. Prueba la calificación del producto (opiniones), la calidad de la
     // publicación, el rendimiento y las preguntas. Imprime SÓLO números y nombres de campo: nada de texto de compradores (el registro es
     // público). Para decidir qué se agrega a la ficha; un 403/404 dice que esa puerta no está.
+    // BILLING_PROBE=vendcat:<MLA propia o código de catálogo>[;…] → ¿HAY FORMA DE SABER CUÁNTAS UNIDADES VENDIÓ UN CATÁLOGO? (21/10/2026,
+    // él: "me gustaría que mires si hay alguna forma de sacar las unidades vendidas del producto en catálogo"). SOLO LEE. Prueba todas
+    // las puertas que quedan (ya se sabía que `/items?ids=` de ajenas da 403 y `/products/<id>/items` no trae ventas): la ficha del
+    // catálogo entera (busca cualquier campo con "sold"/"vend"), la publicación ajena con y sin token, visitas públicas, el ranking de
+    // más vendidos (`/highlights`), las opiniones, y la página web del catálogo ("+100 vendidos"). Imprime sólo números y nombres de
+    // campo, nada de vendedores.
+    if (/^vendcat(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const ids = String(process.env.BILLING_PROBE).split(':').slice(1).join(':').split(/[;,]/).map((x) => x.trim().toUpperCase()).filter((x) => /^MLA\d+$/.test(x));
+      let tk = null;
+      for (const label of labels) { const acc = accounts[label]; if (!acc?.refresh_token) continue;
+        try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() }); tk = t.access_token; break; } catch { /* la siguiente */ } }
+      if (!tk) { console.log('❌ sin token'); return; }
+      const corto = (x) => String(x).replace(/\s+/g, ' ').slice(0, 160);
+      const buscaSold = (o, pre = '', out = [], d = 0) => { if (!o || typeof o !== 'object' || d > 4) return out;
+        for (const [k, v] of Object.entries(o)) { const r = pre ? pre + '.' + k : k;
+          if (/sold|vend|sales|ventas/i.test(k)) out.push(`${r}=${typeof v === 'object' ? JSON.stringify(v).slice(0, 60) : v}`);
+          if (v && typeof v === 'object') buscaSold(v, r, out, d + 1); } return out; };
+      const pr = async (nom, f) => { try { console.log(`  ✅ ${nom}: ${corto(await f())}`); } catch (e) { console.log(`  ❌ ${nom}: ${corto(e.message || e)}`); } };
+      for (const id0 of ids) {
+        let pid = id0;
+        try { const it = await mlGet(`/items/${id0}?attributes=catalog_product_id,sold_quantity`, tk); if (it && it.catalog_product_id) { console.log(`\n■ ${id0} (nuestra) → catálogo ${it.catalog_product_id} · nuestras vendidas ${it.sold_quantity ?? '—'}`); pid = it.catalog_product_id; } } catch { /* es un catálogo */ }
+        console.log(`\n■ catálogo ${pid} · https://www.mercadolibre.com.ar/p/${pid}`);
+        let prod = null; await pr('ficha del catálogo', async () => { prod = await mlGet(`/products/${pid}`, tk); const s = buscaSold(prod); return `campos con ventas: ${s.length ? s.join(' · ') : 'ninguno'} · buy_box_winner ${prod.buy_box_winner ? 'sí' : 'null'}`; });
+        let ofs = []; await pr('vendedores del catálogo', async () => { const r = await mlGet(`/products/${pid}/items`, tk); ofs = (r && r.results) || []; const s = buscaSold(ofs[0] || {}); return `${ofs.length} ofertas · campos con ventas en una oferta: ${s.length ? s.join(' · ') : 'ninguno'} · claves: ${Object.keys(ofs[0] || {}).join(',')}`; });
+        const otro = (ofs.find((o) => o.item_id) || {}).item_id;
+        if (otro) {
+          await pr('publicación ajena con token', async () => { const r = await mlGet(`/items/${otro}?attributes=id,sold_quantity,available_quantity`, tk); return `vendidas ${r.sold_quantity ?? '—'} · stock ${r.available_quantity ?? '—'}`; });
+          await pr('publicación ajena SIN token', async () => { const r = await fetch(`https://api.mercadolibre.com/items/${otro}?attributes=id,sold_quantity`); const t = await r.text(); return `${r.status} · ${t.slice(0, 120)}`; });
+          await pr('ajena multiget sin token', async () => { const r = await fetch(`https://api.mercadolibre.com/items?ids=${otro}&attributes=id,sold_quantity`); const t = await r.text(); return `${r.status} · ${t.slice(0, 120)}`; });
+          await pr('visitas públicas de la ajena', async () => { const r = await mlGet(`/visits/items?ids=${otro}`, tk); return JSON.stringify(r).slice(0, 100); });
+          await pr('opiniones de la ajena', async () => { const r = await mlGet(`/reviews/item/${otro}`, tk); return `total ${r.paging ? r.paging.total : '—'} · promedio ${r.rating_average ?? '—'}`; });
+        }
+        await pr('opiniones del catálogo', async () => { const r = await mlGet(`/reviews/item/${pid}?catalog_product_id=${pid}`, tk); return `total ${r.paging ? r.paging.total : '—'} · promedio ${r.rating_average ?? '—'}`; });
+        await pr('ranking más vendidos (highlights)', async () => { const r = await mlGet(`/highlights/MLA/product/${pid}`, tk); return JSON.stringify(r).slice(0, 150); });
+        if (prod && prod.domain_id) await pr('más vendidos de su categoría', async () => { const r = await mlGet(`/highlights/MLA/category/${(ofs[0] && ofs[0].category_id) || prod.category_id || ''}`, tk); const c = (r.content || []); const pos = c.findIndex((x) => x.id === pid); return `${c.length} en la lista · este en posición ${pos >= 0 ? pos + 1 : 'no está'}`; });
+        await pr('página web del catálogo', async () => {
+          const r = await fetch(`https://www.mercadolibre.com.ar/p/${pid}`, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36', 'Accept-Language': 'es-AR,es;q=0.9' } });
+          const h = await r.text(); const m = h.match(/\+?\s*[\d.]+(?:\s*mil)?\s+vendid[oa]s/gi) || [];
+          return `${r.status} · ${h.length} letras · "vendidos" encontrado: ${m.length ? [...new Set(m)].slice(0, 4).join(' | ') : 'no'}${/verific|captcha|account-verification/i.test(h) ? ' · ⚠️ pide verificación' : ''}`; });
+      }
+      console.log('\nSOLO LEE: no toqué nada.');
+      return;
+    }
     if (/^fichaml(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const mlas = String(process.env.BILLING_PROBE).split(':').slice(1).join(':').split(/[;,]/).map((x) => x.trim().toUpperCase()).filter((x) => /^MLA\d+$/.test(x));
       const links = (await db.get('cyc/mllinks')) || {};
