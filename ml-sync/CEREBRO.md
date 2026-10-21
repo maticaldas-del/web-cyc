@@ -127,7 +127,7 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
    `techo95;go`, frenos a reabrir. Nota con QUÉ MIRAR MAÑANA de cada una que miré (`decido:archivo=fichas_<fecha>;go`).
 6b. **💳 Toda publicación con su Premium (21/10/2026, regla suya: *"quiero que todas las publicaciones tengan clásica y premium.
    puede que yo vaya creando publicaciones y queden sin premium"*).** Cada noche `gemela:todas` (ml-consulta, solo lee: cualquier
-   precio, activas o pausadas, con o sin stock). Cada renglón con precio Premium medido se crea con `gemelacrea:<MLA>=<precio>:go`
+   precio, activas o pausadas, SÓLO con stock en Full: *"no mirar todas las demás"*). Cada renglón con precio Premium medido se crea con `gemelacrea:<MLA>=<precio>:go`
    (uno por renglón, en la corrida final de ml-sync). Si la Premium no llega a la misma plata neta o al 25% en el peor caso, no se
    crea y queda una nota con el motivo. Si ML no deja (sin `user_product_id`, con variantes), se anota y se le dice a él sólo si
    es algo que vende. La lista tiene que quedar vacía.
