@@ -2918,6 +2918,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.92',f:'21/10',h:'16:00',c:[{n:1,t:'📈 Línea de tiempo: las ventas en Clásica siguen en verde y las de Premium (con cuotas) en naranja, así se ve si la Premium suma ventas. Lo vendido en remate pasa a amarillo.'}]},
   {v:'25.92',f:'21/10',h:'15:42',c:[{n:3,t:'💰 Línea de tiempo: el día que cambia el precio, lo vendido cuenta al precio que de verdad se cobró (antes todo quedaba al precio nuevo y la línea 💰 marcaba de más, como en el Filtro y las Cartas).'},{n:3,t:'🔓 Lo que vende poco ya no queda trabado en un precio alto: pasados 15 días de una suba sin techo medido, decide la plata por día.'}]},
   {v:'25.91',f:'21/10',h:'15:30',c:[{n:1,t:'🎉 Primera venta de una publicación: ya no dice hace cuánto está publicada sino cuántos días tuvo stock en Full hasta venderse ("o más" si no se vio entrar la mercadería).'}]},
   {v:'25.90',f:'21/10',h:'14:50',c:[{n:3,t:'💰 Estrategia nueva "buscando el de más ganancia": cuando ya hay techo 🔴 y el precio está arriba de la línea 💰, el robot no baja hasta estar 95% seguro de que ese precio deja menos plata por día que el 💰. Si deja más, la línea 💰 sube sola a ese precio.'}]},
@@ -10913,9 +10914,11 @@ function lineaPintar(prodId){
   // eso un día que vendió 4 decía "no vendió" y la franja de stock salía roja. Mismo filtro que la ganancia (`gd`).
   const _vp1=Object.keys(state.ventaprod||{}).filter(k=>/^\d{4}_\d{2}_\d{2}$/.test(k)).sort()[0]||null;
   for(const k of ks){const ents=Object.values((state.ventaprod||{})[k]||{}).filter(v=>v&&!v.cancelada&&(prodDeVenta(v)||{}).id===prodId&&_vOk(v));
-    let t=0,q=0,qR=0;ents.forEach(v=>{t+=Number(v.total)||0;q+=Number(v.qty)||0;if(ventaEnRemate(v,k))qR+=Number(v.qty)||0;});
+    let t=0,q=0,qR=0,qP=0;ents.forEach(v=>{t+=Number(v.total)||0;q+=Number(v.qty)||0;if(ventaEnRemate(v,k))qR+=Number(v.qty)||0;else if(v.tipoPub==='gold_pro')qP+=Number(v.qty)||0;});
+    // 💳 Premium aparte (21/10/2026, él: "las que se vendan como clásicas sigan en verde y las premium en naranja, así veo si hacer
+    // publicaciones premium aumentó las ventas y ganancias"). Sale de `tipoPub` de cada venta; sin el dato cuenta como Clásica.
     // "En remate" con la MISMA regla que la línea de todos y Pedidos (ventaEnRemate), no la marca del robot (etapa 8).
-    if(_vp1&&k>=_vp1&&!(dias[k]&&dias[k].hoy)&&(q>0||(dias[k]&&dias[k].u!=null))){const o=dias[k]=dias[k]||{u:null,uR:null,vis:null,st:null,stN:0,p:null,caja:null,rem:false,esc:null,mg:null,tot:null,pubs:0};o.u=q;o.uR=qR;}
+    if(_vp1&&k>=_vp1&&!(dias[k]&&dias[k].hoy)&&(q>0||(dias[k]&&dias[k].u!=null))){const o=dias[k]=dias[k]||{u:null,uR:null,vis:null,st:null,stN:0,p:null,caja:null,rem:false,esc:null,mg:null,tot:null,pubs:0};o.u=q;o.uR=qR;o.uP=qP;}
     if(q>0&&t>0){const _o=(dias[k]=dias[k]||{u:null,uR:null,vis:null,st:null,stN:0,p:null,caja:null,rem:false,esc:null,mg:null,tot:null,pubs:0});if(_o.p>0&&!_o.pCob)_o.pLista=_o.p;_o.p=Math.round(t/q);_o.pCob=true;}}
   // Escala con un rango mínimo del 20%: un cambio de 3% no puede verse como un salto (él, con el costo: "$1.007 a $1.036").
   const _esc=(mn,mx)=>{if(!(mx>0))return[0,1];if(mx-mn<mx*0.2){const c=(mx+mn)/2;return[c-mx*0.1,c+mx*0.1];}return[mn,mx];};
@@ -11190,9 +11193,10 @@ function lineaPintar(prodId){
     // visitas, DETRÁS de las ventas y con su propia escala (20/10/2026, él: "juntar las barras")
     if(hayVis&&d&&d.vis!=null&&d.vis>0){const h=d.vis/maxV*L.vent[1];svg+=`<rect x="${x}" y="${L.vent[0]+L.vent[1]-h}" width="${bw}" height="${h}" fill="#60a5fa" opacity=".35"/>`;}
     // ventas
-    if(d&&d.u!=null&&d.u>0){const hN=(d.u-(d.uR||0))/maxU*L.vent[1], hR=(d.uR||0)/maxU*L.vent[1];
+    if(d&&d.u!=null&&d.u>0){const hN=(d.u-(d.uR||0)-(d.uP||0))/maxU*L.vent[1], hP=(d.uP||0)/maxU*L.vent[1], hR=(d.uR||0)/maxU*L.vent[1];
       if(hN>0)svg+=`<rect x="${x}" y="${L.vent[0]+L.vent[1]-hN}" width="${bw}" height="${hN}" fill="var(--green)"/>`;
-      if(hR>0)svg+=`<rect x="${x}" y="${L.vent[0]+L.vent[1]-hN-hR}" width="${bw}" height="${hR}" fill="#f59e0b"/>`;}
+      if(hP>0)svg+=`<rect x="${x}" y="${L.vent[0]+L.vent[1]-hN-hP}" width="${bw}" height="${hP}" fill="#f97316"/>`;
+      if(hR>0)svg+=`<rect x="${x}" y="${L.vent[0]+L.vent[1]-hN-hP-hR}" width="${bw}" height="${hR}" fill="#facc15"/>`;}
     // stock: verde con, rojo sin, gris no se sabe. Si vendió ese día, había stock.
     // STOCK (03/10/2026, él con las Cartas Casino: "dice que no hay stock, está en rojo y vendió siempre").
     // Si ese día vendió, había stock, diga lo que diga el registro. Y "sin stock" sólo si TODAS las
@@ -11319,7 +11323,7 @@ function lineaPintar(prodId){
   const _semK={};{const S=_lineaSemanas(ks,_ganK);for(const [w,o] of Object.entries(S)){const t=`📅 semana del lunes ${w.slice(8,10)}/${w.slice(5,7)}: ${fmt(Math.round(o.t))}${o.n<7?` (${o.n} de 7 días en el gráfico)`:''}`;o.ks.forEach(kk=>{_semK[kk]=t;});}}
   ks.forEach((k,i)=>{const d=dias[k];const es=evK[k]||[];
     const _h=`${_lineaFmtDia(k)}${d&&d.hoy?' · HOY (incompleto: hasta ahora)':''}`;
-    const _vent=d&&d.u!=null&&d.u>0?`🛒 vendió ${d.u} u.${d.uR?` (${d.uR} en remate)`:''}`:(k>=_gd0||(d&&d.u===0)?'🛒 no vendió':'🛒 ventas: sin dato');
+    const _vent=d&&d.u!=null&&d.u>0?`🛒 vendió ${d.u} u.${d.uP?` (${d.uP} en Premium · ${d.u-d.uP-(d.uR||0)} en Clásica)`:''}${d.uR?` (${d.uR} en remate)`:''}`:(k>=_gd0||(d&&d.u===0)?'🛒 no vendió':'🛒 ventas: sin dato');
     const _pctU=!gd[k]&&pdUlt[k]?`💰 % ganancia de la última venta (${_lineaFmtDia(pdUlt[k][1])}): ${pdUlt[k][0].toFixed(0)}%`:'';
     const _g7=g7[k]!=null?`💵 ganancia promedio de los últimos 7 días: ${fmt(Math.round(g7[k]))} por día`:'💵 promedio de 7 días: todavía no hay 7 días con dato';
     // Sin costo cargado no hay % (deja $0, regla del 26/09) · con neto estimado va "≈", como el renglón de Ventas (21/10/2026 · etapa 5).
@@ -11345,7 +11349,7 @@ function lineaPintar(prodId){
   // Las flechitas van ARRIBA de los rectángulos del globito: si no, el mouse nunca llega a su explicación.
   svg+=_flechasSvg;
   // resumen del rango
-  let uT=0,uRT=0,dCon=0,dSin=0,dNo=0,dRem=0,vT=0; ks.forEach(k=>{const d=dias[k];if(d&&d.u)uT+=d.u;if(d&&d.uR)uRT+=d.uR;if(d&&d.vis)vT+=d.vis;
+  let uT=0,uRT=0,uPT=0,dCon=0,dSin=0,dNo=0,dRem=0,vT=0; ks.forEach(k=>{const d=dias[k];if(d&&d.u)uT+=d.u;if(d&&d.uR)uRT+=d.uR;if(d&&d.uP)uPT+=d.uP;if(d&&d.vis)vT+=d.vis;
     const s=_conSt(d,k)?1:(k>=_stIni&&!_stCiego(k)?0:null);if(s===1)dCon++;else if(s===0)dSin++;else dNo++;if(d&&(d.rem||d.esc!=null))dRem++;});
   let gT=0,cT=0,eT=0;Object.values(gd).forEach(g=>{gT+=g.gan;cT+=g.costo;eT+=g.gest;});const gPct=hayGan?pctGananciaVP(gT,cT,eT):null;
   // EL STOCK DE HOY EN EL RESUMEN (05/10/2026, él: "que muestre el número de unidades en stock, con su color de
@@ -11404,7 +11408,7 @@ function lineaPintar(prodId){
     <div style="font-size:.9rem;font-weight:700;line-height:1.35;overflow-wrap:anywhere">📈 ${p.name}${_lineaVar?` · <span style="color:#a78bfa">${_lineaVar}</span>`:''}</div>
     <div class="linea-btns" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;margin-top:6px">${_lineaFichaMlas(prodId,_lineaVar).length?`<button class="btn" onclick="lineaFichaAbrir('${prodId}',event)" style="font-size:.66rem;padding:3px 10px" title="La ficha completa de la publicación: lo que ya sabemos, cada cambio de precio y cómo le fue">📋 Ficha</button>`:''}<button class="btn" onclick="lineaTodoAbrir(event)" style="font-size:.66rem;padding:3px 10px" title="La misma línea con TODOS los productos juntos">📈 Todos</button>${btn(365)}${btn(90)}${btn(30)}${_lineaGiroBtn()}<button class="btn" onclick="document.getElementById('linea-modal').remove()" style="font-size:.7rem;padding:3px 10px">✕</button></div>
     ${_vars.length>1?`<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px">${['',..._vars].map((v,i)=>`<button class="btn" onclick="lineaVar(_lineaVarsL[${i}],'${prodId}')" style="font-size:.62rem;padding:2px 9px;${_lineaVar===v?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}">${v||'Todas juntas'}</button>`).join('')}</div>`:''}
-    <div style="font-size:.7rem;color:var(--muted);margin:6px 0 8px;line-height:1.6">${_lineaRango} días · <b style="color:var(--text)">${uT} u. vendidas</b>${uRT?` (${uRT} en remate)`:''}${hayGan&&gPct!=null&&isFinite(gPct)?` · ganancia <b style="color:${pctColor(gPct)}">${gPct.toFixed(0)}%</b>`:''} · ${vT} visitas · ${_stHoy} · historial: <span style="color:var(--green)">${dCon} d con</span> · <span style="color:var(--red)">${dSin} d sin</span> · ${dNo} d sin dato${dRem?` · ${dRem} d rematando`:''}${pIni&&pFin?` · precio ${fmt(pIni)} → ${fmt(pFin)}`:''} · ${Object.keys(porMlaF).length} publicación(es)${C.fallo?' · <span style="color:var(--amber)">alguna publicación no se pudo leer</span>':''}</div>
+    <div style="font-size:.7rem;color:var(--muted);margin:6px 0 8px;line-height:1.6">${_lineaRango} días · <b style="color:var(--text)">${uT} u. vendidas</b>${uPT?` (<span style="color:#f97316">${uPT} en Premium</span>)`:''}${uRT?` (${uRT} en remate)`:''}${hayGan&&gPct!=null&&isFinite(gPct)?` · ganancia <b style="color:${pctColor(gPct)}">${gPct.toFixed(0)}%</b>`:''} · ${vT} visitas · ${_stHoy} · historial: <span style="color:var(--green)">${dCon} d con</span> · <span style="color:var(--red)">${dSin} d sin</span> · ${dNo} d sin dato${dRem?` · ${dRem} d rematando`:''}${pIni&&pFin?` · precio ${fmt(pIni)} → ${fmt(pFin)}`:''} · ${Object.keys(porMlaF).length} publicación(es)${C.fallo?' · <span style="color:var(--amber)">alguna publicación no se pudo leer</span>':''}</div>
     <div style="position:relative;padding-left:58px">
       ${lab(L.vent[0]+28,'ventas'+(hayVis?' · <span style="color:#60a5fa">visitas</span>':''))}${L.gan?lab(L.gan[0]+15,'$ ganancia/día · <span style="color:#a78bfa">semana</span>'):''}${L.pct?lab(L.pct[0]+18,pvs.length?('% ganancia'+(cvs.length?' · <span style="color:#f59e0b">costo</span>':'')):'<span style="color:#f59e0b">costo</span>'):''}${lab(L.st[0]+(suv.length?20:2),'stock')}${lab(L.pr[0]+18,'precio')}${L.est?lab(L.est[0]+2,'remate'):''}${L.caja?lab(L.caja[0]+2,'caja'):''}
       <svg class="linea-svg" viewBox="0 0 ${W} ${H+16}" preserveAspectRatio="none" style="width:100%;height:${Math.round((H+16)*1.1)}px;display:block">${svg}</svg>
@@ -11414,7 +11418,7 @@ function lineaPintar(prodId){
       return `<div style="font-size:.64rem;color:var(--muted);margin-top:6px;line-height:1.9">💲 la línea del precio va del color de su estrategia: ${vs.map(t=>{const u=ESTRATEGIA_UI[t];return `<span title="${u[3].replace(/"/g,'&quot;')}" style="display:inline-flex;align-items:center;gap:4px;margin-right:10px;cursor:help"><span style="width:14px;height:3px;border-radius:2px;background:${u[2]};display:inline-block"></span><span style="color:${u[2]}">${u[0]} ${u[1]}</span></span>`;}).join('')}${cvs.length?'<span style="margin-right:10px"><span style="color:#f59e0b">┄ costo</span></span>':''} · pasá el mouse por la línea para ver por qué</div>`;})()}
     <details style="margin-top:8px" ${_lineaDetAb?'open':''} ontoggle="_lineaDetAb=this.open"><summary style="cursor:pointer;font-size:.68rem;color:var(--muted)">Qué significa cada color ▾</summary>
     <div style="font-size:.64rem;color:var(--muted);margin-top:6px;line-height:1.9">
-      ${ley('var(--green)','vendió / con stock / caja ganada')}${ley('#f59e0b','vendido en remate / caja compartida')}${ley('var(--red)','sin stock / caja perdida')}${ley('#60a5fa','visitas')}${ley('#f97316','rematando')}${ley('#a855f7','escalera')}${ley('#94a3b8','no es de catálogo (no hay caja)')}${ley('#3f3f46','pausada (no pelea la caja)')}${ley('rgba(128,128,128,.35)','no se sabe')}
+      ${ley('var(--green)','vendió / con stock / caja ganada')}${ley('#f97316','vendido en Premium (con cuotas)')}${ley('#facc15','vendido en remate')}${ley('#f59e0b','caja compartida')}${ley('var(--red)','sin stock / caja perdida')}${ley('#60a5fa','visitas')}${ley('#f97316','rematando')}${ley('#a855f7','escalera')}${ley('#94a3b8','no es de catálogo (no hay caja)')}${ley('#3f3f46','pausada (no pelea la caja)')}${ley('rgba(128,128,128,.35)','no se sabe')}
       <span style="margin-right:10px">📦 stock en unidades, color por los días que alcanza: <span style="color:var(--red)">━ falta (−7) o poco en Full (${_repE.inf?'no se puede reponer':'alcanza menos de lo que tarda reponer: '+_corteE+' d'}; es 🔥 escasez, y se sube el precio, sólo si la caja en camino y la oficina no llegan a tiempo)</span> <span style="color:#f97316">━ justo (comprar ya, llega a tiempo)</span> <span style="color:var(--green)">━ bien (20-45)</span> <span style="color:#eab308">━ sobra (45-90)</span> <span style="color:#a855f7">━ exceso (+90)</span></span><span style="margin-right:10px"><span style="color:#f59e0b">━</span> costo real por unidad (mercadería × dólar del mes + IIBB y monotributo, que son % de lo cobrado: por eso se mueve un poco; el detalle sale al pasar el mouse)</span><span style="margin-right:10px">📊 % de ganancia: la línea toma el color del nivel de ese día (🔴 Bajo · 🟠 Justo · 🟢 Bien · 🩵 Bueno · 🔵 Excelente · 🟣 Estrella · 💎 JOYA), misma cuenta que Ventas</span><span style="margin-right:10px">▲▼ cambio de precio, el color dice por qué: ${flechaLeyenda()} · <span style="color:var(--amber)">▾</span> ese día se cobró menos sin cambiar el precio (promo/cupón de ML, carrito o un color más barato)</span><br>
       Pasá el mouse (o tocá) un día para ver todo lo que pasó. El precio es el más barato de sus publicaciones; ventas, visitas y stock suman todas. Stock, caja y remate de los días viejos no los guarda ML: quedan en gris. En stock: la línea son las unidades en Full (cuando se sabe el número) y la franja finita de abajo dice si hubo o no hubo stock ese día.
     </div></details></div>`;

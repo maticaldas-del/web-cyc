@@ -2606,3 +2606,9 @@ al ayudante con `effort` y que `ventasvistas` diga `esf=max`.
 sino cuántos días llevó de stock hasta la primera venta"*. `_vhDiasStock` (index.html) usa `cyc/stockhist` del color o del producto en esa
 cuenta (`desde`/`desdePrev` anterior a la venta). Sin fecha vista entrar dice "o más"; sin dato, nada. **Qué chequear:** si el producto se
 repuso después de la venta, `desdePrev` ya se borró y el cartel queda sin días (no inventa).
+
+**21/10/2026 · etapa 1 · ventas Premium en naranja y toda publicación con su Premium (v25.92).** Él: *"las que se vendan como clásicas
+sigan en verde y las premium en naranja"* y *"quiero que todas las publicaciones tengan clásica y premium"*. (1) Línea de tiempo de cada
+producto: barra verde = Clásica, naranja = Premium (`tipoPub` de cada venta, `uP`), amarillo = remate; el encabezado dice cuántas en
+Premium. (2) `gemela:todas` (sync.mjs): sin mínimo de precio, también pausadas y sin stock; la completa crea cada una con `gemelacrea`
+(CEREBRO §completa 6b). **Qué chequear:** ventas viejas sin `tipoPub` cuentan como Clásica; que `gemela:todas` quede vacía cada noche.

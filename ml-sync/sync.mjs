@@ -24188,7 +24188,10 @@ async function main() {
       return;
     }
     if (String(process.env.BILLING_PROBE || '').startsWith('gemela')) {
-      const DIAS = 60, PMIN = parseFloat(String(process.env.BILLING_PROBE).split(':')[1]) || 50000;
+      // `gemela:todas` (21/10/2026, él: "quiero que todas las publicaciones tengan clásica y premium. puede que yo vaya creando
+      // publicaciones y queden sin premium"): sin mínimo de precio, también pausadas y sin stock en Full. Sin `todas`, como antes.
+      const _g1 = String(process.env.BILLING_PROBE).split(':')[1] || '', TODAS = _g1 === 'todas';
+      const DIAS = 60, PMIN = TODAS ? 0 : (parseFloat(_g1) || 50000);
       const links = (await db.get('cyc/mllinks')) || {};
       const cuotasM = (await db.get('cyc/mlcuotas')) || {};
       const netopub = (await db.get('cyc/netopub')) || {};
@@ -24217,11 +24220,11 @@ async function main() {
         }
       }
       for (const { b, label, t } of vivos) {
-        if (b.listing_type_id !== 'gold_special' || b.status !== 'active') continue;
+        if (b.listing_type_id !== 'gold_special' || !(b.status === 'active' || (TODAS && b.status === 'paused'))) continue;
         // 6.D2 (etapa 6, eligió la a): lo que pierde la caja POR CUOTAS (`mllinks.cajaPorCuotas`, lo marca el robot cada hora) entra
         // aunque esté abajo del mínimo de precio: es justo el caso donde la gemela gana la caja sin bajar.
         const precio = Math.round(b.price || 0); if (!(precio >= PMIN) && !(links[b.id] || {}).cajaPorCuotas) continue;
-        const full = (b.shipping || {}).logistic_type === 'fulfillment'; const st = full ? (b.available_quantity || 0) : 0; if (!(st > 0)) continue;
+        const full = (b.shipping || {}).logistic_type === 'fulfillment'; const st = full ? (b.available_quantity || 0) : 0; if (!(st > 0) && !TODAS) continue;
         const L = links[b.id] || {}; const p = pIdx[L.prodId]; if (!p) continue;
         if (premHermana.has(L.prodId + '__' + label)) continue;
         const costo = tc ? costoPesos(p, 1, tc).costo : 0; if (!(costo > 0)) continue;
@@ -24239,7 +24242,7 @@ async function main() {
         filas.push({ mla: b.id, label, nom: String(L.title || b.title || '').slice(0, 46), precio, st, u, ud, ganCla, netaCla, P, ganP, netaP, ok, finEn: fP && fP.fin, cuo, caja: L.caja || '', porCuotas: !!L.cajaPorCuotas, cat: !!b.catalog_listing, vars: Array.isArray(b.variations) && b.variations.length > 1, margen: costo > 0 ? ganCla / (costo + precio * impPct + envio) * 100 : null });
       }
       filas.sort((a, b) => (b.porCuotas - a.porCuotas) || (a.u - b.u) || (b.st * b.precio - a.st * a.precio));
-      console.log(`\n══ GEMELA PREMIUM · ${filas.length} Clásica(s) activa(s) con stock en Full, desde $${PMIN.toLocaleString('es-AR')}, sin Premium hermana ══`);
+      console.log(TODAS ? `\n══ GEMELA PREMIUM · ${filas.length} Clásica(s) sin Premium hermana (todas: cualquier precio, activas o pausadas, con o sin stock) ══` : `\n══ GEMELA PREMIUM · ${filas.length} Clásica(s) activa(s) con stock en Full, desde $${PMIN.toLocaleString('es-AR')}, sin Premium hermana ══`);
       console.log('   (solo lee · "misma plata neta" = misma ganancia por venta menos el 3% del facturado de más por el tope de H)\n');
       for (const f of filas) {
         console.log(`• ${f.label.padEnd(8)} ${f.mla} · ${f.nom}${f.vars ? ' · CON VARIANTES' : ''}${f.cat ? ' · catálogo' : ''}${f.caja ? ' · caja ' + f.caja : ''}${f.porCuotas ? ' · 💳 PIERDE LA CAJA POR CUOTAS, NO POR PRECIO' : ''}`);

@@ -125,6 +125,12 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
 5. Yo miro lo dudoso, lo que cambia más de 20% y lo que deshace una decisión de menos de 7 días.
 6. Pedidos y cajas como siempre (`decide_pedidos.py`, `decide_cajas.py`, revisados, `decido:archivo=…;go`). Juicios de precio,
    `techo95;go`, frenos a reabrir. Nota con QUÉ MIRAR MAÑANA de cada una que miré (`decido:archivo=fichas_<fecha>;go`).
+6b. **💳 Toda publicación con su Premium (21/10/2026, regla suya: *"quiero que todas las publicaciones tengan clásica y premium.
+   puede que yo vaya creando publicaciones y queden sin premium"*).** Cada noche `gemela:todas` (ml-consulta, solo lee: cualquier
+   precio, activas o pausadas, con o sin stock). Cada renglón con precio Premium medido se crea con `gemelacrea:<MLA>=<precio>:go`
+   (uno por renglón, en la corrida final de ml-sync). Si la Premium no llega a la misma plata neta o al 25% en el peor caso, no se
+   crea y queda una nota con el motivo. Si ML no deja (sin `user_product_id`, con variantes), se anota y se le dice a él sólo si
+   es algo que vende. La lista tiene que quedar vacía.
 7. Todo lo que escribe va en UNA corrida de ml-sync al final.
 8. **Los domingos, además:** el catálogo entero (todas las activas con stock, como era antes) y **el ayudante de ideas a fondo
    (max)**, que ya no corre todos los días (decisión suya del 21/10: *"semanal y a fondo"*). Lee `notas/ideas.md` para no repetir.
