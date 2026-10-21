@@ -98,6 +98,22 @@ svg.linea-svg{touch-action:pan-y}
   .fm-tarj td[data-p]{flex-basis:auto;order:1;font-weight:700}
   .fm-tarj td[data-r]{flex-basis:auto;order:2;margin-left:auto;font-weight:700}
 }
+.cv{margin:2px 0 8px;max-width:560px}
+.cv-ruta{position:relative;height:22px;margin:0 10px}
+.cv-ruta::before{content:'';position:absolute;left:0;right:0;top:15px;border-top:2px dashed color-mix(in srgb,var(--muted) 45%,transparent)}
+.cv-hecho{position:absolute;left:0;top:14px;height:4px;border-radius:2px}
+.cv-rojo{position:absolute;top:9px;height:14px;width:2px;margin-left:-1px;background:var(--red);opacity:.7}
+.cv-meta{position:absolute;top:0;font-size:.8rem;transform:translateX(-30%)}
+.cv-cam{position:absolute;top:-1px;font-size:1rem;line-height:1;transform:translateX(-50%) scaleX(-1)}
+.cv-anda{animation:cvAnda 1.6s ease-in-out infinite}
+@keyframes cvAnda{50%{margin-top:-2px}}
+body.discreto .cv-anda{animation:none}
+@media(prefers-reduced-motion:reduce){.cv-anda{animation:none}}
+.cv-et{display:flex;justify-content:space-between;font-size:.6rem;color:var(--muted);margin-top:1px}
+.cv-ent{height:5px;border-radius:3px;background:color-mix(in srgb,var(--muted) 22%,transparent);margin-top:5px;overflow:hidden}
+.cv-ent span{display:block;height:100%;background:var(--green)}
+.pvc{display:inline-flex;gap:3px;vertical-align:middle;margin-left:4px}
+.pvc i{width:9px;height:9px;border-radius:2px;border:1px solid var(--border2);display:inline-block}
 .rb{margin-top:4px}
 .rb-bar{position:relative;display:block;height:6px;border-radius:3px;background:color-mix(in srgb,var(--muted) 25%,transparent);max-width:100%}
 .rb .rb-ok{position:absolute;top:0;bottom:0;background:color-mix(in srgb,var(--green) 35%,transparent);border-radius:3px}
@@ -8493,6 +8509,25 @@ async function delEnvioFull(id){
 }
 // Las cajas dentro de "Mi oficina". Misma información que la pantalla de Envíos a Full pero en el
 // lugar donde se arman: no hay que salir a buscarlas a otro lado.
+// 7.28 · POR DÓNDE VA LA CAJA (21/10/2026, eligió la a). Un camioncito sobre una ruta de días: sale de la oficina (día 0), la raya
+// roja es el día ENV_ROJO_DIAS (si pasa de ahí, algo anda mal) y la bandera es REPO_DIAS_DEMORA (llega y se activa, ~8 días). Abajo,
+// en verde, lo que ML ya dio de alta (`cajaEntradoDe`, el mismo número del "📥 ya entraron"). Sólo en cajas que no llegaron. El
+// camión se mueve un poquito mientras viaja; con "menos movimiento" o modo discreto queda quieto.
+function cajaViajeHTML(e,c,uu,uEnt){
+  if(!c||c.recibida)return '';
+  const d=envDias(e),lleg=typeof REPO_DIAS_DEMORA==='number'?REPO_DIAS_DEMORA:8,esc=Math.max(lleg+2,d+1);
+  const pos=v=>Math.max(0,Math.min(100,v/esc*100));
+  const tarde=d>=ENV_ROJO_DIAS,pe=uu>0?Math.max(0,Math.min(100,uEnt/uu*100)):0;
+  const faltan=Math.max(0,lleg-d);
+  const tit=`Salió ${d<=0?'hoy':'hace '+d+' día'+(d===1?'':'s')}. Una caja tarda ~${lleg} días en llegar y activarse${tarde?`; pasaron ${ENV_ROJO_DIAS} o más: mirá el seguimiento`:faltan?` (faltan ~${faltan})`:''}.${uEnt>0?` ML ya dio de alta ${uEnt} de ${uu} u.`:''}`;
+  return `<div class="cv" title="${tit.replace(/"/g,'&quot;')}">
+    <div class="cv-ruta"><span class="cv-hecho" style="width:${pos(d).toFixed(1)}%;background:${tarde?'var(--red)':'var(--amber)'}"></span>
+      <i class="cv-rojo" style="left:${pos(ENV_ROJO_DIAS).toFixed(1)}%"></i><span class="cv-meta" style="left:${pos(lleg).toFixed(1)}%">🏁</span>
+      <span class="cv-cam${tarde?'':' cv-anda'}" style="left:${pos(d).toFixed(1)}%">🚚</span></div>
+    <div class="cv-et"><span>🏠 salió</span><span style="color:${tarde?'var(--red)':'var(--muted)'}">${tarde?`⚠️ ${d} días`:d<=0?'salió hoy':`día ${d} de ~${lleg}`}</span></div>
+    ${uEnt>0?`<div class="cv-ent"><span style="width:${pe.toFixed(1)}%"></span></div><div class="cv-et"><span style="color:var(--green)">📥 entrando a Full: ${uEnt} de ${uu} u.</span></div>`:''}
+  </div>`;
+}
 function renderCajasEnCamino(){
   const cont=document.getElementById('ofi-camino-list');if(!cont)return;
   const todos0=Object.entries(state.envios_full||{}).map(([id,e])=>({id,...e}))
@@ -8545,6 +8580,7 @@ function renderCajasEnCamino(){
         <span style="font-size:.64rem;color:var(--muted)">${uu} u.</span>
         ${uEnt>0?`<span style="font-size:.64rem;color:var(--green)" title="ML ya dio de alta estas unidades: se cuentan en Full y no en camino, para no contarlas dos veces">📥 ya entraron ${uEnt} a Full</span>`:''}
       </div>
+      ${cajaViajeHTML(e,c,uu,uEnt)}
       <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px">
         <input type="text" inputmode="numeric" value="${c.track||''}" placeholder="nº de seguimiento"
           style="flex:1;min-width:130px;background:var(--bg);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:.68rem;padding:7px 9px;outline:none"
@@ -16908,6 +16944,10 @@ function pvPedidoTarjeta(id,c){
   const est=cam?`en camino · hace ${Math.max(0,Math.floor((Date.now()-Date.parse(c.fecha+'T12:00:00-03:00'))/864e5))} d`:debe?`llegó ${dm(c.fechaLlego)} · falta pagar`:`pagado ${dm(c.fechaPago)}`;
   const _lp=(cam||debe)?_pvLimitePago(c):null,_hab=_lp?_pvHabilesHasta(_lp.lim):null;
   const _pagoTxt=!_lp?'':_hab<0?`<span style="color:var(--red)">venció el ${dm(_lp.lim)}: cobran ${PV_RECARGO_TARDE}% más</span>`:`<span style="color:${_lp.aprox?'var(--muted)':_hab<=2?'var(--red)':'var(--amber)'}">pagar ${_lp.aprox?'aprox ':''}antes del ${dm(_lp.lim)} · ${_lp.aprox?'7 días hábiles desde que llega':_hab===0?'vence HOY':'te quedan '+_hab+' días hábiles'}</span>`;
+  // 7.28 · LOS 7 CASILLEROS DEL PAGO (21/10/2026, eligió la a): uno por día hábil desde que llegó; los que ya pasaron se llenan
+  // (ámbar, y rojos cuando quedan 2 o menos). Vencido: los 7 en rojo. Mismo cálculo que el "te quedan N días hábiles" de al lado.
+  const _casTxt=(debe&&_lp&&!_lp.aprox)?(()=>{const pas=_hab<0?PV_DIAS_PAGO:Math.max(0,Math.min(PV_DIAS_PAGO,PV_DIAS_PAGO-_hab));const cl=_hab<0||_hab<=2?'var(--red)':'var(--amber)';
+    return `<span class="pvc" title="${pas} de ${PV_DIAS_PAGO} días hábiles ya pasaron desde que llegó">${Array.from({length:PV_DIAS_PAGO},(_,i)=>`<i style="${i<pas?'background:'+cl+';border-color:'+cl:''}"></i>`).join('')}</span>`;})():'';
   const _llegTxt=(cam&&_lp)?`llega aprox ${dm(_lp.lleg)}`:'';
   const tot=Number(c.montoPago)||Number(c.aPagar)||0,fl=Number(c.flete)||0;
   const uLl=uDe(c.llego),uT=parseInt(c.testers)||0,uR=parseInt(c.regalos)||0;
@@ -16934,7 +16974,7 @@ function pvPedidoTarjeta(id,c){
   const der=tot>0?fmt(Math.round(tot)):_aprox?`≈ ${fmt(_aprox)}`:`${cam?uDe(c.items):uLl} u.`;
   return `<details style="margin-bottom:8px;background:var(--surface2);border:1px solid var(--border2);border-left:4px solid ${col};border-radius:9px">
     <summary style="cursor:pointer;padding:11px 13px;display:flex;align-items:center;gap:12px;list-style:none">
-      <div style="min-width:0"><div style="font-size:.95rem;font-weight:800;color:var(--text)">${pedNumTag(c,'margin-right:6px')}${dm(c.fecha)}</div><div style="font-size:.66rem;font-weight:700;color:${col};margin-top:2px;white-space:nowrap">${est}${_llegTxt?' · '+_llegTxt:''}</div>${_pagoTxt?`<div style="font-size:.64rem;font-weight:700;margin-top:2px">${_pagoTxt}</div>`:''}</div>
+      <div style="min-width:0"><div style="font-size:.95rem;font-weight:800;color:var(--text)">${pedNumTag(c,'margin-right:6px')}${dm(c.fecha)}</div><div style="font-size:.66rem;font-weight:700;color:${col};margin-top:2px">${est}${_llegTxt?' · '+_llegTxt:''}</div>${_pagoTxt?`<div style="font-size:.64rem;font-weight:700;margin-top:2px">${_pagoTxt}${_casTxt}</div>`:''}</div>
       <div style="margin-left:auto;text-align:right"><div style="font-size:1.05rem;font-weight:800;color:var(--text);white-space:nowrap">${der}</div><div style="font-size:.62rem;color:var(--muted);margin-top:2px;white-space:nowrap">${cu?'costo '+fmt(cu)+' c/u':(cam?uDe(c.items)+' u. en '+Object.keys(ped).length+' aromas':'')}</div></div>
       <span style="font-size:.7rem;color:var(--muted);margin-left:4px">▾</span></summary>
     <div style="padding:4px 11px 11px">
