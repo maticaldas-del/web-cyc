@@ -4765,6 +4765,8 @@ function comisionEnPrecio(comRef,precioRef,precioNuevo){
 //   costo     = costoBase + lo que cobra Full          ← el divisor, regla suya del 01/09
 //   ganancia  = lo que te deposita ML − costoBase      ← NO se le resta Full dos veces
 // La gestión de Full se suma al COSTO o se resta del PRECIO, nunca las dos cosas.
+// `retPct` (21/10/2026 · etapa 1, 1.5a): el peor caso, la retención de IIBB de otra provincia en % del precio (`PEOR_RET_PCT`×100).
+// Sin él (0) es la cuenta de siempre. Lo usa el precio máximo de compra: una compra se mide con el peor caso, como cualquier precio.
 function simMargen(x){
   const precio=Math.round(Number(x.precio)||0);
   const merc=Math.round(Number(x.mercaderia)||0);
@@ -4772,11 +4774,12 @@ function simMargen(x){
   const com=Math.round(Number(x.comision)||0);
   const imp=Math.round(precio*(Number(x.impPct)||0)/100);
   const cuo=Math.round(precio*(Number(x.cuotasPct)||0)/100);
-  const neto=precio-com-gest-cuo;
+  const ret=Math.round(precio*(Number(x.retPct)||0)/100);
+  const neto=precio-com-gest-cuo-ret;
   const costoBase=merc+imp;
   const costo=costoBase+gest;
   const ganancia=neto-costoBase;
-  return {precio,com,gest,cuo,neto,imp,merc,costoBase,costo,ganancia,
+  return {precio,com,gest,cuo,ret,neto,imp,merc,costoBase,costo,ganancia,
     margen:costo>0?(ganancia/costo*100):null};
 }
 // ── LOS DOS NÚMEROS DE LA COMISIÓN, POR SEPARADO ──────────────────────────────────────────
@@ -10068,6 +10071,18 @@ function _lineaDias(n){const out=[];const hoy=new Date();for(let i=n-1;i>=0;i--)
 // color): sólo vale el stock guardado de ESE color; el del producto entero no es de ese color y no se usa.
 // El color de una publicación: el fijado a mano o el que nombra el título (misma regla que `_varPorMla`).
 function _lineaColorDe(l){if(!l)return '';const v=String(l.variant||'').trim();if(v)return v;const p=(state.products||[]).find(pp=>pp.id===l.prodId);return p&&(p.variantes||[]).length?String(_matchProdVariant(l.title||'',p.variantes)||'').trim():'';}
+// LA GEMELA Y SU CLÁSICA SE MIDEN JUNTAS · LA PLATA PARADA UNA VEZ (21/10/2026, 5.2a y 1.6a). Copia de `claveStockPub`,
+// `hermanasStockDe` y `juntarLineaStock` del robot (sync.mjs): si se toca una, se toca la otra. Clave de stock = producto × cuenta ×
+// color (la `kSt` de `planilla`); la línea junta es la de la publicación medida (su precio, su estado, sus visitas) más las ventas de
+// las otras de la misma clave, con el stock tomado UNA vez (el mayor de los que lo informan, nunca sumado).
+function _claveStockPub(l){if(!l||!l.prodId)return null;const p=(state.products||[]).find(pp=>pp.id===l.prodId);const vs=p&&Array.isArray(p.variantes)?p.variantes:[];
+  const v=_lineaColorDe(l);if(vs.length&&!v)return null;return l.prodId+'__'+sid(String(l.cuenta||'').toLowerCase())+(v?'__v__'+sid(String(v).toLowerCase()):'');}
+function _hermanasStock(mla){const L=state.mllinks||{};const e=L[mla];const k=_claveStockPub(e);if(!k)return [];
+  return Object.keys(L).filter(m=>{const x=L[m];return m!==mla&&x&&!x.ignored&&!x.hidden&&!x.noVendemosMas&&!['closed','inactive'].includes(String(x.status||''))&&x.prodId===e.prodId&&_claveStockPub(x)===k;});}
+function _lineaJuntaStock(dP,otras){const out={};for(const [k,x] of Object.entries(dP||{})){if(!/^\d{4}_\d{2}_\d{2}$/.test(k)||!x||typeof x!=='object'){out[k]=x;continue;}const o={...x};
+  for(const d2 of (otras||[])){const y=d2&&d2[k];if(!y||typeof y!=='object')continue;for(const c of ['u','uR','neto','tot'])if(y[c]!=null)o[c]=(Number(o[c])||0)+(Number(y[c])||0);
+    if(o.vis!=null&&y.vis!=null)o.vis=(Number(o.vis)||0)+(Number(y.vis)||0);if(y.st!=null)o.st=o.st==null?Number(y.st):Math.max(Number(o.st)||0,Number(y.st)||0);}
+  out[k]=o;}return out;}
 function _lineaJunta(porMla,lks,varSel){
   // Junta las publicaciones del producto día por día: unidades, visitas y stock se SUMAN; el precio es el
   // más barato; la caja, la mejor; remate/escalera si alguna lo estaba. Stock: sólo si TODAS las que
@@ -10385,8 +10400,11 @@ function lineaPintar(prodId){
     // (21/10/2026 · etapa 1) Con 2+ activas aunque estén al MISMO precio, una sola (la más barata; empate → la de MLA menor),
     // igual que `techo95`, que mide la línea de cada publicación sola: si no, las ventas de las dos se sumaban en un escalón.
     return act.length>=2?act.sort((a,b)=>a.p-b.p||String(a.m).localeCompare(String(b.m)))[0].m:null;})();
-  const _rayasDias=_mlaRaya?_lineaJunta({[_mlaRaya]:porMlaF[_mlaRaya]},state.mllinks||{},_lineaVar||''):dias;
-  const _ganRaya=k=>{const g=gd[k];if(!g)return 0;if(_mlaRaya)return Number((g.porMla||{})[_mlaRaya])||0;return g.ganHoy!=null?g.ganHoy:(g.gan||0);};
+  // 5.2a (21/10/2026): la publicación de las rayas se mide JUNTO con las que comparten su stock (gemela Premium, repetidas): sus ventas
+  // y su plata suman, y el stock (la plata parada, 1.6a) va una sola vez. La misma cuenta que `techo95` y la ficha del robot.
+  const _grupoRaya=_mlaRaya?[_mlaRaya].concat(_hermanasStock(_mlaRaya).filter(m=>C.porMla[m]&&typeof C.porMla[m]==='object')):[];
+  const _rayasDias=_mlaRaya?_lineaJunta({[_mlaRaya]:_grupoRaya.length>1?_lineaJuntaStock(porMlaF[_mlaRaya],_grupoRaya.slice(1).map(m=>C.porMla[m])):porMlaF[_mlaRaya]},state.mllinks||{},_lineaVar||''):dias;
+  const _ganRaya=k=>{const g=gd[k];if(!g)return 0;if(_mlaRaya)return _grupoRaya.reduce((a,m)=>a+(Number((g.porMla||{})[m])||0),0);return g.ganHoy!=null?g.ganHoy:(g.gan||0);};
   // ⚖️ LO QUE SE RESTA DE CADA DÍA PARA LA PLATA POR DÍA NETA (21/10/2026 · etapa 1): la misma cuenta que `rayasPrecioLinea` del robot
   // (u × $100 + lo cobrado × 3% + stock × costo de hoy × 2%/30). Sin lo cobrado anotado, unidades × precio de lista.
   const _pdDed=d=>{if(!d)return 0;const u=Number(d.u)||0,t=d.tot!=null?(Number(d.tot)||0):u*(Number(d.pLista||d.p)||0);
@@ -11148,6 +11166,8 @@ async function fichaAbrir(mla,ev){
   if(F){const r=F.res||{};
     // 20/10/2026 · etapa 4: la noche que la armó no pudo leer algo (notas, supervisor, estrategias…): se dice arriba.
     if(F.incompleta)h+=`<p style="color:var(--amber);margin:6px 0 0">⚠️ Ficha incompleta: ${esc(F.incompleta)}. Se completa la próxima noche.</p>`;
+    // 5.2a (21/10/2026): medida junto con las publicaciones que comparten su stock (gemela Premium, repetidas).
+    if(Array.isArray(F.juntaCon)&&F.juntaCon.length)h+=`<p style="color:var(--muted);margin:6px 0 0;font-size:.74rem">🔗 Medida junto con ${F.juntaCon.map(m=>esc(m)).join(', ')}: venden de las mismas unidades, así que las ventas de las dos cuentan acá y la plata parada va una sola vez.</p>`;
     h+=`<p style="margin:8px 0 0">Hoy: <b>${$(r.p)}</b> · ${esc(_FICHA_EST[r.est]||r.est||'?')} · ${r.st!=null?r.st+' u. en Full':'stock ?'} · últimos 30 días: ${r.u30||0} u. (${r.r30??'—'} por día con stock, ${$(r.pd30)} de ganancia por día) · costo ${$(r.cu)} · ficha armada ${_cerFecha(F.ts)}</p>`;
     const ico={perdio:'⛔',gano:'✅',mejor:'🏆',curso:'🧪'};
     h+=sec('Lo que ya sabemos',(F.sabemos||[]).length?(F.sabemos||[]).map(s=>`<div style="margin:3px 0">${ico[s.t]||'·'} ${esc(s.txt)}</div>`).join(''):'<div style="color:var(--muted)">Todavía no hay nada medido: ningún cambio de precio con días suficientes después.</div>');
@@ -11293,7 +11313,8 @@ function prodDeVenta(v){return (v&&v.prodId)?(prodById(v.prodId)||prodByName(v&&
 const ESTRATEGIA_UI={sindecidir:['⚪','sin estrategia','#64748b','Todavía sin estrategia: el cerebro la tiene que decidir (buscar techo, escasez, sobra…). Desde el 19/10 no existe un precio "base": todo precio tiene su estrategia.'],noanotada:['▫️','no se anotaba','#94a3b8','Antes de que se empezara a anotar la estrategia de cada precio: no se sabe cuál era (no es que el cerebro tenga que decidir algo).'],agotado:['⏸️','sin stock','#94a3b8','Sin stock en Full: el precio espera la reposición.'],escasez:['🔥','escasez','#f97316','Se estira el stock hasta que llegue la próxima caja: precio alto para que dure.'],sinrepo:['⏳','sin reposición','#eab308','No se consigue: el precio va para que el stock se venda en 4 meses al máximo posible.'],techo:['📈','buscando techo','#22c55e','Prueba de suba: se busca el precio que más plata por día deja.'],liquidando:['📉','liquidando','#ef4444','Se remata a propósito (sobra stock, stock antiguo o no vende): el % bajo es buscado.'],caja:['🥊','ganar la caja','#a78bfa','Bajado para ganar la caja de compra de ML.'],promo:['🏷️','promo','#c084fc','En una promo de Mercado Libre donde ML también pone plata.'],descuento:['💸','descuento','#e879f9','Descuento puesto sólo por nosotros (precio tachado): ML no pone nada.'],fecha:['🎁','fecha especial','#f472b6','Precio pensado para una fecha (Día de la Madre, Navidad…).'],excepcion:['🛡️','excepción','#94a3b8','Abajo del 25% a propósito (barrera de $33.000 u otro motivo explicado en el 🧠).'],sobra:['📦','sobra stock','#fb923c','Hay más stock del que se vende antes de que ML cobre stock antiguo: se baja (aunque quede abajo del 25%) para que salga lo que sobra, y vuelve al precio normal cuando queda lo justo. El cerebro se juzga contra no hacer nada.'],nuevo:['🆕','lanzamiento','#2dd4bf','Producto nuevo: arranca ~20% arriba del precio que se cree correcto y queda 7 días ahí de verdad. Si no vende, cada bajada va como descuento con el precio de lanzamiento tachado (real porque existió).'],prueba:['🧪','prueba','#818cf8','Precio de prueba: se cambió para medir cómo responde. (La prueba del tachado del 21/10 se canceló el 20/10: no se baja algo que vende bien sólo para medir.)'],techook:['🏔️','techo encontrado','#16a34a','La suba siguiente no rindió: queda en el último precio que más plata por día dejó. Se vuelve a probar si cambia la competencia o a los 30 días.'],bajando:['🪜','bajando','#fbbf24','Bajando en escalera, midiendo cada escalón: la escasez o la prueba de techo no vendió a ese precio y se baja de a poco, nunca abajo del último que vendía.'],volviendo:['↘️','volviendo al normal','#38bdf8','Llegó la reposición, pasó la fecha o volvió a conseguirse: el precio vuelve del alto al normal buscando el punto medio que más deja.'],desobra:['↗️','volviendo de sobra','#86efac','Ya no sobra stock: el precio vuelve a subir al normal.'],remate:['🧨','remate total','#dc2626','Rematado a cualquier precio (abajo de 0%) porque lo pediste vos.'],gemela:['💳','gemela con cuotas','#a855f7','Premium gemela: la misma publicación con cuotas sin interés, al precio que deja la misma plata neta que la Clásica. Comparte el stock con la Clásica.']};
 // 19/10/2026, eligió 1a 2a 3a: "↩️ corrección" ya no existe. Lo viejo anotado así toma el nombre del pasaje según el tag ANTERIOR
 // (misma tabla que `pasajeDe` del robot), y cada chip dice "de X" cuando la estrategia anterior era otra.
-function estrategiaPasaje(prev){if(prev==='techo'||prev==='techook')return 'techook';if(['escasez','sinrepo','fecha','bajando'].includes(prev))return 'volviendo';if(['sobra','liquidando','remate'].includes(prev))return 'desobra';return 'volviendo';}
+// 1.1a (21/10/2026): volver de una prueba de techo (o corregir después de una 🏔️) es 🪜 bajando: el 🏔️ lo marca SÓLO techo95 al 95%.
+function estrategiaPasaje(prev){if(prev==='techo'||prev==='techook')return 'bajando';if(['escasez','sinrepo','fecha','bajando'].includes(prev))return 'volviendo';if(['sobra','liquidando','remate'].includes(prev))return 'desobra';return 'volviendo';}
 // GANANCIA POR SEMANA (20/10/2026, él: "que haya otra línea que vea por semana en vez de por día"). Semana de lunes a domingo:
 // la suma de la ganancia de esos días. La usan las dos líneas de tiempo (producto y todas juntas). La semana que no está entera
 // en el gráfico (la de hoy, o la primera cortada) va punteada y dice cuántos días tiene: no se compara con una entera.
@@ -18759,7 +18780,7 @@ function pedPyLineaHTML(prod){
   if(r&&!r.motivo){
     if(mx!=null){
       const donde={full:`a ${fmt(r.P)}, lo que se puede cobrar teniendo Full${r.techo&&r.techo.cS?` (el más barato SIN Full está a ${fmt(r.techo.cS)}: se lo pasa hasta +10%)`:''}${r.techo&&r.techo.cF?` · el más barato CON Full: ${fmt(r.techo.cF)}`:''}`,caja:`a ${fmt(r.P)}, lo que pide ML para ganar la caja`,ganas:`a ${fmt(r.P)}, tu precio de hoy (ya ganás la caja)`,nocat:`a ${fmt(r.P)}, tu precio de hoy (no es de catálogo)`,hoy:`a ${fmt(r.P)}, tu precio de hoy`,claude:`a ${fmt(r.P)}, el precio al que lo pienso vender (lo decidí yo, Claude${r.clMot?': '+r.clMot:''})`,vieja:`a ${fmt(r.P)}, tu precio de hoy (publicaciones pausadas)`}[r.fuente]||'';
-      partes.push(`<span title="${q(`Lo más que podés pagar (puesto) para quedar en ${r.meta}% vendiendo ${donde}, con todo adentro (comisión, envío de Full, IIBB, monotributo, envío/embalaje y reclamos).${r.usdPy>0?` En la web de Paraguay: ${f2(r.usdPy)} antes del recargo.`:''}${tc>0?' = '+fmt(Math.round(mx*tc))+'.':''}`)}">💰 máx <b>${f2(mx)}</b></span>`);
+      partes.push(`<span title="${q(`Lo más que podés pagar (puesto) para quedar en ${r.meta}% vendiendo ${donde}, con todo adentro (comisión, envío de Full, IIBB, monotributo, envío/embalaje, reclamos y el peor caso: 2% de retención de otra provincia).${r.usdPy>0?` En la web de Paraguay: ${f2(r.usdPy)} antes del recargo.`:''}${tc>0?' = '+fmt(Math.round(mx*tc))+'.':''}`)}">💰 máx <b>${f2(mx)}</b></span>`);
     }else partes.push(`<span style="color:var(--red)" title="${q(`Vendiendo a ${fmt(r.P)} no hay precio de compra que deje ${r.meta}%.`)}">💰 máx: no llega</span>`);
   }else partes.push(`<span style="color:var(--muted)" title="No hay publicación viva con el neto calculado: no se puede medir.">💰 máx sin medir</span>`);
   return `<div style="flex-basis:100%;font-size:.72rem;line-height:1.6;display:flex;flex-wrap:wrap;gap:4px 12px;padding:4px 0">${partes.join('<span style="color:var(--muted)">·</span>')}</div>`;
@@ -18829,14 +18850,17 @@ function maxCompraDe(p,metaPct,color){
   // Full, el que decidí), el envío es el de ESE lado: abajo de $33.000 cero; arriba el medido de hoy si hoy ya está arriba, si no
   // el peor medido en ventas reales (`envioEstimadoArriba`, o `SIM_ENVIO_ARRIBA`). La comisión de hoy (`comHoy`) sigue con el de hoy.
   const gestP=P<UMBRAL_ENVIO_GRATIS?0:((precio>=UMBRAL_ENVIO_GRATIS&&gest>0)?gest:((envioEstimadoArriba()||{}).envio||SIM_ENVIO_ARRIBA));
-  const netoP=P-c2.com-gestP-cuo;
+  // EL PEOR CASO (21/10/2026 · etapa 1, 1.5a): el máximo de compra deja la meta con la retención de IIBB de otra provincia restada
+  // (`PEOR_RET_PCT`, 2% del precio), igual que la regla 🛡️ de cualquier precio y que los candidatos del robot (`cuentaCandidato`).
+  const ret=Math.round(P*PEOR_RET_PCT);
+  const netoP=P-c2.com-gestP-cuo-ret;
   // (netoP − merc − imp) / (merc + imp + gest) = m   →   merc = (netoP − imp·(1+m) − m·gest) / (1+m)
   const merc=(netoP-imp*(1+m)-m*gestP)/(1+m);
   const tc=curTC();
   const ship=parseFloat(p.shipUSD)||0,dev=devPctCosto(p)||0;
   const usd=tc>0?(merc/tc-ship)/(1+dev/100):null;
-  const chk=simMargen({precio:P,mercaderia:merc,gest:gestP,comision:c2.com,impPct,cuotasPct:cuoPct});
-  return {P,fuente,cuoN,cuoPct,cuo,merc:Math.round(merc),usd,usdPy:usd!=null?usd/RECARGO_PY:null,meta:Math.round(m*100),
+  const chk=simMargen({precio:P,mercaderia:merc,gest:gestP,comision:c2.com,impPct,cuotasPct:cuoPct,retPct:PEOR_RET_PCT*100});
+  return {P,fuente,cuoN,cuoPct,cuo,ret,merc:Math.round(merc),usd,usdPy:usd!=null?usd/RECARGO_PY:null,meta:Math.round(m*100),
     chk:chk.margen,hoyUSD:costUSDof(p)||0,esPy:p.origen==='py',techo,netoP,imp,gest:gestP,ship,dev,tc,clMot,color:pubV?color:''};
 }
 // El % que quedaría comprando a un precio de Paraguay dado (06/10/2026, pedido suyo: "que los que no den
@@ -18949,7 +18973,7 @@ function maxCompraHTML(p){
   const _pg=v=>(_enPesos&&curTC()>0)?fmt(Math.round(v*curTC())):'US$ '+v.toFixed(2).replace('.',',');
   const cmp=r.hoyUSD>0?(r.hoyUSD<=r.usd?` · hoy lo pagaste ${_pg(r.hoyUSD)} <span style="color:var(--green)">✓ entra</span>`:` · hoy lo pagaste ${_pg(r.hoyUSD)} <span style="color:var(--red)">✕ te pasás</span>`):'';
   const py=!_enPesos&&r.usdPy>0?` · en la web de Paraguay: <b>US$ ${r.usdPy.toFixed(2).replace('.',',')}</b> (antes del recargo)`:'';
-  return `<div style="${st};color:var(--muted)" title="Es lo más que podés pagar la mercadería para que, vendiéndola ${donde}, te quede ${r.meta}% con todo adentro (comisión de ML a ese precio, envío de Full, IIBB, monotributo, envío/embalaje y reclamos). Puesta en tu oficina: ${fmt(r.merc)}.">💰 Máximo para comprar: <b style="color:var(--text)">${_enPesos&&curTC()>0?fmt(Math.round(r.usd*curTC())):'US$ '+r.usd.toFixed(2).replace('.',',')}</b>${py} · para quedar en ${r.meta}% vendiendo ${donde}${r.cuoN?` · 💳 <span style="color:var(--amber)">el que hay que igualar da cuotas sin interés: van descontadas ${r.cuoN} cuotas (${fmt(r.cuo)})</span>`:''}${cmp}</div>`;
+  return `<div style="${st};color:var(--muted)" title="Es lo más que podés pagar la mercadería para que, vendiéndola ${donde}, te quede ${r.meta}% con todo adentro (comisión de ML a ese precio, envío de Full, IIBB, monotributo, envío/embalaje, reclamos y el peor caso: 2% de retención de otra provincia). Puesta en tu oficina: ${fmt(r.merc)}.">💰 Máximo para comprar: <b style="color:var(--text)">${_enPesos&&curTC()>0?fmt(Math.round(r.usd*curTC())):'US$ '+r.usd.toFixed(2).replace('.',',')}</b>${py} · para quedar en ${r.meta}% vendiendo ${donde}${r.cuoN?` · 💳 <span style="color:var(--amber)">el que hay que igualar da cuotas sin interés: van descontadas ${r.cuoN} cuotas (${fmt(r.cuo)})</span>`:''}${cmp}</div>`;
 }
 // El máximo de compra A LA VISTA en la cabecera de la tarjeta, en dólares y pesos (24/09/2026,
 // pedido suyo: "que aparezca en dólares y pesos, sin tener que abrir el detalle"). Es la MISMA
