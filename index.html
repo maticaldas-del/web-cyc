@@ -2733,7 +2733,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.61';
+const APP_VERSION='25.62';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2746,6 +2746,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.62',f:'21/10',h:'00:05',c:[{n:3,t:'📋 Revisión de datos (etapa 5): la ficha y la línea de tiempo dejaron de inventar: un día pausado no cuenta como día con stock, cada veredicto pide certeza, el stock que no se sabe sale en gris y una venta sin costo en un carrito ya no da pérdida.'},{n:2,t:'🔥 Los remates quedan con historia aunque se caiga la marca, las cancelaciones tardías corrigen su día, y una promo terminada sigue apareciendo en la línea de tiempo.'},{n:1,t:'📈 Línea de tiempo: el título va solo arriba y los botones abajo (no se corren); los globitos dicen la semana y el carrito.'}]},
   {v:'25.61',f:'21/10',h:'23:11',c:[{n:1,t:'🪜 Línea de tiempo: lo que baja en escalera dice desde qué precio (el que se probó y no rindió, con su raya 🚧) y de cuál no baja (💰 piso). Si ya se probó más caro, no dice más "techo: todavía no se sabe".'}]},
   {v:'25.60',f:'20/10',h:'22:57',c:[{n:3,t:'💲 Revisión de precios (etapa 1): las rayas 💰/🔴 de la línea de tiempo cuentan la plata por día NETA (trabajo, tope de H y plata parada), igual que la ficha y el robot, y no cuentan los días en que la publicación estaba pausada.'},{n:3,t:'🛒 Precio máximo de compra: resta el envío de Full del lado de los $33.000 del precio al que se va a vender (antes usaba el de hoy y podía prometer 25% y dar 0%).'},{n:2,t:'📉 "El 25% te da hasta $X" y "rematar al 12%" calculan con el cargo fijo de ML (antes quedaban varios puntos abajo de lo prometido).'},{n:2,t:'🥊 Caja ML en Rotación: "se puede bajar" sólo si queda arriba del piso en el peor caso, y lo dice al lado.'},{n:2,t:'🎨 La línea de tiempo de un color mide la escasez con el ritmo de ese color, y el 🧠 de un color muestra sólo sus notas.'},{n:1,t:'✍️ En Ventas, los cambios de precio que decidí yo dicen "Claude" y no "robot de noche".'}]},
   {v:'25.59',f:'21/10',h:'22:50',c:[{n:1,t:'📦 Armar caja: cada cuenta (botón, número y 📦) toma el color de su caja: verde sólo si es MANDALA YA, naranja si podés mandarla y rojo si podés esperar. Sin caja, gris.'}]},
@@ -4383,7 +4384,8 @@ const REV_HIST={
      {f:'2026-09-30',t:'Fallas mudas y privacidad: ~35 reales arregladas; él decidió aprobar a mano los chats nuevos de Telegram y cómo contar días con stock.'},
      {f:'2026-10-20',t:'Choques y fallas mudas: 4 revisores; arreglados doble toque, ventas borradas que volvían, descuentos mudos, corridas canceladas que seguían escribiendo, errores de ML sin código y ml-daily dos veces por noche. Sus 2 decisiones: listas de proveedores cifradas (1a) y lo que cancela ML no se reactiva.'}],
   5:[{f:'2026-10-12',t:'Primera vuelta de las líneas de tiempo: que cada día cuente bien y coincida con Ventas y el Arqueo.'},
-     {f:'2026-10-13',t:'Revisión del cerebro: cada parte entera contra el total; se midieron los precios redondos y la regla se sacó.'}],
+     {f:'2026-10-13',t:'Revisión del cerebro: cada parte entera contra el total; se midieron los precios redondos y la regla se sacó.'},
+     {f:'2026-10-21',t:'4 revisores en máximo (ficha, línea de tiempo, robot de datos, web): 44 arreglos (v25.62: ficha y techo95 sin borrar historia, remate con historia, canceladas tarde, línea por color y sin stock inventado). 2 decisiones suyas.'}],
   6:[{f:'2026-09-27',t:'Ideas 1-10: eligió Premium vs Clásica, visitas en Rotación, caja ML, tope de H, prueba de suba y motivo de reclamos.'},
      {f:'2026-10-15',t:'Etapa del 14/10 cerrada: lo de los reclamos que paga ML se midió (sí nos cuestan) y no quedó nada pendiente.'}],
   7:[{f:'2026-09-29',t:'4 revisores (teléfono, lo que sobra, lo que cuesta encontrar, parejo): lo chico hecho.'},
