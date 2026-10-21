@@ -21400,7 +21400,10 @@ async function main() {
       console.log('@@LISTA'); for (const l of out) console.log(l); console.log('@@FIN'); return;
     }
     if (/^listarevisar(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
-      const solo = String(process.env.BILLING_PROBE).split(':')[1] || ''; const provs = (await db.get('cyc/mlconfig/listasProv')) || {};
+      let solo = String(process.env.BILLING_PROBE).split(':')[1] || ''; const provs = (await db.get('cyc/mlconfig/listasProv')) || {};
+      // `listarevisar:confirmados` (21/10/2026, él con el Lux: 1 jabón de orquídea medido contra un pack de 3 de jazmín, "✓ mismo
+      // producto"): al revés, los que YA tienen el ✅, para volver a mirarlos. Sólo lee.
+      const CONF = solo === 'confirmados'; if (CONF) solo = '';
       // Salen los que dan 25%+ y les falta el ✅ de que el catálogo medido es el mismo producto (listaOkVale). Desde el 20/10/2026 (1a) las
       // ventas ya no hacen falta (2+ vendedores, lo mide el robot) y los de 1 solo vendedor no salen. Historia: 20/10/2026: antes salían sólo los sin ventas, y los que tenían ventas de antes de la regla del ✅
       // quedaban en "Para revisar" sin que nadie los mirara. Los de menos de 100 ventas ya están afuera y no salen. Orden: DA primero,
@@ -21411,7 +21414,7 @@ async function main() {
         for (const [cod, e] of Object.entries(cat)) { if (!e || listaNoEsVale(e) || e.sacado || e.noWeb || e.noFull || !(e.m != null && Number(e.m) >= 25 && e.mi) || !listaCostoVigente(e)) continue;   // costo nuevo sin medir: el margen no vale (etapa 3, 20/10/2026)
           const okV = listaOkVale(e);
           // 20/10/2026 (eligió la 1a): ya no hacen falta las ventas; sólo el ✅, y con 1 solo vendedor no da (no sale).
-          if (okV || !(Number(e.mv) >= CAND_MIN_VENDEDORES)) continue;
+          if (CONF ? !okV : (okV || !(Number(e.mv) >= CAND_MIN_VENDEDORES))) continue;
           const falta = 'ok';
           const est = (okV || (!e.rp && Number(e.m) < 80 && Number(e.mv) !== 1)) ? 'DA' : (Number(e.mv) === 1 ? 'REVISAR-1VEND' : 'REVISAR');   // DA = margen y nombre bien
           filas.push({ o: est === 'DA' ? 0 : 1, m: Number(e.m), t: [k, cod, String(e.n).replace(/\|/g, '/'), Math.round((Number(e.p) || 0) * (1 + rec / 100)), e.mi, String(e.mt || '').replace(/\|/g, '/').slice(0, 80), e.mp || '', Math.round(e.m) + '%', est, falta].join('|') });
