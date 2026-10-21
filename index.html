@@ -37,11 +37,12 @@ body.light{
 #theme-toggle{position:fixed;bottom:80px;right:28px;z-index:300;background:var(--surface);border:1px solid var(--border2);border-radius:8px;width:36px;height:36px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;transition:background .15s,border .15s}
 #fnav-btn{position:fixed;bottom:22px;right:22px;z-index:400;width:48px;height:48px;border-radius:50%;background:var(--accent2);border:none;cursor:pointer;font-size:1.3rem;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 18px rgba(0,0,0,.45);transition:transform .15s,opacity .15s}
 #fnav-btn:hover{transform:scale(1.08)}
-#fnav-menu{position:fixed;bottom:82px;right:22px;z-index:400;background:var(--surface);border:1px solid var(--border2);border-radius:14px;padding:8px;display:flex;flex-direction:column;gap:4px;box-shadow:0 8px 32px rgba(0,0,0,.5);min-width:190px;transform-origin:bottom right;transition:transform .18s,opacity .18s}
+#fnav-menu{position:fixed;bottom:82px;right:22px;z-index:400;background:var(--surface);border:1px solid var(--border2);border-radius:14px;padding:8px;display:flex;flex-direction:column;gap:4px;box-shadow:0 8px 32px rgba(0,0,0,.5);min-width:190px;transform-origin:bottom right;transition:transform .18s,opacity .18s;max-height:calc(100vh - 110px);overflow-y:auto;overscroll-behavior:contain}
 #fnav-menu.hidden{transform:scale(.85);opacity:0;pointer-events:none}
-.fnav-item{display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:9px;border:none;background:transparent;color:var(--text);font-family:'DM Mono',monospace;font-size:.72rem;cursor:pointer;text-align:left;transition:background .12s}
+.fnav-item{display:flex;align-items:center;gap:10px;padding:9px 14px;min-height:40px;border-radius:9px;border:none;background:transparent;color:var(--text);font-family:'DM Mono',monospace;font-size:.8rem;cursor:pointer;text-align:left;transition:background .12s}
 .fnav-item:hover{background:var(--surface2)}
 .fnav-item.active-page{background:rgba(124,58,237,.15);color:#a78bfa}
+body.light .fnav-item.active-page{color:#6d28d9;background:rgba(124,58,237,.12)}
 html{font-size:118%}
 /* Etapa 7 (29/09/2026): en pantallas táctiles, casillas con letra de 16px (el iPhone deja de agrandar la
    pantalla al tocarlas), botones chicos más grandes, y en el teléfono las listas no tienen scroll propio. */
@@ -705,13 +706,13 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
     <div class="nav-card nc6" onclick="goPage('resumen')">
       <span class="nc-icon">📋</span>
       <div class="nc-title">Resumen</div>
-      <div class="nc-desc">Vista general de todas las secciones: patrimonio, ingresos ML, local y pedidos.</div>
+      <div class="nc-desc">Vista general: patrimonio, ingresos de ML, gastos y pedidos.</div>
       <span class="nc-arrow">→</span>
     </div>
     <div class="nav-card nc1" onclick="goPage('inventario')">
-      <span class="nc-icon">📦</span>
+      <span class="nc-icon">🧮</span>
       <div class="nc-title">Arqueo</div>
-      <div class="nc-desc">Stock, balance financiero y comparación de cierres.</div>
+      <div class="nc-desc">Finanzas, stock, cierres del mes y las fichas de cada producto.</div>
       <span class="nc-arrow">→</span>
     </div>
     <div class="nav-card nc4" onclick="goPage('metricas')">
@@ -743,21 +744,21 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
     <div class="nav-card nc3" onclick="goPage('pedidos')">
       <span class="nc-icon">🚚</span>
       <div class="nc-title">Pedidos</div>
-      <div class="nc-desc">BS AS · Paraguay · Urgente · Poco stock.</div>
+      <div class="nc-desc">Bs As · Paraguay · Paulvic · Listas: qué comprar y cuántas, con el porqué en el 🧠.</div>
       <div id="nc-pedidos-costo" style="font-size:.68rem;color:var(--muted);margin-top:4px"></div>
       <span class="nc-arrow">→</span>
     </div>
     <div class="nav-card nc3" onclick="goPage('oficina')">
-      <span class="nc-icon">🏠</span>
+      <span class="nc-icon">🏢</span>
       <div class="nc-title">Mi oficina</div>
       <div class="nc-desc">Qué tenés en casa y a qué cuenta va cada cosa.</div>
       <div id="nc-ofi-sub" style="font-size:.68rem;color:var(--muted);margin-top:4px"></div>
       <span class="nc-arrow">→</span>
     </div>
     <div class="nav-card nc3" onclick="goPage('rotacion')">
-      <span class="nc-icon">📊</span>
+      <span class="nc-icon">🔄</span>
       <div class="nc-title">Rotación de Stock</div>
-      <div class="nc-desc">Capital inmovilizado · ventas 30d · estado por producto.</div>
+      <div class="nc-desc">Capital inmovilizado · ventas 60 días · estado por producto.</div>
       <div id="nc-rot-score"></div>
       <span class="nc-arrow">→</span>
     </div>
@@ -1081,7 +1082,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
       <div class="ph-logo" id="ped-logo"></div>
       <div>
         <div class="ph-title">Pedidos</div>
-        <div class="ph-sub">BS AS · Paraguay · Paulvic</div>
+        <div class="ph-sub">Bs As · Paraguay · Paulvic · Listas</div>
       </div>
     </div>
     <div class="ph-right">
@@ -1167,7 +1168,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 
   <div id="ped-section-listas" style="display:none"><div id="listas-body"></div></div>
   <div id="ped-section-papelera" style="display:none">
-    <div style="font-size:.66rem;color:var(--muted);margin-bottom:10px">Productos que sacaste de Pedidos. No se vuelven a crear solos y no cuentan para el Puntaje del mes ni para el stock en riesgo. Tenés <strong>7 días</strong> para arrepentirte con "Devolver"; pasado ese plazo la eliminación queda definitiva.</div>
+    <div style="font-size:.66rem;color:var(--muted);margin-bottom:10px">Productos que sacaste de Pedidos. No se vuelven a crear solos y no cuentan para el stock en riesgo. Tenés <strong>7 días</strong> para arrepentirte con "Devolver"; pasado ese plazo la eliminación queda definitiva.</div>
     <div class="pedidos-count" id="pedidos-papelera-count"></div>
     <input class="search-box" id="ped-papelera-search" type="search" placeholder="Buscar en la papelera..." oninput="renderPedidos()" style="margin-bottom:10px">
     <div id="pedidos-papelera-list"><div class="empty-msg">La papelera está vacía.</div></div>
@@ -1263,7 +1264,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
         <textarea id="env-track" placeholder="Números de seguimiento, uno por línea (los del comprobante)"
           style="width:100%;min-height:70px;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:.72rem;padding:10px;outline:none;margin-bottom:6px"></textarea>
         <input type="text" id="env-obs" class="fin-input" placeholder="Nota (opcional): quién lo despachó, qué iba adentro…" style="width:100%">
-        <div style="font-size:.63rem;color:var(--amber);margin-top:8px;line-height:1.6">Una caja anotada así queda <strong>sin contenido</strong>, y el robot no la puede marcar solo cuando llega: hay que tocarle "llegó" a mano. Si la mercadería todavía está en casa, conviene usar "Armar caja".</div>
+        <div style="font-size:.63rem;color:var(--amber);margin-top:8px;line-height:1.6">Una caja anotada así queda <strong>sin contenido</strong>, y no se puede saber sola cuándo llegó: hay que tocarle "llegó" a mano (o decírmelo). Si la mercadería todavía está en casa, conviene usar "Armar caja".</div>
       </div>
     </details>
     <input class="search-box" id="env-search" type="search" placeholder="Buscar por seguimiento, cuenta o fecha..." oninput="renderCajasEnCamino()" style="margin-bottom:10px">
@@ -1271,7 +1272,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
       Las cajas que ya cerraste. <span style="color:var(--green)">Verde</span> llegó a ML ·
       <span style="color:var(--amber)">naranja</span> en camino ·
       <span style="color:var(--red)">rojo</span> hace 7 días o más.
-      El verde lo pone el robot solo cuando ML informa que la mercadería entró.
+      El verde lo pongo yo (Claude) en la próxima vuelta, cuando ML informa que la mercadería entró.
     </div>
     <div class="pedidos-count" id="ofi-camino-count"></div>
     <div id="ofi-camino-list"></div>
@@ -1331,7 +1332,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
         <th style="min-width:100px">Rotación</th>
         <th style="min-width:110px">⏳ Días sin vender</th>
         <th style="min-width:95px" title="Lo que deja hoy sobre el costo, con el precio que tiene puesto en ML ahora. Es la MISMA cuenta que muestra la ficha del producto (Productos → Neto ML). Sirve para ver de un vistazo cuánto aire hay antes de tocar un precio.">💰 Margen hoy</th>
-        <th style="min-width:105px" title="Hace cuánto que esta mercadería está en ML. Es lo que le da sentido a los días sin vender: un producto que llegó anteayer y no vendió NO es un problema; uno que está hace dos meses sí. 🆕 = entró hace menos de 10 días, todavía no se puede juzgar. "—" = todavía no se sabe: ese producto ya tenía stock cuando el robot empezó a llevar el registro. Se llena solo cuando el robot ve ENTRAR la mercadería, así que se va a ir poblando a medida que repongas. El dato se reinicia con cada reposición.">📅 En stock hace</th>
+        <th style="min-width:105px" title="Hace cuánto que esta mercadería está en ML. Es lo que le da sentido a los días sin vender: un producto que llegó anteayer y no vendió NO es un problema; uno que está hace dos meses sí. 🆕 = entró hace menos de 30 días, todavía no se puede juzgar. Ámbar: le falta un mes para pagar almacenamiento · rojo: ya paga. "—" = todavía no se sabe: ese producto ya tenía stock cuando el robot empezó a llevar el registro. Se llena solo cuando el robot ve ENTRAR la mercadería, así que se va a ir poblando a medida que repongas. El dato se reinicia con cada reposición.">📅 En stock hace</th>
         <th style="min-width:110px" title="En las publicaciones de CATÁLOGO, ML muestra un solo botón de comprar y se lo lleva UN vendedor. 🟢 Ganás = la venta es tuya · 🟠 Compartís = ML reparte con otro (subir el precio te saca) · 🔴 Perdés = la venta se la lleva otro y tu publicación no la ve nadie · ⚪ = no es de catálogo, no hay caja que pelear. Ojo: el color de acá NO significa lo mismo que el del margen de al lado.">🥊 Caja ML</th>
         <th style="min-width:100px">Estado</th>
       </tr></thead>
@@ -1516,7 +1517,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
     <button class="vbtn" onclick="metIr('chart-bar-dia')">👥 Por cuenta</button>
     <button class="vbtn" onclick="metIr('met-horas')">🕐 Horas</button>
     <button class="vbtn" onclick="metIr('met-origen')">🌎 Origen</button>
-    <button class="vbtn" onclick="metIr('met-auto')">🤖 Robot de precios</button>
+    <button class="vbtn" onclick="metIr('met-auto')">🧠 Cambios de precio</button>
   </div>
 
   <!-- Carga manual — solo visible en modo Día -->
@@ -1547,7 +1548,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   </div>
 
   <!-- Gráfico % Ganancia -->
-  <div class="stitle">% de Ganancia <span id="met-pct-period" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;font-size:.65rem">· markup sobre costo · meta 35%</span></div>
+  <div class="stitle">% de Ganancia <span id="met-pct-period" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;font-size:.65rem">· sobre el costo</span></div>
   <div class="chart-box">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
       <div class="ch-title" id="chart-pct-title" style="margin-bottom:0"></div>
@@ -1592,7 +1593,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   <!-- El robot de precios, UNA sola tarjeta (30/09/2026, pedido suyo: "que se unifique"): arriba lo que
        ganó o perdió (sólo confirmado) y adentro, en un desplegable, todo lo que está vigilando.
        met-vig vive ADENTRO de met-auto: renderMetAuto lo crea y renderMetVig lo llena. -->
-  <div class="stitle">🤖 Robot de precios <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;font-size:.65rem">· lo que ganó o perdió · y todo lo que está mirando</span></div>
+  <div class="stitle">🧠 Cambios de precio <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;font-size:.65rem">· lo que ganó o perdió cada cambio · y lo que se está mirando</span></div>
   <div id="met-auto"></div>
 
   <footer>CYC · Métricas ML · datos independientes</footer>
@@ -2075,7 +2076,7 @@ window.addEventListener('unhandledrejection',ev=>{
 function startApp(){
   db.ref('.info/connected').on('value',s=>{
     const ok=s.val()===true&&!_cycSinDatos; // Etapa 5: con la lectura cancelada el punto NO puede quedar verde
-    ['home','inv','ped','met','res','cmp','vp'].forEach(id=>{
+    ['home','inv','ped','met','res','cmp','vp','ofi','rot','fac'].forEach(id=>{
       const dot=document.getElementById('dot-'+id);
       const txt=document.getElementById('conn-'+id);
       if(dot){dot.className='dot '+(ok?'online':'offline');}
@@ -2244,7 +2245,7 @@ function startApp(){
     if(_extEntries.length)_applyStockEntries(_extEntries);
     document.getElementById('loading').style.display='none';
     const primeraVez=firstDataLoad;
-    if(firstDataLoad){firstDataLoad=false;const _irV=location.hash==='#ventaprod';if(_irV)try{history.replaceState(null,'',location.pathname);}catch(e){}goPage(_irV?'ventaprod':'home');}   // #ventaprod = abrió tocando el aviso de una venta
+    if(firstDataLoad){firstDataLoad=false;goPage(_paginaDeHash()||'home');}   // #ventaprod = abrió tocando el aviso de una venta (o un acceso directo del ícono)
     // La primera carga se dibuja ya; las demás se juntan y respetan tu scroll (ver renderPronto).
     renderPronto(primeraVez);
   },err=>{
@@ -2252,7 +2253,7 @@ function startApp(){
     // congelado con datos viejos y el punto seguía verde (.info/connected sólo mira la red). Ahora
     // se ve: punto rojo, "sin datos" y un cartel fijo que no se va solo.
     _cycSinDatos=true;
-    ['home','inv','ped','met','res','cmp','vp'].forEach(id=>{
+    ['home','inv','ped','met','res','cmp','vp','ofi','rot','fac'].forEach(id=>{
       const dot=document.getElementById('dot-'+id),txt=document.getElementById('conn-'+id);
       if(dot)dot.className='dot offline';
       if(txt)txt.textContent='sin datos: volvé a entrar';
@@ -2342,7 +2343,7 @@ function injectLogos(){
 }
 
 function setWhoLabels(){
-  ['who-inv','who-ped','who-met','who-res','who-cmp','who-home','who-vp','who-ajustes'].forEach(id=>{
+  ['who-inv','who-ped','who-met','who-res','who-cmp','who-home','who-vp','who-ajustes','who-ofi','who-rot','who-fac'].forEach(id=>{
     const el=document.getElementById(id);
     if(el)el.textContent='👤 '+whoAmI;
   });
@@ -2376,10 +2377,12 @@ async function renderPush(){
   const h=document.getElementById('home-push'),a=document.getElementById('ajustes-push');
   const n=Object.values(state.pushsubs||{}).filter(x=>x&&x.endpoint).length;
   const btn='<button class="btn" style="background:#22c55e;color:#06210f;font-weight:700;border:none;border-radius:10px;padding:10px 14px;cursor:pointer" onclick="pushActivar()">🔔 Activar aviso de cada venta</button>';
-  if(h)h.innerHTML=_pushEstado==='falta'?`<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;margin:10px 0;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span style="font-size:.8rem;color:var(--muted);flex:1;min-width:180px">Que este teléfono vibre y suene con cada venta nueva.</span>${btn}</div>`:'';
+  // El cartel de Inicio sólo en el teléfono (pantalla táctil): en la PC no suena nada y era un cartel de más (20/10/2026, etapa 7).
+  let _tel=true;try{_tel=window.matchMedia('(pointer:coarse)').matches;}catch(e){}
+  if(h)h.innerHTML=(_pushEstado==='falta'&&_tel)?`<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;margin:10px 0;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span style="font-size:.8rem;color:var(--muted);flex:1;min-width:180px">Que este teléfono vibre y suene con cada compra que deja $10.000 o más (de 00:30 a 10 no suena).</span>${btn}</div>`:'';
   if(!a)return;
   const txt={
-    activo:'<div style="color:var(--green);font-weight:700">✅ Este teléfono recibe el aviso de cada venta que deja $10.000 o más de ganancia.</div><div style="font-size:.75rem;color:var(--muted);margin-top:6px">Si dejan de llegar, tocá de nuevo para volver a anotarlo.</div><div style="margin-top:10px">'+btn.replace('🔔 Activar aviso de cada venta','🔄 Volver a anotar este teléfono')+'</div>',
+    activo:'<div style="color:var(--green);font-weight:700">✅ Este teléfono recibe el aviso de cada compra que deja $10.000 o más de ganancia (de 00:30 a 10 no suena: lo de esa franja sale junto a las 10).</div><div style="font-size:.75rem;color:var(--muted);margin-top:6px">Si dejan de llegar, tocá de nuevo para volver a anotarlo.</div><div style="margin-top:10px">'+btn.replace('🔔 Activar aviso de cada venta','🔄 Volver a anotar este teléfono')+'</div>',
     falta:'<div style="font-size:.8rem;color:var(--muted);margin-bottom:10px">Tocá una vez en cada teléfono (el tuyo y el de tu viejo). Te pide permiso y listo.</div>'+btn,
     negado:'<div style="color:var(--amber)">⚠️ En este teléfono los avisos de CYC están bloqueados. Se habilitan en Ajustes del teléfono → Notificaciones → CYC.</div>',
     nosoporta:'<div style="color:var(--amber)">⚠️ Así no se pueden recibir avisos. En iPhone: abrí CYC desde el ícono de la pantalla de inicio (no desde Safari) y con iOS 16.4 o más.</div>'
@@ -2406,7 +2409,17 @@ async function pushActivar(){
     renderPush();
   }catch(e){alert('No se pudo activar: '+e.message);}
 }
-if('serviceWorker' in navigator)navigator.serviceWorker.addEventListener('message',ev=>{if(ev.data&&ev.data.cycIr)try{goPage(ev.data.cycIr);}catch(e){}});
+if('serviceWorker' in navigator)navigator.serviceWorker.addEventListener('message',ev=>{if(ev.data&&ev.data.cycIr)try{if(ev.data.cycIr==='ventaprod')vpLimpiarFiltros();goPage(ev.data.cycIr);}catch(e){}});
+// ABRIR LA APP EN UNA PANTALLA (20/10/2026, etapa 7): los accesos directos del ícono (manifest: Ventas de hoy, Pedidos,
+// Armar caja) y el aviso de una venta abren con #ventaprod / #pedidos / #oficina. Se lee una vez y se borra de la dirección.
+const _PAGINAS_HASH={ventaprod:1,pedidos:1,oficina:1};
+function _paginaDeHash(){
+  const h=String(location.hash||'').replace(/^#/,'');if(!_PAGINAS_HASH[h])return null;
+  try{history.replaceState(null,'',location.pathname+location.search);}catch(e){}
+  if(h==='ventaprod')try{vpLimpiarFiltros();}catch(e){}
+  return h;
+}
+window.addEventListener('hashchange',()=>{if(firstDataLoad)return;const pg=_paginaDeHash();if(pg)try{goPage(pg);}catch(e){}});
 function enterAjustes(){
   try{renderHomeRevision();renderRevPanel();_pintarVersion();}catch(e){console.warn('revisiones',e);}
   const inp=document.getElementById('ajuste-nombre');if(inp)inp.value=whoAmI;
@@ -3883,20 +3896,49 @@ const stockOfVar=(p,variante)=>p?ML_LOCS.reduce((s,l)=>s+getQV(p.id,l,variante),
 const todayStr=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
 const yesterdayStr=()=>{const d=new Date();d.setDate(d.getDate()-1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
 const normTxt=s=>(s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+// UNA SOLA FORMA DE BUSCAR (20/10/2026, etapa 7): sin tildes y palabra por palabra, así "termometro" encuentra
+// "Termómetro pincha" y "sabanas gris" encuentra las Sábanas de color Gris. Todas las palabras tienen que estar en
+// alguno de los textos (nombre, código, colores, títulos y números de sus publicaciones). Vacío = todo coincide.
+function buscaCoincide(q,...textos){
+  const pal=normTxt(q).split(/\s+/).filter(Boolean);if(!pal.length)return true;
+  const t=normTxt(textos.flat(2).filter(x=>x!=null&&x!=='').join(' '));
+  return pal.every(w=>t.includes(w));
+}
+// Los textos con los que se busca un producto: su nombre, su código de Paraguay, sus colores, y de cada publicación
+// suya el número (MLA), el título de ML y el color fijado. Se arma una vez por cada versión de state.mllinks.
+let _txtProdRef=null,_txtProdIdx={},_txtProdN=-1;
+function textosDeProd(p){
+  if(!p)return [];
+  const ml=(typeof state!=='undefined'&&state&&state.mllinks)||{};
+  const _n=Object.keys(ml).length;
+  if(_txtProdRef!==ml||_txtProdN!==_n){_txtProdRef=ml;_txtProdN=_n;_txtProdIdx={};for(const[k,e]of Object.entries(ml)){if(!e||!e.prodId)continue;(_txtProdIdx[e.prodId]=_txtProdIdx[e.prodId]||[]).push(k,e.title||'',e.variant||'');}}
+  return [p.name,p.codPy,...(p.variantes||[]),...(_txtProdIdx[p.id]||[])];
+}
 function productsSorted(){
   return [...(state.products||[])].sort((a,b)=>(a.name||'').localeCompare(b.name||'','es',{sensitivity:'base'}));
 }
 function productsFiltered(inputId){
-  const q=normTxt(document.getElementById(inputId)?.value||'');
-  return productsSorted().filter(p=>!q||normTxt(p.name).includes(q)||(p.variantes||[]).some(v=>normTxt(v).includes(q)));
+  const q=document.getElementById(inputId)?.value||'';
+  return productsSorted().filter(p=>buscaCoincide(q,textosDeProd(p)));
 }
 
 let toastT;
 function toast(msg,type='ok',ms){
   const el=document.getElementById('toast');
-  el.textContent=msg;el.className='show '+type;
+  el.textContent=msg;el.className='show '+type;el.style.pointerEvents='';
   // Etapa 5: varios llamados ya pasaban la duración (y se ignoraba); un error se lee en más de 3 s.
   clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('show'),ms||(type==='err'?6000:3000));
+}
+
+// Aviso con un botón "↩ Deshacer" que dura unos segundos (20/10/2026, etapa 7: la ✕ de Pedidos no pregunta, pero se
+// puede volver atrás al toque sin ir a la Papelera).
+function toastDeshacer(msg,fn,ms){
+  const el=document.getElementById('toast');if(!el)return;
+  el.textContent='';const sp=document.createElement('span');sp.textContent=msg+' ';
+  const b=document.createElement('button');b.className='btn';b.textContent='↩ Deshacer';b.style.cssText='margin-left:8px;font-size:.7rem;padding:3px 10px';
+  let usado=false;b.onclick=()=>{if(usado)return;usado=true;el.classList.remove('show');el.style.pointerEvents='';try{fn();}catch(e){console.warn(e);}};
+  el.append(sp,b);el.className='show info';el.style.pointerEvents='auto';
+  clearTimeout(toastT);toastT=setTimeout(()=>{el.classList.remove('show');el.style.pointerEvents='';},ms||7000);
 }
 
 async function fbSet(p,v){if(db)await db.ref('cyc/'+p).set(v);}
@@ -4171,7 +4213,8 @@ function renderAll(){
 
 /* ═══════════ INVENTARIO ═══════════ */
 function goTab(tab,btn){
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  // Sólo las solapas del Arqueo (20/10/2026): antes apagaba TODAS las .tab de la app y dejaba sin marcar las de Pedidos y Mi oficina.
+  document.querySelectorAll('#page-inventario .tab').forEach(t=>t.classList.remove('active'));
   btn.classList.add('active');
   // OJO: esta lista hay que actualizarla al agregar una pestaña nueva. Si falta, el botón se
   // marca como activo pero no se muestra nada (queda la página en blanco).
@@ -4401,8 +4444,9 @@ function renderInv(){
         <td style="text-align:right">${badge}</td>
       </tr>`;
     }
-    const nameMatches=!q||normTxt(p.name).includes(q);
-    const varsFiltered=nameMatches?(p.variantes||[]):(p.variantes||[]).filter(v=>normTxt(v).includes(q));
+    // Si la búsqueda nombra un color, sólo ese color; si coincidió por otra cosa (nombre, publicación), todos.
+    const _vq=q?(p.variantes||[]).filter(v=>buscaCoincide(q,p.name,v)):[];
+    const varsFiltered=(!q||!_vq.length)?(p.variantes||[]):_vq;
     const varRows=[...varsFiltered].sort((a,b)=>a.localeCompare(b,'es',{sensitivity:'base'})).map(v=>{
       let vSub=0;
       const locCells=LOCS.map(l=>{const q=getQV(p.id,l,v);vSub+=q;return`<td class="ac" style="${_negStyle(q)}">${fmtN(q)}</td>`;}).join('');
@@ -6073,6 +6117,13 @@ function enterOficina(){migrarOficina().then(()=>{
 const _ckSafe=s=>String(s||'').replace(/[.#$\[\]\/]/g,c=>'%'+c.charCodeAt(0).toString(16).toUpperCase());
 const _ck=(pid,va)=>pid+'|'+_ckSafe(va);
 const cajaDe=(cta)=>((state.cajas_armando||{})[cta]||{}).items||{};
+// Desde Inicio ("📦 N cajas para mandar ya · Adriana, Matías"): cada nombre abre Armar caja de ESA cuenta (20/10/2026, etapa 7).
+function irACaja(c,ev){
+  if(ev&&ev.stopPropagation)ev.stopPropagation();
+  ofiFiltroCuenta=c||'';ofiTab='caja';
+  goPage('oficina');
+  try{setOfiTab('caja',document.getElementById('tab-ofi-caja'));}catch(e){}
+}
 function setOfiFiltro(c){
   ofiFiltroCuenta=(ofiFiltroCuenta===c?'':c);
   // ELEGIR UNA CUENTA NO CARGA NADA. Pedido suyo del 23/08/2026: "al clickear cada cuenta me arma
@@ -7040,7 +7091,7 @@ function renderOfiContar(){
   let prods=(state.products||[]).slice().sort((a,b)=>(a.name||'').localeCompare(b.name||''));
   // El buscador también mira las variantes: escribiendo "paulv" tienen que aparecer sus aromas,
   // y escribiendo un aroma tiene que aparecer ese renglón aunque el nombre del producto no lo diga.
-  if(q)prods=prods.filter(p=>normTxt(p.name).includes(q)||(p.variantes||[]).some(v=>normTxt(v).includes(q)));
+  if(q)prods=prods.filter(p=>buscaCoincide(q,textosDeProd(p)));
   // Filtro por cuenta: se dejan solo los productos que ESA cuenta tiene publicados. Los que tienen
   // variantes quedan si alguna de sus variantes la publica esa cuenta (después se filtran los
   // aromas uno por uno más abajo).
@@ -7141,7 +7192,8 @@ function renderOfiContar(){
     // aroma. Con variantes cargadas se cuenta una por una y el total del producto se recalcula
     // solo con la suma — la clave de producto sigue siendo la que manda para la plata, las de
     // variante son el desglose.
-    const vars=(p.variantes||[]).filter(v=>!q||normTxt(p.name).includes(q)||normTxt(v).includes(q));
+    const _vq=q?(p.variantes||[]).filter(v=>buscaCoincide(q,p.name,v)):[];
+    const vars=(!q||!_vq.length)?(p.variantes||[]):_vq;
     if((p.variantes||[]).length){
       const pubV=cta?(pubVarCache[p.id]||cuentasPorVariante(p)):null;
       // "Mostrar solo los que tienen algo" tiene que filtrar CADA VARIANTE, no el producto entero.
@@ -7883,7 +7935,7 @@ function renderNcOfi(filas){
     const v=cajasVerdes(filas);
     const nSinDec=SOLO_CLAUDE?new Set(filas.filter(f=>f.sinDecidir&&f.hay>0).map(f=>f.p.id)).size:0;   // 09/10/2026
     sub.innerHTML=(uHay?`${uHay} u. en casa · ${aMandar} para mandar${nSinDec?` · <span style="color:var(--amber)">${nSinDec} sin decidir</span>`:''}`:'Sin nada contado todavía')
-      +(v.length?`<div style="color:var(--green);font-weight:700;margin-top:4px">📦 ${v.length} caja${v.length===1?'':'s'} para mandar ya · ${v.join(', ')}</div>`:'');
+      +(v.length?`<div style="color:var(--green);font-weight:700;margin-top:4px">📦 ${v.length} caja${v.length===1?'':'s'} para mandar ya · ${v.map(c=>`<span role="button" onclick="irACaja('${c}',event)" title="Ir a Armar caja de ${c}" style="text-decoration:underline;cursor:pointer">${c}</span>`).join(', ')}</div>`:'');
   }catch(e){}
 }
 function convieneCaja(filas,cuenta){
@@ -8258,7 +8310,7 @@ function renderCajasEnCamino(){
           onchange="setCajaTrack('${e.id}',${i},this.value);renderCajasEnCamino()">
         <button class="btn" style="padding:7px 12px;font-size:.66rem;${c.recibida?'background:transparent;border:1px solid var(--border2);color:var(--muted)':''}"
           onclick="marcarCajaRecibida('${e.id}',${i},${c.recibida?'false':'true'}).then(renderCajasEnCamino)">${c.recibida?'no llegó':'llegó'}</button>
-        ${c.recibida?'':uEnt>0?`<span style="font-size:.62rem;color:var(--muted)" title="Lo que ya entró a Full no puede volver a la oficina: se contaría dos veces">ya entraron ${uEnt} a Full: marcala como llegada (o esperá al robot)</span>`:`<button class="btn btn-del" style="padding:7px 12px;font-size:.66rem" title="Deshacer: las unidades vuelven a tu oficina" onclick="deshacerCaja('${e.id}',${i})">deshacer</button>`}
+        ${c.recibida?'':uEnt>0?`<span style="font-size:.62rem;color:var(--muted)" title="Lo que ya entró a Full no puede volver a la oficina: se contaría dos veces">marcala como llegada (o esperá: la marco yo, Claude, en la próxima vuelta)</span>`:`<button class="btn btn-del" style="padding:7px 12px;font-size:.66rem" title="Deshacer: las unidades vuelven a tu oficina" onclick="deshacerCaja('${e.id}',${i})">deshacer</button>`}
       </div>
       ${items.length&&!_ab?`<div onclick="cajaToggle('${_ck}')" style="font-size:.68rem;color:var(--blue,#38bdf8);cursor:pointer">▸ ver contenido · ${items.length} renglón${items.length===1?'':'es'} · ${uu} u.</div>`:items.length?`<div style="display:flex;flex-direction:column;gap:4px">${items.map(x=>{
         // Uno abajo del otro con las unidades y el código de la etiqueta de Full de esa cuenta (20/10/2026, pedido suyo:
@@ -9197,7 +9249,8 @@ function renderMonotributo(){
         </div>
       </div>`;
     }).join('');
-    const tip=best?`<div style="font-size:.64rem;color:var(--muted);margin:12px 2px 0;line-height:1.5">💡 La cuenta con <strong style="color:var(--text)">más lugar</strong> es <strong style="color:var(--text)">${MET_LABELS[best.a]}</strong> (quedan ${fmt(best.resta)}). Conviene mandarle ahí las ventas nuevas.</div>`:'';
+    // A qué cuenta mandar lo nuevo lo dice la tarjeta ⚖️ (tope de H) de Inicio y Facturas: acá no se repite (20/10/2026, etapa 7).
+    const tip='';void best;
     panelEl.innerHTML=`<div class="stitle" style="margin-top:0">Estado por cuenta <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;font-size:.62rem">· 🟢 con lugar · 🟡 cerca del tope · 🔴 pasada</span></div>`
       +`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">${cards}</div>${tip}`
       +`<div style="font-size:.6rem;color:var(--muted);margin:10px 2px 22px;line-height:1.5">El <strong>Facturado ML</strong> es idéntico a las <strong>"Ventas brutas"</strong> de ML: incluye canceladas y devueltas (para AFIP eso es facturado). Cargá el <strong>Facturado real AFIP</strong> si querés fijar el número oficial; si lo dejás vacío, usa el de ML. Topes oficiales vigentes desde ago-2026.</div>`;
@@ -9511,6 +9564,14 @@ let vpFilterCuenta=null;
 let vpFilterTag=null,vpTagsCero=false;
 function setVpTag(t){vpFilterTag=(vpFilterTag===t?null:t);renderVentaProd();}
 function vpTagsDeGrupo(grp){const s=new Set();for(const v of grp.items){if(!v.mla)continue;const e=estrategiaPromoAjuste(estrategiaDe(v.mla,Number(v.ts)||0),v.mla,v);if(e)s.add(e.t);}return s;}
+// Al llegar a Ventas desde "Ventas de hoy" o desde el aviso de una venta, se ve TODO: sin cuenta, sin tag y sin búsqueda
+// elegidos de antes (20/10/2026, etapa 7: si quedaba "Adriana" puesto, la venta del aviso podía no aparecer).
+function vpLimpiarFiltros(){
+  vpFilterCuenta=null;vpFilterTag=null;
+  const q=document.getElementById('vp-search');if(q)q.value='';
+  document.querySelectorAll('[id^="vpf-"]').forEach(b=>b.classList.remove('active'));
+  const all=document.getElementById('vpf-all');if(all)all.classList.add('active');
+}
 function setVpCuenta(cuenta,btn){
   vpFilterCuenta=cuenta;
   document.querySelectorAll('[id^="vpf-"]').forEach(b=>b.classList.remove('active'));
@@ -9539,11 +9600,41 @@ function vpNavPrev(){
   else{const el=document.getElementById('vp-year');el.value=parseInt(el.value)-1;}
   renderVentaProd();
 }
+// LA › NO PASA DE HOY (20/10/2026, etapa 7): antes llevaba a días, meses y años futuros, vacíos.
+// Devuelve el valor siguiente (día 'AAAA-MM-DD', semana = un día de esa semana, mes 'AAAA-MM', año) o null si ya es hoy.
+// En la semana, si saltar 7 días se pasa de hoy, va a hoy (la semana actual).
+function _navSigTope(tipo,val,hoy){
+  hoy=hoy||todayStr();
+  if(tipo==='dia'||tipo==='semana'){
+    if(!val||val>=hoy)return null;
+    const d=new Date(val+'T12:00:00');d.setDate(d.getDate()+(tipo==='semana'?7:1));
+    let n=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    if(n>hoy)n=hoy;
+    if(tipo==='semana'){const lun=x=>{const t=new Date(x+'T12:00:00');t.setDate(t.getDate()-((t.getDay()+6)%7));return t.toISOString().split('T')[0];};if(lun(n)===lun(val))return null;}
+    return n;
+  }
+  if(tipo==='mes'){
+    const[y,m]=String(val||'').split('-').map(x=>parseInt(x,10));if(!y||!m)return null;
+    const d=new Date(y,m,1);const n=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    return n>hoy.slice(0,7)?null:n;
+  }
+  if(tipo==='anio'){const y=parseInt(val,10);if(!y)return null;return (y+1)>parseInt(hoy.slice(0,4),10)?null:y+1;}
+  return null;
+}
+// La › se ve apagada cuando ya estás en hoy (este mes, este año).
+function _navNextPintar(btn,sig){if(!btn)return;const off=sig==null;btn.disabled=off;btn.style.opacity=off?'.35':'';btn.style.cursor=off?'default':'';btn.title=off?'Ya estás en hoy: no hay ventas para adelante':'';}
+function _vpNextValor(){
+  if(vpPeriod==='semana'||vpPeriod==='dia')return _navSigTope(vpPeriod,document.getElementById('vp-date')?.value);
+  if(vpPeriod==='mes')return _navSigTope('mes',document.getElementById('vp-month')?.value);
+  if(vpPeriod==='anio')return _navSigTope('anio',document.getElementById('vp-year')?.value);
+  return null;
+}
+function _vpNextApagar(){try{_navNextPintar(document.getElementById('vp-nav-next'),_vpNextValor());}catch(e){}}
 function vpNavNext(){
-  if(vpPeriod==='semana'){const el=document.getElementById('vp-date');const d=new Date(el.value+'T12:00:00');d.setDate(d.getDate()+7);el.value=d.toISOString().split('T')[0];}
-  else if(vpPeriod==='dia'){const el=document.getElementById('vp-date');const d=new Date(el.value+'T12:00:00');d.setDate(d.getDate()+1);el.value=d.toISOString().split('T')[0];}
-  else if(vpPeriod==='mes'){const el=document.getElementById('vp-month');const[y,m]=el.value.split('-');const d=new Date(parseInt(y),parseInt(m),1);el.value=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
-  else{const el=document.getElementById('vp-year');el.value=parseInt(el.value)+1;}
+  const n=_vpNextValor();if(n==null){_vpNextApagar();return;}
+  if(vpPeriod==='semana'||vpPeriod==='dia')document.getElementById('vp-date').value=n;
+  else if(vpPeriod==='mes')document.getElementById('vp-month').value=n;
+  else document.getElementById('vp-year').value=n;
   renderVentaProd();
 }
 function vpGetYM(){
@@ -9916,7 +10007,7 @@ async function lineaAbrir(prodId,ev,varSel){
   if(ev&&ev.stopPropagation)ev.stopPropagation();
   const p=prodById(prodId); if(!p)return; _lineaVar=varSel?String(varSel):'';
   let m=document.getElementById('linea-modal');
-  if(!m){m=document.createElement('div');m.id='linea-modal';m.style.cssText='position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.6);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:16px';
+  if(!m){m=document.createElement('div');m.id='linea-modal';m.style.cssText='position:fixed;inset:0;z-index:9200;background:rgba(0,0,0,.6);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:16px';
     m.onclick=e=>{if(e.target===m)m.remove();};document.body.appendChild(m);}
   _lineaAplicarGiro(m);
   m.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;max-width:1100px;width:100%;padding:14px 16px;margin-top:20px"><div style="font-size:.8rem;color:var(--muted)">📈 Cargando la línea de tiempo de <b>${p.name}</b>…</div></div>`;
@@ -10480,7 +10571,7 @@ function _ltMotAuto(a){const m={margen:'rescate',venta:'rescate',costo:'rescate'
 async function lineaTodoAbrir(ev){
   if(ev&&ev.stopPropagation)ev.stopPropagation();
   let m=document.getElementById('linea-modal');
-  if(!m){m=document.createElement('div');m.id='linea-modal';m.style.cssText='position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.6);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:16px';
+  if(!m){m=document.createElement('div');m.id='linea-modal';m.style.cssText='position:fixed;inset:0;z-index:9200;background:rgba(0,0,0,.6);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:16px';
     m.onclick=e=>{if(e.target===m)m.remove();};document.body.appendChild(m);}
   _lineaAplicarGiro(m);
   m.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;max-width:1100px;width:100%;padding:14px 16px;margin-top:20px"><div style="font-size:.8rem;color:var(--muted)">📈 Cargando la línea de tiempo de todos los productos…</div></div>`;
@@ -10748,7 +10839,7 @@ async function cerebroAbrir(el,ev){
   let mem={};try{const sn=await db.ref('cyc/cerebro').once('value');mem=sn.val()||{};}catch(e){mem=null;}
   const L=state.mllinks||{},AP=state.autoprecio||{};
   const par=t=>`<p style="margin:8px 0 0">${t}</p>`;
-  let h=`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><b style="font-size:.95rem">${tit}</b><button class="btn" onclick="document.getElementById('cerebro-modal').remove()">Cerrar</button></div>`;
+  let h=`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;position:sticky;top:0;z-index:2;background:var(--surface);padding:6px 0;border-bottom:1px solid var(--border)"><b style="font-size:.95rem">${tit}</b><button class="btn" onclick="document.getElementById('cerebro-modal').remove()">Cerrar</button></div>`;
   // SÓLO LO QUE ESCRIBIÓ CLAUDE (08/10/2026, él: *"antes de ver uno escrito por el robot automático prefiero que no
   // aparezca nada, solo lo tuyo"*): en modo Claude no sale ningún texto armado solo (ni "la revisé el…", ni el %
   // de hoy, ni la cuenta del pedido): sólo mis notas, con su fecha. Si no escribí nada, lo dice y nada más.
@@ -10850,7 +10941,7 @@ async function fichaAbrir(mla,ev){
   const sec=(t,h)=>`<div style="margin-top:14px"><div style="font-weight:700;font-size:.85rem;margin-bottom:4px">${t}</div>${h}</div>`;
   const tb=(cab,filas)=>`<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;font-size:.72rem"><tr>${cab.map(c=>`<th style="text-align:left;padding:3px 6px;border-bottom:1px solid var(--border2);color:var(--muted);white-space:nowrap">${c}</th>`).join('')}</tr>${filas.map(f=>`<tr>${f.map(c=>`<td style="padding:3px 6px;border-bottom:1px solid var(--border);vertical-align:top">${c}</td>`).join('')}</tr>`).join('')}</table></div>`;
   const tit=`${esc(p.name||'')}${e.variant?' · 🎨 '+esc(e.variant):''} · ${esc(e.cuenta||'')}`;
-  let h=`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><b style="font-size:.95rem">📋 Ficha · ${tit}</b><div style="color:var(--muted)">${esc(mla)} · "${esc(e.title||'')}"</div></div><div style="display:flex;gap:6px;flex-wrap:wrap">${e.prodId?`<button class="btn" onclick="lineaAbrir('${e.prodId}',event,${JSON.stringify(e.variant||'').replace(/"/g,'&quot;')})">📈 Gráfico</button>`:''}<button class="btn" onclick="document.getElementById('ficha-modal').remove()">Cerrar</button></div></div>`;
+  let h=`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;position:sticky;top:0;z-index:2;background:var(--surface);padding:6px 0;border-bottom:1px solid var(--border)"><div><b style="font-size:.95rem">📋 Ficha · ${tit}</b><div style="color:var(--muted)">${esc(mla)} · "${esc(e.title||'')}"</div></div><div style="display:flex;gap:6px;flex-wrap:wrap">${e.prodId?`<button class="btn" onclick="lineaAbrir('${e.prodId}',event,${JSON.stringify(e.variant||'').replace(/"/g,'&quot;')})">📈 Gráfico</button>`:''}<button class="btn" onclick="document.getElementById('ficha-modal').remove()">Cerrar</button></div></div>`;
   if(falla)h+=`<p style="color:var(--amber)">No pude leer ${falla}. Probá de nuevo en un rato.</p>`;
   if(F){const r=F.res||{};
     // 20/10/2026 · etapa 4: la noche que la armó no pudo leer algo (notas, supervisor, estrategias…): se dice arriba.
@@ -10947,7 +11038,7 @@ function vpCerebroModal(titulo,frases){
   if(!m){m=document.createElement('div');m.id='cerebro-modal';m.style.cssText='position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.6);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:16px';
     m.onclick=e=>{if(e.target===m)m.remove();};document.body.appendChild(m);}
   m.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;max-width:560px;width:100%;padding:14px 16px;margin-top:20px;font-size:.85rem;line-height:1.5">
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><b style="font-size:.95rem">🧠 ${_cerEsc(titulo)}</b><button class="btn" onclick="document.getElementById('cerebro-modal').remove()">Cerrar</button></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;position:sticky;top:0;z-index:2;background:var(--surface);padding:6px 0;border-bottom:1px solid var(--border)"><b style="font-size:.95rem">🧠 ${_cerEsc(titulo)}</b><button class="btn" onclick="document.getElementById('cerebro-modal').remove()">Cerrar</button></div>
     ${frases.map(t=>`<p style="margin:8px 0 0">${_cerEsc(t)}</p>`).join('')}</div>`;
 }
 // "🧠 QUÉ PASÓ" SÓLO CUANDO FUE IMPORTANTE (08/10/2026, él: *"en el cerebro de ventas escribí algo si fue importante en el
@@ -10997,7 +11088,7 @@ function prodDeVenta(v){return (v&&v.prodId)?(prodById(v.prodId)||prodByName(v&&
 // *"quiero que cada precio tenga un tag (…) y que al venderse ese producto en ventas x producto diga qué tag tiene"*. La pone
 // Claude con cada precio (`cyc/estrategia/<MLA>/<ts>`, historia). Cada venta muestra la última estrategia ANTERIOR a esa venta,
 // así una venta vieja dice la estrategia que tenía ese día. MISMA LISTA EN sync.mjs (ESTRATEGIAS).
-const ESTRATEGIA_UI={sindecidir:['⚪','sin estrategia','#64748b','Todavía sin estrategia: el cerebro la tiene que decidir (buscar techo, escasez, sobra…). Desde el 19/10 no existe un precio "base": todo precio tiene su estrategia.'],agotado:['⏸️','sin stock','#94a3b8','Sin stock en Full: el precio espera la reposición.'],escasez:['🔥','escasez','#f97316','Se estira el stock hasta que llegue la próxima caja: precio alto para que dure.'],sinrepo:['⏳','sin reposición','#eab308','No se consigue: el precio va para que el stock se venda en 4 meses al máximo posible.'],techo:['📈','buscando techo','#22c55e','Prueba de suba: se busca el precio que más plata por día deja.'],liquidando:['📉','liquidando','#ef4444','Se remata a propósito (sobra stock, stock antiguo o no vende): el % bajo es buscado.'],caja:['🥊','ganar la caja','#a78bfa','Bajado para ganar la caja de compra de ML.'],promo:['🏷️','promo','#c084fc','En una promo de Mercado Libre donde ML también pone plata.'],descuento:['💸','descuento','#e879f9','Descuento puesto sólo por nosotros (precio tachado): ML no pone nada.'],fecha:['🎁','fecha especial','#f472b6','Precio pensado para una fecha (Día de la Madre, Navidad…).'],excepcion:['🛡️','excepción','#94a3b8','Abajo del 25% a propósito (barrera de $33.000 u otro motivo explicado en el 🧠).'],sobra:['📦','sobra stock','#fb923c','Hay más stock del que se vende antes de que ML cobre stock antiguo: se baja (aunque quede abajo del 25%) para que salga lo que sobra, y vuelve al precio normal cuando queda lo justo. El cerebro se juzga contra no hacer nada.'],nuevo:['🆕','lanzamiento','#2dd4bf','Producto nuevo: arranca ~20% arriba del precio que se cree correcto y queda 7 días ahí de verdad. Si no vende, cada bajada va como descuento con el precio de lanzamiento tachado (real porque existió).'],prueba:['🧪','prueba tachado','#818cf8','Prueba de 2 semanas (21/10 al 04/11): 10 publicaciones bajan 5%, 5 con precio tachado y 5 con precio liso, para saber si el tachado vende más.'],techook:['🏔️','techo encontrado','#16a34a','La suba siguiente no rindió: queda en el último precio que más plata por día dejó. Se vuelve a probar si cambia la competencia o a los 30 días.'],bajando:['🪜','bajando','#fbbf24','Bajando en escalera, midiendo cada escalón: la escasez o la prueba de techo no vendió a ese precio y se baja de a poco, nunca abajo del último que vendía.'],volviendo:['↘️','volviendo al normal','#38bdf8','Llegó la reposición, pasó la fecha o volvió a conseguirse: el precio vuelve del alto al normal buscando el punto medio que más deja.'],desobra:['↗️','volviendo de sobra','#86efac','Ya no sobra stock: el precio vuelve a subir al normal.'],remate:['🧨','remate total','#dc2626','Rematado a cualquier precio (abajo de 0%) porque lo pediste vos.'],gemela:['💳','gemela con cuotas','#a855f7','Premium gemela: la misma publicación con cuotas sin interés, al precio que deja la misma plata neta que la Clásica. Comparte el stock con la Clásica.']};
+const ESTRATEGIA_UI={sindecidir:['⚪','sin estrategia','#64748b','Todavía sin estrategia: el cerebro la tiene que decidir (buscar techo, escasez, sobra…). Desde el 19/10 no existe un precio "base": todo precio tiene su estrategia.'],agotado:['⏸️','sin stock','#94a3b8','Sin stock en Full: el precio espera la reposición.'],escasez:['🔥','escasez','#f97316','Se estira el stock hasta que llegue la próxima caja: precio alto para que dure.'],sinrepo:['⏳','sin reposición','#eab308','No se consigue: el precio va para que el stock se venda en 4 meses al máximo posible.'],techo:['📈','buscando techo','#22c55e','Prueba de suba: se busca el precio que más plata por día deja.'],liquidando:['📉','liquidando','#ef4444','Se remata a propósito (sobra stock, stock antiguo o no vende): el % bajo es buscado.'],caja:['🥊','ganar la caja','#a78bfa','Bajado para ganar la caja de compra de ML.'],promo:['🏷️','promo','#c084fc','En una promo de Mercado Libre donde ML también pone plata.'],descuento:['💸','descuento','#e879f9','Descuento puesto sólo por nosotros (precio tachado): ML no pone nada.'],fecha:['🎁','fecha especial','#f472b6','Precio pensado para una fecha (Día de la Madre, Navidad…).'],excepcion:['🛡️','excepción','#94a3b8','Abajo del 25% a propósito (barrera de $33.000 u otro motivo explicado en el 🧠).'],sobra:['📦','sobra stock','#fb923c','Hay más stock del que se vende antes de que ML cobre stock antiguo: se baja (aunque quede abajo del 25%) para que salga lo que sobra, y vuelve al precio normal cuando queda lo justo. El cerebro se juzga contra no hacer nada.'],nuevo:['🆕','lanzamiento','#2dd4bf','Producto nuevo: arranca ~20% arriba del precio que se cree correcto y queda 7 días ahí de verdad. Si no vende, cada bajada va como descuento con el precio de lanzamiento tachado (real porque existió).'],prueba:['🧪','prueba','#818cf8','Precio de prueba: se cambió para medir cómo responde. (La prueba del tachado del 21/10 se canceló el 20/10: no se baja algo que vende bien sólo para medir.)'],techook:['🏔️','techo encontrado','#16a34a','La suba siguiente no rindió: queda en el último precio que más plata por día dejó. Se vuelve a probar si cambia la competencia o a los 30 días.'],bajando:['🪜','bajando','#fbbf24','Bajando en escalera, midiendo cada escalón: la escasez o la prueba de techo no vendió a ese precio y se baja de a poco, nunca abajo del último que vendía.'],volviendo:['↘️','volviendo al normal','#38bdf8','Llegó la reposición, pasó la fecha o volvió a conseguirse: el precio vuelve del alto al normal buscando el punto medio que más deja.'],desobra:['↗️','volviendo de sobra','#86efac','Ya no sobra stock: el precio vuelve a subir al normal.'],remate:['🧨','remate total','#dc2626','Rematado a cualquier precio (abajo de 0%) porque lo pediste vos.'],gemela:['💳','gemela con cuotas','#a855f7','Premium gemela: la misma publicación con cuotas sin interés, al precio que deja la misma plata neta que la Clásica. Comparte el stock con la Clásica.']};
 // 19/10/2026, eligió 1a 2a 3a: "↩️ corrección" ya no existe. Lo viejo anotado así toma el nombre del pasaje según el tag ANTERIOR
 // (misma tabla que `pasajeDe` del robot), y cada chip dice "de X" cuando la estrategia anterior era otra.
 function estrategiaPasaje(prev){if(prev==='techo'||prev==='techook')return 'techook';if(['escasez','sinrepo','fecha','bajando'].includes(prev))return 'volviendo';if(['sobra','liquidando','remate'].includes(prev))return 'desobra';return 'volviendo';}
@@ -11816,6 +11907,7 @@ async function delVentaProd(id){
 function renderVentaProd(){
   const dEl=document.getElementById('vp-date');if(!dEl)return;
   vpDate=dEl.value||vpDate||todayStr();
+  _vpNextApagar();
   try{vpCerebroBtnSync();}catch(e){}
   // etiqueta período activo
   const sk=vpScopeKeys();
@@ -11852,7 +11944,8 @@ function renderVentaProd(){
       // Ahora el buscador mira los DOS: el número guardado y el id de la orden (que vive adentro de
       // saleId). Barrido con `faltanventas`: no falta ninguna venta, así que el problema era éste.
       const _numsDe=(v)=>[(v.numVenta||''),String(v.saleId||'').replace(/^s/,''),String(v.id||'').replace(/^v/,'').replace(/_\d+$/,'')];
-      const matchQ=!vpQ||grp.items.some(v=>nombreDeVenta(v).toLowerCase().includes(vpQ)||_numsDe(v).some(n=>n&&n.toLowerCase().includes(vpQ)));
+      // Además del nombre: el color de esa venta, su publicación (MLA) y el título de ML (búsqueda sin tildes, palabra por palabra).
+      const matchQ=!vpQ||grp.items.some(v=>buscaCoincide(vpQ,nombreDeVenta(v),v.variante,v.mla,((state.mllinks||{})[v.mla]||{}).title)||_numsDe(v).some(n=>n&&n.toLowerCase().includes(vpQ)));
       const matchC=!vpFilterCuenta||grp.items[0].cuenta===vpFilterCuenta;
       return matchQ&&matchC;
     });
@@ -12030,7 +12123,7 @@ function renderVentaProd(){
       const _cambios=grp.items.map(v=>isCancelled?'':cambioVentaHTML(v,Number(v.ts)||0));
       const _hayCambio=_cambios.some(x=>x);
       const _pill=isCancelled?'':(gpct===null?`<span class="db nc" style="font-size:.66rem" title="${_sinFicha?'Esta venta no está enganchada a ninguna ficha: el panel no sabe qué producto es ni cuánto costó. Se arregla vinculando la publicación.':'La ficha no tiene costo cargado.'}">${_sinFicha?'sin ficha':'sin costo'}</span>`:`<span class="db ${_est?'nc':''}" style="font-size:.72rem;padding:3px 9px;${_est?'color:var(--muted)':_pillSt}">${_est?'≈ ':''}${gpct>=0?'+':''}${gpct.toFixed(0)}%</span>`);
-      const _items=grp.items.map((v,i)=>`<div style="font-size:.8rem;line-height:1.35;${isCancelled?'opacity:.45;text-decoration:line-through':''}">${fotoVentaHTML(v,38)}<span style="color:var(--muted)">${v.qty}×</span> ${nombreDeVenta(v)}${estrategiaVentaHTML(v)}${v.variante?` <span style="padding:1px 6px;border-radius:4px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.66rem;white-space:nowrap">${v.variante}</span>`:''}${_cambios[i]?` <span style="font-size:.66rem" title="Cambió de precio antes de esta venta · mirá el detalle">${(_cambios[i].match(/<b style="color:[^"]*;font-size:\.8rem" title="[^"]*">[▲▼]<\/b>/)||[''])[0].replace('font-size:.8rem','font-size:.66rem')||(_cambios[i].includes('▲')?'<b style="color:var(--green)">▲</b>':'<b style="color:var(--red)">▼</b>')}</span>`:''}${(()=>{const _pp=prodDeVenta(v);return _pp?' '+cerebroBtn(_pp.id,{mla:v.mla,ctx:'venta'}):'';})()}</div>`).join('');
+      const _items=grp.items.map((v,i)=>`<div style="font-size:.8rem;line-height:1.35;${isCancelled?'opacity:.45;text-decoration:line-through':''}">${fotoVentaHTML(v,38)}<span style="color:var(--muted)">${v.qty}×</span> ${nombreDeVenta(v)}${estrategiaVentaHTML(v)}${v.variante?` <span style="padding:1px 6px;border-radius:4px;background:rgba(124,58,237,.12);color:#a78bfa;font-size:.66rem;white-space:nowrap">${v.variante}</span>`:''}${_cambios[i]?` <span style="font-size:.66rem" title="Cambió de precio antes de esta venta · mirá el detalle">${(_cambios[i].match(/<b style="color:[^"]*;font-size:\.8rem" title="[^"]*">[▲▼]<\/b>/)||[''])[0].replace('font-size:.8rem','font-size:.66rem')||(_cambios[i].includes('▲')?'<b style="color:var(--green)">▲</b>':'<b style="color:var(--red)">▼</b>')}</span>`:''}</div>`).join('');   // el 🧠 de cada producto va en el detalle (antes salía dos veces en el teléfono)
       // La etiqueta del rescate al vender era del robot viejo, que ya no toca precios: no se muestra más (09/10/2026, él:
       // "sacá lo de los precios automáticos están apagados, además por qué sale eso si ya estás haciendo todo vos").
       rescLabel='';
@@ -12150,7 +12243,7 @@ function renderVentaProd(){
     ${mBruto>0?`<div class="met-kpi c5"><div class="mk-lbl">Total bruto</div><div class="mk-val">${fmt(mBruto)}</div><div class="mk-sub">precio de venta</div></div>`:''}
     <div class="met-kpi c4"><div class="mk-lbl">Neto</div><div class="mk-val">${fmt(mNeto)}</div><div class="mk-sub">lo que queda</div></div>
     <div class="met-kpi c2"><div class="mk-lbl">Ganancia</div><div class="mk-val" style="color:${gMes>=0?'var(--green)':'var(--red)'}">${fmt(gMes)}</div><div class="mk-sub">neto − costo${ptsDiaHtml}${sinCostoU?`<br><span style="color:var(--amber,#f59e0b)" title="Ventas sin ficha o con la ficha en costo 0: cuentan en lo facturado pero no en la ganancia. Cargá el costo en la ficha y entran solas.">⚠️ ${sinCostoU} u. sin costo (${fmt(sinCostoTot)}) no suman</span>`:''}</div></div>
-    <div class="met-kpi c1"><div class="mk-lbl">% ganancia</div><div class="mk-val" style="color:${pctColor(pctMes)}">${pctMes!==null?(pctMes>=0?'+':'')+pctMes.toFixed(1)+'%':'—'}</div><div class="mk-sub">piso ${parseFloat((state.mlconfig||{}).minPct)||22}% · meta ${parseFloat((state.mlconfig||{}).targetPct)||25}%</div></div>`;
+    <div class="met-kpi c1"><div class="mk-lbl">% ganancia</div><div class="mk-val" style="color:${pctColor(pctMes)}">${pctMes!==null?(pctMes>=0?'+':'')+pctMes.toFixed(1)+'%':'—'}</div><div class="mk-sub">objetivo ${_pctPisoMeta().meta}%</div></div>`;
   renderVpScopeBlocks();
   renderVPRanking();
 }
@@ -13696,18 +13789,11 @@ function updatePedidosCosto(){
   const tc=curTC();
   const allPeds=[...(state.pedidos||[]),...(state.pedidos_py||[])];
   if(!allPeds.length){el.textContent='Sin pedidos pendientes';return;}
-  let totalUSD=0;
-  allPeds.forEach(ped=>{
-    const est=ped.estado||'pendiente';
-    if(est==='suficiente')return;
-    const p=state.products.find(x=>x.id===ped.prodId);
-    if(!p)return;
-    totalUSD+=(costUSDof(p)||0)*(ped.cantidad||1);
-  });
-  const totalARS=tc?totalUSD*tc:0;
-  el.innerHTML=tc
-    ?`Costo estimado: <strong style="color:var(--text)">US$${totalUSD.toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:0})}</strong> · <strong style="color:var(--text)">${fmt(Math.round(totalARS))}</strong>`
-    :`Costo estimado: <strong style="color:var(--text)">US$${totalUSD.toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:0})}</strong>`;
+  // La MISMA cuenta que el "Falta reponer" de cada solapa de Pedidos (_pedsCostoReponer), con todos los pedidos juntos.
+  const c=_pedsCostoReponer(allPeds);const totalUSD=c.usd;void tc;
+  el.innerHTML=c.ars
+    ?`Falta reponer (todo junto): <strong style="color:var(--text)">US$${totalUSD.toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:0})}</strong> · <strong style="color:var(--text)">${fmt(c.ars)}</strong>`
+    :`Falta reponer (todo junto): <strong style="color:var(--text)">US$${totalUSD.toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:0})}</strong>`;
 }
 // Plata que falta para reponer el stock de una lista de pedidos: costo base (US$) × unidades
 // pendientes (NO cuenta los marcados "suficiente"). Devuelve {usd, ars}.
@@ -16648,6 +16734,8 @@ async function delPedido(id){
   // Sin producto interno no hay con qué frenar al robot; se borra y listo (pedido suelto a mano).
   const pid=p?p.prodId:null;
   if(!pid){
+    // Sin ficha no pasa por la Papelera: se borra para siempre, así que acá sí se pregunta.
+    if(!confirm('¿Borrar el pedido "'+(p?p.producto:id)+'"? No está pegado a ninguna ficha: no se puede devolver.'))return;
     await fbDel(path+id);
     await log('Eliminó pedido: '+(p?p.producto:id));
     toast('Eliminado','info');
@@ -16662,7 +16750,7 @@ async function delPedido(id){
   await db.ref('cyc').update({['pedidos_papelera/'+pid]:entry,[path+id]:null});
   await log('Mandó a la papelera: '+(p.producto||id));
   renderPedidos();updatePedidosCosto();
-  toast('A la papelera 🗑️','info');
+  toastDeshacer('🗑️ '+(p.producto||'Pedido')+' a la papelera.',()=>restaurarPedido(pid));
 }
 
 // Devuelve un producto de la papelera. El robot lo vuelve a tener en cuenta en la próxima pasada.
@@ -16684,7 +16772,7 @@ async function vaciarPapelera(){
   // "eliminado para siempre" no querría decir nada.
   const ids=Object.entries(state.papelera||{}).filter(([,x])=>!x.definitivo).map(([pid])=>pid);
   const n=ids.length;if(!n)return;
-  if(!confirm(`Devolver los ${n} productos que todavía están a tiempo?\n\nNo se borra nada: vuelven a aparecer en Pedidos y a contar en el Puntaje del mes.`))return;
+  if(!confirm(`Devolver los ${n} productos que todavía están a tiempo?\n\nNo se borra nada: vuelven a aparecer en Pedidos y a contar en el stock en riesgo.`))return;
   const upd={};
   for(const pid of ids){
     const e=state.papelera[pid];
@@ -17381,9 +17469,12 @@ function rotEnStockHtml(r){
   // un producto se agote y lo repongas, esa fecha queda registrada de verdad.
   if(e.aprox)
     return `<span style="color:var(--muted)" title="Todavía no se sabe. Cuando el robot empezó a llevar este registro este producto YA tenía stock, así que no hay forma de saber cuándo entró (lo único cierto es que está desde hace al menos ${d} día(s), y puede ser mucho más). La fecha real va a aparecer sola la próxima vez que se agote y lo repongas.">—</span>`;
-  if(d<ROT_RECIEN_DIAS)
-    return `<span style="color:var(--blue,#60a5fa);font-weight:700" title="Llegó hace ${d} día(s), y el robot lo vio entrar, así que la fecha es exacta. RECIÉN LLEGÓ: que todavía no haya vendido no significa nada y no es motivo para tocarle el precio.">🆕 ${d}d</span>`;
-  const color=d>=60?'var(--red)':d>=30?'var(--amber)':'var(--text)';
+  // 🆕 con la MISMA gracia que el estado (ROT_GRACIA_DIAS, 30 d) y el rojo cuando empieza a pagar almacenamiento
+  // (almacDiasDe: 120 d lo chico, 60 lo grande), ámbar 30 días antes (20/10/2026, etapa 7: antes eran 10/30/60 fijos).
+  if(d<ROT_GRACIA_DIAS)
+    return `<span style="color:var(--blue,#60a5fa);font-weight:700" title="Llegó hace ${d} día(s), y el robot lo vio entrar, así que la fecha es exacta. RECIÉN LLEGÓ (menos de ${ROT_GRACIA_DIAS} días): que todavía no haya vendido no significa nada y no es motivo para tocarle el precio.">🆕 ${d}d</span>`;
+  const _ad=r.ad||(r.pid?almacDiasDe(prodById(r.pid)):ALMAC_DIAS);
+  const color=d>=_ad?'var(--red)':d>=_ad-30?'var(--amber)':'var(--text)';
   return `<span style="color:${color}" title="Entró hace ${d} día(s) y el robot lo vio entrar, así que la fecha es exacta. Junto con los días sin vender es lo que dice si de verdad está parada: acá ya hubo tiempo de sobra para venderla.">${d}d</span>`;
 }
 // ── ¿EL MARGEN QUE MUESTRO ES CONFIABLE? ─────────────────────────────────────────────
@@ -17500,7 +17591,7 @@ function rotMargenHtml(r){
   // se ve igual que uno que se hundió solo — y el remedio es el contrario: a éste se lo deja en paz,
   // al otro hay que subirlo. Va en la misma columna y no en una aparte porque es una aclaración
   // SOBRE ese número, no un dato nuevo.
-  if(r.liq2)pie+=`<div title="Vos lo bajaste a mano para liquidarlo${r.liq2.fecha?' el '+r.liq2.fecha.split('-').reverse().join('/'):''}. El robot NO le va a subir el precio aunque la venta quede abajo del piso. La marca se saca sola cuando se acabe el stock." style="font-size:.6rem;color:#a78bfa;margin-top:2px;white-space:nowrap">🔒 liquidando a propósito</div>`;
+  if(r.liq2)pie+=`<div title="Vos lo bajaste a mano para liquidarlo${r.liq2.fecha?' el '+r.liq2.fecha.split('-').reverse().join('/'):''}. No le subo el precio aunque la venta quede abajo del 25%. La marca se saca sola cuando se acabe el stock." style="font-size:.6rem;color:#a78bfa;margin-top:2px;white-space:nowrap">🔒 liquidando a propósito</div>`;
   // EN PROMO (15/10/2026, él con el Galaxy A07: "¿por qué queda en 80%?"): el % de arriba es al precio de LISTA (el tachado);
   // si le puse una promo, abajo va a cuánto se vende de verdad y el % a ese precio, que es el que importa.
   if(r.promo)pie+=`<div title="Está en una promo que puse yo${r.promo.hasta?' hasta el '+r.promo.hasta:''}: el comprador ve ${fmt(r.margenPrecio)} tachado y paga ${fmt(r.promo.precio)}. El % de arriba es al precio tachado." style="font-size:.62rem;color:#a78bfa;margin-top:2px;white-space:nowrap">🏷️ en promo a ${fmt(r.promo.precio)}${r.promo.margen!=null?` · <b style="color:${pctColor(r.promo.margen)}">${Math.round(r.promo.margen)}%</b>`:''}</div>`;
@@ -17937,7 +18028,7 @@ function renderRotacionStock(){
   if(rotSoloDudoso)rows=rows.filter(r=>r.margenDudoso);
   const _q=normTxt(document.getElementById('rot-search')?.value||'');
   const _todas=rows.length;
-  if(_q)rows=rows.filter(r=>normTxt(r.name).includes(_q));
+  if(_q)rows=rows.filter(r=>buscaCoincide(_q,r.name,textosDeProd(prodById(r.pid))));
   if(!rows.length){
     tbody.innerHTML=`<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:18px">`
       +(_q?`Ningún producto con “${document.getElementById('rot-search').value}”${rotSoloDudoso?' entre los que no están medidos':''} (de ${_todas}).`
@@ -18016,7 +18107,7 @@ function renderRotacionStock(){
         <td class="rc-s" data-l="Rotación" style="text-align:right;font-family:'DM Mono',monospace;font-size:.72rem">${st>0?rotN.toFixed(2):'—'}</td>
         <td class="rc-s" data-l="Días sin vender" style="text-align:right;font-size:.72rem">${rotDiasSinVenderHtml(dsv,st<=0)}</td>
         <td class="rc-g" data-l="Margen hoy" style="text-align:right">${mgV}</td>
-        <td class="rc-s" data-l="En stock hace" style="text-align:right;font-size:.66rem">${rotEnStockHtml({diasEnStock:diasEnStockVarDe(p,v),diasCaja:null,diasSinStock:diasSinStockDe(LOCS.map(l=>[getQV(p.id,l,v),invKeyV(p.id,l,v)]))})}</td>
+        <td class="rc-s" data-l="En stock hace" style="text-align:right;font-size:.66rem">${rotEnStockHtml({pid:p.id,diasEnStock:diasEnStockVarDe(p,v),diasCaja:null,diasSinStock:diasSinStockDe(LOCS.map(l=>[getQV(p.id,l,v),invKeyV(p.id,l,v)]))})}</td>
         <td class="rc-g" data-l="Caja ML" style="text-align:right;font-size:.72rem">${cjHtml}</td>
         <td class="rc-g" data-l="Estado" style="font-size:.72rem">${estTxt}</td>
       </tr>`;
@@ -18148,7 +18239,7 @@ function _clMotH(p){
 function cuentaPedidoHTML(p){
   // Lo vendido en remate no pide reponer (ver ventaEnRemate): se dice cuánto quedó afuera, así no
   // se lee como que el producto vende menos sin motivo.
-  let rem=(p.cRemate||0)>0?`<div style="flex-basis:100%;font-size:.6rem;color:var(--muted);margin-top:2px">🔒 No cuento <strong style="color:var(--text)">${fmtN(p.cRemate)}</strong> u. vendidas abajo del piso (${parseFloat((state.mlconfig||{}).minPct)||30}%): lo que se vende rematado no se vuelve a comprar.${p.cRN?` Uso lo que vende sin remate: <strong style="color:var(--text)">${fmtN(p.cRN.mes)}/mes</strong>${p.cRN.f?' (todavía con pocos días medidos)':''}.`:''}</div>`:'';
+  let rem=(p.cRemate||0)>0?`<div style="flex-basis:100%;font-size:.6rem;color:var(--muted);margin-top:2px">🔒 No cuento <strong style="color:var(--text)">${fmtN(p.cRemate)}</strong> u. que se vendieron rematadas: lo que se vende rematado no se vuelve a comprar.${p.cRN?` Uso lo que vende sin remate: <strong style="color:var(--text)">${fmtN(p.cRN.mes)}/mes</strong>${p.cRN.f?' (todavía con pocos días medidos)':''}.`:''}</div>`:'';
   const regH=p.cReg?`<div style="flex-basis:100%;font-size:.6rem;color:var(--amber);margin-top:2px">🔀 ${p.cReg.txt.join(' · ')}. Por eso el ritmo que uso es <strong style="color:var(--text)">${fmtN(p.cReg.mes)}/mes</strong> (lo de antes del cambio ya no vale).</div>`:'';
   rem=rem+regH;
   // Lo que decidió Claude va arriba de todo: es el número que manda (la cuenta automática sigue abajo, para comparar).
@@ -18792,14 +18883,19 @@ function _pedidoItemHtml(p,opts){
       ${_tanque}${(()=>{const n=_tanque?String(p.nota||'').replace(/ · ~\d+d cubiertos/,'').replace(/ · 📦[\s\S]*$/,''):p.nota;return n?`<span class="pi-nota">${n}</span>`:'<span class="pi-nota" style="flex:0"></span>';})()}
       ${_enCam?'':riesgoBadge}
       ${(()=>{const _r=pedSinSentido(p);return _r?`<span class="pi-var-toggle" style="background:rgba(245,158,11,.14);color:var(--amber);border-color:rgba(245,158,11,.35);cursor:default" title="${_r.det.join(' · ').replace(/"/g,'&quot;')}">⚠️ este renglón no cierra${_r.n>1?' ('+_r.n+')':''}</span>`:'';})()}
-      ${origenBtn}
-      ${_grupoBsasBtn(_prod)}
+      ${varsSorted?origenBtn+_grupoBsasBtn(_prod):''}
       ${cuentaPedidoHTML(p)}
       ${opts.verdDet?`<div style="flex-basis:100%;font-size:.62rem;line-height:1.5;color:var(--muted)">🇵🇾 ${opts.verdDet}</div>`:''}${_prod?maxCompraHTML(_prod):''}
+      ${(()=>{
+        // Lo que cambia o saca el pedido (origen, solapa, proveedor, estado, fecha y la ✕). Con colores ya va adentro de
+        // "más datos"; sin colores va en su propio desplegable para que no se toque sin querer (20/10/2026, etapa 7).
+        const _cfg=`${varsSorted?'':origenBtn+_grupoBsasBtn(_prod)}
       <button class="pi-prov ${p.proveedor?'':'sin-prov'}" onclick="setPedidoProveedor('${p.id}')">${p.proveedor?p.proveedor.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'):'+ proveedor'}</button>
       ${p.auto===false||!_tanque?accionBtns:''}
       <span class="pi-ts">${p.ts?ts2s(p.ts):''}</span>
-      <button class="btn btn-del" onclick="delPedido('${p.id}')">✕</button>
+      <button class="btn btn-del" onclick="delPedido('${p.id}')">✕</button>`;
+        return varsSorted?_cfg:`<details class="ped-mas" style="flex-basis:100%"><summary style="cursor:pointer;font-size:.7rem;color:var(--muted)">⚙️ cambiar o sacar ▾</summary><div class="ped-body" style="padding:6px 0 0;border-top:none">${_cfg}</div></details>`;
+      })()}
       ${varsSorted?'</div></details>':''}
     </div>
   </details>${_armHTML}`;
@@ -19309,10 +19405,11 @@ async function pedCambiarGrupo(id){
   const bp=_bsasProvs(),pv=(state.mlconfig&&state.mlconfig.listasProv)||{};const nom=k=>(pv[k]&&pv[k].nombre)||k;
   let nuevo=null;
   if(!p.listaProv){
-    if(bp.length===1)nuevo=bp[0];
+    if(bp.length===1){nuevo=bp[0];if(!confirm('¿Pasar "'+(p.name||'')+'" a 📋 '+nom(nuevo)+'?'))return;}
     else{const r=prompt('¿A qué lista lo paso?\n'+bp.map((k,i)=>(i+1)+') '+nom(k)).join('\n'),'1');if(r===null)return;const i=parseInt(r,10)-1;if(!(i>=0&&i<bp.length))return;nuevo=bp[i];}
   }
   const viejo=p.listaProv||null;
+  if(!nuevo&&!confirm('¿Pasar "'+(p.name||'')+'" a 🏬 De siempre (deja de ser de '+nom(viejo)+')?'))return;
   try{
     if(nuevo)await fbSet('products/'+id+'/listaProv',nuevo);
     else{await fbSet('products/'+id+'/listaProv',null);await fbSet('products/'+id+'/listaProvViejo',viejo);}
@@ -19511,7 +19608,7 @@ function renderPedidos(){
       (finados.length?`<div class="pcount"><strong style="color:var(--muted)">${finados.length}</strong>Ya vencieron</div>`:'')+
       (items.length?`<button class="btn" style="align-self:center" onclick="vaciarPapelera()">Devolver todos</button>`:'');
     const q=normTxt(document.getElementById('ped-papelera-search')?.value||'');
-    if(q)items=items.filter(x=>normTxt(x.producto||'').includes(q));
+    if(q)items=items.filter(x=>buscaCoincide(q,x.producto,textosDeProd(prodById(x.prodId))));
     const fila=(x,muerto)=>{
       const prod=(state.products||[]).find(p=>p.id===x.prodId);
       const nom=(prod?prod.name:x.producto)||x.prodId;
@@ -19527,7 +19624,7 @@ function renderPedidos(){
     let html=items.length?items.map(x=>fila(x,false)).join(''):'<div class="empty-msg">No hay nada que se pueda devolver.</div>';
     // Los vencidos se muestran igual, en gris y abajo. Si no se mostraran, un producto podría no
     // aparecer nunca más en Pedidos sin ningún lugar donde ver por qué.
-    if(finados.length)html+=`<div style="font-size:.62rem;color:var(--muted);margin:14px 0 6px">Eliminados para siempre (${finados.length}) — no vuelven a aparecer en Pedidos ni cuentan en el Puntaje del mes.</div>`+finados.map(x=>fila(x,true)).join('');
+    if(finados.length)html+=`<div style="font-size:.62rem;color:var(--muted);margin:14px 0 6px">Eliminados para siempre (${finados.length}) — no vuelven a aparecer en Pedidos ni cuentan en el stock en riesgo.</div>`+finados.map(x=>fila(x,true)).join('');
     el.innerHTML=html;
     return;
   }
@@ -19546,7 +19643,7 @@ function renderPedidos(){
       <div class="pcount"><strong style="color:var(--red)">${fmt(riesgoTotal)}</strong>En riesgo (30d)</div>
       <div class="pcount"><strong>${peds.length}</strong>Total</div>${_pedCostoChip(peds)}`;
     const q=normTxt(document.getElementById('ped-prioridad-search')?.value||'');
-    if(q)peds=peds.filter(p=>normTxt(p.producto||'').includes(q)||normTxt(p.nota||'').includes(q));
+    if(q)peds=peds.filter(p=>buscaCoincide(q,p.producto,p.nota,textosDeProd(prodById(p.prodId))));
     if(!peds.length){el.innerHTML='<div class="empty-msg">Nada urgente por ahora ✓</div>';return;}
     el.innerHTML=peds.slice().sort(_pedSortFnRiesgo).map(p=>_pedidoItemHtml(p,{showRiesgo:true})).join('');
     return;
@@ -19567,7 +19664,7 @@ function renderPedidos(){
       peds=_pedFiltrar(peds);
     }
     const q=normTxt(document.getElementById('ped-paulvic-search')?.value||'');
-    if(q)peds=peds.filter(p=>normTxt(p.producto||'').includes(q)||normTxt(p.nota||'').includes(q));
+    if(q)peds=peds.filter(p=>buscaCoincide(q,p.producto,p.nota,textosDeProd(prodById(p.prodId))));
     if(!peds.length){
       const allPedsTotal=[...(state.pedidos||[]),...(state.pedidos_py||[])];
       const hayPaulvicProd=(state.products||[]).some(x=>normTxt(x.name||'').includes('paulvic')||(x.proveedorId&&(state.proveedores||[]).find(pv=>pv.id===x.proveedorId&&normTxt(pv.nombre||'').includes('paulvic'))));
@@ -19610,8 +19707,10 @@ function renderPedidos(){
     <div class="pcount"><strong>${peds.length}</strong>Total</div>${_pedCostoChip(peds)}`;
   if(pedidoFilter!=='todos')peds=_pedFiltrar(peds);
   const searchId=isBsas?'ped-search':'ped-py-search';
+  // El buscador de Paraguay busca en los pedidos de Probados: en Nuevos y en el Pedido no filtra nada, así que ahí no se muestra (20/10/2026, etapa 7).
+  if(!isBsas){const _sb=document.getElementById('ped-py-search');if(_sb)_sb.style.display=(pyVista==='probados'||pyVista==='ambos')?'':'none';}
   const q=normTxt(document.getElementById(searchId)?.value||'');
-  if(q)peds=peds.filter(p=>normTxt(p.producto||'').includes(q)||normTxt(p.nota||'').includes(q));
+  if(q)peds=peds.filter(p=>buscaCoincide(q,p.producto,p.nota,textosDeProd(prodById(p.prodId))));
   if(!isBsas)peds=peds.filter(p=>_pyRubroOk(p.producto)&&pyProvDe((state.products||[]).find(x=>x.id===p.prodId))===pyProv);
   if(!peds.length&&!isBsas){el.innerHTML='<div class="empty-msg">'+(pyProv==='nissei'?'Sin pedidos':'Todavía no le compraste nada a '+pyProvNom()+': lo que llegue de un pedido suyo aparece acá como probado')+(_pyRubro!=='todos'?(_pyRubro==='perf'?' de perfumes':' (fuera de perfumes)'):'')+'.</div>';}
   else if(!peds.length){el.innerHTML='<div class="empty-msg">Sin pedidos'+(!isBsas&&_pyRubro!=='todos'?(_pyRubro==='perf'?' de perfumes':' (fuera de perfumes)'):'')+(pedidoFilter!=='todos'?' en esta categoría':'')+'.</div>';return;}
@@ -19717,6 +19816,8 @@ async function togglePedidoOrigen(pedId,prodId){
   const desdeBsas=(state.pedidos||[]).some(x=>x.id===pedId);
   const arrDesde=(desdeBsas?state.pedidos:state.pedidos_py)||[];
   const ped=arrDesde.find(x=>x.id===pedId);
+  {const _p=(state.products||[]).find(x=>x.id===prodId);const _aPy=(_p&&_p.origen)!=='py';
+   if(!confirm('¿Pasar "'+((_p&&_p.name)||'este producto')+'" a '+(_aPy?'🇵🇾 Paraguay':'🇦🇷 Bs As')+'?\nCambia dónde se compra y en qué solapa de Pedidos aparece.'))return;}
   await toggleProdOrigen(prodId);
   if(ped&&ped.auto===false){
     const pathDesde=desdeBsas?'pedidos/':'pedidos_py/';
@@ -19771,6 +19872,8 @@ async function toggleNoConsigo(prodId,vari){
     try{await db.ref('cyc/noconsigo/'+prodId+'/nunca/'+sid(vari)).remove();}catch(e){toast('No se pudo guardar: '+e.message,'err');return;}
     const r0=_noConsigoRaw(prodId);if(r0.nunca)delete r0.nunca[sid(vari)];(state.noconsigo=state.noconsigo||{})[prodId]=r0;_repoMemo={};
     toast('Sacado: '+vari+' vuelve a pedirse','ok');renderPedidos();return;}
+  if(val){const _p=(state.products||[]).find(x=>x.id===prodId);
+    if(!confirm('¿Marcar que no se consigue '+(vari?'el color "'+vari+'" de ':'')+'"'+((_p&&_p.name)||'este producto')+'"?\nPasa a escasez (sin reposición) y el precio se estira hasta que entre mercadería a la oficina.'))return;}
   const path='cyc/noconsigo/'+prodId+(vari?'/v/'+sid(vari):'/todo');
   try{
     const raw=(state.noconsigo||{})[prodId];
@@ -20139,10 +20242,19 @@ function metNavPrev(){
   else if(metScopeMode==='ano'){const av=document.getElementById('met-ano-val');av.value=parseInt(av.value)-1;}
   renderMetricas();
 }
+// Mismo tope que Ventas: la › de Métricas no pasa de hoy y se ve apagada en hoy.
+function _metNextValor(){
+  if(metScopeMode==='dia')return _navSigTope('dia',document.getElementById('met-date')?.value);
+  if(metScopeMode==='mes'){const ms=document.getElementById('met-mes')?.value,ma=document.getElementById('met-anio')?.value;return _navSigTope('mes',ma+'-'+String(ms||'').padStart(2,'0'));}
+  if(metScopeMode==='ano')return _navSigTope('anio',document.getElementById('met-ano-val')?.value);
+  return null;
+}
+function _metNextApagar(){try{const n=_metNextValor();document.querySelectorAll('[id^="ms-ctrl-"] [onclick^="metNavNext"]').forEach(b=>_navNextPintar(b,n));}catch(e){}}
 function metNavNext(){
-  if(metScopeMode==='dia'){const el=document.getElementById('met-date');const d=new Date(el.value+'T12:00:00');d.setDate(d.getDate()+1);el.value=d.toISOString().split('T')[0];}
-  else if(metScopeMode==='mes'){const ms=document.getElementById('met-mes'),ma=document.getElementById('met-anio');const d=new Date(parseInt(ma.value),parseInt(ms.value),1);ms.value=String(d.getMonth()+1).padStart(2,'0');ma.value=d.getFullYear();}
-  else if(metScopeMode==='ano'){const av=document.getElementById('met-ano-val');av.value=parseInt(av.value)+1;}
+  const n=_metNextValor();if(n==null){_metNextApagar();return;}
+  if(metScopeMode==='dia')document.getElementById('met-date').value=n;
+  else if(metScopeMode==='mes'){const[y,m]=String(n).split('-');document.getElementById('met-mes').value=m;document.getElementById('met-anio').value=parseInt(y,10);}
+  else if(metScopeMode==='ano')document.getElementById('met-ano-val').value=n;
   renderMetricas();
 }
 
@@ -20510,7 +20622,7 @@ function renderMetAuto(){
   // aparece: ni número, ni renglón. Los rescates por costo/inflación tampoco (no son mérito del robot).
   const enCurso=delMes.filter(x=>x.estado==='encurso'&&x.enTotal);
   const prox=enCurso.length?Math.min(...enCurso.map(x=>n(x.ts)))+7*864e5:null;
-  const notaDesh=deshechos?`<div style="font-size:.6rem;color:var(--muted);margin-top:6px">${deshechos} cambio${deshechos===1?'':'s'} que deshicieron una baja o suba del propio robot no cuenta${deshechos===1?'':'n'}: volver al precio de antes no es mérito.</div>`:'';
+  const notaDesh=deshechos?`<div style="font-size:.6rem;color:var(--muted);margin-top:6px">${deshechos} cambio${deshechos===1?'':'s'} que deshicieron una baja o suba anterior no cuenta${deshechos===1?'':'n'}: volver al precio de antes no es mérito.</div>`:'';
   const espera=enCurso.length?`<div style="font-size:.6rem;color:var(--muted);margin-top:8px">${enCurso.length} cambio${enCurso.length===1?'':'s'}${conf.length?' más':''} todavía no ${enCurso.length===1?'tiene':'tienen'} 7 días: ${enCurso.length===1?'aparece':'van apareciendo'} solo${enCurso.length===1?'':'s'}${prox?' desde el '+fh(prox).slice(0,5):''}.</div>`:'';
   const fila=x=>{
     const sube=n(x.a)>n(x.de);
@@ -20520,7 +20632,7 @@ function renderMetAuto(){
         <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${sube?'⬆️':'⬇️'} ${x.nom||x.mla}${x.cuenta?' · '+x.cuenta:''}</span>
         <b style="white-space:nowrap;color:${metJuicio(x)?MET_JZ[metJuicio(x).v][2]:col(x.total)}">${metJuicio(x)?MET_JZ[metJuicio(x).v][1]+' ':n(x.total)>0?'ganó ':n(x.total)<0?'perdió ':'igual '}${(()=>{const j=metJuicio(x);const choca=j&&((j.v==='perdio'&&n(x.total)>0)||(j.v==='gano'&&n(x.total)<0));return choca?`<span style="color:var(--muted);font-weight:400" title="El número es sólo lo que se cobró de más (o de menos) en las unidades que SÍ se vendieron. No cuenta las ventas que se perdieron por el precio: eso lo mira mi juicio.">(cuenta del precio ${sg(x.total)}, sin las ventas perdidas)</span>`:sg(x.total);})()}</b>
       </div>
-      <div style="font-size:.6rem;color:var(--muted)">${fh(x.ts)} · ${metAutoMotTxt(x)} · ${x.de?fmt(n(x.de)):'?'} → ${x.a?fmt(n(x.a)):'?'} (${sube?'+':''}${pct}%)${n(x.deRef)>0?' · medido contra '+fmt(n(x.deRef))+', el precio antes del robot':''}${x._mesParcial?' · sólo lo vendido en '+mesTxt(metAutoMes):''}${x.estado==='medido'?fuenteTxt(x):''}</div>
+      <div style="font-size:.6rem;color:var(--muted)">${fh(x.ts)} · ${metAutoMotTxt(x)} · ${x.de?fmt(n(x.de)):'?'} → ${x.a?fmt(n(x.a)):'?'} (${sube?'+':''}${pct}%)${n(x.deRef)>0?' · medido contra '+fmt(n(x.deRef))+', el precio antes del cambio':''}${x._mesParcial?' · sólo lo vendido en '+mesTxt(metAutoMes):''}${x.estado==='medido'?fuenteTxt(x):''}</div>
       ${metJuicioHTML(x)}
     </div>`;
   };
@@ -20568,7 +20680,7 @@ function renderMetAuto(){
     if(vf==='pisado')return ' · otro cambio llegó antes de los 7 días: sólo el precio';
     return ' · ⏳ sin confirmar hasta el '+fh(n(x.ts)+30*864e5).slice(0,5);};
   const cuerpo=ok.length?`
-    <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">${confTot<0?'Plata de MENOS':'Plata de más'} que dejaron las decisiones del robot · ${metAutoMes==='todos'?'todos los meses':mesTxt(metAutoMes)}</div>
+    <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">${confTot<0?'Plata de MENOS':'Plata de más'} que dejaron los cambios de precio · ${metAutoMes==='todos'?'todos los meses':mesTxt(metAutoMes)}</div>
     <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:2rem;color:${col(confTot)};line-height:1.1">${sg(confTot)}</div>
     <div style="font-size:.62rem;color:var(--muted);margin-bottom:10px"><span style="color:var(--green)">${ok.filter(x=>n(x.total)>0).length} ganaron ${sg(ok.reduce((a,x)=>a+Math.max(0,n(x.total)),0))}</span> · <span style="color:var(--red)">${ok.filter(x=>n(x.total)<0).length} perdieron ${sg(ok.reduce((a,x)=>a+Math.min(0,n(x.total)),0))}</span></div>
     ${lineaFirme}
@@ -20582,7 +20694,7 @@ function renderMetAuto(){
       <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${sube?'⬆️':'⬇️'} ${x.nom||x.mla}${x.cuenta?' · '+x.cuenta:''}</span><b style="white-space:nowrap">${x.estado==='medido'||x.estado==='encurso'?sg(x.total):'—'}</b></div>
       <div style="font-size:.6rem">${fh(x.ts)} · ${metAutoMotTxt(x)} · ${x.de?fmt(n(x.de)):'?'} → ${x.a?fmt(n(x.a)):'?'} (${sube?'+':''}${pct}%) · no suma</div></div>`;};
   const bloqueOtros=otros.length?`<div style="margin-top:14px"><div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Otros cambios de precio de lo buscado (no suman)</div>${otros.map(filaOtro).join('')}</div>`:'';
-  const nada=buscando&&!delMes.length?`<div style="font-size:.72rem;color:var(--muted);margin-top:8px">El robot no le cambió el precio a nada que coincida con «${metAutoQ.replace(/[<>&"]/g,'')}»${metAutoMes==='todos'?'':' en '+mesTxt(metAutoMes)}. Abajo, en «Qué está mirando ahora», se ve si lo está vigilando.</div>`:'';
+  const nada=buscando&&!delMes.length?`<div style="font-size:.72rem;color:var(--muted);margin-top:8px">No hubo cambio de precio en nada que coincida con «${metAutoQ.replace(/[<>&"]/g,'')}»${metAutoMes==='todos'?'':' en '+mesTxt(metAutoMes)}. Abajo, en «Qué está mirando ahora», se ve si lo está vigilando.</div>`:'';
   const qAttr=String(metAutoQ).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
   const caja=`<input id="met-auto-q" type="search" value="${qAttr}" placeholder="🔍 Buscar un producto (nombre, MLA o cuenta)" oninput="metAutoBuscar(this.value)" style="width:100%;box-sizing:border-box;font-size:16px;padding:8px 10px;margin-bottom:10px;border-radius:8px;border:1px solid rgba(148,163,184,.3);background:transparent;color:var(--text)">`;
   const cuerpoB=buscando&&!delMes.length?nada:cuerpo;
@@ -20592,7 +20704,7 @@ function renderMetAuto(){
     ${cuerpoB}${notaDesh}${bloqueCurso}${bloqueOtros}
     <details style="margin-top:10px"><summary style="cursor:pointer;font-size:.6rem;color:var(--muted)">¿Qué cuenta?</summary><div style="font-size:.6rem;color:var(--muted);line-height:1.45;margin-top:4px">
       Desde el 09/10/2026 los precios los decido yo (💭 Lo decidió Claude) y se miden igual. Abajo de cada cambio va 🧠 mi juicio, que reviso todos los días: el número es la cuenta (lo cobrado de más o de menos y lo que vendió antes y después), el juicio dice si de verdad fue el precio (o un quiebre de stock, una fecha, una caja que llegó) y si una decisión que hoy pierde puede recuperarse. Antes, todo lo que el robot cambió solo: 📈 subir, 📉 bajar, 🧠 cerebro de precios, 🧪 prueba de suba, 🔨 remate, 🪜 escalera, 🛟 rescate antes de vender (el de la noche o por costo, que sube ANTES de que una venta salga baja) y ↩️ volver atrás un cambio suyo que perdía plata. Sólo después de 7 días. Antes de eso el cambio aparece abajo, en gris, con lo que ya se cobró de más o de menos por el precio: eso es plata firme, pero si se vendió menos (o más) por el precio recién se sabe a la semana. No cuenta: el rescate que sube DESPUÉS de una venta con % bajo, cuando el robot corrige una suba suya que quedó de más, cuando vuelve al precio de antes de un cambio propio (deshizo), ni lo que tocaste a mano.
-      "Sin robot" es que el precio se quedaba donde estaba: se compara el mismo tiempo antes y después. En remates y escalera NO se suma la ganancia de lo que se vendió (bajar el precio adelanta la venta, no la crea): cuenta lo que se cobró de menos, el almacenamiento que se dejó de pagar y la plata que volvió antes (la mercadería vendida antes de lo que se habría vendido a su ritmo normal, valorada al 1% por mes en dólares, el interés que paga CYC).
+      "Sin el cambio" es que el precio se quedaba donde estaba: se compara el mismo tiempo antes y después. En remates y escalera NO se suma la ganancia de lo que se vendió (bajar el precio adelanta la venta, no la crea): cuenta lo que se cobró de menos, el almacenamiento que se dejó de pagar y la plata que volvió antes (la mercadería vendida antes de lo que se habría vendido a su ritmo normal, valorada al 1% por mes en dólares, el interés que paga CYC).
     </div></details>
     ${metVigBox()}
   </div>`;
@@ -20778,6 +20890,7 @@ function metIr(id){
 function renderMetricas(){
   _syncMetFieldBtns(); // deja los botones prendidos/apagados según las métricas activas
   _initMetDefaults();
+  _metNextApagar();
   const curKeys=getAllMetKeys(metScopeMode),prevKeys=getAllPrevMetKeys(metScopeMode);
   const cur=sumMetFields(curKeys,metViewField),prev=sumMetFields(prevKeys,metViewField);
   const curTotal=MET_ACCTS.reduce((s,a)=>s+cur[a],0),prevTotal=MET_ACCTS.reduce((s,a)=>s+prev[a],0);
@@ -21184,7 +21297,7 @@ function renderMetPctAvg(buckets,bucketsPrev,bucketsYear){
     +`<span style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};margin-right:5px;vertical-align:middle"></span>${lbl}</span>`
     +`<span style="font-size:1rem;font-weight:700;color:var(--text)">${fmtP(val)}</span>${extra}</div>`;
   // revisión max (rev4): el título decía "meta 40%" escrito a mano; va la meta del Puntaje de este mes.
-  try{const sp=document.getElementById('met-pct-period');if(sp){const n=new Date();sp.textContent='· markup sobre costo · meta '+puntCfg(n.getFullYear()+'_'+String(n.getMonth()+1).padStart(2,'0')).margenMeta+'%';}}catch(e){}
+  try{const sp=document.getElementById('met-pct-period');if(sp){const n=new Date();void n;sp.textContent='· sobre el costo · objetivo '+_pctPisoMeta().meta+'%';}}catch(e){}
   // CONTRA EL ANTERIOR ENTERO (08/10/2026, él: "quiero que el mes pasado tome el promedio final del mes, no del período
   // donde va este mes"). El número grande y la flecha van contra el período anterior COMPLETO; "a esta altura" queda abajo, chico.
   el.innerHTML=chip(CMP_CUR,'Promedio actual',cur,delta(cur,prev,'anterior'))
@@ -21876,6 +21989,7 @@ function homeHoyIr(){
   if(_homeHoyEsc==='dia'&&_homeHoyOff>0){const x=new Date();x.setDate(x.getDate()-_homeHoyOff);_vpIrDia=dateToKey(x).replace(/_/g,'-');}
   else if(_homeHoyEsc==='mes'){const f=_homeHoyFecha();_vpIrPer={per:'mes',ym:f.getFullYear()+'-'+String(f.getMonth()+1).padStart(2,'0')};}
   else if(_homeHoyEsc==='anio'){_vpIrPer={per:'anio',y:_homeHoyFecha().getFullYear()};}
+  vpLimpiarFiltros();
   goPage('ventaprod');
 }
 // ── EL PUNTAJE DEL DÍA (03/10/2026, pedido suyo: "el puntaje del día según la ganancia") ──────────
@@ -22084,16 +22198,13 @@ function cobroProxMes(P){
   return{gan,tercio,yaPorSocio,falta:tercio-yaPorSocio};
 }
 function renderPuntajeMes(){
-  try{renderHomeHoy();}catch(e){}
+  // La tarjeta del Puntaje del mes ya no se dibuja (09/10/2026, él: "sacar lo del puntaje del mes, no me interesa").
+  // Lo único que quería, cuánto cobrar, vive en el desplegable de "Ventas de hoy" (_homeCobroHtml). Desde el 20/10/2026
+  // (etapa 7) acá ya no se arma lo que se tiraba (barras, objetivo, cobro, sugerencias) ni se redibuja "Ventas de hoy"
+  // (Inicio la dibuja primero): sólo queda lo que todavía se usa, el monotributo de cada cuenta para la tarjeta ⚖️
+  // (P.monoCuentas → _monoHomeHtml) y el puntaje de Rotación.
   const el=document.getElementById('home-puntaje');if(!el)return;
   const P=calcPuntajeMes(puntMesSel||undefined);puntMesSel=P.ym;
-  const col=puntColor(P.score),C=2*Math.PI*50,off=C*(1-P.score/10);
-  const mesLbl=MONTHS[parseInt(P.ym.split('_')[1])-1]+' '+P.ym.split('_')[0];
-  const sug=_puntSugerencias(P);
-  const nota=(P.esActual&&P.dias<7)?` <span style="color:var(--muted)">· proyección estimada (mes recién arranca)</span>`:'';
-  const _pctObj=P.meta>0?Math.round(P.proy/P.meta*100):0;
-  const cycTxt=`<span style="color:var(--muted)">🎯 Objetivo de ganancia CYC:</span> <strong>${fmt(P.meta)}</strong> <span style="color:var(--muted)">${P.metaFuente==='manual'?'(lo pusiste a mano)':'(lo mismo que sale en retiro + gastos)'} · meta grande ${fmt(P.metaGrande)}</span>`;
-  const nuestroTxt=`<span style="color:var(--muted)">CYC (queda en el negocio):</span> vas <strong style="color:${P.g.ganancia>=0?'var(--green)':'var(--red)'}">${fmt(P.g.ganancia)}</strong> · proyección <strong>${fmt(P.proy)}</strong> <span style="color:var(--muted)">(${_pctObj}% del objetivo)</span>${nota}<br><span style="color:var(--muted)">Ya descontado: retiro ${fmt(P.g.retiro)} · gastos ${fmt(P.g.gastos)}</span>`;
   const facARCA=_facARCA();   // una sola vez: recorrer todas las ventas por cuenta sería 4 veces lo mismo
   const monoHtml=`<div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><span style="font-size:.6rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)">Monotributo · cómo vendés vs AFIP</span><button onclick="goMonotributo()" style="background:transparent;border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:2px 8px;font-size:.6rem;cursor:pointer">✎ AFIP / meses</button></div>${P.monoCuentas.map(m=>{
     const mlF=m.fac;
@@ -22122,94 +22233,15 @@ function renderPuntajeMes(){
     }
     return`<div style="margin-bottom:11px"><div style="display:flex;align-items:center;gap:8px"><span style="width:70px;font-size:.62rem;flex-shrink:0">${m.label}</span><div style="flex:1;height:8px;border-radius:4px;background:var(--surface2);overflow:hidden"><div style="height:100%;width:${Math.min(100,mc.pct)}%;background:${mc.excede?'#ef4444':'linear-gradient(90deg,#16a34a,#22c55e)'};border-radius:4px"></div></div><span style="width:104px;text-align:right;font-size:.6rem;font-family:'DM Mono',monospace;color:var(--text)">${fmt(mlF)}</span></div><div style="font-size:.6rem;color:${col};margin-left:78px;margin-top:2px">Vendiendo así: ${ventaTxt}</div>${afipLine?`<div style="font-size:.6rem;margin-left:78px;margin-top:1px">${afipLine}</div>`:''}</div>`;
   }).join('')}</div>`;
-  const bars=P.comp.map(c=>{const pc=Math.max(0,Math.min(1,c.pts/c.max));return`<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px"><span style="width:150px;font-size:.62rem;color:var(--muted);flex-shrink:0">${c.label}</span><div style="flex:1;height:7px;border-radius:4px;background:var(--surface2);overflow:hidden"><div style="height:100%;width:${pc*100}%;background:${col};border-radius:4px"></div></div><span style="width:52px;text-align:right;font-size:.62rem;font-family:'DM Mono',monospace">${c.pts.toFixed(1)}/${c.max}</span></div>`;}).join('');
-  const pend=sug.filter(s=>s.pts>=0.05);
-  const sugHtml=`<div style="margin-top:12px"><div style="font-size:.6rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:6px">Detalle por categoría${pend.length?` <span style="text-transform:none;letter-spacing:0">· lo que falta</span>`:''}</div>${pend.length?pend.map(s=>{const badge=`<span style="background:rgba(245,158,11,.15);color:var(--amber);border-radius:4px;padding:1px 6px;font-size:.6rem;font-weight:700;white-space:nowrap;flex-shrink:0">+${s.pts.toFixed(1)}</span>`;return`<div style="display:flex;gap:8px;align-items:flex-start;font-size:.68rem;margin-bottom:5px;line-height:1.45">${badge}<span>${s.txt}</span></div>`;}).join(''):`<div style="font-size:.68rem;color:var(--green)">✓ Todo cumplido este mes 🎉</div>`}</div>`;
-  // COBRO MES A MES (01/10/2026), corrección suya: "según vamos en el mes actual, que diga cuánto cobrar el
-  // prox mes. y el mes actual, cobramos lo que dice el mes pasado". O sea: la ganancia de un mes se cobra al mes
-  // siguiente. Arriba (grande) lo que deja ESTE mes para cobrar en el que viene; abajo lo que se cobra ESTE mes
-  // (lo que dejó el anterior) contra lo que ya se retiró.
-  const _cb=cobroProxMes(P);
-  const [_py,_pm]=P.ym.split('_').map(Number);
-  const _sigLbl=MONTHS[_pm%12]+' '+(_pm===12?_py+1:_py);
-  const _antYM=_pm===1?`${_py-1}_12`:`${_py}_${String(_pm-1).padStart(2,'0')}`;
-  const _antLbl=MONTHS[(_pm+10)%12];
-  let _cbAnt=null;try{_cbAnt=cobroProxMes(calcPuntajeMes(_antYM));}catch(e){}
-  const _mesCorto=MONTHS[_pm-1];
-  const _faltaEste=_cbAnt?_cbAnt.tercio-_cb.yaPorSocio:null;
-  const _cobroHtml=`<div style="margin-top:10px;padding-top:9px;border-top:1px dashed var(--border2)" title="La ganancia real de un mes (lo que depositó ML menos la mercadería y los gastos ya cargados, antes del retiro) se cobra al mes siguiente, partida en 3 iguales: CYC, vos y tu papá.">
-          <div style="font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)">💸 Para cobrar en ${_sigLbl} · cada uno${P.esActual?' · va hasta hoy':''}</div>
-          <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.5rem;color:${_cb.tercio>0?'var(--text)':'var(--red)'}">${fmt(_cb.tercio)}</div>
-          <div style="font-size:.64rem;color:var(--muted);line-height:1.45">Ganancia real de CYC en ${_mesCorto}${P.esActual?' hasta hoy':''} ${fmt(_cb.gan)} ÷ 3 (CYC, vos y tu papá)</div>
-          ${_cbAnt?`<div style="font-size:.66rem;margin-top:6px;line-height:1.45">En ${_mesCorto} cobran lo que dejó ${_antLbl}: <b>${fmt(_cbAnt.tercio)} c/u</b>${_cb.yaPorSocio>0?` · ya retiraron ${fmt(_cb.yaPorSocio)} c/u · ${_faltaEste>=0?`<span style="color:var(--green)">quedan ${fmt(_faltaEste)} c/u</span>`:`<span style="color:var(--red)">se retiró ${fmt(-_faltaEste)} c/u de más</span>`}`:''}</div>`:''}
-        </div>`;
-  // La tarjeta del Puntaje del mes ya no se dibuja (09/10/2026, él: "sacar lo del puntaje del mes, no me interesa").
-  // Lo único que quería, cuánto cobrar, vive en el desplegable de "Ventas de hoy" (_homeCobroHtml).
   el.innerHTML='';
   // Pedido suyo del 30/09/2026: "Monotributo · cómo vendés vs AFIP" se mudó a la tarjeta ⚖️ de las 4
-  // cuentas, con un botón para cambiar entre las dos vistas. Acá sólo se arma y se deja lista.
+  // cuentas. Acá sólo se arma y se deja lista.
   _monoHomeHtml=monoHtml;
   try{renderHomeParejo();}catch(e){}
   try{renderRotCardScore();}catch(e){}
 }
-function setPuntajeMeta(ym){
-  const o=(state.puntaje&&state.puntaje[ym])||{};
-  const cfg=puntCfg(ym);
-  const p=ym.split('_'), mesLbl=MONTHS[parseInt(p[1])-1]+' '+p[0];
-  const tc=histTCforYM(ym)||curTC()||0; // Etapa 5: ídem, sin $1.500 inventado
-  const pisoAuto=(()=>{try{const g=_puntGananciaMes(ym);return Math.round(g.retiro+g.gastos);}catch(e){return 0;}})();
-  const ex=document.getElementById('pm-modal');if(ex)ex.remove();
-  const ov=document.createElement('div');ov.id='pm-modal';
-  ov.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.72);display:flex;align-items:flex-start;justify-content:center;padding:24px 16px;overflow:auto';
-  const inp="width:100%;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;color:var(--text);font-family:'DM Mono',monospace;font-size:.8rem;outline:none";
-  const lbl='display:block;font-size:.62rem;color:var(--muted);margin:0 0 4px;line-height:1.3';
-  const sec='font-size:.6rem;text-transform:uppercase;letter-spacing:.1em;color:var(--green);margin:14px 0 8px';
-  const grp='margin-bottom:11px';
-  const f=(id,val,ph)=>`<input id="${id}" type="number" step="any" inputmode="decimal" value="${val===''||val==null?'':val}" placeholder="${ph}" style="${inp}">`;
-  const row=(label,inner)=>`<div style="${grp}"><label style="${lbl}">${label}</label>${inner}</div>`;
-  const two=(label,a,b)=>`<div style="${grp}"><label style="${lbl}">${label}</label><div style="display:flex;gap:8px">${a}${b}</div></div>`;
-  ov.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;max-width:460px;width:100%">
-    <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:1rem;margin-bottom:4px">Objetivos · ${mesLbl}</div>
-    <div style="font-size:.64rem;color:var(--muted);margin-bottom:6px;line-height:1.45">Dejá un campo vacío para usar el valor automático (el número gris de ejemplo).</div>
-    <div style="${sec}">Objetivo de ganancia de CYC</div>
-    ${row('Objetivo en pesos (vacío = lo que sale en retiro + gastos del mes)', f('pm-metaManual',o.metaManual,'auto: '+fmt(pisoAuto).replace('$','')))}
-    <div style="${sec}">Otros objetivos</div>
-    ${row('Meta de margen (%) — puntos llenos a este %', f('pm-margen',o.margenMeta,PUNT_DEF.margenMeta))}
-    ${two('Devoluciones — perfecto hasta % · cero en %', f('pm-devOk',o.devOk,PUNT_DEF.devOk), f('pm-devMax',o.devMax,PUNT_DEF.devMax))}
-    <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
-      <button id="pm-save" class="btn" style="background:var(--accent2);color:#fff;flex:1;min-width:110px">Guardar</button>
-      <button id="pm-reset" class="btn" style="background:var(--surface2);color:var(--muted)">Volver a automáticos</button>
-      <button id="pm-cancel" class="btn" style="background:transparent;color:var(--muted);border:1px solid var(--border2)">Cancelar</button>
-    </div>
-  </div>`;
-  document.body.appendChild(ov);
-  ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
-  document.getElementById('pm-cancel').onclick=()=>ov.remove();
-  document.getElementById('pm-reset').onclick=async()=>{
-    if(!state.puntaje)state.puntaje={};
-    state.puntaje[ym]=null;await fbSet('puntaje/'+ym,null);
-    ov.remove();renderPuntajeMes();toast('Objetivos: volvió a los valores automáticos');
-  };
-  document.getElementById('pm-save').onclick=async()=>{
-    const rd=id=>{const v=(document.getElementById(id).value||'').trim();return v===''?null:Number(v.replace(/[^\d.-]/g,''));};
-    const c={},set=(k,v)=>{if(v!=null&&isFinite(v))c[k]=v;};
-    // Se conservan los campos viejos que ya no están en pantalla (piso en US$, gastos): no se borran.
-    ['pisoUsdPP','socios','retiroPct','gastOk','gastMax'].forEach(k=>{if(o[k]!=null&&o[k]!=='')c[k]=o[k];});
-    set('metaManual',rd('pm-metaManual'));set('margenMeta',rd('pm-margen'));
-    set('devOk',rd('pm-devOk'));set('devMax',rd('pm-devMax'));
-    // validaciones sobre los valores EFECTIVOS (lo que se guarda + el default del resto)
-    const eDevOk=c.devOk??PUNT_DEF.devOk, eDevMax=c.devMax??PUNT_DEF.devMax;
-    const eGastOk=c.gastOk??PUNT_DEF.gastOk, eGastMax=c.gastMax??PUNT_DEF.gastMax;
-    if(eDevOk>=eDevMax){toast('Devoluciones: "perfecto hasta" tiene que ser menor que "cero en".','err',4500);return;}
-    if(eGastOk>=eGastMax){toast('Gastos: "perfecto hasta" tiene que ser menor que "cero en".','err',4500);return;}
-    if(c.socios!=null&&c.socios<1){toast('La cantidad de socios tiene que ser 1 o más.','err',4500);return;}
-    if(c.margenMeta!=null&&c.margenMeta<=0){toast('La meta de margen tiene que ser mayor que 0.','err',4500);return;}
-    if(!state.puntaje)state.puntaje={};
-    if(Object.keys(c).length===0){state.puntaje[ym]=null;await fbSet('puntaje/'+ym,null);}
-    else{state.puntaje[ym]=c;await fbSet('puntaje/'+ym,c);}
-    ov.remove();renderPuntajeMes();toast('Objetivos guardados para '+mesLbl);
-  };
-}
+// setPuntajeMeta (la ventanita de ✎ objetivos del Puntaje) se borró el 20/10/2026: su botón vivía en la tarjeta que ya no se dibuja.
+
 
 
 /* ═══════════ RESUMEN GENERAL ═══════════ */
@@ -22670,17 +22702,17 @@ function renderComprasChecklist(){
     </div>
     ${filas.map(f=>`<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;padding:7px 0;border-top:1px solid var(--border)">
       <span style="font-size:.9rem;flex-shrink:0">${f.noVa?'➖':(f.hay?'✅':(f.parcial?'⚠️':'❌'))}</span>
-      <span style="font-size:.76rem;font-weight:600;min-width:150px;flex:1">${f.g.n}</span>
+      <span style="font-size:.76rem;font-weight:600;min-width:150px;flex:1" title="${String(f.g.nota||'').replace(/"/g,'&quot;')}">${f.g.n}</span>
       <span style="font-family:'DM Mono',monospace;font-size:.76rem;color:${f.hay?'var(--text)':(f.parcial?'var(--amber)':'var(--red)')}">${
         f.noVa?`<span style="color:var(--muted)">este mes no va</span> <button class="vbtn" style="font-size:.6rem;padding:1px 6px" onclick="setGastoNoVa('${ymL}',${JSON.stringify(f.g.n).replace(/"/g,'&quot;')},false)">deshacer</button>`
         :f.hay?fmt(f.monto)+(f.n>1?` · ${f.n} renglones`:'')
              :(f.parcial?`${fmt(f.monto)} · ${f.n} de ${f.min} · falta ${f.min-f.n}`
                :`falta${f.n?'':` <button class="vbtn" style="font-size:.6rem;padding:1px 6px;color:var(--muted)" title="Marcalo si este mes este gasto no existe. Vale SÓLO para este mes: el que viene lo vuelve a pedir." onclick="setGastoNoVa('${ymL}',${JSON.stringify(f.g.n).replace(/"/g,'&quot;')},true)">este mes no va</button>`}`)}</span>
-      <span style="font-size:.62rem;color:var(--muted);flex-basis:100%">${f.g.nota}</span>
+      ${f.hay?'':`<span style="font-size:.62rem;color:var(--muted);flex-basis:100%">${f.g.nota}</span>`}
     </div>`).join('')}
-    <div style="font-size:.62rem;color:var(--muted);margin-top:10px;line-height:1.6">
+    ${faltan?`<div style="font-size:.62rem;color:var(--muted);margin-top:10px;line-height:1.6">
       Lo reconoce por la categoría y por palabras de la descripción. <strong>Si lo cargaste con otro nombre te lo va a marcar en rojo aunque esté</strong> — es preferible una alarma de más que dar por cargado algo que falta.
-    </div>
+    </div>`:''}
   </div>`;
 }
 
@@ -22815,7 +22847,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){const fs=document.g
 const FNAV_PAGES=[
   {id:'home',      icon:'🏠', label:'Inicio'},
   {id:'resumen',   icon:'📋', label:'Resumen'},
-  {id:'inventario',icon:'📦', label:'Arqueo'},
+  {id:'inventario',icon:'🧮', label:'Arqueo'},
   {id:'ventaprod', icon:'🏷️', label:'Ventas x Producto'},
   {id:'metricas',  icon:'📊', label:'Métricas ML'},
   {id:'pedidos',   icon:'🚚', label:'Pedidos'},
@@ -22848,7 +22880,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
       <button class="back-btn" onclick="goPage('home')">← Inicio</button>
       <div>
         <div class="ph-title">Ajustes</div>
-        <div class="ph-sub">Perfil · Apariencia · Precios ML · Monotributo · Dólar · Precios históricos · Historial · Datos</div>
+        <div class="ph-sub">Versión · Avisos · Perfil · Apariencia · Robot · Monotributo · Facturación · Dólar · Precios históricos · Cambios · Datos</div>
       </div>
     </div>
     <div class="ph-right">
@@ -22931,7 +22963,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         El <b>impuesto integrado</b> se reparte como % sobre cada venta y se suma al costo del producto: es un costo de vender
         (más facturás → categoría más alta). El % lo calcula solo la web con lo que facturaste de verdad.<br>
         El <b>autónomo + obra social</b> no es costo de producto (es jubilación y salud), va como gasto del mes y
-        <b>se carga solo</b> el día 1 para no depender de acordarse.
+        <b>lo cargo yo</b> (Claude) con el VEP de cada mes.
       </p>
       <div style="display:flex;flex-direction:column;gap:8px;max-width:420px">
         <div style="font-size:.66rem;color:var(--muted);font-weight:600;letter-spacing:.04em">IMPUESTO INTEGRADO POR CUENTA (va al costo)</div>
@@ -22951,7 +22983,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
   <!-- MONOTRIBUTO -->
   <div id="tab-monotributo">
     <div class="stitle" style="margin-top:0">Monotributo · facturación por mes y cuenta</div>
-    <p style="font-size:.68rem;color:var(--muted);margin-bottom:14px">Cargá el facturado <strong>real</strong> de cada mes por cuenta (lo mirás en ML → <em>Métricas</em>). Desde <strong>junio 2026</strong> en adelante lo toma solo de las ventas cargadas (dejá el casillero vacío). Suma los <strong>últimos 12 meses</strong> y calcula la categoría real; cada mes que pasa, el más viejo se cae solo. Dejá vacío un casillero para borrar lo cargado a mano.</p>
+    <p style="font-size:.68rem;color:var(--muted);margin-bottom:14px">Cargá el facturado <strong>real</strong> de cada mes por cuenta. Desde <strong>junio 2026</strong> en adelante lo toma solo de las ventas cargadas (dejá el casillero vacío). Suma los <strong>últimos 12 meses</strong> y calcula la categoría real; cada mes que pasa, el más viejo se cae solo. Dejá vacío un casillero para borrar lo cargado a mano.</p>
     <div id="mono-panel"></div>
     <div id="mono-cats"></div>
     <div id="mono-grid"><div class="empty-msg">Cargando…</div></div>
@@ -23049,12 +23081,12 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
 <div id="fnav-menu" class="hidden">
   <button class="fnav-item" data-page="home"       onclick="goPage('home');fnavOpen=false;_syncFnav()">🏠 Inicio</button>
   <button class="fnav-item" data-page="resumen"    onclick="goPage('resumen');fnavOpen=false;_syncFnav()">📋 Resumen</button>
-  <button class="fnav-item" data-page="inventario" onclick="goPage('inventario');fnavOpen=false;_syncFnav()">📦 Arqueo</button>
+  <button class="fnav-item" data-page="inventario" onclick="goPage('inventario');fnavOpen=false;_syncFnav()">🧮 Arqueo</button>
   <button class="fnav-item" data-page="ventaprod"  onclick="goPage('ventaprod');fnavOpen=false;_syncFnav()">🏷️ Ventas x Producto</button>
   <button class="fnav-item" data-page="metricas"   onclick="goPage('metricas');fnavOpen=false;_syncFnav()">📊 Métricas ML</button>
   <button class="fnav-item" data-page="pedidos"    onclick="goPage('pedidos');fnavOpen=false;_syncFnav()">🚚 Pedidos</button>
-  <button class="fnav-item" data-page="oficina"    onclick="goPage('oficina');fnavOpen=false;_syncFnav()">🏠 Mi oficina</button>
-  <button class="fnav-item" data-page="rotacion"   onclick="goPage('rotacion');fnavOpen=false;_syncFnav()">📊 Rotación de Stock</button>
+  <button class="fnav-item" data-page="oficina"    onclick="goPage('oficina');fnavOpen=false;_syncFnav()">🏢 Mi oficina</button>
+  <button class="fnav-item" data-page="rotacion"   onclick="goPage('rotacion');fnavOpen=false;_syncFnav()">🔄 Rotación de Stock</button>
   <button class="fnav-item" data-page="compras"    onclick="goPage('compras');fnavOpen=false;_syncFnav()">🛒 Compras y Gastos</button>
   <button class="fnav-item" data-page="facturas"   onclick="goPage('facturas');fnavOpen=false;_syncFnav()">🧾 Facturas</button>
   <button class="fnav-item" data-page="ajustes"    onclick="goPage('ajustes');fnavOpen=false;_syncFnav()">⚙️ Ajustes</button>
