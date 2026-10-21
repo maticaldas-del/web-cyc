@@ -6,6 +6,16 @@ archivo de antes quedó en `notas/cerebro_viejo_20261021.md`, sólo como histori
 frase suya, el caso) está en `CLAUDE.md`. **Regla nueva → va en su tema acá, en `CLAUDE.md` y en `REVISION.md`, en el mismo commit.**
 Si una regla nueva choca con una de acá, se REEMPLAZA la de acá (no se agrega abajo): así no vuelven a convivir dos versiones.
 
+**🔬 TODAS LAS VUELTAS SON PESADAS Y LAS VENTAS SE ANALIZAN AL MÁXIMO (21/10/2026, regla suya; manda sobre cualquier prompt de tarea
+que diga "liviana" o "gastá poco"):** *"necesito análisis máximo en las ventas"* y *"todas las revisiones son pesadas con esfuerzo más alto,
+se quita eso de gasta poco"*. En CADA vuelta (también las de cada 2 h), cada publicación que vendió desde la vuelta anterior se mira con
+su FICHA COMPLETA (`ficha:<MLA>`, varias en un disparo): año entero, reacción al precio, caja, competencia, stock, reposición, fechas,
+rayas. Toda publicación que vendió queda con estrategia bien pensada (🧭 de `ventasraras` sin ⚠️, y las ✓ revisadas con esta venta).
+Si vendieron más de ~5 publicaciones distintas, las piensa un ayudante con esfuerzo MÁXIMO que propone; decidir y aplicar es mío.
+La de las 08:52 hace lo mismo con las ventas de la noche y además lo que no depende de las ventas (pedidos de todo el catálogo,
+cajas, lo que no vende 📏/🔎/📦, juicios del supervisor, promos a fondo, fotos de candidatos): eso NO se saca, porque lo que no vende
+nunca dispara una revisión de venta.
+
 **Las marcas:**
 - 🔒 **freno en el código**: no se puede romper. `decido`/`entrarpromo`/`tag` lo rechazan solos y dicen la regla. Para pasar
   a propósito hay una bandera (`!…`) que vale SÓLO si el motivo dice **"EXCEPCIÓN: …"** con el porqué.

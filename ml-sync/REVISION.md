@@ -2377,3 +2377,8 @@ detenimiento venta x venta, así todos los productos quedan con estrategias siem
 con "🧭 ESTRATEGIA DE LO QUE VENDIÓ": cada publicación vendida en la ventana con su estrategia (`cyc/estrategia`) y si tiene techo probado
 (`cyc/techofreno`); ⚠️ las que no tienen una con techo. CEREBRO.md sección 1 paso 5. Qué chequear: que la lista ⚠️ quede vacía en cada
 vuelta y que lo que no vende siga barrido por la completa.
+
+**21/10/2026 · etapa 8 · todas las vueltas pesadas, ventas al máximo.** Él: *"necesito análisis máximo en las ventas"* y *"todas las
+revisiones son pesadas con esfuerzo más alto, se quita eso de gasta poco"*. Arriba de todo en CEREBRO.md (manda sobre el prompt de la
+tarea de cada 2 h, que todavía dice "liviana": la tarea sólo se puede editar desde su conversación). La completa de las 08:52 sigue
+(pedidos, cajas, lo que no vende). Qué chequear: que cada vuelta corta abra la ficha de cada publicación que vendió y deje la 🧭 sin ⚠️.
