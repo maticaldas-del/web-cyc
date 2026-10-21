@@ -114,6 +114,7 @@ body.discreto .cv-anda{animation:none}
 .cv-ent span{display:block;height:100%;background:var(--green)}
 .pvc{display:inline-flex;gap:3px;vertical-align:middle;margin-left:4px}
 .pvc i{width:9px;height:9px;border-radius:2px;border:1px solid var(--border2);display:inline-block}
+.cmp-nuevo>summary::-webkit-details-marker{display:none}
 .rb{margin-top:4px}
 .rb-bar{position:relative;display:block;height:6px;border-radius:3px;background:color-mix(in srgb,var(--muted) 25%,transparent);max-width:100%}
 .rb .rb-ok{position:absolute;top:0;bottom:0;background:color-mix(in srgb,var(--green) 35%,transparent);border-radius:3px}
@@ -1995,7 +1996,9 @@ body.light .est-chip{color:color-mix(in srgb,var(--ec) 50%,#000)}
   </div>
   <div id="cmp-comp-result"></div>
 
-  <div class="stitle">Nuevo movimiento</div>
+  <!-- 7.30 (21/10/2026, eligió la a): los gastos los carga Claude con `cargargasto`; el formulario a mano queda plegado. -->
+  <details id="cmp-nuevo" class="cmp-nuevo">
+  <summary class="stitle" style="cursor:pointer;list-style:none">➕ Nuevo movimiento a mano <span style="font-size:.66rem;font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0">· casi siempre lo cargo yo (Claude) ▾</span></summary>
   <div class="pedidos-add" style="flex-wrap:wrap">
     <select id="cmp-tipo" class="cal-select" style="font-size:.74rem;padding:8px 12px;font-weight:700" onchange="onCmpTipo()">
       <option value="gasto">💸 Gasto</option>
@@ -2017,6 +2020,7 @@ body.light .est-chip{color:color-mix(in srgb,var(--ec) 50%,#000)}
     <input type="text" id="cmp-desc" class="ingreso-inp-nota" placeholder="Descripción (opcional)" style="flex:2;min-width:140px" onkeydown="if(event.key==='Enter')addCompra()">
     <button class="btn btn-add" onclick="addCompra()">+ Agregar</button>
   </div>
+  </details>
 
   <div class="stitle">💸 Lo que retiramos nosotros este mes</div>
   <div id="compras-retiro"></div>
@@ -19638,7 +19642,9 @@ async function _listaBuscarYa(q){
   if(!pal.length){out.innerHTML='';return;}
   const provs=(state.mlconfig&&state.mlconfig.listasProv)||{};
   const _prob=x=>(state.products||[]).some(p=>p.listaProv===x);
-  const ks=Object.keys(provs).filter(k=>{const v=provs[k];return !v.desc&&!v.pausa&&!(v.dan!=null&&v.pend!=null&&!(v.dan>0)&&!(v.pend>0)&&!_prob(k));});
+  // 7.30: en Bs As (solapa Dai Nippon) el mismo buscador mira sólo las listas de Bs As; en 📋 Listas, todas (como siempre).
+  const _soloB=pedidoSection==='bsas';
+  const ks=Object.keys(provs).filter(k=>{const v=provs[k];return !v.desc&&!v.pausa&&(!_soloB||!!v.bsas)&&!(v.dan!=null&&v.pend!=null&&!(v.dan>0)&&!(v.pend>0)&&!_prob(k));});
   _listaCacheRevisar();   // etapa 4 (20/10/2026): la que cambió el robot se vuelve a bajar
   if(ks.some(k=>!_listaCache[k]))out.innerHTML='<div style="font-size:.7rem;color:var(--muted);padding:6px 2px">⏳ bajando las listas…</div>';
   await Promise.all(ks.filter(k=>!_listaCache[k]).map(async k=>{try{_listaCacheFirma[k]=_listaFirma(k);_listaCache[k]=(await db.ref('mlapi/listas/'+k).once('value')).val()||{};}catch(e){}}));
@@ -20042,7 +20048,9 @@ async function renderListas(){
   // son tarjetas de Pedidos como las de "De siempre" y los nuevos se miran para que Tito los traiga.
   if(_enB&&_listaVista==='hechos')_listaVista='nuevos';
   const _tab=(t,txt,tit)=>`<button class="btn" style="font-size:.64rem;padding:5px 13px;${_listaVista===t?'background:var(--blue);color:#fff;font-weight:700':''}" title="${tit}" onclick="listaSetVista('${t}')">${txt}</button>`;
-  const cab=(_enB?'<div style="height:10px"></div>':'')+(_enB?'':`<div style="margin-bottom:10px"><input id="lista-buscar" type="search" value="${escHtml(window._listaQ||'')}" placeholder="🔎 Buscar un producto en TODAS las listas…" oninput="listaBuscar(this.value)" style="width:100%;padding:9px 12px;font-size:.85rem;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--text)"><div id="lista-busq"></div></div>`)+`
+  // 7.30 · UN SOLO BUSCADOR (21/10/2026, eligió la a): había dos (éste arriba, en todas las listas, y otro abajo de todo, sólo en la
+  // lista abierta) que buscaban lo mismo con dos resultados distintos. Queda éste, arriba, también en la solapa Dai Nippon de Bs As.
+  const cab=(_enB?'<div style="height:10px"></div>':'')+`<div style="margin-bottom:10px"><input id="lista-buscar" type="search" value="${escHtml(window._listaQ||'')}" placeholder="🔎 Buscar un producto en ${_enB?'las listas de Bs As':'TODAS las listas'}…" oninput="listaBuscar(this.value)" style="width:100%;padding:9px 12px;font-size:.85rem;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--text)"><div id="lista-busq"></div></div>`+`
     ${(_enB&&visibles.length===1)?'':`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px"><span style="font-size:.68rem;color:var(--muted)">Proveedor:</span>${visibles.map(_provBtn).join('')}${_enB?'':`<button class="btn" style="font-size:.64rem;padding:4px 10px;opacity:.8" title="La esconde de acá hasta que la vuelvas a poner (desde ⏸️ sacadas por ahora). No borra nada." onclick="listaPausar('${k}',true)">⏸️ sacar ${escHtml(nom)} por ahora</button>`}</div>`}${_volverHtml}
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${_tab('probados','✅ Productos probados','Lo que ya le compraste a este proveedor: cuánto reponer.')}${_tab('nuevos','🆕 Productos nuevos','Lo de su lista que todavía no vendés y da 25% o más en ML.')}${_enB?'':_tab('hechos','🧾 Pedido'+(nArm?' ('+nArm+' cargados)':''),'El pedido del momento, el mensaje con código y unidades, y los pedidos ya hechos.')}</div>`;
   _listaCacheRevisar();   // etapa 4 (20/10/2026): la que cambió el robot se vuelve a bajar
@@ -20190,8 +20198,7 @@ async function renderListas(){
     ${sinWeb.length?`<details style="margin-top:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px"><summary style="cursor:pointer;font-size:.82rem;font-weight:700;color:var(--muted)">🚫 No está en la web de ${escHtml(nom)}: no lo tienen (${sinWeb.length})</summary><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${sinWeb.slice(0,150).map(f=>fila(f,false)).join('')}${sinWeb.length>150?`<div style="font-size:.64rem;color:var(--muted)">… y ${sinWeb.length-150} más (usá el buscador)</div>`:''}</div></details>`:''}
     ${sacados.length?`<details style="margin-top:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px"><summary style="cursor:pointer;font-size:.82rem;font-weight:700;color:var(--muted)">🗑️ Sacados por vos (${sacados.length})</summary><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${sacados.map(f=>fila(f,false)).join('')}</div></details>`:''}
     </details>
-    <div style="margin-top:14px"><input id="lista-q" type="search" value="${escHtml(q)}" placeholder="🔎 buscar en toda la lista" oninput="clearTimeout(window._listaT);window._listaT=setTimeout(()=>{_listaQ=this.value.trim();renderListas();setTimeout(()=>{const i=document.getElementById('lista-q');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length);}},0);},400)" style="width:100%;padding:8px 10px;font-size:.85rem;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--text)">
-    ${q.length>=2?`<div style="font-size:.64rem;color:var(--muted);margin:6px 0">${res.length} encontrado${res.length===1?'':'s'}${res.length>60?' · muestro 60':''}</div><div style="display:flex;flex-direction:column;gap:6px">${res.slice(0,60).map(f=>fila(f,true)).join('')}</div>`:''}</div>`;
+`;
 }
 // LA PAPELERA DE PEDIDOS VIVE EN AJUSTES (21/10/2026). Se dibuja al abrir su tarjeta y cada vez que Pedidos se redibuja con ella abierta.
 function renderPapelera(){
