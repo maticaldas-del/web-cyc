@@ -365,3 +365,12 @@ La etapa 8 de la revisión (Reglas del cerebro, cada 7 días) mira que esto qued
 - Paraguay 08/10: falta el correo (monto y kilos). Paraguay 08/09: pesos de los dólares, ticket, retira, correo. Transferencia de
   $50.000 del 29/09: preguntar de qué es.
 - Dinero que rinde en MP: lo revisa él en la app de cada cuenta.
+
+## ✅ 21/10/2026 · LO QUE CAMBIÓ CON SUS 62 DECISIONES (todas (a), v25.75)
+- 🪜 al volver de un techo, no 🏔️ (1.1) · liquidando frena sólo subas (1.2) · la 🏔️ vence con la foto del mercado (1.3) · tags que vencen
+  (1.4) · compras con peor caso (1.5) · gemela y Clásica juntas, plata parada una vez (1.6/5.2) · estrategia liquidando/remate/sobra
+  vigente = remate para Pedidos (5.1).
+
+- 💡 El precio sugerido de ML (`sugP`) es una referencia para lanzamiento y techo, nunca motivo para bajar algo que vende.
+- 🪜 Arriba de $15.000 hay ~15% de zona muerta de comisión: una suba que cae ahí se frena sola salvo `!escalon` con motivo.
+- 💳 Caja perdida por cuotas (`cajaPorCuotas`) = candidata a 💳 gemela Premium, no a bajar el precio.

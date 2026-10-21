@@ -2916,7 +2916,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.74';
+const APP_VERSION='25.75';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2929,6 +2929,62 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.75',f:'21/10',h:'02:25',c:[
+    {n:3,t:'🪜 Volver al precio de antes después de una prueba de techo ya no se anota 🏔️ techo encontrado: queda 🪜 bajando hasta que la medición diga 95%.'},
+    {n:3,t:'📉 La marca "liquidando" frena sólo las SUBAS: lo que decido bajar, poner en descuento o rematar sí pasa.'},
+    {n:3,t:'🏔️ El techo encontrado vence: se guarda cómo estaba la competencia y se vuelve a buscar si el competidor sube 8%+, desaparece, ganamos la caja o pasan 30 días.'},
+    {n:3,t:'🛒 Los productos nuevos de Paraguay y Listas y el precio máximo de compra se miden con el peor caso (2% de retención de otra provincia), igual que nuestros precios.'},
+    {n:3,t:'💳 La gemela Premium y su Clásica se miden juntas (techo, rayas de la línea de tiempo y ficha): son las mismas unidades, así que se suman sus ventas y la plata parada va una sola vez.'},
+    {n:3,t:'Cada mes, entre el 1 y el 5, el robot carga solo los cargos de Full del mes anterior (almacenamiento, stock antiguo, retiro) como gasto. Una sola vez: no se duplica.'},
+    {n:3,t:'Armar caja: si el cupo de Full no alcanza para lo que hay en la oficina, lo que quedó afuera ya no cuenta como reposición en camino (para la escasez) ni como sobra.'},
+    {n:3,t:'"Llegó" en Paraguay y en Listas te pregunta si llegó todo: si decís que sí, lo suma solo a Mi oficina (lo que tiene colores y el pedido no dice cuál te lo pide aparte)'},
+    {n:3,t:'Lo nuevo (que nunca vendió) ya no se activa solo en Full sin el precio de lanzamiento decidido y sin estar en el catálogo de ML confirmado'},
+    {n:2,t:'🔎 Los tags que ya no explican el precio (🎁 fecha especial pasada hace 7 días, 🪜 bajando sin escalón en 14, 🥊 caja en 30) entran a "sin afinar".'},
+    {n:2,t:'📉 Lo vendido abajo de 20% con estrategia liquidando, remate o sobra cuenta como remate: Pedidos ya no lo toma como demanda para volver a comprar.'},
+    {n:2,t:'Armar caja y la ficha muestran lo que ML recomienda reponer en Full, los días sin stock de las últimas semanas, y avisan si mandás mucho más o si ML pide reponer en menos de 2 semanas.'},
+    {n:2,t:'La columna Caja ML dice cuando la caja se pierde por las cuotas y no por el precio (candidata a gemela Premium), y cuando el que gana está en promo.'},
+    {n:2,t:'La ficha muestra el precio que sugiere ML (en lo que no es de catálogo), las etiquetas de calidad con problema y lo que cuesta de verdad mandar una caja a esa cuenta.'},
+    {n:2,t:'En Para probar, Paraguay y Listas: si el más barato de ML está en promo, se dice con su % y el precio sin promo.'},
+    {n:2,t:'Paraguay: al lado del dólar que pagaste sale el MEP y el cripto de ese día.'},
+    {n:2,t:'Cada venta dice si es la 🥇 1ª o la 🥈 2ª desde el último cambio de precio de esa publicación'},
+    {n:2,t:'La ventanita 🧠 avisa cuando la nota es de antes de las últimas ventas (cuántas y cuándo fue la última)'},
+    {n:2,t:'👥 Ventas de hoy: las 4 cuentas a esta hora contra el promedio de los últimos 5 días iguales (rayita = lo normal); se pone ámbar sólo si una se frenó de verdad (Poisson, menos de 1 vez cada 20). En Ventas → Análisis por cuenta, con Día = hoy, la flechita compara "a esta hora" en vez de contra ayer entero.'},
+    {n:2,t:'Armar caja e Inicio: "para mandar" y "sugerido p/ <cuenta>" ya vienen con el cupo de Full restado, igual que los botones de cada cuenta (dice "(cupo)" cuando corta).'},
+    {n:2,t:'Resumen: "Pedidos pendientes" pasó a "Falta reponer" con la misma cuenta que Pedidos (plata para reponer, productos para comprar y plata en riesgo). Tocalo y vas a Pedidos.'},
+    {n:2,t:'Pedidos → Paraguay: el "Falta reponer" de arriba cuenta sólo el proveedor elegido (Nissei o Elegancia).'},
+    {n:2,t:'Pedidos Bs As: 🛒 Lista para el mayorista, por proveedor con unidades y colores, para tildar, copiar o imprimir'},
+    {n:2,t:'Barrita 💰 piso · 🔴 techo · precio de hoy en el 🧠 y en Rotación (las rayas de la línea de tiempo, las deja el robot cada noche)'},
+    {n:1,t:'El robot dice cuántas consultas le hizo a Mercado Libre en cada vuelta y no repite la vuelta pesada cada vez que se corre un comando'},
+    {n:1,t:'🔄 Pedidos marca qué cambió desde que lo miraste en ese teléfono: 🆕 nuevo · ⬆️ pide más · ⬇️ pide menos · 🎨 cambió por color, arriba la cuenta y la lista de lo que ya no hace falta comprar, y un interruptor para ver sólo lo que cambió. Se da por visto solo al salir de Pedidos después de mirarlo 10 segundos (cada teléfono por su lado).'},
+    {n:1,t:'🎉 Cada venta dice si es un hecho nuevo: 🎉 primera venta de esa publicación · 🏁 era la última que había en Full de esa cuenta · 🔁 volvió a vender después de 30+ días · ⚡ se aceleró (misma regla que Pedidos y la escasez).'},
+    {n:1,t:'🔥 Racha de días cumplidos ($115.000+) en Ventas de hoy; en Mes: 🏆 mejor día, racha y récord, y el mes en cuadritos del color de su ganancia (tocás uno y abre Ventas en ese día).'},
+    {n:1,t:'📱 Ventas en el celu: los 6 cuadros de arriba quedan en un renglón (ventas · facturado · ganancia · % · puntaje) que se abre al tocarlo y se recuerda abierto/cerrado. En la PC no cambia.'},
+    {n:1,t:'🆕 Ventas: "N ventas nuevas desde que miraste · +$X", con un puntito azul en cada nueva y una rayita donde empieza lo que ya habías visto. Se da por visto al salir de Ventas después de 5 segundos.'},
+    {n:1,t:'🔔 Ajustes → Apariencia: sonido de cada venta con Inicio o Ventas abiertos (APAGADO de fábrica): más agudo = mejor %, más notas = más plata, 💎 JOYA con brillo; opción "sólo $5.000+ de ganancia" y botones para escuchar cada nivel. En modo discreto no suena.'},
+    {n:1,t:'Métricas: sacamos "👀 Qué está mirando ahora" (era una foto vieja del 07/10).'},
+    {n:1,t:'Arqueo: sacamos el botón "🔧 Reparar stock variantes" (escribía sin preguntar).'},
+    {n:1,t:'Vinculaciones: sacamos "⚡ Auto Paulvic + Victoria" y "🗑 Ocultar sin vincular".'},
+    {n:1,t:'Arqueo: el número violeta de arriba dice "Patrimonio hoy" y en el teléfono no se ve (manda el grande de abajo).'},
+    {n:1,t:'"Última actividad" vive sólo en Ajustes (🕘 Últimos cambios): salió del Arqueo y del Resumen.'},
+    {n:1,t:'Ajustes: una sola tarjeta con la versión, buscar actualizaciones y descargar el backup.'},
+    {n:1,t:'Los botones que no tenían fondo (manchas blancas en el tema oscuro) ahora tienen fondo y borde, y todo botón se hunde un poquito al tocarlo.'},
+    {n:1,t:'Lo elegido (pestañas, solapas, proveedor, rango, menú) va siempre del mismo verde.'},
+    {n:1,t:'Ventas de hoy: el cartel del puntaje lleva el color y el nombre del nivel de la tarjeta (Bien, Bueno, Excelente…) y abajo una escalerita dice cuánto falta para el siguiente.'},
+    {n:1,t:'Los colores de las estrategias van por familia: verdes para subir/buscar techo, rojos y naranjas para bajar o sacar stock, azul para volver, violetas para promos y especiales, grises sin estrategia.'},
+    {n:1,t:'El botón "atrás" del teléfono vuelve a la pantalla anterior y al mismo lugar donde estabas (si hay una ventanita abierta, primero la cierra).'},
+    {n:1,t:'☰: buscador de productos arriba del menú. Cada resultado abre la hoja del producto: stock en Full, oficina y camino, lo vendido, cuánto le alcanza, lo que deja hoy y botones a su línea de tiempo, ficha, 🧠, ventas, pedido, caja y contar.'},
+    {n:1,t:'Inicio: arriba CYC y el dólar, después Ventas de hoy y el Puntaje, y abajo 9 baldosas con un número vivo cada una (ventas de hoy, pedidos urgentes, cajas para mandar, gastos sin cargar…)'},
+    {n:1,t:'El menú ☰ ordenado por uso (todos los días · mirar · plata una vez por semana), con números, 🗂️ Fichas, y el ☀️/🌙 adentro. Al bajar la pantalla el ☰ se esconde'},
+    {n:1,t:'📈 línea de tiempo en cada pedido y en Armar caja, 📋 Ficha desde la línea de tiempo, y "mandar de casa" lleva a Armar caja'},
+    {n:1,t:'Al tocar el aviso de una venta, Ventas abre en ese día y la venta late y dice "la del aviso"'},
+    {n:1,t:'Paraguay: los filtros (mostrar / vender en) quedan plegados en ⚙️ Filtros'},
+    {n:1,t:'Línea de tiempo: tocá o arrastrá sobre un día y aparece su franja con todo lo de ese día'},
+    {n:1,t:'Ficha médica en el celu: los cambios y los tramos en tarjetitas'},
+    {n:1,t:'Ventas de hoy (Inicio): deslizá la tarjeta con el dedo para ver otros días'},
+    {n:1,t:'Inicio: "🧠 Última vuelta de Claude" dice cuándo pasé, cuántos precios cambié y mis notas'},
+    {n:1,t:'En camino: un camioncito muestra por dónde va cada caja; y el pago del Paulvic tiene 7 casilleros, uno por día hábil'},
+    {n:1,t:'Ventas separadas por día, con la ganancia de cada día; hoy sin ventas dice cómo iba la semana pasada a esta hora'},
+    {n:1,t:'Listas con un solo buscador arriba; en Gastos el formulario a mano queda plegado'}]},
   {v:'25.74',f:'21/10',h:'02:10',c:[{n:2,t:'🔬 Cada venta dice que la analizó el robot y con qué esfuerzo. Si no hizo falta cambiar nada sale en gris como las cuotas; si cambió algo, del color de la estrategia que se tomó. Pasando el mouse (o tocando) explica qué pasó y qué se resolvió.'}]},
   {v:'25.73',f:'21/10',h:'00:51',c:[{n:2,t:'💰 Línea de tiempo: el piso ("más plata") ya no puede ser un precio donde no se vendió nada. Pasaba con el Aer Jasmín: $19.490 salía de piso con 0 ventas en 5 días, sólo porque era el único precio con 5 días medidos. Sin un precio que vendió con 5 días, queda el piso provisorio de lo que sí vendió.'}]},
   {v:'25.72',f:'21/10',h:'00:48',c:[{n:1,t:'🗑️ La papelera de Pedidos pasó a Ajustes (tarjeta "🗑️ Papelera de pedidos", con lo que sacaste y lo que no se trae más). En Pedidos ya no está la solapa.'}]},
@@ -4584,10 +4640,7 @@ const REV_HORA='04:00';
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel dice la etapa
 //                     de HOY (una por día de la semana, corre sola a las REV_HORA) y si ya quedó hecha.
 const REV_PENDIENTE=[
-  {t:'Etapa 6 · 24 ideas nuevas para elegir',que:'datos de ML (6), plata (6), lo que hacés a mano (5) y gusto (7), cada una con (a) y (b)',pedi:'a'},
-  {t:'Etapa 7 · ideas de diseño para elegir',que:'la lista numerada que te pasé (cada una con (a) y (b))',pedi:'a'},
-  {t:'Etapa 5 · 2 decisiones de historia',que:'1 un remate que decido yo cuenta como remate · 2 la gemela Premium y su Clásica se miden juntas',pedi:'a'},
-  {t:'Etapa 1 · 6 decisiones de precios',que:'1 volver tras prueba de techo · 2 liquidando frena bajas · 3 la 🏔️ no vence · 4 cuánto dura un tag · 5 compras con peor caso · 6 plata parada compartida',pedi:'a'},
+  // 21/10/2026: eligió las 62 decisiones (etapas 1, 5, 6 y 7), todas (a), y quedaron aplicadas en v25.75.
 ];
 // Etapa 7 (diseño) cerrada el 01/10/2026: hechas 1-9, 11, 13, 14 y 15; la 10 (Pedidos) y la 12 (sacar
 // "Participación por cuenta") él eligió dejarlas como están.

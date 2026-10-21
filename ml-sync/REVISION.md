@@ -86,6 +86,16 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   explican el precio → (a) 🎁 7 d después de la fecha, 🪜 14 d sin escalón nuevo, 🥊 30 d, después a 🔎 (b) duran hasta que los
   cambie · 5 candidatos, listas y máximo de compra con el peor caso (2% retención) → (a) sí (b) no · 6 plata parada de un stock
   compartido (gemela/repetidas) → (a) repartir por lo que vende cada una (b) dejarlo y no sumarlas.
+- **APLICADAS LAS 6 DE PRECIOS (v25.75, 21/10/2026).** Lo que se hizo, dónde vive y qué chequear:
+  - **21/10/2026 · las 6 aplicadas (a).** 1 `pasajeDe`/`estrategiaPasaje`: volver de 📈/🏔️ = 🪜; `decido` lo anota 🪜 (y 🚧 en techofreno);
+    `techo95` mira esas 🪜 (`bajaDeTecho`): 95% → 🏔️, si no siguen 🪜. · 2 `calcCerebro`: liquidando con `forzar` (decido/entrarpromo) baja,
+    no sube; `aplicarCerebro` baja la marcada si lo decidí yo. · 3 `fotoMercadoTecho`/`porQueReabrirTecho` (una sola cuenta con `techofreno`):
+    `techo95:go` guarda la foto (`cyc/techofreno/<MLA>` con `t95`) al anotar 🏔️ y la reabre a 📈 si el ajeno sube 8%+, desaparece, no queda
+    abajo, ganamos la caja o pasan 30 d. · 4 `tagVencido`: 🎁 7 d después de la fecha, 🪜 14 d sin escalón, 🥊 30 d → 🔎 SIN AFINAR.
+    · 5 `cuentaCandidato` y `maxCompraDe` con `PEOR_RET_PCT` (CAND_CALC_VER 13, pycat/listas `cv`). · 6 stock compartido: línea junta
+    (stock una vez) o `partesStockDe` (escmedir, lupa, `rayasPrecioLinea`/`armarFicha` con `parte`).
+    Qué chequear: ninguna 🏔️ sin foto t95 después de la completa (salvo las especiales); la 🔎 sin afinar con los vencidos; ningún
+    liquidando subido; máximo de compra = 25% en el peor caso; los candidatos medidos con calcVer 13.
 - **21/10/2026 · v25.61 · 🪜 bajando con techo marcado** (él con el Centímetro Blanco: *"está bajando sin techo"* · *"todos los productos
   tienen que tener techo marcado, excepto los que tienen sobrestock, bajando por algún motivo puntual, o que todavía están buscando
   techo"*). `decido` con 🪜 anota solo en `cyc/techofreno` el precio que no rindió (`auto:true`, no pisa uno de 30 días con precio
@@ -840,6 +850,62 @@ el precio de un candidato distinto con código parecido (se compara también por
   · G5 Ventas en el celu: los 6 cuadros de arriba en un renglón que se abre: (a) el renglón · (b) sólo 3 cuadros.
   · G6 "N ventas nuevas desde que miraste" en Ventas, con puntito y rayita: (a) todo · (b) sólo el aviso de arriba.
   · G7 Sonido de venta con el tono del nivel (el iPhone no vibra): (a) interruptor en Ajustes, apagado de fábrica · (b) sólo día cumplido y día de oro.
+- **APLICADAS LAS 24 IDEAS (v25.75, 21/10/2026).** Lo que se hizo, dónde vive y qué chequear:
+  **Etapa 3 (mercadería)**
+  - **6.D1 · Reposición que recomienda ML.** Una vez cada ~20 h por producto×cuenta (tope 150 por vuelta) el robot lee `/marketplace/fbm/user-products/<upid>/replenishment` y guarda `cyc/fullreco/<upid>` = {cta, ts, st, urg, v30, sem:[[vendidas, días sin stock]…], tipo, sug, plazo}. Web: `fullRecoDe`/`fullRecoHTML` en Armar caja (chip "ML N" y renglón con barritas); robot: sección "📦 ML PIDE REPONER EN ≤2 SEMANAS" de `escasez` (⏰ sin caja en camino). Probe a mano `reposfull[:go]`. Chequear: que `sug` null no se lea como 0; que el aviso de "mandás N veces lo que recomienda ML" no salte en todos.
+  - **6.P1 · decide_cajas recorta por cupo con la regla de la web.** `pedidostodo` imprime `CUPO <Cuenta> peq N gra M · leído hace D d · mandado después P/G` y `· GRANDE` por producto; `llenar_cupo` (Python) = `cajaLlenarCupoPlan` (web): 1 u. a cada uno y después por plata. El motivo de la caja empieza con `✂️ por el cupo de Full de <cta> … (faltan Q)`. Chequear: si la web cambia `cajaLlenarCupoPlan`, cambiar `llenar_cupo` (probadas iguales en 400 casos al azar).
+  - **6.P2 · cupoCorto.** `decido:caja` guarda `cupoCorto:{falta,ts}` cuando el motivo trae `✂️ … (faltan N)`; `escasez` resta esas unidades de la oficina (15 días, `CUPO_CORTO_DIAS`) y `planilla` las dice en la sobra. Chequear: la clave de `claudedecide/caja` contra la de inventario (color con mayúsculas/espacios: probado).
+  - **6.P5 · Caja real por cuenta.** `cajaRealPorCuenta` (robot) = `cajaRealDe` (web): costoCaja ÷ unidades promedio de las últimas 8 cajas de esa cuenta en 120 días. Ficha (`cajaRealFichaHTML`) y `planilla` (sección 📦 con "¿conviene?", avisa si la caja se come 25%+ de lo que deja). Chequear: robot y web dan lo mismo (probado).
+
+  **Etapa 1 (precios)**
+  - **6.D2 · Caja perdida por cuotas.** `cajaDeCompraML` guarda `cajaBoost`, `cajaGanP` (precio del ganador), `cajaPorCuotas` (`cajaPerdidaPorCuotas`: pierde/comparte, el ganador está a 98%+ de nuestro precio y `free_installments` no está boosted). Rotación muestra "💳 la perdés por cuotas"; `gemela` las pone primero aunque estén abajo de $50.000. Chequear con `medir6` qué trae `winner`.
+  - **6.D4 · Precio sugerido de ML (sólo no catálogo).** `/suggestions/items/<MLA>/details` cada ~20 h (tope 40 por vuelta) → `sugP`, `sugMin`, `sugTs`. Sólo referencia: `planilla` (sección 💡) y la ficha. **No mueve precios.** Forma de la respuesta NO medida: código tolerante (número suelto o `.amount`). Correr `medir6` para confirmar.
+  - **6.D5 · Competidor en promo.** `promoDeOferta` (original_price) en `precioAIgualar` → `promoPct`; candidatos guardan `mlPromoPct`/`mlSinPromo`, pycat/listas `pp`; la caja guarda `cajaGanPromo` (original_price/regular_amount del ganador, tolerante). Chequear con `medir6` que `winner.original_price` exista; si no, `cajaGanPromo` queda vacío y no dice nada.
+  - **6.P6 · Escalón de comisión en $15.000.** `escalonDeComision` (zona = hasta 15% arriba). `planilla` lista las que están en la zona con lo que dejarían a $14.990; `decido` frena una SUBA que cae en la zona si a $14.990 deja igual o más por unidad ("🚫 FRENO zona muerta…"); a propósito con `!escalon`. Probado de punta a punta con un ML de mentira.
+
+  **Etapa 2 (plata)**
+  - **6.D3 · Cargos de Full al cierre.** Paso nuevo en `ml-daily` "Cargos de Full del mes" (`cargosmes:auto:go`, continue-on-error, en FALLOS_NOCHE). Sólo días 1–5 (hora AR), memoria `mlapi/cargosmes/<AAAA_MM>`; si ya hay uno cargado a mano lo marca hecho sin cargar otro. Chequear el 1º de noviembre que cargue octubre UNA vez.
+  - **6.P3 · Dólar MEP/cripto.** Una vez por día (`mlapi/dolar/refDia`) → `cyc/dolarref/<AAAA_MM_DD>` = {of, mep, cri, ts, fuentes} (dolarapi, respaldo criptoya; si no contesta ninguna, no escribe). Paraguay muestra "ese día MEP $X (+Y%) · cripto $Z"; `compray` lo imprime. Chequear que las fuentes sigan contestando.
+  - **6.P4 · `cruza33[:días]`** (solo lee): envío que pagamos cuando 2 u. o un carrito cruzan $33.000 contra la venta suelta del mismo producto.
+
+  **Etapa 8 (datos)**
+  - **6.D6 · Etiquetas de calidad.** `cajaDeCompraML` pide `tags,health` y guarda `etq` (ordenadas, separadas por coma) y `salud`. `etqProblemas` traduce las malas (`ETQ_PROBLEMA`); `planilla` lista las que no venden y tienen un problema (sección 🩺); la ficha las muestra.
+  - **Probe `medir6[:MLA]`** (solo lee): las claves de `winner`/boosts, la forma de suggestions, el conteo de etiquetas, una reposición y el dólar de referencia.
+
+  - **A1 · HECHO (preparado, falta la prueba en la próxima llegada) · `publicar:<ficha>|cuenta=<cuenta>|precio=<pesos>[|catalogo=<MLA…>][|color=<variante>][|!piso][|go]`** (ml-sync; ml-consulta lo niega). Crea UNA publicación Clásica PAUSADA en el catálogo CONFIRMADO de la ficha (`mlCatalogo` de la lista o el candidato de Paraguay con ✅/revisión de fotos, o `catalogo=` mirado por mí), con título/fotos/categoría del catálogo (categoría = la de las ofertas del catálogo; si no, `domain_discovery`). Sin `|go` muestra el cuerpo y le pide a ML `POST /items/validate` (no crea nada). Con `|go`: valida, crea, PAUSA en el acto, relee, vincula (`cyc/mllinks/<MLA>` con `catOk`, `altaClaude`, `altaSinVender`) y anota 🆕 lanzamiento. Frenos: ficha con colores pide `color=`, ya hay publicación viva de esa ficha en la cuenta, techo $650.000, margen en el peor caso (`cuentaCandidato` + 2% de retención) abajo del piso salvo `!piso`, sin dólar/costo/comisión no publica, ML no valida → no crea. Riesgo conocido: entre el alta y la pausa (~segundos) queda activa con 1 u. de depósito; si la pausa falla lo grita y `pausarFuera` la pausa en la vuelta de la hora. Qué chequear: que sin go no cree nada (sólo validate), que la creada quede `paused` y vinculada, que no repita en la misma cuenta.
+  - **A2 · HECHO · lo nuevo no se activa solo sin precio de lanzamiento y sin catálogo confirmado.** En `activarPausadasFull` (vuelta de la hora, `activarfull`, `pausadas`): "nuevo" = ni la publicación ni su ficha vendieron NUNCA (todas las ventas, no 120 días). Pide (1) una estrategia mía anotada en `cyc/estrategia/<MLA>` (cualquiera decidida; `decido:<MLA>=<precio>#nuevo|…`) y (2) que el `catalog_product_id` de la publicación sea el confirmado de la ficha (`mlCatalogo` o candidato `candCatChequeado`) o que esté confirmado a mano en `cyc/mllinks/<MLA>/catOk` (`catok:<MLA>=ok|sincat|MLA…|-[;…][;go]`, lee el catálogo de ML en el momento). Si no, queda pausada con el motivo (y el 🧠 lo dice en simple). El alta de nuevas guarda `catalogo` (`catalog_product_id` o null) y `catalogoListing`, y el log lo muestra. La ficha nace con `mlCatalogo` del candidato confirmado (web `candFichaDesde` y robot `pyped:llego`). Qué chequear: que una gemela o un producto que ya vendió NO quede frenado; que `pausadas` nombre los frenados por esto; que `catok` no escriba si ML dice otro catálogo.
+  - **A3 · HECHO · "Llegó" suma a la oficina en Paraguay y Listas.** Web: `_pyPedidoLlego` (reposición y con nuevos) y `_listaLlego` preguntan "¿Llegó TODO?" (`_llegoTodoPreg`); con sí suman con `llegadaSumarOfi` (usa `ofiMover`, color con `_ofiColorDe`); lo que no se puede (producto con colores y renglón sin color, sin ficha) sale en el cartel para contarlo a mano. `ofiAlLlegar` es la foto de ANTES de sumar y queda sólo de lo no sumado (la canasta/`LIviaja` no esperan lo ya contado); `sumoOfi` {ts, por, items} en el pedido. Robot: `pyped:llego:<id>[;<palabra>[#color]=<llegaron>…][;nosumar][;go]` suma con `ofiSumarBot` (misma cuenta que `ofi`), anota `falto` y `sumoOfi`, y el `ofi` que imprime para lo no sumado sale con `@color` (o `@<color: …>` para elegir) — ARREGLADO el pendiente: antes salía sin `@` y fallaba entero. Comando nuevo **`listaped`** (lista en camino) y **`listaped:llego:<id|número>[;…][;nosumar][;go]`**: lo mismo que el botón Llegó de Listas (fichas nuevas con costo pc÷dólar del pedido, `listaProv`, `codLista`, `mlCatalogo`; probados suben costo congelando el viejo en `precios_hist_prod`) + suma a la oficina. Qué chequear: que dos "Llegó" no sumen dos veces (el estado se chequea antes), que el total de la oficina no quede abajo de la suma de colores, que lo faltado quede en `falto`.
+  - **A4 · HECHO · menos llamadas a ML.** `lib.mjs`: `mlConteo` (consultas, 429, reintentos, comisiones de memoria, permisos) y al salir cada corrida imprime `📞 consultas a ML en esta corrida: …`; `mlGet` reintenta UNA vez un 429 (~2 s; `ML_REINTENTO_429=0` lo apaga) y guarda `/sites/…/listing_prices?…` por ruta y permiso durante la corrida; `mlRefresh` reintenta 429/5xx (3 s y 8 s; un 400 no). `sync.mjs` main: `mlapi/vueltapesada` {ts, consultas, e429} — una vuelta pesada a menos de 45 min de la última va liviana; una liviana del ciclo (`PESADA_SI_TOCA=1`, puesto en `ciclo.sh`) se vuelve pesada a los 60 min; sin memoria legible manda lo que decidió el ciclo; `FORZAR_PESADA=1` la corre igual; se anota sólo si la vuelta terminó entera. Qué chequear: en el log, `⏩ La vuelta pesada se hizo hace N min` tras un comando y `⏫` en las livianas; que el stock/cajas se sigan leyendo una vez por hora.
+  - **A5 · HECHO.** Web: en la ventanita 🧠 (modo Claude, notas de precio) si después de la nota hubo ventas de esa publicación, renglón ámbar "⚠️ Esta nota es del dd/mm hh:mm y después vendió N veces (la última el …): todavía no la revisé" (`_comprasEntre`). En Ventas x Producto cada venta lleva 🥇 1ª / 🥈 2ª venta desde el cambio (`ventaNroHTML` / `ventaNroDesdeCambio`: compras —no renglones— no canceladas de ESA publicación desde el último cambio de `cambiosPrecioLista`); de la 3ª en adelante nada. Qué chequear: que un carrito cuente una vez; que no aparezca en canceladas.
+
+  - **G1 · Pedidos: qué cambió desde que lo miraste** (`pedCambioDe`, `pedCambioChip`, `pedCambioAvisoHTML`, `#ped-cambio-aviso`,
+    localStorage `cycPedVisto` = {ts, p:{id:{c,n,s,v}}}). La cantidad comparada sale de `_pedCantVista`, que ahora usa también la
+    tarjeta (`_cantShow`; en Paulvic, redondeada con `pvRedondo`). "Visto" = `_vistoSalir` (goPage, ocultar la app, pagehide) si
+    estuvo 10 s (`VISTO_SEG`). La primera vez en un aparato se anota sin marcar nada; sin pedidos cargados no se anota.
+    **Chequear:** que la cantidad del chip sea la misma que la del número grande · que el filtro "sólo lo que cambió" se apague solo
+    si no hay cambios o en Listas/Papelera · que nada falle sin localStorage.
+  - **G2 · lo que significa cada venta** (`ventaHechoDe`/`ventaHechoHTML`, índice `_ventaHechosIdx` cacheado por firma). 🎉 sólo si la
+    publicación tiene `altaTs` posterior al primer día guardado o la venta es 90+ días posterior (las ventas arrancan el 01/05/2026) ·
+    🏁 sólo con stock MEDIDO en 0 (clave de inventario existente; producto con colores y color sin identificar = no dice nada) y sin
+    ventas posteriores de esa clave · 🔁 30+ días desde la venta anterior de ESA publicación · ⚡ `ritmoRapido` (7 d contra los 30
+    anteriores) sólo en la venta en que empieza y con ritmo de antes > 0. **No hice el papelito de colores** de la maqueta (adorno; se
+    puede agregar). **Chequear:** que un relleno viejo de ventas no llene todo de 🎉 (por eso la vara de altaTs/90 días).
+  - **G3 · las 4 cuentas a esta hora** (`cuentasAEstaHora`, `_homeCuentasHTML`, `vpAehChip`; `_homeCurva(k,cta)` ahora acepta cuenta y
+    da `compras(min)`; `_homeCurvaPrev` = los mismos días que la línea). Ámbar: suele llevar 3+ compras a esa hora y P(X≤hoy) < 5%
+    (`_poisCdf`). En Ventas (Día = hoy) la flechita de ganancia por cuenta es "vs a esta hora"; el % sigue contra el día anterior.
+    **Chequear:** misma cuenta que la línea de Ventas de hoy (efectivoCostoVP) · sin días previos no se dibuja.
+  - **G4 · racha 🔥, mejor día 🏆 y el mes en cuadritos** (`rachaHasta`, `_mesRachas`, `_homeGustoHTML`, `homeCalIr`). Día cumplido =
+    `PUNT_DIA_7` ($115.000); hoy sin llegar no corta (cuenta hasta ayer). Colores = `VIVA_DIA_NIV`. Todo sale de `_homeDiaTot`, no
+    guarda nada. **Chequear:** que el cuadrito de un día abra Ventas en ese día · que días sin datos (antes del 01/05) queden vacíos.
+  - **G5 · Ventas en el celu en un renglón** (`vpKpiResHTML`, `vpKpiToggle`, clase `vp-kc` en `#vp-kpis`, localStorage `cycVpKpi`).
+    Sólo ≤640px; en la PC no cambia. Mismos números que los cuadros (se arma con las mismas variables).
+  - **G6 · ventas nuevas desde que miraste** (`ventaVistoTs`/`ventaVistoGuardar`, localStorage `cycVentaVisto` = ts de la última venta
+    vista; `.vp-nuevas`, `.vp-nueva-dot`, `#vp-rayita`). Visto al salir de Ventas tras 5 s. **Chequear:** primera vez sin marcas.
+  - **G7 · sonido de cada venta** (`ventaSonidoCheck` en renderAll, renderHomeHoy y renderVentaProd; `sonarVenta` con Web Audio, sin
+    archivos; `sonidoAjusteHTML` en `#ajuste-sonido`; localStorage `cycSonidoVenta`, `cycSonidoMin`). Apagado de fábrica, no suena en
+    modo discreto ni en otra página ni con la app oculta; la primera mirada y el cambio de día no cuentan; hasta 3 sonidos por tanda;
+    venta sin costo no suena (no se sabe el nivel). El aparato se "destraba" con el primer toque (iPhone). **Chequear:** que una venta
+    vieja no suene al volver a Inicio (la base se actualiza en cualquier página).
 - **QUÉ TIENE QUE PROPONER, regla suya del 09/10/2026:** *"lo que hicimos hoy con los colores y movimientos y
   efectos de las tarjetas son detalles que quiero que estén en la revisión de diseño o ideas para ir mejorando la
   web. no puede ser que no me lo haya recomendado cuando está tan bueno (…) que piense cosas así. detalles o mejoras
@@ -945,6 +1011,65 @@ el precio de un candidato distinto con código parecido (se compara también por
   26 "🧠 Última vuelta de Claude" en Inicio · 27 barrita piso/techo/hoy en 🧠 y Rotación · 28 camioncito de la caja y casilleros del
   pago Paulvic · 29 ventas separadas por día · 30 Listas un solo buscador y Gastos "Nuevo movimiento" plegado.
 
+- **APLICADAS LAS 30 DE DISEÑO (v25.75, 21/10/2026).** Lo que se hizo, dónde vive y qué chequear:
+  - **21/10/2026 · las 15 primeras decisiones de diseño (7.1-7.15, todas a).**
+    · 7.1 `aMandarConCupo(filas)` (una sola cuenta): botones y cuadros de Armar caja y la línea de Mi oficina en Inicio, con el cupo
+      de Full restado (chicos y grandes aparte; un cupo negativo cuenta 0). Chequear: Ayelen con 142 sugeridas y cupo 38 → 38 en botón, cuadro e Inicio.
+    · 7.2 `pedFaltaReponerTodo()` = `_pedsCostoReponer` de todos los pedidos + productos no "suficiente" + riesgo; la usan Inicio
+      (`nc-pedidos-costo`) y el Resumen (`res-ped-reponer/-n/-riesgo`). Chequear: Resumen e Inicio dicen la misma plata.
+    · 7.3/7.4/7.5 borrados: `metVigBox/renderMetVig/metVigSet/MET_VIG_EST/metCerebroOn` (state.vigilancia se sigue leyendo, nadie la
+      dibuja), `repararStockVariantes`, `autoLinkFamilies`, `bulkHidePending`. Tres listas: falta sólo eso.
+    · 7.6 Pedidos → Paraguay: el filtro por `pyProv` va ANTES de la cuenta de arriba.
+    · 7.7 `.total-pill` dice "Patrimonio hoy" (updateHeaderTotal siempre en vivo) y `@media(max-width:640px){display:none}`.
+    · 7.8 fuera `#act-bar`/`updateAct` del Arqueo y "Última actividad" del Resumen; queda Ajustes → 🕘 Últimos cambios (renderHist).
+    · 7.9 Ajustes: una tarjeta "🔄 Versión, actualizaciones y backup" (se fueron "💾 Datos", "🔄 Aplicación" y `#ajustes-version`).
+    · 7.10 CSS: `.btn` sin `style*="background"` ni clase de color toma `--surface2`/`--border2`; `:active{transform:scale(.95)}` en
+      .btn/.vbtn/.pf-btn/.tab/.dd-opt/.back-btn/.fnav-item. Un botón nuevo con fondo propio lo trae en el style; sin fondo queda parejo solo.
+    · 7.11 tokens `--sel-bg/--sel-tx` (oscuro verde con letra oscura, claro verde oscuro con letra blanca) en .tab.active, .vbtn.active,
+      .dd-opt.active, .pf-btn.active-all, .fnav-item.active-page y los botones elegidos de Paraguay/Listas/Bs As/Paulvic/rango/proveedor.
+      Lo elegido nuevo usa esos tokens, no azul ni violeta. (Los botones de cuenta de Armar caja siguen con el color del veredicto, v25.59.)
+    · 7.12 `VIVA_DIA_NOM` + `_diaEscaleraHTML(gan,dias)`: el cartel del puntaje de Ventas de hoy toma `--c` y el nombre del nivel de la
+      tarjeta; escalerita con lo que falta (Mes/Año por día, con el promedio). El número 0-10 (`_puntajeDia`) no cambió.
+    · 7.13 `ESTRATEGIA_UI` usa `var(--es-*)` por familia (sube*, baja*, vuelve, esp*, neu*), con claro y oscuro en :root/body.light;
+      los alfas pegados al hex pasaron a `color-mix`. Una estrategia nueva lleva su token en su familia (y en las dos paletas).
+    · 7.14 `goPage(page,opt)`: guarda `_pagScroll[pantalla]` y hace `history.pushState({cycPage})`; `popstate` cierra primero la
+      ventanita de arriba (`_MODALES_ATRAS`) y si no vuelve a la pantalla anterior con `{atras:true}` y la deja donde estaba. Al abrir
+      por acceso directo (#pedidos…) Inicio queda abajo en el historial. Chequear: Rotación bajada → Pedidos → atrás = Rotación en el mismo lugar.
+    · 7.15 `fnavBuscar` (buscaCoincide+textosDeProd) en el ☰ y `hojaProdAbrir(prodId)` (z 8900, debajo de 🧠/ficha/línea) con
+      `hojaIr(prodId,'ventas'|'pedido'|'caja'|'contar')`. Sólo números ya calculados (stockOf, stockOficina, enTransito, margenMLDe,
+      ventas de 30 d sin canceladas). Chequear: un nombre largo no ensancha el menú; desde la hoja, Pedidos abre la solapa del origen.
+
+  - **Inicio en grilla 3×3 (7.16)** · `renderHomeVivos`/`_homeVivos` + CSS `.ht-grid` · chequear: arriba siempre CYC+dólar,
+    después `#home-hoy`, `#home-vuelta` y `#home-puntaje`; baldosas de altura fija (un número largo no mueve nada); en
+    ≤640px 3 columnas sin cortes; los números salen de las mismas funciones que las pantallas (`_homeDiaTot`,
+    `cajasVerdes`, `gastosChecklistMes`, `_facRojas`).
+  - **☰ por uso (7.17/7.22)** · `#fnav-menu`, `_fnavNumeros`, `_syncFnav` · chequear: activo correcto por página y solapa,
+    números sólo cuando está abierto, ☀️ cambia el texto, `body.fnav-oculto` vuelve al subir.
+  - **Lista de Tito (7.18)** · `titoAbrir`, `_titoRenglones` usa `_pedsBsasSiempre` (la misma lista que Pedidos → De siempre) ·
+    chequear: misma cantidad y colores que las tarjetas; tildes por día en el teléfono (no en la base); imprimir sólo la lista.
+  - **Atajos (7.19)** · `lineaBtn` en Pedidos/Armar caja, `lineaFichaAbrir`, `_irCajaLink` · chequear: la ficha abre arriba de
+    la línea y al volver al gráfico baja.
+  - **Venta del aviso (7.20)** · robot `cyc/avisoventa_ult`, web `vpMarcarAviso` · chequear: sólo marca si el aviso tiene menos
+    de 3 h; el latido se apaga con modo discreto / menos movimiento; no hay datos del comprador.
+  - **Filtros de Paraguay plegados (7.21)** · `_pyFiltrosHTML` · chequear: el resumen dice lo elegido y ✕ vuelve a todo.
+  - **Franja del día en la línea de tiempo (7.23)** · `_lineaFranjaEn` · chequear: girada (de costado) también; se cierra al
+    cerrar la línea; los números del día son los de la línea guardada (no se recalcula nada).
+  - **Ficha en tarjetitas (7.24)** · `tb()` con `{prim,res}` · chequear ≤640px: ninguna etiqueta vacía, nada recortado.
+  - **Deslizar Ventas de hoy (7.25)** · `_homeHoyDeslizar` · chequear: nunca pasa hoy, el toque normal sigue abriendo Ventas.
+  - **Última vuelta de Claude (7.26)** · `renderHomeVuelta`, `_cerTs` · chequear: ventana de 90 min (`VUELTA_VENTANA_MS`), ámbar
+    con más de 14 h; cuenta sólo lo de `cyc/claudecambios` y `mlapi/claudeexp`.
+  - **Barrita piso/techo (7.27, etapa 8 también)** · robot `armarFicha().rayas` → `cyc/rayas/<MLA>`; web `rayasBarHTML` ·
+    chequear: es la MISMA cuenta que las rayas de la línea de tiempo (`rayasPrecioLinea` = `_rayas`); sin 💰 no se dibuja;
+    el punto respira sólo en 📈 buscando techo / 🪜 bajando; `cyc/rayas` se escribe con `ficha:go` (correr `ficha:<MLA>`
+    sin go para ver la línea RAYAS).
+  - **Camioncito y casilleros (7.28)** · `cajaViajeHTML` (usa `envDias`, `ENV_ROJO_DIAS`, `REPO_DIAS_DEMORA`, `cajaEntradoDe`);
+    `_casTxt` (usa `_pvLimitePago`/`_pvHabilesHasta`, `PV_DIAS_PAGO`) · chequear: cajas llegadas sin camión; casilleros sólo
+    en pedidos llegados sin pagar; vencido = 7 en rojo.
+  - **Ventas por día (7.29)** · `_vpDiasStats`/`_vpDiaCabHTML` · chequear: la ganancia del día usa `efectivoCostoVP` /
+    `pctGananciaVP` como los KPIs (sin canceladas); sólo con más de un día en el período.
+  - **Un buscador en Listas y Gastos plegado (7.30)** · `#lista-buscar` + `_listaBuscarYa` (`_soloB`); `#cmp-nuevo` ·
+    chequear: en Bs As → Dai Nippon el buscador está y busca sólo listas de Bs As; los textos "el resto con el buscador"
+    apuntan al de arriba; Gastos: `addCompra` igual, sólo plegado.
 - **ETAPA 7 DEL 20/10/2026 (v25.54), 4 revisores en máximo: lo chico HECHO.** Qué chequear en la próxima:
   · `buscaCoincide(q,...textos)` + `textosDeProd(p)` (sin tildes, palabra por palabra, nombre/colores/título ML/MLA/código PY) es LA
     búsqueda de Productos, Contar, Ventas, Rotación y Pedidos; un buscador nuevo usa ésa. Armar caja busca por renglón a propósito.
@@ -1140,6 +1265,12 @@ Chequear: que los ayudantes no corran nada que escriba y que cada publicación a
   2 la gemela Premium y su Clásica se juzgan por separado (techo95, rayas, ficha) aunque comparten demanda y stock: la Clásica
   "deja de vender" porque vende la Premium → (a) medirlas juntas por la clave de stock, como `planilla` (`kSt`) (b) seguir por
   publicación y avisarlo en el texto. (La plata parada compartida es la decisión 6 de precios.)
+- **APLICADAS LAS 2 DE LA ETAPA 5 (v25.75, 21/10/2026).** Lo que se hizo, dónde vive y qué chequear:
+  - **21/10/2026 · las 2 aplicadas (a).** 1 `clasificarRemates` con `estrat`: 📉/🧨/📦 vigente al venderse (`tagVigenteEn`, sólo lo anotado
+    antes) + abajo de 20% = remate (`linea` y `pedidostodo`). · 2 gemela + Clásica (y repetidas) juntas por la clave de stock
+    (`claveStockPub`, `lineaJuntaStock`; web `_lineaJuntaStock`, copia exacta): `techo95`, ficha (`juntaCon`), `frenosBajas`, rayas de la web.
+    Qué chequear: la línea junta del robot y la de la web dan lo mismo (si se toca una, la otra); ninguna venta liquidando/remate abajo de 20%
+    contando como demanda en `pedidostodo`; una ficha con gemela dice "🔗 medida junto con…".
 - **CEREBRO.md §1 (20/10 a la noche, de la revisión):** las cortas leen también `preguntas` (antes no traían ninguna) · el log de
   las lecturas se baja entero y se chequean los `✓ terminó` · la completa corre `ventasraras:13` (las de la noche). Chequear:
   que la rutina lo haga.
