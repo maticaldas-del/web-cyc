@@ -1114,6 +1114,9 @@ el precio de un candidato distinto con código parecido (se compara también por
   color y las que temblaban/ardían con ✦. `_vivaPaso` no dibuja. Chequear: un nivel nuevo de `.viva` no puede volver a pintar
   el fondo en modo discreto (la regla usa `[class*=lv-]`).
 
+### Inicio en el celular: sin logo y el dólar al final (21/10/2026, v25.79, pedido suyo)
+- **Qué es:** en ≤640px `#home-dolar-logo` no se dibuja y `#home-cab` (dólar) va con `order:98`, antes de `.home-status`. **Dónde vive:** index.html (CSS). **Qué chequear:** que lo primero en el teléfono sea Ventas de hoy y que el dólar siga editable abajo; en la PC sin cambios.
+
 ### iPhone: el encabezado de cada página debajo de la barra de estado (21/10/2026, v25.78, pedido suyo)
 - **Qué es:** `.page-wrap` y `#page-home` suman `env(safe-area-inset-top)` arriba; antes "← Inicio" quedaba debajo de la hora (barra translúcida, `viewport-fit=cover`) y no se podía tocar. **Dónde vive:** index.html (CSS). **Qué chequear:** en la etapa 7, que nada tocable quede en la franja de arriba del teléfono (botones fijos, carteles con `top:0`).
 

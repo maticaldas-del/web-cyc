@@ -216,6 +216,9 @@ html,body{overflow-x:hidden;max-width:100%}html{overflow-x:clip}body{overscroll-
 .home-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;width:100%;max-width:1280px;align-items:stretch}
 @media(max-width:900px){.home-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:640px){.home-grid{grid-template-columns:1fr}}
+/* 21/10/2026, él: "en el celu sacar cyc y poner el dólar al fondo de todo. Así lo primero que se ven son las ventas".
+   Sólo en el teléfono: el logo no se dibuja y el dólar baja al final de Inicio (antes de "en línea"). */
+@media(max-width:640px){#home-dolar-logo{display:none!important}#home-cab{order:98;margin:10px auto 6px}#page-home .home-status{order:99}}
 .nav-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px 22px 44px;cursor:pointer;transition:all .18s;position:relative;overflow:hidden;text-align:left;height:100%}
 .nav-card:hover{transform:translateY(-2px);border-color:var(--border2)}
 .nav-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;transition:opacity .18s}
@@ -925,7 +928,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 <!-- ════════════════════ HOME ════════════════════ -->
 <div id="page-home" class="page active">
   <div id="home-logo-wrap" class="home-logo" style="display:none"></div>
-  <div style="display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:24px;margin:6px auto 16px;max-width:100%">
+  <div id="home-cab" style="display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:24px;margin:6px auto 16px;max-width:100%">
     <span id="home-dolar-logo" style="display:flex;align-items:center;justify-content:center;height:210px;width:min(640px,calc(100vw - 48px));overflow:hidden"></span>
     <div id="home-dolar" style="padding:10px 22px;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:8px;max-width:100%;box-sizing:border-box;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.3);border-radius:14px">
       <span style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.12em">💵 Dólar actual</span>
@@ -2921,7 +2924,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.78';
+const APP_VERSION='25.79';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2934,6 +2937,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.79',f:'21/10',h:'03:10',c:[{n:1,t:'Inicio en el celular: sin el logo de CYC y el dólar al final de todo. Lo primero que se ve son las ventas de hoy. En la PC queda igual.'}]},
   {v:'25.78',f:'21/10',h:'03:05',c:[{n:1,t:'En el iPhone el botón "← Inicio" (y todo el encabezado de cada página) quedaba debajo de la hora y la batería y no se podía tocar: ahora arranca debajo de esa franja.'}]},
   {v:'25.77',f:'21/10',h:'03:00',c:[{n:1,t:'Inicio: "🧠 Última vuelta de Claude" pasa abajo de las tarjetas.'}]},
   {v:'25.76',f:'21/10',h:'02:50',c:[{n:1,t:'Ventas de hoy: la barra de niveles se llena de a poco, tramo por tramo. El tramo que está en curso queda lleno a medias, con el color del último nivel que ya pasaste. Con cada venta nueva avanza un poquito desde donde estaba.'}]},
