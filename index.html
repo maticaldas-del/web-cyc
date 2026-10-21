@@ -52,6 +52,12 @@ body.light{
 .hv-vuelta .hv-fila{display:flex;gap:10px;padding:5px 0;border-top:1px dashed var(--border)}
 .hv-vuelta .hv-h{font-family:'DM Mono',monospace;color:var(--muted);flex-shrink:0}
 .hv-vuelta summary::-webkit-details-marker{display:none}
+.vp-dia-cab{position:sticky;top:0;z-index:3;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:7px 10px;margin:6px 0 4px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;font-size:.72rem}
+.vp-dia-f{font-weight:700;text-transform:capitalize}
+.vp-dia-n{color:var(--muted)}
+.vp-dia-g{font-weight:700;margin-left:auto}
+.vp-dia-r{flex-basis:100%;height:3px;background:var(--border);border-radius:2px;overflow:hidden}
+.vp-dia-r i{display:block;height:100%;border-radius:2px}
 .fnav-sec{font-size:.6rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);padding:8px 14px 2px}
 .fnav-n{margin-left:auto;padding-left:10px;font-size:.68rem;color:var(--muted);white-space:nowrap}
 .fnav-fila{display:flex;gap:4px;border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:2px}
@@ -12188,6 +12194,39 @@ async function delVentaProd(id){
   if(state.ventaprod[key])delete state.ventaprod[key][id];
   renderVentaProd();syncPedidosDebounced();toast('Eliminado','info');
 }
+// 7.29 · LAS VENTAS SEPARADAS POR DÍA (21/10/2026, eligió la a). Con Semana, 7 días, Mes… la lista era una tira larga sin dónde
+// termina un día. Cada día lleva un renglón pegado arriba mientras se baja: cuántas ventas, la ganancia del día en el color de su %
+// y una rayita contra el mejor día del período. La cuenta es la de los KPIs de Ventas (neto − `efectivoCostoVP`, % con
+// `pctGananciaVP` y la gestión de Full en el divisor) sobre las MISMAS ventas que muestra la lista (búsqueda, cuenta y tag).
+function _vpDiasStats(groups){
+  const D={};
+  for(const g of groups){const k=g._dateKey;if(!k)continue;const d=(D[k]=D[k]||{ventas:0,gan:0,costo:0,gest:0,canc:0});
+    if(g.cancelada){d.canc++;continue;}d.ventas++;
+    for(const v of g.items){const c=efectivoCostoVP(v);d.gan+=(v.neto||0)-c;d.costo+=c;d.gest+=gestDivVP(v);}}
+  let max=0;for(const d of Object.values(D)){d.pct=pctGananciaVP(d.gan,d.costo,d.gest);if(d.gan>max)max=d.gan;}
+  return {D,max};
+}
+function _vpDiaCabHTML(k,S){
+  const d=S.D[k]||{ventas:0,gan:0};const [y,m,dd]=String(k).split('_').map(Number);const f=new Date(y,m-1,dd,12);
+  const DIAS=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  const hoyK=dateToKey(new Date()),ayer=new Date();ayer.setDate(ayer.getDate()-1);
+  const nom=k===hoyK?'hoy':k===dateToKey(ayer)?'ayer':DIAS[f.getDay()];
+  const col=d.pct==null?'var(--muted)':pctColor(d.pct);
+  const w=S.max>0&&d.gan>0?Math.max(2,Math.round(d.gan/S.max*100)):0;
+  return `<div class="vp-dia-cab"><span class="vp-dia-f">📅 ${nom} ${String(dd).padStart(2,'0')}/${String(m).padStart(2,'0')}</span><span class="vp-dia-n">${d.ventas} venta${d.ventas===1?'':'s'}${d.canc?` · ${d.canc} cancelada${d.canc===1?'':'s'}`:''}</span><span class="vp-dia-g" style="color:${col}">${fmt(Math.round(d.gan))}${d.pct!=null&&isFinite(d.pct)?` · ${d.pct>=0?'+':''}${d.pct.toFixed(0)}%`:''}</span><span class="vp-dia-r" title="Contra el mejor día del período"><i style="width:${w}%;background:${col}"></i></span></div>`;
+}
+// Hoy todavía sin ventas: en vez de "Sin ventas cargadas", cómo iba el mismo día de la semana pasada a esta misma hora.
+function _vpHoyVacioHTML(){
+  const ahora=new Date(),hace=new Date();hace.setDate(hace.getDate()-7);
+  const k=dateToKey(hace),ini=new Date(hace.getFullYear(),hace.getMonth(),hace.getDate()).getTime();
+  const corte=ini+(ahora.getTime()-new Date(ahora.getFullYear(),ahora.getMonth(),ahora.getDate()).getTime());
+  const ents=Object.values((state.ventaprod||{})[k]||{}).filter(v=>v&&!v.cancelada&&Number(v.ts)>0&&Number(v.ts)<=corte).map(v=>({...v,_dateKey:k}));
+  const n=new Set(ents.map(vpGrupoKey)).size;let gan=0;ents.forEach(v=>{gan+=(v.neto||0)-efectivoCostoVP(v);});
+  const DIAS=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  const hh=String(ahora.getHours()).padStart(2,'0')+':'+String(ahora.getMinutes()).padStart(2,'0');
+  const comp=state.ventaprod&&state.ventaprod[k]?(n?`El ${DIAS[hace.getDay()]} pasado a esta hora (${hh}) iban <b>${n} venta${n===1?'':'s'}</b> · ${fmt(Math.round(gan))} de ganancia.`:`El ${DIAS[hace.getDay()]} pasado a esta hora (${hh}) tampoco había ninguna.`):'';
+  return `<div class="empty-msg" style="line-height:1.6">☕ <b>Todavía no hay ventas hoy.</b>${comp?'<br>'+comp:''}<br><span style="color:var(--muted)">La primera de hoy va a aparecer acá sola.</span></div>`;
+}
 function renderVentaProd(){
   const dEl=document.getElementById('vp-date');if(!dEl)return;
   vpDate=dEl.value||vpDate||todayStr();
@@ -12252,7 +12291,10 @@ function renderVentaProd(){
     // el celular. Mostramos los 200 más recientes; los totales/KPIs de abajo igual
     // se calculan sobre TODO el período. Para ver otras, se usa el buscador/filtros.
     const VP_CAP=200;const shownGroups=filteredGroups.slice(0,VP_CAP);
+    // 7.29: con más de un día en el período, cada día lleva su renglón pegado arriba (ventas, ganancia y una rayita contra el mejor).
+    const _vpDS=listScopeKeys.length>1?_vpDiasStats(filteredGroups):null;let _vpDiaPrev=null;
     list.innerHTML=filteredGroups.length?shownGroups.map(grp=>{
+      let _vpCab='';if(_vpDS&&grp._dateKey!==_vpDiaPrev){_vpDiaPrev=grp._dateKey;_vpCab=_vpDiaCabHTML(grp._dateKey,_vpDS);}
       const isCancelled=grp.cancelada;
       let gn=0,gc=0,gmlx=0,ggest=0,gOfi=0;grp.items.forEach(v=>{if(!isCancelled){gn+=v.neto||0;gc+=efectivoCostoVP(v);gmlx+=impuestosDeVenta(v);ggest+=gestDivVP(v);gOfi+=costoOficinaVP(v);}});
       // La ganancia en PESOS se mide contra gc (sin la gestión): el neto ya la trae descontada.
@@ -12498,8 +12540,8 @@ function renderVentaProd(){
         ${_det}
       </div>`;
       const _vv=vivaVenta({cancel:isCancelled,gpct,est:_est,neto:gn,gan:gg,costo:gc});
-      return vivaEnvolver(_pcHtml,'vp-pc',_vv)+vivaEnvolver(_celHtml,'vp-cel',_vv);
-    }).join('')+(filteredGroups.length>VP_CAP?`<div class="empty-msg" style="margin-top:10px">Mostrando las ${VP_CAP} ventas más recientes de ${filteredGroups.length}. Usá el buscador o filtrá por cuenta/período para encontrar otras. (Los totales de arriba sí cuentan todas.)</div>`:''):`<div class="empty-msg">${vpQ||vpFilterCuenta?'Sin resultados para los filtros aplicados '+(/^(hoy|el )/.test(mesLabel)?'':'en ')+mesLabel+'.':'Sin ventas cargadas '+(/^(hoy|el )/.test(mesLabel)?'':'en ')+mesLabel+'.'}</div>`;
+      return _vpCab+vivaEnvolver(_pcHtml,'vp-pc',_vv)+vivaEnvolver(_celHtml,'vp-cel',_vv);
+    }).join('')+(filteredGroups.length>VP_CAP?`<div class="empty-msg" style="margin-top:10px">Mostrando las ${VP_CAP} ventas más recientes de ${filteredGroups.length}. Usá el buscador o filtrá por cuenta/período para encontrar otras. (Los totales de arriba sí cuentan todas.)</div>`:''):((!vpQ&&!vpFilterCuenta&&!vpFilterTag&&vpPeriod==='dia'&&vpDate===todayStr())?_vpHoyVacioHTML():`<div class="empty-msg">${vpQ||vpFilterCuenta?'Sin resultados para los filtros aplicados '+(/^(hoy|el )/.test(mesLabel)?'':'en ')+mesLabel+'.':'Sin ventas cargadas '+(/^(hoy|el )/.test(mesLabel)?'':'en ')+mesLabel+'.'}</div>`);
     vivaScan(list);
   }
   const kpis=document.getElementById('vp-kpis');
