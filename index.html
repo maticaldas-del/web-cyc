@@ -2923,7 +2923,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.81';
+const APP_VERSION='25.82';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2936,6 +2936,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.82',f:'21/10',h:'14:20',c:[{n:1,t:'Los desplegables ya no se cierran solos cuando llega un dato nuevo y la pantalla se redibuja (ej. 📂 Toda la lista).'}]},
   {v:'25.81',f:'21/10',h:'09:10',c:[{n:1,t:'Ventas: vuelve a salir 🔬 analizada · nivel de esfuerzo (no salía en ninguna venta). Sólo se marca 💳 Premium (la Clásica ya no sale), sólo 🥇 1ª venta desde el cambio, y 💳 gemela ya no figura como estrategia: la Premium muestra la estrategia de su Clásica. Una venta con cupón o promo que puso ML muestra la estrategia real del precio (ej. 📈 buscando techo) y aparte "🏷️ ML puso $X".'}]},
   {v:'25.80',f:'21/10',h:'08:50',c:[{n:1,t:'Pedidos Bs As: se sacó el botón 🛒 Lista para el mayorista (no se usaba).'}]},
   {v:'25.79',f:'21/10',h:'03:10',c:[{n:1,t:'Inicio en el celular: sin el logo de CYC y el dólar al final de todo. Lo primero que se ve son las ventas de hoy. En la PC queda igual.'}]},
@@ -24478,6 +24479,18 @@ function fnavIrOfi(t){
 {let _fnY=0;window.addEventListener('scroll',()=>{const y=window.scrollY||0,d=y-_fnY;if(Math.abs(d)<6)return;
   document.body.classList.toggle('fnav-oculto',d>0&&y>120&&!fnavOpen);_fnY=y;},{passive:true});}
 document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn')&&!e.target.closest('#fnav-menu')){fnavOpen=false;_syncFnav();}});
+
+// ── LOS DESPLEGABLES QUEDAN ABIERTOS AUNQUE LA PANTALLA SE VUELVA A DIBUJAR (21/10/2026, él: "abro un desplegable y después de un
+// ratito se cierra"). Cada vez que llega un dato nuevo de la base la sección se redibuja y los <details> nacen cerrados. Se recuerda
+// cuáles abrió (por el texto de su título sin números, dentro de la sección con id más cercana) y al redibujar se vuelven a abrir.
+// Vale para todos los desplegables de la app; si uno se cierra a mano, queda cerrado.
+const _detAbiertos=new Set();
+const _detClave=d=>{const s=d.querySelector(':scope>summary');if(!s)return'';const t=(s.textContent||'').replace(/[0-9.,$%]+/g,'').replace(/\s+/g,' ').trim().slice(0,80);
+  let p=d.parentElement;while(p&&!p.id)p=p.parentElement;return (p?p.id:'')+'|'+t;};
+document.addEventListener('toggle',e=>{const d=e.target;if(!(d instanceof HTMLDetailsElement)||d._detRestaurando)return;const k=_detClave(d);if(!k)return;if(d.open)_detAbiertos.add(k);else _detAbiertos.delete(k);},true);
+new MutationObserver(ms=>{if(!_detAbiertos.size)return;for(const m of ms)for(const n of m.addedNodes){if(!(n instanceof Element))continue;
+  const ds=n.tagName==='DETAILS'?[n]:[];n.querySelectorAll&&ds.push(...n.querySelectorAll('details'));
+  for(const d of ds){if(d.open)continue;const k=_detClave(d);if(k&&_detAbiertos.has(k)){d._detRestaurando=true;d.open=true;setTimeout(()=>{d._detRestaurando=false;},0);}}}}).observe(document.documentElement,{childList:true,subtree:true});
 </script>
 
 <!-- AJUSTES -->
