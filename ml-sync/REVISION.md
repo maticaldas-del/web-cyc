@@ -78,7 +78,7 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   por `informe`/`alertas` y no a Telegram; que las cajas que ML da por entradas las marque Claude y no queden contadas dos veces.
 
 ## 1 · PRECIOS (lunes)
-- **⏳ LAS 6 DECISIONES DE PRECIOS DEL 20/10/2026 ESPERAN SU RESPUESTA** (él: *"guardás eso junto con las de diseño"*). Se le
+- **✅ LAS 6 DECISIONES DE PRECIOS: ELIGIÓ TODAS (a) EL 21/10/2026** (en 1.6 aclaró: *"en verdad son las mismas unidades, no habría que duplicar la plata"*). Antes decía: ESPERAN SU RESPUESTA (él: *"guardás eso junto con las de diseño"*). Se le
   recuerdan junto con las 30 de diseño. (a) = la recomendada. 1 volver al precio de antes tras una prueba de techo que no rindió →
   (a) 🪜 bajando hasta que techo95 diga 95% (b) sigue quedando 🏔️ hasta que techo95 lo corrija · 2 la marca liquidando frena también
   mis bajas/descuentos/remates → (a) que frene sólo las subas (b) como hoy, sacarla antes · 3 la 🏔️ no vence → (a) techo95 guarda la
@@ -811,7 +811,7 @@ el precio de un candidato distinto con código parecido (se compara también por
  · **Informe 7b (auditoría 19/10/2026):** los mensajes de compradores sin leer salen por cuenta (sin el texto). Chequear: que la suma coincida con el título.
 
 ## 6 · IDEAS NUEVAS (sábado)
-- **⏳ LAS 24 IDEAS DE LA ETAPA 6 DEL 21/10/2026 ESPERAN SU RESPUESTA** (él: *"avisame cuando termine el último (…) tengo que elegir las decisiones"*). (a) = la recomendada. Una cosa obvia quedó sin hacer porque las revisiones se pausaron: el `ofi` que imprime `pyped:llego` sale sin `@color` y falla entero en una reposición con colores (arreglarlo al retomar).
+- **✅ LAS 24 IDEAS DE LA ETAPA 6: ELIGIÓ TODAS (a) EL 21/10/2026** (A1: *"probemos y me decís"* = una sola publicación en la próxima llegada). Antes decía: ESPERAN SU RESPUESTA (él: *"avisame cuando termine el último (…) tengo que elegir las decisiones"*). (a) = la recomendada. Una cosa obvia quedó sin hacer porque las revisiones se pausaron: el `ofi` que imprime `pyped:llego` sale sin `@color` y falla entero en una reposición con colores (arreglarlo al retomar).
   **Datos de ML sin usar:**
   · D1 Lo que ML recomienda mandar a Full (replenishment por upid) + días sin stock: (a) mostrar y avisar 2 semanas · (b) tope duro.
   · D2 Por qué se pierde la caja (winner.price + boosts, 0 consultas más): marcar "perdés por cuotas" → gemela, no bajar: (a) guardar y marcar · (b) sólo mostrar boosts.
@@ -928,7 +928,7 @@ el precio de un candidato distinto con código parecido (se compara también por
 - **21/10/2026 · v25.58 · Inicio → Para cobrar queda sólo con el número** (él: *"siguen apareciendo texto"*): se sacaron de `_homeCobroHtml` las líneas grises "Ventas al ritmo de… ÷ 3 / Ya ganado hasta hoy…" y "Ganancia real de CYC… ÷ 3". Quedan el título, el número y el aviso de gastos que faltan cargar. Qué chequear: que la tarjeta no vuelva a explicar la cuenta (la explicación vive en el Puntaje).
 - **21/10/2026 · v25.59 · Armar caja: el color de cada cuenta = el veredicto de su caja** (él: *"verde sólo si la caja es mandala ya, naranja si es podés mandarla y rojo si podemos esperar"*). Una sola función `cajaVeredicto(cv)` (verde ≤2 días o `porTamano` · naranja ≤7 días · rojo el resto · null sin nada) que usan el cartel, los botones de `#ofi-filtro-cuentas` (borde, fondo al elegirla, número y 📦 por la variable CSS `--cv`) y `cajasVerdes` (Inicio). Antes el botón elegido y el 📦 eran siempre verdes y el número se ponía verde con ≤7 días. Qué chequear: que el botón, el número, el 📦 y el cartel de la misma cuenta digan siempre el mismo color; "Todas" y una cuenta sin caja van en gris.
 
-- **⏳ LAS 30 DECISIONES DE DISEÑO DEL 20/10/2026 ESPERAN SU RESPUESTA** (él: *"dejamos las respuestas para más tarde. acordate"*).
+- **✅ LAS 30 DECISIONES DE DISEÑO: ELIGIÓ TODAS (a) EL 21/10/2026.** Antes decía: ESPERAN SU RESPUESTA (él: *"dejamos las respuestas para más tarde. acordate"*).
   Recordárselas y aplicar lo que elija. (a) = la recomendada. Las maquetas vivían en el scratchpad (se pierden con el contenedor;
   si hace falta se rehacen). 1 cuadros de Armar caja e Inicio con el cupo restado · 2 Resumen "Pedidos pendientes" → (a) un cuadro
   "Falta reponer" con la cuenta de Pedidos (b) sacarlo · 3 Métricas "👀 Qué está mirando ahora" (foto del 07/10) → (a) sacar ·
@@ -1126,7 +1126,7 @@ a la lista. Chequear: que cada hoja muestre el nombre del mismo id que se marca 
 Chequear: que los ayudantes no corran nada que escriba y que cada publicación activa tenga juicio.
 
 ## 5 · DATOS, HISTORIAL Y CEREBRO (viernes · junta las viejas 8 y 9; datos e historial nació el 08/10/2026)
-- **⏳ 2 DECISIONES DE LA ETAPA 5 DEL 20/10/2026 ESPERAN SU RESPUESTA** (junto con las 6 de precios y las 30 de diseño).
+- **✅ LAS 2 DECISIONES DE LA ETAPA 5: ELIGIÓ LAS DOS (a) EL 21/10/2026.** Antes decía: ESPERAN SU RESPUESTA (junto con las 6 de precios y las 30 de diseño).
   (a) = la recomendada. 1 un remate decidido por mí con `decido …#liquidando/#remate/#sobra` no prueba remate: sus ventas abajo de
   20% cuentan como demanda (Pedidos vuelve a comprar lo que se liquida) → (a) la estrategia liquidando/remate vigente al venderse
   vale como la marca liquidando (y sobra abajo de 20% también) (b) sólo remate si estaba parado o se usó el comando `liquidando` ·

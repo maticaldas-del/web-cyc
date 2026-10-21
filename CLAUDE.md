@@ -620,6 +620,9 @@ retiro + gastos del mes ("por cada peso que sale, otro se queda"; editable en �
 35) · faltantes 2 · capital parado 1 (`calcRotScore`, nuevo) · reclamos 1. Se sacaron retiro vs piso (es fijo) y gastos
 aparte (ya están en la ganancia). Falta que él lo mire y diga si el objetivo le cierra.
 
+### ✅ 21/10/2026: ELIGIÓ LAS 62 DECISIONES, TODAS (a)
+Página para elegir: https://claude.ai/artifact/9AVyzZegLnaeJk8WgjuKqo (base `respuestas/matias`). 1.1a-1.6a (1.6: *"son las mismas unidades, no duplicar la plata"*) · 5.1a 5.2a · 6.* todas a (6.A1: probar con UNA publicación en la próxima llegada y contarle) · 7.1a-7.30a. Detalle de cada una en `ml-sync/REVISION.md` (los ✅). Aplicándose desde el 21/10.
+
 ### LAS 7 ETAPAS, UNA POR DÍA, CORREN SOLAS (20/10/2026, pedido suyo, ya con el plan 20x)
 **⏸️ PAUSADAS EL 21/10/2026 a las 00:10 (él: *"dejamos las revisiones por acá. pausá las automáticas (…) la seguimos la próxima semana y además tengo que elegir las decisiones"*).** La tarea de las 04:00 (`trig_01TT94wnEKk299d85Sj6ePWw`) está APAGADA (`enabled:false`); se prende con `update_trigger` cuando él diga. Hechas: 1, 2, 3, 4, 7, 5 (v25.62) y 6. La 6 (ideas) TERMINÓ esa misma noche (él: *"dije que termines"*): 24 ideas en REVISION.md §6. Lo pendiente para él: 62 decisiones (30 de diseño, 6 de precios, 2 de la etapa 5, 24 ideas de la 6), todas juntas. Con eso las 8 etapas quedaron revisadas esta semana (1-7 el 20-21/10, la 8 el 21/10).
 **CAMBIO DEL MISMO 20/10 A LA TARDE (él: *"que miren hasta qué revisión se hizo, así no repite"*): ya NO va por día de la
