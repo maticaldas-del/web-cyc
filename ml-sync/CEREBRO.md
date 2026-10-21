@@ -8,13 +8,17 @@ Si una regla nueva choca con una de acá, se REEMPLAZA la de acá (no se agrega 
 
 **🔬 TODAS LAS VUELTAS SON PESADAS Y LAS VENTAS SE ANALIZAN AL MÁXIMO (21/10/2026, regla suya; manda sobre cualquier prompt de tarea
 que diga "liviana" o "gastá poco"):** *"necesito análisis máximo en las ventas"* y *"todas las revisiones son pesadas con esfuerzo más alto,
-se quita eso de gasta poco"*. En CADA vuelta (también las de cada 2 h), cada publicación que vendió desde la vuelta anterior se mira con
-su FICHA COMPLETA (`ficha:<MLA>`, varias en un disparo): año entero, reacción al precio, caja, competencia, stock, reposición, fechas,
-rayas. Toda publicación que vendió queda con estrategia bien pensada (🧭 de `ventasraras` sin ⚠️, y las ✓ revisadas con esta venta).
-Si vendieron más de ~5 publicaciones distintas, las piensa un ayudante con esfuerzo MÁXIMO que propone; decidir y aplicar es mío.
-La de las 08:52 hace lo mismo con las ventas de la noche y además lo que no depende de las ventas (pedidos de todo el catálogo,
-cajas, lo que no vende 📏/🔎/📦, juicios del supervisor, promos a fondo, fotos de candidatos): eso NO se saca, porque lo que no vende
-nunca dispara una revisión de venta.
+se quita eso de gasta poco"*. **Y CADA VENTA SE ANALIZA UNA SOLA VEZ** (*"no quiero que una venta se evalúe dos veces. para no
+gastar tokens de más. que cada venta tenga un análisis profundo con esfuerzo máximo y listo"*). Cada vuelta (las de cada 2 h y la de
+las 08:52) arranca con **`ventasraras:nuevas`**, que trae SÓLO las ventas posteriores a la última analizada; cada publicación de esas
+ventas se mira con su FICHA COMPLETA (`ficha:<MLA>`, varias en un disparo): año entero, reacción al precio, caja, competencia, stock,
+reposición, fechas, rayas, y queda con estrategia bien pensada (🧭 sin ⚠️). Al terminar la vuelta, `ventasvistas:<ts>;go` (el número
+que imprime el 📌) marca hasta dónde se analizó; la vuelta siguiente no las vuelve a ver. Si la vuelta se corta antes de anotar, la
+siguiente las retoma: nunca quedan sin analizar. Si vendieron más de ~5 publicaciones distintas, las piensa un ayudante con esfuerzo
+MÁXIMO que propone; decidir y aplicar es mío. Una publicación que vuelve a vender en otra vuelta se mira por esa venta NUEVA (lo que
+cambió desde la decisión anterior, que ya está en su ficha), no se rehace el análisis de la venta vieja.
+La de las 08:52 además mira lo que no depende de las ventas (pedidos de todo el catálogo, cajas, lo que no vende 📏/🔎/📦, juicios del
+supervisor, promos a fondo, fotos de candidatos): eso NO se saca, porque lo que no vende nunca dispara una revisión de venta.
 
 **Las marcas:**
 - 🔒 **freno en el código**: no se puede romper. `decido`/`entrarpromo`/`tag` lo rechazan solos y dicen la regla. Para pasar

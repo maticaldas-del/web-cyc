@@ -2382,3 +2382,9 @@ vuelta y que lo que no vende siga barrido por la completa.
 revisiones son pesadas con esfuerzo más alto, se quita eso de gasta poco"*. Arriba de todo en CEREBRO.md (manda sobre el prompt de la
 tarea de cada 2 h, que todavía dice "liviana": la tarea sólo se puede editar desde su conversación). La completa de las 08:52 sigue
 (pedidos, cajas, lo que no vende). Qué chequear: que cada vuelta corta abra la ficha de cada publicación que vendió y deje la 🧭 sin ⚠️.
+
+**21/10/2026 · etapa 8 · cada venta se analiza UNA sola vez.** Él: *"no quiero que una venta se evalúe dos veces. para no gastar tokens
+de más. que cada venta tenga un análisis profundo con esfuerzo máximo y listo"*. `ventasraras:nuevas` trae sólo las ventas posteriores a
+`mlapi/ventasvistas/hasta` (sin marca: últimas 24 h) e imprime 📌 con el `ventasvistas:<ts>;go` para anotar al terminar la vuelta;
+`ventasvistas` nunca retrocede y corre también por ml-consulta. `ventasraras:<horas>` sigue para mirar a mano. Qué chequear: que cada
+vuelta use `:nuevas` y anote al final; que una vuelta cortada no deje ventas sin ver (la marca sólo avanza al terminar).

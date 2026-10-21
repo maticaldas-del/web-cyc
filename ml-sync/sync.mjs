@@ -70,7 +70,7 @@ const _cortarCiclo = (donde) => {
 // los que escriben en cantidad o en plata se niegan de entrada, y cualquier otro corre con la base,
 // ML, Mercado Pago y Telegram en sólo lectura (se deja renovar y guardar el token de ML, que ML rota).
 const EN_CONSULTA = process.env.GITHUB_WORKFLOW === 'ml-consulta' || process.env.ML_CONSULTA === '1';
-const CONSULTA_ESCRIBE = new Set(['pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull']);
+const CONSULTA_ESCRIBE = new Set(['ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull']);
 const CONSULTA_NIEGA = new Set(['cajaitems', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'promoventas', 'cargosmes', 'arcacierres', 'webpush']);
@@ -42932,15 +42932,33 @@ async function main() {
     // precio (mediana del neto por unidad de sus ventas sueltas de 45 días). La que sale abajo del 25% o deja bastante menos
     // que lo normal se explica leyendo los cargos de Mercado Pago de ese pago: retención de una provincia, cuotas, comisión
     // distinta, precio más bajo, neto todavía estimado. NINGÚN dato del comprador ni números de orden en el registro.
+    // BILLING_PROBE=ventasvistas:<ts>[;go] (21/10/2026) → anota hasta qué venta se analizó (el `hasta` de `ventasraras:nuevas`). Nunca
+    // retrocede: si ya había una marca más nueva, no la pisa. Corre también por ml-consulta (es una marca chica).
+    if (/^ventasvistas:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const r = String(process.env.BILLING_PROBE).slice('ventasvistas:'.length); const GOv = /;go\s*$/.test(r); const ts = Number(r.replace(/;go\s*$/, ''));
+      if (!(ts > 1.7e12 && ts <= Date.now() + 60e3)) { console.log('❌ fecha inválida: va el número que imprime ventasraras:nuevas'); return; }
+      const prev = Number(await db.get('mlapi/ventasvistas/hasta')) || 0;
+      if (prev >= ts) { console.log(`= ya estaba anotado hasta ${new Date(prev - 3 * 36e5).toISOString().slice(5, 16).replace('T', ' ')}: no retrocedo`); return; }
+      if (!GOv) { console.log('PRUEBA: agregá ;go'); return; }
+      await db.set('mlapi/ventasvistas/hasta', ts); const chk = Number(await db.get('mlapi/ventasvistas/hasta'));
+      console.log(chk === ts ? `✓ ventas analizadas hasta ${new Date(ts - 3 * 36e5).toISOString().slice(5, 16).replace('T', ' ')} (releído)` : '⚠️ no quedó anotado'); return;
+    }
     if (/^ventasraras(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
-      const horas = parseFloat(String(process.env.BILLING_PROBE).split(':')[1]) || 12;
+      // CADA VENTA SE ANALIZA UNA SOLA VEZ (21/10/2026, él: "no quiero que una venta se evalúe dos veces. para no gastar tokens de más.
+      // que cada venta tenga un análisis profundo con esfuerzo máximo y listo"). `ventasraras:nuevas` trae sólo las ventas posteriores a
+      // la última analizada (`mlapi/ventasvistas/hasta`, la anota `ventasvistas:<ts>;go` al terminar la vuelta con el `hasta=` que imprime
+      // este comando). Con horas (`ventasraras:13`) sigue igual, para mirar a mano.
+      const _argV = String(process.env.BILLING_PROBE).split(':')[1] || '';
+      let _desdeVistas = null;
+      if (/^nuevas$/i.test(_argV)) { try { _desdeVistas = Number(await db.get('mlapi/ventasvistas/hasta')) || 0; } catch { console.log('⚠️ no pude leer hasta dónde se analizó: no opino'); return; } if (!_desdeVistas) _desdeVistas = Date.now() - 24 * 36e5; }
+      const horas = _desdeVistas ? (Date.now() - _desdeVistas) / 36e5 : (parseFloat(_argV) || 12);
       const vp = await db.get('cyc/ventaprod').catch(() => null);
       if (!vp) { console.log('⚠️ no pude leer las ventas: no opino'); return; }
       setDevLive(vp);
       const costoDe = await armarCostoWeb(db, vp);
       // Revisión 9 (13/10/2026): el piso sale de la configuración (`cyc/mlconfig/minPct`, hoy 25), no escrito a mano.
       const PISO_V = await pisoConfig(db, 25);
-      const hoy = Date.now(), desde = hoy - horas * 36e5, desdeRef = hoy - 45 * 864e5;
+      const hoy = Date.now(), desde = _desdeVistas ? _desdeVistas + 1 : hoy - horas * 36e5, desdeRef = hoy - 45 * 864e5;
       const f = (n) => '$' + Math.round(n).toLocaleString('es-AR');
       const tsDe = (v) => Number(v.ts) || Date.parse(v.ts || '') || 0;
       // Referencia: neto por unidad de las ventas SUELTAS (una sola fila en la compra) por publicación y precio.
@@ -43057,6 +43075,8 @@ async function main() {
           const nomV = String((Object.values(grupos).flat().find(({ v }) => v.mla === mla) || {}).v?.prod || '').slice(0, 40);
           (bien ? buenas : malas).push(`${mla} · ${nomV} · ${ult || 'sin estrategia'}${dias != null ? ` (hace ${dias} d)` : ''}${conTecho ? ` · techo probado $${Math.round(Number(tf[mla].probado)).toLocaleString('es-AR')}` : ''}`);
         }
+        { const tsMax = Object.values(grupos).flat().reduce((a, { ts }) => Math.max(a, ts || 0), 0);
+          if (_desdeVistas != null) console.log(`\n📌 ventas nuevas desde ${new Date(_desdeVistas - 3 * 36e5).toISOString().slice(5, 16).replace('T', ' ')} · ${Object.keys(grupos).length} compras · al terminar la vuelta: ${tsMax ? `ventasvistas:${tsMax};go` : '(no hay ventas nuevas: no hace falta anotar nada)'}`); }
         console.log(`\n🧭 ESTRATEGIA DE LO QUE VENDIÓ (${mlas.length} publicaciones): ${buenas.length} con estrategia y techo · ${malas.length} PARA DECIDIR EN ESTA VUELTA`);
         for (const l of malas) console.log('   ⚠️ ' + l);
         for (const l of buenas) console.log('   ✓ ' + l);
