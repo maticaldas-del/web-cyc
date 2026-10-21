@@ -6,6 +6,8 @@
 # 30 d por día CON stock (o 60 d si vendió poco, o 180 d si está agotado) menos Full y camino; si está en cero y vende,
 # mínimo 4; nunca más de lo que hay en la oficina. Nuevo (nunca vendió, nada en Full): 4. Nada pasa los 90 días
 # de venta (tope para lo lento: Full cobra a los 120). 15/10/2026. Paulvic: todo a Adriana menos Persea (Luciana). Remates no cuentan.
+# Y si la cuenta tiene cupo de Full cargado y la caja no entra, se recorta con la regla de la web (6.P1, 21/10/2026): lo que queda
+# afuera dice "✂️ … (faltan N)" en el motivo y `decido` lo anota como `cupoCorto` (6.P2: esa oficina no es reposición ni sobra).
 import re,sys,math
 T=37  # 30 días de venta + 7 de viaje (regla suya del 14/10/2026)
 T_LARGO=60  # se estira a 60 días sólo en lo que vende parejo y no tiene prueba de precio abierta (eligió la a, 14/10/2026)
@@ -54,6 +56,14 @@ if any('NO LEÍ' in l for l in L):
 tc=next((float(m.group(1)) for l in L for m in [re.match(r'^dólar ([\d.]+) ·',l)] if m),0)
 if not tc>0: print('⚠️ el log no trae el dólar (o está en 0): está cortado al principio o no es de pedidostodo. No armo nada.'); sys.exit(1)
 P=[];cur=None;esper=0;grupos=set();noEnt=[];cuentaOk=False
+# 6.P1 (etapa 6, eligió la a, 21/10/2026): el cupo de Full que le queda a cada cuenta (lo imprime pedidostodo: "CUPO <cuenta> peq N
+# gra M"). Con cupo, la caja de esa cuenta se recorta con la MISMA regla que la web ("Cargar lo que entra en el cupo",
+# `cajaLlenarCupoPlan`): 1 u. a cada producto, de lo que más deja por unidad a lo que menos, y después se llena por plata.
+# Sin la línea (o con "?") esa cuenta NO se recorta: no se inventa un cupo.
+CUPO={}
+for l in L:
+    m=re.match(r'^CUPO (\w+) peq (\d+|\?) gra (\d+|\?)',l)
+    if m: CUPO[m.group(1)]={'peq':None if m.group(2)=='?' else int(m.group(2)),'gra':None if m.group(3)=='?' else int(m.group(3))}
 for l in L:
     m=re.match(r'════ (BSAS|PY|PAULVIC) · (\d+) ════',l)
     if m: esper+=int(m.group(2)); grupos.add(m.group(1)); cur=None; continue
@@ -62,8 +72,10 @@ for l in L:
     m=re.match(r'^(p\w+) · (.*?) · v30 (\d+) v60 (\d+) v180 (\d+) · .*?dCS (\d+)(?: · cortes \d+)? · Full (\d+) \[([^\]]*)\] · casa (\d+) · camino (\d+)(.*)$',l)
     if m:
         ct=re.search(r' · ctas \[([^\]]*)\]',m.group(11))
+        nc=re.search(r' · neto \$(\d+) costo \$(\d+)',m.group(11))
+        gan=(int(nc.group(1))-int(nc.group(2))) if nc and int(nc.group(1))>0 else None   # lo que deja por unidad (sin neto medido: no se sabe)
         cur=dict(id=m.group(1),n=m.group(2),v=list(map(int,m.group(3,4,5))),dcs=int(m.group(6)),full=int(m.group(7)),br=m.group(8),casa=int(m.group(9)),cam=int(m.group(10)),
-                 ctas=[AB[x] for x in ct.group(1).split() if x in AB] if ct else None,vars=[]);P.append(cur);continue
+                 ctas=[AB[x] for x in ct.group(1).split() if x in AB] if ct else None,vars=[],gan=gan,grande=' · GRANDE' in m.group(11));P.append(cur);continue
     # Un renglón de producto que NO se entiende (un dato nuevo en el medio): sus colores NO pueden ir al producto de arriba.
     if re.match(r'^p\w+ · ',l): cur=None; noEnt.append(l[:110]); continue
     m=re.match(r'^   # (.*?) · v30 (\d+) v60 (\d+) v180 (\d+) · últ \S+(?: · dCS (\d+))?(?: · cortes \d+)? · Full (\d+) · casa (\d+) · camino (\d+)',l)
@@ -98,20 +110,57 @@ for p in P:
             if pv and c not in ctas: sin.append(f"{p['n']} · {x['v']}: va a {c} pero {c} no lo puede recibir (no publica o nomandar)"); continue
             D,por=dias_de(p['n'],x['s'][0],x['s'][1],x['dcs'])
             q,r,b=calc(*x['s'],x['full'],x['cam'],x['casa'],x['dcs'],D)
-            out.append(f"caja:{p['id']}@{c}#{x['v']}=u|{q}|{b} · hay {x['full']} en Full y {x['cam']} en camino · {txt_dias(D,por)} hacen falta {r*D:.0f} · en la oficina {x['casa']}")
+            out.append(dict(cab=f"caja:{p['id']}@{c}#{x['v']}",q=q,cola=f"{b} · hay {x['full']} en Full y {x['cam']} en camino · {txt_dias(D,por)} hacen falta {r*D:.0f} · en la oficina {x['casa']}",
+                            cta=c,nom=f"{p['n'][:38]} · {x['v']}",gan=p['gan'],grande=p['grande'],enCero=(x['full']+x['cam'])==0,dias=((x['full']+x['cam'])/r if r>0 else None)))
             if D==T_LARGO: largos.append(f"{p['n'][:38]} · {x['v']}")
-            if q: res.append(f"{p['n'][:38]} · {x['v']} → {c}: {q}")
     else:
         D,por=dias_de(p['n'],p['v'][0],p['v'][1],p['dcs'])
         q,r,b=calc(*p['v'],p['full'],p['cam'],p['casa'],p['dcs'],D)
-        out.append(f"caja:{p['id']}@{cta}=u|{q}|{b} · hay {p['full']} en Full y {p['cam']} en camino · {txt_dias(D,por)} hacen falta {r*D:.0f} · en la oficina {p['casa']}")
+        out.append(dict(cab=f"caja:{p['id']}@{cta}",q=q,cola=f"{b} · hay {p['full']} en Full y {p['cam']} en camino · {txt_dias(D,por)} hacen falta {r*D:.0f} · en la oficina {p['casa']}",
+                        cta=cta,nom=p['n'][:38],gan=p['gan'],grande=p['grande'],enCero=(p['full']+p['cam'])==0,dias=((p['full']+p['cam'])/r if r>0 else None)))
         if D==T_LARGO: largos.append(p['n'][:38])
-        if q: res.append(f"{p['n'][:38]} → {cta}: {q}")
+def llenar_cupo(cands,tope_peq,tope_gra):
+    # La regla de la web (`cajaLlenarCupoPlan`, index.html), traída tal cual: orden por lo que deja cada unidad (sin dato al final,
+    # pero no afuera), después el que está en cero y después el que menos días tiene. RONDA 1: una unidad a cada uno. RONDA 2:
+    # llenar con lo que más deja. Devuelve cuántas recibe cada uno (por índice).
+    lib={'peq':float('inf') if tope_peq is None else max(0,tope_peq),'gra':float('inf') if tope_gra is None else max(0,tope_gra)}
+    dado={}
+    orden=sorted(range(len(cands)),key=lambda i:(-(cands[i]['gan'] if cands[i]['gan'] is not None else -1),-(1 if cands[i]['enCero'] else 0),(cands[i]['dias'] if cands[i]['dias'] is not None else 9999)))
+    def sumar(i,n):
+        c=cands[i];b='gra' if c['grande'] else 'peq';d=min(n,lib[b],c['q']-dado.get(i,0))
+        if d>0: dado[i]=dado.get(i,0)+d;lib[b]-=d
+    for i in orden:
+        if cands[i]['q']>0: sumar(i,1)
+    for i in orden:
+        if cands[i]['q']>0: sumar(i,cands[i]['q']-dado.get(i,0))
+    return {i:int(dado.get(i,0)) for i in range(len(cands))}
+recortes=[]
+for cta in sorted({o['cta'] for o in out}):
+    cu=CUPO.get(cta)
+    if not cu or (cu['peq'] is None and cu['gra'] is None): continue
+    idx=[i for i,o in enumerate(out) if o['cta']==cta and o['q']>0]
+    if not idx: continue
+    pide={'peq':sum(out[i]['q'] for i in idx if not out[i]['grande']),'gra':sum(out[i]['q'] for i in idx if out[i]['grande'])}
+    if (cu['peq'] is None or pide['peq']<=cu['peq']) and (cu['gra'] is None or pide['gra']<=cu['gra']): continue   # entra todo: no se toca
+    dado=llenar_cupo([out[i] for i in idx],cu['peq'],cu['gra'])
+    for j,i in enumerate(idx):
+        o=out[i];d=dado[j]
+        if d<o['q']:
+            b='grandes' if o['grande'] else 'chicos y medianos'
+            o['cola']=f"✂️ por el cupo de Full de {cta} ({cu['gra'] if o['grande'] else cu['peq']} {b}) entran {d} de {o['q']} (faltan {o['q']-d}) · "+o['cola']
+            recortes.append(f"{o['nom']} → {cta}: {o['q']} → {d}")
+            o['q']=d
+for o in out:
+    if o['q']: res.append(f"{o['nom']} → {o['cta']}: {o['q']}")
+out=[f"{o['cab']}=u|{o['q']}|{o['cola']}" for o in out]
 bad=[x for x in out if ';' in x]
 if bad: print('⚠️ renglones con ";" (decido los cortaría):',*bad[:5],sep='\n  '); sys.exit(1)
 open('cajas.txt','w').write('\n'.join(out)+'\n')
 print(len(out),'renglones de caja ·',nOfi,'productos con mercadería en la oficina');print('\n'.join(res))
 print(f"estirados a {T_LARGO} días (venden parejo, sin prueba abierta): {len(largos)}",*largos,sep='\n  ')
 if SIN_ESTIRAR is None: print('⚠️ no encontré sin_estirar.txt: todo quedó en 37 días')
+if CUPO: print('cupo de Full leído: '+' · '.join(f"{c} {v['peq'] if v['peq'] is not None else '?'}/{v['gra'] if v['gra'] is not None else '?'}" for c,v in CUPO.items()))
+else: print('⚠️ el log no trae el CUPO de Full (pedidostodo viejo): no recorté ninguna caja por el cupo')
+if recortes: print(f"✂️ RECORTADO POR EL CUPO (la regla de la web: 1 u. a cada uno y después por plata) · {len(recortes)}:",*recortes,sep='\n  ')
 if sin: print('SIN CUENTA:',*sin,sep='\n  ')
 if amano: print('DECIDIR A MANO (más de una cuenta):',*amano,sep='\n  ')

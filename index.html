@@ -2177,6 +2177,10 @@ function startApp(){
     // La web NO se la puede preguntar a ML: no tiene el token. Mismo camino que las visitas y la
     // caja de compra, a propósito.
     state.reputacion=d.reputacion||{};
+    // 6.D1 (etapa 6, 21/10/2026): lo que ML recomienda mandar a Full por producto (`cyc/fullreco/<upid>`, el robot una vez por día).
+    state.fullreco=d.fullreco||{};
+    // 6.P3: el dólar MEP y cripto de cada día (`cyc/dolarref/<AAAA_MM_DD>`), para comparar el que se paga en Paraguay.
+    state.dolarref=d.dolarref||{};
     // "ESTO SE ESTÁ LIQUIDANDO: NO SUBIR EL PRECIO", por publicación. Lo marca él desde el chat
     // (comando `liquidando`) y el robot lo respeta adentro de raisePrice/raisePriceTo. Acá se lee
     // sólo para MOSTRARLO: un margen en rojo que está así a propósito tiene que verse distinto de
@@ -5179,6 +5183,7 @@ function renderProds(){
         </div>
       </div>
       ${flujoPlataHTML(p)}
+      ${fichaDatosMLHTML(p)}
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-top:8px;border-top:1px solid var(--border);margin-top:2px">
         <span style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap">Variantes</span>
         <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">${(p.variantes&&p.variantes.length)?(p.variantes||[]).map(v=>`<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:5px;background:rgba(124,58,237,.1);color:#a78bfa;font-size:.68rem">${v}<button onclick="removeVariante('${p.id}','${v.replace(/'/g,"\\'")}')" style="background:none;border:none;color:#a78bfa;cursor:pointer;padding:0 0 0 3px;font-size:.75rem;line-height:1" title="Eliminar variante">✕</button></span>`).join(''):'<span style="font-size:.65rem;color:var(--muted);font-style:italic">sin variantes</span>'}</div>
@@ -6988,6 +6993,7 @@ function renderOfiCaja(){
         ${s.enCero&&!s.sinPub?'<span style="background:rgba(239,68,68,.14);color:var(--red);border-radius:5px;padding:2px 7px;font-size:.6rem;font-weight:700">SIN STOCK · no vende</span>':''}
         ${s.sinPub?`<span style="background:rgba(245,158,11,.16);color:var(--amber);border-radius:5px;padding:2px 7px;font-size:.6rem;font-weight:700" title="Vos pediste que este producto pase a ${s.cuenta}, pero todavía no hay publicación hecha ahí. Mandá la mercadería en esta caja y creá la publicación: hasta que exista, esas unidades no se pueden vender.">FALTA CREAR LA PUBLICACIÓN EN ${s.cuenta.toUpperCase()}</span>`:''}
         <span style="font-size:.66rem;color:var(--muted)">le quedan ${s.enML!=null?s.enML:s.stock}${s.camino?` <span style="color:var(--amber)">+${s.camino} en camino</span>`:''} · ${dias} · ${ritmo}</span>
+        <div style="flex-basis:100%;height:0"></div>${fullRecoHTML(f.p.id,s.cuenta,f.variante||'',s.mandar)}
         ${s.sinPub
           ? `<button class="btn" style="margin-left:auto;font-size:.6rem;padding:2px 7px;background:transparent;color:var(--muted);border:1px solid var(--border2)"
               onclick="setRepoExtra('${f.p.id}','${s.cuenta}',false)"
@@ -7059,7 +7065,7 @@ function renderOfiCaja(){
     const _tog=`onclick="cajaToggleDet(${JSON.stringify(_kAb).replace(/"/g,'&quot;')})"`;
     const _resum=sug.filter(s=>s.mandar>0).map(s=>`<span style="display:inline-flex;align-items:center;gap:6px;margin-right:12px">
         <span class="pi-prov">${s.cuenta}</span><strong style="font-family:'Syne',sans-serif;font-size:1rem">mandar ${s.mandar} u.</strong>
-        ${s.etiq?`<span title="Código de la etiqueta de Full en ${s.cuenta} (no es el MLA)." style="font-family:'DM Mono',monospace;font-size:.7rem;background:rgba(255,255,255,.06);border:1px solid var(--border2);border-radius:5px;padding:2px 6px;letter-spacing:.04em">${s.etiq}</span>`:'<span style="font-size:.62rem;color:var(--muted)">sin código</span>'}</span>`).join('');
+        ${s.etiq?`<span title="Código de la etiqueta de Full en ${s.cuenta} (no es el MLA)." style="font-family:'DM Mono',monospace;font-size:.7rem;background:rgba(255,255,255,.06);border:1px solid var(--border2);border-radius:5px;padding:2px 6px;letter-spacing:.04em">${s.etiq}</span>`:'<span style="font-size:.62rem;color:var(--muted)">sin código</span>'}${(r=>r&&r.tipo==='REPLENISH'&&r.sug!=null?`<span title="Lo que recomienda mandar ML (lo lee el robot una vez por día). No decide: es para comparar." style="font-size:.6rem;color:${['THIS_WEEK','NEXT_WEEK','IN_TWO_WEEKS'].includes(r.plazo)?'var(--amber)':'var(--muted)'}">ML ${r.sug}</span>`:'')(fullRecoDe(f.p.id,s.cuenta,f.variante||''))}</span>`).join('');
     const _hayAviso=sug.some(s=>s.sinPub)||!!f.sinContarPorAroma||!!f.sinPublicar;
     return `<div style="padding:12px 14px;background:var(--surface);border:1px solid ${enCaja>0?'var(--accent2)':'var(--border)'};border-radius:var(--r);margin-bottom:8px">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
@@ -7998,6 +8004,72 @@ const costoCaja=()=>{
   const v=parseFloat((state.mlconfig||{}).costoCaja);
   return (isFinite(v)&&v>0)?v:COSTO_CAJA_FALLBACK;
 };
+// ── 6.P5 · LO QUE CUESTA DE VERDAD MANDAR UNA UNIDAD A FULL, POR CUENTA (etapa 6, eligió la a, 21/10/2026) ──────────────
+// La caja sale plana ($17.310/$17.500, `costoCaja()`) y el "Envío+embalaje" de la ficha la reparte como si fuera llena. En una cuenta
+// con cupo chico (Ayelen) las cajas salen con pocas unidades y cada una carga mucho más: lo barato de Ayelen ponía $35-60/u y le
+// cuesta ~$266. Se mide con las cajas que SE MANDARON: el promedio de unidades de las últimas CAJA_REAL_N cajas de esa cuenta en
+// CAJA_REAL_DIAS días. Sin cajas medidas no se inventa nada (null). La misma cuenta vive en la `planilla` del robot
+// (`cajaRealPorCuenta`, sync.mjs): si se toca una, la otra.
+const CAJA_REAL_N=8,CAJA_REAL_DIAS=120,CAJA_REAL_COMEMUCHO=0.25;
+function cajaRealDe(cta){
+  const desde=Date.now()-CAJA_REAL_DIAS*86400000,us=[];
+  for(const e of Object.values(state.envios_full||{})){
+    if(!e||e.cuenta!==cta)continue;
+    const t=e.fecha?new Date(e.fecha+'T12:00:00').getTime():Number(e.ts)||0;
+    if(!(t>=desde))continue;
+    for(const c of cajasDe(e)){const u=(c.items||[]).reduce((a,it)=>a+(Number(it&&it.u)||0),0);if(u>0)us.push({t,u});}
+  }
+  if(!us.length)return null;
+  const ult=us.sort((a,b)=>b.t-a.t).slice(0,CAJA_REAL_N);
+  const uProm=ult.reduce((a,x)=>a+x.u,0)/ult.length;
+  return {n:ult.length,uProm,costoU:costoCaja()/uProm};
+}
+// ¿CONVIENE? lo que deja una unidad (`gananciaUnidad`, con el envío de la ficha adentro) contra lo que de verdad cuesta mandarla
+// en esa cuenta. Si la caja real se come más de CAJA_REAL_COMEMUCHO de lo que deja → caja chica: juntar más antes de mandar.
+function cajaRealFichaHTML(p){
+  const tc=curTC(),cargado=tc>0?(parseFloat(p.shipUSD)||0)*tc:null,g=gananciaUnidad(p);
+  const filas=cuentasConPublicacion(p).map(cta=>{
+    const cr=cajaRealDe(cta);if(!cr)return `<div>· <b>${cta}</b>: sin cajas mandadas en ${CAJA_REAL_DIAS} días, no hay con qué medir</div>`;
+    // `g` ya descuenta el envío cargado en la ficha: se le devuelve y se le resta el real.
+    const gReal=g!=null&&cargado!=null?g+cargado-cr.costoU:null;
+    const come=g!=null&&g+(cargado||0)>0?cr.costoU/(g+(cargado||0)):null;
+    const mal=come!=null&&come>CAJA_REAL_COMEMUCHO;
+    return `<div>· <b>${cta}</b>: cajas de ~${Math.round(cr.uProm)} u. (últimas ${cr.n}) → <b style="color:${mal?'var(--amber)':'var(--text)'}">${fmt(Math.round(cr.costoU))}/u</b>${cargado!=null?` <span style="color:var(--muted)">(la ficha carga ${fmt(Math.round(cargado))}/u)</span>`:''}${gReal!=null?` · ¿conviene? deja ${fmt(Math.round(gReal))}/u después de la caja${mal?` · <span style="color:var(--amber)">⚠️ la caja se come el ${Math.round(come*100)}%: juntá más antes de mandar</span>`:''}`:''}</div>`;
+  });
+  if(!filas.length)return '';
+  return `<div style="font-size:.64rem;line-height:1.55;margin-top:6px"><div style="color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-size:.58rem">📦 Mandarlo a Full, lo que cuesta de verdad</div>${filas.join('')}</div>`;
+}
+// 6.D4/6.D6/6.D2 · LO QUE DICE ML DE CADA PUBLICACIÓN DE ESTE PRODUCTO, en la ficha: el precio que sugiere (sólo las que no son de
+// catálogo: referencia para el salto de techo y el lanzamiento, nunca para bajar lo que vende), las etiquetas de calidad que son un
+// problema, y si la caja se pierde por cuotas. Lo guarda el robot en `cyc/mllinks`; lo que no está no se muestra (no se inventa).
+const ETQ_PROBLEMA_WEB={poor_quality_thumbnail:'foto principal de mala calidad',poor_quality_picture:'fotos de mala calidad',unknown_quality_picture:'ML no pudo evaluar la foto',incomplete_technical_specs:'ficha técnica incompleta',incomplete_compatibilities:'compatibilidades incompletas',moderation_penalty:'penalizada por moderación',under_infractions:'con infracciones',catalog_forewarning:'aviso de catálogo',lost_me1_by_user:'perdió el envío por usuario',dragged_bids_and_visits:'visitas arrastradas de otra'};
+function etqProblemasWeb(etq,salud){
+  const out=[];
+  for(const t of String(etq||'').split(',').map(x=>x.trim()).filter(Boolean)){
+    if(ETQ_PROBLEMA_WEB[t])out.push(ETQ_PROBLEMA_WEB[t]);
+    else if(/poor|bad_|low_quality|incomplete|penalt|infraction|forewarning|warning|missing|without_/i.test(t))out.push(t);
+  }
+  if(salud!=null&&Number(salud)<0.7)out.push('salud de la publicación '+Math.round(Number(salud)*100)+'%');
+  return out;
+}
+function fichaDatosMLHTML(p){
+  const L=state.mllinks||{},filas=[];
+  for(const [mla,e] of Object.entries(L)){
+    if(!e||e.prodId!==p.id||e.ignored||(e.status||'')==='closed')continue;
+    const tit=escHtml(String(e.title||mla).slice(0,40))+(e.variant?' · '+escHtml(e.variant):''),partes=[];
+    if(Number(e.sugP)>0&&e.caja==='nocat'){
+      const pr=Number(((state.netopub||{})[mla]||{}).precio)||0;
+      partes.push(`💡 ML sugiere <b>${fmt(Number(e.sugP))}</b>${Number(e.sugMin)>0?` · la más barata parecida ${fmt(Number(e.sugMin))}`:''}${pr>0?` <span style="color:var(--muted)">· vos ${fmt(pr)} (${pr>=Number(e.sugP)?'+':''}${Math.round((pr/Number(e.sugP)-1)*100)}%)</span>`:''} <span style="color:var(--muted)">· sirve para el salto de techo y el lanzamiento, no para bajar lo que vende</span>`);
+    }
+    const pr=etqProblemasWeb(e.etq,e.salud);
+    if(pr.length)partes.push(`🩺 <span style="color:var(--amber)">${pr.join(' · ')}</span> <span style="color:var(--muted)">· se arregla la publicación, no el precio</span>`);
+    if(e.cajaPorCuotas&&(e.caja==='losing'||e.caja==='sharing'))partes.push(`💳 <span style="color:var(--amber)">la caja se pierde por cuotas${Number(e.cajaGanP)>0?' (el que gana está a '+fmt(Number(e.cajaGanP))+')':''}: probar la gemela Premium, no bajar</span>`);
+    if(partes.length)filas.push(`<div>· <b>${e.cuenta||'?'}</b> ${tit}: ${partes.join(' · ')}</div>`);
+  }
+  const caja=cajaRealFichaHTML(p);
+  if(!filas.length&&!caja)return '';
+  return `<div style="padding-top:8px;border-top:1px solid var(--border);margin-top:2px;overflow-wrap:anywhere">${filas.length?`<div style="font-size:.64rem;line-height:1.55"><div style="color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-size:.58rem">📡 Lo que dice ML</div>${filas.join('')}</div>`:''}${caja}</div>`;
+}
 function gananciaUnidad(p){
   const m=margenMLDe(p);
   if(!m||m.neto==null||!(m.costo>0))return null;   // sin neto de ML no se inventa
@@ -14283,7 +14355,7 @@ function pycatFila([cod,e]){const tc=curTC();{const u=Number(e.u)||0,pu=u*RECARG
     return `<div style="display:flex;gap:8px;align-items:center;padding:6px 8px;background:var(--surface);border:1px solid var(--border);border-radius:8px">
       ${im(fPY,'Paraguay')}${im(fML,'ML')}
       <div style="flex:1;min-width:0;font-size:.72rem;line-height:1.45"><div style="font-weight:600">${e.n}</div>
-        <div style="color:var(--muted);font-size:.64rem">🔖 ${cod} · ${fmtUS2(u)} → <b style="color:var(--text)">${fmtUS2(pu)}</b> puesto${ps?' · '+fmt(ps):''}${e.mp?` · en ML ${fmt(e.mp)}${e.mv?' · '+(e.mv==1?'<b style="color:var(--amber)">⚠️ 1 solo vendedor: precio que nadie más confirma</b>':e.mv+' vendedores'):''}`:''}${e.cand?' · <span style="color:var(--green)">ya está en Para probar</span>':''}</div>
+        <div style="color:var(--muted);font-size:.64rem">🔖 ${cod} · ${fmtUS2(u)} → <b style="color:var(--text)">${fmtUS2(pu)}</b> puesto${ps?' · '+fmt(ps):''}${e.mp?` · en ML ${fmt(e.mp)}${e.mv?' · '+(e.mv==1?'<b style="color:var(--amber)">⚠️ 1 solo vendedor: precio que nadie más confirma</b>':e.mv+' vendedores'):''}${Number(e.pp)>0?` · <span style="color:var(--amber)">🏷️ el más barato está en promo (−${Number(e.pp)}%)</span>`:''}`:''}${e.cand?' · <span style="color:var(--green)">ya está en Para probar</span>':''}</div>
         <div style="font-size:.64rem">${/^https:\/\//.test(e.l||'')?`<a href="${e.l}" target="_blank" rel="noopener" style="color:var(--green)">🇵🇾 comprasparaguay</a>`:''}${e.mi?` · <a href="https://www.mercadolibre.com.ar/p/${e.mi}" target="_blank" rel="noopener" style="color:var(--green)">🔗 ML</a>`:''}</div></div>
       <div style="text-align:right;flex:0 0 auto">${est}${loc!=null?`<div>${perfLocalHTML(loc)}</div>`:''}</div></div>`;}}
 // ── TODO LO QUE EL ROBOT REVISÓ Y NO DA, ABAJO DE TODO (17/10/2026, pedido suyo) ──────────────────────────
@@ -14647,6 +14719,8 @@ function candPreciosPartes(c){
   // CUOTAS DE LA QUE GANA (02/10/2026): si la publicación ganadora da 6+ cuotas sin interés hay que
   // ofrecerlas para competir, y el robot ya las restó del margen (`mlCuotas`). Se dice acá.
   if(c.mlVia==='sincuotas'&&Number(c.mlPrecioVenta)>0)R.full=(R.full?R.full+' · ':'')+`💳➜💵 <b style="color:var(--green)">la que gana da cuotas, pero conviene pelear SIN cuotas a ${fmt(Number(c.mlPrecioVenta))}</b> <span style="color:var(--muted)">(el % de abajo es a ese precio)</span>`;
+  // 6.D5 (etapa 6, eligió la a): el que pone el precio está en promo (precio tachado): cuando termine, su precio vuelve a subir.
+  if(Number(c.mlPromoPct)>0)R.full=(R.full?R.full+' · ':'')+`🏷️ <b style="color:var(--amber)">el más barato está en promo (−${Number(c.mlPromoPct)}%)</b>${Number(c.mlSinPromo)>0?` <span style="color:var(--muted)">· sin promo está a ${fmt(Number(c.mlSinPromo))}: el % de abajo es contra el precio de promo</span>`:''}`;
   if(Number(c.mlCuotas)>0)R.full=(R.full?R.full+' · ':'')+`💳 <b style="color:var(--amber)">la que gana da ${parseInt(c.cuotasGan)||Number(c.mlCuotasAuto)||'?'} cuotas${!parseInt(c.cuotasGan)&&c.mlCuotasAuto?' (lo vio el robot: Premium o campaña de cuotas)':''}</b>: −${fmt(Number(c.mlCuotas))} (${Number(c.mlCuotasPct)||0}%) ya descontado del %`;
   // LAS VENTAS DEL PRODUCTO EN ML (18/09/2026, pedido suyo). Regla suya: *"en ML tiene que haber
   // ventas de verdad (+25 vendidos para arriba): un vendedor solo no molesta, uno sin ventas no
@@ -15237,6 +15311,18 @@ function pyRecargoFichas(c){
   const r=tot/tc/pag;if(!(r>=1&&r<=1.6))return R;
   return{r:Math.round(r*10000)/10000,falta:[],contraPagado:true};
 }
+// 6.P3 (etapa 6, eligió la a, 21/10/2026): el dólar que se pagó contra el MEP y el cripto de ESE día (`cyc/dolarref`, lo guarda el
+// robot una vez por día desde el 21/10/2026). Positivo = se pagó más caro que ése. Sin dato de ese día no dice nada (no se inventa).
+function pyDolarRefDe(c){
+  const f=String((c&&(c.fecha||c.dia))||'').slice(0,10);if(!/^\d{4}-\d{2}-\d{2}$/.test(f))return null;
+  const r=(state.dolarref||{})[f.replace(/-/g,'_')];
+  return r&&(Number(r.mep)>0||Number(r.cri)>0)?r:null;
+}
+function pyDolarRefTxt(c,pag){
+  const r=pyDolarRefDe(c);if(!r||!(pag>0))return '';
+  const d=v=>{const x=(pag/v-1)*100;return `${x>=0?'+':''}${x.toFixed(1).replace('.',',')}%`;};
+  return ` · ese día MEP ${Number(r.mep)>0?fmt(Math.round(r.mep))+' ('+d(r.mep)+')':'?'} · cripto ${Number(r.cri)>0?fmt(Math.round(r.cri))+' ('+d(r.cri)+')':'?'}`;
+}
 function pyGastosChecklistHTML(c){
   // UNA SOLA CAJA con todos los gastos del pedido (08/10/2026, pedidos suyos: "unificá eso de los gastos"
   // y "que la diferencia de dólares al comprar también se ponga como gasto, todo junto").
@@ -15259,7 +15345,7 @@ function pyGastosChecklistHTML(c){
   let filas='';
   if(_usd>0&&_tc>0){
     filas+=fila(true,'Mercadería',`${fmtUS2(_usd)} al dólar del panel (${fmt(Math.round(_tc))})`,fmt(Math.round(_base)),'');
-    filas+=fila(okM,'Dólar más caro al comprar',_dolPag?`lo pagaste ${fmt(Math.round(_dolPag))}`:'',(_dif<0?'−':'')+fmt(Math.round(Math.abs(_dif))),okM?(_dif<0?'−':'')+_pct(Math.abs(_dif))+'%':'');
+    filas+=fila(okM,'Dólar más caro al comprar',_dolPag?`lo pagaste ${fmt(Math.round(_dolPag))}${pyDolarRefTxt(c,_dolPag)}`:'',(_dif<0?'−':'')+fmt(Math.round(Math.abs(_dif))),okM?(_dif<0?'−':'')+_pct(Math.abs(_dif))+'%':'');
   } else filas+=fila(okM,'Mercadería',_usd?fmtUS2(_usd):'',fmt(Math.round(_m)),'');
   for(const k of ['cambista','retira','envio']){
     const g=G(k),ok=pyGastoCargado(c,g),v=val(g);
@@ -17298,6 +17384,34 @@ function pubDeVariante(prodId,cuenta,variante,sirve){
   }
   return null;
 }
+// ── 6.D1 · LO QUE ML RECOMIENDA MANDAR A FULL (etapa 6, eligió la a, 21/10/2026) ───────────────────────────────────────
+// El robot lee una vez por día `/marketplace/fbm/user-products/<upid>/replenishment` y lo deja en `cyc/fullreco/<upid>`: cuántas
+// recomienda mandar ML, con qué urgencia, y las ventas y días sin stock de las últimas 6 semanas según ML. Acá se muestra AL LADO
+// de lo nuestro (no decide nada): si mandamos mucho más que ML, mirar el ritmo; si ML cuenta más días sin stock que nosotros, el
+// ritmo puede estar inflado. Se busca la publicación de ESE color en esa cuenta (misma regla que el código de Full: no se adivina).
+const FULLRECO_PLAZO={THIS_WEEK:'esta semana',NEXT_WEEK:'la semana que viene',IN_TWO_WEEKS:'en 2 semanas',NO_URGENCY:'sin apuro',NOT_REPLENISHMENT_NEEDED:'no hace falta'};
+function fullRecoDe(prodId,cuenta,variante){
+  const FR=state.fullreco||{};
+  const e=pubDeVariante(prodId,cuenta,variante,(x)=>x.upid&&FR[x.upid]);
+  if(!e)return null;
+  const r=FR[e.upid];
+  if(!r||!(Number(r.ts)>0))return null;
+  return {...r,viejo:Date.now()-Number(r.ts)>3*86400000};
+}
+function fullRecoHTML(prodId,cuenta,variante,mandar){
+  const r=fullRecoDe(prodId,cuenta,variante);
+  if(!r)return '';
+  const sem=Array.isArray(r.sem)?r.sem:[];
+  const sinSt=sem.reduce((a,x)=>a+(Number(x&&x[1])||0),0);
+  const pronto=r.tipo==='REPLENISH'&&['THIS_WEEK','NEXT_WEEK','IN_TWO_WEEKS'].includes(r.plazo);
+  const reco=r.tipo==='REPLENISH'?`ML recomienda <b>${r.sug!=null?r.sug:'?'} u.</b>${r.plazo?' · '+(FULLRECO_PLAZO[r.plazo]||r.plazo):''}`:`ML: <b>no hace falta reponer</b>`;
+  const col=pronto?'var(--amber)':'var(--muted)';
+  let aviso='';
+  if(mandar>0&&r.tipo==='REPLENISH'&&r.sug>0&&mandar>=r.sug*2.5)aviso=`Mandás ${(mandar/r.sug).toFixed(1).replace('.',',')} veces lo que recomienda ML: mirá el ritmo antes de cerrar la caja.`;
+  else if(mandar>0&&r.tipo!=='REPLENISH')aviso='ML dice que no hace falta reponer: mirá el ritmo antes de cerrar la caja.';
+  const barras=sem.length?`<span style="display:inline-flex;gap:2px;align-items:flex-end;height:14px;margin-left:6px;vertical-align:middle" title="Semanas según ML (de la más vieja a la última): la barra son las vendidas, el rojo abajo los días sin stock">${sem.map(x=>{const u=Number(x&&x[0])||0,d=Number(x&&x[1])||0,mx=Math.max(1,...sem.map(y=>Number(y&&y[0])||0));return `<span style="display:inline-flex;flex-direction:column;justify-content:flex-end;width:5px;height:14px"><span style="height:${Math.max(1,Math.round(u/mx*12))}px;background:var(--accent2);opacity:.8"></span><span style="height:${d?2:0}px;background:var(--red)"></span></span>`;}).join('')}</span>`:'';
+  return `<div style="font-size:.64rem;color:${col};margin:3px 0 0 2px;line-height:1.45">📦 ${reco}${barras}${sinSt?` · <span style="color:var(--red)">${sinSt} días sin stock en 6 semanas según ML</span>`:''}${r.viejo?' <span style="color:var(--amber)">(dato de hace '+Math.floor((Date.now()-r.ts)/86400000)+' d)</span>':''}${aviso?`<div style="color:var(--amber)">⚠️ ${aviso}</div>`:''}</div>`;
+}
 function etiquetaFullDe(prodId,cuenta,variante){
   const e=pubDeVariante(prodId,cuenta,variante,(x)=>(variante&&x.invVar&&x.invVar[sid(variante)])||x.inv);
   if(!e)return null;
@@ -17334,13 +17448,17 @@ function cajaMLDe(p){
   // publicación que DA el estado del producto (la que gana, si hay), no de cualquiera: con una que
   // pierde y otra que gana, la que importa es la que se lleva las ventas.
   const _VR={maximum:3,medium:2,minimum:1};
-  let vis=null,comp=null;
+  let vis=null,comp=null,porCuotas=false,ganP=0,ganPromo=0;
   for(const e of (vivas.length?vivas:conCaja)){
     if(e.caja!==st)continue;
     if(e.cajaVis&&_VR[e.cajaVis]&&(!vis||_VR[e.cajaVis]>_VR[vis]))vis=e.cajaVis;
     if(typeof e.cajaComp==='number'&&e.cajaComp>=0&&(comp==null||e.cajaComp<comp))comp=e.cajaComp;
+    // 6.D2 (etapa 6, eligió la a): el robot marca `cajaPorCuotas` cuando el que gana no está más barato y ML dice que te faltan
+    // cuotas sin interés: el remedio es la gemela Premium, no bajar. Y si el que gana está en promo (`cajaGanPromo`, 6.D5).
+    if(e.cajaPorCuotas){porCuotas=true;if(Number(e.cajaGanP)>0)ganP=Number(e.cajaGanP);}
+    if(Number(e.cajaGanPromo)>0)ganPromo=Math.max(ganPromo,Number(e.cajaGanPromo));
   }
-  return {st,n,ts,ptw,pubs,vieja,vis,comp};
+  return {st,n,ts,ptw,pubs,vieja,vis,comp,porCuotas,ganP,ganPromo};
 }
 // ── ¿CUÁNTO HAY QUE BAJAR PARA GANAR LA CAJA, Y EN QUÉ MARGEN QUEDÁS? (21/09/2026) ─────────
 // Pedido suyo mirando el Xiaomi Watch S5: "se puede agregar ahi? que ponga a que % hay que bajarlo
@@ -17479,6 +17597,11 @@ function rotCajaHtml(r){
   // Revisión max (rev4): la caja de una pausada es vieja y se dice a la vista, no sólo en el globito.
   if(c.vieja)return `<span style="color:var(--muted)" title="${detalle.slice(3)}">⏸ ${ {winning:'ganaba',sharing:'compartía',losing:'perdía'}[c.st]||'sin catálogo'} <span style="font-size:.6rem">(pausada · dato viejo)</span></span>`;
   const _ext=rotCajaExtraHtml(c);
+  // 6.D2/6.D5 (etapa 6): POR QUÉ SE PIERDE. Si es por cuotas, la respuesta es la gemela Premium y no bajar el precio.
+  if((c.st==='losing'||c.st==='sharing')&&c.porCuotas)
+    _ext.html+=`<div style="font-size:.62rem;color:var(--amber);margin-top:2px;line-height:1.35" title="El que gana la caja no está más barato que vos${c.ganP?' (está a '+fmt(c.ganP)+')':''} y ML dice que te faltan las cuotas sin interés. No es el precio: es la cuota. Probar la gemela Premium (misma plata neta) antes de bajar.">💳 la perdés por cuotas, no por precio · gemela Premium</div>`;
+  if((c.st==='losing'||c.st==='sharing')&&c.ganPromo>0)
+    _ext.html+=`<div style="font-size:.62rem;color:var(--muted);margin-top:2px" title="El que gana tiene el precio tachado: está en promo. Cuando termine, su precio vuelve a subir.">🏷️ el que gana está en promo (−${c.ganPromo}%)</div>`;
   // Etapa 5: la edad del dato iba sólo en el globito. El robot la pregunta cada hora; con más de 24 h
   // "Ganás" puede ser de ayer y ya no ser cierto: va a la vista, en ámbar.
   if(c.ts&&Date.now()-c.ts>CAJA_VIEJA_MS){const _h=Math.floor((Date.now()-c.ts)/3600000);
@@ -19334,7 +19457,7 @@ async function _listaBuscarYa(q){
     return `<div style="display:flex;gap:8px;align-items:center;padding:6px 8px;background:var(--surface);border:1px solid ${(arm[k]||{})[cod]>0?'var(--blue)':'var(--border)'};border-radius:8px;margin-top:5px">
       <div style="flex:1;min-width:0;font-size:.72rem;line-height:1.45"><span style="font-size:.6rem;padding:1px 7px;border-radius:9px;background:#7c3aed;color:#fff">${escHtml(provs[k].nombre||k)}</span> <b>${escHtml(e.n)}</b>
         <div style="color:var(--muted);font-size:.66rem">te sale <b style="color:var(--text)">${fmt(_listaPuesto(k,e))}</b>${e.mp?` · en ML <b style="color:var(--text)">${fmt(e.mp)}</b>`:''}</div>
-        <details style="margin-top:3px"><summary style="cursor:pointer;font-size:.62rem;color:var(--muted)">detalle ▾</summary><div style="color:var(--muted);font-size:.64rem;margin-top:4px">${e.mv?' · '+(e.mv==1?'<b style="color:var(--amber)">⚠️ 1 solo vendedor</b>':e.mv+' vendedores'):''}${e.vend!=null?` · 🛒 ${e.vend>=1000?'+1000':e.vend} vendidas`:''}</div><div style="font-size:.64rem;margin-top:3px">${e.mi?`<a href="https://www.mercadolibre.com.ar/p/${e.mi}" target="_blank" rel="noopener" style="color:var(--green)">🔗 verlo en ML</a> · `:''}<a href="#" onclick="listaVerOri('${k}','${c}');return false" style="color:var(--blue)">📄 verlo en la lista</a> · <a href="#" onclick="_listaSel='${k}';_listaVista='nuevos';renderListas();return false" style="color:var(--muted)">ir a ${escHtml(provs[k].nombre||k)}</a></div></details></div>
+        <details style="margin-top:3px"><summary style="cursor:pointer;font-size:.62rem;color:var(--muted)">detalle ▾</summary><div style="color:var(--muted);font-size:.64rem;margin-top:4px">${e.mv?' · '+(e.mv==1?'<b style="color:var(--amber)">⚠️ 1 solo vendedor</b>':e.mv+' vendedores'):''}${Number(e.pp)>0?` · <span style="color:var(--amber)">🏷️ el más barato está en promo (−${Number(e.pp)}%)</span>`:''}${e.vend!=null?` · 🛒 ${e.vend>=1000?'+1000':e.vend} vendidas`:''}</div><div style="font-size:.64rem;margin-top:3px">${e.mi?`<a href="https://www.mercadolibre.com.ar/p/${e.mi}" target="_blank" rel="noopener" style="color:var(--green)">🔗 verlo en ML</a> · `:''}<a href="#" onclick="listaVerOri('${k}','${c}');return false" style="color:var(--blue)">📄 verlo en la lista</a> · <a href="#" onclick="_listaSel='${k}';_listaVista='nuevos';renderListas();return false" style="color:var(--muted)">ir a ${escHtml(provs[k].nombre||k)}</a></div></details></div>
       <div style="text-align:right;flex:0 0 auto">${m!=null&&!_listaCostoVigente(e)?'<span style="font-size:.6rem;color:var(--amber)">⏳ costo nuevo, falta medir</span>':m!=null?`<b style="color:${m>=25?'var(--green)':'var(--red)'}">${m}%</b>`:'<span style="font-size:.6rem;color:var(--muted)">sin medir</span>'}
         ${_listaFichaDe(k,cod,e)?'<div style="font-size:.6rem;color:var(--green)" title="Ya es una ficha: se pide desde la tarjeta de Pedidos (📋 pedir a la lista) o en ✅ Probados">ya es probado</div>':(_listaDa(e)&&_listaEsBsas(k))?'<div style="font-size:.6rem;color:var(--green)">da · lo trae Tito</div>':_listaDa(e)?`<div style="font-size:.62rem;color:var(--muted)">pedir <input type="number" min="0" inputmode="numeric" value="${(arm[k]||{})[cod]||''}" placeholder="0" onchange="listaSetU('${k}','${c}',this.value)" style="width:48px;padding:2px 4px;font-size:.78rem;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text)"></div>`:''}</div></div>`;};
   out.innerHTML=`<div style="font-size:.66rem;color:var(--muted);margin-top:6px">${R.length?R.length+' resultado'+(R.length===1?'':'s')+(R.length>60?' · muestro los 60 mejores':''):'Nada en ninguna lista con eso.'}</div>`+R.slice(0,60).map(fila).join('');
@@ -19762,7 +19885,7 @@ async function renderListas(){
       <div style="flex:1;min-width:0;font-size:.72rem;line-height:1.45"><div style="font-weight:600">${escHtml(e.n)}</div>
         <div style="color:var(--muted);font-size:.66rem">te sale <b style="color:var(--text)">${fmt(pc)}</b>${e.mp?` · en ML <b style="color:var(--text)">${fmt(e.mp)}</b>`:''}${_duda?' · <span style="color:var(--amber)">⚠️ hay una duda (tocá para verla)</span>':''}</div></div>
       <div style="text-align:right;flex:0 0 auto" onclick="if(event.target.tagName==='INPUT'){event.preventDefault();event.stopPropagation();}">${est}${uBox}</div></summary>
-      <div style="padding:0 10px 8px 10px"><div style="color:var(--muted);font-size:.64rem;margin-top:4px;line-height:1.55">te sale <b style="color:var(--text)">${fmt(pc)}</b>${rec?` (${fmt(Number(e.p)||0)} + ${rec}%)`:''}${Number(e.pl)>0?` · lista ${fmt(Number(e.pl))} −${e.dto}%`:''}${e.mp?` · en ML ${fmt(e.mp)}${e.mv?' · '+(e.mv==1?'<b style="color:var(--amber)">⚠️ 1 solo vendedor: precio que nadie más confirma</b>':e.mv+' vendedores'):''}`:''}${e.vend!=null?` · 🛒 ${e.vend>=1000?'+1000':e.vend} vendidas`:(_listaDa(e)?' · 🛒 vendidas en ML: falta mirarlas (entra igual · con menos de '+CAND_MIN_VENTAS+' se va)':'')}${e.ok?' · <span style="color:var(--green)">✓ mismo producto</span>':''}${_listaNoEsVale(e)?' · <span style="color:var(--red)">✗ otro producto</span>':e.noEs?' · <span style="color:var(--muted)" title="El chat de compras dijo que el catálogo de antes era otro producto; éste es otro catálogo y falta confirmarlo.">catálogo nuevo, falta confirmar</span>':''}${e.mt?` · <span title="el catálogo de ML contra el que se midió">"${escHtml(String(e.mt).slice(0,60))}"</span>`:''}${e.pAnt?` · antes ${fmt(e.pAnt)}`:''}</div><div style="font-size:.64rem;margin-top:3px">${e.mi?`<a href="https://www.mercadolibre.com.ar/p/${e.mi}" target="_blank" rel="noopener" style="color:var(--green)">🔗 verlo en ML</a> · `:''}<a href="#" onclick="listaVerOri('${k}','${String(cod).replace(/'/g,"\\'")}');return false" style="color:var(--blue)">📄 verlo en la lista</a>${e.rp?` <span style="color:${_listaOkVale(e)?'var(--muted)':'var(--amber)'}">· ${_listaOkVale(e)?'':'⚠️ '}${escHtml(String(e.rp).slice(0,80))}</span>`:''}</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">${e.sacado?`<button class="btn" style="font-size:.64rem;padding:3px 10px" onclick="listaSacar('${k}','${String(cod).replace(/'/g,"\\'")}',false)">↩︎ volver a la lista</button>`:`<button class="btn" style="font-size:.64rem;padding:3px 10px;color:var(--red);border-color:var(--red)" onclick="listaSacar('${k}','${String(cod).replace(/'/g,"\\'")}',true)">✕ sacar producto</button>`}</div></div></details>`;};
+      <div style="padding:0 10px 8px 10px"><div style="color:var(--muted);font-size:.64rem;margin-top:4px;line-height:1.55">te sale <b style="color:var(--text)">${fmt(pc)}</b>${rec?` (${fmt(Number(e.p)||0)} + ${rec}%)`:''}${Number(e.pl)>0?` · lista ${fmt(Number(e.pl))} −${e.dto}%`:''}${e.mp?` · en ML ${fmt(e.mp)}${e.mv?' · '+(e.mv==1?'<b style="color:var(--amber)">⚠️ 1 solo vendedor: precio que nadie más confirma</b>':e.mv+' vendedores'):''}${Number(e.pp)>0?` · <span style="color:var(--amber)">🏷️ el más barato está en promo (−${Number(e.pp)}%)</span>`:''}`:''}${e.vend!=null?` · 🛒 ${e.vend>=1000?'+1000':e.vend} vendidas`:(_listaDa(e)?' · 🛒 vendidas en ML: falta mirarlas (entra igual · con menos de '+CAND_MIN_VENTAS+' se va)':'')}${e.ok?' · <span style="color:var(--green)">✓ mismo producto</span>':''}${_listaNoEsVale(e)?' · <span style="color:var(--red)">✗ otro producto</span>':e.noEs?' · <span style="color:var(--muted)" title="El chat de compras dijo que el catálogo de antes era otro producto; éste es otro catálogo y falta confirmarlo.">catálogo nuevo, falta confirmar</span>':''}${e.mt?` · <span title="el catálogo de ML contra el que se midió">"${escHtml(String(e.mt).slice(0,60))}"</span>`:''}${e.pAnt?` · antes ${fmt(e.pAnt)}`:''}</div><div style="font-size:.64rem;margin-top:3px">${e.mi?`<a href="https://www.mercadolibre.com.ar/p/${e.mi}" target="_blank" rel="noopener" style="color:var(--green)">🔗 verlo en ML</a> · `:''}<a href="#" onclick="listaVerOri('${k}','${String(cod).replace(/'/g,"\\'")}');return false" style="color:var(--blue)">📄 verlo en la lista</a>${e.rp?` <span style="color:${_listaOkVale(e)?'var(--muted)':'var(--amber)'}">· ${_listaOkVale(e)?'':'⚠️ '}${escHtml(String(e.rp).slice(0,80))}</span>`:''}</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">${e.sacado?`<button class="btn" style="font-size:.64rem;padding:3px 10px" onclick="listaSacar('${k}','${String(cod).replace(/'/g,"\\'")}',false)">↩︎ volver a la lista</button>`:`<button class="btn" style="font-size:.64rem;padding:3px 10px;color:var(--red);border-color:var(--red)" onclick="listaSacar('${k}','${String(cod).replace(/'/g,"\\'")}',true)">✕ sacar producto</button>`}</div></div></details>`;};
   const ord=(a,b)=>((b[1].m??-999)-(a[1].m??-999));
   // ── PEDIDO ──
   if(_listaVista==='hechos'){

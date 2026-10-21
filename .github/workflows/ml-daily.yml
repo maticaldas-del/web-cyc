@@ -423,6 +423,24 @@ jobs:
           BILLING_PROBE: dispo:go
         run: exec node ml-sync/sync.mjs
 
+      # LOS CARGOS DE FULL DEL MES QUE CERRÓ, COMO GASTO (6.D3, etapa 6, eligió la a, 21/10/2026). Sólo del 1 al 5 de cada mes y
+      # una sola vez por mes (`mlapi/cargosmes/<AAAA_MM>`): almacenamiento, stock antiguo, retiro y multas de las 4 cuentas, netos
+      # de bonificaciones, en `cyc/compras/fullml_<mes>_<cuenta>`. Si hay uno cargado a mano ese mes no lo duplica. Los otros días
+      # no hace nada y sale bien.
+      - name: Cargos de Full del mes
+        id: cargosmes
+        if: steps.noche.outputs.hecha != '1'
+        continue-on-error: true
+        env:
+          ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
+          ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
+          FIREBASE_BOT_EMAIL: ${{ secrets.FIREBASE_BOT_EMAIL }}
+          FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
+          BILLING_PROBE: cargosmes:auto:go
+        run: exec node ml-sync/sync.mjs
+
       # (Las percepciones de IIBB se descuentan como un % por cuenta sobre cada venta (ML_EXTRA_PCT).
       # Los cargos de Full —almacenamiento, stock antiguo, retiro, multas— van como GASTO del mes, a mano.
       # 26/09/2026: antes el % traía los dos adentro y se contaban dos veces.)
@@ -444,7 +462,7 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           BILLING_PROBE: avisonoche
-          FALLOS_NOCHE: "${{ steps.resumen.outcome == 'failure' && 'Resumen diario · ' || '' }} ${{ steps.facturas.outcome == 'failure' && 'Facturas emitidas · ' || '' }} ${{ steps.netoreal.outcome == 'failure' && 'Neto real de las ventas que quedaron estimadas · ' || '' }} ${{ steps.cuotas.outcome == 'failure' && 'Cuotas de las publicaciones Premium · ' || '' }} ${{ steps.netoweb.outcome == 'failure' && 'Margen ML al precio de hoy · ' || '' }} ${{ steps.visitas.outcome == 'failure' && 'Visitas de las publicaciones · ' || '' }} ${{ steps.canceladas.outcome == 'failure' && 'Facturación de canceladas · ' || '' }} ${{ steps.entregas.outcome == 'failure' && 'Cuándo llegó cada venta · ' || '' }} ${{ steps.motivoreclamo.outcome == 'failure' && 'Motivo de los reclamos · ' || '' }} ${{ steps.linea.outcome == 'failure' && 'Línea de tiempo de ayer · ' || '' }} ${{ steps.ficha.outcome == 'failure' && 'Ficha de cada publicación · ' || '' }} ${{ steps.ritmo.outcome == 'failure' && 'Diario y ritmo normal · ' || '' }} ${{ steps.paramcompra.outcome == 'failure' && 'Números de compra · ' || '' }} ${{ steps.techofull.outcome == 'failure' && 'Techo con Full · ' || '' }} ${{ steps.avisos.outcome == 'failure' && 'Avisos de precio al canal privado · ' || '' }} ${{ steps.supervisor.outcome == 'failure' && 'Supervisor de precios · ' || '' }} ${{ steps.candidatos.outcome == 'failure' && 'Para probar · candidatos de Paraguay · ' || '' }} ${{ steps.saldoml.outcome == 'failure' && 'Saldo a liquidar y agenda de liberaciones · ' || '' }} ${{ steps.dispo.outcome == 'failure' && 'Disponible de ML (lo liberado pasa de a liquidar al disponible) · ' || '' }}"
+          FALLOS_NOCHE: "${{ steps.resumen.outcome == 'failure' && 'Resumen diario · ' || '' }} ${{ steps.facturas.outcome == 'failure' && 'Facturas emitidas · ' || '' }} ${{ steps.netoreal.outcome == 'failure' && 'Neto real de las ventas que quedaron estimadas · ' || '' }} ${{ steps.cuotas.outcome == 'failure' && 'Cuotas de las publicaciones Premium · ' || '' }} ${{ steps.netoweb.outcome == 'failure' && 'Margen ML al precio de hoy · ' || '' }} ${{ steps.visitas.outcome == 'failure' && 'Visitas de las publicaciones · ' || '' }} ${{ steps.canceladas.outcome == 'failure' && 'Facturación de canceladas · ' || '' }} ${{ steps.entregas.outcome == 'failure' && 'Cuándo llegó cada venta · ' || '' }} ${{ steps.motivoreclamo.outcome == 'failure' && 'Motivo de los reclamos · ' || '' }} ${{ steps.linea.outcome == 'failure' && 'Línea de tiempo de ayer · ' || '' }} ${{ steps.ficha.outcome == 'failure' && 'Ficha de cada publicación · ' || '' }} ${{ steps.ritmo.outcome == 'failure' && 'Diario y ritmo normal · ' || '' }} ${{ steps.paramcompra.outcome == 'failure' && 'Números de compra · ' || '' }} ${{ steps.techofull.outcome == 'failure' && 'Techo con Full · ' || '' }} ${{ steps.avisos.outcome == 'failure' && 'Avisos de precio al canal privado · ' || '' }} ${{ steps.supervisor.outcome == 'failure' && 'Supervisor de precios · ' || '' }} ${{ steps.candidatos.outcome == 'failure' && 'Para probar · candidatos de Paraguay · ' || '' }} ${{ steps.saldoml.outcome == 'failure' && 'Saldo a liquidar y agenda de liberaciones · ' || '' }} ${{ steps.dispo.outcome == 'failure' && 'Disponible de ML (lo liberado pasa de a liquidar al disponible) · ' || '' }} ${{ steps.cargosmes.outcome == 'failure' && 'Cargos de Full del mes · ' || '' }}"
         run: |
           if [ -n "$(echo "$FALLOS_NOCHE" | tr -d ' ')" ]; then echo "hubo=1" >> "$GITHUB_OUTPUT"; node ml-sync/sync.mjs; else echo "Ningún paso falló."; fi
 
