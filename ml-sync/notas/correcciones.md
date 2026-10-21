@@ -7,5 +7,6 @@ Cada corrección: fecha · qué · por qué pasó · qué cambié. Los lunes se 
 | 19/10 | Ventas en el celu aplastadas | error mío de pantalla (v25.00, probé con 3 tarjetas) | v25.05 · probar con muchas |
 | 20/10 | Tendedero: "¿por qué no lo bajamos?" | — (no fue error, pidió revisar) | no cuenta |
 | 20/10 | Ferrari Rojo: dije que la Premium no sumaba ventas; las Clásicas llevan 88 d sin vender y la Premium vendió 2 en 30 | comparé las publicaciones entre sí y no contra qué pasaba SIN la Premium | pregunta 21 en preguntas.md · busco más productos para gemela Premium |
+| 20/10 | Cuba Platinum (y en la misma vuelta Cuba Classic, Halloween Man y Adyan): bajé lo recién llegado sin techo medido, con toda la info a mano | no fue falta de dato: dos reglas chocaron ("ganar la caja" contra "lo nuevo no baja sin 🏔️ al 95%") y ganó la equivocada; los ayudantes y el revisor leen el mismo texto, así que tienen el mismo punto ciego | freno en el código (`decido` no baja lo nuevo sin `techook`) · `bajasnuevas` encontró las 5 · los dos Cuba volvieron a $50.000 · pregunta 22 |
 
 - 20/10/2026 · Ventas vivas apagadas un día: al agregar atributos a la tarjeta de venta (v24.86) se rompió `vivaEnvolver` en silencio. Pregunta general: ¿qué otra cosa depende del texto exacto de una etiqueta HTML?
