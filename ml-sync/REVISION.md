@@ -245,7 +245,7 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   promo no pase por abajo del piso sin `!piso` ni de 0% · que el cerebro de la noche no lea el precio de promo como
   "cambio a mano" y frene subas.
 
-### v25.91 · 21/10/2026 · Rayas al precio cobrado y F7 que vence a los 15 días (etapa 1, eligió 1a 2a)
+### v25.92 · 21/10/2026 · Rayas al precio cobrado y F7 que vence a los 15 días (etapa 1, eligió 1a 2a)
  · **1a:** `rayasPrecioLinea` (sync.mjs) y `_rayas` (index.html): el día que cambia el precio, lo vendido cuenta al precio (de hoy o de
    ayer) más parecido a lo cobrado por unidad, la misma regla de los tramos de `armarFicha`. Antes iba todo al precio de la noche
    (Filtro 19/10: 5 de 6 a $4.990 quedaban a $5.750; Cartas: 26 a $3.310 quedaban a $3.890 y el 💰 iba a saltar). Qué chequear: que
@@ -2601,3 +2601,8 @@ de esfuerzo que tengo yo"*. Las ventas las piensa SIEMPRE un ayudante con `effor
 venta; antes sólo con más de ~5 publicaciones y si no las pensaba la sesión con su nivel); los raros (🧭/🔀/💭) siempre un ayudante
 `effort:"high"`. Vive en `ml-sync/CEREBRO.md` (bloque 🔬, paso 4 y §2). **Qué chequear:** en cada vuelta, que el log tenga la llamada
 al ayudante con `effort` y que `ventasvistas` diga `esf=max`.
+
+**21/10/2026 · etapa 7 (diseño) · 🎉 primera venta dice días con stock (v25.91).** Él: *"no quiero que diga hace cuánto está publicada,
+sino cuántos días llevó de stock hasta la primera venta"*. `_vhDiasStock` (index.html) usa `cyc/stockhist` del color o del producto en esa
+cuenta (`desde`/`desdePrev` anterior a la venta). Sin fecha vista entrar dice "o más"; sin dato, nada. **Qué chequear:** si el producto se
+repuso después de la venta, `desdePrev` ya se borró y el cartel queda sin días (no inventa).
