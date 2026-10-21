@@ -849,9 +849,10 @@ body.light .est-chip{color:color-mix(in srgb,var(--ec) 50%,#000)}
   <div id="tab-inventario" style="display:none">
     <div style="font-size:.68rem;color:var(--muted);margin-bottom:8px">👀 Sólo para mirar: el stock de Full lo trae el robot cada hora y lo de casa se cuenta en <a href="#" onclick="goPage('oficina');return false" style="color:var(--accent,#38bdf8)">Mi oficina</a>.</div>
     <input class="search-box" id="inv-search" type="search" placeholder="Buscar producto..." oninput="renderInv()">
+    <!-- "🔧 Reparar stock variantes" se sacó el 21/10/2026 (decisión 7.4 de diseño, eligió la a): escribía en el
+         inventario sin preguntar, en una pestaña que es sólo para mirar. -->
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
       <div class="stitle" style="margin:0">Unidades por cuenta / ubicación</div>
-      <button class="btn" style="font-size:.68rem;padding:4px 10px;background:rgba(251,191,36,.12);color:var(--amber);border:1px solid rgba(251,191,36,.3)" onclick="repararStockVariantes()">🔧 Reparar stock variantes</button>
     </div>
     <div class="tbl-outer">
       <table id="inv-tbl">
@@ -1614,10 +1615,10 @@ body.light .est-chip{color:color-mix(in srgb,var(--ec) 50%,#000)}
   <div class="stitle">De dónde viene la mercadería <span id="met-origen-period" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;font-size:.65rem"></span></div>
   <div id="met-origen"></div>
 
-  <!-- El robot de precios, UNA sola tarjeta (30/09/2026, pedido suyo: "que se unifique"): arriba lo que
-       ganó o perdió (sólo confirmado) y adentro, en un desplegable, todo lo que está vigilando.
-       met-vig vive ADENTRO de met-auto: renderMetAuto lo crea y renderMetVig lo llena. -->
-  <div class="stitle">🧠 Cambios de precio <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;font-size:.65rem">· lo que ganó o perdió cada cambio · y lo que se está mirando</span></div>
+  <!-- El robot de precios, UNA sola tarjeta (30/09/2026, pedido suyo: "que se unifique"): lo que ganó o perdió
+       cada cambio. El desplegable "👀 Qué está mirando ahora" (foto vieja de cyc/vigilancia del 07/10) se sacó el
+       21/10/2026 (decisión 7.3 de diseño, eligió la a): ya no se rehace desde que manda el cerebro. -->
+  <div class="stitle">🧠 Cambios de precio <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;font-size:.65rem">· lo que ganó o perdió cada cambio</span></div>
   <div id="met-auto"></div>
 
   <footer>CYC · Métricas ML · datos independientes</footer>
@@ -2536,28 +2537,8 @@ function _matchProdVariant(title,variantes){
   }
   return best;
 }
-// Auto-vincula familias que son un solo producto con variantes (Paulvic, Victoria's Secret).
-async function autoLinkFamilies(){
-  const fams=[{kw:'paulvic',prod:'Paulvic TODOS'},{kw:'victoria',prod:"Victoria's Secret"}];
-  const map=state.mllinks||{};
-  let linked=0,sinVar=0,noProd=[];
-  for(const f of fams){
-    const prod=(state.products||[]).find(p=>_mlnorm(p.name)===_mlnorm(f.prod));
-    if(!prod){noProd.push(f.prod);continue;}
-    for(const mla of Object.keys(map)){
-      const e=map[mla];
-      if(!e||e.ignored||e.prodId)continue;                       // solo sin vincular
-      if(!_mlnorm(e.title).includes(_mlnorm(f.kw)))continue;      // que sea de la familia
-      const variant=_matchProdVariant(e.title,prod.variantes);
-      const campos={prodId:prod.id,variant:variant||'',manual:true,auto:null,candidatos:null};
-      await fbUpdate(mlLinkCampos(mla,campos));state.mllinks[mla]=mlLinkMezcla(e,campos);
-      linked++;if(!variant)sinVar++;
-    }
-  }
-  renderMlLinks();
-  if(noProd.length)toast('No encontré el producto: '+noProd.join(', '),'err');
-  toast(linked+' vinculadas'+(sinVar?' · '+sinVar+' sin variante (revisá)':'')+' ✓','ok',5000);
-}
+// "⚡ Auto Paulvic + Victoria" y "🗑 Ocultar sin vincular" se sacaron el 21/10/2026 (decisión 7.5 de diseño, eligió la a):
+// vincular lo hace Claude (regla del 09/10) y ocultar de a montón escondía publicaciones vivas sin mirarlas.
 let _mlFilterPend=false,_mlShowHidden=false;
 function toggleMlFilter(){_mlFilterPend=!_mlFilterPend;renderMlLinks();}
 function toggleMlHidden(){_mlShowHidden=!_mlShowHidden;renderMlLinks();}
@@ -2585,9 +2566,7 @@ function renderMlLinks(){
   const head=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">
       <span style="font-size:.66rem;color:var(--muted)">${_mlShowHidden?hidden+' ocultas':pend+' sin vincular · '+total+' en total'+(hidden?' · '+hidden+' ocultas':'')}</span>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
-        ${(!_mlShowHidden&&pend)?btn('⚡ Auto Paulvic + Victoria','autoLinkFamilies()','color:var(--accent2);border-color:var(--accent2)'):''}
         ${_mlShowHidden?'':btn(_mlFilterPend?'Ver todas':'Solo sin vincular','toggleMlFilter()')}
-        ${(!_mlShowHidden&&pend)?btn('🗑 Ocultar sin vincular','bulkHidePending()','color:var(--amber)'):''}
         ${hidden?btn(_mlShowHidden?'← Volver':'Ver ocultas ('+hidden+')','toggleMlHidden()'):''}
       </div>
     </div>`;
@@ -2640,16 +2619,6 @@ async function unhideMl(mla){
   const cur=(state.mllinks&&state.mllinks[mla])||{};
   await fbUpdate(mlLinkCampos(mla,{ignored:null}));
   state.mllinks[mla]=mlLinkMezcla(cur,{ignored:null});renderMlLinks();toast('Recuperada ✓');
-}
-async function bulkHidePending(){
-  const map=state.mllinks||{};
-  const targets=Object.keys(map).filter(m=>!map[m].prodId&&!map[m].ignored);
-  if(!targets.length){toast('No hay sin vincular','info');return;}
-  if(!confirm('¿Ocultar '+targets.length+' publicaciones sin vincular? Las podés recuperar después.'))return;
-  const campos={ignored:true,manual:true};const upd={};
-  for(const m of targets)Object.assign(upd,mlLinkCampos(m,campos));
-  await fbUpdate(upd);for(const m of targets)state.mllinks[m]=mlLinkMezcla(map[m],campos);
-  renderMlLinks();toast(targets.length+' ocultas ✓');
 }
 function mlVarRefresh(mla){
   const ps=document.getElementById('mlp_'+mla);const vs=document.getElementById('mlv_'+mla);
@@ -13986,44 +13955,6 @@ async function syncPedidosAuto(){
 }
 function syncPedidosDebounced(){clearTimeout(syncPedidosTimer);syncPedidosTimer=setTimeout(syncPedidosAuto,1500);}
 
-async function repararStockVariantes(){
-  const updates={};
-  for(const p of (state.products||[])){
-    const vars=p.variantes||[];if(!vars.length)continue;
-    for(const loc of LOCS){
-      const productLevel=parseInt(state.inventory[invKey(p.id,loc)])||0;
-      const varStocks={};let variantSum=0;
-      for(const v of vars){varStocks[v]=parseInt(state.inventory[invKeyV(p.id,loc,v)])||0;variantSum+=varStocks[v];}
-      const delta=variantSum-productLevel;
-      if(delta<=0)continue; // ya sincronizado o no hay discrepancia
-      // contar ventas por variante en esta ubicación
-      const salesByVar={};
-      Object.values(state.ventaprod||{}).forEach(day=>Object.values(day||{}).forEach(s=>{
-        if(!ventaEsDe(s,p)||normTxt(s.cuenta||'')!==normTxt(loc)||!s.variante||_esCancelada(s))return;
-        salesByVar[s.variante]=(salesByVar[s.variante]||0)+(s.qty||0);
-      }));
-      const totalVarSales=Object.values(salesByVar).reduce((a,b)=>a+b,0);
-      if(!totalVarSales)continue;
-      // distribuir el delta proporcionalmente a las ventas de cada variante
-      let deducted=0;
-      const sortedVars=[...vars].sort((a,b)=>a.localeCompare(b,'es',{sensitivity:'base'}));
-      const withSales=sortedVars.filter(v=>salesByVar[v]>0);
-      withSales.forEach((v,i)=>{
-        const isLast=i===withSales.length-1;
-        const toDeduct=isLast?(delta-deducted):Math.round(delta*salesByVar[v]/totalVarSales);
-        const actual=Math.min(toDeduct,delta-deducted);
-        if(actual===0)return;
-        const vk=invKeyV(p.id,loc,v);
-        updates[vk]=(updates[vk]!==undefined?updates[vk]:varStocks[v])-actual;
-        deducted+=actual;
-      });
-    }
-  }
-  if(!Object.keys(updates).length){toast('Variantes ya sincronizadas, no hay nada que corregir ✓','ok');return;}
-  for(const[k,nv]of Object.entries(updates)){state.inventory[k]=nv;await fbSet('inventory/'+k,nv);}
-  updateTotals();renderAll();
-  toast(`✓ Corregidas ${Object.keys(updates).length} claves de variante`,'ok',4000);
-}
 function updatePedidosCosto(){
   const el=document.getElementById('nc-pedidos-costo');if(!el)return;
   const tc=curTC();
@@ -20864,22 +20795,6 @@ const MET_AUTO_MOT={prueba:'🧪 Prueba de suba (sin catálogo)',subir:'📈 Sub
 // "Deshizo" manda sobre todo: es lo que explica por qué no suma.
 const metAutoMotTxt=x=>!x?'?':x.motivo==='deshace'?MET_AUTO_MOT.deshace:(x.por==='cerebro'||x.por==='claude'||x.por==='correccion')?MET_AUTO_MOT[x.por]:(MET_AUTO_MOT[x.motivo]||x.motivo||'?');
 function metAutoSet(k,v){if(k==='mes')metAutoMes=v;else metAutoMot=v;renderMetAuto();}
-let metVigAbierto=false;
-// El desplegable con todo lo que vigila el robot (antes era la tarjeta 🧪 Vigilancia aparte).
-// EL CEREBRO REEMPLAZÓ A LA PRUEBA DE SUBA (08/10/2026): desde el 07/10, con el cerebro prendido, el robot
-// ya no rehace cyc/vigilancia a propósito. La foto que queda es vieja: no se dice "en prueba" ni "se sube
-// esta noche" ni que el robot "no la pudo rehacer". Misma regla que el robot: prendido salvo cerebro='off'.
-const metCerebroOn=()=>String((state.mlconfig||{}).cerebro||'on')!=='off';
-function metVigBox(){
-  const V=state.vigilancia,f=V&&V.filas?Object.values(V.filas):[];
-  const enP=f.filter(x=>x&&(x.estado==='prueba'||x.estado==='candidata')).length,cat=f.filter(x=>x&&x.estado==='catalogo').length;
-  const fd=t=>{const d=new Date(Number(t)||0);return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0');};
-  const res=metCerebroOn()?(f.length?`foto vieja del ${fd(V.ts)} · ya no se rehace (la reemplazó el 🧠 cerebro)`:'ya no se arma (la reemplazó el 🧠 cerebro)')
-    :f.length?`${f.length} publicaciones que venden · ${cat} de catálogo · ${enP} en prueba de suba`:'todavía sin foto';
-  return `<details style="margin-top:12px;border-top:1px solid rgba(148,163,184,.16);padding-top:8px"${metVigAbierto||metAutoNorm(metAutoQ).trim()?' open':''} ontoggle="metVigAbierto=this.open">
-    <summary style="cursor:pointer;font-size:.66rem;color:var(--text)">👀 Qué está mirando ahora <span style="color:var(--muted)">· ${res}</span></summary>
-    <div id="met-vig" style="margin-top:8px"></div></details>`;
-}
 // EL JUICIO DE CLAUDE (10/10/2026). Él: "quiero que aparezca todo, desde la primer decisión del robot anterior y que hagas
 // el análisis (…) todos los días" y "quizás esa decisión es buena y está unos días perdiendo y después recupera". La cuenta
 // (plata cobrada de más o de menos, ventas antes y después) la sigue haciendo el supervisor; lo que dice si GANÓ o PERDIÓ de
@@ -20891,7 +20806,7 @@ const metJuicioHTML=x=>{const j=metJuicio(x);if(!j)return '';const [ic,lbl,c]=ME
 function renderMetAuto(){
   const el=document.getElementById('met-auto');if(!el)return;
   const r=state.supResumen;
-  if(!r||!(r.ts>0)){el.innerHTML='<div class="chart-box"><div style="color:var(--muted);font-size:.72rem">Todavía no hay cuenta: la hace el robot todas las noches, después del aviso de precios.</div>'+metVigBox()+'</div>';return;}
+  if(!r||!(r.ts>0)){el.innerHTML='<div class="chart-box"><div style="color:var(--muted);font-size:.72rem">Todavía no hay cuenta: la hace el robot todas las noches, después del aviso de precios.</div></div>';return;}
   const n=v=>Number(v)||0;
   const col=v=>n(v)>0?'var(--green)':n(v)<0?'var(--red)':'var(--muted)';
   // 27/09/2026, regla suya: VERDE sólo lo confirmado que ganó plata y ROJO sólo lo confirmado que
@@ -20901,7 +20816,7 @@ function renderMetAuto(){
   const dias=Math.floor((Date.now()-r.ts)/864e5);
   const viejo=dias>=2?`<div style="font-size:.62rem;color:#fbbf24;margin-bottom:8px">⚠️ la cuenta es de hace ${dias} días: el robot no la pudo rehacer.</div>`:'';
   const todos=Array.isArray(r.todos)?r.todos:null;
-  if(!todos){el.innerHTML=`<div class="chart-box">${viejo}<div style="color:var(--muted);font-size:.72rem">La cuenta nueva (por mes, por motivo y sin contar lo que es inflación) la arma el robot en su próxima vuelta de la noche.</div>${metVigBox()}</div>`;return;}
+  if(!todos){el.innerHTML=`<div class="chart-box">${viejo}<div style="color:var(--muted);font-size:.72rem">La cuenta nueva (por mes, por motivo y sin contar lo que es inflación) la arma el robot en su próxima vuelta de la noche.</div></div>`;return;}
   const ymDe=t=>{const d=new Date(t);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');};
   // POR MES (06/10/2026, pedido suyo): cada peso va al mes de la VENTA que lo dejó (x.mes lo arma el
   // robot). Un cambio de septiembre que vende en octubre suma en octubre sólo lo de octubre, y lo que
@@ -21018,75 +20933,6 @@ function renderMetAuto(){
       Desde el 09/10/2026 los precios los decido yo (💭 Lo decidió Claude) y se miden igual. Abajo de cada cambio va 🧠 mi juicio, que reviso todos los días: el número es la cuenta (lo cobrado de más o de menos y lo que vendió antes y después), el juicio dice si de verdad fue el precio (o un quiebre de stock, una fecha, una caja que llegó) y si una decisión que hoy pierde puede recuperarse. Antes, todo lo que el robot cambió solo: 📈 subir, 📉 bajar, 🧠 cerebro de precios, 🧪 prueba de suba, 🔨 remate, 🪜 escalera, 🛟 rescate antes de vender (el de la noche o por costo, que sube ANTES de que una venta salga baja) y ↩️ volver atrás un cambio suyo que perdía plata. Sólo después de 7 días. Antes de eso el cambio aparece abajo, en gris, con lo que ya se cobró de más o de menos por el precio: eso es plata firme, pero si se vendió menos (o más) por el precio recién se sabe a la semana. No cuenta: el rescate que sube DESPUÉS de una venta con % bajo, cuando el robot corrige una suba suya que quedó de más, cuando vuelve al precio de antes de un cambio propio (deshizo), ni lo que tocaste a mano.
       "Sin el cambio" es que el precio se quedaba donde estaba: se compara el mismo tiempo antes y después. En remates y escalera NO se suma la ganancia de lo que se vendió (bajar el precio adelanta la venta, no la crea): cuenta lo que se cobró de menos, el almacenamiento que se dejó de pagar y la plata que volvió antes (la mercadería vendida antes de lo que se habría vendido a su ritmo normal, valorada al 1% por mes en dólares, el interés que paga CYC).
     </div></details>
-    ${metVigBox()}
-  </div>`;
-  renderMetVig();
-}
-// ── 🧪 VIGILANCIA DE PRECIOS (idea 6 de la etapa 6, 27/09/2026) ──────────────────────────────────
-// Pedido suyo: "tener como un panel de control para ver (…) todos los cambios de las publicaciones, y
-// si esa decisión ganó o perdió plata. O sea que todos los productos estén en vigilancia".
-// La foto la deja el robot cada noche (cyc/vigilancia): cada publicación que vendió en 30 días, con su
-// estado frente a la prueba de suba de +5%. Al lado va el ÚLTIMO cambio de precio de esa publicación
-// y lo que midió el supervisor (la misma plata de la tarjeta de arriba, no otra cuenta).
-let metVigFiltro='todas';
-const MET_VIG_EST={candidata:['🧪','Se sube esta noche','var(--blue,#60a5fa)'],prueba:['🧪','En prueba','var(--blue,#60a5fa)'],espera:['⏳','Esperando (el robot la tocó hace poco)','var(--muted)'],
-  cerrada:['🔴','Prueba cerrada: la suba dejó menos','var(--red)'],tope:['🚧','Llegó al tope (barrera, techo o escalón de ML)','#fbbf24'],
-  catalogo:['🏷️','De catálogo: la vigilan 📈 subir y 📉 bajar','var(--muted)'],no:['➖','No se prueba (con el motivo)','var(--muted)'],sinleer:['❔','No se pudo leer','#fbbf24']};
-function metVigSet(v){metVigFiltro=v;renderMetVig();}
-function renderMetVig(){
-  const el=document.getElementById('met-vig');if(!el)return;
-  const V=state.vigilancia,cer=metCerebroOn();
-  if(!V||!V.filas){el.innerHTML=`<div style="color:var(--muted);font-size:.66rem">${cer?'No hay foto: desde el 07/10 el 🧠 cerebro de precios reemplazó a la prueba de suba y esta lista ya no se arma. Lo que cambia el cerebro sale arriba, marcado 🧠.':'Todavía no hay foto: la deja el robot de precios esta noche.'}</div>`;return;}
-  // Con el cerebro prendido los estados de la prueba son de una foto vieja: van en gris y en pasado.
-  const EST=cer?{...MET_VIG_EST,candidata:['🧪','Iba a probarse +5% (foto vieja)','var(--muted)'],prueba:['🧪','Estaba en prueba de suba (foto vieja)','var(--muted)'],
-    catalogo:['🏷️','De catálogo (foto vieja)','var(--muted)']}:MET_VIG_EST;
-  const n=v=>Number(v)||0;
-  const sg=v=>n(v)<0?'−'+fmt(Math.round(-n(v))):(n(v)>0?'+':'')+fmt(Math.round(n(v)));
-  const col=v=>n(v)>0?'var(--green)':n(v)<0?'var(--red)':'var(--muted)';
-  // 27/09/2026, regla suya: VERDE sólo lo confirmado que ganó plata y ROJO sólo lo confirmado que
-  // perdió. En curso (menos de 7 días), rescates y lo que no suma van en gris aunque den un número.
-  const colC=(v,ok)=>ok?col(v):'var(--muted)';
-  const todos=(state.supResumen&&Array.isArray(state.supResumen.todos))?state.supResumen.todos:[];
-  const ultimo={};for(const x of todos){if(!x||!x.mla)continue;const u=ultimo[x.mla];if(!u||n(x.ts)>n(u.ts))ultimo[x.mla]=x;}
-  const filas=Object.entries(V.filas).map(([mla,v])=>({mla,...v,ult:ultimo[mla]||null}));
-  const cnt={};filas.forEach(f=>cnt[f.estado]=(cnt[f.estado]||0)+1);
-  const orden=['candidata','prueba','cerrada','tope','espera','no','catalogo','sinleer'];
-  filas.sort((a,b)=>orden.indexOf(a.estado)-orden.indexOf(b.estado)||n(b.u30)-n(a.u30));
-  const vis=filas.filter(f=>(metVigFiltro==='todas'||f.estado===metVigFiltro)&&metAutoMatch(f));
-  const dias=Math.floor((Date.now()-n(V.ts))/864e5);
-  const chip=(v,lbl,on)=>`<button onclick="metVigSet('${v}')" style="font-size:.6rem;padding:3px 8px;border-radius:12px;border:1px solid ${on?'var(--green)':'rgba(148,163,184,.3)'};background:${on?'rgba(52,211,153,.12)':'transparent'};color:${on?'var(--green)':'var(--muted)'};cursor:pointer">${lbl}</button>`;
-  const chips=[chip('todas','Todas ('+filas.length+')',metVigFiltro==='todas'),...orden.filter(k=>cnt[k]).map(k=>chip(k,EST[k][0]+' '+EST[k][1].split(' (')[0].split(':')[0]+' ('+cnt[k]+')',metVigFiltro===k))].join('');
-  const fd=t=>{const d=new Date(n(t));return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0');};
-  const fila=f=>{
-    const E=EST[f.estado]||['·',f.estado,'var(--muted)'];
-    const u=f.ult;
-    const pct=u&&n(u.de)&&n(u.a)?((n(u.a)/n(u.de)-1)*100).toFixed(1).replace('.',','):null;
-    const cambio=u?`último cambio ${fd(u.ts)} · ${metAutoMotTxt(u)} · ${fmt(n(u.de))} → ${fmt(n(u.a))}${pct?' ('+(n(u.a)>n(u.de)?'+':'')+pct+'%)':''}`+(u.estado==='medido'&&u.total!=null&&u.enTotal?' · ':'')+
-      // 30/09/2026, él: verde si ganó, rojo si perdió, NADA si todavía no hay datos (menos de 7 días).
-      (u.estado==='medido'&&u.total!=null&&u.enTotal?`<b style="color:${col(u.total)}">${n(u.total)>0?'ganó':n(u.total)<0?'perdió':'igual'} ${sg(u.total)}</b>`:''):'';
-    const ini=f.precioInicial&&f.pasos?` · ${f.pasos} suba(s) de prueba desde ${fmt(n(f.precioInicial))}`:'';
-    return `<div style="padding:6px 0;border-bottom:1px solid rgba(148,163,184,.1);font-size:.66rem">
-      <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
-        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${E[0]} ${f.nom||f.mla} · ${f.cuenta||''}</span>
-        <span style="white-space:nowrap;font-family:'DM Mono',monospace">${f.precio?fmt(n(f.precio)):''}</span>
-      </div>
-      <div style="font-size:.6rem;color:${E[2]}">${f.motivo||E[1]}${ini}</div>
-      <div style="font-size:.6rem;color:var(--muted)">vendió ${n(f.u30)} en 30 d${f.dsin!=null?' · última hace '+f.dsin+' d':''}${f.dstock!=null?' · '+f.dstock+' d de stock':''}${cambio?' · '+cambio:''} · ${f.mla}</div>
-    </div>`;
-  };
-  // 30/09/2026: vive adentro de la tarjeta del robot. La plata de las pruebas ya está en el total de
-  // arriba (motivo 'prueba' suma), así que acá no se repite: sólo qué mira y por qué.
-  el.innerHTML=`<div>
-    ${cer?`<div style="font-size:.62rem;color:var(--muted);margin-bottom:8px">🧠 Desde el 07/10 la prueba de +5% (y el 📈 subir) los reemplazó el <b>cerebro de precios</b>: esta lista es la foto del ${fd(V.ts)} y ya no se rehace. Lo que cambia el cerebro sale arriba, marcado 🧠.</div>`
-      :dias>=2?`<div style="font-size:.62rem;color:#fbbf24;margin-bottom:8px">⚠️ la foto es de hace ${dias} días: el robot no la pudo rehacer.</div>`:''}
-    <div style="font-size:.62rem;color:var(--muted);margin-bottom:8px">${cer?'Cada publicación que vendía en 30 días ese día y en qué estado estaba.':'Cada publicación que vendió en 30 días y qué hace el robot con ella.'} Las de <b>catálogo</b> las compara contra la competencia (${cer?'':'📈 subir · '}📉 bajar para ganar la caja · 🔨 remate si sobra stock). Las que <b>no son de catálogo</b> no tienen competidor que ML deje ver: ${cer?'ahora las mira el 🧠 cerebro, que sube o baja según la plata por día.':'ahí prueba +5% y mide.'}${n(cnt.cerrada)?` <span style="color:var(--red)">${cnt.cerrada} prueba${cnt.cerrada===1?'':'s'} cerrada${cnt.cerrada===1?'':'s'} porque la suba dejó menos.</span>`:''}</div>
-    <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px">${chips}</div>
-    ${vis.map(fila).join('')||'<div style="font-size:.62rem;color:var(--muted);padding:6px 0">No hay publicaciones con este filtro.</div>'}
-    ${cer?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.6rem;color:var(--muted)">¿Qué pasó con la prueba de suba?</summary><div style="font-size:.6rem;color:var(--muted);line-height:1.45;margin-top:4px">
-      Desde el 07/10 la reemplazó el 🧠 cerebro de precios, que corre cada noche. Mira la <b>plata por día</b> de cada publicación (ventas por día con stock × lo que deja cada unidad) y, cuando al ritmo de antes ya se tendrían que haber vendido unas 4 unidades (o pasaron 21 días con stock), juzga: si el precio nuevo deja menos del 85% de antes, vuelve al de antes; si deja igual o más, prueba otro escalón para arriba, hasta el competidor de catálogo. Sin esperas fijas de 14 días. Sus cambios salen arriba, marcados 🧠, y suman como cualquier decisión del robot.
-    </div></details>`:`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.6rem;color:var(--muted)">¿Cómo funciona la prueba de suba?</summary><div style="font-size:.6rem;color:var(--muted);line-height:1.45;margin-top:4px"> Cada noche, a lo que vende y <b>no es de catálogo</b> (no hay competidor contra quién medir) se le sube <b>+5%</b>, todas juntas. El supervisor compara lo que dejó antes y después. Si dejó igual o más, a los 14 días prueba otro +5%; si dejó <b>menos</b>, la prueba de esa publicación se cierra y te aviso: volverla atrás es bajar un precio y eso lo decidís vos.
-      No se prueba lo que vende poco (menos de 4 en 30 d), lo que no vende hace más de 7 días, lo que tiene más de 60 días de stock, lo que está liquidando, lo que bajaste a mano, ni cuando subir cruza los $33.000 o ML cobra más comisión de lo que sube el precio. Lo de catálogo lo siguen vigilando el 📈 subir y el 📉 bajar, como siempre.
-    </div></details>`}
   </div>`;
 }
 function renderMetHoras(keys){
@@ -21223,7 +21069,6 @@ function renderMetricas(){
   renderMetHoras(curKeys);   // ¿a qué hora te compran? · al final de todo
   renderMetOrigen(curKeys);  // de dónde viene la mercadería · abajo de todo
   renderMetAuto();           // la plata que trajo la automatización de precios
-  renderMetVig();            // 🧪 vigilancia: todas las que venden y la prueba de suba
   const acctColors=['c1','c4','c2','c3'];
   // Mismo período un año atrás (alineado con las líneas del gráfico).
   const year=sumMetFields(metScopeBuckets(metScopeMode).bucketsYear.flat(),metViewField);
