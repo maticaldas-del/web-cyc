@@ -78,6 +78,14 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   por `informe`/`alertas` y no a Telegram; que las cajas que ML da por entradas las marque Claude y no queden contadas dos veces.
 
 ## 1 · PRECIOS (lunes)
+- **⏳ LAS 6 DECISIONES DE PRECIOS DEL 21/10/2026 ESPERAN SU RESPUESTA** (él: *"guardás eso junto con las de diseño"*). Se le
+  recuerdan junto con las 30 de diseño. (a) = la recomendada. 1 volver al precio de antes tras una prueba de techo que no rindió →
+  (a) 🪜 bajando hasta que techo95 diga 95% (b) sigue quedando 🏔️ hasta que techo95 lo corrija · 2 la marca liquidando frena también
+  mis bajas/descuentos/remates → (a) que frene sólo las subas (b) como hoy, sacarla antes · 3 la 🏔️ no vence → (a) techo95 guarda la
+  foto del mercado en `cyc/techofreno` y se reabre sola (sube/desaparece la competencia o 30 d) (b) a mano · 4 tags que ya no
+  explican el precio → (a) 🎁 7 d después de la fecha, 🪜 14 d sin escalón nuevo, 🥊 30 d, después a 🔎 (b) duran hasta que los
+  cambie · 5 candidatos, listas y máximo de compra con el peor caso (2% retención) → (a) sí (b) no · 6 plata parada de un stock
+  compartido (gemela/repetidas) → (a) repartir por lo que vende cada una (b) dejarlo y no sumarlas.
 - **21/10/2026 · F4 con 15 días (decisión 2b):** `frenosBajas` F4 pide 95% o visitas a la mitad sólo los primeros 15 días de una suba
   de 5%+ (`F4_ESPERA_DIAS`); de 15 a 60 días frena la baja si la suba deja igual o más plata por día que la ventana de antes (sin
   dato para medir, decide el 🧠). Chequear: el texto del freno dice cuál de los dos casos fue.
