@@ -24,6 +24,7 @@ en que se anota en `correcciones.md`.** El número entre corchetes es de qué ca
 13. ¿Hay plata por día NETA (trabajo, tope de H, capital parado) o sólo estoy mirando unidades? [18/10]
 14. ¿Esta decisión deshace una mía (o del otro chat) de menos de 7 días? ¿Qué cambió desde entonces?
 22. Si dos reglas tiran para lados distintos (ganar la caja / no bajar lo nuevo, vender / el 25%), ¿cuál es la DURA? La que dice "nunca" o "sólo con 95%" gana siempre, aunque la otra parezca dar más plata hoy. [Cuba Platinum 20/10]
+23. ¿El precio nuevo queda abajo del 💰 piso (el que más plata por día dejó)? Si el redondeo a 90/990 lo empuja abajo, se redondea PARA ARRIBA. Y una raya de techo, ¿está medida al 95% o es sólo una prueba corta? [Adaptador 8 en 1 21/10]
 
 ## Cajas y pedidos
 15. Si entra en escasez y hay unidades en la oficina, ¿decidí la caja en la misma vuelta? [Gua Sha 17/10 · Protector talón 16/10]
