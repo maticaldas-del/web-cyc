@@ -811,6 +811,35 @@ el precio de un candidato distinto con código parecido (se compara también por
  · **Informe 7b (auditoría 19/10/2026):** los mensajes de compradores sin leer salen por cuenta (sin el texto). Chequear: que la suma coincida con el título.
 
 ## 6 · IDEAS NUEVAS (sábado)
+- **⏳ LAS 24 IDEAS DE LA ETAPA 6 DEL 21/10/2026 ESPERAN SU RESPUESTA** (él: *"avisame cuando termine el último (…) tengo que elegir las decisiones"*). (a) = la recomendada. Una cosa obvia quedó sin hacer porque las revisiones se pausaron: el `ofi` que imprime `pyped:llego` sale sin `@color` y falla entero en una reposición con colores (arreglarlo al retomar).
+  **Datos de ML sin usar:**
+  · D1 Lo que ML recomienda mandar a Full (replenishment por upid) + días sin stock: (a) mostrar y avisar 2 semanas · (b) tope duro.
+  · D2 Por qué se pierde la caja (winner.price + boosts, 0 consultas más): marcar "perdés por cuotas" → gemela, no bajar: (a) guardar y marcar · (b) sólo mostrar boosts.
+  · D3 Excel de cargos de Full solo en cada cierre (lotes, tamaño, multas): (a) automático · (b) baja el Excel y deja los comandos para revisar.
+  · D4 Precio sugerido de ML para las ~36 sin catálogo: (a) usarlo para el salto de techo y el lanzamiento · (b) sólo en la ficha.
+  · D5 ¿El competidor que pone el precio está en promo? (a) medir y marcar · (b) en semanas de evento no descartar candidatos.
+  · D6 Etiquetas de calidad de cada publicación: (a) guardarlas y listar las dormidas con problema · (b) sólo en la ficha.
+  **Dónde se gana o pierde plata:**
+  · P1 El cupo chico de Ayelen se recorta a mano y deja en 0 lo agotado que vende (~$47.000 más por caja con la regla de la web): (a) decide_cajas recorta solo con la regla de la web (1 u. a cada uno, después por plata) · (b) sigo a mano con la regla escrita en el CEREBRO.
+  · P2 Con "NO ENTRA" por cupo, la oficina no repone ni es sobra (el Enchufe se bajó por una sobra que no llega a Full): (a) marca cupoCorto que leen escasez y sobra · (b) sólo un aviso en escasez.
+  · P3 El dólar de Paraguay se compara sólo contra el oficial (+5,5 a +7,4%): (a) el robot guarda cripto y MEP del día y el pedido muestra contra ellos · (b) cargarlo a mano en compray.
+  · P4 El envío que pagamos cuando 2 u. o un carrito cruzan los $33.000: (a) comando que lo suma y compara contra la venta suelta · (b) sólo contarlas con lo que ya hay.
+  · P5 La caja de $17.310 se reparte como si fuera llena (lo barato de Ayelen carga $35-60/u y le cuesta ~$266): (a) costo real por cuenta en ficha y planilla + "¿conviene?" para cajas chicas · (b) sólo una columna en planilla.
+  · P6 El escalón de comisión de $15.000 (subir a $15.990 deja menos que $14.990): (a) probar abajo del escalón, lista en planilla y freno en decido · (b) sólo la lista.
+  **Lo que hacés a mano:**
+  · A1 Claude publica en ML lo nuevo de cada pedido, en el catálogo ya confirmado, pausado y con su precio (vuelve atrás tu "ML la hago yo" del 26/09): (a) probar con UNA en la próxima llegada · (b) seguís publicando vos y te dejo una hoja lista por producto.
+  · A2 Lo nuevo no se activa solo sin el precio de lanzamiento decidido, y el alta dice el catálogo exacto: (a) freno + dato · (b) sólo una lista.
+  · A3 "Llegó" suma a la oficina en Paraguay y Listas como ya hace Paulvic, y Listas tiene comando por chat: (a) suma sola con "llegó todo" y vos avisás lo que faltó · (b) se sigue contando aparte.
+  · A4 Menos llamadas a ML (cada comando reinicia la vuelta pesada, comisiones repetidas, permiso que no reintenta): (a) contador + memoria de la vuelta pesada + reintento · (b) sólo contador y reintento.
+  · A5 Una venta nueva no queda tapada por una nota vieja, y cada venta dice si es la 1ª/2ª desde el cambio: (a) las dos · (b) sólo la primera.
+  **Gusto y comodidad (maquetas en el scratchpad, se pierden con el contenedor):**
+  · G1 Pedidos marca qué cambió desde que lo miraste (para Tito; ~36 de 90 renglones cambian por día): (a) se da por visto al salir tras 10 s · (b) botón "✓ ya lo vi".
+  · G2 Cada venta dice qué significa (🎉 primera · ⚡ se aceleró · 🔁 volvió a vender · 🏁 era la última en Full): (a) los 4 · (b) sólo 🎉 y 🔁.
+  · G3 Las 4 cuentas "a esta hora" en Ventas de hoy, ámbar si una se frena de verdad: (a) carriles en Inicio + flechita "a esta hora" en Ventas · (b) sólo la flechita.
+  · G4 Racha 🔥 de días cumplidos, mejor día 🏆 y el mes en cuadritos de colores: (a) las dos · (b) sólo el calendario del mes.
+  · G5 Ventas en el celu: los 6 cuadros de arriba en un renglón que se abre: (a) el renglón · (b) sólo 3 cuadros.
+  · G6 "N ventas nuevas desde que miraste" en Ventas, con puntito y rayita: (a) todo · (b) sólo el aviso de arriba.
+  · G7 Sonido de venta con el tono del nivel (el iPhone no vibra): (a) interruptor en Ajustes, apagado de fábrica · (b) sólo día cumplido y día de oro.
 - **QUÉ TIENE QUE PROPONER, regla suya del 09/10/2026:** *"lo que hicimos hoy con los colores y movimientos y
   efectos de las tarjetas son detalles que quiero que estén en la revisión de diseño o ideas para ir mejorando la
   web. no puede ser que no me lo haya recomendado cuando está tan bueno (…) que piense cosas así. detalles o mejoras
