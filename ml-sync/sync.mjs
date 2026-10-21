@@ -6,7 +6,7 @@
 // Requiere secrets: ML_CLIENT_ID, ML_CLIENT_SECRET,
 //   FIREBASE_API_KEY, FIREBASE_DB_URL, FIREBASE_BOT_EMAIL, FIREBASE_BOT_PASSWORD
 
-import { fbSignIn, makeDB, mlRefresh, mlGet, ML_API, tapaIdsLargos } from './lib.mjs';
+import { fbSignIn, makeDB, mlRefresh, mlGet, ML_API, tapaIdsLargos, mlConteo, mlConteoTxt } from './lib.mjs';
 import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 
 // LO PRIVADO VIAJA CIFRADO (20/10/2026, etapa 4, él eligió la 1a): el repo y sus registros son PÚBLICOS, así que las listas de
@@ -44,6 +44,8 @@ const DRY = !!process.env.DRY_RUN;
 // comandos que escriben en tanda (ofi, pyped, cajallego, abrircaja) terminan la escritura en curso
 // y salen, y a los 6 s se sale igual (GitHub mata a los 10 s).
 let CORTAR = false;
+// A4 (21/10/2026): cada cuánto se hace la vuelta pesada del ciclo (ver `mlapi/vueltapesada` en main).
+const VUELTA_PESADA_CADA_MIN = 60, VUELTA_PESADA_MIN_MIN = 45;
 const _alCortar = (sig) => {
   if (CORTAR) return;
   CORTAR = true;
@@ -52,6 +54,8 @@ const _alCortar = (sig) => {
 };
 process.on('SIGINT', () => _alCortar('SIGINT'));
 process.on('SIGTERM', () => _alCortar('SIGTERM'));
+// A4 (21/10/2026): al terminar, toda corrida (vuelta del ciclo o comando) dice cuántas consultas le hizo a ML. Sólo si hizo alguna.
+process.on('exit', () => { try { if (mlConteo.get || mlConteo.refresh) console.log('\n' + mlConteoTxt()); } catch { /* informativo */ } });
 // ETAPA 4 (20/10/2026): el ciclo de 2 minutos mira `CORTAR` ANTES de empezar cada tanda de escrituras
 // (ventas de cada cuenta · vínculos · stock · etiquetas · cajas) y, si cancelaron la corrida, sale con 130
 // sin empezar la siguiente. Entre una tanda y otra no hay ninguna escritura a medias: lo que falta lo hace
@@ -47379,6 +47383,28 @@ async function main() {
   // las ventas se sincronizan cada 2 minutos, pero el robot de precios corre una vez por hora.
   // Sin esto, bajar el intervalo a 2 minutos haría que el robot evalúe 720 veces por día en vez
   // de 14, y una publicación que queda justo en el piso empezaría a subir de a poco sin parar.
+  // ── LA VUELTA PESADA SE RECUERDA (etapa 6 · A4, 21/10/2026, eligió la a) ─────────────────────────────────────────────
+  // Cada comando a mano reinicia el ciclo (job `ciclo`), y la 1ª vuelta del ciclo es la pesada (stock de Full, cajas, caja de
+  // compra, promos, alta de nuevas): con 5 comandos en una hora eran 5 vueltas pesadas seguidas, y ML cortaba por cupo justo
+  // lo que más hace falta (los movimientos de las cajas). Ahora se anota cuándo terminó la última (`mlapi/vueltapesada`):
+  //  · una vuelta pesada que arranca menos de VUELTA_PESADA_MIN_MIN después de la última se hace como liviana (sólo ventas);
+  //  · una liviana del ciclo (`PESADA_SI_TOCA=1`) se vuelve pesada si ya pasaron VUELTA_PESADA_CADA_MIN, así el reinicio no
+  //    corre la pesada una hora más.
+  // Si la memoria no se puede leer, manda lo que decidió el ciclo (como antes). `FORZAR_PESADA=1` la corre igual.
+  let _vueltaPesadaAnotar = false;
+  if (parseInt(process.env.BACKFILL_DAYS || '0', 10) === 0 && !DRY && !(process.env.ACCOUNT || '').trim() && process.env.FORZAR_PESADA !== '1') {
+    let _ultP = null;
+    try { const _vp = await db.get('mlapi/vueltapesada'); _ultP = _vp && Number(_vp.ts) > 0 ? Number(_vp.ts) : 0; } catch { _ultP = null; }
+    const _minP = _ultP ? (Date.now() - _ultP) / 60000 : Infinity;
+    if (_ultP != null && process.env.SKIP_PRICES !== '1' && _minP < VUELTA_PESADA_MIN_MIN) {
+      process.env.SKIP_PRICES = '1';
+      console.log(`⏩ La vuelta pesada se hizo hace ${Math.round(_minP)} min: ésta va como liviana (sólo ventas). La próxima pesada, a partir de los ${VUELTA_PESADA_CADA_MIN} min.`);
+    } else if (_ultP != null && process.env.SKIP_PRICES === '1' && process.env.PESADA_SI_TOCA === '1' && _minP >= VUELTA_PESADA_CADA_MIN) {
+      delete process.env.SKIP_PRICES;
+      console.log(`⏫ Pasaron ${_minP === Infinity ? 'más de ' + VUELTA_PESADA_CADA_MIN : Math.round(_minP)} min desde la última vuelta pesada: ésta va completa.`);
+    }
+  }
+  if (process.env.SKIP_PRICES !== '1' && parseInt(process.env.BACKFILL_DAYS || '0', 10) === 0 && !DRY && !(process.env.ACCOUNT || '').trim()) _vueltaPesadaAnotar = true;
   const SKIP_PRICES = process.env.SKIP_PRICES === '1';
   // INTERRUPTOR GENERAL. mlconfig.autoPrice=false apaga TODO lo que escribe precios en ML sin que
   // nadie lo pida: el robot que ajusta al piso, la nivelación de grupos y la reactivación de
@@ -49076,6 +49102,8 @@ async function main() {
   // depende de que el robot de precios esté prendido no serviría justo el día que se apague.
   try { await avisarBloqueoML(db, DRY); } catch (e) { console.log('No pude mirar si ML me frenó: ' + e.message); }
 
+  // A4: terminó entera la vuelta pesada → se anota (si se cortó a mitad, no: la próxima la repite).
+  if (_vueltaPesadaAnotar && !CORTAR) { try { await db.set('mlapi/vueltapesada', { ts: Date.now(), consultas: mlConteo.get, e429: mlConteo.e429 }); } catch (e) { console.log('⚠️ no pude anotar la vuelta pesada: ' + String((e && e.message) || e).slice(0, 60)); } }
   if (!precioAuto && !SKIP_PRICES) console.log('\n⏸️  Robot de precios APAGADO (mlconfig.autoPrice=false): no ajusté, no nivelé y no activé nada. Para prenderlo: robot:on');
   const pend = Object.values(map).filter((x) => x && !x.prodId).length;
   console.log(`\n✓ Listo. Renglones cargados: ${cargadas}. Publicaciones sin vincular: ${pend}.`);
