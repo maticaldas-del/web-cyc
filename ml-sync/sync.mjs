@@ -43038,6 +43038,29 @@ async function main() {
         console.log(`· ${cta} · ${nom} · ${f(r.total)} · neto ${f(r.neto)}${r.hayNormal ? ` · lo normal ${f(r.normal)} (${f(r.normal - r.neto)} menos)` : ' · sin ventas sueltas al mismo precio para comparar'}`);
         console.log(`   ${!tk ? 'sin token de esa cuenta: no pude leer los cargos' : !leidos ? 'Mercado Pago no contestó los cargos' : (motivos.join(' · ') || 'sin cargos raros: el margen es bajo con el precio y el costo de hoy')}`);
       }
+      // 🧭 CADA VENTA DEJA SU PRODUCTO CON ESTRATEGIA (21/10/2026, él: "quiero que siempre se mire con detenimiento venta x venta, así todos
+      // los productos quedan con estrategias siempre y con estrategias bien pensadas"). Cada publicación que vendió en la ventana, con su
+      // estrategia de hoy. Las que no tienen una con techo (sin estrategia, promo, descuento, excepción, caja, o volviendo hace 7+ días sin
+      // techo anotado) se deciden EN ESTA VUELTA: buscar techo con salto grande, anotar el techo probado, o sobra/escasez/etc. con motivo.
+      try {
+        const mlas = [...new Set(Object.values(grupos).flat().map(({ v }) => v.mla).filter(Boolean))];
+        const tf = (await db.get('cyc/techofreno')) || {};
+        const OK = new Set(['techo', 'techook', 'sobra', 'escasez', 'sinrepo', 'liquidando', 'remate', 'nuevo', 'gemela', 'fecha', 'prueba']);
+        const malas = [], buenas = [];
+        for (const mla of mlas) {
+          const est = (await db.get('cyc/estrategia/' + mla)) || {};
+          const tags = Object.entries(est).map(([k, x]) => ({ ts: Number(k), t: x && x.t })).filter((x) => x.ts > 0 && x.t).sort((a, b) => a.ts - b.ts);
+          let ult = '', tsU = 0; for (const x of tags) { ult = x.t === 'correccion' ? pasajeDe(ult) : x.t; tsU = x.ts; }
+          const dias = tsU ? Math.floor((hoy - tsU) / 864e5) : null;
+          const conTecho = !!(tf[mla] && Number(tf[mla].probado) > 0);
+          const bien = OK.has(ult) || (ult === 'bajando' && conTecho) || (['volviendo', 'desobra'].includes(ult) && (conTecho || (dias != null && dias < 7)));
+          const nomV = String((Object.values(grupos).flat().find(({ v }) => v.mla === mla) || {}).v?.prod || '').slice(0, 40);
+          (bien ? buenas : malas).push(`${mla} · ${nomV} · ${ult || 'sin estrategia'}${dias != null ? ` (hace ${dias} d)` : ''}${conTecho ? ` · techo probado $${Math.round(Number(tf[mla].probado)).toLocaleString('es-AR')}` : ''}`);
+        }
+        console.log(`\n🧭 ESTRATEGIA DE LO QUE VENDIÓ (${mlas.length} publicaciones): ${buenas.length} con estrategia y techo · ${malas.length} PARA DECIDIR EN ESTA VUELTA`);
+        for (const l of malas) console.log('   ⚠️ ' + l);
+        for (const l of buenas) console.log('   ✓ ' + l);
+      } catch (eE) { console.log('⚠️ no pude leer las estrategias de lo vendido: ' + eE.message + ' · mirar a mano'); }
       return;
     }
 

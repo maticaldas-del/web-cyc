@@ -2371,3 +2371,9 @@ Qué chequear: que "↩︎ Devolver" y "Volver a traer" funcionen desde Ajustes.
 ventas, −$63/día) era el único con 5 días y ganaba por descarte → la línea decía "bajando desde $19.490 · no baja de $19.490" con el precio
 en $18.190, y el freno F5 habría frenado volver a su precio real. Ahora `med` pide `u > 0`; sin eso queda el piso provisorio de lo que
 vendió. Qué chequear: que ningún 💰 tenga 0 vendidas.
+
+**21/10/2026 · etapa 8 (reglas del cerebro) · cada venta deja su producto con estrategia.** Él: *"quiero que siempre se mire con
+detenimiento venta x venta, así todos los productos quedan con estrategias siempre y con estrategias bien pensadas"*. `ventasraras` termina
+con "🧭 ESTRATEGIA DE LO QUE VENDIÓ": cada publicación vendida en la ventana con su estrategia (`cyc/estrategia`) y si tiene techo probado
+(`cyc/techofreno`); ⚠️ las que no tienen una con techo. CEREBRO.md sección 1 paso 5. Qué chequear: que la lista ⚠️ quede vacía en cada
+vuelta y que lo que no vende siga barrido por la completa.

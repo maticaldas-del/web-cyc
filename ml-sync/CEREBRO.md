@@ -64,6 +64,11 @@ La etapa 8 de la revisión (Reglas del cerebro, cada 7 días) mira que esto qued
    Si 🧭 + 🔀 + 💭 traen más de ~8 renglones, un ayudante en Alto los piensa y propone; si no, los miro yo. Aplicar siempre es mío.
 5. Cada venta nueva contra su ficha: ¿1ª o 2ª después de un cambio? ¿confirma o desmiente la prueba? ¿se aceleró ⚡? ¿la dejó en
    escasez? ¿se vendió en promo? Escasez nueva se trata en ESTA vuelta (precio + caja si hay oficina).
+   🔒 **Y cada venta deja su producto con estrategia pensada** (21/10/2026, él: *"quiero que siempre se mire con detenimiento venta x
+   venta, así todos los productos quedan con estrategias siempre y con estrategias bien pensadas"*): `ventasraras` termina con
+   **🧭 ESTRATEGIA DE LO QUE VENDIÓ**; cada ⚠️ (sin estrategia, promo, descuento, excepción, caja, o volviendo 7+ días sin techo
+   anotado) se decide EN ESTA VUELTA con la ficha abierta: buscar techo (salto grande), anotar el techo probado, o sobra/escasez/
+   sin reposición con su motivo. La lista queda vacía. Lo que NO vende no pasa por acá: eso lo barre la completa (📏/🔎/📦).
 6. Activar pausadas con stock en Full (`activarfull:go:25`); lo que no se activa va al `pregunto:` con motivo.
 7. Preguntas de compradores que sé sin duda (`contesto:`). Mis descuentos que vencen en 2 días: renovar o dejar terminar.
 8. 📋 Listas: confirmar el mismo producto (`listarevisar` → `listadato:<prov>;<cód>=ok|no|mi=MLA…;go`); con duda no se toca.
