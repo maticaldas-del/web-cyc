@@ -9429,3 +9429,9 @@ y qué resolución se tomó"*. Al cerrar cada vuelta: `ventasvistas:<ts>|esf=<ni
 (ml-consulta). Escribe `cyc/ventaanalisis` en cada venta del tramo; el cambio lo detecta solo (estrategia o precio mío después de la
 venta). Detalle en `ml-sync/REVISION.md` etapa 5 y `ml-sync/CEREBRO.md` (🔬).
 
+
+## 🕐 LAS VUELTAS VAN SEGÚN CÓMO ENTRAN LAS VENTAS (21/10/2026, eligió la a)
+Medido con `ventashora:30` (1.534 compras, 51 por día): de 21 a 23 h se vende tanto como a la tarde y la completa de las 08:52
+cargaba ~15 ventas de la noche. Ahora: completa **08:52** (cubre 00 a 08 h) y cortas a las **11:52, 13:52, 15:52, 17:52, 19:52,
+21:52 y 23:52** (`trig_01FCaQqzU5MA422N6Z8nH63Z`), ~6 a 8 ventas por vuelta. Las dos tareas ya dicen `ventasraras:nuevas` → ficha
+de cada publicación que vendió → `ventasvistas:<ts>|esf=…|<MLA>=…;go`, y ninguna dice más "liviana".
