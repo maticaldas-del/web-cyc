@@ -21295,7 +21295,7 @@ async function main() {
       const RE = [[/aerosol|aero\b|aer\.|antaer|en lata|presurizad/i, 'aerosol'], [/\bdeo(dorante)?\b.*\bspray\b|\bspray\b.*\b(deo|desodorante|antitranspirante)/i, 'desodorante en spray (aerosol)'],
         [/antitranspirante.*\b(\d{2,3}\s?ml)\b.*(aer|spray)|\bdesodorante\b.*\b(150|200|250)\s?ml\b/i, 'desodorante en aerosol'],
         [/espuma (de )?afeitar|gel de afeitar.*lata|laca\b|fijador.*(spray|aer)|spray fijador|shampoo seco|dry shampoo/i, 'aerosol de pelo o afeitar'],
-        [/\bgas\b|butano|encendedor|garrafa/i, 'gas inflamable'], [/acetona|quitaesmalte|removedor de esmalte/i, 'inflamable (acetona)'],
+        [/\bgas\b|butano|encendedor|garrafa/i, 'gas inflamable'], [/acetona|quitaesm|quita c\/|quita esmalte|removedor de esmalte/i, 'inflamable (quitaesmalte)'], [/desodorante|\bdeo\b/i, 'desodorante (aerosol)'],
         [/alcohol (et[ií]lico|en gel|70|96|fino|medicinal)|\balcohol\b\s*\d/i, 'alcohol (inflamable)'], [/insecticida|repelente.*(aer|spray)|matamosca/i, 'insecticida/repelente en aerosol'],
         [/aire comprimido|limpiador.*aer|lubricante.*aer|wd-?40|pintura.*aer/i, 'aerosol (limpieza/pintura)']];
       const NO_ES = /perfume|eau de|edt\b|edp\b|body splash|colonia|body mist|fragancia/i;
@@ -21303,6 +21303,7 @@ async function main() {
         const cat = (await db.get('mlapi/listas/' + k)) || {}; const upd = {}; const hits = [];
         for (const [cod, e] of Object.entries(cat)) { if (!e || !e.n) continue; const n = String(e.n);
           let mot = null; if ((!NO_ES.test(n) || /aerosol|en lata/i.test(n)) && !/s\/\s*alcohol|sin alcohol|libre de alcohol|sin quitaesmalte|no aerosol/i.test(n)) for (const [re, m] of RE) if (re.test(n)) { mot = m; break; }
+          if (mot === 'desodorante (aerosol)' && /roll|barra|stick|crema|bolilla|\bgel\b|pie|talco|polvo|toallita|ambiente|auto|inodoro/i.test(n)) mot = null;
           if (mot && e.noFull !== mot) { upd[cod + '/noFull'] = mot; hits.push([cod, n, mot]); } }
         const arm = (await db.get('cyc/listas_pedido/' + k)) || {}; const sacar = Object.keys(arm).filter((c) => Number(arm[c]) > 0 && (upd[c + '/noFull'] || (cat[c] || {}).noFull));
         console.log(`\n${k}: ${hits.length} nuevos no van a Full · ${Object.values(cat).filter((e) => e && e.noFull).length} ya marcados · ${sacar.length} cargados en el pedido se sacan${GOn ? '' : ' · PRUEBA: agregá ;go'}`);
