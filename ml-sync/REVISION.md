@@ -1155,6 +1155,53 @@ Todo en `ml-sync/sync.mjs` salvo el 11 (los dos `.py` de `ml-sync/notas/`). Prob
     pide el dólar y rechaza `;`. `decide_pedidos` dice "de N para decidir (M fichas, F fuera)". Y `decido:archivo=` rechaza el
     archivo entero si una clave (`ped:id#color=u`, `caja:id@cta#color`, el precio de un MLA) aparece dos veces.
 
+### Etapa 5 · 20/10/2026 a la noche · arreglos de la ficha y el techo
+Todos en `ml-sync/sync.mjs`, probados con la función o el bloque real y datos inventados (antes → después).
+- **`diaConStock`**: un día pausado o cerrado (est ≠ active) que no vendió ya no cuenta como día con stock. Qué chequear: que una
+  suba seguida de una pausa de ML salga "en curso" y no "perdió".
+- **`ficha:go`**: si guardó menos fichas de las que tocaba o la relectura no coincide, dice ⚠️ y sale con código 1 (antes ✓ con 0 de 2).
+- **🏆 de la ficha** = `rayasPrecioLinea(...).best` (la misma cuenta de la línea de tiempo y de `techo95`).
+- **Lo que le pega el precio** (`reaccionesDe`): medianas y elasticidad con el ritmo suavizado (u+0,5)/días y con TODOS los cambios;
+  no dice "subir le deja más plata" si alguna suba bajó las ventas con certeza (`reac.subaFreno`).
+- **"En curso"** de la ficha: sólo el último cambio, si está en curso o sin certeza y su precio es el de hoy (±2%).
+- **Veredicto de cada cambio** con Poisson sobre la plata por día (λ = ritmo antes × gan/u antes ÷ gan/u después × días después);
+  sin 95% → "sin certeza". Guarda `nec` (lo que hacía falta vender).
+- **Día de la semana**: sólo se afirma con certeza (Poisson del día contra el resto, <5%/7); si no, "no se distingue el día (pocas
+  ventas)". Plurales bien.
+- **Caja y visitas**: "vende igual perdiendo la caja" pide 3+ ventas de cada lado y certeza; "siguen a las visitas" pide rv > 1,3 y
+  ~8+ ventas. Si no, "es una pista".
+- **Fechas especiales**: la base saca los días en la ventana de cualquier otra fecha; con menos de 7 días de base no compara.
+- **Edad del stock** (`fichaExtras` §6): `lotesFifo` + `tablaAntiguoDe` (como `antiguo`: Excel, cajas, `stockhist`), con respaldo de la
+  línea que marca los huecos ("hasta X días"); stock de hoy 0 o sin dato = no dice nada; el aviso usa los días de gracia del producto.
+- **`ficha:cuenta=`**: decide después de leer la línea (activa, con stock o vendió en 60 d) e imprime "N de M (K afuera)".
+- **Ficha**: el log dice cuántos tramos anteriores no se muestran.
+- **`diasTachado`**: corta el tramo de descuento/promo en el fin conocido (el "hasta" de la promo o "Salí de la promo").
+- **`techo95:go`**: ya no borra las 🏔️ viejas de la historia (la estrategia que tenía cada venta pasada no cambia); si ya está anotado
+  igual no lo repite; el resumen cuenta las "sin ficha", las "no leí la línea" y las miradas.
+- **`lupa`**: el stock de hoy es el del último día con dato (como `raros`); sin ningún dato: "stock ?", sin AGOTADA ni "desaparecieron".
+- **`escasez` · 🔁 mis subas cuya razón cambió** y el "en escasez" de cada cambio de la ficha: el tipo sale de la estrategia que tenía
+  la publicación en ese momento (`tagEstrategiaEn`, misma regla que `tagEnMomento` de `pedidostodo`); el motivo, sólo de respaldo. El
+  encabezado dice "N de K decisiones con tag escasez/sinrepo en 60 d".
+- **Turno del expediente** (`escasez:expediente`): los quietos entran si su última nota del 🧠 (`mlapi/claudeexp/<MLA>.ts`) tiene 2+ días
+  o no existe (antes un tercio fijo por día). Sin poder leer las notas, vuelve el turno fijo y lo dice.
+- **`raros` y `lupa`**: "Miradas N de M vivas con ficha".
+Qué chequear en la próxima: que `techo95` no muestre "ya estaba anotado" en algo que cambió de motivo, y que el expediente no se
+dispare a todo el catálogo el día después de una vuelta sin notas.
+
+### Etapa 5 · 20/10/2026 a la noche · arreglos de la línea de tiempo en la web
+**Arreglos web de la línea de tiempo y las estrategias (fixer F, 21/10/2026, v25.61):**
+ · Margen del carrito sin costo: la línea (`gd`/`_gdPanel`/`_gdViejo`) y el ranking de Ventas x Producto usan `efectivoCostoVP({...v,neto:netoProductoVP(v)})`. Chequear: una venta sin costo en un carrito nunca da pérdida · un día todo sin costo no tiene % · venta estimada con "≈" y en gris.
+ · Caché de `lineaAbrir`: sólo guarda `porMla` (la línea del robot), vence a los 10 min, con `fallo` o una publicación faltante se relee; los cambios de precio salen de state en cada dibujo. Chequear: un `decido` hecho con la línea abierta aparece al reabrirla.
+ · `cambiosPrecioLista(mlas|null)`: la ÚNICA lista de cambios de precio (supervisor, claudecambios que le gana al evento repetido, autoprecio salvo 'subiendo', `cyc/promohist`, promoclaude). La usan `lineaPintar`, `cambiosPrecioDe` y `_ltCambios`. Chequear: el mismo cambio sale igual en la venta, en la línea del producto y en la de todos.
+ · `cyc/promohist/<MLA>/<ts>` = {de,a,tipo,nombre,accion:'entra'|'sale'}: lo lee la web; lo escribe el robot (sin eso una promo terminada pierde su ▼).
+ · `_promoTipoEn(mla,ts)`: tipo de promo vigente en esa fecha. Lo usan `estrategiaDe` y `estrategiaPromoAjuste`. Chequear: una venta vieja no cambia de tag porque hoy haya un descuento.
+ · `_estrategiaPrimeraTs` y el tag ▫️ `noanotada`: antes de la primera anotación de estrategia no se dice "el cerebro la tiene que decidir"; al elegir la estrategia del día y en el "· de X" se trata como 'sindecidir'. Aparece también como chip de filtro en Ventas.
+ · Stock que no se sabe (`_stCiegoTxt`): lectura fallida, o color elegido con una publicación de 2+ colores en `invVar` → los días viejos en gris con el motivo, sin llegadas inventadas. Hoy muestra el stock real.
+ · `_pedidoViaja(prodId,_lineaVar||undefined)`: el pedido en camino se mira por color.
+ · Globitos: semana del lunes en cada día · visitas en el carril de ventas · texto del carrito ("en Ventas figura lo cobrado repartido; acá lo que deja vendido solo") · "todavía no hay 7 días con dato". Promedio de 7 días: el producto estima los 6 días previos; en la línea de todos queda vacío si la ventana empieza antes de lo guardado.
+ · Precio de hoy = último `a` de hoy de los cambios frescos; pIni/pFin usan `pLista||p`. Línea de todos: `n` cuenta compras (`vpGrupoKey`); la caja de `_lineaJunta` ignora publicaciones no activas (igual que `calcLineaTodo`).
+ · Cabecera de las dos líneas: título solo arriba y botones abajo (`.linea-btns`, giro con ancho mínimo 96px): ningún botón se corre al cambiar el título. Falta mirarlo a 375px.
+
 ## 5b · DATOS E HISTORIAL (la vieja etapa 8 del 08/10/2026; desde el 20/10 la revisa la 5 · lo que diga "Etapa 8" antes del 21/10 es esto)
 - 20/10/2026 · la ficha (`armarFicha` → `reaccionesDe`, `mlapi/ficha/<MLA>.reac` y `.reacTxt`; en la web "Cómo reacciona este
 producto") dice por publicación: caja ganando/perdiendo, ventas contra visitas, cambios de precio, fechas especiales, sin stock y
