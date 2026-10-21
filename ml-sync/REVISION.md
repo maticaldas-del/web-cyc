@@ -811,6 +811,23 @@ el precio de un candidato distinto con código parecido (se compara también por
 
 ## 7 · DISEÑO (domingo)
 
+- **ETAPA 7 DEL 20/10/2026 (v25.54), 4 revisores en máximo: lo chico HECHO.** Qué chequear en la próxima:
+  · `buscaCoincide(q,...textos)` + `textosDeProd(p)` (sin tildes, palabra por palabra, nombre/colores/título ML/MLA/código PY) es LA
+    búsqueda de Productos, Contar, Ventas, Rotación y Pedidos; un buscador nuevo usa ésa. Armar caja busca por renglón a propósito.
+  · `#page-home` sólo se ve con `.active` (antes Inicio quedaba dibujado arriba de cada pantalla). Una pantalla nueva no puede tener
+    `display` propio con `#id` que le gane a `.page{display:none}`.
+  · Teléfono: `@media(pointer:coarse)` agranda 🧠/📈/chips/✕; colores de Pedidos en dos pisos (≤640px); flechas ‹ › juntas en Ventas y
+    Métricas (no se corren con el "· hoy"); la › no pasa de hoy; `ttI`/`ttMostrar` hacen legibles los ⓘ al tocar; safe-area del iPhone.
+  · Tema claro: tokens `--lv-*` en `:root`/`body.light` para `_pctNivel`, `VIVA_DIA_NIV`, `scoreColor`, `puntColor` (un color nuevo de
+    nivel va como token, no en hex suelto); logo invertido en claro; `fmtUS2` para dólares con coma.
+  · Pedidos: confirm en origen/solapa/no lo consigo, ✕ con `toastDeshacer`; sin colores, lo raro en "⚙️ cambiar o sacar ▾".
+  · Navegación: `goTab` sólo apaga las pestañas del Arqueo; la línea de tiempo (z 9200) abre adelante de la ficha; cabeceras de ficha/🧠
+    fijas; `irACaja` desde Inicio; `vpLimpiarFiltros` al entrar desde Ventas de hoy o el aviso; accesos del ícono (`shortcuts` del
+    manifest + `_paginaDeHash`).
+  · Textos: lo que decía "el robot" (cajas, precios, monotributo) ahora dice que lo hace Claude; "objetivo 25%" único; Rotación "En stock
+    hace" con la regla de 30/120 días. `setPuntajeMeta` borrada (nadie la llamaba).
+  · Las ideas grandes (para él) quedaron en `REV_PENDIENTE`; maquetas en el scratchpad de la sesión (se pierden con el contenedor).
+
 - **El % de un producto no sube por ir en carrito (18/10/2026, v24.59, regla suya: *"no podés subir el % de un producto por venderse con otro… siempre el % de ese producto, no por venta"*).** `netoProductoVP(v)` (index.html): si la venta es parte de un carrito (misma cuenta y `numVenta` con 2+ renglones ese día) usa lo cobrado × la proporción neto/precio de una venta SUELTA de esa publicación al precio más parecido (o del producto); sin venta suelta, el neto repartido. Lo usan la línea de tiempo (ganancia y % por día; las referencias de los días viejos ya excluyen carritos) y el ranking por producto. Totales de plata (Inicio, Ventas, mes, cuentas, origen) siguen con el neto real. Chequear: un carrito no sube la línea del % · los totales no cambian.
 
 - **Ventas x Producto (PC), tarjetas del mismo alto (18/10/2026, v24.58, pedido suyo: "quiero que todas las tarjetas sean iguales de grandes").** La fila de arriba (`.vp-pc-cab`) va sin saltos (`nowrap`) y la promo se resume en "🏷️ promo" / "🏷️ desc. ML" (el texto entero sigue en el detalle y en el globito). Cada renglón de producto (`.vp-pc-txt`) en una línea con "…"; 🧠 y 📈 fijos a la derecha. Chequear: ninguna tarjeta crece por un nombre largo, una promo o un cambio de precio; en ≤640px sigue la tarjeta del celu.
