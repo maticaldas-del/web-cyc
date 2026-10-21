@@ -23990,6 +23990,17 @@ async function main() {
       return;
     }
     // `gemelaalinear[:go]` (21/10/2026): lo mismo que hace la vuelta de cada hora (`alinearGemelas`), a mano. Sin `:go` sólo muestra.
+    // `feepro:<MLA>` (21/10/2026, solo lee): lo que contesta ML en listing_prices (Clásica y Premium) al precio de hoy de esa
+    // publicación, con el detalle. Para comparar con lo que ML muestra en la pantalla de la publicación ("Pagás $X").
+    if (/^feepro:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const mla = String(process.env.BILLING_PROBE).split(':')[1].toUpperCase();
+      const L = ((await db.get('cyc/mllinks/' + mla)) || {}); const acc = accounts[L.cuenta]; if (!acc) { console.log('sin cuenta'); return; }
+      const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + L.cuenta, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+      const it = await mlGet('/items/' + mla + '?attributes=id,price,listing_type_id,category_id,site_id,sale_terms', t.access_token);
+      console.log(`${mla} · ${it.listing_type_id} · $${it.price} · cat ${it.category_id} · sale_terms ${JSON.stringify(it.sale_terms || []).slice(0, 400)}`);
+      for (const lt of ['gold_special', 'gold_pro']) { try { const d = await mlGet(`/sites/MLA/listing_prices?price=${it.price}&listing_type_id=${lt}&category_id=${it.category_id}`, t.access_token); const o = Array.isArray(d) ? d[0] : d; console.log(`  ${lt}: sale_fee $${o?.sale_fee_amount} · detalle ${JSON.stringify(o?.sale_fee_details || {})}`); } catch (e) { console.log(`  ${lt}: error ${String(e.message).slice(0, 150)}`); } }
+      return;
+    }
     if (/^gemelaalinear(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const go = /:go$/.test(String(process.env.BILLING_PROBE));
       const links = (await db.get('cyc/mllinks')) || {}; const toks = {};
