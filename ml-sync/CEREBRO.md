@@ -16,8 +16,10 @@ reposición, fechas, rayas, y queda con estrategia bien pensada (🧭 sin ⚠️
 (el número que imprime el 📌; `esf` = el esfuerzo que usé de verdad: max, xhigh, high…) marca hasta dónde se analizó y deja en
 CADA venta su análisis (`cyc/ventaanalisis`): la tarjeta lo muestra gris si no cambió nada y del color de la estrategia si cambió
 (21/10, pedido suyo). El texto por MLA va siempre que hubo algo que contar (sin `;` ni `|`); sin texto sale el motivo de la estrategia; la vuelta siguiente no las vuelve a ver. Si la vuelta se corta antes de anotar, la
-siguiente las retoma: nunca quedan sin analizar. Si vendieron más de ~5 publicaciones distintas, las piensa un ayudante con esfuerzo
-MÁXIMO que propone; decidir y aplicar es mío. Una publicación que vuelve a vender en otra vuelta se mira por esa venta NUEVA (lo que
+siguiente las retoma: nunca quedan sin analizar. **Las ventas las piensa SIEMPRE un ayudante (Agent con `effort:"max"` escrito en la
+llamada), aunque sea UNA sola venta (21/10, regla suya: *"no quiero que dependan de la config de esfuerzo que tengo yo"*): el chat
+corre con el nivel que tenga la sesión, el ayudante con el que se le pide.** El ayudante lee las fichas y propone; decidir y aplicar es
+mío, siguiendo lo que propuso (si no le hago caso, lo digo en el 🧠). `esf=` del `ventasvistas` = el del ayudante (max). Una publicación que vuelve a vender en otra vuelta se mira por esa venta NUEVA (lo que
 cambió desde la decisión anterior, que ya está en su ficha), no se rehace el análisis de la venta vieja.
 La de las 08:52 además mira lo que no depende de las ventas (pedidos de todo el catálogo, cajas, lo que no vende 📏/🔎/📦, juicios del
 supervisor, promos a fondo, fotos de candidatos): eso NO se saca, porque lo que no vende nunca dispara una revisión de venta.
@@ -86,7 +88,8 @@ La etapa 8 de la revisión (Reglas del cerebro, cada 7 días) mira que esto qued
    que vendió después de mi decisión · 📈 dice techo/escasez y no sube · 🤔 descuentos que ya no tienen sentido · 🔁 subas por
    escasez/sinrepo cuya razón cambió · 🧭 fuera de lo normal · 🔀 no cierra.
 4. ⚠️ dato dudoso: no tocar precio, anotar. 💭 sin certeza: juzgar en familia, por visitas o por parecidas, nunca colgado.
-   Si 🧭 + 🔀 + 💭 traen más de ~8 renglones, un ayudante en Alto los piensa y propone; si no, los miro yo. Aplicar siempre es mío.
+   🧭 + 🔀 + 💭 los piensa SIEMPRE un ayudante con `effort:"high"` escrito en la llamada (21/10: nada depende del esfuerzo de la
+   sesión), aunque sean pocos. Aplicar siempre es mío.
 5. Cada venta nueva contra su ficha: ¿1ª o 2ª después de un cambio? ¿confirma o desmiente la prueba? ¿se aceleró ⚡? ¿la dejó en
    escasez? ¿se vendió en promo? Escasez nueva se trata en ESTA vuelta (precio + caja si hay oficina).
    🔒 **Y cada venta deja su producto con estrategia pensada** (21/10/2026, él: *"quiero que siempre se mire con detenimiento venta x
@@ -136,7 +139,8 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
 - Él no toca precios ni promos; no hace falta que avise nada de eso.
 - Lo grande o sin respuesta clara lo decide él: todo junto, numerado, (a) sugerida y (b). Lo chico y reversible lo decido yo y se lo cuento.
 - Esfuerzo fijo (3a, 20/10; no se cambia sin que él lo diga): ayudantes de la completa, ideas (domingos) y revisor en max; raros de las
-  cortas en Alto; el chat con el nivel que él le ponga.
+  cortas en Alto; las ventas en max. **El esfuerzo va escrito en cada llamada al ayudante (`effort:`), nunca se hereda de la sesión**
+  (21/10): el chat sólo junta datos, aplica y escribe, y eso no necesita el nivel alto.
 
 ## 3 · PENSAR (🧠)
 - **🧐 ¿Tiene sentido?** Antes de usar un número, cruzarlo: otro tamaño, otra cuenta, otra fecha, parecidos del rubro, el costo,

@@ -2587,3 +2587,9 @@ de más. que cada venta tenga un análisis profundo con esfuerzo máximo y listo
 vuelta use `:nuevas` y anote al final; que una vuelta cortada no deje ventas sin ver (la marca sólo avanza al terminar).
 **Arreglo 21/10:** sin ventas raras el comando salía antes (`return`) y no imprimía el 📌 ni la 🧭 de lo vendido: la vuelta no
 sabía desde cuándo anotar. Ahora sigue de largo. Qué chequear: que con "Ninguna venta rara" igual salgan el 📌 y la 🧭.
+
+**21/10/2026 · etapa 8 · el esfuerzo va escrito en el ayudante, no se hereda de la sesión.** Él: *"no quiero que dependan de la config
+de esfuerzo que tengo yo"*. Las ventas las piensa SIEMPRE un ayudante con `effort:"max"` escrito en la llamada (aunque sea una sola
+venta; antes sólo con más de ~5 publicaciones y si no las pensaba la sesión con su nivel); los raros (🧭/🔀/💭) siempre un ayudante
+`effort:"high"`. Vive en `ml-sync/CEREBRO.md` (bloque 🔬, paso 4 y §2). **Qué chequear:** en cada vuelta, que el log tenga la llamada
+al ayudante con `effort` y que `ventasvistas` diga `esf=max`.
