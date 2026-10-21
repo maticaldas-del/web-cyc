@@ -2923,7 +2923,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.82';
+const APP_VERSION='25.83';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2936,6 +2936,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.83',f:'21/10',h:'14:40',c:[{n:1,t:'🇵🇾 Pedidos hechos: cada tarjeta dice ✅ gastos completos o ⚠️ faltan gastos (y cuáles: correo, el que retira, el dólar…).'}]},
   {v:'25.82',f:'21/10',h:'14:20',c:[{n:1,t:'Los desplegables ya no se cierran solos cuando llega un dato nuevo y la pantalla se redibuja (ej. 📂 Toda la lista).'}]},
   {v:'25.81',f:'21/10',h:'09:10',c:[{n:1,t:'Ventas: vuelve a salir 🔬 analizada · nivel de esfuerzo (no salía en ninguna venta). Sólo se marca 💳 Premium (la Clásica ya no sale), sólo 🥇 1ª venta desde el cambio, y 💳 gemela ya no figura como estrategia: la Premium muestra la estrategia de su Clásica. Una venta con cupón o promo que puso ML muestra la estrategia real del precio (ej. 📈 buscando techo) y aparte "🏷️ ML puso $X".'}]},
   {v:'25.80',f:'21/10',h:'08:50',c:[{n:1,t:'Pedidos Bs As: se sacó el botón 🛒 Lista para el mayorista (no se usaba).'}]},
@@ -16367,6 +16368,8 @@ function pyPedidoResumenHTML(c,enCamino,dias,tarde){
   return `<div style="min-width:0">
       <div style="font-size:.95rem;font-weight:800;color:var(--text)">${pedNumTag(c,'margin-right:6px')}${dm(c.fecha)}</div>
       <div style="font-size:.66rem;font-weight:700;color:${col};margin-top:2px;white-space:nowrap">${est}</div>
+      ${/* 21/10/2026, él: "quiero que en la tarjeta de pedidos marque si están todos los gastos cargados o faltan" */''}
+      <div style="font-size:.64rem;font-weight:700;margin-top:3px;color:${R.r?'var(--green)':'var(--amber)'}" title="${R.r?'Están cargados todos los gastos del pedido: el recargo es el real.':'Falta cargar: '+R.falta.join(', ').replace(/"/g,'&quot;')+'. Pasámelos y los cargo.'}">${R.r?'✅ gastos completos':'⚠️ faltan gastos: '+escHtml(R.falta.join(', '))}</div>
     </div>
     <div style="margin-left:auto;text-align:right">
       <div style="font-size:1.05rem;font-weight:800;color:var(--text);white-space:nowrap" title="Lo que te salió el pedido puesto en la oficina: la factura más todos los gastos${R.r?'':' (con el recargo estimado: faltan gastos)'}">US$ ${usd}</div>
