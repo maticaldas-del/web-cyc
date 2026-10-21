@@ -2921,7 +2921,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.94';
+const APP_VERSION='25.95';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2934,6 +2934,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.95',f:'21/10',h:'20:10',c:[{n:1,t:'📋 Listas (Dai Nippon y las demás): al final del nombre de cada producto, cuántas vendidas tiene en ML; si todavía no están cargadas, dice "ventas sin cargar".'}]},
   {v:'25.94',f:'21/10',h:'19:40',c:[{n:2,t:'🛒 Dai Nippon (y toda lista de Bs As): arriba, "Para comprar en el local". Una tarjeta por producto cargado en el pedido, ordenadas por marca: al tocarla muestra la foto de ML, el título de ML con lo que hay que fijarse (tamaño, pack), el precio de la lista, lo más que se puede pagar para dejar 25% y las unidades, con ✓ Lo compré · ✗ No estaba · ≠ Era otro producto (se puede deshacer).'},{n:2,t:'📋 En las listas de Bs As un producto nuevo se puede cargar con 25%+ y 2+ vendedores aunque nadie haya confirmado que es el mismo: lo verifica Tito mirando la foto en el local.'}]},
   {v:'25.93',f:'21/10',h:'17:00',c:[{n:2,t:'🚫 Listas: lo que ML no deja mandar a Full (aerosoles, gas, alcohol, acetona, laca…) queda marcado y no se puede pedir; se sacó del pedido del momento.'}]},
   {v:'25.92',f:'21/10',h:'16:00',c:[{n:1,t:'📈 Línea de tiempo: las ventas en Clásica siguen en verde y las de Premium (con cuotas) en naranja, así se ve si la Premium suma ventas. Lo vendido en remate pasa a amarillo.'}]},
@@ -20824,13 +20825,16 @@ function _llMaxProb(k,f,e){
       return {max:Math.floor(mx.usd*tc/(1+_listaRec(k)/100)/10)*10,de:'ficha',P:mx.P};}}
   return e?_llMaxNuevo(k,e):{motivo:'sin dato para calcularlo'};
 }
+// 🛒 LAS VENDIDAS EN ML AL FINAL DEL NOMBRE (21/10/2026, él: "en nippon agregar las ventas al final del nombre. en este caso no tenemos
+// las ventas aún, pero que se indique que no están cargadas"). Las carga el chat local con `listadato:<prov>;<cód>=<vendidas>` (`e.vend`).
+function _listaVendHTML(e){const v=Number(e&&e.vend);return v>0?` <span style="color:var(--green);font-weight:600;white-space:nowrap">· 🛒 ${v>=1000?'+'+fmtN(v):fmtN(v)} vendidas</span>`:' <span style="color:var(--muted);font-weight:400;white-space:nowrap">· 🛒 ventas sin cargar</span>';}
 function listaLocalFilas(k){
   const cat=_listaCache[k]||{},L=_llDe(k),out=[],vistos=new Set(),hoy=Date.now();
   const M=_listaMesDe(k);
   const nuevo=(cod,u)=>{const e=cat[cod];if(!e)return;const id=_llKey(cod);vistos.add(id);
     const mx=_llMaxNuevo(k,e);
     out.push({id,tipo:'nuevo',cod,u,nom:String(e.n||cod),mt:String(e.mt||''),foto:/^https:\/\//.test(e.mf||'')?e.mf:'',mi:e.mi||'',
-      precio:Number(e.p)||0,pc:_listaPuesto(k,e),max:mx.max||null,maxMot:mx.motivo||'',P:mx.P||Number(e.mp)||0,sinConf:!_listaOkVale(e),reg:L[id]||null});};
+      precio:Number(e.p)||0,pc:_listaPuesto(k,e),max:mx.max||null,maxMot:mx.motivo||'',P:mx.P||Number(e.mp)||0,sinConf:!_listaOkVale(e),reg:L[id]||null,e});};
   for(const [cod,u0] of Object.entries(((state.listaPed||{})[k])||{})){const u=parseInt(u0)||0;if(u>0)nuevo(cod,u);}
   for(const f of listaProbFilas(k)){
     const id=_llKey(f.pid+(f.key?'__'+f.key:''));vistos.add(id);
@@ -20840,7 +20844,7 @@ function listaLocalFilas(k){
     const pm=M&&M.porProd&&M.porProd[f.pid]?Number(M.porProd[f.pid].p)||0:0;
     const mx=_llMaxProb(k,f,e);
     out.push({id,tipo:'probado',pid:f.pid,key:f.key,u:f.u,nom:f.nomL||f.nom,color:f.color||'',mt:String((pub&&pub.title)||(e&&e.mt)||''),
-      foto:(ft&&ft.url)||(e&&/^https:\/\//.test(e.mf||'')?e.mf:''),mi:(e&&e.mi)||f.mi||'',precio:pm||f.p||0,pc:f.pc,max:mx.max||null,maxMot:mx.motivo||'',P:mx.P||0,sinConf:false,reg:L[id]||null});
+      foto:(ft&&ft.url)||(e&&/^https:\/\//.test(e.mf||'')?e.mf:''),mi:(e&&e.mi)||f.mi||'',precio:pm||f.p||0,pc:f.pc,max:mx.max||null,maxMot:mx.motivo||'',P:mx.P||0,sinConf:false,reg:L[id]||null,e});
   }
   // Lo que ya se marcó y salió del pedido (otro producto, o "Ya lo pedí"): se sigue viendo 7 días para poder deshacerlo.
   for(const [id,r] of Object.entries(L)){if(vistos.has(id)||!r||hoy-(Number(r.ts)||0)>7*864e5)continue;
@@ -20863,7 +20867,7 @@ function _llTarjeta(k,f){
   const sobre=f.max&&f.precio>f.max;
   return `<div class="ll-card" style="border-color:${col};${est==='noestaba'?'opacity:.7':''}" onclick="llToggle('${a(k)}','${a(f.id)}')">
     <div class="ll-top">${f.foto?`<img src="${escHtml(f.foto)}" loading="lazy" alt="" onerror="this.style.visibility='hidden'" class="ll-mini">`:'<div class="ll-mini ll-sinfoto">sin foto</div>'}
-      <div style="flex:1;min-width:0"><div class="ll-nom">${escHtml(f.nom)}${f.color?` <span style="color:#a78bfa">· ${escHtml(f.color)}</span>`:''}</div>
+      <div style="flex:1;min-width:0"><div class="ll-nom">${escHtml(f.nom)}${f.color?` <span style="color:#a78bfa">· ${escHtml(f.color)}</span>`:''}${f.e?_listaVendHTML(f.e):''}</div>
         <div class="ll-sub">${chip||`Comprar <b style="color:var(--text);font-size:1.05rem">${f.u} u.</b>`}${f.sinConf&&!est?' · <span style="color:var(--amber)">sin confirmar</span>':''}${!est&&sobre?' · <span style="color:var(--red)">la lista pasa el máximo</span>':''}</div></div>
       <div class="ll-flecha">${ab?'▴':'▾'}</div></div>
     ${ab?`<div class="ll-det" onclick="event.stopPropagation()">
@@ -21013,7 +21017,7 @@ async function renderListas(){
     return `<details class="lst-card" style="background:var(--surface);border:1px solid ${arm[cod]>0?'var(--blue)':'var(--border)'};border-radius:8px">
       <summary class="lst-sum" style="list-style:none;cursor:pointer;display:flex;gap:8px;align-items:center;padding:6px 8px">
       ${fML?`<img src="${fML}" loading="lazy" onclick="event.preventDefault();event.stopPropagation();_mostrarLightbox('${fML}','')" onerror="this.style.visibility='hidden'" style="width:44px;height:44px;object-fit:contain;background:#fff;border-radius:6px;cursor:zoom-in">`:''}
-      <div style="flex:1;min-width:0;font-size:.72rem;line-height:1.45"><div style="font-weight:600">${escHtml(e.n)}</div>
+      <div style="flex:1;min-width:0;font-size:.72rem;line-height:1.45"><div style="font-weight:600">${escHtml(e.n)}${_listaVendHTML(e)}</div>
         <div style="color:var(--muted);font-size:.66rem">te sale <b style="color:var(--text)">${fmt(pc)}</b>${e.mp?` · en ML <b style="color:var(--text)">${fmt(e.mp)}</b>`:''}${_duda?' · <span style="color:var(--amber)">⚠️ hay una duda (tocá para verla)</span>':''}</div></div>
       <div style="text-align:right;flex:0 0 auto" onclick="if(event.target.tagName==='INPUT'){event.preventDefault();event.stopPropagation();}">${est}${uBox}</div></summary>
       <div style="padding:0 10px 8px 10px"><div style="color:var(--muted);font-size:.64rem;margin-top:4px;line-height:1.55">te sale <b style="color:var(--text)">${fmt(pc)}</b>${rec?` (${fmt(Number(e.p)||0)} + ${rec}%)`:''}${Number(e.pl)>0?` · lista ${fmt(Number(e.pl))} −${e.dto}%`:''}${e.mp?` · en ML ${fmt(e.mp)}${e.mv?' · '+(e.mv==1?'<b style="color:var(--amber)">⚠️ 1 solo vendedor: precio que nadie más confirma</b>':e.mv+' vendedores'):''}${Number(e.pp)>0?` · <span style="color:var(--amber)">🏷️ el más barato está en promo (−${Number(e.pp)}%)</span>`:''}`:''}${e.vend!=null?` · 🛒 ${e.vend>=1000?'+1000':e.vend} vendidas`:(_listaDa(e,k)?' · 🛒 vendidas en ML: falta mirarlas (entra igual · con menos de '+CAND_MIN_VENTAS+' se va)':'')}${e.ok?' · <span style="color:var(--green)">✓ mismo producto</span>':''}${_listaNoEsVale(e)?' · <span style="color:var(--red)">✗ otro producto</span>':e.noEs?' · <span style="color:var(--muted)" title="El chat de compras dijo que el catálogo de antes era otro producto; éste es otro catálogo y falta confirmarlo.">catálogo nuevo, falta confirmar</span>':''}${e.mt?` · <span title="el catálogo de ML contra el que se midió">"${escHtml(String(e.mt).slice(0,60))}"</span>`:''}${e.pAnt?` · antes ${fmt(e.pAnt)}`:''}</div><div style="font-size:.64rem;margin-top:3px">${e.mi?`<a href="https://www.mercadolibre.com.ar/p/${e.mi}" target="_blank" rel="noopener" style="color:var(--green)">🔗 verlo en ML</a> · `:''}<a href="#" onclick="listaVerOri('${k}','${String(cod).replace(/'/g,"\\'")}');return false" style="color:var(--blue)">📄 verlo en la lista</a>${e.rp?` <span style="color:${_listaOkVale(e)?'var(--muted)':'var(--amber)'}">· ${_listaOkVale(e)?'':'⚠️ '}${escHtml(String(e.rp).slice(0,80))}</span>`:''}</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">${e.sacado?`<button class="btn" style="font-size:.64rem;padding:3px 10px" onclick="listaSacar('${k}','${String(cod).replace(/'/g,"\\'")}',false)">↩︎ volver a la lista</button>`:`<button class="btn" style="font-size:.64rem;padding:3px 10px;color:var(--red);border-color:var(--red)" onclick="listaSacar('${k}','${String(cod).replace(/'/g,"\\'")}',true)">✕ sacar producto</button>`}</div></div></details>`;};

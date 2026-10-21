@@ -2645,3 +2645,8 @@ Planificación de envíos.
 máscara Nutrición contra la Factor 80+. Las listas (Dai Nippon y demás) no traen foto ni código de barras: `ok` sólo con marca, línea,
 variante, tamaño y cantidad iguales; si ML agrega algo, `no` (CEREBRO paso 8). `listarevisar:confirmados` (sync.mjs) relista los ya
 confirmados: revisados 113 el 21/10, 34 estaban mal. **Qué chequear:** que ningún `ok` nuevo tenga palabras de línea o pack de más en ML.
+
+**21/10/2026 · etapa 7 · vendidas al final del nombre en las listas (v25.95).** Él: *"en nippon agregar las ventas al final del nombre
+(…) que se indique que no están cargadas"*. `_listaVendHTML(e)` (index.html) en Nuevos y en 🛒 Para comprar en el local: `e.vend` (lo carga
+el chat local con `listadato:<prov>;<cód>=<vendidas>`) o "ventas sin cargar". **Qué chequear:** que el número sea de la publicación más
+barata del catálogo medido, no del producto equivocado.
