@@ -78,7 +78,7 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   por `informe`/`alertas` y no a Telegram; que las cajas que ML da por entradas las marque Claude y no queden contadas dos veces.
 
 ## 1 · PRECIOS (lunes)
-- **⏳ LAS 6 DECISIONES DE PRECIOS DEL 21/10/2026 ESPERAN SU RESPUESTA** (él: *"guardás eso junto con las de diseño"*). Se le
+- **⏳ LAS 6 DECISIONES DE PRECIOS DEL 20/10/2026 ESPERAN SU RESPUESTA** (él: *"guardás eso junto con las de diseño"*). Se le
   recuerdan junto con las 30 de diseño. (a) = la recomendada. 1 volver al precio de antes tras una prueba de techo que no rindió →
   (a) 🪜 bajando hasta que techo95 diga 95% (b) sigue quedando 🏔️ hasta que techo95 lo corrija · 2 la marca liquidando frena también
   mis bajas/descuentos/remates → (a) que frene sólo las subas (b) como hoy, sacarla antes · 3 la 🏔️ no vence → (a) techo95 guarda la
@@ -229,7 +229,7 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   promo no pase por abajo del piso sin `!piso` ni de 0% · que el cerebro de la noche no lea el precio de promo como
   "cambio a mano" y frene subas.
 
-### Revisión de la etapa 1, arreglos del 21/10/2026 (sync.mjs)
+### Revisión de la etapa 1, arreglos del 20/10/2026 a la noche (v25.60 · sync.mjs + web)
 Qué es · dónde vive · qué chequear:
 - **25% en el peor caso** en `entrarpromo` (sin caer al margen normal si falta) y en `analizapromo` ("conviene" y el `!piso` sugerido);
   la línea impresa dice normal y peor caso. Chequear: un descuento con normal ≥25% y peor caso <25% no entra sin `!piso`.
@@ -254,6 +254,31 @@ Qué es · dónde vive · qué chequear:
   cruzan por cantidad ni netos estimados y sin cuotas adentro; arriba sin ventas de arriba, netopub (si se midió arriba) o
   `CAND_ENVIO_ARRIBA`. `margenAlDia`, `calcCerebro` y `planilla` reusan el envío de netopub sólo si su precio era de arriba.
 - **Sin dólar no se mide** en `activarPausadasFull` (no activa) ni en `unapub`.
+- **Plata por día NETA (⚖️) en todas las comparaciones de precio**: `rayasPrecioLinea` (y por ella `techo95`), `raros`, `escmedir`,
+  `lupa` y en la web `_rayas`/`_ven` (`_pdDed`, constantes `PD_TRABAJO_U`/`PD_TOPE_PCT`/`PD_CAPITAL_DIA` copiadas en index.html): −$100/u,
+  −3% de lo facturado, −2%/mes del stock. Y los días con `est` distinto de `active` (pausada, en revisión) no cuentan en las rayas
+  (robot y web; `_lineaJunta` anota `est`). La web usa una sola publicación también con 2+ activas al MISMO precio. Chequear: web y
+  robot dan la misma raya (💰/🔴) para la misma publicación; después de este cambio hay que volver a correr `techo95` en la completa.
+- **`techo95`**: la 🏔️/🪜 de lanzamiento no pasa a 📈 sin ventas (se mide con la vara de lanzamiento desde el último escalón); la 🏔️
+  se anota después del último tag (`· hallado el dd/mm`) para que una 🪜 posterior no la tape; con 📦/📉/🧨/🔥 y sin 95% no anota 📈.
+- **🛡️ de `planilla`**: propone el precio MÁS BAJO que deja 25% en el peor caso (por mitades, `precioJustoMeta`); hasta $5.500 el mayor
+  entre ése y el que deja $1.000/u (dice cuál manda); 429 → "ML no contestó la comisión a $X"; en la barrera dice lo que deja por unidad
+  a $32.990 y cruzando. Ojo: la regla de $1.000/u sólo se mira en lo que ya está en 🛡️.
+- **🤔**: la excepción de lanzamiento pide una 🏔️ de techo95 posterior a la llegada; sin excepción para 🧪 ni "prueba de tachado".
+  **🔎 / 🏷**: un 💸/🏷️ sin promo mía vigente y un 🧪 cuentan como sin estrategia.
+- **`escasez`**: con pocos datos el ritmo normal manda sólo con estrategia de suba y ritmo normal firme (si no, `ritmo14`); lo sin
+  reposición no se filtra por "menos de 2 ventas en 14 d". Las notas de FALLO de `decido` no cuentan como decisión (🚨 📦 🔎 🤔).
+- **`armarFicha`**: el "antes" de cada cambio arranca después del cambio anterior (no mezcla otro precio), mínimo 5 días;
+  `FICHA_VENCE_DIAS` = 30 (regla 🔓). **Línea de tiempo**: `linea:atras` (fase ventas) reescribe u/tot/neto/uR de los días del panel
+  (corrige los días viejos con el neto repartido del carrito; relleno: `linea:atras:go:ventas`); `mg` del día se calcula de netopub.
+- **netoweb / `envioDeducido`**: abajo de $33.000 sin ventas de abajo el envío es 0 (antes el de arriba).
+- **% de reclamos**: `setDevLive` asigna también por nombre (como la web y `armarCostoWeb`); emoji del aviso de venta (`_nivelPct`) =
+  `_pctNivel` de la web (piso/meta de `cyc/mlconfig`, un decimal).
+- **Web (v25.60)**: `precioParaMargen` con cargo fijo (`simComParams`) y verificado con `simMargen` · `cajaBajarDe`/`rotCajaBajaHtml`/
+  `rotMargenHtml` juzgan con el peor caso (`PEOR_RET_PCT` 2%, `_pctPiso`) · `maxCompraDe` resta el envío del lado de la barrera del
+  precio de venta (`gestP`) · `ritmoNormalDe(pid,loc,vari)` lee la clave del color y `escasezDe` mira sólo las publicaciones del color ·
+  `_cerMlas` filtra por `_lineaColorDe` y los encabezados dicen el color · `cambiosPrecioDe` dice "Claude" en lo de `por:'claude'` ·
+  `normTxt` con trim. Chequear: el máximo de compra de algo que hoy está del otro lado de la barrera da 25% al precio decidido.
 
 ### Chequeo · "para bajar y que roten": las publicaciones nuevas cuentan desde su alta (auditoría 21/10/2026)
 `bajarParaMover` tomaba la última venta del PRODUCTO cuando la publicación no tenía ventas propias, así que la gemela Premium

@@ -34003,9 +34003,10 @@ async function main() {
         const imp = ((ML_EXTRA_PCT[cta] || 4) + _monoLu) / 100;
         const cu = tc > 0 ? costoPesos(pr, 1, tc).costo : 0;
         const tramo = (desde, hasta) => {
-          let dias = 0, u = 0, neto = 0, tot = 0;
-          for (const k of ks) { if (k < desde || k >= hasta) continue; const x = d[k]; if (!conSt(x)) continue; dias++; u += Number(x.u) || 0; neto += Number(x.neto) || 0; tot += Number(x.tot) || 0; }
-          const gan = neto - u * cu - tot * imp;
+          let dias = 0, u = 0, neto = 0, tot = 0, stD = 0;
+          for (const k of ks) { if (k < desde || k >= hasta) continue; const x = d[k]; if (!conSt(x)) continue; dias++; u += Number(x.u) || 0; neto += Number(x.neto) || 0; tot += Number(x.tot) || 0; stD += Math.max(0, Number(x.st) || 0); }
+          // Plata por día NETA (⚖️, 18/10), la misma cuenta que armarFicha, rayas, raros y escmedir (etapa 1, 21/10/2026).
+          const gan = neto - u * cu - tot * imp - u * PD_TRABAJO_U - tot * PD_TOPE_PCT - stD * cu * PD_CAPITAL_DIA;
           return { dias, u, ritmo: dias ? u / dias : null, ganU: u ? gan / u : null, plataDia: dias ? gan / dias : null, precioU: u ? tot / u : null };
         };
         const A = tramo(k37, k7), B = tramo(k7, hoyK);

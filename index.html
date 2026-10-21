@@ -2730,7 +2730,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.59';
+const APP_VERSION='25.60';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2743,6 +2743,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.60',f:'20/10',h:'22:57',c:[{n:3,t:'💲 Revisión de precios (etapa 1): las rayas 💰/🔴 de la línea de tiempo cuentan la plata por día NETA (trabajo, tope de H y plata parada), igual que la ficha y el robot, y no cuentan los días en que la publicación estaba pausada.'},{n:3,t:'🛒 Precio máximo de compra: resta el envío de Full del lado de los $33.000 del precio al que se va a vender (antes usaba el de hoy y podía prometer 25% y dar 0%).'},{n:2,t:'📉 "El 25% te da hasta $X" y "rematar al 12%" calculan con el cargo fijo de ML (antes quedaban varios puntos abajo de lo prometido).'},{n:2,t:'🥊 Caja ML en Rotación: "se puede bajar" sólo si queda arriba del piso en el peor caso, y lo dice al lado.'},{n:2,t:'🎨 La línea de tiempo de un color mide la escasez con el ritmo de ese color, y el 🧠 de un color muestra sólo sus notas.'},{n:1,t:'✍️ En Ventas, los cambios de precio que decidí yo dicen "Claude" y no "robot de noche".'}]},
   {v:'25.59',f:'21/10',h:'22:50',c:[{n:1,t:'📦 Armar caja: cada cuenta (botón, número y 📦) toma el color de su caja: verde sólo si es MANDALA YA, naranja si podés mandarla y rojo si podés esperar. Sin caja, gris.'}]},
   {v:'25.58',f:'21/10',h:'22:47',c:[{n:1,t:'🏠 Inicio: "Para cobrar" queda sólo con el número (se sacaron las líneas de cómo se calcula y lo ganado hasta hoy).'}]},
   {v:'25.58',f:'20/10',h:'21:55',c:[{n:1,t:'🔁 Lo que no está en ML se vuelve a buscar de a poco: sin catálogo cada 60 días y sin vendedores cada 30 (puede aparecer un catálogo nuevo). Antes no se buscaba nunca más.'}]},
@@ -4349,6 +4350,7 @@ const REV_HORA='04:00';
 //                     de HOY (una por día de la semana, corre sola a las REV_HORA) y si ya quedó hecha.
 const REV_PENDIENTE=[
   {t:'Etapa 7 · ideas de diseño para elegir',que:'la lista numerada que te pasé (cada una con (a) y (b))',pedi:'a'},
+  {t:'Etapa 1 · 6 decisiones de precios',que:'1 volver tras prueba de techo · 2 liquidando frena bajas · 3 la 🏔️ no vence · 4 cuánto dura un tag · 5 compras con peor caso · 6 plata parada compartida',pedi:'a'},
 ];
 // Etapa 7 (diseño) cerrada el 01/10/2026: hechas 1-9, 11, 13, 14 y 15; la 10 (Pedidos) y la 12 (sacar
 // "Participación por cuenta") él eligió dejarlas como están.
@@ -4362,7 +4364,8 @@ const REV_HECHAS={1:'2026-10-08',2:'2026-10-20',3:'2026-10-20',4:'2026-10-20',5:
 const REV_HIST={
   1:[{f:'2026-09-24',t:'Primera vuelta: el rescate, la espera de las bajas y los frenos de suba.'},
      {f:'2026-09-27',t:'4 revisores, 23 hallazgos: 22 arreglados (cuotas Premium, variantes, remate en tramos). Él eligió cómo juzgar la prueba de +5%.'},
-     {f:'2026-10-08',t:'Después del cerebro y la regla del 20%: 27 reales, 21 arreglados y 6 decisiones suyas (manda el cerebro, sin rescate al vender).'}],
+     {f:'2026-10-08',t:'Después del cerebro y la regla del 20%: 27 reales, 21 arreglados y 6 decisiones suyas (manda el cerebro, sin rescate al vender).'},
+     {f:'2026-10-20',t:'4 revisores en máximo (escritura en ML, cuentas del margen, listas y techo, web): ~40 arreglos (v25.60: peor caso en descuentos, 🏔️ sólo de techo95, precios exactos $32.999, plata neta en rayas, envío del lado de la barrera). Quedan 6 decisiones suyas.'}],
   2:[{f:'2026-09-28',t:'4 revisores (Arqueo, Mercado Pago, gastos, monedas): 17 reales, las obvias arregladas.'},
      {f:'2026-09-29',t:'Cerrada: lo vendido después del reporte de MP suma al patrimonio (A1) y el Telegram usa la misma cuenta que la web (D4).'},
      {f:'2026-09-30',t:'Revisión completa final: lo de plata quedó sin pendientes.'},
