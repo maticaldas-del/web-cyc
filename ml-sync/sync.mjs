@@ -21519,6 +21519,48 @@ async function main() {
       if (!malas.length) console.log('ninguna');
       return;
     }
+    // BILLING_PROBE=bajastecho[:<días>] (21/10/2026, solo lee): mis bajas (`cyc/claudecambios` y descuentos de `cyc/promoclaude`) de
+    // los últimos N días (30) que DESHICIERON una suba mía de 5%+ hecha hasta 21 días antes, sin 🏔️ de techo95 en el medio. Él, con
+    // el Persea ($21.990 → $14.950 de una) y el Aer Jasmín ($19.490 → $18.190 a los ~7 días): "bajando sin encontrar techo".
+    // Desde el 21/10 lo frenan F2 (escalera ≤15%) y F4 (sin certeza se espera hasta 15 días) de `frenosBajas`: esto busca las de antes.
+    // Por cada una: días entre la suba y la baja, el tamaño de la baja, lo vendido con stock al precio probado contra el ritmo de antes
+    // (Poisson: qué tan seguro era que no rendía) y el precio y la estrategia de hoy.
+    if (/^bajastecho(:\d+)?$/.test(String(process.env.BILLING_PROBE || ''))) {
+      const dias = Number(String(process.env.BILLING_PROBE).split(':')[1]) || 30, desdeT = Date.now() - dias * 864e5;
+      const [cc, est, links, pcl] = await Promise.all(['cyc/claudecambios', 'cyc/estrategia', 'cyc/mllinks', 'cyc/promoclaude'].map((k) => db.get(k)));
+      const camb = Object.values(cc || {}).filter((c) => c && c.mla && Number(c.ts) > 0 && Number(c.de) > 0 && Number(c.a) > 0).map((c) => ({ ...c, ts: Number(c.ts), de: Number(c.de), a: Number(c.a) }));
+      for (const [m, x] of Object.entries(pcl || {})) if (/^MLA\d+$/.test(m) && x && Number(x.de) > Number(x.precio) && Number(x.precio) > 0) camb.push({ mla: m, ts: Number(x.ts) || 0, de: Number(x.de), a: Number(x.precio), motivo: '(descuento) ' + String(x.motivo || '') });
+      const porMla = {}; for (const c of camb) (porMla[c.mla] = porMla[c.mla] || []).push(c);
+      const kD = (t) => dayKeyFromISO(t); const filas = [];
+      for (const [mla, cs] of Object.entries(porMla)) {
+        cs.sort((x, y) => x.ts - y.ts);
+        for (const b of cs) {
+          if (!(b.ts >= desdeT) || !(b.a < b.de)) continue;
+          const su = cs.filter((x) => x.ts < b.ts && x.ts > b.ts - 21 * 864e5 && x.a > x.de * 1.05).pop(); if (!su) continue;
+          if (!(b.a < su.a * 0.995)) continue;
+          const tags = Object.entries((est || {})[mla] || {}).map(([k, x]) => ({ ts: Number(k), t: x && x.t, m: x && x.m })).filter((x) => x.ts > 0 && x.t);
+          if (tags.some((x) => techookDeTecho95(x) && x.ts >= su.ts && x.ts <= b.ts + 36e5)) continue;
+          let lin = null; try { lin = (await db.get('mlapi/linea/' + mla)) || null; } catch { lin = null; }
+          let d0 = 0, u0 = 0, d1 = 0, u1 = 0;
+          if (lin) { const kS = kD(su.ts), kB = kD(b.ts), kA = kD(su.ts - 21 * 864e5);
+            for (const [k, x] of Object.entries(lin)) { if (!/^\d{4}_\d{2}_\d{2}$/.test(k) || !x || typeof x !== 'object' || !diaConStock(x)) continue;
+              if (k >= kA && k < kS) { d0++; u0 += Number(x.u) || 0; } else if (k > kS && k < kB && Number(x.p) >= su.a * 0.98) { d1++; u1 += Math.max(0, (Number(x.u) || 0) - (Number(x.uR) || 0)); } } }
+          const esp = d0 >= 5 ? (u0 / d0) * d1 : null; const azar = esp != null ? poissonCdfF(u1, esp * (su.de / su.a)) : null;
+          const e = (links || {})[mla] || {}; const tl = tags.sort((x, y) => x.ts - y.ts); const tHoy = tl.length ? tl[tl.length - 1].t : '';
+          filas.push({ mla, cta: e.cuenta || b.cuenta || '', nom: String(e.title || b.nom || '').slice(0, 42), var: e.variant || '', su, b, dEsp: Math.round((b.ts - su.ts) / 864e5), pct: Math.round((1 - b.a / su.a) * 100), d0, u0, d1, u1, esp, azar, tHoy, hoy: Number(e.price) || 0 });
+        }
+      }
+      filas.sort((x, y) => x.b.ts - y.b.ts);
+      console.log(`=== BAJAS QUE DESHICIERON UNA PRUEBA DE TECHO SIN 🏔️ · últimos ${dias} días · ${filas.length} ===`);
+      console.log('(F2 hoy frena bajas de más de 15% · F4 frena deshacer una suba antes de 15 días sin certeza 95%)');
+      for (const f of filas) {
+        const fl = []; if (f.pct > 15) fl.push('SIN ESCALERA (' + f.pct + '%)'); if (f.dEsp < 15 && !(f.azar != null && f.azar <= 0.05)) fl.push('SIN CERTEZA a los ' + f.dEsp + ' d');
+        const ev = f.esp != null ? `a ${money(f.su.a)} vendió ${f.u1} en ${f.d1} d con stock (al ritmo de antes ${f.esp.toFixed(1)}; azar ${Math.round((f.azar || 0) * 100)}%)` : `antes no tenía 5 días con stock para medir`;
+        console.log(`${fl.length ? '❌' : '✓'} ${f.mla} · ${f.cta} · ${f.nom}${f.var ? ' · ' + f.var : ''}\n   subí ${kD(f.su.ts).slice(5)} ${money(f.su.de)}→${money(f.su.a)} · bajé ${kD(f.b.ts).slice(5)} →${money(f.b.a)} (−${f.pct}%, a los ${f.dEsp} d) · ${ev}${fl.length ? ' · ' + fl.join(' · ') : ''}\n   hoy: ${f.hoy ? money(f.hoy) : '?'} · ${f.tHoy || 'sin estrategia'}`);
+      }
+      if (!filas.length) console.log('ninguna');
+      return;
+    }
     // BILLING_PROBE=listaprioridad[:<proveedor>|:-][:go] (20/10/2026) → qué lista mide la vuelta de cada hora antes que Paraguay
     // (ver pycatmedir). Sin proveedor muestra la que hay; `-` la saca.
     if (/^listaprioridad(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
