@@ -1115,6 +1115,39 @@ diga cuántos cambios midió (con pocos no se concluye) y que no imprima nada de
 
 - **20/10/2026 · v25.44 · la línea de tiempo de costado en el teléfono** (etapa 7, diseño). Pedido suyo: que abra de costado aunque tenga el giro bloqueado. Una página no puede girar la pantalla con el giro bloqueado, así que se gira el contenido (`_lineaAplicarGiro`: en un teléfono parado, `linea-modal` mide alto×ancho y va rotada 90°). Botón "⤾ parada" lo apaga (`localStorage` `cycLineaGiro`). `_lineaLlenar` mide la altura desde el borde derecho cuando está girada. Chequear: que en la PC y con el teléfono acostado no cambie nada; que el gráfico llegue hasta el borde; que el scroll ande.
 
+### Etapa 5 · 20/10/2026 a la noche · arreglos de la ficha y el techo
+Todos en `ml-sync/sync.mjs`, probados con la función o el bloque real y datos inventados (antes → después).
+- **`diaConStock`**: un día pausado o cerrado (est ≠ active) que no vendió ya no cuenta como día con stock. Qué chequear: que una
+  suba seguida de una pausa de ML salga "en curso" y no "perdió".
+- **`ficha:go`**: si guardó menos fichas de las que tocaba o la relectura no coincide, dice ⚠️ y sale con código 1 (antes ✓ con 0 de 2).
+- **🏆 de la ficha** = `rayasPrecioLinea(...).best` (la misma cuenta de la línea de tiempo y de `techo95`).
+- **Lo que le pega el precio** (`reaccionesDe`): medianas y elasticidad con el ritmo suavizado (u+0,5)/días y con TODOS los cambios;
+  no dice "subir le deja más plata" si alguna suba bajó las ventas con certeza (`reac.subaFreno`).
+- **"En curso"** de la ficha: sólo el último cambio, si está en curso o sin certeza y su precio es el de hoy (±2%).
+- **Veredicto de cada cambio** con Poisson sobre la plata por día (λ = ritmo antes × gan/u antes ÷ gan/u después × días después);
+  sin 95% → "sin certeza". Guarda `nec` (lo que hacía falta vender).
+- **Día de la semana**: sólo se afirma con certeza (Poisson del día contra el resto, <5%/7); si no, "no se distingue el día (pocas
+  ventas)". Plurales bien.
+- **Caja y visitas**: "vende igual perdiendo la caja" pide 3+ ventas de cada lado y certeza; "siguen a las visitas" pide rv > 1,3 y
+  ~8+ ventas. Si no, "es una pista".
+- **Fechas especiales**: la base saca los días en la ventana de cualquier otra fecha; con menos de 7 días de base no compara.
+- **Edad del stock** (`fichaExtras` §6): `lotesFifo` + `tablaAntiguoDe` (como `antiguo`: Excel, cajas, `stockhist`), con respaldo de la
+  línea que marca los huecos ("hasta X días"); stock de hoy 0 o sin dato = no dice nada; el aviso usa los días de gracia del producto.
+- **`ficha:cuenta=`**: decide después de leer la línea (activa, con stock o vendió en 60 d) e imprime "N de M (K afuera)".
+- **Ficha**: el log dice cuántos tramos anteriores no se muestran.
+- **`diasTachado`**: corta el tramo de descuento/promo en el fin conocido (el "hasta" de la promo o "Salí de la promo").
+- **`techo95:go`**: ya no borra las 🏔️ viejas de la historia (la estrategia que tenía cada venta pasada no cambia); si ya está anotado
+  igual no lo repite; el resumen cuenta las "sin ficha", las "no leí la línea" y las miradas.
+- **`lupa`**: el stock de hoy es el del último día con dato (como `raros`); sin ningún dato: "stock ?", sin AGOTADA ni "desaparecieron".
+- **`escasez` · 🔁 mis subas cuya razón cambió** y el "en escasez" de cada cambio de la ficha: el tipo sale de la estrategia que tenía
+  la publicación en ese momento (`tagEstrategiaEn`, misma regla que `tagEnMomento` de `pedidostodo`); el motivo, sólo de respaldo. El
+  encabezado dice "N de K decisiones con tag escasez/sinrepo en 60 d".
+- **Turno del expediente** (`escasez:expediente`): los quietos entran si su última nota del 🧠 (`mlapi/claudeexp/<MLA>.ts`) tiene 2+ días
+  o no existe (antes un tercio fijo por día). Sin poder leer las notas, vuelve el turno fijo y lo dice.
+- **`raros` y `lupa`**: "Miradas N de M vivas con ficha".
+Qué chequear en la próxima: que `techo95` no muestre "ya estaba anotado" en algo que cambió de motivo, y que el expediente no se
+dispare a todo el catálogo el día después de una vuelta sin notas.
+
 ## 5b · DATOS E HISTORIAL (la vieja etapa 8 del 08/10/2026; desde el 20/10 la revisa la 5 · lo que diga "Etapa 8" antes del 21/10 es esto)
 - 20/10/2026 · la ficha (`armarFicha` → `reaccionesDe`, `mlapi/ficha/<MLA>.reac` y `.reacTxt`; en la web "Cómo reacciona este
 producto") dice por publicación: caja ganando/perdiendo, ventas contra visitas, cambios de precio, fechas especiales, sin stock y
