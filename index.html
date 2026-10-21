@@ -3372,8 +3372,6 @@ let _hayVersionNueva=false;
 function _pintarVersion(){
   renderHomeCambios();
   const chip=document.getElementById('home-version');
-  const pie=document.getElementById('ajustes-version');
-  if(pie)pie.textContent='CYC · Versión '+APP_VERSION;
   if(!chip)return;
   if(_hayVersionNueva){
     chip.innerHTML='🔄 <strong style="color:var(--text)">Hay una versión nueva</strong> · tocá para actualizar';
@@ -23042,7 +23040,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
       <button class="back-btn" onclick="goPage('home')">← Inicio</button>
       <div>
         <div class="ph-title">Ajustes</div>
-        <div class="ph-sub">Versión · Avisos · Perfil · Apariencia · Robot · Monotributo · Facturación · Dólar · Precios históricos · Papelera · Cambios · Datos</div>
+        <div class="ph-sub">Versión y backup · Avisos · Perfil · Apariencia · Robot · Monotributo · Facturación · Dólar · Precios históricos · Papelera · Cambios</div>
       </div>
     </div>
     <div class="ph-right">
@@ -23055,7 +23053,13 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
     <!-- 15/10/2026, pedido suyo: "mandar todo a ajustes (…) y las revisiones que pueda clickear, y ver todo lo que pasó, cuáles son,
          qué falta, qué fecha". Antes estaba abajo de todo en Inicio. -->
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
-      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;margin-bottom:10px">🔄 Versión y últimos cambios</div>
+      <!-- Una sola tarjeta para la versión, buscar actualizaciones y el backup (decisión 7.9 de diseño, 21/10/2026, eligió la a):
+           antes había dos 🔄 (arriba y abajo de todo) y el 💾 Datos aparte. -->
+      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;margin-bottom:10px">🔄 Versión, actualizaciones y backup</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()" title="Si no ves los últimos cambios, forzá la actualización">🔄 Buscar actualizaciones</button>
+        <button class="btn" style="background:rgba(34,197,94,.12);color:var(--green);border:1px solid rgba(34,197,94,.3)" onclick="backupDesdeAjustes()" title="Descargá una copia de seguridad de toda la base">💾 Descargar backup</button>
+      </div>
       <div style="text-align:center">
         <span id="home-version" onclick="actualizarApp()" title="Versión de la app que estás usando ahora. Tocá para buscar actualizaciones." style="display:inline-flex;align-items:center;gap:7px;font-size:.66rem;color:var(--muted);border:1px solid var(--border);border-radius:999px;padding:5px 13px;cursor:pointer;letter-spacing:.06em">…</span>
         <details id="home-cambios" style="margin-top:6px;text-align:left"></details>
@@ -23210,21 +23214,6 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
       </div>
     </details>
 
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
-      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;margin-bottom:12px">💾 Datos</div>
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
-        <span style="font-size:.75rem;color:var(--muted)">Descargá una copia de seguridad de toda la base</span>
-        <button class="btn" style="background:rgba(34,197,94,.12);color:var(--green);border:1px solid rgba(34,197,94,.3)" onclick="backupDesdeAjustes()">💾 Descargar backup</button>
-      </div>
-    </div>
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
-      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;margin-bottom:12px">🔄 Aplicación</div>
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
-        <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
-        <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
-      </div>
-      <div id="ajustes-version" style="font-size:.66rem;color:var(--muted);margin-top:12px"></div>
-    </div>
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
       <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;margin-bottom:12px">🔒 Sesión</div>
       <button class="btn" style="background:rgba(239,68,68,.12);color:var(--red);border:1px solid rgba(239,68,68,.3)" onclick="logoutCYC()">🔒 Cerrar sesión</button>
