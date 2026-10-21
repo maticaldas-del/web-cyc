@@ -6601,6 +6601,23 @@ async function setCajaItem(pid,va,val,max){
   await _guardarCajaArmando(ofiFiltroCuenta,items);
   renderOfiCaja();
 }
+// LO QUE SE PUEDE MANDAR DE VERDAD, POR CUENTA: tope del cupo de Full de cada una (18/10/2026, pedido suyo:
+// "que aparezcan solo las unidades que puedo mandar teniendo en cuenta el cupo de cada cuenta").
+// Chicos y grandes por separado, cada uno contra su cupo. Sin cupo cargado, queda lo sugerido.
+// Una sola cuenta para Armar caja (botones y cuadros) e Inicio (decisión 7.1 de diseño, 21/10/2026).
+function aMandarConCupo(filas){
+  const porCta={};LOCS.forEach(l=>porCta[l]=0);
+  (filas||[]).forEach(f=>(f.sug||[]).forEach(x=>{if(porCta[x.cuenta]!==undefined)porCta[x.cuenta]+=x.mandar;}));
+  const porCtaCupo={};
+  LOCS.forEach(l=>{
+    const cr=cupoRestante(l); if(!cr){porCtaCupo[l]=porCta[l];return;}
+    let pq=0,gr=0;
+    (filas||[]).forEach(f=>(f.sug||[]).forEach(x=>{if(x.cuenta!==l)return;if(esGrandeFull(f.p))gr+=x.mandar;else pq+=x.mandar;}));
+    const tp=cr.estPeq!=null?Math.min(pq,Math.max(0,cr.estPeq)):pq, tg=cr.estGra!=null?Math.min(gr,Math.max(0,cr.estGra)):gr;
+    porCtaCupo[l]=tp+tg;
+  });
+  return{porCta,porCtaCupo,total:LOCS.reduce((a,l)=>a+(porCta[l]||0),0),totalCupo:LOCS.reduce((a,l)=>a+(porCtaCupo[l]||0),0)};
+}
 function renderOfiCaja(){
   const cont=document.getElementById('ofi-caja-list');if(!cont)return;
   const filas=repartoOficina();
@@ -6610,27 +6627,16 @@ function renderOfiCaja(){
   const plata=filas.reduce((s,f)=>s+f.hay*costP(f.p),0);
   // Unidades que van a CADA cuenta. Es el número que se necesita para armar la caja de verdad:
   // "41 hay que mandar" no dice cuántas van en la caja que estás armando ahora.
-  const porCta={};LOCS.forEach(l=>porCta[l]=0);
-  filas.forEach(f=>(f.sug||[]).forEach(x=>{if(porCta[x.cuenta]!==undefined)porCta[x.cuenta]+=x.mandar;}));
-  // LO QUE SE PUEDE MANDAR DE VERDAD: tope del cupo de Full de cada cuenta (18/10/2026, pedido suyo:
-  // "que aparezcan solo las unidades que puedo mandar teniendo en cuenta el cupo de cada cuenta").
-  // Chicos y grandes por separado, cada uno contra su cupo. Sin cupo cargado, queda lo sugerido.
-  const porCtaCupo={};
-  LOCS.forEach(l=>{
-    const cr=cupoRestante(l); if(!cr){porCtaCupo[l]=porCta[l];return;}
-    let pq=0,gr=0;
-    filas.forEach(f=>(f.sug||[]).forEach(x=>{if(x.cuenta!==l)return;if(esGrandeFull(f.p))gr+=x.mandar;else pq+=x.mandar;}));
-    const tp=cr.estPeq!=null?Math.min(pq,cr.estPeq):pq, tg=cr.estGra!=null?Math.min(gr,cr.estGra):gr;
-    porCtaCupo[l]=tp+tg;
-  });
-  const aMandarCupo=LOCS.reduce((a,l)=>a+(porCtaCupo[l]||0),0);
-  const uCta=ofiFiltroCuenta?(porCta[ofiFiltroCuenta]||0):0;
+  const {porCta,porCtaCupo,totalCupo:aMandarCupo}=aMandarConCupo(filas);
+  // 21/10/2026 (decisión 7.1 de diseño): los cuadros de arriba también con el cupo ya restado, igual que los botones.
+  const uCta=ofiFiltroCuenta?(porCtaCupo[ofiFiltroCuenta]||0):0;
+  const _cortaCta=ofiFiltroCuenta&&(porCta[ofiFiltroCuenta]||0)>uCta;
   const res=document.getElementById('ofi-resumen');
   if(res)res.innerHTML=(ofiFiltroCuenta
-      ? `<div class="pcount" style="border-color:var(--accent2)"><strong style="color:var(--accent2)">${uCta}</strong>sugerido p/ ${ofiFiltroCuenta}</div>`
+      ? `<div class="pcount" style="border-color:var(--accent2)"${_cortaCta?` title="Se sugieren ${porCta[ofiFiltroCuenta]} pero el cupo de Full deja mandar ${uCta}"`:''}><strong style="color:var(--accent2)">${uCta}</strong>sugerido p/ ${ofiFiltroCuenta}${_cortaCta?' (cupo)':''}</div>`
       : '')
     +`<div class="pcount"><strong>${uHay}</strong>u. en casa</div>`
-    +`<div class="pcount"><strong>${aMandar}</strong>${ofiFiltroCuenta?'a mandar en total':'hay que mandar'}</div>`
+    +`<div class="pcount"${aMandarCupo<aMandar?` title="Se sugieren ${aMandar}; con el tope del cupo de Full de cada cuenta se pueden mandar ${aMandarCupo}"`:''}><strong>${aMandarCupo}</strong>${ofiFiltroCuenta?'a mandar en total':'hay que mandar'}${aMandarCupo<aMandar?' (cupo)':''}</div>`
     +`<div class="pcount"><strong>${fmt(plata)}</strong>en mercadería</div>`;
   renderNcOfi(filas);
   // Botones para armar la caja de UNA cuenta: es como se despacha de verdad, una caja por cuenta.
@@ -8010,7 +8016,8 @@ function renderNcOfi(filas){
   try{
     filas=filas||repartoOficina();
     const uHay=filas.reduce((s,f)=>s+f.hay,0);
-    const aMandar=filas.reduce((s,f)=>s+f.sug.reduce((a,x)=>a+x.mandar,0),0);
+    // Con el cupo de Full ya restado, igual que los botones de Armar caja (decisión 7.1 de diseño, 21/10/2026).
+    const _mc=aMandarConCupo(filas),aMandar=_mc.totalCupo;
     const v=cajasVerdes(filas);
     const nSinDec=SOLO_CLAUDE?new Set(filas.filter(f=>f.sinDecidir&&f.hay>0).map(f=>f.p.id)).size:0;   // 09/10/2026
     sub.innerHTML=(uHay?`${uHay} u. en casa · ${aMandar} para mandar${nSinDec?` · <span style="color:var(--amber)">${nSinDec} sin decidir</span>`:''}`:'Sin nada contado todavía')
