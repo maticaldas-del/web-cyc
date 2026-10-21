@@ -3972,7 +3972,10 @@ function armarFicha({ mla, d, e, cu, imp, cambios, notas, hoyK, tach, parc, extr
   const RX = reaccionesDe(d, ks, tach, parc);
   // 6 · MÁS DATOS PARA DECIDIR (reposición, reclamos, ML, competencia, semana y mes, edad del stock, hermanas) · 20/10/2026
   const DX = extra ? fichaExtras({ mla, e, d, ks, cu, ...extra }) : { ext: {}, txt: [] };
-  return { ts: Date.now(), mla, nom: String(e.title || '').slice(0, 80), cuenta: e.cuenta || '', variante: e.variant || '', prodId: e.prodId || '', res, tramos: T.slice(-60), nTramos: T.length, cambios: C.slice(-40), sabemos: sab, notas: N, linea1, reac: RX.reac, reacTxt: RX.txt, datos: DX.ext, datosTxt: DX.txt };
+  // 7.27 (21/10/2026): las dos rayas de la línea de tiempo (💰 piso y 🔴 techo, `rayasPrecioLinea`) quedan en la ficha y, con `:go`,
+  // en `cyc/rayas/<MLA>` para la barrita de la web (🧠 y Rotación). Sin 💰 medido no hay rayas: `null`, no se inventa.
+  const rayas = RY.best && RY.best.p > 0 ? { piso: RY.best.p, techo: RY.techo && RY.techo.p > 0 ? RY.techo.p : null, seg: RY.techo ? Math.round(RY.techo.seg * 100) : null, dias: RY.medibles || 0 } : null;
+  return { ts: Date.now(), mla, nom: String(e.title || '').slice(0, 80), cuenta: e.cuenta || '', variante: e.variant || '', prodId: e.prodId || '', res, tramos: T.slice(-60), nTramos: T.length, cambios: C.slice(-40), sabemos: sab, notas: N, linea1, reac: RX.reac, reacTxt: RX.txt, datos: DX.ext, datosTxt: DX.txt, rayas };
 }
 // ── LOS DÍAS CON TACHADO DE CADA PUBLICACIÓN (20/10/2026) ── Los usan `vistas` y la ficha. Salen de mis promos (notas
 // "Entré/Salí de la promo" de `mlapi/fichanotas`, `cyc/promoclaude`), de la estrategia descuento/promo (`cyc/estrategia`) y de
@@ -33691,6 +33694,7 @@ async function main() {
         const r = f.res;
         console.log(`\n■ ${mla} · ${f.producto}${f.variante ? ' · 🎨 ' + f.variante : ''} · ${f.cuenta} · "${f.nom}"`);
         console.log(`   hoy: ${$(r.p)} · ${r.est || '?'} · ${r.st != null ? r.st + ' u. en Full' : 'stock ?'} · 30 d: ${r.u30} u. (${r.r30 ?? '—'} por día con stock, ${$(r.pd30)} por día) · costo ${$(r.cu)} · línea guardada ${fK(r.primero)} a ${fK(r.ultimo)} (${r.dias} días${r.inc ? ', ' + r.inc + ' incompletos' : ''})`);
+        console.log(`   RAYAS (la barrita de la web): ${f.rayas ? `💰 piso ${$(f.rayas.piso)} · 🔴 techo ${f.rayas.techo ? $(f.rayas.techo) : 'sin medir'}` : 'sin 💰 medido (no se dibuja barrita)'}`);
         console.log('   LO QUE SABEMOS:'); if (!f.sabemos.length) console.log('    · nada medido todavía');
         for (const s of f.sabemos) console.log(`    · ${s.t === 'perdio' ? '⛔' : s.t === 'gano' ? '✅' : s.t === 'mejor' ? '🏆' : '🧪'} ${s.txt}`);
         console.log('   CAMBIOS Y CÓMO LES FUE:'); if (!f.cambios.length) console.log('    · ninguno anotado');
@@ -33705,6 +33709,8 @@ async function main() {
       if (GO) {
         const ks = Object.keys(out);
         for (let i = 0; i < ks.length; i += 40) { const parte = {}; for (const k of ks.slice(i, i + 40)) parte[k] = out[k]; try { await db.patch('mlapi/ficha', parte); guard += Object.keys(parte).length; } catch (eG) { console.log(`⚠️ no pude guardar ${Object.keys(parte).length} fichas: ${String(eG.message || eG).slice(0, 80)}`); } }
+        // 7.27: la barrita de la web (piso/techo/hoy) lee `cyc/rayas` (chico: dos números por publicación). Si no se puede, la ficha igual queda.
+        { let okR = 0; for (let i = 0; i < ks.length; i += 80) { const parte = {}; for (const k of ks.slice(i, i + 80)) { const r = out[k].rayas; parte[k] = r ? { piso: r.piso, techo: r.techo, ts: out[k].ts } : null; } try { await db.patch('cyc/rayas', parte); okR += Object.keys(parte).length; } catch { console.log('⚠️ no pude guardar las rayas de la barrita (cyc/rayas): la web no las muestra hasta la próxima'); } } console.log(`🎯 rayas para la barrita: ${okR} de ${ks.length}`); }
         const k0 = ks[0]; let rl = null; if (k0) { try { rl = await db.get('mlapi/ficha/' + k0 + '/ts'); } catch { rl = null; } }
         // 20/10/2026 a la noche · etapa 5: con GO, si no se guardó todo lo que tocaba (las armadas + las que no pude leer) o la relectura
         // no coincide, el paso sale con error (entra en `avisonoche`) y sin "✓".

@@ -98,6 +98,19 @@ svg.linea-svg{touch-action:pan-y}
   .fm-tarj td[data-p]{flex-basis:auto;order:1;font-weight:700}
   .fm-tarj td[data-r]{flex-basis:auto;order:2;margin-left:auto;font-weight:700}
 }
+.rb{margin-top:4px}
+.rb-bar{position:relative;display:block;height:6px;border-radius:3px;background:color-mix(in srgb,var(--muted) 25%,transparent);max-width:100%}
+.rb .rb-ok{position:absolute;top:0;bottom:0;background:color-mix(in srgb,var(--green) 35%,transparent);border-radius:3px}
+.rb .rb-p,.rb .rb-t{position:absolute;top:-3px;bottom:-3px;width:2px;margin-left:-1px}
+.rb .rb-p{background:#eab308}.rb .rb-t{background:var(--red)}
+.rb .rb-h{position:absolute;top:50%;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;border:2px solid var(--surface);box-sizing:content-box}
+.rb .rb-prueba{animation:rbRespira 2.6s ease-in-out infinite}
+@keyframes rbRespira{50%{transform:scale(1.35);opacity:.75}}
+body.discreto .rb .rb-prueba{animation:none}
+@media(prefers-reduced-motion:reduce){.rb .rb-prueba{animation:none}}
+.rb-largo{max-width:320px;margin-top:10px}
+.rb-corto{display:flex;justify-content:flex-end}
+.rb-et{display:flex;justify-content:space-between;font-size:.6rem;color:var(--muted);margin-top:4px}
 .fnav-sec{font-size:.6rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);padding:8px 14px 2px}
 .fnav-n{margin-left:auto;padding-left:10px;font-size:.68rem;color:var(--muted);white-space:nowrap}
 .fnav-fila{display:flex;gap:4px;border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:2px}
@@ -2360,6 +2373,8 @@ function startApp(){
     state.stockoculto=d.stockoculto||{};
     // 7.20: las ventas del último aviso al teléfono (las escribe el robot cuando el aviso salió): {ts, ids}.
     state.avisoventa_ult=d.avisoventa_ult||null;
+    // 7.27: el 💰 piso y el 🔴 techo de cada publicación (los deja el robot con la ficha de la noche).
+    state.rayas=d.rayas||{};
     // detectar entradas nuevas de ventaprod escritas externamente (p.ej. cowork)
     const _newVP=d.ventaprod||{};
     const _allIds=new Set();
@@ -11188,6 +11203,7 @@ async function cerebroAbrir(el,ev){
     }
     if(falla)h+=par('<span style="color:var(--amber)">No pude leer alguna nota. Probá de nuevo en un rato.</span>');
     else if(!nn)h+=par(`<span style="color:var(--muted)">${soloUnid?'Todavía no escribí por qué van estas unidades.':'Todavía no escribí nada sobre el precio de esto.'}</span>`);
+    h+=_rayasBarrasHTML(mlas);
     h+=_fichaBotones(mlas);
     m.innerHTML=caja(h);
     return;
@@ -11219,6 +11235,7 @@ async function cerebroAbrir(el,ev){
     const cab=(varias||_col)?`<b>${_cerEsc(e.cuenta||'')}${_col?' · '+_cerEsc(_col):''}${e.status&&e.status!=='active'?' · pausada':''}:</b> `:'';
     h+=par(cab+fr.map(_cerEsc).join(' '));
   }
+  h+=_rayasBarrasHTML(mlas);
   h+=_fichaBotones(mlas);
   m.innerHTML=caja(h);
 }
@@ -11340,6 +11357,34 @@ function _lineaFranjaCerrar(){const f=document.getElementById('linea-franja');if
   ['pointerup','pointercancel'].forEach(t=>document.addEventListener(t,()=>{_lfOn=null;},true));
   // Al cerrar o redibujar la línea, la franja se va (era de un dibujo que ya no está).
   new MutationObserver(()=>{const f=document.getElementById('linea-franja');if(f&&!(f._svg&&f._svg.isConnected))_lineaFranjaCerrar();}).observe(document.body,{childList:true,subtree:true});
+}
+// 7.27 · DÓNDE ESTÁ EL PRECIO DE HOY ENTRE EL 💰 PISO Y EL 🔴 TECHO (21/10/2026, eligió la a). Las dos rayas son las de la línea de
+// tiempo (la misma cuenta, `rayasPrecioLinea` del robot = `_rayas` de acá); el robot las deja cada noche en `cyc/rayas/<MLA>` con la
+// ficha (`ficha:go`). Una barrita chica dice de un vistazo dónde está el precio de hoy. Sin 💰 medido no se dibuja nada (no se inventa).
+// El punto respira despacito sólo cuando el precio está probando (📈 buscando techo o 🪜 bajando); quieto, no se mueve.
+function _rayasMlaDeProd(pid){
+  const R=state.rayas||{},L=state.mllinks||{};
+  const c=Object.entries(L).filter(([m,e])=>e&&e.prodId===pid&&!e.ignored&&R[m]&&R[m].piso>0&&Number(e.price||e.precio)>0)
+    .sort((a,b)=>((b[1].status==='active')-(a[1].status==='active'))||(Number(a[1].price||a[1].precio)-Number(b[1].price||b[1].precio)));
+  return c.length?c[0][0]:null;
+}
+function rayasBarHTML(mla,o){
+  o=o||{};const r=mla&&(state.rayas||{})[mla];const e=mla&&(state.mllinks||{})[mla];
+  const hoy=e?Number(e.price||e.precio)||0:0;
+  if(!r||!(r.piso>0)||!(hoy>0))return '';
+  const piso=Number(r.piso),techo=Number(r.techo)>0?Number(r.techo):null;
+  const lo=Math.min(piso,hoy)*0.92,hi=Math.max(techo||piso*1.25,hoy)*1.06,pos=v=>Math.max(0,Math.min(100,(v-lo)/(hi-lo)*100));
+  const xp=pos(piso),xt=techo?pos(techo):null,xh=pos(hoy);
+  const donde=techo&&hoy>techo*1.005?{t:'arriba del 🔴 techo',c:'var(--red)'}:hoy<piso*0.995?{t:'abajo del 💰 piso',c:'var(--amber)'}:{t:techo?'entre el piso y el techo':'arriba del piso (techo todavía sin medir)',c:'var(--green)'};
+  let probando=false;try{const s=estrategiaDe(mla);probando=!!(s&&(s.t==='techo'||s.t==='bajando'));}catch(_){}
+  const tit=`Precio de hoy ${fmt(hoy)}: ${donde.t}. 💰 Piso ${fmt(piso)} (el precio que más plata por día dejó)${techo?` · 🔴 techo ${fmt(techo)} (más caro ya no rindió, ${r.seg?r.seg+'% seguro':'95%'})`:' · 🔴 techo: falta probar más caro'}. Las mismas rayas de la línea de tiempo, medidas anoche.`;
+  const barra=`<span class="rb-bar" style="width:${o.ancho||'100%'}"><span class="rb-ok" style="left:${xp.toFixed(1)}%;right:${xt!=null?(100-xt).toFixed(1):'0'}%"></span><i class="rb-p" style="left:${xp.toFixed(1)}%"></i>${xt!=null?`<i class="rb-t" style="left:${xt.toFixed(1)}%"></i>`:''}<b class="rb-h${probando?' rb-prueba':''}" style="left:${xh.toFixed(1)}%;background:${donde.c}"></b></span>`;
+  if(o.corto)return `<div class="rb rb-corto" title="${tit.replace(/"/g,'&quot;')}">${barra}</div>`;
+  return `<div class="rb rb-largo" title="${tit.replace(/"/g,'&quot;')}"><div style="font-size:.66rem;color:var(--muted);margin-bottom:3px">🎯 hoy <b style="color:${donde.c}">${fmt(hoy)}</b> · ${donde.t}</div>${barra}<div class="rb-et"><span>💰 ${fmt(piso)}</span><span>${techo?'🔴 '+fmt(techo):'🔴 sin medir'}</span></div></div>`;
+}
+function _rayasBarrasHTML(mlas){
+  const L=state.mllinks||{};const ok=(mlas||[]).filter(m=>rayasBarHTML(m));if(!ok.length)return '';
+  return `<div style="margin-top:10px">${ok.map(m=>{const e=L[m]||{};return (ok.length>1?`<div style="font-size:.62rem;color:var(--muted);margin-top:6px">${_cerEsc(e.cuenta||'')}${e.variant?' · '+_cerEsc(e.variant):''}</div>`:'')+rayasBarHTML(m);}).join('')}</div>`;
 }
 function _fichaBotones(mlas){
   const L=state.mllinks||{};const ok=(mlas||[]).filter(k=>/^MLA\d+$/.test(k));if(!ok.length)return '';
@@ -18600,7 +18645,7 @@ function renderRotacionStock(){
         <td class="rc-s" data-l="Ventas período" style="text-align:right;font-size:.72rem">${vp} u.</td>
         <td class="rc-s" data-l="Rotación" style="text-align:right;font-family:'DM Mono',monospace;font-size:.72rem">${st>0?rotN.toFixed(2):'—'}</td>
         <td class="rc-s" data-l="Días sin vender" style="text-align:right;font-size:.72rem">${rotDiasSinVenderHtml(dsv,st<=0)}</td>
-        <td class="rc-g" data-l="Margen hoy" style="text-align:right">${mgV}</td>
+        <td class="rc-g" data-l="Margen hoy" style="text-align:right">${mgV}${_pubV&&_pubV.mla?rayasBarHTML(_pubV.mla,{corto:true,ancho:'90px'}):''}</td>
         <td class="rc-s" data-l="En stock hace" style="text-align:right;font-size:.66rem">${rotEnStockHtml({pid:p.id,diasEnStock:diasEnStockVarDe(p,v),diasCaja:null,diasSinStock:diasSinStockDe(LOCS.map(l=>[getQV(p.id,l,v),invKeyV(p.id,l,v)]))})}</td>
         <td class="rc-g" data-l="Caja ML" style="text-align:right;font-size:.72rem">${cjHtml}</td>
         <td class="rc-g" data-l="Estado" style="font-size:.72rem">${estTxt}</td>
@@ -18615,7 +18660,7 @@ function renderRotacionStock(){
     <td class="rc-s" data-l="Ventas período" style="text-align:right">${r.ventasPeriodo} u.</td>
     <td class="rc-s" data-l="Rotación" style="text-align:right;font-family:'DM Mono',monospace">${r.stock>0?r.rotNorm.toFixed(2):'—'}</td>
     <td class="rc-s" data-l="Días sin vender" style="text-align:right">${rotDiasSinVenderHtml(r.diasSinVender,!(r.stock>0))}</td>
-    <td class="rc-g" data-l="Margen hoy" style="text-align:right">${rotMargenHtml(r)}</td>
+    <td class="rc-g" data-l="Margen hoy" style="text-align:right">${rotMargenHtml(r)}${(()=>{const _p=prodById(r.pid);if(_p&&Array.isArray(_p.variantes)&&_p.variantes.length>1)return '';const m=_rayasMlaDeProd(r.pid);return m?rayasBarHTML(m,{corto:true,ancho:'90px'}):'';})()}</td>
     <td class="rc-s" data-l="En stock hace" style="text-align:right">${rotEnStockHtml(r)}</td>
     <td class="rc-g" data-l="Caja ML" style="text-align:right">${rotCajaHtml(r)}</td>
     <td class="rc-g" data-l="Estado">${r.estadoHtml}${liquidarHtml(r.liq)}</td>
