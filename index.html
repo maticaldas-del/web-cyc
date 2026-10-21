@@ -2733,7 +2733,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.67';
+const APP_VERSION='25.68';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2746,6 +2746,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.68',f:'21/10',h:'00:32',c:[{n:1,t:'📋 Listas → Nuevos: lo que ya viaja en un pedido sale de la lista de los que dan (y de las demás carpetas) y queda abajo en "🚚 Ya están viajando en un pedido". Lo que ya es producto tuyo ya no aparecía.'}]},
   {v:'25.67',f:'21/10',h:'01:20',c:[{n:1,t:'🔎 Revisión: las 24 ideas nuevas de la etapa 6 quedan en el cartel para elegir.'}]},
   {v:'25.66',f:'21/10',h:'00:29',c:[{n:3,t:'🛒 Paraguay y Listas: vuelven las 100 ventas en ML, como último filtro. Lo que no tiene el dato entra igual (lo mira el chat de compras sólo de lo que pasó todo); si se cargan y dan menos de 100, sale de lo que se puede pedir y va a su carpeta "vendieron menos de 100".'}]},
   {v:'25.65',f:'21/10',h:'00:24',c:[{n:1,t:'📋 Listas → Nuevos: el resumen de arriba es un desplegable (cerrado dice cuántos productos, cuántos dan, por confirmar y sin evaluar). Lo que no da se ordena en carpetas: 📗 con catálogo en ML (por confirmar, casi 15-24%, sin foto, 1 solo vendedor, costo nuevo, menos de 15%, pierden plata, nadie lo vende, era otro producto) y 📕 sin catálogo exacto, más ⏳ sin medir y 🚫 afuera por regla.'}]},
@@ -19789,7 +19790,10 @@ async function renderListas(){
     return;
   }
   // ── NUEVOS ── sólo ML: arriba lo que da 25%+ (medido y con la foto de ML); abajo el resto y el buscador.
-  const nuevos=filas.filter(([cod])=>!yaFicha.has(String(cod)));
+  // LO QUE YA VIAJA SALE DE NUEVOS (21/10/2026, él: "lo que esta viajando o ya tenemos stock que salgan de ahi"). Lo que ya es ficha
+  // (lo tenemos) ya no estaba; lo que viaja en un pedido sin llegar va a su propia carpeta abajo, cerrada.
+  const viajN=filas.filter(([cod])=>!yaFicha.has(String(cod))&&viaj.has(String(cod)));
+  const nuevos=filas.filter(([cod])=>!yaFicha.has(String(cod))&&!viaj.has(String(cod)));
   const dan=nuevos.filter(([,e])=>_listaDa(e)).sort(ord);
   const revis=nuevos.filter(([,e])=>_listaRevisar(e)).sort(ord);
   const resto=nuevos.filter(([,e])=>!_listaMed25(e)&&!e.sacado&&!e.noWeb).sort(ord);
@@ -19803,7 +19807,7 @@ async function renderListas(){
   // evaluados: 🟢 da (confirmado) · 🔎 da 25%+ y falta confirmar · ⚫ no está en ML o nadie lo vende · 🔴 no da.
   const _grp={ficha:0,afuera:0,sinEv:0,da:0,rev:0,noML:0,noDa:0};
   for(const [cod,e] of filas){
-    if(yaFicha.has(String(cod))){_grp.ficha++;continue;}
+    if(yaFicha.has(String(cod))||viaj.has(String(cod))){_grp.ficha++;continue;}
     if(e.sacado||e.noWeb||e.fz){_grp.afuera++;continue;}
     const _viejoNom=(e.sc||e.sv||e.noEs)&&Number(e.qv||0)!==LISTA_NOMBRE_VER;
     if((e.m==null&&!e.sc&&!e.sv)||_viejoNom||(e.m!=null&&!_listaCostoVigente(e))){_grp.sinEv++;continue;}
@@ -19848,11 +19852,11 @@ async function renderListas(){
     ${medirVueltaHTML(k)}<div><b>${filas.length} productos</b> en la lista${v.ts?` <span style="color:var(--muted)">· lista del ${new Date(v.ts).toLocaleDateString('es-AR')}</span>`:''}${rec?` <span style="color:var(--muted)">· recargo del proveedor ${rec}%</span>`:''}</div>
     <div><b>✅ Evaluados ${_ev}</b>: <span style="color:var(--green)">🟢 ${_grp.da} dan</span> · <span style="color:var(--amber)">🔎 ${_grp.rev} dan 25%+ y falta confirmar</span> · <span style="color:var(--red)">🔴 ${_grp.noDa} no dan</span> · <span style="color:var(--muted)">⚫ ${_grp.noML} no están en ML o nadie los vende</span></div>
     <div><b>⏳ Sin evaluar ${_grp.sinEv}</b>${_grp.sinEv?' <span style="color:var(--muted)">· el robot los está midiendo</span>':''}</div>
-    ${_grp.ficha||_grp.afuera?`<div style="color:var(--muted)">${_grp.ficha?`✔️ ${_grp.ficha} ya los vendés`:''}${_grp.ficha&&_grp.afuera?' · ':''}${_grp.afuera?`🚫 ${_grp.afuera} afuera (sacados, no están en la web del proveedor o regla)`:''}</div>`:''}
+    ${_grp.ficha||_grp.afuera?`<div style="color:var(--muted)">${_grp.ficha?`✔️ ${_grp.ficha} ya los vendés o están viajando`:''}${_grp.ficha&&_grp.afuera?' · ':''}${_grp.afuera?`🚫 ${_grp.afuera} afuera (sacados, no están en la web del proveedor o regla)`:''}</div>`:''}
   </details>
     <div style="font-size:.85rem;font-weight:700;color:var(--green);margin:4px 0 8px">✅ Dan 25% o más en ML, con 2+ vendedores y el mismo producto confirmado · ${dan.length}${(()=>{const n=dan.filter(([,e])=>e.vend==null).length;return n?` <span style="font-size:.66rem;font-weight:400;color:var(--muted)">· 🛒 ${n} sin las vendidas de ML todavía (entran igual, se miran al final: menos de ${CAND_MIN_VENTAS} se van)</span>`:'';})()}</div>
     <div style="display:flex;flex-direction:column;gap:6px">${dan.length?dan.map(f=>fila(f,true)).join(''):'<div class="empty-msg">Todavía ninguno (o falta medirlos).</div>'}</div>
-    ${_conCat}${_sinCat}${_sinMed}${_regla}
+    ${_conCat}${_sinCat}${_sinMed}${_regla}${_carp('🚚 Ya están viajando en un pedido',viajN.length,'',`<div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${viajN.map(f=>fila(f,true)).join('')}</div>`)}
     ${sinWeb.length?`<details style="margin-top:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px"><summary style="cursor:pointer;font-size:.82rem;font-weight:700;color:var(--muted)">🚫 No está en la web de ${escHtml(nom)}: no lo tienen (${sinWeb.length})</summary><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${sinWeb.slice(0,150).map(f=>fila(f,false)).join('')}${sinWeb.length>150?`<div style="font-size:.64rem;color:var(--muted)">… y ${sinWeb.length-150} más (usá el buscador)</div>`:''}</div></details>`:''}
     ${sacados.length?`<details style="margin-top:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px"><summary style="cursor:pointer;font-size:.82rem;font-weight:700;color:var(--muted)">🗑️ Sacados por vos (${sacados.length})</summary><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${sacados.map(f=>fila(f,false)).join('')}</div></details>`:''}
     <div style="margin-top:14px"><input id="lista-q" type="search" value="${escHtml(q)}" placeholder="🔎 buscar en toda la lista" oninput="clearTimeout(window._listaT);window._listaT=setTimeout(()=>{_listaQ=this.value.trim();renderListas();setTimeout(()=>{const i=document.getElementById('lista-q');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length);}},0);},400)" style="width:100%;padding:8px 10px;font-size:.85rem;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--text)">

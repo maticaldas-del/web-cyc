@@ -2337,3 +2337,8 @@ En `decido` (sync.mjs, después de `frenosBajas`): 🔒 suba #techo < +30% se fr
 `!chico` + EXCEPCIÓN) · 🔒 baja #bajando de una publicación con `cyc/techofreno` o con tag techo/techook en su historia se frena si baja
 la lista: va con `entrarpromo …@PRICE_DISCOUNT#bajando` (salvo `!lista` + EXCEPCIÓN). CEREBRO.md sección 6. Qué chequear: que la
 escalera post-techo salga como descuento y que el descuento siguiente reemplace al anterior.
+
+**v25.68 (21/10/2026) · etapa 3 · Listas → Nuevos sin lo que ya viaja.** Él: *"lo que esta viajando o ya tenemos stock que salgan de
+ahi"*. `renderListas`: `nuevos` excluye lo de `_listaViajando(k)` (pedido en camino sin llegar); va a la carpeta "🚚 Ya están viajando
+en un pedido". Lo que ya es ficha ya no estaba. El resumen lo cuenta junto con "ya los vendés". Qué chequear: que al marcar "Llegó" el
+producto pase a ✅ Probados y no vuelva a Nuevos.
