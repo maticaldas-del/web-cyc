@@ -7527,8 +7527,12 @@ async function bajarParaMover(db, accounts, labels, products, opts = {}) {
         // acá la pregunta es "hay mercadería esperando comprador", y eso lo sabe ML.
         const stock = Number(b.available_quantity) || 0; if (stock <= 0) continue;
         const ult = ultMla[mla] || ultProd[p.id] || 0;
-        const diasSin = ult ? Math.floor((Date.now() - ult) / 864e5) : 9999;
-        if (diasSin < DIAS) continue;               // vendió hace poco: no está frenada
+        // Auditoría 21/10: una publicación NUEVA (la gemela Premium, una que se dio de alta ayer) no puede llevar
+        // "27 días sin vender" heredados de las ventas del producto: se cuenta desde su alta, la más cercana de las dos.
+        const altaP = Number(links[mla].altaTs) || 0;
+        const desdeP = Math.max(ult, ultMla[mla] ? 0 : altaP);
+        const diasSin = desdeP ? Math.floor((Date.now() - desdeP) / 864e5) : 9999;
+        if (diasSin < DIAS) continue;               // vendió hace poco (o es nueva): no está frenada
         const vars = Array.isArray(b.variations) ? b.variations : [];
         const precio = vars.length ? (vars[0].price || 0) : (b.price || 0);
         if (!precio) continue;
@@ -16677,7 +16681,7 @@ async function main() {
       D.push(`\n── Para bajar y que roten · ${baj.filas.length} ──`);
       for (const f of baj.filas) {
         D.push(`   ${f.cta || f.label} · ${f.nom} · ${f.stock} u. (${money(f.plata)}) · ${f.diasSin == null ? 'NUNCA vendió' : f.diasSin + ' días sin vender'}`);
-        D.push(`      ${money(Math.round(f.precio))} → ${money(f.pw)} (−${f.baja.toFixed(1)}%) · margen ${f.mgHoy.toFixed(0)}% → ${f.mgPw.toFixed(0)}% · volver:${f.mla}=${f.pw}:go`);
+        D.push(`      ${money(Math.round(f.precio))} → ${money(f.pw)} (−${f.baja.toFixed(1)}%) · margen ${f.mgHoy.toFixed(0)}% → ${f.mgPw.toFixed(0)}% · entrarpromo:${f.mla}=${f.pw}@PRICE_DISCOUNT|motivo;go`);
       }
       if (!baj.filas.length) D.push('   ninguna');
       if (baj.noConviene.length) {
@@ -30670,7 +30674,7 @@ async function main() {
         console.log(`     ${f.stock} u. sin vender · ${money(f.plata)} parados · ${f.diasSin == null ? 'NUNCA vendió' : `hace ${f.diasSin} días que no vende`}`);
         console.log(`     ${money(Math.round(f.precio))} → ${money(f.pw)}  (−${f.baja.toFixed(1)}%)  ·  margen ${f.mgHoy.toFixed(0)}% → ${f.mgPw.toFixed(0)}%`);
         if (f.acechan) console.log(`     ⚠️ ${f.acechan} vendedor(es) de esta ficha están MÁS BARATOS que nuestro piso (${money(f.pisoPesos)}). Hoy no compiten, pero si reactivan stock la caja se pierde y ya no hay margen para responder.`);
-        console.log(`     comando: volver:${f.mla}=${f.pw}:go`);
+        console.log(`     comando: entrarpromo:${f.mla}=${f.pw}@PRICE_DISCOUNT|motivo;go   (toda baja va primero como descuento)`);
       }
       if (R.noConviene.length) {
         console.log(`\n── NO CONVIENE BAJARLAS · ${R.noConviene.length} ──`);

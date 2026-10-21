@@ -213,6 +213,12 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   promo no pase por abajo del piso sin `!piso` ni de 0% · que el cerebro de la noche no lea el precio de promo como
   "cambio a mano" y frene subas.
 
+### Chequeo · "para bajar y que roten": las publicaciones nuevas cuentan desde su alta (auditoría 21/10/2026)
+`bajarParaMover` tomaba la última venta del PRODUCTO cuando la publicación no tenía ventas propias, así que la gemela Premium
+de Velvet Petals (creada el 20/10) salía con "27 días sin vender" y propuesta para bajar. Ahora sin ventas propias cuenta desde
+`mllinks.altaTs` si es más nuevo. Y el comando sugerido pasó de `volver:` (que ya no baja) a `entrarpromo:…@PRICE_DISCOUNT`
+(toda baja va primero como descuento). Qué chequear: una publicación de menos de 10 días nunca aparece en esa lista.
+
 ### `decido` sube aunque no haya stock en Full (09/10/2026)
 Cool Water Woman (`MLA2070716651`): se agotó en un día las dos veces a $92.499 (19%) y `decido` se negaba a subirla
 "sin stock en Full", así que la tanda nueva se iba a vender otra vez barata. Ahora en `calcCerebro`, si Claude
