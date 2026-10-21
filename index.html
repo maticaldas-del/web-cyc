@@ -2685,7 +2685,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.52';
+const APP_VERSION='25.53';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2698,6 +2698,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.53',f:'21/10',h:'00:50',c:[{n:1,t:'🔁 Lo que no está en ML se vuelve a buscar de a poco: sin catálogo cada 60 días y sin vendedores cada 30 (puede aparecer un catálogo nuevo). Antes no se buscaba nunca más.'}]},
   {v:'25.52',f:'20/10',h:'19:53',c:[{n:2,t:'🔁 Nissei y cada 📋 lista dicen arriba su última vuelta completa (cuándo terminó y cuántos midió) y si se está midiendo ahora. El robot va lista por lista: termina una entera y pasa a la siguiente. Lo que no está en ML ya no se vuelve a buscar.'}]},
   {v:'25.51',f:'20/10',h:'19:33',c:[{n:2,t:'🛒 Productos nuevos (Paraguay y 📋 Listas): ya no hacen falta las 100 vendidas en ML. Alcanza con que el catálogo de ML tenga 2 o más vendedores (lo mide el robot solo) y que esté confirmado que es el mismo producto. Con 1 solo vendedor no se puede pedir. Cada tarjeta dice 🏪 cuántos vendedores tiene.'}]},
   {v:'25.50',f:'20/10',h:'18:56',c:[{n:2,t:'📈 La línea de tiempo vuelve a abrir en la PC: desde la 25.44 (el giro de costado del teléfono) la ventana se abría fuera de la pantalla, muy abajo.'}]},
@@ -18985,7 +18986,7 @@ function medirVueltaHTML(k){
   const dt=x=>new Date(Number(x)).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
   const a=v&&v.fin?`🔁 Última vuelta completa: <b style="color:var(--text)">${dt(v.fin)}</b> (${Number(v.med||0).toLocaleString('es-AR')} medidos)`:'🔁 Todavía no terminó una vuelta completa';
   const b=t&&t.k===k?` · <span style="color:var(--amber)">midiendo ahora (${Number(t.med||0).toLocaleString('es-AR')} en esta vuelta)</span>`:(v&&v.alDia&&(!v.fin||Number(v.alDia)>Number(v.fin))?` · al día el ${dt(v.alDia)}`:'');
-  return `<div style="font-size:.66rem;color:var(--muted);margin:4px 0" title="El robot mide una lista por vez, entera, y después pasa a la siguiente. Cada producto se vuelve a medir según qué tan cerca está: 15%+ cada 7 días, menos de 15% cada 30, y lo que no está en ML no se vuelve a buscar.">${a}${b}</div>`;
+  return `<div style="font-size:.66rem;color:var(--muted);margin:4px 0" title="El robot mide una lista por vez, entera, y después pasa a la siguiente. Cada producto se vuelve a medir según qué tan cerca está: 15%+ cada 7 días, menos de 15% cada 30, lo que nadie vende en ML cada 30 y lo que no tiene catálogo en ML cada 60 (ML crea catálogos nuevos).">${a}${b}</div>`;
 }
 function _listaRec(k){const v=((state.mlconfig&&state.mlconfig.listasProv)||{})[k]||{};return Number(v.rec)||0;}
 function _listaPuesto(k,e){return Math.round((Number(e&&e.p)||0)*(1+_listaRec(k)/100));}

@@ -9107,15 +9107,17 @@ function c_link(c) {
 const PYCAT_REMEDIR_DIAS = 7;
 // SE VUELVE A MEDIR SEGÚN QUÉ TAN CERCA ESTÁ (20/10/2026, eligió la 1a). Todo cada 7 días gastaba cupo de ML (el mismo de ventas y
 // cajas) en productos que dan 5% o no están en ML: que lleguen a 25% en una semana es muy raro. Ahora: lo que dio 15% o más, cada 7
-// días · lo que dio menos de 15%, cada 30 · lo que no está en ML (sin catálogo exacto o nadie lo vende): ya no (ver abajo). Un costo nuevo o el
+// días · lo que dio menos de 15%, cada 30 · lo que no está en ML: sin catálogo cada 60, nadie lo vende cada 30 (ver abajo). Un costo nuevo o el
 // nombre traducido lo vuelven a medir igual. Vale para Paraguay y para las listas (`pycatRemedirDias`).
-const PYCAT_REMEDIR_LEJOS = 30, PYCAT_CERCA_PCT = 15;
+const PYCAT_REMEDIR_LEJOS = 30, PYCAT_CERCA_PCT = 15, PYCAT_SINCAT_DIAS = 60;
 function pycatRemedirDias(e) {
   if (e && e.m != null && isFinite(Number(e.m))) return Number(e.m) >= PYCAT_CERCA_PCT ? PYCAT_REMEDIR_DIAS : PYCAT_REMEDIR_LEJOS;
-  // LO QUE NO ESTÁ EN ML NO SE VUELVE A BUSCAR (20/10/2026, él: "los que no encontraron productos en ml, no los van a encontrar.
-  // esos sacalos de la revisión"). Sin catálogo exacto o nadie lo vende = afuera de la vuelta. Sólo vuelven si cambia el nombre o
-  // el costo (lista nueva) o con la búsqueda única con el nombre traducido (`qv`, Dai Nippon).
-  if (e && (e.sc || e.sv)) return Infinity;
+  // LO QUE NO ESTÁ EN ML SE VUELVE A BUSCAR, PERO DE A POCO (21/10/2026, corrige la del 20/10 "no se vuelve a buscar nunca").
+  // Él: "puede que se creen catálogo para los productos. entonces si los descartamos para siempre, puede que después lo dejemos
+  // afuera". Sin catálogo exacto → cada 60 días (ML crea catálogos nuevos seguido, pero no cada semana) · el catálogo existe y nadie
+  // lo vende → cada 30 (aparecen vendedores más rápido). Un costo nuevo, el nombre cambiado o la búsqueda traducida (`qv`) igual que antes.
+  if (e && e.sc) return PYCAT_SINCAT_DIAS;
+  if (e && e.sv) return PYCAT_REMEDIR_LEJOS;
   return PYCAT_REMEDIR_DIAS;
 }
 const PYCAT_POR_VUELTA = 700;   // 16/10/2026: era 300 (13 min); con 10.595 por medir y GitHub salteando corridas tardaba semanas
@@ -9301,7 +9303,7 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
   const toca = cola.slice(0, maxN);
   console.log(`(de los ${cola.length} para medir, ${cola.filter(([, e]) => !rubro(e.n)).length} son de los rubros que ya vendemos y van primero)`);
   console.log(`=== ${esLista ? 'LISTA DE ' + String(opts.nombre || opts.lista).toUpperCase() : 'CATÁLOGO DE PARAGUAY'} · medir contra ML ${aplicar ? '' : '(PRUEBA: no escribo nada)'} ===`);
-  console.log(`${todos.length} guardados · ${cuenta.fuera} fuera por regla · ${cuenta.cand} ya son candidatos · ${cuenta.ficha} ya son fichas · ${cuenta.frescos} medidos hace poco (15%+ cada ${PYCAT_REMEDIR_DIAS} días · abajo de ${PYCAT_CERCA_PCT}% cada ${PYCAT_REMEDIR_LEJOS} · fuera de ML no se vuelve a buscar) · ${cuenta.noDeja} que ML no deja medir (se reintentan a los ${PYCAT_REMEDIR_DIAS} días) · ${cola.length} para medir · esta vuelta ${toca.length}`);
+  console.log(`${todos.length} guardados · ${cuenta.fuera} fuera por regla · ${cuenta.cand} ya son candidatos · ${cuenta.ficha} ya son fichas · ${cuenta.frescos} medidos hace poco (15%+ cada ${PYCAT_REMEDIR_DIAS} días · abajo de ${PYCAT_CERCA_PCT}% cada ${PYCAT_REMEDIR_LEJOS} · sin catálogo cada ${PYCAT_SINCAT_DIAS} · nadie lo vende cada ${PYCAT_REMEDIR_LEJOS}) · ${cuenta.noDeja} que ML no deja medir (se reintentan a los ${PYCAT_REMEDIR_DIAS} días) · ${cola.length} para medir · esta vuelta ${toca.length}`);
   if (!toca.length) return { quedan: 0, medidos: 0 };
   let tok = null;
   for (const label of labels) {

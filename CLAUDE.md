@@ -9404,4 +9404,4 @@ Y Paraguay/Listas se vuelven a medir según qué tan cerca están (15%+ cada 7 d
 ## 🔁 LISTA POR LISTA Y LA ÚLTIMA VUELTA COMPLETA (20/10/2026, pedido suyo, v25.52)
 Él: *"quiero que vaya lista por lista. o sea que haga todo nissei y avise cuál fue la última vuelta completa. así con todas"*.
 El robot mide una fuente por vez (Nissei, después cada lista) hasta terminarla, anota la vuelta completa (`cyc/mlconfig/vueltas`) y pasa
-a la siguiente. La web lo muestra arriba de cada una. Lo que no está en ML no se vuelve a buscar (él: *"no los van a encontrar"*).
+a la siguiente. La web lo muestra arriba de cada una. ~~Lo que no está en ML no se vuelve a buscar~~ **CORREGIDO EL 21/10 (él: *"puede que se creen catálogo para los productos (…) si los descartamos para siempre, puede que después lo dejemos afuera"*): sin catálogo se vuelve a buscar cada 60 días y sin vendedores cada 30 (v25.53).** Y lo de 1 solo vendedor nunca se descarta: se vuelve a medir (Paraguay ~cada 20 h, listas 7/30 días) y entra solo cuando hay 2+.
