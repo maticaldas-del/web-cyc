@@ -2734,7 +2734,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.70';
+const APP_VERSION='25.71';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2747,6 +2747,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.71',f:'21/10',h:'00:46',c:[{n:1,t:'📋 Dai Nippon más limpio: sin el título "Listas que compra Tito en Bs As", sin la línea de cuántos probados hay y sin el título verde de los que dan.'}]},
   {v:'25.70',f:'21/10',h:'00:42',c:[{n:1,t:'📋 Listas → Nuevos: arriba sólo los que dan. Todo lo demás (la cuenta de la lista, evaluados y sin evaluar, con catálogo, sin catálogo, sin medir, viajando, no están en su web, sacados) va junto abajo en una sola carpeta cerrada "📂 Toda la lista". En Dai Nippon el aviso de las vendidas sin mirar pasó al detalle de cada producto.'}]},
   {v:'25.69',f:'21/10',h:'00:41',c:[{n:1,t:'📋 Dai Nippon: sin buscador ni botón de proveedor y siempre abre en ✅ Probados. Listas: se toca cualquier parte de la tarjeta para ver el detalle (ya no hay "detalle ▾"), el código no se muestra y el ⚠️ sale sólo si hay una duda de verdad (otro producto, o sin confirmar con 1 solo vendedor o un nombre que no coincide).'}]},
   {v:'25.68',f:'21/10',h:'00:32',c:[{n:1,t:'📋 Listas → Nuevos: lo que ya viaja en un pedido sale de la lista de los que dan (y de las demás carpetas) y queda abajo en "🚚 Ya están viajando en un pedido". Lo que ya es producto tuyo ya no aparecía.'}]},
@@ -19727,7 +19728,7 @@ async function renderListas(){
   // son tarjetas de Pedidos como las de "De siempre" y los nuevos se miran para que Tito los traiga.
   if(_enB&&_listaVista==='hechos')_listaVista='nuevos';
   const _tab=(t,txt,tit)=>`<button class="btn" style="font-size:.64rem;padding:5px 13px;${_listaVista===t?'background:var(--blue);color:#fff;font-weight:700':''}" title="${tit}" onclick="listaSetVista('${t}')">${txt}</button>`;
-  const cab=(_enB?`<div style="font-size:.8rem;font-weight:700;margin:18px 0 8px;padding-top:12px;border-top:2px solid var(--border2)">📋 Listas que compra Tito en Bs As <span style="font-size:.66rem;font-weight:400;color:var(--muted)">· lo que ya compraste está arriba, en los pedidos</span></div>`:'')+(_enB?'':`<div style="margin-bottom:10px"><input id="lista-buscar" type="search" value="${escHtml(window._listaQ||'')}" placeholder="🔎 Buscar un producto en TODAS las listas…" oninput="listaBuscar(this.value)" style="width:100%;padding:9px 12px;font-size:.85rem;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--text)"><div id="lista-busq"></div></div>`)+`
+  const cab=(_enB?'<div style="height:10px"></div>':'')+(_enB?'':`<div style="margin-bottom:10px"><input id="lista-buscar" type="search" value="${escHtml(window._listaQ||'')}" placeholder="🔎 Buscar un producto en TODAS las listas…" oninput="listaBuscar(this.value)" style="width:100%;padding:9px 12px;font-size:.85rem;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--text)"><div id="lista-busq"></div></div>`)+`
     ${(_enB&&visibles.length===1)?'':`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px"><span style="font-size:.68rem;color:var(--muted)">Proveedor:</span>${visibles.map(_provBtn).join('')}${_enB?'':`<button class="btn" style="font-size:.64rem;padding:4px 10px;opacity:.8" title="La esconde de acá hasta que la vuelvas a poner (desde ⏸️ sacadas por ahora). No borra nada." onclick="listaPausar('${k}',true)">⏸️ sacar ${escHtml(nom)} por ahora</button>`}</div>`}${_volverHtml}
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${_tab('probados','✅ Productos probados','Lo que ya le compraste a este proveedor: cuánto reponer.')}${_tab('nuevos','🆕 Productos nuevos','Lo de su lista que todavía no vendés y da 25% o más en ML.')}${_enB?'':_tab('hechos','🧾 Pedido'+(nArm?' ('+nArm+' cargados)':''),'El pedido del momento, el mensaje con código y unidades, y los pedidos ya hechos.')}</div>`;
   _listaCacheRevisar();   // etapa 4 (20/10/2026): la que cambió el robot se vuelve a bajar
@@ -19744,7 +19745,7 @@ async function renderListas(){
   if(_listaVista==='probados'){
     const ids=new Set((state.products||[]).filter(p=>p.listaProv===k).map(p=>p.id));
     const peds=(state.pedidos||[]).filter(p=>ids.has(p.prodId)).sort(_pedSortFnRiesgo);
-    el.innerHTML=cab+(ids.size?`<div style="font-size:.66rem;color:var(--muted);margin-bottom:8px">${ids.size} producto${ids.size===1?'':'s'} de ${escHtml(nom)} · ${peds.length} con pedido de reposición · ${_enB?'Tito los compra en persona, igual que el resto de Bs As':`cargalos con "📋 pedir a ${escHtml(nom)}" debajo de cada tarjeta: van al 🧾 Pedido`}</div>`+(peds.length?peds.map(p=>_pedidoItemHtml(p,{showRiesgo:true})).join(''):'<div class="empty-msg">Ninguno necesita reposición hoy.</div>')
+    el.innerHTML=cab+(ids.size?`${_enB?'':`<div style="font-size:.66rem;color:var(--muted);margin-bottom:8px">${ids.size} producto${ids.size===1?'':'s'} de ${escHtml(nom)} · ${peds.length} con pedido de reposición · ${_enB?'Tito los compra en persona, igual que el resto de Bs As':`cargalos con "📋 pedir a ${escHtml(nom)}" debajo de cada tarjeta: van al 🧾 Pedido`}</div>`}`+(peds.length?peds.map(p=>_pedidoItemHtml(p,{showRiesgo:true})).join(''):'<div class="empty-msg">Ninguno necesita reposición hoy.</div>')
       :`<div class="empty-msg">Todavía no le compraste nada a ${escHtml(nom)}: lo que llegue de un pedido suyo aparece acá como probado.</div>`);
     return;
   }
@@ -19862,7 +19863,7 @@ async function renderListas(){
   // TODA LA LISTA ABAJO, EN UNA CARPETA (21/10/2026, él: "unifica toda la info de los productos vistos y los que no etc. todos abajo.
   // junto con catálogo y sin catálogo"): arriba sólo los que dan; abajo, cerrada, la cuenta de la lista y todas las carpetas.
   el.innerHTML=cab+`
-    <div style="font-size:.85rem;font-weight:700;color:var(--green);margin:4px 0 8px">✅ Dan 25% o más en ML, con 2+ vendedores y el mismo producto confirmado · ${dan.length}${(()=>{const n=_enB?0:dan.filter(([,e])=>e.vend==null).length;return n?` <span style="font-size:.66rem;font-weight:400;color:var(--muted)">· 🛒 ${n} sin las vendidas de ML todavía (entran igual, se miran al final: menos de ${CAND_MIN_VENTAS} se van)</span>`:'';})()}</div>
+    ${_enB?'':`<div style="font-size:.85rem;font-weight:700;color:var(--green);margin:4px 0 8px">✅ Dan 25% o más en ML, con 2+ vendedores y el mismo producto confirmado · ${dan.length}${(()=>{const n=_enB?0:dan.filter(([,e])=>e.vend==null).length;return n?` <span style="font-size:.66rem;font-weight:400;color:var(--muted)">· 🛒 ${n} sin las vendidas de ML todavía (entran igual, se miran al final: menos de ${CAND_MIN_VENTAS} se van)</span>`:'';})()}</div>`}
     <div style="display:flex;flex-direction:column;gap:6px">${dan.length?dan.map(f=>fila(f,true)).join(''):'<div class="empty-msg">Todavía ninguno (o falta medirlos).</div>'}</div>
     <details style="margin-top:16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px"><summary style="cursor:pointer;font-size:.82rem;font-weight:700">📂 Toda la lista · ${filas.length} productos <span style="font-weight:400;font-size:.68rem;color:var(--muted)">${_grp.rev?`· <span style="color:var(--amber)">🔎 ${_grp.rev} por confirmar</span> `:''}${_grp.sinEv?`· ⏳ ${_grp.sinEv} sin evaluar`:''}</span></summary>
     <div style="font-size:.72rem;line-height:1.7;margin-top:8px">

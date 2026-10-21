@@ -2355,3 +2355,7 @@ eso o metelo en el detalle"* (el aviso de vendidas sin mirar: en Bs As ya no sal
 *"unifica toda la info de los productos vistos y los que no etc. todos abajo. junto con catálogo y sin catálogo"*. El resumen (vuelta,
 evaluados, sin evaluar, afuera) y las carpetas (con/sin catálogo, sin medir, regla, viajando, no está en su web, sacados) van adentro de
 un solo `<details>` cerrado debajo de ✅ Dan. Qué chequear: que las etiquetas se cierren bien (prueba con datos de ejemplo: 9/9 details).
+
+**v25.71 (21/10/2026) · etapa 7 · Dai Nippon sin títulos.** Él: *"todo eso sacalos"*: en Bs As (`_enB`) no salen el título "📋 Listas que
+compra Tito en Bs As", la línea "N productos de Dai Nippon · N con pedido…" de ✅ Probados ni el título verde "✅ Dan 25% o más…" de Nuevos.
+En 📋 Listas (Paraguay/otros) siguen igual.
