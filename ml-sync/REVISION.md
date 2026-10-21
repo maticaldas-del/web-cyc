@@ -778,6 +778,27 @@ el precio de un candidato distinto con código parecido (se compara también por
 - **20/10/2026 · v25.48 · El "otro producto" de una lista vale sólo para el catálogo que se miró** (etapa 3). `listaestado` mostró 490 de los 674 de Nippon con 25%+ marcados `noEs` (el chat de compras los miró el 18/10, cuando el robot buscaba con el nombre abreviado y traía cualquier cosa). La marca era del producto y no del catálogo: aunque el robot encontrara el correcto, quedaban afuera para siempre. Ahora `listaNoEsVale` (sync.mjs) / `_listaNoEsVale` (index.html) exigen que `noEsCat` sea el `mi` de hoy; `listadato …=no` guarda `noEsCat`, `ok` lo borra; las marcas viejas lo reciben (el `mi` de antes) la primera vez que se vuelven a medir. Los `noEs` sin `qv` se vuelven a buscar con el nombre traducido aunque estén frescos, y la búsqueda saltea el catálogo rechazado. Chequear: que un `noEs` con catálogo nuevo salga en `listarevisar` y no cuente como dado hasta el ✅.
 - **20/10/2026 · v25.49 · Arriba de cada lista: evaluados y sin evaluar** (etapa 3, reemplaza la línea de v25.46). Él: *"poné los productos evaluados y los no evaluados, con sus números de cuántos dan bien, cuántos no"*. Cada producto cae en UN grupo (`_grp` en `renderListas`): ya es ficha · afuera (sacado, `noWeb`, `fz`) · ⏳ sin evaluar (nunca buscado, `sc`/`sv`/`noEs` con `qv` viejo, o costo no vigente) · ✅ evaluados: 🟢 `_listaDa` · 🔎 `_listaRevisar` · ⚫ no está en ML (`m` null) · 🔴 no da. Chequear: que los grupos sumen el total.
 
+### Etapa 3 · 21/10/2026 · v25.94 · 🛒 Para comprar en el local (Dai Nippon y toda lista de Bs As)
+Él: *"Dai Nippon no trae fotos ni código de barras (…) mi viejo compra personalmente en el local, siempre desde el celular. Que le
+aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las unidades (…) al clickear en la tarjeta, sino es un lio"*.
+ · **Dónde vive:** `index.html`, arriba de la solapa de una lista con `bsas` en Pedidos → Bs As (`listaLocalHTML`, `listaLocalFilas`,
+   `_llTarjeta`, `#ll-box`). Junta los nuevos de `cyc/listas_pedido/<prov>` y los probados de `cyc/listas_pedido_prob/<prov>`,
+   ordenados por la primera palabra del nombre (marca). Tarjeta chica (foto + nombre + "Comprar N u."); al tocarla: foto grande de
+   ML, título de ML, "⚠️ Fijate" (tamaño, pack y palabras del título de ML que la lista no dice, `_llFijate`), precio de la lista,
+   "Pagá como máximo", unidades y tres botones.
+ · **El máximo:** nuevos = la cuenta del robot (`cuentaCandidato`) dada vuelta con el margen `m` medido al costo `uMed` (`_llMaxNuevo`):
+   C* = C0·(1+m)/1,25 + (A+E)·(m−0,25)/1,25, con el IIBB de la cuenta que da el MENOR (no se sabe la cuenta) y sin el recargo del
+   proveedor (precio de la lista). Probados = `maxCompraDe(pr,25,color).usd` × dólar ÷ (1+recargo); si no hay (precio de venta sin
+   decidir, `SOLO_CLAUDE`), la misma cuenta que un nuevo con su renglón de la lista. Sin dato: "sin máximo: no comprar".
+ · **Lo que marca Tito:** `cyc/listas_local/<prov>/<cód o prodId[__color]>` = {estado compro|noestaba|otro, u, p, ts, tipo, prev?}.
+   "Era otro producto" en un nuevo escribe `mlapi/listas/<prov>/<cód>` noEs=1, ok=null, noEsCat=mi (como `listadato …=no`) y lo saca
+   del pedido; "deshacer" lo devuelve todo (`prev`). Lo marcado que salió del pedido se sigue viendo 7 días.
+ · **Regla cambiada:** en las listas `bsas` un nuevo se puede cargar con 25%+ y 2+ vendedores sin el ✓ de mismo producto
+   (`_listaDa(e,k)`); la tarjeta del local dice "sin confirmar: mirá bien la foto". noEs/noWeb/noFull siguen frenando.
+ · **Qué chequear:** que el máximo de un nuevo dé ≥25% con el robot (probado: 25,4% y 26,3% con los dos IIBB extremos); que el robot
+   no lea `cyc/listas_local` todavía (nadie lo usa para costos: el precio pagado real queda anotado, no mueve la ficha); que el
+   "otro producto" del local y el `listadato` del chat no se pisen.
+
 ## 4 · CHOQUES Y FALLAS MUDAS (jueves · junta las viejas 4 y 5)
 
 - **LAS 2 DECISIONES DE LA ETAPA 4 DEL 20/10/2026, CERRADAS (v25.45).**
