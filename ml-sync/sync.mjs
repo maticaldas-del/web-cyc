@@ -142,12 +142,12 @@ function umbralRedondoCruzado(p0, p1) {
 // 19/10/2026, eligió 1a 2a 3a: los PASAJES tienen nombre. 5 tags nuevos (🪜 bajando · ↘️ volviendo al normal · ↗️ volviendo de
 // sobra · 🏔️ techo encontrado · 🧨 remate total); "↩️ corrección" se elimina: lo que "vuelve" se nombra según de dónde venía
 // (`pasajeDe`) y la web muestra "venía de X" en el chip. Escasez lleva escalón como el techo.
-const ESTRATEGIAS = { sindecidir: '⚪ sin estrategia', agotado: '⏸️ sin stock', escasez: '🔥 escasez', sinrepo: '⏳ sin reposición', techo: '📈 buscando techo', techook: '🏔️ techo encontrado', bajando: '🪜 bajando', volviendo: '↘️ volviendo al normal', desobra: '↗️ volviendo de sobra', liquidando: '📉 liquidando', remate: '🧨 remate total', caja: '🥊 ganar la caja', promo: '🏷️ promo', descuento: '💸 descuento', fecha: '🎁 fecha especial', excepcion: '🛡️ excepción', sobra: '📦 sobra stock', nuevo: '🆕 lanzamiento', prueba: '🧪 prueba tachado', gemela: '💳 gemela con cuotas' };
+const ESTRATEGIAS = { sindecidir: '⚪ sin estrategia', agotado: '⏸️ sin stock', escasez: '🔥 escasez', sinrepo: '⏳ sin reposición', techo: '📈 buscando techo', techook: '🏔️ techo encontrado', bajando: '🪜 bajando', punto: '💰 buscando el de más ganancia', volviendo: '↘️ volviendo al normal', desobra: '↗️ volviendo de sobra', liquidando: '📉 liquidando', remate: '🧨 remate total', caja: '🥊 ganar la caja', promo: '🏷️ promo', descuento: '💸 descuento', fecha: '🎁 fecha especial', excepcion: '🛡️ excepción', sobra: '📦 sobra stock', nuevo: '🆕 lanzamiento', prueba: '🧪 prueba tachado', gemela: '💳 gemela con cuotas' };
 // Lo que "vuelve" (motivo "vuelvo", o una anotación vieja ↩️ corrección) toma nombre según el tag ANTERIOR. MISMA tabla en index.html.
 // 1.1a (21/10/2026): volver de una prueba de techo (📈) —o corregir después de una 🏔️— es 🪜 bajando, no 🏔️: el techo lo marca
 // SÓLO `techo95` al 95% (antes esto devolvía 🏔️ y un "vuelvo al de antes" quedaba como techo encontrado sin medir).
 function pasajeDe(prev) {
-  if (prev === 'techo' || prev === 'techook') return 'bajando';
+  if (prev === 'techo' || prev === 'techook' || prev === 'punto') return 'bajando';
   if (['escasez', 'sinrepo', 'fecha', 'bajando'].includes(prev)) return 'volviendo';
   if (['sobra', 'liquidando', 'remate'].includes(prev)) return 'desobra';
   return 'volviendo';
@@ -173,6 +173,7 @@ function tagDeMotivo(m) {
   // 🏔️ lo anota SÓLO `techo95` al 95% (etapa 1, 21/10/2026): un motivo que dice "techo encontrado" no alcanza. Sin estrategia
   // deducible (null): `decido` pide el #tag que corresponda.
   if (/techo encontrado|encontr[eé] el techo|ya es el techo|[uú]ltimo (precio )?que rindi/.test(t)) return null;
+  if (/buscando el de m[aá]s ganancia|l[ií]nea de (m[aá]s|mayor) ganancia/.test(t)) return 'punto';
   if (/escalera|bajo de a poco|bajando de a poco|baja un escal[oó]n|bajo un escal[oó]n/.test(t)) return 'bajando';
   if (/ya no sobra|qued[oó] lo justo|vuelve a subir de la sobra|vuelvo de la sobra/.test(t)) return 'desobra';
   if (/termin[oó] la escasez|fin de la escasez|sali[oó] de la escasez|ya no hay escasez|lleg[oó] la caja|vuelvo al normal|volviendo al normal|vuelve al normal|pas[oó] la fecha/.test(t)) return 'volviendo';
@@ -4277,6 +4278,24 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
           if (gu0 > 0 && pd1 >= pd0) { frenar(d, `la suba del ${kS.slice(8, 10)}/${kS.slice(5, 7)} (${$(ultSuba.de)} → ${$(ultSuba.a)}) deja igual o más plata por día (${$(Math.round(pd1))}/día contra ${$(Math.round(pd0))}/día antes): pasados los 15 días, si la suba no deja menos, se queda. Excepción: !sincerteza y "EXCEPCIÓN: …"`); out.push(d); continue; } }
       } else if (!(seg != null && seg >= 0.95) && !visMitad) { frenar(d, `deshace la suba del ${kS.slice(8, 10)}/${kS.slice(5, 7)} (${$(ultSuba.de)} → ${$(ultSuba.a)}) sin certeza: ${txt || 'antes vendía muy poco para medir la diferencia'}. Una suba no se deshace por casualidad: hace falta 95% o las visitas a la mitad; si no, se espera hasta 15 días y ahí decide la plata por día. Excepción: !sincerteza y "EXCEPCIÓN: …"`); out.push(d); continue; }
     }
+    // ── F8 · ARRIBA DEL 💰 NO SE BAJA SIN 95% (21/10/2026, él con el Pendrive 8gb: techo $26.990, bajó a $23.990 y el 💰 es $21.990:
+    // "antes de bajar tenés que estar 95% seguro o más que ese precio genera menos ganancia que la línea de ganancia. Si estás
+    // seguro, volver a bajar en escalera; si ves que genera más dinero, subir la línea de más ganancia a ese precio"). Se miden los
+    // días seguidos con stock al precio de hoy (desde que se puso): para dejar la misma plata por día que el 💰 tenía que vender ~λ
+    // (Poisson); con 95% de que vendió menos, se baja otro escalón (F2/F3). Si deja más, la raya 💰 sube sola (best = más plata por día
+    // con 5+ días). Mismas excepciones que F5 (sobra, sin reposición, liquidando, remate, salida de escasez). `!sincerteza` + "EXCEPCIÓN: …".
+    const abajoOk8 = ['sobra', 'sinrepo', 'liquidando', 'remate'];
+    if (!abajoOk8.includes(tagNuevo) && !abajoOk8.includes(ult) && !enEscasez && !exc(fz, 'sincerteza')) {
+      const R8 = lin && cu > 0 ? rayasPrecioLinea(lin, cu, imp, hoyK) : null;
+      if (R8 && R8.best && R8.best.gu > 0 && p0 > R8.best.p * 1.02) {
+        let d1 = 0, u1 = 0;
+        for (let i = ks.length - 1; i >= 0; i--) { const x = lin[ks[i]]; const px = Number(x.p) || 0; if (!(px > 0) || Math.abs(px - p0) > p0 * 0.02) break; if (!diaConStock(x) || (x.est && x.est !== 'active')) continue; d1++; u1 += Math.max(0, (Number(x.u) || 0) - (Number(x.uR) || 0)); }
+        const gu1 = R8.best.gu + (p0 - R8.best.p) * 0.7;
+        const lam = R8.best.r * (R8.best.gu / gu1) * d1, seg = d1 > 0 ? 1 - poissonCdfF(u1, lam) : 0;
+        d.f8 = { best: R8.best.p, d1, u1, lam: +lam.toFixed(2), seg: +seg.toFixed(3) };
+        if (seg < 0.95) { frenar(d, `${$(p0)} está arriba del 💰 ${$(R8.best.p)} (el que más plata por día dejó) y no hay 95% de que deje menos: a ${$(p0)} vendió ${u1} en ${d1} día${d1 === 1 ? '' : 's'} con stock; para dejar la misma plata por día que el 💰 tenía que vender ~${lam.toFixed(1)} (${Math.round(seg * 100)}% seguro de que deja menos). Se queda (💰 buscando el de más ganancia) hasta estar 95% seguro; si deja más, la línea 💰 sube a este precio. Excepción: !sincerteza y "EXCEPCIÓN: …"`); out.push(d); continue; }
+      }
+    }
     // ── F5 · no abajo del 💰 piso
     const abajoOk = ['sobra', 'sinrepo', 'liquidando', 'remate'];
     if (lin && cu > 0 && !abajoOk.includes(tagNuevo) && !abajoOk.includes(ult) && !exc(fz, 'bajopiso')) {
@@ -4285,7 +4304,7 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
     }
     // ── F6 · 🤔 ¿tiene sentido este descuento?
     const esDesc = opts.promo || ['descuento', 'promo', 'sobra'].includes(tagNuevo);
-    const conContexto = ['techo', 'techook', 'bajando', 'escasez', 'sinrepo', 'fecha', 'liquidando', 'remate'].includes(ult) || ['bajando', 'escasez', 'sinrepo', 'fecha', 'liquidando', 'remate', 'volviendo'].includes(tagNuevo);
+    const conContexto = ['techo', 'techook', 'punto', 'bajando', 'escasez', 'sinrepo', 'fecha', 'liquidando', 'remate'].includes(ult) || ['bajando', 'escasez', 'sinrepo', 'fecha', 'liquidando', 'remate', 'volviendo'].includes(tagNuevo);
     if (esDesc && !conContexto && !exc(fz, 'nosobra')) {
       const cta = String(e.cuenta || ''), vs = e.variant ? [sid(String(e.variant)), sid(String(e.variant).toLowerCase())] : [];
       const kh = []; for (const c of [cta, cta.toLowerCase()]) { for (const v of vs) kh.push(e.prodId + '__' + c + '__v__' + v); kh.push(e.prodId + '__' + c); }
@@ -43845,7 +43864,7 @@ async function main() {
           // Explican el precio: 🔥 escasez · ⏳ sin reposición · 📦 sobra · 📉 liquidando · 🧨 remate · 📈 buscando techo (la 📈 de abajo
           // controla que suba) · 🏔️ (sólo lo anota techo95) · 🎁 fecha y 💸/🏷️ vigentes · 🛡️ excepción. Las gemelas las alinea el robot.
           if (r.gemelaDe) continue;
-          const explica = ['escasez', 'sinrepo', 'sobra', 'liquidando', 'remate', 'techo', 'techook', 'fecha', 'descuento', 'promo', 'excepcion'].includes(r.est2.t);
+          const explica = ['escasez', 'sinrepo', 'sobra', 'liquidando', 'remate', 'techo', 'techook', 'punto', 'fecha', 'descuento', 'promo', 'excepcion'].includes(r.est2.t);
           if (r.exc || (explica && !sinPromo && !venc)) continue;
           const dias = diasGrupo(r);
           // Menos de 14 días sin tag 🔥: o es escasez sin decidir (sale en la 🚨) o la caja llega a tiempo: igual entra acá
