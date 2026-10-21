@@ -901,6 +901,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   .vp-cel span{white-space:normal!important}
 }
 .lst-sum::-webkit-details-marker{display:none}
+.prod-card>summary::-webkit-details-marker{display:none}.prod-card[open] .prod-sum-mas{visibility:hidden}.prod-card .pname-area{width:100%}
 </style>
 </head>
 <body>
@@ -1050,39 +1051,10 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
     <!-- ABRE EN FINANZAS (idea 6 de la etapa 7, 30/09/2026, eligió la a): es lo que se entra a mirar.
          Inventario queda al lado y es SÓLO LECTURA: el stock de Full lo trae el robot y lo de casa se
          cuenta en Mi oficina. Una casilla acá pisaba el número del robot hasta la vuelta siguiente. -->
+    <!-- 21/10/2026, él: "sacar eso de arqueo que no se usa [🏭 Proveedores] (…) que inventario vaya adentro de productos y que
+         comparar vaya adentro de finanzas". Quedan dos solapas; Inventario y Comparar son desplegables adentro. -->
     <button class="tab active" onclick="goTab('arqueo',this)">Finanzas</button>
-    <button class="tab" onclick="goTab('inventario',this)">Inventario</button>
-    <button class="tab" onclick="goTab('comparar',this)">📅 Comparar</button>
     <button class="tab" onclick="goTab('productos',this)">Productos</button>
-    <button class="tab" onclick="goTab('proveedores',this)">🏭 Proveedores</button>
-  </div>
-
-  <!-- INV -->
-  <div id="tab-inventario" style="display:none">
-    <div style="font-size:.68rem;color:var(--muted);margin-bottom:8px">👀 Sólo para mirar: el stock de Full lo trae el robot cada hora y lo de casa se cuenta en <a href="#" onclick="goPage('oficina');return false" style="color:var(--accent,#38bdf8)">Mi oficina</a>.</div>
-    <input class="search-box" id="inv-search" type="search" placeholder="Buscar producto..." oninput="renderInv()">
-    <!-- "🔧 Reparar stock variantes" se sacó el 21/10/2026 (decisión 7.4 de diseño, eligió la a): escribía en el
-         inventario sin preguntar, en una pestaña que es sólo para mirar. -->
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-      <div class="stitle" style="margin:0">Unidades por cuenta / ubicación</div>
-    </div>
-    <div class="tbl-outer">
-      <table id="inv-tbl">
-        <thead><tr>
-          <th style="text-align:left;min-width:120px">Producto</th>
-          <th style="min-width:80px">Costo US$</th>
-          <th style="min-width:60px">Adriana</th>
-          <th style="min-width:60px">Luciana</th>
-          <th style="min-width:60px">Ayelen</th>
-          <th style="min-width:60px">Matias</th>
-          <th class="ac" style="min-width:60px">Total</th>
-          <th class="ac" style="min-width:90px">Valor</th>
-          <th class="ac" style="min-width:75px">vs ant.</th>
-        </tr></thead>
-        <tbody id="inv-body"></tbody>
-      </table>
-    </div>
-    <div class="empty-msg" id="empty-inv" style="display:none;margin-top:12px">No hay productos.</div>
   </div>
 
   <!-- ARQUEO -->
@@ -1232,10 +1204,10 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
     </div>
     <div id="retiros-mes-list" style="margin-top:12px"></div>
     <div id="recon-panel" style="margin-top:14px"></div>
-  </div>
-
-  <!-- COMPARAR -->
-  <div id="tab-comparar" style="display:none">
+    <!-- COMPARAR, adentro de Finanzas (21/10/2026, pedido suyo). Se arma al abrirlo. -->
+    <details id="fin-comparar" style="margin-top:18px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px" ontoggle="if(this.open)compararAbrir()">
+      <summary style="cursor:pointer;font-size:.86rem;font-weight:700">📅 Comparar meses</summary>
+      <div style="margin-top:10px">
     <div class="stitle" style="margin-top:0">Meses cerrados (arqueo)</div>
     <div class="pedidos-add" style="margin-bottom:10px">
       <select id="snap-month" class="cal-select" style="font-size:.72rem">
@@ -1266,6 +1238,8 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
       </div>
     </div>
     <div id="comp-content"><div class="empty-msg">Guardá el cierre de un mes en "📸 Cerrar mes" para comparar.</div></div>
+        </div>
+    </details>
   </div>
 
   <!-- RESUMEN -->
@@ -1280,6 +1254,36 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
     </div>
     <input class="search-box" id="prod-search" type="search" placeholder="Buscar producto..." oninput="renderProds()">
     <div id="prod-list"></div>
+    <!-- INVENTARIO, adentro de Productos (21/10/2026, pedido suyo): abajo de las fichas y cerrado, para que no las tape. -->
+    <details id="prod-inventario" style="margin-top:18px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px" ontoggle="if(this.open)renderInv()">
+      <summary style="cursor:pointer;font-size:.86rem;font-weight:700">📦 Inventario · unidades por cuenta</summary>
+      <div style="margin-top:10px">
+    <div style="font-size:.68rem;color:var(--muted);margin-bottom:8px">👀 Sólo para mirar: el stock de Full lo trae el robot cada hora y lo de casa se cuenta en <a href="#" onclick="goPage('oficina');return false" style="color:var(--accent,#38bdf8)">Mi oficina</a>.</div>
+    <input class="search-box" id="inv-search" type="search" placeholder="Buscar producto..." oninput="renderInv()">
+    <!-- "🔧 Reparar stock variantes" se sacó el 21/10/2026 (decisión 7.4 de diseño, eligió la a): escribía en el
+         inventario sin preguntar, en una pestaña que es sólo para mirar. -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+      <div class="stitle" style="margin:0">Unidades por cuenta / ubicación</div>
+    </div>
+    <div class="tbl-outer">
+      <table id="inv-tbl">
+        <thead><tr>
+          <th style="text-align:left;min-width:120px">Producto</th>
+          <th style="min-width:80px">Costo US$</th>
+          <th style="min-width:60px">Adriana</th>
+          <th style="min-width:60px">Luciana</th>
+          <th style="min-width:60px">Ayelen</th>
+          <th style="min-width:60px">Matias</th>
+          <th class="ac" style="min-width:60px">Total</th>
+          <th class="ac" style="min-width:90px">Valor</th>
+          <th class="ac" style="min-width:75px">vs ant.</th>
+        </tr></thead>
+        <tbody id="inv-body"></tbody>
+      </table>
+    </div>
+    <div class="empty-msg" id="empty-inv" style="display:none;margin-top:12px">No hay productos.</div>
+        </div>
+    </details>
   </div>
 
 
@@ -1287,28 +1291,6 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 
 
 
-
-  <!-- PROVEEDORES -->
-  <div id="tab-proveedores" style="display:none">
-    <div class="stitle">Nuevo proveedor</div>
-    <div class="add-form" style="gap:10px;align-items:flex-end">
-      <div style="flex:2;min-width:180px">
-        <label style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:4px">Nombre *</label>
-        <input id="new-prov-nombre" type="text" placeholder="Nombre del proveedor" style="width:100%" onkeydown="if(event.key==='Enter')addProveedor()">
-      </div>
-      <div style="flex:2;min-width:160px">
-        <label style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:4px">Dirección (opcional)</label>
-        <input id="new-prov-dir" type="text" placeholder="Dirección..." style="width:100%" onkeydown="if(event.key==='Enter')addProveedor()">
-      </div>
-      <div style="flex:1;min-width:130px">
-        <label style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:4px">WhatsApp (opcional)</label>
-        <input id="new-prov-wsp" type="text" placeholder="+54 9 ..." style="width:100%" onkeydown="if(event.key==='Enter')addProveedor()">
-      </div>
-      <button class="btn btn-add" onclick="addProveedor()" style="padding:8px 22px">+ Agregar</button>
-    </div>
-    <div class="stitle" style="margin-top:20px">Proveedores</div>
-    <div id="prov-list"><div class="empty-msg">Sin proveedores cargados.</div></div>
-  </div>
 
   <footer>CYC · Arqueo · Firebase Realtime Database</footer>
 </div>
@@ -2923,7 +2905,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.86';
+const APP_VERSION='25.87';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2936,6 +2918,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.87',f:'21/10',h:'16:00',c:[{n:1,t:'Arqueo: se fue 🏭 Proveedores; Inventario quedó adentro de Productos y Comparar adentro de Finanzas (desplegables). Cada producto muestra lo importante (costo, precio de hoy, lo que te queda y el estado) y el resto se abre tocando la tarjeta.'}]},
   {v:'25.86',f:'21/10',h:'15:30',c:[{n:2,t:'🛒 Pedidos: las casillas de unidades ya no guardan al instante (borraba lo que estabas escribiendo en otras). Cargás todo y tocás "🛒 Agregar al pedido" en la barra de abajo; lo sin agregar queda en ámbar.'},{n:2,t:'📋 Dai Nippon vuelve a tener pedido: casilla "📋 pedir a Dai Nippon" en cada tarjeta, 🧾 Pedido con el mensaje para WhatsApp (nombre, unidades y código), Ya lo pedí y Llegó.'},{n:2,t:'Lo cargado en el pedido se descuenta de lo que falta: con todo lo recomendado cargado la tarjeta baja a "🧾 Ya cargado"; con menos queda arriba con lo que falta y "pediste N" (Paraguay probados y listas).'}]},
   {v:'25.85',f:'21/10',h:'15:05',c:[{n:1,t:'Gastos: arriba de la lista de lo que falta cargar sale el total gastado del mes.'},{n:2,t:'Línea de tiempo: un precio ya no se marca 🔴 techo si otro precio más alto dejó más plata por día (pasaba con el Persea).'}]},
   {v:'25.84',f:'21/10',h:'14:50',c:[{n:1,t:'Vuelve como antes: cada pantalla se abre debajo de Inicio, y subiendo con el dedo llegás a Inicio para entrar a otra tarjeta (sin tener que tocar ← Inicio).'}]},
@@ -4555,7 +4538,7 @@ async function quitarFoto(prodId){
 function renderAll(){
   try{ventaSonidoCheck();}catch(e){}   // etapa 6 (G7): anota las ventas de hoy en cualquier página; sólo suena en Inicio o Ventas
   updateHdr();populateSelects();
-  if(currentPage==='inventario'){renderInv();renderProds();renderHist();renderProveedores();loadFinInputs();updateArqueo();updateTotals();}
+  if(currentPage==='inventario'){renderInv();renderProds();renderHist();loadFinInputs();updateArqueo();updateTotals();}
   if(currentPage==='pedidos')renderPedidos();
   if(currentPage==='compras')initComprasPage();
   if(currentPage==='resumen')renderResumen_page();
@@ -4574,13 +4557,13 @@ function goTab(tab,btn){
   btn.classList.add('active');
   // OJO: esta lista hay que actualizarla al agregar una pestaña nueva. Si falta, el botón se
   // marca como activo pero no se muestra nada (queda la página en blanco).
-  ['inventario','arqueo','comparar','resumen','productos','oficinas','proveedores'].forEach(t=>{
+  ['arqueo','resumen','productos','oficinas'].forEach(t=>{
     const el=document.getElementById('tab-'+t);if(el)el.style.display=t===tab?'block':'none';
   });
   if(tab==='arqueo'){initFinViewSel();loadFinInputs();updateArqueo();}
-  if(tab==='comparar'){populateSelects();renderComparacion();renderClosedMonths();const sy=document.getElementById('snap-year');if(sy&&!sy.value)sy.value=new Date().getFullYear();}
-  if(tab==='proveedores')renderProveedores();
 }
+// Comparar vive en un desplegable de Finanzas (21/10/2026): se arma al abrirlo (antes, al entrar a su solapa).
+function compararAbrir(){populateSelects();renderComparacion();renderClosedMonths();const sy=document.getElementById('snap-year');if(sy&&!sy.value)sy.value=new Date().getFullYear();}
 
 function updateHdr(){
   const d=new Date();
@@ -5442,14 +5425,37 @@ function renderProds(){
     const v365=ventasProd365(p);
     const devCount=devCountOf(p);
     const devPctAuto=devCount>0&&v365>0?Math.round(devCount/v365*1000)/10:0;
-    return`<div class="prod-item" style="flex-direction:column;align-items:stretch;gap:10px">
+    // LA TARJETA CHICA (21/10/2026, él: "que los productos muestren lo importante. el resto en desplegable al clickear en la
+    // tarjeta"): a la vista foto, nombre, origen, botones, costo, precio de hoy, lo que queda por venta y el estado. Lo demás
+    // (nombre editable, casillas de costo y envío, Full, paquete, reclamos, la línea de la plata, mandarlo a Full, variantes) se abre
+    // tocándola. Es un <details>: lo abierto se mantiene al redibujar (`_detAbiertos`). Los botones del renglón no la abren ni cierran.
+    const _r=margenMLDe(p),_pr=Math.round(Number(p.netoCalcPrecio)||0),_M=metaMargenML();
+    const _gan=(_r.netoCalc!=null&&_r.costoBase>0)?Math.round(_r.netoCalc-_r.costoBase):null;
+    const _se=subEstadoDe(p);
+    const _est=!_pr?'<span style="color:var(--muted)">sin publicación</span>':p.netoCalcPausada?'<span style="color:var(--amber)">⏸️ pausada</span>'+(_se&&_se.motivos.length?` <span style="color:var(--muted);font-size:.9em">(${_esc(_se.motivos.join(' · '))})</span>`:''):'<span style="color:var(--green)">● activa</span>';
+    const _st='display:inline-flex;align-items:baseline;gap:5px;white-space:nowrap';
+    return`<details class="prod-item prod-card" style="display:block">
+      <summary class="prod-sum" style="list-style:none;cursor:pointer">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        ${fotoChipHTML(p,64)}
-        <textarea class="pname-edit pname-area" rows="${Math.max(1,Math.min(4,Math.ceil(p.name.length/38)))}" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}" onchange="updProdName('${p.id}',this.value.replace(/\s*\n\s*/g,' ').trim())" title="Editar nombre (el vínculo de ventas es por ID interno, no se pierde nada)">${p.name.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</textarea>
-        <button class="btn" style="white-space:nowrap;background:${p.origen==='py'?'rgba(239,68,68,.15)':'rgba(59,130,246,.12)'};color:${p.origen==='py'?'#f87171':'#60a5fa'};border:1px solid ${p.origen==='py'?'rgba(239,68,68,.3)':'rgba(59,130,246,.3)'}" onclick="toggleProdOrigen('${p.id}')" title="Origen del producto: define en qué sección de Pedidos aparece (BS AS o Paraguay)">${p.origen==='py'?'🇵🇾 Paraguay':'🇦🇷 BS AS'}</button>
+        ${fotoChipHTML(p,48)}
+        <span style="flex:1;min-width:150px;font-weight:700;font-size:.86rem;line-height:1.3">${_esc(p.name||'')}</span>
+        <span onclick="event.preventDefault()" style="display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <button class="btn" style="white-space:nowrap;background:${p.origen==='py'?'rgba(239,68,68,.15)':'rgba(59,130,246,.12)'};color:${p.origen==='py'?'#f87171':'#60a5fa'};border:1px solid ${p.origen==='py'?'rgba(239,68,68,.3)':'rgba(59,130,246,.3)'}" onclick="toggleProdOrigen('${p.id}')" title="Origen del producto: define en qué sección de Pedidos aparece (BS AS o Paraguay)">${p.origen==='py'?'🇵🇾':'🇦🇷'}</button>
         ${lineaBtn(p.id,'📈 línea')}${cerebroBtn(p.id)}
         <button class="btn btn-del" onclick="delProd('${p.id}')">✕</button>
+        </span>
       </div>
+      <div class="prod-sum-datos" style="display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:8px;font-size:.74rem;color:var(--muted)">
+        <span style="${_st}">costo <b style="color:var(--text)">${fmtUSD(cu)}</b> · ${fmtPesos(cp)}</span>
+        <span style="${_st}">precio hoy <b style="color:var(--text)">${_pr?fmt(_pr):'—'}</b></span>
+        <span style="${_st}">te queda ${_gan!=null?`<b style="color:${_r.margen!=null?pctColor(_r.margen):'var(--text)'}">${fmt(_gan)} · ${_r.margen!=null?Math.round(_r.margen)+'%':'—'}</b>`:'<b>—</b>'}</span>
+        <span style="${_st}">${_est}</span>
+        ${_r.margen!=null&&_r.margen<_M?`<span style="background:rgba(239,68,68,.14);color:var(--red);border-radius:5px;padding:1px 7px;font-weight:700;white-space:nowrap">⚠️ abajo del ${_M}%</span>`:''}
+        <span class="prod-sum-mas" style="margin-left:auto;font-size:.66rem">ver todo ▾</span>
+      </div>
+      </summary>
+      <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:10px">
+      <div><label>Nombre</label><br><textarea class="pname-edit pname-area" rows="${Math.max(1,Math.min(4,Math.ceil(p.name.length/38)))}" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}" onchange="updProdName('${p.id}',this.value.replace(/\s*\n\s*/g,' ').trim())" title="Editar nombre (el vínculo de ventas es por ID interno, no se pierde nada)">${p.name.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</textarea></div>
       <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end">
         <div><label>Costo US$</label><br><input type="number" min="0" step="0.01" value="${usdVal(cu)}" oninput="guardarProdLuego('${p.id}',this.value,updCostUSD)" onchange="updCostUSD('${p.id}',this.value)"></div>
         <div><label>Costo $</label><br><input class="money" type="text" inputmode="numeric" value="${moneyVal(cp)}" oninput="guardarProdLuego('${p.id}',this.value,updCostPesos)" onchange="updCostPesos('${p.id}',this.value)"></div>
@@ -5474,7 +5480,8 @@ function renderProds(){
         <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">${(p.variantes&&p.variantes.length)?(p.variantes||[]).map(v=>`<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:5px;background:rgba(124,58,237,.1);color:#a78bfa;font-size:.68rem">${v}<button onclick="removeVariante('${p.id}','${v.replace(/'/g,"\\'")}')" style="background:none;border:none;color:#a78bfa;cursor:pointer;padding:0 0 0 3px;font-size:.75rem;line-height:1" title="Eliminar variante">✕</button></span>`).join(''):'<span style="font-size:.65rem;color:var(--muted);font-style:italic">sin variantes</span>'}</div>
         <input type="text" placeholder="+ Nueva variante" style="font-size:.68rem;padding:3px 8px;border-radius:5px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);outline:none;width:130px" onkeydown="if(event.key==='Enter'&&this.value.trim()){addVariante('${p.id}',this.value);this.value='';}">
       </div>
-    </div>`;
+      </div>
+    </details>`;
   }).join('');
 }
 
@@ -5557,134 +5564,8 @@ async function removeVariante(prodId,varName){
   renderProds();
 }
 
-async function updProdProveedor(prodId,proveedorId){
-  const p=(state.products||[]).find(x=>x.id===prodId);
-  if(!p)return;
-  p.proveedorId=proveedorId||null;
-  await fbSet('products/'+prodId+'/proveedorId',proveedorId||null);
-}
-
-async function addProveedor(){
-  const nombre=document.getElementById('new-prov-nombre')?.value.trim()||'';
-  if(!nombre){document.getElementById('new-prov-nombre').focus();return;}
-  const dir=document.getElementById('new-prov-dir')?.value.trim()||'';
-  const wsp=document.getElementById('new-prov-wsp')?.value.trim()||'';
-  const id='prov'+Date.now();
-  const obj={id,nombre,ts:Date.now()};
-  if(dir)obj.direccion=dir;
-  if(wsp)obj.wsp=wsp;
-  await fbSet('proveedores/'+id,obj);
-  await log('Agregó proveedor: '+nombre);
-  ['new-prov-nombre','new-prov-dir','new-prov-wsp'].forEach(i=>{const e=document.getElementById(i);if(e)e.value='';});
-  toast('Proveedor agregado ✓');
-}
-
-async function delProveedor(id){
-  const pv=(state.proveedores||[]).find(x=>x.id===id);
-  if(!confirm('¿Eliminar proveedor "'+(pv?.nombre||id)+'"?'))return;
-  await fbDel('proveedores/'+id);
-  await log('Eliminó proveedor: '+(pv?.nombre||id));
-  toast('Eliminado','info');
-}
-
-async function updProveedorNombre(id,nombre){
-  const pv=(state.proveedores||[]).find(x=>x.id===id);
-  if(!pv||!nombre.trim())return;
-  pv.nombre=nombre.trim();
-  await fbSet('proveedores/'+id+'/nombre',nombre.trim());
-}
-
-async function updProveedorDireccion(id,val){
-  const pv=(state.proveedores||[]).find(x=>x.id===id);if(!pv)return;
-  pv.direccion=val.trim();await fbSet('proveedores/'+id+'/direccion',val.trim());
-}
-async function updProveedorWsp(id,val){
-  const pv=(state.proveedores||[]).find(x=>x.id===id);if(!pv)return;
-  pv.wsp=val.trim();await fbSet('proveedores/'+id+'/wsp',val.trim());
-}
-
-const _provInpStyle='font-size:.7rem;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:\'DM Mono\',monospace;padding:6px 10px;outline:none;width:100%';
-
-function provByNombre(nombre){const n=normTxt(nombre||'');return(state.proveedores||[]).find(pv=>normTxt(pv.nombre||'')===n);}
-
-function calcDescuento(condiciones,totalUSD){
-  if(!condiciones||!condiciones.length)return{pct:0,minUSD:0};
-  let best={pct:0,minUSD:0};
-  for(const c of condiciones){if(totalUSD>=(c.minUSD||0)&&(c.minUSD||0)>=(best.minUSD||0))best=c;}
-  return best;
-}
-
-async function addProveedorCondicion(provId){
-  const minEl=document.getElementById('pcmin-'+provId);
-  const pctEl=document.getElementById('pcpct-'+provId);
-  const minUSD=parseFloat(minEl?.value)||0;
-  const pct=parseFloat(pctEl?.value)||0;
-  if(pct<=0){toast('Ingresá un % de descuento','err');pctEl?.focus();return;}
-  const id='pc'+Date.now();
-  await fbSet('proveedores/'+provId+'/condiciones/'+id,{id,minUSD,pct});
-  if(minEl)minEl.value='';if(pctEl)pctEl.value='';
-  toast('Condición agregada ✓');
-}
-
-async function delProveedorCondicion(provId,condId){
-  await fbDel('proveedores/'+provId+'/condiciones/'+condId);
-  toast('Condición eliminada','info');
-}
-
-function renderProveedores(){
-  const el=document.getElementById('prov-list');if(!el)return;
-  const provs=state.proveedores||[];
-  if(!provs.length){el.innerHTML='<div class="empty-msg">Sin proveedores. Agregá uno arriba.</div>';return;}
-  const tc=curTC();
-  el.innerHTML=provs.map(pv=>{
-    const prods=(state.products||[]).filter(p=>p.proveedorId===pv.id).map(p=>p.name).join(' · ')||'Sin productos asignados';
-    const wspHref=pv.wsp?`https://wa.me/${pv.wsp.replace(/[^0-9]/g,'')}`:null;
-    const conds=(pv.condiciones||[]);
-    const condRows=conds.map(c=>{
-      const ars=tc?` · ${fmt(Math.round((c.minUSD||0)*tc))}`:'';
-      return`<div style="display:flex;align-items:center;gap:8px;padding:5px 10px;background:var(--surface2);border-radius:6px">
-        <span style="flex:1;font-size:.7rem;color:var(--text)">Desde <strong>US$${c.minUSD||0}${ars}</strong> → <strong style="color:#38bdf8">${c.pct}% desc.</strong></span>
-        <button class="btn btn-del" style="padding:2px 8px;font-size:.65rem" onclick="delProveedorCondicion('${pv.id}','${c.id}')">✕</button>
-      </div>`;
-    }).join('');
-    const condEmpty=!conds.length?'<span style="font-size:.68rem;color:var(--muted)">Sin condiciones cargadas.</span>':'';
-    return`<div class="prod-item" style="flex-direction:column;gap:12px">
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <input class="pname-edit" style="flex:1;min-width:160px" type="text" value="${(pv.nombre||'').replace(/"/g,'&quot;')}" onchange="updProveedorNombre('${pv.id}',this.value)" placeholder="Nombre">
-        <button class="btn btn-del" onclick="delProveedor('${pv.id}')">✕</button>
-      </div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap">
-        <div style="flex:2;min-width:160px">
-          <label style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:3px">Dirección</label>
-          <input type="text" value="${(pv.direccion||'').replace(/"/g,'&quot;')}" onchange="updProveedorDireccion('${pv.id}',this.value)" placeholder="Dirección..." style="${_provInpStyle}">
-        </div>
-        <div style="flex:1;min-width:130px">
-          <label style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:3px">WhatsApp</label>
-          <div style="display:flex;gap:6px;align-items:center">
-            <input type="text" value="${(pv.wsp||'').replace(/"/g,'&quot;')}" onchange="updProveedorWsp('${pv.id}',this.value)" placeholder="+54 9 ..." style="${_provInpStyle}">
-            ${wspHref?`<a href="${wspHref}" target="_blank" style="white-space:nowrap;font-size:.68rem;padding:5px 10px;background:rgba(34,197,94,.12);color:var(--green);border:1px solid rgba(34,197,94,.25);border-radius:6px;text-decoration:none">💬 Chat</a>`:''}
-          </div>
-        </div>
-      </div>
-      <div>
-        <label style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:6px">Condiciones de compra (en US$)</label>
-        <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:8px">${condEmpty}${condRows}</div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <div style="display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border2);border-radius:7px;padding:6px 10px">
-            <span style="font-size:.68rem;color:var(--muted)">Desde US$</span>
-            <input id="pcmin-${pv.id}" type="number" min="0" step="1" placeholder="0" style="width:70px;background:transparent;border:none;color:var(--text);font-family:'DM Mono',monospace;font-size:.72rem;outline:none" onkeydown="if(event.key==='Enter')addProveedorCondicion('${pv.id}')">
-            <span style="font-size:.68rem;color:var(--muted)">→</span>
-            <input id="pcpct-${pv.id}" type="number" min="0" max="100" step="0.5" placeholder="%" style="width:50px;background:transparent;border:none;color:#38bdf8;font-family:'DM Mono',monospace;font-size:.72rem;outline:none" onkeydown="if(event.key==='Enter')addProveedorCondicion('${pv.id}')">
-            <span style="font-size:.68rem;color:#38bdf8">%</span>
-          </div>
-          <button class="btn btn-add" style="padding:6px 14px;font-size:.68rem" onclick="addProveedorCondicion('${pv.id}')">+ Agregar</button>
-        </div>
-      </div>
-      <div style="font-size:.64rem;color:var(--muted)">📦 ${prods}</div>
-    </div>`;
-  }).join('');
-}
-
+// (21/10/2026) Se sacaron las funciones de la solapa 🏭 Proveedores del Arqueo (no se usaba). `state.proveedores` se sigue
+// leyendo: lo usan los pedidos viejos que tienen proveedorId.
 async function delProd(id){
   const p=state.products.find(x=>x.id===id);
   // Etapa 3 (29/09): borrar la ficha borra su stock de Full, de la oficina y hace que lo que va en
