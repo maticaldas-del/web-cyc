@@ -2619,3 +2619,8 @@ no sé si cuentan como inflamable (…) todos esos productos que no se pueden en
 perfumes y body splash no (van a Full desde siempre). `noFull` cuenta igual que `noWeb` en la web y el robot (no da, no se pide) y se saca
 del pedido del momento. **Qué chequear:** falsos positivos por nombre (mirar la prueba antes del `;go`); lo que ML acepte de verdad lo dice
 Planificación de envíos.
+
+**21/10/2026 · etapa 3 · listas sin foto: confirmar sólo lo exacto.** Él mostró el Lux (1 jabón orquídea contra pack 3x jazmín) y la Dove
+máscara Nutrición contra la Factor 80+. Las listas (Dai Nippon y demás) no traen foto ni código de barras: `ok` sólo con marca, línea,
+variante, tamaño y cantidad iguales; si ML agrega algo, `no` (CEREBRO paso 8). `listarevisar:confirmados` (sync.mjs) relista los ya
+confirmados: revisados 113 el 21/10, 34 estaban mal. **Qué chequear:** que ningún `ok` nuevo tenga palabras de línea o pack de más en ML.

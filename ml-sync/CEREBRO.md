@@ -100,6 +100,11 @@ La etapa 8 de la revisión (Reglas del cerebro, cada 7 días) mira que esto qued
 6. Activar pausadas con stock en Full (`activarfull:go:25`); lo que no se activa va al `pregunto:` con motivo.
 7. Preguntas de compradores que sé sin duda (`contesto:`). Mis descuentos que vencen en 2 días: renovar o dejar terminar.
 8. 📋 Listas: confirmar el mismo producto (`listarevisar` → `listadato:<prov>;<cód>=ok|no|mi=MLA…;go`); con duda no se toca.
+   **Sin foto ni código de barras (Dai Nippon y las demás listas, 21/10/2026, él: *"nippon sólo trae lo que viste vos"*): `ok` sólo si
+   el título de ML coincide en marca, línea, variante/aroma, tamaño y cantidad.** Si ML agrega algo que la lista no dice (una línea
+   como "80+", "1 minuto", "Intense", una edición, "pack", "3x", "x2", otro aroma) → `no`. Casos que la dejaron escrita: Lux orquídea
+   120 g contra pack 3x120 jazmín, Dove máscara Nutrición contra Factor 80+ 1 minuto. Dan menos productos, pero no se compra uno por otro.
+   De vez en cuando, `listarevisar:confirmados` para volver a mirar los ya confirmados.
 9. Escrituras en UNA ml-sync (uno por renglón). Antes, mirar el job `sync` de la última corrida de ml-sync: si sigue andando,
    esperar. **Un solo disparo por turno.** Después confirmar `success`; si quedó `cancelled`, repetir sólo lo que faltó (cada
    comando terminado deja `##### ✓ terminó:`). No se toca `cancel-in-progress`.
