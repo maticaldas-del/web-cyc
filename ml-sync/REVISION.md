@@ -2650,3 +2650,8 @@ confirmados: revisados 113 el 21/10, 34 estaban mal. **Qué chequear:** que ning
 (…) que se indique que no están cargadas"*. `_listaVendHTML(e)` (index.html) en Nuevos y en 🛒 Para comprar en el local: `e.vend` (lo carga
 el chat local con `listadato:<prov>;<cód>=<vendidas>`) o "ventas sin cargar". **Qué chequear:** que el número sea de la publicación más
 barata del catálogo medido, no del producto equivocado.
+
+**21/10/2026 · etapa 7 · Nissei: sin "no da en el local", "no se puede ML" y abre en Todo · ML (v25.96).** Él lo pidió con el Zimaya Tiramisú.
+`perfNoLocalBtn` ya no dibuja nada (lo marcado `noLocal` sigue); el botón de `candNoML` dice "🛒✕ no se puede ML" y con el filtro ML (el
+de arranque) lo marcado no aparece. `_pyRubro='todos'` y `_candFiltro='ml'` al abrir, sin localStorage. **Qué chequear:** que con el filtro
+ML no se vea ningún `noML`.

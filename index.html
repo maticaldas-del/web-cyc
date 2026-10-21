@@ -2921,7 +2921,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.95';
+const APP_VERSION='25.96';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2934,6 +2934,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.96',f:'21/10',h:'20:30',c:[{n:1,t:'🇵🇾 Nissei: se sacó el botón "no da en el local"; el de ML ahora dice "🛒✕ no se puede ML" y lo marcado sale de las sugerencias de ML. Al abrir siempre muestra Todo · ML.'}]},
   {v:'25.95',f:'21/10',h:'20:10',c:[{n:1,t:'📋 Listas (Dai Nippon y las demás): al final del nombre de cada producto, cuántas vendidas tiene en ML; si todavía no están cargadas, dice "ventas sin cargar".'}]},
   {v:'25.94',f:'21/10',h:'19:40',c:[{n:2,t:'🛒 Dai Nippon (y toda lista de Bs As): arriba, "Para comprar en el local". Una tarjeta por producto cargado en el pedido, ordenadas por marca: al tocarla muestra la foto de ML, el título de ML con lo que hay que fijarse (tamaño, pack), el precio de la lista, lo más que se puede pagar para dejar 25% y las unidades, con ✓ Lo compré · ✗ No estaba · ≠ Era otro producto (se puede deshacer).'},{n:2,t:'📋 En las listas de Bs As un producto nuevo se puede cargar con 25%+ y 2+ vendedores aunque nadie haya confirmado que es el mismo: lo verifica Tito mirando la foto en el local.'}]},
   {v:'25.93',f:'21/10',h:'17:00',c:[{n:2,t:'🚫 Listas: lo que ML no deja mandar a Full (aerosoles, gas, alcohol, acetona, laca…) queda marcado y no se puede pedir; se sacó del pedido del momento.'}]},
@@ -15320,7 +15321,8 @@ async function candNoML(id,on){
   try{await fbSet('candidatos_py/'+id+'/noML',on?true:null);}catch(e){toast('No se guardó: '+e.message,'err');return;}
   renderPedidos();toast(on?'Sacado de ML: queda sólo para la perfumería ✓':'Vuelve a contarse para ML ✓');
 }
-function perfNoLocalBtn(tipo,id,on){return `<button class="btn" style="font-size:.6rem;padding:2px 8px;margin-left:4px" onclick="event.preventDefault();event.stopPropagation();perfNoLocal('${tipo}','${id}',${on?'false':'true'})" title="${on?'Volver a sugerirlo para la perfumería del local':'Ya lo probaron en la perfumería y no da: dejar de sugerirlo para el local'}">${on?'↩︎ 🏪 volver a sugerir':'🏪✕ no da en el local'}</button>`;}
+// 21/10/2026, él: "saca lo de 'no da en el local'": el botón ya no se dibuja (lo marcado antes sigue marcado).
+function perfNoLocalBtn(tipo,id,on){return '';return `<button class="btn" style="font-size:.6rem;padding:2px 8px;margin-left:4px" onclick="event.preventDefault();event.stopPropagation();perfNoLocal('${tipo}','${id}',${on?'false':'true'})" title="${on?'Volver a sugerirlo para la perfumería del local':'Ya lo probaron en la perfumería y no da: dejar de sugerirlo para el local'}">${on?'↩︎ 🏪 volver a sugerir':'🏪✕ no da en el local'}</button>`;}
 function candLocalPct(c){if(!candEsPerf(c)||c.noLocal)return null;const u=parseFloat(c.usd)||0,tc=curTC();return perfLocalPct(u*RECARGO_PY*tc,Number(c.mlPrecio)||0);}
 function candLocalOk(c){const l=candLocalPct(c);return l!=null&&l>=PERF_LOCAL_GAN;}
 // El % azul al lado del de ML (rojo si no llega: azul si da).
@@ -16553,7 +16555,8 @@ function nisseiMsgLineas(items){
 // de perfumes y resto"). Un solo selector para las dos pestañas, recordado en el aparato. Es SÓLO lo que se ve:
 // el pedido armado, los totales y el mensaje para Nissei siguen viendo todo. Perfume = esPerfumeNom (misma regla
 // que parte el mensaje para Nissei).
-let _pyRubro=(()=>{try{return localStorage.getItem('cycPyRubro')||'todos';}catch(e){return'todos';}})();
+// Al abrir, siempre Todo · ML (21/10/2026, él: "que al abrir nissei siempre abra todo - ML"): no se recuerda lo elegido la vez anterior.
+let _pyRubro='todos';
 function pySetRubro(v){_pyRubro=v;try{localStorage.setItem('cycPyRubro',v);}catch(e){}renderPedidos();}
 function _pyRubroOk(nom){if(_pyRubro==='todos')return true;const p=esBellezaNom(nom);return _pyRubro==='perf'?p:!p;}
 function _pedOrden(){try{return localStorage.getItem('cycPedOrden')||'orig';}catch(e){return'orig';}}
@@ -17186,14 +17189,14 @@ function candidatosHTML(){
         <div class="cand-der" style="display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap;flex:0 1 auto">
           ${tieneCuenta&&_loc!=null?`<div class="cand-loc">${perfLocalHTML(_loc)}${perfNoLocalBtn('c',c.id,false)}</div>`:tieneCuenta&&candEsPerf(c)&&c.noLocal?`<div class="cand-loc" style="font-size:.6rem;color:var(--muted)">🏪 no da en el local${perfNoLocalBtn('c',c.id,true)}</div>`:''}
           ${(()=>{const Q=candPuedePedir(c),uu=Math.max(0,parseInt(c.pedirU)||0);if(!(Q.ok||Q.bajoPiso)&&!uu)return '';return `<span onclick="event.preventDefault();event.stopPropagation()" style="display:inline-flex;align-items:center;gap:4px;font-size:.66rem;color:${uu>0?'var(--green)':'var(--muted)'}">🧾 pedir <input type="number" min="0" step="1" value="${uu||''}" placeholder="0" onchange="candSetPedir('${c.id}',this.value)" style="width:54px;font-size:.95rem;padding:3px 5px;text-align:center;background:var(--surface2);border:1px solid ${uu>0?'var(--green)':'var(--border)'};border-radius:6px;color:var(--text)"></span>`;})()}
-          <button class="btn" style="font-size:.6rem;padding:2px 8px" onclick="event.preventDefault();event.stopPropagation();candNoML('${c.id}',${c.noML?'false':'true'})" title="${c.noML?'Volver a considerarlo para vender en ML':'No da para vender en ML (marca, precio, lo que sea): deja de contarlo para ML y queda sólo para la perfumería del local'}">${c.noML?'↩︎ 🛒 volver a ML':'🛒✕ no da en ML'}</button>
+          <button class="btn" style="font-size:.6rem;padding:2px 8px" onclick="event.preventDefault();event.stopPropagation();candNoML('${c.id}',${c.noML?'false':'true'})" title="${c.noML?'Volver a considerarlo para vender en ML':'No da para vender en ML (marca, precio, lo que sea): deja de contarlo para ML y queda sólo para la perfumería del local'}">${c.noML?'↩︎ 🛒 volver a ML':'🛒✕ no se puede ML'}</button>
           <div style="text-align:right">${c.noML?`<div style="font-size:.8rem;font-weight:700;color:var(--muted);line-height:1" title="Lo marcaste: no da para ML, queda sólo para la perfumería del local">🚫 ML</div>`:tieneCuenta?`<div style="font-size:1.35rem;font-weight:700;color:${col};line-height:1">${c.margen.toFixed(0)}%${dudas?' <span title="Hay dudas de que sea el mismo producto: abrilo y mirá las dos fotos" style="font-size:.8em">⚠️</span>':''}</div>`:'<div style="font-size:.68rem;color:var(--muted)">⏳ sin medir</div>'}<div style="font-size:.6rem;color:var(--muted);margin-top:3px">detalle ▾</div></div>
         </div>
       </summary>
       <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
       <div class="cand-solocel" style="font-size:.72rem;color:var(--muted);line-height:1.6">${c.cod?`🔖 ${c.cod} · `:''}${usd>0?`${fmtUS2(usd)} → <b style="color:var(--text)">${fmtUS2(puesto)}</b> puesto${pesos?` · ${fmt(pesos)}`:''}`:'sin precio'}${(()=>{const _v=candVentasDe(c);const _nv=Number(c.mlVendedores);return (_v!=null?` · 🛒 ${_v>=1000?'+1000':_v} vendidas`:'')+` · 🏪 ${_nv>0?_nv+(_nv===1?' vendedor':' vend.'):'sin vendedores'}`;})()}
         ${tieneCuenta&&_loc!=null?`<div style="margin-top:4px">${perfLocalHTML(_loc)}${perfNoLocalBtn('c',c.id,false)}</div>`:tieneCuenta&&candEsPerf(c)&&c.noLocal?`<div style="margin-top:4px">🏪 no da en el local${perfNoLocalBtn('c',c.id,true)}</div>`:''}</div>
-      <div onclick="event.stopPropagation()"><button class="btn" style="font-size:.66rem;padding:3px 10px" onclick="event.preventDefault();event.stopPropagation();candNoML('${c.id}',${c.noML?'false':'true'})" title="${c.noML?'Volver a considerarlo para vender en ML':'Marca que ML no deja vender: deja de contarlo para ML y queda sólo para la perfumería del local'}">${c.noML?'↩︎ volver a ML':'🛒✕ no da en ML'}</button></div>
+      <div onclick="event.stopPropagation()"><button class="btn" style="font-size:.66rem;padding:3px 10px" onclick="event.preventDefault();event.stopPropagation();candNoML('${c.id}',${c.noML?'false':'true'})" title="${c.noML?'Volver a considerarlo para vender en ML':'Marca que ML no deja vender: deja de contarlo para ML y queda sólo para la perfumería del local'}">${c.noML?'↩︎ volver a ML':'🛒✕ no se puede ML'}</button></div>
       <div style="display:flex;gap:10px;flex-wrap:wrap">${fotoBox(RP.fotoPY,'🇵🇾 Paraguay')}${fotoBox(RP.fotoML,'🏷️ ML')}</div>
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:.72rem" onclick="event.stopPropagation()">🛒 Vendidas en ML (mirá la publicación más barata):
         <input type="number" min="0" step="1" inputmode="numeric" value="${c.vendCarga!=null&&isFinite(c.vendCarga)?Number(c.vendCarga):''}" placeholder="ej. 150" style="width:90px;font-size:16px;padding:3px 6px" onchange="candSetVend('${c.id}',this.value)">
@@ -17323,7 +17326,7 @@ function candidatosHTML(){
 const _candAbiertos=new Set();
 let _candOrden=(()=>{try{return localStorage.getItem('cycCandOrden')||'pct';}catch(e){return 'pct';}})();
 function candOrdenar(k){_candOrden=k;try{localStorage.setItem('cycCandOrden',k);}catch(e){}renderPedidos();}
-let _candFiltro=(()=>{try{return localStorage.getItem('cycCandFiltro')||'todos';}catch(e){return 'todos';}})();
+let _candFiltro='ml';
 function candFiltrar(k){_candFiltro=k;try{localStorage.setItem('cycCandFiltro',k);}catch(e){}renderPedidos();}
 function candToggle(id,ab){if(ab)_candAbiertos.add(id);else _candAbiertos.delete(id);}
 // `med` (17/10/2026, carpetas Medidos / No medidos): true = sólo los que tienen margen medido (y sin catálogo), false = los
