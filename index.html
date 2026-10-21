@@ -11072,6 +11072,10 @@ async function cerebroAbrir(el,ev){
     const cab=(varias||_col)?`<b>${_cerEsc(e.cuenta||'')}${_col?' · '+_cerEsc(_col):''}${e.status&&e.status!=='active'?' · pausada':''}:</b> `:'';
       if(_repetido(c.simple))continue;_decir(c.simple);
       h+=par(`${cab}💭 ${_cerEsc(_cerFecha(c.ts))}: ${_cerEsc(c.simple)}`);
+      // UNA VENTA NUEVA NO QUEDA TAPADA POR UNA NOTA VIEJA (etapa 6 · A5, 21/10/2026, eligió la a): si después de la nota vendió,
+      // se dice cuántas y cuándo fue la última, para no leer la nota como si ya las hubiera mirado.
+      {const _vd=Number(c.ts)>0?_comprasEntre(k,Number(c.ts),Date.now()+60e3):{n:0};
+        if(_vd.n>0)h+=par(`<span style="color:var(--amber)">⚠️ Esta nota es del ${_cerEsc(_cerFecha(c.ts))} y después vendió ${_vd.n} ${_vd.n===1?'vez':'veces'} (la última el ${_cerEsc(_cerFecha(_vd.ult))}): todavía no la revisé con ${_vd.n===1?'esa venta':'esas ventas'}.</span>`);}
     }
     // POR QUÉ CAMBIÓ EL PRECIO (13/10/2026, él con el Paulvic Barbarella: "no explica por qué aumentó de 58 a 97%"): la nota
     // de la publicación dice cómo está hoy; el motivo de cada suba o baja vive en `cyc/claudecambios`. Van los últimos 3.
@@ -11496,6 +11500,44 @@ function cambioTxt(e){const de=Number(e.de)||0,a=Number(e.a)||0,sube=a>de,ts=Num
   if(!mot&&e.motivo==='promo')mot=e.origen||'promo';
   return `${sube?'▲':'▼'} ${FLECHA_TIPOS[tipo][1]}: ${fmt(de)} → ${fmt(a)} (${sube?'+':''}${de?((a/de-1)*100).toFixed(1):'?'}%)${mot?' · '+mot:' · sin motivo anotado'}`;}
 const flechaLeyenda=()=>Object.entries(FLECHA_TIPOS).map(([k,[c,n]])=>`<span style="margin-right:8px;white-space:nowrap"><b style="color:${c}">${k==='promo'||k==='remate'||k==='volver'||k==='caja'?'▼':'▲'}</b> ${n}</span>`).join('');
+// ── LA 1ª Y LA 2ª VENTA DESDE EL ÚLTIMO CAMBIO DE PRECIO (etapa 6 · A5, 21/10/2026, eligió la a) ──
+// Regla del cerebro (⚡, 18/10/2026): cada venta es un dato. La 1ª a un precio nuevo dice que a ese precio vende; la 2ª lo confirma.
+// Cada venta dice cuál es, contando COMPRAS (no renglones: un carrito es una) de ESA publicación, no canceladas, desde el último
+// cambio de precio (la misma lista que las flechas y la línea de tiempo: `cambiosPrecioLista`). De la 3ª en adelante no dice nada.
+// El índice por publicación se arma una vez y se rehace si cambia la base o pasan 5 s (la lista de ventas lo pide renglón por renglón).
+let _vMlaIdx=null,_vMlaRef=null,_vMlaTs=0;
+function _ventasDeMla(mla){
+  const vp=state.ventaprod||{};
+  if(!_vMlaIdx||_vMlaRef!==vp||Date.now()-_vMlaTs>5000){
+    _vMlaRef=vp;_vMlaTs=Date.now();_vMlaIdx=new Map();
+    for(const o of Object.values(vp))for(const [id,v] of Object.entries(o||{})){
+      if(!v||!v.mla||v.cancelada)continue;const ts=Number(v.ts)||Date.parse(v.ts||'')||0;if(!ts)continue;
+      let a=_vMlaIdx.get(v.mla);if(!a)_vMlaIdx.set(v.mla,a=[]);a.push({ts,g:v.numVenta?'n'+v.numVenta:(v.saleId||id)});
+    }
+    for(const a of _vMlaIdx.values())a.sort((x,y)=>x.ts-y.ts);
+  }
+  return _vMlaIdx.get(mla)||[];
+}
+// Compras de esa publicación con fecha en (desde, hasta]. La última es la de más tarde.
+function _comprasEntre(mla,desde,hasta){const g=new Map();for(const x of _ventasDeMla(mla))if(x.ts>desde&&x.ts<=hasta)g.set(x.g,Math.max(g.get(x.g)||0,x.ts));return {n:g.size,ult:g.size?Math.max(...g.values()):0};}
+function ventaNroDesdeCambio(v){
+  if(!v||!v.mla||v.cancelada)return null;
+  const ts=Number(v.ts)||Date.parse(v.ts||'')||0;if(!ts)return null;
+  const cs=cambiosPrecioLista([v.mla]).filter(c=>c.ts<ts);if(!cs.length)return null;
+  const c=cs[cs.length-1],r=_comprasEntre(v.mla,c.ts,ts);
+  return r.n>0?{n:r.n,c}:null;
+}
+function ventaNroHTML(items){
+  const vistos=new Set(),out=[];
+  for(const v of (items||[])){
+    if(!v||vistos.has(v.mla))continue;vistos.add(v.mla);
+    const r=ventaNroDesdeCambio(v);if(!r||r.n>2)continue;
+    const d=new Date(r.c.ts),f=String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0');
+    const tt=`El precio cambió el ${f} de ${fmt(r.c.de)} a ${fmt(r.c.a)}: ésta es la ${r.n===1?'primera':'segunda'} compra a ese precio. Cada venta es un dato: la 1ª dice que a ese precio vende, la 2ª lo confirma.`;
+    out.push(`<span style="font-size:.62rem;padding:1px 6px;border-radius:4px;border:1px solid ${r.n===1?'rgba(34,197,94,.45)':'rgba(56,189,248,.45)'};color:${r.n===1?'var(--green)':'#38bdf8'};white-space:nowrap" title="${tt.replace(/"/g,'&quot;')}">${r.n===1?'🥇 1ª':'🥈 2ª'} venta desde el cambio</span>`);
+  }
+  return out.join(' ');
+}
 function cambioVentaHTML(v,tsVenta){
   const cs=cambiosPrecioDe(v&&v.mla,tsVenta);
   if(!cs.length)return'';
@@ -12411,6 +12453,7 @@ function renderVentaProd(){
         return vs.map(x=>{const [t,pr,si]=x.split('|');const col=pr==='1'?'#eab308':'var(--muted)';
           const tt=(pr==='1'?'Se vendió por la publicación PREMIUM (con cuotas). ':t.startsWith('Clásica')?'Se vendió por la publicación CLÁSICA. ':'')+(si==='1'?'El interés de las cuotas lo pagamos nosotros (cuotas sin interés).':/cuotas/.test(t)?'Pagó en cuotas con interés: el interés lo pagó el comprador.':'');
           return `<span style="font-size:.62rem;padding:1px 6px;border-radius:4px;border:1px solid ${pr==='1'?'rgba(234,179,8,.5)':'var(--border2)'};color:${col};white-space:nowrap" title="${tt}">💳 ${t}</span>`;}).join(' ');})();
+      const nroLabel=isCancelled?'':ventaNroHTML(grp.items);   // A5 (21/10/2026): 🥇 1ª / 🥈 2ª venta desde el último cambio de precio
       const _pcHtml=`<div class="ingreso-item vp-pc" onclick="vpCardClick(event,'${grp.gid}')" title="Tocá para ver u ocultar el detalle" style="cursor:pointer;flex-direction:column;align-items:stretch;gap:4px;${isCancelled?'border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.04)':''}">
         <div class="vp-pc-cab" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;row-gap:4px;white-space:nowrap">
           <span class="who-badge" style="font-size:.6rem;${isCancelled?'opacity:.6':''}">${cuenta}</span>
@@ -12419,7 +12462,7 @@ function renderVentaProd(){
           ${grp.items.length>1?`<span style="font-size:.64rem;color:var(--muted)">${grp.items.length} prod.</span>`:''}
           <span style="flex:1"></span>
           ${promoLabel?promoLabel.replace(/>🏷️ [^<]*</,'>🏷️ '+(promoLabel.includes('vp-promo-ml')?'desc. ML':'promo')+'<'):''}
-          ${tipoLabel}
+          ${tipoLabel}${nroLabel?' '+nroLabel:''}
           ${entLabel}
           ${rescLabel}
           ${(!isCancelled&&_tot>0)?`<span style="font-size:.66rem;color:var(--muted)">total <b style="color:var(--text);font-weight:600">${fmt(_tot)}</b></span>`:''}
@@ -12439,7 +12482,7 @@ function renderVentaProd(){
           ${_pill}
         </div>
         ${_items}
-        ${tipoLabel?`<div>${tipoLabel}</div>`:''}
+        ${(tipoLabel||nroLabel)?`<div>${[tipoLabel,nroLabel].filter(Boolean).join(' ')}</div>`:''}
         ${promoLabel?`<div>${promoLabel}</div>`:''}
         <div style="display:flex;align-items:center;gap:10px;margin-top:2px">
           ${isCancelled?'':(gc>0?`<span style="font-size:.8rem;font-weight:600;color:${gg>=0?'var(--green)':'var(--red)'}">${gg>=0?'+'+fmt(gg):'−'+fmt(-gg)}</span>`:'')}
