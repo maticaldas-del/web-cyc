@@ -2342,3 +2342,10 @@ escalera post-techo salga como descuento y que el descuento siguiente reemplace 
 ahi"*. `renderListas`: `nuevos` excluye lo de `_listaViajando(k)` (pedido en camino sin llegar); va a la carpeta "🚚 Ya están viajando
 en un pedido". Lo que ya es ficha ya no estaba. El resumen lo cuenta junto con "ya los vendés". Qué chequear: que al marcar "Llegó" el
 producto pase a ✅ Probados y no vuelva a Nuevos.
+
+**v25.69 (21/10/2026) · etapa 7 (diseño) · Dai Nippon más simple y tarjetas de Listas que se abren enteras.** Pedidos suyos: sacar el
+buscador y el botón "Proveedor: Dai Nippon" (en Bs As con una sola lista) · al abrir Dai Nippon siempre ✅ Probados (`_nipAbierto`,
+se resetea en `goPage('pedidos')` y al salir de la solapa) · la tarjeta entera abre el detalle (`<details class="lst-card">` con el
+summary = la tarjeta; la casilla de pedir y la foto no la abren) · sin el código a la vista (queda en "verlo en la lista") · ⚠️ sólo con
+duda de verdad: `_listaNoEsVale` o, sin el ✓ del chat, 1 solo vendedor o un reparo de nombre. Qué chequear: que en el teléfono la
+casilla de pedir se pueda tocar sin que se abra/cierre la tarjeta.

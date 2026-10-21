@@ -691,6 +691,7 @@ body.light .est-chip{color:color-mix(in srgb,var(--ec) 50%,#000)}
   .vp-cel [id^="vpdet-"] button,.vp-cel [id^="vpdet-"] .btn{white-space:normal!important;text-align:left}
   .vp-cel span{white-space:normal!important}
 }
+.lst-sum::-webkit-details-marker{display:none}
 </style>
 </head>
 <body>
@@ -2733,7 +2734,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.68';
+const APP_VERSION='25.69';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2746,6 +2747,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.69',f:'21/10',h:'00:41',c:[{n:1,t:'📋 Dai Nippon: sin buscador ni botón de proveedor y siempre abre en ✅ Probados. Listas: se toca cualquier parte de la tarjeta para ver el detalle (ya no hay "detalle ▾"), el código no se muestra y el ⚠️ sale sólo si hay una duda de verdad (otro producto, o sin confirmar con 1 solo vendedor o un nombre que no coincide).'}]},
   {v:'25.68',f:'21/10',h:'00:32',c:[{n:1,t:'📋 Listas → Nuevos: lo que ya viaja en un pedido sale de la lista de los que dan (y de las demás carpetas) y queda abajo en "🚚 Ya están viajando en un pedido". Lo que ya es producto tuyo ya no aparecía.'}]},
   {v:'25.67',f:'21/10',h:'01:20',c:[{n:1,t:'🔎 Revisión: las 24 ideas nuevas de la etapa 6 quedan en el cartel para elegir.'}]},
   {v:'25.66',f:'21/10',h:'00:29',c:[{n:3,t:'🛒 Paraguay y Listas: vuelven las 100 ventas en ML, como último filtro. Lo que no tiene el dato entra igual (lo mira el chat de compras sólo de lo que pasó todo); si se cargan y dan menos de 100, sale de lo que se puede pedir y va a su carpeta "vendieron menos de 100".'}]},
@@ -3518,7 +3520,7 @@ function actualizarApp(){
 
 /* ═══════════ PAGE ROUTING ═══════════ */
 function goPage(page){
-  if(page==='pedidos')window._pedMomOpenG={};   // el pedido del momento arranca cerrado al entrar (08/10/2026)
+  if(page==='pedidos'){window._pedMomOpenG={};window._nipAbierto=false;}   // el pedido del momento arranca cerrado al entrar (08/10/2026)
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   const el=document.getElementById('page-'+page);
   if(el)el.classList.add('active');
@@ -19334,7 +19336,7 @@ async function _listaBuscarYa(q){
     return `<div style="display:flex;gap:8px;align-items:center;padding:6px 8px;background:var(--surface);border:1px solid ${(arm[k]||{})[cod]>0?'var(--blue)':'var(--border)'};border-radius:8px;margin-top:5px">
       <div style="flex:1;min-width:0;font-size:.72rem;line-height:1.45"><span style="font-size:.6rem;padding:1px 7px;border-radius:9px;background:#7c3aed;color:#fff">${escHtml(provs[k].nombre||k)}</span> <b>${escHtml(e.n)}</b>
         <div style="color:var(--muted);font-size:.66rem">te sale <b style="color:var(--text)">${fmt(_listaPuesto(k,e))}</b>${e.mp?` · en ML <b style="color:var(--text)">${fmt(e.mp)}</b>`:''}</div>
-        <details style="margin-top:3px"><summary style="cursor:pointer;font-size:.62rem;color:var(--muted)">detalle ▾</summary><div style="color:var(--muted);font-size:.64rem;margin-top:4px">🔖 ${escHtml(cod)}${e.mv?' · '+(e.mv==1?'<b style="color:var(--amber)">⚠️ 1 solo vendedor</b>':e.mv+' vendedores'):''}${e.vend!=null?` · 🛒 ${e.vend>=1000?'+1000':e.vend} vendidas`:''}</div><div style="font-size:.64rem;margin-top:3px">${e.mi?`<a href="https://www.mercadolibre.com.ar/p/${e.mi}" target="_blank" rel="noopener" style="color:var(--green)">🔗 verlo en ML</a> · `:''}<a href="#" onclick="listaVerOri('${k}','${c}');return false" style="color:var(--blue)">📄 verlo en la lista</a> · <a href="#" onclick="_listaSel='${k}';_listaVista='nuevos';renderListas();return false" style="color:var(--muted)">ir a ${escHtml(provs[k].nombre||k)}</a></div></details></div>
+        <details style="margin-top:3px"><summary style="cursor:pointer;font-size:.62rem;color:var(--muted)">detalle ▾</summary><div style="color:var(--muted);font-size:.64rem;margin-top:4px">${e.mv?' · '+(e.mv==1?'<b style="color:var(--amber)">⚠️ 1 solo vendedor</b>':e.mv+' vendedores'):''}${e.vend!=null?` · 🛒 ${e.vend>=1000?'+1000':e.vend} vendidas`:''}</div><div style="font-size:.64rem;margin-top:3px">${e.mi?`<a href="https://www.mercadolibre.com.ar/p/${e.mi}" target="_blank" rel="noopener" style="color:var(--green)">🔗 verlo en ML</a> · `:''}<a href="#" onclick="listaVerOri('${k}','${c}');return false" style="color:var(--blue)">📄 verlo en la lista</a> · <a href="#" onclick="_listaSel='${k}';_listaVista='nuevos';renderListas();return false" style="color:var(--muted)">ir a ${escHtml(provs[k].nombre||k)}</a></div></details></div>
       <div style="text-align:right;flex:0 0 auto">${m!=null&&!_listaCostoVigente(e)?'<span style="font-size:.6rem;color:var(--amber)">⏳ costo nuevo, falta medir</span>':m!=null?`<b style="color:${m>=25?'var(--green)':'var(--red)'}">${m}%</b>`:'<span style="font-size:.6rem;color:var(--muted)">sin medir</span>'}
         ${_listaFichaDe(k,cod,e)?'<div style="font-size:.6rem;color:var(--green)" title="Ya es una ficha: se pide desde la tarjeta de Pedidos (📋 pedir a la lista) o en ✅ Probados">ya es probado</div>':(_listaDa(e)&&_listaEsBsas(k))?'<div style="font-size:.6rem;color:var(--green)">da · lo trae Tito</div>':_listaDa(e)?`<div style="font-size:.62rem;color:var(--muted)">pedir <input type="number" min="0" inputmode="numeric" value="${(arm[k]||{})[cod]||''}" placeholder="0" onchange="listaSetU('${k}','${c}',this.value)" style="width:48px;padding:2px 4px;font-size:.78rem;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text)"></div>`:''}</div></div>`;};
   out.innerHTML=`<div style="font-size:.66rem;color:var(--muted);margin-top:6px">${R.length?R.length+' resultado'+(R.length===1?'':'s')+(R.length>60?' · muestro los 60 mejores':''):'Nada en ninguna lista con eso.'}</div>`+R.slice(0,60).map(fila).join('');
@@ -19654,7 +19656,7 @@ let _listaSelB=null;
 // 🏬 De siempre = los pedidos de Bs As de siempre · la otra = las listas que compra Tito (Dai Nippon), con sus Probados, Nuevos y
 // 🧾 Pedido. Los probados de esas listas salen de "De siempre" y van a su solapa (no se ven dos veces).
 let _bsasVista=(()=>{try{return localStorage.getItem('cycBsasVista')==='listas'?'listas':'siempre';}catch(e){return 'siempre';}})();
-function bsasSetVista(v){_bsasVista=v;try{localStorage.setItem('cycBsasVista',v);}catch(e){}renderPedidos();}
+function bsasSetVista(v){_bsasVista=v;if(v==='listas')_listaVista='probados';try{localStorage.setItem('cycBsasVista',v);}catch(e){}renderPedidos();}
 // DE SIEMPRE O DAI NIPPON (20/10/2026, pedido suyo: *"dame poder elegir si son de bs as de siempre o de nippon"*). Cada pedido de
 // Bs As lleva un botón que lo pasa de solapa: a Dai Nippon le pone `listaProv` (la lista de Bs As), a De siempre se lo saca (queda en
 // `listaProvViejo`). Sólo en Bs As y sólo si hay alguna lista de Bs As.
@@ -19689,7 +19691,10 @@ function _bsasProvs(){const p=(state.mlconfig&&state.mlconfig.listasProv)||{};re
 const _listaEsBsas=k=>!!((((state.mlconfig||{}).listasProv||{})[k])||{}).bsas;
 async function renderListas(){
   const _enB=pedidoSection==='bsas';
-  if(_enB&&_bsasVista!=='listas'){const b=document.getElementById('bsas-listas-body');if(b)b.innerHTML='';return;}
+  if(_enB&&_bsasVista!=='listas'){window._nipAbierto=false;const b=document.getElementById('bsas-listas-body');if(b)b.innerHTML='';return;}
+  // AL ABRIR DAI NIPPON, SIEMPRE PROBADOS (21/10/2026, pedido suyo): cada vez que se entra (venía de otra solapa o sección).
+  if(_enB&&!window._nipAbierto)_listaVista='probados';
+  window._nipAbierto=_enB;
   const el=document.getElementById(_enB?'bsas-listas-body':'listas-body');if(!el)return;
   {const otro=document.getElementById(_enB?'listas-body':'bsas-listas-body');if(otro)otro.innerHTML='';}
   if(window._listaQ)setTimeout(()=>_listaBuscarYa(window._listaQ),60);
@@ -19721,8 +19726,8 @@ async function renderListas(){
   // son tarjetas de Pedidos como las de "De siempre" y los nuevos se miran para que Tito los traiga.
   if(_enB&&_listaVista==='hechos')_listaVista='nuevos';
   const _tab=(t,txt,tit)=>`<button class="btn" style="font-size:.64rem;padding:5px 13px;${_listaVista===t?'background:var(--blue);color:#fff;font-weight:700':''}" title="${tit}" onclick="listaSetVista('${t}')">${txt}</button>`;
-  const cab=(_enB?`<div style="font-size:.8rem;font-weight:700;margin:18px 0 8px;padding-top:12px;border-top:2px solid var(--border2)">📋 Listas que compra Tito en Bs As <span style="font-size:.66rem;font-weight:400;color:var(--muted)">· lo que ya compraste está arriba, en los pedidos</span></div>`:'')+`<div style="margin-bottom:10px"><input id="lista-buscar" type="search" value="${escHtml(window._listaQ||'')}" placeholder="🔎 Buscar un producto en TODAS las listas…" oninput="listaBuscar(this.value)" style="width:100%;padding:9px 12px;font-size:.85rem;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--text)"><div id="lista-busq"></div></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px"><span style="font-size:.68rem;color:var(--muted)">Proveedor:</span>${visibles.map(_provBtn).join('')}${_enB?'':`<button class="btn" style="font-size:.64rem;padding:4px 10px;opacity:.8" title="La esconde de acá hasta que la vuelvas a poner (desde ⏸️ sacadas por ahora). No borra nada." onclick="listaPausar('${k}',true)">⏸️ sacar ${escHtml(nom)} por ahora</button>`}</div>${_volverHtml}
+  const cab=(_enB?`<div style="font-size:.8rem;font-weight:700;margin:18px 0 8px;padding-top:12px;border-top:2px solid var(--border2)">📋 Listas que compra Tito en Bs As <span style="font-size:.66rem;font-weight:400;color:var(--muted)">· lo que ya compraste está arriba, en los pedidos</span></div>`:'')+(_enB?'':`<div style="margin-bottom:10px"><input id="lista-buscar" type="search" value="${escHtml(window._listaQ||'')}" placeholder="🔎 Buscar un producto en TODAS las listas…" oninput="listaBuscar(this.value)" style="width:100%;padding:9px 12px;font-size:.85rem;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--text)"><div id="lista-busq"></div></div>`)+`
+    ${(_enB&&visibles.length===1)?'':`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px"><span style="font-size:.68rem;color:var(--muted)">Proveedor:</span>${visibles.map(_provBtn).join('')}${_enB?'':`<button class="btn" style="font-size:.64rem;padding:4px 10px;opacity:.8" title="La esconde de acá hasta que la vuelvas a poner (desde ⏸️ sacadas por ahora). No borra nada." onclick="listaPausar('${k}',true)">⏸️ sacar ${escHtml(nom)} por ahora</button>`}</div>`}${_volverHtml}
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${_tab('probados','✅ Productos probados','Lo que ya le compraste a este proveedor: cuánto reponer.')}${_tab('nuevos','🆕 Productos nuevos','Lo de su lista que todavía no vendés y da 25% o más en ML.')}${_enB?'':_tab('hechos','🧾 Pedido'+(nArm?' ('+nArm+' cargados)':''),'El pedido del momento, el mensaje con código y unidades, y los pedidos ya hechos.')}</div>`;
   _listaCacheRevisar();   // etapa 4 (20/10/2026): la que cambió el robot se vuelve a bajar
   let cat=_listaCache[k];
@@ -19749,12 +19754,17 @@ async function renderListas(){
     const fML=/^https:\/\//.test(e.mf||'')?e.mf:'';const vj=viaj.has(String(cod)),fi=yaFicha.has(String(cod));
     const uBox=!conU?'':(_enB&&!fi)?(_listaDa(e)?'<div style="font-size:.6rem;color:var(--green)" title="No hay pedido: lo trae Tito en persona. Cuando llegue, avisale a Claude y lo da de alta.">da · lo trae Tito</div>':''):fi?'<div style="font-size:.6rem;color:var(--green)" title="Ya es una ficha: se pide desde la tarjeta de Pedidos (📋 pedir a la lista) o en ✅ Probados">ya es probado</div>':vj?'<div style="font-size:.6rem;color:var(--amber)">🚚 viajando</div>'
       :_listaDa(e)?`<div style="margin-top:4px;font-size:.62rem;color:var(--muted)">pedir <input type="number" min="0" inputmode="numeric" value="${arm[cod]||''}" placeholder="0" onchange="listaSetU('${k}','${String(cod).replace(/'/g,"\\'")}',this.value)" style="width:52px;padding:3px 5px;font-size:.8rem;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text)"> u.</div>`:'';
-    return `<div style="display:flex;gap:8px;align-items:center;padding:6px 8px;background:var(--surface);border:1px solid ${arm[cod]>0?'var(--blue)':'var(--border)'};border-radius:8px">
-      ${fML?`<img src="${fML}" loading="lazy" onclick="_mostrarLightbox('${fML}','')" onerror="this.style.visibility='hidden'" style="width:44px;height:44px;object-fit:contain;background:#fff;border-radius:6px;cursor:zoom-in">`:''}
+    // LA TARJETA ENTERA ABRE EL DETALLE (21/10/2026, él: "quiero que salga donde dice detalle y la flechita. que se abra directamente al
+    // clickear en cualquier parte de la tarjeta del producto"). Sin el código a la vista ("no nos basamos con eso"; queda en "verlo en
+    // la lista"). ⚠️ sólo si hay una duda de verdad: otro producto, o sin confirmar con 1 solo vendedor o un reparo de nombre.
+    const _duda=_listaNoEsVale(e)||(!_listaOkVale(e)&&(Number(e.mv)===1||!!e.rp));
+    return `<details class="lst-card" style="background:var(--surface);border:1px solid ${arm[cod]>0?'var(--blue)':'var(--border)'};border-radius:8px">
+      <summary class="lst-sum" style="list-style:none;cursor:pointer;display:flex;gap:8px;align-items:center;padding:6px 8px">
+      ${fML?`<img src="${fML}" loading="lazy" onclick="event.preventDefault();event.stopPropagation();_mostrarLightbox('${fML}','')" onerror="this.style.visibility='hidden'" style="width:44px;height:44px;object-fit:contain;background:#fff;border-radius:6px;cursor:zoom-in">`:''}
       <div style="flex:1;min-width:0;font-size:.72rem;line-height:1.45"><div style="font-weight:600">${escHtml(e.n)}</div>
-        <div style="color:var(--muted);font-size:.66rem">te sale <b style="color:var(--text)">${fmt(pc)}</b>${e.mp?` · en ML <b style="color:var(--text)">${fmt(e.mp)}</b>`:''}${(_listaNoEsVale(e)||e.mv==1||e.rp)?' · <span style="color:var(--amber)">⚠️ mirar el detalle</span>':''}</div>
-        <details style="margin-top:3px"><summary style="cursor:pointer;font-size:.62rem;color:var(--muted)">detalle ▾</summary><div style="color:var(--muted);font-size:.64rem;margin-top:4px;line-height:1.55">🔖 ${escHtml(cod)} · te sale <b style="color:var(--text)">${fmt(pc)}</b>${rec?` (${fmt(Number(e.p)||0)} + ${rec}%)`:''}${Number(e.pl)>0?` · lista ${fmt(Number(e.pl))} −${e.dto}%`:''}${e.mp?` · en ML ${fmt(e.mp)}${e.mv?' · '+(e.mv==1?'<b style="color:var(--amber)">⚠️ 1 solo vendedor: precio que nadie más confirma</b>':e.mv+' vendedores'):''}`:''}${e.vend!=null?` · 🛒 ${e.vend>=1000?'+1000':e.vend} vendidas`:''}${e.ok?' · <span style="color:var(--green)">✓ mismo producto</span>':''}${_listaNoEsVale(e)?' · <span style="color:var(--red)">✗ otro producto</span>':e.noEs?' · <span style="color:var(--muted)" title="El chat de compras dijo que el catálogo de antes era otro producto; éste es otro catálogo y falta confirmarlo.">catálogo nuevo, falta confirmar</span>':''}${e.mt?` · <span title="el catálogo de ML contra el que se midió">"${escHtml(String(e.mt).slice(0,60))}"</span>`:''}${e.pAnt?` · antes ${fmt(e.pAnt)}`:''}</div><div style="font-size:.64rem;margin-top:3px">${e.mi?`<a href="https://www.mercadolibre.com.ar/p/${e.mi}" target="_blank" rel="noopener" style="color:var(--green)">🔗 verlo en ML</a> · `:''}<a href="#" onclick="listaVerOri('${k}','${String(cod).replace(/'/g,"\\'")}');return false" style="color:var(--blue)">📄 verlo en la lista</a>${e.rp?` <span style="color:var(--amber)">· ⚠️ ${escHtml(String(e.rp).slice(0,80))}</span>`:''}</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">${e.sacado?`<button class="btn" style="font-size:.64rem;padding:3px 10px" onclick="listaSacar('${k}','${String(cod).replace(/'/g,"\\'")}',false)">↩︎ volver a la lista</button>`:`<button class="btn" style="font-size:.64rem;padding:3px 10px;color:var(--red);border-color:var(--red)" onclick="listaSacar('${k}','${String(cod).replace(/'/g,"\\'")}',true)">✕ sacar producto</button>`}</div></details></div>
-      <div style="text-align:right;flex:0 0 auto">${est}${uBox}</div></div>`;};
+        <div style="color:var(--muted);font-size:.66rem">te sale <b style="color:var(--text)">${fmt(pc)}</b>${e.mp?` · en ML <b style="color:var(--text)">${fmt(e.mp)}</b>`:''}${_duda?' · <span style="color:var(--amber)">⚠️ hay una duda (tocá para verla)</span>':''}</div></div>
+      <div style="text-align:right;flex:0 0 auto" onclick="if(event.target.tagName==='INPUT'){event.preventDefault();event.stopPropagation();}">${est}${uBox}</div></summary>
+      <div style="padding:0 10px 8px 10px"><div style="color:var(--muted);font-size:.64rem;margin-top:4px;line-height:1.55">te sale <b style="color:var(--text)">${fmt(pc)}</b>${rec?` (${fmt(Number(e.p)||0)} + ${rec}%)`:''}${Number(e.pl)>0?` · lista ${fmt(Number(e.pl))} −${e.dto}%`:''}${e.mp?` · en ML ${fmt(e.mp)}${e.mv?' · '+(e.mv==1?'<b style="color:var(--amber)">⚠️ 1 solo vendedor: precio que nadie más confirma</b>':e.mv+' vendedores'):''}`:''}${e.vend!=null?` · 🛒 ${e.vend>=1000?'+1000':e.vend} vendidas`:''}${e.ok?' · <span style="color:var(--green)">✓ mismo producto</span>':''}${_listaNoEsVale(e)?' · <span style="color:var(--red)">✗ otro producto</span>':e.noEs?' · <span style="color:var(--muted)" title="El chat de compras dijo que el catálogo de antes era otro producto; éste es otro catálogo y falta confirmarlo.">catálogo nuevo, falta confirmar</span>':''}${e.mt?` · <span title="el catálogo de ML contra el que se midió">"${escHtml(String(e.mt).slice(0,60))}"</span>`:''}${e.pAnt?` · antes ${fmt(e.pAnt)}`:''}</div><div style="font-size:.64rem;margin-top:3px">${e.mi?`<a href="https://www.mercadolibre.com.ar/p/${e.mi}" target="_blank" rel="noopener" style="color:var(--green)">🔗 verlo en ML</a> · `:''}<a href="#" onclick="listaVerOri('${k}','${String(cod).replace(/'/g,"\\'")}');return false" style="color:var(--blue)">📄 verlo en la lista</a>${e.rp?` <span style="color:${_listaOkVale(e)?'var(--muted)':'var(--amber)'}">· ${_listaOkVale(e)?'':'⚠️ '}${escHtml(String(e.rp).slice(0,80))}</span>`:''}</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">${e.sacado?`<button class="btn" style="font-size:.64rem;padding:3px 10px" onclick="listaSacar('${k}','${String(cod).replace(/'/g,"\\'")}',false)">↩︎ volver a la lista</button>`:`<button class="btn" style="font-size:.64rem;padding:3px 10px;color:var(--red);border-color:var(--red)" onclick="listaSacar('${k}','${String(cod).replace(/'/g,"\\'")}',true)">✕ sacar producto</button>`}</div></div></details>`;};
   const ord=(a,b)=>((b[1].m??-999)-(a[1].m??-999));
   // ── PEDIDO ──
   if(_listaVista==='hechos'){
