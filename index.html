@@ -28,6 +28,13 @@
   --text:#f1f1f3;--muted:#8a8a99;--r:10px;
   /* Etapa 7 (20/10/2026): los colores de los niveles (% de ganancia, día, score, puntaje, semáforo). En oscuro, los de siempre. */
   --lv-justo:#f97316;--lv-bueno:#14b8a6;--lv-exc:#60a5fa;--lv-estr:#a78bfa;--lv-joya:#facc15;--lv-lima:#84cc16;
+  /* "Estás acá" (decisión 7.11 de diseño, 21/10/2026): UN solo verde para lo elegido (pestañas, solapas, rango, proveedor,
+     menú). En oscuro la letra va oscura: la blanca sobre el verde tenía contraste 2,3. */
+  --sel-bg:#22c55e;--sel-tx:#04210f;
+  /* LOS COLORES DE LAS ESTRATEGIAS POR FAMILIA (decisión 7.13 de diseño, 21/10/2026, eligió la a): verdes = subir/buscar
+     (techo, escasez, lanzamiento), rojos/naranjas = bajar/salir (liquidando, sobra, escalera, caja), azul = volver al normal,
+     violetas = especiales (promo, descuento, fecha, gemela, prueba), grises = sin estrategia. En claro, más oscuros para leerse. */
+  --es-sube:#22c55e;--es-sube-ok:#4ade80;--es-sube-esc:#a3e635;--es-sube-espera:#d9f99d;--es-sube-nuevo:#2dd4bf;--es-sube-vuelve:#6ee7b7;--es-baja-liq:#ef4444;--es-baja-remate:#f87171;--es-baja-sobra:#fb923c;--es-baja-esc:#fbbf24;--es-baja-caja:#f97316;--es-vuelve:#38bdf8;--es-esp-promo:#c084fc;--es-esp-desc:#e879f9;--es-esp-fecha:#f472b6;--es-esp-gemela:#a855f7;--es-esp-prueba:#818cf8;--es-neu:#64748b;--es-neu-vieja:#94a3b8;--es-neu-stock:#94a3b8;--es-neu-exc:#cbd5e1;
 }
 body.light{
   --bg:#f4f4f6;--surface:#ffffff;--surface2:#ebebef;
@@ -37,6 +44,8 @@ body.light{
   --green:#15803d;--red:#dc2626;--amber:#b45309;--blue:#0369a1;--accent2:#16a34a;
   /* y en claro, los niveles más oscuros para que se lean sobre blanco (el JOYA amarillo tenía 1,5 de contraste) */
   --lv-justo:#c2410c;--lv-bueno:#0f766e;--lv-exc:#2563eb;--lv-estr:#7c3aed;--lv-joya:#a16207;--lv-lima:#4d7c0f;
+  --sel-bg:#15803d;--sel-tx:#fff;
+  --es-sube:#15803d;--es-sube-ok:#166534;--es-sube-esc:#4d7c0f;--es-sube-espera:#3f6212;--es-sube-nuevo:#0f766e;--es-sube-vuelve:#047857;--es-baja-liq:#b91c1c;--es-baja-remate:#7f1d1d;--es-baja-sobra:#c2410c;--es-baja-esc:#a16207;--es-baja-caja:#9a3412;--es-vuelve:#0369a1;--es-esp-promo:#7e22ce;--es-esp-desc:#a21caf;--es-esp-fecha:#be185d;--es-esp-gemela:#6b21a8;--es-esp-prueba:#4338ca;--es-neu:#475569;--es-neu-vieja:#64748b;--es-neu-stock:#64748b;--es-neu-exc:#334155;
 }
 #theme-toggle{position:fixed;bottom:80px;right:28px;z-index:300;background:var(--surface);border:1px solid var(--border2);border-radius:8px;width:36px;height:36px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;transition:background .15s,border .15s}
 #fnav-btn{position:fixed;bottom:22px;right:22px;z-index:400;width:48px;height:48px;border-radius:50%;background:var(--accent2);border:none;cursor:pointer;font-size:1.3rem;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 18px rgba(0,0,0,.45);transition:transform .15s,opacity .15s}
@@ -45,10 +54,11 @@ body.light{
 /* etapa 7 (20/10/2026): en el iPhone con muesca o barra de abajo, lo fijo no queda tapado (sin muesca no cambia nada) */
 #fnav-btn{bottom:calc(22px + env(safe-area-inset-bottom,0px))}#fnav-menu{bottom:calc(82px + env(safe-area-inset-bottom,0px))}#theme-toggle{bottom:calc(80px + env(safe-area-inset-bottom,0px))}
 #fnav-menu.hidden{transform:scale(.85);opacity:0;pointer-events:none}
+/* el buscador del ☰ (7.15): un nombre largo no puede ensanchar el menú fuera de la pantalla */
+#fnav-menu{max-width:min(320px,calc(100vw - 44px))}.fnav-hit{min-width:0;width:100%}.fnav-hit span{flex:1;min-width:0}
 .fnav-item{display:flex;align-items:center;gap:10px;padding:9px 14px;min-height:40px;border-radius:9px;border:none;background:transparent;color:var(--text);font-family:'DM Mono',monospace;font-size:.8rem;cursor:pointer;text-align:left;transition:background .12s}
 .fnav-item:hover{background:var(--surface2)}
-.fnav-item.active-page{background:rgba(124,58,237,.15);color:#a78bfa}
-body.light .fnav-item.active-page{color:#6d28d9;background:rgba(124,58,237,.12)}
+.fnav-item.active-page{background:var(--sel-bg);color:var(--sel-tx);font-weight:700}
 html{font-size:118%}
 /* Etapa 7 (29/09/2026): en pantallas táctiles, casillas con letra de 16px (el iPhone deja de agrandar la
    pantalla al tocarlas), botones chicos más grandes, y en el teléfono las listas no tienen scroll propio. */
@@ -154,18 +164,25 @@ html,body{overflow-x:hidden;max-width:100%}html{overflow-x:clip}body{overscroll-
 .total-pill .lbl{font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;opacity:.85}
 .total-pill .val{font-family:'Syne',sans-serif;font-size:1.2rem;font-weight:800}
 .total-pill .val.negative{color:#fca5a5}
+@media(max-width:640px){.total-pill{display:none}}
 
 /* ── SHARED COMPONENTS ── */
-#act-bar{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 14px;margin-bottom:16px;font-size:.66rem;color:var(--muted);display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:34px;overflow:hidden}
-.act-pill{padding:2px 8px;border-radius:4px;background:rgba(124,58,237,.1);color:#a78bfa;font-size:.63rem;white-space:nowrap;max-width:260px;overflow:hidden;text-overflow:ellipsis}
 .tabs{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
 .tab{padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:var(--surface);font-size:.72rem;cursor:pointer;color:var(--muted);font-family:'DM Mono',monospace;transition:all .15s}
 .tab:hover:not(.active){border-color:var(--border2);color:var(--text)}
-.tab.active{background:var(--accent2);border-color:var(--accent2);color:#fff}
+.tab.active{background:var(--sel-bg);border-color:var(--sel-bg);color:var(--sel-tx);font-weight:700}
 .stitle{font-family:'Syne',sans-serif;font-size:.68rem;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin-bottom:10px;margin-top:18px;cursor:pointer;user-select:none}
 .stitle:hover{color:var(--text)}
 .stitle:first-child{margin-top:0}
 .btn{padding:8px 16px;border-radius:8px;border:none;cursor:pointer;font-family:'DM Mono',monospace;font-size:.72rem;font-weight:500;transition:all .15s;white-space:nowrap}
+/* BOTONES SIN FONDO (decisión 7.10 de diseño, 21/10/2026, eligió la a): ~90 .btn no traían fondo propio y el navegador les ponía
+   el suyo (gris claro con letra negra: manchas blancas en el tema oscuro). El que no trae fondo ni una clase de color toma el de
+   los botones de vista (.vbtn): fondo de tarjeta y borde fino, con tokens para claro y oscuro. Uno con style="background…"
+   (también si el JS se lo pone después) o con .btn-add/.btn-del/.btn-exp/.btn-snap queda como está. */
+.btn:not([style*="background"]):not(.btn-add):not(.btn-del):not(.btn-exp):not(.btn-snap){background:var(--surface2);color:var(--text);border:1px solid var(--border2)}
+.btn:not([style*="background"]):not(.btn-add):not(.btn-del):not(.btn-exp):not(.btn-snap):hover{border-color:var(--muted)}
+/* y todo botón se hunde un poquito al tocarlo: así se sabe que se tocó */
+.btn:active:not(:disabled),.vbtn:active,.pf-btn:active,.tab:active,.dd-opt:active,.back-btn:active,.fnav-item:active,.pi-status:active,.pi-var-toggle:active{transform:scale(.95)}
 .btn-add{background:var(--accent2);color:#fff}.btn-add:hover{opacity:.85}
 .btn-del{background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.2);padding:5px 10px;font-size:.66rem}.btn-del:hover{background:rgba(239,68,68,.2)}
 .btn-exp{background:rgba(56,189,248,.1);color:var(--blue);border:1px solid rgba(56,189,248,.2)}.btn-exp:hover{background:rgba(56,189,248,.2)}
@@ -291,7 +308,7 @@ input.qty:focus{border-color:var(--accent2)}
 .cal-select:focus{border-color:var(--accent2)}
 .view-toggle{display:flex;gap:6px;flex-wrap:wrap}
 .vbtn{padding:6px 14px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--muted);font-family:'DM Mono',monospace;font-size:.68rem;cursor:pointer;transition:all .15s}
-.vbtn.active{background:var(--accent2);border-color:var(--accent2);color:#fff}
+.vbtn.active{background:var(--sel-bg);border-color:var(--sel-bg);color:var(--sel-tx);font-weight:700}
 /* Menú desplegable del período (Métricas ML). En la barra queda UN solo botón con el período
    elegido; las diez opciones viven adentro y aparecen recién al tocarlo. Antes eran diez
    botones en fila y ocupaban media pantalla. */
@@ -302,7 +319,7 @@ input.qty:focus{border-color:var(--accent2)}
 .dd-grp{font-size:.6rem;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);padding:8px 10px 4px}
 .dd-opt{display:block;width:100%;text-align:left;padding:7px 10px;border:0;border-radius:6px;background:none;color:var(--text);font-family:'DM Mono',monospace;font-size:.68rem;cursor:pointer}
 .dd-opt:hover{background:var(--surface2)}
-.dd-opt.active{background:var(--accent2);color:#fff}
+.dd-opt.active{background:var(--sel-bg);color:var(--sel-tx);font-weight:700}
 .comp-table{width:100%;border-collapse:collapse;font-size:.74rem}
 .comp-table th{padding:10px 14px;text-align:right;font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);border-bottom:1px solid var(--border);background:var(--surface);white-space:nowrap}
 .comp-table th:first-child{text-align:left}
@@ -430,7 +447,7 @@ input.qty:focus{border-color:var(--accent2)}
 .pf-btn.active-pend{background:rgba(239,68,68,.12);color:var(--red);border-color:rgba(239,68,68,.25)}
 .pf-btn.active-ped{background:rgba(245,158,11,.12);color:var(--amber);border-color:rgba(245,158,11,.25)}
 .pf-btn.active-rec{background:rgba(34,197,94,.12);color:var(--green);border-color:rgba(34,197,94,.25)}
-.pf-btn.active-all{background:var(--accent2);color:#fff;border-color:var(--accent2)}
+.pf-btn.active-all{background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700}
 #ofi-filtro-cuentas .pf-btn.active-all strong,#ofi-filtro-cuentas .pf-btn.active-all span:not(.pf-badge){color:#fff!important}
 /* etapa 7: el 📦N de la caja a medio armar va como globito arriba del botón: así el botón no cambia de ancho */
 #ofi-filtro-cuentas{padding-top:8px}#ofi-filtro-cuentas .pf-btn{position:relative}
@@ -750,7 +767,6 @@ body.light .vp-promo.vp-promo-ml{color:#0369a1;background:color-mix(in srgb,#036
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 /* etapa 7: el chip de estrategia no se parte en dos renglones; en el tema claro la letra va más oscura para que se lea */
 .est-chip{display:inline-block;white-space:nowrap;max-width:100%;color:var(--ec)}.vp-cel span.est-chip{white-space:nowrap!important}
-body.light .est-chip{color:color-mix(in srgb,var(--ec) 50%,#000)}
 @media(max-width:640px){
   .vp-cel{max-width:100%;overflow:hidden}
   .vp-cel *{max-width:100%}
@@ -890,17 +906,16 @@ body.light .est-chip{color:color-mix(in srgb,var(--ec) 50%,#000)}
         <span style="font-size:.6rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)">💵 Dólar</span>
         <input id="f_tipo_cambio" class="fin-input money" style="width:120px" type="text" inputmode="numeric" placeholder="$0" onchange="saveTC(this.value)">
       </div>
+      <!-- Dos "Patrimonio total" en la misma pantalla (decisión 7.7 de diseño, 21/10/2026, eligió la a): éste es el de HOY
+           (calcArqueo en vivo, aunque abajo se mire un mes cerrado) y en el teléfono no se ve: ahí manda el de abajo. -->
       <div class="total-pill">
-        <div class="lbl">Patrimonio total</div>
+        <div class="lbl">Patrimonio hoy</div>
         <div class="val" id="total-val">$0</div>
       </div>
     </div>
   </div>
 
-  <div id="act-bar">
-    <span>Última actividad (sólo lo hecho desde la web, no el robot):</span>
-    <span id="act-entries" style="color:var(--muted)">sin actividad</span>
-  </div>
+  <!-- "Última actividad" se sacó del Arqueo el 21/10/2026 (decisión 7.8 de diseño): vive en Ajustes → 🕘 Últimos cambios. -->
 
   <div class="tabs">
     <!-- ABRE EN FINANZAS (idea 6 de la etapa 7, 30/09/2026, eligió la a): es lo que se entra a mirar.
@@ -917,9 +932,10 @@ body.light .est-chip{color:color-mix(in srgb,var(--ec) 50%,#000)}
   <div id="tab-inventario" style="display:none">
     <div style="font-size:.68rem;color:var(--muted);margin-bottom:8px">👀 Sólo para mirar: el stock de Full lo trae el robot cada hora y lo de casa se cuenta en <a href="#" onclick="goPage('oficina');return false" style="color:var(--accent,#38bdf8)">Mi oficina</a>.</div>
     <input class="search-box" id="inv-search" type="search" placeholder="Buscar producto..." oninput="renderInv()">
+    <!-- "🔧 Reparar stock variantes" se sacó el 21/10/2026 (decisión 7.4 de diseño, eligió la a): escribía en el
+         inventario sin preguntar, en una pestaña que es sólo para mirar. -->
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
       <div class="stitle" style="margin:0">Unidades por cuenta / ubicación</div>
-      <button class="btn" style="font-size:.68rem;padding:4px 10px;background:rgba(251,191,36,.12);color:var(--amber);border:1px solid rgba(251,191,36,.3)" onclick="repararStockVariantes()">🔧 Reparar stock variantes</button>
     </div>
     <div class="tbl-outer">
       <table id="inv-tbl">
@@ -1683,10 +1699,10 @@ body.light .est-chip{color:color-mix(in srgb,var(--ec) 50%,#000)}
   <div class="stitle">De dónde viene la mercadería <span id="met-origen-period" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;font-size:.65rem"></span></div>
   <div id="met-origen"></div>
 
-  <!-- El robot de precios, UNA sola tarjeta (30/09/2026, pedido suyo: "que se unifique"): arriba lo que
-       ganó o perdió (sólo confirmado) y adentro, en un desplegable, todo lo que está vigilando.
-       met-vig vive ADENTRO de met-auto: renderMetAuto lo crea y renderMetVig lo llena. -->
-  <div class="stitle">🧠 Cambios de precio <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;font-size:.65rem">· lo que ganó o perdió cada cambio · y lo que se está mirando</span></div>
+  <!-- El robot de precios, UNA sola tarjeta (30/09/2026, pedido suyo: "que se unifique"): lo que ganó o perdió
+       cada cambio. El desplegable "👀 Qué está mirando ahora" (foto vieja de cyc/vigilancia del 07/10) se sacó el
+       21/10/2026 (decisión 7.3 de diseño, eligió la a): ya no se rehace desde que manda el cerebro. -->
+  <div class="stitle">🧠 Cambios de precio <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;font-size:.65rem">· lo que ganó o perdió cada cambio</span></div>
   <div id="met-auto"></div>
 
   <footer>CYC · Métricas ML · datos independientes</footer>
@@ -1871,19 +1887,14 @@ body.light .est-chip{color:color-mix(in srgb,var(--ec) 50%,#000)}
     <div class="met-kpi c1"><div class="mk-lbl">Efectivo & Digital</div><div class="mk-val" id="res-efect">$0</div><div class="mk-sub" id="res-efect-comp">caja + MP</div></div>
   </div>
 
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
-    <div>
-      <div class="stitle">🚚 Pedidos pendientes</div>
-      <div class="met-kpi-grid" style="grid-template-columns:1fr 1fr 1fr">
-        <div class="met-kpi c1"><div class="mk-lbl">Urgente</div><div class="mk-val" id="res-ped-pend" style="color:var(--red)">0</div><div class="mk-sub">prioridad alta</div></div>
-        <div class="met-kpi c4"><div class="mk-lbl">Poco stock</div><div class="mk-val" id="res-ped-ped" style="color:var(--amber)">0</div><div class="mk-sub">reabastecer</div></div>
-        <div class="met-kpi ct"><div class="mk-lbl">Suficiente</div><div class="mk-val" id="res-ped-rec" style="color:var(--green)">0</div><div class="mk-sub">ok</div></div>
-      </div>
-    </div>
-    <div>
-      <div class="stitle">🕑 Última actividad <span style="text-transform:none;font-weight:400">· sólo lo hecho desde la web, no el robot</span></div>
-      <div id="res-hist-list"><div class="empty-msg">Sin actividad.</div></div>
-    </div>
+  <!-- 21/10/2026 (decisiones 7.2 y 7.8 de diseño, eligió la a): "Pedidos pendientes" contaba renglones por un estado que
+       ya casi nadie mira; ahora es "Falta reponer" con la MISMA cuenta que Pedidos (pedFaltaReponerTodo → _pedsCostoReponer).
+       "Última actividad" vive sólo en Ajustes (🕘 Últimos cambios). -->
+  <div class="stitle">🚚 Falta reponer <span style="font-weight:400;font-size:.65rem;text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;color:var(--muted)">· hoy, todos los pedidos juntos</span></div>
+  <div class="met-kpi-grid" style="cursor:pointer" onclick="goPage('pedidos')" title="Lo mismo que el «Falta reponer» de Pedidos, con todas las solapas juntas">
+    <div class="met-kpi c4"><div class="mk-lbl">Plata para reponer</div><div class="mk-val" id="res-ped-reponer">$0</div><div class="mk-sub" id="res-ped-reponer-sub">costo base, sin envío</div></div>
+    <div class="met-kpi c1"><div class="mk-lbl">Productos para comprar</div><div class="mk-val" id="res-ped-n">0</div><div class="mk-sub">los que no están en «suficiente»</div></div>
+    <div class="met-kpi ct"><div class="mk-lbl">En riesgo (30 d)</div><div class="mk-val" id="res-ped-riesgo" style="color:var(--red)">$0</div><div class="mk-sub">lo que dejás de ganar si se corta</div></div>
   </div>
 
   <footer>CYC · Resumen general</footer>
@@ -2343,7 +2354,7 @@ function startApp(){
     if(_extEntries.length)_applyStockEntries(_extEntries);
     document.getElementById('loading').style.display='none';
     const primeraVez=firstDataLoad;
-    if(firstDataLoad){firstDataLoad=false;goPage(_paginaDeHash()||'home');}   // #ventaprod = abrió tocando el aviso de una venta (o un acceso directo del ícono)
+    if(firstDataLoad){firstDataLoad=false;const _pg0=_paginaDeHash();currentPage=currentPage||'home';goPage('home');if(_pg0&&_pg0!=='home')goPage(_pg0);}   // #ventaprod = abrió tocando el aviso de una venta (o un acceso directo del ícono)
     // La primera carga se dibuja ya; las demás se juntan y respetan tu scroll (ver renderPronto).
     renderPronto(primeraVez);
   },err=>{
@@ -2513,7 +2524,7 @@ if('serviceWorker' in navigator)navigator.serviceWorker.addEventListener('messag
 const _PAGINAS_HASH={ventaprod:1,pedidos:1,oficina:1};
 function _paginaDeHash(){
   const h=String(location.hash||'').replace(/^#/,'');if(!_PAGINAS_HASH[h])return null;
-  try{history.replaceState(null,'',location.pathname+location.search);}catch(e){}
+  try{history.replaceState(history.state,'',location.pathname+location.search);}catch(e){}
   if(h==='ventaprod')try{vpLimpiarFiltros();}catch(e){}
   return h;
 }
@@ -2606,28 +2617,8 @@ function _matchProdVariant(title,variantes){
   }
   return best;
 }
-// Auto-vincula familias que son un solo producto con variantes (Paulvic, Victoria's Secret).
-async function autoLinkFamilies(){
-  const fams=[{kw:'paulvic',prod:'Paulvic TODOS'},{kw:'victoria',prod:"Victoria's Secret"}];
-  const map=state.mllinks||{};
-  let linked=0,sinVar=0,noProd=[];
-  for(const f of fams){
-    const prod=(state.products||[]).find(p=>_mlnorm(p.name)===_mlnorm(f.prod));
-    if(!prod){noProd.push(f.prod);continue;}
-    for(const mla of Object.keys(map)){
-      const e=map[mla];
-      if(!e||e.ignored||e.prodId)continue;                       // solo sin vincular
-      if(!_mlnorm(e.title).includes(_mlnorm(f.kw)))continue;      // que sea de la familia
-      const variant=_matchProdVariant(e.title,prod.variantes);
-      const campos={prodId:prod.id,variant:variant||'',manual:true,auto:null,candidatos:null};
-      await fbUpdate(mlLinkCampos(mla,campos));state.mllinks[mla]=mlLinkMezcla(e,campos);
-      linked++;if(!variant)sinVar++;
-    }
-  }
-  renderMlLinks();
-  if(noProd.length)toast('No encontré el producto: '+noProd.join(', '),'err');
-  toast(linked+' vinculadas'+(sinVar?' · '+sinVar+' sin variante (revisá)':'')+' ✓','ok',5000);
-}
+// "⚡ Auto Paulvic + Victoria" y "🗑 Ocultar sin vincular" se sacaron el 21/10/2026 (decisión 7.5 de diseño, eligió la a):
+// vincular lo hace Claude (regla del 09/10) y ocultar de a montón escondía publicaciones vivas sin mirarlas.
 let _mlFilterPend=false,_mlShowHidden=false;
 function toggleMlFilter(){_mlFilterPend=!_mlFilterPend;renderMlLinks();}
 function toggleMlHidden(){_mlShowHidden=!_mlShowHidden;renderMlLinks();}
@@ -2655,9 +2646,7 @@ function renderMlLinks(){
   const head=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">
       <span style="font-size:.66rem;color:var(--muted)">${_mlShowHidden?hidden+' ocultas':pend+' sin vincular · '+total+' en total'+(hidden?' · '+hidden+' ocultas':'')}</span>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
-        ${(!_mlShowHidden&&pend)?btn('⚡ Auto Paulvic + Victoria','autoLinkFamilies()','color:var(--accent2);border-color:var(--accent2)'):''}
         ${_mlShowHidden?'':btn(_mlFilterPend?'Ver todas':'Solo sin vincular','toggleMlFilter()')}
-        ${(!_mlShowHidden&&pend)?btn('🗑 Ocultar sin vincular','bulkHidePending()','color:var(--amber)'):''}
         ${hidden?btn(_mlShowHidden?'← Volver':'Ver ocultas ('+hidden+')','toggleMlHidden()'):''}
       </div>
     </div>`;
@@ -2710,16 +2699,6 @@ async function unhideMl(mla){
   const cur=(state.mllinks&&state.mllinks[mla])||{};
   await fbUpdate(mlLinkCampos(mla,{ignored:null}));
   state.mllinks[mla]=mlLinkMezcla(cur,{ignored:null});renderMlLinks();toast('Recuperada ✓');
-}
-async function bulkHidePending(){
-  const map=state.mllinks||{};
-  const targets=Object.keys(map).filter(m=>!map[m].prodId&&!map[m].ignored);
-  if(!targets.length){toast('No hay sin vincular','info');return;}
-  if(!confirm('¿Ocultar '+targets.length+' publicaciones sin vincular? Las podés recuperar después.'))return;
-  const campos={ignored:true,manual:true};const upd={};
-  for(const m of targets)Object.assign(upd,mlLinkCampos(m,campos));
-  await fbUpdate(upd);for(const m of targets)state.mllinks[m]=mlLinkMezcla(map[m],campos);
-  renderMlLinks();toast(targets.length+' ocultas ✓');
 }
 function mlVarRefresh(mla){
   const ps=document.getElementById('mlp_'+mla);const vs=document.getElementById('mlv_'+mla);
@@ -3480,8 +3459,6 @@ let _hayVersionNueva=false;
 function _pintarVersion(){
   renderHomeCambios();
   const chip=document.getElementById('home-version');
-  const pie=document.getElementById('ajustes-version');
-  if(pie)pie.textContent='CYC · Versión '+APP_VERSION;
   if(!chip)return;
   if(_hayVersionNueva){
     chip.innerHTML='🔄 <strong style="color:var(--text)">Hay una versión nueva</strong> · tocá para actualizar';
@@ -3586,8 +3563,33 @@ function actualizarApp(){
 }
 
 /* ═══════════ PAGE ROUTING ═══════════ */
-function goPage(page){
+// EL "ATRÁS" DE ANDROID (decisión 7.14 de diseño, 21/10/2026, eligió la a): cada cambio de pantalla deja un paso en el
+// historial del navegador (sin cambiar la dirección), así el botón atrás del teléfono vuelve a la pantalla ANTERIOR y no
+// cierra la app. Antes de irse se guarda dónde estaba la pantalla (_pagScroll) y al volver con atrás se la deja ahí mismo.
+// Si hay una ventanita abierta (línea de tiempo, 🧠, ficha, hoja del producto), atrás primero la cierra.
+const _pagScroll={};
+const _MODALES_ATRAS=['linea-modal','ficha-modal','cerebro-modal','hoja-prod-modal'];   // de la de más arriba a la de más abajo
+let _histListo=false;
+function _histPush(page){
+  try{
+    if(!_histListo){history.replaceState({cycPage:currentPage||'home'},'');_histListo=true;}
+    history.pushState({cycPage:page},'');
+  }catch(e){}
+}
+window.addEventListener('popstate',ev=>{
+  try{
+    const abierto=_MODALES_ATRAS.map(id=>document.getElementById(id)).find(Boolean);
+    if(abierto){abierto.remove();history.pushState({cycPage:currentPage},'');return;}
+    try{if(typeof fnavOpen!=='undefined'&&fnavOpen){fnavOpen=false;_syncFnav();}}catch(e){}
+    const pg=(ev.state&&ev.state.cycPage)||'home';
+    if(document.getElementById('page-'+pg))goPage(pg,{atras:true});
+  }catch(e){}
+});
+function goPage(page,opt){
+  opt=opt||{};
   try{_vistoSalir();_vistoEntrar(page);}catch(e){}   // etapa 6 (G1/G6): "lo viste" se anota al salir de Pedidos / Ventas
+  // El historial: guardar dónde quedó la pantalla que se deja y anotar el paso (no al volver con atrás ni al redibujar la misma).
+  if(currentPage&&currentPage!==page){_pagScroll[currentPage]=window.scrollY;if(!opt.atras)_histPush(page);}
   if(page==='pedidos'){window._pedMomOpenG={};window._nipAbierto=false;}   // el pedido del momento arranca cerrado al entrar (08/10/2026)
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   const el=document.getElementById('page-'+page);
@@ -3605,7 +3607,14 @@ function goPage(page){
   if(page==='ajustes')enterAjustes();
   if(page==='inventario'){initFinViewSel();renderInv();renderProds();renderHist();loadFinInputs();updateArqueo();updateTotals();updateHdr();}
   if(page==='home'){try{renderHomeHoy();}catch(e){}checkCierrePendiente();renderHomeRevision();updateHomeDolar();renderPuntajeMes();renderHomeParejo();renderNcOfi();try{renderNcFacAviso();}catch(e){}}
-  if(page!=='home'){
+  if(opt.atras&&_pagScroll[page]!=null){
+    // Volvió con atrás: a donde estaba. Se reintenta un par de veces porque gráficos y listas terminan de dibujarse
+    // después; cualquier gesto suyo lo corta (igual que el ajuste de abajo).
+    let cancelado=false;const cancela=()=>{cancelado=true;};
+    ['wheel','touchstart','keydown','pointerdown'].forEach(ev=>window.addEventListener(ev,cancela,{once:true,passive:true}));
+    const y=_pagScroll[page];const ir=()=>{if(!cancelado&&currentPage===page)window.scrollTo({top:y,behavior:'instant'});};
+    ir();requestAnimationFrame(ir);setTimeout(ir,150);setTimeout(ir,450);
+  }else if(page!=='home'){
     // Al entrar a una página se baja el header para dejar el contenido arriba. OJO: esto solo puede
     // pasar en los primeros milisegundos. Antes había un MutationObserver que repetía el scroll cada
     // vez que cambiaba el DOM durante 800 ms: como los gráficos terminan de dibujarse después, si ya
@@ -4330,7 +4339,7 @@ async function quitarFoto(prodId){
 
 function renderAll(){
   try{ventaSonidoCheck();}catch(e){}   // etapa 6 (G7): anota las ventas de hoy en cualquier página; sólo suena en Inicio o Ventas
-  updateHdr();updateAct();populateSelects();
+  updateHdr();populateSelects();
   if(currentPage==='inventario'){renderInv();renderProds();renderHist();renderProveedores();loadFinInputs();updateArqueo();updateTotals();}
   if(currentPage==='pedidos')renderPedidos();
   if(currentPage==='compras')initComprasPage();
@@ -4362,13 +4371,6 @@ function updateHdr(){
   const d=new Date();
   const sub=document.getElementById('inv-sub');
   if(sub)sub.textContent=MONTHS[d.getMonth()]+' '+d.getFullYear()+' · '+(state.products.length)+' productos';
-}
-
-function updateAct(){
-  const el=document.getElementById('act-entries');if(!el)return;
-  const h=state.history||[];
-  if(!h.length){el.innerHTML='<span style="color:var(--muted)">sin actividad</span>';return;}
-  el.innerHTML=h.slice(0,3).map(x=>`<span class="act-pill">${x.who}: ${x.desc}</span>`).join('');
 }
 
 function deltaBadge(cur,prev,invert=false){
@@ -6720,6 +6722,23 @@ async function setCajaItem(pid,va,val,max){
   await _guardarCajaArmando(ofiFiltroCuenta,items);
   renderOfiCaja();
 }
+// LO QUE SE PUEDE MANDAR DE VERDAD, POR CUENTA: tope del cupo de Full de cada una (18/10/2026, pedido suyo:
+// "que aparezcan solo las unidades que puedo mandar teniendo en cuenta el cupo de cada cuenta").
+// Chicos y grandes por separado, cada uno contra su cupo. Sin cupo cargado, queda lo sugerido.
+// Una sola cuenta para Armar caja (botones y cuadros) e Inicio (decisión 7.1 de diseño, 21/10/2026).
+function aMandarConCupo(filas){
+  const porCta={};LOCS.forEach(l=>porCta[l]=0);
+  (filas||[]).forEach(f=>(f.sug||[]).forEach(x=>{if(porCta[x.cuenta]!==undefined)porCta[x.cuenta]+=x.mandar;}));
+  const porCtaCupo={};
+  LOCS.forEach(l=>{
+    const cr=cupoRestante(l); if(!cr){porCtaCupo[l]=porCta[l];return;}
+    let pq=0,gr=0;
+    (filas||[]).forEach(f=>(f.sug||[]).forEach(x=>{if(x.cuenta!==l)return;if(esGrandeFull(f.p))gr+=x.mandar;else pq+=x.mandar;}));
+    const tp=cr.estPeq!=null?Math.min(pq,Math.max(0,cr.estPeq)):pq, tg=cr.estGra!=null?Math.min(gr,Math.max(0,cr.estGra)):gr;
+    porCtaCupo[l]=tp+tg;
+  });
+  return{porCta,porCtaCupo,total:LOCS.reduce((a,l)=>a+(porCta[l]||0),0),totalCupo:LOCS.reduce((a,l)=>a+(porCtaCupo[l]||0),0)};
+}
 function renderOfiCaja(){
   const cont=document.getElementById('ofi-caja-list');if(!cont)return;
   const filas=repartoOficina();
@@ -6729,27 +6748,16 @@ function renderOfiCaja(){
   const plata=filas.reduce((s,f)=>s+f.hay*costP(f.p),0);
   // Unidades que van a CADA cuenta. Es el número que se necesita para armar la caja de verdad:
   // "41 hay que mandar" no dice cuántas van en la caja que estás armando ahora.
-  const porCta={};LOCS.forEach(l=>porCta[l]=0);
-  filas.forEach(f=>(f.sug||[]).forEach(x=>{if(porCta[x.cuenta]!==undefined)porCta[x.cuenta]+=x.mandar;}));
-  // LO QUE SE PUEDE MANDAR DE VERDAD: tope del cupo de Full de cada cuenta (18/10/2026, pedido suyo:
-  // "que aparezcan solo las unidades que puedo mandar teniendo en cuenta el cupo de cada cuenta").
-  // Chicos y grandes por separado, cada uno contra su cupo. Sin cupo cargado, queda lo sugerido.
-  const porCtaCupo={};
-  LOCS.forEach(l=>{
-    const cr=cupoRestante(l); if(!cr){porCtaCupo[l]=porCta[l];return;}
-    let pq=0,gr=0;
-    filas.forEach(f=>(f.sug||[]).forEach(x=>{if(x.cuenta!==l)return;if(esGrandeFull(f.p))gr+=x.mandar;else pq+=x.mandar;}));
-    const tp=cr.estPeq!=null?Math.min(pq,cr.estPeq):pq, tg=cr.estGra!=null?Math.min(gr,cr.estGra):gr;
-    porCtaCupo[l]=tp+tg;
-  });
-  const aMandarCupo=LOCS.reduce((a,l)=>a+(porCtaCupo[l]||0),0);
-  const uCta=ofiFiltroCuenta?(porCta[ofiFiltroCuenta]||0):0;
+  const {porCta,porCtaCupo,totalCupo:aMandarCupo}=aMandarConCupo(filas);
+  // 21/10/2026 (decisión 7.1 de diseño): los cuadros de arriba también con el cupo ya restado, igual que los botones.
+  const uCta=ofiFiltroCuenta?(porCtaCupo[ofiFiltroCuenta]||0):0;
+  const _cortaCta=ofiFiltroCuenta&&(porCta[ofiFiltroCuenta]||0)>uCta;
   const res=document.getElementById('ofi-resumen');
   if(res)res.innerHTML=(ofiFiltroCuenta
-      ? `<div class="pcount" style="border-color:var(--accent2)"><strong style="color:var(--accent2)">${uCta}</strong>sugerido p/ ${ofiFiltroCuenta}</div>`
+      ? `<div class="pcount" style="border-color:var(--accent2)"${_cortaCta?` title="Se sugieren ${porCta[ofiFiltroCuenta]} pero el cupo de Full deja mandar ${uCta}"`:''}><strong style="color:var(--accent2)">${uCta}</strong>sugerido p/ ${ofiFiltroCuenta}${_cortaCta?' (cupo)':''}</div>`
       : '')
     +`<div class="pcount"><strong>${uHay}</strong>u. en casa</div>`
-    +`<div class="pcount"><strong>${aMandar}</strong>${ofiFiltroCuenta?'a mandar en total':'hay que mandar'}</div>`
+    +`<div class="pcount"${aMandarCupo<aMandar?` title="Se sugieren ${aMandar}; con el tope del cupo de Full de cada cuenta se pueden mandar ${aMandarCupo}"`:''}><strong>${aMandarCupo}</strong>${ofiFiltroCuenta?'a mandar en total':'hay que mandar'}${aMandarCupo<aMandar?' (cupo)':''}</div>`
     +`<div class="pcount"><strong>${fmt(plata)}</strong>en mercadería</div>`;
   renderNcOfi(filas);
   // Botones para armar la caja de UNA cuenta: es como se despacha de verdad, una caja por cuenta.
@@ -8434,7 +8442,8 @@ function renderNcOfi(filas){
   try{
     filas=filas||repartoOficina();
     const uHay=filas.reduce((s,f)=>s+f.hay,0);
-    const aMandar=filas.reduce((s,f)=>s+f.sug.reduce((a,x)=>a+x.mandar,0),0);
+    // Con el cupo de Full ya restado, igual que los botones de Armar caja (decisión 7.1 de diseño, 21/10/2026).
+    const _mc=aMandarConCupo(filas),aMandar=_mc.totalCupo;
     const v=cajasVerdes(filas);
     const nSinDec=SOLO_CLAUDE?new Set(filas.filter(f=>f.sinDecidir&&f.hay>0).map(f=>f.p.id)).size:0;   // 09/10/2026
     sub.innerHTML=(uHay?`${uHay} u. en casa · ${aMandar} para mandar${nSinDec?` · <span style="color:var(--amber)">${nSinDec} sin decidir</span>`:''}`:'Sin nada contado todavía')
@@ -10198,6 +10207,11 @@ const VIVA_ORD={bajo:0,justo:1,bien:2,bueno:3,exc:4,estr:5,joya:6};
 const VIVA_SH={bajo:'sq',justo:'tri',bien:'circ',bueno:'ring',exc:'plus',estr:'star',joya:'dia',gris:'circ'};
 // [cantidad, tamaño, opacidad]: desde verde, pocas figuras y cada vez más según el nivel (09/10/2026, pedido suyo)
 const VIVA_NV={gris:[.8,.9,.8],bajo:[.8,.9,.8],justo:[.8,.9,.85],bien:[.3,1,1],bueno:[.65,1.2,1.2],exc:[1.1,1.4,1.35],estr:[1.7,1.6,1.45],joya:[2.4,1.8,1.55]};
+// LA TARJETA DEL DÍA EN UN SOLO IDIOMA (decisión 7.12 de diseño, 21/10/2026, eligió la a): antes el color salía de la ganancia
+// (estos niveles) y el cartel del puntaje usaba otra escala con otros nombres y colores ("tarjeta naranja, cartel verde Aprobado").
+// Ahora el cartel lleva el color y el NOMBRE del nivel de la tarjeta (el número de 0 a 10 queda igual) y abajo una escalerita dice
+// cuánto falta para el siguiente (_diaEscaleraHTML). Los nombres son los mismos del % (_pctNivel).
+const VIVA_DIA_NOM={bajo:'🔴 Bajo',justo:'🟠 Justo',bien:'🟢 Bien',bueno:'🩵 Bueno',exc:'🔵 Excelente',estr:'🟣 Estrella',joya:'💎 JOYA'};
 const VIVA_DIA_NIV=[['bajo',-1e12,'var(--red)'],['justo',90000,'var(--lv-justo)'],['bien',115000,'var(--green)'],['bueno',150000,'var(--lv-bueno)'],['exc',190000,'var(--lv-exc)'],['estr',230000,'var(--lv-estr)'],['joya',300000,'var(--lv-joya)']];
 // EL TOPE DE UNA VENTA (09/10/2026, él: "lo máximo que puede vender cyc es 650.000, el tope del neto es lo que deje esa
 // venta"): $650.000 menos lo que se queda ML ≈ $550.000 de neto. Velocidad y temblor llegan al máximo ahí, no antes.
@@ -10280,6 +10294,21 @@ function vivaDia(h){
   const mv=fuego?'mv-tiembla':t>=1400000?'mv-tiembla':t>=1000000?'mv-flota2':t>=600000?'mv-flota':'';
   const gl=VIVA_ORD[k]>=VIVA_ORD.bueno?('gl'+(VIVA_ORD[k]>=VIVA_ORD.estr?' fuerte':'')):'';
   return{k,c,vel:_vivaLog(t,100000,2500000),fuego,mv,gl,quieta:!(h.ventas>0)};
+}
+// La escalerita del día: un tramo por nivel (prendido el que ya se pasó) y cuánto falta para el siguiente. Con más de un día
+// (Mes/Año) el nivel sale del promedio por día, igual que el color de la tarjeta (vivaDia), y lo que falta se dice por día.
+function _diaEscaleraHTML(gan,dias){
+  const n=Math.max(1,Number(dias)||1),g=(Number(gan)||0)/n;
+  const niv=VIVA_DIA_NIV.slice(1);
+  let sig=null;for(const x of niv)if(g<x[1]){sig=x;break;}
+  const k1=x=>'$'+Math.round(x[1]/1000)+'k';
+  const segs=niv.map(x=>`<span title="${VIVA_DIA_NOM[x[0]]} desde ${fmt(x[1])}${n>1?' por día':''}" style="flex:1;height:8px;border-radius:99px;background:${x[2]};opacity:${g>=x[1]?1:.25}"></span>`).join('');
+  const marcas=niv.map(x=>`<span style="flex:1;min-width:0;overflow:hidden;white-space:nowrap">${k1(x)}</span>`).join('');
+  const falta=sig?`Faltan <b style="color:${sig[2]}">${fmt(sig[1]-g)}</b>${n>1?' por día':''} para ${VIVA_DIA_NOM[sig[0]]}${n>1?` <span style="color:var(--muted)">(promedio ${fmt(g)} por día)</span>`:''}`
+    :`${VIVA_DIA_NOM.joya}: arriba de todo${n>1?' (promedio por día)':''}`;
+  return `<div class="hoy-esc" style="margin-top:14px"><div style="display:flex;gap:3px">${segs}</div>
+    <div style="display:flex;gap:3px;font-size:.6rem;color:var(--muted);margin-top:3px;font-family:'DM Mono',monospace">${marcas}</div>
+    <div style="font-size:.76rem;margin-top:6px">${falta}</div></div>`;
 }
 const _viva={cards:[],on:false,last:0,tick:0,io:null};
 function vivaScan(root){
@@ -11004,7 +11033,7 @@ function lineaPintar(prodId){
     const tt=`🏔️ Techo encontrado (${_lineaFmtDia?_lineaFmtDia(kk):kk})\n${x.m||''}`.replace(/[<>&]/g,'');
     svg+=`<g style="cursor:help"><title>${tt}</title><line x1="${xx.toFixed(1)}" y1="${L.pr[0]}" x2="${xx.toFixed(1)}" y2="${(L.pr[0]+L.pr[1]).toFixed(1)}" stroke="#16a34a" stroke-width="1.5" stroke-dasharray="3,3"/><text x="${(xx+3).toFixed(1)}" y="${(L.pr[0]+10).toFixed(1)}" font-size="10" fill="#16a34a">🏔️ techo</text></g>`;});});}
   // Cada tramo toma el color de la estrategia del día al que llega (la línea cambia de color el día que cambió la estrategia).
-  if(ptsPK.length>1)for(let j=1;j<ptsPK.length;j++){const a=ptsPK[j-1],b=ptsPK[j];svg+=`<line x1="${a[0].toFixed(1)}" y1="${a[1].toFixed(1)}" x2="${b[0].toFixed(1)}" y2="${b[1].toFixed(1)}" stroke="${_estCol(b[2])}" stroke-width="3.5" stroke-linecap="round"/>`;}
+  if(ptsPK.length>1)for(let j=1;j<ptsPK.length;j++){const a=ptsPK[j-1],b=ptsPK[j];svg+=`<line x1="${a[0].toFixed(1)}" y1="${a[1].toFixed(1)}" x2="${b[0].toFixed(1)}" y2="${b[1].toFixed(1)}" style="stroke:${_estCol(b[2])}" stroke-width="3.5" stroke-linecap="round"/>`;}
   // marcas de cambios de precio
   const motivoTxt={rescate:'🛟 rescate después de una venta baja',rescatep:'🛟 rescate antes de vender (cuenta)',subir:'📈 suba del robot',bajar:'📉 baja del robot',remate:'🔻 remate',escalera:'🪜 escalera',prueba:'🧪 prueba +5%',promo:'🏷️ promo (precio tachado)',mano:'✋ a mano',volver:'↩️ vuelto atrás',claude:'🧠 decisión del cerebro'};
   const evK={}; for(const e of evP){if(!e.ts||!_mlaOk(e.mla))continue;const kk=dateToKey(new Date(e.ts));(evK[kk]=evK[kk]||[]).push(e);}
@@ -11108,7 +11137,7 @@ function lineaPintar(prodId){
     const lin=(t,v)=>`${t} ${v.dc} d con stock · ${v.u} u. · ${fmt(Math.round(v.g))} (${v.dc?fmt(Math.round(v.g/v.dc)):'—'}/día neto ⚖️)`;
     return `<div style="padding:5px 0;border-top:1px solid var(--border)"><b>${_lineaFmtDia(x.k)}</b> ${sube?'▲':'▼'} ${motivoTxt[e.motivo]||'cambio de precio'} · ${fmt(e.de)} → ${fmt(e.a)} (${pct>=0?'+':''}${pct.toFixed(1)}%)<br>
       <span style="color:var(--muted)">${lin('antes:',A)} · ${lin('después:',D)}</span> → ${res}</div>`;}).join('');
-  const btn=n=>`<button class="btn" onclick="lineaRango(${n},'${prodId}')" style="font-size:.66rem;padding:3px 10px;${_lineaRango===n?'background:var(--green);color:#000;border-color:var(--green)':''}">${n} días</button>`;
+  const btn=n=>`<button class="btn" onclick="lineaRango(${n},'${prodId}')" style="font-size:.66rem;padding:3px 10px;${_lineaRango===n?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}">${n} días</button>`;
   const ley=(c,t)=>`<span style="display:inline-flex;align-items:center;gap:4px;margin-right:10px"><span style="width:10px;height:10px;border-radius:2px;background:${c};display:inline-block"></span>${t}</span>`;
   const lab=(y,t)=>`<div style="position:absolute;left:0;top:${y/ (H+16)*100}%;font-size:.6rem;color:var(--muted);transform:translateY(-1px)">${t}</div>`;
   // LA CABECERA (21/10/2026 · etapa 5): el título va en su propio renglón y los botones abajo, pegados a la derecha (y el de giro con
@@ -11116,7 +11145,7 @@ function lineaPintar(prodId){
   m.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;max-width:1500px;width:100%;padding:14px 16px;margin-top:20px">
     <div style="font-size:.9rem;font-weight:700;line-height:1.35;overflow-wrap:anywhere">📈 ${p.name}${_lineaVar?` · <span style="color:#a78bfa">${_lineaVar}</span>`:''}</div>
     <div class="linea-btns" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;margin-top:6px"><button class="btn" onclick="lineaTodoAbrir(event)" style="font-size:.66rem;padding:3px 10px" title="La misma línea con TODOS los productos juntos">📈 Todos</button>${btn(365)}${btn(90)}${btn(30)}${_lineaGiroBtn()}<button class="btn" onclick="document.getElementById('linea-modal').remove()" style="font-size:.7rem;padding:3px 10px">✕</button></div>
-    ${_vars.length>1?`<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px">${['',..._vars].map((v,i)=>`<button class="btn" onclick="lineaVar(_lineaVarsL[${i}],'${prodId}')" style="font-size:.62rem;padding:2px 9px;${_lineaVar===v?'background:#7c3aed;color:#fff;border-color:#7c3aed':''}">${v||'Todas juntas'}</button>`).join('')}</div>`:''}
+    ${_vars.length>1?`<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px">${['',..._vars].map((v,i)=>`<button class="btn" onclick="lineaVar(_lineaVarsL[${i}],'${prodId}')" style="font-size:.62rem;padding:2px 9px;${_lineaVar===v?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}">${v||'Todas juntas'}</button>`).join('')}</div>`:''}
     <div style="font-size:.7rem;color:var(--muted);margin:6px 0 8px;line-height:1.6">${_lineaRango} días · <b style="color:var(--text)">${uT} u. vendidas</b>${uRT?` (${uRT} en remate)`:''}${hayGan&&gPct!=null&&isFinite(gPct)?` · ganancia <b style="color:${pctColor(gPct)}">${gPct.toFixed(0)}%</b>`:''} · ${vT} visitas · ${_stHoy} · historial: <span style="color:var(--green)">${dCon} d con</span> · <span style="color:var(--red)">${dSin} d sin</span> · ${dNo} d sin dato${dRem?` · ${dRem} d rematando`:''}${pIni&&pFin?` · precio ${fmt(pIni)} → ${fmt(pFin)}`:''} · ${Object.keys(porMlaF).length} publicación(es)${C.fallo?' · <span style="color:var(--amber)">alguna publicación no se pudo leer</span>':''}</div>
     <div style="position:relative;padding-left:58px">
       ${lab(L.vent[0]+28,'ventas'+(hayVis?' · <span style="color:#60a5fa">visitas</span>':''))}${L.gan?lab(L.gan[0]+15,'$ ganancia/día · <span style="color:#a78bfa">semana</span>'):''}${L.pct?lab(L.pct[0]+18,pvs.length?('% ganancia'+(cvs.length?' · <span style="color:#f59e0b">costo</span>':'')):'<span style="color:#f59e0b">costo</span>'):''}${lab(L.st[0]+(suv.length?20:2),'stock')}${lab(L.pr[0]+18,'precio')}${L.est?lab(L.est[0]+2,'remate'):''}${L.caja?lab(L.caja[0]+2,'caja'):''}
@@ -11263,7 +11292,7 @@ function lineaTodoPintar(){
   const porMot={};camR.forEach(c=>{const x=porMot[c.mot]=porMot[c.mot]||[0,0];x[c.a>c.de?0:1]++;});
   const motHTML=Object.entries(porMot).sort((a,b)=>(b[1][0]+b[1][1])-(a[1][0]+a[1][1])).map(([mo,[a,b2]])=>`<span style="margin-right:10px">${_LT_MOT[mo]||mo||'sin motivo'}: <span style="color:var(--green)">▲${a}</span> <span style="color:var(--red)">▼${b2}</span></span>`).join('');
   const LIM=400;const listHTML=camR.slice(0,LIM).map(c=>{const pc=(c.a/c.de-1)*100;return `<div style="padding:3px 0;border-top:1px solid var(--border)"><b>${_lineaFmtDia(c.k)}</b> <span style="color:${c.a>c.de?'var(--green)':'var(--red)'}">${c.a>c.de?'▲':'▼'} ${pc>=0?'+':''}${pc.toFixed(1)}%</span> · ${c.nom}${c.cta?` <span style="color:var(--muted)">(${c.cta})</span>`:''} · ${fmt(c.de)} → ${fmt(c.a)} · <span style="color:var(--muted)">${_LT_MOT[c.mot]||c.mot||'cambio de precio'}</span></div>`;}).join('')+(camR.length>LIM?`<div style="color:var(--muted);padding-top:4px">… y ${camR.length-LIM} más (los más viejos)</div>`:'');
-  const btn=n=>`<button class="btn" onclick="lineaTodoRango(${n})" style="font-size:.66rem;padding:3px 10px;${_ltRango===n?'background:var(--green);color:#000;border-color:var(--green)':''}">${n} días</button>`;
+  const btn=n=>`<button class="btn" onclick="lineaTodoRango(${n})" style="font-size:.66rem;padding:3px 10px;${_ltRango===n?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}">${n} días</button>`;
   const ley=(c,t)=>`<span style="display:inline-flex;align-items:center;gap:4px;margin-right:10px"><span style="width:10px;height:10px;border-radius:2px;background:${c};display:inline-block"></span>${t}</span>`;
   const lab=(y,t)=>`<div style="position:absolute;left:0;top:${y/(H+16)*100}%;font-size:.6rem;color:var(--muted);transform:translateY(-1px)">${t}</div>`;
   const viejo=_ltC.ts?(Date.now()-_ltC.ts)/864e5:null;
@@ -11667,7 +11696,7 @@ function prodDeVenta(v){return (v&&v.prodId)?(prodById(v.prodId)||prodByName(v&&
 // *"quiero que cada precio tenga un tag (…) y que al venderse ese producto en ventas x producto diga qué tag tiene"*. La pone
 // Claude con cada precio (`cyc/estrategia/<MLA>/<ts>`, historia). Cada venta muestra la última estrategia ANTERIOR a esa venta,
 // así una venta vieja dice la estrategia que tenía ese día. MISMA LISTA EN sync.mjs (ESTRATEGIAS).
-const ESTRATEGIA_UI={sindecidir:['⚪','sin estrategia','#64748b','Todavía sin estrategia: el cerebro la tiene que decidir (buscar techo, escasez, sobra…). Desde el 19/10 no existe un precio "base": todo precio tiene su estrategia.'],noanotada:['▫️','no se anotaba','#94a3b8','Antes de que se empezara a anotar la estrategia de cada precio: no se sabe cuál era (no es que el cerebro tenga que decidir algo).'],agotado:['⏸️','sin stock','#94a3b8','Sin stock en Full: el precio espera la reposición.'],escasez:['🔥','escasez','#f97316','Se estira el stock hasta que llegue la próxima caja: precio alto para que dure.'],sinrepo:['⏳','sin reposición','#eab308','No se consigue: el precio va para que el stock se venda en 4 meses al máximo posible.'],techo:['📈','buscando techo','#22c55e','Prueba de suba: se busca el precio que más plata por día deja.'],liquidando:['📉','liquidando','#ef4444','Se remata a propósito (sobra stock, stock antiguo o no vende): el % bajo es buscado.'],caja:['🥊','ganar la caja','#a78bfa','Bajado para ganar la caja de compra de ML.'],promo:['🏷️','promo','#c084fc','En una promo de Mercado Libre donde ML también pone plata.'],descuento:['💸','descuento','#e879f9','Descuento puesto sólo por nosotros (precio tachado): ML no pone nada.'],fecha:['🎁','fecha especial','#f472b6','Precio pensado para una fecha (Día de la Madre, Navidad…).'],excepcion:['🛡️','excepción','#94a3b8','Abajo del 25% a propósito (barrera de $33.000 u otro motivo explicado en el 🧠).'],sobra:['📦','sobra stock','#fb923c','Hay más stock del que se vende antes de que ML cobre stock antiguo: se baja (aunque quede abajo del 25%) para que salga lo que sobra, y vuelve al precio normal cuando queda lo justo. El cerebro se juzga contra no hacer nada.'],nuevo:['🆕','lanzamiento','#2dd4bf','Producto nuevo: arranca ~20% arriba del precio que se cree correcto y queda 7 días ahí de verdad. Si no vende, cada bajada va como descuento con el precio de lanzamiento tachado (real porque existió).'],prueba:['🧪','prueba','#818cf8','Precio de prueba: se cambió para medir cómo responde. (La prueba del tachado del 21/10 se canceló el 20/10: no se baja algo que vende bien sólo para medir.)'],techook:['🏔️','techo encontrado','#16a34a','La suba siguiente no rindió: queda en el último precio que más plata por día dejó. Se vuelve a probar si cambia la competencia o a los 30 días.'],bajando:['🪜','bajando','#fbbf24','Bajando en escalera, midiendo cada escalón: la escasez o la prueba de techo no vendió a ese precio y se baja de a poco, nunca abajo del último que vendía.'],volviendo:['↘️','volviendo al normal','#38bdf8','Llegó la reposición, pasó la fecha o volvió a conseguirse: el precio vuelve del alto al normal buscando el punto medio que más deja.'],desobra:['↗️','volviendo de sobra','#86efac','Ya no sobra stock: el precio vuelve a subir al normal.'],remate:['🧨','remate total','#dc2626','Rematado a cualquier precio (abajo de 0%) porque lo pediste vos.'],gemela:['💳','gemela con cuotas','#a855f7','Premium gemela: la misma publicación con cuotas sin interés, al precio que deja la misma plata neta que la Clásica. Comparte el stock con la Clásica.']};
+const ESTRATEGIA_UI={sindecidir:['⚪','sin estrategia','var(--es-neu)','Todavía sin estrategia: el cerebro la tiene que decidir (buscar techo, escasez, sobra…). Desde el 19/10 no existe un precio "base": todo precio tiene su estrategia.'],noanotada:['▫️','no se anotaba','var(--es-neu-vieja)','Antes de que se empezara a anotar la estrategia de cada precio: no se sabe cuál era (no es que el cerebro tenga que decidir algo).'],agotado:['⏸️','sin stock','var(--es-neu-stock)','Sin stock en Full: el precio espera la reposición.'],escasez:['🔥','escasez','var(--es-sube-esc)','Se estira el stock hasta que llegue la próxima caja: precio alto para que dure.'],sinrepo:['⏳','sin reposición','var(--es-sube-espera)','No se consigue: el precio va para que el stock se venda en 4 meses al máximo posible.'],techo:['📈','buscando techo','var(--es-sube)','Prueba de suba: se busca el precio que más plata por día deja.'],liquidando:['📉','liquidando','var(--es-baja-liq)','Se remata a propósito (sobra stock, stock antiguo o no vende): el % bajo es buscado.'],caja:['🥊','ganar la caja','var(--es-baja-caja)','Bajado para ganar la caja de compra de ML.'],promo:['🏷️','promo','var(--es-esp-promo)','En una promo de Mercado Libre donde ML también pone plata.'],descuento:['💸','descuento','var(--es-esp-desc)','Descuento puesto sólo por nosotros (precio tachado): ML no pone nada.'],fecha:['🎁','fecha especial','var(--es-esp-fecha)','Precio pensado para una fecha (Día de la Madre, Navidad…).'],excepcion:['🛡️','excepción','var(--es-neu-exc)','Abajo del 25% a propósito (barrera de $33.000 u otro motivo explicado en el 🧠).'],sobra:['📦','sobra stock','var(--es-baja-sobra)','Hay más stock del que se vende antes de que ML cobre stock antiguo: se baja (aunque quede abajo del 25%) para que salga lo que sobra, y vuelve al precio normal cuando queda lo justo. El cerebro se juzga contra no hacer nada.'],nuevo:['🆕','lanzamiento','var(--es-sube-nuevo)','Producto nuevo: arranca ~20% arriba del precio que se cree correcto y queda 7 días ahí de verdad. Si no vende, cada bajada va como descuento con el precio de lanzamiento tachado (real porque existió).'],prueba:['🧪','prueba','var(--es-esp-prueba)','Precio de prueba: se cambió para medir cómo responde. (La prueba del tachado del 21/10 se canceló el 20/10: no se baja algo que vende bien sólo para medir.)'],techook:['🏔️','techo encontrado','var(--es-sube-ok)','La suba siguiente no rindió: queda en el último precio que más plata por día dejó. Se vuelve a probar si cambia la competencia o a los 30 días.'],bajando:['🪜','bajando','var(--es-baja-esc)','Bajando en escalera, midiendo cada escalón: la escasez o la prueba de techo no vendió a ese precio y se baja de a poco, nunca abajo del último que vendía.'],volviendo:['↘️','volviendo al normal','var(--es-vuelve)','Llegó la reposición, pasó la fecha o volvió a conseguirse: el precio vuelve del alto al normal buscando el punto medio que más deja.'],desobra:['↗️','volviendo de sobra','var(--es-sube-vuelve)','Ya no sobra stock: el precio vuelve a subir al normal.'],remate:['🧨','remate total','var(--es-baja-remate)','Rematado a cualquier precio (abajo de 0%) porque lo pediste vos.'],gemela:['💳','gemela con cuotas','var(--es-esp-gemela)','Premium gemela: la misma publicación con cuotas sin interés, al precio que deja la misma plata neta que la Clásica. Comparte el stock con la Clásica.']};
 // 19/10/2026, eligió 1a 2a 3a: "↩️ corrección" ya no existe. Lo viejo anotado así toma el nombre del pasaje según el tag ANTERIOR
 // (misma tabla que `pasajeDe` del robot), y cada chip dice "de X" cuando la estrategia anterior era otra.
 function estrategiaPasaje(prev){if(prev==='techo'||prev==='techook')return 'techook';if(['escasez','sinrepo','fecha','bajando'].includes(prev))return 'volviendo';if(['sobra','liquidando','remate'].includes(prev))return 'desobra';return 'volviendo';}
@@ -11718,7 +11747,7 @@ function _promoTipoEn(mla,ts){const t=Number(ts)||Date.now();const H=(state.prom
 function estrategiaChip(e){if(!e)return'';const u=ESTRATEGIA_UI[e.t];if(!u)return'';const d=e.ts?new Date(e.ts).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}):'';
   const de=e.de&&ESTRATEGIA_UI[e.de]?ESTRATEGIA_UI[e.de]:null;
   const tit=(u[3]+(e.n>1?(e.t==='escasez'?' Es el escalón n.º '+e.n+' seguido de escasez.':' Es la suba n.º '+e.n+' seguida buscando el techo.'):'')+(de?' Venía de '+de[0]+' '+de[1]+'.':'')+(e.m?' · '+e.m:'')+(d?' · desde el '+d:'')).replace(/"/g,'&quot;');
-  return ` <span class="est-chip" title="${tit}" style="--ec:${u[2]};padding:1px 6px;border-radius:4px;border:1px solid ${u[2]}55;background:${u[2]}1f;font-size:.62rem">${u[0]} ${u[1]}${e.n>1?' · '+e.n+(e.t==='escasez'?'º escalón':'ª suba'):''}${de?' <span style="opacity:.7">· de '+de[0]+'</span>':''}</span>`;}
+  return ` <span class="est-chip" title="${tit}" style="--ec:${u[2]};padding:1px 6px;border-radius:4px;border:1px solid color-mix(in srgb,${u[2]} 33%,transparent);background:color-mix(in srgb,${u[2]} 12%,transparent);font-size:.62rem">${u[0]} ${u[1]}${e.n>1?' · '+e.n+(e.t==='escasez'?'º escalón':'ª suba'):''}${de?' <span style="opacity:.7">· de '+de[0]+'</span>':''}</span>`;}
 // 19/10/2026, él: "promo que sea cuando ml también pone plata, si ponemos sólo nosotros es descuento". En la venta manda lo que
 // pasó EN ESA venta (`cyc/promoventa`): ML puso algo = 🏷️ promo · sólo nosotros = 💸 descuento. Sin ese dato, el tipo de la promo
 // que entré (descuento propio = descuento).
@@ -12568,7 +12597,7 @@ function renderVentaProd(){
      const box=document.getElementById('vp-tag-chips');
      if(box){const chip=t=>{cnt[t]=cnt[t]||0;const u=ESTRATEGIA_UI[t],on=vpFilterTag===t;
        if(!cnt[t]&&!on)return `<span title="${String(u[3]).replace(/"/g,'&quot;')} · ninguna venta con este tag en el período" style="padding:3px 9px;border-radius:6px;border:1px dashed var(--border,#333);color:var(--muted);opacity:.55;font-size:.68rem;white-space:nowrap">${u[0]} ${u[1]} · 0</span>`;
-       return `<button onclick="setVpTag('${t}')" title="${String(u[3]).replace(/"/g,'&quot;')}" style="cursor:pointer;padding:3px 9px;border-radius:6px;border:1px solid ${u[2]}${on?'':'55'};background:${on?u[2]+'40':u[2]+'14'};color:${u[2]};font-size:.68rem;font-family:inherit;white-space:nowrap${on?';font-weight:700':''}">${u[0]} ${u[1]} · ${cnt[t]}${on?' ✕':''}</button>`;};
+       return `<button onclick="setVpTag('${t}')" title="${String(u[3]).replace(/"/g,'&quot;')}" style="cursor:pointer;padding:3px 9px;border-radius:6px;border:1px solid ${on?u[2]:`color-mix(in srgb,${u[2]} 33%,transparent)`};background:color-mix(in srgb,${u[2]} ${on?25:8}%,transparent);color:${u[2]};font-size:.68rem;font-family:inherit;white-space:nowrap${on?';font-weight:700':''}">${u[0]} ${u[1]} · ${cnt[t]}${on?' ✕':''}</button>`;};
       const ts=Object.keys(ESTRATEGIA_UI),con=ts.filter(t=>cnt[t]>0||vpFilterTag===t),sin=ts.filter(t=>!(cnt[t]>0)&&vpFilterTag!==t);
       box.innerHTML=con.map(chip).join('')+(sin.length?`<button onclick="vpTagsCero=!vpTagsCero;renderVentaProd()" style="cursor:pointer;padding:3px 9px;border-radius:6px;border:1px dashed var(--border,#333);background:transparent;color:var(--muted);font-size:.68rem;font-family:inherit;white-space:nowrap">${vpTagsCero?'ocultar los sin ventas ▴':'＋'+sin.length+' sin ventas ▾'}</button>`+(vpTagsCero?sin.map(chip).join(''):''):'');}
      if(vpFilterTag){for(let i=filteredGroups.length-1;i>=0;i--)if(!vpTagsDeGrupo(filteredGroups[i]).has(vpFilterTag))filteredGroups.splice(i,1);}}
@@ -14384,51 +14413,19 @@ async function syncPedidosAuto(){
 }
 function syncPedidosDebounced(){clearTimeout(syncPedidosTimer);syncPedidosTimer=setTimeout(syncPedidosAuto,1500);}
 
-async function repararStockVariantes(){
-  const updates={};
-  for(const p of (state.products||[])){
-    const vars=p.variantes||[];if(!vars.length)continue;
-    for(const loc of LOCS){
-      const productLevel=parseInt(state.inventory[invKey(p.id,loc)])||0;
-      const varStocks={};let variantSum=0;
-      for(const v of vars){varStocks[v]=parseInt(state.inventory[invKeyV(p.id,loc,v)])||0;variantSum+=varStocks[v];}
-      const delta=variantSum-productLevel;
-      if(delta<=0)continue; // ya sincronizado o no hay discrepancia
-      // contar ventas por variante en esta ubicación
-      const salesByVar={};
-      Object.values(state.ventaprod||{}).forEach(day=>Object.values(day||{}).forEach(s=>{
-        if(!ventaEsDe(s,p)||normTxt(s.cuenta||'')!==normTxt(loc)||!s.variante||_esCancelada(s))return;
-        salesByVar[s.variante]=(salesByVar[s.variante]||0)+(s.qty||0);
-      }));
-      const totalVarSales=Object.values(salesByVar).reduce((a,b)=>a+b,0);
-      if(!totalVarSales)continue;
-      // distribuir el delta proporcionalmente a las ventas de cada variante
-      let deducted=0;
-      const sortedVars=[...vars].sort((a,b)=>a.localeCompare(b,'es',{sensitivity:'base'}));
-      const withSales=sortedVars.filter(v=>salesByVar[v]>0);
-      withSales.forEach((v,i)=>{
-        const isLast=i===withSales.length-1;
-        const toDeduct=isLast?(delta-deducted):Math.round(delta*salesByVar[v]/totalVarSales);
-        const actual=Math.min(toDeduct,delta-deducted);
-        if(actual===0)return;
-        const vk=invKeyV(p.id,loc,v);
-        updates[vk]=(updates[vk]!==undefined?updates[vk]:varStocks[v])-actual;
-        deducted+=actual;
-      });
-    }
-  }
-  if(!Object.keys(updates).length){toast('Variantes ya sincronizadas, no hay nada que corregir ✓','ok');return;}
-  for(const[k,nv]of Object.entries(updates)){state.inventory[k]=nv;await fbSet('inventory/'+k,nv);}
-  updateTotals();renderAll();
-  toast(`✓ Corregidas ${Object.keys(updates).length} claves de variante`,'ok',4000);
+// "FALTA REPONER" CON TODOS LOS PEDIDOS JUNTOS: la MISMA cuenta que el chip de cada solapa de Pedidos
+// (_pedsCostoReponer), más cuántos productos falta comprar y la plata en riesgo (la de la solapa de prioridad).
+// La usan Inicio y el Resumen (decisión 7.2 de diseño, 21/10/2026): una sola cuenta para los dos.
+function pedFaltaReponerTodo(){
+  const allPeds=[...(state.pedidos||[]),...(state.pedidos_py||[])];
+  const c=_pedsCostoReponer(allPeds);
+  const vivos=allPeds.filter(p=>(p.estado||'pendiente')!=='suficiente');
+  return {...c,n:vivos.length,riesgo:vivos.reduce((s,p)=>s+(Number(p.riesgo)||0),0),total:allPeds.length};
 }
 function updatePedidosCosto(){
   const el=document.getElementById('nc-pedidos-costo');if(!el)return;
-  const tc=curTC();
-  const allPeds=[...(state.pedidos||[]),...(state.pedidos_py||[])];
-  if(!allPeds.length){el.textContent='Sin pedidos pendientes';return;}
-  // La MISMA cuenta que el "Falta reponer" de cada solapa de Pedidos (_pedsCostoReponer), con todos los pedidos juntos.
-  const c=_pedsCostoReponer(allPeds);const totalUSD=c.usd;void tc;
+  const c=pedFaltaReponerTodo();const totalUSD=c.usd;
+  if(!c.total){el.textContent='Sin pedidos pendientes';return;}
   el.innerHTML=c.ars
     ?`Falta reponer (todo junto): <strong style="color:var(--text)">US$${totalUSD.toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:0})}</strong> · <strong style="color:var(--text)">${fmt(c.ars)}</strong>`
     :`Falta reponer (todo junto): <strong style="color:var(--text)">US$${totalUSD.toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:0})}</strong>`;
@@ -16096,7 +16093,7 @@ function pedidoMomentoHTML(g){
     <div style="font-size:.66rem;color:${pasa>0?'var(--amber)':'var(--muted)'};margin-top:2px">${pasa>0?`⚠️ te pasás ${u2(pasa)} de tu tope de ${u2(tope)}`:`tope ${u2(tope)} · te quedan ${u2(-pasa)}`}</div>
     ${cfg}
     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:8px 0 0;font-size:.68rem;color:var(--muted)">↕️ Ordenar:
-      ${[['orig','como se cargó'],['pct','% ganancia'],['gan','$ por unidad'],['costo','más barato'],['sub','subtotal'],['vend','ventas'],['nom','nombre']].map(([k,t])=>`<button class="btn" onclick="_pedOrdenSet('${k}')" style="font-size:.64rem;padding:3px 9px;${_ord===k?'background:var(--green);color:#000;border-color:var(--green)':''}">${t}</button>`).join('')}</div>
+      ${[['orig','como se cargó'],['pct','% ganancia'],['gan','$ por unidad'],['costo','más barato'],['sub','subtotal'],['vend','ventas'],['nom','nombre']].map(([k,t])=>`<button class="btn" onclick="_pedOrdenSet('${k}')" style="font-size:.64rem;padding:3px 9px;${_ord===k?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}">${t}</button>`).join('')}</div>
     ${A.length?tit('✅ Probados (reposición)',A.length,crA)+_perfGrupos(filasA,As.map(f=>f.nom)):''}
     ${N.filas.length?tit('🆕 Nuevos',N.filas.length,N.crudo)+_perfGrupos(filasN,Ns.map(f=>f.c.nombre)):''}
     ${Pp.length?tit('🙋 Uso personal (no es de CYC)',Pp.length,crP)+Pp.map(f=>fila(f.nom,f.cod,f.u,f.usd,`pyPersonalSet('${f.k}',this.value)`,`pyPersonalSet('${f.k}',0)`,'<span style="color:#a78bfa">para vos: va en el mensaje a '+pyProvNom()+' y en el total, pero no entra en CYC (sin margen, sin ficha, sin stock)</span>',f.foto,null,null,'')).join(''):''}
@@ -17070,7 +17067,7 @@ function pvSetVista(v){_pvVista=v;renderPedidos();}
 function _pvTabs(){
   const todos=Object.values(state.pedidospv||{}).filter(c=>c&&c.fecha);
   const nCam=todos.filter(c=>c.estado==='camino').length,nImp=todos.filter(c=>c.estado==='llego'&&!c.pagado).length;
-  const t=(v,txt,tit)=>`<button class="btn" style="font-size:.64rem;padding:5px 13px;${_pvVista===v?'background:var(--blue);color:#fff;font-weight:700':''}" title="${tit}" onclick="pvSetVista('${v}')">${txt}</button>`;
+  const t=(v,txt,tit)=>`<button class="btn" style="font-size:.64rem;padding:5px 13px;${_pvVista===v?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}" title="${tit}" onclick="pvSetVista('${v}')">${txt}</button>`;
   return `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${t('comprar','📦 A comprar','Lo que hay que pedirle al Paulvic, aroma por aroma.')}${t('hechos','🧾 Pedidos hechos'+(nCam||nImp?` (${[nCam?nCam+' en camino':'',nImp?nImp+' sin pagar':''].filter(Boolean).join(' · ')})`:''),'Los pedidos ya hechos: en camino, llegados que falta pagar y pagados.')}</div>`;
 }
 function pvEnCaminoHTML(){
@@ -20116,13 +20113,13 @@ async function renderListas(){
   const k=_listaSel,v=provs[k],nom=v.nombre||k;
   const _num=x=>{const q=provs[x];if(q.dan==null)return `<span style="opacity:.75">· ${q.n||0}</span>`;
     return `<span style="opacity:.85">· ✅ ${q.dan}</span>${q.pend>0?` <span style="opacity:.6;font-size:.85em">⏳${q.pend}</span>`:''}`;};
-  const _provBtn=x=>`<button class="btn" style="font-size:.72rem;padding:6px 16px;${x===k?'background:#7c3aed;color:#fff;border-color:#7c3aed;font-weight:700':''}" title="✅ cuántos dan 25% o más en ML${provs[x].pend>0?' · ⏳ cuántos falta medir':''} · ${provs[x].n||0} en la lista" onclick="_listaSel='${x}';_listaQ='';renderListas()">${provs[x].nombre||x} ${_num(x)}</button>`;
+  const _provBtn=x=>`<button class="btn" style="font-size:.72rem;padding:6px 16px;${x===k?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}" title="✅ cuántos dan 25% o más en ML${provs[x].pend>0?' · ⏳ cuántos falta medir':''} · ${provs[x].n||0} en la lista" onclick="_listaSel='${x}';_listaQ='';renderListas()">${provs[x].nombre||x} ${_num(x)}</button>`;
   const nArm=_listaArmado(k).length+listaProbFilas(k).length;
   // LAS LISTAS DE BS AS NO TIENEN PEDIDO (20/10/2026, él: "en dai nippon no se hacen pedidos, se trabajan igual que en resto de bs
   // as. eso lo trae mi viejo personalmente"): sin 🧾 Pedido, sin casillas de "pedir" ni "📋 pedir a …" en las tarjetas. Los probados
   // son tarjetas de Pedidos como las de "De siempre" y los nuevos se miran para que Tito los traiga.
   if(_enB&&_listaVista==='hechos')_listaVista='nuevos';
-  const _tab=(t,txt,tit)=>`<button class="btn" style="font-size:.64rem;padding:5px 13px;${_listaVista===t?'background:var(--blue);color:#fff;font-weight:700':''}" title="${tit}" onclick="listaSetVista('${t}')">${txt}</button>`;
+  const _tab=(t,txt,tit)=>`<button class="btn" style="font-size:.64rem;padding:5px 13px;${_listaVista===t?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}" title="${tit}" onclick="listaSetVista('${t}')">${txt}</button>`;
   const cab=(_enB?'<div style="height:10px"></div>':'')+(_enB?'':`<div style="margin-bottom:10px"><input id="lista-buscar" type="search" value="${escHtml(window._listaQ||'')}" placeholder="🔎 Buscar un producto en TODAS las listas…" oninput="listaBuscar(this.value)" style="width:100%;padding:9px 12px;font-size:.85rem;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--text)"><div id="lista-busq"></div></div>`)+`
     ${(_enB&&visibles.length===1)?'':`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px"><span style="font-size:.68rem;color:var(--muted)">Proveedor:</span>${visibles.map(_provBtn).join('')}${_enB?'':`<button class="btn" style="font-size:.64rem;padding:4px 10px;opacity:.8" title="La esconde de acá hasta que la vuelvas a poner (desde ⏸️ sacadas por ahora). No borra nada." onclick="listaPausar('${k}',true)">⏸️ sacar ${escHtml(nom)} por ahora</button>`}</div>`}${_volverHtml}
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${_tab('probados','✅ Productos probados','Lo que ya le compraste a este proveedor: cuánto reponer.')}${_tab('nuevos','🆕 Productos nuevos','Lo de su lista que todavía no vendés y da 25% o más en ML.')}${_enB?'':_tab('hechos','🧾 Pedido'+(nArm?' ('+nArm+' cargados)':''),'El pedido del momento, el mensaje con código y unidades, y los pedidos ya hechos.')}</div>`;
@@ -20394,7 +20391,7 @@ function renderPedidos(){
     if(!bp.length)_bsasVista='siempre';
     const st=document.getElementById('bsas-subtabs');
     if(st){const nomL=bp.length===1?(pv[bp[0]].nombre||bp[0]):'Listas de Tito';
-      const b=(v,t)=>`<button class="btn" style="font-size:.72rem;padding:6px 16px;${_bsasVista===v?'background:var(--blue);color:#fff;font-weight:700':''}" onclick="bsasSetVista('${v}')">${t}</button>`;
+      const b=(v,t)=>`<button class="btn" style="font-size:.72rem;padding:6px 16px;${_bsasVista===v?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}" onclick="bsasSetVista('${v}')">${t}</button>`;
       st.innerHTML=bp.length?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${b('siempre','🏬 De siempre')}${b('listas','📋 '+escHtml(nomL))}</div>`:'';}
     const wr=document.getElementById('bsas-siempre-wrap');if(wr)wr.style.display=_bsasVista==='listas'?'none':'';
     if(_bsasVista==='listas'){renderListas();return;}
@@ -20412,6 +20409,9 @@ function renderPedidos(){
   // Sólo lo de una lista que SE VE en Listas (etapa 3, 20/10/2026): una lista descartada o sacada por ahora no se dibuja, y sus probados
   // no salían en ninguna solapa. Ésos vuelven a Bs As "De siempre" hasta que la lista vuelva.
   if(isBsas){const _lp=(state.mlconfig&&state.mlconfig.listasProv)||{};const _li=new Set((state.products||[]).filter(p=>p.listaProv&&_lp[p.listaProv]&&!_lp[p.listaProv].desc&&!_lp[p.listaProv].pausa).map(p=>p.id));if(_li.size)peds=peds.filter(x=>!_li.has(x.prodId));}
+  // Paraguay: los números de arriba ("Falta reponer" incluido) sólo del proveedor elegido (decisión 7.6 de diseño, 21/10/2026).
+  // Antes se contaban Nissei y Elegancia juntos y la lista de abajo mostraba uno solo.
+  if(!isBsas)peds=peds.filter(p=>pyProvDe((state.products||[]).find(x=>x.id===p.prodId))===pyProv);
   const cnt={pendiente:0,poco_stock:0,suficiente:0};peds.forEach(p=>{const e=p.estado==='en_camino'?'pendiente':(p.estado||'pendiente');cnt[e]=(cnt[e]||0)+1;});
   const cntEl=document.getElementById(countId);
   if(cntEl)cntEl.innerHTML=`
@@ -20423,7 +20423,7 @@ function renderPedidos(){
   if(!isBsas){const _sb=document.getElementById('ped-py-search');if(_sb)_sb.style.display=(pyVista==='probados'||pyVista==='ambos')?'':'none';}
   const q=normTxt(document.getElementById(searchId)?.value||'');
   if(q)peds=peds.filter(p=>buscaCoincide(q,p.producto,p.nota,textosDeProd(prodById(p.prodId))));
-  if(!isBsas)peds=peds.filter(p=>_pyRubroOk(p.producto)&&pyProvDe((state.products||[]).find(x=>x.id===p.prodId))===pyProv);
+  if(!isBsas)peds=peds.filter(p=>_pyRubroOk(p.producto));
   if(!peds.length&&!isBsas){el.innerHTML='<div class="empty-msg">'+(pyProv==='nissei'?'Sin pedidos':'Todavía no le compraste nada a '+pyProvNom()+': lo que llegue de un pedido suyo aparece acá como probado')+(_pyRubro!=='todos'?(_pyRubro==='perf'?' de perfumes':' (fuera de perfumes)'):'')+'.</div>';}
   else if(!peds.length){el.innerHTML='<div class="empty-msg">Sin pedidos'+(!isBsas&&_pyRubro!=='todos'?(_pyRubro==='perf'?' de perfumes':' (fuera de perfumes)'):'')+(pedidoFilter!=='todos'?' en esta categoría':'')+'.</div>';return;}
   // "POR PROVEEDOR" SE SACÓ EL 18/09/2026. Decisión suya: *"eliminar el por proveedor, nunca se
@@ -20480,13 +20480,13 @@ function renderPedidos(){
   //  · PROBADOS → la canasta de US$ 1.000, los pedidos de reposición y lo que dejó de convenir
   //  · NUEVOS   → "Para probar" y el armado del pedido de productos nuevos
   if(!isBsas){
-    const _tab=(v,txt,tit)=>`<button class="btn" style="font-size:.64rem;padding:5px 13px;${(pyVista===v||(pyVista==='ambos'&&v!=='hechos'))?'background:var(--blue);color:#fff;font-weight:700':''}" title="${tit}" onclick="pySetVista('${v}')">${txt}</button>`;
-    const _provBtn=k=>`<button class="btn" style="font-size:.72rem;padding:6px 16px;${pyProv===k?'background:#7c3aed;color:#fff;border-color:#7c3aed;font-weight:700':''}" title="Proveedor de Paraguay: cada uno tiene sus productos probados, sus nuevos y sus pedidos (no se juntan)." onclick="pySetProv('${k}')">${PY_PROVS[k].e} ${PY_PROVS[k].n}</button>`;
+    const _tab=(v,txt,tit)=>`<button class="btn" style="font-size:.64rem;padding:5px 13px;${(pyVista===v||(pyVista==='ambos'&&v!=='hechos'))?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}" title="${tit}" onclick="pySetVista('${v}')">${txt}</button>`;
+    const _provBtn=k=>`<button class="btn" style="font-size:.72rem;padding:6px 16px;${pyProv===k?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}" title="Proveedor de Paraguay: cada uno tiene sus productos probados, sus nuevos y sus pedidos (no se juntan)." onclick="pySetProv('${k}')">${PY_PROVS[k].e} ${PY_PROVS[k].n}</button>`;
     const _tabs=`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px"><span style="font-size:.68rem;color:var(--muted)">Proveedor:</span>${Object.keys(PY_PROVS).map(_provBtn).join('')}</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
       ${_tab('probados','✅ Productos probados','Lo que YA vendés: cuánto hay que reponer para no quedarte sin stock, y lo que dejó de convenir al precio de Paraguay de hoy.')}
       ${_tab('nuevos','🆕 Productos nuevos','Lo que todavía NO vendés: los candidatos que trae el chat de Paraguay y el armado de ese pedido.')}
       ${_tab('hechos',`🧾 Pedido${(()=>{const n=pyArmadoFilas().length+pedNuevos(candList().filter(candEnArmado).filter(c=>candEnPedido(c)!=='viajando')).filas.length;return n?' ('+n+' cargados)':'';})()}`,'El pedido del momento (probados + nuevos juntos, con el mensaje para Nissei) y abajo los pedidos ya hechos: en camino y llegados.')}
-    </div>`+(pyVista!=='hechos'?`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:-4px 0 12px"><span style="font-size:.66rem;color:var(--muted)">Mostrar:</span>${[['todos','Todo'],['perf','🧴 Perfumes, belleza y salud'],['resto','📦 Resto']].map(([v,t])=>`<button class="btn" style="font-size:.64rem;padding:4px 11px;${_pyRubro===v?'background:#7c3aed;color:#fff;border-color:#7c3aed;font-weight:700':''}" onclick="pySetRubro('${v}')">${t}</button>`).join('')}</div><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:-6px 0 12px"><span style="font-size:.66rem;color:var(--muted)">Vender en:</span>${[['todos','Todo'],['ml','🛒 ML'],['local','🏪 Perfumería'],['ambos','✅ Los dos']].map(([v,t])=>`<button class="btn" style="font-size:.64rem;padding:4px 11px;${_candFiltro===v?'background:#7c3aed;color:#fff;border-color:#7c3aed;font-weight:700':''}" onclick="candFiltrar('${v}')">${t}</button>`).join('')}</div>`:'');
+    </div>`+(pyVista!=='hechos'?`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:-4px 0 12px"><span style="font-size:.66rem;color:var(--muted)">Mostrar:</span>${[['todos','Todo'],['perf','🧴 Perfumes, belleza y salud'],['resto','📦 Resto']].map(([v,t])=>`<button class="btn" style="font-size:.64rem;padding:4px 11px;${_pyRubro===v?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}" onclick="pySetRubro('${v}')">${t}</button>`).join('')}</div><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:-6px 0 12px"><span style="font-size:.66rem;color:var(--muted)">Vender en:</span>${[['todos','Todo'],['ml','🛒 ML'],['local','🏪 Perfumería'],['ambos','✅ Los dos']].map(([v,t])=>`<button class="btn" style="font-size:.64rem;padding:4px 11px;${_candFiltro===v?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}" onclick="candFiltrar('${v}')">${t}</button>`).join('')}</div>`:'');
     // PROBADOS = IDÉNTICO A BS AS (01/10/2026, pedido suyo): sólo la lista de pedidos, sin canasta ni precios.
     el.innerHTML=_tabs+(pyVista==='nuevos'?candidatosHTML():pyVista==='ambos'?el.innerHTML+candidatosHTML():pyVista==='hechos'?pedidoMomentoHTML()+`<div style="font-size:.85rem;font-weight:800;margin:10px 0 10px">Pedidos hechos <span style="color:var(--muted);font-weight:400">· ${pyCompras().length}</span></div>`+pyHechosHTML():el.innerHTML);
     if(window._pycatQ&&pyVista!=='probados'&&pyVista!=='hechos')setTimeout(()=>pycatBuscar(window._pycatQ),0);   // el buscador conserva lo buscado al redibujar
@@ -21264,22 +21264,6 @@ const MET_AUTO_MOT={prueba:'🧪 Prueba de suba (sin catálogo)',subir:'📈 Sub
 // "Deshizo" manda sobre todo: es lo que explica por qué no suma.
 const metAutoMotTxt=x=>!x?'?':x.motivo==='deshace'?MET_AUTO_MOT.deshace:(x.por==='cerebro'||x.por==='claude'||x.por==='correccion')?MET_AUTO_MOT[x.por]:(MET_AUTO_MOT[x.motivo]||x.motivo||'?');
 function metAutoSet(k,v){if(k==='mes')metAutoMes=v;else metAutoMot=v;renderMetAuto();}
-let metVigAbierto=false;
-// El desplegable con todo lo que vigila el robot (antes era la tarjeta 🧪 Vigilancia aparte).
-// EL CEREBRO REEMPLAZÓ A LA PRUEBA DE SUBA (08/10/2026): desde el 07/10, con el cerebro prendido, el robot
-// ya no rehace cyc/vigilancia a propósito. La foto que queda es vieja: no se dice "en prueba" ni "se sube
-// esta noche" ni que el robot "no la pudo rehacer". Misma regla que el robot: prendido salvo cerebro='off'.
-const metCerebroOn=()=>String((state.mlconfig||{}).cerebro||'on')!=='off';
-function metVigBox(){
-  const V=state.vigilancia,f=V&&V.filas?Object.values(V.filas):[];
-  const enP=f.filter(x=>x&&(x.estado==='prueba'||x.estado==='candidata')).length,cat=f.filter(x=>x&&x.estado==='catalogo').length;
-  const fd=t=>{const d=new Date(Number(t)||0);return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0');};
-  const res=metCerebroOn()?(f.length?`foto vieja del ${fd(V.ts)} · ya no se rehace (la reemplazó el 🧠 cerebro)`:'ya no se arma (la reemplazó el 🧠 cerebro)')
-    :f.length?`${f.length} publicaciones que venden · ${cat} de catálogo · ${enP} en prueba de suba`:'todavía sin foto';
-  return `<details style="margin-top:12px;border-top:1px solid rgba(148,163,184,.16);padding-top:8px"${metVigAbierto||metAutoNorm(metAutoQ).trim()?' open':''} ontoggle="metVigAbierto=this.open">
-    <summary style="cursor:pointer;font-size:.66rem;color:var(--text)">👀 Qué está mirando ahora <span style="color:var(--muted)">· ${res}</span></summary>
-    <div id="met-vig" style="margin-top:8px"></div></details>`;
-}
 // EL JUICIO DE CLAUDE (10/10/2026). Él: "quiero que aparezca todo, desde la primer decisión del robot anterior y que hagas
 // el análisis (…) todos los días" y "quizás esa decisión es buena y está unos días perdiendo y después recupera". La cuenta
 // (plata cobrada de más o de menos, ventas antes y después) la sigue haciendo el supervisor; lo que dice si GANÓ o PERDIÓ de
@@ -21291,7 +21275,7 @@ const metJuicioHTML=x=>{const j=metJuicio(x);if(!j)return '';const [ic,lbl,c]=ME
 function renderMetAuto(){
   const el=document.getElementById('met-auto');if(!el)return;
   const r=state.supResumen;
-  if(!r||!(r.ts>0)){el.innerHTML='<div class="chart-box"><div style="color:var(--muted);font-size:.72rem">Todavía no hay cuenta: la hace el robot todas las noches, después del aviso de precios.</div>'+metVigBox()+'</div>';return;}
+  if(!r||!(r.ts>0)){el.innerHTML='<div class="chart-box"><div style="color:var(--muted);font-size:.72rem">Todavía no hay cuenta: la hace el robot todas las noches, después del aviso de precios.</div></div>';return;}
   const n=v=>Number(v)||0;
   const col=v=>n(v)>0?'var(--green)':n(v)<0?'var(--red)':'var(--muted)';
   // 27/09/2026, regla suya: VERDE sólo lo confirmado que ganó plata y ROJO sólo lo confirmado que
@@ -21301,7 +21285,7 @@ function renderMetAuto(){
   const dias=Math.floor((Date.now()-r.ts)/864e5);
   const viejo=dias>=2?`<div style="font-size:.62rem;color:#fbbf24;margin-bottom:8px">⚠️ la cuenta es de hace ${dias} días: el robot no la pudo rehacer.</div>`:'';
   const todos=Array.isArray(r.todos)?r.todos:null;
-  if(!todos){el.innerHTML=`<div class="chart-box">${viejo}<div style="color:var(--muted);font-size:.72rem">La cuenta nueva (por mes, por motivo y sin contar lo que es inflación) la arma el robot en su próxima vuelta de la noche.</div>${metVigBox()}</div>`;return;}
+  if(!todos){el.innerHTML=`<div class="chart-box">${viejo}<div style="color:var(--muted);font-size:.72rem">La cuenta nueva (por mes, por motivo y sin contar lo que es inflación) la arma el robot en su próxima vuelta de la noche.</div></div>`;return;}
   const ymDe=t=>{const d=new Date(t);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');};
   // POR MES (06/10/2026, pedido suyo): cada peso va al mes de la VENTA que lo dejó (x.mes lo arma el
   // robot). Un cambio de septiembre que vende en octubre suma en octubre sólo lo de octubre, y lo que
@@ -21418,75 +21402,6 @@ function renderMetAuto(){
       Desde el 09/10/2026 los precios los decido yo (💭 Lo decidió Claude) y se miden igual. Abajo de cada cambio va 🧠 mi juicio, que reviso todos los días: el número es la cuenta (lo cobrado de más o de menos y lo que vendió antes y después), el juicio dice si de verdad fue el precio (o un quiebre de stock, una fecha, una caja que llegó) y si una decisión que hoy pierde puede recuperarse. Antes, todo lo que el robot cambió solo: 📈 subir, 📉 bajar, 🧠 cerebro de precios, 🧪 prueba de suba, 🔨 remate, 🪜 escalera, 🛟 rescate antes de vender (el de la noche o por costo, que sube ANTES de que una venta salga baja) y ↩️ volver atrás un cambio suyo que perdía plata. Sólo después de 7 días. Antes de eso el cambio aparece abajo, en gris, con lo que ya se cobró de más o de menos por el precio: eso es plata firme, pero si se vendió menos (o más) por el precio recién se sabe a la semana. No cuenta: el rescate que sube DESPUÉS de una venta con % bajo, cuando el robot corrige una suba suya que quedó de más, cuando vuelve al precio de antes de un cambio propio (deshizo), ni lo que tocaste a mano.
       "Sin el cambio" es que el precio se quedaba donde estaba: se compara el mismo tiempo antes y después. En remates y escalera NO se suma la ganancia de lo que se vendió (bajar el precio adelanta la venta, no la crea): cuenta lo que se cobró de menos, el almacenamiento que se dejó de pagar y la plata que volvió antes (la mercadería vendida antes de lo que se habría vendido a su ritmo normal, valorada al 1% por mes en dólares, el interés que paga CYC).
     </div></details>
-    ${metVigBox()}
-  </div>`;
-  renderMetVig();
-}
-// ── 🧪 VIGILANCIA DE PRECIOS (idea 6 de la etapa 6, 27/09/2026) ──────────────────────────────────
-// Pedido suyo: "tener como un panel de control para ver (…) todos los cambios de las publicaciones, y
-// si esa decisión ganó o perdió plata. O sea que todos los productos estén en vigilancia".
-// La foto la deja el robot cada noche (cyc/vigilancia): cada publicación que vendió en 30 días, con su
-// estado frente a la prueba de suba de +5%. Al lado va el ÚLTIMO cambio de precio de esa publicación
-// y lo que midió el supervisor (la misma plata de la tarjeta de arriba, no otra cuenta).
-let metVigFiltro='todas';
-const MET_VIG_EST={candidata:['🧪','Se sube esta noche','var(--blue,#60a5fa)'],prueba:['🧪','En prueba','var(--blue,#60a5fa)'],espera:['⏳','Esperando (el robot la tocó hace poco)','var(--muted)'],
-  cerrada:['🔴','Prueba cerrada: la suba dejó menos','var(--red)'],tope:['🚧','Llegó al tope (barrera, techo o escalón de ML)','#fbbf24'],
-  catalogo:['🏷️','De catálogo: la vigilan 📈 subir y 📉 bajar','var(--muted)'],no:['➖','No se prueba (con el motivo)','var(--muted)'],sinleer:['❔','No se pudo leer','#fbbf24']};
-function metVigSet(v){metVigFiltro=v;renderMetVig();}
-function renderMetVig(){
-  const el=document.getElementById('met-vig');if(!el)return;
-  const V=state.vigilancia,cer=metCerebroOn();
-  if(!V||!V.filas){el.innerHTML=`<div style="color:var(--muted);font-size:.66rem">${cer?'No hay foto: desde el 07/10 el 🧠 cerebro de precios reemplazó a la prueba de suba y esta lista ya no se arma. Lo que cambia el cerebro sale arriba, marcado 🧠.':'Todavía no hay foto: la deja el robot de precios esta noche.'}</div>`;return;}
-  // Con el cerebro prendido los estados de la prueba son de una foto vieja: van en gris y en pasado.
-  const EST=cer?{...MET_VIG_EST,candidata:['🧪','Iba a probarse +5% (foto vieja)','var(--muted)'],prueba:['🧪','Estaba en prueba de suba (foto vieja)','var(--muted)'],
-    catalogo:['🏷️','De catálogo (foto vieja)','var(--muted)']}:MET_VIG_EST;
-  const n=v=>Number(v)||0;
-  const sg=v=>n(v)<0?'−'+fmt(Math.round(-n(v))):(n(v)>0?'+':'')+fmt(Math.round(n(v)));
-  const col=v=>n(v)>0?'var(--green)':n(v)<0?'var(--red)':'var(--muted)';
-  // 27/09/2026, regla suya: VERDE sólo lo confirmado que ganó plata y ROJO sólo lo confirmado que
-  // perdió. En curso (menos de 7 días), rescates y lo que no suma van en gris aunque den un número.
-  const colC=(v,ok)=>ok?col(v):'var(--muted)';
-  const todos=(state.supResumen&&Array.isArray(state.supResumen.todos))?state.supResumen.todos:[];
-  const ultimo={};for(const x of todos){if(!x||!x.mla)continue;const u=ultimo[x.mla];if(!u||n(x.ts)>n(u.ts))ultimo[x.mla]=x;}
-  const filas=Object.entries(V.filas).map(([mla,v])=>({mla,...v,ult:ultimo[mla]||null}));
-  const cnt={};filas.forEach(f=>cnt[f.estado]=(cnt[f.estado]||0)+1);
-  const orden=['candidata','prueba','cerrada','tope','espera','no','catalogo','sinleer'];
-  filas.sort((a,b)=>orden.indexOf(a.estado)-orden.indexOf(b.estado)||n(b.u30)-n(a.u30));
-  const vis=filas.filter(f=>(metVigFiltro==='todas'||f.estado===metVigFiltro)&&metAutoMatch(f));
-  const dias=Math.floor((Date.now()-n(V.ts))/864e5);
-  const chip=(v,lbl,on)=>`<button onclick="metVigSet('${v}')" style="font-size:.6rem;padding:3px 8px;border-radius:12px;border:1px solid ${on?'var(--green)':'rgba(148,163,184,.3)'};background:${on?'rgba(52,211,153,.12)':'transparent'};color:${on?'var(--green)':'var(--muted)'};cursor:pointer">${lbl}</button>`;
-  const chips=[chip('todas','Todas ('+filas.length+')',metVigFiltro==='todas'),...orden.filter(k=>cnt[k]).map(k=>chip(k,EST[k][0]+' '+EST[k][1].split(' (')[0].split(':')[0]+' ('+cnt[k]+')',metVigFiltro===k))].join('');
-  const fd=t=>{const d=new Date(n(t));return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0');};
-  const fila=f=>{
-    const E=EST[f.estado]||['·',f.estado,'var(--muted)'];
-    const u=f.ult;
-    const pct=u&&n(u.de)&&n(u.a)?((n(u.a)/n(u.de)-1)*100).toFixed(1).replace('.',','):null;
-    const cambio=u?`último cambio ${fd(u.ts)} · ${metAutoMotTxt(u)} · ${fmt(n(u.de))} → ${fmt(n(u.a))}${pct?' ('+(n(u.a)>n(u.de)?'+':'')+pct+'%)':''}`+(u.estado==='medido'&&u.total!=null&&u.enTotal?' · ':'')+
-      // 30/09/2026, él: verde si ganó, rojo si perdió, NADA si todavía no hay datos (menos de 7 días).
-      (u.estado==='medido'&&u.total!=null&&u.enTotal?`<b style="color:${col(u.total)}">${n(u.total)>0?'ganó':n(u.total)<0?'perdió':'igual'} ${sg(u.total)}</b>`:''):'';
-    const ini=f.precioInicial&&f.pasos?` · ${f.pasos} suba(s) de prueba desde ${fmt(n(f.precioInicial))}`:'';
-    return `<div style="padding:6px 0;border-bottom:1px solid rgba(148,163,184,.1);font-size:.66rem">
-      <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
-        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${E[0]} ${f.nom||f.mla} · ${f.cuenta||''}</span>
-        <span style="white-space:nowrap;font-family:'DM Mono',monospace">${f.precio?fmt(n(f.precio)):''}</span>
-      </div>
-      <div style="font-size:.6rem;color:${E[2]}">${f.motivo||E[1]}${ini}</div>
-      <div style="font-size:.6rem;color:var(--muted)">vendió ${n(f.u30)} en 30 d${f.dsin!=null?' · última hace '+f.dsin+' d':''}${f.dstock!=null?' · '+f.dstock+' d de stock':''}${cambio?' · '+cambio:''} · ${f.mla}</div>
-    </div>`;
-  };
-  // 30/09/2026: vive adentro de la tarjeta del robot. La plata de las pruebas ya está en el total de
-  // arriba (motivo 'prueba' suma), así que acá no se repite: sólo qué mira y por qué.
-  el.innerHTML=`<div>
-    ${cer?`<div style="font-size:.62rem;color:var(--muted);margin-bottom:8px">🧠 Desde el 07/10 la prueba de +5% (y el 📈 subir) los reemplazó el <b>cerebro de precios</b>: esta lista es la foto del ${fd(V.ts)} y ya no se rehace. Lo que cambia el cerebro sale arriba, marcado 🧠.</div>`
-      :dias>=2?`<div style="font-size:.62rem;color:#fbbf24;margin-bottom:8px">⚠️ la foto es de hace ${dias} días: el robot no la pudo rehacer.</div>`:''}
-    <div style="font-size:.62rem;color:var(--muted);margin-bottom:8px">${cer?'Cada publicación que vendía en 30 días ese día y en qué estado estaba.':'Cada publicación que vendió en 30 días y qué hace el robot con ella.'} Las de <b>catálogo</b> las compara contra la competencia (${cer?'':'📈 subir · '}📉 bajar para ganar la caja · 🔨 remate si sobra stock). Las que <b>no son de catálogo</b> no tienen competidor que ML deje ver: ${cer?'ahora las mira el 🧠 cerebro, que sube o baja según la plata por día.':'ahí prueba +5% y mide.'}${n(cnt.cerrada)?` <span style="color:var(--red)">${cnt.cerrada} prueba${cnt.cerrada===1?'':'s'} cerrada${cnt.cerrada===1?'':'s'} porque la suba dejó menos.</span>`:''}</div>
-    <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px">${chips}</div>
-    ${vis.map(fila).join('')||'<div style="font-size:.62rem;color:var(--muted);padding:6px 0">No hay publicaciones con este filtro.</div>'}
-    ${cer?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.6rem;color:var(--muted)">¿Qué pasó con la prueba de suba?</summary><div style="font-size:.6rem;color:var(--muted);line-height:1.45;margin-top:4px">
-      Desde el 07/10 la reemplazó el 🧠 cerebro de precios, que corre cada noche. Mira la <b>plata por día</b> de cada publicación (ventas por día con stock × lo que deja cada unidad) y, cuando al ritmo de antes ya se tendrían que haber vendido unas 4 unidades (o pasaron 21 días con stock), juzga: si el precio nuevo deja menos del 85% de antes, vuelve al de antes; si deja igual o más, prueba otro escalón para arriba, hasta el competidor de catálogo. Sin esperas fijas de 14 días. Sus cambios salen arriba, marcados 🧠, y suman como cualquier decisión del robot.
-    </div></details>`:`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.6rem;color:var(--muted)">¿Cómo funciona la prueba de suba?</summary><div style="font-size:.6rem;color:var(--muted);line-height:1.45;margin-top:4px"> Cada noche, a lo que vende y <b>no es de catálogo</b> (no hay competidor contra quién medir) se le sube <b>+5%</b>, todas juntas. El supervisor compara lo que dejó antes y después. Si dejó igual o más, a los 14 días prueba otro +5%; si dejó <b>menos</b>, la prueba de esa publicación se cierra y te aviso: volverla atrás es bajar un precio y eso lo decidís vos.
-      No se prueba lo que vende poco (menos de 4 en 30 d), lo que no vende hace más de 7 días, lo que tiene más de 60 días de stock, lo que está liquidando, lo que bajaste a mano, ni cuando subir cruza los $33.000 o ML cobra más comisión de lo que sube el precio. Lo de catálogo lo siguen vigilando el 📈 subir y el 📉 bajar, como siempre.
-    </div></details>`}
   </div>`;
 }
 function renderMetHoras(keys){
@@ -21623,7 +21538,6 @@ function renderMetricas(){
   renderMetHoras(curKeys);   // ¿a qué hora te compran? · al final de todo
   renderMetOrigen(curKeys);  // de dónde viene la mercadería · abajo de todo
   renderMetAuto();           // la plata que trajo la automatización de precios
-  renderMetVig();            // 🧪 vigilancia: todas las que venden y la prueba de suba
   const acctColors=['c1','c4','c2','c3'];
   // Mismo período un año atrás (alineado con las líneas del gráfico).
   const year=sumMetFields(metScopeBuckets(metScopeMode).bucketsYear.flat(),metViewField);
@@ -22865,10 +22779,11 @@ function renderHomeHoy(){
     <div style="display:flex;flex-wrap:wrap;gap:10px 34px;align-items:flex-end">
       <div><div id="hoy-bruto" style="font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(2rem,8vw,3.4rem);line-height:1;letter-spacing:-.01em">${fmt(h.bruto)}</div><div style="font-size:.78rem;color:var(--muted);margin-top:6px">facturado · <b style="color:var(--text)">${h.ventas}</b> venta${h.ventas===1?'':'s'} · <b style="color:var(--text)">${h.u}</b> u.</div></div>
       <div><div id="hoy-gan" style="font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(1.6rem,6vw,2.2rem);line-height:1;color:var(--c)">${fmt(h.gan)}</div><div style="font-size:.78rem;color:var(--muted);margin-top:6px">ganancia · <b style="color:var(--text)">${pctTxt}</b></div></div>
-      ${(()=>{const D=_puntajeDia(hoy,h,h.dias,esc);if(!D)return `<div style="align-self:center;padding:8px 14px;border-radius:12px;color:var(--muted);border:1px solid var(--border2);text-align:center"><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.35rem;line-height:1">—<span style="font-size:.6em;opacity:.7"> /10</span></div><div style="font-size:.74rem;font-weight:700;margin-top:4px">sin ventas todavía</div></div>`;const _c=puntColor(D.score);
-        return `<div style="align-self:center;padding:8px 14px;border-radius:12px;color:${_c};background:color-mix(in srgb,${_c} 12%,transparent);border:1px solid color-mix(in srgb,${_c} 35%,transparent);text-align:center" title="Puntaje ${esc==='dia'?'del día':esc==='mes'?'del mes':'del año'} (de 0 a 10), sólo por la ganancia en pesos: 7 en ${fmt(D.target)}${D.n>1?` ($115.000 × ${D.n} días)`:' por día'} (que a cada uno de los 3 le queden $900.000 por mes pagando todo) y 10 en ${fmt(D.target2)}.">
-          <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.35rem;line-height:1">${D.score.toFixed(1).replace('.',',')}<span style="font-size:.6em;opacity:.7"> /10</span></div><div style="font-size:.74rem;font-weight:700;margin-top:4px">${D.nivel}</div></div>`;})()}
+      ${(()=>{const D=_puntajeDia(hoy,h,h.dias,esc);if(!D)return `<div style="align-self:center;padding:8px 14px;border-radius:12px;color:var(--muted);border:1px solid var(--border2);text-align:center"><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.35rem;line-height:1">—<span style="font-size:.6em;opacity:.7"> /10</span></div><div style="font-size:.74rem;font-weight:700;margin-top:4px">sin ventas todavía</div></div>`;
+        return `<div style="align-self:center;padding:8px 14px;border-radius:12px;color:var(--c);background:color-mix(in srgb,var(--c) 12%,transparent);border:1px solid color-mix(in srgb,var(--c) 35%,transparent);text-align:center" title="Puntaje ${esc==='dia'?'del día':esc==='mes'?'del mes':'del año'} (de 0 a 10), sólo por la ganancia en pesos: 7 en ${fmt(D.target)}${D.n>1?` ($115.000 × ${D.n} días)`:' por día'} (que a cada uno de los 3 le queden $900.000 por mes pagando todo) y 10 en ${fmt(D.target2)}.">
+          <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.35rem;line-height:1">${D.score.toFixed(1).replace('.',',')}<span style="font-size:.6em;opacity:.7"> /10</span></div><div style="font-size:.74rem;font-weight:700;margin-top:4px">${VIVA_DIA_NOM[_vd.k]||D.nivel}</div></div>`;})()}
     </div>
+    ${h.ventas>0?_diaEscaleraHTML(h.gan,h.dias):''}
     ${esc==='dia'?(()=>{try{return _homeCurvaHTML(hoy);}catch(e){return '';}})():''}
     ${(()=>{try{return _homeGustoHTML(esc,hoy,_hf);}catch(e){return '';}})()}
     <details id="hoy-cobro" ${_hoyCobroAbierto()?'open':''} onclick="event.stopPropagation()" ontoggle="_hoyCobroToggle(this)" style="margin-top:14px;padding-top:9px;border-top:1px solid color-mix(in srgb,var(--c) 25%,transparent)">
@@ -23157,21 +23072,11 @@ function renderResumen_page(){
   const _pgEl=document.getElementById('casc-ganancia-pct');
   if(_pgEl){_pgEl.textContent=_pgp!=null?(_pgp>=0?'+':'')+_pgp.toFixed(0)+'%':'';_pgEl.style.color=_pgp!=null&&typeof pctColor==='function'?pctColor(_pgp):'';}
 
-  const peds=state.pedidos||[];
-  const cnt={pendiente:0,pedido:0,recibido:0};
-  peds.forEach(p=>cnt[p.estado||'pendiente']=(cnt[p.estado||'pendiente']||0)+1);
-  const pCnt={pendiente:0,poco_stock:0,suficiente:0};(state.pedidos||[]).forEach(p=>pCnt[p.estado||'pendiente']=(pCnt[p.estado||'pendiente']||0)+1);
-  setTxt('res-ped-pend',pCnt.pendiente);setTxt('res-ped-ped',pCnt.poco_stock);setTxt('res-ped-rec',pCnt.suficiente);
-
-  const el=document.getElementById('res-hist-list');
-  const h2=state.history||[];
-  if(!el)return;
-  if(!h2.length){el.innerHTML='<div class="empty-msg">Sin actividad.</div>';return;}
-  el.innerHTML=h2.slice(0,8).map(x=>`<div class="hist-entry">
-    <span class="hist-who">${x.who||'?'}</span>
-    <span class="hist-time">${ts2s(x.ts)}</span>
-    <span class="hist-desc">${x.desc}</span>
-  </div>`).join('');
+  // "Falta reponer" con la cuenta de Pedidos (decisión 7.2, 21/10/2026). Sin "Última actividad" (7.8: vive en Ajustes).
+  {const r=pedFaltaReponerTodo();
+   setTxt('res-ped-reponer',r.ars?fmt(r.ars):'US$'+Math.round(r.usd).toLocaleString('es-AR'));
+   setTxt('res-ped-reponer-sub',(r.ars?'US$'+Math.round(r.usd).toLocaleString('es-AR')+' · ':'')+'costo base, sin envío');
+   setTxt('res-ped-n',r.n);setTxt('res-ped-riesgo',fmt(r.riesgo));}
 }
 
 /* ═══════════ ARQUEO FINANZAS — VER MES ═══════════ */
@@ -23578,6 +23483,96 @@ window.addEventListener('orientationchange',()=>{if(_fsChart)setTimeout(()=>{try
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){const fs=document.getElementById('chart-fs');if(fs&&fs.classList.contains('open'))cerrarGraficoFS();}});
 /* La barra de filtros de Métricas queda FIJA en su lugar. Antes se escondía sola al scrolear
    (transform:translateY) y volvía al subir: eso era lo que la hacía "salirse de su casilla". */
+/* ═══════════ LA HOJA DEL PRODUCTO Y EL BUSCADOR DEL ☰ (decisión 7.15 de diseño, 21/10/2026, eligió la a) ═══════════
+   Se escribe el nombre (o un color, el código de Paraguay, el número MLA) en el ☰ y sube una hoja con lo esencial del producto
+   y un botón para cada lugar donde vive: la línea de tiempo, la ficha médica, el 🧠, sus ventas, su pedido, mandarlo y contarlo.
+   Busca con LA búsqueda del panel (buscaCoincide + textosDeProd). La hoja sólo muestra números que ya calcula el panel:
+   stockOf (Full), stockOficina, enTransito (en camino), ventas de 30 días (las mismas ventas de Ventas x Producto, sin
+   canceladas) y el margen de hoy de margenMLDe. No calcula nada nuevo. */
+function fnavBuscar(){
+  const inp=document.getElementById('fnav-busca'),box=document.getElementById('fnav-busca-res');if(!inp||!box)return;
+  const q=inp.value.trim();
+  if(!q){box.innerHTML='';return;}
+  const hits=(state.products||[]).filter(p=>buscaCoincide(q,textosDeProd(p)))
+    .sort((a,b)=>(normTxt(a.name).startsWith(normTxt(q))?0:1)-(normTxt(b.name).startsWith(normTxt(q))?0:1)||(a.name||'').localeCompare(b.name||'','es',{sensitivity:'base'}));
+  box.innerHTML=hits.length?hits.slice(0,8).map(p=>`<button class="fnav-item fnav-hit" onclick="event.stopPropagation();hojaProdAbrir('${p.id}')">📦 <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(p.name||'—')}</span></button>`).join('')
+    +(hits.length>8?`<div style="font-size:.62rem;color:var(--muted);padding:2px 14px">y ${hits.length-8} más: escribí otra palabra</div>`:'')
+    :`<div style="font-size:.66rem;color:var(--muted);padding:4px 14px">Ningún producto con «${_esc(q)}»</div>`;
+}
+// Lo que se vendió del producto en los últimos 30 días (unidades), sin canceladas: las mismas ventas de Ventas x Producto.
+function _hojaVend30(p){
+  const now=new Date(),fk=dateToKey(new Date(now.getTime()-29*864e5)),tk=dateToKey(now);let u=0;
+  Object.keys(state.ventaprod||{}).forEach(k=>{if(k<fk||k>tk)return;Object.values(state.ventaprod[k]||{}).forEach(v=>{if(v&&ventaEsDe(v,p)&&!_esCancelada(v))u+=Number(v.qty)||0;});});
+  return u;
+}
+function hojaProdAbrir(prodId){
+  const p=prodById(prodId);if(!p)return;
+  try{fnavOpen=false;_syncFnav();}catch(e){}
+  let m=document.getElementById('hoja-prod-modal');
+  if(!m){m=document.createElement('div');m.id='hoja-prod-modal';
+    m.style.cssText='position:fixed;inset:0;z-index:8900;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center';
+    m.onclick=e=>{if(e.target===m)m.remove();};document.body.appendChild(m);}
+  // Las publicaciones del producto: cuentas donde vive y la principal (viva, de Full si se puede) para la ficha y el 🧠.
+  const pubs=Object.entries(state.mllinks||{}).filter(([k,e])=>e&&e.prodId===p.id&&!e.ignored&&/^MLA/i.test(k));
+  const viva=pubs.filter(([,e])=>(e.status||'')!=='closed');
+  const ppal=(viva.find(([,e])=>(e.status||'')==='active')||viva[0]||pubs[0]||[])[0]||'';
+  const ctas=[...new Set(viva.map(([,e])=>e.cuenta).filter(c=>c&&LOCS.includes(c)))];
+  const tr=enTransito();const camino=LOCS.reduce((a,l)=>a+(tr[p.id+'__'+sid(l)]||0),0);
+  const full=stockOf(p),ofi=stockOficina(p),v30=_hojaVend30(p);
+  const alc=v30>0?Math.round((full+camino)/(v30/30)):null;
+  let mg=null;try{const r=margenMLDe(p);mg=r&&r.margen!=null&&isFinite(r.margen)?r.margen:null;}catch(e){}
+  let est='';try{if(ppal)est=estrategiaChip(estrategiaDe(ppal));}catch(e){}
+  const f=fotoDeProducto(p);
+  const foto=f&&f.url?`<img src="${_esc(f.url)}" alt="" style="width:58px;height:58px;border-radius:12px;object-fit:cover;flex-shrink:0;background:var(--surface2)" onerror="this.remove()">`
+    :`<div style="width:58px;height:58px;border-radius:12px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:1.6rem;flex-shrink:0">📦</div>`;
+  const n=(v,l,c)=>`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:8px 4px;text-align:center;min-width:0"><b style="font:800 1.1rem 'Syne',sans-serif;display:block;${c?'color:'+c:''}">${v}</b><span style="font-size:.6rem;color:var(--muted)">${l}</span></div>`;
+  const ped=[...(state.pedidos||[]),...(state.pedidos_py||[])].find(x=>x&&x.prodId===p.id);
+  const enPy=ped&&(state.pedidos_py||[]).includes(ped);
+  const b=(ic,t,sub,on,prim,attrs)=>`<button class="btn" onclick="${on}"${attrs||''} style="display:flex;align-items:center;gap:8px;padding:11px 12px;border-radius:12px;min-height:48px;text-align:left;white-space:normal;${prim?'grid-column:1/-1;background:color-mix(in srgb,var(--green) 14%,var(--surface2));border:1px solid color-mix(in srgb,var(--green) 40%,transparent);color:var(--text)':''}"><span style="font-size:1.1rem">${ic}</span><span>${t}<small style="display:block;font-size:.6rem;color:var(--muted)">${sub}</small></span></button>`;
+  const ida=`'${p.id}'`;
+  m.innerHTML=`<div style="width:100%;max-width:560px;max-height:86vh;overflow-y:auto;background:var(--surface);border:1px solid var(--border2);border-bottom:none;border-radius:20px 20px 0 0;padding:10px 16px calc(18px + env(safe-area-inset-bottom,0px));box-shadow:0 -10px 40px rgba(0,0,0,.45)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="width:44px;height:5px;border-radius:3px;background:var(--border2);margin:0 auto"></div>
+      <button class="btn" onclick="document.getElementById('hoja-prod-modal').remove()" style="font-size:.7rem;padding:3px 10px" title="Cerrar">✕</button></div>
+    <div style="display:flex;gap:12px;align-items:center">${foto}<div style="min-width:0"><b style="font:800 1rem 'Syne',sans-serif;line-height:1.2;display:block;overflow-wrap:anywhere">${_esc(p.name||'—')}</b>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:5px;font-size:.62rem;align-items:center">${est}${ctas.map(c=>`<span style="padding:1px 7px;border-radius:999px;border:1px solid var(--border2);color:var(--muted)">${_esc(c)}</span>`).join('')}${(p.variantes||[]).length?`<span style="color:var(--muted)">🎨 ${(p.variantes||[]).length} colores</span>`:''}</div></div></div>
+    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:14px 0 12px">
+      ${n(fmtN(full),'en Full')}${n(fmtN(ofi),'en tu oficina')}${n(fmtN(camino),'en camino')}
+      ${n(fmtN(v30),'vendió en 30 d')}${n(alc==null?'—':'≈'+alc+' d','le alcanza',alc!=null&&alc<14?'var(--red)':'')}${n(mg==null?'—':Math.round(mg)+'%','deja hoy',mg==null?'':pctColor(mg))}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      ${b('📈','Línea de tiempo','stock, ventas, precio y techo, día por día',`lineaAbrir(${ida},event)`,true)}
+      ${ppal?b('📋','Ficha médica','todo lo que se sabe',`fichaAbrir('${ppal}',event)`):''}
+      ${b('🧠','Por qué','las notas de Claude','cerebroAbrir(this,event)',false,` data-p="${p.id}"${ppal?` data-m="${ppal}"`:''}`)}
+      ${b('🏷️','Sus ventas','en Ventas x Producto',`hojaIr(${ida},'ventas')`)}
+      ${b('🚚','Su pedido',ped?`${enPy?'Paraguay':esPedidoPaulvic(ped)?'Paulvic':'Bs As'} · comprar ${fmtN(Number(ped.cantidad)||0)} u.`:'no está en Pedidos',`hojaIr(${ida},'pedido')`)}
+      ${b('📦','Mandarlo',ctas.length?'Armar caja · '+_esc(ctas[0]):'Armar caja',`hojaIr(${ida},'caja')`)}
+      ${b('🔢','Contarlo','en la oficina',`hojaIr(${ida},'contar')`)}
+    </div></div>`;
+}
+// Ir desde la hoja a la pantalla de ese producto, con el buscador de esa pantalla ya puesto en su nombre.
+function hojaIr(prodId,donde){
+  const p=prodById(prodId);if(!p)return;
+  const m=document.getElementById('hoja-prod-modal');if(m)m.remove();
+  const pon=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v;};
+  const nom=p.name||'';
+  if(donde==='ventas'){goPage('ventaprod');try{vpLimpiarFiltros();}catch(e){}pon('vp-search',nom);try{renderVentaProd();}catch(e){}return;}
+  if(donde==='pedido'){
+    const ped=[...(state.pedidos||[]),...(state.pedidos_py||[])].find(x=>x&&x.prodId===p.id);
+    // Sin pedido, la solapa sale del origen de la ficha (Paraguay / Paulvic / Bs As), la misma regla que arma los pedidos.
+    const sec=ped?((state.pedidos_py||[]).includes(ped)?'paraguay':esPedidoPaulvic(ped)?'paulvic':'bsas')
+      :(p.origen==='py'?'paraguay':esPedidoPaulvic({prodId:p.id,producto:p.name})?'paulvic':'bsas');
+    goPage('pedidos');
+    ['ped-search','ped-py-search','ped-paulvic-search'].forEach(id=>pon(id,nom));
+    const btn=document.getElementById(sec==='paraguay'?'tab-py-btn':sec==='paulvic'?'tab-paulvic-btn':'tab-bsas-btn');
+    try{if(btn)setPedidoSection(sec,btn);else renderPedidos();}catch(e){}
+    return;
+  }
+  if(donde==='caja'){
+    const ctas=[...new Set(Object.values(state.mllinks||{}).filter(e=>e&&e.prodId===p.id&&!e.ignored&&(e.status||'')!=='closed').map(e=>e.cuenta).filter(c=>c&&LOCS.includes(c)))];
+    pon('ofi-caja-search',nom);irACaja(ctas[0]||'');return;
+  }
+  if(donde==='contar'){ofiTab='contar';goPage('oficina');pon('ofi-contar-search',nom);try{setOfiTab('contar',document.getElementById('tab-ofi-contar'));}catch(e){}return;}
+}
 /* ═══════════ FLOATING NAV ═══════════ */
 const FNAV_PAGES=[
   {id:'home',      icon:'🏠', label:'Inicio'},
@@ -23615,7 +23610,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
       <button class="back-btn" onclick="goPage('home')">← Inicio</button>
       <div>
         <div class="ph-title">Ajustes</div>
-        <div class="ph-sub">Versión · Avisos · Perfil · Apariencia · Robot · Monotributo · Facturación · Dólar · Precios históricos · Papelera · Cambios · Datos</div>
+        <div class="ph-sub">Versión y backup · Avisos · Perfil · Apariencia · Robot · Monotributo · Facturación · Dólar · Precios históricos · Papelera · Cambios</div>
       </div>
     </div>
     <div class="ph-right">
@@ -23628,7 +23623,13 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
     <!-- 15/10/2026, pedido suyo: "mandar todo a ajustes (…) y las revisiones que pueda clickear, y ver todo lo que pasó, cuáles son,
          qué falta, qué fecha". Antes estaba abajo de todo en Inicio. -->
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
-      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;margin-bottom:10px">🔄 Versión y últimos cambios</div>
+      <!-- Una sola tarjeta para la versión, buscar actualizaciones y el backup (decisión 7.9 de diseño, 21/10/2026, eligió la a):
+           antes había dos 🔄 (arriba y abajo de todo) y el 💾 Datos aparte. -->
+      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;margin-bottom:10px">🔄 Versión, actualizaciones y backup</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()" title="Si no ves los últimos cambios, forzá la actualización">🔄 Buscar actualizaciones</button>
+        <button class="btn" style="background:rgba(34,197,94,.12);color:var(--green);border:1px solid rgba(34,197,94,.3)" onclick="backupDesdeAjustes()" title="Descargá una copia de seguridad de toda la base">💾 Descargar backup</button>
+      </div>
       <div style="text-align:center">
         <span id="home-version" onclick="actualizarApp()" title="Versión de la app que estás usando ahora. Tocá para buscar actualizaciones." style="display:inline-flex;align-items:center;gap:7px;font-size:.66rem;color:var(--muted);border:1px solid var(--border);border-radius:999px;padding:5px 13px;cursor:pointer;letter-spacing:.06em">…</span>
         <details id="home-cambios" style="margin-top:6px;text-align:left"></details>
@@ -23785,21 +23786,6 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
     </details>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
-      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;margin-bottom:12px">💾 Datos</div>
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
-        <span style="font-size:.75rem;color:var(--muted)">Descargá una copia de seguridad de toda la base</span>
-        <button class="btn" style="background:rgba(34,197,94,.12);color:var(--green);border:1px solid rgba(34,197,94,.3)" onclick="backupDesdeAjustes()">💾 Descargar backup</button>
-      </div>
-    </div>
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
-      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;margin-bottom:12px">🔄 Aplicación</div>
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
-        <span style="font-size:.75rem;color:var(--muted)">Si no ves los últimos cambios, forzá la actualización</span>
-        <button class="btn" style="background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.3)" onclick="actualizarApp()">🔄 Buscar actualizaciones</button>
-      </div>
-      <div id="ajustes-version" style="font-size:.66rem;color:var(--muted);margin-top:12px"></div>
-    </div>
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
       <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;margin-bottom:12px">🔒 Sesión</div>
       <button class="btn" style="background:rgba(239,68,68,.12);color:var(--red);border:1px solid rgba(239,68,68,.3)" onclick="logoutCYC()">🔒 Cerrar sesión</button>
     </div>
@@ -23827,6 +23813,11 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
 <!-- Floating nav -->
 <button id="fnav-btn" onclick="toggleFnav(event)">☰</button>
 <div id="fnav-menu" class="hidden">
+  <!-- 🔎 buscador de productos (decisión 7.15 de diseño, 21/10/2026): cada resultado abre la hoja del producto -->
+  <div id="fnav-busca-wrap" onclick="event.stopPropagation()" style="padding:2px 2px 6px;border-bottom:1px solid var(--border);margin-bottom:4px">
+    <input id="fnav-busca" type="search" placeholder="🔎 Buscar producto…" oninput="fnavBuscar()" autocomplete="off" style="width:100%;padding:8px 10px;border-radius:9px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-family:'DM Mono',monospace;font-size:.8rem">
+    <div id="fnav-busca-res"></div>
+  </div>
   <button class="fnav-item" data-page="home"       onclick="goPage('home');fnavOpen=false;_syncFnav()">🏠 Inicio</button>
   <button class="fnav-item" data-page="resumen"    onclick="goPage('resumen');fnavOpen=false;_syncFnav()">📋 Resumen</button>
   <button class="fnav-item" data-page="inventario" onclick="goPage('inventario');fnavOpen=false;_syncFnav()">🧮 Arqueo</button>
