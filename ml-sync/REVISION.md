@@ -221,6 +221,32 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   promo no pase por abajo del piso sin `!piso` ni de 0% · que el cerebro de la noche no lea el precio de promo como
   "cambio a mano" y frene subas.
 
+### Revisión de la etapa 1, arreglos del 21/10/2026 (sync.mjs)
+Qué es · dónde vive · qué chequear:
+- **25% en el peor caso** en `entrarpromo` (sin caer al margen normal si falta) y en `analizapromo` ("conviene" y el `!piso` sugerido);
+  la línea impresa dice normal y peor caso. Chequear: un descuento con normal ≥25% y peor caso <25% no entra sin `!piso`.
+- **🏔️ sólo de techo95**: `techookDeTecho95` (texto `Techo encontrado, N% seguro` o `🔴 Techo de lanzamiento`) decide el freno F1
+  de `frenosBajas` y `bajasnuevas` (que ahora lee también los descuentos de `cyc/promoclaude`). `decido`/`entrarpromo`/`tag:` rechazan
+  `#techook` (y `decido`/`entrarpromo` también `#sindecidir`/`#agotado`); `tagDeMotivo` ya no deduce `techook`. Chequear: un
+  `techook` anotado a mano no deja bajar lo nuevo.
+- **`entrarpromo`**: renovar el descuento propio encuentra el que ya está (por tipo, no por id); si ML rechaza vuelve la excepción
+  de antes en `cyc/promoclaude`; precio fijo de ML pedido a otro precio no entra; releído distinto o no visto → sale de la promo,
+  restaura y no anota estrategia ni nota; `=salir` vuelve la estrategia de antes de la promo; `#descuento` con ML poniendo plata = 🏷️ promo.
+- **`gemelacrea`** mide la Premium al precio pedido con `cuentaGemela` (la misma de `gemela`): peor caso <25% o neta menor que la
+  Clásica → no crea salvo `!piso`. El envío de las dos sale de `envioGemelaDe` (netopub sólo si se midió arriba).
+- **Redondeo**: `decido` usa el precio exacto; `setPriceTo` y `raisePriceTo` con `exacto` (lo que decidió Claude) no redondean, y sin
+  `exacto` redondean a $10 sin cruzar los $33.000 (`redondeoSube`). Chequear: 32.999 queda 32.999 y 4.999 queda 4.999.
+- **`!cruza`** sólo si a ese precio deja más por unidad que en $32.999 (calcCerebro). **`aplicarCerebro`**: el colchón de 0,5 no hunde
+  abajo de 0% un margen positivo.
+- **`sacapromos` a mano** manda `offer_id` y relee `cyc/promoclaude/<MLA>` antes de cada DELETE (como el guardián).
+- **Pausar lo activo fuera de Full** corre cada hora también con SOLO_DATOS (bloque propio, sólo pausa).
+- **No inflar el tachado**: `_chequeoPromoMia` (por `_chequeoNoSubir`: raisePriceTo, raiseVariations, raisePrice, `volver`; y
+  `submargen` antes de su PUT) no sube el precio de lista con un descuento mío vigente; sin leer `cyc/promoclaude` no sube.
+- **Envío por lado de la barrera**: `unapub` (`bajar=`/`empatar`) mide con las ventas del lado del precio que mide, sin compras que
+  cruzan por cantidad ni netos estimados y sin cuotas adentro; arriba sin ventas de arriba, netopub (si se midió arriba) o
+  `CAND_ENVIO_ARRIBA`. `margenAlDia`, `calcCerebro` y `planilla` reusan el envío de netopub sólo si su precio era de arriba.
+- **Sin dólar no se mide** en `activarPausadasFull` (no activa) ni en `unapub`.
+
 ### Chequeo · "para bajar y que roten": las publicaciones nuevas cuentan desde su alta (auditoría 21/10/2026)
 `bajarParaMover` tomaba la última venta del PRODUCTO cuando la publicación no tenía ventas propias, así que la gemela Premium
 de Velvet Petals (creada el 20/10) salía con "27 días sin vender" y propuesta para bajar. Ahora sin ventas propias cuenta desde
