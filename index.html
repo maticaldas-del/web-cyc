@@ -2923,7 +2923,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.85';
+const APP_VERSION='25.86';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2936,6 +2936,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.86',f:'21/10',h:'15:30',c:[{n:2,t:'🛒 Pedidos: las casillas de unidades ya no guardan al instante (borraba lo que estabas escribiendo en otras). Cargás todo y tocás "🛒 Agregar al pedido" en la barra de abajo; lo sin agregar queda en ámbar.'},{n:2,t:'📋 Dai Nippon vuelve a tener pedido: casilla "📋 pedir a Dai Nippon" en cada tarjeta, 🧾 Pedido con el mensaje para WhatsApp (nombre, unidades y código), Ya lo pedí y Llegó.'},{n:2,t:'Lo cargado en el pedido se descuenta de lo que falta: con todo lo recomendado cargado la tarjeta baja a "🧾 Ya cargado"; con menos queda arriba con lo que falta y "pediste N" (Paraguay probados y listas).'}]},
   {v:'25.85',f:'21/10',h:'15:05',c:[{n:1,t:'Gastos: arriba de la lista de lo que falta cargar sale el total gastado del mes.'},{n:2,t:'Línea de tiempo: un precio ya no se marca 🔴 techo si otro precio más alto dejó más plata por día (pasaba con el Persea).'}]},
   {v:'25.84',f:'21/10',h:'14:50',c:[{n:1,t:'Vuelve como antes: cada pantalla se abre debajo de Inicio, y subiendo con el dedo llegás a Inicio para entrar a otra tarjeta (sin tener que tocar ← Inicio).'}]},
   {v:'25.83',f:'21/10',h:'14:40',c:[{n:1,t:'🇵🇾 Pedidos hechos: cada tarjeta dice ✅ gastos completos o ⚠️ faltan gastos (y cuáles: correo, el que retira, el dólar…).'}]},
@@ -20183,7 +20184,7 @@ function _pedidoItemHtml(p,opts){
   const _armColRows=_armU==null?[]:(()=>{const m=new Map();for(const[c]of _armCols)m.set(_pyArmK(c),c);for(const[k,x]of Object.entries(_armVV||{}))if(!m.has(k))m.set(k,String((x&&x.c)||k));return[...m.entries()];})();
   const _armPorColor=_armU!=null&&(!!_armVV||(_armCols.length>0&&(_prod.variantes||[]).length>1));
   const _armHTML=_armU==null?'':`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 12px 8px;margin:-4px 0 10px;font-size:.78rem;background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px">
-      <span style="font-weight:700;color:${_armU>0?'var(--green)':'var(--muted)'}">🧾 pedir</span>
+      <span style="font-weight:700;color:${_armU>0?'var(--green)':'var(--muted)'}">🧾 pedir</span>${p._pediste?`<span style="font-size:.64rem;color:var(--muted)">pediste ${p._pediste} · faltan ${fmtN(p.cantidad)}</span>`:''}
       ${_armPorColor
         ?_armColRows.map(([k,c])=>{const q=parseInt(((_armVV||{})[k]||{}).u)||0;return `<label style="display:inline-flex;align-items:center;gap:4px;color:${q>0?'var(--green)':'var(--muted)'}">${c} <input type="number" min="0" step="1" value="${q||''}" placeholder="0" onchange="pyArmSetVar('${_prod.id}','${k}',this.value)" style="width:52px;font-size:.84rem;padding:3px 5px;text-align:center;background:var(--surface2);border:1px solid ${q>0?'var(--green)':'var(--border)'};border-radius:6px;color:var(--text)"></label>`;}).join('')+(_armU>0?` <span style="color:var(--green)">✓ ${_armU} u. en el pedido</span>`:'')
         :`<input type="number" min="0" step="1" value="${_armU||''}" placeholder="0" onchange="pyArmSet('${_prod.id}',this.value)" style="width:58px;font-size:.88rem;padding:4px 6px;text-align:center;background:var(--surface2);border:1px solid ${_armU>0?'var(--green)':'var(--border)'};border-radius:6px;color:var(--text)"> u.`}
@@ -20203,7 +20204,7 @@ function _pedidoItemHtml(p,opts){
       ${_prod?fotoChipHTML(_prod,38,p.variante||''):''}
       <span class="ped-name">${p.producto||'—'}${p.variante?` <span style="padding:1px 6px;border-radius:4px;background:rgba(124,58,237,.15);color:#a78bfa;font-size:.65rem;font-family:'DM Mono',monospace;font-weight:400">${p.variante}</span>`:''}${opts.etiqueta||''}${pedCambioChip(p)}</span>
       ${_prod?maxCompraChip(_prod):''}
-      <span class="ped-buy"><b>${fmtN(_cantShow)}</b><i>u. a comprar${p.auto===false?' · a mano':''}</i>${_semTxt?`<i class="ped-sem" title="Cuenta lo que hay en ML + en camino + en tu oficina, al ritmo de venta">${_semTxt}</i>`:''}</span>
+      <span class="ped-buy"><b>${fmtN(_cantShow)}</b><i>u. a comprar${p.auto===false?' · a mano':''}</i>${p._pediste?`<i style="color:var(--green)" title="Ya cargaste ${p._pediste} u. en el 🧾 Pedido: arriba queda lo que falta para llegar a lo recomendado.">🧾 pediste ${p._pediste}</i>`:''}${_semTxt?`<i class="ped-sem" title="Cuenta lo que hay en ML + en camino + en tu oficina, al ritmo de venta">${_semTxt}</i>`:''}</span>
       <span class="ped-caret">▼</span>
     </summary>
     <div class="ped-body">
@@ -20404,7 +20405,7 @@ async function _listaBuscarYa(q){
         <div style="color:var(--muted);font-size:.66rem">te sale <b style="color:var(--text)">${fmt(_listaPuesto(k,e))}</b>${e.mp?` · en ML <b style="color:var(--text)">${fmt(e.mp)}</b>`:''}</div>
         <details style="margin-top:3px"><summary style="cursor:pointer;font-size:.62rem;color:var(--muted)">detalle ▾</summary><div style="color:var(--muted);font-size:.64rem;margin-top:4px">${e.mv?' · '+(e.mv==1?'<b style="color:var(--amber)">⚠️ 1 solo vendedor</b>':e.mv+' vendedores'):''}${Number(e.pp)>0?` · <span style="color:var(--amber)">🏷️ el más barato está en promo (−${Number(e.pp)}%)</span>`:''}${e.vend!=null?` · 🛒 ${e.vend>=1000?'+1000':e.vend} vendidas`:''}</div><div style="font-size:.64rem;margin-top:3px">${e.mi?`<a href="https://www.mercadolibre.com.ar/p/${e.mi}" target="_blank" rel="noopener" style="color:var(--green)">🔗 verlo en ML</a> · `:''}<a href="#" onclick="listaVerOri('${k}','${c}');return false" style="color:var(--blue)">📄 verlo en la lista</a> · <a href="#" onclick="_listaSel='${k}';_listaVista='nuevos';renderListas();return false" style="color:var(--muted)">ir a ${escHtml(provs[k].nombre||k)}</a></div></details></div>
       <div style="text-align:right;flex:0 0 auto">${m!=null&&!_listaCostoVigente(e)?'<span style="font-size:.6rem;color:var(--amber)">⏳ costo nuevo, falta medir</span>':m!=null?`<b style="color:${m>=25?'var(--green)':'var(--red)'}">${m}%</b>`:'<span style="font-size:.6rem;color:var(--muted)">sin medir</span>'}
-        ${_listaFichaDe(k,cod,e)?'<div style="font-size:.6rem;color:var(--green)" title="Ya es una ficha: se pide desde la tarjeta de Pedidos (📋 pedir a la lista) o en ✅ Probados">ya es probado</div>':(_listaDa(e)&&_listaEsBsas(k))?'<div style="font-size:.6rem;color:var(--green)">da · lo trae Tito</div>':_listaDa(e)?`<div style="font-size:.62rem;color:var(--muted)">pedir <input type="number" min="0" inputmode="numeric" value="${(arm[k]||{})[cod]||''}" placeholder="0" onchange="listaSetU('${k}','${c}',this.value)" style="width:48px;padding:2px 4px;font-size:.78rem;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text)"></div>`:''}</div></div>`;};
+        ${_listaFichaDe(k,cod,e)?'<div style="font-size:.6rem;color:var(--green)" title="Ya es una ficha: se pide desde la tarjeta de Pedidos (📋 pedir a la lista) o en ✅ Probados">ya es probado</div>':_listaDa(e)?`<div style="font-size:.62rem;color:var(--muted)">pedir <input type="number" min="0" inputmode="numeric" value="${(arm[k]||{})[cod]||''}" placeholder="0" onchange="listaSetU('${k}','${c}',this.value)" style="width:48px;padding:2px 4px;font-size:.78rem;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text)"></div>`:''}</div></div>`;};
   out.innerHTML=`<div style="font-size:.66rem;color:var(--muted);margin-top:6px">${R.length?R.length+' resultado'+(R.length===1?'':'s')+(R.length>60?' · muestro los 60 mejores':''):'Nada en ninguna lista con eso.'}</div>`+R.slice(0,60).map(fila).join('');
 }
 // LA ÚLTIMA VUELTA COMPLETA DE CADA FUENTE (20/10/2026, pedido suyo: "que haga todo nissei y avise cuál fue la última vuelta
@@ -20535,12 +20536,36 @@ async function listaProbSugeridas(pedId){
   if(!await _listaProbGuardar(s.k,s.pid,{u:tot,ts:Date.now(),...(cur.cod?{cod:cur.cod}:{}),v:vv}))return;
   toast(`📋 ${tot} u. en el pedido · ${s.cols.map(([c,q])=>c+' '+q).join(' · ')}`);_listaRepintar();
 }
+// ── LO CARGADO EN EL PEDIDO SE DESCUENTA DE LO QUE FALTA (21/10/2026, él: "que vayan desapareciendo: si me pide 10 unidades y cargo
+// 10 o más que salgan, y si cargo 9 o menos que siga apareciendo las unidades que me faltan pedir para llegar a 10 (que es lo que vos
+// recomendás mandar) pero que indique en chiquito que pedí X unidades de ese producto"). `cur` = lo cargado en el 🧾 Pedido de ese
+// producto ({u, v:{<color>:{c,u}}}: py_armado de Paraguay o listas_pedido_prob de la lista). Devuelve la tarjeta con lo que FALTA
+// (`cantidad` y la q de cada color) y `_pediste`, o `falta:null` si no hay nada cargado. Lo ya pedido (Ya lo pedí) no entra acá:
+// eso ya se descuenta de lo decidido al pedirlo.
+function _pedTrasCargado(p,cur){
+  const u=parseInt(cur&&cur.u)||0;if(!(u>0))return{p,falta:null};
+  const cv=_pyArmV(cur);const cols=(p.variantesNec||[]).filter(x=>x&&x.v&&(parseInt(x.q)||0)>0);
+  if(cols.length&&cv){
+    const vn=(p.variantesNec||[]).map(x=>{if(!x||!x.v||!((parseInt(x.q)||0)>0))return x;const cg=parseInt((cv[_pyArmK(String(x.v))]||{}).u)||0;return cg?{...x,q:Math.max(0,(parseInt(x.q)||0)-cg),_pediste:cg}:x;});
+    const falta=vn.reduce((a,x)=>a+(x&&x.v?(parseInt(x.q)||0):0),0);
+    return{p:{...p,cantidad:falta,variantesNec:vn,_pediste:u},falta,u};
+  }
+  const falta=Math.max(0,(parseInt(p.cantidad)||0)-u);
+  return{p:{...p,cantidad:falta,_pediste:u},falta,u};
+}
+// Parte una lista de pedidos en lo que todavía falta (con lo cargado descontado) y lo que ya quedó cubierto con lo cargado.
+function _pedPartirCargado(peds,curDe){const quedan=[],ya=[];
+  for(const p of peds){const t=_pedTrasCargado(p,p&&p.prodId?curDe(p.prodId):null);if(t.falta==null)quedan.push(p);else if(t.falta<=0)ya.push(p);else quedan.push(t.p);}
+  return{quedan,ya};}
+function _pedYaCargadosHTML(ya,dib){if(!ya.length)return '';
+  return `<details style="margin-top:10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:8px 12px"><summary style="cursor:pointer;font-size:.76rem;font-weight:700;color:var(--green)">🧾 Ya cargado en el pedido (${ya.length}) <span style="font-weight:400;color:var(--muted);font-size:.66rem">· lo que recomendé ya está cargado: si lo sacás del 🧾 Pedido, vuelve arriba</span></summary><div style="margin-top:8px">${ya.map(dib).join('')}</div></details>`;}
 function _listaRepintar(){try{renderPedidos();}catch(e){}try{renderListas();}catch(e){}}
 // La casilla debajo de la tarjeta de Pedidos (como la de Paraguay). Devuelve '' si la ficha no es de una lista que existe.
 function listaProbCasillaHTML(p,pr){
   const k=pr&&pr.listaProv;const pv=((state.mlconfig||{}).listasProv||{})[k];
   if(!k||!pv||pv.desc)return '';
-  if(pv.bsas)return '';   // Dai Nippon y las listas de Bs As no tienen pedido: las compra Tito en persona (20/10/2026)
+  // 21/10/2026, él: "al final en nippon siempre compra mi viejo yendo físicamente, pero ahora me pidió que haga un pedido así se lo
+  // cargan más rápido": Dai Nippon (y las listas de Bs As) vuelven a tener casilla de pedir y 🧾 Pedido (se deshace la v25.47).
   const nomP=escHtml(pv.nombre||k);
   const cur=_listaProbDe(k)[pr.id]||null;const u=parseInt(cur&&cur.u)||0;const vv=_pyArmV(cur);
   const cols=(p.variantesNec||[]).filter(x=>x&&x.v&&(parseInt(x.q)||0)>0).map(x=>[String(x.v),parseInt(x.q)||0]);
@@ -20550,7 +20575,7 @@ function listaProbCasillaHTML(p,pr){
   const porColor=!!vv||(cols.length>0&&(pr.variantes||[]).length>1);
   const viaja=_listaProbViaja(k,pr.id);
   return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 12px 8px;margin:-4px 0 10px;font-size:.78rem;background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px">
-      <span style="font-weight:700;color:${u>0?'var(--green)':'var(--muted)'}">📋 pedir a ${nomP}</span>
+      <span style="font-weight:700;color:${u>0?'var(--green)':'var(--muted)'}">📋 pedir a ${nomP}</span>${p._pediste?`<span style="font-size:.64rem;color:var(--muted)">pediste ${p._pediste} · faltan ${fmtN(p.cantidad)}</span>`:''}
       ${porColor
         ?rows.map(([kk,c])=>{const q=parseInt(((vv||{})[kk]||{}).u)||0;return `<label style="display:inline-flex;align-items:center;gap:4px;color:${q>0?'var(--green)':'var(--muted)'}">${escHtml(c)} <input type="number" min="0" step="1" value="${q||''}" placeholder="0" onchange="listaProbSetVar('${k}','${pr.id}','${kk}',this.value)" style="width:52px;font-size:.84rem;padding:3px 5px;text-align:center;background:var(--surface2);border:1px solid ${q>0?'var(--green)':'var(--border)'};border-radius:6px;color:var(--text)"></label>`;}).join('')+(u>0?` <span style="color:var(--green)">✓ ${u} u. en el pedido</span>`:'')
         :`<input type="number" min="0" step="1" value="${u||''}" placeholder="0" onchange="listaProbSet('${k}','${pr.id}',this.value)" style="width:58px;font-size:.88rem;padding:4px 6px;text-align:center;background:var(--surface2);border:1px solid ${u>0?'var(--green)':'var(--border)'};border-radius:6px;color:var(--text)"> u.${u>0?' <span style="color:var(--green)">✓ en el pedido</span>':''}`}
@@ -20799,13 +20824,12 @@ async function renderListas(){
   // LAS LISTAS DE BS AS NO TIENEN PEDIDO (20/10/2026, él: "en dai nippon no se hacen pedidos, se trabajan igual que en resto de bs
   // as. eso lo trae mi viejo personalmente"): sin 🧾 Pedido, sin casillas de "pedir" ni "📋 pedir a …" en las tarjetas. Los probados
   // son tarjetas de Pedidos como las de "De siempre" y los nuevos se miran para que Tito los traiga.
-  if(_enB&&_listaVista==='hechos')_listaVista='nuevos';
   const _tab=(t,txt,tit)=>`<button class="btn" style="font-size:.64rem;padding:5px 13px;${_listaVista===t?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}" title="${tit}" onclick="listaSetVista('${t}')">${txt}</button>`;
   // 7.30 · UN SOLO BUSCADOR (21/10/2026, eligió la a): había dos (éste arriba, en todas las listas, y otro abajo de todo, sólo en la
   // lista abierta) que buscaban lo mismo con dos resultados distintos. Queda éste, arriba, también en la solapa Dai Nippon de Bs As.
   const cab=(_enB?'<div style="height:10px"></div>':'')+`<div style="margin-bottom:10px"><input id="lista-buscar" type="search" value="${escHtml(window._listaQ||'')}" placeholder="🔎 Buscar un producto en ${_enB?'las listas de Bs As':'TODAS las listas'}…" oninput="listaBuscar(this.value)" style="width:100%;padding:9px 12px;font-size:.85rem;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--text)"><div id="lista-busq"></div></div>`+`
     ${(_enB&&visibles.length===1)?'':`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px"><span style="font-size:.68rem;color:var(--muted)">Proveedor:</span>${visibles.map(_provBtn).join('')}${_enB?'':`<button class="btn" style="font-size:.64rem;padding:4px 10px;opacity:.8" title="La esconde de acá hasta que la vuelvas a poner (desde ⏸️ sacadas por ahora). No borra nada." onclick="listaPausar('${k}',true)">⏸️ sacar ${escHtml(nom)} por ahora</button>`}</div>`}${_volverHtml}
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${_tab('probados','✅ Productos probados','Lo que ya le compraste a este proveedor: cuánto reponer.')}${_tab('nuevos','🆕 Productos nuevos','Lo de su lista que todavía no vendés y da 25% o más en ML.')}${_enB?'':_tab('hechos','🧾 Pedido'+(nArm?' ('+nArm+' cargados)':''),'El pedido del momento, el mensaje con código y unidades, y los pedidos ya hechos.')}</div>`;
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${_tab('probados','✅ Productos probados','Lo que ya le compraste a este proveedor: cuánto reponer.')}${_tab('nuevos','🆕 Productos nuevos','Lo de su lista que todavía no vendés y da 25% o más en ML.')}${_tab('hechos','🧾 Pedido'+(nArm?' ('+nArm+' cargados)':''),'El pedido del momento, el mensaje con código y unidades, y los pedidos ya hechos.')}</div>`;
   _listaCacheRevisar();   // etapa 4 (20/10/2026): la que cambió el robot se vuelve a bajar
   let cat=_listaCache[k];
   if(!cat){el.innerHTML=cab+`<div style="font-size:.72rem;color:var(--muted)">⏳ bajando la lista…</div>`;
@@ -20820,7 +20844,8 @@ async function renderListas(){
   if(_listaVista==='probados'){
     const ids=new Set((state.products||[]).filter(p=>p.listaProv===k).map(p=>p.id));
     const peds=(state.pedidos||[]).filter(p=>ids.has(p.prodId)).sort(_pedSortFnRiesgo);
-    el.innerHTML=cab+(ids.size?`${_enB?'':`<div style="font-size:.66rem;color:var(--muted);margin-bottom:8px">${ids.size} producto${ids.size===1?'':'s'} de ${escHtml(nom)} · ${peds.length} con pedido de reposición · ${_enB?'Tito los compra en persona, igual que el resto de Bs As':`cargalos con "📋 pedir a ${escHtml(nom)}" debajo de cada tarjeta: van al 🧾 Pedido`}</div>`}`+(peds.length?peds.map(p=>_pedidoItemHtml(p,{showRiesgo:true})).join(''):'<div class="empty-msg">Ninguno necesita reposición hoy.</div>')
+    el.innerHTML=cab+(ids.size?`<div style="font-size:.66rem;color:var(--muted);margin-bottom:8px">${ids.size} producto${ids.size===1?'':'s'} de ${escHtml(nom)} · ${peds.length} con pedido de reposición · cargalos con "📋 pedir a ${escHtml(nom)}" debajo de cada tarjeta y tocá 🛒 Agregar al pedido: van al 🧾 Pedido</div>`+(()=>{const PC=_pedPartirCargado(peds,pid=>_listaProbDe(k)[pid]);
+        return (PC.quedan.length?PC.quedan.map(p=>_pedidoItemHtml(p,{showRiesgo:true})).join(''):`<div class="empty-msg">${PC.ya.length?'Todo lo recomendado ya está cargado en el 🧾 Pedido.':'Ninguno necesita reposición hoy.'}</div>`)+_pedYaCargadosHTML(PC.ya,p=>_pedidoItemHtml(p,{showRiesgo:true}));})()
       :`<div class="empty-msg">Todavía no le compraste nada a ${escHtml(nom)}: lo que llegue de un pedido suyo aparece acá como probado.</div>`);
     return;
   }
@@ -20829,7 +20854,7 @@ async function renderListas(){
       :m!=null?`<b style="font-size:1rem;color:${m>=25?'var(--green)':'var(--red)'}">${Math.round(m)}%</b> <span style="font-size:.6rem;color:var(--muted)">ML</span>`
       :e.sc?'<span style="font-size:.62rem;color:var(--muted)">sin catálogo exacto en ML</span>':e.sv?'<span style="font-size:.62rem;color:var(--muted)">en ML no lo vende nadie</span>':e.fz?`<span style="font-size:.62rem;color:var(--muted)">afuera: ${escHtml(e.fz)}</span>`:'<span style="font-size:.62rem;color:var(--muted)">⏳ sin medir</span>';
     const fML=/^https:\/\//.test(e.mf||'')?e.mf:'';const vj=viaj.has(String(cod)),fi=yaFicha.has(String(cod));
-    const uBox=!conU?'':(_enB&&!fi)?(_listaDa(e)?'<div style="font-size:.6rem;color:var(--green)" title="No hay pedido: lo trae Tito en persona. Cuando llegue, avisale a Claude y lo da de alta.">da · lo trae Tito</div>':''):fi?'<div style="font-size:.6rem;color:var(--green)" title="Ya es una ficha: se pide desde la tarjeta de Pedidos (📋 pedir a la lista) o en ✅ Probados">ya es probado</div>':vj?'<div style="font-size:.6rem;color:var(--amber)">🚚 viajando</div>'
+    const uBox=!conU?'':fi?'<div style="font-size:.6rem;color:var(--green)" title="Ya es una ficha: se pide desde la tarjeta de Pedidos (📋 pedir a la lista) o en ✅ Probados">ya es probado</div>':vj?'<div style="font-size:.6rem;color:var(--amber)">🚚 viajando</div>'
       :_listaDa(e)?`<div style="margin-top:4px;font-size:.62rem;color:var(--muted)">pedir <input type="number" min="0" inputmode="numeric" value="${arm[cod]||''}" placeholder="0" onchange="listaSetU('${k}','${String(cod).replace(/'/g,"\\'")}',this.value)" style="width:52px;padding:3px 5px;font-size:.8rem;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text)"> u.</div>`:'';
     // LA TARJETA ENTERA ABRE EL DETALLE (21/10/2026, él: "quiero que salga donde dice detalle y la flechita. que se abra directamente al
     // clickear en cualquier parte de la tarjeta del producto"). Sin el código a la vista ("no nos basamos con eso"; queda en "verlo en
@@ -20853,8 +20878,11 @@ async function renderListas(){
     // 19/10/2026, él: "en los pedidos de iscos agregar el precio que dice, para ver si el precio que dice es el que nos vende el
     // mayorista": cada renglón lleva el precio de la LISTA (sin el recargo nuestro), así se compara contra la factura.
     // Los probados van con el NOMBRE DE LA LISTA (el del código `codLista`) y su color; sin código, con el nombre de la ficha.
-    const msg=[...PB.map(f=>`${f.nomL||f.nom}${f.color?' · '+f.color:''} x${f.u}${f.pl>0?' · '+fmt(f.pl)+' c/u':''}`),
-      ...A.map(x=>`${x.e.n} x${x.u}${Number(x.e.pl||x.e.p)>0?' · '+fmt(Number(x.e.pl||x.e.p))+' c/u':''}`)].join('\n');
+    // 21/10/2026, él con Dai Nippon: "copiar el mensaje y mandarlo por wsp. nombre, unidades y código si se puede". En las listas de
+    // Bs As (las que compra Tito) cada renglón lleva el código de la lista; las demás quedan como las pidió (con el precio).
+    const _cB=_listaEsBsas(k);
+    const msg=[...PB.map(f=>`${f.nomL||f.nom}${f.color?' · '+f.color:''} x${f.u}${_cB?(f.sinCod||!f.cod?'':' · cód '+f.cod):(f.pl>0?' · '+fmt(f.pl)+' c/u':'')}`),
+      ...A.map(x=>`${x.e.n} x${x.u}${_cB?' · cód '+x.cod:(Number(x.e.pl||x.e.p)>0?' · '+fmt(Number(x.e.pl||x.e.p))+' c/u':'')}`)].join('\n');
     const totL=A.reduce((t,x)=>t+(Number(x.e.pl||x.e.p)||0)*x.u,0)+PB.reduce((t,f)=>t+(f.pl||0)*f.u,0);
     const filaP=f=>`<div style="display:flex;gap:8px;align-items:center;padding:6px 8px;background:var(--surface);border:1px solid var(--green);border-radius:8px">
       <div style="flex:1;min-width:0;font-size:.72rem;line-height:1.45"><div style="font-weight:600">✅ ${escHtml(f.nom)}${f.color?` <span style="color:#a78bfa">· ${escHtml(f.color)}</span>`:''}</div>
@@ -21207,9 +21235,11 @@ function renderPedidos(){
     // LO QUE YA ESTÁ EN EL PEDIDO SALE DE ACÁ (19/10/2026, él: "al cargar unidades al pedido que salgan de ahí de nuevos o
     // probados. pero si una vez en el pedido los saco, que vuelvan donde estaban"). Igual que Nuevos con candEnPedido: se
     // mira state.pyArmado en cada dibujado, así que sacarlo del pedido (u = 0) lo devuelve solo.
-    const _enArm=new Set(Object.entries(state.pyArmado||{}).filter(([,v])=>(parseInt(v&&v.u)||0)>0).map(([k])=>k));
-    const _nEnPed=peds.filter(p=>p.prodId&&_enArm.has(p.prodId)).length;
-    peds=peds.filter(p=>!(p.prodId&&_enArm.has(p.prodId)));
+    // 21/10/2026: lo cargado se DESCUENTA (antes cualquier unidad cargada sacaba la tarjeta entera): con todo lo recomendado cargado
+    // va abajo, a "🧾 Ya cargado"; con menos, sigue arriba con lo que falta y "pediste N" (_pedTrasCargado).
+    const _PC=_pedPartirCargado(peds,pid=>(state.pyArmado||{})[pid]);
+    const _yaCarg=_PC.ya;
+    peds=_PC.quedan;
     peds.slice().sort(_pedSortFnRiesgo).forEach(p=>{const v=pyProbVeredicto(p);
       if(v.k==='da'&&_candFiltro!=='todos'){const ml=v.via!=='local',lo=pyProbLocalOk(p);
         const ok=_candFiltro==='ml'?ml:_candFiltro==='local'?lo:(ml&&lo);if(!ok){_ocultosF++;return;}}
@@ -21227,7 +21257,7 @@ function renderPedidos(){
     el.innerHTML=''
       +(G.da.length?G.da.map(card).join(''):`<div class="empty-msg">${_ocultosF?'Ninguno con este filtro.':'Todavía ninguno confirmado: falta revisar los precios de '+pyProvNom()+'.'}</div>`)
       +(_ocultosF?`<div style="font-size:.64rem;color:var(--muted);margin:6px 0">${_ocultosF} que dan quedan ocultos por el filtro "Vender en".</div>`:'')
-      +(_nEnPed?`<div style="font-size:.64rem;color:var(--muted);margin:6px 0">${_nEnPed} ya ${_nEnPed===1?'está':'están'} en el 🧾 Pedido (si lo${_nEnPed===1?'':'s'} sacás de ahí, vuelve${_nEnPed===1?'':'n'} acá).</div>`:'')
+      +_pedYaCargadosHTML(_yaCarg,p=>_pedidoItemHtml(p,{showRiesgo:true}))
       +(resto?`<details style="margin-top:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px"><summary style="cursor:pointer;font-size:.82rem;font-weight:700">⬇️ No da, no hay o falta revisar (${resto})</summary>
         ${grupo('❔ Falta revisar el precio en '+pyProvNom(),G.sinrev,'var(--amber)')}${grupo('🔴 No da el precio',G.noda,'var(--red)')}${grupo('⚪ '+pyProvNom()+' no lo tiene',G.notiene,'var(--muted)')}</details>`:'');
   }
@@ -24501,6 +24531,54 @@ document.addEventListener('toggle',e=>{const d=e.target;if(!(d instanceof HTMLDe
 new MutationObserver(ms=>{if(!_detAbiertos.size)return;for(const m of ms)for(const n of m.addedNodes){if(!(n instanceof Element))continue;
   const ds=n.tagName==='DETAILS'?[n]:[];n.querySelectorAll&&ds.push(...n.querySelectorAll('details'));
   for(const d of ds){if(d.open)continue;const k=_detClave(d);if(k&&_detAbiertos.has(k)){d._detRestaurando=true;d.open=true;setTimeout(()=>{d._detRestaurando=false;},0);}}}}).observe(document.documentElement,{childList:true,subtree:true});
+
+// ── EL PEDIDO SE CARGA CON UN BOTÓN (21/10/2026, él: "en todos los que se pueden hacer pedidos, al agregar unidades a un producto,
+// carga el producto al momento, tarda un tiempo y borra cualquier movimiento hecho en ese momento mientras cargaba. quiero que haya
+// un botón de cargar: yo agrego unidades a los productos que voy a pedir y cuando termino aprieto 'agregar al pedido' y se agregan
+// todos juntos"). Las casillas de unidades de Pedidos (Paraguay, Listas y Dai Nippon, Bs As/Paulvic por color) ya no guardan al
+// cambiar: lo escrito queda en un BORRADOR en memoria (casilla en ámbar), se vuelve a poner si la pantalla se redibuja, y la barra
+// de abajo lo aplica todo junto con las MISMAS funciones de siempre (sus frenos y confirmaciones: candPuedePedir, ya viaja, etc.)
+// y UN solo redibujado al final. La casilla se reconoce por su onchange: una casilla nueva de unidades que llame a otra función
+// tiene que sumarse a `_BORR_RE`.
+const _BORR_RE=/^\s*(candSetPedir|pyArmSet|pyArmSetVar|listaSetU|listaProbSet|listaProbSetVar|pedSetVarU)\(/;
+const _borr=new Map();let _borrAplicando=false,_borrFoco=null;
+function _borrKey(el){const oc=el&&el.getAttribute?el.getAttribute('onchange'):null;return oc&&_BORR_RE.test(oc)?oc:null;}
+function _borrMarcar(el,on){if(on){el.style.borderColor='var(--amber)';el.style.boxShadow='0 0 0 2px color-mix(in srgb,var(--amber) 35%,transparent)';}else{el.style.removeProperty('border-color');el.style.removeProperty('box-shadow');}}
+['input','change'].forEach(ev=>document.addEventListener(ev,e=>{
+  if(_borrAplicando)return;const t=e.target;if(!(t instanceof HTMLInputElement))return;const k=_borrKey(t);if(!k)return;
+  if(ev==='change')e.stopPropagation();   // en captura: el onchange de la casilla (que guardaba al instante) no corre
+  if(String(t.value)===String(t.defaultValue)){_borr.delete(k);_borrMarcar(t,false);}else{_borr.set(k,t.value);_borrMarcar(t,true);}
+  _borrBarra();},true));
+document.addEventListener('focusin',e=>{const k=_borrKey(e.target);if(k)_borrFoco=k;},true);
+document.addEventListener('pointerdown',e=>{if(!_borrKey(e.target))_borrFoco=null;},true);
+// Si la pantalla se redibuja (llega un dato, otro aparato, un botón), lo escrito vuelve a su casilla y la casilla que tenía el foco lo recupera.
+function _borrReponer(){if(!_borr.size)return;const pg=document.getElementById('page-pedidos');if(!pg)return;
+  for(const el of pg.querySelectorAll('input[onchange]')){const k=_borrKey(el);if(!k||!_borr.has(k))continue;const v=_borr.get(k);
+    if(el.value!==String(v))el.value=v;_borrMarcar(el,true);
+    if(_borrFoco===k&&document.activeElement!==el&&!(document.activeElement instanceof HTMLInputElement))try{el.focus({preventScroll:true});}catch(e){}}}
+function _borrBarra(){let b=document.getElementById('borr-barra');const n=_borr.size;
+  const ver=n>0&&typeof currentPage!=='undefined'&&currentPage==='pedidos';
+  if(!b){if(!ver)return;b=document.createElement('div');b.id='borr-barra';
+    b.style.cssText='position:fixed;left:12px;right:84px;bottom:14px;z-index:850;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 12px;background:var(--surface);border:1px solid var(--amber);border-radius:12px;box-shadow:0 6px 24px rgba(0,0,0,.35);font-size:.8rem';
+    document.body.appendChild(b);}
+  if(!ver){b.style.display='none';return;}
+  b.style.display='flex';
+  b.innerHTML=`<span style="font-weight:700;color:var(--amber)">🛒 ${n} ${n===1?'casilla':'casillas'} sin agregar</span><span style="flex:1"></span><button class="btn" style="background:var(--green);color:#fff;font-weight:700" onclick="borrAplicar()">🛒 Agregar al pedido</button><button class="btn" onclick="borrDescartar()">Descartar</button>`;}
+async function borrAplicar(){if(!_borr.size||_borrAplicando)return;
+  const items=[..._borr.entries()];_borrAplicando=true;
+  const rp=window.renderPedidos,rl=window.renderListas;window.renderPedidos=()=>{};window.renderListas=async()=>{};
+  let nOk=0;const malos=[];
+  try{for(const [code,v] of items){try{await (new Function('return ('+code+')')).call({value:v});nOk++;}catch(e){malos.push(e&&e.message||String(e));}}}
+  finally{window.renderPedidos=rp;window.renderListas=rl;_borr.clear();_borrAplicando=false;}
+  try{renderPedidos();}catch(e){}try{renderListas();}catch(e){}
+  _borrBarra();
+  if(malos.length)toast(`⚠️ ${malos.length} no se pudo agregar: ${malos[0]}`,'err',6000);else toast(`🛒 ${nOk} ${nOk===1?'cambio agregado':'cambios agregados'} al pedido`);}
+function borrDescartar(){if(!_borr.size)return;if(!confirm(`¿Descartar ${_borr.size} ${_borr.size===1?'casilla':'casillas'} sin agregar?`))return;
+  _borr.clear();try{renderPedidos();}catch(e){}try{renderListas();}catch(e){}_borrBarra();}
+{const pg=document.getElementById('page-pedidos');
+  if(pg){new MutationObserver(()=>{if(_borr.size&&!_borrAplicando)_borrReponer();}).observe(pg,{childList:true,subtree:true});
+    new MutationObserver(()=>_borrBarra()).observe(pg,{attributes:true,attributeFilter:['class']});}}
+window.addEventListener('beforeunload',e=>{if(_borr.size){e.preventDefault();e.returnValue='';}});
 </script>
 
 <!-- AJUSTES -->
