@@ -434,6 +434,10 @@ input.qty:focus{border-color:var(--accent2)}
 #ofi-filtro-cuentas .pf-btn.active-all strong,#ofi-filtro-cuentas .pf-btn.active-all span:not(.pf-badge){color:#fff!important}
 /* etapa 7: el 📦N de la caja a medio armar va como globito arriba del botón: así el botón no cambia de ancho */
 #ofi-filtro-cuentas{padding-top:8px}#ofi-filtro-cuentas .pf-btn{position:relative}
+/* v25.59 (21/10/2026, pedido suyo): el color de cada cuenta es el veredicto de SU caja (--cv): verde MANDALA YA · naranja podés mandarla · rojo podés esperar. Sin caja, gris. */
+#ofi-filtro-cuentas .pf-btn{border-color:var(--cv,var(--border2))}
+#ofi-filtro-cuentas .pf-btn.active-all{background:var(--cv,var(--muted));border-color:var(--cv,var(--muted))}
+#ofi-filtro-cuentas .pf-badge{border-color:var(--cv,var(--muted));color:var(--cv,var(--muted))}
 .pf-badge{position:absolute;top:-9px;right:-7px;font-size:.6rem;line-height:1.25;padding:1px 5px;border-radius:999px;background:var(--surface2);border:1px solid var(--accent2);color:var(--accent2);pointer-events:auto;white-space:nowrap}
 .pedido-item{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);margin-bottom:7px;flex-wrap:wrap;transition:opacity .2s}
 .pedido-item.recibido{opacity:.4}
@@ -2726,7 +2730,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.58';
+const APP_VERSION='25.59';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2739,6 +2743,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.59',f:'21/10',h:'22:50',c:[{n:1,t:'📦 Armar caja: cada cuenta (botón, número y 📦) toma el color de su caja: verde sólo si es MANDALA YA, naranja si podés mandarla y rojo si podés esperar. Sin caja, gris.'}]},
   {v:'25.58',f:'21/10',h:'22:47',c:[{n:1,t:'🏠 Inicio: "Para cobrar" queda sólo con el número (se sacaron las líneas de cómo se calcula y lo ganado hasta hoy).'}]},
   {v:'25.58',f:'20/10',h:'21:55',c:[{n:1,t:'🔁 Lo que no está en ML se vuelve a buscar de a poco: sin catálogo cada 60 días y sin vendedores cada 30 (puede aparecer un catálogo nuevo). Antes no se buscaba nunca más.'}]},
   {v:'25.57',f:'21/10',h:'22:30',c:[{n:1,t:'🏠 Inicio: en "Para cobrar" se sacó el renglón "En <mes> cobran lo que dejó <mes anterior> · ya retiraron · quedan".'}]},
@@ -6633,20 +6638,19 @@ function renderOfiCaja(){
   // cartel de arriba (convieneCaja) — o se paga rápido por lo que destraba, o lleva bastante más
   // plata que los $16.000 del envío. Si el numerito se pusiera verde con la primera unidad
   // sugerida, volvería a ser el número de antes pintado de colores.
-  const _listo={};
-  LOCS.forEach(l=>{
-    const cv=convieneCaja(filas,l);
-    const d=cv.diasPago;
-    _listo[l]=(d!=null&&d<=7)||cv.porTamano;
-  });
+  // v25.59 (21/10/2026, pedido suyo): "verde sólo si la caja es MANDALA YA, naranja si es podés mandarla y rojo si
+  // podemos esperar". El botón, el número y el 📦 toman el MISMO veredicto del cartel (cajaVeredicto).
+  const _ver={};
+  LOCS.forEach(l=>{_ver[l]=cajaVeredicto(convieneCaja(filas,l));});
   if(fc)fc.innerHTML=`<button class="pf-btn${ofiFiltroCuenta===''?' active-all':''}" onclick="setOfiFiltro('')">Todas${aMandarCupo?` <strong title="Lo que se puede mandar hoy entre las 4 cuentas, con el tope del cupo de Full de cada una">${aMandarCupo}</strong>`:''}</button>`
     +LOCS.map(l=>{
       const u=Object.values(cajaDe(l)).reduce((a,x)=>a+x,0);
       const nC=porCtaCupo[l]||0;
-      const col=nC?(_listo[l]?'var(--green)':'var(--red)'):'';
+      const vr=_ver[l];
+      const col=vr?vr.col:'';
       const _corte=porCta[l]>nC?` · se sugieren ${porCta[l]} pero el cupo de Full deja mandar ${nC}`:'';
-      const tit=nC?((_listo[l]?`La caja de ${l} ya se justifica: mandala`:`Todavía no da: juntá más antes de pagar los ${fmt(costoCaja())} del envío`)+_corte):'';
-      return `<button class="pf-btn${ofiFiltroCuenta===l?' active-all':''}" onclick="setOfiFiltro('${l}')">${l}${nC?` <strong style="color:${col}" title="${tit}">${nC}</strong>`:''}${u?`<span class="pf-badge" title="caja a medio armar">📦${u}</span>`:''}</button>`;
+      const tit=vr?(`${vr.txt} · ${vr.k==='verde'?`la caja de ${l} ya se justifica`:vr.k==='naranja'?'se paga en menos de una semana':`todavía no da: juntá más antes de pagar los ${fmt(costoCaja())} del envío`}`+_corte):'';
+      return `<button class="pf-btn${ofiFiltroCuenta===l?' active-all':''}"${col?` style="--cv:${col}"`:''} title="${tit}" onclick="setOfiFiltro('${l}')">${l}${nC?` <strong style="color:${col||'inherit'}">${nC}</strong>`:''}${u?`<span class="pf-badge" title="caja a medio armar${vr?' · '+vr.txt:''}">📦${u}</span>`:''}</button>`;
     }).join('');
   // Con una cuenta elegida se entra en MODO ARMAR CAJA: se listan TODOS los productos que hay en
   // casa (no solo los que la cuenta "necesita"), cada uno con una casilla para poner cuántos van
@@ -6846,12 +6850,11 @@ function renderOfiCaja(){
     if(cv.gCero>0||cv.gTotal>0){
       const d=cv.diasPago;
       const cuando=d==null?null:(d<1?`${Math.max(1,Math.round(d*24))} h`:`${d<10?d.toFixed(1):Math.round(d)} días`);
-      const porRitmo=d!=null&&d<=2, ritmoOk=d!=null&&d<=7;
+      const porRitmo=d!=null&&d<=2;
       // Dos motivos distintos para mandarla, y cualquiera de los dos alcanza: que se pague rápido
       // por lo que destraba, o que lleve tanta plata adentro que el envío sea calderilla.
-      const verde=porRitmo||cv.porTamano, ambar=!verde&&ritmoOk;
-      const col=verde?'var(--green)':ambar?'var(--amber)':'var(--muted)';
-      const veredicto=verde?'MANDALA YA':ambar?'Conviene mandarla':'Podés esperar y juntar más';
+      const _vr=cajaVeredicto(cv);
+      const col=_vr.col, veredicto=_vr.txt;
       const motivo=porRitmo
         ?`se paga en <strong>${cuando}</strong>`
         :cv.porTamano
@@ -7981,14 +7984,17 @@ const CAJA_VALE_LA_PENA=10;   // si lleva 10 veces el costo del envío, va igual
 // en verde, si no hay que no diga nada"). Verde = el MISMO veredicto "MANDALA YA" del cartel de Armar
 // caja (se paga en 2 días o menos, o lleva tanta plata que el envío es calderilla), una caja por cuenta.
 function cajasVerdes(filas){
-  const out=[];
-  for(const c of LOCS){
-    const cv=convieneCaja(filas,c);
-    if(!(cv.gCero>0||cv.gTotal>0))continue;
-    const d=cv.diasPago;
-    if((d!=null&&d<=2)||cv.porTamano)out.push(c);
-  }
-  return out;
+  return LOCS.filter(c=>{const v=cajaVeredicto(convieneCaja(filas,c));return v&&v.k==='verde';});
+}
+// EL VEREDICTO DE UNA CAJA, EN UN SOLO LUGAR (v25.59, 21/10/2026): lo usan el cartel de Armar caja, los botones de
+// cada cuenta (color, número y 📦) y la tarjeta de Inicio. Verde MANDALA YA (se paga en 2 días o lleva mucha plata) ·
+// naranja podés mandarla (se paga en una semana) · rojo podés esperar. Sin nada para mandar, null.
+function cajaVeredicto(cv){
+  if(!cv||!(cv.gCero>0||cv.gTotal>0))return null;
+  const d=cv.diasPago;
+  if((d!=null&&d<=2)||cv.porTamano)return{k:'verde',col:'var(--green)',txt:'MANDALA YA'};
+  if(d!=null&&d<=7)return{k:'naranja',col:'var(--lv-justo)',txt:'Podés mandarla'};
+  return{k:'rojo',col:'var(--red)',txt:'Podés esperar y juntar más'};
 }
 function renderNcOfi(filas){
   const sub=document.getElementById('nc-ofi-sub');if(!sub)return;
