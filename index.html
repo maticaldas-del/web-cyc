@@ -63,6 +63,24 @@ body.light{
 body.discreto .vp-aviso{animation:none}
 @media(prefers-reduced-motion:reduce){.vp-aviso{animation:none}}
 .vp-aviso-tag{flex-shrink:0;font-size:.62rem;font-weight:700;color:var(--avc,var(--green));border:1px solid currentColor;border-radius:999px;padding:1px 7px;white-space:nowrap}
+.tito-modal{position:fixed;inset:0;z-index:9300;background:rgba(0,0,0,.6);overflow-y:auto;display:flex;justify-content:center;align-items:flex-start;padding:14px}
+.tito-caja{background:var(--surface);border:1px solid var(--border2);border-radius:14px;max-width:560px;width:100%;padding:14px 16px;margin:10px 0 40px}
+.tito-cab{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;font-size:.9rem}
+.tito-prog{display:flex;align-items:center;gap:10px;font-size:.7rem;color:var(--muted);margin-bottom:8px}
+.tito-bar{flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden}.tito-bar i{display:block;height:100%;background:var(--green)}
+.tito-prov{font-size:.62rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin:14px 0 4px}
+.tito-prod{border:1px solid var(--border);border-radius:10px;padding:8px 10px;margin-bottom:8px;background:var(--surface2)}
+.tito-nom{font-weight:700;font-size:.8rem;margin-bottom:4px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.tito-fila{display:flex;align-items:center;gap:10px;padding:8px 2px;border-top:1px dashed var(--border);font-size:.82rem;cursor:pointer;min-height:40px}
+.tito-fila input{width:22px;height:22px;flex-shrink:0}
+.tito-v{flex:1;min-width:0}
+.tito-u{font-family:'Syne',sans-serif;font-size:1.25rem;min-width:44px;text-align:right}
+.tito-ok .tito-v,.tito-ok .tito-u{text-decoration:line-through;opacity:.55}
+.tito-no .tito-v,.tito-no .tito-u{opacity:.55}
+.tito-nohay{font-size:.66rem;color:var(--red);white-space:nowrap}
+.tito-listos{margin-top:10px;font-size:.72rem;color:var(--muted)}.tito-listos summary{cursor:pointer;padding:6px 0}
+.tito-pie{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:14px}
+@media print{body>*:not(#tito-modal){display:none!important}.tito-modal{position:static;background:none;padding:0}.tito-pie,.tito-cab .btn{display:none}.tito-caja{border:none;max-width:none}}
 .fnav-sec{font-size:.6rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);padding:8px 14px 2px}
 .fnav-n{margin-left:auto;padding-left:10px;font-size:.68rem;color:var(--muted);white-space:nowrap}
 .fnav-fila{display:flex;gap:4px;border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:2px}
@@ -1204,6 +1222,7 @@ body.light .est-chip{color:color-mix(in srgb,var(--ec) 50%,#000)}
   <div id="ped-section-bsas" style="display:none">
     <div id="bsas-subtabs"></div>
     <div id="bsas-siempre-wrap">
+    <button class="btn" onclick="titoAbrir()" style="margin-bottom:10px" title="La misma cuenta de Pedidos, puesta para llevar al mayorista: por proveedor, producto, color y cuántas, con tildes">🛒 Lista para el mayorista</button>
     <div class="pedidos-count" id="pedidos-count"></div>
     <input class="search-box" id="ped-search" type="search" placeholder="Buscar pedido..." oninput="renderPedidos()" style="margin-bottom:10px">
     <div class="pedido-filters">
@@ -20034,6 +20053,77 @@ function renderPapelera(){
     if(finados.length)html+=`<div style="font-size:.62rem;color:var(--muted);margin:14px 0 6px">Eliminados para siempre (${finados.length}) — no vuelven a aparecer en Pedidos ni cuentan en el stock en riesgo.</div>`+finados.map(x=>fila(x,true)).join('');
     el.innerHTML=html;
 }
+// Los pedidos de Bs As "De siempre": sin el Paulvic (tiene su pestaña) ni lo comprado a una lista que se ve en 📋 Listas.
+// Lo que se le compró a un proveedor de 📋 Listas va en Listas → Probados, no en Bs As (18/10/2026).
+// Sólo lo de una lista que SE VE en Listas (etapa 3, 20/10/2026): una lista descartada o sacada por ahora no se dibuja, y sus probados
+// no salían en ninguna solapa. Ésos vuelven a Bs As "De siempre" hasta que la lista vuelva.
+function _pedsBsasSiempre(){
+  let peds=(state.pedidos||[]).filter(x=>!esPedidoPaulvic(x));
+  const _lp=(state.mlconfig&&state.mlconfig.listasProv)||{};const _li=new Set((state.products||[]).filter(p=>p.listaProv&&_lp[p.listaProv]&&!_lp[p.listaProv].desc&&!_lp[p.listaProv].pausa).map(p=>p.id));if(_li.size)peds=peds.filter(x=>!_li.has(x.prodId));
+  return peds;
+}
+// 7.18 · LA LISTA DE TITO PARA EL MAYORISTA (21/10/2026, eligió la a). Es la MISMA cuenta de Pedidos Bs As "De siempre", puesta para
+// llevar en la mano: por proveedor, producto, color y cuántas, lo más urgente primero. Los tildes ("ya en el changuito") quedan en
+// ESTE teléfono y se borran solos al otro día: no cambian ningún número ni marcan nada como comprado.
+function _titoRenglones(){
+  const provNom=p=>{const pr=prodById(p.prodId);const pv=pr&&pr.proveedorId?(state.proveedores||[]).find(x=>x.id===pr.proveedorId):null;
+    return String((pv&&pv.nombre)||p.proveedor||'Sin proveedor').trim()||'Sin proveedor';};
+  const out=[];
+  for(const p of _pedsBsasSiempre()){
+    const vars=Array.isArray(p.variantesNec)&&p.variantesNec.length?p.variantesNec:null;
+    const nc=p.prodId?_noConsigoActivo(p.prodId):0;
+    let filas;
+    if(vars)filas=vars.filter(x=>(x.q||0)>0).sort((a,b)=>(_PED_SEM_ORD[pedVarSem(a)]-_PED_SEM_ORD[pedVarSem(b)])||((b.q||0)-(a.q||0))).map(x=>({v:x.v,u:x.q||0,sem:pedVarSem(x),no:!!(p.prodId&&_noConsigoActivo(p.prodId,x.v))}));
+    else filas=(p.cantidad||0)>0?[{v:'',u:p.cantidad||0,sem:_pedSem(p),no:!!nc}]:[];
+    if(!filas.length)continue;
+    out.push({id:p.id,prodId:p.prodId,nombre:p.producto||((prodById(p.prodId)||{}).name)||'—',prov:provNom(p),sem:_pedSem(p),riesgo:p.riesgoComprar||p.riesgo||0,filas,todoNo:!!nc});
+  }
+  return out;
+}
+function _titoKey(){return 'cycTito_'+dateToKey(new Date());}
+function _titoTildes(){try{return JSON.parse(localStorage.getItem(_titoKey())||'{}')||{};}catch(e){return {};}}
+function titoTilde(k){const t=_titoTildes();if(t[k])delete t[k];else t[k]=1;
+  try{for(let i=localStorage.length-1;i>=0;i--){const kk=localStorage.key(i);if(kk&&kk.startsWith('cycTito_')&&kk!==_titoKey())localStorage.removeItem(kk);}localStorage.setItem(_titoKey(),JSON.stringify(t));}catch(e){}
+  titoDibujar();}
+function titoAbrir(){
+  let m=document.getElementById('tito-modal');
+  if(!m){m=document.createElement('div');m.id='tito-modal';m.className='tito-modal';document.body.appendChild(m);}
+  titoDibujar();
+}
+function titoCerrar(){const m=document.getElementById('tito-modal');if(m)m.remove();}
+function _titoTexto(R){
+  const prov={};R.forEach(r=>{(prov[r.prov]=prov[r.prov]||[]).push(r);});
+  return Object.entries(prov).map(([pv,rs])=>`*${pv}*\n`+rs.map(r=>r.filas.filter(f=>!f.no).map(f=>`${r.nombre}${f.v?' · '+f.v:''} x${f.u}`).join('\n')).filter(Boolean).join('\n')).join('\n\n');
+}
+function titoCopiar(){const R=_titoRenglones();const t=_titoTexto(R);if(!t.trim()){toast('No hay nada para copiar');return;}
+  const ok=()=>toast('📋 Copiado');const viejo=()=>{const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');ok();}catch(e){toast('No se pudo copiar');}ta.remove();};
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(ok).catch(viejo);else viejo();}
+function titoDibujar(){
+  const m=document.getElementById('tito-modal');if(!m)return;
+  const R=_titoRenglones(),T=_titoTildes();
+  const SO={rojo:0,naranja:1,amarillo:2};
+  const semTxt={rojo:'🔴',naranja:'🟠',amarillo:'🟡'};
+  const kf=(r,f)=>r.id+'|'+(f.v||'');
+  const total=R.reduce((a,r)=>a+r.filas.length,0),hechos=R.reduce((a,r)=>a+r.filas.filter(f=>T[kf(r,f)]).length,0);
+  const prov={};R.forEach(r=>{(prov[r.prov]=prov[r.prov]||[]).push(r);});
+  const DIAS=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];const h=new Date();
+  const fila=(r,f)=>{const k=kf(r,f),on=!!T[k];
+    return `<label class="tito-fila${on?' tito-ok':''}${f.no?' tito-no':''}"><input type="checkbox" ${on?'checked':''} onchange="titoTilde(${JSON.stringify(k).replace(/"/g,'&quot;')})"><span class="tito-v">${f.v?escHtml(f.v):'<span style="color:var(--muted)">cantidad</span>'}</span>${f.no?'<span class="tito-nohay">🚫 no hay</span>':''}<b class="tito-u">${fmtN(f.u)}</b></label>`;};
+  const prod=r=>{const pend=r.filas.filter(f=>!T[kf(r,f)]);if(!pend.length)return '';
+    return `<div class="tito-prod"><div class="tito-nom">${semTxt[r.sem]||''} ${escHtml(r.nombre)}${r.prodId?' '+cerebroBtn(r.prodId,{ped:r.id}):''}</div>${pend.map(f=>fila(r,f)).join('')}</div>`;};
+  const listos=R.flatMap(r=>r.filas.filter(f=>T[kf(r,f)]).map(f=>({r,f})));
+  const cuerpo=Object.entries(prov).sort((a,b)=>a[0].localeCompare(b[0],'es')).map(([pv,rs])=>{
+    const h2=rs.slice().sort((a,b)=>(SO[a.sem]-SO[b.sem])||(b.riesgo-a.riesgo)).map(prod).join('');
+    return h2?`<div class="tito-prov">🏬 ${escHtml(pv)}</div>${h2}`:'';}).join('');
+  m.innerHTML=`<div class="tito-caja">
+    <div class="tito-cab"><div><b>🛒 Lista para el mayorista</b><div style="color:var(--muted);font-size:.68rem;margin-top:2px">Bs As · De siempre · ${DIAS[h.getDay()]} ${String(h.getDate()).padStart(2,'0')}/${String(h.getMonth()+1).padStart(2,'0')}</div></div><button class="btn" onclick="titoCerrar()">✕</button></div>
+    <div style="font-size:.66rem;color:var(--muted);line-height:1.5;margin:6px 0 10px">Es la MISMA cuenta de Pedidos, sólo puesta para llevar en la mano. Los tildes quedan en este teléfono y se borran solos mañana: no cambian ningún número.</div>
+    ${total?`<div class="tito-prog"><span>${hechos} de ${total} renglones en el changuito</span><span class="tito-bar"><i style="width:${total?Math.round(hechos/total*100):0}%"></i></span></div>`:''}
+    ${cuerpo||(total?'<div class="empty-msg">✓ Ya está todo en el changuito.</div>':'<div class="empty-msg">No hay nada para comprar en Bs As ahora.</div>')}
+    ${listos.length?`<details class="tito-listos"><summary>✓ ya en el changuito (${listos.length})</summary>${listos.map(({r,f})=>`<label class="tito-fila tito-ok"><input type="checkbox" checked onchange="titoTilde(${JSON.stringify(kf(r,f)).replace(/"/g,'&quot;')})"><span class="tito-v">${escHtml(r.nombre)}${f.v?' · '+escHtml(f.v):''}</span><b class="tito-u">${fmtN(f.u)}</b></label>`).join('')}</details>`:''}
+    <div class="tito-pie"><button class="btn" onclick="titoCopiar()">📋 Copiar para WhatsApp</button><button class="btn" onclick="window.print()">🖨️ Imprimir</button><button class="btn" style="background:var(--green);color:#000;border-color:var(--green)" onclick="titoCerrar()">✓ Listo</button></div>
+  </div>`;
+}
 function renderPedidos(){
   if(pedidoSection==='listas'){renderListas();return;}
   // El número al lado de la solapa se refresca siempre, se esté mirando la papelera o no.
@@ -20134,11 +20224,8 @@ function renderPedidos(){
   // bs as aparecen cosas que son de otra categoría". Bs As mostraba TODO state.pedidos sin sacar
   // los del Paulvic, así que el mismo pedido salía en las dos listas y el total de "Falta reponer"
   // lo contaba dos veces.
-  let peds=((isBsas?state.pedidos:state.pedidos_py)||[]).filter(x=>!esPedidoPaulvic(x));
-  // Lo que se le compró a un proveedor de 📋 Listas va en Listas → Probados, no en Bs As (18/10/2026).
-  // Sólo lo de una lista que SE VE en Listas (etapa 3, 20/10/2026): una lista descartada o sacada por ahora no se dibuja, y sus probados
-  // no salían en ninguna solapa. Ésos vuelven a Bs As "De siempre" hasta que la lista vuelva.
-  if(isBsas){const _lp=(state.mlconfig&&state.mlconfig.listasProv)||{};const _li=new Set((state.products||[]).filter(p=>p.listaProv&&_lp[p.listaProv]&&!_lp[p.listaProv].desc&&!_lp[p.listaProv].pausa).map(p=>p.id));if(_li.size)peds=peds.filter(x=>!_li.has(x.prodId));}
+  // Bs As "De siempre" sale de `_pedsBsasSiempre` (la misma lista que usa la lista de Tito, 7.18).
+  let peds=isBsas?_pedsBsasSiempre():(state.pedidos_py||[]).filter(x=>!esPedidoPaulvic(x));
   const cnt={pendiente:0,poco_stock:0,suficiente:0};peds.forEach(p=>{const e=p.estado==='en_camino'?'pendiente':(p.estado||'pendiente');cnt[e]=(cnt[e]||0)+1;});
   const cntEl=document.getElementById(countId);
   if(cntEl)cntEl.innerHTML=`
