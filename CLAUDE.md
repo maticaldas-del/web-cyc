@@ -625,7 +625,7 @@ aparte (ya están en la ganancia). Falta que él lo mire y diga si el objetivo l
 semana. Cada madrugada toca la etapa que hace más que no se revisa (última fecha en `REV_HIST`/`REV_HECHAS`, empate → número
 menor, nunca una de los últimos 6 días ni una que esté corriendo). Toda corrida termina con su renglón en `REV_HIST`.**
 **lun 1 Precios · mar 2 Plata · mié 3 Mercadería · jue 4 Choques y fallas mudas (viejas 4+5) · vie 5 Datos, historial y cerebro
-(viejas 8+9) · sáb 6 Ideas nuevas · dom 7 Diseño.** Tarea programada diaria a las **04:00** de acá (pedido suyo del 20/10: *"quiero que siempre las revisiones diarias se hagan a las 4am de argentina"*; antes 22:13) que entra a esta sesión (`trig_01TT94wnEKk299d85Sj6ePWw`). **Los 4 revisores de cada etapa van con esfuerzo MÁXIMO** (20/10, con el plan 20x; reemplaza el "Alto" del 25/09). Cómo corre
+(viejas 8+9) · sáb 6 Ideas nuevas · dom 7 Diseño** · y desde el 21/10 **8 Reglas del cerebro, cada 7 días**. Tarea programada diaria a las **04:00** de acá (pedido suyo del 20/10: *"quiero que siempre las revisiones diarias se hagan a las 4am de argentina"*; antes 22:13) que entra a esta sesión (`trig_01TT94wnEKk299d85Sj6ePWw`). **Los 4 revisores de cada etapa van con esfuerzo MÁXIMO** (20/10, con el plan 20x; reemplaza el "Alto" del 25/09). Cómo corre
 cada una: arriba de todo en `ml-sync/REVISION.md` ("EL CALENDARIO"). En `index.html`: `REV_ETAPAS` (con `dia`), `REV_HORA`,
 `REV_HECHAS`/`REV_HIST` ya con la numeración nueva. **La numeración vieja (8 y 9) que aparece más abajo es historia.**
 
@@ -890,6 +890,14 @@ de las cortas en Alto, el chat con el nivel que él elija. No se cambia sin que 
 
 ## 🧠 EL CEREBRO REHECHO Y LAS REGLAS DURAS EN EL CÓDIGO (21/10/2026, él: "a, dale" y "fijate si es necesario rehacer el cerebro (…) manejalo")
 Después del Cuba Platinum (bajado sin techo con toda la info) y del Adaptador 8 en 1 (bajado de golpe y abajo del piso). `CEREBRO.md` rehecho: cada regla una vez, la más nueva, marcada 🔒 (freno en el código) o 🧠 (pensar); los choques que son decisión suya están en su sección 0b con la regla provisoria. Frenos nuevos en `frenosBajas` (sync.mjs, usada por `decido` y `entrarpromo`): lo nuevo sin 🏔️ · escalera ≤15% (25% escasez) · un escalón cada 48 h (12 h escasez) · una suba no se deshace sin 95% · no abajo del 💰 piso · descuento sin sobra. Excepciones con `!sintecho` `!golpe` `!sincerteza` `!bajopiso` `!nosobra` y "EXCEPCIÓN: …" en el motivo. `#techook` sólo por `techo95`. **Regla: toda regla nueva "nunca/sólo si" que se pueda medir va al código, y REEMPLAZA la de su tema en el CEREBRO.**
+
+## 🧠 SUS 4 DECISIONES DEL CEREBRO Y LA ETAPA 8 (21/10/2026, "1a 2b 3a 4a")
+1a bajar algo que no sobra (salir de techo, escasez o lanzamiento) = 💸 descuento con el precio de antes tachado, no bajar la lista ·
+2b una prueba de techo sin certeza espera 15 días como mucho; después decide la plata por día (igual o más → se queda, menos → un
+escalón). En el código: F4 de `frenosBajas` (`F4_ESPERA_DIAS`) · 3a visitas a la mitad y caja perdida → un escalón (≤15%), no volver
+directo · 4a Paraguay: barato ≤US$15 → 3, caro +US$60 → 1, resto 2, sin vendidas (`candMaxU`, v25.56).
+Y él: *"las reglas del cerebro es lo más importante de todo (…) así todas las semanas se actualiza"* → **etapa 8 · Reglas del cerebro**,
+cada 7 días y adelante de las otras cuando le toca (`cada:7` en `REV_ETAPAS`; qué mira, al final de `ml-sync/REVISION.md`).
 
 ## 📋 LA LISTA ÚNICA DEL CEREBRO: `ml-sync/CEREBRO.md` (13/10/2026, pedido suyo)
 

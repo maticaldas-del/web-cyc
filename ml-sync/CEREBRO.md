@@ -45,15 +45,9 @@ al código; lo que es pensar queda acá, y una regla dura ("nunca", "sólo si") 
 - **Las excepciones a los frenos son siempre las mismas cinco:** precio mal puesto · stock antiguo con fecha encima · ML la
   pausó por el precio · lo pide él · la última unidad. "Ganar la caja" y "para ver si sale" NO son excepciones.
 
-### 0b · PARA DECIDIR CON ÉL (21/10/2026) — hasta que conteste, vale lo provisorio
-1. **Bajar sin que sobre** (salida de una prueba de techo, salida de escasez, lanzamiento): ¿va como 💸 descuento con el precio
-   de antes tachado, o se baja la lista? *Provisorio: como descuento, con su tag (techo/bajando/escasez/lanzamiento); el 🤔 de
-   "sobra 90 días" vale sólo para descuentos por sobra o sin otra causa.*
-2. **Prueba de techo sin certeza a los 30 días:** *Provisorio: se compara la plata por día de las dos ventanas; si la prueba deja
-   menos, baja un escalón; si deja igual o más, se queda y se sigue.*
-3. **Corte por visitas** (visitas a la mitad y caja cambiada): *Provisorio: baja un escalón (≤15%), no vuelve directo.*
-4. **Paraguay, cuántas de cada nuevo:** la regla pedía 100+ vendidas, que ya no se cargan (desde el 20/10 manda "catálogo con 2+
-   vendedores"). *Provisorio: barato (≤US$15) → 3 · caro (+US$60) → 1 · resto 2, sin mirar vendidas.*
+### 0b · PARA DECIDIR CON ÉL — vacío (las 4 del 21/10/2026 las decidió él ese mismo día: 1a 2b 3a 4a, ya están en sus secciones)
+Lo que choque y no tenga fila en 0 va acá con su regla provisoria hasta que conteste; al contestar, pasa a su sección y se borra de acá.
+La etapa 8 de la revisión (Reglas del cerebro, cada 7 días) mira que esto quede vacío.
 
 ===========================================================================================================================
 ## 1 · CADA VUELTA, EN ESTE ORDEN
@@ -171,8 +165,12 @@ al código; lo que es pensar queda acá, y una regla dura ("nunca", "sólo si") 
   día. En lo que se compra de a muchos se cuentan COMPRADORES y 7 días mínimo.
 - **Si funciona** (igual o más plata por día) → otro salto. **Si sale mal** → 🔒 se baja en escalera (≤15% por escalón, uno cada 48 h),
   nunca abajo del último que vendía ni del 💰 piso, y se anota `techofreno:<MLA>=<precio>|motivo;go`.
-- 🔒 **Una suba no se deshace por casualidad:** bajar del precio de una suba de menos de 30 días pide 95% (Poisson sobre la plata
-  por día) o las visitas a la mitad. Si no, se espera (ver 0b.2 y 0b.3).
+- 🔒 **Una suba no se deshace por casualidad:** bajar del precio de una suba (5%+) de menos de 15 días pide 95% (Poisson sobre la plata
+  por día) o las visitas a la mitad. Si no, se espera **15 días como mucho** (decisión suya 2b del 21/10: *"máximo 15 días de espera,
+  después a"*): pasados los 15 días decide la plata por día de las dos ventanas — si la prueba deja igual o más, se queda (🔒 F4 no
+  deja bajar); si deja menos, baja un escalón (≤15%, F2), no vuelve directo.
+- **Visitas a la mitad y caja perdida durante una prueba** (decisión 3a del 21/10) → baja un escalón (≤15%), no vuelve directo al
+  precio de antes. Después se mide ese escalón como cualquier otro.
 - **Las rayas** (una sola cuenta en la web y el robot, `_rayas` = `rayasPrecioLinea`; días con 3+ u. en Full y con visitas):
   💰 **piso** = el precio que más plata por día dejó (5+ días; desde la primera venta hay uno provisorio, punteado). 🔒 No se baja
   de ahí salvo sobra, sin reposición o stock antiguo. 🔴 **techo** = el precio más bajo arriba del 💰 donde, al 95%, no deja la misma
@@ -223,7 +221,9 @@ al código; lo que es pensar queda acá, y una regla dura ("nunca", "sólo si") 
   Nunca subir la lista para inflar el tachado.
 - 🔒 **🤔 ¿Tiene sentido este descuento?** (F6, `entrarpromo` y `decido` con #descuento/#promo/#sobra): sobra de verdad (90+ d en
   Full al ritmo con stock) y no recién llegado (30+ d desde la última entrada). Y 🔒 25% en el peor caso (o `!piso`). No aplica a
-  las escaleras con causa propia: techo, escasez, lanzamiento con 🏔️, sinrepo, fecha (ver 0b.1). Las promos de ML pasan por lo mismo:
+  las escaleras con causa propia: techo, escasez, lanzamiento con 🏔️, sinrepo, fecha. **Bajar algo que no sobra** (salir de una
+  prueba de techo, de escasez o de lanzamiento) va como 💸 descuento con el precio de antes tachado, con su tag
+  (techo/bajando/escasez/lanzamiento), no bajando la lista (decisión 1a del 21/10). Las promos de ML pasan por lo mismo:
   que ML ponga parte no la justifica sola. Lista **🤔 MIS DESCUENTOS QUE YA NO TIENEN SENTIDO** todos los días.
 - **Promos de ML:** las analizo en cada completa (`analizapromo` entero) y entro si deja más plata y pasa el 🤔. Mías en
   `cyc/promoclaude`; el guardián saca las que nadie analizó. Medir si vende más (plata por día antes vs durante), no suponerlo.
@@ -284,7 +284,8 @@ al código; lo que es pensar queda acá, y una regla dura ("nunca", "sólo si") 
 - Precios y códigos SÓLO de comprasparaguay (la fila de Nissei), nunca nissei.com. El chat local los copia una vez por mes.
 - Para pedir: 25% (no 24) **y** catálogo de ML con 2+ vendedores **y** confirmado que es el mismo producto (✅ `mismoOk` o `revcand`
   ok de ESE catálogo). Las vendidas ya no se cargan.
-- Cuántas de cada nuevo: ver 0b.4.
+- Cuántas de cada nuevo (decisión 4a del 21/10; las vendidas ya no se cargan): 🔒 barato (≤US$15 crudo) → 3 · caro (+US$60) → 1 ·
+  resto → 2 (`candMaxU`, botón 🪄 Llenar). Lo que vuela se repone en el pedido siguiente por sus ventas.
 - Ticket real obligatorio para cerrar (`compray:<fecha>|det=…|go`); gastos: dólares, retira, correo (monto y kilos); `adelanto=` y
   `cambio=` sólo cuando él avisa. Recargo: el medido de los pedidos (respaldo 20%).
 - Al llegar: ficha (pagado × recargo), cuenta por rubro (perfumes → Adriana) y equilibrio, vínculo.

@@ -2726,7 +2726,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.55';
+const APP_VERSION='25.56';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2739,6 +2739,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.56',f:'21/10',h:'22:24',c:[{n:2,t:'🛒 Paraguay, cuántas de cada nuevo: barato (hasta US$15) → 3 · caro (más de US$60) → 1 · el resto → 2. Ya no mira las vendidas (no se cargan más).'},{n:1,t:'🔁 Revisión: etapa nueva 8 · Reglas del cerebro. Va cada 7 días, adelante de las otras cuando le toca. Ajustes muestra la fecha real de cada etapa.'}]},
   {v:'25.55',f:'20/10',h:'22:10',c:[{n:2,t:'📈 Línea de tiempo: la raya 🚧 de un precio probado dice si es segura. Roja "ya no vende · N% seguro" sólo con 95%; si no, naranja punteada "no vendió · sin certeza" (se puede volver a probar).'}]},
   {v:'25.54',f:'20/10',h:'21:15',c:[{n:2,t:'🔎 Los buscadores encuentran sin tilde, palabra por palabra y por color, título de ML, número de publicación o código de Paraguay ("sabanas gris", "termometro").'},{n:2,t:'📱 Teléfono: los colores de Pedidos ya no quedan aplastados, los números grandes no se cortan, botones 🧠 📈 más grandes para el dedo, las flechas ‹ › juntas y quietas, y los ⓘ se pueden tocar para leerlos.'},{n:2,t:'🗑️ Pedidos: cambiar de Bs As a Paraguay, de solapa o marcar "no lo consigo" pregunta antes; la ✕ tiene ↩ Deshacer.'},{n:1,t:'☀️ Tema claro: el logo, los colores del % y las estrategias se leen; JOYA con un solo dorado.'},{n:1,t:'🧭 Inicio ya no queda dibujado arriba de cada pantalla, la ficha abre la línea de tiempo adelante, las cajas para mandar de Inicio llevan a esa cuenta, y textos viejos que hablaban del robot corregidos.'},{n:1,t:'📲 En Android, dejando apretado el ícono de CYC: Ventas de hoy, Pedidos y Armar caja.'}]},
   {v:'25.53',f:'20/10',h:'20:40',c:[{n:1,t:'🏷️ Ventas de hoy: dice "los últimos 5 martes" (antes "martess").'}]},
@@ -4321,7 +4322,13 @@ const REV_ETAPAS=[
   {n:5,dia:5,nom:'Datos, historial y cerebro',que:'las líneas de tiempo, la ficha médica y la historia de estrategias (que cada día cuente bien y coincida con Ventas y el Arqueo), y lo que hace Claude en cada vuelta: que cada parte quede ENTERA, contando contra el total',esf:'Máximo'},
   {n:6,dia:6,nom:'Ideas nuevas',que:'datos que ML ya da y no usamos, cosas que hacés a mano y se pueden automatizar, y detalles que den gusto usar la web: efectos, comodidad, lo repetido y lo que falta (sólo propone)',esf:'Máximo'},
   {n:7,dia:0,nom:'Diseño',que:'la web más cómoda, sencilla y linda: qué sobra, qué cuesta encontrar, qué se ve mal en el teléfono, botones que se corren al cambiar un texto, y detalles lindos con sentido (sólo propone)',esf:'Máximo'},
+  // 21/10/2026, él: "las reglas del cerebro es lo más importante de todo… meterlo en etapas de revisión? así todas las semanas se
+  // actualiza". Va SIEMPRE cada 7 días (`cada`): si le toca, pasa adelante de las demás aunque haya otra más vieja.
+  {n:8,dia:null,cada:7,nom:'Reglas del cerebro',que:'CEREBRO.md entero: reglas que se contradicen o están repetidas, decisiones suyas que no llegaron al archivo, que cada regla 🔒 tenga su freno en el código y que lo que se pueda medir pase a código, y las correcciones de la semana convertidas en regla o pregunta',esf:'Máximo'},
 ];
+// Las etapas con `cada` (la 8) van primero cuando se cumplió su plazo; después, la que hace más que no se revisa.
+function _revVencida(et){if(!et.cada)return false;const u=revUltCorrida(et.n);if(!u)return true;const f=_revFecha(u);return !f||(Date.now()-f.getTime())/864e5>=et.cada-0.5;}
+function _revOrden(a,b){return (_revVencida(b)-_revVencida(a))||(revUltCorrida(a.n)||'').localeCompare(revUltCorrida(b.n)||'')||a.n-b.n;}
 const REV_HORA='04:00';
 // ── LA REVISIÓN LA MANEJA CLAUDE, NO ÉL (26/09/2026, pedido suyo) ─────────────────────────────
 // Textual: *"quiero que manejes vos eso de revision del panel, que me marque lo que realmente falte,
@@ -4341,7 +4348,7 @@ const REV_PENDIENTE=[
 // por una nota vieja.
 // 30/09 a la tarde: la revisión completa final (6 revisores) cubrió precios, plata, mercadería, ventas,
 // corridas del robot y la web; lo obvio quedó arreglado en la v20.88.
-const REV_HECHAS={1:'2026-10-08',2:'2026-10-20',3:'2026-10-20',4:'2026-10-20',5:'2026-10-12',6:'2026-10-15',7:'2026-10-01'};
+const REV_HECHAS={1:'2026-10-08',2:'2026-10-20',3:'2026-10-20',4:'2026-10-20',5:'2026-10-12',6:'2026-10-15',7:'2026-10-01',8:'2026-10-21'};
 // LO QUE PASÓ EN CADA ETAPA (15/10/2026, para el panel de Ajustes). Lo escribe Claude al cerrar cada vuelta: fecha y una línea.
 const REV_HIST={
   1:[{f:'2026-09-24',t:'Primera vuelta: el rescate, la espera de las bajas y los frenos de suba.'},
@@ -4365,14 +4372,26 @@ const REV_HIST={
   7:[{f:'2026-09-29',t:'4 revisores (teléfono, lo que sobra, lo que cuesta encontrar, parejo): lo chico hecho.'},
      {f:'2026-10-01',t:'Cerrada: eligió 13 de 15 ideas (Inicio, Rotación en el teléfono, colores del %, Ventas por semana, Métricas con índice).'},
      {f:'2026-10-20',t:'4 revisores en máximo (teléfono, lo que sobra, lo que cuesta encontrar, parejo y lindo): ~60 arreglos chicos hechos (v25.54: buscadores, teléfono, tema claro, flechas, textos del robot viejo, accesos del ícono). Quedan ideas para que elija él.'}],
+  8:[{f:'2026-10-21',t:'Primera: CEREBRO.md rehecho de cero (917 → 329 líneas, cada regla una vez), 6 frenos nuevos en el código (frenosBajas) y sus 4 decisiones aplicadas (descuento con tachado, 15 días de espera, corte por visitas, cuántas de cada nuevo).'}],
 };
 // Las etapas en el orden en que van a tocar (20/10/2026): una por día, primero la que hace más que no se revisa (`revProxima`).
 function _revHoyISO(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function revAgenda(){
+  // 21/10/2026: se simula día por día con la misma regla de `revProxima` (la 8 se adelanta cada 7 días), así la fecha que dice
+  // cada etapa es la que de verdad le va a tocar.
   const hoy=new Date();hoy.setHours(12,0,0,0);const hoyISO=_revHoyISO();
   const hecha=REV_ETAPAS.some(x=>revUltCorrida(x.n)===hoyISO);   // si hoy ya corrió una, la próxima es mañana
-  const ord=REV_ETAPAS.slice().sort((a,b)=>((revUltCorrida(a.n)===hoyISO)-(revUltCorrida(b.n)===hoyISO))||(revUltCorrida(a.n)||'').localeCompare(revUltCorrida(b.n)||'')||a.n-b.n);
-  return ord.map((et,i)=>{const k=i+(hecha?1:0);const u=revUltCorrida(et.n);return {et,k,ult:u?_revFecha(u):null,toca:new Date(hoy.getTime()+k*864e5)};});
+  const ult={};REV_ETAPAS.forEach(et=>{ult[et.n]=revUltCorrida(et.n)||'';});
+  const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  const toca={};
+  for(let k=hecha?1:0;k<40&&Object.keys(toca).length<REV_ETAPAS.length;k++){
+    const dia=new Date(hoy.getTime()+k*864e5);
+    const venc=et=>{if(!et.cada)return false;const u=ult[et.n];if(!u)return true;const f=_revFecha(u);return !f||(dia-f)/864e5>=et.cada-0.5;};
+    const et=REV_ETAPAS.slice().sort((x,y)=>(venc(y)-venc(x))||(ult[x.n]||'').localeCompare(ult[y.n]||'')||x.n-y.n)[0];
+    if(!(et.n in toca))toca[et.n]=k;
+    ult[et.n]=iso(dia);
+  }
+  return REV_ETAPAS.map(et=>{const k=toca[et.n]??null;const u=revUltCorrida(et.n);return {et,k,ult:u?_revFecha(u):null,toca:k==null?null:new Date(hoy.getTime()+k*864e5)};}).sort((x,y)=>(x.k??99)-(y.k??99));
 }
 function renderRevPanel(){
   const el=document.getElementById('aj-revisiones');if(!el)return;
@@ -4403,7 +4422,7 @@ function revUltCorrida(n){let u=REV_HECHAS[n]||'';(REV_HIST[n]||[]).forEach(x=>{
 function revProxima(){
   const hoy=new Date(),hoyISO=_revHoyISO();
   const hoyEt=REV_ETAPAS.find(x=>revUltCorrida(x.n)===hoyISO)||null;
-  const cand=REV_ETAPAS.filter(x=>revUltCorrida(x.n)!==hoyISO).sort((a,b)=>(revUltCorrida(a.n)||'').localeCompare(revUltCorrida(b.n)||'')||a.n-b.n);
+  const cand=REV_ETAPAS.filter(x=>revUltCorrida(x.n)!==hoyISO).sort(_revOrden);
   const et=cand[0]||REV_ETAPAS[0];
   let ult=null;
   for(const [n,iso] of Object.entries(REV_HECHAS)){const f=_revFecha(iso);if(f&&(!ult||f>ult.f))ult={n:Number(n),f};}
@@ -14619,14 +14638,14 @@ async function candSetPedir(id,v){
 // —la regla de este archivo—. `pedNuevosLlenar` pregunta y escribe; ésta sólo decide.
 // CUÁNTAS DE CADA NUEVO, SEGÚN PRECIO Y SEÑAL DE ML (15/10/2026, eligió la a). Con 2 de todo no se
 // sabe si una venta fue casualidad y lo barato que vuela se corta enseguida; y 4 de algo de US$100 se
-// come el pedido. Barato (≤ US$15 crudo) con 100+ vendidas en ML y 5 vendedores o menos → hasta 4
-// (3 si tiene menos de 300 vendidas) · caro (> US$60) → 1 · el resto → lo de la casilla (2).
+// come el pedido. Desde el 21/10/2026 (él, 4a; las vendidas ya no se cargan): barato (≤ US$15 crudo) → 3
+// · caro (> US$60) → 1 · el resto → lo de la casilla (2).
 // Lo que vuela se repone en el pedido siguiente con unidades por sus ventas: eso lo decido yo.
-const PED_BARATO_USD=15, PED_CARO_USD=60, PED_POCOS_VEND=5;
+const PED_BARATO_USD=15, PED_CARO_USD=60;
 function candMaxU(c,maxU){
-  const usd=parseFloat(c&&c.usd)||0, v=candVentasDe(c), nv=Number(c&&c.mlVendedores);
+  const usd=parseFloat(c&&c.usd)||0;
   if(usd>PED_CARO_USD)return 1;
-  if(usd>0&&usd<=PED_BARATO_USD&&v!=null&&v>=100&&(!isFinite(nv)||nv<=PED_POCOS_VEND))return Math.max(maxU,v>=300?4:3);
+  if(usd>0&&usd<=PED_BARATO_USD)return Math.max(maxU,3);   // 21/10/2026 (él, 4a): las vendidas ya no se cargan · barato → 3, sin mirar ventas
   return maxU;
 }
 function pedLlenarPlan(vivos,tope,maxU,minV){

@@ -3708,14 +3708,16 @@ function rayasPrecioLinea(d, cu, imp, hoyK) {
 //  F1 lo nuevo no se baja sin 🏔️ de `techo95` (primera tanda en Full de menos de 30 d, o estrategia 🆕) · `!sintecho`
 //  F2 escalera: una baja de más de 15% de una vez (25% si está en escasez) no pasa · `!golpe`
 //  F3 escalón medido: otra baja dentro de las 48 h de la anterior (12 h en escasez) no pasa · `!golpe`
-//  F4 una suba no se deshace por casualidad: bajar del precio de una suba de menos de 30 d pide 95% (Poisson sobre la plata por
-//     día, la misma cuenta del 🔴) o visitas a la mitad · `!sincerteza`
+//  F4 una suba no se deshace por casualidad: bajar del precio de una suba de menos de 15 d pide 95% (Poisson sobre la plata por
+//     día, la misma cuenta del 🔴) o visitas a la mitad; pasados los 15 d (hasta 60) no baja si la suba deja igual o más plata
+//     por día que antes (decisión suya 2b del 21/10/2026) · `!sincerteza`
 //  F5 no abajo del 💰 piso (el precio que más plata por día dejó, `rayasPrecioLinea`) salvo sobra / sin reposición / liquidando /
 //     remate · `!bajopiso`. Si el redondeo a 90/990 lo empuja abajo, dice el precio redondeado PARA ARRIBA.
 //  F6 🤔 un descuento o promo nuevo (fuera de una escalera de techo, escasez, lanzamiento, sin reposición o fecha) pide sobra de
 //     verdad (90+ d en Full al ritmo con stock) y no recién llegado (30+ d desde la última entrada) · `!nosobra`
 // Cada `!bandera` vale SÓLO si el motivo dice "EXCEPCIÓN" y por qué: una excepción sin decir cuál no es una excepción.
 // Lo que no puede leer (estrategia, línea de tiempo, stockhist, mis cambios) frena: no se baja a ciegas.
+const F4_ESPERA_DIAS = 15; // 21/10/2026, él: "máximo 15 días de espera, después a" (plata por día)
 async function frenosBajas(db, decs, fzs, links, opts = {}) {
   const bajas = decs.filter((d) => d && d.accion === 'baja');
   if (!bajas.length) return [];
@@ -3776,7 +3778,10 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
     // ── F4 · una suba no se deshace por casualidad
     // sólo subas de 5%+ (una prueba de verdad): volver de $17.990 a $18.290 para quedar en el piso no es algo que proteger
     const ultSuba = camb.find((c) => c.a > c.de * 1.05);
-    if (ultSuba && ahora - ultSuba.ts < 30 * 864e5 && p0 >= ultSuba.a * 0.98 && a < ultSuba.a * 0.995 && !exc(fz, 'sincerteza')) {
+    // 21/10/2026 (él, 2b): se espera la certeza 15 días como mucho; después decide la plata por día de las dos ventanas
+    // (si la suba deja igual o más, se queda; si deja menos, baja un escalón — el tamaño lo frena F2).
+    if (ultSuba && ahora - ultSuba.ts < 60 * 864e5 && p0 >= ultSuba.a * 0.98 && a < ultSuba.a * 0.995 && !exc(fz, 'sincerteza')) {
+      const pasaron15 = ahora - ultSuba.ts >= F4_ESPERA_DIAS * 864e5;
       if (!lin || !(cu > 0)) { frenar(d, `deshace la suba del ${kDia(ultSuba.ts).slice(8, 10)}/${kDia(ultSuba.ts).slice(5, 7)} (${$(ultSuba.de)} → ${$(ultSuba.a)}) y no pude leer la línea de tiempo o el costo para saber si fue casualidad`); out.push(d); continue; }
       const kS = kDia(ultSuba.ts); const kA = kDia(ultSuba.ts - 21 * 864e5);
       let d0 = 0, u0 = 0, n0 = 0, t0 = 0, v0 = 0, nv0 = 0, d1 = 0, u1 = 0, v1 = 0, nv1 = 0;
@@ -3786,7 +3791,12 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
       let seg = null, txt = '';
       if (d0 >= 5 && u0 >= 3) { const r0 = u0 / d0, gu0 = (n0 - u0 * cu - t0 * imp) / u0, gu1 = gu0 + (ultSuba.a - ultSuba.de) * 0.7;
         if (gu0 > 0 && gu1 > gu0) { const lam = r0 * (gu0 / gu1) * d1; seg = 1 - poissonCdfF(u1, lam); txt = `a ${$(ultSuba.a)} vendió ${u1} en ${d1} día${d1 === 1 ? '' : 's'} con stock; para dejar la misma plata por día que antes tenía que vender ~${lam.toFixed(1)}: ${Math.round(seg * 100)}% seguro`; } }
-      if (!(seg != null && seg >= 0.95) && !visMitad) { frenar(d, `deshace la suba del ${kS.slice(8, 10)}/${kS.slice(5, 7)} (${$(ultSuba.de)} → ${$(ultSuba.a)}) sin certeza: ${txt || 'antes vendía muy poco para medir la diferencia'}. Una suba no se deshace por casualidad: hace falta 95%, las visitas a la mitad, o que pasen 30 días. Excepción: !sincerteza y "EXCEPCIÓN: …"`); out.push(d); continue; }
+      if (pasaron15) {
+        // pasados los 15 días: plata por día antes contra después (la misma cuenta de arriba). Sin dato para medirla, decide el 🧠.
+        if (d0 >= 5 && u0 >= 3 && d1 >= 5) { const r0 = u0 / d0, gu0 = (n0 - u0 * cu - t0 * imp) / u0, gu1 = gu0 + (ultSuba.a - ultSuba.de) * 0.7;
+          const pd0 = r0 * gu0, pd1 = (u1 / d1) * gu1;
+          if (gu0 > 0 && pd1 >= pd0) { frenar(d, `la suba del ${kS.slice(8, 10)}/${kS.slice(5, 7)} (${$(ultSuba.de)} → ${$(ultSuba.a)}) deja igual o más plata por día (${$(Math.round(pd1))}/día contra ${$(Math.round(pd0))}/día antes): pasados los 15 días, si la suba no deja menos, se queda. Excepción: !sincerteza y "EXCEPCIÓN: …"`); out.push(d); continue; } }
+      } else if (!(seg != null && seg >= 0.95) && !visMitad) { frenar(d, `deshace la suba del ${kS.slice(8, 10)}/${kS.slice(5, 7)} (${$(ultSuba.de)} → ${$(ultSuba.a)}) sin certeza: ${txt || 'antes vendía muy poco para medir la diferencia'}. Una suba no se deshace por casualidad: hace falta 95% o las visitas a la mitad; si no, se espera hasta 15 días y ahí decide la plata por día. Excepción: !sincerteza y "EXCEPCIÓN: …"`); out.push(d); continue; }
     }
     // ── F5 · no abajo del 💰 piso
     const abajoOk = ['sobra', 'sinrepo', 'liquidando', 'remate'];
