@@ -206,7 +206,7 @@ html,body{overflow-x:hidden;max-width:100%}html{overflow-x:clip}body{overscroll-
 
 /* ── HOME PAGE ── */
 #page-home{flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:14px 20px;gap:14px}
-#page-home.active{display:flex}   /* etapa 7 (20/10/2026): antes Inicio se dibujaba arriba de TODAS las pantallas */
+#page-home,#page-home.active{display:flex}   /* 21/10/2026, él: "estamos acostumbrados a que se abra abajo y poder subir scroleando y entrar a otra tarjeta": Inicio vuelve a estar arriba de TODAS las pantallas (la etapa 7 del 20/10 lo había sacado). La pantalla abre abajo y goPage baja hasta su encabezado. */
 .home-logo{text-align:center}
 .home-logo img{height:140px;object-fit:contain;filter:brightness(1.05)}
 .home-subtitle{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.16em;margin-top:8px}
@@ -2923,7 +2923,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.83';
+const APP_VERSION='25.84';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2936,6 +2936,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.84',f:'21/10',h:'14:50',c:[{n:1,t:'Vuelve como antes: cada pantalla se abre debajo de Inicio, y subiendo con el dedo llegás a Inicio para entrar a otra tarjeta (sin tener que tocar ← Inicio).'}]},
   {v:'25.83',f:'21/10',h:'14:40',c:[{n:1,t:'🇵🇾 Pedidos hechos: cada tarjeta dice ✅ gastos completos o ⚠️ faltan gastos (y cuáles: correo, el que retira, el dólar…).'}]},
   {v:'25.82',f:'21/10',h:'14:20',c:[{n:1,t:'Los desplegables ya no se cierran solos cuando llega un dato nuevo y la pantalla se redibuja (ej. 📂 Toda la lista).'}]},
   {v:'25.81',f:'21/10',h:'09:10',c:[{n:1,t:'Ventas: vuelve a salir 🔬 analizada · nivel de esfuerzo (no salía en ninguna venta). Sólo se marca 💳 Premium (la Clásica ya no sale), sólo 🥇 1ª venta desde el cambio, y 💳 gemela ya no figura como estrategia: la Premium muestra la estrategia de su Clásica. Una venta con cupón o promo que puso ML muestra la estrategia real del precio (ej. 📈 buscando techo) y aparte "🏷️ ML puso $X".'}]},
