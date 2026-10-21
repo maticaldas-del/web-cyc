@@ -9406,6 +9406,7 @@ En Paraguay y en 📋 Listas un producto nuevo se puede pedir si da 25%, el cat�
 / `mv`, lo mide el robot solo) y está confirmado que es el mismo producto. Las vendidas ya no se cargan (el chat de compras sólo dice ok/no).
 Reemplaza la regla de las 100 ventas del 03/10 y del 18/10 y la vara "+100" del 19/09.
 **Lo repitió el 21/10 (*"acordate. los que no tienen catálogo fuera. los que tienen menos de 100 pero tienen catálogo entran"*):** verificado ese día en el código: ningún filtro de Paraguay ni de Listas pide 100 ventas (sólo se muestran); sin catálogo exacto queda afuera.
+**Las vendidas del catálogo NO se buscan más (21/10/2026, él: *"dejalo como está"*):** medido con `vendcat` que ML no las da por ningún lado (API 403 y la página pide iniciar sesión, también desde un navegador en la nube). No volver a proponer chat local ni navegador con cuenta para eso.
 
 ## 📋 LAS LISTAS LAS CONFIRMO YO · EL CHAT LOCAL SÓLO COPIA COMPRASPARAGUAY (20/10/2026, eligió la a)
 En cada vuelta: `listarevisar` → nombre de la lista contra el título del catálogo de ML → `listadato:<prov>;<cód>=ok|no|mi=MLA…;go`
