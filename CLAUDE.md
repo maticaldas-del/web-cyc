@@ -9430,6 +9430,17 @@ y qué resolución se tomó"*. Al cerrar cada vuelta: `ventasvistas:<ts>|esf=<ni
 venta). Detalle en `ml-sync/REVISION.md` etapa 5 y `ml-sync/CEREBRO.md` (🔬).
 
 
+## 🌙 LA COMPLETA A LAS 03:00 Y SÓLO LO QUE NADIE MIRÓ (21/10/2026, eligió la a)
+Él, después de que la completa de las 08:52 tardara 3 h y frenara la vuelta de ventas: *"quiero que mire cosas que nadie miró"*,
+*"a las 3am siempre, así no molesta"* y de las ideas *"semanal y a fondo"*. La completa (`trig_01475PwdPVJ1qTnYswcDxRq8`) corre a las
+**03:00** y mira a fondo (esfuerzo max, no se baja) sólo: las ventas de la noche, todas las listas de alarma, y las activas con stock
+que NO vendieron (rotando la mitad por noche). Afuera las gemelas (las alinea el robot), las pausadas sin stock (salvo 🛡️) y lo que
+ya vio una vuelta de ventas. Lecturas en una sola corrida, 2 ayudantes y el revisor en contra. **Los domingos** además el catálogo
+entero y el ayudante de ideas a fondo. Medido el 21/10: la vieja gastaba ~100 de tokens; ésta ~35-40. Detalle en `ml-sync/CEREBRO.md`.
+**Y sus dos decisiones de las ideas de ese día:** (1b) los Paulvic que ML congeló por nombrar otra marca siguen con cuotas en todo y
+se espera que ML los libere · (2) el Full lleno de Ayelen (cupo 0): *"retirar libera stock, pero es un poco de lío, lo mejor es
+vender"* → lo lento que ocupa el Full de una cuenta sin cupo se empuja a vender (descuento o escalera) antes que retirarlo.
+
 ## 🕐 LAS VUELTAS VAN SEGÚN CÓMO ENTRAN LAS VENTAS (21/10/2026, eligió la a)
 Medido con `ventashora:30` (1.534 compras, 51 por día): de 21 a 23 h se vende tanto como a la tarde y la completa de las 08:52
 cargaba ~15 ventas de la noche. Ahora: completa **08:52** (cubre 00 a 08 h) y cortas a las **11:52, 13:52, 15:52, 17:52, 19:52,

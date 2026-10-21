@@ -1,6 +1,6 @@
 # 🧠 CEREBRO · REHECHO EL 21/10/2026 (pedido suyo: *"fijate si es necesario rehacer el cerebro (…) hay reglas viejas, que se pisan. manejalo"*)
 
-**Cómo se usa.** Cada vuelta (08:52 completa · 10:52, 12:52, 14:52, 16:52, 18:52, 20:52 cortas) arranca leyendo ESTE archivo y
+**Cómo se usa.** Cada vuelta (03:00 completa · 11:52, 13:52, 15:52, 17:52, 19:52, 21:52, 23:52 cortas) arranca leyendo ESTE archivo y
 `notas/preguntas.md`. Cada regla está UNA sola vez y en su versión más nueva. Las viejas, repetidas o pisadas se sacaron (el
 archivo de antes quedó en `notas/cerebro_viejo_20261021.md`, sólo como historia: no se usa). La historia de cada regla (fecha,
 frase suya, el caso) está en `CLAUDE.md`. **Regla nueva → va en su tema acá, en `CLAUDE.md` y en `REVISION.md`, en el mismo commit.**
@@ -93,28 +93,29 @@ La etapa 8 de la revisión (Reglas del cerebro, cada 7 días) mira que esto qued
    comando terminado deja `##### ✓ terminó:`). No se toca `cancel-in-progress`.
 10. En el chat: "🚨 N → N · 🧭 N → N · 🔀 N → N · 🚫 frenadas N · ventas N miradas · ideas …" (nunca callado).
 
-**Completa (08:52), además:**
-1. `historia` · `escasez:expediente` · `informe:24` · `ficha:cuenta=<c>` ×4 · `pedidostodo` · `techo95` · `techofreno` ·
-   `escmedir` · `supervisor:medir:go` · `analizapromo` entero.
-   Y `ventasraras:13` (las compras de 20:52 a 08:52, una por una: las de la noche no las mira ninguna corta).
-2. **Cuatro ayudantes (uno por cuenta, esfuerzo max)**: cada uno abre la ficha ENTERA de cada publicación de su cuenta y le hace
-   las preguntas de `notas/preguntas.md`; recibe también los `raros` de su cuenta. Devuelve por publicación: estrategia, precio (o
-   "igual"), pedido/caja si corresponde, el porqué con números y "no estoy seguro" cuando lo está. Sólo leen.
-3. **Un quinto, ideas nuevas (max)**: el negocio entero, plata que se pierde o se puede ganar y nadie mira, medida y con (a)/(b).
-   Lee `notas/ideas.md` para no repetir. Lo chico lo hago yo; lo grande al `pregunto:`.
-4. **Un sexto, el revisor en contra (max)**, ANTES de aplicar: abre la ficha de cada publicación que cambia y busca en qué me
-   equivoco (dato que no cierra, regla de la tabla 0 que pisé, pregunta sin contestar, decisión de menos de 7 días que deshago).
-   Marca, no propone. Lo que no puedo resolver no se aplica esa vuelta.
-5. Yo miro todo lo dudoso, lo que cambia más de 20% y lo que contradice una decisión de menos de 7 días. Si los ayudantes se
-   cortan por límite, se rehacen y se dice: **nunca se aplica un juicio a medias.**
-6. Listas de la completa que se vacían: 📦 sobra sin decidir · 🔎 sin afinar · 💸 paga o va a pagar stock antiguo · ⚠️ no vendió
-   y no sé desde cuándo.
-7. **El expediente pensado** (`escasez:expediente`): un juicio por bloque (QUÉ HAGO o POR QUÉ NO, con sus números). Entran los que
-   se movieron y un tercio del resto: nadie pasa 3 días sin mirarse. Si no cambió nada, una línea; lo largo va donde algo se movió.
-8. Pedidos (`decide_pedidos.py`) y cajas (`decide_cajas.py`) sobre el mismo log de `pedidostodo`, revisados a mano,
-   `decido:archivo=pedidos;go` + `decido:archivo=cajas;go`. Si el log dice NO LEÍ o el script NO CIERRA, no se carga nada.
-9. Juicios de precio (`juzgo:`) · `techo95;go` · frenos de techo a reabrir.
-10. Toda publicación juzgada queda con su nota del 🧠 y QUÉ MIRAR MAÑANA (`decido:archivo=fichas_<fecha>;go`).
+**Completa (03:00, una vez por día) · REHECHA EL 21/10/2026, eligió la (a): *"que mire cosas que nadie miró"* y *"a las 3am siempre, así no molesta"*.**
+Antes recorría las ~590 publicaciones enteras todos los días (3 h, ~100 de tokens, frenaba las vueltas de ventas). Ahora mira SÓLO lo
+que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 29 cambios mal leídos el 21/10). Medida: ~1 h, ~35-40.
+1. **Lecturas TODAS en UNA corrida de ml-consulta** (no una por comando): `planilla` · `informe:24` · `pedidostodo` · `historia` ·
+   `escasez:expediente` · `raros` · `techo95` · `techofreno` · `escmedir` · `analizapromo:21` · `ventasraras:nuevas`. Después
+   `supervisor:medir:go` (ml-sync).
+2. **Qué se mira a fondo (ficha entera):**
+   - las ventas de la noche (como una vuelta corta);
+   - TODAS las listas de alarma: 🛡️ abajo del 25% · 💸 stock antiguo · 📦 sobra · 🔎 sin afinar · 📈 dice techo y no sube ·
+     🚨 escasez · 🧭 raros · ⚠️/🤔 · pausadas con stock;
+   - **las quietas con stock que nadie miró**: activas con stock en Full que NO vendieron desde la última completa (las que
+     vendieron ya las vio la vuelta de ventas). Rotan: la mitad cada noche, primero la que hace más que no tiene nota mía; ninguna
+     pasa 2 días sin mirarse.
+   - **Afuera:** gemelas Premium (las alinea el robot con su Clásica) · pausadas sin stock (salvo que caigan en 🛡️) · lo que ya
+     vio una vuelta de ventas en las últimas 24 h.
+3. **Dos ayudantes (max)** se reparten lo de arriba (no uno por cuenta); `ficha:<MLA>` sólo de lo que se mira. Sólo leen.
+4. **El revisor en contra (max)** ANTES de aplicar, igual que siempre: marca, no propone.
+5. Yo miro lo dudoso, lo que cambia más de 20% y lo que deshace una decisión de menos de 7 días.
+6. Pedidos y cajas como siempre (`decide_pedidos.py`, `decide_cajas.py`, revisados, `decido:archivo=…;go`). Juicios de precio,
+   `techo95;go`, frenos a reabrir. Nota con QUÉ MIRAR MAÑANA de cada una que miré (`decido:archivo=fichas_<fecha>;go`).
+7. Todo lo que escribe va en UNA corrida de ml-sync al final.
+8. **Los domingos, además:** el catálogo entero (todas las activas con stock, como era antes) y **el ayudante de ideas a fondo
+   (max)**, que ya no corre todos los días (decisión suya del 21/10: *"semanal y a fondo"*). Lee `notas/ideas.md` para no repetir.
 11. Los lunes: contar `notas/correcciones.md` de la semana contra la anterior.
 
 ===========================================================================================================================
@@ -125,7 +126,7 @@ La etapa 8 de la revisión (Reglas del cerebro, cada 7 días) mira que esto qued
 - Nunca tomar como dato una marca vieja del robot (escalera, liquidando automático, expediente viejo). Dato crudo.
 - Él no toca precios ni promos; no hace falta que avise nada de eso.
 - Lo grande o sin respuesta clara lo decide él: todo junto, numerado, (a) sugerida y (b). Lo chico y reversible lo decido yo y se lo cuento.
-- Esfuerzo fijo (3a, 20/10; no se cambia sin que él lo diga): ayudantes de la completa, ideas y revisor en max; raros de las
+- Esfuerzo fijo (3a, 20/10; no se cambia sin que él lo diga): ayudantes de la completa, ideas (domingos) y revisor en max; raros de las
   cortas en Alto; el chat con el nivel que él le ponga.
 
 ## 3 · PENSAR (🧠)
@@ -289,6 +290,9 @@ La etapa 8 de la revisión (Reglas del cerebro, cada 7 días) mira que esto qued
   por las ventas que la Clásica sola no hacía.
 - 🔒 **Cuotas en TODO (21/10/2026, él: *"poner cuotas a todas las publicaciones, no sólo a las de más de $50.000 (…) siempre que nos dé la misma ganancia en premium que en clásica (…) puede que en productos baratos tengas que aumentar mucho el precio, hacelo"*):** toda Clásica activa con stock en Full lleva su 💳 gemela Premium al precio que deja la MISMA plata neta (`precioGemelaIgual`, ~+17-24%; las que cruzan los $33.000 pagan el envío y suben más). Que la Premium quede abajo del 25% no frena si deja lo mismo que su Clásica. **Cada gemela sigue sola a su Clásica cada hora** (`alinearGemelas`, tolerancia 1%; `gemelaalinear[:go]` a mano; se apaga con `gemelaSigue=off`): al mover la Clásica no hay que tocar la Premium. Lo nuevo que entre en Full con Clásica se le crea la gemela en la vuelta siguiente (`gemela:1` lista las que faltan).
 
+- **Paulvic con nombre de otra marca (21/10/2026, eligió la 1b):** ML congeló "en revisión · prohibido" a Invictus y Phantom con sus gemelas al crearlas. Se sigue con cuotas en todo, también en esos, y se espera que ML los libere. No se frena la creación de gemelas por eso.
+- Una Premium que ya existe sin `gemelaDe` no la sigue nadie: `gemelacrea:anotar:<Premium>=<Clásica>:go` (chequea misma cuenta y mismo producto de ML).
+
 ## 12 · PAUSADAS, PUBLICACIONES, VÍNCULOS
 - Activar lo pausado con stock en Full es prioridad en todas las vueltas; lo que no se activa, al `pregunto:` con motivo. Lo que está
   en depósito (fuera de Full) se pausa solo.
@@ -312,6 +316,7 @@ La etapa 8 de la revisión (Reglas del cerebro, cada 7 días) mira que esto qued
 - 37 días (30 de venta + 7 de viaje); 60 sólo en lo parejo sin prueba abierta (`notas/sin_estirar.txt`); nada pasa 90 días; lo
   nuevo sale con el mínimo de 4. Una cuenta SIN publicación no recibe el mínimo si otra tiene stock de ese color; la que ya publica y
   está en cero, sí. Respetar el cupo (lo vendido no devuelve cupo). Costo de la caja $17.310.
+- **Cupo de Full lleno con lo que no vende (21/10/2026, él con Ayelen en 0: *"retirar libera stock, pero es un poco de lío, lo mejor es vender"*):** con el cupo de una cuenta en 0 y mercadería que vende esperando en la oficina, lo lento que ocupa el Full de esa cuenta (Timer, cortapelo a pila, panel solar…) se empuja a VENDER (descuento propio o escalera, frenos de siempre) antes que retirarlo. Retirar sólo si vender no alcanza y él lo pide.
 - Con varias cuentas posibles, decidir a mano mirando `cajasnotas`. Las que ML dio por entradas las marco yo (`cajallego`).
 - Caja para mandar ya de algo que vende fuerte y está en 0 en Full → al `pregunto:`.
 
