@@ -269,6 +269,9 @@ html,body{overflow-x:hidden;max-width:100%}html{overflow-x:clip}body{overscroll-
 
 /* ── SHARED PAGE HEADER ── */
 .page-wrap{max-width:1760px;margin:0 auto;padding:20px;overflow-x:clip}
+/* 21/10/2026, él: "el botón para ir para atrás queda muy arriba y no me deja clickear": en el iPhone (barra de estado translúcida) el
+   header quedaba debajo de la hora y la batería, donde no se puede tocar. Se baja lo que mide esa franja. */
+.page-wrap{padding-top:calc(20px + env(safe-area-inset-top,0px))}#page-home{padding-top:calc(14px + env(safe-area-inset-top,0px))}
 .page-header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:22px;padding-bottom:16px;border-bottom:1px solid var(--border)}
 .ph-left{display:flex;align-items:center;gap:12px}
 .back-btn{display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:8px;border:1px solid var(--border2);background:var(--surface);color:var(--muted);font-family:'DM Mono',monospace;font-size:.7rem;cursor:pointer;transition:all .15s;white-space:nowrap}
@@ -2918,7 +2921,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.77';
+const APP_VERSION='25.78';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2931,6 +2934,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.78',f:'21/10',h:'03:05',c:[{n:1,t:'En el iPhone el botón "← Inicio" (y todo el encabezado de cada página) quedaba debajo de la hora y la batería y no se podía tocar: ahora arranca debajo de esa franja.'}]},
   {v:'25.77',f:'21/10',h:'03:00',c:[{n:1,t:'Inicio: "🧠 Última vuelta de Claude" pasa abajo de las tarjetas.'}]},
   {v:'25.76',f:'21/10',h:'02:50',c:[{n:1,t:'Ventas de hoy: la barra de niveles se llena de a poco, tramo por tramo. El tramo que está en curso queda lleno a medias, con el color del último nivel que ya pasaste. Con cada venta nueva avanza un poquito desde donde estaba.'}]},
   {v:'25.75',f:'21/10',h:'02:25',c:[

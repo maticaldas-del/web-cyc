@@ -1114,6 +1114,9 @@ el precio de un candidato distinto con código parecido (se compara también por
   color y las que temblaban/ardían con ✦. `_vivaPaso` no dibuja. Chequear: un nivel nuevo de `.viva` no puede volver a pintar
   el fondo en modo discreto (la regla usa `[class*=lv-]`).
 
+### iPhone: el encabezado de cada página debajo de la barra de estado (21/10/2026, v25.78, pedido suyo)
+- **Qué es:** `.page-wrap` y `#page-home` suman `env(safe-area-inset-top)` arriba; antes "← Inicio" quedaba debajo de la hora (barra translúcida, `viewport-fit=cover`) y no se podía tocar. **Dónde vive:** index.html (CSS). **Qué chequear:** en la etapa 7, que nada tocable quede en la franja de arriba del teléfono (botones fijos, carteles con `top:0`).
+
 ### Inicio: "🧠 Última vuelta de Claude" abajo de las tarjetas (21/10/2026, v25.77, pedido suyo)
 - **Qué es:** `#home-vuelta` se movió de arriba (después de Ventas de hoy) a abajo de la grilla, antes de "en línea". **Dónde vive:** index.html. **Qué chequear:** que siga apareciendo y que no quede pegada a la grilla.
 
