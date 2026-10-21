@@ -21303,7 +21303,7 @@ async function main() {
         const cat = (await db.get('mlapi/listas/' + k)) || {}; const upd = {}; const hits = [];
         for (const [cod, e] of Object.entries(cat)) { if (!e || !e.n) continue; const n = String(e.n);
           let mot = null; if ((!NO_ES.test(n) || /aerosol|en lata/i.test(n)) && !/s\/\s*alcohol|sin alcohol|libre de alcohol|sin quitaesmalte|no aerosol/i.test(n)) for (const [re, m] of RE) if (re.test(n)) { mot = m; break; }
-          if (mot === 'desodorante (aerosol)' && /roll|barra|stick|crema|bolilla|\bgel\b|pie|talco|polvo|toallita|ambiente|auto|inodoro/i.test(n)) mot = null;
+          if (mot === 'desodorante (aerosol)' && /roll|barra|stick|crema|\bcr\.|bolilla|\bgel\b|pie|talco|polvo|toallita|ambiente|auto|inodoro|jab|splash/i.test(n)) mot = null;
           if (mot && e.noFull !== mot) { upd[cod + '/noFull'] = mot; hits.push([cod, n, mot]); } }
         const arm = (await db.get('cyc/listas_pedido/' + k)) || {}; const sacar = Object.keys(arm).filter((c) => Number(arm[c]) > 0 && (upd[c + '/noFull'] || (cat[c] || {}).noFull));
         console.log(`\n${k}: ${hits.length} nuevos no van a Full · ${Object.values(cat).filter((e) => e && e.noFull).length} ya marcados · ${sacar.length} cargados en el pedido se sacan${GOn ? '' : ' · PRUEBA: agregá ;go'}`);
