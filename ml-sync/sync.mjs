@@ -41708,7 +41708,11 @@ async function main() {
       const ac = await aplicarCerebro(db, cz, { tokens: tokP, aplica: true, autoprecio: apP });
       console.log(`\n✓ hechos: ${ac.hechos.length} · no se pudo: ${ac.fallidos.length} · sin anotar: ${ac.sinAnotar.length}`);
       // LA ESTRATEGIA DE ESTE PRECIO (17/10/2026): `#tag` si lo puse, si no se deduce del motivo.
-      for (const h of ac.hechos) { const fz = forzar[h.f.mla] || {}; const tg0 = fz.tag || tagDeMotivo(fz.motivo); let tg = (!tg0 && fz.piso) ? 'excepcion' : tg0; if (['techo', 'escasez'].includes(tg) && Number(h.a) < Number(h.de)) { console.log(`   ⚠️ ${h.f.mla}: bajó y la etiqueta decía ${ESTRATEGIAS[tg]} — queda 🪜 bajando (techo y escasez quieren decir que el precio sube)`); tg = 'bajando'; } const okT = await guardarEstrategia(db, h.f.mla, tg, fz.motivo, Date.now()); console.log(`   ${okT ? '🏷' : '⚠️ no quedó la'} estrategia ${ESTRATEGIAS[tg] || '↩️ vuelta (nombrada por la anterior)'} · ${h.f.mla}`); }
+      for (const h of ac.hechos) { const fz = forzar[h.f.mla] || {}; const tg0 = fz.tag || tagDeMotivo(fz.motivo); let tg = (!tg0 && fz.piso) ? 'excepcion' : tg0; if (['techo', 'escasez'].includes(tg) && Number(h.a) < Number(h.de)) { console.log(`   ⚠️ ${h.f.mla}: bajó y la etiqueta decía ${ESTRATEGIAS[tg]} — queda 🪜 bajando (techo y escasez quieren decir que el precio sube)`); tg = 'bajando'; } const okT = await guardarEstrategia(db, h.f.mla, tg, fz.motivo, Date.now()); console.log(`   ${okT ? '🏷' : '⚠️ no quedó la'} estrategia ${ESTRATEGIAS[tg] || '↩️ vuelta (nombrada por la anterior)'} · ${h.f.mla}`);
+        // 🪜 LA PRIMERA BAJA DE UNA ESCALERA ANOTA EL PRECIO QUE NO RINDIÓ (21/10/2026, él con el Centímetro Blanco: "está bajando sin
+        // techo"). Sin `cyc/techofreno` la línea de tiempo no dibuja la raya 🚧 y parece que baja a ciegas. Si ya hay uno de los últimos
+        // 30 días con un precio igual o más alto, no se pisa (los escalones siguientes bajan desde el mismo techo probado).
+        if (tg === 'bajando' && Number(h.a) < Number(h.de)) { try { const tf = await db.get('cyc/techofreno/' + h.f.mla); if (!(tf && Number(tf.probado) >= Number(h.de) && Date.now() - (Number(tf.ts) || 0) < 30 * 864e5)) { await db.set('cyc/techofreno/' + h.f.mla, { ts: Date.now(), probado: Math.round(Number(h.de)), volvio: Math.round(Number(h.a)), motivo: String(fz.motivo || 'escalera').slice(0, 300), cat: false, auto: true, fotoTs: Date.now() }); const rr = await db.get('cyc/techofreno/' + h.f.mla); console.log(`   ${rr && rr.probado === Math.round(Number(h.de)) ? '🚧 anotado' : '⚠️ no quedó anotado'} el precio que no rindió (${money(Number(h.de))}) · ${h.f.mla}`); } } catch { console.log(`   ⚠️ ${h.f.mla}: no pude anotar el precio que no rindió en techofreno`); } } }
       for (const h of ac.hechos) { const fz = forzar[h.f.mla] || {}; await escribirNota(h.f.mla, `${Number(h.a) > Number(h.de) ? 'Lo subí' : 'Lo bajé'} de ${money(h.de)} a ${money(h.a)}. ${fz.motivo || ''}`.trim(), { tipo: 'precio', de: h.de, a: h.a }); }
       // EXCEPCIONES A PROPÓSITO (12/10/2026): un precio que dejé abajo del 25% con `!piso` (remate, liquidar, sobrestock)
       // queda anotado con el precio exacto, para que el chequeo del peor caso de `planilla` no lo marque. Si después
@@ -44066,6 +44070,38 @@ async function main() {
       }
       const fr = (await db.get('cyc/techofreno')) || {};
       const ids = Object.keys(fr);
+      // 🪜 BAJANDO SIN TECHO ANOTADO (21/10/2026, él con el Centímetro Blanco: "está bajando sin techo" · "fijate si hay más como
+      // este"). Una escalera sale de una prueba (de techo o de escasez) que no rindió: el precio probado tiene que quedar en
+      // `cyc/techofreno` para que la línea de tiempo dibuje la raya 🚧 y se vea desde dónde baja. Lista las que están 🪜 sin eso.
+      try {
+        const est = (await db.get('cyc/estrategia')) || {}; const sinT = [];
+        for (const [mla, h] of Object.entries(est)) {
+          const ks = Object.keys(h || {}).map(Number).filter((n) => n > 0).sort((a, b) => b - a); const u = ks.length ? h[ks[0]] : null;
+          if (!u || u.t !== 'bajando' || fr[mla]) continue;
+          const l = links[mla] || {}; if (l.hidden || l.noVendemosMas) continue;
+          sinT.push(`   ${mla} · ${l.cuenta || '?'} · ${String(l.title || '').slice(0, 50)} · bajando desde el ${new Date(ks[0]).toLocaleDateString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })}${u.m ? ' · ' + String(u.m).slice(0, 160) : ''}`);
+        }
+        console.log(`=== 🪜 BAJANDO SIN EL PRECIO PROBADO ANOTADO · ${sinT.length} ===`);
+        sinT.forEach((x) => console.log(x));
+        if (sinT.length) console.log('Se anotan con techofreno:<MLA>=<precio probado>|motivo;go (por ml-sync).\n');
+        // 📏 SIN TECHO MARCADO (21/10/2026, regla suya: "todos los productos tienen que tener techo marcado, excepto los que tienen
+        // sobrestock, bajando por algún motivo puntual, o que todavía están buscando techo"). Activas y con stock cuyo último tag no es
+        // 📈 buscando techo, 📦 sobra, 📉 liquidando, 🧨 remate, 🪜 bajando ni 🔥 escasez (que también busca su precio), y sin techo
+        // anotado: ni 🏔️ en su historia de 60 días ni raya 🚧 (`techofreno`). Ojo: el 🔴 que la línea mide sola no se ve desde acá.
+        const EXC = new Set(['techo', 'sobra', 'liquidando', 'remate', 'bajando', 'escasez']); const sinM = {};
+        for (const [mla, l] of Object.entries(links)) {
+          if (!l || l.hidden || l.noVendemosMas || l.status !== 'active') continue;
+          if ((Array.isArray(l.subStatus) ? l.subStatus : [l.subStatus]).some((x) => /out_of_stock/.test(String(x || '')))) continue;
+          const h = est[mla] || {}; const ks = Object.keys(h).map(Number).filter((n) => n > 0).sort((a, b) => b - a); const u = ks.length ? h[ks[0]] : null;
+          if (u && EXC.has(u.t)) continue; if (fr[mla]) continue;
+          if (ks.some((k) => h[k] && h[k].t === 'techook' && Date.now() - k < 60 * 864e5)) continue;
+          const t = u ? u.t : 'sin tag'; (sinM[t] = sinM[t] || []).push(`   ${mla} · ${l.cuenta || '?'} · ${String(l.title || '').slice(0, 55)}`);
+        }
+        const nM = Object.values(sinM).reduce((a, x) => a + x.length, 0);
+        console.log(`=== 📏 ACTIVAS CON STOCK SIN TECHO MARCADO · ${nM} (por su tag de hoy) ===`);
+        for (const [t, xs] of Object.entries(sinM).sort((a, b) => b[1].length - a[1].length)) { console.log(` ${ESTRATEGIAS[t] || t} · ${xs.length}`); xs.forEach((x) => console.log(x)); }
+        console.log('');
+      } catch (er) { console.log('⚠️ no pude leer las estrategias: ' + (er.message || er)); }
       console.log(`=== FRENO DE TECHO: ¿CAMBIÓ EL MERCADO? · ${ids.length} frenada(s) ===`);
       if (!ids.length) { console.log('No hay ninguna. Se anotan con techofreno:<MLA>=<precio probado>|motivo;go al volver una prueba.'); return; }
       const DIAS = 30, SUBE = 0.08; let reabrir = 0;

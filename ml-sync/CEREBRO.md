@@ -178,6 +178,10 @@ La etapa 8 de la revisión (Reglas del cerebro, cada 7 días) mira que esto qued
   de ahí salvo sobra, sin reposición o stock antiguo. 🔴 **techo** = el precio más bajo arriba del 💰 donde, al 95%, no deja la misma
   plata. La raya 🚧 de una prueba vuelta dice "N% seguro" o "sin certeza". Subir arriba del 🔴 → decir por qué no le creo.
 - **🏔️ techo encontrado:** 🔒 sólo con `techo95` (95%); si no llega, vuelve a 📈. Corre en cada completa sobre las 🏔️ y las 🆕.
+- **📏 Todo producto tiene su techo marcado** (21/10/2026, regla suya): 🏔️, raya 🔴 o raya 🚧. Las únicas excepciones: 📦 sobra,
+  🪜 bajando por un motivo puntual (y ese motivo es el precio probado que no rindió, anotado en `techofreno`) o 📈 todavía buscándolo
+  (🔥 escasez también busca su precio). 🔒 La primera baja 🪜 de `decido` anota sola el precio que no rindió en `techofreno`.
+  `techofreno` (sin args, solo lee) lista 🪜 sin precio probado y 📏 activas con stock sin techo marcado: las dos se vacían en la completa.
 - **`techofreno`**: el freno de no volver a probar se reabre si el más barato ajeno sube 8%+, ya no hay ajenos abajo, ganamos la
   caja o pasan 30 días (sin catálogo, sólo a los 30).
 - Lista **📈 DICE TECHO/ESCASEZ Y NO SUBE**: se vacía en la vuelta (otro escalón para arriba, o el tag que corresponde).

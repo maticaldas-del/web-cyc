@@ -2730,7 +2730,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.60';
+const APP_VERSION='25.61';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2743,6 +2743,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.61',f:'21/10',h:'23:11',c:[{n:1,t:'🪜 Línea de tiempo: lo que baja en escalera dice desde qué precio (el que se probó y no rindió, con su raya 🚧) y de cuál no baja (💰 piso). Si ya se probó más caro, no dice más "techo: todavía no se sabe".'}]},
   {v:'25.60',f:'20/10',h:'22:57',c:[{n:3,t:'💲 Revisión de precios (etapa 1): las rayas 💰/🔴 de la línea de tiempo cuentan la plata por día NETA (trabajo, tope de H y plata parada), igual que la ficha y el robot, y no cuentan los días en que la publicación estaba pausada.'},{n:3,t:'🛒 Precio máximo de compra: resta el envío de Full del lado de los $33.000 del precio al que se va a vender (antes usaba el de hoy y podía prometer 25% y dar 0%).'},{n:2,t:'📉 "El 25% te da hasta $X" y "rematar al 12%" calculan con el cargo fijo de ML (antes quedaban varios puntos abajo de lo prometido).'},{n:2,t:'🥊 Caja ML en Rotación: "se puede bajar" sólo si queda arriba del piso en el peor caso, y lo dice al lado.'},{n:2,t:'🎨 La línea de tiempo de un color mide la escasez con el ritmo de ese color, y el 🧠 de un color muestra sólo sus notas.'},{n:1,t:'✍️ En Ventas, los cambios de precio que decidí yo dicen "Claude" y no "robot de noche".'}]},
   {v:'25.59',f:'21/10',h:'22:50',c:[{n:1,t:'📦 Armar caja: cada cuenta (botón, número y 📦) toma el color de su caja: verde sólo si es MANDALA YA, naranja si podés mandarla y rojo si podés esperar. Sin caja, gris.'}]},
   {v:'25.58',f:'21/10',h:'22:47',c:[{n:1,t:'🏠 Inicio: "Para cobrar" queda sólo con el número (se sacaron las líneas de cómo se calcula y lo ganado hasta hoy).'}]},
@@ -10553,7 +10554,13 @@ function lineaPintar(prodId){
       if(R.best&&R.best.aprox)_ray(R.best.p,'#eab308','4,3',`💰 piso ${fmt(R.best.p)} · provisorio`,`💰 Piso PROVISORIO: ${fmt(R.best.p)} es, por ahora, el precio que más plata por día dejó (${fmt(Math.round(R.best.pd))} por día · ${R.best.u} vendida${R.best.u===1?'':'s'} en ${R.best.dias} día${R.best.dias===1?'':'s'} con stock). Son pocos días para estar seguro: se corrige con cada venta. No se baja de acá salvo un problema.`,-3);
       else if(R.best)_ray(R.best.p,'#eab308','2,0',`💰 piso ${fmt(R.best.p)} · más plata`,`💰 Piso = el precio que más plata por día dejó: ${fmt(R.best.p)} → ${fmt(Math.round(R.best.pd))} por día (${R.best.u} vendidas en ${R.best.dias} días con stock). No se baja de acá salvo un problema (sobra stock, stock antiguo, ML lo pide). Entre el piso y el 🔴 techo es lo que falta probar.`,-3);
       if(!R.best&&!R.sobra)svg+=`<text x="${W-4}" y="${(L.pr[0]+21).toFixed(1)}" font-size="10" text-anchor="end" fill="var(--muted)">piso: todavía no vendió con stock en este período</text>`;
-      if(!R.techo&&R.best&&!R.sobra)svg+=`<text x="${W-4}" y="${(L.pr[0]+21).toFixed(1)}" font-size="10" text-anchor="end" fill="var(--muted)">${R.best.aprox?'techo: pocos días medibles (3+ u. en Full y con visitas)':'techo: todavía no se sabe (falta probar más caro)'}</text>`;}}
+      // 🪜 BAJANDO DICE DESDE DÓNDE Y HASTA DÓNDE (v25.60, 21/10/2026, él con el Centímetro Blanco: "está bajando sin techo"). La
+      // escalera sale de una prueba que no rindió: el precio probado (la raya 🚧, de `techofreno`) y el 💰 piso del que no baja.
+      // Y con una raya 🚧 ya no se dice "techo: todavía no se sabe (falta probar más caro)": más caro ya se probó.
+      const _baj=Object.keys(porMlaF).map(m=>estrategiaDe(m)).find(e=>e&&e.t==='bajando');
+      const _tPr=_techos.length?_techos[_techos.length-1].probado:0;
+      if(_baj&&!R.sobra&&!_prueba)svg+=`<text x="${W-4}" y="${(L.pr[0]+21).toFixed(1)}" font-size="10" text-anchor="end" fill="#fbbf24"><title>${('Bajando en escalera: '+(_tPr?'a '+fmt(_tPr)+' no rindió (raya 🚧), ':'')+'se baja de a un escalón (15% como mucho, uno cada 48 h) midiendo cada uno'+(R.best?', y nunca abajo del 💰 piso '+fmt(R.best.p)+', el precio que más plata por día dejó':'')+'.').replace(/[<>&]/g,'')}</title>🪜 bajando${_tPr?' desde '+fmt(_tPr):''}${R.best?' · no baja de '+fmt(R.best.p):''}</text>`;
+      else if(!R.techo&&R.best&&!R.sobra&&!_techos.length)svg+=`<text x="${W-4}" y="${(L.pr[0]+21).toFixed(1)}" font-size="10" text-anchor="end" fill="var(--muted)">${R.best.aprox?'techo: pocos días medibles (3+ u. en Full y con visitas)':'techo: todavía no se sabe (falta probar más caro)'}</text>`;}}
   // 🏔️ DÓNDE SE ENCONTRÓ EL TECHO (19/10/2026, él: "todos los que digan techo encontrado tienen que marcar en la línea dónde se encontró
   // el techo y por qué estás seguro"). Raya vertical verde el día de la anotación 🏔️ (la anota `techo95` sólo con 95% de seguridad)
   // y el porqué en el globito.

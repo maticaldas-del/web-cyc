@@ -86,6 +86,12 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   explican el precio → (a) 🎁 7 d después de la fecha, 🪜 14 d sin escalón nuevo, 🥊 30 d, después a 🔎 (b) duran hasta que los
   cambie · 5 candidatos, listas y máximo de compra con el peor caso (2% retención) → (a) sí (b) no · 6 plata parada de un stock
   compartido (gemela/repetidas) → (a) repartir por lo que vende cada una (b) dejarlo y no sumarlas.
+- **21/10/2026 · v25.61 · 🪜 bajando con techo marcado** (él con el Centímetro Blanco: *"está bajando sin techo"* · *"todos los productos
+  tienen que tener techo marcado, excepto los que tienen sobrestock, bajando por algún motivo puntual, o que todavía están buscando
+  techo"*). `decido` con 🪜 anota solo en `cyc/techofreno` el precio que no rindió (`auto:true`, no pisa uno de 30 días con precio
+  igual o más alto). `techofreno` sin args lista 🪜 sin precio probado y 📏 activas con stock sin techo marcado. Web: la línea dice
+  "🪜 bajando desde $X · no baja de $piso" y con raya 🚧 ya no dice "techo: todavía no se sabe". Qué chequear: las dos listas vacías
+  después de la completa; ninguna 🪜 sin raya 🚧 en la línea.
 - **21/10/2026 · F4 con 15 días (decisión 2b):** `frenosBajas` F4 pide 95% o visitas a la mitad sólo los primeros 15 días de una suba
   de 5%+ (`F4_ESPERA_DIAS`); de 15 a 60 días frena la baja si la suba deja igual o más plata por día que la ventana de antes (sin
   dato para medir, decide el 🧠). Chequear: el texto del freno dice cuál de los dos casos fue.
