@@ -720,10 +720,10 @@ body.light .est-chip{color:color-mix(in srgb,var(--ec) 50%,#000)}
   <div id="home-logo-wrap" class="home-logo" style="display:none"></div>
   <div style="display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:24px;margin:6px auto 16px;max-width:100%">
     <span id="home-dolar-logo" style="display:flex;align-items:center;justify-content:center;height:210px;width:min(640px,calc(100vw - 48px));overflow:hidden"></span>
-    <div id="home-dolar" style="padding:10px 22px;display:flex;align-items:center;gap:8px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.3);border-radius:14px">
+    <div id="home-dolar" style="padding:10px 22px;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:8px;max-width:100%;box-sizing:border-box;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.3);border-radius:14px">
       <span style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.12em">💵 Dólar actual</span>
       <span style="font-size:2rem;line-height:1;color:var(--green);font-family:'Syne',sans-serif;font-weight:800">$</span>
-      <input id="home-dolar-val" type="text" inputmode="numeric" title="Editá el dólar y apretá Enter (o salí del campo) para guardarlo" oninput="fmtMoneyInput(this)" onchange="saveTC(this.value)" onkeydown="if(event.key==='Enter')this.blur()" style="font-size:2rem;line-height:1.4;color:var(--green);font-family:'Syne',sans-serif;font-weight:800;background:transparent;border:none;border-bottom:2px dashed rgba(34,197,94,.5);width:150px;text-align:left;outline:none;padding:4px 2px 6px;cursor:text">
+      <input id="home-dolar-val" type="text" inputmode="numeric" title="Editá el dólar y apretá Enter (o salí del campo) para guardarlo" oninput="fmtMoneyInput(this);_dolarAncho(this)" onchange="saveTC(this.value)" onkeydown="if(event.key==='Enter')this.blur()" style="font-size:2rem;line-height:1.4;color:var(--green);font-family:'Syne',sans-serif;font-weight:800;background:transparent;border:none;border-bottom:2px dashed rgba(34,197,94,.5);width:150px;min-width:110px;flex-shrink:0;max-width:calc(100vw - 110px);text-align:left;outline:none;padding:4px 2px 6px;cursor:text">
     </div>
   </div>
   <!-- Arriba de todo CYC y el dólar; ahí nomás las ventas de hoy y el puntaje (29/09/2026, pedido suyo) -->
@@ -2733,7 +2733,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.63';
+const APP_VERSION='25.64';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2746,6 +2746,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.64',f:'21/10',h:'00:40',c:[{n:1,t:'💵 Inicio: el dólar ya no corta el último número; la casilla se agranda según lo que tiene adentro, en la PC y en el teléfono.'}]},
   {v:'25.63',f:'21/10',h:'00:13',c:[{n:1,t:'📊 Métricas: cada globito de los gráficos dice el % de diferencia del período actual (o de la proyección en los días que faltan) contra el período anterior y contra el año pasado, siempre, positivo o negativo. En el gráfico de % va en puntos.'}]},
   {v:'25.62',f:'21/10',h:'00:05',c:[{n:3,t:'📋 Revisión de datos (etapa 5): la ficha y la línea de tiempo dejaron de inventar: un día pausado no cuenta como día con stock, cada veredicto pide certeza, el stock que no se sabe sale en gris y una venta sin costo en un carrito ya no da pérdida.'},{n:2,t:'🔥 Los remates quedan con historia aunque se caiga la marca, las cancelaciones tardías corrigen su día, y una promo terminada sigue apareciendo en la línea de tiempo.'},{n:1,t:'📈 Línea de tiempo: el título va solo arriba y los botones abajo (no se corren); los globitos dicen la semana y el carrito.'}]},
   {v:'25.61',f:'21/10',h:'23:11',c:[{n:1,t:'🪜 Línea de tiempo: lo que baja en escalera dice desde qué precio (el que se probó y no rindió, con su raya 🚧) y de cuál no baja (💰 piso). Si ya se probó más caro, no dice más "techo: todavía no se sabe".'}]},
@@ -4319,7 +4320,16 @@ function updateHomeDolar(){
   if(document.activeElement===el)return; // no pisar el valor mientras se está editando
   const tc=curTC();
   el.value=tc?tc.toLocaleString('es-AR'):'';
+  _dolarAncho(el);
 }
+// La casilla del dólar se mide con lo que tiene adentro: con 150px fijos la letra Syne cortaba el último
+// número ("1.535" mide 154px en la PC). Se mide de nuevo cuando carga la letra (21/10/2026, lo marcó él).
+function _dolarAncho(el){
+  if(!el)return;
+  el.style.width='0px';
+  el.style.width=Math.max(110,el.scrollWidth+12)+'px';
+}
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>_dolarAncho(document.getElementById('home-dolar-val'))).catch(()=>{});
 // ── LA REVISIÓN DEL PANEL, POR ETAPAS (25/09/2026) ─────────────────────────────────────────────
 // Pedido suyo: "que me avise en la web de cyc, ese tiempo para acordarme". La revisión completa no
 // entraba en una ventana de 5 horas de tokens, así que se partió en seis etapas, UNA POR SEMANA
