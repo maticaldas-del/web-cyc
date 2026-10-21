@@ -54,6 +54,8 @@ body.light{
 /* etapa 7 (20/10/2026): en el iPhone con muesca o barra de abajo, lo fijo no queda tapado (sin muesca no cambia nada) */
 #fnav-btn{bottom:calc(22px + env(safe-area-inset-bottom,0px))}#fnav-menu{bottom:calc(82px + env(safe-area-inset-bottom,0px))}#theme-toggle{bottom:calc(80px + env(safe-area-inset-bottom,0px))}
 #fnav-menu.hidden{transform:scale(.85);opacity:0;pointer-events:none}
+/* el buscador del ☰ (7.15): un nombre largo no puede ensanchar el menú fuera de la pantalla */
+#fnav-menu{max-width:min(320px,calc(100vw - 44px))}.fnav-hit{min-width:0;width:100%}.fnav-hit span{flex:1;min-width:0}
 .fnav-item{display:flex;align-items:center;gap:10px;padding:9px 14px;min-height:40px;border-radius:9px;border:none;background:transparent;color:var(--text);font-family:'DM Mono',monospace;font-size:.8rem;cursor:pointer;text-align:left;transition:background .12s}
 .fnav-item:hover{background:var(--surface2)}
 .fnav-item.active-page{background:var(--sel-bg);color:var(--sel-tx);font-weight:700}
@@ -2283,7 +2285,7 @@ function startApp(){
     if(_extEntries.length)_applyStockEntries(_extEntries);
     document.getElementById('loading').style.display='none';
     const primeraVez=firstDataLoad;
-    if(firstDataLoad){firstDataLoad=false;goPage(_paginaDeHash()||'home');}   // #ventaprod = abrió tocando el aviso de una venta (o un acceso directo del ícono)
+    if(firstDataLoad){firstDataLoad=false;const _pg0=_paginaDeHash();currentPage=currentPage||'home';goPage('home');if(_pg0&&_pg0!=='home')goPage(_pg0);}   // #ventaprod = abrió tocando el aviso de una venta (o un acceso directo del ícono)
     // La primera carga se dibuja ya; las demás se juntan y respetan tu scroll (ver renderPronto).
     renderPronto(primeraVez);
   },err=>{
@@ -2453,7 +2455,7 @@ if('serviceWorker' in navigator)navigator.serviceWorker.addEventListener('messag
 const _PAGINAS_HASH={ventaprod:1,pedidos:1,oficina:1};
 function _paginaDeHash(){
   const h=String(location.hash||'').replace(/^#/,'');if(!_PAGINAS_HASH[h])return null;
-  try{history.replaceState(null,'',location.pathname+location.search);}catch(e){}
+  try{history.replaceState(history.state,'',location.pathname+location.search);}catch(e){}
   if(h==='ventaprod')try{vpLimpiarFiltros();}catch(e){}
   return h;
 }
@@ -3491,7 +3493,32 @@ function actualizarApp(){
 }
 
 /* ═══════════ PAGE ROUTING ═══════════ */
-function goPage(page){
+// EL "ATRÁS" DE ANDROID (decisión 7.14 de diseño, 21/10/2026, eligió la a): cada cambio de pantalla deja un paso en el
+// historial del navegador (sin cambiar la dirección), así el botón atrás del teléfono vuelve a la pantalla ANTERIOR y no
+// cierra la app. Antes de irse se guarda dónde estaba la pantalla (_pagScroll) y al volver con atrás se la deja ahí mismo.
+// Si hay una ventanita abierta (línea de tiempo, 🧠, ficha, hoja del producto), atrás primero la cierra.
+const _pagScroll={};
+const _MODALES_ATRAS=['linea-modal','ficha-modal','cerebro-modal','hoja-prod-modal'];   // de la de más arriba a la de más abajo
+let _histListo=false;
+function _histPush(page){
+  try{
+    if(!_histListo){history.replaceState({cycPage:currentPage||'home'},'');_histListo=true;}
+    history.pushState({cycPage:page},'');
+  }catch(e){}
+}
+window.addEventListener('popstate',ev=>{
+  try{
+    const abierto=_MODALES_ATRAS.map(id=>document.getElementById(id)).find(Boolean);
+    if(abierto){abierto.remove();history.pushState({cycPage:currentPage},'');return;}
+    try{if(typeof fnavOpen!=='undefined'&&fnavOpen){fnavOpen=false;_syncFnav();}}catch(e){}
+    const pg=(ev.state&&ev.state.cycPage)||'home';
+    if(document.getElementById('page-'+pg))goPage(pg,{atras:true});
+  }catch(e){}
+});
+function goPage(page,opt){
+  opt=opt||{};
+  // El historial: guardar dónde quedó la pantalla que se deja y anotar el paso (no al volver con atrás ni al redibujar la misma).
+  if(currentPage&&currentPage!==page){_pagScroll[currentPage]=window.scrollY;if(!opt.atras)_histPush(page);}
   if(page==='pedidos'){window._pedMomOpenG={};window._nipAbierto=false;}   // el pedido del momento arranca cerrado al entrar (08/10/2026)
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   const el=document.getElementById('page-'+page);
@@ -3509,7 +3536,14 @@ function goPage(page){
   if(page==='ajustes')enterAjustes();
   if(page==='inventario'){initFinViewSel();renderInv();renderProds();renderHist();loadFinInputs();updateArqueo();updateTotals();updateHdr();}
   if(page==='home'){try{renderHomeHoy();}catch(e){}checkCierrePendiente();renderHomeRevision();updateHomeDolar();renderPuntajeMes();renderHomeParejo();renderNcOfi();try{renderNcFacAviso();}catch(e){}}
-  if(page!=='home'){
+  if(opt.atras&&_pagScroll[page]!=null){
+    // Volvió con atrás: a donde estaba. Se reintenta un par de veces porque gráficos y listas terminan de dibujarse
+    // después; cualquier gesto suyo lo corta (igual que el ajuste de abajo).
+    let cancelado=false;const cancela=()=>{cancelado=true;};
+    ['wheel','touchstart','keydown','pointerdown'].forEach(ev=>window.addEventListener(ev,cancela,{once:true,passive:true}));
+    const y=_pagScroll[page];const ir=()=>{if(!cancelado&&currentPage===page)window.scrollTo({top:y,behavior:'instant'});};
+    ir();requestAnimationFrame(ir);setTimeout(ir,150);setTimeout(ir,450);
+  }else if(page!=='home'){
     // Al entrar a una página se baja el header para dejar el contenido arriba. OJO: esto solo puede
     // pasar en los primeros milisegundos. Antes había un MutationObserver que repetía el scroll cada
     // vez que cambiaba el DOM durante 800 ms: como los gráficos terminan de dibujarse después, si ya
@@ -23046,6 +23080,96 @@ window.addEventListener('orientationchange',()=>{if(_fsChart)setTimeout(()=>{try
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){const fs=document.getElementById('chart-fs');if(fs&&fs.classList.contains('open'))cerrarGraficoFS();}});
 /* La barra de filtros de Métricas queda FIJA en su lugar. Antes se escondía sola al scrolear
    (transform:translateY) y volvía al subir: eso era lo que la hacía "salirse de su casilla". */
+/* ═══════════ LA HOJA DEL PRODUCTO Y EL BUSCADOR DEL ☰ (decisión 7.15 de diseño, 21/10/2026, eligió la a) ═══════════
+   Se escribe el nombre (o un color, el código de Paraguay, el número MLA) en el ☰ y sube una hoja con lo esencial del producto
+   y un botón para cada lugar donde vive: la línea de tiempo, la ficha médica, el 🧠, sus ventas, su pedido, mandarlo y contarlo.
+   Busca con LA búsqueda del panel (buscaCoincide + textosDeProd). La hoja sólo muestra números que ya calcula el panel:
+   stockOf (Full), stockOficina, enTransito (en camino), ventas de 30 días (las mismas ventas de Ventas x Producto, sin
+   canceladas) y el margen de hoy de margenMLDe. No calcula nada nuevo. */
+function fnavBuscar(){
+  const inp=document.getElementById('fnav-busca'),box=document.getElementById('fnav-busca-res');if(!inp||!box)return;
+  const q=inp.value.trim();
+  if(!q){box.innerHTML='';return;}
+  const hits=(state.products||[]).filter(p=>buscaCoincide(q,textosDeProd(p)))
+    .sort((a,b)=>(normTxt(a.name).startsWith(normTxt(q))?0:1)-(normTxt(b.name).startsWith(normTxt(q))?0:1)||(a.name||'').localeCompare(b.name||'','es',{sensitivity:'base'}));
+  box.innerHTML=hits.length?hits.slice(0,8).map(p=>`<button class="fnav-item fnav-hit" onclick="event.stopPropagation();hojaProdAbrir('${p.id}')">📦 <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(p.name||'—')}</span></button>`).join('')
+    +(hits.length>8?`<div style="font-size:.62rem;color:var(--muted);padding:2px 14px">y ${hits.length-8} más: escribí otra palabra</div>`:'')
+    :`<div style="font-size:.66rem;color:var(--muted);padding:4px 14px">Ningún producto con «${_esc(q)}»</div>`;
+}
+// Lo que se vendió del producto en los últimos 30 días (unidades), sin canceladas: las mismas ventas de Ventas x Producto.
+function _hojaVend30(p){
+  const now=new Date(),fk=dateToKey(new Date(now.getTime()-29*864e5)),tk=dateToKey(now);let u=0;
+  Object.keys(state.ventaprod||{}).forEach(k=>{if(k<fk||k>tk)return;Object.values(state.ventaprod[k]||{}).forEach(v=>{if(v&&ventaEsDe(v,p)&&!_esCancelada(v))u+=Number(v.qty)||0;});});
+  return u;
+}
+function hojaProdAbrir(prodId){
+  const p=prodById(prodId);if(!p)return;
+  try{fnavOpen=false;_syncFnav();}catch(e){}
+  let m=document.getElementById('hoja-prod-modal');
+  if(!m){m=document.createElement('div');m.id='hoja-prod-modal';
+    m.style.cssText='position:fixed;inset:0;z-index:8900;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center';
+    m.onclick=e=>{if(e.target===m)m.remove();};document.body.appendChild(m);}
+  // Las publicaciones del producto: cuentas donde vive y la principal (viva, de Full si se puede) para la ficha y el 🧠.
+  const pubs=Object.entries(state.mllinks||{}).filter(([k,e])=>e&&e.prodId===p.id&&!e.ignored&&/^MLA/i.test(k));
+  const viva=pubs.filter(([,e])=>(e.status||'')!=='closed');
+  const ppal=(viva.find(([,e])=>(e.status||'')==='active')||viva[0]||pubs[0]||[])[0]||'';
+  const ctas=[...new Set(viva.map(([,e])=>e.cuenta).filter(c=>c&&LOCS.includes(c)))];
+  const tr=enTransito();const camino=LOCS.reduce((a,l)=>a+(tr[p.id+'__'+sid(l)]||0),0);
+  const full=stockOf(p),ofi=stockOficina(p),v30=_hojaVend30(p);
+  const alc=v30>0?Math.round((full+camino)/(v30/30)):null;
+  let mg=null;try{const r=margenMLDe(p);mg=r&&r.margen!=null&&isFinite(r.margen)?r.margen:null;}catch(e){}
+  let est='';try{if(ppal)est=estrategiaChip(estrategiaDe(ppal));}catch(e){}
+  const f=fotoDeProducto(p);
+  const foto=f&&f.url?`<img src="${_esc(f.url)}" alt="" style="width:58px;height:58px;border-radius:12px;object-fit:cover;flex-shrink:0;background:var(--surface2)" onerror="this.remove()">`
+    :`<div style="width:58px;height:58px;border-radius:12px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:1.6rem;flex-shrink:0">📦</div>`;
+  const n=(v,l,c)=>`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:8px 4px;text-align:center;min-width:0"><b style="font:800 1.1rem 'Syne',sans-serif;display:block;${c?'color:'+c:''}">${v}</b><span style="font-size:.6rem;color:var(--muted)">${l}</span></div>`;
+  const ped=[...(state.pedidos||[]),...(state.pedidos_py||[])].find(x=>x&&x.prodId===p.id);
+  const enPy=ped&&(state.pedidos_py||[]).includes(ped);
+  const b=(ic,t,sub,on,prim,attrs)=>`<button class="btn" onclick="${on}"${attrs||''} style="display:flex;align-items:center;gap:8px;padding:11px 12px;border-radius:12px;min-height:48px;text-align:left;white-space:normal;${prim?'grid-column:1/-1;background:color-mix(in srgb,var(--green) 14%,var(--surface2));border:1px solid color-mix(in srgb,var(--green) 40%,transparent);color:var(--text)':''}"><span style="font-size:1.1rem">${ic}</span><span>${t}<small style="display:block;font-size:.6rem;color:var(--muted)">${sub}</small></span></button>`;
+  const ida=`'${p.id}'`;
+  m.innerHTML=`<div style="width:100%;max-width:560px;max-height:86vh;overflow-y:auto;background:var(--surface);border:1px solid var(--border2);border-bottom:none;border-radius:20px 20px 0 0;padding:10px 16px calc(18px + env(safe-area-inset-bottom,0px));box-shadow:0 -10px 40px rgba(0,0,0,.45)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="width:44px;height:5px;border-radius:3px;background:var(--border2);margin:0 auto"></div>
+      <button class="btn" onclick="document.getElementById('hoja-prod-modal').remove()" style="font-size:.7rem;padding:3px 10px" title="Cerrar">✕</button></div>
+    <div style="display:flex;gap:12px;align-items:center">${foto}<div style="min-width:0"><b style="font:800 1rem 'Syne',sans-serif;line-height:1.2;display:block;overflow-wrap:anywhere">${_esc(p.name||'—')}</b>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:5px;font-size:.62rem;align-items:center">${est}${ctas.map(c=>`<span style="padding:1px 7px;border-radius:999px;border:1px solid var(--border2);color:var(--muted)">${_esc(c)}</span>`).join('')}${(p.variantes||[]).length?`<span style="color:var(--muted)">🎨 ${(p.variantes||[]).length} colores</span>`:''}</div></div></div>
+    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:14px 0 12px">
+      ${n(fmtN(full),'en Full')}${n(fmtN(ofi),'en tu oficina')}${n(fmtN(camino),'en camino')}
+      ${n(fmtN(v30),'vendió en 30 d')}${n(alc==null?'—':'≈'+alc+' d','le alcanza',alc!=null&&alc<14?'var(--red)':'')}${n(mg==null?'—':Math.round(mg)+'%','deja hoy',mg==null?'':pctColor(mg))}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      ${b('📈','Línea de tiempo','stock, ventas, precio y techo, día por día',`lineaAbrir(${ida},event)`,true)}
+      ${ppal?b('📋','Ficha médica','todo lo que se sabe',`fichaAbrir('${ppal}',event)`):''}
+      ${b('🧠','Por qué','las notas de Claude','cerebroAbrir(this,event)',false,` data-p="${p.id}"${ppal?` data-m="${ppal}"`:''}`)}
+      ${b('🏷️','Sus ventas','en Ventas x Producto',`hojaIr(${ida},'ventas')`)}
+      ${b('🚚','Su pedido',ped?`${enPy?'Paraguay':esPedidoPaulvic(ped)?'Paulvic':'Bs As'} · comprar ${fmtN(Number(ped.cantidad)||0)} u.`:'no está en Pedidos',`hojaIr(${ida},'pedido')`)}
+      ${b('📦','Mandarlo',ctas.length?'Armar caja · '+_esc(ctas[0]):'Armar caja',`hojaIr(${ida},'caja')`)}
+      ${b('🔢','Contarlo','en la oficina',`hojaIr(${ida},'contar')`)}
+    </div></div>`;
+}
+// Ir desde la hoja a la pantalla de ese producto, con el buscador de esa pantalla ya puesto en su nombre.
+function hojaIr(prodId,donde){
+  const p=prodById(prodId);if(!p)return;
+  const m=document.getElementById('hoja-prod-modal');if(m)m.remove();
+  const pon=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v;};
+  const nom=p.name||'';
+  if(donde==='ventas'){goPage('ventaprod');try{vpLimpiarFiltros();}catch(e){}pon('vp-search',nom);try{renderVentaProd();}catch(e){}return;}
+  if(donde==='pedido'){
+    const ped=[...(state.pedidos||[]),...(state.pedidos_py||[])].find(x=>x&&x.prodId===p.id);
+    // Sin pedido, la solapa sale del origen de la ficha (Paraguay / Paulvic / Bs As), la misma regla que arma los pedidos.
+    const sec=ped?((state.pedidos_py||[]).includes(ped)?'paraguay':esPedidoPaulvic(ped)?'paulvic':'bsas')
+      :(p.origen==='py'?'paraguay':esPedidoPaulvic({prodId:p.id,producto:p.name})?'paulvic':'bsas');
+    goPage('pedidos');
+    ['ped-search','ped-py-search','ped-paulvic-search'].forEach(id=>pon(id,nom));
+    const btn=document.getElementById(sec==='paraguay'?'tab-py-btn':sec==='paulvic'?'tab-paulvic-btn':'tab-bsas-btn');
+    try{if(btn)setPedidoSection(sec,btn);else renderPedidos();}catch(e){}
+    return;
+  }
+  if(donde==='caja'){
+    const ctas=[...new Set(Object.values(state.mllinks||{}).filter(e=>e&&e.prodId===p.id&&!e.ignored&&(e.status||'')!=='closed').map(e=>e.cuenta).filter(c=>c&&LOCS.includes(c)))];
+    pon('ofi-caja-search',nom);irACaja(ctas[0]||'');return;
+  }
+  if(donde==='contar'){ofiTab='contar';goPage('oficina');pon('ofi-contar-search',nom);try{setOfiTab('contar',document.getElementById('tab-ofi-contar'));}catch(e){}return;}
+}
 /* ═══════════ FLOATING NAV ═══════════ */
 const FNAV_PAGES=[
   {id:'home',      icon:'🏠', label:'Inicio'},
@@ -23285,6 +23409,11 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
 <!-- Floating nav -->
 <button id="fnav-btn" onclick="toggleFnav(event)">☰</button>
 <div id="fnav-menu" class="hidden">
+  <!-- 🔎 buscador de productos (decisión 7.15 de diseño, 21/10/2026): cada resultado abre la hoja del producto -->
+  <div id="fnav-busca-wrap" onclick="event.stopPropagation()" style="padding:2px 2px 6px;border-bottom:1px solid var(--border);margin-bottom:4px">
+    <input id="fnav-busca" type="search" placeholder="🔎 Buscar producto…" oninput="fnavBuscar()" autocomplete="off" style="width:100%;padding:8px 10px;border-radius:9px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-family:'DM Mono',monospace;font-size:.8rem">
+    <div id="fnav-busca-res"></div>
+  </div>
   <button class="fnav-item" data-page="home"       onclick="goPage('home');fnavOpen=false;_syncFnav()">🏠 Inicio</button>
   <button class="fnav-item" data-page="resumen"    onclick="goPage('resumen');fnavOpen=false;_syncFnav()">📋 Resumen</button>
   <button class="fnav-item" data-page="inventario" onclick="goPage('inventario');fnavOpen=false;_syncFnav()">🧮 Arqueo</button>
