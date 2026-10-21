@@ -2593,3 +2593,8 @@ de esfuerzo que tengo yo"*. Las ventas las piensa SIEMPRE un ayudante con `effor
 venta; antes sólo con más de ~5 publicaciones y si no las pensaba la sesión con su nivel); los raros (🧭/🔀/💭) siempre un ayudante
 `effort:"high"`. Vive en `ml-sync/CEREBRO.md` (bloque 🔬, paso 4 y §2). **Qué chequear:** en cada vuelta, que el log tenga la llamada
 al ayudante con `effort` y que `ventasvistas` diga `esf=max`.
+
+**21/10/2026 · etapa 7 (diseño) · 🎉 primera venta dice días con stock (v25.91).** Él: *"no quiero que diga hace cuánto está publicada,
+sino cuántos días llevó de stock hasta la primera venta"*. `_vhDiasStock` (index.html) usa `cyc/stockhist` del color o del producto en esa
+cuenta (`desde`/`desdePrev` anterior a la venta). Sin fecha vista entrar dice "o más"; sin dato, nada. **Qué chequear:** si el producto se
+repuso después de la venta, `desdePrev` ya se borró y el cartel queda sin días (no inventa).

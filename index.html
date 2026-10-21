@@ -2905,7 +2905,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.90';
+const APP_VERSION='25.91';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2918,6 +2918,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.91',f:'21/10',h:'15:30',c:[{n:1,t:'🎉 Primera venta de una publicación: ya no dice hace cuánto está publicada sino cuántos días tuvo stock en Full hasta venderse ("o más" si no se vio entrar la mercadería).'}]},
   {v:'25.90',f:'21/10',h:'14:50',c:[{n:3,t:'💰 Estrategia nueva "buscando el de más ganancia": cuando ya hay techo 🔴 y el precio está arriba de la línea 💰, el robot no baja hasta estar 95% seguro de que ese precio deja menos plata por día que el 💰. Si deja más, la línea 💰 sube sola a ese precio.'}]},
   {v:'25.89',f:'21/10',h:'16:10',c:[{n:2,t:'📋 Dai Nippon (y las listas de Bs As): sólo se puede pedir lo que está en la lista del mes. Lo que no está queda en Pedidos pero sin casilla ("no está en la lista del dd/mm"). Al lado de la casilla, el precio de la lista del mes.'}]},
   {v:'25.88',f:'21/10',h:'16:30',c:[{n:2,t:'📦 Armar caja: el cupo de Full es una barra por tipo (chicos/grandes): lo que ya está en Full sólido, lo que va en camino más claro, esta caja transparente y lo que se pasa en rojo.'},{n:2,t:'El cartel "Mandala ya / Podés esperar" es desplegable y compara lo que cuesta cada camino: lo que dejás de vender si esperás 7 días (productos que se cortan en Full) contra lo que sale de más mandarla a medias. Ya no compara la ganancia de la caja contra el envío.'},{n:1,t:'Se fueron el desplegable de cajas a medio armar y el texto de ayuda de la caja.'}]},
@@ -8166,6 +8167,19 @@ function _vhRapido(arr,i){
   for(let j=i;j>=0;j--){const d=ts-arr[j].ts;if(d>37*D864)break;if(d<7*D864)u7+=arr[j].q;else u30+=arr[j].q;}
   const base=u30/30,rk=ritmoRapido(base,u7,7);return (rk.rapido&&base>0)?{u7,base}:null;
 }
+// 🎉 Cuántos días tuvo stock en Full hasta la primera venta (pedido suyo del 21/10, en vez de "publicada hace N días"): sale de
+// `cyc/stockhist` del color (o del producto) en esa cuenta, la entrada de stock (`desde`, o `desdePrev` si después se agotó y volvió)
+// más reciente anterior a la venta. Si el robot no la vio ENTRAR (`aprox`), es un mínimo ("N días o más"). Sin dato no dice nada.
+function _vhDiasStock(v,ts){
+  const loc=LOCS.find(l=>sid(l).toLowerCase()===sid(String(v.cuenta||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')).toLowerCase());
+  if(!loc||!v.prodId)return '';
+  const sh=state.stockhist||{},vr=_vhVar(v);
+  const h=(vr&&sh[invKeyV(v.prodId,loc,vr)])||sh[invKey(v.prodId,loc)];if(!h)return '';
+  let best=null;[[h.desde,h.aprox],[h.desdePrev,h.aproxPrev]].forEach(([d,a])=>{d=Number(d)||0;if(d>0&&d<=ts&&(!best||d>best.d))best={d,a};});
+  if(!best)return '';const n=Math.max(0,Math.round((ts-best.d)/D864));
+  if(best.a!==false)return 'con stock en Full hace '+n+' días o más';
+  return n<1?'vendió el mismo día que entró a Full':'tardó '+n+' día'+(n===1?'':'s')+' con stock en Full';
+}
 function ventaHechoDe(grp){
   if(!grp||grp.cancelada||!grp.items)return null;
   const I=_ventaHechosIdx(),pri={primera:4,ultima:3,volvio:2,acelero:1};let best=null;
@@ -8175,7 +8189,7 @@ function ventaHechoDe(grp){
     const m=String(v.mla||''),arr=/^MLA\d+$/.test(m)?I.mla[m]:null;
     const i=arr?arr.findIndex(x=>x.gk===grp.gid):-1;
     if(i===0){const alta=Number(((state.mllinks||{})[m]||{}).altaTs)||0;
-      if((alta&&alta>=I.t0)||ts-I.t0>=90*D864)put({t:'primera',ico:'🎉',txt:'primera venta de esta publicación',sub:alta&&alta<=ts?'publicada hace '+Math.round((ts-alta)/D864)+' días':'',c:'var(--lv-joya)'});}
+      if((alta&&alta>=I.t0)||ts-I.t0>=90*D864)put({t:'primera',ico:'🎉',txt:'primera venta de esta publicación',sub:_vhDiasStock(v,ts),c:'var(--lv-joya)'});}
     else if(i>0){
       const gap=ts-arr[i-1].ts;
       if(gap>=30*D864)put({t:'volvio',ico:'🔁',txt:'volvió a vender después de '+Math.round(gap/D864)+' días',sub:'',c:'var(--green)'});
