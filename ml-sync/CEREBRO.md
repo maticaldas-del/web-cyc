@@ -148,7 +148,7 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
   rechaza un precio sin estrategia; `!piso` solo = 🛡️ excepción.
 - **Tags:** 🔥 `escasez` · ⏳ `sinrepo` · 📈 `techo` · 🏔️ `techook` (🔒 sólo lo anota `techo95` al 95%) · 🪜 `bajando` · ↘️
   `volviendo` · ↗️ `desobra` · 📦 `sobra` · 💸 `descuento` (sólo nosotros) · 🏷️ `promo` (ML pone plata; `entrarpromo` elige solo) ·
-  📉 `liquidando` · 🧨 `remate` (sólo él) · 🛡️ `excepcion` · 🆕 `nuevo` · 🎁 `fecha` · 🥊 `caja` · 💳 `gemela`.
+  📉 `liquidando` · 🧨 `remate` (sólo él) · 🛡️ `excepcion` · 🆕 `nuevo` · 🎁 `fecha` · 🥊 `caja`. (💳 `gemela` NO es estrategia, regla suya del 21/10: el robot la anota como dato y la Premium muestra la estrategia de su Clásica. 🏷️/💸 son estrategia sólo si los entramos nosotros; un cupón o promo que puso ML en una venta no cambia la estrategia del precio.)
 - Lo que "vuelve" se nombra por el tag anterior (`pasajeDe`); ↗️/↘️ son un paso: con 7 días en ese tag entra a 🔎 sin afinar.
 - 🔒 Un `decido` que baja con `#techo` o `#escasez` se guarda 🪜 bajando (techo y escasez quieren decir que el precio sube).
 - **La nota en 4 partes:** QUÉ HICE (de $X a $Y) · POR QUÉ (estrategia + el dato) · QUÉ ESPERO VER (números) · SI NO PASA (días y

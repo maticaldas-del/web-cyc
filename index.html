@@ -2923,7 +2923,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.80';
+const APP_VERSION='25.81';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2936,6 +2936,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.81',f:'21/10',h:'09:10',c:[{n:1,t:'Ventas: vuelve a salir 🔬 analizada · nivel de esfuerzo (no salía en ninguna venta). Sólo se marca 💳 Premium (la Clásica ya no sale), sólo 🥇 1ª venta desde el cambio, y 💳 gemela ya no figura como estrategia: la Premium muestra la estrategia de su Clásica. Una venta con cupón o promo que puso ML muestra la estrategia real del precio (ej. 📈 buscando techo) y aparte "🏷️ ML puso $X".'}]},
   {v:'25.80',f:'21/10',h:'08:50',c:[{n:1,t:'Pedidos Bs As: se sacó el botón 🛒 Lista para el mayorista (no se usaba).'}]},
   {v:'25.79',f:'21/10',h:'03:10',c:[{n:1,t:'Inicio en el celular: sin el logo de CYC y el dólar al final de todo. Lo primero que se ve son las ventas de hoy. En la PC queda igual.'}]},
   {v:'25.78',f:'21/10',h:'03:05',c:[{n:1,t:'En el iPhone el botón "← Inicio" (y todo el encabezado de cada página) quedaba debajo de la hora y la batería y no se podía tocar: ahora arranca debajo de esa franja.'}]},
@@ -12124,7 +12125,7 @@ function prodDeVenta(v){return (v&&v.prodId)?(prodById(v.prodId)||prodByName(v&&
 // *"quiero que cada precio tenga un tag (…) y que al venderse ese producto en ventas x producto diga qué tag tiene"*. La pone
 // Claude con cada precio (`cyc/estrategia/<MLA>/<ts>`, historia). Cada venta muestra la última estrategia ANTERIOR a esa venta,
 // así una venta vieja dice la estrategia que tenía ese día. MISMA LISTA EN sync.mjs (ESTRATEGIAS).
-const ESTRATEGIA_UI={sindecidir:['⚪','sin estrategia','var(--es-neu)','Todavía sin estrategia: el cerebro la tiene que decidir (buscar techo, escasez, sobra…). Desde el 19/10 no existe un precio "base": todo precio tiene su estrategia.'],noanotada:['▫️','no se anotaba','var(--es-neu-vieja)','Antes de que se empezara a anotar la estrategia de cada precio: no se sabe cuál era (no es que el cerebro tenga que decidir algo).'],agotado:['⏸️','sin stock','var(--es-neu-stock)','Sin stock en Full: el precio espera la reposición.'],escasez:['🔥','escasez','var(--es-sube-esc)','Se estira el stock hasta que llegue la próxima caja: precio alto para que dure.'],sinrepo:['⏳','sin reposición','var(--es-sube-espera)','No se consigue: el precio va para que el stock se venda en 4 meses al máximo posible.'],techo:['📈','buscando techo','var(--es-sube)','Prueba de suba: se busca el precio que más plata por día deja.'],liquidando:['📉','liquidando','var(--es-baja-liq)','Se remata a propósito (sobra stock, stock antiguo o no vende): el % bajo es buscado.'],caja:['🥊','ganar la caja','var(--es-baja-caja)','Bajado para ganar la caja de compra de ML.'],promo:['🏷️','promo','var(--es-esp-promo)','En una promo de Mercado Libre donde ML también pone plata.'],descuento:['💸','descuento','var(--es-esp-desc)','Descuento puesto sólo por nosotros (precio tachado): ML no pone nada.'],fecha:['🎁','fecha especial','var(--es-esp-fecha)','Precio pensado para una fecha (Día de la Madre, Navidad…).'],excepcion:['🛡️','excepción','var(--es-neu-exc)','Abajo del 25% a propósito (barrera de $33.000 u otro motivo explicado en el 🧠).'],sobra:['📦','sobra stock','var(--es-baja-sobra)','Hay más stock del que se vende antes de que ML cobre stock antiguo: se baja (aunque quede abajo del 25%) para que salga lo que sobra, y vuelve al precio normal cuando queda lo justo. El cerebro se juzga contra no hacer nada.'],nuevo:['🆕','lanzamiento','var(--es-sube-nuevo)','Producto nuevo: arranca ~20% arriba del precio que se cree correcto y queda 7 días ahí de verdad. Si no vende, cada bajada va como descuento con el precio de lanzamiento tachado (real porque existió).'],prueba:['🧪','prueba','var(--es-esp-prueba)','Precio de prueba: se cambió para medir cómo responde. (La prueba del tachado del 21/10 se canceló el 20/10: no se baja algo que vende bien sólo para medir.)'],techook:['🏔️','techo encontrado','var(--es-sube-ok)','La suba siguiente no rindió: queda en el último precio que más plata por día dejó. Se vuelve a probar si cambia la competencia o a los 30 días.'],bajando:['🪜','bajando','var(--es-baja-esc)','Bajando en escalera, midiendo cada escalón: la escasez o la prueba de techo no vendió a ese precio y se baja de a poco, nunca abajo del último que vendía.'],volviendo:['↘️','volviendo al normal','var(--es-vuelve)','Llegó la reposición, pasó la fecha o volvió a conseguirse: el precio vuelve del alto al normal buscando el punto medio que más deja.'],desobra:['↗️','volviendo de sobra','var(--es-sube-vuelve)','Ya no sobra stock: el precio vuelve a subir al normal.'],remate:['🧨','remate total','var(--es-baja-remate)','Rematado a cualquier precio (abajo de 0%) porque lo pediste vos.'],gemela:['💳','gemela con cuotas','var(--es-esp-gemela)','Premium gemela: la misma publicación con cuotas sin interés, al precio que deja la misma plata neta que la Clásica. Comparte el stock con la Clásica.']};
+const ESTRATEGIA_UI={sindecidir:['⚪','sin estrategia','var(--es-neu)','Todavía sin estrategia: el cerebro la tiene que decidir (buscar techo, escasez, sobra…). Desde el 19/10 no existe un precio "base": todo precio tiene su estrategia.'],noanotada:['▫️','no se anotaba','var(--es-neu-vieja)','Antes de que se empezara a anotar la estrategia de cada precio: no se sabe cuál era (no es que el cerebro tenga que decidir algo).'],agotado:['⏸️','sin stock','var(--es-neu-stock)','Sin stock en Full: el precio espera la reposición.'],escasez:['🔥','escasez','var(--es-sube-esc)','Se estira el stock hasta que llegue la próxima caja: precio alto para que dure.'],sinrepo:['⏳','sin reposición','var(--es-sube-espera)','No se consigue: el precio va para que el stock se venda en 4 meses al máximo posible.'],techo:['📈','buscando techo','var(--es-sube)','Prueba de suba: se busca el precio que más plata por día deja.'],liquidando:['📉','liquidando','var(--es-baja-liq)','Se remata a propósito (sobra stock, stock antiguo o no vende): el % bajo es buscado.'],caja:['🥊','ganar la caja','var(--es-baja-caja)','Bajado para ganar la caja de compra de ML.'],promo:['🏷️','promo','var(--es-esp-promo)','En una promo de Mercado Libre donde ML también pone plata.'],descuento:['💸','descuento','var(--es-esp-desc)','Descuento puesto sólo por nosotros (precio tachado): ML no pone nada.'],fecha:['🎁','fecha especial','var(--es-esp-fecha)','Precio pensado para una fecha (Día de la Madre, Navidad…).'],excepcion:['🛡️','excepción','var(--es-neu-exc)','Abajo del 25% a propósito (barrera de $33.000 u otro motivo explicado en el 🧠).'],sobra:['📦','sobra stock','var(--es-baja-sobra)','Hay más stock del que se vende antes de que ML cobre stock antiguo: se baja (aunque quede abajo del 25%) para que salga lo que sobra, y vuelve al precio normal cuando queda lo justo. El cerebro se juzga contra no hacer nada.'],nuevo:['🆕','lanzamiento','var(--es-sube-nuevo)','Producto nuevo: arranca ~20% arriba del precio que se cree correcto y queda 7 días ahí de verdad. Si no vende, cada bajada va como descuento con el precio de lanzamiento tachado (real porque existió).'],prueba:['🧪','prueba','var(--es-esp-prueba)','Precio de prueba: se cambió para medir cómo responde. (La prueba del tachado del 21/10 se canceló el 20/10: no se baja algo que vende bien sólo para medir.)'],techook:['🏔️','techo encontrado','var(--es-sube-ok)','La suba siguiente no rindió: queda en el último precio que más plata por día dejó. Se vuelve a probar si cambia la competencia o a los 30 días.'],bajando:['🪜','bajando','var(--es-baja-esc)','Bajando en escalera, midiendo cada escalón: la escasez o la prueba de techo no vendió a ese precio y se baja de a poco, nunca abajo del último que vendía.'],volviendo:['↘️','volviendo al normal','var(--es-vuelve)','Llegó la reposición, pasó la fecha o volvió a conseguirse: el precio vuelve del alto al normal buscando el punto medio que más deja.'],desobra:['↗️','volviendo de sobra','var(--es-sube-vuelve)','Ya no sobra stock: el precio vuelve a subir al normal.'],remate:['🧨','remate total','var(--es-baja-remate)','Rematado a cualquier precio (abajo de 0%) porque lo pediste vos.']};   // 21/10/2026: 💳 gemela salió de la lista: no es una estrategia de precio (ver estrategiaDe)
 // 19/10/2026, eligió 1a 2a 3a: "↩️ corrección" ya no existe. Lo viejo anotado así toma el nombre del pasaje según el tag ANTERIOR
 // (misma tabla que `pasajeDe` del robot), y cada chip dice "de X" cuando la estrategia anterior era otra.
 // 1.1a (21/10/2026): volver de una prueba de techo (o corregir después de una 🏔️) es 🪜 bajando: el 🏔️ lo marca SÓLO techo95 al 95%.
@@ -12142,8 +12143,11 @@ function _lineaSemSvg(lane,ks,X,bw,Wd,S,junto){const ws=Object.keys(S).sort();if
     if(prevY!=null)out+=`<line x1="${x0.toFixed(1)}" y1="${prevY.toFixed(1)}" x2="${x0.toFixed(1)}" y2="${yy.toFixed(1)}" stroke="#a78bfa" stroke-width="1" opacity=".5"/>`;
     out+=`<g style="cursor:help"><title>Semana del lunes ${fw(w)}: ganancia ${fmt(Math.round(o.t))}${inc?` · ${o.n} de 7 días en el gráfico (incompleta)`:''}</title><rect x="${x0.toFixed(1)}" y="${lane[0]}" width="${Math.max(1,x1-x0).toFixed(1)}" height="${lane[1]}" fill="transparent"/><line x1="${x0.toFixed(1)}" y1="${yy.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${yy.toFixed(1)}" stroke="${o.t<0?'var(--red)':'#a78bfa'}" stroke-width="2.4"${inc?' stroke-dasharray="4,3" opacity=".7"':junto?' opacity=".75"':''}/></g>`;prevY=yy;});
   out+=`<text x="${Wd-2}" y="${lane[0]+(junto?20:9)}" font-size="10" text-anchor="end" fill="${junto?'#a78bfa':'var(--muted)'}">${fmt(Math.round(mx))}/semana</text>`;return out;}
-function estrategiaDe(mla,ts){
-  if(!mla)return null;const h=(state.estrategia||{})[mla]||{};const t=Number(ts)||Date.now();
+function estrategiaDe(mla,ts,_g){
+  if(!mla)return null;
+  // 21/10/2026, él: "gemela con cuotas no es una estrategia, es algo nuevo que se hizo y queda". La Premium gemela sigue el precio
+  // de su Clásica, así que muestra la estrategia de la Clásica (y nunca 💳 como estrategia).
+  {const gd=String(((state.mllinks||{})[mla]||{}).gemelaDe||'');if(gd&&gd!==mla&&!_g)return estrategiaDe(gd,ts,1);}const h=(state.estrategia||{})[mla]||{};const t=Number(ts)||Date.now();
   const okT=x=>x&&(ESTRATEGIA_UI[x.t]||x.t==='correccion'||x.t==='base');
   // Historia ordenada (más nueva primero) con las viejas "correccion" ya nombradas por la anterior.
   const ks=Object.keys(h).map(Number).filter(n=>n>0&&okT(h[n])).sort((x,y)=>x-y);const hs=[];let pv=null;
@@ -12182,9 +12186,12 @@ function estrategiaChip(e){if(!e)return'';const u=ESTRATEGIA_UI[e.t];if(!u)retur
 // cambio relacionado a la estrategia que se tomó y al poner el cursor arriba que explique lo sucedido y qué resolución se tomó".
 // Lo escribe el robot en `cyc/ventaanalisis/<día>/<id>` al cerrar cada vuelta (`ventasvistas`). Una venta sin análisis no muestra nada.
 const ESF_NOMBRE={low:'bajo',medium:'medio',high:'alto',xhigh:'muy alto',max:'máximo'};
-let _vaIdx={ref:null,m:new WeakMap()};
-function _ventaAnalisisDe(v){const VP=state.ventaprod||{};if(_vaIdx.ref!==VP){const m=new WeakMap();for(const [dk,dd] of Object.entries(VP))for(const [id,x] of Object.entries(dd||{}))if(x&&typeof x==='object')m.set(x,dk+'/'+id);_vaIdx={ref:VP,m};}
-  const k=_vaIdx.m.get(v);if(!k)return null;const [dk,id]=k.split('/');return ((state.ventaanalisis||{})[dk]||{})[id]||null;}
+// 21/10/2026: Ventas x Producto arma la lista con COPIAS ({...v,_dateKey}) y el índice por objeto no las encontraba nunca: ningún
+// 🔬 salía. Ahora también busca por la firma de la venta (día, venta, publicación y hora), que la copia conserva.
+let _vaIdx={ref:null,m:new WeakMap(),f:new Map()};
+const _vaFirma=(v,dk)=>[dk||v._dateKey||'',v.saleId||'',v.numVenta||'',v.mla||'',v.ts||''].join('|');
+function _ventaAnalisisDe(v){const VP=state.ventaprod||{};if(_vaIdx.ref!==VP){const m=new WeakMap(),f=new Map();for(const [dk,dd] of Object.entries(VP))for(const [id,x] of Object.entries(dd||{}))if(x&&typeof x==='object'){m.set(x,dk+'/'+id);f.set(_vaFirma(x,dk),dk+'/'+id);}_vaIdx={ref:VP,m,f};}
+  const k=_vaIdx.m.get(v)||(v&&v._dateKey?_vaIdx.f.get(_vaFirma(v)):null);if(!k)return null;const [dk,id]=k.split('/');return ((state.ventaanalisis||{})[dk]||{})[id]||null;}
 function analisisVentaHTML(items){const vs=[];const vistos=new Set();
   for(const v of (items||[])){const a=_ventaAnalisisDe(v);if(!a)continue;const key=[a.cambio?1:0,a.t||'',a.m||'',a.esf||''].join('|');if(vistos.has(key))continue;vistos.add(key);vs.push({a,v});}
   return vs.map(({a,v})=>{const esf=ESF_NOMBRE[a.esf]||a.esf||'';const u=a.t&&ESTRATEGIA_UI[a.t]?ESTRATEGIA_UI[a.t]:null;
@@ -12205,9 +12212,14 @@ function estrategiaPromoAjuste(e,mla,v){if(!e||(e.t!=='promo'&&e.t!=='descuento'
 // 19/10/2026, él: "que sólo salgan tags: si es precio tachado y ponemos todo nosotros es descuento, si es promo y ml pone algo es
 // promo". Si la venta tuvo promo o cupón (`cyc/promoventa`), el tag de ESA venta es 🏷️ promo (ML puso algo) o 💸 descuento (sólo
 // nosotros), y la estrategia que tenía el precio queda como "· de X". El cartel dorado ya no sale (vpPromoLabel devuelve '').
-function estrategiaVentaHTML(v){if(!v||!v.mla)return'';let e=estrategiaPromoAjuste(estrategiaDe(v.mla,Number(v.ts)||0),v.mla,v);
-  const pv=vpPromoDe([v]);if(pv&&e&&e.t!=='promo'&&e.t!=='descuento'){const de=e.t!=='sindecidir'&&e.t!=='noanotada'?e.t:(e.de||null);e={t:pv.ml>0?'promo':'descuento',m:'vendida con '+(pv.ml>0?'promo (ML puso '+fmt(Math.round(pv.ml))+')':'descuento nuestro')+(e.m?' · '+e.m:''),ts:e.ts,de};}
-  return estrategiaChip(e);}
+// 21/10/2026, él con las Cartas Casino ("dice promo · de 📈, no entiendo, ¿promo es una estrategia?"): promo/descuento es
+// estrategia sólo cuando la DECIDIMOS nosotros (entrarpromo). Una venta que tuvo un cupón o una promo que ML puso por su cuenta no
+// cambia la estrategia del precio: el chip dice la estrategia real (📈 buscando techo…) y la promo va aparte, en un chip gris.
+function estrategiaVentaHTML(v){if(!v||!v.mla)return'';const e=estrategiaPromoAjuste(estrategiaDe(v.mla,Number(v.ts)||0),v.mla,v);
+  const pv=vpPromoDe([v]);let extra='';
+  if(pv&&e&&e.t!=='promo'&&e.t!=='descuento'){const tt=(pv.ml>0?'Esta venta tuvo una promo o cupón de ML: ML puso '+fmt(Math.round(pv.ml))+(pv.s>0?' y nosotros '+fmt(Math.round(pv.s)):'')+'.':'Esta venta tuvo un descuento que pusimos nosotros ('+fmt(Math.round(pv.s))+').')+' No es la estrategia del precio: ésa es la del chip de al lado.';
+    extra=` <span style="font-size:.62rem;padding:1px 6px;border-radius:4px;border:1px solid var(--border2);color:var(--muted);white-space:nowrap" title="${tt.replace(/"/g,'&quot;')}">${pv.ml>0?'🏷️ ML puso '+fmt(Math.round(pv.ml)):'💸 '+fmt(Math.round(pv.s))+' nuestro'}</span>`;}
+  return estrategiaChip(e)+extra;}
 function nombreDeVenta(v){const p=prodDeVenta(v);return p?p.name:((v&&v.prod)||'');}
 // ── LOS CAMBIOS DE PRECIO DE ESA PUBLICACIÓN, AL LADO DE CADA VENTA (24/09/2026) ──
 // Pedido suyo: *"yo quiero ver los aumentos diarios que efecto tienen en las ventas diarias"*.
@@ -12380,7 +12392,7 @@ function ventaNroHTML(items){
   const vistos=new Set(),out=[];
   for(const v of (items||[])){
     if(!v||vistos.has(v.mla))continue;vistos.add(v.mla);
-    const r=ventaNroDesdeCambio(v);if(!r||r.n>2)continue;
+    const r=ventaNroDesdeCambio(v);if(!r||r.n>1)continue;   // 21/10/2026, él: "sacar lo de 2da venta, solo la primera"
     const d=new Date(r.c.ts),f=String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0');
     const tt=`El precio cambió el ${f} de ${fmt(r.c.de)} a ${fmt(r.c.a)}: ésta es la ${r.n===1?'primera':'segunda'} compra a ese precio. Cada venta es un dato: la 1ª dice que a ese precio vende, la 2ª lo confirma.`;
     out.push(`<span style="font-size:.62rem;padding:1px 6px;border-radius:4px;border:1px solid ${r.n===1?'rgba(34,197,94,.45)':'rgba(56,189,248,.45)'};color:${r.n===1?'var(--green)':'#38bdf8'};white-space:nowrap" title="${tt.replace(/"/g,'&quot;')}">${r.n===1?'🥇 1ª':'🥈 2ª'} venta desde el cambio</span>`);
@@ -13371,7 +13383,8 @@ function renderVentaProd(){
         const ct=c>1?`${c} cuotas${v.cuotasSI?' s/interés':''}`:c===1?'1 pago':'';
         return [tn,ct].filter(Boolean).join(' · ')+'|'+(lt==='gold_pro'?1:0)+'|'+(v.cuotasSI?1:0);}).filter(Boolean))];
         // Colores (20/10/2026, él: "premium en dorado" y "clásica como estaba antes, muchos colores si no"): Premium dorado, Clásica gris.
-        return vs.map(x=>{const [t,pr,si]=x.split('|');const col=pr==='1'?'#eab308':'var(--muted)';
+        // 21/10/2026, él: "las cuotas en transparente sacarlas, solo mostrar las premium como están": la Clásica no se muestra.
+        return vs.filter(x=>x.split('|')[1]==='1').map(x=>{const [t,pr,si]=x.split('|');const col=pr==='1'?'#eab308':'var(--muted)';
           const tt=(pr==='1'?'Se vendió por la publicación PREMIUM (con cuotas). ':t.startsWith('Clásica')?'Se vendió por la publicación CLÁSICA. ':'')+(si==='1'?'El interés de las cuotas lo pagamos nosotros (cuotas sin interés).':/cuotas/.test(t)?'Pagó en cuotas con interés: el interés lo pagó el comprador.':'');
           return `<span style="font-size:.62rem;padding:1px 6px;border-radius:4px;border:1px solid ${pr==='1'?'rgba(234,179,8,.5)':'var(--border2)'};color:${col};white-space:nowrap" title="${tt}">💳 ${t}</span>`;}).join(' ');})();
       const analisisLabel=analisisVentaHTML(grp.items);   // 🔬 análisis del robot (otra sesión, 21/10)
