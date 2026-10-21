@@ -888,6 +888,9 @@ sabemos que da y que no"* → toda lista se mide contra ML, también las que com
 y el esfuerzo de cada parte queda fijo (CEREBRO sección 2): ayudantes de la completa y revisor en contra en max, ayudante de raros
 de las cortas en Alto, el chat con el nivel que él elija. No se cambia sin que él lo diga.
 
+## 🧠 EL CEREBRO REHECHO Y LAS REGLAS DURAS EN EL CÓDIGO (21/10/2026, él: "a, dale" y "fijate si es necesario rehacer el cerebro (…) manejalo")
+Después del Cuba Platinum (bajado sin techo con toda la info) y del Adaptador 8 en 1 (bajado de golpe y abajo del piso). `CEREBRO.md` rehecho: cada regla una vez, la más nueva, marcada 🔒 (freno en el código) o 🧠 (pensar); los choques que son decisión suya están en su sección 0b con la regla provisoria. Frenos nuevos en `frenosBajas` (sync.mjs, usada por `decido` y `entrarpromo`): lo nuevo sin 🏔️ · escalera ≤15% (25% escasez) · un escalón cada 48 h (12 h escasez) · una suba no se deshace sin 95% · no abajo del 💰 piso · descuento sin sobra. Excepciones con `!sintecho` `!golpe` `!sincerteza` `!bajopiso` `!nosobra` y "EXCEPCIÓN: …" en el motivo. `#techook` sólo por `techo95`. **Regla: toda regla nueva "nunca/sólo si" que se pueda medir va al código, y REEMPLAZA la de su tema en el CEREBRO.**
+
 ## 📋 LA LISTA ÚNICA DEL CEREBRO: `ml-sync/CEREBRO.md` (13/10/2026, pedido suyo)
 
 Él: *"no quiero que te olvides las cosas que agregamos a cerebro (...) me gustaría que tengas una lista de TODO lo que
