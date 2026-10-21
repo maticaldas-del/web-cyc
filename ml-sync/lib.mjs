@@ -20,17 +20,28 @@ export async function fbSignIn(apiKey, email, password) {
 // El idToken de Firebase caduca a la ~1h. Para corridas largas (backfill),
 // pasamos `reauth` (una función que vuelve a loguear y devuelve un idToken
 // nuevo): ante un 401, renovamos el token y reintentamos una vez.
+export const dbConteo = { get: 0, reint: 0, fallos: 0, rutas: [] };
 export function makeDB(dbUrl, idToken, reauth) {
   const base = dbUrl.replace(/\/$/, '');
   let token = idToken;
   const url = (p) => `${base}/${p}.json?auth=${token}`;
+  // 21/10/2026: la base contestó 500 en varias lecturas de una revisión (ventas, nosubir, ficha) y la revisión decidió igual con
+  // datos a medias. Ahora una LECTURA que falla por 5xx o por red se reintenta 3 veces (1 s, 3 s, 7 s) y, si igual falla, se anota en
+  // `dbConteo` y al terminar la corrida sale "⚠️ DATOS INCOMPLETOS" (ver sync.mjs): con eso la revisión no decide. Las escrituras
+  // no se reintentan solas (podrían duplicarse).
   async function req(path, opts, method) {
-    let r = await fetch(url(path), opts);
-    if (r.status === 401 && reauth) {
-      token = await reauth();
-      r = await fetch(url(path), opts);
+    const esLect = method === 'get'; let r = null, err = null;
+    for (const espera of esLect ? [0, 1000, 3000, 7000] : [0]) {
+      if (espera) { dbConteo.reint++; await new Promise((ok) => setTimeout(ok, espera)); }
+      try {
+        r = await fetch(url(path), opts); err = null;
+        if (r.status === 401 && reauth) { token = await reauth(); r = await fetch(url(path), opts); }
+        if (r.ok || r.status < 500) break;
+      } catch (e) { err = e; r = null; }
     }
-    if (!r.ok) throw new Error(`DB ${method} ${path}: ${r.status}`);
+    if (esLect) dbConteo.get++;
+    if (!r || !r.ok) { if (esLect) { dbConteo.fallos++; if (dbConteo.rutas.length < 15) dbConteo.rutas.push(String(path).split('/').slice(0, 3).join('/') + ' (' + (r ? r.status : 'red') + ')'); }
+      throw new Error(`DB ${method} ${path}: ${r ? r.status : (err && err.message) || 'sin respuesta'}`); }
     return r.json();
   }
   const body = (value) => ({ headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(value) });

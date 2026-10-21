@@ -6,7 +6,7 @@
 // Requiere secrets: ML_CLIENT_ID, ML_CLIENT_SECRET,
 //   FIREBASE_API_KEY, FIREBASE_DB_URL, FIREBASE_BOT_EMAIL, FIREBASE_BOT_PASSWORD
 
-import { fbSignIn, makeDB, mlRefresh, mlGet, ML_API, tapaIdsLargos, mlConteo, mlConteoTxt } from './lib.mjs';
+import { fbSignIn, makeDB, mlRefresh, mlGet, ML_API, tapaIdsLargos, mlConteo, mlConteoTxt, dbConteo } from './lib.mjs';
 import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 
 // LO PRIVADO VIAJA CIFRADO (20/10/2026, etapa 4, él eligió la 1a): el repo y sus registros son PÚBLICOS, así que las listas de
@@ -56,6 +56,8 @@ process.on('SIGINT', () => _alCortar('SIGINT'));
 process.on('SIGTERM', () => _alCortar('SIGTERM'));
 // A4 (21/10/2026): al terminar, toda corrida (vuelta del ciclo o comando) dice cuántas consultas le hizo a ML. Sólo si hizo alguna.
 process.on('exit', () => { try { if (mlConteo.get || mlConteo.refresh) console.log('\n' + mlConteoTxt()); } catch { /* informativo */ } });
+// 21/10/2026: si alguna lectura de la base falló aun con reintentos, la corrida lo grita al final: con datos a medias NO se decide nada.
+process.on('exit', () => { try { if (dbConteo.fallos) console.log(`\n⚠️⚠️ DATOS INCOMPLETOS: ${dbConteo.fallos} lectura(s) de la base fallaron aun reintentando (${dbConteo.rutas.join(' · ')}). NO DECIDIR NADA CON ESTA CORRIDA: volver a correrla.`); else if (dbConteo.reint) console.log(`\n(base: ${dbConteo.reint} lectura(s) reintentadas, todas salieron bien)`); } catch { /* informativo */ } });
 // ETAPA 4 (20/10/2026): el ciclo de 2 minutos mira `CORTAR` ANTES de empezar cada tanda de escrituras
 // (ventas de cada cuenta · vínculos · stock · etiquetas · cajas) y, si cancelaron la corrida, sale con 130
 // sin empezar la siguiente. Entre una tanda y otra no hay ninguna escritura a medias: lo que falta lo hace

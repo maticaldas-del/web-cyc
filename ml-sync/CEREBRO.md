@@ -40,6 +40,7 @@ al código; lo que es pensar queda acá, y una regla dura ("nunca", "sólo si") 
 | 2 | **Dato dudoso → no se toca el precio esa vuelta** (⚠️ de `raros`) | 🧠 |
 | 3 | **Frenos que no se discuten:** ML la tiene frenada · variantes de UNA publicación, todas o ninguna · techo $650.000 · liquidando no se sube · releer de ML después de cambiar | 🔒 |
 | 4 | **Nunca abajo de 0%** (sólo él lo abre: `!bajocero`, y sólo en `entrarpromo`) | 🔒 |
+| 4b | **SIN LÍNEA DE TECHO NO SE BAJA** (21/10/2026, él: *"nunca puede bajar si no hay línea de techo y si no hay línea de techo tiene que buscar techo hasta que esté 95% o más seguro de que ése es el techo"*). Línea = 🔴 de las rayas o 🏔️ de techo95. Sin línea: 📈 buscar techo (subir). Afuera sólo sobra, sin reposición, liquidando, remate y la salida de una escasez | 🔒 F7 · lista 🔎 |
 | 5 | **Lo nuevo no se baja sin 🏔️ al 95%** (primera tanda en Full de menos de 30 d, o 🆕 lanzamiento). Ganar la caja NO es excepción | 🔒 F1 |
 | 6 | **No llegar a pagar stock antiguo** (120 d lo chico, 60 lo grande/Tenders; apuntar a ~100) | 🧠 (la lista 💸 lo trae) |
 | 7 | **Escasez: se sube** para que dure hasta que vuelva a haber. "Escasez" siempre = el precio sube | 🧠 + la lista 📈 |
@@ -185,6 +186,14 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
   `espera` más de 30 días.
 
 ## 6 · TECHO (📈 → 🏔️)
+- 🔒 **PRIMERO, LA LÍNEA DE TECHO (21/10/2026, regla suya, después del Persea y del Aer Jasmín):** en cada publicación que se mira
+  (cada venta, cada renglón de lista) la PRIMERA pregunta es *¿tiene 🔴 techo al 95% (rayas) o 🏔️ de techo95?* Si NO: la estrategia es
+  📈 buscar techo y el precio SUBE (salto grande), salvo sobra, sin reposición, liquidando, remate o escasez. "Ya probé techo una vez",
+  "volviendo al normal" o "está bien a este precio" NO alcanzan. Bajar sin línea no se puede (F7). Una baja vieja que deshizo una
+  prueba sin certeza (`bajastecho`) se vuelve a abrir: se retoma la prueba.
+- 🔒 **Un precio no es 🔴 techo si otro MÁS ALTO medido dejó más plata por día** (21/10, Persea: 🔴 en $14.360 con $14.850 mejor).
+- 🔒 **⚠️ DATOS INCOMPLETOS = no se decide.** Si una corrida termina con "⚠️⚠️ DATOS INCOMPLETOS" (la base no contestó aun reintentando)
+  o la ficha sale incompleta, esa vuelta no cambia precios: se vuelve a correr la lectura.
 - **Todo lo que vende sin techo conocido se prueba para arriba**, todas juntas. Afuera: escasez, sobra (+90 d), liquidando, mis
   promos, regalables en las 2 semanas antes de su fecha, frenadas por ML.
 - **Cómo:** 🔒 **siempre un salto grande, nunca de a poco** (21/10/2026, regla suya: *"cuando buscan techo siempre dar un salto
