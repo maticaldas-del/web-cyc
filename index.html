@@ -2726,7 +2726,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.56';
+const APP_VERSION='25.57';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2739,6 +2739,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.57',f:'21/10',h:'22:30',c:[{n:1,t:'🏠 Inicio: en "Para cobrar" se sacó el renglón "En <mes> cobran lo que dejó <mes anterior> · ya retiraron · quedan".'}]},
   {v:'25.56',f:'21/10',h:'22:24',c:[{n:2,t:'🛒 Paraguay, cuántas de cada nuevo: barato (hasta US$15) → 3 · caro (más de US$60) → 1 · el resto → 2. Ya no mira las vendidas (no se cargan más).'},{n:1,t:'🔁 Revisión: etapa nueva 8 · Reglas del cerebro. Va cada 7 días, adelante de las otras cuando le toca. Ajustes muestra la fecha real de cada etapa.'}]},
   {v:'25.55',f:'20/10',h:'22:10',c:[{n:2,t:'📈 Línea de tiempo: la raya 🚧 de un precio probado dice si es segura. Roja "ya no vende · N% seguro" sólo con 95%; si no, naranja punteada "no vendió · sin certeza" (se puede volver a probar).'}]},
   {v:'25.54',f:'20/10',h:'21:15',c:[{n:2,t:'🔎 Los buscadores encuentran sin tilde, palabra por palabra y por color, título de ML, número de publicación o código de Paraguay ("sabanas gris", "termometro").'},{n:2,t:'📱 Teléfono: los colores de Pedidos ya no quedan aplastados, los números grandes no se cortan, botones 🧠 📈 más grandes para el dedo, las flechas ‹ › juntas y quietas, y los ⓘ se pueden tocar para leerlos.'},{n:2,t:'🗑️ Pedidos: cambiar de Bs As a Paraguay, de solapa o marcar "no lo consigo" pregunta antes; la ✕ tiene ↩ Deshacer.'},{n:1,t:'☀️ Tema claro: el logo, los colores del % y las estrategias se leen; JOYA con un solo dorado.'},{n:1,t:'🧭 Inicio ya no queda dibujado arriba de cada pantalla, la ficha abre la línea de tiempo adelante, las cajas para mandar de Inicio llevan a esa cuenta, y textos viejos que hablaban del robot corregidos.'},{n:1,t:'📲 En Android, dejando apretado el ícono de CYC: Ventas de hoy, Pedidos y Armar caja.'}]},
@@ -22233,20 +22234,17 @@ function _homeCobroHtml(f){
     const P=calcPuntajeMes(ym),cb=cobroProxMes(P);
     const [py,pm]=ym.split('_').map(Number);
     const sigLbl=MONTHS[pm%12]+' '+(pm===12?py+1:py);
-    const antYM=pm===1?`${py-1}_12`:`${py}_${String(pm-1).padStart(2,'0')}`;
-    const antLbl=MONTHS[(pm+10)%12],mesCorto=MONTHS[pm-1];
-    let cbAnt=null;try{cbAnt=cobroProxMes(calcPuntajeMes(antYM));}catch(e){}
-    const falta=cbAnt?cbAnt.tercio-cb.yaPorSocio:null;
-    const _avAnt=cbAnt?_gastosFaltanAviso(antYM,antLbl):'',_avEste=P.esActual?'':_gastosFaltanAviso(ym,mesCorto);
+    const mesCorto=MONTHS[pm-1];
+    const _avEste=P.esActual?'':_gastosFaltanAviso(ym,mesCorto);
     const pr=P.esActual?cobroProyMes(ym):null;
     if(pr)return `<div style="font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)">Para cobrar en ${sigLbl} · cada uno · proyección a fin de ${mesCorto.toLowerCase()}</div>
       <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.5rem;color:${pr.mes>0?'var(--text)':'var(--red)'}">${fmt(pr.mes)}</div>
       <div style="font-size:.66rem;color:var(--muted);line-height:1.45">Ventas al ritmo de ${mesCorto} (${fmt(pr.rMes)}/día) hasta el ${pr.diasMes} · menos los gastos del mes (${fmt(pr.gEsp)}${pr.gEsp>pr.gastos?', lo del mes pasado: faltan cargar':''}) · ÷ 3<br>Ya ganado hasta hoy: ${fmt(cb.tercio)} c/u (${fmt(cb.gan)} ÷ 3)</div>
-      ${cbAnt?`<div style="font-size:.7rem;margin-top:6px;line-height:1.45">En ${mesCorto} cobran lo que dejó ${antLbl}: <b>${fmt(cbAnt.tercio)} c/u</b>${cb.yaPorSocio>0?` · ya retiraron ${fmt(cb.yaPorSocio)} c/u · ${falta>=0?`<span style="color:var(--green)">quedan ${fmt(falta)} c/u</span>`:`<span style="color:var(--red)">se retiró de más ${fmt(-falta)} c/u</span>`}`:''}</div>${_avAnt}`:''}${_avEste}`;
+      ${_avEste}`;   // 21/10/2026, él: sacar "En <mes> cobran lo que dejó <mes anterior>" de Inicio ("ya lo sabemos")
     return `<div style="font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)">Para cobrar en ${sigLbl} · cada uno${P.esActual?' · va hasta hoy':''}</div>
       <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.5rem;color:${cb.tercio>0?'var(--text)':'var(--red)'}">${fmt(cb.tercio)}</div>
       <div style="font-size:.66rem;color:var(--muted);line-height:1.45">Ganancia real de CYC en ${mesCorto}${P.esActual?' hasta hoy':''} ${fmt(cb.gan)} ÷ 3 (CYC, vos y tu papá)</div>
-      ${cbAnt?`<div style="font-size:.7rem;margin-top:6px;line-height:1.45">En ${mesCorto} cobran lo que dejó ${antLbl}: <b>${fmt(cbAnt.tercio)} c/u</b>${cb.yaPorSocio>0?` · ya retiraron ${fmt(cb.yaPorSocio)} c/u · ${falta>=0?`<span style="color:var(--green)">quedan ${fmt(falta)} c/u</span>`:`<span style="color:var(--red)">se retiró de más ${fmt(-falta)} c/u</span>`}`:''}</div>${_avAnt}`:''}${_avEste}`;
+      ${_avEste}`;   // 21/10/2026, él: sacar "En <mes> cobran lo que dejó <mes anterior>" de Inicio ("ya lo sabemos")
   }catch(e){return '<span style="color:var(--muted);font-size:.7rem">No pude calcularlo.</span>';}
 }
 // PARA RETIRAR HASTA HOY (30/09/2026). Regla suya: "los 3 cobremos lo mismo: CYC, papá y yo". Corrección suya

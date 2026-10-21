@@ -826,6 +826,8 @@ el precio de un candidato distinto con código parecido (se compara también por
     decisión de compra, no código. 11 (dinero que rinde en MP) lo mira él en la app.
 
 ## 7 · DISEÑO (domingo)
+- **21/10/2026 · v25.57 · Inicio → Para cobrar sin "En <mes> cobran lo que dejó <mes anterior>"** (él: *"sacar eso del inicio, ya que lo
+  sabemos"*). `_homeCobroHtml` queda con lo que se cobra el mes que viene y lo ganado hasta hoy. Chequear: no volver a ponerlo.
 
 - **⏳ LAS 30 DECISIONES DE DISEÑO DEL 20/10/2026 ESPERAN SU RESPUESTA** (él: *"dejamos las respuestas para más tarde. acordate"*).
   Recordárselas y aplicar lo que elija. (a) = la recomendada. Las maquetas vivían en el scratchpad (se pierden con el contenedor;
