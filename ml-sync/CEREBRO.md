@@ -22,6 +22,13 @@ cambió desde la decisión anterior, que ya está en su ficha), no se rehace el 
 La de las 08:52 además mira lo que no depende de las ventas (pedidos de todo el catálogo, cajas, lo que no vende 📏/🔎/📦, juicios del
 supervisor, promos a fondo, fotos de candidatos): eso NO se saca, porque lo que no vende nunca dispara una revisión de venta.
 
+**🏔️ EN CADA VENTA, LO PRIMERO ES LA LÍNEA DE TECHO (21/10/2026, regla suya; manda sobre cualquier prompt de tarea).** Después del
+Persea y del Aer Jasmín (bajados sin techo, y la revisión de prueba los dio por buenos): por cada publicación que vendió, antes de
+cualquier otra cosa, mirar en su ficha si tiene 🔴 techo al 95% (rayas) o 🏔️ de techo95. **Si no lo tiene, la decisión es 📈 buscar
+techo (subir con salto grande)**, salvo sobra, sin reposición, liquidando, remate o escasez, y el texto del `ventasvistas` lo dice.
+"Ya probó techo", "va volviendo al normal" o "está bien a este precio" NO alcanzan. Si la ficha o la corrida dicen DATOS INCOMPLETOS,
+esa venta no se decide: se vuelve a leer. Ver §0 fila 4b y §6.
+
 **Las marcas:**
 - 🔒 **freno en el código**: no se puede romper. `decido`/`entrarpromo`/`tag` lo rechazan solos y dicen la regla. Para pasar
   a propósito hay una bandera (`!…`) que vale SÓLO si el motivo dice **"EXCEPCIÓN: …"** con el porqué.
