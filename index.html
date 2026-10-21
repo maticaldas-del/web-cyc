@@ -2923,7 +2923,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.84';
+const APP_VERSION='25.85';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2936,6 +2936,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.85',f:'21/10',h:'15:05',c:[{n:1,t:'Gastos: arriba de la lista de lo que falta cargar sale el total gastado del mes.'},{n:2,t:'Línea de tiempo: un precio ya no se marca 🔴 techo si otro precio más alto dejó más plata por día (pasaba con el Persea).'}]},
   {v:'25.84',f:'21/10',h:'14:50',c:[{n:1,t:'Vuelve como antes: cada pantalla se abre debajo de Inicio, y subiendo con el dedo llegás a Inicio para entrar a otra tarjeta (sin tener que tocar ← Inicio).'}]},
   {v:'25.83',f:'21/10',h:'14:40',c:[{n:1,t:'🇵🇾 Pedidos hechos: cada tarjeta dice ✅ gastos completos o ⚠️ faltan gastos (y cuáles: correo, el que retira, el dólar…).'}]},
   {v:'25.82',f:'21/10',h:'14:20',c:[{n:1,t:'Los desplegables ya no se cierran solos cuando llega un dato nuevo y la pantalla se redibuja (ej. 📂 Toda la lista).'}]},
@@ -11145,7 +11146,9 @@ function lineaPintar(prodId){
     const best=med.reduce((a,b)=>b.pd>a.pd?b:a);
     const piso=med.filter(g=>g.u>=3).reduce((a,b)=>!a||b.p>a.p?b:a,null);
     const pois=(k,lam)=>{if(!(lam>0))return 1;let p=Math.exp(-lam),s=p;for(let i=1;i<=k;i++){p*=lam/i;s+=p;}return Math.min(1,s);};
-    let techo=null;if(best.u>=3&&best.gu>0)L.filter(g=>g.p>best.p*1.02).sort((a,b)=>a.p-b.p).some(g=>{const gu1=g.gu!=null?g.gu:best.gu+(g.p-best.p)*0.7;if(!(gu1>best.gu))return false;
+    // 21/10/2026 (Persea): no es techo un precio si otro MÁS ALTO medido dejó más plata por día (misma regla en `rayasPrecioLinea`).
+    const _masAltoMejor=g=>med.some(h=>h.p>g.p*1.005&&h.pd>g.pd);
+    let techo=null;if(best.u>=3&&best.gu>0)L.filter(g=>g.p>best.p*1.02).sort((a,b)=>a.p-b.p).some(g=>{if(_masAltoMejor(g))return false;const gu1=g.gu!=null?g.gu:best.gu+(g.p-best.p)*0.7;if(!(gu1>best.gu))return false;
       const lam=best.r*(best.gu/gu1)*g.dias,seg=1-pois(g.u,lam);if(seg>=0.95){techo={...g,seg,lam};return true;}return false;});
     return {best,piso,techo};})());
   const _pcv=ps.concat(_techos.map(t=>Number(t.probado))).concat([_rayas.best,_rayas.piso,_rayas.techo].filter(Boolean).map(g=>g.p)).concat(_techos.map(t=>Number(t.volvio)).filter(v=>v>0));const [pcMin,pcMax]=_pcv.length?_esc(Math.min(..._pcv),Math.max(..._pcv)):[0,1];
@@ -24195,6 +24198,9 @@ function renderComprasChecklist(){
     <div style="font-size:.86rem;font-weight:700;color:${col};margin-bottom:10px">
       ${faltan?`❌ Faltan ${faltan} de ${filas.length}`:`✅ Están los ${filas.length}`}
       <span style="font-weight:400;font-size:.68rem;color:var(--muted)">· lo que no puede cargarse solo</span>
+      ${(()=>{/* 21/10/2026, él: "que el total gastado del mes aparezca ahí también": TODOS los gastos cargados del mes (no sólo los de la lista) */
+        const gm=getComprasByPrefix(ymL).filter(x=>getCompraTipo(x)==='gasto');const t=gm.reduce((a,x)=>a+(Number(x.monto)||0),0);
+        return `<span style="float:right;font-size:.82rem;color:var(--text)" title="Todos los gastos cargados este mes (${gm.length} renglones), estén o no en esta lista.">Total del mes <b>${fmt(t)}</b> <span style="font-weight:400;font-size:.66rem;color:var(--muted)">· ${gm.length} gasto${gm.length===1?'':'s'}</span></span>`;})()}
     </div>
     ${filas.map(f=>`<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;padding:7px 0;border-top:1px solid var(--border)">
       <span style="font-size:.9rem;flex-shrink:0">${f.noVa?'➖':(f.hay?'✅':(f.parcial?'⚠️':'❌'))}</span>

@@ -4136,7 +4136,11 @@ function rayasPrecioLinea(d, cu, imp, hoyK, parte = 1) {
   const med = L.filter((g) => g.dias >= 5 && g.u > 0); if (!med.length) return { medibles: L.reduce((a, g) => a + g.dias, 0) };
   const best = med.reduce((a, b) => (b.pd > a.pd ? b : a));
   let techo = null;
+  // 21/10/2026 (el Persea: 🔴 en $14.360 cuando a $14.850 dejó MÁS plata por día): un precio no es techo si otro precio MÁS ALTO,
+  // medido (5+ días y con ventas), dejó más plata por día que él. Ahí lo flojo fue la época o el azar, no el precio. Misma regla en la web (`_rayas`).
+  const masAltoMejor = (g) => med.some((h) => h.p > g.p * 1.005 && h.pd > g.pd);
   if (best.u >= 3 && best.gu > 0) L.filter((g) => g.p > best.p * 1.02).sort((a, b) => a.p - b.p).some((g) => {
+    if (masAltoMejor(g)) return false;
     const gu1 = g.gu != null ? g.gu : best.gu + (g.p - best.p) * 0.7; if (!(gu1 > best.gu)) return false;
     const lam = best.r * (best.gu / gu1) * g.dias, seg = 1 - poissonCdfF(g.u, lam); if (seg >= 0.95) { techo = { ...g, seg, lam }; return true; } return false; });
   return { best, techo, medibles: L.reduce((a, g) => a + g.dias, 0) };
