@@ -2288,3 +2288,9 @@ el producto. el resto va a detalle al clickear desplegable. como estan las venta
 el del buscador de todas las listas) muestra nombre, foto, te sale, precio en ML, el % y pedir; código, recargo, lista −dto, vendedores,
 vendidas, mismo producto, título del catálogo, links, reparo y sacar van en `<details>`. Si hay 1 solo vendedor, otro producto o un
 reparo, arriba dice "⚠️ mirar el detalle". Qué chequear: que ningún aviso que decide quede sólo escondido.
+
+**v25.65 (21/10/2026) · etapa 7 (diseño) · Listas → Nuevos en carpetas.** Pedido suyo: *"esto poner desplegable. y agregar carpetas
+los que tienen catalogo y los que no. y despues dividirlos como vos sabes"*. El resumen de arriba es un `<details>` (cerrado: productos,
+dan, por confirmar, sin evaluar). Lo que no está en ✅ Dan va a 📗 Con catálogo en ML (🔎 por confirmar abierto primero · 🟠 casi 15-24%
+· 📷 sin foto · 👤 1 vendedor · ⏳ costo nuevo · 🔴 <15% · ⛔ <0% · 👻 nadie lo vende · ✗ otro producto), 📕 Sin catálogo exacto, ⏳ Sin
+medir y 🚫 Afuera por regla (`_cg` en `renderListas`). Qué chequear: que la suma de las carpetas dé lo que no da, sin repetir ni perder.

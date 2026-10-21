@@ -2733,7 +2733,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.64';
+const APP_VERSION='25.65';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2746,6 +2746,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.65',f:'21/10',h:'00:24',c:[{n:1,t:'📋 Listas → Nuevos: el resumen de arriba es un desplegable (cerrado dice cuántos productos, cuántos dan, por confirmar y sin evaluar). Lo que no da se ordena en carpetas: 📗 con catálogo en ML (por confirmar, casi 15-24%, sin foto, 1 solo vendedor, costo nuevo, menos de 15%, pierden plata, nadie lo vende, era otro producto) y 📕 sin catálogo exacto, más ⏳ sin medir y 🚫 afuera por regla.'}]},
   {v:'25.64',f:'21/10',h:'00:22',c:[{n:1,t:'📋 Listas: cada producto muestra sólo lo básico (nombre, foto, te sale, precio en ML, el % y pedir). Código, recargo, vendedores, vendidas, catálogo de ML, links y sacar van en "detalle ▾", igual que Ventas x Producto. Si hay algo para mirar (1 solo vendedor, otro producto, un reparo) dice "⚠️ mirar el detalle".'}]},
   {v:'25.64',f:'21/10',h:'00:40',c:[{n:1,t:'💵 Inicio: el dólar ya no corta el último número; la casilla se agranda según lo que tiene adentro, en la PC y en el teléfono.'}]},
   {v:'25.63',f:'21/10',h:'00:13',c:[{n:1,t:'📊 Métricas: cada globito de los gráficos dice el % de diferencia del período actual (o de la proyección en los días que faltan) contra el período anterior y contra el año pasado, siempre, positivo o negativo. En el gráfico de % va en puntos.'}]},
@@ -19797,16 +19798,42 @@ async function renderListas(){
   const _ev=_grp.da+_grp.rev+_grp.noML+_grp.noDa;
   const q=_listaQ;
   let res=[];if(q.length>=2){const pal=_pycNorm(q).split(/\s+/).filter(Boolean);res=filas.filter(([cod,e])=>{const t=_pycNorm(e.n+' '+cod);return pal.every(w=>t.includes(w));}).sort(ord);}
-  el.innerHTML=cab+`<div style="font-size:.72rem;line-height:1.7;margin-bottom:10px;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:8px">
+  // CARPETAS (21/10/2026, pedido suyo: "esto poner desplegable. y agregar carpetas los que tienen catalogo y los que no. y despues
+  // dividirlos como vos sabes"). El resumen va cerrado con lo principal en la línea de arriba; lo que no da se reparte en 📗 con
+  // catálogo en ML (por por qué no entra: casi, poco, pierde, 1 vendedor, otro producto, costo nuevo, nadie lo vende) y 📕 sin
+  // catálogo exacto, más ⏳ sin medir y 🚫 afuera por regla. Cada producto cae en una sola carpeta.
+  const _cg={casi:[],bajo:[],neg:[],unV:[],otro:[],cNuevo:[],sinFoto:[],nadie:[],sinCat:[],sinMed:[],regla:[]};
+  for(const f of resto){const e=f[1],m=e.m!=null&&isFinite(e.m)?Number(e.m):null;
+    if(e.fz)_cg.regla.push(f);else if(e.sc)_cg.sinCat.push(f);else if(e.sv)_cg.nadie.push(f);else if(m==null)_cg.sinMed.push(f);
+    else if(!_listaCostoVigente(e))_cg.cNuevo.push(f);else if(_listaNoEsVale(e))_cg.otro.push(f);
+    else if(e.mv!=null&&Number(e.mv)<CAND_MIN_VENDEDORES)_cg.unV.push(f);else if(m>=25)_cg.sinFoto.push(f);
+    else if(m<0)_cg.neg.push(f);else if(m<15)_cg.bajo.push(f);else _cg.casi.push(f);}
+  const _sub=(t,arr,col,abierto)=>arr.length?`<details${abierto?' open':''} style="margin-top:8px;border:1px solid var(--border);border-radius:8px;padding:7px 10px"><summary style="cursor:pointer;font-size:.74rem;font-weight:700${col?';color:'+col:''}">${t} (${arr.length})</summary><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${arr.slice(0,150).map(f=>fila(f,false)).join('')}${arr.length>150?`<div style="font-size:.62rem;color:var(--muted)">muestro 150 · el resto con el buscador</div>`:''}</div></details>`:'';
+  const _carp=(t,n,col,body,extra)=>n?`<details style="margin-top:14px;background:var(--surface);border:1px solid ${col||'var(--border)'};border-radius:var(--r);padding:10px 12px"><summary style="cursor:pointer;font-size:.82rem;font-weight:700">${t} (${n})${extra||''}</summary>${body}</details>`:'';
+  const _nCon=revis.length+_cg.casi.length+_cg.bajo.length+_cg.neg.length+_cg.unV.length+_cg.otro.length+_cg.cNuevo.length+_cg.sinFoto.length+_cg.nadie.length;
+  const _conCat=_carp('📗 Con catálogo en ML',_nCon,'',
+     _sub('🔎 Darían 25%+ pero falta confirmar que es el mismo producto',revis,'var(--amber)',true)
+    +_sub('🟠 Casi: dan 15% a 24% (se vuelven a medir cada 7 días)',_cg.casi,'var(--amber)')
+    +_sub('📷 Darían 25%+ pero falta la foto de ML para compararlo',_cg.sinFoto,'')
+    +_sub('👤 Un solo vendedor en ML: el precio no lo confirma nadie',_cg.unV,'')
+    +_sub('⏳ Cambió el costo: falta volver a medir',_cg.cNuevo,'')
+    +_sub('🔴 Dan menos de 15%',_cg.bajo,'var(--red)')
+    +_sub('⛔ Pierden plata (menos de 0%)',_cg.neg,'var(--red)')
+    +_sub('👻 Hay catálogo pero hoy nadie lo vende (se vuelve a buscar cada 30 días)',_cg.nadie,'var(--muted)')
+    +_sub('✗ El catálogo era otro producto',_cg.otro,'var(--muted)'),
+    revis.length?` <span style="font-weight:400;font-size:.66rem;color:var(--amber)">· 🔎 ${revis.length} para confirmar</span>`:'');
+  const _sinCat=_carp('📕 Sin catálogo exacto en ML',_cg.sinCat.length,'',`<div style="font-size:.64rem;color:var(--muted);margin-top:6px">No hay un catálogo de ML que sea este mismo producto: sin catálogo no se mide ni se compra. Se vuelve a buscar cada 60 días por si ML crea uno.</div><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${_cg.sinCat.slice(0,150).map(f=>fila(f,false)).join('')}${_cg.sinCat.length>150?`<div style="font-size:.62rem;color:var(--muted)">muestro 150 · el resto con el buscador</div>`:''}</div>`);
+  const _sinMed=_carp('⏳ Sin medir todavía',_cg.sinMed.length,'',`<div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${_cg.sinMed.slice(0,150).map(f=>fila(f,false)).join('')}</div>`);
+  const _regla=_carp('🚫 Afuera por una regla',_cg.regla.length,'',`<div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${_cg.regla.slice(0,150).map(f=>fila(f,false)).join('')}</div>`);
+  el.innerHTML=cab+`<details style="font-size:.72rem;line-height:1.7;margin-bottom:10px;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:8px"><summary style="cursor:pointer;font-size:.74rem"><b>📊 ${filas.length} productos</b> · <span style="color:var(--green)">🟢 ${_grp.da} dan</span>${_grp.rev?` · <span style="color:var(--amber)">🔎 ${_grp.rev} por confirmar</span>`:''}${_grp.sinEv?` · <span style="color:var(--muted)">⏳ ${_grp.sinEv} sin evaluar</span>`:''}</summary>
     ${medirVueltaHTML(k)}<div><b>${filas.length} productos</b> en la lista${v.ts?` <span style="color:var(--muted)">· lista del ${new Date(v.ts).toLocaleDateString('es-AR')}</span>`:''}${rec?` <span style="color:var(--muted)">· recargo del proveedor ${rec}%</span>`:''}</div>
     <div><b>✅ Evaluados ${_ev}</b>: <span style="color:var(--green)">🟢 ${_grp.da} dan</span> · <span style="color:var(--amber)">🔎 ${_grp.rev} dan 25%+ y falta confirmar</span> · <span style="color:var(--red)">🔴 ${_grp.noDa} no dan</span> · <span style="color:var(--muted)">⚫ ${_grp.noML} no están en ML o nadie los vende</span></div>
     <div><b>⏳ Sin evaluar ${_grp.sinEv}</b>${_grp.sinEv?' <span style="color:var(--muted)">· el robot los está midiendo</span>':''}</div>
     ${_grp.ficha||_grp.afuera?`<div style="color:var(--muted)">${_grp.ficha?`✔️ ${_grp.ficha} ya los vendés`:''}${_grp.ficha&&_grp.afuera?' · ':''}${_grp.afuera?`🚫 ${_grp.afuera} afuera (sacados, no están en la web del proveedor o regla)`:''}</div>`:''}
-  </div>
+  </details>
     <div style="font-size:.85rem;font-weight:700;color:var(--green);margin:4px 0 8px">✅ Dan 25% o más en ML, con 2+ vendedores y el mismo producto confirmado · ${dan.length}</div>
     <div style="display:flex;flex-direction:column;gap:6px">${dan.length?dan.map(f=>fila(f,true)).join(''):'<div class="empty-msg">Todavía ninguno (o falta medirlos).</div>'}</div>
-    ${revis.length?`<details style="margin-top:14px;background:var(--surface);border:1px solid var(--amber);border-radius:var(--r);padding:10px 12px"><summary style="cursor:pointer;font-size:.82rem;font-weight:700;color:var(--amber)">🔎 Para revisar con los ojos (${revis.length}) <span style="font-weight:400;color:var(--muted);font-size:.66rem">— darían 25%+, pero falta confirmar que es el mismo producto (lo mira el chat), o ML no nombra alguna palabra (⚠️), o da 80% o más</span></summary><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${revis.slice(0,150).map(f=>fila(f,false)).join('')}</div></details>`:''}
-    ${resto.length?`<details style="margin-top:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px"><summary style="cursor:pointer;font-size:.82rem;font-weight:700">⬇️ No dan, sin catálogo en ML o sin medir (${resto.length})</summary><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${resto.slice(0,150).map(f=>fila(f,false)).join('')}</div>${resto.length>150?`<div style="font-size:.62rem;color:var(--muted);margin-top:6px">muestro 150 · el resto con el buscador</div>`:''}</details>`:''}
+    ${_conCat}${_sinCat}${_sinMed}${_regla}
     ${sinWeb.length?`<details style="margin-top:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px"><summary style="cursor:pointer;font-size:.82rem;font-weight:700;color:var(--muted)">🚫 No está en la web de ${escHtml(nom)}: no lo tienen (${sinWeb.length})</summary><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${sinWeb.slice(0,150).map(f=>fila(f,false)).join('')}${sinWeb.length>150?`<div style="font-size:.64rem;color:var(--muted)">… y ${sinWeb.length-150} más (usá el buscador)</div>`:''}</div></details>`:''}
     ${sacados.length?`<details style="margin-top:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px"><summary style="cursor:pointer;font-size:.82rem;font-weight:700;color:var(--muted)">🗑️ Sacados por vos (${sacados.length})</summary><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${sacados.map(f=>fila(f,false)).join('')}</div></details>`:''}
     <div style="margin-top:14px"><input id="lista-q" type="search" value="${escHtml(q)}" placeholder="🔎 buscar en toda la lista" oninput="clearTimeout(window._listaT);window._listaT=setTimeout(()=>{_listaQ=this.value.trim();renderListas();setTimeout(()=>{const i=document.getElementById('lista-q');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length);}},0);},400)" style="width:100%;padding:8px 10px;font-size:.85rem;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--text)">
