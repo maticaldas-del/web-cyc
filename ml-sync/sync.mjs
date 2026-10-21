@@ -3743,7 +3743,9 @@ function rayasPrecioLinea(d, cu, imp, hoyK) {
     const g = (G[b] = G[b] || { p: b, dias: 0, u: 0, gan: 0, desde: k, hasta: k }); g.dias++; g.u += u; g.gan += gan; if (k < g.desde) g.desde = k; if (k > g.hasta) g.hasta = k;
   }
   const L = Object.values(G).map((g) => ({ ...g, r: g.u / g.dias, pd: g.gan / g.dias, gu: g.u ? g.gan / g.u : null }));
-  const med = L.filter((g) => g.dias >= 5); if (!med.length) return { medibles: L.reduce((a, g) => a + g.dias, 0) };
+  // 💰 SÓLO UN PRECIO QUE VENDIÓ (21/10/2026, él con el Aer Jasmín: el piso decía $19.490 "más plata" y ahí no vendió ninguna en 5 días;
+  // era el único precio con 5 días medibles y ganaba por descarte). Sin venta no hay "más plata": no es piso. Misma regla en la web (`_rayas`).
+  const med = L.filter((g) => g.dias >= 5 && g.u > 0); if (!med.length) return { medibles: L.reduce((a, g) => a + g.dias, 0) };
   const best = med.reduce((a, b) => (b.pd > a.pd ? b : a));
   let techo = null;
   if (best.u >= 3 && best.gu > 0) L.filter((g) => g.p > best.p * 1.02).sort((a, b) => a.p - b.p).some((g) => {

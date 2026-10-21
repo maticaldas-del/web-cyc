@@ -2727,7 +2727,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.72';
+const APP_VERSION='25.73';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2740,6 +2740,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.73',f:'21/10',h:'00:51',c:[{n:2,t:'💰 Línea de tiempo: el piso ("más plata") ya no puede ser un precio donde no se vendió nada. Pasaba con el Aer Jasmín: $19.490 salía de piso con 0 ventas en 5 días, sólo porque era el único precio con 5 días medidos. Sin un precio que vendió con 5 días, queda el piso provisorio de lo que sí vendió.'}]},
   {v:'25.72',f:'21/10',h:'00:48',c:[{n:1,t:'🗑️ La papelera de Pedidos pasó a Ajustes (tarjeta "🗑️ Papelera de pedidos", con lo que sacaste y lo que no se trae más). En Pedidos ya no está la solapa.'}]},
   {v:'25.71',f:'21/10',h:'00:46',c:[{n:1,t:'📋 Dai Nippon más limpio: sin el título "Listas que compra Tito en Bs As", sin la línea de cuántos probados hay y sin el título verde de los que dan.'}]},
   {v:'25.70',f:'21/10',h:'00:42',c:[{n:1,t:'📋 Listas → Nuevos: arriba sólo los que dan. Todo lo demás (la cuenta de la lista, evaluados y sin evaluar, con catálogo, sin catálogo, sin medir, viajando, no están en su web, sacados) va junto abajo en una sola carpeta cerrada "📂 Toda la lista". En Dai Nippon el aviso de las vendidas sin mirar pasó al detalle de cada producto.'}]},
@@ -10399,7 +10400,8 @@ function lineaPintar(prodId){
     const G={};ks.forEach(k=>{const d=_rayasDias[k];if(!d)return;if(d.est!=null&&d.est!=='active')return;if(!(d.st!=null&&d.st>=3&&d.vis!=null))return;const pl=Number(d.pLista||d.p)||0;if(!(pl>0))return;
       const b=Math.round(pl/10)*10;const g=(G[b]=G[b]||{p:b,dias:0,u:0,gan:0});g.dias++;g.u+=Math.max(0,(d.u||0)-(d.uR||0));g.gan+=_ganRaya(k)-_pdDed(d);});
     const L=Object.values(G).map(g=>({...g,r:g.u/g.dias,pd:g.gan/g.dias,gu:g.u?g.gan/g.u:null}));
-    const med=L.filter(g=>g.dias>=5);
+    // 💰 sólo un precio que VENDIÓ (21/10/2026, Aer Jasmín: $19.490 salía de "más plata" con 0 ventas en 5 días, por ser el único con 5 días).
+    const med=L.filter(g=>g.dias>=5&&g.u>0);
     // EL PISO APARECE DESDE LA PRIMERA VENTA (20/10/2026, él con el Joystick Velocity Green: "acá debería aparecer la línea con el
     // piso donde más ganancia da, es apresurada decisión, pero siempre que venta tiene que tener ese piso, que va variando con cada
     // venta" y "fijate que todos tengan eso"). Sin 5 días medibles se toma un piso PROVISORIO con todos los días con stock (aunque

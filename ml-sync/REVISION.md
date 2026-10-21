@@ -2364,3 +2364,10 @@ En 📋 Listas (Paraguay/otros) siguen igual.
 tarjeta `#aj-papelera` en Ajustes (antes de Últimos cambios) con la búsqueda, lo que se puede devolver, lo vencido y "no traer más".
 `renderPapelera()` (sale del bloque de `renderPedidos`) se dibuja al abrir la tarjeta y cuando Pedidos se redibuja con ella abierta.
 Qué chequear: que "↩︎ Devolver" y "Volver a traer" funcionen desde Ajustes.
+
+**v25.73 (21/10/2026) · etapa 1 (precios) y 5 (datos) · el 💰 piso sólo con un precio que vendió.** Él con el Aer Jasmín (MLA3429019146):
+*"dice que el piso donde mejor vende es donde esta el techo y se bajo. hay dos errores en uno"*. `rayasPrecioLinea` (sync.mjs) y `_rayas`
+(index.html) tomaban como 💰 "más plata" el mejor de los precios con 5+ días medibles aunque no hubiera vendido nada: $19.490 (5 días, 0
+ventas, −$63/día) era el único con 5 días y ganaba por descarte → la línea decía "bajando desde $19.490 · no baja de $19.490" con el precio
+en $18.190, y el freno F5 habría frenado volver a su precio real. Ahora `med` pide `u > 0`; sin eso queda el piso provisorio de lo que
+vendió. Qué chequear: que ningún 💰 tenga 0 vendidas.
