@@ -17,7 +17,7 @@ en que se anota en `correcciones.md`.** El número entre corchetes es de qué ca
 ## Precio y estrategia
 7. ¿Lo que dice la estrategia (tag) coincide con lo que hace el precio? (techo o escasez = sube; sobra = baja; techo encontrado = 95% seguro) [Batidora 19/10]
 8. ¿Cada escalón se midió antes de dar el siguiente? ¿Estoy bajando en escalera o de golpe? [Hub 8 en 1 18/10]
-9. ¿Tiene las tres rayas (techo, piso, el que más plata deja)? Si falta alguna, ¿estoy buscándola? [Modista 19/10]
+9. ¿Tiene sus dos rayas (🔴 techo al 95% y 💰 piso, el precio que más plata por día dejó)? Si falta el 🔴, ¿estoy buscándolo? [Modista 19/10 · unificadas el 19/10]
 10. ¿El % que estoy mirando es del producto vendido SOLO o está inflado por carritos? [18/10]
 11. ¿El precio de ML contra el que lo mido tiene sentido? ¿Un solo vendedor? ¿Otro tamaño? ¿Del exterior? [Iscos 19/10]
 12. ¿El mismo producto está en otra cuenta, en otro tamaño o en otra fecha a un precio que no cierra con éste? [Iscos 19/10]

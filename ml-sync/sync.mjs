@@ -3774,7 +3774,8 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
     const imp = ((ML_EXTRA_PCT[String(e.cuenta || '').toLowerCase()] || 4) + (Number(mono) || 0)) / 100;
     const ks = lin ? Object.keys(lin).filter((k) => /^\d{4}_\d{2}_\d{2}$/.test(k) && k < hoyK && lin[k] && typeof lin[k] === 'object').sort() : [];
     // ── F4 · una suba no se deshace por casualidad
-    const ultSuba = camb.find((c) => c.a > c.de);
+    // sólo subas de 5%+ (una prueba de verdad): volver de $17.990 a $18.290 para quedar en el piso no es algo que proteger
+    const ultSuba = camb.find((c) => c.a > c.de * 1.05);
     if (ultSuba && ahora - ultSuba.ts < 30 * 864e5 && p0 >= ultSuba.a * 0.98 && a < ultSuba.a * 0.995 && !exc(fz, 'sincerteza')) {
       if (!lin || !(cu > 0)) { frenar(d, `deshace la suba del ${kDia(ultSuba.ts).slice(8, 10)}/${kDia(ultSuba.ts).slice(5, 7)} (${$(ultSuba.de)} → ${$(ultSuba.a)}) y no pude leer la línea de tiempo o el costo para saber si fue casualidad`); out.push(d); continue; }
       const kS = kDia(ultSuba.ts); const kA = kDia(ultSuba.ts - 21 * 864e5);
