@@ -10,7 +10,7 @@ if any('NO LEÍ' in l for l in L):
     print('⚠️ el log dice NO LEÍ: pedidostodo no pudo leer algo de la base. No armo pedidos a medias:',*[l for l in L if 'NO LEÍ' in l],sep='\n  '); sys.exit(1)
 tc=next((float(m.group(1)) for l in L for m in [re.match(r'^dólar ([\d.]+) ·',l)] if m),0)
 if not tc>0: print('⚠️ el log no trae el dólar (o está en 0): sin dólar los costos dan 0. No armo nada.'); sys.exit(1)
-prods=[];grupo='';cur=None;esper={};nfichas=None
+prods=[];grupo='';cur=None;esper={};nfichas=None;noEnt=[];cuentaOk=False;nDecidir=None;nFuera=None
 # `hist N d` (etapa 3, 20/10/2026): días de la PRIMERA a la ÚLTIMA venta en 180 d, con piso de 7 (lo mismo que `ventasHistoricas`
 # de la web). Un log viejo no lo trae: ahí lo agotado se sigue midiendo ÷180.
 def hist_de(t):
@@ -20,7 +20,11 @@ for l in L:
     m=re.match(r'^dólar \S+ · ventana .* · (\d+) fichas',l)
     if m: nfichas=int(m.group(1))
     m=re.match(r'════ (\w+) · (\d+) ════',l)
-    if m: grupo=m.group(1); esper[grupo]=int(m.group(2)); continue
+    if m: grupo=m.group(1); esper[grupo]=int(m.group(2)); cur=None; continue
+    if l.startswith('════'): grupo=''; cur=None; continue
+    # La línea final de pedidostodo (etapa 5, 20/10/2026): sin ella el log está cortado. Trae cuántas son para decidir.
+    m=re.match(r'^CUENTA: (\d+) fichas = (\d+) para decidir \+ (\d+) fuera (.*)$',l)
+    if m: cuentaOk=('✓' in m.group(4)); nDecidir=int(m.group(2)); nFuera=int(m.group(3)); continue
     m=re.match(r'^(p\w+) · (.*?) · v30 (\d+) v60 (\d+) v180 (\d+) · últ (\S+)(?: · REMATE (\d+))?(?: · BARATA (\d+))? · dCS (\d+)(?: · cortes (\d+))? · Full (\d+) \[[^\]]*\] · casa (\d+) · camino (\d+)(.*)$',l)
     if m and grupo in('BSAS','PY','PAULVIC'):
         rest=m.group(14)
@@ -30,6 +34,8 @@ for l in L:
           py=g(r'PYviaja (\d+)'),pv=g(r'PVviaja (\d+)'),li=g(r'LIviaja (\d+)'),colores=g(r'colores (\d+)'),neto=g(r'neto \$(\d+)'),costo=g(r'costo \$(\d+)'),precio=g(r'precio \$(\d+)'),med60=g(r'med60 \$(\d+)'),
           cambios=(cm.group(1) if cm else ''),decidido=(' YA DECIDÍ ' in rest),vars=[],hist=hist_de(rest),colFicha=None)
         prods.append(cur); continue
+    # Un renglón de producto que NO se entiende (un dato nuevo en el medio): sus colores NO pueden ir al producto de arriba.
+    if re.match(r'^p\w+ · ',l): cur=None; noEnt.append(l[:110]); continue
     # Los colores de la ficha (etapa 3, 20/10/2026): también los que no tienen renglón (sin ventas ni mercadería).
     m=re.match(r'^   ## colores (\[.*\])\s*$',l)
     if m and cur:
@@ -47,6 +53,15 @@ for gr,n in esper.items():
         k=sum(1 for p in prods if p['g']==gr)
         print(f"{gr}: leí {k} de {n}"+(' ✓' if k==n else ' ⚠️ NO CIERRA: hay renglones que no entendí'))
 if not esper: print('⚠️ no encontré ningún grupo (════ BSAS ════…): ¿es el log de pedidostodo?'); sys.exit(1)
+# NO SE ESCRIBE NADA A MEDIAS (etapa 5, 20/10/2026): renglones que no entendí, un grupo que no cierra, un grupo que falta o la
+# línea final "CUENTA: … ✓" que no está (el log se cortó o pedidostodo se cayó) → no se arma ningún archivo.
+malo=[]
+if noEnt: malo.append(f"{len(noEnt)} renglón(es) de producto que no entendí (¿formato nuevo?):\n    "+'\n    '.join(noEnt[:5]))
+for gr in ('BSAS','PY','PAULVIC'):
+    if gr not in esper: malo.append(f'falta el grupo {gr} (el log está cortado)')
+    elif sum(1 for p in prods if p['g']==gr)!=esper[gr]: malo.append(f'{gr} no cierra')
+if not cuentaOk: malo.append('falta la línea final "CUENTA: … ✓" (el log está cortado o pedidostodo no cerró)')
+if malo: print('⚠️ NO ARMO PEDIDOS: '+' · '.join(malo)); sys.exit(1)
 def ritmo(x,dcs=30):
     # `li` (20/10/2026, decisión 1a): lo ya probado pedido a una lista que viaja (o llegó y falta contar), igual que Paraguay y el Paulvic.
     tiene=x['full']+x['casa']+x['cam']+x.get('py',0)+x.get('pv',0)+x.get('li',0)
@@ -294,6 +309,7 @@ bad=[n for n in N if ';' in n]
 if bad: print('⚠️ renglones con ";" (decido los cortaría):',*bad[:5],sep='\n  '); sys.exit(1)
 open('pedidos.txt','w').write('\n'.join(N)+'\n')
 sinCosto=[p['n'] for p in prods if p['motNoRenta']=='falta el costo' and (p['v30'] or p['v60'])]
-print(len(N),'renglones ·',len(prods),'productos'+(f' de {nfichas} fichas' if nfichas else ''))
+# "de N para decidir": las fichas que están afuera (papelera / no traer) no se cuentan (etapa 5, 20/10/2026).
+print(len(N),'renglones ·',len(prods),'productos'+(f' de {nDecidir} para decidir ({nfichas} fichas, {nFuera} fuera: papelera / no traer)' if nDecidir is not None else ''))
 if sinCosto: print('⚠️ venden y no tienen costo (no se piden):',*sinCosto,sep='\n  ')
 if avisos: print('⚠️ para mirar:',*avisos,sep='\n  ')

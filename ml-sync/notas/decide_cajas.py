@@ -50,18 +50,34 @@ def calc(v30,v60,v180,full,cam,casa,dcs=30,dias=T):
 L=[re.sub(r'^\d{4}-\d\d-\d\dT[\d:.]+Z ?','',l) for l in open(sys.argv[1]).read().split('\n')]
 if any('NO LEÍ' in l for l in L):
     print('⚠️ el log dice NO LEÍ: no armo cajas a medias:',*[l for l in L if 'NO LEÍ' in l],sep='\n  '); sys.exit(1)
-P=[];cur=None;esper=0
+# El dólar, como decide_pedidos (etapa 5, 20/10/2026): sin esa línea el log está cortado al principio.
+tc=next((float(m.group(1)) for l in L for m in [re.match(r'^dólar ([\d.]+) ·',l)] if m),0)
+if not tc>0: print('⚠️ el log no trae el dólar (o está en 0): está cortado al principio o no es de pedidostodo. No armo nada.'); sys.exit(1)
+P=[];cur=None;esper=0;grupos=set();noEnt=[];cuentaOk=False
 for l in L:
     m=re.match(r'════ (BSAS|PY|PAULVIC) · (\d+) ════',l)
-    if m: esper+=int(m.group(2)); continue
+    if m: esper+=int(m.group(2)); grupos.add(m.group(1)); cur=None; continue
+    if l.startswith('════'): cur=None; continue
+    if re.match(r'^CUENTA: .*✓\s*$',l): cuentaOk=True; continue
     m=re.match(r'^(p\w+) · (.*?) · v30 (\d+) v60 (\d+) v180 (\d+) · .*?dCS (\d+)(?: · cortes \d+)? · Full (\d+) \[([^\]]*)\] · casa (\d+) · camino (\d+)(.*)$',l)
     if m:
         ct=re.search(r' · ctas \[([^\]]*)\]',m.group(11))
         cur=dict(id=m.group(1),n=m.group(2),v=list(map(int,m.group(3,4,5))),dcs=int(m.group(6)),full=int(m.group(7)),br=m.group(8),casa=int(m.group(9)),cam=int(m.group(10)),
                  ctas=[AB[x] for x in ct.group(1).split() if x in AB] if ct else None,vars=[]);P.append(cur);continue
+    # Un renglón de producto que NO se entiende (un dato nuevo en el medio): sus colores NO pueden ir al producto de arriba.
+    if re.match(r'^p\w+ · ',l): cur=None; noEnt.append(l[:110]); continue
     m=re.match(r'^   # (.*?) · v30 (\d+) v60 (\d+) v180 (\d+) · últ \S+(?: · dCS (\d+))?(?: · cortes \d+)? · Full (\d+) · casa (\d+) · camino (\d+)',l)
     if m and cur: cur['vars'].append(dict(v=m.group(1),s=list(map(int,m.group(2,3,4))),dcs=int(m.group(5)) if m.group(5) else cur['dcs'],full=int(m.group(6)),casa=int(m.group(7)),cam=int(m.group(8))))
 print(f"leí {len(P)} de {esper} productos"+(' ✓' if len(P)==esper else ' ⚠️ NO CIERRA: hay renglones que no entendí'))
+# NO SE ESCRIBE NADA A MEDIAS (etapa 5, 20/10/2026): renglones que no entendí, grupos que no cierran, falta un grupo o la
+# línea final "CUENTA: … ✓" (el log se cortó o el comando se cayó) → no se arma cajas.txt.
+malo=[]
+if noEnt: malo.append(f"{len(noEnt)} renglón(es) de producto que no entendí (¿formato nuevo?):\n    "+'\n    '.join(noEnt[:5]))
+if len(P)!=esper: malo.append(f"leí {len(P)} productos y los grupos dicen {esper}")
+falt=[g for g in ('BSAS','PY','PAULVIC') if g not in grupos]
+if falt: malo.append('falta el grupo '+', '.join(falt)+' (el log está cortado)')
+if not cuentaOk: malo.append('falta la línea final "CUENTA: … ✓" (el log está cortado o pedidostodo no cerró)')
+if malo: print('⚠️ NO ARMO CAJAS: '+' · '.join(malo)); sys.exit(1)
 if any(p['ctas'] is None for p in P): print('⚠️ el log es viejo (no trae "ctas [..]"): corré pedidostodo de nuevo'); sys.exit(1)
 out=[];res=[];sin=[];amano=[];nOfi=0;largos=[]
 def txt_dias(D,por):
@@ -91,6 +107,8 @@ for p in P:
         out.append(f"caja:{p['id']}@{cta}=u|{q}|{b} · hay {p['full']} en Full y {p['cam']} en camino · {txt_dias(D,por)} hacen falta {r*D:.0f} · en la oficina {p['casa']}")
         if D==T_LARGO: largos.append(p['n'][:38])
         if q: res.append(f"{p['n'][:38]} → {cta}: {q}")
+bad=[x for x in out if ';' in x]
+if bad: print('⚠️ renglones con ";" (decido los cortaría):',*bad[:5],sep='\n  '); sys.exit(1)
 open('cajas.txt','w').write('\n'.join(out)+'\n')
 print(len(out),'renglones de caja ·',nOfi,'productos con mercadería en la oficina');print('\n'.join(res))
 print(f"estirados a {T_LARGO} días (venden parejo, sin prueba abierta): {len(largos)}",*largos,sep='\n  ')

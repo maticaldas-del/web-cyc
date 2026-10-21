@@ -1131,6 +1131,30 @@ diga cuántos cambios midió (con pocos no se concluye) y que no imprima nada de
 
 - **20/10/2026 · v25.44 · la línea de tiempo de costado en el teléfono** (etapa 7, diseño). Pedido suyo: que abra de costado aunque tenga el giro bloqueado. Una página no puede girar la pantalla con el giro bloqueado, así que se gira el contenido (`_lineaAplicarGiro`: en un teléfono parado, `linea-modal` mide alto×ancho y va rotada 90°). Botón "⤾ parada" lo apaga (`localStorage` `cycLineaGiro`). `_lineaLlenar` mide la altura desde el borde derecho cuando está girada. Chequear: que en la PC y con el teléfono acostado no cambie nada; que el gráfico llegue hasta el borde; que el scroll ande.
 
+### Etapa 5 · 20/10/2026 a la noche · arreglos de la línea, el ritmo y las vueltas
+Todo en `ml-sync/sync.mjs` salvo el 11 (los dos `.py` de `ml-sync/notas/`). Probado con el código real y bases de mentira.
+1. **Remate con historia:** al caerse una marca `liquidando` (stock 0, ya no hermana, `liquidando:-`) queda su período en
+   `cyc/nosubirhist/<MLA>/<desde>` = `{hasta, por}` (`anotarFinLiquidando`); si no se pudo guardar, la marca NO se borra.
+   `clasificarRemates` (noche `linea`, `pedidostodo`) cuenta las ventas dentro de un período ya terminado. Con `SOLO_DATOS` la
+   etiqueta `remate` de `cyc/rescateventa` se escribe igual (sin rescatar). Chequear: una marca caída deja su renglón en nosubirhist.
+2. **Canceladas tarde:** la noche relee 45 días (no 7) y `linea:atras` corrige los días de ventas (`_difVentasLinea`): un día que
+   la línea tiene con u>0 y el panel ya no, pasa a 0. Chequear: una venta cancelada a los 10 días baja de la línea.
+3. **Caja de una pausada:** `caja`/`ptw` en la línea sólo si la publicación está activa y la caja tiene menos de 26 h; `ritmo`
+   no toma la caja de días no activos. Chequear: una pausada no "gana" en la línea.
+4. **Ritmo normal:** `calcRitmoNormal` saca canceladas y devoluciones con `_esCancelada` (antes sólo `v.cancelada`: un reclamo contaba).
+5. **Antes del alta:** la línea (ventas y relleno de stock) no escribe días anteriores a `altaTs` de la publicación (las gemelas nuevas).
+6. **Supervisor `stockDe`:** si hay clave del producto se usa ésa; si no, la suma de colores (antes sumaba las dos: ×2).
+7. **`planilla`:** si quedaron publicaciones sin leer, "Cuenta completa" dice ⚠️ FALTAN N SIN LEER y cada lista lo repite.
+8. **Preguntas (`preguntas` y sección 10 del `informe`):** la cuenta sin token o que ML no contestó sale "no leída / no pude
+   entrar", el corte dice "leí N de M" y el total "o más · ⚠️ INCOMPLETO" (antes faltaba o decía 0).
+9. **`historia` y `cajasnotas`:** sin fichas o vínculos no arman nada ("⚠️ NO LEÍ"); papelera, no traer, pasara, decisiones y
+   notas que no se leen se avisan (no son vacío); `cajasnotas` dice "N productos de M fichas con mercadería en la oficina".
+10. **`entrarpromo`:** cada entrada y salida deja `cyc/promohist/<MLA>/<ts>` = `{de, a, tipo, nombre, accion}` (de = lista, a = promo).
+11. **`decide_cajas.py` / `decide_pedidos.py`:** un renglón de producto que no se entiende ya no le pega sus colores al de arriba;
+    si algo no cierra, falta un grupo (BSAS/PY/PAULVIC) o la línea "CUENTA: … ✓", salen con error SIN escribir. `decide_cajas`
+    pide el dólar y rechaza `;`. `decide_pedidos` dice "de N para decidir (M fichas, F fuera)". Y `decido:archivo=` rechaza el
+    archivo entero si una clave (`ped:id#color=u`, `caja:id@cta#color`, el precio de un MLA) aparece dos veces.
+
 ## 5b · DATOS E HISTORIAL (la vieja etapa 8 del 08/10/2026; desde el 20/10 la revisa la 5 · lo que diga "Etapa 8" antes del 21/10 es esto)
 - 20/10/2026 · la ficha (`armarFicha` → `reaccionesDe`, `mlapi/ficha/<MLA>.reac` y `.reacTxt`; en la web "Cómo reacciona este
 producto") dice por publicación: caja ganando/perdiendo, ventas contra visitas, cambios de precio, fechas especiales, sin stock y
