@@ -48,6 +48,14 @@ body.light{
 .fnav-item{display:flex;align-items:center;gap:10px;padding:9px 14px;min-height:40px;border-radius:9px;border:none;background:transparent;color:var(--text);font-family:'DM Mono',monospace;font-size:.8rem;cursor:pointer;text-align:left;transition:background .12s}
 .fnav-item:hover{background:var(--surface2)}
 .fnav-item.active-page{background:rgba(124,58,237,.15);color:#a78bfa}
+/* 7.17 / 7.22 (21/10/2026): el ☰ por secciones y con números; el ☀️ adentro; el ☰ se esconde al bajar. */
+.fnav-sec{font-size:.6rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);padding:8px 14px 2px}
+.fnav-n{margin-left:auto;padding-left:10px;font-size:.68rem;color:var(--muted);white-space:nowrap}
+.fnav-fila{display:flex;gap:4px;border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:2px}
+.fnav-fila .fnav-chico{flex:1;justify-content:center;padding:7px 6px;font-size:.7rem;min-height:36px;white-space:nowrap}
+#fnav-menu{min-width:250px}
+#theme-toggle{display:none!important}
+body.fnav-oculto #fnav-btn{transform:translateY(96px);opacity:0;pointer-events:none}
 body.light .fnav-item.active-page{color:#6d28d9;background:rgba(124,58,237,.12)}
 html{font-size:118%}
 /* Etapa 7 (29/09/2026): en pantallas táctiles, casillas con letra de 16px (el iPhone deja de agrandar la
@@ -133,6 +141,37 @@ html,body{overflow-x:hidden;max-width:100%}html{overflow-x:clip}body{overscroll-
 .nav-card .nc-desc{font-size:.67rem;color:var(--muted);line-height:1.5}
 .nav-card .nc-arrow{position:absolute;bottom:18px;right:18px;font-size:1rem;color:var(--muted);transition:all .18s}
 .nav-card:hover .nc-arrow{color:var(--text);transform:translateX(3px)}
+/* 7.16 · la grilla 3×3 de Inicio (21/10/2026). Alto FIJO: el número de cada tarjeta cambia y la fila no se mueve. */
+.ht-grid{max-width:1100px}
+.ht-grid .nav-card.ht{height:164px;padding:14px 16px 26px;display:grid;grid-template-columns:auto 1fr;column-gap:10px;align-content:start}
+.ht-grid .nav-card.ht>*:not(.nc-icon):not(.nc-title):not(.nc-arrow){grid-column:1 / -1}
+.ht-grid .nav-card.ht .nc-icon{font-size:1.5rem;margin-bottom:8px}
+.ht-grid .nav-card.ht .nc-title{font-size:.98rem;margin-bottom:8px;align-self:center}
+.ht-grid .nav-card.ht .nc-arrow{bottom:10px;right:14px}
+.ht-grid .nav-card.ht-gastos::before{background:linear-gradient(90deg,#ef4444,#f87171);opacity:.6}
+.ht-vivo{font-size:.7rem;line-height:1.35;color:var(--muted);overflow:hidden}
+.ht-vivo b{color:var(--text)}
+.ht-vivo .g{color:var(--green);font-weight:700}.ht-vivo .r{color:var(--red);font-weight:700}.ht-vivo .a{color:var(--amber);font-weight:700}
+.ht-grid .ht-cel{display:none}
+.ht-grid .ht-pc{overflow:hidden}
+@media(max-width:900px){.ht-grid{grid-template-columns:repeat(3,1fr)!important}}
+@media(max-width:640px){
+  .ht-grid{grid-template-columns:repeat(3,1fr)!important;gap:8px}
+  .ht-grid .nav-card.ht{height:108px;padding:12px 6px 8px;display:flex;flex-direction:column;align-items:center;text-align:center;border-radius:14px}
+  .ht-grid .nav-card.ht:hover{transform:none}
+  .ht-grid .nav-card.ht:active{transform:scale(.97)}
+  .ht-grid .nav-card.ht .nc-icon{font-size:1.4rem;margin-bottom:4px}
+  .ht-grid .nav-card.ht .nc-title{font-size:.76rem;margin-bottom:3px;line-height:1.15}
+  .ht-grid .nav-card.ht .nc-desc{font-size:.6rem;line-height:1.3}
+  .ht-grid .nav-card.ht .nc-arrow{display:none}
+  .ht-grid .ht-vivo{font-size:.6rem;line-height:1.3;max-height:2.6em}
+  .ht-grid .ht-cel{display:block}
+  .ht-grid .ht-pc{display:none!important}
+  .ht-rot>div:nth-child(2){display:none}
+  .ht-rot>div:first-child{justify-content:center}
+  .ht-rot>div:first-child>span:last-child{display:none}
+  .ht-grid .nav-card.ht .nc-title{white-space:nowrap;font-size:.72rem}
+}
 .home-status{display:flex;align-items:center;gap:8px;font-size:.65rem;color:var(--muted)}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--amber);flex-shrink:0}
 .dot.online{background:var(--green);box-shadow:0 0 6px var(--green)}
@@ -733,64 +772,66 @@ body.light .est-chip{color:color-mix(in srgb,var(--ec) 50%,#000)}
   <div id="home-puntaje"></div>
   <div id="home-cierre-aviso" style="display:none"></div>
   <!-- 15/10/2026, pedido suyo: la revisión del panel, la versión y los últimos cambios se mudaron a Ajustes. -->
-  <div class="home-grid">
-    <div class="nav-card nc6" onclick="goPage('resumen')">
-      <span class="nc-icon">📋</span>
-      <div class="nc-title">Resumen</div>
-      <div class="nc-desc">Vista general: patrimonio, ingresos de ML, gastos y pedidos.</div>
-      <span class="nc-arrow">→</span>
-    </div>
-    <div class="nav-card nc1" onclick="goPage('inventario')">
-      <span class="nc-icon">🧮</span>
-      <div class="nc-title">Arqueo</div>
-      <div class="nc-desc">Finanzas, stock, cierres del mes y las fichas de cada producto.</div>
-      <span class="nc-arrow">→</span>
-    </div>
-    <div class="nav-card nc4" onclick="goPage('metricas')">
-      <span class="nc-icon">📊</span>
-      <div class="nc-title">Métricas ML</div>
-      <div class="nc-desc">Ventas diarias por cuenta. Gráficos y análisis mensual.</div>
-      <span class="nc-arrow">→</span>
-    </div>
-    <div class="nav-card nc2" onclick="goPage('ventaprod')">
+  <!-- 7.16 · INICIO EN GRILLA 3×3 CON NÚMEROS VIVOS (21/10/2026, eligió la a): lo de todos los días primero (Ventas, Pedidos,
+       Mi oficina), después mirar (Rotación, Arqueo, Métricas) y la plata de una vez por semana (Facturas, Gastos, Resumen).
+       Cada tarjeta lleva su número en una línea (`renderHomeVivos`). `ht-cel` = sólo en el teléfono, `ht-pc` = sólo en la PC.
+       Las tarjetas miden lo mismo siempre (alto fijo): un número más largo no corre la fila de abajo. -->
+  <div class="home-grid ht-grid">
+    <div class="nav-card nc2 ht" onclick="goPage('ventaprod')" title="Qué producto se vendió, en qué cuenta y ranking del mes.">
       <span class="nc-icon">🏷️</span>
-      <div class="nc-title">Ventas x Producto</div>
-      <div class="nc-desc">Qué producto se vendió, en qué cuenta y ranking del mes.</div>
+      <div class="nc-title">Ventas</div>
+      <div class="ht-vivo" id="hv-ventas"></div>
       <span class="nc-arrow">→</span>
     </div>
-    <div class="nav-card nc5" onclick="goPage('facturas')">
-      <span class="nc-icon">🧾</span>
-      <div class="nc-title">Facturas</div>
-      <div class="nc-desc">Las facturas que emitió ML por cada cuenta, y si alguna venta quedó sin facturar.</div>
-      <div id="nc-fac-aviso"></div>
-      <span class="nc-arrow">→</span>
-    </div>
-    <div class="nav-card" onclick="goPage('compras')" style="border-color:rgba(239,68,68,.3)">
-      <span style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#ef4444,#f87171)"></span>
-      <span class="nc-icon">🛒</span>
-      <div class="nc-title">Compras y Gastos</div>
-      <div class="nc-desc">Registro de inversiones y gastos operativos por categoría.</div>
-      <span class="nc-arrow">→</span>
-    </div>
-    <div class="nav-card nc3" onclick="goPage('pedidos')">
+    <div class="nav-card nc3 ht" onclick="goPage('pedidos')" title="Bs As · Paraguay · Paulvic · Listas: qué comprar y cuántas, con el porqué en el 🧠.">
       <span class="nc-icon">🚚</span>
       <div class="nc-title">Pedidos</div>
-      <div class="nc-desc">Bs As · Paraguay · Paulvic · Listas: qué comprar y cuántas, con el porqué en el 🧠.</div>
-      <div id="nc-pedidos-costo" style="font-size:.68rem;color:var(--muted);margin-top:4px"></div>
+      <div class="ht-vivo" id="hv-ped"></div>
+      <div id="nc-pedidos-costo" class="ht-pc" style="font-size:.66rem;color:var(--muted);margin-top:4px"></div>
       <span class="nc-arrow">→</span>
     </div>
-    <div class="nav-card nc3" onclick="goPage('oficina')">
+    <div class="nav-card nc3 ht" onclick="goPage('oficina')" title="Qué tenés en casa y a qué cuenta va cada cosa.">
       <span class="nc-icon">🏢</span>
       <div class="nc-title">Mi oficina</div>
-      <div class="nc-desc">Qué tenés en casa y a qué cuenta va cada cosa.</div>
-      <div id="nc-ofi-sub" style="font-size:.68rem;color:var(--muted);margin-top:4px"></div>
+      <div class="ht-vivo ht-cel" id="hv-ofi"></div>
+      <div id="nc-ofi-sub" class="ht-pc" style="font-size:.66rem;color:var(--muted);margin-top:4px"></div>
       <span class="nc-arrow">→</span>
     </div>
-    <div class="nav-card nc3" onclick="goPage('rotacion')">
+    <div class="nav-card nc3 ht" onclick="goPage('rotacion')" title="Capital inmovilizado · ventas 60 días · estado por producto.">
       <span class="nc-icon">🔄</span>
-      <div class="nc-title">Rotación de Stock</div>
-      <div class="nc-desc">Capital inmovilizado · ventas 60 días · estado por producto.</div>
-      <div id="nc-rot-score"></div>
+      <div class="nc-title">Rotación</div>
+      <div id="nc-rot-score" class="ht-rot"></div>
+      <span class="nc-arrow">→</span>
+    </div>
+    <div class="nav-card nc1 ht" onclick="goPage('inventario')" title="Finanzas, stock, cierres del mes y las fichas de cada producto.">
+      <span class="nc-icon">🧮</span>
+      <div class="nc-title">Arqueo</div>
+      <div class="nc-desc">plata y fichas</div>
+      <span class="nc-arrow">→</span>
+    </div>
+    <div class="nav-card nc4 ht" onclick="goPage('metricas')" title="Ventas diarias por cuenta. Gráficos y análisis mensual.">
+      <span class="nc-icon">📊</span>
+      <div class="nc-title">Métricas</div>
+      <div class="nc-desc">gráficos</div>
+      <span class="nc-arrow">→</span>
+    </div>
+    <div class="nav-card nc5 ht" onclick="goPage('facturas')" title="Las facturas que emitió ML por cada cuenta, y si alguna venta quedó sin facturar.">
+      <span class="nc-icon">🧾</span>
+      <div class="nc-title">Facturas</div>
+      <div class="ht-vivo ht-cel" id="hv-fac"><span class="nc-desc">de ML</span></div>
+      <div id="nc-fac-aviso" class="ht-pc"></div>
+      <span class="nc-arrow">→</span>
+    </div>
+    <div class="nav-card ht ht-gastos" onclick="goPage('compras')" title="Registro de inversiones y gastos operativos por categoría.">
+      <span class="nc-icon">🛒</span>
+      <div class="nc-title">Gastos</div>
+      <div class="ht-vivo" id="hv-gastos"></div>
+      <span class="nc-arrow">→</span>
+    </div>
+    <div class="nav-card nc6 ht" onclick="goPage('resumen')" title="Vista general: patrimonio, ingresos de ML, gastos y pedidos.">
+      <span class="nc-icon">📋</span>
+      <div class="nc-title">Resumen</div>
+      <div class="nc-desc">el mes</div>
       <span class="nc-arrow">→</span>
     </div>
   </div>
@@ -2055,6 +2096,7 @@ function toggleTheme(){
   localStorage.setItem('cyc_theme',isLight?'light':'dark');
   const btn=document.getElementById('theme-toggle');
   if(btn)btn.textContent=isLight?'🌙':'☀️';
+  const tm=document.getElementById('fnav-tema');if(tm)tm.textContent=isLight?'🌙 Oscuro':'☀️ Claro';
 }
 function toggleDiscreto(){
   const on=!document.body.classList.contains('discreto');document.body.classList.toggle('discreto',on);
@@ -3533,7 +3575,7 @@ function goPage(page){
   if(page==='facturas'){renderFacturas();try{renderHomeParejo();}catch(e){}}
   if(page==='ajustes')enterAjustes();
   if(page==='inventario'){initFinViewSel();renderInv();renderProds();renderHist();loadFinInputs();updateArqueo();updateTotals();updateHdr();}
-  if(page==='home'){try{renderHomeHoy();}catch(e){}checkCierrePendiente();renderHomeRevision();updateHomeDolar();renderPuntajeMes();renderHomeParejo();renderNcOfi();try{renderNcFacAviso();}catch(e){}}
+  if(page==='home'){try{renderHomeHoy();}catch(e){}checkCierrePendiente();renderHomeRevision();updateHomeDolar();renderPuntajeMes();renderHomeParejo();renderNcOfi();try{renderNcFacAviso();}catch(e){}try{renderHomeVivos();}catch(e){}}
   if(page!=='home'){
     // Al entrar a una página se baja el header para dejar el contenido arriba. OJO: esto solo puede
     // pasar en los primeros milisegundos. Antes había un MutationObserver que repetía el scroll cada
@@ -4267,7 +4309,7 @@ function renderAll(){
   if(currentPage==='rotacion')renderRotacionStock();
   // Inicio: cada tarjeta por separado y "Ventas de hoy" primero (30/09/2026, él: "la tarjeta de arriba no se
   // actualiza"). Antes iban en fila: si una de las de antes fallaba, las de después quedaban con lo viejo.
-  if(currentPage==='home'){[renderHomeHoy,checkCierrePendiente,renderHomeRevision,updateHomeDolar,renderPuntajeMes,renderHomeParejo,renderNcOfi,renderNcFacAviso,renderPush].forEach(f=>{try{f();}catch(e){console.warn('Inicio:',f.name,e);}});}
+  if(currentPage==='home'){[renderHomeHoy,checkCierrePendiente,renderHomeRevision,updateHomeDolar,renderPuntajeMes,renderHomeParejo,renderNcOfi,renderNcFacAviso,renderPush,renderHomeVivos].forEach(f=>{try{f();}catch(e){console.warn('Inicio:',f.name,e);}});}
   updatePedidosCosto();
 }
 
@@ -22004,10 +22046,14 @@ function _parejoCatLinea(a,fM,facARCA){
 // EL ROJO DEL TOPE DE H, EN LA TARJETA DE FACTURAS DE INICIO (15/10/2026, pedido suyo: "cuando alguna cuenta se pase a rojo
 // (cualquier motivo) que avise en la tarjeta de facturación así lo veo"). Rojo = la misma regla de la tarjeta del tope: a este
 // ritmo cierra el año arriba de H. Sin ninguna en rojo no se dibuja nada.
+// Las cuentas que a este ritmo pasan el tope de H (la regla de la tarjeta ⚖️). La usan la tarjeta de Facturas y el ☰ (7.17).
+function _facRojas(){try{const d=parejoDatos();return (d&&d.filas)?d.filas.filter(f=>f.proy>d.topeH):[];}catch(e){return [];}}
 function renderNcFacAviso(){
   const el=document.getElementById('nc-fac-aviso');if(!el)return;
-  let rojas=[];try{const d=parejoDatos();if(d&&d.filas)rojas=d.filas.filter(f=>f.proy>d.topeH);}catch(e){rojas=[];}
+  const rojas=_facRojas();
   el.innerHTML=rojas.length?`<div style="margin-top:8px;font-size:.72rem;font-weight:700;color:var(--red);background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.4);border-radius:8px;padding:6px 8px">🔴 ${rojas.map(f=>MET_LABELS[f.a]).join(' y ')} ${rojas.length>1?'pasarían':'pasaría'} el tope de H a este ritmo. Tocá para ver.</div>`:'';
+  // 7.16 (21/10/2026): la misma cuenta, corta, para la tarjeta del teléfono.
+  const hv=document.getElementById('hv-fac');if(hv)hv.innerHTML=rojas.length?`<span class="r">🔴 tope de H</span>`:'<span class="nc-desc">de ML</span>';
 }
 function renderHomeParejo(){
   const el=document.getElementById('home-parejo'); if(!el)return;
@@ -22433,6 +22479,31 @@ function _hoyChispas(col,txt,calma){
   const b=document.createElement('div');b.className='hoy-boom';b.style.setProperty('--c',col);
   let h='';if(!calma)for(let i=0;i<18;i++){const a=i/18*Math.PI*2,r=70+Math.random()*60;h+=`<i style="--x:${Math.round(Math.cos(a)*r)}px;--y:${Math.round(Math.sin(a)*r)}px;animation-delay:${Math.round(Math.random()*120)}ms"></i>`;}
   b.innerHTML=h+`<b>${txt}</b>`;document.body.appendChild(b);setTimeout(()=>b.remove(),3600);
+}
+// 7.16 · LOS NÚMEROS VIVOS DE LA GRILLA DE INICIO (21/10/2026, eligió la a). Ninguna cuenta nueva: cada número sale de la
+// función que ya lo calcula en su pantalla (ventas de hoy = `_homeDiaTot`, el semáforo de Pedidos = `_pedSem`, las cajas para
+// mandar ya = `cajasVerdes`, los gastos que faltan = `gastosChecklistMes`). Sin dato no se inventa: queda vacío.
+function _vivosDatos(){
+  const d={};
+  try{const t=_homeDiaTot(dateToKey(new Date()));d.ventas=t.ventas||0;d.gan=t.gan||0;}catch(e){}
+  try{const peds=[...(state.pedidos||[]),...(state.pedidos_py||[])];d.peds=peds.length;d.rojo=peds.filter(p=>_pedSem(p)==='rojo').length;}catch(e){}
+  try{const f=repartoOficina(),v=cajasVerdes(f);d.cajas=v.length;d.cajasCtas=v;d.casa=f.reduce((s,x)=>s+(x.hay||0),0);}catch(e){}
+  try{const ym=dateToKey(new Date()).slice(0,7);d.gastosFaltan=gastosChecklistMes(ym).filter(x=>!x.hay).length;}catch(e){}
+  d.topeH=_facRojas().length>0;
+  return d;
+}
+function _homeVivos(d){
+  d=d||_vivosDatos();const out={};
+  if(d.ventas!=null)out.ventas=d.ventas?`<b>${fmtN(d.ventas)}</b> hoy · <span class="g">${fmt(d.gan)}</span>`:'todavía ninguna hoy';
+  if(d.peds!=null)out.ped=d.peds?(d.rojo?`<span class="r">🔴 ${fmtN(d.rojo)} en rojo</span>`:'<span class="g">✓ nada en rojo</span>'):'';
+  if(d.cajas!=null)out.ofi=d.cajas?`<span class="g">📦 ${d.cajas} caja${d.cajas===1?'':'s'} ya</span>`:(d.casa?`${fmtN(d.casa)} u. en casa`:'nada contado');
+  if(d.gastosFaltan!=null)out.gastos=d.gastosFaltan?`<span class="a">${d.gastosFaltan} sin cargar</span>`:'<span class="g">✓ todo cargado</span>';
+  return out;
+}
+function renderHomeVivos(){
+  const v=_homeVivos();
+  [['hv-ventas','ventas'],['hv-ped','ped'],['hv-ofi','ofi'],['hv-gastos','gastos']].forEach(([id,k])=>{const el=document.getElementById(id);if(el&&v[k]!=null)el.innerHTML=v[k];});
+  return v;
 }
 function renderHomeHoy(){
   const el=document.getElementById('home-hoy');if(!el||!state.ventaprod)return;
@@ -23187,13 +23258,47 @@ const FNAV_PAGES=[
 ];
 let fnavOpen=false;
 function toggleFnav(e){e&&e.stopPropagation();fnavOpen=!fnavOpen;_syncFnav();}
+// La solapa que se está mirando, para marcar "estás acá" en el ☰ cuando dos renglones van a la misma pantalla (7.17).
+function _fnavTabActual(pg){
+  if(pg==='oficina')return typeof ofiTab!=='undefined'?(ofiTab||'caja'):'caja';
+  if(pg==='inventario'){const t=document.getElementById('tab-productos');return t&&t.style.display==='block'?'productos':'arqueo';}
+  return '';
+}
 function _syncFnav(){
   document.getElementById('fnav-menu').classList.toggle('hidden',!fnavOpen);
   document.getElementById('fnav-btn').textContent=fnavOpen?'✕':'☰';
+  const tab=_fnavTabActual(currentPage);
   document.querySelectorAll('.fnav-item').forEach(el=>{
-    el.classList.toggle('active-page',el.dataset.page===currentPage);
+    el.classList.toggle('active-page',el.dataset.page===currentPage&&(!el.dataset.tab||el.dataset.tab===tab));
   });
+  const tm=document.getElementById('fnav-tema');if(tm)tm.textContent=document.body.classList.contains('light')?'🌙 Oscuro':'☀️ Claro';
+  if(fnavOpen)try{_fnavNumeros();}catch(e){}
 }
+// Los números del ☰ (7.17): los mismos de la grilla de Inicio. Sin dato, el renglón queda sin número.
+function _fnavNumeros(){
+  const d=_vivosDatos();
+  const pon=(id,html)=>{const el=document.getElementById(id);if(el)el.innerHTML=html||'';};
+  pon('fn-n-ventas',d.ventas?`${fmtN(d.ventas)} hoy`:'');
+  pon('fn-n-ped',d.rojo?`<span style="color:var(--red)">🔴 ${fmtN(d.rojo)}</span>`:'');
+  pon('fn-n-caja',d.cajas?`<span style="color:var(--green)">${d.cajas} lista${d.cajas===1?'':'s'}</span>`:'');
+  pon('fn-n-gastos',d.gastosFaltan?`<span style="color:var(--amber)">${d.gastosFaltan} sin cargar</span>`:'');
+  pon('fn-n-fac',d.topeH?'<span style="color:var(--red)">⚠️ tope H</span>':'');
+}
+function fnavIrFichas(){
+  fnavOpen=false;goPage('inventario');
+  const b=[...document.querySelectorAll('#page-inventario .tab')].find(x=>/'productos'/.test(x.getAttribute('onclick')||''));
+  if(b)goTab('productos',b);
+  _syncFnav();
+}
+function fnavIrOfi(t){
+  fnavOpen=false;ofiTab=t;goPage('oficina');
+  try{setOfiTab(t,document.getElementById('tab-ofi-'+t));}catch(e){}
+  _syncFnav();
+}
+// 7.22 · EL ☰ SE ESCONDE AL BAJAR Y VUELVE AL SUBIR (21/10/2026, eligió la a): bajando se lee sin el botón tapando el renglón
+// de abajo; apenas se sube un poco, vuelve. Con el menú abierto no se esconde nunca.
+{let _fnY=0;window.addEventListener('scroll',()=>{const y=window.scrollY||0,d=y-_fnY;if(Math.abs(d)<6)return;
+  document.body.classList.toggle('fnav-oculto',d>0&&y>120&&!fnavOpen);_fnY=y;},{passive:true});}
 document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn')&&!e.target.closest('#fnav-menu')){fnavOpen=false;_syncFnav();}});
 </script>
 
@@ -23422,19 +23527,30 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
 
 <!-- Floating nav -->
 <button id="fnav-btn" onclick="toggleFnav(event)">☰</button>
+<!-- 7.17 · EL ☰ ORDENADO POR USO, CON NÚMEROS (21/10/2026, eligió la a): lo de todos los días queda ABAJO, al alcance del pulgar;
+     lo de una vez por semana arriba. Los números salen de `_vivosDatos` (los mismos de Inicio) y se cargan al abrirlo.
+     7.22: el ☀️ vive acá adentro (antes era un botón suelto arriba del ☰). -->
 <div id="fnav-menu" class="hidden">
+  <div class="fnav-fila">
+    <button class="fnav-item fnav-chico" data-page="ajustes" onclick="goPage('ajustes');fnavOpen=false;_syncFnav()">⚙️ Ajustes</button>
+    <button class="fnav-item fnav-chico" id="fnav-tema" onclick="toggleTheme();_syncFnav()">☀️ Claro</button>
+    <button class="fnav-item fnav-chico" onclick="fnavOpen=false;_syncFnav();logoutCYC()">🔒 Salir</button>
+  </div>
   <button class="fnav-item" data-page="home"       onclick="goPage('home');fnavOpen=false;_syncFnav()">🏠 Inicio</button>
+  <div class="fnav-sec">Plata · una vez por semana</div>
+  <button class="fnav-item" data-page="inventario" data-tab="arqueo" onclick="goPage('inventario');fnavOpen=false;_syncFnav()">🧮 Arqueo</button>
   <button class="fnav-item" data-page="resumen"    onclick="goPage('resumen');fnavOpen=false;_syncFnav()">📋 Resumen</button>
-  <button class="fnav-item" data-page="inventario" onclick="goPage('inventario');fnavOpen=false;_syncFnav()">🧮 Arqueo</button>
-  <button class="fnav-item" data-page="ventaprod"  onclick="goPage('ventaprod');fnavOpen=false;_syncFnav()">🏷️ Ventas x Producto</button>
+  <button class="fnav-item" data-page="facturas"   onclick="goPage('facturas');fnavOpen=false;_syncFnav()">🧾 Facturas<span class="fnav-n" id="fn-n-fac"></span></button>
+  <button class="fnav-item" data-page="compras"    onclick="goPage('compras');fnavOpen=false;_syncFnav()">🛒 Compras y Gastos<span class="fnav-n" id="fn-n-gastos"></span></button>
+  <div class="fnav-sec">Mirar</div>
   <button class="fnav-item" data-page="metricas"   onclick="goPage('metricas');fnavOpen=false;_syncFnav()">📊 Métricas ML</button>
-  <button class="fnav-item" data-page="pedidos"    onclick="goPage('pedidos');fnavOpen=false;_syncFnav()">🚚 Pedidos</button>
-  <button class="fnav-item" data-page="oficina"    onclick="goPage('oficina');fnavOpen=false;_syncFnav()">🏢 Mi oficina</button>
   <button class="fnav-item" data-page="rotacion"   onclick="goPage('rotacion');fnavOpen=false;_syncFnav()">🔄 Rotación de Stock</button>
-  <button class="fnav-item" data-page="compras"    onclick="goPage('compras');fnavOpen=false;_syncFnav()">🛒 Compras y Gastos</button>
-  <button class="fnav-item" data-page="facturas"   onclick="goPage('facturas');fnavOpen=false;_syncFnav()">🧾 Facturas</button>
-  <button class="fnav-item" data-page="ajustes"    onclick="goPage('ajustes');fnavOpen=false;_syncFnav()">⚙️ Ajustes</button>
-  <button class="fnav-item" onclick="fnavOpen=false;_syncFnav();logoutCYC()">🔒 Salir</button>
+  <button class="fnav-item" data-page="inventario" data-tab="productos" onclick="fnavIrFichas()">🗂️ Fichas de productos</button>
+  <div class="fnav-sec">Todos los días</div>
+  <button class="fnav-item" data-page="pedidos"    onclick="goPage('pedidos');fnavOpen=false;_syncFnav()">🚚 Pedidos<span class="fnav-n" id="fn-n-ped"></span></button>
+  <button class="fnav-item" data-page="oficina" data-tab="caja"   onclick="fnavIrOfi('caja')">📦 Armar caja<span class="fnav-n" id="fn-n-caja"></span></button>
+  <button class="fnav-item" data-page="oficina" data-tab="contar" onclick="fnavIrOfi('contar')">🔢 Contar lo que hay</button>
+  <button class="fnav-item" data-page="ventaprod"  onclick="goPage('ventaprod');fnavOpen=false;_syncFnav()">🏷️ Ventas x Producto<span class="fnav-n" id="fn-n-ventas"></span></button>
 </div>
 
 </body>
