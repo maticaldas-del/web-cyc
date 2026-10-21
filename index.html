@@ -2733,7 +2733,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.62';
+const APP_VERSION='25.63';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2746,6 +2746,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.63',f:'21/10',h:'00:13',c:[{n:1,t:'📊 Métricas: cada globito de los gráficos dice el % de diferencia del período actual (o de la proyección en los días que faltan) contra el período anterior y contra el año pasado, siempre, positivo o negativo. En el gráfico de % va en puntos.'}]},
   {v:'25.62',f:'21/10',h:'00:05',c:[{n:3,t:'📋 Revisión de datos (etapa 5): la ficha y la línea de tiempo dejaron de inventar: un día pausado no cuenta como día con stock, cada veredicto pide certeza, el stock que no se sabe sale en gris y una venta sin costo en un carrito ya no da pérdida.'},{n:2,t:'🔥 Los remates quedan con historia aunque se caiga la marca, las cancelaciones tardías corrigen su día, y una promo terminada sigue apareciendo en la línea de tiempo.'},{n:1,t:'📈 Línea de tiempo: el título va solo arriba y los botones abajo (no se corren); los globitos dicen la semana y el carrito.'}]},
   {v:'25.61',f:'21/10',h:'23:11',c:[{n:1,t:'🪜 Línea de tiempo: lo que baja en escalera dice desde qué precio (el que se probó y no rindió, con su raya 🚧) y de cuál no baja (💰 piso). Si ya se probó más caro, no dice más "techo: todavía no se sabe".'}]},
   {v:'25.60',f:'20/10',h:'22:57',c:[{n:3,t:'💲 Revisión de precios (etapa 1): las rayas 💰/🔴 de la línea de tiempo cuentan la plata por día NETA (trabajo, tope de H y plata parada), igual que la ficha y el robot, y no cuentan los días en que la publicación estaba pausada.'},{n:3,t:'🛒 Precio máximo de compra: resta el envío de Full del lado de los $33.000 del precio al que se va a vender (antes usaba el de hoy y podía prometer 25% y dar 0%).'},{n:2,t:'📉 "El 25% te da hasta $X" y "rematar al 12%" calculan con el cargo fijo de ML (antes quedaban varios puntos abajo de lo prometido).'},{n:2,t:'🥊 Caja ML en Rotación: "se puede bajar" sólo si queda arriba del piso en el peor caso, y lo dice al lado.'},{n:2,t:'🎨 La línea de tiempo de un color mide la escasez con el ritmo de ese color, y el 🧠 de un color muestra sólo sus notas.'},{n:1,t:'✍️ En Ventas, los cambios de precio que decidí yo dicen "Claude" y no "robot de noche".'}]},
@@ -21367,10 +21368,29 @@ function renderLineChartFromScope(scope){
   if(multi)scales.y.beginAtZero=true; // arrancar en 0, si no las diferencias se ven infladas
   if(barDet)scales.x.offset=true; // si no, la primera y la última barra salen cortadas a la mitad
   metChartLine=new Chart(canvas,{type:'line',data:{labels,datasets},
-    options:{responsive:true,aspectRatio:innerWidth<=640?1.3:undefined,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{boxWidth:12,font:{size:11}},onClick:_metLegendClick},tooltip:{callbacks:{title:items=>{const total=items.reduce((s,i)=>s+(i.raw||0),0);return metChartLineView==='cuentas'?[items[0].label,'Total: $'+Math.round(total).toLocaleString('es-AR')]:[items[0].label];},label:item=>' '+item.dataset.label+': $'+Math.round(item.raw||0).toLocaleString('es-AR'),afterBody:items=>{if(metChartLineView!=='general'||metViewFields.length>1)return '';const det=(barDet&&barDet[items[0].dataIndex])||[];const detL=det.length?['','Gastos de ese día:',...det.map(x=>'  · '+x.t+': −$'+Math.round(x.m).toLocaleString('es-AR'))]:[];const find=l=>{const it=items.find(i=>i.dataset.label===l);return it?(it.raw||0):null;};const cur=find(CMP_LBL_CUR),prev=find(CMP_LBL_PREV);if(cur==null||prev==null)return detL;const diff=cur-prev,pct=prev!==0?(diff/Math.abs(prev)*100):(cur!==0?100:0),s=diff>=0?'+':'−';const _neg=prev<=0||cur<0;return ['','Diferencia vs anterior: '+s+'$'+Math.abs(Math.round(diff)).toLocaleString('es-AR')+(_neg?'  ('+(diff>=0?'mejor':'peor')+' que el anterior · sin % porque hay un número negativo)':'  ('+s+Math.abs(pct).toFixed(1)+'%)'),...detL];}},titleFont:{size:13,weight:'bold'},bodyFont:{size:11},titleColor:'#f1f1f3',bodyColor:'#9b9ba8'}},scales}
+    options:{responsive:true,aspectRatio:innerWidth<=640?1.3:undefined,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{boxWidth:12,font:{size:11}},onClick:_metLegendClick},tooltip:{callbacks:{title:items=>{const total=items.reduce((s,i)=>s+(i.raw||0),0);return metChartLineView==='cuentas'?[items[0].label,'Total: $'+Math.round(total).toLocaleString('es-AR')]:[items[0].label];},label:item=>' '+item.dataset.label+': $'+Math.round(item.raw||0).toLocaleString('es-AR'),afterBody:items=>{if(metChartLineView!=='general'||metViewFields.length>1)return '';const det=(barDet&&barDet[items[0].dataIndex])||[];const detL=det.length?['','Gastos de ese día:',...det.map(x=>'  · '+x.t+': −$'+Math.round(x.m).toLocaleString('es-AR'))]:[];const dif=_metTipDifs(items,false);return dif.length||detL.length?['',...dif,...detL]:'';}},titleFont:{size:13,weight:'bold'},bodyFont:{size:11},titleColor:'#f1f1f3',bodyColor:'#9b9ba8'}},scales}
   });
 }
 
+// EL % DE DIFERENCIA ENTRE LAS LÍNEAS, EN CADA GLOBITO (21/10/2026, pedido suyo: "quiero que en todas muestre el % de
+// diferencia entre ambas. en todos lados. no importa si es negativa o positiva"). La línea del período actual (o, en los
+// días que todavía no pasaron, la proyección) contra el período anterior y contra el año pasado: sólo el %, con signo.
+// Antes salía sólo contra el anterior y con un número negativo no daba %. En el gráfico de % va en puntos (restar
+// porcentajes da puntos, no un % de un %). Contra un $0 no hay %: lo dice.
+function _metTipDifs(items,enPuntos){
+  const v=l=>{const it=(items||[]).find(i=>i.dataset&&i.dataset.label===l);return it&&it.raw!=null&&isFinite(+it.raw)?+it.raw:null;};
+  let base=v(CMP_LBL_CUR),bl='Actual';
+  if(base==null){const pr=(items||[]).find(i=>i.dataset&&String(i.dataset.label||'').startsWith('≈ Proyección')&&i.raw!=null);if(pr){base=+pr.raw;bl='Proyección';}}
+  if(base==null)return [];
+  const out=[];
+  [[CMP_LBL_PREV,'período anterior'],[CMP_LBL_YEAR,'año pasado']].forEach(([l,n])=>{
+    const o=v(l);if(o==null)return;
+    if(enPuntos){const d=base-o;out.push(bl+' vs '+n+': '+(d>=0?'+':'−')+Math.abs(d).toFixed(1).replace('.',',')+' pts');return;}
+    if(o===0){out.push(bl+' vs '+n+': sin % (el '+n+' está en $0)');return;}
+    const p=(base-o)/Math.abs(o)*100;out.push(bl+' vs '+n+': '+(p>=0?'+':'−')+Math.abs(p).toFixed(1).replace('.',',')+'%');
+  });
+  return out;
+}
 // LAS BARRAS DE GANANCIA Y GASTOS ARRANCAN APAGADAS (08/10/2026, pedido suyo: "que estén
 // predeterminado apagado, que esté la opción de prenderla, porque me saca lugar del gráfico"). El gasto
 // del retiro del día 1 va para abajo y achicaba todas las líneas. Se prenden tocando su nombre en la
@@ -21573,7 +21593,7 @@ function renderPctChartFromScope(scope){
   if(metChartPct){metChartPct.data.labels=labels;metChartPct.data.datasets=datasets;metChartPct.update();return;}
   Chart.defaults.color='#6b6b7a';Chart.defaults.borderColor='#2a2a30';
   metChartPct=new Chart(canvas,{type:'line',data:{labels,datasets},
-    options:{responsive:true,aspectRatio:innerWidth<=640?1.3:undefined,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{boxWidth:12,font:{size:11}}},tooltip:{callbacks:{label:item=>' '+item.dataset.label+': '+(item.raw==null?'s/costo':item.raw.toFixed(1)+'%')},titleFont:{size:13,weight:'bold'},bodyFont:{size:11},titleColor:'#f1f1f3',bodyColor:'#9b9ba8'}},scales:{y:{grid:{color:'#2a2a30'},ticks:{callback:v=>v+'%'}},x:{grid:{display:false}}}}
+    options:{responsive:true,aspectRatio:innerWidth<=640?1.3:undefined,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{boxWidth:12,font:{size:11}}},tooltip:{callbacks:{label:item=>' '+item.dataset.label+': '+(item.raw==null?'s/costo':item.raw.toFixed(1)+'%'),afterBody:items=>{if(metPctLineView!=='general')return '';const dif=_metTipDifs(items,true);return dif.length?['',...dif]:'';}},titleFont:{size:13,weight:'bold'},bodyFont:{size:11},titleColor:'#f1f1f3',bodyColor:'#9b9ba8'}},scales:{y:{grid:{color:'#2a2a30'},ticks:{callback:v=>v+'%'}},x:{grid:{display:false}}}}
   });
 }
 

@@ -2275,3 +2275,9 @@ Lo que mira, siempre con `ml-sync/CEREBRO.md` entero, `notas/correcciones.md`, `
   · 3a visitas a la mitad → un escalón, no volver directo · 4a `candMaxU` barato 3 / caro 1 / resto 2 sin vendidas (v25.56).
   Chequear: que un `decido` que baja una suba de 16-60 días que deja más plata frene con "deja igual o más plata por día".
 
+
+**v25.63 (21/10/2026) · etapa 7 (diseño) · el % de diferencia en los globitos de Métricas.** Pedido suyo: *"en todas muestre el % de
+diferencia entre ambas. en todos lados. no importa si es negativa o positiva"*. `_metTipDifs` (index.html) arma, en el globito del
+gráfico de pesos y del de %, la diferencia del período actual (o de la proyección en los días futuros) contra el anterior y contra el
+año pasado: % con signo en pesos, puntos en el gráfico de %, "sin %" contra un $0. Sólo en la vista general (en "por cuenta" y con
+varias métricas no hay contra qué). Qué chequear: que el número del globito coincida con (actual − anterior) ÷ |anterior|.
