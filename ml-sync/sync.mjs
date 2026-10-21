@@ -23514,16 +23514,25 @@ async function main() {
         const costo = tc ? costoPesos(p, 1, tc).costo : 0; if (!(costo > 0)) continue;
         const envio = envioGemelaDe(netopub[b.id]);
         const impPct = (mlExtraPct(label) + monoPct) / 100;
-        // Premium: probar desde el precio de hoy subiendo hasta que la plata neta iguale a la Clásica (`cuentaGemela`, la misma de gemelacrea).
-        let P = precio, fP = null, ganP = null, netaP = null, cuo = 0, ok = false, fC = null, ganCla = null, netaCla = null;
-        for (let i = 0; i < 4; i++) {
-          const cg = await cuentaGemela({ b, P, tk: t.access_token, costo, envio, impPct, cuoMed: parseFloat((cuotasM[b.id] || {}).pct), cuoPeor, fC });
-          if (!cg) break; fC = cg.fC; ganCla = cg.ganCla; netaCla = cg.netaCla; fP = cg.fP; if (!fP) break;
-          cuo = cg.cuo; ganP = cg.ganP; netaP = cg.netaP;
-          if (netaP >= netaCla - 1) { ok = true; break; }
-          const pct = (fP.f + P * cuo / 100) / P; const den = 1 - pct - impPct - PD_TOPE_PCT; if (!(den > 0.05)) break;
-          P = r90((netaCla + envio + costo) / den);
-          if (P > 650000) { P = null; break; }
+        // Premium: el precio MÁS BAJO que deja la misma plata neta que la Clásica (21/10/2026). Antes se despejaba con el envío de Full
+        // sumado siempre y el cargo fijo de ML tomado como un %, y en lo barato saltaba arriba de los $33.000 (Naipes $3.890 → $34.190).
+        // Ahora se prueba precio por precio con `cuentaGemela` (la misma de gemelacrea): se agranda hasta que alcanza (antes de cruzar
+        // la barrera se prueba $32.990) y después se parte el tramo al medio hasta quedar a $10 (0,2% en lo caro), redondeado a 90.
+        const cuoMed = parseFloat((cuotasM[b.id] || {}).pct);
+        let fC = null, ganCla = null, netaCla = null, fP = null, ganP = null, netaP = null, cuo = 0, ok = false, P = null;
+        const ev = async (Q) => { const cg = await cuentaGemela({ b, P: Q, tk: t.access_token, costo, envio, impPct, cuoMed, cuoPeor, fC }); if (!cg) return null; fC = cg.fC; ganCla = cg.ganCla; netaCla = cg.netaCla; return cg.fP ? cg : null; };
+        const alcanza = (cg) => !!cg && cg.netaP >= cg.netaCla - 1;
+        let lo = precio, hi = null, cgHi = null;
+        { let Q = precio;
+          for (const f of [1.05, 1.1, 1.2, 1.35, 1.5, 1.75, 2, 2.5, 3, 4, 6]) {
+            let N = Math.round(precio * f); if (Q < 32990 && N >= UMBRAL_ENVIO_GRATIS) N = 32990; if (N > 650000) N = 650000; if (N <= Q) continue;
+            Q = N; const cg = await ev(Q); if (!fC || !cg) break; if (alcanza(cg)) { hi = Q; cgHi = cg; break; } lo = Q; if (Q >= 650000) break; } }
+        if (hi) {
+          while (hi - lo > Math.max(10, hi * 0.002)) { const m = Math.round((lo + hi) / 2); const cg = await ev(m); if (!cg) break; if (alcanza(cg)) { hi = m; cgHi = cg; } else lo = m; }
+          let R = r90(hi); if (hi < UMBRAL_ENVIO_GRATIS && R >= UMBRAL_ENVIO_GRATIS) R = 32990;
+          if (R !== hi) { const cg = await ev(R); if (alcanza(cg)) cgHi = cg; else R = hi; }
+          P = R > 650000 ? null : R;
+          if (P) { fP = cgHi.fP; cuo = cgHi.cuo; ganP = cgHi.ganP; netaP = cgHi.netaP; ok = true; }
         }
         if (!fC) { sinLeer.push(b.id); continue; }
         const u = uds[b.id] || 0, ud = ult[b.id] ? Math.round((Date.now() - new Date(ult[b.id].replace(/_/g, '-') + 'T12:00:00-03:00')) / 864e5) : null;
@@ -23537,6 +23546,19 @@ async function main() {
         console.log(`    Clásica $${f.precio.toLocaleString('es-AR')} · ${f.st} u. Full · vendió ${f.u} en ${DIAS} d · última ${f.ud != null ? 'hace ' + f.ud + ' d' : 'nunca'} · deja $${Math.round(f.ganCla).toLocaleString('es-AR')}/venta${f.margen != null ? ' (' + f.margen.toFixed(1) + '%)' : ''}`);
         console.log(`    Premium ${f.P && f.ok ? '$' + f.P.toLocaleString('es-AR') + ` (+${((f.P / f.precio - 1) * 100).toFixed(1)}%) · deja $${Math.round(f.ganP).toLocaleString('es-AR')}/venta · neta $${Math.round(f.netaP).toLocaleString('es-AR')} vs $${Math.round(f.netaCla).toLocaleString('es-AR')} · cuotas ${f.finEn ? 'adentro de la comisión' : f.cuo + '% aparte'}` : '? (ML no dio la comisión o pasa el techo)'}`);
       }
+      // Las 💳 gemelas que ya existen: ventas de cada una (Premium y su Clásica) desde que se creó la Premium, y quién tiene la caja.
+      { const gem = Object.entries(links).filter(([, e]) => e && e.gemelaDe);
+        if (gem.length) {
+          console.log(`\n══ LAS ${gem.length} GEMELAS QUE YA EXISTEN · ventas desde que se creó la Premium ══`);
+          let tP = 0, tC = 0;
+          for (const [k, e] of gem) {
+            const alta = Number(e.altaTs) || 0, dk0 = alta ? new Date(alta - 3 * 36e5).toISOString().slice(0, 10).replace(/-/g, '_') : '9999';
+            let vP = 0, vC = 0; for (const [dk, ents] of Object.entries(vp)) { if (dk < dk0) continue; for (const v of Object.values(ents || {})) { if (!v || v.cancelada) continue; if (v.mla === k) vP += Number(v.qty) || 1; else if (v.mla === e.gemelaDe) vC += Number(v.qty) || 1; } }
+            tP += vP; tC += vC; const lc = links[e.gemelaDe] || {};
+            console.log(`   • ${String(e.cuenta || '').padEnd(8)} Premium ${k} (caja ${e.caja || '—'}) vendió ${vP} · Clásica ${e.gemelaDe} (caja ${lc.caja || '—'}) vendió ${vC} · desde ${dk0.slice(5).replace('_', '/')} · ${String(e.title || '').slice(0, 40)}`);
+          }
+          console.log(`   total: Premium ${tP} u. · sus Clásicas ${tC} u.`);
+        } }
       if (sinLeer.length) console.log(`\n⚠️ sin leer: ${sinLeer.join(', ')}`);
       return;
     }
