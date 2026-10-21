@@ -20492,7 +20492,7 @@ async function main() {
         const llego = h.aprox === false && Number(h.desde) > 0 ? Number(h.desde) : 0;
         const tags = Object.entries((est || {})[c.mla] || {}).map(([k, x]) => ({ ts: Number(k), t: x && x.t })).filter((x) => x.ts > 0 && x.t && x.ts < Number(c.ts)).sort((x, y) => x.ts - y.ts);
         const ult = tags.length ? tags[tags.length - 1].t : '';
-        const recien = (llego && Number(c.ts) - llego < 30 * 864e5) || ult === 'nuevo';
+        const recien = (llego && !(Number(h.cero) > 0) && !(Number(h.desdePrev) > 0) && Number(c.ts) - llego < 30 * 864e5) || ult === 'nuevo';
         const conTecho = tags.some((x) => x.t === 'techook' && x.ts >= (llego || 0));
         if (recien && !conTecho) malas.push({ ...c, llego, ult });
       }
@@ -41288,9 +41288,12 @@ async function main() {
             const desde = h.aprox === false && Number(h.desde) > 0 ? Number(h.desde) : 0;
             const tags = Object.entries(est).map(([k, x]) => ({ ts: Number(k), t: x && x.t })).filter((x) => x.ts > 0 && x.t).sort((x, y) => x.ts - y.ts);
             const ult = tags.length ? tags[tags.length - 1].t : '';
-            const recien = (desde && Date.now() - desde < 30 * 864e5) || ult === 'nuevo';
+            // Nuevo = primera tanda en Full: una reposición después de agotarse deja `cero` (o `desdePrev`) en el registro y NO
+            // cuenta como nueva (el Pendrive 8gb o la Muñequera repuestos no son lanzamientos).
+            const primeraTanda = !(Number(h.cero) > 0) && !(Number(h.desdePrev) > 0);
+            const recien = (desde && primeraTanda && Date.now() - desde < 30 * 864e5) || ult === 'nuevo';
             const conTecho = tags.some((x) => x.t === 'techook' && x.ts >= (desde || 0));
-            if (recien && !conTecho) { d.accion = 'nada'; d.motivo = `es nuevo (${desde ? 'llegó hace ' + Math.round((Date.now() - desde) / 864e5) + ' d' : 'en 🆕 lanzamiento'}) y techo95 no dijo 95% que ${money(d.p0)} es el techo: lo nuevo no se baja sin techo (si es a propósito, !sintecho con el porqué)`; }
+            if (recien && !conTecho) { d.accion = 'nada'; d.motivo = `es nuevo (${desde && primeraTanda ? 'su primera tanda llegó hace ' + Math.round((Date.now() - desde) / 864e5) + ' d' : 'en 🆕 lanzamiento'}) y techo95 no dijo 95% que ${money(d.p0)} es el techo: lo nuevo no se baja sin techo (si es a propósito, !sintecho con el porqué)`; }
           }
         }
       } catch (eT) { console.log('⚠️ el freno de lo nuevo sin techo falló: ' + eT.message + ' · no aplico ninguna baja'); for (const d of cz.dec) if (d.accion === 'baja') { d.accion = 'nada'; d.motivo = 'el freno de lo nuevo sin techo falló'; } }
