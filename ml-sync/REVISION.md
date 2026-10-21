@@ -2282,3 +2282,9 @@ diferencia entre ambas. en todos lados. no importa si es negativa o positiva"*. 
 gráfico de pesos y del de %, la diferencia del período actual (o de la proyección en los días futuros) contra el anterior y contra el
 año pasado: % con signo en pesos, puntos en el gráfico de %, "sin %" contra un $0. Sólo en la vista general (en "por cuenta" y con
 varias métricas no hay contra qué). Qué chequear: que el número del globito coincida con (actual − anterior) ÷ |anterior|.
+
+**v25.64 (21/10/2026) · etapa 7 (diseño) · Listas con lo básico arriba y el resto en "detalle".** Pedido suyo: *"dejar lo basico en
+el producto. el resto va a detalle al clickear desplegable. como estan las ventas x productos"*. El renglón de 🆕 Nuevos de Listas (y
+el del buscador de todas las listas) muestra nombre, foto, te sale, precio en ML, el % y pedir; código, recargo, lista −dto, vendedores,
+vendidas, mismo producto, título del catálogo, links, reparo y sacar van en `<details>`. Si hay 1 solo vendedor, otro producto o un
+reparo, arriba dice "⚠️ mirar el detalle". Qué chequear: que ningún aviso que decide quede sólo escondido.
