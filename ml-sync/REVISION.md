@@ -245,6 +245,14 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   promo no pase por abajo del piso sin `!piso` ni de 0% · que el cerebro de la noche no lea el precio de promo como
   "cambio a mano" y frene subas.
 
+### v25.91 · 21/10/2026 · Rayas al precio cobrado y F7 que vence a los 15 días (etapa 1, eligió 1a 2a)
+ · **1a:** `rayasPrecioLinea` (sync.mjs) y `_rayas` (index.html): el día que cambia el precio, lo vendido cuenta al precio (de hoy o de
+   ayer) más parecido a lo cobrado por unidad, la misma regla de los tramos de `armarFicha`. Antes iba todo al precio de la noche
+   (Filtro 19/10: 5 de 6 a $4.990 quedaban a $5.750; Cartas: 26 a $3.310 quedaban a $3.890 y el 💰 iba a saltar). Qué chequear: que
+   las dos copias sigan iguales.
+ · **2a:** `frenosBajas` F7 no frena si la última suba de 5%+ tiene 15 días o más (`F4_ESPERA_DIAS`) y el precio sigue ahí: decide F4
+   por plata por día. Antes F7 corría antes que F4 y lo que vende poco (sin 🔴 medible con 1-2 u. en Full) quedaba trabado.
+
 ### Revisión de la etapa 1, arreglos del 20/10/2026 a la noche (v25.60 · sync.mjs + web)
 Qué es · dónde vive · qué chequear:
 - **25% en el peor caso** en `entrarpromo` (sin caer al margen normal si falta) y en `analizapromo` ("conviene" y el `!piso` sugerido);

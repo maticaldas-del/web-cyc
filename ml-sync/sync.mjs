@@ -4120,12 +4120,19 @@ function poissonCdfF(k, lam) { if (!(lam > 0)) return 1; let p = Math.exp(-lam),
 function rayasPrecioLinea(d, cu, imp, hoyK, parte = 1) {
   const pC = Number(parte) >= 0 && Number(parte) <= 1 ? Number(parte) : 1;
   const G = {};
-  for (const k of Object.keys(d || {})) {
+  let pAnt = null;
+  for (const k of Object.keys(d || {}).sort()) {
     if (!/^\d{4}_\d{2}_\d{2}$/.test(k) || (hoyK && k >= hoyK)) continue; const x = d[k]; if (!x || typeof x !== 'object') continue;
+    // 1a (21/10/2026, decisión suya): el día que cambia el precio, lo vendido pudo salir al precio de antes. Vale el precio (de hoy
+    // o de ayer) más parecido a lo cobrado por unidad, la misma regla de los tramos de `armarFicha` (Filtro 19/10: 5 de 6 a $4.990
+    // quedaban anotadas a $5.750). Misma regla en la web (`_rayas`).
+    const pN = Number(x.p) > 0 ? Number(x.p) : pAnt;
+    let pl = pN || 0; if (Number(x.u) > 0 && Number(x.tot) > 0 && pAnt && pN && pAnt !== pN) { const pu = Number(x.tot) / Number(x.u); if (Math.abs(pu - pAnt) < Math.abs(pu - pN)) pl = pAnt; }
+    pAnt = pN;
     if (!(x.st != null && Number(x.st) >= 3 && x.vis != null)) continue;
     // 21/10/2026 · etapa 1: un día pausado o frenado por ML (no se podía comprar) no mide el precio; sin `est` sigue contando.
     if (x.est && x.est !== 'active') continue;
-    const pl = Number(x.p) || 0; if (!(pl > 0)) continue; const b = Math.round(pl / 10) * 10;
+    if (!(Number(x.p) > 0) || !(pl > 0)) continue; const b = Math.round(pl / 10) * 10;
     const u = Math.max(0, (Number(x.u) || 0) - (Number(x.uR) || 0));
     // 21/10/2026 · etapa 1: plata por día NETA (regla ⚖️, la misma cuenta de `armarFicha`): −$100/u de trabajo, −3% de lo facturado
     // (tope de H) y −2%/mes del stock parado de ese día. La web (`_ganRaya`/`_rayas`) usa las mismas constantes: si se toca una, la otra.
@@ -4160,7 +4167,8 @@ function rayasPrecioLinea(d, cu, imp, hoyK, parte = 1) {
 //     por día que antes (decisión suya 2b del 21/10/2026) · `!sincerteza`
 //  F5 no abajo del 💰 piso (el precio que más plata por día dejó, `rayasPrecioLinea`) salvo sobra / sin reposición / liquidando /
 //     remate · `!bajopiso`. Si el redondeo a 90/990 lo empuja abajo, dice el precio redondeado PARA ARRIBA.
-//  F7 sin línea de techo (🔴 al 95% o 🏔️ de techo95) no se baja: se busca techo (21/10/2026, regla suya) · `!sinlinea`
+//  F7 sin línea de techo (🔴 al 95% o 🏔️ de techo95) no se baja: se busca techo (21/10/2026, regla suya) · `!sinlinea`.
+//     Pasados 15 d de la última suba (5%+) deja de frenar y decide F4 por plata por día (2a, 21/10/2026)
 //  F6 🤔 un descuento o promo nuevo (fuera de una escalera de techo, escasez, lanzamiento, sin reposición o fecha) pide sobra de
 //     verdad (90+ d en Full al ritmo con stock) y no recién llegado (30+ d desde la última entrada) · `!nosobra`
 // Cada `!bandera` vale SÓLO si el motivo dice "EXCEPCIÓN" y por qué: una excepción sin decir cuál no es una excepción.
@@ -4244,9 +4252,13 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
     // 🔴 de `rayasPrecioLinea` (precio medido al 95% que no rinde, la misma raya de la web) o un 🏔️ de `techo95` de los últimos 60 días.
     // No frena lo que tiene otra explicación de precio: sobra, sin reposición, liquidando, remate y la salida de una escasez (precio
     // inflado a propósito). `!sinlinea` + "EXCEPCIÓN: …" en el motivo para un caso puntual (error de precio, ML lo pausó por el precio).
+    // 2a (21/10/2026, decisión suya): pasados los 15 días de la última suba (F4_ESPERA_DIAS) F7 no frena: decide la plata por día
+    // de F4. Sin esto lo que vende poco (sin 🔴 medible con 1-2 u. en Full) quedaba trabado para siempre en un precio alto.
+    const ultSuba7 = camb.find((c) => c.a > c.de * 1.05);
+    const f7Vencido = !!(ultSuba7 && ahora - ultSuba7.ts >= F4_ESPERA_DIAS * 864e5 && p0 >= ultSuba7.a * 0.98);
     {
       const sinLineaOk = ['sobra', 'sinrepo', 'liquidando', 'remate'];
-      if (!sinLineaOk.includes(tagNuevo) && !sinLineaOk.includes(ult) && !enEscasez && !exc(fz, 'sinlinea')) {
+      if (!f7Vencido && !sinLineaOk.includes(tagNuevo) && !sinLineaOk.includes(ult) && !enEscasez && !exc(fz, 'sinlinea')) {
         const t95 = tags.some((x) => techookDeTecho95(x) && x.ts > ahora - 60 * 864e5);
         if (!t95) {
           if (!lin || !(cu > 0)) { frenar(d, 'no pude leer la línea de tiempo o el costo: sin saber si tiene línea de techo no bajo'); out.push(d); continue; }
