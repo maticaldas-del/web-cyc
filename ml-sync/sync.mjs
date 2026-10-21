@@ -41820,7 +41820,7 @@ async function main() {
         // El precio EXACTO que escribí (etapa 1, 21/10/2026): redondear a $10 hacía $32.999 → $33.000 (cruzaba la barrera) y $4.999 → $5.000.
         forzar[mm[1].toUpperCase()] = { p: soloAct ? 0 : Math.round(pesosArg(mm[2])), motivo: mot.join('|').trim(), piso: banderas.includes('!piso'), cruza: banderas.includes('!cruza'),
           activar: soloAct || banderas.includes('!activar'), salto: banderas.includes('!salto'), sinstock: banderas.includes('!sinstock'), sintecho: banderas.includes('!sintecho'),
-          golpe: banderas.includes('!golpe'), sincerteza: banderas.includes('!sincerteza'), bajopiso: banderas.includes('!bajopiso'), nosobra: banderas.includes('!nosobra'), tag: mm[4] ? mm[4].toLowerCase() : '' };
+          golpe: banderas.includes('!golpe'), sincerteza: banderas.includes('!sincerteza'), bajopiso: banderas.includes('!bajopiso'), nosobra: banderas.includes('!nosobra'), chico: banderas.includes('!chico'), lista: banderas.includes('!lista'), tag: mm[4] ? mm[4].toLowerCase() : '' };
         // Sin 🎯 base (19/10/2026): un precio nuevo tiene que decir su estrategia (#tag o un motivo que la nombre).
         { const fz = forzar[mm[1].toUpperCase()]; if (!soloAct && !fz.tag && !tagDeMotivo(fz.motivo) && !fz.piso) { delete forzar[mm[1].toUpperCase()]; malos.push(x + ` (falta la estrategia: agregá #techo, #escasez, #sobra… · ${Object.keys(ESTRATEGIAS).filter((k) => !['sindecidir', 'agotado', 'techook'].includes(k)).join(', ')})`); continue; } }
       }
@@ -41966,6 +41966,23 @@ async function main() {
       // descuento sin sobra. Viven en `frenosBajas` (la misma que usa `entrarpromo`). Si el freno falla, no se aplica ninguna baja.
       try { const fr = await frenosBajas(db, cz.dec, forzar, linksD); if (fr.length) console.log(`\n🚫 ${fr.length} baja(s) frenada(s) por las reglas duras (abajo, cada una con su motivo)`); }
       catch (eT) { console.log('⚠️ los frenos de las bajas fallaron: ' + eT.message + ' · no aplico ninguna baja'); for (const d of cz.dec) if (d.accion === 'baja') { d.accion = 'nada'; d.motivo = 'los frenos de las bajas fallaron'; } }
+      // EL TECHO SE BUSCA CON UN SALTO GRANDE Y SE BAJA CON DESCUENTO (21/10/2026, regla suya: "cuando buscan techo siempre dar un salto
+      // grande nunca ir subiendo de a poco. después cuando se encuentre el techo ahí sí bajar de a poco con descuentos").
+      // 🔒 suba #techo de menos de +30% → no (salvo frenar en $32.990 por la barrera, el techo de $650.000, o !chico con "EXCEPCIÓN: …").
+      // 🔒 baja #bajando de algo que ya probó su techo (techofreno anotado o venía de 📈) bajando la LISTA → no: va como descuento propio
+      //    con el precio tachado (`entrarpromo:<MLA>=<precio>@PRICE_DISCOUNT#bajando|motivo;go`), salvo !lista con "EXCEPCIÓN: …".
+      { let tf = null, estT = {}; try { tf = (await db.get('cyc/techofreno')) || {}; } catch { tf = null; }
+        for (const d of cz.dec) { const fz = forzar[d.mla] || {}; const tg = fz.tag || tagDeMotivo(fz.motivo) || '';
+          const exc = (f) => !!fz[f] && /excepci[oó]n/i.test(String(fz.motivo || ''));
+          const a = Number(d.a) || 0, p0 = Number(d.p0) || 0; if (!(a > 0 && p0 > 0)) continue;
+          if (d.accion === 'sube' && tg === 'techo' && a < p0 * 1.3 && !exc('chico') && !(p0 < UMBRAL_ENVIO_GRATIS && a >= 32900 && a < UMBRAL_ENVIO_GRATIS) && !(a >= 640000)) {
+            d.accion = 'nada'; d.freno = true; d.motivo = `🚫 FRENO: buscar techo es un salto grande (+30% o más), nunca de a poco: ${money(p0)} → ${money(a)} es +${Math.round((a / p0 - 1) * 100)}%. El salto llega a ${money(Math.ceil(p0 * 1.3 / 100) * 100 - 10)} o más. Si es menos a propósito (un techo ya visto, la barrera): !chico y "EXCEPCIÓN: …"`; continue; }
+          if (d.accion === 'baja' && tg === 'bajando' && !exc('lista')) {
+            if (estT[d.mla] === undefined) { try { estT[d.mla] = (await db.get('cyc/estrategia/' + d.mla)) || {}; } catch { estT[d.mla] = {}; } }
+            const tagsT = Object.values(estT[d.mla] || {}).map((x) => x && x.t);
+            const probo = (tf && tf[d.mla] && Number(tf[d.mla].probado) > 0) || tagsT.includes('techo') || tagsT.includes('techook');
+            if (probo) { d.accion = 'nada'; d.freno = true; d.motivo = `🚫 FRENO: ya se buscó su techo, así que la bajada va de a poco como DESCUENTO con el precio tachado, no bajando la lista: entrarpromo:${d.mla}=${a}@PRICE_DISCOUNT#bajando|motivo;go. Si tiene que ser la lista: !lista y "EXCEPCIÓN: …"`; } }
+        } }
       console.log(`\n=== 💭 PRECIOS QUE DECIDIÓ CLAUDE ${GOp && !DRY ? '· SE APLICAN' : '(PRUEBA: no toco nada)'} ===`);
       const vistos = new Set(cz.dec.map((d) => d.mla));
       for (const m of Object.keys(forzar)) if (!vistos.has(m)) console.log(`\n${m} · no la miré: no está vinculada, no está activa o es de otra cosa (sin ficha, oculta, "no la vendemos más")`);

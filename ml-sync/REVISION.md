@@ -2301,3 +2301,10 @@ cuando se carguen las ventas"*. `CAND_MIN_VENTAS`=100 (index.html y sync.mjs). P
 `candVentasDe` < 100; sin dato no frena; carpeta "🛒 vendieron menos de 100". Listas: `_listaDa`/`cuentaLista` piden no tener `vend` < 100;
 carpeta en 📗 con catálogo. Comando nuevo `faltaventas` (solo lee): lo que pasó todo y no tiene vendidas, para el chat de compras.
 `candprecio:<cód>=/<vendidas>` carga sólo las vendidas. Qué chequear: que un candidato sin vendidas siga apareciendo para pedir.
+
+**21/10/2026 · etapa 1 (precios) y 8 (reglas del cerebro) · techo con salto grande, bajada con descuento.** Él: *"cuando buscan techo
+siempre dar un salto grande nunca ir subiendo de a poco. despues cuando se encuentre el techo ahi si bajar de a poco con descuentos"*.
+En `decido` (sync.mjs, después de `frenosBajas`): 🔒 suba #techo < +30% se frena (salvo $32.900-32.999 por la barrera, ≥$640.000 o
+`!chico` + EXCEPCIÓN) · 🔒 baja #bajando de una publicación con `cyc/techofreno` o con tag techo/techook en su historia se frena si baja
+la lista: va con `entrarpromo …@PRICE_DISCOUNT#bajando` (salvo `!lista` + EXCEPCIÓN). CEREBRO.md sección 6. Qué chequear: que la
+escalera post-techo salga como descuento y que el descuento siguiente reemplace al anterior.

@@ -165,10 +165,15 @@ La etapa 8 de la revisión (Reglas del cerebro, cada 7 días) mira que esto qued
 ## 6 · TECHO (📈 → 🏔️)
 - **Todo lo que vende sin techo conocido se prueba para arriba**, todas juntas. Afuera: escasez, sobra (+90 d), liquidando, mis
   promos, regalables en las 2 semanas antes de su fecha, frenadas por ML.
-- **Cómo:** saltos de +30 a +50% (ML deja hasta +100%; 🔒 más del doble pide `!salto`). **Cada escalón se mide antes del
+- **Cómo:** 🔒 **siempre un salto grande, nunca de a poco** (21/10/2026, regla suya: *"cuando buscan techo siempre dar un salto
+  grande nunca ir subiendo de a poco. después cuando se encuentre el techo ahí sí bajar de a poco con descuentos"*): +30% como
+  mínimo, mejor +40-50% (ML deja hasta +100%; 🔒 más del doble pide `!salto`). `decido` frena una suba #techo de menos de +30% salvo
+  $32.990 por la barrera, el techo de $650.000 o `!chico` con "EXCEPCIÓN: …". **Cada escalón se mide antes del
   siguiente**: por certeza (Poisson sobre la plata por día: 3 esperadas y 0 = 5% · 6 y 0-1 = 2% · 10 y ≤2 = 0,3%), nunca un solo
   día. En lo que se compra de a muchos se cuentan COMPRADORES y 7 días mínimo.
-- **Si funciona** (igual o más plata por día) → otro salto. **Si sale mal** → 🔒 se baja en escalera (≤15% por escalón, uno cada 48 h),
+- **Si funciona** (igual o más plata por día) → otro salto. **Si sale mal** → 🔒 se baja en escalera **como DESCUENTO propio con el
+  precio tachado** (`entrarpromo:<MLA>=<precio>@PRICE_DISCOUNT#bajando`; `decido` frena bajar la lista de algo que ya probó su techo
+  salvo `!lista` con "EXCEPCIÓN: …") (≤15% por escalón, uno cada 48 h),
   nunca abajo del último que vendía ni del 💰 piso, y se anota `techofreno:<MLA>=<precio>|motivo;go`.
 - 🔒 **Una suba no se deshace por casualidad:** bajar del precio de una suba (5%+) de menos de 15 días pide 95% (Poisson sobre la plata
   por día) o las visitas a la mitad. Si no, se espera **15 días como mucho** (decisión suya 2b del 21/10: *"máximo 15 días de espera,
