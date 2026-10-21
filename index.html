@@ -932,7 +932,6 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   </div>
   <!-- Arriba de todo CYC y el dólar; ahí nomás las ventas de hoy y el puntaje (29/09/2026, pedido suyo) -->
   <div id="home-hoy" style="width:100%"></div>
-  <div id="home-vuelta" style="width:100%"></div>
   <div id="home-push"></div>
   <div id="home-puntaje"></div>
   <div id="home-cierre-aviso" style="display:none"></div>
@@ -1000,6 +999,8 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
       <span class="nc-arrow">→</span>
     </div>
   </div>
+  <!-- 21/10/2026, pedido suyo: "🧠 Última vuelta de Claude" va abajo de las tarjetas. -->
+  <div id="home-vuelta" style="width:100%;margin-top:14px"></div>
   <div class="home-status">
     <span class="dot" id="dot-home"></span>
     <span id="conn-home">conectando...</span>
@@ -2917,7 +2918,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.76';
+const APP_VERSION='25.77';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2930,6 +2931,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.77',f:'21/10',h:'03:00',c:[{n:1,t:'Inicio: "🧠 Última vuelta de Claude" pasa abajo de las tarjetas.'}]},
   {v:'25.76',f:'21/10',h:'02:50',c:[{n:1,t:'Ventas de hoy: la barra de niveles se llena de a poco, tramo por tramo. El tramo que está en curso queda lleno a medias, con el color del último nivel que ya pasaste. Con cada venta nueva avanza un poquito desde donde estaba.'}]},
   {v:'25.75',f:'21/10',h:'02:25',c:[
     {n:3,t:'🪜 Volver al precio de antes después de una prueba de techo ya no se anota 🏔️ techo encontrado: queda 🪜 bajando hasta que la medición diga 95%.'},

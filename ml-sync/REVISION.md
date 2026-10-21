@@ -1114,6 +1114,9 @@ el precio de un candidato distinto con código parecido (se compara también por
   color y las que temblaban/ardían con ✦. `_vivaPaso` no dibuja. Chequear: un nivel nuevo de `.viva` no puede volver a pintar
   el fondo en modo discreto (la regla usa `[class*=lv-]`).
 
+### Inicio: "🧠 Última vuelta de Claude" abajo de las tarjetas (21/10/2026, v25.77, pedido suyo)
+- **Qué es:** `#home-vuelta` se movió de arriba (después de Ventas de hoy) a abajo de la grilla, antes de "en línea". **Dónde vive:** index.html. **Qué chequear:** que siga apareciendo y que no quede pegada a la grilla.
+
 ### Ventas de hoy: la barra de niveles se llena de a poco (21/10/2026, v25.76, pedido suyo)
 - **Qué es:** `_diaEscaleraHTML` llena cada tramo en proporción (el de curso a medias, con el color del último nivel completo) y lo anima tramo por tramo (`.esc-fill`, keyframes `escLlena`); `_escPrev` guarda dónde quedó para que una venta nueva la empuje desde ahí.
 - **Dónde vive:** index.html (`_diaEscaleraHTML`, CSS `.esc-fill`).
