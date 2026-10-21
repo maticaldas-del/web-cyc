@@ -1127,7 +1127,6 @@ body.light .est-chip{color:color-mix(in srgb,var(--ec) 50%,#000)}
     <button class="tab ped-section-tab" id="tab-py-btn" onclick="setPedidoSection('paraguay',this)">🇵🇾 Paraguay</button>
     <button class="tab ped-section-tab" id="tab-paulvic-btn" onclick="setPedidoSection('paulvic',this)">🧴 Paulvic</button>
     <button class="tab ped-section-tab" id="tab-listas-btn" onclick="setPedidoSection('listas',this)">📋 Listas</button>
-    <button class="tab ped-section-tab" id="tab-papelera-btn" onclick="setPedidoSection('papelera',this)">🗑️ Papelera <span id="tab-papelera-n"></span></button>
   </div>
 
   <!-- EL CARTEL DE "EN CAMINO A FULL" SE SACÓ DE ACÁ (18/09/2026). Decisión suya: *"sacar eso de
@@ -1198,13 +1197,7 @@ body.light .est-chip{color:color-mix(in srgb,var(--ec) 50%,#000)}
        sigue mirando todos los dias: el dia que vuelve a llegar al piso lo avisa solo. -->
 
   <div id="ped-section-listas" style="display:none"><div id="listas-body"></div></div>
-  <div id="ped-section-papelera" style="display:none">
-    <div style="font-size:.66rem;color:var(--muted);margin-bottom:10px">Productos que sacaste de Pedidos. No se vuelven a crear solos y no cuentan para el stock en riesgo. Tenés <strong>7 días</strong> para arrepentirte con "Devolver"; pasado ese plazo la eliminación queda definitiva.</div>
-    <div class="pedidos-count" id="pedidos-papelera-count"></div>
-    <input class="search-box" id="ped-papelera-search" type="search" placeholder="Buscar en la papelera..." oninput="renderPedidos()" style="margin-bottom:10px">
-    <div id="pedidos-papelera-list"><div class="empty-msg">La papelera está vacía.</div></div>
-    <div id="pedidos-notraer-list" style="margin-top:16px"></div>
-  </div>
+  <div id="ped-section-papelera" style="display:none"></div>
 
   <footer>CYC · Pedidos</footer>
 </div>
@@ -2734,7 +2727,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.71';
+const APP_VERSION='25.72';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2747,6 +2740,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.72',f:'21/10',h:'00:48',c:[{n:1,t:'🗑️ La papelera de Pedidos pasó a Ajustes (tarjeta "🗑️ Papelera de pedidos", con lo que sacaste y lo que no se trae más). En Pedidos ya no está la solapa.'}]},
   {v:'25.71',f:'21/10',h:'00:46',c:[{n:1,t:'📋 Dai Nippon más limpio: sin el título "Listas que compra Tito en Bs As", sin la línea de cuántos probados hay y sin el título verde de los que dan.'}]},
   {v:'25.70',f:'21/10',h:'00:42',c:[{n:1,t:'📋 Listas → Nuevos: arriba sólo los que dan. Todo lo demás (la cuenta de la lista, evaluados y sin evaluar, con catálogo, sin catálogo, sin medir, viajando, no están en su web, sacados) va junto abajo en una sola carpeta cerrada "📂 Toda la lista". En Dai Nippon el aviso de las vendidas sin mirar pasó al detalle de cada producto.'}]},
   {v:'25.69',f:'21/10',h:'00:41',c:[{n:1,t:'📋 Dai Nippon: sin buscador ni botón de proveedor y siempre abre en ✅ Probados. Listas: se toca cualquier parte de la tarjeta para ver el detalle (ya no hay "detalle ▾"), el código no se muestra y el ⚠️ sale sólo si hay una duda de verdad (otro producto, o sin confirmar con 1 solo vendedor o un nombre que no coincide).'}]},
@@ -19879,6 +19873,38 @@ async function renderListas(){
     <div style="margin-top:14px"><input id="lista-q" type="search" value="${escHtml(q)}" placeholder="🔎 buscar en toda la lista" oninput="clearTimeout(window._listaT);window._listaT=setTimeout(()=>{_listaQ=this.value.trim();renderListas();setTimeout(()=>{const i=document.getElementById('lista-q');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length);}},0);},400)" style="width:100%;padding:8px 10px;font-size:.85rem;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--text)">
     ${q.length>=2?`<div style="font-size:.64rem;color:var(--muted);margin:6px 0">${res.length} encontrado${res.length===1?'':'s'}${res.length>60?' · muestro 60':''}</div><div style="display:flex;flex-direction:column;gap:6px">${res.slice(0,60).map(f=>fila(f,true)).join('')}</div>`:''}</div>`;
 }
+// LA PAPELERA DE PEDIDOS VIVE EN AJUSTES (21/10/2026). Se dibuja al abrir su tarjeta y cada vez que Pedidos se redibuja con ella abierta.
+function renderPapelera(){
+    renderNoTraer();
+    const el=document.getElementById('pedidos-papelera-list');if(!el)return;
+    const todos=Object.values(state.papelera||{}).sort((a,b)=>(b.ts||0)-(a.ts||0));
+    // Los vencidos (más de 7 días) ya no se pueden devolver de un click: van aparte y en gris.
+    let items=todos.filter(x=>!x.definitivo);
+    const finados=todos.filter(x=>x.definitivo);
+    const cntEl=document.getElementById('pedidos-papelera-count');
+    if(cntEl)cntEl.innerHTML=`<div class="pcount"><strong>${items.length}</strong>Se pueden devolver</div>`+
+      (finados.length?`<div class="pcount"><strong style="color:var(--muted)">${finados.length}</strong>Ya vencieron</div>`:'')+
+      (items.length?`<button class="btn" style="align-self:center" onclick="vaciarPapelera()">Devolver todos</button>`:'');
+    const q=normTxt(document.getElementById('ped-papelera-search')?.value||'');
+    if(q)items=items.filter(x=>buscaCoincide(q,x.producto,textosDeProd(prodById(x.prodId))));
+    const fila=(x,muerto)=>{
+      const prod=(state.products||[]).find(p=>p.id===x.prodId);
+      const nom=(prod?prod.name:x.producto)||x.prodId;
+      const quedan=Math.max(0,PAP_DIAS-Math.floor((Date.now()-(x.ts||0))/86400000));
+      return `<div class="pedido-item ${muerto?'suficiente':'poco_stock'}"${muerto?' style="opacity:.55"':''}>
+        <span class="pi-prod">${nom}</span>
+        <span class="pi-nota">${x.auto===false?'cargado a mano':'lo armaba el robot solo'}</span>
+        <span class="pi-nota" style="flex:1">${muerto?'eliminado para siempre — pasaron los '+PAP_DIAS+' días':(quedan<=1?'último día para arrepentirte':'quedan '+quedan+' días para arrepentirte')}</span>
+        <button class="btn" onclick="restaurarPedido('${x.prodId}')">↩︎ Devolver${muerto?' igual':''}</button>
+        <span class="pi-ts">${x.ts?ts2s(x.ts):''}</span>
+      </div>`;
+    };
+    let html=items.length?items.map(x=>fila(x,false)).join(''):'<div class="empty-msg">No hay nada que se pueda devolver.</div>';
+    // Los vencidos se muestran igual, en gris y abajo. Si no se mostraran, un producto podría no
+    // aparecer nunca más en Pedidos sin ningún lugar donde ver por qué.
+    if(finados.length)html+=`<div style="font-size:.62rem;color:var(--muted);margin:14px 0 6px">Eliminados para siempre (${finados.length}) — no vuelven a aparecer en Pedidos ni cuentan en el stock en riesgo.</div>`+finados.map(x=>fila(x,true)).join('');
+    el.innerHTML=html;
+}
 function renderPedidos(){
   if(pedidoSection==='listas'){renderListas();return;}
   // El número al lado de la solapa se refresca siempre, se esté mirando la papelera o no.
@@ -19910,38 +19936,8 @@ function renderPedidos(){
     }
   }
   {const _sdEl=document.getElementById('ped-sindecidir');if(_sdEl)_sdEl.innerHTML=pedSinDecidirHTML(pedidoSection);}
-  if(pedidoSection==='papelera'){
-    renderNoTraer();
-    const el=document.getElementById('pedidos-papelera-list');if(!el)return;
-    const todos=Object.values(state.papelera||{}).sort((a,b)=>(b.ts||0)-(a.ts||0));
-    // Los vencidos (más de 7 días) ya no se pueden devolver de un click: van aparte y en gris.
-    let items=todos.filter(x=>!x.definitivo);
-    const finados=todos.filter(x=>x.definitivo);
-    const cntEl=document.getElementById('pedidos-papelera-count');
-    if(cntEl)cntEl.innerHTML=`<div class="pcount"><strong>${items.length}</strong>Se pueden devolver</div>`+
-      (finados.length?`<div class="pcount"><strong style="color:var(--muted)">${finados.length}</strong>Ya vencieron</div>`:'')+
-      (items.length?`<button class="btn" style="align-self:center" onclick="vaciarPapelera()">Devolver todos</button>`:'');
-    const q=normTxt(document.getElementById('ped-papelera-search')?.value||'');
-    if(q)items=items.filter(x=>buscaCoincide(q,x.producto,textosDeProd(prodById(x.prodId))));
-    const fila=(x,muerto)=>{
-      const prod=(state.products||[]).find(p=>p.id===x.prodId);
-      const nom=(prod?prod.name:x.producto)||x.prodId;
-      const quedan=Math.max(0,PAP_DIAS-Math.floor((Date.now()-(x.ts||0))/86400000));
-      return `<div class="pedido-item ${muerto?'suficiente':'poco_stock'}"${muerto?' style="opacity:.55"':''}>
-        <span class="pi-prod">${nom}</span>
-        <span class="pi-nota">${x.auto===false?'cargado a mano':'lo armaba el robot solo'}</span>
-        <span class="pi-nota" style="flex:1">${muerto?'eliminado para siempre — pasaron los '+PAP_DIAS+' días':(quedan<=1?'último día para arrepentirte':'quedan '+quedan+' días para arrepentirte')}</span>
-        <button class="btn" onclick="restaurarPedido('${x.prodId}')">↩︎ Devolver${muerto?' igual':''}</button>
-        <span class="pi-ts">${x.ts?ts2s(x.ts):''}</span>
-      </div>`;
-    };
-    let html=items.length?items.map(x=>fila(x,false)).join(''):'<div class="empty-msg">No hay nada que se pueda devolver.</div>';
-    // Los vencidos se muestran igual, en gris y abajo. Si no se mostraran, un producto podría no
-    // aparecer nunca más en Pedidos sin ningún lugar donde ver por qué.
-    if(finados.length)html+=`<div style="font-size:.62rem;color:var(--muted);margin:14px 0 6px">Eliminados para siempre (${finados.length}) — no vuelven a aparecer en Pedidos ni cuentan en el stock en riesgo.</div>`+finados.map(x=>fila(x,true)).join('');
-    el.innerHTML=html;
-    return;
-  }
+  if(pedidoSection==='papelera'){renderPapelera();return;}
+  {const _aj=document.getElementById('aj-papelera');if(_aj&&_aj.open)renderPapelera();}
   if(pedidoSection==='prioridad'){
     const el=document.getElementById('pedidos-prioridad-list');if(!el)return;
     // El origen ya no se pega acá como etiqueta: lo pone el botón de cada tarjeta leyéndolo de la
@@ -23214,7 +23210,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
       <button class="back-btn" onclick="goPage('home')">← Inicio</button>
       <div>
         <div class="ph-title">Ajustes</div>
-        <div class="ph-sub">Versión · Avisos · Perfil · Apariencia · Robot · Monotributo · Facturación · Dólar · Precios históricos · Cambios · Datos</div>
+        <div class="ph-sub">Versión · Avisos · Perfil · Apariencia · Robot · Monotributo · Facturación · Dólar · Precios históricos · Papelera · Cambios · Datos</div>
       </div>
     </div>
     <div class="ph-right">
@@ -23356,6 +23352,18 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
     </div>
     <div id="arq-hist-list"><div class="empty-msg">Elegí un mes para ver y editar los precios.</div></div>
   </div>
+      </div>
+    </details>
+
+    <!-- PAPELERA DE PEDIDOS (21/10/2026, pedido suyo: "ponelo en ajustes"): era una solapa de Pedidos. -->
+    <details id="aj-papelera" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px" ontoggle="if(this.open)renderPapelera()">
+      <summary style="cursor:pointer;font-family:'Syne',sans-serif;font-weight:800;font-size:.95rem;list-style:none">🗑️ Papelera de pedidos <span id="tab-papelera-n" style="font-weight:400;color:var(--muted);font-size:.72rem"></span> <span style="font-weight:400;color:var(--muted);font-size:.68rem">· lo que sacaste de Pedidos y lo que no se trae más</span></summary>
+      <div style="margin-top:12px">
+    <div style="font-size:.66rem;color:var(--muted);margin-bottom:10px">Productos que sacaste de Pedidos. No se vuelven a crear solos y no cuentan para el stock en riesgo. Tenés <strong>7 días</strong> para arrepentirte con "Devolver"; pasado ese plazo la eliminación queda definitiva.</div>
+    <div class="pedidos-count" id="pedidos-papelera-count"></div>
+    <input class="search-box" id="ped-papelera-search" type="search" placeholder="Buscar en la papelera..." oninput="renderPapelera()" style="margin-bottom:10px">
+    <div id="pedidos-papelera-list"><div class="empty-msg">La papelera está vacía.</div></div>
+    <div id="pedidos-notraer-list" style="margin-top:16px"></div>
       </div>
     </details>
 

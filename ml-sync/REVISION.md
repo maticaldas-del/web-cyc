@@ -2359,3 +2359,8 @@ un solo `<details>` cerrado debajo de ✅ Dan. Qué chequear: que las etiquetas 
 **v25.71 (21/10/2026) · etapa 7 · Dai Nippon sin títulos.** Él: *"todo eso sacalos"*: en Bs As (`_enB`) no salen el título "📋 Listas que
 compra Tito en Bs As", la línea "N productos de Dai Nippon · N con pedido…" de ✅ Probados ni el título verde "✅ Dan 25% o más…" de Nuevos.
 En 📋 Listas (Paraguay/otros) siguen igual.
+
+**v25.72 (21/10/2026) · etapa 7 · la Papelera de Pedidos pasó a Ajustes.** Pedido suyo: *"ponelo en ajustes"*. Sin la solapa en Pedidos;
+tarjeta `#aj-papelera` en Ajustes (antes de Últimos cambios) con la búsqueda, lo que se puede devolver, lo vencido y "no traer más".
+`renderPapelera()` (sale del bloque de `renderPedidos`) se dibuja al abrir la tarjeta y cuando Pedidos se redibuja con ella abierta.
+Qué chequear: que "↩︎ Devolver" y "Volver a traer" funcionen desde Ajustes.
