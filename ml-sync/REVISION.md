@@ -1114,6 +1114,11 @@ el precio de un candidato distinto con código parecido (se compara también por
   color y las que temblaban/ardían con ✦. `_vivaPaso` no dibuja. Chequear: un nivel nuevo de `.viva` no puede volver a pintar
   el fondo en modo discreto (la regla usa `[class*=lv-]`).
 
+### Ventas de hoy: la barra de niveles se llena de a poco (21/10/2026, v25.76, pedido suyo)
+- **Qué es:** `_diaEscaleraHTML` llena cada tramo en proporción (el de curso a medias, con el color del último nivel completo) y lo anima tramo por tramo (`.esc-fill`, keyframes `escLlena`); `_escPrev` guarda dónde quedó para que una venta nueva la empuje desde ahí.
+- **Dónde vive:** index.html (`_diaEscaleraHTML`, CSS `.esc-fill`).
+- **Qué chequear:** que no se vuelva a llenar desde cero en cada actualización; que el color del tramo a medias sea el del nivel alcanzado; sin animación con "menos movimiento".
+
 ### Probados se ve igual que Nuevos · Precios ML en Ajustes (15/10/2026, v23.58-23.59, pedidos suyos)
 - Pedidos → Probados (`_pedidoItemHtml` con `_armU!=null`): tarjeta compacta como la de Nuevos (foto, nombre, código, US$ → puesto,
   pesos, lo vendido, % grande de "pidiéndolo queda"); la tarjeta de siempre va adentro de "detalle ▾" con su cabecera escondida.
