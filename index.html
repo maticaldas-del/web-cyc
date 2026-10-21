@@ -49,6 +49,9 @@ body.light{
 .fnav-item:hover{background:var(--surface2)}
 .fnav-item.active-page{background:rgba(124,58,237,.15);color:#a78bfa}
 /* 7.17 / 7.22 (21/10/2026): el ☰ por secciones y con números; el ☀️ adentro; el ☰ se esconde al bajar. */
+.hv-vuelta .hv-fila{display:flex;gap:10px;padding:5px 0;border-top:1px dashed var(--border)}
+.hv-vuelta .hv-h{font-family:'DM Mono',monospace;color:var(--muted);flex-shrink:0}
+.hv-vuelta summary::-webkit-details-marker{display:none}
 .fnav-sec{font-size:.6rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);padding:8px 14px 2px}
 .fnav-n{margin-left:auto;padding-left:10px;font-size:.68rem;color:var(--muted);white-space:nowrap}
 .fnav-fila{display:flex;gap:4px;border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:2px}
@@ -768,6 +771,7 @@ body.light .est-chip{color:color-mix(in srgb,var(--ec) 50%,#000)}
   </div>
   <!-- Arriba de todo CYC y el dólar; ahí nomás las ventas de hoy y el puntaje (29/09/2026, pedido suyo) -->
   <div id="home-hoy" style="width:100%"></div>
+  <div id="home-vuelta" style="width:100%"></div>
   <div id="home-push"></div>
   <div id="home-puntaje"></div>
   <div id="home-cierre-aviso" style="display:none"></div>
@@ -2157,6 +2161,8 @@ function startApp(){
     const v=snap.val()||{};_cerNotas=new Set(Object.keys(v).filter(k=>v[k]&&v[k].simple));
     // El TEXTO de las notas de unidades (ped__/caja__) queda en memoria para mostrarlo a la vista (etapa 6, idea 2).
     _cerTxt={};for(const k of _cerNotas)if(k.startsWith('ped__')||k.startsWith('caja__'))_cerTxt[k]={s:_sinSoloTxt(v[k].simple),ts:v[k].ts||0};
+    // 7.26: la hora de cada nota, para "🧠 Última vuelta de Claude" de Inicio.
+    _cerTs={};for(const k of _cerNotas)_cerTs[k]=Number(v[k].ts)||0;
     if(typeof renderPronto==='function')renderPronto();
   },()=>{_cerNotas=null;});
   db.ref('cyc').on('value',snap=>{
@@ -3575,7 +3581,7 @@ function goPage(page){
   if(page==='facturas'){renderFacturas();try{renderHomeParejo();}catch(e){}}
   if(page==='ajustes')enterAjustes();
   if(page==='inventario'){initFinViewSel();renderInv();renderProds();renderHist();loadFinInputs();updateArqueo();updateTotals();updateHdr();}
-  if(page==='home'){try{renderHomeHoy();}catch(e){}checkCierrePendiente();renderHomeRevision();updateHomeDolar();renderPuntajeMes();renderHomeParejo();renderNcOfi();try{renderNcFacAviso();}catch(e){}try{renderHomeVivos();}catch(e){}}
+  if(page==='home'){try{renderHomeHoy();}catch(e){}checkCierrePendiente();renderHomeRevision();updateHomeDolar();renderPuntajeMes();renderHomeParejo();renderNcOfi();try{renderNcFacAviso();}catch(e){}try{renderHomeVivos();}catch(e){}try{renderHomeVuelta();}catch(e){}}
   if(page!=='home'){
     // Al entrar a una página se baja el header para dejar el contenido arriba. OJO: esto solo puede
     // pasar en los primeros milisegundos. Antes había un MutationObserver que repetía el scroll cada
@@ -4309,7 +4315,7 @@ function renderAll(){
   if(currentPage==='rotacion')renderRotacionStock();
   // Inicio: cada tarjeta por separado y "Ventas de hoy" primero (30/09/2026, él: "la tarjeta de arriba no se
   // actualiza"). Antes iban en fila: si una de las de antes fallaba, las de después quedaban con lo viejo.
-  if(currentPage==='home'){[renderHomeHoy,checkCierrePendiente,renderHomeRevision,updateHomeDolar,renderPuntajeMes,renderHomeParejo,renderNcOfi,renderNcFacAviso,renderPush,renderHomeVivos].forEach(f=>{try{f();}catch(e){console.warn('Inicio:',f.name,e);}});}
+  if(currentPage==='home'){[renderHomeHoy,checkCierrePendiente,renderHomeRevision,updateHomeDolar,renderPuntajeMes,renderHomeParejo,renderNcOfi,renderNcFacAviso,renderPush,renderHomeVivos,renderHomeVuelta].forEach(f=>{try{f();}catch(e){console.warn('Inicio:',f.name,e);}});}
   updatePedidosCosto();
 }
 
@@ -10963,6 +10969,7 @@ let _cerNotas=null;
 // Ahora va en la tarjeta, cortada en dos renglones y entera al abrirla. Es el MISMO texto que abre el 🧠
 // (misma clave, `_cerClaveCtx`); sin nota escrita no se dibuja nada.
 let _cerTxt={};
+let _cerTs={};   // 7.26 (21/10/2026): clave de la nota → cuándo la escribí
 function _cerNotaCtx(tipo,prodId,cuenta,variante){
   const T=_cerTxt||{};
   const k1=_cerClaveCtx(tipo,prodId,cuenta,variante);if(T[k1])return T[k1];
@@ -22505,6 +22512,45 @@ function renderHomeVivos(){
   [['hv-ventas','ventas'],['hv-ped','ped'],['hv-ofi','ofi'],['hv-gastos','gastos']].forEach(([id,k])=>{const el=document.getElementById(id);if(el&&v[k]!=null)el.innerHTML=v[k];});
   return v;
 }
+// 7.26 · "🧠 ÚLTIMA VUELTA DE CLAUDE" EN INICIO (21/10/2026, eligió la a). Qué hice en la última vuelta: los cambios de precio
+// (`cyc/claudecambios`, cada `decido` con su motivo) y las notas del 🧠 (`mlapi/claudeexp`, con su hora). La vuelta = lo escrito
+// hasta 90 minutos antes de lo último. Sin nada guardado no se dibuja. Más de 14 h sin nada: en ámbar (se saltó una vuelta).
+// Solo lee lo que ya está guardado: no calcula nada ni toca precios.
+const VUELTA_VENTANA_MS=90*60e3, VUELTA_VIEJA_H=14;
+function _vueltaClaude(ahora){
+  ahora=ahora||Date.now();
+  const cc=Object.values(state.claudecambios||{}).filter(c=>c&&Number(c.ts)>0&&Number(c.ts)<=ahora+6e4);
+  const ns=Object.entries(_cerTs||{}).filter(([,t])=>t>0&&t<=ahora+6e4);
+  const T=Math.max(0,...cc.map(c=>Number(c.ts)),...ns.map(([,t])=>t));
+  if(!(T>0))return null;
+  const desde=T-VUELTA_VENTANA_MS;
+  const cambios=cc.filter(c=>Number(c.ts)>=desde).sort((a,b)=>Number(a.ts)-Number(b.ts));
+  const notas=ns.filter(([,t])=>t>=desde).map(([k])=>k);
+  const tipo={precio:0,ped:0,caja:0,dia:0};
+  for(const k of notas){if(k.startsWith('ped__'))tipo.ped++;else if(k.startsWith('caja__'))tipo.caja++;else if(k.startsWith('dia__'))tipo.dia++;else tipo.precio++;}
+  return {T,cambios,notas:notas.length,tipo,horas:(ahora-T)/36e5};
+}
+function _vueltaAbierta(){try{return localStorage.getItem('cycVuelta')==='1';}catch(e){return false;}}
+function renderHomeVuelta(){
+  const el=document.getElementById('home-vuelta');if(!el)return;
+  const V=_vueltaClaude();if(!V){el.innerHTML='';return;}
+  const p2=n=>String(n).padStart(2,'0');
+  const hora=t=>{const d=new Date(t);return p2(d.getHours())+':'+p2(d.getMinutes());};
+  const dT=new Date(V.T),hoy=new Date();const ayer=new Date();ayer.setDate(ayer.getDate()-1);
+  const dia=dT.toDateString()===hoy.toDateString()?'hoy':dT.toDateString()===ayer.toDateString()?'ayer':p2(dT.getDate())+'/'+p2(dT.getMonth()+1);
+  const vieja=V.horas>VUELTA_VIEJA_H;
+  const col=vieja?'var(--amber)':'var(--muted)';
+  const nc=V.cambios.length;
+  const res=[nc?`cambié ${nc} precio${nc===1?'':'s'}`:'ningún precio',V.notas?`${V.notas} nota${V.notas===1?'':'s'}`:''].filter(Boolean).join(' · ');
+  const tip=[V.tipo.precio?`${V.tipo.precio} de precio`:'',V.tipo.ped?`${V.tipo.ped} de pedidos (Hola Tito)`:'',V.tipo.caja?`${V.tipo.caja} de cajas`:'',V.tipo.dia?`${V.tipo.dia} del día`:''].filter(Boolean).join(' · ');
+  const filas=V.cambios.map(c=>{const sube=Number(c.a)>Number(c.de);const m=String(c.motivo||'').replace(/\s+/g,' ');
+    return `<div class="hv-fila"><span class="hv-h">${hora(Number(c.ts))}</span><span><b>${escHtml(String(c.nom||c.mla||'').slice(0,46))}</b>${c.cuenta?' · '+escHtml(c.cuenta):''} · ${fmt(Number(c.de)||0)} <b style="color:${sube?'var(--green)':'var(--red)'}">${sube?'▲':'▼'}</b> ${fmt(Number(c.a)||0)}${m?`<br><span style="color:var(--muted)">${escHtml(m.length>150?m.slice(0,150)+'…':m)}</span>`:''}</span></div>`;}).join('');
+  el.innerHTML=`<details class="hv-vuelta" ${_vueltaAbierta()?'open':''} ontoggle="try{localStorage.setItem('cycVuelta',this.open?'1':'0')}catch(e){}" style="max-width:min(760px,calc(100vw - 32px));margin:-6px auto 16px;border:1px solid ${vieja?'color-mix(in srgb,var(--amber) 55%,var(--border))':'var(--border)'};border-radius:14px;background:var(--surface);padding:10px 14px">
+    <summary style="cursor:pointer;font-size:.74rem;color:${col};list-style:none;display:flex;gap:6px;align-items:baseline;flex-wrap:wrap"><span>🧠 <b style="color:var(--text)">Última vuelta de Claude:</b> ${dia} ${hora(V.T)}${vieja?` · hace ${Math.round(V.horas)} h, se saltó una vuelta`:''}</span><span>· ${res}</span><span style="margin-left:auto">▾</span></summary>
+    <div style="margin-top:8px;font-size:.7rem;line-height:1.45">${filas||'<div style="color:var(--muted)">En esa vuelta no cambié precios.</div>'}
+      ${V.notas?`<div style="color:var(--muted);margin-top:8px">📝 ${V.notas} nota${V.notas===1?'':'s'}${tip?': '+tip:''} · tocá el 🧠 de cada producto para leerlas</div>`:''}</div>
+  </details>`;
+}
 function renderHomeHoy(){
   const el=document.getElementById('home-hoy');if(!el||!state.ventaprod)return;
   const esc=_homeHoyEsc;
@@ -22547,6 +22593,27 @@ function renderHomeHoy(){
   </div></div>`;
   vivaScan(el);
   try{_homeHoyEfectos(esc,h,hoy);}catch(e){}
+  try{_homeHoyDeslizar(el);}catch(e){}
+}
+// 7.25 · DESLIZAR "VENTAS DE HOY" CON EL DEDO (21/10/2026, eligió la a): la tarjeta sigue al dedo y al soltar pasa al día (o mes,
+// o año) de antes, o vuelve hacia hoy. Es lo mismo que las flechas ‹ ›, que siguen igual; nunca pasa de hoy para adelante.
+// Se engancha UNA vez al contenedor (que no se redibuja): sólo gestos de costado, el de arriba-abajo sigue bajando la pantalla.
+function _homeHoyDeslizar(el){
+  if(!el||el._desliza)return;el._desliza=true;
+  el.style.touchAction='pan-y';
+  let x0=null,y0=0,dx=0,lado=false,card=null;
+  const fin=()=>{if(card){card.style.transition='transform .18s';card.style.transform='';}x0=null;lado=false;card=null;};
+  el.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'&&e.button!==0)return;if(e.target.closest('button,summary,details,input,a'))return;
+    x0=e.clientX;y0=e.clientY;dx=0;lado=false;card=el.firstElementChild;});
+  el.addEventListener('pointermove',e=>{if(x0==null||!card)return;dx=e.clientX-x0;const dy=e.clientY-y0;
+    if(!lado){if(Math.abs(dx)>12&&Math.abs(dx)>Math.abs(dy)*1.3)lado=true;else if(Math.abs(dy)>12){x0=null;return;}else return;}
+    // Hacia hoy (dedo a la izquierda) estando en hoy: la tarjeta casi no se mueve, para que se note que no hay más.
+    const tope=dx<0&&_homeHoyOff===0;card.style.transition='none';card.style.transform=`translateX(${(tope?dx*0.15:dx*0.6).toFixed(0)}px)`;});
+  const suelta=()=>{if(x0==null)return;const d=dx,fue=lado;fin();if(!fue)return;el._deslizoTs=Date.now();
+    if(d>60)homeHoyMover(1);else if(d<-60&&_homeHoyOff>0)homeHoyMover(-1);};
+  el.addEventListener('pointerup',suelta);el.addEventListener('pointercancel',fin);
+  // Después de deslizar no se abre Ventas por el toque que terminó el gesto.
+  el.addEventListener('click',e=>{if(el._deslizoTs&&Date.now()-el._deslizoTs<400){e.stopPropagation();e.preventDefault();}},true);
 }
 // CUÁNTO COBRAR, adentro de "Ventas de hoy" (09/10/2026, él: "sacar lo del puntaje del mes, no me interesa. lo único
 // que me interesa de ahí es cuánto cobrar (…) en detalle desplegable en ventas de hoy"). Misma cuenta que tenía el
