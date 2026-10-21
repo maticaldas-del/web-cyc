@@ -215,6 +215,57 @@ async function clDescontarPedBot(db, pid, va, u) {
   await db.patch(base, upd);
   return Object.entries(upd).filter(([kk]) => !kk.startsWith('mano/')).map(([kk, v]) => `${kk.replace(/^vars\//, '')} → ${v}${upd['mano/' + kk.replace(/^vars\//, '')] === null ? ' (era a mano)' : ''}`).join(' · ');
 }
+// ── LO QUE LLEGÓ SE SUMA A LA OFICINA (etapa 6 · A3, 21/10/2026, eligió la a) ─────────────────────────────────────────────
+// "Llegó" de Paraguay y de Listas suma solo lo que vino (como ya hacía `pvped:llego` del Paulvic): él avisa lo que faltó y se resta
+// antes. Misma cuenta que el comando `ofi` y que `ofiMover` de la web: con color, la clave de ESE color y al total del producto lo
+// que cambió el color (nunca abajo de la suma de sus colores); sin color, el total. Se relee la clave justo antes y va en UN patch.
+// Devuelve null sin escribir cuando no se puede saber dónde va: un producto con colores y un renglón sin color (o con un color que
+// la ficha no tiene). `inv` es la foto de `cyc/inventory` de la corrida (se actualiza con lo escrito, para la suma de colores).
+function ofiColorDeFicha(p, va) {
+  const vs = Array.isArray(p && p.variantes) ? p.variantes : Object.values((p && p.variantes) || {});
+  if (!va) return vs.length ? null : '';
+  const n = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+  const hit = vs.filter((v) => n(v) === n(va));
+  return hit.length === 1 ? hit[0] : null;
+}
+async function ofiSumarBot(db, p, va, delta, inv) {
+  const OFI_LOC = 'Oficina Mati';
+  const vs = Array.isArray(p && p.variantes) ? p.variantes : Object.values((p && p.variantes) || {});
+  const color = ofiColorDeFicha(p, va);
+  if (color == null || !(delta > 0)) return null;
+  const kTot = p.id + '__' + sid(OFI_LOC), kVar = (v) => kTot + '__v__' + sid(v);
+  const tA = parseInt(await db.get('cyc/inventory/' + kTot)) || 0;
+  const upd = {};
+  let antes = tA, ahora = tA + delta, tN = tA + delta;
+  if (color) {
+    antes = parseInt(await db.get('cyc/inventory/' + kVar(color))) || 0; ahora = antes + delta;
+    const sumV = vs.reduce((a, v) => a + (v === color ? ahora : (parseInt(inv && inv[kVar(v)]) || 0)), 0);
+    tN = Math.max(0, tA + delta, sumV);
+    upd[kVar(color)] = ahora;
+  }
+  upd[kTot] = tN;
+  await db.patch('cyc/inventory', upd);
+  if (inv) Object.assign(inv, upd);
+  try { await db.set('cyc/ofientro/' + p.id, Date.now()); } catch { /* no frena */ }
+  return { color, antes, ahora, tA, tN };
+}
+// Lo que FALTÓ de un pedido, desde el chat: `<palabra>[#<color>]=<unidades que LLEGARON>` (`=` adelante = nombre exacto). Cada uno
+// tiene que agarrar UN renglón del pedido. Devuelve { llegan: Map(índice → u), problemas }.
+function faltoDePedido(items, args, nomDe) {
+  const n = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+  const llegan = new Map(), problemas = [];
+  for (const a of args) {
+    const m = String(a).trim().match(/^(.+?)(?:#(.+?))?=(\d+)$/);
+    if (!m) { problemas.push(`"${a}" → se espera <palabra>[#<color>]=<unidades que llegaron>`); continue; }
+    const ex = m[1].trim().startsWith('='), q = n(m[1].trim().replace(/^=/, '')), col = m[2] ? n(m[2]) : '';
+    const hits = items.map((it, i) => ({ it, i })).filter(({ it }) => it && (ex ? n(nomDe(it)) === q : n(nomDe(it)).includes(q)) && (!col || n(it.variante || it.v || '') === col));
+    if (hits.length !== 1) { problemas.push(`"${m[1]}${m[2] ? '#' + m[2] : ''}" → ${hits.length ? 'agarra ' + hits.length + ': ' + hits.slice(0, 6).map(({ it }) => nomDe(it) + (it.variante ? ' · ' + it.variante : '')).join(' | ') : 'ningún renglón del pedido'}`); continue; }
+    const u = parseInt(m[3], 10), ped = parseInt(hits[0].it.u) || 0;
+    if (u > ped) { problemas.push(`"${m[1]}": dijiste que llegaron ${u} y se pidieron ${ped}`); continue; }
+    llegan.set(hits[0].i, u);
+  }
+  return { llegan, problemas };
+}
 function precioRedondoAviso(p0, p1) {
   const a = [];
   if (p1 >= 1000 && p1 % 1000 === 0) a.push(`termina redondo (${'$' + p1.toLocaleString('es-AR')}): mejor ${'$' + (p1 - 10).toLocaleString('es-AR')}`);
@@ -44980,7 +45031,12 @@ async function main() {
       // `llego` (precio pagado × recargo real). No marca nada, no toca la oficina ni el estado del pedido.
       const SOLOFICHAS = sub === 'fichas';
       if (sub === 'llego' || SOLOFICHAS) {
-        let id = arg.trim();
+        // A3 (etapa 6, 21/10/2026): `pyped:llego:<id>[;<palabra>[#<color>]=<llegaron>…][;nosumar][;go]`. Lo que llegó se SUMA solo a
+        // la oficina (lo que no se dice, llegó entero); `nosumar` = lo contás vos en Mi oficina, como antes.
+        const [_idA, ..._llA] = arg.split(';');
+        let id = _idA.trim();
+        const NOSUMAR = _llA.some((x) => /^nosumar$/i.test(String(x).trim()));
+        const _faltaArgs = _llA.map((x) => String(x).trim()).filter((x) => x && !/^nosumar$/i.test(x));
         if (/^\d{4}-\d{2}-\d{2}$/.test(id)) {
           const m = Object.entries(compras).filter(([, c]) => c && c.fecha === id && c.estado === 'camino');
           if (m.length !== 1) { console.log(`Con la fecha ${id} hay ${m.length} pedido(s) en camino${m.length ? ': ' + m.map(([k]) => k).join(', ') : ''}. Pasá el id.`); return; }
@@ -45032,9 +45088,16 @@ async function main() {
           plan.filter((x) => x.estado === 'ya').forEach((x) => console.log(`  = ya tenía ficha: ${x.src.nombre}`));
           plan.filter((x) => x.estado === 'nonombre').forEach(() => console.log(`  ⚠️ un renglón sin nombre: no se puede crear`));
         }
-        if (_repIts.length) {
-          console.log('Probados (reposición): no crean fichas (ya las tienen). Hay que contar estas unidades en la oficina:');
-          _repIts.forEach((it) => console.log(`  ${it.u} u. · ${it.nom || it.cod || '?'}`));
+        if (_repIts.length) console.log(`Probados (reposición): no crean fichas (ya las tienen): ${_repIts.length} renglón(es).`);
+        // A3: qué llegó de cada renglón (lo que no se nombra, entero) y si se suma a la oficina.
+        const _itsP = (c.items || []).filter(Boolean);
+        const _nomIt = (it) => it.nom || it.cod || '?';
+        const _F = SOLOFICHAS ? { llegan: new Map(), problemas: [] } : faltoDePedido(_itsP, _faltaArgs, _nomIt);
+        if (_F.problemas.length) { console.log('❌ NO ESCRIBO NADA (lo que faltó no se entiende):'); _F.problemas.forEach((x) => console.log('   ' + x)); return; }
+        const _llegoU = (it) => { const i = _itsP.indexOf(it); return _F.llegan.has(i) ? _F.llegan.get(i) : (parseInt(it.u) || 0); };
+        if (!SOLOFICHAS) {
+          console.log(NOSUMAR ? 'Oficina: NO se suma nada (nosumar): contalo vos en Mi oficina.' : 'Oficina: se SUMA lo que llegó (lo que no dijiste que faltó, llegó entero):');
+          for (const it of _itsP) { const u = _llegoU(it), pe = parseInt(it.u) || 0; console.log(`  ${u} de ${pe} u. · ${_nomIt(it)}${it.variante ? ' · 🎨 ' + it.variante : ''}${u < pe ? '  ⚠️ faltaron ' + (pe - u) : ''}`); }
         }
         if (!GO) { console.log('\nNo se guardó nada (falta :go).'); return; }
         const hechas = [];
@@ -45067,7 +45130,7 @@ async function main() {
           try {
             await db.set('cyc/products/' + p.id, p);
             if (x.src.id && cands[x.src.id]) await db.set(`cyc/candidatos_py/${x.src.id}/prodId`, p.id);
-            hechas.push(p);
+            hechas.push(Object.defineProperty(p, '_srcId', { value: x.src.id, enumerable: false }));   // A3: para sumar a la oficina en su ficha
             if (x.src.id) _fichaDeItem[x.src.id] = p.name;   // revisión final: para el comando `ofi` de abajo
           } catch (e) { console.log(`⚠️ no pude crear ${p.name}: ${(e && e.message) || e}`); }
         }
@@ -45082,24 +45145,55 @@ async function main() {
         await db.set('cyc/compraspy/' + id + '/fechaLlego', hoyAR);
         // D6 (29/09, eligió la b): foto de la oficina al llegar una reposición. La canasta sigue restando
         // lo llegado hasta que la oficina suba (o 7 días): si no, lo volvería a pedir sin contar.
-        if (_repIts.length) {
-          try {
-            const _inv = (await db.get('cyc/inventory')) || {};
-            const _ofiLl = {};
-            for (const it of _repIts) if (!(it.prodId in _ofiLl)) _ofiLl[it.prodId] = parseInt(_inv[it.prodId + '__' + sid('Oficina Mati')]) || 0;
-            await db.set('cyc/compraspy/' + id + '/ofiAlLlegar', _ofiLl);
-          } catch (eO) { console.log('⚠️ no pude guardar la foto de la oficina: la canasta puede volver a pedirla hasta que la cuentes'); }
+        // A3 (21/10/2026): la foto se toma ANTES de sumar y se guarda sólo de los productos que NO se pudieron sumar (los que se
+        // sumaron ya están contados: la canasta no tiene nada que esperar).
+        let _inv = null, _ofiLl = {};
+        try { _inv = (await db.get('cyc/inventory')) || {}; for (const it of _repIts) if (!(it.prodId in _ofiLl)) _ofiLl[it.prodId] = parseInt(_inv[it.prodId + '__' + sid('Oficina Mati')]) || 0; }
+        catch { _inv = null; console.log('⚠️ no pude leer la oficina: no sumo nada (contalo en Mi oficina) y la canasta puede volver a pedirlo hasta que lo cuentes'); }
+        const _sumados = [], _aMano = [], _faltoR = [];
+        const _fichaIdDe = (it) => it.id ? ((hechas.find((p) => p._srcId === it.id) || {}).id || (plan.find((x) => x.src && x.src.id === it.id && x.estado === 'repe') || {}).rep?.[0]?.id || (cands[it.id] || {}).prodId || null) : (it.prodId || null);
+        for (const it of _itsP) { const u = _llegoU(it), pe = parseInt(it.u) || 0; if (u < pe) _faltoR.push({ nom: String(_nomIt(it)).slice(0, 80), ...(it.variante ? { v: it.variante } : {}), pedidas: pe, llegaron: u }); }
+        if (!NOSUMAR && _inv) {
+          const _prodsAll = [...prods, ...hechas];
+          for (const it of _itsP) {
+            const u = _llegoU(it); if (!(u > 0)) continue;
+            const pid = _fichaIdDe(it), pf = pid && _prodsAll.find((pp) => pp.id === pid);
+            if (!pf) { _aMano.push({ it, u, why: 'sin ficha' }); continue; }
+            if (CORTAR) { _aMano.push({ it, u, pf, why: 'cancelaron la corrida' }); continue; }
+            let r = null; try { r = await ofiSumarBot(db, pf, it.variante || '', u, _inv); } catch (eS) { _aMano.push({ it, u, pf, why: 'no se pudo escribir (' + String((eS && eS.message) || eS).slice(0, 40) + ')' }); continue; }
+            if (!r) { _aMano.push({ it, u, pf, why: it.variante ? `la ficha no tiene el color "${it.variante}"` : 'la ficha tiene colores y el renglón no dice cuál' }); continue; }
+            _sumados.push({ prodId: pf.id, ...(r.color ? { v: r.color } : {}), u });
+            console.log(`  🏠 oficina · ${pf.name}${r.color ? ' · ' + r.color + ': ' + r.antes + ' → ' + r.ahora + ' (total ' + r.tA + ' → ' + r.tN + ')' : ': ' + r.antes + ' → ' + r.tN}`);
+          }
         }
+        if (_repIts.length && _inv) {
+          const _sinSumar = {}; for (const [pid, q0] of Object.entries(_ofiLl)) if (NOSUMAR || _aMano.some((x) => (x.pf ? x.pf.id : x.it.prodId) === pid)) _sinSumar[pid] = q0;
+          try { await db.set('cyc/compraspy/' + id + '/ofiAlLlegar', Object.keys(_sinSumar).length ? _sinSumar : null); }
+          catch (eO) { console.log('⚠️ no pude guardar la foto de la oficina: la canasta puede volver a pedirla hasta que la cuentes'); }
+        }
+        try { await db.patch('cyc/compraspy/' + id, { sumoOfi: NOSUMAR || !_inv ? null : { ts: Date.now(), por: 'chat', items: _sumados }, falto: _faltoR.length ? _faltoR : null }); } catch { console.log('⚠️ no pude anotar en el pedido lo que se sumó y lo que faltó'); }
         for (const it of (c.items || [])) { const k = it && it.id && cands[it.id]; if (k && k.pedidoEn === id) { try { await db.set(`cyc/candidatos_py/${it.id}/pedidoEn`, null); } catch {} } }
         const rel = await db.get('cyc/compraspy/' + id);
         console.log(`\n${rel && rel.estado === 'llego' ? '✓' : '⚠️ NO QUEDÓ'} Pedido ${id} marcado como llegado · ${hechas.length} ficha(s) creada(s)${hechas.length ? ': ' + hechas.map((p) => p.id + ' ' + p.name).join(' | ') : ''}`);
         if (hechas.length) console.log(`Siguiente paso: \`repartopy:${id}\` para ver en qué cuenta va cada una y \`pasara:<cuenta>:=<nombre>:go\` para marcarla. Después contar en la oficina.`);
         // Etapa 3 (29/09): hasta contarlas, el patrimonio baja lo que costó el pedido (dejó de estar
         // "en camino" y las fichas nacen en 0). El comando para cargarlas, listo (revisar las unidades).
+        // A3 (21/10/2026): lo que llegó ya se sumó. Lo que no se pudo (sin ficha, colores sin decir cuál, `nosumar`) sale con su
+        // comando `ofi` listo. ARREGLADO: antes salía sin `@color` y en una reposición con colores el comando fallaba ENTERO.
         { const _nomOfi = (it) => (it.id && _fichaDeItem[it.id])
             || (it.prodId && (prods.find((pp) => pp.id === it.prodId) || {}).name) || it.nom;
-          const _ofi = (c.items || []).filter((it) => it && _nomOfi(it) && (parseInt(it.u) || 0) > 0 && !/[;=]/.test(_nomOfi(it))).map((it) => `=${_nomOfi(it)}=+${parseInt(it.u)}`);
-          if (_ofi.length) console.log(`⚠️ Contalas en la oficina (hasta entonces no suman en el patrimonio). Si llegó todo: ofi:${_ofi.join(';')};go`); }
+          const _pend = NOSUMAR || !_inv ? _itsP.map((it) => ({ it, u: _llegoU(it), pf: [...prods, ...hechas].find((pp) => pp.id === _fichaIdDe(it)) })) : _aMano;
+          const _ofi = [], _sinCmd = [];
+          for (const x of _pend) {
+            if (!(x.u > 0)) continue;
+            const nom = (x.pf && x.pf.name) || _nomOfi(x.it); if (!nom || /[;=@#]/.test(nom)) { _sinCmd.push(`${x.u} u. · ${_nomOfi(x.it)}${x.why ? ' (' + x.why + ')' : ''}`); continue; }
+            const col = x.pf ? ofiColorDeFicha(x.pf, x.it.variante || '') : '';
+            if (col == null) { const vsP = Array.isArray(x.pf.variantes) ? x.pf.variantes : Object.values(x.pf.variantes || {}); _ofi.push(`=${nom}@<color: ${vsP.slice(0, 6).join(' | ')}>=+${x.u}`); continue; }
+            _ofi.push(`=${nom}${col ? '@' + col : ''}=+${x.u}`);
+          }
+          if (_sumados.length) console.log(`✓ Sumado a la oficina: ${_sumados.reduce((a, x) => a + x.u, 0)} u. en ${_sumados.length} renglón(es).${_faltoR.length ? ' Faltaron ' + _faltoR.reduce((a, x) => a + x.pedidas - x.llegaron, 0) + ' u. (quedan anotadas en el pedido).' : ''}`);
+          if (_ofi.length) console.log(`⚠️ Esto NO se sumó (hasta contarlo no suma en el patrimonio): ofi:${_ofi.join(';')};go${_ofi.some((x) => x.includes('<color')) ? '  ← cambiá <color…> por el color que llegó' : ''}`);
+          if (_sinCmd.length) console.log(`⚠️ Contalo a mano en Mi oficina: ${_sinCmd.join(' · ')}`); }
         // 05/10/2026: lo que ya tenía ficha (probados y nuevos enganchados) sube su costo si este pedido salió más caro.
         if (_recReal) { try { await aplicarCostosPedido(db, id, rel || c, true); } catch (eC) { console.log('⚠️ no pude revisar los costos: ' + ((eC && eC.message) || eC)); } }
         return;
