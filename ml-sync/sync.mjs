@@ -42934,6 +42934,24 @@ async function main() {
     // distinta, precio más bajo, neto todavía estimado. NINGÚN dato del comprador ni números de orden en el registro.
     // BILLING_PROBE=ventasvistas:<ts>[;go] (21/10/2026) → anota hasta qué venta se analizó (el `hasta` de `ventasraras:nuevas`). Nunca
     // retrocede: si ya había una marca más nueva, no la pisa. Corre también por ml-consulta (es una marca chica).
+    // BILLING_PROBE=ventashora[:<días>] (21/10/2026, SOLO LEE): cuántas compras entran en cada hora de acá (promedio por día, sin
+    // canceladas, un carrito = una) y cuántas caen en cada tramo entre dos vueltas. Para repartir las vueltas de ventas según el ritmo.
+    if (/^ventashora(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const dias = Math.max(7, Math.min(90, Number(String(process.env.BILLING_PROBE).split(':')[1]) || 30));
+      const vp = await db.get('cyc/ventaprod').catch(() => null); if (!vp) { console.log('⚠️ no pude leer las ventas'); return; }
+      const desde = Date.now() - dias * 864e5; const vistos = new Set(); const porH = Array(24).fill(0), porDH = {}; let n = 0;
+      for (const dia of Object.values(vp)) for (const [id, v] of Object.entries(dia || {})) {
+        if (!v || v.cancelada) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ts < desde) continue;
+        const k = String(v.cuenta || '') + '|' + String(v.numVenta || v.saleId || id); if (vistos.has(k)) continue; vistos.add(k);
+        const d = new Date(ts - 3 * 36e5); const h = d.getUTCHours(); porH[h]++; n++; const wd = d.getUTCDay(); (porDH[wd] = porDH[wd] || Array(24).fill(0))[h]++;
+      }
+      console.log(`=== 🕐 COMPRAS POR HORA (acá) · últimos ${dias} días · ${n} compras · ${(n / dias).toFixed(1)} por día ===`);
+      const mx = Math.max(...porH);
+      for (let h = 0; h < 24; h++) console.log(`${String(h).padStart(2, '0')}h  ${(porH[h] / dias).toFixed(2).padStart(5)}/día  ${(100 * porH[h] / n).toFixed(1).padStart(4)}%  ${'█'.repeat(Math.round(30 * porH[h] / mx))}`);
+      const nomD = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
+      console.log('\npor día de la semana (compras en el período): ' + nomD.map((x, i) => `${x} ${(porDH[i] || []).reduce((a, b) => a + b, 0)}`).join(' · '));
+      return;
+    }
     if (/^ventasvistas:/.test(String(process.env.BILLING_PROBE || ''))) {
       // 21/10/2026, él: "quiero que en la tarjeta de venta aparezca que fue analizada por el robot y el nivel de esfuerzo
       // utilizado". Además de la marca, deja en cada venta del tramo (prev, ts] su análisis en `cyc/ventaanalisis/<día>/<id>`
