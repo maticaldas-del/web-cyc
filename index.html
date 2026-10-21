@@ -2229,6 +2229,9 @@ function startApp(){
     state.autoprecio=d.autoprecio||{};state.claudecambios=d.claudecambios||{};
     state.techofreno=d.techofreno||{};   // 18/10: precio probado que no vendió (el techo), se marca en la línea de tiempo
     state.promoclaude=d.promoclaude||{};   // promos que entré yo (13/10/2026: cuentan como baja de precio en la venta)
+    // HISTORIA DE PROMOS (21/10/2026 · etapa 5): `cyc/promohist/<MLA>/<ts>` = {de, a, tipo, nombre, accion:'entra'|'sale'}, la
+    // escribe el robot desde hoy. Así una promo terminada sigue mostrando su ▼ en la fecha que fue (`promoclaude` sólo tiene la de hoy).
+    state.promohist=d.promohist||{};
     state.claudedecide=d.claudedecide||{};
     state.ofientro=d.ofientro||{};   // 1b (16/10): cuándo entró mercadería a la oficina por última vez
     state.noconsigo=d.noconsigo||{};   // 17/10: "🚫 No lo consigo" de Pedidos (Bs As/Paulvic): sin reposición hasta que entre algo a la oficina
@@ -10068,6 +10071,9 @@ function _lineaJunta(porMla,lks,varSel){
       if(!x||typeof x!=='object')continue;
       const o=dias[k]=dias[k]||{u:null,uR:null,vis:null,st:null,stN:0,p:null,caja:null,rem:false,esc:null,mg:null,tot:null,pubs:0};
       o.pubs++;
+      // (21/10/2026 · etapa 5) La caja del día sale sólo de las publicaciones ACTIVAS (o sin estado anotado), igual que
+      // `calcLineaTodo` del robot: una pausada no pelea la caja y su última lectura no dice nada de ese día.
+      const _cjOk=x.est==null||x.est==='active';
       if(x.u!=null){o.u=(o.u||0)+Number(x.u||0);}
       // EL ESTADO DEL DÍA (21/10/2026 · etapa 1): 'active' si alguna publicación con estado estaba activa; si todas las que
       // lo informan estaban pausadas/cerradas, ese estado. Sin estado en ninguna, no se sabe (queda sin `est`). Lo usan las rayas.
@@ -10093,7 +10099,7 @@ function _lineaJunta(porMla,lks,varSel){
         // que vendió más reciente (30 días) o la última que figuraba activa.
         else (o._c=o._c||[]).push({p:Number(x.p),ult:ultVta(k),viva:vive()});}
       // `nocat`/`sincaja` llegan crudos de la línea del robot (su tabla esperaba otros nombres): se leen como n / s.
-      if(x.caja){const _cj={nocat:'n',sincaja:'s'}[x.caja]||x.caja;const r={g:3,c:2,p:1,s:0.5,n:0};if(o.caja==null||(r[_cj]||0)>(r[o.caja]||0))o.caja=_cj;}
+      if(x.caja&&_cjOk){const _cj={nocat:'n',sincaja:'s'}[x.caja]||x.caja;const r={g:3,c:2,p:1,s:0.5,n:0};if(o.caja==null||(r[_cj]||0)>(r[o.caja]||0))o.caja=_cj;}
       if(x.rem)o.rem=true;
       if(x.esc!=null)o.esc=o.esc==null?Number(x.esc):Math.min(o.esc,Number(x.esc));
       if(x.mg!=null)o.mg=o.mg==null?Number(x.mg):Math.min(o.mg,Number(x.mg));
@@ -10119,22 +10125,17 @@ async function lineaAbrir(prodId,ev,varSel){
   m.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;max-width:1100px;width:100%;padding:14px 16px;margin-top:20px"><div style="font-size:.8rem;color:var(--muted)">📈 Cargando la línea de tiempo de <b>${p.name}</b>…</div></div>`;
   const mlas=Object.entries(state.mllinks||{}).filter(([,e])=>e&&e.prodId===prodId&&!e.ignored).map(([k])=>k);
   try{
-    if(!_lineaCache[prodId]){
+    // LA CACHÉ ES SÓLO DE LA LÍNEA DEL ROBOT (21/10/2026 · etapa 5). Antes se guardaba también la lista de cambios de precio
+    // (leída una vez de `cyc/supervisor/eventos` con un catch vacío) y no vencía nunca: un `decido` de hoy no aparecía hasta
+    // recargar la página. Ahora: la línea (`mlapi/linea/<MLA>`) vence a los 10 minutos como `lineaTodo`, una lectura con
+    // fallo no se reutiliza (la próxima apertura vuelve a leer) y las flechas se arman en cada dibujo desde `state`, que el
+    // listener de `cyc` trae en vivo (`cambiosPrecioLista`).
+    const _c0=_lineaCache[prodId];
+    const _vieja=!_c0||_c0.fallo||Date.now()-Number(_c0.ts||0)>10*60e3||mlas.some(m=>!(m in (_c0.porMla||{})));
+    if(_vieja){
       const porMla={};
       await Promise.all(mlas.map(async mla=>{try{const sn=await db.ref('mlapi/linea/'+mla).once('value');porMla[mla]=sn.val()||{};}catch(e){porMla[mla]=null;}}));
-      let evs={};try{const sn=await db.ref('cyc/supervisor/eventos').once('value');evs=sn.val()||{};}catch(e){}
-      const evP=Object.values(evs).filter(e=>e&&mlas.includes(e.mla));
-      // UNA PROMO MÍA TAMBIÉN ES UNA BAJA DE PRECIO (13/10/2026, él: "porque no aparece que bajamos de precio? esta en
-      // promo es lo mismo no?"). Sale de `cyc/promoclaude/<MLA>` {de, precio, ts, nombre}.
-      // MIS CAMBIOS AL INSTANTE (20/10/2026, él con las Cartas Casino: "no muestra flecha de suba de precio"). Los eventos del
-      // supervisor salen de la foto de precios de la noche, así que una suba de ayer no tenía flecha. Cada `decido` queda en
-      // `cyc/claudecambios` con hora y motivo exactos: se suman, y se saca el evento de la foto que es el MISMO cambio (misma
-      // publicación, mismo precio final, menos de 2 días de diferencia).
-      for(const c of Object.values(state.claudecambios||{})){if(!c||!mlas.includes(c.mla)||!(Number(c.ts)>0)||!(Number(c.de)>0)||!(Number(c.a)>0)||Number(c.de)===Number(c.a))continue;
-        for(let j=evP.length-1;j>=0;j--){const e=evP[j];if(e.mla===c.mla&&Math.abs(Number(e.a)-Number(c.a))<1&&Math.abs(Number(e.ts)-Number(c.ts))<2*864e5)evP.splice(j,1);}
-        evP.push({mla:c.mla,ts:Number(c.ts),de:Number(c.de),a:Number(c.a),motivo:'claude',nota:c.motivo||''});}
-      for(const mla of mlas){const pc=(state.promoclaude||{})[mla];if(pc&&Number(pc.ts)>0&&Number(pc.de)>0&&Number(pc.precio)>0&&Number(pc.precio)!==Number(pc.de))evP.push({mla,ts:Number(pc.ts),de:Number(pc.de),a:Number(pc.precio),origen:promoNombreDe(pc),motivo:'promo'});}
-      _lineaCache[prodId]={porMla,evP,ts:Date.now(),fallo:Object.values(porMla).some(x=>x===null)};
+      _lineaCache[prodId]={porMla,ts:Date.now(),fallo:Object.values(porMla).some(x=>x===null)};
     }
     const _C=_lineaCache[prodId];
     if(!mlas.length||Object.values(_C.porMla).every(x=>x===null)){delete _lineaCache[prodId];m.innerHTML=`<div style="background:var(--surface);border-radius:12px;padding:16px;max-width:600px;margin-top:20px;font-size:.8rem">${mlas.length?'No pude leer la línea de tiempo de la base (puede ser un permiso). Avisame y lo reviso.':'Este producto no tiene ninguna publicación vinculada: no hay línea de tiempo.'}<br><br><button class="btn" onclick="document.getElementById(\'linea-modal\').remove()">Cerrar</button></div>`;return;}
@@ -10168,7 +10169,7 @@ function _lineaAplicarGiro(m){
   if(g){const W=window.innerHeight,H=window.innerWidth;Object.assign(m.style,{inset:'auto',top:'0',left:'0',right:'auto',bottom:'auto',width:W+'px',height:H+'px',transformOrigin:'top left',transform:`translateX(${H}px) rotate(90deg)`});m.dataset.giro='1';}
   else{Object.assign(m.style,{top:'',left:'',right:'',bottom:'',width:'',height:'',transformOrigin:'',transform:''});m.style.inset='0';m.dataset.giro='';}
 }
-function _lineaGiroBtn(){if(!_lineaPuedeGirar())return '';return `<button class="btn" onclick="lineaGiroCambiar()" style="font-size:.7rem;padding:3px 10px" title="${_lineaGiro?'Verla parada (normal)':'Verla de costado'}">${_lineaGiro?'⤾ parada':'⤿ de costado'}</button>`;}
+function _lineaGiroBtn(){if(!_lineaPuedeGirar())return '';return `<button class="btn" onclick="lineaGiroCambiar()" style="font-size:.7rem;padding:3px 10px;min-width:96px;text-align:center;white-space:nowrap" title="${_lineaGiro?'Verla parada (normal)':'Verla de costado'}">${_lineaGiro?'⤾ parada':'⤿ de costado'}</button>`;}
 function lineaGiroCambiar(){_lineaGiro=!_lineaGiro;try{localStorage.setItem('cycLineaGiro',_lineaGiro?'1':'0');}catch(e){}const m=document.getElementById('linea-modal');_lineaAplicarGiro(m);_lineaFac=1;if(_lineaRepintar)_lineaRepintar();}
 let _lineaFac=1,_lineaDim=null,_lineaRepintar=null,_lineaResizeOk=false;
 function _lineaLlenar(m,repintar){
@@ -10194,6 +10195,16 @@ function lineaPintar(prodId){
   const _vOk=v=>!_lineaVar||_lineaVarDeVenta(v)===_lineaVar;
   const porMlaF={};for(const [m,d] of Object.entries(C.porMla))if(_mlaOk(m))porMlaF[m]=d;
   const dias=_lineaJunta(porMlaF,state.mllinks||{},_lineaVar||'');
+  // LAS FLECHAS, FRESCAS EN CADA DIBUJO (21/10/2026 · etapa 5): de `state` (en vivo), con la MISMA lista que la línea de todos
+  // y el renglón de la venta. Antes vivían en la caché y un cambio de hoy no aparecía hasta recargar.
+  const evP=cambiosPrecioLista(Object.keys(C.porMla));
+  // EL STOCK DE LOS DÍAS VIEJOS QUE NO SE PUEDE SABER (21/10/2026 · etapa 5). (a) Si alguna publicación no se pudo leer, el total
+  // de stock de cualquier día viejo está corto (falta su parte): no se dibuja ni se deducen llegadas. (b) Con un color elegido, si
+  // una publicación que queda afuera del filtro tiene los colores ADENTRO (`invVar` con 2+), su stock de ese color no está en la
+  // línea (la foto de la noche es la del producto entero): tampoco se sabe. Hoy sí (sale del inventario de ahora).
+  const _stCiegoTxt=C.fallo?'no se pudo leer una publicación':(_lineaVar&&Object.keys(C.porMla).some(m=>!_mlaOk(m)&&((_lk[m]||{}).invVar)&&Object.keys(_lk[m].invVar).length>=2))?'no se sabe: una publicación tiene los colores adentro':'';
+  if(_stCiegoTxt)for(const o of Object.values(dias)){if(o&&!o.hoy){o._stVisto=o.st!=null;o.st=null;o.stN=0;}}
+  const _stCiego=k=>!!_stCiegoTxt&&!(dias[k]&&dias[k].hoy);
   // HOY, INCOMPLETO: la línea del robot es hasta AYER (la escribe de noche). El día de hoy se arma con lo que el
   // panel ya sabe: las ventas de hoy y el stock de ahora en las 4 cuentas. Sin visitas (eso lo trae la noche); la caja sale de la lectura de cada hora.
   // Y AUNQUE LA LÍNEA YA TENGA UN RENGLÓN DE HOY (08/10/2026): el relleno para atrás escribe hoy a medias (sólo stock o
@@ -10207,7 +10218,14 @@ function lineaPintar(prodId){
     Object.keys(C.porMla).filter(_mlaOk).forEach(m=>{const e=_lk[m]||{};if((e.status||'')!=='active')return;const r=_rc[e.caja]||0;if(r>cjR){cjR=r;cjH=_cc[e.caja];}});
     // Sin ninguna publicación activa no hay caja que pelear: se dice (antes quedaba en gris como "no se sabe").
     const _hayAct=Object.keys(C.porMla).filter(_mlaOk).some(m=>((_lk[m]||{}).status||'')==='active');if(!cjH&&!_hayAct)cjH='z';
-    dias[_hk]={u:ents.reduce((a,v)=>a+(Number(v.qty)||0),0),uR:ents.reduce((a,v)=>a+(ventaEnRemate(v,_hk)?(Number(v.qty)||0):0),0),vis:null,st,stN:1,p:(dias[_ay]&&dias[_ay].p)||null,caja:cjH||(_prevH&&_prevH.caja)||null,rem:!!(_prevH&&_prevH.rem),esc:_prevH?_prevH.esc:null,mg:_prevH?_prevH.mg:null,tot:null,pubs:1,hoy:true};if(_prevH&&_prevH.vis!=null)dias[_hk].vis=_prevH.vis;if(_prevH&&_prevH.p>0&&!dias[_hk].p)dias[_hk].p=_prevH.p;}}
+    // EL PRECIO DE HOY CON LOS CAMBIOS DE HOY (21/10/2026 · etapa 5): si hoy cambió el precio, el de hoy es el `a` del último
+    // cambio de hoy de cada publicación (las que no cambiaron, con el de ayer); antes quedaba el de ayer todo el día.
+    let _pHoy=(dias[_ay]&&dias[_ay].p)||null;
+    {const evH=evP.filter(e=>_mlaOk(e.mla)&&dateToKey(new Date(e.ts))===_hk);
+      if(evH.length){const ult={};evH.forEach(e=>{ult[e.mla]=Number(e.a);});const cand=[];
+        Object.keys(C.porMla).filter(_mlaOk).forEach(m=>{if(ult[m]>0){cand.push(ult[m]);return;}if(((_lk[m]||{}).status||'')!=='active')return;const y=(C.porMla[m]||{})[_ay];if(y&&Number(y.p)>0)cand.push(Number(y.p));});
+        _pHoy=cand.length?Math.min(...cand):Number(evH[evH.length-1].a);}}
+    dias[_hk]={u:ents.reduce((a,v)=>a+(Number(v.qty)||0),0),uR:ents.reduce((a,v)=>a+(ventaEnRemate(v,_hk)?(Number(v.qty)||0):0),0),vis:null,st,stN:1,p:_pHoy,caja:cjH||(_prevH&&_prevH.caja)||null,rem:!!(_prevH&&_prevH.rem),esc:_prevH?_prevH.esc:null,mg:_prevH?_prevH.mg:null,tot:null,pubs:1,hoy:true};if(_prevH&&_prevH.vis!=null)dias[_hk].vis=_prevH.vis;if(_prevH&&_prevH.p>0&&!dias[_hk].p)dias[_hk].p=_prevH.p;}}
   const ks=_lineaDias(_lineaRango); const N=ks.length;
   const W=1000, X=i=>i*W/N, bw=Math.max(W/N,0.6);
   // Escalas
@@ -10235,34 +10253,48 @@ function lineaPintar(prodId){
   const _cfHoy=costFullP(p),_monoHoy=monoPctVigente();
   // La plata de HOY de UNA venta (la misma cuenta que `ganHoy`, o `gan` sin costo de hoy), para guardar la del día POR
   // PUBLICACIÓN (`porMla`): las rayas de una publicación sola la necesitan (20/10/2026 · etapa 3, ver `_mlaRaya`).
-  const _gmV=(v,neto)=>{const q=Number(v.qty)||0;return _cfHoy>0?neto-(q*_cfHoy+(Number(v.total)||0)*(mlExtraPct(v.cuenta)+_monoHoy)/100):neto-efectivoCostoVP(v);};
+  // LA VENTA SIN COSTO EN UN CARRITO (21/10/2026 · etapa 5): el costo de una venta sin costo cargado ES su neto (regla del 26/09:
+  // deja $0), y acá el neto es el "vendido solo" (`netoProductoVP`), más bajo que el repartido del carrito: con `efectivoCostoVP(v)`
+  // el costo salía del neto repartido y la línea mostraba una PÉRDIDA que en Ventas era $0. El costo se mide con el mismo neto.
+  const _ecN=(v,neto)=>efectivoCostoVP({...v,neto});
+  const _gmV=(v,neto)=>{const q=Number(v.qty)||0;return _cfHoy>0?neto-(q*_cfHoy+(Number(v.total)||0)*(mlExtraPct(v.cuenta)+_monoHoy)/100):neto-_ecN(v,neto);};
   const _gmSum=(o,mla,x)=>{o[mla||'?']=(o[mla||'?']||0)+x;return o;};
-  const gd={}; for(const k of ks){const ents=Object.values((state.ventaprod||{})[k]||{}).filter(v=>v&&!v.cancelada&&(prodDeVenta(v)||{}).id===prodId&&_vOk(v)).map(v=>({...v,_dateKey:k}));
-    if(!ents.length)continue;let neto=0,costo=0,gest=0,q=0,mer=0,imp=0,tot=0,cHoy=0;ents.forEach(v=>{neto+=netoProductoVP(v);costo+=efectivoCostoVP(v);gest+=gestDivVP(v);q+=Number(v.qty)||0;cHoy+=(Number(v.qty)||0)*_cfHoy+(Number(v.total)||0)*(mlExtraPct(v.cuenta)+_monoHoy)/100;
+  // La ganancia de un día con las ventas del panel (la usan los días del gráfico y los 6 de antes, para el promedio de 7).
+  // `sinCosto`: todas las ventas del día sin costo cargado (no hay % que mostrar) · `estV`: alguna con neto ESTIMADO (≈, en gris,
+  // como el renglón de Ventas) · `gV`: lo que figura en Ventas (con el neto repartido del carrito), para decirlo en el globito.
+  const _gdPanel=k=>{const ents=Object.values((state.ventaprod||{})[k]||{}).filter(v=>v&&!v.cancelada&&(prodDeVenta(v)||{}).id===prodId&&_vOk(v)).map(v=>({...v,_dateKey:k}));
+    if(!ents.length)return null;let neto=0,costo=0,gest=0,q=0,mer=0,imp=0,tot=0,cHoy=0,nSC=0,estV=false,gV=0,cart=false;ents.forEach(v=>{const nP=netoProductoVP(v),cP=_ecN(v,nP);neto+=nP;costo+=cP;gest+=gestDivVP(v);q+=Number(v.qty)||0;cHoy+=(Number(v.qty)||0)*_cfHoy+(Number(v.total)||0)*(mlExtraPct(v.cuenta)+_monoHoy)/100;
+      if(ventaSinCostoVP(v))nSC++;if(ventaEstimadaVP(v))estV=true;gV+=(Number(v.neto)||0)-efectivoCostoVP(v);if(ventaEnCarritoVP(v)&&nP!==(Number(v.neto)||0))cart=true;
       // Para la LÍNEA del costo va sólo la MERCADERÍA (costo × dólar del mes): el costo de la ganancia trae además
       // IIBB + monotributo como % del precio cobrado, y eso hacía que la línea se moviera con cada venta (03/10/2026).
-      const vv={...v,_dateKey:k};const ex=_efectivoCostoVP(vv),im=impuestosDeVenta(vv);mer+=Math.max(0,ex-im);imp+=im;tot+=Number(v.total)||0;});gd[k]={gan:neto-costo,ganHoy:_cfHoy>0?neto-cHoy:null,costo,gest,cu:q>0&&mer>0?mer/q:null,ct:q>0&&mer>0?(mer+imp)/q:null,impPct:tot>0?imp/tot*100:null,
-      porMla:ents.reduce((o,v)=>_gmSum(o,v.mla,_gmV(v,netoProductoVP(v))),{})};}
+      const vv={...v,_dateKey:k};const ex=_efectivoCostoVP(vv),im=impuestosDeVenta(vv);mer+=Math.max(0,ex-im);imp+=im;tot+=Number(v.total)||0;});
+    return {gan:neto-costo,ganHoy:_cfHoy>0?neto-cHoy:null,costo,gest,cu:q>0&&mer>0?mer/q:null,ct:q>0&&mer>0?(mer+imp)/q:null,impPct:tot>0?imp/tot*100:null,
+      porMla:ents.reduce((o,v)=>_gmSum(o,v.mla,_gmV(v,netoProductoVP(v))),{}),sinCosto:nSC===ents.length,estV,gV:cart?gV:null};};
+  const gd={}; for(const k of ks){const g=_gdPanel(k);if(g)gd[k]=g;}
   // LOS DÍAS VIEJOS, ESTIMADOS (07/10/2026, él con el Pack Cubreasiento: "no hiciste que el costo vaya hacia atrás en
   // el tiempo así tenemos un aprox de cuánta ganancia se hizo"). Las ventas de antes de que el panel las guarde salen de
   // la línea del robot (unidades y lo cobrado, SIN lo que depositó ML). Se arma una venta igual a las del panel, con la
   // MISMA cuenta (efectivoCostoVP: costo del mes o el de hoy hacia atrás, dólar del mes, IIBB y monotributo), y lo que
   // deposita ML sale de la venta del panel de ESA publicación con el precio más parecido (misma proporción, así el cargo
   // fijo y el envío se parecen). Sin ninguna venta del panel para comparar no se inventa nada. Queda marcado `est`.
+  // (21/10/2026 · etapa 5) La misma estimación corre también sobre los 6 días ANTES del gráfico (`_gdViejo`), para el promedio de 7.
+  let _gdViejo=()=>null;
   {const ref={};for(const [k,dd] of Object.entries(state.ventaprod||{}))for(const v of Object.values(dd||{})){if(!v||v.cancelada||!(Number(v.total)>0)||!(Number(v.neto)>0)||v.netoEstimado||(prodDeVenta(v)||{}).id!==prodId||!_vOk(v)||ventaEnCarritoVP({...v,_dateKey:k}))continue;
       const q=Number(v.qty)||1;(ref[v.mla||'*']=ref[v.mla||'*']||[]).push({pu:Number(v.total)/q,r:Number(v.neto)/Number(v.total)});(ref['*']=ref['*']||[]).push({pu:Number(v.total)/q,r:Number(v.neto)/Number(v.total)});}
     const ratioDe=(mla,pu)=>{const L0=(ref[mla]&&ref[mla].length?ref[mla]:ref['*'])||[];if(!L0.length)return null;let b=null;for(const x of L0)if(!b||Math.abs(Math.log(x.pu/pu))<Math.abs(Math.log(b.pu/pu)))b=x;return b.r;};
-    for(const k of ks){if(gd[k])continue;let neto=0,costo=0,gest=0,q=0,mer=0,imp=0,tot=0,cHoy=0;const pm={};
+    _gdViejo=k=>{let neto=0,costo=0,gest=0,q=0,mer=0,imp=0,tot=0,cHoy=0;const pm={};
       for(const [mla,d] of Object.entries(porMlaF)){const x=d&&d[k];if(!x||!(Number(x.u)>0)||!(Number(x.tot)>0))continue;
         const u=Number(x.u),t=Number(x.tot);const r=Number(x.neto)>0?Number(x.neto)/t:ratioDe(mla,t/u);if(r==null)continue;
         const lk=(state.mllinks||{})[mla]||{};const v={prodId,prod:'',mla,cuenta:lk.cuenta||'',qty:u,total:t,neto:Math.round(t*r),_dateKey:k};
         neto+=v.neto;costo+=efectivoCostoVP(v);gest+=gestDivVP(v);q+=u;cHoy+=u*_cfHoy+t*(mlExtraPct(v.cuenta)+_monoHoy)/100;const ex=_efectivoCostoVP(v),im=impuestosDeVenta(v);mer+=Math.max(0,ex-im);imp+=im;tot+=t;_gmSum(pm,mla,_gmV(v,v.neto));}
-      if(q>0)gd[k]={gan:neto-costo,ganHoy:_cfHoy>0?neto-cHoy:null,costo,gest,cu:mer>0?mer/q:null,ct:mer>0?(mer+imp)/q:null,impPct:tot>0?imp/tot*100:null,est:true,porMla:pm};}}
+      return q>0?{gan:neto-costo,ganHoy:_cfHoy>0?neto-cHoy:null,costo,gest,cu:mer>0?mer/q:null,ct:mer>0?(mer+imp)/q:null,impPct:tot>0?imp/tot*100:null,est:true,porMla:pm}:null;};
+    for(const k of ks){if(gd[k])continue;const g=_gdViejo(k);if(g)gd[k]=g;}}
   // EL % DE GANANCIA COMO LÍNEA (03/10/2026, él: "sacá la ganancia y el % ponelo como una línea, idéntico
   // al precio, del color del nivel de % que vendió ese día"). Cada tramo toma el color de su día con la MISMA
   // tabla de niveles que todo el panel (pctColor: Bajo, Justo, Bien, Bueno, Excelente, Estrella, JOYA).
   // La escala se recorta en −50%/250% para que un día raro no aplaste el resto.
-  const pd={}; for(const [k,g] of Object.entries(gd)){const q=pctGananciaVP(g.gan,g.costo,g.gest);if(q!=null&&isFinite(q))pd[k]=q;}
+  // Un día con todas las ventas sin costo cargado no tiene % (21/10/2026 · etapa 5): no se dibuja y el globito lo dice.
+  const pd={}; for(const [k,g] of Object.entries(gd)){if(g.sinCosto)continue;const q=pctGananciaVP(g.gan,g.costo,g.gest);if(q!=null&&isFinite(q))pd[k]=q;}
   // EL COSTO POR UNIDAD (03/10/2026, él: "agreguemos con una línea el costo del producto de ese día, así
   // veo si aumentó o bajó"). Es el costo con el que el panel calculó la ganancia de las ventas de ese día
   // (efectivoCostoVP: costo del mes y dólar del mes) ÷ unidades. Los días sin ventas siguen el último.
@@ -10295,7 +10327,7 @@ function lineaPintar(prodId){
   // LAS LLEGADAS DE MERCADERÍA (08/10/2026, él: "que en stock tenga una pequeña marca indicando que llegaron
   // unidades"). Entre dos días con el número de stock (a 3 días o menos): lo que hay hoy − lo que había + lo vendido
   // en el medio. 2 u. o más (o desde cero) es una llegada; 1 u. suelta puede ser una devolución y no se marca.
-  const stIn={};{let pk=null,pi=-9;ks.forEach((k,i)=>{if(stU[k]==null)return;if(pk!=null&&i-pi<=3){let v=0;for(let j=pi+1;j<=i;j++){const dd=dias[ks[j]];v+=(dd&&dd.u)||0;}
+  const stIn={};if(!_stCiegoTxt){let pk=null,pi=-9;ks.forEach((k,i)=>{if(stU[k]==null)return;if(pk!=null&&i-pi<=3){let v=0;for(let j=pi+1;j<=i;j++){const dd=dias[ks[j]];v+=(dd&&dd.u)||0;}
       const e=stU[k]-stU[pk]+v;if(e>=2||(e>=1&&stU[pk]===0))stIn[k]=Math.round(e);}pk=k;pi=i;});}
   // ESCASEZ CON SU COLOR (16/10/2026, él: "dice escasez, pero lo sigo viendo en verde"). Lo que alcanza menos de lo que
   // tarda reponer (`reponerDe`, la misma regla de Pedidos y del robot) va en naranja como escasez, aunque sean 30 días.
@@ -10373,11 +10405,14 @@ function lineaPintar(prodId){
   // LOS 6 DÍAS ANTERIORES AL PERÍODO TAMBIÉN CUENTAN (07/10/2026, él: "falta esa línea de ganancia por día"):
   // sin ellos la línea arrancaba recién el 7º día del gráfico. Misma cuenta que `gd` (neto − efectivoCostoVP).
   const _ksAll=_lineaDias(ks.length+6).slice(0,6).concat(ks);
-  const _ganPre={};_ksAll.slice(0,6).forEach(k=>{const ents=Object.values((state.ventaprod||{})[k]||{}).filter(v=>v&&!v.cancelada&&(prodDeVenta(v)||{}).id===prodId&&_vOk(v));
-    // Etapa 2 (20/10/2026): el neto "vendido solo" (`netoProductoVP`), igual que `gd`: un carrito no infla la ganancia de antes.
-    if(ents.length)_ganPre[k]=ents.reduce((a,v)=>a+netoProductoVP({...v,_dateKey:k})-efectivoCostoVP({...v,_dateKey:k}),0);});
+  // Etapa 2 (20/10/2026): el neto "vendido solo" (`netoProductoVP`), igual que `gd`: un carrito no infla la ganancia de antes.
+  // (21/10/2026 · etapa 5) Los 6 días de antes salen de la MISMA cuenta que `gd` (`_gdPanel`, y si no hay ventas del panel la
+  // estimación de los días viejos `_gdViejo`), y el promedio de 7 se dibuja recién cuando los 7 días tienen dato: antes un día sin
+  // dato contaba como $0 y la línea arrancaba en 1/7 de lo real y subía de a escalones aunque se vendiera parejo.
+  const _ganPre={};_ksAll.slice(0,6).forEach(k=>{const g=_gdPanel(k)||_gdViejo(k);if(g)_ganPre[k]=g.gan;});
   const _ganK=k=>gd[k]?gd[k].gan:(_ganPre[k]||0);
-  const g7={};ks.forEach((k,i)=>{const ia=i+6;let t=0;for(let j=ia-6;j<=ia;j++)t+=_ganK(_ksAll[j]);g7[k]=t/7;});
+  const _ganDato=k=>!!gd[k]||_ganPre[k]!=null||(!!_vp1&&k>=_vp1)||(!!dias[k]&&dias[k].u===0);
+  const g7={};ks.forEach((k,i)=>{const ia=i+6;let t=0;for(let j=ia-6;j<=ia;j++){if(!_ganDato(_ksAll[j]))return;t+=_ganK(_ksAll[j]);}g7[k]=t/7;});
   const g7v=Object.values(g7);const gMax=g7v.length?Math.max(0,...g7v):1,gMin=g7v.length?Math.min(0,...g7v):0;
   _lane('vent',64,true);_lane('st',suv.length?54:14,true);_lane('gan',52,g7v.some(x=>x!==0));_lane('pct',cvs.length?56:46,pvs.length>0||cvs.length>0);_lane('pr',46,true);_lane('est',14,hayEst);_lane('caja',14,hayCaja);
   const H=_y-8;_lineaDim={fx:_lFx-8,sc:_lSc};
@@ -10399,7 +10434,7 @@ function lineaPintar(prodId){
       L.lotes.forEach(x=>{if(!(Number(x.u)>0&&Number(x.dias)>=0))return;const t=ref-Number(x.dias)*864e5;if(m==null||t<m)m=t;});});
     return m==null?null:dateToKey(new Date(m));})();
   const _conSt=(d,k)=>(!!d&&(d.u>0||d.st>0||(d.vis>0&&!(d.st!=null&&d.stN>=d.pubs))))||(!!k&&_stHistDesde!=null&&k>=_stHistDesde&&!(d&&d.st!=null&&d.stN>=d.pubs&&!(d.st>0)));
-  const _stIni=ks.find(k=>dias[k]&&(dias[k].u>0||dias[k].st!=null||dias[k].vis>0))||'9999';
+  const _stIni=ks.find(k=>dias[k]&&(dias[k].u>0||dias[k].st!=null||dias[k]._stVisto||dias[k].vis>0))||'9999';
   let svg='';
   // EL RELOJ DE LOS 4 MESES (16/10/2026, él: "agregar lo que falta para llegar a los 4 meses, por día, con una barra que
   // se vaya llenando, siempre roja"). CORREGIDO EL MISMO DÍA (él con el Metatarso: "toma desde que tiene stock, pero el stock
@@ -10455,9 +10490,9 @@ function lineaPintar(prodId){
     // al de la línea, y en un empate la que tiene una estrategia anotada (no base).
     const t=new Date(k.replace(/_/g,'-')+'T23:59:59-03:00').getTime();let best=null,bs=null;
     for(const mm of _ms){const x=(porMlaF[mm]||{})[k];const xp=x&&Number(x.p);if(!(xp>0))continue;const e=estrategiaDe(mm,t);
-      const sc=[Number(x.u)>0?0:1,Math.round(Math.abs(xp-d.p)/Math.max(1,d.p)*100),e&&e.t!=='sindecidir'?0:1,-(e&&e.ts||0)];
+      const sc=[Number(x.u)>0?0:1,Math.round(Math.abs(xp-d.p)/Math.max(1,d.p)*100),e&&e.t!=='sindecidir'&&e.t!=='noanotada'?0:1,-(e&&e.ts||0)];
       const di=bs?sc.findIndex((v,i)=>v!==bs[i]):-1;if(!bs||(di>=0&&sc[di]<bs[di])){bs=sc;best=e;}}
-    if(!bs){const e0=_ms.map(mm=>estrategiaDe(mm,t)).find(e=>e&&e.t!=='sindecidir');best=e0||estrategiaDe(_ms[0],t);}
+    if(!bs){const e0=_ms.map(mm=>estrategiaDe(mm,t)).find(e=>e&&e.t!=='sindecidir'&&e.t!=='noanotada');best=e0||estrategiaDe(_ms[0],t);}
     if(best&&ESTRATEGIA_UI[best.t])_estD[k]=best;});}
   const _estCol=k=>{const e=_estD[k];return e?ESTRATEGIA_UI[e.t][2]:'var(--text)';};
   const _estTxt=e=>{if(!e)return'';const u=ESTRATEGIA_UI[e.t];const d=e.ts?new Date(e.ts).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}):'';
@@ -10479,7 +10514,7 @@ function lineaPintar(prodId){
     // Regla suya del 03/10/2026: día sin dato y sin ventas = SIN stock. Sólo antes del primer día con algún
     // dato del producto queda gris (ahí todavía no existía o no se miraba).
     // Y si no hay dato de stock pero tuvo VISITAS, había stock (él, mismo día).
-    const stK=_conSt(d,k)?'si':(k>=_stIni?'no':null);
+    const stK=_conSt(d,k)?'si':(k>=_stIni&&!_stCiego(k)?'no':null);
     if(suv.length&&_alC[k]){const hA=Math.min(1,_alC[k]/_alD)*(_stB0-L.st[0]-2);svg+=`<rect x="${x}" y="${(_stB0-hA).toFixed(1)}" width="${bw}" height="${hA.toFixed(1)}" fill="var(--red)" opacity="${_alC[k]>=_alD?'.45':'.22'}"><title>la unidad más vieja lleva ${_alC[k]} d · ${_alC[k]>=_alD?'ya paga almacenamiento':'faltan '+(_alD-_alC[k])+' d para los '+Math.round(_alD/30)+' meses'}</title></rect>`;}
     svg+=`<rect x="${x}" y="${_stB0}" width="${bw}" height="${_stBh}" fill="${stK==='si'?'var(--green)':stK==='no'?'var(--red)':'rgba(128,128,128,.25)'}" opacity="${stK?'.75':'1'}"/>`;
     // precio
@@ -10494,8 +10529,10 @@ function lineaPintar(prodId){
   if(_pcv.length)svg+=`<text x="${W-2}" y="${L.pr[0]+9}" font-size="10" text-anchor="end" fill="var(--muted)">${fmt(Math.max(..._pcv))}</text>`+(Math.max(..._pcv)>Math.min(..._pcv)?`<text x="${W-2}" y="${L.pr[0]+L.pr[1]}" font-size="10" text-anchor="end" fill="var(--muted)">${fmt(Math.min(..._pcv))}</text>`:'');
   if(L.pct){const yq=q=>L.pct[0]+L.pct[1]-(qMax>qMin?(Math.max(qMin,Math.min(qMax,q))-qMin)/(qMax-qMin):.5)*L.pct[1];let prev=null;
     ks.forEach((k,i)=>{if(pd[k]==null)return;const pt=[X(i)+bw/2,yq(pd[k])];
-      if(prev)svg+=`<line x1="${prev[0].toFixed(1)}" y1="${prev[1].toFixed(1)}" x2="${pt[0].toFixed(1)}" y2="${pt[1].toFixed(1)}" stroke="${pctColor(pd[k])}" stroke-width="2"/>`;
-      else svg+=`<circle cx="${pt[0].toFixed(1)}" cy="${pt[1].toFixed(1)}" r="1.5" fill="${pctColor(pd[k])}"/>`;prev=pt;});
+      // Un día con alguna venta de neto ESTIMADO va en gris, como el renglón "≈ estimado" de Ventas (21/10/2026 · etapa 5).
+      const _pc=gd[k]&&gd[k].estV?'var(--muted)':pctColor(pd[k]);
+      if(prev)svg+=`<line x1="${prev[0].toFixed(1)}" y1="${prev[1].toFixed(1)}" x2="${pt[0].toFixed(1)}" y2="${pt[1].toFixed(1)}" stroke="${_pc}" stroke-width="2"/>`;
+      else svg+=`<circle cx="${pt[0].toFixed(1)}" cy="${pt[1].toFixed(1)}" r="1.5" fill="${_pc}"/>`;prev=pt;});
     if(pvs.length)svg+=`<text x="${W-2}" y="${L.pct[0]+9}" font-size="10" text-anchor="end" font-weight="700" fill="${pctColor(qMax)}">${Math.round(qMax)}%</text>`+(qMax>qMin?`<text x="${W-2}" y="${L.pct[0]+L.pct[1]}" font-size="10" text-anchor="end" font-weight="700" fill="${pctColor(qMin)}">${Math.round(qMin)}%</text>`:'');}
   if(L.gan){const yg=v=>L.gan[0]+L.gan[1]-(gMax>gMin?(v-gMin)/(gMax-gMin):.5)*L.gan[1];
     if(gMin<0)svg+=`<line x1="0" y1="${yg(0).toFixed(1)}" x2="${W}" y2="${yg(0).toFixed(1)}" stroke="rgba(128,128,128,.4)" stroke-dasharray="3,3"/>`;
@@ -10565,7 +10602,7 @@ function lineaPintar(prodId){
   if(ptsPK.length>1)for(let j=1;j<ptsPK.length;j++){const a=ptsPK[j-1],b=ptsPK[j];svg+=`<line x1="${a[0].toFixed(1)}" y1="${a[1].toFixed(1)}" x2="${b[0].toFixed(1)}" y2="${b[1].toFixed(1)}" stroke="${_estCol(b[2])}" stroke-width="3.5" stroke-linecap="round"/>`;}
   // marcas de cambios de precio
   const motivoTxt={rescate:'🛟 rescate después de una venta baja',rescatep:'🛟 rescate antes de vender (cuenta)',subir:'📈 suba del robot',bajar:'📉 baja del robot',remate:'🔻 remate',escalera:'🪜 escalera',prueba:'🧪 prueba +5%',promo:'🏷️ promo (precio tachado)',mano:'✋ a mano',volver:'↩️ vuelto atrás',claude:'🧠 decisión del cerebro'};
-  const evK={}; for(const e of C.evP){if(!e.ts||!_mlaOk(e.mla))continue;const kk=dateToKey(new Date(e.ts));(evK[kk]=evK[kk]||[]).push(e);}
+  const evK={}; for(const e of evP){if(!e.ts||!_mlaOk(e.mla))continue;const kk=dateToKey(new Date(e.ts));(evK[kk]=evK[kk]||[]).push(e);}
   let _flechasSvg='';
   ks.forEach((k,i)=>{const es=evK[k];if(!es)return;const e0=es[es.length-1];const sube=Number(e0.a)>Number(e0.de);const col=(FLECHA_TIPOS[flechaTipo(e0.mla,Number(e0.ts),e0.motivo,sube)]||FLECHA_TIPOS.otro)[0];
     const tt=es.map(e=>cambioTxt(e)).join('\n').replace(/[<>&]/g,'');
@@ -10585,30 +10622,39 @@ function lineaPintar(prodId){
   // EL GLOBITO, CARRIL POR CARRIL (08/10/2026, él: "quiero que al pasar el mouse por cada línea me muestre info de esa
   // línea en el día que puse el mouse. no todo, ya que es un lío"). Un rectángulo invisible por día Y por carril: cada
   // uno dice sólo lo suyo (la fecha arriba siempre). Tapa también el espacio entre carriles para que no haya huecos.
+  // LA SEMANA EN EL GLOBITO DE CADA DÍA (21/10/2026 · etapa 5): la franja de la semana queda debajo de los rectángulos de cada
+  // día y el mouse nunca llegaba a su explicación. Cada día del carril de ganancia dice ahora la de su semana.
+  const _semK={};{const S=_lineaSemanas(ks,_ganK);for(const [w,o] of Object.entries(S)){const t=`📅 semana del lunes ${w.slice(8,10)}/${w.slice(5,7)}: ${fmt(Math.round(o.t))}${o.n<7?` (${o.n} de 7 días en el gráfico)`:''}`;o.ks.forEach(kk=>{_semK[kk]=t;});}}
   ks.forEach((k,i)=>{const d=dias[k];const es=evK[k]||[];
     const _h=`${_lineaFmtDia(k)}${d&&d.hoy?' · HOY (incompleto: hasta ahora)':''}`;
     const _vent=d&&d.u!=null&&d.u>0?`🛒 vendió ${d.u} u.${d.uR?` (${d.uR} en remate)`:''}`:(k>=_gd0||(d&&d.u===0)?'🛒 no vendió':'🛒 ventas: sin dato');
     const _pctU=!gd[k]&&pdUlt[k]?`💰 % ganancia de la última venta (${_lineaFmtDia(pdUlt[k][1])}): ${pdUlt[k][0].toFixed(0)}%`:'';
-    const _g7=g7[k]!=null?`💵 ganancia promedio de los últimos 7 días: ${fmt(Math.round(g7[k]))} por día`:'';
-    const _gan=gd[k]?`💰 ${gd[k].est?'≈ ganancia estimada':'ganancia'} ${fmt(gd[k].gan)}${(()=>{const q=pctGananciaVP(gd[k].gan,gd[k].costo,gd[k].gest);return q!=null&&isFinite(q)?` (${q.toFixed(0)}%)`:'';})()}`:'';
+    const _g7=g7[k]!=null?`💵 ganancia promedio de los últimos 7 días: ${fmt(Math.round(g7[k]))} por día`:'💵 promedio de 7 días: todavía no hay 7 días con dato';
+    // Sin costo cargado no hay % (deja $0, regla del 26/09) · con neto estimado va "≈", como el renglón de Ventas (21/10/2026 · etapa 5).
+    const _gan=gd[k]?(gd[k].sinCosto?`💰 ganancia ${fmt(gd[k].gan)} · sin costo cargado (no hay % que mostrar)`:`💰 ${gd[k].est?'≈ ganancia estimada':gd[k].estV?'≈ ganancia':'ganancia'} ${fmt(gd[k].gan)}${(()=>{const q=pctGananciaVP(gd[k].gan,gd[k].costo,gd[k].gest);return q!=null&&isFinite(q)?` (${q.toFixed(0)}%)`:'';})()}${gd[k].estV&&!gd[k].est?' · neto estimado: ML todavía no liquidó':''}`):'';
+    // EL DÍA CON CARRITO (21/10/2026 · etapa 5): acá la ganancia es la de cada producto "vendido solo" (`netoProductoVP`); en Ventas
+    // figura la de lo cobrado repartido entre los productos del carrito. Se dicen las dos para que no parezca un error.
+    const _cart=gd[k]&&gd[k].gV!=null?`🛒 en carrito: en Ventas figura ${fmt(Math.round(gd[k].gV))} (lo cobrado, repartido); acá va lo que deja vendido solo`:'';
     const _st=stU[k]!=null?`📦 ${stU[k]} u. en Full · ${stD[k]==null?'sin ventas para medir el ritmo':'alcanza '+(stD[k]>=999?'+999':Math.round(stD[k]))+' d ('+_stTxt(stD[k])+')'}`:'';
     const _cos=cu[k]!=null?`🏷️ costo real ${ct[k]>0?fmt(ct[k]):'?'} c/u = mercadería ${fmt(cu[k])} (dólar del mes $${Math.round(tcForYM(k.slice(0,7))||0)}) + IIBB y monotributo ${ct[k]>0?fmt(ct[k]-cu[k]):'?'}${gd[k]&&gd[k].impPct!=null?` (${gd[k].impPct.toFixed(1)}% de lo cobrado)`:''}${gd[k]&&gd[k].cu>0?'':' · el último conocido'}`:'';
     const _vis=d&&d.vis!=null?`👀 ${d.vis} visitas`:'';
-    const _tuvo=_conSt(d,k)?`📦 tenía stock${d&&d.st>0?` (${d.st} u. en Full)`:d&&d.u>0?' (vendió)':d&&d.vis>0?' (tuvo visitas)':` (el robot lo ve en Full desde el ${_lineaFmtDia(_stHistDesde)})`}`:(k>=_stIni?(d&&d.st!=null?'📦 sin stock en Full':'📦 sin stock (sin dato, sin ventas ni visitas)'):'📦 todavía no se miraba');
+    const _tuvo=_conSt(d,k)?`📦 tenía stock${d&&d.st>0?` (${d.st} u. en Full)`:d&&d.u>0?' (vendió)':d&&d.vis>0?' (tuvo visitas)':` (el robot lo ve en Full desde el ${_lineaFmtDia(_stHistDesde)})`}`:(k>=_stIni?(_stCiego(k)?'📦 stock: '+_stCiegoTxt:d&&d.st!=null?'📦 sin stock en Full':'📦 sin stock (sin dato, sin ventas ni visitas)'):'📦 todavía no se miraba');
+    const _stCg=_stCiego(k)&&_conSt(d,k)?'📦 cuántas unidades: '+_stCiegoTxt:'';
     const _pr=d&&d.p>0?`💲 ${d.pCob?'cobrado':'precio'} ${fmt(d.p)}${d.pCob?' por unidad':''}${d.pCob&&d.pLista>0&&d.p<d.pLista*0.97?` · <span style="color:var(--amber)">▾ ${Math.round((1-d.p/d.pLista)*100)}% menos que el publicado (${fmt(d.pLista)}) sin cambiar el precio: promo o cupón de ML, carrito, o se vendió un color más barato</span>`:''}`:'';
     const _mg=d&&d.mg!=null?`📊 margen ${Number(d.mg).toFixed(0)}%`:'';
     const _est=d&&d.esc!=null?`🪜 escalera, escalón ${d.esc}%`:(d&&d.rem?'🔻 rematando':'');
     const _caja=d&&d.caja?`🥊 caja: ${(d.hoy?{g:'la ganamos (última lectura del robot)',c:'compartida (última lectura del robot)',p:'la perdemos (última lectura del robot)',n:'no es de catálogo: no hay caja que ganar',s:'ML no informa caja en ese catálogo',z:'ninguna publicación activa (pausadas): no pelea la caja'}:{g:'la ganábamos',c:'compartida',p:'la perdíamos',n:'no es de catálogo',s:'ML no informaba caja'})[d.caja]||d.caja}`:'';
     const _ent=stIn[k]!=null?`📥 llegaron ~${stIn[k]} u.`:'';
     const _ev=es.map(e=>cambioTxt(e).replace(/[<>&]/g,''));
-    const por={vent:[_vent,_gan],gan:[_g7],pct:[_gan||_pctU,_mg,_cos],st:[_ent,_st||_tuvo],vis:[_vis],pr:[_pr,_estD[k]?'🎨 '+_estTxt(_estD[k]):'',..._ev],est:[_est||'sin remate ni escalera'],caja:[_caja]};
+    // Las visitas van en el carril de ventas (el carril `vis` no existe desde v25.21).
+    const por={vent:[_vent,_vis,_gan,_cart],gan:[_g7,_semK[k]||''],pct:[_gan||_pctU,_cart,_mg,_cos],st:[_ent,_st||_tuvo,_stCg],pr:[_pr,_estD[k]?'🎨 '+_estTxt(_estD[k]):'',..._ev],est:[_est||'sin remate ni escalera'],caja:[_caja]};
     for(const [n,arr] of Object.entries(por)){if(!L[n])continue;const t=[_h,...arr].filter(Boolean).join('\n');
       svg+=`<rect x="${X(i)}" y="${Math.max(0,L[n][0]-4)}" width="${Math.max(bw,1)}" height="${L[n][1]+8}" fill="transparent"><title>${t}</title></rect>`;}});
   // Las flechitas van ARRIBA de los rectángulos del globito: si no, el mouse nunca llega a su explicación.
   svg+=_flechasSvg;
   // resumen del rango
   let uT=0,uRT=0,dCon=0,dSin=0,dNo=0,dRem=0,vT=0; ks.forEach(k=>{const d=dias[k];if(d&&d.u)uT+=d.u;if(d&&d.uR)uRT+=d.uR;if(d&&d.vis)vT+=d.vis;
-    const s=_conSt(d,k)?1:(k>=_stIni?0:null);if(s===1)dCon++;else if(s===0)dSin++;else dNo++;if(d&&(d.rem||d.esc!=null))dRem++;});
+    const s=_conSt(d,k)?1:(k>=_stIni&&!_stCiego(k)?0:null);if(s===1)dCon++;else if(s===0)dSin++;else dNo++;if(d&&(d.rem||d.esc!=null))dRem++;});
   let gT=0,cT=0,eT=0;Object.values(gd).forEach(g=>{gT+=g.gan;cT+=g.costo;eT+=g.gest;});const gPct=hayGan?pctGananciaVP(gT,cT,eT):null;
   // EL STOCK DE HOY EN EL RESUMEN (05/10/2026, él: "que muestre el número de unidades en stock, con su color de
   // excedente, faltan"). Unidades en Full de las 4 cuentas (o del color elegido) y los días que alcanzan al ritmo de
@@ -10633,14 +10679,15 @@ function lineaPintar(prodId){
     // quiero que me muestre cuántos días aprox faltan para que llegue la caja a Full y cuántas unidades, y cuántas en la oficina").
     // La caja tarda ~8 días desde que se despacha (misma vara que la escasez); del color elegido si hay uno.
     const _CL=8,_cajTxt=_tr?_tr.lista.slice().sort((a,b)=>b.d-a.d).map(c=>{const f=Math.max(0,Math.round(_CL-c.d));return `<b>${c.u} u.</b> ${f>0?`llega en ~${f} d`:`ya debería estar (despachada hace ${Math.round(c.d)} d, ML la está procesando)`}`;}).join(' · '):'';
-    const _pv=_pedidoViaja(prodId);
+    const _pv=_pedidoViaja(prodId,_lineaVar||undefined);
     const _repTxt=` · 🚚 camino a Full: ${_tr?_cajTxt:'<span style="color:var(--amber)">ninguna caja</span>'} · 🏠 oficina: <b style="color:${_cs>0?'var(--text)':'var(--amber)'}">${_cs} u.</b>${_pv?` · 📦 pedido a ${_pv.de} del ${String(_pv.fecha).slice(8,10)}/${String(_pv.fecha).slice(5,7)} (${_pv.falta>0?'~'+_pv.falta+' d':'ya debería haber llegado'})`:''}`;
     return `stock hoy: <b style="color:${_cHoy}">${q} u.</b> <span style="color:${_cHoy}">(${q>0?(dd==null?'sin ventas para medir el ritmo':'alcanza '+Math.round(dd)+' d · '+(_esc?'escasez':_cub?_cubTxt:_stTxt(dd))):'agotado · '+_stTxt(0)})</span>${_repTxt}${_esc?' · '+_esc:''}${_sr}`;})();
-  const pIni=ks.map(k=>dias[k]&&dias[k].p).find(x=>x>0), pFin=[...ks].reverse().map(k=>dias[k]&&dias[k].p).find(x=>x>0);
+  // El precio PUBLICADO, no lo cobrado (un día con ventas trae en `p` lo cobrado por unidad y en `pLista` el de lista) · 21/10/2026 · etapa 5.
+  const pIni=ks.map(k=>dias[k]&&(dias[k].pLista||dias[k].p)).find(x=>x>0), pFin=[...ks].reverse().map(k=>dias[k]&&(dias[k].pLista||dias[k].p)).find(x=>x>0);
   // ¿EL CAMBIO DE PRECIO DEJÓ MÁS PLATA? (04/10/2026, él con el Metatarso: "quizás lo aumentó un 10% y se vendió un
   // 20% menos"). Por cada cambio del rango: ganancia por día CON STOCK en los 14 días antes y en los días después
   // (hasta 14, cortando en el cambio siguiente). Días sin stock no cuentan: no vender sin mercadería no es culpa del precio.
-  const _evD=[];{const vistos=new Set();for(const e of C.evP){if(!e||!e.ts||!_mlaOk(e.mla)||!(Number(e.de)>0)||!(Number(e.a)>0))continue;
+  const _evD=[];{const vistos=new Set();for(const e of evP){if(!e||!e.ts||!_mlaOk(e.mla)||!(Number(e.de)>0)||!(Number(e.a)>0))continue;
     const kk=dateToKey(new Date(e.ts));const i=ks.indexOf(kk);if(i<0||vistos.has(kk))continue;vistos.add(kk);_evD.push({i,k:kk,e});}}
   _evD.sort((a,b)=>a.i-b.i);
   // ⚖️ (21/10/2026 · etapa 1) La plata de cada día con stock es la NETA: se le resta `_pdDed` (trabajo, tope de H y plata parada),
@@ -10659,11 +10706,11 @@ function lineaPintar(prodId){
   const btn=n=>`<button class="btn" onclick="lineaRango(${n},'${prodId}')" style="font-size:.66rem;padding:3px 10px;${_lineaRango===n?'background:var(--green);color:#000;border-color:var(--green)':''}">${n} días</button>`;
   const ley=(c,t)=>`<span style="display:inline-flex;align-items:center;gap:4px;margin-right:10px"><span style="width:10px;height:10px;border-radius:2px;background:${c};display:inline-block"></span>${t}</span>`;
   const lab=(y,t)=>`<div style="position:absolute;left:0;top:${y/ (H+16)*100}%;font-size:.6rem;color:var(--muted);transform:translateY(-1px)">${t}</div>`;
+  // LA CABECERA (21/10/2026 · etapa 5): el título va en su propio renglón y los botones abajo, pegados a la derecha (y el de giro con
+  // ancho fijo): elegir un color (título más largo) o cambiar "⤿ de costado"/"⤾ parada" ya no corre el ✕ ni los botones de días.
   m.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;max-width:1500px;width:100%;padding:14px 16px;margin-top:20px">
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-      <div style="font-size:.9rem;font-weight:700">📈 ${p.name}${_lineaVar?` · <span style="color:#a78bfa">${_lineaVar}</span>`:''}</div>
-      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><button class="btn" onclick="lineaTodoAbrir(event)" style="font-size:.66rem;padding:3px 10px" title="La misma línea con TODOS los productos juntos">📈 Todos</button>${btn(365)}${btn(90)}${btn(30)}${_lineaGiroBtn()}<button class="btn" onclick="document.getElementById('linea-modal').remove()" style="font-size:.7rem;padding:3px 10px">✕</button></div>
-    </div>
+    <div style="font-size:.9rem;font-weight:700;line-height:1.35;overflow-wrap:anywhere">📈 ${p.name}${_lineaVar?` · <span style="color:#a78bfa">${_lineaVar}</span>`:''}</div>
+    <div class="linea-btns" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;margin-top:6px"><button class="btn" onclick="lineaTodoAbrir(event)" style="font-size:.66rem;padding:3px 10px" title="La misma línea con TODOS los productos juntos">📈 Todos</button>${btn(365)}${btn(90)}${btn(30)}${_lineaGiroBtn()}<button class="btn" onclick="document.getElementById('linea-modal').remove()" style="font-size:.7rem;padding:3px 10px">✕</button></div>
     ${_vars.length>1?`<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px">${['',..._vars].map((v,i)=>`<button class="btn" onclick="lineaVar(_lineaVarsL[${i}],'${prodId}')" style="font-size:.62rem;padding:2px 9px;${_lineaVar===v?'background:#7c3aed;color:#fff;border-color:#7c3aed':''}">${v||'Todas juntas'}</button>`).join('')}</div>`:''}
     <div style="font-size:.7rem;color:var(--muted);margin:6px 0 8px;line-height:1.6">${_lineaRango} días · <b style="color:var(--text)">${uT} u. vendidas</b>${uRT?` (${uRT} en remate)`:''}${hayGan&&gPct!=null&&isFinite(gPct)?` · ganancia <b style="color:${pctColor(gPct)}">${gPct.toFixed(0)}%</b>`:''} · ${vT} visitas · ${_stHoy} · historial: <span style="color:var(--green)">${dCon} d con</span> · <span style="color:var(--red)">${dSin} d sin</span> · ${dNo} d sin dato${dRem?` · ${dRem} d rematando`:''}${pIni&&pFin?` · precio ${fmt(pIni)} → ${fmt(pFin)}`:''} · ${Object.keys(porMlaF).length} publicación(es)${C.fallo?' · <span style="color:var(--amber)">alguna publicación no se pudo leer</span>':''}</div>
     <div style="position:relative;padding-left:58px">
@@ -10708,17 +10755,11 @@ async function lineaTodoAbrir(ev){
 }
 function lineaTodoRango(n){_ltRango=n;lineaTodoPintar();}
 function _ltCambios(){
-  // Todos los cambios de precio: el supervisor (robot y a mano) + el último del robot por publicación (puede ser de hoy,
-  // antes de que el supervisor lo anote). Mismo cambio en las dos fuentes (misma publicación, mismo día, mismo precio
-  // nuevo) cuenta una sola vez.
-  const out=[],vistos=new Set();
-  const add=(mla,ts,de,a,mot,nom,cta)=>{de=Number(de);a=Number(a);if(!mla||!(ts>0)||!(de>0)||!(a>0)||de===a)return;
-    const k=dateToKey(new Date(ts));const id=mla+'|'+k+'|'+Math.round(a);if(vistos.has(id))return;vistos.add(id);
-    const lk=(state.mllinks||{})[mla]||{};const p=lk.prodId?prodById(lk.prodId):null;
-    out.push({mla,k,ts,de,a,mot:mot||'',nom:(p&&p.name)||nom||lk.title||mla,cta:lk.cuenta||cta||''});};
-  for(const e of Object.values(((state.supervisor||{}).eventos)||{}))if(e)add(e.mla,Number(e.ts),e.de,e.a,e.motivo,e.nom,e.cuenta);
-  for(const [mla,a] of Object.entries(state.autoprecio||{}))if(a&&a.de!=null&&a.a!=null&&a.estado!=='subiendo')add(mla,Number(a.ts),a.de,a.a,_ltMotAuto(a),a.nom,a.cuenta);
-  return out.sort((x,y)=>y.ts-x.ts);
+  // Todos los cambios de precio, de la MISMA lista que la línea de cada producto y el renglón de la venta (`cambiosPrecioLista`,
+  // 21/10/2026 · etapa 5): supervisor + claudecambios + autoprecio + promos (también las que ya terminaron).
+  return cambiosPrecioLista(null).map(c=>{const lk=(state.mllinks||{})[c.mla]||{};const p=lk.prodId?prodById(lk.prodId):null;
+    return {mla:c.mla,k:dateToKey(new Date(c.ts)),ts:c.ts,de:c.de,a:c.a,mot:c.motivo||'',nom:(p&&p.name)||c.nom||lk.title||c.mla,cta:lk.cuenta||c.cuenta||''};})
+    .sort((x,y)=>y.ts-x.ts);
 }
 function lineaTodoPintar(){
   const m=document.getElementById('linea-modal');if(!m||!_ltC)return;
@@ -10733,10 +10774,12 @@ function lineaTodoPintar(){
   const _ksAll=_lineaDias(N+6);const pv=state.ventaprod||{};const pv0=Object.keys(pv).sort()[0]||'9999';
   const vd={};_ksAll.forEach(k=>{const ents=Object.values(pv[k]||{}).filter(v=>v&&!v.cancelada);if(!ents.length)return;
     let u=0,uR=0,gan=0,costo=0,gest=0,tot=0;ents.forEach(v0=>{const v={...v0,_dateKey:k};const q=Number(v.qty)||0;u+=q;if(ventaEnRemate(v,k))uR+=q;const c=efectivoCostoVP(v);gan+=(v.neto||0)-c;costo+=c;gest+=gestDivVP(v);tot+=Number(v.total)||0;});
-    vd[k]={u,uR,gan,costo,gest,tot,n:ents.length};});
+    // Ventas = COMPRAS (un carrito es una venta), como el KPI de Ventas (`vpGrupoKey`) · 21/10/2026 · etapa 5.
+    vd[k]={u,uR,gan,costo,gest,tot,n:new Set(ents.map(vpGrupoKey)).size};});
   const uDe=k=>vd[k]?vd[k].u:(k<pv0&&R[k]&&R[k].u!=null?R[k].u:(k>=pv0?0:null));
   const uRDe=k=>vd[k]?vd[k].uR:(k<pv0&&R[k]?R[k].uR||0:0);
-  const g7={};ks.forEach((k,i)=>{if(k<pv0)return;let t=0;for(let j=i;j<=i+6;j++)t+=(vd[_ksAll[j]]||{}).gan||0;g7[k]=t/7;});
+  const g7={};ks.forEach((k,i)=>{if(k<pv0||_ksAll[i]<pv0)return;let t=0;   // 7 días enteros con ventas guardadas, si no, vacío (etapa 5)
+  for(let j=i;j<=i+6;j++)t+=(vd[_ksAll[j]]||{}).gan||0;g7[k]=t/7;});
   const pd={};ks.forEach(k=>{const v=vd[k];if(v&&v.costo>0){const q=pctGananciaVP(v.gan,v.costo,v.gest);if(q!=null&&isFinite(q))pd[k]=q;}});
   // Stock: sólo los días en que lo informa casi todo el catálogo (el relleno para atrás quedó a medias: un día con
   // la mitad de las publicaciones daría la mitad del stock).
@@ -10790,13 +10833,15 @@ function lineaTodoPintar(){
   if(L.pr)linea(L.pr,idx,'var(--text)',q=>q.toFixed(1));
   svg+=`<text x="${W-2}" y="${L.cam[0]+9}" font-size="10" text-anchor="end" fill="var(--muted)">▲ ${maxC}</text><text x="${W-2}" y="${L.cam[0]+L.cam[1]}" font-size="10" text-anchor="end" fill="var(--muted)">▼ ${maxC}</text>`;
   svg+=`<text x="${W-2}" y="${L.vent[0]+9}" font-size="10" text-anchor="end" fill="var(--muted)">${maxU} u.</text>`+(hayVis?`<text x="${W-2}" y="${L.vent[0]+20}" font-size="10" text-anchor="end" fill="#60a5fa">${maxV} visitas</text>`:'');
-  // globito por día
+  // globito por día · con la ganancia de la semana (21/10/2026 · etapa 5: la franja de la semana queda debajo de los días)
+  const _semK={};{const S=_lineaSemanas(ks.filter(k=>k>=pv0),k=>(vd[k]||{}).gan||0);for(const [w,o] of Object.entries(S)){const t=`📅 semana del lunes ${w.slice(8,10)}/${w.slice(5,7)}: ${fmt(Math.round(o.t))}${o.n<7?` (${o.n} de 7 días en el gráfico)`:''}`;o.ks.forEach(kk=>{_semK[kk]=t;});}}
   ks.forEach((k,i)=>{const r=R[k],rr=RD(k),v=vd[k],s=cS(k),b=cB(k);const u=uDe(k);
     const lst=(arr,sg)=>arr.slice(0,8).map(c=>`   ${sg} ${c.nom}${c.cta?' ('+c.cta+')':''} ${fmt(c.de)} → ${fmt(c.a)} (${c.a>c.de?'+':''}${((c.a/c.de-1)*100).toFixed(1)}%) · ${_LT_MOT[c.mot]||c.mot||'cambio'}`).concat(arr.length>8?[`   … y ${arr.length-8} más`]:[]);
     const t=[`${_lineaFmtDia(k)}${k===hk?' · HOY (incompleto: hasta ahora)':''}`,
       u!=null?`🛒 ${u} u. vendidas${uRDe(k)?` (${uRDe(k)} en remate)`:''}${v?` · ${v.n} venta(s) · facturado ${fmt(Math.round(v.tot))}`:(k<pv0?' (de la línea del robot: antes de que el panel guarde ventas)':'')}`:'🛒 ventas: sin dato',
       v?`💰 ganancia ${fmt(Math.round(v.gan))}${pd[k]!=null?` (${pd[k].toFixed(0)}%)`:''}`:'',
       g7[k]!=null?`💵 ganancia promedio de los últimos 7 días: ${fmt(Math.round(g7[k]))} por día`:'',
+      _semK[k]||'',
       stU[k]!=null?`📦 ${Math.round(stU[k])} u. en Full${k===hk?' (ahora)':''}`:(r&&r.st!=null?`📦 stock: sólo ${r.stN} publicaciones lo informan ese día (no se dibuja)`:''),
       r&&r.vis!=null?`👀 ${r.vis} visitas (${r.visN} publicaciones)`:'',
       idx[k]!=null?`💲 índice de precio ${idx[k].toFixed(1)} (${idx[k]>=100?'+':''}${(idx[k]-100).toFixed(1)}% contra el primer día)`:'',
@@ -10818,10 +10863,8 @@ function lineaTodoPintar(){
   const lab=(y,t)=>`<div style="position:absolute;left:0;top:${y/(H+16)*100}%;font-size:.6rem;color:var(--muted);transform:translateY(-1px)">${t}</div>`;
   const viejo=_ltC.ts?(Date.now()-_ltC.ts)/864e5:null;
   m.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;max-width:1500px;width:100%;padding:14px 16px;margin-top:20px">
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-      <div style="font-size:.9rem;font-weight:700">📈 Todos los productos</div>
-      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">${btn(365)}${btn(90)}${btn(30)}${_lineaGiroBtn()}<button class="btn" onclick="document.getElementById('linea-modal').remove()" style="font-size:.7rem;padding:3px 10px">✕</button></div>
-    </div>
+    <div style="font-size:.9rem;font-weight:700;line-height:1.35">📈 Todos los productos</div>
+    <div class="linea-btns" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;margin-top:6px">${btn(365)}${btn(90)}${btn(30)}${_lineaGiroBtn()}<button class="btn" onclick="document.getElementById('linea-modal').remove()" style="font-size:.7rem;padding:3px 10px">✕</button></div>
     <div style="font-size:.7rem;color:var(--muted);margin:6px 0 8px;line-height:1.6">${_ltRango} días · <b style="color:var(--text)">${uT.toLocaleString('es-AR')} u. vendidas</b>${gT?` · ganancia <b style="color:var(--text)">${fmt(Math.round(gT))}</b>`:''}${gPct!=null&&isFinite(gPct)?` (<b style="color:${pctColor(gPct)}">${gPct.toFixed(0)}%</b>)`:''} · ${vT.toLocaleString('es-AR')} visitas · stock hoy: <b style="color:var(--text)">${hoyR.st.toLocaleString('es-AR')} u.</b> · cambios de precio: <span style="color:var(--green)">▲ ${sT}</span> · <span style="color:var(--red)">▼ ${bT}</span>${iIni!=null&&iFin!=null?` · índice de precio ${iIni.toFixed(0)} → ${iFin.toFixed(1)}`:''} · caja hoy: <span style="color:var(--green)">${hoyR.g} ganan</span> · <span style="color:#f59e0b">${hoyR.c} comparten</span> · <span style="color:var(--red)">${hoyR.p} pierden</span>${_ltC.fallo?` · <span style="color:var(--amber)">no pude leer la línea del robot (${_ltC.fallo}): sólo lo del panel</span>`:(!Object.keys(R).length?' · <span style="color:var(--amber)">el robot todavía no armó la línea de todos: stock, visitas y precio salen desde la próxima noche</span>':(viejo>2?` · <span style="color:var(--amber)">la línea del robot es de hace ${Math.floor(viejo)} días</span>`:''))}</div>
     <div style="position:relative;padding-left:58px">
       ${lab(L.vent[0]+28,'ventas'+(hayVis?' · <span style="color:#60a5fa">visitas</span>':''))}${L.st?lab(L.st[0]+15,'stock'):''}${L.gan?lab(L.gan[0]+15,'$ ganancia/día · <span style="color:#a78bfa">semana</span>'):''}${L.pct?lab(L.pct[0]+15,'% ganancia'):''}${L.pr?lab(L.pr[0]+15,'precio (índice)'):''}${lab(L.cam[0]+20,'subas / bajadas')}${L.rem?lab(L.rem[0]+4,'remate'):''}${L.caja?lab(L.caja[0]+6,'caja'):''}
@@ -11219,7 +11262,7 @@ function prodDeVenta(v){return (v&&v.prodId)?(prodById(v.prodId)||prodByName(v&&
 // *"quiero que cada precio tenga un tag (…) y que al venderse ese producto en ventas x producto diga qué tag tiene"*. La pone
 // Claude con cada precio (`cyc/estrategia/<MLA>/<ts>`, historia). Cada venta muestra la última estrategia ANTERIOR a esa venta,
 // así una venta vieja dice la estrategia que tenía ese día. MISMA LISTA EN sync.mjs (ESTRATEGIAS).
-const ESTRATEGIA_UI={sindecidir:['⚪','sin estrategia','#64748b','Todavía sin estrategia: el cerebro la tiene que decidir (buscar techo, escasez, sobra…). Desde el 19/10 no existe un precio "base": todo precio tiene su estrategia.'],agotado:['⏸️','sin stock','#94a3b8','Sin stock en Full: el precio espera la reposición.'],escasez:['🔥','escasez','#f97316','Se estira el stock hasta que llegue la próxima caja: precio alto para que dure.'],sinrepo:['⏳','sin reposición','#eab308','No se consigue: el precio va para que el stock se venda en 4 meses al máximo posible.'],techo:['📈','buscando techo','#22c55e','Prueba de suba: se busca el precio que más plata por día deja.'],liquidando:['📉','liquidando','#ef4444','Se remata a propósito (sobra stock, stock antiguo o no vende): el % bajo es buscado.'],caja:['🥊','ganar la caja','#a78bfa','Bajado para ganar la caja de compra de ML.'],promo:['🏷️','promo','#c084fc','En una promo de Mercado Libre donde ML también pone plata.'],descuento:['💸','descuento','#e879f9','Descuento puesto sólo por nosotros (precio tachado): ML no pone nada.'],fecha:['🎁','fecha especial','#f472b6','Precio pensado para una fecha (Día de la Madre, Navidad…).'],excepcion:['🛡️','excepción','#94a3b8','Abajo del 25% a propósito (barrera de $33.000 u otro motivo explicado en el 🧠).'],sobra:['📦','sobra stock','#fb923c','Hay más stock del que se vende antes de que ML cobre stock antiguo: se baja (aunque quede abajo del 25%) para que salga lo que sobra, y vuelve al precio normal cuando queda lo justo. El cerebro se juzga contra no hacer nada.'],nuevo:['🆕','lanzamiento','#2dd4bf','Producto nuevo: arranca ~20% arriba del precio que se cree correcto y queda 7 días ahí de verdad. Si no vende, cada bajada va como descuento con el precio de lanzamiento tachado (real porque existió).'],prueba:['🧪','prueba','#818cf8','Precio de prueba: se cambió para medir cómo responde. (La prueba del tachado del 21/10 se canceló el 20/10: no se baja algo que vende bien sólo para medir.)'],techook:['🏔️','techo encontrado','#16a34a','La suba siguiente no rindió: queda en el último precio que más plata por día dejó. Se vuelve a probar si cambia la competencia o a los 30 días.'],bajando:['🪜','bajando','#fbbf24','Bajando en escalera, midiendo cada escalón: la escasez o la prueba de techo no vendió a ese precio y se baja de a poco, nunca abajo del último que vendía.'],volviendo:['↘️','volviendo al normal','#38bdf8','Llegó la reposición, pasó la fecha o volvió a conseguirse: el precio vuelve del alto al normal buscando el punto medio que más deja.'],desobra:['↗️','volviendo de sobra','#86efac','Ya no sobra stock: el precio vuelve a subir al normal.'],remate:['🧨','remate total','#dc2626','Rematado a cualquier precio (abajo de 0%) porque lo pediste vos.'],gemela:['💳','gemela con cuotas','#a855f7','Premium gemela: la misma publicación con cuotas sin interés, al precio que deja la misma plata neta que la Clásica. Comparte el stock con la Clásica.']};
+const ESTRATEGIA_UI={sindecidir:['⚪','sin estrategia','#64748b','Todavía sin estrategia: el cerebro la tiene que decidir (buscar techo, escasez, sobra…). Desde el 19/10 no existe un precio "base": todo precio tiene su estrategia.'],noanotada:['▫️','no se anotaba','#94a3b8','Antes de que se empezara a anotar la estrategia de cada precio: no se sabe cuál era (no es que el cerebro tenga que decidir algo).'],agotado:['⏸️','sin stock','#94a3b8','Sin stock en Full: el precio espera la reposición.'],escasez:['🔥','escasez','#f97316','Se estira el stock hasta que llegue la próxima caja: precio alto para que dure.'],sinrepo:['⏳','sin reposición','#eab308','No se consigue: el precio va para que el stock se venda en 4 meses al máximo posible.'],techo:['📈','buscando techo','#22c55e','Prueba de suba: se busca el precio que más plata por día deja.'],liquidando:['📉','liquidando','#ef4444','Se remata a propósito (sobra stock, stock antiguo o no vende): el % bajo es buscado.'],caja:['🥊','ganar la caja','#a78bfa','Bajado para ganar la caja de compra de ML.'],promo:['🏷️','promo','#c084fc','En una promo de Mercado Libre donde ML también pone plata.'],descuento:['💸','descuento','#e879f9','Descuento puesto sólo por nosotros (precio tachado): ML no pone nada.'],fecha:['🎁','fecha especial','#f472b6','Precio pensado para una fecha (Día de la Madre, Navidad…).'],excepcion:['🛡️','excepción','#94a3b8','Abajo del 25% a propósito (barrera de $33.000 u otro motivo explicado en el 🧠).'],sobra:['📦','sobra stock','#fb923c','Hay más stock del que se vende antes de que ML cobre stock antiguo: se baja (aunque quede abajo del 25%) para que salga lo que sobra, y vuelve al precio normal cuando queda lo justo. El cerebro se juzga contra no hacer nada.'],nuevo:['🆕','lanzamiento','#2dd4bf','Producto nuevo: arranca ~20% arriba del precio que se cree correcto y queda 7 días ahí de verdad. Si no vende, cada bajada va como descuento con el precio de lanzamiento tachado (real porque existió).'],prueba:['🧪','prueba','#818cf8','Precio de prueba: se cambió para medir cómo responde. (La prueba del tachado del 21/10 se canceló el 20/10: no se baja algo que vende bien sólo para medir.)'],techook:['🏔️','techo encontrado','#16a34a','La suba siguiente no rindió: queda en el último precio que más plata por día dejó. Se vuelve a probar si cambia la competencia o a los 30 días.'],bajando:['🪜','bajando','#fbbf24','Bajando en escalera, midiendo cada escalón: la escasez o la prueba de techo no vendió a ese precio y se baja de a poco, nunca abajo del último que vendía.'],volviendo:['↘️','volviendo al normal','#38bdf8','Llegó la reposición, pasó la fecha o volvió a conseguirse: el precio vuelve del alto al normal buscando el punto medio que más deja.'],desobra:['↗️','volviendo de sobra','#86efac','Ya no sobra stock: el precio vuelve a subir al normal.'],remate:['🧨','remate total','#dc2626','Rematado a cualquier precio (abajo de 0%) porque lo pediste vos.'],gemela:['💳','gemela con cuotas','#a855f7','Premium gemela: la misma publicación con cuotas sin interés, al precio que deja la misma plata neta que la Clásica. Comparte el stock con la Clásica.']};
 // 19/10/2026, eligió 1a 2a 3a: "↩️ corrección" ya no existe. Lo viejo anotado así toma el nombre del pasaje según el tag ANTERIOR
 // (misma tabla que `pasajeDe` del robot), y cada chip dice "de X" cuando la estrategia anterior era otra.
 function estrategiaPasaje(prev){if(prev==='techo'||prev==='techook')return 'techook';if(['escasez','sinrepo','fecha','bajando'].includes(prev))return 'volviendo';if(['sobra','liquidando','remate'].includes(prev))return 'desobra';return 'volviendo';}
@@ -11246,15 +11289,27 @@ function estrategiaDe(mla,ts){
   let best=null;for(const x of hs){if(x.ts>t+60e3)continue;best={...x};break;}
   if(!best){const ns=(state.nosubir||{})[mla];if(ns){const n=Number(ns.ts||ns.desde)||0;if(!n||n<=t)best={t:'liquidando',m:'marcada liquidando',ts:n};}}
   // 17/10, él: "¿por qué algunos no tienen tag?". Lo que nunca tuvo una estrategia anotada está en su precio normal: es 🎯 base.
-  if(!best)best={t:'sindecidir',m:'sin estrategia anotada',ts:0};
+  // 21/10 (etapa 5): antes de la PRIMERA anotación de estrategia del panel no se sabe qué estrategia tenía: ▫️ no se anotaba, no ⚪.
+  if(!best)best=t<_estrategiaPrimeraTs()?{t:'noanotada',m:'antes de que se anotara la estrategia',ts:0}:{t:'sindecidir',m:'sin estrategia anotada',ts:0};
   // 17/10, él: "cuando vuelve a subir puede poner el tag como buscando techo x2". Se cuentan las subas 📈 seguidas hasta ésta
   // (para atrás, hasta la primera anotación que no es techo): 1 = primera suba, 2 = segunda, etc.
   // 3a (19/10): la escasez también lleva escalón, igual que el techo.
   if(best.ts){const ant=hs.filter(x=>x.ts<=best.ts);if(best.t==='techo'||best.t==='escasez'){let n=0;for(const x of ant){if(x.t!==best.t)break;n++;}best.n=n;}
     const prev=ant.find(x=>x.t!==best.t);if(prev&&prev.t!=='sindecidir')best.de=prev.t;}
-  if(best.t==='promo'){const pc=(state.promoclaude||{})[mla];if(pc&&String(pc.tipo||'').toUpperCase()==='PRICE_DISCOUNT')best={...best,t:'descuento'};}
+  if(best.t==='promo'){if(String(_promoTipoEn(mla,t)||'').toUpperCase()==='PRICE_DISCOUNT')best={...best,t:'descuento'};}
   return best;
 }
+// 21/10/2026 (etapa 5): la primera vez que el panel anotó una estrategia (cualquier publicación). Antes de eso, ▫️ no se anotaba.
+let _estPrimCache={ref:null,v:0};
+function _estrategiaPrimeraTs(){const E=state.estrategia||{};if(_estPrimCache.ref===E)return _estPrimCache.v;let m=Infinity;
+  for(const h of Object.values(E)){if(!h||typeof h!=='object')continue;for(const k of Object.keys(h)){const n=Number(k);if(n>0&&n<m)m=n;}}
+  _estPrimCache={ref:E,v:m===Infinity?0:m};return _estPrimCache.v;}
+// 21/10/2026 (etapa 5): el tipo de la promo que tenía la publicación EN ESE MOMENTO (no la de hoy). Primero la historia
+// `cyc/promohist` (el último entra/sale hasta esa fecha); sin historia, la de `cyc/promoclaude` sólo si ya había entrado entonces.
+function _promoTipoEn(mla,ts){const t=Number(ts)||Date.now();const H=(state.promohist||{})[mla];
+  if(H&&typeof H==='object'){let ult=null,ut=-1;for(const [k,x] of Object.entries(H)){const n=Number(k)||Number(x&&x.ts)||0;if(x&&n>0&&n<=t+60e3&&n>ut){ut=n;ult=x;}}
+    if(ult)return ult.accion==='sale'?null:(ult.tipo||null);}
+  const pc=(state.promoclaude||{})[mla];if(!pc)return null;const pt=Number(pc.ts||pc.desde)||0;if(pt&&pt>t+60e3)return null;return pc.tipo||null;}
 function estrategiaChip(e){if(!e)return'';const u=ESTRATEGIA_UI[e.t];if(!u)return'';const d=e.ts?new Date(e.ts).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}):'';
   const de=e.de&&ESTRATEGIA_UI[e.de]?ESTRATEGIA_UI[e.de]:null;
   const tit=(u[3]+(e.n>1?(e.t==='escasez'?' Es el escalón n.º '+e.n+' seguido de escasez.':' Es la suba n.º '+e.n+' seguida buscando el techo.'):'')+(de?' Venía de '+de[0]+' '+de[1]+'.':'')+(e.m?' · '+e.m:'')+(d?' · desde el '+d:'')).replace(/"/g,'&quot;');
@@ -11264,13 +11319,13 @@ function estrategiaChip(e){if(!e)return'';const u=ESTRATEGIA_UI[e.t];if(!u)retur
 // que entré (descuento propio = descuento).
 function estrategiaPromoAjuste(e,mla,v){if(!e||(e.t!=='promo'&&e.t!=='descuento'))return e;
   const pv=v?vpPromoDe([v]):null;if(pv)return {...e,t:pv.ml>0?'promo':'descuento'};
-  const pc=(state.promoclaude||{})[mla];if(pc&&String(pc.tipo||'').toUpperCase()==='PRICE_DISCOUNT')return {...e,t:'descuento'};
+  if(String(_promoTipoEn(mla,(v&&Number(v.ts))||e.ts||Date.now())||'').toUpperCase()==='PRICE_DISCOUNT')return {...e,t:'descuento'};
   return e;}
 // 19/10/2026, él: "que sólo salgan tags: si es precio tachado y ponemos todo nosotros es descuento, si es promo y ml pone algo es
 // promo". Si la venta tuvo promo o cupón (`cyc/promoventa`), el tag de ESA venta es 🏷️ promo (ML puso algo) o 💸 descuento (sólo
 // nosotros), y la estrategia que tenía el precio queda como "· de X". El cartel dorado ya no sale (vpPromoLabel devuelve '').
 function estrategiaVentaHTML(v){if(!v||!v.mla)return'';let e=estrategiaPromoAjuste(estrategiaDe(v.mla,Number(v.ts)||0),v.mla,v);
-  const pv=vpPromoDe([v]);if(pv&&e&&e.t!=='promo'&&e.t!=='descuento'){const de=e.t!=='sindecidir'?e.t:(e.de||null);e={t:pv.ml>0?'promo':'descuento',m:'vendida con '+(pv.ml>0?'promo (ML puso '+fmt(Math.round(pv.ml))+')':'descuento nuestro')+(e.m?' · '+e.m:''),ts:e.ts,de};}
+  const pv=vpPromoDe([v]);if(pv&&e&&e.t!=='promo'&&e.t!=='descuento'){const de=e.t!=='sindecidir'&&e.t!=='noanotada'?e.t:(e.de||null);e={t:pv.ml>0?'promo':'descuento',m:'vendida con '+(pv.ml>0?'promo (ML puso '+fmt(Math.round(pv.ml))+')':'descuento nuestro')+(e.m?' · '+e.m:''),ts:e.ts,de};}
   return estrategiaChip(e);}
 function nombreDeVenta(v){const p=prodDeVenta(v);return p?p.name:((v&&v.prod)||'');}
 // ── LOS CAMBIOS DE PRECIO DE ESA PUBLICACIÓN, AL LADO DE CADA VENTA (24/09/2026) ──
@@ -11288,27 +11343,47 @@ const _ORIGEN_AUTO={venta:'el robot, al vender',margen:'el robot (rescate)',rema
   cerebro:'el robot (cerebro)',claude:'Claude',correccion:'el robot (corrigió una suba de más)',escalera:'el robot (escalera)',
   volver:'el robot (volvió atrás un cambio)',prueba:'el robot (prueba de suba)',grupo:'el robot (grupo de precio)'};
 const _origenAuto=a=>_ORIGEN_AUTO[a&&a.por]||'el robot, de noche';
+// ── UNA SOLA LISTA DE CAMBIOS DE PRECIO (21/10/2026 · etapa 5) ──
+// La línea de un producto, la línea de todos y el renglón de cada venta armaban cada una su propia lista (una leía el supervisor
+// con claudecambios, otra el supervisor con autoprecio, otra las dos sin claudecambios) y decían cosas distintas del mismo
+// cambio. Ahora las tres salen de acá:
+//  · cyc/supervisor/eventos — TODOS los cambios (robot y a mano), de la foto de precios de cada noche (hora aproximada).
+//  · cyc/claudecambios — cada `decido` con hora y motivo exactos (20/10/2026, él con las Cartas Casino: "no muestra flecha de
+//    suba de precio"). Saca el evento del supervisor que es el MISMO cambio (misma publicación, mismo precio final, <2 días).
+//  · cyc/autoprecio/<MLA> — el último cambio del robot viejo, si no está ya (mismo precio final ±1%, <2 días).
+//  · cyc/promohist/<MLA>/<ts> {de, a, tipo, nombre, accion} — cada promo que entra (▼) o sale (▲), aunque ya haya terminado.
+//  · cyc/promoclaude/<MLA> — la promo de hoy, si su entrada no está ya en la historia (13/10/2026, él: "porque no aparece que
+//    bajamos de precio? esta en promo es lo mismo no?"). Una promo también saca el evento del supervisor del mismo cambio.
+// `mlaOk`: función, arreglo o Set de publicaciones (sin nada: todas). Cada cambio: {mla, ts, de, a, motivo, origen, nota, quien,
+// aprox, nom, cuenta}. Ordenados del más viejo al más nuevo.
+function cambiosPrecioLista(mlaOk){
+  const ok=!mlaOk?()=>true:typeof mlaOk==='function'?mlaOk:(S=>m=>S.has(m))(mlaOk instanceof Set?mlaOk:new Set(mlaOk));
+  const val=(ts,de,a)=>ts>0&&de>0&&a>0&&de!==a;
+  const igual=(x,y,tol)=>x.mla===y.mla&&Math.abs(Number(x.a)-Number(y.a))<Math.max(1,tol?Number(y.a)*tol:0)&&Math.abs(Number(x.ts)-Number(y.ts))<2*864e5;
+  let out=[];
+  for(const ev of Object.values(((state.supervisor||{}).eventos)||{})){if(!ev||!ok(ev.mla))continue;const ts=Number(ev.ts),de=Number(ev.de),a=Number(ev.a);if(!val(ts,de,a))continue;
+    // Lo que cambié yo (`por:'claude'`) dice "Claude", no el origen crudo del supervisor (21/10/2026 · etapa 1).
+    out.push({...ev,mla:ev.mla,ts,de,a,quien:ev.por==='claude'?'Claude':(ev.origen||'?'),aprox:!!ev.aprox,_f:'sup'});}
+  const _saca=c=>{out=out.filter(e=>!(e._f==='sup'&&igual(e,c)));};
+  for(const c of Object.values(state.claudecambios||{})){if(!c||!ok(c.mla))continue;const ts=Number(c.ts),de=Number(c.de),a=Number(c.a);if(!val(ts,de,a))continue;
+    const x={mla:c.mla,ts,de,a,motivo:'claude',nota:c.motivo||'',quien:'Claude',aprox:false,_f:'claude'};_saca(x);out.push(x);}
+  for(const [mla,ap] of Object.entries(state.autoprecio||{})){if(!ap||!ok(mla)||ap.estado==='subiendo')continue;const ts=Number(ap.ts),de=Number(ap.de),a=Number(ap.a);if(!val(ts,de,a))continue;
+    const x={mla,ts,de,a,motivo:_ltMotAuto(ap),nota:ap.motivo||'',quien:_origenAuto(ap),aprox:false,nom:ap.nom,cuenta:ap.cuenta,_f:'auto'};
+    if(!out.some(e=>igual(e,x,0.01)))out.push(x);}
+  for(const [mla,H] of Object.entries(state.promohist||{})){if(!H||typeof H!=='object'||!ok(mla))continue;
+    for(const [k,r] of Object.entries(H)){if(!r||typeof r!=='object')continue;const ts=Number(r.ts)||Number(k),de=Number(r.de),a=Number(r.a);if(!val(ts,de,a))continue;
+      const nom=promoNombreDe({tipo:r.tipo,nombre:r.nombre}),sale=r.accion==='sale';
+      const x={mla,ts,de,a,motivo:'promo',origen:sale?'terminó: '+nom:nom,quien:'🏷️ '+(sale?'terminó '+nom:nom),aprox:false,accion:sale?'sale':'entra',_f:'promo'};_saca(x);out.push(x);}}
+  for(const [mla,pc] of Object.entries(state.promoclaude||{})){if(!pc||!ok(mla))continue;const ts=Number(pc.ts),de=Number(pc.de),a=Number(pc.precio);if(!val(ts,de,a))continue;
+    const x={mla,ts,de,a,motivo:'promo',origen:promoNombreDe(pc),quien:'🏷️ '+promoNombreDe(pc),aprox:false,accion:'entra',_f:'promo'};
+    if(out.some(e=>e._f==='promo'&&igual(e,x)))continue;_saca(x);out.push(x);}
+  return out.sort((x,y)=>x.ts-y.ts);
+}
 function cambiosPrecioDe(mla,tsVenta){
   if(!mla||!(tsVenta>0))return[];
-  const out=[],desde=tsVenta-CAMBIO_VENTA_DIAS*864e5;
-  const ok=c=>c&&c.ts>0&&c.ts<=tsVenta&&c.ts>=desde&&Number(c.a)>0&&Number(c.de)>0&&Number(c.a)!==Number(c.de);
-  const evs=((state.supervisor||{}).eventos)||{};
-  for(const ev of Object.values(evs)){
-    if(!ev||ev.mla!==mla)continue;
-    // Lo que cambié yo (`por:'claude'`) dice "Claude", no el origen crudo del supervisor (21/10/2026 · etapa 1).
-    const c={ts:Number(ev.ts),de:Number(ev.de),a:Number(ev.a),quien:ev.por==='claude'?'Claude':(ev.origen||'?'),aprox:!!ev.aprox};
-    if(ok(c))out.push(c);
-  }
-  const ap=(state.autoprecio||{})[mla];
-  if(ap){
-    const c={ts:Number(ap.ts),de:Number(ap.de),a:Number(ap.a),quien:_origenAuto(ap),aprox:false};
-    // El mismo cambio puede estar en las dos fuentes: si ya está (mismo precio final, menos de un
-    // día de diferencia) no se repite.
-    if(ok(c)&&!out.some(x=>Math.abs(x.ts-c.ts)<864e5&&Math.abs(x.a-c.a)/c.a<0.01))out.push(c);
-  }
-  const pc=(state.promoclaude||{})[mla];
-  if(pc){const c={ts:Number(pc.ts),de:Number(pc.de),a:Number(pc.precio),quien:'🏷️ '+promoNombreDe(pc),aprox:false};if(ok(c))out.push(c);}
-  return out.sort((x,y)=>y.ts-x.ts);
+  const desde=tsVenta-CAMBIO_VENTA_DIAS*864e5;
+  // Sólo los cambios de los 30 días ANTES de la venta (más viejo ya no explica nada). Misma lista que las líneas de tiempo.
+  return cambiosPrecioLista([mla]).filter(c=>c.ts<=tsVenta&&c.ts>=desde).sort((x,y)=>y.ts-x.ts);
 }
 // EL NOMBRE DE LA PROMO, EN CRIOLLO (13/10/2026, él: "quiero que diga el nombre de la promocion o que es").
 function promoNombreDe(pc){
@@ -12676,7 +12751,7 @@ function renderVPRanking(){
   vpEntries(sk.keys).filter(ctaFilter).filter(v=>!v.cancelada).forEach(v=>{
     const gk=grpKeyOf(v);
     if(!agg[gk])agg[gk]={total:0,byAcc:{},byVariante:{},neto:0,costo:0,gest:0,prod:nombreDeVenta(v),pid:(prodDeVenta(v)||{}).id||null};
-    agg[gk].total+=v.qty||0;agg[gk].neto+=netoProductoVP(v);agg[gk].costo+=efectivoCostoVP(v);agg[gk].gest+=gestDivVP(v);
+    agg[gk].total+=v.qty||0;{const _nP=netoProductoVP(v);agg[gk].neto+=_nP;agg[gk].costo+=efectivoCostoVP({...v,neto:_nP});}agg[gk].gest+=gestDivVP(v);
     agg[gk].byAcc[v.cuenta]=(agg[gk].byAcc[v.cuenta]||0)+(v.qty||0);
     if(v.variante)agg[gk].byVariante[v.variante]=(agg[gk].byVariante[v.variante]||0)+(v.qty||0);
   });
