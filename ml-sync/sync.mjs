@@ -45553,7 +45553,8 @@ async function main() {
         // sobrestock, bajando por algún motivo puntual, o que todavía están buscando techo"). Activas y con stock cuyo último tag no es
         // 📈 buscando techo, 📦 sobra, 📉 liquidando, 🧨 remate, 🪜 bajando ni 🔥 escasez (que también busca su precio), y sin techo
         // anotado: ni 🏔️ en su historia de 60 días ni raya 🚧 (`techofreno`). Ojo: el 🔴 que la línea mide sola no se ve desde acá.
-        const EXC = new Set(['techo', 'sobra', 'liquidando', 'remate', 'bajando', 'escasez', 'nuevo', 'gemela']); // 🆕 arranca arriba buscando su techo · 💳 sigue el de su Clásica const sinM = {};
+        const EXC = new Set(['techo', 'sobra', 'liquidando', 'remate', 'bajando', 'escasez', 'nuevo', 'gemela']); // 🆕 arranca arriba buscando su techo · 💳 sigue el de su Clásica
+        const sinM = {};
         for (const [mla, l] of Object.entries(links)) {
           if (!l || l.hidden || l.noVendemosMas || l.status !== 'active') continue;
           if ((Array.isArray(l.subStatus) ? l.subStatus : [l.subStatus]).some((x) => /out_of_stock/.test(String(x || '')))) continue;
