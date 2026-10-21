@@ -2612,3 +2612,10 @@ sigan en verde y las premium en naranja"* y *"quiero que todas las publicaciones
 producto: barra verde = Clásica, naranja = Premium (`tipoPub` de cada venta, `uP`), amarillo = remate; el encabezado dice cuántas en
 Premium. (2) `gemela:todas` (sync.mjs): sin mínimo de precio, activas o pausadas, sólo con stock en Full (corrección suya: "no mirar todas las demás"); la completa crea cada una con `gemelacrea`
 (CEREBRO §completa 6b). **Qué chequear:** ventas viejas sin `tipoPub` cuentan como Clásica; que `gemela:todas` quede vacía cada noche.
+
+**21/10/2026 · etapa 3 · lo que no va a Full sale de las listas (v25.93).** Él: *"estaba viendo la lista de nippon y hay desodorantes.
+no sé si cuentan como inflamable (…) todos esos productos que no se pueden enviar sacarlos del pedido"*. `listanofull:<prov|todas>[;go]`
+(sync.mjs) marca `noFull` (el motivo) por nombre: aerosoles, gas, alcohol, acetona/quitaesmalte, laca, espuma de afeitar, insecticidas;
+perfumes y body splash no (van a Full desde siempre). `noFull` cuenta igual que `noWeb` en la web y el robot (no da, no se pide) y se saca
+del pedido del momento. **Qué chequear:** falsos positivos por nombre (mirar la prueba antes del `;go`); lo que ML acepte de verdad lo dice
+Planificación de envíos.

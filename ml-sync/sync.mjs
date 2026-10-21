@@ -9488,7 +9488,7 @@ const RE_CAND_PERF = /perfum|parfum|\bedp\b|\bedt\b|eau de|fragan|fragr|body spl
 function cuentaLista(cat) {
   const v = Object.values(cat || {}).filter((e) => e && e.n);
   // 2+ vendedores en el catálogo de ML (20/10/2026, eligió la 1a; reemplaza el mínimo de 100 ventas del 18/10): con 1 solo queda afuera.
-  const m25 = (e) => !listaNoEsVale(e) && !e.sacado && !e.noWeb && e.m != null && Number(e.m) >= 25 && listaCostoVigente(e) && /^https:\/\//.test(e.mf || '') && !(e.mv != null && Number(e.mv) < CAND_MIN_VENDEDORES);
+  const m25 = (e) => !listaNoEsVale(e) && !e.sacado && !e.noWeb && !e.noFull && e.m != null && Number(e.m) >= 25 && listaCostoVigente(e) && /^https:\/\//.test(e.mf || '') && !(e.mv != null && Number(e.mv) < CAND_MIN_VENDEDORES);
   // DESDE EL 20/10/2026 (eligió la a) sólo da lo que el chat de compras confirmó mirando ML (`ok`, de `listadato`) para ESE catálogo
   // (`okCat`, o el catálogo fijado con `mi=`). Antes también entraba lo que el robot emparejó solo y "parecía" bien: 21 de 36 estaban mal.
   const da = (e) => m25(e) && Number(e.mv) >= CAND_MIN_VENDEDORES && listaOkVale(e) && !pocasVentas(e.vend);
@@ -10288,7 +10288,7 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
     if (!esLista && fichas.some((p) => _pyCodIg(p.codPy, cod))) { cuenta.ficha++; continue; }
     const _uNow = esLista ? Number(e.p) : Number(e.u);
     if (esLista && !(_uNow > 0)) continue;
-    if (esLista && e.noWeb) { cuenta.fuera++; continue; }   // no está en la web del proveedor: no lo tienen (`listaweb`)
+    if (esLista && (e.noWeb || e.noFull)) { cuenta.fuera++; continue; }   // no está en la web del proveedor: no lo tienen (`listaweb`)
     // ML NO DEJA MEDIRLO (etapa 4, 20/10/2026): 3 fallas seguidas (403/5xx/HTML, no el 429 de cupo) lo sacan del frente de la cola
     // hasta dentro de PYCAT_REMEDIR_DIAS días; se cuenta aparte. Antes 12 productos que ML contestaba 403 encabezaban la cola
     // en cada vuelta y gastaban la tanda.
@@ -21283,6 +21283,40 @@ async function main() {
       const pv = ((await db.get('cyc/mlconfig/listasProv')) || {})[k] || {}; await db.patch('cyc/mlconfig/listasProv/' + k, { ...cuentaLista(re), webTs: Date.now(), enWeb: si });
       console.log(`✓ releído: ${ok} de ${ks.length} · ${pv.nombre || k} ahora cuenta sólo lo que está en la web.`); return;
     }
+    // BILLING_PROBE=listanofull:<proveedor|todas>[;go] (21/10/2026, él con los desodorantes de Dai Nippon: "todos esos productos que no se
+    // pueden enviar [a Full] sacarlos del pedido"). Marca `noFull` (= el motivo) en lo que ML no deja mandar a Full por ser inflamable o a
+    // presión (aerosoles, gas, alcohol, acetona, quitaesmalte, laca, espuma de afeitar en lata…) y lo saca del pedido del momento. Lo
+    // marcado no se puede pedir ni da en la lista (igual que `noWeb`). Perfumes y body splash NO: los mandamos a Full desde siempre. Sin
+    // `;go` sólo muestra. Lo que ML acepte de verdad lo dice Planificación de envíos de cada cuenta.
+    if (/^listanofull:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _r = String(process.env.BILLING_PROBE).slice('listanofull:'.length); const GOn = /(^|;)go\s*$/.test(_r) && !DRY;
+      const k0 = _r.replace(/(^|;)go\s*$/, '').trim().toLowerCase();
+      const provs = k0 === 'todas' ? Object.keys((await db.get('cyc/mlconfig/listasProv')) || {}) : [k0];
+      const RE = [[/aerosol|aero\b|\baer\.|en lata|presurizad/i, 'aerosol'], [/\bdeo(dorante)?\b.*\bspray\b|\bspray\b.*\b(deo|desodorante|antitranspirante)/i, 'desodorante en spray (aerosol)'],
+        [/antitranspirante.*\b(\d{2,3}\s?ml)\b.*(aer|spray)|\bdesodorante\b.*\b(150|200|250)\s?ml\b/i, 'desodorante en aerosol'],
+        [/espuma (de )?afeitar|gel de afeitar.*lata|laca\b|fijador.*(spray|aer)|spray fijador|shampoo seco|dry shampoo/i, 'aerosol de pelo o afeitar'],
+        [/\bgas\b|butano|encendedor|garrafa/i, 'gas inflamable'], [/acetona|quitaesmalte|removedor de esmalte/i, 'inflamable (acetona)'],
+        [/alcohol (et[ií]lico|en gel|70|96|fino|medicinal)|\balcohol\b\s*\d/i, 'alcohol (inflamable)'], [/insecticida|repelente.*(aer|spray)|matamosca/i, 'insecticida/repelente en aerosol'],
+        [/aire comprimido|limpiador.*aer|lubricante.*aer|wd-?40|pintura.*aer/i, 'aerosol (limpieza/pintura)']];
+      const NO_ES = /perfume|eau de|edt\b|edp\b|body splash|colonia|body mist|fragancia/i;
+      for (const k of provs) {
+        const cat = (await db.get('mlapi/listas/' + k)) || {}; const upd = {}; const hits = [];
+        for (const [cod, e] of Object.entries(cat)) { if (!e || !e.n) continue; const n = String(e.n);
+          let mot = null; if (!NO_ES.test(n) || /aerosol|en lata/i.test(n)) for (const [re, m] of RE) if (re.test(n)) { mot = m; break; }
+          if (mot && e.noFull !== mot) { upd[cod + '/noFull'] = mot; hits.push([cod, n, mot]); } }
+        const arm = (await db.get('cyc/listas_pedido/' + k)) || {}; const sacar = Object.keys(arm).filter((c) => Number(arm[c]) > 0 && (upd[c + '/noFull'] || (cat[c] || {}).noFull));
+        console.log(`\n${k}: ${hits.length} nuevos no van a Full · ${Object.values(cat).filter((e) => e && e.noFull).length} ya marcados · ${sacar.length} cargados en el pedido se sacan${GOn ? '' : ' · PRUEBA: agregá ;go'}`);
+        for (const [c, n, m] of hits.slice(0, 200)) console.log(`  🚫 ${c} · ${n.slice(0, 70)} · ${m}${arm[c] > 0 ? ' · ESTABA EN EL PEDIDO x' + arm[c] : ''}`);
+        for (const c of sacar) if (!hits.find((h) => h[0] === c)) console.log(`  🚫 ${c} · ${String((cat[c] || {}).n || '').slice(0, 70)} · ya marcado · ESTABA EN EL PEDIDO x${arm[c]}`);
+        if (!GOn) continue;
+        const ks = Object.keys(upd); for (let i = 0; i < ks.length; i += 600) await db.patch('mlapi/listas/' + k, Object.fromEntries(ks.slice(i, i + 600).map((x) => [x, upd[x]])));
+        if (sacar.length) await db.patch('cyc/listas_pedido/' + k, Object.fromEntries(sacar.map((c) => [c, null])));
+        const re = (await db.get('mlapi/listas/' + k)) || {}; const ok = ks.filter((x) => (re[x.split('/')[0]] || {}).noFull === upd[x]).length;
+        await db.patch('cyc/mlconfig/listasProv/' + k, cuentaLista(re));
+        console.log(`✓ releído: ${ok} de ${ks.length} marcados · ${sacar.length} sacados del pedido`);
+      }
+      return;
+    }
     // BILLING_PROBE=listaver:<proveedor> → SOLO LEE (19/10/2026). La lista guardada ENTERA de un proveedor, para compararla contra
     // otra (ej. el catálogo web de Iscos): una línea por producto, cód|nombre|pesos|fecha de carga. Nada de compradores: es la lista del proveedor.
     if (/^listaver:/.test(String(process.env.BILLING_PROBE || ''))) {
@@ -21332,7 +21366,7 @@ async function main() {
         // Los de 25%+ por dónde están (20/10/2026): qué les falta para "dar" de verdad.
         { const q = { ok: 0, sinOk: 0, unVend: 0, noEs: 0, viejo: 0, sinMi: 0, sacado: 0 };
           for (const e of v) { if (!(e.m != null && Number(e.m) >= 25)) continue;
-            if (e.sacado || e.noWeb) { q.sacado++; continue; } if (listaNoEsVale(e)) { q.noEs++; continue; } if (!e.mi) { q.sinMi++; continue; }
+            if (e.sacado || e.noWeb || e.noFull) { q.sacado++; continue; } if (listaNoEsVale(e)) { q.noEs++; continue; } if (!e.mi) { q.sinMi++; continue; }
             if (!listaCostoVigente(e)) { q.viejo++; continue; } if (!(Number(e.mv) >= CAND_MIN_VENDEDORES)) { q.unVend++; continue; }
             if (listaOkVale(e)) q.ok++; else q.sinOk++; }
           console.log(`   de los ${c.d25} de 25%+: ${q.ok} confirmados (2+ vendedores y ✅) · ${q.sinOk} sin ✅ · ${q.unVend} con 1 solo vendedor · ${q.noEs} otro producto · ${q.viejo} medidos con un costo viejo · ${q.sinMi} sin catálogo · ${q.sacado} sacados o fuera de la web`); }
@@ -21359,7 +21393,7 @@ async function main() {
         out.push(`py|${String(c.prov || 'nissei').toLowerCase()}|${c.cod || ''}|${String(c.nombre || '').replace(/\|/g, '/').slice(0, 80)}|${candCatDe(c)}|${Math.round(mg)}%`); }
       const provs = (await db.get('cyc/mlconfig/listasProv')) || {};
       for (const [k, pv] of Object.entries(provs)) { if (pv.desc) continue; const cat = (await db.get('mlapi/listas/' + k)) || {};
-        for (const [cod, e] of Object.entries(cat)) { if (!e || listaNoEsVale(e) || e.sacado || e.noWeb || !(e.m != null && Number(e.m) >= 25) || !listaCostoVigente(e)) continue;
+        for (const [cod, e] of Object.entries(cat)) { if (!e || listaNoEsVale(e) || e.sacado || e.noWeb || e.noFull || !(e.m != null && Number(e.m) >= 25) || !listaCostoVigente(e)) continue;
           if (!/^https:\/\//.test(e.mf || '') || !(Number(e.mv) >= CAND_MIN_VENDEDORES) || !listaOkVale(e) || e.vend != null) continue;
           out.push(`lista|${k}|${cod}|${String(e.n).replace(/\|/g, '/').slice(0, 80)}|${e.mi || ''}|${Math.round(e.m)}%`); } }
       console.log(`=== PASARON TODO, FALTAN LAS VENTAS DE ML: ${out.length} (fuente|proveedor|código|nombre|catálogo ML|margen) ===`);
@@ -21374,7 +21408,7 @@ async function main() {
       let tot = 0; const filas = []; const porProv = {};
       for (const [k, pv] of Object.entries(provs)) { if (pv.desc || (solo && k !== solo.toLowerCase())) continue;
         const cat = (await db.get('mlapi/listas/' + k)) || {}; const rec = Number(pv.rec) || 0;
-        for (const [cod, e] of Object.entries(cat)) { if (!e || listaNoEsVale(e) || e.sacado || e.noWeb || !(e.m != null && Number(e.m) >= 25 && e.mi) || !listaCostoVigente(e)) continue;   // costo nuevo sin medir: el margen no vale (etapa 3, 20/10/2026)
+        for (const [cod, e] of Object.entries(cat)) { if (!e || listaNoEsVale(e) || e.sacado || e.noWeb || e.noFull || !(e.m != null && Number(e.m) >= 25 && e.mi) || !listaCostoVigente(e)) continue;   // costo nuevo sin medir: el margen no vale (etapa 3, 20/10/2026)
           const okV = listaOkVale(e);
           // 20/10/2026 (eligió la 1a): ya no hacen falta las ventas; sólo el ✅, y con 1 solo vendedor no da (no sale).
           if (okV || !(Number(e.mv) >= CAND_MIN_VENDEDORES)) continue;
