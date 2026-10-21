@@ -534,6 +534,74 @@ input.qty:focus{border-color:var(--accent2)}
 .hoy-boom b{font-family:'Syne',sans-serif;font-size:1.05rem;color:var(--c);background:color-mix(in srgb,var(--c) 16%,var(--surface));border:1px solid var(--c);border-radius:999px;padding:6px 14px;animation:hoyBoomTxt 3.5s ease-out forwards}
 @keyframes hoyBoomTxt{0%{opacity:0;transform:scale(.7)}12%{opacity:1;transform:scale(1.05)}20%{transform:none}85%{opacity:1}100%{opacity:0}}
 @media (prefers-reduced-motion:reduce){.hoy-pill,.hoy-boom b,.hoy-sp-anim .sp-a{animation:none}.hoy-sp-anim .sp-a{stroke-dashoffset:0}}
+/* ── ETAPA 6 · GUSTO (21/10/2026, eligió todas (a)) ── */
+/* G1 · Pedidos: qué cambió desde que lo miraste */
+.ped-cambio{border:1px solid color-mix(in srgb,var(--blue) 40%,var(--border));background:color-mix(in srgb,var(--blue) 7%,var(--surface));border-radius:12px;padding:11px 13px;margin:0 0 12px;font-size:.74rem}
+.ped-cambio .pcb-sub{font-size:.64rem;color:var(--muted);margin-top:3px;line-height:1.45}
+.ped-cambio .pcb-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+.ped-cchip{display:inline-block;font-size:.62rem;border-radius:999px;padding:2px 8px;border:1px solid;white-space:nowrap;font-weight:700;font-family:'DM Mono',monospace;vertical-align:middle;animation:pedChipLate 1.6s ease-out 2}
+.pc-nuevo{color:var(--blue);border-color:color-mix(in srgb,var(--blue) 50%,transparent);background:color-mix(in srgb,var(--blue) 12%,transparent)}
+.pc-mas{color:var(--amber);border-color:color-mix(in srgb,var(--amber) 50%,transparent);background:color-mix(in srgb,var(--amber) 12%,transparent)}
+.pc-menos{color:var(--green);border-color:color-mix(in srgb,var(--green) 45%,transparent);background:color-mix(in srgb,var(--green) 10%,transparent)}
+.pc-fuera{color:var(--muted);border-color:var(--border2);background:transparent}
+@keyframes pedChipLate{0%{box-shadow:0 0 0 0 color-mix(in srgb,currentColor 55%,transparent)}100%{box-shadow:0 0 0 7px transparent}}
+.ped-cambio .pcb-sw{display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer;background:transparent;border:none;color:var(--text);font:inherit;font-size:.7rem;padding:2px 0;text-align:left}
+.pcb-sw i{width:34px;height:20px;border-radius:999px;background:var(--border2);position:relative;display:inline-block;flex-shrink:0}
+.pcb-sw i::after{content:"";position:absolute;left:2px;top:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .15s}
+.pcb-sw.on i{background:var(--green)}.pcb-sw.on i::after{left:16px}
+.ped-cambio details{margin-top:10px;border-top:1px dashed var(--border2);padding-top:8px}
+.ped-cambio details summary{cursor:pointer;font-size:.68rem;color:var(--muted)}
+.ped-cambio .pcb-it{font-size:.68rem;padding:4px 0;display:flex;justify-content:space-between;gap:8px;border-bottom:1px solid var(--border)}
+.ped-cambio .pcb-it s{color:var(--muted);white-space:nowrap}
+/* G2 · lo que dice cada venta */
+.vp-hecho{display:inline-block;font-size:.68rem;line-height:1.35;padding:4px 10px;border-radius:12px;border:1px solid color-mix(in srgb,var(--c) 45%,transparent);background:color-mix(in srgb,var(--c) 13%,transparent);color:var(--c);max-width:100%;align-self:flex-start;white-space:normal}
+.vp-hecho b{font-weight:700}.vp-hecho span{color:var(--muted);font-size:.62rem}
+/* G3 · las 4 cuentas a esta hora */
+.hoy-ctas{margin-top:12px;padding-top:10px;border-top:1px solid color-mix(in srgb,var(--c) 25%,transparent)}
+.hoy-ctas .hc-tit{font-size:.66rem;color:var(--muted);margin-bottom:6px;line-height:1.4}
+.hoy-ctas .hc-f{display:grid;grid-template-columns:4.3rem minmax(36px,1fr) 8.3rem;align-items:center;gap:4px 8px;padding:5px 6px;border-radius:9px;border:1px solid transparent}
+.hoy-ctas .hc-n{font-size:.74rem;font-weight:700}
+.hoy-ctas .hc-bar{position:relative;height:8px;border-radius:6px;background:var(--surface2)}
+.hoy-ctas .hc-bar>i{position:absolute;left:0;top:0;bottom:0;border-radius:6px;background:var(--c)}
+.hoy-ctas .hc-bar>b{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--muted);border-radius:2px}
+.hoy-ctas .hc-v{font-size:.7rem;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hoy-ctas .hc-f.lento{background:color-mix(in srgb,var(--amber) 13%,transparent);border-color:color-mix(in srgb,var(--amber) 45%,transparent)}
+.hoy-ctas .hc-av{grid-column:1/-1;font-size:.66rem;color:var(--amber);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.hoy-ctas .hc-av button{background:transparent;border:none;color:var(--amber);text-decoration:underline;font:inherit;cursor:pointer;padding:0}
+.vp-aeh{font-size:.66rem;padding:1px 7px;border-radius:5px;white-space:nowrap}
+/* G4 · racha, mejor día y el mes en cuadritos */
+.hoy-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.hoy-chip{font-size:.72rem;font-weight:700;padding:4px 11px;border-radius:999px;border:1px solid color-mix(in srgb,var(--cc) 45%,transparent);background:color-mix(in srgb,var(--cc) 13%,transparent);color:var(--cc)}
+.hoy-chip.gris{--cc:var(--muted);font-weight:600}
+.hoy-cal{margin-top:12px}
+.hoy-cal .hcal-g{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.hoy-cal .hcal-h{font-size:.6rem;color:var(--muted);text-align:center;padding-bottom:2px}
+.hoy-cal .hcal-d{position:relative;min-height:40px;border-radius:7px;border:1px solid color-mix(in srgb,var(--dc) 55%,transparent);background:color-mix(in srgb,var(--dc) 20%,transparent);color:var(--text);font-size:.6rem;padding:3px 4px;display:flex;flex-direction:column;justify-content:space-between;cursor:pointer;font-family:'DM Mono',monospace;min-width:0;text-align:left}
+.hoy-cal .hcal-d b{font-size:.62rem;text-align:right;font-weight:700;white-space:nowrap;overflow:hidden}
+.hoy-cal .hcal-d.vacio{--dc:var(--border2);background:transparent;border-style:dashed;cursor:default;color:var(--muted)}
+.hoy-cal .hcal-d.hoy{outline:2px solid var(--text);outline-offset:1px}
+.hoy-cal .hcal-d em{position:absolute;top:-7px;right:-4px;font-style:normal;font-size:.7rem;line-height:1}
+.hoy-cal .hcal-ley{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:8px;font-size:.6rem;color:var(--muted)}
+.hoy-cal .hcal-ley i{display:inline-block;width:9px;height:9px;border-radius:3px;background:var(--dc);margin-right:3px;vertical-align:-1px}
+/* G5 · Ventas en el celu: los 6 cuadros en un renglón que se abre */
+.vp-kpi-res{display:none}
+@media(max-width:640px){
+  .vp-kpi-res{display:flex;grid-column:1/-1;align-items:center;gap:6px 10px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 13px;font-size:.78rem;cursor:pointer;color:var(--text);font-family:inherit;text-align:left;width:100%}
+  .vp-kpi-res .kr-car{margin-left:auto;color:var(--muted);font-size:.7rem}
+  #vp-kpis.vp-kc>.met-kpi{display:none}
+}
+/* G6 · ventas nuevas desde que miraste */
+.vp-nuevas{display:block;width:100%;text-align:left;font:inherit;font-size:.74rem;font-weight:700;color:var(--blue);background:color-mix(in srgb,var(--blue) 12%,var(--surface));border:1px solid color-mix(in srgb,var(--blue) 45%,transparent);border-radius:999px;padding:7px 13px;margin:2px 0 8px;cursor:pointer}
+.vp-nueva-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--blue);box-shadow:0 0 0 3px color-mix(in srgb,var(--blue) 25%,transparent);flex-shrink:0}
+.vp-rayita{display:flex;align-items:center;gap:8px;font-size:.64rem;color:var(--blue);margin:6px 0;white-space:nowrap}
+.vp-rayita::before,.vp-rayita::after{content:"";flex:1;border-top:1px dashed color-mix(in srgb,var(--blue) 60%,transparent)}
+@media(max-width:640px){.vp-rayita{white-space:normal;text-align:center}}
+/* G7 · sonido de cada venta (Ajustes) */
+.son-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:12px;border-top:1px solid var(--border);padding-top:12px}
+.son-niv{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:6px;margin-top:10px}
+.son-niv button{font:inherit;font-size:.72rem;font-weight:700;text-align:left;padding:7px 10px;border-radius:9px;cursor:pointer;color:var(--cc);border:1px solid color-mix(in srgb,var(--cc) 50%,transparent);background:color-mix(in srgb,var(--cc) 12%,transparent)}
+body.discreto .ped-cchip{animation:none}
+@media (prefers-reduced-motion:reduce){.ped-cchip{animation:none}}
 .ped-tanque{flex-basis:100%;margin:2px 0 4px}
 .tq-bar{position:relative;height:12px;background:var(--surface2);border-radius:6px;display:flex;overflow:visible}
 .tq-bar>span:not(.tq-corte){height:100%}.tq-bar>span:first-child{border-radius:6px 0 0 6px}
@@ -1135,6 +1203,7 @@ body.light .est-chip{color:color-mix(in srgb,var(--ec) 50%,#000)}
        que va en camino, así que abajo no se vuelve a pedir. Lo que se sacó es el aviso, no la regla. -->
   <div id="ped-raro-aviso"></div>
   <div id="ped-sindecidir"></div>
+  <div id="ped-cambio-aviso"></div>
 
   <!-- ── SECCIÓN PRIORIDAD (mezclado, ordenado por $ en riesgo) ── -->
   <div id="ped-section-prioridad" style="display:none">
@@ -2456,6 +2525,7 @@ function enterAjustes(){
   const isLight=document.body.classList.contains('light');
   const tb=document.getElementById('ajuste-tema-btn');if(tb)tb.textContent=isLight?'☀️ Modo claro':'🌙 Modo oscuro';
   {const db2=document.getElementById('ajuste-discreto-btn');if(db2)db2.textContent=document.body.classList.contains('discreto')?'🤫 Discreto (prendido)':'✨ Con efectos';}
+  try{_sonidoRepintar();}catch(e){}   // etapa 6 (G7)
   const ok=document.getElementById('ajuste-nombre-ok');if(ok)ok.textContent='';
   renderAutoPriceCfg();
   renderMono();
@@ -3517,6 +3587,7 @@ function actualizarApp(){
 
 /* ═══════════ PAGE ROUTING ═══════════ */
 function goPage(page){
+  try{_vistoSalir();_vistoEntrar(page);}catch(e){}   // etapa 6 (G1/G6): "lo viste" se anota al salir de Pedidos / Ventas
   if(page==='pedidos'){window._pedMomOpenG={};window._nipAbierto=false;}   // el pedido del momento arranca cerrado al entrar (08/10/2026)
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   const el=document.getElementById('page-'+page);
@@ -4258,6 +4329,7 @@ async function quitarFoto(prodId){
 }
 
 function renderAll(){
+  try{ventaSonidoCheck();}catch(e){}   // etapa 6 (G7): anota las ventas de hoy en cualquier página; sólo suena en Inicio o Ventas
   updateHdr();updateAct();populateSelects();
   if(currentPage==='inventario'){renderInv();renderProds();renderHist();renderProveedores();loadFinInputs();updateArqueo();updateTotals();}
   if(currentPage==='pedidos')renderPedidos();
@@ -7859,6 +7931,311 @@ function _reponerCalc(p,vari){
   return{d:PED_DIAS_ROJO_PY+esp,dudoso:ver.k!=='da',txt:`Paraguay ${PED_DIAS_ROJO_PY} d (viaje, armar, caja)${espT}${ver.k!=='da'?' · ⚠ falta revisar el precio en Nissei':''}`};
 }
 const pedDiasRojoDe=p=>reponerDe(p).d;
+// ══════════════ ETAPA 6 · GUSTO Y COMODIDAD (21/10/2026, eligió todas (a)) ══════════════
+// G1 Pedidos marca qué cambió · G2 cada venta dice qué significa · G3 las 4 cuentas a esta hora · G4 racha, mejor día y el
+// mes en cuadritos · G5 Ventas en el celu en un renglón · G6 ventas nuevas desde que miraste · G7 sonido de cada venta.
+// Lo que recuerda cada aparato vive en localStorage, SIEMPRE con try/catch: en una ventana privada o con los datos del sitio
+// bloqueados no anda, y la web tiene que funcionar igual (sin marcas, nunca con marcas inventadas). Nada de esto va a la base.
+function _lsGet(k){try{return localStorage.getItem(k);}catch(e){return null;}}
+function _lsSet(k,v){try{localStorage.setItem(k,v);return true;}catch(e){return false;}}
+// "Hoy 14:10" · "ayer 20:58" · "18/10 09:30".
+function _cuandoTxt(ts){
+  const d=new Date(Number(ts)||0);if(!(d.getTime()>0))return '—';
+  const p2=n=>String(n).padStart(2,'0'),hm=p2(d.getHours())+':'+p2(d.getMinutes()),k=dateToKey(d);
+  const ay=new Date();ay.setDate(ay.getDate()-1);
+  return k===dateToKey(new Date())?'hoy '+hm:k===dateToKey(ay)?'ayer '+hm:p2(d.getDate())+'/'+p2(d.getMonth()+1)+' '+hm;
+}
+// ── "LO VISTE" SE ANOTA SOLO AL SALIR (G1 y G6) ──
+// Pedidos (G1, eligió la a): se da por visto al salir si estuviste 10 segundos (Tito lo mira, no hay botón que apretar).
+// Ventas (G6): lo mismo con 5 segundos (es una mirada rápida). "Salir" = cambiar de página o esconder la app.
+const VISTO_SEG={pedidos:10,ventaprod:5};
+let _vistoPag=null,_vistoDesde=0;
+function _vistoEntrar(page){_vistoPag=page;_vistoDesde=Date.now();}
+function _vistoSalir(){
+  const p=_vistoPag;_vistoPag=null;if(!p||!VISTO_SEG[p])return;
+  if(Date.now()-_vistoDesde<VISTO_SEG[p]*1000)return;
+  try{if(p==='pedidos')pedVistoGuardar();else if(p==='ventaprod')ventaVistoGuardar();}catch(e){}
+}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')_vistoSalir();else _vistoEntrar(currentPage);});
+window.addEventListener('pagehide',()=>{try{_vistoSalir();}catch(e){}});
+// ── G1 · PEDIDOS: QUÉ CAMBIÓ DESDE QUE LO MIRASTE ──
+// Cada teléfono guarda la foto de lo que vio (por pedido: cuántas u., el nombre, la solapa y cada color) y la compara con lo
+// de ahora: 🆕 nuevo · ⬆️ pide más · ⬇️ pide menos · 🎨 cambió por color, y arriba la lista de lo que ya no hace falta comprar.
+// La cantidad que se compara es la MISMA que muestra la tarjeta (_pedCantVista: en el Paulvic, redondeada como se pide).
+const PED_VISTO_LS='cycPedVisto';
+let _pedVisto,_pedSoloCambio=false;   // _pedVisto: undefined = sin leer todavía · null = este aparato nunca miró Pedidos
+function _pedSecDe(p){return esPedidoPaulvic(p)?'paulvic':(state.pedidos_py||[]).some(x=>x&&x.id===p.id)?'paraguay':'bsas';}
+function _pedCantVista(p){
+  const vars=Array.isArray(p.variantesNec)&&p.variantesNec.length?p.variantesNec:null;
+  const pv=!!vars&&esPedidoPaulvic(p),v={};let s=0;
+  if(vars)for(const x of vars){const q=(pv&&x&&!x.mano&&(x.q||0)>0)?pvRedondo(x.q):((x&&x.q)||0);s+=q;if(x&&x.v!=null)v[String(x.v)]=q;}
+  return{tot:pv?s:(p.cantidad||1),v};
+}
+function pedVistoBase(){if(_pedVisto===undefined){try{_pedVisto=JSON.parse(_lsGet(PED_VISTO_LS)||'null');}catch(e){_pedVisto=null;}}return _pedVisto;}
+function _pedFoto(){const o={};for(const p of [...(state.pedidos||[]),...(state.pedidos_py||[])]){if(!p||!p.id)continue;const c=_pedCantVista(p);if(!(c.tot>0))continue;
+  o[p.id]={c:c.tot,n:String(p.producto||'')+(p.variante?' · '+p.variante:''),s:_pedSecDe(p),v:c.v};}return o;}
+function pedVistoGuardar(){
+  // Sin pedidos cargados todavía no se anota nada: una foto vacía haría que mañana todo diga "nuevo".
+  if(!((state.pedidos||[]).length+(state.pedidos_py||[]).length))return;
+  const o={ts:Date.now(),p:_pedFoto()};if(_lsSet(PED_VISTO_LS,JSON.stringify(o)))_pedVisto=o;
+}
+function pedCambioDe(p){
+  const b=pedVistoBase();if(!b||!b.p||!p||!p.id)return null;
+  const c=_pedCantVista(p);if(!(c.tot>0))return null;
+  const o=b.p[p.id];if(!o)return{t:'nuevo',cols:[]};
+  const ov=o.v||{},cols=[];for(const k of new Set([...Object.keys(ov),...Object.keys(c.v)])){const a=ov[k]||0,n=c.v[k]||0;if(a!==n)cols.push(k+' '+a+'→'+n);}
+  if(c.tot!==o.c)return{t:c.tot>o.c?'mas':'menos',d:c.tot-o.c,antes:o.c,cols};
+  return cols.length?{t:'colores',cols}:null;
+}
+function pedCambioChip(p){
+  const x=pedCambioDe(p);if(!x)return '';
+  const cuando=_cuandoTxt((pedVistoBase()||{}).ts),det=x.cols.length?' · por color: '+x.cols.join(' · '):'';
+  const [cls,txt,tt]=x.t==='nuevo'?['pc-nuevo','🆕 nuevo','No estaba en la lista la última vez que miraste Pedidos en este teléfono ('+cuando+').']
+    :x.t==='mas'?['pc-mas','⬆️ +'+fmtN(x.d),'Antes pedía '+fmtN(x.antes)+' u. (la última vez que miraste, '+cuando+')'+det]
+    :x.t==='menos'?['pc-menos','⬇️ −'+fmtN(-x.d),'Antes pedía '+fmtN(x.antes)+' u. (la última vez que miraste, '+cuando+')'+det]
+    :['pc-mas','🎨 '+x.cols.length+' color'+(x.cols.length===1?'':'es'),'El total es el mismo pero cambió por color (desde '+cuando+')'+det];
+  return ` <span class="ped-cchip ${cls}" title="${escHtml(tt)}">${txt}</span>`;
+}
+function pedSoloCambioToggle(){_pedSoloCambio=!_pedSoloCambio;renderPedidos();}
+function pedCambioAvisoHTML(sec){
+  if(!['bsas','paraguay','paulvic','prioridad'].includes(sec)){_pedSoloCambio=false;return '';}
+  const b=pedVistoBase();
+  if(!b){pedVistoGuardar();return '';}   // la primera vez en este aparato: se anota lo de hoy y no se marca nada
+  const todos=[...(state.pedidos||[]),...(state.pedidos_py||[])].filter(p=>p&&p.id),ahora={};
+  for(const p of todos)ahora[p.id]=_pedCantVista(p).tot;
+  const cnt={nuevo:0,mas:0,menos:0,colores:0};let tot=0;
+  for(const p of todos){if(!(ahora[p.id]>0))continue;if(sec!=='prioridad'&&_pedSecDe(p)!==sec)continue;tot++;const x=pedCambioDe(p);if(x)cnt[x.t]++;}
+  const fuera=Object.entries(b.p||{}).filter(([id,o])=>o&&(sec==='prioridad'||o.s===sec)&&!(ahora[id]>0));
+  const nCamb=cnt.nuevo+cnt.mas+cnt.menos+cnt.colores;
+  if(!nCamb&&!fuera.length){_pedSoloCambio=false;return '';}
+  if(!nCamb)_pedSoloCambio=false;
+  const ch=(cls,t,n)=>n?`<span class="ped-cchip ${cls}" style="animation:none">${t} ${n}</span>`:'';
+  return `<div class="ped-cambio">
+    <div style="font-weight:700">🔄 Cambió desde que miraste <span style="font-weight:400;color:var(--muted)">· ${escHtml(_cuandoTxt(b.ts))}</span></div>
+    <div class="pcb-sub">Lo que se movió desde la última vez que miraste Pedidos en este teléfono. Se da por visto solo cuando salís de Pedidos después de mirarlo 10 segundos (cada teléfono por su lado).</div>
+    <div class="pcb-row">${ch('pc-nuevo','🆕 nuevos',cnt.nuevo)}${ch('pc-mas','⬆️ piden más',cnt.mas)}${ch('pc-menos','⬇️ piden menos',cnt.menos)}${ch('pc-mas','🎨 cambian por color',cnt.colores)}${ch('pc-fuera','✖️ ya no van',fuera.length)}</div>
+    ${nCamb?`<button class="pcb-sw${_pedSoloCambio?' on':''}" onclick="pedSoloCambioToggle()"><i></i>mostrar sólo lo que cambió (${nCamb} de ${tot})</button>`:''}
+    ${fuera.length?`<details><summary>✖️ ${fuera.length} ya no hace${fuera.length===1?'':'n'} falta comprar</summary>${fuera.slice(0,40).map(([,o])=>`<div class="pcb-it"><span>${escHtml(o.n||'—')}</span><s>pedía ${fmtN(o.c||0)}</s></div>`).join('')}${fuera.length>40?`<div class="pcb-it"><span style="color:var(--muted)">y ${fuera.length-40} más…</span></div>`:''}<div style="font-size:.62rem;color:var(--muted);margin-top:4px">El porqué está en el 🧠 de cada uno.</div></details>`:''}
+  </div>`;
+}
+// ── G6 · VENTAS NUEVAS DESDE QUE MIRASTE ──
+// Cada teléfono guarda la hora de la última venta que tenía a la vista. Al volver: un aviso arriba con cuántas entraron y
+// cuánto dejaron, un puntito azul en cada nueva y una rayita donde empieza lo que ya habías visto.
+const VENTA_VISTO_LS='cycVentaVisto';
+function _ventaTsMax(){let m=0;Object.keys(state.ventaprod||{}).filter(k=>/^\d{4}_\d{2}_\d{2}$/.test(k)).sort().slice(-3).forEach(k=>Object.values(state.ventaprod[k]||{}).forEach(v=>{const t=Number(v&&v.ts)||0;if(t>m)m=t;}));return m;}
+function ventaVistoTs(){const r=Number(_lsGet(VENTA_VISTO_LS));return r>0?r:null;}
+function ventaVistoGuardar(){const m=_ventaTsMax();if(m>0&&m>(ventaVistoTs()||0))_lsSet(VENTA_VISTO_LS,String(m));}
+function ventaNuevasIr(){const r=document.getElementById('vp-rayita');if(r)r.scrollIntoView({block:'center',behavior:'smooth'});}
+// ── G2 · LO QUE SIGNIFICA CADA VENTA ──
+// Sólo lleva cartelito la venta que es un hecho nuevo, uno por venta (manda el de más arriba):
+//   🎉 la primera venta de esa publicación · 🏁 era la última que había en Full de esa cuenta (hoy está en 0 y no vendió
+//   después) · 🔁 volvió a vender después de 30+ días · ⚡ se aceleró (la MISMA regla `ritmoRapido` de Pedidos y la escasez:
+//   en 7 días vendió 2+ u. y el doble del ritmo de antes; sólo la venta en la que empieza, no todas las de la semana).
+// 🎉 sólo cuando se puede saber: las ventas guardadas arrancan el 01/05/2026, así que la publicación tiene que haberse dado
+// de alta después de eso (`altaTs`) o la venta tiene que ser 90+ días posterior. Sin dato no se dice nada.
+const D864=864e5;
+let _vhIdx=null,_vhSig='';
+function _vhVar(v){return v.variante||(((state.mllinks||{})[v.mla]||{}).variant)||'';}
+function _vhStockKey(v){return v.prodId+'|'+v.cuenta+'|'+sid(String(_vhVar(v)));}
+function _ventaHechosIdx(){
+  const vp=state.ventaprod||{},ks=Object.keys(vp).filter(k=>/^\d{4}_\d{2}_\d{2}$/.test(k)).sort();
+  let n=0,nc=0;for(const k of ks){const o=vp[k]||{};for(const id in o){n++;if(o[id]&&o[id].cancelada)nc++;}}
+  const sig=ks.length+'|'+n+'|'+nc+'|'+(ks[ks.length-1]||'');
+  if(_vhIdx&&sig===_vhSig)return _vhIdx;
+  const mla={},ult={};
+  for(const k of ks)for(const v of Object.values(vp[k]||{})){
+    if(!v||v.cancelada)continue;const ts=Number(v.ts)||0;if(!(ts>0))continue;
+    const m=String(v.mla||'');if(/^MLA\d+$/.test(m))(mla[m]=mla[m]||[]).push({ts,q:Number(v.qty)||1,gk:vpGrupoKey(v)});
+    if(v.prodId&&v.cuenta){const kk=_vhStockKey(v);if(!(ult[kk]>=ts))ult[kk]=ts;}
+  }
+  for(const m in mla)mla[m].sort((a,b)=>a.ts-b.ts);
+  let t0=0;if(ks[0]){const[a,b,c]=ks[0].split('_').map(Number);t0=new Date(a,b-1,c).getTime();}
+  _vhIdx={mla,ult,t0};_vhSig=sig;return _vhIdx;
+}
+function _vhRapido(arr,i){
+  if(i<0)return null;const ts=arr[i].ts;let u7=0,u30=0;
+  for(let j=i;j>=0;j--){const d=ts-arr[j].ts;if(d>37*D864)break;if(d<7*D864)u7+=arr[j].q;else u30+=arr[j].q;}
+  const base=u30/30,rk=ritmoRapido(base,u7,7);return (rk.rapido&&base>0)?{u7,base}:null;
+}
+function ventaHechoDe(grp){
+  if(!grp||grp.cancelada||!grp.items)return null;
+  const I=_ventaHechosIdx(),pri={primera:4,ultima:3,volvio:2,acelero:1};let best=null;
+  const put=x=>{if(!best||pri[x.t]>pri[best.t])best=x;};
+  for(const v of grp.items){
+    const ts=Number(v&&v.ts)||0;if(!(ts>0)||v.cancelada)continue;
+    const m=String(v.mla||''),arr=/^MLA\d+$/.test(m)?I.mla[m]:null;
+    const i=arr?arr.findIndex(x=>x.gk===grp.gid):-1;
+    if(i===0){const alta=Number(((state.mllinks||{})[m]||{}).altaTs)||0;
+      if((alta&&alta>=I.t0)||ts-I.t0>=90*D864)put({t:'primera',ico:'🎉',txt:'primera venta de esta publicación',sub:alta&&alta<=ts?'publicada hace '+Math.round((ts-alta)/D864)+' días':'',c:'var(--lv-joya)'});}
+    else if(i>0){
+      const gap=ts-arr[i-1].ts;
+      if(gap>=30*D864)put({t:'volvio',ico:'🔁',txt:'volvió a vender después de '+Math.round(gap/D864)+' días',sub:'',c:'var(--green)'});
+      const rk=_vhRapido(arr,i);
+      if(rk&&!_vhRapido(arr,i-1))put({t:'acelero',ico:'⚡',txt:'se aceleró: '+fmtN(rk.u7)+' u. en 7 días',sub:'solía ~'+String(Math.round(rk.base*70)/10).replace('.',',')+' por semana',c:'var(--blue)'});
+    }
+    if(v.prodId&&v.cuenta&&I.ult[_vhStockKey(v)]===ts){
+      const p=prodById(v.prodId),vr=_vhVar(v),inv=state.inventory||{};
+      const key=vr?invKeyV(v.prodId,v.cuenta,vr):(p&&!((p.variantes||[]).length))?invKey(v.prodId,v.cuenta):null;
+      // Sólo con el stock MEDIDO: una clave que no existe es "no sé", no cero.
+      if(key&&inv[key]!=null&&inv[key]!==''&&isFinite(parseInt(inv[key]))&&parseInt(inv[key])<=0)put({t:'ultima',ico:'🏁',txt:'era la última que había en Full de '+v.cuenta,sub:'',c:'var(--red)'});
+    }
+  }
+  return best;
+}
+function ventaHechoHTML(grp){const h=ventaHechoDe(grp);return h?`<div class="vp-hecho" style="--c:${h.c}">${h.ico} <b>${escHtml(h.txt)}</b>${h.sub?`<span>· ${escHtml(h.sub)}</span>`:''}</div>`:'';}
+// ── G3 · LAS 4 CUENTAS A ESTA HORA ──
+// La misma cuenta que la línea de "Ventas de hoy" (`_homeCurva`), separada por cuenta: ganancia hasta esta hora contra el
+// promedio de los últimos 5 días iguales a la misma hora. El renglón se pone ámbar sólo si la diferencia no puede ser
+// casualidad: a esta hora esa cuenta suele llevar 3 compras o más y hoy lleva tan pocas que pasa menos de 1 vez cada 20
+// (Poisson, la misma vara del CEREBRO). Lo normal no llama la atención.
+function _poisCdf(k,l){let s=0,t=Math.exp(-l);for(let i=0;i<=k;i++){s+=t;t*=l/(i+1);}return s;}
+function _homeCurvaPrev(dia){const prev=[];for(let w=1;w<=5;w++){const d=new Date(dia);d.setDate(d.getDate()-7*w);if((state.ventaprod||{})[dateToKey(d)])prev.push(d);}return prev;}
+function cuentasAEstaHora(dia){
+  const k=dateToKey(dia),prev=_homeCurvaPrev(dia);if(!prev.length)return null;
+  const esHoy=k===dateToKey(new Date()),now=new Date(),lim=esHoy?now.getHours()*60+now.getMinutes():1439;
+  const fila=cta=>{const A=_homeCurva(k,cta),Bs=prev.map(d=>_homeCurva(dateToKey(d),cta)),nP=Bs.length;
+    const g=A.hasta(lim),gB=Bs.reduce((t,b)=>t+b.hasta(lim),0)/nP,n=A.compras(lim),nB=Bs.reduce((t,b)=>t+b.compras(lim),0)/nP;
+    return{a:cta,g,gB,n,nB,dif:gB>0?Math.round((g-gB)/gB*100):null,lento:nB>=3&&_poisCdf(n,nB)<0.05};};
+  return{rows:VP_ACCTS.map(fila),tot:fila(null),prev,esHoy,lim};
+}
+const _DIAS_SEM=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+function _homeCuentasHTML(dia){
+  const R=cuentasAEstaHora(dia);if(!R)return '';
+  const nP=R.prev.length,dn=_DIAS_SEM[R.prev[0].getDay()],p2=n=>String(n).padStart(2,'0');
+  const max=Math.max(1,...R.rows.map(r=>Math.max(r.g,r.gB)));
+  const fila=r=>{const w=Math.max(0,r.g)/max*100,wb=Math.max(0,r.gB)/max*100;
+    const dTxt=r.dif==null?(r.g>0?'<span style="color:var(--green)">nuevo</span>':''):Math.abs(r.dif)<10?'<span style="color:var(--muted)">≈ normal</span>'
+      :`<span style="color:${r.dif>0?'var(--green)':'var(--red)'}">${r.dif>0?'▲':'▼'} ${Math.abs(r.dif)}%</span>`;
+    return `<div class="hc-f${r.lento?' lento':''}"><span class="hc-n">${r.a}</span><span class="hc-bar"><i style="width:${w.toFixed(1)}%"></i>${r.gB>0?`<b style="left:calc(${wb.toFixed(1)}% - 1px)"></b>`:''}</span><span class="hc-v"><b>${fmt(r.g)}</b> ${dTxt}</span>${r.lento?`<div class="hc-av"><span>⚠️ ${r.n} compra${r.n===1?'':'s'} · ${R.esHoy?'a esta hora suele llevar':'suele hacer'} ${Math.round(r.nB)}</span><button onclick="event.stopPropagation();homeCuentaIr('${r.a}')">ver sus ventas ›</button></div>`:''}</div>`;};
+  return `<div class="hoy-ctas" title="Ganancia de cada cuenta${R.esHoy?' hasta esta hora':' en el día'} contra el promedio de los últimos ${nP} ${nP===1?dn:_diaPl(dn)}${R.esHoy?' a la misma hora':''}. Ámbar sólo si la diferencia no puede ser casualidad.">
+    <div class="hc-tit">Las 4 cuentas ${R.esHoy?`a esta hora · la rayita es lo normal a las ${p2(Math.floor(R.lim/60))}:${p2(R.lim%60)}`:'en el día · la rayita es lo normal'} (promedio de ${nP===1?`el ${dn} anterior`:`los últimos ${nP} ${_diaPl(dn)}`})</div>
+    ${[...R.rows].sort((a,b)=>b.g-a.g).map(fila).join('')}</div>`;
+}
+function homeCuentaIr(a){
+  if(_homeHoyOff>0){const x=new Date();x.setDate(x.getDate()-_homeHoyOff);_vpIrDia=dateToKey(x).replace(/_/g,'-');}
+  vpLimpiarFiltros();goPage('ventaprod');const b=document.getElementById('vpf-'+a);if(b)setVpCuenta(a,b);
+}
+// La flechita de Ventas → Análisis por cuenta (Día = hoy): la misma comparación, en vez de "contra ayer entero" (que a la
+// tarde siempre da abajo).
+function vpAehChip(r){
+  if(!r||r.dif==null)return '';const c=Math.abs(r.dif)<10?'var(--muted)':r.dif>0?'var(--green)':'var(--red)';
+  return `<span class="vp-aeh" style="color:${c};background:color-mix(in srgb,${c} 12%,transparent)" title="Ganancia hasta esta hora contra el promedio de los últimos días iguales a la misma hora (${fmt(Math.round(r.gB))}).">${Math.abs(r.dif)<10?'≈':r.dif>0?'▲':'▼'} ${Math.abs(r.dif)}% vs a esta hora</span>`;
+}
+// ── G4 · RACHA 🔥, MEJOR DÍA 🏆 Y EL MES EN CUADRITOS ──
+// Todo sale de `_homeDiaTot` día por día (la misma cuenta de la tarjeta) y de los niveles de `VIVA_DIA_NIV`. Un día
+// "cumplido" = ganancia de $115.000 o más (el 7 del puntaje). No guarda nada nuevo.
+function _vpPrimerDiaTs(){const k0=Object.keys(state.ventaprod||{}).filter(k=>/^\d{4}_\d{2}_\d{2}$/.test(k)).sort()[0];if(!k0)return Infinity;const[a,b,c]=k0.split('_').map(Number);return new Date(a,b-1,c).getTime();}
+function _gNivDia(g){let n=VIVA_DIA_NIV[0];for(const x of VIVA_DIA_NIV)if(g>=x[1])n=x;return n;}
+// Días seguidos cumplidos que terminan en `dia`. Si `dia` es hoy y todavía no llegó, se cuenta hasta ayer (hoy no corta la
+// racha mientras el día sigue; si no llega, mañana vuelve a 0 — sin cartel rojo).
+function rachaHasta(dia){
+  const t0=_vpPrimerDiaTs(),d=new Date(dia);d.setHours(12,0,0,0);
+  const esHoy=dateToKey(d)===dateToKey(new Date());let hoyOk=true;
+  if(esHoy){hoyOk=_homeDiaTot(dateToKey(d)).gan>=PUNT_DIA_7;if(!hoyOk)d.setDate(d.getDate()-1);}
+  let n=0;const dias=[];
+  for(let i=0;i<400;i++){if(d.getTime()<t0-D864)break;const k=dateToKey(d);if(_homeDiaTot(k).gan>=PUNT_DIA_7){n++;dias.push(k);d.setDate(d.getDate()-1);}else break;}
+  return{n,hoyOk,esHoy,dias};
+}
+function _mesRachas(Y,M){
+  const hoy=new Date(),hoyK=dateToKey(hoy),t0=_vpPrimerDiaTs(),fin=new Date(Y,M+1,0).getDate(),tot={};
+  let mejor=null,rec={n:0},cur={n:0};
+  for(let d=1;d<=fin;d++){const dt=new Date(Y,M,d,12),k=dateToKey(dt);if(dt.getTime()>hoy.getTime()&&k!==hoyK)break;if(dt.getTime()<t0-D864)continue;
+    const t=_homeDiaTot(k);tot[k]=t;if(t.ventas&&(!mejor||t.gan>mejor.g))mejor={k,g:t.gan,dt};
+    if(t.gan>=PUNT_DIA_7){cur=cur.n?{n:cur.n+1,ini:cur.ini,fin:dt}:{n:1,ini:dt,fin:dt};if(cur.n>rec.n)rec={...cur};}else cur={n:0};}
+  return{tot,mejor,rec};
+}
+function homeCalIr(k){_vpIrDia=String(k).replace(/_/g,'-');vpLimpiarFiltros();goPage('ventaprod');}
+function _kTxt(g){const a=Math.abs(g);return (g<0?'-':'')+(a>=1000?Math.round(a/1000)+'k':Math.round(a));}
+const _MESES_L=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+function _homeGustoHTML(esc,dia,hf){
+  const p2=n=>String(n).padStart(2,'0'),dm=d=>p2(d.getDate())+'/'+p2(d.getMonth()+1);
+  const chip=(t,cc,tt,gris)=>`<span class="hoy-chip${gris?' gris':''}"${gris?'':` style="--cc:${cc}"`} title="${escHtml(tt)}">${t}</span>`;
+  const ttR='Días seguidos con '+fmt(PUNT_DIA_7)+' o más de ganancia (el 7 del puntaje). Si hoy todavía no llega se cuenta hasta ayer; si no llega, mañana vuelve a 0.';
+  if(esc==='dia'){
+    let h='';
+    try{const r=rachaHasta(dia),M=_mesRachas(dia.getFullYear(),dia.getMonth());
+      let c='';if(r.n>=2)c+=chip(`🔥 ${r.n} días seguidos cumplidos${r.esHoy&&!r.hoyOk?' (hasta ayer)':''}`,'var(--lv-justo)',ttR);
+      if(M.rec.n>=2&&M.rec.n>r.n)c+=chip(`racha más larga de ${_MESES_L[dia.getMonth()]}: ${M.rec.n}`,'',ttR,true);
+      if(c)h+=`<div class="hoy-chips">${c}</div>`;}catch(e){}
+    try{h+=_homeCuentasHTML(dia);}catch(e){}
+    return h;
+  }
+  if(esc!=='mes')return '';
+  const Y=hf.getFullYear(),Mo=hf.getMonth(),R=_mesRachas(Y,Mo),hoyK=dateToKey(new Date()),esEste=Y===new Date().getFullYear()&&Mo===new Date().getMonth();
+  const ra=esEste?rachaHasta(new Date()):{n:0,dias:[]},enRacha=new Set(ra.n>=2?ra.dias:[]);
+  let c='';
+  if(R.mejor&&R.mejor.g>0)c+=chip(`🏆 mejor día: ${_DIAS_SEM[R.mejor.dt.getDay()].slice(0,3)} ${dm(R.mejor.dt)} · ${fmt(R.mejor.g)}`,'var(--lv-exc)','El día de más ganancia del mes. Tocá su cuadrito para ver sus ventas.');
+  if(ra.n>=2||R.rec.n>=2)c+=chip(`🔥 ${ra.n>=2?`racha: ${ra.n} día${ra.n===1?'':'s'}`:'sin racha ahora'}${R.rec.n>=2&&R.rec.n>ra.n?` · récord ${R.rec.n} (${R.rec.ini.getDate()} al ${dm(R.rec.fin)})`:''}`,'var(--lv-justo)',ttR);
+  const off=(new Date(Y,Mo,1).getDay()+6)%7,fin=new Date(Y,Mo+1,0).getDate();
+  let cells=['L','M','M','J','V','S','D'].map(x=>`<span class="hcal-h">${x}</span>`).join('');
+  for(let i=0;i<off;i++)cells+='<span></span>';
+  for(let d=1;d<=fin;d++){const k=dateToKey(new Date(Y,Mo,d,12)),t=R.tot[k];
+    if(!t){cells+=`<span class="hcal-d vacio">${d}</span>`;continue;}
+    const n=_gNivDia(t.gan),em=R.mejor&&k===R.mejor.k&&R.mejor.g>0?'🏆':enRacha.has(k)?'🔥':'';
+    cells+=`<button class="hcal-d${k===hoyK?' hoy':''}" style="--dc:${t.ventas?n[2]:'var(--border2)'}" onclick="event.stopPropagation();homeCalIr('${k}')" title="${dm(new Date(Y,Mo,d))} · ${t.ventas} venta${t.ventas===1?'':'s'} · ganancia ${fmt(t.gan)}${k===hoyK?' (va en curso)':''}">${d}<b>${t.ventas?_kTxt(t.gan):'—'}</b>${em?`<em>${em}</em>`:''}</button>`;}
+  const ley=VIVA_DIA_NIV.map((x,i)=>`<span><i style="--dc:${x[2]}"></i>${i===0?'menos de '+_kTxt(VIVA_DIA_NIV[1][1]):_kTxt(x[1])}</span>`).join('');
+  return `${c?`<div class="hoy-chips">${c}</div>`:''}<div class="hoy-cal"><div class="hcal-g">${cells}</div><div class="hcal-ley">${ley}</div>
+    <div style="font-size:.62rem;color:var(--muted);margin-top:4px">Cada cuadrito es un día, del color de su ganancia (los mismos de la tarjeta del día). Tocá uno y abre Ventas en ese día.</div></div>`;
+}
+// ── G5 · VENTAS EN EL CELU: LOS 6 CUADROS EN UN RENGLÓN QUE SE ABRE ──
+// Sólo en el teléfono (el CSS lo esconde en la PC). Se recuerda abierto/cerrado en cada aparato.
+function _vpKpiAbierto(){return _lsGet('cycVpKpi')==='1';}
+function vpKpiToggle(){const ab=!_vpKpiAbierto();_lsSet('cycVpKpi',ab?'1':'0');const k=document.getElementById('vp-kpis');if(k){k.classList.toggle('vp-kc',!ab);const c=k.querySelector('.kr-car');if(c)c.textContent=ab?'▲':'▼';}}
+function vpKpiResHTML(o){
+  const pct=o.pct!=null&&isFinite(o.pct)?`<b style="color:${pctColor(o.pct)}">${o.pct>=0?'+':''}${o.pct.toFixed(0)}%</b>`:'';
+  return `<button type="button" class="vp-kpi-res" onclick="vpKpiToggle()" title="Tocá para ver u ocultar los cuadros"><span><b>${o.n}</b> venta${o.n===1?'':'s'}</span><b>${fmt(o.bruto)}</b><span>· <b style="color:${o.gan>=0?'var(--green)':'var(--red)'}">${o.gan>=0?'+'+fmt(o.gan):fmt(o.gan)}</b> ${pct}</span>${o.pts?`<span style="color:${puntColor(o.pts.score)};font-weight:600">≈ ${o.pts.score.toFixed(1).replace('.',',')}/10</span>`:''}<span class="kr-car">${_vpKpiAbierto()?'▲':'▼'}</span></button>`;
+}
+// ── G7 · SONIDO DE CADA VENTA ──
+// Con Inicio o Ventas abiertos suena cuando entra una venta, con el tono de su nivel de % (más agudo = mejor %, los mismos 7
+// de las ventas) y más notas cuanto más plata dejó (1 hasta $5.000, 2 hasta $15.000, 3 desde ahí; 💎 JOYA hace un arpegio
+// con brillo). APAGADO de fábrica (interruptor en Ajustes → Apariencia) y en modo discreto no suena. Los sonidos se arman en
+// el momento (no hay archivos). El iPhone pide un primer toque en la página para habilitar el sonido y en silencio no suena.
+const SON_LS='cycSonidoVenta',SON_MIN_LS='cycSonidoMin';
+const SON_NIV=[['bajo','🔴 Bajo','var(--red)',196],['justo','🟠 Justo','var(--lv-justo)',247],['bien','🟢 Bien','var(--green)',330],['bueno','🩵 Bueno','var(--lv-bueno)',392],['exc','🔵 Excelente','var(--lv-exc)',494],['estr','🟣 Estrella','var(--lv-estr)',587],['joya','💎 JOYA','var(--lv-joya)',659]];
+function sonidoOn(){return _lsGet(SON_LS)==='1';}
+let _sonCtx=null,_sonVistos=null;
+function _sonCtxDe(){try{if(!_sonCtx){const C=window.AudioContext||window.webkitAudioContext;if(!C)return null;_sonCtx=new C();}if(_sonCtx.state==='suspended')_sonCtx.resume();return _sonCtx;}catch(e){return null;}}
+document.addEventListener('pointerdown',()=>{if(sonidoOn())_sonCtxDe();},{passive:true});
+function sonarVenta(nk,gan){
+  const ctx=_sonCtxDe();if(!ctx)return false;
+  try{
+    const n0=SON_NIV.find(x=>x[0]===nk)||SON_NIV[2],f0=n0[3],joya=nk==='joya';
+    const n=joya?4:gan>=15000?3:gan>5000?2:1,ints=nk==='bajo'?[1,.84,.75]:[1,1.26,1.5,2],t=ctx.currentTime+.02;
+    const nota=(f,s,dur,vol,tipo)=>{const o=ctx.createOscillator(),g=ctx.createGain();o.type=tipo;o.frequency.value=f;
+      g.gain.setValueAtTime(.0001,s);g.gain.exponentialRampToValueAtTime(vol,s+.015);g.gain.exponentialRampToValueAtTime(.0001,s+dur);
+      o.connect(g);g.connect(ctx.destination);o.start(s);o.stop(s+dur+.05);};
+    for(let i=0;i<n;i++)nota(f0*ints[i],t+i*.13,.38,.22,nk==='bajo'?'triangle':'sine');
+    if(joya)for(let i=0;i<4;i++)nota(f0*(3+i*.5),t+.55+i*.07,.3,.06,'triangle');   // el brillo
+    return true;
+  }catch(e){return false;}
+}
+function ventaSonidoCheck(){
+  if(!state||!state.ventaprod)return;
+  const k=dateToKey(new Date()),grupos={};
+  Object.values(state.ventaprod[k]||{}).forEach(v=>{if(!v||v.cancelada)return;const g=vpGrupoKey(v);(grupos[g]=grupos[g]||[]).push({...v,_dateKey:k});});
+  const prev=_sonVistos;_sonVistos={k,set:new Set(Object.keys(grupos))};
+  if(!prev||prev.k!==k)return;   // la primera mirada (y el cambio de día) no cuentan como ventas nuevas
+  const nuevas=Object.keys(grupos).filter(g=>!prev.set.has(g));
+  if(!nuevas.length||!sonidoOn()||document.body.classList.contains('discreto'))return;
+  if(!['home','ventaprod'].includes(currentPage)||document.visibilityState==='hidden')return;
+  const soloGrandes=_lsGet(SON_MIN_LS)==='1';let t=0;
+  for(const g of nuevas.slice(0,3)){let gan=0,cost=0,gest=0;grupos[g].forEach(v=>{const c=efectivoCostoVP(v);gan+=(v.neto||0)-c;cost+=c;gest+=gestDivVP(v);});
+    if(grupos[g].some(ventaSinCostoVP))continue;   // sin costo no se sabe el nivel: no se inventa un tono
+    const nv=_pctNivel(pctGananciaVP(gan,cost,gest));if(!nv||(soloGrandes&&gan<5000))continue;
+    setTimeout(()=>sonarVenta(nv.k,gan),t);t+=900;}
+}
+function sonidoAjusteHTML(){
+  const on=sonidoOn(),min=_lsGet(SON_MIN_LS)==='1';
+  const sw=(txt,v,fn)=>`<div class="son-row"><span style="font-size:.75rem;color:var(--muted)">${txt}</span><button class="btn" style="background:${v?'color-mix(in srgb,var(--green) 18%,var(--surface2))':'var(--surface2)'};border:1px solid ${v?'var(--green)':'var(--border2)'};color:var(--text)" onclick="${fn}">${v?'🔔 Prendido':'🔕 Apagado'}</button></div>`;
+  return sw('🔔 Sonido de cada venta: con Inicio o Ventas abiertos, que suene cuando entra una venta (en modo discreto no suena)',on,'sonidoToggle()')
+    +(on?sw('Sólo las de $5.000 o más de ganancia',min,'sonidoMinToggle()'):'')
+    +`<div class="son-niv">${SON_NIV.map(x=>`<button style="--cc:${x[2]}" onclick="sonidoProbar('${x[0]}')">▶ ${x[1]}</button>`).join('')}</div>
+    <div style="font-size:.66rem;color:var(--muted);margin-top:8px;line-height:1.5">Tocá cada nivel para escucharlo. Más agudo = mejor % de ganancia (los mismos 7 colores de las ventas). Más notas = más plata en esa venta: 1 nota hasta $5.000, 2 hasta $15.000, 3 desde $15.000. El 💎 JOYA hace un arpegio con brillo. En el iPhone hace falta tocar la página una vez para que pueda sonar, y con el teléfono en silencio no suena. Se guarda en cada aparato.</div>`;
+}
+function _sonidoRepintar(){const s=document.getElementById('ajuste-sonido');if(s)s.innerHTML=sonidoAjusteHTML();}
+function sonidoToggle(){const on=!sonidoOn();_lsSet(SON_LS,on?'1':'0');if(on)sonarVenta('bien',8000);_sonidoRepintar();}
+function sonidoMinToggle(){_lsSet(SON_MIN_LS,_lsGet(SON_MIN_LS)==='1'?'0':'1');_sonidoRepintar();}
+function sonidoProbar(nk){sonarVenta(nk,nk==='joya'?50000:8000);}
 // UNA SOLA REGLA DE ESCASEZ (16/10/2026, él: "quiero que sean lo mismo y tomen la misma regla lo de pedidos y lo de
 // escasez"). La usan Pedidos (semáforo y barra), la línea de tiempo y, con la misma cuenta, el robot (`escasez`):
 //  · se corta antes de poder COMPRAR: lo que hay en total (ML + camino + oficina) dura MENOS que lo que tarda reponer
@@ -12203,8 +12580,20 @@ function renderVentaProd(){
     // el celular. Mostramos los 200 más recientes; los totales/KPIs de abajo igual
     // se calculan sobre TODO el período. Para ver otras, se usa el buscador/filtros.
     const VP_CAP=200;const shownGroups=filteredGroups.slice(0,VP_CAP);
-    list.innerHTML=filteredGroups.length?shownGroups.map(grp=>{
+    // ── G6 (etapa 6): las ventas que entraron desde la última vez que miraste Ventas en este teléfono ──
+    // La primera vez en el aparato se anota lo de ahora y no se marca nada. Sin localStorage no se marca nada.
+    if(ventaVistoTs()==null)ventaVistoGuardar();
+    const _vistoTs=ventaVistoTs();
+    const _nueva=g=>!!_vistoTs&&!g.cancelada&&g.items.some(v=>(Number(v.ts)||0)>_vistoTs);
+    const _nv=shownGroups.map(_nueva),_hayVieja=_nv.some((x,i)=>!x&&_nv.slice(0,i).some(Boolean));
+    let _vpNuevasHTML='';
+    {const ng=filteredGroups.filter(_nueva);if(ng.length){let gg=0;ng.forEach(g=>g.items.forEach(v=>{if(!ventaSinCostoVP(v))gg+=(v.neto||0)-efectivoCostoVP(v);}));
+      _vpNuevasHTML=`<button class="vp-nuevas" onclick="ventaNuevasIr()" title="Se da por visto cuando salís de Ventas después de mirarla 5 segundos (cada teléfono por su lado)">🆕 ${ng.length} venta${ng.length===1?' nueva':'s nuevas'} desde que miraste · ${gg>=0?'+':''}${fmt(gg)}${_hayVieja?' ↓':''}</button>`;}}
+    const _rayita=`<div class="vp-rayita" id="vp-rayita">hasta acá es lo nuevo · lo de abajo ya lo viste</div>`;
+    const _dot='<span class="vp-nueva-dot" title="Entró después de la última vez que miraste Ventas en este teléfono"></span>';
+    list.innerHTML=_vpNuevasHTML+(filteredGroups.length?shownGroups.map((grp,_gi)=>{
       const isCancelled=grp.cancelada;
+      const _esNueva=_nv[_gi],_antes=(_gi>0&&_nv[_gi-1]&&!_esNueva)?_rayita:'';
       let gn=0,gc=0,gmlx=0,ggest=0,gOfi=0;grp.items.forEach(v=>{if(!isCancelled){gn+=v.neto||0;gc+=efectivoCostoVP(v);gmlx+=impuestosDeVenta(v);ggest+=gestDivVP(v);gOfi+=costoOficinaVP(v);}});
       // La ganancia en PESOS se mide contra gc (sin la gestión): el neto ya la trae descontada.
       // El PORCENTAJE se mide contra gc+ggest, que es el costo total como lo pidió él.
@@ -12367,6 +12756,7 @@ function renderVentaProd(){
       rescLabel='';
       const _avisoIco=(rescLabel&&rescLabel.includes('⚠️'))?' <span title="El robot no pudo subirla · mirá el detalle">⚠️</span>':'';
       const _abierto=vpDetOpen.has(grp.gid);
+      const _hechoV=isCancelled?'':(()=>{try{return ventaHechoHTML(grp);}catch(e){return '';}})();   // etapa 6 (G2): 🎉 ⚡ 🔁 🏁
       const _dl=(k,val)=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:3px 0;border-bottom:1px dashed var(--border)"><span style="color:var(--muted)">${k}</span><span style="text-align:right">${val}</span></div>`;
       const _det=`<div id="vpdet-${grp.gid}" style="display:${_abierto?'block':'none'};font-size:.7rem;background:var(--surface2);border-radius:8px;padding:8px 10px;margin-top:2px">
           ${_dl('N° de venta',`<span style="font-family:'DM Mono',monospace">${numVenta?'#'+numVenta:'sin N°'}</span>`)}
@@ -12413,7 +12803,7 @@ function renderVentaProd(){
           return `<span style="font-size:.62rem;padding:1px 6px;border-radius:4px;border:1px solid ${pr==='1'?'rgba(234,179,8,.5)':'var(--border2)'};color:${col};white-space:nowrap" title="${tt}">💳 ${t}</span>`;}).join(' ');})();
       const _pcHtml=`<div class="ingreso-item vp-pc" onclick="vpCardClick(event,'${grp.gid}')" title="Tocá para ver u ocultar el detalle" style="cursor:pointer;flex-direction:column;align-items:stretch;gap:4px;${isCancelled?'border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.04)':''}">
         <div class="vp-pc-cab" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;row-gap:4px;white-space:nowrap">
-          <span class="who-badge" style="font-size:.6rem;${isCancelled?'opacity:.6':''}">${cuenta}</span>
+          ${_esNueva?_dot:''}<span class="who-badge" style="font-size:.6rem;${isCancelled?'opacity:.6':''}">${cuenta}</span>
           ${fechaTag}
           ${cancelBadge}
           ${grp.items.length>1?`<span style="font-size:.64rem;color:var(--muted)">${grp.items.length} prod.</span>`:''}
@@ -12428,17 +12818,19 @@ function renderVentaProd(){
           ${(()=>{if(_varios)return'';const _pp=prodDeVenta(grp.items[0]);return _pp?lineaBtn(_pp.id,null,_lineaVarDeVentas(grp.items,_pp.id)):'';})()}
         </div>
         ${lines}
+        ${_hechoV}
         ${_det}
       </div>`;
       const _celHtml=`<div class="ingreso-item vp-cel" onclick="vpCardClick(event,'${grp.gid}')" title="Tocá para ver u ocultar el detalle" style="cursor:pointer;flex-direction:column;align-items:stretch;gap:6px;padding:12px 14px;${isCancelled?'border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.04)':''}">
         <div style="display:flex;align-items:center;gap:8px">
-          <span class="who-badge" style="font-size:.62rem;${isCancelled?'opacity:.6':''}">${cuenta}</span>
+          ${_esNueva?_dot:''}<span class="who-badge" style="font-size:.62rem;${isCancelled?'opacity:.6':''}">${cuenta}</span>
           <span style="font-size:.68rem;color:var(--muted);white-space:nowrap">${_fh}</span>
           ${cancelBadge}
           <span style="flex:1"></span>
           ${_pill}
         </div>
         ${_items}
+        ${_hechoV}
         ${tipoLabel?`<div>${tipoLabel}</div>`:''}
         ${promoLabel?`<div>${promoLabel}</div>`:''}
         <div style="display:flex;align-items:center;gap:10px;margin-top:2px">
@@ -12449,8 +12841,8 @@ function renderVentaProd(){
         ${_det}
       </div>`;
       const _vv=vivaVenta({cancel:isCancelled,gpct,est:_est,neto:gn,gan:gg,costo:gc});
-      return vivaEnvolver(_pcHtml,'vp-pc',_vv)+vivaEnvolver(_celHtml,'vp-cel',_vv);
-    }).join('')+(filteredGroups.length>VP_CAP?`<div class="empty-msg" style="margin-top:10px">Mostrando las ${VP_CAP} ventas más recientes de ${filteredGroups.length}. Usá el buscador o filtrá por cuenta/período para encontrar otras. (Los totales de arriba sí cuentan todas.)</div>`:''):`<div class="empty-msg">${vpQ||vpFilterCuenta?'Sin resultados para los filtros aplicados '+(/^(hoy|el )/.test(mesLabel)?'':'en ')+mesLabel+'.':'Sin ventas cargadas '+(/^(hoy|el )/.test(mesLabel)?'':'en ')+mesLabel+'.'}</div>`;
+      return _antes+vivaEnvolver(_pcHtml,'vp-pc',_vv)+vivaEnvolver(_celHtml,'vp-cel',_vv);
+    }).join('')+(filteredGroups.length>VP_CAP?`<div class="empty-msg" style="margin-top:10px">Mostrando las ${VP_CAP} ventas más recientes de ${filteredGroups.length}. Usá el buscador o filtrá por cuenta/período para encontrar otras. (Los totales de arriba sí cuentan todas.)</div>`:''):`<div class="empty-msg">${vpQ||vpFilterCuenta?'Sin resultados para los filtros aplicados '+(/^(hoy|el )/.test(mesLabel)?'':'en ')+mesLabel+'.':'Sin ventas cargadas '+(/^(hoy|el )/.test(mesLabel)?'':'en ')+mesLabel+'.'}</div>`);
     vivaScan(list);
   }
   const kpis=document.getElementById('vp-kpis');
@@ -12482,8 +12874,11 @@ function renderVentaProd(){
     <div class="met-kpi c4"><div class="mk-lbl">Neto</div><div class="mk-val">${fmt(mNeto)}</div><div class="mk-sub">lo que queda</div></div>
     <div class="met-kpi c2"><div class="mk-lbl">Ganancia</div><div class="mk-val" style="color:${gMes>=0?'var(--green)':'var(--red)'}">${fmt(gMes)}</div><div class="mk-sub">neto − costo${ptsDiaHtml}${sinCostoU?`<br><span style="color:var(--amber,#f59e0b)" title="Ventas sin ficha o con la ficha en costo 0: cuentan en lo facturado pero no en la ganancia. Cargá el costo en la ficha y entran solas.">⚠️ ${sinCostoU} u. sin costo (${fmt(sinCostoTot)}) no suman</span>`:''}</div></div>
     <div class="met-kpi c1"><div class="mk-lbl">% ganancia</div><div class="mk-val" style="color:${pctColor(pctMes)}">${pctMes!==null?(pctMes>=0?'+':'')+pctMes.toFixed(1)+'%':'—'}</div><div class="mk-sub">objetivo ${_pctPisoMeta().meta}%</div></div>`;
+  // G5 (etapa 6): en el celu los 6 cuadros quedan en un renglón que se abre al tocarlo (en la PC no cambia nada).
+  if(kpis){try{kpis.insertAdjacentHTML('afterbegin',vpKpiResHTML({n:ventasCount,bruto:mBruto,gan:gMes,pct:pctMes,pts:_ptsD}));kpis.classList.toggle('vp-kc',!_vpKpiAbierto());}catch(e){}}
   renderVpScopeBlocks();
   renderVPRanking();
+  try{ventaSonidoCheck();}catch(e){}
 }
 function renderVpScopeBlocks(){
   const sk=vpScopeKeys();
@@ -12498,10 +12893,13 @@ function renderVpScopeBlocks(){
     const pctOf=o=>pctGananciaVP(o.ganancia,o.costo,o.gest);
     const accs=[...VP_ACCTS].sort((a,b)=>cur[b].ganancia-cur[a].ganancia);
     const maxG=Math.max(1,...VP_ACCTS.map(a=>Math.abs(cur[a].ganancia)));
+    // G3 (etapa 6): con Día = hoy la flechita compara "a esta hora" contra los últimos días iguales, no contra ayer entero.
+    let _aeh=null;if(vpPeriod==='dia'&&sk.keys.length===1&&sk.keys[0]===dateToKey(new Date())){try{_aeh=cuentasAEstaHora(new Date());}catch(e){_aeh=null;}}
     const fila=(nombre,c,p,nV,general)=>{
       const cp=pctOf(c),pp=pctOf(p);
       const dg=c.ganancia-(p.ganancia||0);
-      const dGan=(p.ganancia||0)!==0?`<span class="db ${dg>=0?'up':'dn'}">${dg>=0?'▲':'▼'} ${fmt(Math.abs(dg))}</span>`:(c.ganancia>0?'<span class="db up">nuevo</span>':'');
+      const _ah=_aeh?(general?_aeh.tot:_aeh.rows.find(x=>x.a===nombre)):null;
+      const dGan=_ah?vpAehChip(_ah):(p.ganancia||0)!==0?`<span class="db ${dg>=0?'up':'dn'}">${dg>=0?'▲':'▼'} ${fmt(Math.abs(dg))}</span>`:(c.ganancia>0?'<span class="db up">nuevo</span>':'');
       const dPct=(cp!==null&&pp!==null)?`<span class="db ${cp>=pp?'up':'dn'}">${cp>=pp?'▲':'▼'} ${Math.abs(cp-pp).toFixed(1)}pts</span>`:'';
       const val=cp!==null?`${cp>=0?'+':''}${cp.toFixed(1)}%`:(c.costo>0?'—':'sin costo');
       const w=Math.max(2,Math.abs(c.ganancia)/maxG*100);
@@ -12523,7 +12921,7 @@ function renderVpScopeBlocks(){
       +accs.map(a=>fila(a,cur[a],prev[a]||{},ventasCta[a].size,false)).join('')
       +fila('TOTAL (ponderado)',sum(cur),sum(prev),nTot,true)
       +vpPromoTotalHTML(vpEntries(sk.keys))
-      +`<div style="font-size:.6rem;color:var(--muted);margin-top:4px">Ganancia neta en $ (neto − costo) y % de ganancia · mayor a menor · Δ vs ${sk.prevLabel}</div></div>`;
+      +`<div style="font-size:.6rem;color:var(--muted);margin-top:4px">Ganancia neta en $ (neto − costo) y % de ganancia · mayor a menor · Δ ${_aeh?`ganancia vs a esta hora (promedio de los últimos ${_aeh.prev.length} días iguales) · % vs ${sk.prevLabel}`:'vs '+sk.prevLabel}</div></div>`;
   }
 }
 let vpRankMode='roi';
@@ -19030,6 +19428,7 @@ function pedCopiarVars(id){
 }
 function _pedidoItemHtml(p,opts){
   opts=opts||{};
+  if(_pedSoloCambio&&!pedCambioDe(p))return '';   // etapa 6 (G1): "mostrar sólo lo que cambió"
   {const _pr=(state.products||[]).find(x=>x.id===p.prodId);_pedRojoCur=pedDiasRojoDe(_pr);_pedRepoCur=reponerDe(_pr);}
   const NEXT={pendiente:'poco_stock',poco_stock:'suficiente',suficiente:'pendiente'};
   const LABEL={pendiente:'🔴 Urgente',poco_stock:'🟡 Poco stock',suficiente:'🟢 Suficiente'};
@@ -19041,7 +19440,7 @@ function _pedidoItemHtml(p,opts){
   // redondearlo al número más cercano"; antes sólo el texto copiado y para arriba). Lo cambiado a mano (✋) queda como lo puso él.
   const _esPvR=esPedidoPaulvic(p);
   const varsSorted=vars?[...vars].map(x=>(_esPvR&&!x.mano&&(x.q||0)>0)?{...x,q:pvRedondo(x.q)}:x).sort((a,b)=>b.q-a.q):null;
-  const _cantShow=(varsSorted&&_esPvR)?varsSorted.reduce((a,x)=>a+(x.q||0),0):(p.cantidad||1);
+  const _cantShow=_pedCantVista(p).tot;   // la misma cantidad que compara "qué cambió" (G1)
   const _vOpen=varsSorted&&_openPedVars.has(p.id);
   void _vOpen;
   // LAS VARIANTES A LA VISTA (06/10/2026, pedido suyo: "al hacer click aparezcan las variantes directamente
@@ -19135,7 +19534,7 @@ function _pedidoItemHtml(p,opts){
   const _card=`<details class="ped-card ${_est}${_sem?' sem-'+_sem:''}"${_abierto||_esProb?' open':''} ${_esProb?'':`ontoggle="_setPedCardOpen('${p.id}',this.open)"`}>
     <summary class="ped-head"${_esProb?' style="display:none"':''}>
       ${_prod?fotoChipHTML(_prod,38,p.variante||''):''}
-      <span class="ped-name">${p.producto||'—'}${p.variante?` <span style="padding:1px 6px;border-radius:4px;background:rgba(124,58,237,.15);color:#a78bfa;font-size:.65rem;font-family:'DM Mono',monospace;font-weight:400">${p.variante}</span>`:''}${opts.etiqueta||''}</span>
+      <span class="ped-name">${p.producto||'—'}${p.variante?` <span style="padding:1px 6px;border-radius:4px;background:rgba(124,58,237,.15);color:#a78bfa;font-size:.65rem;font-family:'DM Mono',monospace;font-weight:400">${p.variante}</span>`:''}${opts.etiqueta||''}${pedCambioChip(p)}</span>
       ${_prod?maxCompraChip(_prod):''}
       <span class="ped-buy"><b>${fmtN(_cantShow)}</b><i>u. a comprar${p.auto===false?' · a mano':''}</i>${_semTxt?`<i class="ped-sem" title="Cuenta lo que hay en ML + en camino + en tu oficina, al ritmo de venta">${_semTxt}</i>`:''}</span>
       <span class="ped-caret">▼</span>
@@ -19179,7 +19578,7 @@ function _pedidoItemHtml(p,opts){
       ${_fu?`<img src="${_fu}" loading="lazy" onclick="event.preventDefault();event.stopPropagation();_mostrarLightbox('${_fu}',${_tq})" onerror="this.style.visibility='hidden'" class="cand-foto" style="width:56px;height:56px;object-fit:contain;background:#fff;border-radius:8px;flex:0 0 auto;cursor:zoom-in">`
         :`<div style="width:56px;height:56px;border:1px dashed var(--border);border-radius:8px;flex:0 0 auto;font-size:.6rem;color:var(--muted);display:flex;align-items:center;justify-content:center">sin foto</div>`}
       <div style="flex:1;min-width:0">
-        <div class="cand-nom" style="font-size:.8rem;font-weight:600;line-height:1.3">${p.producto||'—'}${p.variante?` <span style="color:#a78bfa;font-size:.7rem">· ${p.variante}</span>`:''}</div>
+        <div class="cand-nom" style="font-size:.8rem;font-weight:600;line-height:1.3">${p.producto||'—'}${p.variante?` <span style="color:#a78bfa;font-size:.7rem">· ${p.variante}</span>`:''}${pedCambioChip(p)}</div>
         <div class="cand-cel" style="font-size:.66rem;color:var(--muted);margin-top:2px">comprar <b style="color:var(--text)">${fmtN(p.cantidad||0)}</b> u.${_ps?` · ${fmt(_ps)}`:''}${_locP!=null?` · ${perfLocalHTML(_locP)}`:''}</div>
         <div class="cand-sub" style="font-size:.68rem;color:var(--muted);margin-top:3px">${_prod.codPy?`🔖 ${_prod.codPy} · `:'<span style="color:var(--amber)">🔖 sin código</span> · '}${_nu>0?`${fmtUS2(_nu)} → <b style="color:var(--text)">${fmtUS2(_pu)}</b> puesto${_ps?` · ${fmt(_ps)}`:''}`:'<span style="color:var(--red)">sin precio de Paraguay</span>'}${p.cVend!=null?` · <b style="color:var(--green)">🛒 vendiste ${fmtN(p.cVend)}${p.cDias?` en ${p.cDias} d`:''}</b>`:''}</div>
       </div>
@@ -19938,6 +20337,7 @@ function renderPedidos(){
     }
   }
   {const _sdEl=document.getElementById('ped-sindecidir');if(_sdEl)_sdEl.innerHTML=pedSinDecidirHTML(pedidoSection);}
+  {const _caEl=document.getElementById('ped-cambio-aviso');if(_caEl){try{_caEl.innerHTML=pedCambioAvisoHTML(pedidoSection==='bsas'&&_bsasVista==='listas'?'':pedidoSection);}catch(e){_caEl.innerHTML='';}}}
   if(pedidoSection==='papelera'){renderPapelera();return;}
   {const _aj=document.getElementById('aj-papelera');if(_aj&&_aj.open)renderPapelera();}
   if(pedidoSection==='prioridad'){
@@ -22348,12 +22748,14 @@ function _puntajeDia(fecha,h,dias,esc){
 // "Ventas de hoy" contra el MISMO día de la semana pasada, cortado a la MISMA hora: comparar contra el día entero de
 // ayer engaña (a la tarde siempre se va "abajo"). La línea es la ganancia acumulada hora por hora, la misma cuenta
 // que la tarjeta (`efectivoCostoVP`), con la hora real de cada venta (`ts`). Un día que no es hoy se compara entero.
-function _homeCurva(k){
-  const ents=Object.values((state.ventaprod||{})[k]||{}).filter(v=>!v.cancelada&&Number(v.ts)>0);
-  const pts=ents.map(v=>{const d=new Date(Number(v.ts));return {m:d.getHours()*60+d.getMinutes(),g:(v.neto||0)-efectivoCostoVP({...v,_dateKey:k})};}).sort((a,b)=>a.m-b.m);
+function _homeCurva(k,cta){
+  // `cta` (etapa 6, G3): la misma curva de UNA cuenta. `compras(min)` = compras distintas hasta esa hora (un carrito es una).
+  const ents=Object.values((state.ventaprod||{})[k]||{}).filter(v=>!v.cancelada&&Number(v.ts)>0&&(!cta||v.cuenta===cta));
+  const pts=ents.map(v=>{const d=new Date(Number(v.ts));return {m:d.getHours()*60+d.getMinutes(),g:(v.neto||0)-efectivoCostoVP({...v,_dateKey:k}),gk:vpGrupoKey(v)};}).sort((a,b)=>a.m-b.m);
   const hasta=min=>pts.reduce((a,x)=>a+(x.m<=min?x.g:0),0);
+  const compras=min=>new Set(pts.filter(x=>x.m<=min).map(x=>x.gk)).size;
   const c=[];for(let h=0;h<=24;h++)c.push(hasta(h*60-1));
-  return {c,hasta,n:pts.length};
+  return {c,hasta,compras,n:pts.length};
 }
 let _homeCurvaAnim=true;
 // lunes, martes, miércoles, jueves y viernes no llevan otra s en plural (20/10/2026: decía "martess").
@@ -22361,8 +22763,7 @@ function _diaPl(d){return /s$/.test(d)?d:d+'s';}
 function _homeCurvaHTML(dia){
   // CONTRA EL PROMEDIO DE LOS ÚLTIMOS 5 DEL MISMO DÍA (18/10/2026, pedido suyo: *"que se compare con los últimos sábados mejor,
   // un promedio de los 5 últimos"*): un solo día de la semana pasada puede haber sido malo o bueno de casualidad.
-  const k=dateToKey(dia);const prev=[];
-  for(let w=1;w<=5;w++){const d=new Date(dia);d.setDate(d.getDate()-7*w);if((state.ventaprod||{})[dateToKey(d)])prev.push(d);}
+  const k=dateToKey(dia);const prev=_homeCurvaPrev(dia);   // los mismos días que usan las 4 cuentas (G3)
   if(!prev.length)return '';
   const A=_homeCurva(k),Bs=prev.map(d=>_homeCurva(dateToKey(d)));
   const B={c:Array.from({length:25},(_,h)=>Bs.reduce((t,b)=>t+b.c[h],0)/Bs.length),hasta:m=>Bs.reduce((t,b)=>t+b.hasta(m),0)/Bs.length,n:Bs.reduce((t,b)=>t+b.n,0)};
@@ -22469,6 +22870,7 @@ function renderHomeHoy(){
           <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.35rem;line-height:1">${D.score.toFixed(1).replace('.',',')}<span style="font-size:.6em;opacity:.7"> /10</span></div><div style="font-size:.74rem;font-weight:700;margin-top:4px">${D.nivel}</div></div>`;})()}
     </div>
     ${esc==='dia'?(()=>{try{return _homeCurvaHTML(hoy);}catch(e){return '';}})():''}
+    ${(()=>{try{return _homeGustoHTML(esc,hoy,_hf);}catch(e){return '';}})()}
     <details id="hoy-cobro" ${_hoyCobroAbierto()?'open':''} onclick="event.stopPropagation()" ontoggle="_hoyCobroToggle(this)" style="margin-top:14px;padding-top:9px;border-top:1px solid color-mix(in srgb,var(--c) 25%,transparent)">
       <summary style="cursor:pointer;font-size:.72rem;color:var(--muted)">💸 cuánto cobrar</summary>
       <div id="hoy-cobro-in" style="margin-top:8px">${_hoyCobroAbierto()?_homeCobroHtml(_homeHoyFecha()):''}</div>
@@ -22476,6 +22878,7 @@ function renderHomeHoy(){
   </div></div>`;
   vivaScan(el);
   try{_homeHoyEfectos(esc,h,hoy);}catch(e){}
+  try{ventaSonidoCheck();}catch(e){}
 }
 // CUÁNTO COBRAR, adentro de "Ventas de hoy" (09/10/2026, él: "sacar lo del puntaje del mes, no me interesa. lo único
 // que me interesa de ahí es cuánto cobrar (…) en detalle desplegable en ventas de hoy"). Misma cuenta que tenía el
@@ -23263,6 +23666,7 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
         <span style="font-size:.75rem;color:var(--muted)">Modo discreto: ventas sin colores ni movimiento (para usarla en el trabajo). Las ventas especiales quedan con una rayita de color y las muy buenas con un ✦.</span>
         <button class="btn" id="ajuste-discreto-btn" style="background:var(--surface2);border:1px solid var(--border2);color:var(--text)" onclick="toggleDiscreto()">✨ Con efectos</button>
       </div>
+      <div id="ajuste-sonido"></div>
     </div>
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px">
       <!-- 15/10/2026: el botón "Subir precios automático" se sacó. Desde el 09/10 el robot sólo junta datos (SOLO_DATOS): no sube ni
