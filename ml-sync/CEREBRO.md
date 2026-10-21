@@ -54,7 +54,9 @@ La etapa 8 de la revisión (Reglas del cerebro, cada 7 días) mira que esto qued
 
 **Cortas (10:52 a 20:52, cada 2 h):**
 1. Leer este archivo y `notas/preguntas.md`.
-2. Lecturas en UNA ml-consulta (uno por renglón): `planilla` · `escasez` · `raros` · `lupa` · `ventasraras:5` · `pausadas:25` · `analizapromo:7`.
+2. Lecturas en UNA ml-consulta (uno por renglón): `planilla` · `escasez` · `raros` · `lupa` · `ventasraras:5` · `pausadas:25` · `analizapromo:7` · `preguntas`.
+   **El log se baja ENTERO a un archivo** (no con `tail_lines` chico) y antes de usarlo tienen que estar los N `##### ✓ terminó:` y la
+   línea final "todos bien"; si falta uno, se repite esa lectura. Una lista que dice "faltan N sin leer" no cuenta como vacía.
 3. **Listas que quedan VACÍAS al terminar** (cada renglón: decisión o nota con motivo): 🛡️ abajo del 25% peor caso · 🚨 escasez
    que vendió después de mi decisión · 📈 dice techo/escasez y no sube · 🤔 descuentos que ya no tienen sentido · 🔁 subas por
    escasez/sinrepo cuya razón cambió · 🧭 fuera de lo normal · 🔀 no cierra.
@@ -73,6 +75,7 @@ La etapa 8 de la revisión (Reglas del cerebro, cada 7 días) mira que esto qued
 **Completa (08:52), además:**
 1. `historia` · `escasez:expediente` · `informe:24` · `ficha:cuenta=<c>` ×4 · `pedidostodo` · `techo95` · `techofreno` ·
    `escmedir` · `supervisor:medir:go` · `analizapromo` entero.
+   Y `ventasraras:13` (las compras de 20:52 a 08:52, una por una: las de la noche no las mira ninguna corta).
 2. **Cuatro ayudantes (uno por cuenta, esfuerzo max)**: cada uno abre la ficha ENTERA de cada publicación de su cuenta y le hace
    las preguntas de `notas/preguntas.md`; recibe también los `raros` de su cuenta. Devuelve por publicación: estrategia, precio (o
    "igual"), pedido/caja si corresponde, el porqué con números y "no estoy seguro" cuando lo está. Sólo leen.

@@ -1096,6 +1096,16 @@ a la lista. Chequear: que cada hoja muestre el nombre del mismo id que se marca 
 Chequear: que los ayudantes no corran nada que escriba y que cada publicación activa tenga juicio.
 
 ## 5 · DATOS, HISTORIAL Y CEREBRO (viernes · junta las viejas 8 y 9; datos e historial nació el 08/10/2026)
+- **⏳ 2 DECISIONES DE LA ETAPA 5 DEL 20/10/2026 ESPERAN SU RESPUESTA** (junto con las 6 de precios y las 30 de diseño).
+  (a) = la recomendada. 1 un remate decidido por mí con `decido …#liquidando/#remate/#sobra` no prueba remate: sus ventas abajo de
+  20% cuentan como demanda (Pedidos vuelve a comprar lo que se liquida) → (a) la estrategia liquidando/remate vigente al venderse
+  vale como la marca liquidando (y sobra abajo de 20% también) (b) sólo remate si estaba parado o se usó el comando `liquidando` ·
+  2 la gemela Premium y su Clásica se juzgan por separado (techo95, rayas, ficha) aunque comparten demanda y stock: la Clásica
+  "deja de vender" porque vende la Premium → (a) medirlas juntas por la clave de stock, como `planilla` (`kSt`) (b) seguir por
+  publicación y avisarlo en el texto. (La plata parada compartida es la decisión 6 de precios.)
+- **CEREBRO.md §1 (20/10 a la noche, de la revisión):** las cortas leen también `preguntas` (antes no traían ninguna) · el log de
+  las lecturas se baja entero y se chequean los `✓ terminó` · la completa corre `ventasraras:13` (las de la noche). Chequear:
+  que la rutina lo haga.
 ### Etapa 3 · 20/10/2026 · los juicios de pedidos son un objetivo ("tener N"), no una compra fija
 Idea 1 del ayudante de ideas: `decide_pedidos.py` copiaba la cantidad de `juicios.txt` aunque ya hubiera llegado la mercadería
 (Cortapelo 2 en 1 con 10 en la oficina, 1 en 1 con 15, Lupa 75mm con 10 en Full: $185.034 de compra repetida). Ahora `juicioQ`
