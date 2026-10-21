@@ -1362,7 +1362,6 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   <div id="ped-section-bsas" style="display:none">
     <div id="bsas-subtabs"></div>
     <div id="bsas-siempre-wrap">
-    <button class="btn" onclick="titoAbrir()" style="margin-bottom:10px" title="La misma cuenta de Pedidos, puesta para llevar al mayorista: por proveedor, producto, color y cuántas, con tildes">🛒 Lista para el mayorista</button>
     <div class="pedidos-count" id="pedidos-count"></div>
     <input class="search-box" id="ped-search" type="search" placeholder="Buscar pedido..." oninput="renderPedidos()" style="margin-bottom:10px">
     <div class="pedido-filters">
@@ -2924,7 +2923,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.79';
+const APP_VERSION='25.80';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2937,6 +2936,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.80',f:'21/10',h:'08:50',c:[{n:1,t:'Pedidos Bs As: se sacó el botón 🛒 Lista para el mayorista (no se usaba).'}]},
   {v:'25.79',f:'21/10',h:'03:10',c:[{n:1,t:'Inicio en el celular: sin el logo de CYC y el dólar al final de todo. Lo primero que se ve son las ventas de hoy. En la PC queda igual.'}]},
   {v:'25.78',f:'21/10',h:'03:05',c:[{n:1,t:'En el iPhone el botón "← Inicio" (y todo el encabezado de cada página) quedaba debajo de la hora y la batería y no se podía tocar: ahora arranca debajo de esa franja.'}]},
   {v:'25.77',f:'21/10',h:'03:00',c:[{n:1,t:'Inicio: "🧠 Última vuelta de Claude" pasa abajo de las tarjetas.'}]},
