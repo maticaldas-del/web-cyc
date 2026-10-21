@@ -1126,6 +1126,13 @@ a la lista. Chequear: que cada hoja muestre el nombre del mismo id que se marca 
 Chequear: que los ayudantes no corran nada que escriba y que cada publicación activa tenga juicio.
 
 ## 5 · DATOS, HISTORIAL Y CEREBRO (viernes · junta las viejas 8 y 9; datos e historial nació el 08/10/2026)
+- **🔬 EL ANÁLISIS DE CADA VENTA EN SU TARJETA (21/10/2026, v25.74, pedido suyo).** `ventasvistas:<ts>|esf=<nivel>|<MLA>=<texto>;go`
+  escribe `cyc/ventaanalisis/<día>/<id>` (mismas claves que `cyc/ventaprod`) para cada venta no cancelada del tramo (marca anterior, ts]:
+  `{ts, esf, cambio, t, m, de, a}`. Hay cambio si después de la venta hay estrategia nueva (`cyc/estrategia/<MLA>`) o precio mío
+  (`cyc/claudecambios`). Si un análisis no se anota, la marca NO se mueve. La web (`analisisVentaHTML`, en Ventas x Producto PC y celular):
+  gris si no cambió, color de la estrategia si cambió, globito con qué pasó y qué se resolvió. **Chequear:** que el `esf` sea el que
+  se usó de verdad, que el texto no traiga datos del comprador (la base la lee la web, el log es público) y que ninguna venta del
+  tramo quede sin su análisis.
 - **✅ LAS 2 DECISIONES DE LA ETAPA 5: ELIGIÓ LAS DOS (a) EL 21/10/2026.** Antes decía: ESPERAN SU RESPUESTA (junto con las 6 de precios y las 30 de diseño).
   (a) = la recomendada. 1 un remate decidido por mí con `decido …#liquidando/#remate/#sobra` no prueba remate: sus ventas abajo de
   20% cuentan como demanda (Pedidos vuelve a comprar lo que se liquida) → (a) la estrategia liquidando/remate vigente al venderse

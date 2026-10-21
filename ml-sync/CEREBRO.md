@@ -12,8 +12,10 @@ se quita eso de gasta poco"*. **Y CADA VENTA SE ANALIZA UNA SOLA VEZ** (*"no qui
 gastar tokens de más. que cada venta tenga un análisis profundo con esfuerzo máximo y listo"*). Cada vuelta (las de cada 2 h y la de
 las 08:52) arranca con **`ventasraras:nuevas`**, que trae SÓLO las ventas posteriores a la última analizada; cada publicación de esas
 ventas se mira con su FICHA COMPLETA (`ficha:<MLA>`, varias en un disparo): año entero, reacción al precio, caja, competencia, stock,
-reposición, fechas, rayas, y queda con estrategia bien pensada (🧭 sin ⚠️). Al terminar la vuelta, `ventasvistas:<ts>;go` (el número
-que imprime el 📌) marca hasta dónde se analizó; la vuelta siguiente no las vuelve a ver. Si la vuelta se corta antes de anotar, la
+reposición, fechas, rayas, y queda con estrategia bien pensada (🧭 sin ⚠️). Al terminar la vuelta, `ventasvistas:<ts>|esf=<esfuerzo>|<MLA>=<qué pasó y qué resolví>|…;go`
+(el número que imprime el 📌; `esf` = el esfuerzo que usé de verdad: max, xhigh, high…) marca hasta dónde se analizó y deja en
+CADA venta su análisis (`cyc/ventaanalisis`): la tarjeta lo muestra gris si no cambió nada y del color de la estrategia si cambió
+(21/10, pedido suyo). El texto por MLA va siempre que hubo algo que contar (sin `;` ni `|`); sin texto sale el motivo de la estrategia; la vuelta siguiente no las vuelve a ver. Si la vuelta se corta antes de anotar, la
 siguiente las retoma: nunca quedan sin analizar. Si vendieron más de ~5 publicaciones distintas, las piensa un ayudante con esfuerzo
 MÁXIMO que propone; decidir y aplicar es mío. Una publicación que vuelve a vender en otra vuelta se mira por esa venta NUEVA (lo que
 cambió desde la decisión anterior, que ya está en su ficha), no se rehace el análisis de la venta vieja.

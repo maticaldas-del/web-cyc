@@ -42935,13 +42935,58 @@ async function main() {
     // BILLING_PROBE=ventasvistas:<ts>[;go] (21/10/2026) → anota hasta qué venta se analizó (el `hasta` de `ventasraras:nuevas`). Nunca
     // retrocede: si ya había una marca más nueva, no la pisa. Corre también por ml-consulta (es una marca chica).
     if (/^ventasvistas:/.test(String(process.env.BILLING_PROBE || ''))) {
-      const r = String(process.env.BILLING_PROBE).slice('ventasvistas:'.length); const GOv = /;go\s*$/.test(r); const ts = Number(r.replace(/;go\s*$/, ''));
+      // 21/10/2026, él: "quiero que en la tarjeta de venta aparezca que fue analizada por el robot y el nivel de esfuerzo
+      // utilizado". Además de la marca, deja en cada venta del tramo (prev, ts] su análisis en `cyc/ventaanalisis/<día>/<id>`
+      // (las mismas claves que `cyc/ventaprod`): esfuerzo, si hubo cambio, la estrategia y qué pasó. Formato:
+      // `ventasvistas:<ts>|esf=max|<MLA>=<texto>|<MLA>=<texto>;go`. El cambio NO se declara: es cambio si después de la venta
+      // hay una estrategia nueva (`cyc/estrategia/<MLA>`) o un precio mío (`cyc/claudecambios`) de esa publicación; el texto del
+      // MLA, si va, reemplaza al motivo guardado. Sin texto y sin cambio: "mirada con su ficha, estaba todo en orden".
+      const r = String(process.env.BILLING_PROBE).slice('ventasvistas:'.length); const GOv = /;go\s*$/.test(r);
+      const partes = r.replace(/;go\s*$/, '').split('|'); const ts = Number(partes[0]);
+      let esf = 'max'; const notasV = {};
+      for (const p0 of partes.slice(1)) { const m = String(p0).match(/^\s*([^=]+?)\s*=\s*([\s\S]*)$/); if (!m) continue;
+        if (/^esf$/i.test(m[1])) esf = m[2].trim().toLowerCase(); else { const ml = (m[1].match(/MLA\d+/i) || [])[0]; if (ml) notasV[ml.toUpperCase()] = m[2].trim().slice(0, 400); } }
+      if (!['low', 'medium', 'high', 'xhigh', 'max'].includes(esf)) { console.log(`❌ esfuerzo "${esf}" no existe (low · medium · high · xhigh · max)`); return; }
       if (!(ts > 1.7e12 && ts <= Date.now() + 60e3)) { console.log('❌ fecha inválida: va el número que imprime ventasraras:nuevas'); return; }
       const prev = Number(await db.get('mlapi/ventasvistas/hasta')) || 0;
       if (prev >= ts) { console.log(`= ya estaba anotado hasta ${new Date(prev - 3 * 36e5).toISOString().slice(5, 16).replace('T', ' ')}: no retrocedo`); return; }
+      // Las ventas del tramo: sólo los días que caen entre la marca anterior y la nueva (hora de acá).
+      const desdeV = prev || (ts - 24 * 36e5); const dks = new Set();
+      for (let t = desdeV - 864e5; t <= ts + 864e5; t += 864e5) dks.add(new Date(t - 3 * 36e5).toISOString().slice(0, 10).replace(/-/g, '_'));
+      const ventasT = []; let diasNoLei = 0;
+      for (const dk of dks) { let dia = null; try { dia = await db.get(`cyc/ventaprod/${dk}`); } catch { diasNoLei++; continue; }
+        for (const [id, v] of Object.entries(dia || {})) { if (!v || v.cancelada) continue; const tv = Number(v.ts) || Date.parse(v.ts || '') || 0; if (tv > desdeV && tv <= ts) ventasT.push({ dk, id, v, tv }); } }
+      if (diasNoLei) { console.log(`⚠️ no pude leer ${diasNoLei} día(s) de ventas: no anoto nada (quedarían ventas sin su análisis)`); return; }
+      let ccV = {}; try { ccV = (await db.get('cyc/claudecambios')) || {}; } catch { console.log('⚠️ no pude leer mis cambios de precio: no anoto (no sabría si hubo cambio)'); return; }
+      const estH = {}; const ahoraV = Date.now(); const filasA = {}; let nCambio = 0, nOk = 0;
+      const fP = (n) => '$' + Math.round(Number(n) || 0).toLocaleString('es-AR');
+      for (const { dk, id, v, tv } of ventasT) {
+        const mla = String(v.mla || '').toUpperCase(); let est = null, estAntes = null, cc = null;
+        if (mla) {
+          if (!(mla in estH)) { try { estH[mla] = (await db.get(`cyc/estrategia/${mla}`)) || {}; } catch { estH[mla] = null; } }
+          const H = estH[mla];
+          if (H) for (const [k, x] of Object.entries(H)) { const n = Number(k); if (!x || !x.t || !(n > 0)) continue;
+            if (n > tv && n <= ahoraV + 60e3) { if (!est || n > est.k) est = { ...x, k: n }; } else if (n <= tv) { if (!estAntes || n > estAntes.k) estAntes = { ...x, k: n }; } }
+          for (const x of Object.values(ccV)) { if (!x || String(x.mla || '').toUpperCase() !== mla) continue; const n = Number(x.ts) || 0; if (n > tv && n <= ahoraV + 60e3 && (!cc || n > cc.ts)) cc = { ...x, ts: n }; }
+        }
+        const cambio = !!(est || cc); const nota = mla ? notasV[mla] : '';
+        const t = est ? est.t : (estAntes ? estAntes.t : '');
+        let m = nota || (est && est.m) || (cc && cc.motivo) || '';
+        if (!m) m = cambio ? 'Se cambió después de esta venta.' : `Mirada con su ficha: precio y estrategia${t ? ' (' + t + ')' : ''} en orden, no hizo falta cambiar nada.`;
+        const fila = { ts: ahoraV, esf, cambio, m: String(m).slice(0, 400) };
+        if (mla) fila.mla = mla; if (t) fila.t = t; if (cc) { fila.de = Number(cc.de) || null; fila.a = Number(cc.a) || null; }
+        (filasA[dk] = filasA[dk] || {})[id] = fila; if (cambio) nCambio++; else nOk++;
+        console.log(`${cambio ? '🔁' : '✓'} ${dk} · ${v.cuenta || ''} · ${String(v.prod || '').slice(0, 40)} · ${t || 'sin estrategia'}${cc ? ` · ${fP(cc.de)}→${fP(cc.a)}` : ''} · ${String(fila.m).slice(0, 90)}`);
+      }
+      const sinUsar = Object.keys(notasV).filter((ml) => !ventasT.some(({ v }) => String(v.mla || '').toUpperCase() === ml));
+      if (sinUsar.length) console.log(`⚠️ estos textos no tienen venta en el tramo (no se usaron): ${sinUsar.join(', ')}`);
+      console.log(`\n${ventasT.length} venta(s) en el tramo · ${nCambio} con cambio · ${nOk} sin cambio · esfuerzo ${esf}`);
       if (!GOv) { console.log('PRUEBA: agregá ;go'); return; }
+      let okA = 0;
+      for (const [dk, filas] of Object.entries(filasA)) { try { await db.patch(`cyc/ventaanalisis/${dk}`, filas); const chk = (await db.get(`cyc/ventaanalisis/${dk}`)) || {}; okA += Object.keys(filas).filter((id) => chk[id] && chk[id].ts === filas[id].ts).length; } catch { console.log(`⚠️ no pude anotar el análisis de ${dk}`); } }
+      if (okA !== ventasT.length) { console.log(`⚠️ quedaron anotados ${okA} de ${ventasT.length} análisis: NO muevo la marca (la vuelta siguiente los retoma)`); return; }
       await db.set('mlapi/ventasvistas/hasta', ts); const chk = Number(await db.get('mlapi/ventasvistas/hasta'));
-      console.log(chk === ts ? `✓ ventas analizadas hasta ${new Date(ts - 3 * 36e5).toISOString().slice(5, 16).replace('T', ' ')} (releído)` : '⚠️ no quedó anotado'); return;
+      console.log(chk === ts ? `✓ ventas analizadas hasta ${new Date(ts - 3 * 36e5).toISOString().slice(5, 16).replace('T', ' ')} · ${okA} análisis en las tarjetas (releído)` : '⚠️ no quedó anotado'); return;
     }
     if (/^ventasraras(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       // CADA VENTA SE ANALIZA UNA SOLA VEZ (21/10/2026, él: "no quiero que una venta se evalúe dos veces. para no gastar tokens de más.
