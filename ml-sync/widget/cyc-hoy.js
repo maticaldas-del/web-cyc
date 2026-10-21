@@ -151,7 +151,54 @@ function armar(d, fam) {
   return w;
 }
 
+// LA PANTALLA BLOQUEADA (20/10/2026, pedido suyo: "en la pantalla bloqueada me gustaria hacerlo mejor").
+// Ahí el iPhone sólo deja tres tamaños chicos y los pinta en un solo tono: no hay fondo ni colores, así que se
+// juega con el tamaño de la letra. Rectangular = facturado, ganancia y puntaje con cómo va contra el día igual;
+// redondo = el puntaje con su anillo; de una línea = arriba de la hora.
+function nro(n) { return String(n).replace(".", ","); }
+function anillo(score) {
+  const S = 120, dc = new DrawContext(); dc.size = new Size(S, S); dc.opaque = false; dc.respectScreenScale = true;
+  const arco = (frac, alfa, ancho) => {
+    const p = new Path(), r = S / 2 - ancho / 2 - 2, n = Math.max(2, Math.round(frac * 80)), pts = [];
+    for (let i = 0; i <= n; i++) { const a = -Math.PI / 2 + 2 * Math.PI * frac * i / n; pts.push(new Point(S / 2 + r * Math.cos(a), S / 2 + r * Math.sin(a))); }
+    p.addLines(pts); dc.addPath(p); dc.setStrokeColor(new Color("#ffffff", alfa)); dc.setLineWidth(ancho); dc.strokePath();
+  };
+  arco(1, 0.25, 10);
+  if (score > 0) arco(Math.min(1, score / 10), 1, 10);
+  return dc.getImage();
+}
+function bloqueada(d, fam) {
+  const w = new ListWidget(); w.url = WEB; w.refreshAfterDate = new Date(Date.now() + 10 * 60 * 1000);
+  const viejo = Date.now() - (d.ts || 0) > 60 * 60 * 1000;
+  const sc = d.score == null ? "—" : nro(d.score.toFixed(1));
+  const c = comparacion(d);
+  if (fam === "accessoryInline") {
+    w.addText(`${viejo ? "⚠️ " : ""}🏷️ ${fmt(d.bruto)} · gan ${fmt(d.gan)} · ${sc}/10`);
+    return w;
+  }
+  if (fam === "accessoryCircular") {
+    w.backgroundImage = anillo(d.score || 0);
+    w.addSpacer();
+    const t = w.addText(sc); t.font = Font.heavyRoundedSystemFont(20); t.centerAlignText(); t.minimumScaleFactor = 0.6;
+    const n = w.addText(viejo ? "⚠️" : "/10"); n.font = Font.boldSystemFont(9); n.centerAlignText();
+    w.addSpacer();
+    return w;
+  }
+  // rectangular: lo que más mira, de mayor a menor
+  const f1 = w.addStack(); f1.centerAlignContent();
+  const b = f1.addText(fmt(d.bruto)); b.font = Font.heavyRoundedSystemFont(17); b.lineLimit = 1; b.minimumScaleFactor = 0.6;
+  f1.addSpacer();
+  const v = f1.addText(`${viejo ? "⚠️ " : ""}${d.ventas} v`); v.font = Font.boldSystemFont(11);
+  const g = w.addText(`gan ${fmt(d.gan)} · ${d.pct == null ? "—" : (d.pct >= 0 ? "+" : "") + Math.round(d.pct) + "%"}`);
+  g.font = Font.boldSystemFont(13); g.lineLimit = 1; g.minimumScaleFactor = 0.6;
+  const vs = c && c.dif != null ? ` · ${c.dif >= 0 ? "+" : ""}${c.dif}% vs ${d.diaSem ? d.diaSem.slice(0, 3) : "antes"}` : "";
+  const p = w.addText(`${sc}/10 ${String(d.nivel || "").replace(/^\S+\s/, "")}${vs}`);
+  p.font = Font.systemFont(11); p.lineLimit = 1; p.minimumScaleFactor = 0.6;
+  return w;
+}
+
 function aviso(txt) {
+  if (/^accessory/.test(config.widgetFamily || "")) { const a = new ListWidget(); a.addText("CYC · " + (/sesi/.test(txt) ? "abrí Scriptable" : "sin datos")).font = Font.boldSystemFont(12); return a; }
   const w = new ListWidget(); w.backgroundColor = BG; w.setPadding(14, 14, 14, 14);
   const t = w.addText("CYC"); t.font = Font.heavySystemFont(16); t.textColor = new Color("#22c55e");
   w.addSpacer(6);
@@ -167,6 +214,7 @@ try { d = await datos(); } catch (e) { d = { error: String(e) }; }
 if (config.runsInApp && d && d.error === "sesion" && await login()) { try { d = await datos(); } catch (e) { d = { error: String(e) }; } }
 if (d && d.error === "sesion") w = aviso("Abrí Scriptable y tocá este script para iniciar sesión.");
 else if (!d || d.error) w = aviso("No pude leer las ventas (" + (d && d.error) + "). Reintento solo.");
+else if (/^accessory/.test(config.widgetFamily || "")) w = bloqueada(d, config.widgetFamily);
 else w = armar(d, config.widgetFamily || "large");
 if (config.runsInWidget) Script.setWidget(w);
 else await w.presentLarge();
