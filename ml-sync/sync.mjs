@@ -1904,7 +1904,7 @@ async function cajaDeCompraML(db, accounts, labels, DRY, soloCta) {
         // (ML no lo da para catálogo: ahí viene vacío). Se guardan crudas (`etq`, texto separado por comas) y la `planilla`
         // lista las que no venden y tienen alguna (`etqProblemas`). Si ML no manda `tags` NO se borra lo guardado: falta de
         // dato no es "sin problemas". Antes del filtro de activas, para que también las tengan las pausadas.
-        if (Array.isArray(b.tags)) { const _et = b.tags.map(String).filter(Boolean).sort().join(','); if (links[mla].etq !== _et) upd[mla + '/etq'] = _et || ''; upd[mla + '/etqTs'] = Date.now(); }
+        if (Array.isArray(b.tags)) { const _et = b.tags.map(String).filter(Boolean).sort().join(','); if (links[mla].etq !== _et) upd[mla + '/etq'] = _et || ''; }
         if (b.health != null && Number.isFinite(Number(b.health))) { const _h = Math.round(Number(b.health) * 100) / 100; if (links[mla].salud !== _h) upd[mla + '/salud'] = _h; }
         if (b.status !== 'active') continue;      // pausada o cerrada: no está peleando ninguna caja
         res.mirados++;
@@ -1963,8 +1963,7 @@ async function cajaDeCompraML(db, accounts, labels, DRY, soloCta) {
     let sg = null; try { sg = await mlGet(`/suggestions/items/${x.mla}/details`, x.tok); } catch { sg = null; }
     const r = leerSugerenciaML(sg);
     upd[x.mla + '/sugTs'] = Date.now();
-    if (r.sug) { upd[x.mla + '/sugP'] = r.sug; res.sug++; } else res.sugSin++;
-    upd[x.mla + '/sugMin'] = r.min || null;
+    if (r.sug) { upd[x.mla + '/sugP'] = r.sug; upd[x.mla + '/sugMin'] = r.min || null; res.sug++; } else res.sugSin++;   // sin número: queda lo de antes
   }
   // ── EL NOMBRE DEL RUBRO ────────────────────────────────────────────────────────────────────
   // `MLA352679` no le dice nada a nadie: lo que hace falta es la RAÍZ del árbol ("Belleza y
@@ -18153,6 +18152,15 @@ async function main() {
     // Para qué sirve el número que da: una publicación que PIERDE la caja no vende aunque esté
     // perfecta de precio, de stock y de margen — el comprador ni la ve. Es la diferencia entre
     // "hay que tocarle el precio" y "no hay nada que tocar acá".
+    // BILLING_PROBE=reposfull[:go] → 6.D1 (21/10/2026). LO QUE ML RECOMIENDA MANDAR A FULL, a mano (lo mismo que corre solo una vez
+    // por día en la vuelta de la hora). Sin `:go` sólo muestra (no escribe `cyc/fullreco`). No toca ML: sólo lee la reposición.
+    if (/^reposfull(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const goR = /:go\b/.test(String(process.env.BILLING_PROBE));
+      const rf = await reposicionFullML(db, accounts, labels, DRY || !goR);
+      console.log(`=== REPOSICIÓN DE FULL SEGÚN ML ${goR ? '' : '(PRUEBA: no se guarda)'} ===`);
+      console.log(rf.error ? '⚠️ ' + rf.error : `${rf.leidos} leídos · ${rf.pronto || 0} piden reponer en ≤2 semanas · ${rf.fallas} sin leer · ${rf.pend} para la vuelta siguiente (los leídos hace menos de ${FULLRECO_CADA_H} h no se repiten)`);
+      return;
+    }
     if (/^cajacompra(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const soloCta = (String(process.env.BILLING_PROBE).split(':')[1] || '').trim() || null;
       const r = await cajaDeCompraML(db, accounts, labels, DRY, soloCta);
@@ -43292,12 +43300,13 @@ async function main() {
       console.log(`\n── dólar de referencia hoy → oficial ${dr.of ?? '?'} · MEP ${dr.mep ?? '?'} (${dr.fuentes.mep || 'ninguna'}${dr.fuentes.mepB ? ', criptoya ' + dr.fuentes.mepB : ''}) · cripto ${dr.cri ?? '?'} (${dr.fuentes.cri || 'ninguna'}${dr.fuentes.criB ? ', criptoya ' + dr.fuentes.criB : ''})`);
       return;
     }
-    // BILLING_PROBE=envio33[:<días>] → 6.P4 (etapa 6, eligió la a, 21/10/2026). SOLO LEE. EL ENVÍO QUE PAGAMOS CUANDO 2 U. O UN
+    // BILLING_PROBE=cruza33[:<días>] → 6.P4 (etapa 6, eligió la a, 21/10/2026). SOLO LEE. EL ENVÍO QUE PAGAMOS CUANDO 2 U. O UN
     // CARRITO PASAN LOS $33.000. La unidad está abajo de la barrera (ML no cobra envío), pero el PEDIDO entero la cruza (`compraCruzaBarrera`,
     // la misma regla que la deducción de envío): ahí ML sí cobra el envío gratis. Por publicación: lo que ML se quedó por unidad en esas
     // ventas contra lo que se quedó en sus ventas sueltas (la mediana, mismo precio ±10%); la diferencia × unidades es el envío pagado
     // aprox. Sin ventas sueltas comparables no se inventa: se dice. Las ventas con neto estimado no entran. No imprime números de orden.
-    if (/^envio33(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+    // (no se llama `envio33`: `envio3` agarra todo lo que empieza así)
+    if (/^cruza33(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const dias = parseFloat(String(process.env.BILLING_PROBE).split(':')[1]) || 60;
       const vp = await db.get('cyc/ventaprod').catch(() => null);
       if (!vp) { console.log('⚠️ no pude leer las ventas: no opino'); return; }
