@@ -6,7 +6,7 @@
 // Requiere secrets: ML_CLIENT_ID, ML_CLIENT_SECRET,
 //   FIREBASE_API_KEY, FIREBASE_DB_URL, FIREBASE_BOT_EMAIL, FIREBASE_BOT_PASSWORD
 
-import { fbSignIn, makeDB, mlRefresh, mlGet, ML_API, tapaIdsLargos } from './lib.mjs';
+import { fbSignIn, makeDB, mlRefresh, mlGet, ML_API, tapaIdsLargos, mlConteo, mlConteoTxt } from './lib.mjs';
 import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 
 // LO PRIVADO VIAJA CIFRADO (20/10/2026, etapa 4, él eligió la 1a): el repo y sus registros son PÚBLICOS, así que las listas de
@@ -44,6 +44,8 @@ const DRY = !!process.env.DRY_RUN;
 // comandos que escriben en tanda (ofi, pyped, cajallego, abrircaja) terminan la escritura en curso
 // y salen, y a los 6 s se sale igual (GitHub mata a los 10 s).
 let CORTAR = false;
+// A4 (21/10/2026): cada cuánto se hace la vuelta pesada del ciclo (ver `mlapi/vueltapesada` en main).
+const VUELTA_PESADA_CADA_MIN = 60, VUELTA_PESADA_MIN_MIN = 45;
 const _alCortar = (sig) => {
   if (CORTAR) return;
   CORTAR = true;
@@ -52,6 +54,8 @@ const _alCortar = (sig) => {
 };
 process.on('SIGINT', () => _alCortar('SIGINT'));
 process.on('SIGTERM', () => _alCortar('SIGTERM'));
+// A4 (21/10/2026): al terminar, toda corrida (vuelta del ciclo o comando) dice cuántas consultas le hizo a ML. Sólo si hizo alguna.
+process.on('exit', () => { try { if (mlConteo.get || mlConteo.refresh) console.log('\n' + mlConteoTxt()); } catch { /* informativo */ } });
 // ETAPA 4 (20/10/2026): el ciclo de 2 minutos mira `CORTAR` ANTES de empezar cada tanda de escrituras
 // (ventas de cada cuenta · vínculos · stock · etiquetas · cajas) y, si cancelaron la corrida, sale con 130
 // sin empezar la siguiente. Entre una tanda y otra no hay ninguna escritura a medias: lo que falta lo hace
@@ -71,7 +75,7 @@ const _cortarCiclo = (donde) => {
 // ML, Mercado Pago y Telegram en sólo lectura (se deja renovar y guardar el token de ML, que ML rota).
 const EN_CONSULTA = process.env.GITHUB_WORKFLOW === 'ml-consulta' || process.env.ML_CONSULTA === '1';
 const CONSULTA_ESCRIBE = new Set(['pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull']);
-const CONSULTA_NIEGA = new Set(['cajaitems', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
+const CONSULTA_NIEGA = new Set(['cajaitems', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'listaped', 'publicar', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'promoventas', 'cargosmes', 'arcacierres', 'webpush']);
 let CONSULTA_SOLO_LEE = false;
@@ -115,6 +119,12 @@ const sid = (s) => String(s).replace(/[^a-z0-9]/gi, '_');
 // Fecha local Argentina (UTC-3) → clave YYYY_MM_DD que usa la app.
 // PSICOLOGÍA DEL PRECIO (10/10/2026, él eligió 1a 2a 3a 4b). Los números redondos que el comprador "ve" (y por los que
 // filtra en ML). Lo usan `decido` (avisa) y `redondos` (mide si de verdad pesa en nuestras ventas).
+// 🪜 6.P6 (etapa 6, eligió la a, 21/10/2026): EL ESCALÓN DE LA COMISIÓN DE ML. La comisión no es un % parejo: tiene escalones, y
+// cruzar uno cuesta de golpe más que lo que se subió (medido el 12/09/2026 con `subirpuede`: Paulvic de $14.360 a $15.790 deja $312
+// menos por unidad). El conocido está en $15.000. `ESCALON_ZONA` = hasta cuánto arriba del escalón se mira (15%). La planilla lista
+// lo que está ahí arriba y `decido` frena un precio que cae en la zona muerta (lo que deja menos que $14.990, preguntado a ML).
+const ESCALONES_COMISION = [15000], ESCALON_ZONA = 0.15;
+function escalonDeComision(P) { for (const e of ESCALONES_COMISION) if (P > e && P <= e * (1 + ESCALON_ZONA)) return e; return null; }
 const UMBRALES_REDONDOS = [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 12000, 15000, 20000, 25000, 30000, 40000, 50000, 60000, 70000, 80000, 90000, 100000, 120000, 150000, 200000, 250000, 300000, 400000, 500000, 600000];
 function umbralRedondoCruzado(p0, p1) {
   const lo = Math.min(p0, p1), hi = Math.max(p0, p1); let t = null;
@@ -132,8 +142,10 @@ function umbralRedondoCruzado(p0, p1) {
 // (`pasajeDe`) y la web muestra "venía de X" en el chip. Escasez lleva escalón como el techo.
 const ESTRATEGIAS = { sindecidir: '⚪ sin estrategia', agotado: '⏸️ sin stock', escasez: '🔥 escasez', sinrepo: '⏳ sin reposición', techo: '📈 buscando techo', techook: '🏔️ techo encontrado', bajando: '🪜 bajando', volviendo: '↘️ volviendo al normal', desobra: '↗️ volviendo de sobra', liquidando: '📉 liquidando', remate: '🧨 remate total', caja: '🥊 ganar la caja', promo: '🏷️ promo', descuento: '💸 descuento', fecha: '🎁 fecha especial', excepcion: '🛡️ excepción', sobra: '📦 sobra stock', nuevo: '🆕 lanzamiento', prueba: '🧪 prueba tachado', gemela: '💳 gemela con cuotas' };
 // Lo que "vuelve" (motivo "vuelvo", o una anotación vieja ↩️ corrección) toma nombre según el tag ANTERIOR. MISMA tabla en index.html.
+// 1.1a (21/10/2026): volver de una prueba de techo (📈) —o corregir después de una 🏔️— es 🪜 bajando, no 🏔️: el techo lo marca
+// SÓLO `techo95` al 95% (antes esto devolvía 🏔️ y un "vuelvo al de antes" quedaba como techo encontrado sin medir).
 function pasajeDe(prev) {
-  if (prev === 'techo' || prev === 'techook') return 'techook';
+  if (prev === 'techo' || prev === 'techook') return 'bajando';
   if (['escasez', 'sinrepo', 'fecha', 'bajando'].includes(prev)) return 'volviendo';
   if (['sobra', 'liquidando', 'remate'].includes(prev)) return 'desobra';
   return 'volviendo';
@@ -210,6 +222,57 @@ async function clDescontarPedBot(db, pid, va, u) {
   if (!Object.keys(upd).length) return '';
   await db.patch(base, upd);
   return Object.entries(upd).filter(([kk]) => !kk.startsWith('mano/')).map(([kk, v]) => `${kk.replace(/^vars\//, '')} → ${v}${upd['mano/' + kk.replace(/^vars\//, '')] === null ? ' (era a mano)' : ''}`).join(' · ');
+}
+// ── LO QUE LLEGÓ SE SUMA A LA OFICINA (etapa 6 · A3, 21/10/2026, eligió la a) ─────────────────────────────────────────────
+// "Llegó" de Paraguay y de Listas suma solo lo que vino (como ya hacía `pvped:llego` del Paulvic): él avisa lo que faltó y se resta
+// antes. Misma cuenta que el comando `ofi` y que `ofiMover` de la web: con color, la clave de ESE color y al total del producto lo
+// que cambió el color (nunca abajo de la suma de sus colores); sin color, el total. Se relee la clave justo antes y va en UN patch.
+// Devuelve null sin escribir cuando no se puede saber dónde va: un producto con colores y un renglón sin color (o con un color que
+// la ficha no tiene). `inv` es la foto de `cyc/inventory` de la corrida (se actualiza con lo escrito, para la suma de colores).
+function ofiColorDeFicha(p, va) {
+  const vs = Array.isArray(p && p.variantes) ? p.variantes : Object.values((p && p.variantes) || {});
+  if (!va) return vs.length ? null : '';
+  const n = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+  const hit = vs.filter((v) => n(v) === n(va));
+  return hit.length === 1 ? hit[0] : null;
+}
+async function ofiSumarBot(db, p, va, delta, inv) {
+  const OFI_LOC = 'Oficina Mati';
+  const vs = Array.isArray(p && p.variantes) ? p.variantes : Object.values((p && p.variantes) || {});
+  const color = ofiColorDeFicha(p, va);
+  if (color == null || !(delta > 0)) return null;
+  const kTot = p.id + '__' + sid(OFI_LOC), kVar = (v) => kTot + '__v__' + sid(v);
+  const tA = parseInt(await db.get('cyc/inventory/' + kTot)) || 0;
+  const upd = {};
+  let antes = tA, ahora = tA + delta, tN = tA + delta;
+  if (color) {
+    antes = parseInt(await db.get('cyc/inventory/' + kVar(color))) || 0; ahora = antes + delta;
+    const sumV = vs.reduce((a, v) => a + (v === color ? ahora : (parseInt(inv && inv[kVar(v)]) || 0)), 0);
+    tN = Math.max(0, tA + delta, sumV);
+    upd[kVar(color)] = ahora;
+  }
+  upd[kTot] = tN;
+  await db.patch('cyc/inventory', upd);
+  if (inv) Object.assign(inv, upd);
+  try { await db.set('cyc/ofientro/' + p.id, Date.now()); } catch { /* no frena */ }
+  return { color, antes, ahora, tA, tN };
+}
+// Lo que FALTÓ de un pedido, desde el chat: `<palabra>[#<color>]=<unidades que LLEGARON>` (`=` adelante = nombre exacto). Cada uno
+// tiene que agarrar UN renglón del pedido. Devuelve { llegan: Map(índice → u), problemas }.
+function faltoDePedido(items, args, nomDe) {
+  const n = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+  const llegan = new Map(), problemas = [];
+  for (const a of args) {
+    const m = String(a).trim().match(/^(.+?)(?:#(.+?))?=(\d+)$/);
+    if (!m) { problemas.push(`"${a}" → se espera <palabra>[#<color>]=<unidades que llegaron>`); continue; }
+    const ex = m[1].trim().startsWith('='), q = n(m[1].trim().replace(/^=/, '')), col = m[2] ? n(m[2]) : '';
+    const hits = items.map((it, i) => ({ it, i })).filter(({ it }) => it && (ex ? n(nomDe(it)) === q : n(nomDe(it)).includes(q)) && (!col || n(it.variante || it.v || '') === col));
+    if (hits.length !== 1) { problemas.push(`"${m[1]}${m[2] ? '#' + m[2] : ''}" → ${hits.length ? 'agarra ' + hits.length + ': ' + hits.slice(0, 6).map(({ it }) => nomDe(it) + (it.variante ? ' · ' + it.variante : '')).join(' | ') : 'ningún renglón del pedido'}`); continue; }
+    const u = parseInt(m[3], 10), ped = parseInt(hits[0].it.u) || 0;
+    if (u > ped) { problemas.push(`"${m[1]}": dijiste que llegaron ${u} y se pidieron ${ped}`); continue; }
+    llegan.set(hits[0].i, u);
+  }
+  return { llegan, problemas };
 }
 function precioRedondoAviso(p0, p1) {
   const a = [];
@@ -1796,11 +1859,46 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY, soloAnotar 
 //
 // Si ML no contesta para una publicación NO se escribe nada: queda el dato de la vuelta anterior.
 // Mejor un dato de hace una hora que un "no sé" que borre lo que sabíamos.
+// 6.D4 · cada cuánto y cuántas por vuelta se le pide a ML el precio sugerido de las publicaciones sin catálogo.
+const SUG_CADA_H = 20, SUG_MAX_VUELTA = 40;
+// Lee la respuesta de `/suggestions/items/<MLA>/details` sin adivinar: el precio sugerido y el más barato parecido, si vienen
+// como número (suelto o en `.amount`). Lo que no viene es null.
+function leerSugerenciaML(sg) {
+  const num = (x) => { const v = x && typeof x === 'object' ? Number(x.amount ?? x.price ?? x.value) : Number(x); return Number.isFinite(v) && v > 0 ? Math.round(v) : null; };
+  if (!sg || typeof sg !== 'object') return { sug: null, min: null };
+  return { sug: num(sg.suggested_price), min: num(sg.lowest_price) };
+}
+// 6.D6 · LAS ETIQUETAS DE ML QUE SON UN PROBLEMA de la publicación (la foto, la ficha técnica, una moderación). Las "buenas" o
+// neutras (good_quality_thumbnail, immediate_payment, cart_eligible…) no salen. Devuelve la lista en castellano; con salud (0-1)
+// menor a 0,7 también avisa. Las etiquetas que no se conocen y suenan a problema salen crudas (no se adivina qué son).
+const ETQ_PROBLEMA = { poor_quality_thumbnail: 'foto principal de mala calidad', poor_quality_picture: 'fotos de mala calidad', unknown_quality_picture: 'ML no pudo evaluar la foto',
+  incomplete_technical_specs: 'ficha técnica incompleta', incomplete_compatibilities: 'compatibilidades incompletas', moderation_penalty: 'penalizada por moderación',
+  under_infractions: 'con infracciones', catalog_forewarning: 'aviso de catálogo', lost_me1_by_user: 'perdió el envío por usuario', dragged_bids_and_visits: 'visitas arrastradas de otra' };
+function etqProblemas(etq, salud) {
+  const out = [];
+  for (const t of String(etq || '').split(',').map((x) => x.trim()).filter(Boolean)) {
+    if (ETQ_PROBLEMA[t]) out.push(ETQ_PROBLEMA[t]);
+    else if (/poor|bad_|low_quality|incomplete|penalt|infraction|forewarning|warning|missing|without_/i.test(t)) out.push(t);
+  }
+  if (salud != null && Number(salud) < 0.7) out.push(`salud de la publicación ${Math.round(Number(salud) * 100)}%`);
+  return out;
+}
+// 6.D2 · ¿la caja se pierde por las cuotas y no por el precio? Pierde o comparte, el que gana NO está más barato que nosotros
+// (está a nuestro precio o más caro, 2% de margen) y ML dice que nos faltan cuotas sin interés (`free_installments` que no
+// está `boosted`). Sin el precio del que gana o sin `boosts`, no se opina (devuelve false).
+function cajaPerdidaPorCuotas(st, precio, ganP, boosts) {
+  if (st !== 'losing' && st !== 'sharing') return false;
+  if (!(precio > 0) || !(ganP > 0) || !Array.isArray(boosts)) return false;
+  const cuo = boosts.find((x) => /^free_installments:/.test(x));
+  if (!cuo || /:boosted$/.test(cuo)) return false;
+  return ganP >= precio * 0.98;
+}
 async function cajaDeCompraML(db, accounts, labels, DRY, soloCta) {
   const links = (await db.get('cyc/mllinks')) || {};
   const upd = {};
-  const res = { winning: 0, sharing: 0, losing: 0, nocat: 0, sincaja: 0, mirados: 0, filas: [], cats: new Set(), catsNuevas: 0, catsFaltan: 0, fotos: 0 };
+  const res = { winning: 0, sharing: 0, losing: 0, nocat: 0, sincaja: 0, mirados: 0, filas: [], cats: new Set(), catsNuevas: 0, catsFaltan: 0, fotos: 0, porCuotas: 0, sug: 0, sugSin: 0 };
   let tokUno = null;
+  const _sugPend = [];   // 6.D4: las sin catálogo a las que hay que pedirles el precio sugerido de ML en esta vuelta
   for (const label of labels) {
     if (soloCta && label.toLowerCase() !== String(soloCta).toLowerCase()) continue;
     const acc = accounts[label]; if (!acc?.refresh_token) continue;
@@ -1815,7 +1913,7 @@ async function cajaDeCompraML(db, accounts, labels, DRY, soloCta) {
       m.startsWith('MLA') && e && e.cuenta === label && !e.ignored && (e.status || '') !== 'closed').map(([m]) => m);
     for (let k = 0; k < ids.length; k += 20) {
       let arr;
-      try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,title,status,price,catalog_listing,category_id,secure_thumbnail,thumbnail,domain_id,user_product_id', tok); }
+      try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,title,status,price,catalog_listing,category_id,secure_thumbnail,thumbnail,domain_id,user_product_id,tags,health', tok); }
       catch { continue; }
       for (const row of (arr || [])) {
         const b = row.body || {}; const mla = b.id; if (!mla || !links[mla]) continue;
@@ -1858,6 +1956,13 @@ async function cajaDeCompraML(db, accounts, labels, DRY, soloCta) {
         // las cuatro y tiene 4 ids —, igual que el código de Full. Se guarda para el alta de
         // publicaciones nuevas, que es donde hoy se adivina por el título.
         if (b.user_product_id && links[mla].upid !== b.user_product_id) upd[mla + '/upid'] = b.user_product_id;
+        // 6.D6 (etapa 6, eligió la a, 21/10/2026): LAS ETIQUETAS DE CALIDAD DE CADA PUBLICACIÓN, TODAS. ML pone en `tags` cosas
+        // como `poor_quality_thumbnail`, `incomplete_technical_specs` o `moderation_penalty`, y en `health` un número de 0 a 1
+        // (ML no lo da para catálogo: ahí viene vacío). Se guardan crudas (`etq`, texto separado por comas) y la `planilla`
+        // lista las que no venden y tienen alguna (`etqProblemas`). Si ML no manda `tags` NO se borra lo guardado: falta de
+        // dato no es "sin problemas". Antes del filtro de activas, para que también las tengan las pausadas.
+        if (Array.isArray(b.tags)) { const _et = b.tags.map(String).filter(Boolean).sort().join(','); if (links[mla].etq !== _et) upd[mla + '/etq'] = _et || ''; }
+        if (b.health != null && Number.isFinite(Number(b.health))) { const _h = Math.round(Number(b.health) * 100) / 100; if (links[mla].salud !== _h) upd[mla + '/salud'] = _h; }
         if (b.status !== 'active') continue;      // pausada o cerrada: no está peleando ninguna caja
         res.mirados++;
         const stamp = (st, ptw) => {
@@ -1866,7 +1971,7 @@ async function cajaDeCompraML(db, accounts, labels, DRY, soloCta) {
           upd[mla + '/cajaTs'] = Date.now();
           res[st]++;
         };
-        if (!b.catalog_listing) { stamp('nocat', null); continue; }
+        if (!b.catalog_listing) { stamp('nocat', null); if (_sugPend.length < SUG_MAX_VUELTA && !(Number(links[mla].sugTs) > Date.now() - SUG_CADA_H * 3600e3)) _sugPend.push({ mla, tok }); continue; }
         let ptw = null;
         try { ptw = await mlGet('/items/' + mla + '/price_to_win?version=v2', tok); } catch { /* se deja lo de antes */ }
         if (!ptw || !ptw.status) continue;
@@ -1883,9 +1988,39 @@ async function cajaDeCompraML(db, accounts, labels, DRY, soloCta) {
         upd[mla + '/cajaVis'] = ['maximum', 'medium', 'minimum'].includes(_vs) ? _vs : null;
         const _cs = ptw.competitors_sharing_first_place;
         upd[mla + '/cajaComp'] = Array.isArray(_cs) ? _cs.length : (Number.isFinite(Number(_cs)) && _cs !== null && _cs !== '' ? Number(_cs) : null);
+        // 6.D2 (etapa 6, eligió la a): POR QUÉ SE PIERDE LA CAJA, sin una consulta más (viene en el mismo price_to_win). `boosts`
+        // dice qué te da ventaja y qué te falta (medido con `valefull` el 22/09: `fulfillment:boosted` y `free_installments:
+        // opportunity` en 12 de 12) y `winner.price` a cuánto está el que gana. Se guarda compacto (`cajaBoost`, texto
+        // "id:estado|id:estado") y el precio del que gana (`cajaGanP`). `cajaPorCuotas` = la perdés (o compartís), al que gana NO
+        // le ganás por precio (está a tu precio o más caro) y ML dice que te faltan cuotas sin interés: el remedio es la gemela
+        // Premium (misma plata neta), no bajar. Lo que no viene se guarda vacío, nunca adivinado.
+        const _bo = Array.isArray(ptw.boosts) ? ptw.boosts.filter((x) => x && x.id).map((x) => String(x.id) + ':' + String(x.status || '?')) : null;
+        upd[mla + '/cajaBoost'] = _bo ? _bo.join('|') : null;
+        const _wp = Number(ptw.winner && ptw.winner.price) || 0;
+        upd[mla + '/cajaGanP'] = st !== 'winning' && _wp > 0 ? Math.round(_wp) : null;
+        upd[mla + '/cajaPorCuotas'] = cajaPerdidaPorCuotas(st, Number(b.price) || 0, _wp, _bo) || null;
+        // 6.D5 (etapa 6, eligió la a): ¿EL QUE GANA ESTÁ EN PROMO? Si ML manda el precio tachado del ganador (`original_price`
+        // o `regular_amount`) se guarda cuánto está rebajado (%); si no lo manda queda vacío (no se sabe, no es "no está en
+        // promo"). NO MEDIDO TODAVÍA: correr `ptwganador` para ver qué campos trae `winner`.
+        const _wo = Number(ptw.winner && (ptw.winner.original_price || ptw.winner.regular_amount)) || 0;
+        upd[mla + '/cajaGanPromo'] = st !== 'winning' && _wp > 0 && _wo > _wp * 1.01 ? Math.round((1 - _wp / _wo) * 100) : null;
+        res.porCuotas += upd[mla + '/cajaPorCuotas'] ? 1 : 0;
         res.filas.push({ mla, label, nom: String(b.title || '').slice(0, 46), st, precio: Math.round(b.price || 0), ptw: pw });
       }
     }
+  }
+  // ── 6.D4 · EL PRECIO QUE SUGIERE ML PARA LAS QUE NO SON DE CATÁLOGO (etapa 6, eligió la a, 21/10/2026) ──────────
+  // Sin catálogo no hay competidor legible (ML da 403 en publicaciones ajenas), y para el salto de techo y el precio de
+  // lanzamiento no había ninguna referencia de afuera. `/suggestions/items/<MLA>/details` trae lo que ML sugiere y la más
+  // barata parecida. Se guarda en la publicación (`sugP`, `sugMin`, `sugTs`) y la planilla lo muestra como DATO para mi
+  // decisión: NO mueve ningún precio solo. Una vez por día por publicación (SUG_CADA_H) y con tope por vuelta. Si ML no
+  // contesta o no trae el número, se anota la fecha y nada más (no se inventa una sugerencia). Forma de la respuesta NO
+  // medida todavía: se aceptan `suggested_price.amount` o `suggested_price` suelto; correr `sugerido:<MLA>` para mirarla.
+  for (const x of _sugPend) {
+    let sg = null; try { sg = await mlGet(`/suggestions/items/${x.mla}/details`, x.tok); } catch { sg = null; }
+    const r = leerSugerenciaML(sg);
+    upd[x.mla + '/sugTs'] = Date.now();
+    if (r.sug) { upd[x.mla + '/sugP'] = r.sug; upd[x.mla + '/sugMin'] = r.min || null; res.sug++; } else res.sugSin++;   // sin número: queda lo de antes
   }
   // ── EL NOMBRE DEL RUBRO ────────────────────────────────────────────────────────────────────
   // `MLA352679` no le dice nada a nadie: lo que hace falta es la RAÍZ del árbol ("Belleza y
@@ -2176,6 +2311,102 @@ async function responderPreguntas(db, accounts, labels, GO, verTexto) {
   return out;
 }
 
+// ── 6.D1 · LO QUE ML RECOMIENDA MANDAR A FULL, Y LOS DÍAS SIN STOCK SEGÚN ML (etapa 6, eligió la a, 21/10/2026) ──────────
+// `/marketplace/fbm/user-products/<upid>/replenishment?country=AR` (otra API, ~500 por minuto, no gasta cupo de facturación).
+// Medido con `cargosfull` el 04/10: trae `stock.total_stock`, `stock.shipping_urgency` (THIS_WEEK · NEXT_WEEK · IN_TWO_WEEKS ·
+// NO_URGENCY), `sales.sales_history[]` (unidades y días SIN STOCK por semana, 6 semanas), `sales.sales_totals.units_sold[0].full`
+// (30 días) y `recommendation` {recommendation_type REPLENISH|NO_REPLENISHMENT, suggested_quantity.value, replenishment_deadline}.
+// Se guarda en `cyc/fullreco/<upid>` = {cta, ts, st, urg, v30, sem:[[u, díasSinStock],…], tipo, sug, plazo}. Una vez por día por
+// producto (FULLRECO_CADA_H) y con tope por vuelta. Si ML no contesta NO se borra lo guardado (queda con su fecha: la web avisa
+// si está viejo). No decide nada: Armar caja lo muestra al lado de lo nuestro y `escasez` avisa lo que ML pide reponer en ≤2 semanas.
+const FULLRECO_CADA_H = 20, FULLRECO_MAX_VUELTA = 150;
+function leerRepoFullML(j) {
+  if (!j || typeof j !== 'object') return null;
+  const n = (x) => (x == null || x === '' || !Number.isFinite(Number(x))) ? null : Math.round(Number(x));
+  const r = j.recommendation || {}, sq = r.suggested_quantity;
+  const sem = Array.isArray(j.sales && j.sales.sales_history) ? j.sales.sales_history.map((h) => [n(h && h.units_sold) ?? 0, n(h && h.days_out_of_stock) ?? 0]) : [];
+  const v30r = j.sales && j.sales.sales_totals && Array.isArray(j.sales.sales_totals.units_sold) ? j.sales.sales_totals.units_sold[0] : null;
+  return {
+    st: n(j.stock && j.stock.total_stock), urg: (j.stock && j.stock.shipping_urgency) || null,
+    v30: v30r && typeof v30r === 'object' ? n(v30r.full) : n(v30r), sem,
+    tipo: r.recommendation_type || null, sug: sq && typeof sq === 'object' ? n(sq.value) : n(sq), plazo: r.replenishment_deadline || null,
+  };
+}
+// Lo que ML pide reponer pronto: REPLENISH con plazo de esta semana, la próxima o en dos semanas (las "2 semanas de margen").
+const FULLRECO_PRONTO = new Set(['THIS_WEEK', 'NEXT_WEEK', 'IN_TWO_WEEKS']);
+async function reposicionFullML(db, accounts, labels, DRY) {
+  const links = (await db.get('cyc/mllinks')) || {};
+  let ya = {}; try { ya = (await db.get('cyc/fullreco')) || {}; } catch { ya = null; }
+  if (ya === null) return { leidos: 0, fallas: 0, pend: 0, error: 'no pude leer cyc/fullreco' };
+  const res = { leidos: 0, fallas: 0, pend: 0, pronto: 0 };
+  const upd = {};
+  let usadas = 0;
+  for (const label of labels) {
+    const acc = accounts[label]; if (!acc?.refresh_token) continue;
+    const ups = [...new Set(Object.values(links).filter((v) => v && v.cuenta === label && v.upid && v.inv && !v.ignored && v.status !== 'closed').map((v) => v.upid))]
+      .filter((up) => !(Number((ya[up] || {}).ts) > Date.now() - FULLRECO_CADA_H * 3600e3));
+    if (!ups.length) continue;
+    let tok;
+    try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() }); tok = t.access_token; }
+    catch { res.fallas += ups.length; continue; }
+    for (const up of ups) {
+      if (usadas >= FULLRECO_MAX_VUELTA) { res.pend++; continue; }
+      usadas++;
+      let j = null; try { j = await mlGet(`/marketplace/fbm/user-products/${up}/replenishment?country=AR`, tok); } catch { j = null; }
+      const r = leerRepoFullML(j);
+      if (!r) { res.fallas++; continue; }
+      upd[up] = { cta: label, ts: Date.now(), ...r };
+      res.leidos++;
+      if (r.tipo === 'REPLENISH' && FULLRECO_PRONTO.has(r.plazo)) res.pronto++;
+      await new Promise((ok) => setTimeout(ok, 150));
+    }
+  }
+  if (!DRY && Object.keys(upd).length) await db.patch('cyc/fullreco', upd);
+  return res;
+}
+// ── 6.P5 · LO QUE CUESTA DE VERDAD MANDAR UNA UNIDAD A FULL, POR CUENTA (etapa 6, eligió la a, 21/10/2026) ───────────────
+// La caja sale plana (`cyc/mlconfig/costoCaja`) y la ficha la reparte como si fuera llena; con cupo chico las cajas salen con pocas
+// unidades. Promedio de unidades de las últimas CAJA_REAL_N cajas de la cuenta en CAJA_REAL_DIAS días → costo real por unidad. Es la
+// MISMA cuenta que `cajaRealDe` de la web (index.html): si se toca una, la otra. Sin cajas medidas devuelve null (no se inventa).
+const CAJA_REAL_N = 8, CAJA_REAL_DIAS = 120, CAJA_REAL_COMEMUCHO = 0.25;
+function cajaRealPorCuenta(envios, cta, costoCaja, ahora) {
+  const desde = (ahora || Date.now()) - CAJA_REAL_DIAS * 864e5, us = [];
+  for (const e of Object.values(envios || {})) {
+    if (!e || e.cuenta !== cta) continue;
+    const t = e.fecha ? new Date(e.fecha + 'T12:00:00').getTime() : Number(e.ts) || 0;
+    if (!(t >= desde)) continue;
+    const cajas = Array.isArray(e.cajasDet) && e.cajasDet.length ? e.cajasDet : [];
+    for (const c of cajas) { const u = ((c && c.items) || []).reduce((a, it) => a + (Number(it && it.u) || 0), 0); if (u > 0) us.push({ t, u }); }
+  }
+  if (!us.length) return null;
+  const ult = us.sort((a, b) => b.t - a.t).slice(0, CAJA_REAL_N);
+  const uProm = ult.reduce((a, x) => a + x.u, 0) / ult.length;
+  return { n: ult.length, uProm, costoU: costoCaja / uProm };
+}
+// ── 6.P2 · LO QUE NO ENTRA EN FULL POR EL CUPO (etapa 6, eligió la a, 21/10/2026) ─────────────────────────────────
+// `decido` guarda `cupoCorto` = {falta, ts} en la decisión de caja cuando `decide_cajas.py` la recortó por el cupo de la cuenta.
+// Mapa por clave en minúsculas (producto__cuenta[__v__color]) con lo que falta, sólo si es de los últimos CUPO_CORTO_DIAS.
+// Devuelve null si no se pudo leer (no es "nada recortado").
+const CUPO_CORTO_DIAS = 15;
+function cupoCortoMapa(dec, ahora) {
+  if (dec == null) return null;
+  const m = {};
+  for (const [k, x] of Object.entries(dec || {})) {
+    const cc = x && x.cupoCorto;
+    if (!cc || !(Number(cc.falta) > 0) || !(Number(cc.ts) > (ahora || Date.now()) - CUPO_CORTO_DIAS * 864e5)) continue;
+    m[String(k).toLowerCase()] = Math.round(Number(cc.falta));
+  }
+  return m;
+}
+// La clave de inventario (producto__Cuenta[__v__Color], con mayúsculas como venga) contra el mapa de arriba.
+function cupoCortoDe(mapa, k) {
+  if (!mapa) return 0;
+  const i = k.indexOf('__'), iv = k.indexOf('__v__');
+  const pid = k.slice(0, i), cta = iv > 0 ? k.slice(i + 2, iv) : k.slice(i + 2), col = iv > 0 ? k.slice(iv + 5) : '';
+  const cl = cta.toLowerCase().replace(/í/g, 'i').replace(/[^a-z0-9]/g, '_');
+  const key = (pid + '__' + cl + (col ? '__v__' + col.toLowerCase().replace(/[^a-z0-9]/g, '_') : '')).toLowerCase();
+  return mapa[key] || 0;
+}
 async function reputacionML(db, accounts, labels, DRY) {
   const out = { ok: 0, mal: 0, filas: [] };
   for (const label of labels) {
@@ -2226,6 +2457,18 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso, op
   // Ventas para deducir el descuento real (comisión aparte) de cada publicación.
   const vtaMla = {}, vtaProd = {};
   const desde = Date.now() - 120 * 864e5;
+  // LO NUEVO (etapa 6 · A2, 21/10/2026): qué publicaciones y qué fichas vendieron ALGUNA vez (no sólo en 120 días).
+  const vendioMla = new Set(), vendioProd = new Set();
+  for (const ents of Object.values(vp)) for (const v of Object.values(ents || {})) { if (!v || v.cancelada) continue; if (v.mla) vendioMla.add(v.mla); if (v.prodId) vendioProd.add(v.prodId); }
+  // El catálogo CONFIRMADO de cada ficha: el de la lista (`mlCatalogo`, que pone "Llegó" con el `mi` confirmado) y el de los
+  // candidatos de Paraguay chequeados (`candCatChequeado`: ✅ suyo o la revisión de fotos, atado a ESE catálogo). Se lee una vez.
+  let _candsConf = undefined;
+  const catConfDe = async (p) => {
+    const out = new Set(); if (p && p.mlCatalogo) out.add(String(p.mlCatalogo).toUpperCase());
+    if (_candsConf === undefined) { try { _candsConf = (await db.get('cyc/candidatos_py')) || {}; } catch { _candsConf = null; } }
+    if (_candsConf) for (const c of Object.values(_candsConf)) if (c && c.prodId === (p && p.id) && candCatChequeado(c)) out.add(candCatDe(c));
+    return { cats: out, leido: _candsConf !== null };
+  };
   for (const ents of Object.values(vp)) {
     for (const v of Object.values(ents || {})) {
       // Revisión final: una venta con neto ESTIMADO no sirve para deducir el envío (tot − net − com ≈ 0).
@@ -2283,7 +2526,7 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso, op
       .map(([mla]) => mla);
     for (let k = 0; k < ids.length; k += 20) {
       let arr;
-      try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,sub_status,price,variations,title,listing_type_id,category_id,site_id,shipping,inventory_id,available_quantity', tok); }
+      try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,sub_status,price,variations,title,listing_type_id,category_id,site_id,shipping,inventory_id,available_quantity,catalog_product_id', tok); }
       catch { conteo.lotesFallidos++; continue; }
       for (const row of (arr || [])) {
         const b = row.body || {}; const mla = b.id;
@@ -2352,6 +2595,29 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso, op
         // Freno: ¿llega al piso con el precio de hoy?
         const p = linkRow.prodId ? pIdx[linkRow.prodId] : null;
         if (!p) { noVa(linkRow.prodId ? 'su ficha ya no existe en la web' : 'no está pegada a ninguna ficha: sin costo no puedo medir el margen'); continue; }
+        // ── LO NUEVO NO SE ACTIVA SOLO SIN PRECIO DE LANZAMIENTO Y SIN EL CATÁLOGO CONFIRMADO (etapa 6 · A2, 21/10/2026, eligió la a) ──
+        // Nuevo = ni esta publicación ni su ficha vendieron nunca. Antes una caja que llegaba a Full activaba la publicación al
+        // precio que él puso al crearla, sin que nadie lo pensara, y en el catálogo que él eligió (puede no ser el que se midió).
+        // Hace falta: (1) una estrategia mía anotada (`decido:<MLA>=<precio>#nuevo|…` o cualquier otra decidida) y (2) que la
+        // publicación esté en el catálogo confirmado de la ficha, o que él/yo lo hayamos confirmado (`catok:<MLA>=ok|sincat;go`).
+        if (!vendioMla.has(mla) && !vendioProd.has(p.id)) {
+          let hE;
+          try { hE = (await db.get('cyc/estrategia/' + mla)) || {}; } catch { noVa('es NUEVA y no pude leer su estrategia: no la activo a ciegas'); continue; }
+          let ultE = null; for (const [k0, x] of Object.entries(hE)) { const kt = Number(k0); if (kt > 0 && x && x.t && (!ultE || kt > ultE.ts)) ultE = { t: x.t, ts: kt }; }
+          if (!ultE || ['sindecidir', 'agotado', 'base'].includes(ultE.t)) { noVa(`es NUEVA (nunca vendió) y no tiene el precio de lanzamiento decidido: decido:${mla}=<precio>#nuevo|<motivo>;go`, b.price || 0); continue; }
+          const catPub = String(b.catalog_product_id || '').toUpperCase();
+          const okMano = linkRow.catOk && ((catPub && String(linkRow.catOk).toUpperCase() === catPub) || (!catPub && linkRow.catOk === 'sincat'));
+          if (!okMano) {
+            const cc = await catConfDe(p);
+            if (!cc.leido) { noVa('es NUEVA y no pude leer los candidatos para saber su catálogo confirmado: no la activo a ciegas', b.price || 0); continue; }
+            if (!(catPub && cc.cats.has(catPub))) {
+              noVa(catPub
+                ? (cc.cats.size ? `es NUEVA y está publicada en el catálogo ${catPub}, pero el confirmado de la ficha es ${[...cc.cats].join(' / ')}: revisarla (si está bien, catok:${mla}=ok;go)` : `es NUEVA y nadie confirmó que su catálogo (${catPub}) sea el mismo producto: catok:${mla}=ok;go`)
+                : `es NUEVA y no está en catálogo: si va sin catálogo a propósito, catok:${mla}=sincat;go`, b.price || 0);
+              continue;
+            }
+          }
+        }
         if (!(tc > 0)) { noVa('sin dólar cargado: no puedo medir el margen'); continue; }
         const costo = costoPesos(p, 1, tc).costo;
         if (!costo) { noVa('sin costo cargado'); continue; }
@@ -2548,6 +2814,8 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso, op
     // `simple`: la frase clara que muestra el 🧠 (pedido suyo del 08/10: "sin cosas técnicas").
     const simpleNo = (w) => {
       w = String(w || '');
+      if (/es NUEVA.*precio de lanzamiento/.test(w)) return 'es nueva (nunca vendió): no la activo hasta que Claude decida el precio de lanzamiento.';
+      if (/es NUEVA/.test(w)) return 'es nueva (nunca vendió): no la activo hasta confirmar que está publicada en el catálogo correcto de Mercado Libre.';
       if (/pausó ML/.test(w)) return 'la pausó Mercado Libre: no la puedo activar yo, hay que mirarla en ML.';
       if (/no la vendemos más/.test(w)) return 'la marcaste "no la vendemos más".';
       if (/ocultaste del panel/.test(w)) return 'la ocultaste del panel.';
@@ -3720,6 +3988,123 @@ function diaConStock(x) {
   if (x.est && x.est !== 'active' && !(Number(x.u) > 0)) return false;
   return (x.st != null && (Number(x.st) > 0 || Number(x.u) > 0)) || (x.st == null && x.est === 'active');
 }
+// ── LA GEMELA Y SU CLÁSICA SE MIDEN JUNTAS · LA PLATA PARADA UNA SOLA VEZ (21/10/2026, eligió la a en las dos) ──────────────
+// Etapa 5 (2a): la gemela Premium y su Clásica (y cualquier publicación repetida del mismo producto, cuenta y color) venden de las
+// MISMAS unidades. Medidas por separado, la Clásica "deja de vender" porque vende la Premium y `techo95`/las rayas/la ficha leían
+// eso como precio alto. Se juntan por la CLAVE DE STOCK (producto × cuenta × color, la `kSt` de `planilla`): la línea de la
+// publicación que se mide (su precio, su estado, sus visitas) más las ventas de las otras de la misma clave.
+// Etapa 1 (6a, él: "en verdad son las mismas unidades, no habría que duplicar la plata"): el stock de esas publicaciones es UNO.
+// En la línea junta se toma una vez (no se suma); donde se mide una publicación sola, la plata parada se reparte por lo que vende
+// cada una (`partesStockDe`). MISMA REGLA en index.html (`_claveStockPub`, `_lineaJuntaStock`): si se toca una, se toca la otra.
+function claveStockPub(e, p) {
+  if (!e || !e.prodId) return null;
+  const vs = p && Array.isArray(p.variantes) ? p.variantes : (p && p.variantes && typeof p.variantes === 'object' ? Object.values(p.variantes) : []);
+  const eVar = String(e.variant || '').trim() || (vs.length ? varianteDeTitulo(e.title || '', vs) : '');
+  if (vs.length && !eVar) return null;   // publicación de un color que no se identifica: no se junta con nadie (no se adivina)
+  return e.prodId + '__' + sid(String(e.cuenta || '').toLowerCase()) + (eVar ? '__v__' + sid(String(eVar).toLowerCase()) : '');
+}
+// Las otras publicaciones vivas (no cerradas, no ocultas, no "no la vendemos más") con la misma clave de stock que `mla`.
+function hermanasStockDe(links, prodById, mla) {
+  const e = (links || {})[mla]; const k = claveStockPub(e, e && (prodById || {})[e.prodId]); if (!k) return [];
+  const viva = (x) => x && !x.ignored && !x.hidden && !x.noVendemosMas && !['closed', 'inactive'].includes(String(x.status || ''));
+  return Object.keys(links).filter((m) => m !== mla && viva(links[m]) && links[m].prodId === e.prodId && claveStockPub(links[m], (prodById || {})[links[m].prodId]) === k);
+}
+// La línea de `dPropia` con las ventas de las hermanas sumadas día por día. Manda lo de la propia: el precio, el estado (si estaba
+// pausada ese día su precio no se podía comprar) y si hay dato de visitas. El stock es el mismo depósito: se toma una vez (el mayor
+// de los que lo informan), nunca se suma. Un día que sólo tiene la hermana no entra (no hay precio propio para medir).
+function juntarLineaStock(dPropia, otras) {
+  const out = {};
+  for (const [k, x] of Object.entries(dPropia || {})) {
+    if (!/^\d{4}_\d{2}_\d{2}$/.test(k) || !x || typeof x !== 'object') { out[k] = x; continue; }
+    const o = { ...x };
+    for (const d2 of (otras || [])) {
+      const y = d2 && d2[k]; if (!y || typeof y !== 'object') continue;
+      for (const c of ['u', 'uR', 'neto', 'tot']) if (y[c] != null) o[c] = (Number(o[c]) || 0) + (Number(y[c]) || 0);
+      if (o.vis != null && y.vis != null) o.vis = (Number(o.vis) || 0) + (Number(y.vis) || 0);
+      if (y.st != null) o.st = o.st == null ? Number(y.st) : Math.max(Number(o.st) || 0, Number(y.st) || 0);
+    }
+    out[k] = o;
+  }
+  return out;
+}
+// Lee las líneas de las hermanas de stock y devuelve la junta. `lineaDe(mla)` puede ser async (null = no se pudo leer: esa no se
+// suma y se dice en `sinLeer`, para no medir a medias en silencio). Sin hermanas devuelve la propia tal cual.
+async function lineaJuntaStock(links, prodById, mla, dPropia, lineaDe) {
+  const hs = hermanasStockDe(links, prodById, mla); if (!hs.length) return { d: dPropia, con: [], sinLeer: [] };
+  const otras = [], con = [], sinLeer = [];
+  for (const m of hs) { let d2 = null; try { d2 = await lineaDe(m); } catch { d2 = null; } if (d2 == null) { sinLeer.push(m); continue; } otras.push(d2); con.push(m); }
+  return { d: con.length ? juntarLineaStock(dPropia, otras) : dPropia, con, sinLeer };
+}
+// La parte de la plata parada que le toca a cada publicación de un stock compartido (6a): lo que vendió cada una en 60 días sobre lo
+// que vendió el grupo (`u60PorMla`, unidades por MLA). Sin ventas en el grupo, partes iguales. Sola en su clave = 1.
+function partesStockDe(links, prodById, u60PorMla) {
+  const G = {}; for (const [m, e] of Object.entries(links || {})) { if (!e || e.ignored || e.hidden || ['closed', 'inactive'].includes(String(e.status || ''))) continue; const k = claveStockPub(e, (prodById || {})[e.prodId]); if (k) (G[k] = G[k] || []).push(m); }
+  const out = {};
+  for (const ms of Object.values(G)) { const tot = ms.reduce((a, m) => a + (Number((u60PorMla || {})[m]) || 0), 0); for (const m of ms) out[m] = ms.length === 1 ? 1 : (tot > 0 ? (Number((u60PorMla || {})[m]) || 0) / tot : 1 / ms.length); }
+  return out;
+}
+// Unidades vendidas en los últimos `dias` por MLA, de `cyc/ventaprod` (sin canceladas).
+function u60PorMlaDe(vp, dias = 60) {
+  const out = {}, t0 = Date.now() - dias * 864e5;
+  for (const ents of Object.values(vp || {})) for (const v of Object.values(ents || {})) { if (!v || v.cancelada || !v.mla) continue; const ts = Number(v.ts) || 0; if (ts >= t0) out[v.mla] = (out[v.mla] || 0) + (Number(v.qty) || 1); }
+  return out;
+}
+// LA ESTRATEGIA VIGENTE EN UN MOMENTO (etapa 5, 5.1a): la última anotada ANTES o EN ese momento (no una anotada después, aunque sea
+// a los pocos minutos), con las "correcciones" viejas nombradas según la anterior. null = no había ninguna.
+function tagVigenteEn(h, ts) {
+  let pv = null, t = null;
+  for (const k of Object.keys(h || {}).map(Number).filter((n) => n > 0).sort((a, b) => a - b)) { const x = h[k]; if (!x || !x.t) continue; const tt = x.t === 'correccion' ? pasajeDe(pv) : x.t; pv = tt; if (k <= ts) t = tt; else break; }
+  return t;
+}
+// ── CUÁNDO UN TAG YA NO EXPLICA EL PRECIO (21/10/2026 · etapa 1, 1.4a) ──────────────────────────────────────────────────────────
+// `est` = {t, m, ts} (la estrategia de hoy). 🎁 fecha: 7 días después de la fecha que nombra el motivo (o la primera fecha especial
+// desde que se puso el tag) · 🪜 bajando: 14 días sin escalón nuevo (el último tag o mi última baja, `ultBaja`) · 🥊 caja: 30 días.
+// Devuelve el texto del porqué, o '' si sigue vigente. La usa la 🔎 SIN AFINAR de `planilla`.
+const TAG_VENCE_FECHA_DIAS = 7, TAG_VENCE_BAJANDO_DIAS = 14, TAG_VENCE_CAJA_DIAS = 30;
+function fechaDeTag(ts, motivo) {
+  const y = new Date(ts).getUTCFullYear(); const evs = [y - 1, y, y + 1].flatMap((yy) => fechasEspeciales(yy)).filter((ev) => ev.ts >= ts - 2 * 864e5).sort((a, b) => a.ts - b.ts);
+  const mn = norm(motivo || ''); const nom = evs.find((ev) => mn.includes(norm(ev.nom).replace(/^dia del? /, '')));
+  return nom || evs[0] || null;
+}
+function tagVencido(est, { hoy = Date.now(), ultBaja = 0, sinCambios = false } = {}) {
+  if (!est || !est.t || !(Number(est.ts) > 0)) return '';
+  const dd = (t) => Math.floor((hoy - t) / 864e5);
+  if (est.t === 'fecha') { const ev = fechaDeTag(Number(est.ts), est.m); if (!ev) return ''; const fin = ev.ts + ((Number(ev.dur) || 1) - 1) * 864e5 + TAG_VENCE_FECHA_DIAS * 864e5; return hoy > fin ? `🎁 ${ev.nom} pasó hace ${dd(ev.ts)} d` : ''; }
+  if (est.t === 'bajando') { const ult = Math.max(Number(est.ts) || 0, Number(ultBaja) || 0); return hoy - ult > TAG_VENCE_BAJANDO_DIAS * 864e5 ? `🪜 sin escalón nuevo hace ${dd(ult)} d${sinCambios ? ' (sin leer mis cambios)' : ''}` : ''; }
+  if (est.t === 'caja') return hoy - Number(est.ts) > TAG_VENCE_CAJA_DIAS * 864e5 ? `🥊 ganar la caja desde hace ${dd(Number(est.ts))} d` : '';
+  return '';
+}
+// ── LA FOTO DEL MERCADO DE UN TECHO Y CUÁNDO SE REABRE (17/10/2026, decisión 🔓; una sola cuenta desde el 21/10/2026 · 1.3a) ──────
+// La usan `techofreno` (lo que anoté al volver una prueba) y `techo95` (al marcar 🏔️ guarda la foto, y la 🏔️ vence con las mismas
+// razones). `tok` = token de la cuenta de la publicación; `sids` = {seller_id: cuenta} de las nuestras (no son competencia).
+async function fotoMercadoTecho(mla, probado, e, tok, sids) {
+  if (!tok) return { err: 'sin token' };
+  let b; try { b = await mlGet('/items/' + mla + '?attributes=id,title,price,catalog_product_id,status', tok); } catch (er) { return { err: 'ML no contestó la publicación' }; }
+  const out = { precio: Math.round(b.price || 0), titulo: String(b.title || (e && e.title) || '').slice(0, 55), cuenta: (e && e.cuenta) || '?', cat: !!b.catalog_product_id };
+  if (!b.catalog_product_id) return out;
+  try { const p = await mlGet('/items/' + mla + '/price_to_win?version=v2', tok); out.caja = p?.status || null; out.ptw = p?.price_to_win ? Math.round(p.price_to_win) : null; } catch { out.caja = null; }
+  let comp = null; try { comp = await mlGet(`/products/${b.catalog_product_id}/items`, tok); } catch { return { ...out, err: 'ML no dio los competidores' }; }
+  const ajenos = ofertasParaMedir((comp?.results || []).filter((x) => x && x.price > 0 && !(sids || {})[String(x.seller_id)])).ofs;
+  out.ajenos = ajenos.length;
+  out.barato = ajenos.length ? Math.round(Math.min(...ajenos.map((x) => x.price))) : null;
+  out.abajo = probado ? ajenos.filter((x) => x.price < probado).length : null;
+  return out;
+}
+const TECHO_REABRE_DIAS = 30, TECHO_REABRE_SUBE = 0.08;
+// Por qué se reabre un freno de techo: `r` = lo guardado en `cyc/techofreno/<MLA>`, `f` = la foto de hoy (o null si no se pudo:
+// entonces sólo cuenta el tiempo). [] = sigue frenado.
+function porQueReabrirTecho(r, f, ahora = Date.now()) {
+  const por = []; if (!r) return por;
+  const dias = Math.floor((ahora - (Number(r.ts) || 0)) / 864e5);
+  if (dias >= TECHO_REABRE_DIAS) por.push(`pasaron ${dias} días`);
+  if (r.cat && f && !f.err) {
+    if (r.barato && f.barato && f.barato >= r.barato * (1 + TECHO_REABRE_SUBE)) por.push(`el más barato ajeno subió ${money(r.barato)} → ${money(f.barato)}`);
+    if (r.barato && !f.barato) por.push('ya no hay ningún vendedor ajeno en la ficha');
+    if ((r.abajo || 0) > 0 && f.abajo === 0) por.push(`antes había ${r.abajo} ajeno(s) más barato(s) que ${money(r.probado)} y hoy ninguno`);
+    if (r.caja && r.caja !== 'winning' && f.caja === 'winning') por.push('ahora ganamos la caja (antes no)');
+  }
+  return por;
+}
 function poissonCdfF(k, lam) { if (!(lam > 0)) return 1; let p = Math.exp(-lam), s = p; for (let i = 1; i <= k; i++) { p *= lam / i; s += p; } return Math.min(1, s); }
 // LAS RAYAS DEL PRECIO, UNA SOLA CUENTA (20/10/2026, él con las Sábanas 140 Blanco: la raya de la web decía techo $20.180 y la
 // estrategia "buscando techo" a $21.990). Copia de `_rayas` de la línea de tiempo (index.html): si se toca una, se toca la otra.
@@ -3727,7 +4112,10 @@ function poissonCdfF(k, lam) { if (!(lam > 0)) return 1; let p = Math.exp(-lam),
 // (5+ días) · 🔴 techo = el precio más bajo arriba del best (2%+) donde, con 95% (Poisson), no deja la misma plata por día.
 // (20/10/2026) La web además muestra un 💰 piso PROVISORIO desde la primera venta cuando no hay 5 días medibles; es sólo para
 // mirar: acá (`techo95`) el piso y el techo siguen pidiendo días medibles, y el 🏔️ sigue pidiendo 95%.
-function rayasPrecioLinea(d, cu, imp, hoyK) {
+// `parte` (6a, 21/10/2026): la porción de la plata parada que le toca a esta publicación si comparte el stock con otras y se mide
+// SOLA (`partesStockDe`). Con la línea junta del grupo (`lineaJuntaStock`) va 1: el stock ya está una sola vez.
+function rayasPrecioLinea(d, cu, imp, hoyK, parte = 1) {
+  const pC = Number(parte) >= 0 && Number(parte) <= 1 ? Number(parte) : 1;
   const G = {};
   for (const k of Object.keys(d || {})) {
     if (!/^\d{4}_\d{2}_\d{2}$/.test(k) || (hoyK && k >= hoyK)) continue; const x = d[k]; if (!x || typeof x !== 'object') continue;
@@ -3739,7 +4127,7 @@ function rayasPrecioLinea(d, cu, imp, hoyK) {
     // 21/10/2026 · etapa 1: plata por día NETA (regla ⚖️, la misma cuenta de `armarFicha`): −$100/u de trabajo, −3% de lo facturado
     // (tope de H) y −2%/mes del stock parado de ese día. La web (`_ganRaya`/`_rayas`) usa las mismas constantes: si se toca una, la otra.
     const uT = Number(x.u) || 0, totT = Number(x.tot) || 0;
-    const gan = (Number(x.neto) || 0) - uT * cu - totT * imp - uT * PD_TRABAJO_U - totT * PD_TOPE_PCT - Math.max(0, Number(x.st) || 0) * cu * PD_CAPITAL_DIA;
+    const gan = (Number(x.neto) || 0) - uT * cu - totT * imp - uT * PD_TRABAJO_U - totT * PD_TOPE_PCT - Math.max(0, Number(x.st) || 0) * cu * PD_CAPITAL_DIA * pC;
     const g = (G[b] = G[b] || { p: b, dias: 0, u: 0, gan: 0, desde: k, hasta: k }); g.dias++; g.u += u; g.gan += gan; if (k < g.desde) g.desde = k; if (k > g.hasta) g.hasta = k;
   }
   const L = Object.values(G).map((g) => ({ ...g, r: g.u / g.dias, pd: g.gan / g.dias, gu: g.u ? g.gan / g.u : null }));
@@ -3794,6 +4182,11 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
     try { est = (await db.get('cyc/estrategia/' + d.mla)) || {}; } catch { est = null; }
     try { lin = (await db.get('mlapi/linea/' + d.mla)) || {}; } catch { lin = null; }
     if (est == null || sh == null || cc == null) { frenar(d, 'no pude leer la estrategia, desde cuándo está en Full o mis cambios: no bajo a ciegas'); out.push(d); continue; }
+    // 5.2a (21/10/2026): con la gemela Premium o una repetida del mismo stock, los frenos miden la línea JUNTA (las ventas de las dos,
+    // el stock una vez), la misma que `techo95` y la ficha. Sin poder leer la de la otra, no se baja a ciegas.
+    if (lin) { const J = await lineaJuntaStock(links, prods || {}, d.mla, lin, async (m) => { try { return (await db.get('mlapi/linea/' + m)) || {}; } catch { return null; } });
+      if (J.sinLeer.length) { frenar(d, `no pude leer la línea de ${J.sinLeer.join(', ')}, que comparte el stock con ésta: sin sus ventas la cuenta sale a medias, no bajo a ciegas`); out.push(d); continue; }
+      lin = J.d; }
     const tags = Object.entries(est).map(([k, x]) => ({ ts: Number(k), t: x && x.t, m: x && x.m })).filter((x) => x.ts > 0 && x.t).sort((x, y) => x.ts - y.ts);
     let ult = '', prev = ''; for (const x of tags) { const t = x.t === 'correccion' ? pasajeDe(ult) : x.t; prev = ult; ult = t; }
     const tagNuevo = fz.tag || tagDeMotivo(fz.motivo) || (opts.promo ? 'descuento' : '');
@@ -3875,13 +4268,16 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
   }
   return out;
 }
-function armarFicha({ mla, d, e, cu, imp, cambios, notas, hoyK, tach, parc, extra }) {
+// `parte` y `juntaCon` (21/10/2026, 6a y 5.2a): con la línea junta de las publicaciones que comparten el stock (`lineaJuntaStock`),
+// `juntaCon` = las otras MLA sumadas (la ficha lo dice) y `parte` 1; medida sola, `parte` = su porción de la plata parada.
+function armarFicha({ mla, d, e, cu, imp, cambios, notas, hoyK, tach, parc, extra, parte = 1, juntaCon = [] }) {
+  const pC = Number(parte) >= 0 && Number(parte) <= 1 ? Number(parte) : 1;
   const ks = Object.keys(d || {}).filter((k) => /^\d{4}_\d{2}_\d{2}$/.test(k) && k < hoyK && d[k] && typeof d[k] === 'object').sort();
   const conSt = diaConStock;   // 20/10/2026 · etapa 4: un día sin dato de stock no cuenta como con stock
   const kTs = (k) => Date.parse(k.replace(/_/g, '-') + 'T15:00:00Z');
   const fK = (k) => k ? k.slice(8, 10) + '/' + k.slice(5, 7) + '/' + k.slice(2, 4) : '?';
   const $ = (x) => (x == null || !isFinite(x)) ? '—' : '$' + Math.round(x).toLocaleString('es-AR');
-  const tramoDe = (a, b) => { let dias = 0, u = 0, neto = 0, tot = 0, agot = 0, vis = 0, nv = 0, stD = 0; for (const k of ks) { if (k < a || k >= b) continue; const x = d[k]; if (x.vis != null) { vis += Number(x.vis) || 0; nv++; } if (!conSt(x)) { agot++; continue; } dias++; u += Number(x.u) || 0; neto += Number(x.neto) || 0; tot += Number(x.tot) || 0; stD += Math.max(0, Number(x.st) || 0); } const gan = neto - u * cu - tot * imp - u * PD_TRABAJO_U - tot * PD_TOPE_PCT - stD * cu * PD_CAPITAL_DIA; return { dias, agot, u, r: dias ? u / dias : null, gu: u ? gan / u : null, pd: dias ? gan / dias : null, vd: nv ? vis / nv : null }; };
+  const tramoDe = (a, b) => { let dias = 0, u = 0, neto = 0, tot = 0, agot = 0, vis = 0, nv = 0, stD = 0; for (const k of ks) { if (k < a || k >= b) continue; const x = d[k]; if (x.vis != null) { vis += Number(x.vis) || 0; nv++; } if (!conSt(x)) { agot++; continue; } dias++; u += Number(x.u) || 0; neto += Number(x.neto) || 0; tot += Number(x.tot) || 0; stD += Math.max(0, Number(x.st) || 0); } const gan = neto - u * cu - tot * imp - u * PD_TRABAJO_U - tot * PD_TOPE_PCT - stD * cu * PD_CAPITAL_DIA * pC; return { dias, agot, u, r: dias ? u / dias : null, gu: u ? gan / u : null, pd: dias ? gan / dias : null, vd: nv ? vis / nv : null }; };
   // 1 · TRAMOS DE PRECIO (precio de lista de cada día; un día sin precio sigue el anterior)
   const tramos = []; let cur = null, pAnt = null;
   for (const k of ks) {
@@ -3900,7 +4296,7 @@ function armarFicha({ mla, d, e, cu, imp, cambios, notas, hoyK, tach, parc, extr
     cur.diasSt++; cur.u += Number(x.u) || 0; cur.neto += Number(x.neto) || 0; cur.tot += Number(x.tot) || 0; cur.uR += Number(x.uR) || 0; cur.stD += Math.max(0, Number(x.st) || 0);
   }
   if (cur) tramos.push(cur);
-  const T = tramos.map((t) => { const gan = t.neto - t.u * cu - t.tot * imp - t.u * PD_TRABAJO_U - t.tot * PD_TOPE_PCT - t.stD * cu * PD_CAPITAL_DIA; const caja = Object.entries(t.cajas).sort((a, b) => b[1] - a[1])[0]; return { p: t.p || null, desde: t.desde, hasta: t.hasta, dias: t.dias, diasSt: t.diasSt, agot: t.agot, u: t.u, uR: t.uR, r: t.diasSt ? +(t.u / t.diasSt).toFixed(3) : null, gu: t.u ? Math.round(gan / t.u) : null, pd: t.diasSt ? Math.round(gan / t.diasSt) : null, vd: t.nv ? +(t.vis / t.nv).toFixed(1) : null, caja: caja ? caja[0] : null, pausada: (t.est.paused || 0) > (t.est.active || 0) }; });
+  const T = tramos.map((t) => { const gan = t.neto - t.u * cu - t.tot * imp - t.u * PD_TRABAJO_U - t.tot * PD_TOPE_PCT - t.stD * cu * PD_CAPITAL_DIA * pC; const caja = Object.entries(t.cajas).sort((a, b) => b[1] - a[1])[0]; return { p: t.p || null, desde: t.desde, hasta: t.hasta, dias: t.dias, diasSt: t.diasSt, agot: t.agot, u: t.u, uR: t.uR, r: t.diasSt ? +(t.u / t.diasSt).toFixed(3) : null, gu: t.u ? Math.round(gan / t.u) : null, pd: t.diasSt ? Math.round(gan / t.diasSt) : null, vd: t.nv ? +(t.vis / t.nv).toFixed(1) : null, caja: caja ? caja[0] : null, pausada: (t.est.paused || 0) > (t.est.active || 0) }; });
   // 2 · MIS CAMBIOS Y CÓMO LES FUE
   const cc = (cambios || []).filter((c) => c && Number(c.ts) > 0).sort((a, b) => a.ts - b.ts);
   const C = [];
@@ -3953,7 +4349,7 @@ function armarFicha({ mla, d, e, cu, imp, cambios, notas, hoyK, tach, parc, extr
   // 20/10/2026 a la noche · etapa 5: el 🏆 es el MISMO 💰 piso de la línea de tiempo, de `techo95` y del freno F5 (`rayasPrecioLinea`:
   // días con 3+ u. en Full y visitas sabidas, activa, 5+ días por precio). Antes salía de los tramos con otra vara y podía nombrar
   // otro precio que la raya.
-  const RY = rayasPrecioLinea(d, cu, imp, hoyK);
+  const RY = rayasPrecioLinea(d, cu, imp, hoyK, pC);
   if (RY.best && RY.best.pd > 0) { const b = RY.best; sab.push({ t: 'mejor', txt: `el precio que más plata por día dejó (💰 piso, la misma cuenta de la línea de tiempo y de techo95): ${$(b.p)} → ${$(b.pd)} por día (${Math.round(b.r * 1000) / 1000} por día, ${b.dias} d medibles, ${fK(b.desde)} a ${fK(b.hasta)})` }); }
   // 20/10/2026 a la noche · etapa 5: "en prueba" es SÓLO el último cambio, si todavía no tiene veredicto y la publicación sigue
   // en ese precio (±2%): uno viejo sin certeza no es "la prueba de hoy", y si el precio ya cambió por otro lado tampoco.
@@ -3975,7 +4371,7 @@ function armarFicha({ mla, d, e, cu, imp, cambios, notas, hoyK, tach, parc, extr
   // 7.27 (21/10/2026): las dos rayas de la línea de tiempo (💰 piso y 🔴 techo, `rayasPrecioLinea`) quedan en la ficha y, con `:go`,
   // en `cyc/rayas/<MLA>` para la barrita de la web (🧠 y Rotación). Sin 💰 medido no hay rayas: `null`, no se inventa.
   const rayas = RY.best && RY.best.p > 0 ? { piso: RY.best.p, techo: RY.techo && RY.techo.p > 0 ? RY.techo.p : null, seg: RY.techo ? Math.round(RY.techo.seg * 100) : null, dias: RY.medibles || 0 } : null;
-  return { ts: Date.now(), mla, nom: String(e.title || '').slice(0, 80), cuenta: e.cuenta || '', variante: e.variant || '', prodId: e.prodId || '', res, tramos: T.slice(-60), nTramos: T.length, cambios: C.slice(-40), sabemos: sab, notas: N, linea1, reac: RX.reac, reacTxt: RX.txt, datos: DX.ext, datosTxt: DX.txt, rayas };
+  return { ts: Date.now(), mla, nom: String(e.title || '').slice(0, 80), cuenta: e.cuenta || '', variante: e.variant || '', prodId: e.prodId || '', res, tramos: T.slice(-60), nTramos: T.length, cambios: C.slice(-40), sabemos: sab, notas: N, linea1, reac: RX.reac, reacTxt: RX.txt, datos: DX.ext, datosTxt: DX.txt, juntaCon: (juntaCon || []).length ? juntaCon : null, partePlata: pC < 1 ? Math.round(pC * 100) / 100 : null, rayas };
 }
 // ── LOS DÍAS CON TACHADO DE CADA PUBLICACIÓN (20/10/2026) ── Los usan `vistas` y la ficha. Salen de mis promos (notas
 // "Entré/Salí de la promo" de `mlapi/fichanotas`, `cyc/promoclaude`), de la estrategia descuento/promo (`cyc/estrategia`) y de
@@ -4502,7 +4898,10 @@ async function calcCerebro(db, o) {
         if ((b.variations || []).length) { nada('tiene variantes: la maneja el robot de siempre (regla 7)'); continue; }
         if (!(p0 > 0)) { nada('sin precio'); continue; }
         if (!NOSUBIR_OK) { nada('no pude leer la lista de liquidando'); continue; }
-        if (NOSUBIR[mla]) { nada('liquidando: la maneja el remate'); continue; }
+        // 1.2a (21/10/2026): la marca liquidando frena SÓLO las subas. Una baja, un descuento o un remate que decido yo (`forzar`: `decido`,
+        // `entrarpromo`) sí pasa; lo que el robot calcula solo (sin `forzar`) sigue sin tocar lo marcado.
+        if (NOSUBIR[mla] && !(forzar && forzar[mla])) { nada('liquidando: la maneja el remate'); continue; }
+        if (NOSUBIR[mla] && forzar[mla] && Number(forzar[mla].p) > p0) { nada('marcada liquidando: no se sube (la marca frena sólo las subas; para subir, primero liquidando:-' + mla + ':go)'); continue; }
         // "La bajaste vos a mano" ya no frena (08/10/2026): él no toca precios, y lo que manda rematar lo marca liquidando.
         if (_subiendoVivo(autop[mla], hoyTs)) { nada('hay una suba en curso de otra corrida'); continue; }
         const costo = Math.round(costoPesos(p, 1, tc).costo || 0);
@@ -4581,6 +4980,13 @@ async function calcCerebro(db, o) {
             if (!gB) { nada(`${motF} · ML no contestó la comisión a ${money(UMBRAL_ENVIO_GRATIS - 1)}: no cruzo la barrera sin saber si paga`); continue; }
             if (!(gF.g > gB.g)) { nada(`${motF} · cruzar no paga: en $32.999 deja más por unidad (${money(Math.round(gB.g))} contra ${money(Math.round(gF.g))} a ${money(P)})`); continue; }
           }
+          // 🪜 6.P6 (etapa 6, eligió la a, 21/10/2026): LA ZONA MUERTA DEL ESCALÓN DE COMISIÓN. Medido el 12/09: los Paulvic de $14.360
+          // a $15.790 dejaban $312 MENOS por unidad (la comisión de ML sube de golpe al cruzar ~$15.000). Si el precio nuevo cae justo
+          // arriba del escalón y quedándose en $14.990 deja igual o más por unidad, no se aplica: queda en la zona muerta. Se pregunta
+          // la comisión a ML a los dos precios (no se supone el escalón: si ML no contesta, no frena). Excepción: !escalon con motivo.
+          { const esc = escalonDeComision(P);
+            if (esc && !fz.escalon) { const gE = await gan(esc - 10);
+              if (gE && gE.g >= gF.g) { nada(`🚫 FRENO zona muerta del escalón de comisión: a ${money(P)} deja ${money(Math.round(gF.g))}/u y a ${money(esc - 10)} deja ${money(Math.round(gE.g))}/u (ML cobra de más arriba de ~${money(esc)}). Probar abajo del escalón; si es a propósito: !escalon con motivo`); continue; } } }
           // `!bajocero` (18/10/2026, él con la Tira Led: *"liquidá las 10 tiras led. al precio que sea"*): única excepción al
           // "nunca abajo de 0%", sólo cuando ÉL pide rematar algo a cualquier precio. Nunca la usa una regla automática.
           if (!sube && gF.mg < 0 && !fz.bajocero) { nada(`${motF} · a ${money(P)} queda en ${gF.mg.toFixed(1)}%: abajo de cero no se baja nunca`); continue; }
@@ -4949,7 +5355,8 @@ async function aplicarCerebro(db, cz, o) {
       if (!msub.ok) { fallidos.push({ ...t, err: 'no pude anotar la suba antes de hacerla: no subo a ciegas' }); continue; }
       r = await raisePriceTo(d.mla, d.a, tk, { libre: true, cruza: !!d.cruza, exacto: d.tipoMot === 'claude' });
     } else {
-      if (NOSUBIR[d.mla]) { fallidos.push({ ...t, err: 'está marcada liquidando: no la bajo' }); continue; }
+      // 1.2a: lo marcado liquidando no lo baja el robot solo; lo que decidí yo (`decido`, `tipoMot: 'claude'`) sí.
+      if (NOSUBIR[d.mla] && d.tipoMot !== 'claude') { fallidos.push({ ...t, err: 'está marcada liquidando: no la bajo' }); continue; }
       // El colchón de medio punto no puede hundir abajo de 0% un margen que está arriba (etapa 1, 21/10/2026): con 0,3% daba −0,2% y
       // setPriceTo la rechazaba por "abajo de cero". Un margen negativo de verdad (!bajocero) se declara tal cual.
       const mgD = Number(d.mgA) >= 0 ? Math.max(0, Math.floor((Number(d.mgA) - 0.5) * 10) / 10) : Number(d.mgA);
@@ -6637,7 +7044,7 @@ async function altaDeNuevas(db, accounts, labels, map, index, DRY) {
     if (!faltan.length) continue;
     for (let k = 0; k < faltan.length; k += 20) {
       let arr;
-      try { arr = await mlGet('/items?ids=' + faltan.slice(k, k + 20).join(',') + '&attributes=id,title,status,sub_status,price,shipping,user_product_id', tok); }
+      try { arr = await mlGet('/items?ids=' + faltan.slice(k, k + 20).join(',') + '&attributes=id,title,status,sub_status,price,shipping,user_product_id,catalog_product_id,catalog_listing', tok); }
       catch { continue; }
       for (const row of (arr || [])) {
         const b = row.body || {}; const mla = b.id;
@@ -6678,12 +7085,17 @@ async function altaDeNuevas(db, accounts, labels, map, index, DRY) {
           // El freno: no vendió nunca todavía, así que su costo no está probado. Se va solo en
           // cuanto venda (la vuelta de las ventas reescribe el renglón entero).
           altaSinVender: true,
+          // EL CATÁLOGO EXACTO EN QUE SE PUBLICÓ (etapa 6 · A2, 21/10/2026, eligió la a): el código de ML (`catalog_product_id`)
+          // o null si no es de catálogo. `activarPausadasFull` lo compara contra el catálogo confirmado de la ficha antes de
+          // activar algo nuevo (que no se active publicado en OTRO catálogo, el error de los 67 de 344 de Paraguay).
+          catalogo: b.catalog_product_id || null,
+          catalogoListing: b.catalog_listing === true,
           candidatos: p ? null : candidatesFor(title, index),
         };
         upd[mla] = entry; map[mla] = entry;
         // La hermana recién dada de alta ya sirve para la siguiente del mismo lote.
         if (upid && p) porUpid[label + '|' + upid] = p.id;
-        (p ? nuevas : sinFicha).push({ mla, label, title, prod: p ? p.name : '', variant: entry.variant, como: comoSeEmparejo });
+        (p ? nuevas : sinFicha).push({ mla, label, title, prod: p ? p.name : '', variant: entry.variant, como: comoSeEmparejo, catalogo: entry.catalogo });
       }
     }
   }
@@ -6742,6 +7154,23 @@ async function dolarOficialVenta() {
   const a = await leer('dolarapi', 'https://dolarapi.com/v1/dolares/oficial', (j) => j && j.venta);
   const b = await leer('bluelytics', 'https://api.bluelytics.com.ar/v2/latest', (j) => j && j.oficial && j.oficial.value_sell);
   return { a, b };
+}
+// ── 6.P3 · EL DÓLAR DE PARAGUAY CONTRA CRIPTO Y MEP (etapa 6, eligió la a, 21/10/2026) ──────────────────────────────────
+// El dólar que se paga en cada pedido (+5,5 a +7,4% del oficial) sólo se comparaba contra el oficial. Para saber si es caro hace
+// falta el de mercado del mismo día: MEP (bolsa) y cripto (USDT). Dos fuentes públicas por número, cada una tolerante a fallar
+// (dolarapi y criptoya); si las dos contestan se toma la de dolarapi y se guarda la otra para chequear. Se guarda una vez por día
+// en `cyc/dolarref/<AAAA_MM_DD>` = {of, mep, cri, ts, fuentes}. Lo que ninguna fuente contestó queda null (no se inventa) y la
+// vuelta de la hora siguiente lo reintenta. Sólo mira: no cambia el dólar del panel ni ningún costo.
+async function dolarReferencias() {
+  const leer = async (url, sacar) => { try { const r = await fetch(url, { headers: { 'User-Agent': 'cyc-panel' } }); if (!r.ok) return null; const j = await r.json(); const v = Number(sacar(j)); return Number.isFinite(v) && v > 100 && v < 100000 ? Math.round(v * 100) / 100 : null; } catch { return null; } };
+  const mepA = await leer('https://dolarapi.com/v1/dolares/bolsa', (j) => j && j.venta);
+  const criA = await leer('https://dolarapi.com/v1/dolares/cripto', (j) => j && j.venta);
+  const ofA = await leer('https://dolarapi.com/v1/dolares/oficial', (j) => j && j.venta);
+  let cy = null; try { const r = await fetch('https://criptoya.com/api/dolar', { headers: { 'User-Agent': 'cyc-panel' } }); if (r.ok) cy = await r.json(); } catch { cy = null; }
+  const num = (v) => { const n = Number(v); return Number.isFinite(n) && n > 100 && n < 100000 ? Math.round(n * 100) / 100 : null; };
+  const mepB = cy ? num(cy.mep && ((cy.mep.al30 && cy.mep.al30.ci && cy.mep.al30.ci.price) || cy.mep.price)) : null;
+  const criB = cy ? num(cy.cripto && ((cy.cripto.usdt && (cy.cripto.usdt.ask || cy.cripto.usdt.price)) || cy.cripto.ask)) : null;
+  return { of: ofA, mep: mepA ?? mepB, cri: criA ?? criB, fuentes: { mep: mepA != null ? 'dolarapi' : mepB != null ? 'criptoya' : null, cri: criA != null ? 'dolarapi' : criB != null ? 'criptoya' : null, mepB, criB } };
 }
 async function dolarAuto(db, DRY) {
   const fin = (await db.get('cyc/finanzas')) || {};
@@ -7312,7 +7741,9 @@ function paradoEnLinea(lin, dk, pV) {
 // → { mapa: {dk: {id: 1}}, info: {'dk|id': {pct, remate, porque}}, fallo: Set('dk|id') }. `lineaDe(mla)` puede ser
 // async y devolver null si no se pudo leer (esa venta va a `fallo`: no se sabe, se conserva lo de antes).
 async function clasificarRemates(db, vp, o) {
-  const { nosubir = {}, nosubirhist = {}, rescv = {}, autoprecio = {}, lineaDe, desde = '' } = o || {};
+  // `estrat` = `cyc/estrategia` (5.1a, 21/10/2026): un remate decidido por mí (`decido …#liquidando/#remate`) prueba remate igual que la
+  // marca liquidando, y una venta abajo de 20% con 📦 sobra vigente también (la sobra se baja para que salga, no es demanda).
+  const { nosubir = {}, nosubirhist = {}, rescv = {}, autoprecio = {}, lineaDe, desde = '', estrat = null } = o || {};
   setDevLive(vp);
   const cw = await armarCostoWeb(db, vp);
   const mapa = {}, info = {}, fallo = new Set();
@@ -7329,8 +7760,10 @@ async function clasificarRemates(db, vp, o) {
       const ns = v.mla && nosubir[v.mla]; const nsF = ns && ns.fecha ? Date.parse(ns.fecha) : NaN;
       const ap = v.mla && autoprecio[v.mla];
       let r = null;
+      const tgV = v.mla && estrat ? tagVigenteEn(estrat[v.mla], ts) : null;
       if (et && et.estado === 'remate') r = { es: true, porque: 'la venta quedó etiquetada remate' };
       else if (isFinite(nsF) && nsF <= ts) r = { es: true, porque: 'estaba marcada liquidando' };
+      else if (['liquidando', 'remate', 'sobra'].includes(tgV)) r = { es: true, porque: `tenía la estrategia ${ESTRATEGIAS[tgV]} cuando se vendió` };
       else if (v.mla && enPeriodoLiquidando(nosubirhist[v.mla], ts)) r = { es: true, porque: 'estaba marcada liquidando (período ya terminado)' };
       else if (ap && ns && !ap.remateTerminado && ap.tipo === 'baja' && /remate|escalera/.test(String(ap.por || '')) && (Number(ap.ts) || 0) <= ts) r = { es: true, porque: 'la habían bajado para rematar' };
       else if (v.mla && lineaDe) {
@@ -9131,7 +9564,7 @@ const CAND_FRESCO_MS = 20 * 3600 * 1000;
 // entran al pedido. Un cambio en la fórmula cuenta igual que un campo nuevo, por cuarta vez.
 // QUINTA VEZ, 23/09/2026: el recargo de Paraguay pasó de 15% a 17%. Cambia el costo puesto de
 // TODOS los candidatos, o sea la cuenta: sin subir esto, los que dan se quedaban con el 15%.
-const CAND_CALC_VER = 12;   // 12: 06/10/2026, comisión siempre Clásica (Premium cobraba cuotas 2 veces), IIBB real, envío medido y cuotas vs sin cuotas
+const CAND_CALC_VER = 13;   // 12: 06/10/2026, comisión siempre Clásica (Premium cobraba cuotas 2 veces), IIBB real, envío medido y cuotas vs sin cuotas · 13: 21/10/2026, peor caso (2% de retención de otra provincia, 1.5a)
 //    // 11: 04/10/2026, el robot ve solo si el que hay que igualar da cuotas (Premium o campaña `pcj`)
 // 10: 03/10/2026, se mide al techo de $650.000 si el competidor está más caro
 
@@ -9269,6 +9702,10 @@ function esOfertaFlex(o) {
 //    falta de dato leída como dato, el error de siempre.
 // NO SE FILTRA NADA: el que no tiene Full igual compite, sólo que con desventaja, y esconderlo
 // sería decidir por él. Sale con su número al lado.
+function promoDeOferta(o) {
+  const p = Number(o && o.price) || 0, orig = Number(o && o.original_price) || 0;
+  return p > 0 && orig > p * 1.01 ? Math.round((1 - p / orig) * 100) : 0;
+}
 function precioAIgualar(ofertas) {
   const pr = (o) => Number(o && o.price) || 0;
   const ofs = (ofertas || []).filter((o) => pr(o) > 0);
@@ -9286,9 +9723,14 @@ function precioAIgualar(ofertas) {
   // el más barato de todos es el peor caso, el lado seguro para decidir una compra. El dato de Full
   // se sigue guardando y mostrando, sólo que ya no mueve el precio de referencia.
   const precio = baratoTodos;
+  const ref = ofs.find((o) => pr(o) === precio) || ofs[0];
   return {
     precio,
-    ref: ofs.find((o) => pr(o) === precio) || ofs[0],
+    ref,
+    // 6.D5 (etapa 6, eligió la a, 21/10/2026): ¿EL QUE PONE EL PRECIO ESTÁ EN PROMO? Si ML manda su precio tachado
+    // (`original_price` más alto que el precio) se dice cuánto está rebajado: ese precio puede volver a subir cuando termine la
+    // promo, así que el margen contra él es el peor caso de HOY, no el de siempre. Sin `original_price` queda en 0: no se sabe.
+    promoPct: promoDeOferta(ref),
     max: Math.max(...ofs.map(pr)),
     baratoTodos, baratoFull, baratoSinFull,
     conFull: conFull.length, conFlex: conFlex.length, sinFull: sinFull.length,
@@ -9346,9 +9788,14 @@ async function cuentaCandidato(precio, ltx, catx, puestoUSD, tc, monoP, feeAt, c
   const impuestos2 = precio * (iibb + monoP) / 100;   // IIBB de la cuenta + monotributo
   const costoTot2 = costo2 + impuestos2;
   const cuotas2 = precio * (Number(cuoPct) || 0) / 100;
-  const ganancia2 = (precio - fee2 - envio2 - cuotas2) - costoTot2;
-  return { fee: fee2, envio: envio2, cuotas: cuotas2, costo: costo2, impuestos: impuestos2, ganancia: ganancia2, iibb,
-    margen: (costoTot2 + envio2) > 0 ? (ganancia2 / (costoTot2 + envio2)) * 100 : 0 };
+  // EL PEOR CASO (21/10/2026 · etapa 1, 1.5a): una compra se mide como cualquier precio nuestro (regla 🛡️ del 12/10): con la
+  // retención de IIBB de otra provincia (`PEOR_RET_PCT`, 2% del precio) restada. `margen` y `ganancia` ya son los del peor caso
+  // (son los que deciden si "da"); `margenNormal` es sin esa retención, para mostrar.
+  const ret2 = precio * PEOR_RET_PCT;
+  const ganancia2 = (precio - fee2 - envio2 - cuotas2 - ret2) - costoTot2;
+  const den2 = costoTot2 + envio2;
+  return { fee: fee2, envio: envio2, cuotas: cuotas2, ret: ret2, costo: costo2, impuestos: impuestos2, ganancia: ganancia2, iibb,
+    margen: den2 > 0 ? (ganancia2 / den2) * 100 : 0, margenNormal: den2 > 0 ? ((ganancia2 + ret2) / den2) * 100 : 0 };
 }
 // ── CUOTAS O MÁS BARATO SIN CUOTAS: EL PUNTO MEDIO (06/10/2026) ─────────────────────────────
 // Él: *"si el mejor vendedor tiene cuotas hay que poner cuotas y pagar como hace él. Pero nosotros no
@@ -9703,7 +10150,10 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
     // Lo que no se encontró en ML con el nombre viejo (sin catálogo exacto / nadie lo vende) se vuelve a buscar con el nombre
     // traducido aunque esté fresco (`qv` = versión del traductor con que se buscó).
     const _rebuscar = esLista && (e.sc || e.sv || e.noEs) && Number(e.qv || 0) !== LISTA_NOMBRE_VER;   // noEs: se busca de nuevo, sin el catálogo rechazado
-    const _fresco = e.t && ahora - e.t < (e.nm ? PYCAT_REMEDIR_DIAS : pycatRemedirDias(e)) * 864e5 && !(e.uMed != null && Math.abs(e.uMed - _uNow) >= 0.005);
+    // 1.5a (21/10/2026): lo medido con la cuenta de antes del peor caso (`cv` ≠ `CAND_CALC_VER`) y que estaba cerca de dar (20%+) se
+    // vuelve a medir: con la retención restada puede dejar de dar.
+    const _cuentaVieja = e.m != null && Number(e.m) >= 20 && Number(e.cv || 0) !== CAND_CALC_VER;
+    const _fresco = e.t && ahora - e.t < (e.nm ? PYCAT_REMEDIR_DIAS : pycatRemedirDias(e)) * 864e5 && !(e.uMed != null && Math.abs(e.uMed - _uNow) >= 0.005) && !_cuentaVieja;
     if (e.nm && _fresco) { cuenta.noDeja++; continue; }
     if (!_rebuscar && _fresco) { cuenta.frescos++; continue; }
     cola.push([cod, e]);
@@ -9821,13 +10271,14 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
         let h = ''; try { h = new URL(u).hostname.toLowerCase(); } catch { h = ''; } upd.mf = (h === 'mlstatic.com' || h.endsWith('.mlstatic.com')) ? u : null; }
       if (!pi) { upd.m = null; upd.sv = 1; res.sinVend++; console.log(`  · catálogo sin vendedores · ${e.n.slice(0, 60)} → ${upd.mi}`); if (aplicar) await db.patch(RUTA + '/' + cod, upd); continue; }
       upd.sv = null; upd.mp = Math.round(pi.precio); upd.mv = ofertas.length; upd.afu = piAfuera ? 1 : null;   // 1 = medido contra los de afuera +20%
+      upd.pp = pi.promoPct || null;   // 6.D5: el más barato está en promo (−N%): su precio puede volver a subir
       const cuoA = cuotasDeOferta(pi.ref); const cuoPct = cuoA ? CUOTAS_PCT_ML[cuoA] || 0 : 0;
       const puesto = esLista ? Math.round(Number(e.p) * (1 + (Number(opts.rec) || 0) / 100) / tc * 100) / 100 : Math.round(e.u * RECARGO_PAR * 100) / 100;
       const cn = cuentaNuevoDe({ nombre: e.n, mlTit: upd.mt });
       const r = await cuentaCandidatoMejor(Math.min(pi.precio, TECHO_DURO), pi.ref.category_id, puesto, tc, monoP, feeAt, cuoPct, cn);
       if (!r) { res.err++; continue; }
-      upd.m = Math.round(r.margen * 10) / 10; res.medidos++;
-      console.log(`  · ${String(upd.m.toFixed(1)).padStart(6)}% · ${e.n.slice(0, 55)} · ${esLista ? money(Number(e.p)) : 'US$ ' + e.u} → ${upd.mi} "${upd.mt.slice(0, 50)}" a ${money(upd.mp)}${upd.afu ? ' · 🌎 sólo lo venden de afuera: medido contra ellos +' + Math.round(RECARGO_INTER * 100) + '%' : ''}${upd.rp ? ' · ⚠️ ' + upd.rp.slice(0, 60) : ''}`);
+      upd.m = Math.round(r.margen * 10) / 10; upd.cv = CAND_CALC_VER; res.medidos++;
+      console.log(`  · ${String(upd.m.toFixed(1)).padStart(6)}% · ${e.n.slice(0, 55)} · ${esLista ? money(Number(e.p)) : 'US$ ' + e.u} → ${upd.mi} "${upd.mt.slice(0, 50)}" a ${money(upd.mp)}${upd.afu ? ' · 🌎 sólo lo venden de afuera: medido contra ellos +' + Math.round(RECARGO_INTER * 100) + '%' : ''}${upd.pp ? ' · 🏷️ el más barato está en promo −' + upd.pp + '%' : ''}${upd.rp ? ' · ⚠️ ' + upd.rp.slice(0, 60) : ''}`);
       const piso = candPisoDe({ nombre: e.n, mlTit: upd.mt });
       const loc = RE_CAND_PERF.test(`${e.n} ${upd.mt}`) ? perfLocalPct(puesto * tc, upd.mp) : null;
       // 📋 Listas son SÓLO para ML (18/10/2026, regla suya): ahí el % del local no hace pasar nada.
@@ -10261,6 +10712,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
         console.log(`      ⚠️  ninguno de los ${_pi.sinFull} vendedores tiene Full: mido contra el más barato a secas (${money(Math.round(mlPrecio))})`);
       }
       if (_pi && _pi.conFlex) console.log(`      (${_pi.conFlex} de los que no tienen Full usan FLEX: despachan el mismo día desde su casa, así que compiten parecido)`);
+      if (_pi && _pi.promoPct) console.log(`      🏷️ el más barato está EN PROMO (−${_pi.promoPct}%, tachado ${money(Math.round(Number(_pi.ref.original_price) || 0))}): cuando termine puede volver a subir; el margen de abajo es contra el precio de promo`);
       // El MÁS CARO de la ficha. Con el más barato arma el RANGO, que es lo único honesto que se
       // puede decir de "a cuánto se vende" en un catálogo donde todavía no vendemos: la lista
       // NO dice cuál gana la caja (probado el 18/09).
@@ -10414,6 +10866,8 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
         mlSinFull: _pi && _pi.baratoSinFull ? Math.round(_pi.baratoSinFull) : null,
         mlConFull: _pi ? _pi.conFull : null,
         mlFlex: _pi ? _pi.conFlex : null,
+        mlPromoPct: _pi && _pi.promoPct ? _pi.promoPct : null,   // 6.D5: el que pone el precio está en promo (−N%)
+        mlSinPromo: _pi && _pi.promoPct ? Math.round(Number(_pi.ref.original_price) || 0) : null,
         margen: Math.round(margen * 10) / 10, ganancia: Math.round(ganancia),
         mlCuotasPct: cuoPct, mlCuotas: cuotas > 0 ? Math.round(cuotas) : null, mlCuotasAuto: cuoAuto || null,
         // Cómo conviene pelear y en qué cuenta se midió (06/10/2026): 'sincuotas' = más barato sin cuotas.
@@ -15052,8 +15506,21 @@ async function main() {
     // Sólo lee salvo `:go`. No imprime datos de compradores: son cargos de la cuenta.
     if (/^cargosmes(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const _ps = String(process.env.BILLING_PROBE).split(':').map((x) => x.trim()).slice(1);
+      // 6.D3 (etapa 6, eligió la a, 21/10/2026): `:auto` es el que corre solo en ml-daily. Sólo del 1 al 5 de cada mes (hora de
+      // acá), sólo el mes que cerró, y sólo si todavía no quedó cargado ese mes (`mlapi/cargosmes/<AAAA_MM>`, se anota al releer
+      // bien). Si alguna cuenta no se pudo leer no se carga nada y la noche siguiente lo reintenta; si ya hay un gasto de Full
+      // cargado a mano ese mes, no lo duplica (la regla de abajo).
+      const AUTO = _ps.includes('auto');
+      if (AUTO) {
+        const _ar = new Date(Date.now() - 3 * 3600e3), dia = _ar.getUTCDate();
+        const ymG = `${_ar.getUTCFullYear()}_${String(_ar.getUTCMonth() + 1).padStart(2, '0')}`;
+        if (dia > 5) { console.log(`🧾 Cargos de Full del mes: hoy es ${dia}, sólo se cargan solos del 1 al 5. Nada que hacer.`); return; }
+        let hecho = null; try { hecho = await db.get('mlapi/cargosmes/' + ymG); } catch { console.log('🧾 no pude leer si ya se cargó el mes: no hago nada (sin saberlo podría duplicar)'); process.exitCode = 1; return; }
+        if (hecho && hecho.ok) { console.log(`🧾 Cargos de Full de ${ymG}: ya quedaron cargados el ${new Date(Number(hecho.ts) - 3 * 3600e3).toISOString().slice(0, 10)}. Nada que hacer.`); return; }
+        if (!_ps.includes('go')) _ps.push('go');
+      }
       const GO = _ps.includes('go');
-      const ymArg = _ps.find((x) => /^\d{4}_\d{2}$/.test(x));
+      const ymArg = AUTO ? null : _ps.find((x) => /^\d{4}_\d{2}$/.test(x));
       const nMeses = Math.max(1, Math.min(12, parseInt(_ps.find((x) => /^\d{1,2}$/.test(x)) || '1', 10) || 1));
       if (GO && nMeses > 1) { console.log('Con :go va UN solo mes (el gasto se carga mes por mes).'); return; }
       const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -15118,13 +15585,15 @@ async function main() {
       // El período de ML de un mes se carga en el MES SIGUIENTE, como lo venía cargando él: los "cargos de Full de agosto"
       // ($186.885, período 2026-08-01) están en los gastos de septiembre. Se cobran después de cerrar el período.
       const k = periodos[0], _sig = new Date(Date.UTC(+k.slice(0, 4), +k.slice(5, 7), 1)), ym = _sig.toISOString().slice(0, 7).replace('-', '_');
-      if (faltan.length) { console.log(`\n✗ No cargo el gasto: falta leer ${faltan.length} cuenta(s). Un gasto a medias se lee como completo.`); return; }
+      if (faltan.length) { console.log(`\n✗ No cargo el gasto: falta leer ${faltan.length} cuenta(s). Un gasto a medias se lee como completo.`); if (AUTO) process.exitCode = 1; return; }
       const compras = (await db.get('cyc/compras')) || {};
       const aMano = Object.entries(compras).filter(([id, g]) => g && !id.startsWith('fullml_') && String(g.dayKey || '').startsWith(ym)
         && (/almacenamiento|stock antiguo|cargos? de full|retiro de stock/i.test(String(g.desc || '') + ' ' + String(g.cat || ''))
           // + la regla de la lista de Gastos de la web (categoría Envios con full/almacenamiento/stock antiguo/retiro), etapa 2 20/10/2026
           || (String(g.cat || '') === 'Envios' && /almacenamiento|full|stock antiguo|retiro/i.test(String(g.desc || '')))));
-      if (aMano.length) { console.log(`\n✗ No cargo: ya hay ${aMano.length} gasto(s) de Full cargado(s) a mano en ${ym} (${aMano.map(([, g]) => money(g.monto || 0) + ' ' + String(g.desc || '').slice(0, 30)).join(' · ')}). Sería contarlo dos veces.`); return; }
+      if (aMano.length) { console.log(`\n✗ No cargo: ya hay ${aMano.length} gasto(s) de Full cargado(s) a mano en ${ym} (${aMano.map(([, g]) => money(g.monto || 0) + ' ' + String(g.desc || '').slice(0, 30)).join(' · ')}). Sería contarlo dos veces.`);
+        if (AUTO) try { await db.set('mlapi/cargosmes/' + ym, { ts: Date.now(), ok: true, aMano: aMano.length }); } catch { /* la noche siguiente lo vuelve a mirar */ }
+        return; }
       const upd = {};
       for (const label of labels) { const o = (full[label] || {})[k] || {}; const t = Math.round(Object.values(o).reduce((a, b) => a + b, 0));
         const id = `fullml_${ym}_${label.toLowerCase()}`;
@@ -15135,6 +15604,8 @@ async function main() {
       const rel = (await db.get('cyc/compras')) || {};
       const ok = Object.entries(upd).every(([id, v]) => v === null ? !rel[id] : rel[id] && Math.round(rel[id].monto) === v.monto);
       console.log(`\n${ok ? '✓' : '✗'} Gasto de Full de ${ym} ${ok ? 'cargado y releído' : 'NO quedó igual al releer'}: ${Object.values(upd).filter(Boolean).map((v) => v.desc.split(' · ')[1] + ' ' + money(v.monto)).join(' · ')}`);
+      if (ok) { try { await db.set('mlapi/cargosmes/' + ym, { ts: Date.now(), ok: true, total: Math.round(Object.values(upd).filter(Boolean).reduce((a, v) => a + v.monto, 0)) }); } catch { console.log('⚠️ no pude anotar que el mes quedó cargado: mañana lo vuelve a cargar (mismo id, no duplica)'); } }
+      else if (AUTO) process.exitCode = 1;
       return;
     }
     // BILLING_PROBE=cargosfull[:<cuenta>][:go] → ¿QUÉ PRODUCTOS PAGAN ALMACENAMIENTO Y STOCK ANTIGUO? (04/10/2026)
@@ -15960,6 +16431,7 @@ async function main() {
           if (sh.free_shipping != null) partes.push(`free_shipping=${sh.free_shipping}`);
           if (o.international_delivery_mode != null) partes.push(`international_delivery_mode=${o.international_delivery_mode}`);
           if (o.listing_type_id != null) partes.push(`tipo=${o.listing_type_id}`);
+          if (o.original_price != null) partes.push(`original_price=${o.original_price}${promoDeOferta(o) ? ' (EN PROMO −' + promoDeOferta(o) + '%)' : ''}`);
           const dir = (o && o.seller_address) || {};
           if (dir.country && dir.country.id) partes.push(`pais=${dir.country.id}`);
           if (dir.state && dir.state.name) partes.push(`provincia=${dir.state.name}`);
@@ -17929,6 +18401,15 @@ async function main() {
     // Para qué sirve el número que da: una publicación que PIERDE la caja no vende aunque esté
     // perfecta de precio, de stock y de margen — el comprador ni la ve. Es la diferencia entre
     // "hay que tocarle el precio" y "no hay nada que tocar acá".
+    // BILLING_PROBE=reposfull[:go] → 6.D1 (21/10/2026). LO QUE ML RECOMIENDA MANDAR A FULL, a mano (lo mismo que corre solo una vez
+    // por día en la vuelta de la hora). Sin `:go` sólo muestra (no escribe `cyc/fullreco`). No toca ML: sólo lee la reposición.
+    if (/^reposfull(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const goR = /:go\b/.test(String(process.env.BILLING_PROBE));
+      const rf = await reposicionFullML(db, accounts, labels, DRY || !goR);
+      console.log(`=== REPOSICIÓN DE FULL SEGÚN ML ${goR ? '' : '(PRUEBA: no se guarda)'} ===`);
+      console.log(rf.error ? '⚠️ ' + rf.error : `${rf.leidos} leídos · ${rf.pronto || 0} piden reponer en ≤2 semanas · ${rf.fallas} sin leer · ${rf.pend} para la vuelta siguiente (los leídos hace menos de ${FULLRECO_CADA_H} h no se repiten)`);
+      return;
+    }
     if (/^cajacompra(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const soloCta = (String(process.env.BILLING_PROBE).split(':')[1] || '').trim() || null;
       const r = await cajaDeCompraML(db, accounts, labels, DRY, soloCta);
@@ -19176,14 +19657,16 @@ async function main() {
         const lineaDe = async (mla) => { if (!(mla in linC)) { try { linC[mla] = (await db.get('mlapi/linea/' + mla)) || {}; } catch { linC[mla] = null; } } return linC[mla]; };
         // Los períodos liquidando ya terminados (etapa 5, 20/10/2026): sin ellos un remate viejo volvía a contar como ritmo.
         let nsHist = {}; try { nsHist = (await db.get('cyc/nosubirhist')) || {}; } catch { nsHist = null; }
-        const cl = await clasificarRemates(db, vp, { nosubir, nosubirhist: nsHist || {}, rescv, autoprecio: apL, lineaDe });
+        // 5.1a: la estrategia vigente al venderse también prueba remate. Sin poder leerla, se conserva lo guardado (como sin la historia).
+        let estL = null; try { estL = (await db.get('cyc/estrategia')) || {}; } catch { estL = null; }
+        const cl = await clasificarRemates(db, vp, { nosubir, nosubirhist: nsHist || {}, rescv, autoprecio: apL, lineaDe, estrat: estL || {} });
         vRem = cl.mapa;
         let viejo = {}; try { viejo = (await db.get('cyc/ventaremate')) || {}; } catch { viejo = null; }
-        if ((cl.fallo.size || nsHist === null) && viejo === null) console.log(`⚠️ venta en remate: ${nsHist === null ? 'no pude leer cyc/nosubirhist' : cl.fallo.size + ' venta(s) sin poder leer su línea'} y no pude leer lo guardado: no escribo`);
+        if ((cl.fallo.size || nsHist === null || estL === null) && viejo === null) console.log(`⚠️ venta en remate: ${nsHist === null ? 'no pude leer cyc/nosubirhist' : estL === null ? 'no pude leer cyc/estrategia' : cl.fallo.size + ' venta(s) sin poder leer su línea'} y no pude leer lo guardado: no escribo`);
         else {
           for (const k of cl.fallo) { const [dk, id] = k.split('|'); if (viejo && viejo[dk] && viejo[dk][id]) (vRem[dk] = vRem[dk] || {})[id] = 1; }
           // Sin la historia no se sabe si una venta cayó en un remate ya terminado: se conserva lo guardado (no se pierde un remate).
-          if (nsHist === null) { console.log('⚠️ no pude leer cyc/nosubirhist: conservo las ventas en remate que ya estaban guardadas'); for (const [dk, o] of Object.entries(viejo || {})) for (const id of Object.keys(o || {})) (vRem[dk] = vRem[dk] || {})[id] = 1; }
+          if (nsHist === null || estL === null) { console.log(`⚠️ no pude leer ${nsHist === null ? 'cyc/nosubirhist' : 'cyc/estrategia'}: conservo las ventas en remate que ya estaban guardadas`); for (const [dk, o] of Object.entries(viejo || {})) for (const id of Object.keys(o || {})) (vRem[dk] = vRem[dk] || {})[id] = 1; }
           const nR = Object.values(vRem).reduce((a, o) => a + Object.keys(o).length, 0);
           const nB = Object.values(cl.info).filter((x) => !x.remate).length;
           console.log(`venta en remate (abajo de ${VENTA_REMATE_PCT}% y con prueba): ${nR} · abajo de ${VENTA_REMATE_PCT}% pero era demanda (cuentan): ${nB}${cl.fallo.size ? ' · sin poder leer la línea (queda lo de antes): ' + cl.fallo.size : ''}`);
@@ -23513,7 +23996,9 @@ async function main() {
       }
       for (const { b, label, t } of vivos) {
         if (b.listing_type_id !== 'gold_special' || b.status !== 'active') continue;
-        const precio = Math.round(b.price || 0); if (!(precio >= PMIN)) continue;
+        // 6.D2 (etapa 6, eligió la a): lo que pierde la caja POR CUOTAS (`mllinks.cajaPorCuotas`, lo marca el robot cada hora) entra
+        // aunque esté abajo del mínimo de precio: es justo el caso donde la gemela gana la caja sin bajar.
+        const precio = Math.round(b.price || 0); if (!(precio >= PMIN) && !(links[b.id] || {}).cajaPorCuotas) continue;
         const full = (b.shipping || {}).logistic_type === 'fulfillment'; const st = full ? (b.available_quantity || 0) : 0; if (!(st > 0)) continue;
         const L = links[b.id] || {}; const p = pIdx[L.prodId]; if (!p) continue;
         if (premHermana.has(L.prodId + '__' + label)) continue;
@@ -23533,13 +24018,13 @@ async function main() {
         }
         if (!fC) { sinLeer.push(b.id); continue; }
         const u = uds[b.id] || 0, ud = ult[b.id] ? Math.round((Date.now() - new Date(ult[b.id].replace(/_/g, '-') + 'T12:00:00-03:00')) / 864e5) : null;
-        filas.push({ mla: b.id, label, nom: String(L.title || b.title || '').slice(0, 46), precio, st, u, ud, ganCla, netaCla, P, ganP, netaP, ok, finEn: fP && fP.fin, cuo, caja: L.caja || '', cat: !!b.catalog_listing, vars: Array.isArray(b.variations) && b.variations.length > 1, margen: costo > 0 ? ganCla / (costo + precio * impPct + envio) * 100 : null });
+        filas.push({ mla: b.id, label, nom: String(L.title || b.title || '').slice(0, 46), precio, st, u, ud, ganCla, netaCla, P, ganP, netaP, ok, finEn: fP && fP.fin, cuo, caja: L.caja || '', porCuotas: !!L.cajaPorCuotas, cat: !!b.catalog_listing, vars: Array.isArray(b.variations) && b.variations.length > 1, margen: costo > 0 ? ganCla / (costo + precio * impPct + envio) * 100 : null });
       }
-      filas.sort((a, b) => (a.u - b.u) || (b.st * b.precio - a.st * a.precio));
+      filas.sort((a, b) => (b.porCuotas - a.porCuotas) || (a.u - b.u) || (b.st * b.precio - a.st * a.precio));
       console.log(`\n══ GEMELA PREMIUM · ${filas.length} Clásica(s) activa(s) con stock en Full, desde $${PMIN.toLocaleString('es-AR')}, sin Premium hermana ══`);
       console.log('   (solo lee · "misma plata neta" = misma ganancia por venta menos el 3% del facturado de más por el tope de H)\n');
       for (const f of filas) {
-        console.log(`• ${f.label.padEnd(8)} ${f.mla} · ${f.nom}${f.vars ? ' · CON VARIANTES' : ''}${f.cat ? ' · catálogo' : ''}${f.caja ? ' · caja ' + f.caja : ''}`);
+        console.log(`• ${f.label.padEnd(8)} ${f.mla} · ${f.nom}${f.vars ? ' · CON VARIANTES' : ''}${f.cat ? ' · catálogo' : ''}${f.caja ? ' · caja ' + f.caja : ''}${f.porCuotas ? ' · 💳 PIERDE LA CAJA POR CUOTAS, NO POR PRECIO' : ''}`);
         console.log(`    Clásica $${f.precio.toLocaleString('es-AR')} · ${f.st} u. Full · vendió ${f.u} en ${DIAS} d · última ${f.ud != null ? 'hace ' + f.ud + ' d' : 'nunca'} · deja $${Math.round(f.ganCla).toLocaleString('es-AR')}/venta${f.margen != null ? ' (' + f.margen.toFixed(1) + '%)' : ''}`);
         console.log(`    Premium ${f.P && f.ok ? '$' + f.P.toLocaleString('es-AR') + ` (+${((f.P / f.precio - 1) * 100).toFixed(1)}%) · deja $${Math.round(f.ganP).toLocaleString('es-AR')}/venta · neta $${Math.round(f.netaP).toLocaleString('es-AR')} vs $${Math.round(f.netaCla).toLocaleString('es-AR')} · cuotas ${f.finEn ? 'adentro de la comisión' : f.cuo + '% aparte'}` : '? (ML no dio la comisión o pasa el techo)'}`);
       }
@@ -25053,6 +25538,171 @@ async function main() {
         console.log(`   web: publica ${cta}=${pubCta} · pasara=${!!RX[p.id + '__' + sidW(cta)]} · nomandar=${!!NR[p.id + '__' + sidW(cta)]} → ${hay > 0 && (pubCta || RX[p.id + '__' + sidW(cta)]) && !NR[p.id + '__' + sidW(cta)] ? 'TENDRÍA QUE APARECER' : 'NO aparece'}`);
         if ((p.variantes || []).length) console.log(`   variantes: ${JSON.stringify(p.variantes).slice(0, 300)}`);
       }
+      return;
+    }
+    // BILLING_PROBE=publicar:<ficha>|cuenta=<cuenta>|precio=<pesos>[|catalogo=<MLA…>][|color=<variante>][|!piso][|go]
+    // (etapa 6 · A1, 21/10/2026, él: "probemos y me decís") → CLAUDE PUBLICA EN ML LO NUEVO DE UN PEDIDO, UNA POR VEZ.
+    // Hasta hoy la publicación la creaba él (*"solo armar la publicacion en cyc. ml la hago yo"*, 26/09). Esto la crea PAUSADA, en el
+    // catálogo CONFIRMADO de la ficha (el ✅ o la revisión de fotos del candidato de Paraguay, el `mi` confirmado de la lista, o el que
+    // le paso con `catalogo=` después de mirarlo), Clásica, con el precio de lanzamiento que decido. Sin `|go`: muestra todo lo que
+    // mandaría y le pide a ML que lo VALIDE (`POST /items/validate`, no crea nada) — así se sabe qué campos pide ML sin arriesgar nada.
+    // Con `|go`: valida, crea, la PAUSA en el acto y la relee; la vincula a la ficha (`cyc/mllinks`, con `catOk` = el catálogo usado)
+    // y anota la estrategia 🆕 lanzamiento. Cuando la caja llega a Full, la vuelta de la hora la activa (freno A2: precio decidido +
+    // catálogo confirmado + el piso). Frenos: una sola por corrida · la ficha no puede tener ya una publicación viva en esa cuenta ·
+    // techo $650.000 · el margen al precio pedido en el PEOR caso (comisión preguntada a ML, envío del lado de la barrera, IIBB de la
+    // cuenta, monotributo, 2% de retención) no puede quedar abajo del piso salvo `!piso` · sin dólar o sin costo no publica.
+    // RIESGO CONOCIDO: ML no deja crear una publicación ya pausada; entre el alta y la pausa (un par de segundos) queda activa con 1 u.
+    // de depósito. Si la pausa falla, lo dice fuerte y la vuelta de la hora la pausa igual (`pausarFuera`: no vendemos fuera de Full).
+    if (/^publicar(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _raw = String(process.env.BILLING_PROBE).replace(/^publicar:?/, '');
+      const partes = _raw.split('|').map((x) => x.trim()).filter(Boolean);
+      const GO = partes.includes('go'), PISO_A_MANO = partes.includes('!piso');
+      const kv = {}; for (const x of partes) { const m = x.match(/^([a-z]+)=(.*)$/i); if (m) kv[m[1].toLowerCase()] = m[2].trim(); }
+      const busca = partes.find((x) => !/^[a-z]+=/i.test(x) && x !== 'go' && x !== '!piso') || '';
+      const uso = 'Usá: publicar:<ficha (=nombre exacto o id)>|cuenta=<cuenta>|precio=<pesos>[|catalogo=<MLA…>][|color=<variante>][|!piso][|go]';
+      if (!busca || !kv.cuenta || !kv.precio) { console.log(uso); return; }
+      const nrmP = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+      const productsP = (await db.get('cyc/products')) || {};
+      const prodsP = Object.values(productsP).filter((x) => x && x.name);
+      const ex = busca.startsWith('='), q = nrmP(busca.replace(/^=/, ''));
+      const hitsP = productsP[busca] ? [productsP[busca]] : prodsP.filter((x) => (ex ? nrmP(x.name) === q : nrmP(x.name).includes(q)));
+      if (hitsP.length !== 1) { console.log(`❌ "${busca}" agarra ${hitsP.length} ficha(s)${hitsP.length ? ': ' + hitsP.slice(0, 8).map((x) => x.name).join(' | ') : ''}. No hago nada.`); return; }
+      const P = hitsP[0];
+      const label = labels.find((l) => l.toLowerCase() === kv.cuenta.toLowerCase());
+      if (!label) { console.log(`❌ No conozco la cuenta "${kv.cuenta}" (son: ${labels.join(', ')}).`); return; }
+      const precio = pesosArg(kv.precio);
+      const frenos = [], avisos = [];
+      if (!(precio > 0)) { console.log('❌ precio inválido.'); return; }
+      if (precio > TECHO_DURO) frenos.push(`pasa el techo de ${money(TECHO_DURO)}`);
+      if (precio % 10 !== 0) avisos.push('el precio no termina en 0 (los míos terminan en 90 o 990)');
+      // El color: si la ficha tiene colores, hay que decir cuál (cada color es su publicación).
+      const vsP = Array.isArray(P.variantes) ? P.variantes : Object.values(P.variantes || {});
+      const color = kv.color ? ofiColorDeFicha(P, kv.color) : '';
+      if (vsP.length && !kv.color) frenos.push(`la ficha tiene colores (${vsP.slice(0, 8).join(', ')}): decime cuál con |color=`);
+      if (kv.color && color == null) frenos.push(`la ficha no tiene el color "${kv.color}"`);
+      // ¿Ya hay una publicación viva de esta ficha (y color) en esa cuenta?
+      const linksP = (await db.get('cyc/mllinks')) || {};
+      const yaHay = Object.entries(linksP).filter(([m, e]) => e && e.prodId === P.id && e.cuenta === label && e.status !== 'closed' && (!color || !e.variant || nrmP(e.variant) === nrmP(color)));
+      if (yaHay.length) frenos.push(`esa ficha ya tiene publicación en ${label}: ${yaHay.slice(0, 4).map(([m, e]) => m + ' (' + (e.status || '?') + ')').join(', ')}`);
+      // El catálogo CONFIRMADO.
+      const confP = new Set(); if (P.mlCatalogo) confP.add(String(P.mlCatalogo).toUpperCase());
+      try { for (const c of Object.values((await db.get('cyc/candidatos_py')) || {})) if (c && c.prodId === P.id && candCatChequeado(c)) confP.add(candCatDe(c)); }
+      catch { frenos.push('no pude leer los candidatos para saber el catálogo confirmado'); }
+      const catPedido = kv.catalogo ? String(kv.catalogo).toUpperCase().replace(/^.*\/P\//, '').split(/[?#]/)[0] : '';
+      let cat = '';
+      if (catPedido) { if (!/^MLA\d+$/.test(catPedido)) frenos.push(`catalogo=${kv.catalogo}: no es un código de catálogo (MLA…)`); else { cat = catPedido; if (confP.size && !confP.has(cat)) frenos.push(`catalogo=${cat} no es el confirmado de la ficha (${[...confP].join(' / ')})`); if (!confP.size) avisos.push(`el catálogo ${cat} lo confirmo yo (la ficha no tenía uno confirmado): miralo antes del :go`); } }
+      else if (confP.size === 1) cat = [...confP][0];
+      else if (confP.size > 1) frenos.push(`la ficha tiene ${confP.size} catálogos confirmados (${[...confP].join(' / ')}): decime cuál con |catalogo=`);
+      else frenos.push('la ficha no tiene catálogo confirmado: confirmalo (✅ en Paraguay, listadato ok en Listas) o pasámelo con |catalogo= después de mirarlo');
+      // Permiso de la cuenta.
+      const accP = accounts[label]; if (!accP?.refresh_token) { console.log(`❌ ${label}: sin permiso cargado.`); return; }
+      let tokP; try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, accP.refresh_token); await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() }); tokP = t.access_token; }
+      catch { console.log(`❌ ${label}: no pude renovar el permiso.`); return; }
+      // El catálogo de ML: nombre, fotos, y la categoría de las ofertas que ya hay.
+      let prodML = null, ofs = [];
+      if (cat) {
+        try { prodML = await mlGet('/products/' + cat, tokP); } catch (e) { frenos.push(`ML no me dio el catálogo ${cat} (${String(e.message || e).slice(0, 60)})`); }
+        try { ofs = ((await mlGet('/products/' + cat + '/items', tokP)) || {}).results || []; } catch { ofs = []; }
+      }
+      const catCnt = {}; for (const o of ofs) if (o && o.category_id) catCnt[o.category_id] = (catCnt[o.category_id] || 0) + 1;
+      let categoria = Object.entries(catCnt).sort((a, b) => b[1] - a[1]).map(([k]) => k)[0] || (prodML && prodML.category_id) || '';
+      if (cat && !categoria && prodML && prodML.name) { try { const d = await mlGet('/sites/MLA/domain_discovery/search?limit=1&q=' + encodeURIComponent(String(prodML.name).slice(0, 80)), tokP); categoria = (Array.isArray(d) && d[0] && d[0].category_id) || ''; } catch { /* sin categoría */ } }
+      if (cat && !categoria) frenos.push('no pude saber la categoría de ML de ese catálogo');
+      // El margen al precio pedido, en el PEOR caso (la misma cuenta de los candidatos: `cuentaCandidato`).
+      const tcP = parseFloat((await db.get('cyc/finanzas/tipo_cambio')) || 0) || 0;
+      const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+      const pisoP = await pisoConfig(db);
+      let cuenta = null;
+      if (!(tcP > 0)) frenos.push('sin dólar cargado: no mido el margen');
+      else if (!(monoP > 0)) frenos.push('no leí el monotributo: no mido el margen');
+      else {
+        const costoUSD = costoPesos(P, 1, tcP).costo / tcP;
+        if (!(costoUSD > 0)) frenos.push('la ficha no tiene costo');
+        else if (categoria) {
+          const feeAtP = async (pr, lt, cx) => { try { const d = await mlGet(`/sites/MLA/listing_prices?price=${Math.round(pr)}&listing_type_id=${lt}&category_id=${cx}`, tokP); const o = Array.isArray(d) ? d[0] : d; return typeof o?.sale_fee_amount === 'number' ? o.sale_fee_amount : null; } catch { return null; } };
+          cuenta = await cuentaCandidato(precio, 'gold_special', categoria, costoUSD, tcP, monoP, feeAtP, 0, label);
+          if (!cuenta) frenos.push('ML no contestó la comisión a ese precio: no lo mido a medias');
+          else {
+            const base = cuenta.costo + cuenta.impuestos + cuenta.envio;
+            cuenta.peor = base > 0 ? (cuenta.ganancia - precio * PEOR_RET_PCT) / base * 100 : 0;
+            if (cuenta.peor < pisoP && !PISO_A_MANO) frenos.push(`a ${money(precio)} queda en ${cuenta.peor.toFixed(1)}% en el peor caso, abajo del piso del ${pisoP}% (a propósito: |!piso)`);
+          }
+        }
+      }
+      // Lo que se mandaría. Título y fotos del catálogo (ML los toma del catálogo en una publicación de catálogo).
+      const fotos = ((prodML && prodML.pictures) || []).map((x) => x && (x.secure_url || x.url)).filter((u) => /^https:\/\//.test(String(u || ''))).slice(0, 6);
+      const body = { site_id: 'MLA', title: String((prodML && prodML.name) || P.name).slice(0, 60), category_id: categoria, price: precio, currency_id: 'ARS', available_quantity: 1, buying_mode: 'buy_it_now', listing_type_id: 'gold_special', condition: 'new', catalog_product_id: cat || undefined, catalog_listing: true, ...(fotos.length ? { pictures: fotos.map((u) => ({ source: u })) } : {}) };
+      console.log(`══ PUBLICAR EN ML (${GO ? 'DE VERDAD' : 'PRUEBA'}) · ${P.name}${color ? ' · ' + color : ''} · ${label} ══`);
+      console.log(`   catálogo ${cat || '—'}${prodML ? ' · «' + String(prodML.name || '').slice(0, 70) + '»' : ''} · categoría ${categoria || '—'} · ${ofs.length} oferta(s) en el catálogo${ofs.length ? ' · la más barata ' + money(Math.min(...ofs.map((o) => Number(o.price) || Infinity))) : ''}`);
+      if (cuenta) console.log(`   a ${money(precio)}: ML se queda ${money(Math.round(cuenta.fee))} · envío ${money(Math.round(cuenta.envio))} · IIBB+mono ${money(Math.round(cuenta.impuestos))} · costo ${money(Math.round(cuenta.costo))} → deja ${money(Math.round(cuenta.ganancia))} · ${cuenta.margen.toFixed(1)}% (peor caso ${cuenta.peor.toFixed(1)}%)`);
+      console.log(`   mandaría POST /items ${JSON.stringify({ ...body, pictures: fotos.length ? `[${fotos.length} fotos del catálogo]` : undefined })}`);
+      for (const a of avisos) console.log(`   ⚠️ ${a}`);
+      if (frenos.length) { console.log(`\n🛑 NO SE PUBLICA: ${frenos.join(' · ')}`); return; }
+      // VALIDAR antes (no crea nada): sirve también para aprender qué campos pide ML.
+      let val = null, valTxt = '';
+      try { const r = await fetch(ML_API + '/items/validate', { method: 'POST', headers: { Authorization: 'Bearer ' + tokP, 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(30000) }); val = r.status; valTxt = (await r.text()).slice(0, 1500); } catch (e) { valTxt = String(e.message || e).slice(0, 200); }
+      console.log(`   validación de ML: ${val === 204 || val === 200 ? '✓ la aceptaría' : '✗ ' + (val || 'sin respuesta') + ' ' + valTxt}`);
+      if (!(val === 204 || val === 200)) { console.log('\n🛑 NO SE PUBLICA: ML no valida el pedido (arriba dice qué falta).'); return; }
+      if (!GO) { console.log('\n(prueba: sin |go no se crea nada)'); return; }
+      const r = await fetch(ML_API + '/items', { method: 'POST', headers: { Authorization: 'Bearer ' + tokP, 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(30000) });
+      const txt = await r.text(); _anotarEscrituraML(r, P.id, 'publicar un producto nuevo', txt);
+      if (!r.ok) { console.log(`\n❌ ML no la creó: ${r.status} ${txt.slice(0, 1500)}`); return; }
+      let nuevo = {}; try { nuevo = JSON.parse(txt); } catch { nuevo = {}; }
+      const nid = String(nuevo.id || '');
+      if (!/^MLA\d+$/.test(nid)) { console.log(`⚠️ ML contestó ${r.status} sin un id que entienda: ${txt.slice(0, 600)}`); return; }
+      // PAUSARLA EN EL ACTO (no vendemos fuera de Full).
+      let pausada = false, detP = '';
+      try { const rp = await fetch(ML_API + '/items/' + nid, { method: 'PUT', headers: { Authorization: 'Bearer ' + tokP, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'paused' }) }); if (!rp.ok) detP = rp.status + ' ' + (await rp.text()).slice(0, 200); _anotarEscrituraML(rp, nid, 'pausar la publicación recién creada', detP); }
+      catch (e) { detP = String(e.message || e).slice(0, 120); }
+      await new Promise((ok) => setTimeout(ok, 3000));
+      let b2 = null; try { b2 = await mlGet('/items/' + nid, tokP); } catch (e) { console.log(`⚠️ no pude releer ${nid}: ${String(e.message || e).slice(0, 150)}`); }
+      pausada = !!(b2 && b2.status === 'paused');
+      console.log(`\n✓ Creada ${nid} · ${b2 ? b2.listing_type_id + ' · ' + b2.status + ' · ' + money(Math.round(b2.price || 0)) + ' · catálogo ' + (b2.catalog_product_id || 'no') + ' · ' + (b2.permalink || '') : 'sin releer'}`);
+      if (!pausada) console.log(`🚨 NO QUEDÓ PAUSADA${detP ? ' (' + detP + ')' : ''}: pausala YA en ML (está activa fuera de Full con 1 u.). La vuelta de la hora la pausa igual.`);
+      const e2 = { prodId: P.id, cuenta: label, title: (b2 && b2.title) || body.title, status: (b2 && b2.status) || 'paused', upid: (b2 && b2.user_product_id) || null, catalogo: (b2 && b2.catalog_product_id) || cat || null, catalogoListing: true, catOk: (b2 && b2.catalog_product_id) || cat, catOkTs: Date.now(), altaTs: Date.now(), altaClaude: true, altaSinVender: true, ...(color ? { variant: color } : {}) };
+      try { await db.patch('cyc/mllinks/' + nid, e2); const rl = await db.get('cyc/mllinks/' + nid); console.log(rl && rl.prodId === P.id ? `   ✓ vinculada a la ficha ${P.name}${color ? ' · ' + color : ''}` : '   ⚠️ no quedó vinculada: vincular a mano'); } catch { console.log('   ⚠️ no pude vincularla en cyc/mllinks'); }
+      const okE = await guardarEstrategia(db, nid, 'nuevo', `Lanzamiento a ${money(precio)}: la publiqué yo (Claude) en el catálogo confirmado ${e2.catOk}${cuenta ? ', deja ' + cuenta.margen.toFixed(0) + '% (' + cuenta.peor.toFixed(0) + '% en el peor caso)' : ''}. Se activa sola cuando llegue la caja a Full.`);
+      console.log(okE ? '   ✓ estrategia 🆕 lanzamiento anotada' : '   ⚠️ no pude anotar la estrategia');
+      return;
+    }
+    // BILLING_PROBE=catok:<MLA>=<ok|sincat|MLA…|->[;<MLA>=…][;go] (etapa 6 · A2, 21/10/2026) → "EL CATÁLOGO DE ESTA PUBLICACIÓN NUEVA
+    // ESTÁ BIEN". Lo nuevo (ni la publicación ni su ficha vendieron nunca) no se activa solo si no está en el catálogo confirmado de
+    // la ficha (`activarPausadasFull`). Cuando no hay uno confirmado (un producto de Bs As, una ficha vieja), lo confirmo yo acá
+    // mirando la publicación: `ok` = el catálogo que tiene HOY en ML (se lee en el momento) · `MLA…` = tiene que ser ése (si ML dice
+    // otro, no escribe) · `sincat` = va sin catálogo a propósito · `-` saca la marca. Queda en `cyc/mllinks/<MLA>/catOk` (+ `catOkTs`).
+    // Sin `;go` sólo muestra.
+    if (/^catok(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _raw = String(process.env.BILLING_PROBE).replace(/^catok:?/, '');
+      const GO = /(^|;)go$/.test(_raw);
+      const pares = _raw.replace(/(^|;)go$/, '').split(';').map((x) => x.trim()).filter(Boolean);
+      if (!pares.length) { console.log('Usá: catok:<MLA>=<ok|sincat|MLA…|->[;<MLA>=…][;go]'); return; }
+      const linksC = (await db.get('cyc/mllinks')) || {};
+      const toksC = {}, upd = {}, prob = [];
+      for (const x of pares) {
+        const m = x.match(/^(MLA\d+)=(ok|sincat|-|MLA\d+)$/i);
+        if (!m) { prob.push(`"${x}" → se espera <MLA>=<ok|sincat|MLA…|->`); continue; }
+        const mla = m[1].toUpperCase(), q = m[2].toLowerCase(), e = linksC[mla];
+        if (!e || !e.cuenta) { prob.push(`${mla}: no está en el panel (corré altanuevas o vincular primero)`); continue; }
+        if (q === '-') { upd[mla] = null; console.log(`  ${mla} · ${e.cuenta} · ${String(e.title || '').slice(0, 50)} → saco la marca (era ${e.catOk || 'nada'})`); continue; }
+        if (!toksC[e.cuenta]) {
+          const acc = accounts[e.cuenta]; if (!acc?.refresh_token) { prob.push(`${mla}: sin permiso de ${e.cuenta}`); continue; }
+          try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + e.cuenta, { refresh_token: t.refresh_token, updated_ts: Date.now() }); toksC[e.cuenta] = t.access_token; }
+          catch { prob.push(`${mla}: no pude renovar el permiso de ${e.cuenta}`); continue; }
+        }
+        let b; try { b = await mlGet('/items/' + mla + '?attributes=id,title,status,catalog_product_id,catalog_listing', toksC[e.cuenta]); } catch (er) { prob.push(`${mla}: ML no contestó la publicación (${String(er.message || er).slice(0, 60)})`); continue; }
+        const cat = String(b.catalog_product_id || '').toUpperCase();
+        let val = null;
+        if (q === 'sincat') { if (cat) { prob.push(`${mla}: dijiste sin catálogo y ML dice que está en el catálogo ${cat}`); continue; } val = 'sincat'; }
+        else if (q === 'ok') { if (!cat) { prob.push(`${mla}: no está en ningún catálogo (si es a propósito: =sincat)`); continue; } val = cat; }
+        else { if (cat !== q.toUpperCase()) { prob.push(`${mla}: dijiste ${q.toUpperCase()} y ML dice ${cat || 'sin catálogo'}`); continue; } val = cat; }
+        upd[mla] = val;
+        console.log(`  ${mla} · ${e.cuenta} · ${String(b.title || e.title || '').slice(0, 50)} · ${b.status} → catálogo confirmado: ${val === 'sincat' ? 'va sin catálogo a propósito' : val}`);
+      }
+      if (prob.length) { console.log('❌ NO ESCRIBO NADA:'); prob.forEach((x) => console.log('   ' + x)); return; }
+      if (!GO) { console.log('\nNo se guardó nada (falta ;go).'); return; }
+      for (const [mla, val] of Object.entries(upd)) await db.patch('cyc/mllinks/' + mla, { catOk: val, catOkTs: val ? Date.now() : null });
+      let ok = 0; for (const [mla, val] of Object.entries(upd)) { const r = await db.get('cyc/mllinks/' + mla + '/catOk'); if ((r || null) === val) ok++; }
+      console.log(`\n${ok === Object.keys(upd).length ? '✓' : '⚠️'} ${ok} de ${Object.keys(upd).length} guardada(s) y releída(s). La vuelta de la hora ya puede activarlas si tienen stock en Full, precio decidido y llegan al piso.`);
       return;
     }
     if (String(process.env.BILLING_PROBE || '').startsWith('vincular:')) {
@@ -33675,17 +34325,22 @@ async function main() {
       const $ = (x) => (x == null || !isFinite(x)) ? '—' : '$' + Math.round(x).toLocaleString('es-AR');
       const fK = (k) => k ? k.slice(8, 10) + '/' + k.slice(5, 7) : '?';
       let ok = 0, sinLinea = 0, mal = 0, guard = 0, fueraCta = 0; const out = {};
+      // 5.2a (21/10/2026): las publicaciones que comparten el stock (gemela + Clásica, repetidas) se miden juntas (`lineaJuntaStock`).
+      const LINF = {}; const lineaDeF = async (m) => { if (!(m in LINF)) { try { LINF[m] = (await db.get('mlapi/linea/' + m)) || {}; } catch { LINF[m] = null; } } return LINF[m]; };
+      let nJuntas = 0;
       for (let i = 0; i < sel.length; i += 20) {
         await Promise.all(sel.slice(i, i + 20).map(async ([mla, e]) => {
-          let d; try { d = (await db.get('mlapi/linea/' + mla)) || {}; } catch { mal++; return; }
+          const d = await lineaDeF(mla); if (d == null) { mal++; return; }
           if (!Object.keys(d).length) { if (porCuenta && e.status !== 'active') { fueraCta++; return; } sinLinea++; return; }
           if (porCuenta && !entraCuenta(e, d)) { fueraCta++; return; }
           const pr = pIdx[e.prodId]; const cta = String(e.cuenta || '').toLowerCase();
           const notas = { ...(notasT[mla] || {}) };
           const ex = expC[mla]; if (ex && ex.simple && Number(ex.ts) > 0 && !notas[ex.ts]) notas[ex.ts] = { t: ex.simple, tipo: ex.tipo || 'nota' };
-          const f = armarFicha({ mla, d, e, cu: costoPesos(pr, 1, tc).costo, imp: ((ML_EXTRA_PCT[cta] || 4) + _monoFi) / 100, cambios: camb[mla] || [], notas, hoyK, tach: TCH.tach[mla], parc: TCH.parc[mla], extra: { pr, links, reclamos: recF, techo: tfF, netopub: npF, noconsigo: ncF, opiniones: opF, tc, lotesfull: lfF, cajasLl: cajasF, stockhist: shF, cfg: cfgF, est: estF[mla] || null } });
+          const J = await lineaJuntaStock(links, pIdx, mla, d, lineaDeF); if (J.con.length) nJuntas++;
+          const f = armarFicha({ mla, d: J.d, juntaCon: J.con, e, cu: costoPesos(pr, 1, tc).costo, imp: ((ML_EXTRA_PCT[cta] || 4) + _monoFi) / 100, cambios: camb[mla] || [], notas, hoyK, tach: TCH.tach[mla], parc: TCH.parc[mla], extra: { pr, links, reclamos: recF, techo: tfF, netopub: npF, noconsigo: ncF, opiniones: opF, tc, lotesfull: lfF, cajasLl: cajasF, stockhist: shF, cfg: cfgF, est: estF[mla] || null } });
           f.producto = String(pr.name || '').slice(0, 80);
-          if (faltaF.length) f.incompleta = 'armada sin: ' + faltaF.join(', ');
+          const faltaJ = J.sinLeer.length ? [`la línea de ${J.sinLeer.join(', ')} (comparte el stock: sus ventas no se sumaron)`] : [];
+          if (faltaF.length || faltaJ.length) f.incompleta = 'armada sin: ' + faltaF.concat(faltaJ).join(', ');
           out[mla] = f; ok++;
         }));
       }
@@ -33695,6 +34350,7 @@ async function main() {
         console.log(`\n■ ${mla} · ${f.producto}${f.variante ? ' · 🎨 ' + f.variante : ''} · ${f.cuenta} · "${f.nom}"`);
         console.log(`   hoy: ${$(r.p)} · ${r.est || '?'} · ${r.st != null ? r.st + ' u. en Full' : 'stock ?'} · 30 d: ${r.u30} u. (${r.r30 ?? '—'} por día con stock, ${$(r.pd30)} por día) · costo ${$(r.cu)} · línea guardada ${fK(r.primero)} a ${fK(r.ultimo)} (${r.dias} días${r.inc ? ', ' + r.inc + ' incompletos' : ''})`);
         console.log(`   RAYAS (la barrita de la web): ${f.rayas ? `💰 piso ${$(f.rayas.piso)} · 🔴 techo ${f.rayas.techo ? $(f.rayas.techo) : 'sin medir'}` : 'sin 💰 medido (no se dibuja barrita)'}`);
+        if (f.juntaCon) console.log(`   🔗 medida JUNTO con ${f.juntaCon.join(', ')} (mismo stock: gemela o repetida): las ventas de las dos cuentan y la plata parada va una vez`);
         console.log('   LO QUE SABEMOS:'); if (!f.sabemos.length) console.log('    · nada medido todavía');
         for (const s of f.sabemos) console.log(`    · ${s.t === 'perdio' ? '⛔' : s.t === 'gano' ? '✅' : s.t === 'mejor' ? '🏆' : '🧪'} ${s.txt}`);
         console.log('   CAMBIOS Y CÓMO LES FUE:'); if (!f.cambios.length) console.log('    · ninguno anotado');
@@ -33719,6 +34375,7 @@ async function main() {
         console.log(`\n${todoOk ? '✓' : '⚠️'} ${guard} de ${tocaba} fichas guardadas${mal ? ` (${mal} no las pude leer)` : ''} · releída la primera: ${!k0 ? '(ninguna)' : relOk ? 'ok' : 'NO COINCIDE'}`);
         if (!todoOk) { console.log(`\n${ok} fichas armadas · ${sinLinea} sin línea de tiempo todavía · ${mal} que no pude leer`); process.exit(1); }
       }
+      if (nJuntas) console.log(`🔗 ${nJuntas} ficha(s) medidas junto con las publicaciones que comparten su stock (gemela Premium + Clásica, repetidas)`);
       console.log(`\n${ok} fichas armadas · ${sinLinea} sin línea de tiempo todavía · ${mal} que no pude leer${faltaF.length ? ` · ⚠️ todas INCOMPLETAS (armadas sin: ${faltaF.join(', ')})` : ''}`);
       if (porCuenta) console.log(`${ok} de ${sel.length} publicaciones de la cuenta ${filtro.slice(7)} (${fueraCta} afuera: no están activas, sin stock en el último dato y sin ventas en 60 días)`);
       process.exit(mal && !ok ? 1 : 0);
@@ -33987,9 +34644,11 @@ async function main() {
       const cc = (await db.get('cyc/claudecambios')) || {};
       const tc = parseFloat(await db.get('cyc/finanzas/tipo_cambio')) || 0;
       // Etapa 2 (20/10/2026): `costoPesos` con los reclamos EN VIVO (como la web) y el monotributo vigente, no 2% a mano.
-      setDevLive((await db.get('cyc/ventaprod')) || {});
+      const _vpEm = (await db.get('cyc/ventaprod')) || {}; setDevLive(_vpEm);
       const _monoEm = await leerMonoPct(db);
       const pIdx = {}; for (const pr of products) pIdx[pr.id] = pr;
+      // 1.6a (21/10/2026): la plata parada de un stock compartido (gemela, repetidas) se reparte por lo que vende cada una.
+      const parteEm = partesStockDe(links, pIdx, u60PorMlaDe(_vpEm));
       const hoyK = dayKeyFromISO(Date.now());
       const desde = Date.now() - nDias * 864e5;
       const subas = Object.values(cc).filter((c) => c && c.mla && Number(c.a) > Number(c.de) && Number(c.ts) >= desde).sort((a, b) => a.ts - b.ts);
@@ -34009,7 +34668,7 @@ async function main() {
           const kFin = lista[i + 1] ? dayKeyFromISO(Number(lista[i + 1].ts)) : hoyK;
           const kIni = dayKeyFromISO(Number(c.ts) - 21 * 864e5);
           // 21/10/2026 · etapa 1: plata NETA (regla ⚖️, la misma cuenta de `armarFicha`: −$100/u, −3% facturado, −2%/mes del stock).
-          const tramo = (a, b) => { let dias = 0, u = 0, neto = 0, tot = 0, agot = 0, stD = 0; for (const k of ks) { if (k < a || k >= b) continue; const x = d[k]; if (!conSt(x)) { agot++; continue; } dias++; u += Number(x.u) || 0; neto += Number(x.neto) || 0; tot += Number(x.tot) || 0; stD += Math.max(0, Number(x.st) || 0); } const gan = neto - u * cu - tot * imp - u * PD_TRABAJO_U - tot * PD_TOPE_PCT - stD * cu * PD_CAPITAL_DIA; return { dias, u, agot, r: dias ? u / dias : null, pd: dias ? gan / dias : null, gu: u ? gan / u : null }; };
+          const tramo = (a, b) => { let dias = 0, u = 0, neto = 0, tot = 0, agot = 0, stD = 0; for (const k of ks) { if (k < a || k >= b) continue; const x = d[k]; if (!conSt(x)) { agot++; continue; } dias++; u += Number(x.u) || 0; neto += Number(x.neto) || 0; tot += Number(x.tot) || 0; stD += Math.max(0, Number(x.st) || 0); } const gan = neto - u * cu - tot * imp - u * PD_TRABAJO_U - tot * PD_TOPE_PCT - stD * cu * PD_CAPITAL_DIA * (parteEm[mla] ?? 1); return { dias, u, agot, r: dias ? u / dias : null, pd: dias ? gan / dias : null, gu: u ? gan / u : null }; };
           // el día de la suba no cuenta en ninguno de los dos lados (tiene horas a cada precio)
           const kDesp = dayKeyFromISO(Number(c.ts) + 864e5);
           const A = tramo(kIni, kC), B = tramo(kDesp, kFin);
@@ -34202,6 +34861,8 @@ async function main() {
       // Etapa 2 (20/10/2026): `costoPesos` con los reclamos EN VIVO (como la web) y el monotributo vigente, no 2% a mano.
       setDevLive(vpL);
       const _monoLu = await leerMonoPct(db);
+      // 1.6a (21/10/2026): la plata parada de un stock compartido (gemela, repetidas) se reparte por lo que vende cada una.
+      const parteLu = partesStockDe(links, Object.fromEntries(products.map((pp) => [pp.id, pp])), u60PorMlaDe(vpL));
       const caminoL = {};
       for (const ev of Object.values(envL)) { if (!ev || !ev.cuenta) continue; for (const c of (Array.isArray(ev.cajasDet) ? ev.cajasDet : [])) { if (!c || c.recibida) continue; for (const it of (c.items || [])) { if (!it || !it.prodId || !(Number(it.u) > 0)) continue; const kP = it.prodId + '__' + sidLu(ev.cuenta); const x = (caminoL[kP] = caminoL[kP] || { u: 0, vars: {} }); x.u += Number(it.u); if (it.variante) x.vars[sidLu(it.variante)] = (x.vars[sidLu(it.variante)] || 0) + Number(it.u); } } }
       const ofiL = (pid, vari) => { let n = 0; for (const [k, v] of Object.entries(invL)) { if (!k.startsWith(pid + '__Oficina')) continue; const esV = k.includes('__v__'); if (vari ? (esV && k.endsWith('__v__' + sidLu(vari))) : !esV) n += Math.max(0, parseInt(v) || 0); } return n; };
@@ -34248,7 +34909,7 @@ async function main() {
           let dias = 0, u = 0, neto = 0, tot = 0, stD = 0;
           for (const k of ks) { if (k < desde || k >= hasta) continue; const x = d[k]; if (!conSt(x)) continue; dias++; u += Number(x.u) || 0; neto += Number(x.neto) || 0; tot += Number(x.tot) || 0; stD += Math.max(0, Number(x.st) || 0); }
           // Plata por día NETA (⚖️, 18/10), la misma cuenta que armarFicha, rayas, raros y escmedir (etapa 1, 21/10/2026).
-          const gan = neto - u * cu - tot * imp - u * PD_TRABAJO_U - tot * PD_TOPE_PCT - stD * cu * PD_CAPITAL_DIA;
+          const gan = neto - u * cu - tot * imp - u * PD_TRABAJO_U - tot * PD_TOPE_PCT - stD * cu * PD_CAPITAL_DIA * (parteLu[mla] ?? 1);
           return { dias, u, ritmo: dias ? u / dias : null, ganU: u ? gan / u : null, plataDia: dias ? gan / dias : null, precioU: u ? tot / u : null };
         };
         const A = tramo(k37, k7), B = tramo(k7, hoyK);
@@ -38635,11 +39296,11 @@ async function main() {
         // user_product_id de una hermana, que está medido que no se equivoca) a que lo hayamos
         // adivinado por el título, que es el filtro que ya falló seis veces. Sin eso las dos se
         // leen igual y no hay forma de saber cuál mirar.
-        alt.nuevas.forEach((n) => console.log(`   ${n.mla}  ${n.label.padEnd(8)} → ${n.prod}${n.variant ? '  · variante: ' + n.variant : '  · SIN VARIANTE'}${n.como ? '  · lo dijo ' + n.como : ''}\n            título ML: ${n.title}`));
+        alt.nuevas.forEach((n) => console.log(`   ${n.mla}  ${n.label.padEnd(8)} → ${n.prod}${n.variant ? '  · variante: ' + n.variant : '  · SIN VARIANTE'}${n.como ? '  · lo dijo ' + n.como : ''}  · ${n.catalogo ? 'catálogo ' + n.catalogo : 'sin catálogo'}\n            título ML: ${n.title}`));
       }
       if (alt.sinFicha.length) {
         console.log(`\n🆕 ${alt.sinFicha.length} quedarían SIN producto (no hay ficha clara):`);
-        alt.sinFicha.forEach((n) => console.log(`   ${n.mla}  ${n.label.padEnd(8)} ${n.title}`));
+        alt.sinFicha.forEach((n) => console.log(`   ${n.mla}  ${n.label.padEnd(8)} ${n.title} · ${n.catalogo ? 'catálogo ' + n.catalogo : 'sin catálogo'}`));
         console.log('   Se vinculan a mano: vincular:<MLA>=<palabra o id>:go');
       }
       if (!APLICAR) { console.log('\nPRUEBA: no escribí nada. Para aplicarlo ahora: altanuevas:go'); return; }
@@ -39848,6 +40509,12 @@ async function main() {
           }
         }
       }
+      // 6.P2 (etapa 6, eligió la a, 21/10/2026): LO DE LA OFICINA QUE NO ENTRA EN FULL POR EL CUPO NO ES REPOSICIÓN. Lo marca
+      // `decido` al aplicar una caja recortada por el cupo (`cyc/claudedecide/caja/<id>__<cuenta>[__v__<color>]/cupoCorto` =
+      // {falta, ts}, ver `decide_cajas.py`). Esas unidades se descuentan de la oficina para el plazo y para "todo junto": con el
+      // Enchufe se contó como sobra y reposición mercadería que no iba a llegar a Full. Vale 15 días (la caja siguiente lo rehace).
+      const cupoCortoE = cupoCortoMapa(await db.get('cyc/claudedecide/caja').catch(() => null), ahora);
+      if (cupoCortoE === null) console.log('(no pude leer las cajas decididas: lo que no entra por el cupo se cuenta como oficina)');
       // DÍAS CON STOCK (revisión 9): del registro hora por hora (`cyc/stocklog/cambios`), misma cuenta que `diasStock` /
       // `ventana` de `calcCerebro`: las ventas cuentan sólo desde que el registro mira esa clave. Sin registro de la clave
       // (o si no se pudo leer) cae a días corridos desde que volvió el stock (`cyc/stockhist`) y el renglón lo dice (📅).
@@ -39971,7 +40638,9 @@ async function main() {
         const vv = V[k];
         if (!(k in inv)) { fueraSinClave.push(k); continue; }
         const ofiK = iv > 0 ? pid + '__' + sidE('Oficina Mati') + '__v__' + k.slice(iv + 5) : pid + '__' + sidE('Oficina Mati');
-        const ofi = Math.max(0, parseInt(inv[ofiK]) || 0);
+        const ofiTotal = Math.max(0, parseInt(inv[ofiK]) || 0);
+        const ccFalta = cupoCortoDe(cupoCortoE, k);
+        const ofi = Math.max(0, ofiTotal - ccFalta);   // 6.P2: lo que no entra en Full por el cupo no repone
         // CUÁNTO TARDA EN VOLVER A HABER EN FULL (15/10/2026, regla suya): no es 15 días para todos. Con caja
         // despachada, lo que le falta a esa caja; con mercadería en la oficina, armar y mandar (10 d); si no, lo
         // que tarda COMPRAR según la situación del producto (`cyc/reponer`, lo escribe la web con la misma
@@ -40033,6 +40702,7 @@ async function main() {
         const hayAlgo = st + camK.reduce((a, c) => a + c.u, 0) + ofi > 0;
         const escComp = comp.inf ? hayAlgo : tot < leadComp;
         const escFull = !escComp && alc < lead && lead !== Infinity;
+        if (ccFalta > 0) leadTxt += ` · ✂️ ${Math.min(ccFalta, ofiTotal)} de la oficina no entran en Full por el cupo: no cuentan`;
         todasE[k] = { k, pid, cta, color: iv > 0 ? k.slice(iv + 5) : '', st, r14, cal: rr.cal, dCon: rr.d, rn: !!rr.normal, r3, u14: vv.u14, u30: vv.u30, alc, lead, leadTxt, tot, comp, escFull, escComp, ofi, cam: camK, camU: camK.reduce((a, c) => a + c.u, 0), vts: vv.vts };
         if (alc > dMax && !escFull && !escComp) continue;
         filas.push({ k, pid, cta, color: iv > 0 ? k.slice(iv + 5) : '', st, r14, dCon: rr.d, cal: rr.cal, rapido: !!rr.rapido, r3, alc, u14: vv.u14, u30: vv.u30, ofi, cam: camK, lead, leadTxt, tot, comp, escFull, escComp });
@@ -40214,6 +40884,30 @@ async function main() {
       const sinColTxt = Object.entries(sinColorU).filter(([k]) => conColor.has(k));
       console.log(`\nMiré ${juzgadas} de ${unidades.length} producto×cuenta (o color) con ventas en 30 d · afuera: ${fueraPocas.length} con menos de 2 ventas en 14 d · ${fueraSinClave.length} sin clave de stock en el inventario`);
       if (fueraSinClave.length) console.log(`   sin clave de stock: ${fueraSinClave.slice(0, 12).map(nomK).join(' | ')}${fueraSinClave.length > 12 ? ` (y ${fueraSinClave.length - 12} más…)` : ''}`);
+      // 6.D1 (etapa 6, eligió la a): LO QUE ML PIDE REPONER EN ≤2 SEMANAS Y NO TIENE CAJA EN CAMINO. Es el aviso con margen:
+      // ML calcula su recomendación con las ventas por semana y los días sin stock (`cyc/fullreco`, lo trae el robot una vez por
+      // día). No decide: es un dato más para la caja que armo. Se muestra lo de ML al lado de lo nuestro (Full, oficina, ritmo).
+      try {
+        const FR = (await db.get('cyc/fullreco')) || {};
+        const porUp = {}; for (const [mla, e] of Object.entries(links)) if (e && e.upid && e.prodId && !e.ignored) (porUp[e.upid] = porUp[e.upid] || []).push({ mla, e });
+        const pronto = [];
+        for (const [up, r] of Object.entries(FR)) {
+          if (!r || r.tipo !== 'REPLENISH' || !FULLRECO_PRONTO.has(r.plazo) || !(Number(r.ts) > ahora - 3 * 864e5)) continue;
+          const pubs = porUp[up] || []; if (!pubs.length) continue;
+          const { e } = pubs[0], col = colorDeLink(e);
+          const k = e.prodId + '__' + sidE(e.cuenta || r.cta || '') + (col ? '__v__' + sidE(col) : '');
+          const camU = (cam[k] || []).reduce((a, c) => a + c.u, 0);
+          const ofK = e.prodId + '__' + sidE('Oficina Mati') + (col ? '__v__' + sidE(col) : '');
+          pronto.push({ k, r, camU, of: Math.max(0, parseInt(inv[ofK]) || 0), full: Math.max(0, parseInt(inv[k]) || 0), sinSt: (r.sem || []).reduce((a, x) => a + (Number(x[1]) || 0), 0) });
+        }
+        const sinCaja = pronto.filter((x) => !(x.camU > 0));
+        const PLZ = { THIS_WEEK: 'esta semana', NEXT_WEEK: 'la semana que viene', IN_TWO_WEEKS: 'en 2 semanas' };
+        if (pronto.length) {
+          console.log(`\n📦 ML PIDE REPONER EN ≤2 SEMANAS (${pronto.length} · ${sinCaja.length} sin caja en camino) · lo que ML recomienda, al lado de lo nuestro:`);
+          for (const x of pronto.sort((a, b) => (a.camU > 0) - (b.camU > 0) || (b.r.sug || 0) - (a.r.sug || 0)))
+            console.log(`   ${x.camU > 0 ? '✓' : '⏰'} ${nomK(x.k)} · ML: mandar ${x.r.sug ?? '?'} u. ${PLZ[x.r.plazo] || x.r.plazo} · Full ${x.full} (ML dice ${x.r.st ?? '?'}) · vendió ${x.r.v30 ?? '?'} en 30 d · ${x.sinSt} días sin stock en 6 semanas según ML · oficina ${x.of}${x.camU > 0 ? ` · ya van ${x.camU} en camino` : ''}`);
+        }
+      } catch (eFr) { console.log(`(no pude leer lo que recomienda ML para Full: ${String(eFr.message || eFr).slice(0, 60)})`); }
       if (ceroConOfi.length) { console.log(`\n📦 EN CERO EN FULL CON MERCADERÍA EN LA OFICINA (${ceroConOfi.length}) · no vende porque no hay: mandar en la próxima caja`); for (const x of ceroConOfi.sort((a, b) => b.u30 - a.u30)) console.log(`   ${nomK(x.k)} · oficina ${x.of} u. · vendió ${x.u30} en 30 d antes de cortarse`); }
       if (fueraPocas.length) console.log(`   menos de 2 ventas en 14 d: ${fueraPocas.slice(0, 12).map(nomK).join(' | ')}${fueraPocas.length > 12 ? ` (y ${fueraPocas.length - 12} más…)` : ''}`);
       if (sinColTxt.length) console.log(`   ventas sin color identificado (no entran en ningún color): ${sinColTxt.slice(0, 10).map(([k, u]) => nomK(k) + ' ' + u + ' u.').join(' | ')}${sinColTxt.length > 10 ? ` (y ${sinColTxt.length - 10} más…)` : ''}`);
@@ -41147,6 +41841,7 @@ async function main() {
       const tc = Number(R[11]) || 0;
       if (!(tc > 0)) { console.log('⚠️ NO LEÍ el dólar (cyc/finanzas/tipo_cambio en 0): sin dólar los costos dan 0 y todo parece rentable'); return; }
       const C4 = ['Adriana', 'Luciana', 'Ayelen', 'Matias'], OF = 'Oficina_Mati';
+      let _grandePT = null;   // 6.P1: qué cuenta como GRANDE para el cupo (se arma abajo, con el cupo)
       const hoy = Date.now(), dk = (d) => new Date(hoy - d * 864e5 - 3 * 36e5).toISOString().slice(0, 10).replace(/-/g, '_');
       const k30 = dk(29), k60 = dk(59), k180 = dk(179);
       const provN = {}; for (const [id, x] of Object.entries(PROV)) if (x) provN[x.id || id] = String(x.nombre || '');
@@ -41177,7 +41872,7 @@ async function main() {
       const lineaDe = async (mla) => { if (!(mla in LIN)) { try { LIN[mla] = (await db.get('mlapi/linea/' + mla)) || {}; } catch { LIN[mla] = null; } } return LIN[mla]; };
       const [nsP, rvP, apP, nrP, rxP, esP, ccP, ofP, nhP] = await Promise.all(['cyc/nosubir', 'cyc/rescateventa', 'cyc/autoprecio', 'cyc/norepo', 'cyc/repoextra', 'cyc/estrategia', 'cyc/claudecambios', 'cyc/ofientro', 'cyc/nosubirhist'].map((k) => db.get(k).catch(() => FALLO)));
       if ([nsP, rvP, apP, nrP, rxP, esP, ccP, ofP, nhP].includes(FALLO)) { console.log('⚠️ NO LEÍ: cyc/nosubir, nosubirhist, rescateventa, autoprecio, norepo, repoextra, estrategia, claudecambios u ofientro — no armo la lista a medias'); return; }
-      const clP = await clasificarRemates(db, VP, { nosubir: nsP || {}, nosubirhist: nhP || {}, rescv: rvP || {}, autoprecio: apP || {}, lineaDe, desde: k180 });
+      const clP = await clasificarRemates(db, VP, { nosubir: nsP || {}, nosubirhist: nhP || {}, rescv: rvP || {}, autoprecio: apP || {}, lineaDe, desde: k180, estrat: esP || {} });
       // EL MISMO FILTRO QUE LA WEB (etapa 3, 20/10/2026): sólo se saltean las canceladas de verdad (`_esCancelada`: cancelada o
       // devolución); un RECLAMO cuenta como venta, igual que en Pedidos de la web. Y `ventasDesde` (la ficha se reusó para otro
       // producto: las ventas de antes son del anterior). Antes se salteaba toda `cancelada` y no se miraba `ventasDesde`.
@@ -41319,7 +42014,7 @@ async function main() {
         const hP = histD(s);
         const esBsasP = p.origen !== 'py' && !(/paulvic/i.test(provN[p.proveedorId] || '') || /paulvic/i.test(p.name || ''));   // el mismo grupo que BSAS de abajo
         const m60 = med(pU[p.id]);
-        const dec = dec0 + (m60 ? ` · med60 $${m60}` : '') + ` · ctas [${ctasDe(p.id).map((c) => c.slice(0, 2)).join(' ')}]` + (CD[p.id] ? ` · YA DECIDÍ ${CD[p.id].u != null ? CD[p.id].u : JSON.stringify(CD[p.id].vars || {})}` : '');
+        const dec = dec0 + (m60 ? ` · med60 $${m60}` : '') + ` · ctas [${ctasDe(p.id).map((c) => c.slice(0, 2)).join(' ')}]` + (CD[p.id] ? ` · YA DECIDÍ ${CD[p.id].u != null ? CD[p.id].u : JSON.stringify(CD[p.id].vars || {})}` : '') + (_grandePT && _grandePT(p) ? ' · GRANDE' : '');
         console.log(`\n${p.id} · ${String(p.name).slice(0, 55)} · v30 ${s.t30} v60 ${s.t60} v180 ${s.t180} · últ ${s.ult ? s.ult.slice(8, 10) + '/' + s.ult.slice(5, 7) : '—'}${s.rem ? ' · REMATE ' + s.rem : ''}${s.barata ? ' · BARATA ' + s.barata : ''} · dCS ${dCS(p.id)}${cortes60(p.id) ? ' · cortes ' + cortes60(p.id) : ''} · Full ${ft} [${C4.map((c, i) => full[i] ? c.slice(0, 2) + full[i] : '').filter(Boolean).join(' ')}] · casa ${casa} · camino ${cm}${py ? ' · PYviaja ' + py : ''}${pvv ? ' · PVviaja ' + pvv : ''}${liv ? ' · LIviaja ' + liv : ''} ${(p.variantes || []).length ? ' · colores ' + p.variantes.length : ''} · neto $${Math.round(Number(p.netoCalc) || 0)} costo $${cost}${p.nisseiUSD ? ' · PY US$' + p.nisseiUSD : ''}${hP ? ' · hist ' + hP + 'd' : ''}${dec}`);
         // Los colores de la FICHA (etapa 3, 20/10/2026): un color sin ventas ni mercadería no tiene renglón, y un juicio de ese color
         // (ej. Pizarra 12" Rojo=4) se perdía sin aviso. Con esta lista `decide_pedidos.py` lo aplica igual y avisa si el color no existe.
@@ -41339,6 +42034,28 @@ async function main() {
         }
       };
       console.log(`dólar ${tc} · ventana 30 d desde ${k30} · ${prods.length} fichas`);
+      // 6.P1 (etapa 6, eligió la a, 21/10/2026): EL CUPO DE FULL QUE LE QUEDA A CADA CUENTA, para que `decide_cajas.py` recorte
+      // la caja con la MISMA regla que la web ("Cargar lo que entra en el cupo": 1 u. a cada uno y después por plata). Misma
+      // cuenta que `cupoRestante` de la web: lo leído en ML menos lo despachado DESPUÉS de esa lectura (lo vendido no devuelve
+      // cupo, medido el 18/10). Sin cupo cargado sale "?" y decide_cajas no recorta esa cuenta (no se inventa un cupo).
+      try {
+        const cfgPT = (await db.get('cyc/mlconfig')) || {};
+        const palPT = (Array.isArray(cfgPT.cupoGrandes) ? cfgPT.cupoGrandes : (typeof cfgPT.cupoGrandes === 'string' ? cfgPT.cupoGrandes.split(',') : null)) || ['tendedero', 'tender'];
+        const grandePT = (pp) => !!pp && (pp.grandeFull === true || (pp.grandeFull !== false && palPT.some((w) => w && norm(pp.name || '').includes(norm(String(w).trim())))));
+        const prPT = {}; for (const pp of Object.values(PR)) if (pp && pp.id) prPT[pp.id] = pp;
+        for (const c of C4) {
+          const cu = (cfgPT.cupoFull || {})[c] || (cfgPT.cupoFull || {})[c.toLowerCase()];
+          if (!cu || !(Number(cu.ts) > 0)) { console.log(`CUPO ${c} peq ? gra ? · sin cargar`); continue; }
+          let mP = 0, mG = 0;
+          for (const e of Object.values(ENV)) {
+            if (!e || e.cuenta !== c || !(Number(e.ts) > Number(cu.ts))) continue;
+            for (const cj of (Array.isArray(e.cajasDet) ? e.cajasDet : [])) for (const it of ((cj && cj.items) || [])) { if (!it || !(it.u > 0)) continue; if (grandePT(prPT[it.prodId])) mG += it.u; else mP += it.u; }
+          }
+          const est = (b, m) => Number.isFinite(Number(b)) && b !== null && b !== '' ? Math.max(0, Math.round(Number(b) - m)) : '?';
+          console.log(`CUPO ${c} peq ${est(cu.peq, mP)} gra ${est(cu.gra, mG)} · leído hace ${Math.floor((Date.now() - Number(cu.ts)) / 864e5)} d · mandado después ${mP}/${mG}`);
+        }
+        _grandePT = grandePT;
+      } catch (eC) { console.log(`CUPO ? · no pude leer el cupo de Full (${String(eC.message || eC).slice(0, 50)}): decide_cajas no recorta`); }
       for (const [g, arr] of Object.entries(grupos)) {
         arr.sort((a, b) => ((S[b.id] || {}).t180 || 0) - ((S[a.id] || {}).t180 || 0));
         console.log(`\n════ ${g.toUpperCase()} · ${arr.length} ════`);
@@ -41570,7 +42287,20 @@ async function main() {
       // "lanzamiento" / "Techo de lanzamiento") se sigue midiendo con la vara del lanzamiento (visitas × conversión), contando
       // los días desde el último escalón; con las rayas (que piden ventas) nunca daría 🔴 y la vuelta siguiente lo pasaba a 📈.
       const esLanza = (m) => { const b = ultT(m) || {}; return b.t === 'nuevo' || (['techook', 'bajando'].includes(b.t) && /lanzamiento/i.test(b.m || '')); };
-      const sel = lista.length ? lista : Object.keys(es).filter((m) => ['techook', 'nuevo'].includes((ultT(m) || {}).t) || esLanza(m));
+      // 1.1a (21/10/2026): al volver de una prueba de techo que no rindió queda 🪜 bajando (no 🏔️) hasta que esto diga 95%. Sin la lista
+      // entran también esas 🪜 (la última estrategia antes de la escalera era 📈 buscando o 🏔️): si llegan al 95% pasan a 🏔️; si no,
+      // siguen 🪜 (no se les pone 📈 encima: la escalera tiene su motivo).
+      const bajaDeTecho = (m) => { const h = es[m] || {}; let pv = null, cur = null, antes = null; for (const k of Object.keys(h).map(Number).filter((n) => n > 0).sort((a, b) => a - b)) { const x = h[k]; if (!x || !x.t) continue; const tt = x.t === 'correccion' ? pasajeDe(pv) : x.t; if (tt === 'bajando' && cur !== 'bajando') antes = cur; pv = tt; cur = tt; } return cur === 'bajando' && ['techo', 'techook'].includes(antes); };
+      const sel = lista.length ? lista : Object.keys(es).filter((m) => ['techook', 'nuevo'].includes((ultT(m) || {}).t) || esLanza(m) || bajaDeTecho(m));
+      // 1.3a: la foto del mercado de cada 🏔️ (`cyc/techofreno`) para que venza sola. Sin poder leerla no se reabre nada esta vuelta.
+      let tfT = null; try { tfT = (await db.get('cyc/techofreno')) || {}; } catch { tfT = null; console.log('⚠️ no leí cyc/techofreno: esta vuelta no miro si alguna 🏔️ se reabre ni guardo fotos'); }
+      const sidsT = {}; for (const l of labels) if (accounts[l]?.seller_id) sidsT[String(accounts[l].seller_id)] = l;
+      const toksT = {};
+      const tokDeT = async (cta) => { const label = labels.find((l) => l.toLowerCase() === String(cta || '').toLowerCase() && accounts[l]?.refresh_token); if (!label) return null; if (toksT[label] !== undefined) return toksT[label];
+        try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, accounts[label].refresh_token); await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() }); toksT[label] = t.access_token; } catch { toksT[label] = null; }
+        return toksT[label]; };
+      // 5.2a: la gemela y su Clásica (y las repetidas) se miden juntas: la línea propia más las ventas de las que comparten el stock.
+      const LINT = {}; const lineaDeT = async (m) => { if (!(m in LINT)) { try { LINT[m] = (await db.get('mlapi/linea/' + m)) || {}; } catch { LINT[m] = null; } } return LINT[m]; };
       let convRef = () => null, npL = {};
       if (sel.some(esLanza)) {
         npL = (await db.get('cyc/netopub')) || {}; const vpL = (await db.get('cyc/ventaprod')) || {};
@@ -41586,11 +42316,14 @@ async function main() {
       const res = []; let nSinFicha = 0, nSinLinea = 0;
       for (const mla of sel) {
         const e = links[mla]; const pr = e && pIdx[e.prodId]; if (!pr) { nSinFicha++; console.log(`✗ ${mla}: sin ficha`); continue; }
-        let d; try { d = (await db.get('mlapi/linea/' + mla)) || {}; } catch { nSinLinea++; console.log(`✗ ${mla}: no leí la línea`); continue; }
+        let d = await lineaDeT(mla); if (d == null) { nSinLinea++; console.log(`✗ ${mla}: no leí la línea`); continue; }
+        const J = await lineaJuntaStock(links, pIdx, mla, d, lineaDeT); d = J.d;
+        const jTxt = J.con.length ? ` · 🔗 junto con ${J.con.join(', ')} (mismo stock)` : '';
+        if (J.sinLeer.length) console.log(`⚠️ ${mla}: no leí la línea de ${J.sinLeer.join(', ')} (comparte el stock): se mide sin sus ventas`);
         const cta = String(e.cuenta || '').toLowerCase();
         const f = armarFicha({ mla, d, e, cu: costoPesos(pr, 1, tc).costo, imp: ((ML_EXTRA_PCT[cta] || 4) + _monoT9) / 100, cambios: [], notas: {}, hoyK });
         const P0 = Number(f.res.p) || 0;
-        const nom = `${String(pr.name || e.title || '').slice(0, 38)}${e.variant ? ' #' + e.variant : ''} (${e.cuenta || '?'})`;
+        const nom = `${String(pr.name || e.title || '').slice(0, 38)}${e.variant ? ' #' + e.variant : ''} (${e.cuenta || '?'})${jTxt}`;
         if (esLanza(mla)) {
           // El precio que ve hoy el comprador (netopub, al día). La línea guarda el de lista: con un descuento puesto queda más alto, y
           // esos días cuentan igual (el comprador pagaba esto o más).
@@ -41629,13 +42362,43 @@ async function main() {
         console.log(`${ok ? '🏔️ SEGURO' : '📈 VOLVER A BUSCAR'} · ${mla} · ${nom} · techo ${$(P0)}${seg != null ? ' · ' + (seg * 100).toFixed(1) + '% seguro' : ''}${txt ? ' · ' + txt : ''}${falta ? ' · ' + falta : ''}`);
         res.push({ mla, ok, seg, txt, falta, P0, pH, hasta: hastaT, tHoy: (ultT(mla) || {}).t || '' });
       }
+      // 1.3a · LA 🏔️ VENCE (21/10/2026, eligió la a): las que hoy están en 🏔️ con la foto que guardó techo95 (`cyc/techofreno` con
+      // `t95`) se reabren solas si el más barato ajeno subió 8%+, ya no hay ajenos abajo del techo, pasamos a ganar la caja o pasaron
+      // 30 días (`porQueReabrirTecho`, la misma regla de `techofreno`). Con ;go vuelven a 📈 buscando techo y se borra el freno.
+      const reabre = {};
+      if (tfT) for (const r of res) {
+        if (r.tHoy !== 'techook') continue; const t = tfT[r.mla]; if (!t || !t.t95) continue;
+        const e = links[r.mla] || {}; const f = t.cat ? await fotoMercadoTecho(r.mla, t.probado, e, await tokDeT(e.cuenta), sidsT) : null;
+        if (f && f.err) console.log(`· ${r.mla}: ${f.err}: esta vuelta sólo miro el tiempo`);
+        const por = porQueReabrirTecho(t, f);
+        if (por.length) { reabre[r.mla] = por; console.log(`🔓 SE REABRE · ${r.mla} · la 🏔️ de ${money(Number(t.probado) || 0)} ya no explica el precio: ${por.join(' · ')}`); }
+      }
+      // La foto del mercado al anotar una 🏔️ (el precio que no rinde = el 🔴 medido; en un lanzamiento, el precio de arranque).
+      const guardarFotoT95 = async (r) => {
+        if (!tfT) return false; const e = links[r.mla] || {}; const prev = tfT[r.mla];
+        const pr0 = Math.round(Number(r.lanza ? r.P0 : (r.pH || r.P0)) || 0); if (!(pr0 > 0)) return false;
+        const probado = Math.max(pr0, prev && Date.now() - (Number(prev.ts) || 0) < TECHO_REABRE_DIAS * 864e5 ? Number(prev.probado) || 0 : 0);
+        const f = await fotoMercadoTecho(r.mla, probado, e, await tokDeT(e.cuenta), sidsT);
+        const reg = { ts: Date.now(), probado, volvio: Math.round(Number(r.P0) || 0) || null, motivo: `🏔️ techo95 ${(Number(r.seg) * 100).toFixed(0)}% seguro`, cat: !!f.cat, barato: f.barato ?? null, abajo: f.abajo ?? null, ajenos: f.ajenos ?? null, caja: f.caja || null, fotoTs: Date.now(), t95: true, ...(f.err ? { fotoErr: f.err } : {}) };
+        try { await db.set('cyc/techofreno/' + r.mla, reg); const rr = await db.get('cyc/techofreno/' + r.mla); const ok = !!(rr && rr.t95 && rr.probado === probado); tfT[r.mla] = reg; console.log(`   ${ok ? '📸 foto del mercado guardada' : '⚠️ la foto no quedó'} · ${r.mla} · techo ${money(probado)}${f.cat ? ` · más barato ajeno ${f.barato ? money(f.barato) : '—'} (${f.abajo ?? '?'} abajo) · caja ${f.caja || '?'}` : ' · no es de catálogo: vence a los 30 días'}${f.err ? ' · ⚠️ ' + f.err + ' (vence por tiempo)' : ''}`); return ok; }
+        catch { console.log(`   ⚠️ ${r.mla}: no pude guardar la foto del mercado en cyc/techofreno`); return false; }
+      };
       const nOk = res.filter((r) => r.ok).length; console.log(`\nResumen: ${nOk} seguros al 95% · ${res.length - nOk} vuelven a buscar techo${nSinFicha || nSinLinea ? ` · ✗ ${nSinFicha} sin ficha y ${nSinLinea} sin poder leer la línea (no se midieron)` : ''} · ${sel.length} miradas`);
       if (GOt) {
         let g = 0;
         for (const r of res) {
           // Lanzamiento: sólo se anota cuando es 95% (🏔️ en la línea = 🔴 techo de lanzamiento). Si no, queda 🆕 como está.
           // Una 🏔️ de lanzamiento ya anotada no se vuelve a anotar todos los días (correría el "último escalón" y nunca juntaría días).
-          if (r.lanza) { if (r.ok && r.tHoy !== 'techook' && await guardarEstrategia(db, r.mla, 'techook', `🔴 Techo de lanzamiento, ${(r.seg * 100).toFixed(0)}% seguro: ${r.txt}. Empieza a bajar con precio tachado (entrarpromo con #bajando y "lanzamiento" en el motivo)`.replace(/;/g, ','), Date.now())) g++; continue; }
+          if (reabre[r.mla]) {
+            const okR = await guardarEstrategia(db, r.mla, 'techo', `🔓 Se reabre la búsqueda del techo: ${reabre[r.mla].join(', ')}. La 🏔️ de ${money(Number((tfT[r.mla] || {}).probado) || 0)} ya no explica el precio: decidir la prueba (decido #techo)`.replace(/;/g, ','), Date.now());
+            if (okR) { g++; try { await db.set('cyc/techofreno/' + r.mla, null); } catch { console.log(`   ⚠️ ${r.mla}: no pude sacar el freno de techo`); } }
+            console.log(`${okR ? '🔓' : '⚠️ no quedó el'} ${r.mla} → 📈 buscando techo`); continue;
+          }
+          if (r.lanza) { if (r.ok && r.tHoy !== 'techook' && await guardarEstrategia(db, r.mla, 'techook', `🔴 Techo de lanzamiento, ${(r.seg * 100).toFixed(0)}% seguro: ${r.txt}. Empieza a bajar con precio tachado (entrarpromo con #bajando y "lanzamiento" en el motivo)`.replace(/;/g, ','), Date.now())) { g++; await guardarFotoT95(r); }
+            else if (r.ok && r.tHoy === 'techook' && tfT && !(tfT[r.mla] && tfT[r.mla].t95)) await guardarFotoT95(r);
+            continue; }
+          // 1.1a: 🪜 que volvió de una prueba de techo y no llega al 95%: sigue 🪜 (no se le pone 📈 encima).
+          if (r.tHoy === 'bajando' && !r.ok) { console.log(`· ${r.mla}: 🪜 bajando (volvió de una prueba de techo) y no llega al 95%: sigue 🪜 hasta que llegue`); continue; }
           // 21/10/2026 · etapa 1 (3c): una estrategia que explica el precio (📦 sobra, 📉 liquidando, 🧨 remate, 🔥 escasez) no se tapa
           // con 📈 si no llega al 95%; y si llega, la 🏔️ queda en la historia ANTES de ese tag (no lo pisa como estrategia de hoy).
           const especial = ['sobra', 'liquidando', 'remate', 'escasez'].includes(r.tHoy);
@@ -41655,8 +42418,10 @@ async function main() {
           const m0 = r.ok ? `Techo encontrado, ${(r.seg * 100).toFixed(0)}% seguro: ${r.txt}` : `Volver a buscar techo (no llega al 95%): ${r.falta}${r.txt ? '. ' + r.txt : ''}`;
           const m = m0.slice(0, 400 - hall.length) + hall;
           const tNue = r.ok ? 'techook' : 'techo', mNue = m.replace(/;/g, ',');
-          if (!especial && ultX && ultX.t === tNue && (String(ultX.m || '') === mNue || (r.ok && hall && techookDeTecho95(ultX) && String(ultX.m || '').endsWith(hall)))) { console.log(`· ${r.mla}: ya estaba anotado así (${ESTRATEGIAS[tNue] || tNue}${hall}): no lo repito`); g++; continue; }
-          if (await guardarEstrategia(db, r.mla, tNue, mNue, Math.min(ts, Date.now()))) g++;
+          if (!especial && ultX && ultX.t === tNue && (String(ultX.m || '') === mNue || (r.ok && hall && techookDeTecho95(ultX) && String(ultX.m || '').endsWith(hall)))) { console.log(`· ${r.mla}: ya estaba anotado así (${ESTRATEGIAS[tNue] || tNue}${hall}): no lo repito`); g++;
+            if (r.ok && tfT && !(tfT[r.mla] && tfT[r.mla].t95)) await guardarFotoT95(r);   // una 🏔️ de antes sin foto: el reloj arranca hoy
+            continue; }
+          if (await guardarEstrategia(db, r.mla, tNue, mNue, Math.min(ts, Date.now()))) { g++; if (r.ok && !especial) await guardarFotoT95(r); }
         }
         console.log(`✓ ${g} de ${res.length} anotadas y releídas`);
       }
@@ -41723,7 +42488,7 @@ async function main() {
     // Mide con `calcCerebro` (la misma cuenta de la noche: comisión preguntada a ML al precio nuevo, envío del lado
     // de la barrera, cuotas Premium, IIBB y monotributo) y aplica con `aplicarCerebro` (relee de ML, anota en
     // `cyc/autoprecio` con `por:'claude'` y en la memoria del cerebro). (No es `precios:`: ése ya existe, es el viejo.) Frenos duros: techo $650.000, la barrera de
-    // $33.000 sólo con `!cruza`, abajo del piso sólo con `!piso`, nunca abajo de 0%, sin variantes, no liquidando,
+    // $33.000 sólo con `!cruza`, abajo del piso sólo con `!piso`, nunca abajo de 0%, sin variantes, liquidando no se SUBE (bajar sí, 1.2a del 21/10/2026),
     // y una suba de catálogo sólo si gana la caja. Sin `;go` sólo muestra. El motivo no puede llevar `;`.
     // (13/10/2026, revisión 9) El piso se mide en el PEOR CASO (como `planilla`), una suba de más del doble va sólo con
     // `!salto`, y no se sube el precio de lista de algo que está en una promo mía (primero `entrarpromo:<MLA>=salir`).
@@ -41831,7 +42596,7 @@ async function main() {
         // El precio EXACTO que escribí (etapa 1, 21/10/2026): redondear a $10 hacía $32.999 → $33.000 (cruzaba la barrera) y $4.999 → $5.000.
         forzar[mm[1].toUpperCase()] = { p: soloAct ? 0 : Math.round(pesosArg(mm[2])), motivo: mot.join('|').trim(), piso: banderas.includes('!piso'), cruza: banderas.includes('!cruza'),
           activar: soloAct || banderas.includes('!activar'), salto: banderas.includes('!salto'), sinstock: banderas.includes('!sinstock'), sintecho: banderas.includes('!sintecho'),
-          golpe: banderas.includes('!golpe'), sincerteza: banderas.includes('!sincerteza'), bajopiso: banderas.includes('!bajopiso'), nosobra: banderas.includes('!nosobra'), chico: banderas.includes('!chico'), lista: banderas.includes('!lista'), tag: mm[4] ? mm[4].toLowerCase() : '' };
+          golpe: banderas.includes('!golpe'), sincerteza: banderas.includes('!sincerteza'), bajopiso: banderas.includes('!bajopiso'), nosobra: banderas.includes('!nosobra'), chico: banderas.includes('!chico'), lista: banderas.includes('!lista'), escalon: banderas.includes('!escalon'), tag: mm[4] ? mm[4].toLowerCase() : '' };
         // Sin 🎯 base (19/10/2026): un precio nuevo tiene que decir su estrategia (#tag o un motivo que la nombre).
         { const fz = forzar[mm[1].toUpperCase()]; if (!soloAct && !fz.tag && !tagDeMotivo(fz.motivo) && !fz.piso) { delete forzar[mm[1].toUpperCase()]; malos.push(x + ` (falta la estrategia: agregá #techo, #escasez, #sobra… · ${Object.keys(ESTRATEGIAS).filter((k) => !['sindecidir', 'agotado', 'techook'].includes(k)).join(', ')})`); continue; } }
       }
@@ -41922,6 +42687,13 @@ async function main() {
                   for (const k of Object.keys(_cajaDecViejas)) if ((k === pre || k.startsWith(pre + '__v__')) && k !== `${p.id}__${ctaL}${vk}`) await db.set('cyc/claudedecide/caja/' + k, null);
                 }
                 await db.set(base + '/' + leaf, n.dec === 'auto' ? null : n.val);
+                // 6.P2 (etapa 6, eligió la a): si `decide_cajas.py` recortó esta caja por el cupo, el motivo trae "✂️ … (faltan N)" y
+                // queda `cupoCorto` = {falta, ts}: esas N u. de la oficina no llegan a Full, así que `escasez` no las cuenta como
+                // reposición ni la `planilla` como sobra. Una caja sin recorte lo borra (la decisión nueva manda).
+                if (n.tipo === 'caja' && (n.dec === 'u' || n.dec === 'auto')) {
+                  const mCc = n.dec === 'u' ? String(n.t || '').match(/✂️[^\n]*?\(faltan (\d+)\)/) : null;
+                  await db.set(base + '/cupoCorto', mCc && Number(mCc[1]) > 0 ? { falta: Number(mCc[1]), ts: Date.now() } : null);
+                }
                 // El motivo de cada cosa en su lugar (09/10/2026, revisión 9 · cerebro): el precio para el máximo no pisa el
                 // motivo del pedido (`motPv`), y cada color guarda el suyo (`motVars/<color>`); el renglón del producto dice
                 // que va color por color.
@@ -42018,7 +42790,10 @@ async function main() {
       const ac = await aplicarCerebro(db, cz, { tokens: tokP, aplica: true, autoprecio: apP });
       console.log(`\n✓ hechos: ${ac.hechos.length} · no se pudo: ${ac.fallidos.length} · sin anotar: ${ac.sinAnotar.length}`);
       // LA ESTRATEGIA DE ESTE PRECIO (17/10/2026): `#tag` si lo puse, si no se deduce del motivo.
-      for (const h of ac.hechos) { const fz = forzar[h.f.mla] || {}; const tg0 = fz.tag || tagDeMotivo(fz.motivo); let tg = (!tg0 && fz.piso) ? 'excepcion' : tg0; if (['techo', 'escasez'].includes(tg) && Number(h.a) < Number(h.de)) { console.log(`   ⚠️ ${h.f.mla}: bajó y la etiqueta decía ${ESTRATEGIAS[tg]} — queda 🪜 bajando (techo y escasez quieren decir que el precio sube)`); tg = 'bajando'; } const okT = await guardarEstrategia(db, h.f.mla, tg, fz.motivo, Date.now()); console.log(`   ${okT ? '🏷' : '⚠️ no quedó la'} estrategia ${ESTRATEGIAS[tg] || '↩️ vuelta (nombrada por la anterior)'} · ${h.f.mla}`);
+      for (const h of ac.hechos) { const fz = forzar[h.f.mla] || {}; const tg0 = fz.tag || tagDeMotivo(fz.motivo); let tg = (!tg0 && fz.piso) ? 'excepcion' : tg0; if (['techo', 'escasez'].includes(tg) && Number(h.a) < Number(h.de)) { console.log(`   ⚠️ ${h.f.mla}: bajó y la etiqueta decía ${ESTRATEGIAS[tg]} — queda 🪜 bajando (techo y escasez quieren decir que el precio sube)`); tg = 'bajando'; }
+        // 1.1a (21/10/2026): bajar volviendo de una prueba de techo (la estrategia de antes era 📈 buscando o 🏔️) es 🪜 bajando hasta que
+        // `techo95` diga 95% (y así queda anotado en `cyc/techofreno` el precio que no rindió, la raya 🚧).
+        if (['volviendo', 'correccion', ''].includes(tg || '') && Number(h.a) < Number(h.de)) { let prevT = null; try { prevT = tagVigenteEn((await db.get('cyc/estrategia/' + h.f.mla)) || {}, Date.now()); } catch { prevT = null; } if (['techo', 'techook'].includes(prevT)) { console.log(`   🪜 ${h.f.mla}: vuelve de una prueba de techo — queda 🪜 bajando hasta que techo95 diga 95% (no ${ESTRATEGIAS[tg] || 'una vuelta'})`); tg = 'bajando'; } } const okT = await guardarEstrategia(db, h.f.mla, tg, fz.motivo, Date.now()); console.log(`   ${okT ? '🏷' : '⚠️ no quedó la'} estrategia ${ESTRATEGIAS[tg] || '↩️ vuelta (nombrada por la anterior)'} · ${h.f.mla}`);
         // 🪜 LA PRIMERA BAJA DE UNA ESCALERA ANOTA EL PRECIO QUE NO RINDIÓ (21/10/2026, él con el Centímetro Blanco: "está bajando sin
         // techo"). Sin `cyc/techofreno` la línea de tiempo no dibuja la raya 🚧 y parece que baja a ciegas. Si ya hay uno de los últimos
         // 30 días con un precio igual o más alto, no se pisa (los escalones siguientes bajan desde el mismo techo probado).
@@ -42622,7 +43397,7 @@ async function main() {
             const st = stDesc ? 0 : Math.max(0, parseInt(inv[kSt]) || 0);
             const costo = Math.round(costoPesos(p, 1, tc).costo || 0);
             const m = (mlExtraPct(cta) + monoPz) / 100;
-            let mg = null, g = null, nota = '', mgP = null, meta = null;
+            let mg = null, g = null, nota = '', mgP = null, meta = null, escC = null;
             const cuo = cuotaPremiumDe(cuoC || {}, mla, b.listing_type_id);
             if (!(costo > 0)) nota = 'SIN COSTO';
             else if (cuo == null) nota = 'Premium sin cuotas medidas';
@@ -42639,6 +43414,8 @@ async function main() {
                 const envP = env;
                 const gP = P - fe - P * cuo - envP - costo - P * m - P * PEOR_RET_PCT;
                 mgP = gP / (costo + P * m + envP) * 100;
+                // 🪜 6.P6: justo arriba del escalón de comisión, lo que dejaría a $14.990 (comisión preguntada a ML a ese precio).
+                { const esc = escalonDeComision(P); if (esc && !(b.variations || []).length) { const fE = await feeAtP(b, esc - 10, tk); if (fE != null) { const gE = (esc - 10) - fE - (esc - 10) * cuo - costo - (esc - 10) * m; escC = { e: esc, gE, mgE: gE / (costo + (esc - 10) * m) * 100 }; } else escC = { e: esc, gE: null }; } }
                 // EL PRECIO QUE HACE FALTA (12/10/2026): si en el peor caso no llega, se despeja el precio que deja el
                 // objetivo con la comisión preguntada a ML AL PRECIO NUEVO (se verifica, no se estima), terminado en 90/990.
                 if (mgP < PISO && !(b.variations || []).length) {
@@ -42686,7 +43463,9 @@ async function main() {
             const pcV = promoClaudeVigente(pClaude[mla], hoy);
             filas.push({ mla, cta, kSt: stDesc ? null : kSt, desde: (h.aprox === false && Number(h.desde) > 0) ? Number(h.desde) : 0, nom: String(e.title || p.name || '').slice(0, 42) + (e.variant ? ' #' + e.variant : ''), est: b.status + ((b.sub_status || []).length ? '(' + b.sub_status.join(',') + ')' : ''),
               P, mg, g, mgP, meta, nota, st, stDesc, exc: b.status === 'under_review' ? 'ML la tiene en revisión: no deja cambiar el precio (se sube al liberarla)' : (nosub || {})[mla] ? 'liquidando' : (cPiso && cPiso[mla] && Math.abs((Number(cPiso[mla].a) || 0) - P) <= 10) ? 'la dejé así con !piso' : pcV.vig ? `en promo mía${pcV.hasta ? ' hasta ' + pcV.hasta : ''}` : (P >= 32900 && P < UMBRAL_ENVIO_GRATIS && meta && meta.barrera) ? 'frenada en la barrera de $33.000 (regla 2)' : '', pcVen: pClaude[mla] && !pcV.vig ? (pcV.hasta || '?') : '', ...vv, cero: h.cero && st === 0 && !stDesc ? h.cero : null, tanda, caja: e.caja || '', ptw: e.cajaPtw || null, var: (b.variations || []).length,
-              cambio: a && a.ts ? `${f(a.de)}→${f(a.a)} hace ${Math.round((hoy - a.ts) / 864e5)} d${a.por ? ' (' + a.por + ')' : ''}` : '' });
+              cambio: a && a.ts ? `${f(a.de)}→${f(a.a)} hace ${Math.round((hoy - a.ts) / 864e5)} d${a.por ? ' (' + a.por + ')' : ''}` : '',
+              escC, etq: String(e.etq || ''), salud: e.salud, catalogo: !!b.catalog_listing, sugP: Number(e.sugP) || null, sugMin: Number(e.sugMin) || null, sugTs: Number(e.sugTs) || 0,
+              cajaPorCuotas: !!e.cajaPorCuotas, cajaGanP: Number(e.cajaGanP) || null, cajaGanPromo: Number(e.cajaGanPromo) || null, lt: b.listing_type_id || '' });
           }
         }
       }
@@ -42764,7 +43543,14 @@ async function main() {
         }
         sobra.sort((x, y) => y.st - x.st);
         console.log(`\n── 📦 SOBRA STOCK Y NO LO DECIDÍ (${sobra.length}) · más de ${SOBRA_DIAS_PL} días de stock en Full al ritmo de hoy · decidir EN ESTA VUELTA: promo/escalera, retiro, o dejar con motivo${_faltaLeer} ──`);
-        for (const x of sobra) console.log(`📦 ${x.rs.map((r) => r.mla).join(' ')} · ${x.rs[0].cta} · ${x.rs[0].nom} · ${x.st} u. en Full · vendió ${x.u30} en 30 d y ${x.u60} en 60 d · ${x.dias === Infinity ? 'no vendió en 60 d' : 'alcanza ' + Math.round(x.dias) + ' d'} · ${f(x.rs[0].P)} · ${x.rs[0].mg == null ? 'margen ?' : x.rs[0].mg.toFixed(0) + '%'} · ${x.rs[0].est} · 🏷 ${ESTRATEGIAS[x.rs[0].est2.t]}`);
+        // 6.P2 (etapa 6, eligió la a): al lado va la oficina, y lo que de la oficina NO entra en Full por el cupo (`cupoCorto`, lo
+        // anota `decido` con la caja recortada) se dice aparte: eso no es sobra de Full ni la cura una promo (el Enchufe se bajó por
+        // "26 en Full y 170 en la oficina" con la oficina sin poder llegar a Full).
+        const ccPl = cupoCortoMapa(await db.get('cyc/claudedecide/caja').catch(() => null), hoy);
+        const ofiPl = (k) => { const i = k.indexOf('__'), iv = k.indexOf('__v__'); const ok = k.slice(0, i) + '__Oficina_Mati' + (iv > 0 ? k.slice(iv) : ''); return Math.max(0, parseInt(inv[ok]) || 0); };
+        for (const x of sobra) { const of = ofiPl(x.k), cc = Math.min(of, cupoCortoDe(ccPl, x.k));
+          console.log(`📦 ${x.rs.map((r) => r.mla).join(' ')} · ${x.rs[0].cta} · ${x.rs[0].nom} · ${x.st} u. en Full · vendió ${x.u30} en 30 d y ${x.u60} en 60 d · ${x.dias === Infinity ? 'no vendió en 60 d' : 'alcanza ' + Math.round(x.dias) + ' d'} · ${f(x.rs[0].P)} · ${x.rs[0].mg == null ? 'margen ?' : x.rs[0].mg.toFixed(0) + '%'} · ${x.rs[0].est} · 🏷 ${ESTRATEGIAS[x.rs[0].est2.t]}${of ? ` · oficina ${of}${cc ? ` (✂️ ${cc} no entran en Full por el cupo: no son sobra de Full, la sobra se juzga sólo con lo de Full)` : ''}` : ''}`); }
+        if (ccPl === null) console.log('   (no pude leer las cajas decididas: no sé qué de la oficina quedó afuera por el cupo)');
         if (!sobra.length) console.log('ninguna: todo lo que sobra ya está anotado o pensado');
         if (recien.length) console.log(`   (${recien.length} recién llegadas, menos de 30 días en Full: se miran como lanzamiento, no como sobra: ${recien.map((x) => x.rs[0].nom.slice(0, 24) + ' ' + Math.round((hoy - x.des) / 864e5) + ' d').join(' · ')})`);
         if (pensadas.length) console.log(`   (${pensadas.length} sobran pero ya les escribí nota en los últimos 7 días: ${pensadas.map((x) => x.rs[0].nom.slice(0, 24)).join(' · ')})`);
@@ -42830,29 +43616,36 @@ async function main() {
         const grA = {}; for (const r of filas) if (r.kSt) (grA[r.kSt] = grA[r.kSt] || []).push(r);
         const diasGrupo = (r) => { const rs = r.kSt ? grA[r.kSt] : [r]; const st = Math.max(...rs.map((x) => x.st || 0));
           const rit = Math.max(rs.reduce((a, x) => a + (x.u30 || 0), 0) / 30, rs.reduce((a, x) => a + (x.u60 || 0), 0) / 60); return rit > 0 ? st / rit : Infinity; };
+        // 1.4a (21/10/2026): TAGS QUE YA NO EXPLICAN EL PRECIO. 🎁 fecha especial vence 7 días después de la fecha · 🪜 bajando vence a
+        // los 14 días sin un escalón nuevo · 🥊 ganar la caja vence a los 30 días. Vencidos entran acá como lo sin estrategia.
+        let ccA = null; try { ccA = (await db.get('cyc/claudecambios')) || {}; } catch { ccA = null; }
+        const ultBajaA = {}; for (const c of Object.values(ccA || {})) { if (c && c.mla && Number(c.a) < Number(c.de) && Number(c.ts) > (ultBajaA[c.mla] || 0)) ultBajaA[c.mla] = Number(c.ts); }
+        const vencidoTag = (r) => tagVencido(r.est2, { hoy, ultBaja: ultBajaA[r.mla] || 0, sinCambios: ccA == null });
         const sinAf = [], pens = [];
         for (const r of filas) {
           if (!/^active/.test(r.est) || r.stDesc || !(r.st > 0) || r.mg == null) continue;
+          const venc = vencidoTag(r); if (venc) r.venc = venc;
           // ↗️/↘️ volviendo es un PASO, no un lugar (20/10/2026, él con el Pendrive 128: "¿no debería ir a buscando techo?"):
           // con 7 días en ese tag ya volvió, y entra acá igual que lo sin estrategia.
           const volvViejo = ['desobra', 'volviendo'].includes(r.est2.t) && r.est2.ts && hoy - r.est2.ts > 7 * 864e5;
           // 21/10/2026 · etapa 1: un 💸/🏷️ sin promo mía vigente (venció o se sacó) y un 🧪 (la prueba 3b se canceló) no explican
           // el precio: cuentan como ⚪ sin estrategia.
           const sinPromo = ['descuento', 'promo'].includes(r.est2.t) && !promoClaudeVigente(pClaude[r.mla], hoy).vig;
-          if (r.exc || (!['sindecidir', 'nuevo', 'agotado', 'prueba'].includes(r.est2.t) && !volvViejo && !sinPromo)) continue;
+          if (r.exc || (!['sindecidir', 'nuevo', 'agotado', 'prueba'].includes(r.est2.t) && !volvViejo && !sinPromo && !venc)) continue;
           const dias = diasGrupo(r);
           // Menos de 14 días sin tag 🔥: o es escasez sin decidir (sale en la 🚨) o la caja llega a tiempo: igual entra acá
           // (19/10, él: "si no tiene línea de techo o alguna otra explicación como sobre stock, tiene que entrar en buscar techo").
           // Más de 90 (del grupo) es terreno de la 📦: ahí sale (o está anotado/pensado/recién llegado, y lo dice).
           if (dias > 90) continue;
-          if (techoReciente(r.mla)) continue;
+          if (!venc && techoReciente(r.mla)) continue;   // un 🪜 vencido no cuenta como "probó techo hace poco"
           const nota = ultN(r.mla); const fila = { ...r, dias };
           if (nota && hoy - nota < 7 * 864e5) pens.push(fila); else sinAf.push(fila);
         }
         const cajaTxt = (r) => r.caja ? `caja ${r.caja}${r.ptw && r.caja !== 'winning' ? ' ML pide ' + f(r.ptw) : ''}` : 'sin catálogo';
         sinAf.sort((x, y) => (y.u30 * (y.g || 0)) - (x.u30 * (x.g || 0)));
         console.log(`\n── 🔎 SIN AFINAR (${sinAf.length}) · activas con stock para menos de 90 días, ⚪ sin estrategia (o 🆕) y sin prueba de techo en 60 días · decidir EN ESTA VUELTA: probar techo o dejar con motivo${_faltaLeer} ──`);
-        for (const r of sinAf) console.log(`🔎 ${r.mla} · ${r.cta} · ${r.nom} · ${f(r.P)} · ${r.mg.toFixed(0)}% (${f(r.g)}/u) · v ${r.u7}/${r.u30}/${r.u60} · Full ${r.st} (${Math.round(r.dias)} d) · ${cajaTxt(r)}${r.var ? ' · CON VARIANTES' : ''} · 🏷 ${ESTRATEGIAS[r.est2.t]}`);
+        for (const r of sinAf) console.log(`🔎 ${r.mla} · ${r.cta} · ${r.nom} · ${f(r.P)} · ${r.mg.toFixed(0)}% (${f(r.g)}/u) · v ${r.u7}/${r.u30}/${r.u60} · Full ${r.st} (${Math.round(r.dias)} d) · ${cajaTxt(r)}${r.var ? ' · CON VARIANTES' : ''} · 🏷 ${ESTRATEGIAS[r.est2.t]}${r.venc ? ' VENCIDO: ' + r.venc : ''}`);
+        if (ccA == null) console.log('   ⚠️ no leí mis cambios: un 🪜 se da por vencido sólo por la fecha de su tag');
         if (!sinAf.length) console.log(pens.length ? 'ninguna sin pensar' : 'ninguna: todo lo que vende tiene estrategia o ya probó techo');
         if (pens.length) console.log(`   (${pens.length} ya pensadas en los últimos 7 días: ${pens.map((x) => x.nom.slice(0, 24)).join(' · ')})`);
       } catch (eA) { console.log('⚠️ la lista sin afinar falló: ' + eA.message); }
@@ -42884,11 +43677,160 @@ async function main() {
           if (!malos.length) console.log('ninguna: todo lo que dice techo o escasez está subiendo');
         }
       } catch (eT) { console.log('⚠️ la lista de tags que no suben falló: ' + eT.message); }
+      // ── 6.P5 · 📦 LO QUE CUESTA DE VERDAD MANDAR UNA UNIDAD A FULL (etapa 6, eligió la a). Por cuenta: las cajas que se mandaron
+      // (`cajaRealPorCuenta`, la misma de la ficha de la web) → costo real por unidad contra lo cargado en la ficha (`shipUSD`), y
+      // ¿conviene?: lo que la caja real se come de lo que deja cada unidad. Las que pasan el 25% van listadas: juntar más antes de mandar.
+      try {
+        const [envPl, cfgCaja] = await Promise.all([db.get('cyc/envios_full').catch(() => null), Promise.resolve(parseFloat(cfgM.costoCaja) || 17500)]);
+        if (envPl === null) console.log('\n── 📦 CAJA REAL POR CUENTA: no pude leer las cajas mandadas ──');
+        else {
+          const cr = {}; for (const r of filas) if (!(r.cta in cr)) cr[r.cta] = cajaRealPorCuenta(envPl, r.cta, cfgCaja, hoy);
+          console.log(`\n── 📦 LO QUE CUESTA DE VERDAD MANDAR UNA UNIDAD A FULL (caja ${f(cfgCaja)} ÷ unidades que llevan las cajas de cada cuenta, últimas ${CAJA_REAL_N} en ${CAJA_REAL_DIAS} d) ──`);
+          for (const [cta, x] of Object.entries(cr)) console.log(`   ${cta}: ${x ? `cajas de ~${Math.round(x.uProm)} u. (${x.n}) → ${f(x.costoU)}/u` : 'sin cajas mandadas: no hay con qué medir'}`);
+          const caras = [];
+          for (const r of filas) {
+            const x = cr[r.cta]; if (!x || r.g == null || !(r.st > 0 || r.u30 > 0)) continue;
+            const p = prodById[(lk[r.mla] || {}).prodId] || {}; const carg = (parseFloat(p.shipUSD) || 0) * tc;
+            const base = r.g + carg; if (!(base > 0)) continue;
+            const come = x.costoU / base;
+            if (come > CAJA_REAL_COMEMUCHO) caras.push({ r, x, carg, come, gReal: base - x.costoU });
+          }
+          caras.sort((a, b) => b.come - a.come);
+          console.log(`   ¿conviene? ${caras.length} donde la caja real se come más del ${Math.round(CAJA_REAL_COMEMUCHO * 100)}% de lo que deja cada unidad (juntar más antes de mandar o mandar lo que más deja):`);
+          for (const c of caras.slice(0, 40)) console.log(`   📦 ${c.r.mla} · ${c.r.cta} · ${c.r.nom} · deja ${f(c.r.g + c.carg)}/u antes del envío · caja real ${f(c.x.costoU)}/u (la ficha carga ${f(c.carg)}) → ${Math.round(c.come * 100)}% · queda ${f(c.gReal)}/u`);
+          if (caras.length > 40) console.log(`   … y ${caras.length - 40} más`);
+        }
+      } catch (eCR) { console.log('⚠️ la lista de caja real falló: ' + eCR.message); }
+      // ── 6.P6 · 🪜 JUSTO ARRIBA DEL ESCALÓN DE COMISIÓN (etapa 6, eligió la a). Todo lo que está hasta 15% arriba de un escalón de
+      // ML (hoy el de $15.000): al lado, lo que dejaría quedándose a $14.990 (comisión preguntada a ML a ese precio). Si abajo deja
+      // igual o más por unidad está en la ZONA MUERTA: cobra más caro y gana menos, se prueba abajo (y `decido` no deja volver ahí sin
+      // !escalon). Si abajo deja menos, se dice cuánto cuesta por unidad estar arriba, para decidir con el ritmo de ventas.
+      try {
+        const zona = filas.filter((r) => r.escC && r.g != null && /^active/.test(r.est));
+        const muertas = zona.filter((r) => r.escC.gE != null && r.escC.gE >= r.g), otras = zona.filter((r) => !muertas.includes(r));
+        console.log(`\n── 🪜 JUSTO ARRIBA DEL ESCALÓN DE COMISIÓN (${zona.length}) · ${muertas.length} en la zona muerta (a $${(ESCALONES_COMISION[0] - 10).toLocaleString('es-AR')} dejan igual o más): PROBAR ABAJO${_faltaLeer} ──`);
+        for (const r of muertas) console.log(`🪜 ${r.mla} · ${r.cta} · ${r.nom} · ${f(r.P)} deja ${f(r.g)}/u (${r.mg.toFixed(0)}%) · a ${f(r.escC.e - 10)} dejaría ${f(r.escC.gE)}/u (${r.escC.mgE.toFixed(0)}%) · v ${r.u7}/${r.u30} · Full ${r.st} · 🏷 ${estrat === null ? '?' : ESTRATEGIAS[r.est2.t]}`);
+        for (const r of otras) console.log(`   ${r.mla} · ${r.nom} · ${f(r.P)} deja ${f(r.g)}/u · a ${f(r.escC.e - 10)} ${r.escC.gE == null ? 'ML no contestó la comisión' : 'dejaría ' + f(r.escC.gE) + '/u (estar arriba suma ' + f(r.g - r.escC.gE) + '/u)'}`);
+        if (!zona.length) console.log('ninguna activa justo arriba del escalón');
+      } catch (eE) { console.log('⚠️ la lista del escalón de comisión falló: ' + eE.message); }
+      // ── 6.D6 · 🩺 NO VENDEN Y ML LES MARCA UN PROBLEMA DE CALIDAD (etapa 6, eligió la a). Las etiquetas de cada publicación las
+      // guarda el robot cada hora (`mllinks.etq`, crudas); acá salen las que tienen stock en Full, 0 ventas en 30 días y alguna
+      // etiqueta de problema (`etqProblemas`) o una salud (`health`) baja. Lo que se arregla es la publicación (foto, ficha técnica),
+      // no el precio. Las que ML nunca contestó (sin `etq`) se cuentan aparte: no es "sin problemas".
+      try {
+        const sinEtq = filas.filter((r) => !r.etq && r.salud == null).length;
+        const dorm = filas.filter((r) => !r.stDesc && r.st > 0 && !r.u30).map((r) => ({ r, pr: etqProblemas(r.etq, r.salud) })).filter((x) => x.pr.length);
+        console.log(`\n── 🩺 NO VENDEN Y ML LES MARCA UN PROBLEMA DE CALIDAD (${dorm.length}) · con stock en Full y 0 ventas en 30 d · se arregla la publicación, no el precio${sinEtq ? ` · (${sinEtq} sin etiquetas leídas todavía: no es "sin problemas")` : ''} ──`);
+        for (const { r, pr } of dorm) console.log(`🩺 ${r.mla} · ${r.cta} · ${r.nom} · ${r.est} · Full ${r.st} · ${r.u60 ? 'vendió ' + r.u60 + ' en 60 d' : 'sin ventas en 60 d'} · ${pr.join(' · ')}`);
+        if (!dorm.length) console.log('ninguna');
+      } catch (eQ) { console.log('⚠️ la lista de calidad falló: ' + eQ.message); }
+      // ── 6.D4 · 💡 PRECIO QUE SUGIERE ML (SIN CATÁLOGO) (etapa 6, eligió la a). Para las que no son de catálogo no hay competidor
+      // legible: lo único de afuera es lo que sugiere ML y la más barata parecida (`mllinks.sugP`/`sugMin`, una vez por día). Es una
+      // REFERENCIA para el tamaño del salto de techo y el precio de lanzamiento: nunca para bajar algo que vende (lo de ML orienta;
+      // decide lo que vende). No mueve ningún precio solo.
+      try {
+        const sc = filas.filter((r) => !r.catalogo && /^active/.test(r.est) && !r.var);
+        const conS = sc.filter((r) => r.sugP), sinS = sc.filter((r) => !r.sugP);
+        console.log(`\n── 💡 PRECIO QUE SUGIERE ML · SIN CATÁLOGO (${conS.length} con sugerencia · ${sinS.length} sin) · referencia para el salto de techo y el lanzamiento, nunca para bajar lo que vende ──`);
+        for (const r of conS.sort((x, y) => (y.u30 - x.u30))) { const d = (r.P / r.sugP - 1) * 100;
+          console.log(`💡 ${r.mla} · ${r.cta} · ${r.nom} · vos ${f(r.P)} · ML sugiere ${f(r.sugP)} (${d >= 0 ? '+' : ''}${d.toFixed(0)}% vos)${r.sugMin ? ` · la más barata parecida ${f(r.sugMin)}` : ''} · v ${r.u7}/${r.u30} · Full ${r.st} · 🏷 ${estrat === null ? '?' : ESTRATEGIAS[r.est2.t]}${r.sugTs ? ' · leído hace ' + Math.round((hoy - r.sugTs) / 864e5) + ' d' : ''}`); }
+        if (sinS.length) console.log(`   (${sinS.length} sin sugerencia de ML todavía: ${sinS.slice(0, 12).map((r) => r.mla).join(' ')}${sinS.length > 12 ? ' …' : ''})`);
+      } catch (eS) { console.log('⚠️ la lista de precios sugeridos falló: ' + eS.message); }
+      // ── 6.D2 · 💳 LA PERDÉS POR CUOTAS, NO POR PRECIO (etapa 6, eligió la a). La caja la gana uno que no está más barato que vos y
+      // ML dice que te faltan cuotas sin interés (`mllinks.cajaPorCuotas`, cada hora). El remedio es la gemela Premium a igual plata
+      // neta (`gemela`), NO bajar el precio.
+      try {
+        const pc = filas.filter((r) => r.cajaPorCuotas && /^active/.test(r.est));
+        console.log(`\n── 💳 LA CAJA SE PIERDE POR CUOTAS, NO POR PRECIO (${pc.length}) · candidatas a gemela Premium (\`gemela\`), no a bajar ──`);
+        for (const r of pc) console.log(`💳 ${r.mla} · ${r.cta} · ${r.nom} · vos ${f(r.P)} · el que gana ${r.cajaGanP ? f(r.cajaGanP) : '?'}${r.cajaGanPromo ? ` (en promo −${r.cajaGanPromo}%)` : ''} · ${r.lt === 'gold_pro' ? 'YA es Premium' : 'Clásica'} · v ${r.u7}/${r.u30} · Full ${r.st}`);
+        if (!pc.length) console.log('ninguna');
+      } catch (eC) { console.log('⚠️ la lista de cajas por cuotas falló: ' + eC.message); }
       if (sinMgTxt(filas)) console.log(sinMgTxt(filas));
       console.log(`\nResumen: ${filas.length} miradas · ${bajo.length} abajo de ${PISO}% · ${sinMg.length} sin margen medible · ${rap.length} cuya última tanda duró 3 días o menos (probablemente baratas)`);
       return;
     }
 
+    // BILLING_PROBE=medir6[:<MLA>] → SOLO LEE (etapa 6, 21/10/2026). MIDE LOS DATOS NUEVOS QUE EL ROBOT EMPEZÓ A GUARDAR, para
+    // confirmar que ML los manda como se supuso (las claves se escribieron tolerantes a que falten):
+    //  · price_to_win de hasta 6 publicaciones que pierden o comparten: qué claves trae `winner` (¿precio tachado?) y los `boosts` (6.D2/6.D5)
+    //  · /suggestions/items/<MLA>/details de hasta 4 sin catálogo: claves y lo que lee `leerSugerenciaML` (6.D4)
+    //  · las etiquetas (`tags`) de todas las publicaciones guardadas, contadas, y cuáles toma `etqProblemas` como problema (6.D6)
+    //  · la reposición de Full de 2 productos con lo que lee `leerRepoFullML` (6.D1) · el dólar MEP y cripto de hoy (6.P3)
+    // No imprime datos de compradores ni ids de otros vendedores (sólo nombres de campo y números).
+    if (/^medir6(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const uno = (String(process.env.BILLING_PROBE).split(':')[1] || '').trim().toUpperCase();
+      const lk = (await db.get('cyc/mllinks')) || {};
+      const tok = await tokensCerebro(db);
+      const tkDe = (cta) => tok[cta] || tok[String(cta || '').charAt(0).toUpperCase() + String(cta || '').slice(1).toLowerCase()];
+      console.log('=== MEDIR LOS DATOS NUEVOS DE LA ETAPA 6 (solo lee) ===');
+      const perd = Object.entries(lk).filter(([m, e]) => e && (uno ? m === uno : (e.caja === 'losing' || e.caja === 'sharing')) && !e.ignored).slice(0, 6);
+      console.log(`\n── price_to_win · ${perd.length} que pierden o comparten ──`);
+      for (const [m, e] of perd) { const tk = tkDe(e.cuenta); if (!tk) { console.log(`  ${m}: sin token`); continue; }
+        try { const ptw = await mlGet('/items/' + m + '/price_to_win?version=v2', tk);
+          console.log(`  ${m} · ${ptw.status} · claves: ${Object.keys(ptw || {}).join(',')} · winner: ${Object.keys(ptw.winner || {}).join(',') || '—'} · boosts: ${(ptw.boosts || []).map((b) => b.id + ':' + b.status).join(' ') || '—'} · ganador $${Math.round(Number(ptw.winner && ptw.winner.price) || 0)}${ptw.winner && ptw.winner.original_price ? ' tachado $' + Math.round(ptw.winner.original_price) : ''} · guardado: porCuotas ${e.cajaPorCuotas ? 'sí' : 'no'}`); }
+        catch (er) { console.log(`  ${m}: ${String(er.message || er).slice(0, 80)}`); } }
+      const sinc = Object.entries(lk).filter(([m, e]) => e && (uno ? m === uno : e.caja === 'nocat') && !e.ignored).slice(0, 4);
+      console.log(`\n── /suggestions/items · ${sinc.length} sin catálogo ──`);
+      for (const [m, e] of sinc) { const tk = tkDe(e.cuenta); if (!tk) { console.log(`  ${m}: sin token`); continue; }
+        try { const sg = await mlGet(`/suggestions/items/${m}/details`, tk); const r = leerSugerenciaML(sg);
+          console.log(`  ${m} · claves: ${Object.keys(sg || {}).join(',')} · suggested_price: ${JSON.stringify(sg && sg.suggested_price).slice(0, 80)} · lowest_price: ${JSON.stringify(sg && sg.lowest_price).slice(0, 80)} → lee sugerido ${r.sug ?? '—'} · más barata ${r.min ?? '—'}`); }
+        catch (er) { console.log(`  ${m}: ${String(er.message || er).slice(0, 80)}`); } }
+      const cuenta = {}; let conEtq = 0, sinEtq = 0;
+      for (const e of Object.values(lk)) { if (!e || e.ignored || e.status === 'closed') continue; if (e.etq == null) { sinEtq++; continue; } conEtq++; for (const t of String(e.etq).split(',').filter(Boolean)) cuenta[t] = (cuenta[t] || 0) + 1; }
+      console.log(`\n── etiquetas guardadas · ${conEtq} publicaciones con etiquetas leídas · ${sinEtq} todavía sin leer ──`);
+      for (const [t, n] of Object.entries(cuenta).sort((a, b) => b[1] - a[1])) console.log(`  ${String(n).padStart(4)} × ${t}${etqProblemas(t, null).length ? '   ← problema' : ''}`);
+      const ups = [...new Set(Object.values(lk).filter((e) => e && e.upid && e.inv && !e.ignored).map((e) => e.upid + '|' + e.cuenta))].slice(0, 2);
+      console.log(`\n── reposición de Full según ML · ${ups.length} productos ──`);
+      for (const x of ups) { const [up, cta] = x.split('|'); const tk = tkDe(cta); if (!tk) continue;
+        try { const j = await mlGet(`/marketplace/fbm/user-products/${up}/replenishment?country=AR`, tk); console.log(`  ${up} → ${JSON.stringify(leerRepoFullML(j))}`); }
+        catch (er) { console.log(`  ${up}: ${String(er.message || er).slice(0, 80)}`); } }
+      const dr = await dolarReferencias();
+      console.log(`\n── dólar de referencia hoy → oficial ${dr.of ?? '?'} · MEP ${dr.mep ?? '?'} (${dr.fuentes.mep || 'ninguna'}${dr.fuentes.mepB ? ', criptoya ' + dr.fuentes.mepB : ''}) · cripto ${dr.cri ?? '?'} (${dr.fuentes.cri || 'ninguna'}${dr.fuentes.criB ? ', criptoya ' + dr.fuentes.criB : ''})`);
+      return;
+    }
+    // BILLING_PROBE=cruza33[:<días>] → 6.P4 (etapa 6, eligió la a, 21/10/2026). SOLO LEE. EL ENVÍO QUE PAGAMOS CUANDO 2 U. O UN
+    // CARRITO PASAN LOS $33.000. La unidad está abajo de la barrera (ML no cobra envío), pero el PEDIDO entero la cruza (`compraCruzaBarrera`,
+    // la misma regla que la deducción de envío): ahí ML sí cobra el envío gratis. Por publicación: lo que ML se quedó por unidad en esas
+    // ventas contra lo que se quedó en sus ventas sueltas (la mediana, mismo precio ±10%); la diferencia × unidades es el envío pagado
+    // aprox. Sin ventas sueltas comparables no se inventa: se dice. Las ventas con neto estimado no entran. No imprime números de orden.
+    // (no se llama `envio33`: `envio3` agarra todo lo que empieza así)
+    if (/^cruza33(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const dias = parseFloat(String(process.env.BILLING_PROBE).split(':')[1]) || 60;
+      const vp = await db.get('cyc/ventaprod').catch(() => null);
+      if (!vp) { console.log('⚠️ no pude leer las ventas: no opino'); return; }
+      const lk = (await db.get('cyc/mllinks').catch(() => null)) || {};
+      const desde = new Date(Date.now() - dias * 864e5).toISOString().slice(0, 10).replace(/-/g, '_');
+      const porMla = {};
+      for (const [dk, ents] of Object.entries(vp)) {
+        if (dk.slice(0, 10) < desde) continue;
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada || !v.mla || v.netoEstimado) continue;
+          const q = Number(v.qty) || 1, tot = Number(v.total) || 0, net = Number(v.neto) || 0; if (!(tot > 0 && net > 0)) continue;
+          const unit = tot / q; if (unit >= UMBRAL_ENVIO_GRATIS) continue;
+          const o = (porMla[v.mla] = porMla[v.mla] || { cruza: [], suelta: [] });
+          (compraCruzaBarrera(v, ents) ? o.cruza : o.suelta).push({ unit, q, mlU: (tot - net) / q, carrito: q === 1 });
+        }
+      }
+      const med = (a) => { const x = [...a].sort((p, q) => p - q); return x.length ? x[Math.floor(x.length / 2)] : null; };
+      const filas = []; let uTot = 0, plataTot = 0, sinComp = 0;
+      for (const [mla, o] of Object.entries(porMla)) {
+        if (!o.cruza.length) continue;
+        const u = o.cruza.reduce((a, x) => a + x.q, 0);
+        const pC = med(o.cruza.map((x) => x.unit));
+        const sueltasCerca = o.suelta.filter((x) => Math.abs(x.unit / pC - 1) <= 0.10);
+        const mlC = med(o.cruza.map((x) => x.mlU)), mlS = sueltasCerca.length ? med(sueltasCerca.map((x) => x.mlU)) : null;
+        const extra = mlS != null ? Math.max(0, mlC - mlS) : null;
+        if (extra == null) sinComp++; else { uTot += u; plataTot += extra * u; }
+        filas.push({ mla, nom: String((lk[mla] || {}).title || mla).slice(0, 44), cta: (lk[mla] || {}).cuenta || '?', n: o.cruza.length, u, carr: o.cruza.filter((x) => x.carrito).length, pC, mlC, mlS, nS: sueltasCerca.length, extra });
+      }
+      filas.sort((a, b) => ((b.extra || 0) * b.u) - ((a.extra || 0) * a.u));
+      const m$ = (n) => '$' + Math.round(n).toLocaleString('es-AR');
+      console.log(`=== 🚚 EL ENVÍO QUE PAGAMOS CUANDO EL PEDIDO PASA LOS $33.000 (la unidad no) · últimos ${dias} días · solo lee ===`);
+      console.log(`${filas.length} publicaciones con ventas así · ${uTot} u. comparables · envío pagado aprox ${m$(plataTot)}${sinComp ? ` · ${sinComp} sin ventas sueltas a precio parecido para comparar (no se inventa)` : ''}\n`);
+      for (const f of filas) console.log(`· ${f.mla} · ${f.cta} · ${f.nom} · ${f.n} venta(s) que cruzan (${f.u} u.${f.carr ? `, ${f.carr} en carrito con otros` : ''}) a ~${m$(f.pC)} · ML se quedó ${m$(f.mlC)}/u ${f.mlS != null ? `contra ${m$(f.mlS)}/u suelta (${f.nS} ventas) → envío ~${m$(f.extra)}/u · ${m$(f.extra * f.u)} en total` : '· sin venta suelta comparable'}`);
+      if (!filas.length) console.log('ninguna: ningún pedido cruzó la barrera con unidades de menos de $33.000');
+      return;
+    }
     // BILLING_PROBE=carritos[:<días>] → ¿QUÉ PRODUCTOS SE VEÍAN MEJOR POR VENDERSE EN CARRITO? SOLO LEE (18/10/2026).
     // Regla suya: *"no podés subir el % de un producto por venderse con otro"*. Por producto, en los últimos N días (60): el %
     // con el neto que guardó la venta (el carrito reparte el cargo fijo y el envío) contra el % vendido SOLO (`prepNetoSolo`).
@@ -44343,20 +45285,8 @@ async function main() {
         catch { toks[label] = null; }
         return toks[label];
       };
-      // La foto del mercado de UNA publicación, hoy.
-      const foto = async (mla, probado) => {
-        const e = links[mla] || {}; const tok = await tokDe(e.cuenta); if (!tok) return { err: 'sin token' };
-        let b; try { b = await mlGet('/items/' + mla + '?attributes=id,title,price,catalog_product_id,status', tok); } catch (er) { return { err: 'ML no contestó la publicación' }; }
-        const out = { precio: Math.round(b.price || 0), titulo: String(b.title || e.title || '').slice(0, 55), cuenta: e.cuenta || '?', cat: !!b.catalog_product_id };
-        if (!b.catalog_product_id) return out;
-        try { const p = await mlGet('/items/' + mla + '/price_to_win?version=v2', tok); out.caja = p?.status || null; out.ptw = p?.price_to_win ? Math.round(p.price_to_win) : null; } catch { out.caja = null; }
-        let comp = null; try { comp = await mlGet(`/products/${b.catalog_product_id}/items`, tok); } catch { return { ...out, err: 'ML no dio los competidores' }; }
-        const ajenos = ofertasParaMedir((comp?.results || []).filter((x) => x && x.price > 0 && !sids[String(x.seller_id)])).ofs;
-        out.ajenos = ajenos.length;
-        out.barato = ajenos.length ? Math.round(Math.min(...ajenos.map((x) => x.price))) : null;
-        out.abajo = probado ? ajenos.filter((x) => x.price < probado).length : null;
-        return out;
-      };
+      // La foto del mercado de UNA publicación, hoy (`fotoMercadoTecho`, la misma que usa `techo95`).
+      const foto = async (mla, probado) => { const e = links[mla] || {}; return fotoMercadoTecho(mla, probado, e, await tokDe(e.cuenta), sids); };
       const altas = [], bajas = [];
       for (const x of pares) {
         if (/^-MLA\d+$/i.test(x)) { bajas.push(x.slice(1).toUpperCase()); continue; }
@@ -44416,20 +45346,13 @@ async function main() {
       } catch (er) { console.log('⚠️ no pude leer las estrategias: ' + (er.message || er)); }
       console.log(`=== FRENO DE TECHO: ¿CAMBIÓ EL MERCADO? · ${ids.length} frenada(s) ===`);
       if (!ids.length) { console.log('No hay ninguna. Se anotan con techofreno:<MLA>=<precio probado>|motivo;go al volver una prueba.'); return; }
-      const DIAS = 30, SUBE = 0.08; let reabrir = 0;
+      let reabrir = 0;
       for (const mla of ids) {
         const r = fr[mla] || {}; const dias = Math.floor((Date.now() - (r.ts || 0)) / 864e5);
         const f = await foto(mla, r.probado);
-        const por = [];
-        if (dias >= DIAS) por.push(`pasaron ${dias} días`);
-        if (r.cat && !f.err) {
-          if (r.barato && f.barato && f.barato >= r.barato * (1 + SUBE)) por.push(`el más barato ajeno subió ${money(r.barato)} → ${money(f.barato)}`);
-          if (r.barato && !f.barato) por.push('ya no hay ningún vendedor ajeno en la ficha');
-          if ((r.abajo || 0) > 0 && f.abajo === 0) por.push(`antes había ${r.abajo} ajeno(s) más barato(s) que ${money(r.probado)} y hoy ninguno`);
-          if (r.caja && r.caja !== 'winning' && f.caja === 'winning') por.push('ahora ganamos la caja (antes no)');
-        }
+        const por = porQueReabrirTecho(r, f);
         if (por.length) reabrir++;
-        console.log(`\n${por.length ? '🔓 REABRIR' : '🔒 sigue'} · ${mla} · ${f.cuenta || '?'} · ${f.titulo || ''}`);
+        console.log(`\n${por.length ? '🔓 REABRIR' : '🔒 sigue'} · ${mla} · ${f.cuenta || '?'} · ${f.titulo || ''}${r.t95 ? ' · 🏔️ de techo95' : ''}`);
         console.log(`   frenada hace ${dias} d · probado ${money(r.probado || 0)} · hoy ${money(f.precio || 0)}${r.motivo ? ' · ' + r.motivo : ''}`);
         if (r.cat) console.log(`   más barato ajeno: entonces ${r.barato ? money(r.barato) : '—'} → hoy ${f.barato ? money(f.barato) : '—'} · abajo del probado: ${r.abajo ?? '?'} → ${f.abajo ?? '?'} · caja: ${r.caja || '?'} → ${f.caja || '?'}${f.ptw ? ' (ML pide ' + money(f.ptw) + ')' : ''}`);
         else console.log('   no es de catálogo: se reabre a los 30 días');
@@ -44644,6 +45567,119 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=listaped[:llego:<id|número>[;<palabra>[#<color>]=<llegaron>…][;nosumar]][;go] (etapa 6 · A3, 21/10/2026, eligió la a)
+    // → "LLEGÓ" DE UN PEDIDO A UNA LISTA, DESDE EL CHAT (Listas no tenía comando: había que tocar el botón). Hace lo MISMO que
+    // `listaLlego` de la web, con los mismos registros en `cyc/compraslista/<id>`: los NUEVOS se vuelven ficha (costo = lo pagado a
+    // la lista ÷ el dólar del pedido, del proveedor de la lista, con su código y el catálogo confirmado), los PROBADOS se enganchan
+    // y suben el costo si salió más caro (nunca bajan; el viejo queda congelado en los meses con ventas), y lo que llegó se SUMA a la
+    // oficina (lo que no se nombra llegó entero; `nosumar` = lo contás vos). Sin `;go` sólo muestra. `listaped` solo = en camino.
+    if (/^listaped(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _raw = String(process.env.BILLING_PROBE).replace(/^listaped:?/, '');
+      const GO = /(^|[;:])go$/.test(_raw);
+      const cuerpo = _raw.replace(/([;:])?go$/, '');
+      const [sub, ...resto] = cuerpo.split(':');
+      const nrm = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+      const peds = (await db.get('cyc/compraslista')) || {};
+      if (!sub) {
+        const cam = Object.entries(peds).filter(([, c]) => c && c.estado === 'camino').sort((a, b) => String(a[1].fecha).localeCompare(String(b[1].fecha)));
+        console.log(`=== PEDIDOS A LISTAS EN CAMINO (${cam.length}) ===`);
+        for (const [id, c] of cam) { console.log(`\n· ${id}${c.num ? ' · #' + c.num : ''} · ${c.provNom || c.prov} · del ${c.fecha} · ${(c.items || []).length} renglón(es)`); for (const it of (c.items || [])) console.log(`    ${it.u} u. · ${it.n || it.cod}${it.variante ? ' · ' + it.variante : ''}${it.prodId ? ' (probado)' : ' (nuevo)'}`); }
+        if (!cam.length) console.log('Ninguno.');
+        return;
+      }
+      if (sub !== 'llego') { console.log('Usá: listaped · listaped:llego:<id|número>[;<palabra>[#<color>]=<unidades que llegaron>…][;nosumar][;go]'); return; }
+      const [_idA, ..._llA] = resto.join(':').split(';');
+      const idArg = String(_idA || '').trim().replace(/^#/, '');
+      const NOSUMAR = _llA.some((x) => /^nosumar$/i.test(String(x).trim()));
+      const _faltaArgs = _llA.map((x) => String(x).trim()).filter((x) => x && !/^nosumar$/i.test(x));
+      const hit = Object.entries(peds).filter(([id, c]) => c && (id === idArg || String(c.num || '') === idArg));
+      if (hit.length !== 1) { console.log(`❌ "${idArg}" agarra ${hit.length} pedido(s). Corré \`listaped\` para ver los que están en camino.`); return; }
+      const [id, c] = hit[0];
+      if (c.estado !== 'camino') { console.log(`El pedido ${id} está "${c.estado}", no en camino: no se toca.`); return; }
+      const fin = (await db.get('cyc/finanzas')) || {};
+      const tc = Number(c.tc) || parseFloat(fin.tipo_cambio) || 0;
+      const productsL = (await db.get('cyc/products')) || {};
+      const prods = Object.values(productsL).filter((x) => x && x.name);
+      const its = (c.items || []).filter(Boolean);
+      const plan = its.map((it) => {
+        const nombre = String(it.mt || it.n || '').trim(), n1 = nrm(nombre), n2 = nrm(it.n || '');
+        if (it.prodId) { const pr0 = productsL[it.prodId] || null; return { it, nombre, misma: pr0, prob: true, borrada: !pr0 }; }
+        const misma = prods.find((x) => (x.codLista && String(x.codLista) === String(it.cod) && x.listaProv === c.prov) || nrm(x.name) === n1 || nrm(x.name) === n2) || null;
+        return { it, nombre, misma };
+      });
+      if (!(tc > 0) && plan.some((x) => !x.misma && !x.prob && x.nombre)) { console.log('❌ Falta el dólar (del pedido o de Finanzas): las fichas nuevas nacerían con costo US$ 0. No escribo nada.'); return; }
+      const _nomIt = (it) => it.mt || it.n || it.cod || '?';
+      const F = faltoDePedido(its, _faltaArgs, _nomIt);
+      if (F.problemas.length) { console.log('❌ NO ESCRIBO NADA (lo que faltó no se entiende):'); F.problemas.forEach((x) => console.log('   ' + x)); return; }
+      const llegoU = (it) => { const i = its.indexOf(it); return F.llegan.has(i) ? F.llegan.get(i) : (parseInt(it.u) || 0); };
+      console.log(`=== LLEGÓ EL PEDIDO A ${c.provNom || c.prov} ${id} (del ${c.fecha}) ${GO ? '' : '(PRUEBA — no escribo nada)'} ===`);
+      for (const x of plan) {
+        const u = llegoU(x.it), pe = parseInt(x.it.u) || 0, nu = tc > 0 ? Math.round((Number(x.it.pc) || 0) / tc * 100) / 100 : 0;
+        const est = x.borrada ? 'probado con la ficha BORRADA: no se crea nada' : x.misma ? `${x.prob ? 'probado' : 'ya existe'}: ${x.misma.name}${nu > (parseFloat(x.misma.costUSD) || 0) + 0.005 ? ` (costo sube US$ ${(parseFloat(x.misma.costUSD) || 0).toFixed(2)} → ${nu.toFixed(2)})` : ''}` : `ficha nueva: ${String(x.nombre).slice(0, 60)} · US$ ${nu.toFixed(2)}${x.it.mi ? ' · catálogo ' + x.it.mi : ''}`;
+        console.log(`  ${u} de ${pe} u. · ${_nomIt(x.it)}${x.it.variante ? ' · 🎨 ' + x.it.variante : ''} → ${est}${u < pe ? '  ⚠️ faltaron ' + (pe - u) : ''}`);
+      }
+      console.log(NOSUMAR ? 'Oficina: NO se suma nada (nosumar).' : 'Oficina: se SUMA lo que llegó.');
+      if (!GO) { console.log('\nNo se guardó nada (falta ;go).'); return; }
+      // Primero se marca llegado (deja de contar "en camino") con la foto de la oficina de los probados, como la web.
+      const inv = (await db.get('cyc/inventory')) || {};
+      const ofiAl = {}; for (const x of plan) if (x.prob && x.misma && !(x.misma.id in ofiAl)) ofiAl[x.misma.id] = parseInt(inv[x.misma.id + '__' + sid('Oficina Mati')]) || 0;
+      const fresco = await db.get('cyc/compraslista/' + id);
+      if (!fresco || fresco.estado !== 'camino') { console.log(`⚠️ Mientras corría, el pedido ${id} dejó de estar en camino (lo marcó la web u otro comando): no toco nada.`); return; }
+      const llegoTs = Date.now();
+      await db.patch('cyc/compraslista/' + id, { estado: 'llegado', llegoTs, ...(fresco.pagado !== true ? { pagado: false } : {}), ...(!fresco.ofiAlLlegar && Object.keys(ofiAl).length ? { ofiAlLlegar: ofiAl } : {}) });
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
+      const php = (await db.get('cyc/precios_hist_prod')) || {};
+      const fichaDe = {}, subio = [], nuevas = [];
+      for (const [i, x] of plan.entries()) {
+        if (x.borrada) continue;
+        if (x.misma) {
+          fichaDe[i] = x.misma; const up = {};
+          if (!x.misma.listaProv) up.listaProv = c.prov;
+          if (x.prob && !x.misma.codLista && x.it.cod) up.codLista = String(x.it.cod);
+          const nu = tc > 0 ? Math.round((Number(x.it.pc) || 0) / tc * 100) / 100 : 0, an = parseFloat(x.misma.costUSD) || 0;
+          if (nu > an + 0.005) {
+            // RECOMPRA MÁS CARA (decisión 6a del 20/10/2026, como la web y Paraguay): sube; el costo viejo queda en los meses con ventas.
+            if (an > 0) { const meses = new Set(); for (const [dk, o] of Object.entries(vp)) for (const v of Object.values(o || {})) if (v && v.prodId === x.misma.id) meses.add(String(dk).slice(0, 7)); for (const ym of meses) if (!(php[ym] && php[ym][x.misma.id] != null)) await db.set(`cyc/precios_hist_prod/${ym}/${x.misma.id}`, an); }
+            const dev = DEV_LIVE[x.misma.id] != null ? DEV_LIVE[x.misma.id] : (parseFloat(x.misma.devPct) || 0);
+            Object.assign(up, { costUSD: nu, cost: Math.round(Number(x.it.pc) || 0), costFullUSD: Math.round((nu * (1 + dev / 100) + (parseFloat(x.misma.shipUSD) || 0)) * 100) / 100 });
+            subio.push(`${x.misma.name} US$ ${an.toFixed(2)} → ${nu.toFixed(2)}`);
+          }
+          if (Object.keys(up).length) await db.patch('cyc/products/' + x.misma.id, up);
+          continue;
+        }
+        if (!x.nombre) continue;
+        if (CORTAR) { console.log('⚠️ Cancelaron la corrida: el pedido ya figura llegado; las fichas que faltan se crean repitiendo el comando con la web (Listas → Llegó no aplica) o a mano.'); break; }
+        const usd = tc > 0 ? Math.round((Number(x.it.pc) || 0) / tc * 100) / 100 : 0;
+        const pN = { id: 'p' + Date.now() + 'l' + i, name: String(x.nombre).slice(0, 90), costUSD: usd, cost: Math.round(Number(x.it.pc) || 0), costFullUSD: usd, origen: 'bsas', proveedor: c.provNom || c.prov, listaProv: c.prov, codLista: String(x.it.cod || ''), altaChat: Date.now() };
+        if (x.it.mi) pN.mlCatalogo = x.it.mi;
+        try { await db.set('cyc/products/' + pN.id, pN); fichaDe[i] = pN; nuevas.push(pN); prods.push(pN); }
+        catch (e) { console.log(`⚠️ no pude crear ${pN.name}: ${(e && e.message) || e}`); }
+      }
+      // La oficina: lo que llegó, en su ficha y su color.
+      const sumados = [], aMano = [], faltoR = [];
+      for (const [i, x] of plan.entries()) { const u = llegoU(x.it), pe = parseInt(x.it.u) || 0; if (u < pe) faltoR.push({ nom: String(_nomIt(x.it)).slice(0, 80), ...(x.it.variante ? { v: x.it.variante } : {}), pedidas: pe, llegaron: u }); }
+      if (!NOSUMAR) for (const [i, x] of plan.entries()) {
+        const u = llegoU(x.it); if (!(u > 0)) continue;
+        const pf = fichaDe[i]; if (!pf) { aMano.push({ nom: _nomIt(x.it), u, why: x.borrada ? 'la ficha se borró' : 'no se creó la ficha' }); continue; }
+        let r = null; try { r = await ofiSumarBot(db, pf, x.it.variante || '', u, inv); } catch (e) { aMano.push({ nom: pf.name, u, pf, why: 'no se pudo escribir' }); continue; }
+        if (!r) { aMano.push({ nom: pf.name, u, pf, v: x.it.variante || '', why: x.it.variante ? `la ficha no tiene el color "${x.it.variante}"` : 'la ficha tiene colores y el renglón no dice cuál' }); continue; }
+        sumados.push({ prodId: pf.id, ...(r.color ? { v: r.color } : {}), u });
+        console.log(`  🏠 oficina · ${pf.name}${r.color ? ' · ' + r.color + ': ' + r.antes + ' → ' + r.ahora + ' (total ' + r.tA + ' → ' + r.tN + ')' : ': ' + r.antes + ' → ' + r.tN}`);
+      }
+      const quedan = {}; for (const [pid, q] of Object.entries(ofiAl)) if (NOSUMAR || !sumados.some((y) => y.prodId === pid) || aMano.some((y) => y.pf && y.pf.id === pid)) quedan[pid] = q;
+      await db.patch('cyc/compraslista/' + id, { sumoOfi: NOSUMAR ? null : { ts: Date.now(), por: 'chat', items: sumados }, ofiAlLlegar: Object.keys(quedan).length ? quedan : null, falto: faltoR.length ? faltoR : null });
+      const rel = await db.get('cyc/compraslista/' + id);
+      console.log(`\n${rel && rel.estado === 'llegado' ? '✓' : '⚠️ NO QUEDÓ'} Pedido ${id} llegado · ${nuevas.length} ficha(s) nueva(s)${nuevas.length ? ': ' + nuevas.map((x) => x.id + ' ' + x.name).join(' | ') : ''}${subio.length ? ' · costo subido: ' + subio.join(' · ') : ''}`);
+      if (sumados.length) console.log(`✓ Sumado a la oficina: ${sumados.reduce((a, x) => a + x.u, 0)} u.${faltoR.length ? ' · faltaron ' + faltoR.reduce((a, x) => a + x.pedidas - x.llegaron, 0) + ' u. (anotadas en el pedido)' : ''}`);
+      if (aMano.length || NOSUMAR) {
+        const lst = NOSUMAR ? plan.map((x, i) => ({ nom: (fichaDe[i] || {}).name || _nomIt(x.it), u: llegoU(x.it), pf: fichaDe[i], v: x.it.variante || '' })) : aMano;
+        const cmd = lst.filter((x) => x.u > 0 && x.pf && !/[;=@#]/.test(x.pf.name)).map((x) => { const col = ofiColorDeFicha(x.pf, x.v || ''); const vsP = Array.isArray(x.pf.variantes) ? x.pf.variantes : Object.values(x.pf.variantes || {}); return `=${x.pf.name}${col == null ? '@<color: ' + vsP.slice(0, 6).join(' | ') + '>' : col ? '@' + col : ''}=+${x.u}`; });
+        if (cmd.length) console.log(`⚠️ Esto NO se sumó: ofi:${cmd.join(';')};go`);
+        const sinC = lst.filter((x) => x.u > 0 && (!x.pf || /[;=@#]/.test(x.pf.name)));
+        if (sinC.length) console.log(`⚠️ Contalo a mano en Mi oficina: ${sinC.map((x) => x.u + ' u. ' + x.nom + (x.why ? ' (' + x.why + ')' : '')).join(' · ')}`);
+      }
+      return;
+    }
     // BILLING_PROBE=pyped[:...] → LOS PASOS DE UN PEDIDO A PARAGUAY, DESDE EL CHAT (26/09/2026).
     // Regla suya del 26/09: *"no quiero marcar a mano, todo te lo voy a decir para que lo hagas vos"*.
     // Hace lo MISMO que los botones de la web (pyCanastaYaLoPedi, pyPedidoHecho, pyPedidoLlego), con
@@ -44903,7 +45939,12 @@ async function main() {
       // `llego` (precio pagado × recargo real). No marca nada, no toca la oficina ni el estado del pedido.
       const SOLOFICHAS = sub === 'fichas';
       if (sub === 'llego' || SOLOFICHAS) {
-        let id = arg.trim();
+        // A3 (etapa 6, 21/10/2026): `pyped:llego:<id>[;<palabra>[#<color>]=<llegaron>…][;nosumar][;go]`. Lo que llegó se SUMA solo a
+        // la oficina (lo que no se dice, llegó entero); `nosumar` = lo contás vos en Mi oficina, como antes.
+        const [_idA, ..._llA] = arg.split(';');
+        let id = _idA.trim();
+        const NOSUMAR = _llA.some((x) => /^nosumar$/i.test(String(x).trim()));
+        const _faltaArgs = _llA.map((x) => String(x).trim()).filter((x) => x && !/^nosumar$/i.test(x));
         if (/^\d{4}-\d{2}-\d{2}$/.test(id)) {
           const m = Object.entries(compras).filter(([, c]) => c && c.fecha === id && c.estado === 'camino');
           if (m.length !== 1) { console.log(`Con la fecha ${id} hay ${m.length} pedido(s) en camino${m.length ? ': ' + m.map(([k]) => k).join(', ') : ''}. Pasá el id.`); return; }
@@ -44955,9 +45996,16 @@ async function main() {
           plan.filter((x) => x.estado === 'ya').forEach((x) => console.log(`  = ya tenía ficha: ${x.src.nombre}`));
           plan.filter((x) => x.estado === 'nonombre').forEach(() => console.log(`  ⚠️ un renglón sin nombre: no se puede crear`));
         }
-        if (_repIts.length) {
-          console.log('Probados (reposición): no crean fichas (ya las tienen). Hay que contar estas unidades en la oficina:');
-          _repIts.forEach((it) => console.log(`  ${it.u} u. · ${it.nom || it.cod || '?'}`));
+        if (_repIts.length) console.log(`Probados (reposición): no crean fichas (ya las tienen): ${_repIts.length} renglón(es).`);
+        // A3: qué llegó de cada renglón (lo que no se nombra, entero) y si se suma a la oficina.
+        const _itsP = (c.items || []).filter(Boolean);
+        const _nomIt = (it) => it.nom || it.cod || '?';
+        const _F = SOLOFICHAS ? { llegan: new Map(), problemas: [] } : faltoDePedido(_itsP, _faltaArgs, _nomIt);
+        if (_F.problemas.length) { console.log('❌ NO ESCRIBO NADA (lo que faltó no se entiende):'); _F.problemas.forEach((x) => console.log('   ' + x)); return; }
+        const _llegoU = (it) => { const i = _itsP.indexOf(it); return _F.llegan.has(i) ? _F.llegan.get(i) : (parseInt(it.u) || 0); };
+        if (!SOLOFICHAS) {
+          console.log(NOSUMAR ? 'Oficina: NO se suma nada (nosumar): contalo vos en Mi oficina.' : 'Oficina: se SUMA lo que llegó (lo que no dijiste que faltó, llegó entero):');
+          for (const it of _itsP) { const u = _llegoU(it), pe = parseInt(it.u) || 0; console.log(`  ${u} de ${pe} u. · ${_nomIt(it)}${it.variante ? ' · 🎨 ' + it.variante : ''}${u < pe ? '  ⚠️ faltaron ' + (pe - u) : ''}`); }
         }
         if (!GO) { console.log('\nNo se guardó nada (falta :go).'); return; }
         const hechas = [];
@@ -44984,10 +46032,13 @@ async function main() {
           if (x.src.prov && x.src.prov !== 'nissei') p.provPy = x.src.prov;
           if (/^https:\/\//.test(String(x.src.link || ''))) p.pyLink = String(x.src.link).slice(0, 300);
           if (/^https:\/\//.test(String(x.src.foto || ''))) p.pyFoto = String(x.src.foto).slice(0, 300);
+          // A2 (etapa 6, 21/10/2026): la ficha nace con el catálogo de ML CONFIRMADO del candidato (✅ o revisión de fotos, atado a
+          // ese catálogo). Con eso la publicación nueva se activa sola sólo si está en ESE catálogo (`activarPausadasFull`).
+          { const kC = cands[x.src.id]; if (kC && candCatChequeado(kC)) p.mlCatalogo = candCatDe(kC); }
           try {
             await db.set('cyc/products/' + p.id, p);
             if (x.src.id && cands[x.src.id]) await db.set(`cyc/candidatos_py/${x.src.id}/prodId`, p.id);
-            hechas.push(p);
+            hechas.push(Object.defineProperty(p, '_srcId', { value: x.src.id, enumerable: false }));   // A3: para sumar a la oficina en su ficha
             if (x.src.id) _fichaDeItem[x.src.id] = p.name;   // revisión final: para el comando `ofi` de abajo
           } catch (e) { console.log(`⚠️ no pude crear ${p.name}: ${(e && e.message) || e}`); }
         }
@@ -45002,24 +46053,55 @@ async function main() {
         await db.set('cyc/compraspy/' + id + '/fechaLlego', hoyAR);
         // D6 (29/09, eligió la b): foto de la oficina al llegar una reposición. La canasta sigue restando
         // lo llegado hasta que la oficina suba (o 7 días): si no, lo volvería a pedir sin contar.
-        if (_repIts.length) {
-          try {
-            const _inv = (await db.get('cyc/inventory')) || {};
-            const _ofiLl = {};
-            for (const it of _repIts) if (!(it.prodId in _ofiLl)) _ofiLl[it.prodId] = parseInt(_inv[it.prodId + '__' + sid('Oficina Mati')]) || 0;
-            await db.set('cyc/compraspy/' + id + '/ofiAlLlegar', _ofiLl);
-          } catch (eO) { console.log('⚠️ no pude guardar la foto de la oficina: la canasta puede volver a pedirla hasta que la cuentes'); }
+        // A3 (21/10/2026): la foto se toma ANTES de sumar y se guarda sólo de los productos que NO se pudieron sumar (los que se
+        // sumaron ya están contados: la canasta no tiene nada que esperar).
+        let _inv = null, _ofiLl = {};
+        try { _inv = (await db.get('cyc/inventory')) || {}; for (const it of _repIts) if (!(it.prodId in _ofiLl)) _ofiLl[it.prodId] = parseInt(_inv[it.prodId + '__' + sid('Oficina Mati')]) || 0; }
+        catch { _inv = null; console.log('⚠️ no pude leer la oficina: no sumo nada (contalo en Mi oficina) y la canasta puede volver a pedirlo hasta que lo cuentes'); }
+        const _sumados = [], _aMano = [], _faltoR = [];
+        const _fichaIdDe = (it) => it.id ? ((hechas.find((p) => p._srcId === it.id) || {}).id || (plan.find((x) => x.src && x.src.id === it.id && x.estado === 'repe') || {}).rep?.[0]?.id || (cands[it.id] || {}).prodId || null) : (it.prodId || null);
+        for (const it of _itsP) { const u = _llegoU(it), pe = parseInt(it.u) || 0; if (u < pe) _faltoR.push({ nom: String(_nomIt(it)).slice(0, 80), ...(it.variante ? { v: it.variante } : {}), pedidas: pe, llegaron: u }); }
+        if (!NOSUMAR && _inv) {
+          const _prodsAll = [...prods, ...hechas];
+          for (const it of _itsP) {
+            const u = _llegoU(it); if (!(u > 0)) continue;
+            const pid = _fichaIdDe(it), pf = pid && _prodsAll.find((pp) => pp.id === pid);
+            if (!pf) { _aMano.push({ it, u, why: 'sin ficha' }); continue; }
+            if (CORTAR) { _aMano.push({ it, u, pf, why: 'cancelaron la corrida' }); continue; }
+            let r = null; try { r = await ofiSumarBot(db, pf, it.variante || '', u, _inv); } catch (eS) { _aMano.push({ it, u, pf, why: 'no se pudo escribir (' + String((eS && eS.message) || eS).slice(0, 40) + ')' }); continue; }
+            if (!r) { _aMano.push({ it, u, pf, why: it.variante ? `la ficha no tiene el color "${it.variante}"` : 'la ficha tiene colores y el renglón no dice cuál' }); continue; }
+            _sumados.push({ prodId: pf.id, ...(r.color ? { v: r.color } : {}), u });
+            console.log(`  🏠 oficina · ${pf.name}${r.color ? ' · ' + r.color + ': ' + r.antes + ' → ' + r.ahora + ' (total ' + r.tA + ' → ' + r.tN + ')' : ': ' + r.antes + ' → ' + r.tN}`);
+          }
         }
+        if (_repIts.length && _inv) {
+          const _sinSumar = {}; for (const [pid, q0] of Object.entries(_ofiLl)) if (NOSUMAR || _aMano.some((x) => (x.pf ? x.pf.id : x.it.prodId) === pid)) _sinSumar[pid] = q0;
+          try { await db.set('cyc/compraspy/' + id + '/ofiAlLlegar', Object.keys(_sinSumar).length ? _sinSumar : null); }
+          catch (eO) { console.log('⚠️ no pude guardar la foto de la oficina: la canasta puede volver a pedirla hasta que la cuentes'); }
+        }
+        try { await db.patch('cyc/compraspy/' + id, { sumoOfi: NOSUMAR || !_inv ? null : { ts: Date.now(), por: 'chat', items: _sumados }, falto: _faltoR.length ? _faltoR : null }); } catch { console.log('⚠️ no pude anotar en el pedido lo que se sumó y lo que faltó'); }
         for (const it of (c.items || [])) { const k = it && it.id && cands[it.id]; if (k && k.pedidoEn === id) { try { await db.set(`cyc/candidatos_py/${it.id}/pedidoEn`, null); } catch {} } }
         const rel = await db.get('cyc/compraspy/' + id);
         console.log(`\n${rel && rel.estado === 'llego' ? '✓' : '⚠️ NO QUEDÓ'} Pedido ${id} marcado como llegado · ${hechas.length} ficha(s) creada(s)${hechas.length ? ': ' + hechas.map((p) => p.id + ' ' + p.name).join(' | ') : ''}`);
         if (hechas.length) console.log(`Siguiente paso: \`repartopy:${id}\` para ver en qué cuenta va cada una y \`pasara:<cuenta>:=<nombre>:go\` para marcarla. Después contar en la oficina.`);
         // Etapa 3 (29/09): hasta contarlas, el patrimonio baja lo que costó el pedido (dejó de estar
         // "en camino" y las fichas nacen en 0). El comando para cargarlas, listo (revisar las unidades).
+        // A3 (21/10/2026): lo que llegó ya se sumó. Lo que no se pudo (sin ficha, colores sin decir cuál, `nosumar`) sale con su
+        // comando `ofi` listo. ARREGLADO: antes salía sin `@color` y en una reposición con colores el comando fallaba ENTERO.
         { const _nomOfi = (it) => (it.id && _fichaDeItem[it.id])
             || (it.prodId && (prods.find((pp) => pp.id === it.prodId) || {}).name) || it.nom;
-          const _ofi = (c.items || []).filter((it) => it && _nomOfi(it) && (parseInt(it.u) || 0) > 0 && !/[;=]/.test(_nomOfi(it))).map((it) => `=${_nomOfi(it)}=+${parseInt(it.u)}`);
-          if (_ofi.length) console.log(`⚠️ Contalas en la oficina (hasta entonces no suman en el patrimonio). Si llegó todo: ofi:${_ofi.join(';')};go`); }
+          const _pend = NOSUMAR || !_inv ? _itsP.map((it) => ({ it, u: _llegoU(it), pf: [...prods, ...hechas].find((pp) => pp.id === _fichaIdDe(it)) })) : _aMano;
+          const _ofi = [], _sinCmd = [];
+          for (const x of _pend) {
+            if (!(x.u > 0)) continue;
+            const nom = (x.pf && x.pf.name) || _nomOfi(x.it); if (!nom || /[;=@#]/.test(nom)) { _sinCmd.push(`${x.u} u. · ${_nomOfi(x.it)}${x.why ? ' (' + x.why + ')' : ''}`); continue; }
+            const col = x.pf ? ofiColorDeFicha(x.pf, x.it.variante || '') : '';
+            if (col == null) { const vsP = Array.isArray(x.pf.variantes) ? x.pf.variantes : Object.values(x.pf.variantes || {}); _ofi.push(`=${nom}@<color: ${vsP.slice(0, 6).join(' | ')}>=+${x.u}`); continue; }
+            _ofi.push(`=${nom}${col ? '@' + col : ''}=+${x.u}`);
+          }
+          if (_sumados.length) console.log(`✓ Sumado a la oficina: ${_sumados.reduce((a, x) => a + x.u, 0)} u. en ${_sumados.length} renglón(es).${_faltoR.length ? ' Faltaron ' + _faltoR.reduce((a, x) => a + x.pedidas - x.llegaron, 0) + ' u. (quedan anotadas en el pedido).' : ''}`);
+          if (_ofi.length) console.log(`⚠️ Esto NO se sumó (hasta contarlo no suma en el patrimonio): ofi:${_ofi.join(';')};go${_ofi.some((x) => x.includes('<color')) ? '  ← cambiá <color…> por el color que llegó' : ''}`);
+          if (_sinCmd.length) console.log(`⚠️ Contalo a mano en Mi oficina: ${_sinCmd.join(' · ')}`); }
         // 05/10/2026: lo que ya tenía ficha (probados y nuevos enganchados) sube su costo si este pedido salió más caro.
         if (_recReal) { try { await aplicarCostosPedido(db, id, rel || c, true); } catch (eC) { console.log('⚠️ no pude revisar los costos: ' + ((eC && eC.message) || eC)); } }
         return;
@@ -45364,6 +46446,11 @@ async function main() {
         if (kgPedido > 0 && envio > 0) console.log(`  el correo: ${kgPedido} kg · ${money(Math.round(envio / kgPedido))} por kilo`);
         console.log('');
         if (merc > 0) console.log(`  el dólar que pagaste por la mercadería: ${money(Math.round(dolarMerc))}${tcRef ? ` · el del día del pedido es ${money(Math.round(tcRef))} (${(((dolarMerc + (cambio / usd)) / tcRef - 1) * 100).toFixed(1)}% más caro con el cambista adentro)` : ''}`);
+        // 6.P3: contra el MEP y el cripto de ESE día (`cyc/dolarref`, lo guarda el robot desde el 21/10/2026; los pedidos de antes no lo tienen).
+        if (merc > 0 && fecha) { let dr = null; try { dr = await db.get('cyc/dolarref/' + fecha.replace(/-/g, '_')); } catch { dr = null; }
+          const pagado = dolarMerc + (cambio / usd);
+          if (dr && (dr.mep || dr.cri)) console.log(`  contra el mercado de ese día: ${dr.mep ? `MEP ${money(Math.round(dr.mep))} (${((pagado / dr.mep - 1) * 100).toFixed(1)}%)` : 'MEP ?'} · ${dr.cri ? `cripto ${money(Math.round(dr.cri))} (${((pagado / dr.cri - 1) * 100).toFixed(1)}%)` : 'cripto ?'} — positivo = lo pagaste más caro que ése`);
+          else console.log('  (no tengo el MEP ni el cripto de ese día: el robot los guarda desde el 21/10/2026)'); }
         if (faltaPy.length) {
           console.log(`  ⚠️ Todavía falta: ${faltaPy.join(', ')}. Sin eso el recargo de este pedido no se puede medir (saldría de menos).`);
         } else if (tcRef > 0) {
@@ -47388,6 +48475,28 @@ async function main() {
   // las ventas se sincronizan cada 2 minutos, pero el robot de precios corre una vez por hora.
   // Sin esto, bajar el intervalo a 2 minutos haría que el robot evalúe 720 veces por día en vez
   // de 14, y una publicación que queda justo en el piso empezaría a subir de a poco sin parar.
+  // ── LA VUELTA PESADA SE RECUERDA (etapa 6 · A4, 21/10/2026, eligió la a) ─────────────────────────────────────────────
+  // Cada comando a mano reinicia el ciclo (job `ciclo`), y la 1ª vuelta del ciclo es la pesada (stock de Full, cajas, caja de
+  // compra, promos, alta de nuevas): con 5 comandos en una hora eran 5 vueltas pesadas seguidas, y ML cortaba por cupo justo
+  // lo que más hace falta (los movimientos de las cajas). Ahora se anota cuándo terminó la última (`mlapi/vueltapesada`):
+  //  · una vuelta pesada que arranca menos de VUELTA_PESADA_MIN_MIN después de la última se hace como liviana (sólo ventas);
+  //  · una liviana del ciclo (`PESADA_SI_TOCA=1`) se vuelve pesada si ya pasaron VUELTA_PESADA_CADA_MIN, así el reinicio no
+  //    corre la pesada una hora más.
+  // Si la memoria no se puede leer, manda lo que decidió el ciclo (como antes). `FORZAR_PESADA=1` la corre igual.
+  let _vueltaPesadaAnotar = false;
+  if (parseInt(process.env.BACKFILL_DAYS || '0', 10) === 0 && !DRY && !(process.env.ACCOUNT || '').trim() && process.env.FORZAR_PESADA !== '1') {
+    let _ultP = null;
+    try { const _vp = await db.get('mlapi/vueltapesada'); _ultP = _vp && Number(_vp.ts) > 0 ? Number(_vp.ts) : 0; } catch { _ultP = null; }
+    const _minP = _ultP ? (Date.now() - _ultP) / 60000 : Infinity;
+    if (_ultP != null && process.env.SKIP_PRICES !== '1' && _minP < VUELTA_PESADA_MIN_MIN) {
+      process.env.SKIP_PRICES = '1';
+      console.log(`⏩ La vuelta pesada se hizo hace ${Math.round(_minP)} min: ésta va como liviana (sólo ventas). La próxima pesada, a partir de los ${VUELTA_PESADA_CADA_MIN} min.`);
+    } else if (_ultP != null && process.env.SKIP_PRICES === '1' && process.env.PESADA_SI_TOCA === '1' && _minP >= VUELTA_PESADA_CADA_MIN) {
+      delete process.env.SKIP_PRICES;
+      console.log(`⏫ Pasaron ${_minP === Infinity ? 'más de ' + VUELTA_PESADA_CADA_MIN : Math.round(_minP)} min desde la última vuelta pesada: ésta va completa.`);
+    }
+  }
+  if (process.env.SKIP_PRICES !== '1' && parseInt(process.env.BACKFILL_DAYS || '0', 10) === 0 && !DRY && !(process.env.ACCOUNT || '').trim()) _vueltaPesadaAnotar = true;
   const SKIP_PRICES = process.env.SKIP_PRICES === '1';
   // INTERRUPTOR GENERAL. mlconfig.autoPrice=false apaga TODO lo que escribe precios en ML sin que
   // nadie lo pida: el robot que ajusta al piso, la nivelación de grupos y la reactivación de
@@ -47798,11 +48907,11 @@ async function main() {
       const alt = await altaDeNuevas(db, accounts, labels, map, index, DRY);
       if (alt.nuevas.length) {
         console.log(`\n🆕 ${alt.nuevas.length} publicación(es) nueva(s) dadas de alta y enganchadas solas:`);
-        alt.nuevas.forEach((n) => console.log(`   ${n.mla}  ${n.label.padEnd(8)} → ${n.prod}${n.variant ? ' · ' + n.variant : ''}${n.como ? ' · lo dijo ' + n.como : ''}   (${n.title.slice(0, 46)})`));
+        alt.nuevas.forEach((n) => console.log(`   ${n.mla}  ${n.label.padEnd(8)} → ${n.prod}${n.variant ? ' · ' + n.variant : ''}${n.como ? ' · lo dijo ' + n.como : ''} · ${n.catalogo ? 'catálogo ' + n.catalogo : 'sin catálogo'}   (${n.title.slice(0, 46)})`));
       }
       if (alt.sinFicha.length) {
         console.log(`\n🆕 ${alt.sinFicha.length} publicación(es) nueva(s) dadas de alta SIN producto (${SOLO_DATOS ? 'sólo datos: las vincula Claude' : 'no encontré una ficha clara'}):`);
-        alt.sinFicha.forEach((n) => console.log(`   ${n.mla}  ${n.label.padEnd(8)} ${n.title.slice(0, 60)}`));
+        alt.sinFicha.forEach((n) => console.log(`   ${n.mla}  ${n.label.padEnd(8)} ${n.title.slice(0, 60)} · ${n.catalogo ? 'catálogo ' + n.catalogo : 'sin catálogo'}`));
         console.log(`   Se vinculan con: vincular:<MLA>=<palabra o id>:go`);
       }
     } catch (e) { console.log('No pude buscar publicaciones nuevas: ' + e.message); }
@@ -49017,7 +50126,7 @@ async function main() {
   if (parseInt(process.env.BACKFILL_DAYS || '0', 10) === 0 && !onlyAcc && process.env.SKIP_PRICES !== '1') {
     try {
       const rb = await cajaDeCompraML(db, accounts, labels, DRY, null);
-      console.log(`🥊 Caja de compra · ${rb.mirados} publicaciones activas · ganamos ${rb.winning} · compartimos ${rb.sharing} · perdemos ${rb.losing} · sin catálogo ${rb.nocat}`);
+      console.log(`🥊 Caja de compra · ${rb.mirados} publicaciones activas · ganamos ${rb.winning} · compartimos ${rb.sharing} · perdemos ${rb.losing} · sin catálogo ${rb.nocat}${rb.porCuotas ? ` · 💳 ${rb.porCuotas} se pierden por cuotas (gemela Premium, no bajar)` : ''}${rb.sug || rb.sugSin ? ` · 💡 precio sugerido de ML: ${rb.sug} leídos${rb.sugSin ? `, ${rb.sugSin} sin número` : ''}` : ''}`);
       console.log(`🏷️  Rubros · ${rb.cats.size} categorías distintas · ${rb.catsNuevas} nombre(s) nuevo(s)${rb.catsFaltan ? ` · quedan ${rb.catsFaltan} para la vuelta siguiente` : ''} · 📷 ${rb.fotos} con foto`);
     } catch (e) { console.log('No pude leer la caja de compra: ' + e.message); }
     // Si una suba que pasó a un competidor sin Full perdió la caja, se vuelve al precio anterior (04/10/2026).
@@ -49026,6 +50135,13 @@ async function main() {
       for (const x of vs.vueltos) console.log(`↩️ ${x.nom} (${x.mla}): pasé al que no tiene Full y perdí la caja → vuelvo ${money(x.de)} → ${money(x.a)} (${x.mg.toFixed(1)}%)${x.prueba ? ' [prueba]' : ''}`);
       for (const x of vs.no) console.log(`↩️ ${x.nom} (${x.mla}): perdió la caja después de pasar al que no tiene Full, NO lo volví: ${x.why}`);
     } catch (e) { console.log('No pude revisar las subas que pasaron a uno sin Full: ' + e.message); }
+
+    // 6.D1 · LO QUE ML RECOMIENDA MANDAR A FULL (una vez por día por producto, con tope por vuelta). Sólo lee y anota.
+    try {
+      const rf = await reposicionFullML(db, accounts, labels, DRY);
+      if (rf.error) console.log('📦 Reposición según ML: ' + rf.error);
+      else if (rf.leidos || rf.fallas || rf.pend) console.log(`📦 Reposición según ML · ${rf.leidos} leídos${rf.pronto ? ` · ${rf.pronto} piden reponer en ≤2 semanas` : ''}${rf.fallas ? ` · ${rf.fallas} sin leer (queda lo anterior)` : ''}${rf.pend ? ` · ${rf.pend} para la vuelta siguiente` : ''}`);
+    } catch (e) { console.log('No pude leer la reposición que recomienda ML: ' + e.message); }
 
     // LA REPUTACIÓN DE LAS CUATRO CUENTAS. Va acá al lado y no en un bloque propio porque es lo
     // mismo: una lectura horaria que no toca ML ni precios, sólo anota en el panel.
@@ -49075,6 +50191,21 @@ async function main() {
     } catch (e) { console.log('No pude mirar el dólar: ' + e.message); }
   }
 
+  // 6.P3 · DÓLAR MEP Y CRIPTO DEL DÍA (una vez por día, aparte del oficial). Sólo se guarda para comparar el de Paraguay.
+  if (parseInt(process.env.BACKFILL_DAYS || '0', 10) === 0 && !onlyAcc && !SKIP_PRICES) {
+    try {
+      const hoyAR = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
+      const marcaR = (await db.get('mlapi/dolar/refDia')) || '';
+      if (marcaR !== hoyAR) {
+        const dr = await dolarReferencias();
+        if (dr.mep || dr.cri) {
+          if (!DRY) { await db.set('cyc/dolarref/' + hoyAR.replace(/-/g, '_'), { of: dr.of, mep: dr.mep, cri: dr.cri, ts: Date.now(), fuentes: dr.fuentes }); await db.set('mlapi/dolar/refDia', hoyAR); }
+          console.log(`💵 Dólar de referencia de hoy: oficial ${dr.of ? money(dr.of) : '?'} · MEP ${dr.mep ? money(dr.mep) : '?'} · cripto ${dr.cri ? money(dr.cri) : '?'} (para comparar el de Paraguay)`);
+        } else console.log('💵 Dólar MEP/cripto: ninguna fuente contestó, pruebo en la vuelta de la hora siguiente.');
+      }
+    } catch (e) { console.log('No pude mirar el dólar MEP/cripto: ' + e.message); }
+  }
+
   // ── AVISO DE CADA VENTA NUEVA (15/10/2026, pedido suyo: 1a 2a 3a) ──
   try { await avisarVentasNuevas(db, _avisoVentas); } catch (e) { console.log('No pude avisar las ventas nuevas: ' + e.message); }
   // ── EL WIDGET DEL IPHONE (20/10/2026): el resumen de "Ventas de hoy" en mlapi/widget/hoy ──
@@ -49085,6 +50216,8 @@ async function main() {
   // depende de que el robot de precios esté prendido no serviría justo el día que se apague.
   try { await avisarBloqueoML(db, DRY); } catch (e) { console.log('No pude mirar si ML me frenó: ' + e.message); }
 
+  // A4: terminó entera la vuelta pesada → se anota (si se cortó a mitad, no: la próxima la repite).
+  if (_vueltaPesadaAnotar && !CORTAR) { try { await db.set('mlapi/vueltapesada', { ts: Date.now(), consultas: mlConteo.get, e429: mlConteo.e429 }); } catch (e) { console.log('⚠️ no pude anotar la vuelta pesada: ' + String((e && e.message) || e).slice(0, 60)); } }
   if (!precioAuto && !SKIP_PRICES) console.log('\n⏸️  Robot de precios APAGADO (mlconfig.autoPrice=false): no ajusté, no nivelé y no activé nada. Para prenderlo: robot:on');
   const pend = Object.values(map).filter((x) => x && !x.prodId).length;
   console.log(`\n✓ Listo. Renglones cargados: ${cargadas}. Publicaciones sin vincular: ${pend}.`);

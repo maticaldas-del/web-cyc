@@ -42,7 +42,10 @@ while [ "$(date +%s)" -lt "$fin" ]; do
     corre node ml-sync/sync.mjs || { cortado; echo "⚠️ esta vuelta falló, sigo con la próxima"; }
   else
     echo "───── vuelta $vuelta · $hora · solo ventas ─────"
-    corre env SKIP_PRICES=1 node ml-sync/sync.mjs || { cortado; echo "⚠️ esta vuelta falló, sigo con la próxima"; }
+    # A4 (21/10/2026): PESADA_SI_TOCA=1 → si la última vuelta pesada (mlapi/vueltapesada) fue hace 60 min o más, ésta va completa.
+    # Y la pesada de arriba se hace liviana si hubo una hace menos de 45 min: un comando a mano reinicia el ciclo y ya no
+    # repite la vuelta pesada cada vez.
+    corre env SKIP_PRICES=1 PESADA_SI_TOCA=1 node ml-sync/sync.mjs || { cortado; echo "⚠️ esta vuelta falló, sigo con la próxima"; }
   fi
   # RESUMEN DEL DÍA AL CELULAR. Lo manda ESTE ciclo, no el cron de ml-daily.
   # Por qué: el cron pide las 00:07 de Argentina, pero GitHub demora las corridas

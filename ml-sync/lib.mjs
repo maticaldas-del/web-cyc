@@ -59,7 +59,28 @@ export async function mlExchangeCode(clientId, clientSecret, code, redirectUri) 
 
 // ── MercadoLibre: renovar el access_token con el refresh_token ──
 // OJO: ML rota el refresh_token en cada renovación → hay que guardar el nuevo.
+// ── CUÁNTO LE PEDIMOS A ML POR VUELTA (etapa 6 · A4, 21/10/2026, eligió la a) ──
+// Cada vuelta (y cada comando) dice al terminar cuántas consultas hizo, cuántas cortó ML por cupo (429), cuántas se
+// reintentaron y cuántas comisiones salieron de la memoria de la corrida. Sin el número no se puede saber qué vuelta gasta el
+// cupo que después nos falta para leer las cajas. Lo imprime `sync.mjs` al salir (`mlConteoTxt`).
+export const mlConteo = { get: 0, e429: 0, reint: 0, otrosErr: 0, comMemo: 0, refresh: 0, refreshReint: 0, ini: Date.now() };
+export function mlConteoTxt() {
+  const c = mlConteo, min = Math.max(1, Math.round((Date.now() - c.ini) / 60000));
+  return `📞 consultas a ML en esta corrida: ${c.get} en ${min} min · cortadas por cupo (429): ${c.e429} · reintentadas: ${c.reint} · otros errores: ${c.otrosErr} · comisiones de memoria (no se volvieron a pedir): ${c.comMemo} · permisos renovados: ${c.refresh}${c.refreshReint ? ' (' + c.refreshReint + ' reintentados)' : ''}`;
+}
+const _esperaMs = (ms) => new Promise((ok) => setTimeout(ok, ms));
 export async function mlRefresh(clientId, clientSecret, refreshToken) {
+  // EL PERMISO SE REINTENTA (A4, 21/10/2026): un 429 o un 5xx de ML al renovar dejaba la cuenta afuera de TODA la vuelta (sin
+  // ventas, sin stock). Con esos dos ML no procesó el pedido (el refresh_token no se gastó), así que reintentar es seguro: 3 s y 8 s.
+  // Un 400 (invalid_grant) no se reintenta: ése no se arregla esperando.
+  mlConteo.refresh++;
+  for (const w of [0, 3000, 8000]) {
+    if (w) { await _esperaMs(w); mlConteo.refreshReint++; }
+    try { return await _mlRefresh1(clientId, clientSecret, refreshToken); }
+    catch (e) { if (w === 8000 || !/ML refresh falló: (429|5\d\d) /.test(String((e && e.message) || e))) throw e; }
+  }
+}
+async function _mlRefresh1(clientId, clientSecret, refreshToken) {
   const r = await fetch(ML_TOKEN_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded', accept: 'application/json' },
@@ -89,7 +110,35 @@ export async function mlRefresh(clientId, clientSecret, refreshToken) {
 // acá es una llamada COLGADA, no una lenta. Al abortar, fetch tira error y el que llamó decide:
 // casi todos los recorridos tienen try/catch y saltean ese renglón, que es lo correcto — perder
 // un dato es mucho mejor que perder el informe entero.
+// LAS COMISIONES SE PIDEN UNA VEZ POR CORRIDA (A4, 21/10/2026): `/sites/<sitio>/listing_prices?…` con el mismo precio, tipo y
+// categoría da la misma comisión durante los minutos de una corrida, y la pedían varias funciones (netoweb, activar pausadas, el
+// cerebro, candidatos…). La memoria es por ruta Y por permiso (la cuenta), de la corrida nomás (se va al terminar).
+const _comMemo = new Map();
+// EL 429 SE REINTENTA UNA VEZ ADENTRO (A4, 21/10/2026): ML corta por cupo y la mayoría de los lugares saltaban el dato (un producto
+// sin medir, una caja sin leer) por un corte de un segundo. Una espera de ~2 s alcanza casi siempre. Los lugares que ya tenían su
+// propia espera larga (4/10/20 s, 5/15/30 s) la siguen teniendo; esto va antes. `ML_REINTENTO_429=0` lo apaga.
 export async function mlGet(path, accessToken, ms = 25000) {
+  const esCom = /^\/sites\/[A-Z]{3}\/listing_prices\?/.test(String(path));
+  const kCom = esCom ? path + '|' + String(accessToken || '').slice(-10) : '';
+  if (esCom && _comMemo.has(kCom)) { mlConteo.comMemo++; return JSON.parse(_comMemo.get(kCom)); }
+  const reint = process.env.ML_REINTENTO_429 !== '0';
+  for (let intento = 0; ; intento++) {
+    try {
+      const d = await _mlGet1(path, accessToken, ms);
+      if (esCom) _comMemo.set(kCom, JSON.stringify(d));
+      return d;
+    } catch (e) {
+      const m = String((e && e.message) || e);
+      const es429 = /^ML GET \S*: 429 /.test(m);
+      if (es429) mlConteo.e429++; else mlConteo.otrosErr++;
+      if (!es429 || !reint || intento >= 1) throw e;
+      mlConteo.reint++;
+      await _esperaMs(1800 + Math.round(Math.random() * 700));
+    }
+  }
+}
+async function _mlGet1(path, accessToken, ms) {
+  mlConteo.get++;
   const r = await fetch(`${ML_API}${path}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
     signal: AbortSignal.timeout(ms),
