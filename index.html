@@ -2733,7 +2733,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.66';
+const APP_VERSION='25.67';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2746,6 +2746,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.67',f:'21/10',h:'01:20',c:[{n:1,t:'🔎 Revisión: las 24 ideas nuevas de la etapa 6 quedan en el cartel para elegir.'}]},
   {v:'25.66',f:'21/10',h:'00:29',c:[{n:3,t:'🛒 Paraguay y Listas: vuelven las 100 ventas en ML, como último filtro. Lo que no tiene el dato entra igual (lo mira el chat de compras sólo de lo que pasó todo); si se cargan y dan menos de 100, sale de lo que se puede pedir y va a su carpeta "vendieron menos de 100".'}]},
   {v:'25.65',f:'21/10',h:'00:24',c:[{n:1,t:'📋 Listas → Nuevos: el resumen de arriba es un desplegable (cerrado dice cuántos productos, cuántos dan, por confirmar y sin evaluar). Lo que no da se ordena en carpetas: 📗 con catálogo en ML (por confirmar, casi 15-24%, sin foto, 1 solo vendedor, costo nuevo, menos de 15%, pierden plata, nadie lo vende, era otro producto) y 📕 sin catálogo exacto, más ⏳ sin medir y 🚫 afuera por regla.'}]},
   {v:'25.64',f:'21/10',h:'00:22',c:[{n:1,t:'📋 Listas: cada producto muestra sólo lo básico (nombre, foto, te sale, precio en ML, el % y pedir). Código, recargo, vendedores, vendidas, catálogo de ML, links y sacar van en "detalle ▾", igual que Ventas x Producto. Si hay algo para mirar (1 solo vendedor, otro producto, un reparo) dice "⚠️ mirar el detalle".'}]},
@@ -4368,6 +4369,7 @@ const REV_HORA='04:00';
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel dice la etapa
 //                     de HOY (una por día de la semana, corre sola a las REV_HORA) y si ya quedó hecha.
 const REV_PENDIENTE=[
+  {t:'Etapa 6 · 24 ideas nuevas para elegir',que:'datos de ML (6), plata (6), lo que hacés a mano (5) y gusto (7), cada una con (a) y (b)',pedi:'a'},
   {t:'Etapa 7 · ideas de diseño para elegir',que:'la lista numerada que te pasé (cada una con (a) y (b))',pedi:'a'},
   {t:'Etapa 5 · 2 decisiones de historia',que:'1 un remate que decido yo cuenta como remate · 2 la gemela Premium y su Clásica se miden juntas',pedi:'a'},
   {t:'Etapa 1 · 6 decisiones de precios',que:'1 volver tras prueba de techo · 2 liquidando frena bajas · 3 la 🏔️ no vence · 4 cuánto dura un tag · 5 compras con peor caso · 6 plata parada compartida',pedi:'a'},
@@ -4401,7 +4403,8 @@ const REV_HIST={
      {f:'2026-10-13',t:'Revisión del cerebro: cada parte entera contra el total; se midieron los precios redondos y la regla se sacó.'},
      {f:'2026-10-21',t:'4 revisores en máximo (ficha, línea de tiempo, robot de datos, web): 44 arreglos (v25.62: ficha y techo95 sin borrar historia, remate con historia, canceladas tarde, línea por color y sin stock inventado). 2 decisiones suyas.'}],
   6:[{f:'2026-09-27',t:'Ideas 1-10: eligió Premium vs Clásica, visitas en Rotación, caja ML, tope de H, prueba de suba y motivo de reclamos.'},
-     {f:'2026-10-15',t:'Etapa del 14/10 cerrada: lo de los reclamos que paga ML se midió (sí nos cuestan) y no quedó nada pendiente.'}],
+     {f:'2026-10-15',t:'Etapa del 14/10 cerrada: lo de los reclamos que paga ML se midió (sí nos cuestan) y no quedó nada pendiente.'},
+     {f:'2026-10-21',t:'4 revisores en máximo (datos de ML sin usar, plata, trabajo a mano, gusto): 24 ideas para elegir (el cupo de Ayelen repartido por plata, publicar lo nuevo desde el chat, la venta que dice qué significa, Pedidos con lo que cambió).'}],
   7:[{f:'2026-09-29',t:'4 revisores (teléfono, lo que sobra, lo que cuesta encontrar, parejo): lo chico hecho.'},
      {f:'2026-10-01',t:'Cerrada: eligió 13 de 15 ideas (Inicio, Rotación en el teléfono, colores del %, Ventas por semana, Métricas con índice).'},
      {f:'2026-10-20',t:'4 revisores en máximo (teléfono, lo que sobra, lo que cuesta encontrar, parejo y lindo): ~60 arreglos chicos hechos (v25.54: buscadores, teléfono, tema claro, flechas, textos del robot viejo, accesos del ícono). Quedan ideas para que elija él.'}],
