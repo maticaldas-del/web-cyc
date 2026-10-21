@@ -8429,9 +8429,12 @@ async function avisarVentasNuevas(db, lista) {
     pushOk = await enviarPush(db, {
       title: conGan.length === 1 ? '🔔 Venta nueva' : `🔔 ${conGan.length} ventas nuevas`,
       body: planos.join('\n') + `\n📊 Hoy: ${n} ventas · ganancia ${money(gan)}`,
-      tag: 'venta-' + kid(conGan[conGan.length - 1].v.id), url: './#ventaprod',
+      tag: 'venta-' + kid(conGan[conGan.length - 1].v.id), url: './#aviso',
     });
   } catch (e) { console.log('Aviso al teléfono: ' + e.message); }
+  // 7.20 (21/10/2026): cuáles ventas fueron en este aviso, para que la web las marque "🔔 la del aviso" al tocarlo (#aviso). Sólo los
+  // ids internos de la venta (los mismos de `cyc/ventaprod/<día>/<id>`), nada del comprador. Si no se puede anotar, el aviso igual sale.
+  if (pushOk > 0) { try { await db.set('cyc/avisoventa_ult', { ts: ahora, ids: conGan.map((x) => String(x.v.id)) }); } catch { console.log('Aviso al teléfono: no pude anotar cuáles ventas avisé (la web no las va a marcar).'); } }
   const ok = tgOk || pushOk > 0;   // con que haya salido por uno de los dos, no se repite
   if (ok) { await db.patch('mlapi/avisoventa', anotar); await _fin(); console.log(`Aviso de ventas: mandé ${conGan.length} de ${nuevas.length} (Telegram ${tgOk ? 'sí' : 'no'} · teléfonos ${pushOk}).`); }
   else console.log(`Aviso de ventas: no salió el mensaje (${nuevas.length}), lo reintento la vuelta que viene.`);

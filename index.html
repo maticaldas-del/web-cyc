@@ -58,6 +58,11 @@ body.light{
 .vp-dia-g{font-weight:700;margin-left:auto}
 .vp-dia-r{flex-basis:100%;height:3px;background:var(--border);border-radius:2px;overflow:hidden}
 .vp-dia-r i{display:block;height:100%;border-radius:2px}
+.vp-aviso{border-color:var(--avc,var(--green))!important;box-shadow:0 0 0 2px color-mix(in srgb,var(--avc,var(--green)) 60%,transparent);animation:vpLate 1s ease-in-out 3}
+@keyframes vpLate{50%{box-shadow:0 0 0 7px color-mix(in srgb,var(--avc,var(--green)) 25%,transparent),0 0 22px color-mix(in srgb,var(--avc,var(--green)) 45%,transparent)}}
+body.discreto .vp-aviso{animation:none}
+@media(prefers-reduced-motion:reduce){.vp-aviso{animation:none}}
+.vp-aviso-tag{flex-shrink:0;font-size:.62rem;font-weight:700;color:var(--avc,var(--green));border:1px solid currentColor;border-radius:999px;padding:1px 7px;white-space:nowrap}
 .fnav-sec{font-size:.6rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);padding:8px 14px 2px}
 .fnav-n{margin-left:auto;padding-left:10px;font-size:.68rem;color:var(--muted);white-space:nowrap}
 .fnav-fila{display:flex;gap:4px;border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:2px}
@@ -2317,6 +2322,8 @@ function startApp(){
     // Etapa 3, B3 (29/09/2026): lo que hay en Full de publicaciones OCULTAS. Lo escribe el robot una vez
     // por hora; cuenta en el patrimonio (calcArqueo) y NO en Armar caja ni en Pedidos.
     state.stockoculto=d.stockoculto||{};
+    // 7.20: las ventas del último aviso al teléfono (las escribe el robot cuando el aviso salió): {ts, ids}.
+    state.avisoventa_ult=d.avisoventa_ult||null;
     // detectar entradas nuevas de ventaprod escritas externamente (p.ej. cowork)
     const _newVP=d.ventaprod||{};
     const _allIds=new Set();
@@ -2492,14 +2499,17 @@ async function pushActivar(){
     renderPush();
   }catch(e){alert('No se pudo activar: '+e.message);}
 }
-if('serviceWorker' in navigator)navigator.serviceWorker.addEventListener('message',ev=>{if(ev.data&&ev.data.cycIr)try{if(ev.data.cycIr==='ventaprod')vpLimpiarFiltros();goPage(ev.data.cycIr);}catch(e){}});
+// El aviso de una venta con la app abierta: el service worker manda {cycIr:'ventaprod'} SÓLO al tocar el aviso (7.20).
+if('serviceWorker' in navigator)navigator.serviceWorker.addEventListener('message',ev=>{if(ev.data&&ev.data.cycIr)try{if(ev.data.cycIr==='ventaprod'){vpLimpiarFiltros();vpMarcarAviso();}goPage(ev.data.cycIr);}catch(e){}});
 // ABRIR LA APP EN UNA PANTALLA (20/10/2026, etapa 7): los accesos directos del ícono (manifest: Ventas de hoy, Pedidos,
 // Armar caja) y el aviso de una venta abren con #ventaprod / #pedidos / #oficina. Se lee una vez y se borra de la dirección.
-const _PAGINAS_HASH={ventaprod:1,pedidos:1,oficina:1};
+const _PAGINAS_HASH={ventaprod:1,pedidos:1,oficina:1,aviso:1};
 function _paginaDeHash(){
   const h=String(location.hash||'').replace(/^#/,'');if(!_PAGINAS_HASH[h])return null;
   try{history.replaceState(null,'',location.pathname+location.search);}catch(e){}
   if(h==='ventaprod')try{vpLimpiarFiltros();}catch(e){}
+  // 7.20: #aviso = abrió tocando el aviso de una venta (los avisos nuevos del robot llevan esa dirección).
+  if(h==='aviso'){try{vpLimpiarFiltros();vpMarcarAviso();}catch(e){}return 'ventaprod';}
   return h;
 }
 window.addEventListener('hashchange',()=>{if(firstDataLoad)return;const pg=_paginaDeHash();if(pg)try{goPage(pg);}catch(e){}});
@@ -12227,6 +12237,29 @@ function _vpHoyVacioHTML(){
   const comp=state.ventaprod&&state.ventaprod[k]?(n?`El ${DIAS[hace.getDay()]} pasado a esta hora (${hh}) iban <b>${n} venta${n===1?'':'s'}</b> · ${fmt(Math.round(gan))} de ganancia.`:`El ${DIAS[hace.getDay()]} pasado a esta hora (${hh}) tampoco había ninguna.`):'';
   return `<div class="empty-msg" style="line-height:1.6">☕ <b>Todavía no hay ventas hoy.</b>${comp?'<br>'+comp:''}<br><span style="color:var(--muted)">La primera de hoy va a aparecer acá sola.</span></div>`;
 }
+// 7.20 · LA VENTA DEL AVISO TE ESPERA MARCADA (21/10/2026, eligió la a). Tocar el aviso del teléfono abre Ventas en el día; la
+// venta (o las ventas) de ESE aviso late tres veces con el color de su % y dice "🔔 la del aviso"; a los 6 s queda como todas.
+// Cuáles son lo dice el robot: al mandar el aviso anota `cyc/avisoventa_ult` = {ts, ids}. Un registro de más de 3 h no se usa
+// (el aviso es de otra cosa). En modo discreto o con "menos movimiento", sólo el borde.
+let _vpAvisoIds=null,_vpAvisoHasta=0;
+function vpMarcarAviso(){
+  const u=state.avisoventa_ult;const ids=u&&Array.isArray(u.ids)?u.ids.filter(Boolean):(u&&u.ids&&typeof u.ids==='object'?Object.values(u.ids).filter(Boolean):[]);
+  if(!u||!ids.length||!(Number(u.ts)>0)||Date.now()-Number(u.ts)>3*36e5){_vpAvisoIds=null;return false;}
+  _vpAvisoIds=new Set(ids.map(String));_vpAvisoHasta=0;
+  // Abre en el día de esas ventas (casi siempre hoy; de noche puede ser el de ayer).
+  const k=Object.keys(state.ventaprod||{}).find(dk=>Object.keys(state.ventaprod[dk]||{}).some(id=>_vpAvisoIds.has(id)));
+  if(k)_vpIrDia=k.replace(/_/g,'-');
+  return true;
+}
+function _vpAvisoTras(list){
+  if(!_vpAvisoIds)return;
+  const el=[...list.querySelectorAll('.vp-aviso')].find(x=>x.offsetParent!==null);
+  if(!el)return;
+  if(!_vpAvisoHasta){_vpAvisoHasta=Date.now()+6000;
+    // Después del ajuste de scroll de goPage (que baja el encabezado al entrar): si no, lo pisa.
+    setTimeout(()=>{try{const x=[...document.querySelectorAll('.vp-aviso')].find(y=>y.offsetParent!==null);if(x)x.scrollIntoView({block:'center'});}catch(e){}},450);
+    setTimeout(()=>{_vpAvisoIds=null;document.querySelectorAll('.vp-aviso').forEach(x=>x.classList.remove('vp-aviso'));document.querySelectorAll('.vp-aviso-tag').forEach(x=>x.remove());},6000);}
+}
 function renderVentaProd(){
   const dEl=document.getElementById('vp-date');if(!dEl)return;
   vpDate=dEl.value||vpDate||todayStr();
@@ -12502,11 +12535,13 @@ function renderVentaProd(){
         return vs.map(x=>{const [t,pr,si]=x.split('|');const col=pr==='1'?'#eab308':'var(--muted)';
           const tt=(pr==='1'?'Se vendió por la publicación PREMIUM (con cuotas). ':t.startsWith('Clásica')?'Se vendió por la publicación CLÁSICA. ':'')+(si==='1'?'El interés de las cuotas lo pagamos nosotros (cuotas sin interés).':/cuotas/.test(t)?'Pagó en cuotas con interés: el interés lo pagó el comprador.':'');
           return `<span style="font-size:.62rem;padding:1px 6px;border-radius:4px;border:1px solid ${pr==='1'?'rgba(234,179,8,.5)':'var(--border2)'};color:${col};white-space:nowrap" title="${tt}">💳 ${t}</span>`;}).join(' ');})();
-      const _pcHtml=`<div class="ingreso-item vp-pc" onclick="vpCardClick(event,'${grp.gid}')" title="Tocá para ver u ocultar el detalle" style="cursor:pointer;flex-direction:column;align-items:stretch;gap:4px;${isCancelled?'border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.04)':''}">
+      const _esAv=!!(_vpAvisoIds&&grp.items.some(v=>_vpAvisoIds.has(v.id))),_avSt=_esAv?`--avc:${gpct!=null?pctColor(gpct):'var(--green)'};`:'';
+      const _avTag=_esAv?`<span class="vp-aviso-tag">🔔 la del aviso</span>`:'';
+      const _pcHtml=`<div class="ingreso-item vp-pc${_esAv?' vp-aviso':''}" onclick="vpCardClick(event,'${grp.gid}')" title="Tocá para ver u ocultar el detalle" style="${_avSt}cursor:pointer;flex-direction:column;align-items:stretch;gap:4px;${isCancelled?'border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.04)':''}">
         <div class="vp-pc-cab" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;row-gap:4px;white-space:nowrap">
           <span class="who-badge" style="font-size:.6rem;${isCancelled?'opacity:.6':''}">${cuenta}</span>
           ${fechaTag}
-          ${cancelBadge}
+          ${cancelBadge}${_avTag}
           ${grp.items.length>1?`<span style="font-size:.64rem;color:var(--muted)">${grp.items.length} prod.</span>`:''}
           <span style="flex:1"></span>
           ${promoLabel?promoLabel.replace(/>🏷️ [^<]*</,'>🏷️ '+(promoLabel.includes('vp-promo-ml')?'desc. ML':'promo')+'<'):''}
@@ -12521,11 +12556,11 @@ function renderVentaProd(){
         ${lines}
         ${_det}
       </div>`;
-      const _celHtml=`<div class="ingreso-item vp-cel" onclick="vpCardClick(event,'${grp.gid}')" title="Tocá para ver u ocultar el detalle" style="cursor:pointer;flex-direction:column;align-items:stretch;gap:6px;padding:12px 14px;${isCancelled?'border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.04)':''}">
+      const _celHtml=`<div class="ingreso-item vp-cel${_esAv?' vp-aviso':''}" onclick="vpCardClick(event,'${grp.gid}')" title="Tocá para ver u ocultar el detalle" style="${_avSt}cursor:pointer;flex-direction:column;align-items:stretch;gap:6px;padding:12px 14px;${isCancelled?'border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.04)':''}">
         <div style="display:flex;align-items:center;gap:8px">
           <span class="who-badge" style="font-size:.62rem;${isCancelled?'opacity:.6':''}">${cuenta}</span>
           <span style="font-size:.68rem;color:var(--muted);white-space:nowrap">${_fh}</span>
-          ${cancelBadge}
+          ${cancelBadge}${_esAv?'<span class="vp-aviso-tag">🔔 aviso</span>':''}
           <span style="flex:1"></span>
           ${_pill}
         </div>
@@ -12543,6 +12578,7 @@ function renderVentaProd(){
       return _vpCab+vivaEnvolver(_pcHtml,'vp-pc',_vv)+vivaEnvolver(_celHtml,'vp-cel',_vv);
     }).join('')+(filteredGroups.length>VP_CAP?`<div class="empty-msg" style="margin-top:10px">Mostrando las ${VP_CAP} ventas más recientes de ${filteredGroups.length}. Usá el buscador o filtrá por cuenta/período para encontrar otras. (Los totales de arriba sí cuentan todas.)</div>`:''):((!vpQ&&!vpFilterCuenta&&!vpFilterTag&&vpPeriod==='dia'&&vpDate===todayStr())?_vpHoyVacioHTML():`<div class="empty-msg">${vpQ||vpFilterCuenta?'Sin resultados para los filtros aplicados '+(/^(hoy|el )/.test(mesLabel)?'':'en ')+mesLabel+'.':'Sin ventas cargadas '+(/^(hoy|el )/.test(mesLabel)?'':'en ')+mesLabel+'.'}</div>`);
     vivaScan(list);
+    try{_vpAvisoTras(list);}catch(e){}
   }
   const kpis=document.getElementById('vp-kpis');
   // KPIs usan el mismo período que la lista
