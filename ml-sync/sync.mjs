@@ -21292,7 +21292,7 @@ async function main() {
       const _r = String(process.env.BILLING_PROBE).slice('listanofull:'.length); const GOn = /(^|;)go\s*$/.test(_r) && !DRY;
       const k0 = _r.replace(/(^|;)go\s*$/, '').trim().toLowerCase();
       const provs = k0 === 'todas' ? Object.keys((await db.get('cyc/mlconfig/listasProv')) || {}) : [k0];
-      const RE = [[/aerosol|aero\b|\baer\.|en lata|presurizad/i, 'aerosol'], [/\bdeo(dorante)?\b.*\bspray\b|\bspray\b.*\b(deo|desodorante|antitranspirante)/i, 'desodorante en spray (aerosol)'],
+      const RE = [[/aerosol|aero\b|aer\.|antaer|en lata|presurizad/i, 'aerosol'], [/\bdeo(dorante)?\b.*\bspray\b|\bspray\b.*\b(deo|desodorante|antitranspirante)/i, 'desodorante en spray (aerosol)'],
         [/antitranspirante.*\b(\d{2,3}\s?ml)\b.*(aer|spray)|\bdesodorante\b.*\b(150|200|250)\s?ml\b/i, 'desodorante en aerosol'],
         [/espuma (de )?afeitar|gel de afeitar.*lata|laca\b|fijador.*(spray|aer)|spray fijador|shampoo seco|dry shampoo/i, 'aerosol de pelo o afeitar'],
         [/\bgas\b|butano|encendedor|garrafa/i, 'gas inflamable'], [/acetona|quitaesmalte|removedor de esmalte/i, 'inflamable (acetona)'],
