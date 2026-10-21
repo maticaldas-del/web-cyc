@@ -2294,3 +2294,10 @@ los que tienen catalogo y los que no. y despues dividirlos como vos sabes"*. El 
 dan, por confirmar, sin evaluar). Lo que no está en ✅ Dan va a 📗 Con catálogo en ML (🔎 por confirmar abierto primero · 🟠 casi 15-24%
 · 📷 sin foto · 👤 1 vendedor · ⏳ costo nuevo · 🔴 <15% · ⛔ <0% · 👻 nadie lo vende · ✗ otro producto), 📕 Sin catálogo exacto, ⏳ Sin
 medir y 🚫 Afuera por regla (`_cg` en `renderListas`). Qué chequear: que la suma de las carpetas dé lo que no da, sin repetir ni perder.
+
+**v25.66 (21/10/2026) · etapa 3 (mercadería) · las 100 ventas vuelven, al final.** Él: *"para estar seguros de la compra quiero agregar
+también el filtro de las 100 ventas. pero que se haga al final"* y *"las que no tienen info que no queden afuera, que queden afuera sólo
+cuando se carguen las ventas"*. `CAND_MIN_VENTAS`=100 (index.html y sync.mjs). Paraguay: `candPuedePedir` y el comando `pedir` frenan si
+`candVentasDe` < 100; sin dato no frena; carpeta "🛒 vendieron menos de 100". Listas: `_listaDa`/`cuentaLista` piden no tener `vend` < 100;
+carpeta en 📗 con catálogo. Comando nuevo `faltaventas` (solo lee): lo que pasó todo y no tiene vendidas, para el chat de compras.
+`candprecio:<cód>=/<vendidas>` carga sólo las vendidas. Qué chequear: que un candidato sin vendidas siga apareciendo para pedir.

@@ -53,10 +53,14 @@ En la pestaña de GitHub (workflow ml-consulta): "Run workflow" → rama claude/
 Esperá que termine (1 minuto) y abrí el resultado: tiene que decir "✓ guardado" y "Quedó en la página N". Si dice "❌", corregí lo que diga y volvelo a correr.
 Plan B si GitHub no te deja: pasale los comandos a Matías para que los pegue en el chat CYC.
 
-== LAS VENTAS YA NO SE CARGAN (20/10/2026) ==
-Antes había que anotar las vendidas en ML de cada uno que daba (100 o más). Ya no: alcanza con que el catálogo de ML tenga 2 o más
-vendedores, y eso lo mide el robot solo. Si igual ves que algo de comprasparaguay dice "no disponible", cargalo con
-  candprecio:<código>=nohay;…;go
+== LAS VENTAS VUELVEN, PERO AL FINAL (21/10/2026) ==
+Las 100 vendidas en ML volvieron, pero se miran SÓLO de lo que ya pasó todos los otros filtros (25%, 2+ vendedores, fotos y mismo
+producto confirmado). Así son pocos. Para saber cuáles: correr `faltaventas` (ml-consulta, sólo lee) y mirar en ML, con la sesión
+iniciada, cuántas vendió cada catálogo de la lista. Se cargan así:
+  Paraguay: candprecio:<código>=/<vendidas>;…;go   (Elegancia: candprecio:prov=elegancia;<código>=/<vendidas>;…;go)
+  Listas:   listadato:<proveedor>;<código>=<vendidas>;…;go
+Si ML dice "+1000 vendidos", poné 1000. Sin el dato el producto sigue entrando; con menos de 100 cargado, queda afuera.
+Si algo de comprasparaguay dice "no disponible", cargalo con  candprecio:<código>=nohay;…;go
 
 == CADA 15 MINUTOS, ALGO ==
 Cada 15 minutos como máximo, un renglón: "voy por la página N de M, cargado hasta la N". Si te trabás, avisá enseguida.

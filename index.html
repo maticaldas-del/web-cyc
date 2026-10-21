@@ -2733,7 +2733,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.65';
+const APP_VERSION='25.66';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2746,6 +2746,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.66',f:'21/10',h:'00:29',c:[{n:3,t:'🛒 Paraguay y Listas: vuelven las 100 ventas en ML, como último filtro. Lo que no tiene el dato entra igual (lo mira el chat de compras sólo de lo que pasó todo); si se cargan y dan menos de 100, sale de lo que se puede pedir y va a su carpeta "vendieron menos de 100".'}]},
   {v:'25.65',f:'21/10',h:'00:24',c:[{n:1,t:'📋 Listas → Nuevos: el resumen de arriba es un desplegable (cerrado dice cuántos productos, cuántos dan, por confirmar y sin evaluar). Lo que no da se ordena en carpetas: 📗 con catálogo en ML (por confirmar, casi 15-24%, sin foto, 1 solo vendedor, costo nuevo, menos de 15%, pierden plata, nadie lo vende, era otro producto) y 📕 sin catálogo exacto, más ⏳ sin medir y 🚫 afuera por regla.'}]},
   {v:'25.64',f:'21/10',h:'00:22',c:[{n:1,t:'📋 Listas: cada producto muestra sólo lo básico (nombre, foto, te sale, precio en ML, el % y pedir). Código, recargo, vendedores, vendidas, catálogo de ML, links y sacar van en "detalle ▾", igual que Ventas x Producto. Si hay algo para mirar (1 solo vendedor, otro producto, un reparo) dice "⚠️ mirar el detalle".'}]},
   {v:'25.64',f:'21/10',h:'00:40',c:[{n:1,t:'💵 Inicio: el dólar ya no corta el último número; la casilla se agranda según lo que tiene adentro, en la PC y en el teléfono.'}]},
@@ -14414,6 +14415,13 @@ const CAND_MIN_VENT=100; // 03/10/2026: "100 unidades mínimo vendidas" · DESDE
 // (regla del 19/10). Lo de mismo producto confirmado (✅ / fotos) sigue igual. Misma regla en sync.mjs.
 const CAND_MIN_VENDEDORES=2;
 function candVendOk(c){return Number(c&&c.mlVendedores)>=CAND_MIN_VENDEDORES;}
+// LAS 100 VENTAS VUELVEN, AL FINAL (21/10/2026, él: "para estar seguros de la compra quiero agregar también el filtro de las 100 ventas.
+// pero que se haga al final" y "las que no tienen info que no queden afuera, que queden afuera sólo cuando se carguen las ventas").
+// Sin el dato no frena; cargado y abajo de 100, afuera. Las ventas las mira el chat de compras sólo de lo que pasó todo (`faltaventas`).
+// Misma regla en el robot (`pocasVentas`).
+const CAND_MIN_VENTAS=100;
+function pocasVentasN(v){return v!=null&&isFinite(v)&&Number(v)<CAND_MIN_VENTAS;}
+function candPocasVentas(c){return pocasVentasN(candVentasDe(c));}
 // ── LOS TRES NÚMEROS DEL PEDIDO LOS ELIGE ÉL, Y VIVEN EN LA BASE (19/09/2026) ────────
 // Pedido suyo: *"tope del pedido (…) poder elegir tope de unidades por producto"*.
 // ESTO DA VUELTA SU DECISIÓN DEL 18/09 —*"sin tope solo una barra que marque el total del pedido,
@@ -14478,6 +14486,7 @@ function candPuedePedir(c){
   {const nv=Number(c.mlVendedores);
   if(!(nv>=CAND_MIN_VENDEDORES))return{ok:false,motivo:nv===1?'en ML lo vende 1 solo vendedor: ese precio no lo confirma nadie (mínimo 2)':'no está medido contra un catálogo de ML con vendedores'};}
   if(!candCatChequeado(c))return{ok:false,motivo:'falta confirmar que el producto de ML es el mismo (abrí las dos fotos y tocá ✅ Es el mismo producto)'};
+  if(candPocasVentas(c))return{ok:false,motivo:`en ML vendió ${candVentasDe(c)}: menos de ${CAND_MIN_VENTAS}`};
   if(_bajo)return{ok:false,bajoPiso:true,motivo:_bajo};
   return{ok:true,motivo:''};
 }
@@ -16277,8 +16286,9 @@ function candidatosHTML(){
   // 🚫 "en ML no se puede" (marca que ML frena, 18/10/2026): sólo cuenta para la perfumería del local.
   const _fOk=c=>c.noML?(_candFiltro==='local'?candLocalOk(c):_candFiltro==='todos'):_candFiltro==='ml'?_daML(c):_candFiltro==='local'?candLocalOk(c):_candFiltro==='ambos'?(_daML(c)&&candLocalOk(c)):true;
   const _sinAnalizar=vivos.filter(c=>!_medido(c)&&_fOk(c));
-  const _sinChequear=vivos.filter(c=>_fOk(c)&&_medido(c)&&!_esRojo(c)&&!_pocas(c)&&!c.noML&&!candCatChequeado(c));
-  const _arriba=vivos.filter(c=>_fOk(c)&&_medido(c)&&!_esRojo(c)&&!_pocas(c)&&(c.noML||candCatChequeado(c))), _rojos=vivos.filter(c=>_fOk(c)&&_medido(c)&&_esRojo(c)), _flojas=vivos.filter(c=>_fOk(c)&&_medido(c)&&!_esRojo(c)&&_pocas(c));
+  const _menos100=vivos.filter(c=>_fOk(c)&&_medido(c)&&!_esRojo(c)&&!_pocas(c)&&!c.noML&&candPocasVentas(c));
+  const _sinChequear=vivos.filter(c=>_fOk(c)&&_medido(c)&&!_esRojo(c)&&!_pocas(c)&&!c.noML&&!candCatChequeado(c)&&!candPocasVentas(c));
+  const _arriba=vivos.filter(c=>_fOk(c)&&_medido(c)&&!_esRojo(c)&&!_pocas(c)&&(c.noML||(candCatChequeado(c)&&!candPocasVentas(c)))), _rojos=vivos.filter(c=>_fOk(c)&&_medido(c)&&_esRojo(c)), _flojas=vivos.filter(c=>_fOk(c)&&_medido(c)&&!_esRojo(c)&&_pocas(c));
   // ORDENAR (03/10/2026, pedido suyo: "poder buscar de mayor a menor los que más unidades vendieron, mayor
   // porcentaje y eso"). Los sin dato van siempre al final.
   {const k=_candOrden, val=c=>{const n=x=>(x!=null&&isFinite(x))?Number(x):null;
@@ -16288,7 +16298,7 @@ function candidatosHTML(){
       if(k==='barato')return parseFloat(c.usd)>0?-parseFloat(c.usd):null;
       return n(c.margen);};
     const ord=(a,b)=>{const va=val(a),vb=val(b);if(va==null&&vb==null)return 0;if(va==null)return 1;if(vb==null)return -1;return vb-va;};
-    _arriba.sort(ord);_sinChequear.sort(ord);_rojos.sort(ord);_flojas.sort(ord);_sinAnalizar.sort(ord);}
+    _arriba.sort(ord);_sinChequear.sort(ord);_menos100.sort(ord);_rojos.sort(ord);_flojas.sort(ord);_sinAnalizar.sort(ord);}
   // CUÁNTOS DAN (02/10/2026, pedido suyo: *"antes de arrancar la lista poné cuántos candidatos con % positivo en
   // verde hay, así voy viendo cuando sube productos nuevos"*). Verde = medido y en el piso o arriba.
   const _verdes=_arriba.filter(c=>c.margen!=null&&isFinite(c.margen)).length, _sinMed=_arriba.length-_verdes;
@@ -16299,6 +16309,8 @@ function candidatosHTML(){
   return cab(_verdes)+pycatBuscarHTML()+_orden+_arriba.map(_card).join('')
     +_vencHTML
     +(_sinChequear.length?`<details style="margin-top:12px;background:var(--surface);border:1px solid var(--amber);border-radius:var(--r);padding:8px 12px"><summary style="cursor:pointer;font-size:.76rem;font-weight:700;color:var(--amber)" title="Dan el % y tienen las ventas, pero nadie confirmó todavía que el producto de ML sea el mismo. Abrí cada uno, mirá las dos fotos y tocá ✅ Es el mismo producto: ahí sube arriba y se puede pedir.">🔍 Dan, pero falta confirmar que es el mismo producto · ${_sinChequear.length}</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_sinChequear.map(_card).join('')}</div></details>`:'')
+    +(()=>{const _fv=_arriba.filter(c=>!c.noML&&candVentasDe(c)==null).length;return (_fv?`<div style="font-size:.64rem;color:var(--muted);margin-top:8px">🛒 ${_fv} de los de arriba pasaron todo y todavía no tienen las vendidas de ML: entran igual, el chat de compras las mira al final (si da menos de ${CAND_MIN_VENTAS}, se van).</div>`:'')
+      +(_menos100.length?`<details style="margin-top:12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:8px 12px"><summary style="cursor:pointer;font-size:.76rem;font-weight:700;color:var(--muted)">🛒 Pasaron todo pero vendieron menos de ${CAND_MIN_VENTAS} en ML · ${_menos100.length}</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_menos100.map(_card).join('')}</div></details>`:'');})()
     +(()=>{
       // EL CATÁLOGO ENTERO, DIVIDIDO (17/10/2026, él: "quiero que estén todos los 13.000 divididos en todas las categorías").
       // Los números del catálogo los deja el robot en `cyc/pycatres`; las filas se bajan recién al abrir cada grupo (~4 MB).
@@ -19357,8 +19369,10 @@ function _listaUnVend(e){return !!e&&Number(e.mv)===1;}
 // "parecía" bien: 21 de 36 eran otro producto. Lo demás de 25%+ queda en 🔎 Para revisar. Misma regla en el robot (`cuentaLista`).
 // 20/10/2026 · etapa 4: con `miFijo`, vale sólo si lo medido (`mi`) es ese catálogo (misma regla que `listaOkVale` del robot).
 function _listaOkVale(e){return !!(e&&e.ok&&(e.miFijo?String(e.miFijo).toUpperCase()===String(e.mi||'').toUpperCase():(!e.okCat||String(e.okCat).toUpperCase()===String(e.mi||'').toUpperCase())));}
-function _listaDa(e){return _listaMed25(e)&&Number(e.mv)>=CAND_MIN_VENDEDORES&&_listaOkVale(e);}
-function _listaRevisar(e){return _listaMed25(e)&&!_listaDa(e);}
+function _listaDa(e){return _listaMed25(e)&&Number(e.mv)>=CAND_MIN_VENDEDORES&&_listaOkVale(e)&&!pocasVentasN(e.vend);}
+function _listaRevisar(e){return _listaMed25(e)&&!_listaDa(e)&&!pocasVentasN(e.vend);}
+// pasó todo lo demás pero las vendidas cargadas no llegan a 100 (21/10/2026)
+function _listaPocasV(e){return _listaMed25(e)&&pocasVentasN(e.vend);}
 function _listaArmado(k){return Object.entries(((state.listaPed||{})[k])||{}).map(([cod,u])=>({cod,u:parseInt(u)||0})).filter(x=>x.u>0);}
 function _listaViajando(k){const s=new Set();Object.values(state.comprasLista||{}).forEach(c=>{if(c&&c.prov===k&&c.estado==='camino')(c.items||[]).forEach(it=>{if(!it.prodId)s.add(String(it.cod));});});return s;}
 // ── LO YA PROBADO DE UNA LISTA SE PIDE COMO PARAGUAY (20/10/2026, decisión 1a) ───────────────────────────────────────────
@@ -19810,9 +19824,11 @@ async function renderListas(){
     else if(m<0)_cg.neg.push(f);else if(m<15)_cg.bajo.push(f);else _cg.casi.push(f);}
   const _sub=(t,arr,col,abierto)=>arr.length?`<details${abierto?' open':''} style="margin-top:8px;border:1px solid var(--border);border-radius:8px;padding:7px 10px"><summary style="cursor:pointer;font-size:.74rem;font-weight:700${col?';color:'+col:''}">${t} (${arr.length})</summary><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${arr.slice(0,150).map(f=>fila(f,false)).join('')}${arr.length>150?`<div style="font-size:.62rem;color:var(--muted)">muestro 150 · el resto con el buscador</div>`:''}</div></details>`:'';
   const _carp=(t,n,col,body,extra)=>n?`<details style="margin-top:14px;background:var(--surface);border:1px solid ${col||'var(--border)'};border-radius:var(--r);padding:10px 12px"><summary style="cursor:pointer;font-size:.82rem;font-weight:700">${t} (${n})${extra||''}</summary>${body}</details>`:'';
-  const _nCon=revis.length+_cg.casi.length+_cg.bajo.length+_cg.neg.length+_cg.unV.length+_cg.otro.length+_cg.cNuevo.length+_cg.sinFoto.length+_cg.nadie.length;
+  const _pocasL=nuevos.filter(([,e])=>_listaPocasV(e)).sort(ord);
+  const _nCon=_pocasL.length+revis.length+_cg.casi.length+_cg.bajo.length+_cg.neg.length+_cg.unV.length+_cg.otro.length+_cg.cNuevo.length+_cg.sinFoto.length+_cg.nadie.length;
   const _conCat=_carp('📗 Con catálogo en ML',_nCon,'',
      _sub('🔎 Darían 25%+ pero falta confirmar que es el mismo producto',revis,'var(--amber)',true)
+    +_sub('🛒 Dan 25%+ pero vendieron menos de '+CAND_MIN_VENTAS+' en ML',_pocasL,'var(--muted)')
     +_sub('🟠 Casi: dan 15% a 24% (se vuelven a medir cada 7 días)',_cg.casi,'var(--amber)')
     +_sub('📷 Darían 25%+ pero falta la foto de ML para compararlo',_cg.sinFoto,'')
     +_sub('👤 Un solo vendedor en ML: el precio no lo confirma nadie',_cg.unV,'')
@@ -19831,7 +19847,7 @@ async function renderListas(){
     <div><b>⏳ Sin evaluar ${_grp.sinEv}</b>${_grp.sinEv?' <span style="color:var(--muted)">· el robot los está midiendo</span>':''}</div>
     ${_grp.ficha||_grp.afuera?`<div style="color:var(--muted)">${_grp.ficha?`✔️ ${_grp.ficha} ya los vendés`:''}${_grp.ficha&&_grp.afuera?' · ':''}${_grp.afuera?`🚫 ${_grp.afuera} afuera (sacados, no están en la web del proveedor o regla)`:''}</div>`:''}
   </details>
-    <div style="font-size:.85rem;font-weight:700;color:var(--green);margin:4px 0 8px">✅ Dan 25% o más en ML, con 2+ vendedores y el mismo producto confirmado · ${dan.length}</div>
+    <div style="font-size:.85rem;font-weight:700;color:var(--green);margin:4px 0 8px">✅ Dan 25% o más en ML, con 2+ vendedores y el mismo producto confirmado · ${dan.length}${(()=>{const n=dan.filter(([,e])=>e.vend==null).length;return n?` <span style="font-size:.66rem;font-weight:400;color:var(--muted)">· 🛒 ${n} sin las vendidas de ML todavía (entran igual, se miran al final: menos de ${CAND_MIN_VENTAS} se van)</span>`:'';})()}</div>
     <div style="display:flex;flex-direction:column;gap:6px">${dan.length?dan.map(f=>fila(f,true)).join(''):'<div class="empty-msg">Todavía ninguno (o falta medirlos).</div>'}</div>
     ${_conCat}${_sinCat}${_sinMed}${_regla}
     ${sinWeb.length?`<details style="margin-top:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px"><summary style="cursor:pointer;font-size:.82rem;font-weight:700;color:var(--muted)">🚫 No está en la web de ${escHtml(nom)}: no lo tienen (${sinWeb.length})</summary><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${sinWeb.slice(0,150).map(f=>fila(f,false)).join('')}${sinWeb.length>150?`<div style="font-size:.64rem;color:var(--muted)">… y ${sinWeb.length-150} más (usá el buscador)</div>`:''}</div></details>`:''}

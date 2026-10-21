@@ -292,7 +292,8 @@ La etapa 8 de la revisión (Reglas del cerebro, cada 7 días) mira que esto qued
 - Pedidos de ~US$1.000 cada 2-3 semanas. Lo no urgente espera al próximo; lo que se corta antes de que llegue se pide igual.
 - Precios y códigos SÓLO de comprasparaguay (la fila de Nissei), nunca nissei.com. El chat local los copia una vez por mes.
 - Para pedir: 25% (no 24) **y** catálogo de ML con 2+ vendedores **y** confirmado que es el mismo producto (✅ `mismoOk` o `revcand`
-  ok de ESE catálogo). Las vendidas ya no se cargan.
+  ok de ESE catálogo). 🔒 **Y al final las 100 vendidas (21/10/2026, regla suya):** sin el dato entra igual; cargado y abajo de 100
+  queda afuera (`CAND_MIN_VENTAS`, web y robot). Las mira el chat de compras sólo de lo que pasó todo (`faltaventas`).
 - Cuántas de cada nuevo (decisión 4a del 21/10; las vendidas ya no se cargan): 🔒 barato (≤US$15 crudo) → 3 · caro (+US$60) → 1 ·
   resto → 2 (`candMaxU`, botón 🪄 Llenar). Lo que vuela se repone en el pedido siguiente por sus ventas.
 - Ticket real obligatorio para cerrar (`compray:<fecha>|det=…|go`); gastos: dólares, retira, correo (monto y kilos); `adelanto=` y
@@ -302,7 +303,8 @@ La etapa 8 de la revisión (Reglas del cerebro, cada 7 días) mira que esto qued
 
 ## 17 · LISTAS (otros proveedores)
 - Todas se miden contra ML, también Dai Nippon (que no tiene pedido: lo trae Tito). Para que "dé": 25% y catálogo con 2+ vendedores
-  y el mismo producto confirmado (`listadato` ok o `mi=`). Un solo vendedor no vale como precio.
+  y el mismo producto confirmado (`listadato` ok o `mi=`) y, al final, no menos de 100 vendidas si están cargadas. Un solo vendedor
+  no vale como precio.
 - Nunca cargar una lista vieja. Se paga el neto, no el precio de lista (preguntar antes de cargar). Iscos: sólo lo de su web, ×0,665.
 
 ## 18 · PAULVIC

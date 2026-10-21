@@ -8985,10 +8985,10 @@ function cuentaLista(cat) {
   const m25 = (e) => !listaNoEsVale(e) && !e.sacado && !e.noWeb && e.m != null && Number(e.m) >= 25 && listaCostoVigente(e) && /^https:\/\//.test(e.mf || '') && !(e.mv != null && Number(e.mv) < CAND_MIN_VENDEDORES);
   // DESDE EL 20/10/2026 (eligió la a) sólo da lo que el chat de compras confirmó mirando ML (`ok`, de `listadato`) para ESE catálogo
   // (`okCat`, o el catálogo fijado con `mi=`). Antes también entraba lo que el robot emparejó solo y "parecía" bien: 21 de 36 estaban mal.
-  const da = (e) => m25(e) && Number(e.mv) >= CAND_MIN_VENDEDORES && listaOkVale(e);
+  const da = (e) => m25(e) && Number(e.mv) >= CAND_MIN_VENDEDORES && listaOkVale(e) && !pocasVentas(e.vend);
   // `pend` = falta medir: nunca medidos y también los medidos con un costo que ya cambió (etapa 3, 20/10/2026; si no, una lista a la que
   // le cambió el costo entero quedaba con 0 que dan y 0 pendientes, y la web la escondía).
-  return { n: v.length, med: v.filter((e) => e.m != null).length, pend: v.filter((e) => !e.t || (e.m != null && !e.noWeb && !e.sacado && !listaCostoVigente(e))).length, dan: v.filter(da).length, revisar: v.filter((e) => m25(e) && !da(e)).length, tMed: Date.now() };
+  return { n: v.length, med: v.filter((e) => e.m != null).length, pend: v.filter((e) => !e.t || (e.m != null && !e.noWeb && !e.sacado && !listaCostoVigente(e))).length, dan: v.filter(da).length, revisar: v.filter((e) => m25(e) && !da(e) && !pocasVentas(e.vend)).length, tMed: Date.now() };
 }
 // 20/10/2026 · etapa 4: con el catálogo fijado a mano (`miFijo`) vale sólo si lo MEDIDO (`mi`) es ese catálogo: si una vuelta midió
 // otro (ML no contestó el fijado y se buscó por nombre), el margen es de otro producto y no se da por confirmado. Misma regla en la web.
@@ -9013,6 +9013,13 @@ const CAND_MIN_VENT = 100;      // 03/10/2026: "100 unidades mínimo vendidas". 
 // cargaba a mano: el paso más lento, y no protegía (del pedido del 21/09, 10 de 12 no vendieron en 17 días). Ahora alcanza con que el
 // catálogo medido tenga 2+ vendedores con precio (`mlVendedores` en Paraguay, `mv` en Listas). Misma regla en index.html.
 const CAND_MIN_VENDEDORES = 2;
+// LAS 100 VENTAS VUELVEN, AL FINAL (21/10/2026, él: "para estar seguros de la compra quiero agregar también el filtro de las 100 ventas.
+// pero que se haga al final (…) así llegan menos y es menos trabajo" y "las que no tienen info que no queden afuera, que queden afuera
+// sólo cuando se carguen las ventas"). Sin el dato no se frena nada; con el dato cargado y menos de 100, afuera. Las ventas las mira el
+// chat de compras SÓLO de lo que pasó todos los otros filtros (`faltaventas`). Misma regla en index.html (`CAND_MIN_VENTAS`).
+const CAND_MIN_VENTAS = 100;
+const candVentasDe = (c) => { const a = c && c.vendCarga != null && isFinite(c.vendCarga) ? Number(c.vendCarga) : null; const b = c && c.mlVendidas != null && isFinite(c.mlVendidas) ? Number(c.mlVendidas) : null; return a != null ? a : b; };
+const pocasVentas = (v) => v != null && isFinite(v) && Number(v) < CAND_MIN_VENTAS;
 // NINGÚN "DA" SIN CHEQUEAR EL CATÁLOGO (20/10/2026, eligió la a). El chat de compras encontró mal emparejados 67 de 344 en Paraguay y
 // 21 de 36 en las listas: un margen medido contra OTRO producto. Un candidato de Paraguay se puede pedir sólo si alguien confirmó que el
 // catálogo de ML que se midió es el mismo producto: él con ✅ (`mismoOk`) o la revisión de fotos (`revClaude` ok), los dos atados a ESE
@@ -19855,7 +19862,8 @@ async function main() {
           // frenaba (`candPuedePedir`) y este comando no.
           : !/^https:\/\//.test(String(c.foto || '')) ? 'falta la foto de comprasparaguay'
           : !/^https:\/\//.test(String(c.mlFoto || '')) ? 'falta la foto de ML'
-          : !candCatChequeado(c) ? 'nadie confirmó todavía que el catálogo de ML sea el mismo producto (✅ en el panel o la revisión de fotos)' : '';
+          : !candCatChequeado(c) ? 'nadie confirmó todavía que el catálogo de ML sea el mismo producto (✅ en el panel o la revisión de fotos)'
+          : pocasVentas(candVentasDe(c)) ? `en ML vendió ${candVentasDe(c)}: menos de ${CAND_MIN_VENTAS}` : '';
         if (puede && p.u > antes) { problemas.push(`"${p.busca}" → ${c.nombre}: NO se puede pedir, ${puede}`); continue; }
         cambios.push({ id, c, antes, u: p.u, baja: !!p.baja });
       }
@@ -20700,6 +20708,27 @@ async function main() {
       }
       return;
     }
+    // BILLING_PROBE=faltaventas → SOLO LEE (21/10/2026). Lo que pasó TODOS los filtros (25%, 2+ vendedores, fotos, mismo producto
+    // confirmado) y todavía no tiene las vendidas de ML: la lista corta para el chat de compras. Paraguay se carga con
+    // `candprecio:[prov=elegancia;]<cód>=/<vendidas>;go` y las listas con `listadato:<prov>;<cód>=<vendidas>;go`.
+    if (/^faltaventas$/.test(String(process.env.BILLING_PROBE || ''))) {
+      const cands = (await db.get('cyc/candidatos_py')) || {}; const comp = (await db.get('cyc/compraspy')) || {}; const out = [];
+      for (const c of Object.values(cands)) { if (!c || c.no || c.prodId || c.noML) continue;
+        const pe = c.pedidoEn && comp[c.pedidoEn]; if (pe && pe.estado === 'camino') continue;
+        const mg = Number(c.margen); if (c.margen == null || !isFinite(mg) || mg < candPisoDe(c)) continue;
+        if (c.calcTs == null && Number(c.usdAntes) > 0) continue;
+        if (!(Number(c.mlVendedores) >= CAND_MIN_VENDEDORES)) continue;
+        if (!/^https:\/\//.test(String(c.foto || '')) || !/^https:\/\//.test(String(c.mlFoto || ''))) continue;
+        if (!candCatChequeado(c)) continue; if (candVentasDe(c) != null) continue;
+        out.push(`py|${String(c.prov || 'nissei').toLowerCase()}|${c.cod || ''}|${String(c.nombre || '').replace(/\|/g, '/').slice(0, 80)}|${candCatDe(c)}|${Math.round(mg)}%`); }
+      const provs = (await db.get('cyc/mlconfig/listasProv')) || {};
+      for (const [k, pv] of Object.entries(provs)) { if (pv.desc) continue; const cat = (await db.get('mlapi/listas/' + k)) || {};
+        for (const [cod, e] of Object.entries(cat)) { if (!e || listaNoEsVale(e) || e.sacado || e.noWeb || !(e.m != null && Number(e.m) >= 25) || !listaCostoVigente(e)) continue;
+          if (!/^https:\/\//.test(e.mf || '') || !(Number(e.mv) >= CAND_MIN_VENDEDORES) || !listaOkVale(e) || e.vend != null) continue;
+          out.push(`lista|${k}|${cod}|${String(e.n).replace(/\|/g, '/').slice(0, 80)}|${e.mi || ''}|${Math.round(e.m)}%`); } }
+      console.log(`=== PASARON TODO, FALTAN LAS VENTAS DE ML: ${out.length} (fuente|proveedor|código|nombre|catálogo ML|margen) ===`);
+      console.log('@@LISTA'); for (const l of out) console.log(l); console.log('@@FIN'); return;
+    }
     if (/^listarevisar(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const solo = String(process.env.BILLING_PROBE).split(':')[1] || ''; const provs = (await db.get('cyc/mlconfig/listasProv')) || {};
       // Salen los que dan 25%+ y les falta el ✅ de que el catálogo medido es el mismo producto (listaOkVale). Desde el 20/10/2026 (1a) las
@@ -20988,16 +21017,19 @@ async function main() {
       const codIg = _pyCodIg; // la misma del catálogo (acepta los códigos con letras de Ferso)
       const upd = {}; let malos = 0, noEsta = 0, sube = 0, baja = 0, igual = 0, fuera = 0, vuelve = 0;
       for (const f of filas) {
-        const m = f.match(/^([0-9]+)\s*=\s*(nohay|[0-9]+(?:[.,][0-9]+)?)(?:\s*\/\s*([0-9.]+))?$/i);
-        if (!m) { console.log(`❌ mal escrito: ${f.slice(0, 80)}`); malos++; continue; }
+        // `<cód>=/<vendidas>` (21/10/2026): sólo las vendidas, sin tocar el precio (lo que manda el chat con `faltaventas`).
+        const m = f.match(/^([0-9]+)\s*=\s*(nohay|[0-9]+(?:[.,][0-9]+)?)?(?:\s*\/\s*([0-9.]+))?$/i);
+        if (!m || (m[2] == null && m[3] == null)) { console.log(`❌ mal escrito: ${f.slice(0, 80)}`); malos++; continue; }
         const hits = Object.entries(cands).filter(([, c]) => c && codIg(c.cod, m[1]));
         if (!hits.length) { console.log(`? ${m[1]}: no es candidato (si es nuevo va con candalta, si es ficha con pyprecio)`); noEsta++; continue; }
         for (const [id, c] of hits) {
           if (c.prodId) continue;
           if (c.no && c.noTipo === 'mano') { console.log(`= ${m[1]} · ${String(c.nombre).slice(0, 50)}: lo tachaste a mano, no lo toco`); continue; }
           if (/^nohay$/i.test(m[2])) { if (!(c.no && c.noTipo === 'nissei')) { upd[`${id}/no`] = true; upd[`${id}/noTs`] = Date.now(); upd[`${id}/noTipo`] = 'nissei'; upd[`${id}/motivo`] = 'en comprasparaguay Nissei ya no lo ofrece (pasada del mes)'; fuera++; } continue; }
-          const usd = parseFloat(m[2].replace(',', '.')); const v = parseInt(String(m[3] || '').replace(/\D/g, ''), 10);
-          upd[`${id}/ts`] = Date.now(); if (isFinite(v) && v > 0) upd[`${id}/vendCarga`] = v;
+          const v = parseInt(String(m[3] || '').replace(/\D/g, ''), 10);
+          if (m[2] == null) { if (isFinite(v) && v >= 0) { upd[`${id}/vendCarga`] = v; igual++; } continue; }
+          const usd = parseFloat(m[2].replace(',', '.'));
+          upd[`${id}/ts`] = Date.now(); if (isFinite(v) && v >= 0) upd[`${id}/vendCarga`] = v;
           const u0 = Number(c.usd) || 0;
           if (Math.abs(u0 - usd) >= 0.005) { upd[`${id}/usd`] = usd; upd[`${id}/usdAntes`] = u0 || null; upd[`${id}/calcTs`] = null; if (usd > u0) sube++; else baja++; } else igual++;
           if (c.no && c.noTipo === 'nissei') { upd[`${id}/no`] = null; upd[`${id}/noTipo`] = null; upd[`${id}/motivo`] = null; vuelve++; }
