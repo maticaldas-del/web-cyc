@@ -501,6 +501,23 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
   código (`mllinks.variant` o el título), su Excel, su ritmo (`ritmonormal`/ventas con `variante`) y su `stockhist`. Las cajas
   llegadas no tienen color: por color no se usan. Chequear: la `CUENTA` del final sigue cerrando.
 
+### Armar caja: barra del cupo y el veredicto por costo de esperar (21/10/2026, v25.88, pedido suyo · también etapa 7)
+- **Qué es:** (1) se fueron el desplegable de cajas a medio armar (el apartado `reservadoEnOtras`/`cajaMax` sigue igual) y
+  el texto de ayuda. (2) El cupo de cada cuenta es una barra por tipo (chicos y medianos / grandes, `esGrandeFull`): total =
+  en Full + en camino + lo que queda de cupo (leíste − mandaste, `cupoRestante`). Sólido = en Full (`getQ`) · medio = en
+  camino (`enTransito`, `_cupoOcupadoDe`) · transparente = esta caja (`cupoDeCaja`) · rojo = lo que se pasa del cupo. Sin cupo
+  cargado no se dibuja (como antes). (3) `convieneCaja`/`cajaVeredicto` ya no comparan la ganancia de la caja contra el envío
+  (esa plata se cobra igual si esperás). Comparan: **esperar 7 días** (`CAJA_ESPERA_DIAS`) = Σ por producto de
+  `min(u, días de corte de más × vDia) × ganancia/u`, con días de corte de más = `max(0, viaje+7−corte) − max(0, viaje−corte)`,
+  `corte = (Full+camino)/vDia`, `viaje = REPO_DIAS_DEMORA` · contra **mandarla a medias** = `costoCaja × (1 − lleno)`, con
+  `lleno` = el mayor entre lugar y peso de `cajaOcupacion`. Verde si esperar ≥ envío de más o la caja va al 90%+ · naranja si
+  esperar ≥ la mitad · rojo si no. El cartel es un `<details>`: cerrado veredicto + una línea; abierto los dos costos con números.
+- **Dónde vive:** `index.html` (`renderOfiCaja`, `_cupoOcupadoDe`, `convieneCaja`, `cajaVeredicto`; `cajasVerdes` de Inicio
+  usa el mismo veredicto).
+- **Qué chequear:** que Inicio (📦 cajas para mandar ya) y el cartel digan lo mismo; que una caja con productos a punto de
+  cortarse salga verde y una con todo sobrado salga roja; productos sin medidas cuentan como caja vacía (el envío de más se ve
+  más alto, lo avisa); el veredicto mide los productos en Full de ESA cuenta (no las otras).
+
 ### Pedidos: precio de venta a mano para el máximo (`notas/venta_max.txt`, 20/10/2026)
 `decide_pedidos.py` mide si reponer da con el menor entre el precio de hoy y la mediana de 60 días. En lo que vendía barato y
 se agotaba, esa mediana tira para abajo y da "el precio de Paraguay no da" cuando sí da. Caso: Ferrari Negro, medido a $68.510

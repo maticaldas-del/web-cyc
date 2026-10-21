@@ -2905,7 +2905,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.87';
+const APP_VERSION='25.88';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2918,6 +2918,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.88',f:'21/10',h:'16:30',c:[{n:2,t:'📦 Armar caja: el cupo de Full es una barra por tipo (chicos/grandes): lo que ya está en Full sólido, lo que va en camino más claro, esta caja transparente y lo que se pasa en rojo.'},{n:2,t:'El cartel "Mandala ya / Podés esperar" es desplegable y compara lo que cuesta cada camino: lo que dejás de vender si esperás 7 días (productos que se cortan en Full) contra lo que sale de más mandarla a medias. Ya no compara la ganancia de la caja contra el envío.'},{n:1,t:'Se fueron el desplegable de cajas a medio armar y el texto de ayuda de la caja.'}]},
   {v:'25.87',f:'21/10',h:'16:00',c:[{n:1,t:'Arqueo: se fue 🏭 Proveedores; Inventario quedó adentro de Productos y Comparar adentro de Finanzas (desplegables). Cada producto muestra lo importante (costo, precio de hoy, lo que te queda y el estado) y el resto se abre tocando la tarjeta.'}]},
   {v:'25.86',f:'21/10',h:'15:30',c:[{n:2,t:'🛒 Pedidos: las casillas de unidades ya no guardan al instante (borraba lo que estabas escribiendo en otras). Cargás todo y tocás "🛒 Agregar al pedido" en la barra de abajo; lo sin agregar queda en ámbar.'},{n:2,t:'📋 Dai Nippon vuelve a tener pedido: casilla "📋 pedir a Dai Nippon" en cada tarjeta, 🧾 Pedido con el mensaje para WhatsApp (nombre, unidades y código), Ya lo pedí y Llegó.'},{n:2,t:'Lo cargado en el pedido se descuenta de lo que falta: con todo lo recomendado cargado la tarjeta baja a "🧾 Ya cargado"; con menos queda arriba con lo que falta y "pediste N" (Paraguay probados y listas).'}]},
   {v:'25.85',f:'21/10',h:'15:05',c:[{n:1,t:'Gastos: arriba de la lista de lo que falta cargar sale el total gastado del mes.'},{n:2,t:'Línea de tiempo: un precio ya no se marca 🔴 techo si otro precio más alto dejó más plata por día (pasaba con el Persea).'}]},
@@ -6591,6 +6592,15 @@ function cupoRestante(cta){
     estPeq:est(peqCargado,mandPeq,vendPeq),estGra:est(graCargado,mandGra,vendGra),
     viejo:dias>=CUPO_VIEJO_DIAS};
 }
+// Lo que ya ocupa el cupo de una cuenta, por tipo (21/10/2026, barra del cupo de Armar caja): unidades en Full (`getQ`) y en camino
+// (`enTransito`, lo que sigue arriba del camión). Chicos y grandes con `esGrandeFull`, igual que `cupoDeCaja`.
+function _cupoOcupadoDe(cta){
+  let fullPeq=0,fullGra=0,camPeq=0,camGra=0;const tr=enTransito(),sc='__'+sid(cta);
+  for(const p of (state.products||[])){if(!p||!p.id)continue;const g=esGrandeFull(p);
+    const f=Math.max(0,getQ(p.id,cta)),c=Math.max(0,parseInt(tr[p.id+sc])||0);
+    if(g){fullGra+=f;camGra+=c;}else{fullPeq+=f;camPeq+=c;}}
+  return {fullPeq,fullGra,camPeq,camGra};
+}
 // Cuántas unidades de este renglón entran EN TOTAL, contra lo que la caja tiene puesto de TODO LO
 // DEMÁS. Devuelve el tope del renglón, no un incremento: las unidades propias se descuentan de la
 // cuenta a propósito, porque la casilla de la pantalla guarda el total de ese renglón. Sumarle
@@ -6932,36 +6942,9 @@ function renderOfiCaja(){
   // Se listan TODAS, incluida la que estás mirando: esconder la de al lado sería el mismo error de
   // antes en chico. Va en color normal a propósito —tener una caja armándose no es un problema—;
   // lo único que hace es dejar de esconderlo.
-  const ab=document.getElementById('ofi-cajas-abiertas');
-  if(ab){
-    const abiertas=LOCS.map(l=>{
-      const it=cajaDe(l);
-      const u=Object.values(it).reduce((a,x)=>a+x,0);
-      const ts=((state.cajas_armando||{})[l]||{}).ts||0;
-      return {cta:l,u,ts};
-    }).filter(x=>x.u>0);
-    ab.style.display=abiertas.length?'':'none';
-    if(abiertas.length){
-      const uTot=abiertas.reduce((a,x)=>a+x.u,0);
-      const hace=(ts)=>{
-        if(!ts)return '';
-        const d=Math.floor((Date.now()-ts)/86400000);
-        return d<=0?'hoy':d===1?'hace 1 día':`hace ${d} días`;
-      };
-      ab.innerHTML=`<details style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px">
-        <summary style="cursor:pointer;font-size:.72rem">📦 <strong>${abiertas.length}</strong> caja${abiertas.length===1?'':'s'} a medio armar · <strong>${uTot}</strong> u. apartadas
-          <span style="color:var(--muted);font-weight:400">— esas unidades no se le ofrecen a las otras cuentas hasta cerrar o vaciar</span>
-        </summary>
-        <div style="margin-top:8px">${abiertas.map(x=>`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:6px 0;border-top:1px solid var(--border)">
-          <span class="pi-prov">${x.cta}</span>
-          <strong style="font-family:'DM Mono',monospace;font-size:.85rem">${x.u} u.</strong>
-          <span style="font-size:.64rem;color:var(--muted)">${hace(x.ts)}</span>
-          <button class="btn" style="margin-left:auto;font-size:.6rem;padding:3px 8px" onclick="cajaVaciarDe('${x.cta}')"
-            title="Suelta las ${x.u} unidades de la caja de ${x.cta}. No toca el stock ni ML: la mercadería vuelve a quedar disponible para las cuatro cuentas.">vaciar</button>
-        </div>`).join('')}</div>
-      </details>`;
-    }
-  }
+  // 21/10/2026, él: "sacar esto. total arriba me muestra qué cajas están armándose": el desplegable de cajas a medio armar se fue.
+  // La lógica de apartar (reservadoEnOtras/cajaMax) sigue igual; cada caja se vacía desde su cuenta (Vaciar caja).
+  {const ab=document.getElementById('ofi-cajas-abiertas');if(ab){ab.style.display='none';ab.innerHTML='';}}
 
   // ── LAS DOS BARRITAS DE LA CAJA ──────────────────────────────────────────
   // Los dos límites de una caja a Full son 70x70x70 y 30 kg, y llenar uno solo desperdicia el
@@ -6999,20 +6982,34 @@ function renderOfiCaja(){
       const _cajaU=_cu?cupoDeCaja(cajaAct,vis):null;
       let cupoHTML='';
       if(_cu&&_cajaU){
-        const fila=(tit,cargado,mand,vend,est,uCaja)=>{
+        // LA BARRA DEL CUPO (21/10/2026, él: "que en cupo muestre barra llena como muestra arriba. que se vaya llenando con los
+        // productos que tengo en stock ya en Full y con los que agrego lo muestre en el mismo color más transparente, así veo la
+        // diferencia de lo que ya hay con lo que va a ingresar"). Total de la barra = en Full + en camino + lo que te queda de cupo
+        // (leíste − mandaste). Sólido = lo que ya está en Full · medio = lo que va en camino (ya ocupa el cupo) · transparente = esta
+        // caja · vacío = lo que queda libre después. Si la caja se pasa, el tramo pasado va en rojo.
+        const _oc=_cupoOcupadoDe(ofiFiltroCuenta);
+        const fila=(tit,cargado,mand,est,uCaja,full,cam)=>{
           if(cargado==null)return '';
-          const pasa=(est!=null)&&(uCaja>est);
-          const col=pasa?'var(--red)':(uCaja>0?'var(--accent2)':'var(--muted)');
-          return `<div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;font-size:.63rem;color:var(--muted);padding:3px 0">
-            <span style="min-width:120px">${tit}</span>
-            <strong style="font-family:'DM Mono',monospace;font-size:.78rem;color:${col}">${fmtN(uCaja)} u.</strong>
-            <span>de <strong style="color:var(--text)">${est==null?'?':fmtN(est)}</strong> que te quedan</span>
-            <span style="opacity:.8">(leíste ${fmtN(cargado)}${mand?` − ${fmtN(mand)} que mandaste`:''})</span>
-            ${pasa?`<strong style="color:var(--red)">se pasa por ${fmtN(uCaja-est)} u.</strong>`:''}
+          const tot=Math.max(1,full+cam+(est||0));
+          const cajaOk=Math.min(uCaja,est||0),pasado=Math.max(0,uCaja-(est||0));
+          const w=x=>Math.max(0,Math.min(100,x/tot*100)).toFixed(2);
+          const libre=Math.max(0,(est||0)-uCaja);
+          const colN=pasado?'var(--red)':(uCaja>0?'var(--accent2)':'var(--muted)');
+          return `<div style="padding:4px 0">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:.62rem;color:var(--muted);margin-bottom:4px">
+              <span>${tit} <span style="opacity:.75">· ${fmtN(full)} en Full${cam?` · ${fmtN(cam)} en camino`:''} · esta caja ${fmtN(uCaja)}</span></span>
+              <strong style="font-family:'DM Mono',monospace;font-size:.78rem;color:${colN}" title="Leíste ${fmtN(cargado)}${mand?' − '+fmtN(mand)+' que mandaste':''} = ${est==null?'?':fmtN(est)} que te quedan">${pasado?`se pasa ${fmtN(pasado)} u.`:`${fmtN(libre)} libres`}</strong>
+            </div>
+            <div style="height:9px;background:var(--bg);border:1px solid var(--border2);border-radius:6px;overflow:hidden;display:flex">
+              <div style="width:${w(full)}%;background:var(--accent2)" title="${fmtN(full)} u. ya en Full"></div>
+              <div style="width:${w(cam)}%;background:var(--accent2);opacity:.6" title="${fmtN(cam)} u. en camino"></div>
+              <div style="width:${w(cajaOk)}%;background:var(--accent2);opacity:.32" title="${fmtN(cajaOk)} u. de esta caja"></div>
+              <div style="width:${w(pasado)}%;background:var(--red)" title="${fmtN(pasado)} u. que no entran en el cupo"></div>
+            </div>
           </div>`;
         };
-        const cuerpo=fila('Cupo · chicos y medianos',_cu.peq,_cu.mandPeq,_cu.vendPeq,_cu.estPeq,_cajaU.peq)
-          +fila('Cupo · grandes',_cu.gra,_cu.mandGra,_cu.vendGra,_cu.estGra,_cajaU.gra);
+        const cuerpo=fila('Cupo · chicos y medianos',_cu.peq,_cu.mandPeq,_cu.estPeq,_cajaU.peq,_oc.fullPeq,_oc.camPeq)
+          +fila('Cupo · grandes',_cu.gra,_cu.mandGra,_cu.estGra,_cajaU.gra,_oc.fullGra,_oc.camGra);
         // El cupo cargado VENCE, y se dice con todas las letras: ML no lo da por API (medido, 56
         // intentos), así que lo único que evita que él confíe en un número viejo es este aviso.
         const pie=_cu.viejo
@@ -7051,7 +7048,7 @@ function renderOfiCaja(){
     barra.innerHTML=armando?`<button class="pf-btn" onclick="cajaSugerida()">Cargar lo sugerido</button>`
       +(cupoRestante(ofiFiltroCuenta)?`<button class="pf-btn" style="border-color:var(--accent2);color:var(--accent2)" onclick="cajaSugeridaCupo()" title="Lo mismo, pero sin pasarse del cupo de Full de esta cuenta. Reparte en dos vueltas: primero que ningún producto quede sin nada, y después llena con los que más plata dejan por unidad.">🎯 Cargar lo que entra en el cupo</button>`:'')
       +`<button class="pf-btn" onclick="cajaVaciar()">Vaciar caja</button>`
-      +`<span style="font-size:.66rem;color:var(--muted);align-self:center">Poné cuántas unidades van en ESTA caja. Si no entra todo, cerrás ésta y armás la siguiente. Se guarda sola: podés dejarla a medias.<br>Lo sugerido es lo que decidí yo para esta cuenta: cubre <strong>${REPO_DIAS_TOTAL} días de venta</strong> (${REPO_DIAS_COBERTURA} de stock + ${REPO_DIAS_DEMORA} de viaje; 60 en lo que vende parejo, y nada pasa los 90), contando lo que ya está en Full y lo que va en camino.</span>`:'';
+      :'';   // 21/10/2026, él: "lo segundo también sacar" (el texto de ayuda de la caja)
   }
   if(!vis.length){
     // El vacío tiene que decir QUÉ HACER, no sólo que está vacío. Pedido suyo del 18/08/2026:
@@ -7076,32 +7073,36 @@ function renderOfiCaja(){
   let cartel='';
   if(armando){
     const cv=convieneCaja(filas,ofiFiltroCuenta);
-    if(cv.gCero>0||cv.gTotal>0){
-      const d=cv.diasPago;
-      const cuando=d==null?null:(d<1?`${Math.max(1,Math.round(d*24))} h`:`${d<10?d.toFixed(1):Math.round(d)} días`);
-      const porRitmo=d!=null&&d<=2;
-      // Dos motivos distintos para mandarla, y cualquiera de los dos alcanza: que se pague rápido
-      // por lo que destraba, o que lleve tanta plata adentro que el envío sea calderilla.
+    if(cv.uTot>0){
+      // DESPLEGABLE (21/10/2026, él: "que sea desplegable. adentro el detalle del porqué conviene esperar, o porqué mandar,
+      // siempre resumido con números claros"). Cerrado: el veredicto en su color y una línea con los dos costos. Abierto:
+      // cuánto sale mandarla hoy contra llena, y qué se corta si esperás. Ya no se pone "lleva $X de ganancia": esa plata
+      // se cobra igual si esperás, así que compararla contra el envío no decide nada.
       const _vr=cajaVeredicto(cv);
       const col=_vr.col, veredicto=_vr.txt;
-      const motivo=porRitmo
-        ?`se paga en <strong>${cuando}</strong>`
-        :cv.porTamano
-        ?`lleva <strong>${cv.vecesElEnvio<100?Math.round(cv.vecesElEnvio):'+100'} veces</strong> el costo del envío`
-        :d!=null?`se paga en <strong>${cuando}</strong>`:'';
-      cartel=`<div style="border:1px solid ${col};border-radius:10px;padding:10px 12px;margin-bottom:10px;background:rgba(255,255,255,.02)">
-        <div style="font-size:.9rem;font-weight:700;color:${col}">${veredicto}${motivo?` <span style="font-weight:400;font-size:.7rem;color:var(--muted)">· ${motivo}</span>`:''}</div>
-        <div style="font-size:.72rem;margin-top:5px;line-height:1.6">
-          Lleva <strong>${fmt(Math.round(cv.gTotal))}</strong> de ganancia en ${cv.uTot} u.
-          contra <strong>${fmt(costoCaja())}</strong> de envío.
-          <span style="font-size:.62rem;color:${cv.sobreLoCargado?'var(--green)':'var(--muted)'}">${cv.sobreLoCargado?'· sobre lo que cargaste en la caja':'· sobre lo sugerido (todavía no cargaste nada)'}</span><br>
-          ${cv.gCero>0
-            ? `Destraba <strong>${fmt(Math.round(cv.gCero))} por día</strong> (${cv.nCero} producto${cv.nCero===1?'':'s'} en cero, ${cv.uCero} u.): esperar una semana te cuesta <strong>${fmt(Math.round(cv.gCero*7))}</strong>.`
-            : `Nada de la caja está en cero, así que hoy no destraba ninguna venta — pero esa plata no puede venderse mientras esté en tu casa.`}
+      const pctLl=Math.round(cv.lleno*100);
+      const linea=cv.llena
+        ?`la caja ya va llena (${pctLl}%)`
+        :`esperar ${cv.espera} días te cuesta ${fmt(Math.round(cv.perdida))} · mandarla a medias, ${fmt(Math.round(cv.extra))} de más`;
+      const nom=x=>(x.p.name||'').replace(/</g,'&lt;')+(x.variante?' · '+String(x.variante).replace(/</g,'&lt;'):'');
+      const top=cv.cortan.slice(0,3).map(x=>`· ${nom(x)} — ${x.corte<=0?'ya está en 0':'se corta en '+x.corte+' d'} · ~${fmtN(Math.round(x.u))} u. · ${fmt(Math.round(x.pe))}`).join('<br>');
+      const cpu=cv.uTot>0?cv.costo/cv.uTot:0, cpuLl=cv.uLlena?cv.costo/cv.uLlena:null;
+      cartel=`<details id="caja-veredicto" style="border:1px solid ${col};border-radius:10px;padding:10px 12px;margin-bottom:10px;background:rgba(255,255,255,.02)">
+        <summary style="cursor:pointer;list-style:none">
+          <div style="font-size:.9rem;font-weight:700;color:${col}">${veredicto} <span style="font-size:.62rem;color:var(--muted);font-weight:400">▾</span></div>
+          <div style="font-size:.7rem;color:var(--muted);margin-top:3px">${linea}</div>
+        </summary>
+        <div style="font-size:.72rem;margin-top:8px;line-height:1.65">
+          <div>📦 <strong>Mandarla hoy:</strong> envío ${fmt(cv.costo)} para ${fmtN(cv.uTot)} u. (${fmt(Math.round(cpu))} c/u)${cv.llena?'.':`. La caja va al ${pctLl}%${cv.uLlena?`: llena serían ~${fmtN(cv.uLlena)} u. (${fmt(Math.round(cpuLl))} c/u)`:''}, o sea que mandarla ahora te sale <strong>${fmt(Math.round(cv.extra))}</strong> de más.`}</div>
+          <div style="margin-top:6px">⏳ <strong>Esperar ${cv.espera} días:</strong> ${cv.cortan.length
+            ?`se cortan en Full ${cv.cortan.length} producto${cv.cortan.length===1?'':'s'} antes de que llegue la caja y dejás de ganar <strong>${fmt(Math.round(cv.perdida))}</strong>.<div style="font-size:.64rem;color:var(--muted);margin-top:3px">${top}${cv.cortan.length>3?`<br>· y ${cv.cortan.length-3} más`:''}</div>`
+            :`ningún producto se corta en Full antes de que llegue: esperar no te cuesta ventas.`}</div>
+          <div style="margin-top:6px;font-size:.64rem;color:var(--muted)">La ganancia de lo que lleva (${fmt(Math.round(cv.gTotal))}) no entra en la cuenta: se cobra igual si esperás, una semana después. La caja tarda ${REPO_DIAS_DEMORA} días en llegar; esperar suma ${cv.espera} más.</div>
+          <div style="font-size:.62rem;color:${cv.sobreLoCargado?'var(--green)':'var(--muted)'};margin-top:4px">${cv.sobreLoCargado?'Sobre lo que cargaste en la caja.':'Sobre lo sugerido (todavía no cargaste nada).'}</div>
+          ${cv.sinMedida?`<div style="font-size:.64rem;color:var(--amber);margin-top:4px">${fmtN(cv.sinMedida)} u. sin medidas: no entran en lo llena que va, así que el envío de más se ve más alto de lo que es.</div>`:''}
+          ${cv.sinDato?`<div style="font-size:.64rem;color:var(--amber);margin-top:4px">${cv.sinDato} renglón(es) sin neto de ML cargado: no entran en la cuenta.</div>`:''}
         </div>
-        ${cv.gRelleno>0?`<div style="font-size:.66rem;color:var(--muted);margin-top:6px">Otros ${fmt(Math.round(cv.gRelleno))}/día de la caja son relleno de publicaciones que <strong>ya tienen stock</strong>: eso no lo perdés si esperás. Si lo que te falta para llenar la caja es de acá, juntá tranquilo.</div>`:''}
-        ${cv.sinDato?`<div style="font-size:.66rem;color:var(--amber);margin-top:6px">${cv.sinDato} renglón(es) sin neto de ML cargado: no entran en la cuenta, así que los números de arriba se quedan cortos.</div>`:''}
-      </div>`;
+      </details>`;
     } else {
       cartel=`<div style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:10px">
         <div style="font-size:.72rem;line-height:1.6;color:var(--muted)">
@@ -8592,13 +8593,20 @@ function cajasVerdes(filas){
   return LOCS.filter(c=>{const v=cajaVeredicto(convieneCaja(filas,c));return v&&v.k==='verde';});
 }
 // EL VEREDICTO DE UNA CAJA, EN UN SOLO LUGAR (v25.59, 21/10/2026): lo usan el cartel de Armar caja, los botones de
-// cada cuenta (color, número y 📦) y la tarjeta de Inicio. Verde MANDALA YA (se paga en 2 días o lleva mucha plata) ·
-// naranja podés mandarla (se paga en una semana) · rojo podés esperar. Sin nada para mandar, null.
+// cada cuenta (color, número y 📦) y la tarjeta de Inicio. Sin nada para mandar, null.
+// REHECHO EL 21/10/2026 (v25.88), él: "hoy dice que lleva 75.000 de ganancia y 17.310 de gasto, mirándolo así vale la pena
+// mandar ¿no? pero en realidad no. fijate bien cómo hacerlo". La ganancia de lo que lleva la caja NO se pierde por esperar:
+// esa mercadería se vende igual, una semana después. Lo que se compara es lo que cuesta cada camino:
+//   · ESPERAR (CAJA_ESPERA_DIAS=7): lo que se deja de vender en Full porque algún producto se corta antes de que llegue
+//     la caja (y que mandándola hoy no se cortaba). Por producto: días de corte de más × lo que vende por día × lo que deja.
+//   · MANDARLA A MEDIAS: lo que sale de más el envío por no ir llena = costoCaja × (1 − lo llena que va).
+// Verde MANDALA YA = esperar cuesta más que el envío de más, o la caja ya va llena (90%+) · naranja Podés mandarla =
+// esperar cuesta al menos la mitad · rojo Podés esperar y juntar más = esperar sale casi gratis.
+const CAJA_ESPERA_DIAS=7;
 function cajaVeredicto(cv){
-  if(!cv||!(cv.gCero>0||cv.gTotal>0))return null;
-  const d=cv.diasPago;
-  if((d!=null&&d<=2)||cv.porTamano)return{k:'verde',col:'var(--green)',txt:'MANDALA YA'};
-  if(d!=null&&d<=7)return{k:'naranja',col:'var(--lv-justo)',txt:'Podés mandarla'};
+  if(!cv||!(cv.uTot>0))return null;
+  if(cv.llena||cv.perdida>=cv.extra)return{k:'verde',col:'var(--green)',txt:'MANDALA YA'};
+  if(cv.perdida>=cv.extra*0.5)return{k:'naranja',col:'var(--lv-justo)',txt:'Podés mandarla'};
   return{k:'rojo',col:'var(--red)',txt:'Podés esperar y juntar más'};
 }
 function renderNcOfi(filas){
@@ -8615,37 +8623,56 @@ function renderNcOfi(filas){
   }catch(e){}
 }
 function convieneCaja(filas,cuenta){
-  let gCero=0,gRelleno=0,gTotal=0,nCero=0,uCero=0,uTot=0,sinDato=0;
-  const detalle=[];
+  let gCero=0,gRelleno=0,gTotal=0,nCero=0,uCero=0,uTot=0,sinDato=0,perdida=0;
+  const detalle=[],cortan=[],items={};
   const puestos=cajaDe(cuenta);
   const hayPuesto=Object.values(puestos).some(n=>n>0);
+  const viaje=REPO_DIAS_DEMORA,D=CAJA_ESPERA_DIAS;
   for(const f of filas){
     // LO CARGADO A MANO CUENTA AUNQUE NO TENGA SUGERENCIA (09/10/2026): con SOLO_CLAUDE un producto sin decisión
     // no trae renglón de sugerencia para esta cuenta, y lo que él puso en la caja quedaba sin contar.
     let _ss=(f.sug||[]).filter(s=>s.cuenta===cuenta);
     if(hayPuesto&&!_ss.length&&(puestos[_ck(f.p.id,f.variante||'')]||0)>0){
       const pq=(f.porQueNo||[]).find(c=>c.cuenta===cuenta);
-      _ss=[{cuenta,mandar:0,vDia:pq?(pq.vMes||0)/PED_MAX_DAYS:0,enCero:pq?((pq.enML||0)+(pq.camino||0))<=0:false}];
+      const st=pq?((pq.enML||0)+(pq.camino||0)):0;
+      _ss=[{cuenta,mandar:0,vDia:pq?(pq.vMes||0)/PED_MAX_DAYS:0,stock:st,enCero:pq?st<=0:false}];
     }
     for(const s of _ss){
       // Cuántas unidades se están contando: las que ÉL cargó, o las sugeridas si no cargó nada.
       const u=hayPuesto?(puestos[_ck(f.p.id,f.variante||'')]||0):s.mandar;
       if(!(u>0))continue;
+      const k=_ck(f.p.id,f.variante||'');items[k]=(items[k]||0)+u;
       const g=gananciaUnidad(f.p);
       if(g==null){sinDato++;continue;}
       uTot+=u;
-      gTotal+=Math.max(0,g)*u;
-      const porDia=Math.max(0,g)*(s.vDia||0);
-      if(s.enCero){gCero+=porDia;nCero++;uCero+=u;detalle.push({p:f.p,variante:f.variante,porDia,mandar:u,gan:Math.max(0,g)*u});}
+      const gu=Math.max(0,g);
+      gTotal+=gu*u;
+      const vD=Math.max(0,s.vDia||0);
+      const porDia=gu*vD;
+      if(s.enCero){gCero+=porDia;nCero++;uCero+=u;detalle.push({p:f.p,variante:f.variante,porDia,mandar:u,gan:gu*u});}
       else gRelleno+=porDia;
+      // Lo que se pierde por esperar: días que pasa en cero de más (llega a los viaje+D días en vez de viaje).
+      if(vD>0){
+        const corte=Math.max(0,(s.stock||0))/vD;
+        const diasMas=Math.max(0,viaje+D-corte)-Math.max(0,viaje-corte);
+        const uPerd=Math.min(u,diasMas*vD);
+        const pe=uPerd*gu;
+        if(pe>0){perdida+=pe;cortan.push({p:f.p,variante:f.variante,corte:Math.floor(corte),u:uPerd,pe});}
+      }
     }
   }
   detalle.sort((a,b)=>b.porDia-a.porDia||b.gan-a.gan);
+  cortan.sort((a,b)=>b.pe-a.pe);
   const _cc=costoCaja();
+  // Lo llena que va: el mayor entre lugar y peso (la MISMA cuenta de las dos barras de Armar caja).
+  const oc=cajaOcupacion(items,filas);
+  const lleno=Math.min(1,Math.max(oc.lugar,oc.gramos/1000/CAJA_KG));
+  const uLlena=lleno>0?Math.round(uTot/lleno):null;
+  const extra=_cc*(1-lleno);
   const diasPago=gCero>0?_cc/gCero:null;
   return{gCero,gRelleno,gTotal,nCero,uCero,uTot,sinDato,detalle,diasPago,sobreLoCargado:hayPuesto,
-    // Vale la pena por lo que lleva, aunque la velocidad no lo justifique sola.
-    porTamano:gTotal>=_cc*CAJA_VALE_LA_PENA,
+    perdida,cortan,lleno,uLlena,extra,llena:lleno>=0.9,costo:_cc,espera:D,
+    sinMedida:oc.sinDim,
     vecesElEnvio:_cc>0?gTotal/_cc:0};
 }
 
