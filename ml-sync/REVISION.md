@@ -296,6 +296,9 @@ Qué es · dónde vive · qué chequear:
   `_cerMlas` filtra por `_lineaColorDe` y los encabezados dicen el color · `cambiosPrecioDe` dice "Claude" en lo de `por:'claude'` ·
   `normTxt` con trim. Chequear: el máximo de compra de algo que hoy está del otro lado de la barrera da 25% al precio decidido.
 
+### `entrarpromo`: la relectura espera a que ML muestre el descuento (21/10/2026)
+- **Qué es:** ML tarda segundos en mostrar un descuento recién puesto; la relectura inmediata no lo veía, el robot quería salir ("No offers found") y lo dejaba sin anotar en `cyc/promoclaude` (el guardián de la hora lo sacaba). Ahora relee hasta 4 veces (0/3/6/10 s). **Dónde vive:** sync.mjs, `entrarpromo`. **Qué chequear:** que un descuento nuevo salga "✓ ADENTRO" y quede en `cyc/promoclaude`.
+
 ### 💳 Cuotas en todo: gemela Premium para cada Clásica y que siga sola (21/10/2026, pedido suyo)
 - **Qué es:** `precioGemelaIgual` (el Premium más bajo con la misma plata neta, probado precio por precio con `cuentaGemela`; antes `gemela` despejaba con el envío sumado siempre y en lo barato saltaba la barrera: Naipes $3.890 → $34.190) · `alinearGemelas` en la vuelta de cada hora (también con SOLO_DATOS) y `gemelaalinear[:go]` · `gemelacrea` ya no frena por el piso si la Premium deja lo mismo que la Clásica · `gemela:<mínimo>` muestra además las gemelas que ya existen con sus ventas y su caja. 148 gemelas nuevas creadas el 21/10.
 - **Dónde vive:** sync.mjs (`precioGemelaIgual`, `alinearGemelas`, probes `gemela`, `gemelacrea`, `gemelaalinear`), memoria `cyc/gemelasigue/<MLA>` {c, p, ts}.

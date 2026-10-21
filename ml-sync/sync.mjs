@@ -41902,7 +41902,15 @@ async function main() {
           if (!r.ok) { console.log(`   ✗ ML dijo ${r.status} ${det}`); await restaurarPC(); continue; }
           entre = true;
         }
-        let quedo = null; try { quedo = (await leerPromos(q.mla, tk)).find((x) => promoPermitida({ [q.mla]: { id: pr.id || '', tipo: pr.type } }, q.mla, x, 0) && (x.status === 'started' || x.status === 'pending')); } catch { quedo = null; }
+        // ML tarda unos segundos en mostrar un descuento recién puesto (21/10/2026: Galaxy y Tendedero quedaron puestos, la relectura
+        // inmediata no los vio, el robot quiso salir, ML dijo "No offers found" y quedaron sin anotar en `cyc/promoclaude`, o sea a
+        // merced del guardián de la hora). Se relee hasta 4 veces, esperando 3, 6 y 10 s entre cada una.
+        let quedo = null;
+        for (const espera of [0, 3000, 6000, 10000]) {
+          if (espera) await new Promise((ok) => setTimeout(ok, espera));
+          try { quedo = (await leerPromos(q.mla, tk)).find((x) => promoPermitida({ [q.mla]: { id: pr.id || '', tipo: pr.type } }, q.mla, x, 0) && (x.status === 'started' || x.status === 'pending')); } catch { quedo = null; }
+          if (quedo || !entre) break;
+        }
         const pQuedo = quedo ? Math.round(Number(quedo.price) || 0) : 0;
         // RELEÍDO O NADA (etapa 1, 21/10/2026): si no la veo puesta o quedó a otro precio, no se anota estrategia ni la nota
         // "Entré": se sale de la promo (si la puse ahora) y vuelve la excepción de antes. Antes quedaba anotada una promo que no
