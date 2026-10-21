@@ -154,10 +154,9 @@ html,body{overflow-x:hidden;max-width:100%}html{overflow-x:clip}body{overscroll-
 .total-pill .lbl{font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;opacity:.85}
 .total-pill .val{font-family:'Syne',sans-serif;font-size:1.2rem;font-weight:800}
 .total-pill .val.negative{color:#fca5a5}
+@media(max-width:640px){.total-pill{display:none}}
 
 /* ── SHARED COMPONENTS ── */
-#act-bar{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 14px;margin-bottom:16px;font-size:.66rem;color:var(--muted);display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:34px;overflow:hidden}
-.act-pill{padding:2px 8px;border-radius:4px;background:rgba(124,58,237,.1);color:#a78bfa;font-size:.63rem;white-space:nowrap;max-width:260px;overflow:hidden;text-overflow:ellipsis}
 .tabs{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
 .tab{padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:var(--surface);font-size:.72rem;cursor:pointer;color:var(--muted);font-family:'DM Mono',monospace;transition:all .15s}
 .tab:hover:not(.active){border-color:var(--border2);color:var(--text)}
@@ -822,17 +821,16 @@ body.light .est-chip{color:color-mix(in srgb,var(--ec) 50%,#000)}
         <span style="font-size:.6rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)">💵 Dólar</span>
         <input id="f_tipo_cambio" class="fin-input money" style="width:120px" type="text" inputmode="numeric" placeholder="$0" onchange="saveTC(this.value)">
       </div>
+      <!-- Dos "Patrimonio total" en la misma pantalla (decisión 7.7 de diseño, 21/10/2026, eligió la a): éste es el de HOY
+           (calcArqueo en vivo, aunque abajo se mire un mes cerrado) y en el teléfono no se ve: ahí manda el de abajo. -->
       <div class="total-pill">
-        <div class="lbl">Patrimonio total</div>
+        <div class="lbl">Patrimonio hoy</div>
         <div class="val" id="total-val">$0</div>
       </div>
     </div>
   </div>
 
-  <div id="act-bar">
-    <span>Última actividad (sólo lo hecho desde la web, no el robot):</span>
-    <span id="act-entries" style="color:var(--muted)">sin actividad</span>
-  </div>
+  <!-- "Última actividad" se sacó del Arqueo el 21/10/2026 (decisión 7.8 de diseño): vive en Ajustes → 🕘 Últimos cambios. -->
 
   <div class="tabs">
     <!-- ABRE EN FINANZAS (idea 6 de la etapa 7, 30/09/2026, eligió la a): es lo que se entra a mirar.
@@ -1803,19 +1801,14 @@ body.light .est-chip{color:color-mix(in srgb,var(--ec) 50%,#000)}
     <div class="met-kpi c1"><div class="mk-lbl">Efectivo & Digital</div><div class="mk-val" id="res-efect">$0</div><div class="mk-sub" id="res-efect-comp">caja + MP</div></div>
   </div>
 
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
-    <div>
-      <div class="stitle">🚚 Pedidos pendientes</div>
-      <div class="met-kpi-grid" style="grid-template-columns:1fr 1fr 1fr">
-        <div class="met-kpi c1"><div class="mk-lbl">Urgente</div><div class="mk-val" id="res-ped-pend" style="color:var(--red)">0</div><div class="mk-sub">prioridad alta</div></div>
-        <div class="met-kpi c4"><div class="mk-lbl">Poco stock</div><div class="mk-val" id="res-ped-ped" style="color:var(--amber)">0</div><div class="mk-sub">reabastecer</div></div>
-        <div class="met-kpi ct"><div class="mk-lbl">Suficiente</div><div class="mk-val" id="res-ped-rec" style="color:var(--green)">0</div><div class="mk-sub">ok</div></div>
-      </div>
-    </div>
-    <div>
-      <div class="stitle">🕑 Última actividad <span style="text-transform:none;font-weight:400">· sólo lo hecho desde la web, no el robot</span></div>
-      <div id="res-hist-list"><div class="empty-msg">Sin actividad.</div></div>
-    </div>
+  <!-- 21/10/2026 (decisiones 7.2 y 7.8 de diseño, eligió la a): "Pedidos pendientes" contaba renglones por un estado que
+       ya casi nadie mira; ahora es "Falta reponer" con la MISMA cuenta que Pedidos (pedFaltaReponerTodo → _pedsCostoReponer).
+       "Última actividad" vive sólo en Ajustes (🕘 Últimos cambios). -->
+  <div class="stitle">🚚 Falta reponer <span style="font-weight:400;font-size:.65rem;text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;color:var(--muted)">· hoy, todos los pedidos juntos</span></div>
+  <div class="met-kpi-grid" style="cursor:pointer" onclick="goPage('pedidos')" title="Lo mismo que el «Falta reponer» de Pedidos, con todas las solapas juntas">
+    <div class="met-kpi c4"><div class="mk-lbl">Plata para reponer</div><div class="mk-val" id="res-ped-reponer">$0</div><div class="mk-sub" id="res-ped-reponer-sub">costo base, sin envío</div></div>
+    <div class="met-kpi c1"><div class="mk-lbl">Productos para comprar</div><div class="mk-val" id="res-ped-n">0</div><div class="mk-sub">los que no están en «suficiente»</div></div>
+    <div class="met-kpi ct"><div class="mk-lbl">En riesgo (30 d)</div><div class="mk-val" id="res-ped-riesgo" style="color:var(--red)">$0</div><div class="mk-sub">lo que dejás de ganar si se corta</div></div>
   </div>
 
   <footer>CYC · Resumen general</footer>
@@ -4227,7 +4220,7 @@ async function quitarFoto(prodId){
 }
 
 function renderAll(){
-  updateHdr();updateAct();populateSelects();
+  updateHdr();populateSelects();
   if(currentPage==='inventario'){renderInv();renderProds();renderHist();renderProveedores();loadFinInputs();updateArqueo();updateTotals();}
   if(currentPage==='pedidos')renderPedidos();
   if(currentPage==='compras')initComprasPage();
@@ -4259,13 +4252,6 @@ function updateHdr(){
   const d=new Date();
   const sub=document.getElementById('inv-sub');
   if(sub)sub.textContent=MONTHS[d.getMonth()]+' '+d.getFullYear()+' · '+(state.products.length)+' productos';
-}
-
-function updateAct(){
-  const el=document.getElementById('act-entries');if(!el)return;
-  const h=state.history||[];
-  if(!h.length){el.innerHTML='<span style="color:var(--muted)">sin actividad</span>';return;}
-  el.innerHTML=h.slice(0,3).map(x=>`<span class="act-pill">${x.who}: ${x.desc}</span>`).join('');
 }
 
 function deltaBadge(cur,prev,invert=false){
@@ -13955,13 +13941,19 @@ async function syncPedidosAuto(){
 }
 function syncPedidosDebounced(){clearTimeout(syncPedidosTimer);syncPedidosTimer=setTimeout(syncPedidosAuto,1500);}
 
+// "FALTA REPONER" CON TODOS LOS PEDIDOS JUNTOS: la MISMA cuenta que el chip de cada solapa de Pedidos
+// (_pedsCostoReponer), más cuántos productos falta comprar y la plata en riesgo (la de la solapa de prioridad).
+// La usan Inicio y el Resumen (decisión 7.2 de diseño, 21/10/2026): una sola cuenta para los dos.
+function pedFaltaReponerTodo(){
+  const allPeds=[...(state.pedidos||[]),...(state.pedidos_py||[])];
+  const c=_pedsCostoReponer(allPeds);
+  const vivos=allPeds.filter(p=>(p.estado||'pendiente')!=='suficiente');
+  return {...c,n:vivos.length,riesgo:vivos.reduce((s,p)=>s+(Number(p.riesgo)||0),0),total:allPeds.length};
+}
 function updatePedidosCosto(){
   const el=document.getElementById('nc-pedidos-costo');if(!el)return;
-  const tc=curTC();
-  const allPeds=[...(state.pedidos||[]),...(state.pedidos_py||[])];
-  if(!allPeds.length){el.textContent='Sin pedidos pendientes';return;}
-  // La MISMA cuenta que el "Falta reponer" de cada solapa de Pedidos (_pedsCostoReponer), con todos los pedidos juntos.
-  const c=_pedsCostoReponer(allPeds);const totalUSD=c.usd;void tc;
+  const c=pedFaltaReponerTodo();const totalUSD=c.usd;
+  if(!c.total){el.textContent='Sin pedidos pendientes';return;}
   el.innerHTML=c.ars
     ?`Falta reponer (todo junto): <strong style="color:var(--text)">US$${totalUSD.toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:0})}</strong> · <strong style="color:var(--text)">${fmt(c.ars)}</strong>`
     :`Falta reponer (todo junto): <strong style="color:var(--text)">US$${totalUSD.toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:0})}</strong>`;
@@ -19943,6 +19935,9 @@ function renderPedidos(){
   // Sólo lo de una lista que SE VE en Listas (etapa 3, 20/10/2026): una lista descartada o sacada por ahora no se dibuja, y sus probados
   // no salían en ninguna solapa. Ésos vuelven a Bs As "De siempre" hasta que la lista vuelva.
   if(isBsas){const _lp=(state.mlconfig&&state.mlconfig.listasProv)||{};const _li=new Set((state.products||[]).filter(p=>p.listaProv&&_lp[p.listaProv]&&!_lp[p.listaProv].desc&&!_lp[p.listaProv].pausa).map(p=>p.id));if(_li.size)peds=peds.filter(x=>!_li.has(x.prodId));}
+  // Paraguay: los números de arriba ("Falta reponer" incluido) sólo del proveedor elegido (decisión 7.6 de diseño, 21/10/2026).
+  // Antes se contaban Nissei y Elegancia juntos y la lista de abajo mostraba uno solo.
+  if(!isBsas)peds=peds.filter(p=>pyProvDe((state.products||[]).find(x=>x.id===p.prodId))===pyProv);
   const cnt={pendiente:0,poco_stock:0,suficiente:0};peds.forEach(p=>{const e=p.estado==='en_camino'?'pendiente':(p.estado||'pendiente');cnt[e]=(cnt[e]||0)+1;});
   const cntEl=document.getElementById(countId);
   if(cntEl)cntEl.innerHTML=`
@@ -19954,7 +19949,7 @@ function renderPedidos(){
   if(!isBsas){const _sb=document.getElementById('ped-py-search');if(_sb)_sb.style.display=(pyVista==='probados'||pyVista==='ambos')?'':'none';}
   const q=normTxt(document.getElementById(searchId)?.value||'');
   if(q)peds=peds.filter(p=>buscaCoincide(q,p.producto,p.nota,textosDeProd(prodById(p.prodId))));
-  if(!isBsas)peds=peds.filter(p=>_pyRubroOk(p.producto)&&pyProvDe((state.products||[]).find(x=>x.id===p.prodId))===pyProv);
+  if(!isBsas)peds=peds.filter(p=>_pyRubroOk(p.producto));
   if(!peds.length&&!isBsas){el.innerHTML='<div class="empty-msg">'+(pyProv==='nissei'?'Sin pedidos':'Todavía no le compraste nada a '+pyProvNom()+': lo que llegue de un pedido suyo aparece acá como probado')+(_pyRubro!=='todos'?(_pyRubro==='perf'?' de perfumes':' (fuera de perfumes)'):'')+'.</div>';}
   else if(!peds.length){el.innerHTML='<div class="empty-msg">Sin pedidos'+(!isBsas&&_pyRubro!=='todos'?(_pyRubro==='perf'?' de perfumes':' (fuera de perfumes)'):'')+(pedidoFilter!=='todos'?' en esta categoría':'')+'.</div>';return;}
   // "POR PROVEEDOR" SE SACÓ EL 18/09/2026. Decisión suya: *"eliminar el por proveedor, nunca se
@@ -22599,21 +22594,11 @@ function renderResumen_page(){
   const _pgEl=document.getElementById('casc-ganancia-pct');
   if(_pgEl){_pgEl.textContent=_pgp!=null?(_pgp>=0?'+':'')+_pgp.toFixed(0)+'%':'';_pgEl.style.color=_pgp!=null&&typeof pctColor==='function'?pctColor(_pgp):'';}
 
-  const peds=state.pedidos||[];
-  const cnt={pendiente:0,pedido:0,recibido:0};
-  peds.forEach(p=>cnt[p.estado||'pendiente']=(cnt[p.estado||'pendiente']||0)+1);
-  const pCnt={pendiente:0,poco_stock:0,suficiente:0};(state.pedidos||[]).forEach(p=>pCnt[p.estado||'pendiente']=(pCnt[p.estado||'pendiente']||0)+1);
-  setTxt('res-ped-pend',pCnt.pendiente);setTxt('res-ped-ped',pCnt.poco_stock);setTxt('res-ped-rec',pCnt.suficiente);
-
-  const el=document.getElementById('res-hist-list');
-  const h2=state.history||[];
-  if(!el)return;
-  if(!h2.length){el.innerHTML='<div class="empty-msg">Sin actividad.</div>';return;}
-  el.innerHTML=h2.slice(0,8).map(x=>`<div class="hist-entry">
-    <span class="hist-who">${x.who||'?'}</span>
-    <span class="hist-time">${ts2s(x.ts)}</span>
-    <span class="hist-desc">${x.desc}</span>
-  </div>`).join('');
+  // "Falta reponer" con la cuenta de Pedidos (decisión 7.2, 21/10/2026). Sin "Última actividad" (7.8: vive en Ajustes).
+  {const r=pedFaltaReponerTodo();
+   setTxt('res-ped-reponer',r.ars?fmt(r.ars):'US$'+Math.round(r.usd).toLocaleString('es-AR'));
+   setTxt('res-ped-reponer-sub',(r.ars?'US$'+Math.round(r.usd).toLocaleString('es-AR')+' · ':'')+'costo base, sin envío');
+   setTxt('res-ped-n',r.n);setTxt('res-ped-riesgo',fmt(r.riesgo));}
 }
 
 /* ═══════════ ARQUEO FINANZAS — VER MES ═══════════ */
