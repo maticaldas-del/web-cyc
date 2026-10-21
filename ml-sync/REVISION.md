@@ -2550,3 +2550,5 @@ de más. que cada venta tenga un análisis profundo con esfuerzo máximo y listo
 `mlapi/ventasvistas/hasta` (sin marca: últimas 24 h) e imprime 📌 con el `ventasvistas:<ts>;go` para anotar al terminar la vuelta;
 `ventasvistas` nunca retrocede y corre también por ml-consulta. `ventasraras:<horas>` sigue para mirar a mano. Qué chequear: que cada
 vuelta use `:nuevas` y anote al final; que una vuelta cortada no deje ventas sin ver (la marca sólo avanza al terminar).
+**Arreglo 21/10:** sin ventas raras el comando salía antes (`return`) y no imprimía el 📌 ni la 🧭 de lo vendido: la vuelta no
+sabía desde cuándo anotar. Ahora sigue de largo. Qué chequear: que con "Ninguna venta rara" igual salgan el 📌 y la 🧭.

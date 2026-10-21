@@ -44149,9 +44149,10 @@ async function main() {
       if (enPromo.length && pvNoLei.size) console.log(`   ⚠️ y no pude leer cyc/promoventa de ${pvNoLei.size} día(s) (${[...pvNoLei].sort().join(', ')}): puede haber más en promo`);
       if (canc.length) console.log(`\nCanceladas: ${canc.map((v) => `${v.cuenta} · ${String(v.prod || '').slice(0, 30)} · ${f(Number(v.total) || Number((v.antesCancel || {}).total) || 0)}`).join(' | ')}`);
       if (sinCostoV.length) console.log(`\n=== ⚠️ ${sinCostoV.length} VENTA(S) PARA MIRAR · SIN COSTO O SIN FICHA (no hay % que medir: cargar el costo o vincular) ===\n${sinCostoV.map((x) => '· ' + x).join('\n')}`);
-      if (!raras.length) { console.log(`\nNinguna venta rara${sinCostoV.length ? ' (fuera de las sin costo)' : ''}: todas dejaron lo normal para su precio (o están estimadas y la noche las relee).`); return; }
-      console.log(`\n=== ⚠️ ${raras.length} VENTA(S) PARA MIRAR · el motivo sale de los cargos de Mercado Pago ===`);
-      const tok = await tokensCerebro(db);
+      if (!raras.length) { console.log(`\nNinguna venta rara${sinCostoV.length ? ' (fuera de las sin costo)' : ''}: todas dejaron lo normal para su precio (o están estimadas y la noche las relee).`); }
+      // sin raras NO se sale: abajo van el 📌 (desde cuándo anotar ventasvistas) y la estrategia de lo vendido (21/10/2026: con return no salían)
+      else console.log(`\n=== ⚠️ ${raras.length} VENTA(S) PARA MIRAR · el motivo sale de los cargos de Mercado Pago ===`);
+      const tok = raras.length ? await tokensCerebro(db) : {};
       for (const r of raras) {
         const v0 = r.g[0].v, cta = String(v0.cuenta || '');
         const tk = tok[cta] || tok[cta.toLowerCase()] || tok[cta.charAt(0).toUpperCase() + cta.slice(1).toLowerCase()];
