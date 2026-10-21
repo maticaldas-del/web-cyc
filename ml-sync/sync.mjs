@@ -24207,6 +24207,7 @@ async function main() {
       for (const [dk, ents] of Object.entries(vp)) for (const v of Object.values(ents || {})) { if (!v || v.cancelada || !v.mla) continue; if (!ult[v.mla] || dk > ult[v.mla]) ult[v.mla] = dk; if (dk >= desdeK) uds[v.mla] = (uds[v.mla] || 0) + (Number(v.qty) || 1); }
       const r90 = (x) => { if (x >= 100000) return Math.ceil((x + 10) / 1000) * 1000 - 10; return Math.ceil((x + 10) / 100) * 100 - 10; };
       const filas = [], premHermana = new Set(), sinLeer = [];
+      const NOREPO = TODAS ? ((await db.get('cyc/norepo')) || {}) : {}; let saltNoVende = 0;
       const vivos = [];
       for (const label of labels) {
         const acc = accounts[label]; if (!acc?.refresh_token) continue;
@@ -24227,6 +24228,9 @@ async function main() {
         const full = (b.shipping || {}).logistic_type === 'fulfillment'; const st = full ? (b.available_quantity || 0) : 0; if (!(st > 0) && !TODAS) continue;
         const L = links[b.id] || {}; const p = pIdx[L.prodId]; if (!p) continue;
         if (premHermana.has(L.prodId + '__' + label)) continue;
+        // `todas`: no se le hace Premium a lo que ya no se vende en esa cuenta (las copias viejas de otra cuenta que quedaron pausadas,
+        // `nomandar` = cyc/norepo, o "no lo vendemos más"): una Premium nueva ahí reviviría una publicación que él dejó a propósito.
+        if (TODAS && (NOREPO[L.prodId + '__' + String(label).replace(/[^a-z0-9]/gi, '_')] || L.noVendemosMas)) { saltNoVende++; continue; }
         const costo = tc ? costoPesos(p, 1, tc).costo : 0; if (!(costo > 0)) continue;
         const envio = envioGemelaDe(netopub[b.id]);
         const impPct = (mlExtraPct(label) + monoPct) / 100;
@@ -24262,6 +24266,7 @@ async function main() {
           }
           console.log(`   total: Premium ${tP} u. · sus Clásicas ${tC} u.`);
         } }
+      if (saltNoVende) console.log(`\n(${saltNoVende} Clásica(s) afuera: ese producto ya no se vende en esa cuenta · nomandar o "no lo vendemos más")`);
       if (sinLeer.length) console.log(`\n⚠️ sin leer: ${sinLeer.join(', ')}`);
       return;
     }
