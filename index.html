@@ -2905,7 +2905,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.88';
+const APP_VERSION='25.89';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2918,6 +2918,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.89',f:'21/10',h:'16:10',c:[{n:2,t:'📋 Dai Nippon (y las listas de Bs As): sólo se puede pedir lo que está en la lista del mes. Lo que no está queda en Pedidos pero sin casilla ("no está en la lista del dd/mm"). Al lado de la casilla, el precio de la lista del mes.'}]},
   {v:'25.88',f:'21/10',h:'16:30',c:[{n:2,t:'📦 Armar caja: el cupo de Full es una barra por tipo (chicos/grandes): lo que ya está en Full sólido, lo que va en camino más claro, esta caja transparente y lo que se pasa en rojo.'},{n:2,t:'El cartel "Mandala ya / Podés esperar" es desplegable y compara lo que cuesta cada camino: lo que dejás de vender si esperás 7 días (productos que se cortan en Full) contra lo que sale de más mandarla a medias. Ya no compara la ganancia de la caja contra el envío.'},{n:1,t:'Se fueron el desplegable de cajas a medio armar y el texto de ayuda de la caja.'}]},
   {v:'25.87',f:'21/10',h:'16:00',c:[{n:1,t:'Arqueo: se fue 🏭 Proveedores; Inventario quedó adentro de Productos y Comparar adentro de Finanzas (desplegables). Cada producto muestra lo importante (costo, precio de hoy, lo que te queda y el estado) y el resto se abre tocando la tarjeta.'}]},
   {v:'25.86',f:'21/10',h:'15:30',c:[{n:2,t:'🛒 Pedidos: las casillas de unidades ya no guardan al instante (borraba lo que estabas escribiendo en otras). Cargás todo y tocás "🛒 Agregar al pedido" en la barra de abajo; lo sin agregar queda en ámbar.'},{n:2,t:'📋 Dai Nippon vuelve a tener pedido: casilla "📋 pedir a Dai Nippon" en cada tarjeta, 🧾 Pedido con el mensaje para WhatsApp (nombre, unidades y código), Ya lo pedí y Llegó.'},{n:2,t:'Lo cargado en el pedido se descuenta de lo que falta: con todo lo recomendado cargado la tarjeta baja a "🧾 Ya cargado"; con menos queda arriba con lo que falta y "pediste N" (Paraguay probados y listas).'}]},
@@ -20468,10 +20469,39 @@ function _pedPartirCargado(peds,curDe){const quedan=[],ya=[];
 function _pedYaCargadosHTML(ya,dib){if(!ya.length)return '';
   return `<details style="margin-top:10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:8px 12px"><summary style="cursor:pointer;font-size:.76rem;font-weight:700;color:var(--green)">🧾 Ya cargado en el pedido (${ya.length}) <span style="font-weight:400;color:var(--muted);font-size:.66rem">· lo que recomendé ya está cargado: si lo sacás del 🧾 Pedido, vuelve arriba</span></summary><div style="margin-top:8px">${ya.map(dib).join('')}</div></details>`;}
 function _listaRepintar(){try{renderPedidos();}catch(e){}try{renderListas();}catch(e){}}
+// ── LAS LISTAS DE BS AS SON DEL MES (21/10/2026, él: "solo podemos pedir lo que está en la lista del mes. todos los meses enviar
+// lista de precios y productos. solo esos productos pueden pedirse ese mes (…) si no está en la lista no lo saques de productos
+// pedidos. pero sacale el cuadradito para pedir"). La lista del mes = los renglones cargados en la ÚLTIMA carga de esa lista (cada
+// renglón guarda `ts`; una carga puede ir en varias tandas: vale todo lo cargado hasta 2 días antes de la más nueva). El producto se
+// busca por `codLista` y, si no tiene, por el nombre (`_listaFichaDe`). El precio que vale es el de esa lista (`p`).
+const LISTA_MES_TANDA_MS=2*864e5;
+const _listaMesMemo={};
+function _listaMesDe(k){
+  const cat=_listaCache[k];if(!cat)return null;
+  const m=_listaMesMemo[k];if(m&&m.ref===cat)return m;
+  let max=0;for(const v of Object.values(cat))if(v&&Number(v.ts)>max)max=Number(v.ts);
+  const porProd={};
+  for(const [cod,v] of Object.entries(cat)){if(!v||!(Number(v.ts)>=max-LISTA_MES_TANDA_MS))continue;
+    const f=_listaFichaDe(k,cod,v);if(f&&!porProd[f.id])porProd[f.id]={cod,p:Number(v.p)||0,n:v.n||''};}
+  return (_listaMesMemo[k]={ref:cat,max,porProd});
+}
+let _listaMesCargando={};
+function _listaMesAsegurar(k){if(_listaCache[k]||_listaMesCargando[k])return;_listaMesCargando[k]=1;
+  (async()=>{try{_listaCacheFirma[k]=_listaFirma(k);_listaCache[k]=(await db.ref('mlapi/listas/'+k).once('value')).val()||{};}catch(e){}finally{_listaMesCargando[k]=0;}try{renderPedidos();}catch(e){}})();}
 // La casilla debajo de la tarjeta de Pedidos (como la de Paraguay). Devuelve '' si la ficha no es de una lista que existe.
 function listaProbCasillaHTML(p,pr){
   const k=pr&&pr.listaProv;const pv=((state.mlconfig||{}).listasProv||{})[k];
   if(!k||!pv||pv.desc)return '';
+  if(pv.bsas){const M=_listaMesDe(k);const _caja=t=>`<div style="padding:6px 12px 8px;margin:-4px 0 10px;font-size:.74rem;background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px">${t}</div>`;
+    const _fm=M&&M.max?new Date(M.max).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}):'';
+    if(!M){_listaMesAsegurar(k);return _caja('<span style="color:var(--muted)">📋 mirando si está en la lista del mes…</span>');}
+    const it=M.porProd[pr.id];
+    if(!it){const cur0=_listaProbDe(k)[pr.id];
+      return _caja(`<span style="color:var(--amber);font-weight:700">📋 no está en la lista de ${escHtml(pv.nombre||k)} del ${_fm}: este mes no se puede pedir</span>${cur0&&(parseInt(cur0.u)||0)>0?` · <span style="color:var(--red)">había ${parseInt(cur0.u)} u. cargadas</span> <button class="btn" style="font-size:.64rem;padding:2px 8px" onclick="listaProbSet('${k}','${pr.id}',0)">sacarlas</button>`:''}`);}
+    p={...p,_precioMes:it.p,_fechaMes:_fm};}
+  return _listaProbCasillaHTML(p,pr,k,pv);
+}
+function _listaProbCasillaHTML(p,pr,k,pv){
   // 21/10/2026, él: "al final en nippon siempre compra mi viejo yendo físicamente, pero ahora me pidió que haga un pedido así se lo
   // cargan más rápido": Dai Nippon (y las listas de Bs As) vuelven a tener casilla de pedir y 🧾 Pedido (se deshace la v25.47).
   const nomP=escHtml(pv.nombre||k);
@@ -20483,7 +20513,7 @@ function listaProbCasillaHTML(p,pr){
   const porColor=!!vv||(cols.length>0&&(pr.variantes||[]).length>1);
   const viaja=_listaProbViaja(k,pr.id);
   return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 12px 8px;margin:-4px 0 10px;font-size:.78rem;background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px">
-      <span style="font-weight:700;color:${u>0?'var(--green)':'var(--muted)'}">📋 pedir a ${nomP}</span>${p._pediste?`<span style="font-size:.64rem;color:var(--muted)">pediste ${p._pediste} · faltan ${fmtN(p.cantidad)}</span>`:''}
+      <span style="font-weight:700;color:${u>0?'var(--green)':'var(--muted)'}">📋 pedir a ${nomP}</span>${p._precioMes?`<span style="font-size:.66rem;color:var(--muted)" title="El precio que vale es el de la lista del mes (${p._fechaMes}).">${fmt(p._precioMes)} c/u · lista del ${p._fechaMes}</span>`:''}${p._pediste?`<span style="font-size:.64rem;color:var(--muted)">pediste ${p._pediste} · faltan ${fmtN(p.cantidad)}</span>`:''}
       ${porColor
         ?rows.map(([kk,c])=>{const q=parseInt(((vv||{})[kk]||{}).u)||0;return `<label style="display:inline-flex;align-items:center;gap:4px;color:${q>0?'var(--green)':'var(--muted)'}">${escHtml(c)} <input type="number" min="0" step="1" value="${q||''}" placeholder="0" onchange="listaProbSetVar('${k}','${pr.id}','${kk}',this.value)" style="width:52px;font-size:.84rem;padding:3px 5px;text-align:center;background:var(--surface2);border:1px solid ${q>0?'var(--green)':'var(--border)'};border-radius:6px;color:var(--text)"></label>`;}).join('')+(u>0?` <span style="color:var(--green)">✓ ${u} u. en el pedido</span>`:'')
         :`<input type="number" min="0" step="1" value="${u||''}" placeholder="0" onchange="listaProbSet('${k}','${pr.id}',this.value)" style="width:58px;font-size:.88rem;padding:4px 6px;text-align:center;background:var(--surface2);border:1px solid ${u>0?'var(--green)':'var(--border)'};border-radius:6px;color:var(--text)"> u.${u>0?' <span style="color:var(--green)">✓ en el pedido</span>':''}`}
