@@ -2230,6 +2230,18 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso, op
   // Ventas para deducir el descuento real (comisión aparte) de cada publicación.
   const vtaMla = {}, vtaProd = {};
   const desde = Date.now() - 120 * 864e5;
+  // LO NUEVO (etapa 6 · A2, 21/10/2026): qué publicaciones y qué fichas vendieron ALGUNA vez (no sólo en 120 días).
+  const vendioMla = new Set(), vendioProd = new Set();
+  for (const ents of Object.values(vp)) for (const v of Object.values(ents || {})) { if (!v || v.cancelada) continue; if (v.mla) vendioMla.add(v.mla); if (v.prodId) vendioProd.add(v.prodId); }
+  // El catálogo CONFIRMADO de cada ficha: el de la lista (`mlCatalogo`, que pone "Llegó" con el `mi` confirmado) y el de los
+  // candidatos de Paraguay chequeados (`candCatChequeado`: ✅ suyo o la revisión de fotos, atado a ESE catálogo). Se lee una vez.
+  let _candsConf = undefined;
+  const catConfDe = async (p) => {
+    const out = new Set(); if (p && p.mlCatalogo) out.add(String(p.mlCatalogo).toUpperCase());
+    if (_candsConf === undefined) { try { _candsConf = (await db.get('cyc/candidatos_py')) || {}; } catch { _candsConf = null; } }
+    if (_candsConf) for (const c of Object.values(_candsConf)) if (c && c.prodId === (p && p.id) && candCatChequeado(c)) out.add(candCatDe(c));
+    return { cats: out, leido: _candsConf !== null };
+  };
   for (const ents of Object.values(vp)) {
     for (const v of Object.values(ents || {})) {
       // Revisión final: una venta con neto ESTIMADO no sirve para deducir el envío (tot − net − com ≈ 0).
@@ -2287,7 +2299,7 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso, op
       .map(([mla]) => mla);
     for (let k = 0; k < ids.length; k += 20) {
       let arr;
-      try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,sub_status,price,variations,title,listing_type_id,category_id,site_id,shipping,inventory_id,available_quantity', tok); }
+      try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,sub_status,price,variations,title,listing_type_id,category_id,site_id,shipping,inventory_id,available_quantity,catalog_product_id', tok); }
       catch { conteo.lotesFallidos++; continue; }
       for (const row of (arr || [])) {
         const b = row.body || {}; const mla = b.id;
@@ -2356,6 +2368,29 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso, op
         // Freno: ¿llega al piso con el precio de hoy?
         const p = linkRow.prodId ? pIdx[linkRow.prodId] : null;
         if (!p) { noVa(linkRow.prodId ? 'su ficha ya no existe en la web' : 'no está pegada a ninguna ficha: sin costo no puedo medir el margen'); continue; }
+        // ── LO NUEVO NO SE ACTIVA SOLO SIN PRECIO DE LANZAMIENTO Y SIN EL CATÁLOGO CONFIRMADO (etapa 6 · A2, 21/10/2026, eligió la a) ──
+        // Nuevo = ni esta publicación ni su ficha vendieron nunca. Antes una caja que llegaba a Full activaba la publicación al
+        // precio que él puso al crearla, sin que nadie lo pensara, y en el catálogo que él eligió (puede no ser el que se midió).
+        // Hace falta: (1) una estrategia mía anotada (`decido:<MLA>=<precio>#nuevo|…` o cualquier otra decidida) y (2) que la
+        // publicación esté en el catálogo confirmado de la ficha, o que él/yo lo hayamos confirmado (`catok:<MLA>=ok|sincat;go`).
+        if (!vendioMla.has(mla) && !vendioProd.has(p.id)) {
+          let hE;
+          try { hE = (await db.get('cyc/estrategia/' + mla)) || {}; } catch { noVa('es NUEVA y no pude leer su estrategia: no la activo a ciegas'); continue; }
+          let ultE = null; for (const [k0, x] of Object.entries(hE)) { const kt = Number(k0); if (kt > 0 && x && x.t && (!ultE || kt > ultE.ts)) ultE = { t: x.t, ts: kt }; }
+          if (!ultE || ['sindecidir', 'agotado', 'base'].includes(ultE.t)) { noVa(`es NUEVA (nunca vendió) y no tiene el precio de lanzamiento decidido: decido:${mla}=<precio>#nuevo|<motivo>;go`, b.price || 0); continue; }
+          const catPub = String(b.catalog_product_id || '').toUpperCase();
+          const okMano = linkRow.catOk && ((catPub && String(linkRow.catOk).toUpperCase() === catPub) || (!catPub && linkRow.catOk === 'sincat'));
+          if (!okMano) {
+            const cc = await catConfDe(p);
+            if (!cc.leido) { noVa('es NUEVA y no pude leer los candidatos para saber su catálogo confirmado: no la activo a ciegas', b.price || 0); continue; }
+            if (!(catPub && cc.cats.has(catPub))) {
+              noVa(catPub
+                ? (cc.cats.size ? `es NUEVA y está publicada en el catálogo ${catPub}, pero el confirmado de la ficha es ${[...cc.cats].join(' / ')}: revisarla (si está bien, catok:${mla}=ok;go)` : `es NUEVA y nadie confirmó que su catálogo (${catPub}) sea el mismo producto: catok:${mla}=ok;go`)
+                : `es NUEVA y no está en catálogo: si va sin catálogo a propósito, catok:${mla}=sincat;go`, b.price || 0);
+              continue;
+            }
+          }
+        }
         if (!(tc > 0)) { noVa('sin dólar cargado: no puedo medir el margen'); continue; }
         const costo = costoPesos(p, 1, tc).costo;
         if (!costo) { noVa('sin costo cargado'); continue; }
@@ -2552,6 +2587,8 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso, op
     // `simple`: la frase clara que muestra el 🧠 (pedido suyo del 08/10: "sin cosas técnicas").
     const simpleNo = (w) => {
       w = String(w || '');
+      if (/es NUEVA.*precio de lanzamiento/.test(w)) return 'es nueva (nunca vendió): no la activo hasta que Claude decida el precio de lanzamiento.';
+      if (/es NUEVA/.test(w)) return 'es nueva (nunca vendió): no la activo hasta confirmar que está publicada en el catálogo correcto de Mercado Libre.';
       if (/pausó ML/.test(w)) return 'la pausó Mercado Libre: no la puedo activar yo, hay que mirarla en ML.';
       if (/no la vendemos más/.test(w)) return 'la marcaste "no la vendemos más".';
       if (/ocultaste del panel/.test(w)) return 'la ocultaste del panel.';
@@ -6638,7 +6675,7 @@ async function altaDeNuevas(db, accounts, labels, map, index, DRY) {
     if (!faltan.length) continue;
     for (let k = 0; k < faltan.length; k += 20) {
       let arr;
-      try { arr = await mlGet('/items?ids=' + faltan.slice(k, k + 20).join(',') + '&attributes=id,title,status,sub_status,price,shipping,user_product_id', tok); }
+      try { arr = await mlGet('/items?ids=' + faltan.slice(k, k + 20).join(',') + '&attributes=id,title,status,sub_status,price,shipping,user_product_id,catalog_product_id,catalog_listing', tok); }
       catch { continue; }
       for (const row of (arr || [])) {
         const b = row.body || {}; const mla = b.id;
@@ -6679,12 +6716,17 @@ async function altaDeNuevas(db, accounts, labels, map, index, DRY) {
           // El freno: no vendió nunca todavía, así que su costo no está probado. Se va solo en
           // cuanto venda (la vuelta de las ventas reescribe el renglón entero).
           altaSinVender: true,
+          // EL CATÁLOGO EXACTO EN QUE SE PUBLICÓ (etapa 6 · A2, 21/10/2026, eligió la a): el código de ML (`catalog_product_id`)
+          // o null si no es de catálogo. `activarPausadasFull` lo compara contra el catálogo confirmado de la ficha antes de
+          // activar algo nuevo (que no se active publicado en OTRO catálogo, el error de los 67 de 344 de Paraguay).
+          catalogo: b.catalog_product_id || null,
+          catalogoListing: b.catalog_listing === true,
           candidatos: p ? null : candidatesFor(title, index),
         };
         upd[mla] = entry; map[mla] = entry;
         // La hermana recién dada de alta ya sirve para la siguiente del mismo lote.
         if (upid && p) porUpid[label + '|' + upid] = p.id;
-        (p ? nuevas : sinFicha).push({ mla, label, title, prod: p ? p.name : '', variant: entry.variant, como: comoSeEmparejo });
+        (p ? nuevas : sinFicha).push({ mla, label, title, prod: p ? p.name : '', variant: entry.variant, como: comoSeEmparejo, catalogo: entry.catalogo });
       }
     }
   }
@@ -25053,6 +25095,46 @@ async function main() {
       }
       return;
     }
+    // BILLING_PROBE=catok:<MLA>=<ok|sincat|MLA…|->[;<MLA>=…][;go] (etapa 6 · A2, 21/10/2026) → "EL CATÁLOGO DE ESTA PUBLICACIÓN NUEVA
+    // ESTÁ BIEN". Lo nuevo (ni la publicación ni su ficha vendieron nunca) no se activa solo si no está en el catálogo confirmado de
+    // la ficha (`activarPausadasFull`). Cuando no hay uno confirmado (un producto de Bs As, una ficha vieja), lo confirmo yo acá
+    // mirando la publicación: `ok` = el catálogo que tiene HOY en ML (se lee en el momento) · `MLA…` = tiene que ser ése (si ML dice
+    // otro, no escribe) · `sincat` = va sin catálogo a propósito · `-` saca la marca. Queda en `cyc/mllinks/<MLA>/catOk` (+ `catOkTs`).
+    // Sin `;go` sólo muestra.
+    if (/^catok(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _raw = String(process.env.BILLING_PROBE).replace(/^catok:?/, '');
+      const GO = /(^|;)go$/.test(_raw);
+      const pares = _raw.replace(/(^|;)go$/, '').split(';').map((x) => x.trim()).filter(Boolean);
+      if (!pares.length) { console.log('Usá: catok:<MLA>=<ok|sincat|MLA…|->[;<MLA>=…][;go]'); return; }
+      const linksC = (await db.get('cyc/mllinks')) || {};
+      const toksC = {}, upd = {}, prob = [];
+      for (const x of pares) {
+        const m = x.match(/^(MLA\d+)=(ok|sincat|-|MLA\d+)$/i);
+        if (!m) { prob.push(`"${x}" → se espera <MLA>=<ok|sincat|MLA…|->`); continue; }
+        const mla = m[1].toUpperCase(), q = m[2].toLowerCase(), e = linksC[mla];
+        if (!e || !e.cuenta) { prob.push(`${mla}: no está en el panel (corré altanuevas o vincular primero)`); continue; }
+        if (q === '-') { upd[mla] = null; console.log(`  ${mla} · ${e.cuenta} · ${String(e.title || '').slice(0, 50)} → saco la marca (era ${e.catOk || 'nada'})`); continue; }
+        if (!toksC[e.cuenta]) {
+          const acc = accounts[e.cuenta]; if (!acc?.refresh_token) { prob.push(`${mla}: sin permiso de ${e.cuenta}`); continue; }
+          try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + e.cuenta, { refresh_token: t.refresh_token, updated_ts: Date.now() }); toksC[e.cuenta] = t.access_token; }
+          catch { prob.push(`${mla}: no pude renovar el permiso de ${e.cuenta}`); continue; }
+        }
+        let b; try { b = await mlGet('/items/' + mla + '?attributes=id,title,status,catalog_product_id,catalog_listing', toksC[e.cuenta]); } catch (er) { prob.push(`${mla}: ML no contestó la publicación (${String(er.message || er).slice(0, 60)})`); continue; }
+        const cat = String(b.catalog_product_id || '').toUpperCase();
+        let val = null;
+        if (q === 'sincat') { if (cat) { prob.push(`${mla}: dijiste sin catálogo y ML dice que está en el catálogo ${cat}`); continue; } val = 'sincat'; }
+        else if (q === 'ok') { if (!cat) { prob.push(`${mla}: no está en ningún catálogo (si es a propósito: =sincat)`); continue; } val = cat; }
+        else { if (cat !== q.toUpperCase()) { prob.push(`${mla}: dijiste ${q.toUpperCase()} y ML dice ${cat || 'sin catálogo'}`); continue; } val = cat; }
+        upd[mla] = val;
+        console.log(`  ${mla} · ${e.cuenta} · ${String(b.title || e.title || '').slice(0, 50)} · ${b.status} → catálogo confirmado: ${val === 'sincat' ? 'va sin catálogo a propósito' : val}`);
+      }
+      if (prob.length) { console.log('❌ NO ESCRIBO NADA:'); prob.forEach((x) => console.log('   ' + x)); return; }
+      if (!GO) { console.log('\nNo se guardó nada (falta ;go).'); return; }
+      for (const [mla, val] of Object.entries(upd)) await db.patch('cyc/mllinks/' + mla, { catOk: val, catOkTs: val ? Date.now() : null });
+      let ok = 0; for (const [mla, val] of Object.entries(upd)) { const r = await db.get('cyc/mllinks/' + mla + '/catOk'); if ((r || null) === val) ok++; }
+      console.log(`\n${ok === Object.keys(upd).length ? '✓' : '⚠️'} ${ok} de ${Object.keys(upd).length} guardada(s) y releída(s). La vuelta de la hora ya puede activarlas si tienen stock en Full, precio decidido y llegan al piso.`);
+      return;
+    }
     if (String(process.env.BILLING_PROBE || '').startsWith('vincular:')) {
       const _vcRaw = String(process.env.BILLING_PROBE).slice(9);
       const APLICAR = /:go$/i.test(_vcRaw);
@@ -38630,11 +38712,11 @@ async function main() {
         // user_product_id de una hermana, que está medido que no se equivoca) a que lo hayamos
         // adivinado por el título, que es el filtro que ya falló seis veces. Sin eso las dos se
         // leen igual y no hay forma de saber cuál mirar.
-        alt.nuevas.forEach((n) => console.log(`   ${n.mla}  ${n.label.padEnd(8)} → ${n.prod}${n.variant ? '  · variante: ' + n.variant : '  · SIN VARIANTE'}${n.como ? '  · lo dijo ' + n.como : ''}\n            título ML: ${n.title}`));
+        alt.nuevas.forEach((n) => console.log(`   ${n.mla}  ${n.label.padEnd(8)} → ${n.prod}${n.variant ? '  · variante: ' + n.variant : '  · SIN VARIANTE'}${n.como ? '  · lo dijo ' + n.como : ''}  · ${n.catalogo ? 'catálogo ' + n.catalogo : 'sin catálogo'}\n            título ML: ${n.title}`));
       }
       if (alt.sinFicha.length) {
         console.log(`\n🆕 ${alt.sinFicha.length} quedarían SIN producto (no hay ficha clara):`);
-        alt.sinFicha.forEach((n) => console.log(`   ${n.mla}  ${n.label.padEnd(8)} ${n.title}`));
+        alt.sinFicha.forEach((n) => console.log(`   ${n.mla}  ${n.label.padEnd(8)} ${n.title} · ${n.catalogo ? 'catálogo ' + n.catalogo : 'sin catálogo'}`));
         console.log('   Se vinculan a mano: vincular:<MLA>=<palabra o id>:go');
       }
       if (!APLICAR) { console.log('\nPRUEBA: no escribí nada. Para aplicarlo ahora: altanuevas:go'); return; }
@@ -44979,6 +45061,9 @@ async function main() {
           if (x.src.prov && x.src.prov !== 'nissei') p.provPy = x.src.prov;
           if (/^https:\/\//.test(String(x.src.link || ''))) p.pyLink = String(x.src.link).slice(0, 300);
           if (/^https:\/\//.test(String(x.src.foto || ''))) p.pyFoto = String(x.src.foto).slice(0, 300);
+          // A2 (etapa 6, 21/10/2026): la ficha nace con el catálogo de ML CONFIRMADO del candidato (✅ o revisión de fotos, atado a
+          // ese catálogo). Con eso la publicación nueva se activa sola sólo si está en ESE catálogo (`activarPausadasFull`).
+          { const kC = cands[x.src.id]; if (kC && candCatChequeado(kC)) p.mlCatalogo = candCatDe(kC); }
           try {
             await db.set('cyc/products/' + p.id, p);
             if (x.src.id && cands[x.src.id]) await db.set(`cyc/candidatos_py/${x.src.id}/prodId`, p.id);
@@ -47815,11 +47900,11 @@ async function main() {
       const alt = await altaDeNuevas(db, accounts, labels, map, index, DRY);
       if (alt.nuevas.length) {
         console.log(`\n🆕 ${alt.nuevas.length} publicación(es) nueva(s) dadas de alta y enganchadas solas:`);
-        alt.nuevas.forEach((n) => console.log(`   ${n.mla}  ${n.label.padEnd(8)} → ${n.prod}${n.variant ? ' · ' + n.variant : ''}${n.como ? ' · lo dijo ' + n.como : ''}   (${n.title.slice(0, 46)})`));
+        alt.nuevas.forEach((n) => console.log(`   ${n.mla}  ${n.label.padEnd(8)} → ${n.prod}${n.variant ? ' · ' + n.variant : ''}${n.como ? ' · lo dijo ' + n.como : ''} · ${n.catalogo ? 'catálogo ' + n.catalogo : 'sin catálogo'}   (${n.title.slice(0, 46)})`));
       }
       if (alt.sinFicha.length) {
         console.log(`\n🆕 ${alt.sinFicha.length} publicación(es) nueva(s) dadas de alta SIN producto (${SOLO_DATOS ? 'sólo datos: las vincula Claude' : 'no encontré una ficha clara'}):`);
-        alt.sinFicha.forEach((n) => console.log(`   ${n.mla}  ${n.label.padEnd(8)} ${n.title.slice(0, 60)}`));
+        alt.sinFicha.forEach((n) => console.log(`   ${n.mla}  ${n.label.padEnd(8)} ${n.title.slice(0, 60)} · ${n.catalogo ? 'catálogo ' + n.catalogo : 'sin catálogo'}`));
         console.log(`   Se vinculan con: vincular:<MLA>=<palabra o id>:go`);
       }
     } catch (e) { console.log('No pude buscar publicaciones nuevas: ' + e.message); }

@@ -16471,6 +16471,9 @@ async function candFichaDesde(src,opts){
   if(usd>0){p.nisseiUSD=usd;p.nisseiTs=src.ts||Date.now();}
   if(/^https:\/\//.test(String(src.link||'')))p.pyLink=String(src.link).slice(0,300);
   if(/^https:\/\//.test(String(src.foto||'')))p.pyFoto=String(src.foto).slice(0,300);
+  // A2 (etapa 6, 21/10/2026): el catálogo de ML confirmado del candidato (✅ o revisión de fotos) viaja a la ficha. El robot activa
+  // lo nuevo sólo si la publicación está en ESE catálogo. Misma regla en `pyped:llego` del robot.
+  if(_cML&&candCatChequeado(_cML))p.mlCatalogo=candCatId(_cML);
   await fbSet('products/'+p.id,p);
   if(src.id&&(state.candidatos||{})[src.id]){
     await fbSet('candidatos_py/'+src.id+'/prodId',p.id);
