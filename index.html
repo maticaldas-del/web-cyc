@@ -81,6 +81,7 @@ body.discreto .vp-aviso{animation:none}
 .tito-listos{margin-top:10px;font-size:.72rem;color:var(--muted)}.tito-listos summary{cursor:pointer;padding:6px 0}
 .tito-pie{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:14px}
 @media print{body>*:not(#tito-modal){display:none!important}.tito-modal{position:static;background:none;padding:0}.tito-pie,.tito-cab .btn{display:none}.tito-caja{border:none;max-width:none}}
+.py-filtros summary::-webkit-details-marker{display:none}
 .fnav-sec{font-size:.6rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);padding:8px 14px 2px}
 .fnav-n{margin-left:auto;padding-left:10px;font-size:.68rem;color:var(--muted);white-space:nowrap}
 .fnav-fila{display:flex;gap:4px;border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:2px}
@@ -20150,6 +20151,22 @@ function titoDibujar(){
     <div class="tito-pie"><button class="btn" onclick="titoCopiar()">📋 Copiar para WhatsApp</button><button class="btn" onclick="window.print()">🖨️ Imprimir</button><button class="btn" style="background:var(--green);color:#000;border-color:var(--green)" onclick="titoCerrar()">✓ Listo</button></div>
   </div>`;
 }
+// 7.21 · LOS FILTROS DE PARAGUAY PLEGADOS (21/10/2026, eligió la a). "Mostrar" y "Vender en" ocupaban dos renglones de botones
+// arriba de todo; ahora van adentro de "⚙️ Filtros" y afuera queda una línea que dice qué se está mostrando. Si hay alguno puesto,
+// se dice y se saca con ✕. Los botones son los mismos de antes (`pySetRubro`, `candFiltrar`): no cambia qué filtra cada uno.
+let _pyFiltrosAb=false;
+function _pyFiltrosHTML(){
+  const R=[['todos','Todo'],['perf','🧴 Perfumes, belleza y salud'],['resto','📦 Resto']],V=[['todos','Todo'],['ml','🛒 ML'],['local','🏪 Perfumería'],['ambos','✅ Los dos']];
+  const nom=(L,v)=>((L.find(x=>x[0]===v)||[])[1]||v);
+  const btn=(on,txt,fn)=>`<button class="btn" style="font-size:.64rem;padding:4px 11px;${on?'background:#7c3aed;color:#fff;border-color:#7c3aed;font-weight:700':''}" onclick="${fn}">${txt}</button>`;
+  const hay=_pyRubro!=='todos'||_candFiltro!=='todos';
+  const res=`Mostrando: <b style="color:var(--text)">${nom(R,_pyRubro)}</b> · vender en: <b style="color:var(--text)">${nom(V,_candFiltro)}</b>`;
+  return `<details class="py-filtros" ${_pyFiltrosAb?'open':''} ontoggle="_pyFiltrosAb=this.open" style="margin:-4px 0 12px">
+    <summary style="cursor:pointer;display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:.66rem;color:var(--muted);list-style:none"><span class="btn" style="font-size:.64rem;padding:4px 11px;${hay?'border-color:#7c3aed;color:#a78bfa':''}">⚙️ Filtros ▾</span><span>${res}</span>${hay?`<button class="btn" style="font-size:.62rem;padding:2px 8px" title="Sacar los filtros" onclick="event.preventDefault();event.stopPropagation();_pyRubro='todos';_candFiltro='todos';try{localStorage.setItem('cycPyRubro','todos');localStorage.setItem('cycCandFiltro','todos');}catch(e){}renderPedidos()">✕</button>`:''}</summary>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px"><span style="font-size:.66rem;color:var(--muted)">Mostrar:</span>${R.map(([v,t])=>btn(_pyRubro===v,t,`pySetRubro('${v}')`)).join('')}</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px"><span style="font-size:.66rem;color:var(--muted)">Vender en:</span>${V.map(([v,t])=>btn(_candFiltro===v,t,`candFiltrar('${v}')`)).join('')}</div>
+  </details>`;
+}
 function renderPedidos(){
   if(pedidoSection==='listas'){renderListas();return;}
   // El número al lado de la solapa se refresca siempre, se esté mirando la papelera o no.
@@ -20326,7 +20343,7 @@ function renderPedidos(){
       ${_tab('probados','✅ Productos probados','Lo que YA vendés: cuánto hay que reponer para no quedarte sin stock, y lo que dejó de convenir al precio de Paraguay de hoy.')}
       ${_tab('nuevos','🆕 Productos nuevos','Lo que todavía NO vendés: los candidatos que trae el chat de Paraguay y el armado de ese pedido.')}
       ${_tab('hechos',`🧾 Pedido${(()=>{const n=pyArmadoFilas().length+pedNuevos(candList().filter(candEnArmado).filter(c=>candEnPedido(c)!=='viajando')).filas.length;return n?' ('+n+' cargados)':'';})()}`,'El pedido del momento (probados + nuevos juntos, con el mensaje para Nissei) y abajo los pedidos ya hechos: en camino y llegados.')}
-    </div>`+(pyVista!=='hechos'?`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:-4px 0 12px"><span style="font-size:.66rem;color:var(--muted)">Mostrar:</span>${[['todos','Todo'],['perf','🧴 Perfumes, belleza y salud'],['resto','📦 Resto']].map(([v,t])=>`<button class="btn" style="font-size:.64rem;padding:4px 11px;${_pyRubro===v?'background:#7c3aed;color:#fff;border-color:#7c3aed;font-weight:700':''}" onclick="pySetRubro('${v}')">${t}</button>`).join('')}</div><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:-6px 0 12px"><span style="font-size:.66rem;color:var(--muted)">Vender en:</span>${[['todos','Todo'],['ml','🛒 ML'],['local','🏪 Perfumería'],['ambos','✅ Los dos']].map(([v,t])=>`<button class="btn" style="font-size:.64rem;padding:4px 11px;${_candFiltro===v?'background:#7c3aed;color:#fff;border-color:#7c3aed;font-weight:700':''}" onclick="candFiltrar('${v}')">${t}</button>`).join('')}</div>`:'');
+    </div>`+(pyVista!=='hechos'?_pyFiltrosHTML():'');
     // PROBADOS = IDÉNTICO A BS AS (01/10/2026, pedido suyo): sólo la lista de pedidos, sin canasta ni precios.
     el.innerHTML=_tabs+(pyVista==='nuevos'?candidatosHTML():pyVista==='ambos'?el.innerHTML+candidatosHTML():pyVista==='hechos'?pedidoMomentoHTML()+`<div style="font-size:.85rem;font-weight:800;margin:10px 0 10px">Pedidos hechos <span style="color:var(--muted);font-weight:400">· ${pyCompras().length}</span></div>`+pyHechosHTML():el.innerHTML);
     if(window._pycatQ&&pyVista!=='probados'&&pyVista!=='hechos')setTimeout(()=>pycatBuscar(window._pycatQ),0);   // el buscador conserva lo buscado al redibujar
