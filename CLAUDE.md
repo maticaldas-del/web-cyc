@@ -621,6 +621,7 @@ retiro + gastos del mes ("por cada peso que sale, otro se queda"; editable en �
 aparte (ya están en la ganancia). Falta que él lo mire y diga si el objetivo le cierra.
 
 ### LAS 7 ETAPAS, UNA POR DÍA, CORREN SOLAS (20/10/2026, pedido suyo, ya con el plan 20x)
+**⏸️ PAUSADAS EL 21/10/2026 a las 00:10 (él: *"dejamos las revisiones por acá. pausá las automáticas (…) la seguimos la próxima semana y además tengo que elegir las decisiones"*).** La tarea de las 04:00 (`trig_01TT94wnEKk299d85Sj6ePWw`) está APAGADA (`enabled:false`); se prende con `update_trigger` cuando él diga. Hechas: 1, 2, 3, 7 y 5 (v25.62). La 6 (ideas) se cortó a mitad: no dejó nada, se rehace entera. Lo pendiente para él: las 38 decisiones de REV_PENDIENTE (30 de diseño, 6 de precios, 2 de la etapa 5), todas juntas.
 **CAMBIO DEL MISMO 20/10 A LA TARDE (él: *"que miren hasta qué revisión se hizo, así no repite"*): ya NO va por día de la
 semana. Cada madrugada toca la etapa que hace más que no se revisa (última fecha en `REV_HIST`/`REV_HECHAS`, empate → número
 menor, nunca una de los últimos 6 días ni una que esté corriendo). Toda corrida termina con su renglón en `REV_HIST`.**
