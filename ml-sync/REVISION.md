@@ -838,6 +838,7 @@ el precio de un candidato distinto con código parecido (se compara también por
 ## 7 · DISEÑO (domingo)
 - **21/10/2026 · v25.57 · Inicio → Para cobrar sin "En <mes> cobran lo que dejó <mes anterior>"** (él: *"sacar eso del inicio, ya que lo
   sabemos"*). `_homeCobroHtml` queda con lo que se cobra el mes que viene y lo ganado hasta hoy. Chequear: no volver a ponerlo.
+- **21/10/2026 · v25.58 · Inicio → Para cobrar queda sólo con el número** (él: *"siguen apareciendo texto"*): se sacaron de `_homeCobroHtml` las líneas grises "Ventas al ritmo de… ÷ 3 / Ya ganado hasta hoy…" y "Ganancia real de CYC… ÷ 3". Quedan el título, el número y el aviso de gastos que faltan cargar. Qué chequear: que la tarjeta no vuelva a explicar la cuenta (la explicación vive en el Puntaje).
 
 - **⏳ LAS 30 DECISIONES DE DISEÑO DEL 20/10/2026 ESPERAN SU RESPUESTA** (él: *"dejamos las respuestas para más tarde. acordate"*).
   Recordárselas y aplicar lo que elija. (a) = la recomendada. Las maquetas vivían en el scratchpad (se pierden con el contenedor;

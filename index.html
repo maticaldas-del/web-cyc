@@ -2739,6 +2739,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.58',f:'21/10',h:'22:47',c:[{n:1,t:'🏠 Inicio: "Para cobrar" queda sólo con el número (se sacaron las líneas de cómo se calcula y lo ganado hasta hoy).'}]},
   {v:'25.58',f:'20/10',h:'21:55',c:[{n:1,t:'🔁 Lo que no está en ML se vuelve a buscar de a poco: sin catálogo cada 60 días y sin vendedores cada 30 (puede aparecer un catálogo nuevo). Antes no se buscaba nunca más.'}]},
   {v:'25.57',f:'21/10',h:'22:30',c:[{n:1,t:'🏠 Inicio: en "Para cobrar" se sacó el renglón "En <mes> cobran lo que dejó <mes anterior> · ya retiraron · quedan".'}]},
   {v:'25.56',f:'21/10',h:'22:24',c:[{n:2,t:'🛒 Paraguay, cuántas de cada nuevo: barato (hasta US$15) → 3 · caro (más de US$60) → 1 · el resto → 2. Ya no mira las vendidas (no se cargan más).'},{n:1,t:'🔁 Revisión: etapa nueva 8 · Reglas del cerebro. Va cada 7 días, adelante de las otras cuando le toca. Ajustes muestra la fecha real de cada etapa.'}]},
@@ -22240,11 +22241,9 @@ function _homeCobroHtml(f){
     const pr=P.esActual?cobroProyMes(ym):null;
     if(pr)return `<div style="font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)">Para cobrar en ${sigLbl} · cada uno · proyección a fin de ${mesCorto.toLowerCase()}</div>
       <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.5rem;color:${pr.mes>0?'var(--text)':'var(--red)'}">${fmt(pr.mes)}</div>
-      <div style="font-size:.66rem;color:var(--muted);line-height:1.45">Ventas al ritmo de ${mesCorto} (${fmt(pr.rMes)}/día) hasta el ${pr.diasMes} · menos los gastos del mes (${fmt(pr.gEsp)}${pr.gEsp>pr.gastos?', lo del mes pasado: faltan cargar':''}) · ÷ 3<br>Ya ganado hasta hoy: ${fmt(cb.tercio)} c/u (${fmt(cb.gan)} ÷ 3)</div>
       ${_avEste}`;   // 21/10/2026, él: sacar "En <mes> cobran lo que dejó <mes anterior>" de Inicio ("ya lo sabemos")
     return `<div style="font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)">Para cobrar en ${sigLbl} · cada uno${P.esActual?' · va hasta hoy':''}</div>
       <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.5rem;color:${cb.tercio>0?'var(--text)':'var(--red)'}">${fmt(cb.tercio)}</div>
-      <div style="font-size:.66rem;color:var(--muted);line-height:1.45">Ganancia real de CYC en ${mesCorto}${P.esActual?' hasta hoy':''} ${fmt(cb.gan)} ÷ 3 (CYC, vos y tu papá)</div>
       ${_avEste}`;   // 21/10/2026, él: sacar "En <mes> cobran lo que dejó <mes anterior>" de Inicio ("ya lo sabemos")
   }catch(e){return '<span style="color:var(--muted);font-size:.7rem">No pude calcularlo.</span>';}
 }
