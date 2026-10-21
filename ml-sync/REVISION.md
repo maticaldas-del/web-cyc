@@ -811,6 +811,23 @@ el precio de un candidato distinto con código parecido (se compara también por
 
 ## 7 · DISEÑO (domingo)
 
+- **⏳ LAS 30 DECISIONES DE DISEÑO DEL 20/10/2026 ESPERAN SU RESPUESTA** (él: *"dejamos las respuestas para más tarde. acordate"*).
+  Recordárselas y aplicar lo que elija. (a) = la recomendada. Las maquetas vivían en el scratchpad (se pierden con el contenedor;
+  si hace falta se rehacen). 1 cuadros de Armar caja e Inicio con el cupo restado · 2 Resumen "Pedidos pendientes" → (a) un cuadro
+  "Falta reponer" con la cuenta de Pedidos (b) sacarlo · 3 Métricas "👀 Qué está mirando ahora" (foto del 07/10) → (a) sacar ·
+  4 "🔧 Reparar stock variantes" del Arqueo (escribe sin preguntar) → (a) sacar (b) que pregunte · 5 "⚡ Auto Paulvic+Victoria" y
+  "🗑 Ocultar sin vincular" → (a) sacar · 6 Paraguay "Falta reponer" sólo del proveedor elegido · 7 dos "Patrimonio total" → (a) el
+  de arriba dice "hoy" y no se ve en el teléfono · 8 "Última actividad" sólo en Ajustes · 9 Ajustes: juntar las dos 🔄 y el backup ·
+  10 botones sin fondo (manchas blancas en oscuro) → (a) todos con fondo y se hunden al tocar · 11 un solo verde para "estás acá" ·
+  12 tarjeta del día en un idioma (cartel con el color y nombre del nivel y cuánto falta para el siguiente) · 13 colores de
+  estrategias por familia · 14 "atrás" de Android vuelve a la pantalla anterior en el mismo lugar (b sólo a Inicio) · 15 hoja del
+  producto + buscador en el ☰ · 16 Inicio en grilla 3×3 con números vivos (b de a dos) · 17 ☰ por uso con números y "🗂️ Fichas" ·
+  18 lista de Tito para el mayorista (b copiar todo) · 19 saltos 📈 en Pedidos/Armar caja, 📋 en la línea, mandar → Armar caja ·
+  20 la venta del aviso late y dice "la del aviso" · 21 Paraguay con filtros plegados · 22 ☀️ al ☰ y el ☰ se esconde al bajar ·
+  23 línea de tiempo: tocar un día muestra la franja · 24 ficha médica en tarjetitas en el teléfono · 25 deslizar Ventas de hoy ·
+  26 "🧠 Última vuelta de Claude" en Inicio · 27 barrita piso/techo/hoy en 🧠 y Rotación · 28 camioncito de la caja y casilleros del
+  pago Paulvic · 29 ventas separadas por día · 30 Listas un solo buscador y Gastos "Nuevo movimiento" plegado.
+
 - **ETAPA 7 DEL 20/10/2026 (v25.54), 4 revisores en máximo: lo chico HECHO.** Qué chequear en la próxima:
   · `buscaCoincide(q,...textos)` + `textosDeProd(p)` (sin tildes, palabra por palabra, nombre/colores/título ML/MLA/código PY) es LA
     búsqueda de Productos, Contar, Ventas, Rotación y Pedidos; un buscador nuevo usa ésa. Armar caja busca por renglón a propósito.
