@@ -23919,6 +23919,32 @@ async function main() {
         if (okN + malN) console.log(`\nPremium gemelas: ${okN} bien · ${malN} con algo raro`);
         return;
       }
+      // `anotar:<Premium>=<Clásica>[,…][:go]` (21/10/2026): una Premium que ya existe en ML (creada a mano o por otro camino) y no
+      // tiene `gemelaDe` NO la sigue `alinearGemelas`, y puede quedar más barata que su Clásica (Leyton: Premium $26.790 contra
+      // Clásica que iba a $28.990). Anota la gemela sólo si ML dice que son de la misma cuenta, el MISMO producto (user_product_id)
+      // y una es Premium y la otra Clásica. Sin `:go` sólo muestra. Después corre `gemelaalinear` para llevarla al precio.
+      if (arg.startsWith('anotar:')) {
+        const goA = /:go$/.test(arg);
+        const pares = arg.slice(7).replace(/:go$/, '').split(',').map((x) => x.trim().toUpperCase().split('=')).filter((x) => x.length === 2 && /^MLA\d+$/.test(x[0]) && /^MLA\d+$/.test(x[1]));
+        if (!pares.length) { console.log('Uso: gemelacrea:anotar:<Premium>=<Clásica>[,<Premium>=<Clásica>][:go]'); return; }
+        const links = (await db.get('cyc/mllinks')) || {}; const toks = {}; let ok = 0, no = 0;
+        console.log(`=== ANOTAR GEMELAS ${goA ? '(APLICANDO)' : '(PRUEBA)'} ===`);
+        for (const [P, C] of pares) {
+          const LP = links[P] || {}, LC = links[C] || {};
+          if (!LP.cuenta || LP.cuenta !== LC.cuenta) { console.log(`✗ ${P}=${C}: no son de la misma cuenta (${LP.cuenta || '?'} / ${LC.cuenta || '?'})`); no++; continue; }
+          const acc = accounts[LP.cuenta]; if (!acc?.refresh_token) { console.log(`✗ ${P}: sin permiso de ${LP.cuenta}`); no++; continue; }
+          if (!toks[LP.cuenta]) { try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + LP.cuenta, { refresh_token: t.refresh_token, updated_ts: Date.now() }); toks[LP.cuenta] = t.access_token; } catch { console.log(`✗ ${LP.cuenta}: no pude renovar el permiso`); no++; continue; } }
+          let bP, bC; try { bP = await mlGet('/items/' + P, toks[LP.cuenta]); bC = await mlGet('/items/' + C, toks[LP.cuenta]); } catch (e) { console.log(`✗ ${P}=${C}: ML no contestó (${String(e.message).slice(0, 120)})`); no++; continue; }
+          const malo = bP.listing_type_id !== 'gold_pro' ? 'la primera no es Premium' : bC.listing_type_id === 'gold_pro' ? 'la segunda también es Premium' : (!bP.user_product_id || bP.user_product_id !== bC.user_product_id) ? `no son el mismo producto de ML (${bP.user_product_id || '?'} / ${bC.user_product_id || '?'})` : LP.gemelaDe && LP.gemelaDe !== C ? `ya es gemela de ${LP.gemelaDe}` : '';
+          if (malo) { console.log(`✗ ${P}=${C}: ${malo}`); no++; continue; }
+          console.log(`${LP.gemelaDe === C ? '=' : '→'} ${LP.cuenta} · Premium ${P} $${Number(bP.price).toLocaleString('es-AR')} sigue a Clásica ${C} $${Number(bC.price).toLocaleString('es-AR')} · ${String(bC.title || '').slice(0, 50)}`);
+          if (!goA || LP.gemelaDe === C) { ok++; continue; }
+          await db.patch('cyc/mllinks/' + P, { gemelaDe: C, ...(LC.prodId && !LP.prodId ? { prodId: LC.prodId } : {}), ...(LC.variant && !LP.variant ? { variant: LC.variant } : {}) });
+          const rr = await db.get('cyc/mllinks/' + P + '/gemelaDe'); console.log(`   releído: ${rr === C ? '✓' : '✗ NO QUEDÓ'}`); if (rr === C) ok++; else no++;
+        }
+        console.log(`\n${ok} bien · ${no} no${goA ? '' : ' · prueba: agregá :go'}${goA && ok ? ' · ahora corré gemelaalinear:go para llevarlas al precio' : ''}`);
+        return;
+      }
       const go = /:go$/.test(arg);
       const m = arg.replace(/:go$/, '').match(/^(MLA\d+)=(\d[\d.]*)(!piso)?$/i);
       if (!m) { console.log('Uso: gemelacrea:<MLA>=<precio>[!piso][:go]'); return; }
