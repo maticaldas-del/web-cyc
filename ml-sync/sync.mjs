@@ -42296,7 +42296,7 @@ async function main() {
         if (mm[5] && mm[5].toLowerCase() === 'techook') { malos.push(x + ` (🏔️ lo anota techo95: techo95:${mm[1].toUpperCase()};go)`); continue; }
         if (mm[5] && ['sindecidir', 'agotado'].includes(mm[5].toLowerCase())) { malos.push(x + ` (#${mm[5]} no es una estrategia para un precio)`); continue; }
         const bE = String(mm[4] || '').toLowerCase();
-        pedidos.push({ mla: mm[1].toUpperCase(), p: Math.round(pesosArg(mm[2])), id: mm[3], piso: bE.includes('!piso'), bajocero: bE.includes('!bajocero'), sintecho: bE.includes('!sintecho'), golpe: bE.includes('!golpe'), sincerteza: bE.includes('!sincerteza'), bajopiso: bE.includes('!bajopiso'), nosobra: bE.includes('!nosobra'), tag: mm[5] ? mm[5].toLowerCase() : null, motivo: mot.join('|').trim() });
+        pedidos.push({ mla: mm[1].toUpperCase(), p: Math.round(pesosArg(mm[2])), id: mm[3], piso: bE.includes('!piso'), bajocero: bE.includes('!bajocero'), sintecho: bE.includes('!sintecho'), golpe: bE.includes('!golpe'), sincerteza: bE.includes('!sincerteza'), bajopiso: bE.includes('!bajopiso'), nosobra: bE.includes('!nosobra'), sinlinea: bE.includes('!sinlinea'), tag: mm[5] ? mm[5].toLowerCase() : null, motivo: mot.join('|').trim() });
       }
       if (malos.length || !pedidos.length) { console.log(`No entendí: ${malos.join(' · ') || '(nada)'}\nVa así: entrarpromo:MLA123=21360@P-MLA18067012|ya la iba a bajar;MLA456=salir|terminó;go`); return; }
       const links = (await db.get('cyc/mllinks')) || {};
@@ -43238,7 +43238,7 @@ async function main() {
         // El precio EXACTO que escribí (etapa 1, 21/10/2026): redondear a $10 hacía $32.999 → $33.000 (cruzaba la barrera) y $4.999 → $5.000.
         forzar[mm[1].toUpperCase()] = { p: soloAct ? 0 : Math.round(pesosArg(mm[2])), motivo: mot.join('|').trim(), piso: banderas.includes('!piso'), cruza: banderas.includes('!cruza'),
           activar: soloAct || banderas.includes('!activar'), salto: banderas.includes('!salto'), sinstock: banderas.includes('!sinstock'), sintecho: banderas.includes('!sintecho'),
-          golpe: banderas.includes('!golpe'), sincerteza: banderas.includes('!sincerteza'), bajopiso: banderas.includes('!bajopiso'), nosobra: banderas.includes('!nosobra'), chico: banderas.includes('!chico'), lista: banderas.includes('!lista'), escalon: banderas.includes('!escalon'), tag: mm[4] ? mm[4].toLowerCase() : '' };
+          golpe: banderas.includes('!golpe'), sincerteza: banderas.includes('!sincerteza'), bajopiso: banderas.includes('!bajopiso'), nosobra: banderas.includes('!nosobra'), sinlinea: banderas.includes('!sinlinea'), chico: banderas.includes('!chico'), lista: banderas.includes('!lista'), escalon: banderas.includes('!escalon'), tag: mm[4] ? mm[4].toLowerCase() : '' };
         // Sin 🎯 base (19/10/2026): un precio nuevo tiene que decir su estrategia (#tag o un motivo que la nombre).
         { const fz = forzar[mm[1].toUpperCase()]; if (!soloAct && !fz.tag && !tagDeMotivo(fz.motivo) && !fz.piso) { delete forzar[mm[1].toUpperCase()]; malos.push(x + ` (falta la estrategia: agregá #techo, #escasez, #sobra… · ${Object.keys(ESTRATEGIAS).filter((k) => !['sindecidir', 'agotado', 'techook'].includes(k)).join(', ')})`); continue; } }
       }

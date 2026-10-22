@@ -245,6 +245,11 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   promo no pase por abajo del piso sin `!piso` ni de 0% · que el cerebro de la noche no lea el precio de promo como
   "cambio a mano" y frene subas.
 
+### 22/10/2026 · `!sinlinea` no lo leía nadie (etapa 1)
+ · F7 de `frenosBajas` acepta `!sinlinea` + "EXCEPCIÓN" en el motivo, pero ni `decido` ni `entrarpromo` pasaban esa bandera: la
+   excepción era imposible (en la completa del 22/10 frenó la activación del Corsair y del Soundpeats y 2 bajas). Ahora las dos
+   la leen. Qué chequear: que toda bandera nueva de `frenosBajas` esté también en los dos parsers.
+
 ### v25.92 · 21/10/2026 · Rayas al precio cobrado y F7 que vence a los 15 días (etapa 1, eligió 1a 2a)
  · **1a:** `rayasPrecioLinea` (sync.mjs) y `_rayas` (index.html): el día que cambia el precio, lo vendido cuenta al precio (de hoy o de
    ayer) más parecido a lo cobrado por unidad, la misma regla de los tramos de `armarFicha`. Antes iba todo al precio de la noche
