@@ -3,7 +3,8 @@
 **Cómo se usa.** Cada vuelta (03:00 completa · 11:52, 13:52, 15:52, 17:52, 19:52, 21:52, 23:52 cortas) arranca leyendo ESTE archivo y
 `notas/preguntas.md`. Cada regla está UNA sola vez y en su versión más nueva. Las viejas, repetidas o pisadas se sacaron (el
 archivo de antes quedó en `notas/cerebro_viejo_20261021.md`, sólo como historia: no se usa). La historia de cada regla (fecha,
-frase suya, el caso) está en `CLAUDE.md`. **Regla nueva → va en su tema acá, en `CLAUDE.md` y en `REVISION.md`, en el mismo commit.**
+frase suya, el caso) está en `HISTORIA.md` (hasta el 22/10) y en `REVISION.md`. **Regla nueva → va en su tema acá, en `CLAUDE.md` y en
+`REVISION.md`, en el mismo commit; si toca cómo se juzga una venta, también en `VENTAS.md`.**
 Si una regla nueva choca con una de acá, se REEMPLAZA la de acá (no se agrega abajo): así no vuelven a convivir dos versiones.
 
 **🔬 TODAS LAS VUELTAS SON PESADAS Y LAS VENTAS SE ANALIZAN AL MÁXIMO (21/10/2026, regla suya; manda sobre cualquier prompt de tarea
