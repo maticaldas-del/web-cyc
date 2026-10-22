@@ -2698,3 +2698,10 @@ Pedido suyo: la venta que salió por una gemela Clásica con envío gratis (`cyc
 cartel celeste "📦 envío gratis" al lado del de Premium (`tipoLabel` en Ventas x Producto). Qué chequear: que no salga en ventas
 de la Clásica original ni de las Premium.
 - 22/10/2026: la completa de los domingos mide las gemelas (Premium y envío gratis) y propone sacar las que no sirven (CEREBRO.md paso 9 de la completa).
+
+### 📚 CLAUDE.md achicado y VENTAS.md (22/10/2026, pedido suyo: "la b")
+CLAUDE.md pasó de 794 KB a ~50 KB: sólo lo vigente, una vez cada regla. La historia completa (texto textual hasta el 22/10) quedó en
+`ml-sync/HISTORIA.md`, que no se carga sola (grep cuando haga falta). `ml-sync/VENTAS.md` (~31 KB) es el documento único para juzgar
+ventas: lo leen el ayudante de las vueltas y el de la completa (con la ficha), no el CLAUDE.md entero. Las dos tareas programadas ya
+lo dicen. Qué chequear: que una regla nueva vaya a CLAUDE.md (corta), CEREBRO.md y, si toca ventas, VENTAS.md; que nada vigente quede
+sólo en HISTORIA.md; que CLAUDE.md no vuelva a crecer con historia (la historia va a REVISION.md o HISTORIA.md).
