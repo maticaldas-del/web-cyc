@@ -17833,6 +17833,79 @@ async function main() {
       for (const o of P.filter((x) => pct(x) < 30).sort((a, b) => b.fac - a.fac).slice(0, 15)) console.log(`  ${(o.nom + (o.var ? ' · ' + o.var : '')).slice(0, 50).padEnd(50)} ${String(o.u).padStart(3)} u. · facturado ${$(o.fac).padStart(11)} · ganancia ${$(o.gan).padStart(10)} · ${pct(o).toFixed(1)}%`);
       return;
     }
+    // BILLING_PROBE=efectotecho[:<días>] (22/10/2026, SOLO LEE). Pregunta suya: *"¿puede ser que estemos vendiendo menos en total
+    // porque hay muchos productos buscando techo?"*. Dos partes: (1) semana por semana, unidades, facturado y ganancia de toda la
+    // tienda y cuántas subas 📈 hubo; (2) cada suba buscando techo (`cyc/claudecambios` con tag `techo`, o #techo en el motivo) con
+    // 7+ días encima: unidades, visitas y ganancia por día CON STOCK, 14 días antes contra hasta 14 después (corta en el próximo
+    // cambio de precio). Para no confundir el momento del año con el efecto de la suba, cada una se compara también contra lo que
+    // hizo la tienda entera en las mismas dos ventanas ("esperado"). Ganancia = neto − costo − IIBB/mono (como `mezcla`).
+    if (/^efectotecho(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const DIAS = Math.max(14, parseInt(String(process.env.BILLING_PROBE).split(':')[1]) || 56);
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const cc = (await db.get('cyc/claudecambios')) || {};
+      const mono = (await db.get('cyc/monotributo')) || {};
+      const monoP = parseFloat(mono.pct) || 0;
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      const $ = (n) => (n < 0 ? '-' : '') + '$' + Math.abs(Math.round(n)).toLocaleString('es-AR');
+      const ahora = Date.now(), DIA = 86400e3, kD = (ts) => dayKeyFromISO(ts);
+      // Ventas por día de toda la tienda + costo c/u por publicación (de lo vendido).
+      const tienda = {}, costoU = {};
+      for (const [k, ents] of Object.entries(vp)) {
+        const dk = k.slice(0, 10);
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada) continue;
+          const q = v.qty || 1, imp = (v.total || 0) * (mlExtraPct(v.cuenta) + monoP) / 100;
+          const o = tienda[dk] || (tienda[dk] = { u: 0, fac: 0, gan: 0, sinC: 0 });
+          o.u += q; o.fac += v.total || 0;
+          if (v.costo > 0) { o.gan += (v.neto || 0) - v.costo - imp; if (v.mla) { const c = costoU[v.mla] || (costoU[v.mla] = { c: 0, q: 0 }); c.c += v.costo; c.q += q; } } else o.sinC++;
+        }
+      }
+      const sumaT = (t0, t1) => { const o = { u: 0, fac: 0, gan: 0, d: 0 }; for (let t = t0; t < t1; t += DIA) { const x = tienda[kD(t)]; o.d++; if (x) { o.u += x.u; o.fac += x.fac; o.gan += x.gan; } } return o; };
+      // Subas buscando techo.
+      const cambios = Object.values(cc).filter((r) => r && r.mla && Number(r.ts) > 0).sort((a, b) => a.ts - b.ts);
+      const esTecho = (r) => Number(r.a) > Number(r.de) && (r.tag === 'techo' || (!r.tag && /#?techo\b|buscar techo|📈/i.test(String(r.motivo || ''))));
+      const subas = cambios.filter((r) => esTecho(r) && r.ts >= ahora - DIAS * DIA);
+      // (1) semana por semana
+      console.log(`=== ¿VENDEMOS MENOS POR BUSCAR TECHO? · últimos ${DIAS} días ===\n\n── LA TIENDA ENTERA, SEMANA POR SEMANA (7 días que terminan ayer) ──`);
+      const hoy0 = Date.parse(kD(ahora).replace(/_/g, '-') + 'T00:00:00-03:00');
+      for (let w = Math.floor(DIAS / 7) - 1; w >= 0; w--) {
+        const t1 = hoy0 - w * 7 * DIA, t0 = t1 - 7 * DIA, o = sumaT(t0, t1);
+        const nS = subas.filter((r) => r.ts >= t0 && r.ts < t1).length;
+        console.log(`  ${kD(t0).slice(5).replace('_', '/')}→${kD(t1 - DIA).slice(5).replace('_', '/')}  ${String(o.u).padStart(4)} u. (${(o.u / 7).toFixed(1)}/día) · facturado ${$(o.fac).padStart(12)} · ganancia ${$(o.gan).padStart(11)} (${$(o.gan / 7)}/día) · ${o.fac ? (o.gan / o.fac * 100).toFixed(1) : '0'}% de lo facturado · ${nS} subas 📈`);
+      }
+      // (2) cada suba
+      const res = [], sinLinea = [];
+      for (const r of subas) {
+        if (ahora - r.ts < 7 * DIA) continue;
+        const sig = cambios.find((x) => x.mla === r.mla && x.ts > r.ts + 3600e3);
+        const tFin = Math.min(ahora - DIA, r.ts + 14 * DIA, sig ? sig.ts : Infinity);
+        if (tFin - r.ts < 5 * DIA) continue;
+        let lin = null; try { lin = (await db.get('mlapi/linea/' + r.mla)) || {}; } catch { lin = null; }
+        if (!lin) { sinLinea.push(r.mla); continue; }
+        const cu = costoU[r.mla] && costoU[r.mla].q ? costoU[r.mla].c / costoU[r.mla].q : 0;
+        const med = (t0, t1) => { const o = { u: 0, vis: 0, gan: 0, d: 0, dVis: 0 }; for (let t = t0; t < t1; t += DIA) { const x = lin[kD(t)]; if (!x || !(Number(x.st) > 0)) continue; o.d++; const u = Number(x.u) || 0; o.u += u; if (x.vis != null) { o.vis += Number(x.vis) || 0; o.dVis++; } const tot = Number(x.tot) || 0; o.gan += (Number(x.neto) || 0) - cu * u - tot * (mlExtraPct(r.cuenta) + monoP) / 100; } return o; };
+        const tIni = r.ts + DIA;   // el día de la suba no cuenta para ninguno
+        const A = med(r.ts - 14 * DIA, r.ts - DIA + 1), D = med(tIni, tFin);
+        if (A.d < 4 || D.d < 4) continue;
+        const TA = sumaT(r.ts - 14 * DIA, r.ts), TD = sumaT(tIni, tFin);
+        const fT = TA.u && TD.d ? (TD.u / TD.d) / (TA.u / TA.d) : 1;   // cuánto se movió la tienda entera
+        res.push({ r, cu, A, D, fT, uA: A.u / A.d, uD: D.u / D.d, gA: A.gan / A.d, gD: D.gan / D.d, vA: A.dVis ? A.vis / A.dVis : null, vD: D.dVis ? D.vis / D.dVis : null });
+      }
+      const sum = (f) => res.reduce((a, x) => a + f(x), 0);
+      console.log(`\n── LAS SUBAS 📈 BUSCANDO TECHO CON 7+ DÍAS ENCIMA: ${res.length} medidas (de ${subas.length} en ${DIAS} días; sin línea: ${sinLinea.length}) ──`);
+      console.log('  (por día CON STOCK; 14 días antes contra hasta 14 después; "esperado" = el antes × lo que se movió la tienda entera)');
+      const uA = sum((x) => x.uA), uD = sum((x) => x.uD), uE = sum((x) => x.uA * x.fT), gA = sum((x) => x.gA), gD = sum((x) => x.gD), gE = sum((x) => x.gA * x.fT);
+      console.log(`  JUNTAS · unidades/día: antes ${uA.toFixed(1)} → después ${uD.toFixed(1)} (esperado ${uE.toFixed(1)}) · ganancia/día: antes ${$(gA)} → después ${$(gD)} (esperado ${$(gE)})`);
+      console.log(`  NETO DE LA BÚSQUEDA DE TECHO: ${(uD - uE).toFixed(1)} u./día · ${$(gD - gE)} de ganancia por día (${$((gD - gE) * 30)} al mes)`);
+      const masG = res.filter((x) => x.gD > x.gA * x.fT * 1.1).length, menG = res.filter((x) => x.gD < x.gA * x.fT * 0.9).length;
+      console.log(`  ganaron más plata por día: ${masG} · perdieron: ${menG} · parecido (±10%): ${res.length - masG - menG}`);
+      console.log('\n  publicación                               suba               u./día antes→después  visitas/día      ganancia/día antes→después (esperado)');
+      for (const x of res.sort((a, b) => (a.gD - a.gA * a.fT) - (b.gD - b.gA * b.fT))) {
+        const n = String(x.r.nom || x.r.mla).slice(0, 40).padEnd(40);
+        console.log(`  ${n} ${$(x.r.de).padStart(8)}→${$(x.r.a).padEnd(9)} ${x.uA.toFixed(2).padStart(5)}→${x.uD.toFixed(2).padEnd(6)} ${x.vA == null ? '   ?' : x.vA.toFixed(0).padStart(4)}→${x.vD == null ? '?' : x.vD.toFixed(0).padEnd(5)}  ${$(x.gA).padStart(8)}→${$(x.gD).padEnd(9)} (${$(x.gA * x.fT)})${x.cu ? '' : ' ⚠️ sin costo'} · ${kD(x.r.ts).slice(5).replace('_', '/')}`);
+      }
+      return;
+    }
     if (/^pisobase(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const _pb = String(process.env.BILLING_PROBE).split(':');
       const DIAS = Math.max(7, parseInt(_pb[1]) || 30);
