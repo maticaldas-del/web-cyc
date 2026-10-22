@@ -24317,14 +24317,16 @@ async function main() {
         const rg = await precioGemelaEnvioIgual({ b, tk, costo, envArriba: envioGemelaDe(netopub[b.id]), impPct, dims, crudo });
         crudo = false;
         const u = uds[b.id] || 0;
+        // Lo que paga HOY el comprador por el envío de la Clásica (CABA y Ushuaia): contra eso compite la gemela con envío gratis.
+        let comp = []; for (const cp of ['1425', '9410']) { try { const so = await mlGet(`/items/${b.id}/shipping_options?zip_code=${cp}`, tk); const op = (so?.options || [])[0]; if (op && isFinite(Number(op.cost))) comp.push(Math.round(Number(op.cost))); } catch { } }
         if (!rg || !rg.base) { noDan.push(`${label} ${b.id} ${nom}: ML no dio la comisión`); continue; }
         if (!rg.P) { noDan.push(`${label} ${b.id} ${nom}: ${rg.sinEnvio ? 'ML no dio el costo del envío gratis' : 'no hay precio hasta $650.000'}`); continue; }
         const cg = rg.cg;
-        filas.push({ label, mla: b.id, nom, precio, st: b.available_quantity, u, env: cg.envE, P: rg.P, suba: (rg.P / precio - 1) * 100, netaC: cg.netaCla, netaE: cg.netaE, mgP: cg.mgP, dims, da: cg.mgP >= piso });
+        filas.push({ label, mla: b.id, nom, precio, st: b.available_quantity, u, env: cg.envE, P: rg.P, suba: (rg.P / precio - 1) * 100, netaC: cg.netaCla, netaE: cg.netaE, mgP: cg.mgP, dims, da: cg.mgP >= piso, comp });
       }
       filas.sort((a, z) => z.u - a.u);
       console.log(`\n══ 📦 GEMELA CLÁSICA CON ENVÍO GRATIS · ${filas.length} medidas (Clásicas abajo de $33.000 con stock en Full) · piso ${piso}% ══`);
-      for (const f of filas) console.log(`${f.da ? '✓' : '·'} ${f.label.padEnd(8)} ${f.mla} · ${f.nom} · Clásica $${f.precio.toLocaleString('es-AR')} · ${f.st} u. · vendió ${f.u} en 60 d · envío gratis $${f.env.toLocaleString('es-AR')}${f.dims ? '' : ' (sin medidas)'} → $${f.P.toLocaleString('es-AR')} (+${f.suba.toFixed(1)}%) · neta $${Math.round(f.netaC).toLocaleString('es-AR')} vs $${Math.round(f.netaE).toLocaleString('es-AR')} · peor caso ${f.mgP.toFixed(1)}%${f.da ? '' : ' (abajo del piso)'}`);
+      for (const f of filas) console.log(`${f.da ? '✓' : '·'} ${f.label.padEnd(8)} ${f.mla} · ${f.nom} · Clásica $${f.precio.toLocaleString('es-AR')} · ${f.st} u. · vendió ${f.u} en 60 d · envío gratis $${f.env.toLocaleString('es-AR')}${f.dims ? '' : ' (sin medidas)'} → $${f.P.toLocaleString('es-AR')} (+${f.suba.toFixed(1)}%) · neta $${Math.round(f.netaC).toLocaleString('es-AR')} vs $${Math.round(f.netaE).toLocaleString('es-AR')} · peor caso ${f.mgP.toFixed(1)}%${f.da ? '' : ' (abajo del piso)'}${f.comp.length ? ` · hoy el comprador paga $${f.precio.toLocaleString('es-AR')} + envío $${f.comp.map((x) => x.toLocaleString('es-AR')).join('/$')} (CABA/Ushuaia) = $${(f.precio + Math.min(...f.comp)).toLocaleString('es-AR')}${f.P <= f.precio + Math.min(...f.comp) ? ' ✅ la gemela sale igual o menos' : ''}` : ''}`);
       const env = filas.map((f) => f.env), sub = filas.map((f) => f.suba);
       if (filas.length) console.log(`\nenvío gratis: $${Math.min(...env).toLocaleString('es-AR')} a $${Math.max(...env).toLocaleString('es-AR')} · suba ${Math.min(...sub).toFixed(1)}% a ${Math.max(...sub).toFixed(1)}% · ${filas.filter((f) => f.da).length} con peor caso ≥ ${piso}%`);
       console.log(`\nNo se miden (${noDan.length}):`); for (const x of noDan) console.log(`   · ${x}`);
@@ -24343,6 +24345,14 @@ async function main() {
       const it = await mlGet('/items/' + mla + '?attributes=id,price,listing_type_id,category_id,site_id,sale_terms', t.access_token);
       console.log(`${mla} · ${it.listing_type_id} · $${it.price} · cat ${it.category_id} · sale_terms ${JSON.stringify(it.sale_terms || []).slice(0, 400)}`);
       for (const lt of ['gold_special', 'gold_pro']) { try { const d = await mlGet(`/sites/MLA/listing_prices?price=${it.price}&listing_type_id=${lt}&category_id=${it.category_id}`, t.access_token); const o = Array.isArray(d) ? d[0] : d; console.log(`  ${lt}: sale_fee $${o?.sale_fee_amount} · detalle ${JSON.stringify(o?.sale_fee_details || {})}`); } catch (e) { console.log(`  ${lt}: error ${String(e.message).slice(0, 150)}`); } }
+      return;
+    }
+    // `gemelaenvioalinear[:go]` (22/10/2026): sólo las 📦 gemelas de envío gratis, como la vuelta de cada hora (`alinearGemelasEnvio`).
+    if (/^gemelaenvioalinear(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const go = /:go$/.test(String(process.env.BILLING_PROBE));
+      const links = (await db.get('cyc/mllinks')) || {}; const toks = {};
+      for (const label of labels) { const acc = accounts[label]; if (!acc?.refresh_token) continue; try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() }); toks[label] = t.access_token; } catch { console.log(`⚠️ ${label}: no pude renovar el permiso`); } }
+      await alinearGemelasEnvio(db, links, toks, !go, products, null, true);
       return;
     }
     if (/^gemelaalinear(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
