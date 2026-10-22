@@ -38,3 +38,5 @@ en que se anota en `correcciones.md`.** El número entre corchetes es de qué ca
 
 ## La pregunta que cubre las demás
 20. **Si él mirara esta ficha ahora, ¿qué me preguntaría?** Si se me ocurre una pregunta que no está acá, la contesto y la agrego.
+- (22/10, F9) ¿La venta que uso como prueba se cobró al precio que estoy juzgando? Mirar el precio cobrado de la orden, no el precio del día.
+- (22/10, Enchufe 3 patas) ¿El ritmo con el que se dice "escasez" es del precio de hoy o de un tramo viejo mucho más barato?
