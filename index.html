@@ -1908,14 +1908,18 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
     <div class="stitle" style="margin:0">Ventas <span id="vp-date-label2" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace"></span></div>
     <input id="vp-search" type="text" placeholder="🔍 Buscar producto…" class="cal-select" style="flex:1;min-width:160px;max-width:280px;font-size:.72rem" oninput="renderVentaProd()">
   </div>
-  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+  <!-- 22/10/2026, él: "todo eso que está en ventas se puede poner en un desplegable? así está más limpio": cuentas y tags adentro de ⚙️ Filtros -->
+  <details id="vp-filtros" style="margin-bottom:10px">
+  <summary style="cursor:pointer;list-style:none;display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:.7rem;color:var(--muted)"><span class="btn" id="vp-filtros-btn" style="font-size:.68rem;padding:4px 11px">⚙️ Filtros ▾</span><span id="vp-filtros-res">Mostrando: <b style="color:var(--text)">todas las cuentas</b></span></summary>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin:10px 0">
     <button id="vpf-all" class="vbtn active" onclick="setVpCuenta(null,this)">Todas</button>
     <button id="vpf-Adriana" class="vbtn" onclick="setVpCuenta('Adriana',this)">Adriana</button>
     <button id="vpf-Luciana" class="vbtn" onclick="setVpCuenta('Luciana',this)">Luciana</button>
     <button id="vpf-Ayelen" class="vbtn" onclick="setVpCuenta('Ayelen',this)">Ayelen</button>
     <button id="vpf-Matias" class="vbtn" onclick="setVpCuenta('Matias',this)">Matias</button>
   </div>
-  <div id="vp-tag-chips" style="display:flex;gap:5px;flex-wrap:wrap;margin:-4px 0 10px"></div>
+  <div id="vp-tag-chips" style="display:flex;gap:5px;flex-wrap:wrap;margin:0 0 4px"></div>
+  </details>
   <div id="vp-day-list" class="ingreso-list" style="margin-bottom:6px;max-height:570px;overflow-y:auto;overflow-x:hidden"><div class="empty-msg">Sin ventas cargadas.</div></div>
 
   <div class="stitle" style="margin-top:22px">Análisis <span id="vp-scope-lbl-main" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace"></span></div>
@@ -2921,7 +2925,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.98';
+const APP_VERSION='25.99';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2934,6 +2938,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.99',f:'22/10',h:'10:45',c:[{n:1,t:'Ventas: las cuentas y los tags de estrategia van adentro de "⚙️ Filtros"; afuera queda una línea que dice qué se está mostrando.'}]},
   {v:'25.98',f:'22/10',h:'10:30',c:[{n:1,t:'📋 Dai Nippon: "🛒 Para comprar en el local" no aparece cuando no hay nada cargado.'}]},
   {v:'25.97',f:'22/10',h:'10:10',c:[{n:1,t:'🏷️ Ventas de este año (Inicio): los 12 meses en cuadritos, del color de su ganancia promedio por día, con 🏆 mejor mes y 🔥 racha de meses cumplidos. Tocá un mes y la tarjeta abre en ese mes.'}]},
   {v:'25.96',f:'21/10',h:'20:30',c:[{n:1,t:'🇵🇾 Nissei: se sacó el botón "no da en el local"; el de ML ahora dice "🛒✕ no se puede ML" y lo marcado sale de las sugerencias de ML. Al abrir siempre muestra Todo · ML.'}]},
@@ -13150,6 +13155,9 @@ function renderVentaProd(){
        return `<button onclick="setVpTag('${t}')" title="${String(u[3]).replace(/"/g,'&quot;')}" style="cursor:pointer;padding:3px 9px;border-radius:6px;border:1px solid ${on?u[2]:`color-mix(in srgb,${u[2]} 33%,transparent)`};background:color-mix(in srgb,${u[2]} ${on?25:8}%,transparent);color:${u[2]};font-size:.68rem;font-family:inherit;white-space:nowrap${on?';font-weight:700':''}">${u[0]} ${u[1]} · ${cnt[t]}${on?' ✕':''}</button>`;};
       const ts=Object.keys(ESTRATEGIA_UI),con=ts.filter(t=>cnt[t]>0||vpFilterTag===t),sin=ts.filter(t=>!(cnt[t]>0)&&vpFilterTag!==t);
       box.innerHTML=con.map(chip).join('')+(sin.length?`<button onclick="vpTagsCero=!vpTagsCero;renderVentaProd()" style="cursor:pointer;padding:3px 9px;border-radius:6px;border:1px dashed var(--border,#333);background:transparent;color:var(--muted);font-size:.68rem;font-family:inherit;white-space:nowrap">${vpTagsCero?'ocultar los sin ventas ▴':'＋'+sin.length+' sin ventas ▾'}</button>`+(vpTagsCero?sin.map(chip).join(''):''):'');}
+     {const r=document.getElementById('vp-filtros-res'),b=document.getElementById('vp-filtros-btn');const hay=!!(vpFilterCuenta||vpFilterTag);
+      if(r)r.innerHTML=`Mostrando: <b style="color:var(--text)">${vpFilterCuenta?escHtml(vpFilterCuenta):'todas las cuentas'}</b>${vpFilterTag&&ESTRATEGIA_UI[vpFilterTag]?` · <b style="color:${ESTRATEGIA_UI[vpFilterTag][2]}">${ESTRATEGIA_UI[vpFilterTag][0]} ${ESTRATEGIA_UI[vpFilterTag][1]}</b>`:''}`;
+      if(b)b.style.cssText=`font-size:.68rem;padding:4px 11px;${hay?'border-color:var(--sel-bg);font-weight:700':''}`;}
      if(vpFilterTag){for(let i=filteredGroups.length-1;i>=0;i--)if(!vpTagsDeGrupo(filteredGroups[i]).has(vpFilterTag))filteredGroups.splice(i,1);}}
     // etapa 7 (L17): el cartel de "sin ventas" nombra el período elegido (hoy, un día, una semana…), no siempre el mes
     const mesLabel=vpPeriod==='dia'?(vpDate===todayStr()?'hoy':'el '+String(vpDate).split('-').reverse().join('/'))
