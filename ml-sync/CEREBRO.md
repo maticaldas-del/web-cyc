@@ -16,7 +16,12 @@ reposición, fechas, rayas, y queda con estrategia bien pensada (🧭 sin ⚠️
 (el número que imprime el 📌; `esf` = el esfuerzo que usé de verdad: max, xhigh, high…) marca hasta dónde se analizó y deja en
 CADA venta su análisis (`cyc/ventaanalisis`): la tarjeta lo muestra gris si no cambió nada y del color de la estrategia si cambió
 (21/10, pedido suyo). El texto por MLA va siempre que hubo algo que contar (sin `;` ni `|`); sin texto sale el motivo de la estrategia; la vuelta siguiente no las vuelve a ver. Si la vuelta se corta antes de anotar, la
-siguiente las retoma: nunca quedan sin analizar. **Las ventas las piensa SIEMPRE un ayudante (Agent con `effort:"max"` escrito en la
+siguiente las retoma: nunca quedan sin analizar. **🔬 CAMBIO DEL 22/10/2026 (él eligió 2a, manda sobre lo de abajo): al ayudante en máximo van SÓLO las ventas de la lista 🔬 A FONDO
+de `ventasraras` (rara o abajo del 25% o sin costo · sin estrategia con techo · escasez · lanzamiento que vendió · prueba de techo con 7+ días
+para juzgar). Las "✓ normales" se cierran en el `ventasvistas` sin texto y no se les lee la ficha. Él: *"lo que quiero es que lo haga de
+la forma más efectiva posible y que no me tenga que estar fijando a cada rato, cada venta si tiene error"*. Y al terminar CADA vuelta
+(3a): `bajastecho:1` por consulta; toda ❌ de ese día se deshace en la misma vuelta (vuelve al precio de antes con `!chico` y "EXCEPCIÓN:
+vuelve al precio de antes").** **Las ventas las piensa SIEMPRE un ayudante (Agent con `effort:"max"` escrito en la
 llamada), aunque sea UNA sola venta (21/10, regla suya: *"no quiero que dependan de la config de esfuerzo que tengo yo"*): el chat
 corre con el nivel que tenga la sesión, el ayudante con el que se le pide.** El ayudante lee las fichas y propone; decidir y aplicar es
 mío, siguiendo lo que propuso (si no le hago caso, lo digo en el 🧠). `esf=` del `ventasvistas` = el del ayudante (max). Una publicación que vuelve a vender en otra vuelta se mira por esa venta NUEVA (lo que
