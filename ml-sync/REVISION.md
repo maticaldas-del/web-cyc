@@ -2660,3 +2660,8 @@ ML no se vea ningún `noML`.
 meses con los análisis y colores"*. `_homeAnioHTML`/`_anioMeses` (index.html): 12 cuadritos del color de la ganancia promedio por día
 (niveles de `VIVA_DIA_NIV`), total abajo, 🏆 mejor mes y 🔥 racha de meses con promedio ≥ `PUNT_DIA_7`; tocar abre la tarjeta en ese mes
 (`homeCalMes`). **Qué chequear:** que el promedio del mes en curso use sólo los días ya pasados.
+
+**22/10/2026 · etapa 7 · la tarjeta viva termina en los números (v26.00).** Él marcó con una raya roja: *"que las ventas viva sea hasta
+la línea roja, así lo de abajo se nota más"*. `renderHomeHoy` arma dos tarjetas: la viva (`.vw`/`.viva`, título, facturado, ganancia,
+puntaje) y abajo una común (escalera, curva, calendario de mes/año, cuentas, cuánto cobrar). **Qué chequear:** que los efectos
+(`_homeHoyEfectos`, deslizar) sigan andando y que en claro la de abajo se lea.

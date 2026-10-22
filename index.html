@@ -2925,7 +2925,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.99';
+const APP_VERSION='26.00';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2938,6 +2938,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.00',f:'22/10',h:'11:00',c:[{n:1,t:'Inicio · Ventas de hoy/mes/año: la tarjeta con colores y burbujas termina en los números; la escalera, la curva, el calendario y las cuentas van abajo en una tarjeta común, que se lee mejor.'}]},
   {v:'25.99',f:'22/10',h:'10:45',c:[{n:1,t:'Ventas: las cuentas y los tags de estrategia van adentro de "⚙️ Filtros"; afuera queda una línea que dice qué se está mostrando.'}]},
   {v:'25.98',f:'22/10',h:'10:30',c:[{n:1,t:'📋 Dai Nippon: "🛒 Para comprar en el local" no aparece cuando no hay nada cargado.'}]},
   {v:'25.97',f:'22/10',h:'10:10',c:[{n:1,t:'🏷️ Ventas de este año (Inicio): los 12 meses en cuadritos, del color de su ganancia promedio por día, con 🏆 mejor mes y 🔥 racha de meses cumplidos. Tocá un mes y la tarjeta abre en ese mes.'}]},
@@ -23842,7 +23843,7 @@ function renderHomeHoy(){
   const flecha=(d,txt,off)=>`<button onclick="homeHoyMover(${d},event)" ${off?'disabled':''} style="background:transparent;border:1px solid var(--border2);color:${off?'var(--border2)':'var(--text)'};border-radius:8px;min-width:34px;height:30px;font-size:1.05rem;line-height:1;cursor:${off?'default':'pointer'}">${txt}</button>`;
   const pctTxt=h.pct===null||!isFinite(h.pct)?'—':(h.pct>=0?'+':'')+h.pct.toFixed(0)+'%';
   const _vd=vivaDia(h.dias>1?{gan:h.gan/h.dias,bruto:h.bruto/h.dias,ventas:h.ventas}:h);   // la vida de la tarjeta, con el promedio por día
-  el.innerHTML=`<div class="vw ${_vd.mv} ${_vd.gl}" data-viva="dia" data-vk="${_vd.k}" data-vv="${_vd.vel.toFixed(3)}"${_vd.quieta?' data-vq="1"':''} style="--c:${_vd.c};--vr:20px;margin:4px auto 18px;max-width:min(760px,calc(100vw - 32px))">${_vd.fuego?'<canvas class="viva-fuego"></canvas>':''}<div onclick="homeHoyIr()" class="viva lv-${_vd.k}" style="--c:${_vd.c};cursor:pointer;border-radius:20px;padding:20px 22px 16px">
+  el.innerHTML=`<div class="vw ${_vd.mv} ${_vd.gl}" data-viva="dia" data-vk="${_vd.k}" data-vv="${_vd.vel.toFixed(3)}"${_vd.quieta?' data-vq="1"':''} style="--c:${_vd.c};--vr:20px;margin:4px auto 0;max-width:min(760px,calc(100vw - 32px))">${_vd.fuego?'<canvas class="viva-fuego"></canvas>':''}<div onclick="homeHoyIr()" class="viva lv-${_vd.k}" style="--c:${_vd.c};cursor:pointer;border-radius:20px;padding:20px 22px 16px">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:10px">
       <span style="display:flex;align-items:center;gap:8px;flex:1 1 240px;min-width:0"><span style="display:flex;gap:4px;flex-shrink:0">${flecha(1,'‹',_sinAntes)}${flecha(-1,'›',_homeHoyOff===0)}</span><span style="font-size:.72rem;text-transform:uppercase;letter-spacing:.16em;color:var(--c);font-weight:700">🏷️ ${titulo}</span></span>
       <span style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">${escSel}${esc==='dia'&&_cerDiaVisible(dateToKey(hoy))?`<button onclick="homeHoyCerebro(event)" title="🧠 Qué pasó con las ventas de este día" style="background:transparent;border:1px solid var(--border2);color:var(--text);border-radius:999px;padding:3px 10px;font-size:.7rem;cursor:pointer">🧠 qué pasó</button>`:''}<span style="font-size:.7rem;color:var(--muted);border:1px solid var(--border2);border-radius:999px;padding:3px 10px">ver ventas ›</span></span>
@@ -23854,6 +23855,10 @@ function renderHomeHoy(){
         return `<div style="align-self:center;padding:8px 14px;border-radius:12px;color:var(--c);background:color-mix(in srgb,var(--c) 12%,transparent);border:1px solid color-mix(in srgb,var(--c) 35%,transparent);text-align:center" title="Puntaje ${esc==='dia'?'del día':esc==='mes'?'del mes':'del año'} (de 0 a 10), sólo por la ganancia en pesos: 7 en ${fmt(D.target)}${D.n>1?` ($115.000 × ${D.n} días)`:' por día'} (que a cada uno de los 3 le queden $900.000 por mes pagando todo) y 10 en ${fmt(D.target2)}.">
           <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.35rem;line-height:1">${D.score.toFixed(1).replace('.',',')}<span style="font-size:.6em;opacity:.7"> /10</span></div><div style="font-size:.74rem;font-weight:700;margin-top:4px">${VIVA_DIA_NOM[_vd.k]||D.nivel}</div></div>`;})()}
     </div>
+  </div></div>
+  <!-- 22/10/2026, él: "que las ventas viva sea hasta la línea roja, así lo de abajo se nota más, ya que con colores no se entiende
+       mucho. Lo mismo con mes y año": la tarjeta viva (colores, burbujas, fuego) termina en los números; lo de abajo va en una común. -->
+  <div style="--c:${_vd.c};margin:8px auto 18px;max-width:min(760px,calc(100vw - 32px));background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 22px 14px">
     ${h.ventas>0?_diaEscaleraHTML(h.gan,h.dias):''}
     ${esc==='dia'?(()=>{try{return _homeCurvaHTML(hoy);}catch(e){return '';}})():''}
     ${(()=>{try{return _homeGustoHTML(esc,hoy,_hf);}catch(e){return '';}})()}
@@ -23861,7 +23866,7 @@ function renderHomeHoy(){
       <summary style="cursor:pointer;font-size:.72rem;color:var(--muted)">💸 cuánto cobrar</summary>
       <div id="hoy-cobro-in" style="margin-top:8px">${_hoyCobroAbierto()?_homeCobroHtml(_homeHoyFecha()):''}</div>
     </details>
-  </div></div>`;
+  </div>`;
   vivaScan(el);
   try{_homeHoyEfectos(esc,h,hoy);}catch(e){}
   try{_homeHoyDeslizar(el);}catch(e){}
