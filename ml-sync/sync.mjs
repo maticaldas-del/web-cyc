@@ -9731,6 +9731,7 @@ async function alinearGemelasEnvio(db, links, tokensRun, DRY, products, solo, fo
       if (T.status === 'closed' || C.status === 'closed' || (T.variations || []).length || (C.variations || []).length) continue;
       if (T.listing_type_id !== 'gold_special' || C.listing_type_id !== 'gold_special') { out.fallas.push(`${k}: no son las dos Clásicas`); continue; }
       out.miradas++;
+      if (!(T.shipping || {}).free_shipping) out.fallas.push(`${k}: NO tiene envío gratis en ML (arreglar con gemelaenvio:prender:${k}:go)`);
       const pT = Math.round(T.price || 0), pC = Math.round(C.price || 0);
       const m0 = mem[k] || {};
       if (!forzar && m0.c === pC && m0.p === pT && Date.now() - (Number(m0.ts) || 0) < 864e5) { out.bien++; continue; }
@@ -24198,7 +24199,7 @@ async function main() {
             if (cg.netaE < cg.netaCla - 1) frenos.push('no llega a la misma plata neta que la Clásica');
           }
         }
-        const body = { price: P, category_id: it.category_id, currency_id: it.currency_id || 'ARS', buying_mode: 'buy_it_now', listing_type_id: 'gold_special', shipping: { mode: sh.mode || 'me2', logistic_type: 'fulfillment', free_shipping: true, local_pick_up: false } };
+        const body = { price: P, category_id: it.category_id, currency_id: it.currency_id || 'ARS', buying_mode: 'buy_it_now', listing_type_id: 'gold_special', shipping: { free_shipping: true } };   // logistic_type y mode no se mandan: ML contesta "not_modifiable" (22/10)
         if (it.catalog_listing && it.catalog_product_id) { body.catalog_listing = true; body.catalog_product_id = it.catalog_product_id; }
         console.log(`   mandaría POST /user-products/${upid}/items ${JSON.stringify(body)}`);
         if (frenos.length) { console.log(`   🛑 NO SE CREA: ${frenos.join(' · ')}`); no++; continue; }
@@ -24206,7 +24207,8 @@ async function main() {
         const r = await fetch(`${ML_API}/user-products/${upid}/items`, { method: 'POST', headers: { Authorization: 'Bearer ' + tk, 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(30000) });
         const txt = await r.text(); _anotarEscrituraML(r, mla, 'crear gemela envío gratis', txt);
         if (!r.ok) {
-          console.log(`   ❌ ML no la creó: ${r.status} ${txt.slice(0, 1200)}`); no++;
+          let msj = txt.slice(0, 600); try { const j = JSON.parse(txt); msj = `${j.message || ''} · ${(j.cause || []).filter((c) => c && c.type !== 'warning').map((c) => `${c.code}: ${c.message}`).join(' | ') || '(sólo avisos)'}`; } catch { }
+          console.log(`   ❌ ML no la creó: ${r.status} ${msj.slice(0, 1500)}`); no++;
           await new Promise((ok) => setTimeout(ok, 4000));
           try { const s2 = await mlGet(`/users/${acc.seller_id}/items/search?user_product_id=${upid}`, tk); console.log(`   releído: del mismo producto quedan ${(s2.results || []).join(', ')}`); } catch { }
           continue;
@@ -24255,6 +24257,31 @@ async function main() {
           console.log(`   shipping: ${JSON.stringify(sh).slice(0, 400)}`);
           if (b.user_product_id) { try { const s = await mlGet(`/users/${b.seller_id}/items/search?user_product_id=${b.user_product_id}`, tk); console.log(`   del mismo producto: ${(s.results || []).join(', ')}`); } catch { } }
         }
+        return;
+      }
+      // `prender:<MLA>[:go]` (22/10/2026): una gemela de envío que ML creó SIN el envío gratis (pasó con el Espejo 5", MLA2225759075):
+      // se le pide a ML que lo prenda (PUT shipping.free_shipping=true) y se relee; si ML no deja, se pausa (con `noAutoActivar`, para que
+      // `activarPausadasFull` no la vuelva a prender): una Clásica más cara sin envío gratis sólo confunde al comprador.
+      if (arg.startsWith('prender:')) {
+        const goP = /:go$/.test(arg); const mla = (arg.slice(8).replace(/:go$/, '').match(/MLA\d+/i) || [''])[0].toUpperCase();
+        const L = links[mla] || {}; if (L.gemelaTipo !== 'envio') { console.log(`${mla}: no es una gemela de envío anotada`); return; }
+        const tk = await tokDe(L.cuenta); if (!tk) return;
+        let b; try { b = await mlGet('/items/' + mla + '?attributes=id,status,price,shipping', tk); } catch (e) { console.log(`${mla}: ML no contestó`); return; }
+        console.log(`${mla} · ${b.status} · $${b.price} · envío gratis ${(b.shipping || {}).free_shipping}`);
+        if ((b.shipping || {}).free_shipping) { console.log('   ya tiene envío gratis: nada que hacer'); return; }
+        if (!goP) { console.log('   (prueba: con :go le pido a ML el envío gratis, y si no deja la pauso)'); return; }
+        const r = await fetch(`${ML_API}/items/${mla}`, { method: 'PUT', headers: { Authorization: 'Bearer ' + tk, 'Content-Type': 'application/json' }, body: JSON.stringify({ shipping: { free_shipping: true } }), signal: AbortSignal.timeout(30000) });
+        const txt = await r.text(); _anotarEscrituraML(r, mla, 'prender envío gratis', txt);
+        await new Promise((ok) => setTimeout(ok, 3000));
+        let b2 = null; try { b2 = await mlGet('/items/' + mla + '?attributes=id,status,shipping', tk); } catch { }
+        if (r.ok && b2 && (b2.shipping || {}).free_shipping) { console.log('   ✓ releído: ahora tiene envío gratis'); return; }
+        let msj = txt.slice(0, 300); try { const j = JSON.parse(txt); msj = `${j.message || ''} · ${(j.cause || []).filter((c) => c && c.type !== 'warning').map((c) => `${c.code}: ${c.message}`).join(' | ')}`; } catch { }
+        console.log(`   ✗ ML no prendió el envío gratis (${r.status} ${msj.slice(0, 400)}): la pauso`);
+        const r2 = await fetch(`${ML_API}/items/${mla}`, { method: 'PUT', headers: { Authorization: 'Bearer ' + tk, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'paused' }), signal: AbortSignal.timeout(30000) });
+        _anotarEscrituraML(r2, mla, 'pausar gemela sin envío gratis', '');
+        await db.patch('cyc/mllinks/' + mla, { noAutoActivar: true });
+        let b3 = null; try { b3 = await mlGet('/items/' + mla + '?attributes=id,status', tk); } catch { }
+        console.log(`   releído: ${b3 ? b3.status : '?'} · noAutoActivar anotado`);
         return;
       }
       if (arg.startsWith('anotar:')) {
