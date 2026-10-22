@@ -143,6 +143,10 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
 7. Todo lo que escribe va en UNA corrida de ml-sync al final.
 8. **Los domingos, además:** el catálogo entero (todas las activas con stock, como era antes) y **el ayudante de ideas a fondo
    (max)**, que ya no corre todos los días (decisión suya del 21/10: *"semanal y a fondo"*). Lee `notas/ideas.md` para no repetir.
+9. **Los domingos, además: medir las gemelas** (pedido suyo del 22/10), las Premium y las de envío gratis (`gemelaTipo:'envio'`, 6c).
+   Por cada par: ventas por día con stock de la gemela y de su Clásica desde que existe la gemela contra antes, y la plata que dejó
+   cada una. Cuáles venden, cuáles le sacan ventas a la Clásica sin sumar plata y cuáles no venden nada en 30+ días. Las que no
+   sirven van al `pregunto:` como propuesta de sacarlas, todas juntas con (a)/(b). No se borra ninguna sin que él diga.
 11. Los lunes: contar `notas/correcciones.md` de la semana contra la anterior.
 
 ===========================================================================================================================
