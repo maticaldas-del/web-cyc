@@ -9470,3 +9470,10 @@ Medido con `ventashora:30` (1.534 compras, 51 por día): de 21 a 23 h se vende t
 cargaba ~15 ventas de la noche. Ahora: completa **08:52** (cubre 00 a 08 h) y cortas a las **11:52, 13:52, 15:52, 17:52, 19:52,
 21:52 y 23:52** (`trig_01FCaQqzU5MA422N6Z8nH63Z`), ~6 a 8 ventas por vuelta. Las dos tareas ya dicen `ventasraras:nuevas` → ficha
 de cada publicación que vendió → `ventasvistas:<ts>|esf=…|<MLA>=…;go`, y ninguna dice más "liviana".
+
+## 📨 AL CHAT LOCAL SE LE PASA SÓLO LO QUE INTERESA (22/10/2026, regla suya)
+Él, con las vendidas de las listas: *"siempre pasame el promt con la mercaderia que si interesa. como hiciste ahora"*. Cada vez que
+el chat local tenga que mirar algo, se le manda el texto listo para pegar y la lista YA FILTRADA a lo que puede entrar a un pedido
+(margen 25%+ y en catálogo), no la lista entera. El resto se dice con números (cuántos y por qué no) y se ofrece aparte; el chat
+local no gasta tiempo en lo que no da. Los archivos van por SendUserFile desde el scratchpad, nunca al repo (traen nombres de
+productos de proveedores). Primer caso: `faltaventas:todas` → 183 de 7.392 (PROMPT_VENTAS_LISTAS).
