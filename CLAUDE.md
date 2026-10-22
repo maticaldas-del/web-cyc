@@ -90,7 +90,7 @@
   2a lo que queda abajo de 25% después de buscarle techo **no se repone** y le propongo un reemplazo · 4a tarjeta 🧮 Mezcla en
   Métricas · 5a **Watch S5 y Redmi Pad 2 no se reponen más** · 6a **Full: meta menos de $100.000/mes; un retiro de Full sólo con su
   OK** · 7a lo nuevo va a la cuenta con más lugar contra H · 8b **por ahora las 4 cuentas en H, sin 5ª cuenta ni K**. Detalle en
-  `ml-sync/CEREBRO.md` (💹). La 3 (ordenar por ganancia por peso facturado) se le explica de nuevo y se decide después.
+  `ml-sync/CEREBRO.md` (💹). La 3 (ordenar compras y pedidos por ganancia por peso facturado): **no se toca por el momento** (él, 22/10); no volver a proponerla hasta que la saque él.
 - **La plata ya no es el límite: el proveedor sí** (24/08). Liberar caja vale menos que el almacenamiento y el descarte.
 - OSDE y el colegio son PERSONALES (no cargar). **Sancor = la obra social privada de Ayelen** (un solo renglón, monto real de la factura).
 
