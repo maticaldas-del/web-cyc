@@ -2706,3 +2706,4 @@ ventas: lo leen el ayudante de las vueltas y el de la completa (con la ficha), n
 lo dicen. Qué chequear: que una regla nueva vaya a CLAUDE.md (corta), CEREBRO.md y, si toca ventas, VENTAS.md; que nada vigente quede
 sólo en HISTORIA.md; que CLAUDE.md no vuelva a crecer con historia (la historia va a REVISION.md o HISTORIA.md).
 - 22/10/2026: VENTAS.md al día con 🔐 (`!sinlinea` `!sincerteza` `!sintecho` `!bajocero` `#remate` son suyas), F9 y el detector `errores`; cada error de una venta se anota en su sección 7. Qué chequear: que VENTAS.md no contradiga CEREBRO §0c.
+- 22/10/2026: `planilla` 🛡️: las gemelas (Premium y envío gratis, `gemelaDe`) salen como excepción "la alinea el robot a su Clásica", no para subir a mano. Qué chequear: que la lista 🛡️ no traiga MLA con `gemelaDe` en "para subir".
