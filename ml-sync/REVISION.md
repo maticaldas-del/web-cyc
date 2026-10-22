@@ -2628,6 +2628,12 @@ y el disponible no salte; que un pedido de lista llegado aparezca en Deudas hast
   Nuevo = primera tanda en Full (sin `cero` ni `desdePrev` en `cyc/stockhist`) o 🆕 lanzamiento: una reposición después de agotarse no es un lanzamiento y baja normal (escalera). Y la publicación tiene que ser nueva (`altaTs` de menos de 60 días): una publicación vieja que se repuso no es lanzamiento.
 
 
+### 22/10/2026 · 🟧🟦 Premium y envío gratis en las barras de ventas (v26.10, etapa 7)
+- Él: *"en las barras de ventas no aparecen las premium ni envío gratis"*. Premium en naranja ya existía pero HOY no se separaba (el día
+  de hoy lo arma otro bloque y se salteaba); envío gratis no existía. Ahora `uP` (Premium: `tipoPub` gold_pro o gemela Premium) y `uG`
+  (gemela con `gemelaTipo:'envio'`, celeste #38bdf8, el color del chip de la venta) en todos los días, hoy incluido; tarjeta Vendió y leyenda.
+- **Chequear:** que las cuatro partes (Clásica, envío, Premium, remate) sumen la barra entera.
+
 ### 22/10/2026 · 💳📦 Filtro de ventas por Premium o envío gratis (v26.09, etapa 7)
 - Ventas → ⚙️ Filtros, al lado de las cuentas: `vpFilterVia` ('premium' = `tipoPub` gold_pro · 'envio' = `mllinks.gemelaTipo==='envio'`,
   la misma regla del chip "📦 envío gratis" de cada venta). El botón dice cuántas hay con la búsqueda y la cuenta de ahora.
