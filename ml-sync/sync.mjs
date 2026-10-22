@@ -17125,6 +17125,64 @@ async function main() {
     // de costo del mes). Por eso m = fijos ÷ base. Se toma la base de los últimos N días (30) llevada
     // a un mes, y los fijos de los 2 últimos meses CERRADOS (el mes en curso está a medias).
     // Sin `:go` sólo muestra. Con `:go` escribe SÓLO minPct (el mismo lugar que `meta`) y relee.
+    // BILLING_PROBE=mezcla[:<días>] (22/10/2026, SOLO LEE). Pedido suyo: *"la idea es irnos moviendo hacia arriba (…) dejar de
+    // vender productos de 20% y vender más de 50%"* y *"lo que más me preocupa es paulvic, si aumentamos la línea de ganancia
+    // pueden quedar afuera y cae mucha venta de golpe"*. Mide la MEZCLA de las ventas por % de ganancia (la misma cuenta que
+    // `pisobase`: ganancia = neto − costo − IIBB/mono; % sobre costo + impuestos + envío de Full), por tramo, cuánto deja cada
+    // $100 facturados, qué se iría con cada vara (por producto × color, su promedio) y el Paulvic aroma por aroma.
+    if (/^mezcla(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _mz = String(process.env.BILLING_PROBE).split(':');
+      const DIAS = Math.max(3, parseInt(_mz[1]) || 30);
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const mono = (await db.get('cyc/monotributo')) || {};
+      const monoP = parseFloat(mono.pct) || 0;
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      const desde = Date.now() - DIAS * 86400e3;
+      const kDesde = new Date(desde - 3 * 3600e3).toISOString().slice(0, 10).replace(/-/g, '_');
+      const $ = (n) => '$' + Math.round(n).toLocaleString('es-AR');
+      const filas = []; let sinCosto = 0;
+      for (const [k, ents] of Object.entries(vp)) {
+        if (k.slice(0, 10) < kDesde) continue;
+        for (const v of Object.values(ents || {})) {
+          if (!v || v.cancelada) continue;
+          if (!(v.costo > 0)) { sinCosto++; continue; }
+          const p = pIdx[v.prodId] || {};
+          const q = v.qty || 1;
+          const imp = (v.total || 0) * (mlExtraPct(v.cuenta) + monoP) / 100;
+          const g1 = Number(p.netoCalcEnvio) > 0 ? Number(p.netoCalcEnvio) : (Number(p.gestFull) || 0);
+          const gest = (v.total || 0) / q >= 33000 ? g1 * q : 0;
+          const gan = (v.neto || 0) - v.costo - imp, base = v.costo + imp + gest;
+          const nom = p.name || v.prod || '?';
+          filas.push({ fac: v.total || 0, gan, base, u: q, nom, var: v.variante || '', clave: (v.prodId || nom) + '|' + (v.variante || ''), pv: /paulvic/i.test(nom + ' ' + (v.prod || '')) });
+        }
+      }
+      const suma = (xs) => xs.reduce((a, x) => ({ fac: a.fac + x.fac, gan: a.gan + x.gan, base: a.base + x.base, u: a.u + x.u }), { fac: 0, gan: 0, base: 0, u: 0 });
+      const T = suma(filas);
+      const pct = (o) => (o.base > 0 ? (o.gan / o.base * 100) : 0);
+      console.log(`=== MEZCLA DE LAS VENTAS · últimos ${DIAS} días · ${filas.length} renglones de venta (${sinCosto} sin costo, afuera) ===`);
+      console.log(`TOTAL: facturado ${$(T.fac)} · ganancia ${$(T.gan)} · ${pct(T).toFixed(1)}% · deja ${$(T.gan / T.fac * 100)} cada $100 facturados · ${T.u} u.`);
+      console.log('\n── POR TRAMO DE % (cada venta con su propio %) ──');
+      const tramos = [[-1e9, 0, 'pierde (abajo de 0%)'], [0, 25, '0 a 25%'], [25, 35, '25 a 35%'], [35, 50, '35 a 50%'], [50, 1e9, '50% o más']];
+      for (const [a, b, n] of tramos) {
+        const o = suma(filas.filter((x) => { const m = x.base > 0 ? x.gan / x.base * 100 : 0; return m >= a && m < b; }));
+        console.log(`  ${n.padEnd(22)} facturado ${$(o.fac).padStart(13)} (${(o.fac / T.fac * 100).toFixed(1)}%) · ganancia ${$(o.gan).padStart(12)} (${(o.gan / T.gan * 100).toFixed(1)}%) · deja ${$(o.fac ? o.gan / o.fac * 100 : 0)} c/$100 · ${o.u} u.`);
+      }
+      // Por producto × color (su promedio): qué se va con cada vara.
+      const porP = {}; for (const x of filas) { const o = porP[x.clave] || (porP[x.clave] = { nom: x.nom, var: x.var, pv: x.pv, fac: 0, gan: 0, base: 0, u: 0 }); o.fac += x.fac; o.gan += x.gan; o.base += x.base; o.u += x.u; }
+      const P = Object.values(porP);
+      console.log('\n── SI DEJARA DE REPONER LO QUE QUEDA ABAJO DE CADA VARA (producto × color, su promedio del período) ──');
+      for (const vara of [20, 25, 30, 35, 40]) {
+        const fuera = P.filter((o) => pct(o) < vara), o = suma(fuera), pvF = fuera.filter((x) => x.pv);
+        const opv = suma(pvF);
+        console.log(`  vara ${vara}%: se van ${fuera.length} de ${P.length} · facturado ${$(o.fac)} (${(o.fac / T.fac * 100).toFixed(1)}%) · ganancia ${$(o.gan)} (${(o.gan / T.gan * 100).toFixed(1)}%) · de eso Paulvic: ${pvF.length} aromas, ${$(opv.fac)} facturado, ${$(opv.gan)} ganancia`);
+      }
+      const pv = P.filter((o) => o.pv).sort((a, b) => b.gan - a.gan), tpv = suma(pv);
+      console.log(`\n── PAULVIC · ${pv.length} aromas · facturado ${$(tpv.fac)} (${(tpv.fac / T.fac * 100).toFixed(1)}% del total) · ganancia ${$(tpv.gan)} (${(tpv.gan / T.gan * 100).toFixed(1)}%) · ${pct(tpv).toFixed(1)}% · ${tpv.u} u. ──`);
+      for (const o of pv) console.log(`  ${String(o.var || o.nom).slice(0, 34).padEnd(34)} ${String(o.u).padStart(3)} u. · facturado ${$(o.fac).padStart(11)} · ganancia ${$(o.gan).padStart(10)} · ${pct(o).toFixed(1)}%`);
+      console.log('\n── LOS 15 QUE MÁS FACTURAN ABAJO DE 30% ──');
+      for (const o of P.filter((x) => pct(x) < 30).sort((a, b) => b.fac - a.fac).slice(0, 15)) console.log(`  ${(o.nom + (o.var ? ' · ' + o.var : '')).slice(0, 50).padEnd(50)} ${String(o.u).padStart(3)} u. · facturado ${$(o.fac).padStart(11)} · ganancia ${$(o.gan).padStart(10)} · ${pct(o).toFixed(1)}%`);
+      return;
+    }
     if (/^pisobase(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const _pb = String(process.env.BILLING_PROBE).split(':');
       const DIAS = Math.max(7, parseInt(_pb[1]) || 30);
