@@ -394,7 +394,7 @@
 | `informe:12` | el log único de la vuelta: avisos, ventas, decisiones y resultado, pausadas, nuevas, pedidos, cajas, preguntas, frenadas, caja perdida, fechas |
 | `ventasraras:nuevas` / `ventasraras[:horas]` | ventas nuevas con su %, 🔬 A FONDO y ✓ normales, 🏷️ en promo |
 | `ventasvistas:<ts>\|esf=<nivel>\|<MLA>=<texto>\|…;go` | cierra las ventas analizadas y deja el 🔬 en cada una (ml-consulta) |
-| `ficha:<MLA>[,…]` / `ficha:cuenta=<cuenta>` | la ficha médica completa (sólo lee) |
+| `ficha:<MLA>` (varias: UNA POR RENGLÓN, con coma no anda) / `ficha:cuenta=<cuenta>` | la ficha médica completa (sólo lee) |
 | `decido:<MLA>=<precio>[!piso][!cruza][!sinlinea!activar]#<tag>\|<motivo>;…;go` | poner un precio con estrategia y motivo (sin `;` en el motivo) · `=nota\|…` sólo nota · `decido:ped:<id>[#color]=u\|N\|motivo` · `=venta\|<precio>` · `decido:caja:<id>@<cuenta>[#color]=u\|N\|motivo` · `decido:archivo=<nombre>;go` · `decido:dia:<fecha>=nota\|…` |
 | `entrarpromo:<MLA>=<precio>@<id\|PRICE_DISCOUNT>\|motivo;go` / `=salir` | entrar o salir de una promo/descuento |
 | `tag:<MLA>=<tag>\|motivo;go` / `tag` | poner o listar estrategias |
