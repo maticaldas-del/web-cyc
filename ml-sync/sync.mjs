@@ -41505,7 +41505,8 @@ async function main() {
             if (!(f.escFull || f.escComp) || !(f.st > 0)) continue;
             const vts = ((V[f.k] || {}).vts || []).map(([t]) => t); if (!vts.length) continue;
             const ultV = Math.max(...vts);
-            for (const m of (pubs[f.k] || [])) {
+            // Las gemelas (Premium y envío gratis) siguen a su Clásica: la decisión es la de la Clásica (22/10/2026).
+            for (const m of (pubs[f.k] || []).filter((x) => !(links[x] || {}).gemelaDe)) {
               const dec = ultDec[m] || 0;
               if (ultV > dec) { const nDesp = vts.filter((t) => t > dec).length; alarma.push(`🚨 ${m} · ${pName[f.pid] || f.pid}${f.color ? ' · ' + f.color.replace(/_/g, ' ') : ''} · ${f.cta} · ${f.st} u. · ${f.r14.toFixed(2)}/día${f.rapido ? ' ⚡' : ''} · vendió ${nDesp} ${dec ? 'desde mi última decisión (' + new Date(dec - 3 * 3600e3).toISOString().slice(8, 10) + '/' + new Date(dec - 3 * 3600e3).toISOString().slice(5, 7) + ')' : 'y nunca decidí su precio'}`); }
             }
