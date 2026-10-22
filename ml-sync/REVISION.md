@@ -525,6 +525,14 @@ Qué chequear: que un cambio no salga dos veces (foto + decisión) y que un `dec
   en 25 (si sube a 35, lo de 25-34% se iría a "nunca más") · que la mezcla cierre contra los KPIs (mismo % que el renglón de Ventas) ·
   que `lugarHPorCuenta` mire la misma ventana que `topeh` y la tarjeta ⚖️.
 
+### 22/10/2026 · 📈 La línea de tiempo y las ventas por gemela (v26.07, etapa 8)
+- Él: *"al vender en cuota y envío gratis aumenta el precio pero el neto y la ganancia es el mismo"*. Los días con ventas la línea
+  dibuja lo COBRADO por unidad, y la gemela (Premium o con envío gratis) se cobra más cara para dejar la misma plata. Ahora, para el
+  PRECIO, cada venta de una gemela vale el precio de su Clásica ese día (`lineaPintar` tE/qE; `_lineaJunta` `totEq`/`uEq` para las rayas;
+  robot `juntarLineaStock` `uOwn`/`totOwn` en `rayasPrecioLinea` y en los tramos de la ficha). Lo cobrado (`tot`) y la ganancia no cambian.
+- **Chequear:** todo lugar que saque un "precio cobrado" de `tot/u` de una línea junta (grep `tot) / Number`), y que el 3% de tope de H
+  siga usando lo cobrado de verdad (la gemela sí gasta más tope).
+
 ### 22/10/2026 · 🎉 "primera venta" de una gemela (v26.06, etapa 5)
 - Él con las Cartas Casino: el cartel decía "primera venta de esta publicación · tardó 30 días con stock en Full" en la gemela Premium
   creada el 20-21/10. El stock de Full es del producto (lo comparten todas sus publicaciones): `_vhDiasStock` cuenta desde `altaTs` si la

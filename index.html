@@ -2938,7 +2938,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.06';
+const APP_VERSION='26.07';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2951,6 +2951,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.07',f:'22/10',h:'19:05',c:[{n:2,t:'Línea de tiempo: las ventas por una gemela Premium o con envío gratis cuentan al precio de su Clásica ese día. Se cobran más caras para dejar la misma plata, así que ya no suben la línea del precio ni mueven las rayas de techo y piso.'}]},
   {v:'26.06',f:'22/10',h:'18:40',c:[{n:3,t:'Comprar algo nuevo (Paraguay y Listas) pide 35% de ganancia: lo de 25% a 34% queda guardado y se sigue midiendo. Reponer lo que ya vendés sigue en 25%.'},{n:2,t:'Métricas: tarjeta nueva 🧮 La mezcla de cada mes, con qué parte de lo facturado viene de ventas de menos de 25%, 25-35%, 35-50% y 50% o más, y cuánto deja cada $100 facturados (meta $22).'},{n:1,t:'Ventas: la primera venta de una gemela Premium o con envío gratis lo dice, y los días se cuentan desde que se publicó (no desde que entró el stock).'}]},
   {v:'26.05',f:'22/10',h:'15:20',c:[{n:1,t:'Inicio · Mes y Año: arriba del calendario van las ventas brutas (en blanco) y la ganancia (en verde), cada una con su total y su promedio por día. Los cuadritos del calendario muestran el número completo (sin "k").'}]},
   {v:'26.04',f:'22/10',h:'13:35',c:[{n:1,t:'Ventas: la venta que salió por una gemela con envío gratis lleva el cartel celeste "📦 envío gratis", como el de Premium.'}]},
@@ -10862,6 +10863,11 @@ function _lineaJunta(porMla,lks,varSel){
       if(x.uR!=null){o.uR=(o.uR||0)+Number(x.uR||0);}
       if(x.vis!=null){o.vis=(o.vis||0)+Number(x.vis||0);}
       if(x.tot!=null){o.tot=(o.tot||0)+Number(x.tot||0);}
+      // 💳📦 EL PRECIO DE UNA VENTA POR LA GEMELA, AL PRECIO DE SU CLÁSICA (22/10/2026, él: "al vender en cuota y envío gratis aumenta
+      // el precio pero el neto y la ganancia es el mismo"). La gemela se cobra más cara para dejar la misma plata: para el PRECIO de la
+      // línea (y las rayas) cuenta como vendida al precio de su Clásica ese día. Lo cobrado de verdad (`tot`) no se toca.
+      if(Number(x.u)>0&&Number(x.tot)>0){const gd=lks&&String((lks[mla]||{}).gemelaDe||'');const pc=gd&&gd!==mla?Number(((porMla[gd]||{})[k]||{}).p)||0:-1;
+        if(pc!==0){o.uEq=(o.uEq||0)+Number(x.u);o.totEq=(o.totEq||0)+(pc>0?Number(x.u)*pc:Number(x.tot));}}
       if(x.st!=null){if(lks){const l=lks[mla]||{},cta=String(l.cuenta||'?'),vr=_lineaColorDe(l);
           // Color sacado también del TÍTULO (igual que `_varPorMla` y el robot, etapa 8). Una publicación de UN
           // color que no se identifica: sólo su depósito (relleno) cuenta, como un color aparte; la foto de la noche
@@ -11018,12 +11024,14 @@ function lineaPintar(prodId){
   // eso un día que vendió 4 decía "no vendió" y la franja de stock salía roja. Mismo filtro que la ganancia (`gd`).
   const _vp1=Object.keys(state.ventaprod||{}).filter(k=>/^\d{4}_\d{2}_\d{2}$/.test(k)).sort()[0]||null;
   for(const k of ks){const ents=Object.values((state.ventaprod||{})[k]||{}).filter(v=>v&&!v.cancelada&&(prodDeVenta(v)||{}).id===prodId&&_vOk(v));
-    let t=0,q=0,qR=0,qP=0;ents.forEach(v=>{t+=Number(v.total)||0;q+=Number(v.qty)||0;if(ventaEnRemate(v,k))qR+=Number(v.qty)||0;else if(v.tipoPub==='gold_pro')qP+=Number(v.qty)||0;});
+    // tE/qE: lo cobrado para el PRECIO de la línea, con las ventas de una gemela al precio de su Clásica ese día (22/10/2026, ver _lineaJunta).
+    let t=0,q=0,qR=0,qP=0,tE=0,qE=0;ents.forEach(v=>{t+=Number(v.total)||0;q+=Number(v.qty)||0;
+      {const gd=String((_lk[v.mla]||{}).gemelaDe||''),qq=Number(v.qty)||0;if(gd&&gd!==v.mla){const pc=Number(((C.porMla[gd]||{})[k]||{}).p)||Number((dias[k]||{}).pLista||(dias[k]||{}).p)||0;if(pc>0&&qq>0){tE+=qq*pc;qE+=qq;}}else{tE+=Number(v.total)||0;qE+=qq;}}if(ventaEnRemate(v,k))qR+=Number(v.qty)||0;else if(v.tipoPub==='gold_pro')qP+=Number(v.qty)||0;});
     // 💳 Premium aparte (21/10/2026, él: "las que se vendan como clásicas sigan en verde y las premium en naranja, así veo si hacer
     // publicaciones premium aumentó las ventas y ganancias"). Sale de `tipoPub` de cada venta; sin el dato cuenta como Clásica.
     // "En remate" con la MISMA regla que la línea de todos y Pedidos (ventaEnRemate), no la marca del robot (etapa 8).
     if(_vp1&&k>=_vp1&&!(dias[k]&&dias[k].hoy)&&(q>0||(dias[k]&&dias[k].u!=null))){const o=dias[k]=dias[k]||{u:null,uR:null,vis:null,st:null,stN:0,p:null,caja:null,rem:false,esc:null,mg:null,tot:null,pubs:0};o.u=q;o.uR=qR;o.uP=qP;}
-    if(q>0&&t>0){const _o=(dias[k]=dias[k]||{u:null,uR:null,vis:null,st:null,stN:0,p:null,caja:null,rem:false,esc:null,mg:null,tot:null,pubs:0});if(_o.p>0&&!_o.pCob)_o.pLista=_o.p;_o.p=Math.round(t/q);_o.pCob=true;}}
+    if(qE>0&&tE>0){const _o=(dias[k]=dias[k]||{u:null,uR:null,vis:null,st:null,stN:0,p:null,caja:null,rem:false,esc:null,mg:null,tot:null,pubs:0});if(_o.p>0&&!_o.pCob)_o.pLista=_o.p;_o.p=Math.round(tE/qE);_o.pCob=true;}}
   // Escala con un rango mínimo del 20%: un cambio de 3% no puede verse como un salto (él, con el costo: "$1.007 a $1.036").
   const _esc=(mn,mx)=>{if(!(mx>0))return[0,1];if(mx-mn<mx*0.2){const c=(mx+mn)/2;return[c-mx*0.1,c+mx*0.1];}return[mn,mx];};
   const ps=ks.map(k=>dias[k]&&dias[k].p).filter(x=>x>0); const [pMin,pMax]=ps.length?_esc(Math.min(...ps),Math.max(...ps)):[0,1];
@@ -11165,7 +11173,7 @@ function lineaPintar(prodId){
     // 1a (21/10/2026, decisión suya): el día que cambia el precio, lo vendido vale al precio (de hoy o de ayer) más parecido a lo
     // cobrado por unidad (Filtro 19/10: 5 de 6 a $4.990 quedaban a $5.750). Misma regla en `rayasPrecioLinea` del robot.
     const _plR={};{let pA=null;ks.slice().sort().forEach(k=>{const d=_rayasDias[k];if(!d)return;const pN=Number(d.pLista||d.p)>0?Number(d.pLista||d.p):pA;let pl=pN||0;
-      if((d.u||0)>0&&Number(d.tot)>0&&pA&&pN&&pA!==pN){const pu=Number(d.tot)/Number(d.u);if(Math.abs(pu-pA)<Math.abs(pu-pN))pl=pA;}_plR[k]=Number(d.pLista||d.p)>0?pl:0;pA=pN;});}
+      if((d.u||0)>0&&Number(d.tot)>0&&pA&&pN&&pA!==pN){const pu=Number(d.uEq)>0&&Number(d.totEq)>0?Number(d.totEq)/Number(d.uEq):Number(d.tot)/Number(d.u);if(Math.abs(pu-pA)<Math.abs(pu-pN))pl=pA;}_plR[k]=Number(d.pLista||d.p)>0?pl:0;pA=pN;});}
     const G={};ks.forEach(k=>{const d=_rayasDias[k];if(!d)return;if(d.est!=null&&d.est!=='active')return;if(!(d.st!=null&&d.st>=3&&d.vis!=null))return;const pl=_plR[k]||0;if(!(pl>0))return;
       const b=Math.round(pl/10)*10;const g=(G[b]=G[b]||{p:b,dias:0,u:0,gan:0});g.dias++;g.u+=Math.max(0,(d.u||0)-(d.uR||0));g.gan+=_ganRaya(k)-_pdDed(d);});
     const L=Object.values(G).map(g=>({...g,r:g.u/g.dias,pd:g.gan/g.dias,gu:g.u?g.gan/g.u:null}));

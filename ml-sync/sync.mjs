@@ -4020,7 +4020,10 @@ function juntarLineaStock(dPropia, otras) {
   const out = {};
   for (const [k, x] of Object.entries(dPropia || {})) {
     if (!/^\d{4}_\d{2}_\d{2}$/.test(k) || !x || typeof x !== 'object') { out[k] = x; continue; }
-    const o = { ...x };
+    // `uOwn`/`totOwn`: lo vendido y cobrado por ESTA publicación sola. El precio cobrado del día (el que decide a qué precio de lista
+    // se vendió el día que cambió) sale de acá: una gemela se cobra más cara para dejar la misma plata (22/10/2026, él: "al vender en
+    // cuota y envío gratis aumenta el precio pero el neto y la ganancia es el mismo"). Misma idea que `totEq` de la web.
+    const o = { ...x, uOwn: x.u, totOwn: x.tot };
     for (const d2 of (otras || [])) {
       const y = d2 && d2[k]; if (!y || typeof y !== 'object') continue;
       for (const c of ['u', 'uR', 'neto', 'tot']) if (y[c] != null) o[c] = (Number(o[c]) || 0) + (Number(y[c]) || 0);
@@ -4128,7 +4131,7 @@ function rayasPrecioLinea(d, cu, imp, hoyK, parte = 1) {
     // o de ayer) más parecido a lo cobrado por unidad, la misma regla de los tramos de `armarFicha` (Filtro 19/10: 5 de 6 a $4.990
     // quedaban anotadas a $5.750). Misma regla en la web (`_rayas`).
     const pN = Number(x.p) > 0 ? Number(x.p) : pAnt;
-    let pl = pN || 0; if (Number(x.u) > 0 && Number(x.tot) > 0 && pAnt && pN && pAnt !== pN) { const pu = Number(x.tot) / Number(x.u); if (Math.abs(pu - pAnt) < Math.abs(pu - pN)) pl = pAnt; }
+    let pl = pN || 0; if (Number(x.u) > 0 && Number(x.tot) > 0 && pAnt && pN && pAnt !== pN) { const pu = Number(x.uOwn) > 0 && Number(x.totOwn) > 0 ? Number(x.totOwn) / Number(x.uOwn) : Number(x.tot) / Number(x.u); if (Math.abs(pu - pAnt) < Math.abs(pu - pN)) pl = pAnt; }
     pAnt = pN;
     if (!(x.st != null && Number(x.st) >= 3 && x.vis != null)) continue;
     // 21/10/2026 · etapa 1: un día pausado o frenado por ML (no se podía comprar) no mide el precio; sin `est` sigue contando.
@@ -4914,7 +4917,7 @@ function armarFicha({ mla, d, e, cu, imp, cambios, notas, hoyK, tach, parc, extr
     // vale el precio (de hoy o de ayer) más parecido a lo que se cobró por unidad (Centímetro 08/10: 18 vendidas a $3.450
     // quedaban anotadas a $4.690, el precio de la noche).
     const x = d[k]; const pN = Number(x.p) > 0 ? Number(x.p) : pAnt;
-    let p = pN; if (Number(x.u) > 0 && Number(x.tot) > 0 && pAnt && pN && pAnt !== pN) { const pu = Number(x.tot) / Number(x.u); if (Math.abs(pu - pAnt) < Math.abs(pu - pN)) p = pAnt; }
+    let p = pN; if (Number(x.u) > 0 && Number(x.tot) > 0 && pAnt && pN && pAnt !== pN) { const pu = Number(x.uOwn) > 0 && Number(x.totOwn) > 0 ? Number(x.totOwn) / Number(x.uOwn) : Number(x.tot) / Number(x.u); if (Math.abs(pu - pAnt) < Math.abs(pu - pN)) p = pAnt; }
     pAnt = pN;
     if (!cur || p !== cur.p) { if (cur) tramos.push(cur); cur = { p, desde: k, hasta: k, dias: 0, diasSt: 0, agot: 0, u: 0, neto: 0, tot: 0, uR: 0, stD: 0, vis: 0, nv: 0, cajas: {}, est: {} }; }
     cur.hasta = k; cur.dias++;
