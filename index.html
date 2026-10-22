@@ -2933,7 +2933,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.03';
+const APP_VERSION='26.04';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2946,6 +2946,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.04',f:'22/10',h:'13:35',c:[{n:1,t:'Ventas: la venta que salió por una gemela con envío gratis lleva el cartel celeste "📦 envío gratis", como el de Premium.'}]},
   {v:'26.03',f:'22/10',h:'10:45',c:[{n:1,t:'Inicio · Mes y Año: arriba del calendario, la ganancia total y el promedio por día (con cuántos días).'},{n:2,t:'Pedidos: si lo que hay en la oficina más lo que viaja a Full ya llega a lo que decidí comprar, no se pide; y si estaba cargado en el pedido de Paraguay, se saca solo.'}]},
   {v:'26.02',f:'22/10',h:'11:30',c:[{n:1,t:'Inicio · calendario de días y de meses: cada cuadrito se mueve según lo que vendió. Bajo y justo quietos, bien y bueno laten, excelente y estrella flotan, JOYA además brilla.'}]},
   {v:'26.01',f:'22/10',h:'11:15',c:[{n:1,t:'Métricas: el globito del gráfico dice la diferencia en $ además del % (contra el período anterior y el año pasado).'}]},
@@ -13405,7 +13406,7 @@ function renderVentaProd(){
       // clásica o premium y en cuántas cuotas"). Lo anota el robot en cada venta (`tipoPub`, `cuotas`, `cuotasSI`); las viejas
       // las completa `tipoventa:go`. Una venta sin el dato no muestra nada (no se adivina). En un carrito con tipos distintos
       // sale uno por cada combinación.
-      const tipoLabel=(()=>{const vs=[...new Set(grp.items.map(v=>{const lt=v.tipoPub,c=Number(v.cuotas)||0;if(!lt&&!c)return'';
+      let tipoLabel=(()=>{const vs=[...new Set(grp.items.map(v=>{const lt=v.tipoPub,c=Number(v.cuotas)||0;if(!lt&&!c)return'';
         const tn=lt==='gold_pro'?'Premium':lt==='gold_special'?'Clásica':'';
         const ct=c>1?`${c} cuotas${v.cuotasSI?' s/interés':''}`:c===1?'1 pago':'';
         return [tn,ct].filter(Boolean).join(' · ')+'|'+(lt==='gold_pro'?1:0)+'|'+(v.cuotasSI?1:0);}).filter(Boolean))];
@@ -13414,6 +13415,9 @@ function renderVentaProd(){
         return vs.filter(x=>x.split('|')[1]==='1').map(x=>{const [t,pr,si]=x.split('|');const col=pr==='1'?'#eab308':'var(--muted)';
           const tt=(pr==='1'?'Se vendió por la publicación PREMIUM (con cuotas). ':t.startsWith('Clásica')?'Se vendió por la publicación CLÁSICA. ':'')+(si==='1'?'El interés de las cuotas lo pagamos nosotros (cuotas sin interés).':/cuotas/.test(t)?'Pagó en cuotas con interés: el interés lo pagó el comprador.':'');
           return `<span style="font-size:.62rem;padding:1px 6px;border-radius:4px;border:1px solid ${pr==='1'?'rgba(234,179,8,.5)':'var(--border2)'};color:${col};white-space:nowrap" title="${tt}">💳 ${t}</span>`;}).join(' ');})();
+      // 📦 ENVÍO GRATIS (22/10/2026, pedido suyo: "cuando se venden con envío gratis (solo las que no hubieran tenido) aparece un
+      // mensaje como premium en color?"): la venta salió por una gemela Clásica con envío gratis (`mllinks.gemelaTipo==='envio'`).
+      if(grp.items.some(v=>((state.mllinks||{})[v.mla]||{}).gemelaTipo==='envio')){const _eg=`<span style="font-size:.62rem;padding:1px 6px;border-radius:4px;border:1px solid rgba(56,189,248,.5);color:#38bdf8;white-space:nowrap" title="Se vendió por la publicación gemela CON ENVÍO GRATIS (Clásica, precio más alto con el envío adentro). Sin esa publicación esta venta no habría tenido envío gratis.">📦 envío gratis</span>`;tipoLabel=tipoLabel?tipoLabel+' '+_eg:_eg;}
       const analisisLabel=analisisVentaHTML(grp.items);   // 🔬 análisis del robot (otra sesión, 21/10)
       const nroLabel=isCancelled?'':ventaNroHTML(grp.items);   // A5 (21/10/2026): 🥇 1ª / 🥈 2ª venta desde el último cambio de precio
       const _esAv=!!(_vpAvisoIds&&grp.items.some(v=>_vpAvisoIds.has(v.id))),_avSt=_esAv?`--avc:${gpct!=null?pctColor(gpct):'var(--green)'};`:'';

@@ -2686,3 +2686,8 @@ la oficina, el pedido decía comprar 1): *"si está en el envío hay que sacarlo
 con decisión mía en `u` (sin colores): si oficina + `transitoTotal` ≥ lo decidido → 0, el 🧠 lo dice y se saca de `cyc/py_armado` (una vez).
 `decide_pedidos.py` también tiene que restar la oficina. **Qué chequear:** productos con colores no entran (falta hacerlo color por color).
 **Y en Inicio (Mes y Año):** renglón `hcal-tot` con la ganancia total y el promedio por día arriba del calendario.
+
+### 📦 Cartel "envío gratis" en Ventas (22/10/2026, v26.04)
+Pedido suyo: la venta que salió por una gemela Clásica con envío gratis (`cyc/mllinks/<MLA>.gemelaTipo==='envio'`) lleva el
+cartel celeste "📦 envío gratis" al lado del de Premium (`tipoLabel` en Ventas x Producto). Qué chequear: que no salga en ventas
+de la Clásica original ni de las Premium.
