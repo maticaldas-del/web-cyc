@@ -9388,7 +9388,7 @@ function _nivelPct(pct, cfg) {
   if (pct == null || !isFinite(pct)) return '⚪';
   const c = cfg || {}, piso = parseFloat(c.minPct) || 30, meta = Math.max(piso, parseFloat(c.targetPct) || 25), p = Math.round(pct * 10) / 10;
   if (p >= 200) return '💎'; if (p >= 130) return '🟣'; if (p >= 70) return '🔵';
-  if (p >= Math.max(45, meta + 1)) return '🩵'; if (p >= meta) return '🟢'; if (p >= piso) return '🟠'; return '🔴';
+  if (p >= Math.max(45, meta + 1)) return '💠'; if (p >= meta) return '🟢'; if (p >= piso) return '🟠'; return '🔴';
 }
 // EL AVISO TAMBIÉN VIBRA Y SUENA EN EL TELÉFONO, DESDE LA APP DE CYC (15/10/2026, pedido suyo: "que vibre
 // y suene la web" y "yo ya lo tengo en el inicio en iphone"). Es el aviso "push" de la web: cada teléfono

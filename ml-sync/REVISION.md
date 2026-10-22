@@ -2627,6 +2627,18 @@ y el disponible no salte; que un pedido de lista llegado aparezca en Deudas hast
 - **20/10/2026 · Etapa 1 · probe `bajasnuevas[:días]` (solo lee):** mis bajas (`cyc/claudecambios`) de lo recién llegado o en lanzamiento sin 🏔️ antes de la baja. Para encontrar las que se hicieron antes del freno de `decido`. **Chequear:** misma regla que el freno (30 d con fecha real, `techook` posterior a la llegada).
   Nuevo = primera tanda en Full (sin `cero` ni `desdePrev` en `cyc/stockhist`) o 🆕 lanzamiento: una reposición después de agotarse no es un lanzamiento y baja normal (escalera). Y la publicación tiene que ser nueva (`altaTs` de menos de 60 días): una publicación vieja que se repuso no es lanzamiento.
 
+
+### 22/10/2026 · 📈 La línea de tiempo reordenada (v26.08, etapa 7, eligió 1a 2a 3a con la Codera: "cuesta entender")
+- **Qué:** arriba un cartel de una frase (escasez · cubierto · sin reposición · agotado) y 4 tarjetas (`_lnCard`); el renglón largo
+  quedó chico con el historial. Cada franja deja `LN_TG` arriba para su título, sus colores y el número de hoy (`lnHdrHTML`); el precio
+  va primero. Las notas que se pisaban adentro del gráfico (techo, sobra, bajando, prueba, "rayas de MLA…", costo, reloj de 4 meses)
+  pasaron al título de su franja (`_prNotas`, `_prRayasDe`, `_pctCosto`, `_stReloj`). La de Todos también (tarjetas + títulos; ahí el
+  orden queda con ventas primero: el índice de precio no se decide).
+- **Chequear:** a 390 px el título de cada franja no se corta (la leyenda sí, con …) · ningún texto del gráfico pisa el título · el
+  cartel dice lo mismo que el renglón de stock (`escasezDe`) · al agregar una franja nueva, ponerle su `lnHdrHTML`.
+- **Emojis nuevos que Windows no dibuja** (él vio un cuadradito en "Bueno"): 🩵 (Unicode 15) → 💠, 🪪 (14) → 📇, 🫨 (15) → 📳. **Regla: no usar
+  emojis de Unicode 14 o más nuevos** (🩵 🩷 🫨 🪪 🫧…); 🪜 y 🪄 son de Unicode 13: si él ve cuadraditos ahí, cambiarlos también.
+
 ## 8 · REGLAS DEL CEREBRO (cada 7 días, nació el 21/10/2026)
 Lo que mira, siempre con `ml-sync/CEREBRO.md` entero, `notas/correcciones.md`, `notas/preguntas.md` y `frenosBajas` (sync.mjs):
 - **Contradicciones y repetidos:** dos reglas sobre el mismo tema → queda la más nueva (la vieja se borra, no se tacha); una regla
