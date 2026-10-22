@@ -9486,3 +9486,9 @@ el chat local tenga que mirar algo, se le manda el texto listo para pegar y la l
 (margen 25%+ y en catálogo), no la lista entera. El resto se dice con números (cuántos y por qué no) y se ofrece aparte; el chat
 local no gasta tiempo en lo que no da. Los archivos van por SendUserFile desde el scratchpad, nunca al repo (traen nombres de
 productos de proveedores). Primer caso: `faltaventas:todas` → 183 de 7.392 (PROMPT_VENTAS_LISTAS).
+
+
+## 📦 PAULVIC DEL 19/10: LLEGÓ EL 22/10 COMPLETO (remitos del 20/10)
+Llegaron las 114 u. pedidas en 19 aromas, nada faltó. Vinieron 3 sueltas más (Witch Night, Good y Blue, "+1" en el remito): anotadas
+como tester (cuentan para el costo, no entran a la oficina). Flete (Transporte Oballe) $17.900. Valor declarado de los dos remitos
+$660.130,71 (el del 06/10 fue $214k declarado contra $246k a pagar: no es el monto). Pagar antes del lun 02/11 (7 hábiles).
