@@ -2655,3 +2655,8 @@ barata del catálogo medido, no del producto equivocado.
 `perfNoLocalBtn` ya no dibuja nada (lo marcado `noLocal` sigue); el botón de `candNoML` dice "🛒✕ no se puede ML" y con el filtro ML (el
 de arranque) lo marcado no aparece. `_pyRubro='todos'` y `_candFiltro='ml'` al abrir, sin localStorage. **Qué chequear:** que con el filtro
 ML no se vea ningún `noML`.
+
+**22/10/2026 · etapa 7 · el año en meses (v25.97).** Él: *"quiero que el año sea como el mes. En vez de los días, que el año tenga los
+meses con los análisis y colores"*. `_homeAnioHTML`/`_anioMeses` (index.html): 12 cuadritos del color de la ganancia promedio por día
+(niveles de `VIVA_DIA_NIV`), total abajo, 🏆 mejor mes y 🔥 racha de meses con promedio ≥ `PUNT_DIA_7`; tocar abre la tarjeta en ese mes
+(`homeCalMes`). **Qué chequear:** que el promedio del mes en curso use sólo los días ya pasados.

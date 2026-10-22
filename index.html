@@ -2921,7 +2921,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.96';
+const APP_VERSION='25.97';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2934,6 +2934,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.97',f:'22/10',h:'10:10',c:[{n:1,t:'🏷️ Ventas de este año (Inicio): los 12 meses en cuadritos, del color de su ganancia promedio por día, con 🏆 mejor mes y 🔥 racha de meses cumplidos. Tocá un mes y la tarjeta abre en ese mes.'}]},
   {v:'25.96',f:'21/10',h:'20:30',c:[{n:1,t:'🇵🇾 Nissei: se sacó el botón "no da en el local"; el de ML ahora dice "🛒✕ no se puede ML" y lo marcado sale de las sugerencias de ML. Al abrir siempre muestra Todo · ML.'}]},
   {v:'25.95',f:'21/10',h:'20:10',c:[{n:1,t:'📋 Listas (Dai Nippon y las demás): al final del nombre de cada producto, cuántas vendidas tiene en ML; si todavía no están cargadas, dice "ventas sin cargar".'}]},
   {v:'25.94',f:'21/10',h:'19:40',c:[{n:2,t:'🛒 Dai Nippon (y toda lista de Bs As): arriba, "Para comprar en el local". Una tarjeta por producto cargado en el pedido, ordenadas por marca: al tocarla muestra la foto de ML, el título de ML con lo que hay que fijarse (tamaño, pack), el precio de la lista, lo más que se puede pagar para dejar 25% y las unidades, con ✓ Lo compré · ✗ No estaba · ≠ Era otro producto (se puede deshacer).'},{n:2,t:'📋 En las listas de Bs As un producto nuevo se puede cargar con 25%+ y 2+ vendedores aunque nadie haya confirmado que es el mismo: lo verifica Tito mirando la foto en el local.'}]},
@@ -8289,6 +8290,40 @@ function _mesRachas(Y,M){
     if(t.gan>=PUNT_DIA_7){cur=cur.n?{n:cur.n+1,ini:cur.ini,fin:dt}:{n:1,ini:dt,fin:dt};if(cur.n>rec.n)rec={...cur};}else cur={n:0};}
   return{tot,mejor,rec};
 }
+// EL AÑO EN MESES (22/10/2026, él: "quiero que el año sea como el mes. En vez de los días, que el año tenga los meses con los
+// análisis y colores"). Cada cuadrito es un mes, del color de su ganancia PROMEDIO POR DÍA (los mismos niveles que los días: así
+// un mes que va por la mitad se compara con uno entero). 🏆 el mes que más dejó por día y 🔥 la racha de meses cumplidos (promedio
+// de PUNT_DIA_7 o más). Tocar un mes abre la tarjeta en ese mes. Todo sale de `_homeDiaTot`, igual que el mes.
+function homeCalMes(Y,M){const n=new Date();_homeHoyEsc='mes';_homeHoyOff=Math.max(0,(n.getFullYear()-Y)*12+(n.getMonth()-M));renderHomeHoy();}
+function _anioMeses(Y){
+  const hoy=new Date(),t0=_vpPrimerDiaTs(),out=[];
+  for(let M=0;M<12;M++){const fin=new Date(Y,M+1,0).getDate();let gan=0,ventas=0,dias=0;
+    for(let d=1;d<=fin;d++){const dt=new Date(Y,M,d,12);if(dt.getTime()>hoy.getTime()&&dateToKey(dt)!==dateToKey(hoy))break;if(dt.getTime()<t0-D864)continue;
+      const t=_homeDiaTot(dateToKey(dt));dias++;gan+=t.gan||0;ventas+=t.ventas||0;}
+    out.push({M,gan,ventas,dias,prom:dias?gan/dias:0,curso:Y===hoy.getFullYear()&&M===hoy.getMonth()});}
+  return out;
+}
+function _homeAnioHTML(hf,chip){
+  const Y=hf.getFullYear(),A=_anioMeses(Y),con=A.filter(m=>m.dias>0&&m.ventas>0);
+  const mejor=con.reduce((b,m)=>!b||m.prom>b.prom?m:b,null);
+  // Racha de meses cumplidos (promedio por día de PUNT_DIA_7 o más) que termina en el último mes con datos, y la más larga del año.
+  let cur=0,rec=0,recFin=-1;for(const m of A){if(!m.dias)continue;if(m.prom>=PUNT_DIA_7){cur++;if(cur>rec){rec=cur;recFin=m.M;}}else cur=0;}
+  const MC=_MESES_L.map(x=>x.slice(0,3));
+  let c='';
+  if(mejor&&mejor.prom>0)c+=chip(`🏆 mejor mes: ${_MESES_L[mejor.M]} · ${fmt(Math.round(mejor.prom))} por día`,'var(--lv-exc)','El mes que más ganancia dejó por día. Tocá su cuadrito para verlo.');
+  if(cur>=2||rec>=2)c+=chip(`🔥 ${cur>=2?`racha: ${cur} meses`:'sin racha ahora'}${rec>=2&&rec>cur?` · récord ${rec} (${MC[recFin-rec+1]} a ${MC[recFin]})`:''}`,'var(--lv-justo)','Meses seguidos con un promedio de '+fmt(PUNT_DIA_7)+' o más de ganancia por día (el 7 del puntaje).');
+  let enRacha=new Set();
+  {let n=0;for(let i=A.length-1;i>=0;i--){const m=A[i];if(!m.dias)continue;if(m.prom>=PUNT_DIA_7){enRacha.add(i);n++;}else break;}if(n<2)enRacha=new Set();}
+  let cells='';
+  for(const m of A){
+    if(!m.dias||!m.ventas){cells+=`<span class="hcal-d vacio">${MC[m.M]}</span>`;continue;}
+    const n=_gNivDia(m.prom),em=mejor&&m.M===mejor.M&&mejor.prom>0?'🏆':enRacha.has(m.M)?'🔥':'';
+    cells+=`<button class="hcal-d${m.curso?' hoy':''}" style="--dc:${n[2]};min-height:52px" onclick="event.stopPropagation();homeCalMes(${Y},${m.M})" title="${_MESES_L[m.M]} ${Y} · ${m.ventas} venta${m.ventas===1?'':'s'} · ganancia ${fmt(m.gan)} · ${fmt(Math.round(m.prom))} por día${m.curso?' (va en curso)':''}">${MC[m.M]}<b>${_kTxt(m.prom)}/día</b><b style="font-weight:500;opacity:.75">${_kTxt(m.gan)}</b>${em?`<em>${em}</em>`:''}</button>`;
+  }
+  const ley=VIVA_DIA_NIV.map((x,i)=>`<span><i style="--dc:${x[2]}"></i>${i===0?'menos de '+_kTxt(VIVA_DIA_NIV[1][1]):_kTxt(x[1])}</span>`).join('');
+  return `${c?`<div class="hoy-chips">${c}</div>`:''}<div class="hoy-cal"><div class="hcal-g" style="grid-template-columns:repeat(4,minmax(0,1fr))">${cells}</div><div class="hcal-ley">${ley} <span>por día</span></div>
+    <div style="font-size:.62rem;color:var(--muted);margin-top:4px">Cada cuadrito es un mes, del color de su ganancia promedio por día (los mismos colores que los días). Abajo, lo que dejó en total. Tocá uno y abre ese mes.</div></div>`;
+}
 function homeCalIr(k){_vpIrDia=String(k).replace(/_/g,'-');vpLimpiarFiltros();goPage('ventaprod');}
 function _kTxt(g){const a=Math.abs(g);return (g<0?'-':'')+(a>=1000?Math.round(a/1000)+'k':Math.round(a));}
 const _MESES_L=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
@@ -8305,6 +8340,7 @@ function _homeGustoHTML(esc,dia,hf){
     try{h+=_homeCuentasHTML(dia);}catch(e){}
     return h;
   }
+  if(esc==='anio')return _homeAnioHTML(hf,chip);
   if(esc!=='mes')return '';
   const Y=hf.getFullYear(),Mo=hf.getMonth(),R=_mesRachas(Y,Mo),hoyK=dateToKey(new Date()),esEste=Y===new Date().getFullYear()&&Mo===new Date().getMonth();
   const ra=esEste?rachaHasta(new Date()):{n:0,dias:[]},enRacha=new Set(ra.n>=2?ra.dias:[]);
