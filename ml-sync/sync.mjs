@@ -4679,6 +4679,10 @@ async function detectarErrores(db, o = {}) {
   const terminaBien = (p) => { const r = Math.round(Number(p) || 0) % 100; return r === 90 || r === 99; };
   // el 90 de arriba, sin cruzar los $33.000 desde abajo (queda $32.999, que termina en 99) ni pasar el techo (0 = no se puede)
   const objTerm = (p) => { const c90 = ceil90(p); if (p < UMBRAL_ENVIO_GRATIS && c90 >= UMBRAL_ENVIO_GRATIS) return UMBRAL_ENVIO_GRATIS - 1; return c90 <= TECHO_DURO ? c90 : 0; };
+  // La estrategia al VOLVER al precio de antes: la de antes, salvo la que no dice nada (⚪, ⏸️, corrección vieja) o la que habla de
+  // un descuento (💸/🏷️: al volver la lista no queda ninguno) → 📈 buscando techo, que es lo que piden F1/F7 ("sin techo no se baja,
+  // se busca techo"). Una 🏔️ de techo95 se conserva con su texto (es la misma medición); a mano no se puede pedir (#techook).
+  const tgVuelta = (t) => (!t || !ESTRATEGIAS[t] || ['sindecidir', 'agotado', 'correccion', 'base', 'descuento', 'promo'].includes(t) ? 'techo' : t);
   const FALLO = Symbol('fallo');
   const ks = ['cyc/claudecambios', 'cyc/promohist', 'cyc/promoclaude', 'cyc/estrategia', 'cyc/mllinks', 'cyc/autoprecio', 'cyc/stockhist', 'cyc/products', 'cyc/autoriza', 'cyc/lotesfull', 'cyc/supervisor/eventos', 'cyc/netopub'];
   const R = await Promise.all(ks.map(async (k) => { try { return await db.get(k); } catch { return FALLO; } }));
@@ -4809,7 +4813,7 @@ async function detectarErrores(db, o = {}) {
     if (x.promo) return `entrarpromo:${x.mla}=salir|el detector: ${reglas};go`;
     const soloTerm = x.viol.filter((v) => !v.aviso).every((v) => v.regla === 'terminación');
     // #techook no se puede pedir (lo anota techo95). Si sólo se redondea, sigue la estrategia de HOY; si vuelve atrás, la de antes.
-    const tgDe = (t) => (!t || ['sindecidir', 'agotado', 'correccion', 'base', 'techook'].includes(t) ? 'techo' : t);
+    const tgDe = (t) => { const v = tgVuelta(t); return v === 'techook' ? 'techo' : v; };
     if (soloTerm) return `decido:${x.mla}=${objTerm(x.a)}!chico#${tgDe(x.tagHoy)}|EXCEPCIÓN: redondeo a 90 (el detector);go`;
     return `decido:${x.mla}=${x.de}!chico${x.de >= UMBRAL_ENVIO_GRATIS && x.a < UMBRAL_ENVIO_GRATIS ? '!cruza' : ''}#${tgDe(x.tagAntes)}|EXCEPCIÓN: vuelve al precio de antes, el detector encontró ${reglas};go`;
   };
@@ -4867,7 +4871,7 @@ async function detectarErrores(db, o = {}) {
     const quedoA = Number(r.to || objetivo);
     let quedo = null; try { quedo = Number((await mlGet('/items/' + x.mla + '?attributes=price', tk))?.price) || null; } catch { quedo = null; }
     const tgOk = (t) => (t && ESTRATEGIAS[t] && !['sindecidir', 'agotado', 'correccion', 'base'].includes(t) ? t : '');
-    const ts = Date.now(), tgAntes = tgOk(x.tagAntes), tgReg = soloTerm ? tgOk(x.tagHoy) : tgAntes;   // redondear no cambia la estrategia
+    const ts = Date.now(), tgAntes = tgVuelta(x.tagAntes), tgReg = soloTerm ? tgOk(x.tagHoy) : tgAntes;   // redondear no cambia la estrategia
     const mot = soloTerm ? `↩️ el detector redondeó a 90 (${$(x.a)} → ${$(quedoA)})` : `↩️ el detector volvió al precio de antes: la baja del ${fecha(x.ts)} rompía ${reglas}`;
     try { await db.set('cyc/claudecambios/' + ts + '_' + x.mla, { mla: x.mla, de: Number(r.from) || actual, a: quedoA, ts, motivo: mot.slice(0, 300), nom: x.nom, cuenta: e.cuenta || '', fmt: 2, por: 'errores', deshace: x.id, tag: tgReg || null, ban: [], aut: [] }); }
     catch { console.log(`   ⚠️ ${x.mla}: no pude anotarlo en mis cambios`); }

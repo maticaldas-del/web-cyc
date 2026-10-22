@@ -297,9 +297,13 @@ Después de los 3 Protectores de talón bajados con `!sinlinea` apoyados en la f
      UTC): las reglas de CÓMO se decide (estrategia de una baja, +30%, más del doble) se miran sólo desde que existen (`DET_REGLA_DESDE`);
    - el redondeo de la terminación pedía la estrategia de ANTES (#prueba en el Adaptador, #caja en el Cuba): ahora la de HOY, y si hoy
      está en 🏔️ (techo95 midió ese precio) sólo avisa; y no cruza los $33.000 (queda $32.999) ni pasa el techo;
-   - un 📷 que es una publicación que ML iguala sola con su hermana (`esHermanaPrecio`, la Lupa 90mm) va aparte como 🔗 (se juzga la
-     que se cambió).
-   Probado: 76 casos (los 66 + 10 nuevos con lo que mostró la corrida).
+   - volver al precio de antes con la estrategia de antes pedía #descuento (WD) o #promo (Seagate) para una lista sin descuento: lo
+     que habla de un descuento, o nada (⚪ ⏸️), vuelve como 📈 buscando techo (`tgVuelta`), que es lo que piden F1/F7;
+   - 3 de los 5 📷 eran publicaciones que ML iguala solas con su hermana (`esHermanaPrecio`, la Lupa 90mm): los dos Mazos de cartas y
+     un P47 de Matías. Van aparte como 🔗 (se juzga la que se cambió). Quedan 2 📷 que nadie anotó: Cuba Blue $32.990 → $45.000 y Cuba
+     Gold $28.990 → $67.174 (~20/10, Adriana) — ¿a mano en ML?
+   Segunda corrida con los arreglos (18:37 UTC, 171 cambios porque la ventana corrió): ❌ 22 · ↩️ 18 · ⚠️ 0 · ✅ 125 · 🔚 1 · 📷 2 · 🔗 3,
+   la cuenta cerró. Probado: 79 casos (los 66 + 13 nuevos con lo que mostró la corrida).
  · **Qué chequear:** que todo camino nuevo que baje un precio llame a `setPriceTo` (o pase por `frenosBajas`); que toda bandera nueva
    esté en los dos parsers y en `BAN_DEC`/el `ban` de `entrarpromo`; que una salida usada mal pase a `BANDERAS_SUYAS`; que cada corrección
    nueva tenga su chequeo en `detectarErrores`; que `errores` cierre la cuenta; que `autoriza` no muestre pedidos "TODAVÍA NO SALIÓ".
