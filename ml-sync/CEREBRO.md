@@ -136,6 +136,10 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
    (uno por renglón, en la corrida final de ml-sync). Si la Premium no llega a la misma plata neta o al 25% en el peor caso, no se
    crea y queda una nota con el motivo. Si ML no deja (sin `user_product_id`, con variantes), se anota y se le dice a él sólo si
    es algo que vende. La lista tiene que quedar vacía.
+6c. **📦 Clásica con envío gratis (22/10/2026, pedido suyo):** lo que esté abajo de $33.000 con stock en Full también lleva su gemela
+   Clásica con envío gratis al precio de misma plata neta (`gemelaenvio`, solo lee: la columna ✓ = peor caso ≥ 25%; los
+   `gemelaenviocrea:<MLA>=<precio>:go` salen al final en `@@CREAR`). Se sigue sola cada hora (`alinearGemelasEnvio`). El envío gratis
+   abajo de la barrera es la tarifa entera ($8.000-$11.600): en lo barato el precio sale muy alto y no se crea si queda abajo del 25%.
 7. Todo lo que escribe va en UNA corrida de ml-sync al final.
 8. **Los domingos, además:** el catálogo entero (todas las activas con stock, como era antes) y **el ayudante de ideas a fondo
    (max)**, que ya no corre todos los días (decisión suya del 21/10: *"semanal y a fondo"*). Lee `notas/ideas.md` para no repetir.
