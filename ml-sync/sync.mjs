@@ -46581,8 +46581,10 @@ async function main() {
       const sub0 = (t) => String(t).split(/[:;]/)[0];
       // EL COSTO DEL PAULVIC SALE DEL ÚLTIMO PEDIDO (17/10/2026, regla suya: *"actualizar el precio de los paulvic siempre al
       // último pedido. Los testers podemos venderlos al costo, o sea esos los descontamos del precio final. Y los regalos también
-      // (siempre que sean perfumes)"*). Costo c/u = (lo pagado —o lo que dice la calculadora— + flete) ÷ (unidades que llegaron
-      // + testers + regalos que sean perfume y no estén ya en lo llegado). Se aplica a la ficha sólo si es el ÚLTIMO pedido
+      // (siempre que sean perfumes)"*). LOS TESTERS NO (22/10/2026, él: *"los perfumes extra que traen no los podemos vender ni
+      // nada. son probadores que le damos a la perfumería. no cobramos nada"*): se anotan en el pedido pero NO entran en la cuenta.
+      // Costo c/u = (lo pagado —o lo que dice la calculadora— + flete) ÷ (unidades que llegaron + regalos que sean perfume y no
+      // estén ya en lo llegado). Se aplica a la ficha sólo si es el ÚLTIMO pedido
       // llegado, con el mismo freno que `poncosto`: el costo viejo queda congelado en los meses con ventas.
       const pvCosto = async (id, GO_) => {
         const c = (await db.get('cyc/pedidospv/' + id)) || {};
@@ -46590,10 +46592,10 @@ async function main() {
         if (!pv) { console.log('  (costo: no hay una sola ficha del Paulvic, no lo toco)'); return; }
         const total = (Number(c.montoPago) || Number(c.aPagar) || 0), flete = Number(c.flete) || 0;
         const uLl = (c.llego || []).filter(Boolean).reduce((a, x) => a + (parseInt(x.u) || 0), 0);
-        const uT = parseInt(c.testers) || 0, uR = parseInt(c.regalos) || 0, uTot = uLl + uT + uR;
+        const uT = parseInt(c.testers) || 0, uR = parseInt(c.regalos) || 0, uTot = uLl + uR;
         if (!(total > 0) || !(uTot > 0)) { console.log(`  (costo: falta ${!(total > 0) ? 'lo que hay que pagar (apagar= o monto=)' : 'lo que llegó'}; no lo calculo)`); return; }
         const cu = Math.round((total + flete) / uTot);
-        console.log(`\n💲 COSTO DEL PAULVIC DESDE ESTE PEDIDO: ($${total.toLocaleString('es-AR')} ${flete ? '+ flete $' + flete.toLocaleString('es-AR') : '· sin flete todavía'}) ÷ (${uLl} llegadas${uT ? ' + ' + uT + ' tester(s)' : ''}${uR ? ' + ' + uR + ' regalo(s)' : ''}) = $${cu.toLocaleString('es-AR')} c/u`);
+        console.log(`\n💲 COSTO DEL PAULVIC DESDE ESTE PEDIDO: ($${total.toLocaleString('es-AR')} ${flete ? '+ flete $' + flete.toLocaleString('es-AR') : '· sin flete todavía'}) ÷ (${uLl} llegadas${uR ? ' + ' + uR + ' regalo(s)' : ''}) = $${cu.toLocaleString('es-AR')} c/u${uT ? ` · ${uT} tester(s) para la perfumería: no cuentan` : ''}`);
         const ult = Object.entries((await db.get('cyc/pedidospv')) || {}).filter(([, x]) => x && x.estado === 'llego').sort((a, b) => String(b[1].fechaLlego || b[1].fecha).localeCompare(String(a[1].fechaLlego || a[1].fecha)))[0];
         if (!ult || ult[0] !== id) { console.log(`  No es el último pedido llegado (${ult ? ult[0] : '—'}): guardo la cuenta pero no toco la ficha.`); if (GO_) await db.patch('cyc/pedidospv/' + id, { costoUnit: cu }); return; }
         const tcP = parseFloat(((await db.get('cyc/finanzas')) || {}).tipo_cambio) || 0;
@@ -46631,7 +46633,7 @@ async function main() {
         console.log(`=== COSTO DEL PEDIDO ${hit[0]} ${GO ? '' : '(PRUEBA — no escribo nada)'} ===${Object.keys(upd).length ? '\n  anoto: ' + JSON.stringify(upd) : ''}`);
         if (GO && Object.keys(upd).length) await db.patch('cyc/pedidospv/' + hit[0], upd);
         else if (!GO) Object.assign(hit[1], upd);
-        if (!GO) { const c = hit[1]; const tot = (Number(c.montoPago) || Number(c.aPagar) || 0) + (Number(c.flete) || 0); const u = (c.llego || []).reduce((a, x) => a + (parseInt(x && x.u) || 0), 0) + (parseInt(c.testers) || 0) + (parseInt(c.regalos) || 0); console.log(`  c/u ≈ $${u ? Math.round(tot / u).toLocaleString('es-AR') : '?'} (con ;go se aplica a la ficha)`); return; }
+        if (!GO) { const c = hit[1]; const tot = (Number(c.montoPago) || Number(c.aPagar) || 0) + (Number(c.flete) || 0); const u = (c.llego || []).reduce((a, x) => a + (parseInt(x && x.u) || 0), 0) + (parseInt(c.regalos) || 0); console.log(`  c/u ≈ $${u ? Math.round(tot / u).toLocaleString('es-AR') : '?'} (con ;go se aplica a la ficha)`); return; }
         await pvCosto(hit[0], true);
         return;
       }

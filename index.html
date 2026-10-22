@@ -2941,7 +2941,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.10';
+const APP_VERSION='26.11';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2954,6 +2954,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.11',f:'22/10',h:'19:50',c:[{n:1,t:'Pedidos → Paulvic: los testers que manda el Paulvic son probadores para la perfumería: ya no entran en la cuenta del costo de cada perfume.'}]},
   {v:'26.10',f:'22/10',h:'20:50',c:[{n:1,t:'Línea de tiempo: en las barras de ventas, lo vendido en Premium va en naranja y lo vendido con envío gratis en celeste (también hoy, que antes no se separaba). La tarjeta Vendió dice cuántas de cada una.'}]},
   {v:'26.09',f:'22/10',h:'20:30',c:[{n:1,t:'Ventas → Filtros: al lado de las cuentas, 💳 Premium y 📦 Envío gratis muestran sólo las ventas que salieron por esas publicaciones (con cuántas hay).'}]},
   {v:'26.08',f:'22/10',h:'20:10',c:[{n:1,t:'Línea de tiempo más fácil de leer: arriba un cartel con lo importante de hoy (escasez, agotado, cubierto) y 4 tarjetas (vendió, ganancia, stock, precio). Cada franja tiene su título, sus colores y el número de hoy, y el precio va primero. La de todos los productos también.'},{n:1,t:'El nivel "Bueno" ahora usa 💠: el corazón celeste no se veía en algunas computadoras (salía un cuadradito). Lo mismo con 📇 y 📳.'}]},
@@ -17787,7 +17788,7 @@ function pvPedidoTarjeta(id,c){
   const _llegTxt=(cam&&_lp)?`llega aprox ${dm(_lp.lleg)}`:'';
   const tot=Number(c.montoPago)||Number(c.aPagar)||0,fl=Number(c.flete)||0;
   const uLl=uDe(c.llego),uT=parseInt(c.testers)||0,uR=parseInt(c.regalos)||0;
-  const cu=c.costoUnit||((tot>0&&(uLl+uT+uR)>0)?Math.round((tot+fl)/(uLl+uT+uR)):0);
+  const cu=c.costoUnit||((tot>0&&(uLl+uR)>0)?Math.round((tot+fl)/(uLl+uR)):0);
   const fila=(k,v,ay)=>`<div style="display:flex;justify-content:space-between;gap:10px;font-size:.66rem;padding:2px 0"${ay?` title="${String(ay).replace(/"/g,'&quot;')}"`:''}><span style="color:var(--muted)">${k}</span><span>${v}</span></div>`;
   const box=(t,h)=>`<div style="flex:1;min-width:190px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 11px"><div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">${t}</div>${h}</div>`;
   const ped={};for(const x of (c.items||[]).filter(Boolean))ped[x.v]=(ped[x.v]||0)+(parseInt(x.u)||0);
@@ -17802,9 +17803,9 @@ function pvPedidoTarjeta(id,c){
   const plata=(tot>0?fila(c.pagado?'pagado':'a pagar','<b>'+fmt(Math.round(tot))+'</b>',c.pagado?'Lo que se transfirió.':'Lo que dice la calculadora del Paulvic.'):fila('a pagar',_aprox?`<b>≈ ${fmt(_aprox)}</b> <span style="color:var(--muted)">· aprox</span>`:cam?'<span style="color:var(--muted)">se paga al llegar</span>':'<span style="color:var(--amber)">sin dato</span>',_aprox?`Aproximado: ${uDe(c.items)} u. pedidas × ${fmt(Math.round(_ant.cu))} c/u (lo que salió cada una en el pedido del ${dm(_ant.fecha)}, sin flete). El número real lo da la calculadora del Paulvic cuando llega; si no viene todo, es menos.`:''))
     +(_aprox?fila('','<span style="color:var(--muted);font-size:.6rem">'+uDe(c.items)+' u. × '+fmt(Math.round(_ant.cu))+' (como el pedido del '+dm(_ant.fecha)+') · + flete</span>'):'')
     +(cam?'':fila('flete',fl?fmt(fl):'<span style="color:var(--amber)">falta</span>','Lo que cobra el transporte. Sin esto el costo c/u queda corto.'))
-    +(uT?fila('testers',uT+' u.','Se venden al costo: entran en la cuenta del costo c/u.'):'')
+    +(uT?fila('testers',uT+' u.','Probadores que se le dan a la perfumería: no se venden ni se cobran, no entran en la cuenta del costo c/u.'):'')
     +(uR?fila('regalos (perfume)',uR+' u.','Los regalos que son perfume se venden al costo: entran en la cuenta del costo c/u.'):'')
-    +(cu?fila('costo c/u','<b style="color:var(--green)">'+fmt(cu)+'</b>',`(${fmt(Math.round(tot))}${fl?' + flete '+fmt(fl):''}) ÷ ${uLl+uT+uR} u. (${uLl} llegadas${uT?' + '+uT+' tester':''}${uR?' + '+uR+' regalo':''}). Es el costo que va a la ficha del Paulvic si es el último pedido.`)+(c.costoAplicado?fila('','<span style="color:var(--muted)">✓ puesto en la ficha</span>'):''):'');
+    +(cu?fila('costo c/u','<b style="color:var(--green)">'+fmt(cu)+'</b>',`(${fmt(Math.round(tot))}${fl?' + flete '+fmt(fl):''}) ÷ ${uLl+uR} u. (${uLl} llegadas${uR?' + '+uR+' regalo':''}${uT?'; los '+uT+' tester no cuentan':''}). Es el costo que va a la ficha del Paulvic si es el último pedido.`)+(c.costoAplicado?fila('','<span style="color:var(--muted)">✓ puesto en la ficha</span>'):''):'');
   const dias=fila('pedido el',dm(c.fecha))+((cam&&_lp)?fila('llega aprox',dm(_lp.lleg)+' <span style="color:var(--muted)">· '+_lp.dem.d+' d'+(_lp.dem.n?' (como '+(_lp.dem.n===1?'el pedido anterior':'los '+_lp.dem.n+' anteriores')+')':' (estimado)')+'</span>','Cuánto tardaron en llegar los pedidos anteriores (la mitad del medio). Es aproximado: depende del transporte.'):'')+(_lp?fila('pagar hasta',dm(_lp.lim)+(_lp.aprox?' aprox':''),'7 días hábiles (lunes a viernes) desde que llega. Si se paga después, el Paulvic cobra '+PV_RECARGO_TARDE+'% más.'):'')+(cam?'':fila('llegó el',dm(c.fechaLlego)+(c.fechaLlego?' <span style="color:var(--muted)">· '+Math.max(0,Math.round((Date.parse(c.fechaLlego+'T12:00:00-03:00')-Date.parse(c.fecha+'T12:00:00-03:00'))/864e5))+' d</span>':'')))+(c.pagado?fila('pagado el',dm(c.fechaPago)):'')
     +fila('unidades',cam?uDe(c.items)+' pedidas':`${uDe(c.items)} pedidas · ${uLl} llegaron`);
   const der=tot>0?fmt(Math.round(tot)):_aprox?`≈ ${fmt(_aprox)}`:`${cam?uDe(c.items):uLl} u.`;

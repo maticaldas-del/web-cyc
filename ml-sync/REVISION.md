@@ -678,6 +678,10 @@ que `cortes` salga en el log de `pedidostodo` y `decide_pedidos.py` lea N de M �
 ### Pedidos sin cartel "sin decidir" ni cuadros de conteo (17/10/2026, v24.08, pedido suyo)
 - Ocultos por CSS (`#ped-sindecidir` y los `#pedidos-*-count`); el cálculo sigue. v24.09: de los cuadros queda sólo "Falta reponer" (`.pcount-reponer`). Chequear que no vuelvan a verse y que nada dependa de verlos.
 
+### Paulvic: los testers no entran en el costo (22/10/2026, v26.11, regla suya)
+- Qué: los testers son probadores que se le dan a la perfumería (no se venden ni se cobran): `pvCosto` (sync.mjs) y `pvPedidoTarjeta` (index.html) dividen por llegadas + regalos, ya no por testers. Se siguen anotando (`tester=`) y no entran a la oficina.
+- Chequear: que el costo c/u de la tarjeta y el de la ficha den lo mismo; que el pedido del 06/10 (ya cerrado, con 1 tester adentro) no se recalcule solo.
+
 ### Paulvic: costo del último pedido y tarjeta de pedido (17/10/2026, v24.07, pedido suyo)
 - Qué: `pvCosto` en `pvped` = (montoPago||aPagar + flete) ÷ (llegadas + testers + regalos) → ficha "Paulvic TODOS" (sólo si es el último llegado; congela el costo viejo en meses con ventas como `poncosto`). Corre en `llego`, `pago` con monto y `costo`.
 - Web: `pvPedidoTarjeta` (index.html), tarjeta por pedido como `pyPedidoTarjeta`: plata, días, aroma por aroma (faltaron, no pedidas, 🚫 no viene más), comprobantes.

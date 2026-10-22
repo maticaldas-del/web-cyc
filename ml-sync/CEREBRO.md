@@ -437,7 +437,7 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
 ## 18 · PAULVIC
 - Pedido cada 15 días para 45 días por aroma, redondeado a 3/5/10/20/50 (lo que él cambia a mano no se toca). Nunca "Sólo este
   color" en motivos ni en el copiar.
-- Costo = el del último pedido: (pagado + flete) ÷ (llegadas + testers + regalos perfume). Lo que se pide y no viene, no se pide más (⏳).
+- Costo = el del último pedido: (pagado + flete) ÷ (llegadas + regalos perfume); los testers son probadores para la perfumería y no cuentan (22/10). Lo que se pide y no viene, no se pide más (⏳).
 - Pagar en 7 días hábiles desde que llega.
 
 ## 19 · PLATA

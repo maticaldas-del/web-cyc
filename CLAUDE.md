@@ -319,8 +319,8 @@
 - Fechas al 19/10: Dai Nippon L1309 19/10 · Unilever 08/10 · Iscos 01/10 · Cadam 26/09 · Qsoft 23/09 · Godrej 01/08 (Wels también).
 
 ### Paulvic (perfumes, proveedor de Bs As; CEREBRO §18)
-- **Costo = el del último pedido** (17/10): (pagado + flete) ÷ (llegadas + testers + regalos perfume); testers y regalos se venden al costo
-  (`pvped:costo:<id>;apagar=;flete=;tester=;regalo=;go`; también `llego` y `pago`). Tarjeta por pedido (`pvPedidoTarjeta`).
+- **Costo = el del último pedido** (17/10): (pagado + flete) ÷ (llegadas + regalos perfume). **Los testers NO cuentan** (22/10: son probadores
+  que se le dan a la perfumería, no se venden ni se cobran; se anotan con `tester=` y no entran a la oficina) (`pvped:costo:<id>;apagar=;flete=;tester=;regalo=;go`; también `llego` y `pago`). Tarjeta por pedido (`pvPedidoTarjeta`).
 - **7 días hábiles para pagar desde que llega, si no +10%** (20/10): avisarle al llegar los días que le quedan.
 - **Lo que se pide y no viene no se pide más** (`cyc/noconsigo/<prod>/nunca/<aroma>`, `pvped:nunca:-<aroma>;go` lo saca).
 - Cada aroma es su publicación y se juzga solo (grupo de precio desactivado 04/09). Compartido Adriana + Persea en Luciana.
@@ -443,7 +443,7 @@ Si dudás si un comando existe, buscá en `sync.mjs` (`grep -n "'<nombre>'" ml-s
   `altanuevas`/`pausadas`. `cargosmes:auto` corre solo el 01/11. (ver HISTORIA, "62 DECISIONES")
 - **Paulvic:** juzgar la prueba de $21.990 (si perdió, volver a $14.950; si ganó, extender primero Persea) y la idea de un Paulvic de
   hombre a ~$17.990. Pedido del 06/10 llegó y se pagó (ver HISTORIA). Blush sin publicación en ML.
-  **Pedido `pv20261019` llegó el 22/10 COMPLETO** (114 u. + 3 sueltas de Witch Night/Good/Blue anotadas como tester, fuera de la oficina;
+  **Pedido `pv20261019` llegó el 22/10 COMPLETO** (114 u. + 3 testers de Witch Night/Good/Blue para la perfumería, no cuentan;
   flete $18.000, el del remito redondeado, cargado). Falta el monto a pagar (valor declarado $660.130,71 NO es lo que se paga) → `pvped:costo:pv20261019;apagar=…;go`;
   **pagar antes del lun 02/11** (si no, +10%); con el comprobante, `pvped:pago`.
 - **Iscos del 19/10:** se publica en ML (lo hace él); al llegar fichas con costo web × 0,665 y el precio lo decido yo (peor caso). Los dos
