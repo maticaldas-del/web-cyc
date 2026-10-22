@@ -24198,7 +24198,7 @@ async function main() {
             if (cg.netaE < cg.netaCla - 1) frenos.push('no llega a la misma plata neta que la Clásica');
           }
         }
-        const body = { price: P, category_id: it.category_id, currency_id: it.currency_id || 'ARS', buying_mode: 'buy_it_now', listing_type_id: 'gold_special', shipping: { mode: sh.mode || 'me2', logistic_type: 'fulfillment', free_shipping: true } };
+        const body = { price: P, category_id: it.category_id, currency_id: it.currency_id || 'ARS', buying_mode: 'buy_it_now', listing_type_id: 'gold_special', shipping: { free_shipping: true } };   // logistic_type y mode no se mandan: ML contesta "not_modifiable" (22/10)
         if (it.catalog_listing && it.catalog_product_id) { body.catalog_listing = true; body.catalog_product_id = it.catalog_product_id; }
         console.log(`   mandaría POST /user-products/${upid}/items ${JSON.stringify(body)}`);
         if (frenos.length) { console.log(`   🛑 NO SE CREA: ${frenos.join(' · ')}`); no++; continue; }
