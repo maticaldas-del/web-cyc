@@ -24206,7 +24206,8 @@ async function main() {
         const r = await fetch(`${ML_API}/user-products/${upid}/items`, { method: 'POST', headers: { Authorization: 'Bearer ' + tk, 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(30000) });
         const txt = await r.text(); _anotarEscrituraML(r, mla, 'crear gemela envío gratis', txt);
         if (!r.ok) {
-          console.log(`   ❌ ML no la creó: ${r.status} ${txt.slice(0, 1200)}`); no++;
+          let msj = txt.slice(0, 600); try { const j = JSON.parse(txt); msj = `${j.message || ''} · ${(j.cause || []).filter((c) => c && c.type !== 'warning').map((c) => `${c.code}: ${c.message}`).join(' | ') || '(sólo avisos)'}`; } catch { }
+          console.log(`   ❌ ML no la creó: ${r.status} ${msj.slice(0, 1500)}`); no++;
           await new Promise((ok) => setTimeout(ok, 4000));
           try { const s2 = await mlGet(`/users/${acc.seller_id}/items/search?user_product_id=${upid}`, tk); console.log(`   releído: del mismo producto quedan ${(s2.results || []).join(', ')}`); } catch { }
           continue;
