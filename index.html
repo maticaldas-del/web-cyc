@@ -723,6 +723,13 @@ input.qty:focus{border-color:var(--accent2)}
 .hoy-cal .hcal-d.vacio{--dc:var(--border2);background:transparent;border-style:dashed;cursor:default;color:var(--muted)}
 .hoy-cal .hcal-d.hoy{outline:2px solid var(--text);outline-offset:1px}
 .hoy-cal .hcal-d em{position:absolute;top:-7px;right:-4px;font-style:normal;font-size:.7rem;line-height:1}
+.hoy-cal .hcal-d.an2,.hoy-cal .hcal-d.an3,.hoy-cal .hcal-d.an4,.hoy-cal .hcal-d.an5,.hoy-cal .hcal-d.an6{animation:hcalLat var(--ad,4s) ease-in-out infinite;animation-delay:var(--adl,0s)}
+.hoy-cal .hcal-d.an4,.hoy-cal .hcal-d.an5,.hoy-cal .hcal-d.an6{animation-name:hcalFlota}
+.hoy-cal .hcal-d.an6{background:linear-gradient(115deg,color-mix(in srgb,var(--dc) 20%,transparent) 30%,color-mix(in srgb,var(--dc) 45%,transparent) 50%,color-mix(in srgb,var(--dc) 20%,transparent) 70%);background-size:250% 100%;animation:hcalFlota var(--ad,2s) ease-in-out infinite,hcalBrillo 2.6s linear infinite}
+@keyframes hcalLat{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--dc) 0%,transparent)}50%{box-shadow:0 0 var(--gl,6px) 0 color-mix(in srgb,var(--dc) 55%,transparent)}}
+@keyframes hcalFlota{0%,100%{transform:translateY(0);box-shadow:0 0 0 0 color-mix(in srgb,var(--dc) 0%,transparent)}50%{transform:translateY(-2px);box-shadow:0 2px var(--gl,10px) 0 color-mix(in srgb,var(--dc) 60%,transparent)}}
+@keyframes hcalBrillo{0%{background-position:100% 0}100%{background-position:-150% 0}}
+@media (prefers-reduced-motion:reduce){.hoy-cal .hcal-d{animation:none!important}}
 .hoy-cal .hcal-ley{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:8px;font-size:.6rem;color:var(--muted)}
 .hoy-cal .hcal-ley i{display:inline-block;width:9px;height:9px;border-radius:3px;background:var(--dc);margin-right:3px;vertical-align:-1px}
 /* G5 · Ventas en el celu: los 6 cuadros en un renglón que se abre */
@@ -2925,7 +2932,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.01';
+const APP_VERSION='26.02';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2938,6 +2945,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.02',f:'22/10',h:'11:30',c:[{n:1,t:'Inicio · calendario de días y de meses: cada cuadrito se mueve según lo que vendió. Bajo y justo quietos, bien y bueno laten, excelente y estrella flotan, JOYA además brilla.'}]},
   {v:'26.01',f:'22/10',h:'11:15',c:[{n:1,t:'Métricas: el globito del gráfico dice la diferencia en $ además del % (contra el período anterior y el año pasado).'}]},
   {v:'26.00',f:'22/10',h:'11:00',c:[{n:1,t:'Inicio · Ventas de hoy/mes/año: la tarjeta con colores y burbujas termina en los números; la escalera, la curva, el calendario y las cuentas van abajo en una tarjeta común, que se lee mejor.'}]},
   {v:'25.99',f:'22/10',h:'10:45',c:[{n:1,t:'Ventas: las cuentas y los tags de estrategia van adentro de "⚙️ Filtros"; afuera queda una línea que dice qué se está mostrando.'}]},
@@ -8279,6 +8287,11 @@ function vpAehChip(r){
 // Todo sale de `_homeDiaTot` día por día (la misma cuenta de la tarjeta) y de los niveles de `VIVA_DIA_NIV`. Un día
 // "cumplido" = ganancia de $115.000 o más (el 7 del puntaje). No guarda nada nuevo.
 function _vpPrimerDiaTs(){const k0=Object.keys(state.ventaprod||{}).filter(k=>/^\d{4}_\d{2}_\d{2}$/.test(k)).sort()[0];if(!k0)return Infinity;const[a,b,c]=k0.split('_').map(Number);return new Date(a,b-1,c).getTime();}
+// 22/10/2026, él: "se pueden animar un poquito las ventas de ahí? lo mismo con los meses, según lo que vendieron". Cada cuadrito del
+// calendario (días y meses) late según su nivel: bajo y justo quietos, bien late despacio, bueno un poco más, excelente y estrella
+// flotan, JOYA además brilla. Desfasados para que no latan todos juntos. Con "menos movimiento" del teléfono, quietos.
+function _hcalAnim(g,i){const k=VIVA_DIA_NIV.indexOf(_gNivDia(g));if(k<2)return {c:'',st:''};
+  const ad=[0,0,4.2,3.4,2.8,2.2,1.9][k],gl=[0,0,5,8,10,13,16][k];return {c:' an'+k,st:`;--ad:${ad}s;--gl:${gl}px;--adl:-${((i*0.37)%ad).toFixed(2)}s`};}
 function _gNivDia(g){let n=VIVA_DIA_NIV[0];for(const x of VIVA_DIA_NIV)if(g>=x[1])n=x;return n;}
 // Días seguidos cumplidos que terminan en `dia`. Si `dia` es hoy y todavía no llegó, se cuenta hasta ayer (hoy no corta la
 // racha mientras el día sigue; si no llega, mañana vuelve a 0 — sin cartel rojo).
@@ -8326,7 +8339,7 @@ function _homeAnioHTML(hf,chip){
   for(const m of A){
     if(!m.dias||!m.ventas){cells+=`<span class="hcal-d vacio">${MC[m.M]}</span>`;continue;}
     const n=_gNivDia(m.prom),em=mejor&&m.M===mejor.M&&mejor.prom>0?'🏆':enRacha.has(m.M)?'🔥':'';
-    cells+=`<button class="hcal-d${m.curso?' hoy':''}" style="--dc:${n[2]};min-height:52px" onclick="event.stopPropagation();homeCalMes(${Y},${m.M})" title="${_MESES_L[m.M]} ${Y} · ${m.ventas} venta${m.ventas===1?'':'s'} · ganancia ${fmt(m.gan)} · ${fmt(Math.round(m.prom))} por día${m.curso?' (va en curso)':''}">${MC[m.M]}<b>${_kTxt(m.prom)}/día</b><b style="font-weight:500;opacity:.75">${_kTxt(m.gan)}</b>${em?`<em>${em}</em>`:''}</button>`;
+    const _an=_hcalAnim(m.prom,m.M+1);cells+=`<button class="hcal-d${m.curso?' hoy':''}${_an.c}" style="--dc:${n[2]};min-height:52px${_an.st}" onclick="event.stopPropagation();homeCalMes(${Y},${m.M})" title="${_MESES_L[m.M]} ${Y} · ${m.ventas} venta${m.ventas===1?'':'s'} · ganancia ${fmt(m.gan)} · ${fmt(Math.round(m.prom))} por día${m.curso?' (va en curso)':''}">${MC[m.M]}<b>${_kTxt(m.prom)}/día</b><b style="font-weight:500;opacity:.75">${_kTxt(m.gan)}</b>${em?`<em>${em}</em>`:''}</button>`;
   }
   const ley=VIVA_DIA_NIV.map((x,i)=>`<span><i style="--dc:${x[2]}"></i>${i===0?'menos de '+_kTxt(VIVA_DIA_NIV[1][1]):_kTxt(x[1])}</span>`).join('');
   return `${c?`<div class="hoy-chips">${c}</div>`:''}<div class="hoy-cal"><div class="hcal-g" style="grid-template-columns:repeat(4,minmax(0,1fr))">${cells}</div><div class="hcal-ley">${ley} <span>por día</span></div>
@@ -8361,7 +8374,7 @@ function _homeGustoHTML(esc,dia,hf){
   for(let d=1;d<=fin;d++){const k=dateToKey(new Date(Y,Mo,d,12)),t=R.tot[k];
     if(!t){cells+=`<span class="hcal-d vacio">${d}</span>`;continue;}
     const n=_gNivDia(t.gan),em=R.mejor&&k===R.mejor.k&&R.mejor.g>0?'🏆':enRacha.has(k)?'🔥':'';
-    cells+=`<button class="hcal-d${k===hoyK?' hoy':''}" style="--dc:${t.ventas?n[2]:'var(--border2)'}" onclick="event.stopPropagation();homeCalIr('${k}')" title="${dm(new Date(Y,Mo,d))} · ${t.ventas} venta${t.ventas===1?'':'s'} · ganancia ${fmt(t.gan)}${k===hoyK?' (va en curso)':''}">${d}<b>${t.ventas?_kTxt(t.gan):'—'}</b>${em?`<em>${em}</em>`:''}</button>`;}
+    const _an=t.ventas?_hcalAnim(t.gan,d):{c:'',st:''};cells+=`<button class="hcal-d${k===hoyK?' hoy':''}${_an.c}" style="--dc:${t.ventas?n[2]:'var(--border2)'}${_an.st}" onclick="event.stopPropagation();homeCalIr('${k}')" title="${dm(new Date(Y,Mo,d))} · ${t.ventas} venta${t.ventas===1?'':'s'} · ganancia ${fmt(t.gan)}${k===hoyK?' (va en curso)':''}">${d}<b>${t.ventas?_kTxt(t.gan):'—'}</b>${em?`<em>${em}</em>`:''}</button>`;}
   const ley=VIVA_DIA_NIV.map((x,i)=>`<span><i style="--dc:${x[2]}"></i>${i===0?'menos de '+_kTxt(VIVA_DIA_NIV[1][1]):_kTxt(x[1])}</span>`).join('');
   return `${c?`<div class="hoy-chips">${c}</div>`:''}<div class="hoy-cal"><div class="hcal-g">${cells}</div><div class="hcal-ley">${ley}</div>
     <div style="font-size:.62rem;color:var(--muted);margin-top:4px">Cada cuadrito es un día, del color de su ganancia (los mismos de la tarjeta del día). Tocá uno y abre Ventas en ese día.</div></div>`;
