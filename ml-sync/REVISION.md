@@ -245,6 +245,12 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   promo no pase por abajo del piso sin `!piso` ni de 0% · que el cerebro de la noche no lea el precio de promo como
   "cambio a mano" y frene subas.
 
+### 22/10/2026 · 1a 2a 3a: sin excepciones al "sin techo no se baja", ventas a fondo sólo las que lo piden, chequeo de bajas
+ · **1a:** F7 de `frenosBajas` acepta `!sinlinea` sólo junto con `!activar` (precio mal puesto antes de activar). Antes la usé para bajar
+   3 Protectores de talón por lo que vendió la familia. Qué chequear: ninguna baja sin 🔴/🏔️ salvo activaciones y las tags que F7 exime.
+ · **2a:** `ventasraras` imprime 🔬 A FONDO (con motivo) y ✓ normales. Sólo las 🔬 van al ayudante en máximo.
+ · **3a:** cada vuelta termina con `bajastecho:1` y deshace las ❌ del día (texto de las tareas programadas y CEREBRO 🔬).
+
 ### 22/10/2026 · `!sinlinea` no lo leía nadie (etapa 1)
  · F7 de `frenosBajas` acepta `!sinlinea` + "EXCEPCIÓN" en el motivo, pero ni `decido` ni `entrarpromo` pasaban esa bandera: la
    excepción era imposible (en la completa del 22/10 frenó la activación del Corsair y del Soundpeats y 2 bajas). Ahora las dos

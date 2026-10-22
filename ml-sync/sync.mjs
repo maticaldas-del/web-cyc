@@ -4168,7 +4168,8 @@ function rayasPrecioLinea(d, cu, imp, hoyK, parte = 1) {
 //  F5 no abajo del 💰 piso (el precio que más plata por día dejó, `rayasPrecioLinea`) salvo sobra / sin reposición / liquidando /
 //     remate · `!bajopiso`. Si el redondeo a 90/990 lo empuja abajo, dice el precio redondeado PARA ARRIBA.
 //  F7 sin línea de techo (🔴 al 95% o 🏔️ de techo95) no se baja: se busca techo (21/10/2026, regla suya) · `!sinlinea`.
-//     Pasados 15 d de la última suba (5%+) deja de frenar y decide F4 por plata por día (2a, 21/10/2026)
+//     Pasados 15 d de la última suba (5%+) deja de frenar y decide F4 por plata por día (2a, 21/10/2026). `!sinlinea` vale SÓLO
+//     junto con `!activar` (precio mal puesto antes de activar): 1a del 22/10/2026, después de 3 Protectores de talón bajados por la familia
 //  F6 🤔 un descuento o promo nuevo (fuera de una escalera de techo, escasez, lanzamiento, sin reposición o fecha) pide sobra de
 //     verdad (90+ d en Full al ritmo con stock) y no recién llegado (30+ d desde la última entrada) · `!nosobra`
 // Cada `!bandera` vale SÓLO si el motivo dice "EXCEPCIÓN" y por qué: una excepción sin decir cuál no es una excepción.
@@ -4258,12 +4259,12 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
     const f7Vencido = !!(ultSuba7 && ahora - ultSuba7.ts >= F4_ESPERA_DIAS * 864e5 && p0 >= ultSuba7.a * 0.98);
     {
       const sinLineaOk = ['sobra', 'sinrepo', 'liquidando', 'remate'];
-      if (!f7Vencido && !sinLineaOk.includes(tagNuevo) && !sinLineaOk.includes(ult) && !enEscasez && !exc(fz, 'sinlinea')) {
+      if (!f7Vencido && !sinLineaOk.includes(tagNuevo) && !sinLineaOk.includes(ult) && !enEscasez && !(exc(fz, 'sinlinea') && fz.activar)) {
         const t95 = tags.some((x) => techookDeTecho95(x) && x.ts > ahora - 60 * 864e5);
         if (!t95) {
           if (!lin || !(cu > 0)) { frenar(d, 'no pude leer la línea de tiempo o el costo: sin saber si tiene línea de techo no bajo'); out.push(d); continue; }
           const R7 = rayasPrecioLinea(lin, cu, imp, hoyK);
-          if (!R7.techo) { frenar(d, `no tiene línea de techo 🔴 al 95% (${R7.best ? '💰 ' + $(R7.best.p) + ', nunca se midió más caro con certeza' : 'pocos días medibles todavía'}): sin techo no se baja, se busca techo (📈) hasta estar 95% seguro. Excepción puntual: !sinlinea + "EXCEPCIÓN: …"`); out.push(d); continue; }
+          if (!R7.techo) { frenar(d, `no tiene línea de techo 🔴 al 95% (${R7.best ? '💰 ' + $(R7.best.p) + ', nunca se midió más caro con certeza' : 'pocos días medibles todavía'}): sin techo no se baja, se busca techo (📈) hasta estar 95% seguro. Única excepción: precio mal puesto ANTES DE ACTIVAR (!activar !sinlinea + "EXCEPCIÓN: …"), lo de otras variantes o la familia no alcanza`); out.push(d); continue; }
         }
       }
     }
@@ -44655,6 +44656,7 @@ async function main() {
       console.log(`=== 🧾 VENTAS DE LAS ÚLTIMAS ${horas} H · ${lista.length} compras · ${canc.length} canceladas · ${nEstV} sin juzgar (neto estimado) ===`);
       console.log(`(% con la cuenta de la web · piso ${PISO_V}% · "normal" = lo que deja esa publicación al mismo precio en sus ventas sueltas de 45 días)\n`);
       const raras = [], sinCostoV = [];
+      const _aFondo = new Map(); // 2a (22/10/2026): las ventas que van al ayudante en max, con el motivo; el resto se cierra solo
       // VENTAS EN PROMO (12/10/2026, pedido suyo: *"quiero que cuando se venda algo en promo avise"*): lo que anota el
       // ciclo en `cyc/promoventa/<día>/<orden>` (cuánto fue el descuento y cuánto puso ML). Sin registro no se dice nada.
       // 20/10/2026 · etapa 4: un día que no se pudo leer no es "ninguna venta en promo": se cuenta aparte y el resumen dice "no sé".
@@ -44679,6 +44681,8 @@ async function main() {
         if (sinC) sinCostoV.push(`${v0.cuenta} · ${nombres.join(' + ')} · ${f(total)}`);
         console.log(`${marca} ${hora} · ${v0.cuenta} · ${nombres.join(' + ')}${g.length > 1 ? ' (carrito)' : ''} · ${f(total)} · neto ${f(neto)} · ${pct == null ? (sinC ? 'sin costo/ficha ⚠️' : 'sin costo') : pct.toFixed(0) + '%'}${pctN != null ? ` (normal ${pctN.toFixed(0)}%)` : ''}${(() => { const pr = promoDe(g); if (!pr) return ''; enPromo.push({ nom: nombres.join(' + '), cta: v0.cuenta, pr, pct }); return ` · 🏷️ EN PROMO: descuento ${f(pr.t)} (ML puso ${f(pr.ml)}, nosotros ${f(pr.s)})`; })()}`);
         if (!est && !sinC && (bajo || menos)) raras.push({ g, neto, normal, hayNormal, total });
+        { const why = sinC ? 'sin costo o sin ficha' : (pct != null && pct < 25) ? `salió al ${pct.toFixed(0)}%` : (!est && (bajo || menos)) ? 'dejó menos de lo normal' : '';
+          if (why) for (const { v } of g) if (v.mla && !_aFondo.has(v.mla)) _aFondo.set(v.mla, why); }
       }
       console.log(enPromo.length ? `\n🏷️ ${enPromo.length} VENTA(S) EN PROMO O CON CUPÓN: ${enPromo.map((x) => `${x.cta} · ${x.nom} · ML puso ${f(x.pr.ml)}${x.pr.s > 0 ? ' · nosotros ' + f(x.pr.s) : ''} · ${x.pct == null ? 'sin costo' : x.pct.toFixed(0) + '%'}`).join(' | ')}` : pvNoLei.size ? `\n🏷️ Ventas en promo: NO SÉ (no pude leer cyc/promoventa de ${pvNoLei.size} día(s): ${[...pvNoLei].sort().join(', ')})` : '\n🏷️ Ninguna venta en promo o con cupón en este período.');
       if (enPromo.length && pvNoLei.size) console.log(`   ⚠️ y no pude leer cyc/promoventa de ${pvNoLei.size} día(s) (${[...pvNoLei].sort().join(', ')}): puede haber más en promo`);
@@ -44747,6 +44751,25 @@ async function main() {
         console.log(`\n🧭 ESTRATEGIA DE LO QUE VENDIÓ (${mlas.length} publicaciones): ${buenas.length} con estrategia y techo · ${malas.length} PARA DECIDIR EN ESTA VUELTA`);
         for (const l of malas) console.log('   ⚠️ ' + l);
         for (const l of buenas) console.log('   ✓ ' + l);
+        // 🔬 2a (22/10/2026, él: "lo que quiero es que lo haga de la forma más efectiva posible y que no me tenga que estar fijando a
+        // cada rato"): al ayudante en esfuerzo máximo van SÓLO las ventas que piden pensar; las normales se cierran con ventasvistas
+        // sin texto (la tarjeta dice el motivo de su estrategia). A fondo: rara o abajo del 25% o sin costo · 🧭 para decidir ·
+        // escasez o lanzamiento que vendió · una prueba de techo (techo/punto/prueba) con 7+ días desde mi última decisión (hay que juzgarla).
+        for (const mla of mlas) {
+          if (_aFondo.has(mla)) continue;
+          if (malas.some((l) => l.startsWith(mla + ' '))) { _aFondo.set(mla, 'sin estrategia con techo'); continue; }
+          const est = (await db.get('cyc/estrategia/' + mla)) || {};
+          const tags = Object.entries(est).map(([k, x]) => ({ ts: Number(k), t: x && x.t })).filter((x) => x.ts > 0 && x.t).sort((a, b) => a.ts - b.ts);
+          let ult = '', tsU = 0; for (const x of tags) { ult = x.t === 'correccion' ? pasajeDe(ult) : x.t; tsU = x.ts; }
+          const dias = tsU ? Math.floor((hoy - tsU) / 864e5) : null;
+          if (ult === 'escasez') _aFondo.set(mla, 'escasez: ¿subir más o se frenó?');
+          else if (ult === 'nuevo') _aFondo.set(mla, 'lanzamiento que vendió: ¿buscar techo?');
+          else if (['techo', 'punto', 'prueba'].includes(ult) && dias != null && dias >= 7) _aFondo.set(mla, `prueba de ${ult} con ${dias} d: juzgarla`);
+        }
+        const normales = mlas.filter((m) => !_aFondo.has(m));
+        console.log(`\n🔬 A FONDO (ayudante en esfuerzo máximo) · ${_aFondo.size} de ${mlas.length} publicaciones · las otras ${normales.length} son normales y se cierran solas`);
+        for (const [mla, why] of _aFondo) console.log(`   🔬 ${mla} · ${why}`);
+        if (normales.length) console.log(`   ✓ normales: ${normales.join(', ')}`);
       } catch (eE) { console.log('⚠️ no pude leer las estrategias de lo vendido: ' + eE.message + ' · mirar a mano'); }
       return;
     }
