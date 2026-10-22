@@ -12,3 +12,16 @@ Cada corrección: fecha · qué · por qué pasó · qué cambié. Los lunes se 
 
 - 20/10/2026 · Ventas vivas apagadas un día: al agregar atributos a la tarjeta de venta (v24.86) se rompió `vivaEnvolver` en silencio. Pregunta general: ¿qué otra cosa depende del texto exacto de una etiqueta HTML?
 - (22/10) Bajé 3 Protectores de talón sin línea de techo usando la familia como certeza (!sinlinea). Él: "si no encontró techo, ¿por qué bajó?". Cada variante sola; !sinlinea sólo para error de precio. Deshecho el mismo día.
+
+## Cada corrección y su chequeo en el detector 🔎 `errores` (22/10/2026, regla suya: "un aviso alcanza")
+Cada corrección nueva suma acá su renglón y su chequeo en `detectarErrores` (sync.mjs) en el mismo commit. Si es de precios y se
+puede medir, también su freno en `frenosBajas`; si se pasó por una bandera de excepción, esa bandera pasa a ser 🔐 suya.
+
+| corrección | lo que mira el detector | freno |
+|---|---|---|
+| 20/10 Cuba Platinum (lo nuevo bajado sin techo) | baja de algo nuevo (<30 d en Full o 🆕) sin 🏔️ de techo95 | F1 · `!sintecho` 🔐 |
+| 21/10 Adaptador 8 en 1 (golpe, abajo del 💰) | baja de más de 15% (25% en escasez) · dos bajas en <48 h (12 h) · abajo del 💰 piso | F2 · F3 · F5 |
+| 21/10 Persea / Aer Jasmín (deshacer la prueba sin certeza) | baja que deshace una suba de <15 d sin 95% · arriba del 💰 sin 95% | F4 · F8 · `!sincerteza` 🔐 |
+| 22/10 3 Protectores de talón (`!sinlinea` por la familia) | baja sin línea de techo (🔴 al 95% o 🏔️) y sin su autorización | F7 · `!sinlinea` 🔐 |
+| reglas 🔒 del CEREBRO §0 | abajo de 0% sin su autorización · escasez abajo del precio de antes · descuento sin sobra · abajo del 25% peor caso sin `!piso` · escasez/techo en una baja · suba #techo de menos de +30% o de más del doble · precio que no termina en 90/990 | F0 `!bajocero` 🔐 · F9 · F6 · (aviso) |
+| 19/10 Iscos (un solo vendedor inflado) | no es un cambio de precio: lo frena la medición de candidatos (1 vendedor = para revisar) | — |

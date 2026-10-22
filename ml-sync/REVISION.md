@@ -245,6 +245,53 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   promo no pase por abajo del piso sin `!piso` ni de 0% · que el cerebro de la noche no lea el precio de promo como
   "cambio a mano" y frene subas.
 
+### 22/10/2026 · 🔐 UN AVISO ALCANZA: todos los caminos por las reglas, salidas sólo suyas y el detector (etapa 1, eligió todo)
+Después de los 3 Protectores de talón bajados con `!sinlinea` apoyados en la familia. **Reemplaza la 1a de abajo** (`!sinlinea` +
+`!activar`): `!sinlinea` pasa a ser SÓLO SUYA; lo único que queda mío es corregir el precio de lo que NUNCA estuvo activo.
+ · **LOS CAMINOS QUE CAMBIAN UN PRECIO O UN DESCUENTO EN ML** (medido en sync.mjs el 22/10, función por función):
+   - BAJAN la lista y pasan por `frenosBajas`: `decido` (antes de escribir, con sus banderas) → `aplicarCerebro` → `setPriceTo` (entra
+     por la marca `_FRENOS_OK`, una vez, 1 h) · y TODO lo demás que llama a `setPriceTo` pasa por LA PUERTA (`_frenosEnLaPuerta`, sin
+     banderas): `alpiso`, `bajar`, `tocados`, `unapub …bajar=`/`empatar` (éstos también la miran ANTES de marcar liquidando), el
+     `cerebro:go` y las bajas de `avisos:go` (rescate/caja/remate/escalera, apagadas con `autoPrecios` off), `volverSinFull` y el
+     `supervisor` (apagados con SOLO_DATOS). Sin base (corrida de prueba) la puerta no deja bajar.
+   - BAJAN el precio que ve el comprador: `entrarpromo` (POST de promos) pasa por `frenosBajas` con `promo` y pide las 🔐 igual.
+   - NO pasan, a propósito: `alinearGemelas` y `alinearGemelasEnvio` (`setPriceTo` con `gemela`: siguen a su Clásica, que ya pasó por
+     la puerta; el precio sale de la misma plata neta) · `gemelacrea`/`gemelaenviocrea`/`publicar` (crean, no bajan) · `activarPausadasFull`,
+     `pausar`, `gemelaenvio` (estado o envío gratis, no precio) · `aclasica` (tipo de publicación) · `sacapromos`/`removeStartedPromos`
+     (sacan descuentos: el comprador paga más) · `probarput` (el mismo precio).
+   - SUBEN: `raisePrice`/`raisePriceTo`/`raiseVariations` (frenosSuba: techo $650.000, barrera, +25% salvo `libre`; liquidando y mi
+     descuento vigente con `_chequeoNoSubir`), `volver` y `fijar` (no pueden bajar), `submargen` (sólo sube, frenosSuba + mi descuento),
+     `precios`, `bajopiso`, `nivelarGrupos`, `rescatarAlVender`, `subirPorCosto` (apagados con autoPrecios/SOLO_DATOS). El 🔎 detector
+     mira las subas mías (techo +30%, más del doble, terminación).
+ · **🔐 Salidas sólo suyas** (`BANDERAS_SUYAS` + `#remate`): `!sinlinea` (F7) · `!sincerteza` (F4/F8) · `!sintecho` (F1) · `!bajocero`
+   (F0, nuevo freno) · 🧨 `#remate` (abre F5/F7/F8 sólo autorizado; `tag:` ya no lo pone). Pedido: `pedirAutorizaciones` →
+   `cyc/autoriza/<código>` {mla, tipo, de, precio, banderas, regla, freno, motivo, linea, ts, vencePed, estado, sigPed} y UN mensaje a
+   `tgAlertas`. Respuesta: `_autDeTelegram` (en `resolveTgChat`, el mismo getUpdates, SIN offset: no se le pierde nada a nadie; nunca en
+   consulta ni DRY): sólo su chat, nunca un bot, posterior al pedido, firmado HMAC con el token del bot; "autorizo"/"no", por código,
+   el último verbo antes de cada código; un "no" posterior revoca lo no usado; lo rechazado no se vuelve a pedir por 48 h. `autNoVale`
+   verifica (mla, bandera, precio ±$10, vigencia 48 h, las dos firmas). Usada → `usada`. Probe `autoriza[:todas]` (solo lee).
+ · **Lo que cambió en `frenosBajas`:** lee una vez para varias (`pre`, el detector) · juzga en un momento (`ahora`, `propio`, `p0v`,
+   `autCodigos`) · F0 nuevo (abajo de 0% con `mgA`) · F9 nuevo (en escasez nunca abajo del precio de antes) · la escasez cuenta sólo con
+   su suba anotada en mis cambios, y la escalera de escasez (sin ventas desde el último cambio, 12+ h, sin bajar del normal) no la frena
+   F4 · 📦 sobra y 📉 liquidando abren F5/F7/F8 sólo con sobra de verdad (90+ d de stock al ritmo con stock, sin ventas con stock en
+   60 d, o lotes de 90+ d) · mis descuentos (`cyc/promohist`) son escalones de F3 · las vueltas atrás del detector (`por: 'errores'`) no
+   cuentan como suba de F4/F7 · "antes de activar": lo que nunca estuvo activo ni vendió (línea de tiempo, alta de menos de 90 d) se
+   corrige con `!activar` + EXCEPCIÓN sin F1/F7.
+ · **🔎 `errores[:horas][:go]`** (`detectarErrores`, default 26 h): junta `cyc/claudecambios` (con `fmt: 2` = banderas, estrategia,
+   autorizaciones y margen), `cyc/promohist` (entradas y salidas de mis descuentos, con lo mismo), `cyc/promoclaude` viejos, `cyc/autoprecio`
+   que no es mío y la foto (`cyc/supervisor/eventos`, "a mano"); juzga cada baja con `frenosBajas` en seco en su momento, el 25% en el
+   peor caso sin `!piso`, la estrategia (escasez/techo en una baja), las subas #techo de menos de +30% o de más del doble, y la
+   terminación 90/990. Categorías ❌ · ↩️ · ⚠️ · ❓ · ✅ · 🔚 · 📷 · 💳 y la cuenta tiene que cerrar. `:go` deshace sólo lo `fmt: 2`
+   (vuelve al precio de antes con `raisePriceTo` y relee, o `salirPromoMia`; anota `por: 'errores'` + `deshace` y la estrategia de antes;
+   UN aviso con `sendAlerta` directo). Lo de antes se lista con su comando.
+ · Probado con las funciones REALES (copia del archivo con exports) y una base y un ML de mentira: 66 casos (el de los Protectores con y
+   sin su autorización, autorización tocada a mano o sin firma, F2/F3/F6/F9, la escalera de escasez, :go que deshace y avisa una vez,
+   las respuestas de Telegram de otro chat/bot/viejas/editadas, "pero no", revocar, la puerta) + la de antes contra la de ahora en 14
+   casos sin banderas (sólo cambian las 5 buscadas).
+ · **Qué chequear:** que todo camino nuevo que baje un precio llame a `setPriceTo` (o pase por `frenosBajas`); que toda bandera nueva
+   esté en los dos parsers y en `BAN_DEC`/el `ban` de `entrarpromo`; que una salida usada mal pase a `BANDERAS_SUYAS`; que cada corrección
+   nueva tenga su chequeo en `detectarErrores`; que `errores` cierre la cuenta; que `autoriza` no muestre pedidos "TODAVÍA NO SALIÓ".
+
 ### 22/10/2026 · 1a 2a 3a: sin excepciones al "sin techo no se baja", ventas a fondo sólo las que lo piden, chequeo de bajas
  · **1a:** F7 de `frenosBajas` acepta `!sinlinea` sólo junto con `!activar` (precio mal puesto antes de activar). Antes la usé para bajar
    3 Protectores de talón por lo que vendió la familia. Qué chequear: ninguna baja sin 🔴/🏔️ salvo activaciones y las tags que F7 exime.

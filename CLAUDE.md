@@ -895,6 +895,26 @@ de las cortas en Alto, el chat con el nivel que él elija. No se cambia sin que 
 ## 🧠 EL CEREBRO REHECHO Y LAS REGLAS DURAS EN EL CÓDIGO (21/10/2026, él: "a, dale" y "fijate si es necesario rehacer el cerebro (…) manejalo")
 Después del Cuba Platinum (bajado sin techo con toda la info) y del Adaptador 8 en 1 (bajado de golpe y abajo del piso). `CEREBRO.md` rehecho: cada regla una vez, la más nueva, marcada 🔒 (freno en el código) o 🧠 (pensar); los choques que son decisión suya están en su sección 0b con la regla provisoria. Frenos nuevos en `frenosBajas` (sync.mjs, usada por `decido` y `entrarpromo`): lo nuevo sin 🏔️ · escalera ≤15% (25% escasez) · un escalón cada 48 h (12 h escasez) · una suba no se deshace sin 95% · no abajo del 💰 piso · descuento sin sobra. Excepciones con `!sintecho` `!golpe` `!sincerteza` `!bajopiso` `!nosobra` y "EXCEPCIÓN: …" en el motivo. `#techook` sólo por `techo95`. **Regla: toda regla nueva "nunca/sólo si" que se pueda medir va al código, y REEMPLAZA la de su tema en el CEREBRO.**
 
+## 🔐 UN AVISO ALCANZA (22/10/2026, él eligió las tres)
+Después de los 3 Protectores de talón: el freno "sin línea de techo no se baja" existía y se pasó por la salida `!sinlinea` (la familia
+"ya había encontrado techo"). Él no quiere marcar el mismo error dos veces. Tres cosas, todas en `ml-sync/sync.mjs`:
+ · **Todos los caminos pasan por las mismas reglas.** `frenosBajas` (F0-F9) juzga `decido`, `entrarpromo` y LA PUERTA de `setPriceTo`
+   (toda otra baja de lista: `alpiso`, `bajar`, `tocados`, `unapub …bajar=/empatar`, la noche). Las gemelas siguen a su Clásica. Las
+   subas pasan por `frenosSuba`. La lista completa, en `ml-sync/REVISION.md` (etapa 1, 22/10). F9 nuevo: en escasez nunca abajo del
+   precio de antes de la escasez.
+ · **🔐 Las salidas que ya fallaron son SÓLO SUYAS:** `!sinlinea` `!sincerteza` `!sintecho` `!bajocero` y 🧨 `#remate`. Sin su
+   autorización el cambio no se hace: queda pedido en `cyc/autoriza/<código>` y le llega UN mensaje numerado a su canal privado
+   (`tgAlertas`). Él RESPONDE a ese mensaje "autorizo K7M3" ("autorizo todo" · "no K7M3"); el ciclo lo lee de getUpdates (sin offset,
+   sólo de su chat, nunca de un bot, posterior al pedido), lo firma con el token del bot y vale 48 h para ese renglón. `autoriza`
+   (consulta) lista lo autorizado con el renglón a volver a correr. Única salida mía sin él: corregir el precio de lo que NUNCA estuvo
+   activo ni vendió, al activarlo (`!activar` + EXCEPCIÓN, lo verifica la línea de tiempo).
+ · **🔎 El detector `errores[:horas][:go]`** (paso final de cada vuelta, por consulta): todo cambio de precio y descuento de las
+   últimas 26 h (mis cambios, mis descuentos, el robot, la foto de precios) contra los errores que él ya marcó, con las mismas funciones
+   que deciden, en el momento de cada cambio. La cuenta tiene que cerrar. Con `:go` (ml-sync) deshace lo ❌ (vuelve al precio de antes,
+   releído) y le manda UN aviso.
+ · **Regla: cada corrección nueva suya agrega su chequeo al detector (y su freno si se puede medir), en el mismo commit.** Una salida
+   de excepción que ya se usó mal pasa a ser 🔐 suya. Detalle en `ml-sync/CEREBRO.md` §0c.
+
 ## 🧠 SUS 4 DECISIONES DEL CEREBRO Y LA ETAPA 8 (21/10/2026, "1a 2b 3a 4a")
 1a bajar algo que no sobra (salir de techo, escasez o lanzamiento) = 💸 descuento con el precio de antes tachado, no bajar la lista ·
 2b una prueba de techo sin certeza espera 15 días como mucho; después decide la plata por día (igual o más → se queda, menos → un
