@@ -4701,12 +4701,14 @@ async function detectarErrores(db, o = {}) {
   for (const [k, r] of Object.entries(cc)) {
     if (!r || !enVentana(r.ts)) continue;
     C.push({ id: 'claudecambios/' + k, fuente: r.por === 'errores' ? 'el detector' : 'decido', mla: String(r.mla || ''), ts: Number(r.ts), de: Number(r.de) || 0, a: Number(r.a) || 0, motivo: String(r.motivo || ''),
-      tag: r.tag || '', ban: Array.isArray(r.ban) ? r.ban : [], aut: Array.isArray(r.aut) ? r.aut : [], fmt: Number(r.fmt) || 1, mgA: r.mgA, mgP: r.mgPA, deshace: r.deshace || '' });
+      tag: r.tag || '', ban: Array.isArray(r.ban) ? r.ban : [], aut: Array.isArray(r.aut) ? r.aut : [], fmt: Number(r.fmt) || 1, mgA: r.mgA, mgP: r.mgPA, deshace: r.deshace || '',
+      st: r.st != null && Number.isFinite(Number(r.st)) ? Number(r.st) : null });
   }
   for (const [m, h] of Object.entries(ph)) for (const [k, x] of Object.entries(h || {})) {
     const ts = Number(k); if (!x || !enVentana(ts)) continue;
     if (x.accion === 'entra') C.push({ id: `promohist/${m}/${k}`, fuente: 'descuento', mla: m, ts, de: Number(x.de) || 0, a: Number(x.a) || 0, motivo: String(x.motivo || ''),
-      tag: x.tag || '', ban: Array.isArray(x.ban) ? x.ban : [], aut: Array.isArray(x.aut) ? x.aut : [], fmt: Number(x.fmt) || 1, mgA: x.mg, mgP: x.mgP, promo: true });
+      tag: x.tag || '', ban: Array.isArray(x.ban) ? x.ban : [], aut: Array.isArray(x.aut) ? x.aut : [], fmt: Number(x.fmt) || 1, mgA: x.mg, mgP: x.mgP, promo: true,
+      st: x.st != null && Number.isFinite(Number(x.st)) ? Number(x.st) : null });
     else if (x.accion === 'sale') C.push({ id: `promohist/${m}/${k}`, fuente: 'salida de un descuento', mla: m, ts, de: Number(x.a) || 0, a: Number(x.de) || 0, motivo: '', tag: '', ban: [], aut: [], fmt: 1, salida: true });
   }
   for (const [m, x] of Object.entries(pcl)) {   // descuentos vigentes de antes de la historia (20/10)
@@ -4765,7 +4767,7 @@ async function detectarErrores(db, o = {}) {
       if (nuevoFmt) for (const f of BANDERAS_SUYAS) if (c.ban.includes(f)) fz[f] = true;
       const p0v = c.promo ? p0VistoEn(ph[c.mla] || {}, c.ts, c.de, { ts: c.ts, a: c.a }, true) : c.de;
       const d = { mla: c.mla, accion: 'baja', p0: c.de, a: c.a, ahora: c.ts, fz, p0v, propio: { ts: c.ts, a: c.a }, autCodigos: nuevoFmt ? c.aut : [],
-        mgA: c.mgA != null && Number.isFinite(Number(c.mgA)) ? Number(c.mgA) : null };
+        mgA: c.mgA != null && Number.isFinite(Number(c.mgA)) ? Number(c.mgA) : null, ...(c.st != null ? { st: c.st } : {}) };
       try { await frenosBajas(db, [d], {}, links, { seco: true, promo: !!c.promo, pre }); }
       catch (eF) { it.cat = 'sindato'; it.sinDato = 'los frenos fallaron: ' + String(eF.message || eF).slice(0, 80); continue; }
       if (d.freno) {
@@ -6006,8 +6008,9 @@ async function aplicarCerebro(db, cz, o) {
     // REGISTRO DE CADA DECISIÓN DE CLAUDE (10/10/2026): `cyc/autoprecio` guarda sólo el ÚLTIMO cambio de cada publicación, y
     // la tarjeta de resultados tiene que medir TODAS (él: "quiero que aparezca todo"). Esto no se pisa.
     // `fmt: 2` (22/10/2026): con las banderas, la estrategia, las autorizaciones suyas usadas y el margen, para que el detector
-    // `errores` juzgue cada cambio con lo que de verdad se pidió (sin eso, una bandera mía no cuenta y una suya nunca vale).
-    if (reg.por === 'claude') { try { await db.set('cyc/claudecambios/' + hoyTs + '_' + d.mla, { mla: d.mla, de: reg.de, a: reg.a, ts: hoyTs, motivo: reg.motivo, nom: d.nom, cuenta: d.cuenta, fmt: 2, ban: (d.reg && d.reg.ban) || [], tag: (d.reg && d.reg.tag) || null, aut: (d.reg && d.reg.aut) || [], mgA: d.mgA ?? null, mgPA: d.mgPA ?? null }); } catch { console.log(`   ⚠️ no pude anotar ${d.nom} en el registro de decisiones de Claude`); } }
+    // `errores` juzgue cada cambio con lo que de verdad se pidió (sin eso, una bandera mía no cuenta y una suya nunca vale), y el stock
+    // con el que se decidió (`st`: la sobra de verdad se mide con él; el de la línea de tiempo es el de la noche anterior).
+    if (reg.por === 'claude') { try { await db.set('cyc/claudecambios/' + hoyTs + '_' + d.mla, { mla: d.mla, de: reg.de, a: reg.a, ts: hoyTs, motivo: reg.motivo, nom: d.nom, cuenta: d.cuenta, fmt: 2, ban: (d.reg && d.reg.ban) || [], tag: (d.reg && d.reg.tag) || null, aut: (d.reg && d.reg.aut) || [], mgA: d.mgA ?? null, mgPA: d.mgPA ?? null, st: d.st != null && Number.isFinite(Number(d.st)) ? Number(d.st) : null }); } catch { console.log(`   ⚠️ no pude anotar ${d.nom} en el registro de decisiones de Claude`); } }
     if (autoprecio) autoprecio[d.mla] = reg;
     const pm = { ult: { mot: d.tipoMot, de: reg.de, a: reg.a, ts: hoyTs } };
     if (d.eNueva) pm.e = Math.round(((Number(d.eLearn) || CEREBRO_ELAST) * 0.5 + d.eNueva * 0.5) * 100) / 100;
@@ -43161,7 +43164,8 @@ async function main() {
         // `extra` (22/10/2026): lo que pedí, para que el detector `errores` juzgue esta entrada con sus banderas y autorizaciones.
         const autE = (d.frenosOk && d.frenosOk.aut) || [];
         await histPromo(q.mla, { de: d.p0, a: pQuedo, tipo: pr.type, nombre: pr.name || '', accion: 'entra', extra: { fmt: 2, motivo: String(q.motivo || '').slice(0, 300), tag: q.tag || tagDeMotivo(q.motivo) || 'descuento',
-          ban: ['piso', 'bajocero', 'sintecho', 'golpe', 'sincerteza', 'bajopiso', 'nosobra', 'sinlinea'].filter((k) => q[k]), aut: autE, mg: mg ?? null, mgP: mgP ?? null } });
+          ban: ['piso', 'bajocero', 'sintecho', 'golpe', 'sincerteza', 'bajopiso', 'nosobra', 'sinlinea'].filter((k) => q[k]), aut: autE, mg: mg ?? null, mgP: mgP ?? null,
+          st: d.st != null && Number.isFinite(Number(d.st)) ? Number(d.st) : null } });
         for (const c of autE) await _autUsar(db, c, 'entrarpromo');
         // La promo también es un precio: queda su estrategia (18/10/2026, él: "¿por qué está anotado como precio base?").
         { let tg = q.tag && ESTRATEGIAS[q.tag] ? q.tag : (tagDeMotivo(q.motivo) || 'promo');

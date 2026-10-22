@@ -303,7 +303,11 @@ Después de los 3 Protectores de talón bajados con `!sinlinea` apoyados en la f
      un P47 de Matías. Van aparte como 🔗 (se juzga la que se cambió). Quedan 2 📷 que nadie anotó: Cuba Blue $32.990 → $45.000 y Cuba
      Gold $28.990 → $67.174 (~20/10, Adriana) — ¿a mano en ML?
    Segunda corrida con los arreglos (18:37 UTC, 171 cambios porque la ventana corrió): ❌ 22 · ↩️ 18 · ⚠️ 0 · ✅ 125 · 🔚 1 · 📷 2 · 🔗 3,
-   la cuenta cerró. Probado: 79 casos (los 66 + 13 nuevos con lo que mostró la corrida).
+   la cuenta cerró.
+   - lo anotado con el formato nuevo guarda también el stock con el que se decidió (`st`, en `cyc/claudecambios` y en las entradas de
+     `cyc/promohist`) y el detector juzga con ése: la línea de tiempo tiene el de la noche anterior, y una caja que entró hoy hacía ver
+     "no sobra" lo que al decidir sí sobraba (y `:go` lo habría vuelto atrás).
+   Probado: 81 casos (los 66 + 15 nuevos con lo que mostró la corrida).
  · **Qué chequear:** que todo camino nuevo que baje un precio llame a `setPriceTo` (o pase por `frenosBajas`); que toda bandera nueva
    esté en los dos parsers y en `BAN_DEC`/el `ban` de `entrarpromo`; que una salida usada mal pase a `BANDERAS_SUYAS`; que cada corrección
    nueva tenga su chequeo en `detectarErrores`; que `errores` cierre la cuenta; que `autoriza` no muestre pedidos "TODAVÍA NO SALIÓ".
