@@ -22187,6 +22187,21 @@ async function main() {
     // BILLING_PROBE=faltaventas → SOLO LEE (21/10/2026). Lo que pasó TODOS los filtros (25%, 2+ vendedores, fotos, mismo producto
     // confirmado) y todavía no tiene las vendidas de ML: la lista corta para el chat de compras. Paraguay se carga con
     // `candprecio:[prov=elegancia;]<cód>=/<vendidas>;go` y las listas con `listadato:<prov>;<cód>=<vendidas>;go`.
+    // `faltaventas:todas` (22/10/2026, él: "quiero hacer que el chat local haga todas las publicaciones sin venta y las cargue. de
+    // todas las listas"): TODOS los productos de las listas que tienen catálogo de ML medido y no tienen las vendidas, sin mirar el
+    // margen (para que en 📋 Listas no quede ninguno con "ventas sin cargar"). Afuera sólo lo sacado, lo que no está en la web del
+    // proveedor, lo que no entra en Full y lo marcado "otro producto". Del margen más alto al más bajo.
+    if (/^faltaventas:todas$/.test(String(process.env.BILLING_PROBE || ''))) {
+      const provs = (await db.get('cyc/mlconfig/listasProv')) || {}; const filas = []; const porP = {};
+      for (const [k, pv] of Object.entries(provs)) { if (pv.desc) continue; const cat = (await db.get('mlapi/listas/' + k)) || {};
+        for (const [cod, e] of Object.entries(cat)) { if (!e || !e.mi || e.vend != null || e.sacado || e.noWeb || e.noFull || listaNoEsVale(e)) continue;
+          filas.push({ m: e.m != null ? Number(e.m) : -999, t: `lista|${k}|${cod}|${String(e.n).replace(/\|/g, '/').slice(0, 80)}|${e.mi}|${e.m != null ? Math.round(e.m) + '%' : 'sin margen'}` });
+          porP[pv.nombre || k] = (porP[pv.nombre || k] || 0) + 1; } }
+      filas.sort((a, b) => b.m - a.m);
+      console.log(`=== TODAS LAS DE LAS LISTAS SIN VENTAS DE ML CARGADAS: ${filas.length} (fuente|proveedor|código|nombre|catálogo ML|margen) ===`);
+      console.log(Object.entries(porP).map(([n, c]) => n + ' ' + c).join(' · '));
+      console.log('@@LISTA'); for (const f of filas) console.log(f.t); console.log('@@FIN'); return;
+    }
     if (/^faltaventas$/.test(String(process.env.BILLING_PROBE || ''))) {
       const cands = (await db.get('cyc/candidatos_py')) || {}; const comp = (await db.get('cyc/compraspy')) || {}; const out = [];
       for (const c of Object.values(cands)) { if (!c || c.no || c.prodId || c.noML) continue;

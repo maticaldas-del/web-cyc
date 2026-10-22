@@ -2768,3 +2768,4 @@ de la Clásica original ni de las Premium.
 - 22/10/2026: CEREBRO, choque nuevo resuelto: escasez + stock que paga almacenamiento (caso F9).
 - 22/10/2026 (v26.05): Inicio · calendario de mes y año con ventas brutas (blanco) y ganancia (verde) arriba, y números completos sin "k" (`_kTxt`, `_hcalTotHTML`).
 - 22/10/2026: probe `mezcla[:días]` (solo lee): ventas por tramo de % de ganancia, qué se iría con cada vara y Paulvic aroma por aroma.
+- 22/10/2026: `faltaventas:todas` (solo lee): todos los productos de las listas con catálogo de ML y sin vendidas, para que el chat local las cargue con `listadato`.
