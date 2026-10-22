@@ -730,6 +730,7 @@ input.qty:focus{border-color:var(--accent2)}
 @keyframes hcalFlota{0%,100%{transform:translateY(0);box-shadow:0 0 0 0 color-mix(in srgb,var(--dc) 0%,transparent)}50%{transform:translateY(-2px);box-shadow:0 2px var(--gl,10px) 0 color-mix(in srgb,var(--dc) 60%,transparent)}}
 @keyframes hcalBrillo{0%{background-position:100% 0}100%{background-position:-150% 0}}
 @media (prefers-reduced-motion:reduce){.hoy-cal .hcal-d{animation:none!important}}
+.hoy-cal .hcal-tot{font-size:.78rem;color:var(--muted);margin-bottom:8px}.hoy-cal .hcal-tot b{color:var(--text)}.hoy-cal .hcal-tot span{font-size:.68rem}
 .hoy-cal .hcal-ley{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:8px;font-size:.6rem;color:var(--muted)}
 .hoy-cal .hcal-ley i{display:inline-block;width:9px;height:9px;border-radius:3px;background:var(--dc);margin-right:3px;vertical-align:-1px}
 /* G5 · Ventas en el celu: los 6 cuadros en un renglón que se abre */
@@ -2932,7 +2933,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.02';
+const APP_VERSION='26.03';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2945,6 +2946,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.03',f:'22/10',h:'10:45',c:[{n:1,t:'Inicio · Mes y Año: arriba del calendario, la ganancia total y el promedio por día (con cuántos días).'},{n:2,t:'Pedidos: si lo que hay en la oficina más lo que viaja a Full ya llega a lo que decidí comprar, no se pide; y si estaba cargado en el pedido de Paraguay, se saca solo.'}]},
   {v:'26.02',f:'22/10',h:'11:30',c:[{n:1,t:'Inicio · calendario de días y de meses: cada cuadrito se mueve según lo que vendió. Bajo y justo quietos, bien y bueno laten, excelente y estrella flotan, JOYA además brilla.'}]},
   {v:'26.01',f:'22/10',h:'11:15',c:[{n:1,t:'Métricas: el globito del gráfico dice la diferencia en $ además del % (contra el período anterior y el año pasado).'}]},
   {v:'26.00',f:'22/10',h:'11:00',c:[{n:1,t:'Inicio · Ventas de hoy/mes/año: la tarjeta con colores y burbujas termina en los números; la escalera, la curva, el calendario y las cuentas van abajo en una tarjeta común, que se lee mejor.'}]},
@@ -8342,7 +8344,10 @@ function _homeAnioHTML(hf,chip){
     const _an=_hcalAnim(m.prom,m.M+1);cells+=`<button class="hcal-d${m.curso?' hoy':''}${_an.c}" style="--dc:${n[2]};min-height:52px${_an.st}" onclick="event.stopPropagation();homeCalMes(${Y},${m.M})" title="${_MESES_L[m.M]} ${Y} · ${m.ventas} venta${m.ventas===1?'':'s'} · ganancia ${fmt(m.gan)} · ${fmt(Math.round(m.prom))} por día${m.curso?' (va en curso)':''}">${MC[m.M]}<b>${_kTxt(m.prom)}/día</b><b style="font-weight:500;opacity:.75">${_kTxt(m.gan)}</b>${em?`<em>${em}</em>`:''}</button>`;
   }
   const ley=VIVA_DIA_NIV.map((x,i)=>`<span><i style="--dc:${x[2]}"></i>${i===0?'menos de '+_kTxt(VIVA_DIA_NIV[1][1]):_kTxt(x[1])}</span>`).join('');
-  return `${c?`<div class="hoy-chips">${c}</div>`:''}<div class="hoy-cal"><div class="hcal-g" style="grid-template-columns:repeat(4,minmax(0,1fr))">${cells}</div><div class="hcal-ley">${ley} <span>por día</span></div>
+  // 22/10/2026, él: "agregar ganancia total y por día en el año, y en el mes también con los días".
+  const _gT=A.reduce((a,m)=>a+m.gan,0),_dT=A.reduce((a,m)=>a+m.dias,0);
+  const tot=_dT?`<div class="hcal-tot">💰 ganancia del año <b>${fmt(Math.round(_gT))}</b> · <b>${fmt(Math.round(_gT/_dT))}</b> por día <span>(${_dT} días)</span></div>`:'';
+  return `${c?`<div class="hoy-chips">${c}</div>`:''}<div class="hoy-cal">${tot}<div class="hcal-g" style="grid-template-columns:repeat(4,minmax(0,1fr))">${cells}</div><div class="hcal-ley">${ley} <span>por día</span></div>
     <div style="font-size:.62rem;color:var(--muted);margin-top:4px">Cada cuadrito es un mes, del color de su ganancia promedio por día (los mismos colores que los días). Abajo, lo que dejó en total. Tocá uno y abre ese mes.</div></div>`;
 }
 function homeCalIr(k){_vpIrDia=String(k).replace(/_/g,'-');vpLimpiarFiltros();goPage('ventaprod');}
@@ -8376,7 +8381,9 @@ function _homeGustoHTML(esc,dia,hf){
     const n=_gNivDia(t.gan),em=R.mejor&&k===R.mejor.k&&R.mejor.g>0?'🏆':enRacha.has(k)?'🔥':'';
     const _an=t.ventas?_hcalAnim(t.gan,d):{c:'',st:''};cells+=`<button class="hcal-d${k===hoyK?' hoy':''}${_an.c}" style="--dc:${t.ventas?n[2]:'var(--border2)'}${_an.st}" onclick="event.stopPropagation();homeCalIr('${k}')" title="${dm(new Date(Y,Mo,d))} · ${t.ventas} venta${t.ventas===1?'':'s'} · ganancia ${fmt(t.gan)}${k===hoyK?' (va en curso)':''}">${d}<b>${t.ventas?_kTxt(t.gan):'—'}</b>${em?`<em>${em}</em>`:''}</button>`;}
   const ley=VIVA_DIA_NIV.map((x,i)=>`<span><i style="--dc:${x[2]}"></i>${i===0?'menos de '+_kTxt(VIVA_DIA_NIV[1][1]):_kTxt(x[1])}</span>`).join('');
-  return `${c?`<div class="hoy-chips">${c}</div>`:''}<div class="hoy-cal"><div class="hcal-g">${cells}</div><div class="hcal-ley">${ley}</div>
+  const _ks=Object.keys(R.tot),_gM=_ks.reduce((a,k)=>a+(R.tot[k].gan||0),0);
+  const tot=_ks.length?`<div class="hcal-tot">💰 ganancia del mes <b>${fmt(Math.round(_gM))}</b> · <b>${fmt(Math.round(_gM/_ks.length))}</b> por día <span>(${_ks.length} días)</span></div>`:'';
+  return `${c?`<div class="hoy-chips">${c}</div>`:''}<div class="hoy-cal">${tot}<div class="hcal-g">${cells}</div><div class="hcal-ley">${ley}</div>
     <div style="font-size:.62rem;color:var(--muted);margin-top:4px">Cada cuadrito es un día, del color de su ganancia (los mismos de la tarjeta del día). Tocá uno y abre Ventas en ese día.</div></div>`;
 }
 // ── G5 · VENTAS EN EL CELU: LOS 6 CUADROS EN UN RENGLÓN QUE SE ABRE ──
@@ -14765,7 +14772,7 @@ async function syncPedidosAuto(){
     // fino: restar los totales otra vez lo contaría dos veces. Lo de Paraguay no trae color: va al total.
     let aComprar=aComprarVar!=null?Math.max(0,aComprarVar-enPy):Math.max(0,necesario-enOficina-enCamino);
     // Si Claude decidió cuántas comprar, manda lo suyo (la cuenta automática queda al lado, para comparar).
-    let clInfo=null,_sinDec=false;
+    let clInfo=null,_sinDec=false,_cubreEnvio=0;
     {const _cl=clPedDe(p.id);
       // LO DE PARAGUAY PEDIDO DESPUÉS DE LA DECISIÓN Y QUE NO SE DESCONTÓ (20/10/2026 · etapa 3, misma idea que el Paulvic de abajo):
       // renglones de reposición en camino (`compraspy`, prodId sin id) pedidos después de la decisión y sin `desc` (la web y
@@ -14812,8 +14819,15 @@ async function syncPedidosAuto(){
           variantesNec=vn.length?vn:null;
           aComprar=vn.reduce((a,x)=>a+(x.q||0),0);
         }else if(_cl.u!=null&&(!hasVars||SOLO_CLAUDE)){aComprar=Math.max(0,(parseInt(_cl.u)||0)-_pyPost.reduce((a,it)=>a+(parseInt(it.u)||0),0));if(hasVars)variantesNec=null;}
+        // LO QUE YA ESTÁ EN LA OFICINA O VIAJANDO A FULL TAMBIÉN CUBRE LO DECIDIDO (22/10/2026, él con el Mercedes Club Black: 1 u. en la
+        // oficina y yo pedía comprar 1: "si está en el envío hay que sacarlo, siempre que llegue a lo que me pedís vos"). Si oficina + camino
+        // a Full llegan a lo que decidí, no se compra nada; y si estaba cargado en el 🧾 Pedido de Paraguay, se saca de ahí (una vez).
+        if(_cl.u!=null&&!hasVars&&aComprar>0){const _cub=(enOficina||0)+transitoTotal(_trPed,p.id);
+          if(_cub>=aComprar){aComprar=0;_cubreEnvio=_cub;
+            if(p.origen==='py'&&(parseInt(((state.pyArmado||{})[p.id]||{}).u)||0)>0&&!(window._pyArmCubre||(window._pyArmCubre=new Set())).has(p.id)){window._pyArmCubre.add(p.id);
+              db.ref('cyc/py_armado/'+p.id).remove().then(()=>{delete state.pyArmado[p.id];toast(`🚚 ${p.name}: lo que hay en la oficina o viajando a Full ya cubre lo que pedía: lo saqué del pedido`,'info',6000);}).catch(()=>{});}}}
         if(aComprar!==formU||_cl.u!=null||_cl.vars||_cl.mano){
-          clInfo={u:aComprar,formU,mot:String(_cl.mot||''),ts:_cl.ts||null};
+          clInfo={u:aComprar,formU,mot:String(_cl.mot||'')+(_cubreEnvio?` · 🚚 Ahora no se compra: entre la oficina y lo que viaja a Full hay ${_cubreEnvio} u., que cubren lo que pedía.`:''),ts:_cl.ts||null};
           if(_cl.motPv)clInfo.motPv=String(_cl.motPv).slice(0,2500);   // por qué ese precio para el máximo de compra
           if(hasVars&&_cl.motVars&&typeof _cl.motVars==='object'){   // el motivo de cada color (decidido color por color)
             const mv={};for(const v of (p.variantes||[])){const k=sid(String(v).toLowerCase());if(_cl.motVars[k])mv[k]={v,t:String(_cl.motVars[k]).slice(0,2500),q:(_cl.vars&&k in _cl.vars)?Math.max(0,parseInt(_cl.vars[k])||0):null};}

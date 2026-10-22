@@ -2665,3 +2665,9 @@ meses con los análisis y colores"*. `_homeAnioHTML`/`_anioMeses` (index.html): 
 la línea roja, así lo de abajo se nota más"*. `renderHomeHoy` arma dos tarjetas: la viva (`.vw`/`.viva`, título, facturado, ganancia,
 puntaje) y abajo una común (escalera, curva, calendario de mes/año, cuentas, cuánto cobrar). **Qué chequear:** que los efectos
 (`_homeHoyEfectos`, deslizar) sigan andando y que en claro la de abajo se lea.
+
+**22/10/2026 · etapa 3 · lo que está en la oficina o viajando a Full cubre lo decidido (v26.03).** Él con el Mercedes Club Black (1 u. en
+la oficina, el pedido decía comprar 1): *"si está en el envío hay que sacarlo, siempre que llegue a lo que me pedís vos"*. En `syncPedidosAuto`,
+con decisión mía en `u` (sin colores): si oficina + `transitoTotal` ≥ lo decidido → 0, el 🧠 lo dice y se saca de `cyc/py_armado` (una vez).
+`decide_pedidos.py` también tiene que restar la oficina. **Qué chequear:** productos con colores no entran (falta hacerlo color por color).
+**Y en Inicio (Mes y Año):** renglón `hcal-tot` con la ganancia total y el promedio por día arriba del calendario.
