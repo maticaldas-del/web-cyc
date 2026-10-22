@@ -6093,14 +6093,10 @@ async function medirParamCompra(db, accounts, labels, GO) {
   const vp = (await db.get('cyc/ventaprod')) || {};
   const CTAS = ['adriana', 'luciana', 'ayelen', 'matias'];
   const ctaDe = (x) => { const c = String(x || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); return CTAS.find((k) => c.startsWith(k)) || null; };
-  const desde = Date.now() - 90 * 864e5, fact = { adriana: 0, luciana: 0, ayelen: 0, matias: 0 };
-  for (const [k, ents] of Object.entries(vp)) {
-    const ts = Date.parse(k.slice(0, 10).replace(/_/g, '-'));
-    if (!isFinite(ts) || ts < desde) continue;
-    for (const v of Object.values(ents || {})) { if (!v || v.cancelada) continue; const c = ctaDe(v.cuenta); if (c) fact[c] += Number(v.total) || 0; }
-  }
+  // 22/10/2026 (7a): la que más lugar tiene contra el tope de H, no la que menos facturó en 90 días.
+  const LH = lugarHPorCuenta(vp), fact = {}; for (const c of CTAS) fact[c] = LH.porCta[c].proy; void ctaDe;
   out.cuentaNuevos = [...CTAS].sort((a, b) => fact[a] - fact[b])[0];
-  console.log(`\n🧾 IIBB · perfumes → Adriana ${ML_EXTRA_PCT.adriana}% · el resto → ${out.cuentaNuevos} ${ML_EXTRA_PCT[out.cuentaNuevos]}% (la que menos facturó en 90 días)`);
+  console.log(`\n🧾 IIBB · perfumes → Adriana ${ML_EXTRA_PCT.adriana}% · el resto → ${out.cuentaNuevos} ${ML_EXTRA_PCT[out.cuentaNuevos]}% (la que más lugar tiene contra el tope de H: ${money(Math.round(LH.porCta[out.cuentaNuevos].lugar))})`);
   // 4 · CUOTAS: ¿cuánto más barato tiene que estar uno SIN cuotas para ganarle la caja al que da cuotas?
   const links = (await db.get('cyc/mllinks')) || {};
   const muestras = [], sinCuoGana = [];
@@ -10113,7 +10109,7 @@ const RE_CAND_PERF = /perfum|parfum|\bedp\b|\bedt\b|eau de|fragan|fragr|body spl
 function cuentaLista(cat) {
   const v = Object.values(cat || {}).filter((e) => e && e.n);
   // 2+ vendedores en el catálogo de ML (20/10/2026, eligió la 1a; reemplaza el mínimo de 100 ventas del 18/10): con 1 solo queda afuera.
-  const m25 = (e) => !listaNoEsVale(e) && !e.sacado && !e.noWeb && !e.noFull && e.m != null && Number(e.m) >= 25 && listaCostoVigente(e) && /^https:\/\//.test(e.mf || '') && !(e.mv != null && Number(e.mv) < CAND_MIN_VENDEDORES);
+  const m25 = (e) => !listaNoEsVale(e) && !e.sacado && !e.noWeb && !e.noFull && e.m != null && Number(e.m) >= CAND_VARA_COMPRA && listaCostoVigente(e) && /^https:\/\//.test(e.mf || '') && !(e.mv != null && Number(e.mv) < CAND_MIN_VENDEDORES);
   // DESDE EL 20/10/2026 (eligió la a) sólo da lo que el chat de compras confirmó mirando ML (`ok`, de `listadato`) para ESE catálogo
   // (`okCat`, o el catálogo fijado con `mi=`). Antes también entraba lo que el robot emparejó solo y "parecía" bien: 21 de 36 estaban mal.
   const da = (e) => m25(e) && Number(e.mv) >= CAND_MIN_VENDEDORES && listaOkVale(e) && !pocasVentas(e.vend);
@@ -10137,6 +10133,33 @@ function perfLocalPct(costoPesos, precioML) {
   if (!(costoPesos > 0) || !(precioML > 0)) return null;
   return (precioML / (1 + PERF_LOCAL_TIENDA / 100) / costoPesos - 1) * 100;
 }
+// EL LUGAR QUE LE QUEDA A CADA CUENTA CONTRA EL TOPE DE H (22/10/2026, eligió la 7a de la estrategia: "lo nuevo va a la
+// cuenta que más lugar tiene"; y la 8b: por ahora las 4 cuentas siguen en H). Ventana = la que mira la próxima
+// recategorización (01/01→31/12 o 01/07→30/06, igual que `topeh`). Proyección al cierre = lo facturado en la ventana
+// (ventas + canceladas: ARCA también las ve facturadas) + lo de los últimos 30 días al ritmo de hoy por los días que faltan.
+// Lugar = tope H − proyección. Como el tope es el mismo para las 4, la que más lugar tiene es la de menor proyección.
+// Lo usan `repartopy` y `paramcompra` (cuentaNuevos). La tarjeta ⚖️ de Inicio hace la cuenta fina con facturas y ARCA.
+const TOPE_H_ANUAL = 81924660.37;
+function lugarHPorCuenta(vp) {
+  const CTAS = ['adriana', 'luciana', 'ayelen', 'matias'];
+  const ctaDe = (x) => { const c = String(x || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); return CTAS.find((k) => c.startsWith(k)) || null; };
+  const hoy = new Date(Date.now() - 3 * 3600e3), y = hoy.getUTCFullYear(), m = hoy.getUTCMonth() + 1;
+  const ini = Date.parse(m <= 6 ? `${y - 1}-07-01` : `${y}-01-01`), fin = Date.parse(m <= 6 ? `${y}-06-30` : `${y}-12-31`) + 864e5;
+  const d30 = Date.now() - 30 * 864e5, faltan = Math.max(0, (fin - Date.now()) / 864e5);
+  const r = {}; for (const c of CTAS) r[c] = { fact: 0, f30: 0 };
+  for (const [k, ents] of Object.entries(vp || {})) {
+    const ts = Date.parse(k.slice(0, 10).replace(/_/g, '-')); if (!isFinite(ts) || ts < ini) continue;
+    for (const v of Object.values(ents || {})) { if (!v) continue; const c = ctaDe(v.cuenta); if (!c) continue; const t = Number(v.total) || 0;
+      r[c].fact += t; if (ts >= d30 && !v.cancelada) r[c].f30 += t; }
+  }
+  for (const c of CTAS) { r[c].proy = r[c].fact + r[c].f30 / 30 * faltan; r[c].lugar = TOPE_H_ANUAL - r[c].proy; }
+  return { porCta: r, ini: new Date(ini).toISOString().slice(0, 10), fin: new Date(fin - 864e5).toISOString().slice(0, 10), faltan: Math.round(faltan) };
+}
+// LA VARA PARA COMPRAR ALGO NUEVO ES 35% (22/10/2026, eligió la 1a de la estrategia "ganar más por cada peso facturado").
+// Sólo frena COMPRAR (comando `pedir`, `revisarcompra`, lo que se manda al chat local). El descarte de candidatos sigue con
+// candPisoDe (25%): lo de 25% a 34% queda guardado y se sigue midiendo. Reponer lo que ya se vende sigue en 25%.
+// Misma vara que CAND_VARA_COMPRA de la web (index.html): si se toca una, se toca la otra.
+const CAND_VARA_COMPRA = 35;
 function candPisoDe(c) { return c && RE_CAND_PERF.test(`${c.nombre || ''} ${c.mlTit || ''}`) ? CAND_PISO_PERFUME : CAND_PISO_PCT; }
 const CAND_MIN_VENT = 100;      // 03/10/2026: "100 unidades mínimo vendidas". Desde el 20/10/2026 ya no frena (ver abajo); queda para contar
 // EN CATÁLOGO CON 2+ VENDEDORES EN VEZ DE 100 VENTAS (20/10/2026, eligió la 1a). Él: *"sacar las 100 ventas y que ahora sean todos productos
@@ -10418,7 +10441,7 @@ async function cargarParamCompra(db) {
   PARAM_COMPRA = pc;
   return pc;
 }
-// La cuenta donde iría un producto nuevo: perfume → Adriana (rubro), el resto → la que menos factura.
+// La cuenta donde iría un producto nuevo: perfume → Adriana (rubro), el resto → la que más lugar tiene contra el tope de H (7a, 22/10/2026).
 function cuentaNuevoDe(c) { return c && RE_CAND_PERF.test(`${c.nombre || ''} ${c.mlTit || ''}`) ? 'adriana' : CUENTA_NUEVOS; }
 // A mano se puede pedir más: `candidatos:max=400:go` (el go va al final) (03/10/2026, Guay cargó 350 de una). El 40 es para
 // que la corrida de la noche no se cuelgue; una corrida a mano no lleva nada atrás.
@@ -21297,7 +21320,7 @@ async function main() {
           // 20/10/2026 · etapa 4: `candprecio`/`pycat`/`candalta` cambiaron el precio de Paraguay (`usdAntes`, `calcTs:null`)
           // y el margen guardado es el del precio de antes. Misma regla que `candPrecioViejo` de la web.
           : (c.calcTs == null && Number(c.usdAntes) > 0) ? `cambió el precio de Paraguay (de US$ ${Number(c.usdAntes).toFixed(2)} a US$ ${(parseFloat(c.usd) || 0).toFixed(2)}): falta medirlo`
-          : (mg < candPisoDe(c) && !(_tcP > 0 && !c.noLocal && RE_CAND_PERF.test(`${c.nombre || ''} ${c.mlTit || ''}`) && (perfLocalPct((parseFloat(c.usd) || 0) * RECARGO_PAR * _tcP, Number(c.mlPrecio) || 0) || 0) >= PERF_LOCAL_GAN)) ? `da ${mg.toFixed(1)}% y tu piso es ${candPisoDe(c)}%`
+          : (mg < CAND_VARA_COMPRA && !(_tcP > 0 && !c.noLocal && RE_CAND_PERF.test(`${c.nombre || ''} ${c.mlTit || ''}`) && (perfLocalPct((parseFloat(c.usd) || 0) * RECARGO_PAR * _tcP, Number(c.mlPrecio) || 0) || 0) >= PERF_LOCAL_GAN)) ? `da ${mg.toFixed(1)}% y tu piso es ${candPisoDe(c)}%`
           : !(Number(c.mlVendedores) >= CAND_MIN_VENDEDORES) ? (Number(c.mlVendedores) === 1 ? 'en ML lo vende 1 solo vendedor: ese precio no lo confirma nadie (mínimo 2)' : 'no está medido contra un catálogo de ML con vendedores')
           // Sin las dos fotos no se compra (regla suya del 07/10, "sin foto tampoco acepto"; etapa 3, 20/10/2026): la web ya lo
           // frenaba (`candPuedePedir`) y este comando no.
@@ -21685,7 +21708,7 @@ async function main() {
           if (Math.abs(dif) >= 5) { reparos.push(`el margen se movió de ${antes.toFixed(1)}% a ${r.margen.toFixed(1)}%`); console.log(`     ⚠️ SE MOVIÓ: la medición guardada decía ${antes.toFixed(1)}% y hoy da ${r.margen.toFixed(1)}% (${dif > 0 ? '+' : ''}${dif.toFixed(1)} puntos). Alguien cambió el precio.`); }
           else console.log(`     (la medición anterior daba ${antes.toFixed(1)}% · se movió ${dif > 0 ? '+' : ''}${dif.toFixed(1)} puntos)`);
         }
-        if (r.margen < candPisoDe(c)) { frenos.push(`hoy da ${r.margen.toFixed(1)}%, abajo de tu piso de ${candPisoDe(c)}%`); console.log(`     ❌ ABAJO DE TU PISO DE ${candPisoDe(c)}%`); }
+        if (r.margen < CAND_VARA_COMPRA) { frenos.push(`hoy da ${r.margen.toFixed(1)}%, abajo de la vara de compra de ${CAND_VARA_COMPRA}%`); console.log(`     ❌ ABAJO DE LA VARA DE COMPRA DE ${CAND_VARA_COMPRA}%`); }
         // UN MARGEN MUY ALTO NO ES UNA BUENA NOTICIA: ES UNA SEÑAL (19/09/2026).
         // Sale del DualSense. Cuando el catálogo de ML no es el mismo producto —una edición
         // limitada, un pack, un combo— el precio contra el que se mide es mucho más alto, y eso
@@ -22206,7 +22229,7 @@ async function main() {
       const cands = (await db.get('cyc/candidatos_py')) || {}; const comp = (await db.get('cyc/compraspy')) || {}; const out = [];
       for (const c of Object.values(cands)) { if (!c || c.no || c.prodId || c.noML) continue;
         const pe = c.pedidoEn && comp[c.pedidoEn]; if (pe && pe.estado === 'camino') continue;
-        const mg = Number(c.margen); if (c.margen == null || !isFinite(mg) || mg < candPisoDe(c)) continue;
+        const mg = Number(c.margen); if (c.margen == null || !isFinite(mg) || mg < CAND_VARA_COMPRA) continue;
         if (c.calcTs == null && Number(c.usdAntes) > 0) continue;
         if (!(Number(c.mlVendedores) >= CAND_MIN_VENDEDORES)) continue;
         if (!/^https:\/\//.test(String(c.foto || '')) || !/^https:\/\//.test(String(c.mlFoto || ''))) continue;
@@ -22214,7 +22237,7 @@ async function main() {
         out.push(`py|${String(c.prov || 'nissei').toLowerCase()}|${c.cod || ''}|${String(c.nombre || '').replace(/\|/g, '/').slice(0, 80)}|${candCatDe(c)}|${Math.round(mg)}%`); }
       const provs = (await db.get('cyc/mlconfig/listasProv')) || {};
       for (const [k, pv] of Object.entries(provs)) { if (pv.desc) continue; const cat = (await db.get('mlapi/listas/' + k)) || {};
-        for (const [cod, e] of Object.entries(cat)) { if (!e || listaNoEsVale(e) || e.sacado || e.noWeb || e.noFull || !(e.m != null && Number(e.m) >= 25) || !listaCostoVigente(e)) continue;
+        for (const [cod, e] of Object.entries(cat)) { if (!e || listaNoEsVale(e) || e.sacado || e.noWeb || e.noFull || !(e.m != null && Number(e.m) >= CAND_VARA_COMPRA) || !listaCostoVigente(e)) continue;
           if (!/^https:\/\//.test(e.mf || '') || !(Number(e.mv) >= CAND_MIN_VENDEDORES) || !listaOkVale(e) || e.vend != null) continue;
           out.push(`lista|${k}|${cod}|${String(e.n).replace(/\|/g, '/').slice(0, 80)}|${e.mi || ''}|${Math.round(e.m)}%`); } }
       console.log(`=== PASARON TODO, FALTAN LAS VENTAS DE ML: ${out.length} (fuente|proveedor|código|nombre|catálogo ML|margen) ===`);
@@ -22232,7 +22255,7 @@ async function main() {
       let tot = 0; const filas = []; const porProv = {};
       for (const [k, pv] of Object.entries(provs)) { if (pv.desc || (solo && k !== solo.toLowerCase())) continue;
         const cat = (await db.get('mlapi/listas/' + k)) || {}; const rec = Number(pv.rec) || 0;
-        for (const [cod, e] of Object.entries(cat)) { if (!e || listaNoEsVale(e) || e.sacado || e.noWeb || e.noFull || !(e.m != null && Number(e.m) >= 25 && e.mi) || !listaCostoVigente(e)) continue;   // costo nuevo sin medir: el margen no vale (etapa 3, 20/10/2026)
+        for (const [cod, e] of Object.entries(cat)) { if (!e || listaNoEsVale(e) || e.sacado || e.noWeb || e.noFull || !(e.m != null && Number(e.m) >= CAND_VARA_COMPRA && e.mi) || !listaCostoVigente(e)) continue;   // costo nuevo sin medir: el margen no vale (etapa 3, 20/10/2026)
           const okV = listaOkVale(e);
           // 20/10/2026 (eligió la 1a): ya no hacen falta las ventas; sólo el ✅, y con 1 solo vendedor no da (no sale).
           if (CONF ? !okV : (okV || !(Number(e.mv) >= CAND_MIN_VENDEDORES))) continue;
@@ -46329,17 +46352,13 @@ async function main() {
       const NOM = { adriana: 'Adriana', luciana: 'Luciana', ayelen: 'Ayelen', matias: 'Matías' };
       const ctaDe = (x) => { const c = String(x || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); return CTAS.find((k) => c.startsWith(k)) || null; };
       const RE_PERFUME = /perfum|parfum|\bedp\b|\bedt\b|eau de|fragan|body splash|body mist|\bcolonia\b/i;
-      // facturación de 90 días por cuenta
-      const desde = Date.now() - 90 * 864e5, fact = { adriana: 0, luciana: 0, ayelen: 0, matias: 0 };
-      for (const [k, ents] of Object.entries(vp)) {
-        const ts = Date.parse(k.slice(0, 10).replace(/_/g, '-'));
-        if (!isFinite(ts) || ts < desde) continue;
-        for (const v of Object.values(ents || {})) { if (!v || v.cancelada) continue; const c = ctaDe(v.cuenta); if (c) fact[c] += Number(v.total) || 0; }
-      }
+      // 22/10/2026 (7a): lo que equilibra es el LUGAR contra el tope de H (proyección al cierre de la ventana de ARCA), no
+      // lo facturado en 90 días. `fact` = proyección: la de menor proyección es la de más lugar.
+      const LH = lugarHPorCuenta(vp), fact = {}; for (const c of CTAS) fact[c] = LH.porCta[c].proy; void ctaDe;
       console.log(`=== EN QUÉ CUENTA PUBLICAR LO QUE LLEGA DE PARAGUAY · compra ${comp.fecha || cid} ===`);
       console.log(`SOLO LEE · no crea fichas ni publica nada · piso ${piso}%`);
-      console.log(`\nFacturado en los últimos 90 días (lo que se usa para equilibrar):`);
-      for (const c of [...CTAS].sort((a, b) => fact[a] - fact[b])) console.log(`  ${NOM[c].padEnd(8)} ${money(Math.round(fact[c])).padStart(14)}  · IIBB ${ML_EXTRA_PCT[c]}%`);
+      console.log(`\nLugar contra el tope de H (ventana ${LH.ini} → ${LH.fin}, faltan ${LH.faltan} días · tope ${money(Math.round(TOPE_H_ANUAL))} por cuenta) · lo que se usa para equilibrar:`);
+      for (const c of [...CTAS].sort((a, b) => fact[a] - fact[b])) console.log(`  ${NOM[c].padEnd(8)} lugar ${money(Math.round(TOPE_H_ANUAL - fact[c])).padStart(14)} · facturado ${money(Math.round(LH.porCta[c].fact))} · proyección al cierre ${money(Math.round(fact[c]))} · IIBB ${ML_EXTRA_PCT[c]}%`);
       if (!(tc > 0)) { console.log('\n⚠️ No hay tipo de cambio cargado en Finanzas: sin eso el margen no se puede calcular. No propongo nada.'); return; }
       console.log(`\n${items.length} producto(s):\n`);
       const acum = { ...fact }, porCta = { adriana: [], luciana: [], ayelen: [], matias: [] }, sinCta = [];
@@ -46374,7 +46393,7 @@ async function main() {
         else {
           if (esPerfume) console.log(`    ⚠️ es perfume pero en Adriana no llega al ${piso}% (${m.adriana.toFixed(1)}%): va por equilibrio`);
           const ok = CTAS.filter((k) => m[k] >= piso).sort((a, b) => acum[a] - acum[b]);
-          if (ok.length) { elegida = ok[0]; motivo = ok.length < 4 ? `llega al ${piso}% sólo en ${ok.map((k) => NOM[k]).join(', ')} · la que menos factura de ésas` : 'la que menos factura'; }
+          if (ok.length) { elegida = ok[0]; motivo = ok.length < 4 ? `llega al ${piso}% sólo en ${ok.map((k) => NOM[k]).join(', ')} · la que más lugar tiene contra H de ésas` : 'la que más lugar tiene contra H'; }
         }
         if (elegida) {
           console.log(`    → ${NOM[elegida].toUpperCase()} (${motivo}) · ${m[elegida].toFixed(1)}%`);
@@ -46384,7 +46403,7 @@ async function main() {
       console.log(`\n───── RESUMEN ─────`);
       for (const k of CTAS) if (porCta[k].length) console.log(`${NOM[k]}: ${porCta[k].length} producto(s) · ${porCta[k].join(' · ')}`);
       if (sinCta.length) console.log(`Sin proponer (${sinCta.length}): ${sinCta.join(' · ')}`);
-      console.log(`\nSi se vendiera todo, así quedaría la facturación de 90 días: ` + CTAS.map((k) => `${NOM[k]} ${money(Math.round(acum[k]))}`).join(' · '));
+      console.log(`\nSi se vendiera todo, así quedaría el lugar contra H: ` + CTAS.map((k) => `${NOM[k]} ${money(Math.round(TOPE_H_ANUAL - acum[k]))}`).join(' · '));
       console.log(`\nOJO: el margen usa el precio de ML de la última medición y el ${RECARGO_PAR_PCT}% de recargo. Antes de publicar, ${'`'}revisarcompra${'`'} lo vuelve a medir de HOY.`);
       return;
     }

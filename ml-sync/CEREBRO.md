@@ -387,6 +387,13 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
   (no van a Telegram). Reclamos que esperan su respuesta: recordárselo una vez por día como mucho.
 
 ## 14 · PEDIDOS
+- 💹 **ESTRATEGIA "GANAR MÁS POR CADA PESO FACTURADO" (22/10/2026, eligió 1a 2a 4a 5a 6a 7a 8b).** El tope de H no deja facturar
+  más: sube la ganancia lo que deja cada $100 facturados (meta $22; oct $19). Lo que sale de ahí, en cada parte:
+  · 🔒 **reponer sigue en 25%; comprar algo NUEVO pide 35%** (§16, §17) · **2a: lo que con el techo ya buscado (🏔️ o prueba de techo
+  cerrada) sigue dejando menos de 25% NO se repone**: `decido:ped=u|0` con "Hola Tito!" y el motivo, y en la completa se le propone
+  un reemplazo de 35%+ (de Paraguay o Listas) en el `pregunto:`. Mientras el techo no esté buscado, se busca primero (no se corta de
+  una). Stock antiguo, escasez o algo recién llegado no cuentan como "abajo de 25%" · **5a: Watch S5 y Redmi Pad 2 no se reponen más**
+  (`decido:ped` u 0, 22/10) · lo caro de poco margen es lo primero a reemplazar (gasta mucho tope de H y deja poco).
 - **Completos, todo el catálogo**, en la completa: objetivo 30 días; 45 en Bs As que se cortó 2+ veces en 60 d, vende 0,5+/día y
   deja 25%+, y en lo nuevo que vuela (1+/día la primera semana). Ritmo por día con stock (y por color); stock de las 4 cuentas
   sumado; sin costo no se pide; el precio para el máximo = mediana cobrada en 60 d (no el de escasez). Máximo por color con `pvVars`
@@ -398,24 +405,30 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
   nuevo sale con el mínimo de 4. Una cuenta SIN publicación no recibe el mínimo si otra tiene stock de ese color; la que ya publica y
   está en cero, sí. Respetar el cupo (lo vendido no devuelve cupo). Costo de la caja $17.310.
 - **Cupo de Full lleno con lo que no vende (21/10/2026, él con Ayelen en 0: *"retirar libera stock, pero es un poco de lío, lo mejor es vender"*):** con el cupo de una cuenta en 0 y mercadería que vende esperando en la oficina, lo lento que ocupa el Full de esa cuenta (Timer, cortapelo a pila, panel solar…) se empuja a VENDER (descuento propio o escalera, frenos de siempre) antes que retirarlo. Retirar sólo si vender no alcanza y él lo pide.
+- 💹 **Full abajo de $100.000 por mes (22/10/2026, 6a).** Octubre fueron $347.700 (retiros y descartes $221.600, stock antiguo
+  $64.000, almacenamiento $47.700, multa $14.200). No mandar de más (37 días), lo lento se vende con escalera ANTES de los 4 meses
+  (stock antiguo), y **un retiro de Full sólo con su OK** (`pregunto:` con lo que cuesta retirar contra lo que cuesta quedarse).
+  En la completa del 15, con `cargosmes`, decirle cuánto fue Full contra la meta.
 - Con varias cuentas posibles, decidir a mano mirando `cajasnotas`. Las que ML dio por entradas las marco yo (`cajallego`).
 - Caja para mandar ya de algo que vende fuerte y está en 0 en Full → al `pregunto:`.
 
 ## 16 · PARAGUAY
 - Pedidos de ~US$1.000 cada 2-3 semanas. Lo no urgente espera al próximo; lo que se corta antes de que llegue se pide igual.
 - Precios y códigos SÓLO de comprasparaguay (la fila de Nissei), nunca nissei.com. El chat local los copia una vez por mes.
-- Para pedir: 25% (no 24) **y** catálogo de ML con 2+ vendedores **y** confirmado que es el mismo producto (✅ `mismoOk` o `revcand`
+- Para pedir: 🔒 **35%, la vara de compra (`CAND_VARA_COMPRA`, 22/10/2026, 1a)** — lo de 25-34% queda guardado y se sigue
+  midiendo (el descarte del robot sigue en 25%) — **y** catálogo de ML con 2+ vendedores **y** confirmado que es el mismo producto (✅ `mismoOk` o `revcand`
   ok de ESE catálogo). 🔒 **Y al final las 100 vendidas (21/10/2026, regla suya):** sin el dato entra igual; cargado y abajo de 100
   queda afuera (`CAND_MIN_VENTAS`, web y robot). Las mira el chat de compras sólo de lo que pasó todo (`faltaventas`).
 - Cuántas de cada nuevo (decisión 4a del 21/10; las vendidas ya no se cargan): 🔒 barato (≤US$15 crudo) → 3 · caro (+US$60) → 1 ·
   resto → 2 (`candMaxU`, botón 🪄 Llenar). Lo que vuela se repone en el pedido siguiente por sus ventas.
 - Ticket real obligatorio para cerrar (`compray:<fecha>|det=…|go`); gastos: dólares, retira, correo (monto y kilos); `adelanto=` y
   `cambio=` sólo cuando él avisa. Recargo: el medido de los pedidos (respaldo 20%).
-- Al llegar: ficha (pagado × recargo), cuenta por rubro (perfumes → Adriana) y equilibrio, vínculo.
+- Al llegar: ficha (pagado × recargo), cuenta por rubro (perfumes → Adriana) y si no, la que **más lugar tiene contra el tope de H**
+  (`repartopy`, 7a del 22/10), vínculo. Por ahora siempre las 4 cuentas en H (8b): ni 5ª cuenta ni K.
 - Dos proveedores (Nissei, Elegancia) y dos pedidos en Nissei (perfumería y resto).
 
 ## 17 · LISTAS (otros proveedores)
-- Todas se miden contra ML, también Dai Nippon (que no tiene pedido: lo trae Tito). Para que "dé": 25% y catálogo con 2+ vendedores
+- Todas se miden contra ML, también Dai Nippon (que no tiene pedido: lo trae Tito). Para que "dé": 🔒 35% (vara de compra, 22/10) y catálogo con 2+ vendedores
   y el mismo producto confirmado (`listadato` ok o `mi=`) y, al final, no menos de 100 vendidas si están cargadas. Un solo vendedor
   no vale como precio.
 - Nunca cargar una lista vieja. Se paga el neto, no el precio de lista (preguntar antes de cargar). Iscos: sólo lo de su web, ×0,665.

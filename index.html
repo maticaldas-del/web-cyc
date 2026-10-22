@@ -1760,6 +1760,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
     <button class="vbtn" onclick="metIr('chart-bar-dia')">👥 Por cuenta</button>
     <button class="vbtn" onclick="metIr('met-horas')">🕐 Horas</button>
     <button class="vbtn" onclick="metIr('met-origen')">🌎 Origen</button>
+    <button class="vbtn" onclick="metIr('met-mezcla')">🧮 Mezcla</button>
     <button class="vbtn" onclick="metIr('met-auto')">🧠 Cambios de precio</button>
   </div>
 
@@ -1832,6 +1833,10 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   <!-- De dónde viene la mercadería: Bs As · Paraguay · Paulvic (22/09/2026) · abajo de todo, pedido suyo -->
   <div class="stitle">De dónde viene la mercadería <span id="met-origen-period" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;font-size:.65rem"></span></div>
   <div id="met-origen"></div>
+
+  <!-- 🧮 La mezcla de cada mes (22/10/2026, eligió la 4a de la estrategia): qué parte de lo facturado viene de cada tramo de % -->
+  <div class="stitle">🧮 La mezcla de cada mes <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;font-size:.65rem">· los últimos 6 meses, no depende del período de arriba</span></div>
+  <div id="met-mezcla"></div>
 
   <!-- El robot de precios, UNA sola tarjeta (30/09/2026, pedido suyo: "que se unifique"): lo que ganó o perdió
        cada cambio. El desplegable "👀 Qué está mirando ahora" (foto vieja de cyc/vigilancia del 07/10) se sacó el
@@ -2933,7 +2938,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.05';
+const APP_VERSION='26.06';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2946,6 +2951,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.06',f:'22/10',h:'18:40',c:[{n:3,t:'Comprar algo nuevo (Paraguay y Listas) pide 35% de ganancia: lo de 25% a 34% queda guardado y se sigue midiendo. Reponer lo que ya vendés sigue en 25%.'},{n:2,t:'Métricas: tarjeta nueva 🧮 La mezcla de cada mes, con qué parte de lo facturado viene de ventas de menos de 25%, 25-35%, 35-50% y 50% o más, y cuánto deja cada $100 facturados (meta $22).'},{n:1,t:'Ventas: la primera venta de una gemela Premium o con envío gratis lo dice, y los días se cuentan desde que se publicó (no desde que entró el stock).'}]},
   {v:'26.05',f:'22/10',h:'15:20',c:[{n:1,t:'Inicio · Mes y Año: arriba del calendario van las ventas brutas (en blanco) y la ganancia (en verde), cada una con su total y su promedio por día. Los cuadritos del calendario muestran el número completo (sin "k").'}]},
   {v:'26.04',f:'22/10',h:'13:35',c:[{n:1,t:'Ventas: la venta que salió por una gemela con envío gratis lleva el cartel celeste "📦 envío gratis", como el de Premium.'}]},
   {v:'26.03',f:'22/10',h:'10:45',c:[{n:1,t:'Inicio · Mes y Año: arriba del calendario, la ganancia total y el promedio por día (con cuántos días).'},{n:2,t:'Pedidos: si lo que hay en la oficina más lo que viaja a Full ya llega a lo que decidí comprar, no se pide; y si estaba cargado en el pedido de Paraguay, se saca solo.'}]},
@@ -8213,13 +8219,18 @@ function _vhRapido(arr,i){
 // 🎉 Cuántos días tuvo stock en Full hasta la primera venta (pedido suyo del 21/10, en vez de "publicada hace N días"): sale de
 // `cyc/stockhist` del color (o del producto) en esa cuenta, la entrada de stock (`desde`, o `desdePrev` si después se agotó y volvió)
 // más reciente anterior a la venta. Si el robot no la vio ENTRAR (`aprox`), es un mínimo ("N días o más"). Sin dato no dice nada.
-function _vhDiasStock(v,ts){
+// 22/10/2026 (él con las Cartas Casino: "dice que fue la primera y se vendieron antes"): el stock de Full es del PRODUCTO en la
+// cuenta y lo comparten todas sus publicaciones. Si la publicación se creó DESPUÉS de que entró el stock (una gemela Premium o con
+// envío gratis, o una publicación nueva), se cuenta desde que se publicó (`mllinks.altaTs`), no desde que entró el stock.
+function _vhDiasStock(v,ts,mla){
   const loc=LOCS.find(l=>sid(l).toLowerCase()===sid(String(v.cuenta||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')).toLowerCase());
   if(!loc||!v.prodId)return '';
   const sh=state.stockhist||{},vr=_vhVar(v);
   const h=(vr&&sh[invKeyV(v.prodId,loc,vr)])||sh[invKey(v.prodId,loc)];if(!h)return '';
   let best=null;[[h.desde,h.aprox],[h.desdePrev,h.aproxPrev]].forEach(([d,a])=>{d=Number(d)||0;if(d>0&&d<=ts&&(!best||d>best.d))best={d,a};});
-  if(!best)return '';const n=Math.max(0,Math.round((ts-best.d)/D864));
+  if(!best)return '';
+  const alta=mla?Number(((state.mllinks||{})[mla]||{}).altaTs)||0:0;
+  if(alta>best.d&&alta<=ts){const n=Math.max(0,Math.round((ts-alta)/D864));return n<1?'vendió el mismo día que se publicó':'tardó '+n+' día'+(n===1?'':'s')+' desde que se publicó';}const n=Math.max(0,Math.round((ts-best.d)/D864));
   if(best.a!==false)return 'con stock en Full hace '+n+' días o más';
   return n<1?'vendió el mismo día que entró a Full':'tardó '+n+' día'+(n===1?'':'s')+' con stock en Full';
 }
@@ -8232,7 +8243,7 @@ function ventaHechoDe(grp){
     const m=String(v.mla||''),arr=/^MLA\d+$/.test(m)?I.mla[m]:null;
     const i=arr?arr.findIndex(x=>x.gk===grp.gid):-1;
     if(i===0){const alta=Number(((state.mllinks||{})[m]||{}).altaTs)||0;
-      if((alta&&alta>=I.t0)||ts-I.t0>=90*D864)put({t:'primera',ico:'🎉',txt:'primera venta de esta publicación',sub:_vhDiasStock(v,ts),c:'var(--lv-joya)'});}
+      if((alta&&alta>=I.t0)||ts-I.t0>=90*D864){const _l=(state.mllinks||{})[m]||{},_g=_l.gemelaDe&&_l.gemelaDe!==m;put({t:'primera',ico:'🎉',txt:_g?('primera venta de la gemela '+(_l.gemelaTipo==='envio'?'con envío gratis':'Premium')+' (el producto ya vendía por su Clásica)'):'primera venta de esta publicación',sub:_vhDiasStock(v,ts,m),c:'var(--lv-joya)'});}}
     else if(i>0){
       const gap=ts-arr[i-1].ts;
       if(gap>=30*D864)put({t:'volvio',ico:'🔁',txt:'volvió a vender después de '+Math.round(gap/D864)+' días',sub:'',c:'var(--green)'});
@@ -15414,8 +15425,14 @@ function candLocalOk(c){const l=candLocalPct(c);return l!=null&&l>=PERF_LOCAL_GA
 // El % azul al lado del de ML (rojo si no llega: azul si da).
 function perfLocalHTML(pct,grande){if(pct==null||!isFinite(pct))return'';const ok=pct>=PERF_LOCAL_GAN;
   return `<span title="🏪 Perfumería del local: vendiendo al precio de ML, la perfumería se queda su ${PERF_LOCAL_TIENDA}% y a CYC le queda esto. Sin comisión de ML ni impuestos. Da con ${PERF_LOCAL_GAN}% o más." style="font-size:${grande?'1.05rem':'.8rem'};font-weight:700;color:${ok?'#60a5fa':'var(--muted)'};white-space:nowrap">🏪 ${Math.round(pct)}%</span>`;}
-function candPisoDe(c){if(!c)return CAND_PISO_PCT;const t=String(c.nombre||c.nom||'');return (esPerfumeNom(t)||_PERF_RE.test(String(c.mlTit||'')))?CAND_PISO_PERFUME:CAND_PISO_PCT;}
-const CAND_PISO_TXT=()=>`${CAND_PISO_PCT}%`;
+function candPisoDe(c){return CAND_VARA_COMPRA;}   // 22/10/2026: la vara de compra (35%) para todo lo nuevo, perfumes incluidos
+// LA VARA PARA COMPRAR ALGO NUEVO ES 35% (22/10/2026, eligió la 1a de la estrategia "ganar más por cada peso facturado").
+// El tope de H no deja facturar más: lo que se compra nuevo tiene que dejar más que el promedio. Lo de 25% a 35% NO se borra:
+// el robot lo sigue midiendo (su piso de descarte sigue en CAND_PISO_PCT = 25) y queda guardado por si mejora. REPONER lo que
+// ya se vende sigue con 25% (no toca el Paulvic). Vale para Paraguay y para las 📋 Listas (`_listaMed25`). Misma vara en el
+// comando `pedir` del robot (CAND_VARA_COMPRA de sync.mjs): si se toca una, se toca la otra.
+const CAND_VARA_COMPRA=35;
+const CAND_PISO_TXT=()=>`${CAND_VARA_COMPRA}%`;
 const CAND_MIN_VENT=100; // 03/10/2026: "100 unidades mínimo vendidas" · DESDE EL 20/10/2026 YA NO FRENA (ver CAND_MIN_VENDEDORES); queda para candMaxU y para mostrar
 // EN CATÁLOGO CON 2 O MÁS VENDEDORES EN VEZ DE 100 VENTAS (20/10/2026, eligió la 1a). Él: *"sacar las 100 ventas y que ahora sean todos
 // productos que estén en catálogo. no está en catálogo es como si vendiera menos de 100"*. ML no deja leer las ventas de otros (403) y
@@ -17226,7 +17243,7 @@ function candidatosHTML(){
     const puesto=usd>0?Math.round(usd*RECARGO_PY*100)/100:0;
     const pesos=puesto>0?Math.round(puesto*curTC()):0;
     const tieneCuenta=c.margen!=null&&isFinite(c.margen);
-    const col=!tieneCuenta?'var(--muted)':(c.margen>=25?'var(--green)':'var(--red)');   // 15/10: abajo de 25% en ML, rojo
+    const col=!tieneCuenta?'var(--muted)':(c.margen>=CAND_VARA_COMPRA?'var(--green)':'var(--red)');   // 15/10: abajo de 25% en ML, rojo
     const _loc=candLocalPct(c);
     const info=[];
     if(c.cod)info.push(chip('🔖 '+c.cod,'var(--muted)',pyProv==='nissei'?'El código con el que se pide. Es el de Nissei que usa comprasparaguay, no el número interno de la lista de Nissei.':'El código con el que se pide a '+pyProvNom()+' (el de su lista).'));
@@ -20445,7 +20462,7 @@ async function _listaBuscarYa(q){
       <div style="flex:1;min-width:0;font-size:.72rem;line-height:1.45"><span style="font-size:.6rem;padding:1px 7px;border-radius:9px;background:#7c3aed;color:#fff">${escHtml(provs[k].nombre||k)}</span> <b>${escHtml(e.n)}</b>
         <div style="color:var(--muted);font-size:.66rem">te sale <b style="color:var(--text)">${fmt(_listaPuesto(k,e))}</b>${e.mp?` · en ML <b style="color:var(--text)">${fmt(e.mp)}</b>`:''}</div>
         <details style="margin-top:3px"><summary style="cursor:pointer;font-size:.62rem;color:var(--muted)">detalle ▾</summary><div style="color:var(--muted);font-size:.64rem;margin-top:4px">${e.mv?' · '+(e.mv==1?'<b style="color:var(--amber)">⚠️ 1 solo vendedor</b>':e.mv+' vendedores'):''}${Number(e.pp)>0?` · <span style="color:var(--amber)">🏷️ el más barato está en promo (−${Number(e.pp)}%)</span>`:''}${e.vend!=null?` · 🛒 ${e.vend>=1000?'+1000':e.vend} vendidas`:''}</div><div style="font-size:.64rem;margin-top:3px">${e.mi?`<a href="https://www.mercadolibre.com.ar/p/${e.mi}" target="_blank" rel="noopener" style="color:var(--green)">🔗 verlo en ML</a> · `:''}<a href="#" onclick="listaVerOri('${k}','${c}');return false" style="color:var(--blue)">📄 verlo en la lista</a> · <a href="#" onclick="_listaSel='${k}';_listaVista='nuevos';renderListas();return false" style="color:var(--muted)">ir a ${escHtml(provs[k].nombre||k)}</a></div></details></div>
-      <div style="text-align:right;flex:0 0 auto">${m!=null&&!_listaCostoVigente(e)?'<span style="font-size:.6rem;color:var(--amber)">⏳ costo nuevo, falta medir</span>':m!=null?`<b style="color:${m>=25?'var(--green)':'var(--red)'}">${m}%</b>`:'<span style="font-size:.6rem;color:var(--muted)">sin medir</span>'}
+      <div style="text-align:right;flex:0 0 auto">${m!=null&&!_listaCostoVigente(e)?'<span style="font-size:.6rem;color:var(--amber)">⏳ costo nuevo, falta medir</span>':m!=null?`<b style="color:${m>=CAND_VARA_COMPRA?'var(--green)':'var(--red)'}">${m}%</b>`:'<span style="font-size:.6rem;color:var(--muted)">sin medir</span>'}
         ${_listaFichaDe(k,cod,e)?'<div style="font-size:.6rem;color:var(--green)" title="Ya es una ficha: se pide desde la tarjeta de Pedidos (📋 pedir a la lista) o en ✅ Probados">ya es probado</div>':_listaDa(e,k)?`<div style="font-size:.62rem;color:var(--muted)">pedir <input type="number" min="0" inputmode="numeric" value="${(arm[k]||{})[cod]||''}" placeholder="0" onchange="listaSetU('${k}','${c}',this.value)" style="width:48px;padding:2px 4px;font-size:.78rem;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text)"></div>`:''}</div></div>`;};
   out.innerHTML=`<div style="font-size:.66rem;color:var(--muted);margin-top:6px">${R.length?R.length+' resultado'+(R.length===1?'':'s')+(R.length>60?' · muestro los 60 mejores':''):'Nada en ninguna lista con eso.'}</div>`+R.slice(0,60).map(fila).join('');
 }
@@ -20473,7 +20490,7 @@ function _listaPuesto(k,e){return Math.round((Number(e&&e.p)||0)*(1+_listaRec(k)
 function _listaCostoVigente(e){return !!e&&e.uMed!=null&&Math.abs(Number(e.uMed)-Number(e.p))<1;}
 // "Otro producto" vale para el catálogo que se miró (`noEsCat`); misma regla que `listaNoEsVale` de sync.mjs (20/10/2026).
 function _listaNoEsVale(e){return !!(e&&e.noEs&&(!e.noEsCat||String(e.noEsCat).toUpperCase()===String(e.mi||'').toUpperCase()));}
-function _listaMed25(e){return e&&!_listaNoEsVale(e)&&!e.sacado&&!e.noWeb&&!e.noFull&&e.m!=null&&isFinite(e.m)&&Number(e.m)>=25&&_listaCostoVigente(e)&&/^https:\/\//.test(e.mf||'')&&!(e.mv!=null&&Number(e.mv)<CAND_MIN_VENDEDORES);}
+function _listaMed25(e){return e&&!_listaNoEsVale(e)&&!e.sacado&&!e.noWeb&&!e.noFull&&e.m!=null&&isFinite(e.m)&&Number(e.m)>=CAND_VARA_COMPRA&&_listaCostoVigente(e)&&/^https:\/\//.test(e.mf||'')&&!(e.mv!=null&&Number(e.mv)<CAND_MIN_VENDEDORES);}
 // UN SOLO VENDEDOR NO ALCANZA (19/10/2026, él: "hay un flaco que vende los perfumes re caros y es el único (…) es un precio inflado que no
 // sabemos si vende"). Con 1 vendedor en ML el precio no lo confirma nadie: nunca va a ✅ Dan solo, va a 🔎 Para revisar hasta que el
 // chat de compras lo mire (`ok` = mismo producto Y precio creíble).
@@ -21061,7 +21078,7 @@ async function renderListas(){
   const k=_listaSel,v=provs[k],nom=v.nombre||k;
   const _num=x=>{const q=provs[x];if(q.dan==null)return `<span style="opacity:.75">· ${q.n||0}</span>`;
     return `<span style="opacity:.85">· ✅ ${q.dan}</span>${q.pend>0?` <span style="opacity:.6;font-size:.85em">⏳${q.pend}</span>`:''}`;};
-  const _provBtn=x=>`<button class="btn" style="font-size:.72rem;padding:6px 16px;${x===k?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}" title="✅ cuántos dan 25% o más en ML${provs[x].pend>0?' · ⏳ cuántos falta medir':''} · ${provs[x].n||0} en la lista" onclick="_listaSel='${x}';_listaQ='';renderListas()">${provs[x].nombre||x} ${_num(x)}</button>`;
+  const _provBtn=x=>`<button class="btn" style="font-size:.72rem;padding:6px 16px;${x===k?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}" title="✅ cuántos dan ${CAND_VARA_COMPRA}% o más en ML${provs[x].pend>0?' · ⏳ cuántos falta medir':''} · ${provs[x].n||0} en la lista" onclick="_listaSel='${x}';_listaQ='';renderListas()">${provs[x].nombre||x} ${_num(x)}</button>`;
   const nArm=_listaArmado(k).length+listaProbFilas(k).length;
   // LAS LISTAS DE BS AS NO TIENEN PEDIDO (20/10/2026, él: "en dai nippon no se hacen pedidos, se trabajan igual que en resto de bs
   // as. eso lo trae mi viejo personalmente"): sin 🧾 Pedido, sin casillas de "pedir" ni "📋 pedir a …" en las tarjetas. Los probados
@@ -21095,7 +21112,7 @@ async function renderListas(){
   }
   const fila=([cod,e],conU)=>{const pc=_listaPuesto(k,e);const m=(e.m!=null&&isFinite(e.m))?Number(e.m):null;
     const est=m!=null&&!_listaCostoVigente(e)?`<span style="font-size:.62rem;color:var(--amber)" title="Se midió con un costo de ${fmt(Number(e.uMed)||0)} y hoy es ${fmt(Number(e.p)||0)}: el ${Math.round(m)}% de antes ya no vale.">⏳ costo nuevo, falta medir</span>`
-      :m!=null?`<b style="font-size:1rem;color:${m>=25?'var(--green)':'var(--red)'}">${Math.round(m)}%</b> <span style="font-size:.6rem;color:var(--muted)">ML</span>`
+      :m!=null?`<b style="font-size:1rem;color:${m>=CAND_VARA_COMPRA?'var(--green)':'var(--red)'}">${Math.round(m)}%</b> <span style="font-size:.6rem;color:var(--muted)">ML</span>`
       :e.sc?'<span style="font-size:.62rem;color:var(--muted)">sin catálogo exacto en ML</span>':e.sv?'<span style="font-size:.62rem;color:var(--muted)">en ML no lo vende nadie</span>':e.fz?`<span style="font-size:.62rem;color:var(--muted)">afuera: ${escHtml(e.fz)}</span>`:'<span style="font-size:.62rem;color:var(--muted)">⏳ sin medir</span>';
     const fML=/^https:\/\//.test(e.mf||'')?e.mf:'';const vj=viaj.has(String(cod)),fi=yaFicha.has(String(cod));
     const uBox=!conU?'':fi?'<div style="font-size:.6rem;color:var(--green)" title="Ya es una ficha: se pide desde la tarjeta de Pedidos (📋 pedir a la lista) o en ✅ Probados">ya es probado</div>':vj?'<div style="font-size:.6rem;color:var(--amber)">🚚 viajando</div>'
@@ -21182,21 +21199,22 @@ async function renderListas(){
   // dividirlos como vos sabes"). El resumen va cerrado con lo principal en la línea de arriba; lo que no da se reparte en 📗 con
   // catálogo en ML (por por qué no entra: casi, poco, pierde, 1 vendedor, otro producto, costo nuevo, nadie lo vende) y 📕 sin
   // catálogo exacto, más ⏳ sin medir y 🚫 afuera por regla. Cada producto cae en una sola carpeta.
-  const _cg={casi:[],bajo:[],neg:[],unV:[],otro:[],cNuevo:[],sinFoto:[],nadie:[],sinCat:[],sinMed:[],regla:[]};
+  const _cg={guard:[],casi:[],bajo:[],neg:[],unV:[],otro:[],cNuevo:[],sinFoto:[],nadie:[],sinCat:[],sinMed:[],regla:[]};
   for(const f of resto){const e=f[1],m=e.m!=null&&isFinite(e.m)?Number(e.m):null;
     if(e.fz)_cg.regla.push(f);else if(e.sc)_cg.sinCat.push(f);else if(e.sv)_cg.nadie.push(f);else if(m==null)_cg.sinMed.push(f);
     else if(!_listaCostoVigente(e))_cg.cNuevo.push(f);else if(_listaNoEsVale(e))_cg.otro.push(f);
-    else if(e.mv!=null&&Number(e.mv)<CAND_MIN_VENDEDORES)_cg.unV.push(f);else if(m>=25)_cg.sinFoto.push(f);
-    else if(m<0)_cg.neg.push(f);else if(m<15)_cg.bajo.push(f);else _cg.casi.push(f);}
+    else if(e.mv!=null&&Number(e.mv)<CAND_MIN_VENDEDORES)_cg.unV.push(f);else if(m>=CAND_VARA_COMPRA)_cg.sinFoto.push(f);
+    else if(m<0)_cg.neg.push(f);else if(m<15)_cg.bajo.push(f);else if(m>=CAND_PISO_PCT)_cg.guard.push(f);else _cg.casi.push(f);}
   const _sub=(t,arr,col,abierto)=>arr.length?`<details${abierto?' open':''} style="margin-top:8px;border:1px solid var(--border);border-radius:8px;padding:7px 10px"><summary style="cursor:pointer;font-size:.74rem;font-weight:700${col?';color:'+col:''}">${t} (${arr.length})</summary><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${arr.slice(0,150).map(f=>fila(f,false)).join('')}${arr.length>150?`<div style="font-size:.62rem;color:var(--muted)">muestro 150 · el resto con el buscador</div>`:''}</div></details>`:'';
   const _carp=(t,n,col,body,extra)=>n?`<details style="margin-top:14px;background:var(--surface);border:1px solid ${col||'var(--border)'};border-radius:var(--r);padding:10px 12px"><summary style="cursor:pointer;font-size:.82rem;font-weight:700">${t} (${n})${extra||''}</summary>${body}</details>`:'';
   const _pocasL=nuevos.filter(([,e])=>_listaPocasV(e)).sort(ord);
-  const _nCon=_pocasL.length+revis.length+_cg.casi.length+_cg.bajo.length+_cg.neg.length+_cg.unV.length+_cg.otro.length+_cg.cNuevo.length+_cg.sinFoto.length+_cg.nadie.length;
+  const _nCon=_pocasL.length+revis.length+_cg.guard.length+_cg.casi.length+_cg.bajo.length+_cg.neg.length+_cg.unV.length+_cg.otro.length+_cg.cNuevo.length+_cg.sinFoto.length+_cg.nadie.length;
   const _conCat=_carp('📗 Con catálogo en ML',_nCon,'',
-     _sub('🔎 Darían 25%+ pero falta confirmar que es el mismo producto',revis,'var(--amber)',true)
-    +_sub('🛒 Dan 25%+ pero vendieron menos de '+CAND_MIN_VENTAS+' en ML',_pocasL,'var(--muted)')
+     _sub('🔎 Darían '+CAND_VARA_COMPRA+'%+ pero falta confirmar que es el mismo producto',revis,'var(--amber)',true)
+    +_sub('🛒 Dan '+CAND_VARA_COMPRA+'%+ pero vendieron menos de '+CAND_MIN_VENTAS+' en ML',_pocasL,'var(--muted)')
+    +_sub('💾 Guardados: dan '+CAND_PISO_PCT+'% a '+(CAND_VARA_COMPRA-1)+'% (abajo de la vara de compra de '+CAND_VARA_COMPRA+'%; se siguen midiendo por si mejoran)',_cg.guard,'var(--amber)')
     +_sub('🟠 Casi: dan 15% a 24% (se vuelven a medir cada 7 días)',_cg.casi,'var(--amber)')
-    +_sub('📷 Darían 25%+ pero falta la foto de ML para compararlo',_cg.sinFoto,'')
+    +_sub('📷 Darían '+CAND_VARA_COMPRA+'%+ pero falta la foto de ML para compararlo',_cg.sinFoto,'')
     +_sub('👤 Un solo vendedor en ML: el precio no lo confirma nadie',_cg.unV,'')
     +_sub('⏳ Cambió el costo: falta volver a medir',_cg.cNuevo,'')
     +_sub('🔴 Dan menos de 15%',_cg.bajo,'var(--red)')
@@ -21210,12 +21228,12 @@ async function renderListas(){
   // TODA LA LISTA ABAJO, EN UNA CARPETA (21/10/2026, él: "unifica toda la info de los productos vistos y los que no etc. todos abajo.
   // junto con catálogo y sin catálogo"): arriba sólo los que dan; abajo, cerrada, la cuenta de la lista y todas las carpetas.
   el.innerHTML=cab+`
-    ${_enB?'':`<div style="font-size:.85rem;font-weight:700;color:var(--green);margin:4px 0 8px">✅ Dan 25% o más en ML, con 2+ vendedores y el mismo producto confirmado · ${dan.length}${(()=>{const n=_enB?0:dan.filter(([,e])=>e.vend==null).length;return n?` <span style="font-size:.66rem;font-weight:400;color:var(--muted)">· 🛒 ${n} sin las vendidas de ML todavía (entran igual, se miran al final: menos de ${CAND_MIN_VENTAS} se van)</span>`:'';})()}</div>`}
+    ${_enB?'':`<div style="font-size:.85rem;font-weight:700;color:var(--green);margin:4px 0 8px">✅ Dan ${CAND_VARA_COMPRA}% o más en ML, con 2+ vendedores y el mismo producto confirmado · ${dan.length}${(()=>{const n=_enB?0:dan.filter(([,e])=>e.vend==null).length;return n?` <span style="font-size:.66rem;font-weight:400;color:var(--muted)">· 🛒 ${n} sin las vendidas de ML todavía (entran igual, se miran al final: menos de ${CAND_MIN_VENTAS} se van)</span>`:'';})()}</div>`}
     <div style="display:flex;flex-direction:column;gap:6px">${dan.length?dan.map(f=>fila(f,true)).join(''):'<div class="empty-msg">Todavía ninguno (o falta medirlos).</div>'}</div>
     <details style="margin-top:16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px"><summary style="cursor:pointer;font-size:.82rem;font-weight:700">📂 Toda la lista · ${filas.length} productos <span style="font-weight:400;font-size:.68rem;color:var(--muted)">${_grp.rev?`· <span style="color:var(--amber)">🔎 ${_grp.rev} por confirmar</span> `:''}${_grp.sinEv?`· ⏳ ${_grp.sinEv} sin evaluar`:''}</span></summary>
     <div style="font-size:.72rem;line-height:1.7;margin-top:8px">
     ${medirVueltaHTML(k)}<div><b>${filas.length} productos</b> en la lista${v.ts?` <span style="color:var(--muted)">· lista del ${new Date(v.ts).toLocaleDateString('es-AR')}</span>`:''}${rec?` <span style="color:var(--muted)">· recargo del proveedor ${rec}%</span>`:''}</div>
-    <div><b>✅ Evaluados ${_ev}</b>: <span style="color:var(--green)">🟢 ${_grp.da} dan</span> · <span style="color:var(--amber)">🔎 ${_grp.rev} dan 25%+ y falta confirmar</span> · <span style="color:var(--red)">🔴 ${_grp.noDa} no dan</span> · <span style="color:var(--muted)">⚫ ${_grp.noML} no están en ML o nadie los vende</span></div>
+    <div><b>✅ Evaluados ${_ev}</b>: <span style="color:var(--green)">🟢 ${_grp.da} dan</span> · <span style="color:var(--amber)">🔎 ${_grp.rev} dan ${CAND_VARA_COMPRA}%+ y falta confirmar</span> · <span style="color:var(--red)">🔴 ${_grp.noDa} no dan</span> · <span style="color:var(--muted)">⚫ ${_grp.noML} no están en ML o nadie los vende</span></div>
     <div><b>⏳ Sin evaluar ${_grp.sinEv}</b>${_grp.sinEv?' <span style="color:var(--muted)">· el robot los está midiendo</span>':''}</div>
     ${_grp.ficha||_grp.afuera?`<div style="color:var(--muted)">${_grp.ficha?`✔️ ${_grp.ficha} ya los vendés o están viajando`:''}${_grp.ficha&&_grp.afuera?' · ':''}${_grp.afuera?`🚫 ${_grp.afuera} afuera (sacados, no están en la web del proveedor o regla)`:''}</div>`:''}
 </div>
@@ -22191,6 +22209,49 @@ function metPorOrigen(keys){
   });
   return {g,sinFicha,sinCosto,provs};
 }
+// 🧮 LA MEZCLA DE CADA MES (22/10/2026, eligió la 4a de la estrategia "ganar más por cada peso facturado"). Con el tope de H
+// no se puede facturar más: lo que sube la ganancia es cuánto deja cada $100 facturados. La tarjeta dice, mes por mes, qué
+// parte de lo FACTURADO vino de ventas de menos de 25%, de 25-35%, de 35-50% y de 50% o más, y la ganancia cada $100.
+// El objetivo: que cada mes el tramo rojo baje y el de 50%+ suba, y llegar a $22 cada $100 (MEZCLA_META_100).
+// El % de cada venta es el MISMO del renglón de Ventas (pctGananciaVP con gestDivVP); la ganancia la misma de los KPIs
+// (neto − efectivoCostoVP). Canceladas y ventas sin costo afuera, y se cuentan. Misma cuenta que el probe `mezcla` del robot.
+const MEZCLA_TRAMOS=[{k:'r',t:'menos de 25%',max:25,col:'var(--red)'},{k:'a',t:'25 a 35%',max:35,col:'var(--amber)'},{k:'v',t:'35 a 50%',max:50,col:'var(--green)'},{k:'j',t:'50% o más',max:Infinity,col:'#60a5fa'}];
+const MEZCLA_META_100=22;
+function metMezclaMeses(n){
+  const meses={};
+  for(const k of Object.keys(state.ventaprod||{})){const ym=k.substring(0,7);
+    const m=meses[ym]||(meses[ym]={ym,tot:0,gan:0,sinCosto:0,tr:{r:{tot:0,gan:0},a:{tot:0,gan:0},v:{tot:0,gan:0},j:{tot:0,gan:0}}});
+    for(const v of Object.values(state.ventaprod[k]||{})){
+      if(!v||v.cancelada)continue;
+      const vv={...v,_dateKey:k};const costo=efectivoCostoVP(vv);
+      if(!(costo>0)||ventaSinCostoVP(vv)){m.sinCosto++;continue;}
+      const gan=(v.neto||0)-costo,pct=pctGananciaVP(gan,costo,gestDivVP(v));if(pct==null)continue;
+      const tr=MEZCLA_TRAMOS.find(t=>pct<t.max);const tot=v.total||0;
+      m.tr[tr.k].tot+=tot;m.tr[tr.k].gan+=gan;m.tot+=tot;m.gan+=gan;}
+  }
+  return Object.values(meses).sort((a,b)=>a.ym<b.ym?1:-1).slice(0,n||6);
+}
+function renderMetMezcla(){
+  const el=document.getElementById('met-mezcla');if(!el)return;
+  const ms=metMezclaMeses(6);if(!ms.length){el.innerHTML='<div style="font-size:.72rem;color:var(--muted)">Sin ventas todavía.</div>';return;}
+  const MN=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  const nom=ym=>MN[(parseInt(ym.slice(5,7))||1)-1]+' '+ym.slice(2,4);
+  const cur=_curYM();
+  const fila=m=>{
+    const g100=m.tot>0?m.gan/m.tot*100:null;
+    const bar=MEZCLA_TRAMOS.map(t=>{const p=m.tot>0?m.tr[t.k].tot/m.tot*100:0;return p>0?`<div title="${t.t}: ${p.toFixed(0)}% de lo facturado (${fmt(m.tr[t.k].tot)}) · dejó ${fmt(m.tr[t.k].gan)}${m.tr[t.k].tot>0?' = $'+(m.tr[t.k].gan/m.tr[t.k].tot*100).toFixed(0)+' cada $100':''}" style="width:${p}%;background:${t.col};height:100%">${p>=9?`<span style="font-size:.58rem;color:#fff;font-weight:700;padding-left:3px">${Math.round(p)}%</span>`:''}</div>`:'';}).join('');
+    const c100=g100==null?'var(--muted)':g100>=MEZCLA_META_100?'var(--green)':g100>=MEZCLA_META_100-3?'var(--amber)':'var(--red)';
+    return `<div style="display:flex;align-items:center;gap:8px;margin:6px 0">
+      <div style="width:52px;font-size:.7rem;color:var(--muted)">${nom(m.ym)}${m.ym===cur?' <span style="font-size:.55rem">(va)</span>':''}</div>
+      <div style="flex:1;display:flex;height:18px;border-radius:5px;overflow:hidden;background:var(--border)">${bar}</div>
+      <div style="width:92px;text-align:right;font-size:.74rem"><b style="color:${c100}">${g100==null?'—':'$'+g100.toFixed(1)}</b> <span style="font-size:.58rem;color:var(--muted)">c/$100</span></div></div>`;};
+  const ley=MEZCLA_TRAMOS.map(t=>`<span style="white-space:nowrap"><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${t.col};vertical-align:middle"></span> ${t.t}</span>`).join(' · ');
+  const sc=ms.reduce((a,m)=>a+m.sinCosto,0);
+  el.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px">
+    <div style="font-size:.66rem;color:var(--muted);margin-bottom:6px;line-height:1.5">Qué parte de lo <b>facturado</b> vino de ventas de cada tramo de %. El tope de H no deja facturar más, así que lo que sube la ganancia es que el rojo baje y el celeste suba. A la derecha, la <b>ganancia cada $100 facturados</b> · meta <b>$${MEZCLA_META_100}</b>.</div>
+    ${ms.map(fila).join('')}
+    <div style="font-size:.62rem;color:var(--muted);margin-top:6px">${ley}${sc?` · ${sc} venta(s) sin costo cargado quedan afuera`:''}</div></div>`;
+}
 let metOrigenSel='todo';
 function setMetOrigen(v){metOrigenSel=v;renderMetOrigen(getAllMetKeys(metScopeMode));}
 function renderMetOrigen(keys){
@@ -22577,6 +22638,7 @@ function renderMetricas(){
   renderMetReputacion();
   renderMetHoras(curKeys);   // ¿a qué hora te compran? · al final de todo
   renderMetOrigen(curKeys);  // de dónde viene la mercadería · abajo de todo
+  try{renderMetMezcla();}catch(e){console.warn('renderMetMezcla',e);}
   renderMetAuto();           // la plata que trajo la automatización de precios
   const acctColors=['c1','c4','c2','c3'];
   // Mismo período un año atrás (alineado con las líneas del gráfico).

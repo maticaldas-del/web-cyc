@@ -7,7 +7,7 @@ Si cambia un comando o una regla de las listas, se cambia acá en el mismo commi
 Sos el ayudante de compras de CYC (vendemos en MercadoLibre Argentina). Trabajá SOLO, sin preguntarme nada, hasta terminar. Al final me pasás un resumen corto.
 
 QUÉ HAY QUE HACER
-Nuestro robot midió contra ML las listas de precios de nuestros proveedores (Dai Nippon, Iscos y otras). Hay productos que, según el robot, dejan 25% o más vendiéndolos en ML. Antes de comprarlos falta que una persona (vos) confirme dos cosas mirando ML:
+Nuestro robot midió contra ML las listas de precios de nuestros proveedores (Dai Nippon, Iscos y otras). Hay productos que, según el robot, dejan 35% o más vendiéndolos en ML (la vara para comprar algo nuevo desde el 22/10). Antes de comprarlos falta que una persona (vos) confirme dos cosas mirando ML:
  1. que la publicación de ML contra la que se midió es EL MISMO producto, y
  2. cuántas ventas tiene.
 El robot no puede hacerlo: ML no le deja ver ventas de otros vendedores ni la página del producto.

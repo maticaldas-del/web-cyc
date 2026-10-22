@@ -514,6 +514,23 @@ Qué chequear: que un cambio no salga dos veces (foto + decisión) y que un `dec
 - `pruebatachado` (ml-consulta): las publicaciones en 🧪 prueba con su precio de antes (sirvió para cancelar la prueba 3b). **Chequear:** sólo lee.
 - v25.31/v25.32 (Ventas): la Clásica se ve en gris como siempre y la Premium en dorado (`tipoPub`, ver etapa 5). **Chequear:** en los dos temas se distinguen.
 
+### 22/10/2026 · 💹 La estrategia "ganar más por cada peso facturado" (v26.06, eligió 1a 2a 4a 5a 6a 7a 8b)
+- **Qué:** vara de compra 35% para lo NUEVO (`CAND_VARA_COMPRA` en index.html = sync.mjs; `candPisoDe` de la web la devuelve,
+  `_listaMed25`, comando `pedir`, `revisarcompra`, `faltaventas`, `cuentaLista`). El descarte del robot (`candPisoDe` de sync.mjs)
+  sigue en 25%: lo de 25-34% queda guardado (Listas: carpeta 💾 Guardados). Reponer sigue en 25%. · Tarjeta 🧮 Mezcla en Métricas
+  (`metMezclaMeses`/`renderMetMezcla`, 6 meses, tramos por el % de cada venta, ganancia cada $100 facturados). · `repartopy` y
+  `paramcompra` eligen la cuenta con más lugar contra el tope de H (`lugarHPorCuenta`, `TOPE_H_ANUAL`). · Watch S5 y Redmi Pad 2:
+  `decido:ped` u 0. · Reglas 2a y 6a en CEREBRO §14 y §15.
+- **Chequear:** que ningún camino de COMPRA use todavía 25 (grep `>= 25`/`candPisoDe(` en lo que pide o llena) · que el descarte siga
+  en 25 (si sube a 35, lo de 25-34% se iría a "nunca más") · que la mezcla cierre contra los KPIs (mismo % que el renglón de Ventas) ·
+  que `lugarHPorCuenta` mire la misma ventana que `topeh` y la tarjeta ⚖️.
+
+### 22/10/2026 · 🎉 "primera venta" de una gemela (v26.06, etapa 5)
+- Él con las Cartas Casino: el cartel decía "primera venta de esta publicación · tardó 30 días con stock en Full" en la gemela Premium
+  creada el 20-21/10. El stock de Full es del producto (lo comparten todas sus publicaciones): `_vhDiasStock` cuenta desde `altaTs` si la
+  publicación se creó después de que entró el stock, y el cartel dice "primera venta de la gemela Premium/con envío gratis".
+- **Chequear:** otros carteles que cuenten días por `stockhist` de una publicación nueva (mismo patrón).
+
 ## 2 · PLATA (martes)
 - **Cada lugar, su nota (08/10/2026, v22.71):** él: *"en ventas por qué aumentó el precio o por qué no, y en pedidos por qué
   pide x unidades"*. `cerebroAbrir`: con `ped` o `ctx:'caja'` muestra SÓLO las notas `ped__`/`caja__`; con `ctx:'venta'`

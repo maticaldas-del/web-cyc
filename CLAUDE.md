@@ -75,14 +75,22 @@
 - **Casi todo se vende por Full. Nada fuera de Full** (18/10): lo activo en depósito con unidades lo pausa el robot cada hora; el
   "1" de depósito que pide ML no es mercadería (stock fuera de Full = 0, no cuenta en patrimonio).
 - **La mercadería no se mueve entre cuentas** (22/09): un producto nuevo queda en su cuenta para siempre. Orden para elegir dueña:
-  1) la que ya lo publica · 2) **el rubro (perfumes → Adriana)** · 3) el equilibrio (la que menos facturó entre las que llegan al
-  25%; `repartopy`) · y la actividad de ARCA. **Una sola cuenta por producto** (09/09; excepción Paulvic: Adriana + Persea en
+  1) la que ya lo publica · 2) **el rubro (perfumes → Adriana)** · 3) el equilibrio: **la que más lugar tiene contra el tope de H**
+  (proyección al cierre de la ventana de ARCA, entre las que llegan al 25%; `repartopy`, `lugarHPorCuenta`; 7a del 22/10) · y la actividad de ARCA. **Una sola cuenta por producto** (09/09; excepción Paulvic: Adriana + Persea en
   Luciana). En la MISMA cuenta sí puede repetirse.
 - **Pedidos mira el stock de las 4 cuentas juntas** (C1, 29/09: si en total se vende 10/mes y hay 10 en otra cuenta, no se compra).
   **No volver a proponer calcularlo por cuenta.**
 - **Cobro del mes** (17/10): se cobra lo que dice "💸 cuánto cobrar" del mes cerrado (ganancia real de CYC ÷ 3, cada socio; ×2 =
   retiro). **Reemplaza los $1.800.000 fijos.** El 1º del mes cargo el retiro con ese número (`cobromes:<mes cerrado>`). La tarjeta
   del mes en curso proyecta a fin de mes al ritmo del mes. El interés del capital en dólares ya no se paga desde el 19/09 (ver HISTORIA).
+- **LA ESTRATEGIA PARA GANAR MÁS (22/10/2026, eligió 1a 2a 4a 5a 6a 7a 8b; la 3 quedó para después).** El tope de H no deja
+  facturar más (~$800.000/día, ya estamos ahí): lo que sube la ganancia es **cuánto deja cada $100 facturados** (oct: $19, meta $22;
+  meta $1.200.000 c/u = ~37,3% de margen promedio). 1a **comprar algo nuevo pide 35%** (`CAND_VARA_COMPRA`, web y robot; Paraguay y
+  Listas); lo de 25-34% queda guardado y se sigue midiendo; **reponer lo que ya se vende sigue en 25%** (no toca el Paulvic) ·
+  2a lo que queda abajo de 25% después de buscarle techo **no se repone** y le propongo un reemplazo · 4a tarjeta 🧮 Mezcla en
+  Métricas · 5a **Watch S5 y Redmi Pad 2 no se reponen más** · 6a **Full: meta menos de $100.000/mes; un retiro de Full sólo con su
+  OK** · 7a lo nuevo va a la cuenta con más lugar contra H · 8b **por ahora las 4 cuentas en H, sin 5ª cuenta ni K**. Detalle en
+  `ml-sync/CEREBRO.md` (💹). La 3 (ordenar por ganancia por peso facturado) se le explica de nuevo y se decide después.
 - **La plata ya no es el límite: el proveedor sí** (24/08). Liberar caja vale menos que el almacenamiento y el descarte.
 - OSDE y el colegio son PERSONALES (no cargar). **Sancor = la obra social privada de Ayelen** (un solo renglón, monto real de la factura).
 
