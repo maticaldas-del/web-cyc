@@ -9595,7 +9595,8 @@ async function alinearGemelas(db, links, tokensRun, DRY, products, solo, forzar)
   const out = { miradas: 0, bien: 0, subidas: 0, bajadas: 0, fallas: [], sinPrecio: [] };
   let cfg = {}; try { cfg = (await db.get('cyc/mlconfig')) || {}; } catch { return out; }
   if (String(cfg.gemelaSigue || 'on') === 'off') { console.log('💳 Gemelas: seguir a la Clásica está apagado (gemelaSigue=off)'); return out; }
-  const gem = Object.entries(links || {}).filter(([k, e]) => e && e.gemelaDe && e.status !== 'closed' && (!solo || solo.has(k) || solo.has(e.gemelaDe)));
+  // Las 📦 gemelas de envío gratis (`gemelaTipo:'envio'`) las sigue `alinearGemelasEnvio`: acá sólo las Premium.
+  const gem = Object.entries(links || {}).filter(([k, e]) => e && e.gemelaDe && e.gemelaTipo !== 'envio' && e.status !== 'closed' && (!solo || solo.has(k) || solo.has(e.gemelaDe)));
   if (!gem.length) return out;
   let mem = {}, cuotasM = {}, netopub = {}, tc = 0, monoPct = 0;
   try { mem = (await db.get('cyc/gemelasigue')) || {}; cuotasM = (await db.get('cyc/mlcuotas')) || {}; netopub = (await db.get('cyc/netopub')) || {}; tc = parseFloat((await db.get('cyc/finanzas/tipo_cambio')) || 0) || 0; monoPct = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0; }
@@ -9700,6 +9701,66 @@ async function precioGemelaEnvioIgual(a) {
   let R = r90(hi); if (hi < UMBRAL_ENVIO_GRATIS && R >= UMBRAL_ENVIO_GRATIS) R = 32990;
   if (R !== hi) { const cg = await ev(R); if (alcanza(cg)) cgHi = cg; else R = hi; }
   return R > 650000 ? { P: null, cg: null, base, sinEnvio } : { P: R, cg: cgHi, base, sinEnvio };
+}
+// ── 📦 CADA GEMELA DE ENVÍO GRATIS SIGUE A SU CLÁSICA, CADA HORA (22/10/2026) ──────────────────────────────────────────────
+// La hermana de `alinearGemelas` para las que tienen `gemelaTipo:'envio'`: se llevan al precio Clásica+envío gratis que deja la misma
+// plata neta que su Clásica (`precioGemelaEnvioIgual`, el envío gratis preguntado a ML a cada precio). Misma memoria (`cyc/gemelasigue`),
+// tolerancia 1%, re-medida una vez por día, mismo interruptor `gemelaSigue`. Después de mover el precio se relee que siga con envío gratis
+// (si ML se lo sacó, se avisa en el log: la gemela dejó de ser lo que es).
+async function alinearGemelasEnvio(db, links, tokensRun, DRY, products, solo, forzar) {
+  const out = { miradas: 0, bien: 0, subidas: 0, bajadas: 0, fallas: [], sinPrecio: [], flojas: [] };
+  let cfg = {}; try { cfg = (await db.get('cyc/mlconfig')) || {}; } catch { return out; }
+  if (String(cfg.gemelaSigue || 'on') === 'off') return out;
+  const gem = Object.entries(links || {}).filter(([k, e]) => e && e.gemelaDe && e.gemelaTipo === 'envio' && e.status !== 'closed' && (!solo || solo.has(k) || solo.has(e.gemelaDe)));
+  if (!gem.length) return out;
+  let mem = {}, netopub = {}, tc = 0, monoPct = 0;
+  try { mem = (await db.get('cyc/gemelasigue')) || {}; netopub = (await db.get('cyc/netopub')) || {}; tc = parseFloat((await db.get('cyc/finanzas/tipo_cambio')) || 0) || 0; monoPct = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0; }
+  catch { console.log('📦 Gemelas de envío: no pude leer dólar/monotributo: no toco nada'); return out; }
+  if (!(tc > 0) || !(monoPct > 0)) { console.log('📦 Gemelas de envío: sin dólar o monotributo: no toco nada'); return out; }
+  const piso = PISO_DURO;
+  const pIdx = {}; for (const p of (products || [])) pIdx[p.id] = p;
+  const porCta = {}; for (const [k, e] of gem) (porCta[e.cuenta] = porCta[e.cuenta] || []).push([k, e]);
+  const memUpd = {};
+  for (const [cta, lista] of Object.entries(porCta)) {
+    const tk = tokensRun[cta]; if (!tk) continue;
+    const ids = []; for (const [k, e] of lista) ids.push(k, e.gemelaDe);
+    const it = {};
+    for (let i = 0; i < ids.length; i += 20) { try { const arr = await mlGet('/items?ids=' + ids.slice(i, i + 20).join(',') + '&attributes=id,price,status,category_id,site_id,listing_type_id,variations,shipping,seller_id,condition,attributes', tk); for (const r of (arr || [])) if (r && r.body && r.body.id) it[r.body.id] = r.body; } catch { /* lote sin leer: vuelta siguiente */ } }
+    for (const [k, e] of lista) {
+      const T = it[k], C = it[e.gemelaDe]; if (!T || !C) continue;
+      if (T.status === 'closed' || C.status === 'closed' || (T.variations || []).length || (C.variations || []).length) continue;
+      if (T.listing_type_id !== 'gold_special' || C.listing_type_id !== 'gold_special') { out.fallas.push(`${k}: no son las dos Clásicas`); continue; }
+      out.miradas++;
+      const pT = Math.round(T.price || 0), pC = Math.round(C.price || 0);
+      const m0 = mem[k] || {};
+      if (!forzar && m0.c === pC && m0.p === pT && Date.now() - (Number(m0.ts) || 0) < 864e5) { out.bien++; continue; }
+      const L = links[e.gemelaDe] || {}; const prod = pIdx[L.prodId || e.prodId];
+      const costo = prod ? costoPesos(prod, 1, tc).costo : 0; if (!(costo > 0)) { out.sinPrecio.push(`${k} (sin costo)`); continue; }
+      const r = await precioGemelaEnvioIgual({ b: { ...C, seller_id: C.seller_id || T.seller_id }, tk, costo, envArriba: envioGemelaDe(netopub[e.gemelaDe]), impPct: (mlExtraPct(cta) + monoPct) / 100, dims: dimsDeItem(C) || dimsDeItem(T) });
+      if (!r || !r.P) { out.sinPrecio.push(`${k} (${!r ? 'ML no dio la comisión' : r.sinEnvio ? 'ML no dio el envío gratis' : 'no hay precio hasta $650.000'})`); continue; }
+      const P = r.P, cg = r.cg;
+      if (cg && isFinite(cg.mgP) && cg.mgP < piso) out.flojas.push(`${k} a $${P.toLocaleString('es-AR')}: peor caso ${cg.mgP.toFixed(1)}% (misma plata neta que su Clásica, que también está floja)`);
+      if (Math.abs(pT - P) <= Math.max(10, P * 0.01)) { out.bien++; memUpd[k] = { c: pC, p: pT, ts: Date.now() }; continue; }
+      const txt = `${cta} ${k} · Clásica ${e.gemelaDe} $${pC.toLocaleString('es-AR')} → 📦 envío gratis $${pT.toLocaleString('es-AR')} → $${P.toLocaleString('es-AR')} (envío $${Math.round(cg.envE).toLocaleString('es-AR')}, neta $${Math.round(cg.netaE).toLocaleString('es-AR')} vs $${Math.round(cg.netaCla).toLocaleString('es-AR')}, peor caso ${cg.mgP.toFixed(1)}%)`;
+      if (DRY) { console.log(`   📦 (prueba) ${txt}`); continue; }
+      let res;
+      if (P > pT) res = await raisePriceTo(k, P, tk, { exacto: true, cruza: true, libre: true });
+      else { const mg = isFinite(cg.mgP) ? cg.mgP : -100; res = await setPriceTo(k, null, P, tk, mg < PISO_DURO ? { margen: mg, autorizado: `📦 gemela de envío gratis: misma plata neta que su Clásica ${e.gemelaDe}`, libre: true, exacto: true } : { margen: mg, libre: true, exacto: true }); }
+      if (!res || !res.ok) { out.fallas.push(`${txt} · ${res ? res.err : '?'}`); continue; }
+      P > pT ? out.subidas++ : out.bajadas++;
+      let fs = null; try { const b2 = await mlGet('/items/' + k + '?attributes=id,price,shipping', tk); fs = !!(b2.shipping || {}).free_shipping; } catch { }
+      console.log(`   📦 ${txt} ✓${fs === false ? ' · ⚠️ ML le sacó el envío gratis a este precio' : fs ? ' · sigue con envío gratis' : ''}`);
+      if (fs === false) out.fallas.push(`${k}: a $${P.toLocaleString('es-AR')} ML le sacó el envío gratis`);
+      memUpd[k] = { c: pC, p: res.to || P, ts: Date.now() };
+      try { await guardarEstrategia(db, k, 'gemela', `Clásica con envío gratis, gemela de ${e.gemelaDe} ($${pC.toLocaleString('es-AR')}): a $${Math.round(res.to || P).toLocaleString('es-AR')} deja la misma plata neta, pagando nosotros el envío ($${Math.round(cg.envE).toLocaleString('es-AR')}).`); } catch { /* */ }
+    }
+  }
+  if (!DRY && Object.keys(memUpd).length) { try { await db.patch('cyc/gemelasigue', memUpd); } catch { /* */ } }
+  console.log(`📦 Gemelas de envío gratis que siguen a su Clásica: ${out.miradas} miradas · ${out.bien} bien · ${out.subidas} subidas · ${out.bajadas} bajadas${out.fallas.length ? ' · ' + out.fallas.length + ' no se pudieron' : ''}${out.sinPrecio.length ? ' · ' + out.sinPrecio.length + ' sin medir' : ''}`);
+  for (const f of out.fallas) console.log(`   ⚠️ ${f}`);
+  for (const f of out.sinPrecio) console.log(`   · sin medir: ${f}`);
+  for (const f of out.flojas) console.log(`   · abajo del piso: ${f}`);
+  return out;
 }
 // ── LOS NÚMEROS CON LOS QUE SE DECIDE UNA COMPRA SE ACTUALIZAN SOLOS (06/10/2026) ──────────────
 // Pedido suyo: *"el envío ahora cobra más. todo eso quiero que lo mantengas actualizado al robot.
@@ -24087,6 +24148,90 @@ async function main() {
       if (go && escritas) { try { const q = await db.get(`cyc/ventaprod/${dayKeyFromISO(new Date().toISOString())}`); console.log(`relectura: ${Object.values(q || {}).filter((v) => v && v.tipoPub).length} ventas de hoy con el tipo anotado`); } catch { /* informativo */ } }
       return;
     }
+    // CREAR LA 📦 GEMELA CLÁSICA CON ENVÍO GRATIS (22/10/2026). `gemelaenviocrea:<MLA>=<precio>[;<MLA>=<precio>…][:go]`. Igual que
+    // `gemelacrea` (POST /user-products/<upid>/items, mismo producto, comparte el stock) pero Clásica con `shipping.free_shipping=true`.
+    // Antes de crear vuelve a medir el precio pedido con `cuentaGemelaEnvio` (envío gratis preguntado a ML a ese precio): si no deja la
+    // misma plata neta que la Clásica no crea. Después relee de ML (Clásica, envío gratis, mismo producto, precio, stock), la vincula a la
+    // misma ficha con `gemelaDe` + `gemelaTipo:'envio'` y anota la estrategia 💳 gemela con el motivo. Frenos: sin user_product_id, con
+    // variantes, la original no es Clásica abajo de $33.000, ya hay una Clásica con envío gratis de ese producto.
+    if (/^gemelaenviocrea:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const arg = String(process.env.BILLING_PROBE).slice('gemelaenviocrea:'.length);
+      const go = /:go$/.test(arg);
+      const pares = arg.replace(/:go$/, '').split(/[;,\s]+/).map((x) => x.match(/^(MLA\d+)=(\d[\d.]*)$/i)).filter(Boolean).map((m) => [m[1].toUpperCase(), Math.round(parseFloat(m[2].replace(/\./g, '')))]);
+      if (!pares.length) { console.log('Uso: gemelaenviocrea:<MLA>=<precio>[;<MLA>=<precio>][:go]'); return; }
+      const links = (await db.get('cyc/mllinks')) || {}; const toks = {};
+      const tc = parseFloat((await db.get('cyc/finanzas/tipo_cambio')) || 0) || 0;
+      const monoPct = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+      const netopub = (await db.get('cyc/netopub')) || {};
+      const piso = await pisoConfig(db);
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      let creadas = 0, no = 0;
+      for (const [mla, P] of pares) {
+        const L = links[mla]; if (!L || !L.cuenta) { console.log(`✗ ${mla}: no está en cyc/mllinks`); no++; continue; }
+        const acc = accounts[L.cuenta]; if (!acc?.refresh_token) { console.log(`✗ ${mla}: sin permiso de ${L.cuenta}`); no++; continue; }
+        if (!toks[L.cuenta]) { try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + L.cuenta, { refresh_token: t.refresh_token, updated_ts: Date.now() }); toks[L.cuenta] = t.access_token; } catch { console.log(`✗ ${L.cuenta}: no pude renovar`); no++; continue; } }
+        const tk = toks[L.cuenta];
+        let it; try { it = await mlGet('/items/' + mla, tk); } catch (e) { console.log(`✗ ${mla}: ML no contestó (${String(e.message).slice(0, 160)})`); no++; continue; }
+        const upid = it.user_product_id || null, sh = it.shipping || {};
+        console.log(`\n══ 📦 GEMELA ENVÍO GRATIS · ${mla} · ${L.cuenta} · ${String(it.title || '').slice(0, 55)} · Clásica $${Math.round(it.price || 0).toLocaleString('es-AR')} · ${it.available_quantity} u. · upid ${upid || '—'}`);
+        const frenos = [];
+        if (!upid) frenos.push('sin user_product_id');
+        if ((it.variations || []).length > 1) frenos.push('tiene variantes');
+        if (it.listing_type_id !== 'gold_special') frenos.push('la original no es Clásica');
+        if (sh.free_shipping) frenos.push('la original ya tiene envío gratis');
+        if (!(Math.round(it.price || 0) < UMBRAL_ENVIO_GRATIS)) frenos.push('la original está arriba de $33.000 (ahí todas tienen envío gratis)');
+        if (sh.logistic_type !== 'fulfillment') frenos.push('no es de Full');
+        if (!(P > (it.price || 0))) frenos.push('la gemela tiene que ser más cara que la Clásica');
+        if (upid) {
+          try { const s = await mlGet(`/users/${acc.seller_id}/items/search?user_product_id=${upid}`, tk);
+            for (const h of (s.results || []).filter((x) => x !== mla)) { try { const b = await mlGet('/items/' + h + '?attributes=id,listing_type_id,status,price,shipping', tk); console.log(`   del mismo producto: ${h} · ${b.listing_type_id} · ${b.status} · $${Math.round(b.price || 0).toLocaleString('es-AR')} · envío gratis ${(b.shipping || {}).free_shipping}`); if (b.listing_type_id === 'gold_special' && (b.shipping || {}).free_shipping && b.status !== 'closed') frenos.push(`ya existe la Clásica con envío gratis ${h}`); } catch { } } }
+          catch (e) { frenos.push(`no pude preguntar las otras del mismo producto (${String(e.message).slice(0, 100)})`); }
+        }
+        const prod = pIdx[L.prodId]; const costo = prod && tc > 0 ? costoPesos(prod, 1, tc).costo : 0;
+        let cg = null;
+        if (!(costo > 0) || !(monoPct > 0)) frenos.push('sin costo, dólar o monotributo: no mido');
+        else {
+          cg = await cuentaGemelaEnvio({ b: it, P, tk, costo, envArriba: envioGemelaDe(netopub[mla]), impPct: (mlExtraPct(L.cuenta) + monoPct) / 100, dims: dimsDeItem(it), cache: {} });
+          if (!cg || !cg.fE) frenos.push(cg && cg.sinEnvio ? 'ML no dio el costo del envío gratis' : 'ML no dio la comisión');
+          else {
+            console.log(`   a $${P.toLocaleString('es-AR')}: envío gratis $${Math.round(cg.envE).toLocaleString('es-AR')} · deja $${Math.round(cg.ganE).toLocaleString('es-AR')}/venta · neta $${Math.round(cg.netaE).toLocaleString('es-AR')} vs $${Math.round(cg.netaCla).toLocaleString('es-AR')} de la Clásica · peor caso ${cg.mgP.toFixed(1)}%`);
+            if (cg.netaE < cg.netaCla - 1) frenos.push('no llega a la misma plata neta que la Clásica');
+          }
+        }
+        const body = { price: P, category_id: it.category_id, currency_id: it.currency_id || 'ARS', buying_mode: 'buy_it_now', listing_type_id: 'gold_special', shipping: { mode: sh.mode || 'me2', logistic_type: 'fulfillment', free_shipping: true, local_pick_up: false } };
+        if (it.catalog_listing && it.catalog_product_id) { body.catalog_listing = true; body.catalog_product_id = it.catalog_product_id; }
+        console.log(`   mandaría POST /user-products/${upid}/items ${JSON.stringify(body)}`);
+        if (frenos.length) { console.log(`   🛑 NO SE CREA: ${frenos.join(' · ')}`); no++; continue; }
+        if (!go) { console.log('   (prueba: sin :go no se crea nada)'); continue; }
+        const r = await fetch(`${ML_API}/user-products/${upid}/items`, { method: 'POST', headers: { Authorization: 'Bearer ' + tk, 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(30000) });
+        const txt = await r.text(); _anotarEscrituraML(r, mla, 'crear gemela envío gratis', txt);
+        if (!r.ok) {
+          console.log(`   ❌ ML no la creó: ${r.status} ${txt.slice(0, 1200)}`); no++;
+          await new Promise((ok) => setTimeout(ok, 4000));
+          try { const s2 = await mlGet(`/users/${acc.seller_id}/items/search?user_product_id=${upid}`, tk); console.log(`   releído: del mismo producto quedan ${(s2.results || []).join(', ')}`); } catch { }
+          continue;
+        }
+        let nuevo; try { nuevo = JSON.parse(txt); } catch { nuevo = {}; }
+        const nid = nuevo.id; console.log(`   ✓ ML contestó ${r.status}: item nuevo ${nid || '¿?'}`);
+        if (!/^MLA\d+$/.test(String(nid || ''))) { console.log(`   respuesta: ${txt.slice(0, 1200)}`); no++; continue; }
+        await new Promise((ok) => setTimeout(ok, 4000));
+        let b2 = null, b1 = null;
+        try { b2 = await mlGet('/items/' + nid, tk); } catch (e) { console.log(`   ⚠️ no pude releer ${nid}: ${String(e.message).slice(0, 160)}`); }
+        try { b1 = await mlGet('/items/' + mla + '?attributes=id,listing_type_id,status,price,available_quantity,shipping', tk); } catch { }
+        if (b2) console.log(`   releído ${nid}: ${b2.listing_type_id} · ${b2.status}${(b2.sub_status || []).length ? ' (' + b2.sub_status.join(',') + ')' : ''} · $${Math.round(b2.price || 0).toLocaleString('es-AR')} · ${b2.available_quantity} u. · envío ${(b2.shipping || {}).logistic_type} · envío gratis ${(b2.shipping || {}).free_shipping} · upid ${b2.user_product_id}`);
+        if (b1) console.log(`   la Clásica ${mla}: ${b1.listing_type_id} · ${b1.status} · $${Math.round(b1.price || 0).toLocaleString('es-AR')} · ${b1.available_quantity} u. · envío gratis ${(b1.shipping || {}).free_shipping}`);
+        const okRel = b2 && b2.listing_type_id === 'gold_special' && (b2.shipping || {}).free_shipping === true && Math.round(b2.price) === P && b2.user_product_id === upid;
+        console.log(okRel ? '   ✓ quedó Clásica, con envío gratis, al precio pedido y en el mismo producto' : '   ⚠️ NO coincide con lo pedido: mirarla');
+        const e2 = { title: (b2 && b2.title) || L.title || '', cuenta: L.cuenta, status: (b2 && b2.status) || 'active', gemelaDe: mla, gemelaTipo: 'envio', altaTs: Date.now() };
+        for (const k of ['prodId', 'variant', 'upid', 'inv', 'categoria', 'rubro', 'foto']) if (L[k] != null) e2[k] = L[k];
+        try { await db.patch('cyc/mllinks/' + nid, e2); const rl = await db.get('cyc/mllinks/' + nid); console.log(rl && rl.prodId === L.prodId && rl.gemelaTipo === 'envio' ? `   ✓ vinculada a la ficha ${L.prodId}${L.variant ? ' · ' + L.variant : ''}` : '   ⚠️ no quedó vinculada'); } catch { console.log('   ⚠️ no pude vincularla'); }
+        const okE = await guardarEstrategia(db, nid, 'gemela', `Clásica con envío gratis, misma plata neta: gemela de ${mla} a $${P.toLocaleString('es-AR')} (pagamos el envío, $${Math.round(cg.envE).toLocaleString('es-AR')}). Comparte el stock con la Clásica.`);
+        console.log(okE ? '   ✓ estrategia 💳 gemela anotada' : '   ⚠️ no pude anotar la estrategia');
+        if (okRel) creadas++; else no++;
+      }
+      console.log(`\n${creadas} creadas · ${no} no${go ? '' : ' · prueba: agregá :go'}`);
+      return;
+    }
     // ── 📦 GEMELA CLÁSICA CON ENVÍO GRATIS (22/10/2026). Ver `cuentaGemelaEnvio` arriba. ─────────────────────────────────────
     //  · `gemelaenvio[:<MLA>,…][:max=N]` (solo lee): cada Clásica activa o pausada con stock en Full, abajo de $33.000, con ficha y costo y
     //    sin gemela de envío, con el envío gratis que ML le cobraría y el precio que deja la misma plata neta.
@@ -24205,6 +24350,7 @@ async function main() {
       const links = (await db.get('cyc/mllinks')) || {}; const toks = {};
       for (const label of labels) { const acc = accounts[label]; if (!acc?.refresh_token) continue; try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() }); toks[label] = t.access_token; } catch { console.log(`⚠️ ${label}: no pude renovar el permiso`); } }
       await alinearGemelas(db, links, toks, !go, products, null, true);
+      await alinearGemelasEnvio(db, links, toks, !go, products, null, true);
       return;
     }
     if (String(process.env.BILLING_PROBE || '').startsWith('gemelacrea')) {
@@ -24214,7 +24360,7 @@ async function main() {
         const links = (await db.get('cyc/mllinks')) || {}; const toks = {};
         // `ver:gemelas` = todas las Premium gemelas anotadas en cyc/mllinks (gemelaDe), cada una al lado de su Clásica.
         let lista = arg.slice(4).split(',').map((x) => x.trim().toUpperCase()).filter((x) => /^MLA\d+$/.test(x));
-        if (/^ver:gemelas/i.test(arg)) { lista = []; for (const [k, e] of Object.entries(links)) if (e && e.gemelaDe) lista.push(e.gemelaDe, k); console.log(`${lista.length / 2} gemela(s) anotadas`); }
+        if (/^ver:gemelas/i.test(arg)) { lista = []; for (const [k, e] of Object.entries(links)) if (e && e.gemelaDe && e.gemelaTipo !== 'envio') lista.push(e.gemelaDe, k); console.log(`${lista.length / 2} gemela(s) anotadas`); }
         let okN = 0, malN = 0;
         for (const mla of lista) {
           const L = links[mla] || {}; const acc = accounts[L.cuenta]; if (!acc?.refresh_token) { console.log(`${mla}: sin cuenta conocida`); continue; }
@@ -24433,6 +24579,7 @@ async function main() {
       }
       for (const { b, label, t } of vivos) {
         if (b.listing_type_id !== 'gold_special' || !(b.status === 'active' || (TODAS && b.status === 'paused'))) continue;
+        if ((links[b.id] || {}).gemelaTipo === 'envio') continue;   // 📦 gemela de envío gratis (22/10): no es una Clásica a la que hacerle Premium
         // 6.D2 (etapa 6, eligió la a): lo que pierde la caja POR CUOTAS (`mllinks.cajaPorCuotas`, lo marca el robot cada hora) entra
         // aunque esté abajo del mínimo de precio: es justo el caso donde la gemela gana la caja sin bajar.
         const precio = Math.round(b.price || 0); if (!(precio >= PMIN) && !(links[b.id] || {}).cajaPorCuotas) continue;
@@ -24465,7 +24612,7 @@ async function main() {
         console.log(`    Premium ${f.P && f.ok ? '$' + f.P.toLocaleString('es-AR') + ` (+${((f.P / f.precio - 1) * 100).toFixed(1)}%) · deja $${Math.round(f.ganP).toLocaleString('es-AR')}/venta · neta $${Math.round(f.netaP).toLocaleString('es-AR')} vs $${Math.round(f.netaCla).toLocaleString('es-AR')} · cuotas ${f.finEn ? 'adentro de la comisión' : f.cuo + '% aparte'}` : '? (ML no dio la comisión o pasa el techo)'}`);
       }
       // Las 💳 gemelas que ya existen: ventas de cada una (Premium y su Clásica) desde que se creó la Premium, y quién tiene la caja.
-      { const gem = Object.entries(links).filter(([, e]) => e && e.gemelaDe);
+      { const gem = Object.entries(links).filter(([, e]) => e && e.gemelaDe && e.gemelaTipo !== 'envio');
         if (gem.length) {
           console.log(`\n══ LAS ${gem.length} GEMELAS QUE YA EXISTEN · ventas desde que se creó la Premium ══`);
           let tP = 0, tC = 0;
@@ -50672,6 +50819,7 @@ async function main() {
   // 💳 LAS GEMELAS PREMIUM SIGUEN A SU CLÁSICA (21/10/2026), cada hora, también con SOLO_DATOS: es mecánico (misma plata neta).
   if (parseInt(process.env.BACKFILL_DAYS || '0', 10) === 0 && !onlyAcc && process.env.SKIP_PRICES !== '1') {
     try { await alinearGemelas(db, map, tokensRun, DRY, products); } catch (e) { console.log('No pude alinear las gemelas: ' + e.message); }
+    try { await alinearGemelasEnvio(db, map, tokensRun, DRY, products); } catch (e) { console.log('No pude alinear las gemelas de envío gratis: ' + e.message); }
   }
 
   // CAJAS QUE LLEGARON A FULL. Va en la vuelta horaria (no en las de 2 minutos): preguntarle a ML
