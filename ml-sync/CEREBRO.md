@@ -392,7 +392,8 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
   · 🔒 **reponer sigue en 25%; comprar algo NUEVO pide 35%** (§16, §17) · **2a: lo que con el techo ya buscado (🏔️ o prueba de techo
   cerrada) sigue dejando menos de 25% NO se repone**: `decido:ped=u|0` con "Hola Tito!" y el motivo, y en la completa se le propone
   un reemplazo de 35%+ (de Paraguay o Listas) en el `pregunto:`. Mientras el techo no esté buscado, se busca primero (no se corta de
-  una). Stock antiguo, escasez o algo recién llegado no cuentan como "abajo de 25%" · **5a: Watch S5 y Redmi Pad 2 no se reponen más**
+  una). **Lo de 25-35% con el techo ya encontrado (🏔️) se sigue reponiendo** (22/10, eligió la a): se reemplaza de a poco sólo cuando
+  aparece algo nuevo de 35%+ que ocupe su lugar (mismo rubro o misma plata), y eso se le propone en el `pregunto:` de la completa. Stock antiguo, escasez o algo recién llegado no cuentan como "abajo de 25%" · **5a: Watch S5 y Redmi Pad 2 no se reponen más**
   (`decido:ped` u 0, 22/10) · lo caro de poco margen es lo primero a reemplazar (gasta mucho tope de H y deja poco).
 - **Completos, todo el catálogo**, en la completa: objetivo 30 días; 45 en Bs As que se cortó 2+ veces en 60 d, vende 0,5+/día y
   deja 25%+, y en lo nuevo que vuela (1+/día la primera semana). Ritmo por día con stock (y por color); stock de las 4 cuentas
