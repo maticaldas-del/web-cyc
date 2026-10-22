@@ -423,7 +423,7 @@
 | `gemela` · `gemelacrea:<MLA>=<precio>:go` · `gemelaenvio` · `gemelaenviocrea` · `gemelaalinear` | gemelas Premium y envío gratis |
 | `cupo` · `codigos[:palabra]` · `pasara`/`nomandar:<cuenta>:<palabras>[:go]` | cupo de Full, códigos de etiqueta, reparto por cuenta |
 | `ancla:<cuenta>=<pesos>;go` · `dispo` · `saldoml` · `cargargasto` · `vergastos[:mes]` · `cargosmes` · `cobromes` · `factarca` · `catmono` · `facarca` · `topeh` | plata y ARCA |
-| `cerebro`/`analizapromo:<días>:<palabras>` · `eventos` · `fechas` · `vistas` · `ventashora` | promos, fechas, mediciones |
+| `cerebro`/`analizapromo:<días>:<palabras>` · `eventos` · `fechas` · `vistas` · `ventashora` · `efectotecho[:días]` | promos, fechas, mediciones (¿las subas 📈 bajan ventas/ganancia?) |
 | `chequeo[:días]` · `alertas[:horas]` · `reglas` · `permisos` · `probarput:<MLA>` | chequeo, avisos, base, permisos de ML |
 | `tgaprobar:<núm>:go` · `tgchats` · `webpush` | Telegram y push |
 | `liquidando[:<MLA>][:go]` · `nomas:<MLA>:go` · `pausar:<busca>[!saca][:go]` | marcas sobre publicaciones |
@@ -441,7 +441,8 @@ Si dudás si un comando existe, buscá en `sync.mjs` (`grep -n "'<nombre>'" ml-s
   **14/11 pedido de Navidad para 45 días**.
 - **Medir 6.A1** (21/10): `publicar` sin go en la próxima llegada (avisarle antes de crear) · `ficha:<MLA>` sin go (línea RAYAS) ·
   `altanuevas`/`pausadas`. `cargosmes:auto` corre solo el 01/11. (ver HISTORIA, "62 DECISIONES")
-- **Paulvic:** juzgar la prueba de $21.990 (si perdió, volver a $14.950; si ganó, extender primero Persea) y la idea de un Paulvic de
+- **Paulvic:** juzgar la prueba de $21.990 (si perdió, volver a $14.950; si ganó, extender primero Persea; `efectotecho` 22/10: 5 aromas
+  que vendían 1-2 cada 14 d no vendieron más, Good igual plata con 1/3 de unidades, L'extase mejor; Paulvic −~$1.300/día, pocas ventas: sin certeza) y la idea de un Paulvic de
   hombre a ~$17.990. Pedido del 06/10 llegó y se pagó (ver HISTORIA). Blush sin publicación en ML.
   **Pedido `pv20261019` llegó el 22/10 COMPLETO** (114 u. + 3 testers de Witch Night/Good/Blue para la perfumería, no cuentan;
   flete $18.000, el del remito redondeado, cargado). Falta el monto a pagar (valor declarado $660.130,71 NO es lo que se paga) → `pvped:costo:pv20261019;apagar=…;go`;
