@@ -2925,7 +2925,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.00';
+const APP_VERSION='26.01';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2938,6 +2938,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.01',f:'22/10',h:'11:15',c:[{n:1,t:'Métricas: el globito del gráfico dice la diferencia en $ además del % (contra el período anterior y el año pasado).'}]},
   {v:'26.00',f:'22/10',h:'11:00',c:[{n:1,t:'Inicio · Ventas de hoy/mes/año: la tarjeta con colores y burbujas termina en los números; la escalera, la curva, el calendario y las cuentas van abajo en una tarjeta común, que se lee mejor.'}]},
   {v:'25.99',f:'22/10',h:'10:45',c:[{n:1,t:'Ventas: las cuentas y los tags de estrategia van adentro de "⚙️ Filtros"; afuera queda una línea que dice qué se está mostrando.'}]},
   {v:'25.98',f:'22/10',h:'10:30',c:[{n:1,t:'📋 Dai Nippon: "🛒 Para comprar en el local" no aparece cuando no hay nada cargado.'}]},
@@ -22775,8 +22776,10 @@ function _metTipDifs(items,enPuntos){
   [[CMP_LBL_PREV,'período anterior'],[CMP_LBL_YEAR,'año pasado']].forEach(([l,n])=>{
     const o=v(l);if(o==null)return;
     if(enPuntos){const d=base-o;out.push(bl+' vs '+n+': '+(d>=0?'+':'−')+Math.abs(d).toFixed(1).replace('.',',')+' pts');return;}
-    if(o===0){out.push(bl+' vs '+n+': sin % (el '+n+' está en $0)');return;}
-    const p=(base-o)/Math.abs(o)*100;out.push(bl+' vs '+n+': '+(p>=0?'+':'−')+Math.abs(p).toFixed(1).replace('.',',')+'%');
+    if(o===0){out.push(bl+' vs '+n+': '+(base>=0?'+':'−')+'$'+Math.round(Math.abs(base)).toLocaleString('es-AR')+' · sin % (el '+n+' está en $0)');return;}
+    // 22/10/2026, él: "que ponga también la diferencia en $ además del %".
+    const d=base-o,ds=(d>=0?'+':'−')+'$'+Math.round(Math.abs(d)).toLocaleString('es-AR');
+    const p=d/Math.abs(o)*100;out.push(bl+' vs '+n+': '+ds+' ('+(p>=0?'+':'−')+Math.abs(p).toFixed(1).replace('.',',')+'%)');
   });
   return out;
 }
