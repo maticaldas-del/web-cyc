@@ -2921,7 +2921,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='25.97';
+const APP_VERSION='25.98';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2934,6 +2934,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'25.98',f:'22/10',h:'10:30',c:[{n:1,t:'📋 Dai Nippon: "🛒 Para comprar en el local" no aparece cuando no hay nada cargado.'}]},
   {v:'25.97',f:'22/10',h:'10:10',c:[{n:1,t:'🏷️ Ventas de este año (Inicio): los 12 meses en cuadritos, del color de su ganancia promedio por día, con 🏆 mejor mes y 🔥 racha de meses cumplidos. Tocá un mes y la tarjeta abre en ese mes.'}]},
   {v:'25.96',f:'21/10',h:'20:30',c:[{n:1,t:'🇵🇾 Nissei: se sacó el botón "no da en el local"; el de ML ahora dice "🛒✕ no se puede ML" y lo marcado sale de las sugerencias de ML. Al abrir siempre muestra Todo · ML.'}]},
   {v:'25.95',f:'21/10',h:'20:10',c:[{n:1,t:'📋 Listas (Dai Nippon y las demás): al final del nombre de cada producto, cuántas vendidas tiene en ML; si todavía no están cargadas, dice "ventas sin cargar".'}]},
@@ -20931,6 +20932,7 @@ function listaLocalHTML(k){
   if(!_listaEsBsas(k))return '';
   if(!_listaCache[k])return '';
   const F=listaLocalFilas(k);
+  if(!F.length)return '';   // 22/10/2026, él: "sacar eso de nippon": sin nada cargado no se muestra la sección vacía
   const nom=(((state.mlconfig||{}).listasProv||{})[k]||{}).nombre||k;
   const pend=F.filter(f=>!f.reg).length;
   return `<div class="ll-wrap"><div style="font-size:.95rem;font-weight:800">🛒 Para comprar en el local <span style="font-size:.72rem;font-weight:400;color:var(--muted)">· ${escHtml(nom)} · ${F.length?`${pend} por mirar de ${F.length}`:'nada cargado'}</span></div>
