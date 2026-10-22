@@ -281,13 +281,25 @@ Después de los 3 Protectores de talón bajados con `!sinlinea` apoyados en la f
    autorizaciones y margen), `cyc/promohist` (entradas y salidas de mis descuentos, con lo mismo), `cyc/promoclaude` viejos, `cyc/autoprecio`
    que no es mío y la foto (`cyc/supervisor/eventos`, "a mano"); juzga cada baja con `frenosBajas` en seco en su momento, el 25% en el
    peor caso sin `!piso`, la estrategia (escasez/techo en una baja), las subas #techo de menos de +30% o de más del doble, y la
-   terminación 90/990. Categorías ❌ · ↩️ · ⚠️ · ❓ · ✅ · 🔚 · 📷 · 💳 y la cuenta tiene que cerrar. `:go` deshace sólo lo `fmt: 2`
+   terminación 90/990. Categorías ❌ · ↩️ · ⚠️ · ❓ · ✅ · 🔚 · 📷 · 💳 · 🔗 y la cuenta tiene que cerrar. `:go` deshace sólo lo `fmt: 2`
    (vuelve al precio de antes con `raisePriceTo` y relee, o `salirPromoMia`; anota `por: 'errores'` + `deshace` y la estrategia de antes;
    UN aviso con `sendAlerta` directo). Lo de antes se lista con su comando.
  · Probado con las funciones REALES (copia del archivo con exports) y una base y un ML de mentira: 66 casos (el de los Protectores con y
    sin su autorización, autorización tocada a mano o sin firma, F2/F3/F6/F9, la escalera de escasez, :go que deshace y avisa una vez,
    las respuestas de Telegram de otro chat/bot/viejas/editadas, "pero no", revocar, la puerta) + la de antes contra la de ahora en 14
    casos sin banderas (sólo cambian las 5 buscadas).
+ · **Primera corrida con datos reales (22/10 18:21 UTC, `errores:72` por consulta):** 177 cambios en 72 h (162 de lista míos · 9
+   descuentos · 1 salida · 5 de la foto), la cuenta cerró. ❌ 22 · ↩️ 19 · ⚠️ 38 · ✅ 92 · 🔚 1 · 📷 5. Los 22 ❌ son TODOS de antes
+   del detector (sin banderas anotadas): F7 (sin línea de techo) 10 · F4 (deshacer una suba sin 95%) 5 · F2 (escalón de más) 3 · F1 1 ·
+   F3 1 · sólo la terminación 2. Se listan con su comando; no se deshicieron (algunos son a propósito: el arranque de lanzamiento del
+   20/10). Los 3 Protectores salen ↩️ (F4, ya devueltos a las 13:24). Lo que mostró y se arregló el mismo día:
+   - los 38 ⚠️ eran TODOS "suba #techo de menos de +30%" de antes de que existiera esa regla (el freno de decido es del 21/10 03:30
+     UTC): las reglas de CÓMO se decide (estrategia de una baja, +30%, más del doble) se miran sólo desde que existen (`DET_REGLA_DESDE`);
+   - el redondeo de la terminación pedía la estrategia de ANTES (#prueba en el Adaptador, #caja en el Cuba): ahora la de HOY, y si hoy
+     está en 🏔️ (techo95 midió ese precio) sólo avisa; y no cruza los $33.000 (queda $32.999) ni pasa el techo;
+   - un 📷 que es una publicación que ML iguala sola con su hermana (`esHermanaPrecio`, la Lupa 90mm) va aparte como 🔗 (se juzga la
+     que se cambió).
+   Probado: 76 casos (los 66 + 10 nuevos con lo que mostró la corrida).
  · **Qué chequear:** que todo camino nuevo que baje un precio llame a `setPriceTo` (o pase por `frenosBajas`); que toda bandera nueva
    esté en los dos parsers y en `BAN_DEC`/el `ban` de `entrarpromo`; que una salida usada mal pase a `BANDERAS_SUYAS`; que cada corrección
    nueva tenga su chequeo en `detectarErrores`; que `errores` cierre la cuenta; que `autoriza` no muestre pedidos "TODAVÍA NO SALIÓ".

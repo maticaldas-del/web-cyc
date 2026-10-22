@@ -4657,14 +4657,19 @@ async function _autDeTelegram(db, updates) {
 //  · una baja que queda abajo del 25% en el peor caso sin !piso (regla 9, con el margen anotado);
 //  · una baja que pidió o quedó con la estrategia 🔥 escasez o 📈 techo (quieren decir que el precio SUBE);
 //  · una suba #techo de menos de +30% sin !chico (salvo la barrera y el techo de $650.000) o de más del doble sin !salto;
-//  · un precio mío que no termina en 90/990 (ni 99).
+//  · un precio mío que no termina en 90/990 (ni 99): se arregla subiendo al 90 de arriba, sin cruzar los $33.000 (queda $32.999) ni
+//    el techo; si hoy está en 🏔️ (techo95 lo midió a ESE precio) sólo se avisa.
+// Las reglas de CÓMO se decide (la estrategia de una baja, el +30% y el más del doble de una suba) se miran sólo desde que existen
+// (`DET_REGLA_DESDE`): no se juzga una decisión con una regla que todavía no estaba. Las de los frenos sí, siempre: lo que sigue
+// puesto tiene que cumplir las reglas de hoy.
 // LA CUENTA CIERRA: cada cambio cae en UNA de ❌ pendiente · ↩️ ya no está · ⚠️ aviso · ❓ sin dato · ✅ bien · 🔚 salida de un
-// descuento · 📷 sin registro · 💳 gemela. Si no suma, lo dice.
+// descuento · 📷 sin registro · 💳 gemela · 🔗 hermana que ML iguala sola (`esHermanaPrecio`: la Lupa 90mm). Si no suma, lo dice.
 // Con `aplicar` (`:go`, sólo por ml-sync) deshace cada ❌ de un cambio con el formato nuevo (`fmt: 2`): una baja de lista vuelve al
 // precio de antes (`raisePriceTo`, releída de ML, anotada en mis cambios como `por: 'errores'` con la estrategia de antes), un
 // descuento sale (`salirPromoMia`) y un precio que sólo terminaba mal sube al 90 de arriba. Manda UN aviso a su canal privado con
 // lo deshecho. Lo de antes del detector sólo se lista, con el comando para deshacerlo. Las subas no se deshacen solas (se miran).
 // Cada corrección nueva suya agrega acá su chequeo (CLAUDE.md, "🔐 UN AVISO ALCANZA").
+const DET_REGLA_DESDE = { techo30: Date.parse('2026-10-21T03:31:00Z'), salto: Date.parse('2026-10-19T18:02:00Z'), estrategia: Date.parse('2026-10-19T19:08:00Z') };
 async function detectarErrores(db, o = {}) {
   const horas = Number(o.horas) > 0 ? Number(o.horas) : 26, ahora = Number(o.ahora) > 0 ? Number(o.ahora) : Date.now(), t0 = ahora - horas * 3600e3;
   const aplicar = !!o.aplicar, tokens = o.tokens || {};
@@ -4672,6 +4677,8 @@ async function detectarErrores(db, o = {}) {
   const fecha = (t) => new Date(Number(t) - 3 * 3600e3).toISOString().slice(5, 16).replace('T', ' ').replace(/^(\d\d)-(\d\d)/, '$2/$1');
   const ceil90 = (p) => { let x = Math.ceil(p / 100) * 100 - 10; if (x < p) x += 100; return x; };
   const terminaBien = (p) => { const r = Math.round(Number(p) || 0) % 100; return r === 90 || r === 99; };
+  // el 90 de arriba, sin cruzar los $33.000 desde abajo (queda $32.999, que termina en 99) ni pasar el techo (0 = no se puede)
+  const objTerm = (p) => { const c90 = ceil90(p); if (p < UMBRAL_ENVIO_GRATIS && c90 >= UMBRAL_ENVIO_GRATIS) return UMBRAL_ENVIO_GRATIS - 1; return c90 <= TECHO_DURO ? c90 : 0; };
   const FALLO = Symbol('fallo');
   const ks = ['cyc/claudecambios', 'cyc/promohist', 'cyc/promoclaude', 'cyc/estrategia', 'cyc/mllinks', 'cyc/autoprecio', 'cyc/stockhist', 'cyc/products', 'cyc/autoriza', 'cyc/lotesfull', 'cyc/supervisor/eventos', 'cyc/netopub'];
   const R = await Promise.all(ks.map(async (k) => { try { return await db.get(k); } catch { return FALLO; } }));
@@ -4716,12 +4723,18 @@ async function detectarErrores(db, o = {}) {
   }
   // La foto de precios: lo que cambió y nadie anotó. Lo que coincide con un cambio ya juntado (o con una salida de descuento) es
   // el mismo cambio visto dos veces; el de una gemela lo mueve el robot siguiendo a su Clásica.
-  const foto = [], fotoGem = []; let fotoDup = 0;
+  const foto = [], fotoGem = [], fotoHer = []; let fotoDup = 0;
   for (const ev of Object.values(evs)) {
     if (!ev || ev.origen !== 'fuera del robot (a mano)' || !enVentana(ev.ts) || !/^MLA\d+$/.test(String(ev.mla || ''))) continue;
     const p = Number(ev.a) || 0, tol = Math.max(10, p * 0.01);
     if (C.some((c) => c.mla === ev.mla && Math.abs((Number(c.a) || 0) - p) <= tol && Math.abs(c.ts - Number(ev.ts)) <= 36 * 3600e3)) { fotoDup++; continue; }
-    ((links[ev.mla] || {}).gemelaDe ? fotoGem : foto).push(ev);
+    const eL = links[ev.mla] || {};
+    if (eL.gemelaDe) { fotoGem.push(ev); continue; }
+    // ML le iguala el precio de lista a las publicaciones del MISMO producto en una cuenta (la Lupa 90mm, `esHermanaPrecio`): si una
+    // hermana tiene un cambio anotado a ese precio cerca, a ésta la movió ML siguiéndola. Se juzga la hermana, no ésta.
+    const her = C.find((c) => c.mla !== ev.mla && !c.promo && !c.salida && esHermanaPrecio(eL, links[c.mla]) && Math.abs((Number(c.a) || 0) - p) <= tol && Math.abs(c.ts - Number(ev.ts)) <= 36 * 3600e3);
+    if (her) { fotoHer.push({ ...ev, her: her.mla }); continue; }
+    foto.push(ev);
   }
   C.sort((x, y) => x.ts - y.ts);
   // ── 2 · cada uno, contra las reglas, en su momento
@@ -4739,6 +4752,7 @@ async function detectarErrores(db, o = {}) {
     const tagGuardado = Object.entries(hE).map(([k, x]) => ({ ts: Number(k), t: x && x.t })).filter((x) => x.t && x.ts >= c.ts - 60e3 && x.ts <= c.ts + 15 * 60e3).sort((x, y) => x.ts - y.ts).map((x) => x.t)[0] || '';
     const tagPedido = c.tag || tagGuardado || tagDeMotivo(c.motivo) || (c.promo ? 'descuento' : '');
     it.tagAntes = tagVigenteEn(hE, c.ts - 60e3) || '';
+    it.tagPedido = tagPedido; it.tagHoy = tagVigenteEn(hE, ahora) || '';   // la de hoy: la que sigue si sólo se redondea
     const nuevoFmt = c.fmt >= 2, conExc = /excepci[oó]n/i.test(c.motivo);
     const tiene = (f) => (nuevoFmt ? c.ban.includes(f) : conExc);   // mis banderas; en lo de antes, si el motivo dice EXCEPCIÓN
     if (baja) {
@@ -4758,12 +4772,15 @@ async function detectarErrores(db, o = {}) {
       const mgP = c.mgP != null && Number.isFinite(Number(c.mgP)) ? Number(c.mgP) : null;
       if (nuevoFmt && mgP != null && mgP < PISO && !c.ban.includes('piso')) it.viol.push({ regla: 'piso 25%', txt: `queda en ${mgP}% en el peor caso, abajo del ${PISO}% sin !piso (regla 9)` });
       const tE = ['escasez', 'techo'].includes(c.tag) ? c.tag : (['escasez', 'techo'].includes(tagGuardado) ? tagGuardado : '');
-      if (tE) it.viol.push({ regla: 'estrategia', aviso: true, txt: `bajó con la estrategia ${ESTRATEGIAS[tE]}: escasez y techo quieren decir que el precio SUBE (una baja de una escalera es 🪜 bajando)` });
+      if (tE && c.ts >= DET_REGLA_DESDE.estrategia) it.viol.push({ regla: 'estrategia', aviso: true, txt: `bajó con la estrategia ${ESTRATEGIAS[tE]}: escasez y techo quieren decir que el precio SUBE (una baja de una escalera es 🪜 bajando)` });
     } else if (sube && !rev && !c.robot) {
-      if (tagPedido === 'techo' && c.a < c.de * 1.3 && !tiene('chico') && !(c.de < UMBRAL_ENVIO_GRATIS && c.a >= 32900 && c.a < UMBRAL_ENVIO_GRATIS) && !(c.a >= 640000)) it.viol.push({ regla: 'techo +30%', aviso: true, txt: `buscar techo es un salto de +30% o más, nunca de a poco: ${$(c.de)} → ${$(c.a)} es +${Math.round((c.a / c.de - 1) * 100)}% (sin !chico)` });
-      if (c.a > c.de * 2 && !(nuevoFmt ? c.ban.includes('salto') : conExc)) it.viol.push({ regla: 'más del doble', aviso: true, txt: `subió más del doble de una (${$(c.de)} → ${$(c.a)}) sin !salto` });
+      if (tagPedido === 'techo' && c.ts >= DET_REGLA_DESDE.techo30 && c.a < c.de * 1.3 && !tiene('chico') && !(c.de < UMBRAL_ENVIO_GRATIS && c.a >= 32900 && c.a < UMBRAL_ENVIO_GRATIS) && !(c.a >= 640000)) it.viol.push({ regla: 'techo +30%', aviso: true, txt: `buscar techo es un salto de +30% o más, nunca de a poco: ${$(c.de)} → ${$(c.a)} es +${Math.round((c.a / c.de - 1) * 100)}% (sin !chico)` });
+      if (c.a > c.de * 2 && c.ts >= DET_REGLA_DESDE.salto && !(nuevoFmt ? c.ban.includes('salto') : conExc)) it.viol.push({ regla: 'más del doble', aviso: true, txt: `subió más del doble de una (${$(c.de)} → ${$(c.a)}) sin !salto` });
     }
-    if (!c.robot && !rev && !terminaBien(c.a)) it.viol.push({ regla: 'terminación', aviso: !!c.promo, txt: `${$(c.a)} no termina en 90/990 (ni 99): el de arriba es ${$(ceil90(c.a))}` });
+    if (!c.robot && !rev && !terminaBien(c.a)) {
+      const oT = objTerm(c.a), medido = it.tagHoy === 'techook';
+      it.viol.push({ regla: 'terminación', aviso: !!c.promo || !oT || medido, txt: `${$(c.a)} no termina en 90/990 (ni 99): ${oT ? 'el de arriba es ' + $(oT) + (oT === UMBRAL_ENVIO_GRATIS - 1 ? ' (sin cruzar los $33.000)' : '') : 'el 90 de arriba pasa el techo de ' + $(TECHO_DURO)}${medido ? ' · hoy está en 🏔️ (techo95 lo midió a ese precio): no se redondea, se avisa' : ''}` });
+    }
     // ¿Sigue puesto? Un descuento: el mío vigente a ese precio. Una lista: el precio de hoy (`cyc/netopub`, al día con cada cambio
     // que hace el robot) o mi descuento vigente sobre esa lista; sin un precio de después del cambio, que no haya otro cambio después.
     if (c.promo) { const p = pcl[c.mla]; it.sigue = !!(p && Math.abs((Number(p.precio) || 0) - c.a) <= 10 && promoClaudeVigente(p, ahora).vig); }
@@ -4780,10 +4797,10 @@ async function detectarErrores(db, o = {}) {
   }
   // ── 3 · lo que se ve
   const por = (k) => items.filter((x) => x.cat === k);
-  const N = items.length + foto.length + fotoGem.length;
+  const N = items.length + foto.length + fotoGem.length + fotoHer.length;
   const nDec = items.filter((c) => /^decido|^el detector/.test(c.fuente)).length, nDesc = items.filter((c) => c.promo).length, nSal = items.filter((c) => c.salida).length, nRob = items.filter((c) => c.robot).length;
   console.log(`=== 🔎 EL DETECTOR · cambios de precio y descuentos de las últimas ${horas} h (desde el ${fecha(t0)}) ===`);
-  console.log(`Miré ${N} cambio(s): ${nDec} de lista míos (decido${items.some((c) => c.fuente === 'el detector') ? ' y vueltas atrás del detector' : ''}) · ${nDesc} descuento(s) míos · ${nSal} salida(s) de descuento · ${nRob} del robot por otro camino · ${foto.length + fotoGem.length} que vio la foto de precios sin que nadie los anotara`);
+  console.log(`Miré ${N} cambio(s): ${nDec} de lista míos (decido${items.some((c) => c.fuente === 'el detector') ? ' y vueltas atrás del detector' : ''}) · ${nDesc} descuento(s) míos · ${nSal} salida(s) de descuento · ${nRob} del robot por otro camino · ${foto.length + fotoGem.length + fotoHer.length} que vio la foto de precios sin que nadie los anotara`);
   if (fotoDup || marcas) console.log(`(no cuentan aparte: ${fotoDup ? fotoDup + ' de la foto que ya estaban anotados' : ''}${fotoDup && marcas ? ' · ' : ''}${marcas ? marcas + ' marca(s) de "subiendo/bajando" del robot' : ''})`);
   console.log('(F0 y el 25% en el peor caso se juzgan con el margen anotado: lo de antes del detector no lo tiene)');
   const ren = (x) => `${x.mla} · ${x.cuenta || '?'} · ${x.nom || '?'} · ${fecha(x.ts)} · ${$(x.de)} → ${$(x.a)} (${x.fuente}${x.promo || x.salida ? '' : x.hoy ? ', hoy ' + $(x.hoy) : ''})${x.fmt >= 2 || x.salida ? '' : ' · anotado antes del detector'}`;
@@ -4791,9 +4808,10 @@ async function detectarErrores(db, o = {}) {
     const reglas = x.viol.filter((v) => !v.aviso).map((v) => v.regla).join(', ');
     if (x.promo) return `entrarpromo:${x.mla}=salir|el detector: ${reglas};go`;
     const soloTerm = x.viol.filter((v) => !v.aviso).every((v) => v.regla === 'terminación');
-    const tg = !x.tagAntes || ['sindecidir', 'agotado', 'correccion', 'base', 'techook'].includes(x.tagAntes) ? 'techo' : x.tagAntes;   // #techook no se puede pedir (lo anota techo95)
-    if (soloTerm) return `decido:${x.mla}=${ceil90(x.a)}!chico#${tg}|EXCEPCIÓN: redondeo a 90 (el detector);go`;
-    return `decido:${x.mla}=${x.de}!chico${x.de >= UMBRAL_ENVIO_GRATIS && x.a < UMBRAL_ENVIO_GRATIS ? '!cruza' : ''}#${tg}|EXCEPCIÓN: vuelve al precio de antes, el detector encontró ${reglas};go`;
+    // #techook no se puede pedir (lo anota techo95). Si sólo se redondea, sigue la estrategia de HOY; si vuelve atrás, la de antes.
+    const tgDe = (t) => (!t || ['sindecidir', 'agotado', 'correccion', 'base', 'techook'].includes(t) ? 'techo' : t);
+    if (soloTerm) return `decido:${x.mla}=${objTerm(x.a)}!chico#${tgDe(x.tagHoy)}|EXCEPCIÓN: redondeo a 90 (el detector);go`;
+    return `decido:${x.mla}=${x.de}!chico${x.de >= UMBRAL_ENVIO_GRATIS && x.a < UMBRAL_ENVIO_GRATIS ? '!cruza' : ''}#${tgDe(x.tagAntes)}|EXCEPCIÓN: vuelve al precio de antes, el detector encontró ${reglas};go`;
   };
   const bloque = (tit, arr, f) => { console.log(`\n${tit} (${arr.length})`); for (const x of arr) f(x); };
   bloque('❌ PENDIENTES · rompen una regla suya y siguen puestos', por('pendiente'), (x) => { console.log(ren(x)); for (const v of x.viol) console.log(`   ${v.aviso ? '⚠️' : '✗'} ${v.regla}: ${v.txt}`); if (x.sinDato) console.log(`   ❓ además: ${x.sinDato}`); console.log(`   ▶️ ${x.fmt >= 2 && x.fuente !== 'el detector' ? 'errores:go (por ml-sync) lo deshace solo · a mano: ' : 'para deshacerlo: '}${cmdDeshacer(x)}`); });
@@ -4804,10 +4822,11 @@ async function detectarErrores(db, o = {}) {
   bloque('🔚 SALIDAS DE UN DESCUENTO MÍO (vuelve la lista: no se juzgan)', por('salida'), (x) => console.log(ren(x)));
   bloque('📷 SIN REGISTRO · los vio la foto de precios y nadie los anotó (¿a mano en ML?)', foto, (ev) => console.log(`${ev.mla} · ${String((links[ev.mla] || {}).title || '?').slice(0, 44)} · ~${fecha(ev.ts)} · ${$(ev.de)} → ${$(ev.a)}`));
   bloque('💳 GEMELAS que vio la foto (siguen a su Clásica: no se juzgan solas)', fotoGem, (ev) => console.log(`${ev.mla} · gemela de ${(links[ev.mla] || {}).gemelaDe} · ~${fecha(ev.ts)} · ${$(ev.de)} → ${$(ev.a)}`));
-  const cats = { pendiente: por('pendiente').length, yano: por('yano').length, aviso: por('aviso').length, sindato: por('sindato').length, bien: por('bien').length, salida: por('salida').length, foto: foto.length, gemela: fotoGem.length };
+  bloque('🔗 HERMANAS que ML iguala sola (mismo producto en la cuenta: se juzga la que se cambió)', fotoHer, (ev) => console.log(`${ev.mla} · ${String((links[ev.mla] || {}).title || '?').slice(0, 44)} · sigue a ${ev.her} · ~${fecha(ev.ts)} · ${$(ev.de)} → ${$(ev.a)}`));
+  const cats = { pendiente: por('pendiente').length, yano: por('yano').length, aviso: por('aviso').length, sindato: por('sindato').length, bien: por('bien').length, salida: por('salida').length, foto: foto.length, gemela: fotoGem.length, hermana: fotoHer.length };
   const suma = Object.values(cats).reduce((a, b) => a + b, 0);
-  console.log(`\nLa cuenta: ❌ ${cats.pendiente} + ↩️ ${cats.yano} + ⚠️ ${cats.aviso} + ❓ ${cats.sindato} + ✅ ${cats.bien} + 🔚 ${cats.salida} + 📷 ${cats.foto} + 💳 ${cats.gemela} = ${suma} de ${N} ${suma === N ? '✓ cierra' : '⚠️ NO CIERRA: hay cambios saliendo en silencio'}`);
-  const res = { n: N, cats, items, foto, fotoGem, hechos: [], noHechos: [] };
+  console.log(`\nLa cuenta: ❌ ${cats.pendiente} + ↩️ ${cats.yano} + ⚠️ ${cats.aviso} + ❓ ${cats.sindato} + ✅ ${cats.bien} + 🔚 ${cats.salida} + 📷 ${cats.foto} + 💳 ${cats.gemela} + 🔗 ${cats.hermana} = ${suma} de ${N} ${suma === N ? '✓ cierra' : '⚠️ NO CIERRA: hay cambios saliendo en silencio'}`);
+  const res = { n: N, cats, items, foto, fotoGem, fotoHer, hechos: [], noHechos: [] };
   // ── 4 · deshacer (`:go`): sólo lo anotado con el formato nuevo; lo de antes se deshace a mano con su comando
   const aDeshacer = por('pendiente').filter((x) => x.fmt >= 2 && x.fuente !== 'el detector');
   if (!aplicar) { if (aDeshacer.length) console.log(`\n(sin :go no toco nada · errores:${horas}:go por ml-sync deshace ${aDeshacer.length})`); return res; }
@@ -4835,20 +4854,22 @@ async function detectarErrores(db, o = {}) {
       continue;
     }
     const soloTerm = x.viol.filter((v) => !v.aviso).every((v) => v.regla === 'terminación');
-    const objetivo = soloTerm ? ceil90(x.a) : (x.a < x.de ? x.de : 0);
+    const objetivo = soloTerm ? objTerm(x.a) : (x.a < x.de ? x.de : 0);
     if (!(objetivo > x.a)) { no('es una suba: no se deshace sola (se mira)'); continue; }
     let pv; try { pv = await db.get('cyc/promoclaude/' + x.mla); } catch { no('no pude leer si tiene un descuento mío: no subo la lista a ciegas'); continue; }
     if (pv && promoClaudeVigente(pv).vig) { no(`tiene un descuento mío puesto (${$(pv.precio)}): subir la lista infla el tachado · primero entrarpromo:${x.mla}=salir`); continue; }
     let actual = null; try { actual = Number((await mlGet('/items/' + x.mla + '?attributes=price', tk))?.price) || null; } catch { actual = null; }
     if (actual == null) { no('ML no me dijo el precio de hoy'); continue; }
     if (Math.abs(actual - x.a) > 10) { no(`hoy está a ${$(actual)}, no a ${$(x.a)}: ya cambió`); continue; }
-    const r = await raisePriceTo(x.mla, objetivo, tk, { libre: true, exacto: true, cruza: objetivo >= UMBRAL_ENVIO_GRATIS && actual < UMBRAL_ENVIO_GRATIS });
+    // cruzar los $33.000 sólo para VOLVER a un precio de antes que ya estaba arriba (redondear nunca cruza: objTerm frena en $32.999)
+    const r = await raisePriceTo(x.mla, objetivo, tk, { libre: true, exacto: true, cruza: !soloTerm && objetivo >= UMBRAL_ENVIO_GRATIS && actual < UMBRAL_ENVIO_GRATIS });
     if (!r || !r.ok) { no((r && r.err) || '?'); continue; }
     const quedoA = Number(r.to || objetivo);
     let quedo = null; try { quedo = Number((await mlGet('/items/' + x.mla + '?attributes=price', tk))?.price) || null; } catch { quedo = null; }
-    const ts = Date.now(), tgAntes = x.tagAntes && ESTRATEGIAS[x.tagAntes] && !['sindecidir', 'agotado', 'correccion', 'base'].includes(x.tagAntes) ? x.tagAntes : '';
+    const tgOk = (t) => (t && ESTRATEGIAS[t] && !['sindecidir', 'agotado', 'correccion', 'base'].includes(t) ? t : '');
+    const ts = Date.now(), tgAntes = tgOk(x.tagAntes), tgReg = soloTerm ? tgOk(x.tagHoy) : tgAntes;   // redondear no cambia la estrategia
     const mot = soloTerm ? `↩️ el detector redondeó a 90 (${$(x.a)} → ${$(quedoA)})` : `↩️ el detector volvió al precio de antes: la baja del ${fecha(x.ts)} rompía ${reglas}`;
-    try { await db.set('cyc/claudecambios/' + ts + '_' + x.mla, { mla: x.mla, de: Number(r.from) || actual, a: quedoA, ts, motivo: mot.slice(0, 300), nom: x.nom, cuenta: e.cuenta || '', fmt: 2, por: 'errores', deshace: x.id, tag: tgAntes || null, ban: [], aut: [] }); }
+    try { await db.set('cyc/claudecambios/' + ts + '_' + x.mla, { mla: x.mla, de: Number(r.from) || actual, a: quedoA, ts, motivo: mot.slice(0, 300), nom: x.nom, cuenta: e.cuenta || '', fmt: 2, por: 'errores', deshace: x.id, tag: tgReg || null, ban: [], aut: [] }); }
     catch { console.log(`   ⚠️ ${x.mla}: no pude anotarlo en mis cambios`); }
     if (tgAntes && !soloTerm) {   // la estrategia de antes (una 🏔️ de techo95 conserva su texto: es la misma medición)
       const prevRec = Object.entries(est[x.mla] || {}).map(([k, y]) => ({ ts: Number(k), ...(y || {}) })).filter((y) => y.ts > 0 && y.ts < x.ts && y.t === tgAntes).sort((a, b) => b.ts - a.ts)[0];

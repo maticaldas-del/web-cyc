@@ -23,7 +23,9 @@ la forma más efectiva posible y que no me tenga que estar fijando a cada rato, 
 (3a, desde el 22/10 con el detector, que reemplaza a `bajastecho:1` y manda sobre lo que diga la tarea): **🔎 `errores` por consulta**
 (mira el resultado de TODO cambio de precio y descuento de las últimas 26 h contra cada error que él ya marcó, ver §0b); si sale algún
 ❌ pendiente, **`errores:go` en la ml-sync de la vuelta** lo deshace (vuelve al precio de antes o sale del descuento, releído) y le
-manda UN aviso. Los ❌ "anotados antes del detector" se deshacen con el comando que imprime. Ninguna vuelta termina con un ❌ vivo.** **Las ventas las piensa SIEMPRE un ayudante (Agent con `effort:"max"` escrito en la
+manda UN aviso. Los ❌ "anotados antes del detector" (sin `fmt: 2`) no se deshacen a ciegas: se mira cada uno (puede ser una decisión
+suya, ej. el arranque de lanzamiento del 20/10 de WD, microSD y Adyan) y se corre el comando que imprime o queda una nota en el 🧠 con
+el porqué. Ninguna vuelta termina con un ❌ vivo sin decidir.** **Las ventas las piensa SIEMPRE un ayudante (Agent con `effort:"max"` escrito en la
 llamada), aunque sea UNA sola venta (21/10, regla suya: *"no quiero que dependan de la config de esfuerzo que tengo yo"*): el chat
 corre con el nivel que tenga la sesión, el ayudante con el que se le pide.** El ayudante lee las fichas y propone; decidir y aplicar es
 mío, siguiendo lo que propuso (si no le hago caso, lo digo en el 🧠). `esf=` del `ventasvistas` = el del ayudante (max). Una publicación que vuelve a vender en otra vuelta se mira por esa venta NUEVA (lo que
@@ -139,7 +141,8 @@ Después de los 3 Protectores de talón (22/10: el freno "sin línea de techo no
    esperar. **Un solo disparo por turno.** Después confirmar `success`; si quedó `cancelled`, repetir sólo lo que faltó (cada
    comando terminado deja `##### ✓ terminó:`). No se toca `cancel-in-progress`.
 10. **🔎 Al final, `errores` (consulta)**, después de que terminó la ml-sync de la vuelta. Si hay algún ❌ pendiente: `errores:go` por
-   ml-sync (deshace lo del formato nuevo y le avisa) y el comando que imprime para lo anotado antes. 🔐 lo frenado por una salida suya
+   ml-sync (deshace lo del formato nuevo y le avisa); lo anotado antes, con el comando que imprime o una nota del porqué (no a ciegas:
+   puede ser una decisión suya). 🔗 (hermanas que ML iguala sola) y 💳 no se juzgan solas. 🔐 lo frenado por una salida suya
    queda esperando su "autorizo" (no se reintenta por otro camino).
 11. En el chat: "🚨 N → N · 🧭 N → N · 🔀 N → N · 🚫 frenadas N · 🔐 pedidas N · 🔎 errores N → N · ventas N miradas · ideas …" (nunca callado).
 

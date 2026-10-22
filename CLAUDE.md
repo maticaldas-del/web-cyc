@@ -914,6 +914,10 @@ Después de los 3 Protectores de talón: el freno "sin línea de techo no se baj
    releído) y le manda UN aviso.
  · **Regla: cada corrección nueva suya agrega su chequeo al detector (y su freno si se puede medir), en el mismo commit.** Una salida
    de excepción que ya se usó mal pasa a ser 🔐 suya. Detalle en `ml-sync/CEREBRO.md` §0c.
+ · **Primera corrida con datos reales (22/10, 72 h): 177 cambios, la cuenta cerró. Los 22 ❌ que siguen puestos son de ANTES del
+   detector: se listan con su comando y NO se deshacen solos** (no se sabe con qué permiso se hicieron; algunos son a propósito, ej. WD,
+   microSD y Adyan, cuyo precio del 20/10 se tomó como arranque del lanzamiento). Los decide la vuelta, de a uno, con nota del porqué
+   si se quedan. Entre ellos el Pendrive 8gb (el ejemplo que él usó el 21/10 para la regla F8) sigue en $23.990.
 
 ## 🧠 SUS 4 DECISIONES DEL CEREBRO Y LA ETAPA 8 (21/10/2026, "1a 2b 3a 4a")
 1a bajar algo que no sobra (salir de techo, escasez o lanzamiento) = 💸 descuento con el precio de antes tachado, no bajar la lista ·
