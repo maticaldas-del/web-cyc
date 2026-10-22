@@ -10,6 +10,9 @@ Matías y Tito (su padre). Con ESTE archivo + la ficha de cada publicación tien
 
 **Si algo de acá choca con `ml-sync/CEREBRO.md`, manda CEREBRO.md** y este archivo está mal: se corrige acá en el mismo commit.
 Regla nueva de precios o de ventas → va en CEREBRO.md, en este archivo y en `REVISION.md`, todo junto.
+**Cada error que él marca sobre una venta** se agrega en la sección 7 de este archivo (1-2 renglones: qué pasó y la regla), en el
+mismo commit que su chequeo en el detector `errores` y su pregunta en `notas/preguntas.md`. Este archivo no guarda historia larga
+(va a `REVISION.md`/`HISTORIA.md`): tiene que seguir chico para que el ayudante lo lea entero.
 
 **Quién decide.** El ayudante LEE y PROPONE. Decidir, escribir los comandos en ML y anotar es del chat principal (que sigue lo
 propuesto; si no le hace caso, lo dice en el 🧠). El robot sólo junta datos: nunca tomar como dato una marca vieja del robot
@@ -145,8 +148,9 @@ Si dos reglas tiran para lados distintos y ninguna fila lo resuelve: no se hace 
   parte no lo justifica solo. Bandera `!nosobra`.
 - 🔒 **F7 · SIN LÍNEA DE TECHO NO SE BAJA NUNCA.** Línea = 🔴 al 95% o 🏔️ de techo95 en 60 días. No frena sobra, sinrepo, liquidando,
   remate ni la salida de una escasez. **Vence a los 15 días de la última suba (5%+)**: ahí decide la plata por día (F4).
-  `!sinlinea` vale **SÓLO junto con `!activar`** en `decido` (precio mal puesto ANTES de activar). **Lo que vendieron OTRAS
-  variantes o la familia NO alcanza** (Protectores de talón, 22/10). En `entrarpromo` no hay forma de saltear F7.
+  `!sinlinea` es 🔐 **SÓLO SUYA** (ver abajo). **Lo que vendieron OTRAS variantes o la familia NO alcanza nunca** (Protectores de
+  talón, 22/10). Única salida mía: corregir el precio de lo que NUNCA estuvo activo ni vendió, al activarlo (`!activar` +
+  "EXCEPCIÓN: …").
 - 🔒 **F8 · arriba del 💰 no se baja sin 95%:** con el precio de hoy 2%+ arriba del 💰, se cuentan los días seguidos con stock a este
   precio contra lo que tenía que vender para igualar la plata por día del 💰. Sin 95% se queda (estrategia 💰 `punto`, *buscando el de
   más ganancia*); si deja más, la raya 💰 sube sola. Bandera `!sincerteza`.
@@ -273,18 +277,28 @@ techofreno:<MLA>=<precio probado>|<motivo>;go
 | `!activar` | activar la pausada al precio | decido | no |
 | `!sinstock` | poner precio a una nueva todavía sin stock (copiado mal) | decido | no |
 | `!escalon` | zona muerta de la comisión | decido | no (decir por qué) |
-| `!sintecho` | F1 lo nuevo sin 🏔️ | decido, entrarpromo | **sí** |
+| `!sintecho` | F1 lo nuevo sin 🏔️ | decido, entrarpromo | 🔐 **suya** |
 | `!golpe` | F2/F3 escalón más grande o antes de tiempo | decido, entrarpromo | **sí** |
-| `!sincerteza` | F4 deshacer una suba sin 95% · F8 bajar arriba del 💰 sin 95% | decido, entrarpromo | **sí** |
+| `!sincerteza` | F4 deshacer una suba sin 95% · F8 bajar arriba del 💰 sin 95% | decido, entrarpromo | 🔐 **suya** |
 | `!bajopiso` | F5 abajo del 💰 | decido, entrarpromo | **sí** |
 | `!nosobra` | F6 descuento sin sobra | decido, entrarpromo | **sí** |
-| `!sinlinea` | F7 sin línea de techo (sólo con `!activar`, precio mal puesto) | decido | **sí** |
+| `!sinlinea` | F7 sin línea de techo | decido | 🔐 **suya** |
 | `!chico` | suba `#techo` de menos de +30% | decido | **sí** |
 | `!lista` | bajar la LISTA de algo que ya probó techo | decido | **sí** |
-| `!bajocero` | abajo de 0% (sólo si él lo pide) | entrarpromo | — |
+| `!bajocero` | abajo de 0% | entrarpromo | 🔐 **suya** |
 
 **Una bandera de excepción sin "EXCEPCIÓN: <por qué>" en el motivo NO vale** (el código la ignora y frena igual). Las únicas
 excepciones válidas son las cinco de la sección 4.
+
+**🔐 Salidas SÓLO SUYAS (22/10, CEREBRO §0c):** `!sinlinea` · `!sincerteza` · `!sintecho` · `!bajocero` · la estrategia 🧨 `#remate`.
+Sin su autorización vigente el cambio NO se hace: queda pedido en `cyc/autoriza/<código>` y le llega UN mensaje numerado; él responde
+"autorizo K7M3" (vale 48 h para ese renglón). El ayudante NO las propone como si fueran mías: si cree que hace falta una, lo dice como
+decisión de Matías. `autoriza` (consulta) lista lo autorizado. Todo camino que baja pasa por `frenosBajas` (F0-F9; F9: en escasez
+nunca abajo del precio de antes de la escasez) y toda suba por `frenosSuba`.
+
+**🔎 Detector `errores`** (consulta, al final de cada vuelta): mira el resultado de cada cambio de precio y descuento de 26 h contra
+los errores que él ya marcó; con `:go` (ml-sync) deshace lo ❌. Cada corrección nueva suya agrega su chequeo ahí y, si se mide, su
+freno.
 
 ### Tags válidos
 🔥 `escasez` · ⏳ `sinrepo` · 📈 `techo` (buscando techo, sube) · 💰 `punto` (buscando el de más ganancia) · 🪜 `bajando` · ↘️
@@ -330,7 +344,7 @@ algo que se vende). Lo chico y reversible lo decide el chat y se lo cuenta. Si n
 ## 7 · ERRORES QUE YA SE COMETIERON (no se repiten)
 
 - **Protectores de talón (22/10):** se bajaron 3 sin línea de techo usando lo que vendió la familia como certeza (`!sinlinea`). Él:
-  *"si no encontró techo, ¿por qué bajó?"*. Cada variante sola; `!sinlinea` sólo con `!activar` para un precio mal puesto.
+  *"si no encontró techo, ¿por qué bajó?"*. Cada variante sola; `!sinlinea` pasó a ser 🔐 suya.
 - **Persea y Aer Jasmín (20-21/10):** bajados sin techo ($21.990 → $14.950 de una; $19.490 → $18.190 a los 7 días) y la revisión los
   dio por buenos. Nació la regla "lo primero es la línea de techo" (F7) y `bajastecho`.
 - **Enchufe 3 patas (22/10):** se dijo "escasez" con el ritmo de un tramo viejo mucho más barato. El ritmo de la escasez es el del

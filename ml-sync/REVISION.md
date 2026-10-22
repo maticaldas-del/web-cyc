@@ -2776,3 +2776,4 @@ CLAUDE.md pasó de 794 KB a ~50 KB: sólo lo vigente, una vez cada regla. La his
 ventas: lo leen el ayudante de las vueltas y el de la completa (con la ficha), no el CLAUDE.md entero. Las dos tareas programadas ya
 lo dicen. Qué chequear: que una regla nueva vaya a CLAUDE.md (corta), CEREBRO.md y, si toca ventas, VENTAS.md; que nada vigente quede
 sólo en HISTORIA.md; que CLAUDE.md no vuelva a crecer con historia (la historia va a REVISION.md o HISTORIA.md).
+- 22/10/2026: VENTAS.md al día con 🔐 (`!sinlinea` `!sincerteza` `!sintecho` `!bajocero` `#remate` son suyas), F9 y el detector `errores`; cada error de una venta se anota en su sección 7. Qué chequear: que VENTAS.md no contradiga CEREBRO §0c.

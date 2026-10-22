@@ -14,7 +14,7 @@
 | archivo | qué tiene |
 |---|---|
 | `ml-sync/CEREBRO.md` | **las reglas del cerebro de precios** (quién manda, techo, escasez, sobra, descuentos, gemelas, pedidos, cajas). Cada vuelta arranca leyéndolo. Manda en precios. |
-| `ml-sync/VENTAS.md` | el documento para revisar ventas (lo está creando otro ayudante, 22/10) |
+| `ml-sync/VENTAS.md` | **cómo se juzga una venta** (lo que lee el ayudante de ventas con la ficha, en vez de todo esto). Regla que toca ventas → también ahí |
 | `ml-sync/REVISION.md` | cada cambio anotado en su etapa (qué es · dónde vive · qué chequear) + el calendario de revisiones |
 | `ml-sync/PROMPT_GUAY.md` · `PROMPT_LISTAS.md` | lo que se le pega ENTERO al chat de compras (no lee direcciones remotas) |
 | `ml-sync/AUDITORIA.md` | auditoría del robot (datos crudos contra el `informe`) |
@@ -36,8 +36,8 @@
   hago yo por comando. **Las publicaciones en ML las crea él**; yo creo la ficha en CYC y la vinculo (elijo la cuenta).
 - **Toda tarea completa, nunca a medias** (09/10). **Un error que marca él se busca en todo el sistema** (16/10): arreglarlo en el
   código, buscar el mismo patrón en otras pantallas y en el robot, y decirle cuántos más había (aunque sea "ninguno").
-- **Objetivo: que no tenga que corregirme** (20/10). Cada corrección se cuenta en `notas/correcciones.md` y se vuelve pregunta
-  general en `notas/preguntas.md`. 🧐 **¿Tiene sentido?** antes de usar un número: cruzarlo con otro tamaño, otra cuenta, el costo,
+- **Objetivo: que no tenga que corregirme** (20/10). Cada corrección se cuenta en `notas/correcciones.md`, se vuelve pregunta
+  general en `notas/preguntas.md`, y si es de una venta va también a la sección 7 de `ml-sync/VENTAS.md` (corto). 🧐 **¿Tiene sentido?** antes de usar un número: cruzarlo con otro tamaño, otra cuenta, el costo,
   parecidos. No se le promete "95% sin errores".
 - Cuando un número mío choca con lo que él sabe del negocio, **el que está mal es mi número**. Explicación sin medir = adivinanza.
 - **Los motivos de Pedidos los lee Tito (su papá)**: todo motivo de `ped:` arranca con **"Hola Tito!"**, corto y en criollo
