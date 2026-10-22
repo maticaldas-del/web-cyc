@@ -9641,6 +9641,66 @@ async function alinearGemelas(db, links, tokensRun, DRY, products, solo, forzar)
   for (const f of out.sinPrecio) console.log(`   · sin medir: ${f}`);
   return out;
 }
+// ── 📦 LA GEMELA CLÁSICA CON ENVÍO GRATIS (22/10/2026) ────────────────────────────────────────────────────────────────────
+// Él: *"que te parece agregar otra opción de venta como hicimos con las premium pero ahora clásica con envíos gratis. siempre
+// manteniendo ganancia (…) agregar el costo de envío más el monotributo por el mismo neto"*, *"sólo estamos hablando de publicaciones
+// que hoy están por debajo de 33.000 ya que arriba de eso todos tienen envío gratis"* y *"tenés que medir bien los precios ya que
+// varían muchísimo"*. Igual que la 💳 Premium: una condición de venta más en el MISMO producto de ML (user_product_id, stock
+// compartido), pero Clásica con `shipping.free_shipping=true`, al precio que deja la MISMA plata neta que la Clásica de hoy. El envío
+// gratis que paga el vendedor se le pregunta a ML A CADA PRECIO candidato (`/users/<id>/shipping_options/free` con el precio, el
+// tipo, la logística fulfillment y las medidas del paquete): no se extrapola. Arriba de $33.000 el envío es el de Full de arriba de la
+// barrera (`envioGemelaDe`). Se marcan en `cyc/mllinks/<MLA>` con `gemelaDe` + `gemelaTipo:'envio'` (las Premium no tienen gemelaTipo).
+function dimsDeItem(it) {
+  const at = (it && it.attributes) || [];
+  const num = (id) => { const a = at.find((x) => x.id === id); if (!a) return null; const s = String(a.value_name || ''); let n = parseFloat((s || String(a.value_struct?.number || '')).replace(',', '.')); if (!(isFinite(n) && n > 0)) return null; const u = String(a.value_struct?.unit || s.replace(/[\d.,\s]/g, '')).toLowerCase(); if (id === 'PACKAGE_WEIGHT' && u === 'kg') n *= 1000; if (id !== 'PACKAGE_WEIGHT' && u === 'mm') n /= 10; if (id !== 'PACKAGE_WEIGHT' && u === 'm') n *= 100; return n; };
+  const l = num('PACKAGE_LENGTH'), a = num('PACKAGE_WIDTH'), h = num('PACKAGE_HEIGHT'), g = num('PACKAGE_WEIGHT');
+  if (l && a && h && g) return `${Math.ceil(l)}x${Math.ceil(a)}x${Math.ceil(h)},${Math.ceil(g)}`;
+  const d = String((it && it.shipping && it.shipping.dimensions) || ''); return /^\d+x\d+x\d+,\d+$/.test(d) ? d : null;
+}
+// Lo que ML le cobra al vendedor por ofrecer envío gratis a ese precio (all_country.list_cost). `cache` por precio. null = ML no contestó.
+async function envioGratisEn({ b, P, tk, dims, cache, crudo }) {
+  if (cache && cache[P] !== undefined) return cache[P];
+  const lt = (b.shipping && b.shipping.logistic_type) || 'fulfillment';
+  const qs = `item_price=${P}&listing_type_id=gold_special&mode=${(b.shipping && b.shipping.mode) || 'me2'}&condition=${b.condition || 'new'}&logistic_type=${lt}&category_id=${b.category_id}&currency_id=ARS${dims ? '&dimensions=' + dims : ''}&free_shipping=true`;
+  let r = null; try { r = await mlGet(`/users/${b.seller_id}/shipping_options/free?${qs}`, tk); } catch (e) { if (crudo) console.log(`   (envío gratis a $${P}: ML no contestó · ${String(e.message || e).slice(0, 160)})`); }
+  if (r && crudo) console.log(`   RESPUESTA CRUDA de ML (envío gratis a $${P}): ${JSON.stringify(r).slice(0, 700)}`);
+  const v = r ? Number(r?.coverage?.all_country?.list_cost ?? r?.options?.[0]?.list_cost) : NaN;
+  const out = isFinite(v) && v >= 0 ? Math.round(v) : null; if (cache) cache[P] = out; return out;
+}
+// La cuenta de la gemela de envío a un precio P. Mismo esquema que `cuentaGemela`: comisión Clásica preguntada a ML a P, envío gratis
+// medido a P (o el de Full arriba de la barrera), IIBB+monotributo, costo, 3% del facturado de más; peor caso con `PEOR_RET_PCT`.
+async function cuentaGemelaEnvio({ b, P, tk, costo, envArriba, impPct, dims, cache, fC = null, crudo }) {
+  const fee = async (pr) => { try { const d = await mlGet(`/sites/${b.site_id || 'MLA'}/listing_prices?price=${pr}&listing_type_id=gold_special&category_id=${b.category_id}`, tk); const o = Array.isArray(d) ? d[0] : d; return typeof o?.sale_fee_amount === 'number' ? { f: o.sale_fee_amount } : null; } catch { return null; } };
+  const precio = Math.round(Number(b.price) || 0);
+  const envC = precio >= UMBRAL_ENVIO_GRATIS ? envArriba : 0;
+  if (!fC) fC = await fee(precio); if (!fC) return null;
+  const ganCla = precio - fC.f - envC - precio * impPct - costo, netaCla = ganCla - precio * PD_TOPE_PCT;
+  const fE = await fee(P); if (!fE) return { fC, ganCla, netaCla, fE: null };
+  const envE = P >= UMBRAL_ENVIO_GRATIS ? envArriba : await envioGratisEn({ b, P, tk, dims, cache, crudo });
+  if (envE == null) return { fC, ganCla, netaCla, fE: null, sinEnvio: true };
+  const ganE = P - fE.f - envE - P * impPct - costo, netaE = ganE - P * PD_TOPE_PCT;
+  const den = costo + P * impPct + envE;
+  return { fC, fE, envE, ganCla, netaCla, ganE, netaE, mg: den > 0 ? ganE / den * 100 : null, mgP: den > 0 ? (ganE - P * PEOR_RET_PCT) / den * 100 : null };
+}
+// El precio MÁS BAJO de la gemela de envío que deja la misma plata neta que la Clásica. Misma búsqueda que `precioGemelaIgual`
+// (se agranda hasta que alcanza, después se parte el tramo al medio, redondeo a 90/990). {P, cg, base} · P null = no hay hasta $650.000.
+async function precioGemelaEnvioIgual(a) {
+  const r90 = (x) => { if (x >= 100000) return Math.ceil((x + 10) / 1000) * 1000 - 10; return Math.ceil((x + 10) / 100) * 100 - 10; };
+  const precio = Math.round(Number(a.b.price) || 0); if (!(precio > 0)) return null;
+  const cache = a.cache || {}; let fC = a.fC || null, base = null, sinEnvio = false;
+  const ev = async (Q) => { const cg = await cuentaGemelaEnvio({ ...a, cache, P: Q, fC }); if (!cg) return null; fC = cg.fC; base = cg; if (cg.sinEnvio) sinEnvio = true; return cg.fE ? cg : null; };
+  const alcanza = (cg) => !!cg && cg.netaE >= cg.netaCla - 1;
+  let lo = precio, hi = null, cgHi = null, Q = precio;
+  for (const f of [1.03, 1.07, 1.12, 1.2, 1.3, 1.45, 1.65, 2, 2.5, 3, 4, 6]) {
+    let N = Math.round(precio * f); if (Q < 32990 && N >= UMBRAL_ENVIO_GRATIS) N = 32990; if (N > 650000) N = 650000; if (N <= Q) continue;
+    Q = N; const cg = await ev(Q); if (!fC) return null; if (!cg) return { P: null, cg: null, base, sinEnvio }; if (alcanza(cg)) { hi = Q; cgHi = cg; break; } lo = Q; if (Q >= 650000) break;
+  }
+  if (!hi) return { P: null, cg: null, base, sinEnvio };
+  while (hi - lo > Math.max(10, hi * 0.002)) { const m = Math.round((lo + hi) / 2); const cg = await ev(m); if (!cg) break; if (alcanza(cg)) { hi = m; cgHi = cg; } else lo = m; }
+  let R = r90(hi); if (hi < UMBRAL_ENVIO_GRATIS && R >= UMBRAL_ENVIO_GRATIS) R = 32990;
+  if (R !== hi) { const cg = await ev(R); if (alcanza(cg)) cgHi = cg; else R = hi; }
+  return R > 650000 ? { P: null, cg: null, base, sinEnvio } : { P: R, cg: cgHi, base, sinEnvio };
+}
 // ── LOS NÚMEROS CON LOS QUE SE DECIDE UNA COMPRA SE ACTUALIZAN SOLOS (06/10/2026) ──────────────
 // Pedido suyo: *"el envío ahora cobra más. todo eso quiero que lo mantengas actualizado al robot.
 // Porque con el tiempo los costos cambian y si yo no te decía estamos viendo mal"*. Hasta hoy el
@@ -24025,6 +24085,107 @@ async function main() {
       console.log(`\n${linea('Clásica', tot.gold_special)}\n${linea('Premium', tot.gold_pro)}${tot.otro.n ? '\n' + linea('otro tipo', tot.otro) : ''}`);
       console.log(go ? `\n✓ ${escritas} ventas completadas · ${sinVenta} no estaban en el panel · ${fallos} lecturas fallidas` : '\n(prueba: con :go se completan las ventas guardadas)');
       if (go && escritas) { try { const q = await db.get(`cyc/ventaprod/${dayKeyFromISO(new Date().toISOString())}`); console.log(`relectura: ${Object.values(q || {}).filter((v) => v && v.tipoPub).length} ventas de hoy con el tipo anotado`); } catch { /* informativo */ } }
+      return;
+    }
+    // ── 📦 GEMELA CLÁSICA CON ENVÍO GRATIS (22/10/2026). Ver `cuentaGemelaEnvio` arriba. ─────────────────────────────────────
+    //  · `gemelaenvio[:<MLA>,…][:max=N]` (solo lee): cada Clásica activa o pausada con stock en Full, abajo de $33.000, con ficha y costo y
+    //    sin gemela de envío, con el envío gratis que ML le cobraría y el precio que deja la misma plata neta.
+    //  · `gemelaenvio:ver:<MLA>,…` (solo lee): tipo, envío gratis, user_product_id, precio, stock y las otras del mismo producto.
+    //  · `gemelaenvio:anotar:<gemela>=<Clásica>[,…][:go]`: anota una que ya existe (creada a mano) si ML dice que es Clásica con envío
+    //    gratis, del mismo producto y cuenta, y la otra Clásica sin envío gratis. Sin `:go` sólo muestra.
+    if (/^gemelaenvio(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const arg = String(process.env.BILLING_PROBE).slice('gemelaenvio'.length).replace(/^:/, '');
+      const links = (await db.get('cyc/mllinks')) || {}; const toks = {};
+      const tokDe = async (cta) => { if (toks[cta]) return toks[cta]; const acc = accounts[cta]; if (!acc?.refresh_token) return null; try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + cta, { refresh_token: t.refresh_token, updated_ts: Date.now() }); toks[cta] = t.access_token; return t.access_token; } catch { console.log(`⚠️ ${cta}: no pude renovar el permiso`); return null; } };
+      const ATR = 'id,listing_type_id,status,sub_status,price,category_id,site_id,title,available_quantity,shipping,variations,seller_id,condition,user_product_id,catalog_listing,catalog_product_id,attributes,inventory_id';
+      if (arg.startsWith('ver:')) {
+        const lista = arg.slice(4).split(',').map((x) => x.trim().toUpperCase()).filter((x) => /^MLA\d+$/.test(x));
+        for (const mla of lista) {
+          const L = links[mla] || {}; let b = null;
+          // Una creada a mano puede no estar en cyc/mllinks todavía: se prueba con cada cuenta.
+          for (const cta of (L.cuenta ? [L.cuenta] : labels)) { const tk0 = await tokDe(cta); if (!tk0) continue; try { b = await mlGet('/items/' + mla, tk0); L.cuenta = L.cuenta || cta; break; } catch { } }
+          if (!b) { console.log(`${mla}: ML no la devolvió con ninguna cuenta`); continue; } const tk = toks[L.cuenta];
+          const sh = b.shipping || {};
+          console.log(`${mla} · ${L.cuenta} · ${b.listing_type_id} · ${b.status}${(b.sub_status || []).length ? ' (' + b.sub_status.join(',') + ')' : ''} · $${Math.round(b.price || 0).toLocaleString('es-AR')} · ${b.available_quantity} u. · envío ${sh.logistic_type}/${sh.mode} · free_shipping ${sh.free_shipping} · upid ${b.user_product_id || '—'} · inv ${b.inventory_id || '—'} · catálogo ${b.catalog_listing ? 'sí' : 'no'} · ficha ${L.prodId || '—'}${L.gemelaDe ? ' · gemelaDe ' + L.gemelaDe + ' (' + (L.gemelaTipo || 'premium') + ')' : ''} · ${String(b.title || '').slice(0, 50)}`);
+          console.log(`   shipping: ${JSON.stringify(sh).slice(0, 400)}`);
+          if (b.user_product_id) { try { const s = await mlGet(`/users/${b.seller_id}/items/search?user_product_id=${b.user_product_id}`, tk); console.log(`   del mismo producto: ${(s.results || []).join(', ')}`); } catch { } }
+        }
+        return;
+      }
+      if (arg.startsWith('anotar:')) {
+        const goA = /:go$/.test(arg);
+        const pares = arg.slice(7).replace(/:go$/, '').split(',').map((x) => x.trim().toUpperCase().split('=')).filter((x) => x.length === 2 && /^MLA\d+$/.test(x[0]) && /^MLA\d+$/.test(x[1]));
+        if (!pares.length) { console.log('Uso: gemelaenvio:anotar:<gemela>=<Clásica>[,…][:go]'); return; }
+        for (const [G, C] of pares) {
+          const LG = links[G] || {}, LC = links[C] || {}; const cta = LC.cuenta || LG.cuenta;
+          if (LG.cuenta && LC.cuenta && LG.cuenta !== LC.cuenta) { console.log(`✗ ${G}=${C}: no son de la misma cuenta`); continue; }
+          const tk = await tokDe(cta); if (!tk) { console.log(`✗ ${G}: sin permiso`); continue; }
+          let bG, bC; try { bG = await mlGet('/items/' + G, tk); bC = await mlGet('/items/' + C, tk); } catch (e) { console.log(`✗ ${G}=${C}: ML no contestó (${String(e.message).slice(0, 120)})`); continue; }
+          const malo = bG.listing_type_id !== 'gold_special' ? 'la gemela no es Clásica' : !(bG.shipping || {}).free_shipping ? 'la gemela no tiene envío gratis' : bC.listing_type_id !== 'gold_special' ? 'la original no es Clásica' : (bC.shipping || {}).free_shipping ? 'la original también tiene envío gratis' : (!bG.user_product_id || bG.user_product_id !== bC.user_product_id) ? `no son el mismo producto (${bG.user_product_id || '?'} / ${bC.user_product_id || '?'})` : bG.seller_id !== bC.seller_id ? 'otra cuenta' : LG.gemelaDe && LG.gemelaDe !== C ? `ya es gemela de ${LG.gemelaDe}` : '';
+          if (malo) { console.log(`✗ ${G}=${C}: ${malo}`); continue; }
+          console.log(`→ ${cta} · 📦 ${G} $${Math.round(bG.price).toLocaleString('es-AR')} (${bG.available_quantity} u.) sigue a Clásica ${C} $${Math.round(bC.price).toLocaleString('es-AR')} (${bC.available_quantity} u.) · ${String(bC.title || '').slice(0, 50)}`);
+          if (!goA) continue;
+          const e2 = { gemelaDe: C, gemelaTipo: 'envio', cuenta: cta, ...(LG.title ? {} : { title: bG.title || '' }), ...(LG.status ? {} : { status: bG.status }), ...(LG.altaTs ? {} : { altaTs: Date.now() }) };
+          for (const k of ['prodId', 'variant', 'upid', 'inv', 'categoria', 'rubro', 'foto']) if (LC[k] != null && LG[k] == null) e2[k] = LC[k];
+          await db.patch('cyc/mllinks/' + G, e2);
+          const rr = (await db.get('cyc/mllinks/' + G)) || {}; console.log(`   releído: ${rr.gemelaDe === C && rr.gemelaTipo === 'envio' && rr.prodId === LC.prodId ? '✓' : '✗ NO QUEDÓ'}`);
+        }
+        return;
+      }
+      const solo = new Set(arg.split(/[,:]/).map((x) => x.trim().toUpperCase()).filter((x) => /^MLA\d+$/.test(x)));
+      const MAXN = parseInt((arg.match(/max=(\d+)/) || [])[1] || '400', 10);
+      const netopub = (await db.get('cyc/netopub')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
+      const tc = parseFloat((await db.get('cyc/finanzas/tipo_cambio')) || 0) || 0;
+      const monoPct = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+      if (!(tc > 0) || !(monoPct > 0)) { console.log('Sin dólar o monotributo: no mido'); return; }
+      const piso = await pisoConfig(db);
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      const desdeK = new Date(Date.now() - 60 * 864e5).toISOString().slice(0, 10).replace(/-/g, '_');
+      const uds = {}; for (const [dk, ents] of Object.entries(vp)) { if (dk < desdeK) continue; for (const v of Object.values(ents || {})) { if (!v || v.cancelada || !v.mla) continue; uds[v.mla] = (uds[v.mla] || 0) + (Number(v.qty) || 1); } }
+      const yaGem = new Set(Object.values(links).filter((e) => e && e.gemelaTipo === 'envio' && e.gemelaDe).map((e) => e.gemelaDe));
+      const vivos = [], upFree = new Set(); const sinLeer = [];
+      for (const label of labels) {
+        const tk = await tokDe(label); if (!tk) continue;
+        const ids = Object.entries(links).filter(([mla, e]) => e && e.cuenta === label && /^MLA/i.test(mla) && e.status !== 'closed' && !e.ignored && (!solo.size || solo.has(mla))).map(([mla]) => mla);
+        for (let k = 0; k < ids.length; k += 20) {
+          let arr; try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=' + ATR, tk); } catch { sinLeer.push(label + ' (un lote)'); continue; }
+          for (const row of (arr || [])) { const b = row.body || {}; if (!b.id) continue; vivos.push({ b, label, tk }); if (b.listing_type_id === 'gold_special' && (b.shipping || {}).free_shipping && b.status !== 'closed' && b.user_product_id) upFree.add(b.user_product_id); }
+        }
+      }
+      const filas = [], noDan = []; let crudo = true, n = 0;
+      for (const { b, label, tk } of vivos) {
+        const L = links[b.id] || {};
+        if (b.listing_type_id !== 'gold_special' || !(b.status === 'active' || b.status === 'paused') || L.gemelaTipo === 'envio' || L.gemelaDe) continue;
+        const sh = b.shipping || {}; if (sh.free_shipping) continue;
+        const precio = Math.round(b.price || 0); if (!(precio > 0 && precio < UMBRAL_ENVIO_GRATIS)) continue;
+        if (sh.logistic_type !== 'fulfillment' || !((b.available_quantity || 0) > 0)) continue;
+        const nom = String(L.title || b.title || '').slice(0, 40);
+        if ((b.variations || []).length > 1) { noDan.push(`${label} ${b.id} ${nom}: tiene variantes`); continue; }
+        if (yaGem.has(b.id) || (b.user_product_id && upFree.has(b.user_product_id))) { noDan.push(`${label} ${b.id} ${nom}: ya tiene gemela de envío gratis`); continue; }
+        const p = pIdx[L.prodId]; if (!p) { noDan.push(`${label} ${b.id} ${nom}: sin ficha`); continue; }
+        const costo = costoPesos(p, 1, tc).costo; if (!(costo > 0)) { noDan.push(`${label} ${b.id} ${nom}: sin costo`); continue; }
+        if (!b.user_product_id) { noDan.push(`${label} ${b.id} ${nom}: sin user_product_id`); continue; }
+        if (n++ >= MAXN) { noDan.push(`${label} ${b.id} ${nom}: quedó afuera por el tope de ${MAXN}`); continue; }
+        const dims = dimsDeItem(b);
+        const impPct = (mlExtraPct(label) + monoPct) / 100;
+        const rg = await precioGemelaEnvioIgual({ b, tk, costo, envArriba: envioGemelaDe(netopub[b.id]), impPct, dims, crudo });
+        crudo = false;
+        const u = uds[b.id] || 0;
+        if (!rg || !rg.base) { noDan.push(`${label} ${b.id} ${nom}: ML no dio la comisión`); continue; }
+        if (!rg.P) { noDan.push(`${label} ${b.id} ${nom}: ${rg.sinEnvio ? 'ML no dio el costo del envío gratis' : 'no hay precio hasta $650.000'}`); continue; }
+        const cg = rg.cg;
+        filas.push({ label, mla: b.id, nom, precio, st: b.available_quantity, u, env: cg.envE, P: rg.P, suba: (rg.P / precio - 1) * 100, netaC: cg.netaCla, netaE: cg.netaE, mgP: cg.mgP, dims, da: cg.mgP >= piso });
+      }
+      filas.sort((a, z) => z.u - a.u);
+      console.log(`\n══ 📦 GEMELA CLÁSICA CON ENVÍO GRATIS · ${filas.length} medidas (Clásicas abajo de $33.000 con stock en Full) · piso ${piso}% ══`);
+      for (const f of filas) console.log(`${f.da ? '✓' : '·'} ${f.label.padEnd(8)} ${f.mla} · ${f.nom} · Clásica $${f.precio.toLocaleString('es-AR')} · ${f.st} u. · vendió ${f.u} en 60 d · envío gratis $${f.env.toLocaleString('es-AR')}${f.dims ? '' : ' (sin medidas)'} → $${f.P.toLocaleString('es-AR')} (+${f.suba.toFixed(1)}%) · neta $${Math.round(f.netaC).toLocaleString('es-AR')} vs $${Math.round(f.netaE).toLocaleString('es-AR')} · peor caso ${f.mgP.toFixed(1)}%${f.da ? '' : ' (abajo del piso)'}`);
+      const env = filas.map((f) => f.env), sub = filas.map((f) => f.suba);
+      if (filas.length) console.log(`\nenvío gratis: $${Math.min(...env).toLocaleString('es-AR')} a $${Math.max(...env).toLocaleString('es-AR')} · suba ${Math.min(...sub).toFixed(1)}% a ${Math.max(...sub).toFixed(1)}% · ${filas.filter((f) => f.da).length} con peor caso ≥ ${piso}%`);
+      console.log(`\nNo se miden (${noDan.length}):`); for (const x of noDan) console.log(`   · ${x}`);
+      if (sinLeer.length) console.log(`⚠️ sin leer: ${sinLeer.join(', ')}`);
+      const crear = filas.filter((f) => f.da);
+      if (crear.length) console.log(`\n@@CREAR ${crear.map((f) => `gemelaenviocrea:${f.mla}=${f.P}:go`).join(' ')}`);
       return;
     }
     // `gemelaalinear[:go]` (21/10/2026): lo mismo que hace la vuelta de cada hora (`alinearGemelas`), a mano. Sin `:go` sólo muestra.
