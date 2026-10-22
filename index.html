@@ -1930,6 +1930,9 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
     <button id="vpf-Luciana" class="vbtn" onclick="setVpCuenta('Luciana',this)">Luciana</button>
     <button id="vpf-Ayelen" class="vbtn" onclick="setVpCuenta('Ayelen',this)">Ayelen</button>
     <button id="vpf-Matias" class="vbtn" onclick="setVpCuenta('Matias',this)">Matias</button>
+    <!-- 22/10/2026, él: "al lado de matias poner para buscar publicaciones que se vendieron como premium o envio gratis" -->
+    <button id="vpv-premium" class="vbtn" onclick="setVpVia('premium')" title="Sólo las ventas que salieron por una publicación Premium (cuotas)">💳 Premium</button>
+    <button id="vpv-envio" class="vbtn" onclick="setVpVia('envio')" title="Sólo las ventas que salieron por una gemela Clásica con envío gratis">📦 Envío gratis</button>
   </div>
   <div id="vp-tag-chips" style="display:flex;gap:5px;flex-wrap:wrap;margin:0 0 4px"></div>
   </details>
@@ -2938,7 +2941,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.08';
+const APP_VERSION='26.09';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2951,6 +2954,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.09',f:'22/10',h:'20:30',c:[{n:1,t:'Ventas → Filtros: al lado de las cuentas, 💳 Premium y 📦 Envío gratis muestran sólo las ventas que salieron por esas publicaciones (con cuántas hay).'}]},
   {v:'26.08',f:'22/10',h:'20:10',c:[{n:1,t:'Línea de tiempo más fácil de leer: arriba un cartel con lo importante de hoy (escasez, agotado, cubierto) y 4 tarjetas (vendió, ganancia, stock, precio). Cada franja tiene su título, sus colores y el número de hoy, y el precio va primero. La de todos los productos también.'},{n:1,t:'El nivel "Bueno" ahora usa 💠: el corazón celeste no se veía en algunas computadoras (salía un cuadradito). Lo mismo con 📇 y 📳.'}]},
   {v:'26.07',f:'22/10',h:'19:05',c:[{n:2,t:'Línea de tiempo: las ventas por una gemela Premium o con envío gratis cuentan al precio de su Clásica ese día. Se cobran más caras para dejar la misma plata, así que ya no suben la línea del precio ni mueven las rayas de techo y piso.'}]},
   {v:'26.06',f:'22/10',h:'18:40',c:[{n:3,t:'Comprar algo nuevo (Paraguay y Listas) pide 35% de ganancia: lo de 25% a 34% queda guardado y se sigue midiendo. Reponer lo que ya vendés sigue en 25%.'},{n:2,t:'Métricas: tarjeta nueva 🧮 La mezcla de cada mes, con qué parte de lo facturado viene de ventas de menos de 25%, 25-35%, 35-50% y 50% o más, y cuánto deja cada $100 facturados (meta $22).'},{n:1,t:'Ventas: la primera venta de una gemela Premium o con envío gratis lo dice, y los días se cuentan desde que se publicó (no desde que entró el stock).'}]},
@@ -10409,12 +10413,17 @@ let vpFilterCuenta=null;
 // las ventas con ese tag"). Un botón por estrategia con cuántas ventas del período (y de la cuenta y búsqueda elegidas) la
 // tenían al venderse (`estrategiaDe`, la misma del chip de cada venta). Tocar uno deja sólo esas; tocarlo de nuevo, todas.
 let vpFilterTag=null,vpTagsCero=false;
+// POR DÓNDE SALIÓ LA VENTA (22/10/2026, pedido suyo): 💳 Premium (`tipoPub` gold_pro) o 📦 envío gratis (la gemela con `gemelaTipo:'envio'`).
+// Se suma a la cuenta y al tag; tocar el mismo botón de nuevo lo saca.
+let vpFilterVia=null;
+const vpVentaVia=(v,via)=>via==='premium'?String(v.tipoPub||'')==='gold_pro':via==='envio'?((state.mllinks||{})[v.mla]||{}).gemelaTipo==='envio':true;
+function setVpVia(via){vpFilterVia=(vpFilterVia===via?null:via);renderVentaProd();}
 function setVpTag(t){vpFilterTag=(vpFilterTag===t?null:t);renderVentaProd();}
 function vpTagsDeGrupo(grp){const s=new Set();for(const v of grp.items){if(!v.mla)continue;const e=estrategiaPromoAjuste(estrategiaDe(v.mla,Number(v.ts)||0),v.mla,v);if(e)s.add(e.t);}return s;}
 // Al llegar a Ventas desde "Ventas de hoy" o desde el aviso de una venta, se ve TODO: sin cuenta, sin tag y sin búsqueda
 // elegidos de antes (20/10/2026, etapa 7: si quedaba "Adriana" puesto, la venta del aviso podía no aparecer).
 function vpLimpiarFiltros(){
-  vpFilterCuenta=null;vpFilterTag=null;
+  vpFilterCuenta=null;vpFilterTag=null;vpFilterVia=null;
   const q=document.getElementById('vp-search');if(q)q.value='';
   document.querySelectorAll('[id^="vpf-"]').forEach(b=>b.classList.remove('active'));
   const all=document.getElementById('vpf-all');if(all)all.classList.add('active');
@@ -13239,6 +13248,10 @@ function renderVentaProd(){
       const matchC=!vpFilterCuenta||grp.items[0].cuenta===vpFilterCuenta;
       return matchQ&&matchC;
     });
+    // 💳 / 📦: cuántas hay con la búsqueda y la cuenta de ahora (el número va en el botón) y, si hay uno elegido, se filtra.
+    {const nV={premium:0,envio:0};for(const grp of filteredGroups){if(grp.cancelada)continue;for(const k of ['premium','envio'])if(grp.items.some(v=>vpVentaVia(v,k)))nV[k]++;}
+     for(const [k,t] of [['premium','💳 Premium'],['envio','📦 Envío gratis']]){const b=document.getElementById('vpv-'+k);if(b){b.textContent=`${t} · ${nV[k]}`;b.classList.toggle('active',vpFilterVia===k);}}
+     if(vpFilterVia){for(let i=filteredGroups.length-1;i>=0;i--)if(!filteredGroups[i].items.some(v=>vpVentaVia(v,vpFilterVia)))filteredGroups.splice(i,1);}}
     // Los tags: se cuentan sobre lo que ya filtran la búsqueda y la cuenta, y recién después se filtra por el elegido.
     {const cnt={};for(const grp of filteredGroups){if(grp.cancelada)continue;for(const t of vpTagsDeGrupo(grp))cnt[t]=(cnt[t]||0)+1;}
      // 19/10, él: primero "¿están todos los tags?" y después "mostrar sólo las que tienen venta, las que no que haya un
@@ -13249,8 +13262,8 @@ function renderVentaProd(){
        return `<button onclick="setVpTag('${t}')" title="${String(u[3]).replace(/"/g,'&quot;')}" style="cursor:pointer;padding:3px 9px;border-radius:6px;border:1px solid ${on?u[2]:`color-mix(in srgb,${u[2]} 33%,transparent)`};background:color-mix(in srgb,${u[2]} ${on?25:8}%,transparent);color:${u[2]};font-size:.68rem;font-family:inherit;white-space:nowrap${on?';font-weight:700':''}">${u[0]} ${u[1]} · ${cnt[t]}${on?' ✕':''}</button>`;};
       const ts=Object.keys(ESTRATEGIA_UI),con=ts.filter(t=>cnt[t]>0||vpFilterTag===t),sin=ts.filter(t=>!(cnt[t]>0)&&vpFilterTag!==t);
       box.innerHTML=con.map(chip).join('')+(sin.length?`<button onclick="vpTagsCero=!vpTagsCero;renderVentaProd()" style="cursor:pointer;padding:3px 9px;border-radius:6px;border:1px dashed var(--border,#333);background:transparent;color:var(--muted);font-size:.68rem;font-family:inherit;white-space:nowrap">${vpTagsCero?'ocultar los sin ventas ▴':'＋'+sin.length+' sin ventas ▾'}</button>`+(vpTagsCero?sin.map(chip).join(''):''):'');}
-     {const r=document.getElementById('vp-filtros-res'),b=document.getElementById('vp-filtros-btn');const hay=!!(vpFilterCuenta||vpFilterTag);
-      if(r)r.innerHTML=`Mostrando: <b style="color:var(--text)">${vpFilterCuenta?escHtml(vpFilterCuenta):'todas las cuentas'}</b>${vpFilterTag&&ESTRATEGIA_UI[vpFilterTag]?` · <b style="color:${ESTRATEGIA_UI[vpFilterTag][2]}">${ESTRATEGIA_UI[vpFilterTag][0]} ${ESTRATEGIA_UI[vpFilterTag][1]}</b>`:''}`;
+     {const r=document.getElementById('vp-filtros-res'),b=document.getElementById('vp-filtros-btn');const hay=!!(vpFilterCuenta||vpFilterTag||vpFilterVia);
+      if(r)r.innerHTML=`Mostrando: <b style="color:var(--text)">${vpFilterCuenta?escHtml(vpFilterCuenta):'todas las cuentas'}</b>${vpFilterVia?` · <b style="color:var(--text)">${vpFilterVia==='premium'?'💳 sólo Premium':'📦 sólo envío gratis'}</b>`:''}${vpFilterTag&&ESTRATEGIA_UI[vpFilterTag]?` · <b style="color:${ESTRATEGIA_UI[vpFilterTag][2]}">${ESTRATEGIA_UI[vpFilterTag][0]} ${ESTRATEGIA_UI[vpFilterTag][1]}</b>`:''}`;
       if(b)b.style.cssText=`font-size:.68rem;padding:4px 11px;${hay?'border-color:var(--sel-bg);font-weight:700':''}`;}
      if(vpFilterTag){for(let i=filteredGroups.length-1;i>=0;i--)if(!vpTagsDeGrupo(filteredGroups[i]).has(vpFilterTag))filteredGroups.splice(i,1);}}
     // etapa 7 (L17): el cartel de "sin ventas" nombra el período elegido (hoy, un día, una semana…), no siempre el mes

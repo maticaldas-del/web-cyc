@@ -2628,6 +2628,12 @@ y el disponible no salte; que un pedido de lista llegado aparezca en Deudas hast
   Nuevo = primera tanda en Full (sin `cero` ni `desdePrev` en `cyc/stockhist`) o 🆕 lanzamiento: una reposición después de agotarse no es un lanzamiento y baja normal (escalera). Y la publicación tiene que ser nueva (`altaTs` de menos de 60 días): una publicación vieja que se repuso no es lanzamiento.
 
 
+### 22/10/2026 · 💳📦 Filtro de ventas por Premium o envío gratis (v26.09, etapa 7)
+- Ventas → ⚙️ Filtros, al lado de las cuentas: `vpFilterVia` ('premium' = `tipoPub` gold_pro · 'envio' = `mllinks.gemelaTipo==='envio'`,
+  la misma regla del chip "📦 envío gratis" de cada venta). El botón dice cuántas hay con la búsqueda y la cuenta de ahora.
+- **Chequear:** que "Limpiar filtros" y el aviso de venta lo saquen (`vpLimpiarFiltros`), y que una venta Premium vieja sin `tipoPub`
+  no cuente (no se sabe: se ve con `tipoventa`).
+
 ### 22/10/2026 · 📈 La línea de tiempo reordenada (v26.08, etapa 7, eligió 1a 2a 3a con la Codera: "cuesta entender")
 - **Qué:** arriba un cartel de una frase (escasez · cubierto · sin reposición · agotado) y 4 tarjetas (`_lnCard`); el renglón largo
   quedó chico con el historial. Cada franja deja `LN_TG` arriba para su título, sus colores y el número de hoy (`lnHdrHTML`); el precio
