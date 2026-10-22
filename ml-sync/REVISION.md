@@ -2692,3 +2692,4 @@ Pedido suyo: la venta que salió por una gemela Clásica con envío gratis (`cyc
 cartel celeste "📦 envío gratis" al lado del de Premium (`tipoLabel` en Ventas x Producto). Qué chequear: que no salga en ventas
 de la Clásica original ni de las Premium.
 - 22/10/2026: la completa de los domingos mide las gemelas (Premium y envío gratis) y propone sacar las que no sirven (CEREBRO.md paso 9 de la completa).
+- 22/10/2026: CEREBRO, choque nuevo resuelto: escasez + stock que paga almacenamiento (caso F9).

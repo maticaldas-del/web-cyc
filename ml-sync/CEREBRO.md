@@ -63,6 +63,12 @@ al código; lo que es pensar queda acá, y una regla dura ("nunca", "sólo si") 
 - *25% vs stock antiguo* → gana 6: se baja abajo del 25% para que salga a tiempo (tag 📦 `sobra` o ⏳ `sinrepo`). El 🧠 lo dice
   y lo que falta para el 25% se anota al error de origen (mandar/comprar de más). El cerebro se juzga contra NO hacer nada.
 - *Escasez vs techo conocido* → gana 7, pero con el precio que pienso (no ×3/×4): ya se sabe que más arriba no rinde.
+- *Escasez vs stock que YA paga almacenamiento o stock antiguo* (22/10/2026, él con el F9: *"el sobra stock puede convivir con
+  escasez (…) todo el stock está pagando almacenamiento y al ritmo que viene se va a acabar, lo cual está bien"*) → conviven y gana 7
+  (se sube), pero el precio se elige con la plata por día NETA de lo que cuesta cada día de más que esa mercadería queda en Full
+  (almacenamiento y stock antiguo por unidad, de `cargosmes`/la lista 💸). Se sube hasta donde el extra por unidad paga los días de
+  más; si subir hace que lo que paga stock antiguo no salga antes del próximo cobro, se sube menos. Que se acabe NO es un problema:
+  es justo lo que conviene. Tag 🔥 `escasez`, y el 🧠 dice que además paga almacenamiento.
 - *Escasez vs mercadería en camino u oficina que llega a tiempo* → NO es escasez: "🚚 cubierto", se manda la caja.
 - *Buscar techo vs sobra* → con sobra no se busca techo: primero sale lo que sobra.
 - *Descuento mío vigente vs suba de lista* → primero salir del descuento (`entrarpromo:…=salir`); nunca inflar el tachado. 🔒
