@@ -18,7 +18,7 @@
 | `ml-sync/REVISION.md` | cada cambio anotado en su etapa (qué es · dónde vive · qué chequear) + el calendario de revisiones |
 | `ml-sync/PROMPT_GUAY.md` · `PROMPT_LISTAS.md` | lo que se le pega ENTERO al chat de compras (no lee direcciones remotas) |
 | `ml-sync/AUDITORIA.md` | auditoría del robot (datos crudos contra el `informe`) |
-| `ml-sync/notas/` | `preguntas.md` (cada corrección suya vuelta pregunta general) · `correcciones.md` (cuántas veces me corrigió) · `techo.md` · `ideas.md` · `sin_estirar.txt` · `decide_pedidos.py` · `decide_cajas.py` · `pedidos.txt` · `juicios*.txt` · `listaweb_iscos.txt` |
+| `ml-sync/notas/` | `para_mati.md` (dudas que esperan su respuesta) · `preguntas.md` (cada corrección suya vuelta pregunta general) · `correcciones.md` (cuántas veces me corrigió) · `techo.md` · `ideas.md` · `sin_estirar.txt` · `decide_pedidos.py` · `decide_cajas.py` · `pedidos.txt` · `juicios*.txt` · `listaweb_iscos.txt` |
 | `ml-sync/HISTORIA.md` | todo lo viejo, textual |
 | `index.html` / `sw.js` / `ml-sync/sync.mjs` | la app (PWA en un archivo) · su caché · el robot (~todos los comandos "probe") |
 
@@ -29,6 +29,9 @@
 - Dale **el número y la conclusión**, no el camino. Si algo está mal, decilo derecho y proponé qué hacer.
 - **Decisiones: TODAS JUNTAS, en UN mensaje, numeradas, cada una corta con (a) sugerida y (b)**; él contesta "1a 2b 3a"
   (08/10, *"quiero que me pases todo lo que hay que decidir todo junto siempre"*). Ideas de revisiones también todas juntas.
+- **Dudas para él: a `ml-sync/notas/para_mati.md`, no sueltas en el chat** (23/10, *"me pierdo… guardalas y después te pido y
+  resolvemos. De mientras andá haciendo"*): se anotan ahí y se sigue con lo que no lo necesita; cuando pida "resolvamos" se le pasa
+  la lista entera, numerada. Lo urgente que cuesta plata sigue por `pregunto:URGENTE: …` (CYC Avisos = sólo urgente y recordatorios).
 - **Lo chico y reversible lo elegís vos** y se lo contás (24/09: *"elegí vos qué hacer, excepto que sea una decisión muy
   importante, grande y difícil"*). Se pregunta lo grande: precios que mueven plata fuerte, borrar datos, reglas del negocio,
   algo irreversible, y lo que no tenga respuesta clara.
@@ -148,9 +151,9 @@
   gris si no cambió nada, color de la estrategia si cambió) → **al terminar, `bajastecho:1` y el detector `errores`, y deshacer en la
   misma vuelta toda ❌ del día** (22/10, 3a: vuelve al precio de antes con `!chico` y "EXCEPCIÓN: vuelve al precio de antes").
 - Listas que tienen que quedar **vacías** al terminar la vuelta: 🚨 escasez que vendió después de mi decisión (`escasez`) · 🛡️ abajo
-  del 25% en el peor caso · 📦 sobra sin decidir · 🔎 sin afinar · 📈 dice techo/escasez y no sube (todas en `planilla`) · 🆕 lanzamiento que vendió (también por su gemela) y no subió (en `errores`, 23/10).
+  del 25% en el peor caso · 📦 sobra sin decidir · 🔎 sin afinar · 📈 dice techo/escasez y no sube · 📈 prueba con respuesta (3 ventas esperadas, 23/10) (todas en `planilla`) · 🆕 lanzamiento que vendió (también por su gemela) y no subió (en `errores`, 23/10).
 - **Activar lo pausado es prioridad** (10/10): `pausadas:25` + `activarfull:go:25`; toda pausada con stock en Full que no se activa
-  va al `pregunto:` con motivo. Lo nuevo (nunca estuvo en Full) lo activo yo con el precio ya puesto (peor caso).
+  va a `notas/para_mati.md` con motivo (al `pregunto:URGENTE` sólo si vende fuerte). Lo nuevo (nunca estuvo en Full) lo activo yo con el precio ya puesto (peor caso).
 - **Preguntas de compradores:** las contesto yo (`contesto:<id>=<respuesta>;…;go`), sólo las nuevas y sólo las que sé SIN DUDA.
   `responder` automático apagado (`responder:off`); la IA de preguntas necesita `ANTHROPIC_API_KEY` en GitHub (decisión suya, ver HISTORIA).
 - **Cada vuelta busca algo nuevo para mejorar** (12/10, maximizar y bajar costos), sin repetir (`notas/ideas.md`); si no hay, no se inventa.
@@ -158,11 +161,12 @@
   ventas en max. **El esfuerzo va escrito en cada llamada al ayudante**, nunca se hereda de la sesión.
 
 ### Telegram y avisos
-- **A Telegram SÓLO `pregunto:<texto>`** (ml-sync; `//` = salto de línea, sin `;`, sin datos de compradores): (1) decisiones suyas,
-  todas juntas, numeradas, (a)/(b) · (2) lo importante que sólo él puede hacer y cuesta plata (reclamo que espera su respuesta, ML frenó
-  algo que vende, algo que vende fuerte en 0 en Full con mercadería en la oficina, costo faltante en algo que se vende). **Nunca**
-  "subí/bajé/activé", ni resúmenes (`resumen:` no se manda), ni preguntas sin contestar, ni cajas "para la próxima". Sin nada, nada.
-  `recordar:<texto>` para recordatorios que él pide. Avisos informativos del robot van con `sendAlerta(texto,{info:true})` (al log).
+- **CYC Avisos (Telegram) = SÓLO lo urgente y los recordatorios** (23/10, *"si me llega un mensaje de CYC Avisos sé que es algo
+  que tengo que resolver ya"*): `pregunto:URGENTE: …` (el robot lo niega sin "URGENTE") sólo para lo que cuesta plata si espera
+  (reclamo que espera su respuesta, ML frenó algo que vende, algo que vende fuerte en 0 en Full con mercadería en la oficina, un pago
+  que vence) · `recordar:<texto>` · las 🔐 autorizaciones que él ya pidió en el chat · el chat nuevo del bot. **Las decisiones (a)/(b)
+  NO van: a `notas/para_mati.md`** y se resuelven en el chat cuando dice "resolvamos". Nunca "subí/bajé/activé", ni resúmenes, ni lo que
+  deshizo el detector (va al log). `//` = salto de línea, sin `;`, sin datos de compradores. Informativos: `sendAlerta(texto,{info:true})`.
 - **Cada venta nueva llega al TELÉFONO (push de la web), no a Telegram** (`AVISO_VENTA_TELEGRAM=false`): sólo compras que dejan
   **$10.000+** de ganancia (la compra ENTERA, sumando el carrito), no suena 00:30-10:00 (sale junto a las 10:00). Cada teléfono toca
   una vez "🔔 Activar aviso de cada venta". Llave privada VAPID en `mlapi/vapid` (nunca al repo).
@@ -175,6 +179,8 @@
 - **Quién manda** (CEREBRO §0): lo que pide él para ese producto → dato dudoso no se toca → frenos duros → nunca abajo de 0% →
   **sin línea de techo no se baja** → arriba del 💰 no se baja sin 95% → lo nuevo no se baja sin 🏔️ → no pagar stock antiguo → escasez
   sube → sobra baja en escalera → 25% peor caso → buscar techo en todo lo demás.
+- **Lo que vende menos de 1 por semana no busca techo subiendo** (4a del 23/10; freno en `decido`): queda 💰 #punto; los 31 que
+  estaban en prueba vuelven a su precio de antes (`techodias` arma los renglones). Las pruebas se juzgan a las 3 ventas esperadas.
 - **Sin línea de techo no se baja** (21/10; 22/10 decisión 1a): línea = 🔴 de las rayas o 🏔️ de `techo95`. Sin línea → 📈 buscar
   techo (subir). Lo que vendieron otras variantes o la familia NO alcanza. Pasados 15 días de la última suba sin certeza, decide la
   plata por día (F4).
@@ -211,9 +217,12 @@
   ⏳ `sinrepo` · 📦 `sobra` · 🏷️ `promo` (ML pone) · 💸 `descuento` (sólo nosotros) · 🆕 `lanzamiento` · 💰 `punto` · 💳 `gemela` · 🧨 `remate`
   (sólo si lo pide él) · `liquidando` · 🛡️ excepción (`!piso`, `cyc/claudepiso`). ⚪ sin estrategia (decidir) · ⏸️ sin stock. "Volviendo"
   dura 7 días, después entra a 🔎. Cada chip dice "· de X". Cada venta muestra la estrategia que tenía (`cyc/estrategia/<MLA>/<ts>`).
-- **Lanzamiento (🆕)** (20/10): lo nuevo arranca ~20% arriba del precio correcto; baja recién con 🏔️ al 95% (visitas × conversión) y
+- **Lanzamiento (🆕)** (20/10; 23/10 él: *"buscá el precio más alto que podamos, que tenga sentido, quizás al de los competidores"*):
+  lo nuevo arranca en lo MÁS ALTO que tenga sentido contra su catálogo — si nadie tiene Full, cerca del más caro (Full vale ~19% más);
+  si hay otros con Full, ~20% arriba del Full más barato sin pasar el más caro; baja recién con 🏔️ al 95% (visitas × conversión) y
   cada escalón como descuento propio con el de lanzamiento tachado. **Nunca bajar algo que vende sólo para medir** (la prueba del tachado
   3b se canceló).
+- **Nunca se crea una publicación (Clásica o gemela) más cara que $550.000** (23/10, él; `TOPE_CREAR`, freno en `publicar` y `gemelacrea`).
 - **Precio para el peor caso** al poner o activar (12/10). Lo que vende rápido abajo del 25% con poco stock se sube en la misma vuelta.
 - **Venta barata ≠ remate** (09/10): remate sólo si antes estuvo parado (30+ d con stock, <1/semana); si llegó y voló es demanda (precio
   barato: subir). Mirar la línea de tiempo antes de decidir. `pedidostodo` marca `REMATE n` (no cuenta) / `BARATA n` (cuenta).
@@ -231,7 +240,7 @@
   solas cada hora a su Clásica (`gemelaSigue=off` apaga). Caja perdida por cuotas = candidata a gemela, no a bajar.
 - **Terminaciones 90/990** (99 en lo muy barato). La regla de no cruzar números redondos se SACÓ (medido 13/10).
 - 🪜 Arriba de $15.000 hay ~15% de zona muerta de comisión: suba que cae ahí se frena salvo `!escalon`. La comisión de ML tiene cargo
-  fijo ~$1.230 por venta: abajo de ~$4.000 se come el producto. Packs NO (*"al estar en pack las saco de competencia"*).
+  fijo ~$1.230 por venta: abajo de ~$4.000 se come el producto. Packs: **sí si el pack tiene su propio catálogo en ML** (23/10, *"si el pack está en catálogo sí se arman"*); armar un pack de algo que hoy compite suelto en su catálogo, no (27/09, *"al estar en pack las saco de competencia"*).
 - **Fechas:** calendario y eventos de ML en el `informe` (secciones 14/14b), `fechas`, `eventos`. El ×1,4 de regalables NO está
   confirmado. **Navidad: a mediados de noviembre se pide para 45 días** (recordatorio 14/11).
 - **El precio sugerido de ML** (`sugP`) es referencia, nunca motivo para bajar algo que vende.
@@ -426,7 +435,7 @@
 | `gemela` · `gemelacrea:<MLA>=<precio>:go` · `gemelaenvio` · `gemelaenviocrea` · `gemelaalinear` | gemelas Premium y envío gratis |
 | `cupo` · `codigos[:palabra]` · `pasara`/`nomandar:<cuenta>:<palabras>[:go]` | cupo de Full, códigos de etiqueta, reparto por cuenta |
 | `ancla:<cuenta>=<pesos>;go` · `dispo` · `saldoml` · `cargargasto` · `vergastos[:mes]` · `cargosmes` · `cobromes` · `factarca` · `catmono` · `facarca` · `topeh` | plata y ARCA |
-| `cerebro`/`analizapromo:<días>:<palabras>` · `eventos` · `fechas` · `vistas` · `ventashora` · `efectotecho[:días]` | promos, fechas, mediciones (¿las subas 📈 bajan ventas/ganancia?) |
+| `cerebro`/`analizapromo:<días>:<palabras>` · `eventos` · `fechas` · `vistas` · `ventashora` · `efectotecho[:días]` · `techodias` | promos, fechas, mediciones (¿las subas 📈 bajan ventas/ganancia? ¿cuánto tarda cada prueba?) |
 | `chequeo[:días]` · `alertas[:horas]` · `reglas` · `permisos` · `probarput:<MLA>` | chequeo, avisos, base, permisos de ML |
 | `tgaprobar:<núm>:go` · `tgchats` · `webpush` | Telegram y push |
 | `liquidando[:<MLA>][:go]` · `nomas:<MLA>:go` · `pausar:<busca>[!saca][:go]` | marcas sobre publicaciones |

@@ -19,7 +19,7 @@ todas las etapas.
 cerebro (las viejas 8 y 9) · sáb 6 Ideas nuevas · dom 7 Diseño.** Corre sola todas las madrugadas a las 04:00 de acá (desde el 20/10, pedido suyo; antes 22:13) (tarea programada
 que entra a esta sesión). Cada corrida: leer la etapa de hoy en este archivo + lo de SIEMPRE, 4 revisores en Alto, verificar cada
 hallazgo con el código real antes de contarlo (**los 4 revisores van con esfuerzo MÁXIMO desde el 20/10, plan 20x; antes Alto**), hacer lo obvio (probado, en las dos ramas, anotado acá), y lo que es decisión suya
-va TODO JUNTO en un solo `pregunto:` numerado (a)/(b) y en `REV_PENDIENTE`. Al terminar: `REV_HECHAS[n]`=hoy y un renglón en
+va TODO JUNTO a `notas/para_mati.md` numerado (a)/(b) y en `REV_PENDIENTE` (23/10: a CYC Avisos ya no van decisiones). Al terminar: `REV_HECHAS[n]`=hoy y un renglón en
 `REV_HIST` (index.html). Inicio dice la etapa de hoy, si ya quedó hecha o si no terminó. **En el archivo el orden de las secciones
 quedó 0·1·2·3·4·6·7·5** (la 5 nueva está abajo de todo, donde vivían la 8 y la 9).
 
@@ -96,6 +96,62 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
 ### `vara` (23/10/2026, sólo lee): ¿35% o 30% para comprar algo nuevo?
 - Qué: cuenta los candidatos de Paraguay y los productos de las listas por tramo de % (25-30, 30-35, 35-50, 50+), cuántos pasaron todo y cuántos venden 100+, y lista los de 30-35% que pasaron todo.
 - Chequear: que use los mismos filtros que `faltaventas` (vivos, sin categoría que no se mira, costo vigente).
+
+### Publicar desde acá: Clásica + Premium + envío gratis, todo PAUSADO (23/10/2026, él: "intentalo", etapa 3)
+- **Qué es:** él aceptó que yo cree las publicaciones nuevas (todas de catálogo). Cada producto lleva Clásica (`publicar`), su gemela
+  Premium (`gemelacrea`) y, si queda abajo de $33.000, la Clásica con envío gratis (`gemelaenviocrea`; arriba de $33.000 la Clásica ya
+  tiene envío gratis, no se crea). **Todo queda pausado** (*"esa mercadería no la podemos mandar por correo, sí o sí a Full"*):
+  `publicar` ya pausaba; desde hoy las dos gemelas se pausan en el acto si la Clásica no está activa, y se relee.
+- **Dónde vive:** `sync.mjs` → `publicar`, `gemelacrea`, `gemelaenviocrea` (bloque "pausar la gemela nueva").
+- **Qué chequear:** que ninguna quede activa con el 1 de depósito · que la vuelta de la hora las active cuando entra la caja a Full.
+
+### CYC Avisos = sólo urgente y recordatorios (23/10/2026, regla suya, etapa 4)
+- **Qué es:** él: *"si me llega un mensaje de CYC Avisos sé que es algo que tengo que resolver ya"*. `pregunto:` sólo sale si el texto
+  empieza con "URGENTE"; `resumen:` no sale; lo que deshace el detector va al log. Las decisiones van a `notas/para_mati.md`.
+  Siguen yendo: `recordar:`, las 🔐 autorizaciones que él pidió en el chat, el chat nuevo del bot.
+- **Dónde vive:** `sync.mjs` → bloque `recordar|pregunto|resumen` y el aviso de `detectarErrores`; CLAUDE.md §4, CEREBRO §20.
+- **Qué chequear:** que ninguna vuelta mande decisiones por Telegram (las vueltas pasan por `pregunto:` y ahora se les niega).
+
+### 4a · lo que vende menos de 1 por semana no busca techo (23/10/2026, eligió la a, etapa 1)
+- **Qué es:** `techodias` mostró que 31 de 34 lentos (menos de 1 por semana) no vendieron ninguna al precio nuevo (~9 esperadas entre
+  todos) y dejaban ~$12.500 menos por día. Él eligió: vuelven a su precio de antes (redondeado a 90) como 💰 #punto, salvo los que
+  eran 🆕 lanzamiento, y freno nuevo en `decido`: suba #techo con ritmo de 60 días (con gemelas y hermanas) menor a 1 por semana → no.
+- **Dónde vive:** `sync.mjs` → `ritmoSemanalGrupo`, `TECHO_RITMO_MIN_SEMANA`, el freno en el bloque de subas de `decido`, y la lista
+  "4a" de `techodias` (con `tagPrev` y `pAntes`). Las vueltas pasan por 🔐 (`!sinlinea !sincerteza`): le llega UN Telegram.
+- **Qué chequear:** que un 🆕 que vende siga pudiendo subir · que el freno no lea mal el ritmo de lo recién llegado (60 días fijos).
+
+### Packs: sí si el pack tiene su propio catálogo (23/10/2026, regla suya, etapa 3)
+- **Qué es:** él: *"si el pack está en catálogo sí se arman"*. Reemplaza el "packs NO" del 27/09, que era por sacar de la competencia
+  algo que hoy compite suelto. Un pack se mide como cualquier producto nuevo contra SU catálogo (2+ vendedores, mismo pack exacto).
+- **Dónde vive:** CLAUDE.md §5 (renglón de la comisión). Primer caso: rejilla Media Naranja 40x45 → no hay catálogo de pack de esa
+  rejilla (los x4/x6 de Media Naranja son trapo de piso, otro producto): no se compra.
+- **Qué chequear:** que la medición de candidatos no confunda un pack con la unidad (ya lo frena `pack`/`3x`/`x2` en CEREBRO §17).
+
+### `!activar` sin fecha de alta (23/10/2026, etapa 1)
+- **Qué es:** la única salida mía sin él (corregir el precio de lo que NUNCA estuvo activo al activarlo) pedía `altaTs` en el renglón de
+  `cyc/mllinks`; el Sacapelusas y la Mentonera (Ayelen) no lo tenían y quedaban frenados por F2/F7 aunque su línea dijera "siempre
+  pausada". Sin `altaTs` vale el primer día de la línea de tiempo, y el freno dice por qué `!activar` no vale (activa tal día, sin fecha, +90 d).
+- **Dónde vive:** `sync.mjs` → `frenosBajas` (`altaRef`, `diaActiva`, `porQueNoActivar`).
+- **Qué chequear:** que algo que estuvo activo un solo día siga frenado (pide su autorización).
+
+### `pydet:<id>` (23/10/2026, sólo lee): el detalle guardado de un pedido de Paraguay
+- **Qué es:** cada renglón como `código*unidades*pagado` con el precio de la web al lado. Para cargar un ticket que faltaba hay que
+  mandar el `det=` ENTERO (lo que no figura sale del pedido). Primer uso: el 4º ticket del pedido del 08/10 (`py20261010`; Revlon 14,
+  Gudsport 10, Medicube 13, Wella 33), total US$ 475,40 igual al pagado.
+- **Qué chequear:** el código del Gudsport en el ticket (6146978) no termina igual que el guardado (145978): se cargó con el guardado.
+
+### 📈 PRUEBA CON RESPUESTA en `planilla` (23/10/2026)
+- **Qué es:** toda 📈 activa que llegó a 3 ventas esperadas desde la suba (o 3 más desde mi última nota) sale en la lista y se decide en
+  esa vuelta. El 23/10 había 10 con respuesta sin juzgar (Naipes, Centímetro ×2, Infusor ×2, Termómetro ×2, Mazo, Adaptador Hub, Paulvic Good).
+- **Dónde vive:** `sync.mjs` → `pruebasTechoEnCurso` (la usan `techodias` y `planilla`).
+- **Qué chequear:** que una nota "sigue" la saque hasta 3 esperadas más · que lo decidido salga (el tag nuevo cambia el inicio).
+
+### `techodias` (23/10/2026, sólo lee): ¿cuánto tarda cada prueba de techo en dar certeza?
+- **Qué es:** él: *"mientras más días buscando techo, más días perdiendo ventas; el punto justo para tener info lo más rápido sin apurar"*.
+  Cada publicación activa con 📈: días en la prueba, ritmo de los 30 días antes (con gemelas/hermanas), vendidas desde la suba y
+  esperadas; el 95% llega con 3 esperadas y 0 vendidas → días que hacen falta = 3 ÷ ritmo. Agrupado por ritmo.
+- **Dónde vive:** `sync.mjs`, antes de `pycatdia`.
+- **Qué chequear:** que el ritmo de antes no cuente días sin stock como días sin venta (hoy divide por 30 fijo: lo de poco stock sale más lento de lo que es).
 
 ### ¿Vendemos menos por buscar techo? `efectotecho[:días]` (22/10/2026, pregunta suya, sólo lee)
 - Qué: semana por semana la tienda entera (u., facturado, ganancia, cuántas subas 📈) + cada suba buscando techo de `cyc/claudecambios` con 7+ días: u./día, visitas y ganancia/día con stock, 14 d antes contra hasta 14 después (corta en el próximo cambio), comparado contra lo que se movió la tienda en las mismas ventanas.
@@ -339,6 +395,9 @@ Después de los 3 Protectores de talón bajados con `!sinlinea` apoyados en la f
    3 Protectores de talón por lo que vendió la familia. Qué chequear: ninguna baja sin 🔴/🏔️ salvo activaciones y las tags que F7 exime.
  · **2a:** `ventasraras` imprime 🔬 A FONDO (con motivo) y ✓ normales. Sólo las 🔬 van al ayudante en máximo.
  · **3a:** cada vuelta termina con `bajastecho:1` y deshace las ❌ del día (texto de las tareas programadas y CEREBRO 🔬).
+
+### 23/10/2026 · Nissei: la carpeta "Sin medir o sin precio en ML" pasa a "Sin precio en ML" (etapa 7, pregunta suya)
+ · Él leyó "5.571 sin medir" cuando sólo faltan ~100: el resto ya está buscado (nadie lo vende o afuera por regla). v26.17. Qué chequear: que el título no diga "sin medir" y que "Falta analizar" muestre los que faltan de verdad.
 
 ### 23/10/2026 · F9 de escasez: el precio de antes es el de antes de la PRIMERA suba (etapa 1, revisor de la completa)
  · `frenosBajas` tomaba como "precio de antes de la escasez" el `de` de la ÚLTIMA suba de escasez. Con una escasez subida en
@@ -1101,6 +1160,7 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
   - **Probe `medir6[:MLA]`** (solo lee): las claves de `winner`/boosts, la forma de suggestions, el conteo de etiquetas, una reposición y el dólar de referencia.
 
   - **A1 · HECHO (preparado, falta la prueba en la próxima llegada) · `publicar:<ficha>|cuenta=<cuenta>|precio=<pesos>[|catalogo=<MLA…>][|color=<variante>][|!piso][|go]`** (ml-sync; ml-consulta lo niega). Crea UNA publicación Clásica PAUSADA en el catálogo CONFIRMADO de la ficha (`mlCatalogo` de la lista o el candidato de Paraguay con ✅/revisión de fotos, o `catalogo=` mirado por mí), con título/fotos/categoría del catálogo (categoría = la de las ofertas del catálogo; si no, `domain_discovery`). Sin `|go` muestra el cuerpo y le pide a ML `POST /items/validate` (no crea nada). Con `|go`: valida, crea, PAUSA en el acto, relee, vincula (`cyc/mllinks/<MLA>` con `catOk`, `altaClaude`, `altaSinVender`) y anota 🆕 lanzamiento. Frenos: ficha con colores pide `color=`, ya hay publicación viva de esa ficha en la cuenta, techo $650.000, margen en el peor caso (`cuentaCandidato` + 2% de retención) abajo del piso salvo `!piso`, sin dólar/costo/comisión no publica, ML no valida → no crea. Riesgo conocido: entre el alta y la pausa (~segundos) queda activa con 1 u. de depósito; si la pausa falla lo grita y `pausarFuera` la pausa en la vuelta de la hora. Qué chequear: que sin go no cree nada (sólo validate), que la creada quede `paused` y vinculada, que no repita en la misma cuenta.
+  - **Tope para crear $550.000 (23/10, él: *"nunca crear publicaciones más caras que 550.000"*)** · `TOPE_CREAR` en `sync.mjs`, freno en `publicar` y en `gemelacrea` (la de envío gratis va siempre abajo de $33.000). Qué chequear: que `publicar:…|precio=560000` y `gemelacrea:<MLA>=560000` salgan frenados con "pasa los $550.000"; el techo de $650.000 para subir un precio que ya existe no cambia.
   - **A2 · HECHO · lo nuevo no se activa solo sin precio de lanzamiento y sin catálogo confirmado.** En `activarPausadasFull` (vuelta de la hora, `activarfull`, `pausadas`): "nuevo" = ni la publicación ni su ficha vendieron NUNCA (todas las ventas, no 120 días). Pide (1) una estrategia mía anotada en `cyc/estrategia/<MLA>` (cualquiera decidida; `decido:<MLA>=<precio>#nuevo|…`) y (2) que el `catalog_product_id` de la publicación sea el confirmado de la ficha (`mlCatalogo` o candidato `candCatChequeado`) o que esté confirmado a mano en `cyc/mllinks/<MLA>/catOk` (`catok:<MLA>=ok|sincat|MLA…|-[;…][;go]`, lee el catálogo de ML en el momento). Si no, queda pausada con el motivo (y el 🧠 lo dice en simple). El alta de nuevas guarda `catalogo` (`catalog_product_id` o null) y `catalogoListing`, y el log lo muestra. La ficha nace con `mlCatalogo` del candidato confirmado (web `candFichaDesde` y robot `pyped:llego`). Qué chequear: que una gemela o un producto que ya vendió NO quede frenado; que `pausadas` nombre los frenados por esto; que `catok` no escriba si ML dice otro catálogo.
   - **A3 · HECHO · "Llegó" suma a la oficina en Paraguay y Listas.** Web: `_pyPedidoLlego` (reposición y con nuevos) y `_listaLlego` preguntan "¿Llegó TODO?" (`_llegoTodoPreg`); con sí suman con `llegadaSumarOfi` (usa `ofiMover`, color con `_ofiColorDe`); lo que no se puede (producto con colores y renglón sin color, sin ficha) sale en el cartel para contarlo a mano. `ofiAlLlegar` es la foto de ANTES de sumar y queda sólo de lo no sumado (la canasta/`LIviaja` no esperan lo ya contado); `sumoOfi` {ts, por, items} en el pedido. Robot: `pyped:llego:<id>[;<palabra>[#color]=<llegaron>…][;nosumar][;go]` suma con `ofiSumarBot` (misma cuenta que `ofi`), anota `falto` y `sumoOfi`, y el `ofi` que imprime para lo no sumado sale con `@color` (o `@<color: …>` para elegir) — ARREGLADO el pendiente: antes salía sin `@` y fallaba entero. Comando nuevo **`listaped`** (lista en camino) y **`listaped:llego:<id|número>[;…][;nosumar][;go]`**: lo mismo que el botón Llegó de Listas (fichas nuevas con costo pc÷dólar del pedido, `listaProv`, `codLista`, `mlCatalogo`; probados suben costo congelando el viejo en `precios_hist_prod`) + suma a la oficina. Qué chequear: que dos "Llegó" no sumen dos veces (el estado se chequea antes), que el total de la oficina no quede abajo de la suma de colores, que lo faltado quede en `falto`.
   - **A4 · HECHO · menos llamadas a ML.** `lib.mjs`: `mlConteo` (consultas, 429, reintentos, comisiones de memoria, permisos) y al salir cada corrida imprime `📞 consultas a ML en esta corrida: …`; `mlGet` reintenta UNA vez un 429 (~2 s; `ML_REINTENTO_429=0` lo apaga) y guarda `/sites/…/listing_prices?…` por ruta y permiso durante la corrida; `mlRefresh` reintenta 429/5xx (3 s y 8 s; un 400 no). `sync.mjs` main: `mlapi/vueltapesada` {ts, consultas, e429} — una vuelta pesada a menos de 45 min de la última va liviana; una liviana del ciclo (`PESADA_SI_TOCA=1`, puesto en `ciclo.sh`) se vuelve pesada a los 60 min; sin memoria legible manda lo que decidió el ciclo; `FORZAR_PESADA=1` la corre igual; se anota sólo si la vuelta terminó entera. Qué chequear: en el log, `⏩ La vuelta pesada se hizo hace N min` tras un comando y `⏫` en las livianas; que el stock/cajas se sigan leyendo una vez por hora.
@@ -1216,6 +1276,7 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
     decisión de compra, no código. 11 (dinero que rinde en MP) lo mira él en la app.
 
 ## 7 · DISEÑO (domingo)
+- **23/10/2026 · v26.16 · el puntaje del día puede pasar de 10** (él: *"que pueda romper el 10 hacia arriba y que al romperlo tenga un pequeño movimiento denotando un día excepcional"*). `_puntajeDia` sin `Math.min(10)` (misma pendiente: 3 puntos cada $115.000 × días; $284.491 en un día = 11,4); arriba de 10 dice "🚀 Día/Mes/Año excepcional" y el número lleva `.punt-rompe` (saltito con brillo cada 2,6 s; nada con movimiento reducido). En Inicio y en Ventas → Ganancia. Qué chequear: que en 360 px el número de 2 cifras ("11,4 /10") no corra los botones de al lado.
 - **21/10/2026 · v25.64 · el dólar de Inicio cortaba el último número** (lo marcó él: *"la revisión de diseño no ve que está cortado? (…) lo primero que aparece en la web"*). La casilla medía 150px fijos y "1.535" en Syne mide 154px en la PC. Ahora `_dolarAncho` la mide con lo que tiene adentro (también al tipear y cuando termina de cargar la letra) y en el teléfono la tarjeta puede partirse en dos renglones. **Por qué se le pasó a la revisión: los revisores leían el código y nunca vieron la pantalla con la letra real** (el index entero se cuelga al conectar con Firebase). **Desde ahora la etapa 7 SIEMPRE dibuja** cada pantalla con el CSS real y las letras de Google (pedazo por pedazo con Playwright, a 360, 390 y 1200 px) y mide toda casilla y todo número grande: `scrollWidth > clientWidth` o `scrollHeight > clientHeight` = cortado. Empezar por lo que se ve primero (Inicio: dólar, ventas de hoy, puntaje). Chequear: probado con 1.535 · 10.000 · 1.535,50 · vacío, a 360/390/1200 px, nada cortado.
 - **21/10/2026 · v25.57 · Inicio → Para cobrar sin "En <mes> cobran lo que dejó <mes anterior>"** (él: *"sacar eso del inicio, ya que lo
   sabemos"*). `_homeCobroHtml` queda con lo que se cobra el mes que viene y lo ganado hasta hoy. Chequear: no volver a ponerlo.
@@ -2720,7 +2781,7 @@ Lo que mira, siempre con `ml-sync/CEREBRO.md` entero, `notas/correcciones.md`, `
 - **Correcciones de la semana:** cada renglón de `correcciones.md` de los últimos 7 días → regla nueva (en su sección, reemplazando
   la vieja de su tema) o pregunta general en `preguntas.md`. Contar cuántas fueron (la meta: 1-2 por semana).
 - **Que se use:** mirar 3-5 notas del 🧠 de la semana y si citan la regla vigente o una vieja.
-- Lo obvio se arregla (texto o freno, probado, en las dos ramas); lo que es decisión suya va TODO JUNTO en el `pregunto:`.
+- Lo obvio se arregla (texto o freno, probado, en las dos ramas); lo que es decisión suya va TODO JUNTO a `notas/para_mati.md`.
 - **21/10/2026 · lo que dejó la primera:** sus 4 decisiones aplicadas — 1a bajar sin que sobre = descuento con tachado (CEREBRO §11)
   · 2b F4 espera la certeza 15 días (`F4_ESPERA_DIAS`) y después no deja bajar si la suba deja igual o más plata por día (hasta 60 d)
   · 3a visitas a la mitad → un escalón, no volver directo · 4a `candMaxU` barato 3 / caro 1 / resto 2 sin vendidas (v25.56).
