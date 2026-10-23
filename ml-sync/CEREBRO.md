@@ -110,6 +110,8 @@ Después de los 3 Protectores de talón (22/10: el freno "sin línea de techo no
   en sync.mjs) en el mismo commit, y si se puede medir, su freno en `frenosBajas`. Una salida que ya falló pasa a ser 🔐 suya.
 
 ===========================================================================================================================
+- 🔒 **No bajar lo que él marcó** (23/10/2026, la waflera: *"que sea una excepción si el robot decide bajarlo, quizás lo mejor sería no tocarlo"*): `cyc/nobajar/<MLA>` (comando `nobajar`); freno F10 en `frenosBajas` (decido, entrarpromo, la puerta y el detector). Sólo con su autorización (`!nobajar`, 🔐).
+
 ## 1 · CADA VUELTA, EN ESTE ORDEN
 
 **Cortas (10:52 a 20:52, cada 2 h):**
