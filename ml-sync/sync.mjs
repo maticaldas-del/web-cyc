@@ -4415,8 +4415,6 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
     // → null si pasa · { regla, txt, sinDato } si frena.
     const evaluar = async (autH) => {
       const suya = (f) => autH.has(f);
-      // ── F10 · 🔒 él pidió no bajarla
-      { const nb = nobaj[d.mla]; if (nb && !suya('nobajar')) return { regla: 'F10', txt: `🔒 pediste no bajarla${nb.ts ? ' el ' + new Date(Number(nb.ts) - 3 * 3600e3).toISOString().slice(8, 10) + '/' + new Date(Number(nb.ts) - 3 * 3600e3).toISOString().slice(5, 7) : ''}${nb.m ? ' (' + String(nb.m).slice(0, 120) + ')' : ''}: no se baja ni entra en descuento sin tu autorización` }; }
       const remOk = (tagNuevo === 'remate' && suya('remate')) || remPrevio;
       const exentoPor = (t) => ((t === 'sobra' || t === 'liquidando') ? (sobraReal() ? t : '') : t === 'sinrepo' ? t : (t === 'remate' && remOk) ? t : '');
       const exento = exentoPor(tagNuevo) || exentoPor(ult);
@@ -4517,6 +4515,19 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
         continue;
       }
       r = r2;   // otra regla lo frena igual: pedirle la autorización no serviría
+    }
+    // ── F10 · 🔒 él pidió no bajarla (23/10/2026). Se juzga DESPUÉS de las otras reglas (él: *"que evalúe y que diga qué hubiera
+    // hecho"*): si las demás la dejaban pasar, el freno dice "HUBIERA HECHO: bajarla de X a Y" con mi motivo y lo guarda en
+    // `cyc/nobajar/<MLA>/hubiera` (lo ve en la lista `nobajar` y en el informe); si otra regla la frenaba igual, lo dice también.
+    const nbM = nobaj[d.mla];
+    if (nbM && !autOk.has('nobajar')) {
+      const pide = !r && pedidas.includes('nobajar');
+      const cuando = nbM.ts ? ' el ' + new Date(Number(nbM.ts) - 3 * 3600e3).toISOString().slice(8, 10) + '/' + new Date(Number(nbM.ts) - 3 * 3600e3).toISOString().slice(5, 7) : '';
+      const hub = r ? `Además la frenaba otra regla (${r.regla}): ${r.txt}` : `HUBIERA HECHO: ${opts.promo ? 'un descuento' : 'bajarla'} de ${$(p0v)} a ${$(a)} (−${Math.round((1 - a / p0v) * 100)}%)${fz.motivo ? ' — ' + String(fz.motivo).slice(0, 220) : ''}. Pasa todas las otras reglas.`;
+      frenar(`F10 🔒 pediste no bajarla${cuando}${nbM.m ? ' (' + String(nbM.m).slice(0, 100) + ')' : ''}: no se toca sin tu autorización. ${hub}${pide ? ' → 🔐 se te pide por Telegram' : ''}`,
+        { regla: 'F10', pideAut: pide ? ['nobajar'] : undefined, frenoTxt: hub, motivoPedido: String(fz.motivo || '') });
+      if (!r && !opts.seco) { try { await db.set('cyc/nobajar/' + d.mla + '/hubiera', { ts: ahora, de: Math.round(p0v), a: Math.round(a), promo: !!opts.promo, por: opts.puerta ? 'puerta' : 'decido', m: String(fz.motivo || '').slice(0, 300) }); } catch { /* no frena */ } }
+      continue;
     }
     if (r) { frenar(r.txt, { regla: r.regla, sinDato: !!r.sinDato }); continue; }
     const lad = enEscasez && ultSuba && a < ultSuba.a * 0.995 ? await escalera() : null;
@@ -47629,7 +47640,7 @@ async function main() {
       if (!arg) {
         console.log('=== 🔒 NO BAJAR (sólo con su autorización) ===');
         const ks = Object.keys(nb); if (!ks.length) console.log('  (nada marcado)');
-        for (const k of ks) { const e = links[k] || {}; console.log(`  ${k} · ${e.cuenta || '?'} · ${String(e.title || '').slice(0, 50)} · $${Math.round(Number(e.price) || 0).toLocaleString('es-AR')} · ${nb[k].m || ''}`); }
+        for (const k of ks) { const e = links[k] || {}; const h = nb[k].hubiera; console.log(`  ${k} · ${e.cuenta || '?'} · ${String(e.title || '').slice(0, 50)} · $${Math.round(Number(e.price) || 0).toLocaleString('es-AR')} · ${nb[k].m || ''}${h ? `\n     ↳ HUBIERA HECHO (${new Date(Number(h.ts) - 3 * 3600e3).toISOString().slice(0, 16).replace('T', ' ')}): ${h.promo ? 'descuento' : 'bajar'} de $${Number(h.de).toLocaleString('es-AR')} a $${Number(h.a).toLocaleString('es-AR')}${h.m ? ' — ' + h.m : ''}` : ''}`); }
         return;
       }
       const saca = arg.startsWith('-');
@@ -47649,7 +47660,7 @@ async function main() {
       for (const k of mlas) {
         const e = links[k] || {};
         console.log(`  ${k} · ${e.cuenta || '?'} · ${e.listing_type_id || e.tipo || ''} · ${String(e.title || '').slice(0, 50)} · $${Math.round(Number(e.price) || 0).toLocaleString('es-AR')} · ${e.status || ''}`);
-        if (GO) await db.set('cyc/nobajar/' + k, saca ? null : { ts: Date.now(), m: motivo || 'lo pidió él' });
+        if (GO) await (saca ? db.set('cyc/nobajar/' + k, null) : db.patch('cyc/nobajar/' + k, { ts: Date.now(), m: motivo || 'lo pidió él' }));
       }
       if (GO) { const rl = (await db.get('cyc/nobajar')) || {}; const okN = mlas.filter((k) => saca ? !rl[k] : !!rl[k]).length; console.log(`\n${okN === mlas.length ? '✓' : '⚠️'} releído: ${okN} de ${mlas.length} ${saca ? 'sin marca' : 'con 🔒'}`); }
       else console.log('\nNo se guardó nada (falta ;go).');
