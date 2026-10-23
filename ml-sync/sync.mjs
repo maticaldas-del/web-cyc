@@ -47640,7 +47640,7 @@ async function main() {
       if (!arg) {
         console.log('=== 🔒 NO BAJAR (sólo con su autorización) ===');
         const ks = Object.keys(nb); if (!ks.length) console.log('  (nada marcado)');
-        for (const k of ks) { const e = links[k] || {}; const h = nb[k].hubiera; console.log(`  ${k} · ${e.cuenta || '?'} · ${String(e.title || '').slice(0, 50)} · $${Math.round(Number(e.price) || 0).toLocaleString('es-AR')} · ${nb[k].m || ''}${h ? `\n     ↳ HUBIERA HECHO (${new Date(Number(h.ts) - 3 * 3600e3).toISOString().slice(0, 16).replace('T', ' ')}): ${h.promo ? 'descuento' : 'bajar'} de $${Number(h.de).toLocaleString('es-AR')} a $${Number(h.a).toLocaleString('es-AR')}${h.m ? ' — ' + h.m : ''}` : ''}`); }
+        for (const k of ks) { const e = links[k] || {}; const h = nb[k].hubiera; console.log(`  ${k} · ${e.cuenta || '?'} · ${String(e.title || '').slice(0, 50)} · ${nb[k].m || ''}${h ? `\n     ↳ HUBIERA HECHO (${new Date(Number(h.ts) - 3 * 3600e3).toISOString().slice(0, 16).replace('T', ' ')}): ${h.promo ? 'descuento' : 'bajar'} de $${Number(h.de).toLocaleString('es-AR')} a $${Number(h.a).toLocaleString('es-AR')}${h.m ? ' — ' + h.m : ''}` : ''}`); }
         return;
       }
       const saca = arg.startsWith('-');
@@ -47659,7 +47659,7 @@ async function main() {
       console.log(`=== 🔒 ${saca ? 'SACAR' : 'MARCAR'} NO BAJAR ${GO ? '' : '(PRUEBA — no escribo nada)'} ===`);
       for (const k of mlas) {
         const e = links[k] || {};
-        console.log(`  ${k} · ${e.cuenta || '?'} · ${e.listing_type_id || e.tipo || ''} · ${String(e.title || '').slice(0, 50)} · $${Math.round(Number(e.price) || 0).toLocaleString('es-AR')} · ${e.status || ''}`);
+        console.log(`  ${k} · ${e.cuenta || '?'} · ${e.gemelaDe ? (e.gemelaTipo === 'envio' ? '📦 gemela envío gratis' : '💳 gemela Premium') : 'Clásica'} · ${String(e.title || '').slice(0, 50)} · ${e.status || ''}`);
         if (GO) await (saca ? db.set('cyc/nobajar/' + k, null) : db.patch('cyc/nobajar/' + k, { ts: Date.now(), m: motivo || 'lo pidió él' }));
       }
       if (GO) { const rl = (await db.get('cyc/nobajar')) || {}; const okN = mlas.filter((k) => saca ? !rl[k] : !!rl[k]).length; console.log(`\n${okN === mlas.length ? '✓' : '⚠️'} releído: ${okN} de ${mlas.length} ${saca ? 'sin marca' : 'con 🔒'}`); }
