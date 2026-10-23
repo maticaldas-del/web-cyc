@@ -24,7 +24,7 @@ R7. El adelanto de plata para un pedido (como los 29.000 del 14/10): (a) dejarlo
 R8. Hay 1 fila por día hábil en cada cuenta de MP sin fecha de liberación (no es venta, ~1% de a liquidar) y hoy se cuenta como por cobrar: (a) tomarla como plata ya en la cuenta · (b) dejarla en a liquidar
 
 ### De las vueltas del 23/10 (a la noche y a la tarde)
-12. **Bajas de la escalera de escasez y de "sin reposición"** (Pendrive 8gb, Pizarra Rosa, Chispero, los 2 Espejos 4"): pasan los frenos y el detector de errores dice que están bien, pero el control de "bajas sin techo" (`bajastecho`) y la lista de descuentos 🤔 (por "recién llegado") las marcan. Las dejé puestas. El Pendrive ya vendió 4 con el descuento. (a) sugerida: que esos dos controles no las cuenten como error cuando son escalera de escasez o sin reposición con línea (lo arreglo) · (b) deshacerlas y volver al precio subido.
+12. **Bajas de la escalera de escasez y de "sin reposición"** (Pendrive 8gb, Pizarra Rosa, Chispero; los 2 Espejos 4" ya volvieron a $5.490 el 23/10 19:37 porque entraron en escasez): pasan los frenos y el detector de errores dice que están bien, pero el control de "bajas sin techo" (`bajastecho`) y la lista de descuentos 🤔 (por "recién llegado") las marcan. Las dejé puestas. El Pendrive ya vendió 4 con el descuento. (a) sugerida: que esos dos controles no las cuenten como error cuando son escalera de escasez o sin reposición con línea (lo arreglo) · (b) deshacerlas y volver al precio subido.
 13. **Cuba Gold** (Adriana, última unidad, a $67.174, la anterior se vendió a $28.990): te llegó por Telegram el pedido de autorización para bajarla a $32.990. Contestá "autorizo <código>" o "no <código>".
 14. **Batidor eléctrico Blanco** (Luciana): 2 de 25 reclamaron que le faltan partes. (a) sugerida: que la publicación diga exacto qué trae y revisar que vengan completas · (b) dejarla igual.
 15. **Lupa de mano 100 mm** (Ayelen): 2 de 34 llegaron rotas. (a) sugerida: que Tito las envuelva mejor al armar la caja · (b) seguir igual.
@@ -34,7 +34,6 @@ R8. Hay 1 fila por día hábil en cada cuenta de MP sin fecha de liberación (no
 19. **Dos controles que sólo reviso yo, para que sepas:** el reclamo de la Piedra Guasha de Ayelen sigue esperando tu respuesta en ML (lo hacés vos desde ML).
 20. **Paulvic Invictus y Phantom (Adriana) en revisión de ML desde el 21/10** (`MLA1546343320`, `MLA1823112871`, "prohibido": el nombre es de una marca). En Full figuran 0 disponibles (esta tarde eran 8 y 4: ML las frenó mientras revisa) y en la oficina hay 6 Invictus + 3 Phantom que no se pueden mandar. Vendían 2 por mes cada uno.
     (a) sugerida: dejarlas así, no mandar nada y venderlas en el local; ya están marcadas "no se piden más". (b) Pedirle a ML que las revise de nuevo, o publicarlas con otro nombre (es riesgoso: Ayelen ya tiene un aviso por falsificados).
-
 ## Viejas que siguen esperando (de CLAUDE.md §13)
 - Clave `ANTHROPIC_API_KEY` para la IA de preguntas · `almactarifa` · Sancor (respuesta y baja de Vida Plus) · contador
   (recategorización, actividad, facturas entre cuentas) · si el puntaje del mes le cierra · costo de las dos Linternas COB de Ayelen.

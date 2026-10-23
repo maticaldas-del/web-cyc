@@ -259,7 +259,8 @@
 
 - **Pedidos completos, todo el catálogo** (09/10): `pedidostodo` (ml-consulta) → `python3 ml-sync/notas/decide_pedidos.py <log> <salida>`
   (objetivo **30 días**: ritmo de 30 d, de 60 d o de 180 d si está agotado; menos Full + oficina + camino + viajando; sin ganancia = 0;
-  ritmo normal si hubo remate o prueba) → revisar a mano → `notas/pedidos.txt` → `decido:archivo=pedidos;go`. En la completa.
+  ritmo normal si hubo remate o prueba; **precio para el máximo de compra = el de la última venta**, aunque sea 1, sin pasar el de hoy ni
+  contar la de escasez; nunca vendió → el de hoy, 23/10) → revisar a mano → `notas/pedidos.txt` → `decido:archivo=pedidos;go`. En la completa.
   Lo de la oficina o viajando a Full cubre lo decidido.
 - Por color: un color agotado hace 30+ d pide con su ritmo viejo ("ritmo viejo"). Pedido a mano ya no existe (lo arma el panel/yo).
 - **Bs As:** el padre compra en persona (~1 semana, plata ~$3M, lugar en la Kangoo). Solapas 🏬 De siempre / 📋 Dai Nippon
