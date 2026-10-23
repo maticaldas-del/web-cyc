@@ -2960,6 +2960,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'',f:'23/10',h:'15:50',c:[{n:1,t:'Paraguay → Nissei: ⏳ Falta revisar queda en su propia carpeta, a la vista (antes estaba adentro de Lo que no entra en el pedido). La otra pasa a llamarse ✅ Revisados.'}]},
   {v:'26.20',f:'23/10',h:'15:25',c:[{n:2,t:'🗂️ Paraguay → Nissei → "Lo que no entra en el pedido": ahora son dos carpetas, ✅ Revisados (lo que el robot miró en los últimos 14 días, con los mismos grupos de antes) y ⏳ Falta revisar (nunca medidos y vencidos). Lo revisado vence a los 14 días y el robot lo vuelve a mirar solo: nada queda más de 2 semanas sin mirar, en Nissei y en las Listas.'}]},
   {v:'26.19',f:'23/10',h:'15:20',c:[{n:1,t:'⚖️ Tope de H en Inicio: "lo próximo nuevo va a…" elige entre Ayelen y Luciana (la que más lugar tiene), como pediste.'}]},
   {v:'26.18',f:'23/10',h:'15:10',c:[{n:2,t:'🔢 Contar lo que hay: tarjeta "🏷️ Sin terminar / sin etiqueta" con la mercadería que llegó y todavía no tiene la etiqueta de Full (la carga Claude cuando le pasás lo que llegó, y la saca cuando le decís que la etiquetaste). Armar caja la sigue contando igual y en cada renglón dice cuántas faltan etiquetar.'}]},
@@ -17548,6 +17549,17 @@ function candidatosHTML(){
       const tot=_flojas.length+_rojos.length+_sinAnalizar.length+nDesc+(R?n('ficha')+(R.rev!=null&&R.pend!=null?n('rev')+n('pend'):n('bajo')+n('nomed')+n('sc')+n('scr')+n('sv')+n('fz')):0);
       // SE ARMA AL ABRIRLO (19/10/2026, él: "el problema de Nissei es que carga eso también, que cargue al clickearlo"): son miles de
       // tarjetas; antes se dibujaban todas al entrar a Nuevos aunque el desplegable estuviera cerrado.
+
+      // ⏳ FALTA REVISAR EN SU PROPIA CARPETA (23/10/2026, él: "no veo el falta revisar. ponelo en otra carpeta"): afuera de
+      // "Lo que no entra en el pedido", a la vista. Se arma al abrirla, como la otra.
+      const _nuevo=!!(R&&R.rev!=null&&R.pend!=null&&R.rv), totP=_sinAnalizar.length+n('pend');
+      window._pyFaltaFn=()=>{
+        const hoyP=(()=>{const hoy=new Date(Date.now()-3*36e5).toISOString().slice(0,10).replace(/-/g,'_');const d=R.dia;if(!d||d.d!==hoy||d.pend==null)return '';const x=Number(d.pend)-n('pend');return x>0?` <span style="color:var(--green)">−${f(x)} revisados hoy</span>`:'';})();
+        return (hoyP?`<div style="font-size:.66rem;margin:6px 0 0">${hoyP}</div>`:'')+''
+        +`<div style="font-size:.66rem;color:var(--muted);line-height:1.6;margin:8px 0 4px">🆕 <b style="color:var(--text)">${f(n('pn'))}</b> nunca medidos · ⌛ <b style="color:var(--text)">${f(n('pv'))}</b> revisados hace 14 días o más (vencidos)${_sinAnalizar.length?` · ⏳ <b style="color:var(--text)">${_sinAnalizar.length}</b> candidatos sin analizar (falta la medición de ML o una de las dos fotos)`:''}. El robot los va mirando solo, primero los de los rubros que ya vendemos y el que hace más que no se mira.</div>`
+        +(_sinAnalizar.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--muted)" title="Falta la medición de ML o alguna de las dos fotos. Suben solos cuando estén completos y den.">⏳ Candidatos sin analizar · <b>${_sinAnalizar.length}</b></summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_sinAnalizar.map(_card).join('')}</div></details>`:'')
+        +(n('pend')?pycatNoDanHTML(['pend'],'pycat-nodan-pend','📦 Del catálogo: nunca medidos y vencidos',true):'');
+      };
       window._pyNoEntraFn=()=>{
       const cuenta=R?`<div style="font-size:.64rem;color:var(--muted);margin:8px 0 2px;line-height:1.5">📊 comprasparaguay tiene <b>${f(R.tot)}</b>: <b>${f(n('cand'))}</b> ya son candidatos (para probar, en el pedido y los de acá abajo) · <b>${f(n('ficha'))}</b> ya son productos tuyos · <b>${f(n('bajo'))}</b> medidos que no llegan al ${CAND_PISO_TXT()} · <b>${f(n('sc')+n('sv')+n('fz'))}</b> sin catálogo exacto, que nadie vende o afuera por regla · <b>${f(n('nomed'))}</b> todavía sin medir. <span title="Los números los arma el robot cada vez que mide (cada 2 h).">(contado el ${new Date(R.t).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})})</span></div>`:'';
       // DOS CARPETAS: MEDIDOS Y NO MEDIDOS (17/10/2026, él: "quiero dos carpetas, medidos y no medidos y dentro de cada una que
@@ -17577,11 +17589,7 @@ function candidatosHTML(){
         +sub('🔍 Sin catálogo exacto en ML (falta buscarlo traducido)','var(--muted)',rv('sc'),['sc'],'pycat-nodan-sc','📦 Del catálogo: no se pudo comparar contra el mismo producto')
         +sub('⛔ Afuera por regla','var(--muted)',rv('fz'),['fz'],'pycat-nodan-fz','📦 Del catálogo: 110V, marca que ML frena, etc.')
         +(n('ficha')?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--green)">✅ Ya son productos tuyos · <b>${f(n('ficha'))}</b> del catálogo</summary>${pycatNoDanHTML(['ficha'],'pycat-nodan-ficha','📦 Del catálogo: ya tienen ficha en CYC')}</details>`:'')
-        +sub('✔️ Revisados: no están en ML (buscados también traducidos)','var(--muted)',rv('scr'),['scr'],'pycat-nodan-scr','📦 Del catálogo: ML no tiene el mismo producto'))
-        +carp('⏳ Falta revisar'+hoyP,totP,'var(--amber)',''
-        +`<div style="font-size:.66rem;color:var(--muted);line-height:1.6;margin:8px 0 4px">🆕 <b style="color:var(--text)">${f(n('pn'))}</b> nunca medidos · ⌛ <b style="color:var(--text)">${f(n('pv'))}</b> revisados hace 14 días o más (vencidos)${_sinAnalizar.length?` · ⏳ <b style="color:var(--text)">${_sinAnalizar.length}</b> candidatos sin analizar (falta la medición de ML o una de las dos fotos)`:''}. El robot los va mirando solo, primero los de los rubros que ya vendemos y el que hace más que no se mira.</div>`
-        +(_sinAnalizar.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--muted)" title="Falta la medición de ML o alguna de las dos fotos. Suben solos cuando estén completos y den.">⏳ Candidatos sin analizar · <b>${_sinAnalizar.length}</b></summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_sinAnalizar.map(_card).join('')}</div></details>`:'')
-        +(n('pend')?pycatNoDanHTML(['pend'],'pycat-nodan-pend','📦 Del catálogo: nunca medidos y vencidos',true):''));
+        +sub('✔️ Revisados: no están en ML (buscados también traducidos)','var(--muted)',rv('scr'),['scr'],'pycat-nodan-scr','📦 Del catálogo: ML no tiene el mismo producto'));
       }
       return cuenta
       +carp('📏 Medidos',totM,'var(--text)',''
@@ -17597,7 +17605,7 @@ function candidatosHTML(){
       +((_sinAnalizar.length||R)?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--muted)" title="Falta la medición de ML o alguna de las dos fotos. Suben solos cuando estén completos y den.">⏳ Falta analizar · <b>${_sinAnalizar.length}</b> candidatos${mas('nomed')}</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_sinAnalizar.map(_card).join('')}</div>${pycatNoDanHTML(['nomed'],'pycat-nodan-nomed','📦 Del catálogo: todavía sin medir')}</details>`:'')
       +candDescartadosHTML(R?n('sc')+n('sv')+n('fz'):null,false))
       ;};
-      return (R?medirVueltaHTML('nissei'):'')+`<details ontoggle="if(this.open&&!this.dataset.ok){this.dataset.ok=1;const b=this.querySelector('.nx-body');setTimeout(()=>{b.innerHTML=window._pyNoEntraFn();},0);}" style="margin-top:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:8px 12px"><summary style="cursor:pointer;font-size:.74rem;font-weight:700;color:var(--muted)">🗂️ Lo que no entra en el pedido · ${f(tot)} <span style="font-weight:400">· tocá para abrir</span></summary>`+`<div class="nx-body"><div style="font-size:.7rem;color:var(--muted);padding:8px 0">⏳ cargando…</div></div></details>`;})();
+      return (R?medirVueltaHTML('nissei'):'')+(_nuevo?`<details ontoggle="if(this.open&&!this.dataset.ok){this.dataset.ok=1;const b=this.querySelector('.nx-body');setTimeout(()=>{b.innerHTML=window._pyFaltaFn();},0);}" style="margin-top:14px;background:var(--surface);border:1px solid var(--amber);border-radius:var(--r);padding:8px 12px"><summary style="cursor:pointer;font-size:.74rem;font-weight:700;color:var(--amber)">⏳ Falta revisar · ${f(totP)} <span style="font-weight:400;color:var(--muted)">· lo revisado vence a los 14 días y vuelve acá</span></summary><div class="nx-body"><div style="font-size:.7rem;color:var(--muted);padding:8px 0">⏳ cargando…</div></div></details>`:'')+`<details ontoggle="if(this.open&&!this.dataset.ok){this.dataset.ok=1;const b=this.querySelector('.nx-body');setTimeout(()=>{b.innerHTML=window._pyNoEntraFn();},0);}" style="margin-top:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:8px 12px"><summary style="cursor:pointer;font-size:.74rem;font-weight:700;color:var(--muted)">🗂️ ${_nuevo?'✅ Revisados · lo que no entra en el pedido':'Lo que no entra en el pedido'} · ${f(_nuevo?tot-totP:tot)} <span style="font-weight:400">· tocá para abrir</span></summary>`+`<div class="nx-body"><div style="font-size:.7rem;color:var(--muted);padding:8px 0">⏳ cargando…</div></div></details>`;})();
 }
 // LO DESCARTADO NO SE ESCONDE. Una lista que saca renglones sin decirlo es una lista que miente —
 // la misma regla que el desplegable de `nomandar` en Armar caja.
