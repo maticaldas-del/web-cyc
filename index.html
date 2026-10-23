@@ -2947,7 +2947,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.22';
+const APP_VERSION='26.23';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2960,6 +2960,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.23',f:'23/10',h:'17:30',c:[{n:1,t:'Armar caja → arriba aparece un aviso 🏷️ cuando lo que va en la caja todavía tiene unidades sin etiqueta: cuántas y de qué productos, para terminarlas antes.'}]},
   {v:'26.22',f:'23/10',h:'17:15',c:[{n:1,t:'Armar caja → la barra del cupo de Full cambia de color según el lugar que queda: verde (25%+ libre), amarillo, naranja y rojo (casi sin lugar o pasada).'}]},
   {v:'26.21',f:'23/10',h:'15:50',c:[{n:1,t:'Paraguay → Nissei: ⏳ Falta revisar queda en su propia carpeta, a la vista (antes estaba adentro de Lo que no entra en el pedido). La otra pasa a llamarse ✅ Revisados.'}]},
   {v:'26.20',f:'23/10',h:'15:25',c:[{n:2,t:'🗂️ Paraguay → Nissei → "Lo que no entra en el pedido": ahora son dos carpetas, ✅ Revisados (lo que el robot miró en los últimos 14 días, con los mismos grupos de antes) y ⏳ Falta revisar (nunca medidos y vencidos). Lo revisado vence a los 14 días y el robot lo vuelve a mirar solo: nada queda más de 2 semanas sin mirar, en Nissei y en las Listas.'}]},
@@ -7223,6 +7224,22 @@ function renderOfiCaja(){
         </div></div>`;
     }
   }
+  // 🏷️ AVISO DE LO QUE FALTA TERMINAR (23/10/2026, él: "y acá si hay productos que faltan trabajo (terminarlos/etiquetas) que tenga
+  // un pequeño anuncio, así me doy cuenta"). Lo que esta caja (o, sin cuenta elegida, cualquier caja) quiere mandar y todavía tiene
+  // unidades sin etiqueta en la oficina (`sinEtiq`, la misma marca de Contar lo que hay).
+  try{
+    const _faltan=filas.map(f=>{
+      const n=sinEtiq(f.p.id,f.variante||'');if(!(n>0))return null;
+      const va=(f.sug||[]).filter(x=>x&&x.mandar>0&&(!ofiFiltroCuenta||x.cuenta===ofiFiltroCuenta)).reduce((t,x)=>t+x.mandar,0);
+      return va>0?{nom:(f.p.name||'')+(f.variante?' · '+f.variante:''),n:Math.min(n,va)}:null;
+    }).filter(Boolean);
+    if(_faltan.length){
+      const uF=_faltan.reduce((t,x)=>t+x.n,0);
+      cartel+=`<div style="border:1px solid rgba(245,158,11,.45);background:rgba(245,158,11,.08);border-radius:10px;padding:8px 12px;margin-bottom:10px;font-size:.72rem;line-height:1.5">
+        <strong style="color:var(--amber)">🏷️ Falta terminar ${fmtN(uF)} u. de ${_faltan.length} producto${_faltan.length===1?'':'s'}</strong> <span style="color:var(--muted)">antes de meterlas en la caja${ofiFiltroCuenta?' de '+ofiFiltroCuenta:''} (sin etiqueta):</span>
+        <span style="color:var(--muted)">${_faltan.slice(0,4).map(x=>escHtml(x.nom)+' '+x.n).join(' · ')}${_faltan.length>4?` · y ${_faltan.length-4} más`:''}</span></div>`;
+    }
+  }catch(e){console.warn('aviso sin etiqueta',e);}
   // ── EL BUSCADOR FILTRA SOLO LA LISTA ─────────────────────────────────────
   // Pedido suyo del 27/08/2026. Lo importante es lo que NO toca: las dos barras, el botón de
   // cerrar y el cartel de "conviene mandarla" siguen hablando de la CAJA ENTERA, y por eso se
