@@ -47875,6 +47875,19 @@ async function main() {
         return;
       }
       const ops = [], problemas = [];
+      // `sinetiq:pvped=<id|ultimo>[;go]` (23/10/2026, él: "agregar para etiquetar todos los paulvic que llegaron ayer"): suma como sin
+      // etiqueta lo que LLEGÓ de ese pedido al Paulvic, aroma por aroma (`cyc/pedidospv/<id>/llego`).
+      if (pares.length === 1 && /^pvped=/i.test(pares[0])) {
+        const q = pares[0].split('=')[1].trim();
+        const peds = (await db.get('cyc/pedidospv')) || {};
+        const hit = q === 'ultimo' ? Object.entries(peds).filter(([, c]) => c && c.estado === 'llego').sort((x, y) => String(x[1].fechaLlego || '').localeCompare(String(y[1].fechaLlego || ''))).pop() : (peds[q] ? [q, peds[q]] : null);
+        if (!hit) { console.log(`❌ no encontré el pedido al Paulvic "${q}"`); return; }
+        const pv = prods.find((p) => nrm(p.name).includes('paulvic') && (p.variantes || []).length);
+        if (!pv) { console.log('❌ no encontré la ficha del Paulvic'); return; }
+        console.log(`Pedido ${hit[0]} · llegó el ${hit[1].fechaLlego || '?'} · ficha ${pv.name}`);
+        for (const x of (hit[1].llego || [])) { if (!x || !(parseInt(x.u) > 0)) continue; const va = (pv.variantes || []).find((v) => v === x.v || nrm(v) === nrm(x.v)); if (!va) { problemas.push(`"${x.v}" no es un aroma de ${pv.name}`); continue; } ops.push({ p: pv, va, delta: parseInt(x.u), fijo: null }); }
+        pares.length = 0;
+      }
       for (const x of pares) {
         const m = x.match(/^(.+?)(?:@(.+?))?=([+-]?)(\d+)$/);
         if (!m) { problemas.push(`"${x}" → se espera <palabra>[@<variante>]=<+N|-N|N>`); continue; }
