@@ -32,6 +32,8 @@ R8. Hay 1 fila por día hábil en cada cuenta de MP sin fecha de liberación (no
 17. **Separador x2 de Ayelen** (la publicación que no vende, `MLA1474954957`): ML le marca la calidad en 62%. (a) sugerida: completar en ML la ficha técnica (marca, material, cantidad), el código universal o "no tiene", y fotos con fondo blanco · (b) dejarla.
 18. **Aviso de ML en Ayelen por "productos falsificados"** (se ve en su captura del 23/10, propiedad intelectual): mirar en ML → Consultar infracciones qué publicación fue. Si es una marca, la agrego como prohibida para ML (`marcanoml`).
 19. **Dos controles que sólo reviso yo, para que sepas:** el reclamo de la Piedra Guasha de Ayelen sigue esperando tu respuesta en ML (lo hacés vos desde ML).
+20. **Paulvic Invictus y Phantom (Adriana) en revisión de ML desde el 21/10** (`MLA1546343320`, `MLA1823112871`, "prohibido": el nombre es de una marca). En Full figuran 0 disponibles (esta tarde eran 8 y 4: ML las frenó mientras revisa) y en la oficina hay 6 Invictus + 3 Phantom que no se pueden mandar. Vendían 2 por mes cada uno.
+    (a) sugerida: dejarlas así, no mandar nada y venderlas en el local; ya están marcadas "no se piden más". (b) Pedirle a ML que las revise de nuevo, o publicarlas con otro nombre (es riesgoso: Ayelen ya tiene un aviso por falsificados).
 
 ## Viejas que siguen esperando (de CLAUDE.md §13)
 - Clave `ANTHROPIC_API_KEY` para la IA de preguntas · `almactarifa` · Sancor (respuesta y baja de Vida Plus) · contador
