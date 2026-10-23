@@ -18,8 +18,11 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
    oficina: talones, metatarsos, imán, cintas, lupas, balanza, cortapelos, rebarbador…). ¿Cuánto cupo tiene hoy en ML? → `cupo:Ayelen=<chicos>/<grandes>`.
 9. **Ted Lapidus** (`MLA3310524980`): de la 4a no volvió a $65.990 porque ahí queda abajo del 25% en el peor caso (24%). Sigue a
    $72.990 y ya no busca techo. (a) sugerida: dejarlo así · (b) volver a $65.990 igual (con `!piso`).
-10. **Publicaciones nuevas**: el comando `publicar` las puede crear desde acá (lo que llega sin publicación: Blush de Paulvic, EX15LP
-   blanco, Sennheiser…). (a) sugerida: las creo yo y te aviso antes de cada una · (b) las seguís creando vos.
+10. **Publicaciones nuevas** (23/10 dijo que sí, con Clásica + Premium + envío gratis si va abajo de $33.000, todo pausado). Probadas sin crear:
+   Webcam EMEET S600 (15 vendedores sin Full, $179.999-$245.949) y Sony ZX310AP blanco (4 sin Full, $65.999-$132.305), las dos para Ayelen.
+   EX15LP blanco no tiene ficha (crearla antes). Esperan su OK del precio.
+11. **Comprados que hoy no llegan al 25%** (pedido del 14/10): Switch TP-Link TL-SF1009P 15% · Casio FX-82MS 20% · Walkie Motorola T110 −3% · CK One 200 ml −2%.
+   Publicarlos igual al precio más alto que tenga sentido, o esperar.
 
 ### De la revisión de hoy (le llegaron por Telegram el 23/10 a las 14:45; desde ahora van acá)
 R1. La deuda con ARCA del mes en curso: (a) contarla de a poco según los días que pasaron · (b) entera desde el día 1

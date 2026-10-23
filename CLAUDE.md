@@ -217,7 +217,9 @@
   ⏳ `sinrepo` · 📦 `sobra` · 🏷️ `promo` (ML pone) · 💸 `descuento` (sólo nosotros) · 🆕 `lanzamiento` · 💰 `punto` · 💳 `gemela` · 🧨 `remate`
   (sólo si lo pide él) · `liquidando` · 🛡️ excepción (`!piso`, `cyc/claudepiso`). ⚪ sin estrategia (decidir) · ⏸️ sin stock. "Volviendo"
   dura 7 días, después entra a 🔎. Cada chip dice "· de X". Cada venta muestra la estrategia que tenía (`cyc/estrategia/<MLA>/<ts>`).
-- **Lanzamiento (🆕)** (20/10): lo nuevo arranca ~20% arriba del precio correcto; baja recién con 🏔️ al 95% (visitas × conversión) y
+- **Lanzamiento (🆕)** (20/10; 23/10 él: *"buscá el precio más alto que podamos, que tenga sentido, quizás al de los competidores"*):
+  lo nuevo arranca en lo MÁS ALTO que tenga sentido contra su catálogo — si nadie tiene Full, cerca del más caro (Full vale ~19% más);
+  si hay otros con Full, ~20% arriba del Full más barato sin pasar el más caro; baja recién con 🏔️ al 95% (visitas × conversión) y
   cada escalón como descuento propio con el de lanzamiento tachado. **Nunca bajar algo que vende sólo para medir** (la prueba del tachado
   3b se canceló).
 - **Precio para el peor caso** al poner o activar (12/10). Lo que vende rápido abajo del 25% con poco stock se sube en la misma vuelta.
