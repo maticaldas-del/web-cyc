@@ -4743,7 +4743,8 @@ async function pruebasTechoEnCurso(db, ahora = Date.now()) {
     let uA = 0, uD = 0, gA = 0, gD = 0, sinC = 0, falla = false;
     for (let t = tsU - 30 * DIA; t <= ahora + DIA; t += DIA) { const vd = await vDia(dayKeyFromISO(t)); if (vd == null) { falla = true; continue; }
       for (const v of Object.values(vd)) { if (!v || v.cancelada || !grupo.includes(v.mla)) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; const q = Number(v.qty) || 1;
-        const g = v.costo > 0 ? (Number(v.neto) || 0) - v.costo - (Number(v.total) || 0) * (mlExtraPct(v.cuenta) + monoP) / 100 : 0; if (!(v.costo > 0)) sinC++;
+        // 23/10/2026: neta como la ficha y techo95 (−$100/u de trabajo, −3% de lo facturado por el tope de H); la plata parada no entra (necesita el stock día por día)
+        const g = v.costo > 0 ? (Number(v.neto) || 0) - v.costo - (Number(v.total) || 0) * (mlExtraPct(v.cuenta) + monoP) / 100 - q * PD_TRABAJO_U - (Number(v.total) || 0) * PD_TOPE_PCT : 0; if (!(v.costo > 0)) sinC++;
         if (ts >= tsU - 30 * DIA && ts < tsU) { uA += q; gA += g; } else if (ts >= tsU) { uD += q; gD += g; } } }
     if (falla) sinLeer++;
     const r = uA / 30, d = (ahora - tsU) / DIA;
