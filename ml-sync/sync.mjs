@@ -4719,7 +4719,7 @@ async function pruebasTechoEnCurso(db, ahora = Date.now()) {
   const filas = []; let sinLeer = 0;
   for (const [m, h] of Object.entries(est)) {
     const e = links[m]; if (!e || e.gemelaDe || e.ignored || e.noVendemosMas || !/^active/.test(String(e.status || ''))) continue;
-    let ult = '', tsU = 0; for (const k of Object.keys(h || {}).map(Number).filter((n) => n > 0).sort((x, y) => x - y)) { const x = h[k]; if (!x || !x.t) continue; ult = x.t === 'correccion' ? pasajeDe(ult) : x.t; tsU = k; }
+    let ult = '', tsU = 0, prev = ''; for (const k of Object.keys(h || {}).map(Number).filter((n) => n > 0).sort((x, y) => x - y)) { const x = h[k]; if (!x || !x.t) continue; const tt = x.t === 'correccion' ? pasajeDe(ult) : x.t; if (tt !== ult) prev = ult; ult = tt; tsU = k; }
     if (ult !== 'techo' || !tsU) continue;
     const grupo = [m, ...hermanasStockDe(links, prods, m), ...Object.keys(links).filter((g) => (links[g] || {}).gemelaDe === m)];
     let uA = 0, uD = 0, gA = 0, gD = 0, sinC = 0, falla = false;
@@ -4734,7 +4734,7 @@ async function pruebasTechoEnCurso(db, ahora = Date.now()) {
     // el precio de antes de la suba que abrió la prueba (la última suba mía desde 30 min antes del tag) y el de hoy
     const subaP = Object.values(ccP).filter((c) => c && String(c.mla) === m && Number(c.ts) >= tsU - 30 * 60e3 && Number(c.a) > Number(c.de)).sort((x, y) => Number(x.ts) - Number(y.ts))[0];
     const pAntes = subaP ? Number(subaP.de) || 0 : 0, pHoy = Number((npP[m] || {}).precio) || 0;
-    filas.push({ m, nom: String(e.title || '?').slice(0, 34), cta: e.cuenta || '?', tsU, pAntes, pHoy, d, r, uD, esp: r * d, espNota: tN ? r * (ahora - tN) / DIA : null, d95: r > 0 ? 3 / r : Infinity, gdA: gA / 30, gdD: d >= 0.5 ? gD / d : null, sinC });
+    filas.push({ m, nom: String(e.title || '?').slice(0, 34), cta: e.cuenta || '?', tsU, tagPrev: prev, pAntes, pHoy, d, r, uD, esp: r * d, espNota: tN ? r * (ahora - tN) / DIA : null, d95: r > 0 ? 3 / r : Infinity, gdA: gA / 30, gdD: d >= 0.5 ? gD / d : null, sinC });
   }
   return { filas, sinLeer, sinNotas: notas == null };
 }
@@ -18006,9 +18006,12 @@ async function main() {
         const vend = x.filter((z) => z.uD > 0).length, cert = x.filter((z) => z.uD === 0 && z.esp >= 3).length;
         const gA = x.reduce((s2, z) => s2 + z.gdA, 0), xd = x.filter((z) => z.gdD != null), gAd = xd.reduce((s2, z) => s2 + z.gdA, 0), gDd = xd.reduce((s2, z) => s2 + z.gdD, 0);
         console.log(`${n.padEnd(18)} ${String(x.length).padStart(3)} · llevan ${dProm.toFixed(1)} d de prueba · para el 95% hacen falta ${d95.length ? (d95.reduce((a, y) => a + y, 0) / d95.length).toFixed(1) + ' d' : 'nunca (sin ritmo)'} · ya vendieron al precio nuevo ${vend} · 0 vendidas con 3+ esperadas (ya hay 95%) ${cert} · ganancia/día juntas antes $${Math.round(gAd).toLocaleString('es-AR')} → después $${Math.round(gDd).toLocaleString('es-AR')} (${xd.length} con medio día o más)`); }
-      { const lentos = filas.filter((z) => z.r > 0 && z.r * 7 < TECHO_RITMO_MIN_SEMANA && z.uD === 0);
+      { const lentosT = filas.filter((z) => z.r > 0 && z.r * 7 < TECHO_RITMO_MIN_SEMANA && z.uD === 0);
+        const lanzT = lentosT.filter((z) => z.tagPrev === 'nuevo'), lentos = lentosT.filter((z) => z.tagPrev !== 'nuevo');
+        const a90 = (p) => { const r = Math.round(p) % 100; return r === 90 || r === 99 ? Math.round(p) : Math.ceil((p + 10) / 100) * 100 - 10; };
+        if (lanzT.length) console.log(`(quedan ${lanzT.length} que eran 🆕 lanzamiento y subieron por la regla del lanzamiento que vendió: ${lanzT.map((z) => z.nom.slice(0, 24)).join(' · ')})`);
         console.log(`\n── 4a (23/10): ${lentos.length} que vendían menos de 1 por semana y no vendieron al precio nuevo → vuelven al precio de antes como 💰 ──`);
-        for (const z of lentos) console.log(z.pAntes > 0 && z.pHoy > z.pAntes ? `decido:${z.m}=${z.pAntes}!golpe!sinlinea!sincerteza!chico#punto|EXCEPCIÓN: lo pide él (4a del 23/10): vendía menos de 1 por semana y no vendió ninguna en ${z.d.toFixed(0)} días a ${'$' + z.pHoy.toLocaleString('es-AR')}. Vuelve a su precio de antes y no se le busca más techo subiendo;go` : `   ⚠️ ${z.m} · ${z.nom} · no encontré el precio de antes (${z.pAntes || '?'}) o no es menor que el de hoy (${z.pHoy || '?'}): mirar a mano`); }
+        for (const z of lentos) console.log(z.pAntes > 0 && z.pHoy > a90(z.pAntes) ? `decido:${z.m}=${a90(z.pAntes)}!golpe!sinlinea!sincerteza!chico#punto|EXCEPCIÓN: lo pide él (4a del 23/10): vendía menos de 1 por semana y no vendió ninguna en ${z.d.toFixed(0)} días a ${'$' + z.pHoy.toLocaleString('es-AR')}. Vuelve a su precio de antes y no se le busca más techo subiendo;go` : `   ⚠️ ${z.m} · ${z.nom} · no encontré el precio de antes (${z.pAntes || '?'}) o no es menor que el de hoy (${z.pHoy || '?'}): mirar a mano`); }
       console.log('\n── una por una (de más días a menos) ──');
       for (const z of filas.sort((a, b) => b.d - a.d)) console.log(`${z.m} · ${z.cta} · ${z.nom} · ${z.d.toFixed(1)} d · antes ${z.r.toFixed(2)}/día · vendió ${z.uD} (esperadas ${z.esp.toFixed(1)}) · 95% a los ${isFinite(z.d95) ? z.d95.toFixed(0) + ' d' : '—'} · ganancia/día antes $${Math.round(z.gdA).toLocaleString('es-AR')} → después ${z.gdD == null ? '?' : '$' + Math.round(z.gdD).toLocaleString('es-AR')}${z.sinC ? ' (' + z.sinC + ' sin costo)' : ''}`);
       return;
