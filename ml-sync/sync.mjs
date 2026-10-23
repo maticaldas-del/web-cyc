@@ -31982,6 +31982,29 @@ async function main() {
       console.log(`Y después corré netoweb, si no la pantalla sigue mostrando el neto del precio viejo.`);
       return;
     }
+    // BILLING_PROBE=ofisinpub → LO QUE ESTÁ EN LA OFICINA Y NO TIENE PUBLICACIÓN VIVA (23/10/2026, él: "¿cargaste todos los productos
+    // nuevos?"). Por ficha (y por color): unidades en la oficina, si tiene catálogo confirmado para `publicar`, y las publicaciones
+    // cerradas que tuvo. Una ficha con publicación viva (aunque pausada) no sale. SOLO LEE.
+    if (/^ofisinpub$/.test(String(process.env.BILLING_PROBE || ''))) {
+      const prodsO = (await db.get('cyc/products')) || {};
+      const inv = (await db.get('cyc/inventory')) || {};
+      const links = (await db.get('cyc/mllinks')) || {};
+      const OFI = sid('Oficina Mati');
+      const vivas = {}, cerradas = {};
+      for (const [k, e] of Object.entries(links)) { if (!e || !e.prodId || e.ignored) continue; const st = String(e.status || ''); if (st === 'closed') (cerradas[e.prodId] = cerradas[e.prodId] || []).push(k); else (vivas[e.prodId] = vivas[e.prodId] || []).push(k); }
+      const filas = [];
+      for (const [pid, p] of Object.entries(prodsO)) {
+        if (!p || !p.name) continue;
+        const of = parseInt(inv[pid + '__' + OFI]) || 0; if (!(of > 0)) continue;
+        if (vivas[pid]) continue;
+        const cat = p.mlCatalogo || p.catalogo || p.mlId || '';
+        filas.push({ pid, nom: p.name, of, cat, cer: (cerradas[pid] || []).length });
+      }
+      filas.sort((a, b) => b.of - a.of);
+      console.log(`=== EN LA OFICINA SIN PUBLICACIÓN VIVA · ${filas.length} ficha(s) · ${filas.reduce((a, f) => a + f.of, 0)} u. ===`);
+      for (const f of filas) console.log(`  ${String(f.of).padStart(4)} u. · ${f.nom.slice(0, 70)} · ${f.cat ? 'catálogo ' + f.cat : 'sin catálogo anotado'}${f.cer ? ` · tuvo ${f.cer} cerrada(s)` : ''} · ${f.pid}`);
+      return;
+    }
     // BILLING_PROBE=huerfanos[:<palabra>] → PRODUCTOS SIN PUBLICACIÓN, Y CUÁL LES CORRESPONDE
     //
     // Son los que en "Margen ML" muestran "—": no hay ninguna publicación apuntándoles, así que no
