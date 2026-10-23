@@ -281,6 +281,8 @@
   mide contra ML. Se guarda TODO (no se borra lo de menos de 15%). Para probar: **25%+ y catálogo de ML con 2+ vendedores** (20/10,
   reemplaza las 100 ventas; sin catálogo exacto afuera; las vendidas del catálogo no se buscan más) **y confirmado que es el mismo
   producto** (✅ o `revcand` ok de ESE catálogo; sin las DOS fotos no va). Sin catálogo se rebusca a los 60 d, sin vendedores a los 30.
+  **Nombre traducido** (23/10, 1a): también se busca con el nombre en castellano (`traducirPyNombre`); lo que tampoco aparece traducido queda
+  **✔️ revisado** (`qp`, `pycatres.scr`, en 📏 Medidos) y no cuenta como sin medir. `pycatdia` = desglose y lo buscado por día.
 - **Dos proveedores:** 🟢 Nissei (dos pedidos del momento: 🌸 Perfumería `pyb<fecha>` y 📦 Resto `py<fecha>`; en `compray` `|perf`/`|resto`)
   y 🟣 **Elegancia** (catálogo "Atacado", `pyel<fecha>`, `candalta:prov=elegancia;…`). Mismos costos.
 - **Recargo** = el MEDIDO de los pedidos (`paramcompra`; 22,7% al 17/10), respaldo 20%. El panel lo suma; el chat carga el precio CRUDO.
@@ -465,4 +467,6 @@ Si dudás si un comando existe, buscá en `sync.mjs` (`grep -n "'<nombre>'" ml-s
 - **`anotarNetoWeb` no se llama desde ningún lado** (el margen sólo se recalcula de noche): o se enchufa o se borra. (ver HISTORIA)
 - **`enProceso`** (lo recibido-procesando en Full) no lo cuenta nadie al marcar una caja: hoy vale ~0, se mira si aparece una caja grande
   en revisión (`internal_process` en el stock actual).
+- **Nissei traducido (23/10):** ~3.970 "sin catálogo" volviéndose a buscar con el nombre traducido (~700 por vuelta). Mirar con `pycatdia`
+  cuántos aparecieron y que "Sin medir" de la web baje a ~100.
 - **Una foto de precios tomada dos veces por mañana** marcó "1 cambio a mano" (sin nombre): mirar.
