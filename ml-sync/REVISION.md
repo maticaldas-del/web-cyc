@@ -396,6 +396,9 @@ Después de los 3 Protectores de talón bajados con `!sinlinea` apoyados en la f
  · **2a:** `ventasraras` imprime 🔬 A FONDO (con motivo) y ✓ normales. Sólo las 🔬 van al ayudante en máximo.
  · **3a:** cada vuelta termina con `bajastecho:1` y deshace las ❌ del día (texto de las tareas programadas y CEREBRO 🔬).
 
+### 23/10/2026 · Nissei: la carpeta "Sin medir o sin precio en ML" pasa a "Sin precio en ML" (etapa 7, pregunta suya)
+ · Él leyó "5.571 sin medir" cuando sólo faltan ~100: el resto ya está buscado (nadie lo vende o afuera por regla). v26.17. Qué chequear: que el título no diga "sin medir" y que "Falta analizar" muestre los que faltan de verdad.
+
 ### 23/10/2026 · F9 de escasez: el precio de antes es el de antes de la PRIMERA suba (etapa 1, revisor de la completa)
  · `frenosBajas` tomaba como "precio de antes de la escasez" el `de` de la ÚLTIMA suba de escasez. Con una escasez subida en
    varios escalones ese número ya era de escasez (Brisa Marina $25.990 contra $18.150 real, Pizarra Rosa $6.490 contra $5.090,
