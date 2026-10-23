@@ -79,6 +79,10 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
 
 ## 1 · PRECIOS (lunes)
 
+### `vara` (23/10/2026, sólo lee): ¿35% o 30% para comprar algo nuevo?
+- Qué: cuenta los candidatos de Paraguay y los productos de las listas por tramo de % (25-30, 30-35, 35-50, 50+), cuántos pasaron todo y cuántos venden 100+, y lista los de 30-35% que pasaron todo.
+- Chequear: que use los mismos filtros que `faltaventas` (vivos, sin categoría que no se mira, costo vigente).
+
 ### ¿Vendemos menos por buscar techo? `efectotecho[:días]` (22/10/2026, pregunta suya, sólo lee)
 - Qué: semana por semana la tienda entera (u., facturado, ganancia, cuántas subas 📈) + cada suba buscando techo de `cyc/claudecambios` con 7+ días: u./día, visitas y ganancia/día con stock, 14 d antes contra hasta 14 después (corta en el próximo cambio), comparado contra lo que se movió la tienda en las mismas ventanas.
 - Chequear: que los días sin stock no cuenten; que el costo c/u salga de lo vendido (sin costo → ⚠️); que el "esperado" use las mismas ventanas que la suba.

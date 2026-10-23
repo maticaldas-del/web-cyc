@@ -17858,6 +17858,32 @@ async function main() {
     // 7+ días encima: unidades, visitas y ganancia por día CON STOCK, 14 días antes contra hasta 14 después (corta en el próximo
     // cambio de precio). Para no confundir el momento del año con el efecto de la suba, cada una se compara también contra lo que
     // hizo la tienda entera en las mismas dos ventanas ("esperado"). Ganancia = neto − costo − IIBB/mono (como `mezcla`).
+    // BILLING_PROBE=vara (23/10/2026, SOLO LEE). Pregunta suya: *"analizá si 35 es mejor que 30 (…) quizás dejar afuera los de 30 a
+    // 35 perdemos muchos productos, pero también es verdad que ya llenamos el cupo del monotributo"*. Cuenta lo NUEVO que se podría
+    // comprar (candidatos de Paraguay vivos y productos de las listas), por tramo de %: cuántos, cuántos ya pasaron todo (2+
+    // vendedores, mismo producto confirmado) y cuánto venden en ML; y lista los de 30 a 35%.
+    if (/^vara$/.test(String(process.env.BILLING_PROBE || ''))) {
+      const cands = (await db.get('cyc/candidatos_py')) || {};
+      const T = [[25, 30], [30, 35], [35, 50], [50, 1e9]], nomT = (t) => (t[1] > 1e8 ? `${t[0]}%+` : `${t[0]}-${t[1]}%`);
+      const filas = [];
+      for (const c of Object.values(cands)) {
+        if (!c || !c.nombre || c.no || c.prodId) continue; const m = Number(c.margen); if (c.margen == null || !isFinite(m) || m < 25) continue;
+        const nv = Number(c.mlVendedores) || 0, ok = nv >= CAND_MIN_VENDEDORES && candCatChequeado(c) && !pyCatNoSeMira(c.nombre);
+        filas.push({ f: 'py', n: c.nombre, m, nv, ok, vend: candVentasDe(c), usd: Number(c.usd) || 0 });
+      }
+      const provs = (await db.get('cyc/mlconfig/listasProv')) || {};
+      for (const [k, pv] of Object.entries(provs)) { if (pv.desc) continue; const cat = (await db.get('mlapi/listas/' + k)) || {};
+        for (const e of Object.values(cat)) { if (!e || listaNoEsVale(e) || e.sacado || e.noWeb || e.noFull || e.m == null || !(Number(e.m) >= 25) || !listaCostoVigente(e)) continue;
+          const nv = Number(e.mv) || 0; filas.push({ f: k, n: String(e.n), m: Number(e.m), nv, ok: nv >= CAND_MIN_VENDEDORES && listaOkVale(e), vend: e.vend != null ? Number(e.vend) : null }); } }
+      console.log('=== LO NUEVO QUE SE PODRÍA COMPRAR, POR TRAMO DE % ===');
+      for (const t of T) { const x = filas.filter((f) => f.m >= t[0] && f.m < t[1]), ok = x.filter((f) => f.ok), okV = ok.filter((f) => f.vend != null && f.vend >= CAND_MIN_VENTAS);
+        console.log(`  ${nomT(t).padEnd(7)} ${String(x.length).padStart(4)} productos (Paraguay ${x.filter((f) => f.f === 'py').length}) · pasaron todo ${ok.length} · y venden ${CAND_MIN_VENTAS}+ en ML ${okV.length}`); }
+      console.log('\n── LOS DE 30 A 35% QUE PASARON TODO (2+ vendedores, mismo producto) ──');
+      for (const f of filas.filter((f) => f.m >= 30 && f.m < 35 && f.ok).sort((a, b) => (b.vend || 0) - (a.vend || 0))) console.log(`  ${f.m.toFixed(0)}% · ${f.f} · ${f.n.slice(0, 70)} · ${f.nv} vend. · vendidas ${f.vend == null ? '?' : f.vend}`);
+      console.log('\n── SONY (los auriculares rosas) ──');
+      for (const f of filas.filter((f) => /sony/i.test(f.n))) console.log(`  ${f.m.toFixed(0)}% · ${f.f} · ${f.n.slice(0, 80)} · ${f.nv} vend. · vendidas ${f.vend == null ? '?' : f.vend} · ${f.ok ? 'pasó todo' : 'falta algo'}`);
+      return;
+    }
     if (/^efectotecho(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const DIAS = Math.max(14, parseInt(String(process.env.BILLING_PROBE).split(':')[1]) || 56);
       const vp = (await db.get('cyc/ventaprod')) || {};
