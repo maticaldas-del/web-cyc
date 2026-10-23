@@ -611,6 +611,10 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 
 ## 3 · MERCADERÍA (miércoles)
 
+### Nissei: búsqueda con el nombre traducido; lo que no aparece queda ✔️ revisado (23/10/2026, v26.15, eligió la 1a)
+- Qué: `traducirPyNombre`/`PY_TRAD` (sync.mjs) agrega a `qs` una búsqueda con el nombre en castellano (auriculares, reloj, negro, inalámbrico…); los `sc` sin `qp` se vuelven a buscar una vez (`_rebuscar`), y al medir queda `qp = PY_NOMBRE_VER`. `pycatres.scr` = sin catálogo y ya buscado traducido; la web lo saca de "Sin medir" y lo muestra en 📏 Medidos como "✔️ Revisados: no están en ML" (`_PYC_GRUPOS.scr`).
+- Chequear: que en 1-2 días los ~3.969 `sc` pasen a `scr` o a medidos; cuántos aparecieron con la traducción (`pycatdia`); que el chequeo de mismo producto (con el nombre original) no deje pasar otro modelo.
+
 ### "❔ No medidos" de Nissei dice qué es cada cosa (23/10/2026, v26.14) + `pycatdia`
 - Qué: la carpeta suma sin medir + sin catálogo exacto + nadie lo vende + por regla (9.471); ahora se llama "Sin medir o sin precio en ML" y arriba dice cuántos faltan buscar de verdad (`nomed`, ~100). `pycatdia[:días]` (sync.mjs, sólo lee) desglosa el catálogo y cuenta lo buscado por día.
 - Medido el 23/10: 775 de 25%+ · 2.352 abajo · 3.969 sin el mismo producto en ML · 5.210 nadie lo vende · 205 por regla · 12 ML no deja. Buscados por día (última vez): 15/10 854 · 16/10 1.421 · 17/10 3.346 · 18/10 4.795 · 19/10 1.759 · 20/10 1 · 21/10 152 · 22/10 9 (la primera pasada terminó el 19/10).
