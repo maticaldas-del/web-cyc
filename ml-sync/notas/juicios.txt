@@ -34,4 +34,4 @@ p1779912656290=0|Pendrive 128gb: se acaban de retirar 34 de Full porque iban a p
 p1780106846533=0|Redmi Pad 2: se vendieron las 2 últimas a pérdida por descarte. No volver a traer
 p17833581096736=0|SSD 1TB: el precio de ML quedó inflado y vendía 1 cada 3 meses. No traer por ahora
 p1779912656300=0|Pendrive Ultra Shift 128: se remató porque estuvo parado meses. No traer
-p17833581096732=1|Watch S5: traer 1 sólo de prueba. Vendió 2 en 30 días pero a un precio que hay que bajar a ~$448.000
+p17833581096732=0|Watch S5: no se trae más (decisión 5a de Matías del 22/10)
