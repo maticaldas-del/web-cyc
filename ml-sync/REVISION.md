@@ -251,6 +251,13 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
  · **2a:** `ventasraras` imprime 🔬 A FONDO (con motivo) y ✓ normales. Sólo las 🔬 van al ayudante en máximo.
  · **3a:** cada vuelta termina con `bajastecho:1` y deshace las ❌ del día (texto de las tareas programadas y CEREBRO 🔬).
 
+### 23/10/2026 · 📈 "dice techo y no sube": la prueba en curso no es un tag mentiroso (etapa 1)
+ · `planilla` sacaba en 📈 toda 📈/🔥 sin suba DESPUÉS del tag. La revisión del 21/10 volvió a poner 📈 sobre pruebas ya subidas
+   (Protector de talón $5.290→$6.490 el 19/10, Hub USB $9.030→$13.990 el 13/10): la lista no se podía vaciar sin subir otra vez una
+   prueba que todavía no tiene certeza. Ahora, si mi último cambio de los 15 días antes del tag fue una SUBA, el precio de hoy es ese
+   y no pasaron 15 días (F4), va abajo como "(prueba de techo en curso …)" y no cuenta. A los 15 días vuelve a la lista.
+   Qué chequear: que una 📈 puesta sin ninguna suba (el caso de la Batidora) siga saliendo, y que una prueba de más de 15 días también.
+
 ### 22/10/2026 · `!sinlinea` no lo leía nadie (etapa 1)
  · F7 de `frenosBajas` acepta `!sinlinea` + "EXCEPCIÓN" en el motivo, pero ni `decido` ni `entrarpromo` pasaban esa bandera: la
    excepción era imposible (en la completa del 22/10 frenó la activación del Corsair y del Soundpeats y 2 bajas). Ahora las dos
