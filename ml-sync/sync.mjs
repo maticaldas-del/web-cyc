@@ -17873,6 +17873,27 @@ async function main() {
     // 35 perdemos muchos productos, pero también es verdad que ya llenamos el cupo del monotributo"*. Cuenta lo NUEVO que se podría
     // comprar (candidatos de Paraguay vivos y productos de las listas), por tramo de %: cuántos, cuántos ya pasaron todo (2+
     // vendedores, mismo producto confirmado) y cuánto venden en ML; y lista los de 30 a 35%.
+    // BILLING_PROBE=pycatdia[:<días>] (23/10/2026, SOLO LEE). Él: *"9471 no medidos en nissei, bajemos ese número, pasame cuántas
+    // sacamos de no revisadas por día"*. Desglosa el catálogo de Nissei (`mlapi/pycat`) en lo que la web junta en "❔ No medidos"
+    // (sin medir de verdad · sin catálogo exacto en ML · nadie lo vende · afuera por regla) y cuenta, día por día, cuántos midió el
+    // robot (`t` de cada producto: la última vez que lo buscó en ML).
+    if (/^pycatdia(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const DIAS = Math.max(3, parseInt(String(process.env.BILLING_PROBE).split(':')[1]) || 14);
+      const cat = (await db.get('mlapi/pycat')) || {}; const R = (await db.get('cyc/pycatres')) || {};
+      const c = { tot: 0, sinT: 0, mAlto: 0, mBajo: 0, sc: 0, sv: 0, fz: 0, nm: 0, tSinNada: 0 }; const porDia = {};
+      for (const e of Object.values(cat)) { if (!e || !e.n) continue; c.tot++;
+        if (e.t) { const d = dayKeyFromISO(Number(e.t)); porDia[d] = (porDia[d] || 0) + 1; }
+        if (e.fz) c.fz++; else if (e.m != null && isFinite(e.m)) { if (Number(e.m) >= CAND_PISO_PCT) c.mAlto++; else c.mBajo++; }
+        else if (e.sc) c.sc++; else if (e.sv) c.sv++; else if (e.nm) c.nm++; else if (!e.t) c.sinT++; else c.tSinNada++; }
+      console.log(`=== CATÁLOGO DE NISSEI · ${c.tot} productos ===`);
+      console.log(`  medido con % de 25+ (pasan a candidatos o ya lo son) ${c.mAlto} · medido abajo de 25% ${c.mBajo}`);
+      console.log(`  buscado y SIN el mismo producto en ML ${c.sc} · encontrado pero NADIE lo vende ${c.sv} · afuera por regla ${c.fz}`);
+      console.log(`  ML no deja medirlo ${c.nm} · NUNCA buscado ${c.sinT} · buscado sin resultado guardado ${c.tSinNada}`);
+      console.log(`  web (cyc/pycatres): nomed ${R.nomed} · sc ${R.sc} · sv ${R.sv} · fz ${R.fz} · cand ${R.cand} · ficha ${R.ficha} · bajo ${R.bajo} · al ${R.t ? new Date(R.t).toISOString() : '?'}`);
+      console.log(`\n── CUÁNTOS BUSCÓ EL ROBOT EN ML, POR DÍA (la última vez de cada producto) ──`);
+      for (const d of Object.keys(porDia).sort().slice(-DIAS)) console.log(`  ${d.replace(/_/g, '/')}  ${String(porDia[d]).padStart(5)}`);
+      return;
+    }
     if (/^vara$/.test(String(process.env.BILLING_PROBE || ''))) {
       const cands = (await db.get('cyc/candidatos_py')) || {};
       const T = [[25, 30], [30, 35], [35, 50], [50, 1e9]], nomT = (t) => (t[1] > 1e8 ? `${t[0]}%+` : `${t[0]}-${t[1]}%`);
