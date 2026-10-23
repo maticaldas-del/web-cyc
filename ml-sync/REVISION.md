@@ -97,6 +97,13 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
 - Qué: cuenta los candidatos de Paraguay y los productos de las listas por tramo de % (25-30, 30-35, 35-50, 50+), cuántos pasaron todo y cuántos venden 100+, y lista los de 30-35% que pasaron todo.
 - Chequear: que use los mismos filtros que `faltaventas` (vivos, sin categoría que no se mira, costo vigente).
 
+### `!activar` sin fecha de alta (23/10/2026, etapa 1)
+- **Qué es:** la única salida mía sin él (corregir el precio de lo que NUNCA estuvo activo al activarlo) pedía `altaTs` en el renglón de
+  `cyc/mllinks`; el Sacapelusas y la Mentonera (Ayelen) no lo tenían y quedaban frenados por F2/F7 aunque su línea dijera "siempre
+  pausada". Sin `altaTs` vale el primer día de la línea de tiempo, y el freno dice por qué `!activar` no vale (activa tal día, sin fecha, +90 d).
+- **Dónde vive:** `sync.mjs` → `frenosBajas` (`altaRef`, `diaActiva`, `porQueNoActivar`).
+- **Qué chequear:** que algo que estuvo activo un solo día siga frenado (pide su autorización).
+
 ### `pydet:<id>` (23/10/2026, sólo lee): el detalle guardado de un pedido de Paraguay
 - **Qué es:** cada renglón como `código*unidades*pagado` con el precio de la web al lado. Para cargar un ticket que faltaba hay que
   mandar el `det=` ENTERO (lo que no figura sale del pedido). Primer uso: el 4º ticket del pedido del 08/10 (`py20261010`; Revlon 14,

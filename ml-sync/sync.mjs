@@ -4396,8 +4396,14 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
     // publicación que NUNCA estuvo activa ni vendió (su línea de tiempo no tiene un día activo ni una venta, y se dio de alta hace
     // menos de 90 días) se puede corregir al activarla (`!activar` + "EXCEPCIÓN: …") sin línea de techo: ahí no hay un precio que el
     // mercado haya visto, así que no se deshace nada. Lo que estuvo a la venta aunque sea un día no entra (eso pide su autorización).
-    const nuncaActiva = !!lin && !ks.some((k) => lin[k].est === 'active' || Number(lin[k].u) > 0) && Number(e.altaTs) > 0 && ahora - Number(e.altaTs) <= 90 * 864e5;
+    // 23/10/2026 (Sacapelusas y Mentonera): una publicación vinculada sin `altaTs` (el renglón se reescribe entero al sincronizar) no
+    // entraba nunca acá aunque su línea dijera "siempre pausada". Sin `altaTs` vale el primer día de su línea de tiempo.
+    const altaRef = Number(e.altaTs) > 0 ? Number(e.altaTs) : (ks.length ? Date.parse(ks[0].replace(/_/g, '-') + 'T12:00:00-03:00') || 0 : 0);
+    const diaActiva = lin ? ks.find((k) => lin[k].est === 'active' || Number(lin[k].u) > 0) : null;
+    const nuncaActiva = !!lin && !diaActiva && altaRef > 0 && ahora - altaRef <= 90 * 864e5;
     const antesDeActivar = exc(fz, 'activar') && nuncaActiva;
+    // por qué `!activar` no vale (para que el freno lo diga en vez de sólo frenar)
+    const porQueNoActivar = exc(fz, 'activar') && !nuncaActiva ? (diaActiva ? ` (!activar no vale: estuvo activa o vendió el ${diaActiva.slice(8, 10)}/${diaActiva.slice(5, 7)})` : !(altaRef > 0) ? ' (!activar no vale: no sé cuándo se creó)' : ' (!activar no vale: se creó hace más de 90 días)') : '';
     const golpe = exc(fz, 'golpe');
     const maxB = enEscasez ? 0.25 : 0.15, baja = (p0v - a) / p0v, esEscalon = a < p0v * 0.995;
     const ultSuba = camb.find((c) => !c.rev && c.a > c.de * 1.05);   // la última suba de 5%+ (una prueba de verdad; no una vuelta atrás del detector)
@@ -4434,7 +4440,7 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
         if (!t95) {
           if (!lin || !(cu > 0)) return { regla: 'F7', sinDato: true, txt: 'no pude leer la línea de tiempo o el costo: sin saber si tiene línea de techo no bajo' };
           const R7 = rayasPrecioLinea(lin, cu, imp, hoyK);
-          if (!R7.techo) return { regla: 'F7', txt: `no tiene línea de techo 🔴 al 95% (${R7.best ? '💰 ' + $(R7.best.p) + ', nunca se midió más caro con certeza' : 'pocos días medibles todavía'}): sin techo no se baja, se busca techo (📈) hasta estar 95% seguro. Lo que vendieron otras variantes o la familia NO alcanza. Salida SÓLO SUYA (precio mal puesto, ML la pausó por el precio, o lo pide él): 🔐 !sinlinea con su autorización por Telegram` };
+          if (!R7.techo) return { regla: 'F7', txt: `no tiene línea de techo 🔴 al 95% (${R7.best ? '💰 ' + $(R7.best.p) + ', nunca se midió más caro con certeza' : 'pocos días medibles todavía'}): sin techo no se baja, se busca techo (📈) hasta estar 95% seguro. Lo que vendieron otras variantes o la familia NO alcanza. Salida SÓLO SUYA (precio mal puesto, ML la pausó por el precio, o lo pide él): 🔐 !sinlinea con su autorización por Telegram${porQueNoActivar}` };
         }
       }
       // ── F4 · una suba no se deshace por casualidad
