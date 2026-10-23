@@ -47562,6 +47562,19 @@ async function main() {
       }
       return;
     }
+    // BILLING_PROBE=pydet:<id> (23/10/2026, SOLO LEE). El detalle guardado de un pedido de Paraguay (`cyc/compraspy/<id>`), renglón por
+    // renglón en el formato de `det=` (código*unidades*pagado) con el precio de la web al lado: para cargar un ticket que faltaba hay que
+    // mandar el detalle ENTERO (lo que no figura en `det=` sale del pedido), así que se arma a partir de esto.
+    if (/^pydet:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const id = String(process.env.BILLING_PROBE).slice('pydet:'.length).trim();
+      const c = await db.get('cyc/compraspy/' + id);
+      if (!c) { console.log(`No hay pedido ${id} en cyc/compraspy.`); return; }
+      const it = Array.isArray(c.items) ? c.items : [];
+      console.log(`=== ${id} · ${c.fecha || '?'} · ${c.estado || '?'} · US$ ${c.usdCrudo} · ${it.length} renglones · nota: ${String(c.nota || '').slice(0, 160)} ===`);
+      for (const x of it) console.log(`${x.cod}*${x.u}*${x.usd}   web ${x.usdWeb != null ? x.usdWeb : '?'} · ${String(x.nom || '').slice(0, 60)}${x.prodId ? ' · ficha ' + x.prodId : ''}`);
+      console.log(`suma: US$ ${it.reduce((a2, x) => a2 + (Number(x.usd) || 0) * (Number(x.u) || 0), 0).toFixed(2)} · campos del ticket: ${Object.keys(c.ticket || {}).join(', ') || 'ninguno'}`);
+      return;
+    }
     // BILLING_PROBE=pyped[:...] → LOS PASOS DE UN PEDIDO A PARAGUAY, DESDE EL CHAT (26/09/2026).
     // Regla suya del 26/09: *"no quiero marcar a mano, todo te lo voy a decir para que lo hagas vos"*.
     // Hace lo MISMO que los botones de la web (pyCanastaYaLoPedi, pyPedidoHecho, pyPedidoLlego), con
