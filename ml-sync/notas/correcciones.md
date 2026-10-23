@@ -9,6 +9,23 @@ Cada corrección: fecha · qué · por qué pasó · qué cambié. Los lunes se 
 | 20/10 | Ferrari Rojo: dije que la Premium no sumaba ventas; las Clásicas llevan 88 d sin vender y la Premium vendió 2 en 30 | comparé las publicaciones entre sí y no contra qué pasaba SIN la Premium | pregunta 21 en preguntas.md · busco más productos para gemela Premium |
 | 20/10 | Cuba Platinum (y en la misma vuelta Cuba Classic, Halloween Man y Adyan): bajé lo recién llegado sin techo medido, con toda la info a mano | no fue falta de dato: dos reglas chocaron ("ganar la caja" contra "lo nuevo no baja sin 🏔️ al 95%") y ganó la equivocada; los ayudantes y el revisor leen el mismo texto, así que tienen el mismo punto ciego | freno en el código (`decido` no baja lo nuevo sin `techook`) · `bajasnuevas` encontró las 5 · los dos Cuba volvieron a $50.000 · pregunta 22 |
 | 21/10 | Adaptador 8 en 1: (1) el 13/10 subí $19.990 → $27.990 sin medir el escalón · (2) el 16/10 volví $27.990 → $19.990 de golpe · (3) el 18/10 bajé a $17.990, abajo del 💰 piso $18.220 · (4) la raya "a $27.990 ya no vende" salía como segura con 1-2 días y 0 de ~2,7 esperadas | (1) y (2) son de antes de la regla de la escalera (18/10, nació de este caso); (3) el redondeo a 990 lo empujó abajo del piso y nadie lo frenó; (4) la raya de `techofreno` no se medía | (3) vuelto a $18.290 · (4) v25.55: la raya dice "N% seguro" o "sin certeza" · frenos de piso y escalera en la reconstrucción del cerebro · pregunta 23 |
+| 22/10 | Paulvic: "18.000 más de flete" lo sumé al $17.900 ($35.900); era el mismo flete redondeado ($18.000) | con una frase de dos lecturas elegí la que suma plata en vez de preguntar o tomar la que no duplica | flete $18.000 cargado · pregunta 24 |
+| 23/10 | Batidora Blanco: "no tiene techo y bajó" (el 20/10 $22.990 → $20.990) | baja de antes del detector que deshacía una suba sin 95% (F4); era uno de los 22 ❌ viejos que esperaban decidirse de a uno | vuelta a $22.990 #techo en sus dos publicaciones · los otros 20 ❌ viejos se le proponen juntos |
+| 23/10 | Masajeador de cara: "¿no busca techo?" (🆕 que vendió el 22/10 y siguió en $22.990) | la venta entró por la gemela Premium y el control de la vuelta leía la estrategia de la gemela (💳, "bien"), no la 🆕 de su Clásica | subido a $29.990 #techo · las ventas de una gemela se juzgan con la estrategia de su Clásica · el detector lista 🆕 que vendieron y no subieron · pregunta 25 |
 
 - 20/10/2026 · Ventas vivas apagadas un día: al agregar atributos a la tarjeta de venta (v24.86) se rompió `vivaEnvolver` en silencio. Pregunta general: ¿qué otra cosa depende del texto exacto de una etiqueta HTML?
 - (22/10) Bajé 3 Protectores de talón sin línea de techo usando la familia como certeza (!sinlinea). Él: "si no encontró techo, ¿por qué bajó?". Cada variante sola; !sinlinea sólo para error de precio. Deshecho el mismo día.
+
+## Cada corrección y su chequeo en el detector 🔎 `errores` (22/10/2026, regla suya: "un aviso alcanza")
+Cada corrección nueva suma acá su renglón y su chequeo en `detectarErrores` (sync.mjs) en el mismo commit. Si es de precios y se
+puede medir, también su freno en `frenosBajas`; si se pasó por una bandera de excepción, esa bandera pasa a ser 🔐 suya.
+
+| corrección | lo que mira el detector | freno |
+|---|---|---|
+| 20/10 Cuba Platinum (lo nuevo bajado sin techo) | baja de algo nuevo (<30 d en Full o 🆕) sin 🏔️ de techo95 | F1 · `!sintecho` 🔐 |
+| 21/10 Adaptador 8 en 1 (golpe, abajo del 💰) | baja de más de 15% (25% en escasez) · dos bajas en <48 h (12 h) · abajo del 💰 piso | F2 · F3 · F5 |
+| 21/10 Persea / Aer Jasmín (deshacer la prueba sin certeza) | baja que deshace una suba de <15 d sin 95% · arriba del 💰 sin 95% | F4 · F8 · `!sincerteza` 🔐 |
+| 22/10 3 Protectores de talón (`!sinlinea` por la familia) | baja sin línea de techo (🔴 al 95% o 🏔️) y sin su autorización | F7 · `!sinlinea` 🔐 |
+| 23/10 Masajeador (🆕 que vendió por la Premium y no subió) | no es un cambio sino algo que faltó: 🆕 activa que vendió (ella o su gemela/hermana) después del tag sin una suba mía después de la venta → lista 🆕 del detector con el `decido` +30% listo | — (bloque 🆕 de `errores`) |
+| reglas 🔒 del CEREBRO §0 | abajo de 0% sin su autorización · escasez abajo del precio de antes · descuento sin sobra · abajo del 25% peor caso sin `!piso` · escasez/techo en una baja · suba #techo de menos de +30% o de más del doble · precio que no termina en 90/990 | F0 `!bajocero` 🔐 · F9 · F6 · (aviso) |
+| 19/10 Iscos (un solo vendedor inflado) | no es un cambio de precio: lo frena la medición de candidatos (1 vendedor = para revisar) | — |

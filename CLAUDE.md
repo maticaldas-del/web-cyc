@@ -75,14 +75,22 @@
 - **Casi todo se vende por Full. Nada fuera de Full** (18/10): lo activo en depósito con unidades lo pausa el robot cada hora; el
   "1" de depósito que pide ML no es mercadería (stock fuera de Full = 0, no cuenta en patrimonio).
 - **La mercadería no se mueve entre cuentas** (22/09): un producto nuevo queda en su cuenta para siempre. Orden para elegir dueña:
-  1) la que ya lo publica · 2) **el rubro (perfumes → Adriana)** · 3) el equilibrio (la que menos facturó entre las que llegan al
-  25%; `repartopy`) · y la actividad de ARCA. **Una sola cuenta por producto** (09/09; excepción Paulvic: Adriana + Persea en
+  1) la que ya lo publica · 2) **el rubro (perfumes → Adriana)** · 3) el equilibrio: **la que más lugar tiene contra el tope de H**
+  (proyección al cierre de la ventana de ARCA, entre las que llegan al 25%; `repartopy`, `lugarHPorCuenta`; 7a del 22/10) · y la actividad de ARCA. **Una sola cuenta por producto** (09/09; excepción Paulvic: Adriana + Persea en
   Luciana). En la MISMA cuenta sí puede repetirse.
 - **Pedidos mira el stock de las 4 cuentas juntas** (C1, 29/09: si en total se vende 10/mes y hay 10 en otra cuenta, no se compra).
   **No volver a proponer calcularlo por cuenta.**
 - **Cobro del mes** (17/10): se cobra lo que dice "💸 cuánto cobrar" del mes cerrado (ganancia real de CYC ÷ 3, cada socio; ×2 =
   retiro). **Reemplaza los $1.800.000 fijos.** El 1º del mes cargo el retiro con ese número (`cobromes:<mes cerrado>`). La tarjeta
   del mes en curso proyecta a fin de mes al ritmo del mes. El interés del capital en dólares ya no se paga desde el 19/09 (ver HISTORIA).
+- **LA ESTRATEGIA PARA GANAR MÁS (22/10/2026, eligió 1a 2a 4a 5a 6a 7a 8b; la 3 quedó para después).** El tope de H no deja
+  facturar más (~$800.000/día, ya estamos ahí): lo que sube la ganancia es **cuánto deja cada $100 facturados** (oct: $19, meta $22;
+  meta $1.200.000 c/u = ~37,3% de margen promedio). 1a **comprar algo nuevo pide 35%** (`CAND_VARA_COMPRA`, web y robot; Paraguay y
+  Listas); **lo que vende 100+ en ML con 2+ vendedores entra desde 30%** (`varaCompra`, 23/10 1a: colchón de ~$52 M del tope hasta fin de año; se vuelve a medir en febrero con los topes nuevos; nada nuevo a Matías, que llega justo); lo de 25-34% queda guardado y se sigue midiendo; **reponer lo que ya se vende sigue en 25%** (no toca el Paulvic) ·
+  2a lo que queda abajo de 25% después de buscarle techo **no se repone** y le propongo un reemplazo · lo de **25-35% con el techo ya encontrado se sigue reponiendo** y se reemplaza de a poco sólo cuando aparece algo nuevo de 35%+ que ocupe su lugar (22/10, eligió la a) · 4a tarjeta 🧮 Mezcla en
+  Métricas · 5a **Watch S5 y Redmi Pad 2 no se reponen más** · 6a **Full: meta menos de $100.000/mes; un retiro de Full sólo con su
+  OK** · 7a lo nuevo va a la cuenta con más lugar contra H · 8b **por ahora las 4 cuentas en H, sin 5ª cuenta ni K**. Detalle en
+  `ml-sync/CEREBRO.md` (💹). La 3 (ordenar compras y pedidos por ganancia por peso facturado): **no se toca por el momento** (él, 22/10); no volver a proponerla hasta que la saque él.
 - **La plata ya no es el límite: el proveedor sí** (24/08). Liberar caja vale menos que el almacenamiento y el descarte.
 - OSDE y el colegio son PERSONALES (no cargar). **Sancor = la obra social privada de Ayelen** (un solo renglón, monto real de la factura).
 
@@ -140,7 +148,7 @@
   gris si no cambió nada, color de la estrategia si cambió) → **al terminar, `bajastecho:1` y el detector `errores`, y deshacer en la
   misma vuelta toda ❌ del día** (22/10, 3a: vuelve al precio de antes con `!chico` y "EXCEPCIÓN: vuelve al precio de antes").
 - Listas que tienen que quedar **vacías** al terminar la vuelta: 🚨 escasez que vendió después de mi decisión (`escasez`) · 🛡️ abajo
-  del 25% en el peor caso · 📦 sobra sin decidir · 🔎 sin afinar · 📈 dice techo/escasez y no sube (todas en `planilla`).
+  del 25% en el peor caso · 📦 sobra sin decidir · 🔎 sin afinar · 📈 dice techo/escasez y no sube (todas en `planilla`) · 🆕 lanzamiento que vendió (también por su gemela) y no subió (en `errores`, 23/10).
 - **Activar lo pausado es prioridad** (10/10): `pausadas:25` + `activarfull:go:25`; toda pausada con stock en Full que no se activa
   va al `pregunto:` con motivo. Lo nuevo (nunca estuvo en Full) lo activo yo con el precio ya puesto (peor caso).
 - **Preguntas de compradores:** las contesto yo (`contesto:<id>=<respuesta>;…;go`), sólo las nuevas y sólo las que sé SIN DUDA.
@@ -273,6 +281,8 @@
   mide contra ML. Se guarda TODO (no se borra lo de menos de 15%). Para probar: **25%+ y catálogo de ML con 2+ vendedores** (20/10,
   reemplaza las 100 ventas; sin catálogo exacto afuera; las vendidas del catálogo no se buscan más) **y confirmado que es el mismo
   producto** (✅ o `revcand` ok de ESE catálogo; sin las DOS fotos no va). Sin catálogo se rebusca a los 60 d, sin vendedores a los 30.
+  **Nombre traducido** (23/10, 1a): también se busca con el nombre en castellano (`traducirPyNombre`); lo que tampoco aparece traducido queda
+  **✔️ revisado** (`qp`, `pycatres.scr`, en 📏 Medidos) y no cuenta como sin medir. `pycatdia` = desglose y lo buscado por día.
 - **Dos proveedores:** 🟢 Nissei (dos pedidos del momento: 🌸 Perfumería `pyb<fecha>` y 📦 Resto `py<fecha>`; en `compray` `|perf`/`|resto`)
   y 🟣 **Elegancia** (catálogo "Atacado", `pyel<fecha>`, `candalta:prov=elegancia;…`). Mismos costos.
 - **Recargo** = el MEDIDO de los pedidos (`paramcompra`; 22,7% al 17/10), respaldo 20%. El panel lo suma; el chat carga el precio CRUDO.
@@ -295,7 +305,8 @@
   (monitoreo/DVR, digital, filmadora, auto, infantil, marcha atrás), placa madre, placa de video, monitor, impresora, TV, computadora,
   servidor; lo grande (gabinete, silla y escritorio gamer, UPS, robot de limpieza, aire, heladera, lavarropas, microondas, horno y cocina
   eléctrica, hidrolavadora, monopatín, scooter, bici y moto eléctrica, sillas y mesas, valijas, musculación, cortadora robot, caja fuerte);
-  termos y térmicos (hasta que él decida). **Sí:** aspiradoras, drones (≤US$215), consumibles. **Maquillaje todo adentro con tono EXACTO**
+  termos y térmicos (hasta que él decida). El robot las aplica al pasar a Para probar y a `faltaventas` (`pyCatNoSeMira`; 23/10, 1a: 3 cámaras
+  se habían colado); `candfuera[;go]` saca las vivas. **Sí:** aspiradoras, drones (≤US$215), consumibles. **Maquillaje todo adentro con tono EXACTO**
   (marca + línea + tono + versión + tamaño; sin el tono en ML → afuera), pero sólo entra al pedido si da 25%. Resto: mismo modelo, color,
   capacidad y voltaje (110V afuera), nada de packs distintos. Misma marca ≠ mismo producto (Cabotine 30 vs 100, Animale For Men vs Black).
 - Al llegar: `pyped:llego` crea las fichas (costo pagado × recargo) y recuerda contar la oficina (`ofi`); elegir cuenta según rubro.
@@ -311,8 +322,8 @@
 - Fechas al 19/10: Dai Nippon L1309 19/10 · Unilever 08/10 · Iscos 01/10 · Cadam 26/09 · Qsoft 23/09 · Godrej 01/08 (Wels también).
 
 ### Paulvic (perfumes, proveedor de Bs As; CEREBRO §18)
-- **Costo = el del último pedido** (17/10): (pagado + flete) ÷ (llegadas + testers + regalos perfume); testers y regalos se venden al costo
-  (`pvped:costo:<id>;apagar=;flete=;tester=;regalo=;go`; también `llego` y `pago`). Tarjeta por pedido (`pvPedidoTarjeta`).
+- **Costo = el del último pedido** (17/10): (pagado + flete) ÷ (llegadas + regalos perfume). **Los testers NO cuentan** (22/10: son probadores
+  que se le dan a la perfumería, no se venden ni se cobran; se anotan con `tester=` y no entran a la oficina) (`pvped:costo:<id>;apagar=;flete=;tester=;regalo=;go`; también `llego` y `pago`). Tarjeta por pedido (`pvPedidoTarjeta`).
 - **7 días hábiles para pagar desde que llega, si no +10%** (20/10): avisarle al llegar los días que le quedan.
 - **Lo que se pide y no viene no se pide más** (`cyc/noconsigo/<prod>/nunca/<aroma>`, `pvped:nunca:-<aroma>;go` lo saca).
 - Cada aroma es su publicación y se juzga solo (grupo de precio desactivado 04/09). Compartido Adriana + Persea en Luciana.
@@ -415,7 +426,7 @@
 | `gemela` · `gemelacrea:<MLA>=<precio>:go` · `gemelaenvio` · `gemelaenviocrea` · `gemelaalinear` | gemelas Premium y envío gratis |
 | `cupo` · `codigos[:palabra]` · `pasara`/`nomandar:<cuenta>:<palabras>[:go]` | cupo de Full, códigos de etiqueta, reparto por cuenta |
 | `ancla:<cuenta>=<pesos>;go` · `dispo` · `saldoml` · `cargargasto` · `vergastos[:mes]` · `cargosmes` · `cobromes` · `factarca` · `catmono` · `facarca` · `topeh` | plata y ARCA |
-| `cerebro`/`analizapromo:<días>:<palabras>` · `eventos` · `fechas` · `vistas` · `ventashora` | promos, fechas, mediciones |
+| `cerebro`/`analizapromo:<días>:<palabras>` · `eventos` · `fechas` · `vistas` · `ventashora` · `efectotecho[:días]` | promos, fechas, mediciones (¿las subas 📈 bajan ventas/ganancia?) |
 | `chequeo[:días]` · `alertas[:horas]` · `reglas` · `permisos` · `probarput:<MLA>` | chequeo, avisos, base, permisos de ML |
 | `tgaprobar:<núm>:go` · `tgchats` · `webpush` | Telegram y push |
 | `liquidando[:<MLA>][:go]` · `nomas:<MLA>:go` · `pausar:<busca>[!saca][:go]` | marcas sobre publicaciones |
@@ -433,8 +444,12 @@ Si dudás si un comando existe, buscá en `sync.mjs` (`grep -n "'<nombre>'" ml-s
   **14/11 pedido de Navidad para 45 días**.
 - **Medir 6.A1** (21/10): `publicar` sin go en la próxima llegada (avisarle antes de crear) · `ficha:<MLA>` sin go (línea RAYAS) ·
   `altanuevas`/`pausadas`. `cargosmes:auto` corre solo el 01/11. (ver HISTORIA, "62 DECISIONES")
-- **Paulvic:** juzgar la prueba de $21.990 (si perdió, volver a $14.950; si ganó, extender primero Persea) y la idea de un Paulvic de
+- **Paulvic:** juzgar la prueba de $21.990 (si perdió, volver a $14.950; si ganó, extender primero Persea; `efectotecho` 22/10: 5 aromas
+  que vendían 1-2 cada 14 d no vendieron más, Good igual plata con 1/3 de unidades, L'extase mejor; Paulvic −~$1.300/día, pocas ventas: sin certeza) y la idea de un Paulvic de
   hombre a ~$17.990. Pedido del 06/10 llegó y se pagó (ver HISTORIA). Blush sin publicación en ML.
+  **Pedido `pv20261019` llegó el 22/10 COMPLETO** (114 u. + 3 testers de Witch Night/Good/Blue para la perfumería, no cuentan;
+  flete $18.000, el del remito redondeado, cargado). Facturas A 45796/97: total $798.758,16 (con IVA); se paga con 5% menos si es en 7 días hábiles (la calculadora del 06/10 fue factura × 0,95 exacto) → a pagar **$758.820,25**, cargado;
+  **pagar antes del lun 02/11** (si no, +10%); con el comprobante, `pvped:pago`.
 - **Iscos del 19/10:** se publica en ML (lo hace él); al llegar fichas con costo web × 0,665 y el precio lo decido yo (peor caso). Los dos
   Nina 50 ml pueden no venir. Se esperan ~5-10%: si no deja ni el costo, avisarle.
 - **Paraguay:** cuentas de correo (monto y kilos) del pedido del 08/10 y datos del 08/09; transferencia de $50.000 del 29/09 (preguntar).
@@ -452,4 +467,6 @@ Si dudás si un comando existe, buscá en `sync.mjs` (`grep -n "'<nombre>'" ml-s
 - **`anotarNetoWeb` no se llama desde ningún lado** (el margen sólo se recalcula de noche): o se enchufa o se borra. (ver HISTORIA)
 - **`enProceso`** (lo recibido-procesando en Full) no lo cuenta nadie al marcar una caja: hoy vale ~0, se mira si aparece una caja grande
   en revisión (`internal_process` en el stock actual).
+- **Nissei traducido (23/10):** ~3.970 "sin catálogo" volviéndose a buscar con el nombre traducido (~700 por vuelta). Mirar con `pycatdia`
+  cuántos aparecieron y que "Sin medir" de la web baje a ~100.
 - **Una foto de precios tomada dos veces por mañana** marcó "1 cambio a mano" (sin nombre): mirar.

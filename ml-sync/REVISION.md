@@ -78,6 +78,28 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   por `informe`/`alertas` y no a Telegram; que las cajas que ML da por entradas las marque Claude y no queden contadas dos veces.
 
 ## 1 · PRECIOS (lunes)
+
+### 🆕 Lanzamiento que vendió por la gemela y no subió (23/10/2026, corrección suya con el Masajeador)
+- **Qué es:** la venta del Masajeador entró por la Premium; el 🧭/🔬 de `ventasraras` leía la estrategia de la gemela (💳 = bien) y no la 🆕 de su
+  Clásica, así que no salió "lanzamiento que vendió" y la vuelta no lo subió. Ahora una venta de gemela se juzga con la estrategia (y el techo
+  probado) de su Clásica, y el detector `errores` agrega el bloque 🆕 LANZAMIENTOS QUE VENDIERON Y NO SUBIERON (Clásica activa con tag 🆕,
+  venta propia o de gemela/hermana después del tag, sin suba mía después de esa venta) con el `decido` +30% listo.
+- **Dónde vive:** `sync.mjs` → `ventasraras` (`clasDe`, `estDe`) y `detectarErrores` (bloque `lanza`, `res.lanza`).
+- **Qué chequear:** que el bloque salga vacío al terminar cada vuelta · que no liste lo que ya subió · que la venta de una gemela 🆕 salga 🔬
+  "lanzamiento que vendió (por la gemela…)".
+
+### Vara de compra: 35%, o 30% si vende 100+ con 2+ vendedores (23/10/2026, v26.13, eligió la 1a)
+- Qué: `varaCompra`/`candVaraDe`/`listaVaraDe` en index.html y sync.mjs (las dos iguales). Web: `candPisoDe`, colores (`candPctCol`), `_listaMed25`, carpetas de Listas. Robot: `pedir`, `revisarcompra`, `cuentaLista`, `listarevisar`; `faltaventas` lista desde 30% (las vendidas deciden).
+- Por qué: hasta el 31/12 sobran ~$52 M contra el tope de H (Matías al límite): un 30-35% que vende mucho suma en vez de desplazar. En febrero, con los topes nuevos, se vuelve a medir.
+- Chequear: Sony EX15LP rosa (32%, 1.000 vendidas, 8 vend.) en verde y pedible; uno de 32% con 25 vendidas en rojo; que web y robot den la misma vara.
+
+### `vara` (23/10/2026, sólo lee): ¿35% o 30% para comprar algo nuevo?
+- Qué: cuenta los candidatos de Paraguay y los productos de las listas por tramo de % (25-30, 30-35, 35-50, 50+), cuántos pasaron todo y cuántos venden 100+, y lista los de 30-35% que pasaron todo.
+- Chequear: que use los mismos filtros que `faltaventas` (vivos, sin categoría que no se mira, costo vigente).
+
+### ¿Vendemos menos por buscar techo? `efectotecho[:días]` (22/10/2026, pregunta suya, sólo lee)
+- Qué: semana por semana la tienda entera (u., facturado, ganancia, cuántas subas 📈) + cada suba buscando techo de `cyc/claudecambios` con 7+ días: u./día, visitas y ganancia/día con stock, 14 d antes contra hasta 14 después (corta en el próximo cambio), comparado contra lo que se movió la tienda en las mismas ventanas.
+- Chequear: que los días sin stock no cuenten; que el costo c/u salga de lo vendido (sin costo → ⚠️); que el "esperado" use las mismas ventanas que la suba.
 - **✅ LAS 6 DECISIONES DE PRECIOS: ELIGIÓ TODAS (a) EL 21/10/2026** (en 1.6 aclaró: *"en verdad son las mismas unidades, no habría que duplicar la plata"*). Antes decía: ESPERAN SU RESPUESTA (él: *"guardás eso junto con las de diseño"*). Se le
   recuerdan junto con las 30 de diseño. (a) = la recomendada. 1 volver al precio de antes tras una prueba de techo que no rindió →
   (a) 🪜 bajando hasta que techo95 diga 95% (b) sigue quedando 🏔️ hasta que techo95 lo corrija · 2 la marca liquidando frena también
@@ -245,11 +267,85 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   promo no pase por abajo del piso sin `!piso` ni de 0% · que el cerebro de la noche no lea el precio de promo como
   "cambio a mano" y frene subas.
 
+### 22/10/2026 · 🔐 UN AVISO ALCANZA: todos los caminos por las reglas, salidas sólo suyas y el detector (etapa 1, eligió todo)
+Después de los 3 Protectores de talón bajados con `!sinlinea` apoyados en la familia. **Reemplaza la 1a de abajo** (`!sinlinea` +
+`!activar`): `!sinlinea` pasa a ser SÓLO SUYA; lo único que queda mío es corregir el precio de lo que NUNCA estuvo activo.
+ · **LOS CAMINOS QUE CAMBIAN UN PRECIO O UN DESCUENTO EN ML** (medido en sync.mjs el 22/10, función por función):
+   - BAJAN la lista y pasan por `frenosBajas`: `decido` (antes de escribir, con sus banderas) → `aplicarCerebro` → `setPriceTo` (entra
+     por la marca `_FRENOS_OK`, una vez, 1 h) · y TODO lo demás que llama a `setPriceTo` pasa por LA PUERTA (`_frenosEnLaPuerta`, sin
+     banderas): `alpiso`, `bajar`, `tocados`, `unapub …bajar=`/`empatar` (éstos también la miran ANTES de marcar liquidando), el
+     `cerebro:go` y las bajas de `avisos:go` (rescate/caja/remate/escalera, apagadas con `autoPrecios` off), `volverSinFull` y el
+     `supervisor` (apagados con SOLO_DATOS). Sin base (corrida de prueba) la puerta no deja bajar.
+   - BAJAN el precio que ve el comprador: `entrarpromo` (POST de promos) pasa por `frenosBajas` con `promo` y pide las 🔐 igual.
+   - NO pasan, a propósito: `alinearGemelas` y `alinearGemelasEnvio` (`setPriceTo` con `gemela`: siguen a su Clásica, que ya pasó por
+     la puerta; el precio sale de la misma plata neta) · `gemelacrea`/`gemelaenviocrea`/`publicar` (crean, no bajan) · `activarPausadasFull`,
+     `pausar`, `gemelaenvio` (estado o envío gratis, no precio) · `aclasica` (tipo de publicación) · `sacapromos`/`removeStartedPromos`
+     (sacan descuentos: el comprador paga más) · `probarput` (el mismo precio).
+   - SUBEN: `raisePrice`/`raisePriceTo`/`raiseVariations` (frenosSuba: techo $650.000, barrera, +25% salvo `libre`; liquidando y mi
+     descuento vigente con `_chequeoNoSubir`), `volver` y `fijar` (no pueden bajar), `submargen` (sólo sube, frenosSuba + mi descuento),
+     `precios`, `bajopiso`, `nivelarGrupos`, `rescatarAlVender`, `subirPorCosto` (apagados con autoPrecios/SOLO_DATOS). El 🔎 detector
+     mira las subas mías (techo +30%, más del doble, terminación).
+ · **🔐 Salidas sólo suyas** (`BANDERAS_SUYAS` + `#remate`): `!sinlinea` (F7) · `!sincerteza` (F4/F8) · `!sintecho` (F1) · `!bajocero`
+   (F0, nuevo freno) · 🧨 `#remate` (abre F5/F7/F8 sólo autorizado; `tag:` ya no lo pone). Pedido: `pedirAutorizaciones` →
+   `cyc/autoriza/<código>` {mla, tipo, de, precio, banderas, regla, freno, motivo, linea, ts, vencePed, estado, sigPed} y UN mensaje a
+   `tgAlertas`. Respuesta: `_autDeTelegram` (en `resolveTgChat`, el mismo getUpdates, SIN offset: no se le pierde nada a nadie; nunca en
+   consulta ni DRY): sólo su chat, nunca un bot, posterior al pedido, firmado HMAC con el token del bot; "autorizo"/"no", por código,
+   el último verbo antes de cada código; un "no" posterior revoca lo no usado; lo rechazado no se vuelve a pedir por 48 h. `autNoVale`
+   verifica (mla, bandera, precio ±$10, vigencia 48 h, las dos firmas). Usada → `usada`. Probe `autoriza[:todas]` (solo lee).
+ · **Lo que cambió en `frenosBajas`:** lee una vez para varias (`pre`, el detector) · juzga en un momento (`ahora`, `propio`, `p0v`,
+   `autCodigos`) · F0 nuevo (abajo de 0% con `mgA`) · F9 nuevo (en escasez nunca abajo del precio de antes) · la escasez cuenta sólo con
+   su suba anotada en mis cambios, y la escalera de escasez (sin ventas desde el último cambio, 12+ h, sin bajar del normal) no la frena
+   F4 · 📦 sobra y 📉 liquidando abren F5/F7/F8 sólo con sobra de verdad (90+ d de stock al ritmo con stock, sin ventas con stock en
+   60 d, o lotes de 90+ d) · mis descuentos (`cyc/promohist`) son escalones de F3 · las vueltas atrás del detector (`por: 'errores'`) no
+   cuentan como suba de F4/F7 · "antes de activar": lo que nunca estuvo activo ni vendió (línea de tiempo, alta de menos de 90 d) se
+   corrige con `!activar` + EXCEPCIÓN sin F1/F7.
+ · **🔎 `errores[:horas][:go]`** (`detectarErrores`, default 26 h): junta `cyc/claudecambios` (con `fmt: 2` = banderas, estrategia,
+   autorizaciones y margen), `cyc/promohist` (entradas y salidas de mis descuentos, con lo mismo), `cyc/promoclaude` viejos, `cyc/autoprecio`
+   que no es mío y la foto (`cyc/supervisor/eventos`, "a mano"); juzga cada baja con `frenosBajas` en seco en su momento, el 25% en el
+   peor caso sin `!piso`, la estrategia (escasez/techo en una baja), las subas #techo de menos de +30% o de más del doble, y la
+   terminación 90/990. Categorías ❌ · ↩️ · ⚠️ · ❓ · ✅ · 🔚 · 📷 · 💳 · 🔗 y la cuenta tiene que cerrar. `:go` deshace sólo lo `fmt: 2`
+   (vuelve al precio de antes con `raisePriceTo` y relee, o `salirPromoMia`; anota `por: 'errores'` + `deshace` y la estrategia de antes;
+   UN aviso con `sendAlerta` directo). Lo de antes se lista con su comando.
+ · Probado con las funciones REALES (copia del archivo con exports) y una base y un ML de mentira: 66 casos (el de los Protectores con y
+   sin su autorización, autorización tocada a mano o sin firma, F2/F3/F6/F9, la escalera de escasez, :go que deshace y avisa una vez,
+   las respuestas de Telegram de otro chat/bot/viejas/editadas, "pero no", revocar, la puerta) + la de antes contra la de ahora en 14
+   casos sin banderas (sólo cambian las 5 buscadas).
+ · **Primera corrida con datos reales (22/10 18:21 UTC, `errores:72` por consulta):** 177 cambios en 72 h (162 de lista míos · 9
+   descuentos · 1 salida · 5 de la foto), la cuenta cerró. ❌ 22 · ↩️ 19 · ⚠️ 38 · ✅ 92 · 🔚 1 · 📷 5. Los 22 ❌ son TODOS de antes
+   del detector (sin banderas anotadas): F7 (sin línea de techo) 10 · F4 (deshacer una suba sin 95%) 5 · F2 (escalón de más) 3 · F1 1 ·
+   F3 1 · sólo la terminación 2. Se listan con su comando; no se deshicieron (algunos son a propósito: el arranque de lanzamiento del
+   20/10). Los 3 Protectores salen ↩️ (F4, ya devueltos a las 13:24). Lo que mostró y se arregló el mismo día:
+   - los 38 ⚠️ eran TODOS "suba #techo de menos de +30%" de antes de que existiera esa regla (el freno de decido es del 21/10 03:30
+     UTC): las reglas de CÓMO se decide (estrategia de una baja, +30%, más del doble) se miran sólo desde que existen (`DET_REGLA_DESDE`);
+   - el redondeo de la terminación pedía la estrategia de ANTES (#prueba en el Adaptador, #caja en el Cuba): ahora la de HOY, y si hoy
+     está en 🏔️ (techo95 midió ese precio) sólo avisa; y no cruza los $33.000 (queda $32.999) ni pasa el techo;
+   - volver al precio de antes con la estrategia de antes pedía #descuento (WD) o #promo (Seagate) para una lista sin descuento: lo
+     que habla de un descuento, o nada (⚪ ⏸️), vuelve como 📈 buscando techo (`tgVuelta`), que es lo que piden F1/F7;
+   - 3 de los 5 📷 eran publicaciones que ML iguala solas con su hermana (`esHermanaPrecio`, la Lupa 90mm): los dos Mazos de cartas y
+     un P47 de Matías. Van aparte como 🔗 (se juzga la que se cambió). Quedan 2 📷 que nadie anotó: Cuba Blue $32.990 → $45.000 y Cuba
+     Gold $28.990 → $67.174 (~20/10, Adriana) — ¿a mano en ML?
+   Segunda corrida con los arreglos (18:37 UTC, 171 cambios porque la ventana corrió): ❌ 22 · ↩️ 18 · ⚠️ 0 · ✅ 125 · 🔚 1 · 📷 2 · 🔗 3,
+   la cuenta cerró.
+   - lo anotado con el formato nuevo guarda también el stock con el que se decidió (`st`, en `cyc/claudecambios` y en las entradas de
+     `cyc/promohist`) y el detector juzga con ése: la línea de tiempo tiene el de la noche anterior, y una caja que entró hoy hacía ver
+     "no sobra" lo que al decidir sí sobraba (y `:go` lo habría vuelto atrás).
+   Probado: 81 casos (los 66 + 15 nuevos con lo que mostró la corrida).
+ · **Qué chequear:** que todo camino nuevo que baje un precio llame a `setPriceTo` (o pase por `frenosBajas`); que toda bandera nueva
+   esté en los dos parsers y en `BAN_DEC`/el `ban` de `entrarpromo`; que una salida usada mal pase a `BANDERAS_SUYAS`; que cada corrección
+   nueva tenga su chequeo en `detectarErrores`; que `errores` cierre la cuenta; que `autoriza` no muestre pedidos "TODAVÍA NO SALIÓ".
+
 ### 22/10/2026 · 1a 2a 3a: sin excepciones al "sin techo no se baja", ventas a fondo sólo las que lo piden, chequeo de bajas
  · **1a:** F7 de `frenosBajas` acepta `!sinlinea` sólo junto con `!activar` (precio mal puesto antes de activar). Antes la usé para bajar
    3 Protectores de talón por lo que vendió la familia. Qué chequear: ninguna baja sin 🔴/🏔️ salvo activaciones y las tags que F7 exime.
  · **2a:** `ventasraras` imprime 🔬 A FONDO (con motivo) y ✓ normales. Sólo las 🔬 van al ayudante en máximo.
  · **3a:** cada vuelta termina con `bajastecho:1` y deshace las ❌ del día (texto de las tareas programadas y CEREBRO 🔬).
+
+### 23/10/2026 · F9 de escasez: el precio de antes es el de antes de la PRIMERA suba (etapa 1, revisor de la completa)
+ · `frenosBajas` tomaba como "precio de antes de la escasez" el `de` de la ÚLTIMA suba de escasez. Con una escasez subida en
+   varios escalones ese número ya era de escasez (Brisa Marina $25.990 contra $18.150 real, Pizarra Rosa $6.490 contra $5.090,
+   Chispero $8.490 contra $6.990) y F9 frenaba escaleras que el CEREBRO §7 permite. Ahora busca la primera suba de escasez del
+   mismo tramo (escasez y 🪜 seguidas, 45 días). Qué chequear: que una escasez de un solo escalón siga igual y que una baja abajo
+   del precio normal real siga frenada.
 
 ### 23/10/2026 · 📈 "dice techo y no sube": la prueba en curso no es un tag mentiroso (etapa 1)
  · `planilla` sacaba en 📈 toda 📈/🔥 sin suba DESPUÉS del tag. La revisión del 21/10 volvió a poner 📈 sobre pruebas ya subidas
@@ -454,6 +550,31 @@ Qué chequear: que un cambio no salga dos veces (foto + decisión) y que un `dec
 - `pruebatachado` (ml-consulta): las publicaciones en 🧪 prueba con su precio de antes (sirvió para cancelar la prueba 3b). **Chequear:** sólo lee.
 - v25.31/v25.32 (Ventas): la Clásica se ve en gris como siempre y la Premium en dorado (`tipoPub`, ver etapa 5). **Chequear:** en los dos temas se distinguen.
 
+### 22/10/2026 · 💹 La estrategia "ganar más por cada peso facturado" (v26.06, eligió 1a 2a 4a 5a 6a 7a 8b)
+- **Qué:** vara de compra 35% para lo NUEVO (`CAND_VARA_COMPRA` en index.html = sync.mjs; `candPisoDe` de la web la devuelve,
+  `_listaMed25`, comando `pedir`, `revisarcompra`, `faltaventas`, `cuentaLista`). El descarte del robot (`candPisoDe` de sync.mjs)
+  sigue en 25%: lo de 25-34% queda guardado (Listas: carpeta 💾 Guardados). Reponer sigue en 25%. · Tarjeta 🧮 Mezcla en Métricas
+  (`metMezclaMeses`/`renderMetMezcla`, 6 meses, tramos por el % de cada venta, ganancia cada $100 facturados). · `repartopy` y
+  `paramcompra` eligen la cuenta con más lugar contra el tope de H (`lugarHPorCuenta`, `TOPE_H_ANUAL`). · Watch S5 y Redmi Pad 2:
+  `decido:ped` u 0. · Reglas 2a y 6a en CEREBRO §14 y §15.
+- **Chequear:** que ningún camino de COMPRA use todavía 25 (grep `>= 25`/`candPisoDe(` en lo que pide o llena) · que el descarte siga
+  en 25 (si sube a 35, lo de 25-34% se iría a "nunca más") · que la mezcla cierre contra los KPIs (mismo % que el renglón de Ventas) ·
+  que `lugarHPorCuenta` mire la misma ventana que `topeh` y la tarjeta ⚖️.
+
+### 22/10/2026 · 📈 La línea de tiempo y las ventas por gemela (v26.07, etapa 8)
+- Él: *"al vender en cuota y envío gratis aumenta el precio pero el neto y la ganancia es el mismo"*. Los días con ventas la línea
+  dibuja lo COBRADO por unidad, y la gemela (Premium o con envío gratis) se cobra más cara para dejar la misma plata. Ahora, para el
+  PRECIO, cada venta de una gemela vale el precio de su Clásica ese día (`lineaPintar` tE/qE; `_lineaJunta` `totEq`/`uEq` para las rayas;
+  robot `juntarLineaStock` `uOwn`/`totOwn` en `rayasPrecioLinea` y en los tramos de la ficha). Lo cobrado (`tot`) y la ganancia no cambian.
+- **Chequear:** todo lugar que saque un "precio cobrado" de `tot/u` de una línea junta (grep `tot) / Number`), y que el 3% de tope de H
+  siga usando lo cobrado de verdad (la gemela sí gasta más tope).
+
+### 22/10/2026 · 🎉 "primera venta" de una gemela (v26.06, etapa 5)
+- Él con las Cartas Casino: el cartel decía "primera venta de esta publicación · tardó 30 días con stock en Full" en la gemela Premium
+  creada el 20-21/10. El stock de Full es del producto (lo comparten todas sus publicaciones): `_vhDiasStock` cuenta desde `altaTs` si la
+  publicación se creó después de que entró el stock, y el cartel dice "primera venta de la gemela Premium/con envío gratis".
+- **Chequear:** otros carteles que cuenten días por `stockhist` de una publicación nueva (mismo patrón).
+
 ## 2 · PLATA (martes)
 - **Cada lugar, su nota (08/10/2026, v22.71):** él: *"en ventas por qué aumentó el precio o por qué no, y en pedidos por qué
   pide x unidades"*. `cerebroAbrir`: con `ped` o `ctx:'caja'` muestra SÓLO las notas `ped__`/`caja__`; con `ctx:'venta'`
@@ -505,7 +626,24 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 (sería doble), y que el número de Gastos y el del Arqueo sean el mismo para cada mes.
 
 ## 3 · MERCADERÍA (miércoles)
+
+### Nissei: búsqueda con el nombre traducido; lo que no aparece queda ✔️ revisado (23/10/2026, v26.15, eligió la 1a)
+- Qué: `traducirPyNombre`/`PY_TRAD` (sync.mjs) agrega a `qs` una búsqueda con el nombre en castellano (auriculares, reloj, negro, inalámbrico…); los `sc` sin `qp` se vuelven a buscar una vez (`_rebuscar`), y al medir queda `qp = PY_NOMBRE_VER`. `pycatres.scr` = sin catálogo y ya buscado traducido; la web lo saca de "Sin medir" y lo muestra en 📏 Medidos como "✔️ Revisados: no están en ML" (`_PYC_GRUPOS.scr`).
+- Chequear: que en 1-2 días los ~3.969 `sc` pasen a `scr` o a medidos; cuántos aparecieron con la traducción (`pycatdia`); que el chequeo de mismo producto (con el nombre original) no deje pasar otro modelo.
+
+### "❔ No medidos" de Nissei dice qué es cada cosa (23/10/2026, v26.14) + `pycatdia`
+- Qué: la carpeta suma sin medir + sin catálogo exacto + nadie lo vende + por regla (9.471); ahora se llama "Sin medir o sin precio en ML" y arriba dice cuántos faltan buscar de verdad (`nomed`, ~100). `pycatdia[:días]` (sync.mjs, sólo lee) desglosa el catálogo y cuenta lo buscado por día.
+- Medido el 23/10: 775 de 25%+ · 2.352 abajo · 3.969 sin el mismo producto en ML · 5.210 nadie lo vende · 205 por regla · 12 ML no deja. Buscados por día (última vez): 15/10 854 · 16/10 1.421 · 17/10 3.346 · 18/10 4.795 · 19/10 1.759 · 20/10 1 · 21/10 152 · 22/10 9 (la primera pasada terminó el 19/10).
+- Chequear: que el número de arriba coincida con `pycatdia`; que "−N hoy" siga contando sólo los sin medir.
 - **23/10/2026 · Cajas: la ventana de lectura no pasa los 60 días (vuelta corta).** `cajasllegaron` dio 194 consultas con 400 "Date range can't be greater than 60 days": una caja marcada a mano despachada hace ~58-60 días estiraba la ventana de sus productos (despacho − 1 día hasta hoy + 1) y ninguna caja abierta de esos productos se podía leer (8 abiertas sin marcar). Ahora una marcada a mano despachada hace más de 57 días no estira la ventana (`limVentana`, en `marcarCajasLlegadas`). Qué chequear: que `cajasllegaron` no tenga ningún 400 de rango y que las cajas abiertas no vuelvan a quedar sin leer por eso.
+
+### Nuevos de Paraguay abajo de 35% en rojo (23/10/2026, v26.12, pedido suyo)
+- Qué: `candPctCol` (index.html) pinta el % de un candidato nuevo en rojo abajo de `CAND_VARA_COMPRA`, en la fila del pedido (Nuevos) y en la tarjeta de Para probar; Listas ya lo hacía. Probados (reponer, vara 25%) no cambia.
+- Chequear: que un nuevo de 27% (Lattafa Queen of Arabia) se vea rojo y uno de 40% verde; que Probados no se ponga rojo entre 25 y 35.
+
+### Las categorías que no se miran frenan Para probar y faltaventas (23/10/2026, eligió la a)
+- Qué: `pyCatNoSeMira` (sync.mjs) usa `PYCAT_FUERA_RE` (la regla del 03/10) en el paso pycat → Para probar y en `faltaventas`; el catálogo se sigue guardando y midiendo entero. `candfuera[;go]` descarta los candidatos vivos de esas categorías (`noTipo:'regla'`); `candfuera;prov=<p>;<cód>=<motivo>;go` descarta uno puntual (`noTipo:'duro'`).
+- Chequear: que ninguna cámara, celular, notebook, termo, etc. aparezca en Para probar; que `candfuera` sin go muestre la lista antes de sacar; que no saque lo que ya viaja.
 - **21/10/2026 · `vendcat:<MLA o catálogo>` (solo lee):** prueba todas las puertas para saber las unidades vendidas de un catálogo ajeno (ficha, ofertas, publicación ajena con y sin token, visitas, opiniones, ranking de más vendidos, página web). Pedido suyo. **Resultado 21/10: NO HAY FORMA.** La ficha y las ofertas del catálogo no traen ningún campo de ventas; la publicación ajena da 403 con y sin token; visitas, opiniones y ranking de más vendidos (`highlights`) dan 403 (PolicyAgent); la página web pide verificación (también desde el chat). Sólo un navegador con una persona ve el "+100 vendidos".
 - **21/10/2026 · Lo que no está en ML se vuelve a buscar de a poco (pedido suyo, v25.58).** `pycatRemedirDias`: sin catálogo exacto (`sc`) cada 60 días (`PYCAT_SINCAT_DIAS`), catálogo sin vendedores (`sv`) cada 30. Antes `Infinity`. Qué chequear: el log de `pycatmedir` dice los días; una ola grande de `sc` recién a mitad de diciembre.
 - **21/10/2026 · v25.56 · cuántas de cada nuevo de Paraguay (decisión 4a):** `candMaxU` = barato (≤US$15 crudo) 3 · caro (+US$60) 1
@@ -593,6 +731,10 @@ que `cortes` salga en el log de `pedidostodo` y `decide_pedidos.py` lea N de M �
 
 ### Pedidos sin cartel "sin decidir" ni cuadros de conteo (17/10/2026, v24.08, pedido suyo)
 - Ocultos por CSS (`#ped-sindecidir` y los `#pedidos-*-count`); el cálculo sigue. v24.09: de los cuadros queda sólo "Falta reponer" (`.pcount-reponer`). Chequear que no vuelvan a verse y que nada dependa de verlos.
+
+### Paulvic: los testers no entran en el costo (22/10/2026, v26.11, regla suya)
+- Qué: los testers son probadores que se le dan a la perfumería (no se venden ni se cobran): `pvCosto` (sync.mjs) y `pvPedidoTarjeta` (index.html) dividen por llegadas + regalos, ya no por testers. Se siguen anotando (`tester=`) y no entran a la oficina.
+- Chequear: que el costo c/u de la tarjeta y el de la ficha den lo mismo; que el pedido del 06/10 (ya cerrado, con 1 tester adentro) no se recalcule solo.
 
 ### Paulvic: costo del último pedido y tarjeta de pedido (17/10/2026, v24.07, pedido suyo)
 - Qué: `pvCosto` en `pvped` = (montoPago||aPagar + flete) ÷ (llegadas + testers + regalos) → ficha "Paulvic TODOS" (sólo si es el último llegado; congela el costo viejo en meses con ventas como `poncosto`). Corre en `llego`, `pago` con monto y `costo`.
@@ -2543,6 +2685,30 @@ y el disponible no salte; que un pedido de lista llegado aparezca en Deudas hast
 - **20/10/2026 · Etapa 1 · probe `bajasnuevas[:días]` (solo lee):** mis bajas (`cyc/claudecambios`) de lo recién llegado o en lanzamiento sin 🏔️ antes de la baja. Para encontrar las que se hicieron antes del freno de `decido`. **Chequear:** misma regla que el freno (30 d con fecha real, `techook` posterior a la llegada).
   Nuevo = primera tanda en Full (sin `cero` ni `desdePrev` en `cyc/stockhist`) o 🆕 lanzamiento: una reposición después de agotarse no es un lanzamiento y baja normal (escalera). Y la publicación tiene que ser nueva (`altaTs` de menos de 60 días): una publicación vieja que se repuso no es lanzamiento.
 
+
+### 22/10/2026 · 🟧🟦 Premium y envío gratis en las barras de ventas (v26.10, etapa 7)
+- Él: *"en las barras de ventas no aparecen las premium ni envío gratis"*. Premium en naranja ya existía pero HOY no se separaba (el día
+  de hoy lo arma otro bloque y se salteaba); envío gratis no existía. Ahora `uP` (Premium: `tipoPub` gold_pro o gemela Premium) y `uG`
+  (gemela con `gemelaTipo:'envio'`, celeste #38bdf8, el color del chip de la venta) en todos los días, hoy incluido; tarjeta Vendió y leyenda.
+- **Chequear:** que las cuatro partes (Clásica, envío, Premium, remate) sumen la barra entera.
+
+### 22/10/2026 · 💳📦 Filtro de ventas por Premium o envío gratis (v26.09, etapa 7)
+- Ventas → ⚙️ Filtros, al lado de las cuentas: `vpFilterVia` ('premium' = `tipoPub` gold_pro · 'envio' = `mllinks.gemelaTipo==='envio'`,
+  la misma regla del chip "📦 envío gratis" de cada venta). El botón dice cuántas hay con la búsqueda y la cuenta de ahora.
+- **Chequear:** que "Limpiar filtros" y el aviso de venta lo saquen (`vpLimpiarFiltros`), y que una venta Premium vieja sin `tipoPub`
+  no cuente (no se sabe: se ve con `tipoventa`).
+
+### 22/10/2026 · 📈 La línea de tiempo reordenada (v26.08, etapa 7, eligió 1a 2a 3a con la Codera: "cuesta entender")
+- **Qué:** arriba un cartel de una frase (escasez · cubierto · sin reposición · agotado) y 4 tarjetas (`_lnCard`); el renglón largo
+  quedó chico con el historial. Cada franja deja `LN_TG` arriba para su título, sus colores y el número de hoy (`lnHdrHTML`); el precio
+  va primero. Las notas que se pisaban adentro del gráfico (techo, sobra, bajando, prueba, "rayas de MLA…", costo, reloj de 4 meses)
+  pasaron al título de su franja (`_prNotas`, `_prRayasDe`, `_pctCosto`, `_stReloj`). La de Todos también (tarjetas + títulos; ahí el
+  orden queda con ventas primero: el índice de precio no se decide).
+- **Chequear:** a 390 px el título de cada franja no se corta (la leyenda sí, con …) · ningún texto del gráfico pisa el título · el
+  cartel dice lo mismo que el renglón de stock (`escasezDe`) · al agregar una franja nueva, ponerle su `lnHdrHTML`.
+- **Emojis nuevos que Windows no dibuja** (él vio un cuadradito en "Bueno"): 🩵 (Unicode 15) → 💠, 🪪 (14) → 📇, 🫨 (15) → 📳. **Regla: no usar
+  emojis de Unicode 14 o más nuevos** (🩵 🩷 🫨 🪪 🫧…); 🪜 y 🪄 son de Unicode 13: si él ve cuadraditos ahí, cambiarlos también.
+
 ## 8 · REGLAS DEL CEREBRO (cada 7 días, nació el 21/10/2026)
 Lo que mira, siempre con `ml-sync/CEREBRO.md` entero, `notas/correcciones.md`, `notas/preguntas.md` y `frenosBajas` (sync.mjs):
 - **Contradicciones y repetidos:** dos reglas sobre el mismo tema → queda la más nueva (la vieja se borra, no se tacha); una regla
@@ -2706,6 +2872,10 @@ Pedido suyo: la venta que salió por una gemela Clásica con envío gratis (`cyc
 cartel celeste "📦 envío gratis" al lado del de Premium (`tipoLabel` en Ventas x Producto). Qué chequear: que no salga en ventas
 de la Clásica original ni de las Premium.
 - 22/10/2026: la completa de los domingos mide las gemelas (Premium y envío gratis) y propone sacar las que no sirven (CEREBRO.md paso 9 de la completa).
+- 22/10/2026: CEREBRO, choque nuevo resuelto: escasez + stock que paga almacenamiento (caso F9).
+- 22/10/2026 (v26.05): Inicio · calendario de mes y año con ventas brutas (blanco) y ganancia (verde) arriba, y números completos sin "k" (`_kTxt`, `_hcalTotHTML`).
+- 22/10/2026: probe `mezcla[:días]` (solo lee): ventas por tramo de % de ganancia, qué se iría con cada vara y Paulvic aroma por aroma.
+- 22/10/2026: `faltaventas:todas` (solo lee): todos los productos de las listas con catálogo de ML y sin vendidas, para que el chat local las cargue con `listadato`.
 
 ### 📚 CLAUDE.md achicado y VENTAS.md (22/10/2026, pedido suyo: "la b")
 CLAUDE.md pasó de 794 KB a ~50 KB: sólo lo vigente, una vez cada regla. La historia completa (texto textual hasta el 22/10) quedó en

@@ -19,7 +19,7 @@ Todo lo que necesitás está en este texto. NO leas el repo de GitHub ni otras d
 == EL TRABAJO (decisión de Matías del 15/10/2026) ==
 COPIAR el catálogo entero de NISSEI en comprasparaguay a CYC, página por página. NADA MÁS:
  · NO busques nada en MercadoLibre. NO calcules márgenes. NO descartes nada (ni por precio, ni marca, ni rubro, ni tamaño): copiá TODO.
- · El robot de CYC hace el resto solo: busca cada producto en ML, mide el margen y lo que da 25% o más pasa a "Para probar".
+ · El robot de CYC hace el resto solo: busca cada producto en ML, mide el margen y lo que da 25% o más queda en CYC; para poder pedirlo hace falta 35% (la vara de compra desde el 22/10).
  · Lo único que te va a pedir después son las ventas en ML de esos pocos (ver abajo).
 Arrancá sin pedir confirmación ni explicar el plan.
 
@@ -54,7 +54,7 @@ Esperá que termine (1 minuto) y abrí el resultado: tiene que decir "✓ guarda
 Plan B si GitHub no te deja: pasale los comandos a Matías para que los pegue en el chat CYC.
 
 == LAS VENTAS VUELVEN, PERO AL FINAL (21/10/2026) ==
-Las 100 vendidas en ML volvieron, pero se miran SÓLO de lo que ya pasó todos los otros filtros (25%, 2+ vendedores, fotos y mismo
+Las 100 vendidas en ML volvieron, pero se miran SÓLO de lo que ya pasó todos los otros filtros (35%, 2+ vendedores, fotos y mismo
 producto confirmado). Así son pocos. Para saber cuáles: correr `faltaventas` (ml-consulta, sólo lee) y mirar en ML, con la sesión
 iniciada, cuántas vendió cada catálogo de la lista. Se cargan así:
   Paraguay: candprecio:<código>=/<vendidas>;…;go   (Elegancia: candprecio:prov=elegancia;<código>=/<vendidas>;…;go)

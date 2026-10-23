@@ -9486,3 +9486,11 @@ el chat local tenga que mirar algo, se le manda el texto listo para pegar y la l
 (margen 25%+ y en catálogo), no la lista entera. El resto se dice con números (cuántos y por qué no) y se ofrece aparte; el chat
 local no gasta tiempo en lo que no da. Los archivos van por SendUserFile desde el scratchpad, nunca al repo (traen nombres de
 productos de proveedores). Primer caso: `faltaventas:todas` → 183 de 7.392 (PROMPT_VENTAS_LISTAS).
+
+
+## 📦 PAULVIC DEL 19/10: LLEGÓ EL 22/10 COMPLETO (remitos del 20/10)
+Llegaron las 114 u. pedidas en 19 aromas, nada faltó. Vinieron 3 sueltas más (Witch Night, Good y Blue, "+1" en el remito): anotadas
+como tester (cuentan para el costo, no entran a la oficina). Flete $18.000 (el $17.900 del remito, redondeado: lo que le paga). Valor declarado de los dos remitos
+$660.130,71 (el del 06/10 fue $214k declarado contra $246k a pagar: no es el monto). Pagar antes del lun 02/11 (7 hábiles).
+Facturas A 45796 y 45797 (20/10): $756.718,26 + $42.039,90 = $798.758,16 con IVA; testers facturados a $0,01. Lo que se paga = factura × 0,95
+(pago dentro de 7 hábiles; el 06/10: $259.246,07 × 0,95 = $246.283,77, la calculadora exacta) → $758.820,25 cargado como a pagar el 23/10.

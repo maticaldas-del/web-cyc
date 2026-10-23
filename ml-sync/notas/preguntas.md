@@ -40,3 +40,5 @@ en que se anota en `correcciones.md`.** El número entre corchetes es de qué ca
 20. **Si él mirara esta ficha ahora, ¿qué me preguntaría?** Si se me ocurre una pregunta que no está acá, la contesto y la agrego.
 - (22/10, F9) ¿La venta que uso como prueba se cobró al precio que estoy juzgando? Mirar el precio cobrado de la orden, no el precio del día.
 - (22/10, Enchufe 3 patas) ¿El ritmo con el que se dice "escasez" es del precio de hoy o de un tramo viejo mucho más barato?
+- 24. (22/10, flete Paulvic) Si un monto que me dice se parece a uno que ya tengo (17.900 / 18.000), ¿es el mismo redondeado o uno más? Ante la duda, NO se suma: se toma como el mismo y se lo digo.
+- 25. (23/10, Masajeador) Si vendió una gemela o hermana, ¿qué estrategia tiene la CLÁSICA? Un 🆕 que vende por la Premium es un lanzamiento que vendió: sube +30% en la misma vuelta.
