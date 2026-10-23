@@ -43877,6 +43877,11 @@ async function main() {
       const LIN = {}, rematesVistos = {};
       // El precio NORMAL para el máximo de compra (revisión 9, 13/10/2026): la mediana de lo que se cobró por unidad en 60 días
       // (sin remates). El precio de hoy puede estar subido por escasez y el máximo saldría inflado.
+      // EL PRECIO DE LA ÚLTIMA VENTA (23/10/2026, él: *"si nunca vendió toma el % que decís vos. si ya vendió no importa si fue sólo
+      // 1 unidad. tomar ese %"*). Cada venta de 180 d (sin remates) con su hora y publicación; abajo (`ultV`) sale la última que no se
+      // vendió con el precio subido por escasez o estirado sin reposición (eso no es el precio de siempre). `decide_pedidos.py` la usa
+      // para el máximo de compra en vez de la mediana de 60 d.
+      const vU = {};
       const pU = {}, med = (a) => { if (!a || !a.length) return 0; const b = [...a].sort((x, y) => x - y); return Math.round(b.length % 2 ? b[(b.length - 1) / 2] : (b[b.length / 2 - 1] + b[b.length / 2]) / 2); };
       const lineaDe = async (mla) => { if (!(mla in LIN)) { try { LIN[mla] = (await db.get('mlapi/linea/' + mla)) || {}; } catch { LIN[mla] = null; } } return LIN[mla]; };
       const [nsP, rvP, apP, nrP, rxP, esP, ccP, ofP, nhP] = await Promise.all(['cyc/nosubir', 'cyc/rescateventa', 'cyc/autoprecio', 'cyc/norepo', 'cyc/repoextra', 'cyc/estrategia', 'cyc/claudecambios', 'cyc/ofientro', 'cyc/nosubirhist'].map((k) => db.get(k).catch(() => FALLO)));
@@ -43897,6 +43902,7 @@ async function main() {
           if (inf) s.barata += q;
           addVenta(v, k, q);
           if (k >= k60 && Number(v.total) > 0) (pU[v.prodId] = pU[v.prodId] || []).push(Number(v.total) / q);
+          if (Number(v.total) > 0) (vU[v.prodId] = vU[v.prodId] || []).push({ ts: Number(v.ts) || Date.parse(v.ts || '') || Date.parse(k.slice(0, 10).replace(/_/g, '-') + 'T12:00:00-03:00'), pu: Number(v.total) / q, mla: v.mla || '' });
         }
       }
       if (clP.fallo.size) console.log(`⚠️ ${clP.fallo.size} venta(s) barata(s) sin poder leer su línea de tiempo: cuentan como venta`);
@@ -43990,6 +43996,11 @@ async function main() {
           if (kt <= ts && kt > tAntes) { antes = x.t; tAntes = kt; } }   // si no, la vigente en ese momento
         return best || antes;
       };
+      // La estrategia vigente en el momento de la venta (la última anotada ANTES de esa hora) y la última venta que no fue de escasez.
+      const tagVigente = (mla, ts) => { const h = (esP || {})[mla] || {}; let t = null, tk = -Infinity;
+        for (const [k0, x] of Object.entries(h)) { const kt = Number(k0); if (kt > 0 && x && x.t && kt <= ts && kt > tk) { t = x.t; tk = kt; } } return t; };
+      const ultV = (pid) => { const a = [...(vU[pid] || [])].sort((x, y) => y.ts - x.ts);
+        for (const x of a) if (!(x.mla && ESC_TAGS.has(tagVigente(x.mla, x.ts)))) return Math.round(x.pu); return 0; };
       const marcaCambio = (mla, ev) => {
         if (!(ev.a > ev.de)) return '';
         let t = tagEnMomento(mla, ev.ts); if (!t || t === 'sindecidir') t = tagDeMotivo(ev.motivo);
@@ -44023,7 +44034,8 @@ async function main() {
         const hP = histD(s);
         const esBsasP = p.origen !== 'py' && !(/paulvic/i.test(provN[p.proveedorId] || '') || /paulvic/i.test(p.name || ''));   // el mismo grupo que BSAS de abajo
         const m60 = med(pU[p.id]);
-        const dec = dec0 + (m60 ? ` · med60 $${m60}` : '') + ` · ctas [${ctasDe(p.id).map((c) => c.slice(0, 2)).join(' ')}]` + (CD[p.id] ? ` · YA DECIDÍ ${CD[p.id].u != null ? CD[p.id].u : JSON.stringify(CD[p.id].vars || {})}` : '') + (_grandePT && _grandePT(p) ? ' · GRANDE' : '');
+        const uv = ultV(p.id);
+        const dec = dec0 + (m60 ? ` · med60 $${m60}` : '') + (uv ? ` · ultv $${uv}` : '') + ` · ctas [${ctasDe(p.id).map((c) => c.slice(0, 2)).join(' ')}]` + (CD[p.id] ? ` · YA DECIDÍ ${CD[p.id].u != null ? CD[p.id].u : JSON.stringify(CD[p.id].vars || {})}` : '') + (_grandePT && _grandePT(p) ? ' · GRANDE' : '');
         console.log(`\n${p.id} · ${String(p.name).slice(0, 55)} · v30 ${s.t30} v60 ${s.t60} v180 ${s.t180} · últ ${s.ult ? s.ult.slice(8, 10) + '/' + s.ult.slice(5, 7) : '—'}${s.rem ? ' · REMATE ' + s.rem : ''}${s.barata ? ' · BARATA ' + s.barata : ''} · dCS ${dCS(p.id)}${cortes60(p.id) ? ' · cortes ' + cortes60(p.id) : ''} · Full ${ft} [${C4.map((c, i) => full[i] ? c.slice(0, 2) + full[i] : '').filter(Boolean).join(' ')}] · casa ${casa} · camino ${cm}${py ? ' · PYviaja ' + py : ''}${pvv ? ' · PVviaja ' + pvv : ''}${liv ? ' · LIviaja ' + liv : ''} ${(p.variantes || []).length ? ' · colores ' + p.variantes.length : ''} · neto $${Math.round(Number(p.netoCalc) || 0)} costo $${cost}${p.nisseiUSD ? ' · PY US$' + p.nisseiUSD : ''}${hP ? ' · hist ' + hP + 'd' : ''}${dec}`);
         // Los colores de la FICHA (etapa 3, 20/10/2026): un color sin ventas ni mercadería no tiene renglón, y un juicio de ese color
         // (ej. Pizarra 12" Rojo=4) se perdía sin aviso. Con esta lista `decide_pedidos.py` lo aplica igual y avisa si el color no existe.

@@ -31,7 +31,7 @@ for l in L:
         g=lambda r: int(re.search(r,rest).group(1)) if re.search(r,rest) else 0
         cm=re.search(r'precio \$\d+ \((.*?)\)',rest)
         cur=dict(id=m.group(1),n=m.group(2),g=grupo,v30=int(m.group(3)),v60=int(m.group(4)),v180=int(m.group(5)),ult=m.group(6),rem=int(m.group(7) or 0),barata=int(m.group(8) or 0),dcs=int(m.group(9)),cortes=int(m.group(10) or 0),full=int(m.group(11)),casa=int(m.group(12)),cam=int(m.group(13)),
-          py=g(r'PYviaja (\d+)'),pv=g(r'PVviaja (\d+)'),li=g(r'LIviaja (\d+)'),colores=g(r'colores (\d+)'),neto=g(r'neto \$(\d+)'),costo=g(r'costo \$(\d+)'),precio=g(r'precio \$(\d+)'),med60=g(r'med60 \$(\d+)'),
+          py=g(r'PYviaja (\d+)'),pv=g(r'PVviaja (\d+)'),li=g(r'LIviaja (\d+)'),colores=g(r'colores (\d+)'),neto=g(r'neto \$(\d+)'),costo=g(r'costo \$(\d+)'),precio=g(r'precio \$(\d+)'),med60=g(r'med60 \$(\d+)'),ultv=g(r'ultv \$(\d+)'),
           cambios=(cm.group(1) if cm else ''),decidido=(' YA DECIDÍ ' in rest),vars=[],hist=hist_de(rest),colFicha=None)
         prods.append(cur); continue
     # Un renglón de producto que NO se entiende (un dato nuevo en el medio): sus colores NO pueden ir al producto de arriba.
@@ -211,7 +211,13 @@ if os.path.exists(_vp):
         if _m: VM[_m.group(1)]=int(_m.group(2))
 def venta(p):
     if p['id'] in VM: return VM[p['id']]
-    # El precio NORMAL para el máximo de compra: el menor entre el de hoy y la mediana de lo cobrado en 60 días (sin remates).
+    # SI YA VENDIÓ, MANDA EL PRECIO DE LA ÚLTIMA VENTA (23/10/2026, él: *"si nunca vendió toma el % que decís vos. si ya vendió no
+    # importa si fue sólo 1 unidad. tomar ese %"*): una suba que ya vendió vale para el máximo de compra aunque sea 1 unidad (antes la
+    # mediana de 60 d la tapaba con las ventas viejas, más baratas). Sin pasar el precio de hoy: si después lo bajé, se vende a ése.
+    # La última venta de escasez o sin reposición no cuenta (`ultv` ya la saltea en pedidostodo). Nunca vendió → el precio de hoy.
+    if p.get('ultv'): return min(p['precio'],p['ultv']) if p['precio'] else p['ultv']
+    if p['v180']==0 and p['precio']: return p['precio']
+    # Log viejo sin `ultv`: el precio NORMAL para el máximo de compra: el menor entre el de hoy y la mediana de lo cobrado en 60 días (sin remates).
     # Un precio subido por escasez no infla el máximo (revisión 9, 13/10/2026). Sin ventas en 60 d, el de hoy menos las subas recientes.
     pr=p['precio']; best=pr
     if p.get('med60'): best=min(pr,p['med60']) if pr else p['med60']
@@ -219,6 +225,12 @@ def venta(p):
         de,a,d=int(m.group(1)),int(m.group(2)),int(m.group(3))
         if not p.get('med60') and d<=3 and pr>de*1.15: best=min(best,de)
     return best
+def venta_mot(p):
+    if p['id'] in VM: return 'precio de venta que fijé a mano para el maximo de compra'
+    if p.get('ultv') and (not p['precio'] or p['ultv']<=p['precio']): return f"precio de la ultima venta (${p['ultv']}) para el maximo de compra"
+    if p.get('ultv'): return f"precio de hoy para el maximo de compra (la ultima venta fue a ${p['ultv']}, mas cara)"
+    if p['v180']==0: return 'nunca vendio: precio de hoy para el maximo de compra'
+    return 'precio normal de venta para el maximo de compra'
 N=[];avisos=[]
 # EL MOTIVO LO LEE TITO (09/10/2026, Matías: "los pedidos los ve mi viejo y entra en el cerebrito (...) referite como
 # 'hola tito!' y explicale por qué le pediste ese producto y esas unidades. hablale con confianza y resumido").
@@ -283,7 +295,7 @@ for p,q,d,rent in res:
             # Producto con colores sin ningún color con datos: no se puede escribir sin color (decido lo rechaza). Si había
             # una decisión mía vieja, se borra (=auto) para que no quede pidiendo unidades de otro momento.
             if p['decidido']: N.append(f"ped:{pid}=auto"); avisos.append(f"{p['n']}: tenía decisión vieja y ningún color con datos: la borro (=auto)")
-        if p['precio'] or p.get('med60'): N.append(f"ped:{pid}=venta|{venta(p)}|precio normal de venta para el maximo de compra")
+        if p['precio'] or p.get('med60'): N.append(f"ped:{pid}=venta|{venta(p)}|{venta_mot(p)}")
     else:
         r,t,obj,b=d
         # siempre se escribe (aunque sea 0): si no, una decisión vieja queda colgada (el Ultra Shift del 09/10).
@@ -293,7 +305,7 @@ for p,q,d,rent in res:
             if jc:   # pero un juicio de color sí (etapa 3, 20/10/2026): va color por color
                 for v in jc:
                     jv=juDe(pid,v['v']); qq,mot=juicioQ(jv[0],0,jv[1],p['n']+' #'+v['v']); N.append(f"ped:{pid}#{v['v']}=u|{qq}|{mot}")
-                if p['precio'] or p.get('med60'): N.append(f"ped:{pid}=venta|{venta(p)}|precio normal de venta para el maximo de compra")
+                if p['precio'] or p.get('med60'): N.append(f"ped:{pid}=venta|{venta(p)}|{venta_mot(p)}")
                 continue
             if p['decidido']: N.append(f"ped:{pid}=auto"); avisos.append(f"{p['n']}: tiene colores sin datos por color y una decisión vieja: la borro (=auto)")
             elif q>0: avisos.append(f"{p['n']}: la cuenta pide {q} pero no sé de qué colores: decidilo a mano")
@@ -304,7 +316,7 @@ for p,q,d,rent in res:
         mot=tito(q,r,t,obj,b,rent,p['neto'],None,ex.strip(),p['motNoRenta'])
         if juDe(pid): q,mot=juicioQ(juDe(pid)[0],t,juDe(pid)[1],p['n'])
         N.append(f"ped:{pid}=u|{q}|{mot}")
-        if p['precio'] or p.get('med60'): N.append(f"ped:{pid}=venta|{venta(p)}|precio normal de venta para el maximo de compra")
+        if p['precio'] or p.get('med60'): N.append(f"ped:{pid}=venta|{venta(p)}|{venta_mot(p)}")
 bad=[n for n in N if ';' in n]
 if bad: print('⚠️ renglones con ";" (decido los cortaría):',*bad[:5],sep='\n  '); sys.exit(1)
 open('pedidos.txt','w').write('\n'.join(N)+'\n')

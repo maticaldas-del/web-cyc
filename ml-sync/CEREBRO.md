@@ -409,7 +409,7 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
   (`decido:ped` u 0, 22/10) · lo caro de poco margen es lo primero a reemplazar (gasta mucho tope de H y deja poco).
 - **Completos, todo el catálogo**, en la completa: objetivo 30 días; 45 en Bs As que se cortó 2+ veces en 60 d, vende 0,5+/día y
   deja 25%+, y en lo nuevo que vuela (1+/día la primera semana). Ritmo por día con stock (y por color); stock de las 4 cuentas
-  sumado; sin costo no se pide; el precio para el máximo = mediana cobrada en 60 d (no el de escasez). Máximo por color con `pvVars`
+  sumado; sin costo no se pide; **el precio para el máximo = el de la ÚLTIMA venta** (23/10, él: *"si nunca vendió toma el % que decís vos. si ya vendió no importa si fue sólo 1 unidad. tomar ese %"*), sin pasar el de hoy y salteando la de escasez/sin reposición; nunca vendió → el precio de hoy. Máximo por color con `pvVars`
   (el precio que el color sostuvo 2+ semanas, nunca de escasez ni de la primera semana de techo).
 - Navidad: en la completa del 14/11, medir lo que subió en Navidad 2025 (17-30/12) y pedirlo para 45 días.
 
