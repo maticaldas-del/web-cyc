@@ -27397,6 +27397,14 @@ async function main() {
       let val = null, valTxt = '';
       try { const r = await fetch(ML_API + '/items/validate', { method: 'POST', headers: { Authorization: 'Bearer ' + tokP, 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(30000) }); val = r.status; valTxt = (await r.text()).slice(0, 1500); } catch (e) { valTxt = String(e.message || e).slice(0, 200); }
       console.log(`   validación de ML: ${val === 204 || val === 200 ? '✓ la aceptaría' : '✗ ' + (val || 'sin respuesta') + ' ' + valTxt}`);
+      // MODELO NUEVO DE ML (23/10/2026, medido con la Webcam EMEET S600 en Ayelen): en algunas categorías ML ya no acepta `title`
+      // ("The fields [title] are invalid for requested call") y pide el nombre de la familia (`family_name`); el título lo arma él
+      // desde el catálogo. Se reintenta UNA vez así, también validando antes de crear.
+      if (val === 400 && /fields \[title\] are invalid/i.test(valTxt)) {
+        body.family_name = body.title; delete body.title;
+        try { const r = await fetch(ML_API + '/items/validate', { method: 'POST', headers: { Authorization: 'Bearer ' + tokP, 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(30000) }); val = r.status; valTxt = (await r.text()).slice(0, 1500); } catch (e) { valTxt = String(e.message || e).slice(0, 200); }
+        console.log(`   validación con family_name (sin title): ${val === 204 || val === 200 ? '✓ la aceptaría' : '✗ ' + (val || 'sin respuesta') + ' ' + valTxt}`);
+      }
       if (!(val === 204 || val === 200)) { console.log('\n🛑 NO SE PUBLICA: ML no valida el pedido (arriba dice qué falta).'); return; }
       if (!GO) { console.log('\n(prueba: sin |go no se crea nada)'); return; }
       const r = await fetch(ML_API + '/items', { method: 'POST', headers: { Authorization: 'Bearer ' + tokP, 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(30000) });
@@ -27414,7 +27422,7 @@ async function main() {
       pausada = !!(b2 && b2.status === 'paused');
       console.log(`\n✓ Creada ${nid} · ${b2 ? b2.listing_type_id + ' · ' + b2.status + ' · ' + money(Math.round(b2.price || 0)) + ' · catálogo ' + (b2.catalog_product_id || 'no') + ' · ' + (b2.permalink || '') : 'sin releer'}`);
       if (!pausada) console.log(`🚨 NO QUEDÓ PAUSADA${detP ? ' (' + detP + ')' : ''}: pausala YA en ML (está activa fuera de Full con 1 u.). La vuelta de la hora la pausa igual.`);
-      const e2 = { prodId: P.id, cuenta: label, title: (b2 && b2.title) || body.title, status: (b2 && b2.status) || 'paused', upid: (b2 && b2.user_product_id) || null, catalogo: (b2 && b2.catalog_product_id) || cat || null, catalogoListing: true, catOk: (b2 && b2.catalog_product_id) || cat, catOkTs: Date.now(), altaTs: Date.now(), altaClaude: true, altaSinVender: true, ...(color ? { variant: color } : {}) };
+      const e2 = { prodId: P.id, cuenta: label, title: (b2 && b2.title) || body.title || body.family_name, status: (b2 && b2.status) || 'paused', upid: (b2 && b2.user_product_id) || null, catalogo: (b2 && b2.catalog_product_id) || cat || null, catalogoListing: true, catOk: (b2 && b2.catalog_product_id) || cat, catOkTs: Date.now(), altaTs: Date.now(), altaClaude: true, altaSinVender: true, ...(color ? { variant: color } : {}) };
       try { await db.patch('cyc/mllinks/' + nid, e2); const rl = await db.get('cyc/mllinks/' + nid); console.log(rl && rl.prodId === P.id ? `   ✓ vinculada a la ficha ${P.name}${color ? ' · ' + color : ''}` : '   ⚠️ no quedó vinculada: vincular a mano'); } catch { console.log('   ⚠️ no pude vincularla en cyc/mllinks'); }
       const okE = await guardarEstrategia(db, nid, 'nuevo', `Lanzamiento a ${money(precio)}: la publiqué yo (Claude) en el catálogo confirmado ${e2.catOk}${cuenta ? ', deja ' + cuenta.margen.toFixed(0) + '% (' + cuenta.peor.toFixed(0) + '% en el peor caso)' : ''}. Se activa sola cuando llegue la caja a Full.`);
       console.log(okE ? '   ✓ estrategia 🆕 lanzamiento anotada' : '   ⚠️ no pude anotar la estrategia');
