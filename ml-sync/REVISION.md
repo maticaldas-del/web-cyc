@@ -97,6 +97,14 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
 - Qué: cuenta los candidatos de Paraguay y los productos de las listas por tramo de % (25-30, 30-35, 35-50, 50+), cuántos pasaron todo y cuántos venden 100+, y lista los de 30-35% que pasaron todo.
 - Chequear: que use los mismos filtros que `faltaventas` (vivos, sin categoría que no se mira, costo vigente).
 
+### 4a · lo que vende menos de 1 por semana no busca techo (23/10/2026, eligió la a, etapa 1)
+- **Qué es:** `techodias` mostró que 31 de 34 lentos (menos de 1 por semana) no vendieron ninguna al precio nuevo (~9 esperadas entre
+  todos) y dejaban ~$12.500 menos por día. Él eligió: vuelven a su precio de antes (redondeado a 90) como 💰 #punto, salvo los que
+  eran 🆕 lanzamiento, y freno nuevo en `decido`: suba #techo con ritmo de 60 días (con gemelas y hermanas) menor a 1 por semana → no.
+- **Dónde vive:** `sync.mjs` → `ritmoSemanalGrupo`, `TECHO_RITMO_MIN_SEMANA`, el freno en el bloque de subas de `decido`, y la lista
+  "4a" de `techodias` (con `tagPrev` y `pAntes`). Las vueltas pasan por 🔐 (`!sinlinea !sincerteza`): le llega UN Telegram.
+- **Qué chequear:** que un 🆕 que vende siga pudiendo subir · que el freno no lea mal el ritmo de lo recién llegado (60 días fijos).
+
 ### Packs: sí si el pack tiene su propio catálogo (23/10/2026, regla suya, etapa 3)
 - **Qué es:** él: *"si el pack está en catálogo sí se arman"*. Reemplaza el "packs NO" del 27/09, que era por sacar de la competencia
   algo que hoy compite suelto. Un pack se mide como cualquier producto nuevo contra SU catálogo (2+ vendedores, mismo pack exacto).

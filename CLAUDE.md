@@ -178,6 +178,8 @@
 - **Quién manda** (CEREBRO §0): lo que pide él para ese producto → dato dudoso no se toca → frenos duros → nunca abajo de 0% →
   **sin línea de techo no se baja** → arriba del 💰 no se baja sin 95% → lo nuevo no se baja sin 🏔️ → no pagar stock antiguo → escasez
   sube → sobra baja en escalera → 25% peor caso → buscar techo en todo lo demás.
+- **Lo que vende menos de 1 por semana no busca techo subiendo** (4a del 23/10; freno en `decido`): queda 💰 #punto; los 31 que
+  estaban en prueba vuelven a su precio de antes (`techodias` arma los renglones). Las pruebas se juzgan a las 3 ventas esperadas.
 - **Sin línea de techo no se baja** (21/10; 22/10 decisión 1a): línea = 🔴 de las rayas o 🏔️ de `techo95`. Sin línea → 📈 buscar
   techo (subir). Lo que vendieron otras variantes o la familia NO alcanza. Pasados 15 días de la última suba sin certeza, decide la
   plata por día (F4).
