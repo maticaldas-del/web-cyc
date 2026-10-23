@@ -31,7 +31,7 @@ R8. Hay 1 fila por día hábil en cada cuenta de MP sin fecha de liberación (no
 15. **Lupa de mano 100 mm** (Ayelen): 2 de 34 llegaron rotas. (a) sugerida: que Tito las envuelva mejor al armar la caja · (b) seguir igual.
 16. **Filtro de agua** (Matías): desde el 17/10 vendió 1, perdió la caja y ML pide $1.000 (menos que el costo). (a) sugerida: mirar en la página quién gana la caja y si es otro producto o un precio mal puesto, denunciarlo · (b) esperar.
 17. **Separador x2 de Ayelen** (la publicación que no vende, `MLA1474954957`): ML le marca la calidad en 62%. (a) sugerida: completar en ML la ficha técnica (marca, material, cantidad), el código universal o "no tiene", y fotos con fondo blanco · (b) dejarla.
-18. **Sacapelusas Xiaomi** (Ayelen, 2 en Full): estaba a $99.999 de relleno; para el 25% hace falta $53.780. (a) sugerida: pasame a cuánto lo venden otros con Full y lo pongo unos 20% arriba · (b) $64.990 y buscar techo.
+18. **Aviso de ML en Ayelen por "productos falsificados"** (se ve en su captura del 23/10, propiedad intelectual): mirar en ML → Consultar infracciones qué publicación fue. Si es una marca, la agrego como prohibida para ML (`marcanoml`).
 19. **Dos controles que sólo reviso yo, para que sepas:** el reclamo de la Piedra Guasha de Ayelen sigue esperando tu respuesta en ML (lo hacés vos desde ML).
 
 ## Viejas que siguen esperando (de CLAUDE.md §13)
