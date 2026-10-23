@@ -445,7 +445,7 @@ Si dudás si un comando existe, buscá en `sync.mjs` (`grep -n "'<nombre>'" ml-s
   que vendían 1-2 cada 14 d no vendieron más, Good igual plata con 1/3 de unidades, L'extase mejor; Paulvic −~$1.300/día, pocas ventas: sin certeza) y la idea de un Paulvic de
   hombre a ~$17.990. Pedido del 06/10 llegó y se pagó (ver HISTORIA). Blush sin publicación en ML.
   **Pedido `pv20261019` llegó el 22/10 COMPLETO** (114 u. + 3 testers de Witch Night/Good/Blue para la perfumería, no cuentan;
-  flete $18.000, el del remito redondeado, cargado). Falta el monto a pagar (valor declarado $660.130,71 NO es lo que se paga) → `pvped:costo:pv20261019;apagar=…;go`;
+  flete $18.000, el del remito redondeado, cargado). Facturas A 45796/97: total $798.758,16 (con IVA); se paga con 5% menos si es en 7 días hábiles (la calculadora del 06/10 fue factura × 0,95 exacto) → a pagar **$758.820,25**, cargado;
   **pagar antes del lun 02/11** (si no, +10%); con el comprobante, `pvped:pago`.
 - **Iscos del 19/10:** se publica en ML (lo hace él); al llegar fichas con costo web × 0,665 y el precio lo decido yo (peor caso). Los dos
   Nina 50 ml pueden no venir. Se esperan ~5-10%: si no deja ni el costo, avisarle.
