@@ -77,7 +77,7 @@ const _cortarCiclo = (donde) => {
 // los que escriben en cantidad o en plata se niegan de entrada, y cualquier otro corre con la base,
 // ML, Mercado Pago y Telegram en sólo lectura (se deja renovar y guardar el token de ML, que ML rota).
 const EN_CONSULTA = process.env.GITHUB_WORKFLOW === 'ml-consulta' || process.env.ML_CONSULTA === '1';
-const CONSULTA_ESCRIBE = new Set(['ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar']);
+const CONSULTA_ESCRIBE = new Set(['ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml']);
 const CONSULTA_NIEGA = new Set(['cajaitems', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'listaped', 'publicar', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'errores', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'promoventas', 'cargosmes', 'arcacierres', 'webpush']);
@@ -10677,6 +10677,13 @@ function candDescarteBlando(c) {
 // & Gabbana llegó a la revisión del pedido marcado "✅ LISTO PARA PEDIR" siendo una marca que él
 // tiene prohibida. Ahora se busca la marca también en el NOMBRE, como palabras enteras y en orden
 // ("dolce gabbana" agarra "Dolce & Gabbana Dolce Blue"). Devuelve la marca o null.
+// MARCAS PROHIBIDAS SÓLO PARA ML (23/10/2026, él con el CK One: *"por la marca nos denuncian al toque (…) marca prohibida para ml. ya que
+// para perfumería son los que más venden"*): `cyc/mlconfig/marcasNoML/<marca codificada>` = true. No se publica (`publicar`, `gemelacrea`,
+// `gemelaenviocrea` frenan) pero se sigue comprando para la perfumería (no toca candidatos ni pedidos, a diferencia de `marcano`).
+async function marcaNoMLDe(db, nombre) {
+  let m = null; try { m = (await db.get('cyc/mlconfig/marcasNoML')) || {}; } catch { return { err: 'no pude leer las marcas prohibidas para ML: no publico a ciegas' }; }
+  const r = marcaFrenadaDe({ nombre }, m); return r ? { marca: r } : null;
+}
 function marcaFrenadaDe(c, marcasNo) {
   if (!c || !marcasNo) return null;
   const claves = Object.keys(marcasNo).filter((k) => marcasNo[k]);
@@ -17697,6 +17704,32 @@ async function main() {
         } catch (err) { console.log(`   ML: ❌ ${String(err.message || err).slice(0, 120)}`); }
         console.log('');
       }
+      return;
+    }
+    // BILLING_PROBE=marcanoml:<marca>[:go] / marcanoml:-<marca>:go / marcanoml → MARCA PROHIBIDA SÓLO PARA ML (23/10/2026, él: "el CK One
+    // no publicar, por la marca nos denuncian al toque (…) marca prohibida para ml, ya que para perfumería son los que más venden").
+    // `cyc/mlconfig/marcasNoML`: frena `publicar` y las gemelas; NO toca candidatos ni pedidos (se sigue comprando para el local).
+    // Muestra las publicaciones vivas que ya hay de esa marca (para que él decida si las pausa). Sin `:go` sólo muestra.
+    if (/^marcanoml(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const partes = String(process.env.BILLING_PROBE).split(':');
+      const APLICAR = partes[partes.length - 1] === 'go';
+      let marca = partes.slice(1, APLICAR ? -1 : undefined).join(':').trim();
+      const sacar = marca.startsWith('-'); if (sacar) marca = marca.slice(1).trim();
+      marca = marca.replace(/\+/g, ' ').toLowerCase();
+      const antes = (await db.get('cyc/mlconfig/marcasNoML')) || {};
+      const dec = (k) => { try { return decodeURIComponent(k); } catch { return k; } };
+      console.log(`Marcas prohibidas para ML hoy: ${Object.keys(antes).filter((k) => antes[k]).map(dec).join(' · ') || 'ninguna'}`);
+      if (!marca) return;
+      const clave = encodeURIComponent(marca);
+      console.log(`=== MARCA ${sacar ? 'PERMITIDA DE NUEVO EN ML' : 'PROHIBIDA PARA ML'}: "${marca}" ${APLICAR ? '(APLICANDO)' : '(PRUEBA)'} ===`);
+      const links = (await db.get('cyc/mllinks')) || {};
+      const vivas = Object.entries(links).filter(([, e]) => e && String(e.status || '') !== 'closed' && marcaFrenadaDe({ nombre: e.title || '' }, { [clave]: true }));
+      console.log(`${vivas.length} publicación(es) vivas de esa marca${vivas.length ? ' (NO las toco: decidís vos si se pausan)' : ''}:`);
+      for (const [k, e] of vivas) console.log(`   ${k} · ${e.cuenta || '?'} · ${e.status || '?'} · ${String(e.title || '').slice(0, 60)}`);
+      if (!APLICAR) { console.log('\nSOLO PRUEBA: no se tocó nada.'); return; }
+      await db.set(`cyc/mlconfig/marcasNoML/${clave}`, sacar ? null : true);
+      const r = await db.get(`cyc/mlconfig/marcasNoML/${clave}`);
+      console.log(sacar ? (r ? '❌ no se borró' : '✓ quitada (releído)') : (r ? '✓ guardada (releído): publicar y las gemelas la frenan' : '❌ no se guardó'));
       return;
     }
     // BILLING_PROBE=marcano:<marca>[:go] → "ESTA MARCA NO SE COMPRA" (26/09/2026)
@@ -25395,6 +25428,7 @@ async function main() {
         const upid = it.user_product_id || null, sh = it.shipping || {};
         console.log(`\n══ 📦 GEMELA ENVÍO GRATIS · ${mla} · ${L.cuenta} · ${String(it.title || '').slice(0, 55)} · Clásica $${Math.round(it.price || 0).toLocaleString('es-AR')} · ${it.available_quantity} u. · upid ${upid || '—'}`);
         const frenos = [];
+        { const mn = await marcaNoMLDe(db, it.title || ''); if (mn) frenos.push(mn.err || `marca prohibida para ML: ${mn.marca}`); }
         if (!upid) frenos.push('sin user_product_id');
         if ((it.variations || []).length > 1) frenos.push('tiene variantes');
         if (it.listing_type_id !== 'gold_special') frenos.push('la original no es Clásica');
@@ -25689,6 +25723,7 @@ async function main() {
       if (!(P > (it.price || 0))) frenos.push(`el Premium ($${P.toLocaleString('es-AR')}) tiene que ser más caro que la Clásica`);
       if (P > 650000) frenos.push('pasa el techo de $650.000');
       if (P > TOPE_CREAR) frenos.push(`pasa los ${money(TOPE_CREAR)}: nunca se crean publicaciones más caras (él, 23/10)`);
+      { const mn = await marcaNoMLDe(db, it.title || ''); if (mn) frenos.push(mn.err || `marca prohibida para ML: ${mn.marca}`); }
       // EL MARGEN DE LA PREMIUM AL PRECIO PEDIDO (etapa 1, 21/10/2026): la misma cuenta de `gemela` (`cuentaGemela`). Si el peor caso
       // queda abajo del piso o la plata neta no llega a la de la Clásica, no se crea (salvo `!piso`, con el motivo dicho en el chat).
       // Lo que no se puede medir (sin ficha, sin costo, sin dólar, ML no contestó la comisión) también frena: no se crea a ciegas.
@@ -27449,6 +27484,7 @@ async function main() {
       if (!(precio > 0)) { console.log('❌ precio inválido.'); return; }
       if (precio > TECHO_DURO) frenos.push(`pasa el techo de ${money(TECHO_DURO)}`);
       if (precio > TOPE_CREAR) frenos.push(`pasa los ${money(TOPE_CREAR)}: nunca se crean publicaciones más caras (él, 23/10)`);
+      { const mn = await marcaNoMLDe(db, P.name); if (mn) frenos.push(mn.err || `marca prohibida para ML: ${mn.marca} (nos denuncian; sí se vende en la perfumería)`); }
       if (precio % 10 !== 0) avisos.push('el precio no termina en 0 (los míos terminan en 90 o 990)');
       // El color: si la ficha tiene colores, hay que decir cuál (cada color es su publicación).
       const vsP = Array.isArray(P.variantes) ? P.variantes : Object.values(P.variantes || {});

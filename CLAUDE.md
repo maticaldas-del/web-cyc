@@ -313,7 +313,7 @@
   con números (cuántos y por qué no) y se ofrece aparte. Los archivos van por SendUserFile desde el scratchpad, nunca al repo. Primer
   caso: `faltaventas:todas` → 183 de 7.392 (PROMPT_VENTAS_LISTAS).
 - Pasos por comando: `pyped:repo:<palabra>=<u>;…|nuevos|llego:<id>;go` · `pedir:<palabra>=<u>;…;go` · `compray` · `pyprecio` · `candprecio` ·
-  `candalta` · `pyvisto` · `pyconocidos` · `marcano:<marca>` (prohibida: **Dolce & Gabbana**). Celulares viajan con el padre (`celuviaje`).
+  `candalta` · `pyvisto` · `pyconocidos` · `marcano:<marca>` (prohibida: **Dolce & Gabbana**) · `marcanoml:<marca>:go` = prohibida **sólo para ML** (no se publica, sí se compra para la perfumería): **Calvin Klein** (23/10, *"por la marca nos denuncian al toque"*). Celulares viajan con el padre (`celuviaje`).
   Nada de envío internacional. Tarjetas de memoria: ya no hay truchas (20/10), se tratan como cualquier producto.
 - **Reglas de categorías del chat de compras** (aprobadas 03/10; vivían sólo en una PC, van en el `PROMPT GUAY`): antes de mirar ML,
   afuera precio crudo > US$215, lo que ya está en el panel y Dolce & Gabbana. **No se miran:** celular, notebook, tablet, cámaras
