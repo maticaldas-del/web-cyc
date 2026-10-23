@@ -27384,7 +27384,10 @@ async function main() {
       }
       // Lo que se mandaría. Título y fotos del catálogo (ML los toma del catálogo en una publicación de catálogo).
       const fotos = ((prodML && prodML.pictures) || []).map((x) => x && (x.secure_url || x.url)).filter((u) => /^https:\/\//.test(String(u || ''))).slice(0, 6);
-      const body = { site_id: 'MLA', title: String((prodML && prodML.name) || P.name).slice(0, 60), category_id: categoria, price: precio, currency_id: 'ARS', available_quantity: 1, buying_mode: 'buy_it_now', listing_type_id: 'gold_special', condition: 'new', catalog_product_id: cat || undefined, catalog_listing: true, ...(fotos.length ? { pictures: fotos.map((u) => ({ source: u })) } : {}) };
+      const body = { site_id: 'MLA', title: String((prodML && prodML.name) || P.name).slice(0, 60), category_id: categoria, price: precio, currency_id: 'ARS', available_quantity: 1, buying_mode: 'buy_it_now', listing_type_id: 'gold_special', condition: 'new', catalog_product_id: cat || undefined, catalog_listing: true, ...(fotos.length ? { pictures: fotos.map((u) => ({ source: u })) } : {}),
+        // Envío por Mercado Envíos (me2): sin decirlo ML toma me1 y las 4 cuentas no lo tienen ("User has not mode me1", medido 23/10
+        // con la Webcam). Desde $33.000 el envío gratis es obligatorio; abajo lo paga el comprador. Full lo pone ML al entrar la caja.
+        shipping: { mode: 'me2', local_pick_up: false, free_shipping: precio >= UMBRAL_ENVIO_GRATIS } };
       console.log(`══ PUBLICAR EN ML (${GO ? 'DE VERDAD' : 'PRUEBA'}) · ${P.name}${color ? ' · ' + color : ''} · ${label} ══`);
       { const ps = ofs.map((o) => Number(o && o.price) || 0).filter((x) => x > 0).sort((x, y) => x - y), psF = ofs.filter((o) => o && o.shipping && o.shipping.logistic_type === 'fulfillment').map((o) => Number(o.price) || 0).filter((x) => x > 0).sort((x, y) => x - y);
         console.log(`   competencia en el catálogo: ${ps.length ? money(ps[0]) + ' a ' + money(ps[ps.length - 1]) + ' (' + ps.length + ')' : 'nadie'}${psF.length ? ' · con Full ' + money(psF[0]) + ' a ' + money(psF[psF.length - 1]) + ' (' + psF.length + ')' : ' · nadie con Full'}`); }
