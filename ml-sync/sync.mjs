@@ -4921,7 +4921,8 @@ async function detectarErrores(db, o = {}) {
   // algo que FALTÓ hacer: la regla del 21/10 dice que lo nuevo que vende sube +30% a buscar techo en la misma vuelta. Sale acá toda
   // Clásica activa con stock cuyo tag de hoy es 🆕 y que vendió (ella o una gemela/hermana del mismo stock) después del tag sin una
   // suba mía después de esa venta. La lista tiene que quedar vacía al terminar la vuelta (se sube con el comando que trae).
-  const lanza = [], lzC = { nuevo: 0, inact: 0, sinVenta: 0, subio: 0 };
+  const lanza = [], lzC = { nuevo: 0, inact: 0, sinVenta: 0, subio: 0, congelada: 0 };
+  let nbDet = {}; try { nbDet = (await db.get('cyc/nobajar')) || {}; } catch { nbDet = {}; }
   { const vdC = new Map(); const ventasDia = async (k) => { if (!vdC.has(k)) { let o = null; try { o = (await db.get('cyc/ventaprod/' + k)) || {}; } catch { o = null; } vdC.set(k, o); } return vdC.get(k); };
     for (const [m, h] of Object.entries(est)) {
       const e = links[m]; if (!e || e.gemelaDe || e.ignored || e.noVendemosMas) continue;
@@ -4937,6 +4938,7 @@ async function detectarErrores(db, o = {}) {
       if (!primera) { if (sinLeer) lanza.push({ mla: m, e, sinLeer: true }); else lzC.sinVenta++; continue; }
       const subio = Object.values(cc).some((c) => c && String(c.mla) === m && Number(c.ts) > primera && Number(c.a) > Number(c.de) * 1.02);
       if (subio) { lzC.subio++; continue; }
+      if (nbDet[m] && nbDet[m].congelado) { lzC.congelada++; continue; }   // 🧊 él pidió que el precio quede ahí (`nobajar …!congelar`)
       const P = Number((np[m] || {}).precio) || 0, obj = P > 0 ? Math.min(objTerm(P * 1.3) || TECHO_DURO, TECHO_DURO) : 0;
       lanza.push({ mla: m, e, primera, uds, P, obj, tsU });
     }
@@ -4946,7 +4948,7 @@ async function detectarErrores(db, o = {}) {
     console.log(`${x.mla} · ${x.e.cuenta || '?'} · ${String(x.e.title || '?').slice(0, 44)} · 🆕 desde ${fecha(x.tsU)} · vendió ${x.uds} u. (la primera ${fecha(x.primera)}) · hoy ${x.P ? $(x.P) : '¿?'}`);
     if (x.obj > x.P) console.log(`   ▶️ decido:${x.mla}=${x.obj}#techo|Lanzamiento que vendió: +30% a buscar techo (regla del 21/10, el detector);go`);
   });
-  console.log(`(miré ${lzC.nuevo} con 🆕 de hoy: ${lzC.inact} no activas · ${lzC.sinVenta} sin venta desde el tag · ${lzC.subio} ya subieron después de vender · ${lanza.length} para subir)`);
+  console.log(`(miré ${lzC.nuevo} con 🆕 de hoy: ${lzC.inact} no activas · ${lzC.sinVenta} sin venta desde el tag · ${lzC.subio} ya subieron después de vender · ${lzC.congelada} 🧊 congeladas a pedido suyo · ${lanza.length} para subir)`);
   const res = { n: N, cats, items, foto, fotoGem, fotoHer, hechos: [], noHechos: [], lanza };
   // ── 4 · deshacer (`:go`): sólo lo anotado con el formato nuevo; lo de antes se deshace a mano con su comando
   const aDeshacer = por('pendiente').filter((x) => x.fmt >= 2 && x.fuente !== 'el detector');
