@@ -25292,6 +25292,16 @@ async function main() {
         try { b1 = await mlGet('/items/' + mla + '?attributes=id,listing_type_id,status,price,available_quantity,shipping', tk); } catch { }
         if (b2) console.log(`   releído ${nid}: ${b2.listing_type_id} · ${b2.status}${(b2.sub_status || []).length ? ' (' + b2.sub_status.join(',') + ')' : ''} · $${Math.round(b2.price || 0).toLocaleString('es-AR')} · ${b2.available_quantity} u. · envío ${(b2.shipping || {}).logistic_type} · envío gratis ${(b2.shipping || {}).free_shipping} · upid ${b2.user_product_id}`);
         if (b1) console.log(`   la Clásica ${mla}: ${b1.listing_type_id} · ${b1.status} · $${Math.round(b1.price || 0).toLocaleString('es-AR')} · ${b1.available_quantity} u. · envío gratis ${(b1.shipping || {}).free_shipping}`);
+        // 23/10/2026 (él: "después de crearla tenés que pausarla sí o sí: esa mercadería no se puede mandar por correo, va a Full"):
+        // si la Clásica no está activa (no tiene stock en Full todavía), la gemela nueva se pausa en el acto y se relee. La activa la
+        // vuelta de la hora junto con la Clásica cuando entra la caja.
+        if (nid && b1 && b1.status !== 'active') {
+          try { const rp = await fetch(ML_API + '/items/' + nid, { method: 'PUT', headers: { Authorization: 'Bearer ' + tk, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'paused' }) }); _anotarEscrituraML(rp, nid, 'pausar la gemela nueva (la Clásica no está activa)', ''); } catch { /* se relee abajo */ }
+          await new Promise((ok) => setTimeout(ok, 2000));
+          let bp = null; try { bp = await mlGet('/items/' + nid + '?attributes=id,status', tk); } catch { bp = null; }
+          console.log(bp && bp.status === 'paused' ? `   ⏸️ ${nid} pausada (la Clásica está ${b1.status}): se activa cuando entre a Full` : `   ⚠️⚠️ NO PUDE PAUSAR ${nid} (dice ${bp ? bp.status : '?'}): la vuelta de la hora pausa lo activo fuera de Full, mirarla`);
+          if (b2 && bp && bp.status) b2.status = bp.status;
+        }
         const okRel = b2 && b2.listing_type_id === 'gold_special' && (b2.shipping || {}).free_shipping === true && Math.round(b2.price) === P && b2.user_product_id === upid;
         console.log(okRel ? '   ✓ quedó Clásica, con envío gratis, al precio pedido y en el mismo producto' : '   ⚠️ NO coincide con lo pedido: mirarla');
         const e2 = { title: (b2 && b2.title) || L.title || '', cuenta: L.cuenta, status: (b2 && b2.status) || 'active', gemelaDe: mla, gemelaTipo: 'envio', altaTs: Date.now() };
@@ -25584,6 +25594,16 @@ async function main() {
       try { b1 = await mlGet('/items/' + mla + '?attributes=id,listing_type_id,status,price,available_quantity', t.access_token); } catch { }
       if (b2) console.log(`   releído ${nid}: tipo ${b2.listing_type_id} · ${b2.status}${(b2.sub_status || []).length ? ' (' + b2.sub_status.join(',') + ')' : ''} · $${Math.round(b2.price || 0).toLocaleString('es-AR')} · ${b2.available_quantity} u. · envío ${(b2.shipping || {}).logistic_type} · upid ${b2.user_product_id} · catálogo ${b2.catalog_listing ? 'sí' : 'no'} · ${b2.permalink || ''}`);
       if (b1) console.log(`   la Clásica ${mla}: tipo ${b1.listing_type_id} · ${b1.status} · $${Math.round(b1.price || 0).toLocaleString('es-AR')} · ${b1.available_quantity} u.`);
+      // 23/10/2026 (él: "después de crearla tenés que pausarla sí o sí: esa mercadería no se puede mandar por correo, va a Full"):
+      // si la Clásica no está activa (no tiene stock en Full todavía), la gemela nueva se pausa en el acto y se relee. La activa la
+      // vuelta de la hora junto con la Clásica cuando entra la caja.
+      if (nid && b1 && b1.status !== 'active') {
+        try { const rp = await fetch(ML_API + '/items/' + nid, { method: 'PUT', headers: { Authorization: 'Bearer ' + t.access_token, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'paused' }) }); _anotarEscrituraML(rp, nid, 'pausar la gemela nueva (la Clásica no está activa)', ''); } catch { /* se relee abajo */ }
+        await new Promise((ok) => setTimeout(ok, 2000));
+        let bp = null; try { bp = await mlGet('/items/' + nid + '?attributes=id,status', t.access_token); } catch { bp = null; }
+        console.log(bp && bp.status === 'paused' ? `   ⏸️ ${nid} pausada (la Clásica está ${b1.status}): se activa cuando entre a Full` : `   ⚠️⚠️ NO PUDE PAUSAR ${nid} (dice ${bp ? bp.status : '?'}): la vuelta de la hora pausa lo activo fuera de Full, mirarla`);
+        if (b2 && bp && bp.status) b2.status = bp.status;
+      }
       const okRel = b2 && b2.listing_type_id === 'gold_pro' && Math.round(b2.price) === P && b2.user_product_id === upid;
       console.log(okRel ? '   ✓ quedó Premium, al precio pedido y en el mismo producto' : '   ⚠️ NO coincide con lo pedido: mirarla en ML');
       // Vincularla a la misma ficha y color (el robot de ventas la reconoce por cyc/mllinks).

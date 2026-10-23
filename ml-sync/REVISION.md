@@ -97,6 +97,14 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
 - Qué: cuenta los candidatos de Paraguay y los productos de las listas por tramo de % (25-30, 30-35, 35-50, 50+), cuántos pasaron todo y cuántos venden 100+, y lista los de 30-35% que pasaron todo.
 - Chequear: que use los mismos filtros que `faltaventas` (vivos, sin categoría que no se mira, costo vigente).
 
+### Publicar desde acá: Clásica + Premium + envío gratis, todo PAUSADO (23/10/2026, él: "intentalo", etapa 3)
+- **Qué es:** él aceptó que yo cree las publicaciones nuevas (todas de catálogo). Cada producto lleva Clásica (`publicar`), su gemela
+  Premium (`gemelacrea`) y, si queda abajo de $33.000, la Clásica con envío gratis (`gemelaenviocrea`; arriba de $33.000 la Clásica ya
+  tiene envío gratis, no se crea). **Todo queda pausado** (*"esa mercadería no la podemos mandar por correo, sí o sí a Full"*):
+  `publicar` ya pausaba; desde hoy las dos gemelas se pausan en el acto si la Clásica no está activa, y se relee.
+- **Dónde vive:** `sync.mjs` → `publicar`, `gemelacrea`, `gemelaenviocrea` (bloque "pausar la gemela nueva").
+- **Qué chequear:** que ninguna quede activa con el 1 de depósito · que la vuelta de la hora las active cuando entra la caja a Full.
+
 ### CYC Avisos = sólo urgente y recordatorios (23/10/2026, regla suya, etapa 4)
 - **Qué es:** él: *"si me llega un mensaje de CYC Avisos sé que es algo que tengo que resolver ya"*. `pregunto:` sólo sale si el texto
   empieza con "URGENTE"; `resumen:` no sale; lo que deshace el detector va al log. Las decisiones van a `notas/para_mati.md`.
