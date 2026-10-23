@@ -10293,6 +10293,27 @@ const CAND_VARA_COMPRA = 35;
 // 23/10/2026 (eligió la 1a): lo que vende 100+ en ML con 2+ vendedores entra desde 30% (el colchón del tope de H hasta fin de año).
 // Misma regla que `varaCompra` de index.html; en febrero, con los topes nuevos, se vuelve a medir.
 const CAND_VARA_VENDE = 30;
+// CUÁNTAS UNIDADES TRAE (23/10/2026, él con el Deco X60: *"estos en ml se venden x2 unidades, en paraguay es de una unidad"*):
+// el número de unidades/piezas/pack que dice un título, o null si no lo dice. Sirve para no medir 1 unidad contra un pack de 2.
+function unidadesPackTit(t) {
+  const s = String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const m = s.match(/\b(\d{1,2})\s*-?\s*(?:unidades|unidade|unidad|unids?|piezas?|pecas?|pack)\b/) || s.match(/\bpack[\s-]*(?:de\s*|x\s*)?(\d{1,2})\b/) || s.match(/\bpaquete\s*de\s*(\d{1,2})\b/);
+  if (!m) return null;
+  const n = parseInt(m[1], 10);
+  return n > 0 && n <= 24 ? n : null;
+}
+// Las unidades de un catálogo de ML: el título y, si no lo dice, sus atributos de unidades por pack (el Deco X60 de 2 se llamaba
+// "Sistema Wifi Mesh Tp-link Deco X60 Ax5400 Wi-fi 6 Blanco", sin el número en el título).
+function unidadesCatML(prod) {
+  const t = unidadesPackTit(prod && (prod.name || prod.title)); if (t != null) return t;
+  for (const a of ((prod && prod.attributes) || [])) {
+    if (!/UNITS?_PER_PACK|PACKAGE_UNITS|UNITS_PER_PACKAGE|PACK_UNITS|UNITS_QUANTITY|SALE_FORMAT_UNITS|^UNITS$/i.test(String(a && a.id || ''))) continue;
+    const n = parseInt(String(a.value_name || (a.values && a.values[0] && a.values[0].name) || ''), 10);
+    if (n > 0 && n <= 24) return n;
+  }
+  return null;
+}
+function packDistinto(a, b) { const x = unidadesPackTit(a), y = (b && typeof b === 'object') ? unidadesCatML(b) : unidadesPackTit(b); return x != null && y != null && x !== y ? { py: x, ml: y } : null; }
 function candPisoDe(c) { return c && RE_CAND_PERF.test(`${c.nombre || ''} ${c.mlTit || ''}`) ? CAND_PISO_PERFUME : CAND_PISO_PCT; }
 const CAND_MIN_VENT = 100;      // 03/10/2026: "100 unidades mínimo vendidas". Desde el 20/10/2026 ya no frena (ver abajo); queda para contar
 // EN CATÁLOGO CON 2+ VENDEDORES EN VEZ DE 100 VENTAS (20/10/2026, eligió la 1a). Él: *"sacar las 100 ventas y que ahora sean todos productos
@@ -10963,6 +10984,7 @@ function _esGemelo(nombre, mlTit, t2) {
   // Las palabras en las que coinciden el candidato y el catálogo medido (marca, línea: "blue iconic")
   // tienen que estar en el gemelo. Sin esto "Club de Nuit Woman" pasaba por gemelo del "Blue Iconic".
   if (_rvColorChoca(nombre, t2) || _rvColorChoca(mlTit, t2)) return false;
+  if (packDistinto(nombre, t2) || packDistinto(mlTit, t2)) return false;   // 1 unidad no es gemelo de un pack de 2 (23/10/2026)
   const GEN = new Set(['edt', 'edp', 'eau', 'toilette', 'parfum', 'perfume', 'perfum', 'masculino', 'feminino', 'hombre', 'mujer', 'unisex', 'unissex', 'para', 'color']);
   if ([...pN].filter((w) => pML.has(w) && !GEN.has(w)).some((w) => !p2.has(w))) return false;
   return [...p2].filter((w) => pN.has(w) || pML.has(w)).length >= 2;
@@ -10992,6 +11014,8 @@ function chequeoMismoProducto(nombre, mlTit) {
   else if (modCP.length && !modOK.length) motivos.push(`el modelo (${modCP.join(', ')}) no está en el título de ML`);
   if (!modCP.length && faltan.length) motivos.push(`en ML no está(n): ${faltan.join(', ')}`);
   if (!modCP.length && numFaltan.length) motivos.push(`el tamaño ${numFaltan.join(', ')} no está en ML`);
+  // OTRA CANTIDAD (23/10/2026, él con el Deco X60: "en ML se venden x2 unidades, en Paraguay es de una"): reparo DURO.
+  { const pd = packDistinto(nombre, t); if (pd) motivos.push(`otra cantidad: el candidato trae ${pd.py} u. y ML ${pd.ml} u.`); }
   if (_rvColorChoca(nombre, t)) motivos.push(`el color no coincide (candidato: ${[..._rvColores(nombre)].join('/')} · ML: ${[..._rvColores(t)].join('/')})`);
   return motivos;
 }
@@ -11758,8 +11782,10 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
         const q = encodeURIComponent(String(c.nombre).slice(0, 80));
         const bus = await mlGet(`/products/search?site_id=MLA&q=${q}&limit=${noEs.size ? 6 : 3}`, tok);
         const res = (bus && (bus.results || bus.paging ? bus.results : null)) || [];
-        prod = res.find((r) => r && r.id && !noEs.has(String(r.id).toUpperCase()));
+        // Uno con distinta cantidad de unidades (1 contra un pack de 2) no es el mismo producto (23/10/2026, Deco X60).
+        prod = res.find((r) => r && r.id && !noEs.has(String(r.id).toUpperCase()) && !packDistinto(c.nombre, r));
         if (!prod && res.length && noEs.size) console.log(`      (la búsqueda sólo trajo catálogos que marcaste "no es el mismo")`);
+        if (!prod && res.some((r) => r && r.id && packDistinto(c.nombre, r))) console.log(`      (la búsqueda sólo trajo catálogos con otra cantidad de unidades)`);
       }
       if (!prod || !prod.id) {
         if (!soloPrueba) await db.set(`cyc/candidatos_py/${id}/motivo`, 'ML no tiene este producto en su catálogo. Hay que mirarlo a mano.');
@@ -11767,6 +11793,14 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
         sinDato.push(`${c.nombre} → ML no lo tiene en su catálogo`);
         continue;
       }
+      { const pd = packDistinto(c.nombre, prod);
+        if (pd) {
+          const txt = `El catálogo de ML ${prod.id} trae ${pd.ml} unidad(es) y el de Paraguay ${pd.py}: no es el mismo producto (no se mide 1 contra un pack). Falta el catálogo de ${pd.py}.`;
+          console.log(`  · ${c.nombre}\n      → ${txt}`);
+          if (!soloPrueba) await db.set(`cyc/candidatos_py/${id}/motivo`, txt);
+          sinDato.push(`${c.nombre} → ML ${pd.ml} u. contra Paraguay ${pd.py} u.`);
+          continue;
+        } }
       mlTit = String(prod.name || prod.title || '').slice(0, 120);
       mlLink = `https://www.mercadolibre.com.ar/p/${prod.id}`;
       // LA FOTO DEL CATÁLOGO DE ML (01/10/2026). Lo marcó él con el Blue Iconic: *"tienen el mismo
@@ -24307,6 +24341,31 @@ async function main() {
     // BILLING_PROBE=catbusca:<texto>[;<texto>…] → SOLO LEE (19/10/2026). Los catálogos de ML que trae una búsqueda (hasta 15), cada uno
     // con cuántos vendedores tiene, el más barato, el más caro y cuántos son Full. Para elegir a mano el catálogo correcto cuando el
     // emparejado por nombre agarró un set u otro tamaño (él con el Cheeky: "está tomando dos productos distintos").
+    // `candpack` (23/10/2026, Deco X60): los candidatos de Paraguay vivos cuyo nombre dice una cantidad distinta de la del catálogo
+    // de ML con que se midieron (por el título). SOLO LEE: la próxima medición los saca sola.
+    if (/^candpack$/.test(String(process.env.BILLING_PROBE || ''))) {
+      const cands = (await db.get('cyc/candidatos_py')) || {};
+      let n = 0, mir = 0;
+      for (const [id, c] of Object.entries(cands)) {
+        if (!c || !c.nombre || !c.mlTit || c.no || c.prodId) continue; mir++;
+        const pd = packDistinto(c.nombre, c.mlTit); if (!pd) continue; n++;
+        console.log(`  ${id} · PY ${pd.py} u. · ML ${pd.ml} u. · ${String(c.nombre).slice(0, 60)} ↔ ${String(c.mlTit).slice(0, 60)}`);
+      }
+      console.log(`\n${n} de ${mir} candidatos vivos con otra cantidad de unidades (por el título; si el título de ML no dice cuántas, no se ve acá).`);
+      return;
+    }
+    // `catunid:<MLA>[;<MLA>…]` (23/10/2026): cuántas unidades trae un catálogo de ML según `unidadesCatML` (título o atributos) y
+    // los atributos que hablan de unidades/pack. Para mirar a mano un emparejamiento de 1 contra un pack. SOLO LEE.
+    if (/^catunid:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const label = labels.find((l) => accounts[l]?.refresh_token); if (!label) { console.log('Sin token.'); return; }
+      let tok; try { const tR = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, accounts[label].refresh_token); await db.patch('mlapi/tokens/' + label, { refresh_token: tR.refresh_token, updated_ts: Date.now() }); tok = tR.access_token; } catch (e) { console.log('Sin token: ' + String(e.message || e).slice(0, 100)); return; }
+      for (const id of String(process.env.BILLING_PROBE).slice('catunid:'.length).split(/[;,\s]+/).map((x) => x.trim().toUpperCase()).filter((x) => /^MLA\d+$/.test(x))) {
+        let p = null; try { p = await mlGet('/products/' + id, tok); } catch (e) { console.log(`${id} · ❌ ${String(e.message || e).slice(0, 100)}`); continue; }
+        const at = ((p && p.attributes) || []).filter((a) => /UNIT|PACK|QUANT|FORMAT/i.test(String(a.id || ''))).map((a) => `${a.id}=${a.value_name || ''}`);
+        console.log(`${id} · ${String(p.name || '').slice(0, 80)} · unidades: ${unidadesCatML(p) ?? '?'} · ${at.join(' · ') || '(sin atributos de unidades)'}`);
+      }
+      return;
+    }
     if (/^catbusca:/.test(String(process.env.BILLING_PROBE || ''))) {
       const label = labels.find((l) => accounts[l]?.refresh_token); if (!label) { console.log('Sin token.'); return; }
       let tok; try { const tR = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, accounts[label].refresh_token); await db.patch('mlapi/tokens/' + label, { refresh_token: tR.refresh_token, updated_ts: Date.now() }); tok = tR.access_token; } catch { console.log('No pude renovar el token.'); return; }
