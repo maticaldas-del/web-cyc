@@ -2947,7 +2947,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.18';
+const APP_VERSION='26.19';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2960,6 +2960,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.19',f:'23/10',h:'15:20',c:[{n:1,t:'⚖️ Tope de H en Inicio: "lo próximo nuevo va a…" elige entre Ayelen y Luciana (la que más lugar tiene), como pediste.'}]},
   {v:'26.18',f:'23/10',h:'15:10',c:[{n:2,t:'🔢 Contar lo que hay: tarjeta "🏷️ Sin terminar / sin etiqueta" con la mercadería que llegó y todavía no tiene la etiqueta de Full (la carga Claude cuando le pasás lo que llegó, y la saca cuando le decís que la etiquetaste). Armar caja la sigue contando igual y en cada renglón dice cuántas faltan etiquetar.'}]},
   {v:'26.17',f:'23/10',h:'15:10',c:[{n:1,t:'Paraguay → Nissei: la carpeta de abajo se llama "Sin precio en ML": son los que el robot ya buscó y encontró en ML pero nadie los vende (no hay precio contra qué comparar), más los que quedan afuera por regla. Los que faltan medir de verdad son los de "Falta analizar" (~100).'}]},
   {v:'26.16',f:'23/10',h:'14:45',c:[{n:2,t:'El puntaje del día (Inicio y Ventas) ya puede pasar de 10: sigue subiendo 3 puntos por cada $115.000 de ganancia de más. Arriba de 10 dice "🚀 Día excepcional" y el número se mueve un poquito.'}]},
@@ -23594,7 +23595,7 @@ function renderHomeParejo(){
   el.innerHTML=caja(`<div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.85rem">⚖️ Las 4 cuentas contra el tope de H (${fM(d.topeH)}/año)</div>
     <div style="font-size:.6rem;color:var(--muted);margin-top:2px">La próxima recategorización de ARCA mira del ${fD(d.ini)} al ${fD(d.fin)}. Barra llena = lo facturado oficial hasta hoy (canceladas incluidas, como las cuenta ARCA) · barra clarita = lo que falta hasta el cierre, al ritmo de los últimos 30 días enteros (hasta ayer). El tope es por cuenta.</div>
     ${barras}${aviso}
-    <div style="font-size:.66rem;margin-top:8px">💡 Lo próximo nuevo que no sea perfume → <strong style="color:var(--green)">${MET_LABELS[menos.a]}</strong>, que es la que más lugar tiene. <span style="color:var(--muted)">(Perfumes siguen yendo a Adriana; lo que ya está en una cuenta, queda.)</span></div>
+    <div style="font-size:.66rem;margin-top:8px">💡 Lo próximo nuevo que no sea perfume → <strong style="color:var(--green)">${MET_LABELS[(orden.find(f=>f.a==='ayelen'||f.a==='luciana')||menos).a]}</strong>, la que más lugar tiene entre Ayelen y Luciana. <span style="color:var(--muted)">(Perfumes siguen yendo a Adriana; lo que ya está en una cuenta, queda.)</span></div>
     <div style="text-align:right;margin-top:8px"><button onclick="goMonotributo()" style="background:transparent;border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:2px 8px;font-size:.6rem;cursor:pointer">✎ AFIP / meses</button></div>`);
 }
 // LA VENTANA QUE MIRA ARCA. No son los últimos 365 días: ARCA cierra por semestre y mira los 12

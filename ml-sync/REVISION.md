@@ -685,6 +685,7 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 (sería doble), y que el número de Gastos y el del Arqueo sean el mismo para cada mes.
 
 ## 3 · MERCADERÍA (miércoles)
+- **23/10/2026 · lo nuevo va a Ayelen o Luciana** (él: *"van en la de ayelen o luciana. dependiendo el cupo de monotributo"*). `repartopy` reparte el equilibrio sólo entre esas dos (las otras sólo si ninguna llega al piso, y lo dice con ⚠️); la tarjeta ⚖️ de Inicio dice la de más lugar entre las dos. Qué chequear: que un perfume siga yendo a Adriana.
 - **23/10/2026 · v26.18 · 🏷️ Sin terminar / sin etiqueta** (él: *"en contar lo que hay poner una tarjeta que sean productos sin etiquetas (…) pero sí que los tengan en cuenta como siempre para armar la caja"*). `cyc/sinetiq/<prodId>` = {t, v:{<variante>}, ts}; robot: `ofi:…=+N!se` (suma a oficina y a sin etiqueta) y `sinetiq:` (lista / fija / resta; en ml-consulta; nunca más que lo que hay en la oficina). Web: `sinEtiq`, `renderSinEtiqCard` (tarjeta arriba de Contar lo que hay, con la cuenta destino), chip `_sinEtiqChip` en cada renglón de Contar y de Armar caja; el reparto NO cambia. Qué chequear: que al despachar una caja el número no quede más alto que la oficina (se recorta solo en pantalla, el dato guardado queda: limpiarlo con `sinetiq:<palabra>=0`), y que el chip no corra la casilla en 360 px.
 
 ### Nissei: búsqueda con el nombre traducido; lo que no aparece queda ✔️ revisado (23/10/2026, v26.15, eligió la 1a)

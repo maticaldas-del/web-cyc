@@ -46828,8 +46828,12 @@ async function main() {
         else if (esPerfume && m.adriana >= piso) { elegida = 'adriana'; motivo = 'es perfume: la perfumería vive en Adriana'; }
         else {
           if (esPerfume) console.log(`    ⚠️ es perfume pero en Adriana no llega al ${piso}% (${m.adriana.toFixed(1)}%): va por equilibrio`);
-          const ok = CTAS.filter((k) => m[k] >= piso).sort((a, b) => acum[a] - acum[b]);
-          if (ok.length) { elegida = ok[0]; motivo = ok.length < 4 ? `llega al ${piso}% sólo en ${ok.map((k) => NOM[k]).join(', ')} · la que más lugar tiene contra H de ésas` : 'la que más lugar tiene contra H'; }
+          // 23/10/2026 (él: "van en la de ayelen o luciana. dependiendo el cupo de monotributo"): lo nuevo se reparte entre Ayelen y
+          // Luciana; las otras dos sólo si en ninguna de esas llega al piso (y se dice).
+          const ok0 = CTAS.filter((k) => m[k] >= piso).sort((a, b) => acum[a] - acum[b]);
+          const okAL = ok0.filter((k) => k === 'ayelen' || k === 'luciana');
+          const ok = okAL.length ? okAL : ok0;
+          if (ok.length) { elegida = ok[0]; motivo = okAL.length ? (okAL.length < 2 ? `entre Ayelen y Luciana sólo llega al ${piso}% en ${NOM[ok[0]]}` : 'entre Ayelen y Luciana, la que más lugar tiene contra H') : `⚠️ ni Ayelen ni Luciana llegan al ${piso}%: ${ok.map((k) => NOM[k]).join(', ')} · la que más lugar tiene contra H de ésas`; }
         }
         if (elegida) {
           console.log(`    → ${NOM[elegida].toUpperCase()} (${motivo}) · ${m[elegida].toFixed(1)}%`);
