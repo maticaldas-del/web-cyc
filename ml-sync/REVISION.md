@@ -79,6 +79,15 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
 
 ## 1 · PRECIOS (lunes)
 
+### 🆕 Lanzamiento que vendió por la gemela y no subió (23/10/2026, corrección suya con el Masajeador)
+- **Qué es:** la venta del Masajeador entró por la Premium; el 🧭/🔬 de `ventasraras` leía la estrategia de la gemela (💳 = bien) y no la 🆕 de su
+  Clásica, así que no salió "lanzamiento que vendió" y la vuelta no lo subió. Ahora una venta de gemela se juzga con la estrategia (y el techo
+  probado) de su Clásica, y el detector `errores` agrega el bloque 🆕 LANZAMIENTOS QUE VENDIERON Y NO SUBIERON (Clásica activa con tag 🆕,
+  venta propia o de gemela/hermana después del tag, sin suba mía después de esa venta) con el `decido` +30% listo.
+- **Dónde vive:** `sync.mjs` → `ventasraras` (`clasDe`, `estDe`) y `detectarErrores` (bloque `lanza`, `res.lanza`).
+- **Qué chequear:** que el bloque salga vacío al terminar cada vuelta · que no liste lo que ya subió · que la venta de una gemela 🆕 salga 🔬
+  "lanzamiento que vendió (por la gemela…)".
+
 ### Vara de compra: 35%, o 30% si vende 100+ con 2+ vendedores (23/10/2026, v26.13, eligió la 1a)
 - Qué: `varaCompra`/`candVaraDe`/`listaVaraDe` en index.html y sync.mjs (las dos iguales). Web: `candPisoDe`, colores (`candPctCol`), `_listaMed25`, carpetas de Listas. Robot: `pedir`, `revisarcompra`, `cuentaLista`, `listarevisar`; `faltaventas` lista desde 30% (las vendidas deciden).
 - Por qué: hasta el 31/12 sobran ~$52 M contra el tope de H (Matías al límite): un 30-35% que vende mucho suma en vez de desplazar. En febrero, con los topes nuevos, se vuelve a medir.

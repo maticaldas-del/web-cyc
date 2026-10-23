@@ -148,7 +148,7 @@
   gris si no cambió nada, color de la estrategia si cambió) → **al terminar, `bajastecho:1` y el detector `errores`, y deshacer en la
   misma vuelta toda ❌ del día** (22/10, 3a: vuelve al precio de antes con `!chico` y "EXCEPCIÓN: vuelve al precio de antes").
 - Listas que tienen que quedar **vacías** al terminar la vuelta: 🚨 escasez que vendió después de mi decisión (`escasez`) · 🛡️ abajo
-  del 25% en el peor caso · 📦 sobra sin decidir · 🔎 sin afinar · 📈 dice techo/escasez y no sube (todas en `planilla`).
+  del 25% en el peor caso · 📦 sobra sin decidir · 🔎 sin afinar · 📈 dice techo/escasez y no sube (todas en `planilla`) · 🆕 lanzamiento que vendió (también por su gemela) y no subió (en `errores`, 23/10).
 - **Activar lo pausado es prioridad** (10/10): `pausadas:25` + `activarfull:go:25`; toda pausada con stock en Full que no se activa
   va al `pregunto:` con motivo. Lo nuevo (nunca estuvo en Full) lo activo yo con el precio ya puesto (peor caso).
 - **Preguntas de compradores:** las contesto yo (`contesto:<id>=<respuesta>;…;go`), sólo las nuevas y sólo las que sé SIN DUDA.
