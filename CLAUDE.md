@@ -223,7 +223,8 @@
   cada escalón como descuento propio con el de lanzamiento tachado. **Nunca bajar algo que vende sólo para medir** (la prueba del tachado
   3b se canceló).
 - **🔒 No bajar** (23/10, él con la waflera: *"le ganamos bien, que sea una excepción si el robot decide bajarlo, quizás lo mejor sería no tocarlo"*):
-  `nobajar:<palabra|MLA>=<motivo>;go` marca todas sus publicaciones (`cyc/nobajar`); F10 frena toda baja y descuento salvo su autorización 🔐 `!nobajar`, pero ANTES evalúa las otras reglas y dice "HUBIERA HECHO: bajarla de X a Y" (queda en `cyc/nobajar/<MLA>/hubiera`, se ve en `nobajar`). Las subas siguen.
+  `nobajar:<palabra|MLA>=<motivo>;go` marca todas sus publicaciones (`cyc/nobajar`); F10 frena toda baja y descuento salvo su autorización 🔐 `!nobajar`, pero ANTES evalúa las otras reglas y dice "HUBIERA HECHO: bajarla de X a Y" (queda en `cyc/nobajar/<MLA>/hubiera`, se ve en `nobajar`). Las subas siguen, salvo `!congelar` (🧊, él: *"queda una sola unidad, quiero que el precio se quede ahí"*): tampoco sube hasta que el stock en Full pase el que tenía al marcarlo (`stockAl`; `_chequeoNoSubir`); ahí se descongela solo y se busca techo/piso.
+- **Nada se publica abajo de 35% en el peor caso** (23/10, él: *"siempre publicar todo arriba del 35% o en 35%. después cuando estemos cerca de pagar stock lo bajaremos"*; *"quizás en un mes cuando el otro vendedor se quede sin stock se venden mucho más caro"*): `PUBLICAR_MIN_PCT`, freno en `publicar` (dice el precio mínimo). Lo comprado que hoy no llega igual se publica a ese precio y espera; se baja recién cerca del stock antiguo.
 - **Nunca se crea una publicación (Clásica o gemela) más cara que $550.000** (23/10, él; `TOPE_CREAR`, freno en `publicar` y `gemelacrea`).
 - **Precio para el peor caso** al poner o activar (12/10). Lo que vende rápido abajo del 25% con poco stock se sube en la misma vuelta.
 - **Venta barata ≠ remate** (09/10): remate sólo si antes estuvo parado (30+ d con stock, <1/semana); si llegó y voló es demanda (precio
@@ -312,7 +313,7 @@
   con números (cuántos y por qué no) y se ofrece aparte. Los archivos van por SendUserFile desde el scratchpad, nunca al repo. Primer
   caso: `faltaventas:todas` → 183 de 7.392 (PROMPT_VENTAS_LISTAS).
 - Pasos por comando: `pyped:repo:<palabra>=<u>;…|nuevos|llego:<id>;go` · `pedir:<palabra>=<u>;…;go` · `compray` · `pyprecio` · `candprecio` ·
-  `candalta` · `pyvisto` · `pyconocidos` · `marcano:<marca>` (prohibida: **Dolce & Gabbana**). Celulares viajan con el padre (`celuviaje`).
+  `candalta` · `pyvisto` · `pyconocidos` · `marcano:<marca>` (prohibida: **Dolce & Gabbana**) · `marcanoml:<marca>:go` = prohibida **sólo para ML** (no se publica, sí se compra para la perfumería): **Calvin Klein** (23/10, *"por la marca nos denuncian al toque"*). Celulares viajan con el padre (`celuviaje`).
   Nada de envío internacional. Tarjetas de memoria: ya no hay truchas (20/10), se tratan como cualquier producto.
 - **Reglas de categorías del chat de compras** (aprobadas 03/10; vivían sólo en una PC, van en el `PROMPT GUAY`): antes de mirar ML,
   afuera precio crudo > US$215, lo que ya está en el panel y Dolce & Gabbana. **No se miran:** celular, notebook, tablet, cámaras
@@ -324,6 +325,7 @@
   (marca + línea + tono + versión + tamaño; sin el tono en ML → afuera), pero sólo entra al pedido si da 25%. Resto: mismo modelo, color,
   capacidad y voltaje (110V afuera), nada de packs distintos. Misma marca ≠ mismo producto (Cabotine 30 vs 100, Animale For Men vs Black).
 - Al llegar: `pyped:llego` crea las fichas (costo pagado × recargo) y recuerda contar la oficina (`ofi`); elegir cuenta según rubro.
+- **Todo lo que entra con ticket se carga con su precio final, aunque no sea para ML** (23/10, *"por más que no sea para ml puede que necesite en algún momento el costo"*): ficha con costo (`nuevoprod`/`poncosto`) sin preguntar; **sólo se le pregunta lo que no sé qué es** (ej. un código sin nombre, como el 7114209 = Joystick PS5), y va a `notas/para_mati.md`.
 
 ### Listas de otros proveedores (📋 Listas = otro Paraguay, sólo para ML; `PROMPT_LISTAS.md`, CEREBRO §17)
 - `lista:<prov>[|fecha=AAAA-MM-DD];<producto>=<pesos>[@<cód>];…;go`. **Nunca cargar una lista vieja** (18/10; el comando frena si la fecha
@@ -434,6 +436,7 @@
 | `cajallego:<seg>[;…][!<palabras>=<u>]:go` · `abrircaja:<seg>:go` · `cajasllegaron` · `faltaron[:días]` | cajas a Full |
 | `lista:<prov>;…;go` · `listarevisar` · `listadato:…;go` · `listaweb:<prov>;go` | listas de proveedores |
 | `pvped:<acción>:<id>;…;go` | Paulvic (llego, pago, costo, nunca) |
+| `sololocal:<id o palabra>[=-]:go` · `ofisinpub` | ficha que se vende sólo en el local (no se publica) · lo de la oficina sin publicación |
 | `vincular:<MLA>=<ficha>:go` · `nuevoprod:<nombre>\|costo=\|mla=\|go` · `fijarvar:<MLA>=<var>[@ficha]\|go` · `buscarpub:<texto>` · `huerfanos` | fichas y vínculos |
 | `unapub:<MLA o palabra>` · `hermanas:<palabra>` · `bajopiso` · `submargen` | todo sobre una publicación · hermanas · márgenes |
 | `poncosto:<id>\|<pesos>\|go` · `ponenvio` · `cajacosto` · `costohist` | costos |
@@ -470,8 +473,7 @@ Si dudás si un comando existe, buscá en `sync.mjs` (`grep -n "'<nombre>'" ml-s
 - **Paraguay:** cuentas de correo (monto y kilos) del pedido del 08/10 y datos del 08/09; transferencia de $50.000 del 29/09 (preguntar).
   Evaluar el 17% de recargo con los gastos del próximo pedido (ya se usa el medido). Cargar los ~13.467 códigos de `pycat` si quedó a medias
   (el chat de compras no tenía GitHub). Pasada del mes de Guay: no se le manda nada hasta que él pida "hagamos la de guay".
-- **Dos Linternas COB** de Ayelen (`MLA3998033920`, `MLA2128209177`) sin ficha: falta el costo real. **EX15LP blanco y Sennheiser** → Ayelen
-  sin publicación todavía. **Piedra Gua Sha** (ficha sola) y Kit Jade vinculados.
+- **Dos Linternas COB** de Ayelen (`MLA3998033920`, `MLA2128209177`) sin ficha: falta el costo real. EX15LP blanco publicado pausado en Ayelen (23/10, `MLA2230467989`, 2 u. sin etiqueta); Joystick PS5 7114209 = sólo local. **Piedra Gua Sha** (ficha sola) y Kit Jade vinculados.
 - **Contador:** recategorización, actividad, facturas entre cuentas, intereses de H. Bajar de ARCA los Emitidos 01/01→04/08 si falta alguno.
 - **Sancor:** esperar respuesta (plan F800/40% $111.988,7: qué es el 40%, si es el final con cuota social e IIBB, qué cubre menos); pagar antes
   del 21; dar de baja "Vida Plus" ($2.901/mes). Hijo de Ayelen tiene OSECAC (plan de 1 persona está bien).
