@@ -97,6 +97,13 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
 - Qué: cuenta los candidatos de Paraguay y los productos de las listas por tramo de % (25-30, 30-35, 35-50, 50+), cuántos pasaron todo y cuántos venden 100+, y lista los de 30-35% que pasaron todo.
 - Chequear: que use los mismos filtros que `faltaventas` (vivos, sin categoría que no se mira, costo vigente).
 
+### `techodias` (23/10/2026, sólo lee): ¿cuánto tarda cada prueba de techo en dar certeza?
+- **Qué es:** él: *"mientras más días buscando techo, más días perdiendo ventas; el punto justo para tener info lo más rápido sin apurar"*.
+  Cada publicación activa con 📈: días en la prueba, ritmo de los 30 días antes (con gemelas/hermanas), vendidas desde la suba y
+  esperadas; el 95% llega con 3 esperadas y 0 vendidas → días que hacen falta = 3 ÷ ritmo. Agrupado por ritmo.
+- **Dónde vive:** `sync.mjs`, antes de `pycatdia`.
+- **Qué chequear:** que el ritmo de antes no cuente días sin stock como días sin venta (hoy divide por 30 fijo: lo de poco stock sale más lento de lo que es).
+
 ### ¿Vendemos menos por buscar techo? `efectotecho[:días]` (22/10/2026, pregunta suya, sólo lee)
 - Qué: semana por semana la tienda entera (u., facturado, ganancia, cuántas subas 📈) + cada suba buscando techo de `cyc/claudecambios` con 7+ días: u./día, visitas y ganancia/día con stock, 14 d antes contra hasta 14 después (corta en el próximo cambio), comparado contra lo que se movió la tienda en las mismas ventanas.
 - Chequear: que los días sin stock no cuenten; que el costo c/u salga de lo vendido (sin costo → ⚠️); que el "esperado" use las mismas ventanas que la suba.

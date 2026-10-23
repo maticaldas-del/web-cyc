@@ -17936,6 +17936,40 @@ async function main() {
     // sacamos de no revisadas por día"*. Desglosa el catálogo de Nissei (`mlapi/pycat`) en lo que la web junta en "❔ No medidos"
     // (sin medir de verdad · sin catálogo exacto en ML · nadie lo vende · afuera por regla) y cuenta, día por día, cuántos midió el
     // robot (`t` de cada producto: la última vez que lo buscó en ML).
+    // BILLING_PROBE=techodias (23/10/2026, SOLO LEE). Él: *"mientras más días estemos buscando techo más días vamos a estar perdiendo
+    // ventas. Hay que encontrar el punto justo para tener info suficiente lo más rápido, sin apurar"*. Cada publicación ACTIVA con 📈
+    // de hoy: días en la prueba, ritmo de antes (unidades de los 30 días antes del tag ÷ 30, con sus gemelas y hermanas de stock),
+    // vendidas desde el tag y cuántas se esperaban a ese ritmo. El 95% llega con 3 esperadas y 0 vendidas (Poisson): a ese ritmo,
+    // ¿cuántos días hacen falta? Agrupa por ritmo para ver dónde se va el tiempo.
+    if (/^techodias$/.test(String(process.env.BILLING_PROBE || ''))) {
+      const DIA = 864e5, ahora = Date.now();
+      const est = (await db.get('cyc/estrategia')) || {}, links = (await db.get('cyc/mllinks')) || {}, prods = (await db.get('cyc/products')) || {};
+      const vdC = new Map(); const vDia = async (k) => { if (!vdC.has(k)) { let o = null; try { o = (await db.get('cyc/ventaprod/' + k)) || {}; } catch { o = null; } vdC.set(k, o); } return vdC.get(k); };
+      const filas = []; let sinLeer = 0;
+      for (const [m, h] of Object.entries(est)) {
+        const e = links[m]; if (!e || e.gemelaDe || e.ignored || e.noVendemosMas || !/^active/.test(String(e.status || ''))) continue;
+        let ult = '', tsU = 0; for (const k of Object.keys(h || {}).map(Number).filter((n) => n > 0).sort((x, y) => x - y)) { const x = h[k]; if (!x || !x.t) continue; ult = x.t === 'correccion' ? pasajeDe(ult) : x.t; tsU = k; }
+        if (ult !== 'techo' || !tsU) continue;
+        const grupo = [m, ...hermanasStockDe(links, prods, m), ...Object.keys(links).filter((g) => (links[g] || {}).gemelaDe === m)];
+        let uA = 0, uD = 0, falla = false;
+        for (let t = tsU - 30 * DIA; t <= ahora + DIA; t += DIA) { const vd = await vDia(dayKeyFromISO(t)); if (vd == null) { falla = true; continue; }
+          for (const v of Object.values(vd)) { if (!v || v.cancelada || !grupo.includes(v.mla)) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; const q = Number(v.qty) || 1;
+            if (ts >= tsU - 30 * DIA && ts < tsU) uA += q; else if (ts >= tsU) uD += q; } }
+        if (falla) sinLeer++;
+        const r = uA / 30, d = (ahora - tsU) / DIA;
+        filas.push({ m, nom: String(e.title || '?').slice(0, 34), cta: e.cuenta || '?', d, r, uD, esp: r * d, d95: r > 0 ? 3 / r : Infinity });
+      }
+      const B = [['3+/día', (r) => r >= 3], ['1 a 3/día', (r) => r >= 1 && r < 3], ['1 cada 1-3 días', (r) => r >= 1 / 3 && r < 1], ['1 cada 3-7 días', (r) => r >= 1 / 7 && r < 1 / 3], ['menos de 1/semana', (r) => r > 0 && r < 1 / 7], ['sin ventas antes', (r) => !(r > 0)]];
+      console.log(`=== 📈 PRUEBAS DE TECHO EN CURSO · ${filas.length} publicaciones activas${sinLeer ? ` · ⚠️ ${sinLeer} con algún día de ventas sin leer` : ''} ===`);
+      console.log('(ritmo = 30 días antes de la suba, con gemelas y hermanas · 95% = 3 ventas esperadas y 0 vendidas)\n');
+      for (const [n, f] of B) { const x = filas.filter((z) => f(z.r)); if (!x.length) continue;
+        const dProm = x.reduce((a, z) => a + z.d, 0) / x.length, d95 = x.filter((z) => isFinite(z.d95)).map((z) => z.d95);
+        const vend = x.filter((z) => z.uD > 0).length, cert = x.filter((z) => z.uD === 0 && z.esp >= 3).length;
+        console.log(`${n.padEnd(18)} ${String(x.length).padStart(3)} · llevan ${dProm.toFixed(1)} d de prueba · para el 95% hacen falta ${d95.length ? (d95.reduce((a, y) => a + y, 0) / d95.length).toFixed(1) + ' d' : 'nunca (sin ritmo)'} · ya vendieron al precio nuevo ${vend} · 0 vendidas con 3+ esperadas (ya hay 95%) ${cert}`); }
+      console.log('\n── una por una (de más días a menos) ──');
+      for (const z of filas.sort((a, b) => b.d - a.d)) console.log(`${z.m} · ${z.cta} · ${z.nom} · ${z.d.toFixed(1)} d · antes ${z.r.toFixed(2)}/día · vendió ${z.uD} (esperadas ${z.esp.toFixed(1)}) · 95% a los ${isFinite(z.d95) ? z.d95.toFixed(0) + ' d' : '—'}`);
+      return;
+    }
     if (/^pycatdia(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const DIAS = Math.max(3, parseInt(String(process.env.BILLING_PROBE).split(':')[1]) || 14);
       const cat = (await db.get('mlapi/pycat')) || {}; const R = (await db.get('cyc/pycatres')) || {};
