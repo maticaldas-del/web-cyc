@@ -8,7 +8,7 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 
 ## Abiertas
 
-1. **Mentonera facial** (Ayelen, `MLA4095170164`, 4 u. en Full, pausada): ¿cuánto costó cada una? Sin costo no la activo.
+1. **Mentonera facial** (Ayelen, `MLA4095170164`, 6 u., pausada): ¿cuánto costó cada una? ¿Hay ticket? Es la ÚNICA ficha que hoy queda sin costo (revisado 23/10). Sin costo no la activo.
 6. **Paulvic `pv20261019`**: pagar $758.820,25 antes del lun 02/11 (si no, +10%). Con el comprobante, `pvped:pago`.
 9. **Ted Lapidus** (`MLA3310524980`): de la 4a no volvió a $65.990 porque ahí queda abajo del 25% en el peor caso (24%). Sigue a
    $72.990 y ya no busca techo. (a) sugerida: dejarlo así · (b) volver a $65.990 igual (con `!piso`).

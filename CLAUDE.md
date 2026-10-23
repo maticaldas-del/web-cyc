@@ -325,6 +325,7 @@
   (marca + línea + tono + versión + tamaño; sin el tono en ML → afuera), pero sólo entra al pedido si da 25%. Resto: mismo modelo, color,
   capacidad y voltaje (110V afuera), nada de packs distintos. Misma marca ≠ mismo producto (Cabotine 30 vs 100, Animale For Men vs Black).
 - Al llegar: `pyped:llego` crea las fichas (costo pagado × recargo) y recuerda contar la oficina (`ofi`); elegir cuenta según rubro.
+- **Todo lo que entra con ticket se carga con su precio final, aunque no sea para ML** (23/10, *"por más que no sea para ml puede que necesite en algún momento el costo"*): ficha con costo (`nuevoprod`/`poncosto`) sin preguntar; **sólo se le pregunta lo que no sé qué es** (ej. un código sin nombre, como el 7114209 = Joystick PS5), y va a `notas/para_mati.md`.
 
 ### Listas de otros proveedores (📋 Listas = otro Paraguay, sólo para ML; `PROMPT_LISTAS.md`, CEREBRO §17)
 - `lista:<prov>[|fecha=AAAA-MM-DD];<producto>=<pesos>[@<cód>];…;go`. **Nunca cargar una lista vieja** (18/10; el comando frena si la fecha
