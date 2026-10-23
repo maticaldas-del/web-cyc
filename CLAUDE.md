@@ -435,6 +435,7 @@
 | `cajallego:<seg>[;…][!<palabras>=<u>]:go` · `abrircaja:<seg>:go` · `cajasllegaron` · `faltaron[:días]` | cajas a Full |
 | `lista:<prov>;…;go` · `listarevisar` · `listadato:…;go` · `listaweb:<prov>;go` | listas de proveedores |
 | `pvped:<acción>:<id>;…;go` | Paulvic (llego, pago, costo, nunca) |
+| `sololocal:<id o palabra>[=-]:go` · `ofisinpub` | ficha que se vende sólo en el local (no se publica) · lo de la oficina sin publicación |
 | `vincular:<MLA>=<ficha>:go` · `nuevoprod:<nombre>\|costo=\|mla=\|go` · `fijarvar:<MLA>=<var>[@ficha]\|go` · `buscarpub:<texto>` · `huerfanos` | fichas y vínculos |
 | `unapub:<MLA o palabra>` · `hermanas:<palabra>` · `bajopiso` · `submargen` | todo sobre una publicación · hermanas · márgenes |
 | `poncosto:<id>\|<pesos>\|go` · `ponenvio` · `cajacosto` · `costohist` | costos |

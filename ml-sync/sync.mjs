@@ -27288,6 +27288,25 @@ async function main() {
     // producto cargado dos veces: la publicación queda pegada a una ficha y la otra queda huérfana.
     // Por eso, antes de crear, busca si ya hay alguna con nombre parecido y NO crea si la encuentra:
     // avisa cuál es y con qué id, para que se decida a mano.
+    // BILLING_PROBE=sololocal:<id o palabra>[=-][:go] → SE VENDE SÓLO EN EL LOCAL, NO EN ML (23/10/2026, él: "el producto 7114209 es un
+    // joystick ps5. se vende en local"). `soloLocal: true` en la ficha: `publicar` la frena y `ofisinpub` no la lista como "sin publicar".
+    // `=-` saca la marca.
+    if (/^sololocal:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _r = String(process.env.BILLING_PROBE).slice('sololocal:'.length);
+      const go = /:go$/i.test(_r);
+      const [qRaw, vRaw] = (go ? _r.replace(/:go$/i, '') : _r).split('=');
+      const q = (qRaw || '').trim(), saca = (vRaw || '').trim() === '-';
+      let hits = products.filter((x) => x.id === q);
+      if (!hits.length) hits = products.filter((x) => norm(x.name || '').includes(norm(q)));
+      if (hits.length !== 1) { console.log(`"${q}" agarra ${hits.length} ficha(s): ${hits.map((x) => x.id + ' ' + x.name).join(' | ') || '—'}. Tiene que ser una sola.`); return; }
+      const pr = hits[0];
+      console.log(`${go ? 'APLICANDO' : 'PRUEBA'}: ${pr.id} · "${pr.name}" · ${saca ? 'vuelve a poder publicarse en ML' : 'sólo se vende en el local (no se publica en ML)'}`);
+      if (!go) { console.log('Para aplicar, agregá :go al final.'); return; }
+      await db.patch('cyc/products/' + pr.id, { soloLocal: saca ? null : true });
+      const rel = await db.get('cyc/products/' + pr.id + '/soloLocal');
+      console.log((!!rel) === !saca ? '✓ Releído de la base.' : `✗ NO quedó: la base dice ${rel}`);
+      return;
+    }
     // BILLING_PROBE=renombrar:<id de ficha>=<nombre nuevo>[:go] → LE CAMBIA EL NOMBRE A UNA FICHA (03/10/2026).
     // Lo mismo que el campo de nombre de la ficha en el panel: las ventas, el stock y los pedidos van por
     // el id, así que no se pierde nada. Se niega si otra ficha ya se llama así (rompería las búsquedas).
@@ -27485,6 +27504,7 @@ async function main() {
       if (precio > TECHO_DURO) frenos.push(`pasa el techo de ${money(TECHO_DURO)}`);
       if (precio > TOPE_CREAR) frenos.push(`pasa los ${money(TOPE_CREAR)}: nunca se crean publicaciones más caras (él, 23/10)`);
       { const mn = await marcaNoMLDe(db, P.name); if (mn) frenos.push(mn.err || `marca prohibida para ML: ${mn.marca} (nos denuncian; sí se vende en la perfumería)`); }
+      if (P.soloLocal) frenos.push('esta ficha se vende sólo en el local (sololocal): no va a ML');
       if (precio % 10 !== 0) avisos.push('el precio no termina en 0 (los míos terminan en 90 o 990)');
       // El color: si la ficha tiene colores, hay que decir cuál (cada color es su publicación).
       const vsP = Array.isArray(P.variantes) ? P.variantes : Object.values(P.variantes || {});
@@ -32067,7 +32087,7 @@ async function main() {
       for (const [pid, p] of Object.entries(prodsO)) {
         if (!p || !p.name) continue;
         const of = parseInt(inv[pid + '__' + OFI]) || 0; if (!(of > 0)) continue;
-        if (vivas[pid]) continue;
+        if (vivas[pid] || p.soloLocal) continue;   // con publicación viva o marcada "sólo en el local"
         const cat = p.mlCatalogo || p.catalogo || p.mlId || '';
         filas.push({ pid, nom: p.name, of, cat, cer: (cerradas[pid] || []).length });
       }
