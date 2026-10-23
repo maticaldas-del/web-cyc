@@ -796,6 +796,7 @@ function redondeoSube(x, cruza) {
 // comando a mano (`volver`, `submargen`, `bajopiso`, `preciosgo`) los podía saltear.
 // Devuelve { to } con el precio ya ajustado, o { err } si no se puede subir.
 const TECHO_DURO = 650000;   // 03/10/2026: subido de $650.000 a $650.000 (regla suya)
+const PUBLICAR_MIN_PCT = 35;   // 23/10/2026 (él): "siempre publicar todo arriba del 35% o en 35%" (peor caso); se baja cerca de pagar stock antiguo
 const TOPE_CREAR = 550000;   // 23/10/2026 (él): nunca se crea una publicación (Clásica o gemela) más cara que esto
 function frenosSuba(from, to, o) {
   from = Number(from) || 0; to = Number(to) || 0;
@@ -27499,7 +27500,21 @@ async function main() {
           else {
             const base = cuenta.costo + cuenta.impuestos + cuenta.envio;
             cuenta.peor = base > 0 ? (cuenta.ganancia - precio * PEOR_RET_PCT) / base * 100 : 0;
-            if (cuenta.peor < pisoP && !PISO_A_MANO) frenos.push(`a ${money(precio)} queda en ${cuenta.peor.toFixed(1)}% en el peor caso, abajo del piso del ${pisoP}% (a propósito: |!piso)`);
+            // 🆕 NADA SE PUBLICA ABAJO DE 35% EN EL PEOR CASO (23/10/2026, él: "siempre publicar todo arriba del 35% o en 35%. después
+            // cuando estemos cerca de pagar stock lo bajaremos"; "quizás en un mes cuando el otro vendedor se quede sin stock se venden
+            // mucho más caro"). Sin excepción: se dice el precio que llega al 35% (búsqueda a cada lado de la barrera de $33.000).
+            const peorA = async (pr) => { const cx = await cuentaCandidato(pr, 'gold_special', categoria, costoUSD, tcP, monoP, feeAtP, 0, label); if (!cx) return null; const b = cx.costo + cx.impuestos + cx.envio; return b > 0 ? (cx.ganancia - pr * PEOR_RET_PCT) / b * 100 : null; };
+            const busca = async (lo, hi) => { const ph = await peorA(hi); if (ph == null || ph < PUBLICAR_MIN_PCT) return null; for (let i = 0; i < 16 && hi - lo > 50; i++) { const mid = Math.round((lo + hi) / 2); const pm = await peorA(mid); if (pm != null && pm >= PUBLICAR_MIN_PCT) hi = mid; else lo = mid; } return hi; };
+            const term = (x) => x >= 10000 ? Math.ceil((x + 10) / 1000) * 1000 - 10 : Math.ceil((x + 1) / 100) * 100 - 10;
+            let p35 = null;
+            { const cMin = Math.max(1000, Math.round(costoUSD * tcP));
+              const abajo = cMin < UMBRAL_ENVIO_GRATIS - 10 ? await busca(cMin, UMBRAL_ENVIO_GRATIS - 10) : null;
+              p35 = abajo != null ? Math.min(term(abajo), UMBRAL_ENVIO_GRATIS - 10) : await busca(Math.max(cMin, UMBRAL_ENVIO_GRATIS), TECHO_DURO);
+              if (p35 != null && abajo == null) p35 = term(p35); }
+            cuenta.p35 = p35;
+            console.log(`   precio para ${PUBLICAR_MIN_PCT}% en el peor caso: ${p35 != null ? money(p35) : `ni a ${money(TECHO_DURO)} llega`}`);
+            if (cuenta.peor < PUBLICAR_MIN_PCT) frenos.push(`a ${money(precio)} queda en ${cuenta.peor.toFixed(1)}% en el peor caso: nada se publica abajo de ${PUBLICAR_MIN_PCT}% (él, 23/10)${p35 != null ? ` → precio mínimo ${money(p35)}` : ''}`);
+            else if (cuenta.peor < pisoP && !PISO_A_MANO) frenos.push(`a ${money(precio)} queda en ${cuenta.peor.toFixed(1)}% en el peor caso, abajo del piso del ${pisoP}% (a propósito: |!piso)`);
           }
         }
       }
@@ -31980,6 +31995,26 @@ async function main() {
       console.log(`\n${ok} aplicados, ${err} con error.`);
       console.log(`Verificá releyendo de ML: volver:<MLA=precio,...> sin ":go" tiene que decir "ya está en".`);
       console.log(`Y después corré netoweb, si no la pantalla sigue mostrando el neto del precio viejo.`);
+      return;
+    }
+    // BILLING_PROBE=porquedaba:<palabra>[;<palabra>…] (23/10/2026, él: "fijate por qué daban"): lo que medía el candidato de Paraguay
+    // cuando se compró (margen, contra qué precio y cuántos vendedores) al lado del costo de hoy de la ficha. SOLO LEE.
+    if (/^porquedaba:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const prodsO = (await db.get('cyc/products')) || {};
+      const cands = (await db.get('cyc/candidatos_py')) || {};
+      const tc = parseFloat((await db.get('cyc/finanzas/tipo_cambio')) || 0) || 0;
+      const nrm = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+      const fd = (ts) => ts ? new Date(Number(ts) - 3 * 3600e3).toISOString().slice(0, 10) : '?';
+      for (const q of String(process.env.BILLING_PROBE).slice('porquedaba:'.length).split(';').map((x) => x.trim()).filter(Boolean)) {
+        const hits = Object.entries(prodsO).filter(([, p]) => p && p.name && nrm(p.name).includes(nrm(q)));
+        console.log(`\n=== "${q}" · ${hits.length} ficha(s) ===`);
+        for (const [pid, p] of hits.slice(0, 3)) {
+          const cs = Object.entries(cands).filter(([, c]) => c && (c.prodId === pid || nrm(c.nombre) === nrm(p.name)));
+          console.log(`  ficha ${p.name.slice(0, 70)} · costo hoy ${tc > 0 ? money(costoPesos(p, 1, tc).costo) : '?'}`);
+          if (!cs.length) console.log('    (no encontré su candidato de Paraguay)');
+          for (const [cid, c] of cs) console.log(`    candidato ${cid} · medido el ${fd(c.calcTs)}: ${c.margen != null ? c.margen + '%' : '?'} · contra ${c.mlPrecio ? money(c.mlPrecio) : '?'} (hasta ${c.mlMax ? money(c.mlMax) : '?'}) · ${c.mlVendedores ?? '?'} vendedores · ${c.mlHayFull ? 'hay Full' : 'nadie con Full'}${c.mlSinFull ? ' · el más barato sin Full ' + money(c.mlSinFull) : ''}${c.mlPromoPct ? ` · el más barato estaba en promo −${c.mlPromoPct}%` : ''} · puesto US$ ${c.puestoUSD ?? '?'} · ML: ${String(c.mlTit || '').slice(0, 60)} · ${c.mlLink || ''}`);
+        }
+      }
       return;
     }
     // BILLING_PROBE=ofisinpub → LO QUE ESTÁ EN LA OFICINA Y NO TIENE PUBLICACIÓN VIVA (23/10/2026, él: "¿cargaste todos los productos
