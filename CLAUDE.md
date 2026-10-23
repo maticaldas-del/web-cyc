@@ -86,7 +86,7 @@
 - **LA ESTRATEGIA PARA GANAR MÁS (22/10/2026, eligió 1a 2a 4a 5a 6a 7a 8b; la 3 quedó para después).** El tope de H no deja
   facturar más (~$800.000/día, ya estamos ahí): lo que sube la ganancia es **cuánto deja cada $100 facturados** (oct: $19, meta $22;
   meta $1.200.000 c/u = ~37,3% de margen promedio). 1a **comprar algo nuevo pide 35%** (`CAND_VARA_COMPRA`, web y robot; Paraguay y
-  Listas); lo de 25-34% queda guardado y se sigue midiendo; **reponer lo que ya se vende sigue en 25%** (no toca el Paulvic) ·
+  Listas); **lo que vende 100+ en ML con 2+ vendedores entra desde 30%** (`varaCompra`, 23/10 1a: colchón de ~$52 M del tope hasta fin de año; se vuelve a medir en febrero con los topes nuevos; nada nuevo a Matías, que llega justo); lo de 25-34% queda guardado y se sigue midiendo; **reponer lo que ya se vende sigue en 25%** (no toca el Paulvic) ·
   2a lo que queda abajo de 25% después de buscarle techo **no se repone** y le propongo un reemplazo · lo de **25-35% con el techo ya encontrado se sigue reponiendo** y se reemplaza de a poco sólo cuando aparece algo nuevo de 35%+ que ocupe su lugar (22/10, eligió la a) · 4a tarjeta 🧮 Mezcla en
   Métricas · 5a **Watch S5 y Redmi Pad 2 no se reponen más** · 6a **Full: meta menos de $100.000/mes; un retiro de Full sólo con su
   OK** · 7a lo nuevo va a la cuenta con más lugar contra H · 8b **por ahora las 4 cuentas en H, sin 5ª cuenta ni K**. Detalle en

@@ -10112,7 +10112,7 @@ const RE_CAND_PERF = /perfum|parfum|\bedp\b|\bedt\b|eau de|fragan|fragr|body spl
 function cuentaLista(cat) {
   const v = Object.values(cat || {}).filter((e) => e && e.n);
   // 2+ vendedores en el catálogo de ML (20/10/2026, eligió la 1a; reemplaza el mínimo de 100 ventas del 18/10): con 1 solo queda afuera.
-  const m25 = (e) => !listaNoEsVale(e) && !e.sacado && !e.noWeb && !e.noFull && e.m != null && Number(e.m) >= CAND_VARA_COMPRA && listaCostoVigente(e) && /^https:\/\//.test(e.mf || '') && !(e.mv != null && Number(e.mv) < CAND_MIN_VENDEDORES);
+  const m25 = (e) => !listaNoEsVale(e) && !e.sacado && !e.noWeb && !e.noFull && e.m != null && Number(e.m) >= listaVaraDe(e) && listaCostoVigente(e) && /^https:\/\//.test(e.mf || '') && !(e.mv != null && Number(e.mv) < CAND_MIN_VENDEDORES);
   // DESDE EL 20/10/2026 (eligió la a) sólo da lo que el chat de compras confirmó mirando ML (`ok`, de `listadato`) para ESE catálogo
   // (`okCat`, o el catálogo fijado con `mi=`). Antes también entraba lo que el robot emparejó solo y "parecía" bien: 21 de 36 estaban mal.
   const da = (e) => m25(e) && Number(e.mv) >= CAND_MIN_VENDEDORES && listaOkVale(e) && !pocasVentas(e.vend);
@@ -10163,6 +10163,9 @@ function lugarHPorCuenta(vp) {
 // candPisoDe (25%): lo de 25% a 34% queda guardado y se sigue midiendo. Reponer lo que ya se vende sigue en 25%.
 // Misma vara que CAND_VARA_COMPRA de la web (index.html): si se toca una, se toca la otra.
 const CAND_VARA_COMPRA = 35;
+// 23/10/2026 (eligió la 1a): lo que vende 100+ en ML con 2+ vendedores entra desde 30% (el colchón del tope de H hasta fin de año).
+// Misma regla que `varaCompra` de index.html; en febrero, con los topes nuevos, se vuelve a medir.
+const CAND_VARA_VENDE = 30;
 function candPisoDe(c) { return c && RE_CAND_PERF.test(`${c.nombre || ''} ${c.mlTit || ''}`) ? CAND_PISO_PERFUME : CAND_PISO_PCT; }
 const CAND_MIN_VENT = 100;      // 03/10/2026: "100 unidades mínimo vendidas". Desde el 20/10/2026 ya no frena (ver abajo); queda para contar
 // EN CATÁLOGO CON 2+ VENDEDORES EN VEZ DE 100 VENTAS (20/10/2026, eligió la 1a). Él: *"sacar las 100 ventas y que ahora sean todos productos
@@ -10175,6 +10178,9 @@ const CAND_MIN_VENDEDORES = 2;
 // sólo cuando se carguen las ventas"). Sin el dato no se frena nada; con el dato cargado y menos de 100, afuera. Las ventas las mira el
 // chat de compras SÓLO de lo que pasó todos los otros filtros (`faltaventas`). Misma regla en index.html (`CAND_MIN_VENTAS`).
 const CAND_MIN_VENTAS = 100;
+const varaCompra = (vend, nv) => (vend != null && isFinite(vend) && vend >= CAND_MIN_VENTAS && (Number(nv) || 0) >= CAND_MIN_VENDEDORES ? CAND_VARA_VENDE : CAND_VARA_COMPRA);
+const candVaraDe = (c) => (c ? varaCompra(candVentasDe(c), c.mlVendedores) : CAND_VARA_COMPRA);
+const listaVaraDe = (e) => (e ? varaCompra(e.vend != null ? Number(e.vend) : null, e.mv) : CAND_VARA_COMPRA);
 const candVentasDe = (c) => { const a = c && c.vendCarga != null && isFinite(c.vendCarga) ? Number(c.vendCarga) : null; const b = c && c.mlVendidas != null && isFinite(c.mlVendidas) ? Number(c.mlVendidas) : null; return a != null ? a : b; };
 const pocasVentas = (v) => v != null && isFinite(v) && Number(v) < CAND_MIN_VENTAS;
 // NINGÚN "DA" SIN CHEQUEAR EL CATÁLOGO (20/10/2026, eligió la a). El chat de compras encontró mal emparejados 67 de 344 en Paraguay y
@@ -21441,7 +21447,7 @@ async function main() {
           // 20/10/2026 · etapa 4: `candprecio`/`pycat`/`candalta` cambiaron el precio de Paraguay (`usdAntes`, `calcTs:null`)
           // y el margen guardado es el del precio de antes. Misma regla que `candPrecioViejo` de la web.
           : (c.calcTs == null && Number(c.usdAntes) > 0) ? `cambió el precio de Paraguay (de US$ ${Number(c.usdAntes).toFixed(2)} a US$ ${(parseFloat(c.usd) || 0).toFixed(2)}): falta medirlo`
-          : (mg < CAND_VARA_COMPRA && !(_tcP > 0 && !c.noLocal && RE_CAND_PERF.test(`${c.nombre || ''} ${c.mlTit || ''}`) && (perfLocalPct((parseFloat(c.usd) || 0) * RECARGO_PAR * _tcP, Number(c.mlPrecio) || 0) || 0) >= PERF_LOCAL_GAN)) ? `da ${mg.toFixed(1)}% y tu piso es ${candPisoDe(c)}%`
+          : (mg < candVaraDe(c) && !(_tcP > 0 && !c.noLocal && RE_CAND_PERF.test(`${c.nombre || ''} ${c.mlTit || ''}`) && (perfLocalPct((parseFloat(c.usd) || 0) * RECARGO_PAR * _tcP, Number(c.mlPrecio) || 0) || 0) >= PERF_LOCAL_GAN)) ? `da ${mg.toFixed(1)}% y tu piso es ${candPisoDe(c)}%`
           : !(Number(c.mlVendedores) >= CAND_MIN_VENDEDORES) ? (Number(c.mlVendedores) === 1 ? 'en ML lo vende 1 solo vendedor: ese precio no lo confirma nadie (mínimo 2)' : 'no está medido contra un catálogo de ML con vendedores')
           // Sin las dos fotos no se compra (regla suya del 07/10, "sin foto tampoco acepto"; etapa 3, 20/10/2026): la web ya lo
           // frenaba (`candPuedePedir`) y este comando no.
@@ -21829,7 +21835,7 @@ async function main() {
           if (Math.abs(dif) >= 5) { reparos.push(`el margen se movió de ${antes.toFixed(1)}% a ${r.margen.toFixed(1)}%`); console.log(`     ⚠️ SE MOVIÓ: la medición guardada decía ${antes.toFixed(1)}% y hoy da ${r.margen.toFixed(1)}% (${dif > 0 ? '+' : ''}${dif.toFixed(1)} puntos). Alguien cambió el precio.`); }
           else console.log(`     (la medición anterior daba ${antes.toFixed(1)}% · se movió ${dif > 0 ? '+' : ''}${dif.toFixed(1)} puntos)`);
         }
-        if (r.margen < CAND_VARA_COMPRA) { frenos.push(`hoy da ${r.margen.toFixed(1)}%, abajo de la vara de compra de ${CAND_VARA_COMPRA}%`); console.log(`     ❌ ABAJO DE LA VARA DE COMPRA DE ${CAND_VARA_COMPRA}%`); }
+        if (r.margen < candVaraDe(c)) { frenos.push(`hoy da ${r.margen.toFixed(1)}%, abajo de la vara de compra de ${candVaraDe(c)}%`); console.log(`     ❌ ABAJO DE LA VARA DE COMPRA DE ${CAND_VARA_COMPRA}%`); }
         // UN MARGEN MUY ALTO NO ES UNA BUENA NOTICIA: ES UNA SEÑAL (19/09/2026).
         // Sale del DualSense. Cuando el catálogo de ML no es el mismo producto —una edición
         // limitada, un pack, un combo— el precio contra el que se mide es mucho más alto, y eso
@@ -22350,7 +22356,7 @@ async function main() {
       const cands = (await db.get('cyc/candidatos_py')) || {}; const comp = (await db.get('cyc/compraspy')) || {}; const out = [];
       for (const c of Object.values(cands)) { if (!c || c.no || c.prodId || c.noML) continue;
         const pe = c.pedidoEn && comp[c.pedidoEn]; if (pe && pe.estado === 'camino') continue;
-        const mg = Number(c.margen); if (c.margen == null || !isFinite(mg) || mg < CAND_VARA_COMPRA) continue;
+        const mg = Number(c.margen); if (c.margen == null || !isFinite(mg) || mg < CAND_VARA_VENDE) continue;   // 30: las vendidas deciden si entra
         if (c.calcTs == null && Number(c.usdAntes) > 0) continue;
         if (!(Number(c.mlVendedores) >= CAND_MIN_VENDEDORES)) continue;
         if (!/^https:\/\//.test(String(c.foto || '')) || !/^https:\/\//.test(String(c.mlFoto || ''))) continue;
@@ -22358,7 +22364,7 @@ async function main() {
         out.push(`py|${String(c.prov || 'nissei').toLowerCase()}|${c.cod || ''}|${String(c.nombre || '').replace(/\|/g, '/').slice(0, 80)}|${candCatDe(c)}|${Math.round(mg)}%`); }
       const provs = (await db.get('cyc/mlconfig/listasProv')) || {};
       for (const [k, pv] of Object.entries(provs)) { if (pv.desc) continue; const cat = (await db.get('mlapi/listas/' + k)) || {};
-        for (const [cod, e] of Object.entries(cat)) { if (!e || listaNoEsVale(e) || e.sacado || e.noWeb || e.noFull || !(e.m != null && Number(e.m) >= CAND_VARA_COMPRA) || !listaCostoVigente(e)) continue;
+        for (const [cod, e] of Object.entries(cat)) { if (!e || listaNoEsVale(e) || e.sacado || e.noWeb || e.noFull || !(e.m != null && Number(e.m) >= CAND_VARA_VENDE) || !listaCostoVigente(e)) continue;
           if (!/^https:\/\//.test(e.mf || '') || !(Number(e.mv) >= CAND_MIN_VENDEDORES) || !listaOkVale(e) || e.vend != null) continue;
           out.push(`lista|${k}|${cod}|${String(e.n).replace(/\|/g, '/').slice(0, 80)}|${e.mi || ''}|${Math.round(e.m)}%`); } }
       console.log(`=== PASARON TODO, FALTAN LAS VENTAS DE ML: ${out.length} (fuente|proveedor|código|nombre|catálogo ML|margen) ===`);
@@ -22376,7 +22382,7 @@ async function main() {
       let tot = 0; const filas = []; const porProv = {};
       for (const [k, pv] of Object.entries(provs)) { if (pv.desc || (solo && k !== solo.toLowerCase())) continue;
         const cat = (await db.get('mlapi/listas/' + k)) || {}; const rec = Number(pv.rec) || 0;
-        for (const [cod, e] of Object.entries(cat)) { if (!e || listaNoEsVale(e) || e.sacado || e.noWeb || e.noFull || !(e.m != null && Number(e.m) >= CAND_VARA_COMPRA && e.mi) || !listaCostoVigente(e)) continue;   // costo nuevo sin medir: el margen no vale (etapa 3, 20/10/2026)
+        for (const [cod, e] of Object.entries(cat)) { if (!e || listaNoEsVale(e) || e.sacado || e.noWeb || e.noFull || !(e.m != null && Number(e.m) >= listaVaraDe(e) && e.mi) || !listaCostoVigente(e)) continue;   // costo nuevo sin medir: el margen no vale (etapa 3, 20/10/2026)
           const okV = listaOkVale(e);
           // 20/10/2026 (eligió la 1a): ya no hacen falta las ventas; sólo el ✅, y con 1 solo vendedor no da (no sale).
           if (CONF ? !okV : (okV || !(Number(e.mv) >= CAND_MIN_VENDEDORES))) continue;

@@ -79,6 +79,11 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
 
 ## 1 · PRECIOS (lunes)
 
+### Vara de compra: 35%, o 30% si vende 100+ con 2+ vendedores (23/10/2026, v26.13, eligió la 1a)
+- Qué: `varaCompra`/`candVaraDe`/`listaVaraDe` en index.html y sync.mjs (las dos iguales). Web: `candPisoDe`, colores (`candPctCol`), `_listaMed25`, carpetas de Listas. Robot: `pedir`, `revisarcompra`, `cuentaLista`, `listarevisar`; `faltaventas` lista desde 30% (las vendidas deciden).
+- Por qué: hasta el 31/12 sobran ~$52 M contra el tope de H (Matías al límite): un 30-35% que vende mucho suma en vez de desplazar. En febrero, con los topes nuevos, se vuelve a medir.
+- Chequear: Sony EX15LP rosa (32%, 1.000 vendidas, 8 vend.) en verde y pedible; uno de 32% con 25 vendidas en rojo; que web y robot den la misma vara.
+
 ### `vara` (23/10/2026, sólo lee): ¿35% o 30% para comprar algo nuevo?
 - Qué: cuenta los candidatos de Paraguay y los productos de las listas por tramo de % (25-30, 30-35, 35-50, 50+), cuántos pasaron todo y cuántos venden 100+, y lista los de 30-35% que pasaron todo.
 - Chequear: que use los mismos filtros que `faltaventas` (vivos, sin categoría que no se mira, costo vigente).
