@@ -10922,7 +10922,20 @@ const PYCAT_FUERA_RE = [
 // con 3 cámaras de vigilancia Hikvision/Imilab de 35-45% que habían pasado solas a Para probar): el catálogo se guarda y se mide
 // entero (15/10, `pyCatFuera`), pero nada de estas categorías pasa a Para probar, a `faltaventas` ni a un pedido. `candfuera` saca
 // las que ya estaban. Devuelve el motivo o null.
-function pyCatNoSeMira(nombre) { const n = String(nombre || ''); for (const [re, mot] of PYCAT_FUERA_RE) if (re.test(n)) return mot; return null; }
+// Lo que es PARA una de esas cosas (jaula o tapa de cámara, micrófono para cámara, estabilizador para celular, funda de iPad) no es
+// la cosa: se mira como cualquiera. Marcas: la regla vigente es sólo Dolce & Gabbana (CK y Carolina Herrera de la lista vieja no).
+const PYCAT_ACCESORIO_RE = /\b(para|p\/)\s+(c[aâ]mera|camara|smartphone|celular|iphone|ipad|tablet|notebook|laptop|bicicleta)\b|\b(jaula|tampa|estojo|capa|suporte|pel[ií]cula|calculadora)\b|\bde\s+mesa\b/i;
+function pyCatNoSeMira(nombre) {
+  const n = String(nombre || '');
+  if (/\bdolce\s*(&|e|and)?\s*gabbana\b/i.test(n)) return 'Dolce & Gabbana (marca que no se compra)';
+  if (PYCAT_ACCESORIO_RE.test(n)) return null;
+  for (const [re, mot] of PYCAT_FUERA_RE) {
+    if (mot === 'marca que no se compra') continue;
+    if (mot.startsWith('termo') && /\bcooler\b/i.test(n) && /\b(liquid|cpu|processador|ventoinha|fan|a?rgb)\b/i.test(n)) continue;   // cooler de PC
+    if (re.test(n)) return mot;
+  }
+  return null;
+}
 function pyCatFuera(nombre, usd, marcasNo) {
   const n = String(nombre || '');
   // 15/10/2026, él: "guardá TODOS los productos y vos hacés el filtro del 25% para arriba y más de 100 ventas, y listo".
