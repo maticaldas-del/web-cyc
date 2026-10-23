@@ -4694,11 +4694,27 @@ const DET_REGLA_DESDE = { techo30: Date.parse('2026-10-21T03:31:00Z'), salto: Da
 // antes del tag (con gemelas y hermanas de stock), vendidas y ganancia desde el tag y las que se esperaban a ese ritmo. El 95% llega
 // con 3 esperadas y 0 vendidas (Poisson): la prueba se mide en VENTAS ESPERADAS, no en días (3 ÷ ritmo = días que hacen falta).
 // La usan `techodias` y la lista 📈 PRUEBA CON RESPUESTA de `planilla`.
+// RITMO POR SEMANA DEL GRUPO (23/10/2026, 4a suya: "a lo que vende menos de 1 por semana no se le busca más techo subiendo"): unidades
+// de los últimos `dias` días de la publicación + sus hermanas de stock + sus gemelas, llevadas a una semana. null = no se pudo leer.
+async function ritmoSemanalGrupo(db, mla, links, prodById, dias = 60, cache = new Map(), ahora = Date.now()) {
+  const grupo = [mla, ...hermanasStockDe(links, prodById, mla), ...Object.keys(links).filter((g) => (links[g] || {}).gemelaDe === mla)];
+  let u = 0;
+  for (let t = ahora - dias * 864e5, i = 0; i <= dias; t += 864e5, i++) {
+    const k = dayKeyFromISO(t);
+    if (!cache.has(k)) { let o = null; try { o = (await db.get('cyc/ventaprod/' + k)) || {}; } catch { o = null; } cache.set(k, o); }
+    const vd = cache.get(k); if (vd == null) return null;
+    for (const v of Object.values(vd)) { if (!v || v.cancelada || !grupo.includes(v.mla)) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ts >= ahora - dias * 864e5) u += Number(v.qty) || 1; }
+  }
+  return u / dias * 7;
+}
+const TECHO_RITMO_MIN_SEMANA = 1;   // 4a del 23/10/2026: menos de 1 venta por semana no busca techo subiendo
 async function pruebasTechoEnCurso(db, ahora = Date.now()) {
   const DIA = 864e5;
   const est = (await db.get('cyc/estrategia')) || {}, links = (await db.get('cyc/mllinks')) || {}, prods = (await db.get('cyc/products')) || {};
   let notas = null; try { notas = (await db.get('mlapi/fichanotas')) || {}; } catch { notas = null; }
   const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+  let ccP = {}; try { ccP = (await db.get('cyc/claudecambios')) || {}; } catch { ccP = {}; }
+  let npP = {}; try { npP = (await db.get('cyc/netopub')) || {}; } catch { npP = {}; }
   const vdC = new Map(); const vDia = async (k) => { if (!vdC.has(k)) { let o = null; try { o = (await db.get('cyc/ventaprod/' + k)) || {}; } catch { o = null; } vdC.set(k, o); } return vdC.get(k); };
   const filas = []; let sinLeer = 0;
   for (const [m, h] of Object.entries(est)) {
@@ -4715,7 +4731,10 @@ async function pruebasTechoEnCurso(db, ahora = Date.now()) {
     const r = uA / 30, d = (ahora - tsU) / DIA;
     // la última nota mía desde el tag ("sigue la prueba"): la próxima decisión pide 3 esperadas MÁS desde esa nota
     const hn = (notas || {})[m] || {}; const tN = Math.max(0, ...Object.keys(hn).map(Number).filter((k) => k > tsU + 10 * 60e3 && (hn[k] || {}).tipo !== 'fallo'));   // la nota del mismo `decido` que abrió la prueba no cuenta
-    filas.push({ m, nom: String(e.title || '?').slice(0, 34), cta: e.cuenta || '?', tsU, d, r, uD, esp: r * d, espNota: tN ? r * (ahora - tN) / DIA : null, d95: r > 0 ? 3 / r : Infinity, gdA: gA / 30, gdD: d >= 0.5 ? gD / d : null, sinC });
+    // el precio de antes de la suba que abrió la prueba (la última suba mía desde 30 min antes del tag) y el de hoy
+    const subaP = Object.values(ccP).filter((c) => c && String(c.mla) === m && Number(c.ts) >= tsU - 30 * 60e3 && Number(c.a) > Number(c.de)).sort((x, y) => Number(x.ts) - Number(y.ts))[0];
+    const pAntes = subaP ? Number(subaP.de) || 0 : 0, pHoy = Number((npP[m] || {}).precio) || 0;
+    filas.push({ m, nom: String(e.title || '?').slice(0, 34), cta: e.cuenta || '?', tsU, pAntes, pHoy, d, r, uD, esp: r * d, espNota: tN ? r * (ahora - tN) / DIA : null, d95: r > 0 ? 3 / r : Infinity, gdA: gA / 30, gdD: d >= 0.5 ? gD / d : null, sinC });
   }
   return { filas, sinLeer, sinNotas: notas == null };
 }
@@ -17987,6 +18006,9 @@ async function main() {
         const vend = x.filter((z) => z.uD > 0).length, cert = x.filter((z) => z.uD === 0 && z.esp >= 3).length;
         const gA = x.reduce((s2, z) => s2 + z.gdA, 0), xd = x.filter((z) => z.gdD != null), gAd = xd.reduce((s2, z) => s2 + z.gdA, 0), gDd = xd.reduce((s2, z) => s2 + z.gdD, 0);
         console.log(`${n.padEnd(18)} ${String(x.length).padStart(3)} · llevan ${dProm.toFixed(1)} d de prueba · para el 95% hacen falta ${d95.length ? (d95.reduce((a, y) => a + y, 0) / d95.length).toFixed(1) + ' d' : 'nunca (sin ritmo)'} · ya vendieron al precio nuevo ${vend} · 0 vendidas con 3+ esperadas (ya hay 95%) ${cert} · ganancia/día juntas antes $${Math.round(gAd).toLocaleString('es-AR')} → después $${Math.round(gDd).toLocaleString('es-AR')} (${xd.length} con medio día o más)`); }
+      { const lentos = filas.filter((z) => z.r > 0 && z.r * 7 < TECHO_RITMO_MIN_SEMANA && z.uD === 0);
+        console.log(`\n── 4a (23/10): ${lentos.length} que vendían menos de 1 por semana y no vendieron al precio nuevo → vuelven al precio de antes como 💰 ──`);
+        for (const z of lentos) console.log(z.pAntes > 0 && z.pHoy > z.pAntes ? `decido:${z.m}=${z.pAntes}!golpe!sinlinea!sincerteza!chico#punto|EXCEPCIÓN: lo pide él (4a del 23/10): vendía menos de 1 por semana y no vendió ninguna en ${z.d.toFixed(0)} días a ${'$' + z.pHoy.toLocaleString('es-AR')}. Vuelve a su precio de antes y no se le busca más techo subiendo;go` : `   ⚠️ ${z.m} · ${z.nom} · no encontré el precio de antes (${z.pAntes || '?'}) o no es menor que el de hoy (${z.pHoy || '?'}): mirar a mano`); }
       console.log('\n── una por una (de más días a menos) ──');
       for (const z of filas.sort((a, b) => b.d - a.d)) console.log(`${z.m} · ${z.cta} · ${z.nom} · ${z.d.toFixed(1)} d · antes ${z.r.toFixed(2)}/día · vendió ${z.uD} (esperadas ${z.esp.toFixed(1)}) · 95% a los ${isFinite(z.d95) ? z.d95.toFixed(0) + ' d' : '—'} · ganancia/día antes $${Math.round(z.gdA).toLocaleString('es-AR')} → después ${z.gdD == null ? '?' : '$' + Math.round(z.gdD).toLocaleString('es-AR')}${z.sinC ? ' (' + z.sinC + ' sin costo)' : ''}`);
       return;
@@ -44432,6 +44454,18 @@ async function main() {
           const a = Number(d.a) || 0, p0 = Number(d.p0) || 0; if (!(a > 0 && p0 > 0)) continue;
           if (d.accion === 'sube' && tg === 'techo' && a < p0 * 1.3 && !exc('chico') && !(p0 < UMBRAL_ENVIO_GRATIS && a >= 32900 && a < UMBRAL_ENVIO_GRATIS) && !(a >= 640000)) {
             d.accion = 'nada'; d.freno = true; d.motivo = `🚫 FRENO: buscar techo es un salto grande (+30% o más), nunca de a poco: ${money(p0)} → ${money(a)} es +${Math.round((a / p0 - 1) * 100)}%. El salto llega a ${money(Math.ceil(p0 * 1.3 / 100) * 100 - 10)} o más. Si es menos a propósito (un techo ya visto, la barrera): !chico y "EXCEPCIÓN: …"`; continue; }
+          // 🔒 4a (23/10/2026, él): a lo que vende menos de 1 por semana (60 días, con gemelas y hermanas) no se le busca techo subiendo.
+          // No frena un 🆕 lanzamiento que vendió (su ritmo todavía no dice nada) ni !chico con "EXCEPCIÓN: …". Queda en 💰 #punto.
+          if (d.accion === 'sube' && tg === 'techo' && !exc('chico')) {
+            if (estT[d.mla] === undefined) { try { estT[d.mla] = (await db.get('cyc/estrategia/' + d.mla)) || {}; } catch { estT[d.mla] = {}; } }
+            const hT = estT[d.mla] || {}; let ultT = ''; for (const k of Object.keys(hT).map(Number).filter((n) => n > 0).sort((x, y) => x - y)) { const x = hT[k]; if (x && x.t) ultT = x.t === 'correccion' ? pasajeDe(ultT) : x.t; }
+            if (ultT !== 'nuevo') {
+              if (!globalThis._ritmoCacheD) globalThis._ritmoCacheD = { m: new Map(), prods: null };
+              if (!globalThis._ritmoCacheD.prods) { try { globalThis._ritmoCacheD.prods = (await db.get('cyc/products')) || {}; } catch { globalThis._ritmoCacheD.prods = {}; } }
+              const rs = await ritmoSemanalGrupo(db, d.mla, linksD, globalThis._ritmoCacheD.prods, 60, globalThis._ritmoCacheD.m);
+              if (rs != null && rs < TECHO_RITMO_MIN_SEMANA) { d.accion = 'nada'; d.freno = true; d.motivo = `🚫 FRENO 4a: vende ${rs.toFixed(1)} por semana (60 días, con gemelas): a lo que vende menos de 1 por semana no se le busca techo subiendo (él, 23/10). Queda en su precio como 💰 (#punto) o, si sobra, baja en escalera.`; }
+            }
+          }
           if (d.accion === 'baja' && tg === 'bajando' && !exc('lista')) {
             if (estT[d.mla] === undefined) { try { estT[d.mla] = (await db.get('cyc/estrategia/' + d.mla)) || {}; } catch { estT[d.mla] = {}; } }
             const tagsT = Object.values(estT[d.mla] || {}).map((x) => x && x.t);
