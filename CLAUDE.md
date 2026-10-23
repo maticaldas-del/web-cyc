@@ -223,7 +223,7 @@
   cada escalón como descuento propio con el de lanzamiento tachado. **Nunca bajar algo que vende sólo para medir** (la prueba del tachado
   3b se canceló).
 - **🔒 No bajar** (23/10, él con la waflera: *"le ganamos bien, que sea una excepción si el robot decide bajarlo, quizás lo mejor sería no tocarlo"*):
-  `nobajar:<palabra|MLA>=<motivo>;go` marca todas sus publicaciones (`cyc/nobajar`); F10 frena toda baja y descuento salvo su autorización 🔐 `!nobajar`, pero ANTES evalúa las otras reglas y dice "HUBIERA HECHO: bajarla de X a Y" (queda en `cyc/nobajar/<MLA>/hubiera`, se ve en `nobajar`). Las subas siguen.
+  `nobajar:<palabra|MLA>=<motivo>;go` marca todas sus publicaciones (`cyc/nobajar`); F10 frena toda baja y descuento salvo su autorización 🔐 `!nobajar`, pero ANTES evalúa las otras reglas y dice "HUBIERA HECHO: bajarla de X a Y" (queda en `cyc/nobajar/<MLA>/hubiera`, se ve en `nobajar`). Las subas siguen, salvo `!congelar` (🧊, él: *"queda una sola unidad, quiero que el precio se quede ahí"*): tampoco sube hasta que el stock en Full pase el que tenía al marcarlo (`stockAl`; `_chequeoNoSubir`); ahí se descongela solo y se busca techo/piso.
 - **Nunca se crea una publicación (Clásica o gemela) más cara que $550.000** (23/10, él; `TOPE_CREAR`, freno en `publicar` y `gemelacrea`).
 - **Precio para el peor caso** al poner o activar (12/10). Lo que vende rápido abajo del 25% con poco stock se sube en la misma vuelta.
 - **Venta barata ≠ remate** (09/10): remate sólo si antes estuvo parado (30+ d con stock, <1/semana); si llegó y voló es demanda (precio

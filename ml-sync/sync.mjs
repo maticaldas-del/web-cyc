@@ -8674,6 +8674,18 @@ async function _chequeoNoSubir(itemId) {
     } catch { return { ok: false, err: 'no-pude-releer-la-marca-de-liquidando: no subo a ciegas' }; }
   }
   if (m) return { ok: false, err: `liquidando-a-proposito${m.motivo ? ' (' + m.motivo + ')' : ''}: no se sube` };
+  // 🧊 CONGELADO (23/10/2026, él con la waflera: *"queda una sola unidad, quiero que el precio se quede ahí. después buscaremos techo
+  // y piso cuando lleguen más unidades"*): `nobajar:…!congelar` → tampoco sube mientras el stock en Full de esa cuenta no pase el que
+  // tenía al marcarlo (`stockAl`). Al entrar mercadería nueva se descongela solo (las bajas siguen con 🔒 hasta que él lo saque).
+  if (DB_REF) {
+    let nb;
+    try { nb = await DB_REF.get('cyc/nobajar/' + String(itemId)); } catch { return { ok: false, err: 'no-pude-leer-la-marca-de-congelado (cyc/nobajar): no subo a ciegas' }; }
+    if (nb && nb.congelado) {
+      let st = null;
+      try { const e = (await DB_REF.get('cyc/mllinks/' + String(itemId))) || {}; if (e.prodId && e.cuenta) st = parseInt(await DB_REF.get('cyc/inventory/' + e.prodId + '__' + sid(String(e.cuenta)))) || 0; } catch { st = null; }
+      if (st == null || st <= (Number(nb.stockAl) || 0)) return { ok: false, err: `🧊 congelado a pedido suyo${nb.m ? ' (' + String(nb.m).slice(0, 80) + ')' : ''}: no sube hasta que entren más unidades (hoy ${st == null ? '?' : st} en Full, al marcarlo ${Number(nb.stockAl) || 0})` };
+    }
+  }
   return await _chequeoPromoMia(itemId);
 }
 // NO SE INFLA EL TACHADO (etapa 1, 21/10/2026): con un descuento/promo mía vigente (`cyc/promoclaude/<MLA>`), subir el precio de
@@ -47640,11 +47652,12 @@ async function main() {
       if (!arg) {
         console.log('=== 🔒 NO BAJAR (sólo con su autorización) ===');
         const ks = Object.keys(nb); if (!ks.length) console.log('  (nada marcado)');
-        for (const k of ks) { const e = links[k] || {}; const h = nb[k].hubiera; console.log(`  ${k} · ${e.cuenta || '?'} · ${String(e.title || '').slice(0, 50)} · ${nb[k].m || ''}${h ? `\n     ↳ HUBIERA HECHO (${new Date(Number(h.ts) - 3 * 3600e3).toISOString().slice(0, 16).replace('T', ' ')}): ${h.promo ? 'descuento' : 'bajar'} de $${Number(h.de).toLocaleString('es-AR')} a $${Number(h.a).toLocaleString('es-AR')}${h.m ? ' — ' + h.m : ''}` : ''}`); }
+        for (const k of ks) { const e = links[k] || {}; const h = nb[k].hubiera; console.log(`  ${k} · ${e.cuenta || '?'} · ${String(e.title || '').slice(0, 50)} · ${nb[k].congelado ? `🧊 congelada (sube cuando el stock pase de ${nb[k].stockAl}) · ` : ''}${nb[k].m || ''}${h ? `\n     ↳ HUBIERA HECHO (${new Date(Number(h.ts) - 3 * 3600e3).toISOString().slice(0, 16).replace('T', ' ')}): ${h.promo ? 'descuento' : 'bajar'} de $${Number(h.de).toLocaleString('es-AR')} a $${Number(h.a).toLocaleString('es-AR')}${h.m ? ' — ' + h.m : ''}` : ''}`); }
         return;
       }
       const saca = arg.startsWith('-');
-      const [qRaw, ...mot] = arg.replace(/^-/, '').split('=');
+      const congelar = /!congelar\b/i.test(arg);
+      const [qRaw, ...mot] = arg.replace(/^-/, '').replace(/!congelar\b/ig, '').split('=');
       const q = qRaw.trim(), motivo = mot.join('=').trim();
       let mlas = [];
       if (/^MLA\d+$/i.test(q)) {
@@ -47660,7 +47673,9 @@ async function main() {
       for (const k of mlas) {
         const e = links[k] || {};
         console.log(`  ${k} · ${e.cuenta || '?'} · ${e.gemelaDe ? (e.gemelaTipo === 'envio' ? '📦 gemela envío gratis' : '💳 gemela Premium') : 'Clásica'} · ${String(e.title || '').slice(0, 50)} · ${e.status || ''}`);
-        if (GO) await (saca ? db.set('cyc/nobajar/' + k, null) : db.patch('cyc/nobajar/' + k, { ts: Date.now(), m: motivo || 'lo pidió él' }));
+        let stockAl = null;
+        if (congelar && !saca) { stockAl = parseInt(await db.get('cyc/inventory/' + e.prodId + '__' + sid(String(e.cuenta || '')))) || 0; console.log(`     🧊 congelada también para arriba hasta que el stock en Full de ${e.cuenta} pase de ${stockAl}`); }
+        if (GO) await (saca ? db.set('cyc/nobajar/' + k, null) : db.patch('cyc/nobajar/' + k, { ts: Date.now(), m: motivo || 'lo pidió él', ...(congelar ? { congelado: true, stockAl } : {}) }));
       }
       if (GO) { const rl = (await db.get('cyc/nobajar')) || {}; const okN = mlas.filter((k) => saca ? !rl[k] : !!rl[k]).length; console.log(`\n${okN === mlas.length ? '✓' : '⚠️'} releído: ${okN} de ${mlas.length} ${saca ? 'sin marca' : 'con 🔒'}`); }
       else console.log('\nNo se guardó nada (falta ;go).');
