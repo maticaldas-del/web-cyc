@@ -2945,7 +2945,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.16';
+const APP_VERSION='26.17';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2958,6 +2958,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.17',f:'23/10',h:'15:10',c:[{n:1,t:'Paraguay → Nissei: la carpeta de abajo se llama "Sin precio en ML": son los que el robot ya buscó y encontró en ML pero nadie los vende (no hay precio contra qué comparar), más los que quedan afuera por regla. Los que faltan medir de verdad son los de "Falta analizar" (~100).'}]},
   {v:'26.16',f:'23/10',h:'14:45',c:[{n:2,t:'El puntaje del día (Inicio y Ventas) ya puede pasar de 10: sigue subiendo 3 puntos por cada $115.000 de ganancia de más. Arriba de 10 dice "🚀 Día excepcional" y el número se mueve un poquito.'}]},
   {v:'26.15',f:'23/10',h:'00:45',c:[{n:2,t:'Nissei: lo que no se encontró en ML se vuelve a buscar con el nombre traducido del portugués; lo que siga sin aparecer pasa a "✔️ Revisados: no están en ML" (dentro de 📏 Medidos) y ya no cuenta como sin medir.'}]},
   {v:'26.14',f:'23/10',h:'00:20',c:[{n:1,t:'Paraguay → Nissei: la carpeta "❔ No medidos" pasa a "❔ Sin medir o sin precio en ML" y arriba dice cuántos faltan buscar de verdad (~100) y cuántos ya se buscaron y no están en ML o nadie los vende.'}]},
@@ -17507,7 +17508,7 @@ function candidatosHTML(){
       +candDescartadosHTML(null,true)
       +(R&&n('scr')?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--muted)">✔️ Revisados: no están en ML (buscados también traducidos) · <b>${f(n('scr'))}</b></summary>${pycatNoDanHTML(['scr'],'pycat-nodan-scr','📦 Del catálogo: ML no tiene el mismo producto')}</details>`:'')
       +(R&&n('ficha')?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--green)">✅ Ya son productos tuyos · <b>${f(n('ficha'))}</b> del catálogo</summary>${pycatNoDanHTML(['ficha'],'pycat-nodan-ficha','📦 Del catálogo: ya tienen ficha en CYC')}</details>`:''))
-      +carp('❔ Sin medir o sin precio en ML'+(()=>{const hoy=new Date(Date.now()-3*36e5).toISOString().slice(0,10).replace(/-/g,'_');const d=R&&R.dia;if(!d||d.d!==hoy)return '';const x=Number(d.nomed)-n('nomed');return x>0?` <span style="color:var(--green)" title="Los que el robot analizó hoy: salieron de sin medir desde el último conteo de ayer.">−${f(x)} hoy</span>`:'';})(),totN,'var(--muted)',''
+      +carp('❔ Sin precio en ML (casi todos ya medidos: nadie lo vende)'+(()=>{const hoy=new Date(Date.now()-3*36e5).toISOString().slice(0,10).replace(/-/g,'_');const d=R&&R.dia;if(!d||d.d!==hoy)return '';const x=Number(d.nomed)-n('nomed');return x>0?` <span style="color:var(--green)" title="Los que el robot analizó hoy: salieron de sin medir desde el último conteo de ayer.">−${f(x)} hoy</span>`:'';})(),totN,'var(--muted)',''
       // 23/10/2026, él: "9471 no medidos en nissei, bajemos ese número". Casi todos YA se buscaron en ML: no hay el mismo producto
       // o nadie lo vende (sin precio contra qué medir). Se dice arriba para que el número no se lea como trabajo pendiente.
       +(R?`<div style="font-size:.66rem;color:var(--muted);line-height:1.6;margin:8px 0 4px">El robot ya buscó en ML todos menos <b style="color:var(--text)">${f(n('nomed'))}</b>. De los demás: 🔍 <b>${f(n('sc'))}</b> no se encontraron en ML y se están buscando de nuevo con el nombre traducido (los que sigan sin aparecer pasan a ✔️ revisados, en 📏 Medidos) · 👻 <b>${f(n('sv'))}</b> están en ML pero nadie los vende (no hay precio contra qué medir) · 🚫 <b>${f(n('fz'))}</b> afuera por regla. Los de 👻 se vuelven a buscar solos cada 30 días.</div>`:'')
