@@ -2941,7 +2941,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.13';
+const APP_VERSION='26.14';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2954,6 +2954,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.14',f:'23/10',h:'00:20',c:[{n:1,t:'Paraguay → Nissei: la carpeta "❔ No medidos" pasa a "❔ Sin medir o sin precio en ML" y arriba dice cuántos faltan buscar de verdad (~100) y cuántos ya se buscaron y no están en ML o nadie los vende.'}]},
   {v:'26.13',f:'22/10',h:'23:55',c:[{n:2,t:'Comprar algo nuevo: la vara sigue en 35%, pero lo que ya vende 100+ en ML con 2+ vendedores entra desde 30% (Paraguay y Listas; el % se pinta con esa vara). Hasta febrero, cuando se vuelva a medir con los topes nuevos.'}]},
   {v:'26.12',f:'22/10',h:'23:35',c:[{n:1,t:'Paraguay → Nuevos (en el pedido y en Para probar): el % de un producto nuevo abajo de 35% (la vara para comprar algo nuevo) va en rojo, como en Listas. Probados sigue igual.'}]},
   {v:'26.11',f:'22/10',h:'19:50',c:[{n:1,t:'Pedidos → Paulvic: los testers que manda el Paulvic son probadores para la perfumería: ya no entran en la cuenta del costo de cada perfume.'}]},
@@ -17499,7 +17500,10 @@ function candidatosHTML(){
       +((_rojos.length||R)?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--red)">🔻 No llegan al ${CAND_PISO_TXT()} · <b>${_rojos.length}</b> candidatos${mas('bajo')}</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_rojos.map(_card).join('')}</div>${pycatNoDanHTML(['bajo'],'pycat-nodan-bajo','📦 Del catálogo: medidos por el robot, abajo del piso')}</details>`:'')
       +candDescartadosHTML(null,true)
       +(R&&n('ficha')?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--green)">✅ Ya son productos tuyos · <b>${f(n('ficha'))}</b> del catálogo</summary>${pycatNoDanHTML(['ficha'],'pycat-nodan-ficha','📦 Del catálogo: ya tienen ficha en CYC')}</details>`:''))
-      +carp('❔ No medidos'+(()=>{const hoy=new Date(Date.now()-3*36e5).toISOString().slice(0,10).replace(/-/g,'_');const d=R&&R.dia;if(!d||d.d!==hoy)return '';const x=Number(d.nomed)-n('nomed');return x>0?` <span style="color:var(--green)" title="Los que el robot analizó hoy: salieron de sin medir desde el último conteo de ayer.">−${f(x)} hoy</span>`:'';})(),totN,'var(--muted)',''
+      +carp('❔ Sin medir o sin precio en ML'+(()=>{const hoy=new Date(Date.now()-3*36e5).toISOString().slice(0,10).replace(/-/g,'_');const d=R&&R.dia;if(!d||d.d!==hoy)return '';const x=Number(d.nomed)-n('nomed');return x>0?` <span style="color:var(--green)" title="Los que el robot analizó hoy: salieron de sin medir desde el último conteo de ayer.">−${f(x)} hoy</span>`:'';})(),totN,'var(--muted)',''
+      // 23/10/2026, él: "9471 no medidos en nissei, bajemos ese número". Casi todos YA se buscaron en ML: no hay el mismo producto
+      // o nadie lo vende (sin precio contra qué medir). Se dice arriba para que el número no se lea como trabajo pendiente.
+      +(R?`<div style="font-size:.66rem;color:var(--muted);line-height:1.6;margin:8px 0 4px">El robot ya buscó en ML todos menos <b style="color:var(--text)">${f(n('nomed'))}</b>. De los demás: 🔍 <b>${f(n('sc'))}</b> no están en ML como el mismo producto · 👻 <b>${f(n('sv'))}</b> están en ML pero nadie los vende (no hay precio contra qué medir) · 🚫 <b>${f(n('fz'))}</b> afuera por regla. Los de 🔍 se vuelven a buscar solos cada 60 días y los de 👻 cada 30.</div>`:'')
       +((_sinAnalizar.length||R)?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--muted)" title="Falta la medición de ML o alguna de las dos fotos. Suben solos cuando estén completos y den.">⏳ Falta analizar · <b>${_sinAnalizar.length}</b> candidatos${mas('nomed')}</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_sinAnalizar.map(_card).join('')}</div>${pycatNoDanHTML(['nomed'],'pycat-nodan-nomed','📦 Del catálogo: todavía sin medir')}</details>`:'')
       +candDescartadosHTML(R?n('sc')+n('sv')+n('fz'):null,false))
       ;};

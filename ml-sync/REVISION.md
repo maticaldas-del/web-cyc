@@ -610,6 +610,11 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 (sería doble), y que el número de Gastos y el del Arqueo sean el mismo para cada mes.
 
 ## 3 · MERCADERÍA (miércoles)
+
+### "❔ No medidos" de Nissei dice qué es cada cosa (23/10/2026, v26.14) + `pycatdia`
+- Qué: la carpeta suma sin medir + sin catálogo exacto + nadie lo vende + por regla (9.471); ahora se llama "Sin medir o sin precio en ML" y arriba dice cuántos faltan buscar de verdad (`nomed`, ~100). `pycatdia[:días]` (sync.mjs, sólo lee) desglosa el catálogo y cuenta lo buscado por día.
+- Medido el 23/10: 775 de 25%+ · 2.352 abajo · 3.969 sin el mismo producto en ML · 5.210 nadie lo vende · 205 por regla · 12 ML no deja. Buscados por día (última vez): 15/10 854 · 16/10 1.421 · 17/10 3.346 · 18/10 4.795 · 19/10 1.759 · 20/10 1 · 21/10 152 · 22/10 9 (la primera pasada terminó el 19/10).
+- Chequear: que el número de arriba coincida con `pycatdia`; que "−N hoy" siga contando sólo los sin medir.
 - **23/10/2026 · Cajas: la ventana de lectura no pasa los 60 días (vuelta corta).** `cajasllegaron` dio 194 consultas con 400 "Date range can't be greater than 60 days": una caja marcada a mano despachada hace ~58-60 días estiraba la ventana de sus productos (despacho − 1 día hasta hoy + 1) y ninguna caja abierta de esos productos se podía leer (8 abiertas sin marcar). Ahora una marcada a mano despachada hace más de 57 días no estira la ventana (`limVentana`, en `marcarCajasLlegadas`). Qué chequear: que `cajasllegaron` no tenga ningún 400 de rango y que las cajas abiertas no vuelvan a quedar sin leer por eso.
 
 ### Nuevos de Paraguay abajo de 35% en rojo (23/10/2026, v26.12, pedido suyo)
