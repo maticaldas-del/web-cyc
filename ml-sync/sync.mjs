@@ -10989,13 +10989,20 @@ const PYCAT_REMEDIR_DIAS = 7;
 // cajas) en productos que dan 5% o no están en ML: que lleguen a 25% en una semana es muy raro. Ahora: lo que dio 15% o más, cada 7
 // días · lo que dio menos de 15%, cada 30 · lo que no está en ML: sin catálogo cada 60, nadie lo vende cada 30 (ver abajo). Un costo nuevo o el
 // nombre traducido lo vuelven a medir igual. Vale para Paraguay y para las listas (`pycatRemedirDias`).
-const PYCAT_REMEDIR_LEJOS = 30, PYCAT_CERCA_PCT = 15, PYCAT_SINCAT_DIAS = 60;
+// NADA MÁS DE 14 DÍAS SIN VOLVER A MIRAR (23/10/2026, él mirando "Lo que no entra en el pedido": *"quiero que haya dos carpetas:
+// una que fueron revisados y otra que faltan revisar, y que cada 2 semanas se venza el producto revisado y pase a no revisado"*).
+// Lo que se rebuscaba a los 30 días (abajo de 15%, nadie lo vende) y a los 60 (sin catálogo exacto) pasa a 14; lo de 15%+ sigue en 7.
+// Cuenta del cupo (23/10): ~13.500 de Nissei + ~13.000 de listas cada 14 días ≈ 1.900 por día, contra ~700 por vuelta en ~20 min
+// (5 vueltas de día + la cadena de noche de 02 a 08) = más de 8.000 por día de lugar. Vale para Paraguay y para las listas.
+// `PYCAT_REVISADO_DIAS` es lo mismo visto desde la web: revisado = medido hace menos de 14 días (`rev`/`pend` en `cyc/pycatres`).
+const PYCAT_REVISADO_DIAS = 14;
+const PYCAT_REMEDIR_LEJOS = PYCAT_REVISADO_DIAS, PYCAT_CERCA_PCT = 15, PYCAT_SINCAT_DIAS = PYCAT_REVISADO_DIAS;
 function pycatRemedirDias(e) {
   if (e && e.m != null && isFinite(Number(e.m))) return Number(e.m) >= PYCAT_CERCA_PCT ? PYCAT_REMEDIR_DIAS : PYCAT_REMEDIR_LEJOS;
   // LO QUE NO ESTÁ EN ML SE VUELVE A BUSCAR, PERO DE A POCO (21/10/2026, corrige la del 20/10 "no se vuelve a buscar nunca").
   // Él: "puede que se creen catálogo para los productos. entonces si los descartamos para siempre, puede que después lo dejemos
-  // afuera". Sin catálogo exacto → cada 60 días (ML crea catálogos nuevos seguido, pero no cada semana) · el catálogo existe y nadie
-  // lo vende → cada 30 (aparecen vendedores más rápido). Un costo nuevo, el nombre cambiado o la búsqueda traducida (`qv`) igual que antes.
+  // afuera". Sin catálogo exacto y catálogo sin vendedores → cada 14 días (23/10/2026; antes 60 y 30). Un costo nuevo, el nombre
+  // cambiado o la búsqueda traducida (`qv`) igual que antes.
   if (e && e.sc) return PYCAT_SINCAT_DIAS;
   if (e && e.sv) return PYCAT_REMEDIR_LEJOS;
   return PYCAT_REMEDIR_DIAS;
@@ -11084,15 +11091,36 @@ function pyCodMatcher(codes) {
   return (y0) => { const y = _pyDg(y0); if (!y) return false; if (full.has(y)) return true; if (/[A-Z]/.test(y)) return false;
     if (y.length >= 5 && suf.has(y)) return true; for (let k = 5; k < y.length; k++) if (full.has(y.slice(-k))) return true; return false; };
 }
+// A qué carpeta va una fila del catálogo (23/10/2026): 'pn' nunca medido · 'pv' vencido (14+ días) · o el grupo de revisado
+// ('bajo' · 'dan' = medido en el piso o arriba y todavía no candidato · 'sc' · 'scr' · 'sv' · 'fz'). MISMA regla que `_pycGrupoRev`
+// de index.html: si se toca una, se toca la otra.
+function pycatGrupoRev(e, ahora, vence) {
+  if (e.fz) return 'fz';
+  if (e.nm || !(Number(e.t) > 0)) return 'pn';
+  if (ahora - Number(e.t) >= vence) return 'pv';
+  const m = e.m != null && isFinite(e.m) ? Number(e.m) : null;
+  if (m != null) return m < CAND_PISO_PCT ? 'bajo' : 'dan';
+  if (e.sc) return Number(e.qp || 0) >= PY_NOMBRE_VER ? 'scr' : 'sc';
+  if (e.sv) return 'sv';
+  return 'pn';   // tiene fecha pero ningún resultado: no se terminó de medir
+}
 async function pycatResumenEscribir(db, cat, cands, products) {
   // El catálogo es de NISSEI: sólo cuentan candidatos y fichas de Nissei (etapa 3, 20/10/2026, ver `provPyDeBot`).
   const esCand = pyCodMatcher(Object.values(cands || {}).filter((c) => c && provPyDeBot(c) === 'nissei').map((c) => c.cod).filter(Boolean));
   const esFicha = pyCodMatcher((products || []).filter((p) => p && provPyDeBot(p) === 'nissei').map((p) => p.codPy).filter(Boolean));
   const r = { t: Date.now(), tot: 0, cand: 0, ficha: 0, fz: 0, bajo: 0, sc: 0, scr: 0, sv: 0, nomed: 0, nm: 0 };
+  // REVISADOS Y FALTA REVISAR (23/10/2026, pedido suyo, ver `PYCAT_REVISADO_DIAS`). `rev` = medido en los últimos 14 días con
+  // cualquier resultado (da, no llega, nadie lo vende, sin catálogo) + afuera por regla (la regla se aplica en cada vuelta) ·
+  // `pend` = nunca medido (`pn`, incluye lo que ML no deja medir) + medido hace 14 días o más (`pv`, vencido). `rv` = los
+  // revisados por grupo (misma división que arriba) para los encabezados de la web. rev + pend = tot − cand − ficha.
+  const ahoraR = Date.now(), vence = PYCAT_REVISADO_DIAS * 864e5;
+  r.rev = 0; r.pend = 0; r.pn = 0; r.pv = 0; r.rv = { bajo: 0, dan: 0, sc: 0, scr: 0, sv: 0, fz: 0 };
   for (const [cod, e] of Object.entries(cat || {})) {
     if (!e || !e.n) continue; r.tot++;
     if (e.cand || esCand(cod)) { r.cand++; continue; }
     if (esFicha(cod)) { r.ficha++; continue; }
+    const pyG = pycatGrupoRev(e, ahoraR, vence);
+    if (pyG === 'pn') { r.pend++; r.pn++; } else if (pyG === 'pv') { r.pend++; r.pv++; } else { r.rev++; r.rv[pyG]++; }
     const m = e.m != null && isFinite(e.m) ? Number(e.m) : null;
     if (m != null) { if (m < CAND_PISO_PCT) r.bajo++; else r.nomed++; continue; }
     if (e.fz) { r.fz++; continue; } if (e.sc) { if (Number(e.qp || 0) >= PY_NOMBRE_VER) r.scr++; else r.sc++; continue; } if (e.sv) { r.sv++; continue; }
@@ -11103,11 +11131,13 @@ async function pycatResumenEscribir(db, cat, cands, products) {
   try {
     const prev = (await db.get('cyc/pycatres')) || {};
     const hoy = new Date(Date.now() - 3 * 36e5).toISOString().slice(0, 10).replace(/-/g, '_');
-    if (prev.dia && prev.dia.d === hoy) r.dia = prev.dia;
-    else if (prev.nomed != null) r.dia = { d: hoy, nomed: Number(prev.nomed), tot: Number(prev.tot) || 0 };
+    if (prev.dia && prev.dia.d === hoy) { r.dia = prev.dia; if (r.dia.pend == null && prev.pend != null) r.dia.pend = Number(prev.pend); }
+    else if (prev.nomed != null) r.dia = { d: hoy, nomed: Number(prev.nomed), tot: Number(prev.tot) || 0, ...(prev.pend != null ? { pend: Number(prev.pend) } : {}) };
   } catch { /* sin el de ayer no se muestra el número del día */ }
   await db.set('cyc/pycatres', r);
   console.log(`📊 catálogo dividido (cyc/pycatres): ${r.tot} = ${r.cand} candidatos + ${r.ficha} fichas + ${r.fz} afuera por regla + ${r.bajo} abajo del ${CAND_PISO_PCT}% + ${r.sc} sin catálogo exacto + ${r.sv} nadie lo vende + ${r.nomed} sin medir${r.nm ? ` (${r.nm} de ésos ML no deja medirlos)` : ''}`);
+  const _cierra = r.rev + r.pend === r.tot - r.cand - r.ficha;
+  console.log(`   ✅ revisados (últimos ${PYCAT_REVISADO_DIAS} días) ${r.rev} [${Object.entries(r.rv).map(([k, v]) => k + ' ' + v).join(' · ')}] + ⏳ falta revisar ${r.pend} (${r.pn} nunca medidos + ${r.pv} vencidos) = ${r.rev + r.pend} ${_cierra ? '= ' : '≠ ❌ '}${r.tot} − ${r.cand} candidatos − ${r.ficha} fichas`);
   return r;
 }
 // LOS NOMBRES ABREVIADOS DE LAS LISTAS (20/10/2026, con Dai Nippon: 4.605 de 7.777 sin medir). Dai Nippon escribe
@@ -11118,7 +11148,7 @@ const LISTA_NOMBRE_VER = 1;
 // EL NOMBRE DE NISSEI TRADUCIDO (23/10/2026, eligió la 1a: "si no se encuentran aunque estén traducidos ponelos como revisados").
 // comprasparaguay escribe en portugués ("Fone de Ouvido ... - Preto") y ML busca en castellano. Se agrega una búsqueda con el nombre
 // traducido; lo que estaba "sin catálogo exacto" se vuelve a buscar UNA vez con la traducción (`qp`), y si sigue sin aparecer queda
-// ✔️ revisado (`scr` en `cyc/pycatres`): ya no cuenta como "sin medir". Se vuelve a buscar solo cada 60 días como antes.
+// ✔️ revisado (`scr` en `cyc/pycatres`): ya no cuenta como "sin medir". Se vuelve a buscar solo cada 14 días (23/10/2026).
 const PY_NOMBRE_VER = 1;
 const PY_TRAD = [
   [/\bmouse\s+sem\s+fio\b/gi, 'mouse inalambrico'], [/\bfones?\s+de\s+ouvido\b/gi, 'auriculares'], [/\bsem\s+fio\b/gi, 'inalambrico'],

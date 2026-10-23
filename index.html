@@ -2947,7 +2947,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.19';
+const APP_VERSION='26.20';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2960,6 +2960,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.20',f:'23/10',h:'15:25',c:[{n:2,t:'🗂️ Paraguay → Nissei → "Lo que no entra en el pedido": ahora son dos carpetas, ✅ Revisados (lo que el robot miró en los últimos 14 días, con los mismos grupos de antes) y ⏳ Falta revisar (nunca medidos y vencidos). Lo revisado vence a los 14 días y el robot lo vuelve a mirar solo: nada queda más de 2 semanas sin mirar, en Nissei y en las Listas.'}]},
   {v:'26.19',f:'23/10',h:'15:20',c:[{n:1,t:'⚖️ Tope de H en Inicio: "lo próximo nuevo va a…" elige entre Ayelen y Luciana (la que más lugar tiene), como pediste.'}]},
   {v:'26.18',f:'23/10',h:'15:10',c:[{n:2,t:'🔢 Contar lo que hay: tarjeta "🏷️ Sin terminar / sin etiqueta" con la mercadería que llegó y todavía no tiene la etiqueta de Full (la carga Claude cuando le pasás lo que llegó, y la saca cuando le decís que la etiquetaste). Armar caja la sigue contando igual y en cada renglón dice cuántas faltan etiquetar.'}]},
   {v:'26.17',f:'23/10',h:'15:10',c:[{n:1,t:'Paraguay → Nissei: la carpeta de abajo se llama "Sin precio en ML": son los que el robot ya buscó y encontró en ML pero nadie los vende (no hay precio contra qué comparar), más los que quedan afuera por regla. Los que faltan medir de verdad son los de "Falta analizar" (~100).'}]},
@@ -15432,24 +15433,41 @@ function _pycDg(x){const s=String(x||'');return /[a-z]/i.test(s)?s.replace(/[^a-
 function _pycMatcher(codes){const full=new Set(),suf=new Set();
   for(const c of codes){const x=_pycDg(c);if(!x)continue;full.add(x);if(!/[A-Z]/.test(x))for(let k=5;k<x.length;k++)suf.add(x.slice(-k));}
   return y0=>{const y=_pycDg(y0);if(!y)return false;if(full.has(y))return true;if(/[A-Z]/.test(y))return false;if(y.length>=5&&suf.has(y))return true;for(let k=5;k<y.length;k++)if(full.has(y.slice(-k)))return true;return false;};}
-const _PYC_GRUPOS={scr:['✔️ revisados: no están en ML','buscados con el nombre en portugués y traducido; ML no tiene el mismo producto. Se vuelven a buscar solos cada 60 días'],ficha:['✅ ya son productos tuyos','tienen ficha en CYC'],nomed:['⏳ todavía sin medir','el robot los mide de a tandas cada 2 h; los que den pasan solos a Para probar'],bajo:['🔻 medidos abajo del piso','del más cercano al piso al más lejos'],sc:['🔍 sin catálogo exacto en ML','no se pudo comparar contra el mismo producto'],sv:['🚫 en ML no lo vende nadie','el catálogo existe pero sin vendedores'],fz:['⛔ afuera por regla','110V, marca que ML frena, etc.']};
-function pycatNoDanHTML(keys,id,titulo){
+const _PYC_GRUPOS={scr:['✔️ revisados: no están en ML','buscados con el nombre en portugués y traducido; ML no tiene el mismo producto. Se vuelven a buscar solos cada 14 días'],dan:['🟢 medidos que dan y no pasaron solos a Para probar','el robot no pudo confirmar que el de ML sea el mismo producto'],pend:['⏳ falta revisar','nunca medidos o medidos hace 14 días o más: el robot los vuelve a mirar solo'],ficha:['✅ ya son productos tuyos','tienen ficha en CYC'],nomed:['⏳ todavía sin medir','el robot los mide de a tandas cada 2 h; los que den pasan solos a Para probar'],bajo:['🔻 medidos abajo del piso','del más cercano al piso al más lejos'],sc:['🔍 sin catálogo exacto en ML','no se pudo comparar contra el mismo producto'],sv:['🚫 en ML no lo vende nadie','el catálogo existe pero sin vendedores'],fz:['⛔ afuera por regla','110V, marca que ML frena, etc.']};
+function pycatNoDanHTML(keys,id,titulo,split){
   if(typeof pyProv!=='undefined'&&pyProv!=='nissei')return'';
   keys=keys||['bajo','sc','sv','fz'];id=id||'pycat-nodan';
-  return `<details style="margin-top:10px" ontoggle="if(this.open)pycatNoDan('${id}','${keys.join(',')}')"><summary style="cursor:pointer;font-size:.68rem;color:var(--muted)" title="Del catálogo entero de comprasparaguay que midió el robot (sin los que ya son candidatos). Filas livianas, sin tarjeta.">${titulo||'🔎 Del catálogo revisado por el robot'} · tocá para verlo</summary><div id="${id}" style="margin-top:8px"></div></details>`;
+  return `<details style="margin-top:10px" ontoggle="if(this.open)pycatNoDan('${id}','${split?'!':''}${keys.join(',')}')"><summary style="cursor:pointer;font-size:.68rem;color:var(--muted)" title="Del catálogo entero de comprasparaguay que midió el robot (sin los que ya son candidatos). Filas livianas, sin tarjeta.">${titulo||'🔎 Del catálogo revisado por el robot'} · tocá para verlo</summary><div id="${id}" style="margin-top:8px"></div></details>`;
 }
+// REVISADOS Y FALTA REVISAR (23/10/2026, él: "dos carpetas: una que fueron revisados y otra que faltan revisar, y que cada 2 semanas
+// se venza el producto revisado y pase a no revisado"). MISMA regla que `pycatGrupoRev` del robot (sync.mjs): 'pn' nunca medido ·
+// 'pv' medido hace 14 días o más · o el grupo de revisado. Si se toca una, se toca la otra.
+const PYC_REVISADO_DIAS=14;
+function _pycGrupoRev(e,ahora){
+  if(e.fz)return 'fz';
+  if(e.nm||!(Number(e.t)>0))return 'pn';
+  if(ahora-Number(e.t)>=PYC_REVISADO_DIAS*864e5)return 'pv';
+  const m=(e.m!=null&&isFinite(e.m))?Number(e.m):null;
+  if(m!=null)return m<CAND_PISO_PCT?'bajo':'dan';
+  if(e.sc)return Number(e.qp||0)>=1?'scr':'sc';
+  if(e.sv)return 'sv';
+  return 'pn';}
 async function pycatNoDan(id,keysTxt){
-  id=id||'pycat-nodan';const keys=String(keysTxt||'bajo,sc,sv,fz').split(',');
+  // `!` adelante de las claves (23/10/2026): modo revisados / falta revisar. Lo vencido o nunca medido va a 'pend' y los demás
+  // grupos muestran sólo lo revisado en los últimos 14 días.
+  const split=String(keysTxt||'').startsWith('!');
+  id=id||'pycat-nodan';const keys=String(keysTxt||'bajo,sc,sv,fz').replace(/^!/,'').split(',');
   const el=document.getElementById(id);if(!el)return;
   if(!_pycatCache)el.innerHTML='<div style="font-size:.7rem;color:var(--muted)">⏳ bajando el catálogo (la primera vez tarda unos segundos)…</div>';
   let cat;try{cat=await pycatCargar();}catch(e){el.innerHTML=`<div style="font-size:.7rem;color:var(--red)">No pude leer el catálogo: ${String(e.message||e).slice(0,120)}</div>`;return;}
-  const g={bajo:[],sc:[],scr:[],sv:[],fz:[],ficha:[],nomed:[]};
+  const g={bajo:[],sc:[],scr:[],sv:[],fz:[],ficha:[],nomed:[],dan:[],pend:[]};const _ahora=Date.now();
   // Sin repetir: lo que ya es candidato (vivo, en el pedido o descartado) está arriba, aunque el catálogo no lo tenga marcado.
   // MISMA división que `pycatResumenEscribir` del robot (los números de los encabezados).
   const esCand=_pycMatcher(Object.values(state.candidatos||{}).map(c=>c&&c.cod).filter(Boolean));
   const esFicha=_pycMatcher((state.products||[]).map(p=>p&&p.codPy).filter(Boolean));
   for(const [cod,e] of Object.entries(cat||{})){if(!e||!e.n||e.cand||esCand(cod))continue;
     if(esFicha(cod)){g.ficha.push([cod,e]);continue;}
+    if(split){const gr=_pycGrupoRev(e,_ahora);(gr==='pn'||gr==='pv'?g.pend:g[gr]).push([cod,e]);continue;}
     const m=(e.m!=null&&isFinite(e.m))?Number(e.m):null;
     if(m!=null){(m<CAND_PISO_PCT?g.bajo:g.nomed).push([cod,e]);continue;}
     if(e.fz){g.fz.push([cod,e]);continue;}
@@ -15457,9 +15475,10 @@ async function pycatNoDan(id,keysTxt){
     if(e.sv){g.sv.push([cod,e]);continue;}
     g.nomed.push([cod,e]);}
   g.bajo.sort((a,b)=>Number(b[1].m)-Number(a[1].m));
+  g.pend.sort((a,b)=>(Number(a[1].t)||0)-(Number(b[1].t)||0));   // el que hace más que no se mira, primero (como la cola del robot)
   const ks=keys.filter(k=>g[k]&&g[k].length),tot=ks.reduce((a,k)=>a+g[k].length,0);
   const lista=(k)=>{const vk=id+'_'+k,n=_pycNoDanVer[vk]||100,arr=g[k];
-    return `<div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">${arr.slice(0,n).map(pycatFila).join('')}${arr.length>n?`<button class="btn" style="font-size:.66rem" onclick="_pycNoDanVer['${vk}']=${n+100};pycatNoDan('${id}','${keys.join(',')}').then(()=>{const d=document.querySelector('#${id} details[data-k=${k}]');if(d)d.open=true;})">mostrar 100 más (quedan ${(arr.length-n).toLocaleString('es-AR')})</button>`:''}</div>`;};
+    return `<div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">${arr.slice(0,n).map(pycatFila).join('')}${arr.length>n?`<button class="btn" style="font-size:.66rem" onclick="_pycNoDanVer['${vk}']=${n+100};pycatNoDan('${id}','${split?'!':''}${keys.join(',')}').then(()=>{const d=document.querySelector('#${id} details[data-k=${k}]');if(d)d.open=true;})">mostrar 100 más (quedan ${(arr.length-n).toLocaleString('es-AR')})</button>`:''}</div>`;};
   el.innerHTML=`<div style="font-size:.64rem;color:var(--muted);margin-bottom:6px">${tot.toLocaleString('es-AR')} del catálogo de comprasparaguay</div>`
     +(ks.length===1?lista(ks[0]):ks.map(k=>`<details data-k="${k}" style="margin-top:6px"><summary style="cursor:pointer;font-size:.7rem">${_PYC_GRUPOS[k][0]} · <b>${g[k].length.toLocaleString('es-AR')}</b> <span style="color:var(--muted);font-size:.62rem">(${_PYC_GRUPOS[k][1]})</span></summary>${lista(k)}</details>`).join(''));
 }
@@ -17525,7 +17544,8 @@ function candidatosHTML(){
       const R=pyProv==='nissei'?state.pycatres:null,n=k=>R&&R[k]!=null?Number(R[k]):0,f=x=>Number(x||0).toLocaleString('es-AR');
       const mas=k=>R?` <span style="color:var(--muted);font-weight:400">+ <b>${f(n(k))}</b> del catálogo</span>`:'';
       const nDesc=candList().filter(c=>c.no).length;
-      const tot=_flojas.length+_rojos.length+_sinAnalizar.length+nDesc+(R?n('ficha')+n('bajo')+n('nomed')+n('sc')+n('sv')+n('fz'):0);
+      // 23/10/2026: suma también los ✔️ revisados traducidos (`scr`, faltaban) y, con la cuenta nueva, es Revisados + Falta revisar.
+      const tot=_flojas.length+_rojos.length+_sinAnalizar.length+nDesc+(R?n('ficha')+(R.rev!=null&&R.pend!=null?n('rev')+n('pend'):n('bajo')+n('nomed')+n('sc')+n('scr')+n('sv')+n('fz')):0);
       // SE ARMA AL ABRIRLO (19/10/2026, él: "el problema de Nissei es que carga eso también, que cargue al clickearlo"): son miles de
       // tarjetas; antes se dibujaban todas al entrar a Nuevos aunque el desplegable estuviera cerrado.
       window._pyNoEntraFn=()=>{
@@ -17537,6 +17557,32 @@ function candidatosHTML(){
       const descM=candList().filter(c=>c.no&&_candMedido(c)).length,descN=nDesc-descM;
       const totM=_flojas.length+_rojos.length+descM+(R?n('bajo')+n('ficha')+n('scr'):0),totN=_sinAnalizar.length+descN+(R?n('nomed')+n('sc')+n('sv')+n('fz'):0);
       const carp=(t,nn,col,html)=>`<details style="margin-top:10px;border:1px solid var(--border2);border-radius:8px;padding:6px 10px;background:var(--surface2)"><summary style="cursor:pointer;font-size:.74rem;font-weight:700;color:${col}">${t} · ${f(nn)}</summary>${html}</details>`;
+      // ✅ REVISADOS / ⏳ FALTA REVISAR (23/10/2026, él: "quiero que haya dos carpetas: una que fueron revisados y otra que faltan
+      // revisar, y que cada 2 semanas se venza el producto revisado y pase a no revisado"). Reemplaza Medidos / Sin precio en ML,
+      // que mezclaba lo ya buscado con lo que faltaba. Los números los deja el robot (`rev`, `pend`, `rv` en `cyc/pycatres`); si
+      // todavía no corrió con la cuenta nueva, se ven las dos carpetas de antes.
+      if(R&&R.rev!=null&&R.pend!=null&&R.rv){
+        const rv=k=>Number((R.rv||{})[k])||0;
+        const totR=_flojas.length+_rojos.length+nDesc+n('ficha')+n('rev'),totP=_sinAnalizar.length+n('pend');
+        const sub=(t,col,nn,keys,idx,tit,extra)=>nn||extra?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:${col}">${t} · <b>${f(nn)}</b></summary>${extra||''}${nn?pycatNoDanHTML(keys,idx,tit,true):''}</details>`:'';
+        const hoyP=(()=>{const hoy=new Date(Date.now()-3*36e5).toISOString().slice(0,10).replace(/-/g,'_');const d=R.dia;if(!d||d.d!==hoy||d.pend==null)return '';const x=Number(d.pend)-n('pend');return x>0?` <span style="color:var(--green)" title="Los que el robot revisó hoy: salieron de falta revisar desde el último conteo de ayer.">−${f(x)} hoy</span>`:'';})();
+        return cuenta
+        +`<div style="font-size:.68rem;color:var(--text);margin:8px 0 2px">🔁 Lo revisado vence a los 14 días y el robot lo vuelve a mirar solo.</div>`
+        +carp('✅ Revisados (últimos 14 días)',totR,'var(--text)',''
+        +(_flojas.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--amber)">🟠 1 solo vendedor en ML (o sin catálogo con vendedores) · <b>${_flojas.length}</b></summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_flojas.map(_card).join('')}</div></details>`:'')
+        +((_rojos.length||rv('bajo'))?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--red)">🔻 No llegan al ${CAND_PISO_TXT()} · <b>${_rojos.length}</b> candidatos${` <span style="color:var(--muted);font-weight:400">+ <b>${f(rv('bajo'))}</b> del catálogo</span>`}</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_rojos.map(_card).join('')}</div>${rv('bajo')?pycatNoDanHTML(['bajo'],'pycat-nodan-bajo','📦 Del catálogo: medidos por el robot, abajo del piso',true):''}</details>`:'')
+        +candDescartadosHTML(null,'todos')
+        +sub('🟢 Medidos que dan, pero el robot no confirmó que sea el mismo producto','var(--green)',rv('dan'),['dan'],'pycat-nodan-dan','📦 Del catálogo: dan el piso, sin pasar a Para probar')
+        +sub('👻 En ML nadie lo vende','var(--muted)',rv('sv'),['sv'],'pycat-nodan-sv','📦 Del catálogo: el catálogo existe pero sin vendedores')
+        +sub('🔍 Sin catálogo exacto en ML (falta buscarlo traducido)','var(--muted)',rv('sc'),['sc'],'pycat-nodan-sc','📦 Del catálogo: no se pudo comparar contra el mismo producto')
+        +sub('⛔ Afuera por regla','var(--muted)',rv('fz'),['fz'],'pycat-nodan-fz','📦 Del catálogo: 110V, marca que ML frena, etc.')
+        +(n('ficha')?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--green)">✅ Ya son productos tuyos · <b>${f(n('ficha'))}</b> del catálogo</summary>${pycatNoDanHTML(['ficha'],'pycat-nodan-ficha','📦 Del catálogo: ya tienen ficha en CYC')}</details>`:'')
+        +sub('✔️ Revisados: no están en ML (buscados también traducidos)','var(--muted)',rv('scr'),['scr'],'pycat-nodan-scr','📦 Del catálogo: ML no tiene el mismo producto'))
+        +carp('⏳ Falta revisar'+hoyP,totP,'var(--amber)',''
+        +`<div style="font-size:.66rem;color:var(--muted);line-height:1.6;margin:8px 0 4px">🆕 <b style="color:var(--text)">${f(n('pn'))}</b> nunca medidos · ⌛ <b style="color:var(--text)">${f(n('pv'))}</b> revisados hace 14 días o más (vencidos)${_sinAnalizar.length?` · ⏳ <b style="color:var(--text)">${_sinAnalizar.length}</b> candidatos sin analizar (falta la medición de ML o una de las dos fotos)`:''}. El robot los va mirando solo, primero los de los rubros que ya vendemos y el que hace más que no se mira.</div>`
+        +(_sinAnalizar.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--muted)" title="Falta la medición de ML o alguna de las dos fotos. Suben solos cuando estén completos y den.">⏳ Candidatos sin analizar · <b>${_sinAnalizar.length}</b></summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_sinAnalizar.map(_card).join('')}</div></details>`:'')
+        +(n('pend')?pycatNoDanHTML(['pend'],'pycat-nodan-pend','📦 Del catálogo: nunca medidos y vencidos',true):''));
+      }
       return cuenta
       +carp('📏 Medidos',totM,'var(--text)',''
       +(_flojas.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--amber)">🟠 1 solo vendedor en ML (o sin catálogo con vendedores) · <b>${_flojas.length}</b></summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_flojas.map(_card).join('')}</div></details>`:'')
@@ -17567,9 +17613,10 @@ function candToggle(id,ab){if(ab)_candAbiertos.add(id);else _candAbiertos.delete
 // sin medir más los del catálogo que no se pudieron medir; sin `med` = todos (como antes).
 const _candMedido=c=>c&&c.margen!=null&&isFinite(c.margen);
 function candDescartadosHTML(nCat,med){
-  const desc=candList().filter(c=>c.no&&(med==null||_candMedido(c)===med));
-  const _cat=med===true?'':pycatNoDanHTML(['sc','sv','fz'],'pycat-nodan-desc','📦 Del catálogo: sin catálogo exacto en ML, nadie lo vende o afuera por regla');
-  if(med===true)nCat=null;
+  // med==='todos' (23/10/2026, carpeta ✅ Revisados): todos los candidatos descartados, sin las filas del catálogo (van en sus grupos).
+  const desc=candList().filter(c=>c.no&&(med==null||med==='todos'||_candMedido(c)===med));
+  const _cat=(med===true||med==='todos')?'':pycatNoDanHTML(['sc','sv','fz'],'pycat-nodan-desc','📦 Del catálogo: sin catálogo exacto en ML, nadie lo vende o afuera por regla');
+  if(med===true||med==='todos')nCat=null;
   if(!desc.length&&!_cat)return '';
   return `<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--muted)">👎 Descartados · <b>${desc.length.toLocaleString('es-AR')}</b> candidatos (se pueden devolver) ${nCat!=null?` <span style="color:var(--muted);font-weight:400">+ <b>${Number(nCat).toLocaleString('es-AR')}</b> del catálogo</span>`:''}</summary>
     <div style="display:flex;flex-direction:column;gap:5px;margin-top:8px">
@@ -21350,10 +21397,10 @@ async function renderListas(){
     +_sub('⏳ Cambió el costo: falta volver a medir',_cg.cNuevo,'')
     +_sub('🔴 Dan menos de 15%',_cg.bajo,'var(--red)')
     +_sub('⛔ Pierden plata (menos de 0%)',_cg.neg,'var(--red)')
-    +_sub('👻 Hay catálogo pero hoy nadie lo vende (se vuelve a buscar cada 30 días)',_cg.nadie,'var(--muted)')
+    +_sub('👻 Hay catálogo pero hoy nadie lo vende (se vuelve a buscar cada 14 días)',_cg.nadie,'var(--muted)')
     +_sub('✗ El catálogo era otro producto',_cg.otro,'var(--muted)'),
     revis.length?` <span style="font-weight:400;font-size:.66rem;color:var(--amber)">· 🔎 ${revis.length} para confirmar</span>`:'');
-  const _sinCat=_carp('📕 Sin catálogo exacto en ML',_cg.sinCat.length,'',`<div style="font-size:.64rem;color:var(--muted);margin-top:6px">No hay un catálogo de ML que sea este mismo producto: sin catálogo no se mide ni se compra. Se vuelve a buscar cada 60 días por si ML crea uno.</div><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${_cg.sinCat.slice(0,150).map(f=>fila(f,false)).join('')}${_cg.sinCat.length>150?`<div style="font-size:.62rem;color:var(--muted)">muestro 150 · el resto con el buscador</div>`:''}</div>`);
+  const _sinCat=_carp('📕 Sin catálogo exacto en ML',_cg.sinCat.length,'',`<div style="font-size:.64rem;color:var(--muted);margin-top:6px">No hay un catálogo de ML que sea este mismo producto: sin catálogo no se mide ni se compra. Se vuelve a buscar cada 14 días por si ML crea uno.</div><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${_cg.sinCat.slice(0,150).map(f=>fila(f,false)).join('')}${_cg.sinCat.length>150?`<div style="font-size:.62rem;color:var(--muted)">muestro 150 · el resto con el buscador</div>`:''}</div>`);
   const _sinMed=_carp('⏳ Sin medir todavía',_cg.sinMed.length,'',`<div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${_cg.sinMed.slice(0,150).map(f=>fila(f,false)).join('')}</div>`);
   const _regla=_carp('🚫 Afuera por una regla',_cg.regla.length,'',`<div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${_cg.regla.slice(0,150).map(f=>fila(f,false)).join('')}</div>`);
   // TODA LA LISTA ABAJO, EN UNA CARPETA (21/10/2026, él: "unifica toda la info de los productos vistos y los que no etc. todos abajo.
