@@ -274,6 +274,10 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
   $32.990 por la barrera, el techo de $650.000 o `!chico` con "EXCEPCIÓN: …". **Cada escalón se mide antes del
   siguiente**: por certeza (Poisson sobre la plata por día: 3 esperadas y 0 = 5% · 6 y 0-1 = 2% · 10 y ≤2 = 0,3%), nunca un solo
   día. En lo que se compra de a muchos se cuentan COMPRADORES y 7 días mínimo.
+  **Una prueba de techo se mide en VENTAS ESPERADAS, no en días** (23/10, él: *"mientras más días buscando techo más días perdiendo
+  ventas"*): al llegar a 3 esperadas a su ritmo de antes sale en 📈 PRUEBA CON RESPUESTA (`planilla`, `techodias`) y se decide en esa
+  vuelta (0 vendidas = 95% → escalera · con ventas manda la ganancia por día · si no alcanza, nota y vuelve a salir con 3 esperadas más).
+  Lo que vende 1+/día se resuelve en 1-3 días; lo de menos de 1 por semana necesita ~2 meses.
 - **Si funciona** (igual o más plata por día) → otro salto. **Si sale mal** → 🔒 se baja en escalera **como DESCUENTO propio con el
   precio tachado** (`entrarpromo:<MLA>=<precio>@PRICE_DISCOUNT#bajando`; `decido` frena bajar la lista de algo que ya probó su techo
   salvo `!lista` con "EXCEPCIÓN: …") (≤15% por escalón, uno cada 48 h),

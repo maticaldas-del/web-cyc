@@ -4683,6 +4683,36 @@ async function _autDeTelegram(db, updates) {
 // lo deshecho. Lo de antes del detector sólo se lista, con el comando para deshacerlo. Las subas no se deshacen solas (se miran).
 // Cada corrección nueva suya agrega acá su chequeo (CLAUDE.md, "🔐 UN AVISO ALCANZA").
 const DET_REGLA_DESDE = { techo30: Date.parse('2026-10-21T03:31:00Z'), salto: Date.parse('2026-10-19T18:02:00Z'), estrategia: Date.parse('2026-10-19T19:08:00Z') };
+// 📈 PRUEBAS DE TECHO EN CURSO (23/10/2026, él: "mientras más días buscando techo, más días perdiendo ventas; el punto justo para
+// tener info suficiente lo más rápido, sin apurar"). Cada publicación ACTIVA con 📈 de hoy: días en la prueba, ritmo de los 30 días
+// antes del tag (con gemelas y hermanas de stock), vendidas y ganancia desde el tag y las que se esperaban a ese ritmo. El 95% llega
+// con 3 esperadas y 0 vendidas (Poisson): la prueba se mide en VENTAS ESPERADAS, no en días (3 ÷ ritmo = días que hacen falta).
+// La usan `techodias` y la lista 📈 PRUEBA CON RESPUESTA de `planilla`.
+async function pruebasTechoEnCurso(db, ahora = Date.now()) {
+  const DIA = 864e5;
+  const est = (await db.get('cyc/estrategia')) || {}, links = (await db.get('cyc/mllinks')) || {}, prods = (await db.get('cyc/products')) || {};
+  let notas = null; try { notas = (await db.get('mlapi/fichanotas')) || {}; } catch { notas = null; }
+  const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+  const vdC = new Map(); const vDia = async (k) => { if (!vdC.has(k)) { let o = null; try { o = (await db.get('cyc/ventaprod/' + k)) || {}; } catch { o = null; } vdC.set(k, o); } return vdC.get(k); };
+  const filas = []; let sinLeer = 0;
+  for (const [m, h] of Object.entries(est)) {
+    const e = links[m]; if (!e || e.gemelaDe || e.ignored || e.noVendemosMas || !/^active/.test(String(e.status || ''))) continue;
+    let ult = '', tsU = 0; for (const k of Object.keys(h || {}).map(Number).filter((n) => n > 0).sort((x, y) => x - y)) { const x = h[k]; if (!x || !x.t) continue; ult = x.t === 'correccion' ? pasajeDe(ult) : x.t; tsU = k; }
+    if (ult !== 'techo' || !tsU) continue;
+    const grupo = [m, ...hermanasStockDe(links, prods, m), ...Object.keys(links).filter((g) => (links[g] || {}).gemelaDe === m)];
+    let uA = 0, uD = 0, gA = 0, gD = 0, sinC = 0, falla = false;
+    for (let t = tsU - 30 * DIA; t <= ahora + DIA; t += DIA) { const vd = await vDia(dayKeyFromISO(t)); if (vd == null) { falla = true; continue; }
+      for (const v of Object.values(vd)) { if (!v || v.cancelada || !grupo.includes(v.mla)) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; const q = Number(v.qty) || 1;
+        const g = v.costo > 0 ? (Number(v.neto) || 0) - v.costo - (Number(v.total) || 0) * (mlExtraPct(v.cuenta) + monoP) / 100 : 0; if (!(v.costo > 0)) sinC++;
+        if (ts >= tsU - 30 * DIA && ts < tsU) { uA += q; gA += g; } else if (ts >= tsU) { uD += q; gD += g; } } }
+    if (falla) sinLeer++;
+    const r = uA / 30, d = (ahora - tsU) / DIA;
+    // la última nota mía desde el tag ("sigue la prueba"): la próxima decisión pide 3 esperadas MÁS desde esa nota
+    const hn = (notas || {})[m] || {}; const tN = Math.max(0, ...Object.keys(hn).map(Number).filter((k) => k > tsU && (hn[k] || {}).tipo !== 'fallo'));
+    filas.push({ m, nom: String(e.title || '?').slice(0, 34), cta: e.cuenta || '?', tsU, d, r, uD, esp: r * d, espNota: tN ? r * (ahora - tN) / DIA : null, d95: r > 0 ? 3 / r : Infinity, gdA: gA / 30, gdD: d >= 0.5 ? gD / d : null, sinC });
+  }
+  return { filas, sinLeer, sinNotas: notas == null };
+}
 async function detectarErrores(db, o = {}) {
   const horas = Number(o.horas) > 0 ? Number(o.horas) : 26, ahora = Number(o.ahora) > 0 ? Number(o.ahora) : Date.now(), t0 = ahora - horas * 3600e3;
   const aplicar = !!o.aplicar, tokens = o.tokens || {};
@@ -17942,25 +17972,7 @@ async function main() {
     // vendidas desde el tag y cuántas se esperaban a ese ritmo. El 95% llega con 3 esperadas y 0 vendidas (Poisson): a ese ritmo,
     // ¿cuántos días hacen falta? Agrupa por ritmo para ver dónde se va el tiempo.
     if (/^techodias$/.test(String(process.env.BILLING_PROBE || ''))) {
-      const DIA = 864e5, ahora = Date.now();
-      const est = (await db.get('cyc/estrategia')) || {}, links = (await db.get('cyc/mllinks')) || {}, prods = (await db.get('cyc/products')) || {};
-      const vdC = new Map(); const vDia = async (k) => { if (!vdC.has(k)) { let o = null; try { o = (await db.get('cyc/ventaprod/' + k)) || {}; } catch { o = null; } vdC.set(k, o); } return vdC.get(k); };
-      const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
-      const filas = []; let sinLeer = 0;
-      for (const [m, h] of Object.entries(est)) {
-        const e = links[m]; if (!e || e.gemelaDe || e.ignored || e.noVendemosMas || !/^active/.test(String(e.status || ''))) continue;
-        let ult = '', tsU = 0; for (const k of Object.keys(h || {}).map(Number).filter((n) => n > 0).sort((x, y) => x - y)) { const x = h[k]; if (!x || !x.t) continue; ult = x.t === 'correccion' ? pasajeDe(ult) : x.t; tsU = k; }
-        if (ult !== 'techo' || !tsU) continue;
-        const grupo = [m, ...hermanasStockDe(links, prods, m), ...Object.keys(links).filter((g) => (links[g] || {}).gemelaDe === m)];
-        let uA = 0, uD = 0, gA = 0, gD = 0, sinC = 0, falla = false;
-        for (let t = tsU - 30 * DIA; t <= ahora + DIA; t += DIA) { const vd = await vDia(dayKeyFromISO(t)); if (vd == null) { falla = true; continue; }
-          for (const v of Object.values(vd)) { if (!v || v.cancelada || !grupo.includes(v.mla)) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; const q = Number(v.qty) || 1;
-            const g = v.costo > 0 ? (Number(v.neto) || 0) - v.costo - (Number(v.total) || 0) * (mlExtraPct(v.cuenta) + monoP) / 100 : 0; if (!(v.costo > 0)) sinC++;
-            if (ts >= tsU - 30 * DIA && ts < tsU) { uA += q; gA += g; } else if (ts >= tsU) { uD += q; gD += g; } } }
-        if (falla) sinLeer++;
-        const r = uA / 30, d = (ahora - tsU) / DIA;
-        filas.push({ m, nom: String(e.title || '?').slice(0, 34), cta: e.cuenta || '?', d, r, uD, esp: r * d, d95: r > 0 ? 3 / r : Infinity, gdA: gA / 30, gdD: d >= 0.5 ? gD / d : null, sinC });
-      }
+      const { filas, sinLeer } = await pruebasTechoEnCurso(db);
       const B = [['3+/día', (r) => r >= 3], ['1 a 3/día', (r) => r >= 1 && r < 3], ['1 cada 1-3 días', (r) => r >= 1 / 3 && r < 1], ['1 cada 3-7 días', (r) => r >= 1 / 7 && r < 1 / 3], ['menos de 1/semana', (r) => r > 0 && r < 1 / 7], ['sin ventas antes', (r) => !(r > 0)]];
       console.log(`=== 📈 PRUEBAS DE TECHO EN CURSO · ${filas.length} publicaciones activas${sinLeer ? ` · ⚠️ ${sinLeer} con algún día de ventas sin leer` : ''} ===`);
       console.log('(ritmo = 30 días antes de la suba, con gemelas y hermanas · 95% = 3 ventas esperadas y 0 vendidas)\n');
@@ -45363,6 +45375,19 @@ async function main() {
         if (!sinAf.length) console.log(pens.length ? 'ninguna sin pensar' : 'ninguna: todo lo que tiene stock tiene estrategia o línea de techo al 95%');
         if (pens.length) console.log(`   (${pens.length} ya pensadas en los últimos 7 días: ${pens.map((x) => x.nom.slice(0, 24)).join(' · ')})`);
       } catch (eA) { console.log('⚠️ la lista sin afinar falló: ' + eA.message); }
+      // ── 📈 PRUEBA CON RESPUESTA (23/10/2026, él: "mientras más días buscando techo más días perdiendo ventas"). Una prueba de techo
+      // se juzga cuando llega a 3 ventas ESPERADAS a su ritmo de antes (no por días): lo rápido en 1-2 días, lo lento tarda semanas.
+      // Sale acá toda 📈 activa con 3+ esperadas desde la suba (o 3+ más desde mi última nota). Se decide EN ESTA VUELTA con la ficha:
+      // 0 vendidas = 95% de que el precio nuevo vende menos → escalera; con ventas, manda la ganancia por día (antes contra después);
+      // si todavía no alcanza, nota "sigue la prueba" y vuelve a salir con 3 esperadas más. La lista tiene que quedar vacía.
+      try {
+        const { filas: pT, sinLeer: sLT, sinNotas } = await pruebasTechoEnCurso(db, hoy);
+        const conResp = pT.filter((z) => (z.espNota == null ? z.esp : z.espNota) >= 3).sort((a2, b2) => b2.gdA - a2.gdA);
+        const f$ = (x) => (x == null ? '?' : '$' + Math.round(x).toLocaleString('es-AR'));
+        console.log(`\n── 📈 PRUEBA CON RESPUESTA (${conResp.length} de ${pT.length} pruebas de techo) · llegaron a 3 ventas esperadas: decidir EN ESTA VUELTA (0 vendidas = 95%, escalera · con ventas manda la ganancia por día · si no alcanza, nota y sigue)${sLT ? ` · ⚠️ ${sLT} con días de ventas sin leer` : ''}${sinNotas ? ' · ⚠️ no leí las notas' : ''} ──`);
+        for (const z of conResp) console.log(`📈 ${z.m} · ${z.cta} · ${z.nom} · ${z.d.toFixed(1)} d de prueba · vendió ${z.uD} de ${z.esp.toFixed(1)} esperadas · ganancia/día antes ${f$(z.gdA)} → después ${f$(z.gdD)}${z.sinC ? ' · ' + z.sinC + ' venta(s) sin costo' : ''}${z.espNota != null ? ' · desde mi última nota ' + z.espNota.toFixed(1) + ' esperadas' : ''}`);
+        if (!conResp.length) console.log('ninguna: ninguna prueba llegó todavía a 3 ventas esperadas');
+      } catch (eP) { console.log('⚠️ la lista 📈 prueba con respuesta falló: ' + eP.message); }
       // ── 📈 DICE TECHO/ESCASEZ Y NO ESTÁ SUBIENDO (19/10/2026, él con la Batidora negro: "dice buscando techo, pero no aumentó
       // nada"). El tag tiene que corresponder al precio: 📈 techo y 🔥 escasez quieren decir que el precio SUBE. Sale acá toda
       // activa con uno de esos tags cuyo último cambio mío desde el tag fue una BAJA, o que no subió en 2 días desde el tag.

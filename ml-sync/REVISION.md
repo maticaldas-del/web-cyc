@@ -97,6 +97,12 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
 - Qué: cuenta los candidatos de Paraguay y los productos de las listas por tramo de % (25-30, 30-35, 35-50, 50+), cuántos pasaron todo y cuántos venden 100+, y lista los de 30-35% que pasaron todo.
 - Chequear: que use los mismos filtros que `faltaventas` (vivos, sin categoría que no se mira, costo vigente).
 
+### 📈 PRUEBA CON RESPUESTA en `planilla` (23/10/2026)
+- **Qué es:** toda 📈 activa que llegó a 3 ventas esperadas desde la suba (o 3 más desde mi última nota) sale en la lista y se decide en
+  esa vuelta. El 23/10 había 10 con respuesta sin juzgar (Naipes, Centímetro ×2, Infusor ×2, Termómetro ×2, Mazo, Adaptador Hub, Paulvic Good).
+- **Dónde vive:** `sync.mjs` → `pruebasTechoEnCurso` (la usan `techodias` y `planilla`).
+- **Qué chequear:** que una nota "sigue" la saque hasta 3 esperadas más · que lo decidido salga (el tag nuevo cambia el inicio).
+
 ### `techodias` (23/10/2026, sólo lee): ¿cuánto tarda cada prueba de techo en dar certeza?
 - **Qué es:** él: *"mientras más días buscando techo, más días perdiendo ventas; el punto justo para tener info lo más rápido sin apurar"*.
   Cada publicación activa con 📈: días en la prueba, ritmo de los 30 días antes (con gemelas/hermanas), vendidas desde la suba y
