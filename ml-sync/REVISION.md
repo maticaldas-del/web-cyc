@@ -146,6 +146,9 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   esa vuelta. El 23/10 había 10 con respuesta sin juzgar (Naipes, Centímetro ×2, Infusor ×2, Termómetro ×2, Mazo, Adaptador Hub, Paulvic Good).
 - **Dónde vive:** `sync.mjs` → `pruebasTechoEnCurso` (la usan `techodias` y `planilla`).
 - **Qué chequear:** que una nota "sigue" la saque hasta 3 esperadas más · que lo decidido salga (el tag nuevo cambia el inicio).
+- **Arreglo 23/10 (tarde):** la ganancia por día antes/después era BRUTA y la ficha la da NETA (dos cuentas para un número). Ahora
+  resta −$100/u de trabajo y −3% de lo facturado (tope de H), como la ficha y `techo95`; la plata parada no entra (pide el stock por día).
+  **Chequear:** que el antes/después de la lista y el de la ficha den parecido para la misma publicación.
 
 ### `techodias` (23/10/2026, sólo lee): ¿cuánto tarda cada prueba de techo en dar certeza?
 - **Qué es:** él: *"mientras más días buscando techo, más días perdiendo ventas; el punto justo para tener info lo más rápido sin apurar"*.
