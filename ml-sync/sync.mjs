@@ -27408,6 +27408,9 @@ async function main() {
         try { const r = await fetch(ML_API + '/items/validate', { method: 'POST', headers: { Authorization: 'Bearer ' + tokP, 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(30000) }); val = r.status; valTxt = (await r.text()).slice(0, 1500); } catch (e) { valTxt = String(e.message || e).slice(0, 200); }
         console.log(`   validación con family_name (sin title): ${val === 204 || val === 200 ? '✓ la aceptaría' : '✗ ' + (val || 'sin respuesta') + ' ' + valTxt}`);
       }
+      // SÓLO AVISOS (23/10/2026, Webcam EMEET S600): ML devuelve 400 "validation_error" aunque todo lo que lista sea `type: warning`
+      // ("User has not mode me1", "Mandatory free shipping added"). Eso no es un error: se publica igual y se dicen los avisos.
+      if (val === 400) { try { const j = JSON.parse(valTxt); const cs = Array.isArray(j.cause) ? j.cause : []; if (cs.length && cs.every((c) => c && c.type === 'warning')) { val = 204; console.log(`   ✓ ML sólo da avisos, no errores: ${cs.map((c) => c.message || c.code).join(' · ')}`); } } catch { /* no es JSON: queda como error */ } }
       if (!(val === 204 || val === 200)) { console.log('\n🛑 NO SE PUBLICA: ML no valida el pedido (arriba dice qué falta).'); return; }
       if (!GO) { console.log('\n(prueba: sin |go no se crea nada)'); return; }
       const r = await fetch(ML_API + '/items', { method: 'POST', headers: { Authorization: 'Bearer ' + tokP, 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(30000) });
