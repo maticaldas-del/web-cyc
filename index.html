@@ -73,6 +73,10 @@ body.light{
 @keyframes vpLate{50%{box-shadow:0 0 0 7px color-mix(in srgb,var(--avc,var(--green)) 25%,transparent),0 0 22px color-mix(in srgb,var(--avc,var(--green)) 45%,transparent)}}
 body.discreto .vp-aviso{animation:none}
 @media(prefers-reduced-motion:reduce){.vp-aviso{animation:none}}
+/* Puntaje arriba de 10 (23/10/2026): un saltito con brillo cada tanto, para que se note el día excepcional. */
+.punt-rompe{display:inline-block;animation:puntRompe 2.6s ease-in-out infinite;transform-origin:50% 70%}
+@keyframes puntRompe{0%,62%,100%{transform:none;text-shadow:none}70%{transform:translateY(-3px) scale(1.12) rotate(-3deg);text-shadow:0 0 10px currentColor}78%{transform:translateY(0) scale(1.04) rotate(2deg)}86%{transform:scale(1.08) rotate(-1deg);text-shadow:0 0 6px currentColor}}
+@media(prefers-reduced-motion:reduce){.punt-rompe{animation:none}}
 .esc-fill{position:absolute;left:0;top:0;bottom:0;border-radius:99px;animation-name:escLlena;animation-timing-function:ease-out;animation-fill-mode:both}@keyframes escLlena{from{width:var(--w0)}to{width:var(--w)}}@media(prefers-reduced-motion:reduce){.esc-fill{animation:none}}
 .vp-aviso-tag{flex-shrink:0;font-size:.62rem;font-weight:700;color:var(--avc,var(--green));border:1px solid currentColor;border-radius:999px;padding:1px 7px;white-space:nowrap}
 .tito-modal{position:fixed;inset:0;z-index:9300;background:rgba(0,0,0,.6);overflow-y:auto;display:flex;justify-content:center;align-items:flex-start;padding:14px}
@@ -2941,7 +2945,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.15';
+const APP_VERSION='26.16';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2954,6 +2958,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.16',f:'23/10',h:'14:45',c:[{n:2,t:'El puntaje del día (Inicio y Ventas) ya puede pasar de 10: sigue subiendo 3 puntos por cada $115.000 de ganancia de más. Arriba de 10 dice "🚀 Día excepcional" y el número se mueve un poquito.'}]},
   {v:'26.15',f:'23/10',h:'00:45',c:[{n:2,t:'Nissei: lo que no se encontró en ML se vuelve a buscar con el nombre traducido del portugués; lo que siga sin aparecer pasa a "✔️ Revisados: no están en ML" (dentro de 📏 Medidos) y ya no cuenta como sin medir.'}]},
   {v:'26.14',f:'23/10',h:'00:20',c:[{n:1,t:'Paraguay → Nissei: la carpeta "❔ No medidos" pasa a "❔ Sin medir o sin precio en ML" y arriba dice cuántos faltan buscar de verdad (~100) y cuántos ya se buscaron y no están en ML o nadie los vende.'}]},
   {v:'26.13',f:'22/10',h:'23:55',c:[{n:2,t:'Comprar algo nuevo: la vara sigue en 35%, pero lo que ya vende 100+ en ML con 2+ vendedores entra desde 30% (Paraguay y Listas; el % se pinta con esa vara). Hasta febrero, cuando se vuelva a medir con los topes nuevos.'}]},
@@ -13579,7 +13584,7 @@ function renderVentaProd(){
   // UNA SOLA ESCALA (etapa 6, idea 6, 14/10/2026): la misma de Inicio (`_puntajeDia`: 7 en $115.000 por día, 10 en el
   // doble), con la ganancia promedio por día del período. Antes era otra tabla y el mismo día daba dos puntajes.
   const _ptsD=(!vpFilterCuenta&&diasConVenta>0)?_puntajeDia(null,{ventas:ventasCountPts(kpiEntries),gan:ganDia},1,'dia'):null;
-  const ptsDiaHtml=_ptsD?`<br><span style="color:${puntColor(_ptsD.score)};font-weight:600" title="La misma vara que el puntaje de Inicio: ganancia promedio por día → 7 puntos en ${fmt(PUNT_DIA_7)} (que a CYC, a vos y a tu papá les queden $900.000 por mes pagando todo) y 10 en ${fmt(PUNT_DIA_7*2)}. Es el promedio de los días del período con ventas, no un solo día bueno.">≈ ${_ptsD.score.toFixed(1).replace('.',',')} / 10</span> <span style="color:var(--muted)">${diasConVenta>1?`· ${fmt(Math.round(ganDia))}/día prom.`:''}${soloHoy?' · hoy va en curso':''}</span>`:'';
+  const ptsDiaHtml=_ptsD?`<br><span class="${_ptsD.score>10?'punt-rompe':''}" style="color:${puntColor(_ptsD.score)};font-weight:600" title="La misma vara que el puntaje de Inicio: ganancia promedio por día → 7 puntos en ${fmt(PUNT_DIA_7)} (que a CYC, a vos y a tu papá les queden $900.000 por mes pagando todo) y 10 en ${fmt(PUNT_DIA_7*2)}; arriba de 10 es un día excepcional (sigue 3 puntos cada ${fmt(PUNT_DIA_7)} de más). Es el promedio de los días del período con ventas, no un solo día bueno.">≈ ${_ptsD.score.toFixed(1).replace('.',',')} / 10</span> <span style="color:var(--muted)">${diasConVenta>1?`· ${fmt(Math.round(ganDia))}/día prom.`:''}${soloHoy?' · hoy va en curso':''}</span>`:'';
   let sinCostoU=0,sinCostoTot=0;kpiEntries.forEach(v=>{if(ventaSinCostoVP(v)){sinCostoU+=v.qty||0;sinCostoTot+=v.total||0;}});
   // cantidad de VENTAS (operaciones únicas por N° de venta); las viejas sin saleId cuentan 1 c/u
   const ventasCount=new Set(kpiEntries.map(vpGrupoKey)).size;
@@ -23843,16 +23848,18 @@ function homeHoyIr(){
 const PUNT_DIA_7=115000;
 function _puntajeDia(fecha,h,dias,esc){
   // 0 en $0 · 7 en $115.000 · 10 en el doble ($230.000). Más ganancia = más puntaje, siempre.
+  // SIN TOPE (23/10/2026, él: *"que pueda romper el 10 hacia arriba y que al romperlo tenga un pequeño movimiento denotando un
+  // día excepcional"*): arriba de 10 sigue con la misma pendiente (3 puntos cada $115.000 × días) y se pinta con `.punt-rompe`.
   // Mes y año: la misma vara por los días del período (7 = $115.000 × días).
   if(!h||!(h.ventas>0))return null;
   const n=Math.max(1,dias||1),target=PUNT_DIA_7*n, target2=PUNT_DIA_7*2*n;
   let score;
   if(h.gan<=0)score=0;
   else if(h.gan<=target)score=7*h.gan/target;
-  else score=Math.min(10,7+3*(h.gan-target)/(target2-target));
+  else score=7+3*(h.gan-target)/(target2-target);
   score=Math.round(score*10)/10;
-  const qn=esc==='mes'?['Mes excelente','Muy buen mes','Buen mes']:esc==='anio'?['Año excelente','Muy buen año','Buen año']:['Día excelente','Muy buen día','Buen día'];
-  const nivel=score>=9?'🏆 '+qn[0]:score>=8?'🌟 '+qn[1]:score>=7?'✅ '+qn[2]:score>=6?'🟢 Aprobado':score>=5?'🟠 A mejorar':'🔴 Flojo';
+  const qn=esc==='mes'?['Mes excelente','Muy buen mes','Buen mes','Mes excepcional']:esc==='anio'?['Año excelente','Muy buen año','Buen año','Año excepcional']:['Día excelente','Muy buen día','Buen día','Día excepcional'];
+  const nivel=score>10?'🚀 '+qn[3]:score>=9?'🏆 '+qn[0]:score>=8?'🌟 '+qn[1]:score>=7?'✅ '+qn[2]:score>=6?'🟢 Aprobado':score>=5?'🟠 A mejorar':'🔴 Flojo';
   return{score,nivel,target,target2,n};
 }
 // ── A ESTA HORA, CONTRA LA SEMANA PASADA (etapa 6, idea 3, 14/10/2026, eligió la a) ─────────────
@@ -24045,8 +24052,8 @@ function renderHomeHoy(){
       <div><div id="hoy-bruto" style="font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(2rem,8vw,3.4rem);line-height:1;letter-spacing:-.01em">${fmt(h.bruto)}</div><div style="font-size:.78rem;color:var(--muted);margin-top:6px">facturado · <b style="color:var(--text)">${h.ventas}</b> venta${h.ventas===1?'':'s'} · <b style="color:var(--text)">${h.u}</b> u.</div></div>
       <div><div id="hoy-gan" style="font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(1.6rem,6vw,2.2rem);line-height:1;color:var(--c)">${fmt(h.gan)}</div><div style="font-size:.78rem;color:var(--muted);margin-top:6px">ganancia · <b style="color:var(--text)">${pctTxt}</b></div></div>
       ${(()=>{const D=_puntajeDia(hoy,h,h.dias,esc);if(!D)return `<div style="align-self:center;padding:8px 14px;border-radius:12px;color:var(--muted);border:1px solid var(--border2);text-align:center"><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.35rem;line-height:1">—<span style="font-size:.6em;opacity:.7"> /10</span></div><div style="font-size:.74rem;font-weight:700;margin-top:4px">sin ventas todavía</div></div>`;
-        return `<div style="align-self:center;padding:8px 14px;border-radius:12px;color:var(--c);background:color-mix(in srgb,var(--c) 12%,transparent);border:1px solid color-mix(in srgb,var(--c) 35%,transparent);text-align:center" title="Puntaje ${esc==='dia'?'del día':esc==='mes'?'del mes':'del año'} (de 0 a 10), sólo por la ganancia en pesos: 7 en ${fmt(D.target)}${D.n>1?` ($115.000 × ${D.n} días)`:' por día'} (que a cada uno de los 3 le queden $900.000 por mes pagando todo) y 10 en ${fmt(D.target2)}.">
-          <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.35rem;line-height:1">${D.score.toFixed(1).replace('.',',')}<span style="font-size:.6em;opacity:.7"> /10</span></div><div style="font-size:.74rem;font-weight:700;margin-top:4px">${VIVA_DIA_NOM[_vd.k]||D.nivel}</div></div>`;})()}
+        return `<div style="align-self:center;padding:8px 14px;border-radius:12px;color:var(--c);background:color-mix(in srgb,var(--c) 12%,transparent);border:1px solid color-mix(in srgb,var(--c) 35%,transparent);text-align:center" title="Puntaje ${esc==='dia'?'del día':esc==='mes'?'del mes':'del año'} (de 0 a 10), sólo por la ganancia en pesos: 7 en ${fmt(D.target)}${D.n>1?` ($115.000 × ${D.n} días)`:' por día'} (que a cada uno de los 3 le queden $900.000 por mes pagando todo) y 10 en ${fmt(D.target2)}; arriba de 10 es excepcional (sigue subiendo).">
+          <div class="${D.score>10?'punt-rompe':''}" style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.35rem;line-height:1">${D.score.toFixed(1).replace('.',',')}<span style="font-size:.6em;opacity:.7"> /10</span></div><div style="font-size:.74rem;font-weight:700;margin-top:4px">${VIVA_DIA_NOM[_vd.k]||D.nivel}</div></div>`;})()}
     </div>
   </div></div>
   <!-- 22/10/2026, él: "que las ventas viva sea hasta la línea roja, así lo de abajo se nota más, ya que con colores no se entiende
