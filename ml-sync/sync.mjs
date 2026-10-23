@@ -17904,9 +17904,10 @@ async function main() {
     if (/^pycatdia(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const DIAS = Math.max(3, parseInt(String(process.env.BILLING_PROBE).split(':')[1]) || 14);
       const cat = (await db.get('mlapi/pycat')) || {}; const R = (await db.get('cyc/pycatres')) || {};
-      const c = { tot: 0, sinT: 0, mAlto: 0, mBajo: 0, sc: 0, scr: 0, sv: 0, fz: 0, nm: 0, tSinNada: 0 }; const porDia = {};
+      const c = { tot: 0, sinT: 0, mAlto: 0, mBajo: 0, sc: 0, scr: 0, sv: 0, fz: 0, nm: 0, tSinNada: 0, qp: 0, qpEnc: 0, qpSv: 0, qpDa: 0 }; const encontrados = []; const porDia = {};
       for (const e of Object.values(cat)) { if (!e || !e.n) continue; c.tot++;
         if (e.t) { const d = dayKeyFromISO(Number(e.t)); porDia[d] = (porDia[d] || 0) + 1; }
+        if (Number(e.qp || 0) >= PY_NOMBRE_VER) { c.qp++; if (!e.sc) { c.qpEnc++; if (e.sv) c.qpSv++; else if (e.m != null && Number(e.m) >= CAND_PISO_PCT) { c.qpDa++; encontrados.push(`${Number(e.m).toFixed(0)}% · ${String(e.n).slice(0, 70)} → ${e.mi || ''}`); } else if (e.m != null) encontrados.push(`${Number(e.m).toFixed(0)}% · ${String(e.n).slice(0, 70)}`); } }
         if (e.fz) c.fz++; else if (e.m != null && isFinite(e.m)) { if (Number(e.m) >= CAND_PISO_PCT) c.mAlto++; else c.mBajo++; }
         else if (e.sc) { c.sc++; if (Number(e.qp || 0) >= PY_NOMBRE_VER) c.scr++; } else if (e.sv) c.sv++; else if (e.nm) c.nm++; else if (!e.t) c.sinT++; else c.tSinNada++; }
       console.log(`=== CATÁLOGO DE NISSEI · ${c.tot} productos ===`);
@@ -17914,6 +17915,8 @@ async function main() {
       console.log(`  buscado y SIN el mismo producto en ML ${c.sc} (de esos ✔️ revisados también traducidos ${c.scr}) · encontrado pero NADIE lo vende ${c.sv} · afuera por regla ${c.fz}`);
       console.log(`  ML no deja medirlo ${c.nm} · NUNCA buscado ${c.sinT} · buscado sin resultado guardado ${c.tSinNada}`);
       console.log(`  web (cyc/pycatres): nomed ${R.nomed} · sc ${R.sc} · scr ${R.scr} · sv ${R.sv} · fz ${R.fz} · cand ${R.cand} · ficha ${R.ficha} · bajo ${R.bajo} · al ${R.t ? new Date(R.t).toISOString() : '?'}`);
+      console.log(`\n── CON EL NOMBRE TRADUCIDO: ${c.qp} buscados · ${c.qpEnc} aparecieron en ML (${c.qpSv} sin vendedores · ${c.qpDa} dan 25%+) · ${c.qp - c.qpEnc} siguen sin aparecer (✔️ revisados) ──`);
+      for (const x of encontrados.slice(0, 40)) console.log('  ' + x);
       console.log(`\n── CUÁNTOS BUSCÓ EL ROBOT EN ML, POR DÍA (la última vez de cada producto) ──`);
       for (const d of Object.keys(porDia).sort().slice(-DIAS)) console.log(`  ${d.replace(/_/g, '/')}  ${String(porDia[d]).padStart(5)}`);
       return;
