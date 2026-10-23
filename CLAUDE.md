@@ -303,7 +303,8 @@
   (monitoreo/DVR, digital, filmadora, auto, infantil, marcha atrás), placa madre, placa de video, monitor, impresora, TV, computadora,
   servidor; lo grande (gabinete, silla y escritorio gamer, UPS, robot de limpieza, aire, heladera, lavarropas, microondas, horno y cocina
   eléctrica, hidrolavadora, monopatín, scooter, bici y moto eléctrica, sillas y mesas, valijas, musculación, cortadora robot, caja fuerte);
-  termos y térmicos (hasta que él decida). **Sí:** aspiradoras, drones (≤US$215), consumibles. **Maquillaje todo adentro con tono EXACTO**
+  termos y térmicos (hasta que él decida). El robot las aplica al pasar a Para probar y a `faltaventas` (`pyCatNoSeMira`; 23/10, 1a: 3 cámaras
+  se habían colado); `candfuera[;go]` saca las vivas. **Sí:** aspiradoras, drones (≤US$215), consumibles. **Maquillaje todo adentro con tono EXACTO**
   (marca + línea + tono + versión + tamaño; sin el tono en ML → afuera), pero sólo entra al pedido si da 25%. Resto: mismo modelo, color,
   capacidad y voltaje (110V afuera), nada de packs distintos. Misma marca ≠ mismo producto (Cabotine 30 vs 100, Animale For Men vs Black).
 - Al llegar: `pyped:llego` crea las fichas (costo pagado × recargo) y recuerda contar la oficina (`ofi`); elegir cuenta según rubro.

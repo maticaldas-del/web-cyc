@@ -601,6 +601,10 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 (sería doble), y que el número de Gastos y el del Arqueo sean el mismo para cada mes.
 
 ## 3 · MERCADERÍA (miércoles)
+
+### Las categorías que no se miran frenan Para probar y faltaventas (23/10/2026, eligió la a)
+- Qué: `pyCatNoSeMira` (sync.mjs) usa `PYCAT_FUERA_RE` (la regla del 03/10) en el paso pycat → Para probar y en `faltaventas`; el catálogo se sigue guardando y midiendo entero. `candfuera[;go]` descarta los candidatos vivos de esas categorías (`noTipo:'regla'`); `candfuera;prov=<p>;<cód>=<motivo>;go` descarta uno puntual (`noTipo:'duro'`).
+- Chequear: que ninguna cámara, celular, notebook, termo, etc. aparezca en Para probar; que `candfuera` sin go muestre la lista antes de sacar; que no saque lo que ya viaja.
 - **21/10/2026 · `vendcat:<MLA o catálogo>` (solo lee):** prueba todas las puertas para saber las unidades vendidas de un catálogo ajeno (ficha, ofertas, publicación ajena con y sin token, visitas, opiniones, ranking de más vendidos, página web). Pedido suyo. **Resultado 21/10: NO HAY FORMA.** La ficha y las ofertas del catálogo no traen ningún campo de ventas; la publicación ajena da 403 con y sin token; visitas, opiniones y ranking de más vendidos (`highlights`) dan 403 (PolicyAgent); la página web pide verificación (también desde el chat). Sólo un navegador con una persona ve el "+100 vendidos".
 - **21/10/2026 · Lo que no está en ML se vuelve a buscar de a poco (pedido suyo, v25.58).** `pycatRemedirDias`: sin catálogo exacto (`sc`) cada 60 días (`PYCAT_SINCAT_DIAS`), catálogo sin vendedores (`sv`) cada 30. Antes `Infinity`. Qué chequear: el log de `pycatmedir` dice los días; una ola grande de `sc` recién a mitad de diciembre.
 - **21/10/2026 · v25.56 · cuántas de cada nuevo de Paraguay (decisión 4a):** `candMaxU` = barato (≤US$15 crudo) 3 · caro (+US$60) 1

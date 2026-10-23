@@ -10918,6 +10918,11 @@ const PYCAT_FUERA_RE = [
   [/\b(calvin\s+klein|tommy\s+hilfiger|carolina\s+herrera|dolce\s*(&|e|and)?\s*gabbana)\b/i, 'marca que no se compra'],
   [/\b(garrafa\s+t[eé]rmica|t[eé]rmic[ao]|termo|caneca\s+t[eé]rmica|copo\s+t[eé]rmico|marmita|cooler)\b/i, 'termo o térmico (falta que decida)'],
 ];
+// LAS CATEGORÍAS QUE NO SE MIRAN (regla suya del 03/10, PROMPT GUAY) VALEN PARA COMPRAR, NO PARA GUARDAR (23/10/2026, eligió la a
+// con 3 cámaras de vigilancia Hikvision/Imilab de 35-45% que habían pasado solas a Para probar): el catálogo se guarda y se mide
+// entero (15/10, `pyCatFuera`), pero nada de estas categorías pasa a Para probar, a `faltaventas` ni a un pedido. `candfuera` saca
+// las que ya estaban. Devuelve el motivo o null.
+function pyCatNoSeMira(nombre) { const n = String(nombre || ''); for (const [re, mot] of PYCAT_FUERA_RE) if (re.test(n)) return mot; return null; }
 function pyCatFuera(nombre, usd, marcasNo) {
   const n = String(nombre || '');
   // 15/10/2026, él: "guardá TODOS los productos y vos hacés el filtro del 25% para arriba y más de 100 ventas, y listo".
@@ -11212,6 +11217,7 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
   for (const [i, x] of res.pasan.entries()) {
     console.log(`  ${x.upd.m.toFixed(1)}% · ${x.e.n.slice(0, 70)} → ML ${x.upd.mi} "${x.upd.mt.slice(0, 60)}" a ${money(x.upd.mp)}`);
     if (!x.e.f) { console.log('     (sin foto de Paraguay: no pasa a Para probar)'); continue; }
+    { const _ns = pyCatNoSeMira(x.e.n); if (_ns) { console.log(`     (${_ns}: categoría que no se mira, no pasa a Para probar)`); continue; } }
     if (!aplicar) continue;
     const id = 'c' + Date.now() + 'p' + i;
     const c = { nombre: x.e.n, cod: x.cod, usd: x.e.u, mlId: x.upd.mi, enNissei: true, fuente: 'pycat', ts: Date.now(), ...(x.e.l ? { link: x.e.l } : {}), foto: x.e.f };
@@ -22309,7 +22315,7 @@ async function main() {
         if (c.calcTs == null && Number(c.usdAntes) > 0) continue;
         if (!(Number(c.mlVendedores) >= CAND_MIN_VENDEDORES)) continue;
         if (!/^https:\/\//.test(String(c.foto || '')) || !/^https:\/\//.test(String(c.mlFoto || ''))) continue;
-        if (!candCatChequeado(c)) continue; if (candVentasDe(c) != null) continue;
+        if (!candCatChequeado(c)) continue; if (candVentasDe(c) != null) continue; if (pyCatNoSeMira(c.nombre)) continue;
         out.push(`py|${String(c.prov || 'nissei').toLowerCase()}|${c.cod || ''}|${String(c.nombre || '').replace(/\|/g, '/').slice(0, 80)}|${candCatDe(c)}|${Math.round(mg)}%`); }
       const provs = (await db.get('cyc/mlconfig/listasProv')) || {};
       for (const [k, pv] of Object.entries(provs)) { if (pv.desc) continue; const cat = (await db.get('mlapi/listas/' + k)) || {};
@@ -44434,6 +44440,35 @@ async function main() {
         console.log(`   fotoML: ${c.mlFoto || '(sin foto)'}`);
         if (Array.isArray(c.mlReparos) && c.mlReparos.length) console.log(`   avisos: ${c.mlReparos.join(' · ')}`);
       }
+      return;
+    }
+    // BILLING_PROBE=candfuera[;prov=<prov>;<cód>=<motivo>…][;go] (23/10/2026). Sin códigos: los candidatos vivos de Paraguay (sin
+    // ficha, sin pedido en viaje) de una categoría que no se mira (`pyCatNoSeMira`) → con `;go` quedan descartados duro
+    // (`noTipo:'regla'`, no se reviven solos). Con `<cód>=<motivo>` (del proveedor `prov=`, Nissei si falta): descarta ESOS con el
+    // motivo dicho (`noTipo:'duro'`), para lo que el chat de compras vio que es otro producto y no tiene id de candidato a mano.
+    if (/^candfuera(;|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const raw = String(process.env.BILLING_PROBE).replace(/^candfuera;?/, ''); const GO = /(^|;)go$/.test(raw);
+      const partes = raw.replace(/(^|;)go$/, '').split(';').map((x) => x.trim()).filter(Boolean);
+      let prov = 'nissei'; if (partes.length && /^prov=/i.test(partes[0])) prov = partes.shift().slice(5).toLowerCase().replace(/[^a-z]/g, '') || 'nissei';
+      const cands = (await db.get('cyc/candidatos_py')) || {}; const comp = (await db.get('cyc/compraspy')) || {};
+      const vivo = (c) => c && !c.no && !c.prodId && !(c.pedidoEn && comp[c.pedidoEn] && comp[c.pedidoEn].estado === 'camino');
+      const up = {}, ts = Date.now(), lista = [];
+      if (!partes.length) {
+        for (const [id, c] of Object.entries(cands)) { if (!vivo(c)) continue; const mot = pyCatNoSeMira(c.nombre); if (!mot) continue;
+          lista.push(`${id} · ${String(c.nombre).slice(0, 70)} → ${mot}`);
+          Object.assign(up, { [`${id}/no`]: true, [`${id}/noTs`]: ts, [`${id}/noTipo`]: 'regla', [`${id}/motivo`]: `🚫 ${mot}: categoría que no se mira (regla del 03/10)`, ...(!c.pedidoEn && (parseInt(c.pedirU, 10) || 0) > 0 ? { [`${id}/pedirU`]: 0 } : {}) }); }
+      } else {
+        for (const pt of partes) { const m = pt.match(/^([0-9a-z]+)\s*=\s*(.+)$/i); if (!m) { console.log(`❌ mal escrito: ${pt} — no escribo nada`); return; }
+          const hits = Object.entries(cands).filter(([, c]) => vivo(c) && provPyDeBot(c) === prov && _pyCodIg(c.cod, m[1]));
+          if (hits.length !== 1) { console.log(`❌ ${m[1]} (${prov}): ${hits.length ? 'agarra ' + hits.length : 'no es un candidato vivo'} — no escribo nada`); return; }
+          const [id, c] = hits[0]; lista.push(`${id} · ${String(c.nombre).slice(0, 70)} → ${m[2]}`);
+          Object.assign(up, { [`${id}/no`]: true, [`${id}/noTs`]: ts, [`${id}/noTipo`]: 'duro', [`${id}/motivo`]: `🚫 ${String(m[2]).slice(0, 200)}`, ...(!c.pedidoEn && (parseInt(c.pedirU, 10) || 0) > 0 ? { [`${id}/pedirU`]: 0 } : {}) }); }
+      }
+      console.log(`=== CANDIDATOS QUE SALEN ${GO ? '' : '(PRUEBA — no escribo nada)'}: ${lista.length} ===`); lista.forEach((x) => console.log('  ' + x));
+      if (!GO || !lista.length) return;
+      await db.patch('cyc/candidatos_py', up);
+      const rel = (await db.get('cyc/candidatos_py')) || {}; const mal = Object.keys(up).filter((k) => k.endsWith('/no')).filter((k) => !(rel[k.split('/')[0]] || {}).no).length;
+      console.log(mal ? `⚠️ ${mal} no quedaron descartados (releído)` : '✓ descartados y releídos.');
       return;
     }
     // BILLING_PROBE=revcand:<id>=<ok|no|duda|mismo>[!nota];…[;go] → LA PASADA DE CLAUDE (07/10/2026).
