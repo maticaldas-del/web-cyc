@@ -31,7 +31,7 @@
   (08/10, *"quiero que me pases todo lo que hay que decidir todo junto siempre"*). Ideas de revisiones también todas juntas.
 - **Dudas para él: a `ml-sync/notas/para_mati.md`, no sueltas en el chat** (23/10, *"me pierdo… guardalas y después te pido y
   resolvemos. De mientras andá haciendo"*): se anotan ahí y se sigue con lo que no lo necesita; cuando pida "resolvamos" se le pasa
-  la lista entera, numerada. Lo urgente que cuesta plata sigue por `pregunto:`.
+  la lista entera, numerada. Lo urgente que cuesta plata sigue por `pregunto:URGENTE: …` (CYC Avisos = sólo urgente y recordatorios).
 - **Lo chico y reversible lo elegís vos** y se lo contás (24/09: *"elegí vos qué hacer, excepto que sea una decisión muy
   importante, grande y difícil"*). Se pregunta lo grande: precios que mueven plata fuerte, borrar datos, reglas del negocio,
   algo irreversible, y lo que no tenga respuesta clara.
@@ -153,7 +153,7 @@
 - Listas que tienen que quedar **vacías** al terminar la vuelta: 🚨 escasez que vendió después de mi decisión (`escasez`) · 🛡️ abajo
   del 25% en el peor caso · 📦 sobra sin decidir · 🔎 sin afinar · 📈 dice techo/escasez y no sube · 📈 prueba con respuesta (3 ventas esperadas, 23/10) (todas en `planilla`) · 🆕 lanzamiento que vendió (también por su gemela) y no subió (en `errores`, 23/10).
 - **Activar lo pausado es prioridad** (10/10): `pausadas:25` + `activarfull:go:25`; toda pausada con stock en Full que no se activa
-  va al `pregunto:` con motivo. Lo nuevo (nunca estuvo en Full) lo activo yo con el precio ya puesto (peor caso).
+  va a `notas/para_mati.md` con motivo (al `pregunto:URGENTE` sólo si vende fuerte). Lo nuevo (nunca estuvo en Full) lo activo yo con el precio ya puesto (peor caso).
 - **Preguntas de compradores:** las contesto yo (`contesto:<id>=<respuesta>;…;go`), sólo las nuevas y sólo las que sé SIN DUDA.
   `responder` automático apagado (`responder:off`); la IA de preguntas necesita `ANTHROPIC_API_KEY` en GitHub (decisión suya, ver HISTORIA).
 - **Cada vuelta busca algo nuevo para mejorar** (12/10, maximizar y bajar costos), sin repetir (`notas/ideas.md`); si no hay, no se inventa.
@@ -161,11 +161,12 @@
   ventas en max. **El esfuerzo va escrito en cada llamada al ayudante**, nunca se hereda de la sesión.
 
 ### Telegram y avisos
-- **A Telegram SÓLO `pregunto:<texto>`** (ml-sync; `//` = salto de línea, sin `;`, sin datos de compradores): (1) decisiones suyas,
-  todas juntas, numeradas, (a)/(b) · (2) lo importante que sólo él puede hacer y cuesta plata (reclamo que espera su respuesta, ML frenó
-  algo que vende, algo que vende fuerte en 0 en Full con mercadería en la oficina, costo faltante en algo que se vende). **Nunca**
-  "subí/bajé/activé", ni resúmenes (`resumen:` no se manda), ni preguntas sin contestar, ni cajas "para la próxima". Sin nada, nada.
-  `recordar:<texto>` para recordatorios que él pide. Avisos informativos del robot van con `sendAlerta(texto,{info:true})` (al log).
+- **CYC Avisos (Telegram) = SÓLO lo urgente y los recordatorios** (23/10, *"si me llega un mensaje de CYC Avisos sé que es algo
+  que tengo que resolver ya"*): `pregunto:URGENTE: …` (el robot lo niega sin "URGENTE") sólo para lo que cuesta plata si espera
+  (reclamo que espera su respuesta, ML frenó algo que vende, algo que vende fuerte en 0 en Full con mercadería en la oficina, un pago
+  que vence) · `recordar:<texto>` · las 🔐 autorizaciones que él ya pidió en el chat · el chat nuevo del bot. **Las decisiones (a)/(b)
+  NO van: a `notas/para_mati.md`** y se resuelven en el chat cuando dice "resolvamos". Nunca "subí/bajé/activé", ni resúmenes, ni lo que
+  deshizo el detector (va al log). `//` = salto de línea, sin `;`, sin datos de compradores. Informativos: `sendAlerta(texto,{info:true})`.
 - **Cada venta nueva llega al TELÉFONO (push de la web), no a Telegram** (`AVISO_VENTA_TELEGRAM=false`): sólo compras que dejan
   **$10.000+** de ganancia (la compra ENTERA, sumando el carrito), no suena 00:30-10:00 (sale junto a las 10:00). Cada teléfono toca
   una vez "🔔 Activar aviso de cada venta". Llave privada VAPID en `mlapi/vapid` (nunca al repo).

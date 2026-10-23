@@ -19,7 +19,7 @@ todas las etapas.
 cerebro (las viejas 8 y 9) · sáb 6 Ideas nuevas · dom 7 Diseño.** Corre sola todas las madrugadas a las 04:00 de acá (desde el 20/10, pedido suyo; antes 22:13) (tarea programada
 que entra a esta sesión). Cada corrida: leer la etapa de hoy en este archivo + lo de SIEMPRE, 4 revisores en Alto, verificar cada
 hallazgo con el código real antes de contarlo (**los 4 revisores van con esfuerzo MÁXIMO desde el 20/10, plan 20x; antes Alto**), hacer lo obvio (probado, en las dos ramas, anotado acá), y lo que es decisión suya
-va TODO JUNTO en un solo `pregunto:` numerado (a)/(b) y en `REV_PENDIENTE`. Al terminar: `REV_HECHAS[n]`=hoy y un renglón en
+va TODO JUNTO a `notas/para_mati.md` numerado (a)/(b) y en `REV_PENDIENTE` (23/10: a CYC Avisos ya no van decisiones). Al terminar: `REV_HECHAS[n]`=hoy y un renglón en
 `REV_HIST` (index.html). Inicio dice la etapa de hoy, si ya quedó hecha o si no terminó. **En el archivo el orden de las secciones
 quedó 0·1·2·3·4·6·7·5** (la 5 nueva está abajo de todo, donde vivían la 8 y la 9).
 
@@ -96,6 +96,13 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
 ### `vara` (23/10/2026, sólo lee): ¿35% o 30% para comprar algo nuevo?
 - Qué: cuenta los candidatos de Paraguay y los productos de las listas por tramo de % (25-30, 30-35, 35-50, 50+), cuántos pasaron todo y cuántos venden 100+, y lista los de 30-35% que pasaron todo.
 - Chequear: que use los mismos filtros que `faltaventas` (vivos, sin categoría que no se mira, costo vigente).
+
+### CYC Avisos = sólo urgente y recordatorios (23/10/2026, regla suya, etapa 4)
+- **Qué es:** él: *"si me llega un mensaje de CYC Avisos sé que es algo que tengo que resolver ya"*. `pregunto:` sólo sale si el texto
+  empieza con "URGENTE"; `resumen:` no sale; lo que deshace el detector va al log. Las decisiones van a `notas/para_mati.md`.
+  Siguen yendo: `recordar:`, las 🔐 autorizaciones que él pidió en el chat, el chat nuevo del bot.
+- **Dónde vive:** `sync.mjs` → bloque `recordar|pregunto|resumen` y el aviso de `detectarErrores`; CLAUDE.md §4, CEREBRO §20.
+- **Qué chequear:** que ninguna vuelta mande decisiones por Telegram (las vueltas pasan por `pregunto:` y ahora se les niega).
 
 ### 4a · lo que vende menos de 1 por semana no busca techo (23/10/2026, eligió la a, etapa 1)
 - **Qué es:** `techodias` mostró que 31 de 34 lentos (menos de 1 por semana) no vendieron ninguna al precio nuevo (~9 esperadas entre
@@ -2761,7 +2768,7 @@ Lo que mira, siempre con `ml-sync/CEREBRO.md` entero, `notas/correcciones.md`, `
 - **Correcciones de la semana:** cada renglón de `correcciones.md` de los últimos 7 días → regla nueva (en su sección, reemplazando
   la vieja de su tema) o pregunta general en `preguntas.md`. Contar cuántas fueron (la meta: 1-2 por semana).
 - **Que se use:** mirar 3-5 notas del 🧠 de la semana y si citan la regla vigente o una vieja.
-- Lo obvio se arregla (texto o freno, probado, en las dos ramas); lo que es decisión suya va TODO JUNTO en el `pregunto:`.
+- Lo obvio se arregla (texto o freno, probado, en las dos ramas); lo que es decisión suya va TODO JUNTO a `notas/para_mati.md`.
 - **21/10/2026 · lo que dejó la primera:** sus 4 decisiones aplicadas — 1a bajar sin que sobre = descuento con tachado (CEREBRO §11)
   · 2b F4 espera la certeza 15 días (`F4_ESPERA_DIAS`) y después no deja bajar si la suba deja igual o más plata por día (hasta 60 d)
   · 3a visitas a la mitad → un escalón, no volver directo · 4a `candMaxU` barato 3 / caro 1 / resto 2 sin vendidas (v25.56).

@@ -21,6 +21,16 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 10. **Publicaciones nuevas**: el comando `publicar` las puede crear desde acá (lo que llega sin publicación: Blush de Paulvic, EX15LP
    blanco, Sennheiser…). (a) sugerida: las creo yo y te aviso antes de cada una · (b) las seguís creando vos.
 
+### De la revisión de hoy (le llegaron por Telegram el 23/10 a las 14:45; desde ahora van acá)
+R1. La deuda con ARCA del mes en curso: (a) contarla de a poco según los días que pasaron · (b) entera desde el día 1
+R2. Lo pedido a una lista (Dai Nippon, Wels…): (a) cuenta como mercadería en camino si se pagó al pedir · (b) es una deuda desde que llega hasta que se paga
+R3. El ritmo para el tope de H: (a) contar también las ventas que después se cancelaron (ARCA las cuenta) · (b) dejarlas afuera
+R4. El recargo promedio de Paraguay: (a) medirlo contra el precio de la web (como todo el panel) · (b) contra lo que se pagó en el ticket
+R5. Las rayas de techo y piso de la línea de tiempo: (a) con el costo, dólar y monotributo de hoy · (b) con los de cada mes
+R6. Si recomprás algo de una lista más caro: (a) actualizar el costo de la ficha como en Paraguay · (b) dejar el costo viejo
+R7. El adelanto de plata para un pedido (como los 29.000 del 14/10): (a) dejarlo afuera del recargo promedio porque es ocasional · (b) que cuente
+R8. Hay 1 fila por día hábil en cada cuenta de MP sin fecha de liberación (no es venta, ~1% de a liquidar) y hoy se cuenta como por cobrar: (a) tomarla como plata ya en la cuenta · (b) dejarla en a liquidar
+
 ## Viejas que siguen esperando (de CLAUDE.md §13)
 - Clave `ANTHROPIC_API_KEY` para la IA de preguntas · `almactarifa` · Sancor (respuesta y baja de Vida Plus) · contador
   (recategorización, actividad, facturas entre cuentas) · si el puntaje del mes le cierra · costo de las dos Linternas COB de Ayelen.

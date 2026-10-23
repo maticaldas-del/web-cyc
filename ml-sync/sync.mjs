@@ -4990,8 +4990,9 @@ async function detectarErrores(db, o = {}) {
     const txt = `🔎 <b>El detector deshizo ${res.hechos.length} cambio(s) que rompían una regla tuya</b>`
       + (res.hechos.length ? '\n' + res.hechos.map((h) => `· ${esc(h.x.nom)} (${esc(h.x.cuenta)}): ${esc(h.txt)} · ${esc(h.reglas)}`).join('\n') : '')
       + (res.noHechos.length ? `\n\n<i>No pude deshacer ${res.noHechos.length}:</i>\n` + res.noHechos.map((h) => `· ${esc(h.x.nom)}: ${esc(String(h.por).slice(0, 160))}`).join('\n') : '');
-    let sale = false; try { sale = await sendAlerta(txt, { directo: true }); } catch (eA) { console.log('⚠️ no pude mandar el aviso: ' + String(eA.message || eA).slice(0, 80)); }
-    console.log(sale ? '✓ aviso mandado a su canal privado' : '⚠️ el aviso no salió por Telegram (lo deshecho queda igual, anotado)');
+    // 23/10/2026: no va a Telegram (sólo urgente o recordatorios); lo deshecho se le cuenta en el chat y queda en el 🧠.
+    try { await sendAlerta(txt, { info: true }); } catch { /* sólo log */ }
+    console.log('(el aviso de lo deshecho queda en el log: a CYC Avisos sólo va lo urgente)');
   }
   return res;
 }
@@ -15306,6 +15307,12 @@ async function main() {
       const esRes = /^resumen:/.test(String(process.env.BILLING_PROBE));
       const t = String(process.env.BILLING_PROBE).replace(/^(recordar|pregunto|resumen):/, '').trim();
       if (!t) { console.log('Falta el texto: recordar:<texto> / pregunto:<texto> / resumen:<texto>'); process.exitCode = 1; return; }
+      // 23/10/2026 (él: "en CYC Avisos sólo quiero que me lleguen cosas urgentes para ver ya o recordatorios… si me llega un mensaje
+      // de CYC Avisos sé que es algo que tengo que resolver ya"). Las decisiones van a `ml-sync/notas/para_mati.md` y se resuelven en el
+      // chat cuando él dice "resolvamos". `pregunto:` sólo sale si empieza con "URGENTE" (cuesta plata si espera: reclamo que espera su
+      // respuesta, ML frenó algo que vende, algo que vende fuerte en 0 en Full con mercadería en la oficina, un pago que vence). `resumen:` no sale.
+      if (esRes) { console.log('🧠 resumen: no va a Telegram (sólo urgente o recordatorios, 23/10). Lo que hizo la vuelta queda en el 🧠 y en el log.'); return; }
+      if (esPreg && !/^\s*(⚠️\s*)?URGENTE\b/i.test(t)) { console.log('🚫 pregunto: NO lo mando. A CYC Avisos sólo va lo URGENTE (empezá el texto con "URGENTE: …") o un recordar:. Las decisiones van a ml-sync/notas/para_mati.md (regla suya del 23/10).'); process.exitCode = 1; return; }
       const cuerpo = t.replace(/&/g, '&amp;').replace(/</g, '&lt;').split(/(?<!:)\/\//).map((x) => x.trim()).join('\n'); // `//` = salto, pero no el de https:// (13/10/2026, revisión 9)
       const txt = (esPreg ? '🤔 <b>Para decidir vos</b>\n' : esRes ? '🧠 <b>Lo que hizo el cerebro</b>\n' : '⏰ <b>Recordatorio</b>\n') + cuerpo;
       let ok = false;

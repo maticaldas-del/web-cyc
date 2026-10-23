@@ -83,7 +83,7 @@ al código; lo que es pensar queda acá, y una regla dura ("nunca", "sólo si") 
 - *Buscar techo vs sobra* → con sobra no se busca techo: primero sale lo que sobra.
 - *Descuento mío vigente vs suba de lista* → primero salir del descuento (`entrarpromo:…=salir`); nunca inflar el tachado. 🔒
 - *Sin reposición que al precio normal no se vacía en 120 días* → gana 6 (no pagar stock antiguo): se baja en escalera.
-- *Una regla dice A, otra B y ninguna fila lo resuelve* → no se hace nada esa vuelta, se anota y va al `pregunto:` con (a)/(b).
+- *Una regla dice A, otra B y ninguna fila lo resuelve* → no se hace nada esa vuelta, se anota y va a `notas/para_mati.md` con (a)/(b).
   Después se agrega la fila acá.
 - **Las excepciones a los frenos son siempre las mismas cinco:** precio mal puesto · stock antiguo con fecha encima · ML la
   pausó por el precio · lo pide él · la última unidad. "Ganar la caja" y "para ver si sale" NO son excepciones.
@@ -130,7 +130,7 @@ Después de los 3 Protectores de talón (22/10: el freno "sin línea de techo no
    **🧭 ESTRATEGIA DE LO QUE VENDIÓ**; cada ⚠️ (sin estrategia, promo, descuento, excepción, caja, o volviendo 7+ días sin techo
    anotado) se decide EN ESTA VUELTA con la ficha abierta: buscar techo (salto grande), anotar el techo probado, o sobra/escasez/
    sin reposición con su motivo. La lista queda vacía. Lo que NO vende no pasa por acá: eso lo barre la completa (📏/🔎/📦).
-6. Activar pausadas con stock en Full (`activarfull:go:25`); lo que no se activa va al `pregunto:` con motivo.
+6. Activar pausadas con stock en Full (`activarfull:go:25`); lo que no se activa va a `notas/para_mati.md` con motivo.
 7. Preguntas de compradores que sé sin duda (`contesto:`). Mis descuentos que vencen en 2 días: renovar o dejar terminar.
 8. 📋 Listas: confirmar el mismo producto (`listarevisar` → `listadato:<prov>;<cód>=ok|no|mi=MLA…;go`); con duda no se toca.
    **Sin foto ni código de barras (Dai Nippon y las demás listas, 21/10/2026, él: *"nippon sólo trae lo que viste vos"*): `ok` sólo si
@@ -183,7 +183,7 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
 9. **Los domingos, además: medir las gemelas** (pedido suyo del 22/10), las Premium y las de envío gratis (`gemelaTipo:'envio'`, 6c).
    Por cada par: ventas por día con stock de la gemela y de su Clásica desde que existe la gemela contra antes, y la plata que dejó
    cada una. Cuáles venden, cuáles le sacan ventas a la Clásica sin sumar plata y cuáles no venden nada en 30+ días. Las que no
-   sirven van al `pregunto:` como propuesta de sacarlas, todas juntas con (a)/(b). No se borra ninguna sin que él diga.
+   sirven van a `notas/para_mati.md` como propuesta de sacarlas, todas juntas con (a)/(b). No se borra ninguna sin que él diga.
 11. Los lunes: contar `notas/correcciones.md` de la semana contra la anterior.
 
 ===========================================================================================================================
@@ -252,7 +252,7 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
 - **Venta abajo del 25% con poco stock** → se sube en la misma vuelta. **Lo nuevo que vuela** se sube al toque.
 - **Lo que vuelve de agotado** se compara contra su último tramo con stock.
 - **Vendedores del exterior** no se miran salvo que no haya argentinos: ahí su precio +20%.
-- **Visitas que caen sin cambio de precio** → preguntas sin responder y descripción (lo arregla él, va al `pregunto:`).
+- **Visitas que caen sin cambio de precio** → preguntas sin responder y descripción (lo arregla él, va a `notas/para_mati.md`).
 - **Pendrives de Matías como familia**: el de 32 es el conveniente; 8 y 16 (⏳) pueden quedar más caros a propósito.
 - **Juzgar resultados todos los días:** `supervisor:medir:go` + `juzgo:`; lo que perdió no vuelve por regla, se piensa. Nada en
   `espera` más de 30 días.
@@ -382,7 +382,7 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
 - Una Premium que ya existe sin `gemelaDe` no la sigue nadie: `gemelacrea:anotar:<Premium>=<Clásica>:go` (chequea misma cuenta y mismo producto de ML).
 
 ## 12 · PAUSADAS, PUBLICACIONES, VÍNCULOS
-- Activar lo pausado con stock en Full es prioridad en todas las vueltas; lo que no se activa, al `pregunto:` con motivo. Lo que está
+- Activar lo pausado con stock en Full es prioridad en todas las vueltas; lo que no se activa, a `notas/para_mati.md` con motivo. Lo que está
   en depósito (fuera de Full) se pausa solo.
 - Publicaciones nuevas: las crea él en ML; yo la ficha y el vínculo (la ficha toma el nombre de ML). La mercadería no se mueve entre cuentas.
 - Frenadas por ML: no se toca precio; si hay que arreglar algo, se le avisa.
@@ -398,9 +398,9 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
   más: sube la ganancia lo que deja cada $100 facturados (meta $22; oct $19). Lo que sale de ahí, en cada parte:
   · 🔒 **reponer sigue en 25%; comprar algo NUEVO pide 35%; 30% si en ML vende 100+ con 2+ vendedores** (§16, §17; 23/10 1a, `varaCompra`: colchón de ~$52 M del tope de H hasta fin de año, nada nuevo a Matías; en febrero se vuelve a medir con los topes nuevos) · **2a: lo que con el techo ya buscado (🏔️ o prueba de techo
   cerrada) sigue dejando menos de 25% NO se repone**: `decido:ped=u|0` con "Hola Tito!" y el motivo, y en la completa se le propone
-  un reemplazo de 35%+ (de Paraguay o Listas) en el `pregunto:`. Mientras el techo no esté buscado, se busca primero (no se corta de
+  un reemplazo de 35%+ (de Paraguay o Listas) en `notas/para_mati.md`. Mientras el techo no esté buscado, se busca primero (no se corta de
   una). **Lo de 25-35% con el techo ya encontrado (🏔️) se sigue reponiendo** (22/10, eligió la a): se reemplaza de a poco sólo cuando
-  aparece algo nuevo de 35%+ que ocupe su lugar (mismo rubro o misma plata), y eso se le propone en el `pregunto:` de la completa. Stock antiguo, escasez o algo recién llegado no cuentan como "abajo de 25%" · **5a: Watch S5 y Redmi Pad 2 no se reponen más**
+  aparece algo nuevo de 35%+ que ocupe su lugar (mismo rubro o misma plata), y eso se le propone en `notas/para_mati.md`. Stock antiguo, escasez o algo recién llegado no cuentan como "abajo de 25%" · **5a: Watch S5 y Redmi Pad 2 no se reponen más**
   (`decido:ped` u 0, 22/10) · lo caro de poco margen es lo primero a reemplazar (gasta mucho tope de H y deja poco).
 - **Completos, todo el catálogo**, en la completa: objetivo 30 días; 45 en Bs As que se cortó 2+ veces en 60 d, vende 0,5+/día y
   deja 25%+, y en lo nuevo que vuela (1+/día la primera semana). Ritmo por día con stock (y por color); stock de las 4 cuentas
@@ -415,10 +415,10 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
 - **Cupo de Full lleno con lo que no vende (21/10/2026, él con Ayelen en 0: *"retirar libera stock, pero es un poco de lío, lo mejor es vender"*):** con el cupo de una cuenta en 0 y mercadería que vende esperando en la oficina, lo lento que ocupa el Full de esa cuenta (Timer, cortapelo a pila, panel solar…) se empuja a VENDER (descuento propio o escalera, frenos de siempre) antes que retirarlo. Retirar sólo si vender no alcanza y él lo pide.
 - 💹 **Full abajo de $100.000 por mes (22/10/2026, 6a).** Octubre fueron $347.700 (retiros y descartes $221.600, stock antiguo
   $64.000, almacenamiento $47.700, multa $14.200). No mandar de más (37 días), lo lento se vende con escalera ANTES de los 4 meses
-  (stock antiguo), y **un retiro de Full sólo con su OK** (`pregunto:` con lo que cuesta retirar contra lo que cuesta quedarse).
+  (stock antiguo), y **un retiro de Full sólo con su OK** (en `notas/para_mati.md`, con lo que cuesta retirar contra lo que cuesta quedarse).
   En la completa del 15, con `cargosmes`, decirle cuánto fue Full contra la meta.
 - Con varias cuentas posibles, decidir a mano mirando `cajasnotas`. Las que ML dio por entradas las marco yo (`cajallego`).
-- Caja para mandar ya de algo que vende fuerte y está en 0 en Full → al `pregunto:`.
+- Caja para mandar ya de algo que vende fuerte y está en 0 en Full → `pregunto:URGENTE: …`.
 
 ## 16 · PARAGUAY
 - Pedidos de ~US$1.000 cada 2-3 semanas. Lo no urgente espera al próximo; lo que se corta antes de que llegue se pide igual.
@@ -453,9 +453,9 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
 - Gastos a mano: la lista de Gastos dice qué falta; recordárselo a fin de mes.
 
 ## 20 · TELEGRAM
-- Sólo `pregunto:` con decisiones suyas (todas juntas, numeradas, (a)/(b)) o lo importante que sólo él puede hacer y cuesta plata
-  (reclamo esperando, ML frenó algo que vende, vende fuerte en 0 en Full con oficina, costo faltante en algo que se vende). Nunca
-  "subí/bajé/activé". Sin datos de compradores. `resumen:` no se manda.
+- **CYC Avisos = sólo urgente y recordatorios** (23/10, él): `pregunto:URGENTE: …` sólo lo que cuesta plata si espera (reclamo
+  esperando, ML frenó algo que vende, vende fuerte en 0 en Full con oficina, pago que vence). **Las decisiones van a `notas/para_mati.md`**
+  (se le pasan cuando dice "resolvamos"). Nunca "subí/bajé/activé". Sin datos de compradores. `resumen:` no se manda.
 
 ## 21 · AL CAMBIAR ALGO DEL SISTEMA
 - `REVISION.md` en su etapa, en el mismo commit; subir a la rama de la sesión y a `claude/add-folder-78ysyb`. Web: `APP_VERSION`,
