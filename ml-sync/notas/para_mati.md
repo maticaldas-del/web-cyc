@@ -25,6 +25,11 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 6. **Paulvic `pv20261019`**: pagar $758.820,25 antes del lun 02/11 (si no, +10%). Con el comprobante, `pvped:pago`.
 7. **Corrector de juanete magnético** (23/10): cargué 12 en la oficina como dijiste. La publicación dice "Par" y la caja dice
    "Single pack": ¿las 12 son 12 pares (12 ventas) o 12 piezas sueltas (6 pares)? Si son sueltas, corrijo a 6.
+8. **Rejilla Media Naranja 40x45** (23/10, foto de góndola a $862,56): suelta NO conviene (en ML hay 1 solo vendedor a $3.500 y
+   deja ~$500 por venta; abajo de $4.000 el cargo fijo de ML se come casi todo). En pack sí daría mucho (hay catálogo "pack x 6" a
+   $27.840 y "pack x 4" a $19.160, 1 vendedor cada uno; el x6 costaría ~$5.200 y dejaría ~$15.000), pero la regla del 27/09 es
+   "packs NO". (a) sugerida: no se compra · (b) probar UN pack x6 como producto nuevo (excepción a la regla, se mide como cualquier
+   lanzamiento; con 1 solo vendedor el precio no está confirmado).
 
 ## Viejas que siguen esperando (de CLAUDE.md §13)
 - Clave `ANTHROPIC_API_KEY` para la IA de preguntas · `almactarifa` · Sancor (respuesta y baja de Vida Plus) · contador
