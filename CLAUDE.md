@@ -138,8 +138,8 @@
   las listas de alarma, las activas con stock que NO vendieron (la mitad por noche), pedidos de todo el catálogo, cajas, juicios.
   Lecturas en una corrida, 2 ayudantes (max) y el revisor en contra (max). **Domingos:** además el catálogo entero, el ayudante de
   ideas a fondo y medir las gemelas (Premium y envío gratis; proponer sacar las que no sirven).
-- **Cortas a las 9:52, 11:52, 13:52, 15:52, 17:52, 19:52, 21:52, 23:52** (`trig_01FCaQqzU5MA422N6Z8nH63Z`, según cómo entran las ventas; la de 9:52 la pidió él el 23/10 para no dejar sin ver las ventas de la mañana).
-- **Auditoría del robot** (`trig_0138cyCgYeEHjqeayqiQPqWQ`, se reprograma sola con `run_once_at`; ver `AUDITORIA.md`).
+- **Cortas a las 9:52, 11:52, 13:52, 15:52, 17:52, 19:37, 21:22, 22:52** (23/10, eligió 1a: repartidas por las ventas por hora de 90 días, ~5 ventas por vuelta; `trig_01FCaQqzU5MA422N6Z8nH63Z` hace las de :52, `trig_01PqmfnY6zLFfGBne72duRC3` la de 19:37 y `trig_01CKS5hpywhunMUppZvSNvFy` la de 21:22).
+- **Auditoría del robot** (`trig_0138cyCgYeEHjqeayqiQPqWQ`, a las 20:30 desde el 23/10, se reprograma sola con `run_once_at`; ver `AUDITORIA.md`).
 - **Cada vuelta, en orden** (detalle en CEREBRO §1): leer `CEREBRO.md` + `notas/preguntas.md` → `ventasraras:nuevas` (sólo ventas
   posteriores a la última analizada; **cada venta se analiza UNA vez**) → **sólo las 🔬 A FONDO van a un ayudante con `effort:"max"`
   escrito en la llamada** (22/10, 2a: rara/abajo del 25%/sin costo · sin estrategia con techo · escasez · lanzamiento que vendió ·
