@@ -78,8 +78,8 @@
 - **Casi todo se vende por Full. Nada fuera de Full** (18/10): lo activo en depósito con unidades lo pausa el robot cada hora; el
   "1" de depósito que pide ML no es mercadería (stock fuera de Full = 0, no cuenta en patrimonio).
 - **La mercadería no se mueve entre cuentas** (22/09): un producto nuevo queda en su cuenta para siempre. Orden para elegir dueña:
-  1) la que ya lo publica · 2) **el rubro (perfumes → Adriana)** · 3) el equilibrio: **la que más lugar tiene contra el tope de H**
-  (proyección al cierre de la ventana de ARCA, entre las que llegan al 25%; `repartopy`, `lugarHPorCuenta`; 7a del 22/10) · y la actividad de ARCA. **Una sola cuenta por producto** (09/09; excepción Paulvic: Adriana + Persea en
+  1) la que ya lo publica · 2) **el rubro (perfumes → Adriana)** · 3) el equilibrio: **entre Ayelen y Luciana** (23/10, *"van en la de ayelen o luciana. dependiendo el cupo de monotributo"*), **la que más lugar tiene contra el tope de H**
+  (proyección al cierre de la ventana de ARCA, entre las que llegan al 25%; `repartopy` y la tarjeta ⚖️ eligen entre Ayelen y Luciana, las otras sólo si ninguna llega; `lugarHPorCuenta`; 7a del 22/10) · y la actividad de ARCA. **Una sola cuenta por producto** (09/09; excepción Paulvic: Adriana + Persea en
   Luciana). En la MISMA cuenta sí puede repetirse.
 - **Pedidos mira el stock de las 4 cuentas juntas** (C1, 29/09: si en total se vende 10/mes y hay 10 en otra cuenta, no se compra).
   **No volver a proponer calcularlo por cuenta.**
@@ -280,6 +280,9 @@
 - **Pedidos hechos tienen número de 4 cifras** (#1001…, `num`) en Paraguay, Paulvic y Listas: "el pedido 1003" → buscar por `num` en
   `cyc/compraspy`, `cyc/pedidospv`, `cyc/compraslista`.
 - 📋 Copiar pedido en tarjetas con variantes (para WhatsApp).
+- **🏷️ Sin terminar / sin etiqueta** (23/10, él): lo que llega a la oficina sin la etiqueta de Full se carga con `ofi:<palabra>=+N!se;go`
+  (suma a la oficina y a `cyc/sinetiq`); Armar caja lo sigue contando igual (para ver qué caja conviene armar) y cada renglón dice
+  "🏷️ N sin etiqueta"; tarjeta arriba de Contar lo que hay. Cuando él dice que lo etiquetó: `sinetiq:<palabra>=0;go` (ml-consulta).
 
 ## 7 · PARAGUAY · LISTAS · PAULVIC
 
@@ -289,7 +292,7 @@
 - **Catálogo entero en `mlapi/pycat`** (15/10): el chat copia (`pycat:#<pág>@<orden>;…;go`, ml-consulta) y el robot (`ml-pycat`, cada 3 h)
   mide contra ML. Se guarda TODO (no se borra lo de menos de 15%). Para probar: **25%+ y catálogo de ML con 2+ vendedores** (20/10,
   reemplaza las 100 ventas; sin catálogo exacto afuera; las vendidas del catálogo no se buscan más) **y confirmado que es el mismo
-  producto** (✅ o `revcand` ok de ESE catálogo; sin las DOS fotos no va). Sin catálogo se rebusca a los 60 d, sin vendedores a los 30.
+  producto** (✅ o `revcand` ok de ESE catálogo; sin las DOS fotos no va). **Nada pasa 14 días sin volver a mirarse** (23/10, él): 15%+ cada 7 d, todo lo demás (abajo de 15%, sin catálogo, sin vendedores; también Listas) cada 14; la web lo muestra en ✅ Revisados / ⏳ Falta revisar (`rev`/`pend` en `cyc/pycatres`).
   **Nombre traducido** (23/10, 1a): también se busca con el nombre en castellano (`traducirPyNombre`); lo que tampoco aparece traducido queda
   **✔️ revisado** (`qp`, `pycatres.scr`, en 📏 Medidos) y no cuenta como sin medir. `pycatdia` = desglose y lo buscado por día.
 - **Dos proveedores:** 🟢 Nissei (dos pedidos del momento: 🌸 Perfumería `pyb<fecha>` y 📦 Resto `py<fecha>`; en `compray` `|perf`/`|resto`)
@@ -425,6 +428,7 @@
 | `pregunto:<texto>` · `recordar:<texto>` | Telegram al canal privado |
 | `pedidostodo` · `cajasnotas`/`pedidosnotas` · `porquepedido:<palabra>` · `porquebajo:<palabras>` | pedidos de todo el catálogo · números · por qué |
 | `pyped:…;go` · `pedir:<palabra>=<u>;…;go` · `compray:<fecha>\|…\|go` · `ofi:<palabra>[@var]=<+N\|-N\|N>;…;go` | Paraguay, unidades, pesos del pedido, oficina |
+| `ofi:<palabra>=+N!se;go` · `sinetiq[:<palabra>[@var]=<+N\|-N\|N>;…][;go]` | llegó sin etiqueta · etiquetado (0) · lista |
 | `cajallego:<seg>[;…][!<palabras>=<u>]:go` · `abrircaja:<seg>:go` · `cajasllegaron` · `faltaron[:días]` | cajas a Full |
 | `lista:<prov>;…;go` · `listarevisar` · `listadato:…;go` · `listaweb:<prov>;go` | listas de proveedores |
 | `pvped:<acción>:<id>;…;go` | Paulvic (llego, pago, costo, nunca) |
