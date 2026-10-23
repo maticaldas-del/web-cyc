@@ -77,7 +77,7 @@ const _cortarCiclo = (donde) => {
 // los que escriben en cantidad o en plata se niegan de entrada, y cualquier otro corre con la base,
 // ML, Mercado Pago y Telegram en sólo lectura (se deja renovar y guardar el token de ML, que ML rota).
 const EN_CONSULTA = process.env.GITHUB_WORKFLOW === 'ml-consulta' || process.env.ML_CONSULTA === '1';
-const CONSULTA_ESCRIBE = new Set(['ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull']);
+const CONSULTA_ESCRIBE = new Set(['ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq']);
 const CONSULTA_NIEGA = new Set(['cajaitems', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'listaped', 'publicar', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'errores', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'promoventas', 'cargosmes', 'arcacierres', 'webpush']);
@@ -47505,8 +47505,12 @@ async function main() {
       const inv = (await db.get('cyc/inventory')) || {};
       const ops = [], problemas = [];
       for (const x of pares) {
-        const m = x.match(/^(.+?)(?:@(.+?))?=([+-]?)(\d+)$/);
-        if (!m) { problemas.push(`"${x}" → se espera <palabra>[@<variante>]=<+N|-N|N>`); continue; }
+        // `!se` al final (23/10/2026): lo que llegó viene SIN ETIQUETA de Full → además de sumarlo a la oficina se suma a
+        // `cyc/sinetiq` (la tarjeta "🏷️ Sin terminar / sin etiqueta" de Contar lo que hay). Sólo con +N.
+        const se = /!se$/i.test(x);
+        const m = x.replace(/!se$/i, '').match(/^(.+?)(?:@(.+?))?=([+-]?)(\d+)$/);
+        if (!m) { problemas.push(`"${x}" → se espera <palabra>[@<variante>]=<+N|-N|N>[!se]`); continue; }
+        if (se && m[3] !== '+') { problemas.push(`"${x}" → !se (sin etiqueta) va sólo con +N (lo que llegó)`); continue; }
         const exacto = m[1].trim().startsWith('=');
         const q = nrm(m[1].trim().replace(/^=/, ''));
         const hits = prods.filter((p) => exacto ? nrm(p.name) === q : nrm(p.name).includes(q));
@@ -47524,7 +47528,7 @@ async function main() {
         // distinto de la suma de sus variantes, y al despachar aparecían unidades de la nada.
         if (!va && (p.variantes || []).length) { problemas.push(`"${m[1]}" tiene variantes (${(p.variantes || []).slice(0, 8).join(', ')}${(p.variantes || []).length > 8 ? '…' : ''}): decime de cuál con @, ej. ${m[1]}@${(p.variantes || [])[0]}=${m[3]}${m[4]}`); continue; }
         const n = parseInt(m[4], 10);
-        ops.push({ p, va, delta: m[3] === '+' ? n : m[3] === '-' ? -n : null, fijo: m[3] ? null : n });
+        ops.push({ p, va, se, delta: m[3] === '+' ? n : m[3] === '-' ? -n : null, fijo: m[3] ? null : n });
       }
       if (problemas.length) { console.log('❌ NO ESCRIBO NADA:'); problemas.forEach((x) => console.log('   ' + x)); return; }
       console.log(`=== CONTAR LO QUE HAY EN LA OFICINA ${GO ? '' : '(PRUEBA — no escribo nada)'} ===`);
@@ -47556,11 +47560,81 @@ async function main() {
         // 1b (16/10/2026): entró mercadería a la oficina → se anota el día. La regla de Bs As cuenta los 10 días
         // sin conseguirlo desde lo último que pasó: el pedido o esta entrada.
         if (GO && dv > 0) { try { await db.set('cyc/ofientro/' + o.p.id, Date.now()); } catch { /* no frena el conteo */ } }
-        console.log(`  ${o.p.name}${o.va ? ' · ' + o.va : ''}: ${antes} → ${ahora}${totTxt}`);
+        let seTxt = '';
+        if (o.se && dv > 0) {
+          const sk = 'cyc/sinetiq/' + o.p.id + '/' + (o.va ? 'v/' + sid(o.va) : 't');
+          const sA = parseInt(await db.get(sk)) || 0;
+          if (GO) { await db.set(sk, sA + dv); await db.set('cyc/sinetiq/' + o.p.id + '/ts', Date.now()); }
+          seTxt = ` · 🏷️ sin etiqueta ${sA} → ${sA + dv}`;
+        }
+        console.log(`  ${o.p.name}${o.va ? ' · ' + o.va : ''}: ${antes} → ${ahora}${totTxt}${seTxt}`);
       }
       if (GO && _ofiCortado) console.log(`\n⚠️ Cancelaron la corrida: ${_ofiCortado} renglón(es) sin escribir (los de arriba sí quedaron). Repetí sólo ésos.`);
       else if (GO) console.log('\n✓ Guardado. La web recalcula sola el valor de la oficina en el Arqueo.');
       else console.log('\nNo se guardó nada (falta ;go).');
+      return;
+    }
+
+    // BILLING_PROBE=sinetiq[:<palabra>[@<variante>]=<+N|-N|N>[;…]][;go] → MERCADERÍA SIN TERMINAR / SIN ETIQUETA (23/10/2026, él: *"en
+    // contar lo que hay poner una tarjeta que sean productos sin etiquetas (…) no están listos para mandar a la caja de full. pero sí
+    // que los tengan en cuenta como siempre para armar la caja (…) cada vez que llega mercadería te paso la lista por acá. vos cargás
+    // todo en contar lo que hay y dentro de sin terminar/sin etiqueta. yo te paso cuando etiquete eso"*).
+    // `cyc/sinetiq/<prodId>` = { t: unidades sin etiqueta (sin variante), v: {<variante>: unidades}, ts }. NO toca la oficina ni Armar
+    // caja (que lo sigue contando igual): es una marca de "hay que trabajarla antes de mandarla". Al llegar: `ofi:<palabra>=+N!se;go`
+    // (suma a los dos). Al etiquetar: `sinetiq:<palabra>=0;go` (o `-N` si etiquetó una parte). Sin pares lista lo que hay marcado.
+    if (/^sinetiq(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _raw = String(process.env.BILLING_PROBE).replace(/^sinetiq:?/, '');
+      const GO = /(^|;)go$/.test(_raw);
+      const pares = _raw.replace(/(^|;)go$/, '').split(';').map((x) => x.trim()).filter(Boolean);
+      const nrm = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+      const prodsO = (await db.get('cyc/products')) || {};
+      const prods = Object.values(prodsO).filter((p) => p && p.name);
+      const se = (await db.get('cyc/sinetiq')) || {};
+      const inv = (await db.get('cyc/inventory')) || {};
+      const kOfi = (pid, v) => pid + '__' + sid('Oficina Mati') + (v ? '__v__' + sid(v) : '');
+      if (!pares.length) {
+        console.log('=== 🏷️ SIN TERMINAR / SIN ETIQUETA (en la oficina, todavía no se pueden meter en una caja) ===');
+        let tot = 0;
+        for (const [pid, r] of Object.entries(se)) {
+          const p = prodsO[pid]; const nom = p ? p.name : pid + ' (ficha borrada)';
+          if (r && r.t > 0) { const of = parseInt(inv[kOfi(pid)]) || 0; console.log(`  ${nom}: ${r.t} sin etiqueta (en la oficina ${of})`); tot += r.t; }
+          for (const [vk, n] of Object.entries((r && r.v) || {})) if (n > 0) { const vn = ((p && p.variantes) || []).find((x) => sid(x) === vk) || vk; const of = parseInt(inv[kOfi(pid, vn)]) || 0; console.log(`  ${nom} · ${vn}: ${n} sin etiqueta (en la oficina ${of})`); tot += n; }
+        }
+        console.log(tot ? `\nTotal: ${tot} u.` : '  (nada marcado)');
+        return;
+      }
+      const ops = [], problemas = [];
+      for (const x of pares) {
+        const m = x.match(/^(.+?)(?:@(.+?))?=([+-]?)(\d+)$/);
+        if (!m) { problemas.push(`"${x}" → se espera <palabra>[@<variante>]=<+N|-N|N>`); continue; }
+        const exacto = m[1].trim().startsWith('=');
+        const q = nrm(m[1].trim().replace(/^=/, ''));
+        const hits = prods.filter((p) => exacto ? nrm(p.name) === q : nrm(p.name).includes(q));
+        if (hits.length !== 1) { problemas.push(`"${m[1]}" → ${hits.length ? `agarra ${hits.length}: ${hits.slice(0, 8).map((p) => p.name).join(' | ')}` : 'ninguna ficha'}`); continue; }
+        const p = hits[0]; let va = '';
+        if (m[2]) {
+          const vq = nrm(m[2]);
+          const vs = (p.variantes || []).filter((v) => nrm(v) === vq);
+          const vs2 = vs.length ? vs : (p.variantes || []).filter((v) => nrm(v).includes(vq));
+          if (vs2.length !== 1) { problemas.push(`"${m[2]}" en ${p.name} → ${vs2.length ? `agarra ${vs2.length}: ${vs2.join(' | ')}` : 'no es una variante'}`); continue; }
+          va = vs2[0];
+        }
+        if (!va && (p.variantes || []).length) { problemas.push(`"${m[1]}" tiene variantes: decime de cuál con @`); continue; }
+        const n = parseInt(m[4], 10);
+        ops.push({ p, va, delta: m[3] === '+' ? n : m[3] === '-' ? -n : null, fijo: m[3] ? null : n });
+      }
+      if (problemas.length) { console.log('❌ NO ESCRIBO NADA:'); problemas.forEach((x) => console.log('   ' + x)); return; }
+      console.log(`=== 🏷️ SIN ETIQUETA ${GO ? '' : '(PRUEBA — no escribo nada)'} ===`);
+      for (const o of ops) {
+        const sk = 'cyc/sinetiq/' + o.p.id + '/' + (o.va ? 'v/' + sid(o.va) : 't');
+        const antes = GO ? (parseInt(await db.get(sk)) || 0) : (parseInt(o.va ? ((se[o.p.id] || {}).v || {})[sid(o.va)] : (se[o.p.id] || {}).t) || 0);
+        const ofi = parseInt(inv[kOfi(o.p.id, o.va)]) || 0;
+        // Nunca más sin etiqueta que lo que hay en la oficina.
+        const ahora = Math.min(ofi, Math.max(0, o.fijo != null ? o.fijo : antes + o.delta));
+        if (GO) { await db.set(sk, ahora || null); await db.set('cyc/sinetiq/' + o.p.id + '/ts', Date.now()); }
+        console.log(`  ${o.p.name}${o.va ? ' · ' + o.va : ''}: ${antes} → ${ahora} sin etiqueta (en la oficina ${ofi})${o.fijo == null && antes + o.delta > ofi ? ' · ⚠️ recortado a lo que hay en la oficina' : ''}`);
+      }
+      console.log(GO ? '\n✓ Guardado. La tarjeta de Contar lo que hay se actualiza sola.' : '\nNo se guardó nada (falta ;go).');
       return;
     }
 

@@ -1474,6 +1474,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px" id="ofi-contar-cuentas"></div>
     <div id="ofi-contar-nota" style="display:none;font-size:.63rem;color:var(--muted);margin-bottom:10px;line-height:1.5"></div>
+    <div id="ofi-sinetiq-card"></div>
     <input class="search-box" id="ofi-contar-search" type="search" placeholder="Buscar producto..." oninput="renderOfiContar()" style="margin-bottom:8px">
     <label style="font-size:.66rem;color:var(--muted);display:flex;align-items:center;gap:6px;margin-bottom:10px">
       <input type="checkbox" id="ofi-solo-con" onchange="renderOfiContar()"> mostrar solo los que tienen algo
@@ -2470,6 +2471,7 @@ function startApp(){
     state.promohist=d.promohist||{};
     state.claudedecide=d.claudedecide||{};
     state.ofientro=d.ofientro||{};   // 1b (16/10): cuándo entró mercadería a la oficina por última vez
+    state.sinetiq=d.sinetiq||{};   // 23/10: 🏷️ mercadería en la oficina sin etiqueta de Full (la carga Claude: ofi:…!se / sinetiq:)
     state.noconsigo=d.noconsigo||{};   // 17/10: "🚫 No lo consigo" de Pedidos (Bs As/Paulvic): sin reposición hasta que entre algo a la oficina
     // 🧪 VIGILANCIA (idea 6, 27/09/2026): la foto que deja el robot cada noche de TODAS las publicaciones que venden,
     // con su estado frente a la prueba de suba. Sólo se dibuja.
@@ -2945,7 +2947,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.17';
+const APP_VERSION='26.18';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2958,6 +2960,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.18',f:'23/10',h:'15:10',c:[{n:2,t:'🔢 Contar lo que hay: tarjeta "🏷️ Sin terminar / sin etiqueta" con la mercadería que llegó y todavía no tiene la etiqueta de Full (la carga Claude cuando le pasás lo que llegó, y la saca cuando le decís que la etiquetaste). Armar caja la sigue contando igual y en cada renglón dice cuántas faltan etiquetar.'}]},
   {v:'26.17',f:'23/10',h:'15:10',c:[{n:1,t:'Paraguay → Nissei: la carpeta de abajo se llama "Sin precio en ML": son los que el robot ya buscó y encontró en ML pero nadie los vende (no hay precio contra qué comparar), más los que quedan afuera por regla. Los que faltan medir de verdad son los de "Falta analizar" (~100).'}]},
   {v:'26.16',f:'23/10',h:'14:45',c:[{n:2,t:'El puntaje del día (Inicio y Ventas) ya puede pasar de 10: sigue subiendo 3 puntos por cada $115.000 de ganancia de más. Arriba de 10 dice "🚀 Día excepcional" y el número se mueve un poquito.'}]},
   {v:'26.15',f:'23/10',h:'00:45',c:[{n:2,t:'Nissei: lo que no se encontró en ML se vuelve a buscar con el nombre traducido del portugués; lo que siga sin aparecer pasa a "✔️ Revisados: no están en ML" (dentro de 📏 Medidos) y ya no cuenta como sin medir.'}]},
@@ -4299,6 +4302,37 @@ function stockOf(p){
 }
 // Lo que hay en casa, por habitación y total.
 const stockOficina=p=>p?getQ(p.id,OFI):0;
+// ── 🏷️ SIN TERMINAR / SIN ETIQUETA (23/10/2026, él: *"en contar lo que hay poner una tarjeta que sean productos sin etiquetas. eso
+// quiere decir que no están listos para mandar a la caja de full. pero sí que los tengan en cuenta como siempre para armar la caja"*).
+// `cyc/sinetiq/<prodId>` = {t: u. sin variante, v: {<variante>: u.}} lo carga Claude (`ofi:<palabra>=+N!se`, `sinetiq:<palabra>=0`).
+// Armar caja NO cambia la cuenta: sólo muestra cuántas de las que tenés todavía hay que etiquetar. Nunca más que lo que hay en casa.
+function sinEtiq(prodId,variante){
+  const r=(state.sinetiq||{})[prodId]||{};
+  const n=variante?(parseInt((r.v||{})[sid(String(variante))])||0):(parseInt(r.t)||0);
+  const of=variante?getQV(prodId,OFI,variante):getQ(prodId,OFI);
+  return Math.max(0,Math.min(n,of||0));
+}
+function sinEtiqProd(p){return (p.variantes||[]).length?p.variantes.reduce((a,v)=>a+sinEtiq(p.id,v),0)+sinEtiq(p.id,''):sinEtiq(p.id,'');}
+const _sinEtiqChip=(n,de)=>n>0?` <span title="Están en tu oficina pero todavía no tienen la etiqueta de Full: hay que etiquetarlas antes de meterlas en la caja." style="background:rgba(245,158,11,.16);color:var(--amber);border-radius:5px;padding:1px 6px;font-size:.6rem;font-weight:700;white-space:nowrap">🏷️ ${n}${de&&de!==n?' de '+de:''} sin etiqueta</span>`:'';
+function renderSinEtiqCard(){
+  const el=document.getElementById('ofi-sinetiq-card');if(!el)return;
+  const filas=[];
+  for(const p of state.products||[]){
+    const ctas=cuentasConPublicacion(p).filter(l=>!noRepoDe(p.id,l));
+    const ct=ctas.length?ctas.join(' · '):'sin cuenta';
+    if((p.variantes||[]).length){for(const v of p.variantes){const n=sinEtiq(p.id,v);if(n>0)filas.push({nom:p.name,v,n,ct});}}
+    const n0=sinEtiq(p.id,'');
+    if(n0>0&&!(p.variantes||[]).length)filas.push({nom:p.name,v:'',n:n0,ct});
+  }
+  if(!filas.length){el.innerHTML='';return;}
+  filas.sort((a,b)=>a.ct.localeCompare(b.ct)||a.nom.localeCompare(b.nom));
+  const tot=filas.reduce((a,f)=>a+f.n,0);
+  el.innerHTML=`<div style="background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.4);border-radius:12px;padding:12px 14px;margin-bottom:12px">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><strong style="font-size:.82rem;color:var(--amber)">🏷️ Sin terminar / sin etiqueta</strong><span style="font-family:'DM Mono',monospace;font-size:.8rem;color:var(--amber)">${fmtN(tot)} u.</span></div>
+    <div style="font-size:.62rem;color:var(--muted);margin:3px 0 8px;line-height:1.45">Están en la oficina y Armar caja ya las cuenta, pero hay que etiquetarlas antes de meterlas en la caja. Cuando las etiquetes, decíselo a Claude.</div>
+    ${filas.map(f=>`<div style="display:flex;gap:8px;align-items:baseline;padding:4px 0;border-top:1px solid rgba(245,158,11,.18);font-size:.74rem"><span style="flex:1;min-width:0;word-break:break-word">${escHtml(f.nom)}${f.v?` <span style="color:var(--accent2);font-weight:700">· ${escHtml(f.v)}</span>`:''} <span style="color:var(--muted);font-size:.62rem">→ ${escHtml(f.ct)}</span></span><b style="flex:none;font-family:'DM Mono',monospace">${fmtN(f.n)}</b></div>`).join('')}
+  </div>`;
+}
 // Lo que hay EN FULL de una variante: la suma de esa variante en las cuatro cuentas de ML.
 const stockOfVar=(p,variante)=>p?ML_LOCS.reduce((s,l)=>s+getQV(p.id,l,variante),0):0;
 const todayStr=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
@@ -7314,7 +7348,7 @@ function renderOfiCaja(){
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
         ${fotoChipHTML(f.p,36,f.variante,ofiFiltroCuenta)}
         <div class="pi-prod" ${_tog} style="flex:1;min-width:150px;cursor:pointer">${f.p.name}${f.variante?` <span style="color:var(--accent2);font-weight:700">· ${f.variante}</span>`:(f.sinContarPorAroma?' <span style="color:var(--muted);font-weight:400">· sin variante</span>':'')} <span style="font-size:.7rem;color:var(--muted)">${_ab?'▴':'▾'}</span></div>
-        <div style="font-size:.78rem;color:var(--text)">tenés <b>${f.hay}</b> u.${otras>0?` <span style="color:var(--amber)">(${otras} en otra caja)</span>`:''}</div>
+        <div style="font-size:.78rem;color:var(--text)">tenés <b>${f.hay}</b> u.${_sinEtiqChip(sinEtiq(f.p.id,f.variante||''),f.hay)}${otras>0?` <span style="color:var(--amber)">(${otras} en otra caja)</span>`:''}</div>
         ${casilla}
       </div>
       <div ${_tog} style="margin-top:6px;font-size:.75rem;cursor:pointer">${_resum||'<span style="color:var(--muted)">no hace falta mandar</span>'}${!_ab&&_hayAviso?' <span style="color:var(--amber);font-size:.65rem">⚠️ ver detalle</span>':''}</div>
@@ -7444,6 +7478,7 @@ let ofiContarCuenta='';
 function setOfiContarCuenta(c){ofiContarCuenta=(ofiContarCuenta===c?'':c);renderOfiContar();}
 function renderOfiContar(){
   const cont=document.getElementById('ofi-contar-list');if(!cont)return;
+  try{renderSinEtiqCard();}catch(e){console.warn('sinetiq',e);}
   const fcc=document.getElementById('ofi-contar-cuentas');
   if(fcc)fcc.innerHTML=`<button class="pf-btn${ofiContarCuenta===''?' active-all':''}" onclick="setOfiContarCuenta('')">Todas</button>`
     +LOCS.map(l=>`<button class="pf-btn${ofiContarCuenta===l?' active-all':''}" onclick="setOfiContarCuenta('${l}')">${l}</button>`).join('');
@@ -7576,7 +7611,7 @@ function renderOfiContar(){
         const enFull=cta?getQV(p.id,cta,v):stockOfVar(p,v);
         return `<div style="display:flex;align-items:center;gap:10px;padding:7px 0 7px 12px;border-top:1px solid var(--border)">
           <div style="flex:1;min-width:0">
-            <div style="font-size:.75rem;line-height:1.3;word-break:break-word">${v}</div>
+            <div style="font-size:.75rem;line-height:1.3;word-break:break-word">${v}${_sinEtiqChip(sinEtiq(p.id,v),hay)}</div>
             <div style="font-size:.6rem;color:var(--muted);margin-top:2px">${cta?`en Full de ${cta}: ${fmtN(enFull)}${(c=>c?` · <span style="font-family:monospace;color:var(--blue,#38bdf8)">${String(c).replace(/[^A-Za-z0-9]/g,"")}</span>`:'')(etiquetaFullDe(p.id,cta,v))}`:`en Full · ${porCuenta(p,v)}`}</div>
           </div>
           ${casilla(hay,hay>0,`setOfiVar('${p.id}',${JSON.stringify(v).replace(/"/g,'&quot;')},this.value)`)}
@@ -7596,7 +7631,7 @@ function renderOfiContar(){
     }
     return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:${enCasa>0?'var(--surface2)':'var(--surface)'};border:1px solid var(--border);border-radius:8px;margin-bottom:6px">
       <div style="flex:1;min-width:0">
-        <div style="font-size:.8rem;line-height:1.3;word-break:break-word">${p.name}</div>
+        <div style="font-size:.8rem;line-height:1.3;word-break:break-word">${p.name}${_sinEtiqChip(sinEtiq(p.id,''),enCasa)}</div>
         <div style="font-size:.62rem;color:var(--muted);margin-top:2px">${cta?`en Full de ${cta}: ${fmtN(getQ(p.id,cta))}${(c=>c?` · <span style="font-family:monospace;color:var(--blue,#38bdf8)">${String(c).replace(/[^A-Za-z0-9]/g,"")}</span>`:'')(etiquetaFullDe(p.id,cta,''))}`:`en Full · ${porCuenta(p,'')}`}</div>
       </div>
       ${casilla(enCasa,enCasa>0,`setQ('${p.id}','${OFI}',this.value);syncOfiMati();renderOfiContar()`)}

@@ -280,6 +280,9 @@
 - **Pedidos hechos tienen número de 4 cifras** (#1001…, `num`) en Paraguay, Paulvic y Listas: "el pedido 1003" → buscar por `num` en
   `cyc/compraspy`, `cyc/pedidospv`, `cyc/compraslista`.
 - 📋 Copiar pedido en tarjetas con variantes (para WhatsApp).
+- **🏷️ Sin terminar / sin etiqueta** (23/10, él): lo que llega a la oficina sin la etiqueta de Full se carga con `ofi:<palabra>=+N!se;go`
+  (suma a la oficina y a `cyc/sinetiq`); Armar caja lo sigue contando igual (para ver qué caja conviene armar) y cada renglón dice
+  "🏷️ N sin etiqueta"; tarjeta arriba de Contar lo que hay. Cuando él dice que lo etiquetó: `sinetiq:<palabra>=0;go` (ml-consulta).
 
 ## 7 · PARAGUAY · LISTAS · PAULVIC
 
@@ -425,6 +428,7 @@
 | `pregunto:<texto>` · `recordar:<texto>` | Telegram al canal privado |
 | `pedidostodo` · `cajasnotas`/`pedidosnotas` · `porquepedido:<palabra>` · `porquebajo:<palabras>` | pedidos de todo el catálogo · números · por qué |
 | `pyped:…;go` · `pedir:<palabra>=<u>;…;go` · `compray:<fecha>\|…\|go` · `ofi:<palabra>[@var]=<+N\|-N\|N>;…;go` | Paraguay, unidades, pesos del pedido, oficina |
+| `ofi:<palabra>=+N!se;go` · `sinetiq[:<palabra>[@var]=<+N\|-N\|N>;…][;go]` | llegó sin etiqueta · etiquetado (0) · lista |
 | `cajallego:<seg>[;…][!<palabras>=<u>]:go` · `abrircaja:<seg>:go` · `cajasllegaron` · `faltaron[:días]` | cajas a Full |
 | `lista:<prov>;…;go` · `listarevisar` · `listadato:…;go` · `listaweb:<prov>;go` | listas de proveedores |
 | `pvped:<acción>:<id>;…;go` | Paulvic (llego, pago, costo, nunca) |
