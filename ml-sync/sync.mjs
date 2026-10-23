@@ -45169,21 +45169,29 @@ async function main() {
         if (!ccT) console.log('\n⚠️ no pude leer mis cambios: la lista 📈 de tags que no suben no se armó');
         else {
           const porMla = {}; for (const c of Object.values(ccT)) { if (c && c.mla && Number(c.ts) > 0) (porMla[c.mla] = porMla[c.mla] || []).push(c); }
-          const malos = [];
+          const malos = [], pruebaT = [];
           for (const r of filas) {
             if (!/^active/.test(r.est) || !['techo', 'escasez'].includes(r.est2.t)) continue;
             const desde = Number(r.est2.ts) || 0;
             const cs = (porMla[r.mla] || []).filter((c) => Number(c.ts) >= desde - 30 * 60e3).sort((a, b) => a.ts - b.ts);
             const ult = cs[cs.length - 1];
             const subio = cs.some((c) => Number(c.a) > Number(c.de));
+            // 23/10/2026 (vuelta corta, Protector de talón y Hub USB): una prueba de techo que SUBIÓ antes de que se reescribiera el
+            // tag (la revisión del 21/10 volvió a poner 📈 sobre pruebas ya en curso) sí está subiendo: si mi último cambio de los
+            // 15 días antes del tag fue una suba, el precio de hoy es ese y no pasaron 15 días (F4), es una prueba en curso, no un tag mentiroso.
+            const c15 = (porMla[r.mla] || []).filter((c) => Number(c.ts) >= desde - 15 * 864e5).sort((a, b) => a.ts - b.ts);
+            const u15 = c15[c15.length - 1];
+            const enPrueba = !!u15 && Number(u15.a) > Number(u15.de) && hoy - Number(u15.ts) <= 15 * 864e5 && Math.abs(Number(u15.a) - Number(r.P)) < 1;
             let por = null;
             if (ult && Number(ult.a) < Number(ult.de)) por = `el último cambio BAJÓ ${f(ult.de)}→${f(ult.a)}`;
+            else if (!subio && enPrueba) { pruebaT.push({ ...r, dS: Math.round((hoy - Number(u15.ts)) / 864e5), de: u15.de }); continue; }
             else if (!subio && hoy - desde > 2 * 864e5) por = `no subió en ${Math.round((hoy - desde) / 864e5)} d desde el tag`;
             if (por) malos.push({ ...r, por });
           }
           console.log(`\n── 📈 DICE TECHO/ESCASEZ Y NO SUBE (${malos.length}) · subir otro escalón o cambiar el tag por el que corresponde · EN ESTA VUELTA${_faltaLeer} ──`);
           for (const r of malos) console.log(`📈 ${r.mla} · ${r.cta} · ${r.nom} · ${f(r.P)} · ${r.mg == null ? "?" : r.mg.toFixed(0)}% · v ${r.u7}/${r.u30} · Full ${r.st} · 🏷 ${ESTRATEGIAS[r.est2.t]} · ${r.por}`);
           if (!malos.length) console.log('ninguna: todo lo que dice techo o escasez está subiendo');
+          if (pruebaT.length) console.log(`   (${pruebaT.length} con la prueba de techo en curso, subida hace menos de 15 días: ${pruebaT.map((x) => `${x.nom.slice(0, 24)} ${f(x.de)}→${f(x.P)} hace ${x.dS} d`).join(' · ')})`);
         }
       } catch (eT) { console.log('⚠️ la lista de tags que no suben falló: ' + eT.message); }
       // ── 6.P5 · 📦 LO QUE CUESTA DE VERDAD MANDAR UNA UNIDAD A FULL (etapa 6, eligió la a). Por cuenta: las cajas que se mandaron
