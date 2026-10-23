@@ -10,8 +10,6 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 
 1. **Mentonera facial** (Ayelen, `MLA4095170164`, 4 u. en Full, pausada): ¿cuánto costó cada una? Sin costo no la activo.
 6. **Paulvic `pv20261019`**: pagar $758.820,25 antes del lun 02/11 (si no, +10%). Con el comprobante, `pvped:pago`.
-8. **Cupo de Full de Ayelen** (23/10): el último que cargó dice 0 lugares chicos, así que su caja quedó en 0 (~180 u. en la
-   oficina: talones, metatarsos, imán, cintas, lupas, balanza, cortapelos, rebarbador…). ¿Cuánto cupo tiene hoy en ML? → `cupo:Ayelen=<chicos>/<grandes>`.
 9. **Ted Lapidus** (`MLA3310524980`): de la 4a no volvió a $65.990 porque ahí queda abajo del 25% en el peor caso (24%). Sigue a
    $72.990 y ya no busca techo. (a) sugerida: dejarlo así · (b) volver a $65.990 igual (con `!piso`).
 11. **Código 7114209** (1 u. en la oficina, US$59 del pedido de Paraguay): ¿qué producto es? El ticket y el catálogo no dicen el nombre. **EX15LP blanco**: ¿llegó? (no tiene ficha).
