@@ -18,7 +18,7 @@
 | `ml-sync/REVISION.md` | cada cambio anotado en su etapa (qué es · dónde vive · qué chequear) + el calendario de revisiones |
 | `ml-sync/PROMPT_GUAY.md` · `PROMPT_LISTAS.md` | lo que se le pega ENTERO al chat de compras (no lee direcciones remotas) |
 | `ml-sync/AUDITORIA.md` | auditoría del robot (datos crudos contra el `informe`) |
-| `ml-sync/notas/` | `preguntas.md` (cada corrección suya vuelta pregunta general) · `correcciones.md` (cuántas veces me corrigió) · `techo.md` · `ideas.md` · `sin_estirar.txt` · `decide_pedidos.py` · `decide_cajas.py` · `pedidos.txt` · `juicios*.txt` · `listaweb_iscos.txt` |
+| `ml-sync/notas/` | `para_mati.md` (dudas que esperan su respuesta) · `preguntas.md` (cada corrección suya vuelta pregunta general) · `correcciones.md` (cuántas veces me corrigió) · `techo.md` · `ideas.md` · `sin_estirar.txt` · `decide_pedidos.py` · `decide_cajas.py` · `pedidos.txt` · `juicios*.txt` · `listaweb_iscos.txt` |
 | `ml-sync/HISTORIA.md` | todo lo viejo, textual |
 | `index.html` / `sw.js` / `ml-sync/sync.mjs` | la app (PWA en un archivo) · su caché · el robot (~todos los comandos "probe") |
 
@@ -29,6 +29,9 @@
 - Dale **el número y la conclusión**, no el camino. Si algo está mal, decilo derecho y proponé qué hacer.
 - **Decisiones: TODAS JUNTAS, en UN mensaje, numeradas, cada una corta con (a) sugerida y (b)**; él contesta "1a 2b 3a"
   (08/10, *"quiero que me pases todo lo que hay que decidir todo junto siempre"*). Ideas de revisiones también todas juntas.
+- **Dudas para él: a `ml-sync/notas/para_mati.md`, no sueltas en el chat** (23/10, *"me pierdo… guardalas y después te pido y
+  resolvemos. De mientras andá haciendo"*): se anotan ahí y se sigue con lo que no lo necesita; cuando pida "resolvamos" se le pasa
+  la lista entera, numerada. Lo urgente que cuesta plata sigue por `pregunto:`.
 - **Lo chico y reversible lo elegís vos** y se lo contás (24/09: *"elegí vos qué hacer, excepto que sea una decisión muy
   importante, grande y difícil"*). Se pregunta lo grande: precios que mueven plata fuerte, borrar datos, reglas del negocio,
   algo irreversible, y lo que no tenga respuesta clara.
