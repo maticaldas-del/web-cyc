@@ -78,6 +78,7 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   por `informe`/`alertas` y no a Telegram; que las cajas que ML da por entradas las marque Claude y no queden contadas dos veces.
 
 ## 1 · PRECIOS (lunes)
+- **23/10/2026 · 🔒 F10 no bajar** (él, waflera). `cyc/nobajar/<MLA>` = {ts, m}; comando `nobajar[:<MLA|palabra>[=motivo]|:-…][;go]` (ml-consulta, marca Clásica y gemelas de la ficha); F10 DESPUÉS de las otras reglas en `frenosBajas` (él: *"que evalúe y que diga qué hubiera hecho"*): dice "HUBIERA HECHO: bajarla de X a Y" + mi motivo y lo guarda en `cyc/nobajar/<MLA>/hubiera` (la lista `nobajar` lo muestra); `nobajar` en `BANDERAS_SUYAS` (🔐 su autorización), en los dos parsers y en `BAN_DEC`. Qué chequear: `decido:<MLA>=<más bajo>#bajando|…` sale frenado con F10; una suba pasa; el detector marca ❌ una baja de una marcada.
 
 ### 🆕 Lanzamiento que vendió por la gemela y no subió (23/10/2026, corrección suya con el Masajeador)
 - **Qué es:** la venta del Masajeador entró por la Premium; el 🧭/🔬 de `ventasraras` leía la estrategia de la gemela (💳 = bien) y no la 🆕 de su
@@ -685,6 +686,7 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 (sería doble), y que el número de Gastos y el del Arqueo sean el mismo para cada mes.
 
 ## 3 · MERCADERÍA (miércoles)
+- **23/10/2026 · v · Nissei: ⏳ Falta revisar en su propia carpeta (pedido suyo).** Afuera de "Lo que no entra en el pedido" (que pasa a llamarse ✅ Revisados), se arma al abrirla (`window._pyFaltaFn`). Qué chequear: que Falta revisar + Revisados den el total del catálogo menos candidatos del pedido y fichas.
 - **23/10/2026 · lo nuevo va a Ayelen o Luciana** (él: *"van en la de ayelen o luciana. dependiendo el cupo de monotributo"*). `repartopy` reparte el equilibrio sólo entre esas dos (las otras sólo si ninguna llega al piso, y lo dice con ⚠️); la tarjeta ⚖️ de Inicio dice la de más lugar entre las dos. Qué chequear: que un perfume siga yendo a Adriana.
 - **23/10/2026 · v26.18 · 🏷️ Sin terminar / sin etiqueta** (él: *"en contar lo que hay poner una tarjeta que sean productos sin etiquetas (…) pero sí que los tengan en cuenta como siempre para armar la caja"*). `cyc/sinetiq/<prodId>` = {t, v:{<variante>}, ts}; robot: `ofi:…=+N!se` (suma a oficina y a sin etiqueta) y `sinetiq:` (lista / fija / resta; en ml-consulta; nunca más que lo que hay en la oficina). Web: `sinEtiq`, `renderSinEtiqCard` (tarjeta arriba de Contar lo que hay, con la cuenta destino), chip `_sinEtiqChip` en cada renglón de Contar y de Armar caja; el reparto NO cambia. Qué chequear: que al despachar una caja el número no quede más alto que la oficina (se recorta solo en pantalla, el dato guardado queda: limpiarlo con `sinetiq:<palabra>=0`), y que el chip no corra la casilla en 360 px.
 

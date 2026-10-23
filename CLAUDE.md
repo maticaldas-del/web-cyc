@@ -222,6 +222,8 @@
   si hay otros con Full, ~20% arriba del Full más barato sin pasar el más caro; baja recién con 🏔️ al 95% (visitas × conversión) y
   cada escalón como descuento propio con el de lanzamiento tachado. **Nunca bajar algo que vende sólo para medir** (la prueba del tachado
   3b se canceló).
+- **🔒 No bajar** (23/10, él con la waflera: *"le ganamos bien, que sea una excepción si el robot decide bajarlo, quizás lo mejor sería no tocarlo"*):
+  `nobajar:<palabra|MLA>=<motivo>;go` marca todas sus publicaciones (`cyc/nobajar`); F10 frena toda baja y descuento salvo su autorización 🔐 `!nobajar`, pero ANTES evalúa las otras reglas y dice "HUBIERA HECHO: bajarla de X a Y" (queda en `cyc/nobajar/<MLA>/hubiera`, se ve en `nobajar`). Las subas siguen.
 - **Nunca se crea una publicación (Clásica o gemela) más cara que $550.000** (23/10, él; `TOPE_CREAR`, freno en `publicar` y `gemelacrea`).
 - **Precio para el peor caso** al poner o activar (12/10). Lo que vende rápido abajo del 25% con poco stock se sube en la misma vuelta.
 - **Venta barata ≠ remate** (09/10): remate sólo si antes estuvo parado (30+ d con stock, <1/semana); si llegó y voló es demanda (precio

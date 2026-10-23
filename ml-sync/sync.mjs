@@ -77,7 +77,7 @@ const _cortarCiclo = (donde) => {
 // los que escriben en cantidad o en plata se niegan de entrada, y cualquier otro corre con la base,
 // ML, Mercado Pago y Telegram en sólo lectura (se deja renovar y guardar el token de ML, que ML rota).
 const EN_CONSULTA = process.env.GITHUB_WORKFLOW === 'ml-consulta' || process.env.ML_CONSULTA === '1';
-const CONSULTA_ESCRIBE = new Set(['ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq']);
+const CONSULTA_ESCRIBE = new Set(['ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar']);
 const CONSULTA_NIEGA = new Set(['cajaitems', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'listaped', 'publicar', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'errores', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'promoventas', 'cargosmes', 'arcacierres', 'webpush']);
@@ -4190,6 +4190,8 @@ function rayasPrecioLinea(d, cu, imp, hoyK, parte = 1) {
 //     anotada) no frena mientras no baje del precio de antes de la escasez.
 //  F8 arriba del 💰 no se baja sin 95% (21/10/2026) · 🔐 `!sincerteza`. Mismas excepciones que F7.
 //  F9 en escasez (con su suba anotada) nunca abajo del precio de antes de la escasez (22/10/2026, §7) · `!bajopiso`
+//  F10 🔒 él pidió no bajarla (`cyc/nobajar/<MLA>`, comando `nobajar`; 23/10/2026, la waflera: *"le ganamos bien, que sea una
+//     excepción si el robot decide bajarlo, quizás lo mejor sería no tocarlo"*): ninguna baja ni descuento sin su autorización · 🔐 `!nobajar`
 //  F6 🤔 un descuento o promo nuevo (fuera de una escalera de techo, escasez, lanzamiento, sin reposición o fecha) pide sobra de
 //     verdad (90+ d en Full al ritmo con stock) y no recién llegado (30+ d desde la última entrada) · `!nosobra`
 // ANTES DE ACTIVAR: una publicación que nunca estuvo activa ni vendió (lo dice su línea de tiempo) se puede corregir al activarla
@@ -4219,8 +4221,8 @@ function rayasPrecioLinea(d, cu, imp, hoyK, parte = 1) {
 // 3. El pedido pasa a `autorizada` con la firma HMAC del token del bot (lo tiene sólo el robot: un registro escrito a mano en la
 //    base, por la web o por otro comando, no vale) y vence 48 h después de su mensaje.
 // 4. El mismo renglón (misma publicación, misma bandera, mismo precio ±$10) la consume (`usada`). `autoriza` (solo lee) los lista.
-const BANDERAS_SUYAS = ['sinlinea', 'sincerteza', 'sintecho', 'bajocero'];   // + la estrategia 🧨 #remate
-const BANDERA_QUE = { sinlinea: 'bajar sin línea de techo (🔴/🏔️)', sincerteza: 'deshacer una suba (o bajar arriba del 💰) sin 95% de certeza', sintecho: 'bajar algo nuevo sin 🏔️ de techo95', bajocero: 'dejarla abajo de 0% de ganancia', remate: '🧨 rematar (estrategia remate)' };
+const BANDERAS_SUYAS = ['sinlinea', 'sincerteza', 'sintecho', 'bajocero', 'nobajar'];   // + la estrategia 🧨 #remate
+const BANDERA_QUE = { sinlinea: 'bajar sin línea de techo (🔴/🏔️)', sincerteza: 'deshacer una suba (o bajar arriba del 💰) sin 95% de certeza', sintecho: 'bajar algo nuevo sin 🏔️ de techo95', bajocero: 'dejarla abajo de 0% de ganancia', nobajar: 'bajar una publicación que pediste no tocar (🔒)', remate: '🧨 rematar (estrategia remate)' };
 const AUT_VALE_MS = 48 * 3600e3, AUT_LETRAS = 'ACEFHJKMNPRTWXY34679';
 function _autFirma(txt) { return TG_TOKEN ? createHmac('sha256', TG_TOKEN).update(String(txt)).digest('hex').slice(0, 32) : ''; }
 const _autBan = (r) => (Array.isArray(r && r.banderas) ? r.banderas : []).map(String).sort().join(',');
@@ -4271,6 +4273,7 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
   const prods = 'prods' in P ? P.prods : await leer('cyc/products', {});
   const lotes = 'lotes' in P ? P.lotes : await leer('cyc/lotesfull', {});
   let auts = 'auts' in P ? P.auts : undefined;   // cyc/autoriza: se lee sólo si alguna pidió una salida suya
+  const nobaj = ('nobaj' in P ? P.nobaj : await leer('cyc/nobajar', {})) || {};   // F10 🔒
   const out = [];
   for (const d of bajas) {
     const frenar = (txt, extra) => { d.accion = 'nada'; d.motivo = '🚫 FRENO: ' + txt; d.freno = true; if (extra) Object.assign(d, extra); out.push(d); };
@@ -4512,6 +4515,19 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
         continue;
       }
       r = r2;   // otra regla lo frena igual: pedirle la autorización no serviría
+    }
+    // ── F10 · 🔒 él pidió no bajarla (23/10/2026). Se juzga DESPUÉS de las otras reglas (él: *"que evalúe y que diga qué hubiera
+    // hecho"*): si las demás la dejaban pasar, el freno dice "HUBIERA HECHO: bajarla de X a Y" con mi motivo y lo guarda en
+    // `cyc/nobajar/<MLA>/hubiera` (lo ve en la lista `nobajar` y en el informe); si otra regla la frenaba igual, lo dice también.
+    const nbM = nobaj[d.mla];
+    if (nbM && !autOk.has('nobajar')) {
+      const pide = !r && pedidas.includes('nobajar');
+      const cuando = nbM.ts ? ' el ' + new Date(Number(nbM.ts) - 3 * 3600e3).toISOString().slice(8, 10) + '/' + new Date(Number(nbM.ts) - 3 * 3600e3).toISOString().slice(5, 7) : '';
+      const hub = r ? `Además la frenaba otra regla (${r.regla}): ${r.txt}` : `HUBIERA HECHO: ${opts.promo ? 'un descuento' : 'bajarla'} de ${$(p0v)} a ${$(a)} (−${Math.round((1 - a / p0v) * 100)}%)${fz.motivo ? ' — ' + String(fz.motivo).slice(0, 220) : ''}. Pasa todas las otras reglas.`;
+      frenar(`F10 🔒 pediste no bajarla${cuando}${nbM.m ? ' (' + String(nbM.m).slice(0, 100) + ')' : ''}: no se toca sin tu autorización. ${hub}${pide ? ' → 🔐 se te pide por Telegram' : ''}`,
+        { regla: 'F10', pideAut: pide ? ['nobajar'] : undefined, frenoTxt: hub, motivoPedido: String(fz.motivo || '') });
+      if (!r && !opts.seco) { try { await db.set('cyc/nobajar/' + d.mla + '/hubiera', { ts: ahora, de: Math.round(p0v), a: Math.round(a), promo: !!opts.promo, por: opts.puerta ? 'puerta' : 'decido', m: String(fz.motivo || '').slice(0, 300) }); } catch { /* no frena */ } }
+      continue;
     }
     if (r) { frenar(r.txt, { regla: r.regla, sinDato: !!r.sinDato }); continue; }
     const lad = enEscasez && ultSuba && a < ultSuba.a * 0.995 ? await escalera() : null;
@@ -43467,7 +43483,7 @@ async function main() {
         if (mm[5] && ['sindecidir', 'agotado'].includes(mm[5].toLowerCase())) { malos.push(x + ` (#${mm[5]} no es una estrategia para un precio)`); continue; }
         const bE = String(mm[4] || '').toLowerCase();
         renglonE[mm[1].toUpperCase()] = x;
-        pedidos.push({ mla: mm[1].toUpperCase(), p: Math.round(pesosArg(mm[2])), id: mm[3], piso: bE.includes('!piso'), bajocero: bE.includes('!bajocero'), sintecho: bE.includes('!sintecho'), golpe: bE.includes('!golpe'), sincerteza: bE.includes('!sincerteza'), bajopiso: bE.includes('!bajopiso'), nosobra: bE.includes('!nosobra'), sinlinea: bE.includes('!sinlinea'), tag: mm[5] ? mm[5].toLowerCase() : null, motivo: mot.join('|').trim() });
+        pedidos.push({ mla: mm[1].toUpperCase(), p: Math.round(pesosArg(mm[2])), id: mm[3], piso: bE.includes('!piso'), bajocero: bE.includes('!bajocero'), sintecho: bE.includes('!sintecho'), golpe: bE.includes('!golpe'), sincerteza: bE.includes('!sincerteza'), bajopiso: bE.includes('!bajopiso'), nosobra: bE.includes('!nosobra'), sinlinea: bE.includes('!sinlinea'), nobajar: bE.includes('!nobajar'), tag: mm[5] ? mm[5].toLowerCase() : null, motivo: mot.join('|').trim() });
       }
       if (malos.length || !pedidos.length) { console.log(`No entendí: ${malos.join(' · ') || '(nada)'}\nVa así: entrarpromo:MLA123=21360@P-MLA18067012|ya la iba a bajar;MLA456=salir|terminó;go`); return; }
       const links = (await db.get('cyc/mllinks')) || {};
@@ -43600,7 +43616,7 @@ async function main() {
         // `extra` (22/10/2026): lo que pedí, para que el detector `errores` juzgue esta entrada con sus banderas y autorizaciones.
         const autE = (d.frenosOk && d.frenosOk.aut) || [];
         await histPromo(q.mla, { de: d.p0, a: pQuedo, tipo: pr.type, nombre: pr.name || '', accion: 'entra', extra: { fmt: 2, motivo: String(q.motivo || '').slice(0, 300), tag: q.tag || tagDeMotivo(q.motivo) || 'descuento',
-          ban: ['piso', 'bajocero', 'sintecho', 'golpe', 'sincerteza', 'bajopiso', 'nosobra', 'sinlinea'].filter((k) => q[k]), aut: autE, mg: mg ?? null, mgP: mgP ?? null,
+          ban: ['piso', 'bajocero', 'sintecho', 'golpe', 'sincerteza', 'bajopiso', 'nosobra', 'sinlinea', 'nobajar'].filter((k) => q[k]), aut: autE, mg: mg ?? null, mgP: mgP ?? null,
           st: d.st != null && Number.isFinite(Number(d.st)) ? Number(d.st) : null } });
         for (const c of autE) await _autUsar(db, c, 'entrarpromo');
         // La promo también es un precio: queda su estrategia (18/10/2026, él: "¿por qué está anotado como precio base?").
@@ -44394,7 +44410,7 @@ async function main() {
         // El precio EXACTO que escribí (etapa 1, 21/10/2026): redondear a $10 hacía $32.999 → $33.000 (cruzaba la barrera) y $4.999 → $5.000.
         forzar[mm[1].toUpperCase()] = { p: soloAct ? 0 : Math.round(pesosArg(mm[2])), motivo: mot.join('|').trim(), piso: banderas.includes('!piso'), cruza: banderas.includes('!cruza'),
           activar: soloAct || banderas.includes('!activar'), salto: banderas.includes('!salto'), sinstock: banderas.includes('!sinstock'), sintecho: banderas.includes('!sintecho'),
-          golpe: banderas.includes('!golpe'), sincerteza: banderas.includes('!sincerteza'), bajopiso: banderas.includes('!bajopiso'), nosobra: banderas.includes('!nosobra'), sinlinea: banderas.includes('!sinlinea'), chico: banderas.includes('!chico'), lista: banderas.includes('!lista'), escalon: banderas.includes('!escalon'), tag: mm[4] ? mm[4].toLowerCase() : '' };
+          golpe: banderas.includes('!golpe'), sincerteza: banderas.includes('!sincerteza'), bajopiso: banderas.includes('!bajopiso'), nosobra: banderas.includes('!nosobra'), sinlinea: banderas.includes('!sinlinea'), nobajar: banderas.includes('!nobajar'), chico: banderas.includes('!chico'), lista: banderas.includes('!lista'), escalon: banderas.includes('!escalon'), tag: mm[4] ? mm[4].toLowerCase() : '' };
         renglonD[mm[1].toUpperCase()] = x;
         // Sin 🎯 base (19/10/2026): un precio nuevo tiene que decir su estrategia (#tag o un motivo que la nombre).
         { const fz = forzar[mm[1].toUpperCase()]; if (!soloAct && !fz.tag && !tagDeMotivo(fz.motivo) && !fz.piso) { delete forzar[mm[1].toUpperCase()]; malos.push(x + ` (falta la estrategia: agregá #techo, #escasez, #sobra… · ${Object.keys(ESTRATEGIAS).filter((k) => !['sindecidir', 'agotado', 'techook'].includes(k)).join(', ')})`); continue; } }
@@ -44615,7 +44631,7 @@ async function main() {
       if (!GOp || DRY) { console.log('\nPRUEBA: no toqué nada. Para aplicar, el mismo comando con ;go al final.'); return; }
       let apP = null; try { apP = (await db.get('cyc/autoprecio')) || {}; } catch { apP = null; }
       // Lo que se guarda en mis cambios (22/10/2026): banderas, estrategia y autorizaciones suyas usadas (ver `aplicarCerebro`).
-      const BAN_DEC = ['piso', 'cruza', 'activar', 'salto', 'sinstock', 'sintecho', 'golpe', 'sincerteza', 'bajopiso', 'nosobra', 'sinlinea', 'chico', 'lista', 'escalon'];
+      const BAN_DEC = ['piso', 'cruza', 'activar', 'salto', 'sinstock', 'sintecho', 'golpe', 'sincerteza', 'bajopiso', 'nosobra', 'sinlinea', 'nobajar', 'chico', 'lista', 'escalon'];
       for (const d of cz.dec) if (d.accion !== 'nada' && forzar[d.mla]) { const fz = forzar[d.mla]; d.reg = { ban: BAN_DEC.filter((k) => fz[k]), tag: fz.tag || tagDeMotivo(fz.motivo) || '', aut: (d.frenosOk && d.frenosOk.aut) || [] }; }
       const ac = await aplicarCerebro(db, cz, { tokens: tokP, aplica: true, autoprecio: apP });
       console.log(`\n✓ hechos: ${ac.hechos.length} · no se pudo: ${ac.fallidos.length} · sin anotar: ${ac.sinAnotar.length}`);
@@ -47605,6 +47621,48 @@ async function main() {
       }
       if (GO && _ofiCortado) console.log(`\n⚠️ Cancelaron la corrida: ${_ofiCortado} renglón(es) sin escribir (los de arriba sí quedaron). Repetí sólo ésos.`);
       else if (GO) console.log('\n✓ Guardado. La web recalcula sola el valor de la oficina en el Arqueo.');
+      else console.log('\nNo se guardó nada (falta ;go).');
+      return;
+    }
+
+    // BILLING_PROBE=nobajar[:<MLA|palabra>[=<motivo>]|:-<MLA|palabra>][;go] → 🔒 NO BAJAR ESTA PUBLICACIÓN (F10; 23/10/2026, él con la
+    // waflera: *"le ganamos bien, que sea una excepción si el robot decide bajarlo, quizás lo mejor sería no tocarlo"*). Con una palabra
+    // marca TODAS las publicaciones vivas de esa ficha (Clásica y gemelas). `-` adelante la saca. Sin nada lista lo marcado. Sólo frena
+    // bajas y descuentos (las subas siguen): bajarla pide su autorización (`!nobajar`, 🔐).
+    if (/^nobajar(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _raw = String(process.env.BILLING_PROBE).replace(/^nobajar:?/, '');
+      const GO = /(^|;)go$/.test(_raw);
+      const arg = _raw.replace(/(^|;)go$/, '').trim();
+      const links = (await db.get('cyc/mllinks')) || {};
+      const prodsO = (await db.get('cyc/products')) || {};
+      const nb = (await db.get('cyc/nobajar')) || {};
+      const nrm = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+      if (!arg) {
+        console.log('=== 🔒 NO BAJAR (sólo con su autorización) ===');
+        const ks = Object.keys(nb); if (!ks.length) console.log('  (nada marcado)');
+        for (const k of ks) { const e = links[k] || {}; const h = nb[k].hubiera; console.log(`  ${k} · ${e.cuenta || '?'} · ${String(e.title || '').slice(0, 50)} · ${nb[k].m || ''}${h ? `\n     ↳ HUBIERA HECHO (${new Date(Number(h.ts) - 3 * 3600e3).toISOString().slice(0, 16).replace('T', ' ')}): ${h.promo ? 'descuento' : 'bajar'} de $${Number(h.de).toLocaleString('es-AR')} a $${Number(h.a).toLocaleString('es-AR')}${h.m ? ' — ' + h.m : ''}` : ''}`); }
+        return;
+      }
+      const saca = arg.startsWith('-');
+      const [qRaw, ...mot] = arg.replace(/^-/, '').split('=');
+      const q = qRaw.trim(), motivo = mot.join('=').trim();
+      let mlas = [];
+      if (/^MLA\d+$/i.test(q)) {
+        const e = links[q.toUpperCase()]; if (!e) { console.log(`❌ ${q} no está vinculada.`); return; }
+        mlas = Object.entries(links).filter(([, x]) => x && x.prodId === e.prodId && x.cuenta === e.cuenta && x.status !== 'closed').map(([k]) => k);
+      } else {
+        const hits = Object.entries(prodsO).filter(([, p]) => p && nrm(p.name).includes(nrm(q)));
+        if (hits.length !== 1) { console.log(`❌ "${q}" ${hits.length ? `agarra ${hits.length} fichas: ${hits.slice(0, 8).map(([, p]) => p.name).join(' | ')}` : 'no agarra ninguna ficha'}`); return; }
+        mlas = Object.entries(links).filter(([, x]) => x && x.prodId === hits[0][0] && x.status !== 'closed').map(([k]) => k);
+      }
+      if (!mlas.length) { console.log('❌ esa ficha no tiene publicaciones vivas.'); return; }
+      console.log(`=== 🔒 ${saca ? 'SACAR' : 'MARCAR'} NO BAJAR ${GO ? '' : '(PRUEBA — no escribo nada)'} ===`);
+      for (const k of mlas) {
+        const e = links[k] || {};
+        console.log(`  ${k} · ${e.cuenta || '?'} · ${e.gemelaDe ? (e.gemelaTipo === 'envio' ? '📦 gemela envío gratis' : '💳 gemela Premium') : 'Clásica'} · ${String(e.title || '').slice(0, 50)} · ${e.status || ''}`);
+        if (GO) await (saca ? db.set('cyc/nobajar/' + k, null) : db.patch('cyc/nobajar/' + k, { ts: Date.now(), m: motivo || 'lo pidió él' }));
+      }
+      if (GO) { const rl = (await db.get('cyc/nobajar')) || {}; const okN = mlas.filter((k) => saca ? !rl[k] : !!rl[k]).length; console.log(`\n${okN === mlas.length ? '✓' : '⚠️'} releído: ${okN} de ${mlas.length} ${saca ? 'sin marca' : 'con 🔒'}`); }
       else console.log('\nNo se guardó nada (falta ;go).');
       return;
     }
