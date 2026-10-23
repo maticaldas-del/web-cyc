@@ -23,6 +23,8 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 5. **Correo $20.000 Via Cargo**: lo cargué al pedido de Paraguay del 19/10 (el único sin correo). ¿Es ése? ¿Cuántos kilos? ¿Ya
    llegó ese pedido (figura "en camino")?
 6. **Paulvic `pv20261019`**: pagar $758.820,25 antes del lun 02/11 (si no, +10%). Con el comprobante, `pvped:pago`.
+7. **Corrector de juanete magnético** (23/10): cargué 12 en la oficina como dijiste. La publicación dice "Par" y la caja dice
+   "Single pack": ¿las 12 son 12 pares (12 ventas) o 12 piezas sueltas (6 pares)? Si son sueltas, corrijo a 6.
 
 ## Viejas que siguen esperando (de CLAUDE.md §13)
 - Clave `ANTHROPIC_API_KEY` para la IA de preguntas · `almactarifa` · Sancor (respuesta y baja de Vida Plus) · contador
