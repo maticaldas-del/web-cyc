@@ -24316,7 +24316,9 @@ async function main() {
         for (const r of (d.results || [])) {
           let of = []; try { const x = await mlGet(`/products/${r.id}/items`, tok); of = x.results || []; } catch { /* sin vendedores */ }
           const ps = of.map((o) => Number(o.price) || 0).filter((x) => x > 0); const full = of.filter((o) => o.shipping?.logistic_type === 'fulfillment').length;
-          console.log(`  ${String(r.id).padEnd(13)} · ${of.length} vend.${full ? ' (' + full + ' Full)' : ''} · ${ps.length ? money(Math.min(...ps)) + (ps.length > 1 ? ' a ' + money(Math.max(...ps)) : '') : 'sin precio'} · ${String(r.name || '').slice(0, 80)}`);
+          // Los precios de los que tienen Full (23/10/2026, el Deco X60: el rango entero no dice contra quién se compite con Full).
+          const psF = of.filter((o) => o.shipping?.logistic_type === 'fulfillment').map((o) => Number(o.price) || 0).filter((x) => x > 0).sort((x, y) => x - y);
+          console.log(`  ${String(r.id).padEnd(13)} · ${of.length} vend.${full ? ' (' + full + ' Full)' : ''} · ${ps.length ? money(Math.min(...ps)) + (ps.length > 1 ? ' a ' + money(Math.max(...ps)) : '') : 'sin precio'}${psF.length ? ' · con Full: ' + psF.map(money).join(', ') : ''} · ${String(r.name || '').slice(0, 80)}`);
         }
       }
       return;
