@@ -4708,7 +4708,7 @@ async function pruebasTechoEnCurso(db, ahora = Date.now()) {
     if (falla) sinLeer++;
     const r = uA / 30, d = (ahora - tsU) / DIA;
     // la última nota mía desde el tag ("sigue la prueba"): la próxima decisión pide 3 esperadas MÁS desde esa nota
-    const hn = (notas || {})[m] || {}; const tN = Math.max(0, ...Object.keys(hn).map(Number).filter((k) => k > tsU && (hn[k] || {}).tipo !== 'fallo'));
+    const hn = (notas || {})[m] || {}; const tN = Math.max(0, ...Object.keys(hn).map(Number).filter((k) => k > tsU + 10 * 60e3 && (hn[k] || {}).tipo !== 'fallo'));   // la nota del mismo `decido` que abrió la prueba no cuenta
     filas.push({ m, nom: String(e.title || '?').slice(0, 34), cta: e.cuenta || '?', tsU, d, r, uD, esp: r * d, espNota: tN ? r * (ahora - tN) / DIA : null, d95: r > 0 ? 3 / r : Infinity, gdA: gA / 30, gdD: d >= 0.5 ? gD / d : null, sinC });
   }
   return { filas, sinLeer, sinNotas: notas == null };
@@ -45387,6 +45387,8 @@ async function main() {
         console.log(`\n── 📈 PRUEBA CON RESPUESTA (${conResp.length} de ${pT.length} pruebas de techo) · llegaron a 3 ventas esperadas: decidir EN ESTA VUELTA (0 vendidas = 95%, escalera · con ventas manda la ganancia por día · si no alcanza, nota y sigue)${sLT ? ` · ⚠️ ${sLT} con días de ventas sin leer` : ''}${sinNotas ? ' · ⚠️ no leí las notas' : ''} ──`);
         for (const z of conResp) console.log(`📈 ${z.m} · ${z.cta} · ${z.nom} · ${z.d.toFixed(1)} d de prueba · vendió ${z.uD} de ${z.esp.toFixed(1)} esperadas · ganancia/día antes ${f$(z.gdA)} → después ${f$(z.gdD)}${z.sinC ? ' · ' + z.sinC + ' venta(s) sin costo' : ''}${z.espNota != null ? ' · desde mi última nota ' + z.espNota.toFixed(1) + ' esperadas' : ''}`);
         if (!conResp.length) console.log('ninguna: ninguna prueba llegó todavía a 3 ventas esperadas');
+        const pensP = pT.filter((z) => z.esp >= 3 && z.espNota != null && z.espNota < 3);
+        if (pensP.length) console.log(`   (${pensP.length} con 3+ esperadas pero con nota mía hace menos de 3 esperadas, vuelven a salir solas: ${pensP.map((z) => z.nom.slice(0, 22) + ' ' + z.uD + '/' + z.esp.toFixed(1)).join(' · ')})`);
       } catch (eP) { console.log('⚠️ la lista 📈 prueba con respuesta falló: ' + eP.message); }
       // ── 📈 DICE TECHO/ESCASEZ Y NO ESTÁ SUBIENDO (19/10/2026, él con la Batidora negro: "dice buscando techo, pero no aumentó
       // nada"). El tag tiene que corresponder al precio: 📈 techo y 🔥 escasez quieren decir que el precio SUBE. Sale acá toda
