@@ -79,6 +79,15 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
 
 ## 1 · PRECIOS (lunes)
 
+### Vara de compra: 35%, o 30% si vende 100+ con 2+ vendedores (23/10/2026, v26.13, eligió la 1a)
+- Qué: `varaCompra`/`candVaraDe`/`listaVaraDe` en index.html y sync.mjs (las dos iguales). Web: `candPisoDe`, colores (`candPctCol`), `_listaMed25`, carpetas de Listas. Robot: `pedir`, `revisarcompra`, `cuentaLista`, `listarevisar`; `faltaventas` lista desde 30% (las vendidas deciden).
+- Por qué: hasta el 31/12 sobran ~$52 M contra el tope de H (Matías al límite): un 30-35% que vende mucho suma en vez de desplazar. En febrero, con los topes nuevos, se vuelve a medir.
+- Chequear: Sony EX15LP rosa (32%, 1.000 vendidas, 8 vend.) en verde y pedible; uno de 32% con 25 vendidas en rojo; que web y robot den la misma vara.
+
+### `vara` (23/10/2026, sólo lee): ¿35% o 30% para comprar algo nuevo?
+- Qué: cuenta los candidatos de Paraguay y los productos de las listas por tramo de % (25-30, 30-35, 35-50, 50+), cuántos pasaron todo y cuántos venden 100+, y lista los de 30-35% que pasaron todo.
+- Chequear: que use los mismos filtros que `faltaventas` (vivos, sin categoría que no se mira, costo vigente).
+
 ### ¿Vendemos menos por buscar techo? `efectotecho[:días]` (22/10/2026, pregunta suya, sólo lee)
 - Qué: semana por semana la tienda entera (u., facturado, ganancia, cuántas subas 📈) + cada suba buscando techo de `cyc/claudecambios` con 7+ días: u./día, visitas y ganancia/día con stock, 14 d antes contra hasta 14 después (corta en el próximo cambio), comparado contra lo que se movió la tienda en las mismas ventanas.
 - Chequear: que los días sin stock no cuenten; que el costo c/u salga de lo vendido (sin costo → ⚠️); que el "esperado" use las mismas ventanas que la suba.
@@ -602,6 +611,14 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 
 ## 3 · MERCADERÍA (miércoles)
 - **23/10/2026 · Cajas: la ventana de lectura no pasa los 60 días (vuelta corta).** `cajasllegaron` dio 194 consultas con 400 "Date range can't be greater than 60 days": una caja marcada a mano despachada hace ~58-60 días estiraba la ventana de sus productos (despacho − 1 día hasta hoy + 1) y ninguna caja abierta de esos productos se podía leer (8 abiertas sin marcar). Ahora una marcada a mano despachada hace más de 57 días no estira la ventana (`limVentana`, en `marcarCajasLlegadas`). Qué chequear: que `cajasllegaron` no tenga ningún 400 de rango y que las cajas abiertas no vuelvan a quedar sin leer por eso.
+
+### Nuevos de Paraguay abajo de 35% en rojo (23/10/2026, v26.12, pedido suyo)
+- Qué: `candPctCol` (index.html) pinta el % de un candidato nuevo en rojo abajo de `CAND_VARA_COMPRA`, en la fila del pedido (Nuevos) y en la tarjeta de Para probar; Listas ya lo hacía. Probados (reponer, vara 25%) no cambia.
+- Chequear: que un nuevo de 27% (Lattafa Queen of Arabia) se vea rojo y uno de 40% verde; que Probados no se ponga rojo entre 25 y 35.
+
+### Las categorías que no se miran frenan Para probar y faltaventas (23/10/2026, eligió la a)
+- Qué: `pyCatNoSeMira` (sync.mjs) usa `PYCAT_FUERA_RE` (la regla del 03/10) en el paso pycat → Para probar y en `faltaventas`; el catálogo se sigue guardando y midiendo entero. `candfuera[;go]` descarta los candidatos vivos de esas categorías (`noTipo:'regla'`); `candfuera;prov=<p>;<cód>=<motivo>;go` descarta uno puntual (`noTipo:'duro'`).
+- Chequear: que ninguna cámara, celular, notebook, termo, etc. aparezca en Para probar; que `candfuera` sin go muestre la lista antes de sacar; que no saque lo que ya viaja.
 - **21/10/2026 · `vendcat:<MLA o catálogo>` (solo lee):** prueba todas las puertas para saber las unidades vendidas de un catálogo ajeno (ficha, ofertas, publicación ajena con y sin token, visitas, opiniones, ranking de más vendidos, página web). Pedido suyo. **Resultado 21/10: NO HAY FORMA.** La ficha y las ofertas del catálogo no traen ningún campo de ventas; la publicación ajena da 403 con y sin token; visitas, opiniones y ranking de más vendidos (`highlights`) dan 403 (PolicyAgent); la página web pide verificación (también desde el chat). Sólo un navegador con una persona ve el "+100 vendidos".
 - **21/10/2026 · Lo que no está en ML se vuelve a buscar de a poco (pedido suyo, v25.58).** `pycatRemedirDias`: sin catálogo exacto (`sc`) cada 60 días (`PYCAT_SINCAT_DIAS`), catálogo sin vendedores (`sv`) cada 30. Antes `Infinity`. Qué chequear: el log de `pycatmedir` dice los días; una ola grande de `sc` recién a mitad de diciembre.
 - **21/10/2026 · v25.56 · cuántas de cada nuevo de Paraguay (decisión 4a):** `candMaxU` = barato (≤US$15 crudo) 3 · caro (+US$60) 1

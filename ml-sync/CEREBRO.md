@@ -389,7 +389,7 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
 ## 14 · PEDIDOS
 - 💹 **ESTRATEGIA "GANAR MÁS POR CADA PESO FACTURADO" (22/10/2026, eligió 1a 2a 4a 5a 6a 7a 8b).** El tope de H no deja facturar
   más: sube la ganancia lo que deja cada $100 facturados (meta $22; oct $19). Lo que sale de ahí, en cada parte:
-  · 🔒 **reponer sigue en 25%; comprar algo NUEVO pide 35%** (§16, §17) · **2a: lo que con el techo ya buscado (🏔️ o prueba de techo
+  · 🔒 **reponer sigue en 25%; comprar algo NUEVO pide 35%; 30% si en ML vende 100+ con 2+ vendedores** (§16, §17; 23/10 1a, `varaCompra`: colchón de ~$52 M del tope de H hasta fin de año, nada nuevo a Matías; en febrero se vuelve a medir con los topes nuevos) · **2a: lo que con el techo ya buscado (🏔️ o prueba de techo
   cerrada) sigue dejando menos de 25% NO se repone**: `decido:ped=u|0` con "Hola Tito!" y el motivo, y en la completa se le propone
   un reemplazo de 35%+ (de Paraguay o Listas) en el `pregunto:`. Mientras el techo no esté buscado, se busca primero (no se corta de
   una). **Lo de 25-35% con el techo ya encontrado (🏔️) se sigue reponiendo** (22/10, eligió la a): se reemplaza de a poco sólo cuando

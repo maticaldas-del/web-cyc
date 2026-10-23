@@ -86,7 +86,7 @@
 - **LA ESTRATEGIA PARA GANAR MÁS (22/10/2026, eligió 1a 2a 4a 5a 6a 7a 8b; la 3 quedó para después).** El tope de H no deja
   facturar más (~$800.000/día, ya estamos ahí): lo que sube la ganancia es **cuánto deja cada $100 facturados** (oct: $19, meta $22;
   meta $1.200.000 c/u = ~37,3% de margen promedio). 1a **comprar algo nuevo pide 35%** (`CAND_VARA_COMPRA`, web y robot; Paraguay y
-  Listas); lo de 25-34% queda guardado y se sigue midiendo; **reponer lo que ya se vende sigue en 25%** (no toca el Paulvic) ·
+  Listas); **lo que vende 100+ en ML con 2+ vendedores entra desde 30%** (`varaCompra`, 23/10 1a: colchón de ~$52 M del tope hasta fin de año; se vuelve a medir en febrero con los topes nuevos; nada nuevo a Matías, que llega justo); lo de 25-34% queda guardado y se sigue midiendo; **reponer lo que ya se vende sigue en 25%** (no toca el Paulvic) ·
   2a lo que queda abajo de 25% después de buscarle techo **no se repone** y le propongo un reemplazo · lo de **25-35% con el techo ya encontrado se sigue reponiendo** y se reemplaza de a poco sólo cuando aparece algo nuevo de 35%+ que ocupe su lugar (22/10, eligió la a) · 4a tarjeta 🧮 Mezcla en
   Métricas · 5a **Watch S5 y Redmi Pad 2 no se reponen más** · 6a **Full: meta menos de $100.000/mes; un retiro de Full sólo con su
   OK** · 7a lo nuevo va a la cuenta con más lugar contra H · 8b **por ahora las 4 cuentas en H, sin 5ª cuenta ni K**. Detalle en
@@ -303,7 +303,8 @@
   (monitoreo/DVR, digital, filmadora, auto, infantil, marcha atrás), placa madre, placa de video, monitor, impresora, TV, computadora,
   servidor; lo grande (gabinete, silla y escritorio gamer, UPS, robot de limpieza, aire, heladera, lavarropas, microondas, horno y cocina
   eléctrica, hidrolavadora, monopatín, scooter, bici y moto eléctrica, sillas y mesas, valijas, musculación, cortadora robot, caja fuerte);
-  termos y térmicos (hasta que él decida). **Sí:** aspiradoras, drones (≤US$215), consumibles. **Maquillaje todo adentro con tono EXACTO**
+  termos y térmicos (hasta que él decida). El robot las aplica al pasar a Para probar y a `faltaventas` (`pyCatNoSeMira`; 23/10, 1a: 3 cámaras
+  se habían colado); `candfuera[;go]` saca las vivas. **Sí:** aspiradoras, drones (≤US$215), consumibles. **Maquillaje todo adentro con tono EXACTO**
   (marca + línea + tono + versión + tamaño; sin el tono en ML → afuera), pero sólo entra al pedido si da 25%. Resto: mismo modelo, color,
   capacidad y voltaje (110V afuera), nada de packs distintos. Misma marca ≠ mismo producto (Cabotine 30 vs 100, Animale For Men vs Black).
 - Al llegar: `pyped:llego` crea las fichas (costo pagado × recargo) y recuerda contar la oficina (`ofi`); elegir cuenta según rubro.
@@ -445,7 +446,7 @@ Si dudás si un comando existe, buscá en `sync.mjs` (`grep -n "'<nombre>'" ml-s
   que vendían 1-2 cada 14 d no vendieron más, Good igual plata con 1/3 de unidades, L'extase mejor; Paulvic −~$1.300/día, pocas ventas: sin certeza) y la idea de un Paulvic de
   hombre a ~$17.990. Pedido del 06/10 llegó y se pagó (ver HISTORIA). Blush sin publicación en ML.
   **Pedido `pv20261019` llegó el 22/10 COMPLETO** (114 u. + 3 testers de Witch Night/Good/Blue para la perfumería, no cuentan;
-  flete $18.000, el del remito redondeado, cargado). Falta el monto a pagar (valor declarado $660.130,71 NO es lo que se paga) → `pvped:costo:pv20261019;apagar=…;go`;
+  flete $18.000, el del remito redondeado, cargado). Facturas A 45796/97: total $798.758,16 (con IVA); se paga con 5% menos si es en 7 días hábiles (la calculadora del 06/10 fue factura × 0,95 exacto) → a pagar **$758.820,25**, cargado;
   **pagar antes del lun 02/11** (si no, +10%); con el comprobante, `pvped:pago`.
 - **Iscos del 19/10:** se publica en ML (lo hace él); al llegar fichas con costo web × 0,665 y el precio lo decido yo (peor caso). Los dos
   Nina 50 ml pueden no venir. Se esperan ~5-10%: si no deja ni el costo, avisarle.
