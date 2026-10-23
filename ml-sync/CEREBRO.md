@@ -372,6 +372,7 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
 - Si casi no lo ven (<1 visita/día), bajar no lo arregla: título, fotos, caja.
 
 ## 11 · PREMIUM Y GEMELAS (💳)
+- 🔒 **Tope para crear $550.000** (23/10/2026, él: *"nunca crear publicaciones más caras que 550.000"*): ni una Clásica nueva (`publicar`) ni una gemela (`gemelacrea`) se crea arriba de $550.000 (`TOPE_CREAR`, freno en el código). Lo que ya existe sigue con el techo de $650.000.
 - Premium que gana la caja se queda en Premium. Una Clásica gemela nunca al precio de su Premium.
 - Premium contra Clásica con plata NETA (la Premium factura más: más IIBB, mono y tope de H): vale sólo si deja igual o más por día.
 - La gemela la creo yo: `gemela` (solo lee) · `gemelacrea:<MLA>=<precio>:go` (misma publicación, comparte stock, tag 💳). Se juzga
