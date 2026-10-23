@@ -602,6 +602,10 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 
 ## 3 · MERCADERÍA (miércoles)
 
+### Nuevos de Paraguay abajo de 35% en rojo (23/10/2026, v26.12, pedido suyo)
+- Qué: `candPctCol` (index.html) pinta el % de un candidato nuevo en rojo abajo de `CAND_VARA_COMPRA`, en la fila del pedido (Nuevos) y en la tarjeta de Para probar; Listas ya lo hacía. Probados (reponer, vara 25%) no cambia.
+- Chequear: que un nuevo de 27% (Lattafa Queen of Arabia) se vea rojo y uno de 40% verde; que Probados no se ponga rojo entre 25 y 35.
+
 ### Las categorías que no se miran frenan Para probar y faltaventas (23/10/2026, eligió la a)
 - Qué: `pyCatNoSeMira` (sync.mjs) usa `PYCAT_FUERA_RE` (la regla del 03/10) en el paso pycat → Para probar y en `faltaventas`; el catálogo se sigue guardando y midiendo entero. `candfuera[;go]` descarta los candidatos vivos de esas categorías (`noTipo:'regla'`); `candfuera;prov=<p>;<cód>=<motivo>;go` descarta uno puntual (`noTipo:'duro'`).
 - Chequear: que ninguna cámara, celular, notebook, termo, etc. aparezca en Para probar; que `candfuera` sin go muestre la lista antes de sacar; que no saque lo que ya viaja.

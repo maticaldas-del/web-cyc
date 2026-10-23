@@ -2941,7 +2941,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.11';
+const APP_VERSION='26.12';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2954,6 +2954,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.12',f:'22/10',h:'23:35',c:[{n:1,t:'Paraguay → Nuevos (en el pedido y en Para probar): el % de un producto nuevo abajo de 35% (la vara para comprar algo nuevo) va en rojo, como en Listas. Probados sigue igual.'}]},
   {v:'26.11',f:'22/10',h:'19:50',c:[{n:1,t:'Pedidos → Paulvic: los testers que manda el Paulvic son probadores para la perfumería: ya no entran en la cuenta del costo de cada perfume.'}]},
   {v:'26.10',f:'22/10',h:'20:50',c:[{n:1,t:'Línea de tiempo: en las barras de ventas, lo vendido en Premium va en naranja y lo vendido con envío gratis en celeste (también hoy, que antes no se separaba). La tarjeta Vendió dice cuántas de cada una.'}]},
   {v:'26.09',f:'22/10',h:'20:30',c:[{n:1,t:'Ventas → Filtros: al lado de las cuentas, 💳 Premium y 📦 Envío gratis muestran sólo las ventas que salieron por esas publicaciones (con cuántas hay).'}]},
@@ -15504,6 +15505,9 @@ function candPisoDe(c){return CAND_VARA_COMPRA;}   // 22/10/2026: la vara de com
 // comando `pedir` del robot (CAND_VARA_COMPRA de sync.mjs): si se toca una, se toca la otra.
 const CAND_VARA_COMPRA=35;
 const CAND_PISO_TXT=()=>`${CAND_VARA_COMPRA}%`;
+// El % de algo NUEVO para comprar: abajo de la vara (35%) va en rojo, como en 📋 Listas (23/10/2026, él con el Lattafa Queen of
+// Arabia a 27% en verde dentro del pedido: "menos de 35 rojo"). Lo que ya se vende (Probados) sigue con los colores de siempre.
+const candPctCol=m=>m==null||!isFinite(m)?'var(--muted)':m<CAND_VARA_COMPRA?'var(--red)':pctColor(m);
 const CAND_MIN_VENT=100; // 03/10/2026: "100 unidades mínimo vendidas" · DESDE EL 20/10/2026 YA NO FRENA (ver CAND_MIN_VENDEDORES); queda para candMaxU y para mostrar
 // EN CATÁLOGO CON 2 O MÁS VENDEDORES EN VEZ DE 100 VENTAS (20/10/2026, eligió la 1a). Él: *"sacar las 100 ventas y que ahora sean todos
 // productos que estén en catálogo. no está en catálogo es como si vendiera menos de 100"*. ML no deja leer las ventas de otros (403) y
@@ -16809,7 +16813,7 @@ function pedidoMomentoHTML(g){
     return fila(f.c.nombre,String(f.c.cod||'').trim(),f.u,f.usd,`candSetPedir('${f.c.id}',this.value)`,`candSetPedir('${f.c.id}',0)`,
       (P.ok?'':`<div style="color:var(--red);font-weight:700">${P.bajoPiso?'⚠️ no da: '+P.motivo+' · lo agregaste igual':'🚫 '+P.motivo}</div>`)+(R.dudas.length?'<div style="color:var(--red);font-weight:700">🚨 revisá si es el mismo producto (adentro el detalle)</div>':''),
       R.fotoPY||R.fotoML||'', m!=null?m.toFixed(0)+'%'+(R.margenViejo!=null?' (medido a US$ '+R.margenViejo.toFixed(2)+')':''):null,
-      (m==null||R.margenViejo!=null)?'var(--muted)':(typeof pctColor==='function'?pctColor(m):'var(--green)'),
+      (m==null||R.margenViejo!=null)?'var(--muted)':candPctCol(m),
       pedNuevoFilaHTML(f,maxU,tc,true),
       (()=>{const nv=Number(f.c.mlVendedores);return ` · <span style="color:${nv>=CAND_MIN_VENDEDORES?'var(--green)':'var(--amber)'}">🏪 ${nv>0?nv+(nv===1?' vendedor':' vendedores')+' en ML':'sin vendedores medidos'}</span>`;})());});
   const cfg=`<details style="margin:8px 0 2px"><summary style="cursor:pointer;font-size:.68rem;color:var(--muted)">⚙️ tope y máximo por producto</summary><div style="display:flex;gap:7px;flex-wrap:wrap;align-items:flex-end;margin:8px 0 4px">
@@ -16909,7 +16913,7 @@ function pedNuevoFilaHTML(f,maxU,tc,sinCab){
   const cod=String(c.cod||'').trim();
   const puesto=f.usd>0?Math.round(f.usd*RECARGO_PY*100)/100:0;
   const mg=R.margenPct;
-  const mgCol=(mg==null||R.margenViejo!=null)?'var(--muted)':(typeof pctColor==='function'?pctColor(mg):(mg>=25?'var(--green)':'var(--amber)'));
+  const mgCol=(mg==null||R.margenViejo!=null)?'var(--muted)':candPctCol(mg);
   const caja=(t,v,sub)=>`<div style="background:var(--surface2);border-radius:8px;padding:7px 10px;min-width:0">
       <div style="font-size:.66rem;color:var(--muted);margin-bottom:2px">${t}</div>
       <div style="font-size:.92rem;line-height:1.3">${v}</div>
