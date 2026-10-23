@@ -9,18 +9,12 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 ## Abiertas
 
 1. **Mentonera facial** (Ayelen, `MLA4095170164`, 4 u. en Full, pausada): ¿cuánto costó cada una? Sin costo no la activo.
-3. **Las 20 bajas viejas** (23/10 no la entendió: explicarla en criollo) (`errores:100`, ❌ pendientes): (a) sugerida: deshacer las 13 sin motivo
-   (Reflector solar, Philips TWS, Buds Core, Pendrive 8gb, Pendrive 16gb, Joystick, Espejo 8", Godrej, Plantillas, Sony EX15,
-   Seagate 500, Adaptador $3.140, Cuba $50.000) y dejar con nota las 7 con motivo (4 Paulvic por la prueba de $21.990, WD, microSD,
-   Adyan, que se miden el 27/10) · (b) deshacer las 20.
 6. **Paulvic `pv20261019`**: pagar $758.820,25 antes del lun 02/11 (si no, +10%). Con el comprobante, `pvped:pago`.
 8. **Cupo de Full de Ayelen** (23/10): el último que cargó dice 0 lugares chicos, así que su caja quedó en 0 (~180 u. en la
    oficina: talones, metatarsos, imán, cintas, lupas, balanza, cortapelos, rebarbador…). ¿Cuánto cupo tiene hoy en ML? → `cupo:Ayelen=<chicos>/<grandes>`.
 9. **Ted Lapidus** (`MLA3310524980`): de la 4a no volvió a $65.990 porque ahí queda abajo del 25% en el peor caso (24%). Sigue a
    $72.990 y ya no busca techo. (a) sugerida: dejarlo así · (b) volver a $65.990 igual (con `!piso`).
-10. **Publicaciones nuevas** (23/10 dijo que sí, con Clásica + Premium + envío gratis si va abajo de $33.000, todo pausado). Probadas sin crear:
-   Webcam EMEET S600 (15 vendedores sin Full, $179.999-$245.949) y Sony ZX310AP blanco (4 sin Full, $65.999-$132.305), las dos para Ayelen.
-   EX15LP blanco no tiene ficha (crearla antes). Esperan su OK del precio.
+10. **EX15LP blanco**: no tiene ficha; crearla (costo del pedido) antes de publicarlo en Ayelen.
 11. **Comprados que hoy no llegan al 25%** (pedido del 14/10): Switch TP-Link TL-SF1009P 15% · Casio FX-82MS 20% · Walkie Motorola T110 −3% · CK One 200 ml −2%.
    Publicarlos igual al precio más alto que tenga sentido, o esperar.
 

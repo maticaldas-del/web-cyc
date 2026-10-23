@@ -78,7 +78,7 @@
 - **Casi todo se vende por Full. Nada fuera de Full** (18/10): lo activo en depósito con unidades lo pausa el robot cada hora; el
   "1" de depósito que pide ML no es mercadería (stock fuera de Full = 0, no cuenta en patrimonio).
 - **La mercadería no se mueve entre cuentas** (22/09): un producto nuevo queda en su cuenta para siempre. Orden para elegir dueña:
-  1) la que ya lo publica · 2) **el rubro (perfumes → Adriana)** · 3) el equilibrio: **la que más lugar tiene contra el tope de H**
+  1) la que ya lo publica · 2) **el rubro (perfumes → Adriana)** · 3) el equilibrio: **entre Ayelen y Luciana** (23/10, *"van en la de ayelen o luciana. dependiendo el cupo de monotributo"*), **la que más lugar tiene contra el tope de H**
   (proyección al cierre de la ventana de ARCA, entre las que llegan al 25%; `repartopy`, `lugarHPorCuenta`; 7a del 22/10) · y la actividad de ARCA. **Una sola cuenta por producto** (09/09; excepción Paulvic: Adriana + Persea en
   Luciana). En la MISMA cuenta sí puede repetirse.
 - **Pedidos mira el stock de las 4 cuentas juntas** (C1, 29/09: si en total se vende 10/mes y hay 10 en otra cuenta, no se compra).
