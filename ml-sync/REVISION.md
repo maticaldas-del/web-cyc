@@ -340,6 +340,13 @@ Después de los 3 Protectores de talón bajados con `!sinlinea` apoyados en la f
  · **2a:** `ventasraras` imprime 🔬 A FONDO (con motivo) y ✓ normales. Sólo las 🔬 van al ayudante en máximo.
  · **3a:** cada vuelta termina con `bajastecho:1` y deshace las ❌ del día (texto de las tareas programadas y CEREBRO 🔬).
 
+### 23/10/2026 · F9 de escasez: el precio de antes es el de antes de la PRIMERA suba (etapa 1, revisor de la completa)
+ · `frenosBajas` tomaba como "precio de antes de la escasez" el `de` de la ÚLTIMA suba de escasez. Con una escasez subida en
+   varios escalones ese número ya era de escasez (Brisa Marina $25.990 contra $18.150 real, Pizarra Rosa $6.490 contra $5.090,
+   Chispero $8.490 contra $6.990) y F9 frenaba escaleras que el CEREBRO §7 permite. Ahora busca la primera suba de escasez del
+   mismo tramo (escasez y 🪜 seguidas, 45 días). Qué chequear: que una escasez de un solo escalón siga igual y que una baja abajo
+   del precio normal real siga frenada.
+
 ### 23/10/2026 · 📈 "dice techo y no sube": la prueba en curso no es un tag mentiroso (etapa 1)
  · `planilla` sacaba en 📈 toda 📈/🔥 sin suba DESPUÉS del tag. La revisión del 21/10 volvió a poner 📈 sobre pruebas ya subidas
    (Protector de talón $5.290→$6.490 el 19/10, Hub USB $9.030→$13.990 el 13/10): la lista no se podía vaciar sin subir otra vez una

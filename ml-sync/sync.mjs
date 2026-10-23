@@ -4358,8 +4358,13 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
     let esc = null;
     { let i = tl.length - 1; while (i >= 0 && tl[i].t === 'bajando') i--;
       const te = i >= 0 && tl[i].t === 'escasez' && ahora - tl[i].ts < 45 * 864e5 ? tl[i] : null;
-      if (te) { const su = camb.filter((c) => !c.promo && !c.rev && c.a > c.de * 1.02 && Math.abs(c.ts - te.ts) <= 60 * 60e3).sort((x, y) => Math.abs(x.ts - te.ts) - Math.abs(y.ts - te.ts))[0];
-        if (su) esc = { ts: te.ts, subaTs: su.ts, preEsc: su.de, a: su.a }; } }
+      const subaDe = (t) => camb.filter((c) => !c.promo && !c.rev && c.a > c.de * 1.02 && Math.abs(c.ts - t.ts) <= 60 * 60e3).sort((x, y) => Math.abs(x.ts - t.ts) - Math.abs(y.ts - t.ts))[0];
+      // 23/10/2026 (revisor de la completa: Brisa Marina, Pizarra Rosa, Chispero): una escasez subida en VARIOS escalones tomaba como
+      // "precio de antes" el `de` del ÚLTIMO escalón (ya de escasez), no el normal de antes de que empezara. Se busca la PRIMERA suba
+      // de escasez del mismo tramo (escasez y escalera 🪜 seguidas, sin otra estrategia en el medio, 45 días).
+      let i0 = i; for (let j = i - 1; j >= 0 && ['escasez', 'bajando'].includes(tl[j].t) && ahora - tl[j].ts < 45 * 864e5; j--) if (tl[j].t === 'escasez' && subaDe(tl[j])) i0 = j;
+      if (te) { const su = subaDe(te), su0 = i0 !== i ? subaDe(tl[i0]) : su;
+        if (su) esc = { ts: te.ts, subaTs: (su0 || su).ts, preEsc: (su0 || su).de, a: su.a }; } }
     const enEscasez = !!esc;
     const escAbre = enEscasez && a >= esc.preEsc - 10;   // en escasez F7 y F8 no frenan mientras no baje del precio de antes
     const mlasSt = [d.mla, ...hermanasStockDe(links, prods || {}, d.mla)];
