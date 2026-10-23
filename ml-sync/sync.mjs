@@ -18003,6 +18003,32 @@ async function main() {
     // de hoy: días en la prueba, ritmo de antes (unidades de los 30 días antes del tag ÷ 30, con sus gemelas y hermanas de stock),
     // vendidas desde el tag y cuántas se esperaban a ese ritmo. El 95% llega con 3 esperadas y 0 vendidas (Poisson): a ese ritmo,
     // ¿cuántos días hacen falta? Agrupa por ritmo para ver dónde se va el tiempo.
+    // BILLING_PROBE=bajasviejas:<MLA>,<MLA>… (23/10/2026, SOLO LEE). Él con las 20 ❌ viejas: *"no, analizalo: quizás no hay que subirlas,
+    // pero si no tienen techo encontrado hay que buscarlo"*. Por cada una: precio de hoy, estrategia de hoy, ritmo por semana (60 d, con
+    // gemelas y hermanas), ventas de 7/30 d, línea de techo (🔴 de las rayas o 🏔️ de techo95) y el 💰. Y lo que corresponde con las reglas
+    // de hoy: con techo → queda · vende menos de 1 por semana → 💰 #punto (4a, no busca techo) · si no → 📈 buscar techo (+30%).
+    if (/^bajasviejas:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const mlas = String(process.env.BILLING_PROBE).slice('bajasviejas:'.length).split(/[,;\s]+/).map((x) => x.trim().toUpperCase()).filter((x) => /^MLA\d+$/.test(x));
+      const links = (await db.get('cyc/mllinks')) || {}, prods = (await db.get('cyc/products')) || {}, np = (await db.get('cyc/netopub')) || {};
+      const tc = parseFloat(await db.get('cyc/finanzas/tipo_cambio')) || 0; let mono = 0; try { mono = Number(await leerMonoPct(db)) || 0; } catch { mono = 0; }
+      const cache = new Map(); const hoyK = dayKeyFromISO(Date.now()); const f$ = (x) => '$' + Math.round(Number(x) || 0).toLocaleString('es-AR');
+      const tot = { queda: 0, punto: 0, techo: 0, mirar: 0 };
+      for (const m of mlas) {
+        const e = links[m] || {}; const pr = prods[e.prodId] || null; const P = Number((np[m] || {}).precio) || 0;
+        const est = (await db.get('cyc/estrategia/' + m)) || {}; let ult = '', tsU = 0, txtU = ''; for (const k of Object.keys(est).map(Number).filter((n) => n > 0).sort((x, y) => x - y)) { const x = est[k]; if (x && x.t) { ult = x.t === 'correccion' ? pasajeDe(ult) : x.t; tsU = k; txtU = String(x.m || ''); } }
+        const rs = await ritmoSemanalGrupo(db, m, links, prods, 60, cache);
+        const r7 = await ritmoSemanalGrupo(db, m, links, prods, 7, cache), r30 = await ritmoSemanalGrupo(db, m, links, prods, 30, cache);
+        const cu = pr && tc > 0 ? costoPesos(pr, 1, tc).costo : 0; const imp = ((ML_EXTRA_PCT[String(e.cuenta || '').toLowerCase()] || 4) + mono) / 100;
+        let lin = null; try { lin = (await db.get('mlapi/linea/' + m)) || null; } catch { lin = null; }
+        const R = lin && cu > 0 ? rayasPrecioLinea(lin, cu, imp, hoyK) : null;
+        const t95 = Object.entries(est).some(([k, x]) => x && techookDeTecho95(x) && Number(k) > Date.now() - 60 * 864e5) || (ult === 'techook' && RE_TECHOOK_95.test(txtU));
+        const conTecho = !!(R && R.techo) || t95;
+        let que; if (conTecho) { que = 'QUEDA: tiene línea de techo'; tot.queda++; } else if (rs == null) { que = 'MIRAR: no pude leer sus ventas'; tot.mirar++; } else if (rs < TECHO_RITMO_MIN_SEMANA) { que = `💰 PUNTO: vende ${rs.toFixed(1)}/semana, no busca techo (4a)`; tot.punto++; } else { const obj = Math.ceil((P * 1.3 + 10) / 100) * 100 - 10; que = `📈 BUSCAR TECHO: vende ${rs.toFixed(1)}/semana y no tiene techo → ${f$(obj)} (+30%)`; tot.techo++; }
+        console.log(`${m} · ${e.cuenta || '?'} · ${String(e.title || '?').slice(0, 40)} · hoy ${f$(P)} · 🏷 ${ult || '—'} · ${rs == null ? '?' : rs.toFixed(1)}/sem (7 d ${r7 == null ? '?' : r7.toFixed(1)} · 30 d ${r30 == null ? '?' : r30.toFixed(1)}) · techo ${R && R.techo ? f$(R.techo.p) : t95 ? '🏔️' : 'no'} · 💰 ${R && R.best ? f$(R.best.p) : '—'}${cu > 0 ? '' : ' · ⚠️ sin costo'}\n   → ${que}`);
+      }
+      console.log(`\n${mlas.length} miradas: ${tot.queda} quedan (con techo) · ${tot.punto} a 💰 punto (lentas) · ${tot.techo} a buscar techo · ${tot.mirar} para mirar`);
+      return;
+    }
     if (/^techodias$/.test(String(process.env.BILLING_PROBE || ''))) {
       const { filas, sinLeer } = await pruebasTechoEnCurso(db);
       const B = [['3+/día', (r) => r >= 3], ['1 a 3/día', (r) => r >= 1 && r < 3], ['1 cada 1-3 días', (r) => r >= 1 / 3 && r < 1], ['1 cada 3-7 días', (r) => r >= 1 / 7 && r < 1 / 3], ['menos de 1/semana', (r) => r > 0 && r < 1 / 7], ['sin ventas antes', (r) => !(r > 0)]];
