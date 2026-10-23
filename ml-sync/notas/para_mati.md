@@ -12,7 +12,6 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 6. **Paulvic `pv20261019`**: pagar $758.820,25 antes del lun 02/11 (si no, +10%). Con el comprobante, `pvped:pago`.
 9. **Ted Lapidus** (`MLA3310524980`): de la 4a no volvió a $65.990 porque ahí queda abajo del 25% en el peor caso (24%). Sigue a
    $72.990 y ya no busca techo. (a) sugerida: dejarlo así · (b) volver a $65.990 igual (con `!piso`).
-11. **Código 7114209** (1 u. en la oficina, US$59 del pedido de Paraguay): ¿qué producto es? El ticket y el catálogo no dicen el nombre. **EX15LP blanco**: ¿llegó? (no tiene ficha).
 
 ### De la revisión de hoy (le llegaron por Telegram el 23/10 a las 14:45; desde ahora van acá)
 R1. La deuda con ARCA del mes en curso: (a) contarla de a poco según los días que pasaron · (b) entera desde el día 1
