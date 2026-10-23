@@ -4840,7 +4840,37 @@ async function detectarErrores(db, o = {}) {
   const cats = { pendiente: por('pendiente').length, yano: por('yano').length, aviso: por('aviso').length, sindato: por('sindato').length, bien: por('bien').length, salida: por('salida').length, foto: foto.length, gemela: fotoGem.length, hermana: fotoHer.length };
   const suma = Object.values(cats).reduce((a, b) => a + b, 0);
   console.log(`\nLa cuenta: ❌ ${cats.pendiente} + ↩️ ${cats.yano} + ⚠️ ${cats.aviso} + ❓ ${cats.sindato} + ✅ ${cats.bien} + 🔚 ${cats.salida} + 📷 ${cats.foto} + 💳 ${cats.gemela} + 🔗 ${cats.hermana} = ${suma} de ${N} ${suma === N ? '✓ cierra' : '⚠️ NO CIERRA: hay cambios saliendo en silencio'}`);
-  const res = { n: N, cats, items, foto, fotoGem, fotoHer, hechos: [], noHechos: [] };
+  // ── 🆕 LANZAMIENTOS QUE VENDIERON Y NO SUBIERON (23/10/2026, él con el Masajeador: "¿no busca techo?"). No es un cambio sino
+  // algo que FALTÓ hacer: la regla del 21/10 dice que lo nuevo que vende sube +30% a buscar techo en la misma vuelta. Sale acá toda
+  // Clásica activa con stock cuyo tag de hoy es 🆕 y que vendió (ella o una gemela/hermana del mismo stock) después del tag sin una
+  // suba mía después de esa venta. La lista tiene que quedar vacía al terminar la vuelta (se sube con el comando que trae).
+  const lanza = [], lzC = { nuevo: 0, inact: 0, sinVenta: 0, subio: 0 };
+  { const vdC = new Map(); const ventasDia = async (k) => { if (!vdC.has(k)) { let o = null; try { o = (await db.get('cyc/ventaprod/' + k)) || {}; } catch { o = null; } vdC.set(k, o); } return vdC.get(k); };
+    for (const [m, h] of Object.entries(est)) {
+      const e = links[m]; if (!e || e.gemelaDe || e.ignored || e.noVendemosMas) continue;
+      let ult = '', tsU = 0; for (const k of Object.keys(h || {}).map(Number).filter((n) => n > 0).sort((x, y) => x - y)) { const x = h[k]; if (!x || !x.t) continue; ult = x.t === 'correccion' ? pasajeDe(ult) : x.t; tsU = k; }
+      if (ult !== 'nuevo' || !tsU) continue;
+      lzC.nuevo++; if (!/^active/.test(String(e.status || ''))) { lzC.inact++; continue; }   // activa = con stock en Full (sin stock ML la pausa)
+      const grupo = [m, ...hermanasStockDe(links, prods, m), ...Object.keys(links).filter((g) => (links[g] || {}).gemelaDe === m)];
+      let primera = 0, uds = 0, sinLeer = false;
+      for (let t = Math.max(tsU, ahora - 30 * 864e5), i = 0; i < 31 && t <= ahora + 864e5; t += 864e5, i++) {
+        const vd = await ventasDia(dayKeyFromISO(t)); if (vd == null) { sinLeer = true; continue; }
+        for (const v of Object.values(vd)) { if (!v || v.cancelada || !grupo.includes(v.mla)) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ts > tsU) { uds += Number(v.qty) || 1; if (!primera || ts < primera) primera = ts; } }
+      }
+      if (!primera) { if (sinLeer) lanza.push({ mla: m, e, sinLeer: true }); else lzC.sinVenta++; continue; }
+      const subio = Object.values(cc).some((c) => c && String(c.mla) === m && Number(c.ts) > primera && Number(c.a) > Number(c.de) * 1.02);
+      if (subio) { lzC.subio++; continue; }
+      const P = Number((np[m] || {}).precio) || 0, obj = P > 0 ? Math.min(objTerm(P * 1.3) || TECHO_DURO, TECHO_DURO) : 0;
+      lanza.push({ mla: m, e, primera, uds, P, obj, tsU });
+    }
+  }
+  bloque('🆕 LANZAMIENTOS QUE VENDIERON Y NO SUBIERON · subir +30% a buscar techo EN ESTA VUELTA', lanza, (x) => {
+    if (x.sinLeer) { console.log(`${x.mla} · ${x.e.cuenta || '?'} · ${String(x.e.title || '?').slice(0, 44)} · ❓ no pude leer sus ventas: mirarlo a mano`); return; }
+    console.log(`${x.mla} · ${x.e.cuenta || '?'} · ${String(x.e.title || '?').slice(0, 44)} · 🆕 desde ${fecha(x.tsU)} · vendió ${x.uds} u. (la primera ${fecha(x.primera)}) · hoy ${x.P ? $(x.P) : '¿?'}`);
+    if (x.obj > x.P) console.log(`   ▶️ decido:${x.mla}=${x.obj}#techo|Lanzamiento que vendió: +30% a buscar techo (regla del 21/10, el detector);go`);
+  });
+  console.log(`(miré ${lzC.nuevo} con 🆕 de hoy: ${lzC.inact} no activas · ${lzC.sinVenta} sin venta desde el tag · ${lzC.subio} ya subieron después de vender · ${lanza.length} para subir)`);
+  const res = { n: N, cats, items, foto, fotoGem, fotoHer, hechos: [], noHechos: [], lanza };
   // ── 4 · deshacer (`:go`): sólo lo anotado con el formato nuevo; lo de antes se deshace a mano con su comando
   const aDeshacer = por('pendiente').filter((x) => x.fmt >= 2 && x.fuente !== 'el detector');
   if (!aplicar) { if (aDeshacer.length) console.log(`\n(sin :go no toco nada · errores:${horas}:go por ml-sync deshace ${aDeshacer.length})`); return res; }
@@ -10996,14 +11026,14 @@ async function pycatResumenEscribir(db, cat, cands, products) {
   // El catálogo es de NISSEI: sólo cuentan candidatos y fichas de Nissei (etapa 3, 20/10/2026, ver `provPyDeBot`).
   const esCand = pyCodMatcher(Object.values(cands || {}).filter((c) => c && provPyDeBot(c) === 'nissei').map((c) => c.cod).filter(Boolean));
   const esFicha = pyCodMatcher((products || []).filter((p) => p && provPyDeBot(p) === 'nissei').map((p) => p.codPy).filter(Boolean));
-  const r = { t: Date.now(), tot: 0, cand: 0, ficha: 0, fz: 0, bajo: 0, sc: 0, sv: 0, nomed: 0, nm: 0 };
+  const r = { t: Date.now(), tot: 0, cand: 0, ficha: 0, fz: 0, bajo: 0, sc: 0, scr: 0, sv: 0, nomed: 0, nm: 0 };
   for (const [cod, e] of Object.entries(cat || {})) {
     if (!e || !e.n) continue; r.tot++;
     if (e.cand || esCand(cod)) { r.cand++; continue; }
     if (esFicha(cod)) { r.ficha++; continue; }
     const m = e.m != null && isFinite(e.m) ? Number(e.m) : null;
     if (m != null) { if (m < CAND_PISO_PCT) r.bajo++; else r.nomed++; continue; }
-    if (e.fz) { r.fz++; continue; } if (e.sc) { r.sc++; continue; } if (e.sv) { r.sv++; continue; }
+    if (e.fz) { r.fz++; continue; } if (e.sc) { if (Number(e.qp || 0) >= PY_NOMBRE_VER) r.scr++; else r.sc++; continue; } if (e.sv) { r.sv++; continue; }
     r.nomed++; if (e.nm) r.nm++;   // etapa 4 (20/10/2026): de los sin medir, los que ML no deja medir (siguen en `nomed`: la web suma así)
   }
   // CUÁNTOS SE ANALIZARON HOY (18/10/2026, él: "cuántas se analizaron hoy en no medidos, un número en verde -x"). `dia` guarda
@@ -11023,6 +11053,27 @@ async function pycatResumenEscribir(db, cat, cands, products) {
 // interno entre paréntesis y la columna del tamaño repetida y cortada al final. Así ML no lo encuentra o el chequeo lo descarta
 // por un "tamaño 4" que no existe. Esto arma el nombre para BUSCAR y COMPARAR (el de la lista no se toca).
 const LISTA_NOMBRE_VER = 1;
+// EL NOMBRE DE NISSEI TRADUCIDO (23/10/2026, eligió la 1a: "si no se encuentran aunque estén traducidos ponelos como revisados").
+// comprasparaguay escribe en portugués ("Fone de Ouvido ... - Preto") y ML busca en castellano. Se agrega una búsqueda con el nombre
+// traducido; lo que estaba "sin catálogo exacto" se vuelve a buscar UNA vez con la traducción (`qp`), y si sigue sin aparecer queda
+// ✔️ revisado (`scr` en `cyc/pycatres`): ya no cuenta como "sin medir". Se vuelve a buscar solo cada 60 días como antes.
+const PY_NOMBRE_VER = 1;
+const PY_TRAD = [
+  [/\bmouse\s+sem\s+fio\b/gi, 'mouse inalambrico'], [/\bfones?\s+de\s+ouvido\b/gi, 'auriculares'], [/\bsem\s+fio\b/gi, 'inalambrico'],
+  [/\bcaixa\s+de\s+som\b/gi, 'parlante'], [/\balto[- ]?falante\b/gi, 'parlante'], [/\bsecador\s+de\s+cabelo\b/gi, 'secador de pelo'],
+  [/\bcart[aã]o\s+de\s+mem[oó]ria\b/gi, 'tarjeta de memoria'], [/\bgarrafa\s+t[eé]rmica\b/gi, 'termo'], [/\bcapa\s+para\b/gi, 'funda para'],
+  [/\bpel[ií]cula\b/gi, 'vidrio templado'], [/\brel[oó]gio\b/gi, 'reloj'], [/\bfeminino\b/gi, 'mujer'], [/\bmasculino\b/gi, 'hombre'],
+  [/\bunissex\b/gi, 'unisex'], [/\bpreto\b/gi, 'negro'], [/\bbranco\b/gi, 'blanco'], [/\bvermelho\b/gi, 'rojo'], [/\bcinza\b/gi, 'gris'],
+  [/\bprata\b/gi, 'plateado'], [/\b(dourado|ouro)\b/gi, 'dorado'], [/\bamarelo\b/gi, 'amarillo'], [/\broxo\b/gi, 'violeta'], [/\blaranja\b/gi, 'naranja'],
+  [/\bmarrom\b/gi, 'marron'], [/\bcarregador\b/gi, 'cargador'], [/\bcabo\b/gi, 'cable'], [/\bc[aâ]mera\b/gi, 'camara'], [/\bgarrafa\b/gi, 'botella'],
+  [/\bescova\b/gi, 'cepillo'], [/\b(prancha|chapinha)\b/gi, 'planchita'], [/\bbarbeador\b/gi, 'afeitadora'], [/\baparador\b/gi, 'cortadora'],
+  [/\bfritadeira\b/gi, 'freidora'], [/\bliquidificador\b/gi, 'licuadora'], [/\baspirador\b/gi, 'aspiradora'], [/\bl[aâ]mpada\b/gi, 'lampara'],
+  [/\blumin[aá]ria\b/gi, 'lampara'], [/\bbrinquedo\b/gi, 'juguete'], [/\bboneca\b/gi, 'muñeca'], [/\bjogo\b/gi, 'juego'], [/\bcontrole\b/gi, 'control'],
+  [/\b[oó]culos\b/gi, 'anteojos'], [/\bcarteira\b/gi, 'billetera'], [/\bpanela\b/gi, 'olla'], [/\bfrigideira\b/gi, 'sarten'], [/\bfaca\b/gi, 'cuchillo'],
+  [/\bt[eê]nis\b/gi, 'zapatillas'], [/\blanterna\b/gi, 'linterna'], [/\bbalan[cç]a\b/gi, 'balanza'], [/\btesoura\b/gi, 'tijera'],
+  [/\bsuporte\b/gi, 'soporte'], [/\bmicrofone\b/gi, 'microfono'], [/\bcopo\b/gi, 'vaso'], [/\bbolsa\b/gi, 'cartera'], [/\bpilhas?\b/gi, 'pilas'],
+];
+function traducirPyNombre(n) { let s = String(n || ''); for (const [re, r] of PY_TRAD) s = s.replace(re, r); return s.replace(/\s+-\s+/g, ' ').replace(/\s+/g, ' ').trim(); }
 const LISTA_MARCAS = [[/^RV\.\s*/i, 'Revlon '], [/^RML\b\.?\s*/i, 'Rimmel '], [/^MB\.\s*/i, 'Maybelline '], [/^S\.H\.?\s+/i, 'Sally Hansen '],
   [/^A\.W\.\s*/i, 'Artez Westerley '], [/^DRMGLOS\b/i, 'Dermaglos'], [/^H\.PRAVIA\b/i, 'Heno de Pravia'], [/^S\.L\.\s*/i, 'Siempre Libre '],
   [/^MedNRJ\b/i, 'Media Naranja'], [/^TioNACHO\b/i, 'Tio Nacho'], [/^nic\b/, 'Nic'], [/^GinoBOGANI\b/i, 'Gino Bogani'], [/^KR\s+/i, 'Kevin '],
@@ -11096,7 +11147,8 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
     // en cada vuelta y gastaban la tanda.
     // Lo que no se encontró en ML con el nombre viejo (sin catálogo exacto / nadie lo vende) se vuelve a buscar con el nombre
     // traducido aunque esté fresco (`qv` = versión del traductor con que se buscó).
-    const _rebuscar = esLista && (e.sc || e.sv || e.noEs) && Number(e.qv || 0) !== LISTA_NOMBRE_VER;   // noEs: se busca de nuevo, sin el catálogo rechazado
+    const _rebuscar = (esLista && (e.sc || e.sv || e.noEs) && Number(e.qv || 0) !== LISTA_NOMBRE_VER)   // noEs: se busca de nuevo, sin el catálogo rechazado
+      || (!esLista && e.sc && Number(e.qp || 0) !== PY_NOMBRE_VER);   // Nissei sin catálogo exacto: una vez más con el nombre traducido
     // 1.5a (21/10/2026): lo medido con la cuenta de antes del peor caso (`cv` ≠ `CAND_CALC_VER`) y que estaba cerca de dar (20%+) se
     // vuelve a medir: con la retención restada puede dejar de dar.
     const _cuentaVieja = e.m != null && Number(e.m) >= 20 && Number(e.cv || 0) !== CAND_CALC_VER;
@@ -11166,11 +11218,13 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
       // BÚSQUEDA: primero marca + modelo, después el nombre sin el relleno en portugués, después el nombre entero. comprasparaguay
       // escribe "Fone de Ouvido JBL Tune 520BT - Preto" y buscando eso ML trae el 730BT; con "jbl 520bt" trae el correcto.
       const nB = esLista ? limpiarNombreLista(e.n) || e.n : e.n;   // listas: el nombre traducido (ver limpiarNombreLista)
-      if (esLista) upd.qv = LISTA_NOMBRE_VER;
+      if (esLista) upd.qv = LISTA_NOMBRE_VER; else upd.qp = PY_NOMBRE_VER;
       const _rechazado = esLista && e.noEs ? String(e.noEsCat || e.mi || '').toUpperCase() : '';
       if (esLista && e.noEs && !e.noEsCat && e.mi) upd.noEsCat = e.mi;
       const mods = _rvMod(nB); const pal = _rvNorm(nB).split(' ').filter((w) => (w.length >= 2 || /^\d$/.test(w)) && !RV_VACIAS.has(w) && !PYCAT_RELLENO.has(w));
-      const qs = [...new Set([mods.length ? [pal[0], ...mods].filter(Boolean).join(' ') : null, pal.slice(0, 7).join(' '), String(nB).slice(0, 80)].filter((x) => x && x.length >= 3))];
+      const nT = esLista ? '' : traducirPyNombre(nB);   // Nissei: también con el nombre traducido (23/10/2026)
+      const palT = nT && nT !== nB ? _rvNorm(nT).split(' ').filter((w) => (w.length >= 2 || /^\d$/.test(w)) && !RV_VACIAS.has(w)).slice(0, 7).join(' ') : '';
+      const qs = [...new Set([mods.length ? [pal[0], ...mods].filter(Boolean).join(' ') : null, palT || null, pal.slice(0, 7).join(' '), String(nB).slice(0, 80)].filter((x) => x && x.length >= 3))];
       const vistosB = new Map();
       // CATÁLOGO FIJADO A MANO (`listadato`, 18/10/2026): el chat de compras miró ML y dijo cuál es el producto correcto. Se usa ése
       // y no se busca nada; el chequeo de nombre no lo descarta (ya lo confirmó una persona mirando la foto).
@@ -17873,6 +17927,30 @@ async function main() {
     // 35 perdemos muchos productos, pero también es verdad que ya llenamos el cupo del monotributo"*. Cuenta lo NUEVO que se podría
     // comprar (candidatos de Paraguay vivos y productos de las listas), por tramo de %: cuántos, cuántos ya pasaron todo (2+
     // vendedores, mismo producto confirmado) y cuánto venden en ML; y lista los de 30 a 35%.
+    // BILLING_PROBE=pycatdia[:<días>] (23/10/2026, SOLO LEE). Él: *"9471 no medidos en nissei, bajemos ese número, pasame cuántas
+    // sacamos de no revisadas por día"*. Desglosa el catálogo de Nissei (`mlapi/pycat`) en lo que la web junta en "❔ No medidos"
+    // (sin medir de verdad · sin catálogo exacto en ML · nadie lo vende · afuera por regla) y cuenta, día por día, cuántos midió el
+    // robot (`t` de cada producto: la última vez que lo buscó en ML).
+    if (/^pycatdia(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const DIAS = Math.max(3, parseInt(String(process.env.BILLING_PROBE).split(':')[1]) || 14);
+      const cat = (await db.get('mlapi/pycat')) || {}; const R = (await db.get('cyc/pycatres')) || {};
+      const c = { tot: 0, sinT: 0, mAlto: 0, mBajo: 0, sc: 0, scr: 0, sv: 0, fz: 0, nm: 0, tSinNada: 0, qp: 0, qpEnc: 0, qpSv: 0, qpDa: 0 }; const encontrados = []; const porDia = {};
+      for (const e of Object.values(cat)) { if (!e || !e.n) continue; c.tot++;
+        if (e.t) { const d = dayKeyFromISO(Number(e.t)); porDia[d] = (porDia[d] || 0) + 1; }
+        if (Number(e.qp || 0) >= PY_NOMBRE_VER) { c.qp++; if (!e.sc) { c.qpEnc++; if (e.sv) c.qpSv++; else if (e.m != null && Number(e.m) >= CAND_PISO_PCT) { c.qpDa++; encontrados.push(`${Number(e.m).toFixed(0)}% · ${String(e.n).slice(0, 70)} → ${e.mi || ''}`); } else if (e.m != null) encontrados.push(`${Number(e.m).toFixed(0)}% · ${String(e.n).slice(0, 70)}`); } }
+        if (e.fz) c.fz++; else if (e.m != null && isFinite(e.m)) { if (Number(e.m) >= CAND_PISO_PCT) c.mAlto++; else c.mBajo++; }
+        else if (e.sc) { c.sc++; if (Number(e.qp || 0) >= PY_NOMBRE_VER) c.scr++; } else if (e.sv) c.sv++; else if (e.nm) c.nm++; else if (!e.t) c.sinT++; else c.tSinNada++; }
+      console.log(`=== CATÁLOGO DE NISSEI · ${c.tot} productos ===`);
+      console.log(`  medido con % de 25+ (pasan a candidatos o ya lo son) ${c.mAlto} · medido abajo de 25% ${c.mBajo}`);
+      console.log(`  buscado y SIN el mismo producto en ML ${c.sc} (de esos ✔️ revisados también traducidos ${c.scr}) · encontrado pero NADIE lo vende ${c.sv} · afuera por regla ${c.fz}`);
+      console.log(`  ML no deja medirlo ${c.nm} · NUNCA buscado ${c.sinT} · buscado sin resultado guardado ${c.tSinNada}`);
+      console.log(`  web (cyc/pycatres): nomed ${R.nomed} · sc ${R.sc} · scr ${R.scr} · sv ${R.sv} · fz ${R.fz} · cand ${R.cand} · ficha ${R.ficha} · bajo ${R.bajo} · al ${R.t ? new Date(R.t).toISOString() : '?'}`);
+      console.log(`\n── CON EL NOMBRE TRADUCIDO: ${c.qp} buscados · ${c.qpEnc} aparecieron en ML (${c.qpSv} sin vendedores · ${c.qpDa} dan 25%+) · ${c.qp - c.qpEnc} siguen sin aparecer (✔️ revisados) ──`);
+      for (const x of encontrados.slice(0, 40)) console.log('  ' + x);
+      console.log(`\n── CUÁNTOS BUSCÓ EL ROBOT EN ML, POR DÍA (la última vez de cada producto) ──`);
+      for (const d of Object.keys(porDia).sort().slice(-DIAS)) console.log(`  ${d.replace(/_/g, '/')}  ${String(porDia[d]).padStart(5)}`);
+      return;
+    }
     if (/^vara$/.test(String(process.env.BILLING_PROBE || ''))) {
       const cands = (await db.get('cyc/candidatos_py')) || {};
       const T = [[25, 30], [30, 35], [35, 50], [50, 1e9]], nomT = (t) => (t[1] > 1e8 ? `${t[0]}%+` : `${t[0]}-${t[1]}%`);
@@ -45683,17 +45761,22 @@ async function main() {
       try {
         const mlas = [...new Set(Object.values(grupos).flat().map(({ v }) => v.mla).filter(Boolean))];
         const tf = (await db.get('cyc/techofreno')) || {};
+        // 23/10/2026 (él con el Masajeador: "¿no busca techo?"): una venta de una 💳/📦 gemela se juzga con la estrategia de su
+        // CLÁSICA (la gemela sólo sigue su precio). Antes se leía la de la gemela ('gemela', que da ✓) y un 🆕 lanzamiento que
+        // vendió por la Premium no salía como "lanzamiento que vendió" ni subía.
+        const clasDe = {}; for (const m of mlas) { let g = null; try { g = await db.get('cyc/mllinks/' + m + '/gemelaDe'); } catch { g = null; } if (g) clasDe[m] = String(g); }
+        const estDe = async (m) => (await db.get('cyc/estrategia/' + (clasDe[m] || m))) || {};
         const OK = new Set(['techo', 'techook', 'sobra', 'escasez', 'sinrepo', 'liquidando', 'remate', 'nuevo', 'gemela', 'fecha', 'prueba']);
         const malas = [], buenas = [];
         for (const mla of mlas) {
-          const est = (await db.get('cyc/estrategia/' + mla)) || {};
+          const est = await estDe(mla);
           const tags = Object.entries(est).map(([k, x]) => ({ ts: Number(k), t: x && x.t })).filter((x) => x.ts > 0 && x.t).sort((a, b) => a.ts - b.ts);
           let ult = '', tsU = 0; for (const x of tags) { ult = x.t === 'correccion' ? pasajeDe(ult) : x.t; tsU = x.ts; }
           const dias = tsU ? Math.floor((hoy - tsU) / 864e5) : null;
-          const conTecho = !!(tf[mla] && Number(tf[mla].probado) > 0);
+          const conTecho = !!(tf[clasDe[mla] || mla] && Number(tf[clasDe[mla] || mla].probado) > 0);
           const bien = OK.has(ult) || (ult === 'bajando' && conTecho) || (['volviendo', 'desobra'].includes(ult) && (conTecho || (dias != null && dias < 7)));
           const nomV = String((Object.values(grupos).flat().find(({ v }) => v.mla === mla) || {}).v?.prod || '').slice(0, 40);
-          (bien ? buenas : malas).push(`${mla} · ${nomV} · ${ult || 'sin estrategia'}${dias != null ? ` (hace ${dias} d)` : ''}${conTecho ? ` · techo probado $${Math.round(Number(tf[mla].probado)).toLocaleString('es-AR')}` : ''}`);
+          (bien ? buenas : malas).push(`${mla} · ${nomV}${clasDe[mla] ? ' (gemela de ' + clasDe[mla] + ')' : ''} · ${ult || 'sin estrategia'}${dias != null ? ` (hace ${dias} d)` : ''}${conTecho ? ` · techo probado $${Math.round(Number(tf[mla].probado)).toLocaleString('es-AR')}` : ''}`);
         }
         { const tsMax = Object.values(grupos).flat().reduce((a, { ts }) => Math.max(a, ts || 0), 0);
           if (_desdeVistas != null) console.log(`\n📌 ventas nuevas desde ${new Date(_desdeVistas - 3 * 36e5).toISOString().slice(5, 16).replace('T', ' ')} · ${Object.keys(grupos).length} compras · al terminar la vuelta: ${tsMax ? `ventasvistas:${tsMax};go` : '(no hay ventas nuevas: no hace falta anotar nada)'}`); }
@@ -45707,12 +45790,12 @@ async function main() {
         for (const mla of mlas) {
           if (_aFondo.has(mla)) continue;
           if (malas.some((l) => l.startsWith(mla + ' '))) { _aFondo.set(mla, 'sin estrategia con techo'); continue; }
-          const est = (await db.get('cyc/estrategia/' + mla)) || {};
+          const est = await estDe(mla);
           const tags = Object.entries(est).map(([k, x]) => ({ ts: Number(k), t: x && x.t })).filter((x) => x.ts > 0 && x.t).sort((a, b) => a.ts - b.ts);
           let ult = '', tsU = 0; for (const x of tags) { ult = x.t === 'correccion' ? pasajeDe(ult) : x.t; tsU = x.ts; }
           const dias = tsU ? Math.floor((hoy - tsU) / 864e5) : null;
           if (ult === 'escasez') _aFondo.set(mla, 'escasez: ¿subir más o se frenó?');
-          else if (ult === 'nuevo') _aFondo.set(mla, 'lanzamiento que vendió: ¿buscar techo?');
+          else if (ult === 'nuevo') _aFondo.set(mla, `lanzamiento que vendió${clasDe[mla] ? ' (por la gemela: se sube ' + clasDe[mla] + ')' : ''}: subir +30% a buscar techo EN ESTA VUELTA`);
           else if (['techo', 'punto', 'prueba'].includes(ult) && dias != null && dias >= 7) _aFondo.set(mla, `prueba de ${ult} con ${dias} d: juzgarla`);
         }
         const normales = mlas.filter((m) => !_aFondo.has(m));
