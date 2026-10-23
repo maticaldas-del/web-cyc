@@ -17945,19 +17945,21 @@ async function main() {
       const DIA = 864e5, ahora = Date.now();
       const est = (await db.get('cyc/estrategia')) || {}, links = (await db.get('cyc/mllinks')) || {}, prods = (await db.get('cyc/products')) || {};
       const vdC = new Map(); const vDia = async (k) => { if (!vdC.has(k)) { let o = null; try { o = (await db.get('cyc/ventaprod/' + k)) || {}; } catch { o = null; } vdC.set(k, o); } return vdC.get(k); };
+      const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
       const filas = []; let sinLeer = 0;
       for (const [m, h] of Object.entries(est)) {
         const e = links[m]; if (!e || e.gemelaDe || e.ignored || e.noVendemosMas || !/^active/.test(String(e.status || ''))) continue;
         let ult = '', tsU = 0; for (const k of Object.keys(h || {}).map(Number).filter((n) => n > 0).sort((x, y) => x - y)) { const x = h[k]; if (!x || !x.t) continue; ult = x.t === 'correccion' ? pasajeDe(ult) : x.t; tsU = k; }
         if (ult !== 'techo' || !tsU) continue;
         const grupo = [m, ...hermanasStockDe(links, prods, m), ...Object.keys(links).filter((g) => (links[g] || {}).gemelaDe === m)];
-        let uA = 0, uD = 0, falla = false;
+        let uA = 0, uD = 0, gA = 0, gD = 0, sinC = 0, falla = false;
         for (let t = tsU - 30 * DIA; t <= ahora + DIA; t += DIA) { const vd = await vDia(dayKeyFromISO(t)); if (vd == null) { falla = true; continue; }
           for (const v of Object.values(vd)) { if (!v || v.cancelada || !grupo.includes(v.mla)) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; const q = Number(v.qty) || 1;
-            if (ts >= tsU - 30 * DIA && ts < tsU) uA += q; else if (ts >= tsU) uD += q; } }
+            const g = v.costo > 0 ? (Number(v.neto) || 0) - v.costo - (Number(v.total) || 0) * (mlExtraPct(v.cuenta) + monoP) / 100 : 0; if (!(v.costo > 0)) sinC++;
+            if (ts >= tsU - 30 * DIA && ts < tsU) { uA += q; gA += g; } else if (ts >= tsU) { uD += q; gD += g; } } }
         if (falla) sinLeer++;
         const r = uA / 30, d = (ahora - tsU) / DIA;
-        filas.push({ m, nom: String(e.title || '?').slice(0, 34), cta: e.cuenta || '?', d, r, uD, esp: r * d, d95: r > 0 ? 3 / r : Infinity });
+        filas.push({ m, nom: String(e.title || '?').slice(0, 34), cta: e.cuenta || '?', d, r, uD, esp: r * d, d95: r > 0 ? 3 / r : Infinity, gdA: gA / 30, gdD: d >= 0.5 ? gD / d : null, sinC });
       }
       const B = [['3+/día', (r) => r >= 3], ['1 a 3/día', (r) => r >= 1 && r < 3], ['1 cada 1-3 días', (r) => r >= 1 / 3 && r < 1], ['1 cada 3-7 días', (r) => r >= 1 / 7 && r < 1 / 3], ['menos de 1/semana', (r) => r > 0 && r < 1 / 7], ['sin ventas antes', (r) => !(r > 0)]];
       console.log(`=== 📈 PRUEBAS DE TECHO EN CURSO · ${filas.length} publicaciones activas${sinLeer ? ` · ⚠️ ${sinLeer} con algún día de ventas sin leer` : ''} ===`);
@@ -17965,9 +17967,10 @@ async function main() {
       for (const [n, f] of B) { const x = filas.filter((z) => f(z.r)); if (!x.length) continue;
         const dProm = x.reduce((a, z) => a + z.d, 0) / x.length, d95 = x.filter((z) => isFinite(z.d95)).map((z) => z.d95);
         const vend = x.filter((z) => z.uD > 0).length, cert = x.filter((z) => z.uD === 0 && z.esp >= 3).length;
-        console.log(`${n.padEnd(18)} ${String(x.length).padStart(3)} · llevan ${dProm.toFixed(1)} d de prueba · para el 95% hacen falta ${d95.length ? (d95.reduce((a, y) => a + y, 0) / d95.length).toFixed(1) + ' d' : 'nunca (sin ritmo)'} · ya vendieron al precio nuevo ${vend} · 0 vendidas con 3+ esperadas (ya hay 95%) ${cert}`); }
+        const gA = x.reduce((s2, z) => s2 + z.gdA, 0), xd = x.filter((z) => z.gdD != null), gAd = xd.reduce((s2, z) => s2 + z.gdA, 0), gDd = xd.reduce((s2, z) => s2 + z.gdD, 0);
+        console.log(`${n.padEnd(18)} ${String(x.length).padStart(3)} · llevan ${dProm.toFixed(1)} d de prueba · para el 95% hacen falta ${d95.length ? (d95.reduce((a, y) => a + y, 0) / d95.length).toFixed(1) + ' d' : 'nunca (sin ritmo)'} · ya vendieron al precio nuevo ${vend} · 0 vendidas con 3+ esperadas (ya hay 95%) ${cert} · ganancia/día juntas antes $${Math.round(gAd).toLocaleString('es-AR')} → después $${Math.round(gDd).toLocaleString('es-AR')} (${xd.length} con medio día o más)`); }
       console.log('\n── una por una (de más días a menos) ──');
-      for (const z of filas.sort((a, b) => b.d - a.d)) console.log(`${z.m} · ${z.cta} · ${z.nom} · ${z.d.toFixed(1)} d · antes ${z.r.toFixed(2)}/día · vendió ${z.uD} (esperadas ${z.esp.toFixed(1)}) · 95% a los ${isFinite(z.d95) ? z.d95.toFixed(0) + ' d' : '—'}`);
+      for (const z of filas.sort((a, b) => b.d - a.d)) console.log(`${z.m} · ${z.cta} · ${z.nom} · ${z.d.toFixed(1)} d · antes ${z.r.toFixed(2)}/día · vendió ${z.uD} (esperadas ${z.esp.toFixed(1)}) · 95% a los ${isFinite(z.d95) ? z.d95.toFixed(0) + ' d' : '—'} · ganancia/día antes $${Math.round(z.gdA).toLocaleString('es-AR')} → después ${z.gdD == null ? '?' : '$' + Math.round(z.gdD).toLocaleString('es-AR')}${z.sinC ? ' (' + z.sinC + ' sin costo)' : ''}`);
       return;
     }
     if (/^pycatdia(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
