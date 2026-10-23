@@ -97,6 +97,13 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
 - Qué: cuenta los candidatos de Paraguay y los productos de las listas por tramo de % (25-30, 30-35, 35-50, 50+), cuántos pasaron todo y cuántos venden 100+, y lista los de 30-35% que pasaron todo.
 - Chequear: que use los mismos filtros que `faltaventas` (vivos, sin categoría que no se mira, costo vigente).
 
+### Packs: sí si el pack tiene su propio catálogo (23/10/2026, regla suya, etapa 3)
+- **Qué es:** él: *"si el pack está en catálogo sí se arman"*. Reemplaza el "packs NO" del 27/09, que era por sacar de la competencia
+  algo que hoy compite suelto. Un pack se mide como cualquier producto nuevo contra SU catálogo (2+ vendedores, mismo pack exacto).
+- **Dónde vive:** CLAUDE.md §5 (renglón de la comisión). Primer caso: rejilla Media Naranja 40x45 → no hay catálogo de pack de esa
+  rejilla (los x4/x6 de Media Naranja son trapo de piso, otro producto): no se compra.
+- **Qué chequear:** que la medición de candidatos no confunda un pack con la unidad (ya lo frena `pack`/`3x`/`x2` en CEREBRO §17).
+
 ### `!activar` sin fecha de alta (23/10/2026, etapa 1)
 - **Qué es:** la única salida mía sin él (corregir el precio de lo que NUNCA estuvo activo al activarlo) pedía `altaTs` en el renglón de
   `cyc/mllinks`; el Sacapelusas y la Mentonera (Ayelen) no lo tenían y quedaban frenados por F2/F7 aunque su línea dijera "siempre

@@ -234,7 +234,7 @@
   solas cada hora a su Clásica (`gemelaSigue=off` apaga). Caja perdida por cuotas = candidata a gemela, no a bajar.
 - **Terminaciones 90/990** (99 en lo muy barato). La regla de no cruzar números redondos se SACÓ (medido 13/10).
 - 🪜 Arriba de $15.000 hay ~15% de zona muerta de comisión: suba que cae ahí se frena salvo `!escalon`. La comisión de ML tiene cargo
-  fijo ~$1.230 por venta: abajo de ~$4.000 se come el producto. Packs NO (*"al estar en pack las saco de competencia"*).
+  fijo ~$1.230 por venta: abajo de ~$4.000 se come el producto. Packs: **sí si el pack tiene su propio catálogo en ML** (23/10, *"si el pack está en catálogo sí se arman"*); armar un pack de algo que hoy compite suelto en su catálogo, no (27/09, *"al estar en pack las saco de competencia"*).
 - **Fechas:** calendario y eventos de ML en el `informe` (secciones 14/14b), `fechas`, `eventos`. El ×1,4 de regalables NO está
   confirmado. **Navidad: a mediados de noviembre se pide para 45 días** (recordatorio 14/11).
 - **El precio sugerido de ML** (`sugP`) es referencia, nunca motivo para bajar algo que vende.
