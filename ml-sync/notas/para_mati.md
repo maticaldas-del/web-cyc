@@ -8,15 +8,10 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 
 ## Abiertas
 
-1. **Mentonera facial** (Ayelen, `MLA4095170164`, 4 u. en Full, pausada): ¿cuánto costó cada una? Sin costo no la activo.
+1. **Mentonera facial** (Ayelen, `MLA4095170164`, 6 u., pausada): ¿cuánto costó cada una? ¿Hay ticket? Es la ÚNICA ficha que hoy queda sin costo (revisado 23/10). Sin costo no la activo.
 6. **Paulvic `pv20261019`**: pagar $758.820,25 antes del lun 02/11 (si no, +10%). Con el comprobante, `pvped:pago`.
-8. **Cupo de Full de Ayelen** (23/10): el último que cargó dice 0 lugares chicos, así que su caja quedó en 0 (~180 u. en la
-   oficina: talones, metatarsos, imán, cintas, lupas, balanza, cortapelos, rebarbador…). ¿Cuánto cupo tiene hoy en ML? → `cupo:Ayelen=<chicos>/<grandes>`.
 9. **Ted Lapidus** (`MLA3310524980`): de la 4a no volvió a $65.990 porque ahí queda abajo del 25% en el peor caso (24%). Sigue a
    $72.990 y ya no busca techo. (a) sugerida: dejarlo así · (b) volver a $65.990 igual (con `!piso`).
-10. **EX15LP blanco**: no tiene ficha; crearla (costo del pedido) antes de publicarlo en Ayelen.
-11. **Comprados que hoy no llegan al 25%** (pedido del 14/10): Switch TP-Link TL-SF1009P 15% · Casio FX-82MS 20% · Walkie Motorola T110 −3% · CK One 200 ml −2%.
-   Publicarlos igual al precio más alto que tenga sentido, o esperar.
 
 ### De la revisión de hoy (le llegaron por Telegram el 23/10 a las 14:45; desde ahora van acá)
 R1. La deuda con ARCA del mes en curso: (a) contarla de a poco según los días que pasaron · (b) entera desde el día 1
@@ -35,8 +30,10 @@ R8. Hay 1 fila por día hábil en cada cuenta de MP sin fecha de liberación (no
 15. **Lupa de mano 100 mm** (Ayelen): 2 de 34 llegaron rotas. (a) sugerida: que Tito las envuelva mejor al armar la caja · (b) seguir igual.
 16. **Filtro de agua** (Matías): desde el 17/10 vendió 1, perdió la caja y ML pide $1.000 (menos que el costo). (a) sugerida: mirar en la página quién gana la caja y si es otro producto o un precio mal puesto, denunciarlo · (b) esperar.
 17. **Separador x2 de Ayelen** (la publicación que no vende, `MLA1474954957`): ML le marca la calidad en 62%. (a) sugerida: completar en ML la ficha técnica (marca, material, cantidad), el código universal o "no tiene", y fotos con fondo blanco · (b) dejarla.
-18. **Sacapelusas Xiaomi** (Ayelen, 2 en Full): estaba a $99.999 de relleno; para el 25% hace falta $53.780. (a) sugerida: pasame a cuánto lo venden otros con Full y lo pongo unos 20% arriba · (b) $64.990 y buscar techo.
+18. **Aviso de ML en Ayelen por "productos falsificados"** (se ve en su captura del 23/10, propiedad intelectual): mirar en ML → Consultar infracciones qué publicación fue. Si es una marca, la agrego como prohibida para ML (`marcanoml`).
 19. **Dos controles que sólo reviso yo, para que sepas:** el reclamo de la Piedra Guasha de Ayelen sigue esperando tu respuesta en ML (lo hacés vos desde ML).
+20. **Paulvic Invictus y Phantom (Adriana) en revisión de ML desde el 21/10** (`MLA1546343320`, `MLA1823112871`, "prohibido": el nombre es de una marca). En Full figuran 0 disponibles (esta tarde eran 8 y 4: ML las frenó mientras revisa) y en la oficina hay 6 Invictus + 3 Phantom que no se pueden mandar. Vendían 2 por mes cada uno.
+    (a) sugerida: dejarlas así, no mandar nada y venderlas en el local; ya están marcadas "no se piden más". (b) Pedirle a ML que las revise de nuevo, o publicarlas con otro nombre (es riesgoso: Ayelen ya tiene un aviso por falsificados).
 
 ## Viejas que siguen esperando (de CLAUDE.md §13)
 - Clave `ANTHROPIC_API_KEY` para la IA de preguntas · `almactarifa` · Sancor (respuesta y baja de Vida Plus) · contador
