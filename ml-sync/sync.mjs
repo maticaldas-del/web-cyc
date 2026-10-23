@@ -32001,8 +32001,15 @@ async function main() {
         filas.push({ pid, nom: p.name, of, cat, cer: (cerradas[pid] || []).length });
       }
       filas.sort((a, b) => b.of - a.of);
+      // Una ficha que se llama como un código (p. ej. "7114209") es un código de Nissei: se dice qué producto es (candidato y pycat).
+      const candsO = filas.some((f) => /^\d{5,}$/.test(f.nom.trim())) ? ((await db.get('cyc/candidatos_py')) || {}) : {};
+      for (const f of filas) if (/^\d{5,}$/.test(f.nom.trim())) {
+        const cod = f.nom.trim(); const c = Object.values(candsO).find((x) => x && String(x.cod || '').replace(/\D/g, '') === cod);
+        let pc = null; try { pc = await db.get('mlapi/pycat/' + cod); } catch { pc = null; }
+        f.nom += ` → ${c ? '"' + String(c.nombre || '').slice(0, 70) + '"' + (c.mlTit ? ' · ML: ' + String(c.mlTit).slice(0, 60) : '') : pc && (pc.n || pc.nombre) ? '"' + String(pc.n || pc.nombre).slice(0, 70) + '" (pycat)' : 'no encontré ese código en los candidatos ni en pycat'}`;
+      }
       console.log(`=== EN LA OFICINA SIN PUBLICACIÓN VIVA · ${filas.length} ficha(s) · ${filas.reduce((a, f) => a + f.of, 0)} u. ===`);
-      for (const f of filas) console.log(`  ${String(f.of).padStart(4)} u. · ${f.nom.slice(0, 70)} · ${f.cat ? 'catálogo ' + f.cat : 'sin catálogo anotado'}${f.cer ? ` · tuvo ${f.cer} cerrada(s)` : ''} · ${f.pid}`);
+      for (const f of filas) console.log(`  ${String(f.of).padStart(4)} u. · ${f.nom.slice(0, 200)} · ${f.cat ? 'catálogo ' + f.cat : 'sin catálogo anotado'}${f.cer ? ` · tuvo ${f.cer} cerrada(s)` : ''} · ${f.pid}`);
       return;
     }
     // BILLING_PROBE=huerfanos[:<palabra>] → PRODUCTOS SIN PUBLICACIÓN, Y CUÁL LES CORRESPONDE
