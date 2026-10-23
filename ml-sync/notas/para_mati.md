@@ -34,9 +34,6 @@ R8. Hay 1 fila por día hábil en cada cuenta de MP sin fecha de liberación (no
 19. **Dos controles que sólo reviso yo, para que sepas:** el reclamo de la Piedra Guasha de Ayelen sigue esperando tu respuesta en ML (lo hacés vos desde ML).
 20. **Paulvic Invictus y Phantom (Adriana) en revisión de ML desde el 21/10** (`MLA1546343320`, `MLA1823112871`, "prohibido": el nombre es de una marca). En Full figuran 0 disponibles (esta tarde eran 8 y 4: ML las frenó mientras revisa) y en la oficina hay 6 Invictus + 3 Phantom que no se pueden mandar. Vendían 2 por mes cada uno.
     (a) sugerida: dejarlas así, no mandar nada y venderlas en el local; ya están marcadas "no se piden más". (b) Pedirle a ML que las revise de nuevo, o publicarlas con otro nombre (es riesgoso: Ayelen ya tiene un aviso por falsificados).
-21. **Lo nuevo de Nissei se mide contra el precio de los otros vendedores, no contra el que después logramos nosotros** (él, 23/10: *"quizás dejamos afuera mercadería porque en teoría le ganamos el 25 y en verdad después nos da el 40%"*). Lo que ya vendemos sí se recalcula solo con nuestro precio de hoy.
-    (a) sugerida: medir lo comprado de Nissei de los últimos meses, cuánto daba al comprarlo contra cuánto deja hoy vendido. Si nosotros vendemos sistemáticamente más caro, la medición de lo nuevo suma esa diferencia (por ejemplo el premio de Full contra los que no tienen Full) y entran más productos. (b) dejarlo como está.
-
 ## Viejas que siguen esperando (de CLAUDE.md §13)
 - Clave `ANTHROPIC_API_KEY` para la IA de preguntas · `almactarifa` · Sancor (respuesta y baja de Vida Plus) · contador
   (recategorización, actividad, facturas entre cuentas) · si el puntaje del mes le cierra · costo de las dos Linternas COB de Ayelen.
