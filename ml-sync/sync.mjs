@@ -1140,10 +1140,15 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY, soloAnotar 
   const MANO_DIAS = 60;
   const hoyISO = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
   const limMano = new Date(Date.now() - 3 * 3600e3 - MANO_DIAS * 86400e3).toISOString().slice(0, 10);
+  const limVentana = new Date(Date.now() - 3 * 3600e3 - 57 * 86400e3).toISOString().slice(0, 10);
   for (const mb of marcadasAntes) {
     if (Array.isArray(mb.c.recUsadas)) continue;
     const recF = String(mb.c.recFecha || '');
     if (!recF || recF < limMano || recF > hoyISO || !mb.fecha) continue;
+    // 23/10/2026 (vuelta corta, 194 consultas con 400 "Date range can't be greater than 60 days"): ML no da más de 60 días de
+    // movimientos por consulta y la ventana es despacho − 1 día hasta hoy + 1 día. Una marcada a mano DESPACHADA hace más de
+    // 57 días estiraba la de todos sus productos y ninguna caja abierta de esos productos se podía leer. Esa ya no protege.
+    if (mb.fecha < limVentana) continue;
     const o = porCta[mb.e.cuenta]; if (!o) continue;
     let usa = false;
     for (const it of mb.items) {
