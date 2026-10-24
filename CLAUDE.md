@@ -151,7 +151,7 @@
   gris si no cambió nada, color de la estrategia si cambió) → **al terminar, `bajastecho:1` y el detector `errores`, y deshacer en la
   misma vuelta toda ❌ del día** (22/10, 3a: vuelve al precio de antes con `!chico` y "EXCEPCIÓN: vuelve al precio de antes").
 - Listas que tienen que quedar **vacías** al terminar la vuelta: 🚨 escasez que vendió después de mi decisión (`escasez`) · 🛡️ abajo
-  del 25% en el peor caso · 📦 sobra sin decidir · 🔎 sin afinar · 📈 dice techo/escasez y no sube · 📈 prueba con respuesta (3 ventas esperadas, 23/10) (todas en `planilla`) · 🆕 lanzamiento que vendió (también por su gemela) y no subió (en `errores`, 23/10).
+  del 25% en el peor caso · 📦 sobra sin decidir · 🔎 sin afinar · 📈 dice techo/escasez y no sube · 📈 prueba con respuesta (3 ventas esperadas, 23/10) (todas en `planilla`) · 🆕 lanzamiento que vendió (también por su gemela) y no subió (en `errores`, 23/10) · 🧐 revisión a fondo atrasada (`revfondo`, sólo la completa: todo producto con stock en Full y publicación activa con mi nota del 🧠 de menos de 2 días si está quieto o de 7 si vendió; 24/10, eligió la 3a).
 - **Activar lo pausado es prioridad** (10/10): `pausadas:25` + `activarfull:go:25`; toda pausada con stock en Full que no se activa
   va a `notas/para_mati.md` con motivo (al `pregunto:URGENTE` sólo si vende fuerte). Lo nuevo (nunca estuvo en Full) lo activo yo con el precio ya puesto (peor caso).
 - **Preguntas de compradores:** las contesto yo (`contesto:<id>=<respuesta>;…;go`), sólo las nuevas y sólo las que sé SIN DUDA.
@@ -429,6 +429,7 @@
 | `entrarpromo:<MLA>=<precio>@<id\|PRICE_DISCOUNT>\|motivo;go` / `=salir` | entrar o salir de una promo/descuento |
 | `tag:<MLA>=<tag>\|motivo;go` / `tag` | poner o listar estrategias |
 | `errores[:horas][:go]` · `autoriza` | detector de errores ya marcados · autorizaciones 🔐 suyas |
+| `revfondo` | productos con stock y publicación activa sin revisión a fondo a tiempo (quietos 2 d, los que venden 7 d): tiene que quedar vacío en la completa |
 | `techo95[;go]` · `bajastecho[:días]` · `escasez` · `planilla` · `raros` | techo al 95% · bajas sin techo (❌) · escasez 🚨 · listas 🛡️📦🔎📈 · raros contra su año |
 | `pausadas:25` · `activarfull:go:25` | pausadas con stock en Full y por qué · activar las que dan |
 | `contesto:<id>=<respuesta>;…;go` | contestar preguntas seguras |

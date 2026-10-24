@@ -44138,6 +44138,59 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=revfondo → SOLO LEE (24/10/2026, eligió la 3a: *"que no se escape ninguno"*). ¿QUÉ PRODUCTO CON STOCK EN FULL NO
+    // TUVO SU REVISIÓN A FONDO A TIEMPO? Cada producto × cuenta (y color) con stock en Full y alguna publicación ACTIVA (sin contar las
+    // gemelas): la revisión a fondo es mi última nota del 🧠 (`mlapi/claudeexp/<MLA>.ts`, de cualquiera de sus publicaciones o gemelas;
+    // la ✓ rápida de una venta no escribe ahí). Plazo: lo que vendió en 7 días, 7 días; lo quieto, 2 días. La lista TIENE QUE QUEDAR
+    // VACÍA al terminar la completa de las 03:00 (se mira a fondo todo lo que sale acá). Lo pausado con stock no entra: va por `pausadas`.
+    if (/^revfondo$/.test(String(process.env.BILLING_PROBE || ''))) {
+      const KSr = ['cyc/inventory', 'cyc/mllinks', 'cyc/products', 'mlapi/claudeexp'];
+      const RRr = await Promise.all(KSr.map((k) => db.get(k).catch(() => 'FALLO')));
+      if (RRr.includes('FALLO')) { console.log(`⚠️ NO LEÍ: ${KSr.filter((k, i) => RRr[i] === 'FALLO').join(' · ')} — sin eso no puedo decir qué falta revisar`); process.exitCode = 1; return; }
+      const [invR, linksR, prodsR, cxR] = RRr.map((x) => x || {});
+      const pByR = {}; for (const p of Object.values(prodsR)) if (p && p.id) pByR[p.id] = p;
+      const sidR = (x) => String(x).replace(/[^a-z0-9]/gi, '_');
+      const CTR = ['Adriana', 'Luciana', 'Ayelen', 'Matias'];
+      const ahoraR = Date.now(), hace7 = ahoraR - 7 * 864e5;
+      // las ventas de 7 días por publicación (8 días de `ventaprod`, por el corte de la hora)
+      const vend = {}; let diasMal = 0;
+      for (let i = 0; i <= 8; i++) {
+        let vd = null; try { vd = (await db.get('cyc/ventaprod/' + dayKeyFromISO(ahoraR - i * 864e5))) || {}; } catch { vd = null; }
+        if (vd == null) { diasMal++; continue; }
+        for (const v of Object.values(vd)) { if (!v || !v.mla || (v.cancelada && (v.tipoCancelacion === 'cancelada' || v.tipoCancelacion === 'devolucion'))) continue;
+          const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ts >= hace7) vend[v.mla] = (vend[v.mla] || 0) + (Number(v.qty) || 1); }
+      }
+      if (diasMal) console.log(`⚠️ no leí ${diasMal} día(s) de ventas: lo que vendió esos días puede salir como quieto (plazo de 2 días en vez de 7)`);
+      const colorR = (e) => { const p = pByR[e.prodId]; return e.variant ? String(e.variant) : (p ? varianteDeTitulo(e.title || '', p.variantes || []) : ''); };
+      // las claves de stock: con colores, cada color; sin colores, el total de la cuenta
+      const claves = Object.entries(invR).filter(([k, v]) => (parseInt(v) || 0) > 0 && k.includes('__'));
+      const conColor = new Set(claves.filter(([k]) => k.includes('__v__')).map(([k]) => k.slice(0, k.indexOf('__v__'))));
+      const filas = []; let mirados = 0, sinActiva = 0;
+      for (const [k, v] of claves) {
+        const i = k.indexOf('__'), iv = k.indexOf('__v__'), pid = k.slice(0, i), cta = iv > 0 ? k.slice(i + 2, iv) : k.slice(i + 2), col = iv > 0 ? k.slice(iv + 5) : '';
+        if (!CTR.some((c) => sidR(c) === cta) || !pByR[pid]) continue;
+        if (!col && conColor.has(k)) continue;   // el total de un producto con colores: va por color
+        const pubs = Object.entries(linksR).filter(([m, e]) => e && e.prodId === pid && sidR(e.cuenta || '') === cta && !e.ignored && !e.noVendemosMas && !e.gemelaDe
+          && (!col || sidR(colorR(e)) === col)).map(([m, e]) => [m, e]);
+        if (!pubs.length) continue;
+        const act = pubs.filter(([, e]) => /^active/.test(String(e.status || '')));
+        if (!act.length) { sinActiva++; continue; }
+        mirados++;
+        const ms = pubs.map(([m]) => m); const grupo = [...ms, ...Object.keys(linksR).filter((g) => ms.includes((linksR[g] || {}).gemelaDe))];
+        const u7 = grupo.reduce((a, m) => a + (vend[m] || 0), 0);
+        const ult = Math.max(0, ...grupo.map((m) => Number((cxR[m] || {}).ts) || 0));
+        const dias = ult ? (ahoraR - ult) / 864e5 : null, plazo = u7 > 0 ? 7 : 2;
+        if (dias == null || dias >= plazo) filas.push({ nom: String((pByR[pid] || {}).name || act[0][1].title || pid).slice(0, 44), cta: CTR.find((c) => sidR(c) === cta), col, st: parseInt(v) || 0, u7, dias, plazo, mla: act.map(([m]) => m).join(' ') });
+      }
+      filas.sort((a, b) => (b.dias == null ? 1e9 : b.dias) - (a.dias == null ? 1e9 : a.dias));
+      const nQ = filas.filter((f) => !f.u7).length, nV = filas.length - nQ;
+      console.log(`=== 🧐 REVISIÓN A FONDO ATRASADA · ${filas.length} de ${mirados} productos con stock en Full y publicación activa ===`);
+      console.log(`(plazo: quietas 2 días, las que vendieron en 7 días 7 días · la revisión a fondo = mi nota del 🧠 · ${sinActiva} con stock pero sin publicación activa van por \`pausadas\`)\n`);
+      for (const f of filas) console.log(`${f.u7 ? '🛒' : '💤'} ${f.nom}${f.col ? ' · ' + f.col : ''} · ${f.cta} · ${f.st} en Full · ${f.u7 ? 'vendió ' + f.u7 + ' en 7 d' : 'sin ventas en 7 d'} · ${f.dias == null ? 'NUNCA revisada a fondo' : 'última revisión hace ' + Math.floor(f.dias) + ' d'} (plazo ${f.plazo}) · ${f.mla}`);
+      console.log(`\n🧐 REVFONDO: ${filas.length} atrasada(s) (💤 quietas ${nQ} · 🛒 que venden ${nV}) · ${filas.length ? 'la completa tiene que mirarlas a fondo HOY' : 'ninguna ✓'}`);
+      return;
+    }
+
     // BILLING_PROBE=cajasnotas → SOLO LEE (08/10/2026). Lo que hay en la oficina, producto por producto (y color), con cada
     // cuenta que lo publica: en Full, en camino, vendidas en 30 días y días que alcanza. Sirve para escribir la nota del 🧠 de
     // Armar caja (`decido:caja:<prodId>@<cuenta>[#variante]=nota|…`). No calcula cuánto mandar: eso lo hace la web.

@@ -1595,6 +1595,7 @@ a la lista. Chequear: que cada hoja muestre el nombre del mismo id que se marca 
 Chequear: que los ayudantes no corran nada que escriba y que cada publicación activa tenga juicio.
 
 ## 5 · DATOS, HISTORIAL Y CEREBRO (viernes · junta las viejas 8 y 9; datos e historial nació el 08/10/2026)
+- **24/10/2026 · `revfondo`: que no se escape ningún producto** (pregunta suya: *"habría que hacer uno para los productos en general"*; eligió la 3a). Sólo lee: cada producto × cuenta (y color) con stock en Full y alguna publicación activa (sin gemelas), la última nota del 🧠 (`mlapi/claudeexp`) de sus publicaciones y gemelas; atrasado si tiene 2+ días y no vendió en 7, o 7+ días si vendió. Va en las lecturas de la completa y tiene que quedar vacía. Qué chequear: que la cuenta "N de M" tenga sentido contra las activas con stock; que al otro día de la completa dé 0 o casi; que una venta sola (✓ rápida) no la saque de la lista.
 - **🔬 EL ANÁLISIS DE CADA VENTA EN SU TARJETA (21/10/2026, v25.74, pedido suyo).** `ventasvistas:<ts>|esf=<nivel>|<MLA>=<texto>;go`
   escribe `cyc/ventaanalisis/<día>/<id>` (mismas claves que `cyc/ventaprod`) para cada venta no cancelada del tramo (marca anterior, ts]:
   `{ts, esf, cambio, t, m, de, a}`. Hay cambio si después de la venta hay estrategia nueva (`cyc/estrategia/<MLA>`) o precio mío

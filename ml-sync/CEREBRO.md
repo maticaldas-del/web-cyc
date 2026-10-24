@@ -154,7 +154,7 @@ Después de los 3 Protectores de talón (22/10: el freno "sin línea de techo no
 **Completa (03:00, una vez por día) · REHECHA EL 21/10/2026, eligió la (a): *"que mire cosas que nadie miró"* y *"a las 3am siempre, así no molesta"*.**
 Antes recorría las ~590 publicaciones enteras todos los días (3 h, ~100 de tokens, frenaba las vueltas de ventas). Ahora mira SÓLO lo
 que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 29 cambios mal leídos el 21/10). Medida: ~1 h, ~35-40.
-1. **Lecturas TODAS en UNA corrida de ml-consulta** (no una por comando): `autoriza` · `planilla` · `informe:24` · `pedidostodo` · `historia` ·
+1. **Lecturas TODAS en UNA corrida de ml-consulta** (no una por comando): `autoriza` · `revfondo` · `planilla` · `informe:24` · `pedidostodo` · `historia` ·
    `escasez:expediente` · `raros` · `techo95` · `techofreno` · `escmedir` · `analizapromo:21` · `ventasraras:nuevas`. Después
    `supervisor:medir:go` (ml-sync).
 2. **Qué se mira a fondo (ficha entera):**
@@ -164,6 +164,9 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
    - **las quietas con stock que nadie miró**: activas con stock en Full que NO vendieron desde la última completa (las que
      vendieron ya las vio la vuelta de ventas). Rotan: la mitad cada noche, primero la que hace más que no tiene nota mía; ninguna
      pasa 2 días sin mirarse.
+   - **🧐 `revfondo` (24/10/2026, eligió la 3a: *"que no se escape ninguno"*)**: todo producto con stock en Full y publicación activa
+     cuya última nota mía del 🧠 tiene 2+ días (quieto) o 7+ días (vendió en 7 días; la ✓ rápida de una venta no cuenta). Todo lo que
+     sale se mira a fondo esa noche y deja su nota: **la lista tiene que quedar vacía** (al otro día se vuelve a correr y se ve).
    - **Afuera:** gemelas Premium (las alinea el robot con su Clásica) · pausadas sin stock (salvo que caigan en 🛡️) · lo que ya
      vio una vuelta de ventas en las últimas 24 h.
 3. **Dos ayudantes (max)** se reparten lo de arriba (no uno por cuenta); `ficha:<MLA>` sólo de lo que se mira. Sólo leen.
