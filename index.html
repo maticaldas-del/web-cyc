@@ -2960,7 +2960,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.44';
+const APP_VERSION='26.45';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2973,6 +2973,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.45',f:'24/10',h:'14:09',c:[{n:2,t:'💰 Línea de tiempo: abajo del gráfico dice por qué el piso está ahí: cuánto vendió por día y cuánto dejó cada una a cada precio, ya restado el trabajo de $100 por unidad, el tope de H y la plata parada.'},{n:2,t:'🎁 Las fechas especiales se sacan de la cuenta del piso y el techo sólo si ese producto vendió el doble o más en esos días (los Naipes se quedaban sin piso).'}]},
   {v:'26.44',f:'24/10',h:'13:48',c:[{n:1,t:'📈 Línea de tiempo: cada gráfico (precio, ventas, plata por día, %…) mide media pantalla y se baja con el scroll. Tocando el título de uno se cierra (▸) o se abre (▾), y se acuerda.'}]},
   {v:'26.43',f:'24/10',h:'13:42',c:[{n:3,t:'💰🔴 Las rayas de piso y techo se miden con los últimos 60 días y sin los días de fechas especiales (Día del Niño, de la Madre, ofertas): el techo del Infusor salía de comparar contra 8 días de fines de julio que vendieron el triple.'},{n:2,t:'📈 Línea de tiempo: el precio de HOY es el que está puesto ahora (si se cambió a la mañana, ya se ve), no lo cobrado en las ventas de hoy.'},{n:2,t:'🎯 Desde hoy todo pide 35%: el máximo de compra, Listas, el simulador y lo que entra en Paraguay (se acabó la entrada con 30%).'}]},
   {v:'26.42',f:'24/10',h:'13:30',c:[{n:2,t:'🚚 Pedidos → Paraguay: "Falta reponer" cuenta sólo lo que da (lo de "No da, no hay o falta revisar" ya no suma). Lo cargado en el Pedido y lo oculto por el filtro sí.'},{n:2,t:'🌟 Listas: lo que nadie vende en ML (sin competencia) ya puede llegar a "Dan", como en Paraguay.'},{n:1,t:'📊 Rotación: se sacaron "rematar al 12%" y "limpiar al 20%" (regla vieja).'}]},
@@ -11355,9 +11356,12 @@ function lineaPintar(prodId){
     const ksR=Object.keys(_rayasDias||{}).filter(k=>/^\d{4}_\d{2}_\d{2}$/.test(k)&&k<_hoyKR).sort();
     // 24/10/2026 (Infusor cajita): el 💰 y el 🔴 se miden con los últimos RAYAS_DIAS días (un 💰 de hace 3 meses hacía "perder" a todo).
     const _kDesdeR=(()=>{const d=new Date(Date.now()-RAYAS_DIAS*864e5);return d.getFullYear()+'_'+String(d.getMonth()+1).padStart(2,'0')+'_'+String(d.getDate()).padStart(2,'0');})();
+    // Los días de fecha especial salen SÓLO si este producto tuvo un pico ahí (el doble o más por día con stock): copia de `diasFechaPico`.
+    const _fueraR=(()=>{const o=new Set();const kk=ksR.filter(k=>k>=_kDesdeR&&_rayasDias[k]&&Number(_rayasDias[k].st)>0);const enF=kk.filter(k=>_diaFechaRaya(k));if(!enF.length)return o;
+      const r=L0=>L0.length?L0.reduce((a,k)=>a+(Number(_rayasDias[k].u)||0),0)/L0.length:0;const rF=r(enF),rN=r(kk.filter(k=>!_diaFechaRaya(k)));if(rF>0&&rF>=2*rN)enF.forEach(k=>o.add(k));return o;})();
     const _plR={};{let pA=null;ksR.forEach(k=>{const d=_rayasDias[k];if(!d)return;const pN=Number(d.pLista||d.p)>0?Number(d.pLista||d.p):pA;let pl=pN||0;
       if((d.u||0)>0&&Number(d.tot)>0&&pA&&pN&&pA!==pN){const pu=Number(d.uOwn)>0&&Number(d.totOwn)>0?Number(d.totOwn)/Number(d.uOwn):Number(d.uEq)>0&&Number(d.totEq)>0?Number(d.totEq)/Number(d.uEq):Number(d.tot)/Number(d.u);if(Math.abs(pu-pA)<Math.abs(pu-pN))pl=pA;}_plR[k]=Number(d.pLista||d.p)>0?pl:0;pA=pN;});}
-    const G={};ksR.forEach(k=>{const d=_rayasDias[k];if(!d)return;if(d.est!=null&&d.est!=='active')return;if(!(d.st!=null&&d.st>=3&&d.vis!=null))return;if(k<_kDesdeR||_diaFechaRaya(k))return;const pl=_plR[k]||0;if(!(pl>0))return;
+    const G={};ksR.forEach(k=>{const d=_rayasDias[k];if(!d)return;if(d.est!=null&&d.est!=='active')return;if(!(d.st!=null&&d.st>=3&&d.vis!=null))return;if(k<_kDesdeR||_fueraR.has(k))return;const pl=_plR[k]||0;if(!(pl>0))return;
       const b=Math.round(pl/10)*10;const g=(G[b]=G[b]||{p:b,dias:0,u:0,gan:0});g.dias++;g.u+=Math.max(0,(d.u||0)-(d.uR||0));g.gan+=_ganRaya(k)-_pdDed(d);});
     const L=Object.values(G).map(g=>({...g,r:g.u/g.dias,pd:g.gan/g.dias,gu:g.u?g.gan/g.u:null}));
     // 💰 sólo un precio que VENDIÓ (21/10/2026, Aer Jasmín: $19.490 salía de "más plata" con 0 ventas en 5 días, por ser el único con 5 días).
@@ -11367,10 +11371,10 @@ function lineaPintar(prodId){
     // venta" y "fijate que todos tengan eso"). Sin 5 días medibles se toma un piso PROVISORIO con todos los días con stock (aunque
     // sean 1-2 u. o sin dato de visitas): el precio que más plata por día dejó entre los que vendieron. Va punteado y dice
     // "provisorio". El 🔴 techo sigue pidiendo días medibles y 95% (eso no se apura), igual que `rayasPrecioLinea` del robot.
-    if(!med.length){const G2={};ksR.forEach(k=>{const d=_rayasDias[k];if(!d)return;if(d.est!=null&&d.est!=='active')return;if(!((d.st!=null&&d.st>0)||(d.u||0)>0))return;const pl=_plR[k]||0;if(!(pl>0))return;
+    if(!med.length){const G2={};ksR.forEach(k=>{const d=_rayasDias[k];if(!d||k<_kDesdeR||_fueraR.has(k))return;if(d.est!=null&&d.est!=='active')return;if(!((d.st!=null&&d.st>0)||(d.u||0)>0))return;const pl=_plR[k]||0;if(!(pl>0))return;
         const b=Math.round(pl/10)*10;const g=(G2[b]=G2[b]||{p:b,dias:0,u:0,gan:0});g.dias++;g.u+=Math.max(0,(d.u||0)-(d.uR||0));g.gan+=_ganRaya(k)-_pdDed(d);});
       const L2=Object.values(G2).filter(g=>g.u>0).map(g=>({...g,r:g.u/g.dias,pd:g.gan/g.dias,gu:g.gan/g.u,aprox:true}));
-      return L2.length?{best:L2.reduce((a,b)=>b.pd>a.pd?b:a)}:{};}
+      return L2.length?{best:L2.reduce((a,b)=>b.pd>a.pd?b:a),L:L2,fu:_fueraR.size}:{};}
     const best=med.reduce((a,b)=>b.pd>a.pd?b:a);
     const piso=med.filter(g=>g.u>=3).reduce((a,b)=>!a||b.p>a.p?b:a,null);
     const pois=(k,lam)=>{if(!(lam>0))return 1;let p=Math.exp(-lam),s=p;for(let i=1;i<=k;i++){p*=lam/i;s+=p;}return Math.min(1,s);};
@@ -11378,7 +11382,14 @@ function lineaPintar(prodId){
     const _masAltoMejor=g=>med.some(h=>h.p>g.p*1.005&&h.pd>g.pd);
     let techo=null;if(best.u>=3&&best.gu>0)L.filter(g=>g.p>best.p*1.02).sort((a,b)=>a.p-b.p).some(g=>{if(_masAltoMejor(g))return false;const gu1=g.gu!=null?g.gu:best.gu+(g.p-best.p)*0.7;if(!(gu1>best.gu))return false;
       const lam=best.r*(best.gu/gu1)*g.dias,seg=1-pois(g.u,lam);if(seg>=0.95){techo={...g,seg,lam};return true;}return false;});
-    return {best,piso,techo};})());
+    return {best,piso,techo,L:L.filter(g=>g.u>0),fu:_fueraR.size};})());
+  // POR QUÉ EL 💰 ESTÁ AHÍ, A LA VISTA (24/10/2026, él con los Naipes: "el piso quiero que explique por qué está a esa altura… ¿tiene en
+  // cuenta que vender mucho un producto más barato hace que tenga más trabajo/gastos?"). Sí: la plata por día es NETA (−$100 por unidad
+  // de trabajo, −3% de lo cobrado por el tope de H, −2%/mes de la plata parada). Se muestran los precios medidos, de más a menos plata.
+  const _pisoPorQue=(()=>{const R=_rayas;if(!R||!R.best||!Array.isArray(R.L)||!R.L.length)return '';
+    const top=R.L.slice().sort((a,b)=>b.pd-a.pd).slice(0,4);
+    const ren=top.map(g=>`<div>${g.p===R.best.p?'💰 ':'· '}a <b>${fmt(g.p)}</b>: vendió ${(Math.round(g.r*10)/10).toString().replace('.',',')} por día × ${fmt(Math.round(g.gu||0))} cada una = <b>${fmt(Math.round(g.pd))} por día</b> <span style="color:var(--muted)">(${g.u} vendidas en ${g.dias} día${g.dias===1?'':'s'})</span></div>`).join('');
+    return `<div style="margin-top:8px;font-size:.68rem;line-height:1.55;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:8px 10px"><div style="font-weight:700;margin-bottom:3px">💰 Por qué el piso está en ${fmt(R.best.p)}${R.best.aprox?' (provisorio: pocos días)':''}</div>Es el precio que más plata por día dejó, con lo que cuesta cada venta ya restado: la mercadería, los impuestos, <b>$${PD_TRABAJO_U} de trabajo por unidad</b>, el ${Math.round(PD_TOPE_PCT*100)}% del tope de H y la plata parada. Vender más barato vende más, pero cada una deja menos y da más trabajo. Mide los últimos ${RAYAS_DIAS} días${R.fu?` (sin ${R.fu} días de fecha especial en que vendió de más)`:''}.${ren}</div>`;})();
   const _pcv=ps.concat(_techos.map(t=>Number(t.probado))).concat([_rayas.best,_rayas.piso,_rayas.techo].filter(Boolean).map(g=>g.p)).concat(_techos.map(t=>Number(t.volvio)).filter(v=>v>0));const [pcMin,pcMax]=_pcv.length?_esc(Math.min(..._pcv),Math.max(..._pcv)):[0,1];
   const hayEst=ks.some(k=>dias[k]&&(dias[k].rem||dias[k].esc!=null)), hayCaja=ks.some(k=>dias[k]&&dias[k].caja), hayVis=ks.some(k=>dias[k]&&dias[k].vis>0), hayGan=Object.keys(gd).length>0;
   // Los carriles que no tienen NADA en el rango no se dibujan (una franja toda gris no dice nada).
@@ -11745,6 +11756,7 @@ function lineaPintar(prodId){
       ${_lnHdrs}
       <svg class="linea-svg" viewBox="0 0 ${W} ${H+16}" preserveAspectRatio="none" style="width:100%;height:${Math.round((H+16)*1.1)}px;display:block">${_lnClip(L,W,H,svg)}</svg>
     </div>
+    ${_pisoPorQue}
     ${_adHTML?`<div style="margin-top:8px;font-size:.7rem;line-height:1.5"><div style="font-weight:700;margin-bottom:2px">💵 ¿Cada cambio de precio dejó más plata por día?</div>${_adHTML}</div>`:''}
     ${(()=>{const vs=[...new Set(Object.values(_estD).map(e=>e.t))];if(!vs.length)return'';
       return `<div style="font-size:.64rem;color:var(--muted);margin-top:6px;line-height:1.9">💲 la línea del precio va del color de su estrategia: ${vs.map(t=>{const u=ESTRATEGIA_UI[t];return `<span title="${u[3].replace(/"/g,'&quot;')}" style="display:inline-flex;align-items:center;gap:4px;margin-right:10px;cursor:help"><span style="width:14px;height:3px;border-radius:2px;background:${u[2]};display:inline-block"></span><span style="color:${u[2]}">${u[0]} ${u[1]}</span></span>`;}).join('')}${cvs.length?'<span style="margin-right:10px"><span style="color:#f59e0b">┄ costo</span></span>':''} · pasá el mouse por la línea para ver por qué</div>`;})()}
