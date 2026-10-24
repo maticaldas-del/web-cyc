@@ -2960,7 +2960,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.36';
+const APP_VERSION='26.40';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2973,6 +2973,10 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.40',f:'24/10',h:'11:41',c:[{n:2,t:'📈 Todos los productos: las ventas por la publicación Premium van en naranja y las de envío gratis en celeste, y las tarjetas dicen cuántas unidades y cuánta ganancia dejó cada una.'}]},
+  {v:'26.39',f:'24/10',h:'10:55',c:[{n:2,t:'⭐ Cada producto nuevo muestra su nota "gana mucho y sale mucho". 7 es lo mínimo para comprar (35% con 100 de salida): verde 7 o más, ámbar abajo.'}]},
+  {v:'26.38',f:'24/10',h:'10:46',c:[{n:1,t:'⭐ En "gana mucho y sale mucho" lo de rotación baja (🚀 menos de 100) queda después de lo que sale bien, aunque deje mucho %.'}]},
+  {v:'26.37',f:'24/10',h:'10:43',c:[{n:2,t:'🇵🇾 Productos nuevos: orden nuevo ⭐ "gana mucho y sale mucho" (junta el % de ganancia con el 🚀 puntaje de salida; arriba lo que deja mucho y se vende mucho). Se sacaron "más vendidos" y "$ por unidad".'}]},
   {v:'26.36',f:'24/10',h:'02:10',c:[{n:3,t:'🇵🇾 Productos nuevos: 🚀 puntaje de salida. Junta vendidas y reseñas de ML en un número (lo que más diga entre las vendidas y las reseñas × 20). Nuevo orden "🚀 puntaje de salida": arriba lo que más sale. Menos de 100 = rotación baja.'}]},
   {v:'26.35',f:'24/10',h:'02:05',c:[{n:2,t:'🇵🇾 Pedido de nuevos: cada producto dice cuántas vendió en ML y cuántas reseñas tiene (arriba y en el detalle). Las dos cuentan para "se vende": 100+ vendidas o 5+ reseñas.'}]},
   {v:'26.34',f:'24/10',h:'01:55',c:[{n:2,t:'🟣 Elegancia: el catálogo se compara con los candidatos sólo por el código exacto (los del PDF viejo se confundían con otros que terminaban igual).'}]},
@@ -11759,9 +11763,12 @@ function lineaTodoPintar(){
   // Ventas y ganancia del panel, día por día (con 6 días antes para el promedio de 7).
   const _ksAll=_lineaDias(N+6);const pv=state.ventaprod||{};const pv0=Object.keys(pv).sort()[0]||'9999';
   const vd={};_ksAll.forEach(k=>{const ents=Object.values(pv[k]||{}).filter(v=>v&&!v.cancelada);if(!ents.length)return;
-    let u=0,uR=0,gan=0,costo=0,gest=0,tot=0;ents.forEach(v0=>{const v={...v0,_dateKey:k};const q=Number(v.qty)||0;u+=q;if(ventaEnRemate(v,k))uR+=q;const c=efectivoCostoVP(v);gan+=(v.neto||0)-c;costo+=c;gest+=gestDivVP(v);tot+=Number(v.total)||0;});
+    // 💳 PREMIUM Y 📦 ENVÍO GRATIS APARTE (24/10/2026, él: "¿se puede saber cuánto fue Premium? así veo cuánto más vendemos por esa idea").
+    // Misma regla que la línea de un producto: remate primero, después gemela de envío, después Premium (tipoPub gold_pro o gemela Premium).
+    let u=0,uR=0,uP=0,uG=0,gP=0,gG=0,gan=0,costo=0,gest=0,tot=0;ents.forEach(v0=>{const v={...v0,_dateKey:k};const q=Number(v.qty)||0;u+=q;const c=efectivoCostoVP(v),gv=(v.neto||0)-c;gan+=gv;costo+=c;gest+=gestDivVP(v);tot+=Number(v.total)||0;
+      const _lv=(state.mllinks||{})[v.mla]||{};if(ventaEnRemate(v,k))uR+=q;else if(_lv.gemelaTipo==='envio'){uG+=q;gG+=gv;}else if(v.tipoPub==='gold_pro'||(_lv.gemelaDe&&_lv.gemelaDe!==v.mla)){uP+=q;gP+=gv;}});
     // Ventas = COMPRAS (un carrito es una venta), como el KPI de Ventas (`vpGrupoKey`) · 21/10/2026 · etapa 5.
-    vd[k]={u,uR,gan,costo,gest,tot,n:new Set(ents.map(vpGrupoKey)).size};});
+    vd[k]={u,uR,uP,uG,gP,gG,gan,costo,gest,tot,n:new Set(ents.map(vpGrupoKey)).size};});
   const uDe=k=>vd[k]?vd[k].u:(k<pv0&&R[k]&&R[k].u!=null?R[k].u:(k>=pv0?0:null));
   const uRDe=k=>vd[k]?vd[k].uR:(k<pv0&&R[k]?R[k].uR||0:0);
   const g7={};ks.forEach((k,i)=>{if(k<pv0||_ksAll[i]<pv0)return;let t=0;   // 7 días enteros con ventas guardadas, si no, vacío (etapa 5)
@@ -11788,9 +11795,12 @@ function lineaTodoPintar(){
   const yMid=L.cam[0]+L.cam[1]/2;svg+=`<line x1="0" y1="${yMid}" x2="${W}" y2="${yMid}" stroke="rgba(128,128,128,.35)"/>`;
   ks.forEach((k,i)=>{const x=X(i);const u=uDe(k),uR=Math.min(u||0,uRDe(k));
     const r=R[k];if(hayVis&&r&&r.vis>0){const h=r.vis/maxV*L.vent[1];svg+=`<rect x="${x}" y="${L.vent[0]+L.vent[1]-h}" width="${bw}" height="${h}" fill="#60a5fa" opacity=".35"/>`;}
-    if(u>0){const hN=(u-uR)/maxU*L.vent[1],hR=uR/maxU*L.vent[1];const col=vd[k]?'var(--green)':'#4ade80';
-      if(hN>0)svg+=`<rect x="${x}" y="${L.vent[0]+L.vent[1]-hN}" width="${bw}" height="${hN}" fill="${col}" ${vd[k]?'':'opacity=".55"'}/>`;
-      if(hR>0)svg+=`<rect x="${x}" y="${L.vent[0]+L.vent[1]-hN-hR}" width="${bw}" height="${hR}" fill="#f59e0b"/>`;}
+    if(u>0){const uP=Math.min((vd[k]||{}).uP||0,u-uR),uG=Math.min((vd[k]||{}).uG||0,u-uR-uP);
+      const hN=(u-uR-uP-uG)/maxU*L.vent[1],hP=uP/maxU*L.vent[1],hG=uG/maxU*L.vent[1],hR=uR/maxU*L.vent[1];const col=vd[k]?'var(--green)':'#4ade80';const y0=L.vent[0]+L.vent[1];
+      if(hN>0)svg+=`<rect x="${x}" y="${y0-hN}" width="${bw}" height="${hN}" fill="${col}" ${vd[k]?'':'opacity=".55"'}/>`;
+      if(hP>0)svg+=`<rect x="${x}" y="${y0-hN-hP}" width="${bw}" height="${hP}" fill="#f97316"/>`;
+      if(hG>0)svg+=`<rect x="${x}" y="${y0-hN-hP-hG}" width="${bw}" height="${hG}" fill="#38bdf8"/>`;
+      if(hR>0)svg+=`<rect x="${x}" y="${y0-hN-hP-hG-hR}" width="${bw}" height="${hR}" fill="#f59e0b"/>`;}
     // subas (arriba) y bajadas (abajo): las registradas, llenas; las que sólo se ven en el precio guardado, en gris detrás.
     const hc=n=>n/maxC*(L.cam[1]/2-2);
     if(r&&r.sb)svg+=`<rect x="${x}" y="${yMid-hc(r.sb)}" width="${bw}" height="${hc(r.sb)}" fill="rgba(148,163,184,.35)"/>`;
@@ -11837,7 +11847,7 @@ function lineaTodoPintar(){
       rr&&((rr.g||0)+(rr.c||0)+(rr.p||0))?`🥊 caja${k===hk?' (última lectura del robot)':''}: ${rr.g||0} ganan · ${rr.c||0} comparten · ${rr.p||0} pierden`:''].filter(Boolean).join('\n');
     svg+=`<rect x="${X(i)}" y="0" width="${Math.max(bw,1)}" height="${H}" fill="transparent"><title>${t.replace(/</g,'‹')}</title></rect>`;});
   // resumen
-  let uT=0,gT=0,cT=0,eT=0,vT=0;ks.forEach(k=>{uT+=uDe(k)||0;const v=vd[k];if(v){gT+=v.gan;cT+=v.costo;eT+=v.gest;}if(R[k]&&R[k].vis)vT+=R[k].vis;});
+  let uT=0,gT=0,cT=0,eT=0,vT=0,uPT=0,uGT=0,gPT=0,gGT=0;ks.forEach(k=>{uT+=uDe(k)||0;const v=vd[k];if(v){gT+=v.gan;cT+=v.costo;eT+=v.gest;uPT+=v.uP||0;uGT+=v.uG||0;gPT+=v.gP||0;gGT+=v.gG||0;}if(R[k]&&R[k].vis)vT+=R[k].vis;});
   const gPct=cT>0?pctGananciaVP(gT,cT,eT):null;
   const camR=cambios.filter(c=>c.k>=ks[0]);const sT=camR.filter(c=>c.a>c.de).length,bT=camR.length-sT;
   const iIni=ivs.length?ivs[0]:null,iFin=ivs.length?ivs[ivs.length-1]:null;
@@ -11851,17 +11861,17 @@ function lineaTodoPintar(){
   m.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;max-width:1500px;width:100%;padding:14px 16px;margin-top:20px">
     <div style="font-size:.9rem;font-weight:700;line-height:1.35">📈 Todos los productos</div>
     <div class="linea-btns" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;margin-top:6px">${btn(365)}${btn(90)}${btn(30)}${_lineaGiroBtn()}<button class="btn" onclick="document.getElementById('linea-modal').remove()" style="font-size:.7rem;padding:3px 10px">✕</button></div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:8px 0 6px">${_lnCard('Vendió',`${uT.toLocaleString('es-AR')} u.`,'',`${vT.toLocaleString('es-AR')} visitas`)}${_lnCard('Ganancia',gT?fmt(Math.round(gT)):'—',gPct!=null&&isFinite(gPct)?pctColor(gPct):'',gPct!=null&&isFinite(gPct)?`${gPct.toFixed(0)}% de ganancia`:'')}${_lnCard('Stock en Full',`${hoyR.st.toLocaleString('es-AR')} u.`,'','hoy, las 4 cuentas')}${_lnCard('Cambios de precio',`<span style="color:var(--green)">▲ ${sT}</span> <span style="color:var(--red)">▼ ${bT}</span>`,'',iIni!=null&&iFin!=null?`índice de precio ${iIni.toFixed(0)} → ${iFin.toFixed(1)}`:'')}</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:8px 0 6px">${_lnCard('Vendió',`${uT.toLocaleString('es-AR')} u.`,'',`${vT.toLocaleString('es-AR')} visitas${uPT?` · <span style="color:#f97316">${uPT.toLocaleString('es-AR')} en Premium</span>`:''}${uGT?` · <span style="color:#38bdf8">${uGT.toLocaleString('es-AR')} con envío gratis</span>`:''}`)}${_lnCard('Ganancia',gT?fmt(Math.round(gT)):'—',gPct!=null&&isFinite(gPct)?pctColor(gPct):'',(gPct!=null&&isFinite(gPct)?`${gPct.toFixed(0)}% de ganancia`:'')+(gPT?` · <span style="color:#f97316">Premium ${fmt(Math.round(gPT))}</span>`:'')+(gGT?` · <span style="color:#38bdf8">envío gratis ${fmt(Math.round(gGT))}</span>`:''))}${_lnCard('Stock en Full',`${hoyR.st.toLocaleString('es-AR')} u.`,'','hoy, las 4 cuentas')}${_lnCard('Cambios de precio',`<span style="color:var(--green)">▲ ${sT}</span> <span style="color:var(--red)">▼ ${bT}</span>`,'',iIni!=null&&iFin!=null?`índice de precio ${iIni.toFixed(0)} → ${iFin.toFixed(1)}`:'')}</div>
     <div style="font-size:.64rem;color:var(--muted);margin:0 0 8px;line-height:1.6">${_ltRango} días${_ltC.fallo?` · <span style="color:var(--amber)">no pude leer la línea del robot (${_ltC.fallo}): sólo lo del panel</span>`:(!Object.keys(R).length?' · <span style="color:var(--amber)">el robot todavía no armó la línea de todos: stock, visitas y precio salen desde la próxima noche</span>':(viejo>2?` · <span style="color:var(--amber)">la línea del robot es de hace ${Math.floor(viejo)} días</span>`:''))}</div>
     <div style="position:relative">
-      ${lnHdrHTML(L,H,'vent','🛒 Ventas y visitas',_lgS('var(--green)','vendidas',1)+(hayVis?_lgS('#60a5fa','visitas',1):''),`<b>${uT.toLocaleString('es-AR')} u.</b> · ${vT.toLocaleString('es-AR')} visitas`)}${lnHdrHTML(L,H,'st','📦 Stock en Full','',`<b>${hoyR.st.toLocaleString('es-AR')} u.</b> hoy`)}${lnHdrHTML(L,H,'gan','💵 Plata por día',_lgS('var(--green)','promedio de 7 días')+_lgS('#a78bfa','semana'),'')}${lnHdrHTML(L,H,'pct','📊 % de ganancia','',gPct!=null&&isFinite(gPct)?`<b style="color:${pctColor(gPct)}">${gPct.toFixed(0)}%</b> en el período`:'')}${lnHdrHTML(L,H,'pr','💲 Índice de precios',_lgS('var(--text)','100 = el precio de cada producto al empezar'),iFin!=null?`hoy <b>${iFin.toFixed(1)}</b>`:'')}${lnHdrHTML(L,H,'cam','↕️ Subas y bajadas',_lgS('var(--green)','▲ subas',1)+_lgS('var(--red)','▼ bajadas',1),`<span style="color:var(--green)">▲ ${sT}</span> · <span style="color:var(--red)">▼ ${bT}</span>`)}${lnHdrHTML(L,H,'rem','🧨 Remate','','')}${lnHdrHTML(L,H,'caja','🥊 Caja de compra',_lgS('var(--green)','ganan',1)+_lgS('#f59e0b','comparten',1)+_lgS('var(--red)','pierden',1),`hoy: <span style="color:var(--green)">${hoyR.g}</span> · <span style="color:#f59e0b">${hoyR.c}</span> · <span style="color:var(--red)">${hoyR.p}</span>`)}
+      ${lnHdrHTML(L,H,'vent','🛒 Ventas y visitas',_lgS('var(--green)','vendidas',1)+(uPT?_lgS('#f97316','Premium',1):'')+(uGT?_lgS('#38bdf8','envío gratis',1):'')+(hayVis?_lgS('#60a5fa','visitas',1):''),`<b>${uT.toLocaleString('es-AR')} u.</b> · ${vT.toLocaleString('es-AR')} visitas`)}${lnHdrHTML(L,H,'st','📦 Stock en Full','',`<b>${hoyR.st.toLocaleString('es-AR')} u.</b> hoy`)}${lnHdrHTML(L,H,'gan','💵 Plata por día',_lgS('var(--green)','promedio de 7 días')+_lgS('#a78bfa','semana'),'')}${lnHdrHTML(L,H,'pct','📊 % de ganancia','',gPct!=null&&isFinite(gPct)?`<b style="color:${pctColor(gPct)}">${gPct.toFixed(0)}%</b> en el período`:'')}${lnHdrHTML(L,H,'pr','💲 Índice de precios',_lgS('var(--text)','100 = el precio de cada producto al empezar'),iFin!=null?`hoy <b>${iFin.toFixed(1)}</b>`:'')}${lnHdrHTML(L,H,'cam','↕️ Subas y bajadas',_lgS('var(--green)','▲ subas',1)+_lgS('var(--red)','▼ bajadas',1),`<span style="color:var(--green)">▲ ${sT}</span> · <span style="color:var(--red)">▼ ${bT}</span>`)}${lnHdrHTML(L,H,'rem','🧨 Remate','','')}${lnHdrHTML(L,H,'caja','🥊 Caja de compra',_lgS('var(--green)','ganan',1)+_lgS('#f59e0b','comparten',1)+_lgS('var(--red)','pierden',1),`hoy: <span style="color:var(--green)">${hoyR.g}</span> · <span style="color:#f59e0b">${hoyR.c}</span> · <span style="color:var(--red)">${hoyR.p}</span>`)}
       <svg class="linea-svg" viewBox="0 0 ${W} ${H+16}" preserveAspectRatio="none" style="width:100%;height:${Math.round((H+16)*1.1)}px;display:block">${svg}</svg>
     </div>
     ${motHTML?`<div style="margin-top:8px;font-size:.68rem;line-height:1.7"><b>Cambios de precio del período, por motivo:</b> ${motHTML}</div>`:''}
     ${camR.length?`<details style="margin-top:6px" ${_ltListAb?'open':''} ontoggle="_ltListAb=this.open"><summary style="cursor:pointer;font-size:.7rem;font-weight:700">✏️ Todas las subas y bajadas (${camR.length}) ▾</summary><div style="font-size:.68rem;line-height:1.5;margin-top:4px">${listHTML}</div></details>`:''}
     <details style="margin-top:8px" ${_ltDetAb?'open':''} ontoggle="_ltDetAb=this.open"><summary style="cursor:pointer;font-size:.68rem;color:var(--muted)">Qué significa cada cosa ▾</summary>
     <div style="font-size:.64rem;color:var(--muted);margin-top:6px;line-height:1.9">
-      ${ley('var(--green)','vendido · suba · caja ganada')}${ley('#4ade80','vendido (de la línea del robot, antes de que el panel guarde ventas)')}${ley('#f59e0b','vendido en remate · caja compartida')}${ley('var(--red)','bajada · caja perdida')}${ley('#60a5fa','visitas')}${ley('#f97316','rematando')}${ley('#a855f7','escalera')}${ley('rgba(148,163,184,.6)','cambio que se ve en el precio guardado (incluye los de antes del registro)')}<br>
+      ${ley('var(--green)','vendido · suba · caja ganada')}${ley('#f97316','vendido en Premium (gemela con cuotas)')}${ley('#38bdf8','vendido con envío gratis (gemela)')}${ley('#4ade80','vendido (de la línea del robot, antes de que el panel guarde ventas)')}${ley('#f59e0b','vendido en remate · caja compartida')}${ley('var(--red)','bajada · caja perdida')}${ley('#60a5fa','visitas')}${ley('#f97316','rematando')}${ley('#a855f7','escalera')}${ley('rgba(148,163,184,.6)','cambio que se ve en el precio guardado (incluye los de antes del registro)')}<br>
       Ventas, ganancia y % salen de las ventas del panel (la misma cuenta que Ventas). <b>Stock</b>: unidades en Full de todo el catálogo, sólo los días en que lo informa casi todo (para atrás el registro está a medias). <b>Precio</b>: un índice — 100 es el primer día del gráfico y cada día se mueve con el promedio de lo que cambió el precio de cada publicación (110 = en promedio 10% más caro). <b>Subas / bajadas</b>: arriba de la raya cuántas subieron ese día y abajo cuántas bajaron (las registradas, robot y a mano, en color; en gris lo que se ve comparando el precio guardado día contra día). <b>Caja</b>: de las publicaciones activas de catálogo, qué parte gana, comparte o pierde. Pasá el mouse (o tocá) un día para ver el detalle, con cada cambio de precio de ese día.
     </div></details></div>`;
   _lineaLlenar(m,lineaTodoPintar);
@@ -15732,6 +15742,11 @@ const CAND_VENTAS_X_RESENA=20;
 function puntajeSalida(v,res){const vv=(v!=null&&isFinite(v))?Number(v):null,rr=(res!=null&&isFinite(res))?Number(res)*CAND_VENTAS_X_RESENA:null;
   if(vv==null&&rr==null)return null;return Math.round(Math.max(vv||0,rr||0));}
 function candPuntaje(c){return puntajeSalida(candVentasDe(c),c&&c.resCarga);}
+// ⭐ NOTA "GANA MUCHO Y SALE MUCHO" (24/10/2026, él: "¿de qué puntaje no debería aparecer? ¿o todo es mínimo 7 lo que está en la lista?").
+// % × log10(🚀 puntaje + 1) ÷ 10: lo mínimo para comprar (35% con 100 de salida) da 7,0. Abajo de 7 = deja poco o se vende poco.
+const CAND_COMBO_MIN=7;
+function candCombo(c){const m=(c&&c.margen!=null&&isFinite(c.margen))?Number(c.margen):null,p=candPuntaje(c);return (m!=null&&p!=null&&p>0)?m*Math.log10(p+1)/10:null;}
+function comboHTML(c){const x=candCombo(c);if(x==null)return '';const ok=x>=CAND_COMBO_MIN&&candPuntaje(c)>=CAND_MIN_VENTAS;return `<b style="color:${ok?'var(--green)':'var(--amber)'}" title="Gana mucho y sale mucho: % de ganancia × la salida en ML. ${CAND_COMBO_MIN} es lo mínimo para comprar (35% con 100 de salida); más alto, mejor.">⭐ ${x.toFixed(1).replace('.',',')}</b>`;}
 function puntajeHTML(p){if(p==null)return '';const ok=p>=CAND_MIN_VENTAS;return `<b style="color:${ok?'var(--green)':'var(--amber)'}" title="Puntaje de salida: lo que más diga entre las vendidas en ML y las reseñas × ${CAND_VENTAS_X_RESENA}. ${CAND_MIN_VENTAS} o más = sale bien · menos = rotación baja.">🚀 ${p.toLocaleString('es-AR')}${ok?'':' rotación baja'}</b>`;}
 // ── LOS TRES NÚMEROS DEL PEDIDO LOS ELIGE ÉL, Y VIVEN EN LA BASE (19/09/2026) ────────
 // Pedido suyo: *"tope del pedido (…) poder elegir tope de unidades por producto"*.
@@ -17027,7 +17042,7 @@ function pedidoMomentoHTML(g){
       R.fotoPY||R.fotoML||'', m!=null?m.toFixed(0)+'%'+(R.margenViejo!=null?' (medido a US$ '+R.margenViejo.toFixed(2)+')':''):null,
       (m==null||R.margenViejo!=null)?'var(--muted)':candPctCol(m,f.c),
       pedNuevoFilaHTML(f,maxU,tc,true),
-      (()=>{const nv=Number(f.c.mlVendedores);if(f.c.sinComp)return ` · <span style="color:var(--green)" title="Nadie lo vende hoy en su catálogo de ML: se midió contra el precio que vio el chat de compras en ML (${fmt(Number(f.c.svp)||0)}).">🌟 sin competencia en ML</span>`;const _v=candVentasDe(f.c),_r=f.c.resCarga;return ` · <span style="color:${nv>=CAND_MIN_VENDEDORES?'var(--green)':'var(--amber)'}">🏪 ${nv>0?nv+(nv===1?' vendedor':' vendedores')+' en ML':'sin vendedores medidos'}</span>`+` · 🛒 ${_v!=null?(_v>=1000?'+1000':_v)+' vendidas':'<span style="color:var(--amber)">vendidas sin cargar</span>'}`+` · ⭐ ${_r!=null?_r+' reseñas':'<span style="color:var(--muted)">reseñas sin cargar</span>'}`+(candPuntaje(f.c)!=null?' · '+puntajeHTML(candPuntaje(f.c)):'');})());});
+      (()=>{const nv=Number(f.c.mlVendedores);if(f.c.sinComp)return ` · <span style="color:var(--green)" title="Nadie lo vende hoy en su catálogo de ML: se midió contra el precio que vio el chat de compras en ML (${fmt(Number(f.c.svp)||0)}).">🌟 sin competencia en ML</span>`;const _v=candVentasDe(f.c),_r=f.c.resCarga;return ` · <span style="color:${nv>=CAND_MIN_VENDEDORES?'var(--green)':'var(--amber)'}">🏪 ${nv>0?nv+(nv===1?' vendedor':' vendedores')+' en ML':'sin vendedores medidos'}</span>`+` · 🛒 ${_v!=null?(_v>=1000?'+1000':_v)+' vendidas':'<span style="color:var(--amber)">vendidas sin cargar</span>'}`+` · ⭐ ${_r!=null?_r+' reseñas':'<span style="color:var(--muted)">reseñas sin cargar</span>'}`+(candPuntaje(f.c)!=null?' · '+puntajeHTML(candPuntaje(f.c)):'')+(candCombo(f.c)!=null?' · '+comboHTML(f.c):'');})());});
   const cfg=`<details style="margin:8px 0 2px"><summary style="cursor:pointer;font-size:.68rem;color:var(--muted)">⚙️ tope y máximo por producto</summary><div style="display:flex;gap:7px;flex-wrap:wrap;align-items:flex-end;margin:8px 0 4px">
       ${[['pedTopeUSD',tope,'Tope del pedido (US$, probados + nuevos)'],['pedMaxU',maxU,'U. por nuevo (barato que vende: 3-4 · caro: 1)']]
         .map(([k,v,t])=>`<label style="flex:1;min-width:105px"><div style="font-size:.6rem;color:var(--muted);margin-bottom:3px">${t}</div>
@@ -17577,7 +17592,7 @@ function candidatosHTML(){
         <div style="flex:1;min-width:0">
           <div class="cand-nom" style="font-size:.8rem;font-weight:600;line-height:1.3">${c.nombre}</div>
           <div class="cand-cel" style="font-size:.66rem;color:var(--muted);margin-top:2px">${pesos?fmt(pesos):usd>0?fmtUS2(puesto):'sin precio'}${(()=>{const _v=candVentasDe(c);return _v!=null?` · ${_v>=1000?'+1000':_v} vend.`:'';})()}${tieneCuenta&&_loc!=null?` · ${perfLocalHTML(_loc)}`:''}</div>
-          <div class="cand-sub" style="font-size:.68rem;color:var(--muted);margin-top:3px">${c.cod?`🔖 ${c.cod} · `:''}${usd>0?`${fmtUS2(usd)} → <b style="color:var(--text)">${fmtUS2(puesto)}</b> puesto${pesos?` · ${fmt(pesos)}`:''}`:'<span style="color:var(--red)">sin precio</span>'}${(()=>{const _v=candVentasDe(c);const _nv=Number(c.mlVendedores);return (_v!=null?` · 🛒 ${_v>=1000?'+1000':_v} vendidas`:'')+(c.resCarga!=null?` · ⭐ ${c.resCarga} reseñas`:'')+(candPuntaje(c)!=null?' · '+puntajeHTML(candPuntaje(c)):'')+` · <b style="color:${_nv>=CAND_MIN_VENDEDORES?'var(--green)':'var(--amber)'}">🏪 ${_nv>0?_nv+(_nv===1?' vendedor':' vend.'):'sin vendedores'}</b>`;})()}</div>
+          <div class="cand-sub" style="font-size:.68rem;color:var(--muted);margin-top:3px">${c.cod?`🔖 ${c.cod} · `:''}${usd>0?`${fmtUS2(usd)} → <b style="color:var(--text)">${fmtUS2(puesto)}</b> puesto${pesos?` · ${fmt(pesos)}`:''}`:'<span style="color:var(--red)">sin precio</span>'}${(()=>{const _v=candVentasDe(c);const _nv=Number(c.mlVendedores);return (_v!=null?` · 🛒 ${_v>=1000?'+1000':_v} vendidas`:'')+(c.resCarga!=null?` · ⭐ ${c.resCarga} reseñas`:'')+(candPuntaje(c)!=null?' · '+puntajeHTML(candPuntaje(c)):'')+(candCombo(c)!=null?' · '+comboHTML(c):'')+` · <b style="color:${_nv>=CAND_MIN_VENDEDORES?'var(--green)':'var(--amber)'}">🏪 ${_nv>0?_nv+(_nv===1?' vendedor':' vend.'):'sin vendedores'}</b>`;})()}</div>
         </div>
         <div class="cand-der" style="display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap;flex:0 1 auto">
           ${tieneCuenta&&_loc!=null?`<div class="cand-loc">${perfLocalHTML(_loc)}${perfNoLocalBtn('c',c.id,false)}</div>`:tieneCuenta&&candEsPerf(c)&&c.noLocal?`<div class="cand-loc" style="font-size:.6rem;color:var(--muted)">🏪 no da en el local${perfNoLocalBtn('c',c.id,true)}</div>`:''}
@@ -17587,7 +17602,7 @@ function candidatosHTML(){
         </div>
       </summary>
       <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
-      <div class="cand-solocel" style="font-size:.72rem;color:var(--muted);line-height:1.6">${c.cod?`🔖 ${c.cod} · `:''}${usd>0?`${fmtUS2(usd)} → <b style="color:var(--text)">${fmtUS2(puesto)}</b> puesto${pesos?` · ${fmt(pesos)}`:''}`:'sin precio'}${(()=>{const _v=candVentasDe(c);const _nv=Number(c.mlVendedores);return (_v!=null?` · 🛒 ${_v>=1000?'+1000':_v} vendidas`:'')+(c.resCarga!=null?` · ⭐ ${c.resCarga} reseñas`:'')+(candPuntaje(c)!=null?' · '+puntajeHTML(candPuntaje(c)):'')+` · 🏪 ${_nv>0?_nv+(_nv===1?' vendedor':' vend.'):'sin vendedores'}`;})()}
+      <div class="cand-solocel" style="font-size:.72rem;color:var(--muted);line-height:1.6">${c.cod?`🔖 ${c.cod} · `:''}${usd>0?`${fmtUS2(usd)} → <b style="color:var(--text)">${fmtUS2(puesto)}</b> puesto${pesos?` · ${fmt(pesos)}`:''}`:'sin precio'}${(()=>{const _v=candVentasDe(c);const _nv=Number(c.mlVendedores);return (_v!=null?` · 🛒 ${_v>=1000?'+1000':_v} vendidas`:'')+(c.resCarga!=null?` · ⭐ ${c.resCarga} reseñas`:'')+(candPuntaje(c)!=null?' · '+puntajeHTML(candPuntaje(c)):'')+(candCombo(c)!=null?' · '+comboHTML(c):'')+` · 🏪 ${_nv>0?_nv+(_nv===1?' vendedor':' vend.'):'sin vendedores'}`;})()}
         ${tieneCuenta&&_loc!=null?`<div style="margin-top:4px">${perfLocalHTML(_loc)}${perfNoLocalBtn('c',c.id,false)}</div>`:tieneCuenta&&candEsPerf(c)&&c.noLocal?`<div style="margin-top:4px">🏪 no da en el local${perfNoLocalBtn('c',c.id,true)}</div>`:''}</div>
       <div onclick="event.stopPropagation()"><button class="btn" style="font-size:.66rem;padding:3px 10px" onclick="event.preventDefault();event.stopPropagation();candNoML('${c.id}',${c.noML?'false':'true'})" title="${c.noML?'Volver a considerarlo para vender en ML':'Marca que ML no deja vender: deja de contarlo para ML y queda sólo para la perfumería del local'}">${c.noML?'↩︎ volver a ML':'🛒✕ no se puede ML'}</button></div>
       <div style="display:flex;gap:10px;flex-wrap:wrap">${fotoBox(RP.fotoPY,'🇵🇾 Paraguay')}${fotoBox(RP.fotoML,'🏷️ ML')}</div>
@@ -17663,9 +17678,12 @@ function candidatosHTML(){
   // ORDENAR (03/10/2026, pedido suyo: "poder buscar de mayor a menor los que más unidades vendieron, mayor
   // porcentaje y eso"). Los sin dato van siempre al final.
   {const k=_candOrden, val=c=>{const n=x=>(x!=null&&isFinite(x))?Number(x):null;
-      if(k==='vend')return n(candVentasDe(c));
       if(k==='salida')return candPuntaje(c);
-      if(k==='gan')return n(c.ganancia);
+      // ⭐ GANA MUCHO Y SALE MUCHO (24/10/2026, él: "juntando el puntaje de salida y el % de ganancia: el primero tiene que ser el que se
+      // le gana mucho y se vende mucho"). % × log10(puntaje): 50% con 1.000 de salida (150) va arriba de 35% con 20.000 (151 ≈ empate)
+      // y de 100% con 30 (148): el % pesa entero y la salida por escalones de ×10, así un producto no gana sólo por vender muchísimo.
+      // Lo de rotación baja (puntaje abajo de 100) va después de todo lo que sale bien, aunque deje 200%: "que se venda mucho" manda.
+      if(k==='combo'){const x=candCombo(c);return x!=null?x-(candPuntaje(c)<CAND_MIN_VENTAS?1e6:0):null;}
       if(k==='usd')return (parseFloat(c.usd)>0&&n(c.ganancia)!=null)?c.ganancia/(parseFloat(c.usd)*RECARGO_PY):null;
       if(k==='barato')return parseFloat(c.usd)>0?-parseFloat(c.usd):null;
       return n(c.margen);};
@@ -17675,7 +17693,7 @@ function candidatosHTML(){
   // verde hay, así voy viendo cuando sube productos nuevos"*). Verde = medido y en el piso o arriba.
   const _verdes=_arriba.filter(c=>c.margen!=null&&isFinite(c.margen)).length, _sinMed=_arriba.length-_verdes;
   const _sel=(arr,cur,fn)=>`<select onchange="${fn}(this.value)" style="font-size:.72rem;padding:4px 8px;border-radius:6px;background:var(--surface);color:var(--text);border:1px solid var(--border)">${arr.map(([k,t])=>`<option value="${k}"${cur===k?' selected':''}>${t}</option>`).join('')}</select>`;
-  const _orden=`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 10px"><span style="font-size:.66rem;color:var(--muted)">Ordenar:</span>${_sel([['pct','% de ganancia'],['salida','🚀 puntaje de salida'],['vend','🛒 más vendidos'],['gan','$ por unidad'],['usd','$ por dólar invertido'],['barato','más barato']],_candOrden,'candOrdenar')}</div>`;
+  const _orden=`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 10px"><span style="font-size:.66rem;color:var(--muted)">Ordenar:</span>${_sel([['combo','⭐ gana mucho y sale mucho'],['pct','% de ganancia'],['salida','🚀 puntaje de salida'],['usd','$ por dólar invertido'],['barato','más barato']],_candOrden,'candOrdenar')}</div>`;
   // 03/10/2026, él: el simulador y el historial "ahí no se usan y molestan": el simulador va al final y el
   // historial de pedidos vive en la pestaña 🧾 Pedido.
   return cab(_verdes)+pycatBuscarHTML()+_orden+_arriba.map(_card).join('')
@@ -17756,7 +17774,8 @@ function candidatosHTML(){
 // El panel se redibuja solo cada vez que llega un dato (ventas cada 2 min, etc.) y la tarjeta
 // abierta volvía a nacer cerrada "al ratito". Se recuerda cuáles están abiertas (02/10/2026).
 const _candAbiertos=new Set();
-let _candOrden=(()=>{try{return localStorage.getItem('cycCandOrden')||'pct';}catch(e){return 'pct';}})();
+// 24/10/2026: se sacaron "más vendidos" y "$ por unidad" (él); un orden guardado que ya no existe vuelve a ⭐.
+let _candOrden=(()=>{try{const k=localStorage.getItem('cycCandOrden');return ['combo','pct','salida','usd','barato'].includes(k)?k:'combo';}catch(e){return 'combo';}})();
 function candOrdenar(k){_candOrden=k;try{localStorage.setItem('cycCandOrden',k);}catch(e){}renderPedidos();}
 let _candFiltro='ml';
 function candFiltrar(k){_candFiltro=k;try{localStorage.setItem('cycCandFiltro',k);}catch(e){}renderPedidos();}

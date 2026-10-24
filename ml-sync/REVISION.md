@@ -694,6 +694,16 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 
 ## 3 · MERCADERÍA (miércoles)
 
+**24/10/2026 · v26.39 · ⭐ la nota a la vista (él: *"¿de qué puntaje no debería aparecer?"*).** `candCombo` = % × log10(🚀+1) ÷ 10;
+`CAND_COMBO_MIN`=7 = lo mínimo para comprar (35% con 100 de salida). Chip ⭐ en tarjetas y pedido (verde 7+ con salida 100+, ámbar abajo).
+El orden ⭐ usa el mismo número. **Qué chequear:** que nada de lo que "se puede pedir" quede abajo de 7 salvo los de 30% con 100+ y 2 vendedores (6,0).
+
+**24/10/2026 · v26.37 · ⭐ "gana mucho y sale mucho" (él: *"juntando el puntaje de salida y el % de ganancia: el primero tiene que ser el que
+se le gana mucho y se vende mucho"*).** Orden nuevo en Productos nuevos = % × log10(🚀 puntaje + 1) (el % entero, la salida por escalones de ×10,
+para que vender muchísimo no gane solo). Lo de rotación baja (🚀 menos de 100) va después de todo lo que sale bien aunque deje 200%; sin % o sin puntaje, al final. Se sacaron "🛒 más vendidos" y "$ por unidad" (él); un orden guardado que
+ya no existe vuelve a ⭐ (que es el de entrada). **Qué chequear:** que arriba queden los de mucho % con 🚀 verde y que los sin vendidas/reseñas cargadas
+queden abajo.
+
 **24/10/2026 · v26.36 · 🚀 Puntaje de salida (él: *"que para ordenar se junten ambas, ventas y reseñas… ordenar por puntaje de salida y ahí
 me aseguro que los primeros salen bien"*).** `puntajeSalida(v,res)` = max(vendidas, reseñas × `CAND_VENTAS_X_RESENA`=20); orden nuevo en
 Nuevos; chip 🚀 en tarjetas y en el pedido; menos de 100 = rotación baja (misma vara que `pocasVentas`: 100 vendidas o 5 reseñas). MEDIDO con
@@ -1378,6 +1388,11 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
     decisión de compra, no código. 11 (dinero que rinde en MP) lo mira él en la app.
 
 ## 7 · DISEÑO (domingo)
+
+**24/10/2026 · v26.40 · 📈 Todos los productos: Premium y envío gratis aparte (él: *"¿se puede saber cuánto fue Premium? así veo cuánto más
+vendemos por esa idea"*).** Barras: verde Clásica, naranja Premium (gold_pro o gemela Premium), celeste gemela de envío gratis, ámbar remate (misma
+regla que la línea de un producto). Tarjeta Vendió: "N en Premium · M con envío gratis"; Ganancia: lo que dejó cada una. Dónde vive:
+`lineaTodoPintar` (vd[k].uP/uG/gP/gG). **Qué chequear:** que verde+naranja+celeste+ámbar = el total del día; ventas viejas sin `tipoPub` cuentan como Clásica.
 
 **24/10/2026 · v26.35 · Pedido de nuevos: vendidas y reseñas a la vista (él: *"quiero que en el detalle en el pedido aparezcan ventas y
 reseñas"*).** El renglón de arriba (al lado de los vendedores) dice `🛒 N vendidas · ⭐ N reseñas` (o "sin cargar"), y la casilla del
