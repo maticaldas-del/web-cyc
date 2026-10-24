@@ -10681,7 +10681,11 @@ async function cuentaGemela({ b, P, tk, costo, envio, impPct, cuoMed, cuoPeor, f
 // el peor caso (se agranda hasta que alcanza y se parte el tramo al medio, redondeado a 90/990). Si la Clásica está abajo del 35% (sobra,
 // promo, `!piso`: las excepciones ya decididas) sigue con la misma plata. `ev(Q)` = la cuenta de la gemela a Q (null = ML no contestó).
 // Devuelve {P, cg} · {P:null} = no llega al 35% ni a $650.000 · null = ML no contestó.
-const GEMELA_CLA_OK = PISO_DURO - 2;   // la Clásica "está en el 35%" (2 puntos de margen: la cuenta de acá usa otro peor envío que la planilla)
+const GEMELA_CLA_OK = PISO_DURO - 2;
+// Una gemela que tiene que bajar más de 15% de una no se tira de golpe: baja hasta −15% por vuelta (cada hora) y llega sola en pocas horas
+// (24/10/2026, él: "en esos casos sí se permite abajo del 35% (…) todas las formas de venta deberían contribuir": antes quedaba "para revisar"
+// y no bajaba nunca). 90/990 como todo precio.
+function escalonGemela(pT, P) { if (!(P < pT * 0.85)) return P; const x = Math.ceil(pT * 0.85); return x >= 100000 ? Math.ceil((x + 10) / 1000) * 1000 - 10 : Math.ceil((x + 10) / 100) * 100 - 10; }   // la Clásica "está en el 35%" (2 puntos de margen: la cuenta de acá usa otro peor envío que la planilla)
 async function precioGemelaAlPiso(P0, cg0, ev) {
   const ok = (cg) => !!cg && isFinite(cg.mgP) && cg.mgP >= PISO_DURO;
   if (ok(cg0)) return { P: P0, cg: cg0 };
@@ -10774,9 +10778,9 @@ async function alinearGemelas(db, links, tokensRun, DRY, products, solo, forzar)
       }
       // Revisión etapa 1 (24/10): la tolerancia de 1% vale sólo para ARRIBA: si la gemela quedó más barata de lo que le toca, se corrige.
       if (pT >= P && pT - P <= Math.max(10, P * 0.01)) { out.bien++; memUpd[k] = { c: pC, p: pT, ts: Date.now() }; continue; }
+      // Una baja de más de 15% va de a −15% por vuelta (`escalonGemela`), no queda frenada.
+      const Pfin = P; P = escalonGemela(pT, P); if (P !== Pfin) a35 += ` (escalón de −15%: va hacia $${Pfin.toLocaleString('es-AR')} de a poco)`;
       const txt = `${cta} ${k} · Clásica ${e.gemelaDe} $${pC.toLocaleString('es-AR')} → Premium $${pT.toLocaleString('es-AR')} → $${P.toLocaleString('es-AR')}${a35}`;
-      // Revisión etapa 1 (24/10): una baja de más de 15% en una sola vuelta no se aplica sola: queda para revisar.
-      if (P < pT * 0.85) { out.revisar.push(`${txt} (−${Math.round((1 - P / pT) * 100)}% de una: no la bajo, para revisar)`); memUpd[k] = { c: pC, p: pT, ts: Date.now() }; continue; }
       // Revisión etapa 1 (24/10): la gemela marcada 🔒 (nobajar) no se baja si su Clásica no bajó (o no sé si bajó): sólo se dice qué
       // hubiera hecho. Si la Clásica bajó, la sigue. Sin poder leer las marcas, no se baja ninguna (y se vuelve a mirar en la hora).
       if (P < pT && (nobajG == null || (nobajG[k] && !(Number(m0.c) > 0 && pC < Number(m0.c))))) { out.revisar.push(`${txt} · 🔒 HUBIERA HECHO: bajarla de $${pT.toLocaleString('es-AR')} a $${P.toLocaleString('es-AR')}, ${nobajG == null ? 'pero no pude leer cyc/nobajar' : 'pero él pidió no bajarla y su Clásica no bajó'}`); if (nobajG != null) memUpd[k] = { c: pC, p: pT, ts: Date.now() }; continue; }
@@ -10916,14 +10920,16 @@ async function alinearGemelasEnvio(db, links, tokensRun, DRY, products, solo, fo
       if (cg && isFinite(cg.mgP) && cg.mgP < piso) out.flojas.push(`${k} a $${P.toLocaleString('es-AR')}: peor caso ${cg.mgP.toFixed(1)}% (misma plata neta que su Clásica, que también está floja)`);
       // Revisión etapa 1 (24/10): la tolerancia de 1% vale sólo para ARRIBA: si la gemela quedó más barata de lo que le toca, se corrige.
       if (pT >= P && pT - P <= Math.max(10, P * 0.01)) { out.bien++; memUpd[k] = { c: pC, p: pT, ts: Date.now() }; continue; }
+      { const Pfin = P; P = escalonGemela(pT, P); if (P !== Pfin) a35 += ` · escalón de −15%: va hacia $${Pfin.toLocaleString('es-AR')} de a poco`; }
       const txt = `${cta} ${k} · Clásica ${e.gemelaDe} $${pC.toLocaleString('es-AR')} → 📦 envío gratis $${pT.toLocaleString('es-AR')} → $${P.toLocaleString('es-AR')} (envío $${Math.round(cg.envE).toLocaleString('es-AR')}, neta $${Math.round(cg.netaE).toLocaleString('es-AR')} vs $${Math.round(cg.netaCla).toLocaleString('es-AR')}, peor caso ${cg.mgP.toFixed(1)}%${a35})`;
-      // Revisión etapa 1 (24/10): una baja de más de 15% en una sola vuelta no se aplica sola (para revisar), y la marcada 🔒 no se baja
-      // si su Clásica no bajó (o no sé si bajó): se dice qué hubiera hecho. Mismas reglas que `alinearGemelas`.
-      if (P < pT * 0.85) { out.revisar.push(`${txt} (−${Math.round((1 - P / pT) * 100)}% de una: no la bajo, para revisar)`); memUpd[k] = { c: pC, p: pT, ts: Date.now() }; continue; }
+      // Revisión etapa 1 (24/10): la marcada 🔒 no se baja si su Clásica no bajó (o no sé si bajó): se dice qué hubiera hecho. Mismas reglas
+      // que `alinearGemelas`. (La baja de más de 15% va de a −15% por vuelta, ver `escalonGemela` más arriba.)
       if (P < pT && (nobajG == null || (nobajG[k] && !(Number(m0.c) > 0 && pC < Number(m0.c))))) { out.revisar.push(`${txt} · 🔒 HUBIERA HECHO: bajarla de $${pT.toLocaleString('es-AR')} a $${P.toLocaleString('es-AR')}, ${nobajG == null ? 'pero no pude leer cyc/nobajar' : 'pero él pidió no bajarla y su Clásica no bajó'}`); if (nobajG != null) memUpd[k] = { c: pC, p: pT, ts: Date.now() }; continue; }
-      // 39a (24/10/2026, él): la gemela de envío no BAJA sola abajo del 25% del peor caso (deja la misma plata que la Clásica, pero el
-      // envío gratis pesa en el %): se queda donde está y sale en la lista 📦🛡️ de `planilla` para decidir (`cyc/gemelafloja/<MLA>`).
-      if (P < pT && cg && isFinite(cg.mgP) && cg.mgP < PISO_DURO) {
+      // 39a (24/10/2026, él): la gemela de envío no BAJA sola abajo del 35% del peor caso: se queda donde está y sale en la lista 📦🛡️ de
+      // `planilla` para decidir (`cyc/gemelafloja/<MLA>`). SALVO que su Clásica ya esté abajo del 35% a propósito (sobra, promo, `!piso`):
+      // ahí la publicación está para vender rápido y la gemela la acompaña con la misma plata (él, 24/10: "todas las formas de venta deberían
+      // contribuir para eso. En esos casos sí se permite abajo del 35%").
+      if (P < pT && cg && isFinite(cg.mgP) && cg.mgP < PISO_DURO && !(isFinite(cg.mgCla) && cg.mgCla < GEMELA_CLA_OK)) {
         out.revisar.push(`${txt} · 🛡️ a $${P.toLocaleString('es-AR')} queda en ${cg.mgP.toFixed(1)}% en el peor caso: abajo del ${PISO_DURO}% no la bajo sola, se queda en $${pT.toLocaleString('es-AR')} (para decidir)`);
         memUpd[k] = { c: pC, p: pT, ts: Date.now() };
         if (!DRY) { try { await db.set('cyc/gemelafloja/' + k, { ts: Date.now(), de: e.gemelaDe, p: pT, a: P, mgP: Math.round(cg.mgP * 10) / 10, c: pC }); } catch { /* */ } }
