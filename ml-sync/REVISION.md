@@ -694,6 +694,14 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 
 ## 3 · MERCADERÍA (miércoles)
 
+**24/10/2026 · v26.36 · 🚀 Puntaje de salida (él: *"que para ordenar se junten ambas, ventas y reseñas… ordenar por puntaje de salida y ahí
+me aseguro que los primeros salen bien"*).** `puntajeSalida(v,res)` = max(vendidas, reseñas × `CAND_VENTAS_X_RESENA`=20); orden nuevo en
+Nuevos; chip 🚀 en tarjetas y en el pedido; menos de 100 = rotación baja (misma vara que `pocasVentas`: 100 vendidas o 5 reseñas). MEDIDO con
+`resenamedir`: las vendidas que ve el chat ("+5", "+25", "+100") son de UN vendedor (el que gana el catálogo) y las reseñas son del catálogo
+entero de toda la vida (25 vendidas contra 1.041 reseñas): no hay un "1 reseña = N ventas" fijo. ML no deja leer las fechas de las reseñas
+ajenas (403), así que "reseñas de los últimos 90 días" no se puede medir por el robot. El 20 sale de la regla que él aprobó (5 reseñas = 100).
+**Qué chequear:** que ordenar por 🚀 ponga arriba lo de muchas reseñas y que nada con dato quede sin puntaje.
+
 **24/10/2026 · `pycodcolor` (sólo lee): el código de Paraguay de cada ficha contra su color (corrección suya con los Redmi Buds 6 Play:
 la ficha del negro tenía el 131119, que es el azul).** Para cada `codPy` y cada `pyVar` compara el color del renglón del catálogo con el
 de la ficha (nombre, color de la variante y títulos de sus publicaciones de ML): ❌ choca = código casi seguro equivocado (muestra los
