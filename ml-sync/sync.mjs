@@ -21705,6 +21705,13 @@ async function main() {
           }
         }
         const escalera = (await db.get('cyc/escalera')) || {};
+        // SACAR STOCK, CON LAS ESTRATEGIAS DE HOY (24/10/2026, él: "¿qué pasó con remate? quizás no se llaman remate, pero cumplen el mismo
+        // objetivo: sacar stock de productos que no dan o hay sobrestock"). La franja "Remate" de la línea se alimentaba de las marcas del
+        // robot viejo (liquidando automático y su escalera, apagados desde el 09/10): ahora `rem` también es 📦 sobra / 📉 liquidando /
+        // 🧨 remate y `esc` la 🪜 escalera de bajas, según la estrategia que tenía la publicación al terminar ese día.
+        let estDia = {}; try { estDia = (await db.get('cyc/estrategia')) || {}; } catch { estDia = {}; }
+        const finAyer = Date.parse(String(ayerK).replace(/_/g, '-') + 'T23:59:59-03:00');
+        const tagAyer = (m) => { const h = estDia[m] || {}; let best = 0, t = ''; for (const [k, x] of Object.entries(h)) { const ts = Number(k); if (ts > 0 && ts <= finAyer && ts > best && x && x.t) { best = ts; t = x.t; } } return t; };
         // 21/10/2026 · etapa 1: `cyc/netopub` no guarda `margen` (guarda neto, precio, envío, cuotas): `mg` salía vacío siempre. Se
         // calcula con la cuenta del margen normal (la de `planilla`): (neto − costo − precio × (IIBB + mono)) ÷ (costo + precio × (IIBB
         // + mono) + envío). Sin dólar, sin costo o con el neto "sin medir" queda vacío (no se sabe).
@@ -21767,7 +21774,7 @@ async function main() {
               caja: cajaOk ? caja : undefined, ptw: cajaOk && Number(e.cajaPtw) > 0 ? Math.round(Number(e.cajaPtw)) : undefined,
               vis: vis[mla] != null ? vis[mla] : undefined,
               u: vpD.u, tot: Math.round(vpD.tot), neto: Math.round(vpD.neto), uR: vpD.uR,
-              rem: nosubir[mla] ? 1 : 0, esc: escalera[mla] && escalera[mla].paso != null ? escalera[mla].paso : undefined,
+              rem: nosubir[mla] || ['sobra', 'liquidando', 'remate'].includes(tagAyer(mla)) ? 1 : 0, esc: escalera[mla] && escalera[mla].paso != null ? escalera[mla].paso : tagAyer(mla) === 'bajando' ? 1 : undefined,
               mg: mgDe(np, e),
               vend: b && b.sold_quantity != null ? b.sold_quantity : undefined,
             };

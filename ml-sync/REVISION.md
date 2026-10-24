@@ -728,6 +728,8 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 
 ## 3 · MERCADERÍA (miércoles)
 
+**24/10/2026 · v26.49 · "Remate" → "📦 Sacando stock"** (él: *"¿qué pasó con remate? quizás no se llaman remate, pero cumplen el mismo objetivo: sacar stock de productos que no dan o hay sobrestock"*). La franja contaba sólo `cyc/nosubir` y `cyc/escalera` del robot viejo (apagado el 09/10), por eso se cortó. La línea de cada noche (`lineatodo`/ml-daily) ahora pone `rem` también con la estrategia del día 📦 sobra / 📉 liquidando / 🧨 remate y `esc` con 🪜 bajando (`tagAyer`). Los días de antes no se rellenan. **Qué chequear:** mañana la franja vuelve a mostrar los de sobra/escalera de hoy.
+
 **24/10/2026 · v26.42 · "Falta reponer" de Paraguay cuenta sólo lo que da** (él: *"¿por qué dice falta reponer más de 3M y me da solo ese producto?"*). Sumaba todos los pedidos de Nissei (también los de "No da, no hay o falta revisar"). Ahora `_pedsPyQueDan` (✅ `pyProbVeredicto`) en la solapa y en `pedFaltaReponerTodo` (Resumen): lo cargado en el 🧾 Pedido y lo oculto por "Vender en" sí cuentan. **Qué chequear:** que el número de arriba se parezca a lo que muestran Dan + Ya cargado + ocultos.
 
 **24/10/2026 · `pyprecio:prov=elegancia;…` (él eligió la 10a: lo que Nissei no tiene y Elegancia sí, se repone de Elegancia).** Además del
