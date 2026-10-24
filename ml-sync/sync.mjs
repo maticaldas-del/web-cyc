@@ -34455,10 +34455,11 @@ async function main() {
       const hoy = cfgA.almacTarifa || {};
       console.log(`Tarifa de almacenamiento cargada: chico ${hoy.chico ? money(hoy.chico) : 'NO'} · grande ${hoy.grande ? money(hoy.grande) : 'NO'} (por unidad por día)`);
       if (!arg) return;
-      const [c, g] = arg.split('/').map((x) => pesosArg(x));
+      // Con centavos (24/10/2026): la tarifa medida da ~$0,60 por unidad por día y `pesosArg` redondea a pesos enteros ($1).
+      const [c, g] = arg.split('/').map((x) => { const n = Number(String(x).replace(/[^\d.,]/g, '').replace(',', '.')); return isFinite(n) ? Math.round(n * 100) / 100 : 0; });
       if (!(c > 0)) { console.log(`No entiendo "${arg}": va almactarifa:<pesos chico>[/<pesos grande>][:go].`); return; }
       const nueva = { chico: c, grande: g > 0 ? g : (hoy.grande || c), ts: Date.now() };
-      console.log(`${go ? 'Guardo' : 'PRUEBA · guardaría'}: chico ${money(nueva.chico)} · grande ${money(nueva.grande)}`);
+      console.log(`${go ? 'Guardo' : 'PRUEBA · guardaría'}: chico $${nueva.chico.toFixed(2)} · grande $${nueva.grande.toFixed(2)} (por unidad por día)`);
       if (!go) return;
       await db.set('cyc/mlconfig/almacTarifa', nueva);
       const rel = (await db.get('cyc/mlconfig/almacTarifa')) || {};
