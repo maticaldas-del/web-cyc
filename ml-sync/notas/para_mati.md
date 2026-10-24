@@ -29,5 +29,14 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
     dan 35% tienen 1 solo vendedor.
 30. ~~Elegancia: ¿PDF o web?~~ **Resuelto 24/10:** el de la web (*"era promoción lo del pdf, ya no sirve"*). Los 67 pasan al de comprasparaguay.
 
+### De la completa del 24/10 (03:00)
+31. **Paulvic a $21.990: la prueba perdió** (de 33 aromas en Adriana a $21.990 sólo vendieron 4 en 7-11 días; la plata por día bajó ~28%).
+    Te llegaron por Telegram **22 pedidos de autorización** para volver esos aromas a $14.990 (vencen en 48 h). Se quedan a $21.990 los que
+    van ganando: Good, Gold Hombre, L'extase y las 2 Leyton. (a) sugerida: "autorizo todo" · (b) contestar uno por uno.
+32. **Batidora blanca** (Luciana): 2 y 4 reclamos de 25 ventas en sus dos publicaciones (faltan accesorios / distinto a lo publicado).
+    (a) sugerida: que Tito revise qué trae cada unidad y corregir la descripción en ML antes de subirla más · (b) dejarla igual.
+33. **Free Love y Transparent** (Paulvic): los pedidos de autorización del 23/10 dicen $14.390 y la regla dice $14.950 ($14.990).
+    (a) sugerida: dejarlos en $14.390 (Transparent tiene raya roja en $14.360) · (b) contestar "no" y pedirlos a $14.990.
+
 ## Viejas que siguen esperando (de CLAUDE.md §13)
 - Sancor (respuesta y baja de Vida Plus) · contador (recategorización, actividad, facturas entre cuentas) · costo de las dos Linternas COB de Ayelen.
