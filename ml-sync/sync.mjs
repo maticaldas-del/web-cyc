@@ -17513,7 +17513,7 @@ async function main() {
           if (c.pedidoEn && comp[c.pedidoEn] && comp[c.pedidoEn].estado === 'camino') { sum('ya viaja en un pedido'); continue; }
           if (c.calcTs == null && c.usdAntes != null) { sum('cambió el precio de Paraguay, falta medirlo'); continue; }
           if (!/^https:\/\//.test(String(c.foto || '')) || !/^https:\/\//.test(String(c.mlFoto || ''))) { sum('le falta una de las dos fotos'); continue; }
-          if (!vendOk(c.mlVendedores, candVentasDe(c), c.sinComp)) { sum(Number(c.mlVendedores) === 1 ? '1 solo vendedor en ML y falta confirmar 100+ vendidas' : 'sin catálogo de ML con vendedores'); continue; }
+          if (!vendOk(c.mlVendedores, candVentasDe(c), c.sinComp)) { const _v = candVentasDe(c); sum(Number(c.mlVendedores) === 1 ? (_v == null ? '1 solo vendedor · falta cargar las vendidas' : `1 solo vendedor · vendió menos de 100 (${_v >= 50 ? '50-99' : 'menos de 50'})`) : 'sin catálogo de ML con vendedores'); continue; }
           if (!candCatChequeado(c)) { sum(c.revClaude && c.revClaude.cat === candCatDe(c) ? `fotos miradas: ${c.revClaude.v}` : 'falta mirar las fotos'); sinConf.push(c); continue; }
           if (pyCatNoSeMira(c.nombre)) { sum('categoría que no se mira'); continue; }
           if (pocasVentas(candVentasDe(c))) { sum('vendió menos de 100 en ML'); continue; }
