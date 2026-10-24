@@ -2959,7 +2959,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.26';
+const APP_VERSION='26.27';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2972,6 +2972,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.27',f:'24/10',h:'00:50',c:[{n:2,t:'🇵🇾 Paraguay: los productos que descartó Claude porque ML los comparaba con OTRO producto ya no cuentan como descartados: el robot les vuelve a buscar el producto correcto en ML (sin el que estaba mal). Si dan, vuelven a Para probar y pasan por la revisión de fotos.'}]},
   {v:'26.26',f:'24/10',h:'00:35',c:[{n:2,t:'🇵🇾 Paraguay → Nuevos → Revisados: la carpeta "Medidos que dan, pero el robot no confirmó…" ahora se llama "🟠 Dan el %, pero no entran al pedido": el % va en ámbar y cada producto dice por qué no entra (falta la foto de Paraguay, 1 solo vendedor, o el nombre de ML no coincide y puede ser otro producto).'}]},
   {v:'26.25',f:'24/10',h:'00:20',c:[{n:2,t:'🚚 Inicio → la tarjeta de Pedidos tiene 4 botones (Bs As, Paraguay, Paulvic, Listas) que entran directo a cada uno. Se sacó lo que decía abajo (cuántos en rojo y cuánto falta reponer).'}]},
   {v:'26.24',f:'24/10',h:'01:30',c:[{n:2,t:'Listas (Dai Nippon, Wels…) → un pedido que ya pagaste al pedirlo cuenta como mercadería en camino en el Arqueo hasta que llega (botón 💵 Ya lo pagué también mientras viaja). El que no pagaste sigue igual: al llegar es deuda hasta que lo pagás.'}]},
@@ -17607,7 +17608,7 @@ function candidatosHTML(){
       // Los números del catálogo los deja el robot en `cyc/pycatres`; las filas se bajan recién al abrir cada grupo (~4 MB).
       const R=pyProv==='nissei'?state.pycatres:null,n=k=>R&&R[k]!=null?Number(R[k]):0,f=x=>Number(x||0).toLocaleString('es-AR');
       const mas=k=>R?` <span style="color:var(--muted);font-weight:400">+ <b>${f(n(k))}</b> del catálogo</span>`:'';
-      const nDesc=candList().filter(c=>c.no).length;
+      const nDesc=candList().filter(c=>c.no&&c.noTipo!=='rebusca').length;   // 🔁 rebusca (24/10/2026): se están buscando de nuevo, no son descartados
       // 23/10/2026: suma también los ✔️ revisados traducidos (`scr`, faltaban) y, con la cuenta nueva, es Revisados + Falta revisar.
       const tot=_flojas.length+_rojos.length+_sinAnalizar.length+nDesc+(R?n('ficha')+(R.rev!=null&&R.pend!=null?n('rev')+n('pend'):n('bajo')+n('nomed')+n('sc')+n('scr')+n('sv')+n('fz')):0);
       // SE ARMA AL ABRIRLO (19/10/2026, él: "el problema de Nissei es que carga eso también, que cargue al clickearlo"): son miles de
@@ -17629,7 +17630,7 @@ function candidatosHTML(){
       // esté lo mismo que ahora"). Medidos = el robot ya sabe el margen (pocas ventas, no llegan, descartados con margen, ya son
       // tuyos). No medidos = falta analizar (incluye el catálogo sin medir) y descartados sin margen (sin catálogo exacto, nadie lo
       // vende, afuera por regla). Un grupo vacío no se dibuja.
-      const descM=candList().filter(c=>c.no&&_candMedido(c)).length,descN=nDesc-descM;
+      const descM=candList().filter(c=>c.no&&c.noTipo!=='rebusca'&&_candMedido(c)).length,descN=nDesc-descM;
       const totM=_flojas.length+_rojos.length+descM+(R?n('bajo')+n('ficha')+n('scr'):0),totN=_sinAnalizar.length+descN+(R?n('nomed')+n('sc')+n('sv')+n('fz'):0);
       const carp=(t,nn,col,html)=>`<details style="margin-top:10px;border:1px solid var(--border2);border-radius:8px;padding:6px 10px;background:var(--surface2)"><summary style="cursor:pointer;font-size:.74rem;font-weight:700;color:${col}">${t} · ${f(nn)}</summary>${html}</details>`;
       // ✅ REVISADOS / ⏳ FALTA REVISAR (23/10/2026, él: "quiero que haya dos carpetas: una que fueron revisados y otra que faltan
@@ -17685,7 +17686,7 @@ function candToggle(id,ab){if(ab)_candAbiertos.add(id);else _candAbiertos.delete
 const _candMedido=c=>c&&c.margen!=null&&isFinite(c.margen);
 function candDescartadosHTML(nCat,med){
   // med==='todos' (23/10/2026, carpeta ✅ Revisados): todos los candidatos descartados, sin las filas del catálogo (van en sus grupos).
-  const desc=candList().filter(c=>c.no&&(med==null||med==='todos'||_candMedido(c)===med));
+  const desc=candList().filter(c=>c.no&&c.noTipo!=='rebusca'&&(med==null||med==='todos'||_candMedido(c)===med));
   const _cat=(med===true||med==='todos')?'':pycatNoDanHTML(['sc','sv','fz'],'pycat-nodan-desc','📦 Del catálogo: sin catálogo exacto en ML, nadie lo vende o afuera por regla');
   if(med===true||med==='todos')nCat=null;
   if(!desc.length&&!_cat)return '';

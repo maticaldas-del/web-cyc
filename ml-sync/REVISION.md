@@ -694,6 +694,13 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 
 ## 3 · MERCADERÍA (miércoles)
 
+**24/10/2026 · v26.27 · 🔁 Rebusca de los descartados por "otro producto" (eligió la 1a).** De 1.386 descartados, 513 los había sacado
+yo mirando las fotos porque ML los comparaba con OTRO producto, y quedaban afuera para siempre sin que nadie les buscara el correcto.
+**Dónde vive:** `rebusca[;go]` (sync.mjs, ml-consulta) los pasa a `noTipo:'rebusca'` y le saca `cand`/`t` a su renglón de `mlapi/pycat`;
+`correrPyCatMedir` ya no los saltea, busca sin los catálogos de su `mlNoEs` y, si dan, vuelve el MISMO candidato (`rebuscaVolvio`). La
+web no los cuenta como descartados. `descartesmot` agrupa los descartes por motivo. **Qué chequear:** que ninguno vuelva con un
+catálogo de su `mlNoEs`; que los que vuelven pasen por `fotosrev`; que el número de Descartados baje ~513.
+
 **24/10/2026 · v26.26 · Paraguay → "Dan el %, pero no entran al pedido".** Él: *"acá creo que quedan productos que no van"*. La carpeta
 "🟢 Medidos que dan, pero el robot no confirmó…" mostraba en verde 59 productos del catálogo con 2+ vendedores que NUNCA pueden entrar a
 un pedido: a los 59 les falta la foto de Paraguay (sin las dos fotos no se compra) y muchos son otro producto (Klasse shampoo ⇒ vino

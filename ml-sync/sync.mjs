@@ -77,7 +77,7 @@ const _cortarCiclo = (donde) => {
 // los que escriben en cantidad o en plata se niegan de entrada, y cualquier otro corre con la base,
 // ML, Mercado Pago y Telegram en sólo lectura (se deja renovar y guardar el token de ML, que ML rota).
 const EN_CONSULTA = process.env.GITHUB_WORKFLOW === 'ml-consulta' || process.env.ML_CONSULTA === '1';
-const CONSULTA_ESCRIBE = new Set(['ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
+const CONSULTA_ESCRIBE = new Set(['ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
 const CONSULTA_NIEGA = new Set(['cajaitems', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'listaped', 'publicar', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'errores', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'promoventas', 'cargosmes', 'arcacierres', 'webpush']);
@@ -11292,7 +11292,9 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
   for (const [cod, e] of todos) {
     if (!e || !e.n) continue;
     const fz = pyCatFuera(e.n, Number(e.u) || 0, marcasNo); if (fz) { cuenta.fuera++; if (aplicar && e.fz !== fz) await db.patch(RUTA + '/' + cod, { fz }); continue; }
-    if (!esLista && candList.some(([, c]) => _pyCodIg(c.cod, cod))) { cuenta.cand++; continue; }
+    // 🔁 REBUSCA (24/10/2026, eligió la 1a): un candidato que descarté porque ML lo comparaba con OTRO producto no frena que el
+    // catálogo se vuelva a medir; se busca de nuevo sin los catálogos rechazados (`mlNoEs` del candidato).
+    if (!esLista && candList.some(([, c]) => _pyCodIg(c.cod, cod) && c.noTipo !== 'rebusca')) { cuenta.cand++; continue; }
     if (!esLista && fichas.some((p) => _pyCodIg(p.codPy, cod))) { cuenta.ficha++; continue; }
     const _uNow = esLista ? Number(e.p) : Number(e.u);
     if (esLista && !(_uNow > 0)) continue;
@@ -11375,6 +11377,8 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
       const nB = esLista ? limpiarNombreLista(e.n) || e.n : e.n;   // listas: el nombre traducido (ver limpiarNombreLista)
       if (esLista) upd.qv = LISTA_NOMBRE_VER; else upd.qp = PY_NOMBRE_VER;
       const _rechazado = esLista && e.noEs ? String(e.noEsCat || e.mi || '').toUpperCase() : '';
+      const _candR = esLista ? null : candList.find(([, c]) => _pyCodIg(c.cod, cod) && c.noTipo === 'rebusca');
+      const _rechSet = new Set(Object.keys((_candR && _candR[1].mlNoEs) || {}).map((x) => String(x).toUpperCase()));
       if (esLista && e.noEs && !e.noEsCat && e.mi) upd.noEsCat = e.mi;
       const mods = _rvMod(nB); const pal = _rvNorm(nB).split(' ').filter((w) => (w.length >= 2 || /^\d$/.test(w)) && !RV_VACIAS.has(w) && !PYCAT_RELLENO.has(w));
       const nT = esLista ? '' : traducirPyNombre(nB);   // Nissei: también con el nombre traducido (23/10/2026)
@@ -11396,7 +11400,7 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
         if (vistosB.size >= 15) break;
         await espera(250);
         const bus = await mlGetR(`/products/search?site_id=MLA&q=${encodeURIComponent(q.slice(0, 80))}&limit=8`);
-        for (const r of ((bus && bus.results) || [])) if (r && r.id && !vistosB.has(r.id) && String(r.id).toUpperCase() !== _rechazado) vistosB.set(r.id, r);
+        for (const r of ((bus && bus.results) || [])) if (r && r.id && !vistosB.has(r.id) && String(r.id).toUpperCase() !== _rechazado && !_rechSet.has(String(r.id).toUpperCase())) vistosB.set(r.id, r);
       }
       const resB = [...vistosB.values()];
       // Se prueban los que no tienen reparos DUROS (otro modelo, otro tamaño, otro color, edición/pack/lite…). Que falte alguna
@@ -11452,9 +11456,13 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
     if (!x.e.f) { console.log('     (sin foto de Paraguay: no pasa a Para probar)'); continue; }
     { const _ns = pyCatNoSeMira(x.e.n); if (_ns) { console.log(`     (${_ns}: categoría que no se mira, no pasa a Para probar)`); continue; } }
     if (!aplicar) continue;
-    const id = 'c' + Date.now() + 'p' + i;
+    // 🔁 El que estaba en rebusca vuelve con SU id (queda su `mlNoEs`), con el catálogo nuevo y todo lo medido en cero.
+    const _reb = candList.find(([, c]) => _pyCodIg(c.cod, x.cod) && c.noTipo === 'rebusca');
+    if (_reb && String(x.upd.mi).toUpperCase() in ((_reb[1].mlNoEs) || {})) { console.log('     (es el mismo catálogo que ya se rechazó: no vuelve)'); continue; }
+    const id = _reb ? _reb[0] : 'c' + Date.now() + 'p' + i;
     const c = { nombre: x.e.n, cod: x.cod, usd: x.e.u, mlId: x.upd.mi, enNissei: true, fuente: 'pycat', ts: Date.now(), ...(x.e.l ? { link: x.e.l } : {}), foto: x.e.f };
-    await db.set('cyc/candidatos_py/' + id, c);
+    if (_reb) { await db.patch('cyc/candidatos_py/' + id, { ...c, no: null, noTs: null, noTipo: null, motivo: null, revClaude: null, margen: null, calcTs: null, mlLink: null, mlTit: null, mlFoto: null, mlVendedores: null, pedirU: null, rebuscaVolvio: Date.now() }); console.log('     🔁 vuelve el candidato que se había descartado por otro producto'); }
+    else await db.set('cyc/candidatos_py/' + id, c);
     const rr = await db.get('cyc/candidatos_py/' + id);
     if (rr && rr.cod === c.cod) { alta++; await db.patch('mlapi/pycat/' + x.cod, { cand: id }); }
   }
@@ -20972,6 +20980,28 @@ async function main() {
       const usdP = conU.reduce((s, [, c]) => s + (Number(c.pedirU) || 0) * (Number(c.usd || c.precioUSD || c.nisseiUSD) || 0), 0);
       console.log(`\n── EN EL PEDIDO: ${conU.length} producto(s) · ${conU.reduce((s, [, c]) => s + Number(c.pedirU), 0)} u. · US$ ${usdP.toFixed(2)} crudos ──`);
       return;
+    }
+    // BILLING_PROBE=rebusca[;go] (24/10/2026, eligió la 1a: "devolver los 513 para que el robot les busque el producto correcto").
+    // Los candidatos de Nissei que descarté mirando las fotos (`noTipo:'claude'`: ML los comparaba con OTRO producto) pasan a
+    // `noTipo:'rebusca'`: su renglón del catálogo (`mlapi/pycat/<cód>`) pierde `cand` y la fecha, así el robot del catálogo lo vuelve
+    // a buscar en ML sin los catálogos rechazados (`mlNoEs`). Si da, vuelve el MISMO candidato y pasa por la revisión de fotos;
+    // si no, queda en su grupo del catálogo (sin catálogo, nadie lo vende, no llega). La web no los cuenta como descartados.
+    if (/^rebusca(;go)?$/.test(String(process.env.BILLING_PROBE || ''))) {
+      const GO = /;go$/.test(String(process.env.BILLING_PROBE));
+      const cands = (await db.get('cyc/candidatos_py')) || {}; const cat = (await db.get('mlapi/pycat')) || {};
+      const up = {}, upP = {}; let n = 0, sinCat = 0, otroProv = 0; const ts = Date.now();
+      for (const [id, c] of Object.entries(cands)) {
+        if (!c || !c.no || c.noTipo !== 'claude' || c.prodId) continue;
+        if (provPyDeBot(c) !== 'nissei') { otroProv++; continue; }
+        const cod = Object.keys(cat).find((k) => _pyCodIg(c.cod, k)); if (!cod) { sinCat++; continue; }
+        n++; up[`${id}/noTipo`] = 'rebusca'; up[`${id}/motivo`] = `🔁 El robot le está buscando el producto correcto en ML (el que se comparó era otro: ${String(c.motivo || '').replace(/^🤖 Claude miró las fotos: /, '').slice(0, 120)})`; up[`${id}/rebuscaTs`] = ts;
+        upP[`${cod}/cand`] = null; upP[`${cod}/t`] = null;
+      }
+      console.log(`=== REBUSCA ${GO ? '(APLICANDO)' : '(PRUEBA)'}: ${n} candidatos vuelven a buscarse · ${sinCat} sin renglón en el catálogo (no se pueden) · ${otroProv} de Elegancia (no se tocan) ===`);
+      if (!GO || !n) return;
+      await db.patch('cyc/candidatos_py', up); await db.patch('mlapi/pycat', upP);
+      const rel = (await db.get('cyc/candidatos_py')) || {}; const ok = Object.keys(up).filter((k) => k.endsWith('/noTipo')).filter((k) => (rel[k.split('/')[0]] || {}).noTipo === 'rebusca').length;
+      console.log(`✓ releído: ${ok} de ${n} quedaron en rebusca.`); return;
     }
     // BILLING_PROBE=descartesmot → POR QUÉ SE DESCARTÓ CADA CANDIDATO, AGRUPADO (24/10/2026, él: "hay muchos descartados que no sé
     // por qué. son productos legítimos"). SOLO LEE. Agrupa por tipo de descarte y el motivo sin números, con 4 ejemplos por grupo.
