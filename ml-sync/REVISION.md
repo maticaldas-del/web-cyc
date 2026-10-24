@@ -1123,6 +1123,13 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
    no lea `cyc/listas_local` todavía (nadie lo usa para costos: el precio pagado real queda anotado, no mueve la ficha); que el
    "otro producto" del local y el `listadato` del chat no se pisen.
 
+### Invictus y Phantom no vuelven a la caja ni al pedido (24/10/2026, completa de las 03:00)
+- **Qué es:** ML los dio de baja para siempre (él, 24/10). `decide_cajas.py` los volvía a proponer cada noche (4 y 3 a Full, porque
+  hay en la oficina) y `decide_pedidos.py` les ponía el motivo "lo pedimos y no vino". Ahora los dos scripts los dejan en 0 con
+  el motivo real ("ML lo dio de baja… lo de la oficina va al local"). `nomandar` no sirve: frena TODO el Paulvic de Adriana.
+- **Dónde vive:** `ml-sync/notas/decide_cajas.py` (`BAJA_ML`) y `decide_pedidos.py` (mismo par, en el renglón de "no viene más").
+- **Qué chequear:** que la completa ya no tenga que corregirlos a mano · si otro aroma pasa a dado de baja, agregarlo a los DOS.
+
 ## 4 · CHOQUES Y FALLAS MUDAS (jueves · junta las viejas 4 y 5)
 
 - **LAS 2 DECISIONES DE LA ETAPA 4 DEL 20/10/2026, CERRADAS (v25.45).**
