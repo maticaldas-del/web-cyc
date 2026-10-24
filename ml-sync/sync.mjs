@@ -21003,6 +21003,22 @@ async function main() {
       const rel = (await db.get('cyc/candidatos_py')) || {}; const ok = Object.keys(up).filter((k) => k.endsWith('/noTipo')).filter((k) => (rel[k.split('/')[0]] || {}).noTipo === 'rebusca').length;
       console.log(`✓ releído: ${ok} de ${n} quedaron en rebusca.`); return;
     }
+    // BILLING_PROBE=pycatmuestra:<grupo>:<n> (24/10/2026, él: "¿no dejamos ningún producto afuera injustamente?"). SOLO LEE. Una
+    // muestra pareja de N renglones del catálogo de Nissei de ese grupo (`pycatGrupoRev`: bajo · dan · sc · scr · sv · fz) con lo que
+    // trajo ML (título, catálogo, %, vendedores, reparo), para mirar a ojo si el grupo está bien armado. `margen` = descartados por margen.
+    if (/^pycatmuestra:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const [, g, nS] = String(process.env.BILLING_PROBE).split(':'); const N = parseInt(nS, 10) || 60;
+      let L;
+      if (g === 'margen') { const cands = (await db.get('cyc/candidatos_py')) || {};
+        L = Object.values(cands).filter((c) => c && c.no && (c.noTipo === 'margen' || (!c.noTipo && c.margen != null))).map((c) => [c.cod, { n: c.nombre, mt: c.mlTit, mi: candCatDe(c), m: c.margen, mv: c.mlVendedores, mp: c.mlPrecio, u: c.usd }]);
+      } else { const cat = (await db.get('mlapi/pycat')) || {}; const ahora = Date.now();
+        L = Object.entries(cat).filter(([, e]) => e && e.n && pycatGrupoRev(e, ahora, 14 * 864e5) === g); }
+      const paso = Math.max(1, Math.floor(L.length / N));
+      console.log(`=== MUESTRA "${g}" · ${L.length} en el grupo · ${Math.min(N, L.length)} renglones ===`);
+      for (let i = 0; i < L.length && i / paso < N; i += paso) { const [cod, e] = L[i];
+        console.log(`  ${cod} · US$ ${e.u} · ${String(e.n).slice(0, 60)} ⇒ ${String(e.mt || '—').slice(0, 60)} ${e.mi || ''}${e.m != null ? ' · ' + Math.round(e.m) + '%' : ''}${e.mv != null ? ' · ' + e.mv + ' vend' : ''}${e.mp ? ' · $' + e.mp : ''}${e.rp ? ' · rp: ' + String(e.rp).slice(0, 60) : ''}${e.fz ? ' · fz: ' + e.fz : ''}`); }
+      return;
+    }
     // BILLING_PROBE=descartesmot → POR QUÉ SE DESCARTÓ CADA CANDIDATO, AGRUPADO (24/10/2026, él: "hay muchos descartados que no sé
     // por qué. son productos legítimos"). SOLO LEE. Agrupa por tipo de descarte y el motivo sin números, con 4 ejemplos por grupo.
     if (/^descartesmot$/.test(String(process.env.BILLING_PROBE || ''))) {
