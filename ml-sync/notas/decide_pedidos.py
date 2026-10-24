@@ -245,7 +245,7 @@ def tito(q,r,t,obj,b,rent,neto,color=None,extra='',motNo=''):
     de=f" del {color}" if color else ''
     quien=f"El {color}" if color else "Este"
     if not rent:
-        return "Hola Tito! "+quien+" no lo compres: "+({'falta el costo':'todavía no tengo cargado cuánto cuesta.','todavía no sé cuánto deja en ML':'todavía no sé cuánto deja en ML.'}.get(motNo,'con lo que cuesta no nos deja ganancia.'))
+        return "Hola Tito! "+quien+" no lo compres: "+({'falta el costo':'todavía no tengo cargado cuánto cuesta.','todavía no sé cuánto deja en ML':'todavía no sé cuánto deja en ML.'}.get(motNo,(f"al precio de hoy deja {motNo.split(' ')[1].rstrip(',')} y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir." if str(motNo).startswith('deja ') else 'con lo que cuesta no nos deja ganancia.')))
     mes=f"{r*30:.0f}"; b=str(b or '')
     if b.startswith('agotado'): base=f"está agotado y cuando había se vendían unos {mes} por mes"
     elif b.startswith('nunca'): base="todavía no se vendió nunca"
