@@ -11189,7 +11189,10 @@ const PYCAT_EL = 'EL_';
 const pycatProvDe = (key, e) => ((e && e.pv === 'elegancia') || String(key).startsWith(PYCAT_EL) ? 'elegancia' : 'nissei');
 const pycatCodDe = (key) => (String(key).startsWith(PYCAT_EL) ? String(key).slice(PYCAT_EL.length) : String(key));
 // ¿El candidato o la ficha `x` (código `codX`) es este renglón del catálogo? Mismo proveedor y mismo código.
-const pycatEsDe = (key, e, x, codX) => provPyDeBot(x) === pycatProvDe(key, e) && _pyCodIg(codX, pycatCodDe(key));
+// Elegancia SÓLO EXACTO (24/10/2026): los códigos del PDF "Atacado" no son los de comprasparaguay, y comparando por el final
+// ("69942" contra "769942") la carga del catálogo le pisó el precio a candidatos de Elegancia con el de OTRO perfume.
+const pycatCodIgual = (pv, a, b) => (pv === 'elegancia' ? (_pyDg(a) !== '' && _pyDg(a) === _pyDg(b)) : _pyCodIg(a, b));
+const pycatEsDe = (key, e, x, codX) => provPyDeBot(x) === pycatProvDe(key, e) && pycatCodIgual(pycatProvDe(key, e), codX, pycatCodDe(key));
 // Lee renglones `código|nombre|US$|link|foto` y marcas de página `#<n>` (opcional `#<n>@<orden>`). Devuelve lo leído y los malos.
 function pyCatParse(lineas) {
   const filas = [], malos = []; let pg = null, orden = null;
@@ -11210,6 +11213,8 @@ function pyCatParse(lineas) {
 // cada grupo los deja el robot en `cyc/pycatres` (chico) para que los encabezados los muestren sin bajar nada. MISMA división
 // que `pycatNoDan` de index.html: candidato · ficha · afuera por regla · medido abajo del piso · sin catálogo exacto · nadie lo
 // vende · sin medir (o medido arriba del piso y esperando pasar a candidato). Si se toca una, se toca la otra.
+// Elegancia: sólo exacto (ver `pycatCodIgual`).
+function pyCodMatcherPv(pv, codes) { if (pv !== 'elegancia') return pyCodMatcher(codes); const st = new Set(codes.map(_pyDg).filter(Boolean)); return (y) => st.has(_pyDg(y)); }
 function pyCodMatcher(codes) {
   const full = new Set(), suf = new Set();
   for (const c of codes) { const x = _pyDg(c); if (!x) continue; full.add(x); if (!/[A-Z]/.test(x)) for (let k = 5; k < x.length; k++) suf.add(x.slice(-k)); }
@@ -11242,8 +11247,8 @@ async function _pycatResumenUno(db, cat, cands, products, RUTA_R) {
   // Elegancia (24/10/2026) va en el mismo catálogo con clave `EL_<código>`: cada renglón se compara con los de SU proveedor.
   const _mC = {}, _mF = {};
   for (const pv of ['nissei', 'elegancia']) {
-    _mC[pv] = pyCodMatcher(Object.values(cands || {}).filter((c) => c && provPyDeBot(c) === pv).map((c) => c.cod).filter(Boolean));
-    _mF[pv] = pyCodMatcher((products || []).filter((p) => p && provPyDeBot(p) === pv).map((p) => p.codPy).filter(Boolean));
+    _mC[pv] = pyCodMatcherPv(pv, Object.values(cands || {}).filter((c) => c && provPyDeBot(c) === pv).map((c) => c.cod).filter(Boolean));
+    _mF[pv] = pyCodMatcherPv(pv, (products || []).filter((p) => p && provPyDeBot(p) === pv).map((p) => p.codPy).filter(Boolean));
   }
   const esCand = (k) => _mC[pycatProvDe(k, cat && cat[k])](pycatCodDe(k)), esFicha = (k) => _mF[pycatProvDe(k, cat && cat[k])](pycatCodDe(k));
   const r = { t: Date.now(), tot: 0, cand: 0, ficha: 0, fz: 0, bajo: 0, sc: 0, scr: 0, sv: 0, nomed: 0, nm: 0 };
@@ -21179,7 +21184,7 @@ async function main() {
       const cat = (await db.get('mlapi/pycat')) || {}; const cands = (await db.get('cyc/candidatos_py')) || {};
       // Elegancia (24/10/2026) va en el mismo catálogo con clave `EL_<código>`: se compara con SUS candidatos y el renglón dice
       // `py|elegancia|EL_<código>` (ese código entero es el que se carga en `svprecio`).
-      const _mc = {}; for (const pv of ['nissei', 'elegancia']) _mc[pv] = pyCodMatcher(Object.values(cands).filter((c) => c && !c.no && provPyDeBot(c) === pv).map((c) => c.cod).filter(Boolean));
+      const _mc = {}; for (const pv of ['nissei', 'elegancia']) _mc[pv] = pyCodMatcherPv(pv, Object.values(cands).filter((c) => c && !c.no && provPyDeBot(c) === pv).map((c) => c.cod).filter(Boolean));
       const esCand = (k) => _mc[pycatProvDe(k, cat[k])](pycatCodDe(k));
       for (const [cod, e] of Object.entries(cat)) { if (!e || !e.sv || !e.mi || e.fz || !e.f || svpVigente(e) || esCand(cod) || pyCatNoSeMira(e.n)) continue;
         filas.push({ r: PYCAT_RUBRO_RE.test(String(e.n)) ? 0 : 1, u: Number(e.u) || 0, t: `py|${pycatProvDe(cod, e)}|${cod}|${String(e.n).replace(/\|/g, '/').slice(0, 80)}|${e.mi}|US$ ${e.u}` }); }
@@ -22578,10 +22583,10 @@ async function main() {
         // LA FECHA SE RENUEVA AUNQUE EL PRECIO SEA EL MISMO (etapa 3, 20/10/2026): un candidato que da y sigue en el catálogo
         // con el precio de siempre vencía a los 60 días (`CAND_VENCE_DIAS` de la web) sin que nadie lo dijera. Si el código
         // sigue en Nissei, el precio se miró hoy: `ts` (y `visto`) al día.
-        for (const yc of Object.entries(cands).filter(([, c]) => c && !c.prodId && provPyDeBot(c) === PROV_C && _pyCodIg(c.cod, f.cod))) {
+        for (const yc of Object.entries(cands).filter(([, c]) => c && !c.prodId && provPyDeBot(c) === PROV_C && pycatCodIgual(PROV_C, c.cod, f.cod))) {
           if (Math.abs((Number(yc[1].usd) || 0) - f.u) >= 0.005) candUpd.push([yc[0], yc[1], f]); else candVisto.push(yc[0]);
         }
-        const yp = products.find((p) => p && p.codPy && provPyDeBot(p) === PROV_C && _pyCodIg(p.codPy, f.cod));
+        const yp = products.find((p) => p && p.codPy && provPyDeBot(p) === PROV_C && pycatCodIgual(PROV_C, p.codPy, f.cod));
         // La ficha se toca aunque el precio sea el mismo: así `nisseiTs` dice que se miró hoy (antes quedaba "hace 12 d").
         if (yp) fichaUpd.push([yp, f]);
       }
@@ -22655,7 +22660,7 @@ async function main() {
       const sinColor = (t) => _rvBase(t).split(' ').filter((w) => w && !_RV_COLOR[w]).join(' ');
       const porBase = {}; for (const [k, e] of Object.entries(cat)) if (e && e.n) (porBase[pycatProvDe(k, e) + '|' + sinColor(e.n)] = porBase[pycatProvDe(k, e) + '|' + sinColor(e.n)] || []).push([k, e]);
       const keyDe = (p, cod) => { const pv = provPyDeBot(p); const k0 = (pv === 'elegancia' ? PYCAT_EL : '') + _pyDg(cod); if (cat[k0]) return k0;
-        return Object.keys(cat).find((k) => pycatProvDe(k, cat[k]) === pv && _pyCodIg(cod, pycatCodDe(k))) || null; };
+        return Object.keys(cat).find((k) => pycatProvDe(k, cat[k]) === pv && pycatCodIgual(pv, cod, pycatCodDe(k))) || null; };
       const choca = [], duda = []; let mirados = 0;
       const mirar = (p, cod, colorVar) => {
         const k = keyDe(p, cod); if (!k) return; mirados++; const e = cat[k]; const cP = _rvColores(e.n); if (!cP.size) return;

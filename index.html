@@ -2960,7 +2960,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.33';
+const APP_VERSION='26.34';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2973,6 +2973,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.34',f:'24/10',h:'01:55',c:[{n:2,t:'🟣 Elegancia: el catálogo se compara con los candidatos sólo por el código exacto (los del PDF viejo se confundían con otros que terminaban igual).'}]},
   {v:'26.33',f:'24/10',h:'01:30',c:[{n:3,t:'🟣 Elegancia: ahora se mira su catálogo entero, como el de Nissei. El chat de compras lo copia, el robot lo mide contra ML y lo que da 35% aparece en la solapa Elegancia → Nuevos.'}]},
   {v:'26.32',f:'24/10',h:'02:20',c:[{n:2,t:'🇵🇾 Productos nuevos: 5 o más reseñas en ML también cuentan como "se vende" (vale como las 100 vendidas). Lo carga el chat de compras.'}]},
   {v:'26.31',f:'24/10',h:'02:05',c:[{n:1,t:'🇵🇾 La carpeta de "1 solo vendedor" dice la regla: entran con 100+ vendidas en ML; los de ahí vendieron menos o falta que el chat cargue el dato.'}]},
@@ -15560,8 +15561,10 @@ async function pycatNoDan(id,keysTxt){
   // ELEGANCIA (24/10/2026): su catálogo va en el mismo lugar con clave `EL_<código>`; cada solapa ve sólo el suyo y lo compara con
   // SUS candidatos y fichas (`pycatProvDe`/`pycatCodDe`, mismas reglas que el robot).
   const _pv=(typeof pyProv!=='undefined'&&PY_PROVS[pyProv])?pyProv:'nissei';
-  const esCand=_pycMatcher(Object.values(state.candidatos||{}).filter(c=>c&&pyProvDe(c)===_pv).map(c=>c.cod).filter(Boolean));
-  const esFicha=_pycMatcher((state.products||[]).filter(p=>p&&pyProvDe(p)===_pv).map(p=>p.codPy).filter(Boolean));
+  // Elegancia: sólo código exacto (los del PDF "Atacado" no son los de comprasparaguay; por el final se confundían).
+  const _mt=codes=>{if(_pv!=='elegancia')return _pycMatcher(codes);const st=new Set(codes.map(_pycDg).filter(Boolean));return y=>st.has(_pycDg(y));};
+  const esCand=_mt(Object.values(state.candidatos||{}).filter(c=>c&&pyProvDe(c)===_pv).map(c=>c.cod).filter(Boolean));
+  const esFicha=_mt((state.products||[]).filter(p=>p&&pyProvDe(p)===_pv).map(p=>p.codPy).filter(Boolean));
   for(const [cod,e] of Object.entries(cat||{})){if(!e||!e.n||pycatProvDe(cod,e)!==_pv||e.cand||esCand(pycatCodDe(cod)))continue;
     if(esFicha(pycatCodDe(cod))){g.ficha.push([cod,e]);continue;}
     if(split){const gr=_pycGrupoRev(e,_ahora);(gr==='pn'||gr==='pv'?g.pend:g[gr]).push([cod,e]);continue;}
