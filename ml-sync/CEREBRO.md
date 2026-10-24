@@ -310,7 +310,7 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
 - **Las rayas** (una sola cuenta en la web y el robot, `_rayas` = `rayasPrecioLinea`; días con 3+ u. en Full y con visitas):
   💰 **piso** = el precio que más plata por día dejó (5+ días; desde la primera venta hay uno provisorio, punteado). 🔒 No se baja
   de ahí salvo sobra, sin reposición o stock antiguo. 🔴 **techo** = el precio más bajo arriba del 💰 donde, al 95%, no deja la misma
-  plata. La raya 🚧 de una prueba vuelta dice "N% seguro" o "sin certeza". Subir arriba del 🔴 → decir por qué no le creo.
+  plata. La raya 🚧 de una prueba vuelta dice "N% seguro" o "sin certeza". **Las rayas se miden con los últimos 60 días y sin los días de fechas especiales** (24/10, él con el Infusor cajita: el 🔴 $5.290 salía contra un 💰 de 8 días de fines de julio que vendieron el triple; lo pasó y vende a $6.890). Subir arriba del 🔴 → decir por qué no le creo.
 - **🏔️ techo encontrado:** 🔒 sólo con `techo95` (95%); si no llega, vuelve a 📈. Corre en cada completa sobre las 🏔️ y las 🆕.
 - **📏 Todo producto tiene su techo marcado** (21/10/2026, regla suya): 🏔️, raya 🔴 o raya 🚧. Las únicas excepciones: 📦 sobra,
   🪜 bajando por un motivo puntual (y ese motivo es el precio probado que no rindió, anotado en `techofreno`) o 📈 todavía buscándolo

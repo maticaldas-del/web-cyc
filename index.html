@@ -2960,7 +2960,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.42';
+const APP_VERSION='26.43';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2973,6 +2973,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.43',f:'24/10',h:'13:42',c:[{n:3,t:'💰🔴 Las rayas de piso y techo se miden con los últimos 60 días y sin los días de fechas especiales (Día del Niño, de la Madre, ofertas): el techo del Infusor salía de comparar contra 8 días de fines de julio que vendieron el triple.'},{n:2,t:'📈 Línea de tiempo: el precio de HOY es el que está puesto ahora (si se cambió a la mañana, ya se ve), no lo cobrado en las ventas de hoy.'},{n:2,t:'🎯 Desde hoy todo pide 35%: el máximo de compra, Listas, el simulador y lo que entra en Paraguay (se acabó la entrada con 30%).'}]},
   {v:'26.42',f:'24/10',h:'13:30',c:[{n:2,t:'🚚 Pedidos → Paraguay: "Falta reponer" cuenta sólo lo que da (lo de "No da, no hay o falta revisar" ya no suma). Lo cargado en el Pedido y lo oculto por el filtro sí.'},{n:2,t:'🌟 Listas: lo que nadie vende en ML (sin competencia) ya puede llegar a "Dan", como en Paraguay.'},{n:1,t:'📊 Rotación: se sacaron "rematar al 12%" y "limpiar al 20%" (regla vieja).'}]},
   {v:'26.41',f:'24/10',h:'11:55',c:[{n:3,t:'🔍 Revisión de Precios: los frenos ya no se apagan cuando la base no contesta, las gemelas no bajan con un dato en $0 ni lo marcado 🔒, publicar no resta dos veces la retención y respeta los $33.000, y las rayas del techo miran toda la línea (no sólo los días a la vista).'},{n:2,t:'Lo nuevo de las listas de Bs As dice el máximo para dejar 35% (antes 25%), un producto sin costo dice "sin costo" en vez de ~800% verde, y "podés bajar hasta" de la ficha usa el peor caso.'},{n:1,t:'🌟 el precio para dejar 35% se redondea para arriba; el catálogo de Paraguay pinta verde desde 35% y en ámbar "guardado" lo de 25-34%.'}]},
   {v:'26.40',f:'24/10',h:'11:41',c:[{n:2,t:'📈 Todos los productos: las ventas por la publicación Premium van en naranja y las de envío gratis en celeste, y las tarjetas dicen cuántas unidades y cuánta ganancia dejó cada una.'}]},
@@ -5245,6 +5246,19 @@ function simPrecioParaMargen(x){
   if(!llega(ajB))return null;
   return {precio:ajB,gest:SIM_ENVIO_ARRIBA,cruza:true};
 }
+// LOS DÍAS DE FECHA ESPECIAL NO MIDEN EL PRECIO (24/10/2026, él con el Infusor cajita: el 🔴 $5.290 salía contra un 💰 de los días antes
+// del Día del Niño). Las rayas no cuentan la ventana de una fecha especial (regalo u ofertas). Copia de
+// `fechasEspeciales`/`diaFechaRaya` del robot (sync.mjs): si se toca una, la otra.
+function _fechasEspR(y){const nD=(yy,m,n)=>{const d=new Date(Date.UTC(yy,m,1));return Date.UTC(yy,m,1+((7-d.getUTCDay())%7)+(n-1)*7,3);};
+  const nov1=new Date(Date.UTC(y,10,1)).getUTCDay();const bf=Date.UTC(y,10,1+((4-nov1+7)%7)+22,3),cm=Date.UTC(y,10,1+((1-nov1+7)%7),3);
+  return [{ts:nD(y,9,3),pre:14,regalo:1},{ts:nD(y,5,3),pre:14,regalo:1},{ts:nD(y,7,3),pre:14,regalo:1},{ts:Date.UTC(y,11,24,3),pre:21,regalo:1},
+    {ts:Date.UTC(y,0,6,3),pre:7,regalo:1},{ts:Date.UTC(y,1,14,3),pre:10,regalo:1},{ts:Date.UTC(y,6,20,3),pre:7,regalo:1},{ts:cm,pre:2,dur:3},{ts:bf,pre:2,dur:4}];}
+const RAYAS_DIAS=60;   // los días que miden el 💰 y el 🔴: la misma constante en sync.mjs
+const _diasFechaR={};
+function _diaFechaRaya(k){const y=Number(String(k).slice(0,4));if(!y)return false;
+  if(!_diasFechaR[y]){const st=new Set();for(const f of [..._fechasEspR(y-1),..._fechasEspR(y),..._fechasEspR(y+1)]){const pre=f.pre;
+      for(let t=f.ts-pre*864e5;t<=f.ts+((f.dur||1)-1)*864e5;t+=864e5)st.add(new Date(t-3*3600e3).toISOString().slice(0,10).replace(/-/g,'_'));}_diasFechaR[y]=st;}
+  return _diasFechaR[y].has(String(k));}
 function precioParaMargen(p,pct){
   // (21/10/2026 · etapa 1) La comisión NO es un % parejo: es % de la categoría + el cargo fijo de ML (`simComParams`, la misma
   // separación que usa el simulador). Con el % parejo, al BAJAR el precio el cargo fijo pesaba más y "el 25% te da hasta $X" o
@@ -11176,7 +11190,10 @@ function lineaPintar(prodId){
     // el día de hoy lo arma el bloque de arriba (sin separar) y acá sólo se le agregan las dos partes.
     if(dias[k]&&dias[k].hoy){dias[k].uP=qP;dias[k].uG=qG;}
     else if(_vp1&&k>=_vp1&&(q>0||(dias[k]&&dias[k].u!=null))){const o=dias[k]=dias[k]||{u:null,uR:null,vis:null,st:null,stN:0,p:null,caja:null,rem:false,esc:null,mg:null,tot:null,pubs:0};o.u=q;o.uR=qR;o.uP=qP;o.uG=qG;}
-    if(qE>0&&tE>0){const _o=(dias[k]=dias[k]||{u:null,uR:null,vis:null,st:null,stN:0,p:null,caja:null,rem:false,esc:null,mg:null,tot:null,pubs:0});if(_o.p>0&&!_o.pCob)_o.pLista=_o.p;_o.p=Math.round(tE/qE);_o.pCob=true;}}
+    // HOY manda el precio de AHORA (24/10/2026, él con el Kit Jade: "marca que está 14.990 y hace un par de horas ya está en 19.990"):
+    // lo cobrado hoy puede ser de antes del cambio de la mañana; el de hoy es el último precio puesto (`_pHoy`, con los cambios de hoy).
+    // Lo cobrado de hoy sigue en el globito (pLista/pCob quedan como en los otros días).
+    if(qE>0&&tE>0&&!(dias[k]&&dias[k].hoy)){const _o=(dias[k]=dias[k]||{u:null,uR:null,vis:null,st:null,stN:0,p:null,caja:null,rem:false,esc:null,mg:null,tot:null,pubs:0});if(_o.p>0&&!_o.pCob)_o.pLista=_o.p;_o.p=Math.round(tE/qE);_o.pCob=true;}}
   // Escala con un rango mínimo del 20%: un cambio de 3% no puede verse como un salto (él, con el costo: "$1.007 a $1.036").
   const _esc=(mn,mx)=>{if(!(mx>0))return[0,1];if(mx-mn<mx*0.2){const c=(mx+mn)/2;return[c-mx*0.1,c+mx*0.1];}return[mn,mx];};
   const ps=ks.map(k=>dias[k]&&dias[k].p).filter(x=>x>0); const [pMin,pMax]=ps.length?_esc(Math.min(...ps),Math.max(...ps)):[0,1];
@@ -11322,9 +11339,11 @@ function lineaPintar(prodId){
     // (con el botón de 30 días se perdía el 🔴), y el día del cambio de precio decide lo cobrado por ESTA publicación sola (uOwn).
     const _hoyKR=(()=>{const d=new Date();return d.getFullYear()+'_'+String(d.getMonth()+1).padStart(2,'0')+'_'+String(d.getDate()).padStart(2,'0');})();
     const ksR=Object.keys(_rayasDias||{}).filter(k=>/^\d{4}_\d{2}_\d{2}$/.test(k)&&k<_hoyKR).sort();
+    // 24/10/2026 (Infusor cajita): el 💰 y el 🔴 se miden con los últimos RAYAS_DIAS días (un 💰 de hace 3 meses hacía "perder" a todo).
+    const _kDesdeR=(()=>{const d=new Date(Date.now()-RAYAS_DIAS*864e5);return d.getFullYear()+'_'+String(d.getMonth()+1).padStart(2,'0')+'_'+String(d.getDate()).padStart(2,'0');})();
     const _plR={};{let pA=null;ksR.forEach(k=>{const d=_rayasDias[k];if(!d)return;const pN=Number(d.pLista||d.p)>0?Number(d.pLista||d.p):pA;let pl=pN||0;
       if((d.u||0)>0&&Number(d.tot)>0&&pA&&pN&&pA!==pN){const pu=Number(d.uOwn)>0&&Number(d.totOwn)>0?Number(d.totOwn)/Number(d.uOwn):Number(d.uEq)>0&&Number(d.totEq)>0?Number(d.totEq)/Number(d.uEq):Number(d.tot)/Number(d.u);if(Math.abs(pu-pA)<Math.abs(pu-pN))pl=pA;}_plR[k]=Number(d.pLista||d.p)>0?pl:0;pA=pN;});}
-    const G={};ksR.forEach(k=>{const d=_rayasDias[k];if(!d)return;if(d.est!=null&&d.est!=='active')return;if(!(d.st!=null&&d.st>=3&&d.vis!=null))return;const pl=_plR[k]||0;if(!(pl>0))return;
+    const G={};ksR.forEach(k=>{const d=_rayasDias[k];if(!d)return;if(d.est!=null&&d.est!=='active')return;if(!(d.st!=null&&d.st>=3&&d.vis!=null))return;if(k<_kDesdeR||_diaFechaRaya(k))return;const pl=_plR[k]||0;if(!(pl>0))return;
       const b=Math.round(pl/10)*10;const g=(G[b]=G[b]||{p:b,dias:0,u:0,gan:0});g.dias++;g.u+=Math.max(0,(d.u||0)-(d.uR||0));g.gan+=_ganRaya(k)-_pdDed(d);});
     const L=Object.values(G).map(g=>({...g,r:g.u/g.dias,pd:g.gan/g.dias,gu:g.u?g.gan/g.u:null}));
     // 💰 sólo un precio que VENDIÓ (21/10/2026, Aer Jasmín: $19.490 salía de "más plata" con 0 ventas en 5 días, por ser el único con 5 días).

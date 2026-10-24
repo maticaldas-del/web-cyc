@@ -4168,11 +4168,33 @@ function lineaConNetoEst(d, cu, imp) {
   }
   return out;
 }
+// LOS DÍAS DE FECHA ESPECIAL NO MIDEN EL PRECIO (24/10/2026, él con el Infusor cajita: "un claro ejemplo de que el techo que tenía antes
+// era mentiroso, ya que se pasó ese techo y se está vendiendo"). El 💰 $4.480 salía de 8 días antes del Día del Niño (12 por día, el
+// triple de lo normal) y contra eso $5.290 "perdía" al 95%: 🔴 falso. Las rayas (y techo95, F7, F8, la ficha) no cuentan los días de la
+// ventana de una fecha especial (la de `fechasEspeciales`: regalo y ofertas). Misma lista en la web
+// (`_diaFechaRaya`): si se toca una, la otra.
+// Y además (la causa de fondo): el 💰 se mide con los últimos RAYAS_DIAS días. Ese 💰 era de fines de julio (12 por día, con el stock que se
+// cortó); en octubre a $4.480 ya no se vendía así (otra competencia, otra temporada), y contra un 💰 viejo todo precio "pierde".
+const RAYAS_DIAS = 60;
+const _diasFechaRaya = new Map();
+function diaFechaRaya(k) {
+  const y = Number(String(k).slice(0, 4)); if (!y) return false;
+  if (!_diasFechaRaya.has(y)) {
+    const st = new Set();
+    for (const f of [...fechasEspeciales(y - 1), ...fechasEspeciales(y), ...fechasEspeciales(y + 1)]) {
+      const pre = Number(f.pre) || 0;
+      for (let t = f.ts - pre * 864e5; t <= f.ts + ((f.dur || 1) - 1) * 864e5; t += 864e5) st.add(new Date(t - 3 * 3600e3).toISOString().slice(0, 10).replace(/-/g, '_'));
+    }
+    _diasFechaRaya.set(y, st);
+  }
+  return _diasFechaRaya.get(y).has(String(k));
+}
 function rayasPrecioLinea(d, cu, imp, hoyK, parte = 1) {
   d = lineaConNetoEst(d, cu, imp);
   const pC = Number(parte) >= 0 && Number(parte) <= 1 ? Number(parte) : 1;
   const G = {};
   let pAnt = null;
+  const kDesde = new Date(Date.parse(String(hoyK || dayKeyFromISO(Date.now())).replace(/_/g, '-') + 'T12:00:00-03:00') - RAYAS_DIAS * 864e5 - 3 * 3600e3).toISOString().slice(0, 10).replace(/-/g, '_');
   for (const k of Object.keys(d || {}).sort()) {
     if (!/^\d{4}_\d{2}_\d{2}$/.test(k) || (hoyK && k >= hoyK)) continue; const x = d[k]; if (!x || typeof x !== 'object') continue;
     // 1a (21/10/2026, decisión suya): el día que cambia el precio, lo vendido pudo salir al precio de antes. Vale el precio (de hoy
@@ -4182,6 +4204,7 @@ function rayasPrecioLinea(d, cu, imp, hoyK, parte = 1) {
     let pl = pN || 0; if (Number(x.u) > 0 && Number(x.tot) > 0 && pAnt && pN && pAnt !== pN) { const pu = Number(x.uOwn) > 0 && Number(x.totOwn) > 0 ? Number(x.totOwn) / Number(x.uOwn) : Number(x.tot) / Number(x.u); if (Math.abs(pu - pAnt) < Math.abs(pu - pN)) pl = pAnt; }
     pAnt = pN;
     if (!(x.st != null && Number(x.st) >= 3 && x.vis != null)) continue;
+    if (k < kDesde || diaFechaRaya(k)) continue;   // 24/10/2026: sólo los últimos RAYAS_DIAS días y sin fechas especiales (Infusor cajita, ver arriba)
     // 21/10/2026 · etapa 1: un día pausado o frenado por ML (no se podía comprar) no mide el precio; sin `est` sigue contando.
     if (x.est && x.est !== 'active') continue;
     if (!(Number(x.p) > 0) || !(pl > 0)) continue; const b = Math.round(pl / 10) * 10;

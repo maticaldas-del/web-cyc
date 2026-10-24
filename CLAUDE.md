@@ -200,7 +200,7 @@
   chequeo al detector (y su freno si se mide), en el mismo commit; una salida de excepción mal usada pasa a ser 🔐 suya.**
 - **Techo con 95%** (`techo95`, nunca `#techook` a mano): las tres rayas de la línea de tiempo 🔴 techo (95%) · 💰 piso = el precio que
   más plata por día dejó (no se baja de ahí salvo sobra/stock antiguo/problema) · lo de en medio falta probar. Una sola cuenta en web
-  (`_rayas`) y robot (`rayasPrecioLinea`). Sin piso medible, 💰 provisorio desde la primera venta. **Todo producto tiene que llegar a
+  (`_rayas`) y robot (`rayasPrecioLinea`), **con los últimos 60 días y sin los días de fechas especiales** (24/10, el 🔴 falso del Infusor). Sin piso medible, 💰 provisorio desde la primera venta. **Todo producto tiene que llegar a
   tener las tres.** Juicio por certeza (Poisson), no por calendario; manda la **plata por día neta** (−$100/u de trabajo, −3% de lo
   facturado por el tope de H, −2%/mes de la plata parada). Subas **directo al precio que pienso** (sin escalones de +10%; ML deja +100%).
   Prueba que sale mal → baja en escalera midiendo cada escalón. **Toda baja en escalera** salvo las cinco excepciones.
