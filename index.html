@@ -2960,7 +2960,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.50';
+const APP_VERSION='26.51';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2973,6 +2973,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.51',f:'24/10',h:'14:55',c:[{n:2,t:'📈 Línea de tiempo: un precio (o cualquiera más caro) con 30 días a la venta con stock y sin ninguna venta se marca 🔴 techo sí o sí ("30 días sin vender"): de ahí se baja en escalera.'}]},
   {v:'26.50',f:'24/10',h:'14:50',c:[{n:2,t:'🏷️ Ventas del mes y del año: el puntaje, el color y la barra se miden como el día. Lo ganado se reparte en TODOS los días del mes (o del año), no sólo en los que ya pasaron: arranca bajo y sube con cada venta. El año 2026 se mide desde mayo (antes no hay ventas guardadas); desde 2027, el año entero. Abajo dice cuánto falta en total y por día en los que quedan.'},{n:1,t:'📈 Línea de tiempo de todos los productos: al pasar el mouse cada franja dice sólo lo suyo. En Ventas: normales, Premium, envío gratis y liquidadas (sacando stock), más las visitas. Ya no sale el globo gigante.'}]},
   {v:'26.49',f:'24/10',h:'14:35',c:[{n:2,t:'📦 Línea de tiempo: la franja "Remate" pasa a llamarse "Sacando stock" y, desde esta noche, cuenta lo de hoy: sobra, liquidando, remate (naranja) y la escalera de bajas (violeta). Antes sólo contaba las marcas del robot viejo, apagado desde el 09/10.'}]},
   {v:'26.48',f:'24/10',h:'14:34',c:[{n:2,t:'💰 El "piso" ahora se llama "más plata": es el precio que más dejó de los que se probaron. Si nunca se probó uno más barato, ya no frena una baja en escalera (siempre con 35% o más).'}]},
@@ -5263,6 +5264,8 @@ function _fechasEspR(y){const nD=(yy,m,n)=>{const d=new Date(Date.UTC(yy,m,1));r
 // CUÁNTA SEGURIDAD HACE FALTA PARA DECIR "ES TECHO" (24/10/2026, él: "al pasar los días necesita menos % de seguridad para decidir"):
 // 95% hasta el día 7 con stock a ese precio, baja de a poco hasta 70% el día 21. Copia de `umbralTecho` (sync.mjs).
 function umbralTechoW(dias){const d=Number(dias)||0;return d<=7?0.95:d>=21?0.70:0.95-0.25*(d-7)/14;}
+// 30 días sin vender a un precio (o más caro) = 🔴 techo sí o sí (24/10/2026, él). Copia de TECHO_DIAS_SIN_VENTA del robot.
+const TECHO_DIAS_SIN_VENTA_W=30;
 const RAYAS_DIAS=60;   // los días que miden el 💰 y el 🔴: la misma constante en sync.mjs
 const _diasFechaR={};
 function _diaFechaRaya(k){const y=Number(String(k).slice(0,4));if(!y)return false;
@@ -11377,6 +11380,11 @@ function lineaPintar(prodId){
     const G={};ksR.forEach(k=>{const d=_rayasDias[k];if(!d)return;if(d.est!=null&&d.est!=='active')return;if(!(d.st!=null&&d.st>=3&&d.vis!=null))return;if(k<_kDesdeR||_fueraR.has(k))return;const pl=_plR[k]||0;if(!(pl>0))return;
       const b=Math.round(pl/10)*10;const g=(G[b]=G[b]||{p:b,dias:0,u:0,gan:0});g.dias++;g.u+=Math.max(0,(d.u||0)-(d.uR||0));g.gan+=_ganRaya(k)-_pdDed(d);});
     const L=Object.values(G).map(g=>({...g,r:g.u/g.dias,pd:g.gan/g.dias,gu:g.u?g.gan/g.u:null}));
+    // 🔴 POR 30 DÍAS SIN VENDER (24/10/2026, él: "a los 30 días de no vender sí o sí se marca como techo"): el precio más bajo que, con sus
+    // días y los de todos los más caros (activa, 1+ u. en Full), lleva 30+ días sin una venta. Misma cuenta que `rayasPrecioLinea`.
+    const _t30=(()=>{const G1={};ksR.forEach(k=>{const d=_rayasDias[k];if(!d||k<_kDesdeR||_fueraR.has(k))return;if(d.est!=null&&d.est!=='active')return;if(!((Number(d.st)||0)>=1||(d.u||0)>0))return;const pl=_plR[k]||0;if(!(pl>0))return;
+        const b=Math.round(pl/10)*10;const g=(G1[b]=G1[b]||{p:b,dias:0,u:0});g.dias++;g.u+=Math.max(0,(d.u||0)-(d.uR||0));});
+      let D=0,t=null;for(const g of Object.values(G1).sort((a,b)=>b.p-a.p)){if(g.u>0)break;D+=g.dias;if(D>=TECHO_DIAS_SIN_VENTA_W)t={p:g.p,dias:D,u:0,por30:true};}return t;})();
     // 💰 sólo un precio que VENDIÓ (21/10/2026, Aer Jasmín: $19.490 salía de "más plata" con 0 ventas en 5 días, por ser el único con 5 días).
     const med=L.filter(g=>g.dias>=5&&g.u>0);
     // EL PISO APARECE DESDE LA PRIMERA VENTA (20/10/2026, él con el Joystick Velocity Green: "acá debería aparecer la línea con el
@@ -11387,7 +11395,8 @@ function lineaPintar(prodId){
     if(!med.length){const G2={};ksR.forEach(k=>{const d=_rayasDias[k];if(!d||k<_kDesdeR||_fueraR.has(k))return;if(d.est!=null&&d.est!=='active')return;if(!((d.st!=null&&d.st>0)||(d.u||0)>0))return;const pl=_plR[k]||0;if(!(pl>0))return;
         const b=Math.round(pl/10)*10;const g=(G2[b]=G2[b]||{p:b,dias:0,u:0,gan:0});g.dias++;g.u+=Math.max(0,(d.u||0)-(d.uR||0));g.gan+=_ganRaya(k)-_pdDed(d);});
       const L2=Object.values(G2).filter(g=>g.u>0).map(g=>({...g,r:g.u/g.dias,pd:g.gan/g.dias,gu:g.gan/g.u,aprox:true}));
-      return L2.length?{best:L2.reduce((a,b)=>b.pd>a.pd?b:a),L:L2,fu:_fueraR.size}:{};}
+      const b2=L2.length?L2.reduce((a,b)=>b.pd>a.pd?b:a):null;const t2=_t30&&(!b2||_t30.p>b2.p*1.02)?_t30:null;
+      return b2?{best:b2,L:L2,fu:_fueraR.size,techo:t2}:(t2?{techo:t2}:{});}
     const best=med.reduce((a,b)=>b.pd>a.pd?b:a);
     const piso=med.filter(g=>g.u>=3).reduce((a,b)=>!a||b.p>a.p?b:a,null);
     const pois=(k,lam)=>{if(!(lam>0))return 1;let p=Math.exp(-lam),s=p;for(let i=1;i<=k;i++){p*=lam/i;s+=p;}return Math.min(1,s);};
@@ -11398,6 +11407,7 @@ function lineaPintar(prodId){
     // el precio más alto medido arriba del 💰 que todavía no es techo: cuánto lleva (misma cuenta que `rayasPrecioLinea`)
     let enPrueba=null;if(!techo&&best.u>=3&&best.gu>0){const g=L.filter(x=>x.p>best.p*1.02).sort((a,b)=>b.p-a.p)[0];
       if(g){const gu1=g.gu!=null?g.gu:best.gu+(g.p-best.p)*0.7;if(gu1>best.gu){const lam=best.r*(best.gu/gu1)*g.dias;enPrueba={p:g.p,dias:g.dias,u:g.u,lam,seg:1-pois(g.u,lam),umb:umbralTechoW(g.dias)};}}}
+    if(_t30&&_t30.p>best.p*1.02&&(!techo||_t30.p<techo.p)){techo=_t30;enPrueba=null;}
     return {best,piso,techo,enPrueba,L:L.filter(g=>g.u>0),fu:_fueraR.size};})());
   // POR QUÉ EL 💰 ESTÁ AHÍ, A LA VISTA (24/10/2026, él con los Naipes: "el piso quiero que explique por qué está a esa altura… ¿tiene en
   // cuenta que vender mucho un producto más barato hace que tenga más trabajo/gastos?"). Sí: la plata por día es NETA (−$100 por unidad
@@ -11600,7 +11610,8 @@ function lineaPintar(prodId){
       if(_mlaRaya&&(R.best||R.techo))_prRayasDe=_mlaRaya;
       const _prueba=R.techo&&_pHoy>R.techo.p*1.02&&Object.keys(porMlaF).some(m=>{const e=estrategiaDe(m);return e&&(e.t==='techo'||e.t==='escasez');});
       if(_prueba)_prNotas.push(`<span style="color:#fb923c">🔴 techo medido antes ${fmt(R.techo.p)} · hoy probando ${fmt(_pHoy)}</span>`);
-      if(R.techo)_ray(R.techo.p,'#ef4444','6,3',`🔴 techo ${fmt(R.techo.p)} · decidido al ${Math.round(R.techo.seg*100)}%`,`🔴 Techo ${fmt(R.techo.p)}: a ese precio vendió ${R.techo.u} en ${R.techo.dias} días con stock; para dejar la misma plata por día que a ${fmt(R.best.p)} tenía que vender ~${R.techo.lam.toFixed(1)}. ${Math.round(R.techo.seg*100)}% seguro (con ${R.techo.dias} días alcanzaba ${Math.round((R.techo.umb||0.95)*100)}%).`,-3);
+      if(R.techo&&R.techo.por30)_ray(R.techo.p,'#ef4444','6,3',`🔴 techo ${fmt(R.techo.p)} · ${R.techo.dias} días sin vender`,`🔴 Techo ${fmt(R.techo.p)}: a ese precio o más estuvo ${R.techo.dias} días a la venta con stock y no vendió ninguna. Con 30 días sin vender es techo sí o sí (regla suya del 24/10): se arranca la escalera.`,-3);
+      else if(R.techo)_ray(R.techo.p,'#ef4444','6,3',`🔴 techo ${fmt(R.techo.p)} · decidido al ${Math.round(R.techo.seg*100)}%`,`🔴 Techo ${fmt(R.techo.p)}: a ese precio vendió ${R.techo.u} en ${R.techo.dias} días con stock; para dejar la misma plata por día que a ${fmt(R.best.p)} tenía que vender ~${R.techo.lam.toFixed(1)}. ${Math.round(R.techo.seg*100)}% seguro (con ${R.techo.dias} días alcanzaba ${Math.round((R.techo.umb||0.95)*100)}%).`,-3);
       // CUÁNTO LLEVA LA BÚSQUEDA DEL TECHO (24/10/2026, él: "que diga cuánto % lleva de decir si es techo o no, así veo cuánto le falta").
       // De las rayas (lo medido) o, en un lanzamiento, lo que anotó techo95 de noche (visitas × conversión, `cyc/techo95pct`).
       {const EP=R.enPrueba,T95=Object.keys(porMlaF).map(m=>(state.techo95pct||{})[m]).filter(x=>x&&!x.ok&&x.seg!=null).sort((a,b)=>b.ts-a.ts)[0];

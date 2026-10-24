@@ -104,6 +104,8 @@
    **releerlo de ML** (también regla 6). "Aceptar no es haber hecho".
 2. **Barrera $33.000:** abajo de ese precio el comprador paga el envío; arriba ML cobra el envío de Full (~$6.000) al vendedor.
    Se frena en $32.999/$32.990 **salvo que cruzar deje claramente más plata con el envío restado** (`!cruza`, ver CEREBRO §5).
+   **Si en $32.990 queda abajo del 35% en el peor caso, cruza al precio del 35%** (24/10, él: *"que vayan a ser buen producto o que se descarte, no
+   que queden en el medio vendiendo al 30%"*), salvo que la unidad más vieja tenga 100+ días en Full.
 3. **Techo duro $650.000** por publicación (03/10). Nunca arriba.
 4. **35% de ganancia en el PEOR caso es el objetivo** (24/10, él: *"quiero que todo quede en 35% o más, me refiero a ventas y pedidos, ya
    que no tenemos suficiente plata para todo… no quiero que nada se venda a menos de 35% excepto si ya está quedando en sobrestock, ahí sí
@@ -200,7 +202,7 @@
   **Detector `errores[:horas][:go]`** al final de cada vuelta (consulta): todo cambio y descuento de 26 h contra los errores que él ya
   marcó; la cuenta tiene que cerrar; con `:go` (ml-sync) deshace lo ❌ y le manda UN aviso. **Cada corrección nueva suya agrega su
   chequeo al detector (y su freno si se mide), en el mismo commit; una salida de excepción mal usada pasa a ser 🔐 suya.**
-- **Techo con 95%, que baja con los días** (24/10, él: *"no tener 1 mes buscando techo"*: 95% hasta el día 7 con stock a ese precio, después baja hasta 70% el día 21, `umbralTecho`; la línea dice cuánto lleva y con cuánto se decidió) (`techo95`, nunca `#techook` a mano): las tres rayas de la línea de tiempo 🔴 techo (95%) · 💰 más plata (antes "piso") = el precio que
+- **Techo con 95%, que baja con los días** (24/10, él: *"no tener 1 mes buscando techo"*: 95% hasta el día 7 con stock a ese precio, después baja hasta 70% el día 21, `umbralTecho`; la línea dice cuánto lleva y con cuánto se decidió; **30 días sin vender a ese precio o más caro = 🔴 techo sí o sí** y arranca la escalera, `TECHO_DIAS_SIN_VENTA`) (`techo95`, nunca `#techook` a mano): las tres rayas de la línea de tiempo 🔴 techo (95%) · 💰 más plata (antes "piso") = el precio que
   más plata por día dejó de los que se probaron (no se baja de ahí salvo sobra/stock antiguo/problema, **o si nunca se midió uno más bajo**: 1a del 24/10) · lo de en medio falta probar. Una sola cuenta en web
   (`_rayas`) y robot (`rayasPrecioLinea`), **con los últimos 60 días y sin los días de fechas especiales** (24/10, el 🔴 falso del Infusor). Sin piso medible, 💰 provisorio desde la primera venta. **Todo producto tiene que llegar a
   tener las tres.** Juicio por certeza (Poisson), no por calendario; manda la **plata por día neta** (−$100/u de trabajo, −3% de lo
@@ -248,9 +250,11 @@
 - **Un solo vendedor en ML no vale como precio** (19/10). **Lo que sólo venden desde afuera** se mide contra ellos +20% (16/10).
 - **Cuotas Premium:** en algunas categorías `listing_prices` ya trae las cuotas (`enComision`); no contarlas dos veces. Premium sin
   cuotas medidas no se baja ni activa. **Dalí (`MLA1869295911`) queda Premium** (17/10, no volver a proponer).
+  **En revisión de ML para siempre, no se miran más** (24/10, él: *"nunca se van a liberar"*): Dalí La Belle `MLA1869295385`, Galaxy A06 `MLA3528837100`,
+  Scandal Bliss `MLA1695210793` (`ML_REVISION_NO_MIRAR`: fuera de `planilla` y del `informe`; su stock sigue contando).
 - **💳 Gemelas** (CEREBRO §11): toda Clásica activa con stock en Full lleva su Premium en la MISMA publicación de ML al precio de igual
   plata neta (`precioGemelaIgual`; `gemela`, `gemelacrea:<MLA>=<precio>:go`). **📦 Gemela Clásica con envío gratis** (22/10) para lo
-  de abajo de $33.000 (`gemelaenvio`, `gemelaenviocrea`; `gemelaTipo:'envio'`; no se crea si queda abajo del 35%). Las dos se alinean
+  de abajo de $33.000 (`gemelaenvio`, `gemelaenviocrea`; `gemelaTipo:'envio'`; no se crea si queda abajo del 35%). **Ninguna gemela queda abajo del 35% del peor caso si su Clásica está en 35%+** (24/10, él; `precioGemelaAlPiso`: el más alto entre misma plata y 35%). Las dos se alinean
   solas cada hora a su Clásica (`gemelaSigue=off` apaga); **la de envío no BAJA sola abajo del 35% del peor caso** (39a, 24/10): se queda y sale en `planilla` (📦🛡️) para decidir. Caja perdida por cuotas = candidata a gemela, no a bajar.
 - **Terminaciones 90/990** (99 en lo muy barato). La regla de no cruzar números redondos se SACÓ (medido 13/10).
 - 🪜 Arriba de $15.000 hay ~15% de zona muerta de comisión: suba que cae ahí se frena salvo `!escalon`. La comisión de ML tiene cargo
