@@ -320,7 +320,7 @@
   caso: `faltaventas:todas` → 183 de 7.392 (PROMPT_VENTAS_LISTAS).
 - Pasos por comando: `pyped:repo:<palabra>=<u>;…|nuevos|llego:<id>;go` · `pedir:<palabra>=<u>;…;go` · `compray` · `pyprecio` · `candprecio` ·
   `candalta` · `pyvisto` · `pyconocidos` · `marcano:<marca>` (prohibida: **Dolce & Gabbana**) · `marcanoml:<marca>:go` = prohibida **sólo para ML** (no se publica, sí se compra para la perfumería): **Calvin Klein** (23/10, *"por la marca nos denuncian al toque"*). Celulares viajan con el padre (`celuviaje`).
-  Nada de envío internacional. Tarjetas de memoria: ya no hay truchas (20/10), se tratan como cualquier producto.
+  Nada de envío internacional. **Testers de Nissei** (sin caja): afuera para ML, se miran sólo para la perfumería del local (24/10, 6a). Tarjetas de memoria: ya no hay truchas (20/10), se tratan como cualquier producto.
 - **Reglas de categorías del chat de compras** (aprobadas 03/10; vivían sólo en una PC, van en el `PROMPT GUAY`): antes de mirar ML,
   afuera precio crudo > US$215, lo que ya está en el panel y Dolce & Gabbana. **No se miran:** celular, notebook, tablet, cámaras
   (monitoreo/DVR, digital, filmadora, auto, infantil, marcha atrás), placa madre, placa de video, monitor, impresora, TV, computadora,
@@ -345,7 +345,7 @@
 - Mismas reglas que Paraguay: 25% + catálogo 2+ vendedores + **confirmado por mí** (`listarevisar` → `listadato:<prov>;<cód>=ok|no|mi=MLA…;go`,
   con duda no se toca). El robot mide lista por lista y anota la vuelta completa (`cyc/mlconfig/vueltas`). Todo se mide contra ML (también lo de Bs As).
 - Fechas al 19/10: Dai Nippon L1309 19/10 · Unilever 08/10 · Iscos 01/10 · Cadam 26/09 · Qsoft 23/09 · Godrej 01/08 (Wels también).
-- **Softys** (papel higiénico, rollos, servilletas, pañuelos, toallitas femeninas, pañales Babysec y Cotidian): lista del 17/10 cargada el 24/10 (141 productos, "Precios Finales" por unidad de venta; en el nombre se sacó el "<UxB>X" del bulto). Falta saber quién la trae y si hay mínimo.
+- **Softys** (papel higiénico, rollos, servilletas, pañuelos, toallitas femeninas, pañales Babysec y Cotidian): lista del 17/10 cargada el 24/10 (141 productos, "Precios Finales" por unidad de venta; en el nombre se sacó el "<UxB>X" del bulto). Se compra por pedido (24/10, él).
 
 ### Paulvic (perfumes, proveedor de Bs As; CEREBRO §18)
 - **Costo = el del último pedido** (17/10): (pagado + flete) ÷ (llegadas + regalos perfume). **Los testers NO cuentan** (22/10: son probadores

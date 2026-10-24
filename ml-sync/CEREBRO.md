@@ -83,6 +83,7 @@ al código; lo que es pensar queda acá, y una regla dura ("nunca", "sólo si") 
 - *Buscar techo vs sobra* → con sobra no se busca techo: primero sale lo que sobra.
 - *Descuento mío vigente vs suba de lista* → primero salir del descuento (`entrarpromo:…=salir`); nunca inflar el tachado. 🔒
 - *Sin reposición que al precio normal no se vacía en 120 días* → gana 6 (no pagar stock antiguo): se baja en escalera.
+- *Escasez o sin reposición que se vende* → **no se baja: en todo caso sube** (24/10, él: *"si hay falta de stock o no se puede reponer no debería bajar no? en todo caso subir"*). La única baja ahí es la de arriba (no se vacía en 120 días), en escalera.
 - *Una regla dice A, otra B y ninguna fila lo resuelve* → no se hace nada esa vuelta, se anota y va a `notas/para_mati.md` con (a)/(b).
   Después se agrega la fila acá.
 - **Las excepciones a los frenos son siempre las mismas cinco:** precio mal puesto · stock antiguo con fecha encima · ML la
