@@ -84,7 +84,10 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   "volver a buscar techo" sin tocar el precio y Casino decía "2ª suba" con UNA suba. Ahora `estrategiaDe` cuenta las subas reales de
   `cyc/claudecambios` (a > de) desde que empezó la racha. La explicación del 📈 dice que busca el 🔴 techo y que si el precio nuevo vende y
   deja más plata se sigue subiendo. `tag:hist:<MLA>` (sólo lee) lista la historia de estrategias con los cambios de precio.
-- **Qué chequear:** un 📈 con dos subas seguidas dice "2ª suba" · una 🔥 escasez con escalones los cuenta igual · un 📈 puesto con `tag:`
+  **El mismo error en el robot (2 lugares más):** `pruebasTechoEnCurso` (lista 📈 prueba con respuesta y `techodias`) medía el antes/después
+  desde el último renglón 📈 y no desde la suba; ahora desde la última suba real de la racha. `ventasraras` (🔬 "prueba con 7+ días")
+  contaba los días desde el último renglón; ahora desde que empezó la racha del mismo tag.
+- **Qué chequear:** un 📈 con dos subas seguidas dice "2ª suba" · en `planilla` la prueba de Casino cuenta desde el 19/10 15:22 (la suba) · una 🔥 escasez con escalones los cuenta igual · un 📈 puesto con `tag:`
   sin cambio de precio no muestra número.
 
 ### 📅 Franjas: sólo se pinta lo que se aparta · "fecha especial" (24/10/2026, v26.56)
