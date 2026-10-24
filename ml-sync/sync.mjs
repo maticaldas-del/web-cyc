@@ -47051,6 +47051,29 @@ async function main() {
       console.log('\npor día de la semana (compras en el período): ' + nomD.map((x, i) => `${x} ${(porDH[i] || []).reduce((a, b) => a + b, 0)}`).join(' · '));
       return;
     }
+    // BILLING_PROBE=ventasdiames[:<días>] (24/10/2026, SOLO LEE; él: "puede que haya franjas en el mes que se venda más, porque la gente tiene
+    // más plata y cobra"). Compras y neto por DÍA DEL MES, cada día contra el promedio de SU mes (así el crecimiento de mayo a octubre no
+    // pesa), promediado por día del mes y por tramos de 5 días. 1,00 = un día normal; 1,20 = se vende 20% más que el promedio de ese mes.
+    if (/^ventasdiames(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const dias = Math.max(60, Math.min(400, Number(String(process.env.BILLING_PROBE).split(':')[1]) || 180));
+      const vp = await db.get('cyc/ventaprod').catch(() => null); if (!vp) { console.log('⚠️ no pude leer las ventas'); return; }
+      const hoyK = dayKeyFromISO(Date.now()), desdeK = dayKeyFromISO(Date.now() - dias * 864e5);
+      const porDia = {}; const vistos = new Set();
+      for (const [dk, dia] of Object.entries(vp)) { if (!/^\d{4}_\d{2}_\d{2}$/.test(dk) || dk < desdeK || dk >= hoyK) continue; const o = (porDia[dk] = porDia[dk] || { c: 0, n: 0 });
+        for (const [id, v] of Object.entries(dia || {})) { if (!v || v.cancelada) continue; const k = String(v.cuenta || '') + '|' + String(v.numVenta || v.saleId || id); if (!vistos.has(k)) { vistos.add(k); o.c++; } o.n += Number(v.neto) || 0; } }
+      // Sólo meses con 20+ días con datos (un mes cortado deforma su promedio).
+      const porMes = {}; for (const [dk, o] of Object.entries(porDia)) { const m = dk.slice(0, 7); (porMes[m] = porMes[m] || []).push([dk, o]); }
+      const R = Array.from({ length: 32 }, () => ({ c: [], n: [] }));
+      const mesesOk = Object.entries(porMes).filter(([, L]) => L.length >= 20);
+      for (const [, L] of mesesOk) { const mc = L.reduce((a, [, o]) => a + o.c, 0) / L.length, mn = L.reduce((a, [, o]) => a + o.n, 0) / L.length; if (!(mc > 0 && mn > 0)) continue;
+        for (const [dk, o] of L) { const d = Number(dk.slice(8, 10)); R[d].c.push(o.c / mc); R[d].n.push(o.n / mn); } }
+      const prom = (a) => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
+      console.log(`=== 📅 VENTAS POR DÍA DEL MES · ${mesesOk.length} meses enteros (${mesesOk.map(([m]) => m).join(', ')}) · 1,00 = un día normal de su mes ===`);
+      for (let d = 1; d <= 31; d++) { const c = prom(R[d].c), n = prom(R[d].n); if (c == null) continue; console.log(`día ${String(d).padStart(2)} · compras ${c.toFixed(2)} · plata ${n.toFixed(2)} · ${R[d].c.length} meses  ${'█'.repeat(Math.round(20 * (n || 0)))}`); }
+      const tramos = [[1, 5], [6, 10], [11, 15], [16, 20], [21, 25], [26, 31]];
+      console.log('\npor tramos: ' + tramos.map(([a, z]) => { const c = []; const n = []; for (let d = a; d <= z; d++) { c.push(...R[d].c); n.push(...R[d].n); } return `${a}-${z}: compras ${prom(c) == null ? '?' : prom(c).toFixed(2)} · plata ${prom(n) == null ? '?' : prom(n).toFixed(2)}`; }).join(' | '));
+      return;
+    }
     if (/^ventasvistas:/.test(String(process.env.BILLING_PROBE || ''))) {
       // 21/10/2026, él: "quiero que en la tarjeta de venta aparezca que fue analizada por el robot y el nivel de esfuerzo
       // utilizado". Además de la marca, deja en cada venta del tramo (prev, ts] su análisis en `cyc/ventaanalisis/<día>/<id>`
