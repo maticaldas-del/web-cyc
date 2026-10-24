@@ -366,7 +366,7 @@
 - **8 etapas:** 1 Precios · 2 Plata · 3 Mercadería · 4 Choques y fallas mudas · 5 Datos, historial y cerebro · 6 Ideas nuevas · 7 Diseño ·
   8 Reglas del cerebro (cada 7 días, adelante cuando le toca). Cada madrugada a las **04:00** toca la que hace más que no se revisa
   (`REV_HIST`/`REV_HECHAS`; nunca una de los últimos 6 días). 4 revisores con esfuerzo **máximo**. Tarea `trig_01TT94wnEKk299d85Sj6ePWw`:
-  **PAUSADA el 21/10**; la prende el aviso `trig_01Qaa6pmF3sjmNfyHG5LMLgg` el vie 23/10 22:00 de acá (primera revisión sáb 24/10 04:00).
+  **PRENDIDA otra vez el 24/10/2026 01:02 UTC** (vie 23/10 22:02 de acá, como pidió él; estuvo pausada desde el 21/10). Primera revisión sáb 24/10 04:00.
 - **El cartel de Inicio lo manejo yo** (`REV_PENDIENTE` / `REV_HECHAS`, sin botón): algo resuelto ENTERO sale de pendiente con su fecha.
 - Etapas 6 y 7 traen siempre cosas que den gusto (efectos con sentido, comodidad, duplicados, faltantes) con maqueta. La 7 **dibuja**
   cada pantalla con el CSS real (Playwright 360/390/1200 px) y mide que nada se corte y que **ningún botón se corra al cambiar un texto**.
