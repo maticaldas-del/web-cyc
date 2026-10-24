@@ -2959,7 +2959,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.27';
+const APP_VERSION='26.28';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2972,6 +2972,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.28',f:'24/10',h:'01:10',c:[{n:1,t:'🇵🇾 Paraguay → Revisados: "En ML nadie lo vende" pasa a decir lo que es: en ML no hay vendedores en el catálogo de ese producto (puede venderse suelto, pero la regla pide catálogo con 2+ vendedores).'},{n:2,t:'🤖 El robot ya no compara con otro producto cuando cambia la capacidad (32 GB contra 16 GB), el género (perfume de hombre contra el de mujer) o el número del modelo (Flip 7 contra Flip 6). Lo que estaba medido así se vuelve a buscar solo.'}]},
   {v:'26.27',f:'24/10',h:'00:50',c:[{n:2,t:'🇵🇾 Paraguay: los productos que descartó Claude porque ML los comparaba con OTRO producto ya no cuentan como descartados: el robot les vuelve a buscar el producto correcto en ML (sin el que estaba mal). Si dan, vuelven a Para probar y pasan por la revisión de fotos.'}]},
   {v:'26.26',f:'24/10',h:'00:35',c:[{n:2,t:'🇵🇾 Paraguay → Nuevos → Revisados: la carpeta "Medidos que dan, pero el robot no confirmó…" ahora se llama "🟠 Dan el %, pero no entran al pedido": el % va en ámbar y cada producto dice por qué no entra (falta la foto de Paraguay, 1 solo vendedor, o el nombre de ML no coincide y puede ser otro producto).'}]},
   {v:'26.25',f:'24/10',h:'00:20',c:[{n:2,t:'🚚 Inicio → la tarjeta de Pedidos tiene 4 botones (Bs As, Paraguay, Paulvic, Listas) que entran directo a cada uno. Se sacó lo que decía abajo (cuántos en rojo y cuánto falta reponer).'}]},
@@ -17649,7 +17650,7 @@ function candidatosHTML(){
         +((_rojos.length||rv('bajo'))?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--red)">🔻 No llegan al ${CAND_PISO_TXT()} · <b>${_rojos.length}</b> candidatos${` <span style="color:var(--muted);font-weight:400">+ <b>${f(rv('bajo'))}</b> del catálogo</span>`}</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_rojos.map(_card).join('')}</div>${rv('bajo')?pycatNoDanHTML(['bajo'],'pycat-nodan-bajo','📦 Del catálogo: medidos por el robot, abajo del piso',true):''}</details>`:'')
         +candDescartadosHTML(null,'todos')
         +sub('🟠 Dan el %, pero no entran al pedido (falta la foto de Paraguay o el nombre de ML no coincide)','var(--amber)',rv('dan'),['dan'],'pycat-nodan-dan','📦 Del catálogo: dan el piso, sin pasar a Para probar')
-        +sub('👻 En ML nadie lo vende','var(--muted)',rv('sv'),['sv'],'pycat-nodan-sv','📦 Del catálogo: el catálogo existe pero sin vendedores')
+        +sub('👻 En ML no hay vendedores en su catálogo (puede venderse en publicaciones sueltas, pero sin catálogo con 2+ vendedores no se compra)','var(--muted)',rv('sv'),['sv'],'pycat-nodan-sv','📦 Del catálogo: el catálogo existe pero sin vendedores')
         +sub('🔍 Sin catálogo exacto en ML (falta buscarlo traducido)','var(--muted)',rv('sc'),['sc'],'pycat-nodan-sc','📦 Del catálogo: no se pudo comparar contra el mismo producto')
         +sub('⛔ Afuera por regla','var(--muted)',rv('fz'),['fz'],'pycat-nodan-fz','📦 Del catálogo: 110V, marca que ML frena, etc.')
         +(n('ficha')?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--green)">✅ Ya son productos tuyos · <b>${f(n('ficha'))}</b> del catálogo</summary>${pycatNoDanHTML(['ficha'],'pycat-nodan-ficha','📦 Del catálogo: ya tienen ficha en CYC')}</details>`:'')

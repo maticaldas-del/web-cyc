@@ -694,6 +694,16 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 
 ## 3 · MERCADERÍA (miércoles)
 
+**24/10/2026 · v26.28 · Revisión de "¿dejamos algo afuera injustamente?"** (él). Muestras de cada carpeta del catálogo de Nissei
+(`pycatmuestra:<grupo>:<n>`): **fz** (110V, D&G) bien · **margen** (810 descartados por no dar) ~95% bien medidos · **scr** (3.885 no
+están en ML) casi todos de verdad no están · **sv** (5.279 "nadie lo vende") = catálogo de ML SIN vendedores: muchos se venden en
+publicaciones sueltas que la API no deja medir (búsqueda 403) y la regla del 20/10 pide catálogo con 2+ vendedores → se renombró la
+carpeta · **bajo** (2.365 no llegan) ~1 de cada 5 medido contra OTRO producto (RAM 32 GB contra 16 GB, Eros masculino contra pour
+Femme, Flip 7 contra Flip 6). **Hecho:** `chequeoMismoProducto` suma tres reparos DUROS (`_rvCapacidadChoca`, `_rvGeneroChoca`,
+`_rvNumModeloChoca`) y `correrPyCatMedir` vuelve a buscar lo ya medido cuyo catálogo guardado choca (`_chocaNuevo`, no los fijados ni
+los `ok`). **Qué chequear:** que esos se re-midan en las próximas vueltas y ninguno vuelva al mismo catálogo; falsos choques
+(misma palabra con otro número que NO es otro modelo) → agregar la palabra a `RV_NUM_NO`.
+
 **24/10/2026 · v26.27 · 🔁 Rebusca de los descartados por "otro producto" (eligió la 1a).** De 1.386 descartados, 513 los había sacado
 yo mirando las fotos porque ML los comparaba con OTRO producto, y quedaban afuera para siempre sin que nadie les buscara el correcto.
 **Dónde vive:** `rebusca[;go]` (sync.mjs, ml-consulta) los pasa a `noTipo:'rebusca'` y le saca `cand`/`t` a su renglón de `mlapi/pycat`;

@@ -11026,7 +11026,38 @@ function chequeoMismoProducto(nombre, mlTit) {
   // OTRA CANTIDAD (23/10/2026, él con el Deco X60: "en ML se venden x2 unidades, en Paraguay es de una"): reparo DURO.
   { const pd = packDistinto(nombre, t); if (pd) motivos.push(`otra cantidad: el candidato trae ${pd.py} u. y ML ${pd.ml} u.`); }
   if (_rvColorChoca(nombre, t)) motivos.push(`el color no coincide (candidato: ${[..._rvColores(nombre)].join('/')} · ML: ${[..._rvColores(t)].join('/')})`);
+  // OTRA CAPACIDAD Y OTRO GÉNERO (24/10/2026, revisando "No llegan" del catálogo de Nissei: memorias de 8 y 32 GB medidas contra una de
+  // 16 GB, Versace Eros masculino contra Eros pour Femme). Reparos DUROS: con ellos el margen es de otro producto.
+  { const cap = _rvCapacidadChoca(nombre, t); if (cap) motivos.push(`otra capacidad: el candidato dice ${cap.cp} y ML ${cap.ml}`); }
+  { const gen = _rvGeneroChoca(nombre, t); if (gen) motivos.push(`otro género: el candidato es ${gen.cp} y ML ${gen.ml}`); }
+  { const nm = _rvNumModeloChoca(nombre, t); if (nm) motivos.push(`otro modelo: el candidato dice ${nm.cp} y ML ${nm.ml}`); }
   return motivos;
+}
+// "PALABRA + NÚMERO" QUE CHOCA (24/10/2026, JBL Flip 7 medido contra el Flip 6): la misma palabra con otro número chico atrás es otro
+// modelo (Flip 6/7, Note 13/17, Watch 4/5). `_rvMod` no lo ve porque están separados por un espacio.
+const RV_NUM_NO = new Set(['de', 'con', 'para', 'por', 'ml', 'gb', 'tb', 'mm', 'cm', 'hz', 'mhz', 'ghz', 'pack', 'kit', 'edp', 'edt', 'serie', 'series', 'talla', 'size', 'nro', 'numero', 'pulgadas', 'litros', 'unidades', 'piezas', 'pecas', 'em', 'en', 'and', 'with', 'the', 'sim', 'dual', 'puertos', 'portas', 'canales', 'canais', 'botones', 'botoes', 'nucleos', 'meses', 'anos', 'ano', 'dias']);
+function _rvPalNum(t) { const m = {}; const re = /\b([a-z]{3,})\s(\d{1,2})\b/g; const b = _rvBase(t); let x; while ((x = re.exec(b))) { if (RV_NUM_NO.has(x[1])) continue; (m[x[1]] = m[x[1]] || new Set()).add(x[2]); } return m; }
+function _rvNumModeloChoca(nombre, t) {
+  const a = _rvPalNum(nombre), b = _rvPalNum(t);
+  for (const w of Object.keys(a)) if (b[w] && ![...a[w]].some((v) => b[w].has(v))) return { cp: `${w} ${[...a[w]].join('/')}`, ml: `${w} ${[...b[w]].join('/')}` };
+  return null;
+}
+const RV_CAP_RE = /(\d+(?:[.,]\d+)?)\s*(gb|tb|ml|mah|kg|litros?|lts?)\b/g;
+function _rvCaps(t) { const m = {}; const b = String(t || '').toLowerCase(); let x; RV_CAP_RE.lastIndex = 0;
+  while ((x = RV_CAP_RE.exec(b))) { const u = /^l/.test(x[2]) ? 'l' : x[2]; (m[u] = m[u] || new Set()).add(String(Number(x[1].replace(',', '.')))); } return m; }
+function _rvCapacidadChoca(nombre, t) {
+  const a = _rvCaps(nombre), b = _rvCaps(t);
+  for (const u of Object.keys(a)) if (b[u] && ![...a[u]].some((v) => b[u].has(v))) return { cp: [...a[u]].join('/') + ' ' + u.toUpperCase(), ml: [...b[u]].join('/') + ' ' + u.toUpperCase() };
+  return null;
+}
+const RV_MASC = /\b(masculino|masc|hombre|homme|men|mens|male|caballero)\b/, RV_FEM = /\b(feminino|femenino|mujer|femme|woman|women|lady|dama|feminine)\b/;
+function _rvGeneroChoca(nombre, t) {
+  const a = _rvBase(nombre), b = _rvBase(t);
+  if (/\buni(s|ss)ex\b/.test(a) || /\buni(s|ss)ex\b/.test(b)) return null;
+  const am = RV_MASC.test(a), af = RV_FEM.test(a), bm = RV_MASC.test(b), bf = RV_FEM.test(b);
+  if (am && !af && bf && !bm) return { cp: 'de hombre', ml: 'de mujer' };
+  if (af && !am && bm && !bf) return { cp: 'de mujer', ml: 'de hombre' };
+  return null;
 }
 
 // El link del catalogo que el robot MIDIO, no una busqueda nueva: es el mismo criterio que el
@@ -11304,7 +11335,11 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
     // en cada vuelta y gastaban la tanda.
     // Lo que no se encontró en ML con el nombre viejo (sin catálogo exacto / nadie lo vende) se vuelve a buscar con el nombre
     // traducido aunque esté fresco (`qv` = versión del traductor con que se buscó).
-    const _rebuscar = (esLista && (e.sc || e.sv || e.noEs) && Number(e.qv || 0) !== LISTA_NOMBRE_VER)   // noEs: se busca de nuevo, sin el catálogo rechazado
+    // OTRA CAPACIDAD / OTRO GÉNERO (24/10/2026): lo ya medido contra un catálogo que ahora choca (32 GB contra 16 GB, masculino contra
+    // pour Femme) se vuelve a buscar aunque esté fresco; con el chequeo nuevo ese catálogo queda afuera y se busca el correcto.
+    const _nChk = esLista ? (limpiarNombreLista(e.n) || e.n) : e.n;
+    const _chocaNuevo = e.m != null && e.mt && !e.miFijo && !e.ok && !!(_rvCapacidadChoca(_nChk, e.mt) || _rvGeneroChoca(_nChk, e.mt) || _rvNumModeloChoca(_nChk, e.mt));
+    const _rebuscar = _chocaNuevo || (esLista && (e.sc || e.sv || e.noEs) && Number(e.qv || 0) !== LISTA_NOMBRE_VER)   // noEs: se busca de nuevo, sin el catálogo rechazado
       || (!esLista && e.sc && Number(e.qp || 0) !== PY_NOMBRE_VER);   // Nissei sin catálogo exacto: una vez más con el nombre traducido
     // 1.5a (21/10/2026): lo medido con la cuenta de antes del peor caso (`cv` ≠ `CAND_CALC_VER`) y que estaba cerca de dar (20%+) se
     // vuelve a medir: con la retención restada puede dejar de dar.
