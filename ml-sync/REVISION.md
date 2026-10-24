@@ -1389,6 +1389,11 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
 
 ## 7 · DISEÑO (domingo)
 
+**24/10/2026 · v26.40 · 📈 Todos los productos: Premium y envío gratis aparte (él: *"¿se puede saber cuánto fue Premium? así veo cuánto más
+vendemos por esa idea"*).** Barras: verde Clásica, naranja Premium (gold_pro o gemela Premium), celeste gemela de envío gratis, ámbar remate (misma
+regla que la línea de un producto). Tarjeta Vendió: "N en Premium · M con envío gratis"; Ganancia: lo que dejó cada una. Dónde vive:
+`lineaTodoPintar` (vd[k].uP/uG/gP/gG). **Qué chequear:** que verde+naranja+celeste+ámbar = el total del día; ventas viejas sin `tipoPub` cuentan como Clásica.
+
 **24/10/2026 · v26.35 · Pedido de nuevos: vendidas y reseñas a la vista (él: *"quiero que en el detalle en el pedido aparezcan ventas y
 reseñas"*).** El renglón de arriba (al lado de los vendedores) dice `🛒 N vendidas · ⭐ N reseñas` (o "sin cargar"), y la casilla del
 detalle pasó a "🛒 vendidas · ⭐ reseñas en ML" con la regla (100+ vendidas o 5+ reseñas). Dónde vive: `pedNuevoFilaHTML` y el armado de
