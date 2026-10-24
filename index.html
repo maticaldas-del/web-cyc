@@ -2960,7 +2960,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.38';
+const APP_VERSION='26.39';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2973,6 +2973,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.39',f:'24/10',h:'10:55',c:[{n:2,t:'⭐ Cada producto nuevo muestra su nota "gana mucho y sale mucho". 7 es lo mínimo para comprar (35% con 100 de salida): verde 7 o más, ámbar abajo.'}]},
   {v:'26.38',f:'24/10',h:'10:46',c:[{n:1,t:'⭐ En "gana mucho y sale mucho" lo de rotación baja (🚀 menos de 100) queda después de lo que sale bien, aunque deje mucho %.'}]},
   {v:'26.37',f:'24/10',h:'10:43',c:[{n:2,t:'🇵🇾 Productos nuevos: orden nuevo ⭐ "gana mucho y sale mucho" (junta el % de ganancia con el 🚀 puntaje de salida; arriba lo que deja mucho y se vende mucho). Se sacaron "más vendidos" y "$ por unidad".'}]},
   {v:'26.36',f:'24/10',h:'02:10',c:[{n:3,t:'🇵🇾 Productos nuevos: 🚀 puntaje de salida. Junta vendidas y reseñas de ML en un número (lo que más diga entre las vendidas y las reseñas × 20). Nuevo orden "🚀 puntaje de salida": arriba lo que más sale. Menos de 100 = rotación baja.'}]},
@@ -15717,6 +15718,11 @@ const CAND_VENTAS_X_RESENA=20;
 function puntajeSalida(v,res){const vv=(v!=null&&isFinite(v))?Number(v):null,rr=(res!=null&&isFinite(res))?Number(res)*CAND_VENTAS_X_RESENA:null;
   if(vv==null&&rr==null)return null;return Math.round(Math.max(vv||0,rr||0));}
 function candPuntaje(c){return puntajeSalida(candVentasDe(c),c&&c.resCarga);}
+// ⭐ NOTA "GANA MUCHO Y SALE MUCHO" (24/10/2026, él: "¿de qué puntaje no debería aparecer? ¿o todo es mínimo 7 lo que está en la lista?").
+// % × log10(🚀 puntaje + 1) ÷ 10: lo mínimo para comprar (35% con 100 de salida) da 7,0. Abajo de 7 = deja poco o se vende poco.
+const CAND_COMBO_MIN=7;
+function candCombo(c){const m=(c&&c.margen!=null&&isFinite(c.margen))?Number(c.margen):null,p=candPuntaje(c);return (m!=null&&p!=null&&p>0)?m*Math.log10(p+1)/10:null;}
+function comboHTML(c){const x=candCombo(c);if(x==null)return '';const ok=x>=CAND_COMBO_MIN&&candPuntaje(c)>=CAND_MIN_VENTAS;return `<b style="color:${ok?'var(--green)':'var(--amber)'}" title="Gana mucho y sale mucho: % de ganancia × la salida en ML. ${CAND_COMBO_MIN} es lo mínimo para comprar (35% con 100 de salida); más alto, mejor.">⭐ ${x.toFixed(1).replace('.',',')}</b>`;}
 function puntajeHTML(p){if(p==null)return '';const ok=p>=CAND_MIN_VENTAS;return `<b style="color:${ok?'var(--green)':'var(--amber)'}" title="Puntaje de salida: lo que más diga entre las vendidas en ML y las reseñas × ${CAND_VENTAS_X_RESENA}. ${CAND_MIN_VENTAS} o más = sale bien · menos = rotación baja.">🚀 ${p.toLocaleString('es-AR')}${ok?'':' rotación baja'}</b>`;}
 // ── LOS TRES NÚMEROS DEL PEDIDO LOS ELIGE ÉL, Y VIVEN EN LA BASE (19/09/2026) ────────
 // Pedido suyo: *"tope del pedido (…) poder elegir tope de unidades por producto"*.
@@ -17010,7 +17016,7 @@ function pedidoMomentoHTML(g){
       R.fotoPY||R.fotoML||'', m!=null?m.toFixed(0)+'%'+(R.margenViejo!=null?' (medido a US$ '+R.margenViejo.toFixed(2)+')':''):null,
       (m==null||R.margenViejo!=null)?'var(--muted)':candPctCol(m,f.c),
       pedNuevoFilaHTML(f,maxU,tc,true),
-      (()=>{const nv=Number(f.c.mlVendedores);if(f.c.sinComp)return ` · <span style="color:var(--green)" title="Nadie lo vende hoy en su catálogo de ML: se midió contra el precio que vio el chat de compras en ML (${fmt(Number(f.c.svp)||0)}).">🌟 sin competencia en ML</span>`;const _v=candVentasDe(f.c),_r=f.c.resCarga;return ` · <span style="color:${nv>=CAND_MIN_VENDEDORES?'var(--green)':'var(--amber)'}">🏪 ${nv>0?nv+(nv===1?' vendedor':' vendedores')+' en ML':'sin vendedores medidos'}</span>`+` · 🛒 ${_v!=null?(_v>=1000?'+1000':_v)+' vendidas':'<span style="color:var(--amber)">vendidas sin cargar</span>'}`+` · ⭐ ${_r!=null?_r+' reseñas':'<span style="color:var(--muted)">reseñas sin cargar</span>'}`+(candPuntaje(f.c)!=null?' · '+puntajeHTML(candPuntaje(f.c)):'');})());});
+      (()=>{const nv=Number(f.c.mlVendedores);if(f.c.sinComp)return ` · <span style="color:var(--green)" title="Nadie lo vende hoy en su catálogo de ML: se midió contra el precio que vio el chat de compras en ML (${fmt(Number(f.c.svp)||0)}).">🌟 sin competencia en ML</span>`;const _v=candVentasDe(f.c),_r=f.c.resCarga;return ` · <span style="color:${nv>=CAND_MIN_VENDEDORES?'var(--green)':'var(--amber)'}">🏪 ${nv>0?nv+(nv===1?' vendedor':' vendedores')+' en ML':'sin vendedores medidos'}</span>`+` · 🛒 ${_v!=null?(_v>=1000?'+1000':_v)+' vendidas':'<span style="color:var(--amber)">vendidas sin cargar</span>'}`+` · ⭐ ${_r!=null?_r+' reseñas':'<span style="color:var(--muted)">reseñas sin cargar</span>'}`+(candPuntaje(f.c)!=null?' · '+puntajeHTML(candPuntaje(f.c)):'')+(candCombo(f.c)!=null?' · '+comboHTML(f.c):'');})());});
   const cfg=`<details style="margin:8px 0 2px"><summary style="cursor:pointer;font-size:.68rem;color:var(--muted)">⚙️ tope y máximo por producto</summary><div style="display:flex;gap:7px;flex-wrap:wrap;align-items:flex-end;margin:8px 0 4px">
       ${[['pedTopeUSD',tope,'Tope del pedido (US$, probados + nuevos)'],['pedMaxU',maxU,'U. por nuevo (barato que vende: 3-4 · caro: 1)']]
         .map(([k,v,t])=>`<label style="flex:1;min-width:105px"><div style="font-size:.6rem;color:var(--muted);margin-bottom:3px">${t}</div>
@@ -17560,7 +17566,7 @@ function candidatosHTML(){
         <div style="flex:1;min-width:0">
           <div class="cand-nom" style="font-size:.8rem;font-weight:600;line-height:1.3">${c.nombre}</div>
           <div class="cand-cel" style="font-size:.66rem;color:var(--muted);margin-top:2px">${pesos?fmt(pesos):usd>0?fmtUS2(puesto):'sin precio'}${(()=>{const _v=candVentasDe(c);return _v!=null?` · ${_v>=1000?'+1000':_v} vend.`:'';})()}${tieneCuenta&&_loc!=null?` · ${perfLocalHTML(_loc)}`:''}</div>
-          <div class="cand-sub" style="font-size:.68rem;color:var(--muted);margin-top:3px">${c.cod?`🔖 ${c.cod} · `:''}${usd>0?`${fmtUS2(usd)} → <b style="color:var(--text)">${fmtUS2(puesto)}</b> puesto${pesos?` · ${fmt(pesos)}`:''}`:'<span style="color:var(--red)">sin precio</span>'}${(()=>{const _v=candVentasDe(c);const _nv=Number(c.mlVendedores);return (_v!=null?` · 🛒 ${_v>=1000?'+1000':_v} vendidas`:'')+(c.resCarga!=null?` · ⭐ ${c.resCarga} reseñas`:'')+(candPuntaje(c)!=null?' · '+puntajeHTML(candPuntaje(c)):'')+` · <b style="color:${_nv>=CAND_MIN_VENDEDORES?'var(--green)':'var(--amber)'}">🏪 ${_nv>0?_nv+(_nv===1?' vendedor':' vend.'):'sin vendedores'}</b>`;})()}</div>
+          <div class="cand-sub" style="font-size:.68rem;color:var(--muted);margin-top:3px">${c.cod?`🔖 ${c.cod} · `:''}${usd>0?`${fmtUS2(usd)} → <b style="color:var(--text)">${fmtUS2(puesto)}</b> puesto${pesos?` · ${fmt(pesos)}`:''}`:'<span style="color:var(--red)">sin precio</span>'}${(()=>{const _v=candVentasDe(c);const _nv=Number(c.mlVendedores);return (_v!=null?` · 🛒 ${_v>=1000?'+1000':_v} vendidas`:'')+(c.resCarga!=null?` · ⭐ ${c.resCarga} reseñas`:'')+(candPuntaje(c)!=null?' · '+puntajeHTML(candPuntaje(c)):'')+(candCombo(c)!=null?' · '+comboHTML(c):'')+` · <b style="color:${_nv>=CAND_MIN_VENDEDORES?'var(--green)':'var(--amber)'}">🏪 ${_nv>0?_nv+(_nv===1?' vendedor':' vend.'):'sin vendedores'}</b>`;})()}</div>
         </div>
         <div class="cand-der" style="display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap;flex:0 1 auto">
           ${tieneCuenta&&_loc!=null?`<div class="cand-loc">${perfLocalHTML(_loc)}${perfNoLocalBtn('c',c.id,false)}</div>`:tieneCuenta&&candEsPerf(c)&&c.noLocal?`<div class="cand-loc" style="font-size:.6rem;color:var(--muted)">🏪 no da en el local${perfNoLocalBtn('c',c.id,true)}</div>`:''}
@@ -17570,7 +17576,7 @@ function candidatosHTML(){
         </div>
       </summary>
       <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
-      <div class="cand-solocel" style="font-size:.72rem;color:var(--muted);line-height:1.6">${c.cod?`🔖 ${c.cod} · `:''}${usd>0?`${fmtUS2(usd)} → <b style="color:var(--text)">${fmtUS2(puesto)}</b> puesto${pesos?` · ${fmt(pesos)}`:''}`:'sin precio'}${(()=>{const _v=candVentasDe(c);const _nv=Number(c.mlVendedores);return (_v!=null?` · 🛒 ${_v>=1000?'+1000':_v} vendidas`:'')+(c.resCarga!=null?` · ⭐ ${c.resCarga} reseñas`:'')+(candPuntaje(c)!=null?' · '+puntajeHTML(candPuntaje(c)):'')+` · 🏪 ${_nv>0?_nv+(_nv===1?' vendedor':' vend.'):'sin vendedores'}`;})()}
+      <div class="cand-solocel" style="font-size:.72rem;color:var(--muted);line-height:1.6">${c.cod?`🔖 ${c.cod} · `:''}${usd>0?`${fmtUS2(usd)} → <b style="color:var(--text)">${fmtUS2(puesto)}</b> puesto${pesos?` · ${fmt(pesos)}`:''}`:'sin precio'}${(()=>{const _v=candVentasDe(c);const _nv=Number(c.mlVendedores);return (_v!=null?` · 🛒 ${_v>=1000?'+1000':_v} vendidas`:'')+(c.resCarga!=null?` · ⭐ ${c.resCarga} reseñas`:'')+(candPuntaje(c)!=null?' · '+puntajeHTML(candPuntaje(c)):'')+(candCombo(c)!=null?' · '+comboHTML(c):'')+` · 🏪 ${_nv>0?_nv+(_nv===1?' vendedor':' vend.'):'sin vendedores'}`;})()}
         ${tieneCuenta&&_loc!=null?`<div style="margin-top:4px">${perfLocalHTML(_loc)}${perfNoLocalBtn('c',c.id,false)}</div>`:tieneCuenta&&candEsPerf(c)&&c.noLocal?`<div style="margin-top:4px">🏪 no da en el local${perfNoLocalBtn('c',c.id,true)}</div>`:''}</div>
       <div onclick="event.stopPropagation()"><button class="btn" style="font-size:.66rem;padding:3px 10px" onclick="event.preventDefault();event.stopPropagation();candNoML('${c.id}',${c.noML?'false':'true'})" title="${c.noML?'Volver a considerarlo para vender en ML':'Marca que ML no deja vender: deja de contarlo para ML y queda sólo para la perfumería del local'}">${c.noML?'↩︎ volver a ML':'🛒✕ no se puede ML'}</button></div>
       <div style="display:flex;gap:10px;flex-wrap:wrap">${fotoBox(RP.fotoPY,'🇵🇾 Paraguay')}${fotoBox(RP.fotoML,'🏷️ ML')}</div>
@@ -17651,7 +17657,7 @@ function candidatosHTML(){
       // le gana mucho y se vende mucho"). % × log10(puntaje): 50% con 1.000 de salida (150) va arriba de 35% con 20.000 (151 ≈ empate)
       // y de 100% con 30 (148): el % pesa entero y la salida por escalones de ×10, así un producto no gana sólo por vender muchísimo.
       // Lo de rotación baja (puntaje abajo de 100) va después de todo lo que sale bien, aunque deje 200%: "que se venda mucho" manda.
-      if(k==='combo'){const m=n(c.margen),p=candPuntaje(c);return (m!=null&&p!=null&&p>0)?m*Math.log10(p+1)-(p<CAND_MIN_VENTAS?1e6:0):null;}
+      if(k==='combo'){const x=candCombo(c);return x!=null?x-(candPuntaje(c)<CAND_MIN_VENTAS?1e6:0):null;}
       if(k==='usd')return (parseFloat(c.usd)>0&&n(c.ganancia)!=null)?c.ganancia/(parseFloat(c.usd)*RECARGO_PY):null;
       if(k==='barato')return parseFloat(c.usd)>0?-parseFloat(c.usd):null;
       return n(c.margen);};

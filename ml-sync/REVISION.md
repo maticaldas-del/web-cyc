@@ -694,6 +694,10 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 
 ## 3 · MERCADERÍA (miércoles)
 
+**24/10/2026 · v26.39 · ⭐ la nota a la vista (él: *"¿de qué puntaje no debería aparecer?"*).** `candCombo` = % × log10(🚀+1) ÷ 10;
+`CAND_COMBO_MIN`=7 = lo mínimo para comprar (35% con 100 de salida). Chip ⭐ en tarjetas y pedido (verde 7+ con salida 100+, ámbar abajo).
+El orden ⭐ usa el mismo número. **Qué chequear:** que nada de lo que "se puede pedir" quede abajo de 7 salvo los de 30% con 100+ y 2 vendedores (6,0).
+
 **24/10/2026 · v26.37 · ⭐ "gana mucho y sale mucho" (él: *"juntando el puntaje de salida y el % de ganancia: el primero tiene que ser el que
 se le gana mucho y se vende mucho"*).** Orden nuevo en Productos nuevos = % × log10(🚀 puntaje + 1) (el % entero, la salida por escalones de ×10,
 para que vender muchísimo no gane solo). Lo de rotación baja (🚀 menos de 100) va después de todo lo que sale bien aunque deje 200%; sin % o sin puntaje, al final. Se sacaron "🛒 más vendidos" y "$ por unidad" (él); un orden guardado que
