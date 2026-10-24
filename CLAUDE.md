@@ -17,6 +17,7 @@
 | `ml-sync/VENTAS.md` | **cómo se juzga una venta** (lo que lee el ayudante de ventas con la ficha, en vez de todo esto). Regla que toca ventas → también ahí |
 | `ml-sync/REVISION.md` | cada cambio anotado en su etapa (qué es · dónde vive · qué chequear) + el calendario de revisiones |
 | `ml-sync/PROMPT_GUAY.md` · `PROMPT_LISTAS.md` | lo que se le pega ENTERO al chat de compras (no lee direcciones remotas) |
+| `ml-sync/PROMPT_CAJAS.md` | lo que se le pega al chat de Chrome para armar las cajas "MANDALA YA" en ML (él dice "arrancá"; lee el panel, carga Planificación de envíos, no confirma) |
 | `ml-sync/AUDITORIA.md` | auditoría del robot (datos crudos contra el `informe`) |
 | `ml-sync/notas/` | `para_mati.md` (dudas que esperan su respuesta) · `preguntas.md` (cada corrección suya vuelta pregunta general) · `correcciones.md` (cuántas veces me corrigió) · `techo.md` · `ideas.md` · `sin_estirar.txt` · `decide_pedidos.py` · `decide_cajas.py` · `pedidos.txt` · `juicios*.txt` · `listaweb_iscos.txt` |
 | `ml-sync/HISTORIA.md` | todo lo viejo, textual |
