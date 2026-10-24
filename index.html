@@ -2959,7 +2959,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.25';
+const APP_VERSION='26.26';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2972,6 +2972,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.26',f:'24/10',h:'00:35',c:[{n:2,t:'🇵🇾 Paraguay → Nuevos → Revisados: la carpeta "Medidos que dan, pero el robot no confirmó…" ahora se llama "🟠 Dan el %, pero no entran al pedido": el % va en ámbar y cada producto dice por qué no entra (falta la foto de Paraguay, 1 solo vendedor, o el nombre de ML no coincide y puede ser otro producto).'}]},
   {v:'26.25',f:'24/10',h:'00:20',c:[{n:2,t:'🚚 Inicio → la tarjeta de Pedidos tiene 4 botones (Bs As, Paraguay, Paulvic, Listas) que entran directo a cada uno. Se sacó lo que decía abajo (cuántos en rojo y cuánto falta reponer).'}]},
   {v:'26.24',f:'24/10',h:'01:30',c:[{n:2,t:'Listas (Dai Nippon, Wels…) → un pedido que ya pagaste al pedirlo cuenta como mercadería en camino en el Arqueo hasta que llega (botón 💵 Ya lo pagué también mientras viaja). El que no pagaste sigue igual: al llegar es deuda hasta que lo pagás.'}]},
   {v:'26.23',f:'23/10',h:'17:30',c:[{n:1,t:'Armar caja → arriba aparece un aviso 🏷️ cuando lo que va en la caja todavía tiene unidades sin etiqueta: cuántas y de qué productos, para terminarlas antes.'}]},
@@ -15466,7 +15467,12 @@ async function pycatBuscar(q){
 function pycatFila([cod,e]){const tc=curTC();{const u=Number(e.u)||0,pu=u*RECARGO_PY,ps=tc>0?Math.round(pu*tc):0;
     const m=(e.m!=null&&isFinite(e.m))?Number(e.m):null;
     const perf=_PERF_RE.test(e.n+' '+(e.mt||'')), loc=perf&&e.mp>0?perfLocalPct(ps,Number(e.mp)):null;
-    const est=m!=null?`<b style="font-size:1rem;color:${m>=25?'var(--green)':'var(--red)'}">${Math.round(m)}%</b> <span style="font-size:.6rem;color:var(--muted)">ML</span>`
+    // POR QUÉ NO PASÓ A PARA PROBAR (24/10/2026, él: "acá creo que quedan productos que no van"): un % que da el piso pero no puede
+    // entrar a un pedido ya no va en verde; va en ámbar con el motivo (sin la foto de Paraguay no se compra · 1 solo vendedor ·
+    // el nombre de ML no coincide: lo más probable es que sea otro producto).
+    const fPY0=/^https:\/\//.test(e.f||'');
+    const noVa=m!=null&&m>=25&&!e.cand?[!fPY0?'📷 falta la foto de Paraguay: no se puede comprar':'',(Number(e.mv)||0)<CAND_MIN_VENDEDORES?'1 solo vendedor en ML':'',e.rp?'⚠️ el nombre de ML no coincide ('+escHtml(String(e.rp).replace(/^en ML no está\(n\): /,'falta: ').slice(0,70))+'): puede ser otro producto':''].filter(Boolean):[];
+    const est=m!=null?`<b style="font-size:1rem;color:${noVa.length?'var(--amber)':m>=25?'var(--green)':'var(--red)'}">${Math.round(m)}%</b> <span style="font-size:.6rem;color:var(--muted)">ML</span>`
       :e.sc?'<span style="font-size:.62rem;color:var(--muted)">sin catálogo exacto en ML</span>':e.sv?'<span style="font-size:.62rem;color:var(--muted)">en ML no lo vende nadie</span>':e.fz?`<span style="font-size:.62rem;color:var(--muted)">afuera: ${e.fz}</span>`:'<span style="font-size:.62rem;color:var(--muted)">⏳ sin medir</span>';
     const fPY=/^https:\/\//.test(e.f||'')?e.f:'', fML=/^https:\/\//.test(e.mf||'')?e.mf:'';
     const im=(u,t)=>u?`<img src="${u}" loading="lazy" title="${t}" onclick="_mostrarLightbox('${u}','')" onerror="this.style.visibility='hidden'" style="width:44px;height:44px;object-fit:contain;background:#fff;border-radius:6px;cursor:zoom-in">`:'';
@@ -15474,6 +15480,7 @@ function pycatFila([cod,e]){const tc=curTC();{const u=Number(e.u)||0,pu=u*RECARG
       ${im(fPY,'Paraguay')}${im(fML,'ML')}
       <div style="flex:1;min-width:0;font-size:.72rem;line-height:1.45"><div style="font-weight:600">${e.n}</div>
         <div style="color:var(--muted);font-size:.64rem">🔖 ${cod} · ${fmtUS2(u)} → <b style="color:var(--text)">${fmtUS2(pu)}</b> puesto${ps?' · '+fmt(ps):''}${e.mp?` · en ML ${fmt(e.mp)}${e.mv?' · '+(e.mv==1?'<b style="color:var(--amber)">⚠️ 1 solo vendedor: precio que nadie más confirma</b>':e.mv+' vendedores'):''}${Number(e.pp)>0?` · <span style="color:var(--amber)">🏷️ el más barato está en promo (−${Number(e.pp)}%)</span>`:''}`:''}${e.cand?' · <span style="color:var(--green)">ya está en Para probar</span>':''}</div>
+        ${noVa.length?`<div style="font-size:.64rem;color:var(--amber)">No entra al pedido: ${noVa.join(' · ')}</div>`:''}
         <div style="font-size:.64rem">${/^https:\/\//.test(e.l||'')?`<a href="${e.l}" target="_blank" rel="noopener" style="color:var(--green)">🇵🇾 comprasparaguay</a>`:''}${e.mi?` · <a href="https://www.mercadolibre.com.ar/p/${e.mi}" target="_blank" rel="noopener" style="color:var(--green)">🔗 ML</a>`:''}</div></div>
       <div style="text-align:right;flex:0 0 auto">${est}${loc!=null?`<div>${perfLocalHTML(loc)}</div>`:''}</div></div>`;}}
 // ── TODO LO QUE EL ROBOT REVISÓ Y NO DA, ABAJO DE TODO (17/10/2026, pedido suyo) ──────────────────────────
@@ -17640,7 +17647,7 @@ function candidatosHTML(){
         +(_flojas.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--amber)">🟠 1 solo vendedor en ML (o sin catálogo con vendedores) · <b>${_flojas.length}</b></summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_flojas.map(_card).join('')}</div></details>`:'')
         +((_rojos.length||rv('bajo'))?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--red)">🔻 No llegan al ${CAND_PISO_TXT()} · <b>${_rojos.length}</b> candidatos${` <span style="color:var(--muted);font-weight:400">+ <b>${f(rv('bajo'))}</b> del catálogo</span>`}</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_rojos.map(_card).join('')}</div>${rv('bajo')?pycatNoDanHTML(['bajo'],'pycat-nodan-bajo','📦 Del catálogo: medidos por el robot, abajo del piso',true):''}</details>`:'')
         +candDescartadosHTML(null,'todos')
-        +sub('🟢 Medidos que dan, pero el robot no confirmó que sea el mismo producto','var(--green)',rv('dan'),['dan'],'pycat-nodan-dan','📦 Del catálogo: dan el piso, sin pasar a Para probar')
+        +sub('🟠 Dan el %, pero no entran al pedido (falta la foto de Paraguay o el nombre de ML no coincide)','var(--amber)',rv('dan'),['dan'],'pycat-nodan-dan','📦 Del catálogo: dan el piso, sin pasar a Para probar')
         +sub('👻 En ML nadie lo vende','var(--muted)',rv('sv'),['sv'],'pycat-nodan-sv','📦 Del catálogo: el catálogo existe pero sin vendedores')
         +sub('🔍 Sin catálogo exacto en ML (falta buscarlo traducido)','var(--muted)',rv('sc'),['sc'],'pycat-nodan-sc','📦 Del catálogo: no se pudo comparar contra el mismo producto')
         +sub('⛔ Afuera por regla','var(--muted)',rv('fz'),['fz'],'pycat-nodan-fz','📦 Del catálogo: 110V, marca que ML frena, etc.')

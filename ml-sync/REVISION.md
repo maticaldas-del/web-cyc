@@ -693,6 +693,14 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 (sería doble), y que el número de Gastos y el del Arqueo sean el mismo para cada mes.
 
 ## 3 · MERCADERÍA (miércoles)
+
+**24/10/2026 · v26.26 · Paraguay → "Dan el %, pero no entran al pedido".** Él: *"acá creo que quedan productos que no van"*. La carpeta
+"🟢 Medidos que dan, pero el robot no confirmó…" mostraba en verde 59 productos del catálogo con 2+ vendedores que NUNCA pueden entrar a
+un pedido: a los 59 les falta la foto de Paraguay (sin las dos fotos no se compra) y muchos son otro producto (Klasse shampoo ⇒ vino
+Rutini, tag de mochila ⇒ Funko, testers ⇒ perfume en caja, Invictus ⇒ Invictus Platinum). **Dónde vive:** `pycatFila` (`noVa`: motivo
+y % en ámbar), título de la carpeta; `pycatbusca:!sinpasar` (sync.mjs) los lista con motivo y `pycatbusca:<palabra>` muestra la medición
+y el candidato. **Qué chequear:** ningún % verde en esa carpeta; cuando la pasada de Nissei traiga la foto, el robot los vuelve a medir y
+recién ahí pasan a Para probar (y a la revisión de fotos).
 - **24/10/2026 · `pyprecio` también por ml-consulta** (`CONSULTA_ESCRIBE`). El chat de compras mandó 8 `pyprecio` seguidos por ml-sync y cada uno canceló al anterior (ml-sync corta el que está corriendo): sólo quedó el último. ml-consulta corre en paralelo. Sólo toca `nisseiUSD`/`nisseiTs`/`codPy`/`pyLink` de la ficha, nunca el costo. Qué chequear: que varios `pyprecio` seguidos por ml-consulta terminen todos con "quedaron bien".
 - **24/10/2026 · `pyprobadoslista` (sólo lee) y el PROMPT GUAY con los probados primero** (él: *"que primero mire los productos probados y que los cargue lo antes posible, después que siga con el resto"*). Lista cada ficha de Nissei (id, código, US$ guardado, días) para que el chat de compras actualice su precio con `pyprecio` (ml-sync) antes de recorrer el catálogo con `pycat`. Qué chequear: que después de la pasada "Productos probados" de Paraguay muestre los que dan.
 - **23/10/2026 · el máximo de compra usa el precio de la ÚLTIMA venta** (él: *"si nunca vendió toma el % que decís vos. si ya vendió no importa si fue sólo 1 unidad. tomar ese %"*). `pedidostodo` imprime `ultv $X` (última venta de 180 d sin remates, salteando las vendidas con 🔥 escasez o ⏳ sin reposición vigente: `tagVigente`/`ultV`); `decide_pedidos.py` `venta()` = min(precio de hoy, ultv); nunca vendió = precio de hoy; log viejo sin `ultv` = la mediana de 60 d de antes. El motivo del `=venta|` dice cuál usó (`venta_mot`). Qué chequear: una suba que vendió 1 sube el máximo de compra de Paraguay en la web (maxCompraDe lee ese `pv`); que una venta de escasez no lo infle.
