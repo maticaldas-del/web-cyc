@@ -22724,6 +22724,16 @@ async function main() {
       console.log(`   en total ${vT} vendidas y ${nT} reseñas → 1 reseña cada ${nT ? (vT / nT).toFixed(0) : '—'} ventas · ${sinR.length} publicaciones con 5+ vendidas y 0 reseñas`);
       if (rat.length) console.log(`   por publicación (las que tienen reseñas): la mitad entre 1 cada ${q(0.25).toFixed(0)} y 1 cada ${q(0.75).toFixed(0)} ventas · mediana 1 cada ${q(0.5).toFixed(0)}`);
       for (const f of med.slice(0, 40)) console.log(`   ${f.m} · ${f.v} vendidas · ${f.n} reseñas${f.n ? ' · 1 cada ' + (f.v / f.n).toFixed(0) : ''}`);
+      // C) LOS PARES QUE CARGÓ EL CHAT: vendidas Y reseñas del MISMO catálogo, mirados el mismo día (candidatos de Paraguay y listas).
+      //    Es la cuenta que sirve: las reseñas de ML son del catálogo entero (A casi siempre queda afuera por eso).
+      { const cands = (await db.get('cyc/candidatos_py')) || {}; const pares = [];
+        for (const c of Object.values(cands)) { const v = Number(c && c.vendCarga), r = Number(c && c.resCarga); if (c && c.vendCarga != null && c.resCarga != null && v > 0) pares.push([v, r]); }
+        const provs = (await db.get('cyc/mlconfig/listasProv')) || {};
+        for (const k of Object.keys(provs)) { const L = (await db.get('mlapi/listas/' + k)) || {}; for (const e of Object.values(L)) { const v = Number(e && e.vend), r = Number(e && e.res); if (e && e.vend != null && e.res != null && v > 0) pares.push([v, r]); } }
+        const conR = pares.filter(([, r]) => r > 0); const rt = conR.map(([v, r]) => v / r).sort((x, y) => x - y); const qq = (p) => rt[Math.min(rt.length - 1, Math.floor(p * rt.length))];
+        console.log(`\n=== C) PARES DEL CHAT (vendidas y reseñas del mismo catálogo): ${pares.length} · ${pares.length - conR.length} con vendidas y 0 reseñas ===`);
+        if (rt.length) console.log(`   1 reseña cada ${qq(0.5).toFixed(0)} vendidas (mediana) · la mitad entre ${qq(0.25).toFixed(0)} y ${qq(0.75).toFixed(0)} · por tramo de vendidas: ${[[1, 99], [100, 499], [500, 4999], [5000, 1e9]].map(([a, b]) => { const t = conR.filter(([v]) => v >= a && v <= b).map(([v, r]) => v / r).sort((x, y) => x - y); return `${a}-${b >= 1e9 ? '+' : b}: ${t.length ? '1 cada ' + t[Math.floor(t.length / 2)].toFixed(0) + ' (' + t.length + ')' : '—'}`; }).join(' · ')}`);
+        for (const [v, r] of pares.slice(0, 30)) console.log(`   ${v} vendidas · ${r} reseñas`); }
       // B) fechas de las opiniones de los catálogos pedidos
       if (args.length) { const cands = (await db.get('cyc/candidatos_py')) || {}; const ahora = Date.now();
         console.log(`\n=== B) DE CUÁNDO SON LAS RESEÑAS ===`);
@@ -22731,7 +22741,7 @@ async function main() {
           if (!/^MLA/.test(id)) { const c = Object.values(cands).find((x) => x && String(x.cod) === a); if (!c) { console.log(`  ${a}: no encontré ese candidato`); continue; } id = String(candCatDe(c) || '').toUpperCase(); nom = String(c.nombre).slice(0, 50); }
           const ruta = (off) => (/^MLA\d{6,9}$/.test(id) ? `/reviews/item/${id}?catalog_product_id=${id}&limit=50&offset=${off}` : `/reviews/item/${id}?limit=50&offset=${off}`);
           let tot = null, fechas = [], campos = '';
-          for (let off = 0; off < 2000; off += 50) { let r; try { r = await mlGet(ruta(off), tk0); } catch (e) { console.log(`  ${id}: ML no contestó (${String(e.message).slice(0, 80)})`); break; }
+          for (let off = 0; off < 2000; off += 50) { let r; try { r = await mlGet(ruta(off), tk0); } catch (e) { if (off === 0) { try { r = await mlGet(`/reviews/item/${id}?catalog_product_id=${id}`, tk0); } catch (e2) { console.log(`  ${id}: ML no contestó (${String(e2.message).slice(0, 220)})`); break; } } else break; }
             tot = Number(r && r.paging && r.paging.total) || 0; const L = (r && r.reviews) || []; if (!campos && L[0]) campos = Object.keys(L[0]).join(',');
             for (const x of L) { const d = Date.parse(x.date_created || x.date || ''); if (d) fechas.push(d); } if (L.length < 50) break; }
           const en = (dias) => fechas.filter((d) => ahora - d <= dias * 864e5).length; fechas.sort((x, y) => x - y);
