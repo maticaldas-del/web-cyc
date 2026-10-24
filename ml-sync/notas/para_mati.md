@@ -19,5 +19,13 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 18. **(lo mira él, 24/10 "ok") Aviso de ML en Ayelen por "productos falsificados"** (se ve en su captura del 23/10, propiedad intelectual): mirar en ML → Consultar infracciones qué publicación fue. Si es una marca, la agrego como prohibida para ML (`marcanoml`).
 25. **Softys** (lista del 17/10, cargada el 24/10 y midiéndose contra ML): ¿quién la trae (Tito en Bs As o la mandan), hay pedido mínimo, y el "PRECIO FINAL" es lo que se paga (con IVA)? Lo cargué así.
 
+28. **Testers de Nissei** (24/10, revisando lo que quedó afuera): Nissei vende muchos perfumes "Tester" (sin caja, a veces sin tapa) muy
+    baratos, y en ML los comparo contra el mismo perfume EN CAJA: dan 300-800% (Xerjoff Torino 21, 1 Million Elixir, Montblanc Explorer
+    Extreme, Lattafa Teriaq…). Hoy no entran (les falta la foto y no son el mismo producto). (a) sugerida: los testers quedan afuera para
+    ML y se miran sólo para la perfumería del local · (b) se compran para ML publicados como "tester sin caja" (ML puede frenarlos).
+29. **"En ML no hay vendedores en su catálogo"** (5.279 de Nissei): muchos sí se venden en ML, pero en publicaciones sueltas que la API no
+    deja medir. Por tu regla del 20/10 (catálogo con 2+ vendedores) no se compran. (a) sugerida: dejarlo así · (b) que el chat de Nissei
+    mire en ML los de los rubros que ya vendemos (perfumes, auriculares, pendrives, relojes) y cargue el precio a mano.
+
 ## Viejas que siguen esperando (de CLAUDE.md §13)
 - Sancor (respuesta y baja de Vida Plus) · contador (recategorización, actividad, facturas entre cuentas) · costo de las dos Linternas COB de Ayelen.
