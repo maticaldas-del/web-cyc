@@ -79,6 +79,15 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
 
 ## 1 · PRECIOS (lunes)
 
+### 📅 Franjas del mes y del año (24/10/2026, v26.55, pedido suyo)
+- **Qué es:** `ventasdiames` mide compras y plata por día del mes (cada día contra el promedio de SU mes, sin fechas especiales). La noche lo
+  guarda en `cyc/mlconfig/franjasMes` (tramos de 5 días). Las rayas (`rayasPrecioLinea` y `_rayas` de la web) y F8 pesan cada día de prueba
+  por su factor de compras (`franjaDe`/`_franjaMesW`): no vender en la franja fuerte pesa más que en la floja. La web pinta en "Plata por día"
+  la franja fuerte (verde), la floja (rojo) y las temporadas del año (ámbar, `_fechasEspR`; se sumó el Hot Sale, 2ª semana de mayo, en
+  robot y web).
+- **Qué chequear:** con pocos meses el factor salta: revisar cada mes que los tramos sigan parecidos · el techo de algo probado sólo en días
+  flojos tiene que tardar un poco más · el ámbar coincide con las fechas reales (Hot Sale 2026 = 11-13/5).
+
 ### Gemelas al 35% · barrera al 35% · 30 días sin vender = techo · las 3 en revisión fuera (24/10/2026, respuestas suyas)
 - **Qué es:** (1) ninguna gemela (Premium o 📦 envío gratis) queda abajo del 35% en el peor caso si su Clásica está en 35%+ (`precioGemelaAlPiso`,
   en `alinearGemelas`, `alinearGemelasEnvio`, `gemela` y `gemelaenvio`; Clásica abajo del 35% por excepción → misma plata, como antes) ·

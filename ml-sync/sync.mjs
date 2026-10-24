@@ -3994,6 +3994,8 @@ function fechasEspeciales(y) {
     { nom: 'Día del Amigo', ts: Date.UTC(y, 6, 20, 3), pre: 7, regalo: true },
     { nom: 'CyberMonday', ts: cm, pre: 2, dur: 3, ofertas: true },
     { nom: 'Black Friday', ts: bf, pre: 2, dur: 4, ofertas: true },
+    // Hot Sale (CACE): de lunes a miércoles de la 2ª semana de mayo (2024: 13-15 · 2025: 12-14 · 2026: 11-13). Faltaba (24/10/2026).
+    { nom: 'Hot Sale', ts: (() => { const m1 = new Date(Date.UTC(y, 4, 1)).getUTCDay(); return Date.UTC(y, 4, 1 + ((1 - m1 + 7) % 7) + 7, 3); })(), pre: 2, dur: 3, ofertas: true },
   ];
 }
 // ── LA FICHA MÉDICA DE CADA PUBLICACIÓN (16/10/2026, él: "queda guardado en un archivo de cada producto? como si fuera
