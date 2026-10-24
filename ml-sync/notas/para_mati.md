@@ -8,7 +8,6 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 
 ## Abiertas
 
-6. **Paulvic `pv20261019`**: pagar $758.820,25 antes del lun 02/11 (si no, +10%). Con el comprobante, `pvped:pago`.
 9. **Ted Lapidus** (`MLA3310524980`): de la 4a no volvió a $65.990 porque ahí queda abajo del 25% en el peor caso (24%). Sigue a
    $72.990 y ya no busca techo. (a) sugerida: dejarlo así · (b) volver a $65.990 igual (con `!piso`).
 
@@ -23,11 +22,6 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
     baratos, y en ML los comparo contra el mismo perfume EN CAJA: dan 300-800% (Xerjoff Torino 21, 1 Million Elixir, Montblanc Explorer
     Extreme, Lattafa Teriaq…). Hoy no entran (les falta la foto y no son el mismo producto). (a) sugerida: los testers quedan afuera para
     ML y se miran sólo para la perfumería del local · (b) se compran para ML publicados como "tester sin caja" (ML puede frenarlos).
-29. **Catálogo de ML sin vendedores / con 1 solo vendedor** (24/10, él: *"hay productos que tengan catálogo y no tengan vendedores
-    porque nadie tiene stock… para mí tienen que entrar, y es mejor, porque no hay competencia"*). DECIDIDO que entran; falta contra
-    qué precio se miden (pregunta 1 y 2 del chat del 24/10, 00:45). 5.279 sin vendedores en el catálogo de Nissei; 55 de los 121 que
-    dan 35% tienen 1 solo vendedor.
-30. ~~Elegancia: ¿PDF o web?~~ **Resuelto 24/10:** el de la web (*"era promoción lo del pdf, ya no sirve"*). Los 67 pasan al de comprasparaguay.
 
 ### De la completa del 24/10 (03:00)
 31. **Paulvic a $21.990: la prueba perdió** (de 33 aromas en Adriana a $21.990 sólo vendieron 4 en 7-11 días; la plata por día bajó ~28%).
@@ -42,6 +36,8 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
     esas fichas pasan a reponerse de Elegancia con ese código (yo lo cargo) · (b) siguen en Nissei y esperan a que vuelva.
     Además: **Ted Lapidus Rumba** no está en ninguno de los dos; **Calculadora Casio fx-82ms** cambió de US$ 36 a US$ 9 con el mismo código
     (raro: puede ser otro producto, mirarlo en la página antes de pedir).
+35. **⭐ nota de lo que entra con 30%** (24/10): lo que vende 100+ con 2+ vendedores entra con 30% y su ⭐ da 6 (ámbar). (a) sugerida: dejarlo
+    así (si vende más, sube solo: 30% con 1.000 da 9) · (b) todo lo que se compra tiene que dar 7 o más (saco la excepción del 30%).
 
 ## Viejas que siguen esperando (de CLAUDE.md §13)
 - Sancor (respuesta y baja de Vida Plus) · contador (recategorización, actividad, facturas entre cuentas) · costo de las dos Linternas COB de Ayelen.
