@@ -82,5 +82,5 @@ el robot lo hace solo con `pycatmedir` (workflow `ml-pycat`, cada 3 horas). Si h
 **PASADA COMPLETA CON LOS PROBADOS PRIMERO (24/10/2026, él: *"que primero mire los productos probados y que los cargue lo antes posible.
 después que siga con el resto"*).** Cuando pida la pasada completa, se le arma el texto con un PASO 0 antes del catálogo: la lista de
 `pyprobadoslista` (ml-consulta, sólo lee: id|código|US$|días|nombre de cada ficha de Nissei, las más viejas primero) y cómo cargarla
-con `pyprecio:<id>=<código>/<US$>@<link>;…;go` por **ml-sync** (campo `billing_probe`, de a 10), sin código sólo si es exactamente el
+con `pyprecio:<id>=<código>/<US$>@<link>;…;go` por **ml-consulta** (campo `comando`, de a 10; por ml-sync uno cancela al otro), sin código sólo si es exactamente el
 mismo producto (con duda, a la lista de dudas). Después el PASO 1 de siempre desde la página 1. El texto armado va por SendUserFile.
