@@ -22556,7 +22556,7 @@ async function main() {
       if (!cuerpo.trim()) {
         const cat = (await db.get('mlapi/pycat')) || {}; const v = Object.entries(cat).filter(([k, e]) => pycatProvDe(k, e) === PROV_C).map(([, e]) => e);
         const med = v.filter((e) => e && e.t), cnt = (f) => v.filter(f).length;
-        console.log(`=== CATÁLOGO DE ${ELG ? 'ELEGANCIA' : 'NISSEI'} EN CYC ===\n${v.length} productos guardados · última página guardada: ${prog.pg ?? '—'}${prog.orden ? ' (orden ' + prog.orden + ')' : ''} · último código ${prog.cod ?? '—'} · ${prog.ts ? new Date(prog.ts).toISOString().slice(0, 16).replace('T', ' ') + ' UTC' : ''}`);
+        console.log(`=== CATÁLOGO DE ${ELG ? 'ELEGANCIA' : 'NISSEI'} EN CYC ===\n${v.length} productos guardados · última página guardada: ${prog.pg ?? '—'}${prog.orden ? ' (orden ' + prog.orden + ')' : ''} · último código ${prog.cod ?? '—'}${prog.n ? ' ("' + String(prog.n).slice(0, 60) + '")' : ''} · ${prog.ts ? new Date(prog.ts).toISOString().slice(0, 16).replace('T', ' ') + ' UTC' : ''}`);
         console.log(`medidos ${med.length} · fuera por regla ${cnt((e) => e && e.fz)} · dan el piso ${cnt((e) => e && e.m >= 24)} · 15% a 24% ${cnt((e) => e && e.m >= 15 && e.m < 24)} · menos de 15% ${cnt((e) => e && e.m != null && e.m < 15)} · sin catálogo exacto ${cnt((e) => e && e.sc)} · pasaron a Para probar ${cnt((e) => e && e.cand)} · ML no deja medirlos ${cnt((e) => e && e.nm)}${cnt((e) => e && e.ef && !e.nm) ? ` (y ${cnt((e) => e && e.ef && !e.nm)} con 1-2 fallas seguidas)` : ''}`);
         return;
       }
