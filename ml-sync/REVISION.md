@@ -79,6 +79,15 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
 
 ## 1 · PRECIOS (lunes)
 
+### 🔔 El timbre del revisor de ventas (24/10/2026, pedido suyo: "venta a menos del 35% o 6 ventas → que entre el revisor"; "gastar menos tokens")
+- **Qué es:** el ciclo de 2 minutos (`timbreVentas`, después del aviso de venta) cuenta las compras sin revisar (posteriores a
+  `mlapi/ventasvistas/hasta`) y el % de cada compra nueva (misma cuenta que `ventasraras`). Con 6+ compras o una nueva abajo del 35%
+  hace un POST al disparador por API de la tarea `trig_01CjrLU1rXYy3TM1jbQndKGp` (🔔 Revisor de ventas, sesión nueva por toque, sólo
+  ventas). Llave en los secretos de GitHub `TIMBRE_URL` y `TIMBRE_TOKEN`. Memoria `mlapi/timbre` (cada compra toca una vez; mientras el
+  revisor trabaja y `ventasvistas` no se mueve, espera 45 min). `timbre` (sólo mira) · `timbre:tocar:go` (ml-sync, lo toca a mano).
+- **Qué chequear:** que toque con la 6ª compra o con una abajo del 35% · que no toque dos veces por lo mismo · que la sesión del revisor
+  cierre con `ventasvistas` (si no, el timbre vuelve a sonar a los 45 min) · sin llave el ciclo lo dice cada 6 h y no falla.
+
 ### 📈 "2ª suba" = subas de verdad · qué busca el 📈 · `tag:hist` (24/10/2026, v26.57, corrección suya con Casino)
 - **Qué es:** el chip "📈 buscando techo · Nª suba" (y el "×N" de la línea) contaba renglones de `cyc/estrategia`; `techo95` anota
   "volver a buscar techo" sin tocar el precio y Casino decía "2ª suba" con UNA suba. Ahora `estrategiaDe` cuenta las subas reales de
