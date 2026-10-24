@@ -2960,7 +2960,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.52';
+const APP_VERSION='26.53';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2973,6 +2973,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.53',f:'24/10',h:'15:20',c:[{n:2,t:'🏷️ Sin terminar / sin etiqueta: agrupado por cuenta (el nombre arriba y sus productos abajo, cada aroma o color en la cuenta que lo publica). Si elegís una cuenta arriba, muestra sólo lo de esa cuenta.'}]},
   {v:'26.52',f:'24/10',h:'15:05',c:[{n:2,t:'📦 Sacando stock (línea de tiempo de cada producto y de todos): vuelve a dibujarse después del 13/10. Cada día cuenta la estrategia que tenía la publicación (sobra, liquidando o remate en naranja; bajando en escalera en violeta).'}]},
   {v:'26.51',f:'24/10',h:'14:55',c:[{n:2,t:'📈 Línea de tiempo: un precio (o cualquiera más caro) con 30 días a la venta con stock y sin ninguna venta se marca 🔴 techo sí o sí ("30 días sin vender"): de ahí se baja en escalera.'}]},
   {v:'26.50',f:'24/10',h:'14:50',c:[{n:2,t:'🏷️ Ventas del mes y del año: el puntaje, el color y la barra se miden como el día. Lo ganado se reparte en TODOS los días del mes (o del año), no sólo en los que ya pasaron: arranca bajo y sube con cada venta. El año 2026 se mide desde mayo (antes no hay ventas guardadas); desde 2027, el año entero. Abajo dice cuánto falta en total y por día en los que quedan.'},{n:1,t:'📈 Línea de tiempo de todos los productos: al pasar el mouse cada franja dice sólo lo suyo. En Ventas: normales, Premium, envío gratis y liquidadas (sacando stock), más las visitas. Ya no sale el globo gigante.'}]},
@@ -4361,23 +4362,38 @@ function sinEtiq(prodId,variante){
 }
 function sinEtiqProd(p){return (p.variantes||[]).length?p.variantes.reduce((a,v)=>a+sinEtiq(p.id,v),0)+sinEtiq(p.id,''):sinEtiq(p.id,'');}
 const _sinEtiqChip=(n,de)=>n>0?` <span title="Están en tu oficina pero todavía no tienen la etiqueta de Full: hay que etiquetarlas antes de meterlas en la caja." style="background:rgba(245,158,11,.16);color:var(--amber);border-radius:5px;padding:1px 6px;font-size:.6rem;font-weight:700;white-space:nowrap">🏷️ ${n}${de&&de!==n?' de '+de:''} sin etiqueta</span>`:'';
+// POR CUENTA (24/10/2026, él: "poner bien en cada cuenta. nombre de la cuenta arriba y abajo los productos de esa cuenta. y al clickear una
+// sola cuenta en las tarjetas de arriba que sólo muestre a terminar de esa cuenta sola"). Cada renglón va a la cuenta que publica ESE color
+// o aroma (`_varPorMla`); si no se sabe, a las del producto. Con una cuenta elegida arriba (`ofiContarCuenta`) sólo se ve la suya.
+function _sinEtiqCtas(p,v){
+  const ok=e=>e&&e.prodId===p.id&&(e.status||'')!=='closed'&&LOCS.includes(e.cuenta)&&!noRepoDe(p.id,e.cuenta);
+  if(v){const vm=_varPorMla(p),vs=String(v).toLowerCase();const s=new Set();
+    Object.entries(state.mllinks||{}).forEach(([m,e])=>{if(ok(e)&&String(vm[m]||'').toLowerCase()===vs)s.add(e.cuenta);});
+    if(s.size)return [...s];}
+  return cuentasConPublicacion(p).filter(l=>!noRepoDe(p.id,l));
+}
 function renderSinEtiqCard(){
   const el=document.getElementById('ofi-sinetiq-card');if(!el)return;
   const filas=[];
   for(const p of state.products||[]){
-    const ctas=cuentasConPublicacion(p).filter(l=>!noRepoDe(p.id,l));
-    const ct=ctas.length?ctas.join(' · '):'sin cuenta';
-    if((p.variantes||[]).length){for(const v of p.variantes){const n=sinEtiq(p.id,v);if(n>0)filas.push({nom:p.name,v,n,ct});}}
+    if((p.variantes||[]).length){for(const v of p.variantes){const n=sinEtiq(p.id,v);if(n>0)filas.push({nom:p.name,v,n,ctas:_sinEtiqCtas(p,v)});}}
     const n0=sinEtiq(p.id,'');
-    if(n0>0&&!(p.variantes||[]).length)filas.push({nom:p.name,v:'',n:n0,ct});
+    if(n0>0&&!(p.variantes||[]).length)filas.push({nom:p.name,v:'',n:n0,ctas:_sinEtiqCtas(p,'')});
   }
-  if(!filas.length){el.innerHTML='';return;}
-  filas.sort((a,b)=>a.ct.localeCompare(b.ct)||a.nom.localeCompare(b.nom));
-  const tot=filas.reduce((a,f)=>a+f.n,0);
+  const sel=typeof ofiContarCuenta==='string'?ofiContarCuenta:'';
+  const vis=sel?filas.filter(f=>f.ctas.includes(sel)):filas;
+  if(!vis.length){el.innerHTML='';return;}
+  // Un grupo por cuenta (o por las cuentas juntas si ese color se publica en más de una), en el orden de LOCS.
+  const grp={};for(const f of vis){const k=sel||(f.ctas.length?f.ctas.join(' · '):'sin cuenta');(grp[k]=grp[k]||[]).push(f);}
+  const ord=k=>{const i=LOCS.indexOf(k.split(' · ')[0]);return i<0?99:i;};
+  const ks=Object.keys(grp).sort((a,b)=>ord(a)-ord(b)||a.length-b.length||a.localeCompare(b));
+  const tot=vis.reduce((a,f)=>a+f.n,0);
+  const fila=f=>`<div style="display:flex;gap:8px;align-items:baseline;padding:4px 0 4px 10px;border-top:1px solid rgba(245,158,11,.18);font-size:.74rem"><span style="flex:1;min-width:0;word-break:break-word">${escHtml(f.nom)}${f.v?` <span style="color:var(--accent2);font-weight:700">· ${escHtml(f.v)}</span>`:''}</span><b style="flex:none;font-family:'DM Mono',monospace">${fmtN(f.n)}</b></div>`;
   el.innerHTML=`<div style="background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.4);border-radius:12px;padding:12px 14px;margin-bottom:12px">
-    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><strong style="font-size:.82rem;color:var(--amber)">🏷️ Sin terminar / sin etiqueta</strong><span style="font-family:'DM Mono',monospace;font-size:.8rem;color:var(--amber)">${fmtN(tot)} u.</span></div>
+    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><strong style="font-size:.82rem;color:var(--amber)">🏷️ Sin terminar / sin etiqueta${sel?' · '+escHtml(sel):''}</strong><span style="font-family:'DM Mono',monospace;font-size:.8rem;color:var(--amber)">${fmtN(tot)} u.</span></div>
     <div style="font-size:.62rem;color:var(--muted);margin:3px 0 8px;line-height:1.45">Están en la oficina y Armar caja ya las cuenta, pero hay que etiquetarlas antes de meterlas en la caja. Cuando las etiquetes, decíselo a Claude.</div>
-    ${filas.map(f=>`<div style="display:flex;gap:8px;align-items:baseline;padding:4px 0;border-top:1px solid rgba(245,158,11,.18);font-size:.74rem"><span style="flex:1;min-width:0;word-break:break-word">${escHtml(f.nom)}${f.v?` <span style="color:var(--accent2);font-weight:700">· ${escHtml(f.v)}</span>`:''} <span style="color:var(--muted);font-size:.62rem">→ ${escHtml(f.ct)}</span></span><b style="flex:none;font-family:'DM Mono',monospace">${fmtN(f.n)}</b></div>`).join('')}
+    ${ks.map(k=>{const L=grp[k].sort((a,b)=>a.nom.localeCompare(b.nom)||String(a.v).localeCompare(String(b.v)));const n=L.reduce((a,f)=>a+f.n,0);
+      return `<div style="margin-top:10px"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:.78rem;font-weight:800;color:var(--text);padding-bottom:3px"><span>${escHtml(k)}</span><span style="font-family:'DM Mono',monospace;color:var(--amber)">${fmtN(n)} u.</span></div>${L.map(fila).join('')}</div>`;}).join('')}
   </div>`;
 }
 // Lo que hay EN FULL de una variante: la suma de esa variante en las cuatro cuentas de ML.

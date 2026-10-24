@@ -1451,6 +1451,11 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
 
 ## 7 · DISEÑO (domingo)
 
+### 🏷️ Sin terminar por cuenta (24/10/2026, v26.53, pedido suyo)
+- **Qué es:** la tarjeta de Contar lo que hay agrupa por cuenta (nombre arriba, productos abajo); cada color/aroma va a la cuenta que lo
+  publica (`_sinEtiqCtas` con `_varPorMla`); con una cuenta elegida arriba (`ofiContarCuenta`) muestra sólo la suya.
+- **Qué chequear:** el Paulvic sale repartido Adriana/Luciana por aroma (no "Adriana · Luciana" en todos) · el total de la tarjeta = la suma de los grupos.
+
 ### 📦 Sacando stock con la estrategia de cada día (24/10/2026, v26.52, error que marcó él: "figura la última el 13/10")
 - **Qué es:** desde el 13/10 (el robot sólo junta datos) nadie marcaba `rem`/`esc` en la línea y la franja se cortó. Ahora cada día con stock
   cuenta la estrategia que tenía: sobra/liquidando/remate → 📦, bajando → 🪜. Robot: `calcLineaTodo(lin, links, estrat)` (`TAG_SACA_STOCK`,
