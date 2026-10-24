@@ -2960,7 +2960,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.45';
+const APP_VERSION='26.46';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2973,6 +2973,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.46',f:'24/10',h:'14:26',c:[{n:1,t:'▲▼ Línea de tiempo: la flechita de cada suba o bajada va en la línea, justo donde cambió el precio, y con el color de su estrategia (el mismo de la línea). Tocándola dice cuál fue.'}]},
   {v:'26.45',f:'24/10',h:'14:09',c:[{n:2,t:'💰 Línea de tiempo: abajo del gráfico dice por qué el piso está ahí: cuánto vendió por día y cuánto dejó cada una a cada precio, ya restado el trabajo de $100 por unidad, el tope de H y la plata parada.'},{n:2,t:'🎁 Las fechas especiales se sacan de la cuenta del piso y el techo sólo si ese producto vendió el doble o más en esos días (los Naipes se quedaban sin piso).'}]},
   {v:'26.44',f:'24/10',h:'13:48',c:[{n:1,t:'📈 Línea de tiempo: cada gráfico (precio, ventas, plata por día, %…) mide media pantalla y se baja con el scroll. Tocando el título de uno se cierra (▸) o se abre (▾), y se acuerda.'}]},
   {v:'26.43',f:'24/10',h:'13:42',c:[{n:3,t:'💰🔴 Las rayas de piso y techo se miden con los últimos 60 días y sin los días de fechas especiales (Día del Niño, de la Madre, ofertas): el techo del Infusor salía de comparar contra 8 días de fines de julio que vendieron el triple.'},{n:2,t:'📈 Línea de tiempo: el precio de HOY es el que está puesto ahora (si se cambió a la mañana, ya se ve), no lo cobrado en las ventas de hoy.'},{n:2,t:'🎯 Desde hoy todo pide 35%: el máximo de compra, Listas, el simulador y lo que entra en Paraguay (se acabó la entrada con 30%).'}]},
@@ -11610,9 +11611,21 @@ function lineaPintar(prodId){
   const motivoTxt={rescate:'🛟 rescate después de una venta baja',rescatep:'🛟 rescate antes de vender (cuenta)',subir:'📈 suba del robot',bajar:'📉 baja del robot',remate:'🔻 remate',escalera:'🪜 escalera',prueba:'🧪 prueba +5%',promo:'🏷️ promo (precio tachado)',mano:'✋ a mano',volver:'↩️ vuelto atrás',claude:'🧠 decisión del cerebro'};
   const evK={}; for(const e of evP){if(!e.ts||!_mlaOk(e.mla))continue;const kk=dateToKey(new Date(e.ts));(evK[kk]=evK[kk]||[]).push(e);}
   let _flechasSvg='';
-  ks.forEach((k,i)=>{const es=evK[k];if(!es)return;const e0=es[es.length-1];const sube=Number(e0.a)>Number(e0.de);const col=(FLECHA_TIPOS[flechaTipo(e0.mla,Number(e0.ts),e0.motivo,sube)]||FLECHA_TIPOS.otro)[0];
-    const tt=es.map(e=>cambioTxt(e)).join('\n').replace(/[<>&]/g,'');
-    _flechasSvg+=`<text x="${X(i)+bw/2}" y="${L.pr[0]-2}" font-size="11" text-anchor="middle" fill="${col}" style="cursor:help"><title>${_lineaFmtDia?_lineaFmtDia(k):k}\n${tt}</title>${sube?'▲':'▼'}</text>`;});
+  // LA FLECHA VA EN LA LÍNEA Y CON EL COLOR DE SU ESTRATEGIA (24/10/2026, él: "quiero que la flechita esté en el punto de la línea donde
+  // se subió o bajó, no allá arriba" y "muchas aparecen en gris (a mano u otro): quiero que todas tengan color/estrategia/nombre"). El
+  // color sale de la estrategia anotada en ese cambio (`claudecambios.tag`); si no la tiene, de la estrategia de ese día (la misma que
+  // pinta la línea); una gemela que sigue a su Clásica va como 💳. Gris sólo si de verdad no hay nada anotado (cambios viejos).
+  const _gemC='#f97316';
+  ks.forEach((k,i)=>{const es=evK[k];if(!es)return;const e0=es[es.length-1];const sube=Number(e0.a)>Number(e0.de);
+    const cc0=Object.values(state.claudecambios||{}).find(c=>c&&c.mla===e0.mla&&Math.abs((Number(c.ts)||0)-Number(e0.ts))<15*60e3);
+    const tg=(cc0&&cc0.tag&&ESTRATEGIA_UI[cc0.tag])?cc0.tag:null;const esGem=!!((state.mllinks||{})[e0.mla]||{}).gemelaDe;
+    const eD=_estD[k];const col=tg?ESTRATEGIA_UI[tg][2]:esGem?_gemC:eD?ESTRATEGIA_UI[eD.t][2]:(FLECHA_TIPOS[flechaTipo(e0.mla,Number(e0.ts),e0.motivo,sube)]||FLECHA_TIPOS.otro)[0];
+    const nomE=tg?ESTRATEGIA_UI[tg][0]+' '+ESTRATEGIA_UI[tg][1]:esGem?'💳 gemela que sigue a su Clásica':eD?ESTRATEGIA_UI[eD.t][0]+' '+ESTRATEGIA_UI[eD.t][1]:'sin estrategia anotada (cambio viejo o a mano en ML)';
+    const tt=(nomE+'\n'+es.map(e=>cambioTxt(e)).join('\n')).replace(/[<>&]/g,'');
+    const pv=(dias[k]&&dias[k].p>0)?dias[k].p:Number(e0.a)||0;
+    const yP=pv>0?L.pr[0]+L.pr[1]-(pcMax>pcMin?(pv-pcMin)/(pcMax-pcMin):.5)*L.pr[1]:L.pr[0]+8;
+    const yF=sube?Math.max(L.pr[0]+9,yP-5):Math.min(L.pr[0]+L.pr[1]-1,yP+13);
+    _flechasSvg+=`<text x="${X(i)+bw/2}" y="${yF.toFixed(1)}" font-size="12" text-anchor="middle" fill="${col}" stroke="var(--surface)" stroke-width="2.5" paint-order="stroke" style="cursor:help"><title>${_lineaFmtDia?_lineaFmtDia(k):k}\n${tt}</title>${sube?'▲':'▼'}</text>`;});
   // SE COBRÓ MENOS SIN QUE NADIE BAJARA EL PRECIO (13/10/2026, él con la Batidora: "porque se nota que el precio baja si no
   // hay flechita roja"). La línea del precio, los días con ventas, es lo COBRADO por unidad, y eso baja sin cambio de precio
   // por una promo/cupón de ML, un carrito, o porque ese día se vendió una publicación (color) más barata. Se marca con
