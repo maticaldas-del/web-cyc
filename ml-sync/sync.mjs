@@ -4289,6 +4289,8 @@ function rayasPrecioLinea(d, cu, imp, hoyK, parte = 1) {
 const BANDERAS_SUYAS = ['sinlinea', 'sincerteza', 'sintecho', 'bajocero', 'nobajar'];   // + la estrategia 🧨 #remate
 const BANDERA_QUE = { sinlinea: 'bajar sin línea de techo (🔴/🏔️)', sincerteza: 'deshacer una suba (o bajar arriba del 💰) sin 95% de certeza', sintecho: 'bajar algo nuevo sin 🏔️ de techo95', bajocero: 'dejarla abajo de 0% de ganancia', nobajar: 'bajar una publicación que pediste no tocar (🔒)', sacanobajar: 'sacarle la marca 🔒 no bajar', remate: '🧨 rematar (estrategia remate)' };
 const AUT_VALE_MS = 48 * 3600e3, AUT_LETRAS = 'ACEFHJKMNPRTWXY34679';
+// 24/10/2026 (él): los pedidos ya no van por Telegram; se guardan hasta que él los resuelve en el chat (un año = "hasta que lo resolvemos").
+const AUT_POR_TELEGRAM = false, AUT_PED_GUARDA_MS = 365 * 864e5;
 function _autFirma(txt) { return TG_TOKEN ? createHmac('sha256', TG_TOKEN).update(String(txt)).digest('hex').slice(0, 32) : ''; }
 const _autBan = (r) => (Array.isArray(r && r.banderas) ? r.banderas : []).map(String).sort().join(',');
 function _autTxtPed(c, r) { return ['ped', c, r.mla, Math.round(Number(r.precio) || 0), _autBan(r), Number(r.ts) || 0].join('|'); }
@@ -4504,7 +4506,7 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
       const exentoPor = (t) => ((t === 'sobra' || t === 'liquidando') ? (sobraReal() ? t : '') : t === 'sinrepo' ? (antiguoCerca ? t : '') : (t === 'remate' && remOk) ? t : '');
       const exento = exentoPor(tagNuevo) || exentoPor(ult);
       // ── F0 · nunca abajo de 0%
-      if (d.mgA != null && Number.isFinite(Number(d.mgA)) && Number(d.mgA) < 0 && !suya('bajocero')) return { regla: 'F0', txt: `a ${$(a)} queda en ${Number(d.mgA)}%: abajo de 0% no se baja nunca, salvo que él pida rematar a cualquier precio (🔐 !bajocero, sólo con su autorización por Telegram)` };
+      if (d.mgA != null && Number.isFinite(Number(d.mgA)) && Number(d.mgA) < 0 && !suya('bajocero')) return { regla: 'F0', txt: `a ${$(a)} queda en ${Number(d.mgA)}%: abajo de 0% no se baja nunca, salvo que él pida rematar a cualquier precio (🔐 !bajocero, sólo con su autorización (se la paso en el chat))` };
       // ── F11 · FALTA DE STOCK: SIN TECHO 95% NO SE BAJA (ver arriba). Con el techo medido (🏔️ de techo95 en 60 días o 🔴 de las rayas)
       // sigue por los otros frenos (escalera, F9 de la escasez). La salida de la escasez (#volviendo) pasa sólo si la escasez terminó de
       // verdad: el stock en Full alcanza 30+ días al ritmo con stock. Salida SÓLO SUYA: 🔐 !sinlinea con su autorización.
@@ -4522,12 +4524,12 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
           if (!t95F) {
             if (!lin || !(cu > 0)) return { regla: 'F11', sinDato: true, txt: `está en ${qF} y no pude leer la línea de tiempo o el costo: sin saber si tiene techo al 95% no bajo` };
             const R11 = rayasPrecioLinea(lin, cu, imp, hoyK);
-            if (!R11.techo) return { regla: 'F11', txt: `está en ${qF} y no tiene techo al 95% (🏔️ de techo95 o 🔴 de la línea): con falta de stock NUNCA se baja sin techo, en todo caso sube (él, 24/10). Única excepción: el stock por cumplir 4 meses en Full (${edTxt}). Salida SÓLO SUYA: 🔐 !sinlinea con su autorización por Telegram` };
+            if (!R11.techo) return { regla: 'F11', txt: `está en ${qF} y no tiene techo al 95% (🏔️ de techo95 o 🔴 de la línea): con falta de stock NUNCA se baja sin techo, en todo caso sube (él, 24/10). Única excepción: el stock por cumplir 4 meses en Full (${edTxt}). Salida SÓLO SUYA: 🔐 !sinlinea con su autorización (se la paso en el chat)` };
           }
         }
       }
       // ── F1 · lo nuevo sin techo
-      if (!suya('sintecho') && !antesDeActivar && recien && !conTecho) return { regla: 'F1', txt: `es nuevo (${desdeR && primera ? 'su primera tanda llegó hace ' + Math.round((ahora - desdeR) / 864e5) + ' d' : 'en 🆕 lanzamiento'}) y techo95 no dijo 95% que ${$(p0)} es el techo: lo nuevo no se baja sin techo. Salida SÓLO SUYA (precio mal puesto antes de activar, o lo pide él): 🔐 !sintecho con su autorización por Telegram` };
+      if (!suya('sintecho') && !antesDeActivar && recien && !conTecho) return { regla: 'F1', txt: `es nuevo (${desdeR && primera ? 'su primera tanda llegó hace ' + Math.round((ahora - desdeR) / 864e5) + ' d' : 'en 🆕 lanzamiento'}) y techo95 no dijo 95% que ${$(p0)} es el techo: lo nuevo no se baja sin techo. Salida SÓLO SUYA (precio mal puesto antes de activar, o lo pide él): 🔐 !sintecho con su autorización (se la paso en el chat)` };
       // ── F2 · escalera: tamaño del escalón
       if (!golpe && baja > maxB + 0.005) return { regla: 'F2', txt: `baja ${Math.round(baja * 100)}% de una vez (${$(p0v)}${p0v !== p0 ? ' (lo que veía el comprador; lista ' + $(p0) + ')' : ''} → ${$(a)}): toda baja va en escalera, como mucho ${Math.round(maxB * 100)}% por escalón${enEscasez ? ' en escasez' : ''} (el escalón llega hasta ${$(ceil90(p0v * (1 - maxB)))}). Excepciones (precio mal puesto, stock antiguo con fecha encima, ML pausó por el precio, lo pide él, el envío de la barrera $33.000; la última unidad NO desde el 24/10): !golpe y "EXCEPCIÓN: …"` };
       // ── F3 · escalón medido antes del siguiente
@@ -4550,7 +4552,7 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
         if (!t95) {
           if (!lin || !(cu > 0)) return { regla: 'F7', sinDato: true, txt: 'no pude leer la línea de tiempo o el costo: sin saber si tiene línea de techo no bajo' };
           const R7 = rayasPrecioLinea(lin, cu, imp, hoyK);
-          if (!R7.techo) return { regla: 'F7', txt: `no tiene línea de techo 🔴 al 95% (${R7.best ? '💰 ' + $(R7.best.p) + ', nunca se midió más caro con certeza' : 'pocos días medibles todavía'}): sin techo no se baja, se busca techo (📈) hasta estar 95% seguro. Lo que vendieron otras variantes o la familia NO alcanza. Salida SÓLO SUYA (precio mal puesto, ML la pausó por el precio, o lo pide él): 🔐 !sinlinea con su autorización por Telegram${porQueNoActivar}` };
+          if (!R7.techo) return { regla: 'F7', txt: `no tiene línea de techo 🔴 al 95% (${R7.best ? '💰 ' + $(R7.best.p) + ', nunca se midió más caro con certeza' : 'pocos días medibles todavía'}): sin techo no se baja, se busca techo (📈) hasta estar 95% seguro. Lo que vendieron otras variantes o la familia NO alcanza. Salida SÓLO SUYA (precio mal puesto, ML la pausó por el precio, o lo pide él): 🔐 !sinlinea con su autorización (se la paso en el chat)${porQueNoActivar}` };
         }
       }
       // ── F4 · una suba no se deshace por casualidad
@@ -4580,8 +4582,8 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
             // pasados los 15 días: plata por día antes contra después (la misma cuenta de arriba). Sin dato para medirla, decide el 🧠.
             if (d0 >= 5 && u0 >= 3 && d1 >= 5) { const r0 = u0 / d0, gu0 = (n0 - u0 * cu - t0 * imp - u0 * PD_TRABAJO_U - t0 * PD_TOPE_PCT) / u0, gu1 = gu0 + (ultSuba.a - ultSuba.de) * 0.7;
               const pd0 = r0 * gu0, pd1 = (u1 / d1) * gu1;
-              if (gu0 > 0 && pd1 >= pd0) return { regla: 'F4', txt: `la suba del ${kS.slice(8, 10)}/${kS.slice(5, 7)} (${$(ultSuba.de)} → ${$(ultSuba.a)}) deja igual o más plata por día (${$(Math.round(pd1))}/día contra ${$(Math.round(pd0))}/día antes): pasados los 15 días, si la suba no deja menos, se queda. Salida SÓLO SUYA: 🔐 !sincerteza con su autorización por Telegram` }; }
-          } else if (!(seg != null && seg >= 0.95) && !visMitad) return { regla: 'F4', txt: `deshace la suba del ${kS.slice(8, 10)}/${kS.slice(5, 7)} (${$(ultSuba.de)} → ${$(ultSuba.a)}) sin certeza: ${txt || 'antes vendía muy poco para medir la diferencia'}. Una suba no se deshace por casualidad: hace falta 95% (de ESTA publicación: otras variantes o la familia no cuentan) o las visitas a la mitad; si no, se espera hasta 15 días y ahí decide la plata por día${yLad}. Salida SÓLO SUYA: 🔐 !sincerteza con su autorización por Telegram` };
+              if (gu0 > 0 && pd1 >= pd0) return { regla: 'F4', txt: `la suba del ${kS.slice(8, 10)}/${kS.slice(5, 7)} (${$(ultSuba.de)} → ${$(ultSuba.a)}) deja igual o más plata por día (${$(Math.round(pd1))}/día contra ${$(Math.round(pd0))}/día antes): pasados los 15 días, si la suba no deja menos, se queda. Salida SÓLO SUYA: 🔐 !sincerteza con su autorización (se la paso en el chat)` }; }
+          } else if (!(seg != null && seg >= 0.95) && !visMitad) return { regla: 'F4', txt: `deshace la suba del ${kS.slice(8, 10)}/${kS.slice(5, 7)} (${$(ultSuba.de)} → ${$(ultSuba.a)}) sin certeza: ${txt || 'antes vendía muy poco para medir la diferencia'}. Una suba no se deshace por casualidad: hace falta 95% (de ESTA publicación: otras variantes o la familia no cuentan) o las visitas a la mitad; si no, se espera hasta 15 días y ahí decide la plata por día${yLad}. Salida SÓLO SUYA: 🔐 !sincerteza con su autorización (se la paso en el chat)` };
         }
       }
       // ── F8 · ARRIBA DEL 💰 NO SE BAJA SIN 95% (21/10/2026, él con el Pendrive 8gb: techo $26.990, bajó a $23.990 y el 💰 es $21.990:
@@ -4605,7 +4607,7 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
           const gu1 = R8.best.gu + (p0v - R8.best.p) * 0.7;
           const lam = R8.best.r * (R8.best.gu / gu1) * d1, seg = d1 > 0 ? 1 - poissonCdfF(u1, lam) : 0;
           d.f8 = { best: R8.best.p, d1, u1, lam: +lam.toFixed(2), seg: +seg.toFixed(3) };
-          if (seg < 0.95) return { regla: 'F8', txt: `${$(p0v)}${p0v !== p0 ? ' (lo que veía el comprador; lista ' + $(p0) + ')' : ''} está arriba del 💰 ${$(R8.best.p)} (el que más plata por día dejó) y no hay 95% de que deje menos: a ${$(p0v)} vendió ${u1} en ${d1} día${d1 === 1 ? '' : 's'} con stock; para dejar la misma plata por día que el 💰 tenía que vender ~${lam.toFixed(1)} (${Math.round(seg * 100)}% seguro de que deja menos). Se queda (💰 buscando el de más ganancia) hasta estar 95% seguro; si deja más, la línea 💰 sube a este precio. Salida SÓLO SUYA: 🔐 !sincerteza con su autorización por Telegram` };
+          if (seg < 0.95) return { regla: 'F8', txt: `${$(p0v)}${p0v !== p0 ? ' (lo que veía el comprador; lista ' + $(p0) + ')' : ''} está arriba del 💰 ${$(R8.best.p)} (el que más plata por día dejó) y no hay 95% de que deje menos: a ${$(p0v)} vendió ${u1} en ${d1} día${d1 === 1 ? '' : 's'} con stock; para dejar la misma plata por día que el 💰 tenía que vender ~${lam.toFixed(1)} (${Math.round(seg * 100)}% seguro de que deja menos). Se queda (💰 buscando el de más ganancia) hasta estar 95% seguro; si deja más, la línea 💰 sube a este precio. Salida SÓLO SUYA: 🔐 !sincerteza con su autorización (se la paso en el chat)` };
         }
       }
       // ── F5 · no abajo del 💰 piso
@@ -4629,7 +4631,7 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
     if (r && falta.length) {
       const r2 = await evaluar(new Set([...autOk, ...falta]));
       if (!r2) {
-        frenar(`${r.txt} → 🔐 pediste ${falta.map((f) => (f === 'remate' ? '#remate' : '!' + f)).join(' ')}, que es SÓLO SUYA y no tiene su autorización vigente: se le pide por Telegram y, con su "autorizo", este mismo renglón pasa`,
+        frenar(`${r.txt} → 🔐 pediste ${falta.map((f) => (f === 'remate' ? '#remate' : '!' + f)).join(' ')}, que es SÓLO SUYA y no tiene su autorización vigente: se guarda para pasárselo en el chat y, con su "autorizo", este mismo renglón pasa`,
           { regla: r.regla, pideAut: falta, frenoTxt: r.txt, motivoPedido: String(fz.motivo || '') });
         continue;
       }
@@ -4688,7 +4690,7 @@ async function pedirAutorizaciones(db, frenadas, links, o = {}) {
   const $ = (x) => '$' + Math.round(Number(x) || 0).toLocaleString('es-AR');
   const esc = (t) => String(t || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const fecha = (t) => new Date(Number(t) - 3 * 3600e3).toISOString().slice(5, 16).replace('T', ' ').replace(/^(\d\d)-(\d\d)/, '$2/$1');
-  console.log(`\n🔐 ${fs.length} cambio(s) frenado(s) SÓLO por una salida suya sin autorización${aplicar ? ' · le pido la autorización por Telegram' : ' (PRUEBA: no le pido nada)'}:`);
+  console.log(`\n🔐 ${fs.length} cambio(s) frenado(s) SÓLO por una salida suya sin autorización${aplicar ? ' · lo guardo para pasárselo en el chat' : ' (PRUEBA: no le pido nada)'}:`);
   if (!TG_TOKEN) { console.log('   ⚠️ sin el token del bot no puedo firmar el pedido ni leer su respuesta: no pido nada'); return { pedidos: [] }; }
   let auts; try { auts = (await db.get('cyc/autoriza')) || {}; } catch (e) { console.log(`   ⚠️ no pude leer cyc/autoriza (${String(e.message || e).slice(0, 60)}): no pido nada esta vez`); return { pedidos: [] }; }
   const ahora = Date.now(), mandar = [], pedidos = [];
@@ -4710,17 +4712,21 @@ async function pedirAutorizaciones(db, frenadas, links, o = {}) {
     if (!c || auts[c] || !/\d/.test(c) || !/[A-Z]/.test(c)) { console.log(`   ⚠️ ${d.mla}: no encontré un código libre`); continue; }
     const r = { mla: d.mla, nom, cuenta: String(e.cuenta || d.cuenta || ''), tipo, de: Math.round(Number(d.p0) || 0), precio, banderas: ban, regla: String(d.regla || ''),
       freno: String(d.frenoTxt || '').slice(0, 600), motivo: String(d.motivoPedido || '').slice(0, 600), linea: String(renglon(d.mla) || '').slice(0, 1200),
-      ts: ahora, vencePed: ahora + AUT_VALE_MS, estado: 'pendiente', enviado: false };
+      ts: ahora, vencePed: ahora + AUT_PED_GUARDA_MS, estado: 'pendiente', enviado: false, porChat: true };
     r.sigPed = _autFirma(_autTxtPed(c, r));
     auts[c] = r; mandar.push({ c, r, nuevo: true }); pedidos.push({ c, r });
     console.log(`   · ${d.mla} · ${nom} (${r.cuenta}) · ${$(r.de)} → ${$(precio)} · ${ban.map((b) => BANDERA_QUE[b] || b).join(' + ')} · código ${c}${aplicar ? '' : ' (no lo creo: es una prueba)'}`);
   }
   if (!aplicar || !mandar.length) return { pedidos };
+  // 24/10/2026 (él: "no quiero que me mande a Telegram eso, que lo guarde y me lo mande por acá, en el aviso de las 12:30, y si no que lo
+  // siga guardando hasta que lo resolvemos"): el pedido se GUARDA (pendiente, sin vencer) y no sale por Telegram. Se lo paso en el chat
+  // (la tarea de las 12:30 lee `autoriza`) y su respuesta la anoto con `autorizo:<códigos> [no <códigos>];go`.
   for (const m of mandar.filter((x) => x.nuevo)) {
     try { await db.set('cyc/autoriza/' + m.c, m.r); const rl = await db.get('cyc/autoriza/' + m.c); if (!(rl && rl.sigPed === m.r.sigPed)) { console.log(`   ⚠️ el pedido ${m.c} no quedó guardado: no lo mando`); m.mal = true; } }
     catch (e) { console.log(`   ⚠️ no pude guardar el pedido ${m.c} (${String(e.message || e).slice(0, 60)}): no lo mando`); m.mal = true; }
   }
   const ok = mandar.filter((m) => !m.mal); if (!ok.length) return { pedidos };
+  if (!AUT_POR_TELEGRAM) { console.log(`   ✓ ${ok.filter((m) => m.nuevo).length} pedido(s) guardado(s) para pasárselos en el chat (aviso de las 12:30) · no sale nada por Telegram`); return { pedidos }; }
   const ren = ok.map((m, i) => {
     const r = m.r, baja = Number(r.precio) < Number(r.de);
     return `${i + 1}. <b>código ${m.c}</b> · ${esc(r.nom)} (${esc(r.cuenta)}) · ${r.tipo === 'sacanobajar' ? '<b>sacar la marca 🔒 no bajar</b>' : `${r.tipo === 'entrarpromo' ? 'descuento' : 'precio'} ${$(r.de)} → <b>${$(r.precio)}</b>${baja ? ` (−${Math.round((1 - r.precio / r.de) * 100)}%)` : ''}`}`
@@ -4801,6 +4807,39 @@ async function _autDeTelegram(db, updates) {
     ? `✅ <b>Autorizado ${h.c}</b>: ${esc(h.r.nom)} a $${Math.round(Number(h.r.precio) || 0).toLocaleString('es-AR')} (${esc((h.r.banderas || []).map((b) => BANDERA_QUE[b] || b).join(' + '))}). Vale hasta el ${fecha(h.r.vence)}. Lo aplica Claude en la próxima vuelta.`
     : `🚫 <b>${h.antes === 'autorizada' ? 'Revocado' : 'No autorizado'} ${h.c}</b>: ${esc(h.r.nom)} queda como está.`).join('\n');
   try { await sendAlerta(txt, { directo: true }); } catch { /* lo anotado vale igual: el ✅ es sólo para que él sepa que llegó */ }
+}
+// ── 🔐 SU RESPUESTA EN EL CHAT (24/10/2026, él: "no quiero que me mande a Telegram eso, que lo guarde y me lo mande por acá"). Él contesta
+// en el chat con Claude ("autorizo 3K6E 64TN no 3NCW", o sólo los códigos = autorizo) y Claude lo anota con `autorizo:<su texto>;go`
+// (ml-sync). Misma lectura que Telegram: cada código lo decide el último verbo antes de él. Queda firmada por el robot como las de
+// Telegram (vale 48 h desde que la anoto) con `porChat` y SU texto literal guardado (`txtChat`), así se sabe de dónde salió. Un pedido
+// pendiente no vence (se guarda hasta que lo resuelve).
+async function autDesdeChat(db, texto, go) {
+  const t = String(texto || '').trim();
+  const RE_VERBO = /(?<![\p{L}\d])(no\s+autoriz\p{L}*|autoriz\p{L}*|rechaz\p{L}*|no)(?![\p{L}\d])/giu;
+  const RE_COD = /(?<![A-Z0-9])[ACEFHJKMNPRTWXY34679]{4}(?![A-Z0-9])/g;
+  const verbos = [...t.matchAll(RE_VERBO)].map((x) => ({ i: x.index, si: /^autoriz/i.test(x[1]) }));
+  const U = t.toUpperCase();
+  const porCod = new Map();
+  for (const x of U.matchAll(RE_COD)) { if (!(/\d/.test(x[0]) && /[A-Z]/.test(x[0]))) continue; const v = verbos.filter((w) => w.i < x.index).pop(); porCod.set(x[0], v ? v.si : true); }
+  if (!porCod.size) { console.log('❌ no encontré ningún código (4 letras y números, como 3K6E). Uso: autorizo:<códigos> [no <códigos>];go'); return; }
+  let auts; try { auts = (await db.get('cyc/autoriza')) || {}; } catch (e) { console.log('❌ no pude leer cyc/autoriza: ' + String(e.message || e).slice(0, 80)); return; }
+  if (!TG_TOKEN) { console.log('❌ sin el token del bot no puedo firmar: no anoto nada'); return; }
+  console.log(`=== 🔐 SU RESPUESTA EN EL CHAT ${go ? '' : '(PRUEBA — agregá ;go)'} · ${porCod.size} código(s) ===`);
+  const ahora = Date.now(); let ok = 0, mal = 0;
+  for (const [c, si] of porCod) {
+    const r = auts[c];
+    if (!r) { console.log(`✗ ${c}: no existe ese pedido`); mal++; continue; }
+    if (!['pendiente', 'autorizada', 'rechazada'].includes(r.estado)) { console.log(`✗ ${c}: está ${r.estado || '?'} (ya no se puede cambiar)`); mal++; continue; }
+    if ((si && r.estado === 'autorizada') || (!si && r.estado === 'rechazada')) { console.log(`= ${c}: ya estaba ${r.estado}`); ok++; continue; }
+    if (r.sigPed !== _autFirma(_autTxtPed(c, r))) { console.log(`✗ ${c}: el pedido no tiene la firma del robot: no lo toco`); mal++; continue; }
+    const upd = si ? { estado: 'autorizada', autTs: ahora, vence: ahora + AUT_VALE_MS, msgId: 'chat', porChat: true, txtChat: t.slice(0, 300) } : { estado: 'rechazada', rechTs: ahora, msgId: 'chat', porChat: true, txtChat: t.slice(0, 300) };
+    if (si) upd.sig = _autFirma(_autTxtOk(c, { ...r, ...upd }));
+    console.log(`${si ? '✅' : '🚫'} ${c} · ${r.mla} · ${String(r.nom || '').slice(0, 44)} · ${money(r.de)} → ${money(r.precio)} → ${si ? 'AUTORIZADA (vale 48 h)' : r.estado === 'autorizada' ? 'REVOCADA' : 'RECHAZADA'}`);
+    if (!go) { ok++; continue; }
+    try { await db.patch('cyc/autoriza/' + c, upd); const r3 = await db.get('cyc/autoriza/' + c); if (r3 && r3.estado === upd.estado) ok++; else { console.log(`   ⚠️ ${c}: no quedó ${upd.estado}`); mal++; } }
+    catch (e) { console.log(`   ⚠️ ${c}: no pude anotarla (${String(e.message || e).slice(0, 60)})`); mal++; }
+  }
+  console.log(`\n${ok} bien · ${mal} no${go ? ' · releído de la base' : ''}. Lo autorizado lo corro con su renglón (\`autoriza\` lo lista).`);
 }
 // ── 🔎 EL DETECTOR (22/10/2026 · `errores[:horas][:go]`, pedido suyo: no quiere marcar el mismo error dos veces) ──────────────────
 // Mira el RESULTADO, no el camino. Junta cada cambio de precio y de descuento de las últimas N horas (26): mis cambios de lista
@@ -23587,6 +23626,11 @@ async function main() {
     // BILLING_PROBE=autoriza[:todas] (22/10/2026, SOLO LEE) → 🔐 los pedidos de autorización SUYA (`cyc/autoriza`): los pendientes (y si
     // salieron por Telegram), los que él autorizó con la firma verificada y el renglón a volver a correr, y los usados o rechazados de
     // los últimos 3 días (`:todas` = todos). Va al principio de cada vuelta: lo autorizado se corre con su renglón en la ml-sync de la vuelta.
+    // BILLING_PROBE=autorizo:<su texto>[;go] (24/10/2026, ml-sync) → anota SU respuesta del chat a los pedidos 🔐 (ver `autDesdeChat`).
+    if (/^autorizo:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const raw = String(process.env.BILLING_PROBE).replace(/^autorizo:/, ''); const goA = /;go$/.test(raw);
+      await autDesdeChat(db, raw.replace(/;go$/, ''), goA && !DRY); return;
+    }
     if (/^autoriza(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const todasA = /:todas\b/i.test(String(process.env.BILLING_PROBE));
       let A; try { A = (await db.get('cyc/autoriza')) || {}; } catch (eA) { console.log('⚠️ no pude leer cyc/autoriza: ' + String(eA.message || eA).slice(0, 80)); return; }
@@ -23594,7 +23638,7 @@ async function main() {
       const fA = (t) => (Number(t) > 0 ? new Date(Number(t) - 3 * 3600e3).toISOString().slice(5, 16).replace('T', ' ').replace(/^(\d\d)-(\d\d)/, '$2/$1') : '?');
       const filas = Object.entries(A).filter(([, r]) => r && typeof r === 'object').map(([c, r]) => ({ c, r })).sort((x, y) => (Number(y.r.ts) || 0) - (Number(x.r.ts) || 0));
       const noVale = (c, r) => (Array.isArray(r.banderas) && r.banderas.length ? r.banderas.map((b) => autNoVale(c, r, r.mla, b, r.precio, ahoraA)).find(Boolean) || '' : 'no dice qué salida pide');
-      const ver = filas.filter(({ r }) => todasA || r.estado === 'autorizada' || (r.estado === 'pendiente' && ahoraA <= Number(r.vencePed) + 864e5) || ahoraA - Math.max(Number(r.usadaTs) || 0, Number(r.rechTs) || 0, Number(r.ts) || 0) < 3 * 864e5);
+      const ver = filas.filter(({ r }) => todasA || r.estado === 'autorizada' || r.estado === 'pendiente' || ahoraA - Math.max(Number(r.usadaTs) || 0, Number(r.rechTs) || 0, Number(r.ts) || 0) < 3 * 864e5);
       console.log(`=== 🔐 SUS AUTORIZACIONES · ${filas.length} pedido(s) en total · muestro ${ver.length}${todasA ? '' : ' (pendientes, autorizadas y lo de los últimos 3 días; :todas = todo)'} ===`);
       if (!TG_TOKEN) console.log('⚠️ sin el token del bot no puedo verificar ninguna firma: nada de esto vale en esta corrida');
       const listas = [];
@@ -23602,7 +23646,7 @@ async function main() {
         const ban = (r.banderas || []).map((b) => BANDERA_QUE[b] || b).join(' + ');
         let est = '';
         if (r.estado === 'autorizada') { const nv = noVale(c, r); est = nv ? `⚠️ autorizada pero NO vale: ${nv}` : `✅ AUTORIZADA el ${fA(r.autTs)} · vale hasta el ${fA(r.vence)}`; if (!nv) listas.push({ c, r }); }
-        else if (r.estado === 'pendiente') est = ahoraA > Number(r.vencePed) ? `⌛ venció sin respuesta (${fA(r.vencePed)})` : `⏳ esperando su respuesta · ${r.enviado ? 'mandado el ' + fA(r.enviadoTs) : 'TODAVÍA NO SALIÓ por Telegram'} · vence el ${fA(r.vencePed)}`;
+        else if (r.estado === 'pendiente') est = `⏳ esperando su respuesta en el chat (se guarda hasta que la resuelva) · ${r.enviado ? 'mandado por Telegram el ' + fA(r.enviadoTs) : 'guardado'}`;
         else if (r.estado === 'usada') est = `✓ usada el ${fA(r.usadaTs)} (${r.usadaEn || '?'})`;
         else if (r.estado === 'rechazada') est = `🚫 él dijo que NO (${fA(r.rechTs)})`;
         else est = `estado ${r.estado || '?'}`;
@@ -48720,7 +48764,7 @@ async function main() {
         const faltan = [];
         for (const k of marcadas) { const c = Object.keys(auts).find((c0) => !autNoVale(c0, auts[c0], k, 'sacanobajar', 0, Date.now(), false, 'sacanobajar')); if (c) autUsar[k] = c; else faltan.push(k); }
         if (faltan.length) {
-          console.log(`🔐 sacar la marca 🔒 es SÓLO SUYO: ${faltan.length} sin su autorización vigente (${faltan.join(', ')}).${GO ? ' Se la pido por Telegram; con su "autorizo", se vuelve a correr este mismo comando.' : ''}`);
+          console.log(`🔐 sacar la marca 🔒 es SÓLO SUYO: ${faltan.length} sin su autorización vigente (${faltan.join(', ')}).${GO ? ' Lo guardo para pasárselo en el chat; con su "autorizo" (autorizo:<código>;go), se vuelve a correr este mismo comando.' : ''}`);
           if (GO) await pedirAutorizaciones(db, faltan.map((k) => ({ mla: k, a: 0, p0: 0, nom: (links[k] || {}).title, cuenta: (links[k] || {}).cuenta, pideAut: ['sacanobajar'], regla: 'F10', frenoTxt: `él pidió no bajarla: ${(nb[k] || {}).m || ''}`, motivoPedido: motivo || 'sacar la marca 🔒 no bajar' })), links, { aplicar: true, tipo: 'sacanobajar' });
           mlas = mlas.filter((k) => !faltan.includes(k));
           if (!mlas.length) return;

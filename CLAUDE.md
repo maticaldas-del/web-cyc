@@ -168,7 +168,7 @@
 - **CYC Avisos (Telegram) = SÓLO lo urgente y los recordatorios** (23/10, *"si me llega un mensaje de CYC Avisos sé que es algo
   que tengo que resolver ya"*): `pregunto:URGENTE: …` (el robot lo niega sin "URGENTE") sólo para lo que cuesta plata si espera
   (reclamo que espera su respuesta, ML frenó algo que vende, algo que vende fuerte en 0 en Full con mercadería en la oficina, un pago
-  que vence) · `recordar:<texto>` · las 🔐 autorizaciones que él ya pidió en el chat · el chat nuevo del bot. **Las decisiones (a)/(b)
+  que vence) · `recordar:<texto>` · el chat nuevo del bot. Las 🔐 autorizaciones ya NO van por Telegram (24/10): se le pasan en el chat. **Las decisiones (a)/(b)
   NO van: a `notas/para_mati.md`** y se resuelven en el chat cuando dice "resolvamos". Nunca "subí/bajé/activé", ni resúmenes, ni lo que
   deshizo el detector (va al log). `//` = salto de línea, sin `;`, sin datos de compradores. Informativos: `sendAlerta(texto,{info:true})`.
 - **Cada venta nueva llega al TELÉFONO (push de la web), no a Telegram** (`AVISO_VENTA_TELEGRAM=false`): sólo compras que dejan
@@ -192,8 +192,10 @@
 - **🔐 Un aviso alcanza** (22/10, eligió las tres; CEREBRO §0c): **todos los caminos pasan por las mismas reglas** — `frenosBajas`
   (F0-F9) juzga `decido`, `entrarpromo` y la puerta de `setPriceTo` (toda otra baja); las subas pasan por `frenosSuba`; F9: en escasez
   nunca abajo del precio de antes de la escasez. **Las salidas que ya fallaron son SÓLO SUYAS:** `!sinlinea` `!sincerteza` `!sintecho`
-  `!bajocero` y 🧨 `#remate` → sin su autorización no se hace: queda en `cyc/autoriza/<código>` y le llega UN mensaje numerado a su canal
-  privado; él responde "autorizo K7M3" / "autorizo todo" / "no K7M3" (vale 48 h para ese renglón; `autoriza` lista lo autorizado).
+  `!bajocero` y 🧨 `#remate` → sin su autorización no se hace: queda GUARDADO en `cyc/autoriza/<código>` (**no sale por Telegram ni vence**,
+  24/10, él: *"que lo guarde y me lo mande por acá, en el aviso de las 12:30, y si no que lo siga guardando hasta que lo resolvemos"*); se
+  lo paso en el chat (aviso de las 12:30, `autoriza` los lista) y su respuesta la anoto con `autorizo:<su texto>;go` (ml-sync; "autorizo
+  K7M3 64TN no 3NCW", vale 48 h desde que la anoto).
   **Única salida mía sin él:** corregir el precio de lo que NUNCA estuvo activo ni vendió, al activarlo (`!activar` + "EXCEPCIÓN: …").
   **Detector `errores[:horas][:go]`** al final de cada vuelta (consulta): todo cambio y descuento de 26 h contra los errores que él ya
   marcó; la cuenta tiene que cerrar; con `:go` (ml-sync) deshace lo ❌ y le manda UN aviso. **Cada corrección nueva suya agrega su
