@@ -158,6 +158,8 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          TIMBRE_URL: ${{ secrets.TIMBRE_URL }}
+          TIMBRE_TOKEN: ${{ secrets.TIMBRE_TOKEN }}
           DRY_RUN: ${{ github.event.inputs.dry_run }}
           CATALOG_ONLY: ${{ github.event.inputs.catalog_only }}
           CLEAN_VP: ${{ github.event.inputs.clean_vp }}
@@ -247,4 +249,6 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          TIMBRE_URL: ${{ secrets.TIMBRE_URL }}
+          TIMBRE_TOKEN: ${{ secrets.TIMBRE_TOKEN }}
         run: exec bash ml-sync/ciclo.sh

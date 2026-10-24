@@ -9987,6 +9987,68 @@ async function avisarVentasNuevas(db, lista) {
 // de hoy y del promedio de los últimos 5 mismos días de la semana (`_homeCurvaHTML`). Si se toca la tarjeta, se toca esto.
 // Sólo se reescribe si cambiaron las ventas de hoy, cambió el día o pasaron 20 minutos.
 const WIDGET_NIV = [['bajo', -1e12, '#ef4444'], ['justo', 90000, '#f97316'], ['bien', 115000, '#22c55e'], ['bueno', 150000, '#14b8a6'], ['exc', 190000, '#60a5fa'], ['estr', 230000, '#a78bfa'], ['joya', 300000, '#eab308']];
+// ── 🔔 EL TIMBRE DEL REVISOR DE VENTAS (24/10/2026, él: "siempre que haya una venta a menos del 35% que entre el revisor de ventas
+// automáticamente a mirarlo. Y que al entrar 6 ventas (no unidades) que entre automáticamente"; "la idea es gastar menos tokens y
+// mantener calidad"). La cuenta la hace el robot en cada vuelta de 2 minutos (0 tokens): compras sin analizar = las posteriores a
+// `mlapi/ventasvistas/hasta` (lo que anota `ventasvistas;go` al cerrar la revisión). Si alguna compra NUEVA quedó abajo del piso
+// (`cyc/mlconfig/minPct`, 35) o ya hay 6+ compras sin analizar, toca el timbre: un POST al disparador por API de la tarea
+// "Revisor de ventas" (TIMBRE_URL + TIMBRE_TOKEN, secretos de GitHub), que abre una sesión nueva y hace la revisión pesada.
+// Memoria en `mlapi/timbre` = {hasta: la compra más nueva que ya tocó timbre, ts: cuándo, H: el ventasvistas de ese momento}:
+// una compra toca timbre UNA vez, y mientras el revisor trabaja (ventasvistas sin moverse) no se vuelve a tocar por 45 min.
+// El % es el de la venta (misma cuenta que ventasraras y el aviso al teléfono); neto estimado o sin costo no tocan por % (no hay %).
+const TIMBRE_MIN_COMPRAS = 6, TIMBRE_ESPERA_MIN = 45;
+async function timbreVentas(db, opts = {}) {
+  const prueba = !!opts.prueba, forzar = !!opts.forzar;
+  if (!prueba && (CONSULTA_SOLO_LEE || DRY)) return null;
+  const url = String(process.env.TIMBRE_URL || '').trim(), tok = String(process.env.TIMBRE_TOKEN || '').trim();
+  let H = 0, mem = {};
+  try { H = Number(await db.get('mlapi/ventasvistas/hasta')) || 0; mem = (await db.get('mlapi/timbre')) || {}; } catch { console.log('🔔 timbre: no pude leer hasta dónde se revisó: esta vuelta no toco'); return null; }
+  const ahora = Date.now(), desde = Math.max(H, ahora - 3 * 864e5);
+  const dias = []; for (let t = desde; t <= ahora + 864e5; t += 864e5) { const k = dayKeyFromISO(t); if (!dias.includes(k) && k <= dayKeyFromISO(ahora)) dias.push(k); }
+  const vp = {}; for (const k of dias) { try { vp[k] = (await db.get('cyc/ventaprod/' + k)) || {}; } catch { console.log('🔔 timbre: no pude leer las ventas de ' + k + ': esta vuelta no toco'); return null; } }
+  const tsDe = (v) => Number(v.ts) || Date.parse(v.ts || '') || 0;
+  const grupos = {};
+  for (const [dk, dia] of Object.entries(vp)) for (const [id, v] of Object.entries(dia || {})) {
+    if (!v || v.cancelada) continue; const ts = tsDe(v); if (!(ts > desde)) continue;
+    const k = String(v.cuenta || '') + '|' + String(v.numVenta || v.saleId || id); (grupos[k] = grupos[k] || []).push({ v, dk, ts });
+  }
+  const lista = Object.values(grupos); const nuevaMax = lista.reduce((m, g) => Math.max(m, ...g.map((x) => x.ts)), 0);
+  const memH = Number(mem.hasta) || 0, memTs = Number(mem.ts) || 0;
+  const nuevasTimbre = lista.filter((g) => g.some((x) => x.ts > memH));
+  const r = { compras: lista.length, nuevas: nuevasTimbre.length, bajas: [], toca: false, por: '', espera: false, sinLlave: !url || !tok };
+  if (!nuevasTimbre.length && !forzar) return r;
+  let bajas = [];
+  if (nuevasTimbre.length) {
+    const costoDe = await armarCostoWeb(db, vp); const piso = await pisoConfig(db, 35);
+    for (const g of nuevasTimbre) {
+      let neto = 0, costo = 0, gest = 0, est = false, sinC = false;
+      for (const { v, dk } of g) { const c = costoDe(v, dk); neto += Number(v.neto) || 0; costo += c.costo; gest += v.netoEstimado ? 0 : c.gest; if (c.sinCosto) sinC = true; if (v.netoEstimado) est = true; }
+      const div = costo + gest, pct = !sinC && !est && div > 0 ? (neto - costo) / div * 100 : null;
+      if (pct != null && pct < piso) bajas.push({ nom: String(g[0].v.prod || '?').slice(0, 40), cta: g[0].v.cuenta || '?', pct: Math.round(pct) });
+    }
+    r.piso = piso;
+  }
+  r.bajas = bajas;
+  r.por = bajas.length ? `${bajas.length} compra(s) abajo del ${r.piso}%` : lista.length >= TIMBRE_MIN_COMPRAS ? `${lista.length} compras sin revisar` : '';
+  r.toca = forzar || !!r.por;
+  if (!r.toca) return r;
+  // el revisor está trabajando (tocó hace menos de 45 min y ventasvistas no se movió desde entonces): espera
+  if (!forzar && memTs && ahora - memTs < TIMBRE_ESPERA_MIN * 6e4 && H <= (Number(mem.H) || 0)) { r.espera = true; return r; }
+  const texto = `Timbre del robot: ${r.por || 'prueba a mano'}. ${lista.length} compra(s) sin revisar desde ${new Date(H - 3 * 36e5).toISOString().slice(0, 16).replace('T', ' ')} (hora de acá)${bajas.length ? '. Abajo del piso: ' + bajas.map((b) => `${b.cta} · ${b.nom} · ${b.pct}%`).join(' | ') : ''}.`;
+  r.texto = texto;
+  if (prueba) return r;
+  if (r.sinLlave) { if (!mem.sinLlaveAvisado || ahora - Number(mem.sinLlaveAvisado) > 6 * 36e5) { console.log('🔔 timbre: tocaría (' + r.por + ') pero falta la llave (TIMBRE_URL/TIMBRE_TOKEN en los secretos de GitHub)'); try { await db.patch('mlapi/timbre', { sinLlaveAvisado: ahora }); } catch { } } return r; }
+  let ok = false, det = '';
+  try {
+    const res = await fetch(url, { method: 'POST', headers: { Authorization: 'Bearer ' + tok, 'anthropic-beta': 'experimental-cc-routine-2026-04-01', 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' }, body: JSON.stringify({ text: texto }) });
+    ok = res.ok; let j = null; try { j = await res.json(); } catch { j = null; }
+    det = ok ? String((j && j.claude_code_session_url) || '') : `HTTP ${res.status}${j && j.error && j.error.message ? ' · ' + String(j.error.message).slice(0, 120) : ''}`;
+  } catch (e) { det = e.message; }
+  r.ok = ok; r.det = det;
+  if (ok) { try { await db.set('mlapi/timbre', { hasta: nuevaMax || memH, ts: ahora, H, por: r.por, sesion: det.slice(0, 200) }); } catch { console.log('🔔 timbre: tocó pero no pude anotarlo (puede volver a tocar)'); } }
+  console.log(ok ? `🔔 timbre: TOCÓ (${r.por || 'a mano'}) · revisor arrancando` : `🔔 timbre: no pude tocar (${det}): pruebo en la vuelta siguiente`);
+  return r;
+}
 async function escribirWidgetHoy(db, opts = {}) {
   const soloMirar = !!opts.soloMirar;
   if (!soloMirar && (CONSULTA_SOLO_LEE || (DRY && !opts.forzar))) return null;
@@ -32983,6 +33045,39 @@ async function main() {
       }
       return;
     }
+    // BILLING_PROBE=ofi35 (24/10/2026, él: "tengo mercadería en mi oficina que no da para el 35% … me la podés marcar? así veo si me
+    // conviene mandarla a ML o intento venderla por otro lado") → LO DE LA OFICINA CON SU % EN ML AL PRECIO DE HOY, EN EL PEOR CASO. Por
+    // ficha: unidades en la oficina, la mejor de sus publicaciones vivas (Clásica, no gemela) con el % del peor caso (la cuenta de
+    // `planilla`/Sacando stock: neto de `cyc/netopub` − costo − IIBB/mono − 2% de retención, ÷ costo + impuestos + envío) y la plata
+    // parada a costo. Sale primero lo que NO llega al 35%. SOLO LEE.
+    if (/^ofi35$/.test(String(process.env.BILLING_PROBE || ''))) {
+      const prodsO = (await db.get('cyc/products')) || {}, inv = (await db.get('cyc/inventory')) || {}, links = (await db.get('cyc/mllinks')) || {}, np = (await db.get('cyc/netopub')) || {};
+      let tc = 0, mono = null; try { tc = parseFloat(await db.get('cyc/finanzas/tipo_cambio')) || 0; } catch { tc = 0; } try { mono = await leerMonoPct(db); } catch { mono = null; }
+      if (!(tc > 0) || mono == null) { console.log('❌ sin dólar o sin el % de monotributo: no opino'); return; }
+      const piso = await pisoConfig(db, 35); const OFI = sid('Oficina Mati');
+      const mgP = (n, e, pr) => { const neto = Number(n && n.neto), P = Number(n && n.precio), env = Number(n && n.envio) || 0; if (!(neto > 0 && P > 0)) return null;
+        const cu = costoPesos(pr, 1, tc).costo; if (!(cu > 0)) return null; const m = ((ML_EXTRA_PCT[String(e.cuenta || '').toLowerCase()] || 4) + mono) / 100;
+        const v = (neto - cu - P * m - P * PEOR_RET_PCT) / (cu + P * m + env) * 100; return isFinite(v) ? { v, P, cta: e.cuenta || '?' } : null; };
+      const bajo = [], ok = [], sinPub = [], sinDato = [];
+      for (const [pid, p] of Object.entries(prodsO)) {
+        if (!p || !p.name) continue; const of = parseInt(inv[pid + '__' + OFI]) || 0; if (!(of > 0)) continue;
+        const cu = costoPesos(p, 1, tc).costo; const parada = cu > 0 ? cu * of : 0;
+        const pubs = Object.entries(links).filter(([, e]) => e && e.prodId === pid && !e.ignored && !e.gemelaDe && String(e.status || '') !== 'closed');
+        if (!pubs.length) { sinPub.push({ nom: p.name, of, parada, local: !!p.soloLocal }); continue; }
+        let best = null; for (const [m, e] of pubs) { const r = mgP(np[m], e, p); if (r && (!best || r.v > best.v)) best = { ...r, m }; }
+        if (!best) { sinDato.push({ nom: p.name, of, parada, sinCosto: !(cu > 0) }); continue; }
+        (best.v < piso ? bajo : ok).push({ nom: p.name, of, parada, ...best });
+      }
+      const f$ = (x) => '$' + Math.round(x).toLocaleString('es-AR');
+      bajo.sort((a, b) => b.parada - a.parada); sinPub.sort((a, b) => b.parada - a.parada);
+      console.log(`=== 🏢 LA OFICINA CONTRA EL ${piso}% (peor caso, precio de hoy en ML) · ${bajo.length} abajo · ${ok.length} llegan · ${sinPub.length} sin publicación · ${sinDato.length} sin dato ===`);
+      console.log(`\n── ❌ NO LLEGAN AL ${piso}% (${bajo.reduce((a, x) => a + x.of, 0)} u. · ${f$(bajo.reduce((a, x) => a + x.parada, 0))} parados a costo) ──`);
+      for (const x of bajo) console.log(`  ${String(x.of).padStart(4)} u. · ${x.nom.slice(0, 60)} · ${x.cta} ${x.m} a ${f$(x.P)} → ${x.v.toFixed(0)}% · parado ${f$(x.parada)}`);
+      console.log(`\n── ✓ LLEGAN AL ${piso}% (${ok.length} fichas, ${ok.reduce((a, x) => a + x.of, 0)} u.) ──`);
+      if (sinPub.length) { console.log(`\n── ❔ SIN PUBLICACIÓN VIVA (no hay precio de ML que medir) ──`); for (const x of sinPub) console.log(`  ${String(x.of).padStart(4)} u. · ${x.nom.slice(0, 60)}${x.local ? ' · sólo local' : ''} · parado ${x.parada ? f$(x.parada) : 'sin costo'}`); }
+      if (sinDato.length) { console.log(`\n── ⚠️ CON PUBLICACIÓN PERO SIN %: ${sinDato.map((x) => `${x.nom.slice(0, 40)} (${x.of} u.${x.sinCosto ? ', sin costo' : ''})`).join(' | ')}`); }
+      return;
+    }
     // BILLING_PROBE=ofisinpub → LO QUE ESTÁ EN LA OFICINA Y NO TIENE PUBLICACIÓN VIVA (23/10/2026, él: "¿cargaste todos los productos
     // nuevos?"). Por ficha (y por color): unidades en la oficina, si tiene catálogo confirmado para `publicar`, y las publicaciones
     // cerradas que tuvo. Una ficha con publicación viva (aunque pausada) no sale. SOLO LEE.
@@ -43953,6 +44048,23 @@ async function main() {
           const cayo = prom >= 3 && x.h24 < prom / 3;
           console.log(`${cayo ? '⚠️' : '·'} ${c}: ${x.h24} ventas en 24 h · promedio ${prom.toFixed(1)}/día${cayo ? ' · CAYÓ FUERTE: mirar si la cuenta tiene un problema (frenazo:' + c.toLowerCase() + ')' : ''}`);
         }
+        // auditoría del 24/10/2026: las 4 cayeron a la mitad JUNTAS (19 contra ~46/día, el día que subí 143 precios al 35%)
+        // y sólo salía ⚠️ Adriana: cada cuenta sola no llegaba al tercio. El total se compara contra el promedio y contra
+        // el mismo día de la semana de las 2 semanas anteriores (el sábado es flojo), y nombra mis subas de las últimas 36 h.
+        const enT = (t0, t1) => vtsTodas.filter((v) => v.ts >= t0 && v.ts < t1).length;
+        const tH = enT(ahoraI - 864e5, ahoraI + 1), tProm = enT(ahoraI - 15 * 864e5, ahoraI - 864e5) / 14;
+        const tSem = (enT(ahoraI - 8 * 864e5, ahoraI - 7 * 864e5) + enT(ahoraI - 15 * 864e5, ahoraI - 14 * 864e5)) / 2;
+        const cayoT = tProm >= 10 && tH < 0.6 * tProm && tH < 0.6 * tSem;
+        console.log(`${cayoT ? '⚠️' : '·'} LAS 4 JUNTAS: ${tH} ventas en 24 h · promedio ${tProm.toFixed(1)}/día · mismo día de las 2 semanas anteriores ${tSem.toFixed(1)}${cayoT ? ' · CAYERON JUNTAS: no es una cuenta, es algo general (precios, ML, el día)' : ''}`);
+        if (cayoT) {
+          const sub = Object.entries(ap).filter(([, a]) => a && a.por === 'claude' && Number(a.a) > Number(a.de) && ahoraI - (Number(a.ts) || 0) < 36 * 36e5);
+          if (sub.length) {
+            const uD = (m, t0) => vtsTodas.filter((v) => v.mla === m && v.ts >= t0).reduce((s2, v) => s2 + v.q, 0);
+            const uA = (m, t0) => vtsTodas.filter((v) => v.mla === m && v.ts >= t0 - 14 * 864e5 && v.ts < t0).reduce((s2, v) => s2 + v.q, 0) / 14 * ((ahoraI - t0) / 864e5);
+            const dsp = sub.reduce((s2, [m, a]) => s2 + uD(m, a.ts), 0), esp = sub.reduce((s2, [m, a]) => s2 + uA(m, a.ts), 0);
+            console.log(`   mis subas de las últimas 36 h: ${sub.length} publicaciones · vendieron ${dsp} u. desde la suba · al ritmo de sus 14 días de antes hubieran sido ~${esp.toFixed(1)}`);
+          }
+        }
       } catch (eC) { console.log('ventas por cuenta: no pude armarlas · ' + eC.message); }
       // 3) Lo que decidió Claude (60 días) y cómo le fue
       const uEnt = (m, t0, t1) => vtsTodas.filter((v) => v.mla === m && v.ts >= t0 && v.ts < t1).reduce((s2, v) => s2 + v.q, 0);
@@ -47121,6 +47233,21 @@ async function main() {
       for (let d = 1; d <= 31; d++) { if (F.cd[d] == null) continue; console.log(`día ${String(d).padStart(2)} · compras ${F.cd[d].toFixed(2)} · plata ${F.nd[d].toFixed(2)}   (con fechas: ${F2.cd[d] == null ? '?' : F2.cd[d].toFixed(2)} / ${F2.nd[d] == null ? '?' : F2.nd[d].toFixed(2)})  ${'█'.repeat(Math.round(20 * (F.nd[d] || 0)))}`); }
       console.log('\npor tramos SIN fechas especiales: ' + FRANJA_TRAMOS.map(([a0, z], i) => `${a0}-${z}: compras ${F.c[i]} · plata ${F.n[i]}`).join(' | '));
       console.log('por tramos CON fechas especiales: ' + FRANJA_TRAMOS.map(([a0, z], i) => `${a0}-${z}: compras ${F2.c[i]} · plata ${F2.n[i]}`).join(' | '));
+      return;
+    }
+    // BILLING_PROBE=timbre[:tocar:go] (24/10/2026) → 🔔 EL TIMBRE DEL REVISOR DE VENTAS: cuántas compras hay sin revisar, cuáles nuevas
+    // quedaron abajo del 35% y si el robot tocaría el timbre. `timbre:tocar:go` (ml-sync, que tiene la llave) lo toca a mano para probar.
+    if (/^timbre(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _tc = String(process.env.BILLING_PROBE); const tocar = /^timbre:tocar:go$/.test(_tc);
+      let mem = {}; try { mem = (await db.get('mlapi/timbre')) || {}; } catch { mem = {}; }
+      console.log(`=== 🔔 TIMBRE DEL REVISOR DE VENTAS ${tocar ? '· LO TOCO A MANO' : '(sólo miro · timbre:tocar:go por ml-sync lo toca)'} ===`);
+      console.log(`llave: ${process.env.TIMBRE_URL && process.env.TIMBRE_TOKEN ? 'está' : 'FALTA (TIMBRE_URL y TIMBRE_TOKEN en los secretos de GitHub)'} · último toque: ${mem.ts ? new Date(Number(mem.ts) - 3 * 36e5).toISOString().slice(0, 16).replace('T', ' ') + ' (' + (mem.por || '?') + ')' : 'nunca'}`);
+      if (tocar && (CONSULTA_SOLO_LEE || DRY)) { console.log('❌ tocarlo va por ml-sync (ml-consulta no tiene la llave)'); return; }
+      const r = await timbreVentas(db, { prueba: !tocar, forzar: tocar });
+      if (!r) return;
+      console.log(`${r.compras} compra(s) sin revisar · ${r.nuevas} nuevas desde el último toque · ${r.bajas.length} abajo del ${r.piso || 35}%${r.bajas.length ? ': ' + r.bajas.map((b) => `${b.cta} · ${b.nom} · ${b.pct}%`).join(' | ') : ''}`);
+      console.log(r.toca ? (r.espera ? '⏳ tocaría, pero el revisor está trabajando (tocó hace menos de 45 min y no cerró la revisión)' : `🔔 ${tocar ? (r.ok ? 'TOCÓ: ' + r.det : 'no pudo tocar: ' + (r.det || 'sin llave')) : 'TOCARÍA ahora: ' + r.por}`) : `· no toca (hacen falta ${TIMBRE_MIN_COMPRAS} compras o una abajo del 35%)`);
+      if (r.texto) console.log('texto que lleva: ' + r.texto);
       return;
     }
     if (/^ventasvistas:/.test(String(process.env.BILLING_PROBE || ''))) {
@@ -53738,6 +53865,8 @@ async function main() {
 
   // ── AVISO DE CADA VENTA NUEVA (15/10/2026, pedido suyo: 1a 2a 3a) ──
   try { await avisarVentasNuevas(db, _avisoVentas); } catch (e) { console.log('No pude avisar las ventas nuevas: ' + e.message); }
+  // ── 🔔 EL TIMBRE DEL REVISOR DE VENTAS (24/10/2026): 6 compras sin revisar o una abajo del 35% → entra el revisor ──
+  try { await timbreVentas(db); } catch (e) { console.log('🔔 timbre: falló (' + e.message + '): pruebo en la vuelta siguiente'); }
   // ── EL WIDGET DEL IPHONE (20/10/2026): el resumen de "Ventas de hoy" en mlapi/widget/hoy ──
   try { await escribirWidgetHoy(db); } catch (e) { console.log('No pude escribir el widget de hoy: ' + e.message); }
 

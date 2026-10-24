@@ -6,10 +6,16 @@ name: ml-candidatos
 # Argentina) termina en un día.
 # Es EL MISMO comando que el de la noche, no una copia: salta lo ya medido y sigue con lo que falta.
 # NO TOCA NINGÚN PRECIO NI COMPRA NADA. No usa el candado de `ml-sync`, así que no corta el ciclo.
+# 24/10/2026: con los 993 de Elegancia quedaron 2.647 en fila y a ~60 por vuelta (2 por día) tardaba ~3 semanas. Ahora cada 2 horas
+# y con 500 consultas por vuelta (~120 medidos): la fila se termina en ~2 días. Dos vueltas no se pisan (concurrency).
 on:
   schedule:
-    - cron: '7 15 * * *'
+    - cron: '7 */2 * * *'
   workflow_dispatch:
+
+concurrency:
+  group: ml-candidatos
+  cancel-in-progress: false
 
 jobs:
   candidatos:
@@ -29,6 +35,6 @@ jobs:
           FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          BILLING_PROBE: candidatos:go
+          BILLING_PROBE: candidatos:max=500:go
         # exec (etapa 4, 20/10/2026): node (o el ciclo) pasa a ser el proceso del paso y recibe la señal de cancelar de GitHub; antes quedaba huérfano hasta el SIGKILL.
         run: exec node ml-sync/sync.mjs

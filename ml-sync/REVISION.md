@@ -79,6 +79,15 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
 
 ## 1 · PRECIOS (lunes)
 
+### 🔔 El timbre del revisor de ventas (24/10/2026, pedido suyo: "venta a menos del 35% o 6 ventas → que entre el revisor"; "gastar menos tokens")
+- **Qué es:** el ciclo de 2 minutos (`timbreVentas`, después del aviso de venta) cuenta las compras sin revisar (posteriores a
+  `mlapi/ventasvistas/hasta`) y el % de cada compra nueva (misma cuenta que `ventasraras`). Con 6+ compras o una nueva abajo del 35%
+  hace un POST al disparador por API de la tarea `trig_01CjrLU1rXYy3TM1jbQndKGp` (🔔 Revisor de ventas, sesión nueva por toque, sólo
+  ventas). Llave en los secretos de GitHub `TIMBRE_URL` y `TIMBRE_TOKEN`. Memoria `mlapi/timbre` (cada compra toca una vez; mientras el
+  revisor trabaja y `ventasvistas` no se mueve, espera 45 min). `timbre` (sólo mira) · `timbre:tocar:go` (ml-sync, lo toca a mano).
+- **Qué chequear:** que toque con la 6ª compra o con una abajo del 35% · que no toque dos veces por lo mismo · que la sesión del revisor
+  cierre con `ventasvistas` (si no, el timbre vuelve a sonar a los 45 min) · sin llave el ciclo lo dice cada 6 h y no falla.
+
 ### 📈 "2ª suba" = subas de verdad · qué busca el 📈 · `tag:hist` (24/10/2026, v26.57, corrección suya con Casino)
 - **Qué es:** el chip "📈 buscando techo · Nª suba" (y el "×N" de la línea) contaba renglones de `cyc/estrategia`; `techo95` anota
   "volver a buscar techo" sin tocar el precio y Casino decía "2ª suba" con UNA suba. Ahora `estrategiaDe` cuenta las subas reales de
@@ -763,6 +772,29 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 
 ## 3 · MERCADERÍA (miércoles)
 
+### ❌ no da 35% en Armar caja (24/10/2026, v26.58, él: "que el % lo tome del más alto, de la venta más alta y de la competencia")
+- **Qué es:** `_cajaPct35`: % del peor caso al precio de hoy (`margenMLDe`), a la venta más cara de 90 días y contra la competencia
+  (`cyc/techofull`, ≤4 días); manda el más alto. Chip rojo en el renglón si ninguno llega a la meta; detalle de los tres al abrirlo.
+- **Qué chequear:** que "hoy" coincida con el ⚠️ bajo 35% de Productos · que una venta en promo vieja no haga pasar algo que hoy no da.
+
+### `PROMPT_CAJAS.md` · el chat de Chrome arma las cajas "MANDALA YA" (24/10/2026, él: "decirle arrancá y que arme todas las cajas")
+- **Qué es:** un prompt fijo: lee en el panel qué cuentas tienen la caja en verde (`cajasVerdes`/`cajaVeredicto`), copia cada renglón
+  (código de etiqueta y unidades) a Planificación de envíos de ESA cuenta y no confirma el envío.
+- **Etiquetas (24/10, él):** baja el .txt de etiquetas SÓLO de lo que dice "🏷️ N sin etiqueta" (como mucho N) y lo guarda en su carpeta.
+- **Qué chequear:** que el texto siga coincidiendo con lo que muestra la web (cartel "MANDALA YA", "📦 N cajas para mandar ya", el código
+  de etiqueta en cada renglón) cada vez que se toca Armar caja o Inicio.
+
+### `ofi35` · lo de la oficina contra el 35% (24/10/2026, él: "mercadería en mi oficina que no da para el 35%… me la podés marcar?")
+- **Qué es:** sólo lee. Por ficha con unidades en la oficina: la mejor publicación viva (Clásica) y su % en el peor caso al precio de
+  hoy (la cuenta de `planilla`), y la plata parada a costo. Primero lo que no llega al 35%; aparte lo sin publicación y lo sin %.
+- **Qué chequear:** que el % coincida con el de la tarjeta de la web para 2-3 productos · que lo "sin publicación" no tenga una viva.
+
+### Para probar mide cada 2 horas, 500 consultas por vuelta (24/10/2026, control de la tarde de Elegancia)
+- **Qué es:** `ml-candidatos` corría 1 vez por día (+ la noche) con 250 consultas: ~60 medidos por vuelta y 2.647 en fila (los 993 de
+  Elegancia) = ~3 semanas. Ahora `cron 7 */2` y `candidatos:max=500:go` (~120 por vuelta), con `concurrency` para que dos no se pisen.
+- **Qué chequear:** en `candresumen` "sin medir" baja ~1.000 por día · `consultas a ML` sin 429 · que no choque con el paso de candidatos
+  de ml-daily (~09-10 UTC) dejando algo medido dos veces.
+
 ### Las cajas que entraron completas se marcan solas (24/10/2026, error que marcó él: la 79567049 de Matías, 93/93 en ML y 8 días "no llegó")
 - **Qué es:** con SÓLO DATOS el robot sólo anotaba lo entrado y yo tenía que marcar; la vuelta no la marcó. Ahora `cajasQueLlegaron` en la vuelta
   horaria marca sola toda caja en la que entró TODO lo mandado; las que tienen faltantes siguen listadas para mí ("las marca Claude").
@@ -1224,6 +1256,11 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
 - **Qué chequear:** que la completa ya no tenga que corregirlos a mano · si otro aroma pasa a dado de baja, agregarlo a los DOS.
 
 ## 4 · CHOQUES Y FALLAS MUDAS (jueves · junta las viejas 4 y 5)
+
+### 2b del informe: las 4 cuentas juntas (24/10/2026, auditoría)
+- **Qué es:** el 24/10 las 4 cuentas vendieron 19 en 24 h contra ~46/día y el informe sólo marcaba ⚠️ Adriana (cada cuenta sola no llegaba al tercio). Ahora la 2b tiene un renglón "LAS 4 JUNTAS" contra el promedio de 14 días y contra el mismo día de las 2 semanas anteriores; si cae abajo del 60% de los dos, ⚠️ y dice cuántas subas mías de las últimas 36 h hay y cuánto vendieron contra lo esperado.
+- **Dónde vive:** `sync.mjs`, `informe`, sección 2b.
+- **Qué chequear:** que el sábado flojo normal no dispare (compara contra el mismo día de la semana) y que el renglón de subas use sólo subas (`a > de`).
 - **24/10/2026 · horario para resolver** (él): tarea de las 10:00 (sólo lo urgente antes de las 12:30) y de las 12:30 (todo lo demás). **Dónde vive:** `trig_01XcMnTFRBwdBa5kgH1b2hko` y `trig_011SxsjVECrbY9b8ZkkhdBUT`, en la sesión de compras/decisiones; CLAUDE.md §1. **Qué chequear:** que la de las 10 no traiga decisiones (a)/(b) y que la de las 12:30 no repita lo que ya contestó.
 
 - **LAS 2 DECISIONES DE LA ETAPA 4 DEL 20/10/2026, CERRADAS (v25.45).**
