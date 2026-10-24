@@ -91,6 +91,7 @@ if falt: malo.append('falta el grupo '+', '.join(falt)+' (el log está cortado)'
 if not cuentaOk: malo.append('falta la línea final "CUENTA: … ✓" (el log está cortado o pedidostodo no cerró)')
 if malo: print('⚠️ NO ARMO CAJAS: '+' · '.join(malo)); sys.exit(1)
 if any(p['ctas'] is None for p in P): print('⚠️ el log es viejo (no trae "ctas [..]"): corré pedidostodo de nuevo'); sys.exit(1)
+BAJA_ML={('p1779912655490','Invictus'),('p1779912655490','Phantom')}   # Paulvic dados de baja en ML (24/10/2026)
 out=[];res=[];sin=[];amano=[];nOfi=0;largos=[]
 def txt_dias(D,por):
     return f"para {D} dias ({por}: el cupo de esa cuenta lo controla el botón del cupo)" if D==T_LARGO else "para 37 dias (30 + 7 de viaje)"
@@ -108,6 +109,10 @@ for p in P:
             if x['casa']<=0: continue
             c='Luciana' if (pv and x['v']=='Persea') else cta
             if pv and c not in ctas: sin.append(f"{p['n']} · {x['v']}: va a {c} pero {c} no lo puede recibir (no publica o nomandar)"); continue
+            # 24/10/2026 (él): ML dio de baja para siempre estos aromas por la marca del nombre: no se mandan más a Full (lo de la oficina va al local).
+            if (p['id'],x['v']) in BAJA_ML:
+                out.append(dict(cab=f"caja:{p['id']}@{c}#{x['v']}",q=0,cola="ML lo dio de baja para siempre por la marca del nombre (24/10): no se manda más a Full. Lo de la oficina va al local.",
+                                cta=c,nom=f"{p['n'][:38]} · {x['v']}",gan=0,grande=p['grande'],enCero=False,dias=None)); continue
             D,por=dias_de(p['n'],x['s'][0],x['s'][1],x['dcs'])
             q,r,b=calc(*x['s'],x['full'],x['cam'],x['casa'],x['dcs'],D)
             out.append(dict(cab=f"caja:{p['id']}@{c}#{x['v']}",q=q,cola=f"{b} · hay {x['full']} en Full y {x['cam']} en camino · {txt_dias(D,por)} hacen falta {r*D:.0f} · en la oficina {x['casa']}",

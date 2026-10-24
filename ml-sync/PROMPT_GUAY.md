@@ -60,7 +60,31 @@ iniciada, cuántas vendió cada catálogo de la lista. Se cargan así:
   Paraguay: candprecio:<código>=/<vendidas>;…;go   (Elegancia: candprecio:prov=elegancia;<código>=/<vendidas>;…;go)
   Listas:   listadato:<proveedor>;<código>=<vendidas>;…;go
 Si ML dice "+1000 vendidos", poné 1000. Sin el dato el producto sigue entrando; con menos de 100 cargado, queda afuera.
+Si el catálogo NO muestra vendidas, no cargues 0: es duda (anotala). Para sacar unas vendidas mal cargadas: candprecio:<código>=/borrar;…;go
+(Elegancia: candprecio:prov=elegancia;<código>=/borrar;…;go · listas: listadato:<proveedor>;<código>=borrar;…;go).
 Si algo de comprasparaguay dice "no disponible", cargalo con  candprecio:<código>=nohay;…;go
+Desde el 24/10/2026 `faltaventas` trae también los de UN SOLO vendedor en ML: con 100+ vendidas entran (decisión de Matías).
+
+== CATÁLOGOS DE ML SIN VENDEDORES: EL PRECIO QUE SE VE (24/10/2026, decisión de Matías) ==
+Hay productos que tienen catálogo en ML pero hoy nadie los vende (nadie tiene stock). Para Matías son los mejores: no hay competencia.
+El robot no puede ver un precio ahí. Vos sí: correr `faltaprecio` (ml-consulta, sólo lee; `faltaprecio:300` para más) y, de cada
+renglón (fuente|proveedor|código|nombre|catálogo ML|costo), abrir https://www.mercadolibre.com.ar/p/<catálogo ML> con la sesión iniciada.
+ · Si hay publicaciones sueltas del MISMO producto (misma marca, modelo, tamaño, color): el precio más barato de las nuevas, sin las
+   del exterior (las que dicen "compra internacional").
+ · Si no hay ninguna, el último precio que muestre la página del catálogo, si lo muestra.
+ · Si no hay ningún precio a la vista: va "no" (no entra).
+Se carga por ml-consulta, de a 20:
+  Paraguay: svprecio:<código>=<pesos>;<código>=no;…;go
+  Listas:   svprecio:lista=<proveedor>;<código>=<pesos>;…;go
+El robot lo mide en la próxima vuelta del catálogo y, si da 35%, pasa a Para probar como 🌟 sin competencia.
+
+== DESPUÉS DE NISSEI: EL CATÁLOGO ENTERO DE ELEGANCIA (24/10/2026, decisión de Matías) ==
+Elegancia Company (perfumes, belleza y carteras) también es proveedor nuestro. Cuando termines Nissei, hacé LO MISMO con su tienda en
+comprasparaguay (la ficha "Elegancia Company" → "Ver productos"; si se puede, del más barato al más caro). Mismos datos de cada producto
+(código, nombre, US$ crudo, link, foto). Cambia sólo el comienzo del comando:
+  pycat:prov=elegancia;#<página>;<código>|<nombre>|<US$>|<link>|<foto>;…;#<página siguiente>;…;go
+Al principio anotá la dirección exacta de la lista que usaste. Lo no disponible: candprecio:prov=elegancia;<código>=nohay;…;go
+En `faltaprecio` los de Elegancia salen como py|elegancia|EL_<código>: en svprecio se cargan con ese código entero (svprecio:EL_<código>=<pesos>;…;go).
 
 == CADA 15 MINUTOS, ALGO ==
 Cada 15 minutos como máximo, un renglón: "voy por la página N de M, cargado hasta la N". Si te trabás, avisá enseguida.
@@ -78,3 +102,9 @@ el robot lo hace solo con `pycatmedir` (workflow `ml-pycat`, cada 3 horas). Si h
 
 
 **UNIDADES POR PRODUCTO (15/10/2026):** no hace falta que pienses las unidades: el panel pone 3-4 a lo barato que vende mucho, 1 a lo caro y 2 al resto. Vos traé bien el precio, las vendidas y el link.
+
+**PASADA COMPLETA CON LOS PROBADOS PRIMERO (24/10/2026, él: *"que primero mire los productos probados y que los cargue lo antes posible.
+después que siga con el resto"*).** Cuando pida la pasada completa, se le arma el texto con un PASO 0 antes del catálogo: la lista de
+`pyprobadoslista` (ml-consulta, sólo lee: id|código|US$|días|nombre de cada ficha de Nissei, las más viejas primero) y cómo cargarla
+con `pyprecio:<id>=<código>/<US$>@<link>;…;go` por **ml-consulta** (campo `comando`, de a 10; por ml-sync uno cancela al otro), sin código sólo si es exactamente el
+mismo producto (con duda, a la lista de dudas). Después el PASO 1 de siempre desde la página 1. El texto armado va por SendUserFile.

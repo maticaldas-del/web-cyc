@@ -151,11 +151,11 @@
   gris si no cambió nada, color de la estrategia si cambió) → **al terminar, `bajastecho:1` y el detector `errores`, y deshacer en la
   misma vuelta toda ❌ del día** (22/10, 3a: vuelve al precio de antes con `!chico` y "EXCEPCIÓN: vuelve al precio de antes").
 - Listas que tienen que quedar **vacías** al terminar la vuelta: 🚨 escasez que vendió después de mi decisión (`escasez`) · 🛡️ abajo
-  del 25% en el peor caso · 📦 sobra sin decidir · 🔎 sin afinar · 📈 dice techo/escasez y no sube · 📈 prueba con respuesta (3 ventas esperadas, 23/10) (todas en `planilla`) · 🆕 lanzamiento que vendió (también por su gemela) y no subió (en `errores`, 23/10).
+  del 25% en el peor caso · 📦 sobra sin decidir · 🔎 sin afinar · 📈 dice techo/escasez y no sube · 📈 prueba con respuesta (3 ventas esperadas, 23/10) (todas en `planilla`) · 🆕 lanzamiento que vendió (también por su gemela) y no subió (en `errores`, 23/10) · 🧐 revisión a fondo atrasada (`revfondo`, sólo la completa: todo producto con stock en Full y publicación activa con mi nota del 🧠 de menos de 2 días si está quieto o de 7 si vendió; 24/10, eligió la 3a).
 - **Activar lo pausado es prioridad** (10/10): `pausadas:25` + `activarfull:go:25`; toda pausada con stock en Full que no se activa
   va a `notas/para_mati.md` con motivo (al `pregunto:URGENTE` sólo si vende fuerte). Lo nuevo (nunca estuvo en Full) lo activo yo con el precio ya puesto (peor caso).
 - **Preguntas de compradores:** las contesto yo (`contesto:<id>=<respuesta>;…;go`), sólo las nuevas y sólo las que sé SIN DUDA.
-  `responder` automático apagado (`responder:off`); la IA de preguntas necesita `ANTHROPIC_API_KEY` en GitHub (decisión suya, ver HISTORIA).
+  `responder` automático apagado (`responder:off`); la IA de preguntas **queda apagada** (24/10, eligió la a: sin `ANTHROPIC_API_KEY`; no volver a proponerla).
 - **Cada vuelta busca algo nuevo para mejorar** (12/10, maximizar y bajar costos), sin repetir (`notas/ideas.md`); si no hay, no se inventa.
 - Esfuerzo fijo (no se cambia sin que él lo diga): ayudantes de la completa, ideas y revisor en max; raros de las cortas en Alto;
   ventas en max. **El esfuerzo va escrito en cada llamada al ayudante**, nunca se hereda de la sesión.
@@ -295,12 +295,16 @@
   bloquea al robot (Cloudflare): lo copia el chat de compras, que hay que pegarle `PROMPT_GUAY.md` ENTERO.
 - **Catálogo entero en `mlapi/pycat`** (15/10): el chat copia (`pycat:#<pág>@<orden>;…;go`, ml-consulta) y el robot (`ml-pycat`, cada 3 h)
   mide contra ML. Se guarda TODO (no se borra lo de menos de 15%). Para probar: **25%+ y catálogo de ML con 2+ vendedores** (20/10,
-  reemplaza las 100 ventas; sin catálogo exacto afuera; las vendidas del catálogo no se buscan más) **y confirmado que es el mismo
+  reemplaza las 100 ventas; sin catálogo exacto afuera) — **o con 1 solo vendedor si vendió 100+** (24/10 1a, lo carga el chat con `faltaventas`)
+  **o 🌟 sin competencia**: catálogo sin vendedores medido contra el precio que el chat VE en ML (`faltaprecio` → `svprecio`, 24/10 2a, él: *"es mejor,
+  porque no hay competencia"*; sin precio a la vista no entra; se compran 1-2 y se lanza al precio más alto con sentido). Si el catálogo es
+  un PADRE de colores sin vendedores, el robot mide los hijos (24/10). Las dos con la vara de 35%. **Sin ningún precio a la vista** (24/10 3a): carpeta
+  🌟 Sin competencia con el precio para dejar 35% y botón ➕ Lo quiero (los elige ÉL; no entran solos al pedido); pasan a Para probar `sinComp` y yo confirmo fotos **y confirmado que es el mismo
   producto** (✅ o `revcand` ok de ESE catálogo; sin las DOS fotos no va). **Nada pasa 14 días sin volver a mirarse** (23/10, él): 15%+ cada 7 d, todo lo demás (abajo de 15%, sin catálogo, sin vendedores; también Listas) cada 14; la web lo muestra en ✅ Revisados / ⏳ Falta revisar (`rev`/`pend` en `cyc/pycatres`).
   **Nombre traducido** (23/10, 1a): también se busca con el nombre en castellano (`traducirPyNombre`); lo que tampoco aparece traducido queda
   **✔️ revisado** (`qp`, `pycatres.scr`, en 📏 Medidos) y no cuenta como sin medir. `pycatdia` = desglose y lo buscado por día.
 - **Dos proveedores:** 🟢 Nissei (dos pedidos del momento: 🌸 Perfumería `pyb<fecha>` y 📦 Resto `py<fecha>`; en `compray` `|perf`/`|resto`)
-  y 🟣 **Elegancia** (catálogo "Atacado", `pyel<fecha>`, `candalta:prov=elegancia;…`). Mismos costos.
+  y 🟣 **Elegancia** (`pyel<fecha>`; desde el 24/10 **su catálogo entero** en `mlapi/pycat` con clave `EL_<cód>`, carga `pycat:prov=elegancia;…;go`, números en `cyc/pycatres_el`). Mismos costos.
 - **Recargo** = el MEDIDO de los pedidos (`paramcompra`; 22,7% al 17/10), respaldo 20%. El panel lo suma; el chat carga el precio CRUDO.
   Pedido tiene un costo fijo (retira ~$74.000 + transferencia + correo por kilo): conviene llenarlo. **Adelanto de plata** es ocasional
   (`compray:<fecha>|adelanto=<pesos>|go`, renglón aparte del cambista).
@@ -325,6 +329,8 @@
   se habían colado); `candfuera[;go]` saca las vivas. **Sí:** aspiradoras, drones (≤US$215), consumibles. **Maquillaje todo adentro con tono EXACTO**
   (marca + línea + tono + versión + tamaño; sin el tono en ML → afuera), pero sólo entra al pedido si da 25%. Resto: mismo modelo, color,
   capacidad y voltaje (110V afuera), nada de packs distintos. Misma marca ≠ mismo producto (Cabotine 30 vs 100, Animale For Men vs Black).
+- **Shopping China = el próximo proveedor de Paraguay, pero RECIÉN cuando Nissei se agote** (24/10, él: *"no es tan fácil como Nissei, por eso es mil veces más preferible agotar todo lo que haya en Nissei y cuando no haya más nada, ni siquiera para reponer, ahí abrimos Shopping China"*). No proponerlo antes; la señal para abrirlo: la pasada semanal ya no trae nada nuevo de 35%+ ni reposiciones que den.
+- **Pasada semanal de Nissei: sábados 9:00** (24/10, eligió 1a 2a: probados primero + catálogo entero + ventas al final, todo cada semana). La tarea `trig_01Hf4WdWcKKkL5L6q3viaVf9` arma el texto fresco (`pyprobadoslista` + PROMPT_GUAY), se lo manda por acá y `recordar` a CYC Avisos; él lo pega en Claude en Chrome. Los `pyprecio` del chat van por **ml-consulta** (por ml-sync se cancelan entre sí).
 - Al llegar: `pyped:llego` crea las fichas (costo pagado × recargo) y recuerda contar la oficina (`ofi`); elegir cuenta según rubro.
 - **Todo lo que entra con ticket se carga con su precio final, aunque no sea para ML** (23/10, *"por más que no sea para ml puede que necesite en algún momento el costo"*): ficha con costo (`nuevoprod`/`poncosto`) sin preguntar; **sólo se le pregunta lo que no sé qué es** (ej. un código sin nombre, como el 7114209 = Joystick PS5), y va a `notas/para_mati.md`.
 
@@ -334,9 +340,11 @@
   NETO (Iscos: "P. Lista" con −30%/−33,5%, `listadto`).
 - **Iscos: sólo lo que está en su web** y el precio de la web × **0,665** (19/10, `listaweb:iscos;go`, `noWeb`).
 - **Dai Nippon** (Bs As, lo trae Tito): **desde el 21/10 tiene casilla, 🧾 Pedido con mensaje de WhatsApp, Ya lo pedí y Llegó** como las otras.
+- **Pedido a una lista y la plata** (20/10 2b + 24/10 12a): pagado al pedir (💵 Ya lo pagué mientras viaja, `pagado:true`) → mercadería en camino en el Arqueo (`listaEnCaminoUSD`); sin pagar → al llegar es deuda hasta que se paga (`listaDeudaUSD`).
 - Mismas reglas que Paraguay: 25% + catálogo 2+ vendedores + **confirmado por mí** (`listarevisar` → `listadato:<prov>;<cód>=ok|no|mi=MLA…;go`,
   con duda no se toca). El robot mide lista por lista y anota la vuelta completa (`cyc/mlconfig/vueltas`). Todo se mide contra ML (también lo de Bs As).
 - Fechas al 19/10: Dai Nippon L1309 19/10 · Unilever 08/10 · Iscos 01/10 · Cadam 26/09 · Qsoft 23/09 · Godrej 01/08 (Wels también).
+- **Softys** (papel higiénico, rollos, servilletas, pañuelos, toallitas femeninas, pañales Babysec y Cotidian): lista del 17/10 cargada el 24/10 (141 productos, "Precios Finales" por unidad de venta; en el nombre se sacó el "<UxB>X" del bulto). Falta saber quién la trae y si hay mínimo.
 
 ### Paulvic (perfumes, proveedor de Bs As; CEREBRO §18)
 - **Costo = el del último pedido** (17/10): (pagado + flete) ÷ (llegadas + regalos perfume). **Los testers NO cuentan** (22/10: son probadores
@@ -344,6 +352,7 @@
 - **7 días hábiles para pagar desde que llega, si no +10%** (20/10): avisarle al llegar los días que le quedan.
 - **Lo que se pide y no viene no se pide más** (`cyc/noconsigo/<prod>/nunca/<aroma>`, `pvped:nunca:-<aroma>;go` lo saca).
 - Cada aroma es su publicación y se juzga solo (grupo de precio desactivado 04/09). Compartido Adriana + Persea en Luciana.
+- **Invictus y Phantom: dados de baja en ML para siempre** (24/10, él; ML los frenó por la marca del nombre). No se piden ni se mandan a Full; lo de la oficina va al local.
 
 ## 8 · PLATA, GASTOS Y ARQUEO
 
@@ -427,6 +436,7 @@
 | `entrarpromo:<MLA>=<precio>@<id\|PRICE_DISCOUNT>\|motivo;go` / `=salir` | entrar o salir de una promo/descuento |
 | `tag:<MLA>=<tag>\|motivo;go` / `tag` | poner o listar estrategias |
 | `errores[:horas][:go]` · `autoriza` | detector de errores ya marcados · autorizaciones 🔐 suyas |
+| `revfondo` | productos con stock y publicación activa sin revisión a fondo a tiempo (quietos 2 d, los que venden 7 d): tiene que quedar vacío en la completa |
 | `techo95[;go]` · `bajastecho[:días]` · `escasez` · `planilla` · `raros` | techo al 95% · bajas sin techo (❌) · escasez 🚨 · listas 🛡️📦🔎📈 · raros contra su año |
 | `pausadas:25` · `activarfull:go:25` | pausadas con stock en Full y por qué · activar las que dan |
 | `contesto:<id>=<respuesta>;…;go` | contestar preguntas seguras |
@@ -478,9 +488,7 @@ Si dudás si un comando existe, buscá en `sync.mjs` (`grep -n "'<nombre>'" ml-s
 - **Contador:** recategorización, actividad, facturas entre cuentas, intereses de H. Bajar de ARCA los Emitidos 01/01→04/08 si falta alguno.
 - **Sancor:** esperar respuesta (plan F800/40% $111.988,7: qué es el 40%, si es el final con cuota social e IIBB, qué cubre menos); pagar antes
   del 21; dar de baja "Vida Plus" ($2.901/mes). Hijo de Ayelen tiene OSECAC (plan de 1 persona está bien).
-- **Almacenamiento:** falta que él pase `almactarifa:<chico>/<grande>:go` para medir lo que ahorra el remate.
-- **Puntaje del mes rehecho (26/09):** falta que diga si el objetivo le cierra.
-- **IA de preguntas:** falta la clave `ANTHROPIC_API_KEY` (decisión suya).
+- **Almacenamiento** (24/10): ML no da la tarifa por unidad; sale de la factura de septiembre: almacenamiento común $47.735 en las 4 ÷ ~2.640 u. en Full ÷ 30 d ≈ **$0,60 por unidad por día** (cargado con `almactarifa`, chico = grande). El stock antiguo va aparte ($64.155 en sep). Rehacerlo con la factura de octubre (`cargosmes:2026_10`).
 - **Filtro de envíos internacionales** en candidatos: el campo existe (`international_delivery_mode`); escribirlo cuando aparezca uno.
 - **`anotarNetoWeb` no se llama desde ningún lado** (el margen sólo se recalcula de noche): o se enchufa o se borra. (ver HISTORIA)
 - **`enProceso`** (lo recibido-procesando en Full) no lo cuenta nadie al marcar una caja: hoy vale ~0, se mira si aparece una caja grande
