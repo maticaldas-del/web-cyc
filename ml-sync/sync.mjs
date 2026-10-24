@@ -11339,7 +11339,7 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
     // pour Femme) se vuelve a buscar aunque esté fresco; con el chequeo nuevo ese catálogo queda afuera y se busca el correcto.
     const _nChk = esLista ? (limpiarNombreLista(e.n) || e.n) : e.n;
     const _chocaNuevo = e.m != null && e.mt && !e.miFijo && !e.ok && !!(_rvCapacidadChoca(_nChk, e.mt) || _rvGeneroChoca(_nChk, e.mt) || _rvNumModeloChoca(_nChk, e.mt));
-    const _rebuscar = _chocaNuevo || (esLista && (e.sc || e.sv || e.noEs) && Number(e.qv || 0) !== LISTA_NOMBRE_VER)   // noEs: se busca de nuevo, sin el catálogo rechazado
+    const _rebuscar = _chocaNuevo || (e.sv && Number(e.hv || 0) !== 1) || (esLista && (e.sc || e.sv || e.noEs) && Number(e.qv || 0) !== LISTA_NOMBRE_VER)   // noEs: se busca de nuevo, sin el catálogo rechazado
       || (!esLista && e.sc && Number(e.qp || 0) !== PY_NOMBRE_VER);   // Nissei sin catálogo exacto: una vez más con el nombre traducido
     // 1.5a (21/10/2026): lo medido con la cuenta de antes del peor caso (`cv` ≠ `CAND_CALC_VER`) y que estaba cerca de dar (20%+) se
     // vuelve a medir: con la retención restada puede dejar de dar.
@@ -11404,7 +11404,7 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
   for (const [cod, e] of toca) {
     if (Date.now() - t0 > maxMin * 60e3) { console.log(`⏱️ ${maxMin} minutos: corto acá, sigue la próxima vuelta.`); break; }
     if (CORTAR) { console.log('✋ Cancelaron la corrida: no mido más (lo que falta, la vuelta siguiente).'); break; }
-    const upd = { t: Date.now(), uMed: esLista ? Number(e.p) : e.u, ef: null, nm: null };
+    const upd = { t: Date.now(), uMed: esLista ? Number(e.p) : e.u, ef: null, nm: null, hv: 1 };   // hv: medido mirando los catálogos hijos (24/10/2026)
     res.quedan--;
     try {
       // BÚSQUEDA: primero marca + modelo, después el nombre sin el relleno en portugués, después el nombre entero. comprasparaguay
@@ -11448,7 +11448,12 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
         console.log(`  · sin catálogo exacto · ${e.n.slice(0, 60)}${resB[0] ? ` (lo más parecido: "${upd.mt.slice(0, 60)}" · ${duros(chequeoMismoProducto(e.n, upd.mt)).join(' · ').slice(0, 90)})` : ' (ML no trajo nada)'}`);
         if (aplicar) await db.patch(RUTA + '/' + cod, upd); continue; }
       let prod = null, rpBlando = null, ofertas = [], pi = null, piAfuera = false;
-      for (const [r, rr] of okB.slice(0, 5)) {
+      // CATÁLOGO PADRE SIN VENDEDORES (24/10/2026, él: "hay catálogos que nadie tiene stock"; medido con `catvacio`: el Xiaomi Sound
+      // Outdoor daba "nadie lo vende" porque se miraba el catálogo PADRE, que agrupa los colores y nunca tiene vendedores, y sus hijos
+      // tenían 18 y 13). Si un catálogo no tiene vendedores y tiene hijos, se prueban los hijos que pasan el chequeo de mismo producto
+      // (color, capacidad, modelo), en el orden que da ML, antes de seguir con el próximo de la búsqueda.
+      const _vis = okB.slice(0, 5), _hijosVistos = new Set();
+      for (let _iv = 0; _iv < _vis.length && _iv < 14; _iv++) { const [r, rr] = _vis[_iv];
         let ofs = [];
         // LOS DE AFUERA, CON LA MISMA REGLA QUE `candidatos` (20/10/2026 · etapa 3). Acá se sacaban siempre, y si TODOS eran
         // del exterior quedaba "en ML no lo vende nadie" y nunca pasaba a Para probar. Regla suya del 16/10: con algún vendedor
@@ -11460,6 +11465,15 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
         if (prueba) console.log(`      prueba ${r.id} "${String(r.name || '').slice(0, 60)}" · ${ofs.length} vendedor(es)${_soloAfuera ? ' (sólo de afuera: +' + Math.round(RECARGO_INTER * 100) + '%)' : ''}${rr.length ? ' · ' + rr.join(' · ').slice(0, 60) : ''}`);
         if (!prod) { prod = r; rpBlando = rr.length ? rr.join(' · ') : null; }
         if (p2 && p2.precio > 0 && p2.ref && p2.ref.category_id) { prod = r; rpBlando = rr.length ? rr.join(' · ') : null; ofertas = ofs; pi = p2; piAfuera = _soloAfuera; break; }
+        if (!ofs.length) {
+          try { const full = Array.isArray(r.children_ids) ? r : await mlGetR(`/products/${r.id}`); let pos = _iv + 1;
+            for (const h of ((full && full.children_ids) || []).slice(0, 8)) { const H = String(h).toUpperCase();
+              if (_hijosVistos.has(H) || _rechSet.has(H) || H === _rechazado) continue; _hijosVistos.add(H);
+              await espera(250); const ph = await mlGetR(`/products/${H}`); if (!ph || !ph.id) continue;
+              const rrh = chequeoMismoProducto(nB, ph.name || ''); if (duros(rrh).length) continue;
+              _vis.splice(pos++, 0, [ph, rrh]); if (prueba) console.log(`      → hijo ${H} "${String(ph.name || '').slice(0, 60)}"`); } }
+          catch (eH) { if (!/404/.test(String((eH && eH.message) || eH))) throw eH; }
+        }
       }
       upd.sc = null; upd.mi = prod.id; upd.mt = String(prod.name || prod.title || '').slice(0, 120); upd.rp = rpBlando;
       { const pic = Array.isArray(prod.pictures) && prod.pictures[0]; const u = String((pic && (pic.secure_url || pic.url)) || '').replace(/^http:\/\//, 'https://');
