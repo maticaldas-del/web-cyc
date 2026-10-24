@@ -167,6 +167,10 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
    - **🧐 `revfondo` (24/10/2026, eligió la 3a: *"que no se escape ninguno"*)**: todo producto con stock en Full y publicación activa
      cuya última nota mía del 🧠 tiene 2+ días (quieto) o 7+ días (vendió en 7 días; la ✓ rápida de una venta no cuenta). Todo lo que
      sale se mira a fondo esa noche y deja su nota: **la lista tiene que quedar vacía** (al otro día se vuelve a correr y se ve).
+   - **📸 Fotos de lo nuevo de Paraguay (24/10/2026, él: *"no se ven bien hasta que se haga la run"*)**: `fotosrev` (ml-consulta, log
+     guardado en archivo) → `python3 ml-sync/revfotos/revfotos.py armar` → mirar las hojas → `revfotos.py comando` → `revcand:…;go`
+     (ml-consulta). Sin esto lo nuevo que dio 35% NO entra a un pedido (le falta el "mismo producto"). Tiene que quedar vacía, igual
+     que `listarevisar` (paso 8 de las vueltas).
    - **Afuera:** gemelas Premium (las alinea el robot con su Clásica) · pausadas sin stock (salvo que caigan en 🛡️) · lo que ya
      vio una vuelta de ventas en las últimas 24 h.
 3. **Dos ayudantes (max)** se reparten lo de arriba (no uno por cuenta); `ficha:<MLA>` sólo de lo que se mira. Sólo leen.

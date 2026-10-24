@@ -251,6 +251,9 @@ html,body{overflow-x:hidden;max-width:100%}html{overflow-x:clip}body{overscroll-
 .ht-vivo .g{color:var(--green);font-weight:700}.ht-vivo .r{color:var(--red);font-weight:700}.ht-vivo .a{color:var(--amber);font-weight:700}
 .ht-grid .ht-cel{display:none}
 .ht-grid .ht-pc{overflow:hidden}
+.ht-ped-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;width:100%;margin-top:2px}
+.ht-ped-b{font:inherit;font-size:.72rem;font-weight:700;padding:7px 6px;border-radius:9px;border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ht-ped-b:hover{border-color:var(--sel-bg)}
 @media(max-width:900px){.ht-grid{grid-template-columns:repeat(3,1fr)!important}}
 @media(max-width:640px){
   .ht-grid{grid-template-columns:repeat(3,1fr)!important;gap:8px}
@@ -264,6 +267,10 @@ html,body{overflow-x:hidden;max-width:100%}html{overflow-x:clip}body{overscroll-
   .ht-grid .ht-vivo{font-size:.6rem;line-height:1.3;max-height:2.6em}
   .ht-grid .ht-cel{display:block}
   .ht-grid .ht-pc{display:none!important}
+  .ht-grid .nav-card.ht-ped .nc-icon{display:none}
+  .ht-ped-grid{gap:4px;margin-top:0}
+  .ht-ped-b{font-size:.85rem;padding:3px 0;border-radius:7px}
+  .ht-ped-b span{display:none}
   .ht-rot>div:nth-child(2){display:none}
   .ht-rot>div:first-child{justify-content:center}
   .ht-rot>div:first-child>span:last-child{display:none}
@@ -981,12 +988,17 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
       <div class="ht-vivo" id="hv-ventas"></div>
       <span class="nc-arrow">→</span>
     </div>
-    <div class="nav-card nc3 ht" onclick="goPage('pedidos')" title="Bs As · Paraguay · Paulvic · Listas: qué comprar y cuántas, con el porqué en el 🧠.">
+    <!-- LAS CUATRO PUERTAS DE PEDIDOS EN INICIO (24/10/2026, él: "sacar lo que tiene abajo de pedidos y poner las tarjetas de bs as,
+         paraguay, paulvic y listas. para entrar de una clickeando en esas"): cada botón entra directo a su solapa. -->
+    <div class="nav-card nc3 ht ht-ped" onclick="goPage('pedidos')" title="Bs As · Paraguay · Paulvic · Listas: qué comprar y cuántas, con el porqué en el 🧠.">
       <span class="nc-icon">🚚</span>
       <div class="nc-title">Pedidos</div>
-      <div class="ht-vivo" id="hv-ped"></div>
-      <div id="nc-pedidos-costo" class="ht-pc" style="font-size:.66rem;color:var(--muted);margin-top:4px"></div>
-      <span class="nc-arrow">→</span>
+      <div class="ht-ped-grid">
+        <button class="ht-ped-b" onclick="event.stopPropagation();homePedIr('bsas')" title="Pedidos de Bs As">🇦🇷<span> Bs As</span></button>
+        <button class="ht-ped-b" onclick="event.stopPropagation();homePedIr('paraguay')" title="Pedidos de Paraguay">🇵🇾<span> Paraguay</span></button>
+        <button class="ht-ped-b" onclick="event.stopPropagation();homePedIr('paulvic')" title="Pedidos de Paulvic">🧴<span> Paulvic</span></button>
+        <button class="ht-ped-b" onclick="event.stopPropagation();homePedIr('listas')" title="Listas de proveedores">📋<span> Listas</span></button>
+      </div>
     </div>
     <div class="nav-card nc3 ht" onclick="goPage('oficina')" title="Qué tenés en casa y a qué cuenta va cada cosa.">
       <span class="nc-icon">🏢</span>
@@ -2947,7 +2959,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.24';
+const APP_VERSION='26.25';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2960,6 +2972,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.25',f:'24/10',h:'00:20',c:[{n:2,t:'🚚 Inicio → la tarjeta de Pedidos tiene 4 botones (Bs As, Paraguay, Paulvic, Listas) que entran directo a cada uno. Se sacó lo que decía abajo (cuántos en rojo y cuánto falta reponer).'}]},
   {v:'26.24',f:'24/10',h:'01:30',c:[{n:2,t:'Listas (Dai Nippon, Wels…) → un pedido que ya pagaste al pedirlo cuenta como mercadería en camino en el Arqueo hasta que llega (botón 💵 Ya lo pagué también mientras viaja). El que no pagaste sigue igual: al llegar es deuda hasta que lo pagás.'}]},
   {v:'26.23',f:'23/10',h:'17:30',c:[{n:1,t:'Armar caja → arriba aparece un aviso 🏷️ cuando lo que va en la caja todavía tiene unidades sin etiqueta: cuántas y de qué productos, para terminarlas antes.'}]},
   {v:'26.22',f:'23/10',h:'17:15',c:[{n:1,t:'Armar caja → la barra del cupo de Full cambia de color según el lugar que queda: verde (25%+ libre), amarillo, naranja y rojo (casi sin lugar o pasada).'}]},
@@ -14076,6 +14089,12 @@ function renderVPRanking(){
 
 /* ═══════════ PEDIDOS ═══════════ */
 // Al entrar a Pedidos: SIEMPRE arrancar en la sección BS AS (antes arrancaba en "Prioridad" mezclado).
+// Desde Inicio, directo a una solapa de Pedidos (24/10/2026).
+function homePedIr(sec){
+  goPage('pedidos');
+  const id={bsas:'tab-bsas-btn',paraguay:'tab-py-btn',paulvic:'tab-paulvic-btn',listas:'tab-listas-btn'}[sec];
+  const btn=document.getElementById(id);if(btn&&sec!=='bsas')setPedidoSection(sec,btn);
+}
 function enterPedidos(){
   const btn=document.getElementById('tab-bsas-btn');
   if(btn)setPedidoSection('bsas',btn);

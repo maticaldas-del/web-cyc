@@ -1301,6 +1301,16 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
     decisión de compra, no código. 11 (dinero que rinde en MP) lo mira él en la app.
 
 ## 7 · DISEÑO (domingo)
+
+**24/10/2026 · v26.25 · Inicio → Pedidos con 4 puertas.** Él: *"sacar lo que tiene abajo de pedidos y poner las tarjetas de bs as,
+paraguay, paulvic y listas. para entrar de una clickeando en esas"*. **Dónde vive:** `index.html` tarjeta `.ht-ped` (botones `.ht-ped-b`,
+`homePedIr(sec)`); se sacaron `hv-ped` y `nc-pedidos-costo` de la tarjeta (sus funciones siguen y no fallan sin el elemento). En el
+celu sólo las banderas/íconos (2×2, sin el 🚚). **Qué chequear:** cada botón abre SU solapa (no Bs As); dibujado a 360/390/1200 px, los
+4 botones entran en la tarjeta sin cortarse.
+
+**24/10/2026 · completa: 📸 fotos de lo nuevo de Paraguay** (CEREBRO §completa paso 2). La confirmación del "mismo producto" de los
+candidatos nuevos (`fotosrev` → `revfotos.py` → `revcand`) no estaba en ninguna vuelta: lo nuevo que daba 35% quedaba esperando sin que
+nadie lo mirara (187 en la lista al 24/10). **Qué chequear:** que `fotosrev` quede vacío al terminar la completa.
 - **23/10/2026 · v26.22 · color de la barra del cupo** (él: *"según el cupo que haya que vaya de verde, amarillo, naranja y rojo, siendo rojo que casi no hay lugar"*). En `renderOfiCaja` (`fila` del cupo): libre después de esta caja ÷ cupo entero → 25%+ `--green` · 12-25% `--lv-joya` · 5-12% `--lv-justo` · <5% o pasada `--red`; el número "N libres" va del mismo color. Qué chequear: con 0 libres se ve roja (antes verde).
 - **23/10/2026 · v26.16 · el puntaje del día puede pasar de 10** (él: *"que pueda romper el 10 hacia arriba y que al romperlo tenga un pequeño movimiento denotando un día excepcional"*). `_puntajeDia` sin `Math.min(10)` (misma pendiente: 3 puntos cada $115.000 × días; $284.491 en un día = 11,4); arriba de 10 dice "🚀 Día/Mes/Año excepcional" y el número lleva `.punt-rompe` (saltito con brillo cada 2,6 s; nada con movimiento reducido). En Inicio y en Ventas → Ganancia. Qué chequear: que en 360 px el número de 2 cifras ("11,4 /10") no corra los botones de al lado.
 - **21/10/2026 · v25.64 · el dólar de Inicio cortaba el último número** (lo marcó él: *"la revisión de diseño no ve que está cortado? (…) lo primero que aparece en la web"*). La casilla medía 150px fijos y "1.535" en Syne mide 154px en la PC. Ahora `_dolarAncho` la mide con lo que tiene adentro (también al tipear y cuando termina de cargar la letra) y en el teléfono la tarjeta puede partirse en dos renglones. **Por qué se le pasó a la revisión: los revisores leían el código y nunca vieron la pantalla con la letra real** (el index entero se cuelga al conectar con Firebase). **Desde ahora la etapa 7 SIEMPRE dibuja** cada pantalla con el CSS real y las letras de Google (pedazo por pedazo con Playwright, a 360, 390 y 1200 px) y mide toda casilla y todo número grande: `scrollWidth > clientWidth` o `scrollHeight > clientHeight` = cortado. Empezar por lo que se ve primero (Inicio: dólar, ventas de hoy, puntaje). Chequear: probado con 1.535 · 10.000 · 1.535,50 · vacío, a 360/390/1200 px, nada cortado.
