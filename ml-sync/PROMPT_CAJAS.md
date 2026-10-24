@@ -32,9 +32,23 @@ ETIQUETA de Full (tipo ABCD12345, no el MLA) y unidades. Lo que dice 0 o "sin de
 4. Compará el "Total" de abajo con la suma de tu lista.
 5. NO aprietes "Planificar envío", "Confirmar" ni nada que cree el envío. Pasá a la cuenta siguiente.
 
-== PASO 4 · EL RESUMEN PARA MATÍAS ==
+== PASO 4 · LAS ETIQUETAS (sólo de lo que todavía NO tiene etiqueta) ==
+Las etiquetas que hay que bajar son SÓLO las de los renglones que en Armar caja dicen "🏷️ N sin etiqueta", y de cada uno
+como mucho N (si la caja lleva menos unidades que N, las de la caja). Lo que ya tiene su etiqueta pegada NO se baja.
+1. En Mercado Libre, en el mismo envío/planificación de esa cuenta, buscá la opción de etiquetas de productos ("Imprimir
+   etiquetas", "Descargar etiquetas" o "Etiquetas de productos").
+2. Marcá sólo esos productos, con esa cantidad cada uno, y elegí el formato para impresora térmica / Zebra (el archivo .txt).
+   Si sólo deja PDF, bajá el PDF y decilo en el resumen.
+3. Guardalo en la carpeta asignada a este chat con el nombre: etiquetas_<cuenta>_<AAAA-MM-DD>.txt (ej. etiquetas_adriana_2026-10-24.txt).
+   Si en una cuenta no hay nada sin etiqueta: no bajes nada y decí "Adriana: ninguna etiqueta para pegar".
+4. Si ML sólo da las etiquetas DESPUÉS de confirmar el envío: pará, decile a Matías "confirmá el envío de <cuenta> y escribime
+   'etiquetas'", y cuando lo diga, bajá las de esa cuenta con estas mismas reglas.
+5. Después de pegarlas, Matías le avisa a Claude (el chat del panel) para que las saque de "sin etiqueta". Vos no tocás el panel.
+
+== PASO 5 · EL RESUMEN PARA MATÍAS ==
 Por cuenta: "Adriana: N productos · M unidades · total de ML M · listo para que confirmes". Después: dudas (producto + por qué:
-no lo encontré, mínimo de ML, color distinto, se pasa del cupo) y los "sin etiqueta". Si el panel y ML no coinciden en algo
+no lo encontré, mínimo de ML, color distinto, se pasa del cupo) y las etiquetas: el nombre del archivo guardado y cuántas
+de cada producto trae (ej. "etiquetas_adriana_2026-10-24.txt: Aer Limón 2 · Aer Berry 2"). Si el panel y ML no coinciden en algo
 (ej. el panel dice un código que ML no tiene), no inventes: va a dudas.
 
 REGLAS FIJAS

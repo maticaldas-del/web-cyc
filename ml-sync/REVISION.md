@@ -775,6 +775,7 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 ### `PROMPT_CAJAS.md` · el chat de Chrome arma las cajas "MANDALA YA" (24/10/2026, él: "decirle arrancá y que arme todas las cajas")
 - **Qué es:** un prompt fijo: lee en el panel qué cuentas tienen la caja en verde (`cajasVerdes`/`cajaVeredicto`), copia cada renglón
   (código de etiqueta y unidades) a Planificación de envíos de ESA cuenta y no confirma el envío.
+- **Etiquetas (24/10, él):** baja el .txt de etiquetas SÓLO de lo que dice "🏷️ N sin etiqueta" (como mucho N) y lo guarda en su carpeta.
 - **Qué chequear:** que el texto siga coincidiendo con lo que muestra la web (cartel "MANDALA YA", "📦 N cajas para mandar ya", el código
   de etiqueta en cada renglón) cada vez que se toca Armar caja o Inicio.
 
