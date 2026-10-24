@@ -23845,9 +23845,12 @@ async function main() {
       console.log(`=== BAJAS QUE DESHICIERON UNA PRUEBA DE TECHO SIN 🏔️ · últimos ${dias} días · ${filas.length} ===`);
       console.log('(F2 hoy frena bajas de más de 15% · F4 frena deshacer una suba antes de 15 días sin certeza 95%)');
       for (const f of filas) {
-        const fl = []; if (f.pct > 15) fl.push('SIN ESCALERA (' + f.pct + '%)'); if (f.dEsp < 15 && !(f.azar != null && f.azar <= 0.05)) fl.push('SIN CERTEZA a los ' + f.dEsp + ' d');
+        // 24/10/2026: una baja que él AUTORIZÓ (🔐, `aut` en claudecambios: los Paulvic que volvieron a $14.990) no es un error mío:
+        // se muestra con ✓ 🔐 para que la vuelta no la deshaga (antes salían 17 ❌ falsos).
+        const autE = Array.isArray(f.b.aut) && f.b.aut.length > 0;
+        const fl = []; if (!autE) { if (f.pct > 15) fl.push('SIN ESCALERA (' + f.pct + '%)'); if (f.dEsp < 15 && !(f.azar != null && f.azar <= 0.05)) fl.push('SIN CERTEZA a los ' + f.dEsp + ' d'); } else fl.length = 0;
         const ev = f.esp != null ? `a ${money(f.su.a)} vendió ${f.u1} en ${f.d1} d con stock (al ritmo de antes ${f.esp.toFixed(1)}; azar ${Math.round((f.azar || 0) * 100)}%)` : `antes no tenía 5 días con stock para medir`;
-        console.log(`${fl.length ? '❌' : '✓'} ${f.mla} · ${f.cta} · ${f.nom}${f.var ? ' · ' + f.var : ''}\n   subí ${kD(f.su.ts).slice(5)} ${money(f.su.de)}→${money(f.su.a)} · bajé ${kD(f.b.ts).slice(5)} →${money(f.b.a)} (−${f.pct}%, a los ${f.dEsp} d) · ${ev}${fl.length ? ' · ' + fl.join(' · ') : ''}\n   hoy: ${f.hoy ? money(f.hoy) : '?'} · ${f.tHoy || 'sin estrategia'}`);
+        console.log(`${fl.length ? '❌' : autE ? '✓ 🔐 la autorizó él ·' : '✓'} ${f.mla} · ${f.cta} · ${f.nom}${f.var ? ' · ' + f.var : ''}\n   subí ${kD(f.su.ts).slice(5)} ${money(f.su.de)}→${money(f.su.a)} · bajé ${kD(f.b.ts).slice(5)} →${money(f.b.a)} (−${f.pct}%, a los ${f.dEsp} d) · ${ev}${fl.length ? ' · ' + fl.join(' · ') : ''}\n   hoy: ${f.hoy ? money(f.hoy) : '?'} · ${f.tHoy || 'sin estrategia'}`);
       }
       if (!filas.length) console.log('ninguna');
       return;

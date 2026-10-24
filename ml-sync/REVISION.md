@@ -1294,6 +1294,13 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
 - **Dónde vive:** `sync.mjs` → `ventasraras`, bloque 🧭 ESTRATEGIA DE LO QUE VENDIÓ.
 - **Qué chequear:** una venta de gemela con techo anotado en su Clásica sale con "techo probado $…" y el 📌 aparece siempre.
 
+### `bajastecho` marcaba ❌ las bajas que él autorizó (24/10/2026, vuelta de las 15:52)
+- **Qué era:** los 17 Paulvic que volvieron de $21.990 a $14.990 con su "autorizo" salían como ❌ "sin escalera / sin certeza". La regla
+  de la vuelta dice "toda ❌ del día se deshace": una vuelta podía deshacer algo que él pidió. El detector `errores` ya los daba bien (✅).
+- **Arreglo:** si el cambio guardó `aut` (salida 🔐 autorizada), sale "✓ 🔐 la autorizó él" y no cuenta como ❌.
+- **Dónde vive:** `sync.mjs` → `bajastecho`.
+- **Qué chequear:** `bajastecho:1` después de una autorización: el renglón con ✓ 🔐, y una baja mía sin autorización sigue en ❌.
+
 ## 6 · IDEAS NUEVAS (sábado)
 - **✅ LAS 24 IDEAS DE LA ETAPA 6: ELIGIÓ TODAS (a) EL 21/10/2026** (A1: *"probemos y me decís"* = una sola publicación en la próxima llegada). Antes decía: ESPERAN SU RESPUESTA (él: *"avisame cuando termine el último (…) tengo que elegir las decisiones"*). (a) = la recomendada. Una cosa obvia quedó sin hacer porque las revisiones se pausaron: el `ofi` que imprime `pyped:llego` sale sin `@color` y falla entero en una reposición con colores (arreglarlo al retomar).
   **Datos de ML sin usar:**
