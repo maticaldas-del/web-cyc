@@ -2960,7 +2960,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.37';
+const APP_VERSION='26.38';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2973,6 +2973,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.38',f:'24/10',h:'10:46',c:[{n:1,t:'⭐ En "gana mucho y sale mucho" lo de rotación baja (🚀 menos de 100) queda después de lo que sale bien, aunque deje mucho %.'}]},
   {v:'26.37',f:'24/10',h:'10:43',c:[{n:2,t:'🇵🇾 Productos nuevos: orden nuevo ⭐ "gana mucho y sale mucho" (junta el % de ganancia con el 🚀 puntaje de salida; arriba lo que deja mucho y se vende mucho). Se sacaron "más vendidos" y "$ por unidad".'}]},
   {v:'26.36',f:'24/10',h:'02:10',c:[{n:3,t:'🇵🇾 Productos nuevos: 🚀 puntaje de salida. Junta vendidas y reseñas de ML en un número (lo que más diga entre las vendidas y las reseñas × 20). Nuevo orden "🚀 puntaje de salida": arriba lo que más sale. Menos de 100 = rotación baja.'}]},
   {v:'26.35',f:'24/10',h:'02:05',c:[{n:2,t:'🇵🇾 Pedido de nuevos: cada producto dice cuántas vendió en ML y cuántas reseñas tiene (arriba y en el detalle). Las dos cuentan para "se vende": 100+ vendidas o 5+ reseñas.'}]},
