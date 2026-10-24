@@ -23819,7 +23819,10 @@ async function main() {
       const _pp = String(process.env.BILLING_PROBE).slice('pyprecio:'.length);
       const APLICAR = /(^|;)go\s*$/.test(_pp);
       const pares = _pp.replace(/(^|;)go\s*$/, '').split(';').map((x) => x.trim()).filter(Boolean);
-      if (!pares.length) { console.log('Usá: pyprecio:<id|palabras>=<código>/<US$>[@<link>];<…>=nohabia[;go]'); return; }
+      // `pyprecio:prov=elegancia;…` (24/10/2026, eligió la 10a: lo que Nissei no tiene y Elegancia sí se repone de Elegancia): además del
+      // código y el precio, la ficha pasa a ser de Elegancia (`provPy`), así Pedidos la pide ahí y el catálogo la compara con `EL_<código>`.
+      const ELGp = pares.length && /^prov=elegancia$/i.test(pares[0]); if (ELGp) pares.shift();
+      if (!pares.length) { console.log('Usá: pyprecio:[prov=elegancia;]<id|palabras>=<código>/<US$>[@<link>];<…>=nohabia[;go]'); return; }
       const _n = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
       console.log(`=== PRECIO Y CÓDIGO DE PARAGUAY ${APLICAR ? '(APLICANDO)' : '(PRUEBA: no escribo nada)'} ===`);
       console.log('El Costo US$ no se toca: es lo que pagaste.\n');
@@ -23854,7 +23857,7 @@ async function main() {
         }
         if (!(usd > 0)) { console.log(`❌ "${par}": precio en cero.`); malos++; continue; }
         console.log(`── ${p.name} (${p.id})`);
-        console.log(`     código ${p.codPy || '—'} → ${cod} · Paraguay US$ ${p.nisseiUSD != null ? p.nisseiUSD : '—'} → ${usd.toFixed(2)}${link ? ' · link nuevo' : ''} · costo US$ ${p.costUSD ?? '—'} (no se toca)`);
+        console.log(`     código ${p.codPy || '—'} → ${cod} · Paraguay US$ ${p.nisseiUSD != null ? p.nisseiUSD : '—'} → ${usd.toFixed(2)}${link ? ' · link nuevo' : ''} · costo US$ ${p.costUSD ?? '—'} (no se toca)${ELGp ? ` · proveedor ${provPyDeBot(p)} → elegancia` : ''}`);
         plan.push({ p, cod, usd, link });
       }
       if (malos) { console.log(`\n${malos} renglón(es) con problema: NO escribo ninguno. Corregilos y repetí.`); return; }
@@ -23864,7 +23867,7 @@ async function main() {
         const b = `cyc/products/${x.p.id}`;
         if (x.nohay) { await db.set(`cyc/py_sinstock/${x.p.id}`, { ts: ahora }); continue; }
         if (x.key) { await db.set(`${b}/pyVar/${x.key}`, { cod: String(x.cod), usd: x.usd, ts: ahora, ...(x.link ? { link: x.link.slice(0, 300) } : {}), ...(x.foto ? { foto: x.foto.slice(0, 300) } : {}) }); continue; }
-        await db.patch(b, { nisseiUSD: x.usd, nisseiTs: ahora, codPy: String(x.cod), ...(x.link ? { pyLink: x.link.slice(0, 300) } : {}) });
+        await db.patch(b, { nisseiUSD: x.usd, nisseiTs: ahora, codPy: String(x.cod), ...(x.link ? { pyLink: x.link.slice(0, 300) } : {}), ...(ELGp ? { provPy: 'elegancia' } : {}) });
         try { await db.set(`cyc/py_sinstock/${x.p.id}`, null); } catch { console.log(`⚠️ no pude sacar la marca "no había" de ${x.p.name}`); }
       }
       console.log('\n── Releído de la base ──');
@@ -23873,7 +23876,7 @@ async function main() {
       for (const x of plan) {
         const r = (await db.get(`cyc/products/${x.p.id}`)) || {};
         if (x.key) { const v = (r.pyVar || {})[x.key] || {}; const okv = String(v.cod) === String(x.cod) && Math.abs(parseFloat(v.usd) - x.usd) < 0.005; if (okv) ok++; console.log(`  ${okv ? '✓' : '❌'} ${x.p.name} · ${x.key}: código ${v.cod} · US$ ${v.usd}`); continue; }
-        const bien = x.nohay ? !!sinSt[x.p.id] : (Math.abs(parseFloat(r.nisseiUSD) - x.usd) < 0.005 && String(r.codPy) === String(x.cod) && !sinSt[x.p.id] && r.costUSD === x.p.costUSD);
+        const bien = x.nohay ? !!sinSt[x.p.id] : (Math.abs(parseFloat(r.nisseiUSD) - x.usd) < 0.005 && String(r.codPy) === String(x.cod) && !sinSt[x.p.id] && r.costUSD === x.p.costUSD && (!ELGp || r.provPy === 'elegancia'));
         if (bien) ok++;
         console.log(`  ${bien ? '✓' : '❌'} ${x.p.name}: ${x.nohay ? 'marcado "no había"' : `código ${r.codPy} · US$ ${r.nisseiUSD} · costo US$ ${r.costUSD} (igual)`}`);
       }

@@ -719,6 +719,10 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 
 ## 3 · MERCADERÍA (miércoles)
 
+**24/10/2026 · `pyprecio:prov=elegancia;…` (él eligió la 10a: lo que Nissei no tiene y Elegancia sí, se repone de Elegancia).** Además del
+código y el precio pone `provPy:'elegancia'` en la ficha (Pedidos la pide en Elegancia; el catálogo la compara con `EL_<código>`). **Qué chequear:**
+que Halloween 100, Cabotine 30, Cool Water mujer y Cuba Prestige aparezcan en la solapa 🟣 de Pedidos y ya no digan "Nissei no lo tiene".
+
 **24/10/2026 · v26.39 · ⭐ la nota a la vista (él: *"¿de qué puntaje no debería aparecer?"*).** `candCombo` = % × log10(🚀+1) ÷ 10;
 `CAND_COMBO_MIN`=7 = lo mínimo para comprar (35% con 100 de salida). Chip ⭐ en tarjetas y pedido (verde 7+ con salida 100+, ámbar abajo).
 El orden ⭐ usa el mismo número. **Qué chequear:** que nada de lo que "se puede pedir" quede abajo de 7 salvo los de 30% con 100+ y 2 vendedores (6,0).
