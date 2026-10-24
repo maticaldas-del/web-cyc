@@ -694,6 +694,10 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 
 ## 3 · MERCADERÍA (miércoles)
 
+**24/10/2026 · `/borrar` para las vendidas.** El chat cargó "/0" en 36 catálogos que no muestran vendidas (es duda, no 0: con 1 vendedor un 0
+lo deja afuera para siempre). `candprecio:<cód>=/borrar` saca `vendCarga`; `listadato:<prov>;<cód>=borrar` saca `vend`. **Qué chequear:** que
+los borrados vuelvan a "falta cargar las vendidas" en `candresumen`.
+
 **24/10/2026 · v26.30 · 🌟 Sin competencia sin precio (eligió la 3a).** Los catálogos sin vendedores y sin ningún precio a la vista NO entran
 solos: van a la carpeta "🌟 Sin competencia en ML" (antes "nadie lo vende") con el precio estimado para dejar 35% (`pycatPrecio35`:
 comisión ~14,5% + fijo, impuestos peor caso ~10%, envío de Full arriba de $33.000) y el botón **➕ Lo quiero** (`pycatQuiero`): crea el

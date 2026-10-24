@@ -60,6 +60,8 @@ iniciada, cuántas vendió cada catálogo de la lista. Se cargan así:
   Paraguay: candprecio:<código>=/<vendidas>;…;go   (Elegancia: candprecio:prov=elegancia;<código>=/<vendidas>;…;go)
   Listas:   listadato:<proveedor>;<código>=<vendidas>;…;go
 Si ML dice "+1000 vendidos", poné 1000. Sin el dato el producto sigue entrando; con menos de 100 cargado, queda afuera.
+Si el catálogo NO muestra vendidas, no cargues 0: es duda (anotala). Para sacar unas vendidas mal cargadas: candprecio:<código>=/borrar;…;go
+(Elegancia: candprecio:prov=elegancia;<código>=/borrar;…;go · listas: listadato:<proveedor>;<código>=borrar;…;go).
 Si algo de comprasparaguay dice "no disponible", cargalo con  candprecio:<código>=nohay;…;go
 Desde el 24/10/2026 `faltaventas` trae también los de UN SOLO vendedor en ML: con 100+ vendidas entran (decisión de Matías).
 

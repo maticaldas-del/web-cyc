@@ -23052,6 +23052,7 @@ async function main() {
         if (!prov) { malos.push(x + ' (falta el proveedor antes)'); continue; }
         const i = x.indexOf('='); const cod = x.slice(0, i).trim().replace(/[.#$\[\]\/]/g, '_'); const ops = x.slice(i + 1).split(',').map((o) => o.trim());
         const u = {}; for (const o of ops) { if (/^\d+$/.test(o)) u.vend = parseInt(o, 10); else if (/^\+?\d+$/.test(o.replace('+', ''))) u.vend = parseInt(o.replace('+', ''), 10);
+          else if (o === 'borrar' || o === '-') u.vend = null;   // 24/10/2026: saca las vendidas cargadas (catálogo que no las muestra = duda)
           else if (o === 'ok') { u.ok = 1; u.noEs = null; u.noEsCat = null; } else if (o === 'no') { u.noEs = 1; u.ok = null; } else if (/^mi=MLA\d+$/i.test(o)) { u.miFijo = o.slice(3).toUpperCase(); u.t = null; u.ok = 1; u.noEs = null; u.noEsCat = null; } else if (o) { malos.push(x); } }
         upd[prov + '/' + cod] = u; n++;
       }
@@ -23355,7 +23356,7 @@ async function main() {
       const upd = {}; let malos = 0, noEsta = 0, sube = 0, baja = 0, igual = 0, fuera = 0, vuelve = 0;
       for (const f of filas) {
         // `<cód>=/<vendidas>` (21/10/2026): sólo las vendidas, sin tocar el precio (lo que manda el chat con `faltaventas`).
-        const m = f.match(/^([0-9]+)\s*=\s*(nohay|[0-9]+(?:[.,][0-9]+)?)?(?:\s*\/\s*([0-9.]+))?$/i);
+        const m = f.match(/^([0-9]+)\s*=\s*(nohay|[0-9]+(?:[.,][0-9]+)?)?(?:\s*\/\s*([0-9.]+|borrar|-))?$/i);   // `/borrar` (24/10/2026): saca las vendidas cargadas (el catálogo no las muestra: es duda, no 0)
         if (!m || (m[2] == null && m[3] == null)) { console.log(`❌ mal escrito: ${f.slice(0, 80)}`); malos++; continue; }
         const hits = Object.entries(cands).filter(([, c]) => c && codIg(c.cod, m[1]));
         if (!hits.length) { console.log(`? ${m[1]}: no es candidato (si es nuevo va con candalta, si es ficha con pyprecio)`); noEsta++; continue; }
@@ -23363,6 +23364,7 @@ async function main() {
           if (c.prodId) continue;
           if (c.no && c.noTipo === 'mano') { console.log(`= ${m[1]} · ${String(c.nombre).slice(0, 50)}: lo tachaste a mano, no lo toco`); continue; }
           if (/^nohay$/i.test(m[2])) { if (!(c.no && c.noTipo === 'nissei')) { upd[`${id}/no`] = true; upd[`${id}/noTs`] = Date.now(); upd[`${id}/noTipo`] = 'nissei'; upd[`${id}/motivo`] = 'en comprasparaguay Nissei ya no lo ofrece (pasada del mes)'; fuera++; } continue; }
+          if (m[3] && /^(borrar|-)$/i.test(m[3])) { upd[`${id}/vendCarga`] = null; igual++; if (m[2] == null) continue; }
           const v = parseInt(String(m[3] || '').replace(/\D/g, ''), 10);
           if (m[2] == null) { if (isFinite(v) && v >= 0) { upd[`${id}/vendCarga`] = v; igual++; } continue; }
           const usd = parseFloat(m[2].replace(',', '.'));
