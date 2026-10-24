@@ -356,6 +356,9 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
 ## 9 · BAJAR: ESCALERA, SOBRA, DESCUENTOS, PROMOS, STOCK ANTIGUO
 - 🔒 **Toda baja en escalera** (F2-F3): ≤15% por escalón (25% en escasez), uno cada 48 h (12 h en escasez). Excepciones: las cinco
   de la sección 0, con `!golpe` y "EXCEPCIÓN".
+  **Tamaño (24/10, él: "los saltos de los escalones son medio grandes, fijate vos"):** el 15% es el TOPE, no el paso. Bajando a ciegas (sin
+  un precio que haya vendido abajo) el escalón es de ~8-10%; volver de una prueba de techo que no vendió AL PRECIO QUE SÍ VENDÍA (✓ de la
+  línea) va de una aunque sea 10-15% (ej. Seagate 500GB $197.990 → $175.590: volvió a donde vendía, no fue un escalón a ciegas).
 - 🔒 **No abajo del 💰 piso** (F5) salvo 📦 sobra, ⏳ sinrepo, 📉 liquidando, 🧨 remate.
 - **Sobra (📦):** más de 90 días de stock **en Full** al ritmo **con stock** (días en cero no cuentan), o sin ventas en 60 d. (La
   oficina no paga almacenamiento: se manda o no, pero no hace "sobra".) Lista **📦 SOBRA Y NO LO DECIDÍ** en la completa; lo
