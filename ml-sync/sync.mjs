@@ -22598,11 +22598,9 @@ async function main() {
       for (const [p, f] of fichaUpd) if (Math.abs((Number(p.nisseiUSD) || 0) - f.u) >= 0.005) console.log(`  ↻ ficha ${p.name.slice(0, 60)}: Paraguay US$ ${p.nisseiUSD ?? '—'} → ${f.u.toFixed(2)} (el costo no se toca)`);
       if (!APLICAR) { console.log('\nPRUEBA. Para guardar, agregá ";go" al final.'); return; }
       await db.patch('mlapi/pycat', upd);
-      // ELEGANCIA "ATACADO" (24/10/2026): el candidato que vino del PDF mayorista (`fuente:'lista'`) NO cambia de precio con el de
-      // comprasparaguay (el de la web es casi el doble: Odyssey Tyrant 9,99 contra 22); ese queda aparte en `usdWeb` hasta que él diga
-      // cuál es el que se paga (notas/para_mati.md).
-      for (const [id, c, f] of candUpd) { if (ELG && c.fuente === 'lista') { await db.patch('cyc/candidatos_py/' + id, { usdWeb: f.u, usdWebTs: ahora, visto: ahora }); continue; }
-        await db.patch('cyc/candidatos_py/' + id, { usd: f.u, ts: ahora, visto: ahora, calcTs: null, usdAntes: Number(c.usd) || null }); }
+      // ELEGANCIA (24/10/2026, él: "utilizá el precio de la web, no el del PDF. Era promoción, ya no sirve"): manda el de comprasparaguay
+      // también para lo que vino del PDF "Atacado".
+      for (const [id, c, f] of candUpd) await db.patch('cyc/candidatos_py/' + id, { usd: f.u, ts: ahora, visto: ahora, calcTs: null, usdAntes: Number(c.usd) || null, usdWeb: null, usdWebTs: null });
       if (candVisto.length) { const _vu = {}; for (const id of candVisto) { _vu[id + '/ts'] = ahora; _vu[id + '/visto'] = ahora; } await db.patch('cyc/candidatos_py', _vu); }
       { const sinStP = (await db.get('cyc/py_sinstock')) || {};
         for (const [p, f] of fichaUpd) { await db.patch('cyc/products/' + p.id, { nisseiUSD: f.u, nisseiTs: ahora });
@@ -22672,11 +22670,12 @@ async function main() {
         for (const [cod, e] of Object.entries(L)) { const u = Number(e && e.usd) > 0 ? Number(e.usd) : (tc > 0 && Number(e && e.p) > 0 ? Math.round(Number(e.p) / tc * 100) / 100 : 0); if (u > 0 && !deLista[_pyDg(cod)]) deLista[_pyDg(cod)] = { u, prov: k }; } }
       const upC = {}; let ok = 0, rep = 0, duda = 0;
       for (const [id, c] of Object.entries(cands)) {
-        if (!c || provPyDeBot(c) !== 'elegancia' || !c.cod || !(Number(c.ts) >= T0) || c.usdAntes == null) continue;
+        if (!c || provPyDeBot(c) !== 'elegancia' || !c.cod || !(Number(c.ts) >= T0) || (c.usdAntes == null && !(Number(c.usdWeb) > 0))) continue;
         if (cat[PYCAT_EL + _pyDg(c.cod)]) { const e0 = cat[PYCAT_EL + _pyDg(c.cod)];
-          // Mismo producto, pero el del PDF mayorista ("Atacado") vuelve a su precio y el de la web queda en `usdWeb` (ver la carga).
-          if (c.fuente === 'lista' && Number(c.usdAntes) > 0) { rep++; console.log(`  ↺ ${c.cod} · ${String(c.nombre).slice(0, 50)} = "${String(e0.n).slice(0, 45)}" · vuelve a US$ ${c.usdAntes} (Atacado) · web US$ ${c.usd}`);
-            upC[`${id}/usd`] = Number(c.usdAntes); upC[`${id}/usdWeb`] = Number(c.usd); upC[`${id}/usdWebTs`] = Date.now(); upC[`${id}/usdAntes`] = null; upC[`${id}/calcTs`] = null; continue; }
+          // Mismo producto: manda el precio de la web (él, 24/10: el del PDF "Atacado" era promoción). Si un `elreparo;go` anterior lo
+          // volvió al del PDF, `usdWeb` tiene el de la web: se pone ése.
+          if (Number(c.usdWeb) > 0 && Math.abs(Number(c.usdWeb) - Number(c.usd)) >= 0.005) { rep++; console.log(`  ↺ ${c.cod} · ${String(c.nombre).slice(0, 50)} = "${String(e0.n).slice(0, 45)}" · US$ ${c.usd} (PDF) → ${c.usdWeb} (web)`);
+            upC[`${id}/usd`] = Number(c.usdWeb); upC[`${id}/usdWeb`] = null; upC[`${id}/usdWebTs`] = null; upC[`${id}/calcTs`] = null; continue; }
           ok++; continue; }   // su código exacto está y no es del PDF: el precio es el suyo
         const pis = elKeys.filter((k) => _pyCodIg(c.cod, pycatCodDe(k)));
         if (!pis.length) continue;

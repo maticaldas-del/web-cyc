@@ -27,10 +27,7 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
     porque nadie tiene stock… para mí tienen que entrar, y es mejor, porque no hay competencia"*). DECIDIDO que entran; falta contra
     qué precio se miden (pregunta 1 y 2 del chat del 24/10, 00:45). 5.279 sin vendedores en el catálogo de Nissei; 55 de los 121 que
     dan 35% tienen 1 solo vendedor.
-30. **Elegancia: ¿qué precio pagás, el del PDF "Atacado" o el de comprasparaguay?** (24/10) Al copiar su catálogo entero, 67 perfumes
-    del PDF aparecen en la web casi al doble (Odyssey Tyrant 9,99 → 22 · Kiaana Angel 19,99 → 30 · Allure Couture 14,99 → 28). Hoy
-    quedan con el del PDF y el de la web se guarda aparte. (a) sugerida: el del PDF es el mayorista que pagamos nosotros: se queda ·
-    (b) se paga el de la web: paso los 67 a ese precio (muchos dejan de dar el %).
+30. ~~Elegancia: ¿PDF o web?~~ **Resuelto 24/10:** el de la web (*"era promoción lo del pdf, ya no sirve"*). Los 67 pasan al de comprasparaguay.
 
 ## Viejas que siguen esperando (de CLAUDE.md §13)
 - Sancor (respuesta y baja de Vida Plus) · contador (recategorización, actividad, facturas entre cuentas) · costo de las dos Linternas COB de Ayelen.
