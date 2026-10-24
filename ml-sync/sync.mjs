@@ -4986,8 +4986,11 @@ async function pruebasTechoEnCurso(db, ahora = Date.now()) {
   const filas = []; let sinLeer = 0;
   for (const [m, h] of Object.entries(est)) {
     const e = links[m]; if (!e || e.gemelaDe || e.ignored || e.noVendemosMas || !/^active/.test(String(e.status || ''))) continue;
-    let ult = '', tsU = 0, prev = ''; for (const k of Object.keys(h || {}).map(Number).filter((n) => n > 0).sort((x, y) => x - y)) { const x = h[k]; if (!x || !x.t) continue; const tt = x.t === 'correccion' ? pasajeDe(ult) : x.t; if (tt !== ult) prev = ult; ult = tt; tsU = k; }
+    let ult = '', tsU = 0, prev = ''; for (const k of Object.keys(h || {}).map(Number).filter((n) => n > 0).sort((x, y) => x - y)) { const x = h[k]; if (!x || !x.t) continue; const tt = x.t === 'correccion' ? pasajeDe(ult) : x.t; if (tt !== ult) { prev = ult; tsU = k; } ult = tt; }
     if (ult !== 'techo' || !tsU) continue;
+    // 24/10/2026 (él con Casino): la prueba se mide desde la ÚLTIMA SUBA de precio de esta racha 📈 (`cyc/claudecambios`, a > de), no
+    // desde el último renglón anotado: techo95 anota "volver a buscar techo" sin tocar el precio y corría el "antes/después".
+    { let tR = 0; for (const c of Object.values(ccP)) { if (c && c.mla === m && Number(c.a) > Number(c.de) && Number(c.ts) >= tsU - 10 * 60e3 && Number(c.ts) > tR) tR = Number(c.ts); } if (tR) tsU = Math.max(tsU, tR); }
     const grupo = [m, ...hermanasStockDe(links, prods, m), ...Object.keys(links).filter((g) => (links[g] || {}).gemelaDe === m)];
     let uA = 0, uD = 0, gA = 0, gD = 0, sinC = 0, falla = false;
     for (let t = tsU - 30 * DIA; t <= ahora + DIA; t += DIA) { const vd = await vDia(dayKeyFromISO(t)); if (vd == null) { falla = true; continue; }
@@ -45475,6 +45478,18 @@ async function main() {
         if (GOt) { let ok = 0; for (const n of nuevas) if (await guardarEstrategia(db, n.mla, n.t, n.m, n.ts)) ok++; console.log(`\n✓ ${ok} de ${nuevas.length} guardadas y releídas`); }
         return;
       }
+      // `tag:hist:<MLA>` (24/10/2026, Casino): la historia entera de estrategias de una publicación, con su precio de ese momento
+      // (de `cyc/claudecambios`), para ver de dónde sale lo que muestra la web. Sólo lee.
+      const hm = raw.match(/^hist:(MLA\d+)/i);
+      if (hm) {
+        const m = hm[1].toUpperCase(); const h = es[m] || {}; const cc = Object.values((await db.get('cyc/claudecambios')) || {}).filter((c) => c && c.mla === m && Number(c.ts) > 0);
+        const fH = (n) => new Date(n - 3 * 3600e3).toISOString().slice(0, 16).replace('T', ' ');
+        const filas = [...Object.keys(h).map(Number).filter((n) => n > 0 && h[n]).map((n) => ({ ts: n, s: `🏷 ${ESTRATEGIAS[h[n].t] || h[n].t} · ${String(h[n].m || '').slice(0, 160)}` })),
+          ...cc.map((c) => ({ ts: Number(c.ts), s: `💲 ${money(Number(c.de) || 0)} → ${money(Number(c.a) || 0)}${c.tag ? ' #' + c.tag : ''} · ${c.por || 'decido'}` }))].sort((a, b) => a.ts - b.ts);
+        console.log(`=== 🏷 HISTORIA DE ESTRATEGIAS · ${nomDe(m)} · ${filas.length} renglones ===`);
+        for (const f of filas.slice(-60)) console.log(`${fH(f.ts)} ${f.s}`);
+        return;
+      }
       const pon = partes.filter((x) => x !== 'go');
       if (pon.length) {
         console.log(`=== 🏷 PONER ESTRATEGIA ${GOt ? '' : '(PRUEBA · agregá ;go)'} ===`);
@@ -47318,7 +47333,9 @@ async function main() {
           if (malas.some((l) => l.startsWith(mla + ' '))) { _aFondo.set(mla, 'sin estrategia con techo'); continue; }
           const est = await estDe(mla);
           const tags = Object.entries(est).map(([k, x]) => ({ ts: Number(k), t: x && x.t })).filter((x) => x.ts > 0 && x.t).sort((a, b) => a.ts - b.ts);
-          let ult = '', tsU = 0; for (const x of tags) { ult = x.t === 'correccion' ? pasajeDe(ult) : x.t; tsU = x.ts; }
+          // 24/10/2026 (él con Casino, "2ª suba" sin segunda suba): los días se cuentan desde que EMPEZÓ la racha del mismo tag, no desde
+          // el último renglón (techo95 anota "volver a buscar techo" sin tocar el precio y reiniciaba el reloj de la prueba).
+          let ult = '', tsU = 0; for (const x of tags) { const t2 = x.t === 'correccion' ? pasajeDe(ult) : x.t; if (t2 !== ult || !tsU) tsU = x.ts; ult = t2; }
           const dias = tsU ? Math.floor((hoy - tsU) / 864e5) : null;
           if (ult === 'escasez') _aFondo.set(mla, 'escasez: ¿subir más o se frenó?');
           else if (ult === 'nuevo') _aFondo.set(mla, `lanzamiento que vendió${clasDe[mla] ? ' (por la gemela: se sube ' + clasDe[mla] + ')' : ''}: subir +30% a buscar techo EN ESTA VUELTA`);
