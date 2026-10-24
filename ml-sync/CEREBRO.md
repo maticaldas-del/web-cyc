@@ -128,6 +128,10 @@ Después de los 3 Protectores de talón (22/10: el freno "sin línea de techo no
    que vendió después de mi decisión · 📈 dice techo/escasez y no sube · 🤔 descuentos que ya no tienen sentido · 🔁 subas por
    escasez/sinrepo cuya razón cambió · 🧭 fuera de lo normal · 🔀 no cierra.
 4. ⚠️ dato dudoso: no tocar precio, anotar. 💭 sin certeza: juzgar en familia, por visitas o por parecidas, nunca colgado.
+   📅 **Antes de cada decisión, el calendario** (24/10, él): ¿en qué franja del mes estamos (11-15 fuerte, 1-5 floja en plata,
+   `cyc/mlconfig/franjasMes`) y qué fecha especial viene (`fechas`)? **Es un dato para pesar, no un "nunca"**: a veces conviene esperar 2-3
+   días a que llegue lo fuerte antes de decidir, y a veces no (ej. algo por pagar stock antiguo con una fecha cerca: comparar cuánto cuesta
+   esperar contra lo que suma la fecha). Pedidos y cajas: que el stock llegue antes de lo fuerte; las ideas miran la próxima fecha.
    🧭 + 🔀 + 💭 los piensa SIEMPRE un ayudante con `effort:"high"` escrito en la llamada (21/10: nada depende del esfuerzo de la
    sesión), aunque sean pocos. Aplicar siempre es mío.
 5. Cada venta nueva contra su ficha: ¿1ª o 2ª después de un cambio? ¿confirma o desmiente la prueba? ¿se aceleró ⚡? ¿la dejó en
@@ -257,7 +261,7 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
 - **Plata por día NETA:** −$100 por unidad (trabajo) · −3% de lo facturado (tope de H) · −2%/mes del costo del stock parado. A igual
   plata neta gana el precio alto.
 - **Lo barato** (hasta ~$5.500): cada unidad deja ~$1.000 o más; si no, se sube de una.
-- **Barrera $33.000:** se frena en $32.999 salvo que cruzar deje claramente más con el envío restado (`!cruza`). 🔒
+- **Barrera $33.000:** se frena en $32.999 salvo que cruzar deje claramente más con el envío restado (`!cruza`). 🔒 **Si en $32.990 queda abajo del 35% en el peor caso, cruza al precio del 35%** (24/10, él: *"así sabemos que no sirven (…) que vayan a ser buen producto o que se descarte. no que queden en el medio vendiendo al 30%"*), salvo que la unidad más vieja tenga 100+ días en Full (cerca del stock antiguo): `planilla` las pone en 🛡️ para subir.
 - **Terminaciones 90/990.** Cruzar un número redondo NO se frena (medido 13/10). 🔒 Si el redondeo deja el precio abajo del 💰 piso,
   se redondea PARA ARRIBA.
 - **Comisión con escalones:** mirar la ganancia por unidad AL precio nuevo; subir y ganar menos no se hace.
@@ -353,6 +357,9 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
 ## 9 · BAJAR: ESCALERA, SOBRA, DESCUENTOS, PROMOS, STOCK ANTIGUO
 - 🔒 **Toda baja en escalera** (F2-F3): ≤15% por escalón (25% en escasez), uno cada 48 h (12 h en escasez). Excepciones: las cinco
   de la sección 0, con `!golpe` y "EXCEPCIÓN".
+  **Tamaño (24/10, él: "los saltos de los escalones son medio grandes, fijate vos"):** el 15% es el TOPE, no el paso. Bajando a ciegas (sin
+  un precio que haya vendido abajo) el escalón es de ~8-10%; volver de una prueba de techo que no vendió AL PRECIO QUE SÍ VENDÍA (✓ de la
+  línea) va de una aunque sea 10-15% (ej. Seagate 500GB $197.990 → $175.590: volvió a donde vendía, no fue un escalón a ciegas).
 - 🔒 **No abajo del 💰 piso** (F5) salvo 📦 sobra, ⏳ sinrepo, 📉 liquidando, 🧨 remate.
 - **Sobra (📦):** más de 90 días de stock **en Full** al ritmo **con stock** (días en cero no cuentan), o sin ventas en 60 d. (La
   oficina no paga almacenamiento: se manda o no, pero no hace "sobra".) Lista **📦 SOBRA Y NO LO DECIDÍ** en la completa; lo
@@ -393,7 +400,7 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
 - Premium contra Clásica con plata NETA (la Premium factura más: más IIBB, mono y tope de H): vale sólo si deja igual o más por día.
 - La gemela la creo yo: `gemela` (solo lee) · `gemelacrea:<MLA>=<precio>:go` (misma publicación, comparte stock, tag 💳). Se juzga
   por las ventas que la Clásica sola no hacía.
-- 🔒 **Cuotas en TODO (21/10/2026, él: *"poner cuotas a todas las publicaciones, no sólo a las de más de $50.000 (…) siempre que nos dé la misma ganancia en premium que en clásica (…) puede que en productos baratos tengas que aumentar mucho el precio, hacelo"*):** toda Clásica activa con stock en Full lleva su 💳 gemela Premium al precio que deja la MISMA plata neta (`precioGemelaIgual`, ~+17-24%; las que cruzan los $33.000 pagan el envío y suben más). Que la Premium quede abajo del 35% no frena si deja lo mismo que su Clásica. **Cada gemela sigue sola a su Clásica cada hora** (`alinearGemelas`, tolerancia 1%; `gemelaalinear[:go]` a mano; se apaga con `gemelaSigue=off`): al mover la Clásica no hay que tocar la Premium. Lo nuevo que entre en Full con Clásica se le crea la gemela en la vuelta siguiente (`gemela:1` lista las que faltan).
+- 🔒 **Cuotas en TODO (21/10/2026, él: *"poner cuotas a todas las publicaciones, no sólo a las de más de $50.000 (…) siempre que nos dé la misma ganancia en premium que en clásica (…) puede que en productos baratos tengas que aumentar mucho el precio, hacelo"*):** toda Clásica activa con stock en Full lleva su 💳 gemela Premium al precio que deja la MISMA plata neta (`precioGemelaIgual`, ~+17-24%; las que cruzan los $33.000 pagan el envío y suben más). **Pero nunca abajo del 35% en el peor caso si su Clásica está en el 35% o más** (24/10, él: *"que siga a la principal en el % de ganancia, no? nunca deberían quedar por debajo del 35% (excepto las que ya sabemos)"*): va al precio más alto de los dos (misma plata o 35%, `precioGemelaAlPiso`; también la 📦 de envío gratis). Con la Clásica abajo del 35% por una excepción (sobra, promo, `!piso`) sigue con la misma plata y **sí baja abajo del 35%** (él, 24/10: la publicación está para vender rápido y todas las formas de venta tienen que ayudar); una baja de más de 15% va de a −15% por hora. **Cada gemela sigue sola a su Clásica cada hora** (`alinearGemelas`, tolerancia 1%; `gemelaalinear[:go]` a mano; se apaga con `gemelaSigue=off`): al mover la Clásica no hay que tocar la Premium. Lo nuevo que entre en Full con Clásica se le crea la gemela en la vuelta siguiente (`gemela:1` lista las que faltan).
 
 - **Paulvic con nombre de otra marca (21/10/2026, eligió la 1b):** ML congeló "en revisión · prohibido" a Invictus y Phantom con sus gemelas al crearlas. Se sigue con cuotas en todo, también en esos, y se espera que ML los libere. No se frena la creación de gemelas por eso.
 - Una Premium que ya existe sin `gemelaDe` no la sigue nadie: `gemelacrea:anotar:<Premium>=<Clásica>:go` (chequea misma cuenta y mismo producto de ML).

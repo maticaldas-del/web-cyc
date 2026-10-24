@@ -104,6 +104,8 @@
    **releerlo de ML** (también regla 6). "Aceptar no es haber hecho".
 2. **Barrera $33.000:** abajo de ese precio el comprador paga el envío; arriba ML cobra el envío de Full (~$6.000) al vendedor.
    Se frena en $32.999/$32.990 **salvo que cruzar deje claramente más plata con el envío restado** (`!cruza`, ver CEREBRO §5).
+   **Si en $32.990 queda abajo del 35% en el peor caso, cruza al precio del 35%** (24/10, él: *"que vayan a ser buen producto o que se descarte, no
+   que queden en el medio vendiendo al 30%"*), salvo que la unidad más vieja tenga 100+ días en Full.
 3. **Techo duro $650.000** por publicación (03/10). Nunca arriba.
 4. **35% de ganancia en el PEOR caso es el objetivo** (24/10, él: *"quiero que todo quede en 35% o más, me refiero a ventas y pedidos, ya
    que no tenemos suficiente plata para todo… no quiero que nada se venda a menos de 35% excepto si ya está quedando en sobrestock, ahí sí
@@ -168,7 +170,7 @@
 - **CYC Avisos (Telegram) = SÓLO lo urgente y los recordatorios** (23/10, *"si me llega un mensaje de CYC Avisos sé que es algo
   que tengo que resolver ya"*): `pregunto:URGENTE: …` (el robot lo niega sin "URGENTE") sólo para lo que cuesta plata si espera
   (reclamo que espera su respuesta, ML frenó algo que vende, algo que vende fuerte en 0 en Full con mercadería en la oficina, un pago
-  que vence) · `recordar:<texto>` · las 🔐 autorizaciones que él ya pidió en el chat · el chat nuevo del bot. **Las decisiones (a)/(b)
+  que vence) · `recordar:<texto>` · el chat nuevo del bot. Las 🔐 autorizaciones ya NO van por Telegram (24/10): se le pasan en el chat. **Las decisiones (a)/(b)
   NO van: a `notas/para_mati.md`** y se resuelven en el chat cuando dice "resolvamos". Nunca "subí/bajé/activé", ni resúmenes, ni lo que
   deshizo el detector (va al log). `//` = salto de línea, sin `;`, sin datos de compradores. Informativos: `sendAlerta(texto,{info:true})`.
 - **Cada venta nueva llega al TELÉFONO (push de la web), no a Telegram** (`AVISO_VENTA_TELEGRAM=false`): sólo compras que dejan
@@ -192,14 +194,16 @@
 - **🔐 Un aviso alcanza** (22/10, eligió las tres; CEREBRO §0c): **todos los caminos pasan por las mismas reglas** — `frenosBajas`
   (F0-F9) juzga `decido`, `entrarpromo` y la puerta de `setPriceTo` (toda otra baja); las subas pasan por `frenosSuba`; F9: en escasez
   nunca abajo del precio de antes de la escasez. **Las salidas que ya fallaron son SÓLO SUYAS:** `!sinlinea` `!sincerteza` `!sintecho`
-  `!bajocero` y 🧨 `#remate` → sin su autorización no se hace: queda en `cyc/autoriza/<código>` y le llega UN mensaje numerado a su canal
-  privado; él responde "autorizo K7M3" / "autorizo todo" / "no K7M3" (vale 48 h para ese renglón; `autoriza` lista lo autorizado).
+  `!bajocero` y 🧨 `#remate` → sin su autorización no se hace: queda GUARDADO en `cyc/autoriza/<código>` (**no sale por Telegram ni vence**,
+  24/10, él: *"que lo guarde y me lo mande por acá, en el aviso de las 12:30, y si no que lo siga guardando hasta que lo resolvemos"*); se
+  lo paso en el chat (aviso de las 12:30, `autoriza` los lista) y su respuesta la anoto con `autorizo:<su texto>;go` (ml-sync; "autorizo
+  K7M3 64TN no 3NCW", vale 48 h desde que la anoto).
   **Única salida mía sin él:** corregir el precio de lo que NUNCA estuvo activo ni vendió, al activarlo (`!activar` + "EXCEPCIÓN: …").
   **Detector `errores[:horas][:go]`** al final de cada vuelta (consulta): todo cambio y descuento de 26 h contra los errores que él ya
   marcó; la cuenta tiene que cerrar; con `:go` (ml-sync) deshace lo ❌ y le manda UN aviso. **Cada corrección nueva suya agrega su
   chequeo al detector (y su freno si se mide), en el mismo commit; una salida de excepción mal usada pasa a ser 🔐 suya.**
-- **Techo con 95%** (`techo95`, nunca `#techook` a mano): las tres rayas de la línea de tiempo 🔴 techo (95%) · 💰 piso = el precio que
-  más plata por día dejó (no se baja de ahí salvo sobra/stock antiguo/problema) · lo de en medio falta probar. Una sola cuenta en web
+- **Techo con 95%, que baja con los días** (24/10, él: *"no tener 1 mes buscando techo"*: 95% hasta el día 7 con stock a ese precio, después baja hasta 70% el día 21, `umbralTecho`; la línea dice cuánto lleva y con cuánto se decidió; **30 días sin vender a ese precio o más caro = 🔴 techo sí o sí** y arranca la escalera, `TECHO_DIAS_SIN_VENTA`) (`techo95`, nunca `#techook` a mano): las tres rayas de la línea de tiempo 🔴 techo (95%) · 💰 más plata (antes "piso") = el precio que
+  más plata por día dejó de los que se probaron (no se baja de ahí salvo sobra/stock antiguo/problema, **o si nunca se midió uno más bajo**: 1a del 24/10) · lo de en medio falta probar. Una sola cuenta en web
   (`_rayas`) y robot (`rayasPrecioLinea`), **con los últimos 60 días y sin los días de fechas especiales** (24/10, el 🔴 falso del Infusor). Sin piso medible, 💰 provisorio desde la primera venta. **Todo producto tiene que llegar a
   tener las tres.** Juicio por certeza (Poisson), no por calendario; manda la **plata por día neta** (−$100/u de trabajo, −3% de lo
   facturado por el tope de H, −2%/mes de la plata parada). Subas **directo al precio que pienso** (sin escalones de +10%; ML deja +100%).
@@ -216,6 +220,7 @@
 - **Sin reposición (⏳)** — Nissei no lo tiene / no da / "no lo consigo": estirar el stock al precio más alto que lo vacíe en ~100 días,
   nunca pasar 120. Bs As pasa a "no se consigue" cuando Pedidos lo pide hace 10+ días sin entrar nada a la oficina, o con el botón
   🚫 "No lo consigo" (`cyc/noconsigo/<prod>[/v/<color>]`); se cae solo al entrar mercadería.
+- **Lo que no vende al 35%** (24/10, eligió la a): no se repone y, al terminarse, la publicación queda pausada (no se borra).
 - **Sobra** (+90 d de stock al ritmo con stock o sin ventas en 60 d) → escalera/descuento; con sobra no se busca techo. Stock antiguo: 120 d
   lo chico, 60 lo grande (Tenders); apuntar a vender antes de ~100. Bajar porque seguir igual perdía más = el cerebro ganó; lo que falta
   para el 25% es error de origen (mandar/comprar de más).
@@ -245,15 +250,28 @@
 - **Un solo vendedor en ML no vale como precio** (19/10). **Lo que sólo venden desde afuera** se mide contra ellos +20% (16/10).
 - **Cuotas Premium:** en algunas categorías `listing_prices` ya trae las cuotas (`enComision`); no contarlas dos veces. Premium sin
   cuotas medidas no se baja ni activa. **Dalí (`MLA1869295911`) queda Premium** (17/10, no volver a proponer).
+  **En revisión de ML para siempre, no se miran más** (24/10, él: *"nunca se van a liberar"*): Dalí La Belle `MLA1869295385`, Galaxy A06 `MLA3528837100`,
+  Scandal Bliss `MLA1695210793` (`ML_REVISION_NO_MIRAR`: fuera de `planilla` y del `informe`; su stock sigue contando).
 - **💳 Gemelas** (CEREBRO §11): toda Clásica activa con stock en Full lleva su Premium en la MISMA publicación de ML al precio de igual
   plata neta (`precioGemelaIgual`; `gemela`, `gemelacrea:<MLA>=<precio>:go`). **📦 Gemela Clásica con envío gratis** (22/10) para lo
-  de abajo de $33.000 (`gemelaenvio`, `gemelaenviocrea`; `gemelaTipo:'envio'`; no se crea si queda abajo del 35%). Las dos se alinean
-  solas cada hora a su Clásica (`gemelaSigue=off` apaga); **la de envío no BAJA sola abajo del 35% del peor caso** (39a, 24/10): se queda y sale en `planilla` (📦🛡️) para decidir. Caja perdida por cuotas = candidata a gemela, no a bajar.
+  de abajo de $33.000 (`gemelaenvio`, `gemelaenviocrea`; `gemelaTipo:'envio'`; no se crea si queda abajo del 35%). **Ninguna gemela queda abajo del 35% del peor caso si su Clásica está en 35%+** (24/10, él; `precioGemelaAlPiso`: el más alto entre misma plata y 35%). **Si la Clásica está abajo del 35% a propósito (sobra, promo, `!piso`), la gemela la acompaña con la misma plata y SÍ baja abajo del 35%** (él: *"todas las formas de venta deberían contribuir"*); una baja de más de 15% va de a −15% por hora (`escalonGemela`). Las dos se alinean
+  solas cada hora a su Clásica (`gemelaSigue=off` apaga); **la de envío no BAJA sola abajo del 35% del peor caso** (39a, 24/10) salvo que su Clásica ya esté abajo del 35% a propósito: si no, se queda y sale en `planilla` (📦🛡️) para decidir. Caja perdida por cuotas = candidata a gemela, no a bajar.
 - **Terminaciones 90/990** (99 en lo muy barato). La regla de no cruzar números redondos se SACÓ (medido 13/10).
 - 🪜 Arriba de $15.000 hay ~15% de zona muerta de comisión: suba que cae ahí se frena salvo `!escalon`. La comisión de ML tiene cargo
   fijo ~$1.230 por venta: abajo de ~$4.000 se come el producto. Packs: **sí si el pack tiene su propio catálogo en ML** (23/10, *"si el pack está en catálogo sí se arman"*); armar un pack de algo que hoy compite suelto en su catálogo, no (27/09, *"al estar en pack las saco de competencia"*).
 - **Fechas:** calendario y eventos de ML en el `informe` (secciones 14/14b), `fechas`, `eventos`. El ×1,4 de regalables NO está
   confirmado. **Navidad: a mediados de noviembre se pide para 45 días** (recordatorio 14/11).
+- **📅 El calendario de ventas entra en TODA decisión** (24/10, él: *"toda esa es información que quiero que mires y que sea una info más que
+  tenga al hacer cualquier movimiento, precios, pedidos, ideas"*): (1) **franjas del mes** medidas en nuestras ventas sin fechas especiales
+  (`cyc/mlconfig/franjasMes`, la noche y `ventasdiames`): **del 11 al 15 ~+17% compras / +22% plata; del 1 al 5 −25% plata** (5 meses, 24/10);
+  (2) **temporadas y fechas especiales del año** (`fechas`, `fechasEspeciales`: Día de la Madre/Padre/Niño, Navidad, Reyes, San Valentín,
+  Amigo, Hot Sale, CyberMonday, Black Friday) y lo de afuera (sueldo en los primeros 4 días hábiles; 65% agota la plata antes del 20).
+  **No es una regla de "nunca", es un dato más para pensar** (él: *"que vos te des cuenta: se viene fecha/franja buena, quizás lo mejor sea
+  esperar 2 o 3 días (…) pero manejalo: si está por pagar stock y se viene una fecha, quizás lo mejor es bajar para no pagar, o viceversa"*):
+  se pesa contra todo lo demás (stock antiguo, escasez, sobra, plata parada). Ej.: una prueba de techo vista sólo en días flojos vale menos
+  (las rayas ya pesan cada día); bajar 2 días antes de la franja fuerte puede no convenir… salvo que el stock antiguo cueste más que esperar.
+  Pedidos y cajas: que el stock llegue antes de lo fuerte. Ideas y compras: qué se vende en la próxima fecha. Se ve en Plata por día
+  (verde/rojo/ámbar).
 - **El precio sugerido de ML** (`sugP`) es referencia, nunca motivo para bajar algo que vende.
 - **Liquidando** (`liquidando:<MLA>[:go]`, `cyc/nosubir`) frena sólo subas; se cae sola en stock 0; marcar uno no contagia a otros
   colores salvo hermana de precio (`esHermanaPrecio`). Bajar a un precio exacto que pide él: `unapub:<MLA>:<piso>:<días>:bajar=<precio>[:go]`.
@@ -284,7 +302,8 @@
   sólo si él lo pide (21/10).
 - **Código de etiqueta de Full** (`inventory_id`, `cyc/mllinks/<MLA>/inv`): se muestra en Armar caja por cuenta y color; **nunca se
   adivina** (sin color en el título → `fijarvar:<MLA>=<color>:go`). No es el MLA.
-- **Cajas llegadas:** el robot anota lo entrado (`cyc/cajasentrado`) y lista las que ML da por entradas; **las marco yo** con
+- **Cajas llegadas:** el robot anota lo entrado (`cyc/cajasentrado`); **las que entraron COMPLETAS las marca solo cada hora** (24/10, él con
+  la 79567049: *"¿no tenés datos suficientes para darte cuenta?"*); **las que tienen faltantes las marco yo** con
   `cajallego:<seg>[;…][!<palabras>=<u>]:go` (faltante real confirmado) o `abrircaja`. Lo de la oficina no es reposición hasta despachar.
 - **Mercadería en tres lugares:** oficina (`ofi`), en camino a Full (`cyc/envios_full/<id>/cajasDet`), en ML. Lo en camino cuenta como
   stock y patrimonio. Despachar es neutro. Cerrar caja exige seguimiento.

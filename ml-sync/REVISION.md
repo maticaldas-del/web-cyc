@@ -78,6 +78,45 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   por `informe`/`alertas` y no a Telegram; que las cajas que ML da por entradas las marque Claude y no queden contadas dos veces.
 
 ## 1 · PRECIOS (lunes)
+
+### 📈 "2ª suba" = subas de verdad · qué busca el 📈 · `tag:hist` (24/10/2026, v26.57, corrección suya con Casino)
+- **Qué es:** el chip "📈 buscando techo · Nª suba" (y el "×N" de la línea) contaba renglones de `cyc/estrategia`; `techo95` anota
+  "volver a buscar techo" sin tocar el precio y Casino decía "2ª suba" con UNA suba. Ahora `estrategiaDe` cuenta las subas reales de
+  `cyc/claudecambios` (a > de) desde que empezó la racha. La explicación del 📈 dice que busca el 🔴 techo y que si el precio nuevo vende y
+  deja más plata se sigue subiendo. `tag:hist:<MLA>` (sólo lee) lista la historia de estrategias con los cambios de precio.
+  **El mismo error en el robot (2 lugares más):** `pruebasTechoEnCurso` (lista 📈 prueba con respuesta y `techodias`) medía el antes/después
+  desde el último renglón 📈 y no desde la suba; ahora desde la última suba real de la racha. `ventasraras` (🔬 "prueba con 7+ días")
+  contaba los días desde el último renglón; ahora desde que empezó la racha del mismo tag.
+- **Qué chequear:** un 📈 con dos subas seguidas dice "2ª suba" · en `planilla` la prueba de Casino cuenta desde el 19/10 15:22 (la suba) · una 🔥 escasez con escalones los cuenta igual · un 📈 puesto con `tag:`
+  sin cambio de precio no muestra número.
+
+### 📅 Franjas: sólo se pinta lo que se aparta · "fecha especial" (24/10/2026, v26.56)
+- **Qué es:** verde si el tramo vende 12%+ más que el mes, rojo si 12%+ menos, lo demás sin color (días normales). "Temporada" pasó a
+  llamarse "fecha especial". En CLAUDE.md y CEREBRO el calendario es un dato para pesar en cada decisión, no una regla de "nunca".
+- **Qué chequear:** que no quede todo el mes pintado · el cartel al pasar el mouse dice el número del tramo.
+
+### 📅 Franjas del mes y del año (24/10/2026, v26.55, pedido suyo)
+- **Qué es:** `ventasdiames` mide compras y plata por día del mes (cada día contra el promedio de SU mes, sin fechas especiales). La noche lo
+  guarda en `cyc/mlconfig/franjasMes` (tramos de 5 días). Las rayas (`rayasPrecioLinea` y `_rayas` de la web) y F8 pesan cada día de prueba
+  por su factor de compras (`franjaDe`/`_franjaMesW`): no vender en la franja fuerte pesa más que en la floja. La web pinta en "Plata por día"
+  la franja fuerte (verde), la floja (rojo) y las temporadas del año (ámbar, `_fechasEspR`; se sumó el Hot Sale, 2ª semana de mayo, en
+  robot y web).
+- **Qué chequear:** con pocos meses el factor salta: revisar cada mes que los tramos sigan parecidos · el techo de algo probado sólo en días
+  flojos tiene que tardar un poco más · el ámbar coincide con las fechas reales (Hot Sale 2026 = 11-13/5).
+
+### Gemelas al 35% · barrera al 35% · 30 días sin vender = techo · las 3 en revisión fuera (24/10/2026, respuestas suyas)
+- **Qué es:** (1) ninguna gemela (Premium o 📦 envío gratis) queda abajo del 35% en el peor caso si su Clásica está en 35%+ (`precioGemelaAlPiso`,
+  en `alinearGemelas`, `alinearGemelasEnvio`, `gemela` y `gemelaenvio`; Clásica abajo del 35% por excepción → misma plata, como antes) ·
+  (2) lo frenado en $32.990 que ahí queda abajo del 35% ya no es excepción: va a 🛡️ "para subir" cruzando la barrera, salvo la unidad más
+  vieja con 100+ días en Full (`barreraCercaAntiguo` en `planilla`) · (3) 🔴 techo sí o sí con 30 días a la venta con stock sin vender a ese
+  precio o más caro (`TECHO_DIAS_SIN_VENTA`: `rayasPrecioLinea`, lanzamiento de `techo95`; web `TECHO_DIAS_SIN_VENTA_W` en `_rayas`) ·
+  (4) Dalí La Belle, Galaxy A06 y Scandal Bliss (en revisión de ML para siempre) fuera de `planilla` y del `informe` (`ML_REVISION_NO_MIRAR`).
+- **Qué chequear:** la próxima hora `gemelaalinear` sube las Premium flojas y ninguna baja de más · el 🔴 de 30 días sólo aparece arriba del 💰
+  (abajo vendió) · F7/F11 dejan bajar con ese 🔴 (en escalera) · la cuenta de `planilla` sigue cerrando con las 3 afuera.
+- **24/10/2026 · v26.48 · 💰 "más plata" (antes "piso") y no frena si abajo nunca se midió** (él: *"si le faltó datos para ver si el precio donde más genera es más bajo, no lo dejaría bajar porque está el piso"*, eligió la a). `rayasPrecioLinea` devuelve `abajoMedido` (algún precio 2%+ más bajo con 5+ días); F5 frena sólo si lo hay. La web dice "💰 más plata". Y lo que no vende al 35% (eligió la a): no se repone y, al terminarse, la publicación queda pausada (no se borra). **Qué chequear:** que una baja abajo del 💰 sin nada medido abajo pase F5 y la frenen igual los demás (escalera, F7, 35%).
+- **24/10/2026 · v26.47 · la seguridad para decir "techo" baja con los días** (él con el Cuba Gold: *"la idea no es tener 1 mes buscando techo, la idea es vender y ganar… al pasar los días necesita menos % de seguridad para decidir que fue techo y que marque se decidió al 70%"*). `umbralTecho(días con stock a ese precio)`: 95% hasta el día 7, baja lineal hasta 70% el día 21 (robot `rayasPrecioLinea`/`techo95`, web `umbralTechoW`). El 🔴 y la 🏔️ dicen con cuánto se decidió; mientras busca, la línea dice "techo a $X: N% seguro · decide con U%" (rayas, o en un lanzamiento lo que anota `techo95;go` en `cyc/techo95pct`). F4/F8 (deshacer una suba, bajar arriba del 💰) siguen en 95%. **Qué chequear:** la completa: cuántas 🏔️ nuevas salen con menos de 95% y que ninguna sea con menos de 7 días.
+- **24/10/2026 · v26.45 · el 💰 explica por qué está ahí y las fechas sólo se sacan si hubo pico** (él con los Naipes: *"el piso quiero que explique por qué está a esa altura… ¿tiene en cuenta que vender mucho más barato hace que tenga más trabajo/gastos?"*). Sí: la plata por día es neta (−$100/u, −3% tope, −plata parada). Debajo del gráfico (`_pisoPorQue`) van los precios medidos de más a menos plata por día (por día × cada una = por día). Y sacar el Día de la Madre a todos dejaba a los Naipes sin 💰: ahora la ventana de una fecha sale sólo si ese producto vendió el doble o más por día ahí (`diasFechaPico` robot / `_fueraR` web); el 💰 provisorio también mide 60 días. **Qué chequear:** Naipes e Infusor con su 💰 y la explicación.
+- **24/10/2026 · 🔐 las autorizaciones por el chat, no por Telegram** (él: *"no quiero que me mande a Telegram eso, que lo guarde y me lo mande por acá, en el aviso de las 12:30, y si no que lo siga guardando hasta que lo resolvemos"*). `pedirAutorizaciones` guarda el pedido (pendiente, `porChat`, vence en un año) y no manda nada (`AUT_POR_TELEGRAM = false`); `autorizo:<su texto>[;go]` (`autDesdeChat`, ml-sync) anota su respuesta con la misma lectura que Telegram, firmada por el robot, con su texto literal (`txtChat`), vale 48 h desde que la anoto; `autoriza` muestra las pendientes sin vencer. La tarea de las 12:30 se las pasa. **Qué chequear:** que ningún 🔐 salga por Telegram; que `autorizo:<código>;go` deje la autorización firmada y `decido` la use.
 - **24/10/2026 · v26.43 · las rayas 💰/🔴 con los últimos 60 días y sin fechas especiales** (él con el Infusor cajita: *"un claro ejemplo de que el techo que tenía antes era mentiroso, ya que se pasó ese techo y se está vendiendo"*). El 💰 $4.480 salía de 28/07-04/08 (12 por día, el triple de lo normal, antes del Día del Niño y hasta cortarse el stock) y contra eso $5.290 "dejaba menos al 95%": 🔴 falso. `RAYAS_DIAS = 60` y `diaFechaRaya` (ventanas de `fechasEspeciales`) en `rayasPrecioLinea` (robot: techo95, F5/F7/F8/F11, ficha) y en `_rayas` (web, `_fechasEspR`/`_diaFechaRaya`, copia). Probado con una línea inventada: un pico viejo a $4.000 ya no es el 💰. **Qué chequear:** `techo95` de la completa: cuántos 🏔️/🔴 cambian; que el Infusor quede sin 🔴 y en 📈; que nada con 💰 provisorio se rompa.
 - **24/10/2026 · v26.43 · el precio de HOY en la línea de tiempo** (él con el Kit Jade: *"marca que está 14.990 y hace un par de horas ya está en 19.990"*). Los días con ventas dibujan lo cobrado por unidad; hoy eso tapaba el cambio de la mañana. Hoy manda `_pHoy` (el último precio puesto, con los cambios de hoy). **Qué chequear:** una publicación cambiada hoy muestra el precio nuevo en el último punto.
 - **24/10/2026 · TODO EN 35% O MÁS** (él: *"quiero que todo quede en 35% o más, me refiero a ventas y pedidos, ya que no tenemos suficiente plata para todo… no quiero que nada se venda a menos de 35% excepto si ya está quedando en sobrestock, ahí sí liquidar siempre con margen para nunca pagar stock"*). `meta:35:35` (cyc/mlconfig minPct = targetPct = 35 → `PISO_DURO`, 🛡️ de `planilla`, el máximo de compra por defecto de la web) · `CAND_VARA_VENDE` 30→35 (se acabó la entrada con 30%) · `PERF_LOCAL_GAN` 25→35 · web `PY_PROB_PISO`, `LL_META`, `EMBUDO_PISO`, `SIM_PISO_PCT` 25→35 · `decide_pedidos.py`: se repone sólo lo que deja 35%+ con la cuenta de la app (antes neto ≥ costo × 1,1) · freno 4a `al25` usa `PISO_DURO`. Medido al cambiar (planilla 16:30 UTC): de 460 activas con stock, ~65 quedan abajo del 35% y vendieron 43 de 1.796 u. en 30 días (~$171.000/mes de ganancia). **Qué chequear:** la próxima vuelta sube las 🛡️ al 35% (o `!piso` con motivo de sobra); que la próxima completa no pida nada abajo del 35% y diga cuántos se cayeron del pedido; que Paulvic (14.990) siga llegando.
@@ -724,6 +763,14 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 
 ## 3 · MERCADERÍA (miércoles)
 
+### Las cajas que entraron completas se marcan solas (24/10/2026, error que marcó él: la 79567049 de Matías, 93/93 en ML y 8 días "no llegó")
+- **Qué es:** con SÓLO DATOS el robot sólo anotaba lo entrado y yo tenía que marcar; la vuelta no la marcó. Ahora `cajasQueLlegaron` en la vuelta
+  horaria marca sola toda caja en la que entró TODO lo mandado; las que tienen faltantes siguen listadas para mí ("las marca Claude").
+- **Qué chequear:** ninguna caja completa queda abierta más de ~1 h después de que ML la da de alta · una caja con faltantes NO se marca sola ·
+  no sale Telegram por una completa.
+
+**24/10/2026 · v26.49 · "Remate" → "📦 Sacando stock"** (él: *"¿qué pasó con remate? quizás no se llaman remate, pero cumplen el mismo objetivo: sacar stock de productos que no dan o hay sobrestock"*). La franja contaba sólo `cyc/nosubir` y `cyc/escalera` del robot viejo (apagado el 09/10), por eso se cortó. La línea de cada noche (`lineatodo`/ml-daily) ahora pone `rem` también con la estrategia del día 📦 sobra / 📉 liquidando / 🧨 remate y `esc` con 🪜 bajando (`tagAyer`). Los días de antes no se rellenan. **Qué chequear:** mañana la franja vuelve a mostrar los de sobra/escalera de hoy.
+
 **24/10/2026 · v26.42 · "Falta reponer" de Paraguay cuenta sólo lo que da** (él: *"¿por qué dice falta reponer más de 3M y me da solo ese producto?"*). Sumaba todos los pedidos de Nissei (también los de "No da, no hay o falta revisar"). Ahora `_pedsPyQueDan` (✅ `pyProbVeredicto`) en la solapa y en `pedFaltaReponerTodo` (Resumen): lo cargado en el 🧾 Pedido y lo oculto por "Vender en" sí cuentan. **Qué chequear:** que el número de arriba se parezca a lo que muestran Dan + Ya cargado + ocultos.
 
 **24/10/2026 · `pyprecio:prov=elegancia;…` (él eligió la 10a: lo que Nissei no tiene y Elegancia sí, se repone de Elegancia).** Además del
@@ -1263,6 +1310,13 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
 - **Dónde vive:** `sync.mjs` → `ventasraras`, bloque 🧭 ESTRATEGIA DE LO QUE VENDIÓ.
 - **Qué chequear:** una venta de gemela con techo anotado en su Clásica sale con "techo probado $…" y el 📌 aparece siempre.
 
+### `bajastecho` marcaba ❌ las bajas que él autorizó (24/10/2026, vuelta de las 15:52)
+- **Qué era:** los 17 Paulvic que volvieron de $21.990 a $14.990 con su "autorizo" salían como ❌ "sin escalera / sin certeza". La regla
+  de la vuelta dice "toda ❌ del día se deshace": una vuelta podía deshacer algo que él pidió. El detector `errores` ya los daba bien (✅).
+- **Arreglo:** si el cambio guardó `aut` (salida 🔐 autorizada), sale "✓ 🔐 la autorizó él" y no cuenta como ❌.
+- **Dónde vive:** `sync.mjs` → `bajastecho`.
+- **Qué chequear:** `bajastecho:1` después de una autorización: el renglón con ✓ 🔐, y una baja mía sin autorización sigue en ❌.
+
 ## 6 · IDEAS NUEVAS (sábado)
 - **✅ LAS 24 IDEAS DE LA ETAPA 6: ELIGIÓ TODAS (a) EL 21/10/2026** (A1: *"probemos y me decís"* = una sola publicación en la próxima llegada). Antes decía: ESPERAN SU RESPUESTA (él: *"avisame cuando termine el último (…) tengo que elegir las decisiones"*). (a) = la recomendada. Una cosa obvia quedó sin hacer porque las revisiones se pausaron: el `ofi` que imprime `pyped:llego` sale sin `@color` y falla entero en una reposición con colores (arreglarlo al retomar).
   **Datos de ML sin usar:**
@@ -1434,6 +1488,32 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
     decisión de compra, no código. 11 (dinero que rinde en MP) lo mira él en la app.
 
 ## 7 · DISEÑO (domingo)
+
+### 🏷️ Sin terminar por cuenta (24/10/2026, v26.53, pedido suyo)
+- **Qué es:** la tarjeta de Contar lo que hay agrupa por cuenta (nombre arriba, productos abajo); cada color/aroma va a la cuenta que lo
+  publica (`_sinEtiqCtas` con `_varPorMla`); con una cuenta elegida arriba (`ofiContarCuenta`) muestra sólo la suya.
+- **Qué chequear:** el Paulvic sale repartido Adriana/Luciana por aroma (no "Adriana · Luciana" en todos) · el total de la tarjeta = la suma de los grupos.
+
+### 📦 Sacando stock con la estrategia de cada día (24/10/2026, v26.52, error que marcó él: "figura la última el 13/10")
+- **Qué es:** desde el 13/10 (el robot sólo junta datos) nadie marcaba `rem`/`esc` en la línea y la franja se cortó. Ahora cada día con stock
+  cuenta la estrategia que tenía: sobra/liquidando/remate → 📦, bajando → 🪜. Robot: `calcLineaTodo(lin, links, estrat)` (`TAG_SACA_STOCK`,
+  lee `cyc/estrategia`); web, línea de un producto: `remT`/`escT` con `estrategiaDe(mla, fin del día)`.
+- **Ajuste del mismo día (él):** la 🪜 escalera que viene de buscar techo NO es sacar stock; desde el 24/10 cuenta todo día abajo del 35% en el
+  peor caso (`mgP` nuevo en la línea de cada noche, `SACA_35_DESDE`). El violeta queda sólo para las marcas viejas del robot (antes del 13/10).
+- **Qué chequear:** la franja de "Todos" llega hasta ayer · un producto en 📦 sobra se pinta naranja esos días · no se cuenta dos veces un
+  día que ya traía `rem` del robot.
+
+### Mes y año se miden como el día · globo de "Todos" por franja (24/10/2026, v26.50, pedidos suyos)
+- **Qué es:** (1) la tarjeta de Ventas del mes/año reparte lo ganado en TODOS los días del período (`_homePerTot().diasPer`): puntaje,
+  color y escalerita arrancan bajos y suben con cada venta, como el día. El año 2026 se mide desde el primer día con ventas guardadas
+  (mayo); 2027 entero. La escalerita dice cuánto falta en total y por día en los que quedan. En el año en meses, el mes en curso se
+  pinta igual (no corta la racha mientras no llega). (2) La línea de "Todos los productos" tiene un globo por franja (como la de un
+  producto): Ventas = normales / Premium / envío gratis / liquidadas + visitas; cada franja dice sólo lo suyo.
+- **Dónde vive:** `index.html` · `_homePerTot`, `renderHomeHoy` (`_nP`), `_diaEscaleraHTML(gan,dias,quedan,esc)`, `_anioMeses`,
+  `_homeAnioHTML` · `lineaTodoPintar` (capa de globos por carril).
+- **Qué chequear:** el 1º del mes la tarjeta del mes no dice "Bajo" con un día bueno sin explicar (dice cuánto falta) · el último
+  día del mes el puntaje coincide con el de antes (días pasados = días del mes) · ningún globo de "Todos" pasa de ~10 renglones.
+- **24/10/2026 · v26.46 · flechas en la línea y con el color de su estrategia** (él: *"quiero que la flechita esté en el punto de la línea donde se subió o bajó"* y *"muchas aparecen en gris: quiero que todas tengan color/estrategia/nombre, a partir de ahora sí o sí"*). La ▲ va justo arriba del punto del precio de ese día y la ▼ justo abajo; el color sale del `tag` del cambio (`claudecambios`), si no de la estrategia de ese día (la de la línea, `_estD`), y una gemela es 💳. El globito dice el nombre. Gris sólo sin nada anotado (viejo o a mano en ML). Probado con Playwright. **Qué chequear:** que no quede ninguna gris de cambios nuevos.
 - **24/10/2026 · v26.44 · franjas de la línea de tiempo grandes y que se cierran** (él: *"se ven 4 tarjetas, me gustaría que se vieran dos, así están más grandes… total después scroleo hacia abajo, y que se puedan minimizar al clickear en la tarjeta"*). Parada, cada franja grande mide media pantalla (`_lnAlto`); girada sigue entrando entera (`_lineaFac`). Tocar el título (▾/▸) la cierra/abre (`lineaBanda`, `localStorage cycLineaCerr`); lo de una franja cerrada se recorta (`_lnClip`). Vale para la de un producto y la de Todos. Probado con Playwright (1300×900): 5 franjas, cerrar Ventas la deja en un renglón y la siguiente sube. **Qué chequear:** en el teléfono girado, que tocar el título funcione; que nada de una franja cerrada se vea por encima de la de abajo.
 
 **24/10/2026 · v26.40 · 📈 Todos los productos: Premium y envío gratis aparte (él: *"¿se puede saber cuánto fue Premium? así veo cuánto más

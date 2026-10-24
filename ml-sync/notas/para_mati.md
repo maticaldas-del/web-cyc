@@ -11,5 +11,6 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 ### De las vueltas del 23/10 (a la noche y a la tarde)
 18. **(lo mira él, 24/10 "ok") Aviso de ML en Ayelen por "productos falsificados"** (se ve en su captura del 23/10, propiedad intelectual): mirar en ML → Consultar infracciones qué publicación fue. Si es una marca, la agrego como prohibida para ML (`marcanoml`).
 
+
 ## Viejas que siguen esperando (de CLAUDE.md §13)
 - Sancor (respuesta y baja de Vida Plus) · contador (recategorización, actividad, facturas entre cuentas) · costo de las dos Linternas COB de Ayelen.
