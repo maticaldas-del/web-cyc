@@ -154,7 +154,7 @@ Después de los 3 Protectores de talón (22/10: el freno "sin línea de techo no
 **Completa (03:00, una vez por día) · REHECHA EL 21/10/2026, eligió la (a): *"que mire cosas que nadie miró"* y *"a las 3am siempre, así no molesta"*.**
 Antes recorría las ~590 publicaciones enteras todos los días (3 h, ~100 de tokens, frenaba las vueltas de ventas). Ahora mira SÓLO lo
 que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 29 cambios mal leídos el 21/10). Medida: ~1 h, ~35-40.
-1. **Lecturas TODAS en UNA corrida de ml-consulta** (no una por comando): `autoriza` · `planilla` · `informe:24` · `pedidostodo` · `historia` ·
+1. **Lecturas TODAS en UNA corrida de ml-consulta** (no una por comando): `autoriza` · `revfondo` · `planilla` · `informe:24` · `pedidostodo` · `historia` ·
    `escasez:expediente` · `raros` · `techo95` · `techofreno` · `escmedir` · `analizapromo:21` · `ventasraras:nuevas`. Después
    `supervisor:medir:go` (ml-sync).
 2. **Qué se mira a fondo (ficha entera):**
@@ -164,6 +164,13 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
    - **las quietas con stock que nadie miró**: activas con stock en Full que NO vendieron desde la última completa (las que
      vendieron ya las vio la vuelta de ventas). Rotan: la mitad cada noche, primero la que hace más que no tiene nota mía; ninguna
      pasa 2 días sin mirarse.
+   - **🧐 `revfondo` (24/10/2026, eligió la 3a: *"que no se escape ninguno"*)**: todo producto con stock en Full y publicación activa
+     cuya última nota mía del 🧠 tiene 2+ días (quieto) o 7+ días (vendió en 7 días; la ✓ rápida de una venta no cuenta). Todo lo que
+     sale se mira a fondo esa noche y deja su nota: **la lista tiene que quedar vacía** (al otro día se vuelve a correr y se ve).
+   - **📸 Fotos de lo nuevo de Paraguay (24/10/2026, él: *"no se ven bien hasta que se haga la run"*)**: `fotosrev` (ml-consulta, log
+     guardado en archivo) → `python3 ml-sync/revfotos/revfotos.py armar` → mirar las hojas → `revfotos.py comando` → `revcand:…;go`
+     (ml-consulta). Sin esto lo nuevo que dio 35% NO entra a un pedido (le falta el "mismo producto"). Tiene que quedar vacía, igual
+     que `listarevisar` (paso 8 de las vueltas).
    - **Afuera:** gemelas Premium (las alinea el robot con su Clásica) · pausadas sin stock (salvo que caigan en 🛡️) · lo que ya
      vio una vuelta de ventas en las últimas 24 h.
 3. **Dos ayudantes (max)** se reparten lo de arriba (no uno por cuenta); `ficha:<MLA>` sólo de lo que se mira. Sólo leen.
@@ -429,7 +436,7 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
 - Pedidos de ~US$1.000 cada 2-3 semanas. Lo no urgente espera al próximo; lo que se corta antes de que llegue se pide igual.
 - Precios y códigos SÓLO de comprasparaguay (la fila de Nissei), nunca nissei.com. El chat local los copia una vez por mes.
 - Para pedir: 🔒 **35%, la vara de compra (`CAND_VARA_COMPRA`, 22/10/2026, 1a)** — lo de 25-34% queda guardado y se sigue
-  midiendo (el descarte del robot sigue en 25%) — **y** catálogo de ML con 2+ vendedores **y** confirmado que es el mismo producto (✅ `mismoOk` o `revcand`
+  midiendo (el descarte del robot sigue en 25%) — **y** catálogo de ML con 2+ vendedores (o 1 vendedor con 100+ vendidas, o 🌟 sin competencia con el precio visto en ML por el chat: `svprecio`, 24/10/2026 1a 2a) **y** confirmado que es el mismo producto (✅ `mismoOk` o `revcand`
   ok de ESE catálogo). 🔒 **Y al final las 100 vendidas (21/10/2026, regla suya):** sin el dato entra igual; cargado y abajo de 100
   queda afuera (`CAND_MIN_VENTAS`, web y robot). Las mira el chat de compras sólo de lo que pasó todo (`faltaventas`).
 - Cuántas de cada nuevo (decisión 4a del 21/10; las vendidas ya no se cargan): 🔒 barato (≤US$15 crudo) → 3 · caro (+US$60) → 1 ·

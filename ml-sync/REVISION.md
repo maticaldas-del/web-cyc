@@ -641,6 +641,8 @@ Qué chequear: que un cambio no salga dos veces (foto + decisión) y que un `dec
 - **Chequear:** otros carteles que cuenten días por `stockhist` de una publicación nueva (mismo patrón).
 
 ## 2 · PLATA (martes)
+- **24/10/2026 · `almactarifa` con centavos** (pregunta 23 suya: *"¿no aparece en la factura?"*). ML no da la tarifa por unidad; se midió con la factura de septiembre (`cargosmes:2026_09`): almacenamiento común $47.735 ÷ ~2.640 u. en Full ÷ 30 d ≈ $0,60 por unidad por día. `pesosArg` redondeaba a $1 (quedó guardado $1 en la primera corrida): ahora `almactarifa` lee decimales. Qué chequear: `almactarifa` muestra $0,60; rehacerlo con la factura de octubre.
+- **24/10/2026 · v26.24 · lista pagada al pedir = mercadería en camino** (eligió la 12a). `listaEnCaminoUSD` (pedidos de `compraslista` en camino con `pagado:true`, valuados a `pc`) se suma a `stockCamino` del Arqueo junto a Paraguay y sale en el detalle de "en camino". Botón 💵 Ya lo pagué también mientras viaja (`listaPagado` acepta camino). `listaLlego` (web y robot) ya no pisa un `pagado:true`, así no queda en los dos lados. Qué chequear: que un pedido pagado al pedir aparezca en camino y al llegar NO salga como deuda; que uno sin pagar siga saliendo como deuda al llegar.
 - **Cada lugar, su nota (08/10/2026, v22.71):** él: *"en ventas por qué aumentó el precio o por qué no, y en pedidos por qué
   pide x unidades"*. `cerebroAbrir`: con `ped` o `ctx:'caja'` muestra SÓLO las notas `ped__`/`caja__`; con `ctx:'venta'`
   (Ventas x Producto) y en Productos/Rotación, las notas de precio (`claudeexp/<MLA>`). **Chequear:** el mismo producto
@@ -691,6 +693,78 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 (sería doble), y que el número de Gastos y el del Arqueo sean el mismo para cada mes.
 
 ## 3 · MERCADERÍA (miércoles)
+
+**24/10/2026 · v26.36 · 🚀 Puntaje de salida (él: *"que para ordenar se junten ambas, ventas y reseñas… ordenar por puntaje de salida y ahí
+me aseguro que los primeros salen bien"*).** `puntajeSalida(v,res)` = max(vendidas, reseñas × `CAND_VENTAS_X_RESENA`=20); orden nuevo en
+Nuevos; chip 🚀 en tarjetas y en el pedido; menos de 100 = rotación baja (misma vara que `pocasVentas`: 100 vendidas o 5 reseñas). MEDIDO con
+`resenamedir`: las vendidas que ve el chat ("+5", "+25", "+100") son de UN vendedor (el que gana el catálogo) y las reseñas son del catálogo
+entero de toda la vida (25 vendidas contra 1.041 reseñas): no hay un "1 reseña = N ventas" fijo. ML no deja leer las fechas de las reseñas
+ajenas (403), así que "reseñas de los últimos 90 días" no se puede medir por el robot. El 20 sale de la regla que él aprobó (5 reseñas = 100).
+**Qué chequear:** que ordenar por 🚀 ponga arriba lo de muchas reseñas y que nada con dato quede sin puntaje.
+
+**24/10/2026 · `pycodcolor` (sólo lee): el código de Paraguay de cada ficha contra su color (corrección suya con los Redmi Buds 6 Play:
+la ficha del negro tenía el 131119, que es el azul).** Para cada `codPy` y cada `pyVar` compara el color del renglón del catálogo con el
+de la ficha (nombre, color de la variante y títulos de sus publicaciones de ML): ❌ choca = código casi seguro equivocado (muestra los
+códigos de los otros colores) · ❔ la ficha no dice color y el catálogo tiene el mismo producto en varios colores (mirar la foto). **Qué
+chequear:** que el Buds 6 Play ya no salga; correrlo en la completa del sábado después de la pasada de Nissei.
+
+**24/10/2026 · 🟣 El catálogo ENTERO de Elegancia, como el de Nissei (él: *"este de elegancia, también miro todos los productos? (…) de
+acá también podemos pedir"*).** Antes sólo estaban los ~36 del PDF "Atacado". Ahora el chat de compras lo copia con
+`pycat:prov=elegancia;#<pág>;<código>|<nombre>|<US$>|<link>|<foto>;…;go` (ml-consulta): va a `mlapi/pycat` con clave `EL_<código>` y
+`pv:'elegancia'` (así nunca choca con un código de Nissei que termine igual), su página en `mlapi/pycatprog_el`. El robot del catálogo lo
+mide igual; lo que da pasa a Para probar como candidato de Elegancia (`prov:'elegancia'`, código sin `EL_`). Números aparte en
+`cyc/pycatres_el` (la solapa 🟣 Elegancia → Nuevos los muestra como los de Nissei). `faltaprecio` dice `py|elegancia|EL_<cód>` y
+`svprecio:EL_<cód>=…` lo carga. Dónde vive: `pycatProvDe`/`pycatCodDe`/`pycatEsDe` (sync.mjs e index.html). **Qué chequear:** `pycat:prov=elegancia`
+(sin go) dice "CATÁLOGO DE ELEGANCIA" y cuántos; que un candidato nuevo de Elegancia aparezca en la solapa 🟣 y no en la 🟢; que
+`cyc/pycatres` (Nissei) no cambie de total por Elegancia.
+
+**24/10/2026 · `/borrar` para las vendidas.** El chat cargó "/0" en 36 catálogos que no muestran vendidas (es duda, no 0: con 1 vendedor un 0
+lo deja afuera para siempre). `candprecio:<cód>=/borrar` saca `vendCarga`; `listadato:<prov>;<cód>=borrar` saca `vend`. **Qué chequear:** que
+los borrados vuelvan a "falta cargar las vendidas" en `candresumen`.
+
+**24/10/2026 · v26.30 · 🌟 Sin competencia sin precio (eligió la 3a).** Los catálogos sin vendedores y sin ningún precio a la vista NO entran
+solos: van a la carpeta "🌟 Sin competencia en ML" (antes "nadie lo vende") con el precio estimado para dejar 35% (`pycatPrecio35`:
+comisión ~14,5% + fijo, impuestos peor caso ~10%, envío de Full arriba de $33.000) y el botón **➕ Lo quiero** (`pycatQuiero`): crea el
+candidato con `sinComp`, `svp` = ese precio (o el que vio el chat) y `elegido`, y marca el renglón del catálogo. El robot lo mide exacto
+(`correrCandidatos` → `ofertaVista`) y yo confirmo las fotos (`fotosrev`) antes de que se pueda pedir. Orden de la carpeta: rubros que ya
+vendemos, US$ 10-80, el más caro primero; los catálogos genéricos (3+ productos al mismo) al final. **Qué chequear:** que el ➕ no deje
+un producto sin foto de Paraguay; que el % medido por el robot quede cerca de 35%.
+
+**24/10/2026 · v26.29 · 1 vendedor con 100+ y 🌟 sin competencia (eligió 1a 2a).** **1a:** `vendOk(nv, vend, sinComp)` (sync.mjs) y
+`_vendOk`/`candVendOk` (web): entra con 2+ vendedores, con 1 si vendió 100+ (`vendCarga`/`vend`), o `sinComp`. `faltaventas` y
+`listarevisar` traen también los de 1 vendedor (vara 35%). **2a:** `faltaprecio` lista los catálogos sin vendedores (Nissei y listas) para
+el chat; `svprecio` carga el precio VISTO en ML (`svp`/`svpTs`, vale `SVP_DIAS`=30); `ofertaVista` arma una oferta con Full a ese precio
+(categoría por `domain_discovery`) y la miden `correrPyCatMedir` (`svm`) y `correrCandidatos` (`sinComp`). **Catálogo padre:** si un
+catálogo no tiene vendedores y tiene hijos (colores), se miden los hijos (`_vis`, `hv:1`; los `sv` viejos se re-miden). Medido con
+`catvacio`: Xiaomi Sound Outdoor "nadie lo vende" tenía 18 y 13 vendedores en sus hijos. **Qué chequear:** `pycatmedir:prueba` con el
+Xiaomi da vendedores; un `svprecio` mide y pasa a Para probar con 🌟; ningún 1-vendedor sin vendidas aparece como "da".
+
+**24/10/2026 · v26.28 · Revisión de "¿dejamos algo afuera injustamente?"** (él). Muestras de cada carpeta del catálogo de Nissei
+(`pycatmuestra:<grupo>:<n>`): **fz** (110V, D&G) bien · **margen** (810 descartados por no dar) ~95% bien medidos · **scr** (3.885 no
+están en ML) casi todos de verdad no están · **sv** (5.279 "nadie lo vende") = catálogo de ML SIN vendedores: muchos se venden en
+publicaciones sueltas que la API no deja medir (búsqueda 403) y la regla del 20/10 pide catálogo con 2+ vendedores → se renombró la
+carpeta · **bajo** (2.365 no llegan) ~1 de cada 5 medido contra OTRO producto (RAM 32 GB contra 16 GB, Eros masculino contra pour
+Femme, Flip 7 contra Flip 6). **Hecho:** `chequeoMismoProducto` suma tres reparos DUROS (`_rvCapacidadChoca`, `_rvGeneroChoca`,
+`_rvNumModeloChoca`) y `correrPyCatMedir` vuelve a buscar lo ya medido cuyo catálogo guardado choca (`_chocaNuevo`, no los fijados ni
+los `ok`). **Qué chequear:** que esos se re-midan en las próximas vueltas y ninguno vuelva al mismo catálogo; falsos choques
+(misma palabra con otro número que NO es otro modelo) → agregar la palabra a `RV_NUM_NO`.
+
+**24/10/2026 · v26.27 · 🔁 Rebusca de los descartados por "otro producto" (eligió la 1a).** De 1.386 descartados, 513 los había sacado
+yo mirando las fotos porque ML los comparaba con OTRO producto, y quedaban afuera para siempre sin que nadie les buscara el correcto.
+**Dónde vive:** `rebusca[;go]` (sync.mjs, ml-consulta) los pasa a `noTipo:'rebusca'` y le saca `cand`/`t` a su renglón de `mlapi/pycat`;
+`correrPyCatMedir` ya no los saltea, busca sin los catálogos de su `mlNoEs` y, si dan, vuelve el MISMO candidato (`rebuscaVolvio`). La
+web no los cuenta como descartados. `descartesmot` agrupa los descartes por motivo. **Qué chequear:** que ninguno vuelva con un
+catálogo de su `mlNoEs`; que los que vuelven pasen por `fotosrev`; que el número de Descartados baje ~513.
+
+**24/10/2026 · v26.26 · Paraguay → "Dan el %, pero no entran al pedido".** Él: *"acá creo que quedan productos que no van"*. La carpeta
+"🟢 Medidos que dan, pero el robot no confirmó…" mostraba en verde 59 productos del catálogo con 2+ vendedores que NUNCA pueden entrar a
+un pedido: a los 59 les falta la foto de Paraguay (sin las dos fotos no se compra) y muchos son otro producto (Klasse shampoo ⇒ vino
+Rutini, tag de mochila ⇒ Funko, testers ⇒ perfume en caja, Invictus ⇒ Invictus Platinum). **Dónde vive:** `pycatFila` (`noVa`: motivo
+y % en ámbar), título de la carpeta; `pycatbusca:!sinpasar` (sync.mjs) los lista con motivo y `pycatbusca:<palabra>` muestra la medición
+y el candidato. **Qué chequear:** ningún % verde en esa carpeta; cuando la pasada de Nissei traiga la foto, el robot los vuelve a medir y
+recién ahí pasan a Para probar (y a la revisión de fotos).
+- **24/10/2026 · `pyprecio` también por ml-consulta** (`CONSULTA_ESCRIBE`). El chat de compras mandó 8 `pyprecio` seguidos por ml-sync y cada uno canceló al anterior (ml-sync corta el que está corriendo): sólo quedó el último. ml-consulta corre en paralelo. Sólo toca `nisseiUSD`/`nisseiTs`/`codPy`/`pyLink` de la ficha, nunca el costo. Qué chequear: que varios `pyprecio` seguidos por ml-consulta terminen todos con "quedaron bien".
+- **24/10/2026 · `pyprobadoslista` (sólo lee) y el PROMPT GUAY con los probados primero** (él: *"que primero mire los productos probados y que los cargue lo antes posible, después que siga con el resto"*). Lista cada ficha de Nissei (id, código, US$ guardado, días) para que el chat de compras actualice su precio con `pyprecio` (ml-sync) antes de recorrer el catálogo con `pycat`. Qué chequear: que después de la pasada "Productos probados" de Paraguay muestre los que dan.
 - **23/10/2026 · el máximo de compra usa el precio de la ÚLTIMA venta** (él: *"si nunca vendió toma el % que decís vos. si ya vendió no importa si fue sólo 1 unidad. tomar ese %"*). `pedidostodo` imprime `ultv $X` (última venta de 180 d sin remates, salteando las vendidas con 🔥 escasez o ⏳ sin reposición vigente: `tagVigente`/`ultV`); `decide_pedidos.py` `venta()` = min(precio de hoy, ultv); nunca vendió = precio de hoy; log viejo sin `ultv` = la mediana de 60 d de antes. El motivo del `=venta|` dice cuál usó (`venta_mot`). Qué chequear: una suba que vendió 1 sube el máximo de compra de Paraguay en la web (maxCompraDe lee ese `pv`); que una venta de escasez no lo infle.
 - **23/10/2026 · `sololocal`** (él: *"el producto 7114209 es un joystick ps5. se vende en local"*). `soloLocal: true` en la ficha: `publicar` frena y `ofisinpub` no la lista. Qué chequear: que Armar caja no la sugiera (no tiene publicación).
 - **23/10/2026 · v26.23 · aviso 🏷️ en Armar caja** (él: *"si hay productos que faltan trabajo (terminarlos/etiquetas) que tenga un pequeño anuncio"*). En `renderOfiCaja`, después del cartel del veredicto: suma por renglón `min(sinEtiq, lo sugerido para esa cuenta)` y lista hasta 4 productos. Además `sinetiq:pvped=<id|ultimo>` marcó los 114 Paulvic del pv20261019 (264 u. sin etiqueta en total) y `cupo:ayelen=46/100`. Qué chequear: sin cuenta elegida suma todas; que el aviso se vaya al poner `sinetiq:<x>=0`.
@@ -1049,6 +1123,13 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
    no lea `cyc/listas_local` todavía (nadie lo usa para costos: el precio pagado real queda anotado, no mueve la ficha); que el
    "otro producto" del local y el `listadato` del chat no se pisen.
 
+### Invictus y Phantom no vuelven a la caja ni al pedido (24/10/2026, completa de las 03:00)
+- **Qué es:** ML los dio de baja para siempre (él, 24/10). `decide_cajas.py` los volvía a proponer cada noche (4 y 3 a Full, porque
+  hay en la oficina) y `decide_pedidos.py` les ponía el motivo "lo pedimos y no vino". Ahora los dos scripts los dejan en 0 con
+  el motivo real ("ML lo dio de baja… lo de la oficina va al local"). `nomandar` no sirve: frena TODO el Paulvic de Adriana.
+- **Dónde vive:** `ml-sync/notas/decide_cajas.py` (`BAJA_ML`) y `decide_pedidos.py` (mismo par, en el renglón de "no viene más").
+- **Qué chequear:** que la completa ya no tenga que corregirlos a mano · si otro aroma pasa a dado de baja, agregarlo a los DOS.
+
 ## 4 · CHOQUES Y FALLAS MUDAS (jueves · junta las viejas 4 y 5)
 
 - **LAS 2 DECISIONES DE LA ETAPA 4 DEL 20/10/2026, CERRADAS (v25.45).**
@@ -1297,6 +1378,21 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
     decisión de compra, no código. 11 (dinero que rinde en MP) lo mira él en la app.
 
 ## 7 · DISEÑO (domingo)
+
+**24/10/2026 · v26.35 · Pedido de nuevos: vendidas y reseñas a la vista (él: *"quiero que en el detalle en el pedido aparezcan ventas y
+reseñas"*).** El renglón de arriba (al lado de los vendedores) dice `🛒 N vendidas · ⭐ N reseñas` (o "sin cargar"), y la casilla del
+detalle pasó a "🛒 vendidas · ⭐ reseñas en ML" con la regla (100+ vendidas o 5+ reseñas). Dónde vive: `pedNuevoFilaHTML` y el armado de
+`filasN` en index.html. **Qué chequear:** a 360 px que la casilla no se corte con los dos números.
+
+**24/10/2026 · v26.25 · Inicio → Pedidos con 4 puertas.** Él: *"sacar lo que tiene abajo de pedidos y poner las tarjetas de bs as,
+paraguay, paulvic y listas. para entrar de una clickeando en esas"*. **Dónde vive:** `index.html` tarjeta `.ht-ped` (botones `.ht-ped-b`,
+`homePedIr(sec)`); se sacaron `hv-ped` y `nc-pedidos-costo` de la tarjeta (sus funciones siguen y no fallan sin el elemento). En el
+celu sólo las banderas/íconos (2×2, sin el 🚚). **Qué chequear:** cada botón abre SU solapa (no Bs As); dibujado a 360/390/1200 px, los
+4 botones entran en la tarjeta sin cortarse.
+
+**24/10/2026 · completa: 📸 fotos de lo nuevo de Paraguay** (CEREBRO §completa paso 2). La confirmación del "mismo producto" de los
+candidatos nuevos (`fotosrev` → `revfotos.py` → `revcand`) no estaba en ninguna vuelta: lo nuevo que daba 35% quedaba esperando sin que
+nadie lo mirara (187 en la lista al 24/10). **Qué chequear:** que `fotosrev` quede vacío al terminar la completa.
 - **23/10/2026 · v26.22 · color de la barra del cupo** (él: *"según el cupo que haya que vaya de verde, amarillo, naranja y rojo, siendo rojo que casi no hay lugar"*). En `renderOfiCaja` (`fila` del cupo): libre después de esta caja ÷ cupo entero → 25%+ `--green` · 12-25% `--lv-joya` · 5-12% `--lv-justo` · <5% o pasada `--red`; el número "N libres" va del mismo color. Qué chequear: con 0 libres se ve roja (antes verde).
 - **23/10/2026 · v26.16 · el puntaje del día puede pasar de 10** (él: *"que pueda romper el 10 hacia arriba y que al romperlo tenga un pequeño movimiento denotando un día excepcional"*). `_puntajeDia` sin `Math.min(10)` (misma pendiente: 3 puntos cada $115.000 × días; $284.491 en un día = 11,4); arriba de 10 dice "🚀 Día/Mes/Año excepcional" y el número lleva `.punt-rompe` (saltito con brillo cada 2,6 s; nada con movimiento reducido). En Inicio y en Ventas → Ganancia. Qué chequear: que en 360 px el número de 2 cifras ("11,4 /10") no corra los botones de al lado.
 - **21/10/2026 · v25.64 · el dólar de Inicio cortaba el último número** (lo marcó él: *"la revisión de diseño no ve que está cortado? (…) lo primero que aparece en la web"*). La casilla medía 150px fijos y "1.535" en Syne mide 154px en la PC. Ahora `_dolarAncho` la mide con lo que tiene adentro (también al tipear y cuando termina de cargar la letra) y en el teléfono la tarjeta puede partirse en dos renglones. **Por qué se le pasó a la revisión: los revisores leían el código y nunca vieron la pantalla con la letra real** (el index entero se cuelga al conectar con Firebase). **Desde ahora la etapa 7 SIEMPRE dibuja** cada pantalla con el CSS real y las letras de Google (pedazo por pedazo con Playwright, a 360, 390 y 1200 px) y mide toda casilla y todo número grande: `scrollWidth > clientWidth` o `scrollHeight > clientHeight` = cortado. Empezar por lo que se ve primero (Inicio: dólar, ventas de hoy, puntaje). Chequear: probado con 1.535 · 10.000 · 1.535,50 · vacío, a 360/390/1200 px, nada cortado.
@@ -1593,6 +1689,7 @@ a la lista. Chequear: que cada hoja muestre el nombre del mismo id que se marca 
 Chequear: que los ayudantes no corran nada que escriba y que cada publicación activa tenga juicio.
 
 ## 5 · DATOS, HISTORIAL Y CEREBRO (viernes · junta las viejas 8 y 9; datos e historial nació el 08/10/2026)
+- **24/10/2026 · `revfondo`: que no se escape ningún producto** (pregunta suya: *"habría que hacer uno para los productos en general"*; eligió la 3a). Sólo lee: cada producto × cuenta (y color) con stock en Full y alguna publicación activa (sin gemelas), la última nota del 🧠 (`mlapi/claudeexp`) de sus publicaciones y gemelas; atrasado si tiene 2+ días y no vendió en 7, o 7+ días si vendió. Va en las lecturas de la completa y tiene que quedar vacía. Qué chequear: que la cuenta "N de M" tenga sentido contra las activas con stock; que al otro día de la completa dé 0 o casi; que una venta sola (✓ rápida) no la saque de la lista.
 - **🔬 EL ANÁLISIS DE CADA VENTA EN SU TARJETA (21/10/2026, v25.74, pedido suyo).** `ventasvistas:<ts>|esf=<nivel>|<MLA>=<texto>;go`
   escribe `cyc/ventaanalisis/<día>/<id>` (mismas claves que `cyc/ventaprod`) para cada venta no cancelada del tramo (marca anterior, ts]:
   `{ts, esf, cambio, t, m, de, a}`. Hay cambio si después de la venta hay estrategia nueva (`cyc/estrategia/<MLA>`) o precio mío

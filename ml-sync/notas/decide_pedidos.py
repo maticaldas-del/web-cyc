@@ -288,7 +288,9 @@ for p,q,d,rent in res:
             if jv: qq,mot=juicioQ(jv[0],t,jv[1],p['n']+' #'+v['v'])
             # SÓLO ESTOS COLORES (16/10/2026, idea 11 del análisis): llegaban colores lentos en vez de los que se agotan.
             # NO VIENE MÁS (17/10/2026, regla suya): un aroma que se pidió al Paulvic y no vino no se vuelve a pedir.
-            if v.get('nunca'): qq,mot=0,f"Hola Tito! {v['v']}: no te lo pido más. Lo pedimos y no vino, así que lo damos por que no viene más."
+            # 24/10/2026 (él): Invictus y Phantom los dio de baja ML para siempre por la marca del nombre (no es que no vengan)
+            if (p['id'],v['v']) in {('p1779912655490','Invictus'),('p1779912655490','Phantom')}: qq,mot=0,f"Hola Tito! {v['v']}: no te lo pido más. ML lo dio de baja para siempre por la marca del nombre. Lo que hay en la oficina va al local."
+            elif v.get('nunca'): qq,mot=0,f"Hola Tito! {v['v']}: no te lo pido más. Lo pedimos y no vino, así que lo damos por que no viene más."
             if v.get('mano') is not None and not v.get('manoVenc'): avisos.append(f"{p['n']} #{v['v']}: ✋ él lo cambió a mano a {v['mano']} en Pedidos: en la web manda eso (no lo que decido) hasta el pedido hecho")
             N.append(f"ped:{pid}#{v['v']}=u|{qq}|{mot}")
         if not filas:
