@@ -37,6 +37,11 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
     (a) sugerida: que Tito revise qué trae cada unidad y corregir la descripción en ML antes de subirla más · (b) dejarla igual.
 33. **Free Love y Transparent** (Paulvic): los pedidos de autorización del 23/10 dicen $14.390 y la regla dice $14.950 ($14.990).
     (a) sugerida: dejarlos en $14.390 (Transparent tiene raya roja en $14.360) · (b) contestar "no" y pedirlos a $14.990.
+31. **Lo que Nissei no tiene pero Elegancia sí** (24/10, pasada del sábado): Halloween 100 ml (Elegancia US$ 35, "Halloween Edt F 100ML") ·
+    Cabotine 30 ml (US$ 8,50) · Cool Water mujer 100 ml (US$ 22) · Cuba Prestige Platinum (US$ 6, el de Elegancia es 90 ml). (a) sugerida:
+    esas fichas pasan a reponerse de Elegancia con ese código (yo lo cargo) · (b) siguen en Nissei y esperan a que vuelva.
+    Además: **Ted Lapidus Rumba** no está en ninguno de los dos; **Calculadora Casio fx-82ms** cambió de US$ 36 a US$ 9 con el mismo código
+    (raro: puede ser otro producto, mirarlo en la página antes de pedir).
 
 ## Viejas que siguen esperando (de CLAUDE.md §13)
 - Sancor (respuesta y baja de Vida Plus) · contador (recategorización, actividad, facturas entre cuentas) · costo de las dos Linternas COB de Ayelen.
