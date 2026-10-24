@@ -11487,7 +11487,9 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
             for (const h of ((full && full.children_ids) || []).slice(0, 8)) { const H = String(h).toUpperCase();
               if (_hijosVistos.has(H) || _rechSet.has(H) || H === _rechazado) continue; _hijosVistos.add(H);
               await espera(250); const ph = await mlGetR(`/products/${H}`); if (!ph || !ph.id) continue; ph._leido = 1;
-              const rrh = chequeoMismoProducto(nB, ph.name || ''); if (duros(rrh).length) continue;
+              // El hijo (un color) casi nunca repite el código de modelo ni todas las medidas del padre, que ya pasó el chequeo:
+              // ahí sólo frena lo que CHOCA (color, capacidad, género, otro modelo, otra cantidad).
+              const rrh = chequeoMismoProducto(nB, ph.name || '').filter((x) => !/^el modelo \(|^el tamaño /.test(x)); if (duros(rrh).length) continue;
               _vis.splice(pos++, 0, [ph, rrh]); if (prueba) console.log(`      → hijo ${H} "${String(ph.name || '').slice(0, 60)}"`); } }
           catch (eH) { if (!/404/.test(String((eH && eH.message) || eH))) throw eH; }
         }
@@ -21150,7 +21152,12 @@ async function main() {
       for (const [k, pv] of Object.entries(provs)) { if (pv.desc) continue; const L = (await db.get('mlapi/listas/' + k)) || {};
         for (const [cod, e] of Object.entries(L)) { if (!e || !e.sv || !e.mi || e.sacado || e.noWeb || e.noFull || svpVigente(e) || listaNoEsVale(e)) continue;
           filas.push({ r: 1, u: (Number(e.p) || 0) / 1500, t: `lista|${k}|${cod}|${String(e.n).replace(/\|/g, '/').slice(0, 80)}|${e.mi}|$ ${e.p}` }); } }
-      filas.sort((a, b) => a.r - b.r || a.u - b.u);
+      // Un catálogo al que apuntan 3+ productos distintos es un emparejado genérico (mallas de Apple Watch contra uno solo): afuera.
+      const nMi = {}; for (const f of filas) { const mi = f.t.split('|')[4]; nMi[mi] = (nMi[mi] || 0) + 1; }
+      const buenas = filas.filter((f) => nMi[f.t.split('|')[4]] < 3);
+      // Primero los rubros que ya vendemos; adentro, los de US$ 10 a 80 (lo barato deja poco y lo caro inmoviliza), el más caro primero.
+      const z = (u) => (u >= 10 && u <= 80 ? 0 : 1);
+      buenas.sort((a, b) => a.r - b.r || z(a.u) - z(b.u) || b.u - a.u); filas.length = 0; filas.push(...buenas);
       console.log(`=== CATÁLOGOS SIN VENDEDORES, FALTA EL PRECIO QUE SE VE EN ML: ${filas.length} · muestro ${Math.min(N, filas.length)} (fuente|proveedor|código|nombre|catálogo ML|costo) ===`);
       console.log('@@LISTA'); for (const f of filas.slice(0, N)) console.log(f.t); console.log('@@FIN'); return;
     }
