@@ -640,6 +640,31 @@ Qué chequear: que un cambio no salga dos veces (foto + decisión) y que un `dec
   publicación se creó después de que entró el stock, y el cartel dice "primera venta de la gemela Premium/con envío gratis".
 - **Chequear:** otros carteles que cuenten días por `stockhist` de una publicación nueva (mismo patrón).
 
+### 24/10/2026 · Revisión etapa 1 (Precios), 4 revisores en máximo · v26.41 `cyc-v922`
+- **Qué se arregló (robot, sync.mjs):** `tagDeMotivo` ("4 meses" ya no es sinrepo) · F10 juzga con la fecha de la marca 🔒 y el detector se
+  la pasa · `frenosBajas`/`decido` frenan si no leyeron nobajar/promohist/promoclaude/techofreno · freno 4a con días CON stock (mín. 14,
+  `TECHO_RITMO_MIN_DIAS_ST`) y frena si no leyó ventas · `submargen` pasa por `_chequeoNoSubir` · `gemelaenviocrea` con techo, tope de
+  crear y 25% · `alpiso`/`bajar`/`tocados` sin `:go` (bajar va por `decido`) · `anotarCambioFuera`: unapub bajar=/empatar, volver, submargen,
+  fijar y bajopiso anotan en `cyc/claudecambios` · `autNoVale` mira el tipo (descuento ≠ lista) · el "hubiera" de F10 sólo en corridas reales ·
+  la 🏔️ conserva su fecha al salir de un descuento · gemelas: comisión ≤0 o envío <$3.000 (`ENVIO_GRATIS_MIN`) = ML no contestó, baja >15% de
+  una va a revisar, 🔒 no baja si la Clásica no bajó, tolerancia sólo para arriba, sin envío gratis no se re-precia · `publicar` sin doble
+  retención y con la barrera ($33.000, salvo `|!cruza|motivo=EXCEPCIÓN`) · `activarPausadasFull` mide la gemela de envío con su envío gratis ·
+  `gemelacrea`/`gemelaenviocrea` frenan si no leyeron hermanas y pausan si no releen la Clásica · F4/F8 con el precio que ve el comprador
+  (`p0v`) y F4 neta · `planilla` 🤔 al precio del descuento, 🔎 y `bajasviejas` con la línea junta, 📦/🔎/🤔 con ritmo con stock, 🛡️ cuenta
+  las sin margen · `pruebasTechoEnCurso` y `efectotecho` con días con stock, línea junta y neto · `escasez` avisa si no leyó ritmonormal ·
+  `revfondo` sin notas de fallo y lista colores sin publicación · `pedidostodo` `ultV` saltea ventas de gemela · `candMaxUBot` = web ·
+  textos de `pedir`/`revisarcompra` con la vara real.
+- **Web (index.html):** `_llMaxNuevo` con la vara de compra (35/30) para lo nuevo · `margenMLDe` `sinCosto` ("sin costo" en Rotación y la caja,
+  no ~800%) · `precioParaMargen` y el chip "bajo 25%" en el peor caso · `pycatPrecio35` redondea para arriba y sin pasar $550.000 ·
+  `candPuedePedir` frena 🌟 con precio visto de +30 d · `pycatFila` verde desde la vara · venta por gemela no hereda 💸 de la Clásica ·
+  comparación de Ventas x Producto sin canceladas · `listaSetU` dice el motivo real · rayas: toda la línea hasta ayer (`ksR`, `_gdFuera`) y
+  `uOwn/totOwn` como el robot. `decide_pedidos.py` `Tde` con el % de la app.
+- **No se tocó a propósito:** las gemelas siguen alineándose aunque `robot:off` (son mecánicas, se apagan con `gemelaSigue=off`) ·
+  ⏸️ sin stock en la web (chico, queda) · decisiones suyas 36-46 en `notas/para_mati.md`.
+- **Qué chequear:** `errores` y `planilla` corren limpios la primera vuelta · que una baja hecha antes de marcar 🔒 no se deshaga · que la
+  primera alineación no deje ninguna gemela en "ML no contestó" por error (si son muchas, el mínimo de $3.000 está mal) · `publicar` sin go
+  en la próxima llegada.
+
 ## 2 · PLATA (martes)
 - **24/10/2026 · `almactarifa` con centavos** (pregunta 23 suya: *"¿no aparece en la factura?"*). ML no da la tarifa por unidad; se midió con la factura de septiembre (`cargosmes:2026_09`): almacenamiento común $47.735 ÷ ~2.640 u. en Full ÷ 30 d ≈ $0,60 por unidad por día. `pesosArg` redondeaba a $1 (quedó guardado $1 en la primera corrida): ahora `almactarifa` lee decimales. Qué chequear: `almactarifa` muestra $0,60; rehacerlo con la factura de octubre.
 - **24/10/2026 · v26.24 · lista pagada al pedir = mercadería en camino** (eligió la 12a). `listaEnCaminoUSD` (pedidos de `compraslista` en camino con `pagado:true`, valuados a `pc`) se suma a `stockCamino` del Arqueo junto a Paraguay y sale en el detalle de "en camino". Botón 💵 Ya lo pagué también mientras viaja (`listaPagado` acepta camino). `listaLlego` (web y robot) ya no pisa un `pagado:true`, así no queda en los dos lados. Qué chequear: que un pedido pagado al pedir aparezca en camino y al llegar NO salga como deuda; que uno sin pagar siga saliendo como deuda al llegar.
@@ -693,6 +718,16 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 (sería doble), y que el número de Gastos y el del Arqueo sean el mismo para cada mes.
 
 ## 3 · MERCADERÍA (miércoles)
+
+**24/10/2026 · v26.39 · ⭐ la nota a la vista (él: *"¿de qué puntaje no debería aparecer?"*).** `candCombo` = % × log10(🚀+1) ÷ 10;
+`CAND_COMBO_MIN`=7 = lo mínimo para comprar (35% con 100 de salida). Chip ⭐ en tarjetas y pedido (verde 7+ con salida 100+, ámbar abajo).
+El orden ⭐ usa el mismo número. **Qué chequear:** que nada de lo que "se puede pedir" quede abajo de 7 salvo los de 30% con 100+ y 2 vendedores (6,0).
+
+**24/10/2026 · v26.37 · ⭐ "gana mucho y sale mucho" (él: *"juntando el puntaje de salida y el % de ganancia: el primero tiene que ser el que
+se le gana mucho y se vende mucho"*).** Orden nuevo en Productos nuevos = % × log10(🚀 puntaje + 1) (el % entero, la salida por escalones de ×10,
+para que vender muchísimo no gane solo). Lo de rotación baja (🚀 menos de 100) va después de todo lo que sale bien aunque deje 200%; sin % o sin puntaje, al final. Se sacaron "🛒 más vendidos" y "$ por unidad" (él); un orden guardado que
+ya no existe vuelve a ⭐ (que es el de entrada). **Qué chequear:** que arriba queden los de mucho % con 🚀 verde y que los sin vendidas/reseñas cargadas
+queden abajo.
 
 **24/10/2026 · v26.36 · 🚀 Puntaje de salida (él: *"que para ordenar se junten ambas, ventas y reseñas… ordenar por puntaje de salida y ahí
 me aseguro que los primeros salen bien"*).** `puntajeSalida(v,res)` = max(vendidas, reseñas × `CAND_VENTAS_X_RESENA`=20); orden nuevo en
@@ -1207,6 +1242,15 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
 
  · **Informe 7b (auditoría 19/10/2026):** los mensajes de compradores sin leer salen por cuenta (sin el texto). Chequear: que la suma coincida con el título.
 
+### `ventasraras:nuevas` se caía con una venta de gemela cuya Clásica tiene techo anotado (24/10/2026, vuelta de las 11:52)
+- **Qué era:** vendió la gemela Premium de los Naipes Casino. El 🧭 calculaba "tiene techo" con la Clásica pero al escribir el texto leía
+  `tf[<gemela>].probado` (no existe) → "Cannot read properties of undefined (reading 'probado')". Se perdía la lista 🔬 y el 📌 con el número
+  para `ventasvistas`, así que la vuelta no podía cerrar las ventas.
+- **Arreglo:** el texto usa el mismo registro que el cálculo (`tfM`, el de la Clásica) y, si esa parte se cae igual, el 📌 sale igual.
+  Busqué el mismo patrón (`tf[mla].`) en el resto del robot: ninguno más.
+- **Dónde vive:** `sync.mjs` → `ventasraras`, bloque 🧭 ESTRATEGIA DE LO QUE VENDIÓ.
+- **Qué chequear:** una venta de gemela con techo anotado en su Clásica sale con "techo probado $…" y el 📌 aparece siempre.
+
 ## 6 · IDEAS NUEVAS (sábado)
 - **✅ LAS 24 IDEAS DE LA ETAPA 6: ELIGIÓ TODAS (a) EL 21/10/2026** (A1: *"probemos y me decís"* = una sola publicación en la próxima llegada). Antes decía: ESPERAN SU RESPUESTA (él: *"avisame cuando termine el último (…) tengo que elegir las decisiones"*). (a) = la recomendada. Una cosa obvia quedó sin hacer porque las revisiones se pausaron: el `ofi` que imprime `pyped:llego` sale sin `@color` y falla entero en una reposición con colores (arreglarlo al retomar).
   **Datos de ML sin usar:**
@@ -1378,6 +1422,11 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
     decisión de compra, no código. 11 (dinero que rinde en MP) lo mira él en la app.
 
 ## 7 · DISEÑO (domingo)
+
+**24/10/2026 · v26.40 · 📈 Todos los productos: Premium y envío gratis aparte (él: *"¿se puede saber cuánto fue Premium? así veo cuánto más
+vendemos por esa idea"*).** Barras: verde Clásica, naranja Premium (gold_pro o gemela Premium), celeste gemela de envío gratis, ámbar remate (misma
+regla que la línea de un producto). Tarjeta Vendió: "N en Premium · M con envío gratis"; Ganancia: lo que dejó cada una. Dónde vive:
+`lineaTodoPintar` (vd[k].uP/uG/gP/gG). **Qué chequear:** que verde+naranja+celeste+ámbar = el total del día; ventas viejas sin `tipoPub` cuentan como Clásica.
 
 **24/10/2026 · v26.35 · Pedido de nuevos: vendidas y reseñas a la vista (él: *"quiero que en el detalle en el pedido aparezcan ventas y
 reseñas"*).** El renglón de arriba (al lado de los vendedores) dice `🛒 N vendidas · ⭐ N reseñas` (o "sin cargar"), y la casilla del

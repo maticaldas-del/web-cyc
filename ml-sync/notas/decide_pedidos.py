@@ -97,7 +97,10 @@ def Tde(p,x,r):
     if p['g']=='PAULVIC' and r>0: return 45,'el Paulvic se pide cada 15 días'
     if p['g']!='BSAS' or r<0.5: return T,''
     pr=p.get('precio') or p.get('med60') or 0
-    m=((p['neto']-0.08*pr-p['costo'])/p['costo']) if p['costo']>0 and p['neto']>0 else -1
+    # Mismo % que la app (revisión etapa 1, 24/10): impuestos también en el divisor (antes sólo el costo: daba 27% donde la app da 22,6%).
+    # El log no trae el envío de Full: abajo de $33.000 (casi todo Bs As) es 0; arriba ya viene restado del neto.
+    imp=0.08*pr
+    m=((p['neto']-imp-p['costo'])/(p['costo']+imp)) if p['costo']>0 and p['neto']>0 else -1
     if m<0.25: return T,''
     if x.get('cortes',0)>=2: return 45,f"se cortó {x['cortes']} veces en 60 días"
     if p['v180']==p['v30'] and x.get('dcs',30)<=10 and r>=1: return 45,'es nuevo y vuela'
