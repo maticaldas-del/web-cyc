@@ -21081,6 +21081,25 @@ async function main() {
       const n = filas.length, bajo = filas.filter((f) => f.b < 25).length; console.log(`\n${n} productos · ${bajo} quedan abajo de 25% comprando hoy a Nissei`);
       return;
     }
+    // BILLING_PROBE=catvacio:<MLA>[,<MLA>…] (24/10/2026, él: "hay catálogos que nadie tiene stock… vos podés verlos igual"). SOLO LEE.
+    // ¿Qué dice ML de un catálogo SIN vendedores? Los campos de /products/<id> que puedan traer un precio y lo que contestan
+    // /items con y sin filtros de estado. Para ver si hay algún precio de referencia que el robot pueda usar solo.
+    if (/^catvacio:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const ids = String(process.env.BILLING_PROBE).slice(9).split(',').map((x) => x.trim().toUpperCase()).filter((x) => /^MLA\d+$/.test(x));
+      const lab = labels[0]; const acc = accounts[lab]; const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+      await db.patch('mlapi/tokens/' + lab, { refresh_token: t.refresh_token, updated_ts: Date.now() }); const tok = t.access_token;
+      for (const id of ids) { console.log(`\n=== ${id} ===`);
+        try { const p = await mlGet('/products/' + id, tok); console.log('  campos: ' + Object.keys(p).join(', '));
+          for (const k of Object.keys(p)) if (/price|buy_box|winner|status|sold|parent|children|settings/i.test(k)) console.log(`  ${k}: ${JSON.stringify(p[k]).slice(0, 300)}`);
+          console.log('  nombre: ' + p.name); } catch (e) { console.log('  /products: ' + String(e.message).slice(0, 150)); }
+        for (const q of ['', '?status=paused', '?status=closed', '?include_inactive=true', '?offset=0&limit=50']) {
+          try { const r = await mlGet('/products/' + id + '/items' + q, tok); const res = (r && r.results) || []; console.log(`  /items${q}: ${res.length} · ${res.slice(0, 3).map((x) => (x.price || '?') + ' ' + (x.condition || '') + ' ' + (x.status || '')).join(' | ')}`); }
+          catch (e) { console.log(`  /items${q}: ${String(e.message).slice(0, 120)}`); } }
+        for (const r of ['/products/' + id + '/price_reference', '/products/' + id + '/prices', '/catalog_products/' + id]) {
+          try { const x = await mlGet(r, tok); console.log(`  ${r}: ${JSON.stringify(x).slice(0, 300)}`); } catch (e) { console.log(`  ${r}: ${String(e.message).slice(0, 100)}`); } }
+      }
+      return;
+    }
     // BILLING_PROBE=descartesmot → POR QUÉ SE DESCARTÓ CADA CANDIDATO, AGRUPADO (24/10/2026, él: "hay muchos descartados que no sé
     // por qué. son productos legítimos"). SOLO LEE. Agrupa por tipo de descarte y el motivo sin números, con 4 ejemplos por grupo.
     if (/^descartesmot$/.test(String(process.env.BILLING_PROBE || ''))) {
