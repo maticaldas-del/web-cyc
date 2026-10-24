@@ -1801,14 +1801,23 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY, soloAnotar 
   if (!marcadas.length) return { marcadas: [], mirados, msg: null, detalle, manoGuardadas, rellenadas, tiposVistos, opsTotal, fallos, erroresOp, sinCantidad, recEnt, enProceso, abiertas: abiertas.length, descontadas };
   // Las que de verdad quedaron escritas (en prueba, todas): de ésas sale el mensaje.
   const hechas = DRY ? marcadas.slice() : [];
+  // LAS COMPLETAS SE MARCAN SOLAS TAMBIÉN EN SÓLO DATOS (24/10/2026, él con la caja 79567049 de Matías, 93/93 procesada en ML y 8 días
+  // "no llegó" en el panel: "ya llegó hace un tiempo, ¿no tenés datos suficientes para darte cuenta? ¿o por qué no se marcó?"). Una caja
+  // en la que entró TODO lo que se mandó no tiene nada que decidir: es mecánico, como alinear las gemelas. Las que tienen faltantes siguen
+  // quedando para Claude (`cajallego` con el faltante confirmado).
+  let escribirCajas = !soloAnotar;
   if (soloAnotar) {
-    console.log(`📦 SÓLO DATOS: ${marcadas.length} caja(s) que según ML ya entraron${marcadas.some((m) => (m.faltan || []).length) ? ' (alguna con faltantes)' : ''} — NO las marco, las marca Claude:`);
-    for (const m of marcadas) {
+    const parciales = marcadas.filter((m) => (m.faltan || []).length);
+    if (parciales.length) console.log(`📦 SÓLO DATOS: ${parciales.length} caja(s) que según ML ya entraron CON FALTANTES — NO las marco, las marca Claude:`);
+    for (const m of parciales) {
       const uF = (m.faltan || []).reduce((a, x) => a + (x.pide - x.llego), 0);
-      console.log(`   · ${m.e.cuenta} · caja del ${m.fecha}${m.c.track ? ' (' + m.c.track + ')' : ''} · ${m.items.reduce((a, x) => a + x.u, 0)} u.${uF ? ` · faltarían ${uF} u.` : ' · completa'}`);
+      console.log(`   · ${m.e.cuenta} · caja del ${m.fecha}${m.c.track ? ' (' + m.c.track + ')' : ''} · ${m.items.reduce((a, x) => a + x.u, 0)} u. · faltarían ${uF} u.`);
     }
+    for (let i = marcadas.length - 1; i >= 0; i--) if ((marcadas[i].faltan || []).length) marcadas.splice(i, 1);
+    if (marcadas.length) console.log(`📦 ${marcadas.length} caja(s) entraron COMPLETAS según ML: se marcan solas (regla suya del 24/10)`);
+    escribirCajas = marcadas.length > 0;
   }
-  if (!DRY && !soloAnotar) {
+  if (!DRY && escribirCajas) {
     // Se escribe la lista COMPLETA de cajas del envío: cajasDet es un array y un patch parcial la
     // rompería, igual que pasa con las variantes de ML.
     // ── SE RELEE JUSTO ANTES DE ESCRIBIR (revisión max (rev4)) ── La lista salía de la foto leída

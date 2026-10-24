@@ -291,7 +291,8 @@
   sólo si él lo pide (21/10).
 - **Código de etiqueta de Full** (`inventory_id`, `cyc/mllinks/<MLA>/inv`): se muestra en Armar caja por cuenta y color; **nunca se
   adivina** (sin color en el título → `fijarvar:<MLA>=<color>:go`). No es el MLA.
-- **Cajas llegadas:** el robot anota lo entrado (`cyc/cajasentrado`) y lista las que ML da por entradas; **las marco yo** con
+- **Cajas llegadas:** el robot anota lo entrado (`cyc/cajasentrado`); **las que entraron COMPLETAS las marca solo cada hora** (24/10, él con
+  la 79567049: *"¿no tenés datos suficientes para darte cuenta?"*); **las que tienen faltantes las marco yo** con
   `cajallego:<seg>[;…][!<palabras>=<u>]:go` (faltante real confirmado) o `abrircaja`. Lo de la oficina no es reposición hasta despachar.
 - **Mercadería en tres lugares:** oficina (`ofi`), en camino a Full (`cyc/envios_full/<id>/cajasDet`), en ML. Lo en camino cuenta como
   stock y patrimonio. Despachar es neutro. Cerrar caja exige seguimiento.

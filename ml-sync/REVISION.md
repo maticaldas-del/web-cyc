@@ -738,6 +738,12 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 
 ## 3 · MERCADERÍA (miércoles)
 
+### Las cajas que entraron completas se marcan solas (24/10/2026, error que marcó él: la 79567049 de Matías, 93/93 en ML y 8 días "no llegó")
+- **Qué es:** con SÓLO DATOS el robot sólo anotaba lo entrado y yo tenía que marcar; la vuelta no la marcó. Ahora `cajasQueLlegaron` en la vuelta
+  horaria marca sola toda caja en la que entró TODO lo mandado; las que tienen faltantes siguen listadas para mí ("las marca Claude").
+- **Qué chequear:** ninguna caja completa queda abierta más de ~1 h después de que ML la da de alta · una caja con faltantes NO se marca sola ·
+  no sale Telegram por una completa.
+
 **24/10/2026 · v26.49 · "Remate" → "📦 Sacando stock"** (él: *"¿qué pasó con remate? quizás no se llaman remate, pero cumplen el mismo objetivo: sacar stock de productos que no dan o hay sobrestock"*). La franja contaba sólo `cyc/nosubir` y `cyc/escalera` del robot viejo (apagado el 09/10), por eso se cortó. La línea de cada noche (`lineatodo`/ml-daily) ahora pone `rem` también con la estrategia del día 📦 sobra / 📉 liquidando / 🧨 remate y `esc` con 🪜 bajando (`tagAyer`). Los días de antes no se rellenan. **Qué chequear:** mañana la franja vuelve a mostrar los de sobra/escalera de hoy.
 
 **24/10/2026 · v26.42 · "Falta reponer" de Paraguay cuenta sólo lo que da** (él: *"¿por qué dice falta reponer más de 3M y me da solo ese producto?"*). Sumaba todos los pedidos de Nissei (también los de "No da, no hay o falta revisar"). Ahora `_pedsPyQueDan` (✅ `pyProbVeredicto`) en la solapa y en `pedFaltaReponerTodo` (Resumen): lo cargado en el 🧾 Pedido y lo oculto por "Vender en" sí cuentan. **Qué chequear:** que el número de arriba se parezca a lo que muestran Dan + Ya cargado + ocultos.
