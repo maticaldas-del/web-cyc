@@ -4199,6 +4199,11 @@ function diasFechaPico(d, kDesde, hoyK) {
   if (rF > 0 && rF >= 2 * rN) for (const k of enF) out.add(k);
   return out;
 }
+// CUÁNTA SEGURIDAD HACE FALTA PARA DECIR "ES TECHO" (24/10/2026, él con el Cuba Gold: "la idea no es tener 1 mes el producto buscando
+// techo, la idea es vender y ganar… al pasar los días necesita menos % de seguridad para decidir que fue techo y al decidirlo que marque
+// se decidió techo al 70%"). Con pocos días se pide 95%; desde el día 7 con stock a ese precio baja de a poco hasta 70% el día 21, y de ahí
+// no baja más. La misma cuenta en la web (`umbralTechoW`): si se toca una, la otra.
+function umbralTecho(dias) { const d = Number(dias) || 0; return d <= 7 ? 0.95 : d >= 21 ? 0.70 : 0.95 - 0.25 * (d - 7) / 14; }
 function rayasPrecioLinea(d, cu, imp, hoyK, parte = 1) {
   d = lineaConNetoEst(d, cu, imp);
   const pC = Number(parte) >= 0 && Number(parte) <= 1 ? Number(parte) : 1;
@@ -4238,8 +4243,12 @@ function rayasPrecioLinea(d, cu, imp, hoyK, parte = 1) {
   if (best.u >= 3 && best.gu > 0) L.filter((g) => g.p > best.p * 1.02).sort((a, b) => a.p - b.p).some((g) => {
     if (masAltoMejor(g)) return false;
     const gu1 = g.gu != null ? g.gu : best.gu + (g.p - best.p) * 0.7; if (!(gu1 > best.gu)) return false;
-    const lam = best.r * (best.gu / gu1) * g.dias, seg = 1 - poissonCdfF(g.u, lam); if (seg >= 0.95) { techo = { ...g, seg, lam }; return true; } return false; });
-  return { best, techo, medibles: L.reduce((a, g) => a + g.dias, 0) };
+    const lam = best.r * (best.gu / gu1) * g.dias, seg = 1 - poissonCdfF(g.u, lam), umb = umbralTecho(g.dias); if (seg >= umb) { techo = { ...g, seg, lam, umb }; return true; } return false; });
+  // El precio más alto medido arriba del 💰 que todavía no es techo: cuánto lleva (para decir "63% seguro, decide con 88%").
+  let enPrueba = null;
+  if (!techo && best.u >= 3 && best.gu > 0) { const g = L.filter((x) => x.p > best.p * 1.02).sort((a, b) => b.p - a.p)[0];
+    if (g) { const gu1 = g.gu != null ? g.gu : best.gu + (g.p - best.p) * 0.7; if (gu1 > best.gu) { const lam = best.r * (best.gu / gu1) * g.dias; enPrueba = { p: g.p, dias: g.dias, u: g.u, lam, seg: 1 - poissonCdfF(g.u, lam), umb: umbralTecho(g.dias) }; } } }
+  return { best, techo, enPrueba, medibles: L.reduce((a, g) => a + g.dias, 0) };
 }
 // ── LAS REGLAS DURAS DE LAS BAJAS, EN EL CÓDIGO (21/10/2026, él: "a, dale" a pasar a freno toda regla que se pueda medir) ──────
 // Después del Cuba Platinum (bajado sin techo con toda la info a mano) y del Adaptador 8 en 1 (de $27.990 a $19.990 de golpe y
@@ -45193,12 +45202,12 @@ async function main() {
           }
           const visE = nv ? vis / nv * dias : (Number(e.vis30) >= 0 && e.vis30 != null ? Number(e.vis30) / 30 * Math.min(dias, 30) : null);
           const cr = convRef(P0); const lam = cr && visE != null ? visE * cr.c : null;
-          const segL = u === 0 && lam != null ? 1 - Math.exp(-lam) : null; const okL = segL != null && segL >= 0.95;
+          const segL = u === 0 && lam != null ? 1 - Math.exp(-lam) : null; const umbL = umbralTecho(dias); const okL = segL != null && segL >= umbL;
           const txtL = `a ${$(P0)} o más: ${dias} días con stock (${fK(desde)}-${fK(hasta)}), ~${visE == null ? '?' : Math.round(visE)} visitas, ${u} vendidas` + (cr ? `; una nuestra típica a ese precio convierte ${(cr.c * 100).toFixed(1)}% (${cr.n} publicaciones) y habría vendido ~${lam == null ? '?' : lam.toFixed(1)}` : '; sin conversión de referencia para ese precio');
           const faltaL = u > 0 ? `vendió ${u} a este precio: no es techo, sigue la búsqueda para arriba` : okL ? '' : (visE != null && visE < dias * 0.7 ? 'casi no lo ve nadie (menos de 1 visita por día): bajar no lo arregla, mirar título, fotos y caja' : `todavía no alcanza: hacen falta ~${cr && cr.c > 0 ? Math.ceil(3 / cr.c) : '?'} visitas sin venta para estar 95% seguro`);
           const ya = tL.t === 'techook' ? ' (ya anotado' + (kEsc ? ', midiendo desde el ' + fK(kEsc) : '') + ')' : tL.t === 'bajando' ? ' (escalón del ' + fK(kEsc) + ')' : '';
-          console.log(`${okL ? '🔴 TECHO DE LANZAMIENTO · bajar con tachado' : tL.t === 'techook' ? '🔴 TECHO DE LANZAMIENTO' : tL.t === 'bajando' ? '🪜 ESCALÓN DE LANZAMIENTO · ESPERAR' : '🆕 ESPERAR'}${ya} · ${mla} · ${nom} · ${$(P0)}${segL != null ? ' · ' + (segL * 100).toFixed(1) + '% seguro' : ''} · ${txtL}${faltaL ? ' · ' + faltaL : ''}`);
-          res.push({ mla, ok: okL, seg: segL, txt: txtL, falta: faltaL, P0, lanza: true, hasta, tHoy: tL.t || '' });
+          console.log(`${okL ? '🔴 TECHO DE LANZAMIENTO · bajar con tachado' : tL.t === 'techook' ? '🔴 TECHO DE LANZAMIENTO' : tL.t === 'bajando' ? '🪜 ESCALÓN DE LANZAMIENTO · ESPERAR' : '🆕 ESPERAR'}${ya} · ${mla} · ${nom} · ${$(P0)}${segL != null ? ' · ' + (segL * 100).toFixed(1) + '% seguro (decide con ' + Math.round(umbL * 100) + '% a los ' + dias + ' días)' : ''} · ${txtL}${faltaL ? ' · ' + faltaL : ''}`);
+          res.push({ mla, ok: okL, seg: segL, umb: umbL, dias, txt: txtL, falta: faltaL, P0, lanza: true, hasta, tHoy: tL.t || '' });
           continue;
         }
         // UNA SOLA CUENTA CON LA RAYA DE LA WEB (20/10/2026): 🏔️ seguro = el precio de hoy es el 💰 (el que más plata por día dejó)
@@ -45212,10 +45221,17 @@ async function main() {
           txt = `a ${$(R.techo.p)} vendió ${R.techo.u} en ${R.techo.dias} días medibles (${fK(R.techo.desde)}-${fK(R.techo.hasta)}); para dejar la misma plata por día que a ${$(R.best.p)} (${R.best.r.toFixed(2)}/día, ${$(R.best.gu)}/u) tenía que vender ~${R.techo.lam.toFixed(1)}`;
           if (Math.abs(P0 - R.best.p) > R.best.p * 0.02) { falta = P0 > R.techo.p * 0.98 ? `hoy está a ${$(P0)}, arriba del 🔴 techo medido (${$(R.techo.p)}): si es una prueba nueva, que se juzgue; si no, volver al 💰 ${$(R.best.p)}` : `hoy está a ${$(P0)}, entre el 💰 ${$(R.best.p)} y el 🔴 ${$(R.techo.p)}: se sigue probando`; seg = Math.min(seg, 0.94); }
         }
-        const ok = seg != null && seg >= 0.95;
-        console.log(`${ok ? '🏔️ SEGURO' : '📈 VOLVER A BUSCAR'} · ${mla} · ${nom} · techo ${$(P0)}${seg != null ? ' · ' + (seg * 100).toFixed(1) + '% seguro' : ''}${txt ? ' · ' + txt : ''}${falta ? ' · ' + falta : ''}`);
-        res.push({ mla, ok, seg, txt, falta, P0, pH, hasta: hastaT, tHoy: (ultT(mla) || {}).t || '' });
+        const ok = seg != null && R.techo && seg >= (R.techo.umb || 0.95);
+        const umbT = R.techo ? R.techo.umb : null, EP = R.enPrueba;
+        const epTxt = !R.techo && EP ? ` · 📈 prueba a ${$(EP.p)}: ${EP.u} vendidas en ${EP.dias} días medibles · ${(EP.seg * 100).toFixed(0)}% seguro de que es techo (decide con ${Math.round(EP.umb * 100)}%; baja hasta 70% a los 21 días)` : '';
+        console.log(`${ok ? '🏔️ SEGURO' : '📈 VOLVER A BUSCAR'} · ${mla} · ${nom} · techo ${$(P0)}${seg != null ? ' · ' + (seg * 100).toFixed(1) + '% seguro' + (umbT ? ' (decidido con ' + Math.round(umbT * 100) + '%)' : '') : ''}${txt ? ' · ' + txt : ''}${falta ? ' · ' + falta : ''}${epTxt}`);
+        res.push({ mla, ok, seg, umb: umbT, txt, falta, P0, pH, hasta: hastaT, tHoy: (ultT(mla) || {}).t || '', ep: EP });
       }
+      // CUÁNTO LLEVA CADA BÚSQUEDA DE TECHO, PARA LA WEB (24/10/2026, él: "en la línea de tiempo quiero que diga cuánto % lleva de decir si es
+      // techo o no"). Sólo con ;go (la completa). `cyc/techo95pct/<MLA>` = {seg, umb, p, dias, u, lanza, ok, ts}.
+      if (GOt) { const snap = {}; for (const r of res) { const x = r.lanza ? { seg: r.seg, umb: r.umb, p: r.P0, dias: r.dias } : r.ok ? { seg: r.seg, umb: r.umb, p: r.pH } : r.ep ? { seg: r.ep.seg, umb: r.ep.umb, p: r.ep.p, dias: r.ep.dias, u: r.ep.u } : null;
+          if (x && x.seg != null && isFinite(x.seg)) snap[r.mla] = { seg: Math.round(x.seg * 1000) / 1000, umb: Math.round((x.umb || 0.95) * 1000) / 1000, p: Math.round(Number(x.p) || 0), dias: x.dias ?? null, u: x.u ?? null, lanza: !!r.lanza, ok: !!r.ok, ts: Date.now() }; }
+        try { if (Object.keys(snap).length) await db.patch('cyc/techo95pct', snap); } catch { console.log('⚠️ no pude guardar cuánto lleva cada búsqueda (cyc/techo95pct)'); } }
       // 1.3a · LA 🏔️ VENCE (21/10/2026, eligió la a): las que hoy están en 🏔️ con la foto que guardó techo95 (`cyc/techofreno` con
       // `t95`) se reabren solas si el más barato ajeno subió 8%+, ya no hay ajenos abajo del techo, pasamos a ganar la caja o pasaron
       // 30 días (`porQueReabrirTecho`, la misma regla de `techofreno`). Con ;go vuelven a 📈 buscando techo y se borra el freno.
@@ -45248,7 +45264,7 @@ async function main() {
             if (okR) { g++; try { await db.set('cyc/techofreno/' + r.mla, null); } catch { console.log(`   ⚠️ ${r.mla}: no pude sacar el freno de techo`); } }
             console.log(`${okR ? '🔓' : '⚠️ no quedó el'} ${r.mla} → 📈 buscando techo`); continue;
           }
-          if (r.lanza) { if (r.ok && r.tHoy !== 'techook' && await guardarEstrategia(db, r.mla, 'techook', `🔴 Techo de lanzamiento, ${(r.seg * 100).toFixed(0)}% seguro: ${r.txt}. Empieza a bajar con precio tachado (entrarpromo con #bajando y "lanzamiento" en el motivo)`.replace(/;/g, ','), Date.now())) { g++; await guardarFotoT95(r); }
+          if (r.lanza) { if (r.ok && r.tHoy !== 'techook' && await guardarEstrategia(db, r.mla, 'techook', `🔴 Techo de lanzamiento, ${(r.seg * 100).toFixed(0)}% seguro (se decidió con ${Math.round((r.umb || 0.95) * 100)}% a los ${r.dias || '?'} días): ${r.txt}. Empieza a bajar con precio tachado (entrarpromo con #bajando y "lanzamiento" en el motivo)`.replace(/;/g, ','), Date.now())) { g++; await guardarFotoT95(r); }
             else if (r.ok && r.tHoy === 'techook' && tfT && !(tfT[r.mla] && tfT[r.mla].t95)) await guardarFotoT95(r);
             continue; }
           // 1.1a: 🪜 que volvió de una prueba de techo y no llega al 95%: sigue 🪜 (no se le pone 📈 encima).
@@ -45269,7 +45285,7 @@ async function main() {
           const tsHasta = r.ok && r.hasta ? Date.parse(r.hasta.replace(/_/g, '-') + 'T23:00:00-03:00') : Date.now();
           const ts = !r.ok ? Date.now() : especial ? Math.min(tsHasta, ultTs - 1000) : Math.min(Date.now(), Math.max(tsHasta, ultTs + 1000));
           const hall = r.ok && r.hasta ? ` · hallado el ${fK(r.hasta)}` : '';
-          const m0 = r.ok ? `Techo encontrado, ${(r.seg * 100).toFixed(0)}% seguro: ${r.txt}` : `Volver a buscar techo (no llega al 95%): ${r.falta}${r.txt ? '. ' + r.txt : ''}`;
+          const m0 = r.ok ? `Techo encontrado, ${(r.seg * 100).toFixed(0)}% seguro (se decidió con ${Math.round((r.umb || 0.95) * 100)}%): ${r.txt}` : `Volver a buscar techo (no llega a la seguridad que pide): ${r.falta}${r.txt ? '. ' + r.txt : ''}`;
           const m = m0.slice(0, 400 - hall.length) + hall;
           const tNue = r.ok ? 'techook' : 'techo', mNue = m.replace(/;/g, ',');
           if (!especial && ultX && ultX.t === tNue && (String(ultX.m || '') === mNue || (r.ok && hall && techookDeTecho95(ultX) && String(ultX.m || '').endsWith(hall)))) { console.log(`· ${r.mla}: ya estaba anotado así (${ESTRATEGIAS[tNue] || tNue}${hall}): no lo repito`); g++;

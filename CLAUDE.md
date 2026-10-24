@@ -200,7 +200,7 @@
   **Detector `errores[:horas][:go]`** al final de cada vuelta (consulta): todo cambio y descuento de 26 h contra los errores que él ya
   marcó; la cuenta tiene que cerrar; con `:go` (ml-sync) deshace lo ❌ y le manda UN aviso. **Cada corrección nueva suya agrega su
   chequeo al detector (y su freno si se mide), en el mismo commit; una salida de excepción mal usada pasa a ser 🔐 suya.**
-- **Techo con 95%** (`techo95`, nunca `#techook` a mano): las tres rayas de la línea de tiempo 🔴 techo (95%) · 💰 piso = el precio que
+- **Techo con 95%, que baja con los días** (24/10, él: *"no tener 1 mes buscando techo"*: 95% hasta el día 7 con stock a ese precio, después baja hasta 70% el día 21, `umbralTecho`; la línea dice cuánto lleva y con cuánto se decidió) (`techo95`, nunca `#techook` a mano): las tres rayas de la línea de tiempo 🔴 techo (95%) · 💰 piso = el precio que
   más plata por día dejó (no se baja de ahí salvo sobra/stock antiguo/problema) · lo de en medio falta probar. Una sola cuenta en web
   (`_rayas`) y robot (`rayasPrecioLinea`), **con los últimos 60 días y sin los días de fechas especiales** (24/10, el 🔴 falso del Infusor). Sin piso medible, 💰 provisorio desde la primera venta. **Todo producto tiene que llegar a
   tener las tres.** Juicio por certeza (Poisson), no por calendario; manda la **plata por día neta** (−$100/u de trabajo, −3% de lo
