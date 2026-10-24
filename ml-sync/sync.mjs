@@ -22347,6 +22347,20 @@ async function main() {
       console.log('@@LISTA'); for (const c of fal) console.log(`${c.cod}|${(Number(c.usd) || 0).toFixed(2)}|${c_link(c)}|${String(c.nombre || '').slice(0, 70)}`); console.log('@@FIN');
       return;
     }
+    // BILLING_PROBE=pyprobadoslista → SOLO LEE (24/10/2026, él: *"que primero mire los productos probados y que los cargue lo antes
+    // posible, después que siga con el resto"*). La lista para el chat de compras: cada ficha de NISSEI con su id, el código de Nissei
+    // (si tiene), el precio de Nissei guardado y hace cuántos días. El chat busca cada uno en comprasparaguay y lo carga con `pyprecio`.
+    if (/^pyprobadoslista$/.test(String(process.env.BILLING_PROBE || ''))) {
+      const ahoraL = Date.now();
+      const fichasL = products.filter((p) => p && p.id && (p.origen === 'py' || p.codPy) && provPyDeBot(p) === 'nissei' && !p.soloLocal)
+        .sort((a, b) => (Number(a.nisseiTs) || 0) - (Number(b.nisseiTs) || 0));
+      console.log(`=== PROBADOS DE NISSEI · ${fichasL.length} (id|código|US$ guardado|días|nombre) · los más viejos primero ===`);
+      console.log('@@LISTA');
+      for (const p of fichasL) { const d = Number(p.nisseiTs) > 0 ? Math.floor((ahoraL - Number(p.nisseiTs)) / 864e5) : '-';
+        console.log(`${p.id}|${String(p.codPy || '').trim() || 'SIN CÓDIGO'}|${Number(p.nisseiUSD) > 0 ? Number(p.nisseiUSD).toFixed(2) : '-'}|${d}|${String(p.name || '').replace(/[|;]/g, ' ').slice(0, 70)}`); }
+      console.log('@@FIN');
+      return;
+    }
     // BILLING_PROBE=pycatprobados[:go] → LOS PROBADOS PRIMERO (15/10/2026, pedido suyo: "que el robot mire primero siempre la
     // mercadería probada"). Lo probado no se mide contra ML (ya tiene sus ventas reales): lo que necesita es el PRECIO DE PARAGUAY
     // de hoy, y eso ya está en `mlapi/pycat`, gratis y sin consultar a ML. Para cada ficha de Paraguay:
