@@ -20973,6 +20973,18 @@ async function main() {
       console.log(`\n── EN EL PEDIDO: ${conU.length} producto(s) · ${conU.reduce((s, [, c]) => s + Number(c.pedirU), 0)} u. · US$ ${usdP.toFixed(2)} crudos ──`);
       return;
     }
+    // BILLING_PROBE=descartesmot → POR QUÉ SE DESCARTÓ CADA CANDIDATO, AGRUPADO (24/10/2026, él: "hay muchos descartados que no sé
+    // por qué. son productos legítimos"). SOLO LEE. Agrupa por tipo de descarte y el motivo sin números, con 4 ejemplos por grupo.
+    if (/^descartesmot$/.test(String(process.env.BILLING_PROBE || ''))) {
+      const cands = (await db.get('cyc/candidatos_py')) || {}; const g = {};
+      for (const [id, c] of Object.entries(cands)) { if (!c || !c.no) continue;
+        const k = `${c.noTipo || 'sin tipo'} · ${String(c.motivo || '(sin motivo)').replace(/US\$ ?[\d.,]+|\$ ?[\d.,]+|-?\d+([.,]\d+)?%?|MLA\d+/g, '#').replace(/\s+/g, ' ').slice(0, 110)}`;
+        (g[k] = g[k] || []).push(`${String(c.nombre).slice(0, 55)}${c.margen != null ? ' (' + Math.round(c.margen) + '%)' : ''}`); }
+      const L = Object.entries(g).sort((a, b) => b[1].length - a[1].length);
+      console.log(`=== ${L.reduce((a, [, v]) => a + v.length, 0)} descartados en ${L.length} motivos ===`);
+      for (const [k, v] of L) { console.log(`\n${v.length} · ${k}`); for (const x of v.slice(0, 4)) console.log(`     ej: ${x}`); }
+      return;
+    }
     // BILLING_PROBE=descartados → ¿A CUÁNTOS DESCARTAMOS POR EMPAREJARLOS MAL? **SOLO LEE.**
     //
     // Pregunta suya del 19/09/2026, y es la mejor del día: *"acá se equivocó dando por correcto un
