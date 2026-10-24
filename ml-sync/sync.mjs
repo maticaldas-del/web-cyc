@@ -45472,6 +45472,18 @@ async function main() {
         if (GOt) { let ok = 0; for (const n of nuevas) if (await guardarEstrategia(db, n.mla, n.t, n.m, n.ts)) ok++; console.log(`\n✓ ${ok} de ${nuevas.length} guardadas y releídas`); }
         return;
       }
+      // `tag:hist:<MLA>` (24/10/2026, Casino): la historia entera de estrategias de una publicación, con su precio de ese momento
+      // (de `cyc/claudecambios`), para ver de dónde sale lo que muestra la web. Sólo lee.
+      const hm = raw.match(/^hist:(MLA\d+)/i);
+      if (hm) {
+        const m = hm[1].toUpperCase(); const h = es[m] || {}; const cc = Object.values((await db.get('cyc/claudecambios')) || {}).filter((c) => c && c.mla === m && Number(c.ts) > 0);
+        const fH = (n) => new Date(n - 3 * 3600e3).toISOString().slice(0, 16).replace('T', ' ');
+        const filas = [...Object.keys(h).map(Number).filter((n) => n > 0 && h[n]).map((n) => ({ ts: n, s: `🏷 ${ESTRATEGIAS[h[n].t] || h[n].t} · ${String(h[n].m || '').slice(0, 160)}` })),
+          ...cc.map((c) => ({ ts: Number(c.ts), s: `💲 ${money(Number(c.de) || 0)} → ${money(Number(c.a) || 0)}${c.tag ? ' #' + c.tag : ''} · ${c.por || 'decido'}` }))].sort((a, b) => a.ts - b.ts);
+        console.log(`=== 🏷 HISTORIA DE ESTRATEGIAS · ${nomDe(m)} · ${filas.length} renglones ===`);
+        for (const f of filas.slice(-60)) console.log(`${fH(f.ts)} ${f.s}`);
+        return;
+      }
       const pon = partes.filter((x) => x !== 'go');
       if (pon.length) {
         console.log(`=== 🏷 PONER ESTRATEGIA ${GOt ? '' : '(PRUEBA · agregá ;go)'} ===`);
