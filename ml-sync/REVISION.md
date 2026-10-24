@@ -1460,6 +1460,8 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
 - **Qué es:** desde el 13/10 (el robot sólo junta datos) nadie marcaba `rem`/`esc` en la línea y la franja se cortó. Ahora cada día con stock
   cuenta la estrategia que tenía: sobra/liquidando/remate → 📦, bajando → 🪜. Robot: `calcLineaTodo(lin, links, estrat)` (`TAG_SACA_STOCK`,
   lee `cyc/estrategia`); web, línea de un producto: `remT`/`escT` con `estrategiaDe(mla, fin del día)`.
+- **Ajuste del mismo día (él):** la 🪜 escalera que viene de buscar techo NO es sacar stock; desde el 24/10 cuenta todo día abajo del 35% en el
+  peor caso (`mgP` nuevo en la línea de cada noche, `SACA_35_DESDE`). El violeta queda sólo para las marcas viejas del robot (antes del 13/10).
 - **Qué chequear:** la franja de "Todos" llega hasta ayer · un producto en 📦 sobra se pinta naranja esos días · no se cuenta dos veces un
   día que ya traía `rem` del robot.
 

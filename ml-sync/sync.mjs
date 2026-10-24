@@ -8613,8 +8613,13 @@ function _rnDia(ts) { return new Date(ts - 3 * 3600e3).toISOString().slice(0, 10
 // 📦 SACANDO STOCK CON LA ESTRATEGIA DE CADA DÍA (24/10/2026, él: "siguen sin aparecer las ventas. figura la última el 13/10. está mal").
 // Desde que el robot sólo junta datos (13/10) nadie marcaba `rem`/`esc` en la línea de cada publicación y la franja se cortó. Ahora, con
 // `estrat` (`cyc/estrategia`), cada día cuenta la estrategia que tenía ese día (la última anotada hasta las 23:59 de acá): 📦 sobra,
-// liquidando y 🧨 remate → sacando stock (`rem`); 🪜 bajando → escalera (`esc`). Sólo los días activa y con stock (o que vendió).
+// liquidando y 🧨 remate → sacando stock (`rem`). Sólo los días activa y con stock (o que vendió).
+// La escalera 🪜 que viene de buscar techo NO es sacar stock (él, 24/10: "la escalera cuenta como sacando stock si está en sobrestock (…)
+// pero no la escalera que viene del techo buscando el mejor precio. o sea ahí entra todo lo que se venda a menos del 35%"); y "a partir de
+// lo de ahora, ya que antes no estaba esta regla": desde SACA_35_DESDE también cuenta todo día con el peor caso abajo del 35% (`mgP`).
+// `esc` queda sólo para las marcas viejas del robot (antes del 13/10).
 const TAG_SACA_STOCK = new Set(['sobra', 'liquidando', 'remate']);
+const SACA_35_DESDE = '2026_10_24';
 function calcLineaTodo(lin, links, estrat) {
   const out = {};
   const o = (k) => (out[k] = out[k] || { n: 0 });
@@ -8644,8 +8649,8 @@ function calcLineaTodo(lin, links, estrat) {
       const activa = r.est == null || r.est === 'active';
       if (activa && (r.caja === 'g' || r.caja === 'c' || r.caja === 'p')) x[r.caja] = (x[r.caja] || 0) + 1;
       const tD = tags.length ? tagDia(k) : '', conSt = activa && (Number(r.st) > 0 || Number(r.u) > 0);
-      if (r.rem === 1 || (conSt && TAG_SACA_STOCK.has(tD))) x.rem = (x.rem || 0) + 1;
-      else if (r.esc != null || (conSt && tD === 'bajando')) x.esc = (x.esc || 0) + 1;
+      if (r.rem === 1 || (conSt && TAG_SACA_STOCK.has(tD)) || (conSt && k >= SACA_35_DESDE && r.mgP != null && Number(r.mgP) < PISO_DURO)) x.rem = (x.rem || 0) + 1;
+      else if (r.esc != null && k < SACA_35_DESDE) x.esc = (x.esc || 0) + 1;
       const p = Number(r.p) || 0;
       if (p > 0) {
         if (pAnt > 0) {
@@ -21786,6 +21791,10 @@ async function main() {
           if (!(neto > 0 && P > 0 && tcMg > 0 && monoMg != null && pr) || (Number(np.sinMedir) > 0 && Number(np.sinMedir) >= (Number(np.ts) || 0))) return undefined;
           const cu = costoPesos(pr, 1, tcMg).costo; if (!(cu > 0)) return undefined; const m = ((ML_EXTRA_PCT[String(e.cuenta || '').toLowerCase()] || 4) + monoMg) / 100;
           const mg = (neto - cu - P * m) / (cu + P * m + env) * 100; return isFinite(mg) ? Math.round(mg * 10) / 10 : undefined; };
+        // El % en el PEOR caso del día (24/10/2026): lo mismo menos la retención de otra provincia (`PEOR_RET_PCT`). Lo usa "📦 Sacando stock":
+        // desde el 24/10 todo lo que queda abajo del 35% en el peor caso cuenta como sacar stock (él).
+        const mgPDe = (np, e) => { const mg = mgDe(np, e); if (mg == undefined) return undefined; const P = Number(np.precio), env = Number(np.envio) || 0, pr = prodsL[e.prodId]; const cu = costoPesos(pr, 1, tcMg).costo; const m = ((ML_EXTRA_PCT[String(e.cuenta || '').toLowerCase()] || 4) + monoMg) / 100;
+          const v = (Number(np.neto) - cu - P * m - P * PEOR_RET_PCT) / (cu + P * m + env) * 100; return isFinite(v) ? Math.round(v * 10) / 10 : undefined; };
         const filas = {}; let leidas = 0, sinLeer = 0, visUna = 0, visErr = '';
         const desdeY = new Date(Date.parse(ayerK.replace(/_/g, '-') + 'T03:00:00Z')).toISOString(), hastaY = new Date(Date.parse(ayerK.replace(/_/g, '-') + 'T03:00:00Z') + DMS - 1000).toISOString();
         for (const [cta, mlas] of Object.entries(mlasCta)) {
@@ -21839,8 +21848,8 @@ async function main() {
               caja: cajaOk ? caja : undefined, ptw: cajaOk && Number(e.cajaPtw) > 0 ? Math.round(Number(e.cajaPtw)) : undefined,
               vis: vis[mla] != null ? vis[mla] : undefined,
               u: vpD.u, tot: Math.round(vpD.tot), neto: Math.round(vpD.neto), uR: vpD.uR,
-              rem: nosubir[mla] || ['sobra', 'liquidando', 'remate'].includes(tagAyer(mla)) ? 1 : 0, esc: escalera[mla] && escalera[mla].paso != null ? escalera[mla].paso : tagAyer(mla) === 'bajando' ? 1 : undefined,
-              mg: mgDe(np, e),
+              rem: nosubir[mla] || TAG_SACA_STOCK.has(tagAyer(mla)) ? 1 : 0, esc: escalera[mla] && escalera[mla].paso != null ? escalera[mla].paso : undefined,
+              mg: mgDe(np, e), mgP: mgPDe(np, e),
               vend: b && b.sold_quantity != null ? b.sold_quantity : undefined,
             };
             row.inc = ['st', 'p', 'est', 'vis'].some((c) => row[c] === undefined) ? 1 : undefined;
