@@ -2959,7 +2959,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.29';
+const APP_VERSION='26.30';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2972,6 +2972,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.30',f:'24/10',h:'01:55',c:[{n:3,t:'🇵🇾 Paraguay → Nuevos → Revisados: carpeta 🌟 Sin competencia en ML (catálogos que nadie tiene en stock). Cada uno dice a cuánto habría que venderlo para dejar 35% y tiene un botón ➕ Lo quiero: pasa a Para probar, el robot lo mide exacto y Claude confirma las fotos antes de que se pueda pedir. Primero los rubros que ya vendemos.'}]},
   {v:'26.29',f:'24/10',h:'01:30',c:[{n:3,t:'🇵🇾 Productos nuevos: con UN solo vendedor en ML ahora entran si ese producto vendió 100 o más (lo carga el chat de compras). Y los que tienen catálogo en ML pero nadie tiene stock entran como 🌟 sin competencia, medidos contra el precio que el chat ve en ML. Los dos con la vara de 35%.'},{n:2,t:'🤖 El robot ya no da "nadie lo vende" cuando ML agrupa los colores en un catálogo padre: mira el de cada color.'}]},
   {v:'26.28',f:'24/10',h:'01:10',c:[{n:1,t:'🇵🇾 Paraguay → Revisados: "En ML nadie lo vende" pasa a decir lo que es: en ML no hay vendedores en el catálogo de ese producto (puede venderse suelto, pero la regla pide catálogo con 2+ vendedores).'},{n:2,t:'🤖 El robot ya no compara con otro producto cuando cambia la capacidad (32 GB contra 16 GB), el género (perfume de hombre contra el de mujer) o el número del modelo (Flip 7 contra Flip 6). Lo que estaba medido así se vuelve a buscar solo.'}]},
   {v:'26.27',f:'24/10',h:'00:50',c:[{n:2,t:'🇵🇾 Paraguay: los productos que descartó Claude porque ML los comparaba con OTRO producto ya no cuentan como descartados: el robot les vuelve a buscar el producto correcto en ML (sin el que estaba mal). Si dan, vuelven a Para probar y pasan por la revisión de fotos.'}]},
@@ -15467,6 +15468,23 @@ async function pycatBuscar(q){
   res.sort((a,b)=>((b[1].m!=null)-(a[1].m!=null))||((Number(b[1].m)||-999)-(Number(a[1].m)||-999)));
   el.innerHTML=`<div style="font-size:.64rem;color:var(--muted)">${res.length} encontrado${res.length===1?'':'s'}${res.length>60?' · muestro los primeros 60 (escribí más palabras para afinar)':''} · los medidos primero</div>`+res.slice(0,60).map(pycatFila).join('');
 }
+// 🌟 EL PRECIO PARA DEJAR 35% SIN COMPETENCIA (24/10/2026, eligió la 3a). Estimado: comisión ~14,5% + cargo fijo, impuestos del peor caso
+// (~10%: monotributo + IIBB + retención) y el envío de Full arriba de $33.000. El robot lo mide exacto (con la comisión de su categoría)
+// cuando pasa a Para probar.
+function pycatPrecio35(costo){const m=0.35,com=0.145,imp=0.10,F=1230;const uno=E=>Math.ceil(((costo+E)*(1+m)+F)/(1-com-imp-m*imp)/10)*10;
+  let P=uno(0);if(P>=UMBRAL_ENVIO_GRATIS)P=uno(SIM_ENVIO_ARRIBA);return P>0&&isFinite(P)?Math.round(P/1000)*1000-10:null;}
+async function pycatQuiero(cod,p35){
+  const cat=_pycatCache||{};const e=cat[cod];if(!e){toast('No encontré ese producto en el catálogo','err');return;}
+  if(!/^https:\/\//.test(String(e.f||''))){toast('Le falta la foto de Paraguay: sin las dos fotos no se puede comprar. Pedile al chat de Nissei que la copie.','err',6000);return;}
+  if(!(p35>0)){toast('No pude calcular el precio (falta el dólar)','err');return;}
+  const id='c'+Date.now()+'q';const ts=Date.now();
+  const c={nombre:e.n,cod:String(cod),usd:Number(e.u)||0,mlId:e.mi,enNissei:true,fuente:'pycat',ts,foto:e.f,...(e.l?{link:e.l}:{}),svp:Number(e.svp)>0?Number(e.svp):p35,svpTs:ts,sinComp:1,elegido:ts};
+  const upd={};upd['cyc/candidatos_py/'+id]=c;upd['mlapi/pycat/'+cod+'/cand']=id;
+  try{await db.ref().update(upd);}catch(err){toast('No se guardó: '+(err.message||err),'err',5000);return;}
+  state.candidatos=state.candidatos||{};state.candidatos[id]=c;e.cand=id;
+  toast('🌟 Pasó a Para probar. El robot lo mide en su próxima vuelta y Claude confirma las fotos.');
+  try{renderPedidos();}catch(_){}
+}
 function pycatFila([cod,e]){const tc=curTC();{const u=Number(e.u)||0,pu=u*RECARGO_PY,ps=tc>0?Math.round(pu*tc):0;
     const m=(e.m!=null&&isFinite(e.m))?Number(e.m):null;
     const perf=_PERF_RE.test(e.n+' '+(e.mt||'')), loc=perf&&e.mp>0?perfLocalPct(ps,Number(e.mp)):null;
@@ -15484,6 +15502,7 @@ function pycatFila([cod,e]){const tc=curTC();{const u=Number(e.u)||0,pu=u*RECARG
       <div style="flex:1;min-width:0;font-size:.72rem;line-height:1.45"><div style="font-weight:600">${e.n}</div>
         <div style="color:var(--muted);font-size:.64rem">🔖 ${cod} · ${fmtUS2(u)} → <b style="color:var(--text)">${fmtUS2(pu)}</b> puesto${ps?' · '+fmt(ps):''}${e.mp?` · en ML ${fmt(e.mp)}${e.mv?' · '+(e.mv==1?'<b style="color:var(--amber)">⚠️ 1 solo vendedor: precio que nadie más confirma</b>':e.mv+' vendedores'):''}${Number(e.pp)>0?` · <span style="color:var(--amber)">🏷️ el más barato está en promo (−${Number(e.pp)}%)</span>`:''}`:''}${e.cand?' · <span style="color:var(--green)">ya está en Para probar</span>':''}</div>
         ${noVa.length?`<div style="font-size:.64rem;color:var(--amber)">No entra al pedido: ${noVa.join(' · ')}</div>`:''}
+        ${(e.sv&&!e.cand&&e.mi&&ps>0)?(()=>{const p35=pycatPrecio35(ps);return `<div style="font-size:.64rem;color:var(--green);margin-top:2px">🌟 sin competencia en ML (nadie tiene stock)${Number(e.svp)>0?` · el chat vio ${fmt(Number(e.svp))}`:Number(e.svp)<0?' · sin ningún precio a la vista':''}${p35?` · para dejar 35%: venderlo a <b>≈ ${fmt(p35)}</b>`:''} <button class="btn" style="font-size:.6rem;padding:2px 8px;margin-left:4px" onclick="pycatQuiero('${String(cod).replace(/'/g,"\\'")}',${p35||0})" title="Pasa a Para probar como 🌟 sin competencia, medido a ese precio. Claude confirma con las fotos que es el mismo producto antes de que se pueda pedir.">➕ Lo quiero</button></div>`;})():''}
         <div style="font-size:.64rem">${/^https:\/\//.test(e.l||'')?`<a href="${e.l}" target="_blank" rel="noopener" style="color:var(--green)">🇵🇾 comprasparaguay</a>`:''}${e.mi?` · <a href="https://www.mercadolibre.com.ar/p/${e.mi}" target="_blank" rel="noopener" style="color:var(--green)">🔗 ML</a>`:''}</div></div>
       <div style="text-align:right;flex:0 0 auto">${est}${loc!=null?`<div>${perfLocalHTML(loc)}</div>`:''}</div></div>`;}}
 // ── TODO LO QUE EL ROBOT REVISÓ Y NO DA, ABAJO DE TODO (17/10/2026, pedido suyo) ──────────────────────────
@@ -15542,6 +15561,11 @@ async function pycatNoDan(id,keysTxt){
     if(e.sv){g.sv.push([cod,e]);continue;}
     g.nomed.push([cod,e]);}
   g.bajo.sort((a,b)=>Number(b[1].m)-Number(a[1].m));
+  // 🌟 SIN COMPETENCIA (24/10/2026, eligió la 3a): primero los rubros que ya vendemos, después US$ 10-80, el más caro primero (mismo
+  // orden que `faltaprecio` del robot). Un catálogo de ML al que apuntan 3+ productos es un emparejado genérico: va al final.
+  {const nMi={};for(const [,e] of g.sv)if(e.mi)nMi[e.mi]=(nMi[e.mi]||0)+1;const RUB=/\b(perfume|perf|col[oô]nia|edp|edt|fone|auricular|aud[ií]fono|pen\s*-?drive|micro\s*-?sd|rel[oó]gio|reloj|smartwatch|watch)\b/i;
+    const k=e=>[(nMi[e.mi]||0)>=3?1:0,RUB.test(e.n)?0:1,(Number(e.u)>=10&&Number(e.u)<=80)?0:1,-(Number(e.u)||0)];
+    g.sv.sort((a,b)=>{const x=k(a[1]),y=k(b[1]);for(let i=0;i<x.length;i++)if(x[i]!==y[i])return x[i]-y[i];return 0;});}
   g.pend.sort((a,b)=>(Number(a[1].t)||0)-(Number(b[1].t)||0));   // el que hace más que no se mira, primero (como la cola del robot)
   const ks=keys.filter(k=>g[k]&&g[k].length),tot=ks.reduce((a,k)=>a+g[k].length,0);
   const lista=(k)=>{const vk=id+'_'+k,n=_pycNoDanVer[vk]||100,arr=g[k];
@@ -17654,7 +17678,7 @@ function candidatosHTML(){
         +((_rojos.length||rv('bajo'))?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--red)">🔻 No llegan al ${CAND_PISO_TXT()} · <b>${_rojos.length}</b> candidatos${` <span style="color:var(--muted);font-weight:400">+ <b>${f(rv('bajo'))}</b> del catálogo</span>`}</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_rojos.map(_card).join('')}</div>${rv('bajo')?pycatNoDanHTML(['bajo'],'pycat-nodan-bajo','📦 Del catálogo: medidos por el robot, abajo del piso',true):''}</details>`:'')
         +candDescartadosHTML(null,'todos')
         +sub('🟠 Dan el %, pero no entran al pedido (falta la foto de Paraguay o el nombre de ML no coincide)','var(--amber)',rv('dan'),['dan'],'pycat-nodan-dan','📦 Del catálogo: dan el piso, sin pasar a Para probar')
-        +sub('👻 En ML no hay vendedores en su catálogo (puede venderse en publicaciones sueltas, pero sin catálogo con 2+ vendedores no se compra)','var(--muted)',rv('sv'),['sv'],'pycat-nodan-sv','📦 Del catálogo: el catálogo existe pero sin vendedores')
+        +sub('🌟 Sin competencia en ML (nadie tiene stock): tocá ➕ en los que quieras probar','var(--green)',rv('sv'),['sv'],'pycat-nodan-sv','📦 Del catálogo: el catálogo existe pero sin vendedores')
         +sub('🔍 Sin catálogo exacto en ML (falta buscarlo traducido)','var(--muted)',rv('sc'),['sc'],'pycat-nodan-sc','📦 Del catálogo: no se pudo comparar contra el mismo producto')
         +sub('⛔ Afuera por regla','var(--muted)',rv('fz'),['fz'],'pycat-nodan-fz','📦 Del catálogo: 110V, marca que ML frena, etc.')
         +(n('ficha')?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--green)">✅ Ya son productos tuyos · <b>${f(n('ficha'))}</b> del catálogo</summary>${pycatNoDanHTML(['ficha'],'pycat-nodan-ficha','📦 Del catálogo: ya tienen ficha en CYC')}</details>`:'')

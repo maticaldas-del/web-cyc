@@ -694,6 +694,14 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 
 ## 3 · MERCADERÍA (miércoles)
 
+**24/10/2026 · v26.30 · 🌟 Sin competencia sin precio (eligió la 3a).** Los catálogos sin vendedores y sin ningún precio a la vista NO entran
+solos: van a la carpeta "🌟 Sin competencia en ML" (antes "nadie lo vende") con el precio estimado para dejar 35% (`pycatPrecio35`:
+comisión ~14,5% + fijo, impuestos peor caso ~10%, envío de Full arriba de $33.000) y el botón **➕ Lo quiero** (`pycatQuiero`): crea el
+candidato con `sinComp`, `svp` = ese precio (o el que vio el chat) y `elegido`, y marca el renglón del catálogo. El robot lo mide exacto
+(`correrCandidatos` → `ofertaVista`) y yo confirmo las fotos (`fotosrev`) antes de que se pueda pedir. Orden de la carpeta: rubros que ya
+vendemos, US$ 10-80, el más caro primero; los catálogos genéricos (3+ productos al mismo) al final. **Qué chequear:** que el ➕ no deje
+un producto sin foto de Paraguay; que el % medido por el robot quede cerca de 35%.
+
 **24/10/2026 · v26.29 · 1 vendedor con 100+ y 🌟 sin competencia (eligió 1a 2a).** **1a:** `vendOk(nv, vend, sinComp)` (sync.mjs) y
 `_vendOk`/`candVendOk` (web): entra con 2+ vendedores, con 1 si vendió 100+ (`vendCarga`/`vend`), o `sinComp`. `faltaventas` y
 `listarevisar` traen también los de 1 vendedor (vara 35%). **2a:** `faltaprecio` lista los catálogos sin vendedores (Nissei y listas) para
