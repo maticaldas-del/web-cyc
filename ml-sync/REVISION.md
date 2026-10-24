@@ -696,7 +696,7 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 
 **24/10/2026 · v26.37 · ⭐ "gana mucho y sale mucho" (él: *"juntando el puntaje de salida y el % de ganancia: el primero tiene que ser el que
 se le gana mucho y se vende mucho"*).** Orden nuevo en Productos nuevos = % × log10(🚀 puntaje + 1) (el % entero, la salida por escalones de ×10,
-para que vender muchísimo no gane solo). Sin % o sin puntaje va al final. Se sacaron "🛒 más vendidos" y "$ por unidad" (él); un orden guardado que
+para que vender muchísimo no gane solo). Lo de rotación baja (🚀 menos de 100) va después de todo lo que sale bien aunque deje 200%; sin % o sin puntaje, al final. Se sacaron "🛒 más vendidos" y "$ por unidad" (él); un orden guardado que
 ya no existe vuelve a ⭐ (que es el de entrada). **Qué chequear:** que arriba queden los de mucho % con 🚀 verde y que los sin vendidas/reseñas cargadas
 queden abajo.
 

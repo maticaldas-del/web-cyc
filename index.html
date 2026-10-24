@@ -17649,7 +17649,8 @@ function candidatosHTML(){
       // ⭐ GANA MUCHO Y SALE MUCHO (24/10/2026, él: "juntando el puntaje de salida y el % de ganancia: el primero tiene que ser el que se
       // le gana mucho y se vende mucho"). % × log10(puntaje): 50% con 1.000 de salida (150) va arriba de 35% con 20.000 (151 ≈ empate)
       // y de 100% con 30 (148): el % pesa entero y la salida por escalones de ×10, así un producto no gana sólo por vender muchísimo.
-      if(k==='combo'){const m=n(c.margen),p=candPuntaje(c);return (m!=null&&p!=null&&p>0)?m*Math.log10(p+1):null;}
+      // Lo de rotación baja (puntaje abajo de 100) va después de todo lo que sale bien, aunque deje 200%: "que se venda mucho" manda.
+      if(k==='combo'){const m=n(c.margen),p=candPuntaje(c);return (m!=null&&p!=null&&p>0)?m*Math.log10(p+1)-(p<CAND_MIN_VENTAS?1e6:0):null;}
       if(k==='usd')return (parseFloat(c.usd)>0&&n(c.ganancia)!=null)?c.ganancia/(parseFloat(c.usd)*RECARGO_PY):null;
       if(k==='barato')return parseFloat(c.usd)>0?-parseFloat(c.usd):null;
       return n(c.margen);};
