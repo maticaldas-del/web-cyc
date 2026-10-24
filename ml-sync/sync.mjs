@@ -21054,6 +21054,33 @@ async function main() {
         console.log(`  ${cod} · US$ ${e.u} · ${String(e.n).slice(0, 60)} ⇒ ${String(e.mt || '—').slice(0, 60)} ${e.mi || ''}${e.m != null ? ' · ' + Math.round(e.m) + '%' : ''}${e.mv != null ? ' · ' + e.mv + ' vend' : ''}${e.mp ? ' · $' + e.mp : ''}${e.rp ? ' · rp: ' + String(e.rp).slice(0, 60) : ''}${e.fz ? ' · fz: ' + e.fz : ''}`); }
       return;
     }
+    // BILLING_PROBE=probadospct (24/10/2026, él: "los que compré se vendieron re bien y ahora el % no da. no entiendo"). SOLO LEE.
+    // Por cada ficha de Nissei que vendió en 60 días: el % de su última venta con lo que PAGASTE, y el mismo % si lo comprás hoy a
+    // Nissei (precio de hoy × recargo medido). Sin peor caso (es la venta real). Para ver qué cambió: el costo, el recargo o el precio.
+    if (/^probadospct$/.test(String(process.env.BILLING_PROBE || ''))) {
+      try { await cargarParamCompra(db); } catch { /* el de siempre */ }
+      const vp = (await db.get('cyc/ventaprod')) || {}; const tc = parseFloat((await db.get('cyc/finanzas/tipo_cambio')) || 0) || 0;
+      const mono = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0; const links = (await db.get('cyc/mllinks')) || {};
+      const desde = new Date(Date.now() - 60 * 864e5).toISOString().slice(0, 10).replace(/-/g, '_');
+      const ult = {}, n60 = {};
+      for (const [dk, ents] of Object.entries(vp)) { if (dk < desde) continue; for (const v of Object.values(ents || {})) { if (!v || v.cancelada || !v.mla) continue;
+        const pid = (links[v.mla] || {}).prodId || v.prodId; if (!pid) continue; const q = Number(v.qty) || 1; n60[pid] = (n60[pid] || 0) + q;
+        const t = Number(v.ts) || Date.parse(dk.replace(/_/g, '-')); if (!ult[pid] || t > ult[pid].t) ult[pid] = { t, pu: (Number(v.total) || 0) / q, neto: (Number(v.neto) || 0) / q, cta: String(v.cuenta || (links[v.mla] || {}).cuenta || '').toLowerCase() }; } }
+      console.log(`=== PROBADOS DE NISSEI QUE VENDIERON EN 60 DÍAS · dólar ${tc} · recargo medido ${Math.round((RECARGO_PAR - 1) * 1000) / 10}% · monotributo ${mono}% ===`);
+      console.log('nombre | vendidas 60d | última venta $ | costo pagado US$ → % | Nissei hoy US$ (×recargo) → % | qué cambió');
+      const filas = [];
+      for (const p of products) { if (!p || provPyDeBot(p) !== 'nissei' || !(Number(p.nisseiUSD) > 0) || !ult[p.id]) continue;
+        const u = ult[p.id]; if (!(u.neto > 0) || !(u.pu > 0)) continue;
+        const imp = u.pu * (mono + (ML_EXTRA_PCT[u.cta] || 4)) / 100; const envio = u.pu >= UMBRAL_ENVIO_GRATIS ? CAND_ENVIO_ARRIBA : 0;
+        const pct = (costoUSD) => { const c = costoUSD * tc; return (u.neto - imp - c) / (c + imp + envio) * 100; };
+        const cPag = Number(p.costUSD) || 0, cHoy = Number(p.nisseiUSD) * RECARGO_PAR;
+        if (!(cPag > 0)) continue;
+        const a = pct(cPag), b = pct(cHoy);
+        filas.push({ b, t: `${String(p.name).slice(0, 50)} | ${n60[p.id]} | $${Math.round(u.pu)} | ${cPag.toFixed(2)} → ${Math.round(a)}% | ${Number(p.nisseiUSD).toFixed(2)} (${cHoy.toFixed(2)}) → ${Math.round(b)}% | ${cHoy > cPag * 1.05 ? 'reponer sale ' + Math.round((cHoy / cPag - 1) * 100) + '% más caro' : cHoy < cPag * 0.95 ? 'reponer sale más barato' : 'igual'}` }); }
+      filas.sort((x, y) => x.b - y.b); for (const f of filas) console.log('  ' + f.t);
+      const n = filas.length, bajo = filas.filter((f) => f.b < 25).length; console.log(`\n${n} productos · ${bajo} quedan abajo de 25% comprando hoy a Nissei`);
+      return;
+    }
     // BILLING_PROBE=descartesmot → POR QUÉ SE DESCARTÓ CADA CANDIDATO, AGRUPADO (24/10/2026, él: "hay muchos descartados que no sé
     // por qué. son productos legítimos"). SOLO LEE. Agrupa por tipo de descarte y el motivo sin números, con 4 ejemplos por grupo.
     if (/^descartesmot$/.test(String(process.env.BILLING_PROBE || ''))) {
