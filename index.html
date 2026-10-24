@@ -2959,7 +2959,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.30';
+const APP_VERSION='26.31';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2972,6 +2972,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.31',f:'24/10',h:'02:05',c:[{n:1,t:'🇵🇾 La carpeta de "1 solo vendedor" dice la regla: entran con 100+ vendidas en ML; los de ahí vendieron menos o falta que el chat cargue el dato.'}]},
   {v:'26.30',f:'24/10',h:'01:55',c:[{n:3,t:'🇵🇾 Paraguay → Nuevos → Revisados: carpeta 🌟 Sin competencia en ML (catálogos que nadie tiene en stock). Cada uno dice a cuánto habría que venderlo para dejar 35% y tiene un botón ➕ Lo quiero: pasa a Para probar, el robot lo mide exacto y Claude confirma las fotos antes de que se pueda pedir. Primero los rubros que ya vendemos.'}]},
   {v:'26.29',f:'24/10',h:'01:30',c:[{n:3,t:'🇵🇾 Productos nuevos: con UN solo vendedor en ML ahora entran si ese producto vendió 100 o más (lo carga el chat de compras). Y los que tienen catálogo en ML pero nadie tiene stock entran como 🌟 sin competencia, medidos contra el precio que el chat ve en ML. Los dos con la vara de 35%.'},{n:2,t:'🤖 El robot ya no da "nadie lo vende" cuando ML agrupa los colores en un catálogo padre: mira el de cada color.'}]},
   {v:'26.28',f:'24/10',h:'01:10',c:[{n:1,t:'🇵🇾 Paraguay → Revisados: "En ML nadie lo vende" pasa a decir lo que es: en ML no hay vendedores en el catálogo de ese producto (puede venderse suelto, pero la regla pide catálogo con 2+ vendedores).'},{n:2,t:'🤖 El robot ya no compara con otro producto cuando cambia la capacidad (32 GB contra 16 GB), el género (perfume de hombre contra el de mujer) o el número del modelo (Flip 7 contra Flip 6). Lo que estaba medido así se vuelve a buscar solo.'}]},
@@ -17674,7 +17675,7 @@ function candidatosHTML(){
         return cuenta
         +`<div style="font-size:.68rem;color:var(--text);margin:8px 0 2px">🔁 Lo revisado vence a los 14 días y el robot lo vuelve a mirar solo.</div>`
         +carp('✅ Revisados (últimos 14 días)',totR,'var(--text)',''
-        +(_flojas.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--amber)">🟠 1 solo vendedor en ML (o sin catálogo con vendedores) · <b>${_flojas.length}</b></summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_flojas.map(_card).join('')}</div></details>`:'')
+        +(_flojas.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--amber)">🟠 1 solo vendedor en ML: entran con 100+ vendidas (éstos vendieron menos o falta el dato) · <b>${_flojas.length}</b></summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_flojas.map(_card).join('')}</div></details>`:'')
         +((_rojos.length||rv('bajo'))?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--red)">🔻 No llegan al ${CAND_PISO_TXT()} · <b>${_rojos.length}</b> candidatos${` <span style="color:var(--muted);font-weight:400">+ <b>${f(rv('bajo'))}</b> del catálogo</span>`}</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_rojos.map(_card).join('')}</div>${rv('bajo')?pycatNoDanHTML(['bajo'],'pycat-nodan-bajo','📦 Del catálogo: medidos por el robot, abajo del piso',true):''}</details>`:'')
         +candDescartadosHTML(null,'todos')
         +sub('🟠 Dan el %, pero no entran al pedido (falta la foto de Paraguay o el nombre de ML no coincide)','var(--amber)',rv('dan'),['dan'],'pycat-nodan-dan','📦 Del catálogo: dan el piso, sin pasar a Para probar')
@@ -17686,7 +17687,7 @@ function candidatosHTML(){
       }
       return cuenta
       +carp('📏 Medidos',totM,'var(--text)',''
-      +(_flojas.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--amber)">🟠 1 solo vendedor en ML (o sin catálogo con vendedores) · <b>${_flojas.length}</b></summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_flojas.map(_card).join('')}</div></details>`:'')
+      +(_flojas.length?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--amber)">🟠 1 solo vendedor en ML: entran con 100+ vendidas (éstos vendieron menos o falta el dato) · <b>${_flojas.length}</b></summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_flojas.map(_card).join('')}</div></details>`:'')
       +((_rojos.length||R)?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--red)">🔻 No llegan al ${CAND_PISO_TXT()} · <b>${_rojos.length}</b> candidatos${mas('bajo')}</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_rojos.map(_card).join('')}</div>${pycatNoDanHTML(['bajo'],'pycat-nodan-bajo','📦 Del catálogo: medidos por el robot, abajo del piso')}</details>`:'')
       +candDescartadosHTML(null,true)
       +(R&&n('scr')?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.7rem;color:var(--muted)">✔️ Revisados: no están en ML (buscados también traducidos) · <b>${f(n('scr'))}</b></summary>${pycatNoDanHTML(['scr'],'pycat-nodan-scr','📦 Del catálogo: ML no tiene el mismo producto')}</details>`:'')
