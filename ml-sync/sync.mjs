@@ -10389,7 +10389,7 @@ function listaOkVale(e) { return !!(e && e.ok && (e.miFijo ? String(e.miFijo).to
 // (y el `ok`) quedaban los medidos con el costo viejo. `uMed` = el costo con el que se midió; si no es el de hoy, no "da" hasta que
 // `listamedir` lo vuelva a medir (lo hace solo: ve `uMed` distinto). Misma regla en index.html (`_listaCostoVigente`).
 function listaCostoVigente(e) { return !!e && e.uMed != null && Math.abs(Number(e.uMed) - Number(e.p)) < 1; }
-const PERF_LOCAL_TIENDA = 30, PERF_LOCAL_GAN = 25;
+const PERF_LOCAL_TIENDA = 30, PERF_LOCAL_GAN = 35;   // 24/10/2026 (él): "quiero que todo quede en 35% o más, ventas y pedidos, no tenemos plata para todo"
 function perfLocalPct(costoPesos, precioML) {
   if (!(costoPesos > 0) || !(precioML > 0)) return null;
   return (precioML / (1 + PERF_LOCAL_TIENDA / 100) / costoPesos - 1) * 100;
@@ -10423,7 +10423,7 @@ function lugarHPorCuenta(vp) {
 const CAND_VARA_COMPRA = 35;
 // 23/10/2026 (eligió la 1a): lo que vende 100+ en ML con 2+ vendedores entra desde 30% (el colchón del tope de H hasta fin de año).
 // Misma regla que `varaCompra` de index.html; en febrero, con los topes nuevos, se vuelve a medir.
-const CAND_VARA_VENDE = 30;
+const CAND_VARA_VENDE = 35;   // 24/10/2026 (él): "quiero que todo quede en 35% o más, ventas y pedidos, no tenemos plata para todo": se acabó la entrada con 30%
 // CUÁNTAS UNIDADES TRAE (23/10/2026, él con el Deco X60: *"estos en ml se venden x2 unidades, en paraguay es de una unidad"*):
 // el número de unidades/piezas/pack que dice un título, o null si no lo dice. Sirve para no medir 1 unidad contra un pack de 2.
 function unidadesPackTit(t) {

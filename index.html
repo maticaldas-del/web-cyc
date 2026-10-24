@@ -5145,7 +5145,7 @@ const SIM_TECHO=650000;
 // El piso para un producto NUEVO es 25%, regla suya del 15/09/2026: *"el % sano es de 25 hacia
 // arriba"*. Es el MISMO número que usa el robot para los candidatos de Paraguay (`SIM_PISO_PCT`).
 // Ojo: NO es `metaMargenML()`, que lee el piso de lo que ya vendés (hoy 23) — son dos cosas.
-const SIM_PISO_PCT=25;
+const SIM_PISO_PCT=35; // 24/10/2026 (él): "quiero que todo quede en 35% o más, ventas y pedidos, no tenemos plata para todo"
 // ── LA COMISIÓN DE ML LLEVADA A OTRO PRECIO, EN UNA SOLA FUNCIÓN (18/09/2026) ─────────────
 // La usan los DOS simuladores: el de la ficha (mismo producto, otro precio) y el de Paraguay
 // (producto nuevo, tomando la comisión de uno parecido). Son el mismo problema, así que tiene que
@@ -15433,7 +15433,7 @@ function _pyLlenar(orden){
 // Y NO TOCA NINGÚN PRECIO DE VENTA. Que el proveedor aumente no es motivo para subir un precio;
 // es motivo para no comprar. Regla suya del mismo día: *"lo que compre a un precio se vende a ese
 // precio. si aumenta no compro"*. Por eso el único botón es "pausar por precio".
-const EMBUDO_PISO=25;
+const EMBUDO_PISO=35; // 24/10/2026 (él): "quiero que todo quede en 35% o más, ventas y pedidos, no tenemos plata para todo"
 function embudoRepo(){
   const out=[];
   for(const p of (state.products||[])){
@@ -15680,7 +15680,7 @@ const CAND_PISO_PERFUME=25;   // 06/10/2026: 24 para todo lo que se compra (él:
 // impuestos. Su cuenta: costo puesto × 1,25 (lo nuestro) × 1,30 (lo de la perfumería) ≈ precio de ML. O sea, vendiendo
 // al precio de ML, a CYC le queda (precio ML ÷ 1,30 − costo) ÷ costo. Ése es el % AZUL. Con 25%+ el perfume sirve
 // aunque en ML no llegue, y cualquier marca. Misma cuenta en el robot (sync.mjs `perfLocalPct`).
-const PERF_LOCAL_TIENDA=30, PERF_LOCAL_GAN=25;
+const PERF_LOCAL_TIENDA=30, PERF_LOCAL_GAN=35; // 24/10/2026 (él): "quiero que todo quede en 35% o más, ventas y pedidos, no tenemos plata para todo"
 function perfLocalPct(costoPesos,precioML){if(!(costoPesos>0)||!(precioML>0))return null;return (precioML/(1+PERF_LOCAL_TIENDA/100)/costoPesos-1)*100;}
 function candEsPerf(c){return !!c&&(esPerfumeNom(String(c.nombre||''))||_PERF_RE.test(String(c.mlTit||'')));}
 // "YA LO PROBAMOS EN LA PERFUMERÍA Y NO DA" (15/10/2026, pedido suyo): con la marca `noLocal` (en el candidato o en la
@@ -15715,7 +15715,7 @@ const CAND_PISO_TXT=()=>`${CAND_VARA_COMPRA}%`;
 // LO QUE YA SE VENDE MUCHO EN ML ENTRA DESDE 30% (23/10/2026, eligió la 1a): con el colchón del tope de H hasta fin de año
 // (~$52 M) un producto de 30-35% que vende 100+ con 2+ vendedores no le saca lugar a otro mejor, suma. En febrero, con los topes
 // nuevos, se vuelve a medir. Misma regla que `varaCompra` de sync.mjs: si se toca una, se toca la otra.
-const CAND_VARA_VENDE=30;
+const CAND_VARA_VENDE=35; // 24/10/2026 (él): "quiero que todo quede en 35% o más, ventas y pedidos, no tenemos plata para todo": se acabó la entrada con 30%
 const varaCompra=(vend,nv)=>(vend!=null&&isFinite(vend)&&vend>=CAND_MIN_VENTAS&&(Number(nv)||0)>=CAND_MIN_VENDEDORES)?CAND_VARA_VENDE:CAND_VARA_COMPRA;
 const candVaraDe=c=>c?varaCompra(candVentasDe(c),c.mlVendedores):CAND_VARA_COMPRA;
 const listaVaraDe=e=>e?varaCompra(e.vend!=null?Number(e.vend):null,e.mv):CAND_VARA_COMPRA;
@@ -20386,7 +20386,7 @@ function pyProbVisHTML(_prod,colores){
 //   noda    → Nissei lo tiene pero más caro que ese máximo (o ni regalado llega)
 //   notiene → Nissei no lo tenía (`py_sinstock`)
 //   sinrev  → sin precio de Nissei, o mirado hace más de PY_PROB_FRESCO_DIAS: falta que Guay lo revise
-const PY_PROB_PISO=25, PY_PROB_FRESCO_DIAS=7;   // 06/10/2026: 24 (él: "arriba del 24% TODO"; el Ferrari Negro quedaba en 24,9% y no entraba)
+const PY_PROB_PISO=35, PY_PROB_FRESCO_DIAS=7; // 24/10/2026 (él): "quiero que todo quede en 35% o más, ventas y pedidos, no tenemos plata para todo"   // 06/10/2026: 24 (él: "arriba del 24% TODO"; el Ferrari Negro quedaba en 24,9% y no entraba)
 // EL PRECIO DE PARAGUAY DE LOS COLORES QUE SE PIDEN (15/10/2026, él con el Joystick: el azul sale US$ 55 y la tarjeta medía
 // con los US$ 48 del negro). Si los colores a comprar tienen su precio cargado (`pyVar`), manda el MÁS CARO de ésos (peor caso);
 // si no, el de la ficha.
@@ -21254,7 +21254,7 @@ const _listaEsBsas=k=>!!((((state.mlconfig||{}).listasProv||{})[k])||{}).bsas;
 // `cyc/listas_local/<prov>/<cód o prodId[__color]>` = {estado:'compro'|'noestaba'|'otro', u, p, ts, tipo:'nuevo'|'probado', prev?}.
 // "Era otro producto" en un nuevo hace lo mismo que `listadato …=no` del robot (noEs=1, ok=null) y lo saca del pedido; `prev`
 // guarda lo de antes para que "deshacer" lo devuelva. Ordenadas por marca (la primera palabra) para recorrer el local una vez.
-const LL_META=25;
+const LL_META=35; // 24/10/2026 (él): "quiero que todo quede en 35% o más, ventas y pedidos, no tenemos plata para todo"
 window._llAbiertos=window._llAbiertos||new Set();
 function _llDe(k){return ((state.listaLocal||{})[k])||{};}
 function _llKey(s){return String(s).replace(/[.#$\[\]\/]/g,'_');}
