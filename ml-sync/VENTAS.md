@@ -27,7 +27,7 @@ Cada vuelta arranca con **`ventasraras:nuevas`** (ml-consulta, solo lee): trae S
 - **📌** `ventas nuevas desde … · al terminar la vuelta: ventasvistas:<ts>;go` → el número `<ts>` que se usa al cerrar.
 - **🧭 ESTRATEGIA DE LO QUE VENDIÓ**: ✓ con estrategia y techo · ⚠️ para decidir EN ESTA VUELTA.
 - **🔬 A FONDO** (lo único que va al ayudante, decisión 2a del 22/10). Una publicación entra si:
-  - la venta es **rara** (dejó bastante menos que lo normal a ese precio) o salió **abajo del 25%** o **sin costo / sin ficha**;
+  - la venta es **rara** (dejó bastante menos que lo normal a ese precio) o salió **abajo del 35%** o **sin costo / sin ficha**;
   - **sin estrategia con techo** (la ⚠️ de 🧭: sin tag, promo, descuento, excepción, caja, o volviendo 7+ días sin techo anotado);
   - está en **🔥 escasez** (¿subir más o se frenó?);
   - es un **🆕 lanzamiento que vendió** (¿buscar techo?);
@@ -92,12 +92,12 @@ está en su ficha): no se rehace el análisis de la venta vieja.
 1. Lo que pide él para ESE producto · 2. dato dudoso = no se toca · 3. frenos duros (ML la frenó, variantes de una publicación
 todas o ninguna, techo $650.000, liquidando no se sube, releer de ML) · 4. nunca abajo de 0% · 4b. **sin línea de techo no se
 baja** (F7) · 4c. **arriba del 💰 no se baja sin 95%** (F8) · 5. **lo nuevo no se baja sin 🏔️** (F1) · 6. no llegar a pagar stock
-antiguo · 7. escasez = sube · 8. sobra = baja en escalera · 9. 25% en el peor caso · 10. buscar el techo · 11. las formas
+antiguo · 7. escasez = sube · 8. sobra = baja en escalera · 9. 35% en el peor caso · 10. buscar el techo · 11. las formas
 (escalera, 90/990, barrera, 🤔). Una regla dura ("nunca", "sólo con 95%") gana siempre sobre la que parece dar más plata hoy.
 Si dos reglas tiran para lados distintos y ninguna fila lo resuelve: no se hace nada esa vuelta y va a las decisiones de él.
 
 ### Margen y formas
-- **25% en el PEOR caso** (retención 2% de otra provincia + el peor envío visto + cuotas; ≈28% en el número normal). 🔒 Una baja
+- **35% en el PEOR caso** (retención 2% de otra provincia + el peor envío visto + cuotas; ≈28% en el número normal). 🔒 Una baja
   que queda abajo pide `!piso`. Abajo del 25% se acepta sólo por stock antiguo, sobra de verdad o lo que pide él, y cuenta como
   pérdida contra el 25% (pero si bajar evita perder más, la decisión ganó: se juzga contra no hacer nada).
 - 🔒 **Nunca abajo de 0%** (sólo él lo abre: `!bajocero`, sólo en `entrarpromo`).
@@ -111,7 +111,7 @@ Si dos reglas tiran para lados distintos y ninguna fila lo resuelve: no se hace 
 - **Plata por día NETA** para comparar precios: −$100 por unidad (trabajo) · −3% de lo facturado (tope de H) · −2%/mes del costo del
   stock parado. A igual plata neta gana el precio alto.
 - **Lo barato** (hasta ~$5.500): cada unidad tiene que dejar ~$1.000 o más; si no, se sube de una.
-- **Venta abajo del 25% con poco stock** → se sube en la misma vuelta. **Lo nuevo que vuela** se sube al toque.
+- **Venta abajo del 35% con poco stock** → se sube en la misma vuelta. **Lo nuevo que vuela** se sube al toque.
 - **Venta barata ≠ remate:** remate sólo si estuvo parado de verdad (30+ d con stock vendiendo <1 por semana). Si llegó y se vendió
   al toque, es DEMANDA: el precio estaba barato.
 
@@ -184,7 +184,7 @@ Si dos reglas tiran para lados distintos y ninguna fila lo resuelve: no se hace 
   llegado.
 
 ### Lanzamiento (🆕)
-- Arranca ~20% arriba del precio que se cree correcto (25%+ en el peor caso). **🆕 que vende → 📈 buscar techo en la misma vuelta
+- Arranca ~20% arriba del precio que se cree correcto (35%+ en el peor caso). **🆕 que vende → 📈 buscar techo en la misma vuelta
   (+30%).** 🔒 No se baja (ni descuento, ni promo, ni lista, ni para ganar la caja) hasta que `techo95` diga 95% y anote 🏔️; ahí
   escalones de ~5-8% como descuento propio con el arranque tachado. Si casi no lo ven (<1 visita/día), bajar no lo arregla: título,
   fotos, caja.
@@ -243,7 +243,7 @@ entrarpromo:<MLA>=salir|<motivo>;go
 ```
 - Mínimo 5% de descuento (ML no deja menos). Si ya está en otra promo de ML, primero salir.
 - El tag lo elige solo: 🏷️ `promo` sólo si ML pone plata; si ponemos sólo nosotros, 💸 `descuento`. Para una escalera, `#bajando`.
-- Pasa por los mismos frenos F1-F8 y por el 25% en el peor caso (`!piso`). Rematar a cualquier precio, sólo si lo pide él:
+- Pasa por los mismos frenos F1-F8 y por el 35% en el peor caso (`!piso`). Rematar a cualquier precio, sólo si lo pide él:
   `entrarpromo:<MLA>=<precio>@PRICE_DISCOUNT!piso!bajocero|EXCEPCIÓN: lo pidió él …;go`.
 
 ### Estrategia sin tocar el precio
@@ -271,7 +271,7 @@ techofreno:<MLA>=<precio probado>|<motivo>;go
 ### Banderas (sólo cuando hace falta, nunca "por las dudas")
 | bandera | qué saltea | dónde | pide "EXCEPCIÓN:" en el motivo |
 |---|---|---|---|
-| `!piso` | bajar abajo del 25% en el peor caso | decido, entrarpromo | no (pero decir por qué) |
+| `!piso` | bajar abajo del 35% en el peor caso | decido, entrarpromo | no (pero decir por qué) |
 | `!cruza` | cruzar los $33.000 (sólo si paga más) | decido | no |
 | `!salto` | subir más del doble de una | decido | no |
 | `!activar` | activar la pausada al precio | decido | no |
@@ -363,7 +363,7 @@ algo que se vende). Lo chico y reversible lo decide el chat y se lo cuenta. Si n
 - **Ferrari Premium (20/10):** se comparó la gemela contra sus hermanas y no contra qué pasaba SIN ella.
 - **Hub 8 en 1 (18/10):** saltó a $27.990 sin medir $19.990 y volvió directo. Cada escalón se juzga antes del siguiente, y se baja en
   escalera.
-- **Pendrive 128 (18/10):** abajo del 25% por haber mandado 48: el error es de la cantidad, no del precio. El cerebro se juzga contra
+- **Pendrive 128 (18/10):** abajo del 35% por haber mandado 48: el error es de la cantidad, no del precio. El cerebro se juzga contra
   no hacer nada.
 
 ---------------------------------------------------------------------------------------------------------------------------

@@ -101,7 +101,7 @@ def Tde(p,x,r):
     # El log no trae el envío de Full: abajo de $33.000 (casi todo Bs As) es 0; arriba ya viene restado del neto.
     imp=0.08*pr
     m=((p['neto']-imp-p['costo'])/(p['costo']+imp)) if p['costo']>0 and p['neto']>0 else -1
-    if m<0.25: return T,''
+    if m<0.35: return T,''   # 24/10/2026: 35% (él: todo en 35% o más)
     if x.get('cortes',0)>=2: return 45,f"se cortó {x['cortes']} veces en 60 días"
     if p['v180']==p['v30'] and x.get('dcs',30)<=10 and r>=1: return 45,'es nuevo y vuela'
     return T,''
@@ -115,8 +115,12 @@ def reparto(total,pesos):
 res=[]
 for p in prods:
     # Sin costo cargado no se puede decir que deja ganancia (antes 0 de costo = "rentable" y pedía de todo).
-    rentable = p['costo']>0 and p['neto']>0 and p['neto']>=p['costo']*1.1
-    p['motNoRenta']='' if rentable else ('falta el costo' if not p['costo']>0 else ('todavía no sé cuánto deja en ML' if not p['neto'] else 'no deja ganancia'))
+    # 24/10/2026 (él: "quiero que todo quede en 35% o más, ventas y pedidos, no tenemos plata para todo"): se repone sólo lo que a su
+    # precio deja 35%+ con la cuenta de la app (impuestos en el divisor; el envío de Full ya viene restado del neto).
+    _imp=0.08*(p.get('precio') or p.get('med60') or 0)
+    _m=((p['neto']-_imp-p['costo'])/(p['costo']+_imp)) if p['costo']>0 and p['neto']>0 else -1
+    rentable = p['costo']>0 and p['neto']>0 and _m>=0.35
+    p['motNoRenta']='' if rentable else ('falta el costo' if not p['costo']>0 else ('todavía no sé cuánto deja en ML' if not p['neto'] else f'deja {round(_m*100)}%, abajo del 35% (no se repone hasta que su precio llegue)'))
     if p['vars']:
         # Ventas SIN color (la venta no dice qué color fue): se reparten entre los colores según lo que vende cada uno.
         for f in ('v30','v60','v180'):
@@ -241,7 +245,7 @@ def tito(q,r,t,obj,b,rent,neto,color=None,extra='',motNo=''):
     de=f" del {color}" if color else ''
     quien=f"El {color}" if color else "Este"
     if not rent:
-        return "Hola Tito! "+quien+" no lo compres: "+({'falta el costo':'todavía no tengo cargado cuánto cuesta.','todavía no sé cuánto deja en ML':'todavía no sé cuánto deja en ML.'}.get(motNo,'con lo que cuesta no nos deja ganancia.'))
+        return "Hola Tito! "+quien+" no lo compres: "+({'falta el costo':'todavía no tengo cargado cuánto cuesta.','todavía no sé cuánto deja en ML':'todavía no sé cuánto deja en ML.'}.get(motNo,(f"al precio de hoy deja {motNo.split(' ')[1].rstrip(',')} y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir." if str(motNo).startswith('deja ') else 'con lo que cuesta no nos deja ganancia.')))
     mes=f"{r*30:.0f}"; b=str(b or '')
     if b.startswith('agotado'): base=f"está agotado y cuando había se vendían unos {mes} por mes"
     elif b.startswith('nunca'): base="todavía no se vendió nunca"
