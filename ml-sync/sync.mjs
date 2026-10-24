@@ -45550,7 +45550,7 @@ async function main() {
             const ant = Object.values(globalThis._ccCache4a || {}).filter((r) => r && r.mla === d.mla && Number(r.ts) > Date.now() - 90 * 864e5).flatMap((r) => [Number(r.de) || 0, Number(r.a) || 0]);
             vuelveA = ant.length > 0 && a <= Math.max(...ant) * 1.02;
           }
-          const al25 = d.mgP0 != null && Number(d.mgP0) < 25 && d.mgPA != null && Number(d.mgPA) <= 27;
+          const al25 = d.mgP0 != null && Number(d.mgP0) < PISO_DURO && d.mgPA != null && Number(d.mgPA) <= PISO_DURO + 2;   // subir al piso del peor caso (35% desde el 24/10)
           if (d.accion === 'sube' && !exc('chico') && !al25 && !vuelveA) {
             if (estT[d.mla] === undefined) { try { estT[d.mla] = (await db.get('cyc/estrategia/' + d.mla)) || {}; } catch { estT[d.mla] = {}; } }
             const hT = estT[d.mla] || {}; let ultT = ''; for (const k of Object.keys(hT).map(Number).filter((n) => n > 0).sort((x, y) => x - y)) { const x = hT[k]; if (x && x.t) ultT = x.t === 'correccion' ? pasajeDe(ultT) : x.t; }
