@@ -304,7 +304,7 @@
   **Nombre traducido** (23/10, 1a): también se busca con el nombre en castellano (`traducirPyNombre`); lo que tampoco aparece traducido queda
   **✔️ revisado** (`qp`, `pycatres.scr`, en 📏 Medidos) y no cuenta como sin medir. `pycatdia` = desglose y lo buscado por día.
 - **Dos proveedores:** 🟢 Nissei (dos pedidos del momento: 🌸 Perfumería `pyb<fecha>` y 📦 Resto `py<fecha>`; en `compray` `|perf`/`|resto`)
-  y 🟣 **Elegancia** (catálogo "Atacado", `pyel<fecha>`, `candalta:prov=elegancia;…`). Mismos costos.
+  y 🟣 **Elegancia** (`pyel<fecha>`; desde el 24/10 **su catálogo entero** en `mlapi/pycat` con clave `EL_<cód>`, carga `pycat:prov=elegancia;…;go`, números en `cyc/pycatres_el`). Mismos costos.
 - **Recargo** = el MEDIDO de los pedidos (`paramcompra`; 22,7% al 17/10), respaldo 20%. El panel lo suma; el chat carga el precio CRUDO.
   Pedido tiene un costo fijo (retira ~$74.000 + transferencia + correo por kilo): conviene llenarlo. **Adelanto de plata** es ocasional
   (`compray:<fecha>|adelanto=<pesos>|go`, renglón aparte del cambista).

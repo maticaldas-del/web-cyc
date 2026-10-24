@@ -11181,6 +11181,15 @@ const _pyCodIg = (a, b) => { const x = _pyDg(a), y = _pyDg(b); if (!x || !y) ret
 // el precio al candidato o a la ficha de Elegancia, y una llegada enganchaba la ficha del otro proveedor. Todo lo que
 // compara códigos de Paraguay mira antes el proveedor con esto (misma regla que `pyProvDe` de la web).
 const provPyDeBot = (x) => (String((x && (x.prov || x.provPy)) || 'nissei').toLowerCase() === 'elegancia' ? 'elegancia' : 'nissei');
+// ELEGANCIA EN EL CATÁLOGO (24/10/2026, él: *"este de elegancia, también miro todos los productos? (…) de acá también podemos
+// pedir"*). Su catálogo entero va en `mlapi/pycat` como el de Nissei, con clave `EL_<código>` y `pv:'elegancia'`: así nunca choca
+// con un código de Nissei que "termine igual" (`_pyDg` deja las letras y entonces sólo empareja exacto). El código de verdad (el
+// que va al candidato y a la ficha) es sin el `EL_`.
+const PYCAT_EL = 'EL_';
+const pycatProvDe = (key, e) => ((e && e.pv === 'elegancia') || String(key).startsWith(PYCAT_EL) ? 'elegancia' : 'nissei');
+const pycatCodDe = (key) => (String(key).startsWith(PYCAT_EL) ? String(key).slice(PYCAT_EL.length) : String(key));
+// ¿El candidato o la ficha `x` (código `codX`) es este renglón del catálogo? Mismo proveedor y mismo código.
+const pycatEsDe = (key, e, x, codX) => provPyDeBot(x) === pycatProvDe(key, e) && _pyCodIg(codX, pycatCodDe(key));
 // Lee renglones `código|nombre|US$|link|foto` y marcas de página `#<n>` (opcional `#<n>@<orden>`). Devuelve lo leído y los malos.
 function pyCatParse(lineas) {
   const filas = [], malos = []; let pg = null, orden = null;
@@ -11220,10 +11229,23 @@ function pycatGrupoRev(e, ahora, vence) {
   if (e.sv) return 'sv';
   return 'pn';   // tiene fecha pero ningún resultado: no se terminó de medir
 }
+// Elegancia (24/10/2026) tiene sus propios números en `cyc/pycatres_el` (la web los muestra en su solapa); Nissei sigue en `cyc/pycatres`.
 async function pycatResumenEscribir(db, cat, cands, products) {
+  const de = (pv) => Object.fromEntries(Object.entries(cat || {}).filter(([k, e]) => pycatProvDe(k, e) === pv));
+  const catEl = de('elegancia');
+  const r = await _pycatResumenUno(db, de('nissei'), cands, products, 'cyc/pycatres');
+  if (Object.keys(catEl).length) await _pycatResumenUno(db, catEl, cands, products, 'cyc/pycatres_el');
+  return r;
+}
+async function _pycatResumenUno(db, cat, cands, products, RUTA_R) {
   // El catálogo es de NISSEI: sólo cuentan candidatos y fichas de Nissei (etapa 3, 20/10/2026, ver `provPyDeBot`).
-  const esCand = pyCodMatcher(Object.values(cands || {}).filter((c) => c && provPyDeBot(c) === 'nissei').map((c) => c.cod).filter(Boolean));
-  const esFicha = pyCodMatcher((products || []).filter((p) => p && provPyDeBot(p) === 'nissei').map((p) => p.codPy).filter(Boolean));
+  // Elegancia (24/10/2026) va en el mismo catálogo con clave `EL_<código>`: cada renglón se compara con los de SU proveedor.
+  const _mC = {}, _mF = {};
+  for (const pv of ['nissei', 'elegancia']) {
+    _mC[pv] = pyCodMatcher(Object.values(cands || {}).filter((c) => c && provPyDeBot(c) === pv).map((c) => c.cod).filter(Boolean));
+    _mF[pv] = pyCodMatcher((products || []).filter((p) => p && provPyDeBot(p) === pv).map((p) => p.codPy).filter(Boolean));
+  }
+  const esCand = (k) => _mC[pycatProvDe(k, cat && cat[k])](pycatCodDe(k)), esFicha = (k) => _mF[pycatProvDe(k, cat && cat[k])](pycatCodDe(k));
   const r = { t: Date.now(), tot: 0, cand: 0, ficha: 0, fz: 0, bajo: 0, sc: 0, scr: 0, sv: 0, nomed: 0, nm: 0 };
   // REVISADOS Y FALTA REVISAR (23/10/2026, pedido suyo, ver `PYCAT_REVISADO_DIAS`). `rev` = medido en los últimos 14 días con
   // cualquier resultado (da, no llega, nadie lo vende, sin catálogo) + afuera por regla (la regla se aplica en cada vuelta) ·
@@ -11245,13 +11267,13 @@ async function pycatResumenEscribir(db, cat, cands, products) {
   // CUÁNTOS SE ANALIZARON HOY (18/10/2026, él: "cuántas se analizaron hoy en no medidos, un número en verde -x"). `dia` guarda
   // cuántos quedaban sin medir al terminar el día anterior (la última cuenta antes de hoy); la web resta el de ahora.
   try {
-    const prev = (await db.get('cyc/pycatres')) || {};
+    const prev = (await db.get(RUTA_R)) || {};
     const hoy = new Date(Date.now() - 3 * 36e5).toISOString().slice(0, 10).replace(/-/g, '_');
     if (prev.dia && prev.dia.d === hoy) { r.dia = prev.dia; if (r.dia.pend == null && prev.pend != null) r.dia.pend = Number(prev.pend); }
     else if (prev.nomed != null) r.dia = { d: hoy, nomed: Number(prev.nomed), tot: Number(prev.tot) || 0, ...(prev.pend != null ? { pend: Number(prev.pend) } : {}) };
   } catch { /* sin el de ayer no se muestra el número del día */ }
-  await db.set('cyc/pycatres', r);
-  console.log(`📊 catálogo dividido (cyc/pycatres): ${r.tot} = ${r.cand} candidatos + ${r.ficha} fichas + ${r.fz} afuera por regla + ${r.bajo} abajo del ${CAND_PISO_PCT}% + ${r.sc} sin catálogo exacto + ${r.sv} nadie lo vende + ${r.nomed} sin medir${r.nm ? ` (${r.nm} de ésos ML no deja medirlos)` : ''}`);
+  await db.set(RUTA_R, r);
+  console.log(`📊 catálogo dividido (${RUTA_R}): ${r.tot} = ${r.cand} candidatos + ${r.ficha} fichas + ${r.fz} afuera por regla + ${r.bajo} abajo del ${CAND_PISO_PCT}% + ${r.sc} sin catálogo exacto + ${r.sv} nadie lo vende + ${r.nomed} sin medir${r.nm ? ` (${r.nm} de ésos ML no deja medirlos)` : ''}`);
   const _cierra = r.rev + r.pend === r.tot - r.cand - r.ficha;
   console.log(`   ✅ revisados (últimos ${PYCAT_REVISADO_DIAS} días) ${r.rev} [${Object.entries(r.rv).map(([k, v]) => k + ' ' + v).join(' · ')}] + ⏳ falta revisar ${r.pend} (${r.pn} nunca medidos + ${r.pv} vencidos) = ${r.rev + r.pend} ${_cierra ? '= ' : '≠ ❌ '}${r.tot} − ${r.cand} candidatos − ${r.ficha} fichas`);
   return r;
@@ -11335,10 +11357,10 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
   const tc = parseFloat(fin.tipo_cambio) || 0;
   if (!(tc > 0)) { console.log('❌ No hay dólar cargado: sin costo en pesos no se puede medir.'); return; }
   const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
-  // Sólo los de NISSEI (etapa 3, 20/10/2026): el catálogo es de Nissei y un código de Elegancia que "termina igual" no es
-  // el mismo producto (`provPyDeBot`).
-  const candList = Object.entries(cands).filter(([, c]) => c && c.cod && provPyDeBot(c) === 'nissei');
-  const fichas = products.filter((p) => p && p.codPy && provPyDeBot(p) === 'nissei');
+  // Cada renglón se compara SÓLO con los de su proveedor (etapa 3, 20/10/2026: un código de Elegancia que "termina igual" que uno
+  // de Nissei no es el mismo producto). Desde el 24/10/2026 Elegancia también está en el catálogo (`EL_<código>`, `pycatEsDe`).
+  const candList = Object.entries(cands).filter(([, c]) => c && c.cod);
+  const fichas = products.filter((p) => p && p.codPy);
   const ahora = Date.now();
   const todos = Object.entries(cat);
   const cola = [], cuenta = { fuera: 0, cand: 0, ficha: 0, frescos: 0, noDeja: 0 };
@@ -11347,8 +11369,8 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
     const fz = pyCatFuera(e.n, Number(e.u) || 0, marcasNo); if (fz) { cuenta.fuera++; if (aplicar && e.fz !== fz) await db.patch(RUTA + '/' + cod, { fz }); continue; }
     // 🔁 REBUSCA (24/10/2026, eligió la 1a): un candidato que descarté porque ML lo comparaba con OTRO producto no frena que el
     // catálogo se vuelva a medir; se busca de nuevo sin los catálogos rechazados (`mlNoEs` del candidato).
-    if (!esLista && candList.some(([, c]) => _pyCodIg(c.cod, cod) && c.noTipo !== 'rebusca')) { cuenta.cand++; continue; }
-    if (!esLista && fichas.some((p) => _pyCodIg(p.codPy, cod))) { cuenta.ficha++; continue; }
+    if (!esLista && candList.some(([, c]) => pycatEsDe(cod, e, c, c.cod) && c.noTipo !== 'rebusca')) { cuenta.cand++; continue; }
+    if (!esLista && fichas.some((p) => pycatEsDe(cod, e, p, p.codPy))) { cuenta.ficha++; continue; }
     const _uNow = esLista ? Number(e.p) : Number(e.u);
     if (esLista && !(_uNow > 0)) continue;
     if (esLista && (e.noWeb || e.noFull)) { cuenta.fuera++; continue; }   // no está en la web del proveedor: no lo tienen (`listaweb`)
@@ -11434,7 +11456,7 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
       const nB = esLista ? limpiarNombreLista(e.n) || e.n : e.n;   // listas: el nombre traducido (ver limpiarNombreLista)
       if (esLista) upd.qv = LISTA_NOMBRE_VER; else upd.qp = PY_NOMBRE_VER;
       const _rechazado = esLista && e.noEs ? String(e.noEsCat || e.mi || '').toUpperCase() : '';
-      const _candR = esLista ? null : candList.find(([, c]) => _pyCodIg(c.cod, cod) && c.noTipo === 'rebusca');
+      const _candR = esLista ? null : candList.find(([, c]) => pycatEsDe(cod, e, c, c.cod) && c.noTipo === 'rebusca');
       const _rechSet = new Set(Object.keys((_candR && _candR[1].mlNoEs) || {}).map((x) => String(x).toUpperCase()));
       if (esLista && e.noEs && !e.noEsCat && e.mi) upd.noEsCat = e.mi;
       const mods = _rvMod(nB); const pal = _rvNorm(nB).split(' ').filter((w) => (w.length >= 2 || /^\d$/.test(w)) && !RV_VACIAS.has(w) && !PYCAT_RELLENO.has(w));
@@ -11532,10 +11554,11 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
     { const _ns = pyCatNoSeMira(x.e.n); if (_ns) { console.log(`     (${_ns}: categoría que no se mira, no pasa a Para probar)`); continue; } }
     if (!aplicar) continue;
     // 🔁 El que estaba en rebusca vuelve con SU id (queda su `mlNoEs`), con el catálogo nuevo y todo lo medido en cero.
-    const _reb = candList.find(([, c]) => _pyCodIg(c.cod, x.cod) && c.noTipo === 'rebusca');
+    const _reb = candList.find(([, c]) => pycatEsDe(x.cod, x.e, c, c.cod) && c.noTipo === 'rebusca');
     if (_reb && String(x.upd.mi).toUpperCase() in ((_reb[1].mlNoEs) || {})) { console.log('     (es el mismo catálogo que ya se rechazó: no vuelve)'); continue; }
     const id = _reb ? _reb[0] : 'c' + Date.now() + 'p' + i;
-    const c = { nombre: x.e.n, cod: x.cod, usd: x.e.u, mlId: x.upd.mi, enNissei: true, fuente: 'pycat', ts: Date.now(), ...(x.e.l ? { link: x.e.l } : {}), foto: x.e.f, ...(x.upd.svm ? { svp: x.e.svp, svpTs: x.e.svpTs } : {}) };
+    const _elg = pycatProvDe(x.cod, x.e) === 'elegancia';
+    const c = { nombre: x.e.n, cod: pycatCodDe(x.cod), usd: x.e.u, mlId: x.upd.mi, enNissei: true, fuente: 'pycat', ts: Date.now(), ...(_elg ? { prov: 'elegancia' } : {}), ...(x.e.l ? { link: x.e.l } : {}), foto: x.e.f, ...(x.upd.svm ? { svp: x.e.svp, svpTs: x.e.svpTs } : {}) };
     if (_reb) { await db.patch('cyc/candidatos_py/' + id, { ...c, no: null, noTs: null, noTipo: null, motivo: null, revClaude: null, margen: null, calcTs: null, mlLink: null, mlTit: null, mlFoto: null, mlVendedores: null, pedirU: null, rebuscaVolvio: Date.now() }); console.log('     🔁 vuelve el candidato que se había descartado por otro producto'); }
     else await db.set('cyc/candidatos_py/' + id, c);
     const rr = await db.get('cyc/candidatos_py/' + id);
@@ -21154,9 +21177,12 @@ async function main() {
     if (/^faltaprecio(:\d+)?$/.test(String(process.env.BILLING_PROBE || ''))) {
       const N = parseInt(String(process.env.BILLING_PROBE).split(':')[1], 10) || 150; const filas = [];
       const cat = (await db.get('mlapi/pycat')) || {}; const cands = (await db.get('cyc/candidatos_py')) || {};
-      const esCand = pyCodMatcher(Object.values(cands).filter((c) => c && !c.no && provPyDeBot(c) === 'nissei').map((c) => c.cod).filter(Boolean));
+      // Elegancia (24/10/2026) va en el mismo catálogo con clave `EL_<código>`: se compara con SUS candidatos y el renglón dice
+      // `py|elegancia|EL_<código>` (ese código entero es el que se carga en `svprecio`).
+      const _mc = {}; for (const pv of ['nissei', 'elegancia']) _mc[pv] = pyCodMatcher(Object.values(cands).filter((c) => c && !c.no && provPyDeBot(c) === pv).map((c) => c.cod).filter(Boolean));
+      const esCand = (k) => _mc[pycatProvDe(k, cat[k])](pycatCodDe(k));
       for (const [cod, e] of Object.entries(cat)) { if (!e || !e.sv || !e.mi || e.fz || !e.f || svpVigente(e) || esCand(cod) || pyCatNoSeMira(e.n)) continue;
-        filas.push({ r: PYCAT_RUBRO_RE.test(String(e.n)) ? 0 : 1, u: Number(e.u) || 0, t: `py|nissei|${cod}|${String(e.n).replace(/\|/g, '/').slice(0, 80)}|${e.mi}|US$ ${e.u}` }); }
+        filas.push({ r: PYCAT_RUBRO_RE.test(String(e.n)) ? 0 : 1, u: Number(e.u) || 0, t: `py|${pycatProvDe(cod, e)}|${cod}|${String(e.n).replace(/\|/g, '/').slice(0, 80)}|${e.mi}|US$ ${e.u}` }); }
       const provs = (await db.get('cyc/mlconfig/listasProv')) || {};
       for (const [k, pv] of Object.entries(provs)) { if (pv.desc) continue; const L = (await db.get('mlapi/listas/' + k)) || {};
         for (const [cod, e] of Object.entries(L)) { if (!e || !e.sv || !e.mi || e.sacado || e.noWeb || e.noFull || svpVigente(e) || listaNoEsVale(e)) continue;
@@ -21186,7 +21212,7 @@ async function main() {
         const v = /^no$/i.test(m[2]) ? -1 : pesosArg(m[2]); if (v !== -1 && !(v > 0)) { console.log(`  ✗ ${m[1]}: precio raro "${m[2]}"`); mal++; continue; }
         up[`${cod}/svp`] = v; up[`${cod}/svpTs`] = ts; if (v > 0) up[`${cod}/t`] = null;
         console.log(`  · ${cod} · ${String(cat[cod].n).slice(0, 60)} → ${v > 0 ? money(v) : 'no hay ningún precio a la vista'}`);
-        for (const [id, c] of Object.entries(cands)) if (c && !c.no && provPyDeBot(c) === 'nissei' && _pyCodIg(c.cod, cod)) { upC[`${id}/svp`] = v; upC[`${id}/svpTs`] = ts; upC[`${id}/calcTs`] = null; } }
+        for (const [id, c] of Object.entries(cands)) if (c && !c.no && pycatEsDe(cod, cat[cod], c, c.cod)) { upC[`${id}/svp`] = v; upC[`${id}/svpTs`] = ts; upC[`${id}/calcTs`] = null; } }
       console.log(`=== SVPRECIO ${GO ? '(APLICANDO)' : '(PRUEBA)'} · ${Object.keys(up).filter((k) => k.endsWith('/svp')).length} bien · ${mal} mal ===`);
       if (!GO || mal || !Object.keys(up).length) { if (mal) console.log('Con algún renglón mal no escribo nada.'); return; }
       await db.patch(RUTA, up); if (Object.keys(upC).length) await db.patch('cyc/candidatos_py', upC);
@@ -22516,12 +22542,16 @@ async function main() {
     if (/^pycat(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const _pc = String(process.env.BILLING_PROBE).slice('pycat'.length).replace(/^:/, '');
       const APLICAR = /(^|;)go\s*$/.test(_pc);
-      const cuerpo = _pc.replace(/(^|;)go\s*$/, '');
-      const prog = (await db.get('mlapi/pycatprog')) || {};
+      // `pycat:prov=elegancia;#<pág>;…` (24/10/2026): el catálogo de ELEGANCIA. Se guarda en el mismo lugar con clave `EL_<código>`
+      // y `pv:'elegancia'`; sólo toca candidatos y fichas de Elegancia; su página va en `mlapi/pycatprog_el`.
+      const ELG = /^prov=elegancia(;|$)/i.test(_pc);
+      const cuerpo = _pc.replace(/(^|;)go\s*$/, '').replace(/^prov=elegancia;?/i, '');
+      const PROV_C = ELG ? 'elegancia' : 'nissei', KEY = (c) => (ELG ? PYCAT_EL : '') + c, PROG = ELG ? 'mlapi/pycatprog_el' : 'mlapi/pycatprog';
+      const prog = (await db.get(PROG)) || {};
       if (!cuerpo.trim()) {
-        const cat = (await db.get('mlapi/pycat')) || {}; const v = Object.values(cat);
+        const cat = (await db.get('mlapi/pycat')) || {}; const v = Object.entries(cat).filter(([k, e]) => pycatProvDe(k, e) === PROV_C).map(([, e]) => e);
         const med = v.filter((e) => e && e.t), cnt = (f) => v.filter(f).length;
-        console.log(`=== CATÁLOGO DE PARAGUAY EN CYC ===\n${v.length} productos guardados · última página guardada: ${prog.pg ?? '—'}${prog.orden ? ' (orden ' + prog.orden + ')' : ''} · último código ${prog.cod ?? '—'} · ${prog.ts ? new Date(prog.ts).toISOString().slice(0, 16).replace('T', ' ') + ' UTC' : ''}`);
+        console.log(`=== CATÁLOGO DE ${ELG ? 'ELEGANCIA' : 'NISSEI'} EN CYC ===\n${v.length} productos guardados · última página guardada: ${prog.pg ?? '—'}${prog.orden ? ' (orden ' + prog.orden + ')' : ''} · último código ${prog.cod ?? '—'} · ${prog.ts ? new Date(prog.ts).toISOString().slice(0, 16).replace('T', ' ') + ' UTC' : ''}`);
         console.log(`medidos ${med.length} · fuera por regla ${cnt((e) => e && e.fz)} · dan el piso ${cnt((e) => e && e.m >= 24)} · 15% a 24% ${cnt((e) => e && e.m >= 15 && e.m < 24)} · menos de 15% ${cnt((e) => e && e.m != null && e.m < 15)} · sin catálogo exacto ${cnt((e) => e && e.sc)} · pasaron a Para probar ${cnt((e) => e && e.cand)} · ML no deja medirlos ${cnt((e) => e && e.nm)}${cnt((e) => e && e.ef && !e.nm) ? ` (y ${cnt((e) => e && e.ef && !e.nm)} con 1-2 fallas seguidas)` : ''}`);
         return;
       }
@@ -22538,25 +22568,25 @@ async function main() {
       const cands = (await db.get('cyc/candidatos_py')) || {};
       const ahora = Date.now(); const upd = {}; let nuevos = 0, cambio = 0, igual = 0; const candUpd = [], fichaUpd = [], candVisto = [];
       for (const f of filas) {
-        const viejo = cat[f.cod];
-        const e = { ...(viejo || {}), n: f.n, u: f.u, ts: ahora, ...(f.pg != null ? { pg: f.pg } : {}), ...(f.l ? { l: f.l } : {}), ...(f.f ? { f: f.f } : {}) };
+        const viejo = cat[KEY(f.cod)];
+        const e = { ...(viejo || {}), n: f.n, u: f.u, ts: ahora, ...(ELG ? { pv: 'elegancia' } : {}), ...(f.pg != null ? { pg: f.pg } : {}), ...(f.l ? { l: f.l } : {}), ...(f.f ? { f: f.f } : {}) };
         if (!viejo) nuevos++; else if (Math.abs((Number(viejo.u) || 0) - f.u) >= 0.005) { cambio++; e.uAnt = Number(viejo.u) || null; } else igual++;
-        upd[f.cod] = e;
+        upd[KEY(f.cod)] = e;
         // Etapa 3 (20/10/2026): el catálogo es de NISSEI, así que sólo se tocan candidatos y fichas de Nissei (`provPyDeBot`): un
         // código de Elegancia que "terminaba igual" recibía el precio de otro producto. Y todos los candidatos con ese código,
         // no sólo el primero.
         // LA FECHA SE RENUEVA AUNQUE EL PRECIO SEA EL MISMO (etapa 3, 20/10/2026): un candidato que da y sigue en el catálogo
         // con el precio de siempre vencía a los 60 días (`CAND_VENCE_DIAS` de la web) sin que nadie lo dijera. Si el código
         // sigue en Nissei, el precio se miró hoy: `ts` (y `visto`) al día.
-        for (const yc of Object.entries(cands).filter(([, c]) => c && !c.prodId && provPyDeBot(c) === 'nissei' && _pyCodIg(c.cod, f.cod))) {
+        for (const yc of Object.entries(cands).filter(([, c]) => c && !c.prodId && provPyDeBot(c) === PROV_C && _pyCodIg(c.cod, f.cod))) {
           if (Math.abs((Number(yc[1].usd) || 0) - f.u) >= 0.005) candUpd.push([yc[0], yc[1], f]); else candVisto.push(yc[0]);
         }
-        const yp = products.find((p) => p && p.codPy && provPyDeBot(p) === 'nissei' && _pyCodIg(p.codPy, f.cod));
+        const yp = products.find((p) => p && p.codPy && provPyDeBot(p) === PROV_C && _pyCodIg(p.codPy, f.cod));
         // La ficha se toca aunque el precio sea el mismo: así `nisseiTs` dice que se miró hoy (antes quedaba "hace 12 d").
         if (yp) fichaUpd.push([yp, f]);
       }
       const ultPg = filas.reduce((mx, f) => (f.pg != null && f.pg > mx ? f.pg : mx), -1);
-      console.log(`=== CATÁLOGO DE PARAGUAY · carga ${APLICAR ? '' : '(PRUEBA: no escribo nada)'} ===`);
+      console.log(`=== CATÁLOGO DE ${ELG ? 'ELEGANCIA' : 'NISSEI'} · carga ${APLICAR ? '' : '(PRUEBA: no escribo nada)'} ===`);
       console.log(`${filas.length} renglones · ${nuevos} nuevos · ${cambio} cambiaron de precio · ${igual} iguales · páginas ${[...new Set(filas.map((f) => f.pg).filter((x) => x != null))].join(', ') || '(sin número)'}`);
       for (const [id, c, f] of candUpd) console.log(`  ↻ candidato ${c.nombre.slice(0, 60)}: US$ ${Number(c.usd || 0).toFixed(2)} → ${f.u.toFixed(2)}`);
       if (candVisto.length) console.log(`  ✓ ${candVisto.length} candidato(s) siguen en el catálogo con el mismo precio: se renueva la fecha (no vencen)`);
@@ -22569,8 +22599,8 @@ async function main() {
         for (const [p, f] of fichaUpd) { await db.patch('cyc/products/' + p.id, { nisseiUSD: f.u, nisseiTs: ahora });
           if (sinStP[p.id]) { try { await db.set('cyc/py_sinstock/' + p.id, null); console.log(`  ↺ ${p.name.slice(0, 60)}: Nissei lo volvió a listar, le saco la marca "no había"`); } catch { /* sigue */ } } } }
       const last = filas[filas.length - 1];
-      if (ultPg >= 0) await db.patch('mlapi/pycatprog', { pg: ultPg, cod: last.cod, n: last.n.slice(0, 80), ts: ahora, ...(orden ? { orden } : {}) });
-      const r = (await db.get('mlapi/pycat/' + last.cod)) || {};
+      if (ultPg >= 0) await db.patch(PROG, { pg: ultPg, cod: last.cod, n: last.n.slice(0, 80), ts: ahora, ...(orden ? { orden } : {}) });
+      const r = (await db.get('mlapi/pycat/' + KEY(last.cod))) || {};
       const ok = Math.abs((Number(r.u) || 0) - last.u) < 0.005;
       console.log(`\n${ok ? '✓' : '❌'} guardado (releído el último: ${last.n.slice(0, 60)} · US$ ${r.u}). ${ultPg >= 0 ? `Quedó en la página ${ultPg}.` : ''} Los mide \`pycatmedir\` solo.`);
       return;

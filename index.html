@@ -2400,6 +2400,7 @@ function startApp(){
     state.listaLocal=d.listas_local||{};      // 🛒 lo que Tito marcó comprando en el local (21/10/2026)
     state.reponer=d.reponer||{};              // cuánto tarda en volver a haber cada producto (lo lee el robot en `escasez`)
     state.pycatres=d.pycatres||null;          // 17/10/2026: los números del catálogo de Paraguay dividido (los arma el robot)
+    state.pycatresEl=d.pycatres_el||null;     // 24/10/2026: los mismos números del catálogo de Elegancia
     state.pedidospv=d.pedidospv||{};          // los pedidos al Paulvic en camino (06/10/2026, los carga el robot con `pvped`)
     _limpiarEnCamino(); // borra los "en camino" que hayan quedado marcados (la función ya no existe)
     setTimeout(()=>pedNumerar(),1500); // los pedidos hechos sin número reciben el suyo (20/10/2026)
@@ -2959,7 +2960,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.32';
+const APP_VERSION='26.33';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2972,6 +2973,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.33',f:'24/10',h:'01:30',c:[{n:3,t:'🟣 Elegancia: ahora se mira su catálogo entero, como el de Nissei. El chat de compras lo copia, el robot lo mide contra ML y lo que da 35% aparece en la solapa Elegancia → Nuevos.'}]},
   {v:'26.32',f:'24/10',h:'02:20',c:[{n:2,t:'🇵🇾 Productos nuevos: 5 o más reseñas en ML también cuentan como "se vende" (vale como las 100 vendidas). Lo carga el chat de compras.'}]},
   {v:'26.31',f:'24/10',h:'02:05',c:[{n:1,t:'🇵🇾 La carpeta de "1 solo vendedor" dice la regla: entran con 100+ vendidas en ML; los de ahí vendieron menos o falta que el chat cargue el dato.'}]},
   {v:'26.30',f:'24/10',h:'01:55',c:[{n:3,t:'🇵🇾 Paraguay → Nuevos → Revisados: carpeta 🌟 Sin competencia en ML (catálogos que nadie tiene en stock). Cada uno dice a cuánto habría que venderlo para dejar 35% y tiene un botón ➕ Lo quiero: pasa a Para probar, el robot lo mide exacto y Claude confirma las fotos antes de que se pueda pedir. Primero los rubros que ya vendemos.'}]},
@@ -15446,6 +15448,10 @@ function embudoHTML(){
 // da el % pero quiero verlo igual"*. Busca en `mlapi/pycat` (los ~13.500 que copió Guay, FUERA de `cyc/`: ~4 MB, por eso se
 // baja recién la primera vez que se busca y queda en memoria). Sólo muestra: no carga nada ni toca el pedido.
 let _pycatCache=null,_pycatCargando=null;
+// ELEGANCIA EN EL CATÁLOGO (24/10/2026, él: "de acá también podemos pedir"): clave `EL_<código>` y `pv:'elegancia'` (mismo que el robot).
+const PYCAT_EL='EL_';
+function pycatProvDe(k,e){return (e&&e.pv==='elegancia')||String(k).startsWith(PYCAT_EL)?'elegancia':'nissei';}
+function pycatCodDe(k){return String(k).startsWith(PYCAT_EL)?String(k).slice(PYCAT_EL.length):String(k);}
 function _pycNorm(t){return String(t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');}
 async function pycatCargar(){
   if(_pycatCache)return _pycatCache;
@@ -15480,7 +15486,7 @@ async function pycatQuiero(cod,p35){
   if(!/^https:\/\//.test(String(e.f||''))){toast('Le falta la foto de Paraguay: sin las dos fotos no se puede comprar. Pedile al chat de Nissei que la copie.','err',6000);return;}
   if(!(p35>0)){toast('No pude calcular el precio (falta el dólar)','err');return;}
   const id='c'+Date.now()+'q';const ts=Date.now();
-  const c={nombre:e.n,cod:String(cod),usd:Number(e.u)||0,mlId:e.mi,enNissei:true,fuente:'pycat',ts,foto:e.f,...(e.l?{link:e.l}:{}),svp:Number(e.svp)>0?Number(e.svp):p35,svpTs:ts,sinComp:1,elegido:ts};
+  const c={nombre:e.n,cod:pycatCodDe(cod),...(pycatProvDe(cod,e)==='elegancia'?{prov:'elegancia'}:{}),usd:Number(e.u)||0,mlId:e.mi,enNissei:true,fuente:'pycat',ts,foto:e.f,...(e.l?{link:e.l}:{}),svp:Number(e.svp)>0?Number(e.svp):p35,svpTs:ts,sinComp:1,elegido:ts};
   const upd={};upd['cyc/candidatos_py/'+id]=c;upd['mlapi/pycat/'+cod+'/cand']=id;
   try{await db.ref().update(upd);}catch(err){toast('No se guardó: '+(err.message||err),'err',5000);return;}
   state.candidatos=state.candidatos||{};state.candidatos[id]=c;e.cand=id;
@@ -15502,7 +15508,7 @@ function pycatFila([cod,e]){const tc=curTC();{const u=Number(e.u)||0,pu=u*RECARG
     return `<div style="display:flex;gap:8px;align-items:center;padding:6px 8px;background:var(--surface);border:1px solid var(--border);border-radius:8px">
       ${im(fPY,'Paraguay')}${im(fML,'ML')}
       <div style="flex:1;min-width:0;font-size:.72rem;line-height:1.45"><div style="font-weight:600">${e.n}</div>
-        <div style="color:var(--muted);font-size:.64rem">🔖 ${cod} · ${fmtUS2(u)} → <b style="color:var(--text)">${fmtUS2(pu)}</b> puesto${ps?' · '+fmt(ps):''}${e.mp?` · en ML ${fmt(e.mp)}${e.mv?' · '+(e.mv==1?'<b style="color:var(--amber)">⚠️ 1 solo vendedor: precio que nadie más confirma</b>':e.mv+' vendedores'):''}${Number(e.pp)>0?` · <span style="color:var(--amber)">🏷️ el más barato está en promo (−${Number(e.pp)}%)</span>`:''}`:''}${e.cand?' · <span style="color:var(--green)">ya está en Para probar</span>':''}</div>
+        <div style="color:var(--muted);font-size:.64rem">${pycatProvDe(cod,e)==='elegancia'?'🟣 Elegancia · ':''}🔖 ${pycatCodDe(cod)} · ${fmtUS2(u)} → <b style="color:var(--text)">${fmtUS2(pu)}</b> puesto${ps?' · '+fmt(ps):''}${e.mp?` · en ML ${fmt(e.mp)}${e.mv?' · '+(e.mv==1?'<b style="color:var(--amber)">⚠️ 1 solo vendedor: precio que nadie más confirma</b>':e.mv+' vendedores'):''}${Number(e.pp)>0?` · <span style="color:var(--amber)">🏷️ el más barato está en promo (−${Number(e.pp)}%)</span>`:''}`:''}${e.cand?' · <span style="color:var(--green)">ya está en Para probar</span>':''}</div>
         ${noVa.length?`<div style="font-size:.64rem;color:var(--amber)">No entra al pedido: ${noVa.join(' · ')}</div>`:''}
         ${(e.sv&&!e.cand&&e.mi&&ps>0)?(()=>{const p35=pycatPrecio35(ps);return `<div style="font-size:.64rem;color:var(--green);margin-top:2px">🌟 sin competencia en ML (nadie tiene stock)${Number(e.svp)>0?` · el chat vio ${fmt(Number(e.svp))}`:Number(e.svp)<0?' · sin ningún precio a la vista':''}${p35?` · para dejar 35%: venderlo a <b>≈ ${fmt(p35)}</b>`:''} <button class="btn" style="font-size:.6rem;padding:2px 8px;margin-left:4px" onclick="pycatQuiero('${String(cod).replace(/'/g,"\\'")}',${p35||0})" title="Pasa a Para probar como 🌟 sin competencia, medido a ese precio. Claude confirma con las fotos que es el mismo producto antes de que se pueda pedir.">➕ Lo quiero</button></div>`;})():''}
         <div style="font-size:.64rem">${/^https:\/\//.test(e.l||'')?`<a href="${e.l}" target="_blank" rel="noopener" style="color:var(--green)">🇵🇾 comprasparaguay</a>`:''}${e.mi?` · <a href="https://www.mercadolibre.com.ar/p/${e.mi}" target="_blank" rel="noopener" style="color:var(--green)">🔗 ML</a>`:''}</div></div>
@@ -15523,7 +15529,7 @@ function _pycMatcher(codes){const full=new Set(),suf=new Set();
   return y0=>{const y=_pycDg(y0);if(!y)return false;if(full.has(y))return true;if(/[A-Z]/.test(y))return false;if(y.length>=5&&suf.has(y))return true;for(let k=5;k<y.length;k++)if(full.has(y.slice(-k)))return true;return false;};}
 const _PYC_GRUPOS={scr:['✔️ revisados: no están en ML','buscados con el nombre en portugués y traducido; ML no tiene el mismo producto. Se vuelven a buscar solos cada 14 días'],dan:['🟢 medidos que dan y no pasaron solos a Para probar','el robot no pudo confirmar que el de ML sea el mismo producto'],pend:['⏳ falta revisar','nunca medidos o medidos hace 14 días o más: el robot los vuelve a mirar solo'],ficha:['✅ ya son productos tuyos','tienen ficha en CYC'],nomed:['⏳ todavía sin medir','el robot los mide de a tandas cada 2 h; los que den pasan solos a Para probar'],bajo:['🔻 medidos abajo del piso','del más cercano al piso al más lejos'],sc:['🔍 sin catálogo exacto en ML','no se pudo comparar contra el mismo producto'],sv:['🚫 en ML no lo vende nadie','el catálogo existe pero sin vendedores'],fz:['⛔ afuera por regla','110V, marca que ML frena, etc.']};
 function pycatNoDanHTML(keys,id,titulo,split){
-  if(typeof pyProv!=='undefined'&&pyProv!=='nissei')return'';
+  if(typeof pyProv!=='undefined'&&!PY_PROVS[pyProv])return'';
   keys=keys||['bajo','sc','sv','fz'];id=id||'pycat-nodan';
   return `<details style="margin-top:10px" ontoggle="if(this.open)pycatNoDan('${id}','${split?'!':''}${keys.join(',')}')"><summary style="cursor:pointer;font-size:.68rem;color:var(--muted)" title="Del catálogo entero de comprasparaguay que midió el robot (sin los que ya son candidatos). Filas livianas, sin tarjeta.">${titulo||'🔎 Del catálogo revisado por el robot'} · tocá para verlo</summary><div id="${id}" style="margin-top:8px"></div></details>`;
 }
@@ -15551,10 +15557,13 @@ async function pycatNoDan(id,keysTxt){
   const g={bajo:[],sc:[],scr:[],sv:[],fz:[],ficha:[],nomed:[],dan:[],pend:[]};const _ahora=Date.now();
   // Sin repetir: lo que ya es candidato (vivo, en el pedido o descartado) está arriba, aunque el catálogo no lo tenga marcado.
   // MISMA división que `pycatResumenEscribir` del robot (los números de los encabezados).
-  const esCand=_pycMatcher(Object.values(state.candidatos||{}).map(c=>c&&c.cod).filter(Boolean));
-  const esFicha=_pycMatcher((state.products||[]).map(p=>p&&p.codPy).filter(Boolean));
-  for(const [cod,e] of Object.entries(cat||{})){if(!e||!e.n||e.cand||esCand(cod))continue;
-    if(esFicha(cod)){g.ficha.push([cod,e]);continue;}
+  // ELEGANCIA (24/10/2026): su catálogo va en el mismo lugar con clave `EL_<código>`; cada solapa ve sólo el suyo y lo compara con
+  // SUS candidatos y fichas (`pycatProvDe`/`pycatCodDe`, mismas reglas que el robot).
+  const _pv=(typeof pyProv!=='undefined'&&PY_PROVS[pyProv])?pyProv:'nissei';
+  const esCand=_pycMatcher(Object.values(state.candidatos||{}).filter(c=>c&&pyProvDe(c)===_pv).map(c=>c.cod).filter(Boolean));
+  const esFicha=_pycMatcher((state.products||[]).filter(p=>p&&pyProvDe(p)===_pv).map(p=>p.codPy).filter(Boolean));
+  for(const [cod,e] of Object.entries(cat||{})){if(!e||!e.n||pycatProvDe(cod,e)!==_pv||e.cand||esCand(pycatCodDe(cod)))continue;
+    if(esFicha(pycatCodDe(cod))){g.ficha.push([cod,e]);continue;}
     if(split){const gr=_pycGrupoRev(e,_ahora);(gr==='pn'||gr==='pv'?g.pend:g[gr]).push([cod,e]);continue;}
     const m=(e.m!=null&&isFinite(e.m))?Number(e.m):null;
     if(m!=null){(m<CAND_PISO_PCT?g.bajo:g.nomed).push([cod,e]);continue;}
@@ -15572,7 +15581,7 @@ async function pycatNoDan(id,keysTxt){
   const ks=keys.filter(k=>g[k]&&g[k].length),tot=ks.reduce((a,k)=>a+g[k].length,0);
   const lista=(k)=>{const vk=id+'_'+k,n=_pycNoDanVer[vk]||100,arr=g[k];
     return `<div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">${arr.slice(0,n).map(pycatFila).join('')}${arr.length>n?`<button class="btn" style="font-size:.66rem" onclick="_pycNoDanVer['${vk}']=${n+100};pycatNoDan('${id}','${split?'!':''}${keys.join(',')}').then(()=>{const d=document.querySelector('#${id} details[data-k=${k}]');if(d)d.open=true;})">mostrar 100 más (quedan ${(arr.length-n).toLocaleString('es-AR')})</button>`:''}</div>`;};
-  el.innerHTML=`<div style="font-size:.64rem;color:var(--muted);margin-bottom:6px">${tot.toLocaleString('es-AR')} del catálogo de comprasparaguay</div>`
+  el.innerHTML=`<div style="font-size:.64rem;color:var(--muted);margin-bottom:6px">${tot.toLocaleString('es-AR')} del catálogo de ${PY_PROVS[_pv].n} en comprasparaguay</div>`
     +(ks.length===1?lista(ks[0]):ks.map(k=>`<details data-k="${k}" style="margin-top:6px"><summary style="cursor:pointer;font-size:.7rem">${_PYC_GRUPOS[k][0]} · <b>${g[k].length.toLocaleString('es-AR')}</b> <span style="color:var(--muted);font-size:.62rem">(${_PYC_GRUPOS[k][1]})</span></summary>${lista(k)}</details>`).join(''));
 }
 function candList(){
@@ -17640,7 +17649,7 @@ function candidatosHTML(){
     +(()=>{
       // EL CATÁLOGO ENTERO, DIVIDIDO (17/10/2026, él: "quiero que estén todos los 13.000 divididos en todas las categorías").
       // Los números del catálogo los deja el robot en `cyc/pycatres`; las filas se bajan recién al abrir cada grupo (~4 MB).
-      const R=pyProv==='nissei'?state.pycatres:null,n=k=>R&&R[k]!=null?Number(R[k]):0,f=x=>Number(x||0).toLocaleString('es-AR');
+      const R=pyProv==='nissei'?state.pycatres:pyProv==='elegancia'?state.pycatresEl:null,n=k=>R&&R[k]!=null?Number(R[k]):0,f=x=>Number(x||0).toLocaleString('es-AR');
       const mas=k=>R?` <span style="color:var(--muted);font-weight:400">+ <b>${f(n(k))}</b> del catálogo</span>`:'';
       const nDesc=candList().filter(c=>c.no&&c.noTipo!=='rebusca').length;   // 🔁 rebusca (24/10/2026): se están buscando de nuevo, no son descartados
       // 23/10/2026: suma también los ✔️ revisados traducidos (`scr`, faltaban) y, con la cuenta nueva, es Revisados + Falta revisar.

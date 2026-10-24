@@ -694,6 +694,16 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 
 ## 3 · MERCADERÍA (miércoles)
 
+**24/10/2026 · 🟣 El catálogo ENTERO de Elegancia, como el de Nissei (él: *"este de elegancia, también miro todos los productos? (…) de
+acá también podemos pedir"*).** Antes sólo estaban los ~36 del PDF "Atacado". Ahora el chat de compras lo copia con
+`pycat:prov=elegancia;#<pág>;<código>|<nombre>|<US$>|<link>|<foto>;…;go` (ml-consulta): va a `mlapi/pycat` con clave `EL_<código>` y
+`pv:'elegancia'` (así nunca choca con un código de Nissei que termine igual), su página en `mlapi/pycatprog_el`. El robot del catálogo lo
+mide igual; lo que da pasa a Para probar como candidato de Elegancia (`prov:'elegancia'`, código sin `EL_`). Números aparte en
+`cyc/pycatres_el` (la solapa 🟣 Elegancia → Nuevos los muestra como los de Nissei). `faltaprecio` dice `py|elegancia|EL_<cód>` y
+`svprecio:EL_<cód>=…` lo carga. Dónde vive: `pycatProvDe`/`pycatCodDe`/`pycatEsDe` (sync.mjs e index.html). **Qué chequear:** `pycat:prov=elegancia`
+(sin go) dice "CATÁLOGO DE ELEGANCIA" y cuántos; que un candidato nuevo de Elegancia aparezca en la solapa 🟣 y no en la 🟢; que
+`cyc/pycatres` (Nissei) no cambie de total por Elegancia.
+
 **24/10/2026 · `/borrar` para las vendidas.** El chat cargó "/0" en 36 catálogos que no muestran vendidas (es duda, no 0: con 1 vendedor un 0
 lo deja afuera para siempre). `candprecio:<cód>=/borrar` saca `vendCarga`; `listadato:<prov>;<cód>=borrar` saca `vend`. **Qué chequear:** que
 los borrados vuelvan a "falta cargar las vendidas" en `candresumen`.

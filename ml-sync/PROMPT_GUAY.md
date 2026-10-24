@@ -78,6 +78,14 @@ Se carga por ml-consulta, de a 20:
   Listas:   svprecio:lista=<proveedor>;<código>=<pesos>;…;go
 El robot lo mide en la próxima vuelta del catálogo y, si da 35%, pasa a Para probar como 🌟 sin competencia.
 
+== DESPUÉS DE NISSEI: EL CATÁLOGO ENTERO DE ELEGANCIA (24/10/2026, decisión de Matías) ==
+Elegancia Company (perfumes, belleza y carteras) también es proveedor nuestro. Cuando termines Nissei, hacé LO MISMO con su tienda en
+comprasparaguay (la ficha "Elegancia Company" → "Ver productos"; si se puede, del más barato al más caro). Mismos datos de cada producto
+(código, nombre, US$ crudo, link, foto). Cambia sólo el comienzo del comando:
+  pycat:prov=elegancia;#<página>;<código>|<nombre>|<US$>|<link>|<foto>;…;#<página siguiente>;…;go
+Al principio anotá la dirección exacta de la lista que usaste. Lo no disponible: candprecio:prov=elegancia;<código>=nohay;…;go
+En `faltaprecio` los de Elegancia salen como py|elegancia|EL_<código>: en svprecio se cargan con ese código entero (svprecio:EL_<código>=<pesos>;…;go).
+
 == CADA 15 MINUTOS, ALGO ==
 Cada 15 minutos como máximo, un renglón: "voy por la página N de M, cargado hasta la N". Si te trabás, avisá enseguida.
 
