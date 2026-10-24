@@ -338,6 +338,7 @@
 - Mismas reglas que Paraguay: 25% + catálogo 2+ vendedores + **confirmado por mí** (`listarevisar` → `listadato:<prov>;<cód>=ok|no|mi=MLA…;go`,
   con duda no se toca). El robot mide lista por lista y anota la vuelta completa (`cyc/mlconfig/vueltas`). Todo se mide contra ML (también lo de Bs As).
 - Fechas al 19/10: Dai Nippon L1309 19/10 · Unilever 08/10 · Iscos 01/10 · Cadam 26/09 · Qsoft 23/09 · Godrej 01/08 (Wels también).
+- **Softys** (papel higiénico, rollos, servilletas, pañuelos, toallitas femeninas, pañales Babysec y Cotidian): lista del 17/10 cargada el 24/10 (141 productos, "Precios Finales" por unidad de venta; en el nombre se sacó el "<UxB>X" del bulto). Falta saber quién la trae y si hay mínimo.
 
 ### Paulvic (perfumes, proveedor de Bs As; CEREBRO §18)
 - **Costo = el del último pedido** (17/10): (pagado + flete) ÷ (llegadas + regalos perfume). **Los testers NO cuentan** (22/10: son probadores

@@ -17,5 +17,7 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 12. **Bajas de la escalera de escasez y de "sin reposición"** (Pendrive 8gb, Pizarra Rosa, Chispero; los 2 Espejos 4" ya volvieron a $5.490 el 23/10 19:37 porque entraron en escasez): pasan los frenos y el detector de errores dice que están bien, pero el control de "bajas sin techo" (`bajastecho`) y la lista de descuentos 🤔 (por "recién llegado") las marcan. Las dejé puestas. El Pendrive ya vendió 4 con el descuento. (a) sugerida: que esos dos controles no las cuenten como error cuando son escalera de escasez o sin reposición con línea (lo arreglo) · (b) deshacerlas y volver al precio subido.
 13. **Cuba Gold** (Adriana, última unidad, a $67.174, la anterior se vendió a $28.990): te llegó por Telegram el pedido de autorización para bajarla a $32.990. Contestá "autorizo <código>" o "no <código>".
 18. **(lo mira él, 24/10 "ok") Aviso de ML en Ayelen por "productos falsificados"** (se ve en su captura del 23/10, propiedad intelectual): mirar en ML → Consultar infracciones qué publicación fue. Si es una marca, la agrego como prohibida para ML (`marcanoml`).
+25. **Softys** (lista del 17/10, cargada el 24/10 y midiéndose contra ML): ¿quién la trae (Tito en Bs As o la mandan), hay pedido mínimo, y el "PRECIO FINAL" es lo que se paga (con IVA)? Lo cargué así.
+
 ## Viejas que siguen esperando (de CLAUDE.md §13)
 - Sancor (respuesta y baja de Vida Plus) · contador (recategorización, actividad, facturas entre cuentas) · costo de las dos Linternas COB de Ayelen.
