@@ -86,7 +86,9 @@ al código; lo que es pensar queda acá, y una regla dura ("nunca", "sólo si") 
 - *Una regla dice A, otra B y ninguna fila lo resuelve* → no se hace nada esa vuelta, se anota y va a `notas/para_mati.md` con (a)/(b).
   Después se agrega la fila acá.
 - **Las excepciones a los frenos son siempre las mismas cinco:** precio mal puesto · stock antiguo con fecha encima · ML la
-  pausó por el precio · lo pide él · la última unidad. "Ganar la caja" y "para ver si sale" NO son excepciones.
+  pausó por el precio · lo pide él · el envío (cruzar la barrera de $33.000 cuando deja claramente más). "Ganar la caja", "para ver si sale"
+  y **"la última unidad" NO son excepciones** (24/10/2026, él con el Cuba Gold: *"que baje cuando encuentre techo en escalera, no de una a
+  $32.990, excepto que haya algo con el envío o cosas excepcionales"*): la última unidad también baja en escalera y con línea de techo.
 
 ### 0b · PARA DECIDIR CON ÉL — vacío (las 4 del 21/10/2026 las decidió él ese mismo día: 1a 2b 3a 4a, ya están en sus secciones)
 Lo que choque y no tenga fila en 0 va acá con su regla provisoria hasta que conteste; al contestar, pasa a su sección y se borra de acá.

@@ -110,7 +110,8 @@
    abre, `!bajocero`). El % se mide **costo + impuestos + envío de Full en el divisor** (`pctGananciaVP`, un solo % en toda la app).
 5. **Bajar un precio sólo con las reglas del CEREBRO** (y las salidas 🔐 sólo con su autorización, §5): sin línea de techo no se baja · escalera (≤15% por escalón) · descuento antes
    que bajar la lista · una suba no se deshace sin 95% · no abajo del 💰. Excepciones siempre las mismas cinco: precio mal puesto ·
-   stock antiguo con fecha encima · ML la pausó por el precio · lo pide él · la última unidad.
+   stock antiguo con fecha encima · ML la pausó por el precio · lo pide él · el envío (barrera $33.000). **La última unidad NO es
+   excepción** (24/10, él con el Cuba Gold: en escalera y con techo, no de una).
 6. **Releer de ML** cada cambio (precio, promo, estado, gemela) y comparar.
 7. **Variantes: todas o ninguna.** Mandar la lista incompleta borra las que faltan. `setPriceTo`/`raisePriceTo` se niegan con variantes;
    se usa `raiseVariations` y se relee que estén TODAS. Cada variante es su publicación y se juzga sola (precio, stock y ventas de ESE color).
