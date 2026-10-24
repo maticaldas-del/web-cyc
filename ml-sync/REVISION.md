@@ -1451,6 +1451,13 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
 
 ## 7 · DISEÑO (domingo)
 
+### 📦 Sacando stock con la estrategia de cada día (24/10/2026, v26.52, error que marcó él: "figura la última el 13/10")
+- **Qué es:** desde el 13/10 (el robot sólo junta datos) nadie marcaba `rem`/`esc` en la línea y la franja se cortó. Ahora cada día con stock
+  cuenta la estrategia que tenía: sobra/liquidando/remate → 📦, bajando → 🪜. Robot: `calcLineaTodo(lin, links, estrat)` (`TAG_SACA_STOCK`,
+  lee `cyc/estrategia`); web, línea de un producto: `remT`/`escT` con `estrategiaDe(mla, fin del día)`.
+- **Qué chequear:** la franja de "Todos" llega hasta ayer · un producto en 📦 sobra se pinta naranja esos días · no se cuenta dos veces un
+  día que ya traía `rem` del robot.
+
 ### Mes y año se miden como el día · globo de "Todos" por franja (24/10/2026, v26.50, pedidos suyos)
 - **Qué es:** (1) la tarjeta de Ventas del mes/año reparte lo ganado en TODOS los días del período (`_homePerTot().diasPer`): puntaje,
   color y escalerita arrancan bajos y suben con cada venta, como el día. El año 2026 se mide desde el primer día con ventas guardadas

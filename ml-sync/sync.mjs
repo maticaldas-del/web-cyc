@@ -8610,12 +8610,20 @@ function _rnDia(ts) { return new Date(ts - 3 * 3600e3).toISOString().slice(0, 10
 //   g/c/p  publicaciones activas que GANAN / COMPARTEN / PIERDEN la caja   rem/esc  rematando · en la escalera
 //   pl/pN  suma de log(precio hoy ÷ precio del día anterior conocido) y cuántas: el índice de precio
 //   sb/bj  publicaciones a las que les SUBIÓ / BAJÓ el precio ese día (más de 0,5%)
-function calcLineaTodo(lin, links) {
+// 📦 SACANDO STOCK CON LA ESTRATEGIA DE CADA DÍA (24/10/2026, él: "siguen sin aparecer las ventas. figura la última el 13/10. está mal").
+// Desde que el robot sólo junta datos (13/10) nadie marcaba `rem`/`esc` en la línea de cada publicación y la franja se cortó. Ahora, con
+// `estrat` (`cyc/estrategia`), cada día cuenta la estrategia que tenía ese día (la última anotada hasta las 23:59 de acá): 📦 sobra,
+// liquidando y 🧨 remate → sacando stock (`rem`); 🪜 bajando → escalera (`esc`). Sólo los días activa y con stock (o que vendió).
+const TAG_SACA_STOCK = new Set(['sobra', 'liquidando', 'remate']);
+function calcLineaTodo(lin, links, estrat) {
   const out = {};
   const o = (k) => (out[k] = out[k] || { n: 0 });
   for (const [mla, dias] of Object.entries(lin || {})) {
     const e = (links || {})[mla]; if (!e || e.ignored) continue;
     const ks = Object.keys(dias || {}).filter((k) => /^\d{4}_\d{2}_\d{2}$/.test(k) && dias[k] && typeof dias[k] === 'object').sort();
+    const tags = Object.entries((estrat || {})[mla] || {}).map(([t, x]) => [Number(t), x && x.t]).filter(([t, x]) => t > 0 && x && x !== 'correccion').sort((a, b) => a[0] - b[0]);
+    let iT = -1;
+    const tagDia = (k) => { const fin = Date.parse(k.replace(/_/g, '-') + 'T23:59:59-03:00'); while (iT + 1 < tags.length && tags[iT + 1][0] <= fin) iT++; return iT >= 0 ? tags[iT][1] : ''; };
     let pAnt = null;
     for (const k of ks) {
       const r = dias[k], x = o(k); x.n++;
@@ -8635,8 +8643,9 @@ function calcLineaTodo(lin, links) {
         x.stN = (x.stN || 0) + 1; }
       const activa = r.est == null || r.est === 'active';
       if (activa && (r.caja === 'g' || r.caja === 'c' || r.caja === 'p')) x[r.caja] = (x[r.caja] || 0) + 1;
-      if (r.rem === 1) x.rem = (x.rem || 0) + 1;
-      if (r.esc != null) x.esc = (x.esc || 0) + 1;
+      const tD = tags.length ? tagDia(k) : '', conSt = activa && (Number(r.st) > 0 || Number(r.u) > 0);
+      if (r.rem === 1 || (conSt && TAG_SACA_STOCK.has(tD))) x.rem = (x.rem || 0) + 1;
+      else if (r.esc != null || (conSt && tD === 'bajando')) x.esc = (x.esc || 0) + 1;
       const p = Number(r.p) || 0;
       if (p > 0) {
         if (pAnt > 0) {
@@ -22179,13 +22188,13 @@ async function main() {
     // La noche la arma sola dentro de `ritmo:go`; esto es para no esperar. Sólo junta lo que ya está guardado.
     if (/^lineatodo(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const GO = /:go$/.test(String(process.env.BILLING_PROBE));
-      const [lin, links, prodsLT] = await Promise.all([db.get('mlapi/linea'), db.get('cyc/mllinks'), db.get('cyc/products')]);
+      const [lin, links, prodsLT, estLT] = await Promise.all([db.get('mlapi/linea'), db.get('cyc/mllinks'), db.get('cyc/products'), db.get('cyc/estrategia')]);
       const pIdxLT = {}; for (const p of Object.values(prodsLT || {})) if (p && p.id) pIdxLT[p.id] = p;
-      const LT = calcLineaTodo(lin || {}, linksConColor(links || {}, pIdxLT));
+      const LT = calcLineaTodo(lin || {}, linksConColor(links || {}, pIdxLT), estLT || {});
       const ks = Object.keys(LT).sort();
       console.log(`=== LÍNEA DE TODOS ${GO ? '' : '(PRUEBA — no escribo nada)'} ===`);
       console.log(`${Object.keys(lin || {}).length} publicaciones con línea · ${ks.length} días (${ks[0] || '—'} → ${ks[ks.length - 1] || '—'})`);
-      for (const k of ks.slice(-5)) { const x = LT[k]; console.log(`  ${k}: ${x.n} pub · ${x.u ?? '?'} u. · vis ${x.vis ?? '?'} · stock ${x.st ?? '?'} (${x.stN || 0}) · caja g${x.g || 0}/c${x.c || 0}/p${x.p || 0} · ▲${x.sb || 0} ▼${x.bj || 0}`); }
+      for (const k of ks.slice(-14)) { const x = LT[k]; console.log(`  ${k}: ${x.n} pub · ${x.u ?? '?'} u. · vis ${x.vis ?? '?'} · stock ${x.st ?? '?'} (${x.stN || 0}) · caja g${x.g || 0}/c${x.c || 0}/p${x.p || 0} · ▲${x.sb || 0} ▼${x.bj || 0} · 📦 sacando ${x.rem || 0} · 🪜 ${x.esc || 0}`); }
       if (GO) { await db.set('mlapi/lineatodo', { dias: LT, ts: Date.now() }); const r = await db.get('mlapi/lineatodo/ts'); console.log(`✓ guardada · releída: ${r ? new Date(r).toISOString() : 'NO'}`); }
       return;
     }
@@ -22224,7 +22233,8 @@ async function main() {
           }
         }
         // Y la línea de TODOS los productos juntos (08/10/2026), con la misma lectura: ver `calcLineaTodo`.
-        try { const LT = calcLineaTodo(lin, linksC); if (GO && Object.keys(LT).length) await db.set('mlapi/lineatodo', { dias: LT, ts: Date.now() }); console.log(`línea de todos: ${Object.keys(LT).length} días ${GO ? 'guardados' : '(prueba)'}`); }
+        try { let estLT = {}; try { estLT = (await db.get('cyc/estrategia')) || {}; } catch { console.log('⚠️ no pude leer las estrategias: la franja Sacando stock de hoy sale sólo con lo marcado en la línea'); }
+          const LT = calcLineaTodo(lin, linksC, estLT); if (GO && Object.keys(LT).length) await db.set('mlapi/lineatodo', { dias: LT, ts: Date.now() }); console.log(`línea de todos: ${Object.keys(LT).length} días ${GO ? 'guardados' : '(prueba)'}`); }
         catch (e) { console.log(`⚠️ no pude armar la línea de todos (${String(e).slice(0, 80)})`); }
       } catch (e) { linFallo = true; console.log(`⚠️ no pude leer la línea de tiempo (${String(e).slice(0, 80)})`); }
       // Qué venta fue en remate: lo que guardó `linea` con la regla única (`clasificarRemates`). Sin eso no se
