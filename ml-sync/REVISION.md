@@ -763,6 +763,12 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 
 ## 3 · MERCADERÍA (miércoles)
 
+### Para probar mide cada 2 horas, 500 consultas por vuelta (24/10/2026, control de la tarde de Elegancia)
+- **Qué es:** `ml-candidatos` corría 1 vez por día (+ la noche) con 250 consultas: ~60 medidos por vuelta y 2.647 en fila (los 993 de
+  Elegancia) = ~3 semanas. Ahora `cron 7 */2` y `candidatos:max=500:go` (~120 por vuelta), con `concurrency` para que dos no se pisen.
+- **Qué chequear:** en `candresumen` "sin medir" baja ~1.000 por día · `consultas a ML` sin 429 · que no choque con el paso de candidatos
+  de ml-daily (~09-10 UTC) dejando algo medido dos veces.
+
 ### Las cajas que entraron completas se marcan solas (24/10/2026, error que marcó él: la 79567049 de Matías, 93/93 en ML y 8 días "no llegó")
 - **Qué es:** con SÓLO DATOS el robot sólo anotaba lo entrado y yo tenía que marcar; la vuelta no la marcó. Ahora `cajasQueLlegaron` en la vuelta
   horaria marca sola toda caja en la que entró TODO lo mandado; las que tienen faltantes siguen listadas para mí ("las marca Claude").
