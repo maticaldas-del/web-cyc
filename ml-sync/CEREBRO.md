@@ -129,8 +129,9 @@ Después de los 3 Protectores de talón (22/10: el freno "sin línea de techo no
    escasez/sinrepo cuya razón cambió · 🧭 fuera de lo normal · 🔀 no cierra.
 4. ⚠️ dato dudoso: no tocar precio, anotar. 💭 sin certeza: juzgar en familia, por visitas o por parecidas, nunca colgado.
    📅 **Antes de cada decisión, el calendario** (24/10, él): ¿en qué franja del mes estamos (11-15 fuerte, 1-5 floja en plata,
-   `cyc/mlconfig/franjasMes`) y qué fecha especial viene (`fechas`)? Una prueba de techo que sólo vio días flojos no está juzgada; no se baja
-   en la víspera de la franja fuerte o de una fecha; pedidos y cajas tienen que llegar ANTES; las ideas miran la próxima fecha.
+   `cyc/mlconfig/franjasMes`) y qué fecha especial viene (`fechas`)? **Es un dato para pesar, no un "nunca"**: a veces conviene esperar 2-3
+   días a que llegue lo fuerte antes de decidir, y a veces no (ej. algo por pagar stock antiguo con una fecha cerca: comparar cuánto cuesta
+   esperar contra lo que suma la fecha). Pedidos y cajas: que el stock llegue antes de lo fuerte; las ideas miran la próxima fecha.
    🧭 + 🔀 + 💭 los piensa SIEMPRE un ayudante con `effort:"high"` escrito en la llamada (21/10: nada depende del esfuerzo de la
    sesión), aunque sean pocos. Aplicar siempre es mío.
 5. Cada venta nueva contra su ficha: ¿1ª o 2ª después de un cambio? ¿confirma o desmiente la prueba? ¿se aceleró ⚡? ¿la dejó en

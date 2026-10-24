@@ -266,9 +266,12 @@
   (`cyc/mlconfig/franjasMes`, la noche y `ventasdiames`): **del 11 al 15 ~+17% compras / +22% plata; del 1 al 5 −25% plata** (5 meses, 24/10);
   (2) **temporadas y fechas especiales del año** (`fechas`, `fechasEspeciales`: Día de la Madre/Padre/Niño, Navidad, Reyes, San Valentín,
   Amigo, Hot Sale, CyberMonday, Black Friday) y lo de afuera (sueldo en los primeros 4 días hábiles; 65% agota la plata antes del 20).
-  **Precios:** no juzgar una prueba sólo con días flojos ni bajar justo antes de la franja fuerte o de una fecha (las rayas ya pesan cada día).
-  **Pedidos y cajas:** llegar con stock ANTES de la franja/fecha (contar el viaje). **Ideas y compras:** qué se vende en la próxima fecha.
-  Se ve en la línea de tiempo (Plata por día: verde/rojo/ámbar).
+  **No es una regla de "nunca", es un dato más para pensar** (él: *"que vos te des cuenta: se viene fecha/franja buena, quizás lo mejor sea
+  esperar 2 o 3 días (…) pero manejalo: si está por pagar stock y se viene una fecha, quizás lo mejor es bajar para no pagar, o viceversa"*):
+  se pesa contra todo lo demás (stock antiguo, escasez, sobra, plata parada). Ej.: una prueba de techo vista sólo en días flojos vale menos
+  (las rayas ya pesan cada día); bajar 2 días antes de la franja fuerte puede no convenir… salvo que el stock antiguo cueste más que esperar.
+  Pedidos y cajas: que el stock llegue antes de lo fuerte. Ideas y compras: qué se vende en la próxima fecha. Se ve en Plata por día
+  (verde/rojo/ámbar).
 - **El precio sugerido de ML** (`sugP`) es referencia, nunca motivo para bajar algo que vende.
 - **Liquidando** (`liquidando:<MLA>[:go]`, `cyc/nosubir`) frena sólo subas; se cae sola en stock 0; marcar uno no contagia a otros
   colores salvo hermana de precio (`esHermanaPrecio`). Bajar a un precio exacto que pide él: `unapub:<MLA>:<piso>:<días>:bajar=<precio>[:go]`.
