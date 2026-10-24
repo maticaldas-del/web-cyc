@@ -22654,6 +22654,38 @@ async function main() {
     // que dice el catálogo contra el color de la ficha (nombre, color de `pyVar` y títulos de sus publicaciones de ML):
     //  · ❌ CHOCA: el catálogo dice otro color → código casi seguro equivocado (se muestran los hermanos de otro color con su código).
     //  · ❔ SIN COLOR: la ficha no nombra color y el catálogo tiene el mismo producto en varios colores → mirar la foto.
+    // BILLING_PROBE=elreparo[;go] (24/10/2026) → ARREGLA LO QUE PISÓ LA PRIMERA CARGA DEL CATÁLOGO DE ELEGANCIA. Comparaba códigos por
+    // el final y los del PDF "Atacado" ("69942") quedaban iguales a otros de comprasparaguay ("769942"): el candidato o la ficha recibía
+    // el precio de OTRO perfume. Para cada candidato y ficha de Elegancia tocado desde las 04:30 UTC del 24/10 que NO tiene su código
+    // EXACTO en el catálogo: el precio vuelve al de la lista de donde salió (`mlapi/listas/<prov>`, mismo código) o, si no está, al de
+    // antes (`usdAntes`, sólo si un único código del catálogo lo pudo pisar). Lo que no se puede saber seguro se lista y no se toca.
+    if (/^elreparo(;go)?$/.test(String(process.env.BILLING_PROBE || ''))) {
+      const GO = /;go$/.test(String(process.env.BILLING_PROBE)) && !DRY; const T0 = Date.parse('2026-10-24T04:30:00Z');
+      const cat = (await db.get('mlapi/pycat')) || {}; const cands = (await db.get('cyc/candidatos_py')) || {};
+      const elKeys = Object.keys(cat).filter((k) => pycatProvDe(k, cat[k]) === 'elegancia');
+      const provs = (await db.get('cyc/mlconfig/listasProv')) || {}; const tc = Number(await db.get('cyc/finanzas/tipo_cambio')) || 0;
+      const deLista = {}; for (const k of Object.keys(provs)) { const L = (await db.get('mlapi/listas/' + k)) || {};
+        for (const [cod, e] of Object.entries(L)) { const u = Number(e && e.usd) > 0 ? Number(e.usd) : (tc > 0 && Number(e && e.p) > 0 ? Math.round(Number(e.p) / tc * 100) / 100 : 0); if (u > 0 && !deLista[_pyDg(cod)]) deLista[_pyDg(cod)] = { u, prov: k }; } }
+      const upC = {}; let ok = 0, rep = 0, duda = 0;
+      for (const [id, c] of Object.entries(cands)) {
+        if (!c || provPyDeBot(c) !== 'elegancia' || !c.cod || !(Number(c.ts) >= T0) || c.usdAntes == null) continue;
+        if (cat[PYCAT_EL + _pyDg(c.cod)]) { ok++; continue; }   // su código exacto está: el precio es el suyo
+        const pis = elKeys.filter((k) => _pyCodIg(c.cod, pycatCodDe(k)));
+        if (!pis.length) continue;
+        const li = deLista[_pyDg(c.cod)]; const vuelve = li ? li.u : (pis.length === 1 ? Number(c.usdAntes) : null);
+        const txt = `${id} · ${String(c.nombre).slice(0, 55)} · cód ${c.cod} · hoy US$ ${c.usd} · antes US$ ${c.usdAntes} · lo pisó ${pis.map((k) => pycatCodDe(k) + ' "' + String(cat[k].n).slice(0, 35) + '" US$ ' + cat[k].u).join(' | ')}`;
+        if (vuelve > 0) { rep++; console.log(`  ↺ ${txt} → vuelve a US$ ${vuelve}${li ? ' (lista ' + li.prov + ')' : ' (el de antes)'}`); upC[`${id}/usd`] = vuelve; upC[`${id}/usdAntes`] = null; upC[`${id}/calcTs`] = null; }
+        else { duda++; console.log(`  ❔ ${txt} → NO SÉ el de antes (lo pisaron ${pis.length}): no lo toco`); }
+      }
+      const fichasMal = products.filter((p) => p && provPyDeBot(p) === 'elegancia' && p.codPy && Number(p.nisseiTs) >= T0 && !cat[PYCAT_EL + _pyDg(p.codPy)]);
+      for (const p of fichasMal) console.log(`  ⚠️ ficha ${p.id} · ${String(p.name).slice(0, 55)} · cód ${p.codPy} · precio de Paraguay US$ ${p.nisseiUSD} (pisado; el costo no se tocó) → vuelve al costo US$ ${p.costUSD ?? '—'} como precio de Paraguay`);
+      console.log(`=== ELREPARO ${GO ? '(APLICANDO)' : '(PRUEBA)'} · ${rep} candidatos vuelven · ${duda} sin saber · ${ok} con su código exacto (bien) · ${fichasMal.length} fichas ===`);
+      if (!GO) return;
+      if (Object.keys(upC).length) await db.patch('cyc/candidatos_py', upC);
+      for (const p of fichasMal) if (Number(p.costUSD) > 0) await db.patch('cyc/products/' + p.id, { nisseiUSD: Number(p.costUSD), nisseiTs: null });
+      const rel = (await db.get('cyc/candidatos_py')) || {}; const bien = Object.keys(upC).filter((k) => k.endsWith('/usd')).filter((k) => Number((rel[k.split('/')[0]] || {}).usd) === Number(upC[k])).length;
+      console.log(`✓ releído: ${bien} de ${rep} quedaron con el precio de vuelta.`); return;
+    }
     if (/^pycodcolor$/.test(String(process.env.BILLING_PROBE || ''))) {
       const cat = (await db.get('mlapi/pycat')) || {}; const links = (await db.get('cyc/mllinks')) || {};
       const titulos = {}; for (const l of Object.values(links)) if (l && l.prodId && l.title) (titulos[l.prodId] = titulos[l.prodId] || []).push(String(l.title));
