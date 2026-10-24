@@ -22347,6 +22347,14 @@ async function main() {
     // trae los renglones que tienen TODAS sus palabras (código · US$ · nombre · link), para cargar el código de un color con pyprecio.
     if (/^pycatbusca:/.test(String(process.env.BILLING_PROBE || ''))) {
       const cat = (await db.get('mlapi/pycat')) || {};
+      // `pycatbusca:!sinpasar` (24/10/2026): medidos que dan el piso con 2+ vendedores y NUNCA pasaron a Para probar, con el motivo.
+      if (/^pycatbusca:!sinpasar$/.test(String(process.env.BILLING_PROBE))) {
+        const L = Object.entries(cat).filter(([, e]) => e && e.m != null && !e.cand && !e.fz && Number(e.mv) >= CAND_MIN_VENDEDORES && Number(e.m) >= candPisoDe({ nombre: e.n, mlTit: e.mt }));
+        const mot = {}; for (const [, e] of L) { const k = !e.f ? 'sin foto de Paraguay' : pyCatNoSeMira(e.n) || 'otro (¿medido sin pasar?)'; mot[k] = (mot[k] || 0) + 1; }
+        console.log(`=== ${L.length} dan el piso con 2+ vendedores y no pasaron a Para probar ===`); for (const [k, n] of Object.entries(mot)) console.log(`  ${n} · ${k}`);
+        for (const [cod, e] of L.sort((a, b) => b[1].m - a[1].m).slice(0, 60)) console.log(`  ${cod} · ${Number(e.m).toFixed(0)}% · ${e.mv} vend · ${e.f ? 'con foto' : 'SIN FOTO'} · ${String(e.n).slice(0, 60)} ⇒ ${String(e.mt || '').slice(0, 50)}`);
+        return;
+      }
       const norm = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
       for (const q of String(process.env.BILLING_PROBE).slice('pycatbusca:'.length).split(';').map((x) => x.trim()).filter(Boolean)) {
         const ws = norm(q).split(/[\s+]+/).filter(Boolean);
