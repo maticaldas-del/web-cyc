@@ -694,6 +694,12 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 
 ## 3 · MERCADERÍA (miércoles)
 
+**24/10/2026 · `pycodcolor` (sólo lee): el código de Paraguay de cada ficha contra su color (corrección suya con los Redmi Buds 6 Play:
+la ficha del negro tenía el 131119, que es el azul).** Para cada `codPy` y cada `pyVar` compara el color del renglón del catálogo con el
+de la ficha (nombre, color de la variante y títulos de sus publicaciones de ML): ❌ choca = código casi seguro equivocado (muestra los
+códigos de los otros colores) · ❔ la ficha no dice color y el catálogo tiene el mismo producto en varios colores (mirar la foto). **Qué
+chequear:** que el Buds 6 Play ya no salga; correrlo en la completa del sábado después de la pasada de Nissei.
+
 **24/10/2026 · 🟣 El catálogo ENTERO de Elegancia, como el de Nissei (él: *"este de elegancia, también miro todos los productos? (…) de
 acá también podemos pedir"*).** Antes sólo estaban los ~36 del PDF "Atacado". Ahora el chat de compras lo copia con
 `pycat:prov=elegancia;#<pág>;<código>|<nombre>|<US$>|<link>|<foto>;…;go` (ml-consulta): va a `mlapi/pycat` con clave `EL_<código>` y

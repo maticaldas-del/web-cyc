@@ -22644,6 +22644,35 @@ async function main() {
     // BILLING_PROBE=pyprobadoslista → SOLO LEE (24/10/2026, él: *"que primero mire los productos probados y que los cargue lo antes
     // posible, después que siga con el resto"*). La lista para el chat de compras: cada ficha de NISSEI con su id, el código de Nissei
     // (si tiene), el precio de Nissei guardado y hace cuántos días. El chat busca cada uno en comprasparaguay y lo carga con `pyprecio`.
+    // BILLING_PROBE=pycodcolor → SOLO LEE (24/10/2026, él con los Redmi Buds 6 Play: la ficha del NEGRO tenía el código 131119, que en
+    // comprasparaguay es el AZUL: "se equivocó de código"). Para cada código de Paraguay de una ficha (y de cada color, `pyVar`), el color
+    // que dice el catálogo contra el color de la ficha (nombre, color de `pyVar` y títulos de sus publicaciones de ML):
+    //  · ❌ CHOCA: el catálogo dice otro color → código casi seguro equivocado (se muestran los hermanos de otro color con su código).
+    //  · ❔ SIN COLOR: la ficha no nombra color y el catálogo tiene el mismo producto en varios colores → mirar la foto.
+    if (/^pycodcolor$/.test(String(process.env.BILLING_PROBE || ''))) {
+      const cat = (await db.get('mlapi/pycat')) || {}; const links = (await db.get('cyc/mllinks')) || {};
+      const titulos = {}; for (const l of Object.values(links)) if (l && l.prodId && l.title) (titulos[l.prodId] = titulos[l.prodId] || []).push(String(l.title));
+      const sinColor = (t) => _rvBase(t).split(' ').filter((w) => w && !_RV_COLOR[w]).join(' ');
+      const porBase = {}; for (const [k, e] of Object.entries(cat)) if (e && e.n) (porBase[pycatProvDe(k, e) + '|' + sinColor(e.n)] = porBase[pycatProvDe(k, e) + '|' + sinColor(e.n)] || []).push([k, e]);
+      const keyDe = (p, cod) => { const pv = provPyDeBot(p); const k0 = (pv === 'elegancia' ? PYCAT_EL : '') + _pyDg(cod); if (cat[k0]) return k0;
+        return Object.keys(cat).find((k) => pycatProvDe(k, cat[k]) === pv && _pyCodIg(cod, pycatCodDe(k))) || null; };
+      const choca = [], duda = []; let mirados = 0;
+      const mirar = (p, cod, colorVar) => {
+        const k = keyDe(p, cod); if (!k) return; mirados++; const e = cat[k]; const cP = _rvColores(e.n); if (!cP.size) return;
+        const txtF = colorVar ? colorVar : [p.name, ...(titulos[p.id] || [])].join(' '); const cF = _rvColores(txtF);
+        const herm = (porBase[pycatProvDe(k, e) + '|' + sinColor(e.n)] || []).filter(([k2]) => k2 !== k);
+        const hTxt = herm.map(([k2, e2]) => `${pycatCodDe(k2)} ${[..._rvColores(e2.n)].join('/') || '?'}`).join(' · ');
+        const r = `${p.id} · ${String(p.name).slice(0, 55)}${colorVar ? ' #' + colorVar : ''} · código ${cod} = "${String(e.n).slice(0, 70)}"${hTxt ? ' · otros colores: ' + hTxt : ''}${!colorVar && titulos[p.id] ? ' · ML: ' + titulos[p.id][0].slice(0, 60) : ''}`;
+        if (cF.size && ![...cP].some((c) => cF.has(c))) choca.push(r); else if (!cF.size && herm.length) duda.push(r);
+      };
+      for (const p of products) { if (!p || !p.id) continue;
+        if (p.codPy) mirar(p, p.codPy, null);
+        for (const [col, v] of Object.entries(p.pyVar || {})) if (v && v.cod) mirar(p, v.cod, col); }
+      console.log(`=== CÓDIGOS DE PARAGUAY CONTRA EL COLOR · ${mirados} códigos mirados · ❌ ${choca.length} chocan · ❔ ${duda.length} sin color en la ficha y con hermanos de otro color ===`);
+      console.log('❌ CHOCA (el catálogo dice otro color):'); for (const r of choca) console.log('  ' + r);
+      console.log('❔ SIN COLOR EN LA FICHA (mirar la foto):'); for (const r of duda) console.log('  ' + r);
+      return;
+    }
     if (/^pyprobadoslista$/.test(String(process.env.BILLING_PROBE || ''))) {
       const ahoraL = Date.now();
       const fichasL = products.filter((p) => p && p.id && (p.origen === 'py' || p.codPy) && provPyDeBot(p) === 'nissei' && !p.soloLocal)
