@@ -17424,6 +17424,25 @@ async function main() {
       dan.filter((c) => c.margen >= 80).sort((a, b) => b.margen - a.margen).forEach((c) => console.log(`  ${Number(c.margen).toFixed(1)}% · ${String(c.nombre).slice(0, 80)} · cód ${c.cod || '—'} · ML $${c.mlPrecio} (${c.mlVendedores ?? '?'} vend.)`));
       const tot = dan.reduce((a, c) => a + (Number(c.usd) || 0) * 2, 0);
       console.log(`\nComprar 2 de cada uno de los que dan: US$ ${tot.toFixed(0)} crudo.`);
+      // POR QUÉ DE LOS QUE DAN 35% SÓLO UNOS POCOS SE PUEDEN PEDIR (24/10/2026, él: "no veo los 121 productos que dan más del 35%").
+      // Mismo orden de frenos que `candPuedePedir` de la web; cada uno cuenta en el PRIMER freno que lo para.
+      { const comp = (await db.get('cyc/compraspy')) || {}; const f = {}; const ok = []; const sinConf = [];
+        const sum = (k) => { f[k] = (f[k] || 0) + 1; };
+        for (const c of med) { if (!(Number(c.margen) >= candVaraDe(c))) continue;
+          if (c.pedidoEn && comp[c.pedidoEn] && comp[c.pedidoEn].estado === 'camino') { sum('ya viaja en un pedido'); continue; }
+          if (c.calcTs == null && c.usdAntes != null) { sum('cambió el precio de Paraguay, falta medirlo'); continue; }
+          if (!/^https:\/\//.test(String(c.foto || '')) || !/^https:\/\//.test(String(c.mlFoto || ''))) { sum('le falta una de las dos fotos'); continue; }
+          if (!(Number(c.mlVendedores) >= CAND_MIN_VENDEDORES)) { sum(Number(c.mlVendedores) === 1 ? '1 solo vendedor en ML' : 'sin catálogo de ML con vendedores'); continue; }
+          if (!candCatChequeado(c)) { sum(c.revClaude && c.revClaude.cat === candCatDe(c) ? `fotos miradas: ${c.revClaude.v}` : 'falta mirar las fotos'); sinConf.push(c); continue; }
+          if (pyCatNoSeMira(c.nombre)) { sum('categoría que no se mira'); continue; }
+          if (pocasVentas(candVentasDe(c))) { sum('vendió menos de 100 en ML'); continue; }
+          ok.push(c); }
+        const tot35 = ok.length + Object.values(f).reduce((a, b) => a + b, 0);
+        console.log(`\n=== DE LOS ${tot35} QUE DAN LA VARA (35%, o 30% si vende 100+): ${ok.length} se pueden pedir ===`);
+        for (const [k, n] of Object.entries(f).sort((a, b) => b[1] - a[1])) console.log(`  ${n} · ${k}`);
+        if (sinConf.length) { console.log('\nSin confirmar el mismo producto (2+ vendedores):');
+          for (const c of sinConf.sort((a, b) => b.margen - a.margen)) console.log(`  ${Number(c.margen).toFixed(0)}% · ${String(c.nombre).slice(0, 70)} · ${candCatDe(c)} · ${c.revClaude ? c.revClaude.v + (c.revClaude.nota ? ' (' + String(c.revClaude.nota).slice(0, 60) + ')' : '') : 'sin mirar'}`); }
+        console.log('\nSe pueden pedir:'); for (const c of ok) console.log(`  ${Number(c.margen).toFixed(0)}% · ${String(c.nombre).slice(0, 70)}${c.pedirU ? ' · en el pedido ' + c.pedirU : ''}`); }
       return;
     }
     // BILLING_PROBE=reclamosde:<palabras> → RECLAMOS Y % DE UN PRODUCTO, Y LOS AVISOS DE PERMISO (03/10/2026) · SOLO LEE.
