@@ -23364,7 +23364,7 @@ async function main() {
           if (c.prodId) continue;
           if (c.no && c.noTipo === 'mano') { console.log(`= ${m[1]} · ${String(c.nombre).slice(0, 50)}: lo tachaste a mano, no lo toco`); continue; }
           if (/^nohay$/i.test(m[2])) { if (!(c.no && c.noTipo === 'nissei')) { upd[`${id}/no`] = true; upd[`${id}/noTs`] = Date.now(); upd[`${id}/noTipo`] = 'nissei'; upd[`${id}/motivo`] = 'en comprasparaguay Nissei ya no lo ofrece (pasada del mes)'; fuera++; } continue; }
-          if (m[3] && /^(borrar|-)$/i.test(m[3])) { upd[`${id}/vendCarga`] = null; igual++; if (m[2] == null) continue; }
+          if (m[3] && /^(borrar|-)$/i.test(m[3])) { upd[`${id}/vendCarga`] = null; igual++; console.log(`  🧹 ${m[1]} · ${String(c.nombre).slice(0, 55)}: vendidas borradas (antes ${c.vendCarga ?? '—'})`); if (m[2] == null) continue; }
           const v = parseInt(String(m[3] || '').replace(/\D/g, ''), 10);
           if (m[2] == null) { if (isFinite(v) && v >= 0) { upd[`${id}/vendCarga`] = v; igual++; } continue; }
           const usd = parseFloat(m[2].replace(',', '.'));
