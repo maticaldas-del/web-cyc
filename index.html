@@ -5253,9 +5253,11 @@ function precioParaMargen(p,pct){
   const merc=Math.round(r.costoBase-(r.mlExtra||0));
   const gArr=(precio>=UMBRAL_ENVIO_GRATIS&&gest>0)?gest:SIM_ENVIO_ARRIBA;
   const gestEn=P=>P<UMBRAL_ENVIO_GRATIS?0:gArr;
-  const m=pct/100,i=impPct/100,den=1-q.b-i-m*i;
+  // Revisión etapa 1 (24/10): en el PEOR caso (2% de retención de otra provincia), como la caja y Rotación. Antes "podés bajar $X"
+  // dejaba 25% normal y ~21% en el peor caso.
+  const m=pct/100,i=impPct/100,den=1-q.b-i-m*i-PEOR_RET_PCT;
   if(!(den>0))return null;
-  const llega=P=>{const rr=simMargen({precio:P,mercaderia:merc,gest:gestEn(P),comision:simComEn(P,q),impPct});return rr.margen!=null&&rr.margen>=pct;};
+  const llega=P=>{const rr=simMargen({precio:P,mercaderia:merc,gest:gestEn(P),comision:simComEn(P,q),impPct,retPct:PEOR_RET_PCT*100});return rr.margen!=null&&rr.margen>=pct;};
   const uno=g=>Math.ceil(((merc+g)*(1+m)+q.F)/den/10)*10;
   const ajusta=P=>{for(let k=0;k<300&&!llega(P);k++)P+=10;return P;};
   const pA=uno(0);
@@ -5375,7 +5377,8 @@ function flujoPlataHTML(p){
   } else {
     chips.push(`<span title="ML no puede calcularlo: el producto no tiene ninguna publicación de la que sacar el precio." style="font-size:.6rem;color:var(--muted);font-weight:700">SIN PUBLICACIÓN</span>`);
   }
-  if(r.margen!=null&&r.margen<META)chips.push(`<span style="background:rgba(239,68,68,.14);color:var(--red);border-radius:5px;padding:2px 7px;font-size:.6rem;font-weight:700;white-space:nowrap">⚠️ bajo ${META}%</span>`);
+  const _mPeor=(r.margen!=null&&r.costo>0&&r.precio>0)?r.margen-r.precio*PEOR_RET_PCT/r.costo*100:r.margen;   // peor caso (revisión etapa 1, 24/10)
+  if(_mPeor!=null&&_mPeor<META)chips.push(`<span style="background:rgba(239,68,68,.14);color:var(--red);border-radius:5px;padding:2px 7px;font-size:.6rem;font-weight:700;white-space:nowrap">⚠️ bajo ${META}%</span>`);
   const _v=visitasDe(p);
   if(_v){
     const _d=Math.round((Date.now()-_v.ts)/86400000);
@@ -10948,6 +10951,7 @@ function _claveStockPub(l){if(!l||!l.prodId)return null;const p=(state.products|
 function _hermanasStock(mla){const L=state.mllinks||{};const e=L[mla];const k=_claveStockPub(e);if(!k)return [];
   return Object.keys(L).filter(m=>{const x=L[m];return m!==mla&&x&&!x.ignored&&!x.hidden&&!x.noVendemosMas&&!['closed','inactive'].includes(String(x.status||''))&&x.prodId===e.prodId&&_claveStockPub(x)===k;});}
 function _lineaJuntaStock(dP,otras){const out={};for(const [k,x] of Object.entries(dP||{})){if(!/^\d{4}_\d{2}_\d{2}$/.test(k)||!x||typeof x!=='object'){out[k]=x;continue;}const o={...x};
+  o.uOwn=x.u;o.totOwn=x.tot;   // revisión etapa 1 (24/10): lo de ESTA publicación sola, como `juntarLineaStock` del robot (decide el precio del día)
   for(const d2 of (otras||[])){const y=d2&&d2[k];if(!y||typeof y!=='object')continue;for(const c of ['u','uR','neto','tot'])if(y[c]!=null)o[c]=(Number(o[c])||0)+(Number(y[c])||0);
     if(o.vis!=null&&y.vis!=null)o.vis=(Number(o.vis)||0)+(Number(y.vis)||0);if(y.st!=null)o.st=o.st==null?Number(y.st):Math.max(Number(o.st)||0,Number(y.st)||0);}
   out[k]=o;}return out;}
@@ -10985,6 +10989,7 @@ function _lineaJunta(porMla,lks,varSel){
       if(x.uR!=null){o.uR=(o.uR||0)+Number(x.uR||0);}
       if(x.vis!=null){o.vis=(o.vis||0)+Number(x.vis||0);}
       if(x.tot!=null){o.tot=(o.tot||0)+Number(x.tot||0);}
+      if(x.uOwn!=null){o.uOwn=(o.uOwn||0)+Number(x.uOwn||0);o.totOwn=(o.totOwn||0)+Number(x.totOwn||0);}
       // 💳📦 EL PRECIO DE UNA VENTA POR LA GEMELA, AL PRECIO DE SU CLÁSICA (22/10/2026, él: "al vender en cuota y envío gratis aumenta
       // el precio pero el neto y la ganancia es el mismo"). La gemela se cobra más cara para dejar la misma plata: para el PRECIO de la
       // línea (y las rayas) cuenta como vendida al precio de su Clásica ese día. Lo cobrado de verdad (`tot`) no se toca.
@@ -11290,7 +11295,8 @@ function lineaPintar(prodId){
   // y su plata suman, y el stock (la plata parada, 1.6a) va una sola vez. La misma cuenta que `techo95` y la ficha del robot.
   const _grupoRaya=_mlaRaya?[_mlaRaya].concat(_hermanasStock(_mlaRaya).filter(m=>C.porMla[m]&&typeof C.porMla[m]==='object')):[];
   const _rayasDias=_mlaRaya?_lineaJunta({[_mlaRaya]:_grupoRaya.length>1?_lineaJuntaStock(porMlaF[_mlaRaya],_grupoRaya.slice(1).map(m=>C.porMla[m])):porMlaF[_mlaRaya]},state.mllinks||{},_lineaVar||''):dias;
-  const _ganRaya=k=>{const g=gd[k];if(!g)return 0;if(_mlaRaya)return _grupoRaya.reduce((a,m)=>a+(Number((g.porMla||{})[m])||0),0);return g.ganHoy!=null?g.ganHoy:(g.gan||0);};
+  const _gdFuera={};   // revisión etapa 1 (24/10): las rayas miran toda la línea; los días fuera de lo que se ve se calculan acá (gd sólo tiene los visibles)
+  const _ganRaya=k=>{let g=gd[k];if(!g){if(!(k in _gdFuera))_gdFuera[k]=_gdPanel(k)||_gdViejo(k)||null;g=_gdFuera[k];}if(!g)return 0;if(_mlaRaya)return _grupoRaya.reduce((a,m)=>a+(Number((g.porMla||{})[m])||0),0);return g.ganHoy!=null?g.ganHoy:(g.gan||0);};
   // ⚖️ LO QUE SE RESTA DE CADA DÍA PARA LA PLATA POR DÍA NETA (21/10/2026 · etapa 1): la misma cuenta que `rayasPrecioLinea` del robot
   // (u × $100 + lo cobrado × 3% + stock × costo de hoy × 2%/30). Sin lo cobrado anotado, unidades × precio de lista.
   const _pdDed=d=>{if(!d)return 0;const u=Number(d.u)||0,t=d.tot!=null?(Number(d.tot)||0):u*(Number(d.pLista||d.p)||0);
@@ -11303,9 +11309,13 @@ function lineaPintar(prodId){
     // La ganancia de cada día es la NETA ⚖️ (`_pdDed`).
     // 1a (21/10/2026, decisión suya): el día que cambia el precio, lo vendido vale al precio (de hoy o de ayer) más parecido a lo
     // cobrado por unidad (Filtro 19/10: 5 de 6 a $4.990 quedaban a $5.750). Misma regla en `rayasPrecioLinea` del robot.
-    const _plR={};{let pA=null;ks.slice().sort().forEach(k=>{const d=_rayasDias[k];if(!d)return;const pN=Number(d.pLista||d.p)>0?Number(d.pLista||d.p):pA;let pl=pN||0;
-      if((d.u||0)>0&&Number(d.tot)>0&&pA&&pN&&pA!==pN){const pu=Number(d.uEq)>0&&Number(d.totEq)>0?Number(d.totEq)/Number(d.uEq):Number(d.tot)/Number(d.u);if(Math.abs(pu-pA)<Math.abs(pu-pN))pl=pA;}_plR[k]=Number(d.pLista||d.p)>0?pl:0;pA=pN;});}
-    const G={};ks.forEach(k=>{const d=_rayasDias[k];if(!d)return;if(d.est!=null&&d.est!=='active')return;if(!(d.st!=null&&d.st>=3&&d.vis!=null))return;const pl=_plR[k]||0;if(!(pl>0))return;
+    // Revisión etapa 1 (24/10): las rayas se miden con TODA la línea hasta ayer (como el robot), no sólo con los días a la vista
+    // (con el botón de 30 días se perdía el 🔴), y el día del cambio de precio decide lo cobrado por ESTA publicación sola (uOwn).
+    const _hoyKR=(()=>{const d=new Date();return d.getFullYear()+'_'+String(d.getMonth()+1).padStart(2,'0')+'_'+String(d.getDate()).padStart(2,'0');})();
+    const ksR=Object.keys(_rayasDias||{}).filter(k=>/^\d{4}_\d{2}_\d{2}$/.test(k)&&k<_hoyKR).sort();
+    const _plR={};{let pA=null;ksR.forEach(k=>{const d=_rayasDias[k];if(!d)return;const pN=Number(d.pLista||d.p)>0?Number(d.pLista||d.p):pA;let pl=pN||0;
+      if((d.u||0)>0&&Number(d.tot)>0&&pA&&pN&&pA!==pN){const pu=Number(d.uOwn)>0&&Number(d.totOwn)>0?Number(d.totOwn)/Number(d.uOwn):Number(d.uEq)>0&&Number(d.totEq)>0?Number(d.totEq)/Number(d.uEq):Number(d.tot)/Number(d.u);if(Math.abs(pu-pA)<Math.abs(pu-pN))pl=pA;}_plR[k]=Number(d.pLista||d.p)>0?pl:0;pA=pN;});}
+    const G={};ksR.forEach(k=>{const d=_rayasDias[k];if(!d)return;if(d.est!=null&&d.est!=='active')return;if(!(d.st!=null&&d.st>=3&&d.vis!=null))return;const pl=_plR[k]||0;if(!(pl>0))return;
       const b=Math.round(pl/10)*10;const g=(G[b]=G[b]||{p:b,dias:0,u:0,gan:0});g.dias++;g.u+=Math.max(0,(d.u||0)-(d.uR||0));g.gan+=_ganRaya(k)-_pdDed(d);});
     const L=Object.values(G).map(g=>({...g,r:g.u/g.dias,pd:g.gan/g.dias,gu:g.u?g.gan/g.u:null}));
     // 💰 sólo un precio que VENDIÓ (21/10/2026, Aer Jasmín: $19.490 salía de "más plata" con 0 ventas en 5 días, por ser el único con 5 días).
@@ -11315,7 +11325,7 @@ function lineaPintar(prodId){
     // venta" y "fijate que todos tengan eso"). Sin 5 días medibles se toma un piso PROVISORIO con todos los días con stock (aunque
     // sean 1-2 u. o sin dato de visitas): el precio que más plata por día dejó entre los que vendieron. Va punteado y dice
     // "provisorio". El 🔴 techo sigue pidiendo días medibles y 95% (eso no se apura), igual que `rayasPrecioLinea` del robot.
-    if(!med.length){const G2={};ks.forEach(k=>{const d=_rayasDias[k];if(!d)return;if(d.est!=null&&d.est!=='active')return;if(!((d.st!=null&&d.st>0)||(d.u||0)>0))return;const pl=_plR[k]||0;if(!(pl>0))return;
+    if(!med.length){const G2={};ksR.forEach(k=>{const d=_rayasDias[k];if(!d)return;if(d.est!=null&&d.est!=='active')return;if(!((d.st!=null&&d.st>0)||(d.u||0)>0))return;const pl=_plR[k]||0;if(!(pl>0))return;
         const b=Math.round(pl/10)*10;const g=(G2[b]=G2[b]||{p:b,dias:0,u:0,gan:0});g.dias++;g.u+=Math.max(0,(d.u||0)-(d.uR||0));g.gan+=_ganRaya(k)-_pdDed(d);});
       const L2=Object.values(G2).filter(g=>g.u>0).map(g=>({...g,r:g.u/g.dias,pd:g.gan/g.dias,gu:g.gan/g.u,aprox:true}));
       return L2.length?{best:L2.reduce((a,b)=>b.pd>a.pd?b:a)}:{};}
@@ -12428,6 +12438,9 @@ function analisisVentaHTML(items){const vs=[];const vistos=new Set();
 // que entré (descuento propio = descuento).
 function estrategiaPromoAjuste(e,mla,v){if(!e||(e.t!=='promo'&&e.t!=='descuento'))return e;
   const pv=v?vpPromoDe([v]):null;if(pv)return {...e,t:pv.ml>0?'promo':'descuento'};
+  // Revisión etapa 1 (24/10): la venta por una GEMELA hereda la estrategia de su Clásica, pero el descuento era de la Clásica (la gemela
+  // va al precio de LISTA): esa venta no tuvo descuento. Se muestra la estrategia de antes del descuento.
+  if(mla&&((state.mllinks||{})[mla]||{}).gemelaDe)return e.de?{...e,t:e.de,de:null}:{...e,t:'sindecidir'};
   if(String(_promoTipoEn(mla,(v&&Number(v.ts))||e.ts||Date.now())||'').toUpperCase()==='PRICE_DISCOUNT')return {...e,t:'descuento'};
   return e;}
 // 19/10/2026, él: "que sólo salgan tags: si es precio tachado y ponemos todo nosotros es descuento, si es promo y ml pone algo es
@@ -13890,7 +13903,9 @@ function margenMLDe(p,pub){
   const costoBase=costFullP(p)+mlExtra;   // mercadería + envío/embalaje + % reclamos + impuestos
   const costo=costoBase+gest;             // el costo TOTAL, el que él quiere ver
   const netoCalc=(F.neto!=null&&F.neto!=='')?Number(F.neto):null;
-  const margen=(netoCalc!=null&&costo>0)?((netoCalc-costoBase)/costo*100):null;
+  // Revisión etapa 1 (24/10): sin costo de la mercadería cargado el margen daba ~800% en verde (el divisor quedaba sólo con impuestos).
+  const sinCosto=!(costFullP(p)>0);
+  const margen=(netoCalc!=null&&costo>0&&!sinCosto)?((netoCalc-costoBase)/costo*100):null;
   // ── LA SIMULACION, CON LA MISMA CUENTA DE ARRIBA Y NADA MAS ──────────────────
   // No es una formula nueva: es la de la linea de arriba con el envio estimado puesto en los dos
   // lugares donde el envio de verdad ya entra — restado del neto y sumado al costo. Con una
@@ -13910,7 +13925,7 @@ function margenMLDe(p,pub){
       if(costoEst>0)margenEst=(netoCalc-gestEst-costoBase)/costoEst*100;
     }
   }
-  return {costo,costoBase,gest,neto:netoCalc,netoCalc,margen,margenEst,gestEst,estN,mlExtra,mlExtraEstimado,sinMedir:F.sinMedir,ts:F.ts,
+  return {sinCosto,costo,costoBase,gest,neto:netoCalc,netoCalc,margen,margenEst,gestEst,estN,mlExtra,mlExtraEstimado,sinMedir:F.sinMedir,ts:F.ts,
     // El precio sale acá para que quien muestre el margen pueda preguntarse si ese margen es
     // POSIBLE: arriba de los $33.000 ML cobra el envío gratis siempre, así que un margen
     // calculado con envío $0 a ese precio está inflado por varios puntos.
@@ -14006,7 +14021,7 @@ function renderVPRanking(){
   });
   // período anterior para comparativa ▲▼ (misma clave por ID)
   const prevAgg={};
-  vpEntries(sk.prevKeys||[]).filter(ctaFilter).forEach(v=>{
+  vpEntries(sk.prevKeys||[]).filter(ctaFilter).filter(v=>!v.cancelada).forEach(v=>{   // revisión etapa 1 (24/10): sin canceladas, igual que el período actual
     const gk=grpKeyOf(v);
     if(!prevAgg[gk])prevAgg[gk]={total:0,neto:0};
     prevAgg[gk].total+=v.qty||0;prevAgg[gk].neto+=netoProductoVP(v);
@@ -15483,7 +15498,9 @@ async function pycatBuscar(q){
 // (~10%: monotributo + IIBB + retención) y el envío de Full arriba de $33.000. El robot lo mide exacto (con la comisión de su categoría)
 // cuando pasa a Para probar.
 function pycatPrecio35(costo){const m=0.35,com=0.145,imp=0.10,F=1230;const uno=E=>Math.ceil(((costo+E)*(1+m)+F)/(1-com-imp-m*imp)/10)*10;
-  let P=uno(0);if(P>=UMBRAL_ENVIO_GRATIS)P=uno(SIM_ENVIO_ARRIBA);return P>0&&isFinite(P)?Math.round(P/1000)*1000-10:null;}
+  // Revisión etapa 1 (24/10): redondeo PARA ARRIBA (al más cercano podía quedar en 32-34%) y sin pasar el tope de crear ($550.000).
+  let P=uno(0);if(P>=UMBRAL_ENVIO_GRATIS)P=uno(SIM_ENVIO_ARRIBA);if(!(P>0&&isFinite(P)))return null;
+  const r=Math.ceil((P+10)/1000)*1000-10;return r>550000?null:r;}
 async function pycatQuiero(cod,p35){
   const cat=_pycatCache||{};const e=cat[cod];if(!e){toast('No encontré ese producto en el catálogo','err');return;}
   if(!/^https:\/\//.test(String(e.f||''))){toast('Le falta la foto de Paraguay: sin las dos fotos no se puede comprar. Pedile al chat de Nissei que la copie.','err',6000);return;}
@@ -15504,7 +15521,7 @@ function pycatFila([cod,e]){const tc=curTC();{const u=Number(e.u)||0,pu=u*RECARG
     // el nombre de ML no coincide: lo más probable es que sea otro producto).
     const fPY0=/^https:\/\//.test(e.f||'');
     const noVa=m!=null&&m>=25&&!e.cand?[!fPY0?'📷 falta la foto de Paraguay: no se puede comprar':'',(Number(e.mv)||0)<1?'sin vendedores en el catálogo':'',e.rp?'⚠️ el nombre de ML no coincide ('+escHtml(String(e.rp).replace(/^en ML no está\(n\): /,'falta: ').slice(0,70))+'): puede ser otro producto':''].filter(Boolean):[];
-    const est=m!=null?`<b style="font-size:1rem;color:${noVa.length?'var(--amber)':m>=25?'var(--green)':'var(--red)'}">${Math.round(m)}%</b> <span style="font-size:.6rem;color:var(--muted)">ML</span>`
+    const est=m!=null?`<b style="font-size:1rem;color:${noVa.length?'var(--amber)':m>=CAND_VARA_COMPRA?'var(--green)':m>=25?'var(--amber)':'var(--red)'}">${Math.round(m)}%</b> <span style="font-size:.6rem;color:var(--muted)">ML${m>=25&&m<CAND_VARA_COMPRA&&!noVa.length?' · 💾 guardado (la compra pide '+CAND_VARA_COMPRA+'%, o 30% si vende mucho)':''}</span>`
       :e.sc?'<span style="font-size:.62rem;color:var(--muted)">sin catálogo exacto en ML</span>':e.sv?'<span style="font-size:.62rem;color:var(--muted)">en ML no lo vende nadie</span>':e.fz?`<span style="font-size:.62rem;color:var(--muted)">afuera: ${e.fz}</span>`:'<span style="font-size:.62rem;color:var(--muted)">⏳ sin medir</span>';
     const fPY=/^https:\/\//.test(e.f||'')?e.f:'', fML=/^https:\/\//.test(e.mf||'')?e.mf:'';
     const im=(u,t)=>u?`<img src="${u}" loading="lazy" title="${t}" onclick="_mostrarLightbox('${u}','')" onerror="this.style.visibility='hidden'" style="width:44px;height:44px;object-fit:contain;background:#fff;border-radius:6px;cursor:zoom-in">`:'';
@@ -15513,7 +15530,7 @@ function pycatFila([cod,e]){const tc=curTC();{const u=Number(e.u)||0,pu=u*RECARG
       <div style="flex:1;min-width:0;font-size:.72rem;line-height:1.45"><div style="font-weight:600">${e.n}</div>
         <div style="color:var(--muted);font-size:.64rem">${pycatProvDe(cod,e)==='elegancia'?'🟣 Elegancia · ':''}🔖 ${pycatCodDe(cod)} · ${fmtUS2(u)} → <b style="color:var(--text)">${fmtUS2(pu)}</b> puesto${ps?' · '+fmt(ps):''}${e.mp?` · en ML ${fmt(e.mp)}${e.mv?' · '+(e.mv==1?'<b style="color:var(--amber)">⚠️ 1 solo vendedor: precio que nadie más confirma</b>':e.mv+' vendedores'):''}${Number(e.pp)>0?` · <span style="color:var(--amber)">🏷️ el más barato está en promo (−${Number(e.pp)}%)</span>`:''}`:''}${e.cand?' · <span style="color:var(--green)">ya está en Para probar</span>':''}</div>
         ${noVa.length?`<div style="font-size:.64rem;color:var(--amber)">No entra al pedido: ${noVa.join(' · ')}</div>`:''}
-        ${(e.sv&&!e.cand&&e.mi&&ps>0)?(()=>{const p35=pycatPrecio35(ps);return `<div style="font-size:.64rem;color:var(--green);margin-top:2px">🌟 sin competencia en ML (nadie tiene stock)${Number(e.svp)>0?` · el chat vio ${fmt(Number(e.svp))}`:Number(e.svp)<0?' · sin ningún precio a la vista':''}${p35?` · para dejar 35%: venderlo a <b>≈ ${fmt(p35)}</b>`:''} <button class="btn" style="font-size:.6rem;padding:2px 8px;margin-left:4px" onclick="pycatQuiero('${String(cod).replace(/'/g,"\\'")}',${p35||0})" title="Pasa a Para probar como 🌟 sin competencia, medido a ese precio. Claude confirma con las fotos que es el mismo producto antes de que se pueda pedir.">➕ Lo quiero</button></div>`;})():''}
+        ${(e.sv&&!e.cand&&e.mi&&ps>0)?(()=>{const p35=pycatPrecio35(ps);return `<div style="font-size:.64rem;color:var(--green);margin-top:2px">🌟 sin competencia en ML (nadie tiene stock)${Number(e.svp)>0?` · el chat vio ${fmt(Number(e.svp))}`:Number(e.svp)<0?' · sin ningún precio a la vista':''}${p35?` · para dejar 35%: venderlo a <b>≈ ${fmt(p35)}</b>`:' · no llega al 35% sin pasar los $550.000'}${p35?'':'<!--'} <button class="btn" style="font-size:.6rem;padding:2px 8px;margin-left:4px" onclick="pycatQuiero('${String(cod).replace(/'/g,"\\'")}',${p35||0})" title="Pasa a Para probar como 🌟 sin competencia, medido a ese precio. Claude confirma con las fotos que es el mismo producto antes de que se pueda pedir.">➕ Lo quiero</button>${p35?'':'-->'}</div>`;})():''}
         <div style="font-size:.64rem">${/^https:\/\//.test(e.l||'')?`<a href="${e.l}" target="_blank" rel="noopener" style="color:var(--green)">🇵🇾 comprasparaguay</a>`:''}${e.mi?` · <a href="https://www.mercadolibre.com.ar/p/${e.mi}" target="_blank" rel="noopener" style="color:var(--green)">🔗 ML</a>`:''}</div></div>
       <div style="text-align:right;flex:0 0 auto">${est}${loc!=null?`<div>${perfLocalHTML(loc)}</div>`:''}</div></div>`;}}
 // ── TODO LO QUE EL ROBOT REVISÓ Y NO DA, ABAJO DE TODO (17/10/2026, pedido suyo) ──────────────────────────
@@ -15767,6 +15784,8 @@ function candPuedePedir(c){
   if(candEnPedido(c)==='viajando'){const pe=(state.compraspy||{})[c.pedidoEn]||{};return{ok:false,motivo:`ya está viajando en el pedido del ${pe.fecha||'?'}`};}
   const m=Number(c.margen);
   if(c.margen==null||!isFinite(m))return{ok:false,motivo:'todavía no está medido en ML'};
+  // Revisión etapa 1 (24/10): un 🌟 sin competencia se midió contra el precio que vio el chat; ese precio vale 30 días (SVP_DIAS del robot).
+  if(c.sinComp&&!(Number(c.svp)>0&&Date.now()-(Number(c.svpTs)||0)<30*864e5))return{ok:false,motivo:'🌟 el precio que vio el chat en ML tiene más de 30 días: falta volver a mirarlo'};
   {const _uv=candPrecioViejo(c);if(_uv!=null)return{ok:false,motivo:`cambió el precio de Paraguay (de ${fmtUS2(_uv)} a ${fmtUS2((parseFloat(c.usd)||0))}): falta medirlo`};}
   // ABAJO DEL PISO YA NO ES UN FRENO DURO (16/10/2026, él: "que deje agregar productos que no dan. pero que tenga que
   // confirmar al agregar uno de esos. asi no agrego sin querer"). Se siguen mirando los otros frenos (fotos, vendidas)
@@ -18795,6 +18814,7 @@ function cajaBajarDe(p,c,mg){
   const precio=Math.round(Number(mg&&mg.precio)||0);
   const ptw=Math.round(c.ptw);
   const out={ptw,bajaPct:null,margen:null,motivo:null,barrera:false};
+  if(mg&&mg.sinCosto){out.motivo='sincosto';return out;}   // revisión etapa 1 (24/10): sin costo no hay margen que mostrar
   if(!(precio>0)||mg.margen==null){out.motivo='sinprecio';return out;}
   out.bajaPct=(precio-ptw)/precio*100;
   if(ptw>=precio){out.motivo='nobaja';return out;}
@@ -18858,6 +18878,8 @@ function rotVisitasHtml(rt,v,ventas){
 function rotCajaBajaHtml(r){
   const b=r.cajaBaja; if(!b)return '';
   const gris='font-size:.6rem;color:var(--muted);margin-top:2px;line-height:1.25';
+  if(b.motivo==='sincosto')
+    return `<div title="Falta el costo de la mercadería en la ficha: sin eso no se sabe en cuánto quedarías." style="${gris}">ML: ${fmt(b.ptw)} · <span style="color:var(--amber)">sin costo</span></div>`;
   if(b.motivo==='sinprecio')
     return `<div title="ML dice que la caja se gana a ${fmt(b.ptw)}, pero este producto no tiene un margen calculado hoy (no hay publicación viva de la que sacar el precio, o todavía no pasó por el recálculo de la noche). Sin eso no se puede decir en cuánto quedarías, y un precio sin margen al lado no sirve para decidir." style="${gris}">ML: ${fmt(b.ptw)} · <span style="color:var(--amber)">margen sin medir</span></div>`;
   if(b.motivo==='nobaja')
@@ -19211,6 +19233,8 @@ function promoMargenDe(p,mg){
 }
 function rotMargenHtml(r){
   const PISO=parseFloat((state.mlconfig||{}).minPct)||30;
+  if(r.margen==null&&r.margenSinCosto&&r.margenPrecio>0)
+    return `<span style="color:var(--amber)" title="Falta cargar el costo de la mercadería en la ficha: sin eso no hay margen que calcular.">sin costo</span>`;
   if(r.margen==null)
     return `<span style="color:var(--muted)" title="Este producto no tiene ninguna publicación viva en ML de la que sacar el precio, así que no hay margen que calcular.">—</span>`;
   const dudoso=r.margenDudoso;
@@ -19627,7 +19651,7 @@ function renderRotacionStock(){
     const _cajaML=cajaMLDe(p);
     return{pid:p.id,name:p.name,capital,ventasPeriodo,rotNorm,estadoKey,estadoHtml,stock,diasSinVender,liq:_liq,
       margen:mg.margen,margenSinEnvio:mg.sinEnvio,margenEnvioML:mg.envioML,margenNeto:mg.neto,margenCosto:mg.costo,
-      margenPrecio:mg.precio,margenGest:mg.gest,margenEst:mg.margenEst,margenGestEst:mg.gestEst,margenEstN:mg.estN,margenDudoso:margenDudosoDe(mg),margenSinMedir:mg.sinMedir,margenTs:mg.ts,liq2:liquidandoDe(p),
+      margenPrecio:mg.precio,margenGest:mg.gest,margenEst:mg.margenEst,margenGestEst:mg.gestEst,margenEstN:mg.estN,margenDudoso:margenDudosoDe(mg),margenSinCosto:mg.sinCosto,margenSinMedir:mg.sinMedir,margenTs:mg.ts,liq2:liquidandoDe(p),
       caja:_cajaML,cajaBaja:cajaBajarDe(p,_cajaML,mg),promo:promoMargenDe(p,mg),diasEnStock:diasEnStockDe(p),diasCaja:ultimaEntradaDe(p),diasSinStock:diasSinStockDe(LOCS.map(l=>[getQ(p.id,l),invKey(p.id,l)]))};
   });
 
@@ -19774,7 +19798,7 @@ function renderRotacionStock(){
       let mgV,_mV=null;
       if(_npV&&Number(_npV.neto)>0){
         const _m=margenMLDe(p,_npV);_mV=_m;
-        mgV=rotMargenHtml({margen:_m.margen,margenDudoso:margenDudosoDe(_m),margenPrecio:_m.precio,
+        mgV=rotMargenHtml({margen:_m.margen,margenSinCosto:_m.sinCosto,margenDudoso:margenDudosoDe(_m),margenPrecio:_m.precio,
           margenNeto:_m.neto,margenCosto:_m.costo,margenSinEnvio:_m.sinEnvio,margenGest:_m.gest,
           margenEst:_m.margenEst,margenGestEst:_m.gestEst,margenEstN:_m.estN,margenSinMedir:_m.sinMedir,margenTs:_m.ts,liq2:r.liq2});
       } else {
@@ -21012,7 +21036,7 @@ async function listaSetU(k,cod,val){
       if(confirm(`"${e&&e.n||cod}" ya es una ficha: ${fi.name}.\n\nNo se carga como NUEVO. ¿Lo cargo en el pedido como PROBADO (${u} u.)? Así al pedirlo se descuenta de Pedidos.`))await listaProbSet(k,fi.id,u,cod);
       else renderListas();
       return;}}
-  if(u>0&&!_listaDa(e,k)){toast('No se puede cargar: '+(e&&e.noFull?'🚫 no se puede mandar a Full ('+e.noFull+')':e&&e.noWeb?'no está en la web del proveedor: no lo tienen en stock':e&&e.m!=null&&!_listaCostoVigente(e)?'⏳ el costo cambió y el margen es del costo viejo: falta volver a medirlo contra ML':e&&e.m!=null?'en ML da '+Math.round(e.m)+'%, abajo del 25%':'todavía no está medido contra ML (o le falta la foto de ML)'),'err',5000);renderListas();return;}
+  if(u>0&&!_listaDa(e,k)){toast('No se puede cargar: '+(e&&e.noFull?'🚫 no se puede mandar a Full ('+e.noFull+')':e&&e.noWeb?'no está en la web del proveedor: no lo tienen en stock':e&&e.m!=null&&!_listaCostoVigente(e)?'⏳ el costo cambió y el margen es del costo viejo: falta volver a medirlo contra ML':e&&e.m!=null&&Number(e.m)<listaVaraDe(e)?'en ML da '+Math.round(e.m)+'%, abajo de la vara de compra ('+listaVaraDe(e)+'%)':e&&e.m!=null&&!/^https:\/\//.test(e.mf||'')?'le falta la foto de ML':e&&e.m!=null&&e.mv!=null&&Number(e.mv)<1?'el catálogo de ML no tiene vendedores':e&&e.m!=null?'falta confirmar que el catálogo de ML es el mismo producto (o el de 1 solo vendedor que vendió 100+)':'todavía no está medido contra ML (o le falta la foto de ML)'),'err',5000);renderListas();return;}
   if(u>0&&_listaViajando(k).has(String(cod))){toast('Ya está viajando en un pedido de este proveedor','err',4000);renderListas();return;}
   try{await db.ref('cyc/listas_pedido/'+k+'/'+cod).set(u>0?u:null);}catch(err){toast('No se guardó: '+(err.message||err),'err',5000);return;}
   state.listaPed=state.listaPed||{};state.listaPed[k]=state.listaPed[k]||{};if(u>0)state.listaPed[k][cod]=u;else delete state.listaPed[k][cod];
@@ -21224,16 +21248,18 @@ function _llFijate(nomL,tit){
 // del robot (`cuentaCandidato`): con el margen `m` medido al costo `C0` (= uMed + recargo) y el mismo precio de ML, el neto es
 // N − A = C0 + m·(C0+A+E) (A = IIBB+monotributo del precio, E = envío de Full). El costo que deja LL_META justo es
 // C* = C0·(1+m)/(1+meta) + (A+E)·(m−meta)/(1+meta). El IIBB depende de la cuenta (no se sabe acá): se toma el que da el MENOR.
-function _llMaxNuevo(k,e){
+function _llMaxNuevo(k,e,meta){
+  // Revisión etapa 1 (24/10): lo NUEVO se paga para dejar la vara de compra (35%, o 30% si vende mucho), no 25%. Reponer sigue en 25 (meta).
+  const vara=meta!=null?meta:listaVaraDe(e);
   if(!e||e.m==null||!isFinite(Number(e.m))||!(Number(e.mp)>0))return {motivo:'sin medir contra ML'};
   const p0=Number(e.uMed!=null?e.uMed:e.p);if(!(p0>0))return {motivo:'sin precio de la lista'};
-  const rec=_listaRec(k),C0=p0*(1+rec/100),P=Math.min(Number(e.mp),650000),m=Number(e.m)/100,mt=LL_META/100;
+  const rec=_listaRec(k),C0=p0*(1+rec/100),P=Math.min(Number(e.mp),650000),m=Number(e.m)/100,mt=vara/100;
   const E=P>=UMBRAL_ENVIO_GRATIS?SIM_ENVIO_ARRIBA:0,mono=monoPctVigente();
   const ii=Object.values(ML_EXTRA_PCT);
   const Cs=[Math.min(...ii),Math.max(...ii)].map(iibb=>{const A=P*(iibb+mono)/100;return C0*(1+m)/(1+mt)+(A+E)*(m-mt)/(1+mt);});
   const max=Math.floor(Math.min(...Cs)/(1+rec/100)/10)*10;
-  if(!(max>0))return {motivo:'no llega al '+LL_META+'% a ningún precio'};
-  return {max,de:'ml',P};
+  if(!(max>0))return {motivo:'no llega al '+vara+'% a ningún precio'};
+  return {max,de:'ml',P,meta:vara};
 }
 // MÁXIMO DE UN PROBADO: `maxCompraDe` (el de la tarjeta de Pedidos) da US$ de mercadería; en el local se paga eso × dólar, sin el
 // recargo del proveedor. Si no hay (precio de venta sin decidir), la misma cuenta que un nuevo con el renglón de la lista.
@@ -21241,8 +21267,8 @@ function _llMaxProb(k,f,e){
   const tc=curTC();
   if(f.pr&&tc>0){const mx=maxCompraDe(f.pr,LL_META,f.color||undefined);
     if(mx&&mx.usd!=null&&isFinite(mx.usd)){if(!(mx.usd>0))return {motivo:'vendiendo a '+fmt(mx.P)+' no llega al '+LL_META+'%'};
-      return {max:Math.floor(mx.usd*tc/(1+_listaRec(k)/100)/10)*10,de:'ficha',P:mx.P};}}
-  return e?_llMaxNuevo(k,e):{motivo:'sin dato para calcularlo'};
+      return {max:Math.floor(mx.usd*tc/(1+_listaRec(k)/100)/10)*10,de:'ficha',P:mx.P,meta:LL_META};}}
+  return e?_llMaxNuevo(k,e,LL_META):{motivo:'sin dato para calcularlo'};
 }
 // 🛒 LAS VENDIDAS EN ML AL FINAL DEL NOMBRE (21/10/2026, él: "en nippon agregar las ventas al final del nombre. en este caso no tenemos
 // las ventas aún, pero que se indique que no están cargadas"). Las carga el chat local con `listadato:<prov>;<cód>=<vendidas>` (`e.vend`).
@@ -21253,7 +21279,7 @@ function listaLocalFilas(k){
   const nuevo=(cod,u)=>{const e=cat[cod];if(!e)return;const id=_llKey(cod);vistos.add(id);
     const mx=_llMaxNuevo(k,e);
     out.push({id,tipo:'nuevo',cod,u,nom:String(e.n||cod),mt:String(e.mt||''),foto:/^https:\/\//.test(e.mf||'')?e.mf:'',mi:e.mi||'',
-      precio:Number(e.p)||0,pc:_listaPuesto(k,e),max:mx.max||null,maxMot:mx.motivo||'',P:mx.P||Number(e.mp)||0,sinConf:!_listaOkVale(e),reg:L[id]||null,e});};
+      precio:Number(e.p)||0,pc:_listaPuesto(k,e),max:mx.max||null,maxMeta:mx.meta||null,maxMot:mx.motivo||'',P:mx.P||Number(e.mp)||0,sinConf:!_listaOkVale(e),reg:L[id]||null,e});};
   for(const [cod,u0] of Object.entries(((state.listaPed||{})[k])||{})){const u=parseInt(u0)||0;if(u>0)nuevo(cod,u);}
   for(const f of listaProbFilas(k)){
     const id=_llKey(f.pid+(f.key?'__'+f.key:''));vistos.add(id);
@@ -21263,12 +21289,12 @@ function listaLocalFilas(k){
     const pm=M&&M.porProd&&M.porProd[f.pid]?Number(M.porProd[f.pid].p)||0:0;
     const mx=_llMaxProb(k,f,e);
     out.push({id,tipo:'probado',pid:f.pid,key:f.key,u:f.u,nom:f.nomL||f.nom,color:f.color||'',mt:String((pub&&pub.title)||(e&&e.mt)||''),
-      foto:(ft&&ft.url)||(e&&/^https:\/\//.test(e.mf||'')?e.mf:''),mi:(e&&e.mi)||f.mi||'',precio:pm||f.p||0,pc:f.pc,max:mx.max||null,maxMot:mx.motivo||'',P:mx.P||0,sinConf:false,reg:L[id]||null,e});
+      foto:(ft&&ft.url)||(e&&/^https:\/\//.test(e.mf||'')?e.mf:''),mi:(e&&e.mi)||f.mi||'',precio:pm||f.p||0,pc:f.pc,max:mx.max||null,maxMeta:mx.meta||null,maxMot:mx.motivo||'',P:mx.P||0,sinConf:false,reg:L[id]||null,e});
   }
   // Lo que ya se marcó y salió del pedido (otro producto, o "Ya lo pedí"): se sigue viendo 7 días para poder deshacerlo.
   for(const [id,r] of Object.entries(L)){if(vistos.has(id)||!r||hoy-(Number(r.ts)||0)>7*864e5)continue;
     if(r.tipo==='nuevo'){const cod=r.cod||id;const e=cat[cod];if(!e)continue;const mx=_llMaxNuevo(k,e);
-      out.push({id,tipo:'nuevo',cod,u:parseInt(r.uPed||r.u)||0,nom:String(e.n||cod),mt:String(e.mt||''),foto:/^https:\/\//.test(e.mf||'')?e.mf:'',mi:e.mi||'',precio:Number(e.p)||0,pc:_listaPuesto(k,e),max:mx.max||null,maxMot:mx.motivo||'',P:mx.P||0,sinConf:!_listaOkVale(e),reg:r,fuera:1});}
+      out.push({id,tipo:'nuevo',cod,u:parseInt(r.uPed||r.u)||0,nom:String(e.n||cod),mt:String(e.mt||''),foto:/^https:\/\//.test(e.mf||'')?e.mf:'',mi:e.mi||'',precio:Number(e.p)||0,pc:_listaPuesto(k,e),max:mx.max||null,maxMeta:mx.meta||null,maxMot:mx.motivo||'',P:mx.P||0,sinConf:!_listaOkVale(e),reg:r,fuera:1});}
     else{const pr=(state.products||[]).find(x=>x.id===r.pid);if(!pr)continue;const ft=fotoDeProducto(pr,r.color||'');
       out.push({id,tipo:'probado',pid:r.pid,u:parseInt(r.uPed||r.u)||0,nom:r.nom||pr.name,color:r.color||'',mt:'',foto:(ft&&ft.url)||'',mi:'',precio:0,pc:0,max:null,maxMot:'ya salió del pedido',P:0,sinConf:false,reg:r,fuera:1});}
   }
@@ -21297,7 +21323,7 @@ function _llTarjeta(k,f){
       <div class="ll-num"><span>Precio en la lista</span><b>${f.precio>0?fmt(f.precio):'—'}</b></div>
       ${f.pc>0&&f.pc!==f.precio&&f.precio>0?`<div class="ll-sub" style="text-align:right">con el recargo del proveedor te sale ${fmt(f.pc)}</div>`:''}
       <div class="ll-num"><span>Pagá como máximo</span><b style="color:${f.max?(sobre?'var(--red)':'var(--green)'):'var(--red)'}">${f.max?fmt(f.max):'sin máximo: no comprar'}</b></div>
-      ${f.max?`<div class="ll-sub" style="text-align:right">deja ${LL_META}% vendiéndolo en ML a ${fmt(f.P)}</div>`:f.maxMot?`<div class="ll-sub" style="text-align:right">${escHtml(f.maxMot)}</div>`:''}
+      ${f.max?`<div class="ll-sub" style="text-align:right">deja ${f.maxMeta||LL_META}% vendiéndolo en ML a ${fmt(f.P)}</div>`:f.maxMot?`<div class="ll-sub" style="text-align:right">${escHtml(f.maxMot)}</div>`:''}
       ${sobre?`<div class="ll-aviso" style="color:var(--red);border-color:var(--red)">El precio de la lista ya pasa el máximo: si en el local está igual, no lo compres.</div>`:''}
       <div class="ll-num"><span>Comprar</span><b>${f.u} u.</b></div>
       ${f.mi?`<div class="ll-sub" style="margin-top:4px"><a href="https://www.mercadolibre.com.ar/p/${escHtml(f.mi)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:var(--green)">🔗 verlo en ML</a></div>`:''}
