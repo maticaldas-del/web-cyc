@@ -1434,6 +1434,7 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
     decisión de compra, no código. 11 (dinero que rinde en MP) lo mira él en la app.
 
 ## 7 · DISEÑO (domingo)
+- **24/10/2026 · v26.44 · franjas de la línea de tiempo grandes y que se cierran** (él: *"se ven 4 tarjetas, me gustaría que se vieran dos, así están más grandes… total después scroleo hacia abajo, y que se puedan minimizar al clickear en la tarjeta"*). Parada, cada franja grande mide media pantalla (`_lnAlto`); girada sigue entrando entera (`_lineaFac`). Tocar el título (▾/▸) la cierra/abre (`lineaBanda`, `localStorage cycLineaCerr`); lo de una franja cerrada se recorta (`_lnClip`). Vale para la de un producto y la de Todos. Probado con Playwright (1300×900): 5 franjas, cerrar Ventas la deja en un renglón y la siguiente sube. **Qué chequear:** en el teléfono girado, que tocar el título funcione; que nada de una franja cerrada se vea por encima de la de abajo.
 
 **24/10/2026 · v26.40 · 📈 Todos los productos: Premium y envío gratis aparte (él: *"¿se puede saber cuánto fue Premium? así veo cuánto más
 vendemos por esa idea"*).** Barras: verde Clásica, naranja Premium (gold_pro o gemela Premium), celeste gemela de envío gratis, ámbar remate (misma
