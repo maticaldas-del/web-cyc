@@ -44048,6 +44048,23 @@ async function main() {
           const cayo = prom >= 3 && x.h24 < prom / 3;
           console.log(`${cayo ? '⚠️' : '·'} ${c}: ${x.h24} ventas en 24 h · promedio ${prom.toFixed(1)}/día${cayo ? ' · CAYÓ FUERTE: mirar si la cuenta tiene un problema (frenazo:' + c.toLowerCase() + ')' : ''}`);
         }
+        // auditoría del 24/10/2026: las 4 cayeron a la mitad JUNTAS (19 contra ~46/día, el día que subí 143 precios al 35%)
+        // y sólo salía ⚠️ Adriana: cada cuenta sola no llegaba al tercio. El total se compara contra el promedio y contra
+        // el mismo día de la semana de las 2 semanas anteriores (el sábado es flojo), y nombra mis subas de las últimas 36 h.
+        const enT = (t0, t1) => vtsTodas.filter((v) => v.ts >= t0 && v.ts < t1).length;
+        const tH = enT(ahoraI - 864e5, ahoraI + 1), tProm = enT(ahoraI - 15 * 864e5, ahoraI - 864e5) / 14;
+        const tSem = (enT(ahoraI - 8 * 864e5, ahoraI - 7 * 864e5) + enT(ahoraI - 15 * 864e5, ahoraI - 14 * 864e5)) / 2;
+        const cayoT = tProm >= 10 && tH < 0.6 * tProm && tH < 0.6 * tSem;
+        console.log(`${cayoT ? '⚠️' : '·'} LAS 4 JUNTAS: ${tH} ventas en 24 h · promedio ${tProm.toFixed(1)}/día · mismo día de las 2 semanas anteriores ${tSem.toFixed(1)}${cayoT ? ' · CAYERON JUNTAS: no es una cuenta, es algo general (precios, ML, el día)' : ''}`);
+        if (cayoT) {
+          const sub = Object.entries(ap).filter(([, a]) => a && a.por === 'claude' && Number(a.a) > Number(a.de) && ahoraI - (Number(a.ts) || 0) < 36 * 36e5);
+          if (sub.length) {
+            const uD = (m, t0) => vtsTodas.filter((v) => v.mla === m && v.ts >= t0).reduce((s2, v) => s2 + v.q, 0);
+            const uA = (m, t0) => vtsTodas.filter((v) => v.mla === m && v.ts >= t0 - 14 * 864e5 && v.ts < t0).reduce((s2, v) => s2 + v.q, 0) / 14 * ((ahoraI - t0) / 864e5);
+            const dsp = sub.reduce((s2, [m, a]) => s2 + uD(m, a.ts), 0), esp = sub.reduce((s2, [m, a]) => s2 + uA(m, a.ts), 0);
+            console.log(`   mis subas de las últimas 36 h: ${sub.length} publicaciones · vendieron ${dsp} u. desde la suba · al ritmo de sus 14 días de antes hubieran sido ~${esp.toFixed(1)}`);
+          }
+        }
       } catch (eC) { console.log('ventas por cuenta: no pude armarlas · ' + eC.message); }
       // 3) Lo que decidió Claude (60 días) y cómo le fue
       const uEnt = (m, t0, t1) => vtsTodas.filter((v) => v.mla === m && v.ts >= t0 && v.ts < t1).reduce((s2, v) => s2 + v.q, 0);

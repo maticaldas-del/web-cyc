@@ -1256,6 +1256,11 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
 - **Qué chequear:** que la completa ya no tenga que corregirlos a mano · si otro aroma pasa a dado de baja, agregarlo a los DOS.
 
 ## 4 · CHOQUES Y FALLAS MUDAS (jueves · junta las viejas 4 y 5)
+
+### 2b del informe: las 4 cuentas juntas (24/10/2026, auditoría)
+- **Qué es:** el 24/10 las 4 cuentas vendieron 19 en 24 h contra ~46/día y el informe sólo marcaba ⚠️ Adriana (cada cuenta sola no llegaba al tercio). Ahora la 2b tiene un renglón "LAS 4 JUNTAS" contra el promedio de 14 días y contra el mismo día de las 2 semanas anteriores; si cae abajo del 60% de los dos, ⚠️ y dice cuántas subas mías de las últimas 36 h hay y cuánto vendieron contra lo esperado.
+- **Dónde vive:** `sync.mjs`, `informe`, sección 2b.
+- **Qué chequear:** que el sábado flojo normal no dispare (compara contra el mismo día de la semana) y que el renglón de subas use sólo subas (`a > de`).
 - **24/10/2026 · horario para resolver** (él): tarea de las 10:00 (sólo lo urgente antes de las 12:30) y de las 12:30 (todo lo demás). **Dónde vive:** `trig_01XcMnTFRBwdBa5kgH1b2hko` y `trig_011SxsjVECrbY9b8ZkkhdBUT`, en la sesión de compras/decisiones; CLAUDE.md §1. **Qué chequear:** que la de las 10 no traiga decisiones (a)/(b) y que la de las 12:30 no repita lo que ya contestó.
 
 - **LAS 2 DECISIONES DE LA ETAPA 4 DEL 20/10/2026, CERRADAS (v25.45).**
