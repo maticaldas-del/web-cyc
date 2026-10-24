@@ -2960,7 +2960,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.34';
+const APP_VERSION='26.35';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2973,6 +2973,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.35',f:'24/10',h:'02:05',c:[{n:2,t:'🇵🇾 Pedido de nuevos: cada producto dice cuántas vendió en ML y cuántas reseñas tiene (arriba y en el detalle). Las dos cuentan para "se vende": 100+ vendidas o 5+ reseñas.'}]},
   {v:'26.34',f:'24/10',h:'01:55',c:[{n:2,t:'🟣 Elegancia: el catálogo se compara con los candidatos sólo por el código exacto (los del PDF viejo se confundían con otros que terminaban igual).'}]},
   {v:'26.33',f:'24/10',h:'01:30',c:[{n:3,t:'🟣 Elegancia: ahora se mira su catálogo entero, como el de Nissei. El chat de compras lo copia, el robot lo mide contra ML y lo que da 35% aparece en la solapa Elegancia → Nuevos.'}]},
   {v:'26.32',f:'24/10',h:'02:20',c:[{n:2,t:'🇵🇾 Productos nuevos: 5 o más reseñas en ML también cuentan como "se vende" (vale como las 100 vendidas). Lo carga el chat de compras.'}]},
@@ -16997,7 +16998,7 @@ function pedidoMomentoHTML(g){
       R.fotoPY||R.fotoML||'', m!=null?m.toFixed(0)+'%'+(R.margenViejo!=null?' (medido a US$ '+R.margenViejo.toFixed(2)+')':''):null,
       (m==null||R.margenViejo!=null)?'var(--muted)':candPctCol(m,f.c),
       pedNuevoFilaHTML(f,maxU,tc,true),
-      (()=>{const nv=Number(f.c.mlVendedores);if(f.c.sinComp)return ` · <span style="color:var(--green)" title="Nadie lo vende hoy en su catálogo de ML: se midió contra el precio que vio el chat de compras en ML (${fmt(Number(f.c.svp)||0)}).">🌟 sin competencia en ML</span>`;return ` · <span style="color:${nv>=CAND_MIN_VENDEDORES?'var(--green)':'var(--amber)'}">🏪 ${nv>0?nv+(nv===1?' vendedor':' vendedores')+' en ML':'sin vendedores medidos'}</span>`;})());});
+      (()=>{const nv=Number(f.c.mlVendedores);if(f.c.sinComp)return ` · <span style="color:var(--green)" title="Nadie lo vende hoy en su catálogo de ML: se midió contra el precio que vio el chat de compras en ML (${fmt(Number(f.c.svp)||0)}).">🌟 sin competencia en ML</span>`;const _v=candVentasDe(f.c),_r=f.c.resCarga;return ` · <span style="color:${nv>=CAND_MIN_VENDEDORES?'var(--green)':'var(--amber)'}">🏪 ${nv>0?nv+(nv===1?' vendedor':' vendedores')+' en ML':'sin vendedores medidos'}</span>`+` · 🛒 ${_v!=null?(_v>=1000?'+1000':_v)+' vendidas':'<span style="color:var(--amber)">vendidas sin cargar</span>'}`+` · ⭐ ${_r!=null?_r+' reseñas':'<span style="color:var(--muted)">reseñas sin cargar</span>'}`;})());});
   const cfg=`<details style="margin:8px 0 2px"><summary style="cursor:pointer;font-size:.68rem;color:var(--muted)">⚙️ tope y máximo por producto</summary><div style="display:flex;gap:7px;flex-wrap:wrap;align-items:flex-end;margin:8px 0 4px">
       ${[['pedTopeUSD',tope,'Tope del pedido (US$, probados + nuevos)'],['pedMaxU',maxU,'U. por nuevo (barato que vende: 3-4 · caro: 1)']]
         .map(([k,v,t])=>`<label style="flex:1;min-width:105px"><div style="font-size:.6rem;color:var(--muted);margin-bottom:3px">${t}</div>
@@ -17106,7 +17107,10 @@ function pedNuevoFilaHTML(f,maxU,tc,sinCab){
       f.usd>0?`${fmtUS2(f.usd)} + recargo${tc?` · ${fmt(Math.round(f.usd*RECARGO_PY*tc))}`:''}`:''),
     caja('🏷️ se vende en ML',R.medido?R.rango:'<span style="color:var(--amber)">sin medir</span>',R.vend||''),
     caja('💸 ML se queda',R.comPct||'—',R.comDet||''),
-    caja('🛒 vendidas en ML',R.ventasN||'<span style="color:var(--amber)">faltan</span>',R.ventasN?(R.ventasExtra?`<span style="color:var(--amber)">${R.ventasExtra}</span>`:''):'las carga el chat'),
+    // VENTAS Y RESEÑAS JUNTAS (24/10/2026, él: "quiero que en el detalle en el pedido aparezcan ventas y reseñas"): las dos cuentan
+    // para "se vende" (100+ vendidas o 5+ reseñas).
+    caja('🛒 vendidas · ⭐ reseñas en ML',(R.ventasN||'<span style="color:var(--amber)">faltan</span>')+' · '+(c.resCarga!=null?`<b>${Number(c.resCarga)}</b> ⭐`:'<span style="color:var(--muted)">⭐ faltan</span>'),
+      [R.ventasN&&R.ventasExtra?`<span style="color:var(--amber)">${R.ventasExtra}</span>`:'',(!R.ventasN||c.resCarga==null)?'las carga el chat':'',`se vende con ${CAND_MIN_VENTAS}+ vendidas o ${CAND_MIN_RESENAS}+ reseñas`].filter(Boolean).join(' · ')),
     caja('📈 te queda',mg!=null?`<b style="font-size:1.25em;color:${mgCol}">${mg.toFixed(0)}%</b>`:'<span style="color:var(--amber)">sin medir</span>',mg!=null?(R.margenViejo!=null?`medido a ${fmtUS2(R.margenViejo)} · falta medirlo con el precio nuevo`:'contra '+R.margenContra):''),
   ].join('');
   const P=candPuedePedir(c);

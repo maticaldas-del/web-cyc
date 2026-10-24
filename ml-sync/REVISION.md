@@ -1364,6 +1364,11 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
 
 ## 7 · DISEÑO (domingo)
 
+**24/10/2026 · v26.35 · Pedido de nuevos: vendidas y reseñas a la vista (él: *"quiero que en el detalle en el pedido aparezcan ventas y
+reseñas"*).** El renglón de arriba (al lado de los vendedores) dice `🛒 N vendidas · ⭐ N reseñas` (o "sin cargar"), y la casilla del
+detalle pasó a "🛒 vendidas · ⭐ reseñas en ML" con la regla (100+ vendidas o 5+ reseñas). Dónde vive: `pedNuevoFilaHTML` y el armado de
+`filasN` en index.html. **Qué chequear:** a 360 px que la casilla no se corte con los dos números.
+
 **24/10/2026 · v26.25 · Inicio → Pedidos con 4 puertas.** Él: *"sacar lo que tiene abajo de pedidos y poner las tarjetas de bs as,
 paraguay, paulvic y listas. para entrar de una clickeando en esas"*. **Dónde vive:** `index.html` tarjeta `.ht-ped` (botones `.ht-ped-b`,
 `homePedIr(sec)`); se sacaron `hv-ped` y `nc-pedidos-costo` de la tarjeta (sus funciones siguen y no fallan sin el elemento). En el
