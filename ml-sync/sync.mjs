@@ -4248,7 +4248,9 @@ function rayasPrecioLinea(d, cu, imp, hoyK, parte = 1) {
   let enPrueba = null;
   if (!techo && best.u >= 3 && best.gu > 0) { const g = L.filter((x) => x.p > best.p * 1.02).sort((a, b) => b.p - a.p)[0];
     if (g) { const gu1 = g.gu != null ? g.gu : best.gu + (g.p - best.p) * 0.7; if (gu1 > best.gu) { const lam = best.r * (best.gu / gu1) * g.dias; enPrueba = { p: g.p, dias: g.dias, u: g.u, lam, seg: 1 - poissonCdfF(g.u, lam), umb: umbralTecho(g.dias) }; } } }
-  return { best, techo, enPrueba, medibles: L.reduce((a, g) => a + g.dias, 0) };
+  // ¿Se midió algún precio MÁS BAJO que el 💰 (5+ días)? Si no, el 💰 no frena una baja (1a del 24/10, ver F5).
+  const abajoMedido = med.some((g) => g.p < best.p * 0.98);
+  return { best, techo, enPrueba, abajoMedido, medibles: L.reduce((a, g) => a + g.dias, 0) };
 }
 // ── LAS REGLAS DURAS DE LAS BAJAS, EN EL CÓDIGO (21/10/2026, él: "a, dale" a pasar a freno toda regla que se pueda medir) ──────
 // Después del Cuba Platinum (bajado sin techo con toda la info a mano) y del Adaptador 8 en 1 (de $27.990 a $19.990 de golpe y
@@ -4633,7 +4635,10 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
       // ── F5 · no abajo del 💰 piso
       if (lin && cu > 0 && !exento && !exc(fz, 'bajopiso') && !renueva) {
         const R = rayasPrecioLinea(lin, cu, imp, hoyK);
-        if (R.best && a < R.best.p * 0.995) return { regla: 'F5', txt: `${$(a)} queda abajo del 💰 piso ${$(R.best.p)} (el precio que más plata por día dejó: ${R.best.u} vendidas en ${R.best.dias} días con stock). No se baja del piso salvo sobra de verdad, sin reposición o stock antiguo (con su tag). Si es el redondeo: ${$(ceil90(R.best.p))}. Excepción: !bajopiso y "EXCEPCIÓN: …"` };
+        // 1a (24/10/2026, él: "si le faltó datos para ver si el precio donde más genera es más bajo, no lo dejaría bajar porque está el
+        // piso"): el 💰 es "el que más plata dejó DE LOS QUE SE PROBARON". Si nunca se midió uno más bajo, no frena: se puede probar abajo
+        // en escalera (los otros frenos y el 35% siguen).
+        if (R.best && a < R.best.p * 0.995 && R.abajoMedido) return { regla: 'F5', txt: `${$(a)} queda abajo del 💰 piso ${$(R.best.p)} (el precio que más plata por día dejó: ${R.best.u} vendidas en ${R.best.dias} días con stock). No se baja del piso salvo sobra de verdad, sin reposición o stock antiguo (con su tag). Si es el redondeo: ${$(ceil90(R.best.p))}. Excepción: !bajopiso y "EXCEPCIÓN: …"` };
       }
       // ── F6 · 🤔 ¿tiene sentido este descuento?
       const esDesc = opts.promo || ['descuento', 'promo', 'sobra'].includes(tagNuevo);
