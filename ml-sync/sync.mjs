@@ -46711,10 +46711,11 @@ async function main() {
           const tags = Object.entries(est).map(([k, x]) => ({ ts: Number(k), t: x && x.t })).filter((x) => x.ts > 0 && x.t).sort((a, b) => a.ts - b.ts);
           let ult = '', tsU = 0; for (const x of tags) { ult = x.t === 'correccion' ? pasajeDe(ult) : x.t; tsU = x.ts; }
           const dias = tsU ? Math.floor((hoy - tsU) / 864e5) : null;
-          const conTecho = !!(tf[clasDe[mla] || mla] && Number(tf[clasDe[mla] || mla].probado) > 0);
+          const tfM = tf[clasDe[mla] || mla];   // 24/10/2026: la de una gemela es la de su Clásica (antes el texto leía tf[gemela] y se caía)
+          const conTecho = !!(tfM && Number(tfM.probado) > 0);
           const bien = OK.has(ult) || (ult === 'bajando' && conTecho) || (['volviendo', 'desobra'].includes(ult) && (conTecho || (dias != null && dias < 7)));
           const nomV = String((Object.values(grupos).flat().find(({ v }) => v.mla === mla) || {}).v?.prod || '').slice(0, 40);
-          (bien ? buenas : malas).push(`${mla} · ${nomV}${clasDe[mla] ? ' (gemela de ' + clasDe[mla] + ')' : ''} · ${ult || 'sin estrategia'}${dias != null ? ` (hace ${dias} d)` : ''}${conTecho ? ` · techo probado $${Math.round(Number(tf[mla].probado)).toLocaleString('es-AR')}` : ''}`);
+          (bien ? buenas : malas).push(`${mla} · ${nomV}${clasDe[mla] ? ' (gemela de ' + clasDe[mla] + ')' : ''} · ${ult || 'sin estrategia'}${dias != null ? ` (hace ${dias} d)` : ''}${conTecho ? ` · techo probado $${Math.round(Number(tfM.probado)).toLocaleString('es-AR')}` : ''}`);
         }
         { const tsMax = Object.values(grupos).flat().reduce((a, { ts }) => Math.max(a, ts || 0), 0);
           if (_desdeVistas != null) console.log(`\n📌 ventas nuevas desde ${new Date(_desdeVistas - 3 * 36e5).toISOString().slice(5, 16).replace('T', ' ')} · ${Object.keys(grupos).length} compras · al terminar la vuelta: ${tsMax ? `ventasvistas:${tsMax};go` : '(no hay ventas nuevas: no hace falta anotar nada)'}`); }
@@ -46740,7 +46741,9 @@ async function main() {
         console.log(`\n🔬 A FONDO (ayudante en esfuerzo máximo) · ${_aFondo.size} de ${mlas.length} publicaciones · las otras ${normales.length} son normales y se cierran solas`);
         for (const [mla, why] of _aFondo) console.log(`   🔬 ${mla} · ${why}`);
         if (normales.length) console.log(`   ✓ normales: ${normales.join(', ')}`);
-      } catch (eE) { console.log('⚠️ no pude leer las estrategias de lo vendido: ' + eE.message + ' · mirar a mano'); }
+      } catch (eE) { console.log('⚠️ no pude leer las estrategias de lo vendido: ' + eE.message + ' · mirar a mano');
+        // 24/10/2026: si esto se cae, la vuelta igual necesita el número para cerrar las ventas (antes se perdía el 📌)
+        try { const tsMax = Object.values(grupos).flat().reduce((a, { ts }) => Math.max(a, ts || 0), 0); if (_desdeVistas != null && tsMax) console.log(`\n📌 ventas nuevas · ${Object.keys(grupos).length} compras · al terminar la vuelta: ventasvistas:${tsMax};go`); } catch { /* sin grupos no hay ventas */ } }
       return;
     }
 

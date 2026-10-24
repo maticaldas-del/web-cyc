@@ -1217,6 +1217,15 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
 
  · **Informe 7b (auditoría 19/10/2026):** los mensajes de compradores sin leer salen por cuenta (sin el texto). Chequear: que la suma coincida con el título.
 
+### `ventasraras:nuevas` se caía con una venta de gemela cuya Clásica tiene techo anotado (24/10/2026, vuelta de las 11:52)
+- **Qué era:** vendió la gemela Premium de los Naipes Casino. El 🧭 calculaba "tiene techo" con la Clásica pero al escribir el texto leía
+  `tf[<gemela>].probado` (no existe) → "Cannot read properties of undefined (reading 'probado')". Se perdía la lista 🔬 y el 📌 con el número
+  para `ventasvistas`, así que la vuelta no podía cerrar las ventas.
+- **Arreglo:** el texto usa el mismo registro que el cálculo (`tfM`, el de la Clásica) y, si esa parte se cae igual, el 📌 sale igual.
+  Busqué el mismo patrón (`tf[mla].`) en el resto del robot: ninguno más.
+- **Dónde vive:** `sync.mjs` → `ventasraras`, bloque 🧭 ESTRATEGIA DE LO QUE VENDIÓ.
+- **Qué chequear:** una venta de gemela con techo anotado en su Clásica sale con "techo probado $…" y el 📌 aparece siempre.
+
 ## 6 · IDEAS NUEVAS (sábado)
 - **✅ LAS 24 IDEAS DE LA ETAPA 6: ELIGIÓ TODAS (a) EL 21/10/2026** (A1: *"probemos y me decís"* = una sola publicación en la próxima llegada). Antes decía: ESPERAN SU RESPUESTA (él: *"avisame cuando termine el último (…) tengo que elegir las decisiones"*). (a) = la recomendada. Una cosa obvia quedó sin hacer porque las revisiones se pausaron: el `ofi` que imprime `pyped:llego` sale sin `@color` y falla entero en una reposición con colores (arreglarlo al retomar).
   **Datos de ML sin usar:**
