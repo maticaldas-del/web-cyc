@@ -694,6 +694,12 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 
 ## 3 · MERCADERÍA (miércoles)
 
+**24/10/2026 · v26.37 · ⭐ "gana mucho y sale mucho" (él: *"juntando el puntaje de salida y el % de ganancia: el primero tiene que ser el que
+se le gana mucho y se vende mucho"*).** Orden nuevo en Productos nuevos = % × log10(🚀 puntaje + 1) (el % entero, la salida por escalones de ×10,
+para que vender muchísimo no gane solo). Sin % o sin puntaje va al final. Se sacaron "🛒 más vendidos" y "$ por unidad" (él); un orden guardado que
+ya no existe vuelve a ⭐ (que es el de entrada). **Qué chequear:** que arriba queden los de mucho % con 🚀 verde y que los sin vendidas/reseñas cargadas
+queden abajo.
+
 **24/10/2026 · v26.36 · 🚀 Puntaje de salida (él: *"que para ordenar se junten ambas, ventas y reseñas… ordenar por puntaje de salida y ahí
 me aseguro que los primeros salen bien"*).** `puntajeSalida(v,res)` = max(vendidas, reseñas × `CAND_VENTAS_X_RESENA`=20); orden nuevo en
 Nuevos; chip 🚀 en tarjetas y en el pedido; menos de 100 = rotación baja (misma vara que `pocasVentas`: 100 vendidas o 5 reseñas). MEDIDO con

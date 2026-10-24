@@ -2960,7 +2960,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.36';
+const APP_VERSION='26.37';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2973,6 +2973,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.37',f:'24/10',h:'10:43',c:[{n:2,t:'🇵🇾 Productos nuevos: orden nuevo ⭐ "gana mucho y sale mucho" (junta el % de ganancia con el 🚀 puntaje de salida; arriba lo que deja mucho y se vende mucho). Se sacaron "más vendidos" y "$ por unidad".'}]},
   {v:'26.36',f:'24/10',h:'02:10',c:[{n:3,t:'🇵🇾 Productos nuevos: 🚀 puntaje de salida. Junta vendidas y reseñas de ML en un número (lo que más diga entre las vendidas y las reseñas × 20). Nuevo orden "🚀 puntaje de salida": arriba lo que más sale. Menos de 100 = rotación baja.'}]},
   {v:'26.35',f:'24/10',h:'02:05',c:[{n:2,t:'🇵🇾 Pedido de nuevos: cada producto dice cuántas vendió en ML y cuántas reseñas tiene (arriba y en el detalle). Las dos cuentan para "se vende": 100+ vendidas o 5+ reseñas.'}]},
   {v:'26.34',f:'24/10',h:'01:55',c:[{n:2,t:'🟣 Elegancia: el catálogo se compara con los candidatos sólo por el código exacto (los del PDF viejo se confundían con otros que terminaban igual).'}]},
@@ -17644,9 +17645,11 @@ function candidatosHTML(){
   // ORDENAR (03/10/2026, pedido suyo: "poder buscar de mayor a menor los que más unidades vendieron, mayor
   // porcentaje y eso"). Los sin dato van siempre al final.
   {const k=_candOrden, val=c=>{const n=x=>(x!=null&&isFinite(x))?Number(x):null;
-      if(k==='vend')return n(candVentasDe(c));
       if(k==='salida')return candPuntaje(c);
-      if(k==='gan')return n(c.ganancia);
+      // ⭐ GANA MUCHO Y SALE MUCHO (24/10/2026, él: "juntando el puntaje de salida y el % de ganancia: el primero tiene que ser el que se
+      // le gana mucho y se vende mucho"). % × log10(puntaje): 50% con 1.000 de salida (150) va arriba de 35% con 20.000 (151 ≈ empate)
+      // y de 100% con 30 (148): el % pesa entero y la salida por escalones de ×10, así un producto no gana sólo por vender muchísimo.
+      if(k==='combo'){const m=n(c.margen),p=candPuntaje(c);return (m!=null&&p!=null&&p>0)?m*Math.log10(p+1):null;}
       if(k==='usd')return (parseFloat(c.usd)>0&&n(c.ganancia)!=null)?c.ganancia/(parseFloat(c.usd)*RECARGO_PY):null;
       if(k==='barato')return parseFloat(c.usd)>0?-parseFloat(c.usd):null;
       return n(c.margen);};
@@ -17656,7 +17659,7 @@ function candidatosHTML(){
   // verde hay, así voy viendo cuando sube productos nuevos"*). Verde = medido y en el piso o arriba.
   const _verdes=_arriba.filter(c=>c.margen!=null&&isFinite(c.margen)).length, _sinMed=_arriba.length-_verdes;
   const _sel=(arr,cur,fn)=>`<select onchange="${fn}(this.value)" style="font-size:.72rem;padding:4px 8px;border-radius:6px;background:var(--surface);color:var(--text);border:1px solid var(--border)">${arr.map(([k,t])=>`<option value="${k}"${cur===k?' selected':''}>${t}</option>`).join('')}</select>`;
-  const _orden=`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 10px"><span style="font-size:.66rem;color:var(--muted)">Ordenar:</span>${_sel([['pct','% de ganancia'],['salida','🚀 puntaje de salida'],['vend','🛒 más vendidos'],['gan','$ por unidad'],['usd','$ por dólar invertido'],['barato','más barato']],_candOrden,'candOrdenar')}</div>`;
+  const _orden=`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 10px"><span style="font-size:.66rem;color:var(--muted)">Ordenar:</span>${_sel([['combo','⭐ gana mucho y sale mucho'],['pct','% de ganancia'],['salida','🚀 puntaje de salida'],['usd','$ por dólar invertido'],['barato','más barato']],_candOrden,'candOrdenar')}</div>`;
   // 03/10/2026, él: el simulador y el historial "ahí no se usan y molestan": el simulador va al final y el
   // historial de pedidos vive en la pestaña 🧾 Pedido.
   return cab(_verdes)+pycatBuscarHTML()+_orden+_arriba.map(_card).join('')
@@ -17737,7 +17740,8 @@ function candidatosHTML(){
 // El panel se redibuja solo cada vez que llega un dato (ventas cada 2 min, etc.) y la tarjeta
 // abierta volvía a nacer cerrada "al ratito". Se recuerda cuáles están abiertas (02/10/2026).
 const _candAbiertos=new Set();
-let _candOrden=(()=>{try{return localStorage.getItem('cycCandOrden')||'pct';}catch(e){return 'pct';}})();
+// 24/10/2026: se sacaron "más vendidos" y "$ por unidad" (él); un orden guardado que ya no existe vuelve a ⭐.
+let _candOrden=(()=>{try{const k=localStorage.getItem('cycCandOrden');return ['combo','pct','salida','usd','barato'].includes(k)?k:'combo';}catch(e){return 'combo';}})();
 function candOrdenar(k){_candOrden=k;try{localStorage.setItem('cycCandOrden',k);}catch(e){}renderPedidos();}
 let _candFiltro='ml';
 function candFiltrar(k){_candFiltro=k;try{localStorage.setItem('cycCandFiltro',k);}catch(e){}renderPedidos();}
