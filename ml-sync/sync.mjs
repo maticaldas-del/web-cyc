@@ -4218,6 +4218,31 @@ function umbralTecho(dias) { const d = Number(dias) || 0; return d <= 7 ? 0.95 :
 // días activa y con stock en Full (1 u. alcanza) sin ninguna venta es 🔴 techo aunque la cuenta de certeza no llegue. La misma regla en la web
 // (`TECHO_DIAS_SIN_VENTA_W`) y en el lanzamiento de `techo95`.
 const TECHO_DIAS_SIN_VENTA = 30;
+// 📅 LAS FRANJAS DEL MES (24/10/2026, él: "puede que haya franjas en el mes que se venda más, porque la gente tiene más plata y cobra (…)
+// puede ayudar para asegurar el techo"). Medido con `ventasdiames` (6 meses, cada día contra el promedio de SU mes): del 11 al 15 entran
+// ~19% más compras y ~24% más plata; del 1 al 5, ~19% menos plata. `cyc/mlconfig/franjasMes` = {c: compras por tramo, n: plata por tramo,
+// meses, ts}: lo escribe la noche (y `ventasdiames;go`). En las rayas (💰/🔴) cada día de prueba cuenta su factor de compras: no vender en la
+// franja fuerte pesa más que no vender en la floja. La web usa el mismo dato (`_franjaMesW`) y lo dibuja en "Plata por día".
+const FRANJA_TRAMOS = [[1, 5], [6, 10], [11, 15], [16, 20], [21, 25], [26, 31]];
+let FRANJAS_MES = null;
+function tramoDia(d) { d = Number(d) || 1; return d <= 5 ? 0 : d <= 10 ? 1 : d <= 15 ? 2 : d <= 20 ? 3 : d <= 25 ? 4 : 5; }
+function franjaDe(k) { const c = FRANJAS_MES && FRANJAS_MES.c; if (!Array.isArray(c)) return 1; const f = Number(c[tramoDia(String(k).slice(8, 10))]); return f > 0 ? Math.max(0.7, Math.min(1.4, f)) : 1; }
+// Sin los días de fecha especial (`diaFechaRaya`: Hot Sale, Día del Niño, de la Madre, CyberMonday…): la franja tiene que ser la de un mes
+// común, no la de un evento que cayó en esos días (`conFechas` = true las deja, para comparar).
+function calcFranjasMes(vp, dias = 400, conFechas = false) {
+  const hoyK = dayKeyFromISO(Date.now()), desdeK = dayKeyFromISO(Date.now() - dias * 864e5);
+  const porDia = {}; const vistos = new Set();
+  for (const [dk, dia] of Object.entries(vp || {})) { if (!/^\d{4}_\d{2}_\d{2}$/.test(dk) || dk < desdeK || dk >= hoyK || (!conFechas && diaFechaRaya(dk))) continue; const o = (porDia[dk] = porDia[dk] || { c: 0, n: 0 });
+    for (const [id, v] of Object.entries(dia || {})) { if (!v || v.cancelada) continue; const k = String(v.cuenta || '') + '|' + String(v.numVenta || v.saleId || id); if (!vistos.has(k)) { vistos.add(k); o.c++; } o.n += Number(v.neto) || 0; } }
+  const porMes = {}; for (const [dk, o] of Object.entries(porDia)) { const m = dk.slice(0, 7); (porMes[m] = porMes[m] || []).push([dk, o]); }
+  const R = Array.from({ length: 32 }, () => ({ c: [], n: [] }));
+  const mesesOk = Object.entries(porMes).filter(([, L]) => L.length >= 15);
+  for (const [, L] of mesesOk) { const mc = L.reduce((a, [, o]) => a + o.c, 0) / L.length, mn = L.reduce((a, [, o]) => a + o.n, 0) / L.length; if (!(mc > 0 && mn > 0)) continue;
+    for (const [dk, o] of L) { const d = Number(dk.slice(8, 10)); R[d].c.push(o.c / mc); R[d].n.push(o.n / mn); } }
+  const prom = (a) => a.length ? Math.round(a.reduce((x, y) => x + y, 0) / a.length * 1000) / 1000 : null;
+  const tr = (q) => FRANJA_TRAMOS.map(([a, z]) => { const L = []; for (let d = a; d <= z; d++) L.push(...R[d][q]); return prom(L); });
+  return { c: tr('c'), n: tr('n'), cd: R.map((x) => prom(x.c)), nd: R.map((x) => prom(x.n)), meses: mesesOk.map(([m]) => m), ts: Date.now() };
+}
 // LAS QUE ML TIENE EN REVISIÓN PARA SIEMPRE (24/10/2026, él: "nunca se van a liberar. no mirar más eso"): Dalí La Belle et l'Ocelot,
 // Galaxy A06 y Paulvic Scandal Bliss. No salen en `planilla` (ninguna lista) ni en la sección 11 del `informe`. Siguen en el panel
 // (su stock cuenta) y si ML alguna vez las libera, vuelven a aparecer solas (sólo se saltean mientras estén en revisión).
@@ -4249,9 +4274,10 @@ function rayasPrecioLinea(d, cu, imp, hoyK, parte = 1) {
     // (tope de H) y −2%/mes del stock parado de ese día. La web (`_ganRaya`/`_rayas`) usa las mismas constantes: si se toca una, la otra.
     const uT = Number(x.u) || 0, totT = Number(x.tot) || 0;
     const gan = (Number(x.neto) || 0) - uT * cu - totT * imp - uT * PD_TRABAJO_U - totT * PD_TOPE_PCT - Math.max(0, Number(x.st) || 0) * cu * PD_CAPITAL_DIA * pC;
-    const g = (G[b] = G[b] || { p: b, dias: 0, u: 0, gan: 0, desde: k, hasta: k }); g.dias++; g.u += u; g.gan += gan; if (k < g.desde) g.desde = k; if (k > g.hasta) g.hasta = k;
+    const g = (G[b] = G[b] || { p: b, dias: 0, dF: 0, u: 0, gan: 0, desde: k, hasta: k }); g.dias++; g.dF += franjaDe(k); g.u += u; g.gan += gan; if (k < g.desde) g.desde = k; if (k > g.hasta) g.hasta = k;
   }
-  const L = Object.values(G).map((g) => ({ ...g, r: g.u / g.dias, pd: g.gan / g.dias, gu: g.u ? g.gan / g.u : null }));
+  // `rN` = ventas por día "normal" (sacando la franja del mes) y `dF` = los días de cada precio pesados por su franja (24/10/2026).
+  const L = Object.values(G).map((g) => ({ ...g, r: g.u / g.dias, rN: g.dF > 0 ? g.u / g.dF : g.u / g.dias, pd: g.gan / g.dias, gu: g.u ? g.gan / g.u : null }));
   // 🔴 por 30 días sin vender: el precio más bajo que, sumando sus días y los de todos los más caros, lleva 30+ días sin una venta.
   let t30 = null; { let D = 0, desde = null, hasta = null; for (const g of Object.values(G1).sort((a, b) => b.p - a.p)) { if (g.u > 0) break; D += g.dias; desde = !desde || g.desde < desde ? g.desde : desde; hasta = !hasta || g.hasta > hasta ? g.hasta : hasta; if (D >= TECHO_DIAS_SIN_VENTA) t30 = { p: g.p, dias: D, u: 0, desde, hasta, seg: null, umb: null, por30: true }; } }
   const conT30 = (o) => { if (t30 && (!o.techo || t30.p < o.techo.p)) o.techo = t30; return o; };
@@ -4266,11 +4292,11 @@ function rayasPrecioLinea(d, cu, imp, hoyK, parte = 1) {
   if (best.u >= 3 && best.gu > 0) L.filter((g) => g.p > best.p * 1.02).sort((a, b) => a.p - b.p).some((g) => {
     if (masAltoMejor(g)) return false;
     const gu1 = g.gu != null ? g.gu : best.gu + (g.p - best.p) * 0.7; if (!(gu1 > best.gu)) return false;
-    const lam = best.r * (best.gu / gu1) * g.dias, seg = 1 - poissonCdfF(g.u, lam), umb = umbralTecho(g.dias); if (seg >= umb) { techo = { ...g, seg, lam, umb }; return true; } return false; });
+    const lam = best.rN * (best.gu / gu1) * (g.dF || g.dias), seg = 1 - poissonCdfF(g.u, lam), umb = umbralTecho(g.dias); if (seg >= umb) { techo = { ...g, seg, lam, umb }; return true; } return false; });
   // El precio más alto medido arriba del 💰 que todavía no es techo: cuánto lleva (para decir "63% seguro, decide con 88%").
   let enPrueba = null;
   if (!techo && best.u >= 3 && best.gu > 0) { const g = L.filter((x) => x.p > best.p * 1.02).sort((a, b) => b.p - a.p)[0];
-    if (g) { const gu1 = g.gu != null ? g.gu : best.gu + (g.p - best.p) * 0.7; if (gu1 > best.gu) { const lam = best.r * (best.gu / gu1) * g.dias; enPrueba = { p: g.p, dias: g.dias, u: g.u, lam, seg: 1 - poissonCdfF(g.u, lam), umb: umbralTecho(g.dias) }; } } }
+    if (g) { const gu1 = g.gu != null ? g.gu : best.gu + (g.p - best.p) * 0.7; if (gu1 > best.gu) { const lam = best.rN * (best.gu / gu1) * (g.dF || g.dias); enPrueba = { p: g.p, dias: g.dias, u: g.u, lam, seg: 1 - poissonCdfF(g.u, lam), umb: umbralTecho(g.dias) }; } } }
   // ¿Se midió algún precio MÁS BAJO que el 💰 (5+ días)? Si no, el 💰 no frena una baja (1a del 24/10, ver F5).
   const abajoMedido = med.some((g) => g.p < best.p * 0.98);
   // Un 🔴 por 30 días sin vender abajo del 💰 no tiene sentido (ahí sí vendió): sólo vale arriba del 💰.
@@ -4649,10 +4675,10 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
           if (p0v < p0 - 10) { const tE = (pc && Math.abs((Number(pc.precio) || 0) - p0v) <= 10 && Number(pc.ts) > 0 && Number(pc.ts) < ahora ? Number(pc.ts) : 0)
             || Math.max(0, ...Object.entries(ph || {}).filter(([k, x]) => Number(k) > 0 && Number(k) < ahora && x && x.accion === 'entra' && Math.abs((Number(x.a) || 0) - p0v) <= 10).map(([k]) => Number(k)));
             if (tE > 0) kDesde = kDia(tE); }
-          let d1 = 0, u1 = 0;
-          for (let i = ks.length - 1; i >= 0; i--) { if (kDesde && ks[i] < kDesde) break; const x = lin[ks[i]]; const px = Number(x.p) || 0; if (!(px > 0) || Math.abs(px - p0) > p0 * 0.02) break; if (!diaConStock(x) || (x.est && x.est !== 'active')) continue; d1++; u1 += Math.max(0, (Number(x.u) || 0) - (Number(x.uR) || 0)); }
+          let d1 = 0, d1F = 0, u1 = 0;
+          for (let i = ks.length - 1; i >= 0; i--) { if (kDesde && ks[i] < kDesde) break; const x = lin[ks[i]]; const px = Number(x.p) || 0; if (!(px > 0) || Math.abs(px - p0) > p0 * 0.02) break; if (!diaConStock(x) || (x.est && x.est !== 'active')) continue; d1++; d1F += franjaDe(ks[i]); u1 += Math.max(0, (Number(x.u) || 0) - (Number(x.uR) || 0)); }
           const gu1 = R8.best.gu + (p0v - R8.best.p) * 0.7;
-          const lam = R8.best.r * (R8.best.gu / gu1) * d1, seg = d1 > 0 ? 1 - poissonCdfF(u1, lam) : 0;
+          const lam = (R8.best.rN || R8.best.r) * (R8.best.gu / gu1) * (d1F || d1), seg = d1 > 0 ? 1 - poissonCdfF(u1, lam) : 0;
           d.f8 = { best: R8.best.p, d1, u1, lam: +lam.toFixed(2), seg: +seg.toFixed(3) };
           if (seg < 0.95) return { regla: 'F8', txt: `${$(p0v)}${p0v !== p0 ? ' (lo que veía el comprador; lista ' + $(p0) + ')' : ''} está arriba del 💰 ${$(R8.best.p)} (el que más plata por día dejó) y no hay 95% de que deje menos: a ${$(p0v)} vendió ${u1} en ${d1} día${d1 === 1 ? '' : 's'} con stock; para dejar la misma plata por día que el 💰 tenía que vender ~${lam.toFixed(1)} (${Math.round(seg * 100)}% seguro de que deja menos). Se queda (💰 buscando el de más ganancia) hasta estar 95% seguro; si deja más, la línea 💰 sube a este precio. Salida SÓLO SUYA: 🔐 !sincerteza con su autorización (se la paso en el chat)` };
         }
@@ -12942,6 +12968,7 @@ async function main() {
   try { SOLO_DATOS = String(((await db.get('cyc/mlconfig')) || {}).soloDatos || 'on') !== 'off'; } catch { SOLO_DATOS = true; }
   if (SOLO_DATOS && CORRIDA_AUTOMATICA) console.log('🤖 Robot en modo SÓLO DATOS: trae información de ML y la guarda. No decide, no sugiere y no toca nada (eso lo hace Claude).');
   try { await cargarParamCompra(db); } catch { /* quedan los números de siempre */ }
+  try { const fm = await db.get('cyc/mlconfig/franjasMes'); if (fm && Array.isArray(fm.c) && fm.c.length === 6) FRANJAS_MES = fm; } catch { /* sin franjas: cada día vale 1 */ }
   // El índice de fichas para el % de reclamos por nombre (`setDevLive`, como la web). Sin él cuenta sólo por id, como antes.
   try { setDevProds((await db.get('cyc/products')) || {}); } catch { /* sigue por id */ }
   // La lista de "no me lo subas, lo estoy liquidando". Si esto falla, NOSUBIR_OK queda en false y
@@ -21733,6 +21760,8 @@ async function main() {
           if (GO) await db.set('cyc/ventaremate', Object.keys(vRem).length ? vRem : null);
         }
       } else { try { vRem = (await db.get('cyc/ventaremate')) || {}; } catch { vRem = {}; } }
+      // 📅 Las franjas del mes, de las mismas ventas (24/10/2026, ver FRANJAS_MES).
+      try { const F = calcFranjasMes(vp); if (F.meses.length >= 3 && F.c.every((x) => x > 0)) { if (GO) await db.set('cyc/mlconfig/franjasMes', F); FRANJAS_MES = F; console.log(`📅 franjas del mes (${F.meses.length} meses): compras ${F.c.join(' / ')} · plata ${F.n.join(' / ')}`); } } catch (eF) { console.log('⚠️ no pude medir las franjas del mes: ' + ((eF && eF.message) || eF)); }
       // Ventas del panel por MLA y día (desde mayo, con neto y remate).
       const ventasPanel = {}; let primerDiaPanel = null; const _ns = prepNetoSolo(vp);
       for (const [dk0, ents] of Object.entries(vp)) {
@@ -47054,24 +47083,18 @@ async function main() {
     // BILLING_PROBE=ventasdiames[:<días>] (24/10/2026, SOLO LEE; él: "puede que haya franjas en el mes que se venda más, porque la gente tiene
     // más plata y cobra"). Compras y neto por DÍA DEL MES, cada día contra el promedio de SU mes (así el crecimiento de mayo a octubre no
     // pesa), promediado por día del mes y por tramos de 5 días. 1,00 = un día normal; 1,20 = se vende 20% más que el promedio de ese mes.
-    if (/^ventasdiames(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
-      const dias = Math.max(60, Math.min(400, Number(String(process.env.BILLING_PROBE).split(':')[1]) || 180));
+    if (/^ventasdiames(:|;|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const GOdm = /;go\s*$/.test(String(process.env.BILLING_PROBE));
+      const dias = Math.max(60, Math.min(400, Number(String(process.env.BILLING_PROBE).replace(/;go\s*$/, '').split(':')[1]) || 400));
+      if (GOdm) { const vp0 = await db.get('cyc/ventaprod').catch(() => null); if (!vp0) { console.log('⚠️ no pude leer las ventas: no guardo nada'); return; }
+        const F = calcFranjasMes(vp0, dias); await db.set('cyc/mlconfig/franjasMes', F); const rl = await db.get('cyc/mlconfig/franjasMes/ts');
+        console.log(`✓ franjas guardadas (${F.meses.join(', ')}) · compras por tramo ${F.c.join(' / ')} · plata ${F.n.join(' / ')} · releído: ${rl === F.ts ? 'ok' : 'NO'}`); return; }
       const vp = await db.get('cyc/ventaprod').catch(() => null); if (!vp) { console.log('⚠️ no pude leer las ventas'); return; }
-      const hoyK = dayKeyFromISO(Date.now()), desdeK = dayKeyFromISO(Date.now() - dias * 864e5);
-      const porDia = {}; const vistos = new Set();
-      for (const [dk, dia] of Object.entries(vp)) { if (!/^\d{4}_\d{2}_\d{2}$/.test(dk) || dk < desdeK || dk >= hoyK) continue; const o = (porDia[dk] = porDia[dk] || { c: 0, n: 0 });
-        for (const [id, v] of Object.entries(dia || {})) { if (!v || v.cancelada) continue; const k = String(v.cuenta || '') + '|' + String(v.numVenta || v.saleId || id); if (!vistos.has(k)) { vistos.add(k); o.c++; } o.n += Number(v.neto) || 0; } }
-      // Sólo meses con 20+ días con datos (un mes cortado deforma su promedio).
-      const porMes = {}; for (const [dk, o] of Object.entries(porDia)) { const m = dk.slice(0, 7); (porMes[m] = porMes[m] || []).push([dk, o]); }
-      const R = Array.from({ length: 32 }, () => ({ c: [], n: [] }));
-      const mesesOk = Object.entries(porMes).filter(([, L]) => L.length >= 20);
-      for (const [, L] of mesesOk) { const mc = L.reduce((a, [, o]) => a + o.c, 0) / L.length, mn = L.reduce((a, [, o]) => a + o.n, 0) / L.length; if (!(mc > 0 && mn > 0)) continue;
-        for (const [dk, o] of L) { const d = Number(dk.slice(8, 10)); R[d].c.push(o.c / mc); R[d].n.push(o.n / mn); } }
-      const prom = (a) => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
-      console.log(`=== 📅 VENTAS POR DÍA DEL MES · ${mesesOk.length} meses enteros (${mesesOk.map(([m]) => m).join(', ')}) · 1,00 = un día normal de su mes ===`);
-      for (let d = 1; d <= 31; d++) { const c = prom(R[d].c), n = prom(R[d].n); if (c == null) continue; console.log(`día ${String(d).padStart(2)} · compras ${c.toFixed(2)} · plata ${n.toFixed(2)} · ${R[d].c.length} meses  ${'█'.repeat(Math.round(20 * (n || 0)))}`); }
-      const tramos = [[1, 5], [6, 10], [11, 15], [16, 20], [21, 25], [26, 31]];
-      console.log('\npor tramos: ' + tramos.map(([a, z]) => { const c = []; const n = []; for (let d = a; d <= z; d++) { c.push(...R[d].c); n.push(...R[d].n); } return `${a}-${z}: compras ${prom(c) == null ? '?' : prom(c).toFixed(2)} · plata ${prom(n) == null ? '?' : prom(n).toFixed(2)}`; }).join(' | '));
+      const F = calcFranjasMes(vp, dias), F2 = calcFranjasMes(vp, dias, true);
+      console.log(`=== 📅 VENTAS POR DÍA DEL MES · ${F.meses.length} meses (${F.meses.join(', ')}) · SIN fechas especiales · 1,00 = un día normal de su mes ===`);
+      for (let d = 1; d <= 31; d++) { if (F.cd[d] == null) continue; console.log(`día ${String(d).padStart(2)} · compras ${F.cd[d].toFixed(2)} · plata ${F.nd[d].toFixed(2)}   (con fechas: ${F2.cd[d] == null ? '?' : F2.cd[d].toFixed(2)} / ${F2.nd[d] == null ? '?' : F2.nd[d].toFixed(2)})  ${'█'.repeat(Math.round(20 * (F.nd[d] || 0)))}`); }
+      console.log('\npor tramos SIN fechas especiales: ' + FRANJA_TRAMOS.map(([a0, z], i) => `${a0}-${z}: compras ${F.c[i]} · plata ${F.n[i]}`).join(' | '));
+      console.log('por tramos CON fechas especiales: ' + FRANJA_TRAMOS.map(([a0, z], i) => `${a0}-${z}: compras ${F2.c[i]} · plata ${F2.n[i]}`).join(' | '));
       return;
     }
     if (/^ventasvistas:/.test(String(process.env.BILLING_PROBE || ''))) {
