@@ -79,6 +79,19 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
 
 ## 1 · PRECIOS (lunes)
 
+### 📈 "2ª suba" = subas de verdad · qué busca el 📈 · `tag:hist` (24/10/2026, v26.57, corrección suya con Casino)
+- **Qué es:** el chip "📈 buscando techo · Nª suba" (y el "×N" de la línea) contaba renglones de `cyc/estrategia`; `techo95` anota
+  "volver a buscar techo" sin tocar el precio y Casino decía "2ª suba" con UNA suba. Ahora `estrategiaDe` cuenta las subas reales de
+  `cyc/claudecambios` (a > de) desde que empezó la racha. La explicación del 📈 dice que busca el 🔴 techo y que si el precio nuevo vende y
+  deja más plata se sigue subiendo. `tag:hist:<MLA>` (sólo lee) lista la historia de estrategias con los cambios de precio.
+- **Qué chequear:** un 📈 con dos subas seguidas dice "2ª suba" · una 🔥 escasez con escalones los cuenta igual · un 📈 puesto con `tag:`
+  sin cambio de precio no muestra número.
+
+### 📅 Franjas: sólo se pinta lo que se aparta · "fecha especial" (24/10/2026, v26.56)
+- **Qué es:** verde si el tramo vende 12%+ más que el mes, rojo si 12%+ menos, lo demás sin color (días normales). "Temporada" pasó a
+  llamarse "fecha especial". En CLAUDE.md y CEREBRO el calendario es un dato para pesar en cada decisión, no una regla de "nunca".
+- **Qué chequear:** que no quede todo el mes pintado · el cartel al pasar el mouse dice el número del tramo.
+
 ### 📅 Franjas del mes y del año (24/10/2026, v26.55, pedido suyo)
 - **Qué es:** `ventasdiames` mide compras y plata por día del mes (cada día contra el promedio de SU mes, sin fechas especiales). La noche lo
   guarda en `cyc/mlconfig/franjasMes` (tramos de 5 días). Las rayas (`rayasPrecioLinea` y `_rayas` de la web) y F8 pesan cada día de prueba
