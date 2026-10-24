@@ -1171,6 +1171,7 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
 - **Qué chequear:** que la completa ya no tenga que corregirlos a mano · si otro aroma pasa a dado de baja, agregarlo a los DOS.
 
 ## 4 · CHOQUES Y FALLAS MUDAS (jueves · junta las viejas 4 y 5)
+- **24/10/2026 · horario para resolver** (él): tarea de las 10:00 (sólo lo urgente antes de las 12:30) y de las 12:30 (todo lo demás). **Dónde vive:** `trig_01XcMnTFRBwdBa5kgH1b2hko` y `trig_011SxsjVECrbY9b8ZkkhdBUT`, en la sesión de compras/decisiones; CLAUDE.md §1. **Qué chequear:** que la de las 10 no traiga decisiones (a)/(b) y que la de las 12:30 no repita lo que ya contestó.
 
 - **LAS 2 DECISIONES DE LA ETAPA 4 DEL 20/10/2026, CERRADAS (v25.45).**
   · **1a · lo privado viaja CIFRADO.** `ml-sync/listasori.json.gz` y `ml-sync/notas/listaweb_iscos.txt` (precios de proveedores)

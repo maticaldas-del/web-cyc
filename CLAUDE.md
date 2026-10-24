@@ -32,6 +32,7 @@
 - **Dudas para él: a `ml-sync/notas/para_mati.md`, no sueltas en el chat** (23/10, *"me pierdo… guardalas y después te pido y
   resolvemos. De mientras andá haciendo"*): se anotan ahí y se sigue con lo que no lo necesita; cuando pida "resolvamos" se le pasa
   la lista entera, numerada. Lo urgente que cuesta plata sigue por `pregunto:URGENTE: …` (CYC Avisos = sólo urgente y recordatorios).
+- **Horario para resolver** (24/10, él: *"12:30 entro a trabajar y puedo hacer de cyc tranquilo"*): **10:00** sólo lo que, si no lo resuelve antes de las 12:30, pierde plata o es súper importante (`trig_01XcMnTFRBwdBa5kgH1b2hko`, sale 9:48); **12:30** todo lo demás junto, con íconos y numerado, para resolver de 12:30 a 16:00 (`trig_011SxsjVECrbY9b8ZkkhdBUT`, sale 12:19). Las dos en este chat, todos los días.
 - **Lo chico y reversible lo elegís vos** y se lo contás (24/09: *"elegí vos qué hacer, excepto que sea una decisión muy
   importante, grande y difícil"*). Se pregunta lo grande: precios que mueven plata fuerte, borrar datos, reglas del negocio,
   algo irreversible, y lo que no tenga respuesta clara.
