@@ -17639,6 +17639,7 @@ async function main() {
         const h = (Date.now() - (Number(c.calcTs) || 0)) / 3600e3;
         if (!(Number(c.calcTs) > 0)) edades.nunca++; else if (h < 24) edades.fresca++; else if (h < 72) edades['1-3d']++; else edades['+3d']++;
         console.log(`  ${id} · ${String(c.nombre).slice(0, 60)} · usd ${c.usd ?? '—'} · cuotasGan ${c.cuotasGan ?? '—'} · pedirU ${c.pedirU ?? '—'} · mismoOk ${c.mismoOk ?? '—'} · margen ${c.margen ?? '—'} · ML $${c.mlPrecio ?? '—'} medido hace ${_edad(c.calcTs)}`);
+        console.log(`      prov ${c.prov || 'nissei'} · vendedores ${c.mlVendedores ?? '—'} · vendidas chat ${c.vendCarga ?? '—'} / robot ${c.mlVendidas ?? '—'} · reseñas ${c.resCarga ?? '—'} · fotos ${/^https/.test(c.foto || '') ? 'PY✓' : 'PY✗'} ${/^https/.test(c.mlFoto || '') ? 'ML✓' : 'ML✗'} · revClaude ${c.revClaude ? c.revClaude.v : '—'} · noML ${c.noML ? 'SÍ' : 'no'} · sinComp ${c.sinComp ? 'sí' : 'no'} · días ${c.ts ? Math.round((Date.now() - c.ts) / 864e5) : '—'} · pedidoEn ${c.pedidoEn || '—'}`);
       }
       console.log(`\n${conCuo} con cuotasGan · ${conU} con unidades en el pedido`);
       console.log(`Edad de la medición de ML: ${edades.fresca} de menos de 24 h · ${edades['1-3d']} de 1-3 días · ${edades['+3d']} de más de 3 días · ${edades.nunca} nunca medidos`);

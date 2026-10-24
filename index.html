@@ -2959,7 +2959,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.31';
+const APP_VERSION='26.32';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2972,6 +2972,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.32',f:'24/10',h:'02:20',c:[{n:2,t:'🇵🇾 Productos nuevos: 5 o más reseñas en ML también cuentan como "se vende" (vale como las 100 vendidas). Lo carga el chat de compras.'}]},
   {v:'26.31',f:'24/10',h:'02:05',c:[{n:1,t:'🇵🇾 La carpeta de "1 solo vendedor" dice la regla: entran con 100+ vendidas en ML; los de ahí vendieron menos o falta que el chat cargue el dato.'}]},
   {v:'26.30',f:'24/10',h:'01:55',c:[{n:3,t:'🇵🇾 Paraguay → Nuevos → Revisados: carpeta 🌟 Sin competencia en ML (catálogos que nadie tiene en stock). Cada uno dice a cuánto habría que venderlo para dejar 35% y tiene un botón ➕ Lo quiero: pasa a Para probar, el robot lo mide exacto y Claude confirma las fotos antes de que se pueda pedir. Primero los rubros que ya vendemos.'}]},
   {v:'26.29',f:'24/10',h:'01:30',c:[{n:3,t:'🇵🇾 Productos nuevos: con UN solo vendedor en ML ahora entran si ese producto vendió 100 o más (lo carga el chat de compras). Y los que tienen catálogo en ML pero nadie tiene stock entran como 🌟 sin competencia, medidos contra el precio que el chat ve en ML. Los dos con la vara de 35%.'},{n:2,t:'🤖 El robot ya no da "nadie lo vende" cuando ML agrupa los colores en un catálogo padre: mira el de cada color.'}]},
@@ -15679,16 +15680,19 @@ const CAND_MIN_VENT=100; // 03/10/2026: "100 unidades mínimo vendidas" · DESDE
 // (regla del 19/10). Lo de mismo producto confirmado (✅ / fotos) sigue igual. Misma regla en sync.mjs.
 const CAND_MIN_VENDEDORES=2;
 // CON 1 SOLO VENDEDOR ENTRA SI VENDIÓ 100+ (24/10/2026, eligió la 1a). Misma regla que `vendOk` de sync.mjs.
-function _vendOk(nv,vend){nv=Number(nv)||0;return nv>=CAND_MIN_VENDEDORES||(nv===1&&vend!=null&&isFinite(vend)&&Number(vend)>=CAND_MIN_VENTAS);}
+function _vendOk(nv,vend,res){nv=Number(nv)||0;return nv>=CAND_MIN_VENDEDORES||(nv===1&&((vend!=null&&isFinite(vend)&&Number(vend)>=CAND_MIN_VENTAS)||_resOk(res)));}
 // 🌟 SIN COMPETENCIA (24/10/2026, eligió la 2a): catálogo sin vendedores medido contra el precio que vio el chat en ML (`sinComp`): entra.
-function candVendOk(c){return !!(c&&c.sinComp)||_vendOk(c&&c.mlVendedores,candVentasDe(c));}
+function candVendOk(c){return !!(c&&c.sinComp)||_vendOk(c&&c.mlVendedores,candVentasDe(c),c&&c.resCarga);}
 // LAS 100 VENTAS VUELVEN, AL FINAL (21/10/2026, él: "para estar seguros de la compra quiero agregar también el filtro de las 100 ventas.
 // pero que se haga al final" y "las que no tienen info que no queden afuera, que queden afuera sólo cuando se carguen las ventas").
 // Sin el dato no frena; cargado y abajo de 100, afuera. Las ventas las mira el chat de compras sólo de lo que pasó todo (`faltaventas`).
 // Misma regla en el robot (`pocasVentas`).
 const CAND_MIN_VENTAS=100;
-function pocasVentasN(v){return v!=null&&isFinite(v)&&Number(v)<CAND_MIN_VENTAS;}
-function candPocasVentas(c){return pocasVentasN(candVentasDe(c));}
+// 5+ RESEÑAS TAMBIÉN DICEN QUE SE VENDE (24/10/2026, él con el Huawei X1 Pro: 55 reseñas y ML no muestra vendidas). Misma regla que sync.mjs.
+const CAND_MIN_RESENAS=5;
+function _resOk(r){return r!=null&&isFinite(r)&&Number(r)>=CAND_MIN_RESENAS;}
+function pocasVentasN(v,res){return v!=null&&isFinite(v)&&Number(v)<CAND_MIN_VENTAS&&!_resOk(res);}
+function candPocasVentas(c){return pocasVentasN(candVentasDe(c),c&&c.resCarga);}
 // ── LOS TRES NÚMEROS DEL PEDIDO LOS ELIGE ÉL, Y VIVEN EN LA BASE (19/09/2026) ────────
 // Pedido suyo: *"tope del pedido (…) poder elegir tope de unidades por producto"*.
 // ESTO DA VUELTA SU DECISIÓN DEL 18/09 —*"sin tope solo una barra que marque el total del pedido,
@@ -15753,7 +15757,7 @@ function candPuedePedir(c){
   {const nv=Number(c.mlVendedores);
   if(!candVendOk(c))return{ok:false,motivo:nv===1?(candVentasDe(c)==null?'en ML lo vende 1 solo vendedor: entra si vendió 100+ (falta que el chat de compras cargue las vendidas)':`en ML lo vende 1 solo vendedor y vendió ${candVentasDe(c)}: menos de ${CAND_MIN_VENTAS}`):'no está medido contra un catálogo de ML con vendedores'};}
   if(!candCatChequeado(c))return{ok:false,motivo:'falta confirmar que el producto de ML es el mismo (abrí las dos fotos y tocá ✅ Es el mismo producto)'};
-  if(candPocasVentas(c))return{ok:false,motivo:`en ML vendió ${candVentasDe(c)}: menos de ${CAND_MIN_VENTAS}`};
+  if(candPocasVentas(c))return{ok:false,motivo:`en ML vendió ${candVentasDe(c)}${c.resCarga!=null?' y tiene '+c.resCarga+' reseñas':''}: menos de ${CAND_MIN_VENTAS} vendidas y de ${CAND_MIN_RESENAS} reseñas`};
   if(_bajo)return{ok:false,bajoPiso:true,motivo:_bajo};
   return{ok:true,motivo:''};
 }
@@ -17528,7 +17532,7 @@ function candidatosHTML(){
         <div style="flex:1;min-width:0">
           <div class="cand-nom" style="font-size:.8rem;font-weight:600;line-height:1.3">${c.nombre}</div>
           <div class="cand-cel" style="font-size:.66rem;color:var(--muted);margin-top:2px">${pesos?fmt(pesos):usd>0?fmtUS2(puesto):'sin precio'}${(()=>{const _v=candVentasDe(c);return _v!=null?` · ${_v>=1000?'+1000':_v} vend.`:'';})()}${tieneCuenta&&_loc!=null?` · ${perfLocalHTML(_loc)}`:''}</div>
-          <div class="cand-sub" style="font-size:.68rem;color:var(--muted);margin-top:3px">${c.cod?`🔖 ${c.cod} · `:''}${usd>0?`${fmtUS2(usd)} → <b style="color:var(--text)">${fmtUS2(puesto)}</b> puesto${pesos?` · ${fmt(pesos)}`:''}`:'<span style="color:var(--red)">sin precio</span>'}${(()=>{const _v=candVentasDe(c);const _nv=Number(c.mlVendedores);return (_v!=null?` · 🛒 ${_v>=1000?'+1000':_v} vendidas`:'')+` · <b style="color:${_nv>=CAND_MIN_VENDEDORES?'var(--green)':'var(--amber)'}">🏪 ${_nv>0?_nv+(_nv===1?' vendedor':' vend.'):'sin vendedores'}</b>`;})()}</div>
+          <div class="cand-sub" style="font-size:.68rem;color:var(--muted);margin-top:3px">${c.cod?`🔖 ${c.cod} · `:''}${usd>0?`${fmtUS2(usd)} → <b style="color:var(--text)">${fmtUS2(puesto)}</b> puesto${pesos?` · ${fmt(pesos)}`:''}`:'<span style="color:var(--red)">sin precio</span>'}${(()=>{const _v=candVentasDe(c);const _nv=Number(c.mlVendedores);return (_v!=null?` · 🛒 ${_v>=1000?'+1000':_v} vendidas`:'')+(c.resCarga!=null?` · ⭐ ${c.resCarga} reseñas`:'')+` · <b style="color:${_nv>=CAND_MIN_VENDEDORES?'var(--green)':'var(--amber)'}">🏪 ${_nv>0?_nv+(_nv===1?' vendedor':' vend.'):'sin vendedores'}</b>`;})()}</div>
         </div>
         <div class="cand-der" style="display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap;flex:0 1 auto">
           ${tieneCuenta&&_loc!=null?`<div class="cand-loc">${perfLocalHTML(_loc)}${perfNoLocalBtn('c',c.id,false)}</div>`:tieneCuenta&&candEsPerf(c)&&c.noLocal?`<div class="cand-loc" style="font-size:.6rem;color:var(--muted)">🏪 no da en el local${perfNoLocalBtn('c',c.id,true)}</div>`:''}
@@ -17538,7 +17542,7 @@ function candidatosHTML(){
         </div>
       </summary>
       <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
-      <div class="cand-solocel" style="font-size:.72rem;color:var(--muted);line-height:1.6">${c.cod?`🔖 ${c.cod} · `:''}${usd>0?`${fmtUS2(usd)} → <b style="color:var(--text)">${fmtUS2(puesto)}</b> puesto${pesos?` · ${fmt(pesos)}`:''}`:'sin precio'}${(()=>{const _v=candVentasDe(c);const _nv=Number(c.mlVendedores);return (_v!=null?` · 🛒 ${_v>=1000?'+1000':_v} vendidas`:'')+` · 🏪 ${_nv>0?_nv+(_nv===1?' vendedor':' vend.'):'sin vendedores'}`;})()}
+      <div class="cand-solocel" style="font-size:.72rem;color:var(--muted);line-height:1.6">${c.cod?`🔖 ${c.cod} · `:''}${usd>0?`${fmtUS2(usd)} → <b style="color:var(--text)">${fmtUS2(puesto)}</b> puesto${pesos?` · ${fmt(pesos)}`:''}`:'sin precio'}${(()=>{const _v=candVentasDe(c);const _nv=Number(c.mlVendedores);return (_v!=null?` · 🛒 ${_v>=1000?'+1000':_v} vendidas`:'')+(c.resCarga!=null?` · ⭐ ${c.resCarga} reseñas`:'')+` · 🏪 ${_nv>0?_nv+(_nv===1?' vendedor':' vend.'):'sin vendedores'}`;})()}
         ${tieneCuenta&&_loc!=null?`<div style="margin-top:4px">${perfLocalHTML(_loc)}${perfNoLocalBtn('c',c.id,false)}</div>`:tieneCuenta&&candEsPerf(c)&&c.noLocal?`<div style="margin-top:4px">🏪 no da en el local${perfNoLocalBtn('c',c.id,true)}</div>`:''}</div>
       <div onclick="event.stopPropagation()"><button class="btn" style="font-size:.66rem;padding:3px 10px" onclick="event.preventDefault();event.stopPropagation();candNoML('${c.id}',${c.noML?'false':'true'})" title="${c.noML?'Volver a considerarlo para vender en ML':'Marca que ML no deja vender: deja de contarlo para ML y queda sólo para la perfumería del local'}">${c.noML?'↩︎ volver a ML':'🛒✕ no se puede ML'}</button></div>
       <div style="display:flex;gap:10px;flex-wrap:wrap">${fotoBox(RP.fotoPY,'🇵🇾 Paraguay')}${fotoBox(RP.fotoML,'🏷️ ML')}</div>
@@ -20784,10 +20788,10 @@ function _listaOkVale(e){return !!(e&&e.ok&&(e.miFijo?String(e.miFijo).toUpperCa
 // foto de ML, así que con 25%+ medido y 2+ vendedores alcanza para cargarlo (la tarjeta del local dice "sin confirmar: mirá bien la
 // foto"). Lo marcado otro producto (`noEs`), fuera de la web o fuera de Full sigue sin poder pedirse (lo frena `_listaMed25`).
 // `k` = la lista; sin `k` queda la regla de siempre.
-function _listaDa(e,k){return _listaMed25(e)&&(_vendOk(e.mv,e.vend)||!!e.svm)&&(_listaOkVale(e)||(k!=null&&_listaEsBsas(k)))&&!pocasVentasN(e.vend);}
-function _listaRevisar(e,k){return _listaMed25(e)&&!_listaDa(e,k)&&!pocasVentasN(e.vend);}
+function _listaDa(e,k){return _listaMed25(e)&&(_vendOk(e.mv,e.vend,e.res)||!!e.svm)&&(_listaOkVale(e)||(k!=null&&_listaEsBsas(k)))&&!pocasVentasN(e.vend,e.res);}
+function _listaRevisar(e,k){return _listaMed25(e)&&!_listaDa(e,k)&&!pocasVentasN(e.vend,e.res);}
 // pasó todo lo demás pero las vendidas cargadas no llegan a 100 (21/10/2026)
-function _listaPocasV(e){return _listaMed25(e)&&pocasVentasN(e.vend);}
+function _listaPocasV(e){return _listaMed25(e)&&pocasVentasN(e.vend,e.res);}
 function _listaArmado(k){return Object.entries(((state.listaPed||{})[k])||{}).map(([cod,u])=>({cod,u:parseInt(u)||0})).filter(x=>x.u>0);}
 function _listaViajando(k){const s=new Set();Object.values(state.comprasLista||{}).forEach(c=>{if(c&&c.prov===k&&c.estado==='camino')(c.items||[]).forEach(it=>{if(!it.prodId)s.add(String(it.cod));});});return s;}
 // ── LO YA PROBADO DE UNA LISTA SE PIDE COMO PARAGUAY (20/10/2026, decisión 1a) ───────────────────────────────────────────
@@ -21485,7 +21489,7 @@ async function renderListas(){
   for(const f of resto){const e=f[1],m=e.m!=null&&isFinite(e.m)?Number(e.m):null;
     if(e.fz)_cg.regla.push(f);else if(e.sc)_cg.sinCat.push(f);else if(e.sv)_cg.nadie.push(f);else if(m==null)_cg.sinMed.push(f);
     else if(!_listaCostoVigente(e))_cg.cNuevo.push(f);else if(_listaNoEsVale(e))_cg.otro.push(f);
-    else if(e.mv!=null&&!_vendOk(e.mv,e.vend))_cg.unV.push(f);else if(m>=listaVaraDe(e))_cg.sinFoto.push(f);
+    else if(e.mv!=null&&!_vendOk(e.mv,e.vend,e.res))_cg.unV.push(f);else if(m>=listaVaraDe(e))_cg.sinFoto.push(f);
     else if(m<0)_cg.neg.push(f);else if(m<15)_cg.bajo.push(f);else if(m>=CAND_PISO_PCT)_cg.guard.push(f);else _cg.casi.push(f);}
   const _sub=(t,arr,col,abierto)=>arr.length?`<details${abierto?' open':''} style="margin-top:8px;border:1px solid var(--border);border-radius:8px;padding:7px 10px"><summary style="cursor:pointer;font-size:.74rem;font-weight:700${col?';color:'+col:''}">${t} (${arr.length})</summary><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${arr.slice(0,150).map(f=>fila(f,false)).join('')}${arr.length>150?`<div style="font-size:.62rem;color:var(--muted)">muestro 150 · el resto con el buscador</div>`:''}</div></details>`:'';
   const _carp=(t,n,col,body,extra)=>n?`<details style="margin-top:14px;background:var(--surface);border:1px solid ${col||'var(--border)'};border-radius:var(--r);padding:10px 12px"><summary style="cursor:pointer;font-size:.82rem;font-weight:700">${t} (${n})${extra||''}</summary>${body}</details>`:'';
