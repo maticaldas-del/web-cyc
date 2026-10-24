@@ -1,1 +1,1 @@
-p1779905818281=75360|Ferrari Negro: el precio que más plata por día dejó (30/09 a 06/10). La mediana de 60 días ($68.510) arrastra ventas viejas baratas de cuando se agotaba
+# precio de venta a mano para el máximo de compra (<prodId>=<precio>|<motivo>). Desde el 24/10/2026 casi no hace falta: manda la última venta (regla suya del 23/10). El Ferrari Negro (75360) se sacó: su última venta es $79.130.
