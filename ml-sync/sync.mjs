@@ -17523,6 +17523,9 @@ async function main() {
         for (const [k, n] of Object.entries(f).sort((a, b) => b[1] - a[1])) console.log(`  ${n} · ${k}`);
         if (sinConf.length) { console.log('\nSin confirmar el mismo producto (2+ vendedores):');
           for (const c of sinConf.sort((a, b) => b.margen - a.margen)) console.log(`  ${Number(c.margen).toFixed(0)}% · ${String(c.nombre).slice(0, 70)} · ${candCatDe(c)} · ${c.revClaude ? c.revClaude.v + (c.revClaude.nota ? ' (' + String(c.revClaude.nota).slice(0, 60) + ')' : '') : 'sin mirar'}`); }
+        { const uno = med.filter((c) => Number(c.margen) >= candVaraDe(c) && Number(c.mlVendedores) === 1 && !c.sinComp);
+          console.log(`\nCon 1 solo vendedor (${uno.length}) · de dónde sale la venta (chat = la cargó el chat mirando ML · robot = sold_quantity):`);
+          for (const c of uno.sort((a, b) => b.margen - a.margen)) console.log(`  ${Math.round(c.margen)}% · ${String(c.nombre).slice(0, 55)} · chat ${c.vendCarga ?? '—'} · robot ${c.mlVendidas ?? '—'} · ${candCatDe(c)}`); }
         console.log('\nSe pueden pedir:'); for (const c of ok) console.log(`  ${Number(c.margen).toFixed(0)}% · ${String(c.nombre).slice(0, 70)}${c.pedirU ? ' · en el pedido ' + c.pedirU : ''}`); }
       return;
     }
