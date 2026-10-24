@@ -772,6 +772,11 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 
 ## 3 · MERCADERÍA (miércoles)
 
+### `ofi35` · lo de la oficina contra el 35% (24/10/2026, él: "mercadería en mi oficina que no da para el 35%… me la podés marcar?")
+- **Qué es:** sólo lee. Por ficha con unidades en la oficina: la mejor publicación viva (Clásica) y su % en el peor caso al precio de
+  hoy (la cuenta de `planilla`), y la plata parada a costo. Primero lo que no llega al 35%; aparte lo sin publicación y lo sin %.
+- **Qué chequear:** que el % coincida con el de la tarjeta de la web para 2-3 productos · que lo "sin publicación" no tenga una viva.
+
 ### Para probar mide cada 2 horas, 500 consultas por vuelta (24/10/2026, control de la tarde de Elegancia)
 - **Qué es:** `ml-candidatos` corría 1 vez por día (+ la noche) con 250 consultas: ~60 medidos por vuelta y 2.647 en fila (los 993 de
   Elegancia) = ~3 semanas. Ahora `cron 7 */2` y `candidatos:max=500:go` (~120 por vuelta), con `concurrency` para que dos no se pisen.
