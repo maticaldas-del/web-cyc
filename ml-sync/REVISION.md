@@ -1440,6 +1440,17 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
     decisión de compra, no código. 11 (dinero que rinde en MP) lo mira él en la app.
 
 ## 7 · DISEÑO (domingo)
+
+### Mes y año se miden como el día · globo de "Todos" por franja (24/10/2026, v26.50, pedidos suyos)
+- **Qué es:** (1) la tarjeta de Ventas del mes/año reparte lo ganado en TODOS los días del período (`_homePerTot().diasPer`): puntaje,
+  color y escalerita arrancan bajos y suben con cada venta, como el día. El año 2026 se mide desde el primer día con ventas guardadas
+  (mayo); 2027 entero. La escalerita dice cuánto falta en total y por día en los que quedan. En el año en meses, el mes en curso se
+  pinta igual (no corta la racha mientras no llega). (2) La línea de "Todos los productos" tiene un globo por franja (como la de un
+  producto): Ventas = normales / Premium / envío gratis / liquidadas + visitas; cada franja dice sólo lo suyo.
+- **Dónde vive:** `index.html` · `_homePerTot`, `renderHomeHoy` (`_nP`), `_diaEscaleraHTML(gan,dias,quedan,esc)`, `_anioMeses`,
+  `_homeAnioHTML` · `lineaTodoPintar` (capa de globos por carril).
+- **Qué chequear:** el 1º del mes la tarjeta del mes no dice "Bajo" con un día bueno sin explicar (dice cuánto falta) · el último
+  día del mes el puntaje coincide con el de antes (días pasados = días del mes) · ningún globo de "Todos" pasa de ~10 renglones.
 - **24/10/2026 · v26.46 · flechas en la línea y con el color de su estrategia** (él: *"quiero que la flechita esté en el punto de la línea donde se subió o bajó"* y *"muchas aparecen en gris: quiero que todas tengan color/estrategia/nombre, a partir de ahora sí o sí"*). La ▲ va justo arriba del punto del precio de ese día y la ▼ justo abajo; el color sale del `tag` del cambio (`claudecambios`), si no de la estrategia de ese día (la de la línea, `_estD`), y una gemela es 💳. El globito dice el nombre. Gris sólo sin nada anotado (viejo o a mano en ML). Probado con Playwright. **Qué chequear:** que no quede ninguna gris de cambios nuevos.
 - **24/10/2026 · v26.44 · franjas de la línea de tiempo grandes y que se cierran** (él: *"se ven 4 tarjetas, me gustaría que se vieran dos, así están más grandes… total después scroleo hacia abajo, y que se puedan minimizar al clickear en la tarjeta"*). Parada, cada franja grande mide media pantalla (`_lnAlto`); girada sigue entrando entera (`_lineaFac`). Tocar el título (▾/▸) la cierra/abre (`lineaBanda`, `localStorage cycLineaCerr`); lo de una franja cerrada se recorta (`_lnClip`). Vale para la de un producto y la de Todos. Probado con Playwright (1300×900): 5 franjas, cerrar Ventas la deja en un renglón y la siguiente sube. **Qué chequear:** en el teléfono girado, que tocar el título funcione; que nada de una franja cerrada se vea por encima de la de abajo.
 

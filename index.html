@@ -2960,7 +2960,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.49';
+const APP_VERSION='26.50';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2973,6 +2973,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.50',f:'24/10',h:'14:50',c:[{n:2,t:'🏷️ Ventas del mes y del año: el puntaje, el color y la barra se miden como el día. Lo ganado se reparte en TODOS los días del mes (o del año), no sólo en los que ya pasaron: arranca bajo y sube con cada venta. El año 2026 se mide desde mayo (antes no hay ventas guardadas); desde 2027, el año entero. Abajo dice cuánto falta en total y por día en los que quedan.'},{n:1,t:'📈 Línea de tiempo de todos los productos: al pasar el mouse cada franja dice sólo lo suyo. En Ventas: normales, Premium, envío gratis y liquidadas (sacando stock), más las visitas. Ya no sale el globo gigante.'}]},
   {v:'26.49',f:'24/10',h:'14:35',c:[{n:2,t:'📦 Línea de tiempo: la franja "Remate" pasa a llamarse "Sacando stock" y, desde esta noche, cuenta lo de hoy: sobra, liquidando, remate (naranja) y la escalera de bajas (violeta). Antes sólo contaba las marcas del robot viejo, apagado desde el 09/10.'}]},
   {v:'26.48',f:'24/10',h:'14:34',c:[{n:2,t:'💰 El "piso" ahora se llama "más plata": es el precio que más dejó de los que se probaron. Si nunca se probó uno más barato, ya no frena una baja en escalera (siempre con 35% o más).'}]},
   {v:'26.47',f:'24/10',h:'14:34',c:[{n:2,t:'📈 Línea de tiempo: la búsqueda de techo dice cuánto lleva ("techo a $X: 63% seguro · decide con 88%"). Con pocos días pide 95%; desde el día 7 baja hasta 70% el día 21, así no queda un mes buscando. El 🔴 dice con cuánto se decidió.'}]},
@@ -8478,23 +8479,24 @@ function _hcalTotHTML(q,bruto,gan,dias){
 }
 function _anioMeses(Y){
   const hoy=new Date(),t0=_vpPrimerDiaTs(),out=[];
-  for(let M=0;M<12;M++){const fin=new Date(Y,M+1,0).getDate();let gan=0,ventas=0,dias=0,bruto=0;
-    for(let d=1;d<=fin;d++){const dt=new Date(Y,M,d,12);if(dt.getTime()>hoy.getTime()&&dateToKey(dt)!==dateToKey(hoy))break;if(dt.getTime()<t0-D864)continue;
+  for(let M=0;M<12;M++){const fin=new Date(Y,M+1,0).getDate();let gan=0,ventas=0,dias=0,bruto=0,diasPer=0,corto=false;
+    for(let d=1;d<=fin;d++){const dt=new Date(Y,M,d,12);if(dt.getTime()<t0-D864)continue;diasPer++;if(corto||(dt.getTime()>hoy.getTime()&&dateToKey(dt)!==dateToKey(hoy))){corto=true;continue;}
       const t=_homeDiaTot(dateToKey(dt));dias++;gan+=t.gan||0;ventas+=t.ventas||0;bruto+=t.bruto||0;}
-    out.push({M,gan,ventas,dias,bruto,prom:dias?gan/dias:0,curso:Y===hoy.getFullYear()&&M===hoy.getMonth()});}
+    // El mes en curso se colorea con lo ganado repartido en TODOS sus días (24/10/2026, igual que la tarjeta del mes).
+    out.push({M,gan,ventas,dias,bruto,prom:dias?gan/Math.max(dias,diasPer):0,curso:Y===hoy.getFullYear()&&M===hoy.getMonth()});}
   return out;
 }
 function _homeAnioHTML(hf,chip){
   const Y=hf.getFullYear(),A=_anioMeses(Y),con=A.filter(m=>m.dias>0&&m.ventas>0);
   const mejor=con.reduce((b,m)=>!b||m.prom>b.prom?m:b,null);
   // Racha de meses cumplidos (promedio por día de PUNT_DIA_7 o más) que termina en el último mes con datos, y la más larga del año.
-  let cur=0,rec=0,recFin=-1;for(const m of A){if(!m.dias)continue;if(m.prom>=PUNT_DIA_7){cur++;if(cur>rec){rec=cur;recFin=m.M;}}else cur=0;}
+  let cur=0,rec=0,recFin=-1;for(const m of A){if(!m.dias)continue;if(m.curso&&m.prom<PUNT_DIA_7)continue;if(m.prom>=PUNT_DIA_7){cur++;if(cur>rec){rec=cur;recFin=m.M;}}else cur=0;}
   const MC=_MESES_L.map(x=>x.slice(0,3));
   let c='';
   if(mejor&&mejor.prom>0)c+=chip(`🏆 mejor mes: ${_MESES_L[mejor.M]} · ${fmt(Math.round(mejor.prom))} por día`,'var(--lv-exc)','El mes que más ganancia dejó por día. Tocá su cuadrito para verlo.');
   if(cur>=2||rec>=2)c+=chip(`🔥 ${cur>=2?`racha: ${cur} meses`:'sin racha ahora'}${rec>=2&&rec>cur?` · récord ${rec} (${MC[recFin-rec+1]} a ${MC[recFin]})`:''}`,'var(--lv-justo)','Meses seguidos con un promedio de '+fmt(PUNT_DIA_7)+' o más de ganancia por día (el 7 del puntaje).');
   let enRacha=new Set();
-  {let n=0;for(let i=A.length-1;i>=0;i--){const m=A[i];if(!m.dias)continue;if(m.prom>=PUNT_DIA_7){enRacha.add(i);n++;}else break;}if(n<2)enRacha=new Set();}
+  {let n=0;for(let i=A.length-1;i>=0;i--){const m=A[i];if(!m.dias||(m.curso&&m.prom<PUNT_DIA_7))continue;if(m.prom>=PUNT_DIA_7){enRacha.add(i);n++;}else break;}if(n<2)enRacha=new Set();}
   let cells='';
   for(const m of A){
     if(!m.dias||!m.ventas){cells+=`<span class="hcal-d vacio">${MC[m.M]}</span>`;continue;}
@@ -8507,7 +8509,7 @@ function _homeAnioHTML(hf,chip){
   const _bT=A.reduce((a,m)=>a+(m.bruto||0),0);
   const tot=_dT?_hcalTotHTML('año',_bT,_gT,_dT):'';
   return `${c?`<div class="hoy-chips">${c}</div>`:''}<div class="hoy-cal">${tot}<div class="hcal-g" style="grid-template-columns:repeat(4,minmax(0,1fr))">${cells}</div><div class="hcal-ley">${ley} <span>por día</span></div>
-    <div style="font-size:.62rem;color:var(--muted);margin-top:4px">Cada cuadrito es un mes, del color de su ganancia promedio por día (los mismos colores que los días). Abajo, lo que dejó en total. Tocá uno y abre ese mes.</div></div>`;
+    <div style="font-size:.62rem;color:var(--muted);margin-top:4px">Cada cuadrito es un mes, del color de su ganancia promedio por día (los mismos colores que los días; el mes en curso, con lo ganado repartido en todos sus días: arranca bajo y sube con cada venta). Abajo, lo que dejó en total. Tocá uno y abre ese mes.</div></div>`;
 }
 function homeCalIr(k){_vpIrDia=String(k).replace(/_/g,'-');vpLimpiarFiltros();goPage('ventaprod');}
 // El número completo, sin "k" (22/10/2026, él: "no pongas k, poné el número completo").
@@ -10789,7 +10791,7 @@ function vivaDia(h){
 // La escalerita del día: un tramo por nivel (prendido el que ya se pasó) y cuánto falta para el siguiente. Con más de un día
 // (Mes/Año) el nivel sale del promedio por día, igual que el color de la tarjeta (vivaDia), y lo que falta se dice por día.
 const _escPrev={};
-function _diaEscaleraHTML(gan,dias){
+function _diaEscaleraHTML(gan,dias,quedan,esc){
   const n=Math.max(1,Number(dias)||1),g=(Number(gan)||0)/n;
   const niv=VIVA_DIA_NIV.slice(1);
   let sig=null;for(const x of niv)if(g<x[1]){sig=x;break;}
@@ -10804,8 +10806,12 @@ function _diaEscaleraHTML(gan,dias){
   let t=0;const segs=niv.map((x,i)=>{const w0=Math.round((prev[i]||0)*1000)/10,w=Math.round(fr[i]*1000)/10,dur=Math.max(.4,Math.abs(fr[i]-(prev[i]||0))*.9),del=t;t+=w!==w0?dur:0;
     return `<span title="${VIVA_DIA_NOM[x[0]]} desde ${fmt(x[1])}${n>1?' por día':''}" style="flex:1;height:8px;border-radius:99px;position:relative;overflow:hidden"><span style="position:absolute;inset:0;background:${x[2]};opacity:.25"></span><span class="esc-fill" style="--w0:${w0}%;--w:${w}%;width:${w}%;animation-duration:${dur.toFixed(2)}s;animation-delay:${del.toFixed(2)}s;background:${fr[i]>=1?x[2]:colAct}"></span></span>`;}).join('');
   const marcas=niv.map(x=>`<span style="flex:1;min-width:0;overflow:hidden;white-space:nowrap">${k1(x)}</span>`).join('');
-  const falta=sig?`Faltan <b style="color:${sig[2]}">${fmt(sig[1]-g)}</b>${n>1?' por día':''} para ${VIVA_DIA_NOM[sig[0]]}${n>1?` <span style="color:var(--muted)">(promedio ${fmt(g)} por día)</span>`:''}`
-    :`${VIVA_DIA_NOM.joya}: arriba de todo${n>1?' (promedio por día)':''}`;
+  // Mes y año (24/10/2026): `dias` son los del período entero, así que lo que falta se dice en total y repartido en los que quedan.
+  const q=Math.max(0,Number(quedan)||0),per=esc==='anio'?'el año':'el mes';
+  const falta=sig?(n>1?(q>0?`Faltan <b style="color:${sig[2]}">${fmt(Math.round(sig[1]*n-(Number(gan)||0)))}</b> en ${per} para ${VIVA_DIA_NOM[sig[0]]} <span style="color:var(--muted)">(${fmt(Math.round((sig[1]*n-(Number(gan)||0))/q))} por día en los ${q} día${q===1?'':'s'} que quedan)</span>`
+        :`Faltaron <b style="color:${sig[2]}">${fmt(Math.round(sig[1]*n-(Number(gan)||0)))}</b> para ${VIVA_DIA_NOM[sig[0]]}`)
+      :`Faltan <b style="color:${sig[2]}">${fmt(sig[1]-g)}</b> para ${VIVA_DIA_NOM[sig[0]]}`)
+    :`${VIVA_DIA_NOM.joya}: arriba de todo`;
   return `<div class="hoy-esc" style="margin-top:14px"><div style="display:flex;gap:3px">${segs}</div>
     <div style="display:flex;gap:3px;font-size:.6rem;color:var(--muted);margin-top:3px;font-family:'DM Mono',monospace">${marcas}</div>
     <div style="font-size:.76rem;margin-top:6px">${falta}</div></div>`;
@@ -11660,7 +11666,7 @@ function lineaPintar(prodId){
   const _semK={};{const S=_lineaSemanas(ks,_ganK);for(const [w,o] of Object.entries(S)){const t=`📅 semana del lunes ${w.slice(8,10)}/${w.slice(5,7)}: ${fmt(Math.round(o.t))}${o.n<7?` (${o.n} de 7 días en el gráfico)`:''}`;o.ks.forEach(kk=>{_semK[kk]=t;});}}
   ks.forEach((k,i)=>{const d=dias[k];const es=evK[k]||[];
     const _h=`${_lineaFmtDia(k)}${d&&d.hoy?' · HOY (incompleto: hasta ahora)':''}`;
-    const _vent=d&&d.u!=null&&d.u>0?`🛒 vendió ${d.u} u.${d.uP||d.uG?` (${d.uP?d.uP+' en Premium · ':''}${d.uG?d.uG+' con envío gratis · ':''}${d.u-(d.uP||0)-(d.uG||0)-(d.uR||0)} en Clásica)`:''}${d.uR?` (${d.uR} en remate)`:''}`:(k>=_gd0||(d&&d.u===0)?'🛒 no vendió':'🛒 ventas: sin dato');
+    const _vent=d&&d.u!=null&&d.u>0?[`🛒 vendió ${d.u} u.`,`🟩 normales: ${d.u-(d.uP||0)-(d.uG||0)-(d.uR||0)}`,d.uP?`🟧 Premium: ${d.uP}`:'',d.uG?`🟦 envío gratis: ${d.uG}`:'',d.uR?`📦 liquidadas (sacando stock): ${d.uR}`:''].filter(Boolean).join('\n'):(k>=_gd0||(d&&d.u===0)?'🛒 no vendió':'🛒 ventas: sin dato');
     const _pctU=!gd[k]&&pdUlt[k]?`💰 % ganancia de la última venta (${_lineaFmtDia(pdUlt[k][1])}): ${pdUlt[k][0].toFixed(0)}%`:'';
     const _g7=g7[k]!=null?`💵 ganancia promedio de los últimos 7 días: ${fmt(Math.round(g7[k]))} por día`:'💵 promedio de 7 días: todavía no hay 7 días con dato';
     // Sin costo cargado no hay % (deja $0, regla del 26/09) · con neto estimado va "≈", como el renglón de Ventas (21/10/2026 · etapa 5).
@@ -11908,21 +11914,29 @@ function lineaTodoPintar(){
   svg+=`<text x="${W-2}" y="${L.vent[0]+9}" font-size="10" text-anchor="end" fill="var(--muted)">${maxU} u.</text>`+(hayVis?`<text x="${W-2}" y="${L.vent[0]+20}" font-size="10" text-anchor="end" fill="#60a5fa">${maxV} visitas</text>`:'');
   // globito por día · con la ganancia de la semana (21/10/2026 · etapa 5: la franja de la semana queda debajo de los días)
   const _semK={};{const S=_lineaSemanas(ks.filter(k=>k>=pv0),k=>(vd[k]||{}).gan||0);for(const [w,o] of Object.entries(S)){const t=`📅 semana del lunes ${w.slice(8,10)}/${w.slice(5,7)}: ${fmt(Math.round(o.t))}${o.n<7?` (${o.n} de 7 días en el gráfico)`:''}`;o.ks.forEach(kk=>{_semK[kk]=t;});}}
+  // EL GLOBITO, CARRIL POR CARRIL TAMBIÉN EN "TODOS" (24/10/2026, él: "al poner el mouse arriba de la barra quiero que me muestre
+  // las ventas normales/premium/liquidadas en ventas. No todo ese chat gigante. Lo mismo para las otras"). Igual que la línea de un
+  // producto (08/10): un rectángulo invisible por día Y por carril, y cada uno dice sólo lo suyo (la fecha arriba siempre).
   ks.forEach((k,i)=>{const r=R[k],rr=RD(k),v=vd[k],s=cS(k),b=cB(k);const u=uDe(k);
-    const lst=(arr,sg)=>arr.slice(0,8).map(c=>`   ${sg} ${c.nom}${c.cta?' ('+c.cta+')':''} ${fmt(c.de)} → ${fmt(c.a)} (${c.a>c.de?'+':''}${((c.a/c.de-1)*100).toFixed(1)}%) · ${_LT_MOT[c.mot]||c.mot||'cambio'}`).concat(arr.length>8?[`   … y ${arr.length-8} más`]:[]);
-    const t=[`${_lineaFmtDia(k)}${k===hk?' · HOY (incompleto: hasta ahora)':''}`,
-      u!=null?`🛒 ${u} u. vendidas${uRDe(k)?` (${uRDe(k)} en remate)`:''}${v?` · ${v.n} venta(s) · facturado ${fmt(Math.round(v.tot))}`:(k<pv0?' (de la línea del robot: antes de que el panel guarde ventas)':'')}`:'🛒 ventas: sin dato',
-      v?`💰 ganancia ${fmt(Math.round(v.gan))}${pd[k]!=null?` (${pd[k].toFixed(0)}%)`:''}`:'',
-      g7[k]!=null?`💵 ganancia promedio de los últimos 7 días: ${fmt(Math.round(g7[k]))} por día`:'',
-      _semK[k]||'',
-      stU[k]!=null?`📦 ${Math.round(stU[k])} u. en Full${k===hk?' (ahora)':''}`:(r&&r.st!=null?`📦 stock: sólo ${r.stN} publicaciones lo informan ese día (no se dibuja)`:''),
-      r&&r.vis!=null?`👀 ${r.vis} visitas (${r.visN} publicaciones)`:'',
-      idx[k]!=null?`💲 índice de precio ${idx[k].toFixed(1)} (${idx[k]>=100?'+':''}${(idx[k]-100).toFixed(1)}% contra el primer día)`:'',
-      s.length||b.length?`✏️ cambios de precio registrados: ▲ ${s.length} · ▼ ${b.length}`:'',...lst(s,'▲'),...lst(b,'▼'),
-      r&&(r.sb||r.bj)?`🔎 en el precio guardado: ▲ ${r.sb||0} · ▼ ${r.bj||0} publicaciones`:'',
-      rr&&(rr.rem||rr.esc)?`🔻 ${rr.rem||0} rematando${rr.esc?` · 🪜 ${rr.esc} en la escalera`:''}`:'',
-      rr&&((rr.g||0)+(rr.c||0)+(rr.p||0))?`🥊 caja${k===hk?' (última lectura del robot)':''}: ${rr.g||0} ganan · ${rr.c||0} comparten · ${rr.p||0} pierden`:''].filter(Boolean).join('\n');
-    svg+=`<rect x="${X(i)}" y="0" width="${Math.max(bw,1)}" height="${H}" fill="transparent"><title>${t.replace(/</g,'‹')}</title></rect>`;});
+    const lst=(arr,sg)=>arr.slice(0,5).map(c=>`${sg} ${c.nom}${c.cta?' ('+c.cta+')':''} ${fmt(c.de)} → ${fmt(c.a)} (${c.a>c.de?'+':''}${((c.a/c.de-1)*100).toFixed(1)}%)`).concat(arr.length>5?[`   … y ${arr.length-5} más (lista entera abajo del gráfico)`]:[]);
+    const _h=`${_lineaFmtDia(k)}${k===hk?' · HOY (incompleto: hasta ahora)':''}`;
+    let _vent;
+    if(u==null)_vent=['🛒 ventas: sin dato'];
+    else if(!u)_vent=['🛒 no vendió'];
+    else{const uR=Math.min(u,uRDe(k)),uP=Math.min((v||{}).uP||0,u-uR),uG=Math.min((v||{}).uG||0,u-uR-uP),uN=u-uR-uP-uG;
+      _vent=[`🛒 ${u} u. vendidas${v?` (${v.n} venta${v.n===1?'':'s'})`:(k<pv0?' · de la línea del robot':'')}`,
+        `🟩 normales: ${uN}`,uP?`🟧 Premium: ${uP}`:'',uG?`🟦 envío gratis: ${uG}`:'',uR?`📦 liquidadas (sacando stock): ${uR}`:''];}
+    const por={
+      vent:[..._vent,r&&r.vis!=null?`👀 ${r.vis} visitas`:''],
+      st:[stU[k]!=null?`📦 ${Math.round(stU[k])} u. en Full${k===hk?' (ahora)':''}`:(r&&r.st!=null?`📦 stock: sólo ${r.stN} publicaciones lo informan ese día (no se dibuja)`:'📦 stock: sin dato')],
+      gan:[v?`💰 ganancia del día ${fmt(Math.round(v.gan))}`:'',g7[k]!=null?`💵 promedio de 7 días: ${fmt(Math.round(g7[k]))} por día`:'',_semK[k]||''],
+      pct:[pd[k]!=null?`📊 ${pd[k].toFixed(0)}% de ganancia`:'📊 sin ventas con costo ese día'],
+      pr:[idx[k]!=null?`💲 índice de precio ${idx[k].toFixed(1)} (${idx[k]>=100?'+':''}${(idx[k]-100).toFixed(1)}% contra el primer día)`:''],
+      cam:s.length||b.length||(r&&(r.sb||r.bj))?[`✏️ ▲ ${s.length} subas · ▼ ${b.length} bajadas`,...lst(s,'▲'),...lst(b,'▼'),r&&(r.sb||r.bj)?`🔎 en el precio guardado: ▲ ${r.sb||0} · ▼ ${r.bj||0}`:'']:['✏️ sin cambios de precio'],
+      rem:[rr&&(rr.rem||rr.esc)?`📦 ${rr.rem||0} sacando stock${rr.esc?` · 🪜 ${rr.esc} en la escalera`:''}`:'📦 nada sacando stock'],
+      caja:[rr&&((rr.g||0)+(rr.c||0)+(rr.p||0))?`🥊 caja${k===hk?' (última lectura)':''}: ${rr.g||0} ganan · ${rr.c||0} comparten · ${rr.p||0} pierden`:'🥊 caja: sin dato']};
+    for(const [n,arr] of Object.entries(por)){if(!L[n])continue;const t=[_h,...arr].filter(Boolean).join('\n');
+      svg+=`<rect x="${X(i)}" y="${Math.max(0,L[n][0]-4)}" width="${Math.max(bw,1)}" height="${L[n][1]+8}" fill="transparent"><title>${t.replace(/</g,'‹')}</title></rect>`;}});
   // resumen
   let uT=0,gT=0,cT=0,eT=0,vT=0,uPT=0,uGT=0,gPT=0,gGT=0;ks.forEach(k=>{uT+=uDe(k)||0;const v=vd[k];if(v){gT+=v.gan;cT+=v.costo;eT+=v.gest;uPT+=v.uP||0;uGT+=v.uG||0;gPT+=v.gP||0;gGT+=v.gG||0;}if(R[k]&&R[k].vis)vT+=R[k].vis;});
   const gPct=cT>0?pctGananciaVP(gT,cT,eT):null;
@@ -24151,6 +24165,7 @@ function _homePerTot(esc,off){
   let ini,fin;
   if(esc==='mes'){ini=new Date(hoy.getFullYear(),hoy.getMonth()-off,1,12);fin=new Date(ini.getFullYear(),ini.getMonth()+1,0,12);}
   else{ini=new Date(hoy.getFullYear()-off,0,1,12);fin=new Date(ini.getFullYear(),11,31,12);}
+  const finPer=new Date(fin);
   if(fin>hoy)fin=hoy;
   // Las ventas guardadas arrancan el 01/05/2026: los días de antes del primer día con datos no cuentan (si no, el
   // año 2026 se mediría contra enero-abril, que el panel no tiene).
@@ -24159,6 +24174,11 @@ function _homePerTot(esc,off){
   const t={u:0,bruto:0,gan:0,costo:0,gest:0,ventas:0,ult:0,dias:0,ini,fin};
   for(const d=new Date(ini);d<=fin;d.setDate(d.getDate()+1)){const x=_homeDiaTot(dateToKey(d));t.dias++;
     t.u+=x.u;t.bruto+=x.bruto;t.gan+=x.gan;t.costo+=x.costo;t.gest+=x.gest;t.ventas+=x.ventas;if(x.ult>t.ult)t.ult=x.ult;}
+  // EL MES Y EL AÑO SE MIDEN COMO EL DÍA (24/10/2026, él: "el día no mira las horas que pasaron, muestra como final (…) y con
+  // el año lo mismo. pero no tenemos info de enero a abril (…) que saque la cuenta para cuánto hay que llegar sin esos meses").
+  // `diasPer` = los días del período ENTERO (el mes completo; el año desde el primer día con ventas guardadas hasta el 31/12):
+  // el puntaje, el color y la escalerita van contra eso, así el mes arranca bajo y sube con cada venta, igual que el día.
+  t.diasPer=Math.max(t.dias,Math.round((finPer-ini)/864e5)+1);
   t.pct=pctGananciaVP(t.gan,t.costo,t.gest);return t;
 }
 function _homeEsc(){try{const v=localStorage.getItem('cycHoyEsc');return v==='mes'||v==='anio'?v:'dia';}catch(e){return 'dia';}}
@@ -24387,7 +24407,8 @@ function renderHomeHoy(){
   const escSel=`<span style="display:inline-flex;border:1px solid var(--border2);border-radius:999px;padding:2px">${escBtn('dia','Día')}${escBtn('mes','Mes')}${escBtn('anio','Año')}</span>`;
   const flecha=(d,txt,off)=>`<button onclick="homeHoyMover(${d},event)" ${off?'disabled':''} style="background:transparent;border:1px solid var(--border2);color:${off?'var(--border2)':'var(--text)'};border-radius:8px;min-width:34px;height:30px;font-size:1.05rem;line-height:1;cursor:${off?'default':'pointer'}">${txt}</button>`;
   const pctTxt=h.pct===null||!isFinite(h.pct)?'—':(h.pct>=0?'+':'')+h.pct.toFixed(0)+'%';
-  const _vd=vivaDia(h.dias>1?{gan:h.gan/h.dias,bruto:h.bruto/h.dias,ventas:h.ventas}:h);   // la vida de la tarjeta, con el promedio por día
+  const _nP=esc==='dia'?1:(h.diasPer||h.dias||1);   // mes y año: contra los días del período entero (24/10/2026)
+  const _vd=vivaDia(_nP>1?{gan:h.gan/_nP,bruto:h.bruto/_nP,ventas:h.ventas}:h);   // la vida de la tarjeta, con lo ganado repartido en todo el período
   el.innerHTML=`<div class="vw ${_vd.mv} ${_vd.gl}" data-viva="dia" data-vk="${_vd.k}" data-vv="${_vd.vel.toFixed(3)}"${_vd.quieta?' data-vq="1"':''} style="--c:${_vd.c};--vr:20px;margin:4px auto 0;max-width:min(760px,calc(100vw - 32px))">${_vd.fuego?'<canvas class="viva-fuego"></canvas>':''}<div onclick="homeHoyIr()" class="viva lv-${_vd.k}" style="--c:${_vd.c};cursor:pointer;border-radius:20px;padding:20px 22px 16px">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:10px">
       <span style="display:flex;align-items:center;gap:8px;flex:1 1 240px;min-width:0"><span style="display:flex;gap:4px;flex-shrink:0">${flecha(1,'‹',_sinAntes)}${flecha(-1,'›',_homeHoyOff===0)}</span><span style="font-size:.72rem;text-transform:uppercase;letter-spacing:.16em;color:var(--c);font-weight:700">🏷️ ${titulo}</span></span>
@@ -24396,7 +24417,7 @@ function renderHomeHoy(){
     <div style="display:flex;flex-wrap:wrap;gap:10px 34px;align-items:flex-end">
       <div><div id="hoy-bruto" style="font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(2rem,8vw,3.4rem);line-height:1;letter-spacing:-.01em">${fmt(h.bruto)}</div><div style="font-size:.78rem;color:var(--muted);margin-top:6px">facturado · <b style="color:var(--text)">${h.ventas}</b> venta${h.ventas===1?'':'s'} · <b style="color:var(--text)">${h.u}</b> u.</div></div>
       <div><div id="hoy-gan" style="font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(1.6rem,6vw,2.2rem);line-height:1;color:var(--c)">${fmt(h.gan)}</div><div style="font-size:.78rem;color:var(--muted);margin-top:6px">ganancia · <b style="color:var(--text)">${pctTxt}</b></div></div>
-      ${(()=>{const D=_puntajeDia(hoy,h,h.dias,esc);if(!D)return `<div style="align-self:center;padding:8px 14px;border-radius:12px;color:var(--muted);border:1px solid var(--border2);text-align:center"><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.35rem;line-height:1">—<span style="font-size:.6em;opacity:.7"> /10</span></div><div style="font-size:.74rem;font-weight:700;margin-top:4px">sin ventas todavía</div></div>`;
+      ${(()=>{const D=_puntajeDia(hoy,h,_nP,esc);if(!D)return `<div style="align-self:center;padding:8px 14px;border-radius:12px;color:var(--muted);border:1px solid var(--border2);text-align:center"><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.35rem;line-height:1">—<span style="font-size:.6em;opacity:.7"> /10</span></div><div style="font-size:.74rem;font-weight:700;margin-top:4px">sin ventas todavía</div></div>`;
         return `<div style="align-self:center;padding:8px 14px;border-radius:12px;color:var(--c);background:color-mix(in srgb,var(--c) 12%,transparent);border:1px solid color-mix(in srgb,var(--c) 35%,transparent);text-align:center" title="Puntaje ${esc==='dia'?'del día':esc==='mes'?'del mes':'del año'} (de 0 a 10), sólo por la ganancia en pesos: 7 en ${fmt(D.target)}${D.n>1?` ($115.000 × ${D.n} días)`:' por día'} (que a cada uno de los 3 le queden $900.000 por mes pagando todo) y 10 en ${fmt(D.target2)}; arriba de 10 es excepcional (sigue subiendo).">
           <div class="${D.score>10?'punt-rompe':''}" style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.35rem;line-height:1">${D.score.toFixed(1).replace('.',',')}<span style="font-size:.6em;opacity:.7"> /10</span></div><div style="font-size:.74rem;font-weight:700;margin-top:4px">${VIVA_DIA_NOM[_vd.k]||D.nivel}</div></div>`;})()}
     </div>
@@ -24404,7 +24425,7 @@ function renderHomeHoy(){
   <!-- 22/10/2026, él: "que las ventas viva sea hasta la línea roja, así lo de abajo se nota más, ya que con colores no se entiende
        mucho. Lo mismo con mes y año": la tarjeta viva (colores, burbujas, fuego) termina en los números; lo de abajo va en una común. -->
   <div style="--c:${_vd.c};margin:8px auto 18px;max-width:min(760px,calc(100vw - 32px));background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 22px 14px">
-    ${h.ventas>0?_diaEscaleraHTML(h.gan,h.dias):''}
+    ${h.ventas>0?_diaEscaleraHTML(h.gan,_nP,_nP-h.dias,esc):''}
     ${esc==='dia'?(()=>{try{return _homeCurvaHTML(hoy);}catch(e){return '';}})():''}
     ${(()=>{try{return _homeGustoHTML(esc,hoy,_hf);}catch(e){return '';}})()}
     <details id="hoy-cobro" ${_hoyCobroAbierto()?'open':''} onclick="event.stopPropagation()" ontoggle="_hoyCobroToggle(this)" style="margin-top:14px;padding-top:9px;border-top:1px solid color-mix(in srgb,var(--c) 25%,transparent)">
