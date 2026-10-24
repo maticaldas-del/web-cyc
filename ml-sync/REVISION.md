@@ -772,6 +772,11 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 
 ## 3 · MERCADERÍA (miércoles)
 
+### ❌ no da 35% en Armar caja (24/10/2026, v26.58, él: "que el % lo tome del más alto, de la venta más alta y de la competencia")
+- **Qué es:** `_cajaPct35`: % del peor caso al precio de hoy (`margenMLDe`), a la venta más cara de 90 días y contra la competencia
+  (`cyc/techofull`, ≤4 días); manda el más alto. Chip rojo en el renglón si ninguno llega a la meta; detalle de los tres al abrirlo.
+- **Qué chequear:** que "hoy" coincida con el ⚠️ bajo 35% de Productos · que una venta en promo vieja no haga pasar algo que hoy no da.
+
 ### `PROMPT_CAJAS.md` · el chat de Chrome arma las cajas "MANDALA YA" (24/10/2026, él: "decirle arrancá y que arme todas las cajas")
 - **Qué es:** un prompt fijo: lee en el panel qué cuentas tienen la caja en verde (`cajasVerdes`/`cajaVeredicto`), copia cada renglón
   (código de etiqueta y unidades) a Planificación de envíos de ESA cuenta y no confirma el envío.

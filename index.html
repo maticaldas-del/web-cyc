@@ -2960,7 +2960,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.57';
+const APP_VERSION='26.58';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2973,6 +2973,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.58',f:'24/10',h:'20:12',c:[{n:2,t:'📦 Armar caja: lo que no llega al 35% en el peor caso dice ❌ no da 35%. Se mide al precio de hoy, a la venta más alta de 90 días y contra la competencia (de anoche), y manda el más alto. Al abrir el renglón se ven los tres.'}]},
   {v:'26.57',f:'24/10',h:'15:57',c:[{n:2,t:'📈 "Buscando techo · 2ª suba" cuenta las subas de precio de verdad, no los renglones anotados (Casino decía 2ª suba con una sola suba). La explicación del 📈 dice qué busca: el 🔴 techo, y que si el precio nuevo vende y deja más plata se sigue subiendo.'}]},
   {v:'26.56',f:'24/10',h:'15:50',c:[{n:1,t:'📅 Plata por día: sólo se pintan los días que se apartan de verdad (verde del 11 al 15, rojo del 1 al 5); el resto es un día normal y queda sin color. El ámbar se llama "fecha especial" y el globo dice cuál.'}]},
   {v:'26.55',f:'24/10',h:'15:55',c:[{n:3,t:'📅 Línea de tiempo · Plata por día: se pintan las franjas del mes (verde = días que se vende más, rojo = días flojos, medido con nuestras ventas de 6 meses sin fechas especiales) y las temporadas del año (ámbar: Día de la Madre, del Padre, del Niño, Navidad, Hot Sale, CyberMonday…). Al pasar el mouse dice cuánto más o menos se vende ese día. La búsqueda de techo también lo tiene en cuenta: no vender en un día fuerte pesa más que no vender en uno flojo.'}]},
@@ -7481,11 +7482,11 @@ function renderOfiCaja(){
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
         ${fotoChipHTML(f.p,36,f.variante,ofiFiltroCuenta)}
         <div class="pi-prod" ${_tog} style="flex:1;min-width:150px;cursor:pointer">${f.p.name}${f.variante?` <span style="color:var(--accent2);font-weight:700">· ${f.variante}</span>`:(f.sinContarPorAroma?' <span style="color:var(--muted);font-weight:400">· sin variante</span>':'')} <span style="font-size:.7rem;color:var(--muted)">${_ab?'▴':'▾'}</span></div>
-        <div style="font-size:.78rem;color:var(--text)">tenés <b>${f.hay}</b> u.${_sinEtiqChip(sinEtiq(f.p.id,f.variante||''),f.hay)}${otras>0?` <span style="color:var(--amber)">(${otras} en otra caja)</span>`:''}</div>
+        <div style="font-size:.78rem;color:var(--text)">tenés <b>${f.hay}</b> u.${_sinEtiqChip(sinEtiq(f.p.id,f.variante||''),f.hay)}${_cajaNo35(f.p)}${otras>0?` <span style="color:var(--amber)">(${otras} en otra caja)</span>`:''}</div>
         ${casilla}
       </div>
       <div ${_tog} style="margin-top:6px;font-size:.75rem;cursor:pointer">${_resum||'<span style="color:var(--muted)">no hace falta mandar</span>'}${!_ab&&_hayAviso?' <span style="color:var(--amber);font-size:.65rem">⚠️ ver detalle</span>':''}</div>
-      ${_ab?`<div style="margin-top:6px">${cerebroBtn(f.p.id,{variante:f.variante||'',cuenta:ofiFiltroCuenta&&ofiFiltroCuenta!=='todas'?ofiFiltroCuenta:'',ctx:'caja'})} ${lineaBtn(f.p.id,'📈 línea',f.variante||'')}
+      ${_ab?`<div style="margin-top:6px">${_cajaNo35Det(f.p)}${cerebroBtn(f.p.id,{variante:f.variante||'',cuenta:ofiFiltroCuenta&&ofiFiltroCuenta!=='todas'?ofiFiltroCuenta:'',ctx:'caja'})} ${lineaBtn(f.p.id,'📈 línea',f.variante||'')}
       ${_cerNotaVisHTML(_cerNotaCtx('caja',f.p.id,ofiFiltroCuenta&&ofiFiltroCuenta!=='todas'?ofiFiltroCuenta:'',f.variante||''),'caja-vis')}
       ${lineas}${pie}</div>`:''}
     </div>`;
@@ -8898,6 +8899,37 @@ const CAJA_VALE_LA_PENA=10;   // si lleva 10 veces el costo del envío, va igual
 // LA TARJETA "MI OFICINA" DE INICIO (30/09/2026, pedido suyo: "que me diga cuántas cajas hay para mandar
 // en verde, si no hay que no diga nada"). Verde = el MISMO veredicto "MANDALA YA" del cartel de Armar
 // caja (se paga en 2 días o menos, o lleva tanta plata que el envío es calderilla), una caja por cuenta.
+// ❌ NO DA 35% EN ARMAR CAJA (24/10/2026, él: "tengo mercadería en mi oficina que no da para el 35%… me la podés marcar? así veo si me
+// conviene mandarla a ML o intento venderla por otro lado"; y: "que el % lo tome del más alto, de la venta más alta y que se fije de la
+// competencia en este momento en ml… y que en detalle estén las dos"). Se mide el % del PEOR caso (2% de retención de otra provincia,
+// la misma cuenta que "⚠️ bajo 35%" de Productos) a tres precios y manda el MÁS ALTO: el de hoy en ML · la venta más cara de los
+// últimos 90 días (precio por unidad) · a cuánto se puede vender contra la competencia (`cyc/techofull`, el más barato con Full ×0,99
+// o sin Full +10%, lo mide el robot de noche; más viejo de 4 días no cuenta). Otro precio que el de hoy: comisión con
+// `comisionEnPrecio` y el envío del lado de la barrera de ESE precio (igual que `maxCompraDe`). Sin publicación o sin margen, nada.
+function _cajaPct35(p){try{
+  const r=margenMLDe(p);if(!r||r.margen==null||!(r.costo>0)||!(r.precio>0)||r.sinCosto)return null;
+  const precio=Math.round(r.precio),gest=Number(r.gest)||0,comHoy=precio-(Number(r.neto)||0)-gest,merc=costFullP(p),impPct=(Number(r.mlExtra)||0)/precio;
+  const pctEn=P=>{if(!(P>0))return null;if(P===precio)return r.margen-r.precio*PEOR_RET_PCT/r.costo*100;
+    const c2=comisionEnPrecio(comHoy,precio,P);if(!c2)return null;
+    const gP=P<UMBRAL_ENVIO_GRATIS?0:((precio>=UMBRAL_ENVIO_GRATIS&&gest>0)?gest:((envioEstimadoArriba()||{}).envio||SIM_ENVIO_ARRIBA));
+    const imp=P*impPct,div=merc+imp+gP;return div>0?(P-c2.com-gP-merc-imp-P*PEOR_RET_PCT)/div*100:null;};
+  const out={META:metaMargenML(),hoy:{P:precio,m:pctEn(precio)}};
+  // la venta más cara (por unidad) de los últimos 90 días, sin canceladas
+  {const fk=dateToKey(new Date(Date.now()-90*864e5));let best=null;
+    for(const [k,dia] of Object.entries(state.ventaprod||{})){if(k<fk)continue;for(const v of Object.values(dia||{})){if(!v||!ventaEsDe(v,p)||_esCancelada(v))continue;
+      const q=Number(v.qty)||1,P=Math.round((Number(v.total)||0)/q);if(P>0&&(!best||P>best.P))best={P,k};}}
+    if(best)out.venta={P:best.P,k:best.k,m:pctEn(best.P)};}
+  // la competencia (lo que mide el robot de noche en cyc/techofull)
+  {const T=state.techoFull||{};let t=null;for(const [mla,e] of Object.entries(state.mllinks||{})){if(!e||e.prodId!==p.id||e.ignored||(e.status||'')==='closed')continue;
+      const x=T[mla];if(!x||!(x.t>0)||Date.now()-(Number(x.ts)||0)>4*864e5)continue;if(!t||x.t>t.t)t=x;}
+    if(t)out.comp={P:Math.round(t.t),ts:Number(t.ts)||0,m:pctEn(Math.round(t.t))};}
+  const ms=[out.hoy,out.venta,out.comp].filter(x=>x&&x.m!=null);if(!ms.length)return null;
+  out.mejor=ms.reduce((a,b)=>b.m>a.m?b:a);return out;}catch(e){return null;}}
+function _cajaNo35(p){const o=_cajaPct35(p);if(!o||!(o.mejor.m<o.META))return'';
+  return ` <span title="Ni al precio de hoy, ni a la venta más alta, ni contra la competencia llega al ${o.META}% (peor caso). El mejor: ${Math.round(o.mejor.m)}% a ${fmt(o.mejor.P)}. Pensá si conviene mandarlo a Full o venderlo por otro lado. El detalle, al abrir el renglón." style="background:rgba(239,68,68,.14);color:var(--red);border-radius:5px;padding:1px 6px;font-size:.62rem;font-weight:700;white-space:nowrap">❌ no da ${o.META}% · ${Math.round(o.mejor.m)}%</span>`;}
+function _cajaNo35Det(p){const o=_cajaPct35(p);if(!o)return'';const f=(x,txt)=>x?`${txt} <b>${fmt(x.P)}</b> → <b style="color:${x.m!=null&&x.m>=o.META?'var(--green)':'var(--red)'}">${x.m==null?'?':Math.round(x.m)+'%'}</b>`:`${txt} <span style="color:var(--muted)">sin dato</span>`;
+  const fk=k=>k?String(k).split('_').reverse().slice(0,2).join('/'):'';
+  return `<div style="font-size:.66rem;color:var(--muted);margin:4px 0">💯 % en el peor caso (meta ${o.META}%): ${f(o.hoy,'hoy en ML')} · ${f(o.venta,'venta más alta'+(o.venta?' ('+fk(o.venta.k)+')':'')+' a')} · ${f(o.comp,'competencia'+(o.comp&&o.comp.ts?' (medida el '+new Date(o.comp.ts).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'})+')':'')+' a')}${o.mejor.m<o.META?' · <b style="color:var(--red)">no llega en ninguno</b>':''}</div>`;}
 function cajasVerdes(filas){
   return LOCS.filter(c=>{const v=cajaVeredicto(convieneCaja(filas,c));return v&&v.k==='verde';});
 }
