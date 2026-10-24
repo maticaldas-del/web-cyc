@@ -2960,7 +2960,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.41';
+const APP_VERSION='26.42';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2973,6 +2973,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.42',f:'24/10',h:'13:30',c:[{n:2,t:'🚚 Pedidos → Paraguay: "Falta reponer" cuenta sólo lo que da (lo de "No da, no hay o falta revisar" ya no suma). Lo cargado en el Pedido y lo oculto por el filtro sí.'},{n:2,t:'🌟 Listas: lo que nadie vende en ML (sin competencia) ya puede llegar a "Dan", como en Paraguay.'},{n:1,t:'📊 Rotación: se sacaron "rematar al 12%" y "limpiar al 20%" (regla vieja).'}]},
   {v:'26.41',f:'24/10',h:'11:55',c:[{n:3,t:'🔍 Revisión de Precios: los frenos ya no se apagan cuando la base no contesta, las gemelas no bajan con un dato en $0 ni lo marcado 🔒, publicar no resta dos veces la retención y respeta los $33.000, y las rayas del techo miran toda la línea (no sólo los días a la vista).'},{n:2,t:'Lo nuevo de las listas de Bs As dice el máximo para dejar 35% (antes 25%), un producto sin costo dice "sin costo" en vez de ~800% verde, y "podés bajar hasta" de la ficha usa el peor caso.'},{n:1,t:'🌟 el precio para dejar 35% se redondea para arriba; el catálogo de Paraguay pinta verde desde 35% y en ámbar "guardado" lo de 25-34%.'}]},
   {v:'26.40',f:'24/10',h:'11:41',c:[{n:2,t:'📈 Todos los productos: las ventas por la publicación Premium van en naranja y las de envío gratis en celeste, y las tarjetas dicen cuántas unidades y cuánta ganancia dejó cada una.'}]},
   {v:'26.39',f:'24/10',h:'10:55',c:[{n:2,t:'⭐ Cada producto nuevo muestra su nota "gana mucho y sale mucho". 7 es lo mínimo para comprar (35% con 100 de salida): verde 7 o más, ámbar abajo.'}]},
@@ -4782,7 +4783,6 @@ const REV_HORA='04:00';
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel dice la etapa
 //                     de HOY (una por día de la semana, corre sola a las REV_HORA) y si ya quedó hecha.
 const REV_PENDIENTE=[
-  {etapa:1,t:'Precios (24/10): 11 decisiones tuyas',que:'del 36 al 46 en la lista de dudas: sin reposición con datos, frenos por dato, sacar 🔒, gemelas, 🌟 en listas, rematar en Rotación',pedi:'resolvamos'},
   // 21/10/2026: eligió las 62 decisiones (etapas 1, 5, 6 y 7), todas (a), y quedaron aplicadas en v25.75.
 ];
 // Etapa 7 (diseño) cerrada el 01/10/2026: hechas 1-9, 11, 13, 14 y 15; la 10 (Pedidos) y la 12 (sacar
@@ -4792,7 +4792,7 @@ const REV_PENDIENTE=[
 // por una nota vieja.
 // 30/09 a la tarde: la revisión completa final (6 revisores) cubrió precios, plata, mercadería, ventas,
 // corridas del robot y la web; lo obvio quedó arreglado en la v20.88.
-const REV_HECHAS={1:'2026-10-08',2:'2026-10-20',3:'2026-10-20',4:'2026-10-20',5:'2026-10-12',6:'2026-10-15',7:'2026-10-01',8:'2026-10-21'};
+const REV_HECHAS={1:'2026-10-24',2:'2026-10-20',3:'2026-10-20',4:'2026-10-20',5:'2026-10-12',6:'2026-10-15',7:'2026-10-01',8:'2026-10-21'};
 // LO QUE PASÓ EN CADA ETAPA (15/10/2026, para el panel de Ajustes). Lo escribe Claude al cerrar cada vuelta: fecha y una línea.
 const REV_HIST={
   1:[{f:'2026-09-24',t:'Primera vuelta: el rescate, la espera de las bajas y los frenos de suba.'},
@@ -5305,6 +5305,8 @@ function liquidarDe(p,diasSinVender,stock,edad){
       motivo:`${parado} días sin vender`};
   return null;
 }
+// 45a (24/10/2026, él): Rotación ya NO muestra "🔴 rematar al 12% · $X" / "🟠 limpiar al 20%" (regla vieja del 05/09: hoy rematar lo
+// decide él con 🔐 y toda baja va en escalera). `liquidarDe`/`liquidarHtml` quedan sin dibujar en Rotación.
 function liquidarHtml(l){
   if(!l)return '';
   const rem=l.nivel==='rematar';
@@ -15251,9 +15253,13 @@ function syncPedidosDebounced(){clearTimeout(syncPedidosTimer);syncPedidosTimer=
 // "FALTA REPONER" CON TODOS LOS PEDIDOS JUNTOS: la MISMA cuenta que el chip de cada solapa de Pedidos
 // (_pedsCostoReponer), más cuántos productos falta comprar y la plata en riesgo (la de la solapa de prioridad).
 // La usan Inicio y el Resumen (decisión 7.2 de diseño, 21/10/2026): una sola cuenta para los dos.
+// Paraguay: "Falta reponer" cuenta sólo lo que DA (✅, `pyProbVeredicto`), lo que se va a comprar de verdad (24/10/2026, él: "¿por qué dice
+// falta reponer más de 3M y me da solo ese producto?"): antes sumaba también lo de "No da, no hay o falta revisar". Lo cargado en el 🧾
+// Pedido y lo oculto por el filtro "Vender en" sí cuentan (se compran igual). Paulvic y Bs As, como siempre.
+function _pedsPyQueDan(peds){return (peds||[]).filter(p=>esPedidoPaulvic(p)||pyProbVeredicto(p).k==='da');}
 function pedFaltaReponerTodo(){
   const allPeds=[...(state.pedidos||[]),...(state.pedidos_py||[])];
-  const c=_pedsCostoReponer(allPeds);
+  const c=_pedsCostoReponer([...(state.pedidos||[]),..._pedsPyQueDan(state.pedidos_py||[])]);
   const vivos=allPeds.filter(p=>(p.estado||'pendiente')!=='suficiente');
   return {...c,n:vivos.length,riesgo:vivos.reduce((s,p)=>s+(Number(p.riesgo)||0),0),total:allPeds.length};
 }
@@ -19863,7 +19869,7 @@ function renderRotacionStock(){
     <td class="rc-g" data-l="Margen hoy" style="text-align:right">${rotMargenHtml(r)}${(()=>{const _p=prodById(r.pid);if(_p&&Array.isArray(_p.variantes)&&_p.variantes.length>1)return '';const m=_rayasMlaDeProd(r.pid);return m?rayasBarHTML(m,{corto:true,ancho:'90px'}):'';})()}</td>
     <td class="rc-s" data-l="En stock hace" style="text-align:right">${rotEnStockHtml(r)}</td>
     <td class="rc-g" data-l="Caja ML" style="text-align:right">${rotCajaHtml(r)}</td>
-    <td class="rc-g" data-l="Estado">${r.estadoHtml}${liquidarHtml(r.liq)}</td>
+    <td class="rc-g" data-l="Estado">${r.estadoHtml}</td>
   </tr>`+_subVars(r)).join('');
 }
 
@@ -20847,7 +20853,7 @@ function _listaPuesto(k,e){return Math.round((Number(e&&e.p)||0)*(1+_listaRec(k)
 function _listaCostoVigente(e){return !!e&&e.uMed!=null&&Math.abs(Number(e.uMed)-Number(e.p))<1;}
 // "Otro producto" vale para el catálogo que se miró (`noEsCat`); misma regla que `listaNoEsVale` de sync.mjs (20/10/2026).
 function _listaNoEsVale(e){return !!(e&&e.noEs&&(!e.noEsCat||String(e.noEsCat).toUpperCase()===String(e.mi||'').toUpperCase()));}
-function _listaMed25(e){return e&&!_listaNoEsVale(e)&&!e.sacado&&!e.noWeb&&!e.noFull&&e.m!=null&&isFinite(e.m)&&Number(e.m)>=listaVaraDe(e)&&_listaCostoVigente(e)&&/^https:\/\//.test(e.mf||'')&&!(e.mv!=null&&Number(e.mv)<1);}
+function _listaMed25(e){return e&&!_listaNoEsVale(e)&&!e.sacado&&!e.noWeb&&!e.noFull&&e.m!=null&&isFinite(e.m)&&Number(e.m)>=listaVaraDe(e)&&_listaCostoVigente(e)&&/^https:\/\//.test(e.mf||'')&&!(e.mv!=null&&Number(e.mv)<1&&!e.svm);}   // 43a (24/10/2026): 🌟 sin competencia (svm) entra como en Paraguay
 // UN SOLO VENDEDOR NO ALCANZA (19/10/2026, él: "hay un flaco que vende los perfumes re caros y es el único (…) es un precio inflado que no
 // sabemos si vende"). Con 1 vendedor en ML el precio no lo confirma nadie: nunca va a ✅ Dan solo, va a 🔎 Para revisar hasta que el
 // chat de compras lo mire (`ok` = mismo producto Y precio creíble).
@@ -21058,7 +21064,7 @@ async function listaSetU(k,cod,val){
       if(confirm(`"${e&&e.n||cod}" ya es una ficha: ${fi.name}.\n\nNo se carga como NUEVO. ¿Lo cargo en el pedido como PROBADO (${u} u.)? Así al pedirlo se descuenta de Pedidos.`))await listaProbSet(k,fi.id,u,cod);
       else renderListas();
       return;}}
-  if(u>0&&!_listaDa(e,k)){toast('No se puede cargar: '+(e&&e.noFull?'🚫 no se puede mandar a Full ('+e.noFull+')':e&&e.noWeb?'no está en la web del proveedor: no lo tienen en stock':e&&e.m!=null&&!_listaCostoVigente(e)?'⏳ el costo cambió y el margen es del costo viejo: falta volver a medirlo contra ML':e&&e.m!=null&&Number(e.m)<listaVaraDe(e)?'en ML da '+Math.round(e.m)+'%, abajo de la vara de compra ('+listaVaraDe(e)+'%)':e&&e.m!=null&&!/^https:\/\//.test(e.mf||'')?'le falta la foto de ML':e&&e.m!=null&&e.mv!=null&&Number(e.mv)<1?'el catálogo de ML no tiene vendedores':e&&e.m!=null?'falta confirmar que el catálogo de ML es el mismo producto (o el de 1 solo vendedor que vendió 100+)':'todavía no está medido contra ML (o le falta la foto de ML)'),'err',5000);renderListas();return;}
+  if(u>0&&!_listaDa(e,k)){toast('No se puede cargar: '+(e&&e.noFull?'🚫 no se puede mandar a Full ('+e.noFull+')':e&&e.noWeb?'no está en la web del proveedor: no lo tienen en stock':e&&e.m!=null&&!_listaCostoVigente(e)?'⏳ el costo cambió y el margen es del costo viejo: falta volver a medirlo contra ML':e&&e.m!=null&&Number(e.m)<listaVaraDe(e)?'en ML da '+Math.round(e.m)+'%, abajo de la vara de compra ('+listaVaraDe(e)+'%)':e&&e.m!=null&&!/^https:\/\//.test(e.mf||'')?'le falta la foto de ML':e&&e.m!=null&&e.mv!=null&&Number(e.mv)<1&&!e.svm?'el catálogo de ML no tiene vendedores':e&&e.m!=null?'falta confirmar que el catálogo de ML es el mismo producto (o el de 1 solo vendedor que vendió 100+)':'todavía no está medido contra ML (o le falta la foto de ML)'),'err',5000);renderListas();return;}
   if(u>0&&_listaViajando(k).has(String(cod))){toast('Ya está viajando en un pedido de este proveedor','err',4000);renderListas();return;}
   try{await db.ref('cyc/listas_pedido/'+k+'/'+cod).set(u>0?u:null);}catch(err){toast('No se guardó: '+(err.message||err),'err',5000);return;}
   state.listaPed=state.listaPed||{};state.listaPed[k]=state.listaPed[k]||{};if(u>0)state.listaPed[k][cod]=u;else delete state.listaPed[k][cod];
@@ -21833,7 +21839,7 @@ function renderPedidos(){
   const cntEl=document.getElementById(countId);
   if(cntEl)cntEl.innerHTML=`
     ${_pedSemCount(peds,0)}
-    <div class="pcount"><strong>${peds.length}</strong>Total</div>${_pedCostoChip(peds)}`;
+    <div class="pcount"><strong>${peds.length}</strong>Total</div>${_pedCostoChip(isBsas?peds:_pedsPyQueDan(peds))}`;
   if(pedidoFilter!=='todos')peds=_pedFiltrar(peds);
   const searchId=isBsas?'ped-search':'ped-py-search';
   // El buscador de Paraguay busca en los pedidos de Probados: en Nuevos y en el Pedido no filtra nada, así que ahí no se muestra (20/10/2026, etapa 7).

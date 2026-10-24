@@ -82,8 +82,7 @@ al código; lo que es pensar queda acá, y una regla dura ("nunca", "sólo si") 
 - *Escasez vs mercadería en camino u oficina que llega a tiempo* → NO es escasez: "🚚 cubierto", se manda la caja.
 - *Buscar techo vs sobra* → con sobra no se busca techo: primero sale lo que sobra.
 - *Descuento mío vigente vs suba de lista* → primero salir del descuento (`entrarpromo:…=salir`); nunca inflar el tachado. 🔒
-- *Sin reposición que al precio normal no se vacía en 120 días* → gana 6 (no pagar stock antiguo): se baja en escalera.
-- *Escasez o sin reposición que se vende* → **no se baja: en todo caso sube** (24/10, él: *"si hay falta de stock o no se puede reponer no debería bajar no? en todo caso subir"*). La única baja ahí es la de arriba (no se vacía en 120 días), en escalera.
+- *🔥 Escasez o ⏳ sin reposición* → **NUNCA se baja sin techo al 95%** (🏔️ de techo95 o 🔴 de la línea), en todo caso sube (24/10, él: *"si está en no se puede reponer o falta stock o escasez NUNCA se pueda bajar si no hay techo 95% seguro, con una sola excepción, que esté llegando a los 4 meses de stock en Full y esté por pagar almacenamiento. Nada más"*). Freno F11 en `frenosBajas`. La única excepción: la unidad más vieja a 20 días o menos de que ML cobre stock antiguo (120 d lo chico, 60 lo grande); ahí se baja en escalera. Escribir #sinrepo ya no abre ningún freno. La salida de la escasez (↘️ #volviendo) pasa sólo con el stock que alcanza 30+ días.
 - *Una regla dice A, otra B y ninguna fila lo resuelve* → no se hace nada esa vuelta, se anota y va a `notas/para_mati.md` con (a)/(b).
   Después se agrega la fila acá.
 - **Las excepciones a los frenos son siempre las mismas cinco:** precio mal puesto · stock antiguo con fecha encima · ML la
@@ -113,7 +112,8 @@ Después de los 3 Protectores de talón (22/10: el freno "sin línea de techo no
   en sync.mjs) en el mismo commit, y si se puede medir, su freno en `frenosBajas`. Una salida que ya falló pasa a ser 🔐 suya.
 
 ===========================================================================================================================
-- 🔒 **No bajar lo que él marcó** (23/10/2026, la waflera: *"que sea una excepción si el robot decide bajarlo, quizás lo mejor sería no tocarlo"*): `cyc/nobajar/<MLA>` (comando `nobajar`); freno F10 en `frenosBajas` (decido, entrarpromo, la puerta y el detector). Sólo con su autorización (`!nobajar`, 🔐).
+- 🔒 **No bajar lo que él marcó** (23/10/2026, la waflera: *"que sea una excepción si el robot decide bajarlo, quizás lo mejor sería no tocarlo"*): `cyc/nobajar/<MLA>` (comando `nobajar`); freno F10 en `frenosBajas` (decido, entrarpromo, la puerta y el detector). Sólo con su autorización (`!nobajar`, 🔐). **Sacar la marca también pide su "autorizo"** (24/10, 38a): `nobajar:-…;go` sin autorización se la pide por Telegram.
+- **Renovar el MISMO descuento no es una baja** (24/10, 46a): no lo frenan F5 (💰), F7 ni F11.
 
 - 🔒 **Publicar: 35% mínimo en el peor caso** (23/10/2026, él): ninguna publicación nueva arranca abajo de 35% (`PUBLICAR_MIN_PCT`, freno en `publicar`). Lo que hoy no llega se publica a su precio de 35% y espera (el otro vendedor se queda sin stock); bajar recién cuando se acerca el stock antiguo, con las reglas de siempre.
 
@@ -294,7 +294,9 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
   Lo que vende 1+/día se resuelve en 1-3 días; lo de menos de 1 por semana necesita ~2 meses.
   🔒 **A lo que vende menos de 1 por semana no se le busca techo subiendo** (4a del 23/10, él; 60 días, con gemelas y hermanas):
   queda en su precio como 💰 #punto, o baja en escalera si sobra. Freno en `decido` (salvo 🆕 lanzamiento que vendió, o !chico con
-  "EXCEPCIÓN"). Medido el 23/10: 31 de 34 lentos no vendieron ninguna al precio nuevo y juntos dejaban ~$12.500 menos por día.
+  "EXCEPCIÓN"). **Desde el 24/10 (37a) vale para TODA suba, no sólo la etiquetada 📈**: afuera sólo subir al 25% del peor caso, 🔥/⏳
+  con el stock que no llega a 100 días a ese ritmo, o ↘️/↗️ volver a un precio que ya tuvo en 90 días. Y bajar la LISTA de algo que ya
+  buscó techo va como descuento **con cualquier etiqueta** (salvo ↘️ volviendo de una escasez). Medido el 23/10: 31 de 34 lentos no vendieron ninguna al precio nuevo y juntos dejaban ~$12.500 menos por día.
 - **Si funciona** (igual o más plata por día) → otro salto. **Si sale mal** → 🔒 se baja en escalera **como DESCUENTO propio con el
   precio tachado** (`entrarpromo:<MLA>=<precio>@PRICE_DISCOUNT#bajando`; `decido` frena bajar la lista de algo que ya probó su techo
   salvo `!lista` con "EXCEPCIÓN: …") (≤15% por escalón, uno cada 48 h),
