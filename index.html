@@ -2960,7 +2960,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.40';
+const APP_VERSION='26.41';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2973,6 +2973,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.41',f:'24/10',h:'11:55',c:[{n:3,t:'🔍 Revisión de Precios: los frenos ya no se apagan cuando la base no contesta, las gemelas no bajan con un dato en $0 ni lo marcado 🔒, publicar no resta dos veces la retención y respeta los $33.000, y las rayas del techo miran toda la línea (no sólo los días a la vista).'},{n:2,t:'Lo nuevo de las listas de Bs As dice el máximo para dejar 35% (antes 25%), un producto sin costo dice "sin costo" en vez de ~800% verde, y "podés bajar hasta" de la ficha usa el peor caso.'},{n:1,t:'🌟 el precio para dejar 35% se redondea para arriba; el catálogo de Paraguay pinta verde desde 35% y en ámbar "guardado" lo de 25-34%.'}]},
   {v:'26.40',f:'24/10',h:'11:41',c:[{n:2,t:'📈 Todos los productos: las ventas por la publicación Premium van en naranja y las de envío gratis en celeste, y las tarjetas dicen cuántas unidades y cuánta ganancia dejó cada una.'}]},
   {v:'26.39',f:'24/10',h:'10:55',c:[{n:2,t:'⭐ Cada producto nuevo muestra su nota "gana mucho y sale mucho". 7 es lo mínimo para comprar (35% con 100 de salida): verde 7 o más, ámbar abajo.'}]},
   {v:'26.38',f:'24/10',h:'10:46',c:[{n:1,t:'⭐ En "gana mucho y sale mucho" lo de rotación baja (🚀 menos de 100) queda después de lo que sale bien, aunque deje mucho %.'}]},
@@ -4781,6 +4782,7 @@ const REV_HORA='04:00';
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel dice la etapa
 //                     de HOY (una por día de la semana, corre sola a las REV_HORA) y si ya quedó hecha.
 const REV_PENDIENTE=[
+  {etapa:1,t:'Precios (24/10): 11 decisiones tuyas',que:'del 36 al 46 en la lista de dudas: sin reposición con datos, frenos por dato, sacar 🔒, gemelas, 🌟 en listas, rematar en Rotación',pedi:'resolvamos'},
   // 21/10/2026: eligió las 62 decisiones (etapas 1, 5, 6 y 7), todas (a), y quedaron aplicadas en v25.75.
 ];
 // Etapa 7 (diseño) cerrada el 01/10/2026: hechas 1-9, 11, 13, 14 y 15; la 10 (Pedidos) y la 12 (sacar
@@ -4796,7 +4798,8 @@ const REV_HIST={
   1:[{f:'2026-09-24',t:'Primera vuelta: el rescate, la espera de las bajas y los frenos de suba.'},
      {f:'2026-09-27',t:'4 revisores, 23 hallazgos: 22 arreglados (cuotas Premium, variantes, remate en tramos). Él eligió cómo juzgar la prueba de +5%.'},
      {f:'2026-10-08',t:'Después del cerebro y la regla del 20%: 27 reales, 21 arreglados y 6 decisiones suyas (manda el cerebro, sin rescate al vender).'},
-     {f:'2026-10-20',t:'4 revisores en máximo (escritura en ML, cuentas del margen, listas y techo, web): ~40 arreglos (v25.60: peor caso en descuentos, 🏔️ sólo de techo95, precios exactos $32.999, plata neta en rayas, envío del lado de la barrera). Quedan 6 decisiones suyas.'}],
+     {f:'2026-10-20',t:'4 revisores en máximo (escritura en ML, cuentas del margen, listas y techo, web): ~40 arreglos (v25.60: peor caso en descuentos, 🏔️ sólo de techo95, precios exactos $32.999, plata neta en rayas, envío del lado de la barrera). Quedan 6 decisiones suyas.'},
+     {f:'2026-10-24',t:'4 revisores en máximo (frenos y escritura, gemelas y publicar, techo y listas, web y vara de compra): ~45 arreglos (v26.41: frenos que no se apagan si la base no contesta, gemelas sin datos en $0 ni 🔒, publicar sin doble retención y con la barrera, rayas con toda la línea, máximo de compra sin la gemela, vara de 35% en las listas de Bs As). Quedan 11 decisiones suyas (36-46).'}],
   2:[{f:'2026-09-28',t:'4 revisores (Arqueo, Mercado Pago, gastos, monedas): 17 reales, las obvias arregladas.'},
      {f:'2026-09-29',t:'Cerrada: lo vendido después del reporte de MP suma al patrimonio (A1) y el Telegram usa la misma cuenta que la web (D4).'},
      {f:'2026-09-30',t:'Revisión completa final: lo de plata quedó sin pendientes.'},

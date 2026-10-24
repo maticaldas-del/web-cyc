@@ -640,6 +640,31 @@ Qué chequear: que un cambio no salga dos veces (foto + decisión) y que un `dec
   publicación se creó después de que entró el stock, y el cartel dice "primera venta de la gemela Premium/con envío gratis".
 - **Chequear:** otros carteles que cuenten días por `stockhist` de una publicación nueva (mismo patrón).
 
+### 24/10/2026 · Revisión etapa 1 (Precios), 4 revisores en máximo · v26.41 `cyc-v922`
+- **Qué se arregló (robot, sync.mjs):** `tagDeMotivo` ("4 meses" ya no es sinrepo) · F10 juzga con la fecha de la marca 🔒 y el detector se
+  la pasa · `frenosBajas`/`decido` frenan si no leyeron nobajar/promohist/promoclaude/techofreno · freno 4a con días CON stock (mín. 14,
+  `TECHO_RITMO_MIN_DIAS_ST`) y frena si no leyó ventas · `submargen` pasa por `_chequeoNoSubir` · `gemelaenviocrea` con techo, tope de
+  crear y 25% · `alpiso`/`bajar`/`tocados` sin `:go` (bajar va por `decido`) · `anotarCambioFuera`: unapub bajar=/empatar, volver, submargen,
+  fijar y bajopiso anotan en `cyc/claudecambios` · `autNoVale` mira el tipo (descuento ≠ lista) · el "hubiera" de F10 sólo en corridas reales ·
+  la 🏔️ conserva su fecha al salir de un descuento · gemelas: comisión ≤0 o envío <$3.000 (`ENVIO_GRATIS_MIN`) = ML no contestó, baja >15% de
+  una va a revisar, 🔒 no baja si la Clásica no bajó, tolerancia sólo para arriba, sin envío gratis no se re-precia · `publicar` sin doble
+  retención y con la barrera ($33.000, salvo `|!cruza|motivo=EXCEPCIÓN`) · `activarPausadasFull` mide la gemela de envío con su envío gratis ·
+  `gemelacrea`/`gemelaenviocrea` frenan si no leyeron hermanas y pausan si no releen la Clásica · F4/F8 con el precio que ve el comprador
+  (`p0v`) y F4 neta · `planilla` 🤔 al precio del descuento, 🔎 y `bajasviejas` con la línea junta, 📦/🔎/🤔 con ritmo con stock, 🛡️ cuenta
+  las sin margen · `pruebasTechoEnCurso` y `efectotecho` con días con stock, línea junta y neto · `escasez` avisa si no leyó ritmonormal ·
+  `revfondo` sin notas de fallo y lista colores sin publicación · `pedidostodo` `ultV` saltea ventas de gemela · `candMaxUBot` = web ·
+  textos de `pedir`/`revisarcompra` con la vara real.
+- **Web (index.html):** `_llMaxNuevo` con la vara de compra (35/30) para lo nuevo · `margenMLDe` `sinCosto` ("sin costo" en Rotación y la caja,
+  no ~800%) · `precioParaMargen` y el chip "bajo 25%" en el peor caso · `pycatPrecio35` redondea para arriba y sin pasar $550.000 ·
+  `candPuedePedir` frena 🌟 con precio visto de +30 d · `pycatFila` verde desde la vara · venta por gemela no hereda 💸 de la Clásica ·
+  comparación de Ventas x Producto sin canceladas · `listaSetU` dice el motivo real · rayas: toda la línea hasta ayer (`ksR`, `_gdFuera`) y
+  `uOwn/totOwn` como el robot. `decide_pedidos.py` `Tde` con el % de la app.
+- **No se tocó a propósito:** las gemelas siguen alineándose aunque `robot:off` (son mecánicas, se apagan con `gemelaSigue=off`) ·
+  ⏸️ sin stock en la web (chico, queda) · decisiones suyas 36-46 en `notas/para_mati.md`.
+- **Qué chequear:** `errores` y `planilla` corren limpios la primera vuelta · que una baja hecha antes de marcar 🔒 no se deshaga · que la
+  primera alineación no deje ninguna gemela en "ML no contestó" por error (si son muchas, el mínimo de $3.000 está mal) · `publicar` sin go
+  en la próxima llegada.
+
 ## 2 · PLATA (martes)
 - **24/10/2026 · `almactarifa` con centavos** (pregunta 23 suya: *"¿no aparece en la factura?"*). ML no da la tarifa por unidad; se midió con la factura de septiembre (`cargosmes:2026_09`): almacenamiento común $47.735 ÷ ~2.640 u. en Full ÷ 30 d ≈ $0,60 por unidad por día. `pesosArg` redondeaba a $1 (quedó guardado $1 en la primera corrida): ahora `almactarifa` lee decimales. Qué chequear: `almactarifa` muestra $0,60; rehacerlo con la factura de octubre.
 - **24/10/2026 · v26.24 · lista pagada al pedir = mercadería en camino** (eligió la 12a). `listaEnCaminoUSD` (pedidos de `compraslista` en camino con `pagado:true`, valuados a `pc`) se suma a `stockCamino` del Arqueo junto a Paraguay y sale en el detalle de "en camino". Botón 💵 Ya lo pagué también mientras viaja (`listaPagado` acepta camino). `listaLlego` (web y robot) ya no pisa un `pagado:true`, así no queda en los dos lados. Qué chequear: que un pedido pagado al pedir aparezca en camino y al llegar NO salga como deuda; que uno sin pagar siga saliendo como deuda al llegar.
