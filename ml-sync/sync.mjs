@@ -10244,7 +10244,7 @@ function cuentaLista(cat) {
   const m25 = (e) => !listaNoEsVale(e) && !e.sacado && !e.noWeb && !e.noFull && e.m != null && Number(e.m) >= listaVaraDe(e) && listaCostoVigente(e) && /^https:\/\//.test(e.mf || '') && !(e.mv != null && Number(e.mv) < 1);
   // DESDE EL 20/10/2026 (eligió la a) sólo da lo que el chat de compras confirmó mirando ML (`ok`, de `listadato`) para ESE catálogo
   // (`okCat`, o el catálogo fijado con `mi=`). Antes también entraba lo que el robot emparejó solo y "parecía" bien: 21 de 36 estaban mal.
-  const da = (e) => m25(e) && vendOk(e.mv, e.vend, e.svm) && listaOkVale(e) && !pocasVentas(e.vend);
+  const da = (e) => m25(e) && vendOk(e.mv, e.vend, e.svm, e.res) && listaOkVale(e) && !pocasVentas(e.vend, e.res);
   // `pend` = falta medir: nunca medidos y también los medidos con un costo que ya cambió (etapa 3, 20/10/2026; si no, una lista a la que
   // le cambió el costo entero quedaba con 0 que dan y 0 pendientes, y la web la escondía).
   return { n: v.length, med: v.filter((e) => e.m != null).length, pend: v.filter((e) => !e.t || (e.m != null && !e.noWeb && !e.sacado && !listaCostoVigente(e))).length, dan: v.filter(da).length, revisar: v.filter((e) => m25(e) && !da(e) && !pocasVentas(e.vend)).length, tMed: Date.now() };
@@ -10326,7 +10326,7 @@ const CAND_MIN_VENDEDORES = 2;
 // CON 1 SOLO VENDEDOR ENTRA SI VENDIÓ 100+ (24/10/2026, eligió la 1a; él con el Adidas a $210.000: "ese flaco seguro que vende igual y le
 // gana una tonelada. si nos metemos vendemos igual"). Las vendidas las carga el chat de compras (`faltaventas`, ahora también los de 1
 // vendedor); sin el dato, el de 1 vendedor no entra. Misma regla en index.html (`candVendOk`, `_listaVendOk`).
-const vendOk = (nv, vend, sinComp) => !!sinComp || (Number(nv) || 0) >= CAND_MIN_VENDEDORES || ((Number(nv) || 0) === 1 && vend != null && isFinite(vend) && Number(vend) >= CAND_MIN_VENTAS);
+const vendOk = (nv, vend, sinComp, res) => !!sinComp || (Number(nv) || 0) >= CAND_MIN_VENDEDORES || ((Number(nv) || 0) === 1 && ((vend != null && isFinite(vend) && Number(vend) >= CAND_MIN_VENTAS) || resOk(res)));
 // CATÁLOGO SIN VENDEDORES = SIN COMPETENCIA (24/10/2026, eligió la 2a; él: "para mí tienen que entrar, y es mejor, porque no hay
 // competencia"). Nadie tiene stock, así que no hay precio de ML: el chat de compras mira ML en el navegador (publicaciones sueltas del
 // mismo producto o el último precio que tuvo) y lo carga con `svprecio` (`svp`, pesos). Con eso se mide como si hubiera UN vendedor a
@@ -10349,7 +10349,12 @@ const varaCompra = (vend, nv) => (vend != null && isFinite(vend) && vend >= CAND
 const candVaraDe = (c) => (c ? varaCompra(candVentasDe(c), c.mlVendedores) : CAND_VARA_COMPRA);
 const listaVaraDe = (e) => (e ? varaCompra(e.vend != null ? Number(e.vend) : null, e.mv) : CAND_VARA_COMPRA);
 const candVentasDe = (c) => { const a = c && c.vendCarga != null && isFinite(c.vendCarga) ? Number(c.vendCarga) : null; const b = c && c.mlVendidas != null && isFinite(c.mlVendidas) ? Number(c.mlVendidas) : null; return a != null ? a : b; };
-const pocasVentas = (v) => v != null && isFinite(v) && Number(v) < CAND_MIN_VENTAS;
+// 5+ RESEÑAS TAMBIÉN DICEN QUE SE VENDE (24/10/2026, él con el Huawei X1 Pro: "dice que no vendió pero tiene 55 reseñas. o sea vendió
+// bastante… yo pondría también que tenga aunque sea 5 reseñas"). ML no muestra "+N vendidos" en muchos catálogos; las reseñas sí. Las carga
+// el chat de compras (`candprecio:<cód>=/r<reseñas>`, `listadato:<prov>;<cód>=r<reseñas>`): `resCarga` en Paraguay, `res` en las listas.
+const CAND_MIN_RESENAS = 5;
+const resOk = (res) => res != null && isFinite(res) && Number(res) >= CAND_MIN_RESENAS;
+const pocasVentas = (v, res) => v != null && isFinite(v) && Number(v) < CAND_MIN_VENTAS && !resOk(res);
 // NINGÚN "DA" SIN CHEQUEAR EL CATÁLOGO (20/10/2026, eligió la a). El chat de compras encontró mal emparejados 67 de 344 en Paraguay y
 // 21 de 36 en las listas: un margen medido contra OTRO producto. Un candidato de Paraguay se puede pedir sólo si alguien confirmó que el
 // catálogo de ML que se midió es el mismo producto: él con ✅ (`mismoOk`) o la revisión de fotos (`revClaude` ok), los dos atados a ESE
@@ -17513,10 +17518,10 @@ async function main() {
           if (c.pedidoEn && comp[c.pedidoEn] && comp[c.pedidoEn].estado === 'camino') { sum('ya viaja en un pedido'); continue; }
           if (c.calcTs == null && c.usdAntes != null) { sum('cambió el precio de Paraguay, falta medirlo'); continue; }
           if (!/^https:\/\//.test(String(c.foto || '')) || !/^https:\/\//.test(String(c.mlFoto || ''))) { sum('le falta una de las dos fotos'); continue; }
-          if (!vendOk(c.mlVendedores, candVentasDe(c), c.sinComp)) { const _v = candVentasDe(c); sum(Number(c.mlVendedores) === 1 ? (_v == null ? '1 solo vendedor · falta cargar las vendidas' : `1 solo vendedor · vendió menos de 100 (${_v >= 50 ? '50-99' : 'menos de 50'})`) : 'sin catálogo de ML con vendedores'); continue; }
+          if (!vendOk(c.mlVendedores, candVentasDe(c), c.sinComp, c.resCarga)) { const _v = candVentasDe(c); sum(Number(c.mlVendedores) === 1 ? (_v == null ? '1 solo vendedor · falta cargar las vendidas' : `1 solo vendedor · vendió menos de 100 (${_v >= 50 ? '50-99' : 'menos de 50'})`) : 'sin catálogo de ML con vendedores'); continue; }
           if (!candCatChequeado(c)) { sum(c.revClaude && c.revClaude.cat === candCatDe(c) ? `fotos miradas: ${c.revClaude.v}` : 'falta mirar las fotos'); sinConf.push(c); continue; }
           if (pyCatNoSeMira(c.nombre)) { sum('categoría que no se mira'); continue; }
-          if (pocasVentas(candVentasDe(c))) { sum('vendió menos de 100 en ML'); continue; }
+          if (pocasVentas(candVentasDe(c), c.resCarga)) { sum('vendió menos de 100 en ML y menos de 5 reseñas'); continue; }
           ok.push(c); }
         const tot35 = ok.length + Object.values(f).reduce((a, b) => a + b, 0);
         console.log(`\n=== DE LOS ${tot35} QUE DAN LA VARA (35%, o 30% si vende 100+): ${ok.length} se pueden pedir ===`);
@@ -18308,13 +18313,13 @@ async function main() {
       const filas = [];
       for (const c of Object.values(cands)) {
         if (!c || !c.nombre || c.no || c.prodId) continue; const m = Number(c.margen); if (c.margen == null || !isFinite(m) || m < 25) continue;
-        const nv = Number(c.mlVendedores) || 0, ok = vendOk(nv, candVentasDe(c), c.sinComp) && candCatChequeado(c) && !pyCatNoSeMira(c.nombre);
+        const nv = Number(c.mlVendedores) || 0, ok = vendOk(nv, candVentasDe(c), c.sinComp, c.resCarga) && candCatChequeado(c) && !pyCatNoSeMira(c.nombre);
         filas.push({ f: 'py', n: c.nombre, m, nv, ok, vend: candVentasDe(c), usd: Number(c.usd) || 0 });
       }
       const provs = (await db.get('cyc/mlconfig/listasProv')) || {};
       for (const [k, pv] of Object.entries(provs)) { if (pv.desc) continue; const cat = (await db.get('mlapi/listas/' + k)) || {};
         for (const e of Object.values(cat)) { if (!e || listaNoEsVale(e) || e.sacado || e.noWeb || e.noFull || e.m == null || !(Number(e.m) >= 25) || !listaCostoVigente(e)) continue;
-          const nv = Number(e.mv) || 0; filas.push({ f: k, n: String(e.n), m: Number(e.m), nv, ok: vendOk(nv, e.vend) && listaOkVale(e), vend: e.vend != null ? Number(e.vend) : null }); } }
+          const nv = Number(e.mv) || 0; filas.push({ f: k, n: String(e.n), m: Number(e.m), nv, ok: vendOk(nv, e.vend, e.svm, e.res) && listaOkVale(e), vend: e.vend != null ? Number(e.vend) : null }); } }
       console.log('=== LO NUEVO QUE SE PODRÍA COMPRAR, POR TRAMO DE % ===');
       for (const t of T) { const x = filas.filter((f) => f.m >= t[0] && f.m < t[1]), ok = x.filter((f) => f.ok), okV = ok.filter((f) => f.vend != null && f.vend >= CAND_MIN_VENTAS);
         console.log(`  ${nomT(t).padEnd(7)} ${String(x.length).padStart(4)} productos (Paraguay ${x.filter((f) => f.f === 'py').length}) · pasaron todo ${ok.length} · y venden ${CAND_MIN_VENTAS}+ en ML ${okV.length}`); }
@@ -21035,7 +21040,7 @@ async function main() {
         if (!/^MLA\d+$/.test(idL)) p.push('SIN LINK DE ML');
         if (!String(c.cod || c.codPy || '').trim()) p.push('sin código');
         if (!(Number(c.usd || c.precioUSD || c.nisseiUSD) > 0)) p.push('sin precio');
-        if (c.margen != null && !vendOk(c.mlVendedores, candVentasDe(c), c.sinComp)) p.push(Number(c.mlVendedores) === 1 ? '1 solo vendedor en ML (entra con 100+ vendidas)' : 'sin vendedores en ML');
+        if (c.margen != null && !vendOk(c.mlVendedores, candVentasDe(c), c.sinComp, c.resCarga)) p.push(Number(c.mlVendedores) === 1 ? '1 solo vendedor en ML (entra con 100+ vendidas)' : 'sin vendedores en ML');
         const m = (c.margen != null && isFinite(c.margen)) ? Number(c.margen) : null;
         if (m == null) p.push('sin medir todavía');
         else if (m < candPisoDe(c)) p.push(`abajo del piso (${m}%)`);
@@ -22024,13 +22029,13 @@ async function main() {
           // y el margen guardado es el del precio de antes. Misma regla que `candPrecioViejo` de la web.
           : (c.calcTs == null && Number(c.usdAntes) > 0) ? `cambió el precio de Paraguay (de US$ ${Number(c.usdAntes).toFixed(2)} a US$ ${(parseFloat(c.usd) || 0).toFixed(2)}): falta medirlo`
           : (mg < candVaraDe(c) && !(_tcP > 0 && !c.noLocal && RE_CAND_PERF.test(`${c.nombre || ''} ${c.mlTit || ''}`) && (perfLocalPct((parseFloat(c.usd) || 0) * RECARGO_PAR * _tcP, Number(c.mlPrecio) || 0) || 0) >= PERF_LOCAL_GAN)) ? `da ${mg.toFixed(1)}% y tu piso es ${candPisoDe(c)}%`
-          : !vendOk(c.mlVendedores, candVentasDe(c), c.sinComp) ? (Number(c.mlVendedores) === 1 ? 'en ML lo vende 1 solo vendedor: entra si vendió 100+ y ese dato falta o no llega' : 'no está medido contra un catálogo de ML con vendedores')
+          : !vendOk(c.mlVendedores, candVentasDe(c), c.sinComp, c.resCarga) ? (Number(c.mlVendedores) === 1 ? 'en ML lo vende 1 solo vendedor: entra si vendió 100+ y ese dato falta o no llega' : 'no está medido contra un catálogo de ML con vendedores')
           // Sin las dos fotos no se compra (regla suya del 07/10, "sin foto tampoco acepto"; etapa 3, 20/10/2026): la web ya lo
           // frenaba (`candPuedePedir`) y este comando no.
           : !/^https:\/\//.test(String(c.foto || '')) ? 'falta la foto de comprasparaguay'
           : !/^https:\/\//.test(String(c.mlFoto || '')) ? 'falta la foto de ML'
           : !candCatChequeado(c) ? 'nadie confirmó todavía que el catálogo de ML sea el mismo producto (✅ en el panel o la revisión de fotos)'
-          : pocasVentas(candVentasDe(c)) ? `en ML vendió ${candVentasDe(c)}: menos de ${CAND_MIN_VENTAS}` : '';
+          : pocasVentas(candVentasDe(c), c.resCarga) ? `en ML vendió ${candVentasDe(c)} y tiene ${c.resCarga ?? '?'} reseñas: menos de ${CAND_MIN_VENTAS} vendidas y de ${CAND_MIN_RESENAS} reseñas` : '';
         if (puede && p.u > antes) { problemas.push(`"${p.busca}" → ${c.nombre}: NO se puede pedir, ${puede}`); continue; }
         cambios.push({ id, c, antes, u: p.u, baja: !!p.baja });
       }
@@ -22964,12 +22969,12 @@ async function main() {
         if (!(Number(c.mlVendedores) >= 1)) continue;   // 24/10/2026 (1a): los de 1 vendedor también, con la vara de 35%
         if (Number(c.mlVendedores) < CAND_MIN_VENDEDORES && mg < CAND_VARA_COMPRA) continue;
         if (!/^https:\/\//.test(String(c.foto || '')) || !/^https:\/\//.test(String(c.mlFoto || ''))) continue;
-        if (!candCatChequeado(c)) continue; if (candVentasDe(c) != null) continue; if (pyCatNoSeMira(c.nombre)) continue;
+        if (!candCatChequeado(c)) continue; { const _v = candVentasDe(c); if (_v != null && (_v >= CAND_MIN_VENTAS || c.resCarga != null)) continue; } if (pyCatNoSeMira(c.nombre)) continue;   // 24/10/2026: con menos de 100 vendidas y sin reseñas cargadas, también (5+ reseñas lo rescatan)
         out.push(`py|${String(c.prov || 'nissei').toLowerCase()}|${c.cod || ''}|${String(c.nombre || '').replace(/\|/g, '/').slice(0, 80)}|${candCatDe(c)}|${Math.round(mg)}%`); }
       const provs = (await db.get('cyc/mlconfig/listasProv')) || {};
       for (const [k, pv] of Object.entries(provs)) { if (pv.desc) continue; const cat = (await db.get('mlapi/listas/' + k)) || {};
         for (const [cod, e] of Object.entries(cat)) { if (!e || listaNoEsVale(e) || e.sacado || e.noWeb || e.noFull || !(e.m != null && Number(e.m) >= CAND_VARA_VENDE) || !listaCostoVigente(e)) continue;
-          if (!/^https:\/\//.test(e.mf || '') || !(Number(e.mv) >= 1) || (Number(e.mv) < CAND_MIN_VENDEDORES && Number(e.m) < CAND_VARA_COMPRA) || !listaOkVale(e) || e.vend != null) continue;
+          if (!/^https:\/\//.test(e.mf || '') || !(Number(e.mv) >= 1) || (Number(e.mv) < CAND_MIN_VENDEDORES && Number(e.m) < CAND_VARA_COMPRA) || !listaOkVale(e) || (e.vend != null && (Number(e.vend) >= CAND_MIN_VENTAS || e.res != null))) continue;
           out.push(`lista|${k}|${cod}|${String(e.n).replace(/\|/g, '/').slice(0, 80)}|${e.mi || ''}|${Math.round(e.m)}%`); } }
       console.log(`=== PASARON TODO, FALTAN LAS VENTAS DE ML: ${out.length} (fuente|proveedor|código|nombre|catálogo ML|margen) ===`);
       console.log('@@LISTA'); for (const l of out) console.log(l); console.log('@@FIN'); return;
@@ -23052,7 +23057,8 @@ async function main() {
         if (!prov) { malos.push(x + ' (falta el proveedor antes)'); continue; }
         const i = x.indexOf('='); const cod = x.slice(0, i).trim().replace(/[.#$\[\]\/]/g, '_'); const ops = x.slice(i + 1).split(',').map((o) => o.trim());
         const u = {}; for (const o of ops) { if (/^\d+$/.test(o)) u.vend = parseInt(o, 10); else if (/^\+?\d+$/.test(o.replace('+', ''))) u.vend = parseInt(o.replace('+', ''), 10);
-          else if (o === 'borrar' || o === '-') u.vend = null;   // 24/10/2026: saca las vendidas cargadas (catálogo que no las muestra = duda)
+          else if (o === 'borrar' || o === '-') u.vend = null;
+          else if (/^r\d+$/i.test(o)) u.res = parseInt(o.slice(1), 10);   // reseñas (24/10/2026)   // 24/10/2026: saca las vendidas cargadas (catálogo que no las muestra = duda)
           else if (o === 'ok') { u.ok = 1; u.noEs = null; u.noEsCat = null; } else if (o === 'no') { u.noEs = 1; u.ok = null; } else if (/^mi=MLA\d+$/i.test(o)) { u.miFijo = o.slice(3).toUpperCase(); u.t = null; u.ok = 1; u.noEs = null; u.noEsCat = null; } else if (o) { malos.push(x); } }
         upd[prov + '/' + cod] = u; n++;
       }
@@ -23356,14 +23362,15 @@ async function main() {
       const upd = {}; let malos = 0, noEsta = 0, sube = 0, baja = 0, igual = 0, fuera = 0, vuelve = 0;
       for (const f of filas) {
         // `<cód>=/<vendidas>` (21/10/2026): sólo las vendidas, sin tocar el precio (lo que manda el chat con `faltaventas`).
-        const m = f.match(/^([0-9]+)\s*=\s*(nohay|[0-9]+(?:[.,][0-9]+)?)?(?:\s*\/\s*([0-9.]+|borrar|-))?$/i);   // `/borrar` (24/10/2026): saca las vendidas cargadas (el catálogo no las muestra: es duda, no 0)
-        if (!m || (m[2] == null && m[3] == null)) { console.log(`❌ mal escrito: ${f.slice(0, 80)}`); malos++; continue; }
+        const m = f.match(/^([0-9]+)\s*=\s*(nohay|[0-9]+(?:[.,][0-9]+)?)?(?:\s*\/\s*([0-9.]+|borrar|-))?(?:\s*\/\s*r\s*([0-9]+))?$/i);   // `/r<n>` = reseñas (24/10/2026)   // `/borrar` (24/10/2026): saca las vendidas cargadas (el catálogo no las muestra: es duda, no 0)
+        if (!m || (m[2] == null && m[3] == null && m[4] == null)) { console.log(`❌ mal escrito: ${f.slice(0, 80)}`); malos++; continue; }
         const hits = Object.entries(cands).filter(([, c]) => c && codIg(c.cod, m[1]));
         if (!hits.length) { console.log(`? ${m[1]}: no es candidato (si es nuevo va con candalta, si es ficha con pyprecio)`); noEsta++; continue; }
         for (const [id, c] of hits) {
           if (c.prodId) continue;
           if (c.no && c.noTipo === 'mano') { console.log(`= ${m[1]} · ${String(c.nombre).slice(0, 50)}: lo tachaste a mano, no lo toco`); continue; }
           if (/^nohay$/i.test(m[2])) { if (!(c.no && c.noTipo === 'nissei')) { upd[`${id}/no`] = true; upd[`${id}/noTs`] = Date.now(); upd[`${id}/noTipo`] = 'nissei'; upd[`${id}/motivo`] = 'en comprasparaguay Nissei ya no lo ofrece (pasada del mes)'; fuera++; } continue; }
+          if (m[4] != null) { upd[`${id}/resCarga`] = parseInt(m[4], 10); console.log(`  ⭐ ${m[1]} · ${String(c.nombre).slice(0, 55)}: ${m[4]} reseñas`); if (m[2] == null && m[3] == null) { igual++; continue; } }
           if (m[3] && /^(borrar|-)$/i.test(m[3])) { upd[`${id}/vendCarga`] = null; igual++; console.log(`  🧹 ${m[1]} · ${String(c.nombre).slice(0, 55)}: vendidas borradas (antes ${c.vendCarga ?? '—'})`); if (m[2] == null) continue; }
           const v = parseInt(String(m[3] || '').replace(/\D/g, ''), 10);
           if (m[2] == null) { if (isFinite(v) && v >= 0) { upd[`${id}/vendCarga`] = v; igual++; } continue; }
