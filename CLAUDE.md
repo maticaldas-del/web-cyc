@@ -261,6 +261,14 @@
   fijo ~$1.230 por venta: abajo de ~$4.000 se come el producto. Packs: **sí si el pack tiene su propio catálogo en ML** (23/10, *"si el pack está en catálogo sí se arman"*); armar un pack de algo que hoy compite suelto en su catálogo, no (27/09, *"al estar en pack las saco de competencia"*).
 - **Fechas:** calendario y eventos de ML en el `informe` (secciones 14/14b), `fechas`, `eventos`. El ×1,4 de regalables NO está
   confirmado. **Navidad: a mediados de noviembre se pide para 45 días** (recordatorio 14/11).
+- **📅 El calendario de ventas entra en TODA decisión** (24/10, él: *"toda esa es información que quiero que mires y que sea una info más que
+  tenga al hacer cualquier movimiento, precios, pedidos, ideas"*): (1) **franjas del mes** medidas en nuestras ventas sin fechas especiales
+  (`cyc/mlconfig/franjasMes`, la noche y `ventasdiames`): **del 11 al 15 ~+17% compras / +22% plata; del 1 al 5 −25% plata** (5 meses, 24/10);
+  (2) **temporadas y fechas especiales del año** (`fechas`, `fechasEspeciales`: Día de la Madre/Padre/Niño, Navidad, Reyes, San Valentín,
+  Amigo, Hot Sale, CyberMonday, Black Friday) y lo de afuera (sueldo en los primeros 4 días hábiles; 65% agota la plata antes del 20).
+  **Precios:** no juzgar una prueba sólo con días flojos ni bajar justo antes de la franja fuerte o de una fecha (las rayas ya pesan cada día).
+  **Pedidos y cajas:** llegar con stock ANTES de la franja/fecha (contar el viaje). **Ideas y compras:** qué se vende en la próxima fecha.
+  Se ve en la línea de tiempo (Plata por día: verde/rojo/ámbar).
 - **El precio sugerido de ML** (`sugP`) es referencia, nunca motivo para bajar algo que vende.
 - **Liquidando** (`liquidando:<MLA>[:go]`, `cyc/nosubir`) frena sólo subas; se cae sola en stock 0; marcar uno no contagia a otros
   colores salvo hermana de precio (`esHermanaPrecio`). Bajar a un precio exacto que pide él: `unapub:<MLA>:<piso>:<días>:bajar=<precio>[:go]`.
