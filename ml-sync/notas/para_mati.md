@@ -23,9 +23,10 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
     baratos, y en ML los comparo contra el mismo perfume EN CAJA: dan 300-800% (Xerjoff Torino 21, 1 Million Elixir, Montblanc Explorer
     Extreme, Lattafa Teriaq…). Hoy no entran (les falta la foto y no son el mismo producto). (a) sugerida: los testers quedan afuera para
     ML y se miran sólo para la perfumería del local · (b) se compran para ML publicados como "tester sin caja" (ML puede frenarlos).
-29. **"En ML no hay vendedores en su catálogo"** (5.279 de Nissei): muchos sí se venden en ML, pero en publicaciones sueltas que la API no
-    deja medir. Por tu regla del 20/10 (catálogo con 2+ vendedores) no se compran. (a) sugerida: dejarlo así · (b) que el chat de Nissei
-    mire en ML los de los rubros que ya vendemos (perfumes, auriculares, pendrives, relojes) y cargue el precio a mano.
+29. **Catálogo de ML sin vendedores / con 1 solo vendedor** (24/10, él: *"hay productos que tengan catálogo y no tengan vendedores
+    porque nadie tiene stock… para mí tienen que entrar, y es mejor, porque no hay competencia"*). DECIDIDO que entran; falta contra
+    qué precio se miden (pregunta 1 y 2 del chat del 24/10, 00:45). 5.279 sin vendedores en el catálogo de Nissei; 55 de los 121 que
+    dan 35% tienen 1 solo vendedor.
 
 ## Viejas que siguen esperando (de CLAUDE.md §13)
 - Sancor (respuesta y baja de Vida Plus) · contador (recategorización, actividad, facturas entre cuentas) · costo de las dos Linternas COB de Ayelen.
