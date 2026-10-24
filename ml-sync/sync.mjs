@@ -22739,9 +22739,13 @@ async function main() {
         console.log(`\n=== B) DE CUÁNDO SON LAS RESEÑAS ===`);
         for (const a of args) { let id = a.toUpperCase(); let nom = '';
           if (!/^MLA/.test(id)) { const c = Object.values(cands).find((x) => x && String(x.cod) === a); if (!c) { console.log(`  ${a}: no encontré ese candidato`); continue; } id = String(candCatDe(c) || '').toUpperCase(); nom = String(c.nombre).slice(0, 50); }
-          const ruta = (off) => (/^MLA\d{6,9}$/.test(id) ? `/reviews/item/${id}?catalog_product_id=${id}&limit=50&offset=${off}` : `/reviews/item/${id}?limit=50&offset=${off}`);
+          // Un catálogo (MLA corto) no tiene opiniones propias: se piden las de una publicación que lo vende (el ganador o la primera).
+          let itemR = id; if (/^MLA\d{6,9}$/.test(id)) { itemR = null; try { const pr = await mlGet(`/products/${id}`, tk0); itemR = (pr && pr.buy_box_winner && pr.buy_box_winner.item_id) || null; } catch { /* sigue */ }
+            if (!itemR) { try { const li = await mlGet(`/products/${id}/items?limit=1`, tk0); itemR = (li && li.results && li.results[0] && li.results[0].item_id) || null; } catch { /* sin publicación */ } }
+            if (!itemR) { console.log(`  ${id}${nom ? ' · ' + nom : ''}: el catálogo no tiene ninguna publicación de la que leer las opiniones`); continue; } }
+          const ruta = (off) => `/reviews/item/${itemR}?catalog_product_id=${id}&limit=50&offset=${off}`;
           let tot = null, fechas = [], campos = '';
-          for (let off = 0; off < 2000; off += 50) { let r; try { r = await mlGet(ruta(off), tk0); } catch (e) { if (off === 0) { try { r = await mlGet(`/reviews/item/${id}?catalog_product_id=${id}`, tk0); } catch (e2) { console.log(`  ${id}: ML no contestó (${String(e2.message).slice(0, 220)})`); break; } } else break; }
+          for (let off = 0; off < 2000; off += 50) { let r; try { r = await mlGet(ruta(off), tk0); } catch (e) { if (off === 0) { try { r = await mlGet(`/reviews/item/${itemR}`, tk0); } catch (e2) { console.log(`  ${id}: ML no contestó (${String(e2.message).slice(0, 220)})`); break; } } else break; }
             tot = Number(r && r.paging && r.paging.total) || 0; const L = (r && r.reviews) || []; if (!campos && L[0]) campos = Object.keys(L[0]).join(',');
             for (const x of L) { const d = Date.parse(x.date_created || x.date || ''); if (d) fechas.push(d); } if (L.length < 50) break; }
           const en = (dias) => fechas.filter((d) => ahora - d <= dias * 864e5).length; fechas.sort((x, y) => x - y);
