@@ -22669,7 +22669,7 @@ async function main() {
       const upC = {}; let ok = 0, rep = 0, duda = 0;
       for (const [id, c] of Object.entries(cands)) {
         if (!c || provPyDeBot(c) !== 'elegancia' || !c.cod || !(Number(c.ts) >= T0) || c.usdAntes == null) continue;
-        if (cat[PYCAT_EL + _pyDg(c.cod)]) { ok++; continue; }   // su código exacto está: el precio es el suyo
+        if (cat[PYCAT_EL + _pyDg(c.cod)]) { ok++; const e0 = cat[PYCAT_EL + _pyDg(c.cod)]; console.log(`  = ${c.cod} · ${String(c.nombre).slice(0, 50)} ⇔ "${String(e0.n).slice(0, 50)}" · antes US$ ${c.usdAntes} → hoy ${c.usd} · fuente ${c.fuente || '?'}`); continue; }   // su código exacto está
         const pis = elKeys.filter((k) => _pyCodIg(c.cod, pycatCodDe(k)));
         if (!pis.length) continue;
         const li = deLista[_pyDg(c.cod)]; const vuelve = li ? li.u : (pis.length === 1 ? Number(c.usdAntes) : null);
