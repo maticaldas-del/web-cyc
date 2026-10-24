@@ -2959,7 +2959,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.28';
+const APP_VERSION='26.29';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2972,6 +2972,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.29',f:'24/10',h:'01:30',c:[{n:3,t:'🇵🇾 Productos nuevos: con UN solo vendedor en ML ahora entran si ese producto vendió 100 o más (lo carga el chat de compras). Y los que tienen catálogo en ML pero nadie tiene stock entran como 🌟 sin competencia, medidos contra el precio que el chat ve en ML. Los dos con la vara de 35%.'},{n:2,t:'🤖 El robot ya no da "nadie lo vende" cuando ML agrupa los colores en un catálogo padre: mira el de cada color.'}]},
   {v:'26.28',f:'24/10',h:'01:10',c:[{n:1,t:'🇵🇾 Paraguay → Revisados: "En ML nadie lo vende" pasa a decir lo que es: en ML no hay vendedores en el catálogo de ese producto (puede venderse suelto, pero la regla pide catálogo con 2+ vendedores).'},{n:2,t:'🤖 El robot ya no compara con otro producto cuando cambia la capacidad (32 GB contra 16 GB), el género (perfume de hombre contra el de mujer) o el número del modelo (Flip 7 contra Flip 6). Lo que estaba medido así se vuelve a buscar solo.'}]},
   {v:'26.27',f:'24/10',h:'00:50',c:[{n:2,t:'🇵🇾 Paraguay: los productos que descartó Claude porque ML los comparaba con OTRO producto ya no cuentan como descartados: el robot les vuelve a buscar el producto correcto en ML (sin el que estaba mal). Si dan, vuelven a Para probar y pasan por la revisión de fotos.'}]},
   {v:'26.26',f:'24/10',h:'00:35',c:[{n:2,t:'🇵🇾 Paraguay → Nuevos → Revisados: la carpeta "Medidos que dan, pero el robot no confirmó…" ahora se llama "🟠 Dan el %, pero no entran al pedido": el % va en ámbar y cada producto dice por qué no entra (falta la foto de Paraguay, 1 solo vendedor, o el nombre de ML no coincide y puede ser otro producto).'}]},
@@ -15473,7 +15474,7 @@ function pycatFila([cod,e]){const tc=curTC();{const u=Number(e.u)||0,pu=u*RECARG
     // entrar a un pedido ya no va en verde; va en ámbar con el motivo (sin la foto de Paraguay no se compra · 1 solo vendedor ·
     // el nombre de ML no coincide: lo más probable es que sea otro producto).
     const fPY0=/^https:\/\//.test(e.f||'');
-    const noVa=m!=null&&m>=25&&!e.cand?[!fPY0?'📷 falta la foto de Paraguay: no se puede comprar':'',(Number(e.mv)||0)<CAND_MIN_VENDEDORES?'1 solo vendedor en ML':'',e.rp?'⚠️ el nombre de ML no coincide ('+escHtml(String(e.rp).replace(/^en ML no está\(n\): /,'falta: ').slice(0,70))+'): puede ser otro producto':''].filter(Boolean):[];
+    const noVa=m!=null&&m>=25&&!e.cand?[!fPY0?'📷 falta la foto de Paraguay: no se puede comprar':'',(Number(e.mv)||0)<1?'sin vendedores en el catálogo':'',e.rp?'⚠️ el nombre de ML no coincide ('+escHtml(String(e.rp).replace(/^en ML no está\(n\): /,'falta: ').slice(0,70))+'): puede ser otro producto':''].filter(Boolean):[];
     const est=m!=null?`<b style="font-size:1rem;color:${noVa.length?'var(--amber)':m>=25?'var(--green)':'var(--red)'}">${Math.round(m)}%</b> <span style="font-size:.6rem;color:var(--muted)">ML</span>`
       :e.sc?'<span style="font-size:.62rem;color:var(--muted)">sin catálogo exacto en ML</span>':e.sv?'<span style="font-size:.62rem;color:var(--muted)">en ML no lo vende nadie</span>':e.fz?`<span style="font-size:.62rem;color:var(--muted)">afuera: ${e.fz}</span>`:'<span style="font-size:.62rem;color:var(--muted)">⏳ sin medir</span>';
     const fPY=/^https:\/\//.test(e.f||'')?e.f:'', fML=/^https:\/\//.test(e.mf||'')?e.mf:'';
@@ -15652,7 +15653,10 @@ const CAND_MIN_VENT=100; // 03/10/2026: "100 unidades mínimo vendidas" · DESDE
 // Ahora alcanza con que el catálogo medido tenga 2+ vendedores con precio (`mlVendedores`; en Listas `mv`). Uno solo no vale como precio
 // (regla del 19/10). Lo de mismo producto confirmado (✅ / fotos) sigue igual. Misma regla en sync.mjs.
 const CAND_MIN_VENDEDORES=2;
-function candVendOk(c){return Number(c&&c.mlVendedores)>=CAND_MIN_VENDEDORES;}
+// CON 1 SOLO VENDEDOR ENTRA SI VENDIÓ 100+ (24/10/2026, eligió la 1a). Misma regla que `vendOk` de sync.mjs.
+function _vendOk(nv,vend){nv=Number(nv)||0;return nv>=CAND_MIN_VENDEDORES||(nv===1&&vend!=null&&isFinite(vend)&&Number(vend)>=CAND_MIN_VENTAS);}
+// 🌟 SIN COMPETENCIA (24/10/2026, eligió la 2a): catálogo sin vendedores medido contra el precio que vio el chat en ML (`sinComp`): entra.
+function candVendOk(c){return !!(c&&c.sinComp)||_vendOk(c&&c.mlVendedores,candVentasDe(c));}
 // LAS 100 VENTAS VUELVEN, AL FINAL (21/10/2026, él: "para estar seguros de la compra quiero agregar también el filtro de las 100 ventas.
 // pero que se haga al final" y "las que no tienen info que no queden afuera, que queden afuera sólo cuando se carguen las ventas").
 // Sin el dato no frena; cargado y abajo de 100, afuera. Las ventas las mira el chat de compras sólo de lo que pasó todo (`faltaventas`).
@@ -15722,7 +15726,7 @@ function candPuedePedir(c){
   // EN CATÁLOGO CON 2+ VENDEDORES (20/10/2026, reemplaza las 100 vendidas): con 1 solo vendedor el precio no lo confirma nadie.
   // (El mismo freno está en el comando `pedir`.)
   {const nv=Number(c.mlVendedores);
-  if(!(nv>=CAND_MIN_VENDEDORES))return{ok:false,motivo:nv===1?'en ML lo vende 1 solo vendedor: ese precio no lo confirma nadie (mínimo 2)':'no está medido contra un catálogo de ML con vendedores'};}
+  if(!candVendOk(c))return{ok:false,motivo:nv===1?(candVentasDe(c)==null?'en ML lo vende 1 solo vendedor: entra si vendió 100+ (falta que el chat de compras cargue las vendidas)':`en ML lo vende 1 solo vendedor y vendió ${candVentasDe(c)}: menos de ${CAND_MIN_VENTAS}`):'no está medido contra un catálogo de ML con vendedores'};}
   if(!candCatChequeado(c))return{ok:false,motivo:'falta confirmar que el producto de ML es el mismo (abrí las dos fotos y tocá ✅ Es el mismo producto)'};
   if(candPocasVentas(c))return{ok:false,motivo:`en ML vendió ${candVentasDe(c)}: menos de ${CAND_MIN_VENTAS}`};
   if(_bajo)return{ok:false,bajoPiso:true,motivo:_bajo};
@@ -16952,7 +16956,7 @@ function pedidoMomentoHTML(g){
       R.fotoPY||R.fotoML||'', m!=null?m.toFixed(0)+'%'+(R.margenViejo!=null?' (medido a US$ '+R.margenViejo.toFixed(2)+')':''):null,
       (m==null||R.margenViejo!=null)?'var(--muted)':candPctCol(m,f.c),
       pedNuevoFilaHTML(f,maxU,tc,true),
-      (()=>{const nv=Number(f.c.mlVendedores);return ` · <span style="color:${nv>=CAND_MIN_VENDEDORES?'var(--green)':'var(--amber)'}">🏪 ${nv>0?nv+(nv===1?' vendedor':' vendedores')+' en ML':'sin vendedores medidos'}</span>`;})());});
+      (()=>{const nv=Number(f.c.mlVendedores);if(f.c.sinComp)return ` · <span style="color:var(--green)" title="Nadie lo vende hoy en su catálogo de ML: se midió contra el precio que vio el chat de compras en ML (${fmt(Number(f.c.svp)||0)}).">🌟 sin competencia en ML</span>`;return ` · <span style="color:${nv>=CAND_MIN_VENDEDORES?'var(--green)':'var(--amber)'}">🏪 ${nv>0?nv+(nv===1?' vendedor':' vendedores')+' en ML':'sin vendedores medidos'}</span>`;})());});
   const cfg=`<details style="margin:8px 0 2px"><summary style="cursor:pointer;font-size:.68rem;color:var(--muted)">⚙️ tope y máximo por producto</summary><div style="display:flex;gap:7px;flex-wrap:wrap;align-items:flex-end;margin:8px 0 4px">
       ${[['pedTopeUSD',tope,'Tope del pedido (US$, probados + nuevos)'],['pedMaxU',maxU,'U. por nuevo (barato que vende: 3-4 · caro: 1)']]
         .map(([k,v,t])=>`<label style="flex:1;min-width:105px"><div style="font-size:.6rem;color:var(--muted);margin-bottom:3px">${t}</div>
@@ -20741,7 +20745,7 @@ function _listaPuesto(k,e){return Math.round((Number(e&&e.p)||0)*(1+_listaRec(k)
 function _listaCostoVigente(e){return !!e&&e.uMed!=null&&Math.abs(Number(e.uMed)-Number(e.p))<1;}
 // "Otro producto" vale para el catálogo que se miró (`noEsCat`); misma regla que `listaNoEsVale` de sync.mjs (20/10/2026).
 function _listaNoEsVale(e){return !!(e&&e.noEs&&(!e.noEsCat||String(e.noEsCat).toUpperCase()===String(e.mi||'').toUpperCase()));}
-function _listaMed25(e){return e&&!_listaNoEsVale(e)&&!e.sacado&&!e.noWeb&&!e.noFull&&e.m!=null&&isFinite(e.m)&&Number(e.m)>=listaVaraDe(e)&&_listaCostoVigente(e)&&/^https:\/\//.test(e.mf||'')&&!(e.mv!=null&&Number(e.mv)<CAND_MIN_VENDEDORES);}
+function _listaMed25(e){return e&&!_listaNoEsVale(e)&&!e.sacado&&!e.noWeb&&!e.noFull&&e.m!=null&&isFinite(e.m)&&Number(e.m)>=listaVaraDe(e)&&_listaCostoVigente(e)&&/^https:\/\//.test(e.mf||'')&&!(e.mv!=null&&Number(e.mv)<1);}
 // UN SOLO VENDEDOR NO ALCANZA (19/10/2026, él: "hay un flaco que vende los perfumes re caros y es el único (…) es un precio inflado que no
 // sabemos si vende"). Con 1 vendedor en ML el precio no lo confirma nadie: nunca va a ✅ Dan solo, va a 🔎 Para revisar hasta que el
 // chat de compras lo mire (`ok` = mismo producto Y precio creíble).
@@ -20755,7 +20759,7 @@ function _listaOkVale(e){return !!(e&&e.ok&&(e.miFijo?String(e.miFijo).toUpperCa
 // foto de ML, así que con 25%+ medido y 2+ vendedores alcanza para cargarlo (la tarjeta del local dice "sin confirmar: mirá bien la
 // foto"). Lo marcado otro producto (`noEs`), fuera de la web o fuera de Full sigue sin poder pedirse (lo frena `_listaMed25`).
 // `k` = la lista; sin `k` queda la regla de siempre.
-function _listaDa(e,k){return _listaMed25(e)&&Number(e.mv)>=CAND_MIN_VENDEDORES&&(_listaOkVale(e)||(k!=null&&_listaEsBsas(k)))&&!pocasVentasN(e.vend);}
+function _listaDa(e,k){return _listaMed25(e)&&(_vendOk(e.mv,e.vend)||!!e.svm)&&(_listaOkVale(e)||(k!=null&&_listaEsBsas(k)))&&!pocasVentasN(e.vend);}
 function _listaRevisar(e,k){return _listaMed25(e)&&!_listaDa(e,k)&&!pocasVentasN(e.vend);}
 // pasó todo lo demás pero las vendidas cargadas no llegan a 100 (21/10/2026)
 function _listaPocasV(e){return _listaMed25(e)&&pocasVentasN(e.vend);}
@@ -21456,7 +21460,7 @@ async function renderListas(){
   for(const f of resto){const e=f[1],m=e.m!=null&&isFinite(e.m)?Number(e.m):null;
     if(e.fz)_cg.regla.push(f);else if(e.sc)_cg.sinCat.push(f);else if(e.sv)_cg.nadie.push(f);else if(m==null)_cg.sinMed.push(f);
     else if(!_listaCostoVigente(e))_cg.cNuevo.push(f);else if(_listaNoEsVale(e))_cg.otro.push(f);
-    else if(e.mv!=null&&Number(e.mv)<CAND_MIN_VENDEDORES)_cg.unV.push(f);else if(m>=listaVaraDe(e))_cg.sinFoto.push(f);
+    else if(e.mv!=null&&!_vendOk(e.mv,e.vend))_cg.unV.push(f);else if(m>=listaVaraDe(e))_cg.sinFoto.push(f);
     else if(m<0)_cg.neg.push(f);else if(m<15)_cg.bajo.push(f);else if(m>=CAND_PISO_PCT)_cg.guard.push(f);else _cg.casi.push(f);}
   const _sub=(t,arr,col,abierto)=>arr.length?`<details${abierto?' open':''} style="margin-top:8px;border:1px solid var(--border);border-radius:8px;padding:7px 10px"><summary style="cursor:pointer;font-size:.74rem;font-weight:700${col?';color:'+col:''}">${t} (${arr.length})</summary><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${arr.slice(0,150).map(f=>fila(f,false)).join('')}${arr.length>150?`<div style="font-size:.62rem;color:var(--muted)">muestro 150 · el resto con el buscador</div>`:''}</div></details>`:'';
   const _carp=(t,n,col,body,extra)=>n?`<details style="margin-top:14px;background:var(--surface);border:1px solid ${col||'var(--border)'};border-radius:var(--r);padding:10px 12px"><summary style="cursor:pointer;font-size:.82rem;font-weight:700">${t} (${n})${extra||''}</summary>${body}</details>`:'';

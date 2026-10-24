@@ -61,6 +61,20 @@ iniciada, cuántas vendió cada catálogo de la lista. Se cargan así:
   Listas:   listadato:<proveedor>;<código>=<vendidas>;…;go
 Si ML dice "+1000 vendidos", poné 1000. Sin el dato el producto sigue entrando; con menos de 100 cargado, queda afuera.
 Si algo de comprasparaguay dice "no disponible", cargalo con  candprecio:<código>=nohay;…;go
+Desde el 24/10/2026 `faltaventas` trae también los de UN SOLO vendedor en ML: con 100+ vendidas entran (decisión de Matías).
+
+== CATÁLOGOS DE ML SIN VENDEDORES: EL PRECIO QUE SE VE (24/10/2026, decisión de Matías) ==
+Hay productos que tienen catálogo en ML pero hoy nadie los vende (nadie tiene stock). Para Matías son los mejores: no hay competencia.
+El robot no puede ver un precio ahí. Vos sí: correr `faltaprecio` (ml-consulta, sólo lee; `faltaprecio:300` para más) y, de cada
+renglón (fuente|proveedor|código|nombre|catálogo ML|costo), abrir https://www.mercadolibre.com.ar/p/<catálogo ML> con la sesión iniciada.
+ · Si hay publicaciones sueltas del MISMO producto (misma marca, modelo, tamaño, color): el precio más barato de las nuevas, sin las
+   del exterior (las que dicen "compra internacional").
+ · Si no hay ninguna, el último precio que muestre la página del catálogo, si lo muestra.
+ · Si no hay ningún precio a la vista: va "no" (no entra).
+Se carga por ml-consulta, de a 20:
+  Paraguay: svprecio:<código>=<pesos>;<código>=no;…;go
+  Listas:   svprecio:lista=<proveedor>;<código>=<pesos>;…;go
+El robot lo mide en la próxima vuelta del catálogo y, si da 35%, pasa a Para probar como 🌟 sin competencia.
 
 == CADA 15 MINUTOS, ALGO ==
 Cada 15 minutos como máximo, un renglón: "voy por la página N de M, cargado hasta la N". Si te trabás, avisá enseguida.

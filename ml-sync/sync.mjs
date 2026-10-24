@@ -77,7 +77,7 @@ const _cortarCiclo = (donde) => {
 // los que escriben en cantidad o en plata se niegan de entrada, y cualquier otro corre con la base,
 // ML, Mercado Pago y Telegram en sólo lectura (se deja renovar y guardar el token de ML, que ML rota).
 const EN_CONSULTA = process.env.GITHUB_WORKFLOW === 'ml-consulta' || process.env.ML_CONSULTA === '1';
-const CONSULTA_ESCRIBE = new Set(['ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
+const CONSULTA_ESCRIBE = new Set(['ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
 const CONSULTA_NIEGA = new Set(['cajaitems', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'listaped', 'publicar', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'errores', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'promoventas', 'cargosmes', 'arcacierres', 'webpush']);
@@ -10241,10 +10241,10 @@ const RE_CAND_PERF = /perfum|parfum|\bedp\b|\bedt\b|eau de|fragan|fragr|body spl
 function cuentaLista(cat) {
   const v = Object.values(cat || {}).filter((e) => e && e.n);
   // 2+ vendedores en el catálogo de ML (20/10/2026, eligió la 1a; reemplaza el mínimo de 100 ventas del 18/10): con 1 solo queda afuera.
-  const m25 = (e) => !listaNoEsVale(e) && !e.sacado && !e.noWeb && !e.noFull && e.m != null && Number(e.m) >= listaVaraDe(e) && listaCostoVigente(e) && /^https:\/\//.test(e.mf || '') && !(e.mv != null && Number(e.mv) < CAND_MIN_VENDEDORES);
+  const m25 = (e) => !listaNoEsVale(e) && !e.sacado && !e.noWeb && !e.noFull && e.m != null && Number(e.m) >= listaVaraDe(e) && listaCostoVigente(e) && /^https:\/\//.test(e.mf || '') && !(e.mv != null && Number(e.mv) < 1);
   // DESDE EL 20/10/2026 (eligió la a) sólo da lo que el chat de compras confirmó mirando ML (`ok`, de `listadato`) para ESE catálogo
   // (`okCat`, o el catálogo fijado con `mi=`). Antes también entraba lo que el robot emparejó solo y "parecía" bien: 21 de 36 estaban mal.
-  const da = (e) => m25(e) && Number(e.mv) >= CAND_MIN_VENDEDORES && listaOkVale(e) && !pocasVentas(e.vend);
+  const da = (e) => m25(e) && vendOk(e.mv, e.vend, e.svm) && listaOkVale(e) && !pocasVentas(e.vend);
   // `pend` = falta medir: nunca medidos y también los medidos con un costo que ya cambió (etapa 3, 20/10/2026; si no, una lista a la que
   // le cambió el costo entero quedaba con 0 que dan y 0 pendientes, y la web la escondía).
   return { n: v.length, med: v.filter((e) => e.m != null).length, pend: v.filter((e) => !e.t || (e.m != null && !e.noWeb && !e.sacado && !listaCostoVigente(e))).length, dan: v.filter(da).length, revisar: v.filter((e) => m25(e) && !da(e) && !pocasVentas(e.vend)).length, tMed: Date.now() };
@@ -10323,6 +10323,23 @@ const CAND_MIN_VENT = 100;      // 03/10/2026: "100 unidades mínimo vendidas". 
 // cargaba a mano: el paso más lento, y no protegía (del pedido del 21/09, 10 de 12 no vendieron en 17 días). Ahora alcanza con que el
 // catálogo medido tenga 2+ vendedores con precio (`mlVendedores` en Paraguay, `mv` en Listas). Misma regla en index.html.
 const CAND_MIN_VENDEDORES = 2;
+// CON 1 SOLO VENDEDOR ENTRA SI VENDIÓ 100+ (24/10/2026, eligió la 1a; él con el Adidas a $210.000: "ese flaco seguro que vende igual y le
+// gana una tonelada. si nos metemos vendemos igual"). Las vendidas las carga el chat de compras (`faltaventas`, ahora también los de 1
+// vendedor); sin el dato, el de 1 vendedor no entra. Misma regla en index.html (`candVendOk`, `_listaVendOk`).
+const vendOk = (nv, vend, sinComp) => !!sinComp || (Number(nv) || 0) >= CAND_MIN_VENDEDORES || ((Number(nv) || 0) === 1 && vend != null && isFinite(vend) && Number(vend) >= CAND_MIN_VENTAS);
+// CATÁLOGO SIN VENDEDORES = SIN COMPETENCIA (24/10/2026, eligió la 2a; él: "para mí tienen que entrar, y es mejor, porque no hay
+// competencia"). Nadie tiene stock, así que no hay precio de ML: el chat de compras mira ML en el navegador (publicaciones sueltas del
+// mismo producto o el último precio que tuvo) y lo carga con `svprecio` (`svp`, pesos). Con eso se mide como si hubiera UN vendedor a
+// ese precio, con Full (`ofertaVista`), y el candidato queda `sinComp` (entra sin el mínimo de vendedores, con la vara de 35%). Sin
+// precio a la vista no entra. El precio visto vale `SVP_DIAS` días; después hay que volver a mirarlo.
+const SVP_DIAS = 30;
+const svpVigente = (x) => !!x && Number(x.svp) > 0 && Date.now() - (Number(x.svpTs) || 0) < SVP_DIAS * 864e5;
+async function ofertaVista(svp, nombre, get) {
+  let cat = null;
+  try { const d = await get(`/sites/MLA/domain_discovery/search?limit=1&q=${encodeURIComponent(String(nombre || '').slice(0, 80))}`); cat = Array.isArray(d) && d[0] && d[0].category_id; } catch { cat = null; }
+  if (!cat) return [];
+  return [{ price: Number(svp), category_id: cat, listing_type_id: 'gold_special', shipping: { logistic_type: 'fulfillment', tags: [] }, tags: [], item_id: null, _vista: true }];
+}
 // LAS 100 VENTAS VUELVEN, AL FINAL (21/10/2026, él: "para estar seguros de la compra quiero agregar también el filtro de las 100 ventas.
 // pero que se haga al final (…) así llegan menos y es menos trabajo" y "las que no tienen info que no queden afuera, que queden afuera
 // sólo cuando se carguen las ventas"). Sin el dato no se frena nada; con el dato cargado y menos de 100, afuera. Las ventas las mira el
@@ -11452,7 +11469,7 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
       // Outdoor daba "nadie lo vende" porque se miraba el catálogo PADRE, que agrupa los colores y nunca tiene vendedores, y sus hijos
       // tenían 18 y 13). Si un catálogo no tiene vendedores y tiene hijos, se prueban los hijos que pasan el chequeo de mismo producto
       // (color, capacidad, modelo), en el orden que da ML, antes de seguir con el próximo de la búsqueda.
-      const _vis = okB.slice(0, 5), _hijosVistos = new Set();
+      const _vis = okB.slice(0, 5), _hijosVistos = new Set(_vis.map(([x]) => String(x.id).toUpperCase()));
       for (let _iv = 0; _iv < _vis.length && _iv < 14; _iv++) { const [r, rr] = _vis[_iv];
         let ofs = [];
         // LOS DE AFUERA, CON LA MISMA REGLA QUE `candidatos` (20/10/2026 · etapa 3). Acá se sacaban siempre, y si TODOS eran
@@ -11466,10 +11483,10 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
         if (!prod) { prod = r; rpBlando = rr.length ? rr.join(' · ') : null; }
         if (p2 && p2.precio > 0 && p2.ref && p2.ref.category_id) { prod = r; rpBlando = rr.length ? rr.join(' · ') : null; ofertas = ofs; pi = p2; piAfuera = _soloAfuera; break; }
         if (!ofs.length) {
-          try { const full = Array.isArray(r.children_ids) ? r : await mlGetR(`/products/${r.id}`); let pos = _iv + 1;
+          try { const full = (Array.isArray(r.children_ids) && r.children_ids.length) || r._leido ? r : await mlGetR(`/products/${r.id}`); let pos = _iv + 1;   // la búsqueda no trae los hijos: se pide el catálogo entero
             for (const h of ((full && full.children_ids) || []).slice(0, 8)) { const H = String(h).toUpperCase();
               if (_hijosVistos.has(H) || _rechSet.has(H) || H === _rechazado) continue; _hijosVistos.add(H);
-              await espera(250); const ph = await mlGetR(`/products/${H}`); if (!ph || !ph.id) continue;
+              await espera(250); const ph = await mlGetR(`/products/${H}`); if (!ph || !ph.id) continue; ph._leido = 1;
               const rrh = chequeoMismoProducto(nB, ph.name || ''); if (duros(rrh).length) continue;
               _vis.splice(pos++, 0, [ph, rrh]); if (prueba) console.log(`      → hijo ${H} "${String(ph.name || '').slice(0, 60)}"`); } }
           catch (eH) { if (!/404/.test(String((eH && eH.message) || eH))) throw eH; }
@@ -11478,8 +11495,10 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
       upd.sc = null; upd.mi = prod.id; upd.mt = String(prod.name || prod.title || '').slice(0, 120); upd.rp = rpBlando;
       { const pic = Array.isArray(prod.pictures) && prod.pictures[0]; const u = String((pic && (pic.secure_url || pic.url)) || '').replace(/^http:\/\//, 'https://');
         let h = ''; try { h = new URL(u).hostname.toLowerCase(); } catch { h = ''; } upd.mf = (h === 'mlstatic.com' || h.endsWith('.mlstatic.com')) ? u : null; }
+      // 🌟 SIN COMPETENCIA (24/10/2026, 2a): sin vendedores en el catálogo pero con el precio que vio el chat en ML (`svp`).
+      if (!pi && svpVigente(e)) { try { const ofv = await ofertaVista(Number(e.svp), nB, mlGetR); if (ofv.length) { ofertas = ofv; pi = precioAIgualar(ofv); piAfuera = false; } } catch { /* sin categoría: queda sin vendedores */ } }
       if (!pi) { upd.m = null; upd.sv = 1; res.sinVend++; console.log(`  · catálogo sin vendedores · ${e.n.slice(0, 60)} → ${upd.mi}`); if (aplicar) await db.patch(RUTA + '/' + cod, upd); continue; }
-      upd.sv = null; upd.mp = Math.round(pi.precio); upd.mv = ofertas.length; upd.afu = piAfuera ? 1 : null;   // 1 = medido contra los de afuera +20%
+      upd.sv = null; upd.mp = Math.round(pi.precio); upd.mv = ofertas[0] && ofertas[0]._vista ? 0 : ofertas.length; upd.svm = ofertas[0] && ofertas[0]._vista ? 1 : null; upd.afu = piAfuera ? 1 : null;   // 1 = medido contra los de afuera +20%
       upd.pp = pi.promoPct || null;   // 6.D5: el más barato está en promo (−N%): su precio puede volver a subir
       const cuoA = cuotasDeOferta(pi.ref); const cuoPct = cuoA ? CUOTAS_PCT_ML[cuoA] || 0 : 0;
       const puesto = esLista ? Math.round(Number(e.p) * (1 + (Number(opts.rec) || 0) / 100) / tc * 100) / 100 : Math.round(e.u * RECARGO_PAR * 100) / 100;
@@ -11509,7 +11528,7 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
     const _reb = candList.find(([, c]) => _pyCodIg(c.cod, x.cod) && c.noTipo === 'rebusca');
     if (_reb && String(x.upd.mi).toUpperCase() in ((_reb[1].mlNoEs) || {})) { console.log('     (es el mismo catálogo que ya se rechazó: no vuelve)'); continue; }
     const id = _reb ? _reb[0] : 'c' + Date.now() + 'p' + i;
-    const c = { nombre: x.e.n, cod: x.cod, usd: x.e.u, mlId: x.upd.mi, enNissei: true, fuente: 'pycat', ts: Date.now(), ...(x.e.l ? { link: x.e.l } : {}), foto: x.e.f };
+    const c = { nombre: x.e.n, cod: x.cod, usd: x.e.u, mlId: x.upd.mi, enNissei: true, fuente: 'pycat', ts: Date.now(), ...(x.e.l ? { link: x.e.l } : {}), foto: x.e.f, ...(x.upd.svm ? { svp: x.e.svp, svpTs: x.e.svpTs } : {}) };
     if (_reb) { await db.patch('cyc/candidatos_py/' + id, { ...c, no: null, noTs: null, noTipo: null, motivo: null, revClaude: null, margen: null, calcTs: null, mlLink: null, mlTit: null, mlFoto: null, mlVendedores: null, pedirU: null, rebuscaVolvio: Date.now() }); console.log('     🔁 vuelve el candidato que se había descartado por otro producto'); }
     else await db.set('cyc/candidatos_py/' + id, c);
     const rr = await db.get('cyc/candidatos_py/' + id);
@@ -11893,7 +11912,9 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
         ofertas = (it && it.results) || [];
       } catch (e2) {
         const txt = String(e2.message || e2);
-        if (/404/.test(txt)) {
+        if (/404/.test(txt) && svpVigente(c)) { try { ofertas = await ofertaVista(Number(c.svp), c.nombre, (r) => mlGet(r, tok)); } catch { ofertas = []; } }
+        if (ofertas.length && ofertas[0]._vista) console.log(`      → 🌟 sin vendedores en el catálogo: mido contra el precio visto en ML (${money(Math.round(Number(c.svp)))}, lo cargó el chat de compras)`);
+        else if (/404/.test(txt)) {
           if (!soloPrueba) await db.set(`cyc/candidatos_py/${id}/motivo`, `ML tiene el catálogo ("${mlTit}") pero hoy no hay ningún vendedor activo: no hay precio contra el cual medir.`);
           console.log('      → ML no tiene vendedores activos en ese catálogo (404 "no winners"). No es un error: no hay precio que mirar.');
           sinDato.push(`${c.nombre} → el catálogo existe pero hoy no lo vende nadie`);
@@ -11901,7 +11922,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
           console.log(`      → no pude pedir los vendedores (${txt.slice(0, 80)})`);
           sinDato.push(`${c.nombre} → no pude pedirle los vendedores a ML`);
         }
-        continue;
+        if (!(ofertas.length && ofertas[0]._vista)) continue;
       }
       // ── LOS VENDEDORES DE AFUERA NO CUENTAN (19/09/2026, regla suya) ─────────────────────
       // No es contra ésos que competimos: tardan semanas y salen del exterior. Y como el margen
@@ -11915,6 +11936,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       else if (_om.afuera) console.log(`      (saco ${_om.afuera} vendedor(es) del exterior: no es contra ésos que competimos)`);
       ofertas = _om.ofs;
       vendedores = ofertas.length;
+      if (ofertas[0] && ofertas[0]._vista) vendedores = 0;   // 🌟 sin competencia: el precio es el visto, no hay vendedores
       // EL PRECIO DE REFERENCIA ES EL MÁS BARATO **CON FULL**, no el más barato a secas
       // (22/09/2026 · ver `precioAIgualar`). Uno que manda a mano no obliga a igualarle el precio:
       // el comprador elige el que dice "Llega mañana". Medido en nuestras publicaciones, contra uno
@@ -12076,7 +12098,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     console.log(`      medido contra el MÁS BARATO (el peor caso): costo ${money(Math.round(costo))} + impuestos ${money(Math.round(impuestos))} + envío ${money(envio)}${cuotas > 0 ? ` + cuotas ${money(Math.round(cuotas))} (la que gana da ${cuoN || cuoAuto} cuotas${cuoAuto ? ', lo vio el robot' : ''}: ${cuoPct}%)` : ''} → ${margen.toFixed(1)}% · ${money(Math.round(ganancia))} por unidad`);
     if (!soloPrueba) {
       await db.patch(`cyc/candidatos_py/${id}`, {
-        mlTit, mlPrecio: Math.round(mlPrecio), mlMax, mlVendedores: vendedores, mlVendidas, mlVendidasMin, mlComision: Math.round(fee), mlLink, mlPorNombre: porNombre,
+        mlTit, mlPrecio: Math.round(mlPrecio), mlMax, mlVendedores: vendedores, sinComp: svpVigente(c) && !vendedores ? 1 : null, mlVendidas, mlVendidasMin, mlComision: Math.round(fee), mlLink, mlPorNombre: porNombre,
         mlFoto: mlFoto || null,
         mlReparos: (() => { const r = chequeoMismoProducto(c.nombre, mlTit);
           if (gemelo) r.push(_gemeloTxt(gemelo, Math.round(mlPrecio)));
@@ -17489,7 +17511,7 @@ async function main() {
           if (c.pedidoEn && comp[c.pedidoEn] && comp[c.pedidoEn].estado === 'camino') { sum('ya viaja en un pedido'); continue; }
           if (c.calcTs == null && c.usdAntes != null) { sum('cambió el precio de Paraguay, falta medirlo'); continue; }
           if (!/^https:\/\//.test(String(c.foto || '')) || !/^https:\/\//.test(String(c.mlFoto || ''))) { sum('le falta una de las dos fotos'); continue; }
-          if (!(Number(c.mlVendedores) >= CAND_MIN_VENDEDORES)) { sum(Number(c.mlVendedores) === 1 ? '1 solo vendedor en ML' : 'sin catálogo de ML con vendedores'); continue; }
+          if (!vendOk(c.mlVendedores, candVentasDe(c), c.sinComp)) { sum(Number(c.mlVendedores) === 1 ? '1 solo vendedor en ML y falta confirmar 100+ vendidas' : 'sin catálogo de ML con vendedores'); continue; }
           if (!candCatChequeado(c)) { sum(c.revClaude && c.revClaude.cat === candCatDe(c) ? `fotos miradas: ${c.revClaude.v}` : 'falta mirar las fotos'); sinConf.push(c); continue; }
           if (pyCatNoSeMira(c.nombre)) { sum('categoría que no se mira'); continue; }
           if (pocasVentas(candVentasDe(c))) { sum('vendió menos de 100 en ML'); continue; }
@@ -18281,13 +18303,13 @@ async function main() {
       const filas = [];
       for (const c of Object.values(cands)) {
         if (!c || !c.nombre || c.no || c.prodId) continue; const m = Number(c.margen); if (c.margen == null || !isFinite(m) || m < 25) continue;
-        const nv = Number(c.mlVendedores) || 0, ok = nv >= CAND_MIN_VENDEDORES && candCatChequeado(c) && !pyCatNoSeMira(c.nombre);
+        const nv = Number(c.mlVendedores) || 0, ok = vendOk(nv, candVentasDe(c), c.sinComp) && candCatChequeado(c) && !pyCatNoSeMira(c.nombre);
         filas.push({ f: 'py', n: c.nombre, m, nv, ok, vend: candVentasDe(c), usd: Number(c.usd) || 0 });
       }
       const provs = (await db.get('cyc/mlconfig/listasProv')) || {};
       for (const [k, pv] of Object.entries(provs)) { if (pv.desc) continue; const cat = (await db.get('mlapi/listas/' + k)) || {};
         for (const e of Object.values(cat)) { if (!e || listaNoEsVale(e) || e.sacado || e.noWeb || e.noFull || e.m == null || !(Number(e.m) >= 25) || !listaCostoVigente(e)) continue;
-          const nv = Number(e.mv) || 0; filas.push({ f: k, n: String(e.n), m: Number(e.m), nv, ok: nv >= CAND_MIN_VENDEDORES && listaOkVale(e), vend: e.vend != null ? Number(e.vend) : null }); } }
+          const nv = Number(e.mv) || 0; filas.push({ f: k, n: String(e.n), m: Number(e.m), nv, ok: vendOk(nv, e.vend) && listaOkVale(e), vend: e.vend != null ? Number(e.vend) : null }); } }
       console.log('=== LO NUEVO QUE SE PODRÍA COMPRAR, POR TRAMO DE % ===');
       for (const t of T) { const x = filas.filter((f) => f.m >= t[0] && f.m < t[1]), ok = x.filter((f) => f.ok), okV = ok.filter((f) => f.vend != null && f.vend >= CAND_MIN_VENTAS);
         console.log(`  ${nomT(t).padEnd(7)} ${String(x.length).padStart(4)} productos (Paraguay ${x.filter((f) => f.f === 'py').length}) · pasaron todo ${ok.length} · y venden ${CAND_MIN_VENTAS}+ en ML ${okV.length}`); }
@@ -21008,7 +21030,7 @@ async function main() {
         if (!/^MLA\d+$/.test(idL)) p.push('SIN LINK DE ML');
         if (!String(c.cod || c.codPy || '').trim()) p.push('sin código');
         if (!(Number(c.usd || c.precioUSD || c.nisseiUSD) > 0)) p.push('sin precio');
-        if (c.margen != null && !(Number(c.mlVendedores) >= CAND_MIN_VENDEDORES)) p.push(Number(c.mlVendedores) === 1 ? '1 solo vendedor en ML' : 'sin vendedores en ML');
+        if (c.margen != null && !vendOk(c.mlVendedores, candVentasDe(c), c.sinComp)) p.push(Number(c.mlVendedores) === 1 ? '1 solo vendedor en ML (entra con 100+ vendidas)' : 'sin vendedores en ML');
         const m = (c.margen != null && isFinite(c.margen)) ? Number(c.margen) : null;
         if (m == null) p.push('sin medir todavía');
         else if (m < candPisoDe(c)) p.push(`abajo del piso (${m}%)`);
@@ -21113,6 +21135,47 @@ async function main() {
           try { const x = await mlGet(r, tok); console.log(`  ${r}: ${JSON.stringify(x).slice(0, 300)}`); } catch (e) { console.log(`  ${r}: ${String(e.message).slice(0, 100)}`); } }
       }
       return;
+    }
+    // BILLING_PROBE=faltaprecio[:<n>] (24/10/2026, 2a) → SOLO LEE. Los catálogos de ML SIN vendedores (nadie tiene stock) del catálogo de
+    // Nissei y de las listas, para que el chat de compras mire en ML el precio que se ve y lo cargue con `svprecio`. Sólo los que ML
+    // emparejó sin reparos duros, con foto de Paraguay (las listas no tienen) y sin precio visto vigente; primero los rubros que ya
+    // vendemos (perfumes, auriculares, pendrives, relojes) y los más baratos. `n` = cuántos (150 por defecto).
+    if (/^faltaprecio(:\d+)?$/.test(String(process.env.BILLING_PROBE || ''))) {
+      const N = parseInt(String(process.env.BILLING_PROBE).split(':')[1], 10) || 150; const filas = [];
+      const cat = (await db.get('mlapi/pycat')) || {}; const cands = (await db.get('cyc/candidatos_py')) || {};
+      const esCand = pyCodMatcher(Object.values(cands).filter((c) => c && !c.no && provPyDeBot(c) === 'nissei').map((c) => c.cod).filter(Boolean));
+      for (const [cod, e] of Object.entries(cat)) { if (!e || !e.sv || !e.mi || e.fz || !e.f || svpVigente(e) || esCand(cod) || pyCatNoSeMira(e.n)) continue;
+        filas.push({ r: PYCAT_RUBRO_RE.test(String(e.n)) ? 0 : 1, u: Number(e.u) || 0, t: `py|nissei|${cod}|${String(e.n).replace(/\|/g, '/').slice(0, 80)}|${e.mi}|US$ ${e.u}` }); }
+      const provs = (await db.get('cyc/mlconfig/listasProv')) || {};
+      for (const [k, pv] of Object.entries(provs)) { if (pv.desc) continue; const L = (await db.get('mlapi/listas/' + k)) || {};
+        for (const [cod, e] of Object.entries(L)) { if (!e || !e.sv || !e.mi || e.sacado || e.noWeb || e.noFull || svpVigente(e) || listaNoEsVale(e)) continue;
+          filas.push({ r: 1, u: (Number(e.p) || 0) / 1500, t: `lista|${k}|${cod}|${String(e.n).replace(/\|/g, '/').slice(0, 80)}|${e.mi}|$ ${e.p}` }); } }
+      filas.sort((a, b) => a.r - b.r || a.u - b.u);
+      console.log(`=== CATÁLOGOS SIN VENDEDORES, FALTA EL PRECIO QUE SE VE EN ML: ${filas.length} · muestro ${Math.min(N, filas.length)} (fuente|proveedor|código|nombre|catálogo ML|costo) ===`);
+      console.log('@@LISTA'); for (const f of filas.slice(0, N)) console.log(f.t); console.log('@@FIN'); return;
+    }
+    // BILLING_PROBE=svprecio:[lista=<prov>;]<código>=<pesos>|no;…[;go] (24/10/2026, 2a) → el precio que el chat de compras VIO en ML para
+    // un catálogo sin vendedores (publicaciones sueltas del mismo producto o el último precio que tuvo). `no` = no hay ningún precio a la
+    // vista (queda anotado y no entra). Escribe `svp`/`svpTs` en el renglón (`mlapi/pycat` o la lista) y le borra la fecha para que el
+    // robot lo vuelva a medir con ese precio; si ya es candidato de Nissei, también ahí (y se vuelve a medir). Sin `;go` sólo muestra.
+    if (/^svprecio:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const raw = String(process.env.BILLING_PROBE).slice('svprecio:'.length); const GO = /(^|;)go\s*$/.test(raw) && !DRY;
+      let partes = raw.replace(/(^|;)go\s*$/, '').split(';').map((x) => x.trim()).filter(Boolean); let prov = null;
+      if (partes.length && /^lista=/i.test(partes[0])) prov = partes.shift().slice(6).trim().toLowerCase();
+      const RUTA = prov ? 'mlapi/listas/' + prov : 'mlapi/pycat'; const cat = (await db.get(RUTA)) || {};
+      const cands = prov ? {} : ((await db.get('cyc/candidatos_py')) || {});
+      const up = {}, upC = {}; const ts = Date.now(); let mal = 0;
+      for (const pt of partes) { const m = pt.match(/^([^=]+)=\s*(no|[\d.,]+)$/i); if (!m) { console.log(`  ✗ no entiendo "${pt}"`); mal++; continue; }
+        const cod = Object.keys(cat).find((k) => k === m[1].trim() || (!prov && _pyCodIg(k, m[1].trim()))); if (!cod) { console.log(`  ✗ ${m[1]}: no está en ${prov ? 'la lista ' + prov : 'el catálogo de Nissei'}`); mal++; continue; }
+        const v = /^no$/i.test(m[2]) ? -1 : pesosArg(m[2]); if (v !== -1 && !(v > 0)) { console.log(`  ✗ ${m[1]}: precio raro "${m[2]}"`); mal++; continue; }
+        up[`${cod}/svp`] = v; up[`${cod}/svpTs`] = ts; if (v > 0) up[`${cod}/t`] = null;
+        console.log(`  · ${cod} · ${String(cat[cod].n).slice(0, 60)} → ${v > 0 ? money(v) : 'no hay ningún precio a la vista'}`);
+        for (const [id, c] of Object.entries(cands)) if (c && !c.no && provPyDeBot(c) === 'nissei' && _pyCodIg(c.cod, cod)) { upC[`${id}/svp`] = v; upC[`${id}/svpTs`] = ts; upC[`${id}/calcTs`] = null; } }
+      console.log(`=== SVPRECIO ${GO ? '(APLICANDO)' : '(PRUEBA)'} · ${Object.keys(up).filter((k) => k.endsWith('/svp')).length} bien · ${mal} mal ===`);
+      if (!GO || mal || !Object.keys(up).length) { if (mal) console.log('Con algún renglón mal no escribo nada.'); return; }
+      await db.patch(RUTA, up); if (Object.keys(upC).length) await db.patch('cyc/candidatos_py', upC);
+      const rel = (await db.get(RUTA)) || {}; const ok = Object.keys(up).filter((k) => k.endsWith('/svp')).filter((k) => Number((rel[k.split('/')[0]] || {}).svp) === Number(up[k])).length;
+      console.log(`${ok} de ${Object.keys(up).filter((k) => k.endsWith('/svp')).length} quedaron bien (releído). El robot los mide en la próxima vuelta del catálogo.`); return;
     }
     // BILLING_PROBE=descartesmot → POR QUÉ SE DESCARTÓ CADA CANDIDATO, AGRUPADO (24/10/2026, él: "hay muchos descartados que no sé
     // por qué. son productos legítimos"). SOLO LEE. Agrupa por tipo de descarte y el motivo sin números, con 4 ejemplos por grupo.
@@ -21951,7 +22014,7 @@ async function main() {
           // y el margen guardado es el del precio de antes. Misma regla que `candPrecioViejo` de la web.
           : (c.calcTs == null && Number(c.usdAntes) > 0) ? `cambió el precio de Paraguay (de US$ ${Number(c.usdAntes).toFixed(2)} a US$ ${(parseFloat(c.usd) || 0).toFixed(2)}): falta medirlo`
           : (mg < candVaraDe(c) && !(_tcP > 0 && !c.noLocal && RE_CAND_PERF.test(`${c.nombre || ''} ${c.mlTit || ''}`) && (perfLocalPct((parseFloat(c.usd) || 0) * RECARGO_PAR * _tcP, Number(c.mlPrecio) || 0) || 0) >= PERF_LOCAL_GAN)) ? `da ${mg.toFixed(1)}% y tu piso es ${candPisoDe(c)}%`
-          : !(Number(c.mlVendedores) >= CAND_MIN_VENDEDORES) ? (Number(c.mlVendedores) === 1 ? 'en ML lo vende 1 solo vendedor: ese precio no lo confirma nadie (mínimo 2)' : 'no está medido contra un catálogo de ML con vendedores')
+          : !vendOk(c.mlVendedores, candVentasDe(c), c.sinComp) ? (Number(c.mlVendedores) === 1 ? 'en ML lo vende 1 solo vendedor: entra si vendió 100+ y ese dato falta o no llega' : 'no está medido contra un catálogo de ML con vendedores')
           // Sin las dos fotos no se compra (regla suya del 07/10, "sin foto tampoco acepto"; etapa 3, 20/10/2026): la web ya lo
           // frenaba (`candPuedePedir`) y este comando no.
           : !/^https:\/\//.test(String(c.foto || '')) ? 'falta la foto de comprasparaguay'
@@ -22888,14 +22951,15 @@ async function main() {
         const pe = c.pedidoEn && comp[c.pedidoEn]; if (pe && pe.estado === 'camino') continue;
         const mg = Number(c.margen); if (c.margen == null || !isFinite(mg) || mg < CAND_VARA_VENDE) continue;   // 30: las vendidas deciden si entra
         if (c.calcTs == null && Number(c.usdAntes) > 0) continue;
-        if (!(Number(c.mlVendedores) >= CAND_MIN_VENDEDORES)) continue;
+        if (!(Number(c.mlVendedores) >= 1)) continue;   // 24/10/2026 (1a): los de 1 vendedor también, con la vara de 35%
+        if (Number(c.mlVendedores) < CAND_MIN_VENDEDORES && mg < CAND_VARA_COMPRA) continue;
         if (!/^https:\/\//.test(String(c.foto || '')) || !/^https:\/\//.test(String(c.mlFoto || ''))) continue;
         if (!candCatChequeado(c)) continue; if (candVentasDe(c) != null) continue; if (pyCatNoSeMira(c.nombre)) continue;
         out.push(`py|${String(c.prov || 'nissei').toLowerCase()}|${c.cod || ''}|${String(c.nombre || '').replace(/\|/g, '/').slice(0, 80)}|${candCatDe(c)}|${Math.round(mg)}%`); }
       const provs = (await db.get('cyc/mlconfig/listasProv')) || {};
       for (const [k, pv] of Object.entries(provs)) { if (pv.desc) continue; const cat = (await db.get('mlapi/listas/' + k)) || {};
         for (const [cod, e] of Object.entries(cat)) { if (!e || listaNoEsVale(e) || e.sacado || e.noWeb || e.noFull || !(e.m != null && Number(e.m) >= CAND_VARA_VENDE) || !listaCostoVigente(e)) continue;
-          if (!/^https:\/\//.test(e.mf || '') || !(Number(e.mv) >= CAND_MIN_VENDEDORES) || !listaOkVale(e) || e.vend != null) continue;
+          if (!/^https:\/\//.test(e.mf || '') || !(Number(e.mv) >= 1) || (Number(e.mv) < CAND_MIN_VENDEDORES && Number(e.m) < CAND_VARA_COMPRA) || !listaOkVale(e) || e.vend != null) continue;
           out.push(`lista|${k}|${cod}|${String(e.n).replace(/\|/g, '/').slice(0, 80)}|${e.mi || ''}|${Math.round(e.m)}%`); } }
       console.log(`=== PASARON TODO, FALTAN LAS VENTAS DE ML: ${out.length} (fuente|proveedor|código|nombre|catálogo ML|margen) ===`);
       console.log('@@LISTA'); for (const l of out) console.log(l); console.log('@@FIN'); return;
@@ -22915,7 +22979,7 @@ async function main() {
         for (const [cod, e] of Object.entries(cat)) { if (!e || listaNoEsVale(e) || e.sacado || e.noWeb || e.noFull || !(e.m != null && Number(e.m) >= listaVaraDe(e) && e.mi) || !listaCostoVigente(e)) continue;   // costo nuevo sin medir: el margen no vale (etapa 3, 20/10/2026)
           const okV = listaOkVale(e);
           // 20/10/2026 (eligió la 1a): ya no hacen falta las ventas; sólo el ✅, y con 1 solo vendedor no da (no sale).
-          if (CONF ? !okV : (okV || !(Number(e.mv) >= CAND_MIN_VENDEDORES))) continue;
+          if (CONF ? !okV : (okV || !(Number(e.mv) >= 1))) continue;   // 24/10/2026 (1a): los de 1 vendedor también se confirman
           const falta = 'ok';
           const est = (okV || (!e.rp && Number(e.m) < 80 && Number(e.mv) !== 1)) ? 'DA' : (Number(e.mv) === 1 ? 'REVISAR-1VEND' : 'REVISAR');   // DA = margen y nombre bien
           filas.push({ o: est === 'DA' ? 0 : 1, m: Number(e.m), t: [k, cod, String(e.n).replace(/\|/g, '/'), Math.round((Number(e.p) || 0) * (1 + rec / 100)), e.mi, String(e.mt || '').replace(/\|/g, '/').slice(0, 80), e.mp || '', Math.round(e.m) + '%', est, falta].join('|') });

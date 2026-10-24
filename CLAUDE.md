@@ -295,7 +295,10 @@
   bloquea al robot (Cloudflare): lo copia el chat de compras, que hay que pegarle `PROMPT_GUAY.md` ENTERO.
 - **Catálogo entero en `mlapi/pycat`** (15/10): el chat copia (`pycat:#<pág>@<orden>;…;go`, ml-consulta) y el robot (`ml-pycat`, cada 3 h)
   mide contra ML. Se guarda TODO (no se borra lo de menos de 15%). Para probar: **25%+ y catálogo de ML con 2+ vendedores** (20/10,
-  reemplaza las 100 ventas; sin catálogo exacto afuera; las vendidas del catálogo no se buscan más) **y confirmado que es el mismo
+  reemplaza las 100 ventas; sin catálogo exacto afuera) — **o con 1 solo vendedor si vendió 100+** (24/10 1a, lo carga el chat con `faltaventas`)
+  **o 🌟 sin competencia**: catálogo sin vendedores medido contra el precio que el chat VE en ML (`faltaprecio` → `svprecio`, 24/10 2a, él: *"es mejor,
+  porque no hay competencia"*; sin precio a la vista no entra; se compran 1-2 y se lanza al precio más alto con sentido). Si el catálogo es
+  un PADRE de colores sin vendedores, el robot mide los hijos (24/10). Las dos con la vara de 35% **y confirmado que es el mismo
   producto** (✅ o `revcand` ok de ESE catálogo; sin las DOS fotos no va). **Nada pasa 14 días sin volver a mirarse** (23/10, él): 15%+ cada 7 d, todo lo demás (abajo de 15%, sin catálogo, sin vendedores; también Listas) cada 14; la web lo muestra en ✅ Revisados / ⏳ Falta revisar (`rev`/`pend` en `cyc/pycatres`).
   **Nombre traducido** (23/10, 1a): también se busca con el nombre en castellano (`traducirPyNombre`); lo que tampoco aparece traducido queda
   **✔️ revisado** (`qp`, `pycatres.scr`, en 📏 Medidos) y no cuenta como sin medir. `pycatdia` = desglose y lo buscado por día.

@@ -694,6 +694,15 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 
 ## 3 · MERCADERÍA (miércoles)
 
+**24/10/2026 · v26.29 · 1 vendedor con 100+ y 🌟 sin competencia (eligió 1a 2a).** **1a:** `vendOk(nv, vend, sinComp)` (sync.mjs) y
+`_vendOk`/`candVendOk` (web): entra con 2+ vendedores, con 1 si vendió 100+ (`vendCarga`/`vend`), o `sinComp`. `faltaventas` y
+`listarevisar` traen también los de 1 vendedor (vara 35%). **2a:** `faltaprecio` lista los catálogos sin vendedores (Nissei y listas) para
+el chat; `svprecio` carga el precio VISTO en ML (`svp`/`svpTs`, vale `SVP_DIAS`=30); `ofertaVista` arma una oferta con Full a ese precio
+(categoría por `domain_discovery`) y la miden `correrPyCatMedir` (`svm`) y `correrCandidatos` (`sinComp`). **Catálogo padre:** si un
+catálogo no tiene vendedores y tiene hijos (colores), se miden los hijos (`_vis`, `hv:1`; los `sv` viejos se re-miden). Medido con
+`catvacio`: Xiaomi Sound Outdoor "nadie lo vende" tenía 18 y 13 vendedores en sus hijos. **Qué chequear:** `pycatmedir:prueba` con el
+Xiaomi da vendedores; un `svprecio` mide y pasa a Para probar con 🌟; ningún 1-vendedor sin vendidas aparece como "da".
+
 **24/10/2026 · v26.28 · Revisión de "¿dejamos algo afuera injustamente?"** (él). Muestras de cada carpeta del catálogo de Nissei
 (`pycatmuestra:<grupo>:<n>`): **fz** (110V, D&G) bien · **margen** (810 descartados por no dar) ~95% bien medidos · **scr** (3.885 no
 están en ML) casi todos de verdad no están · **sv** (5.279 "nadie lo vende") = catálogo de ML SIN vendedores: muchos se venden en
