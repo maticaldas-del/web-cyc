@@ -22694,6 +22694,51 @@ async function main() {
       const rel = (await db.get('cyc/candidatos_py')) || {}; const bien = Object.keys(upC).filter((k) => k.endsWith('/usd')).filter((k) => Number((rel[k.split('/')[0]] || {}).usd) === Number(upC[k])).length;
       console.log(`✓ releído: ${bien} de ${rep} quedaron con el precio de vuelta.`); return;
     }
+    // BILLING_PROBE=resenamedir[:<MLA|código de candidato>,…] → SOLO LEE (24/10/2026, él: *"necesito estar seguro que un producto va a
+    // vender… la reseña no sé cómo se podrá tomar. ¿a cuántas ventas equivalen?"*). Dos medidas, sólo números (nunca el texto de una opinión):
+    //  A) NUESTRAS publicaciones: vendidas en toda su vida (`sold_quantity`, con el token de su cuenta) contra sus opiniones
+    //     (`/reviews/item`) → cuántas ventas hay detrás de cada reseña en ML Argentina (sólo las que tienen opiniones PROPIAS, no las
+    //     del catálogo entero).
+    //  B) Para cada catálogo pedido: cuántas opiniones tiene y de CUÁNDO son (últimos 30/90/365 días): una reseña de hace 3 años no
+    //     dice que hoy se venda.
+    if (/^resenamedir(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const args = String(process.env.BILLING_PROBE).split(':').slice(1).join(':').split(',').map((x) => x.trim()).filter(Boolean);
+      const tokR = {}; const tokDe = async (lab) => { if (tokR[lab] !== undefined) return tokR[lab]; tokR[lab] = null; const acc = accounts[lab];
+        if (acc?.refresh_token) { try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + lab, { refresh_token: t.refresh_token, updated_ts: Date.now() }); tokR[lab] = t.access_token; } catch { /* sin token */ } }
+        return tokR[lab]; };
+      const links = (await db.get('cyc/mllinks')) || {}; const opi = (await db.get('mlapi/opiniones')) || {};
+      // A) ratio con lo nuestro
+      const porCta = {}; for (const [m, l] of Object.entries(links)) { if (!l || !l.cuenta || l.gemelaDe) continue; const lab = labels.find((x) => x.toLowerCase() === String(l.cuenta).toLowerCase()); if (lab) (porCta[lab] = porCta[lab] || []).push(m); }
+      const filas = [];
+      for (const [lab, mlas] of Object.entries(porCta)) { const tk = await tokDe(lab); if (!tk) { console.log(`⚠️ sin token de ${lab}`); continue; }
+        for (let i = 0; i < mlas.length; i += 20) { let arr = []; try { arr = await mlGet('/items?ids=' + mlas.slice(i, i + 20).join(',') + '&attributes=id,sold_quantity,catalog_listing,date_created', tk); } catch { continue; }
+          for (const x of arr || []) { const b = x && x.body; if (!b || b.sold_quantity == null) continue; filas.push({ m: String(b.id), v: Number(b.sold_quantity) || 0, cl: !!b.catalog_listing, dc: b.date_created }); } } }
+      const conV = filas.filter((f) => f.v >= 5).sort((a, b) => b.v - a.v).slice(0, 80); const med = [];
+      const tk0 = await tokDe(labels[0]);
+      for (const f of conV) { let rv = null; try { rv = await mlGet(`/reviews/item/${f.m}`, tk0); } catch { continue; }
+        const n = Number(rv && rv.paging && rv.paging.total) || 0; const cat = !!(rv && rv.user_product_id);
+        f.n = n; f.cat = cat; if (!cat) med.push(f); }
+      const prop = med.filter((f) => f.n > 0), sinR = med.filter((f) => f.n === 0);
+      const rat = prop.map((f) => f.v / f.n).sort((a, b) => a - b); const q = (p) => rat.length ? rat[Math.min(rat.length - 1, Math.floor(p * rat.length))] : null;
+      const vT = med.reduce((a, f) => a + f.v, 0), nT = med.reduce((a, f) => a + f.n, 0);
+      console.log(`=== A) NUESTRAS PUBLICACIONES: ventas por cada reseña (${med.length} con opiniones propias y 5+ vendidas · ${conV.length - med.length} con las del catálogo entero, afuera) ===`);
+      console.log(`   en total ${vT} vendidas y ${nT} reseñas → 1 reseña cada ${nT ? (vT / nT).toFixed(0) : '—'} ventas · ${sinR.length} publicaciones con 5+ vendidas y 0 reseñas`);
+      if (rat.length) console.log(`   por publicación (las que tienen reseñas): la mitad entre 1 cada ${q(0.25).toFixed(0)} y 1 cada ${q(0.75).toFixed(0)} ventas · mediana 1 cada ${q(0.5).toFixed(0)}`);
+      for (const f of med.slice(0, 40)) console.log(`   ${f.m} · ${f.v} vendidas · ${f.n} reseñas${f.n ? ' · 1 cada ' + (f.v / f.n).toFixed(0) : ''}`);
+      // B) fechas de las opiniones de los catálogos pedidos
+      if (args.length) { const cands = (await db.get('cyc/candidatos_py')) || {}; const ahora = Date.now();
+        console.log(`\n=== B) DE CUÁNDO SON LAS RESEÑAS ===`);
+        for (const a of args) { let id = a.toUpperCase(); let nom = '';
+          if (!/^MLA/.test(id)) { const c = Object.values(cands).find((x) => x && String(x.cod) === a); if (!c) { console.log(`  ${a}: no encontré ese candidato`); continue; } id = String(candCatDe(c) || '').toUpperCase(); nom = String(c.nombre).slice(0, 50); }
+          const ruta = (off) => (/^MLA\d{6,9}$/.test(id) ? `/reviews/item/${id}?catalog_product_id=${id}&limit=50&offset=${off}` : `/reviews/item/${id}?limit=50&offset=${off}`);
+          let tot = null, fechas = [], campos = '';
+          for (let off = 0; off < 2000; off += 50) { let r; try { r = await mlGet(ruta(off), tk0); } catch (e) { console.log(`  ${id}: ML no contestó (${String(e.message).slice(0, 80)})`); break; }
+            tot = Number(r && r.paging && r.paging.total) || 0; const L = (r && r.reviews) || []; if (!campos && L[0]) campos = Object.keys(L[0]).join(',');
+            for (const x of L) { const d = Date.parse(x.date_created || x.date || ''); if (d) fechas.push(d); } if (L.length < 50) break; }
+          const en = (dias) => fechas.filter((d) => ahora - d <= dias * 864e5).length; fechas.sort((x, y) => x - y);
+          console.log(`  ${id}${nom ? ' · ' + nom : ''} · ${tot ?? '?'} reseñas (leí ${fechas.length} con fecha) · últimos 30 d: ${en(30)} · 90 d: ${en(90)} · 365 d: ${en(365)} · la más vieja ${fechas[0] ? new Date(fechas[0]).toISOString().slice(0, 10) : '—'} · la más nueva ${fechas.length ? new Date(fechas[fechas.length - 1]).toISOString().slice(0, 10) : '—'}${campos ? ' · campos: ' + campos : ''}`); } }
+      return;
+    }
     if (/^pycodcolor$/.test(String(process.env.BILLING_PROBE || ''))) {
       const cat = (await db.get('mlapi/pycat')) || {}; const links = (await db.get('cyc/mllinks')) || {};
       const titulos = {}; for (const l of Object.values(links)) if (l && l.prodId && l.title) (titulos[l.prodId] = titulos[l.prodId] || []).push(String(l.title));
