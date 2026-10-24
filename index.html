@@ -2947,7 +2947,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.23';
+const APP_VERSION='26.24';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2960,6 +2960,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.24',f:'24/10',h:'01:30',c:[{n:2,t:'Listas (Dai Nippon, Wels…) → un pedido que ya pagaste al pedirlo cuenta como mercadería en camino en el Arqueo hasta que llega (botón 💵 Ya lo pagué también mientras viaja). El que no pagaste sigue igual: al llegar es deuda hasta que lo pagás.'}]},
   {v:'26.23',f:'23/10',h:'17:30',c:[{n:1,t:'Armar caja → arriba aparece un aviso 🏷️ cuando lo que va en la caja todavía tiene unidades sin etiqueta: cuántas y de qué productos, para terminarlas antes.'}]},
   {v:'26.22',f:'23/10',h:'17:15',c:[{n:1,t:'Armar caja → la barra del cupo de Full cambia de color según el lugar que queda: verde (25%+ libre), amarillo, naranja y rojo (casi sin lugar o pasada).'}]},
   {v:'26.21',f:'23/10',h:'15:50',c:[{n:1,t:'Paraguay → Nissei: ⏳ Falta revisar queda en su propia carpeta, a la vista (antes estaba adentro de Lo que no entra en el pedido). La otra pasa a llamarse ✅ Revisados.'}]},
@@ -9266,6 +9267,18 @@ let _arqViewYM=null; // YYYY_MM del snapshot que se está viendo, null = en vivo
 let _agendaAbierta=false;
 function getHistCostUSDProd(prodId,ym){return state.precios_hist_prod?.[ym]?.[prodId]??null;}
 function efectivoCostP(p){if(!_arqViewYM)return costP(p);return getHistCostUSDProd(p.id,_arqViewYM)??costP(p);}
+// 📋 LO PAGADO A UNA LISTA QUE TODAVÍA NO LLEGÓ (24/10/2026, eligió la 12a: *"si se paga al pedir, cuenta como mercadería en
+// camino"*). Igual que Paraguay: la plata ya salió y la mercadería todavía no está en ningún lado. Sólo los pedidos marcados
+// `pagado:true` mientras viajan (botón 💵 Ya lo pagué); el que no se pagó al pedir sigue la regla del 20/10 (deuda al llegar,
+// `listaDeudaUSD`), así nunca está en los dos lados. Se valúa a lo que te sale (`pc`), lo mismo que la deuda.
+function listaEnCaminoUSD(){
+  const tc=curTC();if(!(tc>0))return 0;let t=0;
+  for(const c of Object.values(state.comprasLista||{})){
+    if(!c||c.estado!=='camino'||c.pagado!==true)continue;
+    t+=(c.items||[]).reduce((s,i)=>s+(Number(i.pc)||0)*(parseInt(i.u)||0),0);
+  }
+  return t/tc;
+}
 function pyEnCaminoUSD(){
   return Object.values(state.compraspy||{}).reduce((t,c)=>{
     // Sólo lo que de verdad viaja (revisión max #21): lo que cargó compray como historial no cuenta.
@@ -9326,7 +9339,7 @@ function calcArqueo(){
   // salieron y la mercadería no está en ningún lado del panel hasta que se cuenta en la oficina:
   // sin esto el patrimonio bajaba de mentira el día del pedido y volvía a subir al contarla.
   // Se valúa igual que la ficha que se va a crear: precio crudo × el recargo (lo puesto en casa).
-  if(!_arqViewYM)stockCamino+=pyEnCaminoUSD();
+  if(!_arqViewYM)stockCamino+=pyEnCaminoUSD()+listaEnCaminoUSD();
   stockVal=stockML+stockLocal+stockCamino;
   let activos=0,deudas=0,corregir=0;
   // Unidades contadas en la oficina de Mati. Si hay aunque sea una, el valor de la mercadería sale
@@ -9676,10 +9689,11 @@ function updateArqueo(){try{if(!_arqViewYM)_btnCerrarTxt();}catch(_){}
       if(d){
         const det=Object.entries(camCta).sort((a,b)=>b[1]-a[1])
           .map(([k,v])=>`${k} ${fmtN(v)}`).join(' · ');
-        const _py=pyEnCaminoUSD();
+        const _py=pyEnCaminoUSD(),_li=listaEnCaminoUSD();
         d.innerHTML=(uCam>0?`${fmtN(uCam)} u. despachadas que ML todavía no recibió`:'')
           +(det?`<br><span style="opacity:.85">${det}</span>`:'')
-          +(_py>0?`${uCam>0?'<br>':''}🇵🇾 Paraguay pagado y no llegado: US$ ${fmtN(Math.round(_py))}`:'');
+          +(_py>0?`${uCam>0?'<br>':''}🇵🇾 Paraguay pagado y no llegado: US$ ${fmtN(Math.round(_py))}`:'')
+          +(_li>0?`${uCam>0||_py>0?'<br>':''}📋 Listas pagadas y no llegadas: US$ ${fmtN(Math.round(_li))}`:'');
       }
     }
   }
@@ -21043,8 +21057,10 @@ async function _listaLlego(id){
   toast(`✓ Llegó · ${n} ficha(s) nueva(s)${nProb?' · '+nProb+' probado(s)':''}${subio.length?' · costo subido: '+subio.join(' · '):''}. ${_todo?_llegadaTxt({sum:R.sum,mano:[]}):'Contá las unidades en Mi oficina.'}`,'ok',8000);_listaRepintar();
 }
 async function listaPagado(id){
-  const c=(state.comprasLista||{})[id];if(!c||c.estado!=='llegado'||c.pagado!==false)return;
-  if(!confirm(`¿Ya le pagaste a ${c.provNom||c.prov} el pedido del ${c.fecha}? Deja de contar como deuda en el Arqueo.`))return;
+  const c=(state.comprasLista||{})[id];if(!c)return;
+  // 12a (24/10/2026): también mientras viaja (pagado al pedir → mercadería en camino en el Arqueo, `listaEnCaminoUSD`).
+  const cam=c.estado==='camino';if(cam?c.pagado===true:(c.estado!=='llegado'||c.pagado!==false))return;
+  if(!confirm(cam?`¿Ya le pagaste a ${c.provNom||c.prov} el pedido del ${c.fecha}? Pasa a contar como mercadería en camino en el Arqueo hasta que llegue.`:`¿Ya le pagaste a ${c.provNom||c.prov} el pedido del ${c.fecha}? Deja de contar como deuda en el Arqueo.`))return;
   try{await db.ref('cyc/compraslista/'+id).update({pagado:true,pagoTs:Date.now()});c.pagado=true;}catch(e){toast('No se guardó: '+(e.message||e),'err',5000);return;}
   await log('Pagado el pedido a '+(c.provNom||c.prov)+' del '+c.fecha);toast('✓ Pagado');renderListas();
 }
@@ -21360,9 +21376,9 @@ async function renderListas(){
       <div style="text-align:right;flex:0 0 auto;font-size:.62rem;color:var(--muted)">pedir <input type="number" min="0" inputmode="numeric" value="${f.u}" onchange="${f.key?`listaProbSetVar('${k}','${f.pid}','${f.key}',this.value)`:`listaProbSet('${k}','${f.pid}',this.value)`}" style="width:52px;padding:3px 5px;font-size:.8rem;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text)"> u.</div></div>`;  // pl = P. Lista del proveedor (Iscos: el costo es la lista menos el descuento)
     const C=Object.entries(state.comprasLista||{}).map(([id,c])=>({...c,id})).filter(c=>c.prov===k).sort((a,b)=>(b.ts||0)-(a.ts||0));
     const comp=c=>{const t=(c.items||[]).reduce((s,i)=>s+(i.pc||0)*(i.u||0),0),tL=(c.items||[]).reduce((s,i)=>s+(i.p||0)*(i.u||0),0);const cam=c.estado==='camino';
-      return `<details style="background:var(--surface);border:1px solid ${cam?'var(--amber)':'var(--border)'};border-radius:8px;padding:8px 10px;margin-bottom:6px"><summary style="cursor:pointer;font-size:.74rem">${pedNumTag(c,'margin-right:4px')}${cam?'🚚 en camino':c.pagado===false?'💵 llegó, falta pagar':'✅ llegó'} · <b>${c.fecha}</b> · ${(c.items||[]).length} productos · ${tL?'lista '+fmt(tL)+' · ':''}te sale ${fmt(t)}</summary>
+      return `<details style="background:var(--surface);border:1px solid ${cam?'var(--amber)':'var(--border)'};border-radius:8px;padding:8px 10px;margin-bottom:6px"><summary style="cursor:pointer;font-size:.74rem">${pedNumTag(c,'margin-right:4px')}${cam?(c.pagado===true?'🚚 en camino · pagado':'🚚 en camino'):c.pagado===false?'💵 llegó, falta pagar':'✅ llegó'} · <b>${c.fecha}</b> · ${(c.items||[]).length} productos · ${tL?'lista '+fmt(tL)+' · ':''}te sale ${fmt(t)}</summary>
         <div style="font-size:.66rem;margin-top:6px;line-height:1.6">${(c.items||[]).map(i=>`· ${i.prodId?'✅ ':''}${i.u} × ${escHtml(i.n)}${i.variante?' · '+escHtml(i.variante):''} <span style="color:var(--muted)">(${escHtml(i.cod)} · ${i.p?'<b style="color:var(--text)">lista '+fmt(i.p)+' c/u</b> · ':''}te sale ${fmt(i.pc)} c/u${i.m!=null?' · '+Math.round(i.m)+'% en ML':''})</span>${((_listaCache[c.prov]||{})[i.cod]||{}).noWeb?' <b style="color:var(--red)">🚫 no está en su web</b>':''}${((_listaCache[c.prov]||{})[i.cod]||{}).noFull?' <b style="color:var(--red)">🚫 no va a Full: '+escHtml(((_listaCache[c.prov]||{})[i.cod]||{}).noFull)+'</b>':''}${_listaUnVend((_listaCache[c.prov]||{})[i.cod])?' <b style="color:var(--amber)">⚠️ 1 solo vendedor en ML: el % puede estar inflado</b>':''}<br><span style="padding-left:10px"><a href="#" onclick="listaVerOri('${c.prov}','${String(i.cod).replace(/'/g,"\\'")}');return false" style="color:var(--blue)">📄 verlo en la lista</a>${i.mi?` · <a href="https://www.mercadolibre.com.ar/p/${escHtml(i.mi)}" target="_blank" rel="noopener" style="color:var(--green)">🔗 verlo en ML</a>`:' · <span style="color:var(--muted)">sin link de ML</span>'}</span>`).join('<br>')}</div>
-        ${cam?`<button class="btn" style="margin-top:8px;font-size:.7rem" onclick="listaLlego('${c.id}')">📦 Llegó${(c.items||[]).every(i=>i&&i.prodId)?'':' · crear las fichas'}</button>`:''}${c.estado==='llegado'&&c.pagado===false?`<div style="font-size:.66rem;color:var(--amber);margin-top:8px">💵 Llegó y falta pagar: cuenta como deuda en el Arqueo.</div><button class="btn" style="margin-top:6px;font-size:.7rem" onclick="listaPagado('${c.id}')">💵 Ya lo pagué</button>`:''}</details>`;};
+        ${cam?`<button class="btn" style="margin-top:8px;font-size:.7rem" onclick="listaLlego('${c.id}')">📦 Llegó${(c.items||[]).every(i=>i&&i.prodId)?'':' · crear las fichas'}</button>${c.pagado===true?`<div style="font-size:.66rem;color:var(--green);margin-top:6px">💵 Pagado al pedir: cuenta como mercadería en camino en el Arqueo.</div>`:`<button class="btn" style="margin-top:6px;margin-left:6px;font-size:.7rem" onclick="listaPagado('${c.id}')">💵 Ya lo pagué</button>`}`:''}${c.estado==='llegado'&&c.pagado===false?`<div style="font-size:.66rem;color:var(--amber);margin-top:8px">💵 Llegó y falta pagar: cuenta como deuda en el Arqueo.</div><button class="btn" style="margin-top:6px;font-size:.7rem" onclick="listaPagado('${c.id}')">💵 Ya lo pagué</button>`:''}</details>`;};
     el.innerHTML=cab+(A.length||PB.length?`<div style="background:var(--surface);border:1px solid var(--blue);border-radius:var(--r);padding:12px;margin-bottom:14px">
         <div style="font-size:1.3rem;font-weight:800">${fmt(tot)} <span style="font-size:.7rem;font-weight:400;color:var(--muted)">· ${A.length+PB.length} productos${PB.length?' ('+PB.length+' probados)':''} · ${uT} u.${rec?' · con el '+rec+'% del proveedor':''}${totL?' · a precio de lista '+fmt(totL)+' (lo que tiene que facturar)':''}</span></div>
         ${PB.length?`<div style="font-size:.7rem;font-weight:700;color:var(--green);margin-top:10px">✅ Probados · reposición (se descuentan de Pedidos al tocar "Ya lo pedí")</div><div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">${PB.map(filaP).join('')}</div>`:''}

@@ -155,7 +155,7 @@
 - **Activar lo pausado es prioridad** (10/10): `pausadas:25` + `activarfull:go:25`; toda pausada con stock en Full que no se activa
   va a `notas/para_mati.md` con motivo (al `pregunto:URGENTE` sólo si vende fuerte). Lo nuevo (nunca estuvo en Full) lo activo yo con el precio ya puesto (peor caso).
 - **Preguntas de compradores:** las contesto yo (`contesto:<id>=<respuesta>;…;go`), sólo las nuevas y sólo las que sé SIN DUDA.
-  `responder` automático apagado (`responder:off`); la IA de preguntas necesita `ANTHROPIC_API_KEY` en GitHub (decisión suya, ver HISTORIA).
+  `responder` automático apagado (`responder:off`); la IA de preguntas **queda apagada** (24/10, eligió la a: sin `ANTHROPIC_API_KEY`; no volver a proponerla).
 - **Cada vuelta busca algo nuevo para mejorar** (12/10, maximizar y bajar costos), sin repetir (`notas/ideas.md`); si no hay, no se inventa.
 - Esfuerzo fijo (no se cambia sin que él lo diga): ayudantes de la completa, ideas y revisor en max; raros de las cortas en Alto;
   ventas en max. **El esfuerzo va escrito en cada llamada al ayudante**, nunca se hereda de la sesión.
@@ -334,6 +334,7 @@
   NETO (Iscos: "P. Lista" con −30%/−33,5%, `listadto`).
 - **Iscos: sólo lo que está en su web** y el precio de la web × **0,665** (19/10, `listaweb:iscos;go`, `noWeb`).
 - **Dai Nippon** (Bs As, lo trae Tito): **desde el 21/10 tiene casilla, 🧾 Pedido con mensaje de WhatsApp, Ya lo pedí y Llegó** como las otras.
+- **Pedido a una lista y la plata** (20/10 2b + 24/10 12a): pagado al pedir (💵 Ya lo pagué mientras viaja, `pagado:true`) → mercadería en camino en el Arqueo (`listaEnCaminoUSD`); sin pagar → al llegar es deuda hasta que se paga (`listaDeudaUSD`).
 - Mismas reglas que Paraguay: 25% + catálogo 2+ vendedores + **confirmado por mí** (`listarevisar` → `listadato:<prov>;<cód>=ok|no|mi=MLA…;go`,
   con duda no se toca). El robot mide lista por lista y anota la vuelta completa (`cyc/mlconfig/vueltas`). Todo se mide contra ML (también lo de Bs As).
 - Fechas al 19/10: Dai Nippon L1309 19/10 · Unilever 08/10 · Iscos 01/10 · Cadam 26/09 · Qsoft 23/09 · Godrej 01/08 (Wels también).
@@ -344,6 +345,7 @@
 - **7 días hábiles para pagar desde que llega, si no +10%** (20/10): avisarle al llegar los días que le quedan.
 - **Lo que se pide y no viene no se pide más** (`cyc/noconsigo/<prod>/nunca/<aroma>`, `pvped:nunca:-<aroma>;go` lo saca).
 - Cada aroma es su publicación y se juzga solo (grupo de precio desactivado 04/09). Compartido Adriana + Persea en Luciana.
+- **Invictus y Phantom: dados de baja en ML para siempre** (24/10, él; ML los frenó por la marca del nombre). No se piden ni se mandan a Full; lo de la oficina va al local.
 
 ## 8 · PLATA, GASTOS Y ARQUEO
 
@@ -478,9 +480,7 @@ Si dudás si un comando existe, buscá en `sync.mjs` (`grep -n "'<nombre>'" ml-s
 - **Contador:** recategorización, actividad, facturas entre cuentas, intereses de H. Bajar de ARCA los Emitidos 01/01→04/08 si falta alguno.
 - **Sancor:** esperar respuesta (plan F800/40% $111.988,7: qué es el 40%, si es el final con cuota social e IIBB, qué cubre menos); pagar antes
   del 21; dar de baja "Vida Plus" ($2.901/mes). Hijo de Ayelen tiene OSECAC (plan de 1 persona está bien).
-- **Almacenamiento:** falta que él pase `almactarifa:<chico>/<grande>:go` para medir lo que ahorra el remate.
-- **Puntaje del mes rehecho (26/09):** falta que diga si el objetivo le cierra.
-- **IA de preguntas:** falta la clave `ANTHROPIC_API_KEY` (decisión suya).
+- **Almacenamiento** (24/10): ML no da la tarifa por unidad; sale de la factura de septiembre: almacenamiento común $47.735 en las 4 ÷ ~2.640 u. en Full ÷ 30 d ≈ **$0,60 por unidad por día** (cargado con `almactarifa`, chico = grande). El stock antiguo va aparte ($64.155 en sep). Rehacerlo con la factura de octubre (`cargosmes:2026_10`).
 - **Filtro de envíos internacionales** en candidatos: el campo existe (`international_delivery_mode`); escribirlo cuando aparezca uno.
 - **`anotarNetoWeb` no se llama desde ningún lado** (el margen sólo se recalcula de noche): o se enchufa o se borra. (ver HISTORIA)
 - **`enProceso`** (lo recibido-procesando en Full) no lo cuenta nadie al marcar una caja: hoy vale ~0, se mira si aparece una caja grande

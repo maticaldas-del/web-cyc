@@ -45,3 +45,4 @@ en que se anota en `correcciones.md`.** El número entre corchetes es de qué ca
 24. ¿Lo que compro y lo que mido en ML traen la MISMA cantidad (1 contra pack de 2/3, par contra unidad)? Mirar la foto y los atributos, no sólo el título (23/10, Deco X60).
 25. Antes de publicar una marca grande (perfume de diseñador, ropa, relojes): ¿esa marca denuncia en ML? Ante la duda, preguntarle antes de crear (23/10, CK One).
 26. ¿Esto que entró tiene ticket? Entonces se carga con su precio final (ficha + costo) sin preguntar, aunque se venda sólo en el local. Se pregunta sólo lo que no sé qué es (23/10, EX15LP / Joystick 7114209).
+27. Antes de pasarle una decisión: ¿ya la contestó? Buscar en `REVISION.md` y `HISTORIA.md` (el 23/10 le reenvié R1-R8, ya elegidas el 20/10, y en dos le sugerí lo contrario de lo que está bien) (24/10).
