@@ -22353,6 +22353,11 @@ async function main() {
         const hits = Object.entries(cat).filter(([, e]) => e && e.n && ws.every((w) => norm(e.n).includes(w)));
         console.log(`\n=== "${q}" · ${hits.length} en el catálogo ===`);
         for (const [cod, e] of hits.slice(0, 40)) console.log(`  ${cod} · US$ ${Number(e.u).toFixed(2)} · ${e.n}${e.l ? ' · ' + e.l : ''}${e.f ? ' · foto ' + e.f : ''}`);
+        // LO QUE PASÓ CON CADA UNO (24/10/2026, él con el Pen Kingston Exodia: "40%, 4 vendedores, ¿por qué no aparece como que da?"):
+        // la medición guardada y, si pasó a Para probar, en qué quedó el candidato (vivo, descartado y por qué).
+        if (hits.length <= 5) { const cands = (await db.get('cyc/candidatos_py')) || {};
+          for (const [cod, e] of hits) { const { n, l, f, ...med } = e; console.log(`    medición ${cod}: ${JSON.stringify(med).slice(0, 400)}`);
+            for (const [id, c] of Object.entries(cands)) if (c && (String(c.cod) === String(cod) || id === e.cand)) console.log(`    candidato ${id}: ${c.no ? 'DESCARTADO (' + (c.noTipo || '?') + ') ' + String(c.motivo || '').slice(0, 200) : c.prodId ? 'ya tiene ficha' : 'vivo'} · margen ${c.margen ?? '—'} · vendedores ${c.mlVendedores ?? '—'} · fotos ${c.revClaude ? c.revClaude.v : 'sin mirar'}`); } }
       }
       return;
     }
