@@ -102,6 +102,7 @@ FIJO={
   ('p1792787629845','','Ayelen'):(0,'25/10 él: los 2 Sony EX15LP Blanco no estaban en la oficina. No va nada hasta que aparezcan'),
   ('p1792881565786','','Luciana'):(0,'Él 25/10: Alfaparf al local, no da 35% en ML (el catálogo que vende tiene Full a $7.990 y el kit cuesta $7.895)'),
   ('p1792881567867','','Luciana'):(0,'Él 25/10: Alfaparf al local, no da 35% en ML (el catálogo que vende tiene Full a $7.990 y el kit cuesta $7.895)'),
+  ('p178287291398902','','Matias'):(0,'Las 2 de la oficina son las CELESTES (él 25/10, con foto) y la publicación de Matías es la NEGRA: no van a Full hasta tener publicación del celeste'),
   ('p1792881587218','','Luciana'):(0,'Él 25/10: Alfaparf al local, no da 35% en ML (el catálogo que vende tiene Full a $7.990 y el kit cuesta $7.895)'),
 }
 out=[];res=[];sin=[];amano=[];nOfi=0;largos=[]
