@@ -8,8 +8,11 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 
 ## Abiertas
 
+### Del 25/10 (lo dejó para después)
+- **Costos de Bowen, Calipso y Alfaparf Alta Moda (tintes):** no están en la lista de Dai Nippon del 19/10. Cuando pase lo que pagó, `poncosto` y publicar en Luciana: Bowen `catalogo=MLA20002465` (el bueno: 2 vendedores, +100 vendidos; el MLA73100796 era un repetido vacío) · **Calipso `catalogo=MLA19895795`** (él confirmó el 25/10 que es Con Gel; el bueno tiene 3 vendedores a $4.000-4.500, el MLA19895794 era un repetido vacío) · Alfaparf tono 1 `MLA69010049`, 3 `MLA68877238`, 5 `MLA68983071`, 7 `MLA68856325`, 8 `MLA30448415` (4, 6 y 9 sin catálogo: los publica él).
+- **Timbre de ventas:** la tarea nueva `trig_012a3LNycnpvUm55TK7y2mji` no tiene llave de API; el robot sigue tocando la vieja (apagada → "Routine is paused"). Falta su captura de Editar de la tarea nueva.
+
 ### De las vueltas del 23/10 (a la noche y a la tarde)
-18. **(lo mira él, 24/10 "ok") Aviso de ML en Ayelen por "productos falsificados"** (se ve en su captura del 23/10, propiedad intelectual): mirar en ML → Consultar infracciones qué publicación fue. Si es una marca, la agrego como prohibida para ML (`marcanoml`).
 
 
 ## Viejas que siguen esperando (de CLAUDE.md §13)
