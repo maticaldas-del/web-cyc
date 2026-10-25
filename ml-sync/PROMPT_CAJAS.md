@@ -43,7 +43,9 @@ como mucho N (si la caja lleva menos unidades que N, las de la caja). Lo que ya 
    Si en una cuenta no hay nada sin etiqueta: no bajes nada y decí "Adriana: ninguna etiqueta para pegar".
 4. Si ML sólo da las etiquetas DESPUÉS de confirmar el envío: pará, decile a Matías "confirmá el envío de <cuenta> y escribime
    'etiquetas'", y cuando lo diga, bajá las de esa cuenta con estas mismas reglas.
-5. Después de pegarlas, Matías le avisa a Claude (el chat del panel) para que las saque de "sin etiqueta". Vos no tocás el panel.
+5. Cuando Matías te diga que ya las pegó (o te pida marcarlas): en el panel, Mi oficina → Contar lo que hay, tarjeta "🏷️ Sin
+   terminar / sin etiqueta", tocá ✅ Etiquetadas en el renglón de ESE producto (y color). Es lo único del panel que tocás; si no
+   estás seguro de cuál renglón es, no toques y preguntá.
 
 == PASO 5 · EL RESUMEN PARA MATÍAS ==
 Por cuenta: "Adriana: N productos · M unidades · total de ML M · listo para que confirmes". Después: dudas (producto + por qué:
