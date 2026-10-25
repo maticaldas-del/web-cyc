@@ -2962,7 +2962,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.64';
+const APP_VERSION='26.65';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2975,6 +2975,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.65',f:'25/10',h:'20:10',c:[{n:1,t:'📈 Línea de tiempo: la búsqueda de techo ya no dice "decide con 95% (2 días)" (los 2 días eran los MEDIDOS, no los que faltan). Ahora dice "pide 95% · lleva 2 días medidos"; y si el precio ya volvió abajo, dice que la prueba se cortó y con cuánto quedó.'}]},
   {v:'26.64',f:'25/10',h:'20:15',c:[{n:2,t:'💰 La escalera que baja después de buscar el techo ahora se llama "buscando el de más ganancia · Nº escalón": es lo que busca (el precio que más plata por día deja). El 🪜 bajando queda sólo para lo que baja por otra cosa (fin de escasez, sobra).'}]},
   {v:'26.63',f:'25/10',h:'19:50',c:[{n:2,t:'📬 Mi oficina → Contar lo que hay: "Mensaje para Claude". El chat de Chrome que arma las cajas (o vos) deja ahí lo que no puede arreglar desde el panel y Claude lo lee en la próxima vuelta.'}]},
   {v:'26.62',f:'25/10',h:'18:20',c:[{n:1,t:'🏷️ Productos: cada tarjeta muestra el código de la etiqueta de Full de cada cuenta (y de cada color), el que va pegado en el producto.'}]},
@@ -11784,7 +11785,12 @@ function lineaPintar(prodId){
       // De las rayas (lo medido) o, en un lanzamiento, lo que anotó techo95 de noche (visitas × conversión, `cyc/techo95pct`).
       {const EP=R.enPrueba,T95=Object.keys(porMlaF).map(m=>(state.techo95pct||{})[m]).filter(x=>x&&!x.ok&&x.seg!=null).sort((a,b)=>b.ts-a.ts)[0];
         const ep=EP||(T95&&T95.lanza?{p:T95.p,dias:T95.dias,seg:T95.seg,umb:T95.umb,lz:true}:null);
-        if(!R.techo&&ep)_prNotas.push(`<span style="color:#22c55e" title="Para decir que ${fmt(ep.p)} es techo hace falta ${Math.round(ep.umb*100)}% de seguridad: con pocos días se pide 95% y desde el día 7 con stock baja hasta 70% el día 21, así no queda un mes buscando.">📈 techo a ${fmt(ep.p)}: <b>${Math.round(ep.seg*100)}%</b> seguro · decide con ${Math.round(ep.umb*100)}%${ep.dias!=null?` (${ep.dias} día${ep.dias===1?'':'s'})`:''}${ep.lz?' · lanzamiento':''}</span>`);}
+        // 25/10/2026, él con el Centímetro Blanco: "está bajando y dice que está un 73% seguro y que termina de decidir en 2 días. no tiene
+        // sentido nada". El "(2 días)" eran los días MEDIDOS, no los que faltan; y si el precio ya volvió abajo la prueba terminó: no se dice
+        // que "decide", se dice que se cortó y con cuánto.
+        if(!R.techo&&ep){const _cort=_pHoy&&_pHoy<ep.p*0.98;
+          _prNotas.push(_cort?`<span style="color:var(--amber)" title="La prueba de ${fmt(ep.p)} terminó antes de llegar a la seguridad que pide (${Math.round(ep.umb*100)}%): no quedó marcado como techo. Si vuelve a ese precio, la cuenta sigue.">📈 la prueba de ${fmt(ep.p)} se cortó: ${ep.dias!=null?ep.dias+' día'+(ep.dias===1?'':'s')+' medido'+(ep.dias===1?'':'s')+', ':''}<b>${Math.round(ep.seg*100)}%</b> seguro (pedía ${Math.round(ep.umb*100)}%)</span>`
+            :`<span style="color:#22c55e" title="Para decir que ${fmt(ep.p)} es techo hace falta ${Math.round(ep.umb*100)}% de seguridad: con pocos días se pide 95% y desde el día 7 con stock baja hasta 70% el día 21, así no queda un mes buscando.">📈 techo a ${fmt(ep.p)}: <b>${Math.round(ep.seg*100)}%</b> seguro · pide ${Math.round(ep.umb*100)}%${ep.dias!=null?` · lleva ${ep.dias} día${ep.dias===1?'':'s'} medido${ep.dias===1?'':'s'}`:''}${ep.lz?' · lanzamiento':''}</span>`);}}
       // 19/10, él: "el piso es un parámetro para decir no bajemos más que esto, excepto que haya un problema (…) quizás lo mejor es
       // unificarlas". Unificadas: el 💰 (el que más plata por día dejó) ES el piso: más abajo vende más pero deja menos.
       if(R.best&&R.best.aprox)_ray(R.best.p,'#eab308','4,3',`💰 más plata ${fmt(R.best.p)} · provisorio`,`💰 Piso PROVISORIO: ${fmt(R.best.p)} es, por ahora, el precio que más plata por día dejó (${fmt(Math.round(R.best.pd))} por día · ${R.best.u} vendida${R.best.u===1?'':'s'} en ${R.best.dias} día${R.best.dias===1?'':'s'} con stock). Son pocos días para estar seguro: se corrige con cada venta. No se baja de acá salvo un problema.`,-3);
