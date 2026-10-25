@@ -13,7 +13,7 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 - **Timbre de ventas:** la tarea nueva `trig_012a3LNycnpvUm55TK7y2mji` no tiene llave de API; el robot sigue tocando la vieja (apagada → "Routine is paused"). Falta su captura de Editar de la tarea nueva.
 
 ### De la completa del domingo 25/10
-- **Protectores de talón sin vender a su precio de prueba** (Beige $10.990 0 en 5 d · Triples Negro $8.990 1 en 6 d · Común Beige $13.990 0 en 5 d): no tienen raya roja porque sus días buenos cayeron en el Día de la Madre. (a) sugerida: autorizar un escalón como descuento (Beige $9.390, Negro $7.690, Común Beige $11.990) · (b) esperar al ~06/11.
+- **Protectores de talón sin vender a su precio de prueba** (Beige $10.990 0 en 5 d · Triples Negro $8.990 1 en 6 d · Común Beige $13.990: vendió 1 el 25/10, así que ése sale de la lista): no tienen raya roja porque sus días buenos cayeron en el Día de la Madre. (a) sugerida: autorizar un escalón como descuento (Beige $9.390, Negro $7.690) · (b) esperar al ~06/11.
 - **Pendrive 64gb:** la escasez terminó (vienen 50 de Paraguay) pero el freno mide sólo lo de Full (13 u., ~17 días). (a) sugerida: autorizar volver a $26.990 ya · (b) esperar a que entren (~03/11).
 - **Pendrive 32gb:** 29 en Full de una tanda de 67+ días (stock antiguo ~17/12), vende 1 por semana a $24.990 y el más barato con Full está a $17.489. (a) sugerida: si al 28/10 vendió menos de 2, autorizar descuento a $22.990 · (b) esperar al ~16/11.
 - **Joystick x3 (MLA1998586178):** volvió a $32.990, un precio que ya no vendía (0 de 3,6 esperadas). (a) sugerida: autorizar volver como descuento a $29.790 · (b) esperar al 07/11.
