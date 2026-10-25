@@ -787,6 +787,17 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 - **Qué chequear:** que el texto siga coincidiendo con lo que muestra la web (cartel "MANDALA YA", "📦 N cajas para mandar ya", el código
   de etiqueta en cada renglón) cada vez que se toca Armar caja o Inicio.
 
+### `fijarinv:<MLA>[=<código>];…;go` · el código de etiqueta de lo pausado (25/10/2026, el chat de Armar cajas)
+- **Qué es:** la vuelta de stock sólo guarda el `inventory_id` de lo que está en Full con stock; esto se lo pregunta a ML para cualquier
+  publicación (pausada también) y hace patch de `cyc/mllinks/<MLA>/inv`. El código que vio el chat sólo se compara: si no coincide, no se escribe.
+- **Qué chequear:** que una venta (que reescribe el renglón de mllinks) no lo borre para siempre: la vuelta lo repone si está en Full; si
+  sigue pausada se vuelve a correr.
+
+### `publicar` frena con un catálogo repetido vacío (25/10/2026, él con la Bowen: "esta es la cera, ¿por qué no la encontraste?")
+- **Qué es:** ML tiene catálogos duplicados con el mismo nombre (Bowen MLA73100796 vacío / MLA20002465 con vendedores; Calipso
+  MLA19895794 / MLA19895795). Si el catálogo elegido no tiene vendedores, `publicar` busca los de nombre idéntico y, si alguno tiene, frena y dice cuál.
+- **Qué chequear:** que no frene cuando el otro es de otro tamaño o tono (sólo nombre idéntico) · 2 de 10 productos nuevos del 25/10 tenían este error.
+
 ### `fotocat:<catálogo>` · las fotos de un catálogo de ML (25/10/2026, él: "¿tenés foto de la Calipso que está en ML? pasámela")
 - **Qué es:** sólo lee: nombre, 4 características y hasta 6 fotos (sólo direcciones de mlstatic) de un catálogo, para confirmar que es
   el mismo producto antes de `publicar`. **Qué chequear:** que no imprima nada que no sea de ML.

@@ -28452,6 +28452,42 @@ async function main() {
       if (!Object.keys(porCta).length) console.log('  (nada para cargar)');
       return;
     }
+    // BILLING_PROBE=fijarinv:<MLA>[=<código que vio el chat>][;…][;go] (25/10/2026, el chat de Armar cajas: "algunas publicaciones estaban
+    // pausadas; si el robot no los lee porque no están activas en Full, cargalos igual"). La vuelta de stock sólo guarda el código de
+    // etiqueta (`inventory_id`) de lo que está en Full con stock; esto se lo pregunta a ML para CUALQUIER publicación (pausada también) y lo
+    // guarda en `cyc/mllinks/<MLA>/inv` (patch de ese campo solo). Nunca se adivina: el código sale de ML; el que se pasa con `=` sólo se
+    // compara, y si no coincide no se escribe. Publicaciones con variantes adentro: no (las llena la vuelta, por color). Sin `;go` sólo muestra.
+    if (/^fijarinv:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const raw = String(process.env.BILLING_PROBE).slice('fijarinv:'.length);
+      const GO = /(^|;)go$/.test(raw);
+      const pares = raw.replace(/(^|;)go$/, '').split(/[;,\s]+/).map((x) => x.trim()).filter(Boolean).map((x) => { const [m, c] = x.split('='); return { mla: String(m || '').toUpperCase(), visto: String(c || '').toUpperCase() }; }).filter((x) => /^MLA\d+$/.test(x.mla));
+      const links = (await db.get('cyc/mllinks')) || {};
+      const toks = {};
+      console.log(`=== 🏷️ CÓDIGO DE ETIQUETA DE FULL, LEÍDO DE ML ${GO ? '' : '(PRUEBA — no escribo nada)'} ===`);
+      let ok = 0, mal = 0;
+      for (const { mla, visto } of pares) {
+        const L = links[mla]; if (!L || !L.cuenta) { console.log(`  ${mla}: no está en el panel`); mal++; continue; }
+        if (!toks[L.cuenta]) { const acc = accounts[L.cuenta]; if (!acc?.refresh_token) { console.log(`  ${mla}: ${L.cuenta} sin permiso`); mal++; continue; }
+          try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + L.cuenta, { refresh_token: t.refresh_token, updated_ts: Date.now() }); toks[L.cuenta] = t.access_token; } catch { console.log(`  ${mla}: no pude entrar a ${L.cuenta}`); mal++; continue; } }
+        let b; try { b = await mlGet(`/items/${mla}?attributes=id,title,status,inventory_id,variations`, toks[L.cuenta]); } catch (e) { console.log(`  ${mla}: ML no contestó (${String(e.message || e).slice(0, 60)})`); mal++; continue; }
+        if (Array.isArray(b.variations) && b.variations.length) { console.log(`  ${mla}: tiene variantes adentro — los códigos los guarda la vuelta por color`); mal++; continue; }
+        const inv = String(b.inventory_id || '').toUpperCase();
+        const tit = String(b.title || L.title || '').slice(0, 55);
+        if (!inv) { console.log(`  ${mla} · ${L.cuenta} · ${b.status} · ${tit}: ML todavía no le dio código`); mal++; continue; }
+        if (visto && visto !== inv) { console.log(`  ${mla} · ${tit}: ML dice ${inv} y me pasaron ${visto} → NO lo guardo`); mal++; continue; }
+        const antes = L.inv || '';
+        console.log(`  ${mla} · ${L.cuenta} · ${b.status} · ${tit}: ${inv}${visto ? ' ✓ coincide con el que vio el chat' : ''}${antes === inv ? ' (ya lo tenía)' : antes ? ` (tenía ${antes})` : ''}`);
+        if (GO && antes !== inv) {
+          await db.patch('cyc/mllinks/' + mla, { inv });
+          const rel = await db.get('cyc/mllinks/' + mla + '/inv');
+          console.log(`     ${rel === inv ? '✓ guardado y releído' : '✗ NO QUEDÓ'}`);
+          if (rel !== inv) { mal++; continue; }
+        }
+        ok++;
+      }
+      console.log(`\n${ok} bien · ${mal} sin guardar`);
+      return;
+    }
     // BILLING_PROBE=fotocat:<catálogo MLA>[;…] → SOLO LEE (25/10/2026, él: "¿tenés foto de la Calipso que está en ML? pasámela y veo").
     // Nombre y fotos (direcciones de mlstatic) del catálogo de ML, para mirar si es el mismo producto antes de publicar en él.
     if (/^fotocat:/.test(String(process.env.BILLING_PROBE || ''))) {
@@ -28552,6 +28588,20 @@ async function main() {
       if (cat) {
         try { prodML = await mlGet('/products/' + cat, tokP); } catch (e) { frenos.push(`ML no me dio el catálogo ${cat} (${String(e.message || e).slice(0, 60)})`); }
         try { ofs = ((await mlGet('/products/' + cat + '/items', tokP)) || {}).results || []; } catch { ofs = []; }
+      }
+      // CATÁLOGO REPETIDO (25/10/2026, él con la Bowen: "esta es la cera, ¿por qué no la encontraste?"): ML tiene catálogos duplicados
+      // con el MISMO nombre (Bowen MLA73100796 vacío y MLA20002465 con 2 vendedores y +100 vendidos; Calipso MLA19895794 vacío y
+      // MLA19895795 con 3). Si el elegido no tiene vendedores, se buscan los del mismo nombre y, si alguno tiene, NO se publica: se dice cuál.
+      if (cat && !ofs.length && prodML && prodML.name) {
+        try {
+          const nN = norm(prodML.name);
+          const bus = ((await mlGet('/products/search?site_id=MLA&q=' + encodeURIComponent(String(prodML.name).slice(0, 80)) + '&limit=10', tokP)) || {}).results || [];
+          for (const r of bus) {
+            if (!r || !r.id || r.id === cat || norm(r.name || '') !== nN) continue;
+            let n2 = 0; try { n2 = (((await mlGet('/products/' + r.id + '/items', tokP)) || {}).results || []).length; } catch { n2 = 0; }
+            if (n2 > 0) frenos.push(`el catálogo ${cat} no tiene vendedores pero ${r.id} se llama IGUAL y tiene ${n2}: es ése (publicá con |catalogo=${r.id})`);
+          }
+        } catch { avisos.push('no pude buscar si hay otro catálogo con el mismo nombre'); }
       }
       const catCnt = {}; for (const o of ofs) if (o && o.category_id) catCnt[o.category_id] = (catCnt[o.category_id] || 0) + 1;
       let categoria = Object.entries(catCnt).sort((a, b) => b[1] - a[1]).map(([k]) => k)[0] || (prodML && prodML.category_id) || '';
