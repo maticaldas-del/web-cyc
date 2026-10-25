@@ -49846,6 +49846,9 @@ async function main() {
         if (SOLOFICHAS && c.estado !== 'llego') { console.log(`El pedido ${id} está "${c.estado}": fichas sólo rehace las de un pedido que ya llegó.`); return; }
         // Sin el ticket real no se cierra (regla suya del 10/10/2026): el costo de cada ficha tiene que salir de lo PAGADO.
         if (!c.ticket) { console.log(`❌ El pedido ${id} no tiene el ticket cargado. Primero va \`compray:${c.fecha}|det=<código>*<unidades>*<precio pagado>;…|go\` con el ticket del mayorista. No escribo nada.`); return; }
+        // LA FOTO DEL TICKET TAMBIÉN (25/10/2026, él con el Sony EX15LP: "que sea obligatorio cargar el ticket de cada pedido de paraguay").
+        // La sube él desde el detalle del pedido en la web (`mlapi/pyticketfoto/<id>`); `llego` es sólo para lo que está en camino, y en camino la web también la exige siempre.
+        if (!(parseInt(c.ticketFoto) || 0)) { console.log(`❌ El pedido ${id} no tiene la FOTO del ticket. Que la suba desde el detalle del pedido en la web (📷 foto del ticket). No escribo nada.`); return; }
         const _repIts = (c.items || []).filter((x) => x && x.prodId && !x.id);
         console.log(`=== LLEGÓ EL PEDIDO ${id} (${_repIts.length ? _repIts.length + ' probado(s)' : ''}${_repIts.length && (c.items || []).some((x) => x && x.id) ? ' + ' : ''}${(c.items || []).some((x) => x && x.id) ? (c.items || []).filter((x) => x && x.id).length + ' nuevo(s)' : ''} del ${c.fecha}) ${GO ? '' : '(PRUEBA — no escribo nada)'} ===`);
         const plan = [];

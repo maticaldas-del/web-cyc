@@ -341,8 +341,11 @@
   (`compray:<fecha>|adelanto=<pesos>|go`, renglón aparte del cambista).
 - **El precio de Paraguay NO pisa el costo. Nunca** (17/09): `costUSD` = lo que PAGÓ; `nisseiUSD` = lo que saldría reponer. Al cambiar
   un costo, el viejo se congela por mes (`precios_hist_prod`).
-- **Ticket real obligatorio para cerrar el pedido** (10/10): `compray:<fecha>|det=<código>*<u>*<pagado>;…|go` (ml-sync). Datos del
-  mayorista: no al repo. Con dos tipos el mismo día pide `|repo`/`|nuevos`.
+- **Ticket real obligatorio para cerrar el pedido** (10/10; 25/10 con FOTO, él con el Sony: *"no sabemos si no lo mandaron o si no lo
+  cobraron"*): renglones con `compray:<fecha>|det=<código>*<u>*<pagado>;…|go` (ml-sync) + la foto, que la sube él desde el detalle del
+  pedido (📷, `mlapi/pyticketfoto/<id>`, `cyc/compraspy/<id>/ticketFoto` = cuántas). Sin las dos no se cierra (web y `pyped:llego`);
+  arriba de Pedidos Paraguay sale en rojo lo que falta (todo lo en camino y lo pedido desde el 25/10). Datos del mayorista: no al repo.
+  Con dos tipos el mismo día pide `|repo`/`|nuevos`.
 - **Cuántas de cada nuevo** (`candMaxU`, 21/10): barato ≤US$15 → 3 · caro >US$60 → 1 · resto 2.
 - **Al chat local se le pasa SÓLO lo que interesa** (22/10, *"siempre pasame el promt con la mercaderia que si interesa"*): el texto
   listo para pegar y la lista YA FILTRADA a lo que puede entrar a un pedido (25%+ y en catálogo), no la lista entera; el resto se dice

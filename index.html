@@ -2960,7 +2960,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.60';
+const APP_VERSION='26.61';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2973,6 +2973,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.61',f:'25/10',h:'15:55',c:[{n:3,t:'🧾 Pedidos de Paraguay: el ticket es obligatorio y se ve en el pedido. En el detalle está "📷 foto del ticket" para subir la foto y verla; sin foto el pedido no se puede cerrar. Arriba de Pedidos sale en rojo cada pedido al que le falta la foto o los renglones del ticket.'}]},
   {v:'26.60',f:'25/10',h:'15:20',c:[{n:2,t:'🚚 Cajas: los días de viaje se cuentan desde que la caja SALE (de lunes a viernes a las 12). Armada el fin de semana o el viernes a la tarde dice "armada · sale el lunes a las 12" y la escasez cuenta esos días de más.'},{n:2,t:'🏷️ Todo lo que se carga a la oficina queda "sin etiqueta", y cada renglón de la tarjeta tiene el botón ✅ Etiquetadas para pasarlo a listo.'}]},
   {v:'26.59',f:'24/10',h:'21:26',c:[{n:2,t:'📦 Armar caja: el ❌ no da 35% se mide sólo con la venta más alta y la competencia (el precio puesto que nadie compró ya no cuenta). El Watch 5 Lite pausado a $142.990 daba 39% y no salía en rojo; su única venta fue a $113.250 (~10%).'}]},
   {v:'26.58',f:'24/10',h:'20:12',c:[{n:2,t:'📦 Armar caja: lo que no llega al 35% en el peor caso dice ❌ no da 35%. Se mide al precio de hoy, a la venta más alta de 90 días y contra la competencia (de anoche), y manda el más alto. Al abrir el renglón se ven los tres.'}]},
@@ -16693,6 +16694,7 @@ async function _pyPedidoLlego(id){
   // EL TICKET ES OBLIGATORIO PARA CERRARLO (10/10/2026, regla suya): sin el ticket real del mayorista, el costo de
   // cada ficha saldría del precio de la web y no del pagado (casi siempre hay descuento, distinto en cada producto).
   if(!c.ticket){alert(`Falta el ticket de este pedido (${c.fecha}).\n\nPasáselo a Claude por el chat: carga lo que pagaste renglón por renglón y ahí se puede cerrar. Hasta entonces sigue "en camino".`);return;}
+  if(pyTicketEstado(c).faltaFoto){alert(`Falta la FOTO del ticket de este pedido (${c.fecha}).\n\nAbrí el pedido y tocá 📷 subir en "foto del ticket". Hasta entonces sigue "en camino".`);return;}
   const _repIts=(c.items||[]).filter(x=>x&&x.prodId&&!x.id);
   if(!(c.items||[]).some(x=>x&&x.id)){
     // Reposición: los productos YA tienen ficha. No se crea nada; sólo se cierra y se recuerda
@@ -16973,7 +16975,8 @@ function pyPedidoResumenHTML(c,enCamino,dias,tarde){
   const col=enCamino?(_llT?'var(--amber)':'#38bdf8'):'var(--green)';
   const R=pyRecargoReal(c);
   const rec=R.r?`<span style="color:${(R.r-1)*100>(RECARGO_PY-1)*100+0.05?'var(--amber)':'var(--green)'}">+${((R.r-1)*100).toFixed(1).replace('.',',')}%</span> recargo`:`<span title="Faltan gastos: ${R.falta.join(', ').replace(/"/g,'&quot;')}">+${Math.round((RECARGO_PY-1)*100)}% estimado</span>`;
-  const tk=c.ticket?(()=>{const w=Number(c.ticket.usdWeb)||0,d=w-(Number(c.ticket.usdPagado)||0);return d>0.004&&w>0?` · ticket −${(d/w*100).toFixed(1).replace('.',',')}%`:'';})():(c.estado==='camino'?' · <b style="color:var(--red)">falta ticket</b>':'');
+  const tk=c.ticket?(()=>{const w=Number(c.ticket.usdWeb)||0,d=w-(Number(c.ticket.usdPagado)||0);return d>0.004&&w>0?` · ticket −${(d/w*100).toFixed(1).replace('.',',')}%`:'';})():(pyTicketEstado(c).faltaReng?' · <b style="color:var(--red)">falta ticket</b>':'');
+  const tkF=pyTicketEstado(c).faltaFoto?' · <b style="color:var(--red)">falta foto del ticket</b>':'';
   const usd=(Math.round(pyBaseUSD(c)*(R.r||RECARGO_PY)*100)/100).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
   return `<div style="min-width:0">
       <div style="font-size:.95rem;font-weight:800;color:var(--text)">${pedNumTag(c,'margin-right:6px')}${dm(c.fecha)}</div>
@@ -16983,9 +16986,72 @@ function pyPedidoResumenHTML(c,enCamino,dias,tarde){
     </div>
     <div style="margin-left:auto;text-align:right">
       <div style="font-size:1.05rem;font-weight:800;color:var(--text);white-space:nowrap" title="Lo que te salió el pedido puesto en la oficina: la factura más todos los gastos${R.r?'':' (con el recargo estimado: faltan gastos)'}">US$ ${usd}</div>
-      <div style="font-size:.62rem;color:var(--muted);margin-top:2px;white-space:nowrap">${rec}${tk}</div>
+      <div style="font-size:.62rem;color:var(--muted);margin-top:2px;white-space:nowrap">${rec}${tk}${tkF}</div>
     </div>
     <span style="font-size:.7rem;color:var(--muted);margin-left:4px">▾</span>`;
+}
+// 🧾 EL TICKET DE CADA PEDIDO DE PARAGUAY, OBLIGATORIO Y A LA VISTA (25/10/2026, él con el Sony EX15LP que faltó: "no sabemos si no
+// lo mandaron o si no lo cobraron. a partir de ahora que sea obligatorio cargar el ticket de cada pedido de paraguay y que el ticket se vea
+// en el detalle del pedido. si el ticket no está que aparezca en rojo avisando, como cuando faltan cargar gastos"). Dos cosas:
+//  · los RENGLONES (`c.ticket`, los carga Claude con `compray:…|det=`), que ya eran obligatorios para cerrar desde el 10/10;
+//  · la FOTO del ticket: se sube desde el detalle del pedido (📷) y queda en `mlapi/pyticketfoto/<id>/<ts>` (fuera de `cyc/`: la web lee
+//    `cyc` entero y las fotos pesan; NUNCA al repo: es un ticket del mayorista). En `cyc/compraspy/<id>/ticketFoto` sólo va cuántas hay.
+// Se exige la foto a los pedidos desde PY_TICKET_FOTO_DESDE y a todo lo que está en camino; los ya llegados de antes la pueden subir igual, pero no salen en rojo.
+const PY_TICKET_FOTO_DESDE='2026-10-25';
+function pyTicketEstado(c){
+  const reng=!!(c&&c.ticket),foto=(parseInt(c&&c.ticketFoto)||0)>0,exige=String(c&&c.fecha||'')>=PY_TICKET_FOTO_DESDE||(c&&c.estado==='camino');
+  const faltaReng=!reng&&(c&&c.estado==='camino'||exige),faltaFoto=exige&&!foto;
+  return{reng,foto,exige,faltaReng,faltaFoto,falta:faltaReng||faltaFoto};
+}
+function pyTicketsFaltanHTML(lista){
+  const f=(lista||[]).filter(c=>pyTicketEstado(c).falta);if(!f.length)return '';
+  const dm=x=>{const m=String(x||'').match(/^\d{4}-(\d{2})-(\d{2})/);return m?m[2]+'/'+m[1]:(x||'—');};
+  return `<div style="background:var(--surface);border:1px solid var(--red);border-radius:var(--r);padding:12px 14px;margin-bottom:12px">
+    <div style="font-size:.84rem;font-weight:700;color:var(--red);margin-bottom:6px">❌ Falta el ticket de ${f.length} pedido${f.length>1?'s':''}</div>
+    <div style="font-size:.62rem;color:var(--muted);line-height:1.5;margin-bottom:6px">Sin el ticket no se sabe si algo que no llegó lo cobraron o no. Subí la foto acá (📷) y pasame el ticket por el chat para cargar lo que pagaste renglón por renglón.</div>
+    ${f.map(c=>{const t=pyTicketEstado(c);return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 0;border-top:1px solid var(--border);font-size:.74rem">
+      <span style="flex:1;min-width:140px">${pedNumTag(c,'margin-right:6px')}<b>${dm(c.fecha)}</b> <span style="color:var(--muted)">· ${c.estado==='camino'?'en camino':'llegó'}</span></span>
+      <span style="color:var(--red);font-size:.68rem">${[t.faltaFoto?'falta la foto':'',t.faltaReng?'faltan los renglones':''].filter(Boolean).join(' · ')}</span>
+      ${t.faltaFoto?`<button type="button" class="btn btn-sm" style="font-size:.64rem;padding:4px 9px" onclick="pyTicketSubir('${c.id}')">📷 Subir foto</button>`:''}
+    </div>`;}).join('')}
+  </div>`;
+}
+// La foto se achica en el teléfono antes de subirla (1600 px de lado, JPEG): un ticket se lee igual y pesa ~200 KB en vez de 4 MB.
+function _pyTicketAchicar(file){
+  return new Promise((res,rej)=>{const fr=new FileReader();fr.onerror=()=>rej(new Error('no pude leer la foto'));
+    fr.onload=()=>{const im=new Image();im.onerror=()=>rej(new Error('la foto no se abre'));
+      im.onload=()=>{let w=im.naturalWidth,h=im.naturalHeight;const M=1600,k=Math.min(1,M/Math.max(w,h));w=Math.round(w*k);h=Math.round(h*k);
+        const cv=document.createElement('canvas');cv.width=w;cv.height=h;cv.getContext('2d').drawImage(im,0,0,w,h);
+        let q=0.75,u=cv.toDataURL('image/jpeg',q);while(u.length>900000&&q>0.35){q-=0.1;u=cv.toDataURL('image/jpeg',q);}res(u);};
+      im.src=fr.result;};fr.readAsDataURL(file);});
+}
+function pyTicketSubir(id){
+  const inp=document.createElement('input');inp.type='file';inp.accept='image/*';inp.multiple=true;
+  inp.onchange=async()=>{
+    const fs=[...(inp.files||[])];if(!fs.length)return;
+    if(!db){toast('Sin conexión a la base: no se pudo subir','err');return;}
+    let n=0;
+    for(const f of fs){try{const img=await _pyTicketAchicar(f);const ts=Date.now()+n;
+      await db.ref('mlapi/pyticketfoto/'+id+'/'+ts).set({img,ts});n++;}catch(e){toast('⚠️ No se subió una foto: '+((e&&(e.message||e.code))||'error'),'err',6000);}}
+    if(!n)return;
+    try{const sn=await db.ref('mlapi/pyticketfoto/'+id).once('value');const tot=Object.keys(sn.val()||{}).length;
+      await fbSet('compraspy/'+id+'/ticketFoto',tot);state.compraspy[id]={...(state.compraspy[id]||{}),ticketFoto:tot};}
+    catch(e){toast('⚠️ La foto se subió pero no quedó anotada: '+((e&&(e.message||e.code))||'error'),'err',6000);return;}
+    toast(`🧾 Ticket subido (${n} foto${n>1?'s':''})`,'ok',3000);
+    try{renderPedidos();}catch(_){}
+  };
+  inp.click();
+}
+async function pyTicketVer(id){
+  if(!db)return;let fotos={};
+  try{fotos=(await db.ref('mlapi/pyticketfoto/'+id).once('value')).val()||{};}catch(e){toast('⚠️ No pude leer el ticket','err');return;}
+  const L=Object.values(fotos).filter(x=>x&&/^data:image\//.test(x.img||'')).sort((a,b)=>(a.ts||0)-(b.ts||0));
+  if(!L.length){toast('Este pedido no tiene foto del ticket','err');return;}
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.88);overflow:auto;padding:16px;display:flex;flex-direction:column;align-items:center;gap:12px';
+  ov.innerHTML=`<button type="button" class="btn" style="position:sticky;top:0;align-self:flex-end">✕ Cerrar</button>`+L.map(x=>`<img src="${x.img}" alt="ticket" style="max-width:100%;height:auto;border-radius:8px;background:#fff">`).join('');
+  ov.addEventListener('click',e=>{if(e.target===ov||e.target.tagName==='BUTTON')ov.remove();});
+  document.body.appendChild(ov);
 }
 // La tarjeta de un pedido, la misma en las dos pantallas: fondo más claro, borde y una barra de color a la izquierda.
 function pyPedidoTarjeta(c,enCamino){
@@ -17011,6 +17077,8 @@ function pyPedidoDetalleHTML(c){
         <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">La plata</div>
         ${c.ticket?(()=>{const w=Number(c.ticket.usdWeb)||0,pg=Number(c.ticket.usdPagado)||0,d=w-pg;return fila('🧾 ticket','<b style="color:var(--green)">cargado</b>','El ticket real del mayorista, renglón por renglón. Cada producto guarda lo que se pagó y lo que decía la web.')+fila('precio de la web',fmtUS2(w))+fila('pagado (ticket)',fmtUS2(pg))+fila('descuento',`<b style="color:${d>0?'var(--green)':d<0?'var(--red)':'var(--muted)'}">${d>0?'−':d<0?'+':''}${fmtUS2(Math.abs(d))}${w>0?' ('+Math.abs(d/w*100).toFixed(1).replace('.',',')+'%)':''}</b>`,'Lo que pagaste de menos (o de más) contra el precio de la web. Producto por producto, abajo en La mercadería.');})()
           :fila('🧾 ticket','<b style="color:var(--red)">falta</b>','Sin el ticket real el pedido no se puede cerrar: pasáselo a Claude por el chat.')}
+        ${(()=>{const t=pyTicketEstado(c),n=parseInt(c.ticketFoto)||0;
+          return fila('📷 foto del ticket',`${n?`<button type="button" class="vbtn" style="font-size:.62rem;padding:1px 7px" onclick="pyTicketVer('${c.id}')">ver${n>1?' ('+n+')':''}</button> `:`<b style="color:${t.faltaFoto?'var(--red)':'var(--muted)'}">${t.faltaFoto?'falta':'no hay'}</b> `}<button type="button" class="vbtn" style="font-size:.62rem;padding:1px 7px" onclick="pyTicketSubir('${c.id}')">${n?'+ otra':'subir'}</button>`,'La foto del ticket del mayorista. Si algo no llega, con la foto se ve si lo cobraron. Es obligatoria para cerrar el pedido (los ya llegados antes del '+PY_TICKET_FOTO_DESDE.split('-').reverse().join('/')+' no la piden).');})()}
         ${fila('mercadería cruda',fmtUS2(pyBaseUSD(c)),'El precio de comprasparaguay, sin el recargo.')}
         ${fila('con el '+(pyRecargoReal(c).r?((pyRecargoReal(c).r-1)*100).toFixed(1)+'% real':Math.round((RECARGO_PY-1)*100)+'% estimado'),fmtUS2(puesto),'Incluye comprar los dólares, el correo y el que despacha. Con todos los gastos cargados es el recargo REAL de este pedido; si no, el estimado.')}
         ${tc?fila('en pesos',fmt(Math.round(puesto*tc))+' <span style="color:var(--muted);font-size:.9em">· dólar '+fmt(Math.round(tc))+'</span>','Con el dólar del DÍA del pedido, no el de hoy: lo que compraste a un precio no cambia solo.'):fila('en pesos','<span style="color:var(--amber)">no había dólar cargado ese día</span>')}
@@ -17051,7 +17119,7 @@ function pyEnCaminoHTML(tipo){
   const llegados=todas.filter(c=>c.estado!=='camino').slice(0,6);
   if(!camino.length&&!llegados.length)return '';
   const tarjeta=(c,enCamino)=>pyPedidoTarjeta(c,enCamino);
-  return `<div style="margin:14px 0 4px">
+  return `<div style="margin:14px 0 4px">${pyTicketsFaltanHTML(todas)}
     ${camino.length?`<div style="font-size:.7rem;font-weight:700;margin-bottom:6px">🚚 ${tipo==='repo'?'Reposición en camino':'Pedidos en camino'} <span style="font-weight:400;color:var(--muted);font-size:.9em">· tocá uno para ver cómo fue</span></div>
       ${camino.map(c=>tarjeta(c,true)).join('')}`:''}
     ${llegados.length?`<details style="margin-top:6px"><summary style="cursor:pointer;font-size:.64rem;color:var(--muted)">📦 Pedidos que ya llegaron o de historial (${llegados.length})</summary>
@@ -22150,7 +22218,7 @@ function renderPedidos(){
       ${_tab('hechos',`🧾 Pedido${(()=>{const n=pyArmadoFilas().length+pedNuevos(candList().filter(candEnArmado).filter(c=>candEnPedido(c)!=='viajando')).filas.length;return n?' ('+n+' cargados)':'';})()}`,'El pedido del momento (probados + nuevos juntos, con el mensaje para Nissei) y abajo los pedidos ya hechos: en camino y llegados.')}
     </div>`+(pyVista!=='hechos'?_pyFiltrosHTML():'');
     // PROBADOS = IDÉNTICO A BS AS (01/10/2026, pedido suyo): sólo la lista de pedidos, sin canasta ni precios.
-    el.innerHTML=_tabs+(pyVista==='nuevos'?candidatosHTML():pyVista==='ambos'?el.innerHTML+candidatosHTML():pyVista==='hechos'?pedidoMomentoHTML()+`<div style="font-size:.85rem;font-weight:800;margin:10px 0 10px">Pedidos hechos <span style="color:var(--muted);font-weight:400">· ${pyCompras().length}</span></div>`+pyHechosHTML():el.innerHTML);
+    el.innerHTML=_tabs+pyTicketsFaltanHTML(pyCompras())+(pyVista==='nuevos'?candidatosHTML():pyVista==='ambos'?el.innerHTML+candidatosHTML():pyVista==='hechos'?pedidoMomentoHTML()+`<div style="font-size:.85rem;font-weight:800;margin:10px 0 10px">Pedidos hechos <span style="color:var(--muted);font-weight:400">· ${pyCompras().length}</span></div>`+pyHechosHTML():el.innerHTML);
     if(window._pycatQ&&pyVista!=='probados'&&pyVista!=='hechos')setTimeout(()=>pycatBuscar(window._pycatQ),0);   // el buscador conserva lo buscado al redibujar
   }
 }
