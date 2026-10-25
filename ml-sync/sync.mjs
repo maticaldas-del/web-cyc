@@ -29135,9 +29135,15 @@ async function main() {
         // El título de la base alcanza para elegir; el estado y el stock SÍ se leen de ML.
         const mios = Object.entries(linksP)
           .filter(([mla, e]) => e && e.cuenta === label && /^MLA/i.test(mla))
-          .filter(([, e]) => {
+          .filter(([mlaP, e]) => {
+            // 25/10/2026 (él eligió sacar las 17 gemelas de envío gratis de Paulvic): `gemelaenvio` entre las palabras = sólo las gemelas
+            // Clásicas con envío gratis (`gemelaTipo:'envio'`) cuyo título tiene ALGUNA de las otras palabras; un MLA entre las palabras
+            // la elige por número.
             const tt = norm(e.title || '');
-            if (!busca.some((w) => tt.includes(w))) return false;
+            const soloGE = busca.includes(norm('gemelaenvio')), bus = busca.filter((w) => w !== norm('gemelaenvio'));
+            if (soloGE && e.gemelaTipo !== 'envio') return false;
+            if (bus.length && !bus.some((w) => tt.includes(w) || w === norm(mlaP))) return false;
+            if (!bus.length && !soloGE) return false;
             if (saca.some((w) => tt.includes(w))) return false;
             return true;
           })
