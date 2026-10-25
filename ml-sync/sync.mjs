@@ -28452,6 +28452,23 @@ async function main() {
       if (!Object.keys(porCta).length) console.log('  (nada para cargar)');
       return;
     }
+    // BILLING_PROBE=fotocat:<catálogo MLA>[;…] → SOLO LEE (25/10/2026, él: "¿tenés foto de la Calipso que está en ML? pasámela y veo").
+    // Nombre y fotos (direcciones de mlstatic) del catálogo de ML, para mirar si es el mismo producto antes de publicar en él.
+    if (/^fotocat:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const ids = String(process.env.BILLING_PROBE).slice('fotocat:'.length).split(/[;,\s]+/).map((x) => x.trim().toUpperCase()).filter((x) => /^MLA\d+$/.test(x));
+      let tk = null;
+      for (const label of labels) { const acc = accounts[label]; if (!acc?.refresh_token) continue;
+        try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() }); tk = t.access_token; break; } catch { /* la que sigue */ } }
+      if (!tk) { console.log('❌ sin token'); return; }
+      for (const id of ids) {
+        try { const p = await mlGet('/products/' + id, tk);
+          console.log(`\n■ ${id} · ${String(p.name || '').slice(0, 100)}`);
+          for (const a of (p.main_features || []).slice(0, 4)) console.log(`   · ${String(a.text || '').slice(0, 120)}`);
+          for (const x of (p.pictures || []).slice(0, 6)) { const u = String(x.secure_url || x.url || '').replace(/^http:\/\//, 'https://'); if (/^https:\/\/[^/]*mlstatic\.com\//.test(u)) console.log(`   FOTO ${u}`); }
+        } catch (e) { console.log(`\n■ ${id}: ML no contestó (${String(e.message || e).slice(0, 80)})`); }
+      }
+      return;
+    }
     if (/^cajaweb:/.test(String(process.env.BILLING_PROBE || ''))) {
       const [, cta, ...pw] = String(process.env.BILLING_PROBE).split(':'); const q = norm(pw.join(':'));
       const L = (await db.get('cyc/mllinks')) || {}, I = (await db.get('cyc/inventory')) || {}, RX = (await db.get('cyc/repoextra')) || {}, NR = (await db.get('cyc/norepo')) || {};

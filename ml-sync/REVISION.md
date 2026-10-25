@@ -787,6 +787,10 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 - **Qué chequear:** que el texto siga coincidiendo con lo que muestra la web (cartel "MANDALA YA", "📦 N cajas para mandar ya", el código
   de etiqueta en cada renglón) cada vez que se toca Armar caja o Inicio.
 
+### `fotocat:<catálogo>` · las fotos de un catálogo de ML (25/10/2026, él: "¿tenés foto de la Calipso que está en ML? pasámela")
+- **Qué es:** sólo lee: nombre, 4 características y hasta 6 fotos (sólo direcciones de mlstatic) de un catálogo, para confirmar que es
+  el mismo producto antes de `publicar`. **Qué chequear:** que no imprima nada que no sea de ML.
+
 ### `cajaarmar` · cargar la caja como el botón "🎯 Cargar lo que entra en el cupo" (25/10/2026, él: "cuando te digo armá la caja (…) hacé idéntico como ahora, pero apretá el botón de cargar lo que entra en el cupo, si no queda incompleta")
 - **Qué es:** después de `decido:archivo=cajas;go`, `cajaarmar[:<cuenta>];go` (ml-sync) escribe `cyc/cajas_armando/<cuenta>` (lo mismo que el botón)
   con lo decidido en `notas/cajas.txt`, que `decide_cajas.py` ya recortó por cupo con la misma regla (`llenar_cupo` = `cajaLlenarCupoPlan`).
