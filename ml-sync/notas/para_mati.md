@@ -9,6 +9,7 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 ## Abiertas
 
 ### Del 25/10 (lo dejó para después)
+- **2 Sony EX15LP Blanco (Ayelen) que no aparecieron:** figuraban en la oficina (llegada del 23/10) y no estaban; él los sacó del envío #80494103 y yo de la caja en el panel (25/10). (a) sugerida: reclamarlos en el próximo pedido de Paraguay o descontarlos · (b) darlos por perdidos.
 - **Timbre de ventas:** la tarea nueva `trig_012a3LNycnpvUm55TK7y2mji` no tiene llave de API; el robot sigue tocando la vieja (apagada → "Routine is paused"). Falta su captura de Editar de la tarea nueva.
 
 ### De la completa del domingo 25/10
