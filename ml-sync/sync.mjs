@@ -2400,6 +2400,18 @@ async function reposicionFullML(db, accounts, labels, DRY) {
 // La caja sale plana (`cyc/mlconfig/costoCaja`) y la ficha la reparte como si fuera llena; con cupo chico las cajas salen con pocas
 // unidades. Promedio de unidades de las últimas CAJA_REAL_N cajas de la cuenta en CAJA_REAL_DIAS días → costo real por unidad. Es la
 // MISMA cuenta que `cajaRealDe` de la web (index.html): si se toca una, la otra. Sin cajas medidas devuelve null (no se inventa).
+// LAS CAJAS SALEN DE LUNES A VIERNES A LAS 12 (25/10/2026, él: "si la caja se arma después del viernes al mediodía ya se envía
+// el lunes"). Devuelve el momento en que SALE (12:00 de acá = 15:00 UTC): armada un día hábil antes de las 12, ese día; si no, el
+// próximo día hábil. La hora sale de `ts` si es del mismo día que `fecha`; sin hora, se toma como armada a la mañana. Misma regla
+// que `envSalidaTs` de la web (index.html): si se toca una, la otra.
+function envSalidaTs(fecha, ts) {
+  const f = String(fecha || '').slice(0, 10); if (!/^\d{4}-\d{2}-\d{2}$/.test(f)) return 0;
+  const t = Number(ts) || 0, loc = t ? new Date(t - 3 * 3600e3) : null;
+  const tarde = !!(loc && loc.toISOString().slice(0, 10) === f && loc.getUTCHours() >= 12);
+  const d = new Date(f + 'T15:00:00Z'); const habil = (x) => x.getUTCDay() >= 1 && x.getUTCDay() <= 5;
+  if (tarde || !habil(d)) { do { d.setUTCDate(d.getUTCDate() + 1); } while (!habil(d)); }
+  return d.getTime();
+}
 const CAJA_REAL_N = 8, CAJA_REAL_DIAS = 120, CAJA_REAL_COMEMUCHO = 0.25;
 function cajaRealPorCuenta(envios, cta, costoCaja, ahora) {
   const desde = (ahora || Date.now()) - CAJA_REAL_DIAS * 864e5, us = [];
@@ -5836,7 +5848,7 @@ async function calcCerebro(db, o) {
     if (!e || !e.cuenta) continue;
     for (const c of (Array.isArray(e.cajasDet) ? e.cajasDet : [])) {
       if (!c || c.recibida) continue;
-      const tsC = Date.parse(String(c.fecha || e.fecha || '').slice(0, 10) + 'T15:00:00Z') || hoyTs;
+      const tsC = envSalidaTs(c.fecha || e.fecha, c.fecha ? 0 : e.ts) || hoyTs;
       for (const it of (c.items || [])) {
         if (!it || !it.prodId || !(Number(it.u) > 0)) continue;
         const kP = it.prodId + '__' + sidL(e.cuenta);
@@ -44399,7 +44411,7 @@ async function main() {
         };
         for (const [id, env] of Object.entries(envs)) for (const [ci, c] of (Array.isArray(env && env.cajasDet) ? env.cajasDet : []).entries()) {
           if (!c || c.recibida) continue; nAb++;
-          const t0 = Date.parse(String(c.fecha || env.fecha || '').slice(0, 10) + 'T15:00:00Z'); const dd = t0 > 0 ? (ahoraI - t0) / 864e5 : null;
+          const t0 = envSalidaTs(c.fecha || env.fecha, c.fecha ? 0 : env.ts); const dd = t0 > 0 ? Math.max(0, (ahoraI - t0) / 864e5) : null;
           const uC = (c.items || []).reduce((s2, it) => s2 + (Number(it && it.u) || 0), 0), eC = entradoCaja(id, ci, c);
           // Etapa 6 (14/10/2026): la caja que ML ya dio de alta ENTERA va a la lista lista para `cajallego`, tenga la edad
           // que tenga (antes sólo salía con 9+ días y con el seguimiento cortado: había que ir a buscarlo a mano).
@@ -49205,12 +49217,12 @@ async function main() {
       const inv = (await db.get('cyc/inventory')) || {};
       const ops = [], problemas = [];
       for (const x of pares) {
-        // `!se` al final (23/10/2026): lo que llegó viene SIN ETIQUETA de Full → además de sumarlo a la oficina se suma a
-        // `cyc/sinetiq` (la tarjeta "🏷️ Sin terminar / sin etiqueta" de Contar lo que hay). Sólo con +N.
-        const se = /!se$/i.test(x);
-        const m = x.replace(/!se$/i, '').match(/^(.+?)(?:@(.+?))?=([+-]?)(\d+)$/);
-        if (!m) { problemas.push(`"${x}" → se espera <palabra>[@<variante>]=<+N|-N|N>[!se]`); continue; }
-        if (se && m[3] !== '+') { problemas.push(`"${x}" → !se (sin etiqueta) va sólo con +N (lo que llegó)`); continue; }
+        // SIEMPRE A ETIQUETAR (25/10/2026, él: "al cargar unidades a mi oficina, que siempre salgan como a etiquetar"): todo lo
+        // que SUBE la oficina se suma también a `cyc/sinetiq` (la tarjeta "🏷️ Sin terminar / sin etiqueta" de Contar lo que hay).
+        // `!ok` al final = ya viene etiquetado (ej. lo que vuelve de una caja); `!se` (23/10) se sigue aceptando, ya no hace falta.
+        const ok = /!ok$/i.test(x), se = !ok;
+        const m = x.replace(/!(se|ok)$/i, '').match(/^(.+?)(?:@(.+?))?=([+-]?)(\d+)$/);
+        if (!m) { problemas.push(`"${x}" → se espera <palabra>[@<variante>]=<+N|-N|N>[!ok]`); continue; }
         const exacto = m[1].trim().startsWith('=');
         const q = nrm(m[1].trim().replace(/^=/, ''));
         const hits = prods.filter((p) => exacto ? nrm(p.name) === q : nrm(p.name).includes(q));

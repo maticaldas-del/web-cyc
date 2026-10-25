@@ -2960,7 +2960,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.59';
+const APP_VERSION='26.60';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2973,6 +2973,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.60',f:'25/10',h:'15:20',c:[{n:2,t:'🚚 Cajas: los días de viaje se cuentan desde que la caja SALE (de lunes a viernes a las 12). Armada el fin de semana o el viernes a la tarde dice "armada · sale el lunes a las 12" y la escasez cuenta esos días de más.'},{n:2,t:'🏷️ Todo lo que se carga a la oficina queda "sin etiqueta", y cada renglón de la tarjeta tiene el botón ✅ Etiquetadas para pasarlo a listo.'}]},
   {v:'26.59',f:'24/10',h:'21:26',c:[{n:2,t:'📦 Armar caja: el ❌ no da 35% se mide sólo con la venta más alta y la competencia (el precio puesto que nadie compró ya no cuenta). El Watch 5 Lite pausado a $142.990 daba 39% y no salía en rojo; su única venta fue a $113.250 (~10%).'}]},
   {v:'26.58',f:'24/10',h:'20:12',c:[{n:2,t:'📦 Armar caja: lo que no llega al 35% en el peor caso dice ❌ no da 35%. Se mide al precio de hoy, a la venta más alta de 90 días y contra la competencia (de anoche), y manda el más alto. Al abrir el renglón se ven los tres.'}]},
   {v:'26.57',f:'24/10',h:'15:57',c:[{n:2,t:'📈 "Buscando techo · 2ª suba" cuenta las subas de precio de verdad, no los renglones anotados (Casino decía 2ª suba con una sola suba). La explicación del 📈 dice qué busca: el 🔴 techo, y que si el precio nuevo vende y deja más plata se sigue subiendo.'}]},
@@ -4382,9 +4383,9 @@ function renderSinEtiqCard(){
   const el=document.getElementById('ofi-sinetiq-card');if(!el)return;
   const filas=[];
   for(const p of state.products||[]){
-    if((p.variantes||[]).length){for(const v of p.variantes){const n=sinEtiq(p.id,v);if(n>0)filas.push({nom:p.name,v,n,ctas:_sinEtiqCtas(p,v)});}}
+    if((p.variantes||[]).length){for(const v of p.variantes){const n=sinEtiq(p.id,v);if(n>0)filas.push({pid:p.id,nom:p.name,v,n,ctas:_sinEtiqCtas(p,v)});}}
     const n0=sinEtiq(p.id,'');
-    if(n0>0&&!(p.variantes||[]).length)filas.push({nom:p.name,v:'',n:n0,ctas:_sinEtiqCtas(p,'')});
+    if(n0>0&&!(p.variantes||[]).length)filas.push({pid:p.id,nom:p.name,v:'',n:n0,ctas:_sinEtiqCtas(p,'')});
   }
   const sel=typeof ofiContarCuenta==='string'?ofiContarCuenta:'';
   const vis=sel?filas.filter(f=>f.ctas.includes(sel)):filas;
@@ -4394,10 +4395,10 @@ function renderSinEtiqCard(){
   const ord=k=>{const i=LOCS.indexOf(k.split(' · ')[0]);return i<0?99:i;};
   const ks=Object.keys(grp).sort((a,b)=>ord(a)-ord(b)||a.length-b.length||a.localeCompare(b));
   const tot=vis.reduce((a,f)=>a+f.n,0);
-  const fila=f=>`<div style="display:flex;gap:8px;align-items:baseline;padding:4px 0 4px 10px;border-top:1px solid rgba(245,158,11,.18);font-size:.74rem"><span style="flex:1;min-width:0;word-break:break-word">${escHtml(f.nom)}${f.v?` <span style="color:var(--accent2);font-weight:700">· ${escHtml(f.v)}</span>`:''}</span><b style="flex:none;font-family:'DM Mono',monospace">${fmtN(f.n)}</b></div>`;
+  const fila=f=>`<div style="display:flex;gap:8px;align-items:center;padding:4px 0 4px 10px;border-top:1px solid rgba(245,158,11,.18);font-size:.74rem"><span style="flex:1;min-width:0;word-break:break-word">${escHtml(f.nom)}${f.v?` <span style="color:var(--accent2);font-weight:700">· ${escHtml(f.v)}</span>`:''}</span><b style="flex:none;font-family:'DM Mono',monospace">${fmtN(f.n)}</b><button type="button" class="btn btn-sm" style="flex:none;white-space:nowrap;padding:3px 8px;font-size:.66rem;border-color:rgba(34,197,94,.45);color:var(--green)" title="Ya les pegaste la etiqueta de Full a estas ${f.n} u.: pasan a listas para la caja" onclick="sinEtiqListo('${f.pid}','${escHtml(String(f.v||'')).replace(/'/g,'&#39;')}')">✅ Etiquetadas</button></div>`;
   el.innerHTML=`<div style="background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.4);border-radius:12px;padding:12px 14px;margin-bottom:12px">
     <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><strong style="font-size:.82rem;color:var(--amber)">🏷️ Sin terminar / sin etiqueta${sel?' · '+escHtml(sel):''}</strong><span style="font-family:'DM Mono',monospace;font-size:.8rem;color:var(--amber)">${fmtN(tot)} u.</span></div>
-    <div style="font-size:.62rem;color:var(--muted);margin:3px 0 8px;line-height:1.45">Están en la oficina y Armar caja ya las cuenta, pero hay que etiquetarlas antes de meterlas en la caja. Cuando las etiquetes, decíselo a Claude.</div>
+    <div style="font-size:.62rem;color:var(--muted);margin:3px 0 8px;line-height:1.45">Están en la oficina y Armar caja ya las cuenta, pero hay que etiquetarlas antes de meterlas en la caja. Todo lo que se carga a la oficina entra acá; cuando las etiquetes tocá ✅ Etiquetadas.</div>
     ${ks.map(k=>{const L=grp[k].sort((a,b)=>a.nom.localeCompare(b.nom)||String(a.v).localeCompare(String(b.v)));const n=L.reduce((a,f)=>a+f.n,0);
       return `<div style="margin-top:10px"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:.78rem;font-weight:800;color:var(--text);padding-bottom:3px"><span>${escHtml(k)}</span><span style="font-family:'DM Mono',monospace;color:var(--amber)">${fmtN(n)} u.</span></div>${L.map(fila).join('')}</div>`;}).join('')}
   </div>`;
@@ -5724,7 +5725,7 @@ function setQ(pid,loc,val,variant=''){
   const _pStk=state.products.find(x=>x.id===pid);
   const _totalBefore=_pStk?stockOf(_pStk):0;
   state.inventory[k]=nv;_invPending[k]=nv;
-  if(loc===OFI&&nv>old)_ofiEntro(invKey(pid,OFI),0,1);
+  if(loc===OFI&&nv>old){_ofiEntro(invKey(pid,OFI),0,1);sinEtiqSumar(pid,variant,nv-old);}
   // Si es variante, recalcular y actualizar la clave de producto (suma de todas las variantes)
   if(variant){
     const p=state.products.find(x=>x.id===pid);
@@ -7812,6 +7813,28 @@ function _ofiEntro(key,antes,ahora){
   const pid=String(key).slice(0,i);(state.ofientro=state.ofientro||{})[pid]=Date.now();
   if(db)db.ref('cyc/ofientro/'+pid).set(Date.now()).catch(()=>{});
 }
+// SIEMPRE A ETIQUETAR (25/10/2026, él: "al cargar unidades a mi oficina, que siempre salgan como a etiquetar"): todo lo que SUBE
+// la oficina (sumar, contar más, Llegó) se suma también a `cyc/sinetiq`, salvo una devolución (`entra:false`, deshacer una caja:
+// esas ya estaban etiquetadas). Con transacción: dos aparatos sumando a la vez no se pisan. El robot hace lo mismo en `ofi:`.
+async function sinEtiqSumar(pid,variante,n){
+  n=Math.round(Number(n)||0);if(!pid||!n)return;
+  const sub=variante?'v/'+sid(String(variante)):'t';
+  const r=(state.sinetiq=state.sinetiq||{})[pid]=(state.sinetiq[pid]||{});
+  const loc=x=>Math.max(0,(parseInt(x)||0)+n);
+  if(variante){r.v=r.v||{};r.v[sid(String(variante))]=loc(r.v[sid(String(variante))]);}else r.t=loc(r.t);
+  if(db){try{await db.ref('cyc/sinetiq/'+pid+'/'+sub).transaction(v=>loc(v)||null);await db.ref('cyc/sinetiq/'+pid+'/ts').set(Date.now());}catch(e){console.warn('sinetiq',e);}}
+  try{renderSinEtiqCard();}catch(_){}
+}
+// ✅ YA LO ETIQUETÉ (25/10/2026, él: "que haya un botón para que pasen a etiquetadas, ya que el chat en local imprime las etiquetas
+// y quiere poner que ese producto ya se etiquetó y no tiene forma de hacerlo"). Pone en 0 lo sin etiqueta de ESE renglón.
+async function sinEtiqListo(pid,variante){
+  const r=(state.sinetiq||{})[pid];if(r){if(variante){if(r.v)delete r.v[sid(String(variante))];}else delete r.t;}
+  if(db){try{await db.ref('cyc/sinetiq/'+pid+'/'+(variante?'v/'+sid(String(variante)):'t')).set(null);await db.ref('cyc/sinetiq/'+pid+'/ts').set(Date.now());}
+    catch(e){toast('⚠️ No se guardó: '+((e&&(e.message||e.code))||'error'),'err',6000);return;}}
+  toast('🏷️ Listo: etiquetadas','ok',2500);
+  try{renderSinEtiqCard();}catch(_){}
+  try{if(typeof renderOfiContar==='function')renderOfiContar();}catch(_){}
+}
 // Mueve unidades de la oficina: con variante toca la clave de la variante y le aplica al total del
 // producto EXACTAMENTE lo que cambió la variante (así lo "sin aroma" no se toca); sin variante, el
 // total del producto.
@@ -7826,9 +7849,12 @@ async function ofiMover(pid,variante,{delta=0,fijo=null,entra=true}={}){
     // y dejaba invisibles las de los otros aromas.
     const _sv=ofiSumaVars(pid),_tot=parseInt(state.inventory[invKey(pid,OFI)])||0;
     if(_tot<_sv){await ofiTx(invKey(pid,OFI),{fijo:_sv,entra});console.warn('oficina: el total de '+pid+' estaba abajo de la suma de sus variantes ('+_tot+' < '+_sv+'), lo subí');}
+    if(entra!==false&&r.ahora>r.antes)await sinEtiqSumar(pid,variante,r.ahora-r.antes);
     return r;
   }
-  return ofiTx(invKey(pid,OFI),{delta,fijo,entra});
+  const r=await ofiTx(invKey(pid,OFI),{delta,fijo,entra});
+  if(entra!==false&&r.ahora>r.antes)await sinEtiqSumar(pid,'',r.ahora-r.antes);
+  return r;
 }
 async function ofiSumar(prodId,inputId){
   const e=document.getElementById(inputId);if(!e)return;
@@ -9036,10 +9062,31 @@ function cajasDe(e){
   const n=e.cajas||segs.length||0;
   return Array.from({length:n},(_,i)=>({n:i+1,track:segs[i]||'',items:[],recibida:false}));
 }
-function envDias(e){
+// LAS CAJAS SALEN DE LUNES A VIERNES A LAS 12 (25/10/2026, él: "si la caja se arma después del viernes al mediodía ya se
+// envía el lunes"). Los días de viaje se cuentan desde que SALE, no desde que se armó: armada un día hábil antes de las 12
+// sale ese día; si no, el próximo día hábil a las 12. La hora sale de `ts` (cuándo se cargó) si es del mismo día que `fecha`;
+// sin hora, se toma como armada a la mañana. Misma regla que `envSalidaTs` del robot (sync.mjs): si se toca una, la otra.
+function envSalidaTs(e){
   if(!e||!e.fecha)return 0;
-  const d=new Date(e.fecha+'T12:00:00');
-  return Math.max(0,Math.floor((Date.now()-d.getTime())/86400000));
+  const f=String(e.fecha).slice(0,10),ts=Number(e.ts)||0,dT=ts?new Date(ts):null;
+  const mismo=dT&&`${dT.getFullYear()}-${String(dT.getMonth()+1).padStart(2,'0')}-${String(dT.getDate()).padStart(2,'0')}`===f;
+  const d=new Date(f+'T12:00:00');if(isNaN(d))return 0;
+  const tarde=mismo&&(dT.getHours()>=12);
+  const habil=x=>x.getDay()>=1&&x.getDay()<=5;
+  if(tarde||!habil(d)){do{d.setDate(d.getDate()+1);}while(!habil(d));}
+  return d.getTime();
+}
+// Días desde que salió; NEGATIVO si todavía no salió (armada el finde: sale el lunes). La escasez lo usa así (8 - d = días
+// que faltan para que llegue).
+function envDias(e){
+  const t=envSalidaTs(e);if(!t)return 0;
+  return Math.floor((Date.now()-t)/86400000);
+}
+function envSaleTxt(e){
+  const t=envSalidaTs(e);if(!t)return '';
+  const d=new Date(t),hoy=new Date();
+  if(d.toDateString()===hoy.toDateString())return 'sale hoy a las 12';
+  return `sale el ${['domingo','lunes','martes','miércoles','jueves','viernes','sábado'][d.getDay()]} ${d.getDate()}/${d.getMonth()+1} a las 12`;
 }
 // UNA CAJA QUE LLEGÓ INCOMPLETA NO VA EN VERDE. El robot ahora la marca igual (pedido suyo del
 // 11/09/2026: "cuando el robot vea que la caja llegó que ya la marque. y luego yo me fijo si hubo
@@ -9054,7 +9101,7 @@ function estadoCaja(e,c){
   }
   const d=envDias(e);
   if(d>=ENV_ROJO_DIAS)return{color:'var(--red)',bg:'rgba(239,68,68,.14)',txt:`⚠️ ${d} días y no llegó`};
-  return{color:'var(--amber)',bg:'rgba(245,158,11,.14)',txt:d<=0?'en camino · salió hoy':`en camino · ${d} día${d===1?'':'s'}`};
+  return{color:'var(--amber)',bg:'rgba(245,158,11,.14)',txt:Date.now()<envSalidaTs(e)?`armada · ${envSaleTxt(e)}`:d<=0?'en camino · salió hoy':`en camino · ${d} día${d===1?'':'s'}`};
 }
 // CUÁNTO DE ESTE RENGLÓN DE UNA CAJA ABIERTA YA ENTRÓ A FULL (24/09/2026, opción a del paso 2).
 // Mientras ML la da de alta, lo que ya entró lo cuenta el stock de Full; si además siguiera en
@@ -9306,16 +9353,16 @@ async function delEnvioFull(id){
 // camión se mueve un poquito mientras viaja; con "menos movimiento" o modo discreto queda quieto.
 function cajaViajeHTML(e,c,uu,uEnt){
   if(!c||c.recibida)return '';
-  const d=envDias(e),lleg=typeof REPO_DIAS_DEMORA==='number'?REPO_DIAS_DEMORA:8,esc=Math.max(lleg+2,d+1);
+  const d0=envDias(e),noSalio=Date.now()<envSalidaTs(e),d=Math.max(0,d0),lleg=typeof REPO_DIAS_DEMORA==='number'?REPO_DIAS_DEMORA:8,esc=Math.max(lleg+2,d+1);
   const pos=v=>Math.max(0,Math.min(100,v/esc*100));
   const tarde=d>=ENV_ROJO_DIAS,pe=uu>0?Math.max(0,Math.min(100,uEnt/uu*100)):0;
   const faltan=Math.max(0,lleg-d);
-  const tit=`Salió ${d<=0?'hoy':'hace '+d+' día'+(d===1?'':'s')}. Una caja tarda ~${lleg} días en llegar y activarse${tarde?`; pasaron ${ENV_ROJO_DIAS} o más: mirá el seguimiento`:faltan?` (faltan ~${faltan})`:''}.${uEnt>0?` ML ya dio de alta ${uEnt} de ${uu} u.`:''}`;
+  const tit=`${noSalio?'Todavía no salió: '+envSaleTxt(e)+' (las cajas salen de lunes a viernes a las 12)':'Salió '+(d<=0?'hoy':'hace '+d+' día'+(d===1?'':'s'))}. Una caja tarda ~${lleg} días en llegar y activarse${tarde?`; pasaron ${ENV_ROJO_DIAS} o más: mirá el seguimiento`:faltan?` (faltan ~${faltan})`:''}.${uEnt>0?` ML ya dio de alta ${uEnt} de ${uu} u.`:''}`;
   return `<div class="cv" title="${tit.replace(/"/g,'&quot;')}">
     <div class="cv-ruta"><span class="cv-hecho" style="width:${pos(d).toFixed(1)}%;background:${tarde?'var(--red)':'var(--amber)'}"></span>
       <i class="cv-rojo" style="left:${pos(ENV_ROJO_DIAS).toFixed(1)}%"></i><span class="cv-meta" style="left:${pos(lleg).toFixed(1)}%">🏁</span>
       <span class="cv-cam${tarde?'':' cv-anda'}" style="left:${pos(d).toFixed(1)}%">🚚</span></div>
-    <div class="cv-et"><span>🏠 salió</span><span style="color:${tarde?'var(--red)':'var(--muted)'}">${tarde?`⚠️ ${d} días`:d<=0?'salió hoy':`día ${d} de ~${lleg}`}</span></div>
+    <div class="cv-et"><span>🏠 ${noSalio?'en la oficina':'salió'}</span><span style="color:${tarde?'var(--red)':'var(--muted)'}">${tarde?`⚠️ ${d} días`:noSalio?envSaleTxt(e):d<=0?'salió hoy':`día ${d} de ~${lleg}`}</span></div>
     ${uEnt>0?`<div class="cv-ent"><span style="width:${pe.toFixed(1)}%"></span></div><div class="cv-et"><span style="color:var(--green)">📥 entrando a Full: ${uEnt} de ${uu} u.</span></div>`:''}
   </div>`;
 }
