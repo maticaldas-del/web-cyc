@@ -792,6 +792,12 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 - **Qué chequear:** que el texto siga coincidiendo con lo que muestra la web (cartel "MANDALA YA", "📦 N cajas para mandar ya", el código
   de etiqueta en cada renglón) cada vez que se toca Armar caja o Inicio.
 
+### `FIJO` en `decide_cajas.py` · las decisiones suyas de una caja no las pisa ninguna vuelta (25/10/2026)
+- **Qué es:** la completa de las 03:00 recalculó las cajas y le pisó dos decisiones del día (Persea de Luciana volvió a 0 y el Watch 5 Lite a 2).
+  `FIJO[(id, color, cuenta)] = (unidades, motivo)` manda sobre la cuenta (nunca más que la oficina). Hoy: Persea 3, Watch 0, P47 blanco Ayelen 0,
+  Sony EX15LP Blanco 0, Alfaparf 1/3/8 Luciana 0. Se saca de ahí cuando él cambia de idea.
+- **Qué chequear:** que cada vez que él decide una caja a mano, el renglón entre a `FIJO` en el mismo commit.
+
 ### `pybusca:<palabras>` · un producto en todos los pedidos de Paraguay, sin precios (25/10/2026, él: "¿miraste en el ticket si estaba el Sony que falta?")
 - **Qué es:** sólo lee `cyc/compraspy`: pedido, fecha, estado, unidades, código y si tiene ticket. No imprime precios (el registro es público).
 - **Qué chequear:** que nunca salga un precio del mayorista.
