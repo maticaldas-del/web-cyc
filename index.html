@@ -2960,7 +2960,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.58';
+const APP_VERSION='26.59';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2973,6 +2973,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.59',f:'24/10',h:'21:26',c:[{n:2,t:'📦 Armar caja: el ❌ no da 35% se mide sólo con la venta más alta y la competencia (el precio puesto que nadie compró ya no cuenta). El Watch 5 Lite pausado a $142.990 daba 39% y no salía en rojo; su única venta fue a $113.250 (~10%).'}]},
   {v:'26.58',f:'24/10',h:'20:12',c:[{n:2,t:'📦 Armar caja: lo que no llega al 35% en el peor caso dice ❌ no da 35%. Se mide al precio de hoy, a la venta más alta de 90 días y contra la competencia (de anoche), y manda el más alto. Al abrir el renglón se ven los tres.'}]},
   {v:'26.57',f:'24/10',h:'15:57',c:[{n:2,t:'📈 "Buscando techo · 2ª suba" cuenta las subas de precio de verdad, no los renglones anotados (Casino decía 2ª suba con una sola suba). La explicación del 📈 dice qué busca: el 🔴 techo, y que si el precio nuevo vende y deja más plata se sigue subiendo.'}]},
   {v:'26.56',f:'24/10',h:'15:50',c:[{n:1,t:'📅 Plata por día: sólo se pintan los días que se apartan de verdad (verde del 11 al 15, rojo del 1 al 5); el resto es un día normal y queda sin color. El ámbar se llama "fecha especial" y el globo dice cuál.'}]},
@@ -8923,10 +8924,13 @@ function _cajaPct35(p){try{
   {const T=state.techoFull||{};let t=null;for(const [mla,e] of Object.entries(state.mllinks||{})){if(!e||e.prodId!==p.id||e.ignored||(e.status||'')==='closed')continue;
       const x=T[mla];if(!x||!(x.t>0)||Date.now()-(Number(x.ts)||0)>4*864e5)continue;if(!t||x.t>t.t)t=x;}
     if(t)out.comp={P:Math.round(t.t),ts:Number(t.ts)||0,m:pctEn(Math.round(t.t))};}
-  const ms=[out.hoy,out.venta,out.comp].filter(x=>x&&x.m!=null);if(!ms.length)return null;
+  // Lo que decide es la venta más alta y la competencia (él, 24/10). El precio de hoy sólo cuenta si no hay
+  // ninguna de las dos: un precio puesto que nadie compró (el Watch 5 Lite pausado a $142.990, 39%, con su
+  // única venta a $113.250, ~10%) no es un precio al que se venda.
+  let ms=[out.venta,out.comp].filter(x=>x&&x.m!=null);out.soloHoy=!ms.length;if(!ms.length)ms=[out.hoy].filter(x=>x&&x.m!=null);if(!ms.length)return null;
   out.mejor=ms.reduce((a,b)=>b.m>a.m?b:a);return out;}catch(e){return null;}}
 function _cajaNo35(p){const o=_cajaPct35(p);if(!o||!(o.mejor.m<o.META))return'';
-  return ` <span title="Ni al precio de hoy, ni a la venta más alta, ni contra la competencia llega al ${o.META}% (peor caso). El mejor: ${Math.round(o.mejor.m)}% a ${fmt(o.mejor.P)}. Pensá si conviene mandarlo a Full o venderlo por otro lado. El detalle, al abrir el renglón." style="background:rgba(239,68,68,.14);color:var(--red);border-radius:5px;padding:1px 6px;font-size:.62rem;font-weight:700;white-space:nowrap">❌ no da ${o.META}% · ${Math.round(o.mejor.m)}%</span>`;}
+  return ` <span title="${o.soloHoy?'Sin ventas ni competencia medida: al precio de hoy':'Ni a la venta más alta ni contra la competencia'} no llega al ${o.META}% (peor caso). El mejor: ${Math.round(o.mejor.m)}% a ${fmt(o.mejor.P)}. Pensá si conviene mandarlo a Full o venderlo por otro lado. El detalle, al abrir el renglón." style="background:rgba(239,68,68,.14);color:var(--red);border-radius:5px;padding:1px 6px;font-size:.62rem;font-weight:700;white-space:nowrap">❌ no da ${o.META}% · ${Math.round(o.mejor.m)}%</span>`;}
 function _cajaNo35Det(p){const o=_cajaPct35(p);if(!o)return'';const f=(x,txt)=>x?`${txt} <b>${fmt(x.P)}</b> → <b style="color:${x.m!=null&&x.m>=o.META?'var(--green)':'var(--red)'}">${x.m==null?'?':Math.round(x.m)+'%'}</b>`:`${txt} <span style="color:var(--muted)">sin dato</span>`;
   const fk=k=>k?String(k).split('_').reverse().slice(0,2).join('/'):'';
   return `<div style="font-size:.66rem;color:var(--muted);margin:4px 0">💯 % en el peor caso (meta ${o.META}%): ${f(o.hoy,'hoy en ML')} · ${f(o.venta,'venta más alta'+(o.venta?' ('+fk(o.venta.k)+')':'')+' a')} · ${f(o.comp,'competencia'+(o.comp&&o.comp.ts?' (medida el '+new Date(o.comp.ts).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'})+')':'')+' a')}${o.mejor.m<o.META?' · <b style="color:var(--red)">no llega en ninguno</b>':''}</div>`;}
