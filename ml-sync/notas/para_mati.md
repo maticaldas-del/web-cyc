@@ -8,9 +8,6 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 
 ## Abiertas
 
-### Del 25/10 (chat de Armar cajas)
-- **Persea de Luciana no entra a la caja #80494328:** ML dice "El centro de almacenamiento asignado no puede recibir stock de esta categoría" (3 u., código JVUG50085, ya etiquetadas). (a) sugerida: sacarlo de esta caja, que la caja salga sin él, y mandarlo en una caja aparte de Luciana sólo con perfumes cuando ML asigne un centro que reciba perfumería · (b) dejar las 3 u. en la oficina hasta la próxima caja de Adriana… **no se puede** (la mercadería no se mueve entre cuentas), así que la (b) real es venderlas en el local.
-
 ### De las vueltas del 23/10 (a la noche y a la tarde)
 18. **(lo mira él, 24/10 "ok") Aviso de ML en Ayelen por "productos falsificados"** (se ve en su captura del 23/10, propiedad intelectual): mirar en ML → Consultar infracciones qué publicación fue. Si es una marca, la agrego como prohibida para ML (`marcanoml`).
 
