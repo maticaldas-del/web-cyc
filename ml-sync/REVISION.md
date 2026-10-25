@@ -79,6 +79,11 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
 
 ## 1 · PRECIOS (lunes)
 
+### VENTAS.md con la regla de "menos de 1 por semana no sube" (25/10/2026)
+- **Qué es:** el ayudante de ventas lee sólo VENTAS.md y ahí faltaba la 4a/37a: el paso 2 decía "sin línea, buscar techo" sin esa excepción. Agregada en el paso 2 y en la lista de "se busca techo".
+- **Dónde vive:** `ml-sync/VENTAS.md`.
+- **Qué chequear:** que el ayudante no proponga subir algo que vende menos de 1 por semana salvo al 35% o escasez/sin reposición.
+
 ### `gemelamedir` (25/10/2026, sólo lee): medir las gemelas los domingos
 - **Qué es:** el paso 9 de la completa del domingo (CEREBRO) no tenía comando. Por cada gemela viva (Premium o envío gratis): días desde el alta, unidades y ganancia de la gemela, y la Clásica en el mismo tiempo antes y después. Agrupa: ✅ venden y suman · ⚠️ le sacan a la Clásica sin sumar · 💤 no venden en 30+ días · ⏳ menos de 30 días.
 - **Dónde vive:** `sync.mjs`, bloque `gemelamedir`, antes del de `gemela`.
