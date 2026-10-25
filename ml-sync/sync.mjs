@@ -44473,6 +44473,23 @@ async function main() {
       console.log(`\n── 11 · PUBLICACIONES FRENADAS POR ML O CERRADAS (${raro.length}) ──`);
       for (const [m, e] of raro.sort((a, b) => (u30[b[0]] || 0) - (u30[a[0]] || 0)).slice(0, 15)) console.log(`· ${m} · ${e.cuenta} · ${tit(m)} · ${e.status}${e.subStatus ? ' (' + e.subStatus + ')' : ''} · vendió ${u30[m] || 0} u. en 30 d`);
       if (raro.length > 15) console.log(`  (y ${raro.length - 15} más…)`);
+      // auditoría del 25/10/2026: el Timer MLA1474412507 salía acá "en revisión" sin cuenta y vendiendo 11 en 30 d. Un vínculo
+      // sin `cuenta` no lo refresca nadie (la vuelta de cada hora recorre sólo los de su cuenta) y cualquier consulta lo lee con el
+      // token de otra cuenta (403): el estado queda viejo. Se le pregunta a ML con el token de cada cuenta quién es la dueña y cómo está hoy.
+      try {
+        const sinC = raro.filter(([, e]) => !e.cuenta);
+        if (sinC.length) {
+          console.log(`  ⚠️ ${sinC.length} sin cuenta en el vínculo: el robot no las refresca (estado viejo). Lo que dice ML hoy:`);
+          for (const [m] of sinC) {
+            let hallada = null;
+            for (const label of labels) {
+              const tk = tokI[label]; if (!tk) continue;
+              try { const it = await mlGet('/items/' + m + '?attributes=id,status,sub_status,seller_id,available_quantity', tk); if (it && it.id && String(it.seller_id) === String((accounts[label] || {}).seller_id)) { hallada = { label, st: it.status, sub: (it.sub_status || []).join(','), q: it.available_quantity }; break; } } catch { /* otra cuenta */ }
+            }
+            console.log(hallada ? `    · ${m} · es de ${hallada.label} · hoy ${hallada.st}${hallada.sub ? ' (' + hallada.sub + ')' : ''} · stock ${hallada.q ?? '?'} · vendió ${u30[m] || 0} u. en 30 d` : `    · ${m} · ninguna de las 4 cuentas la ve (¿borrada?)`);
+          }
+        }
+      } catch (eS) { console.log('  (no pude mirar las sin cuenta: ' + eS.message + ')'); }
       // 12) Caja de compra perdida en lo que vende, y quiebres: lo que vendía y hoy está sin stock
       const perd = Object.entries(links).filter(([m, e]) => e && e.status === 'active' && e.caja === 'losing' && (u30[m] || 0) >= 2).sort((a, b) => (u30[b[0]] || 0) - (u30[a[0]] || 0));
       // El dólar del panel, para poner en pesos el costo (12 y 12c). Revisión 9 (13/10/2026): misma cuenta que el chequeo
