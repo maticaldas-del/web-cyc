@@ -316,6 +316,8 @@
   sube la oficina (web u `ofi:`) se suma a `cyc/sinetiq` salvo deshacer una caja (`ofi:…!ok` = ya viene etiquetado); Armar caja lo sigue
   contando igual y cada renglón dice "🏷️ N sin etiqueta"; tarjeta arriba de Contar lo que hay con botón ✅ Etiquetadas por renglón (lo usa
   el chat de Chrome al imprimir). Por comando: `sinetiq:<palabra>=0;go` (ml-consulta).
+- **📬 Buzón** (25/10, eligió 15a): el chat de Chrome de las cajas (o él) deja en Mi oficina → "Mensaje para Claude" lo que no puede arreglar
+  desde el panel (`cyc/buzon`); cada vuelta corre `buzon` y marca `buzon:leido=<ts>;go` (ml-consulta).
 - **Las cajas salen de lunes a viernes a las 12** (25/10, él): armada después del viernes a las 12 sale el lunes. Los días de viaje se
   cuentan desde que sale (`envSalidaTs`, web y robot).
 

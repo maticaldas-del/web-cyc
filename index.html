@@ -1486,6 +1486,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px" id="ofi-contar-cuentas"></div>
     <div id="ofi-contar-nota" style="display:none;font-size:.63rem;color:var(--muted);margin-bottom:10px;line-height:1.5"></div>
+    <div id="ofi-buzon-card"></div>
     <div id="ofi-sinetiq-card"></div>
     <input class="search-box" id="ofi-contar-search" type="search" placeholder="Buscar producto..." oninput="renderOfiContar()" style="margin-bottom:8px">
     <label style="font-size:.66rem;color:var(--muted);display:flex;align-items:center;gap:6px;margin-bottom:10px">
@@ -2484,6 +2485,7 @@ function startApp(){
     state.promohist=d.promohist||{};
     state.claudedecide=d.claudedecide||{};
     state.ofientro=d.ofientro||{};   // 1b (16/10): cuándo entró mercadería a la oficina por última vez
+    state.buzon=d.buzon||{};   // 25/10: 📬 mensajes para Claude (los deja el chat de Chrome que arma cajas o él)
     state.sinetiq=d.sinetiq||{};   // 23/10: 🏷️ mercadería en la oficina sin etiqueta de Full (la carga Claude: ofi:…!se / sinetiq:)
     state.noconsigo=d.noconsigo||{};   // 17/10: "🚫 No lo consigo" de Pedidos (Bs As/Paulvic): sin reposición hasta que entre algo a la oficina
     // 🧪 VIGILANCIA (idea 6, 27/09/2026): la foto que deja el robot cada noche de TODAS las publicaciones que venden,
@@ -2960,7 +2962,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.62';
+const APP_VERSION='26.63';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2973,6 +2975,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.63',f:'25/10',h:'19:50',c:[{n:2,t:'📬 Mi oficina → Contar lo que hay: "Mensaje para Claude". El chat de Chrome que arma las cajas (o vos) deja ahí lo que no puede arreglar desde el panel y Claude lo lee en la próxima vuelta.'}]},
   {v:'26.62',f:'25/10',h:'18:20',c:[{n:1,t:'🏷️ Productos: cada tarjeta muestra el código de la etiqueta de Full de cada cuenta (y de cada color), el que va pegado en el producto.'}]},
   {v:'26.61',f:'25/10',h:'15:55',c:[{n:3,t:'🧾 Pedidos de Paraguay: el ticket es obligatorio y se ve en el pedido. En el detalle está "📷 foto del ticket" para subir la foto y verla; sin foto el pedido no se puede cerrar. Arriba de Pedidos sale en rojo cada pedido al que le falta la foto o los renglones del ticket.'}]},
   {v:'26.60',f:'25/10',h:'15:20',c:[{n:2,t:'🚚 Cajas: los días de viaje se cuentan desde que la caja SALE (de lunes a viernes a las 12). Armada el fin de semana o el viernes a la tarde dice "armada · sale el lunes a las 12" y la escasez cuenta esos días de más.'},{n:2,t:'🏷️ Todo lo que se carga a la oficina queda "sin etiqueta", y cada renglón de la tarjeta tiene el botón ✅ Etiquetadas para pasarlo a listo.'}]},
@@ -7618,6 +7621,7 @@ function setOfiContarCuenta(c){ofiContarCuenta=(ofiContarCuenta===c?'':c);render
 function renderOfiContar(){
   const cont=document.getElementById('ofi-contar-list');if(!cont)return;
   try{renderSinEtiqCard();}catch(e){console.warn('sinetiq',e);}
+  try{renderBuzonCard();}catch(e){console.warn('buzon',e);}
   const fcc=document.getElementById('ofi-contar-cuentas');
   if(fcc)fcc.innerHTML=`<button class="pf-btn${ofiContarCuenta===''?' active-all':''}" onclick="setOfiContarCuenta('')">Todas</button>`
     +LOCS.map(l=>`<button class="pf-btn${ofiContarCuenta===l?' active-all':''}" onclick="setOfiContarCuenta('${l}')">${l}</button>`).join('');
@@ -7815,6 +7819,30 @@ function _ofiEntro(key,antes,ahora){
   if(!(ahora>antes)||String(key).includes('__v__'))return;const i=String(key).indexOf('__');if(i<=0)return;
   const pid=String(key).slice(0,i);(state.ofientro=state.ofientro||{})[pid]=Date.now();
   if(db)db.ref('cyc/ofientro/'+pid).set(Date.now()).catch(()=>{});
+}
+// 📬 BUZÓN PARA CLAUDE (25/10/2026, eligió la 15a: "cómo se comunica el chat de Chrome que arma cajas"). Lo que el chat (o él) no
+// puede resolver solo desde el panel lo deja escrito acá: `cyc/buzon/<ts>` = {t: texto, ts, leido}. Claude lo lee en cada vuelta con
+// el comando `buzon` y lo marca leído con `buzon:leido=<ts>[,<ts>…];go`. Los mensajes no llevan datos de compradores.
+async function buzonEnviar(){
+  const el=document.getElementById('buzon-txt');if(!el)return;const t=String(el.value||'').trim();if(!t){el.focus();return;}
+  if(t.length>2000){toast('Muy largo: hasta 2000 letras','err');return;}
+  const ts=Date.now();
+  try{await fbSet('buzon/'+ts,{t,ts});}catch(e){toast('⚠️ No se mandó: '+((e&&(e.message||e.code))||'error'),'err',6000);return;}
+  (state.buzon=state.buzon||{})[ts]={t,ts};el.value='';toast('📬 Mensaje dejado para Claude','ok',2500);renderBuzonCard();
+}
+function renderBuzonCard(){
+  const el=document.getElementById('ofi-buzon-card');if(!el)return;
+  const sin=Object.values(state.buzon||{}).filter(x=>x&&!x.leido).sort((a,b)=>(a.ts||0)-(b.ts||0));
+  // Lo que se está escribiendo no se pierde si el panel se redibuja (llega un dato nuevo mientras se escribe).
+  const _ta=document.getElementById('buzon-txt'),_v=_ta?_ta.value:'',_foc=_ta&&document.activeElement===_ta,_ab=el.querySelector('details')?.open;
+  el.innerHTML=`<details style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:10px 14px;margin-bottom:12px"${sin.length||_ab||_v?' open':''}>
+    <summary style="cursor:pointer;font-size:.8rem;font-weight:700">📬 Mensaje para Claude${sin.length?` <span style="color:var(--amber);font-weight:400">· ${sin.length} sin leer</span>`:''}</summary>
+    <div style="font-size:.62rem;color:var(--muted);margin:6px 0;line-height:1.45">Lo que no se puede arreglar desde el panel (un producto que no aparece, un código que no coincide, algo raro en una caja). Claude lo lee en la próxima vuelta.</div>
+    ${sin.map(x=>`<div style="font-size:.7rem;padding:4px 0;border-top:1px solid var(--border)"><span style="color:var(--muted)">${new Date(x.ts).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span> · ${_esc(x.t)}</div>`).join('')}
+    <textarea id="buzon-txt" rows="2" maxlength="2000" placeholder="Escribí acá…" style="width:100%;box-sizing:border-box;margin-top:6px;font-size:.74rem"></textarea>
+    <button type="button" class="btn btn-sm" style="margin-top:6px" onclick="buzonEnviar()">📬 Dejar mensaje</button>
+  </details>`;
+  if(_v){const t=document.getElementById('buzon-txt');if(t){t.value=_v;if(_foc)t.focus();}}
 }
 // SIEMPRE A ETIQUETAR (25/10/2026, él: "al cargar unidades a mi oficina, que siempre salgan como a etiquetar"): todo lo que SUBE
 // la oficina (sumar, contar más, Llegó) se suma también a `cyc/sinetiq`, salvo una devolución (`entra:false`, deshacer una caja:

@@ -77,7 +77,7 @@ const _cortarCiclo = (donde) => {
 // los que escriben en cantidad o en plata se niegan de entrada, y cualquier otro corre con la base,
 // ML, Mercado Pago y Telegram en sólo lectura (se deja renovar y guardar el token de ML, que ML rota).
 const EN_CONSULTA = process.env.GITHUB_WORKFLOW === 'ml-consulta' || process.env.ML_CONSULTA === '1';
-const CONSULTA_ESCRIBE = new Set(['ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
+const CONSULTA_ESCRIBE = new Set(['buzon', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
 const CONSULTA_NIEGA = new Set(['cajaitems', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'listaped', 'publicar', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'errores', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'promoventas', 'cargosmes', 'arcacierres', 'webpush']);
@@ -49346,6 +49346,28 @@ async function main() {
       if (GO) { const rl = (await db.get('cyc/nobajar')) || {}; const okN = mlas.filter((k) => saca ? !rl[k] : !!rl[k]).length; console.log(`\n${okN === mlas.length ? '✓' : '⚠️'} releído: ${okN} de ${mlas.length} ${saca ? 'sin marca' : 'con 🔒'}`);
         for (const [k, c] of Object.entries(autUsar)) if (!rl[k]) await _autUsar(db, c, 'nobajar:-' + k); }
       else console.log('\nNo se guardó nada (falta ;go).');
+      return;
+    }
+
+    // BILLING_PROBE=buzon[:leido=<ts>[,<ts>…]][;go] → 📬 LOS MENSAJES PARA CLAUDE (25/10/2026, eligió la 15a). Los deja el chat de Chrome
+    // que arma las cajas (o él) desde Mi oficina → "Mensaje para Claude" (`cyc/buzon/<ts>` = {t, ts, leido}). Sin nada: lista los sin leer
+    // (y los 5 últimos leídos). `leido=<ts>,…;go` los marca leídos. Va por ml-consulta (`CONSULTA_ESCRIBE`).
+    if (/^buzon(:|;|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const raw = String(process.env.BILLING_PROBE).replace(/^buzon:?/, ''); const GOb = /(^|;)go$/.test(raw) && !DRY;
+      const B = (await db.get('cyc/buzon')) || {};
+      const mL = raw.match(/leido=([\d,]+)/);
+      if (mL) {
+        const tss = mL[1].split(',').filter(Boolean);
+        for (const t of tss) { if (!B[t]) { console.log(`  ${t}: no existe`); continue; } console.log(`  ${t}: ${GOb ? 'marcado leído' : 'lo marcaría leído (falta ;go)'}`); if (GOb) await db.patch('cyc/buzon/' + t, { leido: Date.now() }); }
+        if (GOb) { const r = (await db.get('cyc/buzon')) || {}; const ok = tss.filter((t) => r[t] && r[t].leido).length; console.log(`${ok === tss.length ? '✓' : '⚠️'} releído: ${ok} de ${tss.length} leídos`); }
+        return;
+      }
+      const L = Object.entries(B).map(([k, x]) => ({ k, ...(x || {}) })).sort((a, b) => (Number(a.ts) || 0) - (Number(b.ts) || 0));
+      const sin = L.filter((x) => !x.leido), leid = L.filter((x) => x.leido).slice(-5);
+      const f = (t) => new Date((Number(t) || 0) - 3 * 3600e3).toISOString().slice(5, 16).replace('T', ' ');
+      console.log(`=== 📬 BUZÓN · ${sin.length} sin leer ===`);
+      for (const x of sin) console.log(`  [${x.k}] ${f(x.ts)} · ${String(x.t || '').slice(0, 600)}`);
+      if (leid.length) { console.log('\n  (últimos leídos)'); for (const x of leid) console.log(`  ✓ [${x.k}] ${f(x.ts)} · ${String(x.t || '').slice(0, 200)}`); }
       return;
     }
 

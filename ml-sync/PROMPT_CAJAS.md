@@ -46,6 +46,9 @@ como mucho N (si la caja lleva menos unidades que N, las de la caja). Lo que ya 
 5. Cuando Matías te diga que ya las pegó (o te pida marcarlas): en el panel, Mi oficina → Contar lo que hay, tarjeta "🏷️ Sin
    terminar / sin etiqueta", tocá ✅ Etiquetadas en el renglón de ESE producto (y color). Es lo único del panel que tocás; si no
    estás seguro de cuál renglón es, no toques y preguntá.
+6. Lo que no puedas arreglar desde el panel (un producto que no aparece, un código que no coincide, algo raro en una caja): dejalo
+   escrito en Mi oficina → Contar lo que hay → "📬 Mensaje para Claude", corto y sin datos de compradores. Claude lo lee en la
+   próxima vuelta. Además decíselo a Matías.
 
 == PASO 5 · EL RESUMEN PARA MATÍAS ==
 Por cuenta: "Adriana: N productos · M unidades · total de ML M · listo para que confirmes". Después: dudas (producto + por qué:
