@@ -787,6 +787,12 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 - **Qué chequear:** que el texto siga coincidiendo con lo que muestra la web (cartel "MANDALA YA", "📦 N cajas para mandar ya", el código
   de etiqueta en cada renglón) cada vez que se toca Armar caja o Inicio.
 
+### `cajaarmar` · cargar la caja como el botón "🎯 Cargar lo que entra en el cupo" (25/10/2026, él: "cuando te digo armá la caja (…) hacé idéntico como ahora, pero apretá el botón de cargar lo que entra en el cupo, si no queda incompleta")
+- **Qué es:** después de `decido:archivo=cajas;go`, `cajaarmar[:<cuenta>];go` (ml-sync) escribe `cyc/cajas_armando/<cuenta>` (lo mismo que el botón)
+  con lo decidido en `notas/cajas.txt`, que `decide_cajas.py` ya recortó por cupo con la misma regla (`llenar_cupo` = `cajaLlenarCupoPlan`).
+  Clave `<prodId>|<color>` (`_ck`), nunca más que la oficina, reemplaza la caja cargada (dice cuánto tenía) y relee.
+- **Qué chequear:** que Armar caja muestre la caja cargada igual que con el botón · que un color con `.`/`/` en el nombre entre con su clave.
+
 ### `ofi35` · lo de la oficina contra el 35% (24/10/2026, él: "mercadería en mi oficina que no da para el 35%… me la podés marcar?")
 - **Qué es:** sólo lee. Por ficha con unidades en la oficina: la mejor publicación viva (Clásica) y su % en el peor caso al precio de
   hoy (la cuenta de `planilla`), y la plata parada a costo. Primero lo que no llega al 35%; aparte lo sin publicación y lo sin %.
