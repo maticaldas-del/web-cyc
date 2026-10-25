@@ -776,6 +776,9 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 - **Qué es:** `_cajaPct35`: % del peor caso al precio de hoy (`margenMLDe`), a la venta más cara de 90 días y contra la competencia
   (`cyc/techofull`, ≤4 días); manda el más alto. Chip rojo en el renglón si ninguno llega a la meta; detalle de los tres al abrirlo.
 - **Qué chequear:** que "hoy" coincida con el ⚠️ bajo 35% de Productos · que una venta en promo vieja no haga pasar algo que hoy no da.
+- **Corrección 24/10 21:26 (v26.59, él con el Watch 5 Lite: "cuando da menos del 35% que se vea en rojo"):** el precio de hoy ya NO entra en
+  "el más alto": sólo la venta más alta y la competencia (lo que él pidió). Hoy sólo si no hay ninguna de las dos. El Watch, pausado a
+  $142.990 (39%) con su única venta a $113.250 (~10%), no salía en rojo. Chequear: algo pausado con precio inflado no se salva del rojo.
 
 ### `PROMPT_CAJAS.md` · el chat de Chrome arma las cajas "MANDALA YA" (24/10/2026, él: "decirle arrancá y que arme todas las cajas")
 - **Qué es:** un prompt fijo: lee en el panel qué cuentas tienen la caja en verde (`cajasVerdes`/`cajaVeredicto`), copia cada renglón
