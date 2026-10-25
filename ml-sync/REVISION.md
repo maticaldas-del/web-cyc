@@ -937,6 +937,7 @@ Rutini, tag de mochila ⇒ Funko, testers ⇒ perfume en caja, Invictus ⇒ Invi
 y % en ámbar), título de la carpeta; `pycatbusca:!sinpasar` (sync.mjs) los lista con motivo y `pycatbusca:<palabra>` muestra la medición
 y el candidato. **Qué chequear:** ningún % verde en esa carpeta; cuando la pasada de Nissei traiga la foto, el robot los vuelve a medir y
 recién ahí pasan a Para probar (y a la revisión de fotos).
+- **25/10/2026 · v26.65 · la nota 📈 de la línea de tiempo** (él con el Centímetro Blanco: *"está bajando y dice que está un 73% seguro y que termina de decidir en 2 días. no tiene sentido nada"*). En `lineaPintar`: "(N días)" eran los días medidos → ahora "lleva N días medidos"; si el precio de hoy está 2%+ abajo del de la prueba, dice "la prueba de $X se cortó: N días, Y% seguro (pedía Z%)". Qué chequear: el Centímetro Blanco dice "se cortó".
 - **25/10/2026 · `techo95:buscando`** (él: *"tabla de producto buscando techo, hace cuánto están buscando y qué % de seguridad lleva y en qué fecha aprox"*): mira todas las 📈 (sin gemelas) e imprime `TABLA|…`: desde cuándo busca, subas de verdad, precio de prueba, vendidas/días, % seguro, umbral, fecha estimada (primer día en que, sin vender más, la certeza pasa el umbral que baja con los días, o el día 30 sin vender) y el 💰. Qué chequear: que la fecha se corra cuando vende; que no salgan gemelas.
 - **25/10/2026 · v26.64 · 💰 la escalera después del techo es "buscando el de más ganancia"** (él: *"la estrategia es buscar el mejor precio por ganancia CON escalera"*). `estrategiaDe` (index.html): un `bajando` cuya estrategia anterior es techo/techook/punto se muestra `punto` con `esc:true` y `n` = bajas de verdad (`claudecambios` a<de) desde que empezó la escalera; chip "· Nº escalón". Los dos que miraban `t==='bajando'` (notas de rayas, `probando`) miran también `esc`. CEREBRO y CLAUDE §5: el orden techo → 💰 en escalera. Qué chequear: que una escalera de fin de escasez siga diciendo 🪜; que el color de la línea de tiempo en esos días sea el de 💰.
 - **25/10/2026 · `pausar` elige gemelas de envío o un MLA** (él eligió sacar las 17 gemelas de envío gratis de Paulvic, 11b). `pausar:gemelaenvio+<palabra>[:go]` = sólo `gemelaTipo:'envio'` con esa palabra; un MLA entre las palabras la elige por número. Las pausadas quedan con `noAutoActivar` (no las reactiva el robot). Qué chequear: que `pausar:gemelaenvio+paulvic` liste sólo las de envío y no las Clásicas ni las Premium.
@@ -1313,6 +1314,12 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
 - **Qué chequear:** que la completa ya no tenga que corregirlos a mano · si otro aroma pasa a dado de baja, agregarlo a los DOS.
 
 ## 4 · CHOQUES Y FALLAS MUDAS (jueves · junta las viejas 4 y 5)
+
+### Vínculos sin cuenta en la sección 11 del informe (25/10/2026, auditoría)
+- **Qué es:** el Timer MLA1474412507 vendió 11 en 30 d (la última el 23/10) y el informe lo mostraba "en revisión" sin cuenta. Un vínculo sin `cuenta` no lo refresca la vuelta de cada hora (recorre sólo los de su cuenta) y `unapub` lo lee con el token de otra cuenta (403): el estado queda viejo. Ahora la 11 pregunta a ML con el token de cada cuenta (comparando el vendedor) de quién es y cómo está hoy.
+- **Dónde vive:** `sync.mjs`, `informe`, sección 11.
+- **Arreglo:** el alta de nuevas (`altaDeNuevas`, cada hora y `altanuevas:go`) ahora le devuelve la `cuenta` a todo vínculo de su catálogo que la perdió (antes lo salteaba porque el vínculo "ya existía").
+- **Qué chequear:** que la 11 ya no muestre "sin cuenta"; de dónde salen los vínculos sin `cuenta` (qué los escribe).
 
 ### `techo95;go` era "comando desconocido" (25/10/2026, vuelta de las 21:22)
 - **Qué es:** CLAUDE.md dice `techo95[;go]`, pero el robot sólo reconocía `techo95` o `techo95:<MLA>`: con `;go` salía "comando desconocido" y nunca anotaba el 🏔️, así que F1 seguía frenando lo nuevo con techo ya medido (microSD Pokémon, 90% con umbral de 81% a los 15 días). Ahora acepta `techo95;go`. Revisados los otros 162 comandos con el mismo molde: ninguno más tenía la forma `;go` sin `:` documentada.
