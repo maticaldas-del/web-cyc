@@ -8,6 +8,10 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 
 ## Abiertas
 
+### Del 25/10 (lo dejó para después)
+- **Costos de Bowen, Calipso y Alfaparf Alta Moda (tintes):** no están en la lista de Dai Nippon del 19/10. Cuando pase lo que pagó, `poncosto` y publicar en Luciana: Bowen `catalogo=MLA73100796` · **Calipso `catalogo=MLA19895794` (él confirmó el 25/10 que es el mismo: el paquete dice "Con Gel")** · Alfaparf tono 1 `MLA69010049`, 3 `MLA68877238`, 5 `MLA68983071`, 7 `MLA68856325`, 8 `MLA30448415` (4, 6 y 9 sin catálogo: los publica él).
+- **Timbre de ventas:** la tarea nueva `trig_012a3LNycnpvUm55TK7y2mji` no tiene llave de API; el robot sigue tocando la vieja (apagada → "Routine is paused"). Falta su captura de Editar de la tarea nueva.
+
 ### De las vueltas del 23/10 (a la noche y a la tarde)
 
 
