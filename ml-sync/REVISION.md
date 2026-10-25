@@ -792,6 +792,11 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 - **Qué chequear:** que el texto siga coincidiendo con lo que muestra la web (cartel "MANDALA YA", "📦 N cajas para mandar ya", el código
   de etiqueta en cada renglón) cada vez que se toca Armar caja o Inicio.
 
+### `cajaquitar:<envío>!<palabras o código>=<u>:go` · sacar de una caja en camino lo que no estaba (25/10/2026, él: "sacá los dos del pedido mandado, no los encuentro, ya lo modifiqué del envío")
+- **Qué es:** baja unidades de un renglón de una caja que va en camino (`cyc/envios_full/<id>/cajasDet`, lista entera releída) y deja
+  constancia en `quitado`. No vuelven a la oficina (no existen). Tiene que agarrar UN solo renglón. Primer caso: 2 Sony EX15LP Blanco del #80494103.
+- **Qué chequear:** que el stock "en camino" baje y que al llegar la caja no aparezca un faltante falso de esas unidades.
+
 ### `fijarinv:<MLA>[=<código>];…;go` · el código de etiqueta de lo pausado (25/10/2026, el chat de Armar cajas)
 - **Qué es:** la vuelta de stock sólo guarda el `inventory_id` de lo que está en Full con stock; esto se lo pregunta a ML para cualquier
   publicación (pausada también) y hace patch de `cyc/mllinks/<MLA>/inv`. El código que vio el chat sólo se compara: si no coincide, no se escribe.

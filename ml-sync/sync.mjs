@@ -18398,6 +18398,58 @@ async function main() {
     // Reabrirla las devuelve a "En camino a Full", que es donde tienen que estar hasta que ML
     // termine de procesarlas.
     // Sin `:go` sólo muestra qué caja tocaría y cuántas unidades vuelven.
+    // BILLING_PROBE=cajaquitar:<seguimiento|id del envío|nº de envío de ML>!<palabras con +>=<u>[:go] (25/10/2026, él: "ZGTL57221 sacá
+    // los dos del pedido mandado, no los encuentro, ya lo modifiqué del envío") → SACA UNIDADES DE UNA CAJA QUE VA EN CAMINO, porque
+    // se cargaron y no estaban (o él las sacó del envío en ML antes de despacharlo). NO vuelven a la oficina: no existen. Las palabras
+    // (o el código de etiqueta) tienen que agarrar UN solo renglón de la caja. Se escribe la lista de cajas ENTERA releída (como abrircaja).
+    if (/^cajaquitar(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _raw = String(process.env.BILLING_PROBE).slice('cajaquitar'.length).replace(/^:/, '');
+      const APLICAR = /:go$/.test(_raw);
+      const [busca, qTxt] = _raw.replace(/:go$/, '').split('!').map((x) => String(x || '').trim());
+      const mq = /^(.+)=(\d+)$/.exec(qTxt || '');
+      if (!busca || !mq) { console.log('Usá: cajaquitar:<seguimiento o envío>!<palabras con + o código de etiqueta>=<unidades>[:go]'); return; }
+      const _n = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+      const pals = mq[1].split('+').map(_n).map((x) => x.trim()).filter(Boolean); const sacar = parseInt(mq[2], 10);
+      const envios = (await db.get('cyc/envios_full')) || {}; const links = (await db.get('cyc/mllinks')) || {};
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      const invDe = {}; for (const e of Object.values(links)) if (e && e.prodId && e.inv) (invDe[e.prodId] = invDe[e.prodId] || new Set()).add(String(e.inv).toUpperCase());
+      const hits = [];
+      for (const [id, e] of Object.entries(envios)) {
+        const cajas = Array.isArray(e && e.cajasDet) ? e.cajasDet : [];
+        const delEnvio = id === busca || JSON.stringify(e).includes(busca);
+        cajas.forEach((c, i) => {
+          if (!c || c.recibida) return;
+          if (!delEnvio && String(c.track || '') !== busca) return;
+          (c.items || []).forEach((it, k) => {
+            if (!it || !it.prodId) return;
+            const nom = _n(((pIdx[it.prodId] || {}).name || '') + ' ' + (it.variante || ''));
+            const porCod = pals.length === 1 && (invDe[it.prodId] || new Set()).has(pals[0].toUpperCase());
+            if (porCod || pals.every((w) => nom.includes(w))) hits.push({ id, e, c, i, it, k });
+          });
+        });
+      }
+      console.log(`=== SACAR DE UNA CAJA EN CAMINO · "${busca}" · ${mq[1]} −${sacar} ${APLICAR ? '(APLICANDO)' : '(PRUEBA)'} ===`);
+      for (const h of hits) console.log(`   ${h.e.cuenta || '?'} · envío ${h.id} · caja ${h.c.n || h.i + 1} · ${h.it.u} u. · ${(pIdx[h.it.prodId] || {}).name || h.it.prodId}${h.it.variante ? ' · ' + h.it.variante : ''}`);
+      if (hits.length !== 1) { console.log(hits.length ? `✗ agarra ${hits.length} renglones: no toco nada (sé más preciso)` : '✗ no encontré ese renglón en una caja en camino'); return; }
+      const h = hits[0];
+      if (sacar > (Number(h.it.u) || 0)) { console.log(`✗ la caja tiene ${h.it.u} y pediste sacar ${sacar}: no toco nada`); return; }
+      if (!APLICAR) { console.log(`\nPRUEBA: quedaría en ${h.it.u - sacar} u. Repetí con :go.`); return; }
+      const fresca = await db.get('cyc/envios_full/' + h.id + '/cajasDet');
+      const cajas = Array.isArray(fresca) ? fresca.slice() : [];
+      const j = _ubicarCajaFresca(cajas, h.c, h.i);
+      if (j < 0) { console.log('✗ la caja cambió mientras corría: no la toco'); return; }
+      const its = (cajas[j].items || []).slice();
+      const kk = its.findIndex((x) => x && x.prodId === h.it.prodId && (x.variante || '') === (h.it.variante || '') && Number(x.u) === Number(h.it.u));
+      if (kk < 0) { console.log('✗ el renglón cambió mientras corría: no lo toco'); return; }
+      const queda = Number(its[kk].u) - sacar;
+      if (queda > 0) its[kk] = { ...its[kk], u: queda }; else its.splice(kk, 1);
+      cajas[j] = { ...cajas[j], items: its, quitado: [...(Array.isArray(cajas[j].quitado) ? cajas[j].quitado : []), { prodId: h.it.prodId, variante: h.it.variante || null, u: sacar, ts: Date.now() }] };
+      await db.set('cyc/envios_full/' + h.id + '/cajasDet', cajas);
+      const rel = ((await db.get('cyc/envios_full/' + h.id + '/cajasDet')) || [])[j] || {};
+      const u2 = (rel.items || []).filter((x) => x && x.prodId === h.it.prodId && (x.variante || '') === (h.it.variante || '')).reduce((a, x) => a + (Number(x.u) || 0), 0);
+      console.log(`${u2 === Math.max(0, queda) ? '✓' : '✗ NO QUEDÓ'} releído: ${u2} u. en la caja (antes ${h.it.u})`);
+      return;
+    }
     if (/^abrircaja(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const _ac = String(process.env.BILLING_PROBE).split(':');
       const busca = (_ac[1] || '').trim();
