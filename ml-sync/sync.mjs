@@ -45619,6 +45619,9 @@ async function main() {
     if (/^techo95(:|;|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const raw = String(process.env.BILLING_PROBE).replace(/^techo95:?/, ''); const GOt = /(^|;)go$/.test(raw) && !DRY;
       const lista = raw.replace(/;?go$/, '').split(/[,;]/).map((x) => x.trim().toUpperCase()).filter((x) => /^MLA\d+$/.test(x));
+      // `techo95:buscando` (25/10/2026, él: "me pasás tabla de producto buscando techo, hace cuánto están buscando y qué % de seguridad lleva y en
+      // qué fecha aprox pensás que vas a empezar a buscar el precio que más da"): mira TODAS las que hoy están en 📈 (sin gemelas) e imprime la tabla.
+      const BUSCANDO = /(^|[;,])buscando([;,]|$)/.test(raw);
       const links = (await db.get('cyc/mllinks')) || {}; const es = (await db.get('cyc/estrategia')) || {};
       const tc = parseFloat(await db.get('cyc/finanzas/tipo_cambio')) || 0; if (!(tc > 0)) { console.log('⚠️ sin dólar no se puede medir'); process.exit(1); }
       // Etapa 2 (20/10/2026): `costoPesos` con los reclamos EN VIVO (como la web) y el monotributo vigente, no 2% a mano.
@@ -45642,7 +45645,7 @@ async function main() {
       // entran también esas 🪜 (la última estrategia antes de la escalera era 📈 buscando o 🏔️): si llegan al 95% pasan a 🏔️; si no,
       // siguen 🪜 (no se les pone 📈 encima: la escalera tiene su motivo).
       const bajaDeTecho = (m) => { const h = es[m] || {}; let pv = null, cur = null, antes = null; for (const k of Object.keys(h).map(Number).filter((n) => n > 0).sort((a, b) => a - b)) { const x = h[k]; if (!x || !x.t) continue; const tt = x.t === 'correccion' ? pasajeDe(pv) : x.t; if (tt === 'bajando' && cur !== 'bajando') antes = cur; pv = tt; cur = tt; } return cur === 'bajando' && ['techo', 'techook'].includes(antes); };
-      const sel = lista.length ? lista : Object.keys(es).filter((m) => ['techook', 'nuevo'].includes((ultT(m) || {}).t) || esLanza(m) || bajaDeTecho(m));
+      const sel = BUSCANDO ? Object.keys(es).filter((m) => (ultT(m) || {}).t === 'techo' && links[m] && !links[m].gemelaDe && !links[m].ignored && links[m].status !== 'closed') : lista.length ? lista : Object.keys(es).filter((m) => ['techook', 'nuevo'].includes((ultT(m) || {}).t) || esLanza(m) || bajaDeTecho(m));
       // 1.3a: la foto del mercado de cada 🏔️ (`cyc/techofreno`) para que venza sola. Sin poder leerla no se reabre nada esta vuelta.
       let tfT = null; try { tfT = (await db.get('cyc/techofreno')) || {}; } catch { tfT = null; console.log('⚠️ no leí cyc/techofreno: esta vuelta no miro si alguna 🏔️ se reabre ni guardo fotos'); }
       const sidsT = {}; for (const l of labels) if (accounts[l]?.seller_id) sidsT[String(accounts[l].seller_id)] = l;
@@ -45664,7 +45667,7 @@ async function main() {
       const $ = (x) => (x == null || !isFinite(x)) ? '—' : '$' + Math.round(x).toLocaleString('es-AR');
       const fK = (k) => k ? k.slice(8, 10) + '/' + k.slice(5, 7) : '?';
       console.log(`=== 🏔️ TECHO AL 95% · ${sel.length} publicación(es) · ${GOt ? 'SE ANOTA' : 'prueba (agregá ;go)'} ===`);
-      const res = []; let nSinFicha = 0, nSinLinea = 0;
+      const res = []; let nSinFicha = 0, nSinLinea = 0; const tabT = { rows: [], cc: null };
       for (const mla of sel) {
         const e = links[mla]; const pr = e && pIdx[e.prodId]; if (!pr) { nSinFicha++; console.log(`✗ ${mla}: sin ficha`); continue; }
         let d = await lineaDeT(mla); if (d == null) { nSinLinea++; console.log(`✗ ${mla}: no leí la línea`); continue; }
@@ -45716,6 +45719,25 @@ async function main() {
         const epTxt = !R.techo && EP ? ` · 📈 prueba a ${$(EP.p)}: ${EP.u} vendidas en ${EP.dias} días medibles · ${(EP.seg * 100).toFixed(0)}% seguro de que es techo (decide con ${Math.round(EP.umb * 100)}%; baja hasta 70% a los 21 días)` : '';
         console.log(`${ok ? '🏔️ SEGURO' : '📈 VOLVER A BUSCAR'} · ${mla} · ${nom} · techo ${$(P0)}${seg != null ? ' · ' + (seg * 100).toFixed(1) + '% seguro' + (umbT ? ' (decidido con ' + Math.round(umbT * 100) + '%)' : '') : ''}${txt ? ' · ' + txt : ''}${falta ? ' · ' + falta : ''}${epTxt}`);
         res.push({ mla, ok, seg, umb: umbT, txt, falta, P0, pH, hasta: hastaT, tHoy: (ultT(mla) || {}).t || '', ep: EP });
+        if (BUSCANDO) {
+          // Desde cuándo busca: el primer renglón 📈 seguido hasta hoy. Subas: las de verdad (`cyc/claudecambios`, a > de) desde ahí.
+          const h = es[mla] || {}; const ks = Object.keys(h).map(Number).filter((n) => n > 0).sort((a, b) => b - a); let desdeTs = 0;
+          for (const k of ks) { if ((h[k] || {}).t !== 'techo') break; desdeTs = k; }
+          if (!tabT.cc) tabT.cc = Object.values((await db.get('cyc/claudecambios')) || {});
+          const nSub = tabT.cc.filter((c) => c && c.mla === mla && Number(c.a) > Number(c.de) && Number(c.ts) >= desdeTs - 10 * 60e3).length;
+          // Cuándo llega a decidir si sigue sin vender a ese precio: el primer día en que la certeza (Poisson, mismo λ por día) pasa el umbral que
+          // baja con los días (95% hasta el día 7, 70% el 21), o el día 30 sin vender (techo sí o sí). Si vende, la fecha se corre.
+          let fecha = null;
+          if (EP && EP.dias > 0) { const lD = EP.lam / Math.max(1, EP.dias); for (let x = 0; x <= 60; x++) { const D = EP.dias + x; const sg = 1 - poissonCdfF(EP.u, lD * D); if (sg >= umbralTecho(D) || (EP.u === 0 && D >= TECHO_DIAS_SIN_VENTA)) { fecha = new Date(Date.now() + x * 864e5 - 3 * 3600e3).toISOString().slice(0, 10); break; } } }
+          tabT.rows.push({ nom: String(pr.name || e.title || '').slice(0, 34) + (e.variant ? ' #' + e.variant : ''), cta: e.cuenta || '?', desde: desdeTs ? new Date(desdeTs - 3 * 3600e3).toISOString().slice(0, 10) : '?', nSub, p: EP ? EP.p : P0, u: EP ? EP.u : null, dias: EP ? EP.dias : null, seg: EP ? EP.seg : seg, umb: EP ? EP.umb : umbT, fecha, best: R.best ? R.best.p : null, falta, ok });
+        }
+      }
+      if (BUSCANDO) {
+        const f2 = (k) => (k && k.length >= 10 ? k.slice(8, 10) + '/' + k.slice(5, 7) : '—');
+        tabT.rows.sort((a, b) => (a.fecha || '9999').localeCompare(b.fecha || '9999') || (b.seg || 0) - (a.seg || 0));
+        console.log(`\n=== 📈 TABLA · ${tabT.rows.length} buscando techo ===`);
+        console.log('TABLA|producto|cuenta|busca desde|subas|precio de prueba|vendidas/días|% seguro|decide con|fecha estimada|💰 hoy');
+        for (const r of tabT.rows) console.log(`TABLA|${r.nom}|${r.cta}|${f2(r.desde)}|${r.nSub}|${$(r.p)}|${r.u == null ? '—' : r.u + '/' + r.dias}|${r.seg == null ? '—' : Math.round(r.seg * 100) + '%'}|${r.umb ? Math.round(r.umb * 100) + '%' : '—'}|${r.ok ? 'ya' : f2(r.fecha)}|${r.best ? $(r.best) : '—'}`);
       }
       // CUÁNTO LLEVA CADA BÚSQUEDA DE TECHO, PARA LA WEB (24/10/2026, él: "en la línea de tiempo quiero que diga cuánto % lleva de decir si es
       // techo o no"). Sólo con ;go (la completa). `cyc/techo95pct/<MLA>` = {seg, umb, p, dias, u, lanza, ok, ts}.
