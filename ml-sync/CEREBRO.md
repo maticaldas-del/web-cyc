@@ -184,7 +184,8 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
 4. **El revisor en contra (max)** ANTES de aplicar, igual que siempre: marca, no propone.
 5. Yo miro lo dudoso, lo que cambia más de 20% y lo que deshace una decisión de menos de 7 días.
 6. Pedidos y cajas como siempre (`decide_pedidos.py`, `decide_cajas.py`, revisados, `decido:archivo=…;go`). Juicios de precio,
-   `techo95;go`, frenos a reabrir. Nota con QUÉ MIRAR MAÑANA de cada una que miré (`decido:archivo=fichas_<fecha>;go`).
+   `techo95;go` y **`techo95:buscando;go`** (25/10: las 📈 que ya llegaron al umbral pasan a 🏔️ y arrancan la escalera hacia el 💰 en la
+   misma vuelta; la `TABLA` dice cuándo llega cada una), frenos a reabrir. Nota con QUÉ MIRAR MAÑANA de cada una que miré (`decido:archivo=fichas_<fecha>;go`).
 6b. **💳 Toda publicación con su Premium (21/10/2026, regla suya: *"quiero que todas las publicaciones tengan clásica y premium.
    puede que yo vaya creando publicaciones y queden sin premium"*).** Cada noche `gemela:todas` (ml-consulta, solo lee: cualquier
    precio, activas o pausadas, SÓLO con stock en Full: *"no mirar todas las demás"*). Cada renglón con precio Premium medido se crea con `gemelacrea:<MLA>=<precio>:go`
@@ -320,7 +321,7 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
   💰 **piso** = el precio que más plata por día dejó (5+ días; desde la primera venta hay uno provisorio, punteado). 🔒 No se baja
   de ahí salvo sobra, sin reposición o stock antiguo. 🔴 **techo** = el precio más bajo arriba del 💰 donde, al 95%, no deja la misma
   plata. La raya 🚧 de una prueba vuelta dice "N% seguro" o "sin certeza". **Las rayas se miden con los últimos 60 días y sin los días de fechas especiales** (24/10, él con el Infusor cajita: el 🔴 $5.290 salía contra un 💰 de 8 días de fines de julio que vendieron el triple; lo pasó y vende a $6.890). Subir arriba del 🔴 → decir por qué no le creo.
-- **🏔️ techo encontrado:** 🔒 sólo con `techo95` (95%); si no llega, vuelve a 📈. Corre en cada completa sobre las 🏔️ y las 🆕.
+- **🏔️ techo encontrado:** 🔒 sólo con `techo95` (95%); si no llega, vuelve a 📈. Corre en cada completa sobre las 🏔️ y las 🆕, y con `techo95:buscando` sobre todas las 📈 (25/10).
 - **📏 Todo producto tiene su techo marcado** (21/10/2026, regla suya): 🏔️, raya 🔴 o raya 🚧. Las únicas excepciones: 📦 sobra,
   🪜 bajando por un motivo puntual (y ese motivo es el precio probado que no rindió, anotado en `techofreno`) o 📈 todavía buscándolo
   (🔥 escasez y 🆕 lanzamiento también buscan su precio; 💳 la gemela sigue el techo de su Clásica). 🔒 La primera baja 🪜 de `decido` anota sola el precio que no rindió en `techofreno`.
