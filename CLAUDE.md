@@ -189,6 +189,10 @@
 - **Lo que vende menos de 1 por semana no sube** (4a del 23/10; 37a del 24/10: toda suba, no sólo 📈; freno en `decido`): queda 💰 #punto;
   afuera subir al 25% del peor caso, 🔥/⏳ con stock para menos de 100 días, o volver a un precio de los últimos 90 días. Las pruebas se juzgan a las 3 ventas esperadas.
   Bajar la lista de algo que ya buscó techo va como descuento con cualquier etiqueta (37a). Renovar el mismo descuento no es una baja (46a).
+- **El orden de todo precio** (25/10, él: *"para mí tiene que ser prioridad buscar techo, segundo, buscar el precio que más ganancia da
+  (siempre sacando que está sacando stock)… la estrategia es buscar el mejor precio por ganancia CON escalera"*): 1º 📈 techo (95%) → 2º 💰
+  el de más ganancia, bajando en escalera desde el techo y midiendo cada escalón hasta el que más plata por día deja (en la web la 🪜 que
+  viene de 📈/🏔️/💰 se ve 💰 "· Nº escalón"). Sólo la sobra/stock antiguo baja por otro camino.
 - **Sin línea de techo no se baja** (21/10; 22/10 decisión 1a): línea = 🔴 de las rayas o 🏔️ de `techo95`. Sin línea → 📈 buscar
   techo (subir). Lo que vendieron otras variantes o la familia NO alcanza. Pasados 15 días de la última suba sin certeza, decide la
   plata por día (F4).

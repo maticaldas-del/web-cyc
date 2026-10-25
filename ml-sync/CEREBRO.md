@@ -233,6 +233,11 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
 ## 4 · CÓMO SE ESCRIBE CADA DECISIÓN
 - **Todo precio lleva estrategia** (`#tag`); no existe "base". Sin estrategia = ⚪ para decidir; sin stock = ⏸️. 🔒 `decido`
   rechaza un precio sin estrategia; `!piso` solo = 🛡️ excepción.
+- **💰 DESPUÉS DEL TECHO SE BUSCA EL DE MÁS GANANCIA, EN ESCALERA (25/10/2026, él):** *"para mí tiene que ser prioridad buscar techo,
+  segundo, buscar el precio que más ganancia da (siempre sacando que está sacando stock). veo mucho escalera (que está bien, pero la estrategia
+  es buscar el mejor precio por ganancia CON escalera)"*. Con el 🔴 al 95% el objetivo de cada escalón es llegar al 💰 (el que más plata por día
+  dejó): cada escalón ≤15%, medido, y se para en el que más deja. Si el 💰 ya se conoce y está abajo, se va a él en escalera. La web muestra
+  esa escalera como 💰 "buscando el de más ganancia · Nº escalón" (el dato guardado sigue siendo `bajando`).
 - **Tags:** 🔥 `escasez` · ⏳ `sinrepo` · 📈 `techo` · 🏔️ `techook` (🔒 sólo lo anota `techo95` al 95%) · 🪜 `bajando` · ↘️
   `volviendo` · ↗️ `desobra` · 📦 `sobra` · 💸 `descuento` (sólo nosotros) · 🏷️ `promo` (ML pone plata; `entrarpromo` elige solo) ·
   📉 `liquidando` · 🧨 `remate` (sólo él) · 🛡️ `excepcion` · 🆕 `nuevo` · 🎁 `fecha` · 🥊 `caja`. (💳 `gemela` NO es estrategia, regla suya del 21/10: el robot la anota como dato y la Premium muestra la estrategia de su Clásica. 🏷️/💸 son estrategia sólo si los entramos nosotros; un cupón o promo que puso ML en una venta no cambia la estrategia del precio.)

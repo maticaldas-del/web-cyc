@@ -2962,7 +2962,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.63';
+const APP_VERSION='26.64';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2975,6 +2975,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.64',f:'25/10',h:'20:15',c:[{n:2,t:'💰 La escalera que baja después de buscar el techo ahora se llama "buscando el de más ganancia · Nº escalón": es lo que busca (el precio que más plata por día deja). El 🪜 bajando queda sólo para lo que baja por otra cosa (fin de escasez, sobra).'}]},
   {v:'26.63',f:'25/10',h:'19:50',c:[{n:2,t:'📬 Mi oficina → Contar lo que hay: "Mensaje para Claude". El chat de Chrome que arma las cajas (o vos) deja ahí lo que no puede arreglar desde el panel y Claude lo lee en la próxima vuelta.'}]},
   {v:'26.62',f:'25/10',h:'18:20',c:[{n:1,t:'🏷️ Productos: cada tarjeta muestra el código de la etiqueta de Full de cada cuenta (y de cada color), el que va pegado en el producto.'}]},
   {v:'26.61',f:'25/10',h:'15:55',c:[{n:3,t:'🧾 Pedidos de Paraguay: el ticket es obligatorio y se ve en el pedido. En el detalle está "📷 foto del ticket" para subir la foto y verla; sin foto el pedido no se puede cerrar. Arriba de Pedidos sale en rojo cada pedido al que le falta la foto o los renglones del ticket.'}]},
@@ -11792,7 +11793,7 @@ function lineaPintar(prodId){
       // 🪜 BAJANDO DICE DESDE DÓNDE Y HASTA DÓNDE (v25.60, 21/10/2026, él con el Centímetro Blanco: "está bajando sin techo"). La
       // escalera sale de una prueba que no rindió: el precio probado (la raya 🚧, de `techofreno`) y el 💰 piso del que no baja.
       // Y con una raya 🚧 ya no se dice "techo: todavía no se sabe (falta probar más caro)": más caro ya se probó.
-      const _baj=Object.keys(porMlaF).map(m=>estrategiaDe(m)).find(e=>e&&e.t==='bajando');
+      const _baj=Object.keys(porMlaF).map(m=>estrategiaDe(m)).find(e=>e&&(e.t==='bajando'||e.esc));
       const _tPr=_techos.length?_techos[_techos.length-1].probado:0;
       if(_baj&&!R.sobra&&!_prueba)_prNotas.push(`<span style="color:#fbbf24;cursor:help" title="${('Bajando en escalera: '+(_tPr?'a '+fmt(_tPr)+' no rindió (raya 🚧), ':'')+'se baja de a un escalón (15% como mucho, uno cada 48 h) midiendo cada uno'+(R.best?', y nunca abajo del 💰 piso '+fmt(R.best.p)+', el precio que más plata por día dejó':'')+'.').replace(/[<>&"]/g,'')}">🪜 bajando${_tPr?' desde '+fmt(_tPr):''}${R.best?' · no baja de '+fmt(R.best.p):''}</span>`);
       else if(!R.techo&&R.best&&!R.sobra&&!_techos.length)_prNotas.push(R.best.aprox?`<span style="cursor:help" title="Para medir el techo hacen falta días con 3 o más unidades en Full y con dato de visitas.">techo: todavía pocos días para medirlo</span>`:'techo: falta probar más caro');}}
@@ -12505,7 +12506,7 @@ function rayasBarHTML(mla,o){
   const lo=Math.min(piso,hoy)*0.92,hi=Math.max(techo||piso*1.25,hoy)*1.06,pos=v=>Math.max(0,Math.min(100,(v-lo)/(hi-lo)*100));
   const xp=pos(piso),xt=techo?pos(techo):null,xh=pos(hoy);
   const donde=techo&&hoy>techo*1.005?{t:'arriba del 🔴 techo',c:'var(--red)'}:hoy<piso*0.995?{t:'abajo del 💰 piso',c:'var(--amber)'}:{t:techo?'entre el piso y el techo':'arriba del piso (techo todavía sin medir)',c:'var(--green)'};
-  let probando=false;try{const s=estrategiaDe(mla);probando=!!(s&&(s.t==='techo'||s.t==='bajando'));}catch(_){}
+  let probando=false;try{const s=estrategiaDe(mla);probando=!!(s&&(s.t==='techo'||s.t==='bajando'||s.esc));}catch(_){}
   const tit=`Precio de hoy ${fmt(hoy)}: ${donde.t}. 💰 Piso ${fmt(piso)} (el precio que más plata por día dejó)${techo?` · 🔴 techo ${fmt(techo)} (más caro ya no rindió, ${r.seg?r.seg+'% seguro':'95%'})`:' · 🔴 techo: falta probar más caro'}. Las mismas rayas de la línea de tiempo, medidas anoche.`;
   const barra=`<span class="rb-bar" style="width:${o.ancho||'100%'}"><span class="rb-ok" style="left:${xp.toFixed(1)}%;right:${xt!=null?(100-xt).toFixed(1):'0'}%"></span><i class="rb-p" style="left:${xp.toFixed(1)}%"></i>${xt!=null?`<i class="rb-t" style="left:${xt.toFixed(1)}%"></i>`:''}<b class="rb-h${probando?' rb-prueba':''}" style="left:${xh.toFixed(1)}%;background:${donde.c}"></b></span>`;
   if(o.corto)return `<div class="rb rb-corto" title="${tit.replace(/"/g,'&quot;')}">${barra}</div>`;
@@ -12676,7 +12677,14 @@ function estrategiaDe(mla,ts,_g){
   // que empezó la racha hasta este momento.
   if(best.ts){const ant=hs.filter(x=>x.ts<=best.ts);if(best.t==='techo'||best.t==='escasez'){let ini=best.ts;for(const x of ant){if(x.t!==best.t)break;ini=x.ts;}
       best.n=Object.values(state.claudecambios||{}).filter(c=>c&&c.mla===mla&&Number(c.a)>Number(c.de)&&Number(c.ts)>=ini-10*60e3&&Number(c.ts)<=t+60e3).length;}
-    const prev=ant.find(x=>x.t!==best.t);if(prev&&prev.t!=='sindecidir')best.de=prev.t;}
+    const prev=ant.find(x=>x.t!==best.t);if(prev&&prev.t!=='sindecidir')best.de=prev.t;
+    // 💰 LA ESCALERA DESPUÉS DEL TECHO ES "BUSCANDO EL DE MÁS GANANCIA" (25/10/2026, él: "para mí tiene que ser prioridad buscar techo,
+    // segundo, buscar el precio que más ganancia da (siempre sacando que está sacando stock). veo mucho escalera (que está bien, pero la
+    // estrategia es buscar el mejor precio por ganancia CON escalera)"). Un 🪜 que viene de 📈/🏔️/💰 se muestra 💰 con su escalón (las
+    // bajas de precio de verdad desde que arrancó la escalera). El 🪜 que viene de escasez o sobra sigue siendo 🪜.
+    if(best.t==='bajando'&&prev&&['techo','techook','punto'].includes(prev.t)){let ini=best.ts;for(const x of ant){if(x.t!=='bajando')break;ini=x.ts;}
+      const nB=Object.values(state.claudecambios||{}).filter(c=>c&&c.mla===mla&&Number(c.a)<Number(c.de)&&Number(c.ts)>=ini-10*60e3&&Number(c.ts)<=t+60e3).length;
+      best={...best,t:'punto',esc:true,n:nB,de:prev.t};}}
   if(best.t==='promo'){if(String(_promoTipoEn(mla,t)||'').toUpperCase()==='PRICE_DISCOUNT')best={...best,t:'descuento'};}
   return best;
 }
@@ -12693,8 +12701,8 @@ function _promoTipoEn(mla,ts){const t=Number(ts)||Date.now();const H=(state.prom
   const pc=(state.promoclaude||{})[mla];if(!pc)return null;const pt=Number(pc.ts||pc.desde)||0;if(pt&&pt>t+60e3)return null;return pc.tipo||null;}
 function estrategiaChip(e){if(!e)return'';const u=ESTRATEGIA_UI[e.t];if(!u)return'';const d=e.ts?new Date(e.ts).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}):'';
   const de=e.de&&ESTRATEGIA_UI[e.de]?ESTRATEGIA_UI[e.de]:null;
-  const tit=(u[3]+(e.n>1?(e.t==='escasez'?' Es el escalón n.º '+e.n+' seguido de escasez.':' Es la suba n.º '+e.n+' seguida buscando el techo.'):'')+(de?' Venía de '+de[0]+' '+de[1]+'.':'')+(e.m?' · '+e.m:'')+(d?' · desde el '+d:'')).replace(/"/g,'&quot;');
-  return ` <span class="est-chip" title="${tit}" style="--ec:${u[2]};padding:1px 6px;border-radius:4px;border:1px solid color-mix(in srgb,${u[2]} 33%,transparent);background:color-mix(in srgb,${u[2]} 12%,transparent);font-size:.62rem">${u[0]} ${u[1]}${e.n>1?' · '+e.n+(e.t==='escasez'?'º escalón':'ª suba'):''}${de?' <span style="opacity:.7">· de '+de[0]+'</span>':''}</span>`;}
+  const tit=(u[3]+(e.esc?' Ya se buscó el techo: baja en escalera midiendo cada escalón, hasta encontrar el precio que más plata por día deja'+(e.n>0?' (escalón n.º '+e.n+')':'')+'.':e.n>1?(e.t==='escasez'?' Es el escalón n.º '+e.n+' seguido de escasez.':' Es la suba n.º '+e.n+' seguida buscando el techo.'):'')+(de?' Venía de '+de[0]+' '+de[1]+'.':'')+(e.m?' · '+e.m:'')+(d?' · desde el '+d:'')).replace(/"/g,'&quot;');
+  return ` <span class="est-chip" title="${tit}" style="--ec:${u[2]};padding:1px 6px;border-radius:4px;border:1px solid color-mix(in srgb,${u[2]} 33%,transparent);background:color-mix(in srgb,${u[2]} 12%,transparent);font-size:.62rem">${u[0]} ${u[1]}${e.n>1||(e.esc&&e.n>0)?' · '+e.n+(e.t==='escasez'||e.esc?'º escalón':'ª suba'):''}${de?' <span style="opacity:.7">· de '+de[0]+'</span>':''}</span>`;}
 // 21/10/2026, él: "quiero que en la tarjeta de venta aparezca que fue analizada por el robot y el nivel de esfuerzo utilizado, si
 // no hizo ningún cambio y todo estaba correcto que aparezca como las cuotas transparente. si hubo algún cambio poner el color del
 // cambio relacionado a la estrategia que se tomó y al poner el cursor arriba que explique lo sucedido y qué resolución se tomó".
