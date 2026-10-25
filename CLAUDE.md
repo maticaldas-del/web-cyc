@@ -189,6 +189,10 @@
 - **Lo que vende menos de 1 por semana no sube** (4a del 23/10; 37a del 24/10: toda suba, no sólo 📈; freno en `decido`): queda 💰 #punto;
   afuera subir al 25% del peor caso, 🔥/⏳ con stock para menos de 100 días, o volver a un precio de los últimos 90 días. Las pruebas se juzgan a las 3 ventas esperadas.
   Bajar la lista de algo que ya buscó techo va como descuento con cualquier etiqueta (37a). Renovar el mismo descuento no es una baja (46a).
+- **El orden de todo precio** (25/10, él: *"para mí tiene que ser prioridad buscar techo, segundo, buscar el precio que más ganancia da
+  (siempre sacando que está sacando stock)… la estrategia es buscar el mejor precio por ganancia CON escalera"*): 1º 📈 techo (95%) → 2º 💰
+  el de más ganancia, bajando en escalera desde el techo y midiendo cada escalón hasta el que más plata por día deja (en la web la 🪜 que
+  viene de 📈/🏔️/💰 se ve 💰 "· Nº escalón"). Sólo la sobra/stock antiguo baja por otro camino.
 - **Sin línea de techo no se baja** (21/10; 22/10 decisión 1a): línea = 🔴 de las rayas o 🏔️ de `techo95`. Sin línea → 📈 buscar
   techo (subir). Lo que vendieron otras variantes o la familia NO alcanza. Pasados 15 días de la última suba sin certeza, decide la
   plata por día (F4).
@@ -295,7 +299,7 @@
 - **"Pausar por precio" se sacó entero** (01/10): no volver a proponerlo; si no da, no se compra. `pedremate` decidido (b): se deja; él
   manda a la papelera lo que no quiere. **No volver a proponer cortar el ritmo viejo.**
 - **Cajas a Full:** cubren **37 días** (30 + 7 de viaje); **60 si vende parejo** y no tiene prueba de precio abierta
-  (`notas/sin_estirar.txt`); **tope 90 días**; nuevo sin ventas recibe 4 (`PISO_CERO`). `decide_cajas.py` → `decido:caja:<id>@<cuenta>[#color]=u|N|motivo`. **"Armá la caja" = eso + `cajaarmar;go`** (carga la caja como el botón 🎯 Cargar lo que entra en el cupo; 25/10, si no queda incompleta).
+  (`notas/sin_estirar.txt`); **tope 90 días**; nuevo sin ventas recibe 4 (`PISO_CERO`). `decide_cajas.py` → `decido:caja:<id>@<cuenta>[#color]=u|N|motivo`. **Lo que él decide de una caja va a `FIJO` en `decide_cajas.py`** (25/10: si no, la completa se lo pisa). **"Armá la caja" = eso + `cajaarmar;go`** (carga la caja como el botón 🎯 Cargar lo que entra en el cupo; 25/10, si no queda incompleta).
   Una cuenta sin publicación no recibe el mínimo si otra tiene stock de ese color en Full. Caja 70×70×70, 30 kg; costo de mandar una
   caja `cyc/mlconfig/costoCaja` ($17.500, `cajacosto`).
 - **Cupo de Full por cuenta** (ML no lo da por API): lo carga él con `cupo:<cuenta>=<chicos>/<grandes>`; "grande" = sólo los Tenders
@@ -312,9 +316,14 @@
 - **Pedidos hechos tienen número de 4 cifras** (#1001…, `num`) en Paraguay, Paulvic y Listas: "el pedido 1003" → buscar por `num` en
   `cyc/compraspy`, `cyc/pedidospv`, `cyc/compraslista`.
 - 📋 Copiar pedido en tarjetas con variantes (para WhatsApp).
-- **🏷️ Sin terminar / sin etiqueta** (23/10, él): lo que llega a la oficina sin la etiqueta de Full se carga con `ofi:<palabra>=+N!se;go`
-  (suma a la oficina y a `cyc/sinetiq`); Armar caja lo sigue contando igual (para ver qué caja conviene armar) y cada renglón dice
-  "🏷️ N sin etiqueta"; tarjeta arriba de Contar lo que hay. Cuando él dice que lo etiquetó: `sinetiq:<palabra>=0;go` (ml-consulta).
+- **🏷️ Sin terminar / sin etiqueta** (25/10, él: *"al cargar unidades a mi oficina, que siempre salgan como a etiquetar"*): TODO lo que
+  sube la oficina (web u `ofi:`) se suma a `cyc/sinetiq` salvo deshacer una caja (`ofi:…!ok` = ya viene etiquetado); Armar caja lo sigue
+  contando igual y cada renglón dice "🏷️ N sin etiqueta"; tarjeta arriba de Contar lo que hay con botón ✅ Etiquetadas por renglón (lo usa
+  el chat de Chrome al imprimir). Por comando: `sinetiq:<palabra>=0;go` (ml-consulta).
+- **📬 Buzón** (25/10, eligió 15a): el chat de Chrome de las cajas (o él) deja en Mi oficina → "Mensaje para Claude" lo que no puede arreglar
+  desde el panel (`cyc/buzon`); cada vuelta corre `buzon` y marca `buzon:leido=<ts>;go` (ml-consulta).
+- **Las cajas salen de lunes a viernes a las 12** (25/10, él): armada después del viernes a las 12 sale el lunes. Los días de viaje se
+  cuentan desde que sale (`envSalidaTs`, web y robot).
 
 ## 7 · PARAGUAY · LISTAS · PAULVIC
 
@@ -338,8 +347,11 @@
   (`compray:<fecha>|adelanto=<pesos>|go`, renglón aparte del cambista).
 - **El precio de Paraguay NO pisa el costo. Nunca** (17/09): `costUSD` = lo que PAGÓ; `nisseiUSD` = lo que saldría reponer. Al cambiar
   un costo, el viejo se congela por mes (`precios_hist_prod`).
-- **Ticket real obligatorio para cerrar el pedido** (10/10): `compray:<fecha>|det=<código>*<u>*<pagado>;…|go` (ml-sync). Datos del
-  mayorista: no al repo. Con dos tipos el mismo día pide `|repo`/`|nuevos`.
+- **Ticket real obligatorio para cerrar el pedido** (10/10; 25/10 con FOTO, él con el Sony: *"no sabemos si no lo mandaron o si no lo
+  cobraron"*): renglones con `compray:<fecha>|det=<código>*<u>*<pagado>;…|go` (ml-sync) + la foto, que la sube él desde el detalle del
+  pedido (📷, `mlapi/pyticketfoto/<id>`, `cyc/compraspy/<id>/ticketFoto` = cuántas). Sin las dos no se cierra (web y `pyped:llego`);
+  arriba de Pedidos Paraguay sale en rojo lo que falta (todo lo en camino y lo pedido desde el 25/10). Datos del mayorista: no al repo.
+  Con dos tipos el mismo día pide `|repo`/`|nuevos`.
 - **Cuántas de cada nuevo** (`candMaxU`, 21/10): barato ≤US$15 → 3 · caro >US$60 → 1 · resto 2.
 - **Al chat local se le pasa SÓLO lo que interesa** (22/10, *"siempre pasame el promt con la mercaderia que si interesa"*): el texto
   listo para pegar y la lista YA FILTRADA a lo que puede entrar a un pedido (25%+ y en catálogo), no la lista entera; el resto se dice
@@ -471,7 +483,7 @@
 | `pregunto:<texto>` · `recordar:<texto>` | Telegram al canal privado |
 | `pedidostodo` · `cajasnotas`/`pedidosnotas` · `porquepedido:<palabra>` · `porquebajo:<palabras>` | pedidos de todo el catálogo · números · por qué |
 | `pyped:…;go` · `pedir:<palabra>=<u>;…;go` · `compray:<fecha>\|…\|go` · `ofi:<palabra>[@var]=<+N\|-N\|N>;…;go` | Paraguay, unidades, pesos del pedido, oficina |
-| `ofi:<palabra>=+N!se;go` · `sinetiq[:<palabra>[@var]=<+N\|-N\|N>;…][;go]` | llegó sin etiqueta · etiquetado (0) · lista |
+| `ofi:<palabra>=+N;go` (queda sin etiqueta; `!ok` si ya viene etiquetado) · `sinetiq[:<palabra>[@var]=<+N\|-N\|N>;…][;go]` | oficina · etiquetado (0) · lista |
 | `cajallego:<seg>[;…][!<palabras>=<u>]:go` · `abrircaja:<seg>:go` · `cajasllegaron` · `faltaron[:días]` | cajas a Full |
 | `lista:<prov>;…;go` · `listarevisar` · `listadato:…;go` · `listaweb:<prov>;go` | listas de proveedores |
 | `pvped:<acción>:<id>;…;go` | Paulvic (llego, pago, costo, nunca) |

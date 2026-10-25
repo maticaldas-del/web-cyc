@@ -77,7 +77,7 @@ const _cortarCiclo = (donde) => {
 // los que escriben en cantidad o en plata se niegan de entrada, y cualquier otro corre con la base,
 // ML, Mercado Pago y Telegram en sólo lectura (se deja renovar y guardar el token de ML, que ML rota).
 const EN_CONSULTA = process.env.GITHUB_WORKFLOW === 'ml-consulta' || process.env.ML_CONSULTA === '1';
-const CONSULTA_ESCRIBE = new Set(['ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
+const CONSULTA_ESCRIBE = new Set(['buzon', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
 const CONSULTA_NIEGA = new Set(['cajaitems', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'listaped', 'publicar', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'errores', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'promoventas', 'cargosmes', 'arcacierres', 'webpush']);
@@ -2400,6 +2400,18 @@ async function reposicionFullML(db, accounts, labels, DRY) {
 // La caja sale plana (`cyc/mlconfig/costoCaja`) y la ficha la reparte como si fuera llena; con cupo chico las cajas salen con pocas
 // unidades. Promedio de unidades de las últimas CAJA_REAL_N cajas de la cuenta en CAJA_REAL_DIAS días → costo real por unidad. Es la
 // MISMA cuenta que `cajaRealDe` de la web (index.html): si se toca una, la otra. Sin cajas medidas devuelve null (no se inventa).
+// LAS CAJAS SALEN DE LUNES A VIERNES A LAS 12 (25/10/2026, él: "si la caja se arma después del viernes al mediodía ya se envía
+// el lunes"). Devuelve el momento en que SALE (12:00 de acá = 15:00 UTC): armada un día hábil antes de las 12, ese día; si no, el
+// próximo día hábil. La hora sale de `ts` si es del mismo día que `fecha`; sin hora, se toma como armada a la mañana. Misma regla
+// que `envSalidaTs` de la web (index.html): si se toca una, la otra.
+function envSalidaTs(fecha, ts) {
+  const f = String(fecha || '').slice(0, 10); if (!/^\d{4}-\d{2}-\d{2}$/.test(f)) return 0;
+  const t = Number(ts) || 0, loc = t ? new Date(t - 3 * 3600e3) : null;
+  const tarde = !!(loc && loc.toISOString().slice(0, 10) === f && loc.getUTCHours() >= 12);
+  const d = new Date(f + 'T15:00:00Z'); const habil = (x) => x.getUTCDay() >= 1 && x.getUTCDay() <= 5;
+  if (tarde || !habil(d)) { do { d.setUTCDate(d.getUTCDate() + 1); } while (!habil(d)); }
+  return d.getTime();
+}
 const CAJA_REAL_N = 8, CAJA_REAL_DIAS = 120, CAJA_REAL_COMEMUCHO = 0.25;
 function cajaRealPorCuenta(envios, cta, costoCaja, ahora) {
   const desde = (ahora || Date.now()) - CAJA_REAL_DIAS * 864e5, us = [];
@@ -5836,7 +5848,7 @@ async function calcCerebro(db, o) {
     if (!e || !e.cuenta) continue;
     for (const c of (Array.isArray(e.cajasDet) ? e.cajasDet : [])) {
       if (!c || c.recibida) continue;
-      const tsC = Date.parse(String(c.fecha || e.fecha || '').slice(0, 10) + 'T15:00:00Z') || hoyTs;
+      const tsC = envSalidaTs(c.fecha || e.fecha, c.fecha ? 0 : e.ts) || hoyTs;
       for (const it of (c.items || [])) {
         if (!it || !it.prodId || !(Number(it.u) > 0)) continue;
         const kP = it.prodId + '__' + sidL(e.cuenta);
@@ -18398,6 +18410,58 @@ async function main() {
     // Reabrirla las devuelve a "En camino a Full", que es donde tienen que estar hasta que ML
     // termine de procesarlas.
     // Sin `:go` sólo muestra qué caja tocaría y cuántas unidades vuelven.
+    // BILLING_PROBE=cajaquitar:<seguimiento|id del envío|nº de envío de ML>!<palabras con +>=<u>[:go] (25/10/2026, él: "ZGTL57221 sacá
+    // los dos del pedido mandado, no los encuentro, ya lo modifiqué del envío") → SACA UNIDADES DE UNA CAJA QUE VA EN CAMINO, porque
+    // se cargaron y no estaban (o él las sacó del envío en ML antes de despacharlo). NO vuelven a la oficina: no existen. Las palabras
+    // (o el código de etiqueta) tienen que agarrar UN solo renglón de la caja. Se escribe la lista de cajas ENTERA releída (como abrircaja).
+    if (/^cajaquitar(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _raw = String(process.env.BILLING_PROBE).slice('cajaquitar'.length).replace(/^:/, '');
+      const APLICAR = /:go$/.test(_raw);
+      const [busca, qTxt] = _raw.replace(/:go$/, '').split('!').map((x) => String(x || '').trim());
+      const mq = /^(.+)=(\d+)$/.exec(qTxt || '');
+      if (!busca || !mq) { console.log('Usá: cajaquitar:<seguimiento o envío>!<palabras con + o código de etiqueta>=<unidades>[:go]'); return; }
+      const _n = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+      const pals = mq[1].split('+').map(_n).map((x) => x.trim()).filter(Boolean); const sacar = parseInt(mq[2], 10);
+      const envios = (await db.get('cyc/envios_full')) || {}; const links = (await db.get('cyc/mllinks')) || {};
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      const invDe = {}; for (const e of Object.values(links)) if (e && e.prodId && e.inv) (invDe[e.prodId] = invDe[e.prodId] || new Set()).add(String(e.inv).toUpperCase());
+      const hits = [];
+      for (const [id, e] of Object.entries(envios)) {
+        const cajas = Array.isArray(e && e.cajasDet) ? e.cajasDet : [];
+        const delEnvio = id === busca || JSON.stringify(e).includes(busca);
+        cajas.forEach((c, i) => {
+          if (!c || c.recibida) return;
+          if (!delEnvio && String(c.track || '') !== busca) return;
+          (c.items || []).forEach((it, k) => {
+            if (!it || !it.prodId) return;
+            const nom = _n(((pIdx[it.prodId] || {}).name || '') + ' ' + (it.variante || ''));
+            const porCod = pals.length === 1 && (invDe[it.prodId] || new Set()).has(pals[0].toUpperCase());
+            if (porCod || pals.every((w) => nom.includes(w))) hits.push({ id, e, c, i, it, k });
+          });
+        });
+      }
+      console.log(`=== SACAR DE UNA CAJA EN CAMINO · "${busca}" · ${mq[1]} −${sacar} ${APLICAR ? '(APLICANDO)' : '(PRUEBA)'} ===`);
+      for (const h of hits) console.log(`   ${h.e.cuenta || '?'} · envío ${h.id} · caja ${h.c.n || h.i + 1} · ${h.it.u} u. · ${(pIdx[h.it.prodId] || {}).name || h.it.prodId}${h.it.variante ? ' · ' + h.it.variante : ''}`);
+      if (hits.length !== 1) { console.log(hits.length ? `✗ agarra ${hits.length} renglones: no toco nada (sé más preciso)` : '✗ no encontré ese renglón en una caja en camino'); return; }
+      const h = hits[0];
+      if (sacar > (Number(h.it.u) || 0)) { console.log(`✗ la caja tiene ${h.it.u} y pediste sacar ${sacar}: no toco nada`); return; }
+      if (!APLICAR) { console.log(`\nPRUEBA: quedaría en ${h.it.u - sacar} u. Repetí con :go.`); return; }
+      const fresca = await db.get('cyc/envios_full/' + h.id + '/cajasDet');
+      const cajas = Array.isArray(fresca) ? fresca.slice() : [];
+      const j = _ubicarCajaFresca(cajas, h.c, h.i);
+      if (j < 0) { console.log('✗ la caja cambió mientras corría: no la toco'); return; }
+      const its = (cajas[j].items || []).slice();
+      const kk = its.findIndex((x) => x && x.prodId === h.it.prodId && (x.variante || '') === (h.it.variante || '') && Number(x.u) === Number(h.it.u));
+      if (kk < 0) { console.log('✗ el renglón cambió mientras corría: no lo toco'); return; }
+      const queda = Number(its[kk].u) - sacar;
+      if (queda > 0) its[kk] = { ...its[kk], u: queda }; else its.splice(kk, 1);
+      cajas[j] = { ...cajas[j], items: its, quitado: [...(Array.isArray(cajas[j].quitado) ? cajas[j].quitado : []), { prodId: h.it.prodId, variante: h.it.variante || null, u: sacar, ts: Date.now() }] };
+      await db.set('cyc/envios_full/' + h.id + '/cajasDet', cajas);
+      const rel = ((await db.get('cyc/envios_full/' + h.id + '/cajasDet')) || [])[j] || {};
+      const u2 = (rel.items || []).filter((x) => x && x.prodId === h.it.prodId && (x.variante || '') === (h.it.variante || '')).reduce((a, x) => a + (Number(x.u) || 0), 0);
+      console.log(`${u2 === Math.max(0, queda) ? '✓' : '✗ NO QUEDÓ'} releído: ${u2} u. en la caja (antes ${h.it.u})`);
+      return;
+    }
     if (/^abrircaja(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const _ac = String(process.env.BILLING_PROBE).split(':');
       const busca = (_ac[1] || '').trim();
@@ -29071,9 +29135,15 @@ async function main() {
         // El título de la base alcanza para elegir; el estado y el stock SÍ se leen de ML.
         const mios = Object.entries(linksP)
           .filter(([mla, e]) => e && e.cuenta === label && /^MLA/i.test(mla))
-          .filter(([, e]) => {
+          .filter(([mlaP, e]) => {
+            // 25/10/2026 (él eligió sacar las 17 gemelas de envío gratis de Paulvic): `gemelaenvio` entre las palabras = sólo las gemelas
+            // Clásicas con envío gratis (`gemelaTipo:'envio'`) cuyo título tiene ALGUNA de las otras palabras; un MLA entre las palabras
+            // la elige por número.
             const tt = norm(e.title || '');
-            if (!busca.some((w) => tt.includes(w))) return false;
+            const soloGE = busca.includes(norm('gemelaenvio')), bus = busca.filter((w) => w !== norm('gemelaenvio'));
+            if (soloGE && e.gemelaTipo !== 'envio') return false;
+            if (bus.length && !bus.some((w) => tt.includes(w) || w === norm(mlaP))) return false;
+            if (!bus.length && !soloGE) return false;
             if (saca.some((w) => tt.includes(w))) return false;
             return true;
           })
@@ -44347,7 +44417,7 @@ async function main() {
         };
         for (const [id, env] of Object.entries(envs)) for (const [ci, c] of (Array.isArray(env && env.cajasDet) ? env.cajasDet : []).entries()) {
           if (!c || c.recibida) continue; nAb++;
-          const t0 = Date.parse(String(c.fecha || env.fecha || '').slice(0, 10) + 'T15:00:00Z'); const dd = t0 > 0 ? (ahoraI - t0) / 864e5 : null;
+          const t0 = envSalidaTs(c.fecha || env.fecha, c.fecha ? 0 : env.ts); const dd = t0 > 0 ? Math.max(0, (ahoraI - t0) / 864e5) : null;
           const uC = (c.items || []).reduce((s2, it) => s2 + (Number(it && it.u) || 0), 0), eC = entradoCaja(id, ci, c);
           // Etapa 6 (14/10/2026): la caja que ML ya dio de alta ENTERA va a la lista lista para `cajallego`, tenga la edad
           // que tenga (antes sólo salía con 9+ días y con el seguimiento cortado: había que ir a buscarlo a mano).
@@ -45549,6 +45619,9 @@ async function main() {
     if (/^techo95(:|;|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const raw = String(process.env.BILLING_PROBE).replace(/^techo95:?/, ''); const GOt = /(^|;)go$/.test(raw) && !DRY;
       const lista = raw.replace(/;?go$/, '').split(/[,;]/).map((x) => x.trim().toUpperCase()).filter((x) => /^MLA\d+$/.test(x));
+      // `techo95:buscando` (25/10/2026, él: "me pasás tabla de producto buscando techo, hace cuánto están buscando y qué % de seguridad lleva y en
+      // qué fecha aprox pensás que vas a empezar a buscar el precio que más da"): mira TODAS las que hoy están en 📈 (sin gemelas) e imprime la tabla.
+      const BUSCANDO = /(^|[;,])buscando([;,]|$)/.test(raw);
       const links = (await db.get('cyc/mllinks')) || {}; const es = (await db.get('cyc/estrategia')) || {};
       const tc = parseFloat(await db.get('cyc/finanzas/tipo_cambio')) || 0; if (!(tc > 0)) { console.log('⚠️ sin dólar no se puede medir'); process.exit(1); }
       // Etapa 2 (20/10/2026): `costoPesos` con los reclamos EN VIVO (como la web) y el monotributo vigente, no 2% a mano.
@@ -45572,7 +45645,7 @@ async function main() {
       // entran también esas 🪜 (la última estrategia antes de la escalera era 📈 buscando o 🏔️): si llegan al 95% pasan a 🏔️; si no,
       // siguen 🪜 (no se les pone 📈 encima: la escalera tiene su motivo).
       const bajaDeTecho = (m) => { const h = es[m] || {}; let pv = null, cur = null, antes = null; for (const k of Object.keys(h).map(Number).filter((n) => n > 0).sort((a, b) => a - b)) { const x = h[k]; if (!x || !x.t) continue; const tt = x.t === 'correccion' ? pasajeDe(pv) : x.t; if (tt === 'bajando' && cur !== 'bajando') antes = cur; pv = tt; cur = tt; } return cur === 'bajando' && ['techo', 'techook'].includes(antes); };
-      const sel = lista.length ? lista : Object.keys(es).filter((m) => ['techook', 'nuevo'].includes((ultT(m) || {}).t) || esLanza(m) || bajaDeTecho(m));
+      const sel = BUSCANDO ? Object.keys(es).filter((m) => (ultT(m) || {}).t === 'techo' && links[m] && !links[m].gemelaDe && !links[m].ignored && links[m].status !== 'closed') : lista.length ? lista : Object.keys(es).filter((m) => ['techook', 'nuevo'].includes((ultT(m) || {}).t) || esLanza(m) || bajaDeTecho(m));
       // 1.3a: la foto del mercado de cada 🏔️ (`cyc/techofreno`) para que venza sola. Sin poder leerla no se reabre nada esta vuelta.
       let tfT = null; try { tfT = (await db.get('cyc/techofreno')) || {}; } catch { tfT = null; console.log('⚠️ no leí cyc/techofreno: esta vuelta no miro si alguna 🏔️ se reabre ni guardo fotos'); }
       const sidsT = {}; for (const l of labels) if (accounts[l]?.seller_id) sidsT[String(accounts[l].seller_id)] = l;
@@ -45594,7 +45667,7 @@ async function main() {
       const $ = (x) => (x == null || !isFinite(x)) ? '—' : '$' + Math.round(x).toLocaleString('es-AR');
       const fK = (k) => k ? k.slice(8, 10) + '/' + k.slice(5, 7) : '?';
       console.log(`=== 🏔️ TECHO AL 95% · ${sel.length} publicación(es) · ${GOt ? 'SE ANOTA' : 'prueba (agregá ;go)'} ===`);
-      const res = []; let nSinFicha = 0, nSinLinea = 0;
+      const res = []; let nSinFicha = 0, nSinLinea = 0; const tabT = { rows: [], cc: null };
       for (const mla of sel) {
         const e = links[mla]; const pr = e && pIdx[e.prodId]; if (!pr) { nSinFicha++; console.log(`✗ ${mla}: sin ficha`); continue; }
         let d = await lineaDeT(mla); if (d == null) { nSinLinea++; console.log(`✗ ${mla}: no leí la línea`); continue; }
@@ -45646,6 +45719,25 @@ async function main() {
         const epTxt = !R.techo && EP ? ` · 📈 prueba a ${$(EP.p)}: ${EP.u} vendidas en ${EP.dias} días medibles · ${(EP.seg * 100).toFixed(0)}% seguro de que es techo (decide con ${Math.round(EP.umb * 100)}%; baja hasta 70% a los 21 días)` : '';
         console.log(`${ok ? '🏔️ SEGURO' : '📈 VOLVER A BUSCAR'} · ${mla} · ${nom} · techo ${$(P0)}${seg != null ? ' · ' + (seg * 100).toFixed(1) + '% seguro' + (umbT ? ' (decidido con ' + Math.round(umbT * 100) + '%)' : '') : ''}${txt ? ' · ' + txt : ''}${falta ? ' · ' + falta : ''}${epTxt}`);
         res.push({ mla, ok, seg, umb: umbT, txt, falta, P0, pH, hasta: hastaT, tHoy: (ultT(mla) || {}).t || '', ep: EP });
+        if (BUSCANDO) {
+          // Desde cuándo busca: el primer renglón 📈 seguido hasta hoy. Subas: las de verdad (`cyc/claudecambios`, a > de) desde ahí.
+          const h = es[mla] || {}; const ks = Object.keys(h).map(Number).filter((n) => n > 0).sort((a, b) => b - a); let desdeTs = 0;
+          for (const k of ks) { if ((h[k] || {}).t !== 'techo') break; desdeTs = k; }
+          if (!tabT.cc) tabT.cc = Object.values((await db.get('cyc/claudecambios')) || {});
+          const nSub = tabT.cc.filter((c) => c && c.mla === mla && Number(c.a) > Number(c.de) && Number(c.ts) >= desdeTs - 10 * 60e3).length;
+          // Cuándo llega a decidir si sigue sin vender a ese precio: el primer día en que la certeza (Poisson, mismo λ por día) pasa el umbral que
+          // baja con los días (95% hasta el día 7, 70% el 21), o el día 30 sin vender (techo sí o sí). Si vende, la fecha se corre.
+          let fecha = null;
+          if (EP && EP.dias > 0) { const lD = EP.lam / Math.max(1, EP.dias); for (let x = 0; x <= 60; x++) { const D = EP.dias + x; const sg = 1 - poissonCdfF(EP.u, lD * D); if (sg >= umbralTecho(D) || (EP.u === 0 && D >= TECHO_DIAS_SIN_VENTA)) { fecha = new Date(Date.now() + x * 864e5 - 3 * 3600e3).toISOString().slice(0, 10); break; } } }
+          tabT.rows.push({ nom: String(pr.name || e.title || '').slice(0, 34) + (e.variant ? ' #' + e.variant : ''), cta: e.cuenta || '?', desde: desdeTs ? new Date(desdeTs - 3 * 3600e3).toISOString().slice(0, 10) : '?', nSub, p: EP ? EP.p : P0, u: EP ? EP.u : null, dias: EP ? EP.dias : null, seg: EP ? EP.seg : seg, umb: EP ? EP.umb : umbT, fecha, best: R.best ? R.best.p : null, falta, ok });
+        }
+      }
+      if (BUSCANDO) {
+        const f2 = (k) => (k && k.length >= 10 ? k.slice(8, 10) + '/' + k.slice(5, 7) : '—');
+        tabT.rows.sort((a, b) => (a.fecha || '9999').localeCompare(b.fecha || '9999') || (b.seg || 0) - (a.seg || 0));
+        console.log(`\n=== 📈 TABLA · ${tabT.rows.length} buscando techo ===`);
+        console.log('TABLA|producto|cuenta|busca desde|subas|precio de prueba|vendidas/días|% seguro|decide con|fecha estimada|💰 hoy');
+        for (const r of tabT.rows) console.log(`TABLA|${r.nom}|${r.cta}|${f2(r.desde)}|${r.nSub}|${$(r.p)}|${r.u == null ? '—' : r.u + '/' + r.dias}|${r.seg == null ? '—' : Math.round(r.seg * 100) + '%'}|${r.umb ? Math.round(r.umb * 100) + '%' : '—'}|${r.ok ? 'ya' : f2(r.fecha)}|${r.best ? $(r.best) : '—'}`);
       }
       // CUÁNTO LLEVA CADA BÚSQUEDA DE TECHO, PARA LA WEB (24/10/2026, él: "en la línea de tiempo quiero que diga cuánto % lleva de decir si es
       // techo o no"). Sólo con ;go (la completa). `cyc/techo95pct/<MLA>` = {seg, umb, p, dias, u, lanza, ok, ts}.
@@ -49153,12 +49245,12 @@ async function main() {
       const inv = (await db.get('cyc/inventory')) || {};
       const ops = [], problemas = [];
       for (const x of pares) {
-        // `!se` al final (23/10/2026): lo que llegó viene SIN ETIQUETA de Full → además de sumarlo a la oficina se suma a
-        // `cyc/sinetiq` (la tarjeta "🏷️ Sin terminar / sin etiqueta" de Contar lo que hay). Sólo con +N.
-        const se = /!se$/i.test(x);
-        const m = x.replace(/!se$/i, '').match(/^(.+?)(?:@(.+?))?=([+-]?)(\d+)$/);
-        if (!m) { problemas.push(`"${x}" → se espera <palabra>[@<variante>]=<+N|-N|N>[!se]`); continue; }
-        if (se && m[3] !== '+') { problemas.push(`"${x}" → !se (sin etiqueta) va sólo con +N (lo que llegó)`); continue; }
+        // SIEMPRE A ETIQUETAR (25/10/2026, él: "al cargar unidades a mi oficina, que siempre salgan como a etiquetar"): todo lo
+        // que SUBE la oficina se suma también a `cyc/sinetiq` (la tarjeta "🏷️ Sin terminar / sin etiqueta" de Contar lo que hay).
+        // `!ok` al final = ya viene etiquetado (ej. lo que vuelve de una caja); `!se` (23/10) se sigue aceptando, ya no hace falta.
+        const ok = /!ok$/i.test(x), se = !ok;
+        const m = x.replace(/!(se|ok)$/i, '').match(/^(.+?)(?:@(.+?))?=([+-]?)(\d+)$/);
+        if (!m) { problemas.push(`"${x}" → se espera <palabra>[@<variante>]=<+N|-N|N>[!ok]`); continue; }
         const exacto = m[1].trim().startsWith('=');
         const q = nrm(m[1].trim().replace(/^=/, ''));
         const hits = prods.filter((p) => exacto ? nrm(p.name) === q : nrm(p.name).includes(q));
@@ -49282,6 +49374,28 @@ async function main() {
       if (GO) { const rl = (await db.get('cyc/nobajar')) || {}; const okN = mlas.filter((k) => saca ? !rl[k] : !!rl[k]).length; console.log(`\n${okN === mlas.length ? '✓' : '⚠️'} releído: ${okN} de ${mlas.length} ${saca ? 'sin marca' : 'con 🔒'}`);
         for (const [k, c] of Object.entries(autUsar)) if (!rl[k]) await _autUsar(db, c, 'nobajar:-' + k); }
       else console.log('\nNo se guardó nada (falta ;go).');
+      return;
+    }
+
+    // BILLING_PROBE=buzon[:leido=<ts>[,<ts>…]][;go] → 📬 LOS MENSAJES PARA CLAUDE (25/10/2026, eligió la 15a). Los deja el chat de Chrome
+    // que arma las cajas (o él) desde Mi oficina → "Mensaje para Claude" (`cyc/buzon/<ts>` = {t, ts, leido}). Sin nada: lista los sin leer
+    // (y los 5 últimos leídos). `leido=<ts>,…;go` los marca leídos. Va por ml-consulta (`CONSULTA_ESCRIBE`).
+    if (/^buzon(:|;|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const raw = String(process.env.BILLING_PROBE).replace(/^buzon:?/, ''); const GOb = /(^|;)go$/.test(raw) && !DRY;
+      const B = (await db.get('cyc/buzon')) || {};
+      const mL = raw.match(/leido=([\d,]+)/);
+      if (mL) {
+        const tss = mL[1].split(',').filter(Boolean);
+        for (const t of tss) { if (!B[t]) { console.log(`  ${t}: no existe`); continue; } console.log(`  ${t}: ${GOb ? 'marcado leído' : 'lo marcaría leído (falta ;go)'}`); if (GOb) await db.patch('cyc/buzon/' + t, { leido: Date.now() }); }
+        if (GOb) { const r = (await db.get('cyc/buzon')) || {}; const ok = tss.filter((t) => r[t] && r[t].leido).length; console.log(`${ok === tss.length ? '✓' : '⚠️'} releído: ${ok} de ${tss.length} leídos`); }
+        return;
+      }
+      const L = Object.entries(B).map(([k, x]) => ({ k, ...(x || {}) })).sort((a, b) => (Number(a.ts) || 0) - (Number(b.ts) || 0));
+      const sin = L.filter((x) => !x.leido), leid = L.filter((x) => x.leido).slice(-5);
+      const f = (t) => new Date((Number(t) || 0) - 3 * 3600e3).toISOString().slice(5, 16).replace('T', ' ');
+      console.log(`=== 📬 BUZÓN · ${sin.length} sin leer ===`);
+      for (const x of sin) console.log(`  [${x.k}] ${f(x.ts)} · ${String(x.t || '').slice(0, 600)}`);
+      if (leid.length) { console.log('\n  (últimos leídos)'); for (const x of leid) console.log(`  ✓ [${x.k}] ${f(x.ts)} · ${String(x.t || '').slice(0, 200)}`); }
       return;
     }
 
@@ -49477,6 +49591,25 @@ async function main() {
     // BILLING_PROBE=pydet:<id> (23/10/2026, SOLO LEE). El detalle guardado de un pedido de Paraguay (`cyc/compraspy/<id>`), renglón por
     // renglón en el formato de `det=` (código*unidades*pagado) con el precio de la web al lado: para cargar un ticket que faltaba hay que
     // mandar el detalle ENTERO (lo que no figura en `det=` sale del pedido), así que se arma a partir de esto.
+    // BILLING_PROBE=pybusca:<palabras con +> (25/10/2026, él: "¿miraste en el ticket si estaba el Sony que falta? puede que no lo mandaron
+    // y tampoco lo cobraron") → SOLO LEE. En TODOS los pedidos de Paraguay (`cyc/compraspy`), los renglones cuyo nombre o código tiene esas
+    // palabras: pedido, fecha, estado, unidades y si el pedido tiene ticket cargado. SIN PRECIOS (el registro es público: los tickets del
+    // mayorista no se imprimen).
+    if (/^pybusca:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _n = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+      const pals = String(process.env.BILLING_PROBE).slice('pybusca:'.length).split('+').map(_n).map((x) => x.trim()).filter(Boolean);
+      const todos = (await db.get('cyc/compraspy')) || {};
+      let n = 0;
+      for (const [id, c] of Object.entries(todos)) {
+        for (const x of (Array.isArray(c && c.items) ? c.items : [])) {
+          const t = _n((x.nom || '') + ' ' + (x.cod || ''));
+          if (!pals.every((w) => t.includes(w))) continue; n++;
+          console.log(`${id} · ${c.fecha || '?'} · ${c.estado || '?'} · ${x.u} u. · cód ${x.cod || '?'} · ${String(x.nom || '').slice(0, 60)} · ticket ${c.ticket && Object.keys(c.ticket).length ? 'cargado' : 'NO cargado'}${x.prodId ? ' · ficha ' + x.prodId : ''}${x.llego != null ? ' · llegó ' + x.llego : ''}`);
+        }
+      }
+      console.log(n ? `\n${n} renglón(es).` : 'Ningún pedido de Paraguay tiene un renglón con esas palabras.');
+      return;
+    }
     if (/^pydet:/.test(String(process.env.BILLING_PROBE || ''))) {
       const id = String(process.env.BILLING_PROBE).slice('pydet:'.length).trim();
       const c = await db.get('cyc/compraspy/' + id);
@@ -49763,6 +49896,9 @@ async function main() {
         if (SOLOFICHAS && c.estado !== 'llego') { console.log(`El pedido ${id} está "${c.estado}": fichas sólo rehace las de un pedido que ya llegó.`); return; }
         // Sin el ticket real no se cierra (regla suya del 10/10/2026): el costo de cada ficha tiene que salir de lo PAGADO.
         if (!c.ticket) { console.log(`❌ El pedido ${id} no tiene el ticket cargado. Primero va \`compray:${c.fecha}|det=<código>*<unidades>*<precio pagado>;…|go\` con el ticket del mayorista. No escribo nada.`); return; }
+        // LA FOTO DEL TICKET TAMBIÉN (25/10/2026, él con el Sony EX15LP: "que sea obligatorio cargar el ticket de cada pedido de paraguay").
+        // La sube él desde el detalle del pedido en la web (`mlapi/pyticketfoto/<id>`); `llego` es sólo para lo que está en camino, y en camino la web también la exige siempre.
+        if (!(parseInt(c.ticketFoto) || 0)) { console.log(`❌ El pedido ${id} no tiene la FOTO del ticket. Que la suba desde el detalle del pedido en la web (📷 foto del ticket). No escribo nada.`); return; }
         const _repIts = (c.items || []).filter((x) => x && x.prodId && !x.id);
         console.log(`=== LLEGÓ EL PEDIDO ${id} (${_repIts.length ? _repIts.length + ' probado(s)' : ''}${_repIts.length && (c.items || []).some((x) => x && x.id) ? ' + ' : ''}${(c.items || []).some((x) => x && x.id) ? (c.items || []).filter((x) => x && x.id).length + ' nuevo(s)' : ''} del ${c.fecha}) ${GO ? '' : '(PRUEBA — no escribo nada)'} ===`);
         const plan = [];

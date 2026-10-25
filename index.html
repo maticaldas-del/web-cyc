@@ -1486,6 +1486,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px" id="ofi-contar-cuentas"></div>
     <div id="ofi-contar-nota" style="display:none;font-size:.63rem;color:var(--muted);margin-bottom:10px;line-height:1.5"></div>
+    <div id="ofi-buzon-card"></div>
     <div id="ofi-sinetiq-card"></div>
     <input class="search-box" id="ofi-contar-search" type="search" placeholder="Buscar producto..." oninput="renderOfiContar()" style="margin-bottom:8px">
     <label style="font-size:.66rem;color:var(--muted);display:flex;align-items:center;gap:6px;margin-bottom:10px">
@@ -2484,6 +2485,7 @@ function startApp(){
     state.promohist=d.promohist||{};
     state.claudedecide=d.claudedecide||{};
     state.ofientro=d.ofientro||{};   // 1b (16/10): cuándo entró mercadería a la oficina por última vez
+    state.buzon=d.buzon||{};   // 25/10: 📬 mensajes para Claude (los deja el chat de Chrome que arma cajas o él)
     state.sinetiq=d.sinetiq||{};   // 23/10: 🏷️ mercadería en la oficina sin etiqueta de Full (la carga Claude: ofi:…!se / sinetiq:)
     state.noconsigo=d.noconsigo||{};   // 17/10: "🚫 No lo consigo" de Pedidos (Bs As/Paulvic): sin reposición hasta que entre algo a la oficina
     // 🧪 VIGILANCIA (idea 6, 27/09/2026): la foto que deja el robot cada noche de TODAS las publicaciones que venden,
@@ -2960,7 +2962,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.59';
+const APP_VERSION='26.64';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2973,6 +2975,11 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.64',f:'25/10',h:'20:15',c:[{n:2,t:'💰 La escalera que baja después de buscar el techo ahora se llama "buscando el de más ganancia · Nº escalón": es lo que busca (el precio que más plata por día deja). El 🪜 bajando queda sólo para lo que baja por otra cosa (fin de escasez, sobra).'}]},
+  {v:'26.63',f:'25/10',h:'19:50',c:[{n:2,t:'📬 Mi oficina → Contar lo que hay: "Mensaje para Claude". El chat de Chrome que arma las cajas (o vos) deja ahí lo que no puede arreglar desde el panel y Claude lo lee en la próxima vuelta.'}]},
+  {v:'26.62',f:'25/10',h:'18:20',c:[{n:1,t:'🏷️ Productos: cada tarjeta muestra el código de la etiqueta de Full de cada cuenta (y de cada color), el que va pegado en el producto.'}]},
+  {v:'26.61',f:'25/10',h:'15:55',c:[{n:3,t:'🧾 Pedidos de Paraguay: el ticket es obligatorio y se ve en el pedido. En el detalle está "📷 foto del ticket" para subir la foto y verla; sin foto el pedido no se puede cerrar. Arriba de Pedidos sale en rojo cada pedido al que le falta la foto o los renglones del ticket.'}]},
+  {v:'26.60',f:'25/10',h:'15:20',c:[{n:2,t:'🚚 Cajas: los días de viaje se cuentan desde que la caja SALE (de lunes a viernes a las 12). Armada el fin de semana o el viernes a la tarde dice "armada · sale el lunes a las 12" y la escasez cuenta esos días de más.'},{n:2,t:'🏷️ Todo lo que se carga a la oficina queda "sin etiqueta", y cada renglón de la tarjeta tiene el botón ✅ Etiquetadas para pasarlo a listo.'}]},
   {v:'26.59',f:'24/10',h:'21:26',c:[{n:2,t:'📦 Armar caja: el ❌ no da 35% se mide sólo con la venta más alta y la competencia (el precio puesto que nadie compró ya no cuenta). El Watch 5 Lite pausado a $142.990 daba 39% y no salía en rojo; su única venta fue a $113.250 (~10%).'}]},
   {v:'26.58',f:'24/10',h:'20:12',c:[{n:2,t:'📦 Armar caja: lo que no llega al 35% en el peor caso dice ❌ no da 35%. Se mide al precio de hoy, a la venta más alta de 90 días y contra la competencia (de anoche), y manda el más alto. Al abrir el renglón se ven los tres.'}]},
   {v:'26.57',f:'24/10',h:'15:57',c:[{n:2,t:'📈 "Buscando techo · 2ª suba" cuenta las subas de precio de verdad, no los renglones anotados (Casino decía 2ª suba con una sola suba). La explicación del 📈 dice qué busca: el 🔴 techo, y que si el precio nuevo vende y deja más plata se sigue subiendo.'}]},
@@ -4382,9 +4389,9 @@ function renderSinEtiqCard(){
   const el=document.getElementById('ofi-sinetiq-card');if(!el)return;
   const filas=[];
   for(const p of state.products||[]){
-    if((p.variantes||[]).length){for(const v of p.variantes){const n=sinEtiq(p.id,v);if(n>0)filas.push({nom:p.name,v,n,ctas:_sinEtiqCtas(p,v)});}}
+    if((p.variantes||[]).length){for(const v of p.variantes){const n=sinEtiq(p.id,v);if(n>0)filas.push({pid:p.id,nom:p.name,v,n,ctas:_sinEtiqCtas(p,v)});}}
     const n0=sinEtiq(p.id,'');
-    if(n0>0&&!(p.variantes||[]).length)filas.push({nom:p.name,v:'',n:n0,ctas:_sinEtiqCtas(p,'')});
+    if(n0>0&&!(p.variantes||[]).length)filas.push({pid:p.id,nom:p.name,v:'',n:n0,ctas:_sinEtiqCtas(p,'')});
   }
   const sel=typeof ofiContarCuenta==='string'?ofiContarCuenta:'';
   const vis=sel?filas.filter(f=>f.ctas.includes(sel)):filas;
@@ -4394,10 +4401,10 @@ function renderSinEtiqCard(){
   const ord=k=>{const i=LOCS.indexOf(k.split(' · ')[0]);return i<0?99:i;};
   const ks=Object.keys(grp).sort((a,b)=>ord(a)-ord(b)||a.length-b.length||a.localeCompare(b));
   const tot=vis.reduce((a,f)=>a+f.n,0);
-  const fila=f=>`<div style="display:flex;gap:8px;align-items:baseline;padding:4px 0 4px 10px;border-top:1px solid rgba(245,158,11,.18);font-size:.74rem"><span style="flex:1;min-width:0;word-break:break-word">${escHtml(f.nom)}${f.v?` <span style="color:var(--accent2);font-weight:700">· ${escHtml(f.v)}</span>`:''}</span><b style="flex:none;font-family:'DM Mono',monospace">${fmtN(f.n)}</b></div>`;
+  const fila=f=>`<div style="display:flex;gap:8px;align-items:center;padding:4px 0 4px 10px;border-top:1px solid rgba(245,158,11,.18);font-size:.74rem"><span style="flex:1;min-width:0;word-break:break-word">${escHtml(f.nom)}${f.v?` <span style="color:var(--accent2);font-weight:700">· ${escHtml(f.v)}</span>`:''}</span><b style="flex:none;font-family:'DM Mono',monospace">${fmtN(f.n)}</b><button type="button" class="btn btn-sm" style="flex:none;white-space:nowrap;padding:3px 8px;font-size:.66rem;border-color:rgba(34,197,94,.45);color:var(--green)" title="Ya les pegaste la etiqueta de Full a estas ${f.n} u.: pasan a listas para la caja" onclick="sinEtiqListo('${f.pid}','${escHtml(String(f.v||'')).replace(/'/g,'&#39;')}')">✅ Etiquetadas</button></div>`;
   el.innerHTML=`<div style="background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.4);border-radius:12px;padding:12px 14px;margin-bottom:12px">
     <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><strong style="font-size:.82rem;color:var(--amber)">🏷️ Sin terminar / sin etiqueta${sel?' · '+escHtml(sel):''}</strong><span style="font-family:'DM Mono',monospace;font-size:.8rem;color:var(--amber)">${fmtN(tot)} u.</span></div>
-    <div style="font-size:.62rem;color:var(--muted);margin:3px 0 8px;line-height:1.45">Están en la oficina y Armar caja ya las cuenta, pero hay que etiquetarlas antes de meterlas en la caja. Cuando las etiquetes, decíselo a Claude.</div>
+    <div style="font-size:.62rem;color:var(--muted);margin:3px 0 8px;line-height:1.45">Están en la oficina y Armar caja ya las cuenta, pero hay que etiquetarlas antes de meterlas en la caja. Todo lo que se carga a la oficina entra acá; cuando las etiquetes tocá ✅ Etiquetadas.</div>
     ${ks.map(k=>{const L=grp[k].sort((a,b)=>a.nom.localeCompare(b.nom)||String(a.v).localeCompare(String(b.v)));const n=L.reduce((a,f)=>a+f.n,0);
       return `<div style="margin-top:10px"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:.78rem;font-weight:800;color:var(--text);padding-bottom:3px"><span>${escHtml(k)}</span><span style="font-family:'DM Mono',monospace;color:var(--amber)">${fmtN(n)} u.</span></div>${L.map(fila).join('')}</div>`;}).join('')}
   </div>`;
@@ -5670,6 +5677,7 @@ function renderProds(){
         <span style="${_st}">te queda ${_gan!=null?`<b style="color:${_r.margen!=null?pctColor(_r.margen):'var(--text)'}">${fmt(_gan)} · ${_r.margen!=null?Math.round(_r.margen)+'%':'—'}</b>`:'<b>—</b>'}</span>
         <span style="${_st}">${_est}</span>
         ${_r.margen!=null&&_r.margen<_M?`<span style="background:rgba(239,68,68,.14);color:var(--red);border-radius:5px;padding:1px 7px;font-weight:700;white-space:nowrap">⚠️ abajo del ${_M}%</span>`:''}
+        ${_etiqProdHTML(p)}
         <span class="prod-sum-mas" style="margin-left:auto;font-size:.66rem">ver todo ▾</span>
       </div>
       </summary>
@@ -5724,7 +5732,7 @@ function setQ(pid,loc,val,variant=''){
   const _pStk=state.products.find(x=>x.id===pid);
   const _totalBefore=_pStk?stockOf(_pStk):0;
   state.inventory[k]=nv;_invPending[k]=nv;
-  if(loc===OFI&&nv>old)_ofiEntro(invKey(pid,OFI),0,1);
+  if(loc===OFI&&nv>old){_ofiEntro(invKey(pid,OFI),0,1);sinEtiqSumar(pid,variant,nv-old);}
   // Si es variante, recalcular y actualizar la clave de producto (suma de todas las variantes)
   if(variant){
     const p=state.products.find(x=>x.id===pid);
@@ -7614,6 +7622,7 @@ function setOfiContarCuenta(c){ofiContarCuenta=(ofiContarCuenta===c?'':c);render
 function renderOfiContar(){
   const cont=document.getElementById('ofi-contar-list');if(!cont)return;
   try{renderSinEtiqCard();}catch(e){console.warn('sinetiq',e);}
+  try{renderBuzonCard();}catch(e){console.warn('buzon',e);}
   const fcc=document.getElementById('ofi-contar-cuentas');
   if(fcc)fcc.innerHTML=`<button class="pf-btn${ofiContarCuenta===''?' active-all':''}" onclick="setOfiContarCuenta('')">Todas</button>`
     +LOCS.map(l=>`<button class="pf-btn${ofiContarCuenta===l?' active-all':''}" onclick="setOfiContarCuenta('${l}')">${l}</button>`).join('');
@@ -7812,6 +7821,52 @@ function _ofiEntro(key,antes,ahora){
   const pid=String(key).slice(0,i);(state.ofientro=state.ofientro||{})[pid]=Date.now();
   if(db)db.ref('cyc/ofientro/'+pid).set(Date.now()).catch(()=>{});
 }
+// 📬 BUZÓN PARA CLAUDE (25/10/2026, eligió la 15a: "cómo se comunica el chat de Chrome que arma cajas"). Lo que el chat (o él) no
+// puede resolver solo desde el panel lo deja escrito acá: `cyc/buzon/<ts>` = {t: texto, ts, leido}. Claude lo lee en cada vuelta con
+// el comando `buzon` y lo marca leído con `buzon:leido=<ts>[,<ts>…];go`. Los mensajes no llevan datos de compradores.
+async function buzonEnviar(){
+  const el=document.getElementById('buzon-txt');if(!el)return;const t=String(el.value||'').trim();if(!t){el.focus();return;}
+  if(t.length>2000){toast('Muy largo: hasta 2000 letras','err');return;}
+  const ts=Date.now();
+  try{await fbSet('buzon/'+ts,{t,ts});}catch(e){toast('⚠️ No se mandó: '+((e&&(e.message||e.code))||'error'),'err',6000);return;}
+  (state.buzon=state.buzon||{})[ts]={t,ts};el.value='';toast('📬 Mensaje dejado para Claude','ok',2500);renderBuzonCard();
+}
+function renderBuzonCard(){
+  const el=document.getElementById('ofi-buzon-card');if(!el)return;
+  const sin=Object.values(state.buzon||{}).filter(x=>x&&!x.leido).sort((a,b)=>(a.ts||0)-(b.ts||0));
+  // Lo que se está escribiendo no se pierde si el panel se redibuja (llega un dato nuevo mientras se escribe).
+  const _ta=document.getElementById('buzon-txt'),_v=_ta?_ta.value:'',_foc=_ta&&document.activeElement===_ta,_ab=el.querySelector('details')?.open;
+  el.innerHTML=`<details style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:10px 14px;margin-bottom:12px"${sin.length||_ab||_v?' open':''}>
+    <summary style="cursor:pointer;font-size:.8rem;font-weight:700">📬 Mensaje para Claude${sin.length?` <span style="color:var(--amber);font-weight:400">· ${sin.length} sin leer</span>`:''}</summary>
+    <div style="font-size:.62rem;color:var(--muted);margin:6px 0;line-height:1.45">Lo que no se puede arreglar desde el panel (un producto que no aparece, un código que no coincide, algo raro en una caja). Claude lo lee en la próxima vuelta.</div>
+    ${sin.map(x=>`<div style="font-size:.7rem;padding:4px 0;border-top:1px solid var(--border)"><span style="color:var(--muted)">${new Date(x.ts).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span> · ${_esc(x.t)}</div>`).join('')}
+    <textarea id="buzon-txt" rows="2" maxlength="2000" placeholder="Escribí acá…" style="width:100%;box-sizing:border-box;margin-top:6px;font-size:.74rem"></textarea>
+    <button type="button" class="btn btn-sm" style="margin-top:6px" onclick="buzonEnviar()">📬 Dejar mensaje</button>
+  </details>`;
+  if(_v){const t=document.getElementById('buzon-txt');if(t){t.value=_v;if(_foc)t.focus();}}
+}
+// SIEMPRE A ETIQUETAR (25/10/2026, él: "al cargar unidades a mi oficina, que siempre salgan como a etiquetar"): todo lo que SUBE
+// la oficina (sumar, contar más, Llegó) se suma también a `cyc/sinetiq`, salvo una devolución (`entra:false`, deshacer una caja:
+// esas ya estaban etiquetadas). Con transacción: dos aparatos sumando a la vez no se pisan. El robot hace lo mismo en `ofi:`.
+async function sinEtiqSumar(pid,variante,n){
+  n=Math.round(Number(n)||0);if(!pid||!n)return;
+  const sub=variante?'v/'+sid(String(variante)):'t';
+  const r=(state.sinetiq=state.sinetiq||{})[pid]=(state.sinetiq[pid]||{});
+  const loc=x=>Math.max(0,(parseInt(x)||0)+n);
+  if(variante){r.v=r.v||{};r.v[sid(String(variante))]=loc(r.v[sid(String(variante))]);}else r.t=loc(r.t);
+  if(db){try{await db.ref('cyc/sinetiq/'+pid+'/'+sub).transaction(v=>loc(v)||null);await db.ref('cyc/sinetiq/'+pid+'/ts').set(Date.now());}catch(e){console.warn('sinetiq',e);}}
+  try{renderSinEtiqCard();}catch(_){}
+}
+// ✅ YA LO ETIQUETÉ (25/10/2026, él: "que haya un botón para que pasen a etiquetadas, ya que el chat en local imprime las etiquetas
+// y quiere poner que ese producto ya se etiquetó y no tiene forma de hacerlo"). Pone en 0 lo sin etiqueta de ESE renglón.
+async function sinEtiqListo(pid,variante){
+  const r=(state.sinetiq||{})[pid];if(r){if(variante){if(r.v)delete r.v[sid(String(variante))];}else delete r.t;}
+  if(db){try{await db.ref('cyc/sinetiq/'+pid+'/'+(variante?'v/'+sid(String(variante)):'t')).set(null);await db.ref('cyc/sinetiq/'+pid+'/ts').set(Date.now());}
+    catch(e){toast('⚠️ No se guardó: '+((e&&(e.message||e.code))||'error'),'err',6000);return;}}
+  toast('🏷️ Listo: etiquetadas','ok',2500);
+  try{renderSinEtiqCard();}catch(_){}
+  try{if(typeof renderOfiContar==='function')renderOfiContar();}catch(_){}
+}
 // Mueve unidades de la oficina: con variante toca la clave de la variante y le aplica al total del
 // producto EXACTAMENTE lo que cambió la variante (así lo "sin aroma" no se toca); sin variante, el
 // total del producto.
@@ -7826,9 +7881,12 @@ async function ofiMover(pid,variante,{delta=0,fijo=null,entra=true}={}){
     // y dejaba invisibles las de los otros aromas.
     const _sv=ofiSumaVars(pid),_tot=parseInt(state.inventory[invKey(pid,OFI)])||0;
     if(_tot<_sv){await ofiTx(invKey(pid,OFI),{fijo:_sv,entra});console.warn('oficina: el total de '+pid+' estaba abajo de la suma de sus variantes ('+_tot+' < '+_sv+'), lo subí');}
+    if(entra!==false&&r.ahora>r.antes)await sinEtiqSumar(pid,variante,r.ahora-r.antes);
     return r;
   }
-  return ofiTx(invKey(pid,OFI),{delta,fijo,entra});
+  const r=await ofiTx(invKey(pid,OFI),{delta,fijo,entra});
+  if(entra!==false&&r.ahora>r.antes)await sinEtiqSumar(pid,'',r.ahora-r.antes);
+  return r;
 }
 async function ofiSumar(prodId,inputId){
   const e=document.getElementById(inputId);if(!e)return;
@@ -9036,10 +9094,31 @@ function cajasDe(e){
   const n=e.cajas||segs.length||0;
   return Array.from({length:n},(_,i)=>({n:i+1,track:segs[i]||'',items:[],recibida:false}));
 }
-function envDias(e){
+// LAS CAJAS SALEN DE LUNES A VIERNES A LAS 12 (25/10/2026, él: "si la caja se arma después del viernes al mediodía ya se
+// envía el lunes"). Los días de viaje se cuentan desde que SALE, no desde que se armó: armada un día hábil antes de las 12
+// sale ese día; si no, el próximo día hábil a las 12. La hora sale de `ts` (cuándo se cargó) si es del mismo día que `fecha`;
+// sin hora, se toma como armada a la mañana. Misma regla que `envSalidaTs` del robot (sync.mjs): si se toca una, la otra.
+function envSalidaTs(e){
   if(!e||!e.fecha)return 0;
-  const d=new Date(e.fecha+'T12:00:00');
-  return Math.max(0,Math.floor((Date.now()-d.getTime())/86400000));
+  const f=String(e.fecha).slice(0,10),ts=Number(e.ts)||0,dT=ts?new Date(ts):null;
+  const mismo=dT&&`${dT.getFullYear()}-${String(dT.getMonth()+1).padStart(2,'0')}-${String(dT.getDate()).padStart(2,'0')}`===f;
+  const d=new Date(f+'T12:00:00');if(isNaN(d))return 0;
+  const tarde=mismo&&(dT.getHours()>=12);
+  const habil=x=>x.getDay()>=1&&x.getDay()<=5;
+  if(tarde||!habil(d)){do{d.setDate(d.getDate()+1);}while(!habil(d));}
+  return d.getTime();
+}
+// Días desde que salió; NEGATIVO si todavía no salió (armada el finde: sale el lunes). La escasez lo usa así (8 - d = días
+// que faltan para que llegue).
+function envDias(e){
+  const t=envSalidaTs(e);if(!t)return 0;
+  return Math.floor((Date.now()-t)/86400000);
+}
+function envSaleTxt(e){
+  const t=envSalidaTs(e);if(!t)return '';
+  const d=new Date(t),hoy=new Date();
+  if(d.toDateString()===hoy.toDateString())return 'sale hoy a las 12';
+  return `sale el ${['domingo','lunes','martes','miércoles','jueves','viernes','sábado'][d.getDay()]} ${d.getDate()}/${d.getMonth()+1} a las 12`;
 }
 // UNA CAJA QUE LLEGÓ INCOMPLETA NO VA EN VERDE. El robot ahora la marca igual (pedido suyo del
 // 11/09/2026: "cuando el robot vea que la caja llegó que ya la marque. y luego yo me fijo si hubo
@@ -9054,7 +9133,7 @@ function estadoCaja(e,c){
   }
   const d=envDias(e);
   if(d>=ENV_ROJO_DIAS)return{color:'var(--red)',bg:'rgba(239,68,68,.14)',txt:`⚠️ ${d} días y no llegó`};
-  return{color:'var(--amber)',bg:'rgba(245,158,11,.14)',txt:d<=0?'en camino · salió hoy':`en camino · ${d} día${d===1?'':'s'}`};
+  return{color:'var(--amber)',bg:'rgba(245,158,11,.14)',txt:Date.now()<envSalidaTs(e)?`armada · ${envSaleTxt(e)}`:d<=0?'en camino · salió hoy':`en camino · ${d} día${d===1?'':'s'}`};
 }
 // CUÁNTO DE ESTE RENGLÓN DE UNA CAJA ABIERTA YA ENTRÓ A FULL (24/09/2026, opción a del paso 2).
 // Mientras ML la da de alta, lo que ya entró lo cuenta el stock de Full; si además siguiera en
@@ -9306,16 +9385,16 @@ async function delEnvioFull(id){
 // camión se mueve un poquito mientras viaja; con "menos movimiento" o modo discreto queda quieto.
 function cajaViajeHTML(e,c,uu,uEnt){
   if(!c||c.recibida)return '';
-  const d=envDias(e),lleg=typeof REPO_DIAS_DEMORA==='number'?REPO_DIAS_DEMORA:8,esc=Math.max(lleg+2,d+1);
+  const d0=envDias(e),noSalio=Date.now()<envSalidaTs(e),d=Math.max(0,d0),lleg=typeof REPO_DIAS_DEMORA==='number'?REPO_DIAS_DEMORA:8,esc=Math.max(lleg+2,d+1);
   const pos=v=>Math.max(0,Math.min(100,v/esc*100));
   const tarde=d>=ENV_ROJO_DIAS,pe=uu>0?Math.max(0,Math.min(100,uEnt/uu*100)):0;
   const faltan=Math.max(0,lleg-d);
-  const tit=`Salió ${d<=0?'hoy':'hace '+d+' día'+(d===1?'':'s')}. Una caja tarda ~${lleg} días en llegar y activarse${tarde?`; pasaron ${ENV_ROJO_DIAS} o más: mirá el seguimiento`:faltan?` (faltan ~${faltan})`:''}.${uEnt>0?` ML ya dio de alta ${uEnt} de ${uu} u.`:''}`;
+  const tit=`${noSalio?'Todavía no salió: '+envSaleTxt(e)+' (las cajas salen de lunes a viernes a las 12)':'Salió '+(d<=0?'hoy':'hace '+d+' día'+(d===1?'':'s'))}. Una caja tarda ~${lleg} días en llegar y activarse${tarde?`; pasaron ${ENV_ROJO_DIAS} o más: mirá el seguimiento`:faltan?` (faltan ~${faltan})`:''}.${uEnt>0?` ML ya dio de alta ${uEnt} de ${uu} u.`:''}`;
   return `<div class="cv" title="${tit.replace(/"/g,'&quot;')}">
     <div class="cv-ruta"><span class="cv-hecho" style="width:${pos(d).toFixed(1)}%;background:${tarde?'var(--red)':'var(--amber)'}"></span>
       <i class="cv-rojo" style="left:${pos(ENV_ROJO_DIAS).toFixed(1)}%"></i><span class="cv-meta" style="left:${pos(lleg).toFixed(1)}%">🏁</span>
       <span class="cv-cam${tarde?'':' cv-anda'}" style="left:${pos(d).toFixed(1)}%">🚚</span></div>
-    <div class="cv-et"><span>🏠 salió</span><span style="color:${tarde?'var(--red)':'var(--muted)'}">${tarde?`⚠️ ${d} días`:d<=0?'salió hoy':`día ${d} de ~${lleg}`}</span></div>
+    <div class="cv-et"><span>🏠 ${noSalio?'en la oficina':'salió'}</span><span style="color:${tarde?'var(--red)':'var(--muted)'}">${tarde?`⚠️ ${d} días`:noSalio?envSaleTxt(e):d<=0?'salió hoy':`día ${d} de ~${lleg}`}</span></div>
     ${uEnt>0?`<div class="cv-ent"><span style="width:${pe.toFixed(1)}%"></span></div><div class="cv-et"><span style="color:var(--green)">📥 entrando a Full: ${uEnt} de ${uu} u.</span></div>`:''}
   </div>`;
 }
@@ -11714,7 +11793,7 @@ function lineaPintar(prodId){
       // 🪜 BAJANDO DICE DESDE DÓNDE Y HASTA DÓNDE (v25.60, 21/10/2026, él con el Centímetro Blanco: "está bajando sin techo"). La
       // escalera sale de una prueba que no rindió: el precio probado (la raya 🚧, de `techofreno`) y el 💰 piso del que no baja.
       // Y con una raya 🚧 ya no se dice "techo: todavía no se sabe (falta probar más caro)": más caro ya se probó.
-      const _baj=Object.keys(porMlaF).map(m=>estrategiaDe(m)).find(e=>e&&e.t==='bajando');
+      const _baj=Object.keys(porMlaF).map(m=>estrategiaDe(m)).find(e=>e&&(e.t==='bajando'||e.esc));
       const _tPr=_techos.length?_techos[_techos.length-1].probado:0;
       if(_baj&&!R.sobra&&!_prueba)_prNotas.push(`<span style="color:#fbbf24;cursor:help" title="${('Bajando en escalera: '+(_tPr?'a '+fmt(_tPr)+' no rindió (raya 🚧), ':'')+'se baja de a un escalón (15% como mucho, uno cada 48 h) midiendo cada uno'+(R.best?', y nunca abajo del 💰 piso '+fmt(R.best.p)+', el precio que más plata por día dejó':'')+'.').replace(/[<>&"]/g,'')}">🪜 bajando${_tPr?' desde '+fmt(_tPr):''}${R.best?' · no baja de '+fmt(R.best.p):''}</span>`);
       else if(!R.techo&&R.best&&!R.sobra&&!_techos.length)_prNotas.push(R.best.aprox?`<span style="cursor:help" title="Para medir el techo hacen falta días con 3 o más unidades en Full y con dato de visitas.">techo: todavía pocos días para medirlo</span>`:'techo: falta probar más caro');}}
@@ -12427,7 +12506,7 @@ function rayasBarHTML(mla,o){
   const lo=Math.min(piso,hoy)*0.92,hi=Math.max(techo||piso*1.25,hoy)*1.06,pos=v=>Math.max(0,Math.min(100,(v-lo)/(hi-lo)*100));
   const xp=pos(piso),xt=techo?pos(techo):null,xh=pos(hoy);
   const donde=techo&&hoy>techo*1.005?{t:'arriba del 🔴 techo',c:'var(--red)'}:hoy<piso*0.995?{t:'abajo del 💰 piso',c:'var(--amber)'}:{t:techo?'entre el piso y el techo':'arriba del piso (techo todavía sin medir)',c:'var(--green)'};
-  let probando=false;try{const s=estrategiaDe(mla);probando=!!(s&&(s.t==='techo'||s.t==='bajando'));}catch(_){}
+  let probando=false;try{const s=estrategiaDe(mla);probando=!!(s&&(s.t==='techo'||s.t==='bajando'||s.esc));}catch(_){}
   const tit=`Precio de hoy ${fmt(hoy)}: ${donde.t}. 💰 Piso ${fmt(piso)} (el precio que más plata por día dejó)${techo?` · 🔴 techo ${fmt(techo)} (más caro ya no rindió, ${r.seg?r.seg+'% seguro':'95%'})`:' · 🔴 techo: falta probar más caro'}. Las mismas rayas de la línea de tiempo, medidas anoche.`;
   const barra=`<span class="rb-bar" style="width:${o.ancho||'100%'}"><span class="rb-ok" style="left:${xp.toFixed(1)}%;right:${xt!=null?(100-xt).toFixed(1):'0'}%"></span><i class="rb-p" style="left:${xp.toFixed(1)}%"></i>${xt!=null?`<i class="rb-t" style="left:${xt.toFixed(1)}%"></i>`:''}<b class="rb-h${probando?' rb-prueba':''}" style="left:${xh.toFixed(1)}%;background:${donde.c}"></b></span>`;
   if(o.corto)return `<div class="rb rb-corto" title="${tit.replace(/"/g,'&quot;')}">${barra}</div>`;
@@ -12598,7 +12677,14 @@ function estrategiaDe(mla,ts,_g){
   // que empezó la racha hasta este momento.
   if(best.ts){const ant=hs.filter(x=>x.ts<=best.ts);if(best.t==='techo'||best.t==='escasez'){let ini=best.ts;for(const x of ant){if(x.t!==best.t)break;ini=x.ts;}
       best.n=Object.values(state.claudecambios||{}).filter(c=>c&&c.mla===mla&&Number(c.a)>Number(c.de)&&Number(c.ts)>=ini-10*60e3&&Number(c.ts)<=t+60e3).length;}
-    const prev=ant.find(x=>x.t!==best.t);if(prev&&prev.t!=='sindecidir')best.de=prev.t;}
+    const prev=ant.find(x=>x.t!==best.t);if(prev&&prev.t!=='sindecidir')best.de=prev.t;
+    // 💰 LA ESCALERA DESPUÉS DEL TECHO ES "BUSCANDO EL DE MÁS GANANCIA" (25/10/2026, él: "para mí tiene que ser prioridad buscar techo,
+    // segundo, buscar el precio que más ganancia da (siempre sacando que está sacando stock). veo mucho escalera (que está bien, pero la
+    // estrategia es buscar el mejor precio por ganancia CON escalera)"). Un 🪜 que viene de 📈/🏔️/💰 se muestra 💰 con su escalón (las
+    // bajas de precio de verdad desde que arrancó la escalera). El 🪜 que viene de escasez o sobra sigue siendo 🪜.
+    if(best.t==='bajando'&&prev&&['techo','techook','punto'].includes(prev.t)){let ini=best.ts;for(const x of ant){if(x.t!=='bajando')break;ini=x.ts;}
+      const nB=Object.values(state.claudecambios||{}).filter(c=>c&&c.mla===mla&&Number(c.a)<Number(c.de)&&Number(c.ts)>=ini-10*60e3&&Number(c.ts)<=t+60e3).length;
+      best={...best,t:'punto',esc:true,n:nB,de:prev.t};}}
   if(best.t==='promo'){if(String(_promoTipoEn(mla,t)||'').toUpperCase()==='PRICE_DISCOUNT')best={...best,t:'descuento'};}
   return best;
 }
@@ -12615,8 +12701,8 @@ function _promoTipoEn(mla,ts){const t=Number(ts)||Date.now();const H=(state.prom
   const pc=(state.promoclaude||{})[mla];if(!pc)return null;const pt=Number(pc.ts||pc.desde)||0;if(pt&&pt>t+60e3)return null;return pc.tipo||null;}
 function estrategiaChip(e){if(!e)return'';const u=ESTRATEGIA_UI[e.t];if(!u)return'';const d=e.ts?new Date(e.ts).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}):'';
   const de=e.de&&ESTRATEGIA_UI[e.de]?ESTRATEGIA_UI[e.de]:null;
-  const tit=(u[3]+(e.n>1?(e.t==='escasez'?' Es el escalón n.º '+e.n+' seguido de escasez.':' Es la suba n.º '+e.n+' seguida buscando el techo.'):'')+(de?' Venía de '+de[0]+' '+de[1]+'.':'')+(e.m?' · '+e.m:'')+(d?' · desde el '+d:'')).replace(/"/g,'&quot;');
-  return ` <span class="est-chip" title="${tit}" style="--ec:${u[2]};padding:1px 6px;border-radius:4px;border:1px solid color-mix(in srgb,${u[2]} 33%,transparent);background:color-mix(in srgb,${u[2]} 12%,transparent);font-size:.62rem">${u[0]} ${u[1]}${e.n>1?' · '+e.n+(e.t==='escasez'?'º escalón':'ª suba'):''}${de?' <span style="opacity:.7">· de '+de[0]+'</span>':''}</span>`;}
+  const tit=(u[3]+(e.esc?' Ya se buscó el techo: baja en escalera midiendo cada escalón, hasta encontrar el precio que más plata por día deja'+(e.n>0?' (escalón n.º '+e.n+')':'')+'.':e.n>1?(e.t==='escasez'?' Es el escalón n.º '+e.n+' seguido de escasez.':' Es la suba n.º '+e.n+' seguida buscando el techo.'):'')+(de?' Venía de '+de[0]+' '+de[1]+'.':'')+(e.m?' · '+e.m:'')+(d?' · desde el '+d:'')).replace(/"/g,'&quot;');
+  return ` <span class="est-chip" title="${tit}" style="--ec:${u[2]};padding:1px 6px;border-radius:4px;border:1px solid color-mix(in srgb,${u[2]} 33%,transparent);background:color-mix(in srgb,${u[2]} 12%,transparent);font-size:.62rem">${u[0]} ${u[1]}${e.n>1||(e.esc&&e.n>0)?' · '+e.n+(e.t==='escasez'||e.esc?'º escalón':'ª suba'):''}${de?' <span style="opacity:.7">· de '+de[0]+'</span>':''}</span>`;}
 // 21/10/2026, él: "quiero que en la tarjeta de venta aparezca que fue analizada por el robot y el nivel de esfuerzo utilizado, si
 // no hizo ningún cambio y todo estaba correcto que aparezca como las cuotas transparente. si hubo algún cambio poner el color del
 // cambio relacionado a la estrategia que se tomó y al poner el cursor arriba que explique lo sucedido y qué resolución se tomó".
@@ -16646,6 +16732,7 @@ async function _pyPedidoLlego(id){
   // EL TICKET ES OBLIGATORIO PARA CERRARLO (10/10/2026, regla suya): sin el ticket real del mayorista, el costo de
   // cada ficha saldría del precio de la web y no del pagado (casi siempre hay descuento, distinto en cada producto).
   if(!c.ticket){alert(`Falta el ticket de este pedido (${c.fecha}).\n\nPasáselo a Claude por el chat: carga lo que pagaste renglón por renglón y ahí se puede cerrar. Hasta entonces sigue "en camino".`);return;}
+  if(pyTicketEstado(c).faltaFoto){alert(`Falta la FOTO del ticket de este pedido (${c.fecha}).\n\nAbrí el pedido y tocá 📷 subir en "foto del ticket". Hasta entonces sigue "en camino".`);return;}
   const _repIts=(c.items||[]).filter(x=>x&&x.prodId&&!x.id);
   if(!(c.items||[]).some(x=>x&&x.id)){
     // Reposición: los productos YA tienen ficha. No se crea nada; sólo se cierra y se recuerda
@@ -16926,7 +17013,8 @@ function pyPedidoResumenHTML(c,enCamino,dias,tarde){
   const col=enCamino?(_llT?'var(--amber)':'#38bdf8'):'var(--green)';
   const R=pyRecargoReal(c);
   const rec=R.r?`<span style="color:${(R.r-1)*100>(RECARGO_PY-1)*100+0.05?'var(--amber)':'var(--green)'}">+${((R.r-1)*100).toFixed(1).replace('.',',')}%</span> recargo`:`<span title="Faltan gastos: ${R.falta.join(', ').replace(/"/g,'&quot;')}">+${Math.round((RECARGO_PY-1)*100)}% estimado</span>`;
-  const tk=c.ticket?(()=>{const w=Number(c.ticket.usdWeb)||0,d=w-(Number(c.ticket.usdPagado)||0);return d>0.004&&w>0?` · ticket −${(d/w*100).toFixed(1).replace('.',',')}%`:'';})():(c.estado==='camino'?' · <b style="color:var(--red)">falta ticket</b>':'');
+  const tk=c.ticket?(()=>{const w=Number(c.ticket.usdWeb)||0,d=w-(Number(c.ticket.usdPagado)||0);return d>0.004&&w>0?` · ticket −${(d/w*100).toFixed(1).replace('.',',')}%`:'';})():(pyTicketEstado(c).faltaReng?' · <b style="color:var(--red)">falta ticket</b>':'');
+  const tkF=pyTicketEstado(c).faltaFoto?' · <b style="color:var(--red)">falta foto del ticket</b>':'';
   const usd=(Math.round(pyBaseUSD(c)*(R.r||RECARGO_PY)*100)/100).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
   return `<div style="min-width:0">
       <div style="font-size:.95rem;font-weight:800;color:var(--text)">${pedNumTag(c,'margin-right:6px')}${dm(c.fecha)}</div>
@@ -16936,9 +17024,72 @@ function pyPedidoResumenHTML(c,enCamino,dias,tarde){
     </div>
     <div style="margin-left:auto;text-align:right">
       <div style="font-size:1.05rem;font-weight:800;color:var(--text);white-space:nowrap" title="Lo que te salió el pedido puesto en la oficina: la factura más todos los gastos${R.r?'':' (con el recargo estimado: faltan gastos)'}">US$ ${usd}</div>
-      <div style="font-size:.62rem;color:var(--muted);margin-top:2px;white-space:nowrap">${rec}${tk}</div>
+      <div style="font-size:.62rem;color:var(--muted);margin-top:2px;white-space:nowrap">${rec}${tk}${tkF}</div>
     </div>
     <span style="font-size:.7rem;color:var(--muted);margin-left:4px">▾</span>`;
+}
+// 🧾 EL TICKET DE CADA PEDIDO DE PARAGUAY, OBLIGATORIO Y A LA VISTA (25/10/2026, él con el Sony EX15LP que faltó: "no sabemos si no
+// lo mandaron o si no lo cobraron. a partir de ahora que sea obligatorio cargar el ticket de cada pedido de paraguay y que el ticket se vea
+// en el detalle del pedido. si el ticket no está que aparezca en rojo avisando, como cuando faltan cargar gastos"). Dos cosas:
+//  · los RENGLONES (`c.ticket`, los carga Claude con `compray:…|det=`), que ya eran obligatorios para cerrar desde el 10/10;
+//  · la FOTO del ticket: se sube desde el detalle del pedido (📷) y queda en `mlapi/pyticketfoto/<id>/<ts>` (fuera de `cyc/`: la web lee
+//    `cyc` entero y las fotos pesan; NUNCA al repo: es un ticket del mayorista). En `cyc/compraspy/<id>/ticketFoto` sólo va cuántas hay.
+// Se exige la foto a los pedidos desde PY_TICKET_FOTO_DESDE y a todo lo que está en camino; los ya llegados de antes la pueden subir igual, pero no salen en rojo.
+const PY_TICKET_FOTO_DESDE='2026-10-25';
+function pyTicketEstado(c){
+  const reng=!!(c&&c.ticket),foto=(parseInt(c&&c.ticketFoto)||0)>0,exige=String(c&&c.fecha||'')>=PY_TICKET_FOTO_DESDE||(c&&c.estado==='camino');
+  const faltaReng=!reng&&(c&&c.estado==='camino'||exige),faltaFoto=exige&&!foto;
+  return{reng,foto,exige,faltaReng,faltaFoto,falta:faltaReng||faltaFoto};
+}
+function pyTicketsFaltanHTML(lista){
+  const f=(lista||[]).filter(c=>pyTicketEstado(c).falta);if(!f.length)return '';
+  const dm=x=>{const m=String(x||'').match(/^\d{4}-(\d{2})-(\d{2})/);return m?m[2]+'/'+m[1]:(x||'—');};
+  return `<div style="background:var(--surface);border:1px solid var(--red);border-radius:var(--r);padding:12px 14px;margin-bottom:12px">
+    <div style="font-size:.84rem;font-weight:700;color:var(--red);margin-bottom:6px">❌ Falta el ticket de ${f.length} pedido${f.length>1?'s':''}</div>
+    <div style="font-size:.62rem;color:var(--muted);line-height:1.5;margin-bottom:6px">Sin el ticket no se sabe si algo que no llegó lo cobraron o no. Subí la foto acá (📷) y pasame el ticket por el chat para cargar lo que pagaste renglón por renglón.</div>
+    ${f.map(c=>{const t=pyTicketEstado(c);return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 0;border-top:1px solid var(--border);font-size:.74rem">
+      <span style="flex:1;min-width:140px">${pedNumTag(c,'margin-right:6px')}<b>${dm(c.fecha)}</b> <span style="color:var(--muted)">· ${c.estado==='camino'?'en camino':'llegó'}</span></span>
+      <span style="color:var(--red);font-size:.68rem">${[t.faltaFoto?'falta la foto':'',t.faltaReng?'faltan los renglones':''].filter(Boolean).join(' · ')}</span>
+      ${t.faltaFoto?`<button type="button" class="btn btn-sm" style="font-size:.64rem;padding:4px 9px" onclick="pyTicketSubir('${c.id}')">📷 Subir foto</button>`:''}
+    </div>`;}).join('')}
+  </div>`;
+}
+// La foto se achica en el teléfono antes de subirla (1600 px de lado, JPEG): un ticket se lee igual y pesa ~200 KB en vez de 4 MB.
+function _pyTicketAchicar(file){
+  return new Promise((res,rej)=>{const fr=new FileReader();fr.onerror=()=>rej(new Error('no pude leer la foto'));
+    fr.onload=()=>{const im=new Image();im.onerror=()=>rej(new Error('la foto no se abre'));
+      im.onload=()=>{let w=im.naturalWidth,h=im.naturalHeight;const M=1600,k=Math.min(1,M/Math.max(w,h));w=Math.round(w*k);h=Math.round(h*k);
+        const cv=document.createElement('canvas');cv.width=w;cv.height=h;cv.getContext('2d').drawImage(im,0,0,w,h);
+        let q=0.75,u=cv.toDataURL('image/jpeg',q);while(u.length>900000&&q>0.35){q-=0.1;u=cv.toDataURL('image/jpeg',q);}res(u);};
+      im.src=fr.result;};fr.readAsDataURL(file);});
+}
+function pyTicketSubir(id){
+  const inp=document.createElement('input');inp.type='file';inp.accept='image/*';inp.multiple=true;
+  inp.onchange=async()=>{
+    const fs=[...(inp.files||[])];if(!fs.length)return;
+    if(!db){toast('Sin conexión a la base: no se pudo subir','err');return;}
+    let n=0;
+    for(const f of fs){try{const img=await _pyTicketAchicar(f);const ts=Date.now()+n;
+      await db.ref('mlapi/pyticketfoto/'+id+'/'+ts).set({img,ts});n++;}catch(e){toast('⚠️ No se subió una foto: '+((e&&(e.message||e.code))||'error'),'err',6000);}}
+    if(!n)return;
+    try{const sn=await db.ref('mlapi/pyticketfoto/'+id).once('value');const tot=Object.keys(sn.val()||{}).length;
+      await fbSet('compraspy/'+id+'/ticketFoto',tot);state.compraspy[id]={...(state.compraspy[id]||{}),ticketFoto:tot};}
+    catch(e){toast('⚠️ La foto se subió pero no quedó anotada: '+((e&&(e.message||e.code))||'error'),'err',6000);return;}
+    toast(`🧾 Ticket subido (${n} foto${n>1?'s':''})`,'ok',3000);
+    try{renderPedidos();}catch(_){}
+  };
+  inp.click();
+}
+async function pyTicketVer(id){
+  if(!db)return;let fotos={};
+  try{fotos=(await db.ref('mlapi/pyticketfoto/'+id).once('value')).val()||{};}catch(e){toast('⚠️ No pude leer el ticket','err');return;}
+  const L=Object.values(fotos).filter(x=>x&&/^data:image\//.test(x.img||'')).sort((a,b)=>(a.ts||0)-(b.ts||0));
+  if(!L.length){toast('Este pedido no tiene foto del ticket','err');return;}
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.88);overflow:auto;padding:16px;display:flex;flex-direction:column;align-items:center;gap:12px';
+  ov.innerHTML=`<button type="button" class="btn" style="position:sticky;top:0;align-self:flex-end">✕ Cerrar</button>`+L.map(x=>`<img src="${x.img}" alt="ticket" style="max-width:100%;height:auto;border-radius:8px;background:#fff">`).join('');
+  ov.addEventListener('click',e=>{if(e.target===ov||e.target.tagName==='BUTTON')ov.remove();});
+  document.body.appendChild(ov);
 }
 // La tarjeta de un pedido, la misma en las dos pantallas: fondo más claro, borde y una barra de color a la izquierda.
 function pyPedidoTarjeta(c,enCamino){
@@ -16964,6 +17115,8 @@ function pyPedidoDetalleHTML(c){
         <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">La plata</div>
         ${c.ticket?(()=>{const w=Number(c.ticket.usdWeb)||0,pg=Number(c.ticket.usdPagado)||0,d=w-pg;return fila('🧾 ticket','<b style="color:var(--green)">cargado</b>','El ticket real del mayorista, renglón por renglón. Cada producto guarda lo que se pagó y lo que decía la web.')+fila('precio de la web',fmtUS2(w))+fila('pagado (ticket)',fmtUS2(pg))+fila('descuento',`<b style="color:${d>0?'var(--green)':d<0?'var(--red)':'var(--muted)'}">${d>0?'−':d<0?'+':''}${fmtUS2(Math.abs(d))}${w>0?' ('+Math.abs(d/w*100).toFixed(1).replace('.',',')+'%)':''}</b>`,'Lo que pagaste de menos (o de más) contra el precio de la web. Producto por producto, abajo en La mercadería.');})()
           :fila('🧾 ticket','<b style="color:var(--red)">falta</b>','Sin el ticket real el pedido no se puede cerrar: pasáselo a Claude por el chat.')}
+        ${(()=>{const t=pyTicketEstado(c),n=parseInt(c.ticketFoto)||0;
+          return fila('📷 foto del ticket',`${n?`<button type="button" class="vbtn" style="font-size:.62rem;padding:1px 7px" onclick="pyTicketVer('${c.id}')">ver${n>1?' ('+n+')':''}</button> `:`<b style="color:${t.faltaFoto?'var(--red)':'var(--muted)'}">${t.faltaFoto?'falta':'no hay'}</b> `}<button type="button" class="vbtn" style="font-size:.62rem;padding:1px 7px" onclick="pyTicketSubir('${c.id}')">${n?'+ otra':'subir'}</button>`,'La foto del ticket del mayorista. Si algo no llega, con la foto se ve si lo cobraron. Es obligatoria para cerrar el pedido (los ya llegados antes del '+PY_TICKET_FOTO_DESDE.split('-').reverse().join('/')+' no la piden).');})()}
         ${fila('mercadería cruda',fmtUS2(pyBaseUSD(c)),'El precio de comprasparaguay, sin el recargo.')}
         ${fila('con el '+(pyRecargoReal(c).r?((pyRecargoReal(c).r-1)*100).toFixed(1)+'% real':Math.round((RECARGO_PY-1)*100)+'% estimado'),fmtUS2(puesto),'Incluye comprar los dólares, el correo y el que despacha. Con todos los gastos cargados es el recargo REAL de este pedido; si no, el estimado.')}
         ${tc?fila('en pesos',fmt(Math.round(puesto*tc))+' <span style="color:var(--muted);font-size:.9em">· dólar '+fmt(Math.round(tc))+'</span>','Con el dólar del DÍA del pedido, no el de hoy: lo que compraste a un precio no cambia solo.'):fila('en pesos','<span style="color:var(--amber)">no había dólar cargado ese día</span>')}
@@ -17004,7 +17157,7 @@ function pyEnCaminoHTML(tipo){
   const llegados=todas.filter(c=>c.estado!=='camino').slice(0,6);
   if(!camino.length&&!llegados.length)return '';
   const tarjeta=(c,enCamino)=>pyPedidoTarjeta(c,enCamino);
-  return `<div style="margin:14px 0 4px">
+  return `<div style="margin:14px 0 4px">${pyTicketsFaltanHTML(todas)}
     ${camino.length?`<div style="font-size:.7rem;font-weight:700;margin-bottom:6px">🚚 ${tipo==='repo'?'Reposición en camino':'Pedidos en camino'} <span style="font-weight:400;color:var(--muted);font-size:.9em">· tocá uno para ver cómo fue</span></div>
       ${camino.map(c=>tarjeta(c,true)).join('')}`:''}
     ${llegados.length?`<details style="margin-top:6px"><summary style="cursor:pointer;font-size:.64rem;color:var(--muted)">📦 Pedidos que ya llegaron o de historial (${llegados.length})</summary>
@@ -18957,6 +19110,22 @@ function fullRecoHTML(prodId,cuenta,variante,mandar){
   else if(mandar>0&&r.tipo!=='REPLENISH')aviso='ML dice que no hace falta reponer: mirá el ritmo antes de cerrar la caja.';
   const barras=sem.length?`<span style="display:inline-flex;gap:2px;align-items:flex-end;height:14px;margin-left:6px;vertical-align:middle" title="Semanas según ML (de la más vieja a la última): la barra son las vendidas, el rojo abajo los días sin stock">${sem.map(x=>{const u=Number(x&&x[0])||0,d=Number(x&&x[1])||0,mx=Math.max(1,...sem.map(y=>Number(y&&y[0])||0));return `<span style="display:inline-flex;flex-direction:column;justify-content:flex-end;width:5px;height:14px"><span style="height:${Math.max(1,Math.round(u/mx*12))}px;background:var(--accent2);opacity:.8"></span><span style="height:${d?2:0}px;background:var(--red)"></span></span>`;}).join('')}</span>`:'';
   return `<div style="font-size:.64rem;color:${col};margin:3px 0 0 2px;line-height:1.45">📦 ${reco}${barras}${sinSt?` · <span style="color:var(--red)">${sinSt} días sin stock en 6 semanas según ML</span>`:''}${r.viejo?' <span style="color:var(--amber)">(dato de hace '+Math.floor((Date.now()-r.ts)/86400000)+' d)</span>':''}${aviso?`<div style="color:var(--amber)">⚠️ ${aviso}</div>`:''}</div>`;
+}
+// 🏷️ EL CÓDIGO DE ETIQUETA DE FULL EN LA TARJETA DEL PRODUCTO (25/10/2026, él con los Separadores de dedos: "poner código de ml de
+// envío full"). Es el `inventory_id` que guarda el robot en `cyc/mllinks/<MLA>/inv` (por color en `invVar`): uno por cuenta (y por
+// color). Nunca se adivina: si no está, no se muestra. Las publicaciones cerradas no cuentan.
+function _etiqProdHTML(p){
+  const vs={};(p.variantes||[]).forEach(v=>{vs[sid(String(v))]=v;});
+  const L=[],visto=new Set();
+  Object.values(state.mllinks||{}).forEach(e=>{
+    if(!e||e.prodId!==p.id||(e.status||'')==='closed')return;
+    const add=(cod,col)=>{if(!cod)return;const k=e.cuenta+'|'+cod;if(visto.has(k))return;visto.add(k);L.push({cta:e.cuenta||'?',cod:String(cod),col});};
+    if(e.invVar&&typeof e.invVar==='object')Object.entries(e.invVar).forEach(([k,c])=>add(c,vs[k]||k.replace(/_/g,' ')));
+    add(e.inv,'');
+  });
+  if(!L.length)return '';
+  L.sort((a,b)=>LOCS.indexOf(a.cta)-LOCS.indexOf(b.cta)||String(a.col).localeCompare(String(b.col)));
+  return L.map(x=>`<span style="${'display:inline-flex;align-items:baseline;gap:5px;white-space:nowrap'}" title="Código de la etiqueta de Full de ${_esc(x.cta)}${x.col?' · '+_esc(x.col):''} (el que va pegado en el producto; no es el número de la publicación)">🏷️ ${_esc(x.cta)}${x.col?' · '+_esc(x.col):''} <b style="color:var(--text);font-family:'DM Mono',monospace;user-select:all">${_esc(x.cod)}</b></span>`).join('');
 }
 function etiquetaFullDe(prodId,cuenta,variante){
   const e=pubDeVariante(prodId,cuenta,variante,(x)=>(variante&&x.invVar&&x.invVar[sid(variante)])||x.inv);
@@ -22103,7 +22272,7 @@ function renderPedidos(){
       ${_tab('hechos',`🧾 Pedido${(()=>{const n=pyArmadoFilas().length+pedNuevos(candList().filter(candEnArmado).filter(c=>candEnPedido(c)!=='viajando')).filas.length;return n?' ('+n+' cargados)':'';})()}`,'El pedido del momento (probados + nuevos juntos, con el mensaje para Nissei) y abajo los pedidos ya hechos: en camino y llegados.')}
     </div>`+(pyVista!=='hechos'?_pyFiltrosHTML():'');
     // PROBADOS = IDÉNTICO A BS AS (01/10/2026, pedido suyo): sólo la lista de pedidos, sin canasta ni precios.
-    el.innerHTML=_tabs+(pyVista==='nuevos'?candidatosHTML():pyVista==='ambos'?el.innerHTML+candidatosHTML():pyVista==='hechos'?pedidoMomentoHTML()+`<div style="font-size:.85rem;font-weight:800;margin:10px 0 10px">Pedidos hechos <span style="color:var(--muted);font-weight:400">· ${pyCompras().length}</span></div>`+pyHechosHTML():el.innerHTML);
+    el.innerHTML=_tabs+pyTicketsFaltanHTML(pyCompras())+(pyVista==='nuevos'?candidatosHTML():pyVista==='ambos'?el.innerHTML+candidatosHTML():pyVista==='hechos'?pedidoMomentoHTML()+`<div style="font-size:.85rem;font-weight:800;margin:10px 0 10px">Pedidos hechos <span style="color:var(--muted);font-weight:400">· ${pyCompras().length}</span></div>`+pyHechosHTML():el.innerHTML);
     if(window._pycatQ&&pyVista!=='probados'&&pyVista!=='hechos')setTimeout(()=>pycatBuscar(window._pycatQ),0);   // el buscador conserva lo buscado al redibujar
   }
 }

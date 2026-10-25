@@ -92,6 +92,19 @@ if not cuentaOk: malo.append('falta la línea final "CUENTA: … ✓" (el log es
 if malo: print('⚠️ NO ARMO CAJAS: '+' · '.join(malo)); sys.exit(1)
 if any(p['ctas'] is None for p in P): print('⚠️ el log es viejo (no trae "ctas [..]"): corré pedidostodo de nuevo'); sys.exit(1)
 BAJA_ML={('p1779912655490','Invictus'),('p1779912655490','Phantom')}   # Paulvic dados de baja en ML (24/10/2026)
+# DECISIONES SUYAS FIJAS (25/10/2026): la completa de las 03:00 recalculaba todo y le pisó dos decisiones del día (Persea volvió a 0 y
+# el Watch 5 Lite volvió a 2). Lo que él decidió para un producto (y color) en una cuenta va acá y NINGUNA vuelta lo cambia:
+# (id, color o '', cuenta) → (unidades, motivo). Las unidades nunca pasan lo que hay en la oficina. Se saca de acá cuando él lo cambia.
+FIJO={
+  ('p1779912655490','Persea','Luciana'):(3,'Él 25/10: el Persea queda en Luciana y es el único perfume que vende ahí. Van las 3 de la oficina (etiquetadas JVUG50085)'),
+  ('p17833581096733','','Matias'):(0,'Él eligió la 1a del 25/10: no va a Full porque deja ~10% (su única venta fue a $113.250). Se vende por otro lado'),
+  ('p1779912656220','blanco','Ayelen'):(0,'En Ayelen no hay publicación de P47 blanco (sólo P47m Rosa), 25/10. Sin publicación de ese color no va'),
+  ('p1792787629845','','Ayelen'):(0,'25/10 él: los 2 Sony EX15LP Blanco no estaban en la oficina. No va nada hasta que aparezcan'),
+  ('p1792881565786','','Luciana'):(0,'Él 25/10: Alfaparf al local, no da 35% en ML (el catálogo que vende tiene Full a $7.990 y el kit cuesta $7.895)'),
+  ('p1792881567867','','Luciana'):(0,'Él 25/10: Alfaparf al local, no da 35% en ML (el catálogo que vende tiene Full a $7.990 y el kit cuesta $7.895)'),
+  ('p178287291398902','','Matias'):(0,'Las 2 de la oficina son blancas/celestes (él 25/10, con foto) y la publicación es la NEGRA. Van al local: en ML no llega al 35%'),
+  ('p1792881587218','','Luciana'):(0,'Él 25/10: Alfaparf al local, no da 35% en ML (el catálogo que vende tiene Full a $7.990 y el kit cuesta $7.895)'),
+}
 out=[];res=[];sin=[];amano=[];nOfi=0;largos=[]
 def txt_dias(D,por):
     return f"para {D} dias ({por}: el cupo de esa cuenta lo controla el botón del cupo)" if D==T_LARGO else "para 37 dias (30 + 7 de viaje)"
@@ -113,11 +126,17 @@ for p in P:
             if (p['id'],x['v']) in BAJA_ML:
                 out.append(dict(cab=f"caja:{p['id']}@{c}#{x['v']}",q=0,cola="ML lo dio de baja para siempre por la marca del nombre (24/10): no se manda más a Full. Lo de la oficina va al local.",
                                 cta=c,nom=f"{p['n'][:38]} · {x['v']}",gan=0,grande=p['grande'],enCero=False,dias=None)); continue
+            if (p['id'],x['v'],c) in FIJO:
+                fq,fm=FIJO[(p['id'],x['v'],c)]
+                out.append(dict(cab=f"caja:{p['id']}@{c}#{x['v']}",q=min(fq,x['casa']),cola=fm,cta=c,nom=f"{p['n'][:38]} · {x['v']}",gan=p['gan'],grande=p['grande'],enCero=False,dias=None)); continue
             D,por=dias_de(p['n'],x['s'][0],x['s'][1],x['dcs'])
             q,r,b=calc(*x['s'],x['full'],x['cam'],x['casa'],x['dcs'],D)
             out.append(dict(cab=f"caja:{p['id']}@{c}#{x['v']}",q=q,cola=f"{b} · hay {x['full']} en Full y {x['cam']} en camino · {txt_dias(D,por)} hacen falta {r*D:.0f} · en la oficina {x['casa']}",
                             cta=c,nom=f"{p['n'][:38]} · {x['v']}",gan=p['gan'],grande=p['grande'],enCero=(x['full']+x['cam'])==0,dias=((x['full']+x['cam'])/r if r>0 else None)))
             if D==T_LARGO: largos.append(f"{p['n'][:38]} · {x['v']}")
+    elif (p['id'],'',cta) in FIJO:
+        fq,fm=FIJO[(p['id'],'',cta)]
+        out.append(dict(cab=f"caja:{p['id']}@{cta}",q=min(fq,p['casa']),cola=fm,cta=cta,nom=p['n'][:38],gan=p['gan'],grande=p['grande'],enCero=False,dias=None))
     else:
         D,por=dias_de(p['n'],p['v'][0],p['v'][1],p['dcs'])
         q,r,b=calc(*p['v'],p['full'],p['cam'],p['casa'],p['dcs'],D)
