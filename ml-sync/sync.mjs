@@ -26803,6 +26803,49 @@ async function main() {
       if (sinLeer.length) console.log(`\n⚠️ sin leer: ${sinLeer.join(', ')}`);
       return;
     }
+    // BILLING_PROBE=gemelamedir (25/10/2026, CEREBRO completa paso 9: "los domingos medir las gemelas"; sólo lee). Por cada gemela
+    // (Premium o envío gratis, `gemelaDe`): días desde el alta, unidades y ganancia de la gemela, y su Clásica en el mismo tiempo
+    // antes y después del alta (hasta 60 d). Dice cuáles venden, cuáles no venden en 30+ días y cuáles le sacan a la Clásica sin sumar.
+    if (/^gemelamedir(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const links = (await db.get('cyc/mllinks')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {};
+      const ahoraG = Date.now();
+      const vts = [];
+      for (const ents of Object.values(vp)) for (const v of Object.values(ents || {})) {
+        if (!v || v.cancelada || !v.mla) continue;
+        const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (!ts || ts < ahoraG - 130 * 864e5) continue;
+        vts.push({ mla: v.mla, ts, q: Number(v.qty) || 1, g: (Number(v.neto) || 0) - (Number(v.costo) || 0) });
+      }
+      const suma = (m, t0, t1) => vts.filter((v) => v.mla === m && v.ts >= t0 && v.ts < t1).reduce((a, v) => ({ u: a.u + v.q, g: a.g + v.g }), { u: 0, g: 0 });
+      const filas = [];
+      for (const [m, e] of Object.entries(links)) {
+        if (!e || !e.gemelaDe || ['closed', 'inactive'].includes(e.status)) continue;
+        const alta = Number(e.altaTs) || 0; if (!alta) { filas.push({ m, e, sinAlta: true }); continue; }
+        const d = Math.min(60, (ahoraG - alta) / 864e5);
+        const gem = suma(m, alta, ahoraG), claD = suma(e.gemelaDe, alta, ahoraG), claA = suma(e.gemelaDe, alta - d * 864e5, alta);
+        filas.push({ m, e, d, gem, claD, claA });
+      }
+      const $g = (x) => '$' + Math.round(x).toLocaleString('es-AR');
+      const tipo = (e) => e.gemelaTipo === 'envio' ? '📦 envío' : '💳 Premium';
+      const grupos = { vende: [], nada30: [], saca: [], espera: [], sinAlta: [] };
+      for (const f of filas) {
+        if (f.sinAlta) { grupos.sinAlta.push(f); continue; }
+        if (f.gem.u > 0) { const total = f.gem.g + f.claD.g; (f.claA.g > 0 && total < f.claA.g * 0.9 && f.claD.u < f.claA.u ? grupos.saca : grupos.vende).push(f); }
+        else (f.d >= 30 ? grupos.nada30 : grupos.espera).push(f);
+      }
+      const lin = (f) => `${f.m} · ${tipo(f.e)} de ${f.e.gemelaDe} · ${f.e.cuenta || '?'} · ${String(f.e.title || '').slice(0, 38)} · ${f.d.toFixed(0)} d · gemela ${f.gem.u} u. (${$g(f.gem.g)}) · Clásica antes ${f.claA.u} u. (${$g(f.claA.g)}) → después ${f.claD.u} u. (${$g(f.claD.g)})`;
+      console.log(`=== 💳📦 GEMELAS MEDIDAS · ${filas.length} vivas · sólo lee ===`);
+      console.log(`\n── ✅ VENDEN Y SUMAN (${grupos.vende.length}) ──`); for (const f of grupos.vende) console.log(lin(f));
+      console.log(`\n── ⚠️ LE SACAN VENTAS A LA CLÁSICA SIN SUMAR PLATA (${grupos.saca.length}) · proponer sacarlas ──`); for (const f of grupos.saca) console.log(lin(f));
+      console.log(`\n── 💤 NO VENDEN EN 30+ DÍAS (${grupos.nada30.length}) · proponer sacarlas ──`); for (const f of grupos.nada30) console.log(lin(f));
+      console.log(`\n── ⏳ MENOS DE 30 DÍAS Y SIN VENTAS TODAVÍA (${grupos.espera.length}) ──`);
+      const porT = {}; for (const f of grupos.espera) { const k = tipo(f.e); porT[k] = (porT[k] || 0) + 1; }
+      console.log('   ' + Object.entries(porT).map(([k, v]) => `${k}: ${v}`).join(' · '));
+      if (grupos.sinAlta.length) console.log(`\n(${grupos.sinAlta.length} sin fecha de alta: no se pueden medir · ${grupos.sinAlta.slice(0, 10).map((f) => f.m).join(' ')})`);
+      const tg = filas.filter((f) => !f.sinAlta).reduce((a, f) => ({ u: a.u + f.gem.u, g: a.g + f.gem.g }), { u: 0, g: 0 });
+      console.log(`\nEn total las gemelas vendieron ${tg.u} u. y dejaron ${$g(tg.g)} de ganancia.`);
+      return;
+    }
     if (String(process.env.BILLING_PROBE || '').startsWith('gemela')) {
       // `gemela:todas` (21/10/2026, él: "quiero que todas las publicaciones tengan clásica y premium. puede que yo vaya creando
       // publicaciones y queden sin premium"): sin mínimo de precio, activas o pausadas, PERO SÓLO CON STOCK EN FULL (corrección suya del
