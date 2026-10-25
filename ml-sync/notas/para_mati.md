@@ -9,7 +9,7 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 ## Abiertas
 
 ### Del 25/10 (lo dejó para después)
-- **2 Sony EX15LP Blanco (Ayelen) que no aparecieron:** figuraban en la oficina (llegada del 23/10) y no estaban; él los sacó del envío #80494103 y yo de la caja en el panel (25/10). (a) sugerida: reclamarlos en el próximo pedido de Paraguay o descontarlos · (b) darlos por perdidos.
+- **2 Sony EX15LP Blanco (Ayelen) que no aparecieron:** él los sacó del envío #80494103 y yo de la caja (25/10). `pybusca:ex15`: el único pedido con EX15LP Blanco es el del 21/09 (2 u., con ticket, cobradas); en octubre no vino ninguno blanco (08/10: Azul y Violeta). La ficha del 23/10 se armó con ese pedido viejo, no con algo contado. Lo más probable: llegaron en septiembre y salieron con otro nombre (en el mismo pedido vinieron EX15AP Blanco). No hay faltante para reclamar del último pedido.
 - **Timbre de ventas:** la tarea nueva `trig_012a3LNycnpvUm55TK7y2mji` no tiene llave de API; el robot sigue tocando la vieja (apagada → "Routine is paused"). Falta su captura de Editar de la tarea nueva.
 
 ### De la completa del domingo 25/10
