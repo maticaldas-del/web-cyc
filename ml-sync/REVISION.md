@@ -792,6 +792,10 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 - **Qué chequear:** que el texto siga coincidiendo con lo que muestra la web (cartel "MANDALA YA", "📦 N cajas para mandar ya", el código
   de etiqueta en cada renglón) cada vez que se toca Armar caja o Inicio.
 
+### `pybusca:<palabras>` · un producto en todos los pedidos de Paraguay, sin precios (25/10/2026, él: "¿miraste en el ticket si estaba el Sony que falta?")
+- **Qué es:** sólo lee `cyc/compraspy`: pedido, fecha, estado, unidades, código y si tiene ticket. No imprime precios (el registro es público).
+- **Qué chequear:** que nunca salga un precio del mayorista.
+
 ### `cajaquitar:<envío>!<palabras o código>=<u>:go` · sacar de una caja en camino lo que no estaba (25/10/2026, él: "sacá los dos del pedido mandado, no los encuentro, ya lo modifiqué del envío")
 - **Qué es:** baja unidades de un renglón de una caja que va en camino (`cyc/envios_full/<id>/cajasDet`, lista entera releída) y deja
   constancia en `quitado`. No vuelven a la oficina (no existen). Tiene que agarrar UN solo renglón. Primer caso: 2 Sony EX15LP Blanco del #80494103.

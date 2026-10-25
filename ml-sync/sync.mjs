@@ -49529,6 +49529,25 @@ async function main() {
     // BILLING_PROBE=pydet:<id> (23/10/2026, SOLO LEE). El detalle guardado de un pedido de Paraguay (`cyc/compraspy/<id>`), renglón por
     // renglón en el formato de `det=` (código*unidades*pagado) con el precio de la web al lado: para cargar un ticket que faltaba hay que
     // mandar el detalle ENTERO (lo que no figura en `det=` sale del pedido), así que se arma a partir de esto.
+    // BILLING_PROBE=pybusca:<palabras con +> (25/10/2026, él: "¿miraste en el ticket si estaba el Sony que falta? puede que no lo mandaron
+    // y tampoco lo cobraron") → SOLO LEE. En TODOS los pedidos de Paraguay (`cyc/compraspy`), los renglones cuyo nombre o código tiene esas
+    // palabras: pedido, fecha, estado, unidades y si el pedido tiene ticket cargado. SIN PRECIOS (el registro es público: los tickets del
+    // mayorista no se imprimen).
+    if (/^pybusca:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _n = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+      const pals = String(process.env.BILLING_PROBE).slice('pybusca:'.length).split('+').map(_n).map((x) => x.trim()).filter(Boolean);
+      const todos = (await db.get('cyc/compraspy')) || {};
+      let n = 0;
+      for (const [id, c] of Object.entries(todos)) {
+        for (const x of (Array.isArray(c && c.items) ? c.items : [])) {
+          const t = _n((x.nom || '') + ' ' + (x.cod || ''));
+          if (!pals.every((w) => t.includes(w))) continue; n++;
+          console.log(`${id} · ${c.fecha || '?'} · ${c.estado || '?'} · ${x.u} u. · cód ${x.cod || '?'} · ${String(x.nom || '').slice(0, 60)} · ticket ${c.ticket && Object.keys(c.ticket).length ? 'cargado' : 'NO cargado'}${x.prodId ? ' · ficha ' + x.prodId : ''}${x.llego != null ? ' · llegó ' + x.llego : ''}`);
+        }
+      }
+      console.log(n ? `\n${n} renglón(es).` : 'Ningún pedido de Paraguay tiene un renglón con esas palabras.');
+      return;
+    }
     if (/^pydet:/.test(String(process.env.BILLING_PROBE || ''))) {
       const id = String(process.env.BILLING_PROBE).slice('pydet:'.length).trim();
       const c = await db.get('cyc/compraspy/' + id);
