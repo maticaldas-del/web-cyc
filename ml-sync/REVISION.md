@@ -79,6 +79,11 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
 
 ## 1 · PRECIOS (lunes)
 
+### `gemelamedir` (25/10/2026, sólo lee): medir las gemelas los domingos
+- **Qué es:** el paso 9 de la completa del domingo (CEREBRO) no tenía comando. Por cada gemela viva (Premium o envío gratis): días desde el alta, unidades y ganancia de la gemela, y la Clásica en el mismo tiempo antes y después. Agrupa: ✅ venden y suman · ⚠️ le sacan a la Clásica sin sumar · 💤 no venden en 30+ días · ⏳ menos de 30 días.
+- **Dónde vive:** `sync.mjs`, bloque `gemelamedir`, antes del de `gemela`.
+- **Qué chequear:** que las sin `altaTs` salgan aparte y no como "no venden"; que la ganancia sea neto − costo de cada venta.
+
 ### 🔔 El timbre del revisor de ventas (24/10/2026, pedido suyo: "venta a menos del 35% o 6 ventas → que entre el revisor"; "gastar menos tokens")
 - **Qué es:** el ciclo de 2 minutos (`timbreVentas`, después del aviso de venta) cuenta las compras sin revisar (posteriores a
   `mlapi/ventasvistas/hasta`) y el % de cada compra nueva (misma cuenta que `ventasraras`). Con 6+ compras o una nueva abajo del 35%
