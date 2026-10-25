@@ -8069,6 +8069,14 @@ async function altaDeNuevas(db, accounts, labels, map, index, DRY) {
     let mios;
     try { ({ mios } = await catalogoDeCuenta(acc.seller_id, tok)); }
     catch (err) { console.log(`  · ${label}: ML no me dio el catálogo — ${String(err.message || err).slice(0, 80)}`); continue; }
+    // auditoría del 25/10/2026: una publicación de esta cuenta cuyo vínculo perdió la `cuenta` (el Timer MLA1474412507 de
+    // Ayelen, activo con 89 u.) no la refrescaba nadie: no entra en `faltan` porque el vínculo existe, y la vuelta de stock
+    // recorre sólo `e.cuenta === label`. Se le devuelve la cuenta (es de este catálogo, así que es de esta cuenta).
+    const sinCuenta = mios.filter((m) => map[m] && !map[m].cuenta);
+    if (sinCuenta.length && !DRY) {
+      try { await db.patch('cyc/mllinks', Object.fromEntries(sinCuenta.map((m) => [m + '/cuenta', label]))); for (const m of sinCuenta) map[m].cuenta = label; console.log(`  🔗 ${label}: ${sinCuenta.length} vínculo(s) sin cuenta recuperado(s): ${sinCuenta.join(', ')}`); }
+      catch (eC) { console.log(`  · ${label}: no pude anotar la cuenta de ${sinCuenta.join(', ')} · ${eC.message}`); }
+    }
     const faltan = mios.filter((m) => !map[m]);
     if (!faltan.length) continue;
     for (let k = 0; k < faltan.length; k += 20) {
