@@ -45390,7 +45390,8 @@ async function main() {
     // P0 tenía que vender r0 × gan0/gan1 por día; si vendió tan poco que eso tiene menos de 5% de chance (Poisson) → 95% seguro.
     // Con `;go`: lo seguro se vuelve a anotar 🏔️ el día que se encontró (fin de la prueba de arriba) con el porqué; lo que no llega
     // pasa a 📈 buscando techo con lo que falta (el precio de la prueba lo pongo yo con `decido`).
-    if (/^techo95(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+    // 25/10/2026: `techo95;go` (como dice CLAUDE.md) caía en "comando desconocido": el regex sólo aceptaba `:` o nada.
+    if (/^techo95(:|;|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const raw = String(process.env.BILLING_PROBE).replace(/^techo95:?/, ''); const GOt = /(^|;)go$/.test(raw) && !DRY;
       const lista = raw.replace(/;?go$/, '').split(/[,;]/).map((x) => x.trim().toUpperCase()).filter((x) => /^MLA\d+$/.test(x));
       const links = (await db.get('cyc/mllinks')) || {}; const es = (await db.get('cyc/estrategia')) || {};

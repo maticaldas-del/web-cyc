@@ -1257,6 +1257,11 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
 
 ## 4 · CHOQUES Y FALLAS MUDAS (jueves · junta las viejas 4 y 5)
 
+### `techo95;go` era "comando desconocido" (25/10/2026, vuelta de las 21:22)
+- **Qué es:** CLAUDE.md dice `techo95[;go]`, pero el robot sólo reconocía `techo95` o `techo95:<MLA>`: con `;go` salía "comando desconocido" y nunca anotaba el 🏔️, así que F1 seguía frenando lo nuevo con techo ya medido (microSD Pokémon, 90% con umbral de 81% a los 15 días). Ahora acepta `techo95;go`. Revisados los otros 162 comandos con el mismo molde: ninguno más tenía la forma `;go` sin `:` documentada.
+- **Dónde vive:** `sync.mjs`, bloque `techo95`.
+- **Qué chequear:** `techo95;go` corre y anota; `techo95:<MLA>;go` sigue andando.
+
 ### 2b del informe: las 4 cuentas juntas (24/10/2026, auditoría)
 - **Qué es:** el 24/10 las 4 cuentas vendieron 19 en 24 h contra ~46/día y el informe sólo marcaba ⚠️ Adriana (cada cuenta sola no llegaba al tercio). Ahora la 2b tiene un renglón "LAS 4 JUNTAS" contra el promedio de 14 días y contra el mismo día de las 2 semanas anteriores; si cae abajo del 60% de los dos, ⚠️ y dice cuántas subas mías de las últimas 36 h hay y cuánto vendieron contra lo esperado.
 - **Dónde vive:** `sync.mjs`, `informe`, sección 2b.
