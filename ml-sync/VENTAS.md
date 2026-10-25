@@ -66,7 +66,7 @@ está en su ficha): no se rehace el análisis de la venta vieja.
    PRECIO de hoy, no la venta.
 2. **PRIMERO, LA LÍNEA DE TECHO (🔒, regla suya del 21/10, manda sobre todo lo demás).** ¿Tiene 🔴 techo al 95% (rayas) o 🏔️ de
    `techo95` (últimos 60 días)? **Si NO: la decisión es 📈 buscar techo (subir con salto grande)**, salvo sobra, sin reposición,
-   liquidando, remate o escasez. "Ya probó techo", "va volviendo al normal" o "está bien a este precio" NO alcanzan.
+   liquidando, remate, escasez o **lo que vende menos de 1 por semana** (4a/37a: no sube, queda 💰 punto, salvo llevarlo al 35% o 🔥/⏳ con stock para menos de 100 días). "Ya probó techo", "va volviendo al normal" o "está bien a este precio" NO alcanzan.
 3. **Escasez / sobra / stock / reposición.** Días de stock en Full al ritmo CON stock; ¿se corta antes de que vuelva a haber?
    (caja despachada ~8 d · oficina ~10 d · Paraguay ~16-17 d · Bs As ~1 semana + caja · sin reposición = sin fecha). ¿Le sobra
    (+90 d)? ¿Paga o va a pagar stock antiguo (120 d lo chico, 60 lo grande/Tenders)? ¿Hay unidades en la oficina para mandar?
@@ -117,7 +117,7 @@ Si dos reglas tiran para lados distintos y ninguna fila lo resuelve: no se hace 
 
 ### Techo (📈 → 🏔️)
 - **Sin línea de techo, se busca techo** (ver paso 2). Todo lo que vende sin techo conocido se prueba para arriba. Afuera: escasez,
-  sobra (+90 d), liquidando, mis promos, regalables en las 2 semanas antes de su fecha, frenadas por ML.
+  sobra (+90 d), lo que vende menos de 1 por semana (queda 💰 punto), liquidando, mis promos, regalables en las 2 semanas antes de su fecha, frenadas por ML.
 - 🔒 **Salto grande, nunca de a poco:** +30% como mínimo (mejor +40-50%). `decido` frena una suba `#techo` de menos de +30%, salvo
   frenar en $32.990 por la barrera, el techo de $650.000, o `!chico` con "EXCEPCIÓN: …" (un techo ya visto).
 - **Cada escalón se mide antes del siguiente**, por certeza (Poisson sobre la plata por día: 3 esperadas y 0 ventas = 5% de azar ·
