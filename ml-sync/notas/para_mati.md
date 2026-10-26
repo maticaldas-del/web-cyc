@@ -37,5 +37,9 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 - 1: probar UN pedido de Paraguay de ~US$1.000 · 2a y 4a: ya estaban hechos · 3a: la tabla de IIBB por provincia sale de `cargosmes` (pasada en el chat).
 - 5 Espejos y 6 Victoria's Secret parados: los miro yo y van al aviso de las 12:30 del 26/10 junto con el CyberMonday (tarea `trig_01CgU6vPK2vjhSKyDMgYAixJ`).
 
+### Del chat de compras (noche del 25 al 26/10)
+- **6 candidatos donde el catálogo de ML parece otra variante** (no los toqué, con duda no se toca): Casio A140WE-2ADF (ML gris, lista azul) · Zimaya Zukhruf (ML "Pink") · Afnan Highness V (ML "Black") · Amazfit Active A2437 (ML "Active 2 Premium 44mm") · Dior Hydra Life Crème Sorbet (ML "Intense") · Orientica Rose. (a) que los mire él con las fotos y marque ✅ o ❌ (sugerida) · (b) sacarlos.
+- 52 de la lista de precios eran claramente otro producto: marcados `svprecio:…=otro` (se buscan de nuevo). ~14 quedaron en duda (variante no confirmada): se vuelven a mirar en la próxima tanda.
+
 ## Viejas que siguen esperando (de CLAUDE.md §13)
 - Sancor (respuesta y baja de Vida Plus) · contador (recategorización, actividad, facturas entre cuentas) · costo de las dos Linternas COB de Ayelen.
