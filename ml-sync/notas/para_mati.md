@@ -26,6 +26,8 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 - **Para que sepas (todavía no se decide):** Cortapelo 4 en 1 de Ayelen (5 u.) y Panel solar (5 u.) ya están en el último escalón antes del 0%: si no venden hasta el 08/11, retirar o vender al costo antes de mediados de diciembre.
 - **Batidora Blanco:** 4 reclamos en 27 ventas ("faltan accesorios", "distinto a lo publicado"): hay que arreglar la descripción o las fotos de la publicación (lo tenés que hacer vos en ML).
 - **Paulvic Hot:** 0 ventas en 30 días con 9 en Full, aun a $14.360: mirar la publicación (fotos, título).
+- **Separador x2 MLA1474954957 (Ayelen):** ML le marca 62% de salud y no vende hace 60 días (la hermana MLA3207459664 sí vende con el mismo stock). (a) sugerida: revisarla en ML (fotos, ficha técnica, título) · (b) pausarla.
+- **Color del Centímetro MLA3112784736 (Luciana):** hoy figura Blanco, el 21/10 era el Gris, y la caja del 17/10 trae 70 Gris que ninguna publicación nombra. Si lo ves en ML, decime el color (no lo adivino): (a) Gris · (b) Blanco.
 - **Preguntas que no sé contestar seguro:** Mentonera (si tiene hueco en el mentón y las medidas de la banda) · Protector metatarso (qué es el color "Ab").
 
 ### De las vueltas del 23/10 (a la noche y a la tarde)
