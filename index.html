@@ -3104,7 +3104,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.11';
+const APP_VERSION='27.12';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3117,6 +3117,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.12',f:'26/10',h:'19:30',c:[{n:1,t:'📈 Línea de tiempo: los colores/aromas van en un desplegable; a la vista quedan sólo "Todas juntas" y el que abriste.'}]},
   {v:'27.11',f:'26/10',h:'19:24',c:[{n:1,t:'📦 Productos: cada tarjeta dice cuántas unidades hay en Full (las 4 cuentas juntas; en rojo si no hay).'}]},
   {v:'27.10',f:'26/10',h:'19:24',c:[{n:3,t:'🧠 Métricas · Cambios de precio: el número grande suma sólo los cambios con resultado claro (ganó o perdió en el juicio de Claude) y muestra aparte el costo de buscar techo. Lo que "todavía no se sabe" o "no fue el precio" (sin stock, fechas) queda afuera.'}]},
   {v:'27.09',f:'26/10',h:'19:19',c:[{n:2,t:'🧮 Métricas · La mezcla: elegís cuántos (3, 6, 12, 24 o todo) y si cada renglón es una semana, un mes o un año.'}]},
@@ -12218,7 +12219,10 @@ function lineaPintar(prodId){
          sus colores) y los botones en el MISMO renglón; los botones fijos a la derecha (no se corren al cambiar de color). En el celu, si no
          entran, los botones quedan arriba (wrap-reverse). -->
     <div style="display:flex;align-items:center;gap:6px 12px;flex-wrap:wrap-reverse">
-    <div style="font-size:.9rem;font-weight:700;line-height:1.35;overflow-wrap:anywhere;flex:1 1 260px;min-width:0">📈 ${p.name}${_vars.length>1?`<span style="display:inline-flex;gap:5px;flex-wrap:wrap;vertical-align:middle;margin-left:8px">${['',..._vars].map((v,i)=>`<button class="btn" onclick="lineaVar(_lineaVarsL[${i}],'${prodId}')" style="font-size:.62rem;padding:2px 9px;${_lineaVar===v?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}">${v||'Todas juntas'}</button>`).join('')}</span>`:''}</div>
+    <div style="font-size:.9rem;font-weight:700;line-height:1.35;overflow-wrap:anywhere;flex:1 1 260px;min-width:0">📈 ${p.name}${_vars.length>1?(()=>{   // 26/10/2026, él (con los 60 aromas de Paulvic): "que las variantes estén en un desplegable. que aparezca sólo la variante que clickee yo en la venta y todas juntas"
+      const _ch=(v,i)=>`<button class="btn" onclick="lineaVar(_lineaVarsL[${i}],'${prodId}')" style="font-size:.62rem;padding:2px 9px;${_lineaVar===v?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}">${v||'Todas juntas'}</button>`;
+      const iv=_lineaVarsL.indexOf(_lineaVar);
+      return `<span style="display:inline-flex;gap:5px;flex-wrap:wrap;align-items:center;vertical-align:middle;margin-left:8px">${_ch('',0)}${_lineaVar&&iv>0?_ch(_lineaVar,iv):''}<select onchange="if(this.value!=='')lineaVar(_lineaVarsL[+this.value],'${prodId}')" style="font-size:.62rem;padding:2px 6px;background:var(--surface2);color:var(--text);border:1px solid var(--border2);border-radius:6px;max-width:170px"><option value="">${_vars.length} variantes ▾</option>${_vars.map((v,i)=>`<option value="${i+1}"${_lineaVar===v?' selected':''}>${String(v).replace(/</g,'&lt;')}</option>`).join('')}</select></span>`;})():''}</div>
     <div class="linea-btns" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;margin-left:auto;flex:0 1 auto;max-width:100%">${_lineaFichaMlas(prodId,_lineaVar).length?`<button class="btn" onclick="lineaFichaAbrir('${prodId}',event)" style="font-size:.66rem;padding:3px 10px" title="La ficha completa de la publicación: lo que ya sabemos, cada cambio de precio y cómo le fue">📋 Ficha</button>`:''}<button class="btn" onclick="lineaTodoAbrir(event)" style="font-size:.66rem;padding:3px 10px" title="La misma línea con TODOS los productos juntos">📈 Todos</button>${btn(365)}${btn(90)}${btn(30)}${_lineaGiroBtn()}<button class="btn" onclick="document.getElementById('linea-modal').remove()" style="font-size:.7rem;padding:3px 10px">✕</button></div>
     </div>
     ${_lnAlerta}${_pubsDistintas()}

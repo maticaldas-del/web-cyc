@@ -1379,6 +1379,11 @@ es el promedio por día de cada mes (`_lnPromMes`): cada día muestra el de su m
 del gráfico se suman los días desde el 1º aunque queden antes (`_lnPreMes`). Línea de cada producto y general. Probado: sep $5.000/día,
 oct $10.000/día con ventas de prueba. Qué chequear: que el salto caiga justo el día 1 y que el número de "hoy" sea el del mes en curso.
 
+### Etapa 7 · 26/10/2026 · v27.12 · 📈 Variantes en un desplegable
+Él (Paulvic con ~60 aromas en botones): *"que las variantes estén en un desplegable. que aparezca sólo la variante que clickee yo en la venta
+y todas juntas"*. A la vista: "Todas juntas" + la elegida; las demás en un `<select>` ("N variantes ▾"). Qué chequear: abrir desde una
+venta muestra ese aroma marcado; elegir otro del desplegable cambia la línea.
+
 ### Etapa 7 · 26/10/2026 · v27.11 · 📦 Productos: unidades en Full en la tarjeta
 Él (con la tarjeta de la Waflera): *"que diga las unidades que hay en Full"*. Al lado de "precio hoy": "en Full N u." (suma de las 4
 cuentas, `getQ`; rojo en 0). Qué chequear: coincide con Full de ML de esa ficha.
