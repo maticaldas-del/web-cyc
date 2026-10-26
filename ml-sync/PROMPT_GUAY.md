@@ -73,8 +73,9 @@ renglón (fuente|proveedor|código|nombre|catálogo ML|costo), abrir https://www
    del exterior (las que dicen "compra internacional").
  · Si no hay ninguna, el último precio que muestre la página del catálogo, si lo muestra.
  · Si no hay ningún precio a la vista: va "no" (no entra).
+ · Si el catálogo de ML es OTRO producto (otro color, tamaño, versión, set): va "otro". El robot lo vuelve a buscar sin ese catálogo.
 Se carga por ml-consulta, de a 20:
-  Paraguay: svprecio:<código>=<pesos>;<código>=no;…;go
+  Paraguay: svprecio:<código>=<pesos>;<código>=no;<código>=otro;…;go
   Listas:   svprecio:lista=<proveedor>;<código>=<pesos>;…;go
 El robot lo mide en la próxima vuelta del catálogo y, si da 35%, pasa a Para probar como 🌟 sin competencia.
 

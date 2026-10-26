@@ -79,6 +79,13 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
 
 ## 1 · PRECIOS (lunes)
 
+### `ventasraras`: 💰 punto con precio probado ya cuenta como "con techo" (26/10/2026)
+- **Qué es:** en 🧭 ESTRATEGIA DE LO QUE VENDIÓ, una publicación en 💰 `punto` con su precio probado anotado en `techofreno` sale ✓ (antes
+  ⚠️ "sin estrategia con techo" y se iba al ayudante a fondo: la Lupa 90 y el Filtro de agua el 26/10, falsos avisos). 💰 punto sin precio
+  probado (lo lento que no busca techo, 4a) sigue saliendo ⚠️.
+- **Dónde vive:** `sync.mjs`, bloque 🧭 de `ventasraras` (`const bien = …`).
+- **Qué chequear:** que una 💰 punto sin `techofreno` siga apareciendo ⚠️; que la Lupa 90 (`MLA3690637828`, techofreno $7.520) salga ✓.
+
 ### VENTAS.md con la regla de "menos de 1 por semana no sube" (25/10/2026)
 - **Qué es:** el ayudante de ventas lee sólo VENTAS.md y ahí faltaba la 4a/37a: el paso 2 decía "sin línea, buscar techo" sin esa excepción. Agregada en el paso 2 y en la lista de "se busca techo".
 - **Dónde vive:** `ml-sync/VENTAS.md`.
@@ -937,6 +944,9 @@ Rutini, tag de mochila ⇒ Funko, testers ⇒ perfume en caja, Invictus ⇒ Invi
 y % en ámbar), título de la carpeta; `pycatbusca:!sinpasar` (sync.mjs) los lista con motivo y `pycatbusca:<palabra>` muestra la medición
 y el candidato. **Qué chequear:** ningún % verde en esa carpeta; cuando la pasada de Nissei traiga la foto, el robot los vuelve a medir y
 recién ahí pasan a Para probar (y a la revisión de fotos).
+- **26/10/2026 · `faltaventas` no repite lo ya mirado.** Si ML no muestra vendidas, el chat carga sólo las reseñas (`/r<n>`) y el filtro exigía vendidas para sacarlo: 71 de los 207 que cargó a la noche volvían a la lista (el Sony EX15C con 1.693 reseñas, entre ellos). Ahora con `resCarga` cargado sale. Qué chequear: `faltaventas` ya no trae los que tienen reseñas.
+- **26/10/2026 · `svprecio:<cód>=otro`** (el chat de compras dejó 66 "el catálogo de ML es otro producto" de Nissei/Elegancia y no había cómo marcarlo: volvían cada día a `faltaprecio`). Ahora `otro` pone `noEs`/`noEsCat` en `mlapi/pycat` como en las listas, el robot vuelve a buscar sin ese catálogo (`_rechazado` ya no es sólo de listas) y `faltaprecio` los saca (`listaNoEsVale`). PROMPT_GUAY lo explica. Qué chequear: que los marcados no vuelvan a salir en `faltaprecio` y que se midan contra otro catálogo.
+- **26/10/2026 · `buzon:ver=<ts>`**: muestra el mensaje entero (la lista lo corta en 600 letras; el chat de compras dejó 120 dudas en dos mensajes). Sólo lee.
 - **26/10/2026 · `faltaprecio` y `faltaventas` sin marcas prohibidas.** El texto del 24/10 para el chat de compras traía Dolce & Gabbana (prohibida) y Calvin Klein (prohibida para ML) en la lista de precios a mirar. Ahora `faltaprecio` saca las de `marcasFrenadas` y `marcasNoML` (dice cuántas sacó) y `faltaventas` las de `marcasNoML`. Además `marcaFrenadaDe` reconoce las abreviadas (`MARCA_ALIAS`: "D&G", "CK"), que Elegancia usa y se colaban también en candidatos y `publicar`. Qué chequear: que en el próximo texto no salga ninguna D&G ni CK, y que "Dior Dolce Vita" no quede frenada.
 - **26/10/2026 · rutina diaria del chat de Chrome** (él: *"podemos hacer una rutina del chat en local que haga todo eso… lo haría diario"*; eligió 1a 2a 3a 5b 6b, la 4 la tiene que entender). Qué es: `ml-sync/PROMPT_RUTINA_LOCAL.md` (cupo de Full de las 4, disponible de MP de las 4, repaso del Pedido del momento en la fila de Nissei) → un mensaje `RUTINA <fecha>` en el 📬 buzón; yo lo cargo en la vuelta (CEREBRO, paso del buzón). Qué chequear: que los números del buzón sean los de la pantalla y que no traiga datos de terceros (movimientos de MP); recordatorio del 02/11 (`trig_01TvZRbCah3SQoTCrcWTKxER`).
 - **25/10/2026 · v26.69 · 🎨 otros colores de referencia en los candidatos con aviso rojo** (él con el JBL Grip Purple a 99%: *"quizás hay otro color mucho más barato… para tener referencia del negocio del producto"*). Dónde: `correrCandidatos` (sync.mjs, antes del renglón "se vende…") sube al catálogo padre (`parent_id`) y mide cada hermano (`mlOtrosColores`, cada 3 días como mucho, sólo con 80%+, un vendedor sin Full o reparos de nombre); la web lo muestra en `candPreciosPartes` (`R.colores`). No cambia el margen. Qué chequear: el JBL Grip muestra los otros colores en la próxima medición; que no gaste de más el cupo de consultas.
