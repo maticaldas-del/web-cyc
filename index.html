@@ -3104,7 +3104,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.07';
+const APP_VERSION='27.08';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3117,6 +3117,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.08',f:'26/10',h:'18:59',c:[{n:1,t:'📈 Línea de tiempo: el nombre y los colores suben al renglón de los botones (en la PC queda un renglón menos y los gráficos tienen más lugar).'}]},
   {v:'27.07',f:'26/10',h:'18:50',c:[{n:1,t:'🙈 "Ocultar la plata" también saca la ganancia en pesos de Inicio (queda el %), lo de abajo de la tarjeta (escalera, curva, cobro) y la ganancia de la pantalla de cargando.'}]},
   {v:'27.06',f:'26/10',h:'18:48',c:[{n:2,t:'🙈 Ajustes → Apariencia: "Ocultar la plata vendida". La tarjeta de ventas de Inicio (día, mes, año) muestra las ventas y las unidades sin el facturado. Ventas x Producto queda igual. Cada aparato por su lado.'}]},
   {v:'27.05',f:'26/10',h:'18:42',c:[{n:2,t:'🧾 Pedido del momento: arriba suma el ⭐ gana × vende de todo lo cargado y la 💵 ganancia que dejaría al venderse todo.'}]},
@@ -12209,9 +12210,13 @@ function lineaPintar(prodId){
   // LA CABECERA (21/10/2026 · etapa 5): el título va en su propio renglón y los botones abajo, pegados a la derecha (y el de giro con
   // ancho fijo): elegir un color (título más largo) o cambiar "⤿ de costado"/"⤾ parada" ya no corre el ✕ ni los botones de días.
   m.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;max-width:1500px;width:100%;padding:10px 14px;margin-top:4px">
-    <!-- 26/10/2026, él: "las variantes que vayan al final del nombre del producto · los días/períodos para elegir que estén arriba de todo" -->
-    <div class="linea-btns" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end">${_lineaFichaMlas(prodId,_lineaVar).length?`<button class="btn" onclick="lineaFichaAbrir('${prodId}',event)" style="font-size:.66rem;padding:3px 10px" title="La ficha completa de la publicación: lo que ya sabemos, cada cambio de precio y cómo le fue">📋 Ficha</button>`:''}<button class="btn" onclick="lineaTodoAbrir(event)" style="font-size:.66rem;padding:3px 10px" title="La misma línea con TODOS los productos juntos">📈 Todos</button>${btn(365)}${btn(90)}${btn(30)}${_lineaGiroBtn()}<button class="btn" onclick="document.getElementById('linea-modal').remove()" style="font-size:.7rem;padding:3px 10px">✕</button></div>
-    <div style="font-size:.9rem;font-weight:700;line-height:1.35;overflow-wrap:anywhere;margin-top:6px">📈 ${p.name}${_vars.length>1?`<span style="display:inline-flex;gap:5px;flex-wrap:wrap;vertical-align:middle;margin-left:8px">${['',..._vars].map((v,i)=>`<button class="btn" onclick="lineaVar(_lineaVarsL[${i}],'${prodId}')" style="font-size:.62rem;padding:2px 9px;${_lineaVar===v?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}">${v||'Todas juntas'}</button>`).join('')}</span>`:''}</div>
+    <!-- 26/10/2026, él: "¿tenés lugar para subir más el nombre? la idea es que las métricas ocupen el mayor espacio posible": el nombre (con
+         sus colores) y los botones en el MISMO renglón; los botones fijos a la derecha (no se corren al cambiar de color). En el celu, si no
+         entran, los botones quedan arriba (wrap-reverse). -->
+    <div style="display:flex;align-items:center;gap:6px 12px;flex-wrap:wrap-reverse">
+    <div style="font-size:.9rem;font-weight:700;line-height:1.35;overflow-wrap:anywhere;flex:1 1 260px;min-width:0">📈 ${p.name}${_vars.length>1?`<span style="display:inline-flex;gap:5px;flex-wrap:wrap;vertical-align:middle;margin-left:8px">${['',..._vars].map((v,i)=>`<button class="btn" onclick="lineaVar(_lineaVarsL[${i}],'${prodId}')" style="font-size:.62rem;padding:2px 9px;${_lineaVar===v?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}">${v||'Todas juntas'}</button>`).join('')}</span>`:''}</div>
+    <div class="linea-btns" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;margin-left:auto;flex:0 1 auto;max-width:100%">${_lineaFichaMlas(prodId,_lineaVar).length?`<button class="btn" onclick="lineaFichaAbrir('${prodId}',event)" style="font-size:.66rem;padding:3px 10px" title="La ficha completa de la publicación: lo que ya sabemos, cada cambio de precio y cómo le fue">📋 Ficha</button>`:''}<button class="btn" onclick="lineaTodoAbrir(event)" style="font-size:.66rem;padding:3px 10px" title="La misma línea con TODOS los productos juntos">📈 Todos</button>${btn(365)}${btn(90)}${btn(30)}${_lineaGiroBtn()}<button class="btn" onclick="document.getElementById('linea-modal').remove()" style="font-size:.7rem;padding:3px 10px">✕</button></div>
+    </div>
     ${_lnAlerta}${_pubsDistintas()}
     <div style="font-size:.6rem;color:var(--muted);margin:0 0 4px;line-height:1.5">${_lineaRango} días · historial de stock: <span style="color:var(--green)">${dCon} d con</span> · <span style="color:var(--red)">${dSin} d sin</span> · ${dNo} d sin dato${dRem?` · ${dRem} d rematando`:''} · ${Object.keys(porMlaF).length} publicación(es)${C.fallo?' · <span style="color:var(--amber)">alguna publicación no se pudo leer</span>':''}</div>
     <div style="position:relative">
@@ -12378,8 +12383,10 @@ function lineaTodoPintar(){
   const lab=(y,t)=>`<div style="position:absolute;left:0;top:${y/(H+16)*100}%;font-size:.6rem;color:var(--muted);transform:translateY(-1px)">${t}</div>`;
   const viejo=_ltC.ts?(Date.now()-_ltC.ts)/864e5:null;
   m.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;max-width:1500px;width:100%;padding:10px 14px;margin-top:4px">
-    <div class="linea-btns" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end">${btn(365)}${btn(90)}${btn(30)}${_lineaGiroBtn()}<button class="btn" onclick="document.getElementById('linea-modal').remove()" style="font-size:.7rem;padding:3px 10px">✕</button></div>
-    <div style="font-size:.9rem;font-weight:700;line-height:1.35;margin-top:6px">📈 Todos los productos</div>
+    <div style="display:flex;align-items:center;gap:6px 12px;flex-wrap:wrap-reverse">
+    <div style="font-size:.9rem;font-weight:700;line-height:1.35;flex:1 1 200px;min-width:0">📈 Todos los productos</div>
+    <div class="linea-btns" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;margin-left:auto;flex:0 1 auto;max-width:100%">${btn(365)}${btn(90)}${btn(30)}${_lineaGiroBtn()}<button class="btn" onclick="document.getElementById('linea-modal').remove()" style="font-size:.7rem;padding:3px 10px">✕</button></div>
+    </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px;margin:6px 0 4px">${_lnCard('Vendió',`${uT.toLocaleString('es-AR')} u.`,'',`${vT.toLocaleString('es-AR')} visitas${uPT?` · <span style="color:#f97316">${uPT.toLocaleString('es-AR')} en Premium</span>`:''}${uGT?` · <span style="color:#38bdf8">${uGT.toLocaleString('es-AR')} con envío gratis</span>`:''}`)}${_lnCard('Ganancia',gT?fmt(Math.round(gT)):'—',gPct!=null&&isFinite(gPct)?pctColor(gPct):'',(gPct!=null&&isFinite(gPct)?`${gPct.toFixed(0)}% de ganancia`:'')+(gPT?` · <span style="color:#f97316">Premium ${fmt(Math.round(gPT))}</span>`:'')+(gGT?` · <span style="color:#38bdf8">envío gratis ${fmt(Math.round(gGT))}</span>`:''))}${_lnCard('Stock en Full',`${hoyR.st.toLocaleString('es-AR')} u.`,'','hoy, las 4 cuentas')}${_lnCard('Cambios de precio',`<span style="color:var(--green)">▲ ${sT}</span> <span style="color:var(--red)">▼ ${bT}</span>`,'',iIni!=null&&iFin!=null?`índice de precio ${iIni.toFixed(0)} → ${iFin.toFixed(1)}`:'')}</div>
     <div style="font-size:.6rem;color:var(--muted);margin:0 0 4px;line-height:1.5">${_ltRango} días${_ltC.fallo?` · <span style="color:var(--amber)">no pude leer la línea del robot (${_ltC.fallo}): sólo lo del panel</span>`:(!Object.keys(R).length?' · <span style="color:var(--amber)">el robot todavía no armó la línea de todos: stock, visitas y precio salen desde la próxima noche</span>':(viejo>2?` · <span style="color:var(--amber)">la línea del robot es de hace ${Math.floor(viejo)} días</span>`:''))}</div>
     <div style="position:relative">

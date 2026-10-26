@@ -1379,6 +1379,11 @@ es el promedio por día de cada mes (`_lnPromMes`): cada día muestra el de su m
 del gráfico se suman los días desde el 1º aunque queden antes (`_lnPreMes`). Línea de cada producto y general. Probado: sep $5.000/día,
 oct $10.000/día con ventas de prueba. Qué chequear: que el salto caiga justo el día 1 y que el número de "hoy" sea el del mes en curso.
 
+### Etapa 7 · 26/10/2026 · v27.08 · 📈 Línea de tiempo: nombre y botones en un renglón
+Él: *"¿tenés lugar para subir más el nombre? la idea es que las métricas ocupen el mayor espacio posible"*. Nombre + colores a la izquierda
+y botones a la derecha en el MISMO renglón (producto y 📈 Todos); `wrap-reverse`: en el celu los botones quedan arriba en dos renglones.
+Medido a 1300 y 390 px: entra todo, el ✕ a la vista. Qué chequear: elegir un color no corre los botones.
+
 ### Etapa 7 · 26/10/2026 · v27.07 · 🙈 Tampoco la ganancia
 Él: *"ganancia tampoco"*. Con `ocultaVendido()`: la ganancia de la tarjeta pasa a "+N% de ganancia", la tarjeta de abajo (escalera, curva,
 gusto, cobro) no se muestra, no rueda ningún número y el contador de "cargando" (`_ld4`) no lee `cycGanHoy` (giran las cifras sin número).
