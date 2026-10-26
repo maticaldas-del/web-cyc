@@ -2962,7 +2962,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.75';
+const APP_VERSION='26.76';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2975,6 +2975,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.76',f:'26/10',h:'13:50',c:[{n:1,t:'🧾 Pedido de Paraguay: el % de hoy de cada renglón es el del PEOR caso, con todo pagado (lo que se pagó, el recargo real y la retención de otra provincia). El de "al pedirlo" queda aclarado: web y recargo estimado.'}]},
   {v:'26.75',f:'26/10',h:'13:45',c:[{n:1,t:'🧾 Pedido de Paraguay: además del "margen medido al pedirlo" (precio de la web y recargo estimado), cada renglón dice el % de HOY con lo que se pagó y el recargo real, al precio de su publicación.'}]},
   {v:'26.74',f:'26/10',h:'13:30',c:[{n:2,t:'⏸️ Envíos a Full: botón "Pausar envío" para una caja que todavía no mandamos (no cuenta días de viaje ni la toma como que llega pronto). "Reanudar" la hace salir desde ese día, el próximo día hábil a las 12.'}]},
   {v:'26.73',f:'26/10',h:'13:15',c:[{n:1,t:'🧾 Pedidos de Paraguay: si me pasás la foto del ticket por el chat, el pedido dice "✓ la vio Claude en el chat" y cuenta como foto para cerrarlo (la imagen queda en el chat).'}]},
@@ -17060,7 +17061,7 @@ function _pyItsHTML(its,rec){const _r=rec>=1?rec:RECARGO_PY;
           <div style="font-size:.6rem;color:var(--muted);margin-top:2px;line-height:1.7">
             ${it.cod?'🔖 '+it.cod:'<span style="color:var(--amber)">🔖 sin código</span>'}
             ${it.usd?` · ${it.usdWeb>0&&Math.abs(it.usdWeb-it.usd)>=0.005?`<s style="opacity:.7">web ${fmtUS2(it.usdWeb)}</s> → pagado <b style="color:${it.usd<it.usdWeb?'var(--green)':'var(--red)'}">${fmtUS2(it.usd)}</b> (${it.usd<it.usdWeb?'−':'+'}${Math.abs((1-it.usd/it.usdWeb)*100).toFixed(1).replace('.',',')}%)`:`${fmtUS2(it.usd)}${it.usdWeb>0?' (sin descuento)':''}`} + ${((_r-1)*100).toFixed(rec>=1?1:0)}%${rec>=1?' real':''} = ${fmtUS2((Math.round(it.usd*_r*100)/100))} c/u`:' · <span style="color:var(--amber)">sin precio</span>'}
-            ${it.margen!=null?` · margen medido al pedirlo <b style="color:${it.margen>=candPisoDe(it)?'var(--green)':'var(--amber)'}">${it.margen.toFixed(1)}%</b>`:' · <span style="color:var(--muted)">sin margen medido</span>'}
+            ${it.margen!=null?` · <span title="Medido cuando se pidió: con el precio de la web y el recargo estimado, no con lo pagado">al pedirlo (web y recargo estimado)</span> <b style="color:${it.margen>=candPisoDe(it)?'var(--green)':'var(--amber)'}">${it.margen.toFixed(1)}%</b>`:' · <span style="color:var(--muted)">sin margen medido</span>'}
             ${(()=>{
               // 26/10/2026 (él con el GoPro Handler que salió US$ 10,50 más caro: "el % de ganancia que da abajo ¿es teniendo en cuenta
               // todo?"): el de arriba es el de CUANDO SE PIDIÓ (precio de la web y recargo estimado). Con el pedido llegado, la ficha ya
@@ -17068,8 +17069,11 @@ function _pyItsHTML(its,rec){const _r=rec>=1?rec:RECARGO_PY;
               if(!it.prodId)return '';const p=(state.products||[]).find(x=>x.id===it.prodId);if(!p)return '';
               let np=null,mla='';for(const [m,e] of Object.entries(state.mllinks||{})){if(!e||e.prodId!==it.prodId||e.ignored)continue;const x=(state.netopub||{})[m];if(x&&(!np||e.status==='active')){np=x;mla=m;}}
               let mm=null;try{mm=margenMLDe(p,np);}catch(er){mm=null;}
-              if(!mm||mm.margen==null)return ` · <span style="color:var(--muted)" title="El robot mide el % con lo pagado y el recargo real cada noche">hoy con lo pagado: se mide esta noche</span>`;
-              return ` · hoy con lo pagado <b style="color:${mm.margen>=35?'var(--green)':'var(--amber)'}">${Math.round(mm.margen)}%</b>${np&&np.precio?' a '+fmt(np.precio):''}`;
+              if(!mm||mm.margen==null)return ` · <span style="color:var(--muted)" title="El robot mide el % con lo pagado y el recargo real cada noche">hoy, peor caso con todo pagado: se mide esta noche</span>`;
+              // 26/10/2026 (él: "siempre que diga el peor % de ganancia, pagando todo y tomando el precio pagado"): peor caso = además
+              // la retención de IIBB de otra provincia (PEOR_RET_PCT), como en todo el panel.
+              const pr=Number(np&&np.precio)||0,peor=mm.costo>0&&pr>0?mm.margen-pr*PEOR_RET_PCT/mm.costo*100:mm.margen;
+              return ` · <b>hoy, peor caso con todo pagado</b> <b style="color:${peor>=35?'var(--green)':'var(--amber)'}">${Math.round(peor)}%</b>${pr?' a '+fmt(pr):''}`;
             })()}
             ${it.pesoKg!=null?` · ${it.pesoKg.toFixed(3)} kg c/u`:(it.pesoTxt?` · peso "${it.pesoTxt}" <span style="color:var(--amber)">(sin unidad, no lo cuento)</span>`:'')}
             ${(lML||_lPy)?`<br>${lML?`<a href="${lML}" target="_blank" rel="noopener" style="color:#60a5fa">ver en ML</a>`:''}${lML&&_lPy?' · ':''}${_lPy?`<a href="${_lPy}" target="_blank" rel="noopener" style="color:#60a5fa">ver en comprasparaguay</a>`:''}`:'<br><span style="color:var(--amber)">sin links guardados</span>'}

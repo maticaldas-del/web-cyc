@@ -805,7 +805,7 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 ## 3 · MERCADERÍA (miércoles)
 
 ### 🧾 % de hoy en cada renglón del pedido de Paraguay (26/10/2026, v26.75, él con el GoPro Handler)
-- **Qué es:** en `_pyItsHTML`, al lado de "margen medido al pedirlo" (web + recargo estimado), "hoy con lo pagado N% a $precio" = `margenMLDe` de la ficha (costo pagado × recargo real) con el `netopub` de su publicación; sin medición todavía dice "se mide esta noche".
+- **Qué es:** en `_pyItsHTML`, al lado de "margen medido al pedirlo" (web + recargo estimado), "hoy, peor caso con todo pagado N% a $precio" = `margenMLDe` menos la retención de otra provincia (`PEOR_RET_PCT`) de la ficha (costo pagado × recargo real) con el `netopub` de su publicación; sin medición todavía dice "se mide esta noche".
 - **Qué chequear:** que el % de hoy de un renglón que salió más caro (Handler US$ 18 → 28,50) sea menor que el de al pedirlo · que tome la publicación activa si hay varias.
 
 ### ⏸️ Pausar / reanudar un envío a Full (26/10/2026, v26.74, pedido suyo)
