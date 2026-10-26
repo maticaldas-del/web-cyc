@@ -1379,6 +1379,13 @@ es el promedio por día de cada mes (`_lnPromMes`): cada día muestra el de su m
 del gráfico se suman los días desde el 1º aunque queden antes (`_lnPreMes`). Línea de cada producto y general. Probado: sep $5.000/día,
 oct $10.000/día con ventas de prueba. Qué chequear: que el salto caiga justo el día 1 y que el número de "hoy" sea el del mes en curso.
 
+### Etapa 1 · 26/10/2026 · v27.10 · 🧠 Cambios de precio: el total sólo con resultado claro
+Él (con "−$194.100"): *"¿quiere decir que todo lo que hicimos fue al pedo? yo veo que estamos ganando como nunca"*; eligió la 1a. El total
+de Métricas sumaba todo cambio medido, también los que juzgué "todavía no se sabe" (Waflera sin stock −$56.593, Redmi Watch 4 −$48.722) y
+"no fue el precio". Ahora suma sólo 🟢/🔴 de mi juicio (con el signo del juicio) y dice aparte el **costo de buscar techo** (subas
+que perdieron) y cuántos quedan afuera. Mientras, la mezcla mostraba la plata real: $12-13 cada $100 en may-jun → $20 oct → $27 la última
+semana. Qué chequear: el total cambia cuando juzgo un cambio (`juzgo:`), y los "no se sabe" no lo mueven.
+
 ### Etapa 7 · 26/10/2026 · v27.09 · 🧮 La mezcla: cuántos y por semana, mes o año
 Él: *"no quiero ver los últimos 6 meses solo, sino poder elegir cuántos meses/períodos/años"*. `metMezclaMeses(n, agr)` agrupa con
 `_mzClave` (semana lun-dom, mes o año); botones Semana · Mes · Año y últimos 3/6/12/24/Todo, recordados en el aparato (`cycMezcla`). La cuenta

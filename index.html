@@ -3104,7 +3104,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.09';
+const APP_VERSION='27.10';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3117,6 +3117,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.10',f:'26/10',h:'19:24',c:[{n:3,t:'🧠 Métricas · Cambios de precio: el número grande suma sólo los cambios con resultado claro (ganó o perdió en el juicio de Claude) y muestra aparte el costo de buscar techo. Lo que "todavía no se sabe" o "no fue el precio" (sin stock, fechas) queda afuera.'}]},
   {v:'27.09',f:'26/10',h:'19:19',c:[{n:2,t:'🧮 Métricas · La mezcla: elegís cuántos (3, 6, 12, 24 o todo) y si cada renglón es una semana, un mes o un año.'}]},
   {v:'27.08',f:'26/10',h:'18:59',c:[{n:1,t:'📈 Línea de tiempo: el nombre y los colores suben al renglón de los botones (en la PC queda un renglón menos y los gráficos tienen más lugar).'}]},
   {v:'27.07',f:'26/10',h:'18:50',c:[{n:1,t:'🙈 "Ocultar la plata" también saca la ganancia en pesos de Inicio (queda el %), lo de abajo de la tarjeta (escalera, curva, cobro) y la ganancia de la pantalla de cargando.'}]},
@@ -23539,7 +23540,16 @@ function renderMetAuto(){
   const resc=delMes.filter(x=>(x.estado==='medido'||x.estado==='encurso')&&x.motivo==='rescate');
   const rescTot=resc.reduce((a,x)=>a+n(x.total),0);
   const conf=med.filter(x=>x.estado==='medido');
-  const confTot=conf.reduce((a,x)=>a+n(x.total),0),cursoTot=tot-confTot;
+  // 26/10/2026, eligió la 1a (él: "¿esto quiere decir que todo lo que hicimos fue al pedo? yo veo que estamos ganando como nunca"): el
+  // número grande suma SÓLO los cambios con resultado claro en mi juicio (🟢 ganó / 🔴 perdió; con el signo de ese juicio), y aparte
+  // "costo de buscar techo" = las subas que perdieron. Lo que juzgué "todavía no se sabe" o "no fue el precio" (sin stock, fechas) y lo
+  // sin juicio no suman: antes entraban y la Waflera sin stock (−$56.593) contaba como pérdida del precio.
+  const _jv=x=>{const j=metJuicio(x);return j?j.v:null;};
+  const claros=conf.filter(x=>_jv(x)==='gano'||_jv(x)==='perdio');
+  const _jt=x=>_jv(x)==='gano'?Math.max(0,n(x.total)):Math.min(0,n(x.total));
+  const confTot=claros.reduce((a,x)=>a+_jt(x),0),cursoTot=tot-confTot;
+  const techoCosto=claros.filter(x=>_jv(x)==='perdio'&&n(x.a)>n(x.de)).reduce((a,x)=>a+_jt(x),0);
+  const fueraJ=conf.filter(x=>!claros.includes(x)),fueraJTot=fueraJ.reduce((a,x)=>a+n(x.total),0);
   const neg=confTot<0;
   const chip=(k,v,lbl,on)=>`<button onclick="metAutoSet('${k}','${v}')" style="font-size:.6rem;padding:3px 8px;border-radius:12px;border:1px solid ${on?'var(--green)':'rgba(148,163,184,.3)'};background:${on?'rgba(52,211,153,.12)':'transparent'};color:${on?'var(--green)':'var(--muted)'};cursor:pointer">${lbl}</button>`;
   const chipsMes=[chip('mes','todos','Todos los meses',metAutoMes==='todos'),...meses.map(m=>chip('mes',m,mesTxt(m),metAutoMes===m))].join('');
@@ -23610,6 +23620,7 @@ function renderMetAuto(){
   const cuerpo=ok.length?`
     <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">${confTot<0?'Plata de MENOS':'Plata de más'} que dejaron los cambios de precio · ${metAutoMes==='todos'?'todos los meses':mesTxt(metAutoMes)}</div>
     <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:2rem;color:${col(confTot)};line-height:1.1">${sg(confTot)}</div>
+    <div style="font-size:.62rem;color:var(--muted);margin:2px 0 8px;line-height:1.5">sólo los ${claros.length} cambios con resultado claro en mi juicio${techoCosto<0?` · de eso, <b style="color:var(--amber)">costo de buscar techo ${sg(techoCosto)}</b> (subas de prueba que vendieron menos: es lo que se paga por aprender el precio)`:''} · <span title="Los que juzgué 'todavía no se sabe' o 'no fue el precio' (se quedó sin stock, fechas especiales, otra cosa) y los que todavía no juzgué: no se cuentan como plata del precio.">afuera ${fueraJ.length} sin resultado claro (${sg(fueraJTot)})</span></div>
     <div style="font-size:.62rem;color:var(--muted);margin-bottom:10px"><span style="color:var(--green)">${ok.filter(x=>n(x.total)>0).length} ganaron ${sg(ok.reduce((a,x)=>a+Math.max(0,n(x.total)),0))}</span> · <span style="color:var(--red)">${ok.filter(x=>n(x.total)<0).length} perdieron ${sg(ok.reduce((a,x)=>a+Math.min(0,n(x.total)),0))}</span></div>
     ${lineaFirme}
     ${(()=>{const J=med.map(metJuicio).filter(Boolean),c=k=>J.filter(j=>j.v===k).length;return J.length?`<div style="font-size:.62rem;margin:-4px 0 10px;color:var(--muted)">🧠 Mi juicio: <span style="color:var(--green)">${c('gano')} ganaron</span> · <span style="color:var(--red)">${c('perdio')} perdieron</span> · <span style="color:#fbbf24">${c('espera')} todavía no se sabe</span> · ${c('igual')+c('nocuenta')} igual o no fue el precio · ${med.length-J.length} sin mirar</div>`:'';})()}
