@@ -1379,6 +1379,11 @@ es el promedio por día de cada mes (`_lnPromMes`): cada día muestra el de su m
 del gráfico se suman los días desde el 1º aunque queden antes (`_lnPreMes`). Línea de cada producto y general. Probado: sep $5.000/día,
 oct $10.000/día con ventas de prueba. Qué chequear: que el salto caiga justo el día 1 y que el número de "hoy" sea el del mes en curso.
 
+### Etapa 7 · 26/10/2026 · v26.88 · 🎬 Contador de plata arreglado
+Él: *"el contador de plata se ve trabado y quedan mal los números, no centrados"*. Cada cifra en una caja del mismo ancho (0,92 em: las
+cifras de Syne son anchas, con 0,7 los ceros se cortaban como "C") y de un renglón entero de alto; frenan de izquierda a derecha y el número
+se apaga antes de volver a empezar (antes saltaba de golpe al principio). Medido: centrado igual a 360 · 390 · 1400 px, termina en $12.400.
+
 ### Etapa 7 · 26/10/2026 · v26.87 · 🎬 Siete pantallas de "cargando", una por día
 Él (viendo 6 opciones nuevas): *"se pueden poner todas? pero que cambien todos los días a las 4am?"*. `_ldElegir` (script debajo de
 `#loading`) cuenta los días desde las 4 de la mañana del aparato y elige 0-6 en rueda: 0 la de siempre · 1 se llena de verde · 2 la línea
