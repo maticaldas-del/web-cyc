@@ -17,6 +17,7 @@
 | `ml-sync/VENTAS.md` | **cómo se juzga una venta** (lo que lee el ayudante de ventas con la ficha, en vez de todo esto). Regla que toca ventas → también ahí |
 | `ml-sync/REVISION.md` | cada cambio anotado en su etapa (qué es · dónde vive · qué chequear) + el calendario de revisiones |
 | `ml-sync/PROMPT_GUAY.md` · `PROMPT_LISTAS.md` | lo que se le pega ENTERO al chat de compras (no lee direcciones remotas) |
+| `ml-sync/PROMPT_RUTINA_LOCAL.md` | la rutina DIARIA del chat de Chrome (26/10, él dice "rutina"): cupo de Full de las 4 · disponible de Mercado Pago de las 4 · repaso del Pedido del momento en Nissei → deja un mensaje `RUTINA <fecha>` en el 📬 buzón y yo lo cargo |
 | `ml-sync/PROMPT_CAJAS.md` | lo que se le pega al chat de Chrome para armar las cajas "MANDALA YA" en ML (él dice "arrancá"; lee el panel, carga Planificación de envíos, no confirma) |
 | `ml-sync/AUDITORIA.md` | auditoría del robot (datos crudos contra el `informe`) |
 | `ml-sync/notas/` | `para_mati.md` (dudas que esperan su respuesta) · `preguntas.md` (cada corrección suya vuelta pregunta general) · `correcciones.md` (cuántas veces me corrigió) · `techo.md` · `ideas.md` · `sin_estirar.txt` · `decide_pedidos.py` · `decide_cajas.py` · `pedidos.txt` · `juicios*.txt` · `listaweb_iscos.txt` |
@@ -303,7 +304,7 @@
   (`notas/sin_estirar.txt`); **tope 90 días**; nuevo sin ventas recibe 4 (`PISO_CERO`). `decide_cajas.py` → `decido:caja:<id>@<cuenta>[#color]=u|N|motivo`. **Lo que él decide de una caja va a `FIJO` en `decide_cajas.py`** (25/10: si no, la completa se lo pisa). **"Armá la caja" = eso + `cajaarmar;go`** (carga la caja como el botón 🎯 Cargar lo que entra en el cupo; 25/10, si no queda incompleta).
   Una cuenta sin publicación no recibe el mínimo si otra tiene stock de ese color en Full. Caja 70×70×70, 30 kg; costo de mandar una
   caja `cyc/mlconfig/costoCaja` ($17.500, `cajacosto`).
-- **Cupo de Full por cuenta** (ML no lo da por API): lo carga él con `cupo:<cuenta>=<chicos>/<grandes>`; "grande" = sólo los Tenders
+- **Cupo de Full por cuenta** (ML no lo da por API): desde el 26/10 lo lee cada día el chat de Chrome (`PROMPT_RUTINA_LOCAL.md`, 2a) y yo lo cargo del buzón con `cupo:<cuenta>=<chicos>/<grandes>`; "grande" = sólo los Tenders
   (`cupoGrandes`). Lo vendido NO devuelve cupo (18/10). Avisa, no frena. **Cupo lleno → vender lo lento** (descuento/escalera), retirar
   sólo si él lo pide (21/10).
 - **Código de etiqueta de Full** (`inventory_id`, `cyc/mllinks/<MLA>/inv`): se muestra en Armar caja por cuenta y color; **nunca se
@@ -398,7 +399,7 @@
 ## 8 · PLATA, GASTOS Y ARQUEO
 
 - **El Arqueo está en DÓLARES** (en chico los pesos al lado). Antes de escribir en un campo que existe, preguntar en qué unidad lo lee.
-- **El saldo de MP no se lee por API** (~30 puertas medidas). El disponible: él lo dice y lo cargo con `ancla:<cuenta>=<pesos>;go`; `dispo`
+- **El saldo de MP no se lee por API** (~30 puertas medidas). El disponible: desde el 26/10 lo lee cada día el chat de Chrome (3a, renglón `mp:` del buzón) y lo cargo con `ancla:<cuenta>=<pesos>;go`; `dispo`
   suma/resta desde ahí (una vez por mes recargarlo; `dispo` NO avisa por Telegram, decisión 30/09). "A liquidar en ML" y la agenda de
   liberaciones salen solos de `saldoml` (reporte de liquidación, ml-daily). El extracto de cuenta se baja a mano y **trae nombres de
   terceros: nunca al repo ni a un log**.

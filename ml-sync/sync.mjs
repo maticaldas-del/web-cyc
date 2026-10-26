@@ -11217,9 +11217,12 @@ function marcaFrenadaDe(c, marcasNo) {
     let dec = k; try { dec = decodeURIComponent(k); } catch { /* clave rara: se usa tal cual */ }
     const n = norm(dec);
     if (n && nom.includes(' ' + n + ' ')) return dec;
+    // LAS ABREVIADAS (26/10/2026): Elegancia escribe "D&G The One" y "Kit CK MY Euphoria", y con la marca entera no se agarraban.
+    for (const a of (MARCA_ALIAS[n] || [])) if (nom.includes(' ' + a + ' ')) return dec;
   }
   return null;
 }
+const MARCA_ALIAS = { 'dolce gabbana': ['d g'], 'calvin klein': ['ck'] };   // 'dolce' solo no: "Dior Dolce Vita" es otra marca
 
 // ── ¿ESTA OFERTA ES DE UN VENDEDOR DE AFUERA? (19/09/2026) ─────────────────────────────────
 // Regla suya del 19/09: **"estaba tomando envíos internacionales. esos no quiero que se fije."**
@@ -12625,6 +12628,38 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
         } else gemelo = null;
       }
     }
+    // 🎨 OTROS COLORES, DE REFERENCIA (25/10/2026, él con el JBL Grip Purple a 99%: "ese color da 99% y está todo correcto, pero quizás
+    // hay otro color mucho más barato. Averigualo siempre al mirar un producto que tenga algún aviso en rojo o algo raro. No siempre, ya
+    // que es de gusto y además quizás la gente lo compra igual, pero para tener referencia del negocio del producto"). Sólo en los que
+    // tienen un aviso rojo en la web (80%+, un solo vendedor sin Full, o reparos de nombre): se sube al catálogo PADRE (`parent_id`) y
+    // se mira el precio de cada hermano (otro color). NO cambia el margen: es un dato al lado. Se rehace cada 3 días como mucho.
+    let otrosColores = undefined;
+    {
+      const _rojo = margen >= 80 || (_pi && !_pi.hayFull && vendedores <= 1) || chequeoMismoProducto(c.nombre, mlTit).length > 0;
+      const prodIdOC = (String(mlLink).match(/MLA\d+/) || [])[0];
+      const _fresco = c.mlOtrosColoresTs && Date.now() - Number(c.mlOtrosColoresTs) < 3 * 864e5 && c.mlOtrosColoresDe === prodIdOC;
+      if (_rojo && prodIdOC && !_fresco) {
+        otrosColores = [];
+        try {
+          consultas++; const pm = await mlGet(`/products/${prodIdOC}`, tok);
+          const padre = pm && pm.parent_id ? String(pm.parent_id).toUpperCase() : null;
+          if (padre) {
+            consultas++; const pp = await mlGet(`/products/${padre}`, tok);
+            for (const h of ((pp && pp.children_ids) || []).map((x) => String(x).toUpperCase()).filter((x) => x !== prodIdOC).slice(0, 10)) {
+              let nomH = '', ofH = [];
+              try { consultas++; const ph = await mlGet(`/products/${h}`, tok); nomH = String((ph && (ph.name || ph.title)) || '').slice(0, 80); } catch { /* sin nombre: va el código */ }
+              try { consultas++; const ih = await mlGet(`/products/${h}/items`, tok); ofH = ((ih && ih.results) || []).filter((o) => !esOfertaDeAfuera(o)); } catch { ofH = []; }
+              const piH = ofH.length ? precioAIgualar(ofH) : null;
+              otrosColores.push({ id: h, nom: nomH || h, precio: piH && piH.precio > 0 ? Math.round(piH.precio) : null, vend: ofH.length, full: piH ? !!piH.hayFull : false });
+            }
+            otrosColores.sort((a, b) => (a.precio || 9e12) - (b.precio || 9e12));
+            const bar = otrosColores.find((x) => x.precio > 0);
+            if (bar) { const rB = await cuentaCand(Math.min(bar.precio, TECHO_DURO), lt, cat); if (rB) bar.margen = Math.round(rB.margen * 10) / 10; }
+            console.log(`      🎨 otros colores del mismo catálogo (${otrosColores.length}): ${otrosColores.slice(0, 5).map((x) => `${x.nom.slice(0, 40)} ${x.precio ? money(x.precio) : 'nadie lo vende'}${x.vend ? ` · ${x.vend} vend${x.full ? ' · Full' : ''}` : ''}${x.margen != null ? ` → daría ${x.margen}%` : ''}`).join(' | ') || 'ninguno'}`);
+          } else console.log('      🎨 otros colores: el catálogo no tiene padre (no hay otros colores agrupados)');
+        } catch (eO) { otrosColores = undefined; console.log(`      (no pude mirar los otros colores: ${String(eO.message || eO).slice(0, 80)})`); }
+      }
+    }
     console.log(`      se vende ${mlMax > mlPrecio ? `de ${money(Math.round(mlPrecio))} a ${money(mlMax)}` : money(Math.round(mlPrecio))} · ${vendedores} vendedor(es) en la ficha`);
     // Las VENTAS van en su propio renglón y con el nombre completo: "vendedores" y "vendidas"
     // se confunden leyendo rápido, y son la diferencia entre "hay competencia" y "esto se vende".
@@ -12639,6 +12674,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
           if (gemelo) r.push(_gemeloTxt(gemelo, Math.round(mlPrecio)));
           return r.length ? r : null; })(),
         mlGemelo: gemelo ? { id: gemelo.id, precio: gemelo.precio, vend: gemelo.vend, margen: gemelo.margen, margenAntes: gemelo.margenAntes } : null,
+        ...(otrosColores !== undefined ? { mlOtrosColores: otrosColores.length ? otrosColores.slice(0, 8) : null, mlOtrosColoresTs: Date.now(), mlOtrosColoresDe: (String(mlLink).match(/MLA\d+/) || [])[0] || null } : {}),
         // CONTRA QUIÉN SE MIDIÓ. Se guarda porque el panel tiene que poder EXPLICAR por qué el
         // margen no sale contra el precio más barato de la ficha: sin esto el renglón se lee como
         // un error de cuenta. Es el mismo caso de la comisión del 19/09 —un dato que el robot ya
@@ -21753,7 +21789,13 @@ async function main() {
       // `py|elegancia|EL_<código>` (ese código entero es el que se carga en `svprecio`).
       const _mc = {}; for (const pv of ['nissei', 'elegancia']) _mc[pv] = pyCodMatcherPv(pv, Object.values(cands).filter((c) => c && !c.no && provPyDeBot(c) === pv).map((c) => c.cod).filter(Boolean));
       const esCand = (k) => _mc[pycatProvDe(k, cat[k])](pycatCodDe(k));
+      // MARCAS QUE NO VAN A ML (26/10/2026: el texto del 24/10 le hacía mirar D&G, prohibida, y Calvin Klein, prohibida para ML): afuera,
+      // así el chat no pierde tiempo. Si no se pueden leer, se avisa y se sigue (es una lista para mirar, no una compra).
+      let _mNo = {}, _mNoML = {}; try { _mNo = (await db.get('cyc/mlconfig/marcasFrenadas')) || {}; _mNoML = (await db.get('cyc/mlconfig/marcasNoML')) || {}; } catch { console.log('⚠️ no pude leer las marcas prohibidas: puede salir alguna (D&G, Calvin Klein)'); }
+      const _marcaNo = (n) => marcaFrenadaDe({ nombre: n }, _mNo) || marcaFrenadaDe({ nombre: n }, _mNoML);
+      let _fueraMarca = 0;
       for (const [cod, e] of Object.entries(cat)) { if (!e || !e.sv || !e.mi || e.fz || !e.f || svpVigente(e) || esCand(cod) || pyCatNoSeMira(e.n)) continue;
+        if (_marcaNo(e.n)) { _fueraMarca++; continue; }
         filas.push({ r: PYCAT_RUBRO_RE.test(String(e.n)) ? 0 : 1, u: Number(e.u) || 0, t: `py|${pycatProvDe(cod, e)}|${cod}|${String(e.n).replace(/\|/g, '/').slice(0, 80)}|${e.mi}|US$ ${e.u}` }); }
       const provs = (await db.get('cyc/mlconfig/listasProv')) || {};
       for (const [k, pv] of Object.entries(provs)) { if (pv.desc) continue; const L = (await db.get('mlapi/listas/' + k)) || {};
@@ -21766,6 +21808,7 @@ async function main() {
       const z = (u) => (u >= 10 && u <= 80 ? 0 : 1);
       buenas.sort((a, b) => a.r - b.r || z(a.u) - z(b.u) || b.u - a.u); filas.length = 0; filas.push(...buenas);
       console.log(`=== CATÁLOGOS SIN VENDEDORES, FALTA EL PRECIO QUE SE VE EN ML: ${filas.length} · muestro ${Math.min(N, filas.length)} (fuente|proveedor|código|nombre|catálogo ML|costo) ===`);
+      if (_fueraMarca) console.log(`(afuera ${_fueraMarca} de marcas que no van a ML: Dolce & Gabbana, Calvin Klein…)`);
       console.log('@@LISTA'); for (const f of filas.slice(0, N)) console.log(f.t); console.log('@@FIN'); return;
     }
     // BILLING_PROBE=svprecio:[lista=<prov>;]<código>=<pesos>|no;…[;go] (24/10/2026, 2a) → el precio que el chat de compras VIO en ML para
@@ -23713,7 +23756,9 @@ async function main() {
     }
     if (/^faltaventas$/.test(String(process.env.BILLING_PROBE || ''))) {
       const cands = (await db.get('cyc/candidatos_py')) || {}; const comp = (await db.get('cyc/compraspy')) || {}; const out = [];
-      for (const c of Object.values(cands)) { if (!c || c.no || c.prodId || c.noML) continue;
+      // 26/10/2026: lo de una marca prohibida para ML (Calvin Klein) no se vende ahí: sus vendidas de ML no deciden nada, afuera.
+      let _mNoML = {}; try { _mNoML = (await db.get('cyc/mlconfig/marcasNoML')) || {}; } catch { _mNoML = {}; }
+      for (const c of Object.values(cands)) { if (!c || c.no || c.prodId || c.noML) continue; if (marcaFrenadaDe(c, _mNoML)) continue;
         const pe = c.pedidoEn && comp[c.pedidoEn]; if (pe && pe.estado === 'camino') continue;
         const mg = Number(c.margen); if (c.margen == null || !isFinite(mg) || mg < CAND_VARA_VENDE) continue;   // 30: las vendidas deciden si entra
         if (c.calcTs == null && Number(c.usdAntes) > 0) continue;

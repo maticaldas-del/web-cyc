@@ -2962,7 +2962,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.65';
+const APP_VERSION='26.69';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2975,6 +2975,10 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.69',f:'25/10',h:'23:50',c:[{n:2,t:'🎨 Productos nuevos y Para probar: los que tienen aviso en rojo (80%+, un solo vendedor, nombre dudoso) muestran el precio de los OTROS colores del mismo catálogo de ML y cuánto daría el más barato. Es de referencia: no cambia el %.'}]},
+  {v:'26.68',f:'25/10',h:'23:10',c:[{n:1,t:'🧾 Pedido del momento: el orden por ventas también cuenta las reseñas en los productos nuevos (mismo error que el de recién: lo que no tenía vendidas cargadas iba al final).'}]},
+  {v:'26.67',f:'25/10',h:'23:00',c:[{n:2,t:'🧾 Pedido del momento: el orden "🔥 vende y gana" mandaba al final lo que no tenía las vendidas cargadas aunque tuviera miles de reseñas (el Sony EX15C). Ahora se llama "⭐ gana mucho y sale mucho" y es la MISMA nota que en Productos nuevos: % de ganancia × salida, contando las reseñas.'}]},
+  {v:'26.66',f:'25/10',h:'22:30',c:[{n:1,t:'🧾 Pedido del momento: nuevo orden "🔥 vende y gana" — arriba lo que más se vende y más % de ganancia deja a la vez (ventas × %).'}]},
   {v:'26.65',f:'25/10',h:'20:10',c:[{n:1,t:'📈 Línea de tiempo: la búsqueda de techo ya no dice "decide con 95% (2 días)" (los 2 días eran los MEDIDOS, no los que faltan). Ahora dice "pide 95% · lleva 2 días medidos"; y si el precio ya volvió abajo, dice que la prueba se cortó y con cuánto quedó.'}]},
   {v:'26.64',f:'25/10',h:'20:15',c:[{n:2,t:'💰 La escalera que baja después de buscar el techo ahora se llama "buscando el de más ganancia · Nº escalón": es lo que busca (el precio que más plata por día deja). El 🪜 bajando queda sólo para lo que baja por otra cosa (fin de escasez, sobra).'}]},
   {v:'26.63',f:'25/10',h:'19:50',c:[{n:2,t:'📬 Mi oficina → Contar lo que hay: "Mensaje para Claude". El chat de Chrome que arma las cajas (o vos) deja ahí lo que no puede arreglar desde el panel y Claude lo lee en la próxima vuelta.'}]},
@@ -16346,6 +16350,19 @@ function candPreciosPartes(c){
   // contra $379.000 cuando en ML ya lo vendían a $194.500 en oferta. Confirmar el producto no confirma
   // el precio: el aviso de margen altísimo queda siempre.
   R.dudas=R.mismoOk?D.filter(x=>/^hay OTRO cat|es demasiado/.test(String(x))):D;
+  // 🎨 OTROS COLORES DEL MISMO CATÁLOGO, DE REFERENCIA (25/10/2026, él con el JBL Grip Purple a 99%: "quizás hay otro color mucho más
+  // barato… no siempre, ya que es de gusto y además quizás la gente lo compra igual, pero para tener referencia del negocio del producto").
+  // Lo mira el robot sólo en los que tienen aviso rojo (`mlOtrosColores`). No cambia el margen.
+  R.colores='';
+  {const oc=Array.isArray(c.mlOtrosColores)?c.mlOtrosColores:[];
+   if(oc.length){const e=t=>String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+     const con=oc.filter(x=>x&&x.precio>0),sin=oc.length-con.length;
+     const bar=con[0],mio=Number(c.mlPrecio)||0;
+     const dif=bar&&mio>0?Math.round((1-bar.precio/mio)*100):null;
+     R.colores=`🎨 <b>Otros colores</b> <span style="color:var(--muted)">(de referencia: es de gusto, puede venderse igual)</span>: `
+       +(con.slice(0,4).map(x=>`<a href="https://www.mercadolibre.com.ar/p/${e(x.id)}" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none">${e(String(x.nom).slice(0,40))}</a> ${fmt(x.precio)}${x.vend?` <span style="color:var(--muted)">· ${x.vend} vend.${x.full?' · Full':''}</span>`:''}${x.margen!=null?` → <b style="color:${x.margen>=35?'var(--green)':'var(--amber)'}">${Math.round(x.margen)}%</b>`:''}`).join(' · ')||'ninguno a la venta')
+       +(sin>0?` <span style="color:var(--muted)">· ${sin} sin vendedores</span>`:'')
+       +(dif!=null&&dif>=15?` <span style="color:var(--amber);font-weight:700">· el más barato está ${dif}% abajo de éste</span>`:'');}}
   // LAS DOS FOTOS, LADO A LADO (01/10/2026). Pedido suyo: *"el bot no vio las fotos de los
   // productos, tienen el mismo nombre pero no son nada que ver a simple vista"*. No se le paga a
   // nadie para "mirarlas": se muestran juntas y el ojo decide en un segundo. La de ML la guarda el
@@ -16383,7 +16400,7 @@ function candPreciosHTML(c){
       :`contra ${R.margenContra} → <b style="color:${R.margenPct>=25?'var(--green)':'var(--amber)'}">${R.margenPct.toFixed(0)}%</b>`);
   }
   const dud=R.dudas.length?`<br><span style="color:var(--red);font-weight:700">🚨 ¿Es el mismo producto? Abrí los dos links: ${R.dudas.join(' · ')}</span>`:'';
-  return L.join(' &nbsp;·&nbsp; ')+dud+'<br>'+R.links.join(' &nbsp;·&nbsp; ');
+  return L.join(' &nbsp;·&nbsp; ')+dud+(R.colores?'<br><span style="font-size:.92em">'+R.colores+'</span>':'')+'<br>'+R.links.join(' &nbsp;·&nbsp; ');
 }
 // EL RENGLÓN QUE EXPLICA LO QUE FALTA VA UNA SOLA VEZ, NO EN LOS 17. Repetirlo en cada producto
 // es ruido y a los tres renglones no lo lee nadie; pero no decirlo nunca sería peor, porque él
@@ -17376,7 +17393,12 @@ function pedidoMomentoHTML(g){
   const _k={pct:(x,n)=>n?Number(x.c.margen):(x.pr&&margenMLDe(x.pr)?margenMLDe(x.pr).margen:null),
     gan:(x,n)=>n?Number(x.c.ganancia):(x.pr?gananciaUnidad(x.pr):null),
     costo:(x)=>x.usd, sub:(x)=>x.usd*x.u,
-    vend:(x,n)=>n?candVentasDe(x.c):(x.pr?pedVentasNorm(x.pr).vendidos:null)};
+    vend:(x,n)=>n?candPuntaje(x.c):(x.pr?pedVentasNorm(x.pr).vendidos:null)}; // Nuevos: 🚀 salida (vendidas o reseñas × 20, 26/10: si no, lo que no tenía vendidas cargadas iba al final)
+  // ⭐ GANA MUCHO Y SALE MUCHO (26/10/2026, él: "que se pueda ordenar con el que más se vende y más % de ganancia da"; y enseguida, con el
+  // Sony EX15C último teniendo 1693 reseñas y 146%: "parece joda"). La MISMA nota que Productos nuevos (`candCombo`: % × log10(🚀+1) ÷ 10,
+  // 🚀 = lo que más diga entre vendidas y reseñas × 20): en Nuevos las reseñas cuentan aunque no estén cargadas las vendidas. En Probados,
+  // las ventas propias con la misma cuenta. Lo que no tiene ningún dato de salida va al final.
+  _k.vendpct=(x,n)=>{if(n)return candCombo(x.c);const v=Number(_k.vend(x,n)),p=Number(_k.pct(x,n));return isFinite(v)&&isFinite(p)&&v>0?Math.max(0,p)*Math.log10(v+1)/10:null;};
   const _sort=(arr,n)=>{if(_ord==='nom')return arr.slice().sort((a,b)=>String(n?a.c.nombre:a.nom).localeCompare(String(n?b.c.nombre:b.nom),'es'));
     const f=_k[_ord]; if(!f)return arr; const asc=_ord==='costo';
     return arr.slice().sort((a,b)=>{const va=f(a,n),vb=f(b,n),na=va==null||!isFinite(va),nb=vb==null||!isFinite(vb);
@@ -17435,7 +17457,7 @@ function pedidoMomentoHTML(g){
     <div style="font-size:.66rem;color:${pasa>0?'var(--amber)':'var(--muted)'};margin-top:2px">${pasa>0?`⚠️ te pasás ${u2(pasa)} de tu tope de ${u2(tope)}`:`tope ${u2(tope)} · te quedan ${u2(-pasa)}`}</div>
     ${cfg}
     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:8px 0 0;font-size:.68rem;color:var(--muted)">↕️ Ordenar:
-      ${[['orig','como se cargó'],['pct','% ganancia'],['gan','$ por unidad'],['costo','más barato'],['sub','subtotal'],['vend','ventas'],['nom','nombre']].map(([k,t])=>`<button class="btn" onclick="_pedOrdenSet('${k}')" style="font-size:.64rem;padding:3px 9px;${_ord===k?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}">${t}</button>`).join('')}</div>
+      ${[['orig','como se cargó'],['vendpct','⭐ gana mucho y sale mucho'],['pct','% ganancia'],['gan','$ por unidad'],['costo','más barato'],['sub','subtotal'],['vend','ventas'],['nom','nombre']].map(([k,t])=>`<button class="btn" onclick="_pedOrdenSet('${k}')" style="font-size:.64rem;padding:3px 9px;${_ord===k?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}">${t}</button>`).join('')}</div>
     ${A.length?tit('✅ Probados (reposición)',A.length,crA)+_perfGrupos(filasA,As.map(f=>f.nom)):''}
     ${N.filas.length?tit('🆕 Nuevos',N.filas.length,N.crudo)+_perfGrupos(filasN,Ns.map(f=>f.c.nombre)):''}
     ${Pp.length?tit('🙋 Uso personal (no es de CYC)',Pp.length,crP)+Pp.map(f=>fila(f.nom,f.cod,f.u,f.usd,`pyPersonalSet('${f.k}',this.value)`,`pyPersonalSet('${f.k}',0)`,'<span style="color:#a78bfa">para vos: va en el mensaje a '+pyProvNom()+' y en el total, pero no entra en CYC (sin margen, sin ficha, sin stock)</span>',f.foto,null,null,'')).join(''):''}
@@ -17540,6 +17562,7 @@ function pedNuevoFilaHTML(f,maxU,tc,sinCab){
     </div>
     ${R.full?`<div style="font-size:.74rem;margin-top:7px;line-height:1.5">${R.full}</div>`:''}
     ${R.dudas.length?`<div style="font-size:.78rem;margin-top:7px;line-height:1.5;padding:7px 10px;border-radius:8px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.4);color:var(--red)"><b>🚨 ¿Es el mismo producto? Abrí los dos links antes de comprarlo.</b><br>${R.dudas.join(' · ')}</div>`:''}
+    ${R.colores?`<div style="font-size:.74rem;margin-top:6px;line-height:1.5">${R.colores}</div>`:''}
     ${P.ok?'':`<div style="font-size:.76rem;margin-top:6px"><span style="color:var(--red);font-weight:700">🚫 ${P.motivo}</span> · <a href="#" onclick="event.preventDefault();candSetPedir('${c.id}',0)" style="color:var(--red);font-weight:700">sacarlo del pedido</a></div>`}
     <div style="font-size:.76rem;margin-top:7px">${R.links.join(' &nbsp;·&nbsp; ')}${(c.mlTit||candCatId(c))?` &nbsp;·&nbsp; <a href="#" onclick="event.preventDefault();candNoEsMismo('${c.id}')" style="color:var(--red);font-weight:700" title="El producto de ML no es éste: saca la medición y guarda el caso para ver por qué se equivocó.">❌ no es el mismo</a>`:''}</div>
   </div>`;
