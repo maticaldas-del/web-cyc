@@ -1316,6 +1316,12 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
 
 ## 4 · CHOQUES Y FALLAS MUDAS (jueves · junta las viejas 4 y 5)
 
+### Vínculos sin cuenta en la sección 11 del informe (25/10/2026, auditoría)
+- **Qué es:** el Timer MLA1474412507 vendió 11 en 30 d (la última el 23/10) y el informe lo mostraba "en revisión" sin cuenta. Un vínculo sin `cuenta` no lo refresca la vuelta de cada hora (recorre sólo los de su cuenta) y `unapub` lo lee con el token de otra cuenta (403): el estado queda viejo. Ahora la 11 pregunta a ML con el token de cada cuenta (comparando el vendedor) de quién es y cómo está hoy.
+- **Dónde vive:** `sync.mjs`, `informe`, sección 11.
+- **Arreglo:** el alta de nuevas (`altaDeNuevas`, cada hora y `altanuevas:go`) ahora le devuelve la `cuenta` a todo vínculo de su catálogo que la perdió (antes lo salteaba porque el vínculo "ya existía").
+- **Qué chequear:** que la 11 ya no muestre "sin cuenta"; de dónde salen los vínculos sin `cuenta` (qué los escribe).
+
 ### `techo95;go` era "comando desconocido" (25/10/2026, vuelta de las 21:22)
 - **Qué es:** CLAUDE.md dice `techo95[;go]`, pero el robot sólo reconocía `techo95` o `techo95:<MLA>`: con `;go` salía "comando desconocido" y nunca anotaba el 🏔️, así que F1 seguía frenando lo nuevo con techo ya medido (microSD Pokémon, 90% con umbral de 81% a los 15 días). Ahora acepta `techo95;go`. Revisados los otros 162 comandos con el mismo molde: ninguno más tenía la forma `;go` sin `:` documentada.
 - **Dónde vive:** `sync.mjs`, bloque `techo95`.

@@ -8116,6 +8116,14 @@ async function altaDeNuevas(db, accounts, labels, map, index, DRY) {
     let mios;
     try { ({ mios } = await catalogoDeCuenta(acc.seller_id, tok)); }
     catch (err) { console.log(`  · ${label}: ML no me dio el catálogo — ${String(err.message || err).slice(0, 80)}`); continue; }
+    // auditoría del 25/10/2026: una publicación de esta cuenta cuyo vínculo perdió la `cuenta` (el Timer MLA1474412507 de
+    // Ayelen, activo con 89 u.) no la refrescaba nadie: no entra en `faltan` porque el vínculo existe, y la vuelta de stock
+    // recorre sólo `e.cuenta === label`. Se le devuelve la cuenta (es de este catálogo, así que es de esta cuenta).
+    const sinCuenta = mios.filter((m) => map[m] && !map[m].cuenta);
+    if (sinCuenta.length && !DRY) {
+      try { await db.patch('cyc/mllinks', Object.fromEntries(sinCuenta.map((m) => [m + '/cuenta', label]))); for (const m of sinCuenta) map[m].cuenta = label; console.log(`  🔗 ${label}: ${sinCuenta.length} vínculo(s) sin cuenta recuperado(s): ${sinCuenta.join(', ')}`); }
+      catch (eC) { console.log(`  · ${label}: no pude anotar la cuenta de ${sinCuenta.join(', ')} · ${eC.message}`); }
+    }
     const faltan = mios.filter((m) => !map[m]);
     if (!faltan.length) continue;
     for (let k = 0; k < faltan.length; k += 20) {
@@ -44520,6 +44528,23 @@ async function main() {
       console.log(`\n── 11 · PUBLICACIONES FRENADAS POR ML O CERRADAS (${raro.length}) ──`);
       for (const [m, e] of raro.sort((a, b) => (u30[b[0]] || 0) - (u30[a[0]] || 0)).slice(0, 15)) console.log(`· ${m} · ${e.cuenta} · ${tit(m)} · ${e.status}${e.subStatus ? ' (' + e.subStatus + ')' : ''} · vendió ${u30[m] || 0} u. en 30 d`);
       if (raro.length > 15) console.log(`  (y ${raro.length - 15} más…)`);
+      // auditoría del 25/10/2026: el Timer MLA1474412507 salía acá "en revisión" sin cuenta y vendiendo 11 en 30 d. Un vínculo
+      // sin `cuenta` no lo refresca nadie (la vuelta de cada hora recorre sólo los de su cuenta) y cualquier consulta lo lee con el
+      // token de otra cuenta (403): el estado queda viejo. Se le pregunta a ML con el token de cada cuenta quién es la dueña y cómo está hoy.
+      try {
+        const sinC = raro.filter(([, e]) => !e.cuenta);
+        if (sinC.length) {
+          console.log(`  ⚠️ ${sinC.length} sin cuenta en el vínculo: el robot no las refresca (estado viejo). Lo que dice ML hoy:`);
+          for (const [m] of sinC) {
+            let hallada = null;
+            for (const label of labels) {
+              const tk = tokI[label]; if (!tk) continue;
+              try { const it = await mlGet('/items/' + m + '?attributes=id,status,sub_status,seller_id,available_quantity', tk); if (it && it.id && String(it.seller_id) === String((accounts[label] || {}).seller_id)) { hallada = { label, st: it.status, sub: (it.sub_status || []).join(','), q: it.available_quantity }; break; } } catch { /* otra cuenta */ }
+            }
+            console.log(hallada ? `    · ${m} · es de ${hallada.label} · hoy ${hallada.st}${hallada.sub ? ' (' + hallada.sub + ')' : ''} · stock ${hallada.q ?? '?'} · vendió ${u30[m] || 0} u. en 30 d` : `    · ${m} · ninguna de las 4 cuentas la ve (¿borrada?)`);
+          }
+        }
+      } catch (eS) { console.log('  (no pude mirar las sin cuenta: ' + eS.message + ')'); }
       // 12) Caja de compra perdida en lo que vende, y quiebres: lo que vendía y hoy está sin stock
       const perd = Object.entries(links).filter(([m, e]) => e && e.status === 'active' && e.caja === 'losing' && (u30[m] || 0) >= 2).sort((a, b) => (u30[b[0]] || 0) - (u30[a[0]] || 0));
       // El dólar del panel, para poner en pesos el costo (12 y 12c). Revisión 9 (13/10/2026): misma cuenta que el chequeo
