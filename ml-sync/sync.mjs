@@ -12951,7 +12951,7 @@ function cerebroDeAvisos(text, opt = {}) {
 // que trae código y no se mandó, va UNA vez al canal privado. El código NUNCA se imprime en el registro (es público y abre la
 // entrega): queda sólo en Telegram y en `mlapi/devcodigo/<envío>` (fuera de `cyc/`, la web no lo lee).
 const DEVCOD_CADA_H = 2;
-async function avisoDevCodigo(db, labels, tokensRun, DRY, forzar = false, accounts = {}) {
+async function avisoDevCodigo(db, labels, tokensRun, DRY, forzar = false, accounts = {}, conEntregados = false) {
   const R = { mirados: 0, conCodigo: 0, mandados: 0, fallas: 0, salteo: '' };
   const horaAR = new Date(Date.now() - 3 * 3600e3).getUTCHours();
   if (horaAR < 7 && !forzar) { R.salteo = 'de noche no'; return R; }
@@ -12975,7 +12975,7 @@ async function avisoDevCodigo(db, labels, tokensRun, DRY, forzar = false, accoun
       if (!rr || !Array.isArray(rr.shipments)) continue;
       for (const x of rr.shipments) {
         const sid = x.shipment_id || x.id; if (!sid) continue;
-        if (/^(delivered|cancelled|not_delivered)$/.test(String(x.status || ''))) continue;
+        if (/^(cancelled|not_delivered)$/.test(String(x.status || '')) || (!conEntregados && String(x.status || '') === 'delivered')) continue;
         R.mirados++;
         if (ya[sid] && ya[sid].ok) continue;
         let sh = null; try { sh = await mlGet(`/shipments/${sid}`, tok); } catch { R.fallas++; continue; }
@@ -13002,7 +13002,8 @@ async function avisoDevCodigo(db, labels, tokensRun, DRY, forzar = false, accoun
       const sid = o.shipping && o.shipping.id; if (!sid) continue;
       if (ya[sid] && ya[sid].ok) { R.mirados++; continue; }
       let sh = null; try { sh = await mlGet(`/shipments/${sid}`, tok); } catch { R.fallas++; continue; }
-      if (/^(delivered|cancelled|not_delivered)$/.test(String(sh?.status || ''))) continue;
+      if (/^(cancelled|not_delivered)$/.test(String(sh?.status || '')) || (!conEntregados && String(sh?.status || '') === 'delivered')) continue;
+      if (conEntregados && String(sh?.status || '') === 'delivered' && Date.parse(sh.last_updated || 0) < Date.now() - 2 * 864e5) continue;
       R.mirados++;
       const cod = String((sh && sh.authorization_code) || '').trim();
       if (!cod) continue;
@@ -13010,7 +13011,7 @@ async function avisoDevCodigo(db, labels, tokensRun, DRY, forzar = false, accoun
       if (DRY) continue;
       const tit = String((o.order_items || [])[0]?.item?.title || '').slice(0, 70);
       const llega = sh.shipping_option?.estimated_delivery_time?.date ? new Date(Date.parse(sh.shipping_option.estimated_delivery_time.date) - 3 * 3600e3).toISOString().slice(5, 10).split('-').reverse().join('/') : '';
-      const txt = `🛒 <b>Te llega una compra</b> (${l})${tit ? '\n' + tit.replace(/[<>&]/g, '') : ''}${llega ? '\nLlega: ' + llega : ''}\nCódigo para recibirla: <b>${cod.replace(/[<>&]/g, '')}</b>`;
+      const txt = `🛒 <b>${String(sh.status) === 'delivered' ? 'Compra ya entregada' : 'Te llega una compra'}</b> (${l})${tit ? '\n' + tit.replace(/[<>&]/g, '') : ''}${llega ? '\nLlega: ' + llega : ''}\nCódigo para recibirla: <b>${cod.replace(/[<>&]/g, '')}</b>`;
       const ok = await sendAlerta(txt, { directo: true });
       if (ok) { R.mandados++; try { await db.patch('mlapi/devcodigo/' + sid, { ok: true, ts: Date.now(), cuenta: l, cod, compra: true }); } catch { /* */ } }
       else R.fallas++;
@@ -20011,7 +20012,7 @@ async function main() {
     // También a dónde va cada devolución (al depósito de Full o a tu dirección). Solo LEE.
     if (String(process.env.BILLING_PROBE || '').startsWith('devcodigo')) {
       const DIAS = parseFloat(String(process.env.BILLING_PROBE).split(':')[1]) || 30;
-      const GO_DC = /:go$/.test(String(process.env.BILLING_PROBE));
+      const GO_DC = /:go(:todo)?$/.test(String(process.env.BILLING_PROBE)), TODO_DC = /:todo$/.test(String(process.env.BILLING_PROBE));
       const desde = Date.now() - DIAS * 864e5;
       const RX = /code|cod|pin|auth|verif|qr|token|key|secret|otp/i;
       const huella = (o, pre = '', out = [], prof = 0) => {
@@ -20062,7 +20063,7 @@ async function main() {
       }
       // La MISMA función que corre cada 2 h, en prueba (no manda nada): cuántas en camino y cuántas con código.
       { const TK = {}; for (const l of labels) { const acc = accounts[l]; if (!acc?.refresh_token) continue; try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + l, { refresh_token: t.refresh_token, updated_ts: Date.now() }); TK[l] = t.access_token; } catch { /* */ } }
-        const dc = await avisoDevCodigo(db, labels, TK, !GO_DC, true, accounts);
+        const dc = await avisoDevCodigo(db, labels, TK, !GO_DC, true, accounts, TODO_DC);
         console.log(`\n=== EL AVISO DE CADA 2 H${GO_DC ? '' : ', EN PRUEBA'}: ${dc.mirados} devoluciones y compras en camino · ${dc.conCodigo} con código · ${GO_DC ? dc.mandados + ' mandadas a Telegram' : 'irían a Telegram las que no se mandaron'} · ${dc.fallas} lecturas fallaron ===`); }
       console.log('\n(esto solo LEE y no imprime ningún código)');
       return;
