@@ -150,6 +150,7 @@
   Lecturas en una corrida, 2 ayudantes (max) y el revisor en contra (max). **Domingos:** además el catálogo entero, el ayudante de
   ideas a fondo y medir las gemelas (Premium y envío gratis; proponer sacar las que no sirven).
 - **Cortas a las 9:52, 11:52, 13:52, 15:52, 17:52, 19:37, 21:22, 22:52** (23/10, eligió 1a: repartidas por las ventas por hora de 90 días, ~5 ventas por vuelta; `trig_01FCaQqzU5MA422N6Z8nH63Z` hace las de :52, `trig_01PqmfnY6zLFfGBne72duRC3` la de 19:37 y `trig_01CKS5hpywhunMUppZvSNvFy` la de 21:22).
+- **🔔 Control de ventas cada hora** (`trig_01PxNuKFnJfdAtPem61eaUnA`, a los :07 de 8 a 1, en la sesión de las vueltas; 26/10, él eligió 1a: *"no quiero esperar… un producto que se venda a mal precio puede que se vendan muchas unidades a precio en rojo"*): corre `timbre`; si hay 6+ compras sin revisar o una abajo del 35%, hace la parte de ventas de la vuelta corta; si no, termina en un renglón. Reemplaza al timbre por API (abría un chat sin el robot; `trig_012a3LNycnpvUm55TK7y2mji` apagado).
 - **Auditoría del robot** (`trig_0138cyCgYeEHjqeayqiQPqWQ`, a las 20:30 desde el 23/10, se reprograma sola con `run_once_at`; ver `AUDITORIA.md`).
 - **Cada vuelta, en orden** (detalle en CEREBRO §1): leer `CEREBRO.md` + `notas/preguntas.md` → `ventasraras:nuevas` (sólo ventas
   posteriores a la última analizada; **cada venta se analiza UNA vez**) → **sólo las 🔬 A FONDO van a un ayudante con `effort:"max"`

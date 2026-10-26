@@ -10,7 +10,7 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 
 ### Del 25/10 (lo dejó para después)
 - **Cómo se comunica el chat de Chrome que arma cajas con el panel:** (a) sugerida: él se arregla solo con el panel (✅ Etiquetadas, etc.) y para lo demás un buzón que leo yo · (b) sólo lo que puede hacer solo.
-- **Timbre de ventas (26/10):** él cargó la llave nueva y sonó, pero llamado desde afuera (API) la tarea abre un chat aparte sin el repo ni los comandos del robot (no respeta la sesión de las vueltas): no pudo revisar nada y le mandó 2 avisos de falla. La apagué (`trig_012a3LNycnpvUm55TK7y2mji`, enabled=false). Decisión pendiente: (a) control liviano cada hora dentro de la sesión de las vueltas que sólo trabaja si el timbre está sonando · (b) quedarse con las 8 vueltas cortas.
+- **Timbre de ventas (26/10): resuelto.** Eligió 1a: control cada hora en la sesión de las vueltas (`trig_01PxNuKFnJfdAtPem61eaUnA`). El timbre por API queda apagado.
 
 ### De la completa del domingo 25/10 — él contestó el 25/10 a la noche (1? 2? 3a 4a 5a 6a 7b 8b 9b 10 11b 12a 13b 14a 15a)
 - 1 Talón: preguntó qué tan seguro es el techo → contestado con la tabla `techo95:buscando`. 2 Pendrive 64: sólo con techo seguro, y ahí al 💰 en escalera.

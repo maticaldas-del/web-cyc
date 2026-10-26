@@ -2962,7 +2962,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.69';
+const APP_VERSION='26.70';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2975,6 +2975,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.70',f:'26/10',h:'11:05',c:[{n:2,t:'📈 Línea de tiempo: si un producto y color tiene 2 o más publicaciones con distinto precio o estrategia (como el Centímetro Blanco: una a $4.290 bajando y otra a $3.990 buscando techo), la tarjeta de Precio las muestra todas en ámbar.'}]},
   {v:'26.69',f:'25/10',h:'23:50',c:[{n:2,t:'🎨 Productos nuevos y Para probar: los que tienen aviso en rojo (80%+, un solo vendedor, nombre dudoso) muestran el precio de los OTROS colores del mismo catálogo de ML y cuánto daría el más barato. Es de referencia: no cambia el %.'}]},
   {v:'26.68',f:'25/10',h:'23:10',c:[{n:1,t:'🧾 Pedido del momento: el orden por ventas también cuenta las reseñas en los productos nuevos (mismo error que el de recién: lo que no tenía vendidas cargadas iba al final).'}]},
   {v:'26.67',f:'25/10',h:'23:00',c:[{n:2,t:'🧾 Pedido del momento: el orden "🔥 vende y gana" mandaba al final lo que no tenía las vendidas cargadas aunque tuviera miles de reseñas (el Sony EX15C). Ahora se llama "⭐ gana mucho y sale mucho" y es la MISMA nota que en Productos nuevos: % de ganancia × salida, contando las reseñas.'}]},
@@ -11938,6 +11939,13 @@ function lineaPintar(prodId){
   const _lastDe=o=>{for(let i=ks.length-1;i>=0;i--){const v=o[ks[i]];if(v!=null&&isFinite(v))return v;}return null;};
   const _gHoy=_lastDe(g7),_pctHoy=_lastDe(pd);
   const _estHoy=_estD[_kLast]||[...ks].reverse().map(k=>_estD[k]).find(Boolean)||null;
+  // DOS PUBLICACIONES DEL MISMO COLOR CON DISTINTO PRECIO O ESTRATEGIA (26/10/2026, él con el Centímetro Blanco: "dice buscando techo y
+  // acá dice bajando y en la gráfica no parece estar buscando techo"). Una a $4.290 🪜 y otra a $3.990 📈, con el mismo stock: la
+  // tarjeta mostraba una sola. Ahora, si hay 2+ activas (sin contar las gemelas) que no coinciden, se ven todas debajo, en ámbar.
+  const _pubsDistintas=()=>{const L=Object.keys(porMlaF).filter(m=>!String(((state.mllinks||{})[m]||{}).gemelaDe||'')).map(m=>{
+      const x=(porMlaF[m]||{})[_kLast]||{};if(!(Number(x.p)>0)||(x.est&&!/^active/.test(String(x.est))))return null;return {m,p:Number(x.p),e:estrategiaDe(m)};}).filter(Boolean);
+    if(L.length<2)return'';const dif=new Set(L.map(x=>x.p)).size>1||new Set(L.map(x=>x.e&&x.e.t)).size>1;if(!dif)return'';
+    return `<div style="margin-top:3px;color:var(--amber);font-size:.62rem;line-height:1.5" title="Son ${L.length} publicaciones del mismo producto y color, con el mismo stock: compiten entre ellas y la más barata se lleva las ventas, así que la prueba de la más cara no se puede medir.">⚠️ ${L.length} publicaciones distintas: ${L.sort((a,b)=>a.p-b.p).map(x=>`${fmt(x.p)}${x.e&&ESTRATEGIA_UI[x.e.t]?' '+ESTRATEGIA_UI[x.e.t][0]:''}`).join(' · ')}</div>`;};
   const _estChip=e=>{if(!e||!ESTRATEGIA_UI[e.t])return'';const u=ESTRATEGIA_UI[e.t];return `<span title="${_estTxt(e).replace(/"/g,'&quot;')}" style="display:inline-block;padding:0 7px;border-radius:999px;border:1px solid ${u[2]};color:${u[2]};font-size:.62rem;cursor:help;white-space:nowrap">${u[0]} ${u[1]}</span>`;};
   const _lnAlerta=(()=>{const I=_stI;let col='',t='';
     if(I.esc){col='var(--red)';t=`🔥 <b>Escasez:</b> en Full quedan <b>${I.q} u.</b> y ${I.ezTxt}${pFin?` · precio hoy <b>${fmt(pFin)}</b>`:''}`;}
@@ -11949,7 +11957,7 @@ function lineaPintar(prodId){
     _lnCard('Vendió',`${uT} u.`,'',`${vT} visitas${uPT?` · <span style="color:#f97316">${uPT} en Premium</span>`:''}${uGT?` · <span style="color:#38bdf8">${uGT} con envío gratis</span>`:''}${uRT?` · ${uRT} en remate`:''}`)}${
     _lnCard('Ganancia',hayGan&&gPct!=null&&isFinite(gPct)?`${gPct.toFixed(0)}%`:'—',hayGan&&gPct!=null&&isFinite(gPct)?pctColor(gPct):'',_gHoy!=null?`hoy ${fmt(Math.round(_gHoy))} por día`:'sin ventas con costo')}${
     _lnCard('Stock en Full',`${_stI.q!=null?_stI.q:'—'} u.`,_stI.cHoy,`${_stI.stTxt||''}${_stI.cs>0?` · +${_stI.cs} en la oficina`:''}${_stI.tr?` · ${_stI.tr.u} u. en camino`:' · sin caja en camino'}`)}${
-    _lnCard('Precio',pFin?fmt(pFin):'—','',`${pIni&&pFin&&pIni!==pFin?`antes ${fmt(pIni)} · `:''}${_estChip(_estHoy)}`)}</div>`;
+    _lnCard('Precio',pFin?fmt(pFin):'—','',`${pIni&&pFin&&pIni!==pFin?`antes ${fmt(pIni)} · `:''}${_estChip(_estHoy)}${_pubsDistintas()}`)}</div>`;
   // TÍTULO Y NÚMERO DE HOY DE CADA FRANJA (22/10/2026, 2a): arriba de cada franja, el nombre y sus colores a la izquierda y el dato de
   // hoy a la derecha. Lo técnico (de qué publicación salen las rayas, por qué no se sabe el techo) va al globito o al costado del título.
   const _cjTxt={g:'la ganamos',c:'compartida',p:'la perdemos',n:'no es de catálogo',s:'sin caja',z:'ninguna activa'};
