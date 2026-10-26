@@ -1379,6 +1379,12 @@ es el promedio por día de cada mes (`_lnPromMes`): cada día muestra el de su m
 del gráfico se suman los días desde el 1º aunque queden antes (`_lnPreMes`). Línea de cada producto y general. Probado: sep $5.000/día,
 oct $10.000/día con ventas de prueba. Qué chequear: que el salto caiga justo el día 1 y que el número de "hoy" sea el del mes en curso.
 
+### Etapa 7 · 26/10/2026 · v27.03 · 🇵🇾 El ⭐ gana × vende siempre a la vista
+Él (con la lista de Nissei): *"quiero que muestre el gana/vende más puntaje solo y que se muestre sí o sí, si hace falta que se corte el
+nombre"*. En el renglón de cada candidato: el ⭐ (`candCombo`) en su cajita a la derecha antes del % ("—" si falta la salida); fuera del
+renglón el 🚀 y el ⭐ sueltos (quedan en el detalle); el nombre en un renglón con "…" (entero al pasar el mouse). Qué chequear: PC y celu,
+que el ⭐ no se vaya abajo con nombres largos.
+
 ### Etapa 7 · 26/10/2026 · v27.02 · 📦 Pedidos sin "Cambió desde que miraste"; la vuelta de Nissei más clara
 Él: *"eso sacalo y no veo que diga el último día de revisión"*. `pedCambioAvisoHTML` ya no dibuja el cartel (los chips 🆕/⬆️/⬇️ de cada
 renglón siguen). `_pyVueltaChip`: "hace N días · 🔄 última vuelta completa Nissei"; sin ninguna completa anotada todavía dice "nunca" en rojo
