@@ -1379,6 +1379,13 @@ es el promedio por día de cada mes (`_lnPromMes`): cada día muestra el de su m
 del gráfico se suman los días desde el 1º aunque queden antes (`_lnPreMes`). Línea de cada producto y general. Probado: sep $5.000/día,
 oct $10.000/día con ventas de prueba. Qué chequear: que el salto caiga justo el día 1 y que el número de "hoy" sea el del mes en curso.
 
+### Etapa 7 · 26/10/2026 · v26.92 · 📈 Línea de tiempo: entran tres gráficos
+Él con la del Centímetro en la PC: *"achicar un poco el alto así entran tres. y eso ponerlo arriba más chiquito así entra más"*. Cada franja
+grande mide un tercio del alto de la pantalla (`_lnAlto`, antes la mitad; nunca menos que su mínimo). Las 4 tarjetas (`_lnCard`, también en
+📈 Todos) van con el nombre y el número en el mismo renglón y letra más chica (~42 px de alto en vez de ~64); el renglón de "365 días ·
+historial…" y los márgenes de arriba, más finos. Qué chequear: en la PC entran tres franjas a la vez; en el celu las tarjetas no se cortan
+(medido a 1274 y 390 px); girada (⤿) sigue igual.
+
 ### Etapa 7 · 26/10/2026 · v26.91 · 🎬 Contador: las cifras ya no se cortan
 Él mandó la foto de $106.572 con las cifras cortadas arriba en la PC. Cada cifra va en una caja de 1,16 × 1,5 (antes justa) y la letra
 se achica sola en pantallas angostas (`clamp(1.5rem,8.2vw,2.4rem)`). Medido con $106.572: la caja queda más grande que la cifra y con el
