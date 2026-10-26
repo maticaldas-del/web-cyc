@@ -1379,6 +1379,12 @@ es el promedio por día de cada mes (`_lnPromMes`): cada día muestra el de su m
 del gráfico se suman los días desde el 1º aunque queden antes (`_lnPreMes`). Línea de cada producto y general. Probado: sep $5.000/día,
 oct $10.000/día con ventas de prueba. Qué chequear: que el salto caiga justo el día 1 y que el número de "hoy" sea el del mes en curso.
 
+### Etapa 7 · 26/10/2026 · v27.02 · 📦 Pedidos sin "Cambió desde que miraste"; la vuelta de Nissei más clara
+Él: *"eso sacalo y no veo que diga el último día de revisión"*. `pedCambioAvisoHTML` ya no dibuja el cartel (los chips 🆕/⬆️/⬇️ de cada
+renglón siguen). `_pyVueltaChip`: "hace N días · 🔄 última vuelta completa Nissei"; sin ninguna completa anotada todavía dice "nunca" en rojo
+(antes "—" en gris, no se veía). La primera se anota cuando el chat termine una pasada con `fin=` (sábados). Qué chequear: en Pedidos →
+Paraguay, al lado de Falta reponer.
+
 ### Etapa 4 · 26/10/2026 · v27.01 · 🔄 La versión nueva se detecta aunque el navegador no avise
 Él: *"¡la web no se actualiza sola!"*. La recarga sola dependía sólo del aviso del navegador (`updatefound` del sw.js); con varias
 versiones subidas seguidas puede no llegar. Ahora `_vigilarVersion` además lee el `CACHE` de sw.js sin memoria (`_swMirar`, al abrir, cada 2 min,
