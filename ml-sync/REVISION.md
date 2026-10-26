@@ -1391,7 +1391,7 @@ Arriba de todo los botones (📋 Ficha · 📈 Todos · 365/90/30 · giro · ✕
 publicaciones distintas" sigue, suelto. Qué chequear: con colores y sin colores, celu y PC; el ✕ no se corre al elegir un color.
 
 ### Etapa 3 · 26/10/2026 · 📦 El código de cada devolución que viene a la oficina, a Telegram cada 2 h
-Medido con `devcodigo:45`: ML lo guarda en el envío de vuelta (`/shipments/<id>` → `authorization_code`); las 10 devoluciones de los
+También las COMPRAS de las 4 cuentas que vienen en camino (el código del 26/10 era de una compra, no de una devolución); `devcodigo:<días>:go` (ml-sync) lo manda ya. Medido con `devcodigo:45`: ML lo guarda en el envío de vuelta (`/shipments/<id>` → `authorization_code`); las 10 devoluciones de los
 últimos 45 días fueron al depósito de Full y lo tienen vacío. `avisoDevCodigo` (vuelta horaria, cada 2 h, no de 0 a 7): reclamos de las 4
 cuentas movidos en 20 días → devolución → envíos que no llegaron → si trae código y no se mandó, UN aviso directo al canal privado
 (producto, día que llega y el código) y queda en `mlapi/devcodigo/<envío>`. El registro sólo dice cuántas. `devcodigo` corre la MISMA

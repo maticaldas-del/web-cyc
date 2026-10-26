@@ -12951,7 +12951,7 @@ function cerebroDeAvisos(text, opt = {}) {
 // que trae código y no se mandó, va UNA vez al canal privado. El código NUNCA se imprime en el registro (es público y abre la
 // entrega): queda sólo en Telegram y en `mlapi/devcodigo/<envío>` (fuera de `cyc/`, la web no lo lee).
 const DEVCOD_CADA_H = 2;
-async function avisoDevCodigo(db, labels, tokensRun, DRY, forzar = false) {
+async function avisoDevCodigo(db, labels, tokensRun, DRY, forzar = false, accounts = {}) {
   const R = { mirados: 0, conCodigo: 0, mandados: 0, fallas: 0, salteo: '' };
   const horaAR = new Date(Date.now() - 3 * 3600e3).getUTCHours();
   if (horaAR < 7 && !forzar) { R.salteo = 'de noche no'; return R; }
@@ -12990,6 +12990,30 @@ async function avisoDevCodigo(db, labels, tokensRun, DRY, forzar = false) {
         if (ok) { R.mandados++; try { await db.patch('mlapi/devcodigo/' + sid, { ok: true, ts: Date.now(), cuenta: l, cod }); } catch { /* se vuelve a mandar: mejor dos que ninguno */ } }
         else R.fallas++;
       }
+    }
+  }
+  // 🛒 LO QUE COMPRÓ UNA DE LAS 4 CUENTAS (26/10/2026: el código del día que él mandó — "Hoy te llegará una entrega" — no era de una
+  // devolución, todas van al depósito de Full: era de una compra). Mismo campo del envío, mismo aviso una vez.
+  for (const l of labels) {
+    const tok = tokensRun && tokensRun[l], uid = accounts && accounts[l] && accounts[l].seller_id; if (!tok || !uid) continue;
+    let os = null; try { os = await mlGet(`/orders/search?buyer=${uid}&sort=date_desc&limit=20`, tok); } catch { R.fallas++; continue; }
+    for (const o of (os?.results || [])) {
+      if (Date.parse(o.date_created || 0) < Date.now() - 30 * 864e5) continue;
+      const sid = o.shipping && o.shipping.id; if (!sid) continue;
+      if (ya[sid] && ya[sid].ok) { R.mirados++; continue; }
+      let sh = null; try { sh = await mlGet(`/shipments/${sid}`, tok); } catch { R.fallas++; continue; }
+      if (/^(delivered|cancelled|not_delivered)$/.test(String(sh?.status || ''))) continue;
+      R.mirados++;
+      const cod = String((sh && sh.authorization_code) || '').trim();
+      if (!cod) continue;
+      R.conCodigo++;
+      if (DRY) continue;
+      const tit = String((o.order_items || [])[0]?.item?.title || '').slice(0, 70);
+      const llega = sh.shipping_option?.estimated_delivery_time?.date ? new Date(Date.parse(sh.shipping_option.estimated_delivery_time.date) - 3 * 3600e3).toISOString().slice(5, 10).split('-').reverse().join('/') : '';
+      const txt = `🛒 <b>Te llega una compra</b> (${l})${tit ? '\n' + tit.replace(/[<>&]/g, '') : ''}${llega ? '\nLlega: ' + llega : ''}\nCódigo para recibirla: <b>${cod.replace(/[<>&]/g, '')}</b>`;
+      const ok = await sendAlerta(txt, { directo: true });
+      if (ok) { R.mandados++; try { await db.patch('mlapi/devcodigo/' + sid, { ok: true, ts: Date.now(), cuenta: l, cod, compra: true }); } catch { /* */ } }
+      else R.fallas++;
     }
   }
   if (!DRY) { try { await db.patch('mlapi/devcodigo', { _ult: Date.now() }); } catch { /* */ } }
@@ -19987,6 +20011,7 @@ async function main() {
     // También a dónde va cada devolución (al depósito de Full o a tu dirección). Solo LEE.
     if (String(process.env.BILLING_PROBE || '').startsWith('devcodigo')) {
       const DIAS = parseFloat(String(process.env.BILLING_PROBE).split(':')[1]) || 30;
+      const GO_DC = /:go$/.test(String(process.env.BILLING_PROBE));
       const desde = Date.now() - DIAS * 864e5;
       const RX = /code|cod|pin|auth|verif|qr|token|key|secret|otp/i;
       const huella = (o, pre = '', out = [], prof = 0) => {
@@ -20037,8 +20062,8 @@ async function main() {
       }
       // La MISMA función que corre cada 2 h, en prueba (no manda nada): cuántas en camino y cuántas con código.
       { const TK = {}; for (const l of labels) { const acc = accounts[l]; if (!acc?.refresh_token) continue; try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + l, { refresh_token: t.refresh_token, updated_ts: Date.now() }); TK[l] = t.access_token; } catch { /* */ } }
-        const dc = await avisoDevCodigo(db, labels, TK, true, true);
-        console.log(`\n=== EL AVISO DE CADA 2 H, EN PRUEBA: ${dc.mirados} devoluciones en camino · ${dc.conCodigo} con código (irían a Telegram las que no se mandaron) · ${dc.fallas} lecturas fallaron ===`); }
+        const dc = await avisoDevCodigo(db, labels, TK, !GO_DC, true, accounts);
+        console.log(`\n=== EL AVISO DE CADA 2 H${GO_DC ? '' : ', EN PRUEBA'}: ${dc.mirados} devoluciones y compras en camino · ${dc.conCodigo} con código · ${GO_DC ? dc.mandados + ' mandadas a Telegram' : 'irían a Telegram las que no se mandaron'} · ${dc.fallas} lecturas fallaron ===`); }
       console.log('\n(esto solo LEE y no imprime ningún código)');
       return;
     }
@@ -54542,7 +54567,7 @@ async function main() {
   // 📦 El código de las devoluciones que vienen a la oficina, a Telegram (26/10/2026, pedido suyo). Cada 2 h, sólo lee ML.
   if (parseInt(process.env.BACKFILL_DAYS || '0', 10) === 0 && !onlyAcc && process.env.SKIP_PRICES !== '1') {
     try {
-      const dc = await avisoDevCodigo(db, labels, tokensRun, DRY);
+      const dc = await avisoDevCodigo(db, labels, tokensRun, DRY, false, accounts);
       if (!dc.salteo) console.log(`📦 Devoluciones con código · ${dc.mirados} en camino · ${dc.conCodigo} con código · ${dc.mandados} mandadas a Telegram${dc.fallas ? ' · ' + dc.fallas + ' lecturas fallaron' : ''}`);
     } catch (e) { console.log('No pude mirar los códigos de las devoluciones: ' + String(e.message || e).slice(0, 120)); }
   }
