@@ -17,7 +17,7 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 - 3 Pendrive 32 (a) y 4 Joystick (a): sólo si techo95 dice techo; si no, se sigue buscando. 5 Sacapelusas (a): bajar el arranque a ~$71.990 (🔐 suya).
 - 6 Codera (a) "siempre y cuando no vengan unidades en camino": vienen 4 en la caja de Matías → no se cierran.
 - 7b 8b 9b 13b: se dejan. 10 Luna: seguir buscando techo; con techo, bajar. 11b: pausar las gemelas de envío de Paulvic (eran 35, no 17).
-- 12a: buscar catálogos de pack (primero Cartas Casino) — en la próxima completa. 14a: pedido de Navidad del P47, Filtro y Sábanas el 03/11 (tarea programada). 15a: buzón hecho.
+- 12a: buscar catálogos de pack (primero Cartas Casino) — HECHO 26/10 (`catbusca`, 6 búsquedas): no hay ningún catálogo de pack del mismo mazo Casino x50 con vendedores (el único, "12 cajas de naipes Casino" MLA36486074, está vacío y es otro mazo de 54). Sin catálogo de pack no se arma (regla del 23/10). Se vuelve a mirar en un mes. 14a: pedido de Navidad del P47, Filtro y Sábanas el 03/11 (tarea programada). 15a: buzón hecho.
 
 ### De la completa del lunes 26/10
 - **Paulvic Debutante Mujer (8 en Full) y Witch Night (9 en Full + 10 entre camino y oficina):** siguen a $21.990 desde el 16/10 sin vender 8+ días con stock; la prueba perdió (~28% menos plata por día) y el 24/10 autorizaste volver otros 17 aromas. (a) sugerida: volverlos ya a $14.990 con tu "autorizo", como el 24/10 · (b) esperar al 31/10 y bajar de a un escalón (descuento a $18.790).
