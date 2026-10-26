@@ -160,6 +160,11 @@ html{font-size:118%}
 @media(min-width:641px){#vp-day-list{margin-right:56px;padding:4px 26px}}   /* las ventas un poco adentro: el fuego sale por los costados sin cortarse (09/10/2026) */
 /* Las tarjetas de una lista con alto máximo no se achican: con overflow:hidden (v25.00) el celu las aplastaba (20/10/2026). */
 #vp-day-list>*,.ingreso-list>*{flex-shrink:0}
+/* Ventas en la PC (26/10/2026): ventas a la izquierda, pegadas al borde; los cuadros de números apilados a la derecha (también es el lugar
+   para apoyar el mouse y mover la página). */
+@media(min-width:1100px){#vp-top{display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:16px;align-items:start}
+  #vp-top>#vp-day-list{grid-column:1;grid-row:1;margin:0!important;max-width:none;padding:0 4px 4px 0}
+  #vp-top>#vp-kpis{grid-column:2;grid-row:1;grid-template-columns:1fr;gap:6px;margin:0;position:sticky;top:12px}}
 @media(max-width:640px){#vp-day-list,.ingreso-list{max-height:68vh!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;border:1px solid var(--border);border-radius:10px;padding:4px}}
 #tt-toque{position:fixed;z-index:99990;max-width:min(320px,calc(100vw - 32px));background:var(--surface2);color:var(--text);border:1px solid var(--border2);border-radius:10px;padding:10px 12px;font-size:.78rem;line-height:1.45;box-shadow:0 6px 24px rgba(0,0,0,.35);white-space:pre-line}
 .tt-i{display:inline-block;padding:3px 7px;margin:-3px -3px -3px 0;cursor:help}
@@ -563,6 +568,13 @@ input.qty:focus{border-color:var(--accent2)}
 .met-kpi .mk-val{font-family:'Syne',sans-serif;font-weight:800;font-size:var(--fs-val);line-height:1.25}
 @media(max-width:640px){.met-kpi .mk-val{font-size:min(1rem,3.9vw);white-space:nowrap}}
 .met-kpi .mk-sub{font-size:var(--fs-sub);color:var(--muted);margin-top:1px;line-height:1.35}
+/* 26/10/2026, él: "los cuadrados más finos. si es posible en un renglón mejor": el nombre y el número van en el MISMO renglón; la
+   aclaración (y lo demás que tenga el cuadro) abajo, en chico. */
+.met-kpi{display:flex;flex-wrap:wrap;align-items:baseline;column-gap:8px}
+.met-kpi{align-content:flex-start}
+.met-kpi .mk-lbl{margin-bottom:0;white-space:nowrap;font-size:.56rem;letter-spacing:.06em}
+.met-kpi .mk-val{font-size:.92rem;white-space:nowrap}
+.met-kpi>*:not(.mk-lbl):not(.mk-val){flex-basis:100%}
 .met-acct-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:18px}
 .met-acct{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;position:relative;overflow:hidden}
 .met-acct::after{content:'';position:absolute;top:0;left:0;right:0;height:2px}
@@ -2021,9 +2033,13 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
     <span id="vp-date-label" style="font-size:.66rem;color:var(--muted)"></span>
   </div>
 
+  <!-- 26/10/2026, él: "las ventas ponelas bien pegadas a la izquierda. y los cuadrados ponelos a la derecha uno arriba del otro": en la PC
+       (1100 px o más) dos columnas, las ventas a la izquierda y los cuadros apilados a la derecha; en el celu sigue todo uno abajo del otro. -->
+  <div id="vp-top">
   <div class="met-kpi-grid" id="vp-kpis"></div>
 
   <div id="vp-day-list" class="ingreso-list" style="margin-top:22px;margin-bottom:6px;max-height:570px;overflow-y:auto;overflow-x:hidden"><div class="empty-msg">Sin ventas cargadas.</div></div>
+  </div>
   <!-- 26/10/2026, él: "poner esto abajo de las ventas": el título, el buscador y ⚙️ Filtros van DEBAJO de la lista de ventas. -->
   <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px;margin-bottom:6px">
     <div class="stitle" style="margin:0">Ventas <span id="vp-date-label2" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace"></span></div>
@@ -3078,7 +3094,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.99';
+const APP_VERSION='27.00';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3091,6 +3107,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.00',f:'26/10',h:'18:20',c:[{n:2,t:'🛒 Ventas en la PC: la lista de ventas a la izquierda, pegada al borde, y los cuadros de números apilados a la derecha. Cada cuadro (también en Métricas) con el nombre y el número en el mismo renglón.'}]},
   {v:'26.99',f:'26/10',h:'18:05',c:[{n:1,t:'🧹 Arriba de cada pantalla ya no sale "● en línea · matias" (queda abajo de Inicio). Los cuadros de números de Ventas y Métricas, más finos.'}]},
   {v:'26.98',f:'26/10',h:'17:58',c:[{n:1,t:'💵 Plata por día: se sacó la línea violeta de la semana; queda sólo la verde del mes (la semana sigue en el globito de cada día).'}]},
   {v:'26.97',f:'26/10',h:'17:57',c:[{n:2,t:'📈 Línea de tiempo: los botones de días van arriba de todo, los colores al lado del nombre y se sacaron las 4 tarjetas (todo está en los gráficos); la estrategia de hoy va en el renglón del 💲 Precio.'}]},

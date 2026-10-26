@@ -1379,6 +1379,12 @@ es el promedio por día de cada mes (`_lnPromMes`): cada día muestra el de su m
 del gráfico se suman los días desde el 1º aunque queden antes (`_lnPreMes`). Línea de cada producto y general. Probado: sep $5.000/día,
 oct $10.000/día con ventas de prueba. Qué chequear: que el salto caiga justo el día 1 y que el número de "hoy" sea el del mes en curso.
 
+### Etapa 7 · 26/10/2026 · v27.00 · 🛒 Ventas en dos columnas en la PC; cuadros en un renglón
+Él: *"los cuadrados más finos. si es posible en un renglón mejor"* y *"las ventas ponelas bien pegadas a la izquierda. y los cuadrados
+ponelos a la derecha uno arriba del otro"*. `#vp-top` envuelve `#vp-kpis` + `#vp-day-list`: desde 1100 px grilla (lista | 250 px de
+cuadros apilados, quietos al bajar); en el celu igual que antes. `.met-kpi` (Ventas y Métricas): nombre y número en el mismo renglón
+(flex), lo demás abajo. Medido a 1300/1100/390 px: nada se corta. Qué chequear: el fuego de una venta viva en el borde izquierdo de la lista.
+
 ### Etapa 7 · 26/10/2026 · v26.99 · 🧹 Sin "en línea · matias" arriba y cuadros más finos
 Él: *"sacar ese matias en línea, ya que está en otro lado"* y *"¿se podrán hacer más chicos los cuadrados? más finos"*. `.page-header
 .conn-label/.who-badge` ocultos (queda el renglón de abajo de Inicio; si se corta la base sale el cartel rojo). `.met-kpi` con relleno
