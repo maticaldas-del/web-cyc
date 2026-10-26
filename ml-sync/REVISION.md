@@ -1379,6 +1379,12 @@ es el promedio por día de cada mes (`_lnPromMes`): cada día muestra el de su m
 del gráfico se suman los días desde el 1º aunque queden antes (`_lnPreMes`). Línea de cada producto y general. Probado: sep $5.000/día,
 oct $10.000/día con ventas de prueba. Qué chequear: que el salto caiga justo el día 1 y que el número de "hoy" sea el del mes en curso.
 
+### Etapa 4 · 26/10/2026 · v27.01 · 🔄 La versión nueva se detecta aunque el navegador no avise
+Él: *"¡la web no se actualiza sola!"*. La recarga sola dependía sólo del aviso del navegador (`updatefound` del sw.js); con varias
+versiones subidas seguidas puede no llegar. Ahora `_vigilarVersion` además lee el `CACHE` de sw.js sin memoria (`_swMirar`, al abrir, cada 2 min,
+al volver a la ventana); si cambió, `marcar()` → se recarga sola (no mientras escribís; a los 3 min tapa). Y al volver a la ventana se
+aplica lo que llegó mientras no se veía (`focus`). Qué chequear: subir una versión con la web abierta y que se pase sola en ≤2 min.
+
 ### Etapa 7 · 26/10/2026 · v27.00 · 🛒 Ventas en dos columnas en la PC; cuadros en un renglón
 Él: *"los cuadrados más finos. si es posible en un renglón mejor"* y *"las ventas ponelas bien pegadas a la izquierda. y los cuadrados
 ponelos a la derecha uno arriba del otro"*. `#vp-top` envuelve `#vp-kpis` + `#vp-day-list`: desde 1100 px grilla (lista | 250 px de

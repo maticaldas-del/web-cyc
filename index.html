@@ -2668,6 +2668,7 @@ function startApp(){
     const ahora=Date.now();if(!_cycDesde)_cycDesde=ahora;clearTimeout(_cycT);
     _cycT=setTimeout(_cycAplicar,Math.max(0,Math.min(250,_cycDesde+1000-ahora)));};
   document.addEventListener('visibilitychange',()=>{if(!document.hidden&&_cycPend)_cycAplicar();});
+  window.addEventListener('focus',()=>{if(_cycPend)_cycAplicar();});   // 26/10: al volver a la ventana, lo que llegó mientras no se veía
   const _cycErr=err=>{
     // Etapa 5: si Firebase CANCELA la lectura (permiso vencido, sesión caída) el panel se quedaba
     // congelado con datos viejos y el punto seguía verde (.info/connected sólo mira la red). Ahora
@@ -3094,7 +3095,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.00';
+const APP_VERSION='27.01';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3107,6 +3108,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.01',f:'26/10',h:'18:21',c:[{n:3,t:'🔄 La web se da cuenta sola de que hay una versión nueva aunque el navegador no avise (mira cada 2 minutos y al volver a la ventana) y se recarga sola.'}]},
   {v:'27.00',f:'26/10',h:'18:20',c:[{n:2,t:'🛒 Ventas en la PC: la lista de ventas a la izquierda, pegada al borde, y los cuadros de números apilados a la derecha. Cada cuadro (también en Métricas) con el nombre y el número en el mismo renglón.'}]},
   {v:'26.99',f:'26/10',h:'18:05',c:[{n:1,t:'🧹 Arriba de cada pantalla ya no sale "● en línea · matias" (queda abajo de Inicio). Los cuadros de números de Ventas y Métricas, más finos.'}]},
   {v:'26.98',f:'26/10',h:'17:58',c:[{n:1,t:'💵 Plata por día: se sacó la línea violeta de la semana; queda sólo la verde del mes (la semana sigue en el globito de cada día).'}]},
@@ -4018,6 +4020,13 @@ function _vigilarVersion(){
     window.addEventListener('online',buscar);window.addEventListener('focus',buscar);
     document.addEventListener('focusout',()=>setTimeout(recargar,300));
     setInterval(()=>{if(document.visibilityState==='visible')buscar();},2*60*1000);
+    // 26/10/2026, él: "¡la web no se actualiza sola!". Si el navegador no avisa que bajó una versión nueva (pasa cuando se suben
+    // varias seguidas), la web lo mira ella misma: lee el número de caché de sw.js (2 KB, sin la memoria del navegador) al abrir y cada
+    // 2 minutos; si cambió, hay versión nueva y se recarga sola con las mismas reglas de arriba (no mientras escribís).
+    let _swBase=null;
+    const _swMirar=()=>{if(document.visibilityState!=='visible')return;fetch('sw.js?v='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.text():null).then(t=>{
+      const m=t&&t.match(/const CACHE = "([^"]+)"/);if(!m)return;if(_swBase==null){_swBase=m[1];return;}if(m[1]!==_swBase){reg.update().catch(()=>{});marcar();}}).catch(()=>{});};
+    _swMirar();setInterval(_swMirar,2*60*1000);document.addEventListener('visibilitychange',_swMirar);window.addEventListener('focus',_swMirar);
     if(reg.waiting&&navigator.serviceWorker.controller)marcar();
     reg.addEventListener('updatefound',()=>{
       const nuevo=reg.installing;if(!nuevo)return;
