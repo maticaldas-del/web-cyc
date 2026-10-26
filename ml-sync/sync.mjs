@@ -47098,6 +47098,15 @@ async function main() {
         if (b && b.t === 'correccion') { const ks = Object.keys(h).map(Number).filter((n) => n > 0 && n < b.ts).sort((p, q) => q - p); let pv = null; for (const x of ks) { if (h[x] && h[x].t && h[x].t !== 'correccion') { pv = h[x].t; break; } } b.t = pasajeDe(pv); } if (!b && (nosub || {})[mla]) b = { t: 'liquidando', ts: 0, m: 'marcada liquidando' }; if (b && b.t === 'base') b.t = 'sindecidir'; return b || { t: 'sindecidir', ts: 0, m: 'sin estrategia anotada' }; };
       // Sin estrategia y sin stock en Full (sabido): ⏸️ sin stock, el precio espera la reposición. Con stock, ⚪ hay que decidir.
       for (const r of filas) { r.est2 = estHoy(r.mla); if (r.est2.t === 'sindecidir' && !r.stDesc && !(r.st > 0)) r.est2 = { ...r.est2, t: 'agotado' }; }
+      // ── 👯 MISMO PRODUCTO Y COLOR, DISTINTO PRECIO (26/10/2026, él con el Centímetro Blanco: una a $4.290 🪜 y otra a $3.990 📈 con las
+      // mismas 252 u.: "siendo exactamente el mismo producto y color deberían tener exactamente el mismo precio… creo que acá hay problema
+      // de que no se mira bien la variante; de cualquier modo, quiero que tengan el mismo precio si ves que son exactamente el mismo producto").
+      // Mismo stock (`kSt` = ficha + cuenta + color), activas, sin gemelas. La vuelta mira cada grupo: si son el mismo producto, las deja al
+      // mismo precio y estrategia (la que se está midiendo); si no lo son (otra variante mal vinculada), `fijarvar`/`vincular`. Tiene que quedar vacía.
+      const _dup = {}; for (const r of filas) { if (!r.kSt || !(r.P > 0) || !/^active/.test(String(r.est)) || /^💳/.test(String(r.exc || ''))) continue; (_dup[r.kSt] ||= []).push(r); }
+      const _dupL = Object.values(_dup).filter((g) => g.length > 1 && new Set(g.map((r) => Math.round(r.P))).size > 1);
+      console.log(`\n── 👯 MISMO PRODUCTO Y COLOR (mismo stock) CON DISTINTO PRECIO: ${_dupL.length} · si son exactamente el mismo producto, igualar EN ESTA VUELTA (mismo precio y estrategia); si es otra variante mal vinculada, fijarvar/vincular ──`);
+      for (const g of _dupL) { console.log(`👯 ${g[0].cta} · ${g[0].nom}`); for (const r of g.sort((x, y) => x.P - y.P)) console.log(`     ${r.mla} · ${f(r.P)} · ${r.mg != null ? Math.round(r.mg) + '%' : '?'} · ${ESTRATEGIAS[r.est2.t] || r.est2.t} · ${r.catalogo ? 'catálogo' : 'no catálogo'} · ${r.lt}`); }
       // 24/10/2026: las que ML tiene en revisión para siempre no se miran más (`ML_REVISION_NO_MIRAR`): fuera de todas las listas.
       { const nR = filas.length; for (let i = filas.length - 1; i >= 0; i--) if (ML_REVISION_NO_MIRAR.has(filas[i].mla) && /revisión/.test(filas[i].exc || '')) { filas.splice(i, 1); fuera.revisionML = (fuera.revisionML || 0) + 1; } if (filas.length < nR) console.log(`(${nR - filas.length} en revisión de ML para siempre: no se miran más, regla suya del 24/10)`); }
       filas.sort((x, y) => (y.u30 - x.u30) || (y.st - x.st));
