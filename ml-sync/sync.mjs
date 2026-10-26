@@ -21786,7 +21786,13 @@ async function main() {
       // `py|elegancia|EL_<código>` (ese código entero es el que se carga en `svprecio`).
       const _mc = {}; for (const pv of ['nissei', 'elegancia']) _mc[pv] = pyCodMatcherPv(pv, Object.values(cands).filter((c) => c && !c.no && provPyDeBot(c) === pv).map((c) => c.cod).filter(Boolean));
       const esCand = (k) => _mc[pycatProvDe(k, cat[k])](pycatCodDe(k));
+      // MARCAS QUE NO VAN A ML (26/10/2026: el texto del 24/10 le hacía mirar D&G, prohibida, y Calvin Klein, prohibida para ML): afuera,
+      // así el chat no pierde tiempo. Si no se pueden leer, se avisa y se sigue (es una lista para mirar, no una compra).
+      let _mNo = {}, _mNoML = {}; try { _mNo = (await db.get('cyc/mlconfig/marcasFrenadas')) || {}; _mNoML = (await db.get('cyc/mlconfig/marcasNoML')) || {}; } catch { console.log('⚠️ no pude leer las marcas prohibidas: puede salir alguna (D&G, Calvin Klein)'); }
+      const _marcaNo = (n) => marcaFrenadaDe({ nombre: n }, _mNo) || marcaFrenadaDe({ nombre: n }, _mNoML);
+      let _fueraMarca = 0;
       for (const [cod, e] of Object.entries(cat)) { if (!e || !e.sv || !e.mi || e.fz || !e.f || svpVigente(e) || esCand(cod) || pyCatNoSeMira(e.n)) continue;
+        if (_marcaNo(e.n)) { _fueraMarca++; continue; }
         filas.push({ r: PYCAT_RUBRO_RE.test(String(e.n)) ? 0 : 1, u: Number(e.u) || 0, t: `py|${pycatProvDe(cod, e)}|${cod}|${String(e.n).replace(/\|/g, '/').slice(0, 80)}|${e.mi}|US$ ${e.u}` }); }
       const provs = (await db.get('cyc/mlconfig/listasProv')) || {};
       for (const [k, pv] of Object.entries(provs)) { if (pv.desc) continue; const L = (await db.get('mlapi/listas/' + k)) || {};
@@ -21799,6 +21805,7 @@ async function main() {
       const z = (u) => (u >= 10 && u <= 80 ? 0 : 1);
       buenas.sort((a, b) => a.r - b.r || z(a.u) - z(b.u) || b.u - a.u); filas.length = 0; filas.push(...buenas);
       console.log(`=== CATÁLOGOS SIN VENDEDORES, FALTA EL PRECIO QUE SE VE EN ML: ${filas.length} · muestro ${Math.min(N, filas.length)} (fuente|proveedor|código|nombre|catálogo ML|costo) ===`);
+      if (_fueraMarca) console.log(`(afuera ${_fueraMarca} de marcas que no van a ML: Dolce & Gabbana, Calvin Klein…)`);
       console.log('@@LISTA'); for (const f of filas.slice(0, N)) console.log(f.t); console.log('@@FIN'); return;
     }
     // BILLING_PROBE=svprecio:[lista=<prov>;]<código>=<pesos>|no;…[;go] (24/10/2026, 2a) → el precio que el chat de compras VIO en ML para
@@ -23746,7 +23753,9 @@ async function main() {
     }
     if (/^faltaventas$/.test(String(process.env.BILLING_PROBE || ''))) {
       const cands = (await db.get('cyc/candidatos_py')) || {}; const comp = (await db.get('cyc/compraspy')) || {}; const out = [];
-      for (const c of Object.values(cands)) { if (!c || c.no || c.prodId || c.noML) continue;
+      // 26/10/2026: lo de una marca prohibida para ML (Calvin Klein) no se vende ahí: sus vendidas de ML no deciden nada, afuera.
+      let _mNoML = {}; try { _mNoML = (await db.get('cyc/mlconfig/marcasNoML')) || {}; } catch { _mNoML = {}; }
+      for (const c of Object.values(cands)) { if (!c || c.no || c.prodId || c.noML) continue; if (marcaFrenadaDe(c, _mNoML)) continue;
         const pe = c.pedidoEn && comp[c.pedidoEn]; if (pe && pe.estado === 'camino') continue;
         const mg = Number(c.margen); if (c.margen == null || !isFinite(mg) || mg < CAND_VARA_VENDE) continue;   // 30: las vendidas deciden si entra
         if (c.calcTs == null && Number(c.usdAntes) > 0) continue;
