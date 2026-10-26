@@ -47103,7 +47103,7 @@ async function main() {
       // de que no se mira bien la variante; de cualquier modo, quiero que tengan el mismo precio si ves que son exactamente el mismo producto").
       // Mismo stock (`kSt` = ficha + cuenta + color), activas, sin gemelas. La vuelta mira cada grupo: si son el mismo producto, las deja al
       // mismo precio y estrategia (la que se está midiendo); si no lo son (otra variante mal vinculada), `fijarvar`/`vincular`. Tiene que quedar vacía.
-      const _dup = {}; for (const r of filas) { if (!r.kSt || !(r.P > 0) || !/^active/.test(String(r.est)) || /^💳/.test(String(r.exc || ''))) continue; (_dup[r.kSt] ||= []).push(r); }
+      const _dup = {}; for (const r of filas) { if (!r.kSt || !(r.P > 0) || !/^active/.test(String(r.est)) || /^💳/.test(String(r.exc || ''))) continue; (_dup[r.kSt + '|' + r.lt] ||= []).push(r); }   // Clásica y Premium pueden tener distinto precio (cuotas): se comparan dentro del mismo tipo
       const _dupL = Object.values(_dup).filter((g) => g.length > 1 && new Set(g.map((r) => Math.round(r.P))).size > 1);
       console.log(`\n── 👯 MISMO PRODUCTO Y COLOR (mismo stock) CON DISTINTO PRECIO: ${_dupL.length} · si son exactamente el mismo producto, igualar EN ESTA VUELTA (mismo precio y estrategia); si es otra variante mal vinculada, fijarvar/vincular ──`);
       for (const g of _dupL) { console.log(`👯 ${g[0].cta} · ${g[0].nom}`); for (const r of g.sort((x, y) => x.P - y.P)) console.log(`     ${r.mla} · ${f(r.P)} · ${r.mg != null ? Math.round(r.mg) + '%' : '?'} · ${ESTRATEGIAS[r.est2.t] || r.est2.t} · ${r.catalogo ? 'catálogo' : 'no catálogo'} · ${r.lt}`); }
