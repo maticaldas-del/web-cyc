@@ -2962,7 +2962,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.71';
+const APP_VERSION='26.72';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2975,6 +2975,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.72',f:'26/10',h:'12:20',c:[{n:1,t:'🔥 Ventas vivas: el fuego aparece recién desde $20.000 de ganancia (antes $10.000). De $10.000 a $20.000 como mucho tiembla.'}]},
   {v:'26.71',f:'26/10',h:'11:15',c:[{n:2,t:'🏠 Inicio: el cuadro de Ventas mostraba las ventas del día anterior si la app quedaba abierta de un día para el otro (al volver se actualizaba "Hoy" pero no ese cuadro). Ahora se actualiza junto.'}]},
   {v:'26.70',f:'26/10',h:'11:05',c:[{n:2,t:'📈 Línea de tiempo: si un producto y color tiene 2 o más publicaciones con distinto precio o estrategia (como el Centímetro Blanco: una a $4.290 bajando y otra a $3.990 buscando techo), la tarjeta de Precio las muestra todas en ámbar.'}]},
   {v:'26.69',f:'25/10',h:'23:50',c:[{n:2,t:'🎨 Productos nuevos y Para probar: los que tienen aviso en rojo (80%+, un solo vendedor, nombre dudoso) muestran el precio de los OTROS colores del mismo catálogo de ML y cuánto daría el más barato. Es de referencia: no cambia el %.'}]},
@@ -10893,6 +10894,7 @@ const _vivaLog=(x,a,b)=>Math.min(1,Math.max(0,Math.log(Math.max(x,a)/a)/Math.log
 // 1.800 brilla · 2.400 flota · 10.500 arde (si ganó) · todo al máximo en 120.000. Abajo de 2.000 no se anima.
 const VIVA_SC_MAX=120000, VIVA_SC_MIN=2000;
 const VIVA_GAN_TIEMBLA=10000;   // temblor y fuego recién desde esta ganancia en pesos (15/10/2026, pedido suyo)
+const VIVA_GAN_FUEGO=20000;     // el fuego recién desde $20.000 de ganancia (26/10/2026, él con una Lupa de $16.095: "que el fuego aparezca después de $20.000 de ganancia"); de $10.000 a $20.000 como mucho tiembla
 // VELOCIDAD DE LAS FIGURAS POR NETO (09/10/2026, elegida por él con el ajustador): neto → px por segundo, de a poco
 // entre un punto y otro (escala de neto logarítmica). Sólo la velocidad de subida; lo demás sigue saliendo del puntaje.
 const VIVA_VEL_NETO=[[4000,0],[5000,3],[50000,303],[100000,608],[200000,1037],[400000,2061],[550000,2500]];
@@ -10920,7 +10922,8 @@ function vivaVenta(o){
   // y fuego permita activarse a partir de $10.000 de ganancia. No quiere decir que sí o sí se activen, sino que permita").
   // Abajo de eso todo sigue igual pero como mucho flota rápido. Las que perdieron no llegan a temblar (pierden, no ganan $10.000).
   const g10=(Number(o.gan)||0)>=VIVA_GAN_TIEMBLA;
-  const fi=gano&&g10&&sc>=10500?Math.max(.08,_vivaLog(sc,10500,VIVA_SC_MAX)):0;
+  const g20=(Number(o.gan)||0)>=VIVA_GAN_FUEGO;
+  const fi=gano&&g20&&sc>=10500?Math.max(.08,_vivaLog(sc,10500,VIVA_SC_MAX)):0;
   const ef=fi>0?'fuego':(tm>=.28&&g10)?'tiembla':tm>=.16?'flota2':sc>=2400?'flota':sc>=1800?'glow':'';
   return{k:n.k,c:n.c,vel,vi,tz,tv,fi,ef,vpx:vivaVelNeto(o.neto)};
 }

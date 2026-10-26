@@ -1623,6 +1623,10 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
 
 ## 7 · DISEÑO (domingo)
 
+### 🔥 Fuego de las ventas vivas desde $20.000 (26/10/2026, v26.72, pedido suyo)
+- **Qué es:** `VIVA_GAN_FUEGO=20000` en `vivaVenta`: el fuego necesita $20.000+ de ganancia (antes alcanzaba $10.000, `VIVA_GAN_TIEMBLA`, que sigue para el temblor). Caso: Lupa de $16.095 ardía.
+- **Qué chequear:** una venta de $10.000-$19.999 que antes ardía ahora tiembla (no queda quieta) · una de $20.000+ con puntaje 10.500+ sigue ardiendo.
+
 ### 🏷️ Sin terminar por cuenta (24/10/2026, v26.53, pedido suyo)
 - **Qué es:** la tarjeta de Contar lo que hay agrupa por cuenta (nombre arriba, productos abajo); cada color/aroma va a la cuenta que lo
   publica (`_sinEtiqCtas` con `_varPorMla`); con una cuenta elegida arriba (`ofiContarCuenta`) muestra sólo la suya.

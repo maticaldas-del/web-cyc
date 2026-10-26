@@ -180,7 +180,7 @@
   **$10.000+** de ganancia (la compra ENTERA, sumando el carrito), no suena 00:30-10:00 (sale junto a las 10:00). Cada teléfono toca
   una vez "🔔 Activar aviso de cada venta". Llave privada VAPID en `mlapi/vapid` (nunca al repo).
 - Chats nuevos del bot quedan `pendiente` hasta `tgaprobar:<últimos números>:go`.
-- **Ventas vivas** (temblor y fuego en la tarjeta) se permiten desde **$10.000** de ganancia (`VIVA_GAN_TIEMBLA`, 15/10). Cada venta dice
+- **Ventas vivas:** el temblor se permite desde **$10.000** de ganancia (`VIVA_GAN_TIEMBLA`, 15/10) y el fuego desde **$20.000** (`VIVA_GAN_FUEGO`, 26/10). Cada venta dice
   Clásica o Premium y en cuántas cuotas (`tipoPub`, `cuotas`, `cuotasSI`) y "envío gratis" si salió por una gemela de envío.
 
 ## 5 · PRECIOS (resumen; manda `ml-sync/CEREBRO.md`)
