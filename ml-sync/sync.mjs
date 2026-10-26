@@ -49513,12 +49513,15 @@ async function main() {
       return;
     }
 
-    // BILLING_PROBE=buzon[:leido=<ts>[,<ts>…]][;go] → 📬 LOS MENSAJES PARA CLAUDE (25/10/2026, eligió la 15a). Los deja el chat de Chrome
+    // BILLING_PROBE=buzon[:leido=<ts>[,<ts>…]][;go] · buzon:ver=<ts>[,<ts>] (entero) → 📬 LOS MENSAJES PARA CLAUDE (25/10/2026, eligió la 15a). Los deja el chat de Chrome
     // que arma las cajas (o él) desde Mi oficina → "Mensaje para Claude" (`cyc/buzon/<ts>` = {t, ts, leido}). Sin nada: lista los sin leer
     // (y los 5 últimos leídos). `leido=<ts>,…;go` los marca leídos. Va por ml-consulta (`CONSULTA_ESCRIBE`).
     if (/^buzon(:|;|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const raw = String(process.env.BILLING_PROBE).replace(/^buzon:?/, ''); const GOb = /(^|;)go$/.test(raw) && !DRY;
       const B = (await db.get('cyc/buzon')) || {};
+      // `ver=<ts>[,<ts>]` (26/10/2026): el mensaje ENTERO (la lista lo corta en 600 letras y el chat de compras deja 120 dudas en uno).
+      const mV = raw.match(/ver=([\d,]+)/);
+      if (mV) { for (const t of mV[1].split(',').filter(Boolean)) console.log(B[t] ? `=== [${t}] ===\n${String(B[t].t || '')}\n` : `  ${t}: no existe`); return; }
       const mL = raw.match(/leido=([\d,]+)/);
       if (mL) {
         const tss = mL[1].split(',').filter(Boolean);
