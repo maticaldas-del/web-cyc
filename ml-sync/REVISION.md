@@ -1379,6 +1379,13 @@ es el promedio por día de cada mes (`_lnPromMes`): cada día muestra el de su m
 del gráfico se suman los días desde el 1º aunque queden antes (`_lnPreMes`). Línea de cada producto y general. Probado: sep $5.000/día,
 oct $10.000/día con ventas de prueba. Qué chequear: que el salto caiga justo el día 1 y que el número de "hoy" sea el del mes en curso.
 
+### Etapa 7 · 26/10/2026 · v26.85 · 🖥️ Inicio en la PC
+Él: *"esta parte quiero que se haga como en el celu, sacar cyc y el dólar ponerlo ahí abajo. además la de pc está media hecha como para
+celular, no utiliza el ancho máximo… más que nada el inicio"*. El logo no se dibuja en ningún lado y el dólar va al final (antes sólo en
+el celular). Desde 1100 px las dos tarjetas de Ventas van lado a lado (5:7) con el mismo ancho que la grilla; desde 1560 px las dos
+pasan a 1440 px. Dibujado a 390 · 1400 · 1920 px: el celular queda igual que antes.
+- **Qué chequear:** en la PC, con el mes elegido (calendario largo) que la tarjeta de la derecha no quede cortada.
+
 ### Etapa 4 · 26/10/2026 · v26.84 · ⚡ La web ya no baja `cyc` entero
 Él: *"tarda mucho en cargar cyc y anda medio lento y trabado. mucho más en pc"* y *"que se cargue sino al clickear… las ventas sí quiero
 que estén cargadas"*. `pesobase`: 13,6 MB (candidatos_py 3,84 · ventaprod 3,53 · facturas 1,27 · supervisor 0,97 · mllinks 0,50 ·
