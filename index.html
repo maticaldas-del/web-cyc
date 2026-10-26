@@ -2962,7 +2962,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.67';
+const APP_VERSION='26.68';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2975,6 +2975,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.68',f:'26/10',h:'21:50',c:[{n:1,t:'🧾 Pedido del momento: el orden por ventas también cuenta las reseñas en los productos nuevos (mismo error que el de recién: lo que no tenía vendidas cargadas iba al final).'}]},
   {v:'26.67',f:'26/10',h:'21:40',c:[{n:2,t:'🧾 Pedido del momento: el orden "🔥 vende y gana" mandaba al final lo que no tenía las vendidas cargadas aunque tuviera miles de reseñas (el Sony EX15C). Ahora se llama "⭐ gana mucho y sale mucho" y es la MISMA nota que en Productos nuevos: % de ganancia × salida, contando las reseñas.'}]},
   {v:'26.66',f:'26/10',h:'21:20',c:[{n:1,t:'🧾 Pedido del momento: nuevo orden "🔥 vende y gana" — arriba lo que más se vende y más % de ganancia deja a la vez (ventas × %).'}]},
   {v:'26.65',f:'25/10',h:'20:10',c:[{n:1,t:'📈 Línea de tiempo: la búsqueda de techo ya no dice "decide con 95% (2 días)" (los 2 días eran los MEDIDOS, no los que faltan). Ahora dice "pide 95% · lleva 2 días medidos"; y si el precio ya volvió abajo, dice que la prueba se cortó y con cuánto quedó.'}]},
@@ -17378,7 +17379,7 @@ function pedidoMomentoHTML(g){
   const _k={pct:(x,n)=>n?Number(x.c.margen):(x.pr&&margenMLDe(x.pr)?margenMLDe(x.pr).margen:null),
     gan:(x,n)=>n?Number(x.c.ganancia):(x.pr?gananciaUnidad(x.pr):null),
     costo:(x)=>x.usd, sub:(x)=>x.usd*x.u,
-    vend:(x,n)=>n?candVentasDe(x.c):(x.pr?pedVentasNorm(x.pr).vendidos:null)};
+    vend:(x,n)=>n?candPuntaje(x.c):(x.pr?pedVentasNorm(x.pr).vendidos:null)}; // Nuevos: 🚀 salida (vendidas o reseñas × 20, 26/10: si no, lo que no tenía vendidas cargadas iba al final)
   // ⭐ GANA MUCHO Y SALE MUCHO (26/10/2026, él: "que se pueda ordenar con el que más se vende y más % de ganancia da"; y enseguida, con el
   // Sony EX15C último teniendo 1693 reseñas y 146%: "parece joda"). La MISMA nota que Productos nuevos (`candCombo`: % × log10(🚀+1) ÷ 10,
   // 🚀 = lo que más diga entre vendidas y reseñas × 20): en Nuevos las reseñas cuentan aunque no estén cargadas las vendidas. En Probados,
