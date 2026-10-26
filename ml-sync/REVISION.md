@@ -1379,6 +1379,11 @@ es el promedio por día de cada mes (`_lnPromMes`): cada día muestra el de su m
 del gráfico se suman los días desde el 1º aunque queden antes (`_lnPreMes`). Línea de cada producto y general. Probado: sep $5.000/día,
 oct $10.000/día con ventas de prueba. Qué chequear: que el salto caiga justo el día 1 y que el número de "hoy" sea el del mes en curso.
 
+### Etapa 7 · 26/10/2026 · v27.07 · 🙈 Tampoco la ganancia
+Él: *"ganancia tampoco"*. Con `ocultaVendido()`: la ganancia de la tarjeta pasa a "+N% de ganancia", la tarjeta de abajo (escalera, curva,
+gusto, cobro) no se muestra, no rueda ningún número y el contador de "cargando" (`_ld4`) no lee `cycGanHoy` (giran las cifras sin número).
+Qué chequear: prendido, en Inicio y al abrir la app no aparece ningún monto.
+
 ### Etapa 7 · 26/10/2026 · v27.06 · 🙈 Ocultar la plata vendida en Inicio
 Él: *"quiero opción en ajustes de no mostrar dinero vendido, sólo en ventas x producto, ese sí dejalo normal"*. Ajustes → Apariencia
 (`cycOcultaVendido` en el aparato, `ocultaVendido()`): la tarjeta de ventas de Inicio (día/mes/año) muestra "N ventas · u." en vez del

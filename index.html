@@ -1017,7 +1017,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   // más vieja o sin dato, 5 cifras girando sin parar con "cargando la ganancia…" (nunca un número inventado).
   const _ld4=()=>{
     let gv=null,lbl='';
-    try{const o=JSON.parse(localStorage.getItem('cycGanHoy')||'null');const kk=d=>d.getFullYear()+'_'+String(d.getMonth()+1).padStart(2,'0')+'_'+String(d.getDate()).padStart(2,'0');
+    try{const o=localStorage.getItem('cycOcultaVendido')==='1'?null:JSON.parse(localStorage.getItem('cycGanHoy')||'null');   // 🙈 plata oculta: no muestra la gananciaconst kk=d=>d.getFullYear()+'_'+String(d.getMonth()+1).padStart(2,'0')+'_'+String(d.getDate()).padStart(2,'0');
       if(o&&isFinite(o.g)){if(o.k===kk(new Date())){gv=o.g;lbl='ganancia de hoy';}else if(o.k===kk(new Date(Date.now()-864e5))){gv=o.g;lbl='ganancia de ayer';}}}catch(e){}
     // Sin dato en este aparato (26/10/2026, él con la foto: quedaba "$" y una sola cifra cortada): no se inventa un número; giran 5
     // cifras SIN PARAR ("buscando"), cada una a su velocidad, hasta que entra la app.
@@ -2417,7 +2417,8 @@ function toggleDiscreto(){
 }
 (function(){try{if(localStorage.getItem('cycDiscreto')==='1')document.body.classList.add('discreto');}catch(e){}})();
 // 🙈 SIN LA PLATA VENDIDA (26/10/2026, él: "quiero opción en ajustes de no mostrar dinero vendido, sólo en ventas x producto, ese sí dejalo
-// normal"): en este aparato, la tarjeta de ventas de Inicio (día, mes y año) no muestra el facturado; Ventas x Producto queda igual.
+// normal"; y enseguida "ganancia tampoco"): en este aparato, Inicio (la tarjeta de ventas de día, mes y año, y lo de abajo: escalera,
+// curva, cobro) y la pantalla de "cargando" no muestran plata: quedan las ventas, las unidades, el % y el puntaje. Ventas x Producto igual.
 function ocultaVendido(){try{return localStorage.getItem('cycOcultaVendido')==='1';}catch(e){return false;}}
 function _ocultaVendidoTxt(){return ocultaVendido()?'🙈 Oculta (prendido)':'👁️ Se ve';}
 function toggleOcultaVendido(){const on=!ocultaVendido();try{localStorage.setItem('cycOcultaVendido',on?'1':'0');}catch(e){}
@@ -3103,7 +3104,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.06';
+const APP_VERSION='27.07';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3116,6 +3117,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.07',f:'26/10',h:'18:50',c:[{n:1,t:'🙈 "Ocultar la plata" también saca la ganancia en pesos de Inicio (queda el %), lo de abajo de la tarjeta (escalera, curva, cobro) y la ganancia de la pantalla de cargando.'}]},
   {v:'27.06',f:'26/10',h:'18:48',c:[{n:2,t:'🙈 Ajustes → Apariencia: "Ocultar la plata vendida". La tarjeta de ventas de Inicio (día, mes, año) muestra las ventas y las unidades sin el facturado. Ventas x Producto queda igual. Cada aparato por su lado.'}]},
   {v:'27.05',f:'26/10',h:'18:42',c:[{n:2,t:'🧾 Pedido del momento: arriba suma el ⭐ gana × vende de todo lo cargado y la 💵 ganancia que dejaría al venderse todo.'}]},
   {v:'27.04',f:'26/10',h:'18:40',c:[{n:1,t:'🔄 Pedidos → Paraguay: ahora sí se ve al lado de "Falta reponer" el cuadro de la última vuelta completa de Nissei (una regla vieja lo escondía).'}]},
@@ -24950,7 +24952,7 @@ function _homeHoyEfectos(esc,h,dia){
       const pct=pctGananciaVP(gan,cost,gest);
       const nombre=vs.length&&nuevas.length===1?(vs[0].prod||vs[0].title||''):`${nuevas.length} ventas nuevas`;
       _hoyPastilla(`+${fmt(tot)} · ${nombre}${pct!=null&&isFinite(pct)?' · '+(pct>=0?'+':'')+pct.toFixed(0)+'%':''}`,pctColor(pct));
-      if(!calma){if(!ocultaVendido())_hoyRodar('hoy-bruto',prev.bruto,h.bruto);_hoyRodar('hoy-gan',prev.gan,h.gan);}   // oculto: el número que rueda sería la plata
+      if(!calma&&!ocultaVendido()){_hoyRodar('hoy-bruto',prev.bruto,h.bruto);_hoyRodar('hoy-gan',prev.gan,h.gan);}   // oculto: el número que rueda sería la plata
       try{if(navigator.vibrate)navigator.vibrate(35);}catch(e){}
     }
   }
@@ -25078,7 +25080,8 @@ function renderHomeHoy(){
     <div style="display:flex;flex-wrap:wrap;gap:10px 34px;align-items:flex-end">
       ${ocultaVendido()?`<div><div id="hoy-bruto" style="font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(2rem,8vw,3.4rem);line-height:1;letter-spacing:-.01em">${h.ventas} <span style="font-size:.45em">venta${h.ventas===1?'':'s'}</span></div><div style="font-size:.78rem;color:var(--muted);margin-top:6px"><b style="color:var(--text)">${h.u}</b> u.</div></div>`
         :`<div><div id="hoy-bruto" style="font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(2rem,8vw,3.4rem);line-height:1;letter-spacing:-.01em">${fmt(h.bruto)}</div><div style="font-size:.78rem;color:var(--muted);margin-top:6px">facturado · <b style="color:var(--text)">${h.ventas}</b> venta${h.ventas===1?'':'s'} · <b style="color:var(--text)">${h.u}</b> u.</div></div>`}
-      <div><div id="hoy-gan" style="font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(1.6rem,6vw,2.2rem);line-height:1;color:var(--c)">${fmt(h.gan)}</div><div style="font-size:.78rem;color:var(--muted);margin-top:6px">ganancia · <b style="color:var(--text)">${pctTxt}</b></div></div>
+      ${ocultaVendido()?`<div><div id="hoy-gan" style="font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(1.6rem,6vw,2.2rem);line-height:1;color:var(--c)">${pctTxt}</div><div style="font-size:.78rem;color:var(--muted);margin-top:6px">de ganancia</div></div>`
+        :`<div><div id="hoy-gan" style="font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(1.6rem,6vw,2.2rem);line-height:1;color:var(--c)">${fmt(h.gan)}</div><div style="font-size:.78rem;color:var(--muted);margin-top:6px">ganancia · <b style="color:var(--text)">${pctTxt}</b></div></div>`}
       ${(()=>{const D=_puntajeDia(hoy,h,_nP,esc);if(!D)return `<div style="align-self:center;padding:8px 14px;border-radius:12px;color:var(--muted);border:1px solid var(--border2);text-align:center"><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.35rem;line-height:1">—<span style="font-size:.6em;opacity:.7"> /10</span></div><div style="font-size:.74rem;font-weight:700;margin-top:4px">sin ventas todavía</div></div>`;
         return `<div style="align-self:center;padding:8px 14px;border-radius:12px;color:var(--c);background:color-mix(in srgb,var(--c) 12%,transparent);border:1px solid color-mix(in srgb,var(--c) 35%,transparent);text-align:center" title="Puntaje ${esc==='dia'?'del día':esc==='mes'?'del mes':'del año'} (de 0 a 10), sólo por la ganancia en pesos: 7 en ${fmt(D.target)}${D.n>1?` ($115.000 × ${D.n} días)`:' por día'} (que a cada uno de los 3 le queden $900.000 por mes pagando todo) y 10 en ${fmt(D.target2)}; arriba de 10 es excepcional (sigue subiendo).">
           <div class="${D.score>10?'punt-rompe':''}" style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.35rem;line-height:1">${D.score.toFixed(1).replace('.',',')}<span style="font-size:.6em;opacity:.7"> /10</span></div><div style="font-size:.74rem;font-weight:700;margin-top:4px">${VIVA_DIA_NOM[_vd.k]||D.nivel}</div></div>`;})()}
@@ -25086,7 +25089,7 @@ function renderHomeHoy(){
   </div></div>
   <!-- 22/10/2026, él: "que las ventas viva sea hasta la línea roja, así lo de abajo se nota más, ya que con colores no se entiende
        mucho. Lo mismo con mes y año": la tarjeta viva (colores, burbujas, fuego) termina en los números; lo de abajo va en una común. -->
-  <div style="--c:${_vd.c};margin:8px auto 18px;max-width:min(760px,calc(100vw - 32px));background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 22px 14px">
+  <div style="--c:${_vd.c};margin:8px auto 18px;max-width:min(760px,calc(100vw - 32px));background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 22px 14px;${ocultaVendido()?'display:none':''}">
     ${h.ventas>0?_diaEscaleraHTML(h.gan,_nP,_nP-h.dias,esc):''}
     ${esc==='dia'?(()=>{try{return _homeCurvaHTML(hoy);}catch(e){return '';}})():''}
     ${(()=>{try{return _homeGustoHTML(esc,hoy,_hf);}catch(e){return '';}})()}
@@ -26090,7 +26093,7 @@ window.addEventListener('beforeunload',e=>{if(_borr.size){e.preventDefault();e.r
         <button class="btn" id="ajuste-discreto-btn" style="background:var(--surface2);border:1px solid var(--border2);color:var(--text)" onclick="toggleDiscreto()">✨ Con efectos</button>
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:12px;border-top:1px solid var(--border);padding-top:12px">
-        <span style="font-size:.75rem;color:var(--muted)">Ocultar la plata vendida en Inicio (la tarjeta de ventas de hoy, del mes y del año muestra las ventas y las unidades, sin el facturado). Ventas x Producto queda igual. Sólo en este aparato.</span>
+        <span style="font-size:.75rem;color:var(--muted)">Ocultar la plata en Inicio: la tarjeta de ventas de hoy, del mes y del año muestra las ventas, las unidades, el % y el puntaje, sin el facturado ni la ganancia en pesos (tampoco la pantalla de cargando). Ventas x Producto queda igual. Sólo en este aparato.</span>
         <button class="btn" id="ajuste-vendido-btn" style="background:var(--surface2);border:1px solid var(--border2);color:var(--text)" onclick="toggleOcultaVendido()">👁️ Se ve</button>
       </div>
       <div id="ajuste-sonido"></div>
