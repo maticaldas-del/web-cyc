@@ -2863,7 +2863,8 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso, op
   });
   const lineaP = (x) => `· ${x.nom} · ${x.label} · ${x.stock} u.${x.precio ? ' · ' + money(Math.round(x.precio)) : ''} → ${x.why}`;
   const porMargen = nuevasP.filter((x) => /^queda en /.test(x.why));
-  const sinMedir = nuevasP.filter((x) => !/^queda en /.test(x.why));
+  // 26/10/2026: las pausadas a propósito por él (`pausar`) no van al aviso (él: "no avises más de esas").
+  const sinMedir = nuevasP.filter((x) => !/^queda en /.test(x.why) && !/pausada a mano con el comando pausar/.test(String(x.why || '')));
   if (porMargen.length) {
     avisos.push(`⏸️ <b>Con stock en Full y siguen pausadas</b>\nNo llegan al ${(PISO * 100).toFixed(0)}% con su precio de hoy:\n`
       + porMargen.map(lineaP).join('\n')
@@ -2884,7 +2885,7 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso, op
   }
   const anotarP = {};
   if (!DRY) for (const x of nuevasP) anotarP[x.mla] = { ts: ahoraP, why: x.why, nom: x.nom, cuenta: x.label };
-  console.log(`Activar pausadas con Full: ${activadas.length} activadas · ${noLlegan.length} no (${porMargen.length} por margen, ${sinMedir.length} sin poder medir, ${noLlegan.length - nuevasP.length} ya avisadas antes).`);
+  { const _nProp = noLlegan.filter((x) => /pausada a mano con el comando pausar/.test(String(x.why || ''))).length; console.log(`Activar pausadas con Full: ${activadas.length} activadas · ${noLlegan.length - _nProp} no (${porMargen.length} por margen, ${sinMedir.length} sin poder medir, ${noLlegan.length - nuevasP.length} ya avisadas antes)${_nProp ? ` · ${_nProp} pausadas a propósito por él (no cuentan)` : ''}.`); }
   // Sólo se miran las cuentas con token esta vuelta (13/10/2026, revisión 9): decía "de las 4 cuentas" aunque faltara una.
   const ctasLinks = [...new Set(Object.values(links).map((e) => e && e.cuenta).filter(Boolean))];
   const ctasSin = ctasLinks.filter((c) => !Object.prototype.hasOwnProperty.call(tokensRun, c));
@@ -2918,7 +2919,11 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso, op
     console.log(`   ⚠️ NO CIERRA: ${conteo.conStock} pausadas con stock pero sólo ${cierra} tienen explicación (${activadas.length} activadas + ${noLlegan.length} avisadas). Hay ${conteo.conStock - cierra} saliendo en silencio.`);
   }
   // Renglón por renglón al log SIEMPRE, avisadas o no: un total sin el detalle esconde cuál es.
-  for (const x of noLlegan) console.log(`   ⏸️ ${x.nom} · ${x.label} · ${x.stock} u. → ${x.why}`);
+  // 26/10/2026 (él: "no avises más de esas"): las que pausó él a propósito (`pausar`, p.ej. las gemelas de envío gratis de Paulvic, 11b)
+  // no son una alarma: van en un solo renglón con el total y no se listan ni se cuentan como "no activadas".
+  const aProposito = noLlegan.filter((x) => /pausada a mano con el comando pausar/.test(String(x.why || '')));
+  for (const x of noLlegan) if (!aProposito.includes(x)) console.log(`   ⏸️ ${x.nom} · ${x.label} · ${x.stock} u. → ${x.why}`);
+  if (aProposito.length) console.log(`   (${aProposito.length} pausadas a propósito por él con \`pausar\`: no se avisan ni se activan · ${aProposito.reduce((a, x) => a + (Number(x.stock) || 0), 0)} u. en Full)`);
   // Para el botón 🧠 de la web (08/10/2026): qué decidió esta vuelta con cada pausada con stock en Full.
   if (!DRY && (activadas.length || noLlegan.length)) {
     const act = {};
