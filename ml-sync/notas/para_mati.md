@@ -46,5 +46,10 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 - ~~**6 candidatos donde el catálogo de ML parece otra variante** (no los toqué, con duda no se toca): Casio A140WE-2ADF (ML gris, lista azul) · Zimaya Zukhruf (ML "Pink") · Afnan Highness V (ML "Black") · Amazfit Active A2437 (ML "Active 2 Premium 44mm") · Dior Hydra Life Crème Sorbet (ML "Intense") · Orientica Rose. → **26/10 eligió (b): sacarlos.** HECHO (revcand).~~
 - 52 de la lista de precios eran claramente otro producto: marcados `svprecio:…=otro` (se buscan de nuevo). ~14 quedaron en duda (variante no confirmada): se vuelven a mirar en la próxima tanda.
 
+## 26/10 · pasada de Nissei (chat de Chrome)
+- **3 probados en duda** (sin código, no confirmó que sea el mismo producto): PS Portal y dos Victoria's Secret (variante). Mirarlos en la página de Nissei y pasarme código y precio, o "no lo tiene".
+- 24 de 28 probados quedaron "Nissei no lo tiene" (`nohabia`). Si la pasada del catálogo trae su código con precio, la marca se cae sola; los que sigan marcados al terminar, revisarlos (sobre todo los que venden).
+- **Preguntas de compradores (Ayelen):** medidas y hueco de la mentonera · qué es el color "Ab" del metatarso · aumento del espejo 8".
+
 ## Viejas que siguen esperando (de CLAUDE.md §13)
 - Sancor (respuesta y baja de Vida Plus) · contador (recategorización, actividad, facturas entre cuentas) · costo de las dos Linternas COB de Ayelen.

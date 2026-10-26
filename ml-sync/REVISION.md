@@ -811,6 +811,16 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 
 ## 3 · MERCADERÍA (miércoles)
 
+### 🛒 Informes de Nissei: 35%+ aparte de 25-34% (26/10/2026, él: *"es 35 o más %, no 25"*)
+- **Qué es:** `pycatdia`, la lista de nuevos de `ml-pycat` y `candresumen` decían "dan 25%+ (candidatos)" como si fuera lo que se compra; desde el 24/10 se compra con `CAND_VARA_COMPRA` (35%) y lo de 25-34% sólo queda guardado. Ahora cada uno dice primero cuántos se compran (35%+).
+- **Dónde vive:** `ml-sync/sync.mjs` (`pycatdia`, `nuevosQueDan`, `candresumen`). La web ya los separaba (💾 Guardados 25-34%).
+- **Qué chequear:** que `pycatdia` diga "35%+ (se pueden comprar)" y que esa cifra sea menor que la de 25%+.
+
+### 📦 La caja se llena por plata, no por cubrir stock (26/10/2026, v27.13, él: *"siempre priorizamos ganar más, no cubrir stock"*)
+- **Qué es:** con cupo chico, "Cargar lo que entra en el cupo" da la primera unidad SÓLO a lo que está en 0 o se corta en 14 días (`CAJA_CORTE_DIAS`) y después llena por lo que más deja cada unidad (el lugar en Full no vuelve al vender). Antes daba 1 a cada uno y se comía el cupo con lo que tiene stock para 25-45 días. Lo nuevo que nunca vendió cuenta con lo que deja hoy su publicación (`margenMLDe` × costo); sin publicación con precio, al final como antes.
+- **Dónde vive:** `cajaLlenarCupoPlan` y `cajaGanUnidad` (`index.html`) · `llenar_cupo` (`ml-sync/notas/decide_cajas.py`, misma regla).
+- **Qué chequear:** caja de Ayelen del 26/10 (19 lugares, 28 productos): web y robot dan la misma caja (Mouse 4 · Lupa 100mm 7 · Separador 2 · 1 a Triples Negro, Kit, Cinta 7.5M, Balanza, p47, Gua Sha) = $360.793 contra $138.406 de la regla vieja. Que lo que está en 0 nunca quede sin su unidad si tiene ganancia medida.
+
 ### 🧾 `pyped:nuevos:<resto|perf|elegancia>` (26/10/2026, él pagó sólo el pedido de Resto)
 - **Qué es:** "Ya lo pedí" de los productos nuevos de UN solo pedido del momento (Nissei resto `py…`, perfumería `pyb…`, Elegancia `pyel…`); antes marcaba los tres juntos.
 - **Qué chequear:** que los otros dos sigan en el armado con sus unidades · que lo de uso personal pase al historial sólo del que se pidió.
@@ -1378,6 +1388,131 @@ queda el costo real con la escala desde $0. Qué chequear: que un producto con c
 es el promedio por día de cada mes (`_lnPromMes`): cada día muestra el de su mes; el mes en curso, lo que va del mes. Para el primer mes
 del gráfico se suman los días desde el 1º aunque queden antes (`_lnPreMes`). Línea de cada producto y general. Probado: sep $5.000/día,
 oct $10.000/día con ventas de prueba. Qué chequear: que el salto caiga justo el día 1 y que el número de "hoy" sea el del mes en curso.
+
+### Etapa 7 · 26/10/2026 · v27.12 · 📈 Variantes en un desplegable
+Él (Paulvic con ~60 aromas en botones): *"que las variantes estén en un desplegable. que aparezca sólo la variante que clickee yo en la venta
+y todas juntas"*. A la vista: "Todas juntas" + la elegida; las demás en un `<select>` ("N variantes ▾"). Qué chequear: abrir desde una
+venta muestra ese aroma marcado; elegir otro del desplegable cambia la línea.
+
+### Etapa 7 · 26/10/2026 · v27.11 · 📦 Productos: unidades en Full en la tarjeta
+Él (con la tarjeta de la Waflera): *"que diga las unidades que hay en Full"*. Al lado de "precio hoy": "en Full N u." (suma de las 4
+cuentas, `getQ`; rojo en 0). Qué chequear: coincide con Full de ML de esa ficha.
+
+### Etapa 1 · 26/10/2026 · v27.10 · 🧠 Cambios de precio: el total sólo con resultado claro
+Él (con "−$194.100"): *"¿quiere decir que todo lo que hicimos fue al pedo? yo veo que estamos ganando como nunca"*; eligió la 1a. El total
+de Métricas sumaba todo cambio medido, también los que juzgué "todavía no se sabe" (Waflera sin stock −$56.593, Redmi Watch 4 −$48.722) y
+"no fue el precio". Ahora suma sólo 🟢/🔴 de mi juicio (con el signo del juicio) y dice aparte el **costo de buscar techo** (subas
+que perdieron) y cuántos quedan afuera. Mientras, la mezcla mostraba la plata real: $12-13 cada $100 en may-jun → $20 oct → $27 la última
+semana. Qué chequear: el total cambia cuando juzgo un cambio (`juzgo:`), y los "no se sabe" no lo mueven.
+
+### Etapa 7 · 26/10/2026 · v27.09 · 🧮 La mezcla: cuántos y por semana, mes o año
+Él: *"no quiero ver los últimos 6 meses solo, sino poder elegir cuántos meses/períodos/años"*. `metMezclaMeses(n, agr)` agrupa con
+`_mzClave` (semana lun-dom, mes o año); botones Semana · Mes · Año y últimos 3/6/12/24/Todo, recordados en el aparato (`cycMezcla`). La cuenta
+de cada venta no cambió. Qué chequear: el renglón "(va)" es el período en curso en las tres formas.
+
+### Etapa 7 · 26/10/2026 · v27.08 · 📈 Línea de tiempo: nombre y botones en un renglón
+Él: *"¿tenés lugar para subir más el nombre? la idea es que las métricas ocupen el mayor espacio posible"*. Nombre + colores a la izquierda
+y botones a la derecha en el MISMO renglón (producto y 📈 Todos); `wrap-reverse`: en el celu los botones quedan arriba en dos renglones.
+Medido a 1300 y 390 px: entra todo, el ✕ a la vista. Qué chequear: elegir un color no corre los botones.
+
+### Etapa 7 · 26/10/2026 · v27.07 · 🙈 Tampoco la ganancia
+Él: *"ganancia tampoco"*. Con `ocultaVendido()`: la ganancia de la tarjeta pasa a "+N% de ganancia", la tarjeta de abajo (escalera, curva,
+gusto, cobro) no se muestra, no rueda ningún número y el contador de "cargando" (`_ld4`) no lee `cycGanHoy` (giran las cifras sin número).
+Qué chequear: prendido, en Inicio y al abrir la app no aparece ningún monto.
+
+### Etapa 7 · 26/10/2026 · v27.06 · 🙈 Ocultar la plata vendida en Inicio
+Él: *"quiero opción en ajustes de no mostrar dinero vendido, sólo en ventas x producto, ese sí dejalo normal"*. Ajustes → Apariencia
+(`cycOcultaVendido` en el aparato, `ocultaVendido()`): la tarjeta de ventas de Inicio (día/mes/año) muestra "N ventas · u." en vez del
+facturado y no lo hace rodar (`_hoyRodar`). La ganancia y el puntaje siguen. Ventas x Producto igual. Qué chequear: prenderlo y que en
+Inicio no aparezca el facturado en ningún momento (tampoco al llegar una venta).
+
+### Etapa 3 · 26/10/2026 · v27.05 · 🧾 Pedido del momento: ⭐ total y 💵 ganancia al venderse
+Él: *"que al cargar el pedido se sumen los puntajes de gana/vende más y muestre el conjunto de todos. y la ganancia que generaría al
+venderse"*. En la cabecera (`pedidoMomentoHTML`): ⭐ = suma del `_k.vendpct` de cada producto (la misma nota que ordena); 💵 = Σ unidades ×
+ganancia por unidad (nuevos `c.ganancia`, probados `gananciaUnidad` de hoy); sin uso personal. Qué chequear: con productos sin dato de
+salida o de ganancia no suman (no se inventa), y el número cambia al tocar las unidades.
+
+### Etapa 7 · 26/10/2026 · v27.04 · 🔄 El cuadro de la vuelta de Nissei se ve
+Él: *"sigo sin ver la última vuelta"*. La regla del 17/10 que deja sólo "Falta reponer" en Pedidos (`.pcount:not(.pcount-reponer)`)
+escondía el cuadro nuevo (`_pyVueltaChip`). Ahora lleva `pcount-vuelta` y la regla lo deja. Busqué el mismo patrón: es la única regla que
+esconde cuadros de Pedidos. Qué chequear: Pedidos → Paraguay muestra los dos cuadros.
+
+### Etapa 7 · 26/10/2026 · v27.03 · 🇵🇾 El ⭐ gana × vende siempre a la vista
+Él (con la lista de Nissei): *"quiero que muestre el gana/vende más puntaje solo y que se muestre sí o sí, si hace falta que se corte el
+nombre"*. En el renglón de cada candidato: el ⭐ (`candCombo`) en su cajita a la derecha antes del % ("—" si falta la salida); fuera del
+renglón el 🚀 y el ⭐ sueltos (quedan en el detalle); el nombre en un renglón con "…" (entero al pasar el mouse). Qué chequear: PC y celu,
+que el ⭐ no se vaya abajo con nombres largos.
+
+### Etapa 7 · 26/10/2026 · v27.02 · 📦 Pedidos sin "Cambió desde que miraste"; la vuelta de Nissei más clara
+Él: *"eso sacalo y no veo que diga el último día de revisión"*. `pedCambioAvisoHTML` ya no dibuja el cartel (los chips 🆕/⬆️/⬇️ de cada
+renglón siguen). `_pyVueltaChip`: "hace N días · 🔄 última vuelta completa Nissei"; sin ninguna completa anotada todavía dice "nunca" en rojo
+(antes "—" en gris, no se veía). La primera se anota cuando el chat termine una pasada con `fin=` (sábados). Qué chequear: en Pedidos →
+Paraguay, al lado de Falta reponer.
+
+### Etapa 4 · 26/10/2026 · v27.01 · 🔄 La versión nueva se detecta aunque el navegador no avise
+Él: *"¡la web no se actualiza sola!"*. La recarga sola dependía sólo del aviso del navegador (`updatefound` del sw.js); con varias
+versiones subidas seguidas puede no llegar. Ahora `_vigilarVersion` además lee el `CACHE` de sw.js sin memoria (`_swMirar`, al abrir, cada 2 min,
+al volver a la ventana); si cambió, `marcar()` → se recarga sola (no mientras escribís; a los 3 min tapa). Y al volver a la ventana se
+aplica lo que llegó mientras no se veía (`focus`). Qué chequear: subir una versión con la web abierta y que se pase sola en ≤2 min.
+
+### Etapa 7 · 26/10/2026 · v27.00 · 🛒 Ventas en dos columnas en la PC; cuadros en un renglón
+Él: *"los cuadrados más finos. si es posible en un renglón mejor"* y *"las ventas ponelas bien pegadas a la izquierda. y los cuadrados
+ponelos a la derecha uno arriba del otro"*. `#vp-top` envuelve `#vp-kpis` + `#vp-day-list`: desde 1100 px grilla (lista | 250 px de
+cuadros apilados, quietos al bajar); en el celu igual que antes. `.met-kpi` (Ventas y Métricas): nombre y número en el mismo renglón
+(flex), lo demás abajo. Medido a 1300/1100/390 px: nada se corta. Qué chequear: el fuego de una venta viva en el borde izquierdo de la lista.
+
+### Etapa 7 · 26/10/2026 · v26.99 · 🧹 Sin "en línea · matias" arriba y cuadros más finos
+Él: *"sacar ese matias en línea, ya que está en otro lado"* y *"¿se podrán hacer más chicos los cuadrados? más finos"*. `.page-header
+.conn-label/.who-badge` ocultos (queda el renglón de abajo de Inicio; si se corta la base sale el cartel rojo). `.met-kpi` con relleno
+8×12, etiqueta pegada al número y menos aire (Ventas y Métricas). Qué chequear: que nada se corte en el celu (el resumen en un renglón
+de Ventas no cambia) y que la PC muestre los cuadros más bajos.
+
+### Etapa 7 · 26/10/2026 · v26.98 · 💵 Plata por día sin la línea de la semana
+Él: *"sacar la línea de semana. dejar sólo la del mes"*. Fuera `_lineaSemSvg` (producto y 📈 Todos) y su leyenda; la suma de la semana
+sigue en el globito de cada día (`_lineaSemanas`). Qué chequear: en Plata por día sólo la línea verde y su número de la derecha.
+
+### Etapa 7 · 26/10/2026 · v26.97 · 📈 Línea de tiempo: días arriba, colores al lado del nombre, sin tarjetas
+Él: *"las variantes que vayan al final del nombre del producto · los días/períodos para elegir que estén arriba de todo también"* y
+con las 4 tarjetas: *"esto sacarlo, ya que todo está puesto en las métricas. Lo único, la estrategia ponela en el precio. La actual"*.
+Arriba de todo los botones (📋 Ficha · 📈 Todos · 365/90/30 · giro · ✕), abajo el nombre con los colores a continuación; sin `_lnCards`
+(en 📈 Todos quedan las suyas); el chip de la estrategia de hoy (`_estChip(_estHoy)`) en la derecha del 💲 Precio; el aviso de "N
+publicaciones distintas" sigue, suelto. Qué chequear: con colores y sin colores, celu y PC; el ✕ no se corre al elegir un color.
+
+### Etapa 3 · 26/10/2026 · 📦 El código de cada devolución que viene a la oficina, a Telegram cada 2 h
+También las COMPRAS de las 4 cuentas que vienen en camino (el código del 26/10 era de una compra, no de una devolución); `devcodigo:<días>:go` (ml-sync) lo manda ya; `devcodigo:<días>:go:todo` también lo ya entregado de los últimos 2 días (para encontrar uno que ya llegó). Medido con `devcodigo:45`: ML lo guarda en el envío de vuelta (`/shipments/<id>` → `authorization_code`); las 10 devoluciones de los
+últimos 45 días fueron al depósito de Full y lo tienen vacío. `avisoDevCodigo` (vuelta horaria, cada 2 h, no de 0 a 7): reclamos de las 4
+cuentas movidos en 20 días → devolución → envíos que no llegaron → si trae código y no se mandó, UN aviso directo al canal privado
+(producto, día que llega y el código) y queda en `mlapi/devcodigo/<envío>`. El registro sólo dice cuántas. `devcodigo` corre la MISMA
+función en prueba. Qué chequear: la primera devolución que venga a la oficina llega a Telegram con su código y el registro no lo muestra.
+
+### Etapa 3 · 26/10/2026 · 📦 `devcodigo[:días]`: dónde guarda ML el código de una devolución
+Él: *"cada tanto llegan devoluciones que van con QR. ¿vos podés verlas cuando llegan? ¿y mandarme el código a Telegram? revisar cada 2 h
+… de las cuatro cuentas"*. Primer paso, sólo lee: recorre los reclamos con devolución de las 4 cuentas y de la devolución y su envío
+imprime los NOMBRES de campo con pinta de código (nunca el valor: el registro es público) y a dónde va cada una. Qué chequear: que no
+imprima ningún código ni dato del comprador.
+
+### Etapa 7 · 26/10/2026 · v26.96 · 🛒 Ventas: buscador y filtros abajo de la lista
+Él (con la foto de "VENTAS · fecha · Buscar · Filtros · Mostrando"): *"poner esto abajo de las ventas"* y *"sigue apareciendo esto"* (en
+la v26.94 sólo había sacado el botón azul). El renglón del título + 🔍 y el ⚙️ Filtros van debajo de `#vp-day-list`. Qué chequear: la
+lista sale arriba, el buscador abajo sigue filtrando y "Buscar en ventas" de otras pantallas lo sigue llenando.
+
+### Etapa 4 · 26/10/2026 · v26.95 · ⚡ La web vuelve a actualizar al instante
+Él: *"¿por qué no actualiza al instante ahora la web de cyc?"*. Falla mía de la v26.84 (la web más rápida): la ráfaga de cambios se juntaba
+esperando 400 ms SIN cambios (`_cycSched`) y después otros 300 ms (`renderPronto`); mientras el robot escribía una publicación tras otra, la
+espera se corría sola y una venta nueva aparecía recién cuando el robot terminaba. Ahora: 250 ms sin cambios y **nunca más de 1 s desde el
+primer cambio** (`_cycDesde`), y la pasada dibuja en el acto (`renderPronto(true)`). Medido con escrituras cada 200 ms durante 5 s: se
+actualiza cada ~1 s (antes recién a los 5,4 s); un cambio suelto, a los 250 ms. Qué chequear: una venta nueva aparece sola en segundos.
+
+### Etapa 7 · 26/10/2026 · v26.94 · 🆕 Ventas: la cuenta de las nuevas va en la rayita
+Él: *"poner esto abajo de las ventas y el cuadrito azul sacarlo, ya que está la línea marcando los nuevos"*. Se sacó el botón `.vp-nuevas`
+(y `ventaNuevasIr`); "N ventas nuevas desde que miraste · +$X" va en negrita en la rayita (`_rayitaDe`) que separa lo nuevo de lo ya visto,
+o al final de la lista si todas las que se ven son nuevas. La rayita sigue viéndose en el celu (mín. 14 px de cada lado). Los puntitos
+azules de cada venta nueva siguen. Qué chequear: con ventas nuevas, arriba no hay nada y la cuenta aparece debajo de la última nueva.
+
+### Etapa 7 · 26/10/2026 · v26.93 · 📈 Línea de tiempo en el celu: tocar no abre nada
+Él: *"en el celu al arrastrar o clickear se abre esa ventana. Re molesta. Que no se abra nada y listo"*. Se sacó la franja del día con el
+dedo (7.23 del 21/10: `_lineaFranjaEn`, `_lineaDiasDe`, `_lineaFranjaCerrar`, su CSS y el vigilante de toda la página que la cerraba).
+En la PC el globito del mouse sigue. Qué chequear: en el celu tocar y arrastrar la línea sólo mueve la pantalla; en la PC el globito aparece.
 
 ### Etapa 7 · 26/10/2026 · v26.92 · 📈 Línea de tiempo: entran tres gráficos
 Él con la del Centímetro en la PC: *"achicar un poco el alto así entran tres. y eso ponerlo arriba más chiquito así entra más"*. Cada franja

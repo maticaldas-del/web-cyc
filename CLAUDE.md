@@ -163,7 +163,7 @@
   del 35% en el peor caso · 📦 sobra sin decidir · 🔎 sin afinar · 📈 dice techo/escasez y no sube · 📈 prueba con respuesta (3 ventas esperadas, 23/10) · 👯 mismo producto y color con distinto precio o estrategia (26/10) (todas en `planilla`) · 🆕 lanzamiento que vendió (también por su gemela) y no subió (en `errores`, 23/10) · 🧐 revisión a fondo atrasada (`revfondo`, sólo la completa: todo producto con stock en Full y publicación activa con mi nota del 🧠 de menos de 2 días si está quieto o de 7 si vendió; 24/10, eligió la 3a).
 - **Activar lo pausado es prioridad** (10/10): `pausadas:25` + `activarfull:go:25`; toda pausada con stock en Full que no se activa
   va a `notas/para_mati.md` con motivo (al `pregunto:URGENTE` sólo si vende fuerte). Lo nuevo (nunca estuvo en Full) lo activo yo con el precio ya puesto (peor caso).
-- **Preguntas de compradores:** las contesto yo (`contesto:<id>=<respuesta>;…;go`), sólo las nuevas y sólo las que sé SIN DUDA.
+- **Preguntas de compradores:** las contesto yo (`contesto:<id>=<respuesta>;…;go`), sólo las nuevas y sólo las que sé SIN DUDA. **La que no sé se le pasa en el chat EN EL MOMENTO** (26/10, 1a: *"si no respondo guardá para responder después"*): si no contesta, va a `notas/para_mati.md` y sale en el aviso de las 12:30 hasta que la resuelva. **Las viejas (abril-agosto) se dejan** (26/10, 2a).
   `responder` automático apagado (`responder:off`); la IA de preguntas **queda apagada** (24/10, eligió la a: sin `ANTHROPIC_API_KEY`; no volver a proponerla).
 - **Cada vuelta busca algo nuevo para mejorar** (12/10, maximizar y bajar costos), sin repetir (`notas/ideas.md`); si no hay, no se inventa.
 - Esfuerzo fijo (no se cambia sin que él lo diga): ayudantes de la completa, ideas y revisor en max; raros de las cortas en Alto;
@@ -173,7 +173,7 @@
 - **CYC Avisos (Telegram) = SÓLO lo urgente y los recordatorios** (23/10, *"si me llega un mensaje de CYC Avisos sé que es algo
   que tengo que resolver ya"*): `pregunto:URGENTE: …` (el robot lo niega sin "URGENTE") sólo para lo que cuesta plata si espera
   (reclamo que espera su respuesta, ML frenó algo que vende, algo que vende fuerte en 0 en Full con mercadería en la oficina, un pago
-  que vence) · `recordar:<texto>` · el chat nuevo del bot · **🚫 ML dio de baja/frenó una publicación y ✅ cuando la vuelve a habilitar** (26/10, él: *"es importante a resolver, casi siempre es por pedir facturas en la cuenta de Adriana"*; cerrada, en revisión, inactiva o falta de papeles, una vez por cambio). Las 🔐 autorizaciones ya NO van por Telegram (24/10): se le pasan en el chat. **Las decisiones (a)/(b)
+  que vence) · `recordar:<texto>` · el chat nuevo del bot · **🚫 ML dio de baja/frenó una publicación y ✅ cuando la vuelve a habilitar** (26/10, él: *"es importante a resolver, casi siempre es por pedir facturas en la cuenta de Adriana"*; cerrada, en revisión, inactiva o falta de papeles, una vez por cambio). · **📦 el código para recibir una devolución que viene a la oficina** (26/10, él: *"mandarme el código a Telegram… revisar cada 2 h… de las cuatro cuentas"*; `avisoDevCodigo`, de 7 a 24, una vez por envío; el código nunca al registro, sólo Telegram y `mlapi/devcodigo`). Las 🔐 autorizaciones ya NO van por Telegram (24/10): se le pasan en el chat. **Las decisiones (a)/(b)
   NO van: a `notas/para_mati.md`** y se resuelven en el chat cuando dice "resolvamos". Nunca "subí/bajé/activé", ni resúmenes, ni lo que
   deshizo el detector (va al log). `//` = salto de línea, sin `;`, sin datos de compradores. Informativos: `sendAlerta(texto,{info:true})`.
 - **Cada venta nueva llega al TELÉFONO (push de la web), no a Telegram** (`AVISO_VENTA_TELEGRAM=false`): sólo compras que dejan
@@ -307,6 +307,7 @@
   manda a la papelera lo que no quiere. **No volver a proponer cortar el ritmo viejo.**
 - **Cajas a Full:** cubren **37 días** (30 + 7 de viaje); **60 si vende parejo** y no tiene prueba de precio abierta
   (`notas/sin_estirar.txt`); **tope 90 días**; nuevo sin ventas recibe 4 (`PISO_CERO`). `decide_cajas.py` → `decido:caja:<id>@<cuenta>[#color]=u|N|motivo`. **Lo que él decide de una caja va a `FIJO` en `decide_cajas.py`** (25/10: si no, la completa se lo pisa). **"Armá la caja" = eso + `cajaarmar;go`** (carga la caja como el botón 🎯 Cargar lo que entra en el cupo; 25/10, si no queda incompleta).
+  **Con cupo chico se llena por plata, no por cubrir stock** (26/10, él): 1 u. a lo que está en 0 o se corta en 14 días, después lo que más deja cada unidad (lo nuevo con lo que deja su publicación); web y `decide_cajas.py` iguales.
   Una cuenta sin publicación no recibe el mínimo si otra tiene stock de ese color en Full. Caja 70×70×70, 30 kg; costo de mandar una
   caja `cyc/mlconfig/costoCaja` ($17.500, `cajacosto`).
 - **Cupo de Full por cuenta** (ML no lo da por API): desde el 26/10 lo lee cada día el chat de Chrome (`PROMPT_RUTINA_LOCAL.md`, 2a) y yo lo cargo del buzón con `cupo:<cuenta>=<chicos>/<grandes>`; "grande" = sólo los Tenders

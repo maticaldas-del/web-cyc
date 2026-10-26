@@ -12864,7 +12864,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
   // lista COMPLETA: si no, un día en que todos ya fueron avisados el comando imprime "no mando
   // nada" y parece que no hay ninguno. Es la misma separación que ya usa `calcCajaBarata`.
   if (nuevosQueDan.length) {
-    console.log(`\n── LOS ${nuevosQueDan.length} QUE DAN ${CAND_PISO_PCT}% O MÁS (de mejor a peor) ──`);
+    console.log(`\n── LOS ${nuevosQueDan.length} QUE DAN ${CAND_PISO_PCT}% O MÁS (de mejor a peor) · se compran sólo los de ${CAND_VARA_COMPRA}%+: ${nuevosQueDan.filter((x) => x.margen >= CAND_VARA_COMPRA).length} ──`);
     [...nuevosQueDan].sort((a, b) => b.margen - a.margen).forEach((x, i) => {
       console.log(`${String(i + 1).padStart(3)}. ${x.margen.toFixed(1).padStart(5)}%  ·  US$ ${x.puesto.toFixed(2).padStart(7)} puesto (US$ ${(x.puesto / RECARGO_PAR).toFixed(2)} + ${RECARGO_PAR_PCT}%)`
         + `  ·  en ML ${x.mlMax > x.mlPrecio ? `de ${money(Math.round(x.mlPrecio))} a ${money(x.mlMax)}` : money(Math.round(x.mlPrecio))} (${x.mlVendedores} vend. · ${_ventasTxt(x.c)})  ·  ${money(Math.round(x.ganancia))}/u.`);
@@ -12943,6 +12943,82 @@ function cerebroDeAvisos(text, opt = {}) {
   if (opt && opt.info) return { va: false, por: 'es informativo: no pide ninguna decisión' };
   if (/^⏸️ <b>Con stock en Full y siguen pausadas<\/b>/.test(t)) return { va: false, por: 'la noche las lleva al precio que deja ganar y se activan solas' };
   return { va: true, por: opt && opt.directo ? 'es para vos directo' : 'no lo puede resolver solo' };
+}
+// 📦 EL CÓDIGO PARA RECIBIR UNA DEVOLUCIÓN, A TELEGRAM (26/10/2026, él: "cada tanto llegan devoluciones que van con QR. ¿vos podés verlas
+// cuando llegan? ¿y mandarme el código a Telegram? Pero revisar cada 2 h así lo veo sí o sí el día que llegan. De las cuatro cuentas").
+// ML lo guarda en el envío de vuelta (`/shipments/<id>` → `authorization_code`, medido con `devcodigo`: vacío en las que van al
+// depósito de Full, que son casi todas). Cada 2 h (y no de 0 a 7) mira los reclamos con devolución en camino de las 4 cuentas; el
+// que trae código y no se mandó, va UNA vez al canal privado. El código NUNCA se imprime en el registro (es público y abre la
+// entrega): queda sólo en Telegram y en `mlapi/devcodigo/<envío>` (fuera de `cyc/`, la web no lo lee).
+const DEVCOD_CADA_H = 2;
+async function avisoDevCodigo(db, labels, tokensRun, DRY, forzar = false, accounts = {}, conEntregados = false) {
+  const R = { mirados: 0, conCodigo: 0, mandados: 0, fallas: 0, salteo: '' };
+  const horaAR = new Date(Date.now() - 3 * 3600e3).getUTCHours();
+  if (horaAR < 7 && !forzar) { R.salteo = 'de noche no'; return R; }
+  let ya = {};
+  try { ya = (await db.get('mlapi/devcodigo')) || {}; } catch { R.salteo = 'no pude leer lo ya mandado'; return R; }
+  if (!forzar && Number(ya._ult) > Date.now() - DEVCOD_CADA_H * 3600e3 + 5 * 60e3) { R.salteo = 'lo miré hace menos de 2 h'; return R; }
+  const desde = Date.now() - 20 * 864e5;
+  for (const l of labels) {
+    const tok = tokensRun && tokensRun[l]; if (!tok) { R.fallas++; continue; }
+    const cls = [];
+    for (const st of ['opened', 'closed']) {
+      for (let off = 0; off < 200; off += 50) {
+        let r; try { r = await mlGet(`/post-purchase/v1/claims/search?status=${st}&limit=50&offset=${off}`, tok); } catch { R.fallas++; break; }
+        const d = r?.data || []; cls.push(...d.filter((c) => Date.parse(c.last_updated || c.date_created || 0) >= desde));
+        if (d.length < 50) break;
+      }
+    }
+    for (const c of cls) {
+      let rr = null;
+      try { const r = await mlGet(`/post-purchase/v2/claims/${c.id}/returns`, tok); rr = Array.isArray(r) ? r[0] : (r?.data?.[0] || r); } catch { rr = null; }
+      if (!rr || !Array.isArray(rr.shipments)) continue;
+      for (const x of rr.shipments) {
+        const sid = x.shipment_id || x.id; if (!sid) continue;
+        if (/^(cancelled|not_delivered)$/.test(String(x.status || '')) || (!conEntregados && String(x.status || '') === 'delivered')) continue;
+        R.mirados++;
+        if (ya[sid] && ya[sid].ok) continue;
+        let sh = null; try { sh = await mlGet(`/shipments/${sid}`, tok); } catch { R.fallas++; continue; }
+        const cod = String((sh && sh.authorization_code) || '').trim();
+        if (!cod) continue;
+        R.conCodigo++;
+        if (DRY) continue;
+        let tit = ''; try { const o = await mlGet('/orders/' + c.resource_id, tok); tit = String((o?.order_items || [])[0]?.item?.title || '').slice(0, 70); } catch { /* sin título */ }
+        const llega = sh.shipping_option?.estimated_delivery_time?.date ? new Date(Date.parse(sh.shipping_option.estimated_delivery_time.date) - 3 * 3600e3).toISOString().slice(5, 10).split('-').reverse().join('/') : '';
+        const txt = `📦 <b>Te llega una devolución</b> (${l})${tit ? '\n' + tit.replace(/[<>&]/g, '') : ''}${llega ? '\nLlega: ' + llega : ''}\nCódigo para recibirla: <b>${cod.replace(/[<>&]/g, '')}</b>`;
+        const ok = await sendAlerta(txt, { directo: true });
+        if (ok) { R.mandados++; try { await db.patch('mlapi/devcodigo/' + sid, { ok: true, ts: Date.now(), cuenta: l, cod }); } catch { /* se vuelve a mandar: mejor dos que ninguno */ } }
+        else R.fallas++;
+      }
+    }
+  }
+  // 🛒 LO QUE COMPRÓ UNA DE LAS 4 CUENTAS (26/10/2026: el código del día que él mandó — "Hoy te llegará una entrega" — no era de una
+  // devolución, todas van al depósito de Full: era de una compra). Mismo campo del envío, mismo aviso una vez.
+  for (const l of labels) {
+    const tok = tokensRun && tokensRun[l], uid = accounts && accounts[l] && accounts[l].seller_id; if (!tok || !uid) continue;
+    let os = null; try { os = await mlGet(`/orders/search?buyer=${uid}&sort=date_desc&limit=20`, tok); } catch { R.fallas++; continue; }
+    for (const o of (os?.results || [])) {
+      if (Date.parse(o.date_created || 0) < Date.now() - 30 * 864e5) continue;
+      const sid = o.shipping && o.shipping.id; if (!sid) continue;
+      if (ya[sid] && ya[sid].ok) { R.mirados++; continue; }
+      let sh = null; try { sh = await mlGet(`/shipments/${sid}`, tok); } catch { R.fallas++; continue; }
+      if (/^(cancelled|not_delivered)$/.test(String(sh?.status || '')) || (!conEntregados && String(sh?.status || '') === 'delivered')) continue;
+      if (conEntregados && String(sh?.status || '') === 'delivered' && Date.parse(sh.last_updated || 0) < Date.now() - 2 * 864e5) continue;
+      R.mirados++;
+      const cod = String((sh && sh.authorization_code) || '').trim();
+      if (!cod) continue;
+      R.conCodigo++;
+      if (DRY) continue;
+      const tit = String((o.order_items || [])[0]?.item?.title || '').slice(0, 70);
+      const llega = sh.shipping_option?.estimated_delivery_time?.date ? new Date(Date.parse(sh.shipping_option.estimated_delivery_time.date) - 3 * 3600e3).toISOString().slice(5, 10).split('-').reverse().join('/') : '';
+      const txt = `🛒 <b>${String(sh.status) === 'delivered' ? 'Compra ya entregada' : 'Te llega una compra'}</b> (${l})${tit ? '\n' + tit.replace(/[<>&]/g, '') : ''}${llega ? '\nLlega: ' + llega : ''}\nCódigo para recibirla: <b>${cod.replace(/[<>&]/g, '')}</b>`;
+      const ok = await sendAlerta(txt, { directo: true });
+      if (ok) { R.mandados++; try { await db.patch('mlapi/devcodigo/' + sid, { ok: true, ts: Date.now(), cuenta: l, cod, compra: true }); } catch { /* */ } }
+      else R.fallas++;
+    }
+  }
+  if (!DRY) { try { await db.patch('mlapi/devcodigo', { _ult: Date.now() }); } catch { /* */ } }
+  return R;
 }
 async function sendAlerta(text, opt = {}) {
   const cv = cerebroDeAvisos(text, opt);
@@ -18125,7 +18201,7 @@ async function main() {
       const v100 = dan.filter((c) => Number(c.mlVendedores) >= CAND_MIN_VENDEDORES);
       const descart = Object.values(cands).filter((c) => c && c.no);
       console.log(`=== CANDIDATOS · ${vivos.length} vivos · ${med.length} medidos · ${vivos.length - med.length} sin medir · ${descart.length} descartados en total ===`);
-      console.log(`Dan ${CAND_PISO_PCT}% o más: ${dan.length} (con ${CAND_MIN_VENDEDORES}+ vendedores en ML: ${v100.length}) · abajo del piso esperando 2ª medición: ${med.length - dan.length}`);
+      console.log(`Se compran (${CAND_VARA_COMPRA}%+): ${dan.filter((c) => Number(c.margen) >= CAND_VARA_COMPRA).length} · Dan ${CAND_PISO_PCT}% o más: ${dan.length} (con ${CAND_MIN_VENDEDORES}+ vendedores en ML: ${v100.length}) · abajo del piso esperando 2ª medición: ${med.length - dan.length}`);
       const tramos = [[80, 1e9], [50, 80], [35, 50], [25, 35]];
       for (const [lo, hi] of tramos) console.log(`  ${lo}%${hi < 1e9 ? '-' + hi + '%' : '+'}: ${dan.filter((c) => c.margen >= lo && c.margen < hi).length}`);
       console.log('\n80%+ (mirar con el precio de hoy):');
@@ -18970,14 +19046,14 @@ async function main() {
     if (/^pycatdia(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const DIAS = Math.max(3, parseInt(String(process.env.BILLING_PROBE).split(':')[1]) || 14);
       const cat = (await db.get('mlapi/pycat')) || {}; const R = (await db.get('cyc/pycatres')) || {};
-      const c = { tot: 0, sinT: 0, mAlto: 0, mBajo: 0, sc: 0, scr: 0, sv: 0, fz: 0, nm: 0, tSinNada: 0, qp: 0, qpEnc: 0, qpSv: 0, qpDa: 0 }; const encontrados = []; const porDia = {};
+      const c = { tot: 0, sinT: 0, mAlto: 0, m35: 0, mBajo: 0, sc: 0, scr: 0, sv: 0, fz: 0, nm: 0, tSinNada: 0, qp: 0, qpEnc: 0, qpSv: 0, qpDa: 0 }; const encontrados = []; const porDia = {};
       for (const e of Object.values(cat)) { if (!e || !e.n) continue; c.tot++;
         if (e.t) { const d = dayKeyFromISO(Number(e.t)); porDia[d] = (porDia[d] || 0) + 1; }
         if (Number(e.qp || 0) >= PY_NOMBRE_VER) { c.qp++; if (!e.sc) { c.qpEnc++; if (e.sv) c.qpSv++; else if (e.m != null && Number(e.m) >= CAND_PISO_PCT) { c.qpDa++; encontrados.push(`${Number(e.m).toFixed(0)}% · ${String(e.n).slice(0, 70)} → ${e.mi || ''}`); } else if (e.m != null) encontrados.push(`${Number(e.m).toFixed(0)}% · ${String(e.n).slice(0, 70)}`); } }
-        if (e.fz) c.fz++; else if (e.m != null && isFinite(e.m)) { if (Number(e.m) >= CAND_PISO_PCT) c.mAlto++; else c.mBajo++; }
+        if (e.fz) c.fz++; else if (e.m != null && isFinite(e.m)) { if (Number(e.m) >= CAND_PISO_PCT) { c.mAlto++; if (Number(e.m) >= CAND_VARA_COMPRA) c.m35++; } else c.mBajo++; }
         else if (e.sc) { c.sc++; if (Number(e.qp || 0) >= PY_NOMBRE_VER) c.scr++; } else if (e.sv) c.sv++; else if (e.nm) c.nm++; else if (!e.t) c.sinT++; else c.tSinNada++; }
       console.log(`=== CATÁLOGO DE NISSEI · ${c.tot} productos ===`);
-      console.log(`  medido con % de 25+ (pasan a candidatos o ya lo son) ${c.mAlto} · medido abajo de 25% ${c.mBajo}`);
+      console.log(`  medido con ${CAND_VARA_COMPRA}%+ (se pueden comprar) ${c.m35} · ${CAND_PISO_PCT}-${CAND_VARA_COMPRA - 1}% (guardados, se siguen midiendo, NO se compran) ${c.mAlto - c.m35} · abajo de ${CAND_PISO_PCT}% ${c.mBajo}`);   // 26/10/2026 (él: "es 35 o más %, no 25")
       console.log(`  buscado y SIN el mismo producto en ML ${c.sc} (de esos ✔️ revisados también traducidos ${c.scr}) · encontrado pero NADIE lo vende ${c.sv} · afuera por regla ${c.fz}`);
       console.log(`  ML no deja medirlo ${c.nm} · NUNCA buscado ${c.sinT} · buscado sin resultado guardado ${c.tSinNada}`);
       console.log(`  web (cyc/pycatres): nomed ${R.nomed} · sc ${R.sc} · scr ${R.scr} · sv ${R.sv} · fz ${R.fz} · cand ${R.cand} · ficha ${R.ficha} · bajo ${R.bajo} · al ${R.t ? new Date(R.t).toISOString() : '?'}`);
@@ -19927,6 +20003,69 @@ async function main() {
       console.log(ok
         ? (SACAR ? '\n✅ Freno sacado: el robot puede volver a activarla.' : '\n✅ Freno puesto: el robot NO la va a activar aunque entre stock a Full.')
         : '\n⚠️ NO quedó: lo releí de la base y sigue como estaba.');
+      return;
+    }
+    // BILLING_PROBE=devcodigo[:<días>] → ¿DÓNDE GUARDA ML EL CÓDIGO PARA RECIBIR UNA DEVOLUCIÓN? (26/10/2026, él: "cada tanto llegan
+    // devoluciones que van con QR. ¿vos podés verlas cuando llegan? ¿y mandarme el código a Telegram?"). Recorre los reclamos de las 4
+    // cuentas con devolución y, de la devolución y de su envío, imprime SÓLO los NOMBRES de los campos que parecen un código (code, pin,
+    // auth, verif, qr, token, key, secret) con su tipo y largo — nunca el valor: el registro es público y el código abre la entrega.
+    // También a dónde va cada devolución (al depósito de Full o a tu dirección). Solo LEE.
+    if (String(process.env.BILLING_PROBE || '').startsWith('devcodigo')) {
+      const DIAS = parseFloat(String(process.env.BILLING_PROBE).split(':')[1]) || 30;
+      const GO_DC = /:go(:todo)?$/.test(String(process.env.BILLING_PROBE)), TODO_DC = /:todo$/.test(String(process.env.BILLING_PROBE));
+      const desde = Date.now() - DIAS * 864e5;
+      const RX = /code|cod|pin|auth|verif|qr|token|key|secret|otp/i;
+      const huella = (o, pre = '', out = [], prof = 0) => {
+        if (!o || typeof o !== 'object' || prof > 6) return out;
+        for (const [k, v] of Object.entries(o)) {
+          const ruta = pre ? pre + '.' + k : k;
+          if (RX.test(k) && (v == null || typeof v !== 'object')) out.push(`${ruta} (${v == null ? 'vacío' : typeof v + ' de ' + String(v).length})`);
+          if (v && typeof v === 'object') huella(v, Array.isArray(v) ? pre + '.' + k + '[]' : ruta, out, prof + 1);
+        }
+        return out;
+      };
+      console.log(`=== DEVOLUCIONES DE LOS ÚLTIMOS ${DIAS} DÍAS · dónde está el código para recibirlas (sólo nombres de campo) ===`);
+      for (const l of labels) {
+        const acc = accounts[l]; if (!acc?.refresh_token) { console.log(`\n${l}: no pude entrar`); continue; }
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { console.log(`\n${l}: no pude entrar`); continue; }
+        try { await db.patch('mlapi/tokens/' + l, { refresh_token: t.refresh_token, updated_ts: Date.now() }); } catch { /* no rompe */ }
+        const tok = t.access_token;
+        const cls = [];
+        for (const st of ['opened', 'closed']) {
+          for (let off = 0; off < 200; off += 50) {
+            let r; try { r = await mlGet(`/post-purchase/v1/claims/search?status=${st}&limit=50&offset=${off}`, tok); } catch (e) { console.log(`\n${l}: reclamos ${st}: ${String(e.message || e).replace(/\d{6,}/g, '…').slice(0, 90)}`); break; }
+            const d = r?.data || []; cls.push(...d);
+            if (d.length < 50) break;
+          }
+        }
+        const rec = cls.filter((c) => Date.parse(c.last_updated || c.date_created || 0) >= desde);
+        console.log(`\n── ${l.toUpperCase()} · ${cls.length} reclamos leídos · ${rec.length} movidos en ${DIAS} d ──`);
+        let conDev = 0;
+        for (const c of rec) {
+          let rr = null;
+          try { const r = await mlGet(`/post-purchase/v2/claims/${c.id}/returns`, tok); rr = Array.isArray(r) ? r[0] : (r?.data?.[0] || r); } catch { rr = null; }
+          if (!rr || !rr.status) continue;
+          conDev++;
+          const envs = Array.isArray(rr.shipments) ? rr.shipments : [];
+          const dest = envs.map((x) => (x.destination && (x.destination.name || x.destination.type)) || '?').join('/');
+          console.log(`  reclamo ${_idPub(c.id)} · devolución ${rr.status}${rr.subtype ? ' · ' + rr.subtype : ''} · va a: ${dest || '?'} · envíos ${envs.map((x) => (x.status || '?') + (x.type ? ' ' + x.type : '')).join(', ') || '—'}`);
+          const h1 = huella(rr);
+          console.log(`     campos con pinta de código en la devolución: ${h1.length ? h1.join(' · ') : 'ninguno'}`);
+          for (const x of envs) {
+            const sid = x.shipment_id || x.id; if (!sid) continue;
+            let sh = null; try { sh = await mlGet(`/shipments/${sid}`, tok); } catch { sh = null; }
+            if (!sh) { console.log(`     envío ${_idPub(sid)}: ML no lo dio`); continue; }
+            const h2 = huella(sh);
+            console.log(`     envío ${_idPub(sid)} · ${sh.status || '?'}${sh.substatus ? '/' + sh.substatus : ''} · modo ${sh.mode || '?'} · ${sh.logistic_type || '?'} · campos con pinta de código: ${h2.length ? h2.join(' · ') : 'ninguno'}`);
+          }
+        }
+        console.log(`  ${conDev} con devolución`);
+      }
+      // La MISMA función que corre cada 2 h, en prueba (no manda nada): cuántas en camino y cuántas con código.
+      { const TK = {}; for (const l of labels) { const acc = accounts[l]; if (!acc?.refresh_token) continue; try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + l, { refresh_token: t.refresh_token, updated_ts: Date.now() }); TK[l] = t.access_token; } catch { /* */ } }
+        const dc = await avisoDevCodigo(db, labels, TK, !GO_DC, true, accounts, TODO_DC);
+        console.log(`\n=== EL AVISO DE CADA 2 H${GO_DC ? '' : ', EN PRUEBA'}: ${dc.mirados} devoluciones y compras en camino · ${dc.conCodigo} con código · ${GO_DC ? dc.mandados + ' mandadas a Telegram' : 'irían a Telegram las que no se mandaron'} · ${dc.fallas} lecturas fallaron ===`); }
+      console.log('\n(esto solo LEE y no imprime ningún código)');
       return;
     }
     // BILLING_PROBE=unreclamo:<id> → TODO SOBRE UN RECLAMO, SIN RECORTAR.
@@ -54424,6 +54563,14 @@ async function main() {
       // el canal privado y sólo si alguna caja se marcó CON faltantes (una completa no es noticia).
       if (rc.msg) { console.log(rc.msg.replace(/<[^>]+>/g, '')); if (!DRY && rc.conFaltantes) await sendAlerta(rc.msg + '\n\n⚠️ Revisá las que dicen "faltaron": esas unidades salieron del patrimonio.'); }
     } catch (e) { console.log('No pude revisar las cajas en camino: ' + e.message); }
+  }
+
+  // 📦 El código de las devoluciones que vienen a la oficina, a Telegram (26/10/2026, pedido suyo). Cada 2 h, sólo lee ML.
+  if (parseInt(process.env.BACKFILL_DAYS || '0', 10) === 0 && !onlyAcc && process.env.SKIP_PRICES !== '1') {
+    try {
+      const dc = await avisoDevCodigo(db, labels, tokensRun, DRY, false, accounts);
+      if (!dc.salteo) console.log(`📦 Devoluciones con código · ${dc.mirados} en camino · ${dc.conCodigo} con código · ${dc.mandados} mandadas a Telegram${dc.fallas ? ' · ' + dc.fallas + ' lecturas fallaron' : ''}`);
+    } catch (e) { console.log('No pude mirar los códigos de las devoluciones: ' + String(e.message || e).slice(0, 120)); }
   }
 
   // SACAR LA MARCA DE "LIQUIDANDO" A LO QUE YA SE VENDIÓ ENTERO. Va en la vuelta horaria: el stock
