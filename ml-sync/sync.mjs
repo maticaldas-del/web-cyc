@@ -49880,7 +49880,7 @@ async function main() {
     //                                              código y precio de Paraguay). Como el botón: saca lo pedido del pedido del
     //                                              momento (`py_armado`), descuenta de lo decidido y pasa lo de uso personal
     //                                              al historial (20/10/2026 · etapa 3).
-    //   pyped:nuevos[:go]                       → "✅ Ya lo pedí" de PRODUCTOS NUEVOS (lo cargado en el armado)
+    //   pyped:nuevos[:resto|perf|elegancia][:go] → "✅ Ya lo pedí" de PRODUCTOS NUEVOS (lo cargado en el armado; con grupo, sólo ese pedido)
     //   pyped:llego:<id|AAAA-MM-DD>[:go]        → "Ya llegó". Reposición: sólo la cierra (hay que contar en la
     //                                              oficina). Nuevos: además crea las fichas (costo = precio × recargo,
     //                                              origen Paraguay, código); si hay una ficha parecida NO la crea y lo dice.
@@ -50099,6 +50099,14 @@ async function main() {
         // Etapa 2 (20/10/2026): cada candidato va al pedido de SU proveedor y rubro (`grupoPy`, como la web).
         const X = await ctxBelleza();
         const G = armarGrupos(items, (it) => (cands[it.id] || {}).nombre || it.nom, (it) => provPyDe(cands[it.id]), X);
+        // 26/10/2026 (él pagó SÓLO el de Resto: "pagué el pedido y ya está pedido"): `pyped:nuevos:<resto|perf|elegancia>[:go]` marca
+        // sólo ese pedido del momento; los otros siguen en el armado. Sin grupo marca todos (como antes).
+        if (arg) {
+          const qG = nrm(arg), okG = (gid) => qG === 'resto' ? /^py\d/.test(gid) : /^perf/.test(qG) ? /^pyb\d/.test(gid) : /^eleg/.test(qG) ? /^pyel\d/.test(gid) : null;
+          if (okG('x') === null) { console.log(`No conozco el pedido "${arg}": usá resto, perf o elegancia.`); return; }
+          for (const gid of [...G.keys()]) if (!okG(gid)) G.delete(gid);
+          if (!G.size) { console.log(`No hay productos nuevos en el pedido "${arg}".`); return; }
+        }
         const est = await previosGrupos(G); if (!est) return;
         console.log(`=== PRODUCTOS NUEVOS · YA LO PEDÍ ${GO ? '' : '(PRUEBA — no escribo nada)'} ===`);
         if (G.size > 1) console.log(`  Van en ${G.size} pedidos separados, igual que en la web: ${[...G.values()].map((g) => g.tit + ' (' + g.id + ')').join(' · ')}`);

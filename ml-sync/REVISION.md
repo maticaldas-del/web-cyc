@@ -804,6 +804,10 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 
 ## 3 · MERCADERÍA (miércoles)
 
+### 🧾 `pyped:nuevos:<resto|perf|elegancia>` (26/10/2026, él pagó sólo el pedido de Resto)
+- **Qué es:** "Ya lo pedí" de los productos nuevos de UN solo pedido del momento (Nissei resto `py…`, perfumería `pyb…`, Elegancia `pyel…`); antes marcaba los tres juntos.
+- **Qué chequear:** que los otros dos sigan en el armado con sus unidades · que lo de uso personal pase al historial sólo del que se pidió.
+
 ### 🏷️ Pasar a "con etiqueta" sólo con su palabra (26/10/2026, él: "que nunca se pueda pasar a con etiqueta sin que yo te diga")
 - **Qué es:** `sinetiq` que BAJA (=0, -N, un número menor) y `ofi:…!ok` piden `dijo=<lo que dijo él>` en el mismo comando; sin eso: "NO ESCRIBO NADA".
 - **Qué chequear:** que subir siga andando sin `dijo=` · que el ✅ Etiquetadas de la web (lo aprieta él) no cambie.
