@@ -2962,7 +2962,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.65';
+const APP_VERSION='26.66';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2975,6 +2975,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.66',f:'26/10',h:'21:20',c:[{n:1,t:'🧾 Pedido del momento: nuevo orden "🔥 vende y gana" — arriba lo que más se vende y más % de ganancia deja a la vez (ventas × %).'}]},
   {v:'26.65',f:'25/10',h:'20:10',c:[{n:1,t:'📈 Línea de tiempo: la búsqueda de techo ya no dice "decide con 95% (2 días)" (los 2 días eran los MEDIDOS, no los que faltan). Ahora dice "pide 95% · lleva 2 días medidos"; y si el precio ya volvió abajo, dice que la prueba se cortó y con cuánto quedó.'}]},
   {v:'26.64',f:'25/10',h:'20:15',c:[{n:2,t:'💰 La escalera que baja después de buscar el techo ahora se llama "buscando el de más ganancia · Nº escalón": es lo que busca (el precio que más plata por día deja). El 🪜 bajando queda sólo para lo que baja por otra cosa (fin de escasez, sobra).'}]},
   {v:'26.63',f:'25/10',h:'19:50',c:[{n:2,t:'📬 Mi oficina → Contar lo que hay: "Mensaje para Claude". El chat de Chrome que arma las cajas (o vos) deja ahí lo que no puede arreglar desde el panel y Claude lo lee en la próxima vuelta.'}]},
@@ -17377,6 +17378,9 @@ function pedidoMomentoHTML(g){
     gan:(x,n)=>n?Number(x.c.ganancia):(x.pr?gananciaUnidad(x.pr):null),
     costo:(x)=>x.usd, sub:(x)=>x.usd*x.u,
     vend:(x,n)=>n?candVentasDe(x.c):(x.pr?pedVentasNorm(x.pr).vendidos:null)};
+  // 🔥 VENDE Y GANA (26/10/2026, él: "que se pueda ordenar con el que más se vende y más % de ganancia da"): ventas × % (cada bloque con
+  // sus ventas: las propias en Probados, las de ML en Nuevos). Lo que no tiene uno de los dos datos va al final.
+  _k.vendpct=(x,n)=>{const v=Number(_k.vend(x,n)),p=Number(_k.pct(x,n));return isFinite(v)&&isFinite(p)&&v>0?v*Math.max(0,p):null;};
   const _sort=(arr,n)=>{if(_ord==='nom')return arr.slice().sort((a,b)=>String(n?a.c.nombre:a.nom).localeCompare(String(n?b.c.nombre:b.nom),'es'));
     const f=_k[_ord]; if(!f)return arr; const asc=_ord==='costo';
     return arr.slice().sort((a,b)=>{const va=f(a,n),vb=f(b,n),na=va==null||!isFinite(va),nb=vb==null||!isFinite(vb);
@@ -17435,7 +17439,7 @@ function pedidoMomentoHTML(g){
     <div style="font-size:.66rem;color:${pasa>0?'var(--amber)':'var(--muted)'};margin-top:2px">${pasa>0?`⚠️ te pasás ${u2(pasa)} de tu tope de ${u2(tope)}`:`tope ${u2(tope)} · te quedan ${u2(-pasa)}`}</div>
     ${cfg}
     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:8px 0 0;font-size:.68rem;color:var(--muted)">↕️ Ordenar:
-      ${[['orig','como se cargó'],['pct','% ganancia'],['gan','$ por unidad'],['costo','más barato'],['sub','subtotal'],['vend','ventas'],['nom','nombre']].map(([k,t])=>`<button class="btn" onclick="_pedOrdenSet('${k}')" style="font-size:.64rem;padding:3px 9px;${_ord===k?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}">${t}</button>`).join('')}</div>
+      ${[['orig','como se cargó'],['vendpct','🔥 vende y gana'],['pct','% ganancia'],['gan','$ por unidad'],['costo','más barato'],['sub','subtotal'],['vend','ventas'],['nom','nombre']].map(([k,t])=>`<button class="btn" onclick="_pedOrdenSet('${k}')" style="font-size:.64rem;padding:3px 9px;${_ord===k?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}">${t}</button>`).join('')}</div>
     ${A.length?tit('✅ Probados (reposición)',A.length,crA)+_perfGrupos(filasA,As.map(f=>f.nom)):''}
     ${N.filas.length?tit('🆕 Nuevos',N.filas.length,N.crudo)+_perfGrupos(filasN,Ns.map(f=>f.c.nombre)):''}
     ${Pp.length?tit('🙋 Uso personal (no es de CYC)',Pp.length,crP)+Pp.map(f=>fila(f.nom,f.cod,f.u,f.usd,`pyPersonalSet('${f.k}',this.value)`,`pyPersonalSet('${f.k}',0)`,'<span style="color:#a78bfa">para vos: va en el mensaje a '+pyProvNom()+' y en el total, pero no entra en CYC (sin margen, sin ficha, sin stock)</span>',f.foto,null,null,'')).join(''):''}
