@@ -37,6 +37,12 @@ No copies la lista de movimientos: trae nombres de otras personas.
    mismo modelo y el mismo color del renglón.
 Si aparece un "no soy un robot", avisale a Matías y seguí con lo demás.
 
+== PARTE 3b · LO QUE ML FRENA O AVISA EN PUBLICACIONES (4a del 26/10) ==
+En cada una de las 4 cuentas: Mercado Libre → Publicaciones. Buscá las que dicen pausada por ML, inactiva, "con infracciones",
+"en revisión", "tenés que corregir" o un aviso rojo/naranja. De cada una anotá: el MLA (número de la publicación), el título corto
+y QUÉ dice ML que hay que arreglar (copiado tal cual, corto). No toques nada. Las que ya están "dadas de baja para siempre"
+(Invictus, Phantom, Scandal Bliss, Dalí La Belle, Galaxy A06) no hace falta anotarlas.
+
 == PARTE 4 · LO QUE DEJÁS EN EL BUZÓN ==
 Un solo mensaje (si no entra en 2.000 letras, partilo en dos), EXACTAMENTE con este formato, una cosa por renglón:
 
@@ -44,6 +50,7 @@ RUTINA <AAAA-MM-DD>
 cupo: Adriana=<chicos>/<grandes> · Luciana=<chicos>/<grandes> · Ayelen=<chicos>/<grandes> · Matias=<chicos>/<grandes>
 mp: Adriana=<pesos> · Luciana=<pesos> · Ayelen=<pesos> · Matias=<pesos>
 pedido: <N> iguales · <N> cambiaron · <N> sin stock · total de hoy US$ <número>
+ml: <cuenta> · MLA<número> · <título corto> · <qué pide ML>   (una por renglón; si no hay ninguna: "ml: nada")
 <código> · <nombre corto> · US$ <antes> → US$ <hoy> · <igual|SUBIÓ|BAJÓ|AGOTADO|NO LO ENCONTRÉ>   (sólo los que NO están iguales)
 dudas: <lo que no pudiste ver y por qué>
 

@@ -150,6 +150,7 @@
   Lecturas en una corrida, 2 ayudantes (max) y el revisor en contra (max). **Domingos:** además el catálogo entero, el ayudante de
   ideas a fondo y medir las gemelas (Premium y envío gratis; proponer sacar las que no sirven).
 - **Cortas a las 9:52, 11:52, 13:52, 15:52, 17:52, 19:37, 21:22, 22:52** (23/10, eligió 1a: repartidas por las ventas por hora de 90 días, ~5 ventas por vuelta; `trig_01FCaQqzU5MA422N6Z8nH63Z` hace las de :52, `trig_01PqmfnY6zLFfGBne72duRC3` la de 19:37 y `trig_01CKS5hpywhunMUppZvSNvFy` la de 21:22).
+- **🔔 Control de ventas cada hora** (`trig_01PxNuKFnJfdAtPem61eaUnA`, a los :07 de 8 a 1, en la sesión de las vueltas; 26/10, él eligió 1a: *"no quiero esperar… un producto que se venda a mal precio puede que se vendan muchas unidades a precio en rojo"*): corre `timbre`; si hay 6+ compras sin revisar o una abajo del 35%, hace la parte de ventas de la vuelta corta; si no, termina en un renglón. Reemplaza al timbre por API (abría un chat sin el robot; `trig_012a3LNycnpvUm55TK7y2mji` apagado).
 - **Auditoría del robot** (`trig_0138cyCgYeEHjqeayqiQPqWQ`, a las 20:30 desde el 23/10, se reprograma sola con `run_once_at`; ver `AUDITORIA.md`).
 - **Cada vuelta, en orden** (detalle en CEREBRO §1): leer `CEREBRO.md` + `notas/preguntas.md` → `ventasraras:nuevas` (sólo ventas
   posteriores a la última analizada; **cada venta se analiza UNA vez**) → **sólo las 🔬 A FONDO van a un ayudante con `effort:"max"`
@@ -159,7 +160,7 @@
   gris si no cambió nada, color de la estrategia si cambió) → **al terminar, `bajastecho:1` y el detector `errores`, y deshacer en la
   misma vuelta toda ❌ del día** (22/10, 3a: vuelve al precio de antes con `!chico` y "EXCEPCIÓN: vuelve al precio de antes").
 - Listas que tienen que quedar **vacías** al terminar la vuelta: 🚨 escasez que vendió después de mi decisión (`escasez`) · 🛡️ abajo
-  del 35% en el peor caso · 📦 sobra sin decidir · 🔎 sin afinar · 📈 dice techo/escasez y no sube · 📈 prueba con respuesta (3 ventas esperadas, 23/10) (todas en `planilla`) · 🆕 lanzamiento que vendió (también por su gemela) y no subió (en `errores`, 23/10) · 🧐 revisión a fondo atrasada (`revfondo`, sólo la completa: todo producto con stock en Full y publicación activa con mi nota del 🧠 de menos de 2 días si está quieto o de 7 si vendió; 24/10, eligió la 3a).
+  del 35% en el peor caso · 📦 sobra sin decidir · 🔎 sin afinar · 📈 dice techo/escasez y no sube · 📈 prueba con respuesta (3 ventas esperadas, 23/10) · 👯 mismo producto y color con distinto precio o estrategia (26/10) (todas en `planilla`) · 🆕 lanzamiento que vendió (también por su gemela) y no subió (en `errores`, 23/10) · 🧐 revisión a fondo atrasada (`revfondo`, sólo la completa: todo producto con stock en Full y publicación activa con mi nota del 🧠 de menos de 2 días si está quieto o de 7 si vendió; 24/10, eligió la 3a).
 - **Activar lo pausado es prioridad** (10/10): `pausadas:25` + `activarfull:go:25`; toda pausada con stock en Full que no se activa
   va a `notas/para_mati.md` con motivo (al `pregunto:URGENTE` sólo si vende fuerte). Lo nuevo (nunca estuvo en Full) lo activo yo con el precio ya puesto (peor caso).
 - **Preguntas de compradores:** las contesto yo (`contesto:<id>=<respuesta>;…;go`), sólo las nuevas y sólo las que sé SIN DUDA.
@@ -227,7 +228,7 @@
   nunca pasar 120. Bs As pasa a "no se consigue" cuando Pedidos lo pide hace 10+ días sin entrar nada a la oficina, o con el botón
   🚫 "No lo consigo" (`cyc/noconsigo/<prod>[/v/<color>]`); se cae solo al entrar mercadería.
 - **Lo que no vende al 35%** (24/10, eligió la a): no se repone y, al terminarse, la publicación queda pausada (no se borra).
-- **Sobra** (+90 d de stock al ritmo con stock o sin ventas en 60 d) → escalera/descuento; con sobra no se busca techo. Stock antiguo: 120 d
+- **Sobra** (+90 d de stock al ritmo con stock o sin ventas en 60 d) → escalera/descuento; con sobra no se busca techo. **Lo caro que no vende: a los 60 días sin vender, la escalera apunta al precio que GANA la caja de compra** (26/10, él con los VS, Redmi Watch y Dalí: *"si llegan a 60 días de stock sí bajar los precios hasta estar en ganando"*; nunca abajo de 0%; antes de eso no se baja sin techo y las 16 autorizaciones viejas del 23/10 quedaron en "no"). Stock antiguo: 120 d
   lo chico, 60 lo grande (Tenders); apuntar a vender antes de ~100. Bajar porque seguir igual perdía más = el cerebro ganó; lo que falta
   para el 25% es error de origen (mandar/comprar de más).
 - **Estrategias (tags)** — todo precio tiene una (19/10, **no existe 🎯 base**; `decido` rechaza un precio sin estrategia): 📈 `techo`
@@ -263,6 +264,7 @@
   plata neta (`precioGemelaIgual`; `gemela`, `gemelacrea:<MLA>=<precio>:go`). **📦 Gemela Clásica con envío gratis** (22/10) para lo
   de abajo de $33.000 (`gemelaenvio`, `gemelaenviocrea`; `gemelaTipo:'envio'`; no se crea si queda abajo del 35%). **Ninguna gemela queda abajo del 35% del peor caso si su Clásica está en 35%+** (24/10, él; `precioGemelaAlPiso`: el más alto entre misma plata y 35%). **Si la Clásica está abajo del 35% a propósito (sobra, promo, `!piso`), la gemela la acompaña con la misma plata y SÍ baja abajo del 35%** (él: *"todas las formas de venta deberían contribuir"*); una baja de más de 15% va de a −15% por hora (`escalonGemela`). Las dos se alinean
   solas cada hora a su Clásica (`gemelaSigue=off` apaga); **la de envío no BAJA sola abajo del 35% del peor caso** (39a, 24/10) salvo que su Clásica ya esté abajo del 35% a propósito: si no, se queda y sale en `planilla` (📦🛡️) para decidir. Caja perdida por cuotas = candidata a gemela, no a bajar.
+- **👯 Mismo producto y color en dos publicaciones = mismo precio y misma estrategia** (26/10, también con las Cartas Poker: misma $9.790, una 📈 y otra 💰; él con el Centímetro Blanco: *"siendo exactamente el mismo producto y color deberían tener exactamente el mismo precio (o mejor aún borrar y dejar una)… quiero que tengan el mismo precio si ves que son exactamente el mismo producto"*): lista 👯 de `planilla` (mismo stock, activas, sin gemelas) que tiene que quedar vacía; si no es el mismo producto (variante mal vinculada) → `fijarvar`/`vincular`. Borrar una de las dos lo decide él.
 - **Terminaciones 90/990** (99 en lo muy barato). La regla de no cruzar números redondos se SACÓ (medido 13/10).
 - 🪜 Arriba de $15.000 hay ~15% de zona muerta de comisión: suba que cae ahí se frena salvo `!escalon`. La comisión de ML tiene cargo
   fijo ~$1.230 por venta: abajo de ~$4.000 se come el producto. Packs: **sí si el pack tiene su propio catálogo en ML** (23/10, *"si el pack está en catálogo sí se arman"*); armar un pack de algo que hoy compite suelto en su catálogo, no (27/09, *"al estar en pack las saco de competencia"*).

@@ -10,7 +10,7 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 
 ### Del 25/10 (lo dejó para después)
 - **Cómo se comunica el chat de Chrome que arma cajas con el panel:** (a) sugerida: él se arregla solo con el panel (✅ Etiquetadas, etc.) y para lo demás un buzón que leo yo · (b) sólo lo que puede hacer solo.
-- **Timbre de ventas:** la tarea nueva `trig_012a3LNycnpvUm55TK7y2mji` no tiene llave de API; el robot sigue tocando la vieja (apagada → "Routine is paused"). Falta su captura de Editar de la tarea nueva.
+- **Timbre de ventas (26/10): resuelto.** Eligió 1a: control cada hora en la sesión de las vueltas (`trig_01PxNuKFnJfdAtPem61eaUnA`). El timbre por API queda apagado.
 
 ### De la completa del domingo 25/10 — él contestó el 25/10 a la noche (1? 2? 3a 4a 5a 6a 7b 8b 9b 10 11b 12a 13b 14a 15a)
 - 1 Talón: preguntó qué tan seguro es el techo → contestado con la tabla `techo95:buscando`. 2 Pendrive 64: sólo con techo seguro, y ahí al 💰 en escalera.
@@ -38,7 +38,7 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 - 5 Espejos y 6 Victoria's Secret parados: los miro yo y van al aviso de las 12:30 del 26/10 junto con el CyberMonday (tarea `trig_01CgU6vPK2vjhSKyDMgYAixJ`).
 
 ### Del chat de compras (noche del 25 al 26/10)
-- **6 candidatos donde el catálogo de ML parece otra variante** (no los toqué, con duda no se toca): Casio A140WE-2ADF (ML gris, lista azul) · Zimaya Zukhruf (ML "Pink") · Afnan Highness V (ML "Black") · Amazfit Active A2437 (ML "Active 2 Premium 44mm") · Dior Hydra Life Crème Sorbet (ML "Intense") · Orientica Rose. (a) que los mire él con las fotos y marque ✅ o ❌ (sugerida) · (b) sacarlos.
+- **6 candidatos donde el catálogo de ML parece otra variante** (no los toqué, con duda no se toca): Casio A140WE-2ADF (ML gris, lista azul) · Zimaya Zukhruf (ML "Pink") · Afnan Highness V (ML "Black") · Amazfit Active A2437 (ML "Active 2 Premium 44mm") · Dior Hydra Life Crème Sorbet (ML "Intense") · Orientica Rose. → **26/10 eligió (b): sacarlos.**
 - 52 de la lista de precios eran claramente otro producto: marcados `svprecio:…=otro` (se buscan de nuevo). ~14 quedaron en duda (variante no confirmada): se vuelven a mirar en la próxima tanda.
 
 ## Viejas que siguen esperando (de CLAUDE.md §13)

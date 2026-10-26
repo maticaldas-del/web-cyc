@@ -1005,7 +1005,17 @@ function prepNetoSolo(vp) {
   return { neto, enCarrito };
 }
 
-function compraCruzaBarrera(v, ents) {
+// Y UNA VENTA DE UN CARRITO CON OTROS PRODUCTOS TAMPOCO MIDE EL ENVÍO DE UNA SUELTA (26/10/2026, la revisión del CyberMonday): ML
+// cobra UN envío por paquete y en el desglose puede caer entero en una sola de las ventas. El Bare Vanilla Bliss medía $12.043
+// (17/05: una orden de 1 u. pagó $11.240 = 2 × $5.620 del carrito) contra ~$6.800 de verdad, y el Pure Seduction igual: el peor
+// caso los daba ~35% estando en ~55%, y las subas del 24/10 salieron de ese número. Todo lo que mide el envío pasa por acá.
+function ventaEnCarritoConOtros(v, ents) {
+  if (!v || v.numVenta == null || v.numVenta === '' || !ents) return false;
+  let n = 0; for (const w of Object.values(ents)) if (w && !w.cancelada && String(w.numVenta) === String(v.numVenta) && (w.cuenta || '') === (v.cuenta || '')) n++;
+  return n > 1;
+}
+function compraCruzaBarrera(v, ents, soloBarrera = false) {
+  if (!soloBarrera && ventaEnCarritoConOtros(v, ents)) return true;   // no sirve para medir el envío (ver arriba); `cruza33` pide sólo la barrera
   const q = Number(v && v.qty) || 1, unit = (Number(v && v.total) || 0) / q;
   if (!(unit > 0) || unit >= UMBRAL_ENVIO_GRATIS) return false;
   let ped = Number(v.total) || 0;
@@ -46571,8 +46581,14 @@ async function main() {
         if (!sacar.length) { console.log('No hay candidatos marcados "no es el mismo" para sacar.'); return; }
       }
       for (const parte of (/^aplicarno(;|$)/i.test(raw.trim()) ? [] : raw.split(';').map((x) => x.trim()).filter((x) => x && x.toLowerCase() !== 'go'))) {
-        const m = parte.match(/^(c\d+(?:[a-z]\d+)?)\s*=\s*(ok|no|duda|mismo)(?:!(.*))?$/i);  // [a-z]: los de Elegancia son c…e27 (20/10/2026)
+        const m = parte.match(/^((?:c\d+(?:[a-z]\d+)?)|(?:cod:(?:EL_)?\d+))\s*=\s*(ok|no|duda|mismo)(?:!(.*))?$/i);  // [a-z]: los de Elegancia son c…e27 (20/10/2026)
         if (!m) { console.log(`  ✗ no entiendo "${parte}"`); mal++; continue; }
+        // `cod:<código de Nissei o EL_…>` (26/10/2026): el chat de compras y él hablan por código, no por el número interno. Sólo si
+        // hay UN candidato vivo con ese código; si hay dos (Nissei y Elegancia con el mismo número) se pide el número interno.
+        if (/^cod:/i.test(m[1])) { const k = m[1].slice(4).replace(/^EL_/i, ''); const el = /^cod:EL_/i.test(m[1]);
+          const hs = Object.entries(cands).filter(([, x]) => x && !x.no && !x.prodId && String(x.cod || '').trim() === k && (!el || provPyDeBot(x) === 'elegancia'));
+          if (hs.length !== 1) { console.log(`  ✗ ${m[1]}: ${hs.length ? hs.length + ' candidatos vivos con ese código (' + hs.map(([i]) => i).join(', ') + '): usá el número' : 'ningún candidato vivo con ese código'}`); mal++; continue; }
+          m[1] = hs[0][0]; }
         const c = cands[m[1]]; const cat = c && catDe(c);
         if (!c || !cat) { console.log(`  ✗ ${m[1]}: no existe o no está medido contra un catálogo`); mal++; continue; }
         // `mismo` = lo decidió ÉL (como el botón ✅ Es el mismo producto del panel): pone `mismoOk` para ESE catálogo,
@@ -47092,6 +47108,17 @@ async function main() {
         if (b && b.t === 'correccion') { const ks = Object.keys(h).map(Number).filter((n) => n > 0 && n < b.ts).sort((p, q) => q - p); let pv = null; for (const x of ks) { if (h[x] && h[x].t && h[x].t !== 'correccion') { pv = h[x].t; break; } } b.t = pasajeDe(pv); } if (!b && (nosub || {})[mla]) b = { t: 'liquidando', ts: 0, m: 'marcada liquidando' }; if (b && b.t === 'base') b.t = 'sindecidir'; return b || { t: 'sindecidir', ts: 0, m: 'sin estrategia anotada' }; };
       // Sin estrategia y sin stock en Full (sabido): ⏸️ sin stock, el precio espera la reposición. Con stock, ⚪ hay que decidir.
       for (const r of filas) { r.est2 = estHoy(r.mla); if (r.est2.t === 'sindecidir' && !r.stDesc && !(r.st > 0)) r.est2 = { ...r.est2, t: 'agotado' }; }
+      // ── 👯 MISMO PRODUCTO Y COLOR, DISTINTO PRECIO (26/10/2026, él con el Centímetro Blanco: una a $4.290 🪜 y otra a $3.990 📈 con las
+      // mismas 252 u.: "siendo exactamente el mismo producto y color deberían tener exactamente el mismo precio… creo que acá hay problema
+      // de que no se mira bien la variante; de cualquier modo, quiero que tengan el mismo precio si ves que son exactamente el mismo producto").
+      // Mismo stock (`kSt` = ficha + cuenta + color), activas, sin gemelas. La vuelta mira cada grupo: si son el mismo producto, las deja al
+      // mismo precio y estrategia (la que se está midiendo); si no lo son (otra variante mal vinculada), `fijarvar`/`vincular`. Tiene que quedar vacía.
+      const _dup = {}; for (const r of filas) { if (!r.kSt || !(r.P > 0) || !/^active/.test(String(r.est)) || /^💳/.test(String(r.exc || ''))) continue; (_dup[r.kSt + '|' + r.lt] ||= []).push(r); }   // Clásica y Premium pueden tener distinto precio (cuotas): se comparan dentro del mismo tipo
+      // 26/10/2026, él con las Cartas Poker Rojo y Azul (las dos a $9.790, una 📈 techo y otra 💰): "una está buscando techo y otra el mejor
+      // precio, pero las dos están en el techo, no entiendo". Mismo precio con distinta estrategia también entra: se iguala la estrategia.
+      const _dupL = Object.values(_dup).filter((g) => g.length > 1 && (new Set(g.map((r) => Math.round(r.P))).size > 1 || new Set(g.map((r) => (r.est2 || {}).t)).size > 1));
+      console.log(`\n── 👯 MISMO PRODUCTO Y COLOR (mismo stock) CON DISTINTO PRECIO O ESTRATEGIA: ${_dupL.length} · si son exactamente el mismo producto, igualar EN ESTA VUELTA (mismo precio y estrategia); si es otra variante mal vinculada, fijarvar/vincular ──`);
+      for (const g of _dupL) { console.log(`👯 ${g[0].cta} · ${g[0].nom}`); for (const r of g.sort((x, y) => x.P - y.P)) console.log(`     ${r.mla} · ${f(r.P)} · ${r.mg != null ? Math.round(r.mg) + '%' : '?'} · ${ESTRATEGIAS[r.est2.t] || r.est2.t} · ${r.catalogo ? 'catálogo' : 'no catálogo'} · ${r.lt}`); }
       // 24/10/2026: las que ML tiene en revisión para siempre no se miran más (`ML_REVISION_NO_MIRAR`): fuera de todas las listas.
       { const nR = filas.length; for (let i = filas.length - 1; i >= 0; i--) if (ML_REVISION_NO_MIRAR.has(filas[i].mla) && /revisión/.test(filas[i].exc || '')) { filas.splice(i, 1); fuera.revisionML = (fuera.revisionML || 0) + 1; } if (filas.length < nR) console.log(`(${nR - filas.length} en revisión de ML para siempre: no se miran más, regla suya del 24/10)`); }
       filas.sort((x, y) => (y.u30 - x.u30) || (y.st - x.st));
@@ -47494,7 +47521,7 @@ async function main() {
           const q = Number(v.qty) || 1, tot = Number(v.total) || 0, net = Number(v.neto) || 0; if (!(tot > 0 && net > 0)) continue;
           const unit = tot / q; if (unit >= UMBRAL_ENVIO_GRATIS) continue;
           const o = (porMla[v.mla] = porMla[v.mla] || { cruza: [], suelta: [] });
-          (compraCruzaBarrera(v, ents) ? o.cruza : o.suelta).push({ unit, q, mlU: (tot - net) / q, carrito: q === 1 });
+          (compraCruzaBarrera(v, ents, true) ? o.cruza : o.suelta).push({ unit, q, mlU: (tot - net) / q, carrito: q === 1 });
         }
       }
       const med = (a) => { const x = [...a].sort((p, q) => p - q); return x.length ? x[Math.floor(x.length / 2)] : null; };
