@@ -1379,6 +1379,11 @@ es el promedio por día de cada mes (`_lnPromMes`): cada día muestra el de su m
 del gráfico se suman los días desde el 1º aunque queden antes (`_lnPreMes`). Línea de cada producto y general. Probado: sep $5.000/día,
 oct $10.000/día con ventas de prueba. Qué chequear: que el salto caiga justo el día 1 y que el número de "hoy" sea el del mes en curso.
 
+### Etapa 7 · 26/10/2026 · v26.93 · 📈 Línea de tiempo en el celu: tocar no abre nada
+Él: *"en el celu al arrastrar o clickear se abre esa ventana. Re molesta. Que no se abra nada y listo"*. Se sacó la franja del día con el
+dedo (7.23 del 21/10: `_lineaFranjaEn`, `_lineaDiasDe`, `_lineaFranjaCerrar`, su CSS y el vigilante de toda la página que la cerraba).
+En la PC el globito del mouse sigue. Qué chequear: en el celu tocar y arrastrar la línea sólo mueve la pantalla; en la PC el globito aparece.
+
 ### Etapa 7 · 26/10/2026 · v26.92 · 📈 Línea de tiempo: entran tres gráficos
 Él con la del Centímetro en la PC: *"achicar un poco el alto así entran tres. y eso ponerlo arriba más chiquito así entra más"*. Cada franja
 grande mide un tercio del alto de la pantalla (`_lnAlto`, antes la mitad; nunca menos que su mínimo). Las 4 tarjetas (`_lnCard`, también en

@@ -98,8 +98,6 @@ body.discreto .vp-aviso{animation:none}
 .tito-pie{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:14px}
 @media print{body>*:not(#tito-modal){display:none!important}.tito-modal{position:static;background:none;padding:0}.tito-pie,.tito-cab .btn{display:none}.tito-caja{border:none;max-width:none}}
 .py-filtros summary::-webkit-details-marker{display:none}
-#linea-franja{position:fixed;top:calc(8px + env(safe-area-inset-top,0px));left:8px;right:8px;z-index:9260;max-height:42vh;overflow-y:auto;background:var(--surface2);color:var(--text);border:1px solid var(--border2);border-radius:10px;padding:9px 12px;font-size:.72rem;line-height:1.45;box-shadow:0 6px 24px rgba(0,0,0,.4)}
-.linea-raya-dia{position:absolute;width:0;border-left:1.5px dashed var(--text);opacity:.7;pointer-events:none;z-index:2}
 svg.linea-svg{touch-action:pan-y}
 #linea-modal[data-giro="1"] svg.linea-svg{touch-action:pan-x}
 @media(max-width:640px){
@@ -3068,7 +3066,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.92';
+const APP_VERSION='26.93';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3081,6 +3079,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.93',f:'26/10',h:'16:54',c:[{n:1,t:'📈 Línea de tiempo en el celu: tocar o arrastrar el dibujo ya no abre la ventanita del día (en la PC el globito del mouse sigue igual).'}]},
   {v:'26.92',f:'26/10',h:'16:40',c:[{n:2,t:'📈 Línea de tiempo: cada gráfico ocupa un tercio de la pantalla (entran tres a la vez) y las 4 tarjetas de arriba quedaron en un renglón finito.'}]},
   {v:'26.91',f:'26/10',h:'18:50',c:[{n:1,t:'🎬 Cargando · contador: cada cifra con más lugar arriba, abajo y a los costados (en la PC se cortaban arriba).'}]},
   {v:'26.90',f:'26/10',h:'18:35',c:[{n:1,t:'🎬 Cargando · contador: si ese aparato todavía no vio la ganancia de hoy, giran 5 cifras sin parar (antes quedaba una sola cifra cortada).'}]},
@@ -12640,47 +12639,9 @@ function lineaFichaAbrir(prodId,ev){
   m.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:14px 16px;max-width:420px;width:100%;max-height:88vh;overflow-y:auto"><div style="display:flex;justify-content:space-between;gap:10px;font-size:.8rem;font-weight:700">📋 ¿La ficha de cuál publicación?<button class="btn" onclick="document.getElementById('linea-ficha-elige').remove()">✕</button></div><div onclick="setTimeout(()=>{_lineaFichaSube();const x=document.getElementById('linea-ficha-elige');if(x)x.remove();},80)">${_fichaBotones(ms)}</div></div>`;
   document.body.appendChild(m);
 }
-// 7.23 · LÍNEA DE TIEMPO: TOCAR UN DÍA MUESTRA SU FRANJA (21/10/2026, eligió la a). En el teléfono el globito del mouse no
-// existe: tocar un día no mostraba nada. Ahora, con el dedo, el texto de ese día (el MISMO del globito, palabra por palabra, de todos
-// los carriles juntos) aparece en una franja fija arriba y una raya marca el día; arrastrando el dedo de costado la franja cambia de
-// día. Sirve para la línea de un producto y para la de todos. En la PC sigue el globito como siempre.
-function _lineaDiasDe(svg){
-  if(svg._dias)return svg._dias;
-  const G=new Map();
-  svg.querySelectorAll('rect').forEach(r=>{const t=r.querySelector('title');if(!t)return;const x=parseFloat(r.getAttribute('x')),w=parseFloat(r.getAttribute('width'))||1;if(!isFinite(x))return;
-    const k=x.toFixed(2);const g=G.get(k)||{x,w,l:[]};g.l.push(...String(t.textContent||'').split('\n'));G.set(k,g);});
-  svg._dias=[...G.values()].sort((a,b)=>a.x-b.x).map(g=>({x:g.x,w:g.w,l:[...new Set(g.l.map(s=>s.trim()).filter(Boolean))]}));
-  return svg._dias;
-}
-function _lineaFranjaEn(svg,cx,cy){
-  const D=_lineaDiasDe(svg);if(!D.length)return;
-  let sx;try{const pt=svg.createSVGPoint();pt.x=cx;pt.y=cy;sx=pt.matrixTransform(svg.getScreenCTM().inverse()).x;}catch(e){return;}
-  let d=D.find(g=>sx>=g.x&&sx<g.x+Math.max(g.w,1));if(!d)d=D.reduce((a,g)=>Math.abs(g.x-sx)<Math.abs(a.x-sx)?g:a,D[0]);
-  let f=document.getElementById('linea-franja');
-  // Adentro del cuadro de la línea: si está "de costado" (girado), la franja gira con el dibujo.
-  const _lm=svg.closest('#linea-modal')||document.body;
-  if(!f||f.parentElement!==_lm){if(f)f.remove();f=document.createElement('div');f.id='linea-franja';_lm.appendChild(f);}
-  f._svg=svg;
-  f.innerHTML=`<button class="btn" onclick="_lineaFranjaCerrar()" style="float:right;font-size:.7rem;padding:2px 9px;margin-left:8px">✕</button><b>📅 ${escHtml(d.l[0]||'')}</b>${d.l.slice(1).map(s=>'<br>'+escHtml(s)).join('')}`;
-  // La raya del día, adentro del contenedor del dibujo.
-  const cont=svg.parentElement;if(cont){let r=cont.querySelector('.linea-raya-dia');if(!r){r=document.createElement('div');r.className='linea-raya-dia';cont.appendChild(r);}
-    const vb=svg.viewBox&&svg.viewBox.baseVal;const W=vb&&vb.width||1;const sr=svg.getBoundingClientRect(),cr=cont.getBoundingClientRect();
-    r.style.left=(sr.left-cr.left+(d.x+Math.max(d.w,1)/2)/W*sr.width).toFixed(1)+'px';r.style.top=(sr.top-cr.top)+'px';r.style.height=sr.height+'px';}
-}
-function _lineaFranjaCerrar(){const f=document.getElementById('linea-franja');if(f)f.remove();document.querySelectorAll('.linea-raya-dia').forEach(r=>r.remove());}
-{let _lfOn=null;
-  document.addEventListener('pointerdown',e=>{if(e.pointerType!=='touch')return;const s=e.target.closest&&e.target.closest('svg.linea-svg');if(!s){if(!e.target.closest('#linea-franja'))_lineaFranjaCerrar();return;}
-    _lfOn={s,x:e.clientX,y:e.clientY,lado:false};_lineaFranjaEn(s,e.clientX,e.clientY);},true);
-  // Lo de costado se mide en el dibujo (si la línea está girada, "de costado" en la pantalla es para arriba o abajo).
-  const _svgD=(s,x0,y0,x1,y1)=>{try{const M=s.getScreenCTM().inverse(),p=s.createSVGPoint();p.x=x0;p.y=y0;const a=p.matrixTransform(M);p.x=x1;p.y=y1;const b=p.matrixTransform(M);
-    const vb=s.viewBox&&s.viewBox.baseVal,r=s.getBoundingClientRect(),k=vb&&vb.width?r.width/vb.width:1,kh=vb&&vb.height?r.height/vb.height:1;return[Math.abs(b.x-a.x)*k,Math.abs(b.y-a.y)*kh];}catch(e){return[Math.abs(x1-x0),Math.abs(y1-y0)];}};
-  document.addEventListener('pointermove',e=>{if(!_lfOn||e.pointerType!=='touch')return;const [dx,dy]=_svgD(_lfOn.s,_lfOn.x,_lfOn.y,e.clientX,e.clientY);
-    if(!_lfOn.lado){if(dy>12&&dy>dx){_lfOn=null;return;}if(dx>8)_lfOn.lado=true;}
-    if(_lfOn&&_lfOn.lado)_lineaFranjaEn(_lfOn.s,e.clientX,e.clientY);},true);
-  ['pointerup','pointercancel'].forEach(t=>document.addEventListener(t,()=>{_lfOn=null;},true));
-  // Al cerrar o redibujar la línea, la franja se va (era de un dibujo que ya no está).
-  new MutationObserver(()=>{const f=document.getElementById('linea-franja');if(f&&!(f._svg&&f._svg.isConnected))_lineaFranjaCerrar();}).observe(document.body,{childList:true,subtree:true});
-}
+// 7.23 · LÍNEA DE TIEMPO EN EL TELÉFONO: TOCAR NO ABRE NADA (26/10/2026, él: "al arrastrar o clickear se abre esa ventana. Re molesta.
+// Que no se abra nada y listo. No tiene detalles el celular y ya está"). Se sacó la franja del día que aparecía con el dedo (21/10); en
+// la PC sigue el globito del mouse como siempre.
 // 7.27 · DÓNDE ESTÁ EL PRECIO DE HOY ENTRE EL 💰 PISO Y EL 🔴 TECHO (21/10/2026, eligió la a). Las dos rayas son las de la línea de
 // tiempo (la misma cuenta, `rayasPrecioLinea` del robot = `_rayas` de acá); el robot las deja cada noche en `cyc/rayas/<MLA>` con la
 // ficha (`ficha:go`). Una barrita chica dice de un vistazo dónde está el precio de hoy. Sin 💰 medido no se dibuja nada (no se inventa).
