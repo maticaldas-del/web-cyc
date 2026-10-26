@@ -804,6 +804,10 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 
 ## 3 · MERCADERÍA (miércoles)
 
+### 🏷️ Los "llegó" del robot también dejan sin etiqueta (26/10/2026, él: "¿los agregaste a mi oficina? así voy viendo las etiquetas")
+- **Qué es:** `sinEtiqSumarBot` suma a `cyc/sinetiq` lo que `ofiSumarBot` sube a la oficina (`pyped:llego` y las listas) y lo que suma `pvped:llego` (Paulvic). Antes sólo lo hacían la web y `ofi:`: el pedido de Paraguay del 19/10 entró con 12 u. y 0 sin etiqueta (cargadas a mano con `sinetiq`).
+- **Qué chequear:** que un "llegó" del robot muestre "🏷️ sin etiqueta a → b" en cada renglón · que la tarjeta de Contar lo que hay las liste · que deshacer una caja (devolución) NO las sume.
+
 ### 🧾 % de hoy en cada renglón del pedido de Paraguay (26/10/2026, v26.75, él con el GoPro Handler)
 - **Qué es:** en `_pyItsHTML`, al lado de "margen medido al pedirlo" (web + recargo estimado), "hoy, peor caso con todo pagado N% a $precio" = `margenMLDe` menos la retención de otra provincia (`PEOR_RET_PCT`) de la ficha (costo pagado × recargo real) con el `netopub` de su publicación; sin medición todavía dice "se mide esta noche".
 - **Qué chequear:** que el % de hoy de un renglón que salió más caro (Handler US$ 18 → 28,50) sea menor que el de al pedirlo · que tome la publicación activa si hay varias.

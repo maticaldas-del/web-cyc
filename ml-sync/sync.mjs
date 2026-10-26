@@ -252,6 +252,17 @@ function ofiColorDeFicha(p, va) {
   const hit = vs.filter((v) => n(v) === n(va));
   return hit.length === 1 ? hit[0] : null;
 }
+// 🏷️ LO QUE ENTRA A LA OFICINA POR EL ROBOT TAMBIÉN QUEDA SIN ETIQUETA (26/10/2026, él: "¿los productos nuevos los agregaste a mi
+// oficina? así voy viendo las etiquetas que tengo que hacer"). La regla del 25/10 ("todo lo que sube la oficina pasa a sin etiqueta")
+// estaba en la web y en `ofi:`, pero NO en los "llegó" del robot (`pyped:llego`, listas y `pvped:llego`): el pedido de Paraguay del
+// 19/10 sumó 12 u. a la oficina y ninguna a `cyc/sinetiq`. Mismo nodo que la web: `cyc/sinetiq/<prod>/{t | v/<color>}`.
+async function sinEtiqSumarBot(db, pid, va, u) {
+  if (!pid || !(u > 0)) return null;
+  const sk = 'cyc/sinetiq/' + pid + '/' + (va ? 'v/' + sid(va) : 't');
+  const a = parseInt(await db.get(sk)) || 0;
+  await db.set(sk, a + u); await db.set('cyc/sinetiq/' + pid + '/ts', Date.now());
+  return { antes: a, ahora: a + u };
+}
 async function ofiSumarBot(db, p, va, delta, inv) {
   const OFI_LOC = 'Oficina Mati';
   const vs = Array.isArray(p && p.variantes) ? p.variantes : Object.values((p && p.variantes) || {});
@@ -271,7 +282,8 @@ async function ofiSumarBot(db, p, va, delta, inv) {
   await db.patch('cyc/inventory', upd);
   if (inv) Object.assign(inv, upd);
   try { await db.set('cyc/ofientro/' + p.id, Date.now()); } catch { /* no frena */ }
-  return { color, antes, ahora, tA, tN };
+  let se = null; try { se = await sinEtiqSumarBot(db, p.id, color || '', delta); } catch { console.log(`   ⚠️ ${p.name}: no pude anotarlo sin etiqueta (cyc/sinetiq)`); }
+  return { color, antes, ahora, tA, tN, se };
 }
 // Lo que FALTÓ de un pedido, desde el chat: `<palabra>[#<color>]=<unidades que LLEGARON>` (`=` adelante = nombre exacto). Cada uno
 // tiene que agarrar UN renglón del pedido. Devuelve { llegan: Map(índice → u), problemas }.
@@ -49135,7 +49147,8 @@ async function main() {
           const antes = parseInt(await db.get('cyc/inventory/' + kVar(x.v))) || 0;
           const tA = parseInt(await db.get('cyc/inventory/' + kTot)) || 0;
           await db.patch('cyc/inventory', { [kVar(x.v)]: antes + x.u, [kTot]: tA + x.u });
-          console.log(`  🏠 oficina · ${x.v}: ${antes} → ${antes + x.u}`);
+          let seP = null; try { seP = await sinEtiqSumarBot(db, P.id, x.v, x.u); } catch { /* lo dice abajo */ }
+          console.log(`  🏠 oficina · ${x.v}: ${antes} → ${antes + x.u}${seP ? ` · 🏷️ sin etiqueta ${seP.antes} → ${seP.ahora}` : ' · ⚠️ no quedó sin etiqueta'}`);
         }
         await pvCosto(id, true);
         const rel = await db.get('cyc/pedidospv/' + id);
@@ -49773,7 +49786,7 @@ async function main() {
         let r = null; try { r = await ofiSumarBot(db, pf, x.it.variante || '', u, inv); } catch (e) { aMano.push({ nom: pf.name, u, pf, why: 'no se pudo escribir' }); continue; }
         if (!r) { aMano.push({ nom: pf.name, u, pf, v: x.it.variante || '', why: x.it.variante ? `la ficha no tiene el color "${x.it.variante}"` : 'la ficha tiene colores y el renglón no dice cuál' }); continue; }
         sumados.push({ prodId: pf.id, ...(r.color ? { v: r.color } : {}), u });
-        console.log(`  🏠 oficina · ${pf.name}${r.color ? ' · ' + r.color + ': ' + r.antes + ' → ' + r.ahora + ' (total ' + r.tA + ' → ' + r.tN + ')' : ': ' + r.antes + ' → ' + r.tN}`);
+        console.log(`  🏠 oficina · ${pf.name}${r.color ? ' · ' + r.color + ': ' + r.antes + ' → ' + r.ahora + ' (total ' + r.tA + ' → ' + r.tN + ')' : ': ' + r.antes + ' → ' + r.tN}${r.se ? ` · 🏷️ sin etiqueta ${r.se.antes} → ${r.se.ahora}` : ''}`);
       }
       const quedan = {}; for (const [pid, q] of Object.entries(ofiAl)) if (NOSUMAR || !sumados.some((y) => y.prodId === pid) || aMano.some((y) => y.pf && y.pf.id === pid)) quedan[pid] = q;
       await db.patch('cyc/compraslista/' + id, { sumoOfi: NOSUMAR ? null : { ts: Date.now(), por: 'chat', items: sumados }, ofiAlLlegar: Object.keys(quedan).length ? quedan : null, falto: faltoR.length ? faltoR : null });
@@ -50238,7 +50251,7 @@ async function main() {
             let r = null; try { r = await ofiSumarBot(db, pf, it.variante || '', u, _inv); } catch (eS) { _aMano.push({ it, u, pf, why: 'no se pudo escribir (' + String((eS && eS.message) || eS).slice(0, 40) + ')' }); continue; }
             if (!r) { _aMano.push({ it, u, pf, why: it.variante ? `la ficha no tiene el color "${it.variante}"` : 'la ficha tiene colores y el renglón no dice cuál' }); continue; }
             _sumados.push({ prodId: pf.id, ...(r.color ? { v: r.color } : {}), u });
-            console.log(`  🏠 oficina · ${pf.name}${r.color ? ' · ' + r.color + ': ' + r.antes + ' → ' + r.ahora + ' (total ' + r.tA + ' → ' + r.tN + ')' : ': ' + r.antes + ' → ' + r.tN}`);
+            console.log(`  🏠 oficina · ${pf.name}${r.color ? ' · ' + r.color + ': ' + r.antes + ' → ' + r.ahora + ' (total ' + r.tA + ' → ' + r.tN + ')' : ': ' + r.antes + ' → ' + r.tN}${r.se ? ` · 🏷️ sin etiqueta ${r.se.antes} → ${r.se.ahora}` : ''}`);
           }
         }
         if (_repIts.length && _inv) {
