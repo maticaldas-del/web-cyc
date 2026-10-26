@@ -79,6 +79,13 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
 
 ## 1 · PRECIOS (lunes)
 
+### `ventasraras`: 💰 punto con precio probado ya cuenta como "con techo" (26/10/2026)
+- **Qué es:** en 🧭 ESTRATEGIA DE LO QUE VENDIÓ, una publicación en 💰 `punto` con su precio probado anotado en `techofreno` sale ✓ (antes
+  ⚠️ "sin estrategia con techo" y se iba al ayudante a fondo: la Lupa 90 y el Filtro de agua el 26/10, falsos avisos). 💰 punto sin precio
+  probado (lo lento que no busca techo, 4a) sigue saliendo ⚠️.
+- **Dónde vive:** `sync.mjs`, bloque 🧭 de `ventasraras` (`const bien = …`).
+- **Qué chequear:** que una 💰 punto sin `techofreno` siga apareciendo ⚠️; que la Lupa 90 (`MLA3690637828`, techofreno $7.520) salga ✓.
+
 ### VENTAS.md con la regla de "menos de 1 por semana no sube" (25/10/2026)
 - **Qué es:** el ayudante de ventas lee sólo VENTAS.md y ahí faltaba la 4a/37a: el paso 2 decía "sin línea, buscar techo" sin esa excepción. Agregada en el paso 2 y en la lista de "se busca techo".
 - **Dónde vive:** `ml-sync/VENTAS.md`.

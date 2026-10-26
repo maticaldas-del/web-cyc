@@ -47813,7 +47813,9 @@ async function main() {
           const dias = tsU ? Math.floor((hoy - tsU) / 864e5) : null;
           const tfM = tf[clasDe[mla] || mla];   // 24/10/2026: la de una gemela es la de su Clásica (antes el texto leía tf[gemela] y se caía)
           const conTecho = !!(tfM && Number(tfM.probado) > 0);
-          const bien = OK.has(ult) || (ult === 'bajando' && conTecho) || (['volviendo', 'desobra'].includes(ult) && (conTecho || (dias != null && dias < 7)));
+          // 26/10/2026: 💰 punto con su precio probado anotado (techofreno) ya tiene línea: no es "sin estrategia con techo" (la Lupa 90 y el
+          // Filtro iban al ayudante a fondo por esto). 💰 punto SIN precio probado (lo lento que no busca techo, 4a) sigue saliendo.
+          const bien = OK.has(ult) || (['bajando', 'punto'].includes(ult) && conTecho) || (['volviendo', 'desobra'].includes(ult) && (conTecho || (dias != null && dias < 7)));
           const nomV = String((Object.values(grupos).flat().find(({ v }) => v.mla === mla) || {}).v?.prod || '').slice(0, 40);
           (bien ? buenas : malas).push(`${mla} · ${nomV}${clasDe[mla] ? ' (gemela de ' + clasDe[mla] + ')' : ''} · ${ult || 'sin estrategia'}${dias != null ? ` (hace ${dias} d)` : ''}${conTecho ? ` · techo probado $${Math.round(Number(tfM.probado)).toLocaleString('es-AR')}` : ''}`);
         }
