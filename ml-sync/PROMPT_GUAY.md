@@ -47,6 +47,9 @@ vuelve a estar disponible, copialo normal y vuelve solo.
   pycat:#<página>@<orden>;<código>|<nombre>|<US$>|<link>|<foto>;<código>|…;#<página siguiente>;…;go
 Ej: pycat:#1@menor-preco;7128673|Cabo USB-C Baseus 1m - Preto|2.90|https://comprasparaguay.com.ar/...|a1434913….webp;…;#2;…;go
 Cada página empieza con #<número>: así si se corta se sabe exacto dónde quedó.
+EN LA ÚLTIMA PÁGINA, antes de ";go", agregá ";fin=<cuántos productos dice la web en total>" (el número que muestra comprasparaguay
+para Nissei). Ej: pycat:#412;…;fin=13467;go. Así queda anotada la vuelta: cuenta como COMPLETA si copiaste el 90% o más de los productos
+desde la página 1. Si no la terminaste, no pongas "fin".
 
 == CÓMO SE CARGA (lo hacés vos, sin molestar a Matías) ==
 En la pestaña de GitHub (workflow ml-consulta): "Run workflow" → rama claude/add-folder-78ysyb → en "comando" pegá el comando entero → "Run workflow".

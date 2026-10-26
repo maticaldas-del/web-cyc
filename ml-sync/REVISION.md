@@ -1379,6 +1379,23 @@ es el promedio por día de cada mes (`_lnPromMes`): cada día muestra el de su m
 del gráfico se suman los días desde el 1º aunque queden antes (`_lnPreMes`). Línea de cada producto y general. Probado: sep $5.000/día,
 oct $10.000/día con ventas de prueba. Qué chequear: que el salto caiga justo el día 1 y que el número de "hoy" sea el del mes en curso.
 
+### Etapa 4 · 26/10/2026 · v26.84 · ⚡ La web ya no baja `cyc` entero
+Él: *"tarda mucho en cargar cyc y anda medio lento y trabado. mucho más en pc"* y *"que se cargue sino al clickear… las ventas sí quiero
+que estén cargadas"*. `pesobase`: 13,6 MB (candidatos_py 3,84 · ventaprod 3,53 · facturas 1,27 · supervisor 0,97 · mllinks 0,50 ·
+emparejamal 0,41 …) y cada escritura del robot armaba el árbol entero otra vez. Ahora `startApp` escucha cada parte que la web lee
+(`CYC_KEYS`, 88, sacadas de lo que lee el handler) → no baja lo que nadie usa (emparejamal, stocklog, avisocand, autoriza, mlmap, cerebro…);
+`CYC_LAZY` candidatos_py se baja al entrar a Pedidos (`_cycCargarDe` en `goPage`); una ráfaga = una pasada (400 ms) y con la pestaña
+escondida no procesa hasta volver. La pasada (`_cycAplicar`) es la MISMA de antes. Probado con datos falsos: 88 escuchas, nada de `cyc`
+entero, 5 cambios seguidos = 1 pasada, candidatos sólo al entrar a Pedidos.
+- **Qué chequear:** una parte nueva que lea la web tiene que ir a `CYC_KEYS`; que Pedidos → Paraguay → Nuevos se llene a los 1-2 s.
+
+### Etapa 3 · 26/10/2026 · v26.84 · 🔄 Última vuelta completa de Nissei
+Él: *"al lado de reponer quiero que diga los días que se hizo la última vuelta de nissei en la web. pero tiene que ser completa"* y
+*"vuelta completa equivale a por lo menos el 90% de los productos de la web"*. `pycat` acepta `fin=<total de la web>` en la última página;
+arranca la vuelta con la página 1 (si no, mira 8 días); completa si los productos de Nissei copiados desde entonces son ≥90% del total →
+`cyc/mlconfig/nisseiVuelta` {fin,desde,vistos,total,pct}. Chip `_pyVueltaChip` al lado de "Falta reponer". PROMPT_GUAY pide el `fin=`.
+- **Qué chequear:** el sábado, que la pasada termine con `fin=` y el chip pase a "hoy"; hasta entonces dice "—".
+
 ### Etapa 3 · 26/10/2026 · v26.83 · Unidades de cada nuevo hasta US$ 20 (máx 4) · un solo 🗑️ Vaciar
 Él: *"cada producto pida unidades (máximo 4) hasta llegar a 20 dólares, si una unidad cuesta 21 se pide max una y si vale 19 se piden 2
 si vale 9 se piden 3 si vale 5 4 si vale 4 4"* → `candMaxU` = mín(4, ⌈20 ÷ precio web⌉), mínimo 1 (robot: `candMaxUBot`). Se sacó la

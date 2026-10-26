@@ -2367,8 +2367,20 @@ function startApp(){
     _cerTs={};for(const k of _cerNotas)_cerTs[k]=Number(v[k].ts)||0;
     if(typeof renderPronto==='function')renderPronto();
   },()=>{_cerNotas=null;});
-  db.ref('cyc').on('value',snap=>{
-    const d=snap.val()||{};
+  // ⚡ LA WEB YA NO BAJA `cyc` ENTERO (26/10/2026, él: "tarda mucho en cargar cyc y anda medio lento y trabado. mucho más en pc" y "que
+  // se cargue sino al clickear en eso. quizás carga cosas que no son necesarias para ese momento. las ventas sí quiero que estén cargadas").
+  // `pesobase` midió 13,6 MB, y CADA escritura del robot (cada 2 min, en ráfagas) volvía a armar el árbol entero en el aparato. Ahora:
+  //   1. se escucha cada parte que la web usa (`CYC_KEYS`, sacada de lo que lee esta función); lo que no usa nadie no se baja más;
+  //   2. lo pesado que sirve en UNA sola pantalla se baja al entrar a esa pantalla (`CYC_LAZY`: los candidatos de Paraguay, 3,8 MB);
+  //   3. una ráfaga de cambios = UNA sola pasada (400 ms), y con la pestaña escondida no se procesa nada hasta que se vuelve a ella.
+  // Lo que hace cada pasada es EXACTAMENTE lo de antes (`_cycAplicar`, con `d` = las partes recibidas). Una parte nueva que lea la web
+  // tiene que sumarse a CYC_KEYS (si no, llega vacía).
+  const CYC_LAZY={'candidatos_py': 'pedidos'};
+  const CYC_KEYS=['autoprecio','avisoventa_ult','buzon','cajas_armando','cajasentrado','claudecambios','claudedecide','compras','compraslista','compraspy','daily','dolarref','entregas','envios_full','estrategia','fact_arca','fact_cancel','fact_fuera','fact_mes','facturas','facturas_desde','facturas_recibidas','facturas_sin','finanzas','fullreco','gastos_nova','history','ingresos','inventory','listas_local','listas_pedido','listas_pedido_prob','local','lotesfull','metricas','mlconfig','mllinks','monotributo','netopub','noconsigo','norepo','nosubir','notraer','oficinas','ofientro','pausado_precio','pedidos','pedidos_papelera','pedidos_py','pedidospv','precios_hist_prod','products','promoclaude','promohist','promoventa','proveedores','puntaje','pushsubs','py_armado','py_personal','py_sinstock','pycatres','pycatres_el','rayas','reclamomotivo','repoextra','reponer','reputacion','rescateventa','retiro_mes','revision','ritmonormal','saldoancla','sinetiq','snapshots','stockDiario','stockhist','stockoculto','supervisor','tc_mes','techo95pct','techofreno','techofull','ventaanalisis','ventaprod','ventaremate','vigilancia','visitas'];
+  const _cycD={},_cycFalta=new Set(CYC_KEYS);let _cycT=null,_cycPend=false;
+  const _cycAplicar=()=>{
+    _cycPend=false;clearTimeout(_cycT);
+    const d=_cycD;
     state.products=d.products ?Object.values(d.products).sort((a,b)=>(a.name||'').localeCompare(b.name||'','es',{sensitivity:'base'})):[];
     state.inventory=d.inventory||{};
     Object.assign(state.inventory,_invPending); // no dejar que un snapshot pise lo recién escrito
@@ -2540,7 +2552,11 @@ function startApp(){
     if(firstDataLoad){firstDataLoad=false;const _pg0=_paginaDeHash();currentPage=currentPage||'home';goPage('home');if(_pg0&&_pg0!=='home')goPage(_pg0);}   // #ventaprod = abrió tocando el aviso de una venta (o un acceso directo del ícono)
     // La primera carga se dibuja ya; las demás se juntan y respetan tu scroll (ver renderPronto).
     renderPronto(primeraVez);
-  },err=>{
+  };
+  const _cycSched=()=>{if(_cycFalta.size)return;if(firstDataLoad){_cycAplicar();return;}clearTimeout(_cycT);
+    if(document.hidden){_cycPend=true;return;}_cycT=setTimeout(_cycAplicar,400);};
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&_cycPend)_cycAplicar();});
+  const _cycErr=err=>{
     // Etapa 5: si Firebase CANCELA la lectura (permiso vencido, sesión caída) el panel se quedaba
     // congelado con datos viejos y el punto seguía verde (.info/connected sólo mira la red). Ahora
     // se ve: punto rojo, "sin datos" y un cartel fijo que no se va solo.
@@ -2556,7 +2572,11 @@ function startApp(){
       b.onclick=()=>location.reload();document.body.appendChild(b);}
     b.textContent='⚠️ Se cortó la lectura de la base ('+((err&&(err.code||err.message))||'error')+'). Lo que ves puede estar VIEJO y lo que cargues puede no guardarse. Tocá acá para volver a entrar.';
     const l=document.getElementById('loading');if(l)l.style.display='none';
-  });
+  };
+  const _cycOir=k=>db.ref('cyc/'+k).on('value',sn=>{_cycD[k]=sn.val();_cycFalta.delete(k);_cycSched();},_cycErr);
+  CYC_KEYS.forEach(_cycOir);
+  const _cycLazyOn=new Set();
+  window._cycCargarDe=page=>{for(const [k,pg] of Object.entries(CYC_LAZY))if(pg===page&&!_cycLazyOn.has(k)){_cycLazyOn.add(k);_cycOir(k);}};
 }
 function doLogin(){
   const email=(document.getElementById('login-email').value||'').trim();
@@ -2962,7 +2982,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.83';
+const APP_VERSION='26.84';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2975,6 +2995,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.84',f:'26/10',h:'16:55',c:[{n:3,t:'⚡ La web abre y anda más liviana: ya no baja toda la base (13,6 MB) sino sólo lo que usa; los candidatos de Paraguay (3,8 MB) se bajan al entrar a Pedidos; cuando el robot escribe varias cosas seguidas se procesa una sola vez, y con la pestaña escondida no procesa nada hasta que volvés.'},{n:2,t:'🔄 Pedidos → Paraguay: al lado de "Falta reponer" dice hace cuántos días fue la última vuelta COMPLETA por la web de Nissei (90% o más de los productos).'}]},
   {v:'26.83',f:'26/10',h:'16:25',c:[{n:2,t:'🧾 Paraguay: cada producto nuevo pide unidades hasta llegar a US$ 20, máximo 4 (US$ 21 → 1 · US$ 19 → 2 · US$ 9 → 3 · US$ 5 o menos → 4). Se sacó la casilla "U. por nuevo".'},{n:2,t:'🗑️ Un solo botón Vaciar: saca TODO lo del pedido (probados, nuevos y uso personal). Ya no están Vaciar probados ni Vaciar nuevos.'}]},
   {v:'26.82',f:'26/10',h:'16:00',c:[{n:2,t:'⛔ Paraguay: lo mirado hace 7 días o más SE PUEDE cargar (también con los botones de llenar) y queda en rojo dentro del pedido. Lo único que frena es copiar el mensaje y "Ya lo pedí", hasta que el robot lo vuelva a mirar.'}]},
   {v:'26.81',f:'26/10',h:'15:40',c:[{n:1,t:'📊 % de ganancia: la raya naranja del costo arranca en $0, así un cambio chico se ve chico. Sigue siendo el costo real (mercadería + impuestos de la venta, que suben un poco si sube el precio).'}]},
@@ -3942,6 +3963,7 @@ function goPage(page,opt){
   try{_vistoSalir();_vistoEntrar(page);}catch(e){}   // etapa 6 (G1/G6): "lo viste" se anota al salir de Pedidos / Ventas
   // El historial: guardar dónde quedó la pantalla que se deja y anotar el paso (no al volver con atrás ni al redibujar la misma).
   if(currentPage&&currentPage!==page){_pagScroll[currentPage]=window.scrollY;if(!opt.atras)_histPush(page);}
+  try{window._cycCargarDe&&window._cycCargarDe(page);}catch(e){}   // ⚡ lo pesado de esta pantalla se baja recién ahora (26/10/2026)
   if(page==='pedidos'){window._pedMomOpenG={};window._nipAbierto=false;}   // el pedido del momento arranca cerrado al entrar (08/10/2026)
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   const el=document.getElementById('page-'+page);
@@ -18957,6 +18979,16 @@ function _pedsCostoReponer(peds){
   });
   return {usd,ars:tc?Math.round(usd*tc):0};
 }
+// 🔄 LA ÚLTIMA VUELTA COMPLETA DE NISSEI (26/10/2026, él: "al lado de reponer quiero que diga los días que se hizo la última vuelta de
+// nissei en la web. pero tiene que ser completa" · "vuelta completa equivale a por lo menos el 90% de los productos de la web"). La anota el
+// robot (`pycat` con `fin=`) en `cyc/mlconfig/nisseiVuelta`; una vuelta a medias no la toca.
+function _pyVueltaChip(){
+  const v=(state.mlconfig||{}).nisseiVuelta, f=v&&Number(v.fin);
+  const d=f>0?Math.floor((Date.now()-f)/864e5):null;
+  const col=d==null?'var(--muted)':d>=7?'var(--red)':d>=5?'var(--amber)':'var(--green)';
+  const tit=f>0?`Última vuelta completa por la web de Nissei: ${new Date(f).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'})} · ${v.vistos||'?'} de ${v.total||'?'} productos (${v.pct||'?'}%). Completa = 90% o más de los productos.`:'Todavía no hay una vuelta completa anotada (90% o más de los productos de la web de Nissei).';
+  return `<div class="pcount" title="${tit}"><strong style="color:${col}">${d==null?'—':d===0?'hoy':d===1?'1 día':d+' días'}</strong>🔄 vuelta Nissei</div>`;
+}
 function _pedCostoChip(peds){
   const c=_pedsCostoReponer(peds);
   const val=c.ars?fmt(c.ars):'US$'+Math.round(c.usd).toLocaleString('es-AR');
@@ -22436,7 +22468,7 @@ function renderPedidos(){
   const cntEl=document.getElementById(countId);
   if(cntEl)cntEl.innerHTML=`
     ${_pedSemCount(peds,0)}
-    <div class="pcount"><strong>${peds.length}</strong>Total</div>${_pedCostoChip(isBsas?peds:_pedsPyQueDan(peds))}`;
+    <div class="pcount"><strong>${peds.length}</strong>Total</div>${_pedCostoChip(isBsas?peds:_pedsPyQueDan(peds))}${isBsas?'':_pyVueltaChip()}`;
   if(pedidoFilter!=='todos')peds=_pedFiltrar(peds);
   const searchId=isBsas?'ped-search':'ped-py-search';
   // El buscador de Paraguay busca en los pedidos de Probados: en Nuevos y en el Pedido no filtra nada, así que ahí no se muestra (20/10/2026, etapa 7).

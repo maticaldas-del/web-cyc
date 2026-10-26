@@ -23258,6 +23258,11 @@ async function main() {
         const fs = await import('node:fs'); const ruta = `ml-sync/notas/pycat/${mA[1].replace(/\.txt$/, '')}.txt`;
         try { lineas = fs.readFileSync(ruta, 'utf8').split(/\r?\n/); } catch { console.log(`❌ No encuentro ${ruta}`); return; }
       } else lineas = cuerpo.split(';');
+      // `fin=<productos que dice la web>` (26/10/2026): el chat lo agrega cuando copió la ÚLTIMA página. Sirve para saber si la vuelta
+      // por la web quedó completa (90% de los productos, ver abajo).
+      const _finL = lineas.find((x) => /^\s*fin\s*(=\s*\d+)?\s*$/i.test(String(x || '')));
+      const FIN = !!_finL, FIN_TOT = _finL ? (parseInt(String(_finL).replace(/\D/g, ''), 10) || 0) : 0;
+      lineas = lineas.filter((x) => !/^\s*fin\s*(=\s*\d+)?\s*$/i.test(String(x || '')));
       const { filas, malos, pg, orden } = pyCatParse(lineas);
       if (malos.length) { console.log(`❌ ${malos.length} renglón(es) mal escritos (falta código, nombre o precio). NO escribo ninguno:`); malos.slice(0, 10).forEach((m) => console.log('   ' + m)); return; }
       if (!filas.length) { console.log('Nada para cargar.'); return; }
@@ -23299,6 +23304,29 @@ async function main() {
           if (sinStP[p.id]) { try { await db.set('cyc/py_sinstock/' + p.id, null); console.log(`  ↺ ${p.name.slice(0, 60)}: Nissei lo volvió a listar, le saco la marca "no había"`); } catch { /* sigue */ } } } }
       const last = filas[filas.length - 1];
       if (ultPg >= 0) await db.patch(PROG, { pg: ultPg, cod: last.cod, n: last.n.slice(0, 80), ts: ahora, ...(orden ? { orden } : {}) });
+      // 🔄 LA ÚLTIMA VUELTA COMPLETA DE NISSEI (26/10/2026, él: "al lado de reponer quiero que diga los días que se hizo la última vuelta
+      // de nissei en la web. pero tiene que ser completa, sino no cuenta una vuelta a medias" y "vuelta completa equivale a por lo menos
+      // el 90% de los productos de la web"). La vuelta arranca cuando llega la página 1 (si no llegó, se miran los últimos 8 días) y se
+      // cierra con `fin=<productos que dice la web>`: cuenta si los productos de Nissei copiados desde que arrancó (`ts` en `mlapi/pycat`)
+      // son el 90% o más de ese total (sin el total, contra todo lo que hay guardado de Nissei). Lo completo queda en
+      // `cyc/mlconfig/nisseiVuelta` (la web lo muestra al lado de "Falta reponer"); la vuelta en curso, en `mlapi/pycatvuelta`.
+      if (!ELG) {
+        const pgs = [...new Set(filas.map((f) => f.pg).filter((x) => x != null))];
+        const vu = (await db.get('mlapi/pycatvuelta')) || {};
+        let cur = vu.cur || null;
+        if (pgs.includes(1)) cur = { desde: ahora };
+        let msgV = '';
+        if (FIN) {
+          const desde = cur ? cur.desde : ahora - 8 * 864e5;
+          const nis = Object.entries({ ...cat, ...upd }).filter(([k, e]) => e && pycatProvDe(k, e) === 'nissei');
+          const vistos = nis.filter(([, e]) => Number(e.ts) >= desde).length, total = FIN_TOT > 0 ? FIN_TOT : nis.length;
+          const pct = total > 0 ? Math.round(vistos / total * 1000) / 10 : 0;
+          if (pct >= 90) { await db.set('cyc/mlconfig/nisseiVuelta', { fin: ahora, desde, vistos, total, pct }); msgV = `🔄 VUELTA COMPLETA de Nissei: ${vistos} de ${total} productos (${pct}%).`; cur = null; }
+          else msgV = `⚠️ vuelta INCOMPLETA: ${vistos} de ${total} productos (${pct}%), hace falta el 90%. NO cuenta.`;
+        } else if (cur) msgV = `🔄 vuelta en curso desde la página 1. Se cierra con "fin=<productos que dice la web>" en la última página.`;
+        await db.set('mlapi/pycatvuelta', { cur });
+        if (msgV) console.log(msgV);
+      }
       const r = (await db.get('mlapi/pycat/' + KEY(last.cod))) || {};
       const ok = Math.abs((Number(r.u) || 0) - last.u) < 0.005;
       console.log(`\n${ok ? '✓' : '❌'} guardado (releído el último: ${last.n.slice(0, 60)} · US$ ${r.u}). ${ultPg >= 0 ? `Quedó en la página ${ultPg}.` : ''} Los mide \`pycatmedir\` solo.`);
