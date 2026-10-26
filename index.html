@@ -3104,7 +3104,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.10';
+const APP_VERSION='27.11';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3117,6 +3117,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.11',f:'26/10',h:'19:24',c:[{n:1,t:'📦 Productos: cada tarjeta dice cuántas unidades hay en Full (las 4 cuentas juntas; en rojo si no hay).'}]},
   {v:'27.10',f:'26/10',h:'19:24',c:[{n:3,t:'🧠 Métricas · Cambios de precio: el número grande suma sólo los cambios con resultado claro (ganó o perdió en el juicio de Claude) y muestra aparte el costo de buscar techo. Lo que "todavía no se sabe" o "no fue el precio" (sin stock, fechas) queda afuera.'}]},
   {v:'27.09',f:'26/10',h:'19:19',c:[{n:2,t:'🧮 Métricas · La mezcla: elegís cuántos (3, 6, 12, 24 o todo) y si cada renglón es una semana, un mes o un año.'}]},
   {v:'27.08',f:'26/10',h:'18:59',c:[{n:1,t:'📈 Línea de tiempo: el nombre y los colores suben al renglón de los botones (en la PC queda un renglón menos y los gráficos tienen más lugar).'}]},
@@ -5872,6 +5873,7 @@ function renderProds(){
       <div class="prod-sum-datos" style="display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:8px;font-size:.74rem;color:var(--muted)">
         <span style="${_st}">costo <b style="color:var(--text)">${fmtUSD(cu)}</b> · ${fmtPesos(cp)}</span>
         <span style="${_st}">precio hoy <b style="color:var(--text)">${_pr?fmt(_pr):'—'}</b></span>
+        ${(()=>{const _f=LOCS.reduce((t,l)=>t+getQ(p.id,l),0);return `<span style="${_st}" title="Unidades en Full, las 4 cuentas juntas">en Full <b style="color:${_f>0?'var(--text)':'var(--red)'}">${_f} u.</b></span>`;})()}
         <span style="${_st}">te queda ${_gan!=null?`<b style="color:${_r.margen!=null?pctColor(_r.margen):'var(--text)'}">${fmt(_gan)} · ${_r.margen!=null?Math.round(_r.margen)+'%':'—'}</b>`:'<b>—</b>'}</span>
         <span style="${_st}">${_est}</span>
         ${_r.margen!=null&&_r.margen<_M?`<span style="background:rgba(239,68,68,.14);color:var(--red);border-radius:5px;padding:1px 7px;font-weight:700;white-space:nowrap">⚠️ abajo del ${_M}%</span>`:''}

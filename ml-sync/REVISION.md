@@ -1379,6 +1379,10 @@ es el promedio por día de cada mes (`_lnPromMes`): cada día muestra el de su m
 del gráfico se suman los días desde el 1º aunque queden antes (`_lnPreMes`). Línea de cada producto y general. Probado: sep $5.000/día,
 oct $10.000/día con ventas de prueba. Qué chequear: que el salto caiga justo el día 1 y que el número de "hoy" sea el del mes en curso.
 
+### Etapa 7 · 26/10/2026 · v27.11 · 📦 Productos: unidades en Full en la tarjeta
+Él (con la tarjeta de la Waflera): *"que diga las unidades que hay en Full"*. Al lado de "precio hoy": "en Full N u." (suma de las 4
+cuentas, `getQ`; rojo en 0). Qué chequear: coincide con Full de ML de esa ficha.
+
 ### Etapa 1 · 26/10/2026 · v27.10 · 🧠 Cambios de precio: el total sólo con resultado claro
 Él (con "−$194.100"): *"¿quiere decir que todo lo que hicimos fue al pedo? yo veo que estamos ganando como nunca"*; eligió la 1a. El total
 de Métricas sumaba todo cambio medido, también los que juzgué "todavía no se sabe" (Waflera sin stock −$56.593, Redmi Watch 4 −$48.722) y
