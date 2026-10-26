@@ -8,6 +8,13 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 
 ## Abiertas
 
+### Del 26/10 a la tarde (contestó 1? 2a 3? 4? 5 después)
+- 1 Paulvic Debutante Mujer y Witch Night: no entendió "la prueba perdió" y pidió nunca abajo del 35% salvo cerca de pagar stock → le expliqué y le pasé escalera $21.990 → $18.790 → $16.490 → $14.990 (40%), esperando su a/b.
+- 2a: los Paulvic recién llegados se miden con stock hasta 3 ventas esperadas, los que no vendan bajan en escalera (nunca abajo del 35%).
+- 3 Los 5 Paulvic de 1 u. con 200+ días: preguntó si hay margen para bajar → le pasé los números, esperando su a/b.
+- 4 Separador x2: él lo leyó como techo → le expliqué que la hermana vende al mismo precio con el mismo stock (no es techo, es la publicación), esperando su a/b.
+- 5 Color del Centímetro: "haceme acordar y lo veo" → va en la lista de las 12:30 de mañana.
+
 ### Del 26/10 al mediodía (contestó 1a 2a 3a 4)
 - 1a CyberMonday: entran 6 (el Coconut no: deja 3% y los perfumes van al 10%+), programado 01/11 23 hs (`trig_0116kaFysCe97PQwbjk2FtJD`) · 2a Tendedero y Pizarra no · 3a VS con piso de 10% (regla nueva de perfumes, F12): Pure Seduction $68.990 → $59.990 → $53.990; Bliss igual desde el 15/11; Amber desde el 10/11 · 4 Espejos: la caja no dice el aumento, manda foto con una moneda (5", 6", 8").
 
