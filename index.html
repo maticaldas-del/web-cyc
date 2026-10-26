@@ -2461,9 +2461,9 @@ function startApp(){
   // tiene que sumarse a CYC_KEYS (si no, llega vacía).
   const CYC_LAZY={'candidatos_py': 'pedidos'};
   const CYC_KEYS=['autoprecio','avisoventa_ult','buzon','cajas_armando','cajasentrado','claudecambios','claudedecide','compras','compraslista','compraspy','daily','dolarref','entregas','envios_full','estrategia','fact_arca','fact_cancel','fact_fuera','fact_mes','facturas','facturas_desde','facturas_recibidas','facturas_sin','finanzas','fullreco','gastos_nova','history','ingresos','inventory','listas_local','listas_pedido','listas_pedido_prob','local','lotesfull','metricas','mlconfig','mllinks','monotributo','netopub','noconsigo','norepo','nosubir','notraer','oficinas','ofientro','pausado_precio','pedidos','pedidos_papelera','pedidos_py','pedidospv','precios_hist_prod','products','promoclaude','promohist','promoventa','proveedores','puntaje','pushsubs','py_armado','py_personal','py_sinstock','pycatres','pycatres_el','rayas','reclamomotivo','repoextra','reponer','reputacion','rescateventa','retiro_mes','revision','ritmonormal','saldoancla','sinetiq','snapshots','stockDiario','stockhist','stockoculto','supervisor','tc_mes','techo95pct','techofreno','techofull','ventaanalisis','ventaprod','ventaremate','vigilancia','visitas'];
-  const _cycD={},_cycFalta=new Set(CYC_KEYS);let _cycT=null,_cycPend=false;
+  const _cycD={},_cycFalta=new Set(CYC_KEYS);let _cycT=null,_cycPend=false,_cycDesde=0;
   const _cycAplicar=()=>{
-    _cycPend=false;clearTimeout(_cycT);
+    _cycPend=false;clearTimeout(_cycT);_cycT=null;_cycDesde=0;
     const d=_cycD;
     state.products=d.products ?Object.values(d.products).sort((a,b)=>(a.name||'').localeCompare(b.name||'','es',{sensitivity:'base'})):[];
     state.inventory=d.inventory||{};
@@ -2635,10 +2635,17 @@ function startApp(){
     const primeraVez=firstDataLoad;
     if(firstDataLoad){firstDataLoad=false;const _pg0=_paginaDeHash();currentPage=currentPage||'home';goPage('home');if(_pg0&&_pg0!=='home')goPage(_pg0);}   // #ventaprod = abrió tocando el aviso de una venta (o un acceso directo del ícono)
     // La primera carga se dibuja ya; las demás se juntan y respetan tu scroll (ver renderPronto).
-    renderPronto(primeraVez);
+    // Ya se juntó la ráfaga en `_cycSched`: se dibuja en el acto (antes esperaba otros 300 ms de `renderPronto`).
+    renderPronto(true);
   };
-  const _cycSched=()=>{if(_cycFalta.size)return;if(firstDataLoad){_cycAplicar();return;}clearTimeout(_cycT);
-    if(document.hidden){_cycPend=true;return;}_cycT=setTimeout(_cycAplicar,400);};
+  // "¿Por qué no actualiza al instante?" (26/10/2026, él, después del cambio de arriba): la ráfaga se juntaba esperando 400 ms SIN
+  // cambios y después `renderPronto` otros 300; mientras el robot escribía seguido (una publicación tras otra) la espera se corría
+  // sola y lo nuevo (una venta) aparecía recién cuando el robot terminaba. Ahora: 250 ms sin cambios, y nunca más de 1 s desde el
+  // primer cambio aunque el robot siga escribiendo.
+  const _cycSched=()=>{if(_cycFalta.size)return;if(firstDataLoad){_cycAplicar();return;}
+    if(document.hidden){clearTimeout(_cycT);_cycT=null;_cycPend=true;return;}
+    const ahora=Date.now();if(!_cycDesde)_cycDesde=ahora;clearTimeout(_cycT);
+    _cycT=setTimeout(_cycAplicar,Math.max(0,Math.min(250,_cycDesde+1000-ahora)));};
   document.addEventListener('visibilitychange',()=>{if(!document.hidden&&_cycPend)_cycAplicar();});
   const _cycErr=err=>{
     // Etapa 5: si Firebase CANCELA la lectura (permiso vencido, sesión caída) el panel se quedaba
@@ -3066,7 +3073,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.94';
+const APP_VERSION='26.95';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3079,6 +3086,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.95',f:'26/10',h:'17:33',c:[{n:3,t:'⚡ Lo nuevo (una venta, un cambio del robot) aparece en 1/4 de segundo y nunca tarda más de 1 segundo, aunque el robot esté escribiendo seguido (desde la 26.84 podía esperar a que el robot terminara).'}]},
   {v:'26.94',f:'26/10',h:'17:23',c:[{n:1,t:'🆕 Ventas: se sacó el botón azul de arriba; "N ventas nuevas desde que miraste · +$X" va ahora en la rayita que separa lo nuevo de lo ya visto (o al final si todas son nuevas).'}]},
   {v:'26.93',f:'26/10',h:'16:54',c:[{n:1,t:'📈 Línea de tiempo en el celu: tocar o arrastrar el dibujo ya no abre la ventanita del día (en la PC el globito del mouse sigue igual).'}]},
   {v:'26.92',f:'26/10',h:'16:40',c:[{n:2,t:'📈 Línea de tiempo: cada gráfico ocupa un tercio de la pantalla (entran tres a la vez) y las 4 tarjetas de arriba quedaron en un renglón finito.'}]},

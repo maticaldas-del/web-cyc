@@ -1379,6 +1379,13 @@ es el promedio por día de cada mes (`_lnPromMes`): cada día muestra el de su m
 del gráfico se suman los días desde el 1º aunque queden antes (`_lnPreMes`). Línea de cada producto y general. Probado: sep $5.000/día,
 oct $10.000/día con ventas de prueba. Qué chequear: que el salto caiga justo el día 1 y que el número de "hoy" sea el del mes en curso.
 
+### Etapa 4 · 26/10/2026 · v26.95 · ⚡ La web vuelve a actualizar al instante
+Él: *"¿por qué no actualiza al instante ahora la web de cyc?"*. Falla mía de la v26.84 (la web más rápida): la ráfaga de cambios se juntaba
+esperando 400 ms SIN cambios (`_cycSched`) y después otros 300 ms (`renderPronto`); mientras el robot escribía una publicación tras otra, la
+espera se corría sola y una venta nueva aparecía recién cuando el robot terminaba. Ahora: 250 ms sin cambios y **nunca más de 1 s desde el
+primer cambio** (`_cycDesde`), y la pasada dibuja en el acto (`renderPronto(true)`). Medido con escrituras cada 200 ms durante 5 s: se
+actualiza cada ~1 s (antes recién a los 5,4 s); un cambio suelto, a los 250 ms. Qué chequear: una venta nueva aparece sola en segundos.
+
 ### Etapa 7 · 26/10/2026 · v26.94 · 🆕 Ventas: la cuenta de las nuevas va en la rayita
 Él: *"poner esto abajo de las ventas y el cuadrito azul sacarlo, ya que está la línea marcando los nuevos"*. Se sacó el botón `.vp-nuevas`
 (y `ventaNuevasIr`); "N ventas nuevas desde que miraste · +$X" va en negrita en la rayita (`_rayitaDe`) que separa lo nuevo de lo ya visto,
