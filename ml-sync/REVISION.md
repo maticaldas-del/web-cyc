@@ -1390,6 +1390,13 @@ Arriba de todo los botones (📋 Ficha · 📈 Todos · 365/90/30 · giro · ✕
 (en 📈 Todos quedan las suyas); el chip de la estrategia de hoy (`_estChip(_estHoy)`) en la derecha del 💲 Precio; el aviso de "N
 publicaciones distintas" sigue, suelto. Qué chequear: con colores y sin colores, celu y PC; el ✕ no se corre al elegir un color.
 
+### Etapa 3 · 26/10/2026 · 📦 El código de cada devolución que viene a la oficina, a Telegram cada 2 h
+Medido con `devcodigo:45`: ML lo guarda en el envío de vuelta (`/shipments/<id>` → `authorization_code`); las 10 devoluciones de los
+últimos 45 días fueron al depósito de Full y lo tienen vacío. `avisoDevCodigo` (vuelta horaria, cada 2 h, no de 0 a 7): reclamos de las 4
+cuentas movidos en 20 días → devolución → envíos que no llegaron → si trae código y no se mandó, UN aviso directo al canal privado
+(producto, día que llega y el código) y queda en `mlapi/devcodigo/<envío>`. El registro sólo dice cuántas. `devcodigo` corre la MISMA
+función en prueba. Qué chequear: la primera devolución que venga a la oficina llega a Telegram con su código y el registro no lo muestra.
+
 ### Etapa 3 · 26/10/2026 · 📦 `devcodigo[:días]`: dónde guarda ML el código de una devolución
 Él: *"cada tanto llegan devoluciones que van con QR. ¿vos podés verlas cuando llegan? ¿y mandarme el código a Telegram? revisar cada 2 h
 … de las cuatro cuentas"*. Primer paso, sólo lee: recorre los reclamos con devolución de las 4 cuentas y de la devolución y su envío

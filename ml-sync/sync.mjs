@@ -12944,6 +12944,57 @@ function cerebroDeAvisos(text, opt = {}) {
   if (/^⏸️ <b>Con stock en Full y siguen pausadas<\/b>/.test(t)) return { va: false, por: 'la noche las lleva al precio que deja ganar y se activan solas' };
   return { va: true, por: opt && opt.directo ? 'es para vos directo' : 'no lo puede resolver solo' };
 }
+// 📦 EL CÓDIGO PARA RECIBIR UNA DEVOLUCIÓN, A TELEGRAM (26/10/2026, él: "cada tanto llegan devoluciones que van con QR. ¿vos podés verlas
+// cuando llegan? ¿y mandarme el código a Telegram? Pero revisar cada 2 h así lo veo sí o sí el día que llegan. De las cuatro cuentas").
+// ML lo guarda en el envío de vuelta (`/shipments/<id>` → `authorization_code`, medido con `devcodigo`: vacío en las que van al
+// depósito de Full, que son casi todas). Cada 2 h (y no de 0 a 7) mira los reclamos con devolución en camino de las 4 cuentas; el
+// que trae código y no se mandó, va UNA vez al canal privado. El código NUNCA se imprime en el registro (es público y abre la
+// entrega): queda sólo en Telegram y en `mlapi/devcodigo/<envío>` (fuera de `cyc/`, la web no lo lee).
+const DEVCOD_CADA_H = 2;
+async function avisoDevCodigo(db, labels, tokensRun, DRY, forzar = false) {
+  const R = { mirados: 0, conCodigo: 0, mandados: 0, fallas: 0, salteo: '' };
+  const horaAR = new Date(Date.now() - 3 * 3600e3).getUTCHours();
+  if (horaAR < 7 && !forzar) { R.salteo = 'de noche no'; return R; }
+  let ya = {};
+  try { ya = (await db.get('mlapi/devcodigo')) || {}; } catch { R.salteo = 'no pude leer lo ya mandado'; return R; }
+  if (!forzar && Number(ya._ult) > Date.now() - DEVCOD_CADA_H * 3600e3 + 5 * 60e3) { R.salteo = 'lo miré hace menos de 2 h'; return R; }
+  const desde = Date.now() - 20 * 864e5;
+  for (const l of labels) {
+    const tok = tokensRun && tokensRun[l]; if (!tok) { R.fallas++; continue; }
+    const cls = [];
+    for (const st of ['opened', 'closed']) {
+      for (let off = 0; off < 200; off += 50) {
+        let r; try { r = await mlGet(`/post-purchase/v1/claims/search?status=${st}&limit=50&offset=${off}`, tok); } catch { R.fallas++; break; }
+        const d = r?.data || []; cls.push(...d.filter((c) => Date.parse(c.last_updated || c.date_created || 0) >= desde));
+        if (d.length < 50) break;
+      }
+    }
+    for (const c of cls) {
+      let rr = null;
+      try { const r = await mlGet(`/post-purchase/v2/claims/${c.id}/returns`, tok); rr = Array.isArray(r) ? r[0] : (r?.data?.[0] || r); } catch { rr = null; }
+      if (!rr || !Array.isArray(rr.shipments)) continue;
+      for (const x of rr.shipments) {
+        const sid = x.shipment_id || x.id; if (!sid) continue;
+        if (/^(delivered|cancelled|not_delivered)$/.test(String(x.status || ''))) continue;
+        R.mirados++;
+        if (ya[sid] && ya[sid].ok) continue;
+        let sh = null; try { sh = await mlGet(`/shipments/${sid}`, tok); } catch { R.fallas++; continue; }
+        const cod = String((sh && sh.authorization_code) || '').trim();
+        if (!cod) continue;
+        R.conCodigo++;
+        if (DRY) continue;
+        let tit = ''; try { const o = await mlGet('/orders/' + c.resource_id, tok); tit = String((o?.order_items || [])[0]?.item?.title || '').slice(0, 70); } catch { /* sin título */ }
+        const llega = sh.shipping_option?.estimated_delivery_time?.date ? new Date(Date.parse(sh.shipping_option.estimated_delivery_time.date) - 3 * 3600e3).toISOString().slice(5, 10).split('-').reverse().join('/') : '';
+        const txt = `📦 <b>Te llega una devolución</b> (${l})${tit ? '\n' + tit.replace(/[<>&]/g, '') : ''}${llega ? '\nLlega: ' + llega : ''}\nCódigo para recibirla: <b>${cod.replace(/[<>&]/g, '')}</b>`;
+        const ok = await sendAlerta(txt, { directo: true });
+        if (ok) { R.mandados++; try { await db.patch('mlapi/devcodigo/' + sid, { ok: true, ts: Date.now(), cuenta: l, cod }); } catch { /* se vuelve a mandar: mejor dos que ninguno */ } }
+        else R.fallas++;
+      }
+    }
+  }
+  if (!DRY) { try { await db.patch('mlapi/devcodigo', { _ult: Date.now() }); } catch { /* */ } }
+  return R;
+}
 async function sendAlerta(text, opt = {}) {
   const cv = cerebroDeAvisos(text, opt);
   if (DB_REF) {
@@ -19984,6 +20035,10 @@ async function main() {
         }
         console.log(`  ${conDev} con devolución`);
       }
+      // La MISMA función que corre cada 2 h, en prueba (no manda nada): cuántas en camino y cuántas con código.
+      { const TK = {}; for (const l of labels) { const acc = accounts[l]; if (!acc?.refresh_token) continue; try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + l, { refresh_token: t.refresh_token, updated_ts: Date.now() }); TK[l] = t.access_token; } catch { /* */ } }
+        const dc = await avisoDevCodigo(db, labels, TK, true, true);
+        console.log(`\n=== EL AVISO DE CADA 2 H, EN PRUEBA: ${dc.mirados} devoluciones en camino · ${dc.conCodigo} con código (irían a Telegram las que no se mandaron) · ${dc.fallas} lecturas fallaron ===`); }
       console.log('\n(esto solo LEE y no imprime ningún código)');
       return;
     }
@@ -54482,6 +54537,14 @@ async function main() {
       // el canal privado y sólo si alguna caja se marcó CON faltantes (una completa no es noticia).
       if (rc.msg) { console.log(rc.msg.replace(/<[^>]+>/g, '')); if (!DRY && rc.conFaltantes) await sendAlerta(rc.msg + '\n\n⚠️ Revisá las que dicen "faltaron": esas unidades salieron del patrimonio.'); }
     } catch (e) { console.log('No pude revisar las cajas en camino: ' + e.message); }
+  }
+
+  // 📦 El código de las devoluciones que vienen a la oficina, a Telegram (26/10/2026, pedido suyo). Cada 2 h, sólo lee ML.
+  if (parseInt(process.env.BACKFILL_DAYS || '0', 10) === 0 && !onlyAcc && process.env.SKIP_PRICES !== '1') {
+    try {
+      const dc = await avisoDevCodigo(db, labels, tokensRun, DRY);
+      if (!dc.salteo) console.log(`📦 Devoluciones con código · ${dc.mirados} en camino · ${dc.conCodigo} con código · ${dc.mandados} mandadas a Telegram${dc.fallas ? ' · ' + dc.fallas + ' lecturas fallaron' : ''}`);
+    } catch (e) { console.log('No pude mirar los códigos de las devoluciones: ' + String(e.message || e).slice(0, 120)); }
   }
 
   // SACAR LA MARCA DE "LIQUIDANDO" A LO QUE YA SE VENDIÓ ENTERO. Va en la vuelta horaria: el stock
