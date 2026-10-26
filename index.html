@@ -210,11 +210,11 @@ html,body{overflow-x:hidden;max-width:100%}html{overflow-x:clip}body{overscroll-
 /* 26/10/2026, él: "el contador de plata se ve trabado y quedan mal los números, no centrados". Cada cifra en una caja del MISMO ancho
    y centrada; la altura es la de un renglón entero (no se corta); giran parejo, frenan de izquierda a derecha y el número se apaga
    antes de volver a empezar (así no se ve el salto). Todas duran lo mismo y sin demoras: no se desfasan con el tiempo. */
-.ld4{display:flex;align-items:center;font-size:2.6rem;color:var(--accent2);animation:ld4f 2.8s linear infinite}
-.ld4 .s{height:1.2em;line-height:1.2em;padding:0 .02em}
-.ld4 .d{height:1.2em;width:.92em;overflow:hidden;position:relative}
+.ld4{display:flex;align-items:center;font-size:clamp(1.5rem,8.2vw,2.4rem);color:var(--accent2);animation:ld4f 2.8s linear infinite}
+.ld4 .s{height:1.5em;line-height:1.5em;padding:0 .04em}
+.ld4 .d{height:1.5em;width:1.16em;overflow:hidden;position:relative}
 .ld4 .d>div{display:flex;flex-direction:column;animation:ld4a 2.8s cubic-bezier(.25,.1,.25,1) infinite}
-.ld4 .d span{display:block;height:1.2em;line-height:1.2em;text-align:center}
+.ld4 .d span{display:block;height:1.5em;line-height:1.5em;text-align:center}
 .ld4w>.ld-t2{font-size:.64rem;letter-spacing:.14em;color:var(--muted);text-transform:uppercase}
 @keyframes ld4a{0%{transform:translateY(0)}45%,100%{transform:translateY(-90%)}}
 @keyframes ld4b{0%{transform:translateY(0)}52%,100%{transform:translateY(-90%)}}
@@ -3068,7 +3068,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.90';
+const APP_VERSION='26.91';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3081,6 +3081,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.91',f:'26/10',h:'18:50',c:[{n:1,t:'🎬 Cargando · contador: cada cifra con más lugar arriba, abajo y a los costados (en la PC se cortaban arriba).'}]},
   {v:'26.90',f:'26/10',h:'18:35',c:[{n:1,t:'🎬 Cargando · contador: si ese aparato todavía no vio la ganancia de hoy, giran 5 cifras sin parar (antes quedaba una sola cifra cortada).'}]},
   {v:'26.89',f:'26/10',h:'18:20',c:[{n:1,t:'🎬 Cargando · contador de plata: ahora gira hasta la ganancia de hoy (la última que vio ese aparato; si es de ayer, lo dice).'}]},
   {v:'26.88',f:'26/10',h:'18:05',c:[{n:1,t:'🎬 Cargando · contador de plata: los números quedan centrados, del mismo ancho, giran parejo y no se traban al volver a empezar.'}]},
