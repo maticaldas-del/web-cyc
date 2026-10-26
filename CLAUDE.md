@@ -365,6 +365,9 @@
   mensaje para Nissei y "Ya lo pedí" hasta que se vuelva a mirar (rutina del chat → `visto:` del buzón → `pyprecio`/`candprecio`). Lo ya
   pagado (`pyped:repo`/`nuevos`) sí se registra.
   **🪄 Llenar con probados y nuevos**: 1º probados que pide Pedidos con 35%+ hoy, 2º nuevos por ⭐ hasta el tope.
+- **🔄 Vuelta completa de Nissei** (26/10, él: *"vuelta completa equivale a por lo menos el 90% de los productos de la web"*): el chat cierra
+  la última página con `;fin=<productos que dice la web>` (PROMPT_GUAY); cuenta si se copió el 90%+ desde la página 1 → `cyc/mlconfig/nisseiVuelta`;
+  Pedidos → Paraguay muestra hace cuántos días al lado de "Falta reponer" (verde <5 · ámbar 5-6 · rojo 7+).
 - **Cuántas de cada nuevo** (`candMaxU`, 26/10, él): **hasta llegar a US$ 20 con el precio de la web, máximo 4** (US$ 21 → 1 · 19 → 2 ·
   9 → 3 · 5 o menos → 4); robot igual (`candMaxUBot`). En el pedido del momento hay **un solo 🗑️ Vaciar** que saca todo (probados, nuevos, uso personal).
 - **Al chat local se le pasa SÓLO lo que interesa** (22/10, *"siempre pasame el promt con la mercaderia que si interesa"*): el texto
@@ -443,7 +446,9 @@
   con `f` fecha y `h` hora DE ACÁ) y subir `CACHE` en `sw.js`. La app se actualiza sola y no deja usar una vieja (depende de `CACHE`).
 - **Cada cambio se sube también a `claude/add-folder-78ysyb`** (07/10, siempre y sin preguntar): la web y el robot salen de esa rama.
 - Firebase Realtime Database: **todo lo del panel vive abajo de `cyc/`** (sin prefijo va a una rama que la web no lee). `mlapi/` va en la
-  raíz (tokens, Telegram, línea de tiempo, fichas, pycat: cosas grandes FUERA de `cyc/` porque la web lee `cyc` entero). Reglas de la base:
+  raíz (tokens, Telegram, línea de tiempo, fichas, pycat: cosas grandes FUERA de `cyc/`). **La web escucha `cyc/<parte>` una por una
+  (`CYC_KEYS` en `startApp`, 26/10): una parte NUEVA que tenga que leer la web se agrega ahí o llega vacía**; `CYC_LAZY` = lo que se baja
+  al entrar a su pantalla (`candidatos_py` → Pedidos). Reglas de la base:
   sólo el UID de la cuenta (él, su padre y el robot usan la misma); si se suma otra cuenta, agregar su UID. **Cada comando es un login a
   Firebase y muchos logins o muchas fichas en una corrida dan QUOTA_EXCEEDED: `ficha:` de a 10 como mucho por corrida.**
 - `cyc/mllinks/<MLA>` se reescribe ENTERO al vender: guardar datos propios en nodos aparte (`cyc/netopub`, `cyc/entregas`, `cyc/rescateventa`)

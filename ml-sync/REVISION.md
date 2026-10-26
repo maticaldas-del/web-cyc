@@ -1379,6 +1379,59 @@ es el promedio por día de cada mes (`_lnPromMes`): cada día muestra el de su m
 del gráfico se suman los días desde el 1º aunque queden antes (`_lnPreMes`). Línea de cada producto y general. Probado: sep $5.000/día,
 oct $10.000/día con ventas de prueba. Qué chequear: que el salto caiga justo el día 1 y que el número de "hoy" sea el del mes en curso.
 
+### Etapa 7 · 26/10/2026 · v26.92 · 📈 Línea de tiempo: entran tres gráficos
+Él con la del Centímetro en la PC: *"achicar un poco el alto así entran tres. y eso ponerlo arriba más chiquito así entra más"*. Cada franja
+grande mide un tercio del alto de la pantalla (`_lnAlto`, antes la mitad; nunca menos que su mínimo). Las 4 tarjetas (`_lnCard`, también en
+📈 Todos) van con el nombre y el número en el mismo renglón y letra más chica (~42 px de alto en vez de ~64); el renglón de "365 días ·
+historial…" y los márgenes de arriba, más finos. Qué chequear: en la PC entran tres franjas a la vez; en el celu las tarjetas no se cortan
+(medido a 1274 y 390 px); girada (⤿) sigue igual.
+
+### Etapa 7 · 26/10/2026 · v26.91 · 🎬 Contador: las cifras ya no se cortan
+Él mandó la foto de $106.572 con las cifras cortadas arriba en la PC. Cada cifra va en una caja de 1,16 × 1,5 (antes justa) y la letra
+se achica sola en pantallas angostas (`clamp(1.5rem,8.2vw,2.4rem)`). Medido con $106.572: la caja queda más grande que la cifra y con el
+mismo margen a los dos lados en 320, 390 y 1274 px. Qué chequear: que en su PC y en el celu se vea entera y centrada.
+
+### Etapa 7 · 26/10/2026 · v26.89 · 🎬 El contador gira hasta la ganancia de hoy
+Él: *"y el conteo, ¿pueden ser la ganancia actual?"*. Cuando carga no hay datos todavía: `renderHomeHoy` anota la ganancia de hoy en el
+aparato (`localStorage.cycGanHoy` = {k,g}) y el contador (`_ld4`) gira hasta ese número con "ganancia de hoy" (o "de ayer" si es de ayer);
+sin dato, 5 cifras que saltan de a una sin parar (como tragamonedas, `ld4g` con `steps`) y "cargando la ganancia…" (v26.90: él mandó la foto de "$" con una sola cifra cortada; nunca un número inventado). Las cifras que sobran del número de muestra se armaron por cantidad
+de dígitos (más de 6 → letra más chica). Probado: $75.600 hoy · $1.234.567 · $48.210 ayer · sin dato; centrado en 390 px.
+
+### Etapa 7 · 26/10/2026 · v26.88 · 🎬 Contador de plata arreglado
+Él: *"el contador de plata se ve trabado y quedan mal los números, no centrados"*. Cada cifra en una caja del mismo ancho (0,92 em: las
+cifras de Syne son anchas, con 0,7 los ceros se cortaban como "C") y de un renglón entero de alto; frenan de izquierda a derecha y el número
+se apaga antes de volver a empezar (antes saltaba de golpe al principio). Medido: centrado igual a 360 · 390 · 1400 px, termina en $12.400.
+
+### Etapa 7 · 26/10/2026 · v26.87 · 🎬 Siete pantallas de "cargando", una por día
+Él (viendo 6 opciones nuevas): *"se pueden poner todas? pero que cambien todos los días a las 4am?"*. `_ldElegir` (script debajo de
+`#loading`) cuenta los días desde las 4 de la mañana del aparato y elige 0-6 en rueda: 0 la de siempre · 1 se llena de verde · 2 la línea
+de ganancia · 3 tres cajas que caen · 4 contador de plata · 5 se dibuja el contorno · 6 latido. Clases `ld*`; con "menos movimiento" quedan
+quietas. Dibujadas las 7 simulando cada día.
+
+### Etapa 7 · 26/10/2026 · v26.85 · 🖥️ Inicio en la PC
+Él: *"esta parte quiero que se haga como en el celu, sacar cyc y el dólar ponerlo ahí abajo. además la de pc está media hecha como para
+celular, no utiliza el ancho máximo… más que nada el inicio"*. El logo no se dibuja en ningún lado y el dólar va al final (antes sólo en
+el celular). Desde 1100 px las dos tarjetas de Ventas van una abajo de la otra con el ancho de la grilla (1100; 1440 desde 1560 px) en vez
+de 760. (v26.85 las puso lado a lado y él: *"horrible. uno arriba y otro abajo"* → v26.86.) Dibujado a 390 · 1400 · 1920 px: el celular queda igual que antes.
+- **Qué chequear:** en la PC, con el mes elegido (calendario largo) que la tarjeta de la derecha no quede cortada.
+
+### Etapa 4 · 26/10/2026 · v26.84 · ⚡ La web ya no baja `cyc` entero
+Él: *"tarda mucho en cargar cyc y anda medio lento y trabado. mucho más en pc"* y *"que se cargue sino al clickear… las ventas sí quiero
+que estén cargadas"*. `pesobase`: 13,6 MB (candidatos_py 3,84 · ventaprod 3,53 · facturas 1,27 · supervisor 0,97 · mllinks 0,50 ·
+emparejamal 0,41 …) y cada escritura del robot armaba el árbol entero otra vez. Ahora `startApp` escucha cada parte que la web lee
+(`CYC_KEYS`, 88, sacadas de lo que lee el handler) → no baja lo que nadie usa (emparejamal, stocklog, avisocand, autoriza, mlmap, cerebro…);
+`CYC_LAZY` candidatos_py se baja al entrar a Pedidos (`_cycCargarDe` en `goPage`); una ráfaga = una pasada (400 ms) y con la pestaña
+escondida no procesa hasta volver. La pasada (`_cycAplicar`) es la MISMA de antes. Probado con datos falsos: 88 escuchas, nada de `cyc`
+entero, 5 cambios seguidos = 1 pasada, candidatos sólo al entrar a Pedidos.
+- **Qué chequear:** una parte nueva que lea la web tiene que ir a `CYC_KEYS`; que Pedidos → Paraguay → Nuevos se llene a los 1-2 s.
+
+### Etapa 3 · 26/10/2026 · v26.84 · 🔄 Última vuelta completa de Nissei
+Él: *"al lado de reponer quiero que diga los días que se hizo la última vuelta de nissei en la web. pero tiene que ser completa"* y
+*"vuelta completa equivale a por lo menos el 90% de los productos de la web"*. `pycat` acepta `fin=<total de la web>` en la última página;
+arranca la vuelta con la página 1 (si no, mira 8 días); completa si los productos de Nissei copiados desde entonces son ≥90% del total →
+`cyc/mlconfig/nisseiVuelta` {fin,desde,vistos,total,pct}. Chip `_pyVueltaChip` al lado de "Falta reponer". PROMPT_GUAY pide el `fin=`.
+- **Qué chequear:** el sábado, que la pasada termine con `fin=` y el chip pase a "hoy"; hasta entonces dice "—".
+
 ### Etapa 3 · 26/10/2026 · v26.83 · Unidades de cada nuevo hasta US$ 20 (máx 4) · un solo 🗑️ Vaciar
 Él: *"cada producto pida unidades (máximo 4) hasta llegar a 20 dólares, si una unidad cuesta 21 se pide max una y si vale 19 se piden 2
 si vale 9 se piden 3 si vale 5 4 si vale 4 4"* → `candMaxU` = mín(4, ⌈20 ÷ precio web⌉), mínimo 1 (robot: `candMaxUBot`). Se sacó la

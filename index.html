@@ -193,6 +193,44 @@ html,body{overflow-x:hidden;max-width:100%}html{overflow-x:clip}body{overscroll-
 @keyframes cycRun{0%{left:0;opacity:0}8%{opacity:1}92%{opacity:1}100%{left:100%;opacity:0}}
 /* Si el telefono tiene pedido "menos movimiento", no parpadea nada: queda CYC en verde. */
 @media(prefers-reduced-motion:reduce){.cyc-load span,.cyc-dot{animation:none}.cyc-load span{color:var(--accent2)}.cyc-dot{left:50%;opacity:1}}
+/* 🎬 SIETE PANTALLAS DE "CARGANDO", UNA POR DÍA (26/10/2026, él: "se pueden poner todas? pero que cambien todos los días a las 4am?").
+   0 la de siempre (.cyc-load) · 1 se llena de verde · 2 la línea de ganancia · 3 tres cajas que caen · 4 contador de plata ·
+   5 se dibuja el contorno · 6 latido. La elige el script de abajo de #loading (`_ldElegir`), contando los días desde las 4 de la mañana. */
+.ld-syne{font-family:'Syne',sans-serif;font-weight:800;line-height:1}
+.ld1{font-size:4rem;letter-spacing:.04em;color:transparent;-webkit-text-stroke:1.5px var(--border2);background:linear-gradient(to top,var(--accent2) 0 50%,transparent 50% 100%);background-size:100% 200%;background-position:0 0;-webkit-background-clip:text;background-clip:text;animation:ld1 2.4s ease-in-out infinite}
+@keyframes ld1{0%{background-position:0 0}70%,85%{background-position:0 100%;-webkit-text-stroke-color:var(--accent2)}100%{background-position:0 100%;-webkit-text-stroke-color:var(--accent2);opacity:0}}
+.ld2{display:flex;flex-direction:column;align-items:center;gap:8px}.ld2 .ld-syne{font-size:2.6rem;letter-spacing:.08em}
+.ld2 path{fill:none;stroke:var(--accent2);stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:260;stroke-dashoffset:260;animation:ld2 2.2s ease-in-out infinite;filter:drop-shadow(0 0 6px rgba(34,197,94,.6))}
+@keyframes ld2{0%{stroke-dashoffset:260}60%,85%{stroke-dashoffset:0;opacity:1}100%{stroke-dashoffset:0;opacity:0}}
+.ld3{display:flex;gap:8px;align-items:flex-end;height:90px}
+.ld3 b{width:62px;height:62px;border-radius:10px;background:var(--surface);border:2px solid var(--accent2);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:2rem;color:var(--accent2);opacity:0;transform:translateY(-70px);animation:ld3 2.4s cubic-bezier(.3,1.6,.5,1) infinite}
+.ld3 b:nth-child(2){animation-delay:.18s}.ld3 b:nth-child(3){animation-delay:.36s}
+@keyframes ld3{0%{opacity:0;transform:translateY(-70px)}22%{opacity:1;transform:translateY(0)}78%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(10px)}}
+.ld4w{display:flex;flex-direction:column;align-items:center;gap:8px}.ld4w>.ld-t{font-size:1rem;letter-spacing:.3em;color:var(--muted)}
+/* 26/10/2026, él: "el contador de plata se ve trabado y quedan mal los números, no centrados". Cada cifra en una caja del MISMO ancho
+   y centrada; la altura es la de un renglón entero (no se corta); giran parejo, frenan de izquierda a derecha y el número se apaga
+   antes de volver a empezar (así no se ve el salto). Todas duran lo mismo y sin demoras: no se desfasan con el tiempo. */
+.ld4{display:flex;align-items:center;font-size:clamp(1.5rem,8.2vw,2.4rem);color:var(--accent2);animation:ld4f 2.8s linear infinite}
+.ld4 .s{height:1.5em;line-height:1.5em;padding:0 .04em}
+.ld4 .d{height:1.5em;width:1.16em;overflow:hidden;position:relative}
+.ld4 .d>div{display:flex;flex-direction:column;animation:ld4a 2.8s cubic-bezier(.25,.1,.25,1) infinite}
+.ld4 .d span{display:block;height:1.5em;line-height:1.5em;text-align:center}
+.ld4w>.ld-t2{font-size:.64rem;letter-spacing:.14em;color:var(--muted);text-transform:uppercase}
+@keyframes ld4a{0%{transform:translateY(0)}45%,100%{transform:translateY(-90%)}}
+@keyframes ld4b{0%{transform:translateY(0)}52%,100%{transform:translateY(-90%)}}
+@keyframes ld4c{0%{transform:translateY(0)}59%,100%{transform:translateY(-90%)}}
+@keyframes ld4d{0%{transform:translateY(0)}66%,100%{transform:translateY(-90%)}}
+@keyframes ld4e{0%{transform:translateY(0)}73%,100%{transform:translateY(-90%)}}
+@keyframes ld4f{0%{opacity:0}6%,86%{opacity:1}100%{opacity:0}}
+@keyframes ld4g{0%{transform:translateY(0)}100%{transform:translateY(-90%)}}   /* sin dato: cifra entera tras cifra entera, como una tragamonedas (steps), sin parar */
+.ld5 text{font-family:'Syne',sans-serif;font-weight:800;font-size:68px;fill:transparent;stroke:var(--accent2);stroke-width:1.6;stroke-dasharray:420;stroke-dashoffset:420;animation:ld5 2.6s ease-in-out infinite}
+@keyframes ld5{0%{stroke-dashoffset:420;fill:transparent}55%{stroke-dashoffset:0;fill:transparent}75%,90%{stroke-dashoffset:0;fill:var(--accent2)}100%{fill:var(--accent2);opacity:0}}
+.ld6w{position:relative;display:flex;align-items:center;justify-content:center;width:220px;height:120px}
+.ld6{font-size:3.6rem;letter-spacing:.06em;color:var(--accent2);animation:ld6 1.3s ease-in-out infinite}
+@keyframes ld6{0%,100%{transform:scale(1)}15%{transform:scale(1.08);text-shadow:0 0 22px rgba(34,197,94,.55)}30%{transform:scale(1)}45%{transform:scale(1.05);text-shadow:0 0 14px rgba(34,197,94,.4)}60%{transform:scale(1)}}
+.ld6r{position:absolute;width:120px;height:120px;border-radius:50%;border:2px solid var(--accent2);opacity:0;animation:ld6r 1.3s ease-out infinite}
+@keyframes ld6r{0%{transform:scale(.6);opacity:.6}100%{transform:scale(1.9);opacity:0}}
+@media(prefers-reduced-motion:reduce){.ld1,.ld2 path,.ld3 b,.ld4,.ld4 .d>div,.ld5 text,.ld6,.ld6r{animation:none!important}.ld3 b{opacity:1;transform:none}.ld2 path{stroke-dashoffset:0}.ld5 text{fill:var(--accent2)}}
 
 /* LOGIN */
 #login-screen{position:fixed;inset:0;background:var(--bg);z-index:500;display:none;align-items:center;justify-content:center;flex-direction:column;gap:18px;padding:20px}
@@ -222,7 +260,13 @@ html,body{overflow-x:hidden;max-width:100%}html{overflow-x:clip}body{overscroll-
 @media(max-width:640px){.home-grid{grid-template-columns:1fr}}
 /* 21/10/2026, él: "en el celu sacar cyc y poner el dólar al fondo de todo. Así lo primero que se ven son las ventas".
    Sólo en el teléfono: el logo no se dibuja y el dólar baja al final de Inicio (antes de "en línea"). */
-@media(max-width:640px){#home-dolar-logo{display:none!important}#home-cab{order:98;margin:10px auto 6px}#page-home .home-status{order:99}}
+/* 26/10/2026, él (en la PC): "esta parte quiero que se haga como en el celu, sacar cyc y el dólar ponerlo ahí abajo" → en TODOS lados. */
+#home-dolar-logo{display:none!important}#home-cab{order:98;margin:10px auto 6px}#page-home .home-status{order:99}
+/* LA PC USA EL ANCHO (26/10/2026, él: "la de pc está media hecha como para celular, no utiliza el ancho máximo… más que nada el inicio";
+   lado a lado le pareció "horrible. uno arriba y otro abajo"): las dos tarjetas de Ventas una abajo de la otra, cada una del ancho de la
+   grilla de tarjetas (1100 px; 1440 en pantalla grande) en vez de 760. En el celular y la tablet, igual que antes. */
+@media(min-width:1100px){#home-hoy{max-width:1100px;margin:0 auto}
+  #home-hoy>div{max-width:none!important;margin-left:0!important;margin-right:0!important}}
 .nav-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px 22px 44px;cursor:pointer;transition:all .18s;position:relative;overflow:hidden;text-align:left;height:100%}
 .nav-card:hover{transform:translateY(-2px);border-color:var(--border2)}
 .nav-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;transition:opacity .18s}
@@ -240,6 +284,7 @@ html,body{overflow-x:hidden;max-width:100%}html{overflow-x:clip}body{overscroll-
 .nav-card:hover .nc-arrow{color:var(--text);transform:translateX(3px)}
 /* 7.16 · la grilla 3×3 de Inicio (21/10/2026). Alto FIJO: el número de cada tarjeta cambia y la fila no se mueve. */
 .ht-grid{max-width:1100px}
+@media(min-width:1560px){.ht-grid,#home-hoy{max-width:1440px}}   /* 26/10/2026: en pantalla grande, más ancho (las tarjetas y las Ventas iguales) */
 .ht-grid .nav-card.ht{height:164px;padding:14px 16px 26px;display:grid;grid-template-columns:auto 1fr;column-gap:10px;align-content:start}
 .ht-grid .nav-card.ht>*:not(.nc-icon):not(.nc-title):not(.nc-arrow){grid-column:1 / -1}
 .ht-grid .nav-card.ht .nc-icon{font-size:1.5rem;margin-bottom:8px}
@@ -947,6 +992,47 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   <div class="cyc-load" role="img" aria-label="CYC · cargando"><span>C</span><span>Y</span><span>C</span><i class="cyc-dot"></i></div>
   <p id="load-msg">Conectando...</p>
 </div>
+<script>
+// 🎬 La pantalla de "cargando" del día (26/10/2026): cambia todos los días a las 4 de la mañana (hora del aparato), en rueda de 7.
+(function _ldElegir(){try{
+  const t=new Date(Date.now()-4*3600e3),dia=Math.floor(Date.UTC(t.getFullYear(),t.getMonth(),t.getDate())/864e5),n=((dia%7)+7)%7;
+  if(n===0)return;   // 0 = la de siempre, ya está en el HTML
+  // 4 · CONTADOR DE PLATA = LA GANANCIA DE HOY (26/10/2026, él: "y el conteo, ¿pueden ser la ganancia actual?"). Cuando carga todavía no
+  // llegaron los datos: muestra la última que anotó Inicio en ESTE aparato (`cycGanHoy`, la guarda renderHomeHoy). Si es de ayer lo dice;
+  // más vieja o sin dato, 5 cifras girando sin parar con "cargando la ganancia…" (nunca un número inventado).
+  const _ld4=()=>{
+    let gv=null,lbl='';
+    try{const o=JSON.parse(localStorage.getItem('cycGanHoy')||'null');const kk=d=>d.getFullYear()+'_'+String(d.getMonth()+1).padStart(2,'0')+'_'+String(d.getDate()).padStart(2,'0');
+      if(o&&isFinite(o.g)){if(o.k===kk(new Date())){gv=o.g;lbl='ganancia de hoy';}else if(o.k===kk(new Date(Date.now()-864e5))){gv=o.g;lbl='ganancia de ayer';}}}catch(e){}
+    // Sin dato en este aparato (26/10/2026, él con la foto: quedaba "$" y una sola cifra cortada): no se inventa un número; giran 5
+    // cifras SIN PARAR ("buscando"), cada una a su velocidad, hasta que entra la app.
+    if(gv==null){lbl='cargando la ganancia…';
+      let cs='';const vel=[.9,1.15,.8,1.05,.95];
+      for(let i=0;i<5;i++){const a=[];for(let j=0;j<9;j++)a.push(Math.floor(Math.random()*10));a.push(a[0]);
+        if(i===2)cs+='<span class="s">.</span>';
+        cs+='<div class="d"><div style="animation:ld4g '+vel[i]+'s steps(9,end) infinite">'+a.map(x=>'<span>'+x+'</span>').join('')+'</div></div>';}
+      return '<div class="ld4w"><div class="ld-t">CYC</div><div class="ld4 ld-syne" style="animation:none"><span class="s">$</span>'+cs+'</div><div class="ld-t2">'+lbl+'</div></div>';}
+    const txt=Math.abs(Math.round(gv)).toLocaleString('es-AR'),nD=txt.replace(/\D/g,'').length,NOM=['ld4a','ld4b','ld4c','ld4d','ld4e'];
+    let cols='',i=0;
+    for(const ch of txt){
+      if(!/\d/.test(ch)){cols+='<span class="s">'+ch+'</span>';continue;}
+      const seq=[];for(let j=0;j<9;j++)seq.push(Math.floor(Math.random()*10));seq.push(+ch);
+      cols+='<div class="d"><div style="animation-name:'+NOM[Math.min(4,Math.floor(i*5/nD))]+'">'+seq.map(x=>'<span>'+x+'</span>').join('')+'</div></div>';i++;
+    }
+    const fs=nD>8?' style="font-size:1.55rem"':nD>6?' style="font-size:2rem"':'';
+    return '<div class="ld4w"><div class="ld-t">CYC</div><div class="ld4 ld-syne"'+fs+'><span class="s">'+(gv<0?'-$':'$')+'</span>'+cols+'</div>'+(lbl?'<div class="ld-t2">'+lbl+'</div>':'')+'</div>';
+  };
+  const H=['',
+    '<div class="ld1 ld-syne">CYC</div>',
+    '<div class="ld2"><div class="ld-syne">CYC</div><svg width="200" height="54" viewBox="0 0 200 54"><path d="M4 46 L40 38 L62 42 L92 26 L116 30 L146 14 L170 18 L196 4"/></svg></div>',
+    '<div class="ld3"><b>C</b><b>Y</b><b>C</b></div>',
+    _ld4(),
+    '<svg class="ld5" width="240" height="90" viewBox="0 0 240 90"><text x="120" y="70" text-anchor="middle">CYC</text></svg>',
+    '<div class="ld6w"><div class="ld6r"></div><div class="ld6 ld-syne">CYC</div></div>'];
+  const el=document.querySelector('#loading .cyc-load');if(!el)return;
+  const w=document.createElement('div');w.setAttribute('role','img');w.setAttribute('aria-label','CYC · cargando');w.innerHTML=H[n];el.replaceWith(w);
+}catch(e){}})();
+</script>
 
 <!-- LOGIN -->
 <div id="login-screen">
@@ -2367,8 +2453,20 @@ function startApp(){
     _cerTs={};for(const k of _cerNotas)_cerTs[k]=Number(v[k].ts)||0;
     if(typeof renderPronto==='function')renderPronto();
   },()=>{_cerNotas=null;});
-  db.ref('cyc').on('value',snap=>{
-    const d=snap.val()||{};
+  // ⚡ LA WEB YA NO BAJA `cyc` ENTERO (26/10/2026, él: "tarda mucho en cargar cyc y anda medio lento y trabado. mucho más en pc" y "que
+  // se cargue sino al clickear en eso. quizás carga cosas que no son necesarias para ese momento. las ventas sí quiero que estén cargadas").
+  // `pesobase` midió 13,6 MB, y CADA escritura del robot (cada 2 min, en ráfagas) volvía a armar el árbol entero en el aparato. Ahora:
+  //   1. se escucha cada parte que la web usa (`CYC_KEYS`, sacada de lo que lee esta función); lo que no usa nadie no se baja más;
+  //   2. lo pesado que sirve en UNA sola pantalla se baja al entrar a esa pantalla (`CYC_LAZY`: los candidatos de Paraguay, 3,8 MB);
+  //   3. una ráfaga de cambios = UNA sola pasada (400 ms), y con la pestaña escondida no se procesa nada hasta que se vuelve a ella.
+  // Lo que hace cada pasada es EXACTAMENTE lo de antes (`_cycAplicar`, con `d` = las partes recibidas). Una parte nueva que lea la web
+  // tiene que sumarse a CYC_KEYS (si no, llega vacía).
+  const CYC_LAZY={'candidatos_py': 'pedidos'};
+  const CYC_KEYS=['autoprecio','avisoventa_ult','buzon','cajas_armando','cajasentrado','claudecambios','claudedecide','compras','compraslista','compraspy','daily','dolarref','entregas','envios_full','estrategia','fact_arca','fact_cancel','fact_fuera','fact_mes','facturas','facturas_desde','facturas_recibidas','facturas_sin','finanzas','fullreco','gastos_nova','history','ingresos','inventory','listas_local','listas_pedido','listas_pedido_prob','local','lotesfull','metricas','mlconfig','mllinks','monotributo','netopub','noconsigo','norepo','nosubir','notraer','oficinas','ofientro','pausado_precio','pedidos','pedidos_papelera','pedidos_py','pedidospv','precios_hist_prod','products','promoclaude','promohist','promoventa','proveedores','puntaje','pushsubs','py_armado','py_personal','py_sinstock','pycatres','pycatres_el','rayas','reclamomotivo','repoextra','reponer','reputacion','rescateventa','retiro_mes','revision','ritmonormal','saldoancla','sinetiq','snapshots','stockDiario','stockhist','stockoculto','supervisor','tc_mes','techo95pct','techofreno','techofull','ventaanalisis','ventaprod','ventaremate','vigilancia','visitas'];
+  const _cycD={},_cycFalta=new Set(CYC_KEYS);let _cycT=null,_cycPend=false;
+  const _cycAplicar=()=>{
+    _cycPend=false;clearTimeout(_cycT);
+    const d=_cycD;
     state.products=d.products ?Object.values(d.products).sort((a,b)=>(a.name||'').localeCompare(b.name||'','es',{sensitivity:'base'})):[];
     state.inventory=d.inventory||{};
     Object.assign(state.inventory,_invPending); // no dejar que un snapshot pise lo recién escrito
@@ -2540,7 +2638,11 @@ function startApp(){
     if(firstDataLoad){firstDataLoad=false;const _pg0=_paginaDeHash();currentPage=currentPage||'home';goPage('home');if(_pg0&&_pg0!=='home')goPage(_pg0);}   // #ventaprod = abrió tocando el aviso de una venta (o un acceso directo del ícono)
     // La primera carga se dibuja ya; las demás se juntan y respetan tu scroll (ver renderPronto).
     renderPronto(primeraVez);
-  },err=>{
+  };
+  const _cycSched=()=>{if(_cycFalta.size)return;if(firstDataLoad){_cycAplicar();return;}clearTimeout(_cycT);
+    if(document.hidden){_cycPend=true;return;}_cycT=setTimeout(_cycAplicar,400);};
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&_cycPend)_cycAplicar();});
+  const _cycErr=err=>{
     // Etapa 5: si Firebase CANCELA la lectura (permiso vencido, sesión caída) el panel se quedaba
     // congelado con datos viejos y el punto seguía verde (.info/connected sólo mira la red). Ahora
     // se ve: punto rojo, "sin datos" y un cartel fijo que no se va solo.
@@ -2556,7 +2658,11 @@ function startApp(){
       b.onclick=()=>location.reload();document.body.appendChild(b);}
     b.textContent='⚠️ Se cortó la lectura de la base ('+((err&&(err.code||err.message))||'error')+'). Lo que ves puede estar VIEJO y lo que cargues puede no guardarse. Tocá acá para volver a entrar.';
     const l=document.getElementById('loading');if(l)l.style.display='none';
-  });
+  };
+  const _cycOir=k=>db.ref('cyc/'+k).on('value',sn=>{_cycD[k]=sn.val();_cycFalta.delete(k);_cycSched();},_cycErr);
+  CYC_KEYS.forEach(_cycOir);
+  const _cycLazyOn=new Set();
+  window._cycCargarDe=page=>{for(const [k,pg] of Object.entries(CYC_LAZY))if(pg===page&&!_cycLazyOn.has(k)){_cycLazyOn.add(k);_cycOir(k);}};
 }
 function doLogin(){
   const email=(document.getElementById('login-email').value||'').trim();
@@ -2962,7 +3068,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.83';
+const APP_VERSION='26.92';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2975,6 +3081,15 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.92',f:'26/10',h:'16:40',c:[{n:2,t:'📈 Línea de tiempo: cada gráfico ocupa un tercio de la pantalla (entran tres a la vez) y las 4 tarjetas de arriba quedaron en un renglón finito.'}]},
+  {v:'26.91',f:'26/10',h:'18:50',c:[{n:1,t:'🎬 Cargando · contador: cada cifra con más lugar arriba, abajo y a los costados (en la PC se cortaban arriba).'}]},
+  {v:'26.90',f:'26/10',h:'18:35',c:[{n:1,t:'🎬 Cargando · contador: si ese aparato todavía no vio la ganancia de hoy, giran 5 cifras sin parar (antes quedaba una sola cifra cortada).'}]},
+  {v:'26.89',f:'26/10',h:'18:20',c:[{n:1,t:'🎬 Cargando · contador de plata: ahora gira hasta la ganancia de hoy (la última que vio ese aparato; si es de ayer, lo dice).'}]},
+  {v:'26.88',f:'26/10',h:'18:05',c:[{n:1,t:'🎬 Cargando · contador de plata: los números quedan centrados, del mismo ancho, giran parejo y no se traban al volver a empezar.'}]},
+  {v:'26.87',f:'26/10',h:'17:45',c:[{n:1,t:'🎬 La pantalla de "cargando" tiene 7 versiones (la de siempre y 6 nuevas) y cambia sola todos los días a las 4 de la mañana.'}]},
+  {v:'26.86',f:'26/10',h:'17:25',c:[{n:1,t:'🖥️ Inicio en la PC: las dos tarjetas de Ventas vuelven a ir una abajo de la otra, pero anchas.'}]},
+  {v:'26.85',f:'26/10',h:'17:10',c:[{n:2,t:'🖥️ Inicio en la PC: sin el logo grande de arriba y con el dólar al final (como en el celular); las dos tarjetas de Ventas, una abajo de la otra, usan el ancho de las tarjetas de abajo.'}]},
+  {v:'26.84',f:'26/10',h:'16:55',c:[{n:3,t:'⚡ La web abre y anda más liviana: ya no baja toda la base (13,6 MB) sino sólo lo que usa; los candidatos de Paraguay (3,8 MB) se bajan al entrar a Pedidos; cuando el robot escribe varias cosas seguidas se procesa una sola vez, y con la pestaña escondida no procesa nada hasta que volvés.'},{n:2,t:'🔄 Pedidos → Paraguay: al lado de "Falta reponer" dice hace cuántos días fue la última vuelta COMPLETA por la web de Nissei (90% o más de los productos).'}]},
   {v:'26.83',f:'26/10',h:'16:25',c:[{n:2,t:'🧾 Paraguay: cada producto nuevo pide unidades hasta llegar a US$ 20, máximo 4 (US$ 21 → 1 · US$ 19 → 2 · US$ 9 → 3 · US$ 5 o menos → 4). Se sacó la casilla "U. por nuevo".'},{n:2,t:'🗑️ Un solo botón Vaciar: saca TODO lo del pedido (probados, nuevos y uso personal). Ya no están Vaciar probados ni Vaciar nuevos.'}]},
   {v:'26.82',f:'26/10',h:'16:00',c:[{n:2,t:'⛔ Paraguay: lo mirado hace 7 días o más SE PUEDE cargar (también con los botones de llenar) y queda en rojo dentro del pedido. Lo único que frena es copiar el mensaje y "Ya lo pedí", hasta que el robot lo vuelva a mirar.'}]},
   {v:'26.81',f:'26/10',h:'15:40',c:[{n:1,t:'📊 % de ganancia: la raya naranja del costo arranca en $0, así un cambio chico se ve chico. Sigue siendo el costo real (mercadería + impuestos de la venta, que suben un poco si sube el precio).'}]},
@@ -3942,6 +4057,7 @@ function goPage(page,opt){
   try{_vistoSalir();_vistoEntrar(page);}catch(e){}   // etapa 6 (G1/G6): "lo viste" se anota al salir de Pedidos / Ventas
   // El historial: guardar dónde quedó la pantalla que se deja y anotar el paso (no al volver con atrás ni al redibujar la misma).
   if(currentPage&&currentPage!==page){_pagScroll[currentPage]=window.scrollY;if(!opt.atras)_histPush(page);}
+  try{window._cycCargarDe&&window._cycCargarDe(page);}catch(e){}   // ⚡ lo pesado de esta pantalla se baja recién ahora (26/10/2026)
   if(page==='pedidos'){window._pedMomOpenG={};window._nipAbierto=false;}   // el pedido del momento arranca cerrado al entrar (08/10/2026)
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   const el=document.getElementById('page-'+page);
@@ -11356,7 +11472,7 @@ let _lineaCerr=(()=>{try{return new Set(JSON.parse(localStorage.getItem('cycLine
 function lineaBanda(n){if(_lineaCerr.has(n))_lineaCerr.delete(n);else _lineaCerr.add(n);try{localStorage.setItem('cycLineaCerr',JSON.stringify([..._lineaCerr]));}catch(e){}if(_lineaRepintar)_lineaRepintar();}
 function _lnAlto(n,h0p,big){const m=document.getElementById('linea-modal');const giro=!!(m&&m.dataset&&m.dataset.giro);
   if(_lineaCerr.has(n))return 0;if(!big)return h0p;if(giro)return Math.round(h0p*_lineaFac);
-  const mh=(m&&m.clientHeight)||window.innerHeight||800;return Math.max(h0p,Math.round(((mh-70)/2)/1.1-LN_TG-8));}
+  const mh=(m&&m.clientHeight)||window.innerHeight||800;return Math.max(h0p,Math.round(((mh-70)/3)/1.1-LN_TG-8));}
 // Lo de una franja cerrada no se dibuja: el dibujo se recorta a las franjas abiertas.
 function _lnClip(L,W,H,svg){const ab=Object.entries(L).filter(([n,v])=>v&&v[1]>0);
   return `<defs><clipPath id="lnclip">${ab.map(([n,v])=>`<rect x="-5" y="${v[0]-LN_TG}" width="${W+10}" height="${v[1]+LN_TG+8}"/>`).join('')}</clipPath></defs><g clip-path="url(#lnclip)">${svg}</g>`;}
@@ -11376,7 +11492,7 @@ function _lineaLlenar(m,repintar){
 // Lo que deja cada franja de la línea de tiempo arriba suyo para su título y el número de hoy (22/10/2026, 2a).
 const LN_TG=20;
 // Las tarjetas de arriba, el título de cada franja y sus colores: los usan la línea de un producto y la de todos (22/10/2026).
-function _lnCard(lbl,val,col,sub){return `<div style="background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:7px 10px;min-width:0"><div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">${lbl}</div><div style="font-size:1.15rem;font-weight:700;color:${col||'var(--text)'};line-height:1.25">${val}</div><div style="font-size:.64rem;color:var(--muted);line-height:1.35;overflow-wrap:anywhere">${sub}</div></div>`;}
+function _lnCard(lbl,val,col,sub){return `<div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:3px 9px 4px;min-width:0"><div style="display:flex;align-items:baseline;gap:6px;min-width:0"><span style="font-size:.54rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap">${lbl}</span><span style="font-size:.92rem;font-weight:700;color:${col||'var(--text)'};line-height:1.25;white-space:nowrap">${val}</span></div><div style="font-size:.6rem;color:var(--muted);line-height:1.3;overflow-wrap:anywhere">${sub}</div></div>`;}
 function _lgS(c,t,sq){return `<span style="display:inline-flex;align-items:center;gap:3px;margin-left:8px;white-space:nowrap"><span style="width:${sq?8:12}px;height:${sq?8:3}px;border-radius:2px;background:${c};display:inline-block"></span>${t}</span>`;}
 function lnHdrHTML(L,H,n,tit,leg,der){return L[n]?`<div style="position:absolute;left:0;right:0;top:${((L[n][0]-LN_TG+2)/(H+16)*100).toFixed(2)}%;display:flex;align-items:baseline;gap:6px;font-size:.66rem;pointer-events:none;border-top:1px solid var(--border);padding-top:2px"><b onclick="lineaBanda('${n}')" title="${L[n][1]>0?'Tocá para cerrarla':'Tocá para abrirla'}" style="color:var(--text);font-size:.7rem;white-space:nowrap;flex:0 0 auto;cursor:pointer;pointer-events:auto">${L[n][1]>0?'▾':'▸'} ${tit}</b><span style="color:var(--muted);font-size:.6rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1 1 auto;min-width:0">${leg||''}</span><span style="color:var(--text);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto;min-width:0;max-width:70%;pointer-events:auto">${der||''}</span></div>`:'';}
 function lineaPintar(prodId){
@@ -12013,7 +12129,7 @@ function lineaPintar(prodId){
     else if(I.sinRepo){col='var(--amber)';t='⏳ <b>Sin reposición:</b> el precio va para venderlo todo en ~100 días.';}
     else if(I.q===0&&uT>0){col='var(--amber)';t='⏸️ <b>Agotado en Full</b>'+(I.cs>0?` · hay ${I.cs} en la oficina`:'')+(I.tr?` · caja en camino: ${I.cajTxt}`:'');}
     if(!t)return'';return `<div style="margin:8px 0;padding:8px 12px;border-radius:9px;border:1px solid ${col};background:color-mix(in srgb, ${col} 12%, transparent);font-size:.76rem;line-height:1.45">${t}</div>`;})();
-  const _lnCards=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:8px 0 6px">${
+  const _lnCards=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px;margin:6px 0 4px">${
     _lnCard('Vendió',`${uT} u.`,'',`${vT} visitas${uPT?` · <span style="color:#f97316">${uPT} en Premium</span>`:''}${uGT?` · <span style="color:#38bdf8">${uGT} con envío gratis</span>`:''}${uRT?` · ${uRT} en remate`:''}`)}${
     _lnCard('Ganancia',hayGan&&gPct!=null&&isFinite(gPct)?`${gPct.toFixed(0)}%`:'—',hayGan&&gPct!=null&&isFinite(gPct)?pctColor(gPct):'',_gHoy!=null?`hoy ${fmt(Math.round(_gHoy))} por día`:'sin ventas con costo')}${
     _lnCard('Stock en Full',`${_stI.q!=null?_stI.q:'—'} u.`,_stI.cHoy,`${_stI.stTxt||''}${_stI.cs>0?` · +${_stI.cs} en la oficina`:''}${_stI.tr?` · ${_stI.tr.u} u. en camino`:' · sin caja en camino'}`)}${
@@ -12036,12 +12152,12 @@ function lineaPintar(prodId){
   const lab=(y,t)=>`<div style="position:absolute;left:0;top:${y/ (H+16)*100}%;font-size:.6rem;color:var(--muted);transform:translateY(-1px)">${t}</div>`;
   // LA CABECERA (21/10/2026 · etapa 5): el título va en su propio renglón y los botones abajo, pegados a la derecha (y el de giro con
   // ancho fijo): elegir un color (título más largo) o cambiar "⤿ de costado"/"⤾ parada" ya no corre el ✕ ni los botones de días.
-  m.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;max-width:1500px;width:100%;padding:14px 16px;margin-top:20px">
+  m.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;max-width:1500px;width:100%;padding:10px 14px;margin-top:4px">
     <div style="font-size:.9rem;font-weight:700;line-height:1.35;overflow-wrap:anywhere">📈 ${p.name}${_lineaVar?` · <span style="color:#a78bfa">${_lineaVar}</span>`:''}</div>
     <div class="linea-btns" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;margin-top:6px">${_lineaFichaMlas(prodId,_lineaVar).length?`<button class="btn" onclick="lineaFichaAbrir('${prodId}',event)" style="font-size:.66rem;padding:3px 10px" title="La ficha completa de la publicación: lo que ya sabemos, cada cambio de precio y cómo le fue">📋 Ficha</button>`:''}<button class="btn" onclick="lineaTodoAbrir(event)" style="font-size:.66rem;padding:3px 10px" title="La misma línea con TODOS los productos juntos">📈 Todos</button>${btn(365)}${btn(90)}${btn(30)}${_lineaGiroBtn()}<button class="btn" onclick="document.getElementById('linea-modal').remove()" style="font-size:.7rem;padding:3px 10px">✕</button></div>
     ${_vars.length>1?`<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px">${['',..._vars].map((v,i)=>`<button class="btn" onclick="lineaVar(_lineaVarsL[${i}],'${prodId}')" style="font-size:.62rem;padding:2px 9px;${_lineaVar===v?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}">${v||'Todas juntas'}</button>`).join('')}</div>`:''}
     ${_lnAlerta}${_lnCards}
-    <div style="font-size:.64rem;color:var(--muted);margin:0 0 8px;line-height:1.6">${_lineaRango} días · historial de stock: <span style="color:var(--green)">${dCon} d con</span> · <span style="color:var(--red)">${dSin} d sin</span> · ${dNo} d sin dato${dRem?` · ${dRem} d rematando`:''} · ${Object.keys(porMlaF).length} publicación(es)${C.fallo?' · <span style="color:var(--amber)">alguna publicación no se pudo leer</span>':''}</div>
+    <div style="font-size:.6rem;color:var(--muted);margin:0 0 4px;line-height:1.5">${_lineaRango} días · historial de stock: <span style="color:var(--green)">${dCon} d con</span> · <span style="color:var(--red)">${dSin} d sin</span> · ${dNo} d sin dato${dRem?` · ${dRem} d rematando`:''} · ${Object.keys(porMlaF).length} publicación(es)${C.fallo?' · <span style="color:var(--amber)">alguna publicación no se pudo leer</span>':''}</div>
     <div style="position:relative">
       ${_lnHdrs}
       <svg class="linea-svg" viewBox="0 0 ${W} ${H+16}" preserveAspectRatio="none" style="width:100%;height:${Math.round((H+16)*1.1)}px;display:block">${_lnClip(L,W,H,svg)}</svg>
@@ -12205,11 +12321,11 @@ function lineaTodoPintar(){
   const ley=(c,t)=>`<span style="display:inline-flex;align-items:center;gap:4px;margin-right:10px"><span style="width:10px;height:10px;border-radius:2px;background:${c};display:inline-block"></span>${t}</span>`;
   const lab=(y,t)=>`<div style="position:absolute;left:0;top:${y/(H+16)*100}%;font-size:.6rem;color:var(--muted);transform:translateY(-1px)">${t}</div>`;
   const viejo=_ltC.ts?(Date.now()-_ltC.ts)/864e5:null;
-  m.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;max-width:1500px;width:100%;padding:14px 16px;margin-top:20px">
+  m.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;max-width:1500px;width:100%;padding:10px 14px;margin-top:4px">
     <div style="font-size:.9rem;font-weight:700;line-height:1.35">📈 Todos los productos</div>
     <div class="linea-btns" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;margin-top:6px">${btn(365)}${btn(90)}${btn(30)}${_lineaGiroBtn()}<button class="btn" onclick="document.getElementById('linea-modal').remove()" style="font-size:.7rem;padding:3px 10px">✕</button></div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:8px 0 6px">${_lnCard('Vendió',`${uT.toLocaleString('es-AR')} u.`,'',`${vT.toLocaleString('es-AR')} visitas${uPT?` · <span style="color:#f97316">${uPT.toLocaleString('es-AR')} en Premium</span>`:''}${uGT?` · <span style="color:#38bdf8">${uGT.toLocaleString('es-AR')} con envío gratis</span>`:''}`)}${_lnCard('Ganancia',gT?fmt(Math.round(gT)):'—',gPct!=null&&isFinite(gPct)?pctColor(gPct):'',(gPct!=null&&isFinite(gPct)?`${gPct.toFixed(0)}% de ganancia`:'')+(gPT?` · <span style="color:#f97316">Premium ${fmt(Math.round(gPT))}</span>`:'')+(gGT?` · <span style="color:#38bdf8">envío gratis ${fmt(Math.round(gGT))}</span>`:''))}${_lnCard('Stock en Full',`${hoyR.st.toLocaleString('es-AR')} u.`,'','hoy, las 4 cuentas')}${_lnCard('Cambios de precio',`<span style="color:var(--green)">▲ ${sT}</span> <span style="color:var(--red)">▼ ${bT}</span>`,'',iIni!=null&&iFin!=null?`índice de precio ${iIni.toFixed(0)} → ${iFin.toFixed(1)}`:'')}</div>
-    <div style="font-size:.64rem;color:var(--muted);margin:0 0 8px;line-height:1.6">${_ltRango} días${_ltC.fallo?` · <span style="color:var(--amber)">no pude leer la línea del robot (${_ltC.fallo}): sólo lo del panel</span>`:(!Object.keys(R).length?' · <span style="color:var(--amber)">el robot todavía no armó la línea de todos: stock, visitas y precio salen desde la próxima noche</span>':(viejo>2?` · <span style="color:var(--amber)">la línea del robot es de hace ${Math.floor(viejo)} días</span>`:''))}</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px;margin:6px 0 4px">${_lnCard('Vendió',`${uT.toLocaleString('es-AR')} u.`,'',`${vT.toLocaleString('es-AR')} visitas${uPT?` · <span style="color:#f97316">${uPT.toLocaleString('es-AR')} en Premium</span>`:''}${uGT?` · <span style="color:#38bdf8">${uGT.toLocaleString('es-AR')} con envío gratis</span>`:''}`)}${_lnCard('Ganancia',gT?fmt(Math.round(gT)):'—',gPct!=null&&isFinite(gPct)?pctColor(gPct):'',(gPct!=null&&isFinite(gPct)?`${gPct.toFixed(0)}% de ganancia`:'')+(gPT?` · <span style="color:#f97316">Premium ${fmt(Math.round(gPT))}</span>`:'')+(gGT?` · <span style="color:#38bdf8">envío gratis ${fmt(Math.round(gGT))}</span>`:''))}${_lnCard('Stock en Full',`${hoyR.st.toLocaleString('es-AR')} u.`,'','hoy, las 4 cuentas')}${_lnCard('Cambios de precio',`<span style="color:var(--green)">▲ ${sT}</span> <span style="color:var(--red)">▼ ${bT}</span>`,'',iIni!=null&&iFin!=null?`índice de precio ${iIni.toFixed(0)} → ${iFin.toFixed(1)}`:'')}</div>
+    <div style="font-size:.6rem;color:var(--muted);margin:0 0 4px;line-height:1.5">${_ltRango} días${_ltC.fallo?` · <span style="color:var(--amber)">no pude leer la línea del robot (${_ltC.fallo}): sólo lo del panel</span>`:(!Object.keys(R).length?' · <span style="color:var(--amber)">el robot todavía no armó la línea de todos: stock, visitas y precio salen desde la próxima noche</span>':(viejo>2?` · <span style="color:var(--amber)">la línea del robot es de hace ${Math.floor(viejo)} días</span>`:''))}</div>
     <div style="position:relative">
       ${lnHdrHTML(L,H,'vent','🛒 Ventas y visitas',_lgS('var(--green)','vendidas',1)+(uPT?_lgS('#f97316','Premium',1):'')+(uGT?_lgS('#38bdf8','envío gratis',1):'')+(hayVis?_lgS('#60a5fa','visitas',1):''),`<b>${uT.toLocaleString('es-AR')} u.</b> · ${vT.toLocaleString('es-AR')} visitas`)}${lnHdrHTML(L,H,'st','📦 Stock en Full','',`<b>${hoyR.st.toLocaleString('es-AR')} u.</b> hoy`)}${lnHdrHTML(L,H,'gan','💵 Plata por día',_lgS('var(--green)','promedio del mes')+_lgS('#a78bfa','semana')+_lgS('rgba(34,197,94,.5)','días del mes que se vende más',1)+_lgS('rgba(239,68,68,.45)','días flojos',1)+_lgS('rgba(245,158,11,.6)','fecha especial',1),'')}${lnHdrHTML(L,H,'pct','📊 % de ganancia','',gPct!=null&&isFinite(gPct)?`<b style="color:${pctColor(gPct)}">${gPct.toFixed(0)}%</b> en el período`:'')}${lnHdrHTML(L,H,'pr','💲 Índice de precios',_lgS('var(--text)','100 = el precio de cada producto al empezar'),iFin!=null?`hoy <b>${iFin.toFixed(1)}</b>`:'')}${lnHdrHTML(L,H,'cam','↕️ Subas y bajadas',_lgS('var(--green)','▲ subas',1)+_lgS('var(--red)','▼ bajadas',1),`<span style="color:var(--green)">▲ ${sT}</span> · <span style="color:var(--red)">▼ ${bT}</span>`)}${lnHdrHTML(L,H,'rem','📦 Sacando stock',_lgS('#f97316','sobra / liquidando / remate · abajo del 35% desde el 24/10',1)+_lgS('#a855f7','escalera vieja del robot',1),'')}${lnHdrHTML(L,H,'caja','🥊 Caja de compra',_lgS('var(--green)','ganan',1)+_lgS('#f59e0b','comparten',1)+_lgS('var(--red)','pierden',1),`hoy: <span style="color:var(--green)">${hoyR.g}</span> · <span style="color:#f59e0b">${hoyR.c}</span> · <span style="color:var(--red)">${hoyR.p}</span>`)}
       <svg class="linea-svg" viewBox="0 0 ${W} ${H+16}" preserveAspectRatio="none" style="width:100%;height:${Math.round((H+16)*1.1)}px;display:block">${_lnClip(L,W,H,svg)}</svg>
@@ -18957,6 +19073,16 @@ function _pedsCostoReponer(peds){
   });
   return {usd,ars:tc?Math.round(usd*tc):0};
 }
+// 🔄 LA ÚLTIMA VUELTA COMPLETA DE NISSEI (26/10/2026, él: "al lado de reponer quiero que diga los días que se hizo la última vuelta de
+// nissei en la web. pero tiene que ser completa" · "vuelta completa equivale a por lo menos el 90% de los productos de la web"). La anota el
+// robot (`pycat` con `fin=`) en `cyc/mlconfig/nisseiVuelta`; una vuelta a medias no la toca.
+function _pyVueltaChip(){
+  const v=(state.mlconfig||{}).nisseiVuelta, f=v&&Number(v.fin);
+  const d=f>0?Math.floor((Date.now()-f)/864e5):null;
+  const col=d==null?'var(--muted)':d>=7?'var(--red)':d>=5?'var(--amber)':'var(--green)';
+  const tit=f>0?`Última vuelta completa por la web de Nissei: ${new Date(f).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'})} · ${v.vistos||'?'} de ${v.total||'?'} productos (${v.pct||'?'}%). Completa = 90% o más de los productos.`:'Todavía no hay una vuelta completa anotada (90% o más de los productos de la web de Nissei).';
+  return `<div class="pcount" title="${tit}"><strong style="color:${col}">${d==null?'—':d===0?'hoy':d===1?'1 día':d+' días'}</strong>🔄 vuelta Nissei</div>`;
+}
 function _pedCostoChip(peds){
   const c=_pedsCostoReponer(peds);
   const val=c.ars?fmt(c.ars):'US$'+Math.round(c.usd).toLocaleString('es-AR');
@@ -22436,7 +22562,7 @@ function renderPedidos(){
   const cntEl=document.getElementById(countId);
   if(cntEl)cntEl.innerHTML=`
     ${_pedSemCount(peds,0)}
-    <div class="pcount"><strong>${peds.length}</strong>Total</div>${_pedCostoChip(isBsas?peds:_pedsPyQueDan(peds))}`;
+    <div class="pcount"><strong>${peds.length}</strong>Total</div>${_pedCostoChip(isBsas?peds:_pedsPyQueDan(peds))}${isBsas?'':_pyVueltaChip()}`;
   if(pedidoFilter!=='todos')peds=_pedFiltrar(peds);
   const searchId=isBsas?'ped-search':'ped-py-search';
   // El buscador de Paraguay busca en los pedidos de Probados: en Nuevos y en el Pedido no filtra nada, así que ahí no se muestra (20/10/2026, etapa 7).
@@ -24899,6 +25025,8 @@ function renderHomeVuelta(){
 }
 function renderHomeHoy(){
   const el=document.getElementById('home-hoy');if(!el||!state.ventaprod)return;
+  // La ganancia de hoy queda anotada en el aparato para el contador de la pantalla de "cargando" (26/10/2026).
+  try{const _kh=dateToKey(new Date());localStorage.setItem('cycGanHoy',JSON.stringify({k:_kh,g:Math.round(_homeDiaTot(_kh).gan||0)}));}catch(e){}
   const esc=_homeHoyEsc;
   const hoy=new Date();if(esc==='dia')hoy.setDate(hoy.getDate()-_homeHoyOff);
   const h=esc==='dia'?Object.assign(_homeDiaTot(dateToKey(hoy)),{dias:1}):_homePerTot(esc,_homeHoyOff);
