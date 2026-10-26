@@ -215,7 +215,7 @@ html,body{overflow-x:hidden;max-width:100%}html{overflow-x:clip}body{overscroll-
 .ld4 .d{height:1.2em;width:.92em;overflow:hidden;position:relative}
 .ld4 .d>div{display:flex;flex-direction:column;animation:ld4a 2.8s cubic-bezier(.25,.1,.25,1) infinite}
 .ld4 .d span{display:block;height:1.2em;line-height:1.2em;text-align:center}
-.ld4 .d:nth-child(3)>div{animation-name:ld4b}.ld4 .d:nth-child(5)>div{animation-name:ld4c}.ld4 .d:nth-child(6)>div{animation-name:ld4d}.ld4 .d:nth-child(7)>div{animation-name:ld4e}
+.ld4w>.ld-t2{font-size:.64rem;letter-spacing:.14em;color:var(--muted);text-transform:uppercase}
 @keyframes ld4a{0%{transform:translateY(0)}45%,100%{transform:translateY(-90%)}}
 @keyframes ld4b{0%{transform:translateY(0)}52%,100%{transform:translateY(-90%)}}
 @keyframes ld4c{0%{transform:translateY(0)}59%,100%{transform:translateY(-90%)}}
@@ -996,12 +996,29 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 (function _ldElegir(){try{
   const t=new Date(Date.now()-4*3600e3),dia=Math.floor(Date.UTC(t.getFullYear(),t.getMonth(),t.getDate())/864e5),n=((dia%7)+7)%7;
   if(n===0)return;   // 0 = la de siempre, ya está en el HTML
-  const dg=a=>'<div class="d"><div>'+a.split('').map(x=>'<span>'+x+'</span>').join('')+'</div></div>';
+  // 4 · CONTADOR DE PLATA = LA GANANCIA DE HOY (26/10/2026, él: "y el conteo, ¿pueden ser la ganancia actual?"). Cuando carga todavía no
+  // llegaron los datos: muestra la última que anotó Inicio en ESTE aparato (`cycGanHoy`, la guarda renderHomeHoy). Si es de ayer lo dice;
+  // más vieja o sin dato, $0 con "cargando la ganancia…" (nunca un número inventado).
+  const _ld4=()=>{
+    let gv=null,lbl='';
+    try{const o=JSON.parse(localStorage.getItem('cycGanHoy')||'null');const kk=d=>d.getFullYear()+'_'+String(d.getMonth()+1).padStart(2,'0')+'_'+String(d.getDate()).padStart(2,'0');
+      if(o&&isFinite(o.g)){if(o.k===kk(new Date())){gv=o.g;lbl='ganancia de hoy';}else if(o.k===kk(new Date(Date.now()-864e5))){gv=o.g;lbl='ganancia de ayer';}}}catch(e){}
+    if(gv==null)lbl='cargando la ganancia…';   // sin dato en este aparato: no se inventa un número, gira y queda en $0
+    const txt=Math.abs(Math.round(gv==null?0:gv)).toLocaleString('es-AR'),nD=txt.replace(/\D/g,'').length,NOM=['ld4a','ld4b','ld4c','ld4d','ld4e'];
+    let cols='',i=0;
+    for(const ch of txt){
+      if(!/\d/.test(ch)){cols+='<span class="s">'+ch+'</span>';continue;}
+      const seq=[];for(let j=0;j<9;j++)seq.push(Math.floor(Math.random()*10));seq.push(+ch);
+      cols+='<div class="d"><div style="animation-name:'+NOM[Math.min(4,Math.floor(i*5/nD))]+'">'+seq.map(x=>'<span>'+x+'</span>').join('')+'</div></div>';i++;
+    }
+    const fs=nD>8?' style="font-size:1.55rem"':nD>6?' style="font-size:2rem"':'';
+    return '<div class="ld4w"><div class="ld-t">CYC</div><div class="ld4 ld-syne"'+fs+'><span class="s">'+(gv<0?'-$':'$')+'</span>'+cols+'</div>'+(lbl?'<div class="ld-t2">'+lbl+'</div>':'')+'</div>';
+  };
   const H=['',
     '<div class="ld1 ld-syne">CYC</div>',
     '<div class="ld2"><div class="ld-syne">CYC</div><svg width="200" height="54" viewBox="0 0 200 54"><path d="M4 46 L40 38 L62 42 L92 26 L116 30 L146 14 L170 18 L196 4"/></svg></div>',
     '<div class="ld3"><b>C</b><b>Y</b><b>C</b></div>',
-    '<div class="ld4w"><div class="ld-t">CYC</div><div class="ld4 ld-syne"><span class="s">$</span>'+dg('0371942851')+dg('0826419372')+'<span class="s">.</span>'+dg('0592738164')+dg('0168395720')+dg('0749162830')+'</div></div>',
+    _ld4(),
     '<svg class="ld5" width="240" height="90" viewBox="0 0 240 90"><text x="120" y="70" text-anchor="middle">CYC</text></svg>',
     '<div class="ld6w"><div class="ld6r"></div><div class="ld6 ld-syne">CYC</div></div>'];
   const el=document.querySelector('#loading .cyc-load');if(!el)return;
@@ -3043,7 +3060,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.88';
+const APP_VERSION='26.89';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3056,6 +3073,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.89',f:'26/10',h:'18:20',c:[{n:1,t:'🎬 Cargando · contador de plata: ahora gira hasta la ganancia de hoy (la última que vio ese aparato; si es de ayer, lo dice).'}]},
   {v:'26.88',f:'26/10',h:'18:05',c:[{n:1,t:'🎬 Cargando · contador de plata: los números quedan centrados, del mismo ancho, giran parejo y no se traban al volver a empezar.'}]},
   {v:'26.87',f:'26/10',h:'17:45',c:[{n:1,t:'🎬 La pantalla de "cargando" tiene 7 versiones (la de siempre y 6 nuevas) y cambia sola todos los días a las 4 de la mañana.'}]},
   {v:'26.86',f:'26/10',h:'17:25',c:[{n:1,t:'🖥️ Inicio en la PC: las dos tarjetas de Ventas vuelven a ir una abajo de la otra, pero anchas.'}]},
@@ -24996,6 +25014,8 @@ function renderHomeVuelta(){
 }
 function renderHomeHoy(){
   const el=document.getElementById('home-hoy');if(!el||!state.ventaprod)return;
+  // La ganancia de hoy queda anotada en el aparato para el contador de la pantalla de "cargando" (26/10/2026).
+  try{const _kh=dateToKey(new Date());localStorage.setItem('cycGanHoy',JSON.stringify({k:_kh,g:Math.round(_homeDiaTot(_kh).gan||0)}));}catch(e){}
   const esc=_homeHoyEsc;
   const hoy=new Date();if(esc==='dia')hoy.setDate(hoy.getDate()-_homeHoyOff);
   const h=esc==='dia'?Object.assign(_homeDiaTot(dateToKey(hoy)),{dias:1}):_homePerTot(esc,_homeHoyOff);

@@ -1379,6 +1379,12 @@ es el promedio por día de cada mes (`_lnPromMes`): cada día muestra el de su m
 del gráfico se suman los días desde el 1º aunque queden antes (`_lnPreMes`). Línea de cada producto y general. Probado: sep $5.000/día,
 oct $10.000/día con ventas de prueba. Qué chequear: que el salto caiga justo el día 1 y que el número de "hoy" sea el del mes en curso.
 
+### Etapa 7 · 26/10/2026 · v26.89 · 🎬 El contador gira hasta la ganancia de hoy
+Él: *"y el conteo, ¿pueden ser la ganancia actual?"*. Cuando carga no hay datos todavía: `renderHomeHoy` anota la ganancia de hoy en el
+aparato (`localStorage.cycGanHoy` = {k,g}) y el contador (`_ld4`) gira hasta ese número con "ganancia de hoy" (o "de ayer" si es de ayer);
+sin dato, $0 y "cargando la ganancia…" (nunca un número inventado). Las cifras que sobran del número de muestra se armaron por cantidad
+de dígitos (más de 6 → letra más chica). Probado: $75.600 hoy · $1.234.567 · $48.210 ayer · sin dato; centrado en 390 px.
+
 ### Etapa 7 · 26/10/2026 · v26.88 · 🎬 Contador de plata arreglado
 Él: *"el contador de plata se ve trabado y quedan mal los números, no centrados"*. Cada cifra en una caja del mismo ancho (0,92 em: las
 cifras de Syne son anchas, con 0,7 los ceros se cortaban como "C") y de un renglón entero de alto; frenan de izquierda a derecha y el número
