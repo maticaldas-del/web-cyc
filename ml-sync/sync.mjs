@@ -1005,7 +1005,17 @@ function prepNetoSolo(vp) {
   return { neto, enCarrito };
 }
 
-function compraCruzaBarrera(v, ents) {
+// Y UNA VENTA DE UN CARRITO CON OTROS PRODUCTOS TAMPOCO MIDE EL ENVÍO DE UNA SUELTA (26/10/2026, la revisión del CyberMonday): ML
+// cobra UN envío por paquete y en el desglose puede caer entero en una sola de las ventas. El Bare Vanilla Bliss medía $12.043
+// (17/05: una orden de 1 u. pagó $11.240 = 2 × $5.620 del carrito) contra ~$6.800 de verdad, y el Pure Seduction igual: el peor
+// caso los daba ~35% estando en ~55%, y las subas del 24/10 salieron de ese número. Todo lo que mide el envío pasa por acá.
+function ventaEnCarritoConOtros(v, ents) {
+  if (!v || v.numVenta == null || v.numVenta === '' || !ents) return false;
+  let n = 0; for (const w of Object.values(ents)) if (w && !w.cancelada && String(w.numVenta) === String(v.numVenta) && (w.cuenta || '') === (v.cuenta || '')) n++;
+  return n > 1;
+}
+function compraCruzaBarrera(v, ents, soloBarrera = false) {
+  if (!soloBarrera && ventaEnCarritoConOtros(v, ents)) return true;   // no sirve para medir el envío (ver arriba); `cruza33` pide sólo la barrera
   const q = Number(v && v.qty) || 1, unit = (Number(v && v.total) || 0) / q;
   if (!(unit > 0) || unit >= UMBRAL_ENVIO_GRATIS) return false;
   let ped = Number(v.total) || 0;
@@ -47509,7 +47519,7 @@ async function main() {
           const q = Number(v.qty) || 1, tot = Number(v.total) || 0, net = Number(v.neto) || 0; if (!(tot > 0 && net > 0)) continue;
           const unit = tot / q; if (unit >= UMBRAL_ENVIO_GRATIS) continue;
           const o = (porMla[v.mla] = porMla[v.mla] || { cruza: [], suelta: [] });
-          (compraCruzaBarrera(v, ents) ? o.cruza : o.suelta).push({ unit, q, mlU: (tot - net) / q, carrito: q === 1 });
+          (compraCruzaBarrera(v, ents, true) ? o.cruza : o.suelta).push({ unit, q, mlU: (tot - net) / q, carrito: q === 1 });
         }
       }
       const med = (a) => { const x = [...a].sort((p, q) => p - q); return x.length ? x[Math.floor(x.length / 2)] : null; };
