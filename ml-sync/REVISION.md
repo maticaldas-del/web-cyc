@@ -1379,6 +1379,12 @@ es el promedio por día de cada mes (`_lnPromMes`): cada día muestra el de su m
 del gráfico se suman los días desde el 1º aunque queden antes (`_lnPreMes`). Línea de cada producto y general. Probado: sep $5.000/día,
 oct $10.000/día con ventas de prueba. Qué chequear: que el salto caiga justo el día 1 y que el número de "hoy" sea el del mes en curso.
 
+### Etapa 7 · 26/10/2026 · v26.99 · 🧹 Sin "en línea · matias" arriba y cuadros más finos
+Él: *"sacar ese matias en línea, ya que está en otro lado"* y *"¿se podrán hacer más chicos los cuadrados? más finos"*. `.page-header
+.conn-label/.who-badge` ocultos (queda el renglón de abajo de Inicio; si se corta la base sale el cartel rojo). `.met-kpi` con relleno
+8×12, etiqueta pegada al número y menos aire (Ventas y Métricas). Qué chequear: que nada se corte en el celu (el resumen en un renglón
+de Ventas no cambia) y que la PC muestre los cuadros más bajos.
+
 ### Etapa 7 · 26/10/2026 · v26.98 · 💵 Plata por día sin la línea de la semana
 Él: *"sacar la línea de semana. dejar sólo la del mes"*. Fuera `_lineaSemSvg` (producto y 📈 Todos) y su leyenda; la suma de la semana
 sigue en el globito de cada día (`_lineaSemanas`). Qué chequear: en Plata por día sólo la línea verde y su número de la derecha.

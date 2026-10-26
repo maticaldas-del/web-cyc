@@ -339,6 +339,9 @@ html,body{overflow-x:hidden;max-width:100%}html{overflow-x:clip}body{overscroll-
 .ph-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .conn-label{font-size:.67rem;color:var(--muted);display:flex;align-items:center;gap:5px}
 .who-badge{font-size:.67rem;padding:5px 12px;border-radius:6px;background:rgba(124,58,237,.12);color:#a78bfa;border:1px solid rgba(124,58,237,.25)}
+/* 26/10/2026, él: "sacar ese matias en línea, ya que está en otro lado": el "● en línea · matias" queda sólo abajo de Inicio. Si se corta la
+   base igual sale el cartel rojo de arriba (`cyc-sin-datos`). */
+.page-header .conn-label,.page-header .who-badge{display:none}
 .total-pill{background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:10px;padding:10px 18px;text-align:right;min-width:175px}
 .total-pill .lbl{font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;opacity:.85}
 .total-pill .val{font-family:'Syne',sans-serif;font-size:1.2rem;font-weight:800}
@@ -547,18 +550,19 @@ input.qty:focus{border-color:var(--accent2)}
 /* ── MÉTRICAS PAGE ── */
 .met-date-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);margin-bottom:18px}
 .met-date-bar label{font-size:.67rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
-.met-kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:18px}
-.met-kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:var(--card-pad);position:relative;overflow:hidden}
+.met-kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:14px}
+/* 26/10/2026, él: "¿se podrán hacer más chicos los cuadrados? más finos": menos relleno y menos aire entre renglones. */
+.met-kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:8px 12px 9px;position:relative;overflow:hidden}
 .met-kpi::after{content:'';position:absolute;top:0;left:0;right:0;height:2px}
 .met-kpi.c1::after{background:linear-gradient(90deg,#ff3c78,#ff6b9d)}
 .met-kpi.c2::after{background:linear-gradient(90deg,#7c3aed,#a855f7)}
 .met-kpi.c3::after{background:linear-gradient(90deg,#0ea5e9,#38bdf8)}
 .met-kpi.c4::after{background:linear-gradient(90deg,#f59e0b,#fbbf24)}
 .met-kpi.ct::after{background:linear-gradient(90deg,#22c55e,#4ade80)}
-.met-kpi .mk-lbl{font-size:var(--fs-lbl);color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px}
-.met-kpi .mk-val{font-family:'Syne',sans-serif;font-weight:800;font-size:var(--fs-val)}
+.met-kpi .mk-lbl{font-size:var(--fs-lbl);color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:2px}
+.met-kpi .mk-val{font-family:'Syne',sans-serif;font-weight:800;font-size:var(--fs-val);line-height:1.25}
 @media(max-width:640px){.met-kpi .mk-val{font-size:min(1rem,3.9vw);white-space:nowrap}}
-.met-kpi .mk-sub{font-size:var(--fs-sub);color:var(--muted);margin-top:3px}
+.met-kpi .mk-sub{font-size:var(--fs-sub);color:var(--muted);margin-top:1px;line-height:1.35}
 .met-acct-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:18px}
 .met-acct{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;position:relative;overflow:hidden}
 .met-acct::after{content:'';position:absolute;top:0;left:0;right:0;height:2px}
@@ -3074,7 +3078,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.98';
+const APP_VERSION='26.99';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3087,6 +3091,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.99',f:'26/10',h:'18:05',c:[{n:1,t:'🧹 Arriba de cada pantalla ya no sale "● en línea · matias" (queda abajo de Inicio). Los cuadros de números de Ventas y Métricas, más finos.'}]},
   {v:'26.98',f:'26/10',h:'17:58',c:[{n:1,t:'💵 Plata por día: se sacó la línea violeta de la semana; queda sólo la verde del mes (la semana sigue en el globito de cada día).'}]},
   {v:'26.97',f:'26/10',h:'17:57',c:[{n:2,t:'📈 Línea de tiempo: los botones de días van arriba de todo, los colores al lado del nombre y se sacaron las 4 tarjetas (todo está en los gráficos); la estrategia de hoy va en el renglón del 💲 Precio.'}]},
   {v:'26.96',f:'26/10',h:'17:40',c:[{n:1,t:'🛒 Ventas: el título, el buscador y ⚙️ Filtros pasaron abajo de la lista de ventas (la lista queda arriba, pegada a los números del día).'}]},
