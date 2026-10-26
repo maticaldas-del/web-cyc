@@ -35,6 +35,9 @@ No copies la lista de movimientos: trae nombres de otras personas.
    varias tiendas de Paraguay: mirá SÓLO la fila de la tienda NISSEI. Nunca uses nissei.com.
 4. Buscá cada código y fijate: el precio de HOY en la fila de Nissei, si está disponible o dice agotado/sin stock, y que sea el
    mismo modelo y el mismo color del renglón.
+5. Arriba del pedido puede haber un cuadro ROJO "⛔ N no se pueden pedir: se miraron en Nissei hace 7 días o más". Abrilo y buscá
+   también cada uno de esos códigos (🔖) de la misma forma: son los que hay que volver a mirar para poder pedirlos. Ponelos en el
+   buzón aunque estén iguales (renglón "visto: <código>=<US$ de hoy>" o "visto: <código>=AGOTADO", uno por renglón).
 Si aparece un "no soy un robot", avisale a Matías y seguí con lo demás.
 
 == PARTE 3b · LO QUE ML FRENA O AVISA EN PUBLICACIONES (4a del 26/10) ==
@@ -52,6 +55,7 @@ mp: Adriana=<pesos> · Luciana=<pesos> · Ayelen=<pesos> · Matias=<pesos>
 pedido: <N> iguales · <N> cambiaron · <N> sin stock · total de hoy US$ <número>
 ml: <cuenta> · MLA<número> · <título corto> · <qué pide ML>   (una por renglón; si no hay ninguna: "ml: nada")
 <código> · <nombre corto> · US$ <antes> → US$ <hoy> · <igual|SUBIÓ|BAJÓ|AGOTADO|NO LO ENCONTRÉ>   (sólo los que NO están iguales)
+visto: <código>=<US$ de hoy|AGOTADO|NO LO ENCONTRÉ>   (uno por renglón: los del cuadro rojo "⛔ no se pueden pedir")
 dudas: <lo que no pudiste ver y por qué>
 
 (Si una cuenta no separa grandes, poné sólo un número. Si no viste algo, escribí "?" en ese lugar.)

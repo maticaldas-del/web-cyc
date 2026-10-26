@@ -1347,6 +1347,25 @@ el precio de un candidato distinto con código parecido (se compara también por
 - **20/10/2026 · v25.48 · El "otro producto" de una lista vale sólo para el catálogo que se miró** (etapa 3). `listaestado` mostró 490 de los 674 de Nippon con 25%+ marcados `noEs` (el chat de compras los miró el 18/10, cuando el robot buscaba con el nombre abreviado y traía cualquier cosa). La marca era del producto y no del catálogo: aunque el robot encontrara el correcto, quedaban afuera para siempre. Ahora `listaNoEsVale` (sync.mjs) / `_listaNoEsVale` (index.html) exigen que `noEsCat` sea el `mi` de hoy; `listadato …=no` guarda `noEsCat`, `ok` lo borra; las marcas viejas lo reciben (el `mi` de antes) la primera vez que se vuelven a medir. Los `noEs` sin `qv` se vuelven a buscar con el nombre traducido aunque estén frescos, y la búsqueda saltea el catálogo rechazado. Chequear: que un `noEs` con catálogo nuevo salga en `listarevisar` y no cuente como dado hasta el ✅.
 - **20/10/2026 · v25.49 · Arriba de cada lista: evaluados y sin evaluar** (etapa 3, reemplaza la línea de v25.46). Él: *"poné los productos evaluados y los no evaluados, con sus números de cuántos dan bien, cuántos no"*. Cada producto cae en UN grupo (`_grp` en `renderListas`): ya es ficha · afuera (sacado, `noWeb`, `fz`) · ⏳ sin evaluar (nunca buscado, `sc`/`sv`/`noEs` con `qv` viejo, o costo no vigente) · ✅ evaluados: 🟢 `_listaDa` · 🔎 `_listaRevisar` · ⚫ no está en ML (`m` null) · 🔴 no da. Chequear: que los grupos sumen el total.
 
+### Etapa 3 · 26/10/2026 · v26.77 · 🪄 Llenar con probados y nuevos · ⛔ lo mirado hace 7+ días no se pide
+Él: *"otro boton que sea llenar con nuevos y probados. entonces poner primero todos los productos probados las unidades que pide y que de
+mas de el 35% o mas de ganancia y lo que resta todos productos nuevos siempre desde el que mas gana y vende (el boton de estrella) y que
+avise en rojo todos los productos que fueron revisados hace 7 o mas dias en paraguay. porque pudo modificarse el precio o el stock y que
+no deje perdirlo"*.
+- **Qué es:** botón 🪄 *Llenar con probados y nuevos* en el 🧾 Pedido del momento (también vacío). 1º probados: lo que pide Pedidos (por
+  color si Pedidos lo pide por color), sólo `pyProbVeredicto`='da' (35%+ con el precio de hoy), lo ya cargado no se toca. 2º nuevos: con lo
+  que queda del tope, orden ⭐ (`candCombo`), mismos filtros que el botón viejo. Lo mirado en Paraguay hace 7+ días no entra y se lista.
+- **⛔ 7+ días:** `PY_VIEJO_DIAS=7`. Nuevos: la fecha más nueva entre `visto` y `ts` (`candViejoPy`); probados: `nisseiTs` (`pyProbViejo`).
+  Frena: `candPuedePedir` (casilla, los dos botones de llenar), `pyArmSet`/`pyArmSetVar`/`pyArmSugeridas` (sólo al SUMAR), el 📋 mensaje
+  para el proveedor (no sale si hay uno cargado en rojo) y *Ya lo pedí*. Bloque rojo `pedViejosLista` arriba del pedido con código y días.
+  En el robot, `pedir` tiene la misma regla. `pyped:repo`/`pyped:nuevos` (lo ya pagado) NO se frenan: si pagó, se registra.
+  `pyProbVeredicto` pasó de "más de 7" a "7 o más".
+- **Dónde vive:** `index.html` (`pedLlenarTodo`, `pedLlenarTodoPlan`, `pedViejosLista`, `_pedNuevosEscribir`, `candViejoPy`, `pyProbViejo`);
+  `sync.mjs` (`PY_VIEJO_DIAS`, comando `pedir`); la rutina del chat de Chrome (parte 3) mira también la lista roja.
+- **Qué chequear:** que la rutina diaria (`ofi`… buzón) renueve las fechas (con `pyprecio`/`candprecio`) y la lista roja baje; que el
+  botón no cargue un probado que Pedidos no pide; que el tope cierre (probados + nuevos); que un candidato devuelto con ↩︎ no se cuele como
+  fresco: ↩︎ renueva `ts` sin mirar el precio, así que guarda `renovTs`/`renovDe` y vale la fecha de antes (`candVistoTs`, `candVistoTsBot`).
+
 ### Etapa 3 · 21/10/2026 · v25.94 · 🛒 Para comprar en el local (Dai Nippon y toda lista de Bs As)
 Él: *"Dai Nippon no trae fotos ni código de barras (…) mi viejo compra personalmente en el local, siempre desde el celular. Que le
 aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las unidades (…) al clickear en la tarjeta, sino es un lio"*.

@@ -359,6 +359,10 @@
   pedido (📷, `mlapi/pyticketfoto/<id>`, `cyc/compraspy/<id>/ticketFoto` = cuántas). **Si me la pasa por el chat la anoto yo** (26/10, él: *"siempre subí vos eso"*): `pyticketvisto:<id>=<n>|<nota>;go` (ml-consulta) — la imagen no puede viajar a la base sin pasar por algo público, así que queda "✓ la vio Claude en el chat" contra los renglones y cuenta para cerrar. Sin las dos no se cierra (web y `pyped:llego`);
   arriba de Pedidos Paraguay sale en rojo lo que falta (todo lo en camino y lo pedido desde el 25/10). Datos del mayorista: no al repo.
   Con dos tipos el mismo día pide `|repo`/`|nuevos`.
+- **⛔ Mirado en Paraguay hace 7+ días no se pide** (26/10, él: *"pudo modificarse el precio o el stock y que no deje pedirlo"*): en rojo
+  arriba del pedido; no se carga, no sale el mensaje para Nissei ni "Ya lo pedí" (web) ni `pedir` (robot). Se destraba al volver a mirarlo
+  (rutina del chat → renglones `visto:` del buzón → `pyprecio`/`candprecio`). Lo ya pagado (`pyped:repo`/`nuevos`) sí se registra.
+  **🪄 Llenar con probados y nuevos**: 1º probados que pide Pedidos con 35%+ hoy, 2º nuevos por ⭐ hasta el tope.
 - **Cuántas de cada nuevo** (`candMaxU`, 21/10): barato ≤US$15 → 3 · caro >US$60 → 1 · resto 2.
 - **Al chat local se le pasa SÓLO lo que interesa** (22/10, *"siempre pasame el promt con la mercaderia que si interesa"*): el texto
   listo para pegar y la lista YA FILTRADA a lo que puede entrar a un pedido (25%+ y en catálogo), no la lista entera; el resto se dice

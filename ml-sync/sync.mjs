@@ -10799,6 +10799,9 @@ async function ofertaVista(svp, nombre, get) {
 // sólo cuando se carguen las ventas"). Sin el dato no se frena nada; con el dato cargado y menos de 100, afuera. Las ventas las mira el
 // chat de compras SÓLO de lo que pasó todos los otros filtros (`faltaventas`). Misma regla en index.html (`CAND_MIN_VENTAS`).
 const CAND_MIN_VENTAS = 100;
+const PY_VIEJO_DIAS = 7; // 26/10/2026: mirado en Paraguay hace 7+ días no se pide (`pedir`; en la web `candViejoPy`/`pyProbViejo`)
+// La fecha en que se miró el candidato en Paraguay. "↩︎ Devolver" de la web renueva `ts` sin mirar: ahí vale `renovDe` (igual que `candVistoTs`).
+function candVistoTsBot(c) { let t = Math.max(Number(c && c.visto) || 0, Number(c && c.ts) || 0); if (c && Number(c.renovTs) > 0 && Math.abs(t - Number(c.renovTs)) < 5000) t = Number(c.renovDe) || 0; return t; }
 const varaCompra = (vend, nv) => (vend != null && isFinite(vend) && vend >= CAND_MIN_VENTAS && (Number(nv) || 0) >= CAND_MIN_VENDEDORES ? CAND_VARA_VENDE : CAND_VARA_COMPRA);
 const candVaraDe = (c) => (c ? varaCompra(candVentasDe(c), c.mlVendedores) : CAND_VARA_COMPRA);
 const listaVaraDe = (e) => (e ? varaCompra(e.vend != null ? Number(e.vend) : null, e.mv) : CAND_VARA_COMPRA);
@@ -22729,6 +22732,10 @@ async function main() {
           : (c.calcTs == null && Number(c.usdAntes) > 0) ? `cambió el precio de Paraguay (de US$ ${Number(c.usdAntes).toFixed(2)} a US$ ${(parseFloat(c.usd) || 0).toFixed(2)}): falta medirlo`
           // Revisión etapa 1 (24/10): el 🌟 medido contra un precio visto que ya venció (30 días) no se pide.
           : (c.sinComp && !svpVigente(c)) ? '🌟 el precio que vio el chat en ML tiene más de 30 días: falta volver a mirarlo'
+          // MIRADO EN PARAGUAY HACE 7+ DÍAS NO SE PIDE (26/10/2026, él: "que avise en rojo todos los productos que fueron revisados
+          // hace 7 o mas dias en paraguay. porque pudo modificarse el precio o el stock y que no deje pedirlo"). Misma regla que
+          // `candViejoPy` de la web: `visto` (o `ts`) lo renueva la carga del catálogo, `candprecio` y la rutina.
+          : (() => { const v = candVistoTsBot(c); return !v || Date.now() - v >= PY_VIEJO_DIAS * 864e5; })() ? `se miró en Paraguay ${candVistoTsBot(c) ? 'hace ' + Math.floor((Date.now() - candVistoTsBot(c)) / 864e5) + ' días' : 'sin fecha'}: el precio o el stock pueden haber cambiado, falta volver a mirarlo`
           : (mg < candVaraDe(c) && !(_tcP > 0 && !c.noLocal && RE_CAND_PERF.test(`${c.nombre || ''} ${c.mlTit || ''}`) && (perfLocalPct((parseFloat(c.usd) || 0) * RECARGO_PAR * _tcP, Number(c.mlPrecio) || 0) || 0) >= PERF_LOCAL_GAN)) ? `da ${mg.toFixed(1)}% y la vara de compra es ${candVaraDe(c)}%`
           : !vendOk(c.mlVendedores, candVentasDe(c), c.sinComp, c.resCarga) ? (Number(c.mlVendedores) === 1 ? 'en ML lo vende 1 solo vendedor: entra si vendió 100+ y ese dato falta o no llega' : 'no está medido contra un catálogo de ML con vendedores')
           // Sin las dos fotos no se compra (regla suya del 07/10, "sin foto tampoco acepto"; etapa 3, 20/10/2026): la web ya lo
