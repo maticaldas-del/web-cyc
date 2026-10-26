@@ -537,6 +537,9 @@ Si dudás si un comando existe, buscá en `sync.mjs` (`grep -n "'<nombre>'" ml-s
 - **Paraguay:** cuentas de correo (monto y kilos) del pedido del 08/10 y datos del 08/09; transferencia de $50.000 del 29/09 (preguntar).
   Evaluar el 17% de recargo con los gastos del próximo pedido (ya se usa el medido). Cargar los ~13.467 códigos de `pycat` si quedó a medias
   (el chat de compras no tenía GitHub). Pasada del mes de Guay: no se le manda nada hasta que él pida "hagamos la de guay".
+- **Pedido Paraguay `py20261026` (en camino):** ticket cargado (US$ 553,95, 2 fotos). El Xion no vino ni se cobró. **Al llegar: el Dior
+  J'adore 100 ml y el pendrive SanDisk Z430 128GB (agregados de Tito) van con `sololocal` (perfumería y local, él 26/10), no a ML.**
+  Falta: correo y el que retira.
 - **Dos Linternas COB** de Ayelen (`MLA3998033920`, `MLA2128209177`) sin ficha: falta el costo real. EX15LP blanco publicado pausado en Ayelen (23/10, `MLA2230467989`, 2 u. sin etiqueta); Joystick PS5 7114209 = sólo local. **Piedra Gua Sha** (ficha sola) y Kit Jade vinculados.
 - **Contador:** recategorización, actividad, facturas entre cuentas, intereses de H. Bajar de ARCA los Emitidos 01/01→04/08 si falta alguno.
 - **Sancor:** esperar respuesta (plan F800/40% $111.988,7: qué es el 40%, si es el final con cuota social e IIBB, qué cubre menos); pagar antes
