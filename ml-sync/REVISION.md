@@ -1379,6 +1379,11 @@ es el promedio por día de cada mes (`_lnPromMes`): cada día muestra el de su m
 del gráfico se suman los días desde el 1º aunque queden antes (`_lnPreMes`). Línea de cada producto y general. Probado: sep $5.000/día,
 oct $10.000/día con ventas de prueba. Qué chequear: que el salto caiga justo el día 1 y que el número de "hoy" sea el del mes en curso.
 
+### Etapa 7 · 26/10/2026 · v26.96 · 🛒 Ventas: buscador y filtros abajo de la lista
+Él (con la foto de "VENTAS · fecha · Buscar · Filtros · Mostrando"): *"poner esto abajo de las ventas"* y *"sigue apareciendo esto"* (en
+la v26.94 sólo había sacado el botón azul). El renglón del título + 🔍 y el ⚙️ Filtros van debajo de `#vp-day-list`. Qué chequear: la
+lista sale arriba, el buscador abajo sigue filtrando y "Buscar en ventas" de otras pantallas lo sigue llenando.
+
 ### Etapa 4 · 26/10/2026 · v26.95 · ⚡ La web vuelve a actualizar al instante
 Él: *"¿por qué no actualiza al instante ahora la web de cyc?"*. Falla mía de la v26.84 (la web más rápida): la ráfaga de cambios se juntaba
 esperando 400 ms SIN cambios (`_cycSched`) y después otros 300 ms (`renderPronto`); mientras el robot escribía una publicación tras otra, la

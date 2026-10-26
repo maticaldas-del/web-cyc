@@ -2019,7 +2019,9 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 
   <div class="met-kpi-grid" id="vp-kpis"></div>
 
-  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:22px;margin-bottom:6px">
+  <div id="vp-day-list" class="ingreso-list" style="margin-top:22px;margin-bottom:6px;max-height:570px;overflow-y:auto;overflow-x:hidden"><div class="empty-msg">Sin ventas cargadas.</div></div>
+  <!-- 26/10/2026, él: "poner esto abajo de las ventas": el título, el buscador y ⚙️ Filtros van DEBAJO de la lista de ventas. -->
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px;margin-bottom:6px">
     <div class="stitle" style="margin:0">Ventas <span id="vp-date-label2" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace"></span></div>
     <input id="vp-search" type="text" placeholder="🔍 Buscar producto…" class="cal-select" style="flex:1;min-width:160px;max-width:280px;font-size:.72rem" oninput="renderVentaProd()">
   </div>
@@ -2038,7 +2040,6 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   </div>
   <div id="vp-tag-chips" style="display:flex;gap:5px;flex-wrap:wrap;margin:0 0 4px"></div>
   </details>
-  <div id="vp-day-list" class="ingreso-list" style="margin-bottom:6px;max-height:570px;overflow-y:auto;overflow-x:hidden"><div class="empty-msg">Sin ventas cargadas.</div></div>
 
   <div class="stitle" style="margin-top:22px">Análisis <span id="vp-scope-lbl-main" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace"></span></div>
 
@@ -3073,7 +3074,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.95';
+const APP_VERSION='26.96';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3086,6 +3087,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.96',f:'26/10',h:'17:40',c:[{n:1,t:'🛒 Ventas: el título, el buscador y ⚙️ Filtros pasaron abajo de la lista de ventas (la lista queda arriba, pegada a los números del día).'}]},
   {v:'26.95',f:'26/10',h:'17:33',c:[{n:3,t:'⚡ Lo nuevo (una venta, un cambio del robot) aparece en 1/4 de segundo y nunca tarda más de 1 segundo, aunque el robot esté escribiendo seguido (desde la 26.84 podía esperar a que el robot terminara).'}]},
   {v:'26.94',f:'26/10',h:'17:23',c:[{n:1,t:'🆕 Ventas: se sacó el botón azul de arriba; "N ventas nuevas desde que miraste · +$X" va ahora en la rayita que separa lo nuevo de lo ya visto (o al final si todas son nuevas).'}]},
   {v:'26.93',f:'26/10',h:'16:54',c:[{n:1,t:'📈 Línea de tiempo en el celu: tocar o arrastrar el dibujo ya no abre la ventanita del día (en la PC el globito del mouse sigue igual).'}]},
