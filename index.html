@@ -2962,7 +2962,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.81';
+const APP_VERSION='26.82';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2975,6 +2975,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.82',f:'26/10',h:'16:00',c:[{n:2,t:'⛔ Paraguay: lo mirado hace 7 días o más SE PUEDE cargar (también con los botones de llenar) y queda en rojo dentro del pedido. Lo único que frena es copiar el mensaje y "Ya lo pedí", hasta que el robot lo vuelva a mirar.'}]},
   {v:'26.81',f:'26/10',h:'15:40',c:[{n:1,t:'📊 % de ganancia: la raya naranja del costo arranca en $0, así un cambio chico se ve chico. Sigue siendo el costo real (mercadería + impuestos de la venta, que suben un poco si sube el precio).'}]},
   {v:'26.80',f:'26/10',h:'15:20',c:[{n:2,t:'💵 Plata por día: la línea verde es el promedio por día de cada MES (octubre, noviembre…); el mes en curso, lo que va del mes. En la línea de cada producto y en la general.'}]},
   {v:'26.79',f:'26/10',h:'15:05',c:[{n:2,t:'💵 Plata por día: la línea verde ahora es el promedio de 15 días (antes 7), en la línea de cada producto y en la general.'}]},
@@ -16171,7 +16172,6 @@ function candPuedePedir(c,o){
   // botón de llenar ya lo salteaba, pero a mano (la casilla o el comando `pedir`) se podía comprar
   // dos veces. Cuando llega pasa a ser producto probado y sale de esta lista.
   if(candEnPedido(c)==='viajando'){const pe=(state.compraspy||{})[c.pedidoEn]||{};return{ok:false,motivo:`ya está viajando en el pedido del ${pe.fecha||'?'}`};}
-  if(!(o&&o.sinViejo)){const vj=candViejoPy(c);if(vj)return{ok:false,viejo:true,motivo:vj.txt+': falta volver a mirarlo'};}
   const m=Number(c.margen);
   if(c.margen==null||!isFinite(m))return{ok:false,motivo:'todavía no está medido en ML'};
   // Revisión etapa 1 (24/10): un 🌟 sin competencia se midió contra el precio que vio el chat; ese precio vale 30 días (SVP_DIAS del robot).
@@ -16499,9 +16499,6 @@ async function candSetPedir(id,v){
   const P=candPuedePedir(c);
   if(!P.ok&&P.bajoPiso&&n>antes){
     if(!confirm(`⚠️ Este producto NO llega a tu piso.\n\n${c.nombre}\n\n${P.motivo}.\n\n¿Lo agregás igual al pedido (${n} u.)?`)){renderPedidos();return;}
-  }else if(!P.ok&&P.viejo&&n>antes){
-    alert(`No se puede pedir todavía.\n\n${c?c.nombre:''}\n\n⛔ ${P.motivo}.\n\nQue el chat de Chrome lo vuelva a mirar (la rutina) y se destraba solo.`);
-    renderPedidos();return;
   }else if(!P.ok&&n>antes){
     alert(`No se puede pedir este producto.\n\n${c?c.nombre:''}\n\nMotivo: ${P.motivo}.\n\nTu piso es ${candPisoDe(c)}%. Si el precio en ML cambió, el robot lo vuelve a medir esta noche y la casilla se abre sola.`);
     renderPedidos();return;
@@ -16609,30 +16606,23 @@ async function _pedNuevosEscribir(suma){
   }
   return salteados;
 }
-// LOS QUE NO SE PUEDEN PEDIR POR VIEJOS (26/10/2026): probados que Pedidos pide y nuevos que entrarían si no fuera por la fecha.
-// Sin `pyProbVeredicto` (es la cuenta cara): se muestra en la tarjeta del pedido y se redibuja con cada casilla.
+// LOS CARGADOS EN ROJO (26/10/2026): lo que está en el pedido y se miró en Paraguay hace 7+ días. Se puede cargar igual (él: "que
+// aparezca en rojo si es que está adentro del pedido, y que pueda estar dentro del pedido aunque esté en rojo. yo al verlo hago correr
+// el robot para que los mire"); lo que frena es mandar el mensaje al proveedor y "Ya lo pedí" hasta que se vuelvan a mirar.
 function pedViejosLista(g){
-  g=g||null;const out=[],vistos=new Set(),arm=state.pyArmado||{};
-  for(const ped of (state.pedidos_py||[])){
-    if(!ped||esPedidoPaulvic(ped)||ped.estado==='suficiente'||!((parseInt(ped.cantidad)||0)>0))continue;
-    const pr=(state.products||[]).find(x=>x.id===ped.prodId)||prodByName(ped.producto);
-    if(!pr||vistos.has(pr.id)||pr.origen!=='py'||pyProvDe(pr)!==pyProv||!pyMomEs(g,pr.name)||(state.pySinStock||{})[pr.id])continue;
-    vistos.add(pr.id);const vj=pyProbViejo(pr);
-    if(vj)out.push({nom:pr.name,cod:String(pr.codPy||'').trim(),d:vj.d,tipo:'probado',cargado:(parseInt((arm[pr.id]||{}).u)||0)>0});
-  }
+  g=g||null;const out=[];
+  for(const f of pyArmadoFilas().filter(f=>pyMomEs(g,f.nom))){const vj=pyProbViejo(f.pr);if(vj&&!out.some(x=>x.id===f.pid))out.push({id:f.pid,nom:f.nom,cod:f.cod,d:vj.d,tipo:'probado'});}
   for(const c of candList().filter(candEnArmado).filter(c=>pyMomEs(g,c.nombre))){
-    const vj=candViejoPy(c);if(!vj)continue;
-    const cargado=(parseInt(c.pedirU)||0)>0;
-    if(!cargado&&!candPuedePedir(c,{sinViejo:true}).ok)continue;   // no entraría igual: no hace falta mirarlo
-    out.push({nom:c.nombre,cod:String(c.cod||'').trim(),d:vj.d,tipo:'nuevo',cargado});
+    if(!((parseInt(c.pedirU)||0)>0)||candEnPedido(c)==='viajando')continue;const vj=candViejoPy(c);
+    if(vj)out.push({id:c.id,nom:c.nombre,cod:String(c.cod||'').trim(),d:vj.d,tipo:'nuevo'});
   }
-  return out.sort((a,b)=>(b.cargado-a.cargado)||((b.d==null?1e9:b.d)-(a.d==null?1e9:a.d)));
+  return out.sort((a,b)=>(b.d==null?1e9:b.d)-(a.d==null?1e9:a.d));
 }
 // 🪄 LLENAR CON PROBADOS Y NUEVOS (26/10/2026, él: "otro boton que sea llenar con nuevos y probados. entonces poner primero todos los
 // productos probados las unidades que pide y que de mas de el 35% o mas de ganancia y lo que resta todos productos nuevos siempre desde
 // el que mas gana y vende (el boton de estrella que creamos hace poco)"). 1º probados: lo que pide Pedidos (por color si lo pide por
-// color), sólo los que dan 35%+ con el precio de hoy (`pyProbVeredicto` = 'da') y mirados hace menos de 7 días; lo ya cargado no se
-// toca. 2º nuevos: con lo que queda del tope, de ⭐ para abajo (`candCombo`), mismos filtros que el otro botón.
+// color), sólo los que dan 35%+ con el último precio de Nissei (`pyProbVeredicto` = 'da'; lo mirado hace 7+ días entra igual y queda en
+// rojo, 26/10); lo ya cargado no se toca. 2º nuevos: con lo que queda del tope, de ⭐ para abajo (`candCombo`), mismos filtros que el otro botón.
 function pedLlenarTodoPlan(g){
   g=g||null;const arm=state.pyArmado||{},prob=[],vistos=new Set();let usdP=0;
   for(const ped of (state.pedidos_py||[])){
@@ -16641,8 +16631,8 @@ function pedLlenarTodoPlan(g){
     const pr=(state.products||[]).find(x=>x.id===ped.prodId)||prodByName(ped.producto);
     if(!pr||vistos.has(pr.id)||pr.origen!=='py'||pyProvDe(pr)!==pyProv||!pyMomEs(g,pr.name))continue;
     vistos.add(pr.id);
-    if((parseInt((arm[pr.id]||{}).u)||0)>0||(state.pySinStock||{})[pr.id]||pyProbViejo(pr))continue;
-    if(pyProbVeredicto(ped).k!=='da')continue;
+    if((parseInt((arm[pr.id]||{}).u)||0)>0||(state.pySinStock||{})[pr.id])continue;
+    if(pyProbVeredicto(ped,{sinFecha:true}).k!=='da')continue;
     const nu=pyNuDePedido(pr,ped)||0;if(!(nu>0))continue;
     const cols=(ped.variantesNec||[]).filter(x=>x&&x.v&&(parseInt(x.q)||0)>0).map(x=>[String(x.v),parseInt(x.q)||0]);
     const u=cols.length?cols.reduce((a,[,q])=>a+q,0):cant;
@@ -16651,14 +16641,14 @@ function pedLlenarTodoPlan(g){
   const crA=pyArmadoFilas().filter(f=>pyMomEs(g,f.nom)).reduce((t,f)=>t+f.usd*f.u,0);
   const tope=Math.max(0,pedTopeUSD()-crA-usdP);
   const vivos=candList().filter(candEnArmado).filter(c=>pyMomEs(g,c.nombre));
-  return{prob,usdP:Math.round(usdP*100)/100,crA,tope,N:pedLlenarPlan(vivos,tope,pedMaxU(),pedMinVent(),'combo'),viejos:pedViejosLista(g).filter(v=>!v.cargado)};
+  return{prob,usdP:Math.round(usdP*100)/100,crA,tope,N:pedLlenarPlan(vivos,tope,pedMaxU(),pedMinVent(),'combo')};
 }
 async function pedLlenarTodo(g){return conCandado('pedLlenarTodo:'+(g||''),()=>_pedLlenarTodo(g));}
 async function _pedLlenarTodo(g){
   g=g||null;
   const L=pedLlenarTodoPlan(g),{suma,total}=L.N,topeT=pedTopeUSD();
-  const vjTxt=L.viejos.length?`\n\n⛔ ${L.viejos.length} NO entran: se miraron en ${pyProvNom()} hace ${PY_VIEJO_DIAS} días o más (el precio o el stock pueden haber cambiado):\n`
-    +L.viejos.slice(0,15).map(v=>`  ⛔ ${v.nom} · ${v.d==null?'sin fecha':'hace '+v.d+' d'} · ${v.tipo}`).join('\n')+(L.viejos.length>15?`\n  …y ${L.viejos.length-15} más`:''):'';
+  const _vjN=L.prob.filter(x=>pyProbViejo(x.pr)).length+suma.filter(x=>candViejoPy(x.c)).length;
+  const vjTxt=_vjN?`\n\n⛔ ${_vjN} de éstos se miraron en ${pyProvNom()} hace ${PY_VIEJO_DIAS} días o más: entran en ROJO. Antes de mandar el pedido, que el robot los vuelva a mirar.`:'';
   if(!L.prob.length&&!suma.length){
     alert(`No hay nada para agregar.\n\nTope: ${fmtUS2(topeT)} · ya cargado: ${fmtUS2(L.crA+total)}`
       +(L.N.flojos?`\n${L.N.flojos} nuevos tienen 1 solo vendedor (o ninguno) en el catálogo de ML.`:'')+vjTxt);
@@ -16681,7 +16671,7 @@ async function _pedLlenarTodo(g){
   }
   const saltN=suma.length?await _pedNuevosEscribir(suma):0;
   renderPedidos();
-  toast(`🪄 ${uP} u. de probados y ${uN} u. de nuevos · el pedido queda en ${fmtUS2(fin)}`+((saltP+saltN)?` · ${saltP+saltN} no se cargaron: alguien los cargó o pidió mientras tanto`:'')+(L.viejos.length?` · ⛔ ${L.viejos.length} viejos sin cargar`:''),'info',7000);
+  toast(`🪄 ${uP} u. de probados y ${uN} u. de nuevos · el pedido queda en ${fmtUS2(fin)}`+((saltP+saltN)?` · ${saltP+saltN} no se cargaron: alguien los cargó o pidió mientras tanto`:'')+(_vjN?` · ⛔ ${_vjN} en rojo: hacé correr el robot para que los mire`:''),'info',7000);
 }
 async function pedNuevosVaciar(g){
   const con=candList().filter(c=>(parseInt(c.pedirU)||0)>0).filter(c=>pyMomEs(g||null,c.nombre));
@@ -17408,16 +17398,9 @@ async function _pyArmGuardar(pid,e){
   if(e&&(parseInt(e.u)||0)>0)state.pyArmado[pid]=e;else delete state.pyArmado[pid];
   return true;
 }
-// Probado mirado en Paraguay hace 7+ días: no se le suman unidades (26/10/2026). Sacar siempre se puede.
-function _pyArmFrenoViejo(pr){
-  const vj=pyProbViejo(pr);if(!vj)return false;
-  alert(`No se puede pedir todavía.\n\n${pr?pr.name:''}\n\n⛔ ${vj.txt}.\n\nQue el chat de Chrome lo vuelva a mirar (la rutina) y se destraba solo.`);
-  renderPedidos();return true;
-}
 async function pyArmSet(pid,u){
   u=Math.max(0,parseInt(u)||0);
   const pr=(state.products||[]).find(x=>x.id===pid);
-  if(u>(parseInt(((state.pyArmado||{})[pid]||{}).u)||0)&&_pyArmFrenoViejo(pr))return;
   const vv=_pyArmV((state.pyArmado||{})[pid]);
   // Cargado por color: la casilla del total no adivina a qué color sumar. Con un solo color va a ése; con varios se cambia
   // color por color (en la tarjeta o en el 🧾 Pedido). En 0 saca todo.
@@ -17434,7 +17417,6 @@ async function pyArmSetVar(pid,k,u){
   u=Math.max(0,parseInt(u)||0);
   const cur=(state.pyArmado||{})[pid]||{};
   const vv={...(_pyArmV(cur)||{})};
-  if(u>((vv[k]&&parseInt(vv[k].u))||0)&&_pyArmFrenoViejo((state.products||[]).find(x=>x.id===pid)))return;
   const nom=(vv[k]&&vv[k].c)||window._pyArmCol[pid+'|'+k]||k;
   if(u>0)vv[k]={c:nom,u};else delete vv[k];
   const tot=Object.values(vv).reduce((a,x)=>a+(parseInt(x&&x.u)||0),0);
@@ -17444,7 +17426,6 @@ async function pyArmSetVar(pid,k,u){
 }
 async function pyArmSugeridas(pedId){
   const s=window._pyArmSug[pedId];if(!s)return;
-  if(_pyArmFrenoViejo((state.products||[]).find(x=>x.id===s.pid)))return;
   if(!s.cols.length){await pyArmSet(s.pid,s.total);return;}
   const vv={};for(const[c,q]of s.cols){const k=_pyArmK(c);vv[k]={c,u:((vv[k]&&vv[k].u)||0)+q};}
   const tot=Object.values(vv).reduce((a,x)=>a+x.u,0);
@@ -17560,14 +17541,15 @@ function pedidoMomentoHTML(g){
   const tc=curTC(), u2=n=>fmtUS2(Number(n));
   const crA=A.reduce((t,f)=>t+f.usd*f.u,0), crudoCYC=crA+N.crudo, crudo=crudoCYC+crP, uds=A.reduce((t,f)=>t+f.u,0)+N.unidades+Pp.reduce((t,f)=>t+f.u,0);
   const puesto=crudo*RECARGO_PY, tope=pedTopeUSD();
-  // ⛔ EN ROJO LO MIRADO EN PARAGUAY HACE 7+ DÍAS (26/10/2026): lo cargado arriba (frena el mensaje y "Ya lo pedí") y lo que entraría.
-  const VJ=pedViejosLista(g), VJc=VJ.filter(v=>v.cargado);
+  // ⛔ EN ROJO LO CARGADO QUE SE MIRÓ EN PARAGUAY HACE 7+ DÍAS (26/10/2026): está en el pedido, pero frena el mensaje y "Ya lo pedí"
+  // hasta que el robot lo vuelva a mirar.
+  const VJ=pedViejosLista(g), VJc=VJ;
   const vjBox=VJ.length?`<details style="margin:8px 0 2px;padding:8px 10px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.45);border-radius:8px">
-      <summary style="cursor:pointer;font-size:.72rem;font-weight:700;color:var(--red)">⛔ ${VJ.length} no se pueden pedir: se miraron en ${pyProvNom()} hace ${PY_VIEJO_DIAS} días o más${VJc.length?` · ${VJc.length} ya están cargados`:''} ▾</summary>
-      <div style="font-size:.66rem;color:var(--muted);margin:5px 0 4px;line-height:1.5">El precio o el stock pueden haber cambiado. Que el chat de Chrome los vuelva a mirar (la rutina) y se destraban solos.${VJc.length?' <b style="color:var(--red)">Con uno cargado en rojo no se copia el mensaje ni se marca "Ya lo pedí":</b> miralo o sacalo.':''}</div>
-      ${VJ.slice(0,40).map(v=>`<div style="font-size:.68rem;color:var(--red);line-height:1.6">⛔ ${v.cod?'🔖 '+v.cod+' · ':''}${v.nom} · ${v.d==null?'sin fecha':'hace '+v.d+' d'} · ${v.tipo}${v.cargado?' · <b>cargado</b>':''}</div>`).join('')}${VJ.length>40?`<div style="font-size:.64rem;color:var(--muted)">…y ${VJ.length-40} más</div>`:''}
+      <summary style="cursor:pointer;font-size:.72rem;font-weight:700;color:var(--red)">⛔ ${VJ.length} en rojo: se miraron en ${pyProvNom()} hace ${PY_VIEJO_DIAS} días o más ▾</summary>
+      <div style="font-size:.66rem;color:var(--muted);margin:5px 0 4px;line-height:1.5">Están en el pedido, pero el precio o el stock pueden haber cambiado. <b style="color:var(--red)">Hasta volver a mirarlos no se copia el mensaje ni se marca "Ya lo pedí":</b> hacé correr el robot (la rutina del chat) y se destraban solos.</div>
+      ${VJ.slice(0,40).map(v=>`<div style="font-size:.68rem;color:var(--red);line-height:1.6">⛔ ${v.cod?'🔖 '+v.cod+' · ':''}${v.nom} · ${v.d==null?'sin fecha':'hace '+v.d+' d'} · ${v.tipo}</div>`).join('')}${VJ.length>40?`<div style="font-size:.64rem;color:var(--muted)">…y ${VJ.length-40} más</div>`:''}
     </details>`:'';
-  const btnTodo=`<button class="btn btn-add" style="font-size:.66rem;padding:6px 12px" onclick="pedLlenarTodo(${gArg})" title="1º los probados que pide Pedidos y dan ${PY_PROB_PISO}%+ con el precio de hoy · 2º con lo que queda del tope, los nuevos de ⭐ gana mucho y sale mucho para abajo. Lo mirado en ${pyProvNom()} hace ${PY_VIEJO_DIAS}+ días no entra. No saca nada.">🪄 Llenar con probados y nuevos</button>`;
+  const btnTodo=`<button class="btn btn-add" style="font-size:.66rem;padding:6px 12px" onclick="pedLlenarTodo(${gArg})" title="1º los probados que pide Pedidos y dan ${PY_PROB_PISO}%+ con el precio de hoy · 2º con lo que queda del tope, los nuevos de ⭐ gana mucho y sale mucho para abajo. Lo mirado en ${pyProvNom()} hace ${PY_VIEJO_DIAS}+ días entra en rojo. No saca nada.">🪄 Llenar con probados y nuevos</button>`;
   if(!A.length&&!N.filas.length&&!Pp.length)return `<div style="margin-bottom:16px;padding:12px 13px;background:var(--surface2);border:1px dashed var(--border2);border-radius:10px;font-size:.74rem;color:var(--muted)">🧾 <b style="color:var(--text)">Pedido del momento${gTxt}: vacío.</b> Cargá unidades en <b>✅ Productos probados</b> (la casilla "🧾 pedir" de cada tarjeta) o en <b>🆕 Productos nuevos</b>, y aparece todo acá junto.<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${btnTodo}<button class="btn" style="font-size:.64rem;padding:5px 10px" onclick="pedNuevosLlenar(${gArg})">🪄 Llenar con nuevos</button></div>${vjBox}</div>`;
   const inp=(val,on)=>`<input type="number" min="0" step="1" value="${val}" onchange="${on}" style="width:56px;font-size:.85rem;padding:4px 6px;text-align:center;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text)">`;
   // MINIMALISTA (03/10/2026, él: "como en los otros lados, con las cosas básicas y si quiero data clickear en el
@@ -17615,7 +17597,8 @@ function pedidoMomentoHTML(g){
     f.pr?` · <span style="color:var(--text)">${pedVendTxt(f.pr)}</span>`:'');});
   const maxU=pedMaxU(), minV=pedMinVent();
   const filasN=Ns.map(f=>{const R=candPreciosPartes(f.c);const m=R.margenPct;const P=candPuedePedir(f.c);
-    return fila(f.c.nombre+(P.viejo?_vjTag(candViejoPy(f.c).txt):''),String(f.c.cod||'').trim(),f.u,f.usd,`candSetPedir('${f.c.id}',this.value)`,`candSetPedir('${f.c.id}',0)`,
+    const _vjC=candViejoPy(f.c);
+    return fila(f.c.nombre+(_vjC?_vjTag(_vjC.txt):''),String(f.c.cod||'').trim(),f.u,f.usd,`candSetPedir('${f.c.id}',this.value)`,`candSetPedir('${f.c.id}',0)`,
       (P.ok?'':`<div style="color:var(--red);font-weight:700">${P.bajoPiso?'⚠️ no da: '+P.motivo+' · lo agregaste igual':'🚫 '+P.motivo}</div>`)+(R.dudas.length?'<div style="color:var(--red);font-weight:700">🚨 revisá si es el mismo producto (adentro el detalle)</div>':''),
       R.fotoPY||R.fotoML||'', m!=null?m.toFixed(0)+'%'+(R.margenViejo!=null?' (medido a US$ '+R.margenViejo.toFixed(2)+')':''):null,
       (m==null||R.margenViejo!=null)?'var(--muted)':candPctCol(m,f.c),
@@ -20991,13 +20974,13 @@ function pyProbLocalOk(ped){
     const nu=pyNuDePedido(pr,ped),mx=maxCompraDe(pr,PY_PROB_PISO);if(!mx||mx.motivo||!(nu>0)||!(mx.tc>0))return false;
     const l=perfLocalPct((nu*RECARGO_PY*(1+(mx.dev||0)/100)+(mx.ship||0))*mx.tc,mx.P);return l!=null&&l>=PERF_LOCAL_GAN;}catch(e){return false;}
 }
-function pyProbVeredicto(ped){
+function pyProbVeredicto(ped,o){
   const pr=(state.products||[]).find(x=>x.id===ped.prodId)||prodByName(ped.producto);
   if(!pr)return{k:'sinrev',txt:'sin ficha'};
   if((state.pySinStock||{})[pr.id])return{k:'notiene',txt:'Nissei no lo tenía'};
   const nu=pyNuDePedido(pr,ped), ts=Number(pr.nisseiTs)||0;
   const dias=ts?Math.floor((Date.now()-ts)/864e5):null;
-  if(!(nu>0)||dias==null||dias>=PY_PROB_FRESCO_DIAS)return{k:'sinrev',txt:nu>0?`precio de Nissei de hace ${dias==null?'?':dias} días: falta revisarlo`:'sin precio de Nissei: falta revisarlo'};
+  if(!(nu>0)||((dias==null||dias>=PY_PROB_FRESCO_DIAS)&&!(o&&o.sinFecha)))return{k:'sinrev',txt:nu>0?`precio de Nissei de hace ${dias==null?'?':dias} días: falta revisarlo`:'sin precio de Nissei: falta revisarlo'};
   if(pr.nisseiListado){const dl=Math.floor((Date.now()-Date.parse(pr.nisseiListado+'T12:00:00-03:00'))/864e5);
     if(dl>14)return{k:'sinrev',txt:`comprasparaguay dice "último listado ${pr.nisseiListado.split('-').reverse().slice(0,2).join('/')}": el precio puede no ser el de hoy, preguntá antes`};}
   const mx=maxCompraDe(pr,PY_PROB_PISO);

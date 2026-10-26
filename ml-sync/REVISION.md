@@ -1372,6 +1372,13 @@ es el promedio por día de cada mes (`_lnPromMes`): cada día muestra el de su m
 del gráfico se suman los días desde el 1º aunque queden antes (`_lnPreMes`). Línea de cada producto y general. Probado: sep $5.000/día,
 oct $10.000/día con ventas de prueba. Qué chequear: que el salto caiga justo el día 1 y que el número de "hoy" sea el del mes en curso.
 
+### Etapa 3 · 26/10/2026 · v26.82 · ⛔ Lo viejo se carga y queda en rojo (cambia la v26.77)
+Él, viendo "6 no se pueden pedir" con el pedido vacío: *"que aparezca en rojo si es que está adentro del pedido, y que pueda estar dentro
+del pedido aunque esté en rojo. yo al verlo hago correr el robot para que los mire"*. Ya no frena cargar (`candPuedePedir`, `pyArmSet*`,
+`pedir` del robot); 🪄 Llenar con probados y nuevos los mete (probados con `pyProbVeredicto(ped,{sinFecha:true})`) y avisa cuántos van
+en rojo. El cuadro rojo lista SÓLO lo cargado (`pedViejosLista`). Siguen frenados el 📋 mensaje y "Ya lo pedí". Probado con datos de
+prueba: carga los 2 viejos, cuadro "2 en rojo", mensaje frenado.
+
 ### Etapa 3 · 26/10/2026 · v26.78 · Elegancia apagada
 Él: *"eliminá elegancia. nunca se usa y genera problemas"*.
 - **Qué es:** la web ya no deja elegir Elegancia ni muestra la fila "Proveedor:" (`PY_PROVS_VER=['nissei']`; quien la tenía guardada

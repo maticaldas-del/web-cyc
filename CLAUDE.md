@@ -360,9 +360,10 @@
   pedido (📷, `mlapi/pyticketfoto/<id>`, `cyc/compraspy/<id>/ticketFoto` = cuántas). **Si me la pasa por el chat la subo yo y se tiene que VER en el detalle** (26/10, él: *"siempre subí vos eso"* y *"siempre quiero ver"*): la cierro con la llave del robot (`mlapi/ticketllave`; script en REVISION etapa 3) en `ml-sync/cifrado/<id>/*.enc` y `ticketsube:<id>;go` (ml-sync) la sube; nunca en claro al repo ni al registro. Sin las dos no se cierra (web y `pyped:llego`);
   arriba de Pedidos Paraguay sale en rojo lo que falta (todo lo en camino y lo pedido desde el 25/10). Datos del mayorista: no al repo.
   Con dos tipos el mismo día pide `|repo`/`|nuevos`.
-- **⛔ Mirado en Paraguay hace 7+ días no se pide** (26/10, él: *"pudo modificarse el precio o el stock y que no deje pedirlo"*): en rojo
-  arriba del pedido; no se carga, no sale el mensaje para Nissei ni "Ya lo pedí" (web) ni `pedir` (robot). Se destraba al volver a mirarlo
-  (rutina del chat → renglones `visto:` del buzón → `pyprecio`/`candprecio`). Lo ya pagado (`pyped:repo`/`nuevos`) sí se registra.
+- **⛔ Mirado en Paraguay hace 7+ días = en ROJO dentro del pedido** (26/10, él: *"que pueda estar dentro del pedido aunque esté en rojo.
+  yo al verlo hago correr el robot para que los mire"*): se carga igual (casilla, botones de llenar, `pedir`); lo que frena es copiar el
+  mensaje para Nissei y "Ya lo pedí" hasta que se vuelva a mirar (rutina del chat → `visto:` del buzón → `pyprecio`/`candprecio`). Lo ya
+  pagado (`pyped:repo`/`nuevos`) sí se registra.
   **🪄 Llenar con probados y nuevos**: 1º probados que pide Pedidos con 35%+ hoy, 2º nuevos por ⭐ hasta el tope.
 - **Cuántas de cada nuevo** (`candMaxU`, 21/10): barato ≤US$15 → 3 · caro >US$60 → 1 · resto 2.
 - **Al chat local se le pasa SÓLO lo que interesa** (22/10, *"siempre pasame el promt con la mercaderia que si interesa"*): el texto
