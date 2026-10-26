@@ -143,9 +143,10 @@ for p in P:
         out.append(dict(cab=f"caja:{p['id']}@{cta}",q=q,cola=f"{b} · hay {p['full']} en Full y {p['cam']} en camino · {txt_dias(D,por)} hacen falta {r*D:.0f} · en la oficina {p['casa']}",
                         cta=cta,nom=p['n'][:38],gan=p['gan'],grande=p['grande'],enCero=(p['full']+p['cam'])==0,dias=((p['full']+p['cam'])/r if r>0 else None)))
         if D==T_LARGO: largos.append(p['n'][:38])
+CAJA_CORTE_DIAS=14   # la próxima caja llega en ~2 semanas (= CAJA_CORTE_DIAS de index.html)
 def llenar_cupo(cands,tope_peq,tope_gra):
     # La regla de la web (`cajaLlenarCupoPlan`, index.html), traída tal cual: orden por lo que deja cada unidad (sin dato al final,
-    # pero no afuera), después el que está en cero y después el que menos días tiene. RONDA 1: una unidad a cada uno. RONDA 2:
+    # pero no afuera), después el que está en cero y después el que menos días tiene. RONDA 1: una unidad a lo que está en 0 o se corta en 14 días. RONDA 2:
     # llenar con lo que más deja. Devuelve cuántas recibe cada uno (por índice).
     lib={'peq':float('inf') if tope_peq is None else max(0,tope_peq),'gra':float('inf') if tope_gra is None else max(0,tope_gra)}
     dado={}
@@ -153,8 +154,12 @@ def llenar_cupo(cands,tope_peq,tope_gra):
     def sumar(i,n):
         c=cands[i];b='gra' if c['grande'] else 'peq';d=min(n,lib[b],c['q']-dado.get(i,0))
         if d>0: dado[i]=dado.get(i,0)+d;lib[b]-=d
+    # 26/10/2026 (él: "siempre priorizamos ganar más, no cubrir stock"): la unidad de la ronda 1 va SÓLO a lo que está en 0 o
+    # se corta antes de la próxima caja (CAJA_CORTE_DIAS, igual que la web). Dar 1 a cada uno se comía el cupo chico con lo que
+    # tiene stock para 25-45 días (caja de Ayelen: $138.406 contra $360.793). Sin ganancia medida (nunca vendió y sin
+    # publicación con precio) no entra en la ronda 1: va al final, como antes.
     for i in orden:
-        if cands[i]['q']>0: sumar(i,1)
+        if cands[i]['q']>0 and cands[i]['gan'] is not None and (cands[i]['enCero'] or (cands[i]['dias'] is not None and cands[i]['dias']<CAJA_CORTE_DIAS)): sumar(i,1)
     for i in orden:
         if cands[i]['q']>0: sumar(i,cands[i]['q']-dado.get(i,0))
     return {i:int(dado.get(i,0)) for i in range(len(cands))}

@@ -811,6 +811,11 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 
 ## 3 · MERCADERÍA (miércoles)
 
+### 📦 La caja se llena por plata, no por cubrir stock (26/10/2026, v27.13, él: *"siempre priorizamos ganar más, no cubrir stock"*)
+- **Qué es:** con cupo chico, "Cargar lo que entra en el cupo" da la primera unidad SÓLO a lo que está en 0 o se corta en 14 días (`CAJA_CORTE_DIAS`) y después llena por lo que más deja cada unidad (el lugar en Full no vuelve al vender). Antes daba 1 a cada uno y se comía el cupo con lo que tiene stock para 25-45 días. Lo nuevo que nunca vendió cuenta con lo que deja hoy su publicación (`margenMLDe` × costo); sin publicación con precio, al final como antes.
+- **Dónde vive:** `cajaLlenarCupoPlan` y `cajaGanUnidad` (`index.html`) · `llenar_cupo` (`ml-sync/notas/decide_cajas.py`, misma regla).
+- **Qué chequear:** caja de Ayelen del 26/10 (19 lugares, 28 productos): web y robot dan la misma caja (Mouse 4 · Lupa 100mm 7 · Separador 2 · 1 a Triples Negro, Kit, Cinta 7.5M, Balanza, p47, Gua Sha) = $360.793 contra $138.406 de la regla vieja. Que lo que está en 0 nunca quede sin su unidad si tiene ganancia medida.
+
 ### 🧾 `pyped:nuevos:<resto|perf|elegancia>` (26/10/2026, él pagó sólo el pedido de Resto)
 - **Qué es:** "Ya lo pedí" de los productos nuevos de UN solo pedido del momento (Nissei resto `py…`, perfumería `pyb…`, Elegancia `pyel…`); antes marcaba los tres juntos.
 - **Qué chequear:** que los otros dos sigan en el armado con sus unidades · que lo de uso personal pase al historial sólo del que se pidió.
