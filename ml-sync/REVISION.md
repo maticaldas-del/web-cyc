@@ -1379,6 +1379,12 @@ es el promedio por día de cada mes (`_lnPromMes`): cada día muestra el de su m
 del gráfico se suman los días desde el 1º aunque queden antes (`_lnPreMes`). Línea de cada producto y general. Probado: sep $5.000/día,
 oct $10.000/día con ventas de prueba. Qué chequear: que el salto caiga justo el día 1 y que el número de "hoy" sea el del mes en curso.
 
+### Etapa 3 · 26/10/2026 · 📦 `devcodigo[:días]`: dónde guarda ML el código de una devolución
+Él: *"cada tanto llegan devoluciones que van con QR. ¿vos podés verlas cuando llegan? ¿y mandarme el código a Telegram? revisar cada 2 h
+… de las cuatro cuentas"*. Primer paso, sólo lee: recorre los reclamos con devolución de las 4 cuentas y de la devolución y su envío
+imprime los NOMBRES de campo con pinta de código (nunca el valor: el registro es público) y a dónde va cada una. Qué chequear: que no
+imprima ningún código ni dato del comprador.
+
 ### Etapa 7 · 26/10/2026 · v26.96 · 🛒 Ventas: buscador y filtros abajo de la lista
 Él (con la foto de "VENTAS · fecha · Buscar · Filtros · Mostrando"): *"poner esto abajo de las ventas"* y *"sigue apareciendo esto"* (en
 la v26.94 sólo había sacado el botón azul). El renglón del título + 🔍 y el ⚙️ Filtros van debajo de `#vp-day-list`. Qué chequear: la

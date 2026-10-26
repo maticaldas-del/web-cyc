@@ -19929,6 +19929,64 @@ async function main() {
         : '\n⚠️ NO quedó: lo releí de la base y sigue como estaba.');
       return;
     }
+    // BILLING_PROBE=devcodigo[:<días>] → ¿DÓNDE GUARDA ML EL CÓDIGO PARA RECIBIR UNA DEVOLUCIÓN? (26/10/2026, él: "cada tanto llegan
+    // devoluciones que van con QR. ¿vos podés verlas cuando llegan? ¿y mandarme el código a Telegram?"). Recorre los reclamos de las 4
+    // cuentas con devolución y, de la devolución y de su envío, imprime SÓLO los NOMBRES de los campos que parecen un código (code, pin,
+    // auth, verif, qr, token, key, secret) con su tipo y largo — nunca el valor: el registro es público y el código abre la entrega.
+    // También a dónde va cada devolución (al depósito de Full o a tu dirección). Solo LEE.
+    if (String(process.env.BILLING_PROBE || '').startsWith('devcodigo')) {
+      const DIAS = parseFloat(String(process.env.BILLING_PROBE).split(':')[1]) || 30;
+      const desde = Date.now() - DIAS * 864e5;
+      const RX = /code|cod|pin|auth|verif|qr|token|key|secret|otp/i;
+      const huella = (o, pre = '', out = [], prof = 0) => {
+        if (!o || typeof o !== 'object' || prof > 6) return out;
+        for (const [k, v] of Object.entries(o)) {
+          const ruta = pre ? pre + '.' + k : k;
+          if (RX.test(k) && (v == null || typeof v !== 'object')) out.push(`${ruta} (${v == null ? 'vacío' : typeof v + ' de ' + String(v).length})`);
+          if (v && typeof v === 'object') huella(v, Array.isArray(v) ? pre + '.' + k + '[]' : ruta, out, prof + 1);
+        }
+        return out;
+      };
+      console.log(`=== DEVOLUCIONES DE LOS ÚLTIMOS ${DIAS} DÍAS · dónde está el código para recibirlas (sólo nombres de campo) ===`);
+      for (const l of labels) {
+        const acc = accounts[l]; if (!acc?.refresh_token) { console.log(`\n${l}: no pude entrar`); continue; }
+        let t; try { t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); } catch { console.log(`\n${l}: no pude entrar`); continue; }
+        try { await db.patch('mlapi/tokens/' + l, { refresh_token: t.refresh_token, updated_ts: Date.now() }); } catch { /* no rompe */ }
+        const tok = t.access_token;
+        const cls = [];
+        for (const st of ['opened', 'closed']) {
+          for (let off = 0; off < 200; off += 50) {
+            let r; try { r = await mlGet(`/post-purchase/v1/claims/search?status=${st}&limit=50&offset=${off}`, tok); } catch (e) { console.log(`\n${l}: reclamos ${st}: ${String(e.message || e).replace(/\d{6,}/g, '…').slice(0, 90)}`); break; }
+            const d = r?.data || []; cls.push(...d);
+            if (d.length < 50) break;
+          }
+        }
+        const rec = cls.filter((c) => Date.parse(c.last_updated || c.date_created || 0) >= desde);
+        console.log(`\n── ${l.toUpperCase()} · ${cls.length} reclamos leídos · ${rec.length} movidos en ${DIAS} d ──`);
+        let conDev = 0;
+        for (const c of rec) {
+          let rr = null;
+          try { const r = await mlGet(`/post-purchase/v2/claims/${c.id}/returns`, tok); rr = Array.isArray(r) ? r[0] : (r?.data?.[0] || r); } catch { rr = null; }
+          if (!rr || !rr.status) continue;
+          conDev++;
+          const envs = Array.isArray(rr.shipments) ? rr.shipments : [];
+          const dest = envs.map((x) => (x.destination && (x.destination.name || x.destination.type)) || '?').join('/');
+          console.log(`  reclamo ${_idPub(c.id)} · devolución ${rr.status}${rr.subtype ? ' · ' + rr.subtype : ''} · va a: ${dest || '?'} · envíos ${envs.map((x) => (x.status || '?') + (x.type ? ' ' + x.type : '')).join(', ') || '—'}`);
+          const h1 = huella(rr);
+          console.log(`     campos con pinta de código en la devolución: ${h1.length ? h1.join(' · ') : 'ninguno'}`);
+          for (const x of envs) {
+            const sid = x.shipment_id || x.id; if (!sid) continue;
+            let sh = null; try { sh = await mlGet(`/shipments/${sid}`, tok); } catch { sh = null; }
+            if (!sh) { console.log(`     envío ${_idPub(sid)}: ML no lo dio`); continue; }
+            const h2 = huella(sh);
+            console.log(`     envío ${_idPub(sid)} · ${sh.status || '?'}${sh.substatus ? '/' + sh.substatus : ''} · modo ${sh.mode || '?'} · ${sh.logistic_type || '?'} · campos con pinta de código: ${h2.length ? h2.join(' · ') : 'ninguno'}`);
+          }
+        }
+        console.log(`  ${conDev} con devolución`);
+      }
+      console.log('\n(esto solo LEE y no imprime ningún código)');
+      return;
+    }
     // BILLING_PROBE=unreclamo:<id> → TODO SOBRE UN RECLAMO, SIN RECORTAR.
     //
     // El probe `posventa` muestra los reclamos en fila y corta los mensajes a 300 letras, que
