@@ -87,6 +87,13 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
 - **Qué es:** en `frenosBajas` (todas las bajas: `decido`, `entrarpromo`, la puerta de `setPriceTo`), si la ficha o el título es perfume (`esPerfumeNom`) y el precio nuevo deja menos de 10% en el peor caso, frena; el texto dice si está cerca de pagar stock antiguo → avisarle para retirarlo al local. `!bajocero` con su autorización lo abre.
 - **Qué chequear:** que agarre los VS, Paulvic y Persea (y no un "Splash" que no sea perfume) · el Cyber del Coconut y la escalera del Pure Seduction pasan por acá · que los avisos de retiro le lleguen en el chat, no por Telegram.
 
+### `pausadas`: las que pausó él a propósito no se avisan (26/10/2026, él: "no avises más de esas")
+- **Qué es:** las pausadas con stock en Full cuyo freno es "pausada a mano con el comando pausar" (hoy las 35 gemelas de envío gratis de
+  Paulvic, su 11b del 25/10) ya no se listan una por una ni van al aviso de "no las puedo medir": salen en UN renglón con el total y no
+  cuentan en "N no". Las vueltas no las vuelven a nombrar en el chat.
+- **Dónde vive:** `sync.mjs`, bloque de pausadas con stock (`sinMedir`, el resumen "Activar pausadas con Full" y el listado `aProposito`).
+- **Qué chequear:** que una pausada por otro motivo (sin costo, sin ficha, la pausó ML) siga saliendo con su renglón.
+
 ### `ventasraras`: 💰 punto con precio probado ya cuenta como "con techo" (26/10/2026)
 - **Qué es:** en 🧭 ESTRATEGIA DE LO QUE VENDIÓ, una publicación en 💰 `punto` con su precio probado anotado en `techofreno` sale ✓ (antes
   ⚠️ "sin estrategia con techo" y se iba al ayudante a fondo: la Lupa 90 y el Filtro de agua el 26/10, falsos avisos). 💰 punto sin precio

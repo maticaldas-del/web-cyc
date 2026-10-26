@@ -44,6 +44,8 @@ puede medir, también su freno en `frenosBajas`; si se pasó por una bandera de 
 - (26/10) Pedido del momento, orden "vende y gana": el Sony EX15C (146%, 1693 reseñas) quedó último ("parece joda"). Pasó porque multipliqué sólo las vendidas cargadas, y las del Sony estaban sin cargar; no usé la nota que ya existía en Productos nuevos. Cambié: el orden usa la misma nota ⭐ (% × salida, con reseñas × 20). Mismo patrón buscado: 1 más, el orden por ventas de la misma pantalla (arreglado igual).
 - (25/10) Le dije que la revisión de diseño era del 01/10 y la hizo el 20/10 ("fijate bien"); y le pasé como decisiones nuevas dos cosas ya hechas (cargos de Full solos del 21/10, precios viejos estimados del 24/10). Pasó porque leí REV_HECHAS (lo resuelto entero) y no REV_HIST (la última corrida), y la lista de ideas no tenía marcado lo hecho. Cambié: la fecha de una etapa es la más nueva de las dos (como `revUltCorrida`), y cada idea hecha se marca en ideas.md al hacerla.
 
+- (26/10) Le repetí en cada vuelta "35 pausadas de Paulvic, no activé ninguna" cuando las pausó él a propósito (11b). Él: "no avises más de esas". Pasó porque el listado de pausadas las mostraba igual que una alarma. Cambié: `pausadas` las junta en un renglón y no las cuenta; pregunta 35.
+
 ## Conteo de los lunes
 - **26/10 (semana 19-25/10): 23 correcciones** (19/10: 2 · 20/10: 3 · 21/10: 1 · 22/10: 2 · 23/10: 5 · 24/10: 7 · 25/10: 3). Semana anterior: sin registro (el archivo arrancó el 19/10), así que ésta es la base. Las que más se repiten: datos de Paraguay mal cruzados (código/color/catálogo/pack: 5) y bajas o estrategias que rompían una regla de techo (4). Meta: que la del 02/11 dé menos.
 
