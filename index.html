@@ -224,11 +224,11 @@ html,body{overflow-x:hidden;max-width:100%}html{overflow-x:clip}body{overscroll-
    Sólo en el teléfono: el logo no se dibuja y el dólar baja al final de Inicio (antes de "en línea"). */
 /* 26/10/2026, él (en la PC): "esta parte quiero que se haga como en el celu, sacar cyc y el dólar ponerlo ahí abajo" → en TODOS lados. */
 #home-dolar-logo{display:none!important}#home-cab{order:98;margin:10px auto 6px}#page-home .home-status{order:99}
-/* LA PC USA EL ANCHO (26/10/2026, él: "la de pc está media hecha como para celular, no utiliza el ancho máximo… más que nada el inicio"):
-   en pantalla ancha las dos tarjetas de Ventas van una al lado de la otra (los totales a la izquierda, el detalle y el calendario a la
-   derecha), en el mismo ancho que la grilla de tarjetas. En el celular y la tablet, igual que antes (una abajo de la otra). */
-@media(min-width:1100px){#home-hoy{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:14px;max-width:1100px;margin:0 auto;align-items:start}
-  #home-hoy>div{max-width:none!important;margin:0!important;width:auto!important}}
+/* LA PC USA EL ANCHO (26/10/2026, él: "la de pc está media hecha como para celular, no utiliza el ancho máximo… más que nada el inicio";
+   lado a lado le pareció "horrible. uno arriba y otro abajo"): las dos tarjetas de Ventas una abajo de la otra, cada una del ancho de la
+   grilla de tarjetas (1100 px; 1440 en pantalla grande) en vez de 760. En el celular y la tablet, igual que antes. */
+@media(min-width:1100px){#home-hoy{max-width:1100px;margin:0 auto}
+  #home-hoy>div{max-width:none!important;margin-left:0!important;margin-right:0!important}}
 .nav-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px 22px 44px;cursor:pointer;transition:all .18s;position:relative;overflow:hidden;text-align:left;height:100%}
 .nav-card:hover{transform:translateY(-2px);border-color:var(--border2)}
 .nav-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;transition:opacity .18s}
@@ -2989,7 +2989,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.85';
+const APP_VERSION='26.86';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3002,7 +3002,8 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
-  {v:'26.85',f:'26/10',h:'17:10',c:[{n:2,t:'🖥️ Inicio en la PC: sin el logo grande de arriba y con el dólar al final (como en el celular); las dos tarjetas de Ventas van una al lado de la otra y usan el ancho de la pantalla.'}]},
+  {v:'26.86',f:'26/10',h:'17:25',c:[{n:1,t:'🖥️ Inicio en la PC: las dos tarjetas de Ventas vuelven a ir una abajo de la otra, pero anchas.'}]},
+  {v:'26.85',f:'26/10',h:'17:10',c:[{n:2,t:'🖥️ Inicio en la PC: sin el logo grande de arriba y con el dólar al final (como en el celular); las dos tarjetas de Ventas, una abajo de la otra, usan el ancho de las tarjetas de abajo.'}]},
   {v:'26.84',f:'26/10',h:'16:55',c:[{n:3,t:'⚡ La web abre y anda más liviana: ya no baja toda la base (13,6 MB) sino sólo lo que usa; los candidatos de Paraguay (3,8 MB) se bajan al entrar a Pedidos; cuando el robot escribe varias cosas seguidas se procesa una sola vez, y con la pestaña escondida no procesa nada hasta que volvés.'},{n:2,t:'🔄 Pedidos → Paraguay: al lado de "Falta reponer" dice hace cuántos días fue la última vuelta COMPLETA por la web de Nissei (90% o más de los productos).'}]},
   {v:'26.83',f:'26/10',h:'16:25',c:[{n:2,t:'🧾 Paraguay: cada producto nuevo pide unidades hasta llegar a US$ 20, máximo 4 (US$ 21 → 1 · US$ 19 → 2 · US$ 9 → 3 · US$ 5 o menos → 4). Se sacó la casilla "U. por nuevo".'},{n:2,t:'🗑️ Un solo botón Vaciar: saca TODO lo del pedido (probados, nuevos y uso personal). Ya no están Vaciar probados ni Vaciar nuevos.'}]},
   {v:'26.82',f:'26/10',h:'16:00',c:[{n:2,t:'⛔ Paraguay: lo mirado hace 7 días o más SE PUEDE cargar (también con los botones de llenar) y queda en rojo dentro del pedido. Lo único que frena es copiar el mensaje y "Ya lo pedí", hasta que el robot lo vuelva a mirar.'}]},

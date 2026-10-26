@@ -1382,8 +1382,8 @@ oct $10.000/día con ventas de prueba. Qué chequear: que el salto caiga justo e
 ### Etapa 7 · 26/10/2026 · v26.85 · 🖥️ Inicio en la PC
 Él: *"esta parte quiero que se haga como en el celu, sacar cyc y el dólar ponerlo ahí abajo. además la de pc está media hecha como para
 celular, no utiliza el ancho máximo… más que nada el inicio"*. El logo no se dibuja en ningún lado y el dólar va al final (antes sólo en
-el celular). Desde 1100 px las dos tarjetas de Ventas van lado a lado (5:7) con el mismo ancho que la grilla; desde 1560 px las dos
-pasan a 1440 px. Dibujado a 390 · 1400 · 1920 px: el celular queda igual que antes.
+el celular). Desde 1100 px las dos tarjetas de Ventas van una abajo de la otra con el ancho de la grilla (1100; 1440 desde 1560 px) en vez
+de 760. (v26.85 las puso lado a lado y él: *"horrible. uno arriba y otro abajo"* → v26.86.) Dibujado a 390 · 1400 · 1920 px: el celular queda igual que antes.
 - **Qué chequear:** en la PC, con el mes elegido (calendario largo) que la tarjeta de la derecha no quede cortada.
 
 ### Etapa 4 · 26/10/2026 · v26.84 · ⚡ La web ya no baja `cyc` entero
