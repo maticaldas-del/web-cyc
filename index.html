@@ -2962,7 +2962,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.79';
+const APP_VERSION='26.80';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2975,6 +2975,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.80',f:'26/10',h:'15:20',c:[{n:2,t:'💵 Plata por día: la línea verde es el promedio por día de cada MES (octubre, noviembre…); el mes en curso, lo que va del mes. En la línea de cada producto y en la general.'}]},
   {v:'26.79',f:'26/10',h:'15:05',c:[{n:2,t:'💵 Plata por día: la línea verde ahora es el promedio de 15 días (antes 7), en la línea de cada producto y en la general.'}]},
   {v:'26.78',f:'26/10',h:'14:20',c:[{n:2,t:'🇵🇾 Paraguay: Elegancia sale del panel (no se usa). Queda sólo Nissei, sin la fila de proveedor. Sus datos quedan guardados y el robot deja de medir su catálogo.'}]},
   {v:'26.77',f:'26/10',h:'14:05',c:[{n:3,t:'🪄 Pedido de Paraguay: botón nuevo "Llenar con probados y nuevos". Primero carga los probados que pide Pedidos y dan 35%+ con el precio de hoy, y con lo que queda del tope los nuevos de ⭐ gana mucho y sale mucho para abajo.'},{n:3,t:'⛔ Lo mirado en Paraguay hace 7 días o más sale en rojo y no se puede pedir: no se carga, no se copia el mensaje para Nissei y no se marca Ya lo pedí hasta volver a mirarlo o sacarlo.'}]},
@@ -11181,9 +11182,15 @@ function prodById(id){return id?(state.products||[]).find(p=>p.id===id):null;}
 let _lineaRango=365, _lineaCache={}, _lineaDetAb=false;
 function _lineaFmtDia(k){const q=k.split('_');return q[2]+'/'+q[1]+'/'+q[0].slice(2);}
 // Incluye HOY (07/10/2026, él: "el último día que muestra es de ayer. se puede poner el de hoy aunque sea incompleto").
-// 💵 PLATA POR DÍA: PROMEDIO DE 15 DÍAS (26/10/2026, él: "línea en vez de 7 días 15 días"). Antes 7. Vale para la línea de cada
-// producto y la general; los días de antes del gráfico se agregan solos (LN_PROM_DIAS − 1).
-const LN_PROM_DIAS=15;
+// 💵 PLATA POR DÍA: PROMEDIO POR MES CALENDARIO (26/10/2026, él: "en vez de 15 días, quiero que sea por mes, no cada 30 días. por mes";
+// antes 7 y un rato 15). Cada día muestra el promedio por día de SU mes; el mes en curso, el de lo que va del mes. Para el primer mes del
+// gráfico se suman los días desde el 1º aunque queden antes del gráfico (`_lnPreMes`). Vale para la línea de cada producto y la general.
+const _MESES_LN=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+function _lnMesNom(k){return _MESES_LN[(parseInt(String(k).slice(5,7),10)||1)-1]||'';}
+function _lnPreMes(ks){return ks&&ks.length?Math.max(0,(parseInt(String(ks[0]).slice(8,10),10)||1)-1):0;}
+// {k: promedio por día del mes de k}, contando sólo los días con dato (`dato`) hasta hoy.
+function _lnPromMes(ksAll,ks,ganK,dato){const M={};ksAll.forEach(k=>{if(!dato(k))return;const o=(M[k.slice(0,7)]=M[k.slice(0,7)]||{t:0,n:0});o.t+=Number(ganK(k))||0;o.n++;});
+  const out={};ks.forEach(k=>{const o=M[k.slice(0,7)];if(o&&o.n)out[k]=o.t/o.n;});return out;}
 function _lineaDias(n){const out=[];const hoy=new Date();for(let i=n-1;i>=0;i--){const d=new Date(hoy.getTime()-i*864e5);out.push(dateToKey(d));}return out;}
 // EL STOCK NO SE SUMA DOS VECES (08/10/2026, él con el Centímetro: "aumentó el costo, el precio y el %"; la línea de
 // stock decía 413 u. y había ~107). Cada publicación guarda el stock de SU clave (producto×cuenta, o el color si la
@@ -11646,15 +11653,15 @@ function lineaPintar(prodId){
   // un día suelto sube y baja demasiado. Sale de `gd`, la MISMA ganancia que Ventas.
   // LOS 6 DÍAS ANTERIORES AL PERÍODO TAMBIÉN CUENTAN (07/10/2026, él: "falta esa línea de ganancia por día"):
   // sin ellos la línea arrancaba recién el 7º día del gráfico. Misma cuenta que `gd` (neto − efectivoCostoVP).
-  const _ksAll=_lineaDias(ks.length+LN_PROM_DIAS-1).slice(0,LN_PROM_DIAS-1).concat(ks);
+  const _preN=_lnPreMes(ks);const _ksAll=_lineaDias(ks.length+_preN).slice(0,_preN).concat(ks);
   // Etapa 2 (20/10/2026): el neto "vendido solo" (`netoProductoVP`), igual que `gd`: un carrito no infla la ganancia de antes.
   // (21/10/2026 · etapa 5) Los 6 días de antes salen de la MISMA cuenta que `gd` (`_gdPanel`, y si no hay ventas del panel la
   // estimación de los días viejos `_gdViejo`), y el promedio de 7 se dibuja recién cuando los 7 días tienen dato: antes un día sin
   // dato contaba como $0 y la línea arrancaba en 1/7 de lo real y subía de a escalones aunque se vendiera parejo.
-  const _ganPre={};_ksAll.slice(0,LN_PROM_DIAS-1).forEach(k=>{const g=_gdPanel(k)||_gdViejo(k);if(g)_ganPre[k]=g.gan;});
+  const _ganPre={};_ksAll.slice(0,_preN).forEach(k=>{const g=_gdPanel(k)||_gdViejo(k);if(g)_ganPre[k]=g.gan;});
   const _ganK=k=>gd[k]?gd[k].gan:(_ganPre[k]||0);
   const _ganDato=k=>!!gd[k]||_ganPre[k]!=null||(!!_vp1&&k>=_vp1)||(!!dias[k]&&dias[k].u===0);
-  const g7={};ks.forEach((k,i)=>{const ia=i+LN_PROM_DIAS-1;let t=0;for(let j=ia-LN_PROM_DIAS+1;j<=ia;j++){if(!_ganDato(_ksAll[j]))return;t+=_ganK(_ksAll[j]);}g7[k]=t/LN_PROM_DIAS;});
+  const g7=_lnPromMes(_ksAll,ks,_ganK,_ganDato);
   const g7v=Object.values(g7);const gMax=g7v.length?Math.max(0,...g7v):1,gMin=g7v.length?Math.min(0,...g7v):0;
   // ORDEN Y TÍTULOS (22/10/2026, eligió 1a 2a 3a con la Codera: "cuesta entender"): el precio primero (es lo que se decide), después
   // ventas, plata por día, %, stock, remate y caja. Cada franja deja LN_TG arriba para su título y el número de hoy (`_lnHdr`).
@@ -11905,7 +11912,7 @@ function lineaPintar(prodId){
     const _h=`${_lineaFmtDia(k)}${d&&d.hoy?' · HOY (incompleto: hasta ahora)':''}`;
     const _vent=d&&d.u!=null&&d.u>0?[`🛒 vendió ${d.u} u.`,`🟩 normales: ${d.u-(d.uP||0)-(d.uG||0)-(d.uR||0)}`,d.uP?`🟧 Premium: ${d.uP}`:'',d.uG?`🟦 envío gratis: ${d.uG}`:'',d.uR?`📦 liquidadas (sacando stock): ${d.uR}`:''].filter(Boolean).join('\n'):(k>=_gd0||(d&&d.u===0)?'🛒 no vendió':'🛒 ventas: sin dato');
     const _pctU=!gd[k]&&pdUlt[k]?`💰 % ganancia de la última venta (${_lineaFmtDia(pdUlt[k][1])}): ${pdUlt[k][0].toFixed(0)}%`:'';
-    const _g7=g7[k]!=null?`💵 ganancia promedio de los últimos ${LN_PROM_DIAS} días: ${fmt(Math.round(g7[k]))} por día`:`💵 promedio de ${LN_PROM_DIAS} días: todavía no hay ${LN_PROM_DIAS} días con dato`;
+    const _g7=g7[k]!=null?`💵 promedio de ${_lnMesNom(k)}${k.slice(0,7)===dateToKey(new Date()).slice(0,7)?' (lo que va del mes)':''}: ${fmt(Math.round(g7[k]))} por día`:`💵 promedio de ${_lnMesNom(k)}: sin dato`;
     // Sin costo cargado no hay % (deja $0, regla del 26/09) · con neto estimado va "≈", como el renglón de Ventas (21/10/2026 · etapa 5).
     const _gan=gd[k]?(gd[k].sinCosto?`💰 ganancia ${fmt(gd[k].gan)} · sin costo cargado (no hay % que mostrar)`:`💰 ${gd[k].est?'≈ ganancia estimada':gd[k].estV?'≈ ganancia':'ganancia'} ${fmt(gd[k].gan)}${(()=>{const q=pctGananciaVP(gd[k].gan,gd[k].costo,gd[k].gest);return q!=null&&isFinite(q)?` (${q.toFixed(0)}%)`:'';})()}${gd[k].estV&&!gd[k].est?' · neto estimado: ML todavía no liquidó':''}`):'';
     // EL DÍA CON CARRITO (21/10/2026 · etapa 5): acá la ganancia es la de cada producto "vendido solo" (`netoProductoVP`); en Ventas
@@ -12013,7 +12020,7 @@ function lineaPintar(prodId){
   const _lnHdrs=_lnHdr('pr','💲 Precio',_lgS('var(--text)','color = estrategia')+(_rayas&&(_rayas.best||_rayas.techo)?_lgS('#eab308','💰 más plata')+_lgS('var(--red)','🔴 techo'):''),
       `${pFin?'hoy <b>'+fmt(pFin)+'</b>':''}${_prNotas.length?' · <span style="color:var(--muted)">'+_prNotas.join(' · ')+'</span>':''}${_prRayasDe?` <span style="color:var(--muted);cursor:help" title="Hay más de una publicación activa a precios distintos (por ejemplo la Clásica y su gemela Premium): las rayas se miden con la de precio más bajo sola, como el robot (techo95). Es la ${_prRayasDe}.">ⓘ</span>`:''}`)
     +_lnHdr('vent','🛒 Ventas y visitas',_lgS('var(--green)','vendidas',1)+(uPT?_lgS('#f97316','Premium',1):'')+(uGT?_lgS('#38bdf8','envío gratis',1):'')+(uRT?_lgS('#facc15','remate',1):'')+(hayVis?_lgS('#60a5fa','visitas',1):''),`<b>${uT} u.</b> · ${vT} visitas`)
-    +_lnHdr('gan','💵 Plata por día',_lgS('var(--green)','promedio de '+LN_PROM_DIAS+' días')+_lgS('#a78bfa','semana')+_lgS('rgba(34,197,94,.5)','días del mes que se vende más',1)+_lgS('rgba(239,68,68,.45)','días flojos',1)+_lgS('rgba(245,158,11,.6)','fecha especial',1),_gHoy!=null?`hoy <b>${fmt(Math.round(_gHoy))}</b> por día`:'')
+    +_lnHdr('gan','💵 Plata por día',_lgS('var(--green)','promedio del mes')+_lgS('#a78bfa','semana')+_lgS('rgba(34,197,94,.5)','días del mes que se vende más',1)+_lgS('rgba(239,68,68,.45)','días flojos',1)+_lgS('rgba(245,158,11,.6)','fecha especial',1),_gHoy!=null?`hoy <b>${fmt(Math.round(_gHoy))}</b> por día`:'')
     +_lnHdr('pct','📊 % de ganancia',(pvs.length?_lgS('var(--green)','% de lo vendido'):'')+(cvs.length?_lgS('#f59e0b','costo'):''),`${_pctHoy!=null?`<b style="color:${pctColor(_pctHoy)}">${Math.round(_pctHoy)}%</b> la última venta`:''}${_pctCosto>0?` · costo <span style="color:#f59e0b">${fmt(Math.round(_pctCosto))}</span>`:''}`)
     +_lnHdr('st','📦 Stock en Full',_lgS('var(--green)','con stock',1)+_lgS('var(--red)','sin stock',1)+_lgS('#38bdf8','▼ llegó')+_lgS('var(--red)','edad del stock',1),`<b style="color:${_stI.cHoy||'var(--text)'}">${_stI.q!=null?_stI.q:'—'} u.</b>${_stI.stTxt&&_stI.q>0?' · '+_stI.stTxt:''}${_stReloj?' · <span style="color:var(--red)">'+_stReloj+'</span>':''}`)
     +_lnHdr('est','📦 Sacando stock',_lgS('#f97316','sobra / liquidando / remate · abajo del 35% desde el 24/10',1)+_lgS('#a855f7','escalera vieja del robot',1),'')
@@ -12088,7 +12095,7 @@ function lineaTodoPintar(){
   for(const p of (state.products||[])){LOCS.forEach(l=>{hoyR.st+=Math.max(0,getQ(p.id,l));});}hoyR.stN=1;
   const RD=k=>k===hk?hoyR:R[k];   // hoy manda lo de ahora: un renglón de hoy en la línea es parcial
   // Ventas y ganancia del panel, día por día (con 6 días antes para el promedio de 7).
-  const _ksAll=_lineaDias(N+LN_PROM_DIAS-1);const pv=state.ventaprod||{};const pv0=Object.keys(pv).sort()[0]||'9999';
+  const _preN=_lnPreMes(ks);const _ksAll=_lineaDias(N+_preN);const pv=state.ventaprod||{};const pv0=Object.keys(pv).sort()[0]||'9999';
   const vd={};_ksAll.forEach(k=>{const ents=Object.values(pv[k]||{}).filter(v=>v&&!v.cancelada);if(!ents.length)return;
     // 💳 PREMIUM Y 📦 ENVÍO GRATIS APARTE (24/10/2026, él: "¿se puede saber cuánto fue Premium? así veo cuánto más vendemos por esa idea").
     // Misma regla que la línea de un producto: remate primero, después gemela de envío, después Premium (tipoPub gold_pro o gemela Premium).
@@ -12098,8 +12105,7 @@ function lineaTodoPintar(){
     vd[k]={u,uR,uP,uG,gP,gG,gan,costo,gest,tot,n:new Set(ents.map(vpGrupoKey)).size};});
   const uDe=k=>vd[k]?vd[k].u:(k<pv0&&R[k]&&R[k].u!=null?R[k].u:(k>=pv0?0:null));
   const uRDe=k=>vd[k]?vd[k].uR:(k<pv0&&R[k]?R[k].uR||0:0);
-  const g7={};ks.forEach((k,i)=>{if(k<pv0||_ksAll[i]<pv0)return;let t=0;   // 7 días enteros con ventas guardadas, si no, vacío (etapa 5)
-  for(let j=i;j<=i+LN_PROM_DIAS-1;j++)t+=(vd[_ksAll[j]]||{}).gan||0;g7[k]=t/LN_PROM_DIAS;});
+  const g7=_lnPromMes(_ksAll,ks,k=>(vd[k]||{}).gan||0,k=>k>=pv0);   // sólo días con ventas guardadas (etapa 5); por mes calendario (26/10)
   const pd={};ks.forEach(k=>{const v=vd[k];if(v&&v.costo>0){const q=pctGananciaVP(v.gan,v.costo,v.gest);if(q!=null&&isFinite(q))pd[k]=q;}});
   // Stock: sólo los días en que lo informa casi todo el catálogo (el relleno para atrás quedó a medias: un día con
   // la mitad de las publicaciones daría la mitad del stock).
@@ -12173,7 +12179,7 @@ function lineaTodoPintar(){
     const por={
       vent:[..._vent,r&&r.vis!=null?`👀 ${r.vis} visitas`:''],
       st:[stU[k]!=null?`📦 ${Math.round(stU[k])} u. en Full${k===hk?' (ahora)':''}`:(r&&r.st!=null?`📦 stock: sólo ${r.stN} publicaciones lo informan ese día (no se dibuja)`:'📦 stock: sin dato')],
-      gan:[v?`💰 ganancia del día ${fmt(Math.round(v.gan))}`:'',g7[k]!=null?`💵 promedio de ${LN_PROM_DIAS} días: ${fmt(Math.round(g7[k]))} por día`:'',_semK[k]||'',..._franjaTxt(k)],
+      gan:[v?`💰 ganancia del día ${fmt(Math.round(v.gan))}`:'',g7[k]!=null?`💵 promedio de ${_lnMesNom(k)}${k.slice(0,7)===dateToKey(new Date()).slice(0,7)?' (lo que va del mes)':''}: ${fmt(Math.round(g7[k]))} por día`:'',_semK[k]||'',..._franjaTxt(k)],
       pct:[pd[k]!=null?`📊 ${pd[k].toFixed(0)}% de ganancia`:'📊 sin ventas con costo ese día'],
       pr:[idx[k]!=null?`💲 índice de precio ${idx[k].toFixed(1)} (${idx[k]>=100?'+':''}${(idx[k]-100).toFixed(1)}% contra el primer día)`:''],
       cam:s.length||b.length||(r&&(r.sb||r.bj))?[`✏️ ▲ ${s.length} subas · ▼ ${b.length} bajadas`,...lst(s,'▲'),...lst(b,'▼'),r&&(r.sb||r.bj)?`🔎 en el precio guardado: ▲ ${r.sb||0} · ▼ ${r.bj||0}`:'']:['✏️ sin cambios de precio'],
@@ -12199,7 +12205,7 @@ function lineaTodoPintar(){
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:8px 0 6px">${_lnCard('Vendió',`${uT.toLocaleString('es-AR')} u.`,'',`${vT.toLocaleString('es-AR')} visitas${uPT?` · <span style="color:#f97316">${uPT.toLocaleString('es-AR')} en Premium</span>`:''}${uGT?` · <span style="color:#38bdf8">${uGT.toLocaleString('es-AR')} con envío gratis</span>`:''}`)}${_lnCard('Ganancia',gT?fmt(Math.round(gT)):'—',gPct!=null&&isFinite(gPct)?pctColor(gPct):'',(gPct!=null&&isFinite(gPct)?`${gPct.toFixed(0)}% de ganancia`:'')+(gPT?` · <span style="color:#f97316">Premium ${fmt(Math.round(gPT))}</span>`:'')+(gGT?` · <span style="color:#38bdf8">envío gratis ${fmt(Math.round(gGT))}</span>`:''))}${_lnCard('Stock en Full',`${hoyR.st.toLocaleString('es-AR')} u.`,'','hoy, las 4 cuentas')}${_lnCard('Cambios de precio',`<span style="color:var(--green)">▲ ${sT}</span> <span style="color:var(--red)">▼ ${bT}</span>`,'',iIni!=null&&iFin!=null?`índice de precio ${iIni.toFixed(0)} → ${iFin.toFixed(1)}`:'')}</div>
     <div style="font-size:.64rem;color:var(--muted);margin:0 0 8px;line-height:1.6">${_ltRango} días${_ltC.fallo?` · <span style="color:var(--amber)">no pude leer la línea del robot (${_ltC.fallo}): sólo lo del panel</span>`:(!Object.keys(R).length?' · <span style="color:var(--amber)">el robot todavía no armó la línea de todos: stock, visitas y precio salen desde la próxima noche</span>':(viejo>2?` · <span style="color:var(--amber)">la línea del robot es de hace ${Math.floor(viejo)} días</span>`:''))}</div>
     <div style="position:relative">
-      ${lnHdrHTML(L,H,'vent','🛒 Ventas y visitas',_lgS('var(--green)','vendidas',1)+(uPT?_lgS('#f97316','Premium',1):'')+(uGT?_lgS('#38bdf8','envío gratis',1):'')+(hayVis?_lgS('#60a5fa','visitas',1):''),`<b>${uT.toLocaleString('es-AR')} u.</b> · ${vT.toLocaleString('es-AR')} visitas`)}${lnHdrHTML(L,H,'st','📦 Stock en Full','',`<b>${hoyR.st.toLocaleString('es-AR')} u.</b> hoy`)}${lnHdrHTML(L,H,'gan','💵 Plata por día',_lgS('var(--green)','promedio de '+LN_PROM_DIAS+' días')+_lgS('#a78bfa','semana')+_lgS('rgba(34,197,94,.5)','días del mes que se vende más',1)+_lgS('rgba(239,68,68,.45)','días flojos',1)+_lgS('rgba(245,158,11,.6)','fecha especial',1),'')}${lnHdrHTML(L,H,'pct','📊 % de ganancia','',gPct!=null&&isFinite(gPct)?`<b style="color:${pctColor(gPct)}">${gPct.toFixed(0)}%</b> en el período`:'')}${lnHdrHTML(L,H,'pr','💲 Índice de precios',_lgS('var(--text)','100 = el precio de cada producto al empezar'),iFin!=null?`hoy <b>${iFin.toFixed(1)}</b>`:'')}${lnHdrHTML(L,H,'cam','↕️ Subas y bajadas',_lgS('var(--green)','▲ subas',1)+_lgS('var(--red)','▼ bajadas',1),`<span style="color:var(--green)">▲ ${sT}</span> · <span style="color:var(--red)">▼ ${bT}</span>`)}${lnHdrHTML(L,H,'rem','📦 Sacando stock',_lgS('#f97316','sobra / liquidando / remate · abajo del 35% desde el 24/10',1)+_lgS('#a855f7','escalera vieja del robot',1),'')}${lnHdrHTML(L,H,'caja','🥊 Caja de compra',_lgS('var(--green)','ganan',1)+_lgS('#f59e0b','comparten',1)+_lgS('var(--red)','pierden',1),`hoy: <span style="color:var(--green)">${hoyR.g}</span> · <span style="color:#f59e0b">${hoyR.c}</span> · <span style="color:var(--red)">${hoyR.p}</span>`)}
+      ${lnHdrHTML(L,H,'vent','🛒 Ventas y visitas',_lgS('var(--green)','vendidas',1)+(uPT?_lgS('#f97316','Premium',1):'')+(uGT?_lgS('#38bdf8','envío gratis',1):'')+(hayVis?_lgS('#60a5fa','visitas',1):''),`<b>${uT.toLocaleString('es-AR')} u.</b> · ${vT.toLocaleString('es-AR')} visitas`)}${lnHdrHTML(L,H,'st','📦 Stock en Full','',`<b>${hoyR.st.toLocaleString('es-AR')} u.</b> hoy`)}${lnHdrHTML(L,H,'gan','💵 Plata por día',_lgS('var(--green)','promedio del mes')+_lgS('#a78bfa','semana')+_lgS('rgba(34,197,94,.5)','días del mes que se vende más',1)+_lgS('rgba(239,68,68,.45)','días flojos',1)+_lgS('rgba(245,158,11,.6)','fecha especial',1),'')}${lnHdrHTML(L,H,'pct','📊 % de ganancia','',gPct!=null&&isFinite(gPct)?`<b style="color:${pctColor(gPct)}">${gPct.toFixed(0)}%</b> en el período`:'')}${lnHdrHTML(L,H,'pr','💲 Índice de precios',_lgS('var(--text)','100 = el precio de cada producto al empezar'),iFin!=null?`hoy <b>${iFin.toFixed(1)}</b>`:'')}${lnHdrHTML(L,H,'cam','↕️ Subas y bajadas',_lgS('var(--green)','▲ subas',1)+_lgS('var(--red)','▼ bajadas',1),`<span style="color:var(--green)">▲ ${sT}</span> · <span style="color:var(--red)">▼ ${bT}</span>`)}${lnHdrHTML(L,H,'rem','📦 Sacando stock',_lgS('#f97316','sobra / liquidando / remate · abajo del 35% desde el 24/10',1)+_lgS('#a855f7','escalera vieja del robot',1),'')}${lnHdrHTML(L,H,'caja','🥊 Caja de compra',_lgS('var(--green)','ganan',1)+_lgS('#f59e0b','comparten',1)+_lgS('var(--red)','pierden',1),`hoy: <span style="color:var(--green)">${hoyR.g}</span> · <span style="color:#f59e0b">${hoyR.c}</span> · <span style="color:var(--red)">${hoyR.p}</span>`)}
       <svg class="linea-svg" viewBox="0 0 ${W} ${H+16}" preserveAspectRatio="none" style="width:100%;height:${Math.round((H+16)*1.1)}px;display:block">${_lnClip(L,W,H,svg)}</svg>
     </div>
     ${motHTML?`<div style="margin-top:8px;font-size:.68rem;line-height:1.7"><b>Cambios de precio del período, por motivo:</b> ${motHTML}</div>`:''}

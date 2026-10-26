@@ -1361,9 +1361,11 @@ privada en `mlapi/ticketllave`, nunca en el repo); yo cierro cada foto con la p�
 - **Qué chequear:** que la foto se vea en el detalle del pedido; que `ml-sync/cifrado` siga fuera de la web (`.assetsignore` tiene `ml-sync`);
   que nunca se imprima `priv` ni la imagen.
 
-### Etapa 7 · 26/10/2026 · v26.79 · 💵 Plata por día con promedio de 15 días
-Él: *"línea en vez de 7 días 15 días"*. `LN_PROM_DIAS=15` en la línea de cada producto y en la general (los 14 días de antes del gráfico
-se suman solos). Qué chequear: que la línea arranque desde el primer día del gráfico cuando hay datos de antes.
+### Etapa 7 · 26/10/2026 · v26.80 · 💵 Plata por día: promedio por MES calendario
+Él: *"línea en vez de 7 días 15 días"* y enseguida *"en vez de 15 días, quiero que sea por mes, no cada 30 días. por mes"*. La línea verde
+es el promedio por día de cada mes (`_lnPromMes`): cada día muestra el de su mes; el mes en curso, lo que va del mes. Para el primer mes
+del gráfico se suman los días desde el 1º aunque queden antes (`_lnPreMes`). Línea de cada producto y general. Probado: sep $5.000/día,
+oct $10.000/día con ventas de prueba. Qué chequear: que el salto caiga justo el día 1 y que el número de "hoy" sea el del mes en curso.
 
 ### Etapa 3 · 26/10/2026 · v26.78 · Elegancia apagada
 Él: *"eliminá elegancia. nunca se usa y genera problemas"*.
