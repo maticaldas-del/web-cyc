@@ -1379,6 +1379,11 @@ es el promedio por día de cada mes (`_lnPromMes`): cada día muestra el de su m
 del gráfico se suman los días desde el 1º aunque queden antes (`_lnPreMes`). Línea de cada producto y general. Probado: sep $5.000/día,
 oct $10.000/día con ventas de prueba. Qué chequear: que el salto caiga justo el día 1 y que el número de "hoy" sea el del mes en curso.
 
+### Etapa 7 · 26/10/2026 · v27.09 · 🧮 La mezcla: cuántos y por semana, mes o año
+Él: *"no quiero ver los últimos 6 meses solo, sino poder elegir cuántos meses/períodos/años"*. `metMezclaMeses(n, agr)` agrupa con
+`_mzClave` (semana lun-dom, mes o año); botones Semana · Mes · Año y últimos 3/6/12/24/Todo, recordados en el aparato (`cycMezcla`). La cuenta
+de cada venta no cambió. Qué chequear: el renglón "(va)" es el período en curso en las tres formas.
+
 ### Etapa 7 · 26/10/2026 · v27.08 · 📈 Línea de tiempo: nombre y botones en un renglón
 Él: *"¿tenés lugar para subir más el nombre? la idea es que las métricas ocupen el mayor espacio posible"*. Nombre + colores a la izquierda
 y botones a la derecha en el MISMO renglón (producto y 📈 Todos); `wrap-reverse`: en el celu los botones quedan arriba en dos renglones.

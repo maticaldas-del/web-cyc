@@ -1954,7 +1954,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   <div id="met-origen"></div>
 
   <!-- 🧮 La mezcla de cada mes (22/10/2026, eligió la 4a de la estrategia): qué parte de lo facturado viene de cada tramo de % -->
-  <div class="stitle">🧮 La mezcla de cada mes <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;font-size:.65rem">· los últimos 6 meses, no depende del período de arriba</span></div>
+  <div class="stitle">🧮 La mezcla <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;font-size:.65rem">· elegís cuántos y por semana, mes o año (no depende del período de arriba)</span></div>
   <div id="met-mezcla"></div>
 
   <!-- El robot de precios, UNA sola tarjeta (30/09/2026, pedido suyo: "que se unifique"): lo que ganó o perdió
@@ -3104,7 +3104,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.08';
+const APP_VERSION='27.09';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3117,6 +3117,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.09',f:'26/10',h:'19:19',c:[{n:2,t:'🧮 Métricas · La mezcla: elegís cuántos (3, 6, 12, 24 o todo) y si cada renglón es una semana, un mes o un año.'}]},
   {v:'27.08',f:'26/10',h:'18:59',c:[{n:1,t:'📈 Línea de tiempo: el nombre y los colores suben al renglón de los botones (en la PC queda un renglón menos y los gráficos tienen más lugar).'}]},
   {v:'27.07',f:'26/10',h:'18:50',c:[{n:1,t:'🙈 "Ocultar la plata" también saca la ganancia en pesos de Inicio (queda el %), lo de abajo de la tarjeta (escalera, curva, cobro) y la ganancia de la pantalla de cargando.'}]},
   {v:'27.06',f:'26/10',h:'18:48',c:[{n:2,t:'🙈 Ajustes → Apariencia: "Ocultar la plata vendida". La tarjeta de ventas de Inicio (día, mes, año) muestra las ventas y las unidades sin el facturado. Ventas x Producto queda igual. Cada aparato por su lado.'}]},
@@ -23338,9 +23339,14 @@ function metPorOrigen(keys){
 // (neto − efectivoCostoVP). Canceladas y ventas sin costo afuera, y se cuentan. Misma cuenta que el probe `mezcla` del robot.
 const MEZCLA_TRAMOS=[{k:'r',t:'menos de 25%',max:25,col:'var(--red)'},{k:'a',t:'25 a 35%',max:35,col:'var(--amber)'},{k:'v',t:'35 a 50%',max:50,col:'var(--green)'},{k:'j',t:'50% o más',max:Infinity,col:'#60a5fa'}];
 const MEZCLA_META_100=22;
-function metMezclaMeses(n){
+// 26/10/2026, él: "no quiero ver los últimos 6 meses solo, sino poder elegir cuántos meses/períodos/años": se elige cuántos (3, 6, 12, 24
+// o todos) y si cada renglón es una semana (lun a dom), un mes o un año. Se recuerda en el aparato.
+function _mzCfg(){let n=6,a='mes';try{const x=JSON.parse(localStorage.getItem('cycMezcla')||'{}');if(x.n!=null)n=x.n;if(x.a)a=x.a;}catch(e){}return{n,a};}
+function setMezcla(k,v){const c=_mzCfg();c[k]=v;try{localStorage.setItem('cycMezcla',JSON.stringify(c));}catch(e){}renderMetMezcla();}
+function _mzClave(k,a){if(a==='anio')return k.substring(0,4);if(a==='semana'){const d=new Date(k.replace(/_/g,'-')+'T12:00:00');const m=new Date(d.getTime()-((d.getDay()+6)%7)*864e5);return m.getFullYear()+'_'+String(m.getMonth()+1).padStart(2,'0')+'_'+String(m.getDate()).padStart(2,'0');}return k.substring(0,7);}
+function metMezclaMeses(n,agr){
   const meses={};
-  for(const k of Object.keys(state.ventaprod||{})){const ym=k.substring(0,7);
+  for(const k of Object.keys(state.ventaprod||{})){const ym=_mzClave(k,agr||'mes');
     const m=meses[ym]||(meses[ym]={ym,tot:0,gan:0,sinCosto:0,tr:{r:{tot:0,gan:0},a:{tot:0,gan:0},v:{tot:0,gan:0},j:{tot:0,gan:0}}});
     for(const v of Object.values(state.ventaprod[k]||{})){
       if(!v||v.cancelada)continue;
@@ -23350,25 +23356,29 @@ function metMezclaMeses(n){
       const tr=MEZCLA_TRAMOS.find(t=>pct<t.max);const tot=v.total||0;
       m.tr[tr.k].tot+=tot;m.tr[tr.k].gan+=gan;m.tot+=tot;m.gan+=gan;}
   }
-  return Object.values(meses).sort((a,b)=>a.ym<b.ym?1:-1).slice(0,n||6);
+  const L=Object.values(meses).sort((a,b)=>a.ym<b.ym?1:-1);return n===0?L:L.slice(0,n||6);
 }
 function renderMetMezcla(){
   const el=document.getElementById('met-mezcla');if(!el)return;
-  const ms=metMezclaMeses(6);if(!ms.length){el.innerHTML='<div style="font-size:.72rem;color:var(--muted)">Sin ventas todavía.</div>';return;}
+  const CF=_mzCfg();
+  const ms=metMezclaMeses(CF.n,CF.a);if(!ms.length){el.innerHTML='<div style="font-size:.72rem;color:var(--muted)">Sin ventas todavía.</div>';return;}
   const MN=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
-  const nom=ym=>MN[(parseInt(ym.slice(5,7))||1)-1]+' '+ym.slice(2,4);
-  const cur=_curYM();
+  const nom=ym=>CF.a==='anio'?ym:CF.a==='semana'?'sem '+ym.slice(8,10)+'/'+ym.slice(5,7):MN[(parseInt(ym.slice(5,7))||1)-1]+' '+ym.slice(2,4);
+  const cur=_mzClave(dateToKey(new Date()),CF.a);
+  const _b=(k,v,t)=>`<button class="pf-btn${CF[k]===v?' active-all':''}" style="font-size:.62rem;padding:3px 9px" onclick="setMezcla('${k}',${typeof v==='string'?"'"+v+"'":v})">${t}</button>`;
+  const sel=`<div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-bottom:8px">${_b('a','semana','Semana')}${_b('a','mes','Mes')}${_b('a','anio','Año')}<span style="width:8px"></span>${[3,6,12,24].map(x=>_b('n',x,'últimos '+x)).join('')}${_b('n',0,'Todo')}</div>`;
   const fila=m=>{
     const g100=m.tot>0?m.gan/m.tot*100:null;
     const bar=MEZCLA_TRAMOS.map(t=>{const p=m.tot>0?m.tr[t.k].tot/m.tot*100:0;return p>0?`<div title="${t.t}: ${p.toFixed(0)}% de lo facturado (${fmt(m.tr[t.k].tot)}) · dejó ${fmt(m.tr[t.k].gan)}${m.tr[t.k].tot>0?' = $'+(m.tr[t.k].gan/m.tr[t.k].tot*100).toFixed(0)+' cada $100':''}" style="width:${p}%;background:${t.col};height:100%">${p>=9?`<span style="font-size:.58rem;color:#fff;font-weight:700;padding-left:3px">${Math.round(p)}%</span>`:''}</div>`:'';}).join('');
     const c100=g100==null?'var(--muted)':g100>=MEZCLA_META_100?'var(--green)':g100>=MEZCLA_META_100-3?'var(--amber)':'var(--red)';
     return `<div style="display:flex;align-items:center;gap:8px;margin:6px 0">
-      <div style="width:52px;font-size:.7rem;color:var(--muted)">${nom(m.ym)}${m.ym===cur?' <span style="font-size:.55rem">(va)</span>':''}</div>
+      <div style="width:66px;font-size:.7rem;color:var(--muted);white-space:nowrap">${nom(m.ym)}${m.ym===cur?' <span style="font-size:.55rem">(va)</span>':''}</div>
       <div style="flex:1;display:flex;height:18px;border-radius:5px;overflow:hidden;background:var(--border)">${bar}</div>
       <div style="width:92px;text-align:right;font-size:.74rem"><b style="color:${c100}">${g100==null?'—':'$'+g100.toFixed(1)}</b> <span style="font-size:.58rem;color:var(--muted)">c/$100</span></div></div>`;};
   const ley=MEZCLA_TRAMOS.map(t=>`<span style="white-space:nowrap"><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${t.col};vertical-align:middle"></span> ${t.t}</span>`).join(' · ');
   const sc=ms.reduce((a,m)=>a+m.sinCosto,0);
   el.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px">
+    ${sel}
     <div style="font-size:.66rem;color:var(--muted);margin-bottom:6px;line-height:1.5">Qué parte de lo <b>facturado</b> vino de ventas de cada tramo de %. El tope de H no deja facturar más, así que lo que sube la ganancia es que el rojo baje y el celeste suba. A la derecha, la <b>ganancia cada $100 facturados</b> · meta <b>$${MEZCLA_META_100}</b>.</div>
     ${ms.map(fila).join('')}
     <div style="font-size:.62rem;color:var(--muted);margin-top:6px">${ley}${sc?` · ${sc} venta(s) sin costo cargado quedan afuera`:''}</div></div>`;
