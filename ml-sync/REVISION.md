@@ -79,6 +79,10 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
 
 ## 1 · PRECIOS (lunes)
 
+### 🔒 Freno 50% para subir (26/10/2026, pedido suyo)
+- **Qué es:** en `decido`, una suba se frena si `cyc/techo95pct/<MLA>` (lo guarda `techo95;go` en la completa, de 4 días o menos) da 50%+ de certeza de que el precio en prueba ya es el techo y el precio nuevo está en o arriba de ese. No frena 🔥 escasez, ⏳ sin reposición, volver a un precio de los últimos 90 días ni `!chico`.
+- **Qué chequear:** que no frene una 📈 que todavía no tiene medición (sin dato no frena) · que el dato sea del MISMO precio (±2%) · que lo frenado aparezca en la vuelta con su motivo.
+
 ### 🌸 F12 · perfumes nunca abajo del 10% (26/10/2026, pedido suyo)
 - **Qué es:** en `frenosBajas` (todas las bajas: `decido`, `entrarpromo`, la puerta de `setPriceTo`), si la ficha o el título es perfume (`esPerfumeNom`) y el precio nuevo deja menos de 10% en el peor caso, frena; el texto dice si está cerca de pagar stock antiguo → avisarle para retirarlo al local. `!bajocero` con su autorización lo abre.
 - **Qué chequear:** que agarre los VS, Paulvic y Persea (y no un "Splash" que no sea perfume) · el Cyber del Coconut y la escalera del Pure Seduction pasan por acá · que los avisos de retiro le lleguen en el chat, no por Telegram.
@@ -792,6 +796,10 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 (sería doble), y que el número de Gastos y el del Arqueo sean el mismo para cada mes.
 
 ## 3 · MERCADERÍA (miércoles)
+
+### 🧾 `pyticketvisto` (26/10/2026, v26.73, pedido suyo: "siempre subí vos eso")
+- **Qué es:** la foto del ticket que me pasa por el chat no puede llegar a la base sin pasar por el repo o el registro (públicos). `pyticketvisto:<id>=<n>|<nota>;go` (ml-consulta) anota en `cyc/compraspy/<id>` `ticketFoto` y `ticketFotoChat` (quién, cuándo, cuántas); la web dice "✓ la vio Claude en el chat". Pide los renglones (`det=`) ya cargados.
+- **Qué chequear:** que no se use sin haber comparado la foto renglón por renglón · que `pyped:llego` lo acepte · que la web no muestre "ver" sin imágenes.
 
 ### ❌ no da 35% en Armar caja (24/10/2026, v26.58, él: "que el % lo tome del más alto, de la venta más alta y de la competencia")
 - **Qué es:** `_cajaPct35`: % del peor caso al precio de hoy (`margenMLDe`), a la venta más cara de 90 días y contra la competencia

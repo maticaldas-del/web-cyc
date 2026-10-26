@@ -77,7 +77,7 @@ const _cortarCiclo = (donde) => {
 // los que escriben en cantidad o en plata se niegan de entrada, y cualquier otro corre con la base,
 // ML, Mercado Pago y Telegram en sólo lectura (se deja renovar y guardar el token de ML, que ML rota).
 const EN_CONSULTA = process.env.GITHUB_WORKFLOW === 'ml-consulta' || process.env.ML_CONSULTA === '1';
-const CONSULTA_ESCRIBE = new Set(['buzon', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
+const CONSULTA_ESCRIBE = new Set(['buzon', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
 const CONSULTA_NIEGA = new Set(['cajaitems', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'listaped', 'publicar', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'errores', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'promoventas', 'cargosmes', 'arcacierres', 'webpush']);
@@ -46326,6 +46326,18 @@ async function main() {
               else if (infR.diasSt >= TECHO_RITMO_MIN_DIAS_ST && rs < TECHO_RITMO_MIN_SEMANA) { d.accion = 'nada'; d.freno = true; d.motivo = `🚫 FRENO 4a: vende ${rs.toFixed(1)} por semana (en los ${infR.diasSt} días con stock de los últimos 60, con gemelas): a lo que vende menos de 1 por semana no se le busca techo subiendo (él, 23/10). Queda en su precio como 💰 (#punto) o, si sobra, baja en escalera.`; }
             }
           }
+          // 🔒 SUBIR PIDE 50% (26/10/2026, él: "siempre para bajar tenés que estar 95% seguro, siempre para subir tenés que estar 50% seguro o
+          // más. entonces no hay chances de perder por vender barato"). Lo que se mide es lo contrario: `techo95` guarda cuánta certeza hay de
+          // que el precio en prueba YA es el techo (`cyc/techo95pct/<MLA>`, de la completa). Si eso es 50% o más, subir de ahí es más probable
+          // que pierda que que gane: no se sube (se espera a que la prueba termine). No frena 🔥/⏳ (subir ahí es estirar el stock, no buscar
+          // techo), ni volver a un precio de los últimos 90 días, ni !chico con "EXCEPCIÓN: …". Con el dato viejo (+4 días) o de otro precio no frena.
+          if (d.accion === 'sube' && !exc('chico') && !vuelveA && !['escasez', 'sinrepo'].includes(tg)) {
+            if (globalThis._t95pct === undefined) { try { globalThis._t95pct = (await db.get('cyc/techo95pct')) || {}; } catch { globalThis._t95pct = null; } }
+            const t9 = (globalThis._t95pct || {})[d.mla];
+            if (t9 && Number(t9.seg) >= 0.5 && Number(t9.p) > 0 && Date.now() - Number(t9.ts) < 4 * 864e5 && a >= Number(t9.p) * 0.98 && p0 >= Number(t9.p) * 0.98) {
+              d.accion = 'nada'; d.freno = true; d.motivo = `🚫 FRENO 50%: ya hay ${Math.round(Number(t9.seg) * 100)}% de certeza de que ${money(Number(t9.p))} es el techo (techo95 del ${new Date(Number(t9.ts)).toLocaleDateString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })}): para subir hace falta que sea más probable ganar que perder (menos de 50%). Se espera a que la prueba termine.`;
+            }
+          }
           // 37a (24/10/2026, él): vale para TODA baja de lista (no sólo la etiquetada 🪜), salvo ↘️ #volviendo de una escasez al precio
           // normal (F11 ya pide que la escasez haya terminado de verdad).
           if (d.accion === 'baja' && !exc('lista')) {
@@ -49790,6 +49802,29 @@ async function main() {
         }
       }
       console.log(n ? `\n${n} renglón(es).` : 'Ningún pedido de Paraguay tiene un renglón con esas palabras.');
+      return;
+    }
+    // BILLING_PROBE=pyticketvisto:<id>=<cuántas fotos>[|<nota>][;go] (26/10/2026, él: "siempre subí vos eso", con las 2 fotos del ticket
+    // del pedido del 19/10 que me mandó por el chat). La foto NO puede viajar del chat a la base sin pasar por el repo o el registro, que son
+    // públicos (es un ticket del mayorista), así que no se sube la imagen: queda anotado que Claude la vio en el chat, contra los renglones
+    // del ticket ya cargados (`det=`), y cuántas fotos eran. Cuenta como foto para cerrar el pedido (`ticketFoto`). Sin `;go` sólo muestra.
+    if (/^pyticketvisto:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const raw = String(process.env.BILLING_PROBE).slice('pyticketvisto:'.length);
+      const GOv = /;go\s*$/.test(raw) && !DRY;
+      const m = raw.replace(/;go\s*$/, '').match(/^([a-z0-9_]+)=(\d+)(?:\|(.*))?$/i);
+      if (!m) { console.log('Va así: pyticketvisto:py20261019=2|las vi en el chat, cierran con los renglones;go'); return; }
+      const [, id, nS, nota] = m; const n = parseInt(nS, 10);
+      const c = await db.get('cyc/compraspy/' + id);
+      if (!c) { console.log(`No hay pedido ${id} en cyc/compraspy.`); return; }
+      if (!c.ticket) { console.log(`❌ ${id} no tiene los renglones del ticket cargados: primero \`compray:${c.fecha}|det=…|go\`. No escribo nada.`); return; }
+      if (!(n > 0 && n <= 20)) { console.log('La cantidad de fotos tiene que ser de 1 a 20.'); return; }
+      const ya = parseInt(c.ticketFoto) || 0;
+      console.log(`=== 📷 ${id} · ${c.fecha} · ${c.estado} · fotos en la base: ${ya} · las vio Claude en el chat: ${n}${GOv ? '' : ' · (PRUEBA, agregá ;go)'} ===`);
+      if (!GOv) return;
+      const v = { n, ts: Date.now(), por: 'claude', nota: String(nota || '').slice(0, 200) };
+      await db.patch('cyc/compraspy/' + id, { ticketFoto: Math.max(ya, n), ticketFotoChat: v });
+      const r = await db.get('cyc/compraspy/' + id);
+      console.log(r && Number(r.ticketFoto) >= n && r.ticketFotoChat && r.ticketFotoChat.ts === v.ts ? `✓ anotado: ${id} tiene el ticket visto (${r.ticketFoto} foto/s)` : '⚠️ NO QUEDÓ anotado');
       return;
     }
     if (/^pydet:/.test(String(process.env.BILLING_PROBE || ''))) {

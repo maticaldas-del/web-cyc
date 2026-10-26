@@ -195,6 +195,7 @@
   (siempre sacando que está sacando stock)… la estrategia es buscar el mejor precio por ganancia CON escalera"*): 1º 📈 techo (95%) → 2º 💰
   el de más ganancia, bajando en escalera desde el techo y midiendo cada escalón hasta el que más plata por día deja (en la web la 🪜 que
   viene de 📈/🏔️/💰 se ve 💰 "· Nº escalón"). Sólo la sobra/stock antiguo baja por otro camino.
+- **Bajar pide 95%, subir pide 50%** (26/10, él: *"siempre para bajar tenés que estar 95% seguro, siempre para subir 50% o más. entonces no hay chances de perder por vender barato"*): freno 50% en `decido` — si `techo95` ya da 50%+ de que el precio en prueba es el techo (`cyc/techo95pct`), no se sube más; no frena 🔥/⏳ ni volver a un precio de 90 días.
 - **Sin línea de techo no se baja** (21/10; 22/10 decisión 1a): línea = 🔴 de las rayas o 🏔️ de `techo95`. Sin línea → 📈 buscar
   techo (subir). Lo que vendieron otras variantes o la familia NO alcanza. Pasados 15 días de la última suba sin certeza, decide la
   plata por día (F4).
@@ -354,7 +355,7 @@
   un costo, el viejo se congela por mes (`precios_hist_prod`).
 - **Ticket real obligatorio para cerrar el pedido** (10/10; 25/10 con FOTO, él con el Sony: *"no sabemos si no lo mandaron o si no lo
   cobraron"*): renglones con `compray:<fecha>|det=<código>*<u>*<pagado>;…|go` (ml-sync) + la foto, que la sube él desde el detalle del
-  pedido (📷, `mlapi/pyticketfoto/<id>`, `cyc/compraspy/<id>/ticketFoto` = cuántas). Sin las dos no se cierra (web y `pyped:llego`);
+  pedido (📷, `mlapi/pyticketfoto/<id>`, `cyc/compraspy/<id>/ticketFoto` = cuántas). **Si me la pasa por el chat la anoto yo** (26/10, él: *"siempre subí vos eso"*): `pyticketvisto:<id>=<n>|<nota>;go` (ml-consulta) — la imagen no puede viajar a la base sin pasar por algo público, así que queda "✓ la vio Claude en el chat" contra los renglones y cuenta para cerrar. Sin las dos no se cierra (web y `pyped:llego`);
   arriba de Pedidos Paraguay sale en rojo lo que falta (todo lo en camino y lo pedido desde el 25/10). Datos del mayorista: no al repo.
   Con dos tipos el mismo día pide `|repo`/`|nuevos`.
 - **Cuántas de cada nuevo** (`candMaxU`, 21/10): barato ≤US$15 → 3 · caro >US$60 → 1 · resto 2.

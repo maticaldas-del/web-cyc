@@ -66,6 +66,7 @@ al código; lo que es pensar queda acá, y una regla dura ("nunca", "sólo si") 
 | 7 | **Escasez: se sube** para que dure hasta que vuelva a haber. "Escasez" siempre = el precio sube | 🧠 + la lista 📈 |
 | 8 | **Sobra: se baja en escalera** — lo caro que no vende: a los 60 días sin vender, hasta el precio que GANA la caja (26/10, él) | 🔒 F2-F3 la escalera · 🧠 cuánto |
 | 8b | **🌸 Perfumes nunca abajo del 10%** en el peor caso (26/10, él): antes de liquidar más abajo se retira a la perfumería del local; cerca de pagar stock antiguo se le avisa para que lo retire | 🔒 F12 (salida sólo suya: 🔐 !bajocero) |
+| 8c | **Bajar pide 95%, subir pide 50%** (26/10, él): una suba sólo si es más probable ganar que perder; si `techo95` ya da 50%+ de que el precio en prueba es el techo, se espera | 🔒 freno 50% en `decido` (salvo 🔥/⏳, volver a un precio de 90 días, `!chico`) |
 | 9 | **35% en el PEOR caso** (🛡️) | 🔒 en bajas · lista 🛡️ |
 | 10 | **Buscar el techo** en todo lo demás | 🧠 |
 | 11 | **Formas:** escalera (≤15% por escalón, 25% en escasez; uno cada 48 h, 12 h en escasez; mis descuentos también son escalones) · una suba no se deshace sin 95% (🔐 `!sincerteza`) · no abajo del 💰 piso · en escasez nunca abajo del precio de antes (F9) · 90/990 · barrera $33.000 · descuento sólo si tiene sentido (🤔) | 🔒 F2-F9 |
