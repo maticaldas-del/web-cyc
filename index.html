@@ -2962,7 +2962,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.70';
+const APP_VERSION='26.71';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2975,6 +2975,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.71',f:'26/10',h:'11:15',c:[{n:2,t:'🏠 Inicio: el cuadro de Ventas mostraba las ventas del día anterior si la app quedaba abierta de un día para el otro (al volver se actualizaba "Hoy" pero no ese cuadro). Ahora se actualiza junto.'}]},
   {v:'26.70',f:'26/10',h:'11:05',c:[{n:2,t:'📈 Línea de tiempo: si un producto y color tiene 2 o más publicaciones con distinto precio o estrategia (como el Centímetro Blanco: una a $4.290 bajando y otra a $3.990 buscando techo), la tarjeta de Precio las muestra todas en ámbar.'}]},
   {v:'26.69',f:'25/10',h:'23:50',c:[{n:2,t:'🎨 Productos nuevos y Para probar: los que tienen aviso en rojo (80%+, un solo vendedor, nombre dudoso) muestran el precio de los OTROS colores del mismo catálogo de ML y cuánto daría el más barato. Es de referencia: no cambia el %.'}]},
   {v:'26.68',f:'25/10',h:'23:10',c:[{n:1,t:'🧾 Pedido del momento: el orden por ventas también cuenta las reseñas en los productos nuevos (mismo error que el de recién: lo que no tenía vendidas cargadas iba al final).'}]},
@@ -4071,7 +4072,9 @@ async function _ventasHoyFrescas(forzar){
       if(v)state.ventaprod[k]=v;else delete state.ventaprod[k];}catch(e){return;}
   }
   _netoMesMemo={};_netoAggMemo=null;
-  if(currentPage==='home'){try{renderHomeHoy();}catch(e){}}else if(currentPage==='ventaprod'){try{renderVentaProd();}catch(e){}}
+  // 26/10/2026, él: "me sigue apareciendo con otras ventas y ganancias, no son las de hoy" (Inicio decía 39 · $157.122, las del domingo, y hoy
+  // iban 8): al volver a la app se traían las ventas de hoy y se redibujaba "Hoy", pero no el cuadro de Ventas de la grilla.
+  if(currentPage==='home'){try{renderHomeHoy();}catch(e){}try{renderHomeVivos();}catch(e){}}else if(currentPage==='ventaprod'){try{renderVentaProd();}catch(e){}}
 }
 document.addEventListener('visibilitychange',()=>{
   if(document.hidden){_vueltaOculta=Date.now();return;}

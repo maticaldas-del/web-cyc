@@ -46,3 +46,5 @@ puede medir, también su freno en `frenosBajas`; si se pasó por una bandera de 
 
 ## Conteo de los lunes
 - **26/10 (semana 19-25/10): 23 correcciones** (19/10: 2 · 20/10: 3 · 21/10: 1 · 22/10: 2 · 23/10: 5 · 24/10: 7 · 25/10: 3). Semana anterior: sin registro (el archivo arrancó el 19/10), así que ésta es la base. Las que más se repiten: datos de Paraguay mal cruzados (código/color/catálogo/pack: 5) y bajas o estrategias que rompían una regla de techo (4). Meta: que la del 02/11 dé menos.
+
+- (26/10) Inicio → cuadro de Ventas mostraba 39 · $157.122 (las del domingo) el lunes a la mañana. Pasó porque al volver a la app se refrescaba "Hoy" y no la grilla. Cambié: se refrescan juntos. Mismo patrón: ninguno más (el ☰ y renderAll ya estaban bien).
