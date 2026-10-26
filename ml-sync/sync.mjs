@@ -46571,8 +46571,14 @@ async function main() {
         if (!sacar.length) { console.log('No hay candidatos marcados "no es el mismo" para sacar.'); return; }
       }
       for (const parte of (/^aplicarno(;|$)/i.test(raw.trim()) ? [] : raw.split(';').map((x) => x.trim()).filter((x) => x && x.toLowerCase() !== 'go'))) {
-        const m = parte.match(/^(c\d+(?:[a-z]\d+)?)\s*=\s*(ok|no|duda|mismo)(?:!(.*))?$/i);  // [a-z]: los de Elegancia son c…e27 (20/10/2026)
+        const m = parte.match(/^((?:c\d+(?:[a-z]\d+)?)|(?:cod:(?:EL_)?\d+))\s*=\s*(ok|no|duda|mismo)(?:!(.*))?$/i);  // [a-z]: los de Elegancia son c…e27 (20/10/2026)
         if (!m) { console.log(`  ✗ no entiendo "${parte}"`); mal++; continue; }
+        // `cod:<código de Nissei o EL_…>` (26/10/2026): el chat de compras y él hablan por código, no por el número interno. Sólo si
+        // hay UN candidato vivo con ese código; si hay dos (Nissei y Elegancia con el mismo número) se pide el número interno.
+        if (/^cod:/i.test(m[1])) { const k = m[1].slice(4).replace(/^EL_/i, ''); const el = /^cod:EL_/i.test(m[1]);
+          const hs = Object.entries(cands).filter(([, x]) => x && !x.no && !x.prodId && String(x.cod || '').trim() === k && (!el || provPyDeBot(x) === 'elegancia'));
+          if (hs.length !== 1) { console.log(`  ✗ ${m[1]}: ${hs.length ? hs.length + ' candidatos vivos con ese código (' + hs.map(([i]) => i).join(', ') + '): usá el número' : 'ningún candidato vivo con ese código'}`); mal++; continue; }
+          m[1] = hs[0][0]; }
         const c = cands[m[1]]; const cat = c && catDe(c);
         if (!c || !cat) { console.log(`  ✗ ${m[1]}: no existe o no está medido contra un catálogo`); mal++; continue; }
         // `mismo` = lo decidió ÉL (como el botón ✅ Es el mismo producto del panel): pone `mismoOk` para ESE catálogo,
