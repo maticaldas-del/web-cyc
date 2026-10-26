@@ -1379,6 +1379,13 @@ es el promedio por día de cada mes (`_lnPromMes`): cada día muestra el de su m
 del gráfico se suman los días desde el 1º aunque queden antes (`_lnPreMes`). Línea de cada producto y general. Probado: sep $5.000/día,
 oct $10.000/día con ventas de prueba. Qué chequear: que el salto caiga justo el día 1 y que el número de "hoy" sea el del mes en curso.
 
+### Etapa 3 · 26/10/2026 · v26.83 · Unidades de cada nuevo hasta US$ 20 (máx 4) · un solo 🗑️ Vaciar
+Él: *"cada producto pida unidades (máximo 4) hasta llegar a 20 dólares, si una unidad cuesta 21 se pide max una y si vale 19 se piden 2
+si vale 9 se piden 3 si vale 5 4 si vale 4 4"* → `candMaxU` = mín(4, ⌈20 ÷ precio web⌉), mínimo 1 (robot: `candMaxUBot`). Se sacó la
+casilla "U. por nuevo" (dos lugares). Y *"que no haya vaciar nuevos. sólo vaciar y que saque TODO lo del pedido, sea cual sea"* →
+`pedVaciarTodo` (probados + nuevos + uso personal del pedido del momento, en una sola escritura). Probado: 21→1 · 19→2 · 9→3 · 5→4 · 4→4;
+vaciar deja los tres en 0.
+
 ### Etapa 3 · 26/10/2026 · v26.82 · ⛔ Lo viejo se carga y queda en rojo (cambia la v26.77)
 Él, viendo "6 no se pueden pedir" con el pedido vacío: *"que aparezca en rojo si es que está adentro del pedido, y que pueda estar dentro
 del pedido aunque esté en rojo. yo al verlo hago correr el robot para que los mire"*. Ya no frena cargar (`candPuedePedir`, `pyArmSet*`,
