@@ -1316,6 +1316,11 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
 
 ## 4 · CHOQUES Y FALLAS MUDAS (jueves · junta las viejas 4 y 5)
 
+### La ficha nunca decía "Nissei NO lo tiene" (26/10/2026, vuelta de las 21:22)
+- **Qué es:** `fichaExtras` miraba `pr.nisseiNoHay || pr.pyNoHay`, que no los escribe nadie; la marca real es `cyc/py_sinstock/<prodId>` (la usan la web y `escasez`). El Cuba Prestige salía "se repone de Paraguay" sin reposición. Ahora la ficha lee `cyc/py_sinstock`.
+- **Dónde vive:** `sync.mjs`, `fichaExtras` y la carga de la ficha (`pySinF`).
+- **Qué chequear:** `ficha:MLA2155294207` dice "Nissei NO lo tiene". Pendiente: la sugerencia "+30% #techo" de `ventasraras` y del detector 🆕 no mira si está en escasez o sin reposición.
+
 ### Vínculos sin cuenta en la sección 11 del informe (25/10/2026, auditoría)
 - **Qué es:** el Timer MLA1474412507 vendió 11 en 30 d (la última el 23/10) y el informe lo mostraba "en revisión" sin cuenta. Un vínculo sin `cuenta` no lo refresca la vuelta de cada hora (recorre sólo los de su cuenta) y `unapub` lo lee con el token de otra cuenta (403): el estado queda viejo. Ahora la 11 pregunta a ML con el token de cada cuenta (comparando el vendedor) de quién es y cómo está hoy.
 - **Dónde vive:** `sync.mjs`, `informe`, sección 11.

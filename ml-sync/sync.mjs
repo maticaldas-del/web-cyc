@@ -5616,7 +5616,7 @@ function reaccionesDe(d, ks, tach, parc) {
 // este precio (`cyc/netopub`), la competencia (`cyc/techofull` y la caja de la línea de tiempo), el día de la semana y el mes en que
 // más vende y la edad de la unidad más vieja en Full (la línea de tiempo, primero entra primero sale), y las otras publicaciones del
 // mismo producto (`cyc/mllinks`). Frases simples en `datosTxt`; con pocos días lo dice y no concluye.
-function fichaExtras({ mla, e, pr, d, ks, links, reclamos, techo, netopub, noconsigo, opiniones, tc, cu, lotesfull, cajasLl, stockhist, cfg }) {
+function fichaExtras({ mla, e, pr, d, ks, links, reclamos, techo, netopub, noconsigo, pySin, opiniones, tc, cu, lotesfull, cajasLl, stockhist, cfg }) {
   const txt = [], ext = {};
   const $ = (x) => (x == null || !isFinite(x) ? '—' : '$' + Math.round(x).toLocaleString('es-AR'));
   const conSt = diaConStock;
@@ -5631,7 +5631,8 @@ function fichaExtras({ mla, e, pr, d, ks, links, reclamos, techo, netopub, nocon
     const de = org === 'py' ? 'Paraguay' + (pr.provPy ? ' (' + pr.provPy + ')' : ' (Nissei)') : /paulvic/i.test(prov + ' ' + (pr.name || '')) ? 'Paulvic' : pr.listaProv ? 'la lista de ' + pr.listaProv : 'Bs As' + (prov ? ' (' + prov + ')' : '');
     let f = `🏭 Se repone de ${de} · costo hoy en la ficha ${$(cu)}${pagado > 0 && tc > 0 ? ` (US$ ${r1(pagado)})` : ''}`;
     if (org === 'py' && nis > 0 && pagado > 0) { const rep = nis * RECARGO_PAR, dif = rep / pagado - 1; ext.reponer = { usd: Math.round(rep * 100) / 100, dif: Math.round(dif * 100) }; f += ` · reponerlo hoy US$ ${r1(rep)} (${dif >= 0 ? '+' : ''}${Math.round(dif * 100)}%: ${dif > 0.05 ? 'más caro que lo que pagaste' : dif < -0.05 ? 'más barato' : 'casi igual'})`; }
-    if (pr.nisseiNoHay || pr.pyNoHay) f += ' · Nissei NO lo tiene';
+    // 25/10/2026 (Cuba Prestige): `nisseiNoHay`/`pyNoHay` no los escribe nadie; la marca real es `cyc/py_sinstock/<prodId>` (la usan la web y `escasez`).
+    if (pr.nisseiNoHay || pr.pyNoHay || (pySin && pr.id && pySin[pr.id])) f += ' · Nissei NO lo tiene';
     const fNc = (t) => (Number(t) > 0 ? ' desde el ' + dayKeyFromISO(Number(t)).slice(8, 10) + '/' + dayKeyFromISO(Number(t)).slice(5, 7) : '');
     if (ncVar === 'nunca') f += ' · ⛔ el proveedor no lo mandó: NO se pide más este color'; else if (ncTodo || ncVar) f += ` · ⛔ marcado "no lo consigo"${ncVar && !ncTodo ? ' (este color)' : ''}${fNc(ncTodo || ncVar)} (se cae solo si entra mercadería a la oficina)`;
     txt.push(f + '.');
@@ -37576,7 +37577,7 @@ async function main() {
       const TCH = diasTachado({ notas: notasT, pcl: prC, est: estF, pven: pvF, ahora: Date.now() });
       // Lo que la ficha suma para decidir (20/10/2026): reclamos con motivo, lo que se queda ML, competencia, "no lo consigo".
       const leerX = async (r) => { try { return (await db.get(r)) || {}; } catch { faltaF.push(r); console.log(`⚠️ no leí ${r}: esa parte de la ficha sale sin eso`); return {}; } };
-      const [recF, npF, tfF, ncF] = await Promise.all([leerX('cyc/reclamomotivo'), leerX('cyc/netopub'), leerX('cyc/techofull'), leerX('cyc/noconsigo')]);
+      const [recF, npF, tfF, ncF, pySinF] = await Promise.all([leerX('cyc/reclamomotivo'), leerX('cyc/netopub'), leerX('cyc/techofull'), leerX('cyc/noconsigo'), leerX('cyc/py_sinstock')]);
       // La edad del stock con la misma cuenta del stock antiguo (20/10/2026 a la noche · etapa 5).
       const [lfF, envF, shF, cfgF] = await Promise.all([leerX('cyc/lotesfull'), leerX('cyc/envios_full'), leerX('cyc/stockhist'), leerX('cyc/mlconfig')]);
       const cajasF = cajasLlegadasPorClave(envF);
@@ -37638,7 +37639,7 @@ async function main() {
           const notas = { ...(notasT[mla] || {}) };
           const ex = expC[mla]; if (ex && ex.simple && Number(ex.ts) > 0 && !notas[ex.ts]) notas[ex.ts] = { t: ex.simple, tipo: ex.tipo || 'nota' };
           const J = await lineaJuntaStock(links, pIdx, mla, d, lineaDeF); if (J.con.length) nJuntas++;
-          const f = armarFicha({ mla, d: J.d, juntaCon: J.con, e, cu: costoPesos(pr, 1, tc).costo, imp: ((ML_EXTRA_PCT[cta] || 4) + _monoFi) / 100, cambios: camb[mla] || [], notas, hoyK, tach: TCH.tach[mla], parc: TCH.parc[mla], extra: { pr, links, reclamos: recF, techo: tfF, netopub: npF, noconsigo: ncF, opiniones: opF, tc, lotesfull: lfF, cajasLl: cajasF, stockhist: shF, cfg: cfgF, est: estF[mla] || null } });
+          const f = armarFicha({ mla, d: J.d, juntaCon: J.con, e, cu: costoPesos(pr, 1, tc).costo, imp: ((ML_EXTRA_PCT[cta] || 4) + _monoFi) / 100, cambios: camb[mla] || [], notas, hoyK, tach: TCH.tach[mla], parc: TCH.parc[mla], extra: { pr, links, reclamos: recF, techo: tfF, netopub: npF, noconsigo: ncF, pySin: pySinF, opiniones: opF, tc, lotesfull: lfF, cajasLl: cajasF, stockhist: shF, cfg: cfgF, est: estF[mla] || null } });
           f.producto = String(pr.name || '').slice(0, 80);
           const faltaJ = J.sinLeer.length ? [`la línea de ${J.sinLeer.join(', ')} (comparte el stock: sus ventas no se sumaron)`] : [];
           if (faltaF.length || faltaJ.length) f.incompleta = 'armada sin: ' + faltaF.concat(faltaJ).join(', ');
