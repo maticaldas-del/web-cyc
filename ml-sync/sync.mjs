@@ -53699,10 +53699,17 @@ async function main() {
           // en el mapa: el mapa se reescribe cuando la publicación vende y perdía la memoria.
           // Regla: se manda una vez por publicación y por estado; cuando la publicación se
           // arregla, se borra la marca para que un problema nuevo vuelva a avisar.
-          const bad = st === 'closed' || st === 'under_review'
-            || /deactiv|moderation|warning|suspend|ban|freeze|infract|hold/i.test(sub);
+          // 26/10/2026 (él): también `inactive` y la falta de papeles ("casi siempre es por pedir facturas en la cuenta de Adriana").
+          const bad = st === 'closed' || st === 'under_review' || st === 'inactive'
+            || /deactiv|moderation|warning|suspend|ban|freeze|infract|hold|pending_documentation|waiting_for_patch|forbidden/i.test(sub);
           const clave = bad ? st + (sub ? '|' + sub : '') : '';
           if (!bad) {
+            // 🟢 SE DIO DE ALTA OTRA VEZ (26/10/2026, él: "y cuando se da de alta un producto también que avise"): la que había
+            // avisado como problema y ahora ML la deja andar. Sólo si el aviso de baja salió de verdad (no un 'pend|').
+            if (pubAlerted[mla] && !DRY && !String(pubAlerted[mla]).startsWith('pend|') && !ML_REVISION_NO_MIRAR.has(mla)) {
+              const estadosA = { active: 'activa', paused: 'pausada (por nosotros o sin stock)' };
+              await sendTelegram(`✅ <b>ML la volvió a habilitar</b>\n${map[mla].title || mla}\nCuenta: ${label}\nEstado: ${estadosA[st] || st}${sub ? ' · ' + sub : ''}\n${b.permalink || ''}`, 'baja');
+            }
             if (pubAlerted[mla] && !DRY) await anotarPubAlertYa(mla, null);
           } else if (pubAlerted[mla] !== clave && map[mla].prodId) {
             // Si el estado ya venía guardado igual, no es novedad: se anota sin avisar (así al
@@ -53728,8 +53735,11 @@ async function main() {
                 + `${title}\nCuenta: ${label}\n`
                 + `Estado: ${estados[st] || st}${sub ? ' · ' + sub : ''}\n`
                 + (b.permalink || '');
-              // SÓLO DATOS (09/10/2026): queda en mlapi/cerebroavisos para Claude, no va a Telegram.
-              mandado = (SOLO_DATOS ? await sendAlerta(_txtPub) : await sendTelegram(_txtPub, 'baja')) === true;
+              // SÓLO DATOS (09/10/2026) lo había sacado de Telegram. 26/10/2026, él: "quiero que me avise por telegram cuando ML da de
+              // baja un producto, porque es importante a resolver, casi siempre es por pedir facturas en la cuenta de Adriana": va a
+              // Telegram siempre (y queda también en mlapi/cerebroavisos para mí).
+              if (SOLO_DATOS) await sendAlerta(_txtPub);
+              mandado = (await sendTelegram(_txtPub, 'baja')) === true;
               pubAlerts++;
             }
             if (!DRY) {

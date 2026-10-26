@@ -1350,6 +1350,10 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
 
 ## 4 · CHOQUES Y FALLAS MUDAS (jueves · junta las viejas 4 y 5)
 
+### 📲 Telegram cuando ML da de baja una publicación y cuando la vuelve a habilitar (26/10/2026, pedido suyo)
+- **Qué es:** el aviso "⚠️ Problema en una publicación" (cerrada, en revisión, inactiva, falta de papeles/facturas) vuelve a salir por Telegram (con SOLO_DATOS había quedado sólo en `mlapi/cerebroavisos`); y cuando una que avisó vuelve a estar bien sale "✅ ML la volvió a habilitar". Una vez por cambio de estado (`mlapi/pubalert`), tope 8 por vuelta.
+- **Qué chequear:** que al estrenarlo no llegue una catarata (lo que ya estaba inactivo no es novedad) · que una pausa nuestra (fuera de Full, sin stock) NO avise · que las 3 en revisión para siempre no avisen el alta.
+
 ### La ficha nunca decía "Nissei NO lo tiene" (26/10/2026, vuelta de las 21:22)
 - **Qué es:** `fichaExtras` miraba `pr.nisseiNoHay || pr.pyNoHay`, que no los escribe nadie; la marca real es `cyc/py_sinstock/<prodId>` (la usan la web y `escasez`). El Cuba Prestige salía "se repone de Paraguay" sin reposición. Ahora la ficha lee `cyc/py_sinstock`.
 - **Dónde vive:** `sync.mjs`, `fichaExtras` y la carga de la ficha (`pySinF`).
