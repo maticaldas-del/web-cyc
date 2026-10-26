@@ -228,6 +228,7 @@
   nunca pasar 120. Bs As pasa a "no se consigue" cuando Pedidos lo pide hace 10+ días sin entrar nada a la oficina, o con el botón
   🚫 "No lo consigo" (`cyc/noconsigo/<prod>[/v/<color>]`); se cae solo al entrar mercadería.
 - **Lo que no vende al 35%** (24/10, eligió la a): no se repone y, al terminarse, la publicación queda pausada (no se borra).
+- **🌸 Perfumes: nunca abajo del 10%** (26/10, él: *"todo lo que es perfume se puede poner en la perfumería. antes de liquidar a 0% conviene pedirlo. intentemos venderlo mínimo al 10%. si está por pagar stock avisame y retiro"*; con los VS: *"menos del 10% nunca, antes retirarlos"*). Freno F12 (`esPerfumeNom`: perfume, body mist/splash, Victoria's Secret, Paulvic/Persea). Si no sale al 10% y está a 20 días o menos de pagar stock antiguo → se le avisa en el chat (12:30) para que lo retire al local.
 - **Sobra** (+90 d de stock al ritmo con stock o sin ventas en 60 d) → escalera/descuento; con sobra no se busca techo. **Lo caro que no vende: a los 60 días sin vender, la escalera apunta al precio que GANA la caja de compra** (26/10, él con los VS, Redmi Watch y Dalí: *"si llegan a 60 días de stock sí bajar los precios hasta estar en ganando"*; nunca abajo de 0%; antes de eso no se baja sin techo y las 16 autorizaciones viejas del 23/10 quedaron en "no"). Stock antiguo: 120 d
   lo chico, 60 lo grande (Tenders); apuntar a vender antes de ~100. Bajar porque seguir igual perdía más = el cerebro ganó; lo que falta
   para el 25% es error de origen (mandar/comprar de más).

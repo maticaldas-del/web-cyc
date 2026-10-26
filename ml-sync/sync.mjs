@@ -4556,6 +4556,7 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
       && ['autorizada', 'usada'].includes(r.estado) && Number(r.autTs) <= ahora && ahora - Number(r.autTs) < 60 * 864e5 && r.sig === _autFirma(_autTxtOk(c, r)));
     // ── datos de la línea de tiempo para F4, F5, F6, F7 y F8
     const pr = prods && e.prodId ? prods[e.prodId] : null;
+    const esPerfume = esPerfumeNom(`${(pr && pr.name) || ''} ${e.title || e.titulo || ''} ${d.nom || ''}`);
     const cu = pr && tc > 0 ? costoPesos(pr, 1, tc).costo : 0;
     const imp = ((ML_EXTRA_PCT[String(e.cuenta || '').toLowerCase()] || 4) + (Number(mono) || 0)) / 100;
     if (lin && cu > 0) lin = lineaConNetoEst(lin, cu, imp);   // 42a: días sin neto de ML (antes de mayo), estimados como la web
@@ -4651,6 +4652,10 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
       const exento = exentoPor(tagNuevo) || exentoPor(ult);
       // ── F0 · nunca abajo de 0%
       if (d.mgA != null && Number.isFinite(Number(d.mgA)) && Number(d.mgA) < 0 && !suya('bajocero')) return { regla: 'F0', txt: `a ${$(a)} queda en ${Number(d.mgA)}%: abajo de 0% no se baja nunca, salvo que él pida rematar a cualquier precio (🔐 !bajocero, sólo con su autorización (se la paso en el chat))` };
+      // ── F12 · PERFUMES: NUNCA ABAJO DEL 10% (26/10/2026, él: "todo lo que es perfume se puede poner en la perfumería. antes de liquidar a 0%
+      // conviene pedirlo. pero intentemos venderlo mínimo al 10%. si está por pagar stock entonces avisame y retiro"; y con los VS: "menos del
+      // 10% nunca. antes retirarlos"). Abajo del 10% no se liquida: se le avisa (en el chat, aviso de las 12:30) para que lo retire al local.
+      if (esPerfume && d.mgA != null && Number.isFinite(Number(d.mgA)) && Number(d.mgA) < PERFUME_MIN_PCT && !suya('bajocero')) return { regla: 'F12', txt: `perfume: a ${$(a)} queda en ${Number(d.mgA)}% y un perfume no se vende abajo del ${PERFUME_MIN_PCT}% (regla suya del 26/10): ${antiguoCerca ? 'está por pagar stock antiguo → AVISARLE para que lo retire a la perfumería del local' : 'se queda en el escalón del 10% o más; si llega cerca de pagar stock antiguo, avisarle para retirarlo'}` };
       // ── F11 · FALTA DE STOCK: SIN TECHO 95% NO SE BAJA (ver arriba). Con el techo medido (🏔️ de techo95 en 60 días o 🔴 de las rayas)
       // sigue por los otros frenos (escalera, F9 de la escasez). La salida de la escasez (#volviendo) pasa sólo si la escasez terminó de
       // verdad: el stock en Full alcanza 30+ días al ritmo con stock. Salida SÓLO SUYA: 🔐 !sinlinea con su autorización.
@@ -10657,6 +10662,10 @@ const CAND_PISO_PCT = 25;       // suyo: "el % sano es de 25 hacia arriba"
 // dice (misma idea que `repartopy` y que `esPerfumeNom` de la web). El resto sigue en CAND_PISO_PCT.
 const CAND_PISO_PERFUME = 25;   // 17/10/2026: 25 (él: "tienen que llegar a 25, no a 24"); antes 24 para todo lo que se compra (él: "arriba del 24% TODO")
 const RE_CAND_PERF = /perfum|parfum|\bedp\b|\bedt\b|eau de|fragan|fragr|body splash|body mist|\bcolonia\b|\bsplash\b/i;
+// Lo que se puede vender en la perfumería del local (26/10/2026, él: "todo lo que es perfume se puede poner en la perfumería… intentemos
+// venderlo mínimo al 10%. si está por pagar stock entonces avisame y retiro"): perfumes, body mist/splash, Victoria's Secret y Paulvic/Persea.
+const esPerfumeNom = (t) => RE_CAND_PERF.test(String(t || '')) || /victoria.?s secret|\bvs\b.*(mist|lotion|coconut|vanilla|seduction|romance|bliss)|paulvic|persea/i.test(String(t || ''));
+const PERFUME_MIN_PCT = 10;
 // LA PERFUMERÍA DEL LOCAL (15/10/2026, regla suya): los perfumes también se venden en el local, y ahí no hay comisión
 // de ML ni impuestos. La cuenta de ellos: costo puesto × 1,25 (lo nuestro) × 1,30 (lo de la perfumería) tiene que dar
 // lo mismo o parecido que ML. O sea: vendiendo al precio de ML, la perfumería se queda su 30% y a CYC le queda
