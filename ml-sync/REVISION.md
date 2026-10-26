@@ -1382,7 +1382,7 @@ oct $10.000/día con ventas de prueba. Qué chequear: que el salto caiga justo e
 ### Etapa 7 · 26/10/2026 · v26.89 · 🎬 El contador gira hasta la ganancia de hoy
 Él: *"y el conteo, ¿pueden ser la ganancia actual?"*. Cuando carga no hay datos todavía: `renderHomeHoy` anota la ganancia de hoy en el
 aparato (`localStorage.cycGanHoy` = {k,g}) y el contador (`_ld4`) gira hasta ese número con "ganancia de hoy" (o "de ayer" si es de ayer);
-sin dato, $0 y "cargando la ganancia…" (nunca un número inventado). Las cifras que sobran del número de muestra se armaron por cantidad
+sin dato, 5 cifras que saltan de a una sin parar (como tragamonedas, `ld4g` con `steps`) y "cargando la ganancia…" (v26.90: él mandó la foto de "$" con una sola cifra cortada; nunca un número inventado). Las cifras que sobran del número de muestra se armaron por cantidad
 de dígitos (más de 6 → letra más chica). Probado: $75.600 hoy · $1.234.567 · $48.210 ayer · sin dato; centrado en 390 px.
 
 ### Etapa 7 · 26/10/2026 · v26.88 · 🎬 Contador de plata arreglado

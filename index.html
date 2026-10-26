@@ -222,6 +222,7 @@ html,body{overflow-x:hidden;max-width:100%}html{overflow-x:clip}body{overscroll-
 @keyframes ld4d{0%{transform:translateY(0)}66%,100%{transform:translateY(-90%)}}
 @keyframes ld4e{0%{transform:translateY(0)}73%,100%{transform:translateY(-90%)}}
 @keyframes ld4f{0%{opacity:0}6%,86%{opacity:1}100%{opacity:0}}
+@keyframes ld4g{0%{transform:translateY(0)}100%{transform:translateY(-90%)}}   /* sin dato: cifra entera tras cifra entera, como una tragamonedas (steps), sin parar */
 .ld5 text{font-family:'Syne',sans-serif;font-weight:800;font-size:68px;fill:transparent;stroke:var(--accent2);stroke-width:1.6;stroke-dasharray:420;stroke-dashoffset:420;animation:ld5 2.6s ease-in-out infinite}
 @keyframes ld5{0%{stroke-dashoffset:420;fill:transparent}55%{stroke-dashoffset:0;fill:transparent}75%,90%{stroke-dashoffset:0;fill:var(--accent2)}100%{fill:var(--accent2);opacity:0}}
 .ld6w{position:relative;display:flex;align-items:center;justify-content:center;width:220px;height:120px}
@@ -998,13 +999,20 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   if(n===0)return;   // 0 = la de siempre, ya está en el HTML
   // 4 · CONTADOR DE PLATA = LA GANANCIA DE HOY (26/10/2026, él: "y el conteo, ¿pueden ser la ganancia actual?"). Cuando carga todavía no
   // llegaron los datos: muestra la última que anotó Inicio en ESTE aparato (`cycGanHoy`, la guarda renderHomeHoy). Si es de ayer lo dice;
-  // más vieja o sin dato, $0 con "cargando la ganancia…" (nunca un número inventado).
+  // más vieja o sin dato, 5 cifras girando sin parar con "cargando la ganancia…" (nunca un número inventado).
   const _ld4=()=>{
     let gv=null,lbl='';
     try{const o=JSON.parse(localStorage.getItem('cycGanHoy')||'null');const kk=d=>d.getFullYear()+'_'+String(d.getMonth()+1).padStart(2,'0')+'_'+String(d.getDate()).padStart(2,'0');
       if(o&&isFinite(o.g)){if(o.k===kk(new Date())){gv=o.g;lbl='ganancia de hoy';}else if(o.k===kk(new Date(Date.now()-864e5))){gv=o.g;lbl='ganancia de ayer';}}}catch(e){}
-    if(gv==null)lbl='cargando la ganancia…';   // sin dato en este aparato: no se inventa un número, gira y queda en $0
-    const txt=Math.abs(Math.round(gv==null?0:gv)).toLocaleString('es-AR'),nD=txt.replace(/\D/g,'').length,NOM=['ld4a','ld4b','ld4c','ld4d','ld4e'];
+    // Sin dato en este aparato (26/10/2026, él con la foto: quedaba "$" y una sola cifra cortada): no se inventa un número; giran 5
+    // cifras SIN PARAR ("buscando"), cada una a su velocidad, hasta que entra la app.
+    if(gv==null){lbl='cargando la ganancia…';
+      let cs='';const vel=[.9,1.15,.8,1.05,.95];
+      for(let i=0;i<5;i++){const a=[];for(let j=0;j<9;j++)a.push(Math.floor(Math.random()*10));a.push(a[0]);
+        if(i===2)cs+='<span class="s">.</span>';
+        cs+='<div class="d"><div style="animation:ld4g '+vel[i]+'s steps(9,end) infinite">'+a.map(x=>'<span>'+x+'</span>').join('')+'</div></div>';}
+      return '<div class="ld4w"><div class="ld-t">CYC</div><div class="ld4 ld-syne" style="animation:none"><span class="s">$</span>'+cs+'</div><div class="ld-t2">'+lbl+'</div></div>';}
+    const txt=Math.abs(Math.round(gv)).toLocaleString('es-AR'),nD=txt.replace(/\D/g,'').length,NOM=['ld4a','ld4b','ld4c','ld4d','ld4e'];
     let cols='',i=0;
     for(const ch of txt){
       if(!/\d/.test(ch)){cols+='<span class="s">'+ch+'</span>';continue;}
@@ -3060,7 +3068,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.89';
+const APP_VERSION='26.90';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3073,6 +3081,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.90',f:'26/10',h:'18:35',c:[{n:1,t:'🎬 Cargando · contador: si ese aparato todavía no vio la ganancia de hoy, giran 5 cifras sin parar (antes quedaba una sola cifra cortada).'}]},
   {v:'26.89',f:'26/10',h:'18:20',c:[{n:1,t:'🎬 Cargando · contador de plata: ahora gira hasta la ganancia de hoy (la última que vio ese aparato; si es de ayer, lo dice).'}]},
   {v:'26.88',f:'26/10',h:'18:05',c:[{n:1,t:'🎬 Cargando · contador de plata: los números quedan centrados, del mismo ancho, giran parejo y no se traban al volver a empezar.'}]},
   {v:'26.87',f:'26/10',h:'17:45',c:[{n:1,t:'🎬 La pantalla de "cargando" tiene 7 versiones (la de siempre y 6 nuevas) y cambia sola todos los días a las 4 de la mañana.'}]},
