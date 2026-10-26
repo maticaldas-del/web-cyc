@@ -1925,6 +1925,53 @@ function cajaPerdidaPorCuotas(st, precio, ganP, boosts) {
   if (!cuo || /:boosted$/.test(cuo)) return false;
   return ganP >= precio * 0.98;
 }
+// 🥊 MANTENER LA CAJA HASTA QUE SE VENDA (26/10/2026, él con la waflera: "quiero que vendamos la waflera, estamos ganando? podés
+// mantenerla en ganando siempre hasta que se venda? sin bajar muchísimo"). `cyc/ganacaja/<MLA>` = {piso, m, desde, por}: lo carga
+// `ganarcaja:<MLA>=<piso>|motivo;go` SÓLO con su pedido (es su autorización para ESA publicación: pasa por encima de 🔒/🧊 y de "sin
+// línea de techo", nunca del piso que él aceptó ni del 35% del peor caso). Cada hora, después de leer la caja: si la perdemos o la
+// compartimos y ML dice el precio para ganarla, se baja a ese precio (terminado en 90, sin pasarlo) mientras no quede abajo del piso;
+// como mucho 15% por hora (escalera). Ganándola no se toca. Con stock 0 no hace nada (se vendió). Se relee de ML.
+async function mantenerCaja(db, accounts, DRY) {
+  const out = { mirados: 0, bajadas: [], no: [] };
+  const G = (await db.get('cyc/ganacaja')) || {}; const mlas = Object.keys(G).filter((m) => G[m] && Number(G[m].piso) > 0);
+  if (!mlas.length) return out;
+  const links = (await db.get('cyc/mllinks')) || {}; const np = (await db.get('cyc/netopub')) || {};
+  const tc = parseFloat(await db.get('cyc/finanzas/tipo_cambio')) || 0;
+  const prods = Object.values((await db.get('cyc/products')) || {});
+  const toks = {};
+  for (const mla of mlas) {
+    const e = links[mla] || {}, g = G[mla], piso = Number(g.piso);
+    out.mirados++;
+    const nom = String(e.title || mla).slice(0, 40);
+    if (!e.cuenta) { out.no.push(`${nom}: sin cuenta`); continue; }
+    const st = e.caja; const ptw = Number(e.cajaPtw) || 0;
+    if (st === 'winning') { out.no.push(`${nom}: ganando la caja, no se toca`); continue; }
+    if (!['losing', 'sharing'].includes(st) || !(ptw > 0)) { out.no.push(`${nom}: caja "${st || '?'}" sin precio para ganarla`); continue; }
+    if (!toks[e.cuenta]) { const acc = accounts[e.cuenta]; if (!acc?.refresh_token) { out.no.push(`${nom}: sin permiso de ${e.cuenta}`); continue; }
+      try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + e.cuenta, { refresh_token: t.refresh_token, updated_ts: Date.now() }); toks[e.cuenta] = t.access_token; } catch { out.no.push(`${nom}: no pude renovar el permiso`); continue; } }
+    let it; try { it = await mlGet('/items/' + mla + '?attributes=id,price,status,available_quantity', toks[e.cuenta]); } catch { out.no.push(`${nom}: ML no contestó`); continue; }
+    if (it.status !== 'active' || !(Number(it.available_quantity) > 0)) { out.no.push(`${nom}: ${it.status !== 'active' ? 'no está activa' : 'sin stock (¿se vendió?)'}`); continue; }
+    const p0 = Number(it.price) || 0;
+    let to = Math.floor((ptw - 90) / 100) * 100 + 90; if (to > ptw) to -= 100;
+    to = Math.max(to, Math.ceil(p0 * 0.85 / 10) * 10);   // escalera: como mucho 15% por hora
+    if (to < piso) { out.no.push(`${nom}: para ganar la caja pide ${money(ptw)}, abajo del piso que aceptó (${money(piso)}): se queda en ${money(p0)}`); continue; }
+    if (!(to < p0)) { out.no.push(`${nom}: ya está en ${money(p0)}, el precio para ganar es ${money(ptw)}`); continue; }
+    // El % en que queda (para el piso duro de setPriceTo): neto a ese precio con la misma proporción que el de hoy, menos impuestos y costo.
+    const n0 = np[mla] && Number(np[mla].neto) > 0 && Number(np[mla].precio) > 0 ? Number(np[mla].neto) / Number(np[mla].precio) : 0.8;
+    const pr = prods.find((x) => x && x.id === e.prodId); const cu = pr && tc > 0 ? costoPesos(pr, 1, tc).costo : 0;
+    const imp = mlExtraPct(e.cuenta) / 100 + 0.04;
+    const mg = cu > 0 ? ((to * n0 - to * imp - cu) / to) * 100 : null;
+    if (mg == null || mg < 35) { out.no.push(`${nom}: a ${money(to)} quedaría en ${mg == null ? '?' : mg.toFixed(0) + '%'} (abajo del 35%): no bajo`); continue; }
+    if (DRY) { out.bajadas.push({ mla, nom, de: p0, a: to, mg, dry: true }); continue; }
+    const r = await setPriceTo(mla, null, to, toks[e.cuenta], { margen: mg, exacto: true, ganacaja: true, autorizado: `él pidió mantener la caja hasta que se venda (${g.m || ''})` });
+    if (!r.ok) { out.no.push(`${nom}: no pude bajar a ${money(to)} (${r.err})`); continue; }
+    let rel = 0; try { rel = Number((await mlGet('/items/' + mla + '?attributes=id,price', toks[e.cuenta])).price) || 0; } catch { rel = 0; }
+    out.bajadas.push({ mla, nom, de: p0, a: to, rel, mg });
+    try { await db.patch('cyc/ganacaja/' + mla, { ult: { ts: Date.now(), de: p0, a: to, ptw } }); } catch { /* el log ya lo dice */ }
+    try { await db.set('cyc/claudecambios/' + Date.now() + '_' + mla, { mla, de: p0, a: to, ts: Date.now(), motivo: 'mantener la caja (lo pidió él)' }); } catch { /* */ }
+  }
+  return out;
+}
 async function cajaDeCompraML(db, accounts, labels, DRY, soloCta) {
   const links = (await db.get('cyc/mllinks')) || {};
   const upd = {};
@@ -5569,7 +5616,7 @@ function reaccionesDe(d, ks, tach, parc) {
 // este precio (`cyc/netopub`), la competencia (`cyc/techofull` y la caja de la línea de tiempo), el día de la semana y el mes en que
 // más vende y la edad de la unidad más vieja en Full (la línea de tiempo, primero entra primero sale), y las otras publicaciones del
 // mismo producto (`cyc/mllinks`). Frases simples en `datosTxt`; con pocos días lo dice y no concluye.
-function fichaExtras({ mla, e, pr, d, ks, links, reclamos, techo, netopub, noconsigo, opiniones, tc, cu, lotesfull, cajasLl, stockhist, cfg }) {
+function fichaExtras({ mla, e, pr, d, ks, links, reclamos, techo, netopub, noconsigo, pySin, opiniones, tc, cu, lotesfull, cajasLl, stockhist, cfg }) {
   const txt = [], ext = {};
   const $ = (x) => (x == null || !isFinite(x) ? '—' : '$' + Math.round(x).toLocaleString('es-AR'));
   const conSt = diaConStock;
@@ -5584,7 +5631,8 @@ function fichaExtras({ mla, e, pr, d, ks, links, reclamos, techo, netopub, nocon
     const de = org === 'py' ? 'Paraguay' + (pr.provPy ? ' (' + pr.provPy + ')' : ' (Nissei)') : /paulvic/i.test(prov + ' ' + (pr.name || '')) ? 'Paulvic' : pr.listaProv ? 'la lista de ' + pr.listaProv : 'Bs As' + (prov ? ' (' + prov + ')' : '');
     let f = `🏭 Se repone de ${de} · costo hoy en la ficha ${$(cu)}${pagado > 0 && tc > 0 ? ` (US$ ${r1(pagado)})` : ''}`;
     if (org === 'py' && nis > 0 && pagado > 0) { const rep = nis * RECARGO_PAR, dif = rep / pagado - 1; ext.reponer = { usd: Math.round(rep * 100) / 100, dif: Math.round(dif * 100) }; f += ` · reponerlo hoy US$ ${r1(rep)} (${dif >= 0 ? '+' : ''}${Math.round(dif * 100)}%: ${dif > 0.05 ? 'más caro que lo que pagaste' : dif < -0.05 ? 'más barato' : 'casi igual'})`; }
-    if (pr.nisseiNoHay || pr.pyNoHay) f += ' · Nissei NO lo tiene';
+    // 25/10/2026 (Cuba Prestige): `nisseiNoHay`/`pyNoHay` no los escribe nadie; la marca real es `cyc/py_sinstock/<prodId>` (la usan la web y `escasez`).
+    if (pr.nisseiNoHay || pr.pyNoHay || (pySin && pr.id && pySin[pr.id])) f += ' · Nissei NO lo tiene';
     const fNc = (t) => (Number(t) > 0 ? ' desde el ' + dayKeyFromISO(Number(t)).slice(8, 10) + '/' + dayKeyFromISO(Number(t)).slice(5, 7) : '');
     if (ncVar === 'nunca') f += ' · ⛔ el proveedor no lo mandó: NO se pide más este color'; else if (ncTodo || ncVar) f += ` · ⛔ marcado "no lo consigo"${ncVar && !ncTodo ? ' (este color)' : ''}${fNc(ncTodo || ncVar)} (se cae solo si entra mercadería a la oficina)`;
     txt.push(f + '.');
@@ -9098,7 +9146,7 @@ async function setPriceTo(itemId, variationId, nuevo, token, chequeo) {
   if (!(chequeo && chequeo.libre) && to < base * 0.75) return { ok: false, err: 'baja-mayor-a-25%' };
   // 🔒 LA PUERTA DE LAS BAJAS (22/10/2026): toda baja de lista pasa por `frenosBajas`, venga de `decido` o de cualquier otro
   // comando o regla automática (ver `_frenosEnLaPuerta`). Sólo las gemelas (`gemela`) siguen a su Clásica sin pasar de nuevo.
-  if (!(chequeo && chequeo.gemela)) { const gp = await _frenosEnLaPuerta(itemId, base, to, chequeo); if (!gp.ok) return { ok: false, err: gp.err }; }
+  if (!(chequeo && (chequeo.gemela || chequeo.ganacaja))) { const gp = await _frenosEnLaPuerta(itemId, base, to, chequeo); if (!gp.ok) return { ok: false, err: gp.err }; }   // 🥊 `ganacaja`: su autorización escrita en cyc/ganacaja (mantenerCaja)
   try {
     const r = await fetch(ML_API + '/items/' + itemId, {
       method: 'PUT',
@@ -37529,7 +37577,7 @@ async function main() {
       const TCH = diasTachado({ notas: notasT, pcl: prC, est: estF, pven: pvF, ahora: Date.now() });
       // Lo que la ficha suma para decidir (20/10/2026): reclamos con motivo, lo que se queda ML, competencia, "no lo consigo".
       const leerX = async (r) => { try { return (await db.get(r)) || {}; } catch { faltaF.push(r); console.log(`⚠️ no leí ${r}: esa parte de la ficha sale sin eso`); return {}; } };
-      const [recF, npF, tfF, ncF] = await Promise.all([leerX('cyc/reclamomotivo'), leerX('cyc/netopub'), leerX('cyc/techofull'), leerX('cyc/noconsigo')]);
+      const [recF, npF, tfF, ncF, pySinF] = await Promise.all([leerX('cyc/reclamomotivo'), leerX('cyc/netopub'), leerX('cyc/techofull'), leerX('cyc/noconsigo'), leerX('cyc/py_sinstock')]);
       // La edad del stock con la misma cuenta del stock antiguo (20/10/2026 a la noche · etapa 5).
       const [lfF, envF, shF, cfgF] = await Promise.all([leerX('cyc/lotesfull'), leerX('cyc/envios_full'), leerX('cyc/stockhist'), leerX('cyc/mlconfig')]);
       const cajasF = cajasLlegadasPorClave(envF);
@@ -37591,7 +37639,7 @@ async function main() {
           const notas = { ...(notasT[mla] || {}) };
           const ex = expC[mla]; if (ex && ex.simple && Number(ex.ts) > 0 && !notas[ex.ts]) notas[ex.ts] = { t: ex.simple, tipo: ex.tipo || 'nota' };
           const J = await lineaJuntaStock(links, pIdx, mla, d, lineaDeF); if (J.con.length) nJuntas++;
-          const f = armarFicha({ mla, d: J.d, juntaCon: J.con, e, cu: costoPesos(pr, 1, tc).costo, imp: ((ML_EXTRA_PCT[cta] || 4) + _monoFi) / 100, cambios: camb[mla] || [], notas, hoyK, tach: TCH.tach[mla], parc: TCH.parc[mla], extra: { pr, links, reclamos: recF, techo: tfF, netopub: npF, noconsigo: ncF, opiniones: opF, tc, lotesfull: lfF, cajasLl: cajasF, stockhist: shF, cfg: cfgF, est: estF[mla] || null } });
+          const f = armarFicha({ mla, d: J.d, juntaCon: J.con, e, cu: costoPesos(pr, 1, tc).costo, imp: ((ML_EXTRA_PCT[cta] || 4) + _monoFi) / 100, cambios: camb[mla] || [], notas, hoyK, tach: TCH.tach[mla], parc: TCH.parc[mla], extra: { pr, links, reclamos: recF, techo: tfF, netopub: npF, noconsigo: ncF, pySin: pySinF, opiniones: opF, tc, lotesfull: lfF, cajasLl: cajasF, stockhist: shF, cfg: cfgF, est: estF[mla] || null } });
           f.producto = String(pr.name || '').slice(0, 80);
           const faltaJ = J.sinLeer.length ? [`la línea de ${J.sinLeer.join(', ')} (comparte el stock: sus ventas no se sumaron)`] : [];
           if (faltaF.length || faltaJ.length) f.incompleta = 'armada sin: ' + faltaF.concat(faltaJ).join(', ');
@@ -49402,6 +49450,24 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=ganarcaja[:<MLA>=<piso>[|motivo]|<MLA>=-][;…][;go] → 🥊 MANTENER LA CAJA HASTA QUE SE VENDA (26/10/2026, él con la waflera).
+    // SÓLO con su pedido (es su autorización para esa publicación). Sin pares lista lo marcado. `=-` lo saca. La regla la aplica `mantenerCaja`
+    // cada hora. El piso es el precio más bajo que él aceptó ("sin bajar muchísimo"); nunca abajo del 35% del peor caso.
+    if (/^ganarcaja(:|;|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const raw = String(process.env.BILLING_PROBE).replace(/^ganarcaja:?/, ''); const GOg = /(^|;)go$/.test(raw) && !DRY;
+      const pares = raw.replace(/(^|;)go$/, '').split(';').map((x) => x.trim()).filter(Boolean);
+      const links = (await db.get('cyc/mllinks')) || {};
+      if (!pares.length) { const G = (await db.get('cyc/ganacaja')) || {}; console.log(`=== 🥊 MANTENER LA CAJA · ${Object.keys(G).length} ===`); for (const [m, g] of Object.entries(G)) { const e = links[m] || {}; console.log(`  ${m} · ${e.cuenta || '?'} · ${String(e.title || '').slice(0, 45)} · piso ${money(Number(g.piso) || 0)} · caja hoy ${e.caja || '?'}${e.cajaPtw ? ' (pide ' + money(e.cajaPtw) + ')' : ''} · ${g.m || ''}${g.ult ? ' · último cambio ' + money(g.ult.de) + ' → ' + money(g.ult.a) : ''}`); } return; }
+      for (const x of pares) {
+        const m = x.match(/^(MLA\d+)=(-|\d+)(?:\|(.*))?$/i); if (!m) { console.log(`"${x}" → se espera <MLA>=<piso>|motivo o <MLA>=-`); continue; }
+        const mla = m[1].toUpperCase(); const e = links[mla]; if (!e) { console.log(`${mla}: no está en el panel`); continue; }
+        if (m[2] === '-') { console.log(`${mla}: ${GOg ? 'sacado' : 'lo sacaría (falta ;go)'}`); if (GOg) await db.set('cyc/ganacaja/' + mla, null); continue; }
+        const piso = Number(m[2]); console.log(`${mla} · ${String(e.title || '').slice(0, 50)} · piso ${money(piso)} · caja hoy ${e.caja || '?'}${e.cajaPtw ? ' (pide ' + money(e.cajaPtw) + ')' : ''}${GOg ? '' : ' (falta ;go)'}`);
+        if (GOg) { await db.set('cyc/ganacaja/' + mla, { piso, m: (m[3] || 'lo pidió él').slice(0, 200), desde: Date.now(), por: 'él' }); const r = await db.get('cyc/ganacaja/' + mla); console.log(r && Number(r.piso) === piso ? '   ✓ guardado y releído' : '   ✗ NO QUEDÓ'); }
+      }
+      return;
+    }
+
     // BILLING_PROBE=buzon[:leido=<ts>[,<ts>…]][;go] → 📬 LOS MENSAJES PARA CLAUDE (25/10/2026, eligió la 15a). Los deja el chat de Chrome
     // que arma las cajas (o él) desde Mi oficina → "Mensaje para Claude" (`cyc/buzon/<ts>` = {t, ts, leido}). Sin nada: lista los sin leer
     // (y los 5 últimos leídos). `leido=<ts>,…;go` los marca leídos. Va por ml-consulta (`CONSULTA_ESCRIBE`).
@@ -54103,6 +54169,9 @@ async function main() {
       console.log(`🥊 Caja de compra · ${rb.mirados} publicaciones activas · ganamos ${rb.winning} · compartimos ${rb.sharing} · perdemos ${rb.losing} · sin catálogo ${rb.nocat}${rb.porCuotas ? ` · 💳 ${rb.porCuotas} se pierden por cuotas (gemela Premium, no bajar)` : ''}${rb.sug || rb.sugSin ? ` · 💡 precio sugerido de ML: ${rb.sug} leídos${rb.sugSin ? `, ${rb.sugSin} sin número` : ''}` : ''}`);
       console.log(`🏷️  Rubros · ${rb.cats.size} categorías distintas · ${rb.catsNuevas} nombre(s) nuevo(s)${rb.catsFaltan ? ` · quedan ${rb.catsFaltan} para la vuelta siguiente` : ''} · 📷 ${rb.fotos} con foto`);
     } catch (e) { console.log('No pude leer la caja de compra: ' + e.message); }
+    // 🥊 Lo que él pidió mantener ganando la caja hasta que se venda (26/10/2026, la waflera). Mecánico, como las gemelas.
+    try { const mc = await mantenerCaja(db, accounts, DRY); if (mc.mirados) { for (const b of mc.bajadas) console.log(`🥊 ${b.nom} (${b.mla}): para ganar la caja ${money(b.de)} → ${money(b.a)} (${Math.round(b.mg)}%)${b.rel ? ' · releído ' + money(b.rel) : ''}`); for (const x of mc.no) console.log(`🥊 ${x}`); } }
+    catch (e) { console.log('No pude mantener la caja: ' + e.message); }
     // Si una suba que pasó a un competidor sin Full perdió la caja, se vuelve al precio anterior (04/10/2026).
     if (!SOLO_DATOS) try {
       const vs = await volverSinFull(db, accounts, labels, DRY);
