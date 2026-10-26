@@ -87,6 +87,13 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
 - **Qué es:** en `frenosBajas` (todas las bajas: `decido`, `entrarpromo`, la puerta de `setPriceTo`), si la ficha o el título es perfume (`esPerfumeNom`) y el precio nuevo deja menos de 10% en el peor caso, frena; el texto dice si está cerca de pagar stock antiguo → avisarle para retirarlo al local. `!bajocero` con su autorización lo abre.
 - **Qué chequear:** que agarre los VS, Paulvic y Persea (y no un "Splash" que no sea perfume) · el Cyber del Coconut y la escalera del Pure Seduction pasan por acá · que los avisos de retiro le lleguen en el chat, no por Telegram.
 
+### 🔔 El timbre también suena con una venta de algo que está bajando de precio (26/10/2026, él: "agregar un trigger nuevo, que el producto esté bajando de precio")
+- **Qué es:** además de 6 compras sin revisar o una abajo del 35%, el timbre toca si entra una compra NUEVA de una publicación en 🪜
+  `bajando` (si vendió una gemela, manda la estrategia de su Clásica). Vender en un escalón decide si la escalera se frena ahí (el 💰) o
+  sigue: no espera a la vuelta corta. El control de cada hora (`trig_01PxNuKFnJfdAtPem61eaUnA`) la mira igual que las otras dos.
+- **Dónde vive:** `sync.mjs`, `timbreVentas` (`r.bajando`, el `por` y el texto) y el comando `timbre` (renglón "de algo bajando de precio").
+- **Qué chequear:** que una venta de una 💰 punto o 📈 techo NO toque por esto; que una venta de una gemela de una Clásica 🪜 sí toque.
+
 ### `pausadas`: las que pausó él a propósito no se avisan (26/10/2026, él: "no avises más de esas")
 - **Qué es:** las pausadas con stock en Full cuyo freno es "pausada a mano con el comando pausar" (hoy las 35 gemelas de envío gratis de
   Paulvic, su 11b del 25/10) ya no se listan una por una ni van al aviso de "no las puedo medir": salen en UN renglón con el total y no

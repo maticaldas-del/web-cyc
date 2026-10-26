@@ -10131,12 +10131,24 @@ async function timbreVentas(db, opts = {}) {
     r.piso = piso;
   }
   r.bajas = bajas;
-  r.por = bajas.length ? `${bajas.length} compra(s) abajo del ${r.piso}%` : lista.length >= TIMBRE_MIN_COMPRAS ? `${lista.length} compras sin revisar` : '';
+  // 🪜 26/10/2026 (él: "agregar un trigger nuevo, que el producto esté bajando de precio"): una compra NUEVA de algo que está en la
+  // escalera de bajada (🪜 `bajando`, también si entró por su gemela: manda la estrategia de su Clásica) toca el timbre. Vender en un
+  // escalón es justo el dato que decide si se frena la escalera ahí (es el 💰) o si sigue bajando: no puede esperar a la vuelta.
+  const bajando = [];
+  for (const g of nuevasTimbre) {
+    const m = String(g[0].v.mla || ''); if (!m) continue;
+    let clas = m; try { const gd = await db.get('cyc/mllinks/' + m + '/gemelaDe'); if (gd) clas = String(gd); } catch { /* sin gemela */ }
+    let est = {}; try { est = (await db.get('cyc/estrategia/' + clas)) || {}; } catch { est = {}; }
+    const ult = Object.entries(est).map(([k, x]) => ({ ts: Number(k), t: x && x.t })).filter((x) => x.ts > 0 && x.t).sort((a, b) => b.ts - a.ts)[0];
+    if (ult && ult.t === 'bajando') bajando.push({ nom: String(g[0].v.prod || '?').slice(0, 40), cta: g[0].v.cuenta || '?', mla: clas });
+  }
+  r.bajando = bajando;
+  r.por = bajas.length ? `${bajas.length} compra(s) abajo del ${r.piso}%` : bajando.length ? `${bajando.length} compra(s) de algo que está bajando de precio (🪜)` : lista.length >= TIMBRE_MIN_COMPRAS ? `${lista.length} compras sin revisar` : '';
   r.toca = forzar || !!r.por;
   if (!r.toca) return r;
   // el revisor está trabajando (tocó hace menos de 45 min y ventasvistas no se movió desde entonces): espera
   if (!forzar && memTs && ahora - memTs < TIMBRE_ESPERA_MIN * 6e4 && H <= (Number(mem.H) || 0)) { r.espera = true; return r; }
-  const texto = `Timbre del robot: ${r.por || 'prueba a mano'}. ${lista.length} compra(s) sin revisar desde ${new Date(H - 3 * 36e5).toISOString().slice(0, 16).replace('T', ' ')} (hora de acá)${bajas.length ? '. Abajo del piso: ' + bajas.map((b) => `${b.cta} · ${b.nom} · ${b.pct}%`).join(' | ') : ''}.`;
+  const texto = `Timbre del robot: ${r.por || 'prueba a mano'}. ${lista.length} compra(s) sin revisar desde ${new Date(H - 3 * 36e5).toISOString().slice(0, 16).replace('T', ' ')} (hora de acá)${bajas.length ? '. Abajo del piso: ' + bajas.map((b) => `${b.cta} · ${b.nom} · ${b.pct}%`).join(' | ') : ''}${bajando.length ? '. Bajando de precio (🪜): ' + bajando.map((b) => `${b.cta} · ${b.nom} · ${b.mla}`).join(' | ') : ''}.`;
   r.texto = texto;
   if (prueba) return r;
   if (r.sinLlave) { if (!mem.sinLlaveAvisado || ahora - Number(mem.sinLlaveAvisado) > 6 * 36e5) { console.log('🔔 timbre: tocaría (' + r.por + ') pero falta la llave (TIMBRE_URL/TIMBRE_TOKEN en los secretos de GitHub)'); try { await db.patch('mlapi/timbre', { sinLlaveAvisado: ahora }); } catch { } } return r; }
@@ -47690,8 +47702,8 @@ async function main() {
       if (tocar && (CONSULTA_SOLO_LEE || DRY)) { console.log('❌ tocarlo va por ml-sync (ml-consulta no tiene la llave)'); return; }
       const r = await timbreVentas(db, { prueba: !tocar, forzar: tocar });
       if (!r) return;
-      console.log(`${r.compras} compra(s) sin revisar · ${r.nuevas} nuevas desde el último toque · ${r.bajas.length} abajo del ${r.piso || 35}%${r.bajas.length ? ': ' + r.bajas.map((b) => `${b.cta} · ${b.nom} · ${b.pct}%`).join(' | ') : ''}`);
-      console.log(r.toca ? (r.espera ? '⏳ tocaría, pero el revisor está trabajando (tocó hace menos de 45 min y no cerró la revisión)' : `🔔 ${tocar ? (r.ok ? 'TOCÓ: ' + r.det : 'no pudo tocar: ' + (r.det || 'sin llave')) : 'TOCARÍA ahora: ' + r.por}`) : `· no toca (hacen falta ${TIMBRE_MIN_COMPRAS} compras o una abajo del 35%)`);
+      console.log(`${r.compras} compra(s) sin revisar · ${r.nuevas} nuevas desde el último toque · ${r.bajas.length} abajo del ${r.piso || 35}%${r.bajas.length ? ': ' + r.bajas.map((b) => `${b.cta} · ${b.nom} · ${b.pct}%`).join(' | ') : ''} · ${(r.bajando || []).length} de algo bajando de precio (🪜)${(r.bajando || []).length ? ': ' + r.bajando.map((b) => `${b.cta} · ${b.nom} · ${b.mla}`).join(' | ') : ''}`);
+      console.log(r.toca ? (r.espera ? '⏳ tocaría, pero el revisor está trabajando (tocó hace menos de 45 min y no cerró la revisión)' : `🔔 ${tocar ? (r.ok ? 'TOCÓ: ' + r.det : 'no pudo tocar: ' + (r.det || 'sin llave')) : 'TOCARÍA ahora: ' + r.por}`) : `· no toca (hacen falta ${TIMBRE_MIN_COMPRAS} compras, una abajo del 35% o una de algo bajando de precio)`);
       if (r.texto) console.log('texto que lleva: ' + r.texto);
       return;
     }
