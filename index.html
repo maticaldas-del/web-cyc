@@ -795,10 +795,10 @@ input.qty:focus{border-color:var(--accent2)}
   #vp-kpis.vp-kc>.met-kpi{display:none}
 }
 /* G6 · ventas nuevas desde que miraste */
-.vp-nuevas{display:block;width:100%;text-align:left;font:inherit;font-size:.74rem;font-weight:700;color:var(--blue);background:color-mix(in srgb,var(--blue) 12%,var(--surface));border:1px solid color-mix(in srgb,var(--blue) 45%,transparent);border-radius:999px;padding:7px 13px;margin:2px 0 8px;cursor:pointer}
 .vp-nueva-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--blue);box-shadow:0 0 0 3px color-mix(in srgb,var(--blue) 25%,transparent);flex-shrink:0}
-.vp-rayita{display:flex;align-items:center;gap:8px;font-size:.64rem;color:var(--blue);margin:6px 0;white-space:nowrap}
-.vp-rayita::before,.vp-rayita::after{content:"";flex:1;border-top:1px dashed color-mix(in srgb,var(--blue) 60%,transparent)}
+.vp-rayita{display:flex;align-items:center;gap:8px;font-size:.7rem;color:var(--blue);margin:8px 0;white-space:nowrap}
+.vp-rayita::before,.vp-rayita::after{content:"";flex:1;min-width:14px;border-top:1px dashed color-mix(in srgb,var(--blue) 60%,transparent)}
+.vp-rayita>span{min-width:0}
 @media(max-width:640px){.vp-rayita{white-space:normal;text-align:center}}
 /* G7 · sonido de cada venta (Ajustes) */
 .son-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:12px;border-top:1px solid var(--border);padding-top:12px}
@@ -3066,7 +3066,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.93';
+const APP_VERSION='26.94';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3079,6 +3079,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.94',f:'26/10',h:'17:23',c:[{n:1,t:'🆕 Ventas: se sacó el botón azul de arriba; "N ventas nuevas desde que miraste · +$X" va ahora en la rayita que separa lo nuevo de lo ya visto (o al final si todas son nuevas).'}]},
   {v:'26.93',f:'26/10',h:'16:54',c:[{n:1,t:'📈 Línea de tiempo en el celu: tocar o arrastrar el dibujo ya no abre la ventanita del día (en la PC el globito del mouse sigue igual).'}]},
   {v:'26.92',f:'26/10',h:'16:40',c:[{n:2,t:'📈 Línea de tiempo: cada gráfico ocupa un tercio de la pantalla (entran tres a la vez) y las 4 tarjetas de arriba quedaron en un renglón finito.'}]},
   {v:'26.91',f:'26/10',h:'18:50',c:[{n:1,t:'🎬 Cargando · contador: cada cifra con más lugar arriba, abajo y a los costados (en la PC se cortaban arriba).'}]},
@@ -8566,7 +8567,6 @@ const VENTA_VISTO_LS='cycVentaVisto';
 function _ventaTsMax(){let m=0;Object.keys(state.ventaprod||{}).filter(k=>/^\d{4}_\d{2}_\d{2}$/.test(k)).sort().slice(-3).forEach(k=>Object.values(state.ventaprod[k]||{}).forEach(v=>{const t=Number(v&&v.ts)||0;if(t>m)m=t;}));return m;}
 function ventaVistoTs(){const r=Number(_lsGet(VENTA_VISTO_LS));return r>0?r:null;}
 function ventaVistoGuardar(){const m=_ventaTsMax();if(m>0&&m>(ventaVistoTs()||0))_lsSet(VENTA_VISTO_LS,String(m));}
-function ventaNuevasIr(){const r=document.getElementById('vp-rayita');if(r)r.scrollIntoView({block:'center',behavior:'smooth'});}
 // ── G2 · LO QUE SIGNIFICA CADA VENTA ──
 // Sólo lleva cartelito la venta que es un hecho nuevo, uno por venta (manda el de más arriba):
 //   🎉 la primera venta de esa publicación · 🏁 era la última que había en Full de esa cuenta (hoy está en 0 y no vendió
@@ -13853,18 +13853,22 @@ function renderVentaProd(){
     if(ventaVistoTs()==null)ventaVistoGuardar();
     const _vistoTs=ventaVistoTs();
     const _nueva=g=>!!_vistoTs&&!g.cancelada&&g.items.some(v=>(Number(v.ts)||0)>_vistoTs);
-    const _nv=shownGroups.map(_nueva),_hayVieja=_nv.some((x,i)=>!x&&_nv.slice(0,i).some(Boolean));
-    let _vpNuevasHTML='';
+    const _nv=shownGroups.map(_nueva);
+    // 26/10/2026 (él: "poner esto abajo de las ventas y el cuadrito azul sacarlo, ya que está la línea marcando los nuevos"): ya no hay
+    // botón azul arriba; la cuenta de las nuevas va en la rayita que las separa de lo ya visto (o al final, si todas las que se ven son nuevas).
+    let _vpNuevasTxt='';
     {const ng=filteredGroups.filter(_nueva);if(ng.length){let gg=0;ng.forEach(g=>g.items.forEach(v=>{if(!ventaSinCostoVP(v))gg+=(v.neto||0)-efectivoCostoVP(v);}));
-      _vpNuevasHTML=`<button class="vp-nuevas" onclick="ventaNuevasIr()" title="Se da por visto cuando salís de Ventas después de mirarla 5 segundos (cada teléfono por su lado)">🆕 ${ng.length} venta${ng.length===1?' nueva':'s nuevas'} desde que miraste · ${gg>=0?'+':''}${fmt(gg)}${_hayVieja?' ↓':''}</button>`;}}
-    const _rayita=`<div class="vp-rayita" id="vp-rayita">hasta acá es lo nuevo · lo de abajo ya lo viste</div>`;
+      _vpNuevasTxt=`${ng.length} venta${ng.length===1?' nueva':'s nuevas'} desde que miraste · ${gg>=0?'+':''}${fmt(gg)}`;}}
+    let _rayPuesta=false;
+    const _rayitaDe=abajo=>{const id=_rayPuesta?'':' id="vp-rayita"';_rayPuesta=true;
+      return `<div class="vp-rayita"${id} title="Se da por visto cuando salís de Ventas después de mirarla 5 segundos (cada teléfono por su lado)"><span>↑ <b>${_vpNuevasTxt||'hasta acá es lo nuevo'}</b>${abajo?' · lo de abajo ya lo viste':''}</span></div>`;};
     const _dot='<span class="vp-nueva-dot" title="Entró después de la última vez que miraste Ventas en este teléfono"></span>';
     // 7.29: con más de un día en el período, cada día lleva su renglón pegado arriba (ventas, ganancia y una rayita contra el mejor).
     const _vpDS=listScopeKeys.length>1?_vpDiasStats(filteredGroups):null;let _vpDiaPrev=null;
-    list.innerHTML=_vpNuevasHTML+(filteredGroups.length?shownGroups.map((grp,_gi)=>{
+    list.innerHTML=(filteredGroups.length?shownGroups.map((grp,_gi)=>{
         let _vpCab='';if(_vpDS&&grp._dateKey!==_vpDiaPrev){_vpDiaPrev=grp._dateKey;_vpCab=_vpDiaCabHTML(grp._dateKey,_vpDS);}
       const isCancelled=grp.cancelada;
-      const _esNueva=_nv[_gi],_antes=(_gi>0&&_nv[_gi-1]&&!_esNueva)?_rayita:'';
+      const _esNueva=_nv[_gi],_antes=(_gi>0&&_nv[_gi-1]&&!_esNueva)?_rayitaDe(true):'';
       let gn=0,gc=0,gmlx=0,ggest=0,gOfi=0;grp.items.forEach(v=>{if(!isCancelled){gn+=v.neto||0;gc+=efectivoCostoVP(v);gmlx+=impuestosDeVenta(v);ggest+=gestDivVP(v);gOfi+=costoOficinaVP(v);}});
       // La ganancia en PESOS se mide contra gc (sin la gestión): el neto ya la trae descontada.
       // El PORCENTAJE se mide contra gc+ggest, que es el costo total como lo pidió él.
@@ -14122,7 +14126,7 @@ function renderVentaProd(){
       </div>`;
       const _vv=vivaVenta({cancel:isCancelled,gpct,est:_est,neto:gn,gan:gg,costo:gc});
       return _antes+_vpCab+vivaEnvolver(_pcHtml,'vp-pc',_vv)+vivaEnvolver(_celHtml,'vp-cel',_vv);
-    }).join('')+(filteredGroups.length>VP_CAP?`<div class="empty-msg" style="margin-top:10px">Mostrando las ${VP_CAP} ventas más recientes de ${filteredGroups.length}. Usá el buscador o filtrá por cuenta/período para encontrar otras. (Los totales de arriba sí cuentan todas.)</div>`:''):((!vpQ&&!vpFilterCuenta&&!vpFilterTag&&vpPeriod==='dia'&&vpDate===todayStr())?_vpHoyVacioHTML():`<div class="empty-msg">${vpQ||vpFilterCuenta?'Sin resultados para los filtros aplicados '+(/^(hoy|el )/.test(mesLabel)?'':'en ')+mesLabel+'.':'Sin ventas cargadas '+(/^(hoy|el )/.test(mesLabel)?'':'en ')+mesLabel+'.'}</div>`));
+    }).join('')+(_nv.length&&_nv[_nv.length-1]?_rayitaDe(false):'')+(filteredGroups.length>VP_CAP?`<div class="empty-msg" style="margin-top:10px">Mostrando las ${VP_CAP} ventas más recientes de ${filteredGroups.length}. Usá el buscador o filtrá por cuenta/período para encontrar otras. (Los totales de arriba sí cuentan todas.)</div>`:''):((!vpQ&&!vpFilterCuenta&&!vpFilterTag&&vpPeriod==='dia'&&vpDate===todayStr())?_vpHoyVacioHTML():`<div class="empty-msg">${vpQ||vpFilterCuenta?'Sin resultados para los filtros aplicados '+(/^(hoy|el )/.test(mesLabel)?'':'en ')+mesLabel+'.':'Sin ventas cargadas '+(/^(hoy|el )/.test(mesLabel)?'':'en ')+mesLabel+'.'}</div>`));
     vivaScan(list);
     try{_vpAvisoTras(list);}catch(e){}
   }

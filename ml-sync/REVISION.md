@@ -1379,6 +1379,12 @@ es el promedio por día de cada mes (`_lnPromMes`): cada día muestra el de su m
 del gráfico se suman los días desde el 1º aunque queden antes (`_lnPreMes`). Línea de cada producto y general. Probado: sep $5.000/día,
 oct $10.000/día con ventas de prueba. Qué chequear: que el salto caiga justo el día 1 y que el número de "hoy" sea el del mes en curso.
 
+### Etapa 7 · 26/10/2026 · v26.94 · 🆕 Ventas: la cuenta de las nuevas va en la rayita
+Él: *"poner esto abajo de las ventas y el cuadrito azul sacarlo, ya que está la línea marcando los nuevos"*. Se sacó el botón `.vp-nuevas`
+(y `ventaNuevasIr`); "N ventas nuevas desde que miraste · +$X" va en negrita en la rayita (`_rayitaDe`) que separa lo nuevo de lo ya visto,
+o al final de la lista si todas las que se ven son nuevas. La rayita sigue viéndose en el celu (mín. 14 px de cada lado). Los puntitos
+azules de cada venta nueva siguen. Qué chequear: con ventas nuevas, arriba no hay nada y la cuenta aparece debajo de la última nueva.
+
 ### Etapa 7 · 26/10/2026 · v26.93 · 📈 Línea de tiempo en el celu: tocar no abre nada
 Él: *"en el celu al arrastrar o clickear se abre esa ventana. Re molesta. Que no se abra nada y listo"*. Se sacó la franja del día con el
 dedo (7.23 del 21/10: `_lineaFranjaEn`, `_lineaDiasDe`, `_lineaFranjaCerrar`, su CSS y el vigilante de toda la página que la cerraba).
