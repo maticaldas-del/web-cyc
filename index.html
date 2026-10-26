@@ -2962,7 +2962,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.77';
+const APP_VERSION='26.78';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2975,6 +2975,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.78',f:'26/10',h:'14:20',c:[{n:2,t:'🇵🇾 Paraguay: Elegancia sale del panel (no se usa). Queda sólo Nissei, sin la fila de proveedor. Sus datos quedan guardados y el robot deja de medir su catálogo.'}]},
   {v:'26.77',f:'26/10',h:'14:05',c:[{n:3,t:'🪄 Pedido de Paraguay: botón nuevo "Llenar con probados y nuevos". Primero carga los probados que pide Pedidos y dan 35%+ con el precio de hoy, y con lo que queda del tope los nuevos de ⭐ gana mucho y sale mucho para abajo.'},{n:3,t:'⛔ Lo mirado en Paraguay hace 7 días o más sale en rojo y no se puede pedir: no se carga, no se copia el mensaje para Nissei y no se marca Ya lo pedí hasta volver a mirarlo o sacarlo.'}]},
   {v:'26.76',f:'26/10',h:'13:50',c:[{n:1,t:'🧾 Pedido de Paraguay: el % de hoy de cada renglón es el del PEOR caso, con todo pagado (lo que se pagó, el recargo real y la retención de otra provincia). El de "al pedirlo" queda aclarado: web y recargo estimado.'}]},
   {v:'26.75',f:'26/10',h:'13:45',c:[{n:1,t:'🧾 Pedido de Paraguay: además del "margen medido al pedirlo" (precio de la web y recargo estimado), cada renglón dice el % de HOY con lo que se pagó y el recargo real, al precio de su publicación.'}]},
@@ -15682,7 +15683,10 @@ let pyVista='probados';   // 19/10/2026, él: "tarda mucho, carga todos los prod
 // todo lo de antes. candList, pyCompras, pyArmadoFilas, pyPersonalFilas y la lista de probados filtran por el
 // proveedor elegido, así un "Ya lo pedí" de uno no toca nada del otro.
 const PY_PROVS={nissei:{n:'Nissei',e:'🟢'},elegancia:{n:'Elegancia',e:'🟣'}};
-let pyProv=(()=>{try{const v=localStorage.getItem('cycPyProv');return PY_PROVS[v]?v:'nissei';}catch(e){return 'nissei';}})();
+// ELEGANCIA APAGADA (26/10/2026, él: "eliminá elegancia. nunca se usa y genera problemas"): queda en PY_PROVS para que sus fichas y
+// candidatos NO se cuelen en Nissei, pero no se puede elegir ni se ve la solapa. Sus datos no se borran. (En el robot: PY_ELEGANCIA_OFF.)
+const PY_PROVS_VER=['nissei'];
+let pyProv=(()=>{try{const v=localStorage.getItem('cycPyProv');return PY_PROVS_VER.includes(v)?v:'nissei';}catch(e){return 'nissei';}})();
 function pyProvDe(x){const v=String((x&&(x.prov||x.provPy))||'nissei').toLowerCase();return PY_PROVS[v]?v:'nissei';}
 function pyProvNom(k){return (PY_PROVS[k||pyProv]||PY_PROVS.nissei).n;}
 function pyIdHoy(hoy,g){return (pyProv==='nissei'?(g==='perf'?'pyb':'py'):'py'+pyProv.slice(0,2))+String(hoy).replace(/-/g,'');}   // elegancia: pyel<fecha> · Nissei perfumería: pyb<fecha>
@@ -15692,7 +15696,7 @@ function pyIdHoy(hoy,g){return (pyProv==='nissei'?(g==='perf'?'pyb':'py'):'py'+p
 // `py<fecha>`). Elegancia sigue con uno solo (grupo null = todo).
 function pyMomGrupos(){return pyProv==='nissei'?['perf','resto']:[null];}
 function pyMomEs(g,nom){return !g||(g==='perf'?esBellezaNom(nom):!esBellezaNom(nom));}
-function pySetProv(v){if(!PY_PROVS[v])return;pyProv=v;try{localStorage.setItem('cycPyProv',v);}catch(e){}window._pedMomOpenG={};renderPedidos();}
+function pySetProv(v){if(!PY_PROVS[v]||!PY_PROVS_VER.includes(v))return;pyProv=v;try{localStorage.setItem('cycPyProv',v);}catch(e){}window._pedMomOpenG={};renderPedidos();}
 // PROBADOS Y NUEVOS SE PUEDEN PRENDER JUNTOS (03/10/2026, él: "clickear y sumar los dos juntos o clickear uno solo"):
 // tocar uno lo suma o lo saca; nunca quedan los dos apagados. 🧾 Pedido sigue siendo una vista aparte.
 function pySetVista(v){
@@ -22479,7 +22483,7 @@ function renderPedidos(){
   if(!isBsas){
     const _tab=(v,txt,tit)=>`<button class="btn" style="font-size:.64rem;padding:5px 13px;${(pyVista===v||(pyVista==='ambos'&&v!=='hechos'))?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}" title="${tit}" onclick="pySetVista('${v}')">${txt}</button>`;
     const _provBtn=k=>`<button class="btn" style="font-size:.72rem;padding:6px 16px;${pyProv===k?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}" title="Proveedor de Paraguay: cada uno tiene sus productos probados, sus nuevos y sus pedidos (no se juntan)." onclick="pySetProv('${k}')">${PY_PROVS[k].e} ${PY_PROVS[k].n}</button>`;
-    const _tabs=`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px"><span style="font-size:.68rem;color:var(--muted)">Proveedor:</span>${Object.keys(PY_PROVS).map(_provBtn).join('')}</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+    const _tabs=`${PY_PROVS_VER.length>1?`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px"><span style="font-size:.68rem;color:var(--muted)">Proveedor:</span>${PY_PROVS_VER.map(_provBtn).join('')}</div>`:''}<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
       ${_tab('probados','✅ Productos probados','Lo que YA vendés: cuánto hay que reponer para no quedarte sin stock, y lo que dejó de convenir al precio de Paraguay de hoy.')}
       ${_tab('nuevos','🆕 Productos nuevos','Lo que todavía NO vendés: los candidatos que trae el chat de Paraguay y el armado de ese pedido.')}
       ${_tab('hechos',`🧾 Pedido${(()=>{const n=pyArmadoFilas().length+pedNuevos(candList().filter(candEnArmado).filter(c=>candEnPedido(c)!=='viajando')).filas.length;return n?' ('+n+' cargados)':'';})()}`,'El pedido del momento (probados + nuevos juntos, con el mensaje para Nissei) y abajo los pedidos ya hechos: en camino y llegados.')}

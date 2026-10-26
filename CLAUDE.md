@@ -347,8 +347,9 @@
   producto** (✅ o `revcand` ok de ESE catálogo; sin las DOS fotos no va). **Nada pasa 14 días sin volver a mirarse** (23/10, él): 15%+ cada 7 d, todo lo demás (abajo de 15%, sin catálogo, sin vendedores; también Listas) cada 14; la web lo muestra en ✅ Revisados / ⏳ Falta revisar (`rev`/`pend` en `cyc/pycatres`).
   **Nombre traducido** (23/10, 1a): también se busca con el nombre en castellano (`traducirPyNombre`); lo que tampoco aparece traducido queda
   **✔️ revisado** (`qp`, `pycatres.scr`, en 📏 Medidos) y no cuenta como sin medir. `pycatdia` = desglose y lo buscado por día.
-- **Dos proveedores:** 🟢 Nissei (dos pedidos del momento: 🌸 Perfumería `pyb<fecha>` y 📦 Resto `py<fecha>`; en `compray` `|perf`/`|resto`)
-  y 🟣 **Elegancia** (`pyel<fecha>`; desde el 24/10 **su catálogo entero** en `mlapi/pycat` con clave `EL_<cód>`, carga `pycat:prov=elegancia;…;go`, números en `cyc/pycatres_el`). Mismos costos.
+- **Proveedor:** 🟢 Nissei (dos pedidos del momento: 🌸 Perfumería `pyb<fecha>` y 📦 Resto `py<fecha>`; en `compray` `|perf`/`|resto`)
+  y ~~🟣 Elegancia~~ **apagada el 26/10** (él: *"eliminá elegancia. nunca se usa y genera problemas"*): sin solapa en la web y el robot no
+  mide su catálogo (`PY_PROVS_VER`, `PY_ELEGANCIA_OFF`); sus datos (`EL_<cód>`, `pyel<fecha>`) quedan guardados. No volver a proponerla.
 - **Recargo** = el MEDIDO de los pedidos (`paramcompra`; 22,7% al 17/10), respaldo 20%. El panel lo suma; el chat carga el precio CRUDO.
   Pedido tiene un costo fijo (retira ~$74.000 + transferencia + correo por kilo): conviene llenarlo. **Adelanto de plata** es ocasional
   (`compray:<fecha>|adelanto=<pesos>|go`, renglón aparte del cambista).

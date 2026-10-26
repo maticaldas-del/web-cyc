@@ -11730,6 +11730,9 @@ const provPyDeBot = (x) => (String((x && (x.prov || x.provPy)) || 'nissei').toLo
 // con un código de Nissei que "termine igual" (`_pyDg` deja las letras y entonces sólo empareja exacto). El código de verdad (el
 // que va al candidato y a la ficha) es sin el `EL_`.
 const PYCAT_EL = 'EL_';
+// ELEGANCIA APAGADA (26/10/2026, él: "eliminá elegancia. nunca se usa y genera problemas"). No se borra nada: su catálogo (`EL_…`)
+// queda guardado, pero el robot no lo mide más ni arma sus números, y la web no muestra la solapa. Para volver: false.
+const PY_ELEGANCIA_OFF = true;
 const pycatProvDe = (key, e) => ((e && e.pv === 'elegancia') || String(key).startsWith(PYCAT_EL) ? 'elegancia' : 'nissei');
 const pycatCodDe = (key) => (String(key).startsWith(PYCAT_EL) ? String(key).slice(PYCAT_EL.length) : String(key));
 // ¿El candidato o la ficha `x` (código `codX`) es este renglón del catálogo? Mismo proveedor y mismo código.
@@ -11783,7 +11786,7 @@ async function pycatResumenEscribir(db, cat, cands, products) {
   const de = (pv) => Object.fromEntries(Object.entries(cat || {}).filter(([k, e]) => pycatProvDe(k, e) === pv));
   const catEl = de('elegancia');
   const r = await _pycatResumenUno(db, de('nissei'), cands, products, 'cyc/pycatres');
-  if (Object.keys(catEl).length) await _pycatResumenUno(db, catEl, cands, products, 'cyc/pycatres_el');
+  if (!PY_ELEGANCIA_OFF && Object.keys(catEl).length) await _pycatResumenUno(db, catEl, cands, products, 'cyc/pycatres_el');
   return r;
 }
 async function _pycatResumenUno(db, cat, cands, products, RUTA_R) {
@@ -11915,6 +11918,7 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
   const cola = [], cuenta = { fuera: 0, cand: 0, ficha: 0, frescos: 0, noDeja: 0 };
   for (const [cod, e] of todos) {
     if (!e || !e.n) continue;
+    if (PY_ELEGANCIA_OFF && pycatProvDe(cod, e) === 'elegancia') continue;
     const fz = pyCatFuera(e.n, Number(e.u) || 0, marcasNo); if (fz) { cuenta.fuera++; if (aplicar && e.fz !== fz) await db.patch(RUTA + '/' + cod, { fz }); continue; }
     // 🔁 REBUSCA (24/10/2026, eligió la 1a): un candidato que descarté porque ML lo comparaba con OTRO producto no frena que el
     // catálogo se vuelva a medir; se busca de nuevo sin los catálogos rechazados (`mlNoEs` del candidato).
