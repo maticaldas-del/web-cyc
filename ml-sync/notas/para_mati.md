@@ -22,5 +22,9 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 ### De las vueltas del 23/10 (a la noche y a la tarde)
 
 
+### Del 25/10 a la noche (contestó 1, 2a, 3a, 4a, 5, 6)
+- 1: probar UN pedido de Paraguay de ~US$1.000 · 2a y 4a: ya estaban hechos · 3a: la tabla de IIBB por provincia sale de `cargosmes` (pasada en el chat).
+- 5 Espejos y 6 Victoria's Secret parados: los miro yo y van al aviso de las 12:30 del 26/10 junto con el CyberMonday (tarea `trig_01CgU6vPK2vjhSKyDMgYAixJ`).
+
 ## Viejas que siguen esperando (de CLAUDE.md §13)
 - Sancor (respuesta y baja de Vida Plus) · contador (recategorización, actividad, facturas entre cuentas) · costo de las dos Linternas COB de Ayelen.
