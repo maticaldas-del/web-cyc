@@ -180,7 +180,7 @@
   **$10.000+** de ganancia (la compra ENTERA, sumando el carrito), no suena 00:30-10:00 (sale junto a las 10:00). Cada teléfono toca
   una vez "🔔 Activar aviso de cada venta". Llave privada VAPID en `mlapi/vapid` (nunca al repo).
 - Chats nuevos del bot quedan `pendiente` hasta `tgaprobar:<últimos números>:go`.
-- **Ventas vivas** (temblor y fuego en la tarjeta) se permiten desde **$10.000** de ganancia (`VIVA_GAN_TIEMBLA`, 15/10). Cada venta dice
+- **Ventas vivas:** el temblor se permite desde **$10.000** de ganancia (`VIVA_GAN_TIEMBLA`, 15/10) y el fuego desde **$20.000** (`VIVA_GAN_FUEGO`, 26/10). Cada venta dice
   Clásica o Premium y en cuántas cuotas (`tipoPub`, `cuotas`, `cuotasSI`) y "envío gratis" si salió por una gemela de envío.
 
 ## 5 · PRECIOS (resumen; manda `ml-sync/CEREBRO.md`)
@@ -195,6 +195,7 @@
   (siempre sacando que está sacando stock)… la estrategia es buscar el mejor precio por ganancia CON escalera"*): 1º 📈 techo (95%) → 2º 💰
   el de más ganancia, bajando en escalera desde el techo y midiendo cada escalón hasta el que más plata por día deja (en la web la 🪜 que
   viene de 📈/🏔️/💰 se ve 💰 "· Nº escalón"). Sólo la sobra/stock antiguo baja por otro camino.
+- **Bajar pide 95%, subir pide 50%** (26/10, él: *"siempre para bajar tenés que estar 95% seguro, siempre para subir 50% o más. entonces no hay chances de perder por vender barato"*): freno 50% en `decido` — si `techo95` ya da 50%+ de que el precio en prueba es el techo (`cyc/techo95pct`), no se sube más; no frena 🔥/⏳ ni volver a un precio de 90 días.
 - **Sin línea de techo no se baja** (21/10; 22/10 decisión 1a): línea = 🔴 de las rayas o 🏔️ de `techo95`. Sin línea → 📈 buscar
   techo (subir). Lo que vendieron otras variantes o la familia NO alcanza. Pasados 15 días de la última suba sin certeza, decide la
   plata por día (F4).
@@ -228,6 +229,7 @@
   nunca pasar 120. Bs As pasa a "no se consigue" cuando Pedidos lo pide hace 10+ días sin entrar nada a la oficina, o con el botón
   🚫 "No lo consigo" (`cyc/noconsigo/<prod>[/v/<color>]`); se cae solo al entrar mercadería.
 - **Lo que no vende al 35%** (24/10, eligió la a): no se repone y, al terminarse, la publicación queda pausada (no se borra).
+- **🌸 Perfumes: nunca abajo del 10%** (26/10, él: *"todo lo que es perfume se puede poner en la perfumería. antes de liquidar a 0% conviene pedirlo. intentemos venderlo mínimo al 10%. si está por pagar stock avisame y retiro"*; con los VS: *"menos del 10% nunca, antes retirarlos"*). Freno F12 (`esPerfumeNom`: perfume, body mist/splash, Victoria's Secret, Paulvic/Persea). Si no sale al 10% y está a 20 días o menos de pagar stock antiguo → se le avisa en el chat (12:30) para que lo retire al local.
 - **Sobra** (+90 d de stock al ritmo con stock o sin ventas en 60 d) → escalera/descuento; con sobra no se busca techo. **Lo caro que no vende: a los 60 días sin vender, la escalera apunta al precio que GANA la caja de compra** (26/10, él con los VS, Redmi Watch y Dalí: *"si llegan a 60 días de stock sí bajar los precios hasta estar en ganando"*; nunca abajo de 0%; antes de eso no se baja sin techo y las 16 autorizaciones viejas del 23/10 quedaron en "no"). Stock antiguo: 120 d
   lo chico, 60 lo grande (Tenders); apuntar a vender antes de ~100. Bajar porque seguir igual perdía más = el cerebro ganó; lo que falta
   para el 25% es error de origen (mandar/comprar de más).
@@ -353,7 +355,7 @@
   un costo, el viejo se congela por mes (`precios_hist_prod`).
 - **Ticket real obligatorio para cerrar el pedido** (10/10; 25/10 con FOTO, él con el Sony: *"no sabemos si no lo mandaron o si no lo
   cobraron"*): renglones con `compray:<fecha>|det=<código>*<u>*<pagado>;…|go` (ml-sync) + la foto, que la sube él desde el detalle del
-  pedido (📷, `mlapi/pyticketfoto/<id>`, `cyc/compraspy/<id>/ticketFoto` = cuántas). Sin las dos no se cierra (web y `pyped:llego`);
+  pedido (📷, `mlapi/pyticketfoto/<id>`, `cyc/compraspy/<id>/ticketFoto` = cuántas). **Si me la pasa por el chat la anoto yo** (26/10, él: *"siempre subí vos eso"*): `pyticketvisto:<id>=<n>|<nota>;go` (ml-consulta) — la imagen no puede viajar a la base sin pasar por algo público, así que queda "✓ la vio Claude en el chat" contra los renglones y cuenta para cerrar. Sin las dos no se cierra (web y `pyped:llego`);
   arriba de Pedidos Paraguay sale en rojo lo que falta (todo lo en camino y lo pedido desde el 25/10). Datos del mayorista: no al repo.
   Con dos tipos el mismo día pide `|repo`/`|nuevos`.
 - **Cuántas de cada nuevo** (`candMaxU`, 21/10): barato ≤US$15 → 3 · caro >US$60 → 1 · resto 2.

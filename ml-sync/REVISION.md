@@ -79,6 +79,21 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
 
 ## 1 · PRECIOS (lunes)
 
+### 🔒 Freno 50% para subir (26/10/2026, pedido suyo)
+- **Qué es:** en `decido`, una suba se frena si `cyc/techo95pct/<MLA>` (lo guarda `techo95;go` en la completa, de 4 días o menos) da 50%+ de certeza de que el precio en prueba ya es el techo y el precio nuevo está en o arriba de ese. No frena 🔥 escasez, ⏳ sin reposición, volver a un precio de los últimos 90 días ni `!chico`.
+- **Qué chequear:** que no frene una 📈 que todavía no tiene medición (sin dato no frena) · que el dato sea del MISMO precio (±2%) · que lo frenado aparezca en la vuelta con su motivo.
+
+### 🌸 F12 · perfumes nunca abajo del 10% (26/10/2026, pedido suyo)
+- **Qué es:** en `frenosBajas` (todas las bajas: `decido`, `entrarpromo`, la puerta de `setPriceTo`), si la ficha o el título es perfume (`esPerfumeNom`) y el precio nuevo deja menos de 10% en el peor caso, frena; el texto dice si está cerca de pagar stock antiguo → avisarle para retirarlo al local. `!bajocero` con su autorización lo abre.
+- **Qué chequear:** que agarre los VS, Paulvic y Persea (y no un "Splash" que no sea perfume) · el Cyber del Coconut y la escalera del Pure Seduction pasan por acá · que los avisos de retiro le lleguen en el chat, no por Telegram.
+
+### `pausadas`: las que pausó él a propósito no se avisan (26/10/2026, él: "no avises más de esas")
+- **Qué es:** las pausadas con stock en Full cuyo freno es "pausada a mano con el comando pausar" (hoy las 35 gemelas de envío gratis de
+  Paulvic, su 11b del 25/10) ya no se listan una por una ni van al aviso de "no las puedo medir": salen en UN renglón con el total y no
+  cuentan en "N no". Las vueltas no las vuelven a nombrar en el chat.
+- **Dónde vive:** `sync.mjs`, bloque de pausadas con stock (`sinMedir`, el resumen "Activar pausadas con Full" y el listado `aProposito`).
+- **Qué chequear:** que una pausada por otro motivo (sin costo, sin ficha, la pausó ML) siga saliendo con su renglón.
+
 ### `ventasraras`: 💰 punto con precio probado ya cuenta como "con techo" (26/10/2026)
 - **Qué es:** en 🧭 ESTRATEGIA DE LO QUE VENDIÓ, una publicación en 💰 `punto` con su precio probado anotado en `techofreno` sale ✓ (antes
   ⚠️ "sin estrategia con techo" y se iba al ayudante a fondo: la Lupa 90 y el Filtro de agua el 26/10, falsos avisos). 💰 punto sin precio
@@ -788,6 +803,10 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 (sería doble), y que el número de Gastos y el del Arqueo sean el mismo para cada mes.
 
 ## 3 · MERCADERÍA (miércoles)
+
+### 🧾 `pyticketvisto` (26/10/2026, v26.73, pedido suyo: "siempre subí vos eso")
+- **Qué es:** la foto del ticket que me pasa por el chat no puede llegar a la base sin pasar por el repo o el registro (públicos). `pyticketvisto:<id>=<n>|<nota>;go` (ml-consulta) anota en `cyc/compraspy/<id>` `ticketFoto` y `ticketFotoChat` (quién, cuándo, cuántas); la web dice "✓ la vio Claude en el chat". Pide los renglones (`det=`) ya cargados.
+- **Qué chequear:** que no se use sin haber comparado la foto renglón por renglón · que `pyped:llego` lo acepte · que la web no muestre "ver" sin imágenes.
 
 ### ❌ no da 35% en Armar caja (24/10/2026, v26.58, él: "que el % lo tome del más alto, de la venta más alta y de la competencia")
 - **Qué es:** `_cajaPct35`: % del peor caso al precio de hoy (`margenMLDe`), a la venta más cara de 90 días y contra la competencia
@@ -1622,6 +1641,10 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
     decisión de compra, no código. 11 (dinero que rinde en MP) lo mira él en la app.
 
 ## 7 · DISEÑO (domingo)
+
+### 🔥 Fuego de las ventas vivas desde $20.000 (26/10/2026, v26.72, pedido suyo)
+- **Qué es:** `VIVA_GAN_FUEGO=20000` en `vivaVenta`: el fuego necesita $20.000+ de ganancia (antes alcanzaba $10.000, `VIVA_GAN_TIEMBLA`, que sigue para el temblor). Caso: Lupa de $16.095 ardía.
+- **Qué chequear:** una venta de $10.000-$19.999 que antes ardía ahora tiembla (no queda quieta) · una de $20.000+ con puntaje 10.500+ sigue ardiendo.
 
 ### 🏷️ Sin terminar por cuenta (24/10/2026, v26.53, pedido suyo)
 - **Qué es:** la tarjeta de Contar lo que hay agrupa por cuenta (nombre arriba, productos abajo); cada color/aroma va a la cuenta que lo

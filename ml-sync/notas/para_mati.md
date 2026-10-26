@@ -8,9 +8,15 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 
 ## Abiertas
 
-### Del 25/10 (lo dejó para después)
-- **Cómo se comunica el chat de Chrome que arma cajas con el panel:** (a) sugerida: él se arregla solo con el panel (✅ Etiquetadas, etc.) y para lo demás un buzón que leo yo · (b) sólo lo que puede hacer solo.
-- **Timbre de ventas (26/10): resuelto.** Eligió 1a: control cada hora en la sesión de las vueltas (`trig_01PxNuKFnJfdAtPem61eaUnA`). El timbre por API queda apagado.
+### Del 26/10 a la tarde (contestó 1? 2a 3? 4? 5 después)
+- 1 Paulvic Debutante Mujer y Witch Night: no entendió "la prueba perdió" y pidió nunca abajo del 35% salvo cerca de pagar stock → le expliqué y le pasé escalera $21.990 → $18.790 → $16.490 → $14.990 (40%), esperando su a/b.
+- 2a: los Paulvic recién llegados se miden con stock hasta 3 ventas esperadas, los que no vendan bajan en escalera (nunca abajo del 35%).
+- 3 Los 5 Paulvic de 1 u. con 200+ días: preguntó si hay margen para bajar → le pasé los números, esperando su a/b.
+- 4 Separador x2: él lo leyó como techo → le expliqué que la hermana vende al mismo precio con el mismo stock (no es techo, es la publicación), esperando su a/b.
+- 5 Color del Centímetro: "haceme acordar y lo veo" → va en la lista de las 12:30 de mañana.
+
+### Del 26/10 al mediodía (contestó 1a 2a 3a 4)
+- 1a CyberMonday: entran 6 (el Coconut no: deja 3% y los perfumes van al 10%+), programado 01/11 23 hs (`trig_0116kaFysCe97PQwbjk2FtJD`) · 2a Tendedero y Pizarra no · 3a VS con piso de 10% (regla nueva de perfumes, F12): Pure Seduction $68.990 → $59.990 → $53.990; Bliss igual desde el 15/11; Amber desde el 10/11 · 4 Espejos: la caja no dice el aumento, manda foto con una moneda (5", 6", 8").
 
 ### De la completa del domingo 25/10 — él contestó el 25/10 a la noche (1? 2? 3a 4a 5a 6a 7b 8b 9b 10 11b 12a 13b 14a 15a)
 - 1 Talón: preguntó qué tan seguro es el techo → contestado con la tabla `techo95:buscando`. 2 Pendrive 64: sólo con techo seguro, y ahí al 💰 en escalera.
@@ -35,10 +41,9 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 
 ### Del 25/10 a la noche (contestó 1, 2a, 3a, 4a, 5, 6)
 - 1: probar UN pedido de Paraguay de ~US$1.000 · 2a y 4a: ya estaban hechos · 3a: la tabla de IIBB por provincia sale de `cargosmes` (pasada en el chat).
-- 5 Espejos y 6 Victoria's Secret parados: los miro yo y van al aviso de las 12:30 del 26/10 junto con el CyberMonday (tarea `trig_01CgU6vPK2vjhSKyDMgYAixJ`).
 
 ### Del chat de compras (noche del 25 al 26/10)
-- **6 candidatos donde el catálogo de ML parece otra variante** (no los toqué, con duda no se toca): Casio A140WE-2ADF (ML gris, lista azul) · Zimaya Zukhruf (ML "Pink") · Afnan Highness V (ML "Black") · Amazfit Active A2437 (ML "Active 2 Premium 44mm") · Dior Hydra Life Crème Sorbet (ML "Intense") · Orientica Rose. → **26/10 eligió (b): sacarlos.**
+- ~~**6 candidatos donde el catálogo de ML parece otra variante** (no los toqué, con duda no se toca): Casio A140WE-2ADF (ML gris, lista azul) · Zimaya Zukhruf (ML "Pink") · Afnan Highness V (ML "Black") · Amazfit Active A2437 (ML "Active 2 Premium 44mm") · Dior Hydra Life Crème Sorbet (ML "Intense") · Orientica Rose. → **26/10 eligió (b): sacarlos.** HECHO (revcand).~~
 - 52 de la lista de precios eran claramente otro producto: marcados `svprecio:…=otro` (se buscan de nuevo). ~14 quedaron en duda (variante no confirmada): se vuelven a mirar en la próxima tanda.
 
 ## Viejas que siguen esperando (de CLAUDE.md §13)

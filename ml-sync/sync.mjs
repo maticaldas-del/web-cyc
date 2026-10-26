@@ -77,7 +77,7 @@ const _cortarCiclo = (donde) => {
 // los que escriben en cantidad o en plata se niegan de entrada, y cualquier otro corre con la base,
 // ML, Mercado Pago y Telegram en sólo lectura (se deja renovar y guardar el token de ML, que ML rota).
 const EN_CONSULTA = process.env.GITHUB_WORKFLOW === 'ml-consulta' || process.env.ML_CONSULTA === '1';
-const CONSULTA_ESCRIBE = new Set(['buzon', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
+const CONSULTA_ESCRIBE = new Set(['buzon', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
 const CONSULTA_NIEGA = new Set(['cajaitems', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'listaped', 'publicar', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'errores', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'promoventas', 'cargosmes', 'arcacierres', 'webpush']);
@@ -2863,7 +2863,8 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso, op
   });
   const lineaP = (x) => `· ${x.nom} · ${x.label} · ${x.stock} u.${x.precio ? ' · ' + money(Math.round(x.precio)) : ''} → ${x.why}`;
   const porMargen = nuevasP.filter((x) => /^queda en /.test(x.why));
-  const sinMedir = nuevasP.filter((x) => !/^queda en /.test(x.why));
+  // 26/10/2026: las pausadas a propósito por él (`pausar`) no van al aviso (él: "no avises más de esas").
+  const sinMedir = nuevasP.filter((x) => !/^queda en /.test(x.why) && !/pausada a mano con el comando pausar/.test(String(x.why || '')));
   if (porMargen.length) {
     avisos.push(`⏸️ <b>Con stock en Full y siguen pausadas</b>\nNo llegan al ${(PISO * 100).toFixed(0)}% con su precio de hoy:\n`
       + porMargen.map(lineaP).join('\n')
@@ -2884,7 +2885,7 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso, op
   }
   const anotarP = {};
   if (!DRY) for (const x of nuevasP) anotarP[x.mla] = { ts: ahoraP, why: x.why, nom: x.nom, cuenta: x.label };
-  console.log(`Activar pausadas con Full: ${activadas.length} activadas · ${noLlegan.length} no (${porMargen.length} por margen, ${sinMedir.length} sin poder medir, ${noLlegan.length - nuevasP.length} ya avisadas antes).`);
+  { const _nProp = noLlegan.filter((x) => /pausada a mano con el comando pausar/.test(String(x.why || ''))).length; console.log(`Activar pausadas con Full: ${activadas.length} activadas · ${noLlegan.length - _nProp} no (${porMargen.length} por margen, ${sinMedir.length} sin poder medir, ${noLlegan.length - nuevasP.length} ya avisadas antes)${_nProp ? ` · ${_nProp} pausadas a propósito por él (no cuentan)` : ''}.`); }
   // Sólo se miran las cuentas con token esta vuelta (13/10/2026, revisión 9): decía "de las 4 cuentas" aunque faltara una.
   const ctasLinks = [...new Set(Object.values(links).map((e) => e && e.cuenta).filter(Boolean))];
   const ctasSin = ctasLinks.filter((c) => !Object.prototype.hasOwnProperty.call(tokensRun, c));
@@ -2918,7 +2919,11 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso, op
     console.log(`   ⚠️ NO CIERRA: ${conteo.conStock} pausadas con stock pero sólo ${cierra} tienen explicación (${activadas.length} activadas + ${noLlegan.length} avisadas). Hay ${conteo.conStock - cierra} saliendo en silencio.`);
   }
   // Renglón por renglón al log SIEMPRE, avisadas o no: un total sin el detalle esconde cuál es.
-  for (const x of noLlegan) console.log(`   ⏸️ ${x.nom} · ${x.label} · ${x.stock} u. → ${x.why}`);
+  // 26/10/2026 (él: "no avises más de esas"): las que pausó él a propósito (`pausar`, p.ej. las gemelas de envío gratis de Paulvic, 11b)
+  // no son una alarma: van en un solo renglón con el total y no se listan ni se cuentan como "no activadas".
+  const aProposito = noLlegan.filter((x) => /pausada a mano con el comando pausar/.test(String(x.why || '')));
+  for (const x of noLlegan) if (!aProposito.includes(x)) console.log(`   ⏸️ ${x.nom} · ${x.label} · ${x.stock} u. → ${x.why}`);
+  if (aProposito.length) console.log(`   (${aProposito.length} pausadas a propósito por él con \`pausar\`: no se avisan ni se activan · ${aProposito.reduce((a, x) => a + (Number(x.stock) || 0), 0)} u. en Full)`);
   // Para el botón 🧠 de la web (08/10/2026): qué decidió esta vuelta con cada pausada con stock en Full.
   if (!DRY && (activadas.length || noLlegan.length)) {
     const act = {};
@@ -4556,6 +4561,7 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
       && ['autorizada', 'usada'].includes(r.estado) && Number(r.autTs) <= ahora && ahora - Number(r.autTs) < 60 * 864e5 && r.sig === _autFirma(_autTxtOk(c, r)));
     // ── datos de la línea de tiempo para F4, F5, F6, F7 y F8
     const pr = prods && e.prodId ? prods[e.prodId] : null;
+    const esPerfume = esPerfumeNom(`${(pr && pr.name) || ''} ${e.title || e.titulo || ''} ${d.nom || ''}`);
     const cu = pr && tc > 0 ? costoPesos(pr, 1, tc).costo : 0;
     const imp = ((ML_EXTRA_PCT[String(e.cuenta || '').toLowerCase()] || 4) + (Number(mono) || 0)) / 100;
     if (lin && cu > 0) lin = lineaConNetoEst(lin, cu, imp);   // 42a: días sin neto de ML (antes de mayo), estimados como la web
@@ -4651,6 +4657,10 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
       const exento = exentoPor(tagNuevo) || exentoPor(ult);
       // ── F0 · nunca abajo de 0%
       if (d.mgA != null && Number.isFinite(Number(d.mgA)) && Number(d.mgA) < 0 && !suya('bajocero')) return { regla: 'F0', txt: `a ${$(a)} queda en ${Number(d.mgA)}%: abajo de 0% no se baja nunca, salvo que él pida rematar a cualquier precio (🔐 !bajocero, sólo con su autorización (se la paso en el chat))` };
+      // ── F12 · PERFUMES: NUNCA ABAJO DEL 10% (26/10/2026, él: "todo lo que es perfume se puede poner en la perfumería. antes de liquidar a 0%
+      // conviene pedirlo. pero intentemos venderlo mínimo al 10%. si está por pagar stock entonces avisame y retiro"; y con los VS: "menos del
+      // 10% nunca. antes retirarlos"). Abajo del 10% no se liquida: se le avisa (en el chat, aviso de las 12:30) para que lo retire al local.
+      if (esPerfume && d.mgA != null && Number.isFinite(Number(d.mgA)) && Number(d.mgA) < PERFUME_MIN_PCT && !suya('bajocero')) return { regla: 'F12', txt: `perfume: a ${$(a)} queda en ${Number(d.mgA)}% y un perfume no se vende abajo del ${PERFUME_MIN_PCT}% (regla suya del 26/10): ${antiguoCerca ? 'está por pagar stock antiguo → AVISARLE para que lo retire a la perfumería del local' : 'se queda en el escalón del 10% o más; si llega cerca de pagar stock antiguo, avisarle para retirarlo'}` };
       // ── F11 · FALTA DE STOCK: SIN TECHO 95% NO SE BAJA (ver arriba). Con el techo medido (🏔️ de techo95 en 60 días o 🔴 de las rayas)
       // sigue por los otros frenos (escalera, F9 de la escasez). La salida de la escasez (#volviendo) pasa sólo si la escasez terminó de
       // verdad: el stock en Full alcanza 30+ días al ritmo con stock. Salida SÓLO SUYA: 🔐 !sinlinea con su autorización.
@@ -10657,6 +10667,10 @@ const CAND_PISO_PCT = 25;       // suyo: "el % sano es de 25 hacia arriba"
 // dice (misma idea que `repartopy` y que `esPerfumeNom` de la web). El resto sigue en CAND_PISO_PCT.
 const CAND_PISO_PERFUME = 25;   // 17/10/2026: 25 (él: "tienen que llegar a 25, no a 24"); antes 24 para todo lo que se compra (él: "arriba del 24% TODO")
 const RE_CAND_PERF = /perfum|parfum|\bedp\b|\bedt\b|eau de|fragan|fragr|body splash|body mist|\bcolonia\b|\bsplash\b/i;
+// Lo que se puede vender en la perfumería del local (26/10/2026, él: "todo lo que es perfume se puede poner en la perfumería… intentemos
+// venderlo mínimo al 10%. si está por pagar stock entonces avisame y retiro"): perfumes, body mist/splash, Victoria's Secret y Paulvic/Persea.
+const esPerfumeNom = (t) => RE_CAND_PERF.test(String(t || '')) || /victoria.?s secret|\bvs\b.*(mist|lotion|coconut|vanilla|seduction|romance|bliss)|paulvic|persea/i.test(String(t || ''));
+const PERFUME_MIN_PCT = 10;
 // LA PERFUMERÍA DEL LOCAL (15/10/2026, regla suya): los perfumes también se venden en el local, y ahí no hay comisión
 // de ML ni impuestos. La cuenta de ellos: costo puesto × 1,25 (lo nuestro) × 1,30 (lo de la perfumería) tiene que dar
 // lo mismo o parecido que ML. O sea: vendiendo al precio de ML, la perfumería se queda su 30% y a CYC le queda
@@ -46317,6 +46331,18 @@ async function main() {
               else if (infR.diasSt >= TECHO_RITMO_MIN_DIAS_ST && rs < TECHO_RITMO_MIN_SEMANA) { d.accion = 'nada'; d.freno = true; d.motivo = `🚫 FRENO 4a: vende ${rs.toFixed(1)} por semana (en los ${infR.diasSt} días con stock de los últimos 60, con gemelas): a lo que vende menos de 1 por semana no se le busca techo subiendo (él, 23/10). Queda en su precio como 💰 (#punto) o, si sobra, baja en escalera.`; }
             }
           }
+          // 🔒 SUBIR PIDE 50% (26/10/2026, él: "siempre para bajar tenés que estar 95% seguro, siempre para subir tenés que estar 50% seguro o
+          // más. entonces no hay chances de perder por vender barato"). Lo que se mide es lo contrario: `techo95` guarda cuánta certeza hay de
+          // que el precio en prueba YA es el techo (`cyc/techo95pct/<MLA>`, de la completa). Si eso es 50% o más, subir de ahí es más probable
+          // que pierda que que gane: no se sube (se espera a que la prueba termine). No frena 🔥/⏳ (subir ahí es estirar el stock, no buscar
+          // techo), ni volver a un precio de los últimos 90 días, ni !chico con "EXCEPCIÓN: …". Con el dato viejo (+4 días) o de otro precio no frena.
+          if (d.accion === 'sube' && !exc('chico') && !vuelveA && !['escasez', 'sinrepo'].includes(tg)) {
+            if (globalThis._t95pct === undefined) { try { globalThis._t95pct = (await db.get('cyc/techo95pct')) || {}; } catch { globalThis._t95pct = null; } }
+            const t9 = (globalThis._t95pct || {})[d.mla];
+            if (t9 && Number(t9.seg) >= 0.5 && Number(t9.p) > 0 && Date.now() - Number(t9.ts) < 4 * 864e5 && a >= Number(t9.p) * 0.98 && p0 >= Number(t9.p) * 0.98) {
+              d.accion = 'nada'; d.freno = true; d.motivo = `🚫 FRENO 50%: ya hay ${Math.round(Number(t9.seg) * 100)}% de certeza de que ${money(Number(t9.p))} es el techo (techo95 del ${new Date(Number(t9.ts)).toLocaleDateString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })}): para subir hace falta que sea más probable ganar que perder (menos de 50%). Se espera a que la prueba termine.`;
+            }
+          }
           // 37a (24/10/2026, él): vale para TODA baja de lista (no sólo la etiquetada 🪜), salvo ↘️ #volviendo de una escasez al precio
           // normal (F11 ya pide que la escasez haya terminado de verdad).
           if (d.accion === 'baja' && !exc('lista')) {
@@ -49781,6 +49807,29 @@ async function main() {
         }
       }
       console.log(n ? `\n${n} renglón(es).` : 'Ningún pedido de Paraguay tiene un renglón con esas palabras.');
+      return;
+    }
+    // BILLING_PROBE=pyticketvisto:<id>=<cuántas fotos>[|<nota>][;go] (26/10/2026, él: "siempre subí vos eso", con las 2 fotos del ticket
+    // del pedido del 19/10 que me mandó por el chat). La foto NO puede viajar del chat a la base sin pasar por el repo o el registro, que son
+    // públicos (es un ticket del mayorista), así que no se sube la imagen: queda anotado que Claude la vio en el chat, contra los renglones
+    // del ticket ya cargados (`det=`), y cuántas fotos eran. Cuenta como foto para cerrar el pedido (`ticketFoto`). Sin `;go` sólo muestra.
+    if (/^pyticketvisto:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const raw = String(process.env.BILLING_PROBE).slice('pyticketvisto:'.length);
+      const GOv = /;go\s*$/.test(raw) && !DRY;
+      const m = raw.replace(/;go\s*$/, '').match(/^([a-z0-9_]+)=(\d+)(?:\|(.*))?$/i);
+      if (!m) { console.log('Va así: pyticketvisto:py20261019=2|las vi en el chat, cierran con los renglones;go'); return; }
+      const [, id, nS, nota] = m; const n = parseInt(nS, 10);
+      const c = await db.get('cyc/compraspy/' + id);
+      if (!c) { console.log(`No hay pedido ${id} en cyc/compraspy.`); return; }
+      if (!c.ticket) { console.log(`❌ ${id} no tiene los renglones del ticket cargados: primero \`compray:${c.fecha}|det=…|go\`. No escribo nada.`); return; }
+      if (!(n > 0 && n <= 20)) { console.log('La cantidad de fotos tiene que ser de 1 a 20.'); return; }
+      const ya = parseInt(c.ticketFoto) || 0;
+      console.log(`=== 📷 ${id} · ${c.fecha} · ${c.estado} · fotos en la base: ${ya} · las vio Claude en el chat: ${n}${GOv ? '' : ' · (PRUEBA, agregá ;go)'} ===`);
+      if (!GOv) return;
+      const v = { n, ts: Date.now(), por: 'claude', nota: String(nota || '').slice(0, 200) };
+      await db.patch('cyc/compraspy/' + id, { ticketFoto: Math.max(ya, n), ticketFotoChat: v });
+      const r = await db.get('cyc/compraspy/' + id);
+      console.log(r && Number(r.ticketFoto) >= n && r.ticketFotoChat && r.ticketFotoChat.ts === v.ts ? `✓ anotado: ${id} tiene el ticket visto (${r.ticketFoto} foto/s)` : '⚠️ NO QUEDÓ anotado');
       return;
     }
     if (/^pydet:/.test(String(process.env.BILLING_PROBE || ''))) {

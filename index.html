@@ -2962,7 +2962,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.71';
+const APP_VERSION='26.73';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2975,6 +2975,8 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.73',f:'26/10',h:'13:15',c:[{n:1,t:'🧾 Pedidos de Paraguay: si me pasás la foto del ticket por el chat, el pedido dice "✓ la vio Claude en el chat" y cuenta como foto para cerrarlo (la imagen queda en el chat).'}]},
+  {v:'26.72',f:'26/10',h:'12:20',c:[{n:1,t:'🔥 Ventas vivas: el fuego aparece recién desde $20.000 de ganancia (antes $10.000). De $10.000 a $20.000 como mucho tiembla.'}]},
   {v:'26.71',f:'26/10',h:'11:15',c:[{n:2,t:'🏠 Inicio: el cuadro de Ventas mostraba las ventas del día anterior si la app quedaba abierta de un día para el otro (al volver se actualizaba "Hoy" pero no ese cuadro). Ahora se actualiza junto.'}]},
   {v:'26.70',f:'26/10',h:'11:05',c:[{n:2,t:'📈 Línea de tiempo: si un producto y color tiene 2 o más publicaciones con distinto precio o estrategia (como el Centímetro Blanco: una a $4.290 bajando y otra a $3.990 buscando techo), la tarjeta de Precio las muestra todas en ámbar.'}]},
   {v:'26.69',f:'25/10',h:'23:50',c:[{n:2,t:'🎨 Productos nuevos y Para probar: los que tienen aviso en rojo (80%+, un solo vendedor, nombre dudoso) muestran el precio de los OTROS colores del mismo catálogo de ML y cuánto daría el más barato. Es de referencia: no cambia el %.'}]},
@@ -10893,6 +10895,7 @@ const _vivaLog=(x,a,b)=>Math.min(1,Math.max(0,Math.log(Math.max(x,a)/a)/Math.log
 // 1.800 brilla · 2.400 flota · 10.500 arde (si ganó) · todo al máximo en 120.000. Abajo de 2.000 no se anima.
 const VIVA_SC_MAX=120000, VIVA_SC_MIN=2000;
 const VIVA_GAN_TIEMBLA=10000;   // temblor y fuego recién desde esta ganancia en pesos (15/10/2026, pedido suyo)
+const VIVA_GAN_FUEGO=20000;     // el fuego recién desde $20.000 de ganancia (26/10/2026, él con una Lupa de $16.095: "que el fuego aparezca después de $20.000 de ganancia"); de $10.000 a $20.000 como mucho tiembla
 // VELOCIDAD DE LAS FIGURAS POR NETO (09/10/2026, elegida por él con el ajustador): neto → px por segundo, de a poco
 // entre un punto y otro (escala de neto logarítmica). Sólo la velocidad de subida; lo demás sigue saliendo del puntaje.
 const VIVA_VEL_NETO=[[4000,0],[5000,3],[50000,303],[100000,608],[200000,1037],[400000,2061],[550000,2500]];
@@ -10920,7 +10923,8 @@ function vivaVenta(o){
   // y fuego permita activarse a partir de $10.000 de ganancia. No quiere decir que sí o sí se activen, sino que permita").
   // Abajo de eso todo sigue igual pero como mucho flota rápido. Las que perdieron no llegan a temblar (pierden, no ganan $10.000).
   const g10=(Number(o.gan)||0)>=VIVA_GAN_TIEMBLA;
-  const fi=gano&&g10&&sc>=10500?Math.max(.08,_vivaLog(sc,10500,VIVA_SC_MAX)):0;
+  const g20=(Number(o.gan)||0)>=VIVA_GAN_FUEGO;
+  const fi=gano&&g20&&sc>=10500?Math.max(.08,_vivaLog(sc,10500,VIVA_SC_MAX)):0;
   const ef=fi>0?'fuego':(tm>=.28&&g10)?'tiembla':tm>=.16?'flota2':sc>=2400?'flota':sc>=1800?'glow':'';
   return{k:n.k,c:n.c,vel,vi,tz,tv,fi,ef,vpx:vivaVelNeto(o.neto)};
 }
@@ -17149,7 +17153,10 @@ function pyPedidoDetalleHTML(c){
         <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">La plata</div>
         ${c.ticket?(()=>{const w=Number(c.ticket.usdWeb)||0,pg=Number(c.ticket.usdPagado)||0,d=w-pg;return fila('🧾 ticket','<b style="color:var(--green)">cargado</b>','El ticket real del mayorista, renglón por renglón. Cada producto guarda lo que se pagó y lo que decía la web.')+fila('precio de la web',fmtUS2(w))+fila('pagado (ticket)',fmtUS2(pg))+fila('descuento',`<b style="color:${d>0?'var(--green)':d<0?'var(--red)':'var(--muted)'}">${d>0?'−':d<0?'+':''}${fmtUS2(Math.abs(d))}${w>0?' ('+Math.abs(d/w*100).toFixed(1).replace('.',',')+'%)':''}</b>`,'Lo que pagaste de menos (o de más) contra el precio de la web. Producto por producto, abajo en La mercadería.');})()
           :fila('🧾 ticket','<b style="color:var(--red)">falta</b>','Sin el ticket real el pedido no se puede cerrar: pasáselo a Claude por el chat.')}
-        ${(()=>{const t=pyTicketEstado(c),n=parseInt(c.ticketFoto)||0;
+        ${(()=>{const t=pyTicketEstado(c),n=parseInt(c.ticketFoto)||0,ch=c.ticketFotoChat;
+          // 26/10/2026 (él: "siempre subí vos eso"): la foto que me pasa por el chat no puede llegar a la base sin pasar por algo público,
+          // así que queda anotado que la vi yo contra los renglones (`pyticketvisto`); la imagen sigue en el chat.
+          if(ch&&!(n>(Number(ch.n)||0)))return fila('📷 foto del ticket',`<b style="color:var(--green)">✓ la vio Claude en el chat</b> <span style="color:var(--muted)">(${Number(ch.n)||n} foto${(Number(ch.n)||n)>1?'s':''})</span> <button type="button" class="vbtn" style="font-size:.62rem;padding:1px 7px" onclick="pyTicketSubir('${c.id}')">📷 subir igual</button>`,'Me pasaste la foto por el chat y la comparé renglón por renglón con lo cargado. La imagen no se guarda acá porque tendría que pasar por un lugar público.');
           return fila('📷 foto del ticket',`${n?`<button type="button" class="vbtn" style="font-size:.62rem;padding:1px 7px" onclick="pyTicketVer('${c.id}')">ver${n>1?' ('+n+')':''}</button> `:`<b style="color:${t.faltaFoto?'var(--red)':'var(--muted)'}">${t.faltaFoto?'falta':'no hay'}</b> `}<button type="button" class="vbtn" style="font-size:.62rem;padding:1px 7px" onclick="pyTicketSubir('${c.id}')">${n?'+ otra':'subir'}</button>`,'La foto del ticket del mayorista. Si algo no llega, con la foto se ve si lo cobraron. Es obligatoria para cerrar el pedido (los ya llegados antes del '+PY_TICKET_FOTO_DESDE.split('-').reverse().join('/')+' no la piden).');})()}
         ${fila('mercadería cruda',fmtUS2(pyBaseUSD(c)),'El precio de comprasparaguay, sin el recargo.')}
         ${fila('con el '+(pyRecargoReal(c).r?((pyRecargoReal(c).r-1)*100).toFixed(1)+'% real':Math.round((RECARGO_PY-1)*100)+'% estimado'),fmtUS2(puesto),'Incluye comprar los dólares, el correo y el que despacha. Con todos los gastos cargados es el recargo REAL de este pedido; si no, el estimado.')}
