@@ -11963,10 +11963,10 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
       // escribe "Fone de Ouvido JBL Tune 520BT - Preto" y buscando eso ML trae el 730BT; con "jbl 520bt" trae el correcto.
       const nB = esLista ? limpiarNombreLista(e.n) || e.n : e.n;   // listas: el nombre traducido (ver limpiarNombreLista)
       if (esLista) upd.qv = LISTA_NOMBRE_VER; else upd.qp = PY_NOMBRE_VER;
-      const _rechazado = esLista && e.noEs ? String(e.noEsCat || e.mi || '').toUpperCase() : '';
+      const _rechazado = e.noEs ? String(e.noEsCat || e.mi || '').toUpperCase() : '';   // 26/10/2026: también Nissei/Elegancia (`svprecio:<cód>=otro`)
       const _candR = esLista ? null : candList.find(([, c]) => pycatEsDe(cod, e, c, c.cod) && c.noTipo === 'rebusca');
       const _rechSet = new Set(Object.keys((_candR && _candR[1].mlNoEs) || {}).map((x) => String(x).toUpperCase()));
-      if (esLista && e.noEs && !e.noEsCat && e.mi) upd.noEsCat = e.mi;
+      if (e.noEs && !e.noEsCat && e.mi) upd.noEsCat = e.mi;
       const mods = _rvMod(nB); const pal = _rvNorm(nB).split(' ').filter((w) => (w.length >= 2 || /^\d$/.test(w)) && !RV_VACIAS.has(w) && !PYCAT_RELLENO.has(w));
       const nT = esLista ? '' : traducirPyNombre(nB);   // Nissei: también con el nombre traducido (23/10/2026)
       const palT = nT && nT !== nB ? _rvNorm(nT).split(' ').filter((w) => (w.length >= 2 || /^\d$/.test(w)) && !RV_VACIAS.has(w)).slice(0, 7).join(' ') : '';
@@ -21794,7 +21794,7 @@ async function main() {
       let _mNo = {}, _mNoML = {}; try { _mNo = (await db.get('cyc/mlconfig/marcasFrenadas')) || {}; _mNoML = (await db.get('cyc/mlconfig/marcasNoML')) || {}; } catch { console.log('⚠️ no pude leer las marcas prohibidas: puede salir alguna (D&G, Calvin Klein)'); }
       const _marcaNo = (n) => marcaFrenadaDe({ nombre: n }, _mNo) || marcaFrenadaDe({ nombre: n }, _mNoML);
       let _fueraMarca = 0;
-      for (const [cod, e] of Object.entries(cat)) { if (!e || !e.sv || !e.mi || e.fz || !e.f || svpVigente(e) || esCand(cod) || pyCatNoSeMira(e.n)) continue;
+      for (const [cod, e] of Object.entries(cat)) { if (!e || !e.sv || !e.mi || e.fz || !e.f || svpVigente(e) || esCand(cod) || pyCatNoSeMira(e.n) || listaNoEsVale(e)) continue;
         if (_marcaNo(e.n)) { _fueraMarca++; continue; }
         filas.push({ r: PYCAT_RUBRO_RE.test(String(e.n)) ? 0 : 1, u: Number(e.u) || 0, t: `py|${pycatProvDe(cod, e)}|${cod}|${String(e.n).replace(/\|/g, '/').slice(0, 80)}|${e.mi}|US$ ${e.u}` }); }
       const provs = (await db.get('cyc/mlconfig/listasProv')) || {};
@@ -21822,16 +21822,21 @@ async function main() {
       const RUTA = prov ? 'mlapi/listas/' + prov : 'mlapi/pycat'; const cat = (await db.get(RUTA)) || {};
       const cands = prov ? {} : ((await db.get('cyc/candidatos_py')) || {});
       const up = {}, upC = {}; const ts = Date.now(); let mal = 0;
-      for (const pt of partes) { const m = pt.match(/^([^=]+)=\s*(no|[\d.,]+)$/i); if (!m) { console.log(`  ✗ no entiendo "${pt}"`); mal++; continue; }
+      for (const pt of partes) { const m = pt.match(/^([^=]+)=\s*(no|otro|[\d.,]+)$/i); if (!m) { console.log(`  ✗ no entiendo "${pt}"`); mal++; continue; }
         const cod = Object.keys(cat).find((k) => k === m[1].trim() || (!prov && _pyCodIg(k, m[1].trim()))); if (!cod) { console.log(`  ✗ ${m[1]}: no está en ${prov ? 'la lista ' + prov : 'el catálogo de Nissei'}`); mal++; continue; }
+        // `otro` (26/10/2026): el catálogo que eligió el robot es OTRO producto (otro color, tamaño, versión). Queda rechazado ESE catálogo
+        // (`noEs`/`noEsCat`, como en las listas) y el robot vuelve a buscar sin él; sale de `faltaprecio` hasta que encuentre otro.
+        if (/^otro$/i.test(m[2])) { if (!cat[cod].mi) { console.log(`  ✗ ${m[1]}: no tiene catálogo de ML para rechazar`); mal++; continue; }
+          up[`${cod}/noEs`] = 1; up[`${cod}/noEsCat`] = String(cat[cod].mi).toUpperCase(); up[`${cod}/t`] = null; up[`${cod}/svp`] = null; up[`${cod}/svpTs`] = null;
+          console.log(`  · ${cod} · ${String(cat[cod].n).slice(0, 60)} → el catálogo ${cat[cod].mi} es OTRO producto: se busca de nuevo sin él`); continue; }
         const v = /^no$/i.test(m[2]) ? -1 : pesosArg(m[2]); if (v !== -1 && !(v > 0)) { console.log(`  ✗ ${m[1]}: precio raro "${m[2]}"`); mal++; continue; }
         up[`${cod}/svp`] = v; up[`${cod}/svpTs`] = ts; if (v > 0) up[`${cod}/t`] = null;
         console.log(`  · ${cod} · ${String(cat[cod].n).slice(0, 60)} → ${v > 0 ? money(v) : 'no hay ningún precio a la vista'}`);
         for (const [id, c] of Object.entries(cands)) if (c && !c.no && pycatEsDe(cod, cat[cod], c, c.cod)) { upC[`${id}/svp`] = v; upC[`${id}/svpTs`] = ts; upC[`${id}/calcTs`] = null; } }
-      console.log(`=== SVPRECIO ${GO ? '(APLICANDO)' : '(PRUEBA)'} · ${Object.keys(up).filter((k) => k.endsWith('/svp')).length} bien · ${mal} mal ===`);
+      console.log(`=== SVPRECIO ${GO ? '(APLICANDO)' : '(PRUEBA)'} · ${Object.keys(up).filter((k) => k.endsWith('/svp') && up[k] != null).length} con precio o "no" · ${Object.keys(up).filter((k) => k.endsWith('/noEs')).length} otro producto · ${mal} mal ===`);
       if (!GO || mal || !Object.keys(up).length) { if (mal) console.log('Con algún renglón mal no escribo nada.'); return; }
       await db.patch(RUTA, up); if (Object.keys(upC).length) await db.patch('cyc/candidatos_py', upC);
-      const rel = (await db.get(RUTA)) || {}; const ok = Object.keys(up).filter((k) => k.endsWith('/svp')).filter((k) => Number((rel[k.split('/')[0]] || {}).svp) === Number(up[k])).length;
+      const rel = (await db.get(RUTA)) || {}; const ok = Object.keys(up).filter((k) => k.endsWith('/svp')).filter((k) => { const r = rel[k.split('/')[0]] || {}; return up[k] == null ? (r.svp == null && Number(r.noEs) === 1) : Number(r.svp) === Number(up[k]); }).length;
       console.log(`${ok} de ${Object.keys(up).filter((k) => k.endsWith('/svp')).length} quedaron bien (releído). El robot los mide en la próxima vuelta del catálogo.`); return;
     }
     // BILLING_PROBE=descartesmot → POR QUÉ SE DESCARTÓ CADA CANDIDATO, AGRUPADO (24/10/2026, él: "hay muchos descartados que no sé
