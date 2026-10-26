@@ -2962,7 +2962,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.80';
+const APP_VERSION='26.81';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2975,6 +2975,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.81',f:'26/10',h:'15:40',c:[{n:1,t:'📊 % de ganancia: la raya naranja del costo arranca en $0, así un cambio chico se ve chico. Sigue siendo el costo real (mercadería + impuestos de la venta, que suben un poco si sube el precio).'}]},
   {v:'26.80',f:'26/10',h:'15:20',c:[{n:2,t:'💵 Plata por día: la línea verde es el promedio por día de cada MES (octubre, noviembre…); el mes en curso, lo que va del mes. En la línea de cada producto y en la general.'}]},
   {v:'26.79',f:'26/10',h:'15:05',c:[{n:2,t:'💵 Plata por día: la línea verde ahora es el promedio de 15 días (antes 7), en la línea de cada producto y en la general.'}]},
   {v:'26.78',f:'26/10',h:'14:20',c:[{n:2,t:'🇵🇾 Paraguay: Elegancia sale del panel (no se usa). Queda sólo Nissei, sin la fila de proveedor. Sus datos quedan guardados y el robot deja de medir su catálogo.'}]},
@@ -11506,7 +11507,10 @@ function lineaPintar(prodId){
   const cu={},ct={};{let ult=null,ulT=null;for(const k of ks){if(gd[k]&&gd[k].cu>0){ult=gd[k].cu;ulT=gd[k].ct;}if(ult!=null){cu[k]=ult;ct[k]=ulT;}}
     // Y para atrás, hasta el principio del gráfico, con el primer costo conocido (07/10/2026, pedido suyo).
     const k1=ks.find(k=>cu[k]!=null);if(k1)for(const k of ks){if(k===k1)break;cu[k]=cu[k1];ct[k]=ct[k1];}}
-  const cvs=Object.values(ct).filter(x=>x>0);const [cMin,cMax]=cvs.length?_esc(Math.min(...cvs),Math.max(...cvs)):[0,1];
+  // LA ESCALA DEL COSTO ARRANCA EN $0 (26/10/2026, él: "¿por qué el costo sube cuando sube el %? no tiene sentido", eligió 2b). La raya
+  // sigue siendo el costo REAL (mercadería + IIBB + monotributo, que son % del precio: si sube el precio, sube un poco); con su propia
+  // escala min-máx un cambio de $50 parecía un salto enorme. Desde $0 se ve del tamaño que es.
+  const cvs=Object.values(ct).filter(x=>x>0);const [cMin,cMax]=cvs.length?[0,Math.max(...cvs)*1.08]:[0,1];
   // LA LÍNEA DE STOCK EN UNIDADES (03/10/2026, él: "una línea de stock y que el color coordine con buen stock,
   // falta o exceso, con intermedios, 5 colores"). El color son los DÍAS QUE ALCANZA ese stock al ritmo de ese
   // momento: ventas de los 30 días anteriores ÷ días con stock en esa ventana (3 ventas o más; si no, el ritmo

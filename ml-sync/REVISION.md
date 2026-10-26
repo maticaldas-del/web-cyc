@@ -1361,6 +1361,11 @@ privada en `mlapi/ticketllave`, nunca en el repo); yo cierro cada foto con la p�
 - **Qué chequear:** que la foto se vea en el detalle del pedido; que `ml-sync/cifrado` siga fuera de la web (`.assetsignore` tiene `ml-sync`);
   que nunca se imprima `priv` ni la imagen.
 
+### Etapa 7 · 26/10/2026 · v26.81 · 📊 La raya del costo arranca en $0
+Él: *"¿por qué el costo sube cuando sube el %? no tiene sentido"*. La raya es el costo REAL (mercadería + IIBB + monotributo; los
+impuestos son % del precio, así que suben un poco al subir el precio) y tenía escala propia min-máx: $50 parecían un salto. Eligió 2b:
+queda el costo real con la escala desde $0. Qué chequear: que un producto con costo parejo muestre la raya casi plana.
+
 ### Etapa 7 · 26/10/2026 · v26.80 · 💵 Plata por día: promedio por MES calendario
 Él: *"línea en vez de 7 días 15 días"* y enseguida *"en vez de 15 días, quiero que sea por mes, no cada 30 días. por mes"*. La línea verde
 es el promedio por día de cada mes (`_lnPromMes`): cada día muestra el de su mes; el mes en curso, lo que va del mes. Para el primer mes
