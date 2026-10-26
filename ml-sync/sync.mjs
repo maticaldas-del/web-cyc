@@ -11217,9 +11217,12 @@ function marcaFrenadaDe(c, marcasNo) {
     let dec = k; try { dec = decodeURIComponent(k); } catch { /* clave rara: se usa tal cual */ }
     const n = norm(dec);
     if (n && nom.includes(' ' + n + ' ')) return dec;
+    // LAS ABREVIADAS (26/10/2026): Elegancia escribe "D&G The One" y "Kit CK MY Euphoria", y con la marca entera no se agarraban.
+    for (const a of (MARCA_ALIAS[n] || [])) if (nom.includes(' ' + a + ' ')) return dec;
   }
   return null;
 }
+const MARCA_ALIAS = { 'dolce gabbana': ['d g'], 'calvin klein': ['ck'] };   // 'dolce' solo no: "Dior Dolce Vita" es otra marca
 
 // ── ¿ESTA OFERTA ES DE UN VENDEDOR DE AFUERA? (19/09/2026) ─────────────────────────────────
 // Regla suya del 19/09: **"estaba tomando envíos internacionales. esos no quiero que se fije."**
