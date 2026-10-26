@@ -193,6 +193,32 @@ html,body{overflow-x:hidden;max-width:100%}html{overflow-x:clip}body{overscroll-
 @keyframes cycRun{0%{left:0;opacity:0}8%{opacity:1}92%{opacity:1}100%{left:100%;opacity:0}}
 /* Si el telefono tiene pedido "menos movimiento", no parpadea nada: queda CYC en verde. */
 @media(prefers-reduced-motion:reduce){.cyc-load span,.cyc-dot{animation:none}.cyc-load span{color:var(--accent2)}.cyc-dot{left:50%;opacity:1}}
+/* 🎬 SIETE PANTALLAS DE "CARGANDO", UNA POR DÍA (26/10/2026, él: "se pueden poner todas? pero que cambien todos los días a las 4am?").
+   0 la de siempre (.cyc-load) · 1 se llena de verde · 2 la línea de ganancia · 3 tres cajas que caen · 4 contador de plata ·
+   5 se dibuja el contorno · 6 latido. La elige el script de abajo de #loading (`_ldElegir`), contando los días desde las 4 de la mañana. */
+.ld-syne{font-family:'Syne',sans-serif;font-weight:800;line-height:1}
+.ld1{font-size:4rem;letter-spacing:.04em;color:transparent;-webkit-text-stroke:1.5px var(--border2);background:linear-gradient(to top,var(--accent2) 0 50%,transparent 50% 100%);background-size:100% 200%;background-position:0 0;-webkit-background-clip:text;background-clip:text;animation:ld1 2.4s ease-in-out infinite}
+@keyframes ld1{0%{background-position:0 0}70%,85%{background-position:0 100%;-webkit-text-stroke-color:var(--accent2)}100%{background-position:0 100%;-webkit-text-stroke-color:var(--accent2);opacity:0}}
+.ld2{display:flex;flex-direction:column;align-items:center;gap:8px}.ld2 .ld-syne{font-size:2.6rem;letter-spacing:.08em}
+.ld2 path{fill:none;stroke:var(--accent2);stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:260;stroke-dashoffset:260;animation:ld2 2.2s ease-in-out infinite;filter:drop-shadow(0 0 6px rgba(34,197,94,.6))}
+@keyframes ld2{0%{stroke-dashoffset:260}60%,85%{stroke-dashoffset:0;opacity:1}100%{stroke-dashoffset:0;opacity:0}}
+.ld3{display:flex;gap:8px;align-items:flex-end;height:90px}
+.ld3 b{width:62px;height:62px;border-radius:10px;background:var(--surface);border:2px solid var(--accent2);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:2rem;color:var(--accent2);opacity:0;transform:translateY(-70px);animation:ld3 2.4s cubic-bezier(.3,1.6,.5,1) infinite}
+.ld3 b:nth-child(2){animation-delay:.18s}.ld3 b:nth-child(3){animation-delay:.36s}
+@keyframes ld3{0%{opacity:0;transform:translateY(-70px)}22%{opacity:1;transform:translateY(0)}78%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(10px)}}
+.ld4w{display:flex;flex-direction:column;align-items:center;gap:6px}.ld4w>.ld-t{font-size:1rem;letter-spacing:.3em;color:var(--muted)}
+.ld4{display:flex;font-size:2.6rem;color:var(--accent2);height:2.6rem;overflow:hidden}
+.ld4 .d{display:flex;flex-direction:column;animation:ld4 2s cubic-bezier(.6,0,.2,1) infinite}.ld4 .d span,.ld4 .s{height:2.6rem;line-height:2.6rem}
+.ld4 .d:nth-child(3){animation-delay:.1s}.ld4 .d:nth-child(5){animation-delay:.2s}.ld4 .d:nth-child(6){animation-delay:.3s}.ld4 .d:nth-child(7){animation-delay:.4s}
+@keyframes ld4{0%{transform:translateY(0)}70%,100%{transform:translateY(-90%)}}
+.ld5 text{font-family:'Syne',sans-serif;font-weight:800;font-size:68px;fill:transparent;stroke:var(--accent2);stroke-width:1.6;stroke-dasharray:420;stroke-dashoffset:420;animation:ld5 2.6s ease-in-out infinite}
+@keyframes ld5{0%{stroke-dashoffset:420;fill:transparent}55%{stroke-dashoffset:0;fill:transparent}75%,90%{stroke-dashoffset:0;fill:var(--accent2)}100%{fill:var(--accent2);opacity:0}}
+.ld6w{position:relative;display:flex;align-items:center;justify-content:center;width:220px;height:120px}
+.ld6{font-size:3.6rem;letter-spacing:.06em;color:var(--accent2);animation:ld6 1.3s ease-in-out infinite}
+@keyframes ld6{0%,100%{transform:scale(1)}15%{transform:scale(1.08);text-shadow:0 0 22px rgba(34,197,94,.55)}30%{transform:scale(1)}45%{transform:scale(1.05);text-shadow:0 0 14px rgba(34,197,94,.4)}60%{transform:scale(1)}}
+.ld6r{position:absolute;width:120px;height:120px;border-radius:50%;border:2px solid var(--accent2);opacity:0;animation:ld6r 1.3s ease-out infinite}
+@keyframes ld6r{0%{transform:scale(.6);opacity:.6}100%{transform:scale(1.9);opacity:0}}
+@media(prefers-reduced-motion:reduce){.ld1,.ld2 path,.ld3 b,.ld4 .d,.ld5 text,.ld6,.ld6r{animation:none!important}.ld3 b{opacity:1;transform:none}.ld2 path{stroke-dashoffset:0}.ld5 text{fill:var(--accent2)}}
 
 /* LOGIN */
 #login-screen{position:fixed;inset:0;background:var(--bg);z-index:500;display:none;align-items:center;justify-content:center;flex-direction:column;gap:18px;padding:20px}
@@ -954,6 +980,23 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   <div class="cyc-load" role="img" aria-label="CYC · cargando"><span>C</span><span>Y</span><span>C</span><i class="cyc-dot"></i></div>
   <p id="load-msg">Conectando...</p>
 </div>
+<script>
+// 🎬 La pantalla de "cargando" del día (26/10/2026): cambia todos los días a las 4 de la mañana (hora del aparato), en rueda de 7.
+(function _ldElegir(){try{
+  const t=new Date(Date.now()-4*3600e3),dia=Math.floor(Date.UTC(t.getFullYear(),t.getMonth(),t.getDate())/864e5),n=((dia%7)+7)%7;
+  if(n===0)return;   // 0 = la de siempre, ya está en el HTML
+  const dg=a=>'<div class="d">'+a.split('').map(x=>'<span>'+x+'</span>').join('')+'</div>';
+  const H=['',
+    '<div class="ld1 ld-syne">CYC</div>',
+    '<div class="ld2"><div class="ld-syne">CYC</div><svg width="200" height="54" viewBox="0 0 200 54"><path d="M4 46 L40 38 L62 42 L92 26 L116 30 L146 14 L170 18 L196 4"/></svg></div>',
+    '<div class="ld3"><b>C</b><b>Y</b><b>C</b></div>',
+    '<div class="ld4w"><div class="ld-t">CYC</div><div class="ld4 ld-syne"><span class="s">$</span>'+dg('0371942851')+dg('0826419372')+'<span class="s">.</span>'+dg('0592738164')+dg('0168395720')+dg('0749162830')+'</div></div>',
+    '<svg class="ld5" width="240" height="90" viewBox="0 0 240 90"><text x="120" y="70" text-anchor="middle">CYC</text></svg>',
+    '<div class="ld6w"><div class="ld6r"></div><div class="ld6 ld-syne">CYC</div></div>'];
+  const el=document.querySelector('#loading .cyc-load');if(!el)return;
+  const w=document.createElement('div');w.setAttribute('role','img');w.setAttribute('aria-label','CYC · cargando');w.innerHTML=H[n];el.replaceWith(w);
+}catch(e){}})();
+</script>
 
 <!-- LOGIN -->
 <div id="login-screen">
@@ -2989,7 +3032,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.86';
+const APP_VERSION='26.87';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3002,6 +3045,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.87',f:'26/10',h:'17:45',c:[{n:1,t:'🎬 La pantalla de "cargando" tiene 7 versiones (la de siempre y 6 nuevas) y cambia sola todos los días a las 4 de la mañana.'}]},
   {v:'26.86',f:'26/10',h:'17:25',c:[{n:1,t:'🖥️ Inicio en la PC: las dos tarjetas de Ventas vuelven a ir una abajo de la otra, pero anchas.'}]},
   {v:'26.85',f:'26/10',h:'17:10',c:[{n:2,t:'🖥️ Inicio en la PC: sin el logo grande de arriba y con el dólar al final (como en el celular); las dos tarjetas de Ventas, una abajo de la otra, usan el ancho de las tarjetas de abajo.'}]},
   {v:'26.84',f:'26/10',h:'16:55',c:[{n:3,t:'⚡ La web abre y anda más liviana: ya no baja toda la base (13,6 MB) sino sólo lo que usa; los candidatos de Paraguay (3,8 MB) se bajan al entrar a Pedidos; cuando el robot escribe varias cosas seguidas se procesa una sola vez, y con la pestaña escondida no procesa nada hasta que volvés.'},{n:2,t:'🔄 Pedidos → Paraguay: al lado de "Falta reponer" dice hace cuántos días fue la última vuelta COMPLETA por la web de Nissei (90% o más de los productos).'}]},

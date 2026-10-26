@@ -1379,6 +1379,12 @@ es el promedio por día de cada mes (`_lnPromMes`): cada día muestra el de su m
 del gráfico se suman los días desde el 1º aunque queden antes (`_lnPreMes`). Línea de cada producto y general. Probado: sep $5.000/día,
 oct $10.000/día con ventas de prueba. Qué chequear: que el salto caiga justo el día 1 y que el número de "hoy" sea el del mes en curso.
 
+### Etapa 7 · 26/10/2026 · v26.87 · 🎬 Siete pantallas de "cargando", una por día
+Él (viendo 6 opciones nuevas): *"se pueden poner todas? pero que cambien todos los días a las 4am?"*. `_ldElegir` (script debajo de
+`#loading`) cuenta los días desde las 4 de la mañana del aparato y elige 0-6 en rueda: 0 la de siempre · 1 se llena de verde · 2 la línea
+de ganancia · 3 tres cajas que caen · 4 contador de plata · 5 se dibuja el contorno · 6 latido. Clases `ld*`; con "menos movimiento" quedan
+quietas. Dibujadas las 7 simulando cada día.
+
 ### Etapa 7 · 26/10/2026 · v26.85 · 🖥️ Inicio en la PC
 Él: *"esta parte quiero que se haga como en el celu, sacar cyc y el dólar ponerlo ahí abajo. además la de pc está media hecha como para
 celular, no utiliza el ancho máximo… más que nada el inicio"*. El logo no se dibuja en ningún lado y el dólar va al final (antes sólo en
