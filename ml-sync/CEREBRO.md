@@ -64,7 +64,7 @@ al código; lo que es pensar queda acá, y una regla dura ("nunca", "sólo si") 
 | 5 | **Lo nuevo no se baja sin 🏔️ al 95%** (primera tanda en Full de menos de 30 d, o 🆕 lanzamiento). Ganar la caja NO es excepción. `!sintecho` es 🔐 sólo suya | 🔒 F1 |
 | 6 | **No llegar a pagar stock antiguo** (120 d lo chico, 60 lo grande/Tenders; apuntar a ~100) | 🧠 (la lista 💸 lo trae) |
 | 7 | **Escasez: se sube** para que dure hasta que vuelva a haber. "Escasez" siempre = el precio sube | 🧠 + la lista 📈 |
-| 8 | **Sobra: se baja en escalera** | 🔒 F2-F3 la escalera · 🧠 cuánto |
+| 8 | **Sobra: se baja en escalera** — lo caro que no vende: a los 60 días sin vender, hasta el precio que GANA la caja (26/10, él) | 🔒 F2-F3 la escalera · 🧠 cuánto |
 | 9 | **35% en el PEOR caso** (🛡️) | 🔒 en bajas · lista 🛡️ |
 | 10 | **Buscar el techo** en todo lo demás | 🧠 |
 | 11 | **Formas:** escalera (≤15% por escalón, 25% en escasez; uno cada 48 h, 12 h en escasez; mis descuentos también son escalones) · una suba no se deshace sin 95% (🔐 `!sincerteza`) · no abajo del 💰 piso · en escasez nunca abajo del precio de antes (F9) · 90/990 · barrera $33.000 · descuento sólo si tiene sentido (🤔) | 🔒 F2-F9 |

@@ -227,7 +227,7 @@
   nunca pasar 120. Bs As pasa a "no se consigue" cuando Pedidos lo pide hace 10+ días sin entrar nada a la oficina, o con el botón
   🚫 "No lo consigo" (`cyc/noconsigo/<prod>[/v/<color>]`); se cae solo al entrar mercadería.
 - **Lo que no vende al 35%** (24/10, eligió la a): no se repone y, al terminarse, la publicación queda pausada (no se borra).
-- **Sobra** (+90 d de stock al ritmo con stock o sin ventas en 60 d) → escalera/descuento; con sobra no se busca techo. Stock antiguo: 120 d
+- **Sobra** (+90 d de stock al ritmo con stock o sin ventas en 60 d) → escalera/descuento; con sobra no se busca techo. **Lo caro que no vende: a los 60 días sin vender, la escalera apunta al precio que GANA la caja de compra** (26/10, él con los VS, Redmi Watch y Dalí: *"si llegan a 60 días de stock sí bajar los precios hasta estar en ganando"*; nunca abajo de 0%; antes de eso no se baja sin techo y las 16 autorizaciones viejas del 23/10 quedaron en "no"). Stock antiguo: 120 d
   lo chico, 60 lo grande (Tenders); apuntar a vender antes de ~100. Bajar porque seguir igual perdía más = el cerebro ganó; lo que falta
   para el 25% es error de origen (mandar/comprar de más).
 - **Estrategias (tags)** — todo precio tiene una (19/10, **no existe 🎯 base**; `decido` rechaza un precio sin estrategia): 📈 `techo`
