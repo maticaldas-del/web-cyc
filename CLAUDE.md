@@ -364,6 +364,7 @@
   listo para pegar y la lista YA FILTRADA a lo que puede entrar a un pedido (25%+ y en catálogo), no la lista entera; el resto se dice
   con números (cuántos y por qué no) y se ofrece aparte. Los archivos van por SendUserFile desde el scratchpad, nunca al repo. Primer
   caso: `faltaventas:todas` → 183 de 7.392 (PROMPT_VENTAS_LISTAS).
+- **Me pasa que pagó un pedido = queda pedido EN EL ACTO** (26/10, él: *"cuando te paso que pagué el pedido, automáticamente cargalo como pedido. siempre"*): "Ya lo pedí" de ESE pedido del momento (`pyped:nuevos:<resto|perf|elegancia>;go` + `pyped:repo:…;go`), la plata con `compray` y lo que no cierra se le pregunta después.
 - Pasos por comando: `pyped:repo:<palabra>=<u>;…|nuevos|llego:<id>;go` · `pedir:<palabra>=<u>;…;go` · `compray` · `pyprecio` · `candprecio` ·
   `candalta` · `pyvisto` · `pyconocidos` · `marcano:<marca>` (prohibida: **Dolce & Gabbana**) · `marcanoml:<marca>:go` = prohibida **sólo para ML** (no se publica, sí se compra para la perfumería): **Calvin Klein** (23/10, *"por la marca nos denuncian al toque"*). Celulares viajan con el padre (`celuviaje`).
   Nada de envío internacional. **Perfume que en ML no llega pero en el local deja 35%+ entra al pedido** (44a + 35% del 24/10; `revisarcompra` lo acepta). **Testers de Nissei** (sin caja): afuera para ML, se miran sólo para la perfumería del local (24/10, 6a). Tarjetas de memoria: ya no hay truchas (20/10), se tratan como cualquier producto.
