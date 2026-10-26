@@ -2461,7 +2461,9 @@ async function reposicionFullML(db, accounts, labels, DRY) {
 // el lunes"). Devuelve el momento en que SALE (12:00 de acá = 15:00 UTC): armada un día hábil antes de las 12, ese día; si no, el
 // próximo día hábil. La hora sale de `ts` si es del mismo día que `fecha`; sin hora, se toma como armada a la mañana. Misma regla
 // que `envSalidaTs` de la web (index.html): si se toca una, la otra.
-function envSalidaTs(fecha, ts) {
+function envSalidaTs(fecha, ts, pausado) {
+  // ⏸️ envío en pausa (26/10/2026, botón de la web): no sale; 30 días adelante, igual que `ENV_PAUSA_DIAS` de la web.
+  if (pausado) return Date.now() + 30 * 864e5;
   const f = String(fecha || '').slice(0, 10); if (!/^\d{4}-\d{2}-\d{2}$/.test(f)) return 0;
   const t = Number(ts) || 0, loc = t ? new Date(t - 3 * 3600e3) : null;
   const tarde = !!(loc && loc.toISOString().slice(0, 10) === f && loc.getUTCHours() >= 12);
@@ -5916,7 +5918,7 @@ async function calcCerebro(db, o) {
     if (!e || !e.cuenta) continue;
     for (const c of (Array.isArray(e.cajasDet) ? e.cajasDet : [])) {
       if (!c || c.recibida) continue;
-      const tsC = envSalidaTs(c.fecha || e.fecha, c.fecha ? 0 : e.ts) || hoyTs;
+      const tsC = envSalidaTs(c.fecha || e.fecha, c.fecha ? 0 : e.ts, e.pausado) || hoyTs;
       for (const it of (c.items || [])) {
         if (!it || !it.prodId || !(Number(it.u) > 0)) continue;
         const kP = it.prodId + '__' + sidL(e.cuenta);
@@ -44547,7 +44549,7 @@ async function main() {
         };
         for (const [id, env] of Object.entries(envs)) for (const [ci, c] of (Array.isArray(env && env.cajasDet) ? env.cajasDet : []).entries()) {
           if (!c || c.recibida) continue; nAb++;
-          const t0 = envSalidaTs(c.fecha || env.fecha, c.fecha ? 0 : env.ts); const dd = t0 > 0 ? Math.max(0, (ahoraI - t0) / 864e5) : null;
+          const t0 = env.pausado ? 0 : envSalidaTs(c.fecha || env.fecha, c.fecha ? 0 : env.ts); const dd = t0 > 0 ? Math.max(0, (ahoraI - t0) / 864e5) : null;
           const uC = (c.items || []).reduce((s2, it) => s2 + (Number(it && it.u) || 0), 0), eC = entradoCaja(id, ci, c);
           // Etapa 6 (14/10/2026): la caja que ML ya dio de alta ENTERA va a la lista lista para `cajallego`, tenga la edad
           // que tenga (antes sólo salía con 9+ días y con el seguimiento cortado: había que ir a buscarlo a mano).

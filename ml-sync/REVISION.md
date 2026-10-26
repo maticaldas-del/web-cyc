@@ -804,6 +804,10 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 
 ## 3 · MERCADERÍA (miércoles)
 
+### ⏸️ Pausar / reanudar un envío a Full (26/10/2026, v26.74, pedido suyo)
+- **Qué es:** botón en la cabecera del envío (Mi oficina → En camino). `cyc/envios_full/<id>/pausado` = cuándo se pausó: `envSalidaTs` (web y robot) devuelve 30 días adelante, la caja dice "⏸️ en pausa · no sale" y el robot no la lista como atrasada. Reanudar pone `fecha` = hoy y `ts` = ahora (y la fecha propia de las cajas sin recibir), guarda la original en `fechaArmada`.
+- **Qué chequear:** que una caja en pausa siga contando como stock (no se compra de nuevo) pero NO como "llega a tiempo" en la escasez · que al reanudar diga "sale … a las 12" · que el robot no la marque llegada sola.
+
 ### 🧾 `pyticketvisto` (26/10/2026, v26.73, pedido suyo: "siempre subí vos eso")
 - **Qué es:** la foto del ticket que me pasa por el chat no puede llegar a la base sin pasar por el repo o el registro (públicos). `pyticketvisto:<id>=<n>|<nota>;go` (ml-consulta) anota en `cyc/compraspy/<id>` `ticketFoto` y `ticketFotoChat` (quién, cuándo, cuántas); la web dice "✓ la vio Claude en el chat". Pide los renglones (`det=`) ya cargados.
 - **Qué chequear:** que no se use sin haber comparado la foto renglón por renglón · que `pyped:llego` lo acepte · que la web no muestre "ver" sin imágenes.

@@ -2962,7 +2962,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.73';
+const APP_VERSION='26.74';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2975,6 +2975,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.74',f:'26/10',h:'13:30',c:[{n:2,t:'⏸️ Envíos a Full: botón "Pausar envío" para una caja que todavía no mandamos (no cuenta días de viaje ni la toma como que llega pronto). "Reanudar" la hace salir desde ese día, el próximo día hábil a las 12.'}]},
   {v:'26.73',f:'26/10',h:'13:15',c:[{n:1,t:'🧾 Pedidos de Paraguay: si me pasás la foto del ticket por el chat, el pedido dice "✓ la vio Claude en el chat" y cuenta como foto para cerrarlo (la imagen queda en el chat).'}]},
   {v:'26.72',f:'26/10',h:'12:20',c:[{n:1,t:'🔥 Ventas vivas: el fuego aparece recién desde $20.000 de ganancia (antes $10.000). De $10.000 a $20.000 como mucho tiembla.'}]},
   {v:'26.71',f:'26/10',h:'11:15',c:[{n:2,t:'🏠 Inicio: el cuadro de Ventas mostraba las ventas del día anterior si la app quedaba abierta de un día para el otro (al volver se actualizaba "Hoy" pero no ese cuadro). Ahora se actualiza junto.'}]},
@@ -9109,8 +9110,14 @@ function cajasDe(e){
 // envía el lunes"). Los días de viaje se cuentan desde que SALE, no desde que se armó: armada un día hábil antes de las 12
 // sale ese día; si no, el próximo día hábil a las 12. La hora sale de `ts` (cuándo se cargó) si es del mismo día que `fecha`;
 // sin hora, se toma como armada a la mañana. Misma regla que `envSalidaTs` del robot (sync.mjs): si se toca una, la otra.
+// ⏸️ ENVÍO EN PAUSA (26/10/2026, él: "esta no la vamos a mandar aún. ¿podés agregar un botoncito que yo apreto para pausar el envío?
+// después cuando lo activo sigue normal"): mientras está en pausa no sale (la salida queda 30 días adelante para que la escasez y
+// el viaje no la cuenten como que llega pronto); al reanudarla, la fecha pasa a ser HOY y sale el próximo día hábil a las 12.
+// Misma regla en el robot (`envSalidaTs` de sync.mjs, con `pausado`).
+const ENV_PAUSA_DIAS=30;
 function envSalidaTs(e){
   if(!e||!e.fecha)return 0;
+  if(e.pausado)return Date.now()+ENV_PAUSA_DIAS*864e5;
   const f=String(e.fecha).slice(0,10),ts=Number(e.ts)||0,dT=ts?new Date(ts):null;
   const mismo=dT&&`${dT.getFullYear()}-${String(dT.getMonth()+1).padStart(2,'0')}-${String(dT.getDate()).padStart(2,'0')}`===f;
   const d=new Date(f+'T12:00:00');if(isNaN(d))return 0;
@@ -9126,6 +9133,7 @@ function envDias(e){
   return Math.floor((Date.now()-t)/86400000);
 }
 function envSaleTxt(e){
+  if(e&&e.pausado)return '⏸️ en pausa: no sale hasta que la reanudes';
   const t=envSalidaTs(e);if(!t)return '';
   const d=new Date(t),hoy=new Date();
   if(d.toDateString()===hoy.toDateString())return 'sale hoy a las 12';
@@ -9142,6 +9150,7 @@ function estadoCaja(e,c){
     if(uF)return{color:'var(--amber)',bg:'rgba(245,158,11,.12)',txt:`✓ llegó${c.recFecha?' el '+c.recFecha:''} · faltaron ${uF} u.`};
     return{color:'var(--green)',bg:'rgba(34,197,94,.12)',txt:'✓ llegó'+(c.recFecha?' el '+c.recFecha:'')};
   }
+  if(e&&e.pausado)return{color:'var(--muted)',bg:'rgba(148,163,184,.10)',txt:'⏸️ en pausa · no sale'};
   const d=envDias(e);
   if(d>=ENV_ROJO_DIAS)return{color:'var(--red)',bg:'rgba(239,68,68,.14)',txt:`⚠️ ${d} días y no llegó`};
   return{color:'var(--amber)',bg:'rgba(245,158,11,.14)',txt:Date.now()<envSalidaTs(e)?`armada · ${envSaleTxt(e)}`:d<=0?'en camino · salió hoy':`en camino · ${d} día${d===1?'':'s'}`};
@@ -9242,6 +9251,26 @@ async function setEnvioCuenta(id,cuenta){
   e.cuenta=cuenta;
   await fbSet('envios_full/'+id+'/cuenta',cuenta);
   await log('Envío del '+e.fecha+': cuenta → '+cuenta);
+  renderCajasEnCamino();
+}
+// ⏸️/▶️ Pausar o reanudar un envío (26/10/2026, pedido suyo). Reanudar = sale desde HOY (fecha y hora nuevas, también en las cajas
+// que tengan su propia fecha); la fecha en que se armó queda en `fechaArmada`.
+async function setEnvioPausa(id,on){
+  const e=(state.envios_full||{})[id];if(!e)return;
+  if(on){
+    e.pausado=Date.now();await fbSet('envios_full/'+id+'/pausado',e.pausado);
+    await log('Envío del '+e.fecha+' ('+(e.cuenta||'?')+'): ⏸️ en pausa');
+    toast('⏸️ Envío en pausa: no cuenta días de viaje hasta que lo reanudes','ok',3500);
+  }else{
+    const n=new Date(),hoy=`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`;
+    if(!e.fechaArmada){e.fechaArmada=e.fecha;await fbSet('envios_full/'+id+'/fechaArmada',e.fecha);}
+    const cajas=cajasDe(e);
+    if(Array.isArray(e.cajasDet)&&e.cajasDet.some(c=>c&&!c.recibida&&c.fecha))await _guardarCajas(id,cajas.map(c=>c&&!c.recibida&&c.fecha?{...c,fecha:hoy}:c));
+    e.fecha=hoy;e.ts=Date.now();e.pausado=null;
+    await fbSet('envios_full/'+id+'/fecha',hoy);await fbSet('envios_full/'+id+'/ts',e.ts);await fbSet('envios_full/'+id+'/pausado',null);
+    await log('Envío ('+(e.cuenta||'?')+'): ▶️ reanudado, sale desde el '+hoy);
+    toast('▶️ Envío reanudado: '+envSaleTxt(e),'ok',3500);
+  }
   renderCajasEnCamino();
 }
 // Guarda las cajas de un envío enteras: cajasDet es una lista y un patch parcial la rompería.
@@ -9444,7 +9473,10 @@ function renderCajasEnCamino(){
         <span class="pi-qty">${cajasDe(e).length} caja(s)</span>
         <span style="color:var(--muted);font-size:.66rem">${e.correo||''}${e.sucursal?' · '+e.sucursal:''}</span>
       </div>
-      <button class="btn btn-del" style="padding:5px 10px;font-size:.66rem" onclick="delEnvioFull('${e.id}').then(renderCajasEnCamino)" title="Borrar este envío entero">✕</button>
+      <div style="display:flex;gap:6px;align-items:center">
+        ${cajasDe(e).some(c=>!c.recibida)?`<button class="btn" style="padding:5px 10px;font-size:.66rem;${e.pausado?'':'background:transparent;border:1px solid var(--border2);color:var(--text)'}" onclick="setEnvioPausa('${e.id}',${e.pausado?'false':'true'})" title="${e.pausado?'Vuelve a salir: cuenta desde hoy y sale el próximo día hábil a las 12':'No la mandamos todavía: deja de contar los días de viaje hasta que la reanudes'}">${e.pausado?'▶️ Reanudar envío':'⏸️ Pausar envío'}</button>`:''}
+        <button class="btn btn-del" style="padding:5px 10px;font-size:.66rem" onclick="delEnvioFull('${e.id}').then(renderCajasEnCamino)" title="Borrar este envío entero">✕</button>
+      </div>
     </div>`;
     return cab+cajasDe(e).map((c,i)=>{
     const st=estadoCaja(e,c);

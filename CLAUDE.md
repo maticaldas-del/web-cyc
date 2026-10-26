@@ -329,7 +329,7 @@
 - **📬 Buzón** (25/10, eligió 15a): el chat de Chrome de las cajas (o él) deja en Mi oficina → "Mensaje para Claude" lo que no puede arreglar
   desde el panel (`cyc/buzon`); cada vuelta corre `buzon` y marca `buzon:leido=<ts>;go` (ml-consulta).
 - **Las cajas salen de lunes a viernes a las 12** (25/10, él): armada después del viernes a las 12 sale el lunes. Los días de viaje se
-  cuentan desde que sale (`envSalidaTs`, web y robot).
+  cuentan desde que sale (`envSalidaTs`, web y robot). **⏸️ Pausar envío** (26/10, botón en la cabecera del envío): no sale ni cuenta días hasta que lo reanuda; al reanudar sale desde ese día (`pausado`, `fechaArmada`).
 
 ## 7 · PARAGUAY · LISTAS · PAULVIC
 
