@@ -400,7 +400,7 @@
 - **7 días hábiles para pagar desde que llega, si no +10%** (20/10): avisarle al llegar los días que le quedan.
 - **Lo que se pide y no viene no se pide más** (`cyc/noconsigo/<prod>/nunca/<aroma>`, `pvped:nunca:-<aroma>;go` lo saca).
 - Cada aroma es su publicación y se juzga solo (grupo de precio desactivado 04/09). Compartido Adriana + Persea en Luciana.
-- **Invictus y Phantom: dados de baja en ML para siempre** (24/10, él; ML los frenó por la marca del nombre). No se piden ni se mandan a Full; lo de la oficina va al local.
+- **Invictus y Phantom: dados de baja en ML para siempre** (24/10, él; ML los frenó por la marca del nombre). No se piden ni se mandan a Full; lo de la oficina va al local. 26/10 (él: *"irrecuperables, eliminá todo"*): las 10 publicaciones ocultas en el panel (`nomas`), oficina en 0 (6 Invictus al local), sin etiqueta en 0, "no vienen más" desde el 22/10.
 
 ## 8 · PLATA, GASTOS Y ARQUEO
 
