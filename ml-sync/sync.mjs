@@ -12864,7 +12864,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
   // lista COMPLETA: si no, un día en que todos ya fueron avisados el comando imprime "no mando
   // nada" y parece que no hay ninguno. Es la misma separación que ya usa `calcCajaBarata`.
   if (nuevosQueDan.length) {
-    console.log(`\n── LOS ${nuevosQueDan.length} QUE DAN ${CAND_PISO_PCT}% O MÁS (de mejor a peor) ──`);
+    console.log(`\n── LOS ${nuevosQueDan.length} QUE DAN ${CAND_PISO_PCT}% O MÁS (de mejor a peor) · se compran sólo los de ${CAND_VARA_COMPRA}%+: ${nuevosQueDan.filter((x) => x.margen >= CAND_VARA_COMPRA).length} ──`);
     [...nuevosQueDan].sort((a, b) => b.margen - a.margen).forEach((x, i) => {
       console.log(`${String(i + 1).padStart(3)}. ${x.margen.toFixed(1).padStart(5)}%  ·  US$ ${x.puesto.toFixed(2).padStart(7)} puesto (US$ ${(x.puesto / RECARGO_PAR).toFixed(2)} + ${RECARGO_PAR_PCT}%)`
         + `  ·  en ML ${x.mlMax > x.mlPrecio ? `de ${money(Math.round(x.mlPrecio))} a ${money(x.mlMax)}` : money(Math.round(x.mlPrecio))} (${x.mlVendedores} vend. · ${_ventasTxt(x.c)})  ·  ${money(Math.round(x.ganancia))}/u.`);
@@ -18201,7 +18201,7 @@ async function main() {
       const v100 = dan.filter((c) => Number(c.mlVendedores) >= CAND_MIN_VENDEDORES);
       const descart = Object.values(cands).filter((c) => c && c.no);
       console.log(`=== CANDIDATOS · ${vivos.length} vivos · ${med.length} medidos · ${vivos.length - med.length} sin medir · ${descart.length} descartados en total ===`);
-      console.log(`Dan ${CAND_PISO_PCT}% o más: ${dan.length} (con ${CAND_MIN_VENDEDORES}+ vendedores en ML: ${v100.length}) · abajo del piso esperando 2ª medición: ${med.length - dan.length}`);
+      console.log(`Se compran (${CAND_VARA_COMPRA}%+): ${dan.filter((c) => Number(c.margen) >= CAND_VARA_COMPRA).length} · Dan ${CAND_PISO_PCT}% o más: ${dan.length} (con ${CAND_MIN_VENDEDORES}+ vendedores en ML: ${v100.length}) · abajo del piso esperando 2ª medición: ${med.length - dan.length}`);
       const tramos = [[80, 1e9], [50, 80], [35, 50], [25, 35]];
       for (const [lo, hi] of tramos) console.log(`  ${lo}%${hi < 1e9 ? '-' + hi + '%' : '+'}: ${dan.filter((c) => c.margen >= lo && c.margen < hi).length}`);
       console.log('\n80%+ (mirar con el precio de hoy):');
@@ -19046,14 +19046,14 @@ async function main() {
     if (/^pycatdia(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const DIAS = Math.max(3, parseInt(String(process.env.BILLING_PROBE).split(':')[1]) || 14);
       const cat = (await db.get('mlapi/pycat')) || {}; const R = (await db.get('cyc/pycatres')) || {};
-      const c = { tot: 0, sinT: 0, mAlto: 0, mBajo: 0, sc: 0, scr: 0, sv: 0, fz: 0, nm: 0, tSinNada: 0, qp: 0, qpEnc: 0, qpSv: 0, qpDa: 0 }; const encontrados = []; const porDia = {};
+      const c = { tot: 0, sinT: 0, mAlto: 0, m35: 0, mBajo: 0, sc: 0, scr: 0, sv: 0, fz: 0, nm: 0, tSinNada: 0, qp: 0, qpEnc: 0, qpSv: 0, qpDa: 0 }; const encontrados = []; const porDia = {};
       for (const e of Object.values(cat)) { if (!e || !e.n) continue; c.tot++;
         if (e.t) { const d = dayKeyFromISO(Number(e.t)); porDia[d] = (porDia[d] || 0) + 1; }
         if (Number(e.qp || 0) >= PY_NOMBRE_VER) { c.qp++; if (!e.sc) { c.qpEnc++; if (e.sv) c.qpSv++; else if (e.m != null && Number(e.m) >= CAND_PISO_PCT) { c.qpDa++; encontrados.push(`${Number(e.m).toFixed(0)}% · ${String(e.n).slice(0, 70)} → ${e.mi || ''}`); } else if (e.m != null) encontrados.push(`${Number(e.m).toFixed(0)}% · ${String(e.n).slice(0, 70)}`); } }
-        if (e.fz) c.fz++; else if (e.m != null && isFinite(e.m)) { if (Number(e.m) >= CAND_PISO_PCT) c.mAlto++; else c.mBajo++; }
+        if (e.fz) c.fz++; else if (e.m != null && isFinite(e.m)) { if (Number(e.m) >= CAND_PISO_PCT) { c.mAlto++; if (Number(e.m) >= CAND_VARA_COMPRA) c.m35++; } else c.mBajo++; }
         else if (e.sc) { c.sc++; if (Number(e.qp || 0) >= PY_NOMBRE_VER) c.scr++; } else if (e.sv) c.sv++; else if (e.nm) c.nm++; else if (!e.t) c.sinT++; else c.tSinNada++; }
       console.log(`=== CATÁLOGO DE NISSEI · ${c.tot} productos ===`);
-      console.log(`  medido con % de 25+ (pasan a candidatos o ya lo son) ${c.mAlto} · medido abajo de 25% ${c.mBajo}`);
+      console.log(`  medido con ${CAND_VARA_COMPRA}%+ (se pueden comprar) ${c.m35} · ${CAND_PISO_PCT}-${CAND_VARA_COMPRA - 1}% (guardados, se siguen midiendo, NO se compran) ${c.mAlto - c.m35} · abajo de ${CAND_PISO_PCT}% ${c.mBajo}`);   // 26/10/2026 (él: "es 35 o más %, no 25")
       console.log(`  buscado y SIN el mismo producto en ML ${c.sc} (de esos ✔️ revisados también traducidos ${c.scr}) · encontrado pero NADIE lo vende ${c.sv} · afuera por regla ${c.fz}`);
       console.log(`  ML no deja medirlo ${c.nm} · NUNCA buscado ${c.sinT} · buscado sin resultado guardado ${c.tSinNada}`);
       console.log(`  web (cyc/pycatres): nomed ${R.nomed} · sc ${R.sc} · scr ${R.scr} · sv ${R.sv} · fz ${R.fz} · cand ${R.cand} · ficha ${R.ficha} · bajo ${R.bajo} · al ${R.t ? new Date(R.t).toISOString() : '?'}`);
