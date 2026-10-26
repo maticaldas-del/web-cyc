@@ -23770,7 +23770,7 @@ async function main() {
         if (!(Number(c.mlVendedores) >= 1)) continue;   // 24/10/2026 (1a): los de 1 vendedor también, con la vara de 35%
         if (Number(c.mlVendedores) < CAND_MIN_VENDEDORES && mg < CAND_VARA_COMPRA) continue;
         if (!/^https:\/\//.test(String(c.foto || '')) || !/^https:\/\//.test(String(c.mlFoto || ''))) continue;
-        if (!candCatChequeado(c)) continue; { const _v = candVentasDe(c); if (_v != null && (_v >= CAND_MIN_VENTAS || c.resCarga != null)) continue; } if (pyCatNoSeMira(c.nombre)) continue;   // 24/10/2026: con menos de 100 vendidas y sin reseñas cargadas, también (5+ reseñas lo rescatan)
+        if (!candCatChequeado(c)) continue; { const _v = candVentasDe(c); if (c.resCarga != null || (_v != null && _v >= CAND_MIN_VENTAS)) continue; }   // 26/10/2026: con las reseñas cargadas ya se miró, aunque ML no muestre vendidas (antes volvían 71 cada noche) if (pyCatNoSeMira(c.nombre)) continue;   // 24/10/2026: con menos de 100 vendidas y sin reseñas cargadas, también (5+ reseñas lo rescatan)
         out.push(`py|${String(c.prov || 'nissei').toLowerCase()}|${c.cod || ''}|${String(c.nombre || '').replace(/\|/g, '/').slice(0, 80)}|${candCatDe(c)}|${Math.round(mg)}%`); }
       const provs = (await db.get('cyc/mlconfig/listasProv')) || {};
       for (const [k, pv] of Object.entries(provs)) { if (pv.desc) continue; const cat = (await db.get('mlapi/listas/' + k)) || {};
