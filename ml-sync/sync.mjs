@@ -22768,9 +22768,8 @@ async function main() {
       let _cfgP = {}; try { _cfgP = (await db.get('cyc/mlconfig')) || {}; } catch { _cfgP = {}; }
       const _topeP = (() => { const v = parseFloat(_cfgP.pedTopeUSD); return isFinite(v) && v > 0 ? v : 500; })();
       const _maxUP = (() => { const v = parseInt(_cfgP.pedMaxU); return isFinite(v) && v > 0 ? v : 2; })();
-      const candMaxUBot = (c) => { const usd = parseFloat(c && c.usd) || 0, v = _vendP(c || {}), nv = Number(c && c.mlVendedores);
-        // Revisión etapa 1 (24/10): misma regla que `candMaxU` de la web (4a del 21/10: barato ≤US$15 → 3 sin mirar ventas · caro >US$60 → 1).
-        void v; void nv; if (usd > 60) return 1; if (usd > 0 && usd <= 15) return Math.max(_maxUP, 3); return _maxUP; };
+      // 26/10/2026 (él): hasta llegar a US$ 20 con el precio de la web, máximo 4, mínimo 1. COPIA de `candMaxU` (PED_UNI_USD/PED_UNI_MAX).
+      const candMaxUBot = (c) => { const usd = parseFloat(c && c.usd) || 0; void _maxUP; return usd > 0 ? Math.max(1, Math.min(4, Math.ceil(20 / usd - 1e-9))) : 1; };
       for (const x of cambios) {
         const usd = parseFloat(x.c.usd) || 0;
         console.log(`  ${x.antes} u. → ${x.u} u.  ·  US$ ${(usd * x.u).toFixed(2)}  ·  ${x.c.nombre}`

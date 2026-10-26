@@ -2962,7 +2962,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.82';
+const APP_VERSION='26.83';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -2975,6 +2975,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.83',f:'26/10',h:'16:25',c:[{n:2,t:'🧾 Paraguay: cada producto nuevo pide unidades hasta llegar a US$ 20, máximo 4 (US$ 21 → 1 · US$ 19 → 2 · US$ 9 → 3 · US$ 5 o menos → 4). Se sacó la casilla "U. por nuevo".'},{n:2,t:'🗑️ Un solo botón Vaciar: saca TODO lo del pedido (probados, nuevos y uso personal). Ya no están Vaciar probados ni Vaciar nuevos.'}]},
   {v:'26.82',f:'26/10',h:'16:00',c:[{n:2,t:'⛔ Paraguay: lo mirado hace 7 días o más SE PUEDE cargar (también con los botones de llenar) y queda en rojo dentro del pedido. Lo único que frena es copiar el mensaje y "Ya lo pedí", hasta que el robot lo vuelva a mirar.'}]},
   {v:'26.81',f:'26/10',h:'15:40',c:[{n:1,t:'📊 % de ganancia: la raya naranja del costo arranca en $0, así un cambio chico se ve chico. Sigue siendo el costo real (mercadería + impuestos de la venta, que suben un poco si sube el precio).'}]},
   {v:'26.80',f:'26/10',h:'15:20',c:[{n:2,t:'💵 Plata por día: la línea verde es el promedio por día de cada MES (octubre, noviembre…); el mes en curso, lo que va del mes. En la línea de cada producto y en la general.'}]},
@@ -16530,11 +16531,15 @@ async function candSetPedir(id,v){
 // · caro (> US$60) → 1 · el resto → lo de la casilla (2).
 // Lo que vuela se repone en el pedido siguiente con unidades por sus ventas: eso lo decido yo.
 const PED_BARATO_USD=15, PED_CARO_USD=60;
+// UNIDADES DE CADA NUEVO: HASTA LLEGAR A US$ 20, MÁXIMO 4 (26/10/2026, él: "cada producto pida unidades (máximo 4) hasta llegar a 20
+// dólares, si una unidad cuesta 21 se pide max una y si vale 19 se piden 2 si vale 9 se piden 3 si vale 5 4 si vale 4 4"). Con el precio de
+// la web (crudo): las unidades que hagan falta para llegar a US$ 20, nunca más de 4 ni menos de 1. Reemplaza barato 3 / caro 1 / resto 2
+// y la casilla "U. por nuevo" (el 2º parámetro queda por compatibilidad). El robot (`pedir`) tiene la misma cuenta.
+const PED_UNI_USD=20, PED_UNI_MAX=4;
 function candMaxU(c,maxU){
   const usd=parseFloat(c&&c.usd)||0;
-  if(usd>PED_CARO_USD)return 1;
-  if(usd>0&&usd<=PED_BARATO_USD)return Math.max(maxU,3);   // 21/10/2026 (él, 4a): las vendidas ya no se cargan · barato → 3, sin mirar ventas
-  return maxU;
+  if(!(usd>0))return 1;
+  return Math.max(1,Math.min(PED_UNI_MAX,Math.ceil(PED_UNI_USD/usd-1e-9)));
 }
 function pedLlenarPlan(vivos,tope,maxU,minV,orden){
   let sinVentas=0, flojos=0, viajando=0;
@@ -17605,7 +17610,7 @@ function pedidoMomentoHTML(g){
       pedNuevoFilaHTML(f,maxU,tc,true),
       (()=>{const nv=Number(f.c.mlVendedores);if(f.c.sinComp)return ` · <span style="color:var(--green)" title="Nadie lo vende hoy en su catálogo de ML: se midió contra el precio que vio el chat de compras en ML (${fmt(Number(f.c.svp)||0)}).">🌟 sin competencia en ML</span>`;const _v=candVentasDe(f.c),_r=f.c.resCarga;return ` · <span style="color:${nv>=CAND_MIN_VENDEDORES?'var(--green)':'var(--amber)'}">🏪 ${nv>0?nv+(nv===1?' vendedor':' vendedores')+' en ML':'sin vendedores medidos'}</span>`+` · 🛒 ${_v!=null?(_v>=1000?'+1000':_v)+' vendidas':'<span style="color:var(--amber)">vendidas sin cargar</span>'}`+` · ⭐ ${_r!=null?_r+' reseñas':'<span style="color:var(--muted)">reseñas sin cargar</span>'}`+(candPuntaje(f.c)!=null?' · '+puntajeHTML(candPuntaje(f.c)):'')+(candCombo(f.c)!=null?' · '+comboHTML(f.c):'');})());});
   const cfg=`<details style="margin:8px 0 2px"><summary style="cursor:pointer;font-size:.68rem;color:var(--muted)">⚙️ tope y máximo por producto</summary><div style="display:flex;gap:7px;flex-wrap:wrap;align-items:flex-end;margin:8px 0 4px">
-      ${[['pedTopeUSD',tope,'Tope del pedido (US$, probados + nuevos)'],['pedMaxU',maxU,'U. por nuevo (barato que vende: 3-4 · caro: 1)']]
+      ${[['pedTopeUSD',tope,'Tope del pedido (US$, probados + nuevos)']]
         .map(([k,v,t])=>`<label style="flex:1;min-width:105px"><div style="font-size:.6rem;color:var(--muted);margin-bottom:3px">${t}</div>
           <input type="number" min="0" step="${k==='pedTopeUSD'?'10':'1'}" value="${v}" onchange="pedNuevosCfg('${k}',this.value)" style="width:100%;font-size:.74rem;padding:5px 7px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text)"></label>`).join('')}
     </div></details>`;
@@ -17649,11 +17654,31 @@ function pedidoMomentoHTML(g){
       ${btnTodo}
       <button class="btn btn-add" style="font-size:.66rem;padding:6px 12px" onclick="pedNuevosLlenar(${gArg})" title="Agrega nuevos${g==='perf'?' de perfumería':g==='resto'?' que no son de perfumería':''} que pasan el ${CAND_PISO_TXT()} y tu vara de ventas, los que más dejan por dólar, hasta el tope (descontando lo de probados). No saca nada.">🪄 Llenar con nuevos hasta el tope</button>
       <button class="btn" style="font-size:.62rem;padding:5px 11px" onclick="pyPersonalAgregar()" title="Algo para vos: va en el mensaje al proveedor pero no es de CYC">🙋 + uso personal</button>
-      ${A.length?`<button class="btn" style="font-size:.62rem;padding:5px 11px" onclick="pyArmadoVaciar(${gArg})">Vaciar probados</button>`:''}
-      ${N.filas.length?`<button class="btn" style="font-size:.62rem;padding:5px 11px" onclick="pedNuevosVaciar(${gArg})">Vaciar nuevos</button>`:''}
+      <button class="btn" style="font-size:.62rem;padding:5px 11px;color:var(--red);border-color:rgba(239,68,68,.35)" onclick="pedVaciarTodo(${gArg})" title="Saca TODO lo de este pedido: probados, nuevos y uso personal. No borra ningún producto.">🗑️ Vaciar</button>
     </div>
     </div>
   </details>`;
+}
+// 🗑️ UN SOLO VACIAR (26/10/2026, él: "que no haya vaciar nuevos. sólo vaciar y que saque TODO lo del pedido, sea cual sea"): probados,
+// nuevos y uso personal de ESTE pedido del momento (perfumería o resto). No borra fichas ni candidatos: las unidades vuelven a cero.
+async function pedVaciarTodo(g){return conCandado('pedVaciar:'+(g||''),()=>_pedVaciarTodo(g));}
+async function _pedVaciarTodo(g){
+  g=g||null;
+  const A=pyArmadoFilas().filter(f=>pyMomEs(g,f.nom));
+  const N=candList().filter(c=>(parseInt(c.pedirU)||0)>0).filter(c=>pyMomEs(g,c.nombre));
+  const Pp=pyPersonalFilas().filter(f=>pyMomEs(g,f.nom));
+  const n=new Set(A.map(f=>f.pid)).size+N.length+Pp.length;
+  if(!n){toast('El pedido ya está vacío');return;}
+  if(!confirm(`¿Vaciar el pedido${g==='perf'?' de PERFUMERÍA':g==='resto'?' del RESTO':''}?\n\nSaca TODO: ${new Set(A.map(f=>f.pid)).size} probado(s), ${N.length} nuevo(s)${Pp.length?' y '+Pp.length+' de uso personal':''}. Las unidades vuelven a cero; no se borra ningún producto.`))return;
+  const up={};
+  for(const f of A)up['py_armado/'+f.pid]=null;
+  for(const c of N)up['candidatos_py/'+c.id+'/pedirU']=0;
+  for(const f of Pp)up['py_personal/'+f.k]=null;
+  try{await fbUpdate(up);}catch(e){toast('No se pudo vaciar: '+(e.message||e),'err',5000);return;}
+  for(const f of A)delete (state.pyArmado||{})[f.pid];
+  for(const c of N){c.pedirU=0;const sc=(state.candidatos||{})[c.id];if(sc)sc.pedirU=0;}
+  for(const f of Pp)delete (state.pyPersonal||{})[f.k];
+  renderPedidos();toast('Pedido vaciado ✓');
 }
 async function pyArmadoVaciar(g){
   if(!confirm('¿Sacar del pedido todas las unidades de productos probados'+(g==='perf'?' de perfumería':g==='resto'?' del resto':'')+'?'))return;
@@ -17700,7 +17725,7 @@ async function _pyMomentoYaLoPedi(g){
 // ancho. Los datos salen de `candPreciosPartes`, la MISMA función de la tarjeta del candidato.
 function pedNuevoFilaHTML(f,maxU,tc,sinCab){
   const c=f.c, R=candPreciosPartes(c);
-  maxU=candMaxU(c,maxU); // el máximo de ESTE producto (barato que vende: 3-4 · caro: 1)
+  maxU=candMaxU(c,maxU); // el máximo de ESTE producto (hasta US$ 20, máximo 4)
   const cod=String(c.cod||'').trim();
   const puesto=f.usd>0?Math.round(f.usd*RECARGO_PY*100)/100:0;
   const mg=R.margenPct;
@@ -17802,8 +17827,7 @@ function pedNuevosHTML(vivos){
       ${P.noDan.length?`<div style="font-size:.62rem;color:var(--red);margin-top:5px">🚫 <b>${P.noDan.length} ya no llega(n) a tu piso de ${CAND_PISO_TXT()}</b> y están sumando en el total. Se cargaron cuando todavía daban. No los saco solo: abajo tienen el botón.</div>`:''}
     </div>
     <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:flex-end;margin-bottom:9px">
-      ${[['pedTopeUSD',tope,'Tope del pedido (US$)','Hasta cuántos dólares de mercadería CRUDA (sin el recargo) querés gastar. No frena: si te pasás lo dice en rojo y seguís.'],
-         ['pedMaxU',maxU,'Máx. u. por producto','Cuántas unidades como mucho de cada producto pone el botón de llenar. A mano podés cargar más: sólo avisa.']]
+      ${[['pedTopeUSD',tope,'Tope del pedido (US$)','Hasta cuántos dólares de mercadería CRUDA (sin el recargo) querés gastar. No frena: si te pasás lo dice en rojo y seguís.']]
         .map(([k,v,t,ay])=>`<label style="flex:1;min-width:105px" title="${ay}">
           <div style="font-size:.6rem;color:var(--muted);line-height:1.3;margin-bottom:3px">${t} <span class="tt-i" onclick="ttI(this,event)">ⓘ</span></div>
           <input type="number" min="0" step="${k==='pedTopeUSD'?'10':'1'}" value="${v}" onchange="pedNuevosCfg('${k}',this.value)"

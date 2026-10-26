@@ -365,7 +365,8 @@
   mensaje para Nissei y "Ya lo pedí" hasta que se vuelva a mirar (rutina del chat → `visto:` del buzón → `pyprecio`/`candprecio`). Lo ya
   pagado (`pyped:repo`/`nuevos`) sí se registra.
   **🪄 Llenar con probados y nuevos**: 1º probados que pide Pedidos con 35%+ hoy, 2º nuevos por ⭐ hasta el tope.
-- **Cuántas de cada nuevo** (`candMaxU`, 21/10): barato ≤US$15 → 3 · caro >US$60 → 1 · resto 2.
+- **Cuántas de cada nuevo** (`candMaxU`, 26/10, él): **hasta llegar a US$ 20 con el precio de la web, máximo 4** (US$ 21 → 1 · 19 → 2 ·
+  9 → 3 · 5 o menos → 4); robot igual (`candMaxUBot`). En el pedido del momento hay **un solo 🗑️ Vaciar** que saca todo (probados, nuevos, uso personal).
 - **Al chat local se le pasa SÓLO lo que interesa** (22/10, *"siempre pasame el promt con la mercaderia que si interesa"*): el texto
   listo para pegar y la lista YA FILTRADA a lo que puede entrar a un pedido (25%+ y en catálogo), no la lista entera; el resto se dice
   con números (cuántos y por qué no) y se ofrece aparte. Los archivos van por SendUserFile desde el scratchpad, nunca al repo. Primer
