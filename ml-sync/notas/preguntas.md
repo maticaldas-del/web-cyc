@@ -54,3 +54,4 @@ en que se anota en `correcciones.md`.** El número entre corchetes es de qué ca
 33. ¿El catálogo que elegí es el que VENDE? Si tiene 0 vendedores, buscar otro con el mismo nombre antes de darlo por bueno (Bowen y Calipso, 25/10).
 34. ¿Lo que mando a una publicación de un color es de ESE color? Si el código de Paraguay de la ficha ya dijo otro color (`pycodcolor`), lo de la oficina es de ese otro color hasta que él diga lo contrario (Redmi Buds 6 Play, 25/10).
 35. ¿Esto que le voy a contar ya lo decidió él y está quieto a propósito? Entonces no se lo repito en cada vuelta (26/10, las 35 pausadas de Paulvic: "no avises más de esas"). Lo que él ya resolvió no es novedad.
+36. Después de tocar un archivo que la web necesita para abrir (`sw.js`, `index.html`, `manifest`), ¿lo releí entero y no está vacío ni cortado? Y si algo falla, ¿encontré la causa antes de explicarla? (26/10, la web no entraba por un `sw.js` vacío)

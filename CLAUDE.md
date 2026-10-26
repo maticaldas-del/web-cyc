@@ -150,7 +150,7 @@
   Lecturas en una corrida, 2 ayudantes (max) y el revisor en contra (max). **Domingos:** además el catálogo entero, el ayudante de
   ideas a fondo y medir las gemelas (Premium y envío gratis; proponer sacar las que no sirven).
 - **Cortas a las 9:52, 11:52, 13:52, 15:52, 17:52, 19:37, 21:22, 22:52** (23/10, eligió 1a: repartidas por las ventas por hora de 90 días, ~5 ventas por vuelta; `trig_01FCaQqzU5MA422N6Z8nH63Z` hace las de :52, `trig_01PqmfnY6zLFfGBne72duRC3` la de 19:37 y `trig_01CKS5hpywhunMUppZvSNvFy` la de 21:22).
-- **🔔 Control de ventas cada hora** (`trig_01PxNuKFnJfdAtPem61eaUnA`, a los :07 de 8 a 1, en la sesión de las vueltas; 26/10, él eligió 1a: *"no quiero esperar… un producto que se venda a mal precio puede que se vendan muchas unidades a precio en rojo"*): corre `timbre`; si hay 6+ compras sin revisar o una abajo del 35%, hace la parte de ventas de la vuelta corta; si no, termina en un renglón. Reemplaza al timbre por API (abría un chat sin el robot; `trig_012a3LNycnpvUm55TK7y2mji` apagado).
+- **🔔 Control de ventas cada hora** (`trig_01PxNuKFnJfdAtPem61eaUnA`, a los :07 de 8 a 1, en la sesión de las vueltas; 26/10, él eligió 1a: *"no quiero esperar… un producto que se venda a mal precio puede que se vendan muchas unidades a precio en rojo"*): corre `timbre`; si hay 6+ compras sin revisar, una abajo del 35% o **una de algo que está bajando de precio** (🪜 `bajando`, también por su gemela; 26/10, él: *"agregar un trigger nuevo, que el producto esté bajando de precio"*), hace la parte de ventas de la vuelta corta; si no, termina en un renglón. Reemplaza al timbre por API (abría un chat sin el robot; `trig_012a3LNycnpvUm55TK7y2mji` apagado).
 - **Auditoría del robot** (`trig_0138cyCgYeEHjqeayqiQPqWQ`, a las 20:30 desde el 23/10, se reprograma sola con `run_once_at`; ver `AUDITORIA.md`).
 - **Cada vuelta, en orden** (detalle en CEREBRO §1): leer `CEREBRO.md` + `notas/preguntas.md` → `ventasraras:nuevas` (sólo ventas
   posteriores a la última analizada; **cada venta se analiza UNA vez**) → **sólo las 🔬 A FONDO van a un ayudante con `effort:"max"`
@@ -173,7 +173,7 @@
 - **CYC Avisos (Telegram) = SÓLO lo urgente y los recordatorios** (23/10, *"si me llega un mensaje de CYC Avisos sé que es algo
   que tengo que resolver ya"*): `pregunto:URGENTE: …` (el robot lo niega sin "URGENTE") sólo para lo que cuesta plata si espera
   (reclamo que espera su respuesta, ML frenó algo que vende, algo que vende fuerte en 0 en Full con mercadería en la oficina, un pago
-  que vence) · `recordar:<texto>` · el chat nuevo del bot. Las 🔐 autorizaciones ya NO van por Telegram (24/10): se le pasan en el chat. **Las decisiones (a)/(b)
+  que vence) · `recordar:<texto>` · el chat nuevo del bot · **🚫 ML dio de baja/frenó una publicación y ✅ cuando la vuelve a habilitar** (26/10, él: *"es importante a resolver, casi siempre es por pedir facturas en la cuenta de Adriana"*; cerrada, en revisión, inactiva o falta de papeles, una vez por cambio). Las 🔐 autorizaciones ya NO van por Telegram (24/10): se le pasan en el chat. **Las decisiones (a)/(b)
   NO van: a `notas/para_mati.md`** y se resuelven en el chat cuando dice "resolvamos". Nunca "subí/bajé/activé", ni resúmenes, ni lo que
   deshizo el detector (va al log). `//` = salto de línea, sin `;`, sin datos de compradores. Informativos: `sendAlerta(texto,{info:true})`.
 - **Cada venta nueva llega al TELÉFONO (push de la web), no a Telegram** (`AVISO_VENTA_TELEGRAM=false`): sólo compras que dejan
@@ -247,6 +247,7 @@
 - **🔒 No bajar** (23/10, él con la waflera: *"le ganamos bien, que sea una excepción si el robot decide bajarlo, quizás lo mejor sería no tocarlo"*):
   `nobajar:<palabra|MLA>=<motivo>;go` marca todas sus publicaciones (`cyc/nobajar`); F10 frena toda baja y descuento salvo su autorización 🔐 `!nobajar` (y SACAR la marca también pide su "autorizo", 38a del 24/10), pero ANTES evalúa las otras reglas y dice "HUBIERA HECHO: bajarla de X a Y" (queda en `cyc/nobajar/<MLA>/hubiera`, se ve en `nobajar`). Las subas siguen, salvo `!congelar` (🧊, él: *"queda una sola unidad, quiero que el precio se quede ahí"*): tampoco sube hasta que el stock en Full pase el que tenía al marcarlo (`stockAl`; `_chequeoNoSubir`); ahí se descongela solo y se busca techo/piso.
 - **Nada se publica abajo de 35% en el peor caso** (23/10, él: *"siempre publicar todo arriba del 35% o en 35%. después cuando estemos cerca de pagar stock lo bajaremos"*; *"quizás en un mes cuando el otro vendedor se quede sin stock se venden mucho más caro"*): `PUBLICAR_MIN_PCT`, freno en `publicar` (dice el precio mínimo). Lo comprado que hoy no llega igual se publica a ese precio y espera; se baja recién cerca del stock antiguo.
+- **Al crear una publicación: 100% seguro de que el catálogo es ESE producto, y le mando las fotos que tiene ML** (26/10, él: *"tenés que estar 100% seguro que ese es el producto y mandame foto de los productos, las fotos que da ML"*): `fotocat:<MLA catálogo>;…` (nombre + fotos), comparo contra la foto de la caja/ticket (modelo, color, capacidad) y le paso una lámina con las fotos (SendUserFile). Con duda no se publica.
 - **Nunca se crea una publicación (Clásica o gemela) más cara que $550.000** (23/10, él; `TOPE_CREAR`, freno en `publicar` y `gemelacrea`). Una Premium
   que para dejar la misma plata tiene que pasar los $550.000 no se crea y se avisa (40a del 24/10, `gemela` y `gemelacrea` lo dicen).
 - **Precio para el peor caso** al poner o activar (12/10). Lo que vende rápido abajo del 35% con poco stock se sube en la misma vuelta.
@@ -325,11 +326,11 @@
 - **🏷️ Sin terminar / sin etiqueta** (25/10, él: *"al cargar unidades a mi oficina, que siempre salgan como a etiquetar"*): TODO lo que
   sube la oficina (web u `ofi:`) se suma a `cyc/sinetiq` salvo deshacer una caja (`ofi:…!ok` = ya viene etiquetado); Armar caja lo sigue
   contando igual y cada renglón dice "🏷️ N sin etiqueta"; tarjeta arriba de Contar lo que hay con botón ✅ Etiquetadas por renglón (lo usa
-  el chat de Chrome al imprimir). Por comando: `sinetiq:<palabra>=0;go` (ml-consulta).
+  el chat de Chrome al imprimir). **Nada pasa a "con etiqueta" sin que él lo diga** (26/10, él: *"siempre todo a sin etiqueta"*): los "llegó" del robot también suman (Paraguay, listas, Paulvic); bajar con `sinetiq:<palabra>=0;dijo=<lo que dijo>;go` y `ofi:…!ok;dijo=…;go` — sin `dijo=` el robot no lo hace. El botón ✅ Etiquetadas de la web lo usa él (o el chat de Chrome cuando imprime).
 - **📬 Buzón** (25/10, eligió 15a): el chat de Chrome de las cajas (o él) deja en Mi oficina → "Mensaje para Claude" lo que no puede arreglar
   desde el panel (`cyc/buzon`); cada vuelta corre `buzon` y marca `buzon:leido=<ts>;go` (ml-consulta).
 - **Las cajas salen de lunes a viernes a las 12** (25/10, él): armada después del viernes a las 12 sale el lunes. Los días de viaje se
-  cuentan desde que sale (`envSalidaTs`, web y robot).
+  cuentan desde que sale (`envSalidaTs`, web y robot). **⏸️ Pausar envío** (26/10, botón en la cabecera del envío): no sale ni cuenta días hasta que lo reanuda; al reanudar sale desde ese día (`pausado`, `fechaArmada`).
 
 ## 7 · PARAGUAY · LISTAS · PAULVIC
 
@@ -346,8 +347,9 @@
   producto** (✅ o `revcand` ok de ESE catálogo; sin las DOS fotos no va). **Nada pasa 14 días sin volver a mirarse** (23/10, él): 15%+ cada 7 d, todo lo demás (abajo de 15%, sin catálogo, sin vendedores; también Listas) cada 14; la web lo muestra en ✅ Revisados / ⏳ Falta revisar (`rev`/`pend` en `cyc/pycatres`).
   **Nombre traducido** (23/10, 1a): también se busca con el nombre en castellano (`traducirPyNombre`); lo que tampoco aparece traducido queda
   **✔️ revisado** (`qp`, `pycatres.scr`, en 📏 Medidos) y no cuenta como sin medir. `pycatdia` = desglose y lo buscado por día.
-- **Dos proveedores:** 🟢 Nissei (dos pedidos del momento: 🌸 Perfumería `pyb<fecha>` y 📦 Resto `py<fecha>`; en `compray` `|perf`/`|resto`)
-  y 🟣 **Elegancia** (`pyel<fecha>`; desde el 24/10 **su catálogo entero** en `mlapi/pycat` con clave `EL_<cód>`, carga `pycat:prov=elegancia;…;go`, números en `cyc/pycatres_el`). Mismos costos.
+- **Proveedor:** 🟢 Nissei (dos pedidos del momento: 🌸 Perfumería `pyb<fecha>` y 📦 Resto `py<fecha>`; en `compray` `|perf`/`|resto`)
+  y ~~🟣 Elegancia~~ **apagada el 26/10** (él: *"eliminá elegancia. nunca se usa y genera problemas"*): sin solapa en la web y el robot no
+  mide su catálogo (`PY_PROVS_VER`, `PY_ELEGANCIA_OFF`); sus datos (`EL_<cód>`, `pyel<fecha>`) quedan guardados. No volver a proponerla.
 - **Recargo** = el MEDIDO de los pedidos (`paramcompra`; 22,7% al 17/10), respaldo 20%. El panel lo suma; el chat carga el precio CRUDO.
   Pedido tiene un costo fijo (retira ~$74.000 + transferencia + correo por kilo): conviene llenarlo. **Adelanto de plata** es ocasional
   (`compray:<fecha>|adelanto=<pesos>|go`, renglón aparte del cambista).
@@ -355,14 +357,21 @@
   un costo, el viejo se congela por mes (`precios_hist_prod`).
 - **Ticket real obligatorio para cerrar el pedido** (10/10; 25/10 con FOTO, él con el Sony: *"no sabemos si no lo mandaron o si no lo
   cobraron"*): renglones con `compray:<fecha>|det=<código>*<u>*<pagado>;…|go` (ml-sync) + la foto, que la sube él desde el detalle del
-  pedido (📷, `mlapi/pyticketfoto/<id>`, `cyc/compraspy/<id>/ticketFoto` = cuántas). **Si me la pasa por el chat la anoto yo** (26/10, él: *"siempre subí vos eso"*): `pyticketvisto:<id>=<n>|<nota>;go` (ml-consulta) — la imagen no puede viajar a la base sin pasar por algo público, así que queda "✓ la vio Claude en el chat" contra los renglones y cuenta para cerrar. Sin las dos no se cierra (web y `pyped:llego`);
+  pedido (📷, `mlapi/pyticketfoto/<id>`, `cyc/compraspy/<id>/ticketFoto` = cuántas). **Si me la pasa por el chat la subo yo y se tiene que VER en el detalle** (26/10, él: *"siempre subí vos eso"* y *"siempre quiero ver"*): la cierro con la llave del robot (`mlapi/ticketllave`; script en REVISION etapa 3) en `ml-sync/cifrado/<id>/*.enc` y `ticketsube:<id>;go` (ml-sync) la sube; nunca en claro al repo ni al registro. Sin las dos no se cierra (web y `pyped:llego`);
   arriba de Pedidos Paraguay sale en rojo lo que falta (todo lo en camino y lo pedido desde el 25/10). Datos del mayorista: no al repo.
   Con dos tipos el mismo día pide `|repo`/`|nuevos`.
-- **Cuántas de cada nuevo** (`candMaxU`, 21/10): barato ≤US$15 → 3 · caro >US$60 → 1 · resto 2.
+- **⛔ Mirado en Paraguay hace 7+ días = en ROJO dentro del pedido** (26/10, él: *"que pueda estar dentro del pedido aunque esté en rojo.
+  yo al verlo hago correr el robot para que los mire"*): se carga igual (casilla, botones de llenar, `pedir`); lo que frena es copiar el
+  mensaje para Nissei y "Ya lo pedí" hasta que se vuelva a mirar (rutina del chat → `visto:` del buzón → `pyprecio`/`candprecio`). Lo ya
+  pagado (`pyped:repo`/`nuevos`) sí se registra.
+  **🪄 Llenar con probados y nuevos**: 1º probados que pide Pedidos con 35%+ hoy, 2º nuevos por ⭐ hasta el tope.
+- **Cuántas de cada nuevo** (`candMaxU`, 26/10, él): **hasta llegar a US$ 20 con el precio de la web, máximo 4** (US$ 21 → 1 · 19 → 2 ·
+  9 → 3 · 5 o menos → 4); robot igual (`candMaxUBot`). En el pedido del momento hay **un solo 🗑️ Vaciar** que saca todo (probados, nuevos, uso personal).
 - **Al chat local se le pasa SÓLO lo que interesa** (22/10, *"siempre pasame el promt con la mercaderia que si interesa"*): el texto
   listo para pegar y la lista YA FILTRADA a lo que puede entrar a un pedido (25%+ y en catálogo), no la lista entera; el resto se dice
   con números (cuántos y por qué no) y se ofrece aparte. Los archivos van por SendUserFile desde el scratchpad, nunca al repo. Primer
   caso: `faltaventas:todas` → 183 de 7.392 (PROMPT_VENTAS_LISTAS).
+- **Me pasa que pagó un pedido = queda pedido EN EL ACTO** (26/10, él: *"cuando te paso que pagué el pedido, automáticamente cargalo como pedido. siempre"*): "Ya lo pedí" de ESE pedido del momento (`pyped:nuevos:<resto|perf|elegancia>;go` + `pyped:repo:…;go`), la plata con `compray` y lo que no cierra se le pregunta después.
 - Pasos por comando: `pyped:repo:<palabra>=<u>;…|nuevos|llego:<id>;go` · `pedir:<palabra>=<u>;…;go` · `compray` · `pyprecio` · `candprecio` ·
   `candalta` · `pyvisto` · `pyconocidos` · `marcano:<marca>` (prohibida: **Dolce & Gabbana**) · `marcanoml:<marca>:go` = prohibida **sólo para ML** (no se publica, sí se compra para la perfumería): **Calvin Klein** (23/10, *"por la marca nos denuncian al toque"*). Celulares viajan con el padre (`celuviaje`).
   Nada de envío internacional. **Perfume que en ML no llega pero en el local deja 35%+ entra al pedido** (44a + 35% del 24/10; `revisarcompra` lo acepta). **Testers de Nissei** (sin caja): afuera para ML, se miran sólo para la perfumería del local (24/10, 6a). Tarjetas de memoria: ya no hay truchas (20/10), se tratan como cualquier producto.
@@ -398,7 +407,7 @@
 - **7 días hábiles para pagar desde que llega, si no +10%** (20/10): avisarle al llegar los días que le quedan.
 - **Lo que se pide y no viene no se pide más** (`cyc/noconsigo/<prod>/nunca/<aroma>`, `pvped:nunca:-<aroma>;go` lo saca).
 - Cada aroma es su publicación y se juzga solo (grupo de precio desactivado 04/09). Compartido Adriana + Persea en Luciana.
-- **Invictus y Phantom: dados de baja en ML para siempre** (24/10, él; ML los frenó por la marca del nombre). No se piden ni se mandan a Full; lo de la oficina va al local.
+- **Invictus y Phantom: dados de baja en ML para siempre** (24/10, él; ML los frenó por la marca del nombre). No se piden ni se mandan a Full; lo de la oficina va al local. 26/10 (él: *"irrecuperables, eliminá todo"*): las 10 publicaciones ocultas en el panel (`nomas`), oficina en 0 (6 Invictus al local), sin etiqueta en 0, "no vienen más" desde el 22/10.
 
 ## 8 · PLATA, GASTOS Y ARQUEO
 
@@ -530,6 +539,9 @@ Si dudás si un comando existe, buscá en `sync.mjs` (`grep -n "'<nombre>'" ml-s
 - **Paraguay:** cuentas de correo (monto y kilos) del pedido del 08/10 y datos del 08/09; transferencia de $50.000 del 29/09 (preguntar).
   Evaluar el 17% de recargo con los gastos del próximo pedido (ya se usa el medido). Cargar los ~13.467 códigos de `pycat` si quedó a medias
   (el chat de compras no tenía GitHub). Pasada del mes de Guay: no se le manda nada hasta que él pida "hagamos la de guay".
+- **Pedido Paraguay `py20261026` (en camino):** ticket cargado (US$ 553,95, 2 fotos). El Xion no vino ni se cobró. **Al llegar: el Dior
+  J'adore 100 ml y el pendrive SanDisk Z430 128GB (agregados de Tito) van con `sololocal` (perfumería y local, él 26/10), no a ML.**
+  Falta: correo y el que retira.
 - **Dos Linternas COB** de Ayelen (`MLA3998033920`, `MLA2128209177`) sin ficha: falta el costo real. EX15LP blanco publicado pausado en Ayelen (23/10, `MLA2230467989`, 2 u. sin etiqueta); Joystick PS5 7114209 = sólo local. **Piedra Gua Sha** (ficha sola) y Kit Jade vinculados.
 - **Contador:** recategorización, actividad, facturas entre cuentas, intereses de H. Bajar de ARCA los Emitidos 01/01→04/08 si falta alguno.
 - **Sancor:** esperar respuesta (plan F800/40% $111.988,7: qué es el 40%, si es el final con cuota social e IIBB, qué cubre menos); pagar antes

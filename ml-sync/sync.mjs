@@ -7,8 +7,8 @@
 //   FIREBASE_API_KEY, FIREBASE_DB_URL, FIREBASE_BOT_EMAIL, FIREBASE_BOT_PASSWORD
 
 import { fbSignIn, makeDB, mlRefresh, mlGet, ML_API, tapaIdsLargos, mlConteo, mlConteoTxt, dbConteo } from './lib.mjs';
-import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
-import { createHmac, randomInt } from 'node:crypto';
+import { writeFileSync, mkdirSync, readFileSync, readdirSync, existsSync } from 'node:fs';
+import { createHmac, randomInt, generateKeyPairSync, privateDecrypt, createDecipheriv, createHash, constants as cryptoK } from 'node:crypto';
 
 // LO PRIVADO VIAJA CIFRADO (20/10/2026, etapa 4, él eligió la 1a): el repo y sus registros son PÚBLICOS, así que las listas de
 // precios de los proveedores no se suben legibles. Claude las cifra con `ml-sync/tools/cifrar.mjs` y la llave pública
@@ -252,6 +252,17 @@ function ofiColorDeFicha(p, va) {
   const hit = vs.filter((v) => n(v) === n(va));
   return hit.length === 1 ? hit[0] : null;
 }
+// 🏷️ LO QUE ENTRA A LA OFICINA POR EL ROBOT TAMBIÉN QUEDA SIN ETIQUETA (26/10/2026, él: "¿los productos nuevos los agregaste a mi
+// oficina? así voy viendo las etiquetas que tengo que hacer"). La regla del 25/10 ("todo lo que sube la oficina pasa a sin etiqueta")
+// estaba en la web y en `ofi:`, pero NO en los "llegó" del robot (`pyped:llego`, listas y `pvped:llego`): el pedido de Paraguay del
+// 19/10 sumó 12 u. a la oficina y ninguna a `cyc/sinetiq`. Mismo nodo que la web: `cyc/sinetiq/<prod>/{t | v/<color>}`.
+async function sinEtiqSumarBot(db, pid, va, u) {
+  if (!pid || !(u > 0)) return null;
+  const sk = 'cyc/sinetiq/' + pid + '/' + (va ? 'v/' + sid(va) : 't');
+  const a = parseInt(await db.get(sk)) || 0;
+  await db.set(sk, a + u); await db.set('cyc/sinetiq/' + pid + '/ts', Date.now());
+  return { antes: a, ahora: a + u };
+}
 async function ofiSumarBot(db, p, va, delta, inv) {
   const OFI_LOC = 'Oficina Mati';
   const vs = Array.isArray(p && p.variantes) ? p.variantes : Object.values((p && p.variantes) || {});
@@ -271,7 +282,8 @@ async function ofiSumarBot(db, p, va, delta, inv) {
   await db.patch('cyc/inventory', upd);
   if (inv) Object.assign(inv, upd);
   try { await db.set('cyc/ofientro/' + p.id, Date.now()); } catch { /* no frena */ }
-  return { color, antes, ahora, tA, tN };
+  let se = null; try { se = await sinEtiqSumarBot(db, p.id, color || '', delta); } catch { console.log(`   ⚠️ ${p.name}: no pude anotarlo sin etiqueta (cyc/sinetiq)`); }
+  return { color, antes, ahora, tA, tN, se };
 }
 // Lo que FALTÓ de un pedido, desde el chat: `<palabra>[#<color>]=<unidades que LLEGARON>` (`=` adelante = nombre exacto). Cada uno
 // tiene que agarrar UN renglón del pedido. Devuelve { llegan: Map(índice → u), problemas }.
@@ -2461,7 +2473,9 @@ async function reposicionFullML(db, accounts, labels, DRY) {
 // el lunes"). Devuelve el momento en que SALE (12:00 de acá = 15:00 UTC): armada un día hábil antes de las 12, ese día; si no, el
 // próximo día hábil. La hora sale de `ts` si es del mismo día que `fecha`; sin hora, se toma como armada a la mañana. Misma regla
 // que `envSalidaTs` de la web (index.html): si se toca una, la otra.
-function envSalidaTs(fecha, ts) {
+function envSalidaTs(fecha, ts, pausado) {
+  // ⏸️ envío en pausa (26/10/2026, botón de la web): no sale; 30 días adelante, igual que `ENV_PAUSA_DIAS` de la web.
+  if (pausado) return Date.now() + 30 * 864e5;
   const f = String(fecha || '').slice(0, 10); if (!/^\d{4}-\d{2}-\d{2}$/.test(f)) return 0;
   const t = Number(ts) || 0, loc = t ? new Date(t - 3 * 3600e3) : null;
   const tarde = !!(loc && loc.toISOString().slice(0, 10) === f && loc.getUTCHours() >= 12);
@@ -5916,7 +5930,7 @@ async function calcCerebro(db, o) {
     if (!e || !e.cuenta) continue;
     for (const c of (Array.isArray(e.cajasDet) ? e.cajasDet : [])) {
       if (!c || c.recibida) continue;
-      const tsC = envSalidaTs(c.fecha || e.fecha, c.fecha ? 0 : e.ts) || hoyTs;
+      const tsC = envSalidaTs(c.fecha || e.fecha, c.fecha ? 0 : e.ts, e.pausado) || hoyTs;
       for (const it of (c.items || [])) {
         if (!it || !it.prodId || !(Number(it.u) > 0)) continue;
         const kP = it.prodId + '__' + sidL(e.cuenta);
@@ -10117,12 +10131,24 @@ async function timbreVentas(db, opts = {}) {
     r.piso = piso;
   }
   r.bajas = bajas;
-  r.por = bajas.length ? `${bajas.length} compra(s) abajo del ${r.piso}%` : lista.length >= TIMBRE_MIN_COMPRAS ? `${lista.length} compras sin revisar` : '';
+  // 🪜 26/10/2026 (él: "agregar un trigger nuevo, que el producto esté bajando de precio"): una compra NUEVA de algo que está en la
+  // escalera de bajada (🪜 `bajando`, también si entró por su gemela: manda la estrategia de su Clásica) toca el timbre. Vender en un
+  // escalón es justo el dato que decide si se frena la escalera ahí (es el 💰) o si sigue bajando: no puede esperar a la vuelta.
+  const bajando = [];
+  for (const g of nuevasTimbre) {
+    const m = String(g[0].v.mla || ''); if (!m) continue;
+    let clas = m; try { const gd = await db.get('cyc/mllinks/' + m + '/gemelaDe'); if (gd) clas = String(gd); } catch { /* sin gemela */ }
+    let est = {}; try { est = (await db.get('cyc/estrategia/' + clas)) || {}; } catch { est = {}; }
+    const ult = Object.entries(est).map(([k, x]) => ({ ts: Number(k), t: x && x.t })).filter((x) => x.ts > 0 && x.t).sort((a, b) => b.ts - a.ts)[0];
+    if (ult && ult.t === 'bajando') bajando.push({ nom: String(g[0].v.prod || '?').slice(0, 40), cta: g[0].v.cuenta || '?', mla: clas });
+  }
+  r.bajando = bajando;
+  r.por = bajas.length ? `${bajas.length} compra(s) abajo del ${r.piso}%` : bajando.length ? `${bajando.length} compra(s) de algo que está bajando de precio (🪜)` : lista.length >= TIMBRE_MIN_COMPRAS ? `${lista.length} compras sin revisar` : '';
   r.toca = forzar || !!r.por;
   if (!r.toca) return r;
   // el revisor está trabajando (tocó hace menos de 45 min y ventasvistas no se movió desde entonces): espera
   if (!forzar && memTs && ahora - memTs < TIMBRE_ESPERA_MIN * 6e4 && H <= (Number(mem.H) || 0)) { r.espera = true; return r; }
-  const texto = `Timbre del robot: ${r.por || 'prueba a mano'}. ${lista.length} compra(s) sin revisar desde ${new Date(H - 3 * 36e5).toISOString().slice(0, 16).replace('T', ' ')} (hora de acá)${bajas.length ? '. Abajo del piso: ' + bajas.map((b) => `${b.cta} · ${b.nom} · ${b.pct}%`).join(' | ') : ''}.`;
+  const texto = `Timbre del robot: ${r.por || 'prueba a mano'}. ${lista.length} compra(s) sin revisar desde ${new Date(H - 3 * 36e5).toISOString().slice(0, 16).replace('T', ' ')} (hora de acá)${bajas.length ? '. Abajo del piso: ' + bajas.map((b) => `${b.cta} · ${b.nom} · ${b.pct}%`).join(' | ') : ''}${bajando.length ? '. Bajando de precio (🪜): ' + bajando.map((b) => `${b.cta} · ${b.nom} · ${b.mla}`).join(' | ') : ''}.`;
   r.texto = texto;
   if (prueba) return r;
   if (r.sinLlave) { if (!mem.sinLlaveAvisado || ahora - Number(mem.sinLlaveAvisado) > 6 * 36e5) { console.log('🔔 timbre: tocaría (' + r.por + ') pero falta la llave (TIMBRE_URL/TIMBRE_TOKEN en los secretos de GitHub)'); try { await db.patch('mlapi/timbre', { sinLlaveAvisado: ahora }); } catch { } } return r; }
@@ -10785,6 +10811,9 @@ async function ofertaVista(svp, nombre, get) {
 // sólo cuando se carguen las ventas"). Sin el dato no se frena nada; con el dato cargado y menos de 100, afuera. Las ventas las mira el
 // chat de compras SÓLO de lo que pasó todos los otros filtros (`faltaventas`). Misma regla en index.html (`CAND_MIN_VENTAS`).
 const CAND_MIN_VENTAS = 100;
+const PY_VIEJO_DIAS = 7; // 26/10/2026: mirado en Paraguay hace 7+ días = en rojo (la web no deja mandar el mensaje ni "Ya lo pedí"; cargarlo sí se puede)
+// La fecha en que se miró el candidato en Paraguay. "↩︎ Devolver" de la web renueva `ts` sin mirar: ahí vale `renovDe` (igual que `candVistoTs`).
+function candVistoTsBot(c) { let t = Math.max(Number(c && c.visto) || 0, Number(c && c.ts) || 0); if (c && Number(c.renovTs) > 0 && Math.abs(t - Number(c.renovTs)) < 5000) t = Number(c.renovDe) || 0; return t; }
 const varaCompra = (vend, nv) => (vend != null && isFinite(vend) && vend >= CAND_MIN_VENTAS && (Number(nv) || 0) >= CAND_MIN_VENDEDORES ? CAND_VARA_VENDE : CAND_VARA_COMPRA);
 const candVaraDe = (c) => (c ? varaCompra(candVentasDe(c), c.mlVendedores) : CAND_VARA_COMPRA);
 const listaVaraDe = (e) => (e ? varaCompra(e.vend != null ? Number(e.vend) : null, e.mv) : CAND_VARA_COMPRA);
@@ -11713,6 +11742,9 @@ const provPyDeBot = (x) => (String((x && (x.prov || x.provPy)) || 'nissei').toLo
 // con un código de Nissei que "termine igual" (`_pyDg` deja las letras y entonces sólo empareja exacto). El código de verdad (el
 // que va al candidato y a la ficha) es sin el `EL_`.
 const PYCAT_EL = 'EL_';
+// ELEGANCIA APAGADA (26/10/2026, él: "eliminá elegancia. nunca se usa y genera problemas"). No se borra nada: su catálogo (`EL_…`)
+// queda guardado, pero el robot no lo mide más ni arma sus números, y la web no muestra la solapa. Para volver: false.
+const PY_ELEGANCIA_OFF = true;
 const pycatProvDe = (key, e) => ((e && e.pv === 'elegancia') || String(key).startsWith(PYCAT_EL) ? 'elegancia' : 'nissei');
 const pycatCodDe = (key) => (String(key).startsWith(PYCAT_EL) ? String(key).slice(PYCAT_EL.length) : String(key));
 // ¿El candidato o la ficha `x` (código `codX`) es este renglón del catálogo? Mismo proveedor y mismo código.
@@ -11766,7 +11798,7 @@ async function pycatResumenEscribir(db, cat, cands, products) {
   const de = (pv) => Object.fromEntries(Object.entries(cat || {}).filter(([k, e]) => pycatProvDe(k, e) === pv));
   const catEl = de('elegancia');
   const r = await _pycatResumenUno(db, de('nissei'), cands, products, 'cyc/pycatres');
-  if (Object.keys(catEl).length) await _pycatResumenUno(db, catEl, cands, products, 'cyc/pycatres_el');
+  if (!PY_ELEGANCIA_OFF && Object.keys(catEl).length) await _pycatResumenUno(db, catEl, cands, products, 'cyc/pycatres_el');
   return r;
 }
 async function _pycatResumenUno(db, cat, cands, products, RUTA_R) {
@@ -11898,6 +11930,7 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
   const cola = [], cuenta = { fuera: 0, cand: 0, ficha: 0, frescos: 0, noDeja: 0 };
   for (const [cod, e] of todos) {
     if (!e || !e.n) continue;
+    if (PY_ELEGANCIA_OFF && pycatProvDe(cod, e) === 'elegancia') continue;
     const fz = pyCatFuera(e.n, Number(e.u) || 0, marcasNo); if (fz) { cuenta.fuera++; if (aplicar && e.fz !== fz) await db.patch(RUTA + '/' + cod, { fz }); continue; }
     // 🔁 REBUSCA (24/10/2026, eligió la 1a): un candidato que descarté porque ML lo comparaba con OTRO producto no frena que el
     // catálogo se vuelva a medir; se busca de nuevo sin los catálogos rechazados (`mlNoEs` del candidato).
@@ -22747,9 +22780,8 @@ async function main() {
       let _cfgP = {}; try { _cfgP = (await db.get('cyc/mlconfig')) || {}; } catch { _cfgP = {}; }
       const _topeP = (() => { const v = parseFloat(_cfgP.pedTopeUSD); return isFinite(v) && v > 0 ? v : 500; })();
       const _maxUP = (() => { const v = parseInt(_cfgP.pedMaxU); return isFinite(v) && v > 0 ? v : 2; })();
-      const candMaxUBot = (c) => { const usd = parseFloat(c && c.usd) || 0, v = _vendP(c || {}), nv = Number(c && c.mlVendedores);
-        // Revisión etapa 1 (24/10): misma regla que `candMaxU` de la web (4a del 21/10: barato ≤US$15 → 3 sin mirar ventas · caro >US$60 → 1).
-        void v; void nv; if (usd > 60) return 1; if (usd > 0 && usd <= 15) return Math.max(_maxUP, 3); return _maxUP; };
+      // 26/10/2026 (él): hasta llegar a US$ 20 con el precio de la web, máximo 4, mínimo 1. COPIA de `candMaxU` (PED_UNI_USD/PED_UNI_MAX).
+      const candMaxUBot = (c) => { const usd = parseFloat(c && c.usd) || 0; void _maxUP; return usd > 0 ? Math.max(1, Math.min(4, Math.ceil(20 / usd - 1e-9))) : 1; };
       for (const x of cambios) {
         const usd = parseFloat(x.c.usd) || 0;
         console.log(`  ${x.antes} u. → ${x.u} u.  ·  US$ ${(usd * x.u).toFixed(2)}  ·  ${x.c.nombre}`
@@ -44547,7 +44579,7 @@ async function main() {
         };
         for (const [id, env] of Object.entries(envs)) for (const [ci, c] of (Array.isArray(env && env.cajasDet) ? env.cajasDet : []).entries()) {
           if (!c || c.recibida) continue; nAb++;
-          const t0 = envSalidaTs(c.fecha || env.fecha, c.fecha ? 0 : env.ts); const dd = t0 > 0 ? Math.max(0, (ahoraI - t0) / 864e5) : null;
+          const t0 = env.pausado ? 0 : envSalidaTs(c.fecha || env.fecha, c.fecha ? 0 : env.ts); const dd = t0 > 0 ? Math.max(0, (ahoraI - t0) / 864e5) : null;
           const uC = (c.items || []).reduce((s2, it) => s2 + (Number(it && it.u) || 0), 0), eC = entradoCaja(id, ci, c);
           // Etapa 6 (14/10/2026): la caja que ML ya dio de alta ENTERA va a la lista lista para `cajallego`, tenga la edad
           // que tenga (antes sólo salía con 9+ días y con el seguimiento cortado: había que ir a buscarlo a mano).
@@ -47669,8 +47701,8 @@ async function main() {
       if (tocar && (CONSULTA_SOLO_LEE || DRY)) { console.log('❌ tocarlo va por ml-sync (ml-consulta no tiene la llave)'); return; }
       const r = await timbreVentas(db, { prueba: !tocar, forzar: tocar });
       if (!r) return;
-      console.log(`${r.compras} compra(s) sin revisar · ${r.nuevas} nuevas desde el último toque · ${r.bajas.length} abajo del ${r.piso || 35}%${r.bajas.length ? ': ' + r.bajas.map((b) => `${b.cta} · ${b.nom} · ${b.pct}%`).join(' | ') : ''}`);
-      console.log(r.toca ? (r.espera ? '⏳ tocaría, pero el revisor está trabajando (tocó hace menos de 45 min y no cerró la revisión)' : `🔔 ${tocar ? (r.ok ? 'TOCÓ: ' + r.det : 'no pudo tocar: ' + (r.det || 'sin llave')) : 'TOCARÍA ahora: ' + r.por}`) : `· no toca (hacen falta ${TIMBRE_MIN_COMPRAS} compras o una abajo del 35%)`);
+      console.log(`${r.compras} compra(s) sin revisar · ${r.nuevas} nuevas desde el último toque · ${r.bajas.length} abajo del ${r.piso || 35}%${r.bajas.length ? ': ' + r.bajas.map((b) => `${b.cta} · ${b.nom} · ${b.pct}%`).join(' | ') : ''} · ${(r.bajando || []).length} de algo bajando de precio (🪜)${(r.bajando || []).length ? ': ' + r.bajando.map((b) => `${b.cta} · ${b.nom} · ${b.mla}`).join(' | ') : ''}`);
+      console.log(r.toca ? (r.espera ? '⏳ tocaría, pero el revisor está trabajando (tocó hace menos de 45 min y no cerró la revisión)' : `🔔 ${tocar ? (r.ok ? 'TOCÓ: ' + r.det : 'no pudo tocar: ' + (r.det || 'sin llave')) : 'TOCARÍA ahora: ' + r.por}`) : `· no toca (hacen falta ${TIMBRE_MIN_COMPRAS} compras, una abajo del 35% o una de algo bajando de precio)`);
       if (r.texto) console.log('texto que lleva: ' + r.texto);
       return;
     }
@@ -49133,7 +49165,8 @@ async function main() {
           const antes = parseInt(await db.get('cyc/inventory/' + kVar(x.v))) || 0;
           const tA = parseInt(await db.get('cyc/inventory/' + kTot)) || 0;
           await db.patch('cyc/inventory', { [kVar(x.v)]: antes + x.u, [kTot]: tA + x.u });
-          console.log(`  🏠 oficina · ${x.v}: ${antes} → ${antes + x.u}`);
+          let seP = null; try { seP = await sinEtiqSumarBot(db, P.id, x.v, x.u); } catch { /* lo dice abajo */ }
+          console.log(`  🏠 oficina · ${x.v}: ${antes} → ${antes + x.u}${seP ? ` · 🏷️ sin etiqueta ${seP.antes} → ${seP.ahora}` : ' · ⚠️ no quedó sin etiqueta'}`);
         }
         await pvCosto(id, true);
         const rel = await db.get('cyc/pedidospv/' + id);
@@ -49415,7 +49448,11 @@ async function main() {
     if (/^ofi(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const _raw = String(process.env.BILLING_PROBE).replace(/^ofi:?/, '');
       const GO = /(^|;)go$/.test(_raw);
-      const pares = _raw.replace(/(^|;)go$/, '').split(';').map((x) => x.trim()).filter(Boolean);
+      // 🏷️ NADA PASA A "CON ETIQUETA" SIN QUE ÉL LO DIGA (26/10/2026, él: "que nunca se pueda pasar a con etiqueta sin que yo te diga.
+      // siempre todo a sin etiqueta"). `!ok` (ya viene etiquetado) vale sólo con `dijo=<lo que dijo él>` en el mismo comando.
+      const _pares0 = _raw.replace(/(^|;)go$/, '').split(';').map((x) => x.trim()).filter(Boolean);
+      const DIJO_O = (_pares0.find((x) => /^dijo=/i.test(x)) || '').replace(/^dijo=/i, '').trim();
+      const pares = _pares0.filter((x) => !/^dijo=/i.test(x));
       const nrm = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
       const OFI_LOC = 'Oficina Mati';
       if (!pares.length) { console.log('Usá: ofi:<palabra>[@<variante>]=<+N|-N|N>[;…][;go]   ej. ofi:cartas casino=+50;paulvic@free love=12;go'); return; }
@@ -49427,6 +49464,7 @@ async function main() {
         // que SUBE la oficina se suma también a `cyc/sinetiq` (la tarjeta "🏷️ Sin terminar / sin etiqueta" de Contar lo que hay).
         // `!ok` al final = ya viene etiquetado (ej. lo que vuelve de una caja); `!se` (23/10) se sigue aceptando, ya no hace falta.
         const ok = /!ok$/i.test(x), se = !ok;
+        if (ok && !DIJO_O) { problemas.push(`"${x}" → !ok (ya viene etiquetado) sólo si él lo dijo: agregá ;dijo=<lo que dijo> (regla del 26/10: todo entra sin etiqueta)`); continue; }
         const m = x.replace(/!(se|ok)$/i, '').match(/^(.+?)(?:@(.+?))?=([+-]?)(\d+)$/);
         if (!m) { problemas.push(`"${x}" → se espera <palabra>[@<variante>]=<+N|-N|N>[!ok]`); continue; }
         const exacto = m[1].trim().startsWith('=');
@@ -49608,7 +49646,11 @@ async function main() {
     if (/^sinetiq(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const _raw = String(process.env.BILLING_PROBE).replace(/^sinetiq:?/, '');
       const GO = /(^|;)go$/.test(_raw);
-      const pares = _raw.replace(/(^|;)go$/, '').split(';').map((x) => x.trim()).filter(Boolean);
+      // 🏷️ Bajar lo "sin etiqueta" (=0, -N o un número menor) sólo con su palabra (26/10/2026, él: "que nunca se pueda pasar a con
+      // etiqueta sin que yo te diga"): hace falta `dijo=<lo que dijo él>` en el mismo comando. Subir no lo pide.
+      const _pares0 = _raw.replace(/(^|;)go$/, '').split(';').map((x) => x.trim()).filter(Boolean);
+      const DIJO_S = (_pares0.find((x) => /^dijo=/i.test(x)) || '').replace(/^dijo=/i, '').trim();
+      const pares = _pares0.filter((x) => !/^dijo=/i.test(x));
       const nrm = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
       const prodsO = (await db.get('cyc/products')) || {};
       const prods = Object.values(prodsO).filter((p) => p && p.name);
@@ -49659,8 +49701,12 @@ async function main() {
         const n = parseInt(m[4], 10);
         ops.push({ p, va, delta: m[3] === '+' ? n : m[3] === '-' ? -n : null, fijo: m[3] ? null : n });
       }
+      if (!DIJO_S) for (const o of ops) {
+        const a0 = parseInt(o.va ? ((se[o.p.id] || {}).v || {})[sid(o.va)] : (se[o.p.id] || {}).t) || 0;
+        if ((o.fijo != null && o.fijo < a0) || (o.delta != null && o.delta < 0)) problemas.push(`${o.p.name}${o.va ? ' · ' + o.va : ''}: bajar lo sin etiqueta (${a0} → ${o.fijo != null ? o.fijo : a0 + o.delta}) es pasarlo a "con etiqueta": sólo si él lo dijo → agregá ;dijo=<lo que dijo> (regla del 26/10)`);
+      }
       if (problemas.length) { console.log('❌ NO ESCRIBO NADA:'); problemas.forEach((x) => console.log('   ' + x)); return; }
-      console.log(`=== 🏷️ SIN ETIQUETA ${GO ? '' : '(PRUEBA — no escribo nada)'} ===`);
+      console.log(`=== 🏷️ SIN ETIQUETA ${GO ? '' : '(PRUEBA — no escribo nada)'}${DIJO_S ? ' · él dijo: ' + DIJO_S.slice(0, 100) : ''} ===`);
       for (const o of ops) {
         const sk = 'cyc/sinetiq/' + o.p.id + '/' + (o.va ? 'v/' + sid(o.va) : 't');
         const antes = GO ? (parseInt(await db.get(sk)) || 0) : (parseInt(o.va ? ((se[o.p.id] || {}).v || {})[sid(o.va)] : (se[o.p.id] || {}).t) || 0);
@@ -49771,7 +49817,7 @@ async function main() {
         let r = null; try { r = await ofiSumarBot(db, pf, x.it.variante || '', u, inv); } catch (e) { aMano.push({ nom: pf.name, u, pf, why: 'no se pudo escribir' }); continue; }
         if (!r) { aMano.push({ nom: pf.name, u, pf, v: x.it.variante || '', why: x.it.variante ? `la ficha no tiene el color "${x.it.variante}"` : 'la ficha tiene colores y el renglón no dice cuál' }); continue; }
         sumados.push({ prodId: pf.id, ...(r.color ? { v: r.color } : {}), u });
-        console.log(`  🏠 oficina · ${pf.name}${r.color ? ' · ' + r.color + ': ' + r.antes + ' → ' + r.ahora + ' (total ' + r.tA + ' → ' + r.tN + ')' : ': ' + r.antes + ' → ' + r.tN}`);
+        console.log(`  🏠 oficina · ${pf.name}${r.color ? ' · ' + r.color + ': ' + r.antes + ' → ' + r.ahora + ' (total ' + r.tA + ' → ' + r.tN + ')' : ': ' + r.antes + ' → ' + r.tN}${r.se ? ` · 🏷️ sin etiqueta ${r.se.antes} → ${r.se.ahora}` : ''}`);
       }
       const quedan = {}; for (const [pid, q] of Object.entries(ofiAl)) if (NOSUMAR || !sumados.some((y) => y.prodId === pid) || aMano.some((y) => y.pf && y.pf.id === pid)) quedan[pid] = q;
       await db.patch('cyc/compraslista/' + id, { sumoOfi: NOSUMAR ? null : { ts: Date.now(), por: 'chat', items: sumados }, ofiAlLlegar: Object.keys(quedan).length ? quedan : null, falto: faltoR.length ? faltoR : null });
@@ -49832,6 +49878,62 @@ async function main() {
       console.log(r && Number(r.ticketFoto) >= n && r.ticketFotoChat && r.ticketFotoChat.ts === v.ts ? `✓ anotado: ${id} tiene el ticket visto (${r.ticketFoto} foto/s)` : '⚠️ NO QUEDÓ anotado');
       return;
     }
+    // 📷 LAS FOTOS DEL TICKET QUE ME PASA POR EL CHAT, VISIBLES EN EL DETALLE (26/10/2026, él: "los cargaste para poder verlo en el
+    // detalle del envío? siempre quiero ver"). El repo y los registros son públicos, así que la foto viaja CERRADA: el robot tiene una llave
+    // (la privada vive en `mlapi/ticketllave`, fuera del repo; la pública se puede mostrar, no abre nada). Yo cierro cada foto con la
+    // pública (AES-256-GCM con una clave al azar, y esa clave con RSA-OAEP), la dejo en `ml-sync/cifrado/<pedido>/*.enc` y el robot la
+    // abre y la sube igual que el 📷 de la web (`mlapi/pyticketfoto/<id>/<ts>` = {img,ts}) y anota cuántas hay (`ticketFoto`).
+    //   ticketllave[;go]        → muestra la llave pública (con ;go la crea si no hay)
+    //   ticketsube:<id>[;go]    → abre las fotos cerradas del pedido y las sube (sin ;go sólo dice cuántas y de qué tamaño)
+    // Nunca imprime la foto ni su contenido: sólo tamaño y si ya estaba (misma huella = no se sube dos veces).
+    if (/^ticketllave(;go)?$/.test(String(process.env.BILLING_PROBE || '').trim())) {
+      const GOk = /;go$/.test(String(process.env.BILLING_PROBE).trim()) && !DRY;
+      const ya = await db.get('mlapi/ticketllave');
+      if (ya && ya.pub) { console.log('Ya hay llave. La pública (no abre nada, se puede mostrar):\n' + ya.pub); return; }
+      if (!GOk) { console.log('Todavía no hay llave. Con ticketllave;go la creo.'); return; }
+      const { publicKey, privateKey } = generateKeyPairSync('rsa', { modulusLength: 3072, publicKeyEncoding: { type: 'spki', format: 'pem' }, privateKeyEncoding: { type: 'pkcs8', format: 'pem' } });
+      await db.set('mlapi/ticketllave', { pub: publicKey, priv: privateKey, ts: Date.now() });
+      const r = await db.get('mlapi/ticketllave');
+      console.log(r && r.pub === publicKey && r.priv ? '✓ Llave creada y releída. La pública:\n' + publicKey : '⚠️ La llave NO quedó guardada');
+      return;
+    }
+    if (/^ticketsube:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const raw = String(process.env.BILLING_PROBE).trim().slice('ticketsube:'.length);
+      const GOs = /;go$/.test(raw) && !DRY; const id = raw.replace(/;go$/, '').trim();
+      if (!/^[a-z0-9_]+$/i.test(id)) { console.log('Va así: ticketsube:py20261026;go'); return; }
+      const c = await db.get('cyc/compraspy/' + id);
+      if (!c) { console.log(`No hay pedido ${id} en cyc/compraspy.`); return; }
+      const dir = new URL('./cifrado/' + id + '/', import.meta.url);
+      if (!existsSync(dir)) { console.log(`No hay fotos cerradas para ${id} (ml-sync/cifrado/${id}/).`); return; }
+      const archs = readdirSync(dir).filter((f) => /\.enc$/.test(f)).sort();
+      const ll = await db.get('mlapi/ticketllave');
+      if (!ll || !ll.priv) { console.log('No hay llave: primero ticketllave;go.'); return; }
+      const ya = (await db.get('mlapi/pyticketfoto/' + id)) || {};
+      const huellas = new Set(Object.values(ya).map((x) => x && (x.h || (x.img ? createHash('sha256').update(String(x.img)).digest('hex') : ''))));
+      console.log(`=== 📷 ${id} · ${c.fecha} · ${c.estado} · en la base: ${Object.keys(ya).length} foto/s · cerradas en el repo: ${archs.length}${GOs ? '' : ' · (PRUEBA, agregá ;go)'} ===`);
+      let n = 0, ts0 = Date.now();
+      for (const f of archs) {
+        let img;
+        try {
+          const e = JSON.parse(readFileSync(new URL(f, dir), 'utf8'));
+          const k = privateDecrypt({ key: ll.priv, padding: cryptoK.RSA_PKCS1_OAEP_PADDING, oaepHash: 'sha256' }, Buffer.from(e.k, 'base64'));
+          const d = createDecipheriv('aes-256-gcm', k, Buffer.from(e.iv, 'base64')); d.setAuthTag(Buffer.from(e.tag, 'base64'));
+          img = Buffer.concat([d.update(Buffer.from(e.d, 'base64')), d.final()]).toString('utf8');
+        } catch (err) { console.log(`  ✗ ${f}: no se pudo abrir (${err.message})`); continue; }
+        if (!/^data:image\/(jpeg|png|webp);base64,/.test(img) || img.length > 1000000) { console.log(`  ✗ ${f}: no es una foto o pesa de más (${Math.round(img.length / 1024)} KB)`); continue; }
+        const h = createHash('sha256').update(img).digest('hex');
+        if (huellas.has(h)) { console.log(`  = ${f}: ya estaba en la base`); continue; }
+        console.log(`  + ${f}: foto de ${Math.round(img.length / 1024)} KB`);
+        if (!GOs) continue;
+        const ts = ts0 + n; await db.set(`mlapi/pyticketfoto/${id}/${ts}`, { img, ts, h, por: 'claude' }); huellas.add(h); n++;
+      }
+      if (!GOs) return;
+      const tot = Object.keys((await db.get('mlapi/pyticketfoto/' + id)) || {}).length;
+      if (tot > 0) await db.patch('cyc/compraspy/' + id, { ticketFoto: tot });
+      const r = await db.get('cyc/compraspy/' + id);
+      console.log(`✓ ${n} subida/s · en la base hay ${tot} · el pedido dice ${r && r.ticketFoto} foto/s. Ya se ven en el detalle (📷).`);
+      return;
+    }
     if (/^pydet:/.test(String(process.env.BILLING_PROBE || ''))) {
       const id = String(process.env.BILLING_PROBE).slice('pydet:'.length).trim();
       const c = await db.get('cyc/compraspy/' + id);
@@ -49852,7 +49954,7 @@ async function main() {
     //                                              código y precio de Paraguay). Como el botón: saca lo pedido del pedido del
     //                                              momento (`py_armado`), descuenta de lo decidido y pasa lo de uso personal
     //                                              al historial (20/10/2026 · etapa 3).
-    //   pyped:nuevos[:go]                       → "✅ Ya lo pedí" de PRODUCTOS NUEVOS (lo cargado en el armado)
+    //   pyped:nuevos[:resto|perf|elegancia][:go] → "✅ Ya lo pedí" de PRODUCTOS NUEVOS (lo cargado en el armado; con grupo, sólo ese pedido)
     //   pyped:llego:<id|AAAA-MM-DD>[:go]        → "Ya llegó". Reposición: sólo la cierra (hay que contar en la
     //                                              oficina). Nuevos: además crea las fichas (costo = precio × recargo,
     //                                              origen Paraguay, código); si hay una ficha parecida NO la crea y lo dice.
@@ -50071,6 +50173,14 @@ async function main() {
         // Etapa 2 (20/10/2026): cada candidato va al pedido de SU proveedor y rubro (`grupoPy`, como la web).
         const X = await ctxBelleza();
         const G = armarGrupos(items, (it) => (cands[it.id] || {}).nombre || it.nom, (it) => provPyDe(cands[it.id]), X);
+        // 26/10/2026 (él pagó SÓLO el de Resto: "pagué el pedido y ya está pedido"): `pyped:nuevos:<resto|perf|elegancia>[:go]` marca
+        // sólo ese pedido del momento; los otros siguen en el armado. Sin grupo marca todos (como antes).
+        if (arg) {
+          const qG = nrm(arg), okG = (gid) => qG === 'resto' ? /^py\d/.test(gid) : /^perf/.test(qG) ? /^pyb\d/.test(gid) : /^eleg/.test(qG) ? /^pyel\d/.test(gid) : null;
+          if (okG('x') === null) { console.log(`No conozco el pedido "${arg}": usá resto, perf o elegancia.`); return; }
+          for (const gid of [...G.keys()]) if (!okG(gid)) G.delete(gid);
+          if (!G.size) { console.log(`No hay productos nuevos en el pedido "${arg}".`); return; }
+        }
         const est = await previosGrupos(G); if (!est) return;
         console.log(`=== PRODUCTOS NUEVOS · YA LO PEDÍ ${GO ? '' : '(PRUEBA — no escribo nada)'} ===`);
         if (G.size > 1) console.log(`  Van en ${G.size} pedidos separados, igual que en la web: ${[...G.values()].map((g) => g.tit + ' (' + g.id + ')').join(' · ')}`);
@@ -50236,7 +50346,7 @@ async function main() {
             let r = null; try { r = await ofiSumarBot(db, pf, it.variante || '', u, _inv); } catch (eS) { _aMano.push({ it, u, pf, why: 'no se pudo escribir (' + String((eS && eS.message) || eS).slice(0, 40) + ')' }); continue; }
             if (!r) { _aMano.push({ it, u, pf, why: it.variante ? `la ficha no tiene el color "${it.variante}"` : 'la ficha tiene colores y el renglón no dice cuál' }); continue; }
             _sumados.push({ prodId: pf.id, ...(r.color ? { v: r.color } : {}), u });
-            console.log(`  🏠 oficina · ${pf.name}${r.color ? ' · ' + r.color + ': ' + r.antes + ' → ' + r.ahora + ' (total ' + r.tA + ' → ' + r.tN + ')' : ': ' + r.antes + ' → ' + r.tN}`);
+            console.log(`  🏠 oficina · ${pf.name}${r.color ? ' · ' + r.color + ': ' + r.antes + ' → ' + r.ahora + ' (total ' + r.tA + ' → ' + r.tN + ')' : ': ' + r.antes + ' → ' + r.tN}${r.se ? ` · 🏷️ sin etiqueta ${r.se.antes} → ${r.se.ahora}` : ''}`);
           }
         }
         if (_repIts.length && _inv) {
@@ -53704,10 +53814,17 @@ async function main() {
           // en el mapa: el mapa se reescribe cuando la publicación vende y perdía la memoria.
           // Regla: se manda una vez por publicación y por estado; cuando la publicación se
           // arregla, se borra la marca para que un problema nuevo vuelva a avisar.
-          const bad = st === 'closed' || st === 'under_review'
-            || /deactiv|moderation|warning|suspend|ban|freeze|infract|hold/i.test(sub);
+          // 26/10/2026 (él): también `inactive` y la falta de papeles ("casi siempre es por pedir facturas en la cuenta de Adriana").
+          const bad = st === 'closed' || st === 'under_review' || st === 'inactive'
+            || /deactiv|moderation|warning|suspend|ban|freeze|infract|hold|pending_documentation|waiting_for_patch|forbidden/i.test(sub);
           const clave = bad ? st + (sub ? '|' + sub : '') : '';
           if (!bad) {
+            // 🟢 SE DIO DE ALTA OTRA VEZ (26/10/2026, él: "y cuando se da de alta un producto también que avise"): la que había
+            // avisado como problema y ahora ML la deja andar. Sólo si el aviso de baja salió de verdad (no un 'pend|').
+            if (pubAlerted[mla] && !DRY && !String(pubAlerted[mla]).startsWith('pend|') && !ML_REVISION_NO_MIRAR.has(mla)) {
+              const estadosA = { active: 'activa', paused: 'pausada (por nosotros o sin stock)' };
+              await sendTelegram(`✅ <b>ML la volvió a habilitar</b>\n${map[mla].title || mla}\nCuenta: ${label}\nEstado: ${estadosA[st] || st}${sub ? ' · ' + sub : ''}\n${b.permalink || ''}`, 'baja');
+            }
             if (pubAlerted[mla] && !DRY) await anotarPubAlertYa(mla, null);
           } else if (pubAlerted[mla] !== clave && map[mla].prodId) {
             // Si el estado ya venía guardado igual, no es novedad: se anota sin avisar (así al
@@ -53733,8 +53850,11 @@ async function main() {
                 + `${title}\nCuenta: ${label}\n`
                 + `Estado: ${estados[st] || st}${sub ? ' · ' + sub : ''}\n`
                 + (b.permalink || '');
-              // SÓLO DATOS (09/10/2026): queda en mlapi/cerebroavisos para Claude, no va a Telegram.
-              mandado = (SOLO_DATOS ? await sendAlerta(_txtPub) : await sendTelegram(_txtPub, 'baja')) === true;
+              // SÓLO DATOS (09/10/2026) lo había sacado de Telegram. 26/10/2026, él: "quiero que me avise por telegram cuando ML da de
+              // baja un producto, porque es importante a resolver, casi siempre es por pedir facturas en la cuenta de Adriana": va a
+              // Telegram siempre (y queda también en mlapi/cerebroavisos para mí).
+              if (SOLO_DATOS) await sendAlerta(_txtPub);
+              mandado = (await sendTelegram(_txtPub, 'baja')) === true;
               pubAlerts++;
             }
             if (!DRY) {

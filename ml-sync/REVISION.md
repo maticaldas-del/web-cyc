@@ -87,6 +87,13 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
 - **Qué es:** en `frenosBajas` (todas las bajas: `decido`, `entrarpromo`, la puerta de `setPriceTo`), si la ficha o el título es perfume (`esPerfumeNom`) y el precio nuevo deja menos de 10% en el peor caso, frena; el texto dice si está cerca de pagar stock antiguo → avisarle para retirarlo al local. `!bajocero` con su autorización lo abre.
 - **Qué chequear:** que agarre los VS, Paulvic y Persea (y no un "Splash" que no sea perfume) · el Cyber del Coconut y la escalera del Pure Seduction pasan por acá · que los avisos de retiro le lleguen en el chat, no por Telegram.
 
+### 🔔 El timbre también suena con una venta de algo que está bajando de precio (26/10/2026, él: "agregar un trigger nuevo, que el producto esté bajando de precio")
+- **Qué es:** además de 6 compras sin revisar o una abajo del 35%, el timbre toca si entra una compra NUEVA de una publicación en 🪜
+  `bajando` (si vendió una gemela, manda la estrategia de su Clásica). Vender en un escalón decide si la escalera se frena ahí (el 💰) o
+  sigue: no espera a la vuelta corta. El control de cada hora (`trig_01PxNuKFnJfdAtPem61eaUnA`) la mira igual que las otras dos.
+- **Dónde vive:** `sync.mjs`, `timbreVentas` (`r.bajando`, el `por` y el texto) y el comando `timbre` (renglón "de algo bajando de precio").
+- **Qué chequear:** que una venta de una 💰 punto o 📈 techo NO toque por esto; que una venta de una gemela de una Clásica 🪜 sí toque.
+
 ### `pausadas`: las que pausó él a propósito no se avisan (26/10/2026, él: "no avises más de esas")
 - **Qué es:** las pausadas con stock en Full cuyo freno es "pausada a mano con el comando pausar" (hoy las 35 gemelas de envío gratis de
   Paulvic, su 11b del 25/10) ya no se listan una por una ni van al aviso de "no las puedo medir": salen en UN renglón con el total y no
@@ -804,6 +811,26 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 
 ## 3 · MERCADERÍA (miércoles)
 
+### 🧾 `pyped:nuevos:<resto|perf|elegancia>` (26/10/2026, él pagó sólo el pedido de Resto)
+- **Qué es:** "Ya lo pedí" de los productos nuevos de UN solo pedido del momento (Nissei resto `py…`, perfumería `pyb…`, Elegancia `pyel…`); antes marcaba los tres juntos.
+- **Qué chequear:** que los otros dos sigan en el armado con sus unidades · que lo de uso personal pase al historial sólo del que se pidió.
+
+### 🏷️ Pasar a "con etiqueta" sólo con su palabra (26/10/2026, él: "que nunca se pueda pasar a con etiqueta sin que yo te diga")
+- **Qué es:** `sinetiq` que BAJA (=0, -N, un número menor) y `ofi:…!ok` piden `dijo=<lo que dijo él>` en el mismo comando; sin eso: "NO ESCRIBO NADA".
+- **Qué chequear:** que subir siga andando sin `dijo=` · que el ✅ Etiquetadas de la web (lo aprieta él) no cambie.
+
+### 🏷️ Los "llegó" del robot también dejan sin etiqueta (26/10/2026, él: "¿los agregaste a mi oficina? así voy viendo las etiquetas")
+- **Qué es:** `sinEtiqSumarBot` suma a `cyc/sinetiq` lo que `ofiSumarBot` sube a la oficina (`pyped:llego` y las listas) y lo que suma `pvped:llego` (Paulvic). Antes sólo lo hacían la web y `ofi:`: el pedido de Paraguay del 19/10 entró con 12 u. y 0 sin etiqueta (cargadas a mano con `sinetiq`).
+- **Qué chequear:** que un "llegó" del robot muestre "🏷️ sin etiqueta a → b" en cada renglón · que la tarjeta de Contar lo que hay las liste · que deshacer una caja (devolución) NO las sume.
+
+### 🧾 % de hoy en cada renglón del pedido de Paraguay (26/10/2026, v26.75, él con el GoPro Handler)
+- **Qué es:** en `_pyItsHTML`, al lado de "margen medido al pedirlo" (web + recargo estimado), "hoy, peor caso con todo pagado N% a $precio" = `margenMLDe` menos la retención de otra provincia (`PEOR_RET_PCT`) de la ficha (costo pagado × recargo real) con el `netopub` de su publicación; sin medición todavía dice "se mide esta noche".
+- **Qué chequear:** que el % de hoy de un renglón que salió más caro (Handler US$ 18 → 28,50) sea menor que el de al pedirlo · que tome la publicación activa si hay varias.
+
+### ⏸️ Pausar / reanudar un envío a Full (26/10/2026, v26.74, pedido suyo)
+- **Qué es:** botón en la cabecera del envío (Mi oficina → En camino). `cyc/envios_full/<id>/pausado` = cuándo se pausó: `envSalidaTs` (web y robot) devuelve 30 días adelante, la caja dice "⏸️ en pausa · no sale" y el robot no la lista como atrasada. Reanudar pone `fecha` = hoy y `ts` = ahora (y la fecha propia de las cajas sin recibir), guarda la original en `fechaArmada`.
+- **Qué chequear:** que una caja en pausa siga contando como stock (no se compra de nuevo) pero NO como "llega a tiempo" en la escasez · que al reanudar diga "sale … a las 12" · que el robot no la marque llegada sola.
+
 ### 🧾 `pyticketvisto` (26/10/2026, v26.73, pedido suyo: "siempre subí vos eso")
 - **Qué es:** la foto del ticket que me pasa por el chat no puede llegar a la base sin pasar por el repo o el registro (públicos). `pyticketvisto:<id>=<n>|<nota>;go` (ml-consulta) anota en `cyc/compraspy/<id>` `ticketFoto` y `ticketFotoChat` (quién, cuándo, cuántas); la web dice "✓ la vio Claude en el chat". Pide los renglones (`det=`) ya cargados.
 - **Qué chequear:** que no se use sin haber comparado la foto renglón por renglón · que `pyped:llego` lo acepte · que la web no muestre "ver" sin imágenes.
@@ -1327,6 +1354,72 @@ el precio de un candidato distinto con código parecido (se compara también por
 - **20/10/2026 · v25.48 · El "otro producto" de una lista vale sólo para el catálogo que se miró** (etapa 3). `listaestado` mostró 490 de los 674 de Nippon con 25%+ marcados `noEs` (el chat de compras los miró el 18/10, cuando el robot buscaba con el nombre abreviado y traía cualquier cosa). La marca era del producto y no del catálogo: aunque el robot encontrara el correcto, quedaban afuera para siempre. Ahora `listaNoEsVale` (sync.mjs) / `_listaNoEsVale` (index.html) exigen que `noEsCat` sea el `mi` de hoy; `listadato …=no` guarda `noEsCat`, `ok` lo borra; las marcas viejas lo reciben (el `mi` de antes) la primera vez que se vuelven a medir. Los `noEs` sin `qv` se vuelven a buscar con el nombre traducido aunque estén frescos, y la búsqueda saltea el catálogo rechazado. Chequear: que un `noEs` con catálogo nuevo salga en `listarevisar` y no cuente como dado hasta el ✅.
 - **20/10/2026 · v25.49 · Arriba de cada lista: evaluados y sin evaluar** (etapa 3, reemplaza la línea de v25.46). Él: *"poné los productos evaluados y los no evaluados, con sus números de cuántos dan bien, cuántos no"*. Cada producto cae en UN grupo (`_grp` en `renderListas`): ya es ficha · afuera (sacado, `noWeb`, `fz`) · ⏳ sin evaluar (nunca buscado, `sc`/`sv`/`noEs` con `qv` viejo, o costo no vigente) · ✅ evaluados: 🟢 `_listaDa` · 🔎 `_listaRevisar` · ⚫ no está en ML (`m` null) · 🔴 no da. Chequear: que los grupos sumen el total.
 
+### Etapa 4 · 26/10/2026 · v26.79 · sw.js quedó VACÍO en v26.78 (la web no entraba)
+Error mío: `open('sw.js','w').write(open('sw.js').read()…)` en Python abre para escribir (y vacía) ANTES de leer. Desde 94698c0 el
+`sw.js` publicado estaba vacío y la app no abría (él: *"se rompió web cyc no ingresa"*); se repuso entero (CACHE cyc-v960).
+- **Qué chequear siempre:** después de subir el `CACHE`, `wc -c sw.js` > 0 y `node --check sw.js`. Leer y escribir un archivo en dos pasos.
+
+### Etapa 3 · 26/10/2026 · 📷 Las fotos del ticket que me pasa por el chat se ven en el detalle
+Él: *"los cargaste para poder verlo en el detalle del envío? siempre quiero ver"*. Antes sólo quedaba "la vio Claude" (`pyticketvisto`)
+porque la foto no podía pasar por el repo ni el registro (públicos). Ahora viaja CERRADA: `ticketllave;go` crea la llave del robot (la
+privada en `mlapi/ticketllave`, nunca en el repo); yo cierro cada foto con la pública (AES-256-GCM + RSA-OAEP 3072) en
+`ml-sync/cifrado/<pedido>/*.enc` y `ticketsube:<pedido>;go` (ml-sync) la abre y la sube igual que el 📷 de la web
+(`mlapi/pyticketfoto/<id>/<ts>`, con huella `h` para no subirla dos veces) y anota `ticketFoto`. El registro sólo dice tamaños.
+- **Qué chequear:** que la foto se vea en el detalle del pedido; que `ml-sync/cifrado` siga fuera de la web (`.assetsignore` tiene `ml-sync`);
+  que nunca se imprima `priv` ni la imagen.
+
+### Etapa 7 · 26/10/2026 · v26.81 · 📊 La raya del costo arranca en $0
+Él: *"¿por qué el costo sube cuando sube el %? no tiene sentido"*. La raya es el costo REAL (mercadería + IIBB + monotributo; los
+impuestos son % del precio, así que suben un poco al subir el precio) y tenía escala propia min-máx: $50 parecían un salto. Eligió 2b:
+queda el costo real con la escala desde $0. Qué chequear: que un producto con costo parejo muestre la raya casi plana.
+
+### Etapa 7 · 26/10/2026 · v26.80 · 💵 Plata por día: promedio por MES calendario
+Él: *"línea en vez de 7 días 15 días"* y enseguida *"en vez de 15 días, quiero que sea por mes, no cada 30 días. por mes"*. La línea verde
+es el promedio por día de cada mes (`_lnPromMes`): cada día muestra el de su mes; el mes en curso, lo que va del mes. Para el primer mes
+del gráfico se suman los días desde el 1º aunque queden antes (`_lnPreMes`). Línea de cada producto y general. Probado: sep $5.000/día,
+oct $10.000/día con ventas de prueba. Qué chequear: que el salto caiga justo el día 1 y que el número de "hoy" sea el del mes en curso.
+
+### Etapa 3 · 26/10/2026 · v26.83 · Unidades de cada nuevo hasta US$ 20 (máx 4) · un solo 🗑️ Vaciar
+Él: *"cada producto pida unidades (máximo 4) hasta llegar a 20 dólares, si una unidad cuesta 21 se pide max una y si vale 19 se piden 2
+si vale 9 se piden 3 si vale 5 4 si vale 4 4"* → `candMaxU` = mín(4, ⌈20 ÷ precio web⌉), mínimo 1 (robot: `candMaxUBot`). Se sacó la
+casilla "U. por nuevo" (dos lugares). Y *"que no haya vaciar nuevos. sólo vaciar y que saque TODO lo del pedido, sea cual sea"* →
+`pedVaciarTodo` (probados + nuevos + uso personal del pedido del momento, en una sola escritura). Probado: 21→1 · 19→2 · 9→3 · 5→4 · 4→4;
+vaciar deja los tres en 0.
+
+### Etapa 3 · 26/10/2026 · v26.82 · ⛔ Lo viejo se carga y queda en rojo (cambia la v26.77)
+Él, viendo "6 no se pueden pedir" con el pedido vacío: *"que aparezca en rojo si es que está adentro del pedido, y que pueda estar dentro
+del pedido aunque esté en rojo. yo al verlo hago correr el robot para que los mire"*. Ya no frena cargar (`candPuedePedir`, `pyArmSet*`,
+`pedir` del robot); 🪄 Llenar con probados y nuevos los mete (probados con `pyProbVeredicto(ped,{sinFecha:true})`) y avisa cuántos van
+en rojo. El cuadro rojo lista SÓLO lo cargado (`pedViejosLista`). Siguen frenados el 📋 mensaje y "Ya lo pedí". Probado con datos de
+prueba: carga los 2 viejos, cuadro "2 en rojo", mensaje frenado.
+
+### Etapa 3 · 26/10/2026 · v26.78 · Elegancia apagada
+Él: *"eliminá elegancia. nunca se usa y genera problemas"*.
+- **Qué es:** la web ya no deja elegir Elegancia ni muestra la fila "Proveedor:" (`PY_PROVS_VER=['nissei']`; quien la tenía guardada
+  vuelve a Nissei). Sigue en `PY_PROVS` a propósito: así sus fichas y candidatos (`prov:'elegancia'`) NO se cuelan en las listas de Nissei.
+  El robot no mide su catálogo (`EL_…`) ni arma `cyc/pycatres_el` (`PY_ELEGANCIA_OFF`). No se borró ningún dato.
+- **Qué chequear:** que en Nissei no aparezca nada de Elegancia (probados, nuevos, pedido del momento); que la vuelta de `pycatmedir`
+  no cuente los `EL_` como pendientes. Para volver: `PY_PROVS_VER` + `PY_ELEGANCIA_OFF=false`.
+
+### Etapa 3 · 26/10/2026 · v26.77 · 🪄 Llenar con probados y nuevos · ⛔ lo mirado hace 7+ días no se pide
+Él: *"otro boton que sea llenar con nuevos y probados. entonces poner primero todos los productos probados las unidades que pide y que de
+mas de el 35% o mas de ganancia y lo que resta todos productos nuevos siempre desde el que mas gana y vende (el boton de estrella) y que
+avise en rojo todos los productos que fueron revisados hace 7 o mas dias en paraguay. porque pudo modificarse el precio o el stock y que
+no deje perdirlo"*.
+- **Qué es:** botón 🪄 *Llenar con probados y nuevos* en el 🧾 Pedido del momento (también vacío). 1º probados: lo que pide Pedidos (por
+  color si Pedidos lo pide por color), sólo `pyProbVeredicto`='da' (35%+ con el precio de hoy), lo ya cargado no se toca. 2º nuevos: con lo
+  que queda del tope, orden ⭐ (`candCombo`), mismos filtros que el botón viejo. Lo mirado en Paraguay hace 7+ días no entra y se lista.
+- **⛔ 7+ días:** `PY_VIEJO_DIAS=7`. Nuevos: la fecha más nueva entre `visto` y `ts` (`candViejoPy`); probados: `nisseiTs` (`pyProbViejo`).
+  Frena: `candPuedePedir` (casilla, los dos botones de llenar), `pyArmSet`/`pyArmSetVar`/`pyArmSugeridas` (sólo al SUMAR), el 📋 mensaje
+  para el proveedor (no sale si hay uno cargado en rojo) y *Ya lo pedí*. Bloque rojo `pedViejosLista` arriba del pedido con código y días.
+  En el robot, `pedir` tiene la misma regla. `pyped:repo`/`pyped:nuevos` (lo ya pagado) NO se frenan: si pagó, se registra.
+  `pyProbVeredicto` pasó de "más de 7" a "7 o más".
+- **Dónde vive:** `index.html` (`pedLlenarTodo`, `pedLlenarTodoPlan`, `pedViejosLista`, `_pedNuevosEscribir`, `candViejoPy`, `pyProbViejo`);
+  `sync.mjs` (`PY_VIEJO_DIAS`, comando `pedir`); la rutina del chat de Chrome (parte 3) mira también la lista roja.
+- **Qué chequear:** que la rutina diaria (`ofi`… buzón) renueve las fechas (con `pyprecio`/`candprecio`) y la lista roja baje; que el
+  botón no cargue un probado que Pedidos no pide; que el tope cierre (probados + nuevos); que un candidato devuelto con ↩︎ no se cuele como
+  fresco: ↩︎ renueva `ts` sin mirar el precio, así que guarda `renovTs`/`renovDe` y vale la fecha de antes (`candVistoTs`, `candVistoTsBot`).
+
 ### Etapa 3 · 21/10/2026 · v25.94 · 🛒 Para comprar en el local (Dai Nippon y toda lista de Bs As)
 Él: *"Dai Nippon no trae fotos ni código de barras (…) mi viejo compra personalmente en el local, siempre desde el celular. Que le
 aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las unidades (…) al clickear en la tarjeta, sino es un lio"*.
@@ -1356,6 +1449,10 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
 - **Qué chequear:** que la completa ya no tenga que corregirlos a mano · si otro aroma pasa a dado de baja, agregarlo a los DOS.
 
 ## 4 · CHOQUES Y FALLAS MUDAS (jueves · junta las viejas 4 y 5)
+
+### 📲 Telegram cuando ML da de baja una publicación y cuando la vuelve a habilitar (26/10/2026, pedido suyo)
+- **Qué es:** el aviso "⚠️ Problema en una publicación" (cerrada, en revisión, inactiva, falta de papeles/facturas) vuelve a salir por Telegram (con SOLO_DATOS había quedado sólo en `mlapi/cerebroavisos`); y cuando una que avisó vuelve a estar bien sale "✅ ML la volvió a habilitar". Una vez por cambio de estado (`mlapi/pubalert`), tope 8 por vuelta.
+- **Qué chequear:** que al estrenarlo no llegue una catarata (lo que ya estaba inactivo no es novedad) · que una pausa nuestra (fuera de Full, sin stock) NO avise · que las 3 en revisión para siempre no avisen el alta.
 
 ### La ficha nunca decía "Nissei NO lo tiene" (26/10/2026, vuelta de las 21:22)
 - **Qué es:** `fichaExtras` miraba `pr.nisseiNoHay || pr.pyNoHay`, que no los escribe nadie; la marca real es `cyc/py_sinstock/<prodId>` (la usan la web y `escasez`). El Cuba Prestige salía "se repone de Paraguay" sin reposición. Ahora la ficha lee `cyc/py_sinstock`.
