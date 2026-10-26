@@ -19,6 +19,15 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 - 7b 8b 9b 13b: se dejan. 10 Luna: seguir buscando techo; con techo, bajar. 11b: pausar las gemelas de envío de Paulvic (eran 35, no 17).
 - 12a: buscar catálogos de pack (primero Cartas Casino) — en la próxima completa. 14a: pedido de Navidad del P47, Filtro y Sábanas el 03/11 (tarea programada). 15a: buzón hecho.
 
+### De la completa del lunes 26/10
+- **Paulvic Debutante Mujer (8 en Full) y Witch Night (9 en Full + 10 entre camino y oficina):** siguen a $21.990 desde el 16/10 sin vender 8+ días con stock; la prueba perdió (~28% menos plata por día) y el 24/10 autorizaste volver otros 17 aromas. (a) sugerida: volverlos ya a $14.990 con tu "autorizo", como el 24/10 · (b) esperar al 31/10 y bajar de a un escalón (descuento a $18.790).
+- **Paulvic que recién recibieron stock y siguen a $21.990** (Libre, Fuego, 1.4M Hombre, Turbulence, Flores, Pasión, Boy, Sexy Mujer; Bella cuando entren sus 10) y **Blue Men a $24.990** (5 en Full + 25 entre camino y oficina): (a) sugerida: que se midan con stock hasta 3 ventas esperadas (1.4M Hombre y Blue Men se agotaron en 1-2 días la última vez) y bajar en escalera los que no vendan · (b) volverlos ya a $14.990.
+- **5 Paulvic de 1 unidad con 200+ días** (Rose Mujer, Indigo, Teikirisi, 1.4 Sexy Men, Abismo): pagan ~$5.000 entre todos si siguen el 10/11. (a) sugerida: seguir igual · (b) retirar las que sigan el 08/11 para la perfumería.
+- **Para que sepas (todavía no se decide):** Cortapelo 4 en 1 de Ayelen (5 u.) y Panel solar (5 u.) ya están en el último escalón antes del 0%: si no venden hasta el 08/11, retirar o vender al costo antes de mediados de diciembre.
+- **Batidora Blanco:** 4 reclamos en 27 ventas ("faltan accesorios", "distinto a lo publicado"): hay que arreglar la descripción o las fotos de la publicación (lo tenés que hacer vos en ML).
+- **Paulvic Hot:** 0 ventas en 30 días con 9 en Full, aun a $14.360: mirar la publicación (fotos, título).
+- **Preguntas que no sé contestar seguro:** Mentonera (si tiene hueco en el mentón y las medidas de la banda) · Protector metatarso (qué es el color "Ab").
+
 ### De las vueltas del 23/10 (a la noche y a la tarde)
 
 
