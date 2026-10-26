@@ -49430,7 +49430,11 @@ async function main() {
     if (/^ofi(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const _raw = String(process.env.BILLING_PROBE).replace(/^ofi:?/, '');
       const GO = /(^|;)go$/.test(_raw);
-      const pares = _raw.replace(/(^|;)go$/, '').split(';').map((x) => x.trim()).filter(Boolean);
+      // 🏷️ NADA PASA A "CON ETIQUETA" SIN QUE ÉL LO DIGA (26/10/2026, él: "que nunca se pueda pasar a con etiqueta sin que yo te diga.
+      // siempre todo a sin etiqueta"). `!ok` (ya viene etiquetado) vale sólo con `dijo=<lo que dijo él>` en el mismo comando.
+      const _pares0 = _raw.replace(/(^|;)go$/, '').split(';').map((x) => x.trim()).filter(Boolean);
+      const DIJO_O = (_pares0.find((x) => /^dijo=/i.test(x)) || '').replace(/^dijo=/i, '').trim();
+      const pares = _pares0.filter((x) => !/^dijo=/i.test(x));
       const nrm = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
       const OFI_LOC = 'Oficina Mati';
       if (!pares.length) { console.log('Usá: ofi:<palabra>[@<variante>]=<+N|-N|N>[;…][;go]   ej. ofi:cartas casino=+50;paulvic@free love=12;go'); return; }
@@ -49442,6 +49446,7 @@ async function main() {
         // que SUBE la oficina se suma también a `cyc/sinetiq` (la tarjeta "🏷️ Sin terminar / sin etiqueta" de Contar lo que hay).
         // `!ok` al final = ya viene etiquetado (ej. lo que vuelve de una caja); `!se` (23/10) se sigue aceptando, ya no hace falta.
         const ok = /!ok$/i.test(x), se = !ok;
+        if (ok && !DIJO_O) { problemas.push(`"${x}" → !ok (ya viene etiquetado) sólo si él lo dijo: agregá ;dijo=<lo que dijo> (regla del 26/10: todo entra sin etiqueta)`); continue; }
         const m = x.replace(/!(se|ok)$/i, '').match(/^(.+?)(?:@(.+?))?=([+-]?)(\d+)$/);
         if (!m) { problemas.push(`"${x}" → se espera <palabra>[@<variante>]=<+N|-N|N>[!ok]`); continue; }
         const exacto = m[1].trim().startsWith('=');
@@ -49623,7 +49628,11 @@ async function main() {
     if (/^sinetiq(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const _raw = String(process.env.BILLING_PROBE).replace(/^sinetiq:?/, '');
       const GO = /(^|;)go$/.test(_raw);
-      const pares = _raw.replace(/(^|;)go$/, '').split(';').map((x) => x.trim()).filter(Boolean);
+      // 🏷️ Bajar lo "sin etiqueta" (=0, -N o un número menor) sólo con su palabra (26/10/2026, él: "que nunca se pueda pasar a con
+      // etiqueta sin que yo te diga"): hace falta `dijo=<lo que dijo él>` en el mismo comando. Subir no lo pide.
+      const _pares0 = _raw.replace(/(^|;)go$/, '').split(';').map((x) => x.trim()).filter(Boolean);
+      const DIJO_S = (_pares0.find((x) => /^dijo=/i.test(x)) || '').replace(/^dijo=/i, '').trim();
+      const pares = _pares0.filter((x) => !/^dijo=/i.test(x));
       const nrm = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
       const prodsO = (await db.get('cyc/products')) || {};
       const prods = Object.values(prodsO).filter((p) => p && p.name);
@@ -49674,8 +49683,12 @@ async function main() {
         const n = parseInt(m[4], 10);
         ops.push({ p, va, delta: m[3] === '+' ? n : m[3] === '-' ? -n : null, fijo: m[3] ? null : n });
       }
+      if (!DIJO_S) for (const o of ops) {
+        const a0 = parseInt(o.va ? ((se[o.p.id] || {}).v || {})[sid(o.va)] : (se[o.p.id] || {}).t) || 0;
+        if ((o.fijo != null && o.fijo < a0) || (o.delta != null && o.delta < 0)) problemas.push(`${o.p.name}${o.va ? ' · ' + o.va : ''}: bajar lo sin etiqueta (${a0} → ${o.fijo != null ? o.fijo : a0 + o.delta}) es pasarlo a "con etiqueta": sólo si él lo dijo → agregá ;dijo=<lo que dijo> (regla del 26/10)`);
+      }
       if (problemas.length) { console.log('❌ NO ESCRIBO NADA:'); problemas.forEach((x) => console.log('   ' + x)); return; }
-      console.log(`=== 🏷️ SIN ETIQUETA ${GO ? '' : '(PRUEBA — no escribo nada)'} ===`);
+      console.log(`=== 🏷️ SIN ETIQUETA ${GO ? '' : '(PRUEBA — no escribo nada)'}${DIJO_S ? ' · él dijo: ' + DIJO_S.slice(0, 100) : ''} ===`);
       for (const o of ops) {
         const sk = 'cyc/sinetiq/' + o.p.id + '/' + (o.va ? 'v/' + sid(o.va) : 't');
         const antes = GO ? (parseInt(await db.get(sk)) || 0) : (parseInt(o.va ? ((se[o.p.id] || {}).v || {})[sid(o.va)] : (se[o.p.id] || {}).t) || 0);

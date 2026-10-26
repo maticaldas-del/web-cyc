@@ -326,7 +326,7 @@
 - **🏷️ Sin terminar / sin etiqueta** (25/10, él: *"al cargar unidades a mi oficina, que siempre salgan como a etiquetar"*): TODO lo que
   sube la oficina (web u `ofi:`) se suma a `cyc/sinetiq` salvo deshacer una caja (`ofi:…!ok` = ya viene etiquetado); Armar caja lo sigue
   contando igual y cada renglón dice "🏷️ N sin etiqueta"; tarjeta arriba de Contar lo que hay con botón ✅ Etiquetadas por renglón (lo usa
-  el chat de Chrome al imprimir). Por comando: `sinetiq:<palabra>=0;go` (ml-consulta).
+  el chat de Chrome al imprimir). **Nada pasa a "con etiqueta" sin que él lo diga** (26/10, él: *"siempre todo a sin etiqueta"*): los "llegó" del robot también suman (Paraguay, listas, Paulvic); bajar con `sinetiq:<palabra>=0;dijo=<lo que dijo>;go` y `ofi:…!ok;dijo=…;go` — sin `dijo=` el robot no lo hace. El botón ✅ Etiquetadas de la web lo usa él (o el chat de Chrome cuando imprime).
 - **📬 Buzón** (25/10, eligió 15a): el chat de Chrome de las cajas (o él) deja en Mi oficina → "Mensaje para Claude" lo que no puede arreglar
   desde el panel (`cyc/buzon`); cada vuelta corre `buzon` y marca `buzon:leido=<ts>;go` (ml-consulta).
 - **Las cajas salen de lunes a viernes a las 12** (25/10, él): armada después del viernes a las 12 sale el lunes. Los días de viaje se

@@ -804,6 +804,10 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 
 ## 3 · MERCADERÍA (miércoles)
 
+### 🏷️ Pasar a "con etiqueta" sólo con su palabra (26/10/2026, él: "que nunca se pueda pasar a con etiqueta sin que yo te diga")
+- **Qué es:** `sinetiq` que BAJA (=0, -N, un número menor) y `ofi:…!ok` piden `dijo=<lo que dijo él>` en el mismo comando; sin eso: "NO ESCRIBO NADA".
+- **Qué chequear:** que subir siga andando sin `dijo=` · que el ✅ Etiquetadas de la web (lo aprieta él) no cambie.
+
 ### 🏷️ Los "llegó" del robot también dejan sin etiqueta (26/10/2026, él: "¿los agregaste a mi oficina? así voy viendo las etiquetas")
 - **Qué es:** `sinEtiqSumarBot` suma a `cyc/sinetiq` lo que `ofiSumarBot` sube a la oficina (`pyped:llego` y las listas) y lo que suma `pvped:llego` (Paulvic). Antes sólo lo hacían la web y `ofi:`: el pedido de Paraguay del 19/10 entró con 12 u. y 0 sin etiqueta (cargadas a mano con `sinetiq`).
 - **Qué chequear:** que un "llegó" del robot muestre "🏷️ sin etiqueta a → b" en cada renglón · que la tarjeta de Contar lo que hay las liste · que deshacer una caja (devolución) NO las sume.
