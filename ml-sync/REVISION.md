@@ -1379,6 +1379,13 @@ es el promedio por día de cada mes (`_lnPromMes`): cada día muestra el de su m
 del gráfico se suman los días desde el 1º aunque queden antes (`_lnPreMes`). Línea de cada producto y general. Probado: sep $5.000/día,
 oct $10.000/día con ventas de prueba. Qué chequear: que el salto caiga justo el día 1 y que el número de "hoy" sea el del mes en curso.
 
+### Etapa 7 · 26/10/2026 · v26.97 · 📈 Línea de tiempo: días arriba, colores al lado del nombre, sin tarjetas
+Él: *"las variantes que vayan al final del nombre del producto · los días/períodos para elegir que estén arriba de todo también"* y
+con las 4 tarjetas: *"esto sacarlo, ya que todo está puesto en las métricas. Lo único, la estrategia ponela en el precio. La actual"*.
+Arriba de todo los botones (📋 Ficha · 📈 Todos · 365/90/30 · giro · ✕), abajo el nombre con los colores a continuación; sin `_lnCards`
+(en 📈 Todos quedan las suyas); el chip de la estrategia de hoy (`_estChip(_estHoy)`) en la derecha del 💲 Precio; el aviso de "N
+publicaciones distintas" sigue, suelto. Qué chequear: con colores y sin colores, celu y PC; el ✕ no se corre al elegir un color.
+
 ### Etapa 3 · 26/10/2026 · 📦 `devcodigo[:días]`: dónde guarda ML el código de una devolución
 Él: *"cada tanto llegan devoluciones que van con QR. ¿vos podés verlas cuando llegan? ¿y mandarme el código a Telegram? revisar cada 2 h
 … de las cuatro cuentas"*. Primer paso, sólo lee: recorre los reclamos con devolución de las 4 cuentas y de la devolución y su envío

@@ -3074,7 +3074,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='26.96';
+const APP_VERSION='26.97';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3087,6 +3087,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'26.97',f:'26/10',h:'17:57',c:[{n:2,t:'📈 Línea de tiempo: los botones de días van arriba de todo, los colores al lado del nombre y se sacaron las 4 tarjetas (todo está en los gráficos); la estrategia de hoy va en el renglón del 💲 Precio.'}]},
   {v:'26.96',f:'26/10',h:'17:40',c:[{n:1,t:'🛒 Ventas: el título, el buscador y ⚙️ Filtros pasaron abajo de la lista de ventas (la lista queda arriba, pegada a los números del día).'}]},
   {v:'26.95',f:'26/10',h:'17:33',c:[{n:3,t:'⚡ Lo nuevo (una venta, un cambio del robot) aparece en 1/4 de segundo y nunca tarda más de 1 segundo, aunque el robot esté escribiendo seguido (desde la 26.84 podía esperar a que el robot terminara).'}]},
   {v:'26.94',f:'26/10',h:'17:23',c:[{n:1,t:'🆕 Ventas: se sacó el botón azul de arriba; "N ventas nuevas desde que miraste · +$X" va ahora en la rayita que separa lo nuevo de lo ya visto (o al final si todas son nuevas).'}]},
@@ -12138,18 +12139,15 @@ function lineaPintar(prodId){
     else if(I.sinRepo){col='var(--amber)';t='⏳ <b>Sin reposición:</b> el precio va para venderlo todo en ~100 días.';}
     else if(I.q===0&&uT>0){col='var(--amber)';t='⏸️ <b>Agotado en Full</b>'+(I.cs>0?` · hay ${I.cs} en la oficina`:'')+(I.tr?` · caja en camino: ${I.cajTxt}`:'');}
     if(!t)return'';return `<div style="margin:8px 0;padding:8px 12px;border-radius:9px;border:1px solid ${col};background:color-mix(in srgb, ${col} 12%, transparent);font-size:.76rem;line-height:1.45">${t}</div>`;})();
-  const _lnCards=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px;margin:6px 0 4px">${
-    _lnCard('Vendió',`${uT} u.`,'',`${vT} visitas${uPT?` · <span style="color:#f97316">${uPT} en Premium</span>`:''}${uGT?` · <span style="color:#38bdf8">${uGT} con envío gratis</span>`:''}${uRT?` · ${uRT} en remate`:''}`)}${
-    _lnCard('Ganancia',hayGan&&gPct!=null&&isFinite(gPct)?`${gPct.toFixed(0)}%`:'—',hayGan&&gPct!=null&&isFinite(gPct)?pctColor(gPct):'',_gHoy!=null?`hoy ${fmt(Math.round(_gHoy))} por día`:'sin ventas con costo')}${
-    _lnCard('Stock en Full',`${_stI.q!=null?_stI.q:'—'} u.`,_stI.cHoy,`${_stI.stTxt||''}${_stI.cs>0?` · +${_stI.cs} en la oficina`:''}${_stI.tr?` · ${_stI.tr.u} u. en camino`:' · sin caja en camino'}`)}${
-    _lnCard('Precio',pFin?fmt(pFin):'—','',`${pIni&&pFin&&pIni!==pFin?`antes ${fmt(pIni)} · `:''}${_estChip(_estHoy)}${_pubsDistintas()}`)}</div>`;
+  // Las 4 tarjetas (Vendió · Ganancia · Stock · Precio) se sacaron el 26/10/2026 (él: "esto sacarlo, ya que todo está puesto en las
+  // métricas. Lo único, la estrategia ponela en el precio. La actual"): la estrategia de hoy va en el renglón del 💲 Precio.
   // TÍTULO Y NÚMERO DE HOY DE CADA FRANJA (22/10/2026, 2a): arriba de cada franja, el nombre y sus colores a la izquierda y el dato de
   // hoy a la derecha. Lo técnico (de qué publicación salen las rayas, por qué no se sabe el techo) va al globito o al costado del título.
   const _cjTxt={g:'la ganamos',c:'compartida',p:'la perdemos',n:'no es de catálogo',s:'sin caja',z:'ninguna activa'};
   const _cjHoy=(dias[_kLast]&&dias[_kLast].caja)||null;
   const _lnHdr=(n,tit,leg,der)=>lnHdrHTML(L,H,n,tit,leg,der);
   const _lnHdrs=_lnHdr('pr','💲 Precio',_lgS('var(--text)','color = estrategia')+(_rayas&&(_rayas.best||_rayas.techo)?_lgS('#eab308','💰 más plata')+_lgS('var(--red)','🔴 techo'):''),
-      `${pFin?'hoy <b>'+fmt(pFin)+'</b>':''}${_prNotas.length?' · <span style="color:var(--muted)">'+_prNotas.join(' · ')+'</span>':''}${_prRayasDe?` <span style="color:var(--muted);cursor:help" title="Hay más de una publicación activa a precios distintos (por ejemplo la Clásica y su gemela Premium): las rayas se miden con la de precio más bajo sola, como el robot (techo95). Es la ${_prRayasDe}.">ⓘ</span>`:''}`)
+      `${pFin?'hoy <b>'+fmt(pFin)+'</b>':''}${_estHoy&&ESTRATEGIA_UI[_estHoy.t]?' '+_estChip(_estHoy):''}${_prNotas.length?' · <span style="color:var(--muted)">'+_prNotas.join(' · ')+'</span>':''}${_prRayasDe?` <span style="color:var(--muted);cursor:help" title="Hay más de una publicación activa a precios distintos (por ejemplo la Clásica y su gemela Premium): las rayas se miden con la de precio más bajo sola, como el robot (techo95). Es la ${_prRayasDe}.">ⓘ</span>`:''}`)
     +_lnHdr('vent','🛒 Ventas y visitas',_lgS('var(--green)','vendidas',1)+(uPT?_lgS('#f97316','Premium',1):'')+(uGT?_lgS('#38bdf8','envío gratis',1):'')+(uRT?_lgS('#facc15','remate',1):'')+(hayVis?_lgS('#60a5fa','visitas',1):''),`<b>${uT} u.</b> · ${vT} visitas`)
     +_lnHdr('gan','💵 Plata por día',_lgS('var(--green)','promedio del mes')+_lgS('#a78bfa','semana')+_lgS('rgba(34,197,94,.5)','días del mes que se vende más',1)+_lgS('rgba(239,68,68,.45)','días flojos',1)+_lgS('rgba(245,158,11,.6)','fecha especial',1),_gHoy!=null?`hoy <b>${fmt(Math.round(_gHoy))}</b> por día`:'')
     +_lnHdr('pct','📊 % de ganancia',(pvs.length?_lgS('var(--green)','% de lo vendido'):'')+(cvs.length?_lgS('#f59e0b','costo'):''),`${_pctHoy!=null?`<b style="color:${pctColor(_pctHoy)}">${Math.round(_pctHoy)}%</b> la última venta`:''}${_pctCosto>0?` · costo <span style="color:#f59e0b">${fmt(Math.round(_pctCosto))}</span>`:''}`)
@@ -12162,10 +12160,10 @@ function lineaPintar(prodId){
   // LA CABECERA (21/10/2026 · etapa 5): el título va en su propio renglón y los botones abajo, pegados a la derecha (y el de giro con
   // ancho fijo): elegir un color (título más largo) o cambiar "⤿ de costado"/"⤾ parada" ya no corre el ✕ ni los botones de días.
   m.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;max-width:1500px;width:100%;padding:10px 14px;margin-top:4px">
-    <div style="font-size:.9rem;font-weight:700;line-height:1.35;overflow-wrap:anywhere">📈 ${p.name}${_lineaVar?` · <span style="color:#a78bfa">${_lineaVar}</span>`:''}</div>
-    <div class="linea-btns" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;margin-top:6px">${_lineaFichaMlas(prodId,_lineaVar).length?`<button class="btn" onclick="lineaFichaAbrir('${prodId}',event)" style="font-size:.66rem;padding:3px 10px" title="La ficha completa de la publicación: lo que ya sabemos, cada cambio de precio y cómo le fue">📋 Ficha</button>`:''}<button class="btn" onclick="lineaTodoAbrir(event)" style="font-size:.66rem;padding:3px 10px" title="La misma línea con TODOS los productos juntos">📈 Todos</button>${btn(365)}${btn(90)}${btn(30)}${_lineaGiroBtn()}<button class="btn" onclick="document.getElementById('linea-modal').remove()" style="font-size:.7rem;padding:3px 10px">✕</button></div>
-    ${_vars.length>1?`<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px">${['',..._vars].map((v,i)=>`<button class="btn" onclick="lineaVar(_lineaVarsL[${i}],'${prodId}')" style="font-size:.62rem;padding:2px 9px;${_lineaVar===v?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}">${v||'Todas juntas'}</button>`).join('')}</div>`:''}
-    ${_lnAlerta}${_lnCards}
+    <!-- 26/10/2026, él: "las variantes que vayan al final del nombre del producto · los días/períodos para elegir que estén arriba de todo" -->
+    <div class="linea-btns" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end">${_lineaFichaMlas(prodId,_lineaVar).length?`<button class="btn" onclick="lineaFichaAbrir('${prodId}',event)" style="font-size:.66rem;padding:3px 10px" title="La ficha completa de la publicación: lo que ya sabemos, cada cambio de precio y cómo le fue">📋 Ficha</button>`:''}<button class="btn" onclick="lineaTodoAbrir(event)" style="font-size:.66rem;padding:3px 10px" title="La misma línea con TODOS los productos juntos">📈 Todos</button>${btn(365)}${btn(90)}${btn(30)}${_lineaGiroBtn()}<button class="btn" onclick="document.getElementById('linea-modal').remove()" style="font-size:.7rem;padding:3px 10px">✕</button></div>
+    <div style="font-size:.9rem;font-weight:700;line-height:1.35;overflow-wrap:anywhere;margin-top:6px">📈 ${p.name}${_vars.length>1?`<span style="display:inline-flex;gap:5px;flex-wrap:wrap;vertical-align:middle;margin-left:8px">${['',..._vars].map((v,i)=>`<button class="btn" onclick="lineaVar(_lineaVarsL[${i}],'${prodId}')" style="font-size:.62rem;padding:2px 9px;${_lineaVar===v?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}">${v||'Todas juntas'}</button>`).join('')}</span>`:''}</div>
+    ${_lnAlerta}${_pubsDistintas()}
     <div style="font-size:.6rem;color:var(--muted);margin:0 0 4px;line-height:1.5">${_lineaRango} días · historial de stock: <span style="color:var(--green)">${dCon} d con</span> · <span style="color:var(--red)">${dSin} d sin</span> · ${dNo} d sin dato${dRem?` · ${dRem} d rematando`:''} · ${Object.keys(porMlaF).length} publicación(es)${C.fallo?' · <span style="color:var(--amber)">alguna publicación no se pudo leer</span>':''}</div>
     <div style="position:relative">
       ${_lnHdrs}
@@ -12331,8 +12329,8 @@ function lineaTodoPintar(){
   const lab=(y,t)=>`<div style="position:absolute;left:0;top:${y/(H+16)*100}%;font-size:.6rem;color:var(--muted);transform:translateY(-1px)">${t}</div>`;
   const viejo=_ltC.ts?(Date.now()-_ltC.ts)/864e5:null;
   m.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;max-width:1500px;width:100%;padding:10px 14px;margin-top:4px">
-    <div style="font-size:.9rem;font-weight:700;line-height:1.35">📈 Todos los productos</div>
-    <div class="linea-btns" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;margin-top:6px">${btn(365)}${btn(90)}${btn(30)}${_lineaGiroBtn()}<button class="btn" onclick="document.getElementById('linea-modal').remove()" style="font-size:.7rem;padding:3px 10px">✕</button></div>
+    <div class="linea-btns" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end">${btn(365)}${btn(90)}${btn(30)}${_lineaGiroBtn()}<button class="btn" onclick="document.getElementById('linea-modal').remove()" style="font-size:.7rem;padding:3px 10px">✕</button></div>
+    <div style="font-size:.9rem;font-weight:700;line-height:1.35;margin-top:6px">📈 Todos los productos</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px;margin:6px 0 4px">${_lnCard('Vendió',`${uT.toLocaleString('es-AR')} u.`,'',`${vT.toLocaleString('es-AR')} visitas${uPT?` · <span style="color:#f97316">${uPT.toLocaleString('es-AR')} en Premium</span>`:''}${uGT?` · <span style="color:#38bdf8">${uGT.toLocaleString('es-AR')} con envío gratis</span>`:''}`)}${_lnCard('Ganancia',gT?fmt(Math.round(gT)):'—',gPct!=null&&isFinite(gPct)?pctColor(gPct):'',(gPct!=null&&isFinite(gPct)?`${gPct.toFixed(0)}% de ganancia`:'')+(gPT?` · <span style="color:#f97316">Premium ${fmt(Math.round(gPT))}</span>`:'')+(gGT?` · <span style="color:#38bdf8">envío gratis ${fmt(Math.round(gGT))}</span>`:''))}${_lnCard('Stock en Full',`${hoyR.st.toLocaleString('es-AR')} u.`,'','hoy, las 4 cuentas')}${_lnCard('Cambios de precio',`<span style="color:var(--green)">▲ ${sT}</span> <span style="color:var(--red)">▼ ${bT}</span>`,'',iIni!=null&&iFin!=null?`índice de precio ${iIni.toFixed(0)} → ${iFin.toFixed(1)}`:'')}</div>
     <div style="font-size:.6rem;color:var(--muted);margin:0 0 4px;line-height:1.5">${_ltRango} días${_ltC.fallo?` · <span style="color:var(--amber)">no pude leer la línea del robot (${_ltC.fallo}): sólo lo del panel</span>`:(!Object.keys(R).length?' · <span style="color:var(--amber)">el robot todavía no armó la línea de todos: stock, visitas y precio salen desde la próxima noche</span>':(viejo>2?` · <span style="color:var(--amber)">la línea del robot es de hace ${Math.floor(viejo)} días</span>`:''))}</div>
     <div style="position:relative">
