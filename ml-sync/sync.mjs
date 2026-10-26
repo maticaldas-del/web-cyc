@@ -47114,8 +47114,10 @@ async function main() {
       // Mismo stock (`kSt` = ficha + cuenta + color), activas, sin gemelas. La vuelta mira cada grupo: si son el mismo producto, las deja al
       // mismo precio y estrategia (la que se está midiendo); si no lo son (otra variante mal vinculada), `fijarvar`/`vincular`. Tiene que quedar vacía.
       const _dup = {}; for (const r of filas) { if (!r.kSt || !(r.P > 0) || !/^active/.test(String(r.est)) || /^💳/.test(String(r.exc || ''))) continue; (_dup[r.kSt + '|' + r.lt] ||= []).push(r); }   // Clásica y Premium pueden tener distinto precio (cuotas): se comparan dentro del mismo tipo
-      const _dupL = Object.values(_dup).filter((g) => g.length > 1 && new Set(g.map((r) => Math.round(r.P))).size > 1);
-      console.log(`\n── 👯 MISMO PRODUCTO Y COLOR (mismo stock) CON DISTINTO PRECIO: ${_dupL.length} · si son exactamente el mismo producto, igualar EN ESTA VUELTA (mismo precio y estrategia); si es otra variante mal vinculada, fijarvar/vincular ──`);
+      // 26/10/2026, él con las Cartas Poker Rojo y Azul (las dos a $9.790, una 📈 techo y otra 💰): "una está buscando techo y otra el mejor
+      // precio, pero las dos están en el techo, no entiendo". Mismo precio con distinta estrategia también entra: se iguala la estrategia.
+      const _dupL = Object.values(_dup).filter((g) => g.length > 1 && (new Set(g.map((r) => Math.round(r.P))).size > 1 || new Set(g.map((r) => (r.est2 || {}).t)).size > 1));
+      console.log(`\n── 👯 MISMO PRODUCTO Y COLOR (mismo stock) CON DISTINTO PRECIO O ESTRATEGIA: ${_dupL.length} · si son exactamente el mismo producto, igualar EN ESTA VUELTA (mismo precio y estrategia); si es otra variante mal vinculada, fijarvar/vincular ──`);
       for (const g of _dupL) { console.log(`👯 ${g[0].cta} · ${g[0].nom}`); for (const r of g.sort((x, y) => x.P - y.P)) console.log(`     ${r.mla} · ${f(r.P)} · ${r.mg != null ? Math.round(r.mg) + '%' : '?'} · ${ESTRATEGIAS[r.est2.t] || r.est2.t} · ${r.catalogo ? 'catálogo' : 'no catálogo'} · ${r.lt}`); }
       // 24/10/2026: las que ML tiene en revisión para siempre no se miran más (`ML_REVISION_NO_MIRAR`): fuera de todas las listas.
       { const nR = filas.length; for (let i = filas.length - 1; i >= 0; i--) if (ML_REVISION_NO_MIRAR.has(filas[i].mla) && /revisión/.test(filas[i].exc || '')) { filas.splice(i, 1); fuera.revisionML = (fuera.revisionML || 0) + 1; } if (filas.length < nR) console.log(`(${nR - filas.length} en revisión de ML para siempre: no se miran más, regla suya del 24/10)`); }

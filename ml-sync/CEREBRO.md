@@ -192,7 +192,7 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
    (uno por renglón, en la corrida final de ml-sync). Si la Premium no llega a la misma plata neta o al 35% en el peor caso, no se
    crea y queda una nota con el motivo. Si ML no deja (sin `user_product_id`, con variantes), se anota y se le dice a él sólo si
    es algo que vende. La lista tiene que quedar vacía.
-6b2. **👯 Mismo producto y color en dos publicaciones = mismo precio (26/10/2026, él con el Centímetro Blanco).** Lista 👯 de `planilla`
+6b2. **👯 Mismo producto y color en dos publicaciones = mismo precio y misma estrategia (26/10/2026, él con el Centímetro Blanco y las Cartas Poker).** Lista 👯 de `planilla`
    (mismo stock, activas, sin gemelas). Por cada grupo: ¿es EXACTAMENTE el mismo producto (título, catálogo, foto, variante)? Sí → las dos
    al mismo precio y estrategia, la del escalón que se está midiendo (`decido` en cada una, mismo #tag). No (otra variante mal vinculada)
    → `fijarvar`/`vincular` bien. Borrar una de las dos lo decide él (se le propone en `para_mati.md`). Tiene que quedar vacía.
