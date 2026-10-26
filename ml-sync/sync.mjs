@@ -7,8 +7,8 @@
 //   FIREBASE_API_KEY, FIREBASE_DB_URL, FIREBASE_BOT_EMAIL, FIREBASE_BOT_PASSWORD
 
 import { fbSignIn, makeDB, mlRefresh, mlGet, ML_API, tapaIdsLargos, mlConteo, mlConteoTxt, dbConteo } from './lib.mjs';
-import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
-import { createHmac, randomInt } from 'node:crypto';
+import { writeFileSync, mkdirSync, readFileSync, readdirSync, existsSync } from 'node:fs';
+import { createHmac, randomInt, generateKeyPairSync, privateDecrypt, createDecipheriv, createHash, constants as cryptoK } from 'node:crypto';
 
 // LO PRIVADO VIAJA CIFRADO (20/10/2026, etapa 4, él eligió la 1a): el repo y sus registros son PÚBLICOS, así que las listas de
 // precios de los proveedores no se suben legibles. Claude las cifra con `ml-sync/tools/cifrar.mjs` y la llave pública
@@ -49869,6 +49869,62 @@ async function main() {
       await db.patch('cyc/compraspy/' + id, { ticketFoto: Math.max(ya, n), ticketFotoChat: v });
       const r = await db.get('cyc/compraspy/' + id);
       console.log(r && Number(r.ticketFoto) >= n && r.ticketFotoChat && r.ticketFotoChat.ts === v.ts ? `✓ anotado: ${id} tiene el ticket visto (${r.ticketFoto} foto/s)` : '⚠️ NO QUEDÓ anotado');
+      return;
+    }
+    // 📷 LAS FOTOS DEL TICKET QUE ME PASA POR EL CHAT, VISIBLES EN EL DETALLE (26/10/2026, él: "los cargaste para poder verlo en el
+    // detalle del envío? siempre quiero ver"). El repo y los registros son públicos, así que la foto viaja CERRADA: el robot tiene una llave
+    // (la privada vive en `mlapi/ticketllave`, fuera del repo; la pública se puede mostrar, no abre nada). Yo cierro cada foto con la
+    // pública (AES-256-GCM con una clave al azar, y esa clave con RSA-OAEP), la dejo en `ml-sync/cifrado/<pedido>/*.enc` y el robot la
+    // abre y la sube igual que el 📷 de la web (`mlapi/pyticketfoto/<id>/<ts>` = {img,ts}) y anota cuántas hay (`ticketFoto`).
+    //   ticketllave[;go]        → muestra la llave pública (con ;go la crea si no hay)
+    //   ticketsube:<id>[;go]    → abre las fotos cerradas del pedido y las sube (sin ;go sólo dice cuántas y de qué tamaño)
+    // Nunca imprime la foto ni su contenido: sólo tamaño y si ya estaba (misma huella = no se sube dos veces).
+    if (/^ticketllave(;go)?$/.test(String(process.env.BILLING_PROBE || '').trim())) {
+      const GOk = /;go$/.test(String(process.env.BILLING_PROBE).trim()) && !DRY;
+      const ya = await db.get('mlapi/ticketllave');
+      if (ya && ya.pub) { console.log('Ya hay llave. La pública (no abre nada, se puede mostrar):\n' + ya.pub); return; }
+      if (!GOk) { console.log('Todavía no hay llave. Con ticketllave;go la creo.'); return; }
+      const { publicKey, privateKey } = generateKeyPairSync('rsa', { modulusLength: 3072, publicKeyEncoding: { type: 'spki', format: 'pem' }, privateKeyEncoding: { type: 'pkcs8', format: 'pem' } });
+      await db.set('mlapi/ticketllave', { pub: publicKey, priv: privateKey, ts: Date.now() });
+      const r = await db.get('mlapi/ticketllave');
+      console.log(r && r.pub === publicKey && r.priv ? '✓ Llave creada y releída. La pública:\n' + publicKey : '⚠️ La llave NO quedó guardada');
+      return;
+    }
+    if (/^ticketsube:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const raw = String(process.env.BILLING_PROBE).trim().slice('ticketsube:'.length);
+      const GOs = /;go$/.test(raw) && !DRY; const id = raw.replace(/;go$/, '').trim();
+      if (!/^[a-z0-9_]+$/i.test(id)) { console.log('Va así: ticketsube:py20261026;go'); return; }
+      const c = await db.get('cyc/compraspy/' + id);
+      if (!c) { console.log(`No hay pedido ${id} en cyc/compraspy.`); return; }
+      const dir = new URL('./cifrado/' + id + '/', import.meta.url);
+      if (!existsSync(dir)) { console.log(`No hay fotos cerradas para ${id} (ml-sync/cifrado/${id}/).`); return; }
+      const archs = readdirSync(dir).filter((f) => /\.enc$/.test(f)).sort();
+      const ll = await db.get('mlapi/ticketllave');
+      if (!ll || !ll.priv) { console.log('No hay llave: primero ticketllave;go.'); return; }
+      const ya = (await db.get('mlapi/pyticketfoto/' + id)) || {};
+      const huellas = new Set(Object.values(ya).map((x) => x && (x.h || (x.img ? createHash('sha256').update(String(x.img)).digest('hex') : ''))));
+      console.log(`=== 📷 ${id} · ${c.fecha} · ${c.estado} · en la base: ${Object.keys(ya).length} foto/s · cerradas en el repo: ${archs.length}${GOs ? '' : ' · (PRUEBA, agregá ;go)'} ===`);
+      let n = 0, ts0 = Date.now();
+      for (const f of archs) {
+        let img;
+        try {
+          const e = JSON.parse(readFileSync(new URL(f, dir), 'utf8'));
+          const k = privateDecrypt({ key: ll.priv, padding: cryptoK.RSA_PKCS1_OAEP_PADDING, oaepHash: 'sha256' }, Buffer.from(e.k, 'base64'));
+          const d = createDecipheriv('aes-256-gcm', k, Buffer.from(e.iv, 'base64')); d.setAuthTag(Buffer.from(e.tag, 'base64'));
+          img = Buffer.concat([d.update(Buffer.from(e.d, 'base64')), d.final()]).toString('utf8');
+        } catch (err) { console.log(`  ✗ ${f}: no se pudo abrir (${err.message})`); continue; }
+        if (!/^data:image\/(jpeg|png|webp);base64,/.test(img) || img.length > 1000000) { console.log(`  ✗ ${f}: no es una foto o pesa de más (${Math.round(img.length / 1024)} KB)`); continue; }
+        const h = createHash('sha256').update(img).digest('hex');
+        if (huellas.has(h)) { console.log(`  = ${f}: ya estaba en la base`); continue; }
+        console.log(`  + ${f}: foto de ${Math.round(img.length / 1024)} KB`);
+        if (!GOs) continue;
+        const ts = ts0 + n; await db.set(`mlapi/pyticketfoto/${id}/${ts}`, { img, ts, h, por: 'claude' }); huellas.add(h); n++;
+      }
+      if (!GOs) return;
+      const tot = Object.keys((await db.get('mlapi/pyticketfoto/' + id)) || {}).length;
+      if (tot > 0) await db.patch('cyc/compraspy/' + id, { ticketFoto: tot });
+      const r = await db.get('cyc/compraspy/' + id);
+      console.log(`✓ ${n} subida/s · en la base hay ${tot} · el pedido dice ${r && r.ticketFoto} foto/s. Ya se ven en el detalle (📷).`);
       return;
     }
     if (/^pydet:/.test(String(process.env.BILLING_PROBE || ''))) {

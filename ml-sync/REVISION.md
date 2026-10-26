@@ -1347,6 +1347,19 @@ el precio de un candidato distinto con código parecido (se compara también por
 - **20/10/2026 · v25.48 · El "otro producto" de una lista vale sólo para el catálogo que se miró** (etapa 3). `listaestado` mostró 490 de los 674 de Nippon con 25%+ marcados `noEs` (el chat de compras los miró el 18/10, cuando el robot buscaba con el nombre abreviado y traía cualquier cosa). La marca era del producto y no del catálogo: aunque el robot encontrara el correcto, quedaban afuera para siempre. Ahora `listaNoEsVale` (sync.mjs) / `_listaNoEsVale` (index.html) exigen que `noEsCat` sea el `mi` de hoy; `listadato …=no` guarda `noEsCat`, `ok` lo borra; las marcas viejas lo reciben (el `mi` de antes) la primera vez que se vuelven a medir. Los `noEs` sin `qv` se vuelven a buscar con el nombre traducido aunque estén frescos, y la búsqueda saltea el catálogo rechazado. Chequear: que un `noEs` con catálogo nuevo salga en `listarevisar` y no cuente como dado hasta el ✅.
 - **20/10/2026 · v25.49 · Arriba de cada lista: evaluados y sin evaluar** (etapa 3, reemplaza la línea de v25.46). Él: *"poné los productos evaluados y los no evaluados, con sus números de cuántos dan bien, cuántos no"*. Cada producto cae en UN grupo (`_grp` en `renderListas`): ya es ficha · afuera (sacado, `noWeb`, `fz`) · ⏳ sin evaluar (nunca buscado, `sc`/`sv`/`noEs` con `qv` viejo, o costo no vigente) · ✅ evaluados: 🟢 `_listaDa` · 🔎 `_listaRevisar` · ⚫ no está en ML (`m` null) · 🔴 no da. Chequear: que los grupos sumen el total.
 
+### Etapa 3 · 26/10/2026 · 📷 Las fotos del ticket que me pasa por el chat se ven en el detalle
+Él: *"los cargaste para poder verlo en el detalle del envío? siempre quiero ver"*. Antes sólo quedaba "la vio Claude" (`pyticketvisto`)
+porque la foto no podía pasar por el repo ni el registro (públicos). Ahora viaja CERRADA: `ticketllave;go` crea la llave del robot (la
+privada en `mlapi/ticketllave`, nunca en el repo); yo cierro cada foto con la pública (AES-256-GCM + RSA-OAEP 3072) en
+`ml-sync/cifrado/<pedido>/*.enc` y `ticketsube:<pedido>;go` (ml-sync) la abre y la sube igual que el 📷 de la web
+(`mlapi/pyticketfoto/<id>/<ts>`, con huella `h` para no subirla dos veces) y anota `ticketFoto`. El registro sólo dice tamaños.
+- **Qué chequear:** que la foto se vea en el detalle del pedido; que `ml-sync/cifrado` siga fuera de la web (`.assetsignore` tiene `ml-sync`);
+  que nunca se imprima `priv` ni la imagen.
+
+### Etapa 7 · 26/10/2026 · v26.79 · 💵 Plata por día con promedio de 15 días
+Él: *"línea en vez de 7 días 15 días"*. `LN_PROM_DIAS=15` en la línea de cada producto y en la general (los 14 días de antes del gráfico
+se suman solos). Qué chequear: que la línea arranque desde el primer día del gráfico cuando hay datos de antes.
+
 ### Etapa 3 · 26/10/2026 · v26.78 · Elegancia apagada
 Él: *"eliminá elegancia. nunca se usa y genera problemas"*.
 - **Qué es:** la web ya no deja elegir Elegancia ni muestra la fila "Proveedor:" (`PY_PROVS_VER=['nissei']`; quien la tenía guardada

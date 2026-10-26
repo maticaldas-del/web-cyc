@@ -357,7 +357,7 @@
   un costo, el viejo se congela por mes (`precios_hist_prod`).
 - **Ticket real obligatorio para cerrar el pedido** (10/10; 25/10 con FOTO, él con el Sony: *"no sabemos si no lo mandaron o si no lo
   cobraron"*): renglones con `compray:<fecha>|det=<código>*<u>*<pagado>;…|go` (ml-sync) + la foto, que la sube él desde el detalle del
-  pedido (📷, `mlapi/pyticketfoto/<id>`, `cyc/compraspy/<id>/ticketFoto` = cuántas). **Si me la pasa por el chat la anoto yo** (26/10, él: *"siempre subí vos eso"*): `pyticketvisto:<id>=<n>|<nota>;go` (ml-consulta) — la imagen no puede viajar a la base sin pasar por algo público, así que queda "✓ la vio Claude en el chat" contra los renglones y cuenta para cerrar. Sin las dos no se cierra (web y `pyped:llego`);
+  pedido (📷, `mlapi/pyticketfoto/<id>`, `cyc/compraspy/<id>/ticketFoto` = cuántas). **Si me la pasa por el chat la subo yo y se tiene que VER en el detalle** (26/10, él: *"siempre subí vos eso"* y *"siempre quiero ver"*): la cierro con la llave del robot (`mlapi/ticketllave`; script en REVISION etapa 3) en `ml-sync/cifrado/<id>/*.enc` y `ticketsube:<id>;go` (ml-sync) la sube; nunca en claro al repo ni al registro. Sin las dos no se cierra (web y `pyped:llego`);
   arriba de Pedidos Paraguay sale en rojo lo que falta (todo lo en camino y lo pedido desde el 25/10). Datos del mayorista: no al repo.
   Con dos tipos el mismo día pide `|repo`/`|nuevos`.
 - **⛔ Mirado en Paraguay hace 7+ días no se pide** (26/10, él: *"pudo modificarse el precio o el stock y que no deje pedirlo"*): en rojo
