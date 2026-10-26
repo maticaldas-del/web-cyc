@@ -852,7 +852,8 @@ body.light #home-dolar-logo img{mix-blend-mode:multiply!important;filter:invert(
 /* 17/10/2026, él: "sacar eso de todos, no lo miramos nunca": el cartel 🧠 sin decidir y los cuadros de conteo de Pedidos, ocultos (se siguen calculando) */
 #ped-sindecidir,#pedidos-papelera-count{display:none!important}
 /* y de los cuadros sólo queda "Falta reponer" (pedido suyo, mismo día) */
-#pedidos-prioridad-count .pcount:not(.pcount-reponer),#pedidos-count .pcount:not(.pcount-reponer),#pedidos-py-count .pcount:not(.pcount-reponer),#pedidos-paulvic-count .pcount:not(.pcount-reponer){display:none!important}
+/* 26/10/2026: también queda el de la última vuelta completa de Nissei (`pcount-vuelta`); esta regla lo escondía y él no lo veía. */
+#pedidos-prioridad-count .pcount:not(.pcount-reponer):not(.pcount-vuelta),#pedidos-count .pcount:not(.pcount-reponer):not(.pcount-vuelta),#pedidos-py-count .pcount:not(.pcount-reponer):not(.pcount-vuelta),#pedidos-paulvic-count .pcount:not(.pcount-reponer):not(.pcount-vuelta){display:none!important}
 .pcount{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:.65rem;color:var(--muted)}
 .pcount strong{font-family:'Syne',sans-serif;font-size:.95rem;color:var(--text);display:block;margin-bottom:2px}
 .cmp-type{font-size:.64rem;text-transform:uppercase;letter-spacing:.08em;border-radius:5px;padding:3px 8px;white-space:nowrap}
@@ -3095,7 +3096,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.03';
+const APP_VERSION='27.04';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3108,6 +3109,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.04',f:'26/10',h:'18:40',c:[{n:1,t:'🔄 Pedidos → Paraguay: ahora sí se ve al lado de "Falta reponer" el cuadro de la última vuelta completa de Nissei (una regla vieja lo escondía).'}]},
   {v:'27.03',f:'26/10',h:'18:40',c:[{n:2,t:'🇵🇾 Paraguay: el puntaje ⭐ gana × vende va siempre a la derecha, al lado del %, en cada producto (el 🚀 suelto se sacó del renglón; sigue en el detalle). El nombre largo se corta con "…".'}]},
   {v:'27.02',f:'26/10',h:'18:27',c:[{n:1,t:'📦 Pedidos: se sacó el cartel "Cambió desde que miraste". El cuadrito de la vuelta de Nissei ahora dice "última vuelta completa Nissei · hace N días" (o "nunca" en rojo si todavía no hubo una completa).'}]},
   {v:'27.01',f:'26/10',h:'18:21',c:[{n:3,t:'🔄 La web se da cuenta sola de que hay una versión nueva aunque el navegador no avise (mira cada 2 minutos y al volver a la ventana) y se recarga sola.'}]},
@@ -19085,7 +19087,7 @@ function _pyVueltaChip(){
   const d=f>0?Math.floor((Date.now()-f)/864e5):null;
   const col=d==null?'var(--red)':d>=7?'var(--red)':d>=5?'var(--amber)':'var(--green)';
   const tit=f>0?`Última vuelta completa por la web de Nissei: ${new Date(f).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'})} · ${v.vistos||'?'} de ${v.total||'?'} productos (${v.pct||'?'}%). Completa = 90% o más de los productos.`:'Todavía no hay una vuelta completa anotada (90% o más de los productos de la web de Nissei).';
-  return `<div class="pcount" title="${tit}"><strong style="color:${col}">${d==null?'nunca':d===0?'hoy':d===1?'hace 1 día':'hace '+d+' días'}</strong>🔄 última vuelta completa Nissei</div>`;
+  return `<div class="pcount pcount-vuelta" title="${tit}"><strong style="color:${col}">${d==null?'nunca':d===0?'hoy':d===1?'hace 1 día':'hace '+d+' días'}</strong>🔄 última vuelta completa Nissei</div>`;
 }
 function _pedCostoChip(peds){
   const c=_pedsCostoReponer(peds);

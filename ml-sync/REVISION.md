@@ -1379,6 +1379,11 @@ es el promedio por día de cada mes (`_lnPromMes`): cada día muestra el de su m
 del gráfico se suman los días desde el 1º aunque queden antes (`_lnPreMes`). Línea de cada producto y general. Probado: sep $5.000/día,
 oct $10.000/día con ventas de prueba. Qué chequear: que el salto caiga justo el día 1 y que el número de "hoy" sea el del mes en curso.
 
+### Etapa 7 · 26/10/2026 · v27.04 · 🔄 El cuadro de la vuelta de Nissei se ve
+Él: *"sigo sin ver la última vuelta"*. La regla del 17/10 que deja sólo "Falta reponer" en Pedidos (`.pcount:not(.pcount-reponer)`)
+escondía el cuadro nuevo (`_pyVueltaChip`). Ahora lleva `pcount-vuelta` y la regla lo deja. Busqué el mismo patrón: es la única regla que
+esconde cuadros de Pedidos. Qué chequear: Pedidos → Paraguay muestra los dos cuadros.
+
 ### Etapa 7 · 26/10/2026 · v27.03 · 🇵🇾 El ⭐ gana × vende siempre a la vista
 Él (con la lista de Nissei): *"quiero que muestre el gana/vende más puntaje solo y que se muestre sí o sí, si hace falta que se corte el
 nombre"*. En el renglón de cada candidato: el ⭐ (`candCombo`) en su cajita a la derecha antes del % ("—" si falta la salida); fuera del
