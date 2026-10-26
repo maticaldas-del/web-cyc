@@ -1379,6 +1379,10 @@ es el promedio por día de cada mes (`_lnPromMes`): cada día muestra el de su m
 del gráfico se suman los días desde el 1º aunque queden antes (`_lnPreMes`). Línea de cada producto y general. Probado: sep $5.000/día,
 oct $10.000/día con ventas de prueba. Qué chequear: que el salto caiga justo el día 1 y que el número de "hoy" sea el del mes en curso.
 
+### Etapa 7 · 26/10/2026 · v26.98 · 💵 Plata por día sin la línea de la semana
+Él: *"sacar la línea de semana. dejar sólo la del mes"*. Fuera `_lineaSemSvg` (producto y 📈 Todos) y su leyenda; la suma de la semana
+sigue en el globito de cada día (`_lineaSemanas`). Qué chequear: en Plata por día sólo la línea verde y su número de la derecha.
+
 ### Etapa 7 · 26/10/2026 · v26.97 · 📈 Línea de tiempo: días arriba, colores al lado del nombre, sin tarjetas
 Él: *"las variantes que vayan al final del nombre del producto · los días/períodos para elegir que estén arriba de todo también"* y
 con las 4 tarjetas: *"esto sacarlo, ya que todo está puesto en las métricas. Lo único, la estrategia ponela en el precio. La actual"*.
