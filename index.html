@@ -3096,7 +3096,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.04';
+const APP_VERSION='27.05';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3109,6 +3109,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.05',f:'26/10',h:'18:42',c:[{n:2,t:'🧾 Pedido del momento: arriba suma el ⭐ gana × vende de todo lo cargado y la 💵 ganancia que dejaría al venderse todo.'}]},
   {v:'27.04',f:'26/10',h:'18:40',c:[{n:1,t:'🔄 Pedidos → Paraguay: ahora sí se ve al lado de "Falta reponer" el cuadro de la última vuelta completa de Nissei (una regla vieja lo escondía).'}]},
   {v:'27.03',f:'26/10',h:'18:40',c:[{n:2,t:'🇵🇾 Paraguay: el puntaje ⭐ gana × vende va siempre a la derecha, al lado del %, en cada producto (el 🚀 suelto se sacó del renglón; sigue en el detalle). El nombre largo se corta con "…".'}]},
   {v:'27.02',f:'26/10',h:'18:27',c:[{n:1,t:'📦 Pedidos: se sacó el cartel "Cambió desde que miraste". El cuadrito de la vuelta de Nissei ahora dice "última vuelta completa Nissei · hace N días" (o "nunca" en rojo si todavía no hubo una completa).'}]},
@@ -17708,6 +17709,11 @@ function pedidoMomentoHTML(g){
     return arr.slice().sort((a,b)=>{const va=f(a,n),vb=f(b,n),na=va==null||!isFinite(va),nb=vb==null||!isFinite(vb);
       if(na||nb)return na-nb; return asc?va-vb:vb-va;});};
   const As=_sort(A,false), Ns=_sort(N.filas,true);
+  // 26/10/2026, él: "que al cargar el pedido se sumen los puntajes de gana/vende más y muestre el conjunto de todos. y la ganancia que
+  // generaría al venderse". ⭐ = la suma del gana × vende de cada producto (la misma nota que ordena); 💵 = unidades × ganancia por unidad
+  // (nuevos: la medida en ML · probados: la de su publicación de hoy). Lo de uso personal no cuenta.
+  const _estT=[...A.map(x=>_k.vendpct(x,false)),...N.filas.map(x=>_k.vendpct(x,true))].filter(v=>v!=null&&isFinite(v)).reduce((a,b)=>a+b,0);
+  const _ganT=A.reduce((t,x)=>{const gg=_k.gan(x,false);return t+(gg!=null&&isFinite(gg)?gg*x.u:0);},0)+(Number(N.ganancia)||0);
   // Un renglón por COLOR cuando se cargó por color (20/10/2026 · etapa 3): su casilla cambia sólo ese color.
   const _vjTag=t=>{const d=(t.match(/hace (\d+) días/)||[])[1];return ` <span style="color:var(--red);font-size:.7rem;font-weight:700;white-space:nowrap" title="${t}. No se puede pedir hasta volver a mirarlo.">⛔ ${d?'mirado hace '+d+' d':'sin fecha'}</span>`;};
   const filasA=As.map(f=>{const ft=f.pr?fotoDeProducto(f.pr,f.color||''):null;const _vj=pyProbViejo(f.pr);
@@ -17750,11 +17756,13 @@ function pedidoMomentoHTML(g){
   // cargás unidades (cada casilla redibuja), y vuelve a cerrado al entrar a Pedidos.
   const _ok=g||'todo';
   return `<details ${(window._pedMomOpenG||{})[_ok]?'open':''} ontoggle="(window._pedMomOpenG=window._pedMomOpenG||{})['${_ok}']=this.open" style="margin-bottom:18px;background:var(--surface2);border:1px solid ${pasa>0?'rgba(245,158,11,.55)':'rgba(34,197,94,.45)'};border-radius:10px">
-    <summary style="cursor:pointer;list-style:none;padding:11px 13px;display:flex;align-items:center;gap:10px">
+    <summary style="cursor:pointer;list-style:none;padding:11px 13px;display:flex;align-items:center;gap:6px 10px;flex-wrap:wrap">
       <span style="font-size:1rem">🧾</span>
       <span style="font-size:.82rem;font-weight:700;white-space:nowrap">Pedido del momento${gTxt}</span>
       <span style="font-size:1.05rem;font-weight:800;color:${pasa>0?'var(--amber)':'var(--text)'};white-space:nowrap">${u2(crudo).replace('.',',')}</span>
       <span style="font-size:.66rem;color:var(--muted);white-space:nowrap">${A.length+N.filas.length+Pp.length} prod. · ${uds} u.</span>
+      ${_estT>0?`<span style="font-size:.8rem;font-weight:700;color:var(--green);white-space:nowrap" title="La suma del ⭐ gana × vende de cada producto cargado: más alto, mejor pedido.">⭐ ${_estT.toFixed(1).replace('.',',')}</span>`:''}
+      ${_ganT>0?`<span style="font-size:.8rem;font-weight:700;color:var(--green);white-space:nowrap" title="Lo que dejaría vender todo lo cargado: unidades × ganancia por unidad (nuevos: la medida en ML · probados: la de su publicación de hoy). Sin lo de uso personal.">💵 ${fmt(Math.round(_ganT))} <span style="font-weight:400;font-size:.66rem;color:var(--muted)">al venderse</span></span>`:''}
       <span style="margin-left:auto;font-size:.6rem;color:var(--muted)">▾</span>
     </summary>
     <div style="padding:0 13px 12px">

@@ -1379,6 +1379,12 @@ es el promedio por día de cada mes (`_lnPromMes`): cada día muestra el de su m
 del gráfico se suman los días desde el 1º aunque queden antes (`_lnPreMes`). Línea de cada producto y general. Probado: sep $5.000/día,
 oct $10.000/día con ventas de prueba. Qué chequear: que el salto caiga justo el día 1 y que el número de "hoy" sea el del mes en curso.
 
+### Etapa 3 · 26/10/2026 · v27.05 · 🧾 Pedido del momento: ⭐ total y 💵 ganancia al venderse
+Él: *"que al cargar el pedido se sumen los puntajes de gana/vende más y muestre el conjunto de todos. y la ganancia que generaría al
+venderse"*. En la cabecera (`pedidoMomentoHTML`): ⭐ = suma del `_k.vendpct` de cada producto (la misma nota que ordena); 💵 = Σ unidades ×
+ganancia por unidad (nuevos `c.ganancia`, probados `gananciaUnidad` de hoy); sin uso personal. Qué chequear: con productos sin dato de
+salida o de ganancia no suman (no se inventa), y el número cambia al tocar las unidades.
+
 ### Etapa 7 · 26/10/2026 · v27.04 · 🔄 El cuadro de la vuelta de Nissei se ve
 Él: *"sigo sin ver la última vuelta"*. La regla del 17/10 que deja sólo "Falta reponer" en Pedidos (`.pcount:not(.pcount-reponer)`)
 escondía el cuadro nuevo (`_pyVueltaChip`). Ahora lleva `pcount-vuelta` y la regla lo deja. Busqué el mismo patrón: es la única regla que
