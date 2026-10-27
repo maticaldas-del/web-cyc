@@ -13071,7 +13071,7 @@ function _promoTipoEn(mla,ts){const t=Number(ts)||Date.now();const H=(state.prom
     if(ult)return ult.accion==='sale'?null:(ult.tipo||null);}
   const pc=(state.promoclaude||{})[mla];if(!pc)return null;const pt=Number(pc.ts||pc.desde)||0;if(pt&&pt>t+60e3)return null;return pc.tipo||null;}
 function estrategiaChip(e){if(!e)return'';const u=ESTRATEGIA_UI[e.t];if(!u)return'';const d=e.ts?new Date(e.ts).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}):'';
-  const de=e.de&&ESTRATEGIA_UI[e.de]?ESTRATEGIA_UI[e.de]:null;
+  const de=e.de&&ESTRATEGIA_UI[e.de]&&!e.vuelveA?ESTRATEGIA_UI[e.de]:null;
   const va=e.vuelveA&&ESTRATEGIA_UI[e.vuelveA]?ESTRATEGIA_UI[e.vuelveA]:null;
   const sub=e.tok?' · techo encontrado':e.nuevo?' · nuevo':e.vuelve?' · volviendo':va?' · vuelve a '+va[0]:'';
   const tit=((e.tok?'Techo encontrado al 95%: ahora busca el precio que más plata por día deja. ':e.nuevo?'🆕 Lanzamiento: busca el techo arrancando arriba, y no baja sin 95%. ':e.vuelve?'Volviendo después de una escasez o fecha: busca el precio que más plata por día deja. ':e.escS?'Sobra stock: baja en escalera para vaciar antes de que ML cobre stock antiguo (no busca ganar más). ':va?'Sin stock: cuando entre mercadería vuelve con '+va[0]+' '+va[1]+'. ':'')+u[3]+(e.esc?' Ya se buscó el techo: baja en escalera midiendo cada escalón, hasta encontrar el precio que más plata por día deja'+(e.n>0?' (escalón n.º '+e.n+')':'')+'.':e.n>1?(e.t==='escasez'?' Es el escalón n.º '+e.n+' seguido de escasez.':' Es la suba n.º '+e.n+' seguida buscando el techo.'):'')+(de?' Venía de '+de[0]+' '+de[1]+'.':'')+(e.m?' · '+e.m:'')+(d?' · desde el '+d:'')).replace(/"/g,'&quot;');
