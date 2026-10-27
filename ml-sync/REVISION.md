@@ -78,6 +78,12 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   por `informe`/`alertas` y no a Telegram; que las cajas que ML da por entradas las marque Claude y no queden contadas dos veces.
 
 ## 1 · PRECIOS (lunes)
+### 📦 Chips de Pedidos que latían en cada redibujado (27/10/2026, v27.37, etapa 7, él: *"en Paraguay tarjeta hay varias cosas que titilan, como si se recargaran una y otra vez"*)
+- **Qué es:** los chips 🆕 nuevo / ⬆️ +N / ⬇️ −N / 🎨 de cada renglón de Pedidos tienen un latido de entrada (2 veces). Cada escritura del robot redibuja la página entera y todos volvían a latir.
+- **Dónde vive:** `pedCambioChip` + `_pcLatido` (`index.html`): late sólo la primera vez que se ve cada chip en esa sesión.
+- **Mismo patrón en otros lados:** revisé las animaciones de entrada que se repiten (`vp-aviso` se saca sola a los 6 s; las de Inicio tienen su propio control; el 🚚 del pedido en camino se mueve a propósito): ninguna más.
+- **Qué chequear:** que un chip nuevo lata al aparecer y no vuelva a latir con la próxima escritura del robot.
+
 ### 📈 Si vende, no es techo: se vuelve a subir · dos rayas 🔴/🟠 (27/10/2026, v27.36, él: *"si se vende una vez a un precio que está buscando techo, ahí nomás tiene que volver a subir… el techo es saber que no se vende a ese precio"*; eligió la a)
 - **Qué es:** una prueba 📈 (o 🆕) que vendió al precio de hoy sube otra vez +30% en la misma vuelta. Frena sólo en 🔴 "no vende" (30 días sin vender ahí o más caro) o en 🟠 "deja de convenir" (techo95 con su certeza: 95% que baja con los días) o en el techo duro.
 - **Dónde vive:** `errores` (lista 📈🆕 PRUEBAS DE TECHO QUE VENDIERON Y NO SUBIERON, antes sólo 🆕; cuenta desde el último cambio de precio de más de 2%) · `decido` bandera `!vendio`: verifica con `vendioAEstePrecio` (ventas de ella, hermanas y gemelas desde el último cambio) y el FRENO 50% pasa a pedir la certeza de techo95 (🟠) en vez de 50% · web `_rayas.noVende` / `_rayas.convenir` (dos rayas; `techo` sigue siendo el más bajo de los dos).
