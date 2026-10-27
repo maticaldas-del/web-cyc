@@ -78,6 +78,11 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   por `informe`/`alertas` y no a Telegram; que las cajas que ML da por entradas las marque Claude y no queden contadas dos veces.
 
 ## 1 · PRECIOS (lunes)
+### 🥊 Informe 12: "ML pide" un precio imposible (27/10/2026, auditoría del robot)
+- **Qué es:** ML devolvía $1.000 como precio para ganar la caja en 4 que venden mucho (Naipes Casino, Filtro, Crystal Rock, Cartas Españolas). El informe sólo lo marcaba si quedaba abajo del costo; ahora también marca ⚠️ "no es un precio posible" cuando ni cubre el cargo fijo de ML (~$1.230) más el costo.
+- **Dónde vive:** `ml-sync/sync.mjs`, `informe`, sección 12 (caja perdida en lo que vende).
+- **Qué chequear:** que esas 4 salgan con ⚠️ y que lo que pide un precio normal (arriba de costo + $1.230) siga sin marca.
+
 ### 💵 Pedidos: "lo que salva cada $1" (27/10/2026, v27.40, él eligió 1a)
 - **v27.41 (él: "que quede sólo esa. sacar las otras opciones"):** sin botones; Pedidos se ordena SIEMPRE así (Prioridad, Bs As, Paraguay probados, Paulvic). Se sacaron `_pedOrdenPeso`, `_pedOrdenPesoSet`, `_pedOrdenPesoHTML` y el agregado en `renderPedidos` (comparado contra la versión anterior: no falta nada más).
 - **Qué es:** el botón 💵 ordena por 💸 en riesgo (`riesgoComprar`) ÷ costo de la compra (`costUSDof × dólar × cantidad`, el mismo de "Falta reponer"). Reemplaza "lo que deja cada $1" (él con el Kit Jade: comprar lo que tiene stock no da ganancia ahora).
