@@ -6580,7 +6580,7 @@ async function medirParamCompra(db, accounts, labels, GO) {
   const CTAS = ['adriana', 'luciana', 'ayelen', 'matias'];
   const ctaDe = (x) => { const c = String(x || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); return CTAS.find((k) => c.startsWith(k)) || null; };
   // 22/10/2026 (7a): la que más lugar tiene contra el tope de H, no la que menos facturó en 90 días.
-  const LH = lugarHPorCuenta(vp), fact = {}; for (const c of CTAS) fact[c] = LH.porCta[c].proy; void ctaDe;
+  const LH = lugarHPorCuenta(vp, await leerLugarHExtra(db)), fact = {}; for (const c of CTAS) fact[c] = LH.porCta[c].proy; void ctaDe;
   out.cuentaNuevos = [...CTAS].sort((a, b) => fact[a] - fact[b])[0];
   console.log(`\n🧾 IIBB · perfumes → Adriana ${ML_EXTRA_PCT.adriana}% · el resto → ${out.cuentaNuevos} ${ML_EXTRA_PCT[out.cuentaNuevos]}% (la que más lugar tiene contra el tope de H: ${money(Math.round(LH.porCta[out.cuentaNuevos].lugar))})`);
   // 4 · CUOTAS: ¿cuánto más barato tiene que estar uno SIN cuotas para ganarle la caja al que da cuotas?
@@ -10745,20 +10745,89 @@ function perfLocalPct(costoPesos, precioML) {
 // Lugar = tope H − proyección. Como el tope es el mismo para las 4, la que más lugar tiene es la de menor proyección.
 // Lo usan `repartopy` y `paramcompra` (cuentaNuevos). La tarjeta ⚖️ de Inicio hace la cuenta fina con facturas y ARCA.
 const TOPE_H_ANUAL = 81924660.37;
-function lugarHPorCuenta(vp) {
+function lugarHPorCuenta(vp, X) {
   const CTAS = ['adriana', 'luciana', 'ayelen', 'matias'];
   const ctaDe = (x) => { const c = String(x || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); return CTAS.find((k) => c.startsWith(k)) || null; };
   const hoy = new Date(Date.now() - 3 * 3600e3), y = hoy.getUTCFullYear(), m = hoy.getUTCMonth() + 1;
   const ini = Date.parse(m <= 6 ? `${y - 1}-07-01` : `${y}-01-01`), fin = Date.parse(m <= 6 ? `${y}-06-30` : `${y}-12-31`) + 864e5;
   const d30 = Date.now() - 30 * 864e5, faltan = Math.max(0, (fin - Date.now()) / 864e5);
   const r = {}; for (const c of CTAS) r[c] = { fact: 0, f30: 0 };
+  // ANTES DE MAYO 2026 LO FACTURADO SALE DE `cyc/fact_mes` (27/10/2026, medido con `topeh`): las ventas de esos meses no están
+  // enteras en `ventaprod`, y sin esto a Ayelen se le contaban ~$25M facturados en vez de $45M (y a cada cuenta le faltaba distinto,
+  // así que la "que más lugar tiene" salía mal). Misma regla que `topeh` y que la tarjeta ⚖️ de la web.
+  const FM = X && X.factMes, iniK = new Date(ini).toISOString().slice(0, 7).replace('-', '_');
   for (const [k, ents] of Object.entries(vp || {})) {
     const ts = Date.parse(k.slice(0, 10).replace(/_/g, '-')); if (!isFinite(ts) || ts < ini) continue;
+    const viejoMes = FM && k.slice(0, 7) < '2026_05';
     for (const v of Object.values(ents || {})) { if (!v) continue; const c = ctaDe(v.cuenta); if (!c) continue; const t = Number(v.total) || 0;
-      r[c].fact += t; if (ts >= d30 && !v.cancelada) r[c].f30 += t; }
+      if (!viejoMes) r[c].fact += t; if (ts >= d30 && !v.cancelada) r[c].f30 += t; }
   }
-  for (const c of CTAS) { r[c].proy = r[c].fact + r[c].f30 / 30 * faltan; r[c].lugar = TOPE_H_ANUAL - r[c].proy; }
-  return { porCta: r, ini: new Date(ini).toISOString().slice(0, 10), fin: new Date(fin - 864e5).toISOString().slice(0, 10), faltan: Math.round(faltan) };
+  if (FM) for (const c of CTAS) for (const [ym, val] of Object.entries(FM[c] || {})) if (ym >= iniK && ym < '2026_05') r[c].fact += Number(val) || 0;
+  // CON LA MERCADERÍA QUE YA TIENE (27/10/2026, él: "estamos llenando de productos en la cuenta de ayelen. cuando se comience a vender
+  // ahi va a explotar"): con `X` (lo lee `leerLugarHExtra`) la proyección es la MÁS ALTA entre el ritmo de 30 días y lo que viene con su
+  // mercadería (`proyEsperadaH`). Misma cuenta que `_parejoEsperado` de la tarjeta ⚖️ (index.html): si se toca una, la otra.
+  const E = X && X.merc ? proyEsperadaH(vp, X.merc, faltan) : null;
+  for (const c of CTAS) {
+    r[c].proy30 = r[c].fact + r[c].f30 / 30 * faltan;
+    if (E) { r[c].proyEsp = r[c].fact + E[c].futuro; r[c].valNuevo = E[c].valNuevo; r[c].uNuevo = E[c].uNuevo; r[c].diarioEsp = E[c].diario; }
+    r[c].proy = Math.max(r[c].proy30, r[c].proyEsp || 0); r[c].lugar = TOPE_H_ANUAL - r[c].proy;
+  }
+  return { porCta: r, ini: new Date(ini).toISOString().slice(0, 10), fin: new Date(fin - 864e5).toISOString().slice(0, 10), faltan: Math.round(faltan), conMerc: !!E, conFactMes: !!FM };
+}
+async function leerLugarHExtra(db) {
+  const g = async (k) => { try { return (await db.get(k)) || {}; } catch (e) { console.log(`⚠️ lugar contra el tope de H: no pude leer ${k} (${e.message})`); return null; } };
+  const [products, inventory, stockhist, envios, armando, factMes] = await Promise.all(['cyc/products', 'cyc/inventory', 'cyc/stockhist', 'cyc/envios_full', 'cyc/cajas_armando', 'cyc/fact_mes'].map(g));
+  const merc = (products && inventory && stockhist && envios && armando) ? { products: Object.values(products), inventory, stockhist, envios, armando } : null;
+  if (!merc) console.log('⚠️ lugar contra el tope de H: va sólo con el ritmo de 30 días (falta un dato de la mercadería)');
+  if (!factMes) console.log('⚠️ lugar contra el tope de H: sin `fact_mes`, lo facturado antes de mayo queda corto');
+  return { factMes, merc };
+}
+// Producto por producto de cada cuenta: lo recién llegado (menos de 30 días en Full, el robot lo vio entrar) con 3+ ventas desde que
+// llegó → lo facturado desde que llegó ÷ esos días (mínimo 10); lo nuevo con 0-2 ventas (recién llegado, o viajando, o en la caja que
+// se arma, sin historia en esa cuenta) → lo que vale al precio de hoy si da más que su ritmo; el resto y las ventas sin ficha → ritmo de 30 días.
+const PAREJO_MIN_VENTAS = 3, PAREJO_MIN_DIAS = 10;
+function proyEsperadaH(vp, X, faltan) {
+  const CTAS = ['adriana', 'luciana', 'ayelen', 'matias'], LBL = { adriana: 'Adriana', luciana: 'Luciana', ayelen: 'Ayelen', matias: 'Matias' };
+  const nrm = (x) => String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  const out = {}; for (const c of CTAS) out[c] = { futuro: 0, diario: 0, valNuevo: 0, uNuevo: 0 };
+  const kAR = (ms) => new Date(ms - 3 * 3600e3).toISOString().slice(0, 10).replace(/-/g, '_');
+  const ahora = Date.now(), dK = kAR(ahora - 30 * 864e5), hK = kAR(ahora - 864e5);
+  const pIdx = {}, pNom = {}; for (const p of X.products) { if (!p || !p.id) continue; pIdx[p.id] = p; const n = nrm(p.name); if (n && !(n in pNom)) pNom[n] = p; }
+  const getQ = (pid, c) => parseInt(X.inventory[pid + '__' + sid(LBL[c])]) || 0;
+  const ped = {}, sueltas = {}; for (const c of CTAS) sueltas[c] = 0;
+  for (const [k, ents] of Object.entries(vp || {})) {
+    if (k < dK || k > hK) continue;
+    for (const v of Object.values(ents || {})) {
+      const c = String((v && v.cuenta) || '').toLowerCase(); if (!v || !(c in out)) continue;
+      const t0 = Number(v.total) || 0, t = t0 > 0 ? t0 : (v.cancelada && v.antesCancel ? Number(v.antesCancel.total) || 0 : 0); if (!(t > 0)) continue;
+      const p = (v.prodId && pIdx[v.prodId]) || pNom[nrm(v.prod)]; if (!p) { sueltas[c] += t; continue; }
+      (ped[p.id + '|' + c] = ped[p.id + '|' + c] || []).push({ k, t });
+    }
+  }
+  const viaja = {}, sumV = (pid, c, u) => { if (pid && u > 0 && (c in out)) viaja[pid + '|' + c] = (viaja[pid + '|' + c] || 0) + Number(u); };
+  for (const e of Object.values(X.envios || {})) { const c = String((e && e.cuenta) || '').toLowerCase();
+    for (const cj of (Array.isArray(e && e.cajasDet) ? e.cajasDet : [])) { if (!cj || cj.recibida) continue; for (const it of (cj.items || [])) if (it) sumV(it.prodId, c, Number(it.u) || 0); } }
+  for (const [cta, a] of Object.entries(X.armando || {})) for (const [k, u] of Object.entries((a && a.items) || {})) sumV(String(k).split('|')[0], String(cta).toLowerCase(), Number(u) || 0);
+  const claves = new Set([...Object.keys(ped), ...Object.keys(viaja)]);
+  for (const p of X.products) if (p && p.id) for (const c of CTAS) if (getQ(p.id, c) > 0) claves.add(p.id + '|' + c);
+  for (const key of claves) {
+    const i = key.lastIndexOf('|'), pid = key.slice(0, i), c = key.slice(i + 1);
+    const vs = ped[key] || [], fac30 = vs.reduce((s2, x) => s2 + x.t, 0);
+    const h = X.stockhist[pid + '__' + sid(LBL[c])];
+    const nuevo = !!(h && h.desde && h.aprox === false && ahora - Number(h.desde) < 30 * 864e5);
+    let diario = fac30 / 30;
+    if (nuevo) { const dK2 = kAR(Number(h.desde)), vD = vs.filter((x) => x.k >= dK2);
+      if (vD.length >= PAREJO_MIN_VENTAS) diario = Math.max(diario, vD.reduce((s2, x) => s2 + x.t, 0) / Math.max(PAREJO_MIN_DIAS, (ahora - Number(h.desde)) / 864e5)); }
+    let fut = diario * faltan;
+    const uN = getQ(pid, c) + (viaja[key] || 0);
+    if (vs.length < PAREJO_MIN_VENTAS && uN > 0 && (nuevo || !h)) {
+      const p = pIdx[pid], val = uN * (p ? Number(p.netoCalcPrecio) || 0 : 0);
+      if (val > fut) { out[c].valNuevo += val; out[c].uNuevo += uN; fut = val; }
+    }
+    out[c].futuro += fut; out[c].diario += diario;
+  }
+  for (const c of CTAS) { out[c].futuro += sueltas[c] / 30 * faltan; out[c].diario += sueltas[c] / 30; }
+  return out;
 }
 // LA VARA PARA COMPRAR ALGO NUEVO ES 35% (22/10/2026, eligió la 1a de la estrategia "ganar más por cada peso facturado").
 // Sólo frena COMPRAR (comando `pedir`, `revisarcompra`, lo que se manda al chat local). El descarte de candidatos sigue con
@@ -40255,6 +40324,11 @@ async function main() {
         console.log(`   diferencia: ${money(Math.round(ofi - viejo))} (${viejo ? ((ofi / viejo - 1) * 100).toFixed(1) : '-'}%)`);
       }
       console.log(`\nTOTAL 4 cuentas · con ventas ${money(Math.round(tV))} · oficial ${money(Math.round(tO))}`);
+      // 27/10/2026: las dos proyecciones al cierre (ritmo de 30 días y con la mercadería que ya tiene), la misma cuenta que la tarjeta ⚖️.
+      const LH = lugarHPorCuenta(vp, await leerLugarHExtra(db));
+      console.log(`\nPROYECCIÓN AL CIERRE (${LH.fin}, faltan ${LH.faltan} d) · con ventas, sin facturas · se usa la más alta`);
+      for (const a of ['adriana', 'luciana', 'ayelen', 'matias']) { const P = LH.porCta[a];
+        console.log(`   ${a.padEnd(8)} facturado ${money(Math.round(P.fact))} · ritmo 30 d ${money(Math.round(P.proy30))} · con su mercadería ${P.proyEsp != null ? money(Math.round(P.proyEsp)) : '(sin datos)'}${P.valNuevo ? ` (${money(Math.round(P.diarioEsp * 30))}/mes + ${money(Math.round(P.valNuevo))} de ${P.uNuevo} u. nuevas sin vender)` : ` (${money(Math.round((P.diarioEsp || 0) * 30))}/mes)`} · lugar ${money(Math.round(P.lugar))}`); }
       return;
     }
     // BILLING_PROBE=catmono[:<YYYY-MM-DD>] → ¿QUÉ CATEGORÍA DE MONOTRIBUTO LE CORRESPONDE A CADA CUENTA?
@@ -48945,7 +49019,7 @@ async function main() {
       const RE_PERFUME = /perfum|parfum|\bedp\b|\bedt\b|eau de|fragan|body splash|body mist|\bcolonia\b/i;
       // 22/10/2026 (7a): lo que equilibra es el LUGAR contra el tope de H (proyección al cierre de la ventana de ARCA), no
       // lo facturado en 90 días. `fact` = proyección: la de menor proyección es la de más lugar.
-      const LH = lugarHPorCuenta(vp), fact = {}; for (const c of CTAS) fact[c] = LH.porCta[c].proy; void ctaDe;
+      const LH = lugarHPorCuenta(vp, await leerLugarHExtra(db)), fact = {}; for (const c of CTAS) fact[c] = LH.porCta[c].proy; void ctaDe;
       console.log(`=== EN QUÉ CUENTA PUBLICAR LO QUE LLEGA DE PARAGUAY · compra ${comp.fecha || cid} ===`);
       console.log(`SOLO LEE · no crea fichas ni publica nada · piso ${piso}%`);
       console.log(`\nLugar contra el tope de H (ventana ${LH.ini} → ${LH.fin}, faltan ${LH.faltan} días · tope ${money(Math.round(TOPE_H_ANUAL))} por cuenta) · lo que se usa para equilibrar:`);
