@@ -3105,7 +3105,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.33';
+const APP_VERSION='27.34';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3118,6 +3118,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.34',f:'27/10',h:'15:35',c:[{n:2,t:'⚠️ El aviso de "Todavía no cerraste el mes" sale cuando faltan 7 días (en ámbar, con cuántos días faltan) y se pone en rojo los últimos 3. Si el mes pasado quedó sin cerrar, sale en rojo hasta que lo cierres.'}]},
   {v:'27.33',f:'27/10',h:'15:10',c:[{n:1,t:'🧾 Ventas: en el detalle de una venta con varios productos, los botones de abajo (línea, ficha, no se consigue más) bajan de renglón en vez de empujar la columna de la derecha afuera de la pantalla.'}]},
   {v:'27.32',f:'27/10',h:'14:30',c:[{n:2,t:'📦 Stock en Full: la cabecera vuelve a decir 🏠 cuántas hay en tu oficina y 🚚 cuántas vienen en camino a Full, y si es 🔥 escasez o 🚚 cubierto. Tocando el texto se ve cuándo llega cada caja y por qué es (o no) escasez.'}]},
   {v:'27.31',f:'27/10',h:'14:15',c:[{n:2,t:'📦 Línea de stock: con dos publicaciones del mismo producto y color (o su gemela) alcanza con que una informe el stock del día para dibujarlo. Antes, si una estaba pausada o era la gemela, ese día quedaba sin línea (Centímetro Blanco).'}]},
@@ -5176,21 +5177,32 @@ function renderHomeRevision(){
     <div style="margin-top:4px;font-size:.6rem;color:var(--muted)">${ult}</div>
   </div>`;
 }
-// Aviso en el Home: a partir del día 25 (pedido suyo del 25/09/2026; antes era el 20), si todavía no se cerró el mes en curso.
+// Aviso en el Home (27/10/2026, él: "que aparezca 7 días antes de que termine el mes en cuestión y 3 días antes que se ponga en rojo";
+// antes salía fijo desde el día 25): ámbar desde que faltan 7 días (contando hoy) y rojo los últimos 3. Si el mes pasado quedó sin
+// cerrar, sale en rojo hasta que se cierre.
 function checkCierrePendiente(){
   const el=document.getElementById('home-cierre-aviso');if(!el)return;
   const now=new Date();
-  const ym=now.getFullYear()+'_'+String(now.getMonth()+1).padStart(2,'0');
-  const mesLabel=(MONTHS[now.getMonth()]||'')+' '+now.getFullYear();
-  const cerrado=!!(state.snapshots&&state.snapshots[ym]);
-  if(now.getDate()>=25&&!cerrado){
-    el.innerHTML='<div style="font-size:2.4rem;line-height:1;margin-bottom:10px">⚠️</div>'+
-      '<div style="font-size:1.5rem;font-weight:800;margin-bottom:6px">Todavía no cerraste '+mesLabel+'</div>'+
-      '<div style="font-size:.95rem;opacity:.85">Acordate de cerrarlo antes de fin de mes desde <strong>Arqueo → Finanzas</strong></div>';
-    el.style.cssText='display:block;margin:0 auto 22px;max-width:760px;padding:26px 24px;background:rgba(245,158,11,.14);border:2px solid rgba(245,158,11,.55);border-radius:16px;color:#fbbf24;text-align:center;box-shadow:0 0 24px rgba(245,158,11,.15)';
-  }else{
-    el.style.display='none';
+  const ymDe=(y,m)=>y+'_'+String(m+1).padStart(2,'0');
+  const snaps=state.snapshots||{};
+  const finMes=new Date(now.getFullYear(),now.getMonth()+1,0).getDate(), restan=finMes-now.getDate()+1;
+  const pasado=new Date(now.getFullYear(),now.getMonth()-1,1);
+  // El mes pasado sin cerrar: sólo si ese mes tuvo ventas (un mes de antes de empezar a usar el panel no se avisa).
+  const vpP=Object.keys(state.ventaprod||{}).some(k=>k.startsWith(ymDe(pasado.getFullYear(),pasado.getMonth())));
+  let ym,mesLabel,rojo,txt;
+  if(vpP&&!snaps[ymDe(pasado.getFullYear(),pasado.getMonth())]){
+    ym=ymDe(pasado.getFullYear(),pasado.getMonth());mesLabel=(MONTHS[pasado.getMonth()]||'')+' '+pasado.getFullYear();rojo=true;
+    txt='Ya terminó y quedó sin cerrar: cerralo hoy desde <strong>Arqueo → Finanzas</strong>';
+  }else if(restan<=7&&!snaps[ymDe(now.getFullYear(),now.getMonth())]){
+    ym=ymDe(now.getFullYear(),now.getMonth());mesLabel=(MONTHS[now.getMonth()]||'')+' '+now.getFullYear();rojo=restan<=3;
+    txt=(restan===1?'Termina hoy':'Faltan '+restan+' días para que termine')+': cerralo antes de fin de mes desde <strong>Arqueo → Finanzas</strong>';
   }
+  if(!ym){el.style.display='none';return;}
+  const c=rojo?{bg:'rgba(239,68,68,.14)',bd:'rgba(239,68,68,.6)',tx:'#f87171',sh:'rgba(239,68,68,.18)',ic:'🚨'}:{bg:'rgba(245,158,11,.14)',bd:'rgba(245,158,11,.55)',tx:'#fbbf24',sh:'rgba(245,158,11,.15)',ic:'⚠️'};
+  el.innerHTML='<div style="font-size:2.4rem;line-height:1;margin-bottom:10px">'+c.ic+'</div>'+
+    '<div style="font-size:1.5rem;font-weight:800;margin-bottom:6px">Todavía no cerraste '+mesLabel+'</div>'+
+    '<div style="font-size:.95rem;opacity:.85">'+txt+'</div>';
+  el.style.cssText='display:block;margin:0 auto 22px;max-width:760px;padding:26px 24px;background:'+c.bg+';border:2px solid '+c.bd+';border-radius:16px;color:'+c.tx+';text-align:center;box-shadow:0 0 24px '+c.sh;
 }
 
 function renderInv(){
