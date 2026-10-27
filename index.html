@@ -3104,7 +3104,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.17';
+const APP_VERSION='27.18';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3117,6 +3117,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.18',f:'27/10',h:'00:45',c:[{n:1,t:'🏠 Mi oficina: se sacaron los cuadros "u. en casa · hay que mandar · en mercadería".'}]},
   {v:'27.17',f:'27/10',h:'00:35',c:[{n:2,t:'📦 Envíos a Full: cada envío dice 💵 cuánto deja vender todo lo que lleva (ganancia por unidad de hoy de cada producto), y arriba el total de todo lo que está en camino.'}]},
   {v:'27.16',f:'27/10',h:'00:10',c:[{n:3,t:'📦 Armar caja · Cargar lo que entra en el cupo: lo que está en 0 o se corta antes de la próxima caja recibe lo que vende hasta que llegue (no 1 sola), y el lugar que sobra va a lo que más plata deja por unidad. Así no se pierden ventas y se saca la máxima plata del cupo.'}]},
   {v:'27.15',f:'26/10',h:'23:20',c:[{n:1,t:'🇵🇾 Pedidos hechos de Paraguay (en camino y ya llegaron): cada tarjeta suma el ⭐ gana × vende de sus productos y la 💵 ganancia que deja venderlo todo, como el pedido del momento.'}]},
@@ -7312,10 +7313,10 @@ function renderOfiCaja(){
   const res=document.getElementById('ofi-resumen');
   if(res)res.innerHTML=(ofiFiltroCuenta
       ? `<div class="pcount" style="border-color:var(--accent2)"${_cortaCta?` title="Se sugieren ${porCta[ofiFiltroCuenta]} pero el cupo de Full deja mandar ${uCta}"`:''}><strong style="color:var(--accent2)">${uCta}</strong>sugerido p/ ${ofiFiltroCuenta}${_cortaCta?' (cupo)':''}</div>`
-      : '')
-    +`<div class="pcount"><strong>${uHay}</strong>u. en casa</div>`
-    +`<div class="pcount"${aMandarCupo<aMandar?` title="Se sugieren ${aMandar}; con el tope del cupo de Full de cada cuenta se pueden mandar ${aMandarCupo}"`:''}><strong>${aMandarCupo}</strong>${ofiFiltroCuenta?'a mandar en total':'hay que mandar'}${aMandarCupo<aMandar?' (cupo)':''}</div>`
-    +`<div class="pcount"><strong>${fmt(plata)}</strong>en mercadería</div>`;
+      : '');
+  // 27/10/2026 (él, con los cuadros "u. en casa · hay que mandar · en mercadería": "este sacalo"): se sacan. Queda sólo el sugerido
+  // de la cuenta elegida. Si queda vacío, no ocupa lugar.
+  if(res)res.style.display=res.innerHTML?'':'none';
   renderNcOfi(filas);
   // Botones para armar la caja de UNA cuenta: es como se despacha de verdad, una caja por cuenta.
   const fc=document.getElementById('ofi-filtro-cuentas');

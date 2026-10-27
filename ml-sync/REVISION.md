@@ -1962,6 +1962,11 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
 
 ## 7 · DISEÑO (domingo)
 
+### 🏠 Mi oficina sin los cuadros de resumen (27/10/2026, v27.18, él: *"este sacalo"*)
+- **Qué es:** se sacaron "u. en casa · hay que mandar · en mercadería" de `ofi-resumen`; queda sólo el sugerido de la cuenta elegida (si no hay, el lugar se oculta).
+- **Dónde vive:** `renderOfiCaja`/resumen de la oficina (`index.html`, `ofi-resumen`).
+- **Qué chequear:** Mi oficina sin cuenta elegida no muestra la fila; con cuenta, el cuadro "sugerido p/".
+
 ### 🔥 Fuego de las ventas vivas desde $20.000 (26/10/2026, v26.72, pedido suyo)
 - **Qué es:** `VIVA_GAN_FUEGO=20000` en `vivaVenta`: el fuego necesita $20.000+ de ganancia (antes alcanzaba $10.000, `VIVA_GAN_TIEMBLA`, que sigue para el temblor). Caso: Lupa de $16.095 ardía.
 - **Qué chequear:** una venta de $10.000-$19.999 que antes ardía ahora tiembla (no queda quieta) · una de $20.000+ con puntaje 10.500+ sigue ardiendo.
