@@ -1478,6 +1478,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
     <div style="font-size:.66rem;color:var(--muted);margin-bottom:10px">Todo lo que hay que comprar, mezclado BS AS + Paraguay, ordenado por plata que se pierde si no se repone a tiempo (ganancia mensual del producto × días que va a estar sin stock).</div>
     <div class="pedidos-count" id="pedidos-prioridad-count"></div>
     <input class="search-box" id="ped-prioridad-search" type="search" placeholder="Buscar pedido..." oninput="renderPedidos()" style="margin-bottom:10px">
+    <div class="ped-orden-wrap"></div>
     <div id="pedidos-prioridad-list"><div class="empty-msg">Sin pedidos cargados.</div></div>
   </div>
 
@@ -1487,6 +1488,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
     <div id="bsas-siempre-wrap">
     <div class="pedidos-count" id="pedidos-count"></div>
     <input class="search-box" id="ped-search" type="search" placeholder="Buscar pedido..." oninput="renderPedidos()" style="margin-bottom:10px">
+    <div class="ped-orden-wrap"></div>
     <div class="pedido-filters">
       <button class="pf-btn active-all" id="pf-todos" onclick="setPedidoFilter('todos',this)">Todos</button>
       <button class="pf-btn" id="pf-rojo" onclick="setPedidoFilter('rojo',this)">🔴 Sin stock o escasez</button>
@@ -1502,6 +1504,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   <div id="ped-section-paraguay" style="display:none">
     <div class="pedidos-count" id="pedidos-py-count"></div>
     <input class="search-box" id="ped-py-search" type="search" placeholder="Buscar pedido..." oninput="renderPedidos()" style="margin-bottom:10px">
+    <div class="ped-orden-wrap"></div>
     <div class="pedido-filters">
       <button class="pf-btn active-all" id="pf-py-todos" onclick="setPedidoFilter('todos',this)">Todos</button>
       <button class="pf-btn" id="pf-py-rojo" onclick="setPedidoFilter('rojo',this)">🔴 Sin stock o escasez</button>
@@ -1515,6 +1518,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   <div id="ped-section-paulvic" style="display:none">
     <div class="pedidos-count" id="pedidos-paulvic-count"></div>
     <input class="search-box" id="ped-paulvic-search" type="search" placeholder="Buscar pedido paulvic..." oninput="renderPedidos()" style="margin-bottom:10px">
+    <div class="ped-orden-wrap"></div>
     <div class="pedido-filters">
       <button class="pf-btn active-all" id="pf-paulvic-todos" onclick="setPedidoFilter('todos',this)">Todos</button>
       <button class="pf-btn" id="pf-paulvic-rojo" onclick="setPedidoFilter('rojo',this)">🔴 Sin stock o escasez</button>
@@ -3105,7 +3109,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.37';
+const APP_VERSION='27.38';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3118,6 +3122,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.38',f:'27/10',h:'21:30',c:[{n:2,t:'💵 Pedidos: botón para ordenar por lo que devuelve cada $1 que ponés en la compra (para cuando no alcanza la plata para todo). Cada renglón dice "cada $1 deja $X". El orden de siempre (plata que se pierde) sigue siendo el que viene'}]},
   {v:'27.37',f:'27/10',h:'17:40',c:[{n:2,t:'📦 Pedidos: los chips "🆕 nuevo" y "⬆️ +N" laten una sola vez. Antes volvían a latir cada vez que el robot guardaba algo y en Paraguay parecía que la pantalla se recargaba sola'}]},
   {v:'27.36',f:'27/10',h:'16:45',c:[{n:3,t:'📈 Techo = el precio al que NO se vende. En la línea de tiempo hay dos rayas: 🔴 "techo: no vende" (30 días sin vender ahí o más caro) y 🟠 "deja de convenir" (vende, pero deja menos plata por día que el 💰). Si vende una vez a un precio en prueba, la vuelta lo vuelve a subir'}]},
   {v:'27.35',f:'27/10',h:'16:15',c:[{n:2,t:'📈 Línea de tiempo: un solo techo. La raya roja dice "🔴 techo $X: deja menos plata por día que a $Y"; una prueba vieja que quedó más cara que ese techo se ve gris ("no vendió · ya está arriba del techo"), sin otro 100%. Y el "✓ sí vende" en el techo aclara que vende pero deja menos.'}]},
@@ -21574,6 +21579,8 @@ function _pedidoItemHtml(p,opts){
   // El desglose completo no se pierde: está en el globito al apoyar el dedo.
   const _riesgoNeto=(p.riesgoComprar!=null?p.riesgoComprar:p.riesgo)||0;
   const riesgoBadge=(opts.showRiesgo&&_riesgoNeto>0)?`<span class="pi-var-toggle" style="background:rgba(239,68,68,.12);color:var(--red);border-color:rgba(239,68,68,.3);cursor:default" title="${p.riesgoMandar>0?`De ${fmt(p.riesgo)} que se pierden por estar sin stock, ${fmt(p.riesgoMandar)} se tapan mandando lo que ya tenés en casa o en camino. Esto es lo que necesita COMPRA.`:'Ganancia de un mes de este producto × los días que vas a pasar sin stock en ML si no se repone.'}">💸 ${fmt(_riesgoNeto)} en riesgo</span>`:'';
+  const _dev=opts.showRiesgo?_pedDevuelve(p):null;
+  const devBadge=_dev!=null?` <span class="pi-var-toggle" style="cursor:default;color:${_dev>=1?'var(--green)':'var(--muted)'}" title="Por cada $1 que ponés en la compra, deja $${_dev.toFixed(2).replace('.',',')} de ganancia (ganancia por unidad ÷ lo que cuesta: mercadería + impuestos).">💵 cada $1 deja $${_dev.toFixed(2).replace('.',',')}</span>`:'';
   // ── EL ORIGEN SE CAMBIA DESDE ACÁ (17/09/2026, pedido suyo) ─────────────────────────────
   // Antes este renglón era una ETIQUETA MUERTA que sólo aparecía en la solapa "Prioridad", y el
   // botón para cambiar el origen vivía únicamente en la ficha del producto: para mover algo de
@@ -21641,7 +21648,7 @@ function _pedidoItemHtml(p,opts){
       ${varsSorted?'<details class="ped-mas" style="flex-basis:100%"><summary style="cursor:pointer;font-size:.7rem;color:var(--muted)">más datos ▾</summary><div class="ped-body" style="padding:6px 0 0">':''}
       ${fotoBtn}
       ${_tanque}${(()=>{const n=_tanque?String(p.nota||'').replace(/ · ~\d+d cubiertos/,'').replace(/ · 📦[\s\S]*$/,''):p.nota;return n?`<span class="pi-nota">${n}</span>`:'<span class="pi-nota" style="flex:0"></span>';})()}
-      ${_enCam?'':riesgoBadge}
+      ${_enCam?'':riesgoBadge+devBadge}
       ${(()=>{const _r=pedSinSentido(p);return _r?`<span class="pi-var-toggle" style="background:rgba(245,158,11,.14);color:var(--amber);border-color:rgba(245,158,11,.35);cursor:default" title="${_r.det.join(' · ').replace(/"/g,'&quot;')}">⚠️ este renglón no cierra${_r.n>1?' ('+_r.n+')':''}</span>`:'';})()}
       ${varsSorted?origenBtn+_grupoBsasBtn(_prod):''}
       ${cuentaPedidoHTML(p)}
@@ -21695,7 +21702,16 @@ const _pedSortFn=(a,b)=>{const o={pendiente:0,poco_stock:1,suficiente:2};return(
 // tenés en casa o viajando). O sea que un producto con 14 unidades en casa y 2 para comprar subía
 // arriba de todo por una plata que NO se destraba comprando — es el caso de la Cinta 7.5M que él
 // marcó el 23/08/2026. Con el mismo número en los dos lados, el orden se puede leer de la pantalla.
+// 💵 LO QUE DEVUELVE CADA PESO (27/10/2026, él: "agregá el botón para verlo de esa forma. pero que el predeterminado sea como está
+// ahora"): los pesos son el límite, así que se puede ordenar por cuánto deja cada $1 que se pone en la compra (ganancia por unidad ÷
+// costo de la mercadería, la misma ganancia de "$ por unidad"). El orden de siempre (plata que se pierde) sigue siendo el que viene.
+function _pedOrdenPeso(){try{return localStorage.getItem('cycPedOrdenPeso')==='peso'?'peso':'plata';}catch(e){return'plata';}}
+function _pedOrdenPesoSet(k){try{localStorage.setItem('cycPedOrdenPeso',k);}catch(e){} renderPedidos();}
+function _pedDevuelve(p){const pr=prodById(p.prodId);const m=pr&&margenMLDe(pr);if(!m||m.neto==null||!(m.costoBase>0))return null;return (m.neto-m.costoBase)/m.costoBase;}
+function _pedOrdenPesoHTML(){const k=_pedOrdenPeso();const b=(v,t,tt)=>`<button class="pf-btn${k===v?' active-all':''}" onclick="_pedOrdenPesoSet('${v}')" title="${tt}">${t}</button>`;
+  return `<div class="pedido-filters" style="margin-bottom:6px"><span style="font-size:.66rem;color:var(--muted);align-self:center">Ordenar:</span>${b('plata','💸 plata que se pierde','El de siempre: primero lo que más plata deja de ganar si no se compra')}${b('peso','💵 lo que devuelve cada $1','Para cuando no alcanza la plata para todo: primero lo que más ganancia deja por cada peso que ponés en la compra')}</div>`;}
 const _pedSortFnRiesgo=(a,b)=>{
+  if(_pedOrdenPeso()==='peso'){const da=_pedDevuelve(a),db=_pedDevuelve(b);if(da!=null||db!=null){if(da==null)return 1;if(db==null)return -1;if(db!==da)return db-da;}}
   // EL ORDEN ES POR PLATA, NO POR COLOR (06/10/2026, él): "quiero que la lista muestre primero los que más
   // plata se pierde (…) cartas casino se venden tantas por día que puede que quede arriba de muchos rojos.
   // Tenemos dos parámetros: siempre compramos los que salen primero, y el color dice cuáles no hay en
@@ -22737,6 +22753,7 @@ function _pyFiltrosHTML(){
   </details>`;
 }
 function renderPedidos(){
+  try{document.querySelectorAll('.ped-orden-wrap').forEach(el=>{el.innerHTML=_pedOrdenPesoHTML();});}catch(e){}
   if(pedidoSection==='listas'){renderListas();return;}
   // El número al lado de la solapa se refresca siempre, se esté mirando la papelera o no.
   // El número de la solapa cuenta solo lo que TODAVÍA se puede devolver: si contara también los

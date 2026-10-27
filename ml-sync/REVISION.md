@@ -78,6 +78,11 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   por `informe`/`alertas` y no a Telegram; que las cajas que ML da por entradas las marque Claude y no queden contadas dos veces.
 
 ## 1 · PRECIOS (lunes)
+### 💵 Pedidos: ordenar por lo que devuelve cada $1 (27/10/2026, v27.38, etapa 7; él: *"agregá el botón para verlo de esa forma. pero que el predeterminado sea como está ahora"*)
+- **Qué es:** botones "💸 plata que se pierde" (el de siempre, viene así) y "💵 lo que devuelve cada $1" arriba de Prioridad, Bs As, Paraguay y Paulvic; cada renglón dice "💵 cada $1 deja $X". La elección queda guardada en ese aparato.
+- **Dónde vive:** `index.html` · `_pedOrdenPeso`, `_pedDevuelve` (ganancia por unidad ÷ `costoBase` de `margenMLDe`), `_pedSortFnRiesgo`, `.ped-orden-wrap`.
+- **Qué chequear:** que sin tocar nada el orden sea el de antes; que lo sin costo o sin neto vaya al final en el orden por peso.
+
 ### 🇵🇾 `compray`: el que retira escala con lo comprado (27/10/2026, él: *"el que retira es un 10% del costo de los productos. lo único fijo es el correo"*)
 - **Qué es:** el recargo medido separaba "fijo por pedido" (correo + el que retira) de lo que escala (los dólares). El que retira cobra ~10% de lo comprado (10,1% el 21/09, 10,6% el 26/10): ahora va con lo que escala; fijo queda el correo (y otros/adelanto).
 - **Dónde vive:** `compray` sin fecha (EL RECARGO MEDIDO y la tabla por producto). El recargo TOTAL de cada pedido no cambia.
