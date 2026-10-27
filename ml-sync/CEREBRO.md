@@ -431,6 +431,7 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
 
 ## 14 · PEDIDOS
 - 💹 **ESTRATEGIA "GANAR MÁS POR CADA PESO FACTURADO" (22/10/2026, eligió 1a 2a 4a 5a 6a 7a 8b).** El tope de H no deja facturar
+- 🎯 **Objetivo (27/10/2026, él): que desaparezcan el rojo (abajo de 25%) y el naranja (25-35%) de 🧮 La Mezcla.** Semana del 26/10 ya va 91% azul; antes 30-60% era rojo+naranja.
   más: sube la ganancia lo que deja cada $100 facturados (meta $22; oct $19). Lo que sale de ahí, en cada parte:
   · 🔒 **reponer sigue en 25%; comprar algo NUEVO pide 35%; 30% si en ML vende 100+ con 2+ vendedores** (§16, §17; 23/10 1a, `varaCompra`: colchón de ~$52 M del tope de H hasta fin de año, nada nuevo a Matías; en febrero se vuelve a medir con los topes nuevos) · **2a: lo que con el techo ya buscado (🏔️ o prueba de techo
   cerrada) sigue dejando menos de 25% NO se repone**: `decido:ped=u|0` con "Hola Tito!" y el motivo, y en la completa se le propone
