@@ -19053,6 +19053,8 @@ async function main() {
         if (e.fz) c.fz++; else if (e.m != null && isFinite(e.m)) { if (Number(e.m) >= CAND_PISO_PCT) { c.mAlto++; if (Number(e.m) >= CAND_VARA_COMPRA) c.m35++; } else c.mBajo++; }
         else if (e.sc) { c.sc++; if (Number(e.qp || 0) >= PY_NOMBRE_VER) c.scr++; } else if (e.sv) c.sv++; else if (e.nm) c.nm++; else if (!e.t) c.sinT++; else c.tSinNada++; }
       console.log(`=== CATÁLOGO DE NISSEI · ${c.tot} productos ===`);
+      { const _nv = (await db.get('cyc/mlconfig/nisseiVuelta')) || null, _vc = ((await db.get('mlapi/pycatvuelta')) || {}).cur || null;   // 27/10/2026: la vuelta completa y la que está en curso
+        console.log(`  🔄 última vuelta COMPLETA: ${_nv && _nv.fin ? new Date(_nv.fin).toISOString().slice(0, 16).replace('T', ' ') + ` UTC (${_nv.vistos} de ${_nv.total}, ${_nv.pct}%)` : 'ninguna'}${_vc && _vc.desde ? ` · en curso desde ${new Date(_vc.desde).toISOString().slice(0, 16).replace('T', ' ')} UTC` : ''}`); }
       console.log(`  medido con ${CAND_VARA_COMPRA}%+ (se pueden comprar) ${c.m35} · ${CAND_PISO_PCT}-${CAND_VARA_COMPRA - 1}% (guardados, se siguen midiendo, NO se compran) ${c.mAlto - c.m35} · abajo de ${CAND_PISO_PCT}% ${c.mBajo}`);   // 26/10/2026 (él: "es 35 o más %, no 25")
       console.log(`  buscado y SIN el mismo producto en ML ${c.sc} (de esos ✔️ revisados también traducidos ${c.scr}) · encontrado pero NADIE lo vende ${c.sv} · afuera por regla ${c.fz}`);
       console.log(`  ML no deja medirlo ${c.nm} · NUNCA buscado ${c.sinT} · buscado sin resultado guardado ${c.tSinNada}`);
