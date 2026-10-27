@@ -1478,7 +1478,6 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
     <div style="font-size:.66rem;color:var(--muted);margin-bottom:10px">Todo lo que hay que comprar, mezclado BS AS + Paraguay, ordenado por plata que se pierde si no se repone a tiempo (ganancia mensual del producto × días que va a estar sin stock).</div>
     <div class="pedidos-count" id="pedidos-prioridad-count"></div>
     <input class="search-box" id="ped-prioridad-search" type="search" placeholder="Buscar pedido..." oninput="renderPedidos()" style="margin-bottom:10px">
-    <div class="ped-orden-wrap"></div>
     <div id="pedidos-prioridad-list"><div class="empty-msg">Sin pedidos cargados.</div></div>
   </div>
 
@@ -1488,7 +1487,6 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
     <div id="bsas-siempre-wrap">
     <div class="pedidos-count" id="pedidos-count"></div>
     <input class="search-box" id="ped-search" type="search" placeholder="Buscar pedido..." oninput="renderPedidos()" style="margin-bottom:10px">
-    <div class="ped-orden-wrap"></div>
     <div class="pedido-filters">
       <button class="pf-btn active-all" id="pf-todos" onclick="setPedidoFilter('todos',this)">Todos</button>
       <button class="pf-btn" id="pf-rojo" onclick="setPedidoFilter('rojo',this)">🔴 Sin stock o escasez</button>
@@ -1504,7 +1502,6 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   <div id="ped-section-paraguay" style="display:none">
     <div class="pedidos-count" id="pedidos-py-count"></div>
     <input class="search-box" id="ped-py-search" type="search" placeholder="Buscar pedido..." oninput="renderPedidos()" style="margin-bottom:10px">
-    <div class="ped-orden-wrap"></div>
     <div class="pedido-filters">
       <button class="pf-btn active-all" id="pf-py-todos" onclick="setPedidoFilter('todos',this)">Todos</button>
       <button class="pf-btn" id="pf-py-rojo" onclick="setPedidoFilter('rojo',this)">🔴 Sin stock o escasez</button>
@@ -1518,7 +1515,6 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   <div id="ped-section-paulvic" style="display:none">
     <div class="pedidos-count" id="pedidos-paulvic-count"></div>
     <input class="search-box" id="ped-paulvic-search" type="search" placeholder="Buscar pedido paulvic..." oninput="renderPedidos()" style="margin-bottom:10px">
-    <div class="ped-orden-wrap"></div>
     <div class="pedido-filters">
       <button class="pf-btn active-all" id="pf-paulvic-todos" onclick="setPedidoFilter('todos',this)">Todos</button>
       <button class="pf-btn" id="pf-paulvic-rojo" onclick="setPedidoFilter('rojo',this)">🔴 Sin stock o escasez</button>
@@ -3109,7 +3105,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.38';
+const APP_VERSION='27.39';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3122,6 +3118,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.39',f:'27/10',h:'21:50',c:[{n:1,t:'💵 Pedidos: el botón para ordenar por lo que devuelve cada $1 ahora se ve, al lado de "Falta reponer" (antes quedaba escondido)'}]},
   {v:'27.38',f:'27/10',h:'21:30',c:[{n:2,t:'💵 Pedidos: botón para ordenar por lo que devuelve cada $1 que ponés en la compra (para cuando no alcanza la plata para todo). Cada renglón dice "cada $1 deja $X". El orden de siempre (plata que se pierde) sigue siendo el que viene'}]},
   {v:'27.37',f:'27/10',h:'17:40',c:[{n:2,t:'📦 Pedidos: los chips "🆕 nuevo" y "⬆️ +N" laten una sola vez. Antes volvían a latir cada vez que el robot guardaba algo y en Paraguay parecía que la pantalla se recargaba sola'}]},
   {v:'27.36',f:'27/10',h:'16:45',c:[{n:3,t:'📈 Techo = el precio al que NO se vende. En la línea de tiempo hay dos rayas: 🔴 "techo: no vende" (30 días sin vender ahí o más caro) y 🟠 "deja de convenir" (vende, pero deja menos plata por día que el 💰). Si vende una vez a un precio en prueba, la vuelta lo vuelve a subir'}]},
@@ -21709,7 +21706,7 @@ function _pedOrdenPeso(){try{return localStorage.getItem('cycPedOrdenPeso')==='p
 function _pedOrdenPesoSet(k){try{localStorage.setItem('cycPedOrdenPeso',k);}catch(e){} renderPedidos();}
 function _pedDevuelve(p){const pr=prodById(p.prodId);const m=pr&&margenMLDe(pr);if(!m||m.neto==null||!(m.costoBase>0))return null;return (m.neto-m.costoBase)/m.costoBase;}
 function _pedOrdenPesoHTML(){const k=_pedOrdenPeso();const b=(v,t,tt)=>`<button class="pf-btn${k===v?' active-all':''}" onclick="_pedOrdenPesoSet('${v}')" title="${tt}">${t}</button>`;
-  return `<div class="pedido-filters" style="margin-bottom:6px"><span style="font-size:.66rem;color:var(--muted);align-self:center">Ordenar:</span>${b('plata','💸 plata que se pierde','El de siempre: primero lo que más plata deja de ganar si no se compra')}${b('peso','💵 lo que devuelve cada $1','Para cuando no alcanza la plata para todo: primero lo que más ganancia deja por cada peso que ponés en la compra')}</div>`;}
+  return `<div style="display:flex;flex-direction:column;justify-content:center;gap:5px"><span style="font-size:.62rem;color:var(--muted)">Ordenar por</span><div style="display:flex;gap:6px;flex-wrap:wrap">${b('plata','💸 plata que se pierde','El de siempre: primero lo que más plata deja de ganar si no se compra')}${b('peso','💵 lo que devuelve cada $1','Para cuando no alcanza la plata para todo: primero lo que más ganancia deja por cada peso que ponés en la compra')}</div></div>`;}
 const _pedSortFnRiesgo=(a,b)=>{
   if(_pedOrdenPeso()==='peso'){const da=_pedDevuelve(a),db=_pedDevuelve(b);if(da!=null||db!=null){if(da==null)return 1;if(db==null)return -1;if(db!==da)return db-da;}}
   // EL ORDEN ES POR PLATA, NO POR COLOR (06/10/2026, él): "quiero que la lista muestre primero los que más
@@ -22752,8 +22749,14 @@ function _pyFiltrosHTML(){
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px"><span style="font-size:.66rem;color:var(--muted)">Vender en:</span>${V.map(([v,t])=>btn(_candFiltro===v,t,`candFiltrar('${v}')`)).join('')}</div>
   </details>`;
 }
+// El botón de orden va AL LADO de "Falta reponer" (27/10/2026, él: "quiero que esté al lado de los pesos que vale reponer"): se agrega al
+// final de cada dibujado dentro del renglón de números de cada solapa (Prioridad, Bs As, Paraguay, Paulvic).
 function renderPedidos(){
-  try{document.querySelectorAll('.ped-orden-wrap').forEach(el=>{el.innerHTML=_pedOrdenPesoHTML();});}catch(e){}
+  try{_renderPedidosIn();}finally{
+    try{for(const id of ['pedidos-prioridad-count','pedidos-count','pedidos-py-count','pedidos-paulvic-count']){const el=document.getElementById(id);if(!el)continue;
+      const v=el.querySelector('.ped-orden-wrap');if(v)v.remove();const d=document.createElement('div');d.className='ped-orden-wrap';d.innerHTML=_pedOrdenPesoHTML();el.appendChild(d);}}catch(e){}}
+}
+function _renderPedidosIn(){
   if(pedidoSection==='listas'){renderListas();return;}
   // El número al lado de la solapa se refresca siempre, se esté mirando la papelera o no.
   // El número de la solapa cuenta solo lo que TODAVÍA se puede devolver: si contara también los

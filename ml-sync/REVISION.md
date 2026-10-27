@@ -80,7 +80,7 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
 ## 1 · PRECIOS (lunes)
 ### 💵 Pedidos: ordenar por lo que devuelve cada $1 (27/10/2026, v27.38, etapa 7; él: *"agregá el botón para verlo de esa forma. pero que el predeterminado sea como está ahora"*)
 - **Qué es:** botones "💸 plata que se pierde" (el de siempre, viene así) y "💵 lo que devuelve cada $1" arriba de Prioridad, Bs As, Paraguay y Paulvic; cada renglón dice "💵 cada $1 deja $X". La elección queda guardada en ese aparato.
-- **Dónde vive:** `index.html` · `_pedOrdenPeso`, `_pedDevuelve` (ganancia por unidad ÷ `costoBase` de `margenMLDe`), `_pedSortFnRiesgo`, `.ped-orden-wrap`.
+- **Dónde vive:** `index.html` · `_pedOrdenPeso`, `_pedDevuelve` (ganancia por unidad ÷ `costoBase` de `margenMLDe`), `_pedSortFnRiesgo`, `.ped-orden-wrap`. v27.39: va adentro del renglón de "Falta reponer" (`renderPedidos` lo agrega al final de cada dibujado); en la v27.38 no se veía porque usaba la clase `pedido-filters`, escondida desde el 03/10. Dibujado a 1200 y 360 px: entra al lado / abajo sin cortarse.
 - **Qué chequear:** que sin tocar nada el orden sea el de antes; que lo sin costo o sin neto vaya al final en el orden por peso.
 
 ### 🇵🇾 `compray`: el que retira escala con lo comprado (27/10/2026, él: *"el que retira es un 10% del costo de los productos. lo único fijo es el correo"*)
