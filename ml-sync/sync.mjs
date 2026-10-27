@@ -46293,6 +46293,10 @@ async function main() {
       // `techo95:buscando` (25/10/2026, él: "me pasás tabla de producto buscando techo, hace cuánto están buscando y qué % de seguridad lleva y en
       // qué fecha aprox pensás que vas a empezar a buscar el precio que más da"): mira TODAS las que hoy están en 📈 (sin gemelas) e imprime la tabla.
       const BUSCANDO = /(^|[;,])buscando([;,]|$)/.test(raw);
+      // `techo95:punto` (27/10/2026, él con el Adaptador 8 en 1 y el Centímetro Blanco: "es raro, no busca techo, y el techo no está en rojo
+      // como encontrado"): mira las que hoy están en 💰 (o en la escalera que viene del techo) para ver si de verdad tienen un 🔴 al 95%.
+      // Las que dicen "📈 VOLVER A BUSCAR" no lo tienen: la prueba se cortó antes de la certeza y tienen que volver a 📈.
+      const PUNTO = /(^|[;,])punto([;,]|$)/.test(raw);
       const links = (await db.get('cyc/mllinks')) || {}; const es = (await db.get('cyc/estrategia')) || {};
       const tc = parseFloat(await db.get('cyc/finanzas/tipo_cambio')) || 0; if (!(tc > 0)) { console.log('⚠️ sin dólar no se puede medir'); process.exit(1); }
       // Etapa 2 (20/10/2026): `costoPesos` con los reclamos EN VIVO (como la web) y el monotributo vigente, no 2% a mano.
@@ -46316,7 +46320,7 @@ async function main() {
       // entran también esas 🪜 (la última estrategia antes de la escalera era 📈 buscando o 🏔️): si llegan al 95% pasan a 🏔️; si no,
       // siguen 🪜 (no se les pone 📈 encima: la escalera tiene su motivo).
       const bajaDeTecho = (m) => { const h = es[m] || {}; let pv = null, cur = null, antes = null; for (const k of Object.keys(h).map(Number).filter((n) => n > 0).sort((a, b) => a - b)) { const x = h[k]; if (!x || !x.t) continue; const tt = x.t === 'correccion' ? pasajeDe(pv) : x.t; if (tt === 'bajando' && cur !== 'bajando') antes = cur; pv = tt; cur = tt; } return cur === 'bajando' && ['techo', 'techook'].includes(antes); };
-      const sel = BUSCANDO ? Object.keys(es).filter((m) => (ultT(m) || {}).t === 'techo' && links[m] && !links[m].gemelaDe && !links[m].ignored && links[m].status !== 'closed') : lista.length ? lista : Object.keys(es).filter((m) => ['techook', 'nuevo'].includes((ultT(m) || {}).t) || esLanza(m) || bajaDeTecho(m));
+      const sel = BUSCANDO ? Object.keys(es).filter((m) => (ultT(m) || {}).t === 'techo' && links[m] && !links[m].gemelaDe && !links[m].ignored && links[m].status !== 'closed') : PUNTO ? Object.keys(es).filter((m) => (((ultT(m) || {}).t === 'punto') || bajaDeTecho(m)) && links[m] && !links[m].gemelaDe && !links[m].ignored && links[m].status !== 'closed') : lista.length ? lista : Object.keys(es).filter((m) => ['techook', 'nuevo'].includes((ultT(m) || {}).t) || esLanza(m) || bajaDeTecho(m));
       // 1.3a: la foto del mercado de cada 🏔️ (`cyc/techofreno`) para que venza sola. Sin poder leerla no se reabre nada esta vuelta.
       let tfT = null; try { tfT = (await db.get('cyc/techofreno')) || {}; } catch { tfT = null; console.log('⚠️ no leí cyc/techofreno: esta vuelta no miro si alguna 🏔️ se reabre ni guardo fotos'); }
       const sidsT = {}; for (const l of labels) if (accounts[l]?.seller_id) sidsT[String(accounts[l].seller_id)] = l;

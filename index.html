@@ -3105,7 +3105,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.27';
+const APP_VERSION='27.28';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3118,6 +3118,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.28',f:'27/10',h:'14:55',c:[{n:1,t:'📈 Línea de tiempo: la raya 🚧 de una prueba arriba de todo escribe su texto abajo de la línea, para no pisarse con los datos de arriba a la derecha.'}]},
   {v:'27.27',f:'27/10',h:'14:40',c:[{n:2,t:'📈 Línea de tiempo del precio: las rayas de una prueba (🚧 no vendió / ✓ sí vende) ya no se cortan contra el borde y dicen el % de seguridad de que es techo. Y cuando nunca se probó más caro dice "techo: 0% · nunca se probó más caro que $X".'}]},
   {v:'27.26',f:'27/10',h:'14:05',c:[{n:2,t:'📈 Tendencia → 💰 Ganancia: la barra roja de gastos ya no incluye el retiro de los dueños (no es un gasto). El retiro sólo aparece en 🏢 Ganancia CYC.'}]},
   {v:'27.25',f:'27/10',h:'13:45',c:[{n:3,t:'💲 Lo comprado en pesos (Bs As, Paulvic y listas) queda con el costo fijo en los pesos que se pagaron: si sube el dólar ya no parece más caro ni baja su %. Lo de Paraguay sigue en dólares.'}]},
@@ -12151,7 +12152,7 @@ function lineaPintar(prodId){
     const det=sg?`Estuvo ${sg.dias} día${sg.dias===1?'':'s'} con stock a ese precio o más y vendió ${sg.u}${sg.lam!=null?` (para dejar la misma plata por día que a ${fmt(_rayas.best.p)} tenía que vender ~${sg.lam.toFixed(1)})`:''}: ${Math.round(sg.seg*100)}% seguro.`:'Sin un precio con 5+ días medidos para comparar: no se sabe si es seguro.';
     const tt=`🚧 A ${fmt(t.probado)} ${seguro?'ya no vende':'no vendió, SIN CERTEZA'}\nSe probó a ese precio${tk?' (vuelto el '+_lineaFmtDia(tk)+')':''}. ${det}${seguro?'':' Falta medir: se puede volver a probar más arriba, escalón por escalón.'}${t.volvio?'\nVolvió a '+fmt(t.volvio)+'.':''}${t.motivo?'\n🧠 '+t.motivo:''}`.replace(/[<>&]/g,'');
     svg+=`<g style="cursor:help"><title>${tt}</title><line x1="${x0.toFixed(1)}" y1="${y.toFixed(1)}" x2="${W}" y2="${y.toFixed(1)}" stroke="${colT}" stroke-width="1.5" stroke-dasharray="${seguro?'6,3':'2,4'}" opacity=".85"/>`+
-      `<text ${_txAt(x0)} y="${(y-3).toFixed(1)}" font-size="10" fill="${colT}">🚧 a ${fmt(t.probado)} ${seguro?'ya no vende · '+Math.round(sg.seg*100)+'% seguro':'no vendió · '+(sg?Math.round(sg.seg*100)+'% seguro de que es techo ('+sg.dias+' d)':'sin dato para medirlo')}</text></g>`;
+      `<text ${_txAt(x0)} y="${(y<L.pr[0]+14?y+11:y-3).toFixed(1)}" font-size="10" fill="${colT}">🚧 a ${fmt(t.probado)} ${seguro?'ya no vende · '+Math.round(sg.seg*100)+'% seguro':'no vendió · '+(sg?Math.round(sg.seg*100)+'% seguro de que es techo ('+sg.dias+' d)':'sin dato para medirlo')}</text></g>`;
     // Y el último precio que SÍ vendía (al que se volvió), en verde: el techo útil está entre las dos rayas.
     const vv=Number(t.volvio);if(vv>0&&vv<t.probado){const y2=L.pr[0]+L.pr[1]-(pcMax>pcMin?(vv-pcMin)/(pcMax-pcMin):.5)*L.pr[1];
       svg+=`<g style="cursor:help"><title>✓ ${fmt(vv)}: el precio que sí vendía, al que se volvió después de la prueba.</title><line x1="${x0.toFixed(1)}" y1="${y2.toFixed(1)}" x2="${W}" y2="${y2.toFixed(1)}" stroke="var(--green)" stroke-width="1.2" stroke-dasharray="2,3" opacity=".85"/>`+
