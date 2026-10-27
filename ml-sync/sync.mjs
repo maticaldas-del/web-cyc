@@ -77,7 +77,7 @@ const _cortarCiclo = (donde) => {
 // los que escriben en cantidad o en plata se niegan de entrada, y cualquier otro corre con la base,
 // ML, Mercado Pago y Telegram en sólo lectura (se deja renovar y guardar el token de ML, que ML rota).
 const EN_CONSULTA = process.env.GITHUB_WORKFLOW === 'ml-consulta' || process.env.ML_CONSULTA === '1';
-const CONSULTA_ESCRIBE = new Set(['buzon', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta', 'costopesos']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
+const CONSULTA_ESCRIBE = new Set(['buzon', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta', 'costopesos', 'costopesoshist']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
 const CONSULTA_NIEGA = new Set(['cajaitems', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'listaped', 'publicar', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'errores', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'promoventas', 'cargosmes', 'arcacierres', 'webpush']);
@@ -591,16 +591,17 @@ async function armarCostoWeb(db, vp) {
     const imp = (Number(v.total) || 0) * (mlExtraPct(v.cuenta) + monoPct(ym)) / 100;
     const gest = gestDe(v, p);
     let c;
-    const baseUSD = p ? (hist[ym] && hist[ym][p.id] != null ? parseFloat(hist[ym][p.id]) || 0 : (parseFloat(p.costUSD) || 0)) : 0;
+    // El dólar de SU día, como `tcDeVenta` de la web (27/10/2026): a mano del mes → cierre viejo sin `tcPorVenta` → `v.tcSale` → el del mes.
+    const man = tcMes[ym], sn = snaps[ym], tS = parseFloat(v.tcSale);
+    const tc = (man != null && man !== '' && parseFloat(man) > 0) ? parseFloat(man)
+      : (sn && !sn.tcPorVenta && (parseFloat(sn.tcMes) > 0 || parseFloat(sn.tipoCambio) > 0)) ? tcForYM(ym)
+      : tS > 0 ? tS : tcForYM(ym);
+    // Comprado en pesos (`costoEnPesosBot`, 27/10/2026): los pesos pagados ÷ ese dólar, como `costoEnPesos` de la web.
+    const baseUSD = p ? (hist[ym] && hist[ym][p.id] != null ? parseFloat(hist[ym][p.id]) || 0 : (costoEnPesosBot(p) && tc > 0 ? Number(p.cost) / tc : (parseFloat(p.costUSD) || 0))) : 0;
     const ship = p ? (parseFloat(p.shipUSD) || 0) : 0;
     if (!p || (!baseUSD && !ship)) c = (Number(v.costo) || 0) + imp;
     else {
       const dev = DEV_LIVE[p.id] || 0;
-      // El dólar de SU día, como `tcDeVenta` de la web (27/10/2026): a mano del mes → cierre viejo sin `tcPorVenta` → `v.tcSale` → el del mes.
-      const man = tcMes[ym], sn = snaps[ym], tS = parseFloat(v.tcSale);
-      const tc = (man != null && man !== '' && parseFloat(man) > 0) ? parseFloat(man)
-        : (sn && !sn.tcPorVenta && (parseFloat(sn.tcMes) > 0 || parseFloat(sn.tipoCambio) > 0)) ? tcForYM(ym)
-        : tS > 0 ? tS : tcForYM(ym);
       c = (baseUSD * (1 + dev / 100) + ship) * tc * (v.qty || 1) + imp;
     }
     if (v.netoEstimado) c += gest;
@@ -29145,6 +29146,38 @@ async function main() {
         const n = await sincCostoPesos(db, tc);
         const rel = (await db.get('cyc/products')) || {}; const ok = cand.filter((x) => rel[x.k] && rel[x.k].costoPesos === true).length;
         console.log(`\n✓ marcadas ${ok} de ${cand.length} (releído) · ${n} con los dólares puestos al día`);
+      }
+      return;
+    }
+    // BILLING_PROBE=costopesoshist[;go] → LOS MESES CERRADOS NO SE MUEVEN (27/10/2026). Al marcar `costoPesos` (comando `costopesos;go`) el
+    // `costUSD` de 124 fichas pasó a pesos ÷ dólar de hoy, y los meses viejos sin costo congelado (`precios_hist_prod`) lo usan × su dólar:
+    // su ganancia (ya cobrada) cambiaba. Esto congela en cada mes ANTERIOR al de hoy con ventas de esa ficha el US$ que tenía antes
+    // (pesos ÷ el dólar con que se cargó, guardado en `ml-sync/notas/costopesos_antes.json` de la corrida en seco). No pisa lo ya congelado.
+    if (String(process.env.BILLING_PROBE || '').startsWith('costopesoshist')) {
+      const GOh = /;go$/.test(String(process.env.BILLING_PROBE)) && !DRY;
+      let antes = []; try { antes = JSON.parse(readFileSync(new URL('./notas/costopesos_antes.json', import.meta.url), 'utf8')); } catch (e) { console.log('❌ no pude leer costopesos_antes.json: ' + e.message); return; }
+      const P = (await db.get('cyc/products')) || {}, vp = (await db.get('cyc/ventaprod')) || {}, php = (await db.get('cyc/precios_hist_prod')) || {};
+      const nAR = new Date(Date.now() - 3 * 36e5), cur = `${nAR.getUTCFullYear()}_${String(nAR.getUTCMonth() + 1).padStart(2, '0')}`;
+      const mesesDe = {}; for (const [dk, o] of Object.entries(vp)) { const ym = String(dk).slice(0, 7); if (ym >= cur) continue; for (const v of Object.values(o || {})) if (v && !v.cancelada && v.prodId) (mesesDe[v.prodId] = mesesDe[v.prodId] || new Set()).add(ym); }
+      const plan = [], sinDato = [];
+      for (const [k, p] of Object.entries(P)) {
+        if (!p || !p.costoPesos) continue;
+        const e = antes.find((x) => x.n === String(p.name || '').slice(0, 50).trimEnd() && x.pesos === Math.round(Number(p.cost) || 0));
+        if (!e) { sinDato.push(p.name); continue; }
+        const viejo = e.tc > 0 ? Math.round(e.pesos / e.tc * 10000) / 10000 : e.usd2;
+        if (Math.abs(viejo - e.usd2) > 0.006) { sinDato.push(p.name + ' (no cierra: ' + viejo + ' vs ' + e.usd2 + ')'); continue; }
+        for (const ym of [...(mesesDe[p.id || k] || [])].sort()) if (!(php[ym] && php[ym][p.id || k] != null)) plan.push({ ym, id: p.id || k, nom: p.name, viejo });
+      }
+      console.log(`=== CONGELAR EL US$ VIEJO DE LO COMPRADO EN PESOS EN LOS MESES CERRADOS · ${GOh ? 'SE APLICA' : 'sólo miro (agregá ;go)'} ===`);
+      console.log(`${plan.length} renglones (ficha × mes) · ${new Set(plan.map((x) => x.id)).size} fichas · sin dato: ${sinDato.length}`);
+      for (const x of plan.slice(0, 40)) console.log(`  ${x.ym} · ${String(x.nom).slice(0, 45)} · US$ ${x.viejo}`);
+      if (plan.length > 40) console.log(`  … y ${plan.length - 40} más`);
+      if (sinDato.length) console.log('  sin dato: ' + sinDato.slice(0, 20).join(' · '));
+      if (GOh && plan.length) {
+        const up = {}; for (const x of plan) up[x.ym + '/' + x.id] = x.viejo;
+        await db.patch('cyc/precios_hist_prod', up);
+        const rel = (await db.get('cyc/precios_hist_prod')) || {};
+        console.log(`✓ congelados ${plan.filter((x) => rel[x.ym] && Math.abs(Number(rel[x.ym][x.id]) - x.viejo) < 1e-6).length} de ${plan.length} (releído)`);
       }
       return;
     }
