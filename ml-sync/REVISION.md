@@ -78,6 +78,16 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   por `informe`/`alertas` y no a Telegram; que las cajas que ML da por entradas las marque Claude y no queden contadas dos veces.
 
 ## 1 · PRECIOS (lunes)
+### 🔒 F13 · 35% hasta los 90 días, después hasta 0% (27/10/2026, él con el Paulvic Hot)
+- **Qué es:** ninguna baja deja menos del 35% en el peor caso si la unidad más vieja en Full (de ésta o de las que comparten su stock) lleva menos de 90 días, aunque sobre o vaya con `!piso`. A los 90 días se abre hasta el 0% (F0 sigue). Los 15 días antes del stock antiguo también lo abren (antiguo15). Perfumes: F12 (10%) sigue igual hasta los 15 días antes. Sin saber la edad: frena (❓). Salida sólo suya: 🔐 `!bajocero` o un 🧨 remate autorizado. Renovar el mismo descuento no frena.
+- **Dónde vive:** `frenosBajas` en `ml-sync/sync.mjs` (F13, `edad13`, `BAJAR_MIN_PCT_JOVEN`, `EDAD_LIBERA_CERO`); el detector `errores` ahora le pasa también el peor caso (`mgPA`).
+- **Qué chequear:** una baja a 30% con 60 días → frenada (dice cuántos días faltan); con 95 días → pasa; la gemela que acompaña a su Clásica toma la edad de la Clásica. La autorización XEY9 del Hot (20%) queda en no.
+
+### 🔒 💰 sin 🔴 no (27/10/2026, él con el Adaptador 8 en 1: "no busca techo. y el techo no está en rojo")
+- **Qué es:** de 195 en 💰 sólo 17 tenían techo medido; las 11 publicaciones que vendían 1+ por semana y nunca se probaron más caras volvieron a 📈 (los 5 Paulvic esperan su prueba de $21.990). Freno nuevo: `decido …#punto` y `tag:<MLA>=punto` se niegan si vende 1+ por semana (60 días con stock, con gemelas) y no hay 🔴 (`cyc/rayas/<MLA>.techo`) ni 🏔️ de techo95 de 60 días. Lo que vende menos de 1 por semana sí queda en 💰 (4a).
+- **Dónde vive:** `puntoSinTecho` en `ml-sync/sync.mjs` (al lado de `ritmoSemanalGrupo`), llamado en el comando `tag` y en el bucle de frenos de `decido`. `techo95:punto` lista las 💰 con y sin techo.
+- **Qué chequear:** `tag:MLA3251292052=punto` sin go dice FRENO; correr `techo95:punto` cada semana y que "falta probar más caro" con 1+ por semana quede en 0.
+
 - **27/10/2026 · v27.27 · el % del techo siempre a la vista en la línea de tiempo** (él: *"no dice el % de seguridad que va del techo"* con el Espejo 7", y *"el techo está con línea punteada, no entiendo"* con el Centímetro Blanco). La raya 🚧 de una prueba que no vendió dice ahora "N% seguro de que es techo (d días)"; las etiquetas 🚧/✓ que arrancan pasado el 55% del ancho se escriben hacia la izquierda (`_txAt`) para no cortarse; sin prueba más cara dice "📈 techo: 0% seguro · nunca se probó más caro que $X". Dónde: línea de tiempo del precio (index.html, `_techos.forEach` y `_prNotas`). **Chequear:** a 390 px las dos rayas del Centímetro Blanco se leen enteras; el Espejo dice 0%.
 
 ### 🔔 Aviso a Telegram cuando una 🥊 deja de ganar la caja (27/10/2026, él con la waflera: "avisar cuando la waflera deje de ganar. cuando llegue stock")

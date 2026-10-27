@@ -68,8 +68,15 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 5. **Stock en Full que ML marca "no disponible"** (dañado, retirándose, frenado por facturas) no cuenta en el patrimonio. (a) sugerida: contarlo aparte, en una línea propia · (b) dejarlo afuera.
 6. **"Valor de Stock" del Resumen y "Stock total" del Arqueo dan distinto** (el Resumen no suma Oficina CYC ni vendedores). (a) sugerida: el mismo número en los dos · (b) dejarlos y cambiarle el nombre al del Resumen.
 
-### 💰 sin techo confirmado (27/10, por el Adaptador 8 en 1)
+### ~~💰 sin techo confirmado (27/10, por el Adaptador 8 en 1)~~ → **eligió 1a 2a (27/10): HECHO** (11 publicaciones a 📈, Paulvic espera; freno `puntoSinTecho`)
 De 195 publicaciones en 💰 sólo 17 tienen el 🔴 al 95%. 28 nunca se probaron más caras y 149 no tienen días que se puedan medir.
 1. **Las 17 que venden 1+ por semana y nunca se probaron más caras** (Adaptador, los dos Centímetro Blanco, Infusor, Pendrive 32 y 64, Espejo 6", Alargue, Funda colchón, Sábanas Azul Acero, Protector talón Rosa + Paulvic Barbarella, Witch Night, Gold Lady, Leyton, Hot): (a) sugerida: pasan a 📈 y la vuelta sube cada una (Paulvic espera la prueba de $21.990) · (b) dejarlas en 💰.
 2. **Freno:** (a) sugerida: el robot no deja poner 💰 si no hay 🔴 al 95% y vende 1+ por semana · (b) sin freno.
 3. Las 11 que venden menos de 1 por semana se quedan en 💰 (tu regla del 23/10). Las 149 sin días medibles: lo estoy investigando.
+
+### Respuestas del 27/10 a la lista de 7
+- 1a Paulvic a $21.990: se espera, los decide la plata por día el 31/10 y el 02/11.
+- 2b Codera: las 3 de $30.790 (talle Único) **se dejan** (no se cierran).
+- 3b Separador x2 `MLA1474954957`: **lo mete él al catálogo desde ML** (recordárselo a las 12:30 hasta que esté).
+- 4 Hot XEY9: **no** → regla nueva: nunca abajo del 35% si la unidad más vieja lleva menos de 90 días; a los 90 días se abre hasta el 0% (F13).
+- 5a línea de Ganancia queda ventas − mercadería. 6a estrategias (con "bajando por sobra" = 📦 sobra de stock, no 🪜). 7a costo de la caja por unidad en la plata por día.

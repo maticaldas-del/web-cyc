@@ -115,7 +115,7 @@
    que no tenemos suficiente plata para todo… no quiero que nada se venda a menos de 35% excepto si ya está quedando en sobrestock, ahí sí
    liquidar siempre con margen para nunca pagar stock"*; antes 25%; `cyc/mlconfig` minPct = targetPct = 35). Peor caso = ~2% de retención
    IIBB de otra provincia + el peor envío visto + cuotas. Abajo del 35% sólo con `!piso` y motivo de sobra/stock antiguo (liquidar con margen,
-   antes de pagar stock antiguo) o lo que pide él. **Nunca abajo de 0%** (sólo él lo abre, `!bajocero`). El % se mide **costo + impuestos +
+   antes de pagar stock antiguo) o lo que pide él, **y sólo con la unidad más vieja en Full de 90+ días: ahí se abre hasta el 0%** (27/10, él: *"nunca abajo del 35% si lleva menos de 90 dias si pasa los 90 dias de stock si se habilita bajar hasta 0%"*; freno F13; los 15 días antes del stock antiguo también abren). **Nunca abajo de 0%** (sólo él lo abre, `!bajocero`). El % se mide **costo + impuestos +
    envío de Full en el divisor** (`pctGananciaVP`, un solo % en toda la app). Reponer, comprar, listas y perfumería del local: también 35%.
 5. **Bajar un precio sólo con las reglas del CEREBRO** (y las salidas 🔐 sólo con su autorización, §5): sin línea de techo no se baja · escalera (≤15% por escalón) · descuento antes
    que bajar la lista · una suba no se deshace sin 95% · no abajo del 💰. Excepciones siempre las mismas cinco: precio mal puesto ·
@@ -196,7 +196,7 @@
 - **El orden de todo precio** (25/10, él: *"para mí tiene que ser prioridad buscar techo, segundo, buscar el precio que más ganancia da
   (siempre sacando que está sacando stock)… la estrategia es buscar el mejor precio por ganancia CON escalera"*): 1º 📈 techo (95%) → 2º 💰
   el de más ganancia, bajando en escalera desde el techo y midiendo cada escalón hasta el que más plata por día deja (en la web la 🪜 que
-  viene de 📈/🏔️/💰 se ve 💰 "· Nº escalón"). Sólo la sobra/stock antiguo baja por otro camino.
+  viene de 📈/🏔️/💰 se ve 💰 "· Nº escalón"). Sólo la sobra/stock antiguo baja por otro camino. **💰 sin 🔴 no** (27/10, eligió 2a): lo que vende 1+ por semana no queda en 💰 sin techo medido (`puntoSinTecho`, freno en `decido` y `tag`).
 - **Bajar pide 95%, subir pide 50%** (26/10, él: *"siempre para bajar tenés que estar 95% seguro, siempre para subir 50% o más. entonces no hay chances de perder por vender barato"*): freno 50% en `decido` — si `techo95` ya da 50%+ de que el precio en prueba es el techo (`cyc/techo95pct`), no se sube más; no frena 🔥/⏳ ni volver a un precio de 90 días.
 - **Sin línea de techo no se baja** (21/10; 22/10 decisión 1a): línea = 🔴 de las rayas o 🏔️ de `techo95`. Sin línea → 📈 buscar
   techo (subir). Lo que vendieron otras variantes o la familia NO alcanza. Pasados 15 días de la última suba sin certeza, decide la

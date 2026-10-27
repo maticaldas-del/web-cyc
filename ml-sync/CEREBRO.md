@@ -67,7 +67,8 @@ al código; lo que es pensar queda acá, y una regla dura ("nunca", "sólo si") 
 | 8 | **Sobra: se baja en escalera** — lo caro que no vende: a los 60 días sin vender, hasta el precio que GANA la caja (26/10, él) | 🔒 F2-F3 la escalera · 🧠 cuánto |
 | 8b | **🌸 Perfumes nunca abajo del 10%** en el peor caso (26/10, él): antes de liquidar más abajo se retira a la perfumería del local; cerca de pagar stock antiguo se le avisa para que lo retire | 🔒 F12 (salida sólo suya: 🔐 !bajocero) |
 | 8c | **Bajar pide 95%, subir pide 50%** (26/10, él): una suba sólo si es más probable ganar que perder; si `techo95` ya da 50%+ de que el precio en prueba es el techo, se espera | 🔒 freno 50% en `decido` (salvo 🔥/⏳, volver a un precio de 90 días, `!chico`) |
-| 9 | **35% en el PEOR caso** (🛡️) | 🔒 en bajas · lista 🛡️ |
+| 9 | **35% en el PEOR caso** (🛡️). **Abajo del 35% sólo con la unidad más vieja en Full de 90+ días** (27/10, él con el Paulvic Hot: *"nunca abajo del 35% si lleva menos de 90 días. si pasa los 90 días de stock se habilita bajar hasta 0%"*): antes de los 90 días ni la sobra ni `!piso` lo abren (sí los 15 días antes del stock antiguo, F12/antiguo15); a los 90 días se abre hasta el 0% (los perfumes siguen con su 10% hasta los 15 días antes) | 🔒 F13 · lista 🛡️ |
+| 9b | **💰 sin 🔴 no** (27/10, él con el Adaptador 8 en 1, eligió 2a): lo que vende 1+ por semana no queda en 💰 #punto sin techo medido (🔴 de la línea o 🏔️ de techo95); primero 📈 | 🔒 `puntoSinTecho` en `decido` y `tag` |
 | 10 | **Buscar el techo** en todo lo demás | 🧠 |
 | 11 | **Formas:** escalera (≤15% por escalón, 25% en escasez; uno cada 48 h, 12 h en escasez; mis descuentos también son escalones) · una suba no se deshace sin 95% (🔐 `!sincerteza`) · no abajo del 💰 piso · en escasez nunca abajo del precio de antes (F9) · 90/990 · barrera $33.000 · descuento sólo si tiene sentido (🤔) | 🔒 F2-F9 |
 

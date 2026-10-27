@@ -4658,6 +4658,9 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
     const antiguoCerca = edadF != null && edadF >= cobraDesde - 20;
     const antiguo15 = edadF != null && edadF >= cobraDesde - 15;   // 27/10/2026: 15 días antes de pagar stock antiguo (ver F12)
     const mlasSt = [d.mla, ...hermanasStockDe(links, prods || {}, d.mla)];
+    // F13: la edad de la unidad más vieja, también de las que comparten su stock (la gemela no tiene su propio Excel de lotes).
+    const edad13 = (() => { let m = edadF; for (const m2 of mlasSt.slice(1)) { const x = edadViejaFull(links[m2] || {}, null, lotes || {}, {}); if (x != null && (m == null || x > m)) m = x; } return m; })();
+    const renueva0 = !!opts.promo && !(a < p0v * 0.995);   // renovar el mismo descuento no es una baja (46a)
     // Las unidades vendidas (de ésta y de las que comparten su stock) entre t0 y t1, de `cyc/ventaprod/<día>`. null = no se pudo leer.
     const ventasEntre = async (t0, t1) => {
       const k1 = kDia(t1); let n = 0;
@@ -4713,6 +4716,16 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
       // 27/10/2026 (él: "15 días antes de pagar stock siempre ganar caja hasta llegar al 0% de ganancia, si no se vende se retira" y "perfumes
       // hasta 0%"): con la unidad más vieja a 15 días o menos de pagar stock antiguo, el perfume SÍ baja hasta el 0% (F0 sigue).
       if (esPerfume && !antiguo15 && d.mgA != null && Number.isFinite(Number(d.mgA)) && Number(d.mgA) < PERFUME_MIN_PCT && !suya('bajocero')) return { regla: 'F12', txt: `perfume: a ${$(a)} queda en ${Number(d.mgA)}% y un perfume no se vende abajo del ${PERFUME_MIN_PCT}% (regla suya del 26/10): ${antiguoCerca ? 'está por pagar stock antiguo → AVISARLE para que lo retire a la perfumería del local' : 'se queda en el escalón del 10% o más; si llega cerca de pagar stock antiguo, avisarle para retirarlo'}` };
+      // ── F13 · 35% HASTA LOS 90 DÍAS (27/10/2026, él con el Paulvic Hot: "nunca abajo del 35% si lleva menos de 90 días. si pasa los
+      // 90 días de stock se habilita bajar hasta 0%"). Con la unidad más vieja en Full de menos de 90 días (y no a 15 de pagar stock
+      // antiguo) ninguna baja deja menos del 35% en el peor caso, aunque sobre o lleve !piso. A los 90 días se abre hasta el 0% (F0 sigue;
+      // los perfumes siguen con su 10% de F12 hasta los 15 días antes del stock antiguo). Sin saber la edad, no se baja del 35%.
+      // Salida SÓLO SUYA: 🔐 !bajocero o un 🧨 remate autorizado.
+      { const mgPeor = d.mgPA != null && Number.isFinite(Number(d.mgPA)) ? Number(d.mgPA) : (d.mgA != null && Number.isFinite(Number(d.mgA)) ? Number(d.mgA) : null);
+        if (mgPeor != null && mgPeor < BAJAR_MIN_PCT_JOVEN - 0.05 && !antiguo15 && !suya('bajocero') && !remOk && !renueva0) {
+          if (edad13 == null) return { regla: 'F13', sinDato: true, txt: `a ${$(a)} queda en ${mgPeor}% y no sé cuántos días lleva la unidad más vieja en Full: abajo del ${BAJAR_MIN_PCT_JOVEN}% se baja sólo con 90+ días (regla suya del 27/10)` };
+          if (edad13 < EDAD_LIBERA_CERO) return { regla: 'F13', txt: `a ${$(a)} queda en ${mgPeor}% en el peor caso y su unidad más vieja lleva ${edad13} d en Full: con menos de ${EDAD_LIBERA_CERO} días nunca abajo del ${BAJAR_MIN_PCT_JOVEN}% (regla suya del 27/10; a los ${EDAD_LIBERA_CERO} días se abre hasta el 0%, faltan ${EDAD_LIBERA_CERO - edad13} d). Salida SÓLO SUYA: 🔐 !bajocero con su autorización` };
+        } }
       // ── F11 · FALTA DE STOCK: SIN TECHO 95% NO SE BAJA (ver arriba). Con el techo medido (🏔️ de techo95 en 60 días o 🔴 de las rayas)
       // sigue por los otros frenos (escalera, F9 de la escasez). La salida de la escasez (#volviendo) pasa sólo si la escasez terminó de
       // verdad: el stock en Full alcanza 30+ días al ritmo con stock. Salida SÓLO SUYA: 🔐 !sinlinea con su autorización.
@@ -5105,6 +5118,20 @@ async function ritmoSemanalGrupo(db, mla, links, prodById, dias = 60, cache = ne
   return u / (dd > 0 ? dd : dias) * 7;
 }
 const TECHO_RITMO_MIN_SEMANA = 1;   // 4a del 23/10/2026: menos de 1 venta por semana no busca techo subiendo
+// 💰 SIN 🔴 NO (27/10/2026, él con el Adaptador 8 en 1: "es raro, no busca techo. y el techo no está en rojo, como encontrado"; eligió 2a):
+// el orden es 1º techo al 95% → 2º 💰. Lo que vende 1+ por semana (60 días con stock, con gemelas y hermanas) no queda en 💰 #punto
+// sin un techo medido: el 🔴 de las rayas (`cyc/rayas`, de la noche) o un 🏔️ de techo95 de los últimos 60 días. Lo que vende menos de
+// 1 por semana sí queda en 💰 (4a). → null si pasa · texto si frena. Salida: !chico con "EXCEPCIÓN: …" (en decido).
+async function puntoSinTecho(db, mla, links, prods, cache = new Map()) {
+  let est = null, ray = null;
+  try { est = (await db.get('cyc/estrategia/' + mla)) || {}; ray = (await db.get('cyc/rayas/' + mla)) || {}; } catch { return 'no pude leer su estrategia o sus rayas: sin saber si tiene techo no la dejo en 💰'; }
+  if (Number(ray.techo) > 0) return null;
+  if (Object.entries(est).some(([k, x]) => techookDeTecho95(x) && Number(k) > Date.now() - 60 * 864e5)) return null;
+  const info = {}; const rs = await ritmoSemanalGrupo(db, mla, links, prods, 60, cache, Date.now(), info);
+  if (rs == null) return 'no pude leer sus ventas de 60 días: sin saber si vende 1+ por semana no la dejo en 💰 sin techo';
+  if (info.diasSt < TECHO_RITMO_MIN_DIAS_ST || rs < TECHO_RITMO_MIN_SEMANA) return null;
+  return `vende ${rs.toFixed(1)} por semana (${info.diasSt} días con stock de los últimos 60) y no tiene techo en rojo (🔴 de la línea ni 🏔️ de techo95): primero se busca techo (📈 #techo) y recién con el 🔴 al 95% pasa a 💰 (él, 27/10)`;
+}
 const TECHO_RITMO_MIN_DIAS_ST = 14;   // Revisión etapa 1 (24/10): con menos días con stock que esto el ritmo no alcanza para frenar (4a)
 async function pruebasTechoEnCurso(db, ahora = Date.now()) {
   const DIA = 864e5;
@@ -5251,7 +5278,7 @@ async function detectarErrores(db, o = {}) {
       if (nuevoFmt) for (const f of BANDERAS_SUYAS) if (c.ban.includes(f)) fz[f] = true;
       const p0v = c.promo ? p0VistoEn(ph[c.mla] || {}, c.ts, c.de, { ts: c.ts, a: c.a }, true) : c.de;
       const d = { mla: c.mla, accion: 'baja', p0: c.de, a: c.a, ahora: c.ts, fz, p0v, propio: { ts: c.ts, a: c.a }, autCodigos: nuevoFmt ? c.aut : [],
-        mgA: c.mgA != null && Number.isFinite(Number(c.mgA)) ? Number(c.mgA) : null, ...(c.st != null ? { st: c.st } : {}) };
+        mgA: c.mgA != null && Number.isFinite(Number(c.mgA)) ? Number(c.mgA) : null, mgPA: c.mgP != null && Number.isFinite(Number(c.mgP)) ? Number(c.mgP) : null, ...(c.st != null ? { st: c.st } : {}) };
       try { await frenosBajas(db, [d], {}, links, { seco: true, promo: !!c.promo, pre }); }
       catch (eF) { it.cat = 'sindato'; it.sinDato = 'los frenos fallaron: ' + String(eF.message || eF).slice(0, 80); continue; }
       if (d.freno) {
@@ -10756,6 +10783,8 @@ const RE_CAND_PERF = /perfum|parfum|\bedp\b|\bedt\b|eau de|fragan|fragr|body spl
 // venderlo mínimo al 10%. si está por pagar stock entonces avisame y retiro"): perfumes, body mist/splash, Victoria's Secret y Paulvic/Persea.
 const esPerfumeNom = (t) => RE_CAND_PERF.test(String(t || '')) || /victoria.?s secret|\bvs\b.*(mist|lotion|coconut|vanilla|seduction|romance|bliss)|paulvic|persea/i.test(String(t || ''));
 const PERFUME_MIN_PCT = 10;
+// F13 (27/10/2026, él): abajo del 35% del peor caso sólo con la unidad más vieja en Full de 90+ días; ahí se abre hasta el 0%.
+const BAJAR_MIN_PCT_JOVEN = 35, EDAD_LIBERA_CERO = 90;
 // LA PERFUMERÍA DEL LOCAL (15/10/2026, regla suya): los perfumes también se venden en el local, y ahí no hay comisión
 // de ML ni impuestos. La cuenta de ellos: costo puesto × 1,25 (lo nuestro) × 1,30 (lo de la perfumería) tiene que dar
 // lo mismo o parecido que ML. O sea: vendiendo al precio de ML, la perfumería se queda su 30% y a CYC le queda
@@ -46552,6 +46581,8 @@ async function main() {
           if (mt[2].toLowerCase() === 'remate') { console.log(`✗ ${mt[1]}: 🧨 remate es sólo suyo: va con decido/entrarpromo …#remate y su "autorizo" por Telegram`); continue; }
           const m = mt[1].toUpperCase(), t = mt[2].toLowerCase();
           if (!links[m]) { console.log(`✗ ${m} no está vinculada`); continue; }
+          if (t === 'punto') { if (!globalThis._prodsTag) { try { globalThis._prodsTag = (await db.get('cyc/products')) || {}; } catch { globalThis._prodsTag = {}; } }
+            const fr = await puntoSinTecho(db, m, links, globalThis._prodsTag); if (fr) { console.log(`✗ ${nomDe(m)}: 🚫 FRENO 💰 sin 🔴: ${fr}`); continue; } }
           const a = actual(m);
           const desde = mt[3] ? new Date(mt[3] + ':00-03:00').getTime() : Date.now();
           if (!(desde > 0) || desde > Date.now() + 60e3) { console.log(`✗ la fecha "${mt[3]}" no sirve`); continue; }
@@ -46844,6 +46875,12 @@ async function main() {
         for (const d of cz.dec) { const fz = forzar[d.mla] || {}; const tg = fz.tag || tagDeMotivo(fz.motivo) || '';
           const exc = (f) => !!fz[f] && /excepci[oó]n/i.test(String(fz.motivo || ''));
           const a = Number(d.a) || 0, p0 = Number(d.p0) || 0; if (!(a > 0 && p0 > 0)) continue;
+          if (d.accion !== 'nada' && tg === 'punto' && !exc('chico')) {   // 💰 sin 🔴 no (27/10/2026, 2a suya; ver `puntoSinTecho`)
+            if (!globalThis._ritmoCacheD) globalThis._ritmoCacheD = { m: new Map(), prods: null };
+            if (!globalThis._ritmoCacheD.prods) { try { globalThis._ritmoCacheD.prods = (await db.get('cyc/products')) || {}; } catch { globalThis._ritmoCacheD.prods = {}; } }
+            const fr = await puntoSinTecho(db, d.mla, linksD, globalThis._ritmoCacheD.prods, globalThis._ritmoCacheD.m);
+            if (fr) { d.accion = 'nada'; d.freno = true; d.motivo = `🚫 FRENO 💰 sin 🔴: ${fr}. Si sube, va con #techo; si baja, con la estrategia que la explica (sobra, escalera de escasez…). Excepción: !chico y "EXCEPCIÓN: …"`; continue; }
+          }
           if (d.accion === 'sube' && tg === 'techo' && a < p0 * 1.3 && !exc('chico') && !(p0 < UMBRAL_ENVIO_GRATIS && a >= 32900 && a < UMBRAL_ENVIO_GRATIS) && !(a >= 640000)) {
             d.accion = 'nada'; d.freno = true; d.motivo = `🚫 FRENO: buscar techo es un salto grande (+30% o más), nunca de a poco: ${money(p0)} → ${money(a)} es +${Math.round((a / p0 - 1) * 100)}%. El salto llega a ${money(Math.ceil(p0 * 1.3 / 100) * 100 - 10)} o más. Si es menos a propósito (un techo ya visto, la barrera): !chico y "EXCEPCIÓN: …"`; continue; }
           // 🔒 4a (23/10/2026, él): a lo que vende menos de 1 por semana (60 días, con gemelas y hermanas) no se le busca techo subiendo.
