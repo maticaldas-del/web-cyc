@@ -29121,7 +29121,7 @@ async function main() {
     // y cargar el costo de lo comprado en pesos fijo en los pesos que se pagaron"). Lista las fichas que NO son de Paraguay (Bs As, Paulvic,
     // listas) con costo en pesos (`cost`) y sin la marca, con el dólar que tenían al cargarse (cost ÷ costUSD). Con ;go les pone
     // `costoPesos:true` y deja `costUSD` = pesos ÷ dólar de hoy (`sincCostoPesos`). Sin go sólo muestra.
-    if (String(process.env.BILLING_PROBE || '').startsWith('costopesos')) {
+    if (String(process.env.BILLING_PROBE || '').startsWith('costopesos') && !String(process.env.BILLING_PROBE || '').startsWith('costopesoshist')) {
       const raw = String(process.env.BILLING_PROBE).replace(/^costopesos:?/, ''), GOc = /(^|;)go$/.test(raw) && !DRY;
       const sacar = raw.replace(/;?go$/, '').split('+').map((w) => norm(w)).filter(Boolean);
       const tc = parseFloat(await db.get('cyc/finanzas/tipo_cambio')) || 0; if (!(tc > 0)) { console.log('⚠️ sin dólar cargado'); return; }
