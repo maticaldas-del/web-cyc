@@ -29096,11 +29096,16 @@ async function main() {
     // técnica, las fotos y la descripción. Sirve para contestar preguntas con lo que muestra la foto y para ver por qué una publicación no vende.
     if (/^fotopub:/.test(String(process.env.BILLING_PROBE || ''))) {
       const ids = String(process.env.BILLING_PROBE).slice('fotopub:'.length).split(/[;,\s]+/).map((x) => x.trim().toUpperCase()).filter((x) => /^MLA\d+$/.test(x));
-      let tk = null;
-      for (const label of labels) { const acc = accounts[label]; if (!acc?.refresh_token) continue;
-        try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() }); tk = t.access_token; break; } catch { /* la próxima cuenta */ } }
-      if (!tk) { console.log('❌ sin token'); return; }
+      // ML sólo deja leer /items con la llave de la cuenta DUEÑA (con otra da 403): se busca la cuenta en el vínculo y se usa la suya.
+      const linksF = (await db.get('cyc/mllinks')) || {}, tks = {};
+      const tkDe = async (label) => { if (label in tks) return tks[label]; tks[label] = null; const acc = accounts[label]; if (!acc?.refresh_token) return null;
+        try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() }); tks[label] = t.access_token; } catch { /* sin llave */ }
+        return tks[label]; };
       for (const id of ids) {
+        const cta = String((linksF[id] && linksF[id].cuenta) || '').toLowerCase();
+        const orden = [...labels].sort((a, b) => (String(b).toLowerCase() === cta) - (String(a).toLowerCase() === cta));
+        let tk = null; for (const l of orden) { tk = await tkDe(l); if (tk) { try { await mlGet('/items/' + id + '?attributes=id', tk); break; } catch { tk = null; } } }
+        if (!tk) { console.log(`\n■ ${id}: ninguna de las 4 cuentas la puede leer (¿es nuestra?)`); continue; }
         try {
           const it = await mlGet('/items/' + id, tk);
           console.log(`\n■ ${id} · ${String(it.title || '').slice(0, 110)}`);
