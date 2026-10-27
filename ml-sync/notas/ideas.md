@@ -45,3 +45,4 @@ Cada renglón: fecha · idea · plata estimada · estado (hecha / propuesta / de
 - (27/10, completa) **La completa corre `escasez:expediente`, que no imprime la lista 🚨**: agregar `escasez` a las lecturas de la completa.
 - (27/10, completa) **Los lanzamientos de catálogo que pierden la caja no tienen visitas** (Xiaomi Mi Basic, Switch TP-Link): techo95 no puede medir y sólo los destraban los 30 días sin vender. El Switch ganaría la caja dejando ~40%. Pensar una salida (ej. medir con la caja en vez de visitas).
 - (27/10, completa) **Escalón de $16.490 de los Paulvic cae en la zona muerta de la comisión** ($15.000 a ~$17.250): la escalera útil es $21.990 → $18.790 → $17.990.
+- (27/10, completa) **Rodillera MLA1455458713: 20 días con stock a $12.870 y 0 ventas donde se esperaban ~5 (azar <1%) y el freno dice "sin línea de techo, pocos días medibles"**: la línea guardada tiene 20 días incompletos. Revisar por qué techo95 no la marca 🔴 con esa evidencia. Etapa 1.
