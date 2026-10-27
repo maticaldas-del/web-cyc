@@ -77,7 +77,7 @@ const _cortarCiclo = (donde) => {
 // los que escriben en cantidad o en plata se niegan de entrada, y cualquier otro corre con la base,
 // ML, Mercado Pago y Telegram en sólo lectura (se deja renovar y guardar el token de ML, que ML rota).
 const EN_CONSULTA = process.env.GITHUB_WORKFLOW === 'ml-consulta' || process.env.ML_CONSULTA === '1';
-const CONSULTA_ESCRIBE = new Set(['buzon', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
+const CONSULTA_ESCRIBE = new Set(['buzon', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
 const CONSULTA_NIEGA = new Set(['cajaitems', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'listaped', 'publicar', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'errores', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'promoventas', 'cargosmes', 'arcacierres', 'webpush']);
@@ -19043,6 +19043,32 @@ async function main() {
       for (const z of filas.sort((a, b) => b.d - a.d)) console.log(`${z.m} · ${z.cta} · ${z.nom} · ${z.d.toFixed(1)} d · antes ${z.r.toFixed(2)}/día · vendió ${z.uD} (esperadas ${z.esp.toFixed(1)}) · 95% a los ${isFinite(z.d95) ? z.d95.toFixed(0) + ' d' : '—'} · ganancia/día antes $${Math.round(z.gdA).toLocaleString('es-AR')} → después ${z.gdD == null ? '?' : '$' + Math.round(z.gdD).toLocaleString('es-AR')}${z.sinC ? ' (' + z.sinC + ' sin costo)' : ''}`);
       return;
     }
+    // BILLING_PROBE=nisseivuelta[:<horas>][;fin=<productos que dice la web>][;go] (27/10/2026) → RECUENTA LA VUELTA DE NISSEI. Cuenta los
+    // productos de Nissei copiados en las últimas <horas> (12 si no se dice) contra el total de la web (`fin=`; sin él, todo lo guardado).
+    // Con `;go` y 90% o más, la anota como completa (`cyc/mlconfig/nisseiVuelta`, lo mismo que el cierre con `fin=` del chat) y la relee.
+    // Para cuando el cierre del chat contó mal (el 26/10 la página 1 del orden inverso había reiniciado la cuenta).
+    if (/^nisseivuelta(:|;|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const raw = String(process.env.BILLING_PROBE).replace(/^nisseivuelta:?/, '');
+      const GO = /(^|;)go$/.test(raw);
+      const horas = parseFloat((raw.match(/^(\d+(?:\.\d+)?)/) || [])[1]) || 12;
+      const finTot = parseInt((raw.match(/fin=(\d+)/) || [])[1], 10) || 0;
+      const catV = (await db.get('mlapi/pycat')) || {};
+      const ahoraV = Date.now(), desdeV = ahoraV - horas * 3600e3;
+      const nisV = Object.entries(catV).filter(([k, e]) => e && pycatProvDe(k, e) === 'nissei');
+      const vistosV = nisV.filter(([, e]) => Number(e.ts) >= desdeV).length;
+      const totalV = finTot > 0 ? finTot : nisV.length;
+      const pctV = totalV > 0 ? Math.round(vistosV / totalV * 1000) / 10 : 0;
+      console.log(`=== 🔄 VUELTA DE NISSEI · últimas ${horas} h ${GO ? '' : '(PRUEBA — no escribo nada)'} ===`);
+      console.log(`  copiados desde ${new Date(desdeV).toISOString().slice(0, 16).replace('T', ' ')} UTC: ${vistosV} de ${totalV}${finTot ? ' (lo que dice la web)' : ' (todo lo guardado)'} = ${pctV}% · guardados de Nissei en total: ${nisV.length}`);
+      if (pctV < 90) { console.log('  ⚠️ no llega al 90%: NO cuenta como vuelta completa.'); return; }
+      if (!GO) { console.log('  ✓ llega al 90%: con ;go queda anotada como vuelta completa.'); return; }
+      const regV = { fin: ahoraV, desde: desdeV, vistos: vistosV, total: totalV, pct: pctV };
+      await db.set('cyc/mlconfig/nisseiVuelta', regV);
+      await db.set('mlapi/pycatvuelta', { cur: null });
+      const relV = (await db.get('cyc/mlconfig/nisseiVuelta')) || {};
+      console.log(`  ${relV.fin === ahoraV && relV.vistos === vistosV ? '✓ anotada como VUELTA COMPLETA y releída' : '✗ NO QUEDÓ al releer'}`);
+      return;
+    }
     if (/^pycatdia(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const DIAS = Math.max(3, parseInt(String(process.env.BILLING_PROBE).split(':')[1]) || 14);
       const cat = (await db.get('mlapi/pycat')) || {}; const R = (await db.get('cyc/pycatres')) || {};
@@ -23455,7 +23481,9 @@ async function main() {
         const pgs = [...new Set(filas.map((f) => f.pg).filter((x) => x != null))];
         const vu = (await db.get('mlapi/pycatvuelta')) || {};
         let cur = vu.cur || null;
-        if (pgs.includes(1)) cur = { desde: ahora };
+        // 27/10/2026: la página 1 en el OTRO orden (el chat termina de la Z para atrás) no reinicia una vuelta de menos de 24 h.
+        // El 26/10 la reinició a las 21:10 y lo copiado de la A a la M quedó afuera: contó 26% con el catálogo entero copiado.
+        if (pgs.includes(1) && !(cur && ahora - Number(cur.desde) < 24 * 3600e3)) cur = { desde: ahora };
         let msgV = '';
         if (FIN) {
           const desde = cur ? cur.desde : ahora - 8 * 864e5;

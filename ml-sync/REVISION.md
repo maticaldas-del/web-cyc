@@ -811,6 +811,11 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 
 ## 3 · MERCADERÍA (miércoles)
 
+### 🔄 Vuelta de Nissei: la página 1 del otro orden no la reinicia · `nisseivuelta` (27/10/2026)
+- **Qué es:** el 26/10 el chat copió de la A a la M y después arrancó de la Z para atrás; esa "página 1" reinició la cuenta y el cierre con `fin=13497` dio 26% (no contó). Ahora la página 1 no reinicia una vuelta de menos de 24 h. `nisseivuelta[:<horas>][;fin=<total>][;go]` recuenta lo copiado en las últimas horas y, con 90%+, la anota completa.
+- **Dónde vive:** `ml-sync/sync.mjs` (bloque de la vuelta en `pycat` y el comando `nisseivuelta`, que escribe por ml-consulta).
+- **Qué chequear:** en la próxima pasada que vaya y vuelva, que el cierre cuente las dos mitades; y que el chip de Pedidos → Paraguay diga "hace 0 días".
+
 ### 🛒 Informes de Nissei: 35%+ aparte de 25-34% (26/10/2026, él: *"es 35 o más %, no 25"*)
 - **Qué es:** `pycatdia`, la lista de nuevos de `ml-pycat` y `candresumen` decían "dan 25%+ (candidatos)" como si fuera lo que se compra; desde el 24/10 se compra con `CAND_VARA_COMPRA` (35%) y lo de 25-34% sólo queda guardado. Ahora cada uno dice primero cuántos se compran (35%+).
 - **Dónde vive:** `ml-sync/sync.mjs` (`pycatdia`, `nuevosQueDan`, `candresumen`). La web ya los separaba (💾 Guardados 25-34%).
