@@ -46081,6 +46081,9 @@ async function main() {
       // (todos, no se pisan) y su tipo de la ESTRATEGIA que tenía la publicación en ese momento (`cyc/estrategia/<MLA>`); sin
       // estrategia, del motivo (`tagDeMotivo`). Todos los de 45 días (antes sólo 3) y cada color con SUS publicaciones.
       const ESC_TAGS = new Set(['escasez', 'sinrepo']), PRU_TAGS = new Set(['techo', 'nuevo']);
+      // El precio de HOY de cada color (27/10/2026): el tope del máximo de compra de un color es el precio de hoy de SU publicación,
+      // no el de otra del mismo producto (`cyc/netopub`, al día con cada cambio). Sin dato, el del producto.
+      let NPp = {}; try { NPp = (await db.get('cyc/netopub')) || {}; } catch { NPp = {}; console.log('⚠️ no leí cyc/netopub: el tope de cada color es el precio del producto'); }
       const tagEnMomento = (mla, ts) => {
         const h = (esP || {})[mla] || {}; let best = null, dBest = Infinity, antes = null, tAntes = -Infinity;
         for (const [k0, x] of Object.entries(h)) { const kt = Number(k0); if (!(kt > 0) || !x || !x.t) continue;
@@ -46153,7 +46156,7 @@ async function main() {
           const manoTxt = mo && mo.u != null ? ` · mano ${Math.max(0, parseInt(mo.u) || 0)}${esBsasP && Number((ofP || {})[p.id]) > (Number(mo.ts) || 0) ? ' vencida' : ''}` : '';
           if (!sv.t180 && !fv && !cv && !mv && !pvx && !lix && !manoTxt) continue;
           const camV = cambiosDe(mlasP.filter(([mla, e]) => colorMla(mla, e) === va).map(([mla]) => mla)), hV = histD(sv);
-          console.log(`   # ${va} · v30 ${sv.t30} v60 ${sv.t60} v180 ${sv.t180} · últ ${sv.ult ? sv.ult.slice(8, 10) + '/' + sv.ult.slice(5, 7) : '—'} · dCS ${dCS(p.id, '__v__' + sid(va), dCS(p.id))}${cortes60(p.id, '__v__' + sid(va)) ? ' · cortes ' + cortes60(p.id, '__v__' + sid(va)) : ''} · Full ${fv} · casa ${cv} · camino ${mv}${pvx ? ' · PVviaja ' + pvx : ''}${lix ? ' · LIviaja ' + lix : ''}${nuncaPD[p.id + '#' + sid(va)] ? ' · NUNCA' : ''}${hV ? ' · hist ' + hV + 'd' : ''}${NORM[p.id + '#' + va] || ''}${(() => { const u = ultV(p.id, va); return u ? ' · ultv $' + u : ''; })()}${manoTxt}${camV.length ? ' · cambios (' + camV.join(' ') + ')' : ''}`);
+          console.log(`   # ${va} · v30 ${sv.t30} v60 ${sv.t60} v180 ${sv.t180} · últ ${sv.ult ? sv.ult.slice(8, 10) + '/' + sv.ult.slice(5, 7) : '—'} · dCS ${dCS(p.id, '__v__' + sid(va), dCS(p.id))}${cortes60(p.id, '__v__' + sid(va)) ? ' · cortes ' + cortes60(p.id, '__v__' + sid(va)) : ''} · Full ${fv} · casa ${cv} · camino ${mv}${pvx ? ' · PVviaja ' + pvx : ''}${lix ? ' · LIviaja ' + lix : ''}${nuncaPD[p.id + '#' + sid(va)] ? ' · NUNCA' : ''}${hV ? ' · hist ' + hV + 'd' : ''}${NORM[p.id + '#' + va] || ''}${(() => { const u = ultV(p.id, va); if (!u) return ''; const hs = mlasP.filter(([mla, e]) => !e.gemelaDe && colorMla(mla, e) === va).map(([mla]) => Number((NPp[mla] || {}).precio) || 0).filter((x) => x > 0); return ' · ultv $' + u + (hs.length ? ' · hoy $' + Math.max(...hs) : ''); })()}${manoTxt}${camV.length ? ' · cambios (' + camV.join(' ') + ')' : ''}`);
         }
       };
       console.log(`dólar ${tc} · ventana 30 d desde ${k30} · ${prods.length} fichas`);

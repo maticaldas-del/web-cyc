@@ -49,7 +49,7 @@ for l in L:
     if m and cur:
         rv=m.group(11); pv=re.search(r'PVviaja (\d+)',rv); li=re.search(r'LIviaja (\d+)',rv); cv=re.search(r' · cambios \((.*?)\)',rv); mn=re.search(r' · mano (\d+)( vencida)?',rv)
         cur['vars'].append(dict(v=m.group(1),v30=int(m.group(2)),v60=int(m.group(3)),v180=int(m.group(4)),ult=m.group(5),dcs=int(m.group(6)) if m.group(6) else cur['dcs'],cortes=int(m.group(7) or 0),full=int(m.group(8)),casa=int(m.group(9)),cam=int(m.group(10)),pv=int(pv.group(1)) if pv else 0,li=int(li.group(1)) if li else 0,nunca=(' · NUNCA' in rv),
-          hist=hist_de(rv),cambios=(cv.group(1) if cv else None),mano=(int(mn.group(1)) if mn else None),manoVenc=bool(mn and mn.group(2)),nor=nor_de(rv),ultv=(int(re.search(r' · ultv \$(\d+)',rv).group(1)) if re.search(r' · ultv \$(\d+)',rv) else None)))
+          hist=hist_de(rv),cambios=(cv.group(1) if cv else None),mano=(int(mn.group(1)) if mn else None),manoVenc=bool(mn and mn.group(2)),nor=nor_de(rv),ultv=(int(re.search(r' · ultv \$(\d+)',rv).group(1)) if re.search(r' · ultv \$(\d+)',rv) else None),hoy=(int(re.search(r' · hoy \$(\d+)',rv).group(1)) if re.search(r' · hoy \$(\d+)',rv) else None)))
 # N DE M: que se hayan leído TODAS las fichas que imprimió pedidostodo (si no, un renglón con otro formato se pierde callado).
 for gr,n in esper.items():
     if gr in('BSAS','PY','PAULVIC'):
@@ -261,7 +261,8 @@ def ventas_color(p):
     for v in p.get('vars') or []:
         u=v.get('ultv')
         if not u: continue
-        pr=min(p['precio'],u) if p['precio'] else u
+        hoy=v.get('hoy') or p['precio']   # el precio de hoy de ESE color (sin dato, el del producto)
+        pr=min(hoy,u) if hoy else u
         out.append(f"ped:{p['id']}#{v['v']}=venta|{pr}|precio de la ultima venta de ese color (${u}) para el maximo de compra")
     return out
 def venta_mot(p):
