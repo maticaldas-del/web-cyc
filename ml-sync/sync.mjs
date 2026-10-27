@@ -5386,7 +5386,9 @@ async function detectarErrores(db, o = {}) {
   // algo que FALTÓ hacer: la regla del 21/10 dice que lo nuevo que vende sube +30% a buscar techo en la misma vuelta. Sale acá toda
   // Clásica activa con stock cuyo tag de hoy es 🆕 y que vendió (ella o una gemela/hermana del mismo stock) después del tag sin una
   // suba mía después de esa venta. La lista tiene que quedar vacía al terminar la vuelta (se sube con el comando que trae).
-  const lanza = [], lzC = { nuevo: 0, inact: 0, sinVenta: 0, subio: 0, congelada: 0, convenir: 0 };
+  // Cerca de pagar stock antiguo (20 días o menos, o ya pagando): ahí no se sube a buscar techo, se vende (o lo decidió él, 27/10: "esperar como están").
+  const cercaAntiguo = (e) => { try { const ed = edadViejaFull(e, null, lotes || {}, {}); if (ed == null) return null; const pr = prods && e.prodId ? prods[e.prodId] : null; const cb = (tablaAntiguoDe(e, pr, lotes || {}, {}).tabla.find((t) => Number(t[2]) > 0) || [120])[0]; return ed >= cb - 20 ? `la unidad más vieja lleva ${ed} d en Full y el stock antiguo se cobra desde los ${cb}` : null; } catch { return null; } };
+  const lanza = [], lzC = { nuevo: 0, inact: 0, sinVenta: 0, subio: 0, congelada: 0, convenir: 0, antiguo: 0 };
   let nbDet = {}; try { nbDet = (await db.get('cyc/nobajar')) || {}; } catch { nbDet = {}; }
   let t95Det = {}; try { t95Det = (await db.get('cyc/techo95pct')) || {}; } catch { t95Det = {}; }
   { const vdC = new Map(); const ventasDia = async (k) => { if (!vdC.has(k)) { let o = null; try { o = (await db.get('cyc/ventaprod/' + k)) || {}; } catch { o = null; } vdC.set(k, o); } return vdC.get(k); };
@@ -5415,6 +5417,7 @@ async function detectarErrores(db, o = {}) {
       // plata por día. Vendió, pero subir más ya no conviene: ahí termina la búsqueda.
       { const t9 = t95Det[m]; if (t9 && P > 0 && Number(t9.p) > 0 && Math.abs(Number(t9.p) - P) <= P * 0.02 && Number(t9.seg) >= (Number(t9.umb) || 0.95)) { lzC.convenir++; continue; } }
       if (P > 0 && P >= TECHO_DURO) { lzC.convenir++; continue; }
+      if (cercaAntiguo(e)) { lzC.antiguo++; continue; }
       lanza.push({ mla: m, e, primera, uds, P, obj, tsU, ult });
     }
   }
@@ -5423,7 +5426,7 @@ async function detectarErrores(db, o = {}) {
     console.log(`${x.mla} · ${x.e.cuenta || '?'} · ${String(x.e.title || '?').slice(0, 44)} · ${x.ult === 'nuevo' ? '🆕' : '📈'} a este precio desde ${fecha(x.tsU)} · vendió ${x.uds} u. (la primera ${fecha(x.primera)}) · hoy ${x.P ? $(x.P) : '¿?'}`);
     if (x.obj > x.P) console.log(`   ▶️ decido:${x.mla}=${x.obj}!vendio#techo|Vendió a ${$(x.P)} buscando techo: no es techo, +30% (regla del 27/10, el detector);go`);
   });
-  console.log(`(miré ${lzC.nuevo} en 📈/🆕: ${lzC.inact} no activas · ${lzC.sinVenta} sin venta a este precio · ${lzC.subio} ya subieron después de vender · ${lzC.congelada} 🧊 congeladas a pedido suyo · ${lzC.convenir} 🟠 ya no conviene subir (techo95 o el tope) · ${lanza.length} para subir)`);
+  console.log(`(miré ${lzC.nuevo} en 📈/🆕: ${lzC.inact} no activas · ${lzC.sinVenta} sin venta a este precio · ${lzC.subio} ya subieron después de vender · ${lzC.congelada} 🧊 congeladas a pedido suyo · ${lzC.convenir} 🟠 ya no conviene subir (techo95 o el tope) · ${lzC.antiguo} cerca de pagar stock antiguo · ${lanza.length} para subir)`);
   // ── 🔎 VENDIERON AYER U HOY Y NO ESTÁN BUSCANDO TECHO (27/10/2026, él: "que mire todos los productos de ayer y hoy… los que hay que
   // subir el precio para buscar el techo lo más rápido posible… el objetivo es que todas estén en buscando el mejor precio lo más rápido
   // posible y a partir de ahí afinar"). Toda Clásica activa que vendió (ella, gemela o hermana) en las últimas 48 h, que NO está en 📈/🆕
@@ -5447,7 +5450,7 @@ async function detectarErrores(db, o = {}) {
       const h = est[m] || {}; let ult = ''; for (const k of Object.keys(h).map(Number).filter((n) => n > 0).sort((x, y) => x - y)) { const x = h[k]; if (!x || !x.t) continue; ult = x.t === 'correccion' ? pasajeDe(ult) : x.t; }
       if (['techo', 'nuevo'].includes(ult) || enLanza.has(m)) { v48C.enPrueba++; continue; }
       const P = Number((np[m] || {}).precio) || 0;
-      const porQue = NO_SUBE.has(ult) ? `está en ${ult}` : (nos[m] ? 'marcada liquidando (no sube)' : (nbDet[m] && nbDet[m].congelado ? '🧊 congelada a pedido suyo' : (P >= TECHO_DURO ? 'en el techo duro' : '')));
+      const porQue = NO_SUBE.has(ult) ? `está en ${ult}` : (nos[m] ? 'marcada liquidando (no sube)' : (nbDet[m] && nbDet[m].congelado ? '🧊 congelada a pedido suyo' : (P >= TECHO_DURO ? 'en el techo duro' : (cercaAntiguo(e) || ''))));
       if (porQue) { v48C.explica++; vendio48.push({ mla: m, e, u, P, ult, no: porQue }); continue; }
       const rT = ray == null ? null : Number((ray[m] || {}).techo) || 0;
       const t95 = Object.entries(h).some(([k, x]) => techookDeTecho95(x) && Number(k) > ahora - 60 * 864e5);
