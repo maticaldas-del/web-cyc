@@ -814,7 +814,7 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 ### 🛒 Informes de Nissei: 35%+ aparte de 25-34% (26/10/2026, él: *"es 35 o más %, no 25"*)
 - **Qué es:** `pycatdia`, la lista de nuevos de `ml-pycat` y `candresumen` decían "dan 25%+ (candidatos)" como si fuera lo que se compra; desde el 24/10 se compra con `CAND_VARA_COMPRA` (35%) y lo de 25-34% sólo queda guardado. Ahora cada uno dice primero cuántos se compran (35%+).
 - **Dónde vive:** `ml-sync/sync.mjs` (`pycatdia`, `nuevosQueDan`, `candresumen`). La web ya los separaba (💾 Guardados 25-34%).
-- **Qué chequear:** que `pycatdia` diga "35%+ (se pueden comprar)" y que esa cifra sea menor que la de 25%+.
+- **Qué chequear:** que `pycatdia` diga "35%+ (se pueden comprar)" y que esa cifra sea menor que la de 25%+. Desde el 27/10 `pycatdia` dice también la última vuelta COMPLETA de Nissei (`cyc/mlconfig/nisseiVuelta`) y la que está en curso: tiene que coincidir con el chip de Pedidos → Paraguay.
 
 ### 📦 La caja se llena por plata, no por cubrir stock (26/10/2026, v27.13, él: *"siempre priorizamos ganar más, no cubrir stock"*)
 - **Qué es:** con cupo chico, "Cargar lo que entra en el cupo" da la primera unidad SÓLO a lo que está en 0 o se corta en 14 días (`CAJA_CORTE_DIAS`) y después llena por lo que más deja cada unidad (el lugar en Full no vuelve al vender). Antes daba 1 a cada uno y se comía el cupo con lo que tiene stock para 25-45 días. Lo nuevo que nunca vendió cuenta con lo que deja hoy su publicación (`margenMLDe` × costo); sin publicación con precio, al final como antes.
