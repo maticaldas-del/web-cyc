@@ -29091,6 +29091,31 @@ async function main() {
       }
       return;
     }
+    // BILLING_PROBE=fotopub:<MLA>[;…] → SOLO LEE (27/10/2026, él: "mirá la foto y respondé" y "revisá la publicación en ML"): de una
+    // publicación NUESTRA (no del catálogo, eso es `fotocat`): título, salud y lo que ML le marca (fotos malas, ficha incompleta…), la ficha
+    // técnica, las fotos y la descripción. Sirve para contestar preguntas con lo que muestra la foto y para ver por qué una publicación no vende.
+    if (/^fotopub:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const ids = String(process.env.BILLING_PROBE).slice('fotopub:'.length).split(/[;,\s]+/).map((x) => x.trim().toUpperCase()).filter((x) => /^MLA\d+$/.test(x));
+      let tk = null;
+      for (const label of labels) { const acc = accounts[label]; if (!acc?.refresh_token) continue;
+        try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() }); tk = t.access_token; break; } catch { /* la próxima cuenta */ } }
+      if (!tk) { console.log('❌ sin token'); return; }
+      for (const id of ids) {
+        try {
+          const it = await mlGet('/items/' + id, tk);
+          console.log(`\n■ ${id} · ${String(it.title || '').slice(0, 110)}`);
+          console.log(`   estado ${it.status || '?'} · ${it.listing_type_id || '?'} · $${it.price} · salud ${it.health != null ? Math.round(Number(it.health) * 100) + '%' : '?'} · catálogo ${it.catalog_listing ? 'sí' : 'no'}${it.catalog_product_id ? ' (' + it.catalog_product_id + ')' : ''}`);
+          const malas = (it.tags || []).filter((t) => /poor|incomplete|penalty|moderation|without|unknown|low/i.test(t));
+          if (malas.length) console.log(`   ⚠️ ML le marca: ${malas.join(', ')}`);
+          const at = (it.attributes || []).filter((a) => a && a.value_name).map((a) => `${a.name}: ${String(a.value_name).slice(0, 60)}`);
+          console.log(`   ficha técnica (${at.length} datos): ${at.slice(0, 40).join(' · ')}`);
+          for (const v of (it.variations || []).slice(0, 10)) console.log(`   variante ${v.id}: ${(v.attribute_combinations || []).map((c) => c.name + ' ' + c.value_name).join(', ')}`);
+          for (const x of (it.pictures || []).slice(0, 10)) { const u = String(x.secure_url || x.url || '').replace(/^http:\/\//, 'https://'); if (/^https:\/\/[^/]*mlstatic\.com\//.test(u)) console.log(`   foto ${x.max_size || ''} ${u}`); }
+          try { const d = await mlGet('/items/' + id + '/description', tk); const txt = String((d && d.plain_text) || '').replace(/\s+/g, ' ').trim(); console.log(`   descripción (${txt.length} letras): ${txt.slice(0, 1200)}`); } catch { console.log('   descripción: ML no la dio'); }
+        } catch (e) { console.log(`\n■ ${id}: ML no contestó (${String(e.message || e).slice(0, 80)})`); }
+      }
+      return;
+    }
     if (/^cajaweb:/.test(String(process.env.BILLING_PROBE || ''))) {
       const [, cta, ...pw] = String(process.env.BILLING_PROBE).split(':'); const q = norm(pw.join(':'));
       const L = (await db.get('cyc/mllinks')) || {}, I = (await db.get('cyc/inventory')) || {}, RX = (await db.get('cyc/repoextra')) || {}, NR = (await db.get('cyc/norepo')) || {};

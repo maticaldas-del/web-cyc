@@ -826,6 +826,7 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 (sería doble), y que el número de Gastos y el del Arqueo sean el mismo para cada mes.
 
 ## 3 · MERCADERÍA (miércoles)
+- **27/10/2026 · `fotopub:<MLA>[;…]` (sólo lee)** (él: *"mirá la foto y respondé"*, y revisar el Separador x2): de una publicación nuestra imprime título, salud, lo que ML le marca, la ficha técnica, las fotos y la descripción (las fotos se bajan desde el scratchpad para mirarlas). **Chequear:** que no imprima datos de compradores (sólo la publicación).
 
 ### 💵 Ganancia esperada de cada envío a Full (27/10/2026, v27.17, él: *"quiero que muestre la ganancia esperada de la caja. de todas"*)
 - **Qué es:** en Envíos a Full, la cabecera de cada envío dice 💵 lo que deja vender todo lo que lleva (unidades × `gananciaUnidad` de hoy) y arriba un cuadro con el total de lo que está en camino. Lo sin ganancia medida no suma y se dice cuántas u. son.
