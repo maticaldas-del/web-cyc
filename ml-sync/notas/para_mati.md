@@ -35,6 +35,7 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 - **Paulvic Hot:** 0 ventas en 30 días con 9 en Full, aun a $14.360: mirar la publicación (fotos, título).
 - **Separador x2 MLA1474954957 (Ayelen):** ML le marca 62% de salud y no vende hace 60 días (la hermana MLA3207459664 sí vende con el mismo stock). (a) sugerida: revisarla en ML (fotos, ficha técnica, título) · (b) pausarla.
 - ~~Color del Centímetro~~ → **26/10 a la noche, él con capturas de ML: MLA3559540968 = Rosa · MLA1699834745 y MLA3112784736 (+ su Premium MLA2218757869) = Blanco.** Fijado con `fijarvar` (releído). No hay catálogo de ML por color (sólo "Surtido" MLA46897799). Queda decidir: las dos Blancas al mismo precio o dejar terminar una.
+- **Waflera Disney MLA4087803354 (Ayelen):** se vendió la última a $269.990 (172%). Tenía tu 🥊 "mantener la caja hasta que se venda" (piso $229.990): ya se cumplió. Vienen 4 en el pedido de Paraguay del 26/10. (a) sugerida: sacar la 🥊 y, cuando entren, subirla a $350.990 a buscar techo (si queda puesta, al perder la caja el robot la vuelve a bajar hasta $229.990) · (b) dejar la 🥊 y seguir ganando la caja sin buscar techo.
 - **Preguntas que no sé contestar seguro:** Mentonera (si tiene hueco en el mentón y las medidas de la banda) · Protector metatarso (qué es el color "Ab").
 
 ### De las vueltas del 23/10 (a la noche y a la tarde)
