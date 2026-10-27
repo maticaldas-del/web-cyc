@@ -792,6 +792,7 @@ input.qty:focus{border-color:var(--accent2)}
 .hoy-cal .hcal-d b{font-size:.62rem;text-align:right;font-weight:700;white-space:nowrap;overflow:hidden}@media (max-width:640px){.hoy-cal .hcal-d b{font-size:.5rem;letter-spacing:-.02em}}
 .hoy-cal .hcal-d.vacio{--dc:var(--border2);background:transparent;border-style:dashed;cursor:default;color:var(--muted)}
 .hoy-cal .hcal-d.hoy{outline:2px solid var(--text);outline-offset:1px}
+.hoy-cal .hcal-d b.hcal-br{font-weight:500;font-size:.52rem;opacity:.85;color:#fff}@media (max-width:640px){.hoy-cal .hcal-d b.hcal-br{font-size:.44rem}}
 .hoy-cal .hcal-d em{position:absolute;top:-7px;right:-4px;font-style:normal;font-size:.7rem;line-height:1}
 .hoy-cal .hcal-d.an2,.hoy-cal .hcal-d.an3,.hoy-cal .hcal-d.an4,.hoy-cal .hcal-d.an5,.hoy-cal .hcal-d.an6{animation:hcalLat var(--ad,4s) ease-in-out infinite;animation-delay:var(--adl,0s)}
 .hoy-cal .hcal-d.an4,.hoy-cal .hcal-d.an5,.hoy-cal .hcal-d.an6{animation-name:hcalFlota}
@@ -3104,7 +3105,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.20';
+const APP_VERSION='27.23';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3117,6 +3118,9 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.23',f:'27/10',h:'01:45',c:[{n:3,t:'💲 Cada venta usa el dólar del día en que se vendió (antes el mes en curso se recalculaba entero con el dólar de hoy, y un día pasado cambiaba de color sin que pasara nada). Un día ya pasado sólo cambia si se cancela o devuelve una venta. Los meses ya cerrados y los que tienen dólar cargado a mano no se tocan.'}]},
+  {v:'27.22',f:'27/10',h:'01:05',c:[{n:2,t:'📅 Calendario de Inicio: cada mes del año y cada día del mes muestran también 🧾 las ventas brutas (lo que pagaron los compradores), en corto (1,2M · 850k), debajo de la ganancia.'}]},
+  {v:'27.21',f:'27/10',h:'00:50',c:[{n:2,t:'⚖️ Tope de H: la barra de cada cuenta tiene tres partes: llena = lo ya facturado, clarita = lo que va a facturar en teoría con lo que ya vende, rayada = lo nuevo que todavía no vendió (Full, viajando o en la caja). Debajo, cada parte con su número.'}]},
   {v:'27.20',f:'27/10',h:'00:30',c:[{n:3,t:'⚖️ Tope de H: cada cuenta muestra dos proyecciones al cierre, la del ritmo de 30 días y 📦 la que viene con la mercadería que ya tiene (lo recién llegado a su ritmo desde que llegó, y lo que está en Full, viajando o en la caja sin vender todavía, a su precio). Se usa la más alta: así se ve venir la subida de Ayelen antes de que pase, y el 💡 de la próxima cuenta lo tiene en cuenta.'}]},
   {v:'27.19',f:'27/10',h:'01:00',c:[{n:2,t:'🏠 Mi oficina: los botones de cada cuenta son más grandes y dicen cuántas unidades hay para mandar y 💵 cuánto deja venderlas (la caja a medio armar o, si no hay, lo que entra en el cupo). "Todas" suma las 4.'}]},
   {v:'27.18',f:'27/10',h:'00:45',c:[{n:1,t:'🏠 Mi oficina: se sacaron los cuadros "u. en casa · hay que mandar · en mercadería".'}]},
@@ -8860,7 +8864,7 @@ function _homeAnioHTML(hf,chip){
   for(const m of A){
     if(!m.dias||!m.ventas){cells+=`<span class="hcal-d vacio">${MC[m.M]}</span>`;continue;}
     const n=_gNivDia(m.prom),em=mejor&&m.M===mejor.M&&mejor.prom>0?'🏆':enRacha.has(m.M)?'🔥':'';
-    const _an=_hcalAnim(m.prom,m.M+1);cells+=`<button class="hcal-d${m.curso?' hoy':''}${_an.c}" style="--dc:${n[2]};min-height:52px${_an.st}" onclick="event.stopPropagation();homeCalMes(${Y},${m.M})" title="${_MESES_L[m.M]} ${Y} · ${m.ventas} venta${m.ventas===1?'':'s'} · ganancia ${fmt(m.gan)} · ${fmt(Math.round(m.prom))} por día${m.curso?' (va en curso)':''}">${MC[m.M]}<b>${_kTxt(m.prom)}/día</b><b style="font-weight:500;opacity:.75">${_kTxt(m.gan)}</b>${em?`<em>${em}</em>`:''}</button>`;
+    const _an=_hcalAnim(m.prom,m.M+1);cells+=`<button class="hcal-d${m.curso?' hoy':''}${_an.c}" style="--dc:${n[2]};min-height:52px${_an.st}" onclick="event.stopPropagation();homeCalMes(${Y},${m.M})" title="${_MESES_L[m.M]} ${Y} · ${m.ventas} venta${m.ventas===1?'':'s'} · ventas brutas ${fmt(Math.round(m.bruto||0))} · ganancia ${fmt(m.gan)} · ${fmt(Math.round(m.prom))} por día${m.curso?' (va en curso)':''}">${MC[m.M]}<b>${_kTxt(m.prom)}/día</b><b style="font-weight:500;opacity:.75">${_kTxt(m.gan)}</b>${_brCel(m.bruto)}${em?`<em>${em}</em>`:''}</button>`;
   }
   const ley=VIVA_DIA_NIV.map((x,i)=>`<span><i style="--dc:${x[2]}"></i>${i===0?'menos de '+_kTxt(VIVA_DIA_NIV[1][1]):_kTxt(x[1])}</span>`).join('');
   // 22/10/2026, él: "agregar ganancia total y por día en el año, y en el mes también con los días".
@@ -8868,11 +8872,15 @@ function _homeAnioHTML(hf,chip){
   const _bT=A.reduce((a,m)=>a+(m.bruto||0),0);
   const tot=_dT?_hcalTotHTML('año',_bT,_gT,_dT):'';
   return `${c?`<div class="hoy-chips">${c}</div>`:''}<div class="hoy-cal">${tot}<div class="hcal-g" style="grid-template-columns:repeat(4,minmax(0,1fr))">${cells}</div><div class="hcal-ley">${ley} <span>por día</span></div>
-    <div style="font-size:.62rem;color:var(--muted);margin-top:4px">Cada cuadrito es un mes, del color de su ganancia promedio por día (los mismos colores que los días; el mes en curso, con lo ganado repartido en todos sus días: arranca bajo y sube con cada venta). Abajo, lo que dejó en total. Tocá uno y abre ese mes.</div></div>`;
+    <div style="font-size:.62rem;color:var(--muted);margin-top:4px">Cada cuadrito es un mes, del color de su ganancia promedio por día (los mismos colores que los días; el mes en curso, con lo ganado repartido en todos sus días: arranca bajo y sube con cada venta). Abajo, lo que dejó en total y 🧾 las ventas brutas (lo que pagaron los compradores). Tocá uno y abre ese mes.</div></div>`;
 }
 function homeCalIr(k){_vpIrDia=String(k).replace(/_/g,'-');vpLimpiarFiltros();goPage('ventaprod');}
 // El número completo, sin "k" (22/10/2026, él: "no pongas k, poné el número completo").
 function _kTxt(g){const a=Math.abs(g);return (g<0?'-':'')+Math.round(a).toLocaleString('es-AR');}
+// VENTAS BRUTAS EN CADA CUADRITO (27/10/2026, él: "agregar ventas brutas… y en los meses también… o sea en los días"): corto, para que entre
+// en el cuadrito del teléfono (1,2M · 850k). Lo que pagaron los compradores (`bruto` de `_homeDiaTot`), igual que el renglón 🧾 de arriba.
+function _brTxt(b){const a=Math.abs(Number(b)||0);return a>=1e6?(a/1e6).toFixed(a>=1e7?0:1).replace('.',',')+'M':a>=1e3?Math.round(a/1e3)+'k':String(Math.round(a));}
+function _brCel(b){return b>0?`<b class="hcal-br">🧾${_brTxt(b)}</b>`:'';}
 const _MESES_L=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 function _homeGustoHTML(esc,dia,hf){
   const p2=n=>String(n).padStart(2,'0'),dm=d=>p2(d.getDate())+'/'+p2(d.getMonth()+1);
@@ -8900,12 +8908,12 @@ function _homeGustoHTML(esc,dia,hf){
   for(let d=1;d<=fin;d++){const k=dateToKey(new Date(Y,Mo,d,12)),t=R.tot[k];
     if(!t){cells+=`<span class="hcal-d vacio">${d}</span>`;continue;}
     const n=_gNivDia(t.gan),em=R.mejor&&k===R.mejor.k&&R.mejor.g>0?'🏆':enRacha.has(k)?'🔥':'';
-    const _an=t.ventas?_hcalAnim(t.gan,d):{c:'',st:''};cells+=`<button class="hcal-d${k===hoyK?' hoy':''}${_an.c}" style="--dc:${t.ventas?n[2]:'var(--border2)'}${_an.st}" onclick="event.stopPropagation();homeCalIr('${k}')" title="${dm(new Date(Y,Mo,d))} · ${t.ventas} venta${t.ventas===1?'':'s'} · ganancia ${fmt(t.gan)}${k===hoyK?' (va en curso)':''}">${d}<b>${t.ventas?_kTxt(t.gan):'—'}</b>${em?`<em>${em}</em>`:''}</button>`;}
+    const _an=t.ventas?_hcalAnim(t.gan,d):{c:'',st:''};cells+=`<button class="hcal-d${k===hoyK?' hoy':''}${_an.c}" style="--dc:${t.ventas?n[2]:'var(--border2)'}${_an.st}" onclick="event.stopPropagation();homeCalIr('${k}')" title="${dm(new Date(Y,Mo,d))} · ${t.ventas} venta${t.ventas===1?'':'s'} · ventas brutas ${fmt(Math.round(t.bruto||0))} · ganancia ${fmt(t.gan)}${k===hoyK?' (va en curso)':''}">${d}<b>${t.ventas?_kTxt(t.gan):'—'}</b>${t.ventas?_brCel(t.bruto):''}${em?`<em>${em}</em>`:''}</button>`;}
   const ley=VIVA_DIA_NIV.map((x,i)=>`<span><i style="--dc:${x[2]}"></i>${i===0?'menos de '+_kTxt(VIVA_DIA_NIV[1][1]):_kTxt(x[1])}</span>`).join('');
   const _ks=Object.keys(R.tot),_gM=_ks.reduce((a,k)=>a+(R.tot[k].gan||0),0),_bM=_ks.reduce((a,k)=>a+(R.tot[k].bruto||0),0);
   const tot=_ks.length?_hcalTotHTML('mes',_bM,_gM,_ks.length):'';
   return `${c?`<div class="hoy-chips">${c}</div>`:''}<div class="hoy-cal">${tot}<div class="hcal-g">${cells}</div><div class="hcal-ley">${ley}</div>
-    <div style="font-size:.62rem;color:var(--muted);margin-top:4px">Cada cuadrito es un día, del color de su ganancia (los mismos de la tarjeta del día). Tocá uno y abre Ventas en ese día.</div></div>`;
+    <div style="font-size:.62rem;color:var(--muted);margin-top:4px">Cada cuadrito es un día, del color de su ganancia (los mismos de la tarjeta del día); abajo, 🧾 sus ventas brutas. Tocá uno y abre Ventas en ese día.</div></div>`;
 }
 // ── G5 · VENTAS EN EL CELU: LOS 6 CUADROS EN UN RENGLÓN QUE SE ABRE ──
 // Sólo en el teléfono (el CSS lo esconde en la PC). Se recuerda abierto/cerrado en cada aparato.
@@ -10459,6 +10467,7 @@ async function saveSnapshot(){
   // El dólar de la ganancia del mes: el que ya usaba ANTES de cerrarlo (2a, 12/10/2026). Cerrar no cambia la ganancia.
   const _tcm=state.tc_mes&&state.tc_mes[key];
   const tcMes=(_tcm!=null&&_tcm!==''&&parseFloat(_tcm)>0)?parseFloat(_tcm):(tcVentasMes(key)||tipoCambio);
+  const tcPorVenta=!(_tcm!=null&&_tcm!==''&&parseFloat(_tcm)>0);   // 27/10/2026: el cierre no mueve el dólar de cada venta (`tcDeVenta`)
   // LA AGENDA NO ENTRA EN EL CIERRE DEL MES, a propósito. Es una lista de días FUTUROS: dentro de
   // un cierre guardado no quiere decir nada, y si se copiara quedaría una copia congelada de la
   // misma plata adentro de cada mes para siempre — dos lugares con el mismo dinero es el error
@@ -10470,7 +10479,7 @@ async function saveSnapshot(){
   // noviembre y el cierre quedaba un mes de H más abajo (misma regla que `arcacierres` del robot).
   const _tcA=curTC(), arcaARS=c.arcaDeuda>0?arcaDeudaARS(key).ars:0;
   const totalSnap=c.total+((c.arcaDeuda>0&&_tcA>0)?c.arcaDeuda-arcaARS/_tcA:0);
-  const snap={label,ts:Date.now(),stock:c.stockVal,stockML:c.stockML,stockLocal:c.stockLocal,total:totalSnap,tipoCambio,tcMes,arcaARS,
+  const snap={label,ts:Date.now(),stock:c.stockVal,stockML:c.stockML,stockLocal:c.stockLocal,total:totalSnap,tipoCambio,tcMes,tcPorVenta,arcaARS,
     vsrUSD:c.vsr||0,pvUSD:c.pvDeuda||0,
     finanzas:finSnap,
     locValues:Object.fromEntries(LOCS.map(l=>{let v=0;(state.products||[]).forEach(p=>v+=Math.max(0,getQ(p.id,l))*costP(p));return[sid(l),v];})),
@@ -10578,9 +10587,10 @@ function renderDolarMes(){
     const efec=tcForYM(ym);
     let fuente,fColor;
     if(hasManual){fuente='cargado a mano';fColor='#a78bfa';}
+    else if(snap&&snap.tcPorVenta){fuente='el del día de cada venta (mes cerrado)';fColor='var(--muted)';}
     else if(_tcGananciaSnap(snap)>0){fuente='del cierre del mes';fColor='var(--muted)';}
-    else if(ym<_curYM()&&tcVentasMes(ym)>0){fuente='promedio de sus ventas';fColor='var(--muted)';}
-    else{fuente='dólar actual';fColor='var(--muted)';}
+    else if(ym<_curYM()&&tcVentasMes(ym)>0){fuente='el del día de cada venta (promedio)';fColor='var(--muted)';}
+    else{fuente='el del día de cada venta';fColor='var(--muted)';}
     let nv=0;const days=state.ventaprod||{};
     Object.keys(days).forEach(k=>{if(k.substring(0,7)===ym)Object.values(days[k]||{}).forEach(v=>{if(!v.cancelada)nv++;});});
     return`<div class="ingreso-item" style="flex-direction:column;gap:7px${hasManual?';border-color:rgba(124,58,237,.5)':''}">
@@ -10848,7 +10858,7 @@ async function addManualSnapshot(){
   if(state.snapshots[key]&&!confirm('Ya existe un cierre de '+label+'. ¿Sobrescribir con este total?'))return;
   // El dólar del mes que se carga, no el de HOY (etapa 8): el cierre manifiesta el dólar que ese mes ya usaba,
   // así cargar marzo hoy no le cambia la ganancia de marzo.
-  const snap={label,ts:Date.now(),total,stock:0,stockML:0,stockLocal:0,tipoCambio:(state.snapshots&&state.snapshots[key]&&parseFloat(state.snapshots[key].tipoCambio))||tcForYM(key),tcMes:_tcGananciaSnap(state.snapshots&&state.snapshots[key])||tcForYM(key),manual:true,finanzas:{},locValues:{},prodValues:{}};
+  const snap={label,ts:Date.now(),total,stock:0,stockML:0,stockLocal:0,tipoCambio:(state.snapshots&&state.snapshots[key]&&parseFloat(state.snapshots[key].tipoCambio))||tcForYM(key),tcMes:_tcGananciaSnap(state.snapshots&&state.snapshots[key])||tcForYM(key),tcPorVenta:state.snapshots&&state.snapshots[key]?!!state.snapshots[key].tcPorVenta:true,manual:true,finanzas:{},locValues:{},prodValues:{}};
   await fbSet('snapshots/'+key,snap);await log('Cargó mes manual: '+label+' ('+fmt(total)+')');
   if(!state.snapshots)state.snapshots={};state.snapshots[key]=snap;
   document.getElementById('snap-total').value='';
@@ -13320,6 +13330,19 @@ function tcVentasMes(ym){
 //  3) si no, un mes TERMINADO: el promedio del dólar guardado en sus ventas (etapa 2, 28/09)
 //  4) si no, el dólar actual
 // Así cada mes usa su propio dólar y las ventas viejas no cambian cuando se mueve el dólar de hoy.
+// EL DÓLAR DE CADA VENTA (27/10/2026, él eligió la 1a, con el 15/10 que pasó de dorado a violeta: el mes en curso se recalculaba
+// entero con el dólar de HOY, y al subir ~1,6% el 15 perdió ~$19.000 sin que cambiara ninguna venta). Ahora cada venta usa el dólar
+// de SU día (`v.tcSale`, lo guarda el robot al leerla), salvo que el mes tenga un dólar cargado a mano o un cierre viejo (sin
+// `tcPorVenta`, de antes de esta regla): ahí sigue el del mes y nada de lo viejo se mueve. Un día pasado sólo cambia si se cancela o
+// devuelve una venta, o si cambia el costo en dólares del producto. El robot ya usaba `v.tcSale` (informe, ventas raras, cobromes).
+function tcDeVenta(v,ym){
+  const man=state.tc_mes&&state.tc_mes[ym];
+  if(man!=null&&man!==''&&parseFloat(man)>0)return parseFloat(man);
+  const sn=state.snapshots&&state.snapshots[ym];
+  if(sn&&!sn.tcPorVenta&&_tcGananciaSnap(sn)>0)return _tcGananciaSnap(sn);
+  const t=parseFloat(v&&v.tcSale);
+  return t>0?t:tcForYM(ym);
+}
 function tcForYM(ym){
   const v=state.tc_mes&&state.tc_mes[ym];
   if(v!=null&&v!==''&&!isNaN(parseFloat(v)))return parseFloat(v);
@@ -13420,7 +13443,7 @@ function costoOficinaVP(v){
   const ym=v._dateKey.substring(0,7);
   const baseUSD=getHistCostUSDProd(p.id,ym)??costUSDof(p);   // el costo del MES de la venta
   if(!baseUSD)return v.costo||0;
-  return baseUSD*tcForYM(ym)*(v.qty||1);
+  return baseUSD*tcDeVenta(v,ym)*(v.qty||1);
 }
 // ── LA VENTA SIN COSTO NO SUMA GANANCIA (revisión max #10, 26/09/2026, eligió la a) ──
 // Sin ficha, o con la ficha en costo 0, el costo daba sólo los impuestos y el neto ENTERO se
@@ -13464,9 +13487,8 @@ function _efectivoCostoVP(v){
   // No se usa v.costBaseUSD porque en ventas viejas ese campo se guardó como base+envío, y abajo
   // se vuelve a sumar `ship` → duplicaba el envío e inflaba el costo. Ver "costo real full" del arqueo.
   const baseUSD=getHistCostUSDProd(p.id,ym)??costUSDof(p);
-  // Dólar del MES de la venta (sector "Dólar x mes" → cierre → actual). Ya no se usa el
-  // v.tcSale congelado por venta, así todas las ventas del mismo mes usan el mismo dólar.
-  const tc=tcForYM(ym);
+  // El dólar del DÍA de la venta (27/10/2026, `tcDeVenta`): antes era el del mes, y el mes en curso usaba el de hoy.
+  const tc=tcDeVenta(v,ym);
   // Envío/embalaje: usar SIEMPRE el valor actual del producto (no el congelado por venta).
   // Antes se usaba v.shipUSD congelado, así que ventas viejas cargadas cuando el producto no
   // tenía envío quedaban con envío 0 y el mismo producto mostraba costos distintos. Ver arqueo.
@@ -24742,18 +24764,24 @@ function renderHomeParejo(){
   const facARCA=_facARCA();
   const barras=d.filas.map(f=>{
     const col=f.proy>d.topeH?'var(--red)':f.pct>=85?'var(--amber)':'var(--green)';
-    const wReal=Math.min(100,f.pctReal), wFut=Math.max(0,Math.min(100,f.pct)-wReal);
+    // TRES PARTES EN LA MISMA BARRA (27/10/2026, él: "quiero tres colores de la misma barra, lo ya facturado, lo que va a facturar
+    // en teoría y los productos nuevos"): lleno = facturado · medio = lo que ya vende, a su ritmo · rayado = lo nuevo que todavía no
+    // vendió (Full, viajando o en la caja, a su precio de hoy), que NO entra en "en teoría" porque no tiene ritmo.
+    const nuevo=Math.max(0,f.valNuevo||0), teo=Math.max(0,f.proy-f.fac-nuevo);
+    const wFac=Math.min(100,f.fac/d.topeH*100), wTeo=Math.max(0,Math.min(100-wFac,teo/d.topeH*100)), wNue=Math.max(0,Math.min(100-wFac-wTeo,nuevo/d.topeH*100));
+    const raya=`repeating-linear-gradient(135deg,${col} 0 3px,transparent 3px 6px)`;
+    const mu=(bg,op)=>`<span style="display:inline-block;width:9px;height:9px;border-radius:2px;vertical-align:-1px;margin-right:3px;background:${bg};opacity:${op};border:1px solid ${col}"></span>`;
     return `<div style="margin:8px 0">
       <div style="display:flex;justify-content:space-between;gap:8px;font-size:.66rem"><strong>${MET_LABELS[f.a]}</strong>
         <span style="color:${col};font-family:'DM Mono',monospace">${fM(f.proy)} al ${fD(d.fin).slice(0,5)} · ${f.proy>d.topeH?'se pasa '+fM(-f.resta):'le quedan '+fM(f.resta)}</span></div>
-      <div style="height:7px;background:var(--surface2);border-radius:5px;overflow:hidden;margin-top:3px;display:flex"><div style="height:100%;width:${wReal.toFixed(1)}%;background:${col}"></div><div style="height:100%;width:${wFut.toFixed(1)}%;background:${col};opacity:.4"></div></div>
-      <div style="font-size:.6rem;color:var(--muted);margin-top:2px">facturado ${fM(f.fac)} · a ritmo de 30 días: faltan ${d.faltan} d × ${fM(f.diario*30)}/mes = +${fM(f.futuro30)} → ${fM(f.proy30)}</div>
-      <div style="font-size:.6rem;margin-top:1px;color:${f.porMerc?'var(--amber)':'var(--muted)'}">📦 con la mercadería que tiene: ${fM(f.diarioEsp*30)}/mes${f.valNuevo>0?` + ${fM(f.valNuevo)} de lo nuevo sin vender todavía (${f.uNuevo} u. en Full, viajando o en la caja)`:''} → ${fM(f.proyEsp)}${f.porMerc?' · <strong>es la que se usa</strong>':''}</div>
+      <div style="height:9px;background:var(--surface2);border-radius:5px;overflow:hidden;margin-top:3px;display:flex"><div style="height:100%;width:${wFac.toFixed(1)}%;background:${col}"></div><div style="height:100%;width:${wTeo.toFixed(1)}%;background:${col};opacity:.45"></div><div style="height:100%;width:${wNue.toFixed(1)}%;background:${raya}"></div></div>
+      <div style="font-size:.6rem;color:var(--muted);margin-top:3px;line-height:1.5">${mu(col,1)}facturado ${fM(f.fac)} · ${mu(col,.45)}en teoría +${fM(teo)} <span style="opacity:.8">(lo que ya vende, a su ritmo: ${fM((f.diarioEsp||f.diario)*30)}/mes × ${d.faltan} d)</span>${nuevo>0?` · ${mu(raya,1)}nuevo sin vender +${fM(nuevo)} <span style="opacity:.8">(${f.uNuevo} u. en Full, viajando o en la caja, a su precio de hoy)</span>`:''}</div>
+      <div style="font-size:.58rem;color:var(--muted);opacity:.75;margin-top:1px">con el ritmo parejo de los últimos 30 días serían ${fM(f.proy30)}</div>
       <div style="font-size:.6rem;color:var(--muted);margin-top:1px">${_ofiTxt(f.ofi,fM)}</div>
       ${(()=>{const t=_parejoCatLinea(f.a,fM,facARCA);return t?`<div style="font-size:.6rem;color:var(--muted);margin-top:1px">${t}</div>`:'';})()}
     </div>`;}).join('');
   el.innerHTML=caja(`<div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.85rem">⚖️ Las 4 cuentas contra el tope de H (${fM(d.topeH)}/año)</div>
-    <div style="font-size:.6rem;color:var(--muted);margin-top:2px">La próxima recategorización de ARCA mira del ${fD(d.ini)} al ${fD(d.fin)}. Barra llena = lo facturado oficial hasta hoy (canceladas incluidas, como las cuenta ARCA) · barra clarita = lo que falta hasta el cierre: el MAYOR entre el ritmo de los últimos 30 días enteros (hasta ayer) y lo que viene con la mercadería que ya tiene cada cuenta (lo recién llegado a su ritmo desde que llegó, y lo que está en Full, viajando o en la caja sin vender todavía, a su precio de hoy). El tope es por cuenta.</div>
+    <div style="font-size:.6rem;color:var(--muted);margin-top:2px">La próxima recategorización de ARCA mira del ${fD(d.ini)} al ${fD(d.fin)}. La barra tiene tres partes: <strong>llena</strong> = lo facturado oficial hasta hoy (canceladas incluidas, como las cuenta ARCA) · <strong>clarita</strong> = en teoría, lo que ya vende cada producto a su ritmo hasta el cierre (lo recién llegado, a su ritmo desde que llegó) · <strong>rayada</strong> = lo nuevo que todavía no vendió (en Full, viajando o en la caja), a su precio de hoy. El tope es por cuenta.</div>
     ${barras}${aviso}
     <div style="font-size:.66rem;margin-top:8px">💡 Lo próximo nuevo que no sea perfume → <strong style="color:var(--green)">${MET_LABELS[(orden.find(f=>f.a==='ayelen'||f.a==='luciana')||menos).a]}</strong>, la que más lugar tiene entre Ayelen y Luciana. <span style="color:var(--muted)">(Perfumes siguen yendo a Adriana; lo que ya está en una cuenta, queda.)</span></div>
     <div style="text-align:right;margin-top:8px"><button onclick="goMonotributo()" style="background:transparent;border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:2px 8px;font-size:.6rem;cursor:pointer">✎ AFIP / meses</button></div>`);

@@ -178,7 +178,7 @@
   deshizo el detector (va al log). `//` = salto de línea, sin `;`, sin datos de compradores. Informativos: `sendAlerta(texto,{info:true})`.
 - **Cada venta nueva llega al TELÉFONO (push de la web), no a Telegram** (`AVISO_VENTA_TELEGRAM=false`): sólo compras que dejan
   **$10.000+** de ganancia (la compra ENTERA, sumando el carrito), no suena 00:30-10:00 (sale junto a las 10:00). Cada teléfono toca
-  una vez "🔔 Activar aviso de cada venta". Llave privada VAPID en `mlapi/vapid` (nunca al repo).
+  una vez "🔔 Activar aviso de cada venta". Llave privada VAPID en `mlapi/vapid` (nunca al repo). **Sale apenas el robot lee las ventas** (27/10, no al final de la vuelta): llega 2-5 min después de la venta; él: *"lo del aviso de 2 a 5 mins está bien"* → no se arma el aviso al instante (Cloudflare + notificaciones de ML), no volver a proponerlo.
 - Chats nuevos del bot quedan `pendiente` hasta `tgaprobar:<últimos números>:go`.
 - **Ventas vivas:** el temblor se permite desde **$10.000** de ganancia (`VIVA_GAN_TIEMBLA`, 15/10) y el fuego desde **$20.000** (`VIVA_GAN_FUEGO`, 26/10). Cada venta dice
   Clásica o Premium y en cuántas cuotas (`tipoPub`, `cuotas`, `cuotasSI`) y "envío gratis" si salió por una gemela de envío.
@@ -425,6 +425,7 @@
   `cargargasto:<fecha>|<monto>|<cat>|<desc>[|…][|go]`. Cargos de Full del mes: `cargosmes[:<AAAA_MM>][:go]` (en la completa del 15; el
   período de ML va al mes siguiente) — sólo almacenamiento/stock antiguo/retiro/multas (~$130.000/mes), las percepciones ya están en
   `ML_EXTRA_PCT`. Recordárselo a fin de mes. Retiro y gastos se cargan enteros cuando se pagan (no se reparten por día).
+- **Cada venta usa el dólar de SU día** (27/10, él eligió la 1a después de decir "dejalo así"; caso: el 15/10 pasó de dorado a violeta porque el mes en curso se recalculaba con el dólar de hoy): `tcDeVenta` (`v.tcSale`, lo guarda el robot) en `_efectivoCostoVP`; un día pasado sólo cambia por una cancelación/devolución o un cambio del costo en dólares. Meses con dólar a mano o cierres viejos (sin `tcPorVenta`) siguen con el del mes; los cierres nuevos guardan `tcPorVenta`. El robot ya usaba `v.tcSale`. Para explicar un día que cambió: `porquedia:<AAAA_MM_DD>`.
 - Percepciones IIBB medidas por cuenta en `ML_EXTRA_PCT` (Adriana 3,80 · Luciana 4,01 · Ayelen 5,99 · Matías 3,40).
 - Los reclamos que "cubre" ML SÍ nos cuestan (0 de 70 dejaron la plata, 15/10): no volver a proponerlo.
 
