@@ -45313,7 +45313,9 @@ async function main() {
       const costoDeMlaI = (m) => { const p = prodIdx[(links[m] || {}).prodId]; return p && tcI > 0 ? costoPesos(p, 1, tcI).costo : 0; };
       console.log(`\n── 12 · PIERDEN LA CAJA DE COMPRA Y VENDÍAN (${perd.length}) ──`);
       if (!(tcI > 0)) console.log('   (sin dólar cargado: no comparo el precio de la caja contra el costo)');
-      for (const [m, e] of perd.slice(0, 12)) { const cM = costoDeMlaI(m), ptw = Number(e.cajaPtw) || 0; console.log(`· ${m} · ${e.cuenta} · ${tit(m)} · ${u30[m]} u. en 30 d · ML pide ${ptw ? money(ptw) : '?'}${e.cajaTs ? ' (hace ' + Math.round((ahoraI - e.cajaTs) / 36e5) + ' h)' : ''}${ptw > 0 && cM > 0 && ptw < cM ? ` · ⚠️ ese precio no deja ganancia (el costo de la ficha es ${money(cM)})` : ''}`); }
+      // AUDITORÍA 27/10/2026: ML devolvía $1.000 para ganar la caja en 4 que venden mucho (Naipes, Filtro, Crystal Rock, Cartas
+      // Españolas) y sólo se marcaba si quedaba abajo del costo: un precio que ni cubre el cargo fijo de ML (~$1.230) también se marca.
+      for (const [m, e] of perd.slice(0, 12)) { const cM = costoDeMlaI(m), ptw = Number(e.cajaPtw) || 0; console.log(`· ${m} · ${e.cuenta} · ${tit(m)} · ${u30[m]} u. en 30 d · ML pide ${ptw ? money(ptw) : '?'}${e.cajaTs ? ' (hace ' + Math.round((ahoraI - e.cajaTs) / 36e5) + ' h)' : ''}${ptw > 0 && cM > 0 && ptw < cM ? ` · ⚠️ ese precio no deja ganancia (el costo de la ficha es ${money(cM)})` : ptw > 0 && ptw < cM + 1230 ? ` · ⚠️ no es un precio posible: ni cubre el cargo fijo de ML (~$1.230)${cM > 0 ? ' más el costo (' + money(cM) + ')' : ''}; ML manda un número de relleno, la caja no se pelea por precio` : ''}`); }
       if (perd.length > 12) console.log(`  (y ${perd.length - 12} más…)`);
       // AUDITORÍA 17/10/2026: se ordenaba por UNIDADES y se cortaba en 15, así que lo caro que vende poco (Watch S5,
       // Redmi Pad 2: 2 u. en 30 d, ~$27.000 por día de venta cada uno) quedaba escondido en "y 26 más", mientras el
