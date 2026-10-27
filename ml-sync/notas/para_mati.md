@@ -36,6 +36,8 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 - **Separador x2 MLA1474954957 (Ayelen):** ML le marca 62% de salud y no vende hace 60 días (la hermana MLA3207459664 sí vende con el mismo stock). (a) sugerida: revisarla en ML (fotos, ficha técnica, título) · (b) pausarla.
 - ~~Color del Centímetro~~ → **26/10 a la noche, él con capturas de ML: MLA3559540968 = Rosa · MLA1699834745 y MLA3112784736 (+ su Premium MLA2218757869) = Blanco.** Fijado con `fijarvar` (releído). No hay catálogo de ML por color (sólo "Surtido" MLA46897799). Queda decidir: las dos Blancas al mismo precio o dejar terminar una.
 - ~~**Waflera Disney MLA4087803354 (Ayelen):** 🥊 cumplida.~~ **27/10 eligió (b):** queda en $269.990 ganando la caja, sin buscar techo (*"deja mucho y vende bastante rápido… no quiero perder ritmo de venta"*). HECHO: tag 💰 punto + nota en el 🧠, la 🥊 y el 🔒 siguen puestos.
+- **Codera Matías, cuando entre la caja (~02/11):** la de $30.790 (MLA2230551189, talle Único) y las dos de $13.490 comparten stock. (a) sugerida: cerrar la de $30.790 y sus 2 gemelas, como elegiste el 25/10 · (b) igualar las tres a $30.790 (+128%, probablemente deja de vender: normalmente sale a $6.350-$7.990).
+- **Pack x10 Lupa (Ayelen):** desde que la Clásica cruzó los $33.000 el 22/10, su gemela de envío gratis (MLA2225784435) es la misma oferta dos veces. (a) sugerida: cerrar esa gemela mientras la Clásica esté arriba de $33.000 · (b) dejarla.
 - **Preguntas que no sé contestar seguro:** Mentonera (si tiene hueco en el mentón y las medidas de la banda) · Protector metatarso (qué es el color "Ab").
 
 ### De las vueltas del 23/10 (a la noche y a la tarde)
