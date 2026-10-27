@@ -3105,7 +3105,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.22';
+const APP_VERSION='27.23';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3118,6 +3118,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.23',f:'27/10',h:'01:45',c:[{n:3,t:'💲 Cada venta usa el dólar del día en que se vendió (antes el mes en curso se recalculaba entero con el dólar de hoy, y un día pasado cambiaba de color sin que pasara nada). Un día ya pasado sólo cambia si se cancela o devuelve una venta. Los meses ya cerrados y los que tienen dólar cargado a mano no se tocan.'}]},
   {v:'27.22',f:'27/10',h:'01:05',c:[{n:2,t:'📅 Calendario de Inicio: cada mes del año y cada día del mes muestran también 🧾 las ventas brutas (lo que pagaron los compradores), en corto (1,2M · 850k), debajo de la ganancia.'}]},
   {v:'27.21',f:'27/10',h:'00:50',c:[{n:2,t:'⚖️ Tope de H: la barra de cada cuenta tiene tres partes: llena = lo ya facturado, clarita = lo que va a facturar en teoría con lo que ya vende, rayada = lo nuevo que todavía no vendió (Full, viajando o en la caja). Debajo, cada parte con su número.'}]},
   {v:'27.20',f:'27/10',h:'00:30',c:[{n:3,t:'⚖️ Tope de H: cada cuenta muestra dos proyecciones al cierre, la del ritmo de 30 días y 📦 la que viene con la mercadería que ya tiene (lo recién llegado a su ritmo desde que llegó, y lo que está en Full, viajando o en la caja sin vender todavía, a su precio). Se usa la más alta: así se ve venir la subida de Ayelen antes de que pase, y el 💡 de la próxima cuenta lo tiene en cuenta.'}]},
@@ -10466,6 +10467,7 @@ async function saveSnapshot(){
   // El dólar de la ganancia del mes: el que ya usaba ANTES de cerrarlo (2a, 12/10/2026). Cerrar no cambia la ganancia.
   const _tcm=state.tc_mes&&state.tc_mes[key];
   const tcMes=(_tcm!=null&&_tcm!==''&&parseFloat(_tcm)>0)?parseFloat(_tcm):(tcVentasMes(key)||tipoCambio);
+  const tcPorVenta=!(_tcm!=null&&_tcm!==''&&parseFloat(_tcm)>0);   // 27/10/2026: el cierre no mueve el dólar de cada venta (`tcDeVenta`)
   // LA AGENDA NO ENTRA EN EL CIERRE DEL MES, a propósito. Es una lista de días FUTUROS: dentro de
   // un cierre guardado no quiere decir nada, y si se copiara quedaría una copia congelada de la
   // misma plata adentro de cada mes para siempre — dos lugares con el mismo dinero es el error
@@ -10477,7 +10479,7 @@ async function saveSnapshot(){
   // noviembre y el cierre quedaba un mes de H más abajo (misma regla que `arcacierres` del robot).
   const _tcA=curTC(), arcaARS=c.arcaDeuda>0?arcaDeudaARS(key).ars:0;
   const totalSnap=c.total+((c.arcaDeuda>0&&_tcA>0)?c.arcaDeuda-arcaARS/_tcA:0);
-  const snap={label,ts:Date.now(),stock:c.stockVal,stockML:c.stockML,stockLocal:c.stockLocal,total:totalSnap,tipoCambio,tcMes,arcaARS,
+  const snap={label,ts:Date.now(),stock:c.stockVal,stockML:c.stockML,stockLocal:c.stockLocal,total:totalSnap,tipoCambio,tcMes,tcPorVenta,arcaARS,
     vsrUSD:c.vsr||0,pvUSD:c.pvDeuda||0,
     finanzas:finSnap,
     locValues:Object.fromEntries(LOCS.map(l=>{let v=0;(state.products||[]).forEach(p=>v+=Math.max(0,getQ(p.id,l))*costP(p));return[sid(l),v];})),
@@ -10585,9 +10587,10 @@ function renderDolarMes(){
     const efec=tcForYM(ym);
     let fuente,fColor;
     if(hasManual){fuente='cargado a mano';fColor='#a78bfa';}
+    else if(snap&&snap.tcPorVenta){fuente='el del día de cada venta (mes cerrado)';fColor='var(--muted)';}
     else if(_tcGananciaSnap(snap)>0){fuente='del cierre del mes';fColor='var(--muted)';}
-    else if(ym<_curYM()&&tcVentasMes(ym)>0){fuente='promedio de sus ventas';fColor='var(--muted)';}
-    else{fuente='dólar actual';fColor='var(--muted)';}
+    else if(ym<_curYM()&&tcVentasMes(ym)>0){fuente='el del día de cada venta (promedio)';fColor='var(--muted)';}
+    else{fuente='el del día de cada venta';fColor='var(--muted)';}
     let nv=0;const days=state.ventaprod||{};
     Object.keys(days).forEach(k=>{if(k.substring(0,7)===ym)Object.values(days[k]||{}).forEach(v=>{if(!v.cancelada)nv++;});});
     return`<div class="ingreso-item" style="flex-direction:column;gap:7px${hasManual?';border-color:rgba(124,58,237,.5)':''}">
@@ -10855,7 +10858,7 @@ async function addManualSnapshot(){
   if(state.snapshots[key]&&!confirm('Ya existe un cierre de '+label+'. ¿Sobrescribir con este total?'))return;
   // El dólar del mes que se carga, no el de HOY (etapa 8): el cierre manifiesta el dólar que ese mes ya usaba,
   // así cargar marzo hoy no le cambia la ganancia de marzo.
-  const snap={label,ts:Date.now(),total,stock:0,stockML:0,stockLocal:0,tipoCambio:(state.snapshots&&state.snapshots[key]&&parseFloat(state.snapshots[key].tipoCambio))||tcForYM(key),tcMes:_tcGananciaSnap(state.snapshots&&state.snapshots[key])||tcForYM(key),manual:true,finanzas:{},locValues:{},prodValues:{}};
+  const snap={label,ts:Date.now(),total,stock:0,stockML:0,stockLocal:0,tipoCambio:(state.snapshots&&state.snapshots[key]&&parseFloat(state.snapshots[key].tipoCambio))||tcForYM(key),tcMes:_tcGananciaSnap(state.snapshots&&state.snapshots[key])||tcForYM(key),tcPorVenta:state.snapshots&&state.snapshots[key]?!!state.snapshots[key].tcPorVenta:true,manual:true,finanzas:{},locValues:{},prodValues:{}};
   await fbSet('snapshots/'+key,snap);await log('Cargó mes manual: '+label+' ('+fmt(total)+')');
   if(!state.snapshots)state.snapshots={};state.snapshots[key]=snap;
   document.getElementById('snap-total').value='';
@@ -13327,6 +13330,19 @@ function tcVentasMes(ym){
 //  3) si no, un mes TERMINADO: el promedio del dólar guardado en sus ventas (etapa 2, 28/09)
 //  4) si no, el dólar actual
 // Así cada mes usa su propio dólar y las ventas viejas no cambian cuando se mueve el dólar de hoy.
+// EL DÓLAR DE CADA VENTA (27/10/2026, él eligió la 1a, con el 15/10 que pasó de dorado a violeta: el mes en curso se recalculaba
+// entero con el dólar de HOY, y al subir ~1,6% el 15 perdió ~$19.000 sin que cambiara ninguna venta). Ahora cada venta usa el dólar
+// de SU día (`v.tcSale`, lo guarda el robot al leerla), salvo que el mes tenga un dólar cargado a mano o un cierre viejo (sin
+// `tcPorVenta`, de antes de esta regla): ahí sigue el del mes y nada de lo viejo se mueve. Un día pasado sólo cambia si se cancela o
+// devuelve una venta, o si cambia el costo en dólares del producto. El robot ya usaba `v.tcSale` (informe, ventas raras, cobromes).
+function tcDeVenta(v,ym){
+  const man=state.tc_mes&&state.tc_mes[ym];
+  if(man!=null&&man!==''&&parseFloat(man)>0)return parseFloat(man);
+  const sn=state.snapshots&&state.snapshots[ym];
+  if(sn&&!sn.tcPorVenta&&_tcGananciaSnap(sn)>0)return _tcGananciaSnap(sn);
+  const t=parseFloat(v&&v.tcSale);
+  return t>0?t:tcForYM(ym);
+}
 function tcForYM(ym){
   const v=state.tc_mes&&state.tc_mes[ym];
   if(v!=null&&v!==''&&!isNaN(parseFloat(v)))return parseFloat(v);
@@ -13427,7 +13443,7 @@ function costoOficinaVP(v){
   const ym=v._dateKey.substring(0,7);
   const baseUSD=getHistCostUSDProd(p.id,ym)??costUSDof(p);   // el costo del MES de la venta
   if(!baseUSD)return v.costo||0;
-  return baseUSD*tcForYM(ym)*(v.qty||1);
+  return baseUSD*tcDeVenta(v,ym)*(v.qty||1);
 }
 // ── LA VENTA SIN COSTO NO SUMA GANANCIA (revisión max #10, 26/09/2026, eligió la a) ──
 // Sin ficha, o con la ficha en costo 0, el costo daba sólo los impuestos y el neto ENTERO se
@@ -13471,9 +13487,8 @@ function _efectivoCostoVP(v){
   // No se usa v.costBaseUSD porque en ventas viejas ese campo se guardó como base+envío, y abajo
   // se vuelve a sumar `ship` → duplicaba el envío e inflaba el costo. Ver "costo real full" del arqueo.
   const baseUSD=getHistCostUSDProd(p.id,ym)??costUSDof(p);
-  // Dólar del MES de la venta (sector "Dólar x mes" → cierre → actual). Ya no se usa el
-  // v.tcSale congelado por venta, así todas las ventas del mismo mes usan el mismo dólar.
-  const tc=tcForYM(ym);
+  // El dólar del DÍA de la venta (27/10/2026, `tcDeVenta`): antes era el del mes, y el mes en curso usaba el de hoy.
+  const tc=tcDeVenta(v,ym);
   // Envío/embalaje: usar SIEMPRE el valor actual del producto (no el congelado por venta).
   // Antes se usaba v.shipUSD congelado, así que ventas viejas cargadas cuando el producto no
   // tenía envío quedaban con envío 0 y el mismo producto mostraba costos distintos. Ver arqueo.

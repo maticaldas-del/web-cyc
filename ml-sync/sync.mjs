@@ -37594,7 +37594,7 @@ async function main() {
         nV++;
         const p = v.prodId ? pIdx[v.prodId] : null, qty = v.qty || 1, total = Number(v.total) || 0, neto = Number(v.neto) || 0;
         const imp = total * (mlExtraPct(v.cuenta) + monoP) / 100;
-        const cHoy = p ? costoPesos(p, qty, tc).costo : (Number(v.costo) || 0), cG = Number(v.costo) || 0;
+        const cHoy = p ? costoPesos(p, qty, parseFloat(v.tcSale) || tc).costo : (Number(v.costo) || 0), cG = Number(v.costo) || 0;   // con el dólar de SU día, como la web (27/10, `tcDeVenta`)
         gHoy += neto - cHoy - imp; gGuard += neto - cG - imp;
         if (cG > 0 && Math.abs(cHoy - cG) >= 300) cambio.push({ nom: (v.prod || '?').slice(0, 40), cta: v.cuenta || '?', qty, cG, cHoy });
       }
@@ -37602,7 +37602,7 @@ async function main() {
       console.log(`\n── CANCELADAS O DEVUELTAS (ya no suman) ──`);
       if (!canc.length) console.log('  ninguna');
       for (const c of canc.sort((a, b) => b.ts - a.ts)) console.log(`  ${c.ts ? 'cancelada el ' + fF(c.ts) : 'cancelada (sin fecha)'} · ${c.tipo} · ${c.cta} · ${c.nom} · era ${money(Math.round(c.tot))} (neto ${money(Math.round(c.neto))})`);
-      console.log(`\n── COSTO DISTINTO AL DE ESE DÍA (costo guardado en la venta → costo de hoy, con el % de reclamos en vivo) ──`);
+      console.log(`\n── COSTO DISTINTO AL DE ESE DÍA (costo guardado en la venta → costo de hoy con el dólar de su día y el % de reclamos en vivo) ──`);
       if (!cambio.length) console.log('  ninguno');
       for (const c of cambio.sort((a, b) => Math.abs(b.cHoy - b.cG) - Math.abs(a.cHoy - a.cG))) console.log(`  ${c.cta} · x${c.qty} · ${c.nom} · ${money(Math.round(c.cG))} → ${money(Math.round(c.cHoy))} (${c.cHoy > c.cG ? '−' : '+'}${money(Math.round(Math.abs(c.cHoy - c.cG)))} de ganancia)`);
       console.log(`\n── RESUMEN (cuenta del robot, aproximada a la de la web) ──`);

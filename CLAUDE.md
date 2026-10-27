@@ -425,7 +425,7 @@
   `cargargasto:<fecha>|<monto>|<cat>|<desc>[|…][|go]`. Cargos de Full del mes: `cargosmes[:<AAAA_MM>][:go]` (en la completa del 15; el
   período de ML va al mes siguiente) — sólo almacenamiento/stock antiguo/retiro/multas (~$130.000/mes), las percepciones ya están en
   `ML_EXTRA_PCT`. Recordárselo a fin de mes. Retiro y gastos se cargan enteros cuando se pagan (no se reparten por día).
-- **El mes en curso se calcula con el dólar de HOY** (27/10, él: *"dejalo así"*, eligió la b): lo comprado en dólares se pasa a pesos con el dólar del día, así que la ganancia de un día pasado de este mes se mueve con el dólar (y con cancelaciones/devoluciones) hasta que el mes cierra y se congela. No volver a proponer fijar cada venta con el dólar de su día. Para explicar un día que cambió: `porquedia:<AAAA_MM_DD>`.
+- **Cada venta usa el dólar de SU día** (27/10, él eligió la 1a después de decir "dejalo así"; caso: el 15/10 pasó de dorado a violeta porque el mes en curso se recalculaba con el dólar de hoy): `tcDeVenta` (`v.tcSale`, lo guarda el robot) en `_efectivoCostoVP`; un día pasado sólo cambia por una cancelación/devolución o un cambio del costo en dólares. Meses con dólar a mano o cierres viejos (sin `tcPorVenta`) siguen con el del mes; los cierres nuevos guardan `tcPorVenta`. El robot ya usaba `v.tcSale`. Para explicar un día que cambió: `porquedia:<AAAA_MM_DD>`.
 - Percepciones IIBB medidas por cuenta en `ML_EXTRA_PCT` (Adriana 3,80 · Luciana 4,01 · Ayelen 5,99 · Matías 3,40).
 - Los reclamos que "cubre" ML SÍ nos cuestan (0 de 70 dejaron la plata, 15/10): no volver a proponerlo.
 
