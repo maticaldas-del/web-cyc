@@ -95,3 +95,6 @@ Ganar la caja daba pérdida en todos (Tendedero −25%, Rose y Silver −10%, Co
 2. Paulvic Rose Mujer (2 u., 0 ventas en 30 d; si no vende paga ~$12.000/mes y deja $3.261 c/u): (a) retirar al local · (b) esperar un mes.
 3. Indigo, Silver, Batidora negra, F9 y Timer: (a) esperar como están (pagan poco, venden y dejan mucho) · (b) bajar.
 4. Cortapelo 4 en 1 (0 ventas en 60 d, 70 d en Full): (a) esperar a los 90 días (~20 d, F13) y ahí escalera hasta 0%; si no vende a los ~117 d, retirar · (b) retirar ya.
+
+### Packs contra sueltos (27/10, él: "hay aromatizantes Aer que se venden por unidad")
+1. Lupa 60mm (hoy Pack x10 a $47.990, vende 1 por mes, ~$1.750 por lupa): suelta a ~$4.990 dejaría ~$1.300 c/u, y las lupas sueltas parecidas que tenemos venden 17-23 por mes. (a) sugerida: publicarla también suelta y probar 30 días · (b) dejar sólo el pack.
