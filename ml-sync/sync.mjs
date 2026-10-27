@@ -18285,7 +18285,8 @@ async function main() {
       for (const [ts, g] of Object.entries(hist)) for (const v of Object.values(g || {})) console.log(`  ${new Date(Number(ts) - 3 * 3600e3).toISOString().slice(0, 16)} · ${v.cod} · ${v.nom} · ${v.u} u. · US$ ${v.usd}`);
       const cands = (await db.get('cyc/candidatos_py')) || {};
       console.log('── CANDIDATOS con unidades o viajando:');
-      for (const c of Object.values(cands)) if (c && ((parseInt(c.pedirU) || 0) > 0 || c.pedidoEn)) console.log(`  ${c.nombre} · cód ${c.cod} · pedirU ${c.pedirU || 0} · pedidoEn ${c.pedidoEn || '—'}`);
+      for (const c of Object.values(cands)) if (c && ((parseInt(c.pedirU) || 0) > 0 || c.pedidoEn)) { const _u = parseFloat(c.usd) || 0, _mx = _u > 0 ? Math.max(1, Math.min(4, Math.ceil(20 / _u - 1e-9))) : 1;   // 27/10/2026: el máximo de cada nuevo (candMaxU de la web)
+        console.log(`  ${c.nombre} · cód ${c.cod} · US$ ${_u || '—'} · pedirU ${c.pedirU || 0} (máx ${_mx})${(parseInt(c.pedirU) || 0) > _mx ? ' ⚠️ PASA EL MÁXIMO' : ''} · pedidoEn ${c.pedidoEn || '—'}`); }
       return;
     }
     if (/^ventasdia:/.test(String(process.env.BILLING_PROBE || ''))) {
