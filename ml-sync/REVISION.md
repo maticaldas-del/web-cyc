@@ -83,6 +83,11 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
 - **Dónde vive:** `frenosBajas` en `ml-sync/sync.mjs` (F13, `edad13`, `BAJAR_MIN_PCT_JOVEN`, `EDAD_LIBERA_CERO`); el detector `errores` ahora le pasa también el peor caso (`mgPA`).
 - **Qué chequear:** una baja a 30% con 60 días → frenada (dice cuántos días faltan); con 95 días → pasa; la gemela que acompaña a su Clásica toma la edad de la Clásica. La autorización XEY9 del Hot (20%) queda en no.
 
+### 🧭 Estrategias unidas en la web (27/10/2026, v27.29, eligió 6a: "bajando por sobra entonces es 'sobra stock' no 'bajando'")
+- **Qué es:** sólo cambia cómo se VEN (el robot sigue guardando los tags de siempre, que usan los frenos): 🏔️ techook → 💰 "· techo encontrado" · ↘️ volviendo → 💰 "· volviendo" · 🪜 que viene de 📈/🏔️/💰/🆕/🔥/⏳/🎁/↘️ → 💰 con su escalón · 🪜 que viene de 📦 sobra o liquidando → 📦 sobra stock con su escalón · 🆕 lanzamiento → 📈 "· nuevo" · ⏸️ sin stock → "· vuelve a <la de antes>".
+- **Dónde vive:** `estrategiaDe` y `estrategiaChip` (index.html). El botón 🧭 Estrategias de Arqueo → Productos cuenta con lo mismo.
+- **Qué chequear:** en 🧭 no aparecen 🏔️, ↘️ ni 🆕 como grupo; una 🪜 de sobra sale en 📦; el globito explica de dónde viene.
+
 ### 🔒 💰 sin 🔴 no (27/10/2026, él con el Adaptador 8 en 1: "no busca techo. y el techo no está en rojo")
 - **Qué es:** de 195 en 💰 sólo 17 tenían techo medido; las 11 publicaciones que vendían 1+ por semana y nunca se probaron más caras volvieron a 📈 (los 5 Paulvic esperan su prueba de $21.990). Freno nuevo: `decido …#punto` y `tag:<MLA>=punto` se niegan si vende 1+ por semana (60 días con stock, con gemelas) y no hay 🔴 (`cyc/rayas/<MLA>.techo`) ni 🏔️ de techo95 de 60 días. Lo que vende menos de 1 por semana sí queda en 💰 (4a).
 - **Dónde vive:** `puntoSinTecho` en `ml-sync/sync.mjs` (al lado de `ritmoSemanalGrupo`), llamado en el comando `tag` y en el bucle de frenos de `decido`. `techo95:punto` lista las 💰 con y sin techo.

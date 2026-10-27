@@ -4659,7 +4659,8 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
     const antiguo15 = edadF != null && edadF >= cobraDesde - 15;   // 27/10/2026: 15 días antes de pagar stock antiguo (ver F12)
     const mlasSt = [d.mla, ...hermanasStockDe(links, prods || {}, d.mla)];
     // F13: la edad de la unidad más vieja, también de las que comparten su stock (la gemela no tiene su propio Excel de lotes).
-    const edad13 = (() => { let m = edadF; for (const m2 of mlasSt.slice(1)) { const x = edadViejaFull(links[m2] || {}, null, lotes || {}, {}); if (x != null && (m == null || x > m)) m = x; } return m; })();
+    const edad13 = (() => { let m = edadF != null ? edadF : edadViejaFull(e, 'k', lotes || {}, { k: hSh && hSh.desde ? hSh : null });   // aproximada = la real es igual o mayor
+       for (const m2 of mlasSt.slice(1)) { const x = edadViejaFull(links[m2] || {}, null, lotes || {}, {}); if (x != null && (m == null || x > m)) m = x; } return m; })();
     const renueva0 = !!opts.promo && !(a < p0v * 0.995);   // renovar el mismo descuento no es una baja (46a)
     // Las unidades vendidas (de ésta y de las que comparten su stock) entre t0 y t1, de `cyc/ventaprod/<día>`. null = no se pudo leer.
     const ventasEntre = async (t0, t1) => {
