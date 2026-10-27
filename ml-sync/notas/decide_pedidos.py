@@ -13,6 +13,9 @@ if not tc>0: print('⚠️ el log no trae el dólar (o está en 0): sin dólar l
 prods=[];grupo='';cur=None;esper={};nfichas=None;noEnt=[];cuentaOk=False;nDecidir=None;nFuera=None
 # `hist N d` (etapa 3, 20/10/2026): días de la PRIMERA a la ÚLTIMA venta en 180 d, con piso de 7 (lo mismo que `ventasHistoricas`
 # de la web). Un log viejo no lo trae: ahí lo agotado se sigue midiendo ÷180.
+def nor_de(t):
+    m=re.search(r' · NOR (\d+)/(\d+) (\d+)/(\d+)@(\d+)',t or '')
+    return dict(u30=int(m.group(1)),d30=int(m.group(2)),u=int(m.group(3)),d=int(m.group(4)),w=int(m.group(5))) if m else None
 def hist_de(t):
     mh=re.search(r' · hist ([\d.]+)d',t)
     return float(mh.group(1)) if mh else None
@@ -32,7 +35,7 @@ for l in L:
         cm=re.search(r'precio \$\d+ \((.*?)\)',rest)
         cur=dict(id=m.group(1),n=m.group(2),g=grupo,v30=int(m.group(3)),v60=int(m.group(4)),v180=int(m.group(5)),ult=m.group(6),rem=int(m.group(7) or 0),barata=int(m.group(8) or 0),dcs=int(m.group(9)),cortes=int(m.group(10) or 0),full=int(m.group(11)),casa=int(m.group(12)),cam=int(m.group(13)),
           py=g(r'PYviaja (\d+)'),pv=g(r'PVviaja (\d+)'),li=g(r'LIviaja (\d+)'),colores=g(r'colores (\d+)'),neto=g(r'neto \$(\d+)'),costo=g(r'costo \$(\d+)'),precio=g(r'precio \$(\d+)'),med60=g(r'med60 \$(\d+)'),ultv=g(r'ultv \$(\d+)'),
-          cambios=(cm.group(1) if cm else ''),decidido=(' YA DECIDÍ ' in rest),vars=[],hist=hist_de(rest),colFicha=None)
+          cambios=(cm.group(1) if cm else ''),decidido=(' YA DECIDÍ ' in rest),vars=[],hist=hist_de(rest),colFicha=None,nor=nor_de(rest))
         prods.append(cur); continue
     # Un renglón de producto que NO se entiende (un dato nuevo en el medio): sus colores NO pueden ir al producto de arriba.
     if re.match(r'^p\w+ · ',l): cur=None; noEnt.append(l[:110]); continue
@@ -46,7 +49,7 @@ for l in L:
     if m and cur:
         rv=m.group(11); pv=re.search(r'PVviaja (\d+)',rv); li=re.search(r'LIviaja (\d+)',rv); cv=re.search(r' · cambios \((.*?)\)',rv); mn=re.search(r' · mano (\d+)( vencida)?',rv)
         cur['vars'].append(dict(v=m.group(1),v30=int(m.group(2)),v60=int(m.group(3)),v180=int(m.group(4)),ult=m.group(5),dcs=int(m.group(6)) if m.group(6) else cur['dcs'],cortes=int(m.group(7) or 0),full=int(m.group(8)),casa=int(m.group(9)),cam=int(m.group(10)),pv=int(pv.group(1)) if pv else 0,li=int(li.group(1)) if li else 0,nunca=(' · NUNCA' in rv),
-          hist=hist_de(rv),cambios=(cv.group(1) if cv else None),mano=(int(mn.group(1)) if mn else None),manoVenc=bool(mn and mn.group(2))))
+          hist=hist_de(rv),cambios=(cv.group(1) if cv else None),mano=(int(mn.group(1)) if mn else None),manoVenc=bool(mn and mn.group(2)),nor=nor_de(rv)))
 # N DE M: que se hayan leído TODAS las fichas que imprimió pedidostodo (si no, un renglón con otro formato se pierde callado).
 for gr,n in esper.items():
     if gr in('BSAS','PY','PAULVIC'):
@@ -63,6 +66,18 @@ for gr in ('BSAS','PY','PAULVIC'):
 if not cuentaOk: malo.append('falta la línea final "CUENTA: … ✓" (el log está cortado o pedidostodo no cerró)')
 if malo: print('⚠️ NO ARMO PEDIDOS: '+' · '.join(malo)); sys.exit(1)
 def ritmo(x,dcs=30):
+    # 🛒 A PRECIO NORMAL (27/10/2026, él eligió 1a): si pedidostodo trae `NOR u30/d30 u/d@ventana`, el ritmo sale SÓLO de los días con
+    # stock a precio normal (sin 🔥 escasez, ⏳ sin reposición, 📦 sobra, liquidando ni remate): lo vendido caro en escasez no achica la
+    # compra y lo vendido barato por sobra no la agranda. 60 días; con menos de 14 días normales, 180; si tampoco, 365 (con 7+ días).
+    # Con 3+ ventas en los últimos 30 días normales manda el más alto entre ése y el 80% del largo (como antes con v30/v60).
+    nr=x.get('nor')
+    if nr and (nr['d']>=14 or (nr['w']==365 and nr['d']>=7)):
+        tiene=x['full']+x['casa']+x['cam']+x.get('py',0)+x.get('pv',0)+x.get('li',0)
+        rL=nr['u']/nr['d']; r=rL
+        if nr['u30']>=3 and nr['d30']>=7: r=max(nr['u30']/nr['d30'],rL*0.8)
+        base=f"a precio normal vendió {nr['u']} en {nr['d']} días con stock (últimos {nr['w']} d, sin contar escasez, sobra ni remate)"
+        if r!=rL: base+=f" · {nr['u30']} en los últimos {nr['d30']}"
+        return r,tiene,base
     # `li` (20/10/2026, decisión 1a): lo ya probado pedido a una lista que viaja (o llegó y falta contar), igual que Paraguay y el Paulvic.
     tiene=x['full']+x['casa']+x['cam']+x.get('py',0)+x.get('pv',0)+x.get('li',0)
     d=max(7,min(30,dcs)); R=lambda n: f"{round(n):d}"   # con ventas sin color repartidas las cuentas pueden tener decimales   # días con stock en 30 (con piso de 7: con 1-2 días una venta suelta pediría una caja entera)

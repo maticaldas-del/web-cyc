@@ -46038,7 +46038,7 @@ async function main() {
         const m60 = med(pU[p.id]);
         const uv = ultV(p.id);
         const dec = dec0 + (m60 ? ` · med60 $${m60}` : '') + (uv ? ` · ultv $${uv}` : '') + ` · ctas [${ctasDe(p.id).map((c) => c.slice(0, 2)).join(' ')}]` + (CD[p.id] ? ` · YA DECIDÍ ${CD[p.id].u != null ? CD[p.id].u : JSON.stringify(CD[p.id].vars || {})}` : '') + (_grandePT && _grandePT(p) ? ' · GRANDE' : '');
-        console.log(`\n${p.id} · ${String(p.name).slice(0, 55)} · v30 ${s.t30} v60 ${s.t60} v180 ${s.t180} · últ ${s.ult ? s.ult.slice(8, 10) + '/' + s.ult.slice(5, 7) : '—'}${s.rem ? ' · REMATE ' + s.rem : ''}${s.barata ? ' · BARATA ' + s.barata : ''} · dCS ${dCS(p.id)}${cortes60(p.id) ? ' · cortes ' + cortes60(p.id) : ''} · Full ${ft} [${C4.map((c, i) => full[i] ? c.slice(0, 2) + full[i] : '').filter(Boolean).join(' ')}] · casa ${casa} · camino ${cm}${py ? ' · PYviaja ' + py : ''}${pvv ? ' · PVviaja ' + pvv : ''}${liv ? ' · LIviaja ' + liv : ''} ${(p.variantes || []).length ? ' · colores ' + p.variantes.length : ''} · neto $${Math.round(Number(p.netoCalc) || 0)} costo $${cost}${p.nisseiUSD ? ' · PY US$' + p.nisseiUSD : ''}${hP ? ' · hist ' + hP + 'd' : ''}${dec}`);
+        console.log(`\n${p.id} · ${String(p.name).slice(0, 55)} · v30 ${s.t30} v60 ${s.t60} v180 ${s.t180} · últ ${s.ult ? s.ult.slice(8, 10) + '/' + s.ult.slice(5, 7) : '—'}${s.rem ? ' · REMATE ' + s.rem : ''}${s.barata ? ' · BARATA ' + s.barata : ''} · dCS ${dCS(p.id)}${cortes60(p.id) ? ' · cortes ' + cortes60(p.id) : ''} · Full ${ft} [${C4.map((c, i) => full[i] ? c.slice(0, 2) + full[i] : '').filter(Boolean).join(' ')}] · casa ${casa} · camino ${cm}${py ? ' · PYviaja ' + py : ''}${pvv ? ' · PVviaja ' + pvv : ''}${liv ? ' · LIviaja ' + liv : ''} ${(p.variantes || []).length ? ' · colores ' + p.variantes.length : ''} · neto $${Math.round(Number(p.netoCalc) || 0)} costo $${cost}${p.nisseiUSD ? ' · PY US$' + p.nisseiUSD : ''}${hP ? ' · hist ' + hP + 'd' : ''}${NORM[p.id] || ''}${dec}`);
         // Los colores de la FICHA (etapa 3, 20/10/2026): un color sin ventas ni mercadería no tiene renglón, y un juicio de ese color
         // (ej. Pizarra 12" Rojo=4) se perdía sin aviso. Con esta lista `decide_pedidos.py` lo aplica igual y avisa si el color no existe.
         if ((p.variantes || []).length) console.log(`   ## colores ${JSON.stringify((p.variantes || []).map(String))}`);
@@ -46053,7 +46053,7 @@ async function main() {
           const manoTxt = mo && mo.u != null ? ` · mano ${Math.max(0, parseInt(mo.u) || 0)}${esBsasP && Number((ofP || {})[p.id]) > (Number(mo.ts) || 0) ? ' vencida' : ''}` : '';
           if (!sv.t180 && !fv && !cv && !mv && !pvx && !lix && !manoTxt) continue;
           const camV = cambiosDe(mlasP.filter(([mla, e]) => colorMla(mla, e) === va).map(([mla]) => mla)), hV = histD(sv);
-          console.log(`   # ${va} · v30 ${sv.t30} v60 ${sv.t60} v180 ${sv.t180} · últ ${sv.ult ? sv.ult.slice(8, 10) + '/' + sv.ult.slice(5, 7) : '—'} · dCS ${dCS(p.id, '__v__' + sid(va), dCS(p.id))}${cortes60(p.id, '__v__' + sid(va)) ? ' · cortes ' + cortes60(p.id, '__v__' + sid(va)) : ''} · Full ${fv} · casa ${cv} · camino ${mv}${pvx ? ' · PVviaja ' + pvx : ''}${lix ? ' · LIviaja ' + lix : ''}${nuncaPD[p.id + '#' + sid(va)] ? ' · NUNCA' : ''}${hV ? ' · hist ' + hV + 'd' : ''}${manoTxt}${camV.length ? ' · cambios (' + camV.join(' ') + ')' : ''}`);
+          console.log(`   # ${va} · v30 ${sv.t30} v60 ${sv.t60} v180 ${sv.t180} · últ ${sv.ult ? sv.ult.slice(8, 10) + '/' + sv.ult.slice(5, 7) : '—'} · dCS ${dCS(p.id, '__v__' + sid(va), dCS(p.id))}${cortes60(p.id, '__v__' + sid(va)) ? ' · cortes ' + cortes60(p.id, '__v__' + sid(va)) : ''} · Full ${fv} · casa ${cv} · camino ${mv}${pvx ? ' · PVviaja ' + pvx : ''}${lix ? ' · LIviaja ' + lix : ''}${nuncaPD[p.id + '#' + sid(va)] ? ' · NUNCA' : ''}${hV ? ' · hist ' + hV + 'd' : ''}${NORM[p.id + '#' + va] || ''}${manoTxt}${camV.length ? ' · cambios (' + camV.join(' ') + ')' : ''}`);
         }
       };
       console.log(`dólar ${tc} · ventana 30 d desde ${k30} · ${prods.length} fichas`);
@@ -46079,6 +46079,45 @@ async function main() {
         }
         _grandePT = grandePT;
       } catch (eC) { console.log(`CUPO ? · no pude leer el cupo de Full (${String(eC.message || eC).slice(0, 50)}): decide_cajas no recorta`); }
+      // 🛒 EL RITMO A PRECIO NORMAL (27/10/2026, él eligió 1a: "todas las ventas que cuente sin 🔥 escasez, ⏳ sin reposición, 📦 sobra,
+      // liquidando y remate. y que mire los últimos 365 días… para que si hay algún producto que no se vende hace mucho siga apareciendo").
+      // Por producto y por color: los días con stock en Full a precio NORMAL (la estrategia de ese día —una 🪜/💸/🏷️ se sigue hasta de
+      // dónde viene— no es 🔥⏳📦📉🧨) y lo vendido en esos días (sin remates). Ventana de 60 días; con menos de 14 días normales, 180; si
+      // tampoco, 365 (lo agotado hace mucho sigue apareciendo con lo que vendía). Sale `NOR u30/d30 u/d@ventana` y decide_pedidos.py lo
+      // usa en vez del ritmo de siempre (que contaba lo vendido caro en escasez y lo vendido barato por sobra). Sin línea leída: `NOR ?`.
+      const NOR_ABN = new Set(['escasez', 'sinrepo', 'sobra', 'liquidando', 'remate']), NOR_PASA = new Set(['bajando', 'descuento', 'promo', 'correccion', 'gemela']);
+      const k365 = dk(364);
+      const tagNor = (mla, ts) => { const h = (esP || {})[mla] || {};
+        const kk = Object.keys(h).map(Number).filter((n) => n > 0 && n <= ts && h[n] && h[n].t).sort((a, b) => b - a);
+        for (const n of kk) { if (NOR_PASA.has(h[n].t)) continue; return h[n].t; } return ''; };
+      const normalEn = (mla, ts) => { const e = L[mla] || {}; const m0 = e.gemelaDe && L[e.gemelaDe] ? e.gemelaDe : mla; return !NOR_ABN.has(tagNor(m0, ts)); };
+      const VN = {};
+      for (const [k, ents] of Object.entries(VP)) {
+        if (k < k365) continue;
+        for (const [id0, v] of Object.entries(ents || {})) {
+          if (!v || !v.prodId || _esCancW(v)) continue;
+          const kd = k.slice(0, 10), inf = clP.info[kd + '|' + (v.id || id0)]; if (inf && inf.remate) continue;
+          const ts = Number(v.ts) || Date.parse(kd.replace(/_/g, '-') + 'T12:00:00-03:00');
+          { const pD = byId[v.prodId]; if (pD && Number(pD.ventasDesde) > 0 && ts < Number(pD.ventasDesde)) continue; }
+          (VN[v.prodId] = VN[v.prodId] || []).push({ k: kd, ts, q: Number(v.qty) || 1, mla: v.mla || '', va: varDe(v) });
+        }
+      }
+      const NORM = {}, mediodia = (k) => Date.parse(k.replace(/_/g, '-') + 'T12:00:00-03:00');
+      const norDe = async (pid, va, mlas) => {
+        const dias = new Set();
+        for (const m of mlas) { const lin = await lineaDe(m); if (lin == null) return null;
+          for (const [k, x] of Object.entries(lin || {})) if (/^\d{4}_\d{2}_\d{2}$/.test(k) && k >= k365 && k < dk(0) && x && typeof x === 'object' && diaConStock(x) && normalEn(m, mediodia(k))) dias.add(k); }
+        const uD = {}; for (const v of (VN[pid] || [])) { if (va && v.va !== va) continue; if (!normalEn(v.mla, v.ts)) continue; uD[v.k] = (uD[v.k] || 0) + v.q; dias.add(v.k); }
+        const en = (w) => { const k0 = dk(w - 1); let d = 0, u = 0; for (const k of dias) if (k >= k0) { d++; u += uD[k] || 0; } return { d, u }; };
+        const a30 = en(30); let W = 365, b = en(365); for (const w of [60, 180]) { const x = en(w); if (x.d >= 14) { W = w; b = x; break; } }
+        return ` · NOR ${a30.u}/${a30.d} ${b.u}/${b.d}@${W}`;
+      };
+      for (const p of [...grupos.bsas, ...grupos.py, ...grupos.paulvic]) {
+        const mlasN = Object.entries(L).filter(([m, e]) => e && e.prodId === p.id && !e.ignored && !e.gemelaDe && /^MLA/i.test(m));
+        const r0 = await norDe(p.id, '', mlasN.map(([m]) => m)); NORM[p.id] = r0 == null ? ' · NOR ?' : r0;
+        for (const va of (p.variantes || [])) { const mv = mlasN.filter(([m, e]) => (e.variant ? String(e.variant) : varianteDeTitulo(e.title || '', p.variantes || [])) === va).map(([m]) => m);
+          if (!mv.length) continue; const rv = await norDe(p.id, va, mv); NORM[p.id + '#' + va] = rv == null ? ' · NOR ?' : rv; }
+      }
       for (const [g, arr] of Object.entries(grupos)) {
         arr.sort((a, b) => ((S[b.id] || {}).t180 || 0) - ((S[a.id] || {}).t180 || 0));
         console.log(`\n════ ${g.toUpperCase()} · ${arr.length} ════`);

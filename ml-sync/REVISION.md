@@ -850,6 +850,11 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 (sería doble), y que el número de Gastos y el del Arqueo sean el mismo para cada mes.
 
 ## 3 · MERCADERÍA (miércoles)
+### 🛒 Pedidos mide el ritmo a precio normal (27/10/2026, él con el Aer x6, eligió 1a: "todas las ventas que cuente sin 🔥 escasez, ⏳ sin reposición, 📦 sobra, liquidando y remate. y que mire los últimos 365 días… para que si hay algún producto que no se vende hace mucho siga apareciendo")
+- **Qué es:** `pedidostodo` imprime `NOR u30/d30 u/d@ventana` por producto y por color: días con stock en Full (línea de tiempo, `diaConStock`) cuya estrategia ese día no es 🔥⏳📦📉🧨 (una 🪜/💸/🏷️/gemela se sigue hasta la estrategia de la que viene; la gemela toma la de su Clásica) y las ventas de esos días (sin remates ni canceladas). 60 días; si hay menos de 14 días normales, 180; si tampoco, 365. `decide_pedidos.py` usa ese ritmo (con 3+ en los últimos 30 días normales, el más alto entre ése y el 80% del largo) y, sin `NOR` o con pocos días, la cuenta de antes.
+- **Dónde vive:** `pedidostodo` en `ml-sync/sync.mjs` (`norDe`, `tagNor`, `normalEn`, `VN`, `NORM`); `nor_de` y `ritmo` en `ml-sync/notas/decide_pedidos.py`.
+- **Qué chequear:** los remates de antes de los 180 días no están marcados (cuentan); un color sin publicación propia (los colores dentro de una sola publicación) no tiene `NOR` y sigue con la cuenta de antes; comparar el pedido del Aer x6 antes y después.
+
 ### 📦 La cabecera de Stock en Full dice oficina y camino (27/10/2026, él con el Aromatizante Aer x6: "no lo indica en ninguna parte… tampoco veo las unidades en camino")
 - **Qué es:** el texto de oficina/camino/escasez (`_stHoy`) se calculaba y no se mostraba en ningún lado desde el rediseño de la línea. Ahora la cabecera de 📦 Stock en Full dice 🏠 oficina · 🚚 camino a Full · 📦 pedido que viaja · 🔥 escasez / 🚚 cubierto, y el globito el detalle (cuándo llega cada caja, por qué es o no escasez).
 - **Dónde vive:** `_stRepTit` y el `_lnHdr('st',…)` en index.html (usa `_stI`).
