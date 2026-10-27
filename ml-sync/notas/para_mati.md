@@ -104,6 +104,5 @@ Ganar la caja daba pérdida en todos (Tendedero −25%, Rose y Silver −10%, Co
 1. (a) sugerida: volver a subir apenas haya 50% de que el precio nuevo deja igual o más plata por día que el anterior, mirándolo con cada venta (no esperar las 3 ventas esperadas) · (b) volver a subir con la primera venta, siempre. (Enchufe 2 patas: a $3.140 y a $3.490 vendió y igual deja menos que a $2.990.)
 
 
-## 27/10 · Guía de Via Cargo del pedido Paraguay del 26/10
-Cargado: correo $28.000 (encomienda $21.950 + $6.050 del cobro por reembolso), 11,55 kg. Recargo real del pedido: 10,7%.
-**Duda:** la guía dice "P. Reembolso $100.000": ¿es plata que se paga al retirar en el correo (para el que retira en Paraguay)? Si es así, ¿esos $100.000 reemplazan los $90.000 de "el que retira" que ya están cargados, o son aparte? (a) reemplaza: cargo retira=100000 · (b) es aparte / otra cosa: me decís qué es.
+## 27/10 · Guía de Via Cargo del pedido Paraguay del 26/10 — RESUELTO
+Cargado sólo lo que mandó: correo $28.000, 11,55 kg. Él: "cargá solo lo que yo te mando" (no se pregunta por el reembolso).
