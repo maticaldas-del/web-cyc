@@ -3105,7 +3105,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.25';
+const APP_VERSION='27.26';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3118,6 +3118,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.26',f:'27/10',h:'14:05',c:[{n:2,t:'📈 Tendencia → 💰 Ganancia: la barra roja de gastos ya no incluye el retiro de los dueños (no es un gasto). El retiro sólo aparece en 🏢 Ganancia CYC.'}]},
   {v:'27.25',f:'27/10',h:'13:45',c:[{n:3,t:'💲 Lo comprado en pesos (Bs As, Paulvic y listas) queda con el costo fijo en los pesos que se pagaron: si sube el dólar ya no parece más caro ni baja su %. Lo de Paraguay sigue en dólares.'}]},
   {v:'27.24',f:'27/10',h:'04:50',c:[{n:2,t:'🔍 Revisión de Plata: la deuda con Paulvic es la factura (no el costo con flete) · la de una lista que llegó incompleta, sólo lo que llegó · ⚖️ tope de H sin contar dos veces una caja que ya entró a Full · la ventana de 365 días del monotributo cuenta 365 días de verdad · montos en dólares con US$ en el inventario y el Arqueo · Comparar por año toma el último cierre (no la suma) · la lista de Gastos no tacha dos renglones con el Sancor'}]},
   {v:'27.24',f:'27/10',h:'13:20',c:[{n:2,t:'🧭 Arqueo → Productos: al lado del buscador, el botón Estrategias muestra cada estrategia con cuántas publicaciones tiene. Tocás una y ves esas publicaciones (cuenta, precio y desde cuándo) y las fichas quedan filtradas.'}]},
@@ -24138,7 +24139,11 @@ function renderLineChartFromScope(scope){
   let barDet=null;
   if(!multi&&metChartLineView==='general'){
     const ganB=totOf(buckets,'ganancia');
-    barDet=buckets.map(keys=>{const it={};(keys||[]).forEach(k=>{(_cargosDiaDet(k.substring(0,7))[k]||[]).forEach(x=>{it[x.t]=(it[x.t]||0)+x.m;});});
+    // EL RETIRO NO ES UN GASTO DE LA GANANCIA (27/10/2026, él: "en ganancia creo que suma como gasto los retiros nuestros. para mí no debería
+    // ir… ingresos − gastos (sin retiros)"): en 💰 Ganancia la barra roja muestra sólo los gastos; el retiro de los dueños aparece sólo en
+    // 🏢 Ganancia CYC, que es la que dice cuánto le quedó a CYC después de cobrar.
+    const _conRetiro=metViewField==='gananciaCYC';
+    barDet=buckets.map(keys=>{const it={};(keys||[]).forEach(k=>{(_cargosDiaDet(k.substring(0,7))[k]||[]).forEach(x=>{if(!_conRetiro&&x.t==='Retiro de los dueños')return;it[x.t]=(it[x.t]||0)+x.m;});});
       return Object.entries(it).map(([t,m])=>({t,m})).sort((a,b)=>b.m-a.m);});
     const gasB=barDet.map(a=>-a.reduce((s,x)=>s+x.m,0));
     datasets.forEach(ds=>{ds.order=0;});
