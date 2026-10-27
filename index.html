@@ -3104,7 +3104,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.19';
+const APP_VERSION='27.20';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3117,6 +3117,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.20',f:'27/10',h:'00:30',c:[{n:3,t:'⚖️ Tope de H: cada cuenta muestra dos proyecciones al cierre, la del ritmo de 30 días y 📦 la que viene con la mercadería que ya tiene (lo recién llegado a su ritmo desde que llegó, y lo que está en Full, viajando o en la caja sin vender todavía, a su precio). Se usa la más alta: así se ve venir la subida de Ayelen antes de que pase, y el 💡 de la próxima cuenta lo tiene en cuenta.'}]},
   {v:'27.19',f:'27/10',h:'01:00',c:[{n:2,t:'🏠 Mi oficina: los botones de cada cuenta son más grandes y dicen cuántas unidades hay para mandar y 💵 cuánto deja venderlas (la caja a medio armar o, si no hay, lo que entra en el cupo). "Todas" suma las 4.'}]},
   {v:'27.18',f:'27/10',h:'00:45',c:[{n:1,t:'🏠 Mi oficina: se sacaron los cuadros "u. en casa · hay que mandar · en mercadería".'}]},
   {v:'27.17',f:'27/10',h:'00:35',c:[{n:2,t:'📦 Envíos a Full: cada envío dice 💵 cuánto deja vender todo lo que lleva (ganancia por unidad de hoy de cada producto), y arriba el total de todo lo que está en camino.'}]},
@@ -24615,11 +24616,62 @@ function parejoDatos(){
   Object.keys(state.ventaprod||{}).filter(k=>k>=dK&&k<=hK).forEach(k=>Object.values(state.ventaprod[k]||{}).forEach(v=>{
     const a=(v&&v.cuenta||'').toLowerCase(); if(!v||!(a in m30))return; const t=Number(v.total)||0;
     m30[a]+=t>0?t:(v.cancelada&&v.antesCancel?Number(v.antesCancel.total)||0:0);}));
+  const esp=_parejoEsperado(dK,hK,faltan);
   const filas=MET_ACCTS.map(a=>{
-    const diario=m30[a]/30, fac=real[a]||0, futuro=diario*faltan, proy=fac+futuro;
-    return {a,fac,futuro,proy,diario,pct:proy/topeH*100,resta:topeH-proy,pctReal:fac/topeH*100,ofi:ofi[a]};
+    const diario=m30[a]/30, fac=real[a]||0, futuro30=diario*faltan, proy30=fac+futuro30;
+    const E=esp[a]||{futuro:0,diario:0,valNuevo:0,uNuevo:0}, proyEsp=fac+E.futuro;
+    // Se usa la MÁS ALTA de las dos (la peligrosa): colores, el 🔴, la tarjeta de Facturas y el 💡 de la próxima cuenta.
+    const proy=Math.max(proy30,proyEsp), futuro=proy-fac;
+    return {a,fac,futuro,proy,diario,proy30,futuro30,proyEsp,diarioEsp:E.diario,valNuevo:E.valNuevo,uNuevo:E.uNuevo,porMerc:proyEsp>proy30+1,
+      pct:proy/topeH*100,resta:topeH-proy,pctReal:fac/topeH*100,ofi:ofi[a]};
   });
   return {topeH,filas,ini,fin,faltan};
+}
+// LO QUE VA A FACTURAR CADA CUENTA CON LA MERCADERÍA QUE YA TIENE (27/10/2026, él: "estamos llenando de productos en la cuenta de
+// ayelen. cuando se comience a vender ahi va a explotar. y las otras se comienzan a caer. como se puede ver eso?"). El ritmo de 30
+// días no lo ve: lo que llegó hace 5 días suma 5 días de ventas divididos por 30, y lo que viaja o está en Full sin vender suma cero.
+// Acá, producto por producto de cada cuenta (y la cuenta se lleva la plata a la hora de que se venda):
+//  · llegó a Full hace menos de 30 días y vendió 3+ desde que llegó → lo que facturó desde que llegó ÷ esos días (mínimo 10);
+//  · mercadería NUEVA con 0-2 ventas (llegó hace menos de 30 días, o viaja a Full, o está en la caja que se arma, sin historia en
+//    esa cuenta) → lo que vale al precio de hoy (se toma que se vende antes del cierre), o su ritmo de 30 días si da más;
+//  · todo lo demás, y las ventas sin ficha → su ritmo de 30 días, como antes.
+// Misma cuenta en el robot (`lugarHPorCuenta`, sync.mjs, que elige la cuenta de lo nuevo): si se toca una, la otra.
+const PAREJO_MIN_VENTAS=3,PAREJO_MIN_DIAS=10;
+function _parejoEsperado(dK,hK,faltan){
+  const out={};MET_ACCTS.forEach(a=>out[a]={futuro:0,diario:0,valNuevo:0,uNuevo:0});
+  const L=a=>LOCS.find(l=>l.toLowerCase()===a)||a;
+  const ped={},sueltas={};MET_ACCTS.forEach(a=>sueltas[a]=0);
+  Object.keys(state.ventaprod||{}).filter(k=>k>=dK&&k<=hK).forEach(k=>Object.values(state.ventaprod[k]||{}).forEach(v=>{
+    const a=(v&&v.cuenta||'').toLowerCase(); if(!v||!(a in out))return; const t0=Number(v.total)||0;
+    const t=t0>0?t0:(v.cancelada&&v.antesCancel?Number(v.antesCancel.total)||0:0); if(!(t>0))return;
+    const p=prodDeVenta(v); if(!p){sueltas[a]+=t;return;}
+    (ped[p.id+'|'+a]=ped[p.id+'|'+a]||[]).push({k,t});
+  }));
+  const viaja={},sumV=(pid,a,u)=>{if(pid&&u>0&&(a in out))viaja[pid+'|'+a]=(viaja[pid+'|'+a]||0)+Number(u);};
+  Object.values(state.envios_full||{}).forEach(e=>{const a=String(e&&e.cuenta||'').toLowerCase();
+    for(const c of cajasDe(e||{})){if(c.recibida)continue;for(const it of (c.items||[]))if(it)sumV(it.prodId,a,Number(it.u)||0);}});
+  LOCS.forEach(l=>{for(const [k,u] of Object.entries(cajaDe(l)))sumV(String(k).split('|')[0],l.toLowerCase(),Number(u)||0);});
+  const pIdx={},claves=new Set([...Object.keys(ped),...Object.keys(viaja)]);
+  (state.products||[]).forEach(p=>{pIdx[p.id]=p;MET_ACCTS.forEach(a=>{if(getQ(p.id,L(a))>0)claves.add(p.id+'|'+a);});});
+  const ahora=Date.now();
+  for(const key of claves){
+    const i=key.lastIndexOf('|'),pid=key.slice(0,i),a=key.slice(i+1);
+    const vs=ped[key]||[],fac30=vs.reduce((s,x)=>s+x.t,0);
+    const h=(state.stockhist||{})[invKey(pid,L(a))];
+    const nuevo=!!(h&&h.desde&&h.aprox===false&&ahora-Number(h.desde)<30*864e5);
+    let diario=fac30/30;
+    if(nuevo){const dK2=dateToKey(new Date(Number(h.desde))),vD=vs.filter(x=>x.k>=dK2);
+      if(vD.length>=PAREJO_MIN_VENTAS)diario=Math.max(diario,vD.reduce((s,x)=>s+x.t,0)/Math.max(PAREJO_MIN_DIAS,(ahora-Number(h.desde))/864e5));}
+    let fut=diario*faltan;
+    const uN=getQ(pid,L(a))+(viaja[key]||0);
+    if(vs.length<PAREJO_MIN_VENTAS&&uN>0&&(nuevo||!h)){
+      const p=pIdx[pid],val=uN*(p?Number(p.netoCalcPrecio)||0:0);
+      if(val>fut){out[a].valNuevo+=val;out[a].uNuevo+=uN;fut=val;}
+    }
+    out[a].futuro+=fut;out[a].diario+=diario;
+  }
+  MET_ACCTS.forEach(a=>{out[a].futuro+=sueltas[a]/30*faltan;out[a].diario+=sueltas[a]/30;});
+  return out;
 }
 function _ofiTxt(o,fM){
   if(!o)return '';
@@ -24685,7 +24737,7 @@ function renderHomeParejo(){
   const pasan=d.filas.filter(f=>f.proy>d.topeH);
   const desp=menos.proy>0?mas.proy/menos.proy:Infinity;
   const aviso=pasan.length
-    ?`<div style="font-size:.66rem;color:var(--red);margin-top:8px">🔴 ${pasan.map(f=>MET_LABELS[f.a]).join(' y ')} ${pasan.length>1?'pasarían':'pasaría'} el tope de H al ${fD(d.fin)} a este ritmo. Lo nuevo no va ahí.</div>`
+    ?`<div style="font-size:.66rem;color:var(--red);margin-top:8px">🔴 ${pasan.map(f=>MET_LABELS[f.a]).join(' y ')} ${pasan.length>1?'pasarían':'pasaría'} el tope de H al ${fD(d.fin)} a este ritmo o con la mercadería que ya tiene. Lo nuevo no va ahí.</div>`
     :desp>=2?`<div style="font-size:.66rem;color:var(--amber);margin-top:8px">🟠 Están desparejas: ${MET_LABELS[mas.a]} va a cerrar con ${desp===Infinity?'mucho':desp.toFixed(1).replace('.',',')+' veces'} más que ${MET_LABELS[menos.a]}.</div>`:'';
   const facARCA=_facARCA();
   const barras=d.filas.map(f=>{
@@ -24695,12 +24747,13 @@ function renderHomeParejo(){
       <div style="display:flex;justify-content:space-between;gap:8px;font-size:.66rem"><strong>${MET_LABELS[f.a]}</strong>
         <span style="color:${col};font-family:'DM Mono',monospace">${fM(f.proy)} al ${fD(d.fin).slice(0,5)} · ${f.proy>d.topeH?'se pasa '+fM(-f.resta):'le quedan '+fM(f.resta)}</span></div>
       <div style="height:7px;background:var(--surface2);border-radius:5px;overflow:hidden;margin-top:3px;display:flex"><div style="height:100%;width:${wReal.toFixed(1)}%;background:${col}"></div><div style="height:100%;width:${wFut.toFixed(1)}%;background:${col};opacity:.4"></div></div>
-      <div style="font-size:.6rem;color:var(--muted);margin-top:2px">facturado ${fM(f.fac)} · faltan ${d.faltan} d × ${fM(f.diario*30)}/mes = +${fM(f.futuro)}</div>
+      <div style="font-size:.6rem;color:var(--muted);margin-top:2px">facturado ${fM(f.fac)} · a ritmo de 30 días: faltan ${d.faltan} d × ${fM(f.diario*30)}/mes = +${fM(f.futuro30)} → ${fM(f.proy30)}</div>
+      <div style="font-size:.6rem;margin-top:1px;color:${f.porMerc?'var(--amber)':'var(--muted)'}">📦 con la mercadería que tiene: ${fM(f.diarioEsp*30)}/mes${f.valNuevo>0?` + ${fM(f.valNuevo)} de lo nuevo sin vender todavía (${f.uNuevo} u. en Full, viajando o en la caja)`:''} → ${fM(f.proyEsp)}${f.porMerc?' · <strong>es la que se usa</strong>':''}</div>
       <div style="font-size:.6rem;color:var(--muted);margin-top:1px">${_ofiTxt(f.ofi,fM)}</div>
       ${(()=>{const t=_parejoCatLinea(f.a,fM,facARCA);return t?`<div style="font-size:.6rem;color:var(--muted);margin-top:1px">${t}</div>`:'';})()}
     </div>`;}).join('');
   el.innerHTML=caja(`<div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.85rem">⚖️ Las 4 cuentas contra el tope de H (${fM(d.topeH)}/año)</div>
-    <div style="font-size:.6rem;color:var(--muted);margin-top:2px">La próxima recategorización de ARCA mira del ${fD(d.ini)} al ${fD(d.fin)}. Barra llena = lo facturado oficial hasta hoy (canceladas incluidas, como las cuenta ARCA) · barra clarita = lo que falta hasta el cierre, al ritmo de los últimos 30 días enteros (hasta ayer). El tope es por cuenta.</div>
+    <div style="font-size:.6rem;color:var(--muted);margin-top:2px">La próxima recategorización de ARCA mira del ${fD(d.ini)} al ${fD(d.fin)}. Barra llena = lo facturado oficial hasta hoy (canceladas incluidas, como las cuenta ARCA) · barra clarita = lo que falta hasta el cierre: el MAYOR entre el ritmo de los últimos 30 días enteros (hasta ayer) y lo que viene con la mercadería que ya tiene cada cuenta (lo recién llegado a su ritmo desde que llegó, y lo que está en Full, viajando o en la caja sin vender todavía, a su precio de hoy). El tope es por cuenta.</div>
     ${barras}${aviso}
     <div style="font-size:.66rem;margin-top:8px">💡 Lo próximo nuevo que no sea perfume → <strong style="color:var(--green)">${MET_LABELS[(orden.find(f=>f.a==='ayelen'||f.a==='luciana')||menos).a]}</strong>, la que más lugar tiene entre Ayelen y Luciana. <span style="color:var(--muted)">(Perfumes siguen yendo a Adriana; lo que ya está en una cuenta, queda.)</span></div>
     <div style="text-align:right;margin-top:8px"><button onclick="goMonotributo()" style="background:transparent;border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:2px 8px;font-size:.6rem;cursor:pointer">✎ AFIP / meses</button></div>`);
