@@ -111,3 +111,8 @@ Cargado sólo lo que mandó: correo $28.000, 11,55 kg. Él: "cargá solo lo que 
 Hoy cuenta la última venta salvo 🔥 escasez, ⏳ sin reposición, remate y lo vendido por una gemela. Las de 📈 buscando techo SÍ cuentan (Sábanas a $23.490 sube el máximo en la completa de las 3).
 1. Las ventas de 📦 sobra y "liquidando" hoy SÍ cuentan (bajan el máximo). El ritmo de Pedidos ya las saca desde el 27/10. (a) sacarlas también del precio, igual que el ritmo · (b) dejarlas.
 → **eligió 1a (27/10)**: hecho. Y por color: cada color con su última venta (él: "ese color se vendió a ese precio, no todos").
+
+## 27/10 · Ideas grandes (pedido suyo: "¿hay otro cambio así de grande?")
+1. Quedarse sin stock: $1,5-3,1M de ganancia por mes. (a) armar "💸 plata que se pierde por día sin stock" arriba de Pedidos y en Métricas, ordenado por plata, para comprar primero eso · (b) dejar como está.
+2. El tope de H ya no frena ($54,6M de lugar al 31/12). (a) cambiar la estrategia: volver a apuntar a más unidades (no quedarse sin stock + más productos nuevos), siempre con 35% y la cuenta con lugar (no Matías) · (b) seguir como hoy.
+3. Paraguay: (a) cada pedido de US$1.000-2.000 (lo que ya pide Pedidos + nuevos de 35%+), cada 10-14 días · (b) seguir con uno por semana de ~US$500.
