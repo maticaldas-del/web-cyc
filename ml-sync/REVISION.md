@@ -78,6 +78,11 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   por `informe`/`alertas` y no a Telegram; que las cajas que ML da por entradas las marque Claude y no queden contadas dos veces.
 
 ## 1 · PRECIOS (lunes)
+### 📈 Un solo techo en la línea de tiempo (27/10/2026, v27.35, él con el Enchufe 2 patas: "hay dos techos al 100% de seguridad, no tienen sentido")
+- **Qué es:** el 🔴 de las rayas ($3.140: deja menos plata por día que el 💰 $2.990, 100%) y la 🚧 de una prueba vieja más cara ($3.490 no vendió, 100%) salían los dos como "techo al 100%". Ahora el 🔴 dice "deja menos plata por día que a $Y"; la 🚧 que queda arriba del 🔴 va gris "no vendió · ya está arriba del techo" sin %; el ✓ verde en el precio del techo dice "sí vende, pero deja menos que a $Y".
+- **Dónde vive:** `_techos.forEach` (`_arribaT`) y el `_ray` del 🔴 en la línea de tiempo (index.html).
+- **Qué chequear:** Enchufe 2 patas: un rojo en $3.140, gris en $3.490. Un producto sin 🔴 de rayas sigue mostrando la 🚧 con su %.
+
 ### 🔒 F13 · 35% hasta los 90 días, después hasta 0% (27/10/2026, él con el Paulvic Hot)
 - **Qué es:** ninguna baja deja menos del 35% en el peor caso si la unidad más vieja en Full (de ésta o de las que comparten su stock) lleva menos de 90 días, aunque sobre o vaya con `!piso`. A los 90 días se abre hasta el 0% (F0 sigue). Los 15 días antes del stock antiguo también lo abren (antiguo15). Perfumes: F12 (10%) sigue igual hasta los 15 días antes. Sin saber la edad: frena (❓). Salida sólo suya: 🔐 `!bajocero` o un 🧨 remate autorizado. Renovar el mismo descuento no frena.
 - **Dónde vive:** `frenosBajas` en `ml-sync/sync.mjs` (F13, `edad13`, `BAJAR_MIN_PCT_JOVEN`, `EDAD_LIBERA_CERO`); el detector `errores` ahora le pasa también el peor caso (`mgPA`).

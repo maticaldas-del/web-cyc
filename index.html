@@ -3105,7 +3105,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.34';
+const APP_VERSION='27.35';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3118,6 +3118,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.35',f:'27/10',h:'16:15',c:[{n:2,t:'📈 Línea de tiempo: un solo techo. La raya roja dice "🔴 techo $X: deja menos plata por día que a $Y"; una prueba vieja que quedó más cara que ese techo se ve gris ("no vendió · ya está arriba del techo"), sin otro 100%. Y el "✓ sí vende" en el techo aclara que vende pero deja menos.'}]},
   {v:'27.34',f:'27/10',h:'15:35',c:[{n:2,t:'⚠️ El aviso de "Todavía no cerraste el mes" sale cuando faltan 7 días (en ámbar, con cuántos días faltan) y se pone en rojo los últimos 3. Si el mes pasado quedó sin cerrar, sale en rojo hasta que lo cierres.'}]},
   {v:'27.33',f:'27/10',h:'15:10',c:[{n:1,t:'🧾 Ventas: en el detalle de una venta con varios productos, los botones de abajo (línea, ficha, no se consigue más) bajan de renglón en vez de empujar la columna de la derecha afuera de la pantalla.'}]},
   {v:'27.32',f:'27/10',h:'14:30',c:[{n:2,t:'📦 Stock en Full: la cabecera vuelve a decir 🏠 cuántas hay en tu oficina y 🚚 cuántas vienen en camino a Full, y si es 🔥 escasez o 🚚 cubierto. Tocando el texto se ve cuándo llega cada caja y por qué es (o no) escasez.'}]},
@@ -12175,15 +12176,18 @@ function lineaPintar(prodId){
   const _txAt=x0=>x0>W*0.55?`x="${(W-3).toFixed(1)}" text-anchor="end"`:`x="${(x0+3).toFixed(1)}"`;
   _techos.forEach(t=>{const y=L.pr[0]+L.pr[1]-(pcMax>pcMin?(t.probado-pcMin)/(pcMax-pcMin):.5)*L.pr[1];
     const tk=t.ts?dateToKey(new Date(Number(t.ts))):null,ti=tk?ks.indexOf(tk):-1,x0=ti>=0?X(ti):0;
-    const sg=_segTecho(t),seguro=!!(sg&&sg.seg>=0.95),colT=seguro?'var(--red)':'#fb923c';
+    // 27/10/2026 (él con el Enchufe 2 patas: "hay dos techos al 100% de seguridad, no tienen sentido"): una prueba vieja que quedó
+    // ARRIBA del 🔴 techo de las rayas ya no es "un techo": es un precio más caro que el techo. Se ve gris, sin %.
+    const _arribaT=!!(_rayas&&_rayas.techo&&t.probado>_rayas.techo.p*1.02);
+    const sg=_arribaT?null:_segTecho(t),seguro=!!(sg&&sg.seg>=0.95),colT=_arribaT?'var(--muted)':seguro?'var(--red)':'#fb923c';
     const det=sg?`Estuvo ${sg.dias} día${sg.dias===1?'':'s'} con stock a ese precio o más y vendió ${sg.u}${sg.lam!=null?` (para dejar la misma plata por día que a ${fmt(_rayas.best.p)} tenía que vender ~${sg.lam.toFixed(1)})`:''}: ${Math.round(sg.seg*100)}% seguro.`:'Sin un precio con 5+ días medidos para comparar: no se sabe si es seguro.';
-    const tt=`🚧 A ${fmt(t.probado)} ${seguro?'ya no vende':'no vendió, SIN CERTEZA'}\nSe probó a ese precio${tk?' (vuelto el '+_lineaFmtDia(tk)+')':''}. ${det}${seguro?'':' Falta medir: se puede volver a probar más arriba, escalón por escalón.'}${t.volvio?'\nVolvió a '+fmt(t.volvio)+'.':''}${t.motivo?'\n🧠 '+t.motivo:''}`.replace(/[<>&]/g,'');
+    const tt=_arribaT?`🚧 A ${fmt(t.probado)} no vendió (prueba del ${tk?_lineaFmtDia(tk):'?'}). Ya está arriba del 🔴 techo ${fmt(_rayas.techo.p)}: es lógico que no venda, no es otro techo.`:`🚧 A ${fmt(t.probado)} ${seguro?'ya no vende':'no vendió, SIN CERTEZA'}\nSe probó a ese precio${tk?' (vuelto el '+_lineaFmtDia(tk)+')':''}. ${det}${seguro?'':' Falta medir: se puede volver a probar más arriba, escalón por escalón.'}${t.volvio?'\nVolvió a '+fmt(t.volvio)+'.':''}${t.motivo?'\n🧠 '+t.motivo:''}`.replace(/[<>&]/g,'');
     svg+=`<g style="cursor:help"><title>${tt}</title><line x1="${x0.toFixed(1)}" y1="${y.toFixed(1)}" x2="${W}" y2="${y.toFixed(1)}" stroke="${colT}" stroke-width="1.5" stroke-dasharray="${seguro?'6,3':'2,4'}" opacity=".85"/>`+
-      `<text ${_txAt(x0)} y="${(y<L.pr[0]+14?y+11:y-3).toFixed(1)}" font-size="10" fill="${colT}">🚧 a ${fmt(t.probado)} ${seguro?'ya no vende · '+Math.round(sg.seg*100)+'% seguro':'no vendió · '+(sg?Math.round(sg.seg*100)+'% seguro de que es techo ('+sg.dias+' d)':'sin dato para medirlo')}</text></g>`;
+      `<text ${_txAt(x0)} y="${(y<L.pr[0]+14?y+11:y-3).toFixed(1)}" font-size="10" fill="${colT}">🚧 a ${fmt(t.probado)} ${_arribaT?'no vendió · ya está arriba del techo '+fmt(_rayas.techo.p):seguro?'ya no vende · '+Math.round(sg.seg*100)+'% seguro':'no vendió · '+(sg?Math.round(sg.seg*100)+'% seguro de que es techo ('+sg.dias+' d)':'sin dato para medirlo')}</text></g>`;
     // Y el último precio que SÍ vendía (al que se volvió), en verde: el techo útil está entre las dos rayas.
     const vv=Number(t.volvio);if(vv>0&&vv<t.probado){const y2=L.pr[0]+L.pr[1]-(pcMax>pcMin?(vv-pcMin)/(pcMax-pcMin):.5)*L.pr[1];
       svg+=`<g style="cursor:help"><title>✓ ${fmt(vv)}: el precio que sí vendía, al que se volvió después de la prueba.</title><line x1="${x0.toFixed(1)}" y1="${y2.toFixed(1)}" x2="${W}" y2="${y2.toFixed(1)}" stroke="var(--green)" stroke-width="1.2" stroke-dasharray="2,3" opacity=".85"/>`+
-        `<text ${_txAt(x0)} y="${(y2+11).toFixed(1)}" font-size="10" fill="var(--green)">✓ a ${fmt(vv)} sí vende</text></g>`;}});
+        `<text ${_txAt(x0)} y="${(y2+11).toFixed(1)}" font-size="10" fill="var(--green)">✓ a ${fmt(vv)} sí vende${_rayas&&_rayas.techo&&_rayas.best&&vv>=_rayas.techo.p*0.98?', pero deja menos que a '+fmt(_rayas.best.p):''}</text></g>`;}});
   {const _yP=v=>L.pr[0]+L.pr[1]-(pcMax>pcMin?(v-pcMin)/(pcMax-pcMin):.5)*L.pr[1];const _ray=(v,col,dash,lbl,tt,dy)=>{const y=_yP(v);
       svg+=`<g style="cursor:help"><title>${tt.replace(/[<>&]/g,'')}</title><line x1="0" y1="${y.toFixed(1)}" x2="${W}" y2="${y.toFixed(1)}" stroke="${col}" stroke-width="1.4" stroke-dasharray="${dash}" opacity=".9"/><text x="4" y="${Math.max(L.pr[0]+9,y+dy).toFixed(1)}" font-size="10" fill="${col}">${lbl}</text></g>`;};
     if(_rayas.sobra)_prNotas.push(`<span style="color:#fb923c">📦 sobra stock: no se busca techo, primero sale lo que sobra</span>`);
@@ -12193,7 +12197,7 @@ function lineaPintar(prodId){
       const _prueba=R.techo&&_pHoy>R.techo.p*1.02&&Object.keys(porMlaF).some(m=>{const e=estrategiaDe(m);return e&&(e.t==='techo'||e.t==='escasez');});
       if(_prueba)_prNotas.push(`<span style="color:#fb923c">🔴 techo medido antes ${fmt(R.techo.p)} · hoy probando ${fmt(_pHoy)}</span>`);
       if(R.techo&&R.techo.por30)_ray(R.techo.p,'#ef4444','6,3',`🔴 techo ${fmt(R.techo.p)} · ${R.techo.dias} días sin vender`,`🔴 Techo ${fmt(R.techo.p)}: a ese precio o más estuvo ${R.techo.dias} días a la venta con stock y no vendió ninguna. Con 30 días sin vender es techo sí o sí (regla suya del 24/10): se arranca la escalera.`,-3);
-      else if(R.techo)_ray(R.techo.p,'#ef4444','6,3',`🔴 techo ${fmt(R.techo.p)} · decidido al ${Math.round(R.techo.seg*100)}%`,`🔴 Techo ${fmt(R.techo.p)}: a ese precio vendió ${R.techo.u} en ${R.techo.dias} días con stock; para dejar la misma plata por día que a ${fmt(R.best.p)} tenía que vender ~${R.techo.lam.toFixed(1)}. ${Math.round(R.techo.seg*100)}% seguro (con ${R.techo.dias} días alcanzaba ${Math.round((R.techo.umb||0.95)*100)}%).`,-3);
+      else if(R.techo)_ray(R.techo.p,'#ef4444','6,3',`🔴 techo ${fmt(R.techo.p)}: deja menos plata por día que a ${fmt(R.best.p)} · ${Math.round(R.techo.seg*100)}% seguro`,`🔴 Techo ${fmt(R.techo.p)}: a ese precio vendió ${R.techo.u} en ${R.techo.dias} días con stock; para dejar la misma plata por día que a ${fmt(R.best.p)} tenía que vender ~${R.techo.lam.toFixed(1)}. ${Math.round(R.techo.seg*100)}% seguro (con ${R.techo.dias} días alcanzaba ${Math.round((R.techo.umb||0.95)*100)}%).`,-3);
       // CUÁNTO LLEVA LA BÚSQUEDA DEL TECHO (24/10/2026, él: "que diga cuánto % lleva de decir si es techo o no, así veo cuánto le falta").
       // De las rayas (lo medido) o, en un lanzamiento, lo que anotó techo95 de noche (visitas × conversión, `cyc/techo95pct`).
       {const EP=R.enPrueba,T95=Object.keys(porMlaF).map(m=>(state.techo95pct||{})[m]).filter(x=>x&&!x.ok&&x.seg!=null).sort((a,b)=>b.ts-a.ts)[0];
