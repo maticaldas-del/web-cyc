@@ -51,7 +51,7 @@ Un solo mensaje (si no entra en 2.000 letras, partilo en dos), EXACTAMENTE con e
 
 RUTINA <AAAA-MM-DD>
 cupo: Adriana=<chicos>/<grandes> · Luciana=<chicos>/<grandes> · Ayelen=<chicos>/<grandes> · Matias=<chicos>/<grandes>
-mp: Adriana=<pesos> · Luciana=<pesos> · Ayelen=<pesos> · Matias=<pesos>
+mp: Adriana=<pesos>@<HH:MM> · Luciana=<pesos>@<HH:MM> · Ayelen=<pesos>@<HH:MM> · Matias=<pesos>@<HH:MM>   (la hora en que viste ESE número)
 pedido: <N> iguales · <N> cambiaron · <N> sin stock · total de hoy US$ <número>
 ml: <cuenta> · MLA<número> · <título corto> · <qué pide ML>   (una por renglón; si no hay ninguna: "ml: nada")
 <código> · <nombre corto> · US$ <antes> → US$ <hoy> · <igual|SUBIÓ|BAJÓ|AGOTADO|NO LO ENCONTRÉ>   (sólo los que NO están iguales)

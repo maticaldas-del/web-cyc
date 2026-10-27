@@ -54,3 +54,11 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 ## 26/10 · pasada de Nissei (chat de Chrome)
 - 24 de 28 probados quedaron "Nissei no lo tiene" (`nohabia`). Si la pasada del catálogo trae su código con precio, la marca se cae sola; los que sigan marcados al terminar, revisarlos (sobre todo los que venden).
 - **Preguntas de compradores (Ayelen):** medidas y hueco de la mentonera · qué es el color "Ab" del metatarso · aumento del espejo 8".
+
+### Revisión de Plata del 27/10 (6 decisiones, para cuando digas "resolvamos")
+1. **Saldos de Mercado Pago en el registro público:** el robot muestra los números de las 4 cuentas al leer el buzón y al cargarlos (el registro lo puede ver cualquiera). (a) sugerida: que el robot los tome directo del mensaje del buzón y no los muestre nunca · (b) dejarlo así (es plata tuya, no de terceros).
+2. **Un mes ya cobrado sigue cambiando:** un reclamo nuevo o un cambio del envío recalcula el costo de las ventas viejas de ese producto. (a) sugerida: congelar el mes al cerrarlo · (b) aceptarlo.
+3. **El retiro del día 1º usa números que todavía se mueven** (cancelaciones tardías, el VEP ~día 9, la factura de Sancor). (a) sugerida: cargarlo el 1º y ajustar la diferencia en el retiro siguiente · (b) cargarlo el día 10.
+4. **Ventas sin factura de ML:** a los 45 días dejan de contar como facturado contra el tope de H (si el facturador falla unos días, el tope queda corto). (a) sugerida: que sigan contando hasta que aparezca la factura o se cancele · (b) dejarlo.
+5. **Stock en Full que ML marca "no disponible"** (dañado, retirándose, frenado por facturas) no cuenta en el patrimonio. (a) sugerida: contarlo aparte, en una línea propia · (b) dejarlo afuera.
+6. **"Valor de Stock" del Resumen y "Stock total" del Arqueo dan distinto** (el Resumen no suma Oficina CYC ni vendedores). (a) sugerida: el mismo número en los dos · (b) dejarlos y cambiarle el nombre al del Resumen.
