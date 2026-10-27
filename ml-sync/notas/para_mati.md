@@ -8,6 +8,10 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 
 ## Abiertas
 
+### Del 27/10 a la tarde (contestó 1 recordar · 2a · 3 pidió % · 4 pregunta · 5a · 6a · 7 ok · 8 "siempre es el precio" · 9 mirá la foto · 10 ok · Cortapelo/Panel)
+- **Hecho:** 1 recordatorio del reclamo F9 a las 14:30 · 2a costo fijo en pesos (124 fichas, meses cerrados congelados) · 5a gemela de envío de la Lupa x10 pausada · 9 contestadas metatarso "Ab" y mentonera · regla nueva: al costo 15 días antes del stock antiguo y retiro 3 días antes · botón 🧭 Estrategias · barra roja de Ganancia sin retiro · objetivo Mezcla.
+- **Para decidir (pasados en el chat el 27/10):** 3 Paulvic a $21.990 con su % · 4 Codera las 3 de $30.790 · 6 Separador x2 (no está en catálogo, la hermana sí) · 8 Hot 🔐 XEY9 · Ganancia del gráfico restando gastos · estrategias (pausados, volviendo, bajando, techo encontrado, lanzamiento) · plata por día con el costo real de la caja · score Listas vs Paulvic · plan de Claude.
+
 ### Del 27/10 a la madrugada (contestó 1 2a 3 4a 5 13)
 - **Hecho:** 1 Paulvic Debutante/Witch Night: no se bajan sin techo al 95% salvo cerca de pagar stock (lo mira la vuelta con `techo95`) · 3 Centímetro: las dos Blancas al precio más caro y como un solo producto (regla 👯 cambiada) · 4a: catálogo Surtido no, medir la Rosa una semana (03/11) · 5: caja para la máxima plata (v27.16) · 13: Sancor, contador y Linternas no se nombran más.
 - **2 (perfumes):** contestó "perfumes hasta 0%": en los 15 días antes del stock antiguo F12 se abre (robot, 27/10) · **6:** el tope de US$ 500 es POR CADA pedido (perfumería y resto) · **11:** los 3 probados en duda (PS Portal y las Victoria's Secret sin código) se descartan.
