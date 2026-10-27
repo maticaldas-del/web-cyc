@@ -79,6 +79,7 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
 
 ## 1 · PRECIOS (lunes)
 ### 💵 Pedidos: "lo que salva cada $1" (27/10/2026, v27.40, él eligió 1a)
+- **v27.41 (él: "que quede sólo esa. sacar las otras opciones"):** sin botones; Pedidos se ordena SIEMPRE así (Prioridad, Bs As, Paraguay probados, Paulvic). Se sacaron `_pedOrdenPeso`, `_pedOrdenPesoSet`, `_pedOrdenPesoHTML` y el agregado en `renderPedidos` (comparado contra la versión anterior: no falta nada más).
 - **Qué es:** el botón 💵 ordena por 💸 en riesgo (`riesgoComprar`) ÷ costo de la compra (`costUSDof × dólar × cantidad`, el mismo de "Falta reponer"). Reemplaza "lo que deja cada $1" (él con el Kit Jade: comprar lo que tiene stock no da ganancia ahora).
 - **Por qué éste:** simulación con los datos de Pedidos (`sim.py`/`sim2.py` del scratchpad): en una compra con la mitad de la plata, C (salva) $4,4M a 45 d contra A (plata que se pierde) $3,2M, B (deja) $3,7M, E (score) $2,4M; comprando cada 15 días en 90 d B/C/D empatan (±1%) y le ganan a A ~$170-480 mil por mes según cuánta plata falte.
 - **Qué chequear:** que el Kit Jade (con stock) quede abajo y lo que está en 0 arriba; que lo sin costo vaya al final.

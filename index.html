@@ -1475,7 +1475,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 
   <!-- ── SECCIÓN PRIORIDAD (mezclado, ordenado por $ en riesgo) ── -->
   <div id="ped-section-prioridad" style="display:none">
-    <div style="font-size:.66rem;color:var(--muted);margin-bottom:10px">Todo lo que hay que comprar, mezclado BS AS + Paraguay, ordenado por plata que se pierde si no se repone a tiempo (ganancia mensual del producto × días que va a estar sin stock).</div>
+    <div style="font-size:.66rem;color:var(--muted);margin-bottom:10px">Todo lo que hay que comprar, mezclado BS AS + Paraguay, ordenado por lo que salva cada $1: la ganancia que se pierde si no se repone a tiempo (ganancia mensual × días sin stock) ÷ lo que cuesta la compra. Lo que todavía tiene stock queda abajo.</div>
     <div class="pedidos-count" id="pedidos-prioridad-count"></div>
     <input class="search-box" id="ped-prioridad-search" type="search" placeholder="Buscar pedido..." oninput="renderPedidos()" style="margin-bottom:10px">
     <div id="pedidos-prioridad-list"><div class="empty-msg">Sin pedidos cargados.</div></div>
@@ -3105,7 +3105,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.40';
+const APP_VERSION='27.41';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3118,6 +3118,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.41',f:'27/10',h:'23:00',c:[{n:2,t:'💵 Pedidos: se ordena siempre por lo que salva cada $1 (la ganancia que se pierde si no se compra ÷ lo que cuesta la compra). Se sacaron los botones de orden'}]},
   {v:'27.40',f:'27/10',h:'22:40',c:[{n:2,t:'💵 Pedidos: el botón ahora ordena por lo que SALVA cada $1 (la ganancia que se pierde si no se compra ahora ÷ lo que cuesta la compra). Lo que todavía tiene stock de sobra queda abajo aunque deje mucho; lo que está en 0 sube'}]},
   {v:'27.39',f:'27/10',h:'21:50',c:[{n:1,t:'💵 Pedidos: el botón para ordenar por lo que devuelve cada $1 ahora se ve, al lado de "Falta reponer" (antes quedaba escondido)'}]},
   {v:'27.38',f:'27/10',h:'21:30',c:[{n:2,t:'💵 Pedidos: botón para ordenar por lo que devuelve cada $1 que ponés en la compra (para cuando no alcanza la plata para todo). Cada renglón dice "cada $1 deja $X". El orden de siempre (plata que se pierde) sigue siendo el que viene'}]},
@@ -21700,20 +21701,15 @@ const _pedSortFn=(a,b)=>{const o={pendiente:0,poco_stock:1,suficiente:2};return(
 // tenés en casa o viajando). O sea que un producto con 14 unidades en casa y 2 para comprar subía
 // arriba de todo por una plata que NO se destraba comprando — es el caso de la Cinta 7.5M que él
 // marcó el 23/08/2026. Con el mismo número en los dos lados, el orden se puede leer de la pantalla.
-// 💵 LO QUE DEVUELVE CADA PESO (27/10/2026, él: "agregá el botón para verlo de esa forma. pero que el predeterminado sea como está
-// ahora"): los pesos son el límite, así que se puede ordenar por cuánto deja cada $1 que se pone en la compra (ganancia por unidad ÷
-// costo de la mercadería, la misma ganancia de "$ por unidad"). El orden de siempre (plata que se pierde) sigue siendo el que viene.
-function _pedOrdenPeso(){try{return localStorage.getItem('cycPedOrdenPeso')==='peso'?'peso':'plata';}catch(e){return'plata';}}
-function _pedOrdenPesoSet(k){try{localStorage.setItem('cycPedOrdenPeso',k);}catch(e){} renderPedidos();}
+// 💵 EL ORDEN DE PEDIDOS ES "LO QUE SALVA CADA $1" (27/10/2026, él: "que quede sólo esa. sacar las otras opciones"; antes era la plata
+// que se pierde, del 06/10). Los pesos son el límite: primero lo que más ganancia salva por cada peso que se pone en la compra.
 // 27/10/2026 (él eligió 1a, después de comparar 5 órdenes en una simulación con los datos de Pedidos): no "lo que DEJA cada $1" sino
 // "lo que SALVA cada $1" = la ganancia que se pierde si NO se compra ahora (💸 en riesgo) ÷ lo que cuesta la compra (el mismo costo que
 // "Falta reponer"). Lo que todavía tiene stock de sobra (el Kit Jade) baja solo; lo que está en 0 sube aunque deje menos por unidad.
 function _pedDevuelve(p){const pr=prodById(p.prodId)||prodByName(p.producto);if(!pr)return null;const cu=(costUSDof(pr)||0)*(curTC()||0);const q=Number(p.cantidad)||0;
   const r=p.riesgoComprar!=null?p.riesgoComprar:p.riesgo;if(!(cu>0&&q>0)||r==null)return null;return Math.max(0,Number(r)||0)/(cu*q);}
-function _pedOrdenPesoHTML(){const k=_pedOrdenPeso();const b=(v,t,tt)=>`<button class="pf-btn${k===v?' active-all':''}" onclick="_pedOrdenPesoSet('${v}')" title="${tt}">${t}</button>`;
-  return `<div style="display:flex;flex-direction:column;justify-content:center;gap:5px"><span style="font-size:.62rem;color:var(--muted)">Ordenar por</span><div style="display:flex;gap:6px;flex-wrap:wrap">${b('plata','💸 plata que se pierde','El de siempre: primero lo que más plata deja de ganar si no se compra')}${b('peso','💵 lo que salva cada $1','Para cuando no alcanza la plata para todo: primero lo que más ganancia salva (la que se pierde si no se compra ahora) por cada peso que ponés en la compra. Lo que todavía tiene stock de sobra queda abajo.')}</div></div>`;}
 const _pedSortFnRiesgo=(a,b)=>{
-  if(_pedOrdenPeso()==='peso'){const da=_pedDevuelve(a),db=_pedDevuelve(b);if(da!=null||db!=null){if(da==null)return 1;if(db==null)return -1;if(db!==da)return db-da;}}
+  {const da=_pedDevuelve(a),db=_pedDevuelve(b);if(da!=null||db!=null){if(da==null)return 1;if(db==null)return -1;if(db!==da)return db-da;}}
   // EL ORDEN ES POR PLATA, NO POR COLOR (06/10/2026, él): "quiero que la lista muestre primero los que más
   // plata se pierde (…) cartas casino se venden tantas por día que puede que quede arriba de muchos rojos.
   // Tenemos dos parámetros: siempre compramos los que salen primero, y el color dice cuáles no hay en
@@ -22754,13 +22750,7 @@ function _pyFiltrosHTML(){
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px"><span style="font-size:.66rem;color:var(--muted)">Vender en:</span>${V.map(([v,t])=>btn(_candFiltro===v,t,`candFiltrar('${v}')`)).join('')}</div>
   </details>`;
 }
-// El botón de orden va AL LADO de "Falta reponer" (27/10/2026, él: "quiero que esté al lado de los pesos que vale reponer"): se agrega al
-// final de cada dibujado dentro del renglón de números de cada solapa (Prioridad, Bs As, Paraguay, Paulvic).
-function renderPedidos(){
-  try{_renderPedidosIn();}finally{
-    try{for(const id of ['pedidos-prioridad-count','pedidos-count','pedidos-py-count','pedidos-paulvic-count']){const el=document.getElementById(id);if(!el)continue;
-      const v=el.querySelector('.ped-orden-wrap');if(v)v.remove();const d=document.createElement('div');d.className='ped-orden-wrap';d.innerHTML=_pedOrdenPesoHTML();el.appendChild(d);}}catch(e){}}
-}
+function renderPedidos(){_renderPedidosIn();}
 function _renderPedidosIn(){
   if(pedidoSection==='listas'){renderListas();return;}
   // El número al lado de la solapa se refresca siempre, se esté mirando la papelera o no.
