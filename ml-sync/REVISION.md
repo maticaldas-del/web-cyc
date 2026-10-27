@@ -79,6 +79,11 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
 
 ## 1 · PRECIOS (lunes)
 
+### 🌸 F12 se abre 15 días antes del stock antiguo (27/10/2026, él: *"perfumes hasta 0%"*)
+- **Qué es:** regla nueva del 27/10: con la unidad más vieja a 15 días o menos de pagar stock antiguo se baja hasta ganar la caja, nunca abajo del 0%, y si no se vende se retira. Para perfumes el piso del 10% (F12) deja de valer en esos 15 días; F0 (nunca abajo de 0%) sigue.
+- **Dónde vive:** `frenosBajas` en `ml-sync/sync.mjs` (`antiguo15`, al lado de `antiguoCerca`).
+- **Qué chequear:** un perfume a 16+ días del stock antiguo sigue frenado en 10%; a 15 o menos pasa F12 y se frena recién en 0%.
+
 ### 🔒 Freno 50% para subir (26/10/2026, pedido suyo)
 - **Qué es:** en `decido`, una suba se frena si `cyc/techo95pct/<MLA>` (lo guarda `techo95;go` en la completa, de 4 días o menos) da 50%+ de certeza de que el precio en prueba ya es el techo y el precio nuevo está en o arriba de ese. No frena 🔥 escasez, ⏳ sin reposición, volver a un precio de los últimos 90 días ni `!chico`.
 - **Qué chequear:** que no frene una 📈 que todavía no tiene medición (sin dato no frena) · que el dato sea del MISMO precio (±2%) · que lo frenado aparezca en la vuelta con su motivo.
@@ -810,6 +815,11 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 (sería doble), y que el número de Gastos y el del Arqueo sean el mismo para cada mes.
 
 ## 3 · MERCADERÍA (miércoles)
+
+### 🧾 `pedir`: el tope es de CADA pedido de Nissei (27/10/2026, él: *"por cada pedido"*)
+- **Qué es:** el aviso "pasa tu tope" sumaba perfumería y resto juntos; ahora dice cada uno y avisa por separado. Las expresiones de perfumería/belleza pasaron a nivel de módulo (`PY_PERF_RE`, `PY_BELLEZA_RE`, copia de `_PERF_RE`/`_BELLEZA_RE` de la web).
+- **Dónde vive:** `pedir` y el armado de `pyb<fecha>` en `ml-sync/sync.mjs`.
+- **Qué chequear:** `pedir:…` (sin go) muestra 🌸 y 📦 por separado y la suma da el total.
 
 ### 📦 La caja para la máxima plata: lo que se corta recibe lo que vende hasta la próxima caja (27/10/2026, v27.16, él: *"maximizar la máxima ganancia de $ posible siempre"*)
 - **Qué es:** reemplaza "1 u. a lo que se corta" (v27.13): una venta perdida por estar en 0 no vuelve, y lo que tiene stock puede esperar a la caja siguiente sin perder nada. Lo que está en 0 o se corta antes de `CAJA_CORTE_DIAS` (14) recibe ritmo × (14 − máx(días que le quedan, `CAJA_VIAJE_DIAS` 7)), mínimo 1, en orden de lo que más deja por unidad; lo que sobra, por lo que más deja por unidad.

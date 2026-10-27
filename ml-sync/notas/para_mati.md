@@ -10,8 +10,8 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 
 ### Del 27/10 a la madrugada (contestó 1 2a 3 4a 5 13)
 - **Hecho:** 1 Paulvic Debutante/Witch Night: no se bajan sin techo al 95% salvo cerca de pagar stock (lo mira la vuelta con `techo95`) · 3 Centímetro: las dos Blancas al precio más caro y como un solo producto (regla 👯 cambiada) · 4a: catálogo Surtido no, medir la Rosa una semana (03/11) · 5: caja para la máxima plata (v27.16) · 13: Sancor, contador y Linternas no se nombran más.
-- **Duda de 2a (perfumes):** dijiste "15 días antes de pagar stock, ganar la caja hasta el 0% y si no se vende se retira", pero el 26/10 dijiste que los perfumes nunca abajo del 10% (*"menos del 10% nunca, antes retirarlos"*). Los 5 Paulvic de 1 u. son perfumes: (a) sugerida: perfumes hasta el 10% y después retiro; el resto hasta el 0% · (b) todo hasta el 0%, perfumes incluidos.
-- Siguen sin contestar: 6 tope del pedido de Paraguay (uno o dos de US$ 500) · 7 Batidora · 8 Paulvic Hot · 9 Separador x2 · 10 preguntas de compradores · 11 los 3 probados en duda · ~~12 pagar Paulvic~~: ya estaba pagado y cargado desde el 24/10 (error mío ponerlo en la lista).
+- **2 (perfumes):** contestó "perfumes hasta 0%": en los 15 días antes del stock antiguo F12 se abre (robot, 27/10) · **6:** el tope de US$ 500 es POR CADA pedido (perfumería y resto) · **11:** los 3 probados en duda (PS Portal y las Victoria's Secret sin código) se descartan.
+- Siguen sin contestar: 7 Batidora · 8 Paulvic Hot · 9 Separador x2 · 10 preguntas de compradores · ~~12 pagar Paulvic~~: ya estaba pagado y cargado desde el 24/10 (error mío ponerlo en la lista).
 
 ### Del 26/10 a la tarde (contestó 1? 2a 3? 4? 5 después)
 - 2a: los Paulvic recién llegados se miden con stock hasta 3 ventas esperadas, los que no vendan bajan en escalera (nunca abajo del 35%).
@@ -48,6 +48,5 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 - 52 de la lista de precios eran claramente otro producto: marcados `svprecio:…=otro` (se buscan de nuevo). ~14 quedaron en duda (variante no confirmada): se vuelven a mirar en la próxima tanda.
 
 ## 26/10 · pasada de Nissei (chat de Chrome)
-- **3 probados en duda** (sin código, no confirmó que sea el mismo producto): PS Portal y dos Victoria's Secret (variante). Mirarlos en la página de Nissei y pasarme código y precio, o "no lo tiene".
 - 24 de 28 probados quedaron "Nissei no lo tiene" (`nohabia`). Si la pasada del catálogo trae su código con precio, la marca se cae sola; los que sigan marcados al terminar, revisarlos (sobre todo los que venden).
 - **Preguntas de compradores (Ayelen):** medidas y hueco de la mentonera · qué es el color "Ab" del metatarso · aumento del espejo 8".

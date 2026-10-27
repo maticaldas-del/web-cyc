@@ -4621,6 +4621,7 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
     const edadF = edadViejaFull(e, 'k', lotes || {}, { k: hSh.aprox === false ? hSh : null });
     const cobraDesde = (tablaAntiguoDe(e, pr, lotes || {}, {}).tabla.find((t) => Number(t[2]) > 0) || [120])[0];
     const antiguoCerca = edadF != null && edadF >= cobraDesde - 20;
+    const antiguo15 = edadF != null && edadF >= cobraDesde - 15;   // 27/10/2026: 15 días antes de pagar stock antiguo (ver F12)
     const mlasSt = [d.mla, ...hermanasStockDe(links, prods || {}, d.mla)];
     // Las unidades vendidas (de ésta y de las que comparten su stock) entre t0 y t1, de `cyc/ventaprod/<día>`. null = no se pudo leer.
     const ventasEntre = async (t0, t1) => {
@@ -4674,7 +4675,9 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
       // ── F12 · PERFUMES: NUNCA ABAJO DEL 10% (26/10/2026, él: "todo lo que es perfume se puede poner en la perfumería. antes de liquidar a 0%
       // conviene pedirlo. pero intentemos venderlo mínimo al 10%. si está por pagar stock entonces avisame y retiro"; y con los VS: "menos del
       // 10% nunca. antes retirarlos"). Abajo del 10% no se liquida: se le avisa (en el chat, aviso de las 12:30) para que lo retire al local.
-      if (esPerfume && d.mgA != null && Number.isFinite(Number(d.mgA)) && Number(d.mgA) < PERFUME_MIN_PCT && !suya('bajocero')) return { regla: 'F12', txt: `perfume: a ${$(a)} queda en ${Number(d.mgA)}% y un perfume no se vende abajo del ${PERFUME_MIN_PCT}% (regla suya del 26/10): ${antiguoCerca ? 'está por pagar stock antiguo → AVISARLE para que lo retire a la perfumería del local' : 'se queda en el escalón del 10% o más; si llega cerca de pagar stock antiguo, avisarle para retirarlo'}` };
+      // 27/10/2026 (él: "15 días antes de pagar stock siempre ganar caja hasta llegar al 0% de ganancia, si no se vende se retira" y "perfumes
+      // hasta 0%"): con la unidad más vieja a 15 días o menos de pagar stock antiguo, el perfume SÍ baja hasta el 0% (F0 sigue).
+      if (esPerfume && !antiguo15 && d.mgA != null && Number.isFinite(Number(d.mgA)) && Number(d.mgA) < PERFUME_MIN_PCT && !suya('bajocero')) return { regla: 'F12', txt: `perfume: a ${$(a)} queda en ${Number(d.mgA)}% y un perfume no se vende abajo del ${PERFUME_MIN_PCT}% (regla suya del 26/10): ${antiguoCerca ? 'está por pagar stock antiguo → AVISARLE para que lo retire a la perfumería del local' : 'se queda en el escalón del 10% o más; si llega cerca de pagar stock antiguo, avisarle para retirarlo'}` };
       // ── F11 · FALTA DE STOCK: SIN TECHO 95% NO SE BAJA (ver arriba). Con el techo medido (🏔️ de techo95 en 60 días o 🔴 de las rayas)
       // sigue por los otros frenos (escalera, F9 de la escasez). La salida de la escasez (#volviendo) pasa sólo si la escasez terminó de
       // verdad: el stock en Full alcanza 30+ días al ritmo con stock. Salida SÓLO SUYA: 🔐 !sinlinea con su autorización.
@@ -10692,6 +10695,10 @@ const CAND_PISO_PCT = 25;       // suyo: "el % sano es de 25 hacia arriba"
 // solo en perfumes"). Vale para lo NUEVO de Paraguay (candidatos). Perfume = el nombre o el título de ML lo
 // dice (misma idea que `repartopy` y que `esPerfumeNom` de la web). El resto sigue en CAND_PISO_PCT.
 const CAND_PISO_PERFUME = 25;   // 17/10/2026: 25 (él: "tienen que llegar a 25, no a 24"); antes 24 para todo lo que se compra (él: "arriba del 24% TODO")
+// Perfumería/belleza/salud de Nissei (pedido `pyb<fecha>`) vs el resto (`py<fecha>`): COPIA de `_PERF_RE` y `_BELLEZA_RE` de index.html
+// (si se toca una, se toca la otra). A nivel de módulo desde el 27/10/2026 para que `pedir` mida el tope de CADA pedido.
+const PY_PERF_RE = /perfum|\bedp\b|\bedt\b|parfum|eau de|body splash|body mist|col[oô]nia|fragr[aâ]n|\bsplash\b/i;
+const PY_BELLEZA_RE = /maquill|maquiag|labial|batom|gloss|lip ?(tint|balm|oil)|b[aá]lsamo|rubor|blush|base (l[ií]quida|de maq|matte)|corrector|corretivo|delineador|delineado|r[ií]mel|m[aá]scara (de pesta|de c[ií]lios|para pesta)|cílios|pesta[ñn]as|sombra|paleta de|iluminador|polvo (compacto|suelto|facial)|p[oó] (compacto|facial)|pincel|esponja de maq|esmalte|u[ñn]as|crema|creme|s[eé]rum|hidratante|protector solar|protetor solar|bronceador|desodorante|antitranspirante|jab[oó]n|sabonete|shampo|shamp[uú]|xampu|acondicionador|condicionador|tratamiento capilar|m[aá]scara capilar|t[oó]nico|micelar|desmaquill|exfolia|loci[oó]n|lo[cç][aã]o|skin ?care|facial|cabello|cabelo|capilar|tintura|alisad|planchita|rizador|secador de pelo|depila|afeitad|barbear|rasurad|cortapelo|recortadora|cuidado personal|higiene|cepillo (de dientes|dental)|dental|bucal|masaje|massag|term[oóô]metro|tens[ií]metro|ox[ií]metro|balan[cç]a (corporal|de banheiro)|balanza (corporal|de ba[ñn]o|personal)|nebuliz|vitamina|suplemento|col[aá]geno|prote[ií]na|ortop[eé]d|plantilla|juanete|metatars|tal[oó]n|faja|rodillera|mu[ñn]equera|tobillera|corrector postural|salud/i;
 const RE_CAND_PERF = /perfum|parfum|\bedp\b|\bedt\b|eau de|fragan|fragr|body splash|body mist|\bcolonia\b|\bsplash\b/i;
 // Lo que se puede vender en la perfumería del local (26/10/2026, él: "todo lo que es perfume se puede poner en la perfumería… intentemos
 // venderlo mínimo al 10%. si está por pagar stock entonces avisame y retiro"): perfumes, body mist/splash, Victoria's Secret y Paulvic/Persea.
@@ -22973,7 +22980,11 @@ async function main() {
       const colgados = vivos.filter(([id, c]) => c.no && ((cambios.find((x) => x.id === id) || {}).u ?? (Number(c.pedirU) || 0)) > 0);
       const crudo = final.reduce((s, x) => s + (parseFloat(x.c.usd) || 0) * x.u, 0);
       console.log(`\n🧾 EL PEDIDO QUEDA EN: ${final.length} producto(s) · ${final.reduce((s, x) => s + x.u, 0)} u. · US$ ${crudo.toFixed(2)} crudos · US$ ${(crudo * RECARGO_PAR).toFixed(2)} puestos · ${money(Math.round(crudo * RECARGO_PAR * tcp))}`);
-      if (crudo > _topeP) console.log(`   ⚠️ pasa tu tope de US$ ${_topeP} crudos por US$ ${(crudo - _topeP).toFixed(2)} (sólo nuevos: lo de probados cargado en el pedido del momento también cuenta en el tope del panel)`);
+      // 27/10/2026 (él: "por cada pedido"): perfumería/belleza y el resto son dos pedidos de Nissei, cada uno con SU tope (como la web).
+      { const _esB = (n) => PY_PERF_RE.test(String(n || '')) || PY_BELLEZA_RE.test(String(n || ''));
+        const _cB = final.filter((x) => _esB(x.c.nombre)).reduce((s2, x) => s2 + (parseFloat(x.c.usd) || 0) * x.u, 0), _cR = crudo - _cB;
+        console.log(`   🌸 perfumería y belleza US$ ${_cB.toFixed(2)} · 📦 resto US$ ${_cR.toFixed(2)} (tope de cada uno: US$ ${_topeP})`);
+        for (const [nomG, v] of [['perfumería', _cB], ['resto', _cR]]) if (v > _topeP) console.log(`   ⚠️ el pedido de ${nomG} pasa su tope de US$ ${_topeP} crudos por US$ ${(v - _topeP).toFixed(2)} (sólo nuevos: lo de probados cargado también cuenta en el tope del panel)`); }
       if (colgados.length) console.log(`   (aparte: ${colgados.length} candidato(s) DESCARTADO(s) tienen unidades viejas cargadas. El panel no los muestra y no van en el pedido: ${colgados.map(([, c]) => c.nombre).slice(0, 6).join(' · ')}${colgados.length > 6 ? ' …' : ''})`);
       if (!APLICAR) { console.log('\nPRUEBA: no escribí nada. Para aplicar, agregá  ;go  al final.'); return; }
       let ok = 0;
@@ -50172,8 +50183,8 @@ async function main() {
       // Nissei se parte en perfumería/belleza/salud (`pyb<fecha>`, misma regla que `esBellezaNom`) y el resto (`py<fecha>`).
       // Antes todo iba a `py<fecha>` sin proveedor: la web lo mostraba como Nissei y `compray` le cargaba los pesos de otro.
       // Las dos expresiones son COPIA de `_PERF_RE` y `_BELLEZA_RE` de index.html: si se toca una, se toca la otra.
-      const _PERF_RE_PY = /perfum|\bedp\b|\bedt\b|parfum|eau de|body splash|body mist|col[oô]nia|fragr[aâ]n|\bsplash\b/i;
-      const _BELLEZA_RE_PY = /maquill|maquiag|labial|batom|gloss|lip ?(tint|balm|oil)|b[aá]lsamo|rubor|blush|base (l[ií]quida|de maq|matte)|corrector|corretivo|delineador|delineado|r[ií]mel|m[aá]scara (de pesta|de c[ií]lios|para pesta)|cílios|pesta[ñn]as|sombra|paleta de|iluminador|polvo (compacto|suelto|facial)|p[oó] (compacto|facial)|pincel|esponja de maq|esmalte|u[ñn]as|crema|creme|s[eé]rum|hidratante|protector solar|protetor solar|bronceador|desodorante|antitranspirante|jab[oó]n|sabonete|shampo|shamp[uú]|xampu|acondicionador|condicionador|tratamiento capilar|m[aá]scara capilar|t[oó]nico|micelar|desmaquill|exfolia|loci[oó]n|lo[cç][aã]o|skin ?care|facial|cabello|cabelo|capilar|tintura|alisad|planchita|rizador|secador de pelo|depila|afeitad|barbear|rasurad|cortapelo|recortadora|cuidado personal|higiene|cepillo (de dientes|dental)|dental|bucal|masaje|massag|term[oóô]metro|tens[ií]metro|ox[ií]metro|balan[cç]a (corporal|de banheiro)|balanza (corporal|de ba[ñn]o|personal)|nebuliz|vitamina|suplemento|col[aá]geno|prote[ií]na|ortop[eé]d|plantilla|juanete|metatars|tal[oó]n|faja|rodillera|mu[ñn]equera|tobillera|corrector postural|salud/i;
+      const _PERF_RE_PY = PY_PERF_RE;
+      const _BELLEZA_RE_PY = PY_BELLEZA_RE;
       let _ctxB = null;
       const ctxBelleza = async () => {
         if (!_ctxB) {
