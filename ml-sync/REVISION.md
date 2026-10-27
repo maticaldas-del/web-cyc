@@ -1673,6 +1673,11 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
 
 ## 4 · CHOQUES Y FALLAS MUDAS (jueves · junta las viejas 4 y 5)
 
+### 🔔 El aviso de venta sale apenas se leen las ventas (27/10/2026, él: *"tardó más de 20 mins en avisar. se puede hacer que sea al instante?"*)
+- **Qué es:** `avisarVentasNuevas` se llamaba al FINAL de la vuelta, después del stock de Full, cajas y fichas. Con ML lento (la pasada de Nissei comparte el cupo de ML: 471 consultas en 25 min en vez de 1) la vuelta tardó 20-40 min y el aviso esperó todo eso. Ahora se llama apenas termina el recorrido de ventas de las 4 cuentas; el del final queda de respaldo (la memoria `mlapi/avisoventa` evita avisar dos veces).
+- **Dónde vive:** `main` de `ml-sync/sync.mjs`, después de "✓ <cuenta>: N ventas revisadas".
+- **Qué chequear:** en el registro del ciclo, "Aviso al teléfono" sale antes de "✓ Stock actualizado"; nunca dos avisos de la misma venta.
+
 ### 📲 Telegram cuando ML da de baja una publicación y cuando la vuelve a habilitar (26/10/2026, pedido suyo)
 - **Qué es:** el aviso "⚠️ Problema en una publicación" (cerrada, en revisión, inactiva, falta de papeles/facturas) vuelve a salir por Telegram (con SOLO_DATOS había quedado sólo en `mlapi/cerebroavisos`); y cuando una que avisó vuelve a estar bien sale "✅ ML la volvió a habilitar". Una vez por cambio de estado (`mlapi/pubalert`), tope 8 por vuelta.
 - **Qué chequear:** que al estrenarlo no llegue una catarata (lo que ya estaba inactivo no es novedad) · que una pausa nuestra (fuera de Full, sin stock) NO avise · que las 3 en revisión para siempre no avisen el alta.

@@ -54292,6 +54292,11 @@ async function main() {
     });
     console.log(`✓ ${label}: ${orders.length} ventas revisadas`);
   }
+  // ── EL AVISO DE VENTA SALE APENAS SE LEEN LAS VENTAS (27/10/2026, él: "el aviso que se vendió algo arriba de $10.000 tardó más de
+  // 20 mins en avisar. se puede hacer que sea al instante?"). Antes salía al FINAL de la vuelta, después del stock de Full, las cajas y
+  // las fichas: con ML lento (la pasada de Nissei usa el mismo cupo de ML) una vuelta tardó 20-40 min y el aviso esperó todo eso. Ahora
+  // sale acá; el llamado del final queda de respaldo (la memoria `mlapi/avisoventa` no deja que una venta se avise dos veces).
+  try { await avisarVentasNuevas(db, _avisoVentas); } catch (e) { console.log('No pude avisar las ventas nuevas (lo reintento al final de la vuelta): ' + e.message); }
 
   // guardar en el mapa lo que tocó el auto-match (sin pisar lo que fijaste vos)
   // c0 de la segunda vuelta (25/09/2026): antes esto reescribía cada renglón ENTERO con la copia
@@ -54717,7 +54722,7 @@ async function main() {
     } catch (e) { console.log('No pude mirar el dólar MEP/cripto: ' + e.message); }
   }
 
-  // ── AVISO DE CADA VENTA NUEVA (15/10/2026, pedido suyo: 1a 2a 3a) ──
+  // ── AVISO DE CADA VENTA NUEVA (15/10/2026, pedido suyo: 1a 2a 3a) · desde el 27/10 sale arriba, apenas se leen las ventas: éste es el respaldo ──
   try { await avisarVentasNuevas(db, _avisoVentas); } catch (e) { console.log('No pude avisar las ventas nuevas: ' + e.message); }
   // ── 🔔 EL TIMBRE DEL REVISOR DE VENTAS (24/10/2026): 6 compras sin revisar o una abajo del 35% → entra el revisor ──
   try { await timbreVentas(db); } catch (e) { console.log('🔔 timbre: falló (' + e.message + '): pruebo en la vuelta siguiente'); }
