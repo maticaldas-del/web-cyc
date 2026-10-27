@@ -96,7 +96,7 @@ Ganar la caja daba pérdida en todos (Tendedero −25%, Rose y Silver −10%, Co
 3. Indigo, Silver, Batidora negra, F9 y Timer: (a) esperar como están (pagan poco, venden y dejan mucho) · (b) bajar.
 4. Cortapelo 4 en 1 (0 ventas en 60 d, 70 d en Full): (a) esperar a los 90 días (~20 d, F13) y ahí escalera hasta 0%; si no vende a los ~117 d, retirar · (b) retirar ya.
 
-### Packs contra sueltos (27/10, él: "hay aromatizantes Aer que se venden por unidad")
+### Packs contra sueltos (27/10, él: "hay aromatizantes Aer que se venden por unidad") → **eligió 1a 2a: publicar Lupa 60mm suelta y Aer suelto Limón y Brisa Marina (~$4.490). Las crea él; yo vinculo y pongo precio (35%+ peor caso).**
 1. Lupa 60mm (hoy Pack x10 a $47.990, vende 1 por mes, ~$1.750 por lupa): suelta a ~$4.990 dejaría ~$1.300 c/u, y las lupas sueltas parecidas que tenemos venden 17-23 por mes. (a) sugerida: publicarla también suelta y probar 30 días · (b) dejar sólo el pack.
 2. Aer suelto como publicación APARTE del x6 (él 27/10: "pueden ser los dos, como el filtro x1 y x4"): suelto deja 35% recién desde ~$4.090 (costo $1.352 c/u + cargo fijo ~$1.230 por venta). Rosas, Berry, Lavanda y Jazmín sueltos se venden a $3.330-3.500 (10-13 vendedores, uno con Full a $3.468): ahí no da. Limón (1 vendedor a $4.690) y Brisa Marina (2 a $4.200-4.690) sí: a ~$4.490 dejaría ~45%. (a) sugerida: publicar suelto sólo Limón y Brisa Marina, sin tocar el x6 · (b) no.
 
