@@ -588,7 +588,12 @@ async function armarCostoWeb(db, vp) {
     if (!p || (!baseUSD && !ship)) c = (Number(v.costo) || 0) + imp;
     else {
       const dev = DEV_LIVE[p.id] || 0;
-      c = (baseUSD * (1 + dev / 100) + ship) * tcForYM(ym) * (v.qty || 1) + imp;
+      // El dólar de SU día, como `tcDeVenta` de la web (27/10/2026): a mano del mes → cierre viejo sin `tcPorVenta` → `v.tcSale` → el del mes.
+      const man = tcMes[ym], sn = snaps[ym], tS = parseFloat(v.tcSale);
+      const tc = (man != null && man !== '' && parseFloat(man) > 0) ? parseFloat(man)
+        : (sn && !sn.tcPorVenta && (parseFloat(sn.tcMes) > 0 || parseFloat(sn.tipoCambio) > 0)) ? tcForYM(ym)
+        : tS > 0 ? tS : tcForYM(ym);
+      c = (baseUSD * (1 + dev / 100) + ship) * tc * (v.qty || 1) + imp;
     }
     if (v.netoEstimado) c += gest;
     const sinCosto = !(Number(v.costo) > 0) && (!p || (!(baseUSD > 0) && !(ship > 0)));
@@ -6602,7 +6607,8 @@ async function medirParamCompra(db, accounts, labels, GO) {
   const ctaDe = (x) => { const c = String(x || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); return CTAS.find((k) => c.startsWith(k)) || null; };
   // 22/10/2026 (7a): la que más lugar tiene contra el tope de H, no la que menos facturó en 90 días.
   const LH = lugarHPorCuenta(vp, await leerLugarHExtra(db)), fact = {}; for (const c of CTAS) fact[c] = LH.porCta[c].proy; void ctaDe;
-  out.cuentaNuevos = [...CTAS].sort((a, b) => fact[a] - fact[b])[0];
+  // 23/10/2026 (él: "van en la de ayelen o luciana"): entre esas dos, como `repartopy` y la tarjeta ⚖️ (revisión Plata 27/10/2026: elegía entre las 4).
+  out.cuentaNuevos = ['ayelen', 'luciana'].sort((a, b) => fact[a] - fact[b])[0];
   console.log(`\n🧾 IIBB · perfumes → Adriana ${ML_EXTRA_PCT.adriana}% · el resto → ${out.cuentaNuevos} ${ML_EXTRA_PCT[out.cuentaNuevos]}% (la que más lugar tiene contra el tope de H: ${money(Math.round(LH.porCta[out.cuentaNuevos].lugar))})`);
   // 4 · CUOTAS: ¿cuánto más barato tiene que estar uno SIN cuotas para ganarle la caja al que da cuotas?
   const links = (await db.get('cyc/mllinks')) || {};
@@ -10771,7 +10777,8 @@ function lugarHPorCuenta(vp, X) {
   const ctaDe = (x) => { const c = String(x || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); return CTAS.find((k) => c.startsWith(k)) || null; };
   const hoy = new Date(Date.now() - 3 * 3600e3), y = hoy.getUTCFullYear(), m = hoy.getUTCMonth() + 1;
   const ini = Date.parse(m <= 6 ? `${y - 1}-07-01` : `${y}-01-01`), fin = Date.parse(m <= 6 ? `${y}-06-30` : `${y}-12-31`) + 864e5;
-  const d30 = Date.now() - 30 * 864e5, faltan = Math.max(0, (fin - Date.now()) / 864e5);
+  const faltan = Math.max(0, (fin - Date.now()) / 864e5);
+  const kART = (ms) => new Date(ms - 3 * 3600e3).toISOString().slice(0, 10).replace(/-/g, '_'), k30d = kART(Date.now() - 30 * 864e5), kAyer = kART(Date.now() - 864e5);
   const r = {}; for (const c of CTAS) r[c] = { fact: 0, f30: 0 };
   // ANTES DE MAYO 2026 LO FACTURADO SALE DE `cyc/fact_mes` (27/10/2026, medido con `topeh`): las ventas de esos meses no están
   // enteras en `ventaprod`, y sin esto a Ayelen se le contaban ~$25M facturados en vez de $45M (y a cada cuenta le faltaba distinto,
@@ -10780,8 +10787,12 @@ function lugarHPorCuenta(vp, X) {
   for (const [k, ents] of Object.entries(vp || {})) {
     const ts = Date.parse(k.slice(0, 10).replace(/_/g, '-')); if (!isFinite(ts) || ts < ini) continue;
     const viejoMes = FM && k.slice(0, 7) < '2026_05';
-    for (const v of Object.values(ents || {})) { if (!v) continue; const c = ctaDe(v.cuenta); if (!c) continue; const t = Number(v.total) || 0;
-      if (!viejoMes) r[c].fact += t; if (ts >= d30 && !v.cancelada) r[c].f30 += t; }
+    // Revisión Plata 27/10/2026, igual que `parejoDatos` de la web: la cancelada guarda `total:0` y lo facturado está en `antesCancel`
+    // (ARCA la ve facturada); el ritmo son los 30 días ENTEROS hasta ayer (hoy recién empezado lo bajaba), canceladas incluidas.
+    const k10 = k.slice(0, 10), en30 = k10 >= k30d && k10 <= kAyer;
+    for (const v of Object.values(ents || {})) { if (!v) continue; const c = ctaDe(v.cuenta); if (!c) continue; const t0 = Number(v.total) || 0;
+      const t = t0 > 0 ? t0 : (v.cancelada && v.antesCancel ? Number(v.antesCancel.total) || 0 : 0);
+      if (!viejoMes) r[c].fact += t; if (en30) r[c].f30 += t; }
   }
   if (FM) for (const c of CTAS) for (const [ym, val] of Object.entries(FM[c] || {})) if (ym >= iniK && ym < '2026_05') r[c].fact += Number(val) || 0;
   // CON LA MERCADERÍA QUE YA TIENE (27/10/2026, él: "estamos llenando de productos en la cuenta de ayelen. cuando se comience a vender
@@ -10797,8 +10808,8 @@ function lugarHPorCuenta(vp, X) {
 }
 async function leerLugarHExtra(db) {
   const g = async (k) => { try { return (await db.get(k)) || {}; } catch (e) { console.log(`⚠️ lugar contra el tope de H: no pude leer ${k} (${e.message})`); return null; } };
-  const [products, inventory, stockhist, envios, armando, factMes] = await Promise.all(['cyc/products', 'cyc/inventory', 'cyc/stockhist', 'cyc/envios_full', 'cyc/cajas_armando', 'cyc/fact_mes'].map(g));
-  const merc = (products && inventory && stockhist && envios && armando) ? { products: Object.values(products), inventory, stockhist, envios, armando } : null;
+  const [products, inventory, stockhist, envios, armando, factMes, cajasEnt] = await Promise.all(['cyc/products', 'cyc/inventory', 'cyc/stockhist', 'cyc/envios_full', 'cyc/cajas_armando', 'cyc/fact_mes', 'cyc/cajasentrado'].map(g));
+  const merc = (products && inventory && stockhist && envios && armando) ? { products: Object.values(products), inventory, stockhist, envios, armando, cajasEnt: cajasEnt || {} } : null;
   if (!merc) console.log('⚠️ lugar contra el tope de H: va sólo con el ritmo de 30 días (falta un dato de la mercadería)');
   if (!factMes) console.log('⚠️ lugar contra el tope de H: sin `fact_mes`, lo facturado antes de mayo queda corto');
   return { factMes, merc };
@@ -10826,8 +10837,10 @@ function proyEsperadaH(vp, X, faltan) {
     }
   }
   const viaja = {}, sumV = (pid, c, u) => { if (pid && u > 0 && (c in out)) viaja[pid + '|' + c] = (viaja[pid + '|' + c] || 0) + Number(u); };
-  for (const e of Object.values(X.envios || {})) { const c = String((e && e.cuenta) || '').toLowerCase();
-    for (const cj of (Array.isArray(e && e.cajasDet) ? e.cajasDet : [])) { if (!cj || cj.recibida) continue; for (const it of (cj.items || [])) if (it) sumV(it.prodId, c, Number(it.u) || 0); } }
+  // Sólo lo que sigue arriba del camión, como `cajaPendU` de la web: lo de una caja abierta que ya entró a Full ya está en `getQ` (revisión Plata 27/10/2026).
+  const entro = (eid, i, cj, it) => { const r = (X.cajasEnt || {})[eid + '__' + i]; if (!r || String(r.track || '') !== String(cj.track || '')) return 0; const x = (Array.isArray(r.items) ? r.items : Object.values(r.items || {})).find((y) => y && y.p === it.prodId && (y.v || '') === (it.variante || '')); return x ? Math.max(0, Math.min(Number(x.q) || 0, Number(it.u) || 0)) : 0; };
+  for (const [eid, e] of Object.entries(X.envios || {})) { const c = String((e && e.cuenta) || '').toLowerCase();
+    for (const [i, cj] of (Array.isArray(e && e.cajasDet) ? e.cajasDet : []).entries()) { if (!cj || cj.recibida) continue; for (const it of (cj.items || [])) if (it) sumV(it.prodId, c, Math.max(0, (Number(it.u) || 0) - entro(eid, i, cj, it))); } }
   for (const [cta, a] of Object.entries(X.armando || {})) for (const [k, u] of Object.entries((a && a.items) || {})) sumV(String(k).split('|')[0], String(cta).toLowerCase(), Number(u) || 0);
   const claves = new Set([...Object.keys(ped), ...Object.keys(viaja)]);
   for (const p of X.products) if (p && p.id) for (const c of CTAS) if (getQ(p.id, c) > 0) claves.add(p.id + '|' + c);
@@ -17596,7 +17609,8 @@ async function main() {
       };
       const full = {}, iibb = {}, otros = {}, faltan = [];
       for (const label of labels) {
-        const acc = accounts[label]; if (!acc?.refresh_token) continue;
+        // Sin token = cuenta NO leída (revisión Plata 27/10/2026): antes se salteaba callada y el mes quedaba "cargado" con 3 de 4.
+        const acc = accounts[label]; if (!acc?.refresh_token) { for (const k of periodos) faltan.push(`${label} ${k} [sin token]`); continue; }
         let tok;
         for (let i = 0; i < 3 && !tok; i++) {
           try { const rt = (await db.get('mlapi/tokens/' + label + '/refresh_token')) || acc.refresh_token; const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, rt);
@@ -17654,6 +17668,8 @@ async function main() {
         if (!(t > 0)) { if (compras[id]) upd[id] = null; continue; }
         upd[id] = { id, dayKey: ym + '_15', monto: t, cat: 'Envios', ts: Date.now(), auto: 'cargosmes',
           desc: `Cargos de Full de ML · ${label} · período ${k.slice(0, 7)} (${Object.entries(o).map(([ty, v]) => FULL[ty] + ' ' + money(v)).join(' · ')})` }; }
+      // Las 4 en $0 no es "mes cargado": casi seguro el período todavía no estaba (revisión Plata 27/10/2026). La corrida automática lo vuelve a mirar.
+      if (AUTO && !Object.values(upd).some(Boolean)) { console.log('\n✗ Las 4 cuentas dieron $0 de Full: no lo doy por cargado (el período puede no estar cerrado). Mañana lo vuelvo a mirar.'); process.exitCode = 1; return; }
       await db.patch('cyc/compras', upd);
       const rel = (await db.get('cyc/compras')) || {};
       const ok = Object.entries(upd).every(([id, v]) => v === null ? !rel[id] : rel[id] && Math.round(rel[id].monto) === v.monto);
@@ -20385,7 +20401,9 @@ async function main() {
       const partes = crudo.split('|').map((x) => x.trim());
       const GO = partes.includes('go');
       const dayKey = partes[0] || '';
-      const monto = Math.round(parseFloat((partes[1] || '').replace(/[^\d.-]/g, '')) || 0);
+      // Con puntos de miles (revisión Plata 27/10/2026): "163.045" se guardaba $163. `pesosArg` lee 163.045 · 1.234.567 · 113.083,50; un número dudoso no se carga.
+      const _mRaw = String(partes[1] || ''), _mDud = /[.,]\d{4,}/.test(_mRaw) || (_mRaw.match(/,/g) || []).length > 1;
+      const monto = _mDud ? 0 : pesosArg(_mRaw);
       const cat = partes[2] || '';
       const desc = partes[3] || '';
       const extra = {};
@@ -31797,7 +31815,10 @@ async function main() {
           return;
         }
       }
-      await db.patch('cyc/finanzas', patch);
+      // También `_seen` de lo que se escribe (como `ancla`): si no, el ciclo lo tomaba por un cambio a mano y ponía "cargado hoy"
+      // (`_ts/mp`), y el ámbar de 7 días sin cargar el disponible no salía nunca (revisión Plata 27/10/2026).
+      const _seenP = {}; for (const [k, v] of Object.entries(patch)) if (/^mp_/.test(k)) _seenP['_seen/' + k] = v;
+      await db.patch('cyc/finanzas', { ...patch, ..._seenP });
       // El disponible llega hasta el corte, no hasta ahora: `saldoml` cuenta lo liberado desde acá.
       await db.patch('cyc/saldoml', { _dispTs: corte });
       // Revisión final: si lo liberado pasó al disponible, también se vacía lo de CADA cuenta
@@ -35248,7 +35269,7 @@ async function main() {
       // usaba el supuesto. Escribe cyc/retiro_mes/<mes> (la MISMA casilla que "💸 Retiro cobrado" del Arqueo) y lo relee.
       const _mm = String(_r[1] || '').match(/^(\d{4}_\d{2})=(.+)$/);
       if (_mm) {
-        const ymR = _mm[1], montoR = Math.round(parseFloat(String(_mm[2]).replace(/[^\d]/g, '')) || 0);
+        const ymR = _mm[1], montoR = pesosArg(String(_mm[2]));   // 2.400.000,50 daba 240.000.050 (revisión Plata 27/10/2026)
         const goR = _r.slice(2).includes('go');
         if (!(montoR > 0)) { console.log('Usá: retiromes:2026_11=2400000:go'); return; }
         const antes = await db.get('cyc/retiro_mes/' + ymR);
@@ -35262,7 +35283,7 @@ async function main() {
         return;
       }
       if (_r[1]) {
-        const nuevoM = Math.round(parseFloat(String(_r[1]).replace(/[^\d]/g, '')) || 0);
+        const nuevoM = pesosArg(String(_r[1]));   // 2.400.000,50 daba 240.000.050 (revisión Plata 27/10/2026)
         if (!(nuevoM > 0)) { console.log('Usá: retiromes:1800000'); return; }
         if (SOLO_DATOS) console.log('\u26a0\ufe0f Ojo: con el robot en "sólo datos" la carga automática del 1º NO corre. Para cargar el retiro de un mes: retiromes:<AAAA_MM>=<pesos>:go');
         await db.patch('cyc/mlconfig', { retiroMes: nuevoM });
@@ -37679,7 +37700,7 @@ async function main() {
     if (/^arcacierres(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const go = /:go$/.test(String(process.env.BILLING_PROBE));
       const cfg = (await db.get('cyc/mlconfig')) || {};
-      const desde = cfg.arcaHDesde || '2026_05', mes = Number(cfg.arcaHMes) || 427498, pag = cfg.arcaHPagadoHasta || '';
+      const desde = String(cfg.arcaHDesde || '2026_05').replace('-', '_'), mes = Number(cfg.arcaHMes) || 427498, pag = String(cfg.arcaHPagadoHasta || '').replace('-', '_');
       const snaps = (await db.get('cyc/snapshots')) || {};
       const acum = (ym) => { const [y, m] = desde.split('_').map(Number), [hy, hm] = ym.split('_').map(Number); let t = 0;
         for (let k = y * 12 + m - 1; k <= hy * 12 + hm - 1; k++) { const x = Math.floor(k / 12) + '_' + String(k % 12 + 1).padStart(2, '0'); if (pag && x <= pag) continue; t += mes; } return t; };
@@ -37738,10 +37759,13 @@ async function main() {
         console.log(`   el negocio generó ${$(genera)} (neto ${$(neto)} − costo ${$(costo)} − gastos ${$(gastos)} en ${nG}) · retiro ${ret == null ? 'SIN CARGAR' : $(ret)} → debería crecer ${$(esperado)}`);
         console.log(`   creció el patrimonio ${$(crecio)} (${u(crecioU)}) · DIFERENCIA ${$(crecio - esperado)} (${u((crecio - esperado) / (tc || 1))})${canc ? ` · ${canc} canceladas afuera` : ''}${sinC ? ` · ${sinC} ventas sin costo` : ''}`);
         const d = (a, b) => u(b - a);
-        const efA = F(A, ['efectivo', 'mp_disp', 'mp_liq']), efB = F(B, ['efectivo', 'mp_disp', 'mp_liq']);
-        const deA = FA(A, ['tarjeta', 'deuda_cyc', 'dolares_mati', 'dolares_tito']), deB = FA(B, ['tarjeta', 'deuda_cyc', 'dolares_mati', 'dolares_tito']);
+        // Revisión Plata 27/10/2026: las partes tienen que sumar lo que creció. Lo vendido sin reporte (`vsrUSD`) es plata, la
+        // deuda de proveedores (`pvUSD`) es deuda, y la oficina de Mati (`of_mia`) ya está en el stock cuando se cuenta por unidades (`stockLocal`), como en Comparar.
+        const efA = F(A, ['efectivo', 'mp_disp', 'mp_liq']) + (Number(A.vsrUSD) || 0), efB = F(B, ['efectivo', 'mp_disp', 'mp_liq']) + (Number(B.vsrUSD) || 0);
+        const deA = FA(A, ['tarjeta', 'deuda_cyc', 'dolares_mati', 'dolares_tito']) + (Number(A.pvUSD) || 0), deB = FA(B, ['tarjeta', 'deuda_cyc', 'dolares_mati', 'dolares_tito']) + (Number(B.pvUSD) || 0);
+        const ofDe = (S) => F(S, Number(S.stockLocal) > 0 ? ['of_viejo', 'vendedores'] : ['of_mia', 'of_viejo', 'vendedores']);
         const arA = (Number(A.arcaARS) || 0) / (tc0 || tc || 1), arB = (Number(B.arcaARS) || 0) / (tc || 1);
-        console.log(`   de dónde: stock ${d(Number(A.stock) || 0, Number(B.stock) || 0)} (ML ${d(Number(A.stockML) || 0, Number(B.stockML) || 0)}) · plata ${d(efA, efB)} (efectivo ${d(F(A, ['efectivo']), F(B, ['efectivo']))} · MP disp ${d(F(A, ['mp_disp']), F(B, ['mp_disp']))} · a liquidar ${d(F(A, ['mp_liq']), F(B, ['mp_liq']))}) · nos deben ${d(F(A, ['deben_cyc']), F(B, ['deben_cyc']))} · oficina (Mati, CYC, vendedores) ${d(F(A, ['of_mia', 'of_viejo', 'vendedores']), F(B, ['of_mia', 'of_viejo', 'vendedores']))} · deudas ${u(-(deB - deA))} · ARCA ${u(-(arB - arA))} · corregir ${d(F(A, ['corregir']), F(B, ['corregir']))}`);
+        console.log(`   de dónde: stock ${d(Number(A.stock) || 0, Number(B.stock) || 0)} (ML ${d(Number(A.stockML) || 0, Number(B.stockML) || 0)}) · plata ${d(efA, efB)} (vendido sin reporte ${d(Number(A.vsrUSD) || 0, Number(B.vsrUSD) || 0)} · efectivo ${d(F(A, ['efectivo']), F(B, ['efectivo']))} · MP disp ${d(F(A, ['mp_disp']), F(B, ['mp_disp']))} · a liquidar ${d(F(A, ['mp_liq']), F(B, ['mp_liq']))}) · nos deben ${d(F(A, ['deben_cyc']), F(B, ['deben_cyc']))} · oficina (Mati, CYC, vendedores) ${d(ofDe(A), ofDe(B))} · deudas ${u(-(deB - deA))} · ARCA ${u(-(arB - arA))} · corregir ${d(F(A, ['corregir']), F(B, ['corregir']))}`);
         if (tc0 && tc && tc0 !== tc) console.log(`   ojo: el dólar pasó de ${tc0} a ${tc}: lo que está en pesos (MP, efectivo) cambia en dólares sin que pase nada`);
         console.log('');
       }
@@ -37774,7 +37798,7 @@ async function main() {
       const diasMes = new Date(Date.UTC(Y, M, 0)).getUTCDate();
       const ini = Date.UTC(Y, M - 1, 1) + 3 * 36e5;
       const esActual = ym === `${nAR.getUTCFullYear()}_${String(nAR.getUTCMonth() + 1).padStart(2, '0')}`;
-      const diasTr = esActual ? Math.min(diasMes, (Date.now() - ini) / 864e5) : diasMes;
+      const diasTr = esActual ? Math.min(diasMes, Math.max(1, (Date.now() - ini) / 864e5)) : diasMes;
       const nc = neto - costo, gastos = sum(gA), gastosPrev = sum(gP);
       const ultimos = Object.keys(porDia).sort().slice(-8, -1);   // 7 días cerrados
       const r7 = ultimos.length ? ultimos.reduce((a, k) => a + porDia[k], 0) / ultimos.length : null;
@@ -40404,6 +40428,9 @@ async function main() {
       const arg = (String(process.env.BILLING_PROBE).split(':')[1] || '').trim();
       const corte = /^\d{4}-\d{2}-\d{2}$/.test(arg) ? new Date(arg + 'T23:59:59Z').getTime() : Date.parse('2026-06-30T23:59:59Z');
       const TOPES = [
+        // A-F (revisión Plata 27/10/2026): sin ellas una cuenta en F salía "G". Mismos topes que `MONO_CATS` de la web; la cuota de esas no está cargada.
+        { cat: 'A', tope: 12009410.45, cuota: 0 }, { cat: 'B', tope: 17595182.74, cuota: 0 }, { cat: 'C', tope: 24670494.31, cuota: 0 },
+        { cat: 'D', tope: 30628651.43, cuota: 0 }, { cat: 'E', tope: 36028231.33, cuota: 0 }, { cat: 'F', tope: 45151659.41, cuota: 0 },
         { cat: 'G', tope: 53995798.87, cuota: 158815.05 },
         { cat: 'H', tope: 81924660.37, cuota: 317895.01 },
         { cat: 'I', tope: 91699761.90, cuota: 474992.78 },
@@ -43515,16 +43542,20 @@ async function main() {
       // ── 3. el Arqueo, con la misma cuenta que hace la pantalla ────────────────
       let stockML = 0, stockLocal = 0, stockCamino = 0, uML = 0, uLocal = 0, uCamino = 0;
       const camPorCuenta = {};
+      // Lo que de una caja abierta ya entró a Full lo cuenta el stock de ML: se resta como `cajaPendU` de la web (revisión Plata 27/10/2026).
+      let _cEnt = {}; try { _cEnt = (await db.get('cyc/cajasentrado')) || {}; } catch { console.log('   ⚠️ no pude leer lo entrado de las cajas: en camino va entero'); }
+      const _entro = (eid, i, c, it) => { const r = _cEnt[eid + '__' + i]; if (!r || c.recibida || String(r.track || '') !== String(c.track || '')) return 0; const x = (Array.isArray(r.items) ? r.items : Object.values(r.items || {})).find((y) => y && y.p === it.prodId && (y.v || '') === (it.variante || '')); return x ? Math.max(0, Math.min(Number(x.q) || 0, it.u || 0)) : 0; };
       for (const [id, e] of Object.entries(envios)) {
         if (!e || !e.cuenta || !LOCS.includes(e.cuenta)) continue;
-        for (const c of (Array.isArray(e.cajasDet) ? e.cajasDet : [])) {
-          if (c.recibida) continue;
+        for (const [ci, c] of (Array.isArray(e.cajasDet) ? e.cajasDet : []).entries()) {
+          if (!c || c.recibida) continue;
           for (const it of (c.items || [])) {
             if (!it || !it.prodId || !(it.u > 0)) continue;
             const p = pIdx[it.prodId]; if (!p) continue;
-            stockCamino += costUSD(p) * it.u;
-            uCamino += it.u;
-            camPorCuenta[e.cuenta] = (camPorCuenta[e.cuenta] || 0) + it.u;
+            const uP = Math.max(0, it.u - _entro(id, ci, c, it)); if (!uP) continue;
+            stockCamino += costUSD(p) * uP;
+            uCamino += uP;
+            camPorCuenta[e.cuenta] = (camPorCuenta[e.cuenta] || 0) + uP;
           }
         }
       }
@@ -49070,7 +49101,7 @@ async function main() {
       const vp = (await db.get('cyc/ventaprod')) || {};
       const tc = parseFloat(((await db.get('cyc/finanzas')) || {}).tipo_cambio) || 0;
       const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
-      const piso = 25;
+      const piso = 35;   // 24/10/2026: todo pide 35% (revisión Plata 27/10/2026: seguía en 25)
       const CTAS = ['adriana', 'luciana', 'ayelen', 'matias'];
       const NOM = { adriana: 'Adriana', luciana: 'Luciana', ayelen: 'Ayelen', matias: 'Matías' };
       const ctaDe = (x) => { const c = String(x || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); return CTAS.find((k) => c.startsWith(k)) || null; };
@@ -49167,6 +49198,8 @@ async function main() {
         const c = m && CT[nrmC(m[1])];
         const ars = m ? pesosArg(m[2]) : null;
         if (!c || !(ars >= 0) || ars == null) { mal.push(x); continue; }
+        // Número dudoso (revisión Plata 27/10/2026): "152.34050" daba 15.234.050 y "1,250,000" daba 1.250. Se carga sólo el número claro.
+        if (/[.,]\d{4,}/.test(m[2]) || (m[2].match(/,/g) || []).length > 1) { mal.push(x + ' (número dudoso: escribilo como 1.250.000 o 1250000,50)'); continue; }
         let ts = ahora;
         if (m[3]) {
           const hh = String(m[4]).padStart(2, '0');
@@ -50161,7 +50194,9 @@ async function main() {
         console.log(`  🏠 oficina · ${pf.name}${r.color ? ' · ' + r.color + ': ' + r.antes + ' → ' + r.ahora + ' (total ' + r.tA + ' → ' + r.tN + ')' : ': ' + r.antes + ' → ' + r.tN}${r.se ? ` · 🏷️ sin etiqueta ${r.se.antes} → ${r.se.ahora}` : ''}`);
       }
       const quedan = {}; for (const [pid, q] of Object.entries(ofiAl)) if (NOSUMAR || !sumados.some((y) => y.prodId === pid) || aMano.some((y) => y.pf && y.pf.id === pid)) quedan[pid] = q;
-      await db.patch('cyc/compraslista/' + id, { sumoOfi: NOSUMAR ? null : { ts: Date.now(), por: 'chat', items: sumados }, ofiAlLlegar: Object.keys(quedan).length ? quedan : null, falto: faltoR.length ? faltoR : null });
+      // Lo que llegó de cada renglón (`ul`) cuando faltó algo: la deuda con el proveedor (`listaDeudaUSD`) se cuenta con eso, no con lo pedido (revisión Plata 27/10/2026).
+      const ulP = {}; if (faltoR.length) for (const [i, x] of plan.entries()) { const k = (c.items || []).indexOf(x.it); if (k >= 0) ulP['items/' + k + '/ul'] = llegoU(x.it); }
+      await db.patch('cyc/compraslista/' + id, { sumoOfi: NOSUMAR ? null : { ts: Date.now(), por: 'chat', items: sumados }, ofiAlLlegar: Object.keys(quedan).length ? quedan : null, falto: faltoR.length ? faltoR : null, ...ulP });
       const rel = await db.get('cyc/compraslista/' + id);
       console.log(`\n${rel && rel.estado === 'llegado' ? '✓' : '⚠️ NO QUEDÓ'} Pedido ${id} llegado · ${nuevas.length} ficha(s) nueva(s)${nuevas.length ? ': ' + nuevas.map((x) => x.id + ' ' + x.name).join(' | ') : ''}${subio.length ? ' · costo subido: ' + subio.join(' · ') : ''}`);
       if (sumados.length) console.log(`✓ Sumado a la oficina: ${sumados.reduce((a, x) => a + x.u, 0)} u.${faltoR.length ? ' · faltaron ' + faltoR.reduce((a, x) => a + x.pedidas - x.llegaron, 0) + ' u. (anotadas en el pedido)' : ''}`);
@@ -53786,7 +53821,8 @@ async function main() {
           total: Math.round(itemGross),
           neto, mlfee,
           costo, costBaseUSD, shipUSD,
-          ...(tcReal > 0 ? { tcSale: tcReal } : (Number(_prevV && _prevV.tcSale) > 0 ? { tcSale: Number(_prevV.tcSale) } : {})),
+          // El dólar de SU día queda fijo: al releer las ventas de 2 días no se pisa con el de hoy (revisión Plata 27/10/2026, el caso del 15/10).
+          ...(Number(_prevV && _prevV.tcSale) > 0 ? { tcSale: Number(_prevV.tcSale) } : (tcReal > 0 ? { tcSale: tcReal } : {})),
           numVenta: numDisplay, mla: mla || '',
           ts: new Date(o.date_created || o.date_closed).getTime(),
           origen: 'ml-api',

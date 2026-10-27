@@ -417,7 +417,7 @@
 ## 8 · PLATA, GASTOS Y ARQUEO
 
 - **El Arqueo está en DÓLARES** (en chico los pesos al lado). Antes de escribir en un campo que existe, preguntar en qué unidad lo lee.
-- **El saldo de MP no se lee por API** (~30 puertas medidas). El disponible: desde el 26/10 lo lee cada día el chat de Chrome (3a, renglón `mp:` del buzón) y lo cargo con `ancla:<cuenta>=<pesos>;go`; `dispo`
+- **El saldo de MP no se lee por API** (~30 puertas medidas). El disponible: desde el 26/10 lo lee cada día el chat de Chrome (3a, renglón `mp:` del buzón) y lo cargo con `ancla:<cuenta>=<pesos>@<AAAA-MM-DD HH:MM>;go` (la hora en que lo leyó, nunca la de la vuelta; 27/10); `dispo`
   suma/resta desde ahí (una vez por mes recargarlo; `dispo` NO avisa por Telegram, decisión 30/09). "A liquidar en ML" y la agenda de
   liberaciones salen solos de `saldoml` (reporte de liquidación, ml-daily). El extracto de cuenta se baja a mano y **trae nombres de
   terceros: nunca al repo ni a un log**.

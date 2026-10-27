@@ -1287,7 +1287,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
     <div class="arqueo-grid">
       <div class="arqueo-section positivo">
         <h3>💵 Efectivo & Digital</h3>
-        <div class="fin-field"><div class="fin-left"><span class="fin-ts" id="ts_efectivo"></span><span class="fin-label">Efectivo disponible</span><span id="db_efectivo"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_efectivo" placeholder="$0" onchange="saveFin('efectivo',this.value)"></div>
+        <div class="fin-field"><div class="fin-left"><span class="fin-ts" id="ts_efectivo"></span><span class="fin-label">Efectivo disponible</span><span id="db_efectivo"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_efectivo" placeholder="US$ 0" onchange="saveFin('efectivo',this.value)"></div>
         <!-- DISPONIBLE EN ML, UNA CASILLA POR CUENTA.
              Se carga a mano porque ML NO da el saldo por la API: probado el 15/08/2026 en las
              cuatro cuentas y en los tres endpoints que existen, todos contestan 403 forbidden.
@@ -1295,14 +1295,14 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
              patrimonio. Por eso las cuatro NO se suman aparte en el arqueo (llevan detalle:true),
              si no la plata se contaría dos veces. -->
         <div style="font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.09em;margin:2px 0 6px">Disponible en ML, por cuenta</div>
-        <div class="fin-field"><div class="fin-left"><span class="fin-label">Adriana</span><span id="db_mp_adriana"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_mp_adriana" placeholder="$0" onchange="saveFin('mp_adriana',this.value)"></div>
-        <div class="fin-field"><div class="fin-left"><span class="fin-label">Luciana</span><span id="db_mp_luciana"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_mp_luciana" placeholder="$0" onchange="saveFin('mp_luciana',this.value)"></div>
-        <div class="fin-field"><div class="fin-left"><span class="fin-label">Ayelen</span><span id="db_mp_ayelen"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_mp_ayelen" placeholder="$0" onchange="saveFin('mp_ayelen',this.value)"></div>
-        <div class="fin-field"><div class="fin-left"><span class="fin-label">Matias</span><span id="db_mp_matias"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_mp_matias" placeholder="$0" onchange="saveFin('mp_matias',this.value)"></div>
-        <div class="fin-field"><div class="fin-left"><span class="fin-ts" id="ts_mp_disp"></span><span class="fin-label" style="font-weight:700;color:var(--text)">MercadoPago disponible (total)</span><span id="db_mp_disp"></span></div><input class="fin-input money" type="text" id="f_mp_disp" placeholder="$0" readonly title="Se calcula solo: es la suma de las cuatro cuentas" style="opacity:.75;cursor:default"></div>
+        <div class="fin-field"><div class="fin-left"><span class="fin-label">Adriana</span><span id="db_mp_adriana"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_mp_adriana" placeholder="US$ 0" onchange="saveFin('mp_adriana',this.value)"></div>
+        <div class="fin-field"><div class="fin-left"><span class="fin-label">Luciana</span><span id="db_mp_luciana"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_mp_luciana" placeholder="US$ 0" onchange="saveFin('mp_luciana',this.value)"></div>
+        <div class="fin-field"><div class="fin-left"><span class="fin-label">Ayelen</span><span id="db_mp_ayelen"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_mp_ayelen" placeholder="US$ 0" onchange="saveFin('mp_ayelen',this.value)"></div>
+        <div class="fin-field"><div class="fin-left"><span class="fin-label">Matias</span><span id="db_mp_matias"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_mp_matias" placeholder="US$ 0" onchange="saveFin('mp_matias',this.value)"></div>
+        <div class="fin-field"><div class="fin-left"><span class="fin-ts" id="ts_mp_disp"></span><span class="fin-label" style="font-weight:700;color:var(--text)">MercadoPago disponible (total)</span><span id="db_mp_disp"></span></div><input class="fin-input money" type="text" id="f_mp_disp" placeholder="US$ 0" readonly title="Se calcula solo: es la suma de las cuatro cuentas" style="opacity:.75;cursor:default"></div>
         <div id="ancla_aviso" style="display:none;font-size:.68rem;color:var(--amber);margin:-2px 0 8px;line-height:1.35"></div>
         <div id="mp-disp-aviso" style="display:none;font-size:.64rem;color:var(--amber);margin:-4px 0 8px;line-height:1.4"></div>
-        <div class="fin-field"><div class="fin-left"><span class="fin-ts" id="ts_mp_liq"></span><span class="fin-label">A liquidar en ML</span><span id="db_mp_liq"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_mp_liq" placeholder="$0" onchange="saveFin('mp_liq',this.value)"></div>
+        <div class="fin-field"><div class="fin-left"><span class="fin-ts" id="ts_mp_liq"></span><span class="fin-label">A liquidar en ML</span><span id="db_mp_liq"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_mp_liq" placeholder="US$ 0" onchange="saveFin('mp_liq',this.value)"></div>
         <div id="vsr_linea" style="display:none;font-size:.68rem;margin:-2px 0 8px;line-height:1.4"></div>
       </div>
       <div class="arqueo-section positivo">
@@ -1315,28 +1315,28 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
              que se manda a Full. El número de acá lo calcula la pantalla "Mi oficina" a partir de
              lo contado; por eso el campo queda bloqueado apenas hay algo contado. -->
         <div class="fin-field"><div class="fin-left"><span class="fin-label">Oficina Mati</span><span id="ofi-mati-nota" style="font-size:.6rem;color:var(--muted)"></span><span id="db_of_mia"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_of_mia" placeholder="US$ 0" onchange="saveFin('of_mia',this.value)"></div>
-        <div class="fin-field"><div class="fin-left"><span class="fin-label">Vendedores</span><span id="db_vendedores"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_vendedores" placeholder="$0" onchange="saveFin('vendedores',this.value)"></div>
+        <div class="fin-field"><div class="fin-left"><span class="fin-label">Vendedores</span><span id="db_vendedores"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_vendedores" placeholder="US$ 0" onchange="saveFin('vendedores',this.value)"></div>
         <!-- Desde que se cuenta la oficina por unidades, esa mercadería ya entra sola en el
              patrimonio (Stock Local). Si además queda cargada a mano acá, se cuenta DOS VECES. -->
         <div id="ofi-doble-aviso" style="display:none;font-size:.64rem;color:var(--amber);margin-top:6px;line-height:1.4"></div>
       </div>
       <div class="arqueo-section positivo">
         <h3>📥 Lo que nos deben</h3>
-        <div class="fin-field"><div class="fin-left"><span class="fin-label">Deben a CYC</span><span id="db_deben_cyc"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_deben_cyc" placeholder="$0" onchange="saveFin('deben_cyc',this.value)"></div>
+        <div class="fin-field"><div class="fin-left"><span class="fin-label">Deben a CYC</span><span id="db_deben_cyc"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_deben_cyc" placeholder="US$ 0" onchange="saveFin('deben_cyc',this.value)"></div>
       </div>
       <div class="arqueo-section negativo">
         <h3>📤 Lo que debemos</h3>
-        <div class="fin-field"><div class="fin-left"><span class="fin-label neg-label">Tarjeta</span><span id="db_tarjeta"></span></div><input class="fin-input negative money" type="text" inputmode="numeric" id="f_tarjeta" placeholder="$0" onchange="saveFin('tarjeta',this.value)"></div>
-        <div class="fin-field"><div class="fin-left"><span class="fin-label neg-label">Deuda de CYC</span><span id="db_deuda_cyc"></span></div><input class="fin-input negative money" type="text" inputmode="numeric" id="f_deuda_cyc" placeholder="$0" onchange="saveFin('deuda_cyc',this.value)"></div>
-        <div class="fin-field"><div class="fin-left"><span class="fin-label neg-label">Dólares Mati</span><span id="db_dolares_mati"></span></div><input class="fin-input negative money" type="text" inputmode="numeric" id="f_dolares_mati" placeholder="$0" onchange="saveFin('dolares_mati',this.value)"></div>
-        <div class="fin-field"><div class="fin-left"><span class="fin-label neg-label">Dólares Tito</span><span id="db_dolares_tito"></span></div><input class="fin-input negative money" type="text" inputmode="numeric" id="f_dolares_tito" placeholder="$0" onchange="saveFin('dolares_tito',this.value)"></div>
+        <div class="fin-field"><div class="fin-left"><span class="fin-label neg-label">Tarjeta</span><span id="db_tarjeta"></span></div><input class="fin-input negative money" type="text" inputmode="numeric" id="f_tarjeta" placeholder="US$ 0" onchange="saveFin('tarjeta',this.value)"></div>
+        <div class="fin-field"><div class="fin-left"><span class="fin-label neg-label">Deuda de CYC</span><span id="db_deuda_cyc"></span></div><input class="fin-input negative money" type="text" inputmode="numeric" id="f_deuda_cyc" placeholder="US$ 0" onchange="saveFin('deuda_cyc',this.value)"></div>
+        <div class="fin-field"><div class="fin-left"><span class="fin-label neg-label">Dólares Mati</span><span id="db_dolares_mati"></span></div><input class="fin-input negative money" type="text" inputmode="numeric" id="f_dolares_mati" placeholder="US$ 0" onchange="saveFin('dolares_mati',this.value)"></div>
+        <div class="fin-field"><div class="fin-left"><span class="fin-label neg-label">Dólares Tito</span><span id="db_dolares_tito"></span></div><input class="fin-input negative money" type="text" inputmode="numeric" id="f_dolares_tito" placeholder="US$ 0" onchange="saveFin('dolares_tito',this.value)"></div>
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;padding:11px 16px;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r)">
       <span class="fin-label" style="font-weight:600">⚖️ Corregir (ajuste ±)</span>
       <span style="font-size:.62rem;color:var(--muted);flex:1;min-width:120px">Suma o resta al patrimonio. Puede ser negativo. No cuenta como deuda ni como activo.</span>
       <span id="db_corregir"></span>
-      <input class="fin-input money" type="text" inputmode="numeric" id="f_corregir" placeholder="$0" onchange="saveFin('corregir',this.value)" style="width:150px">
+      <input class="fin-input money" type="text" inputmode="numeric" id="f_corregir" placeholder="US$ 0" onchange="saveFin('corregir',this.value)" style="width:150px">
     </div>
     <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px;padding:11px 16px;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r)">
       <span class="fin-label">💸 Retiro cobrado este mes (Mati + Viejo)</span>
@@ -3105,7 +3105,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.23';
+const APP_VERSION='27.24';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3118,6 +3118,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.24',f:'27/10',h:'04:50',c:[{n:2,t:'🔍 Revisión de Plata: la deuda con Paulvic es la factura (no el costo con flete) · la de una lista que llegó incompleta, sólo lo que llegó · ⚖️ tope de H sin contar dos veces una caja que ya entró a Full · la ventana de 365 días del monotributo cuenta 365 días de verdad · montos en dólares con US$ en el inventario y el Arqueo · Comparar por año toma el último cierre (no la suma) · la lista de Gastos no tacha dos renglones con el Sancor'}]},
   {v:'27.23',f:'27/10',h:'01:45',c:[{n:3,t:'💲 Cada venta usa el dólar del día en que se vendió (antes el mes en curso se recalculaba entero con el dólar de hoy, y un día pasado cambiaba de color sin que pasara nada). Un día ya pasado sólo cambia si se cancela o devuelve una venta. Los meses ya cerrados y los que tienen dólar cargado a mano no se tocan.'}]},
   {v:'27.22',f:'27/10',h:'01:05',c:[{n:2,t:'📅 Calendario de Inicio: cada mes del año y cada día del mes muestran también 🧾 las ventas brutas (lo que pagaron los compradores), en corto (1,2M · 850k), debajo de la ganancia.'}]},
   {v:'27.21',f:'27/10',h:'00:50',c:[{n:2,t:'⚖️ Tope de H: la barra de cada cuenta tiene tres partes: llena = lo ya facturado, clarita = lo que va a facturar en teoría con lo que ya vende, rayada = lo nuevo que todavía no vendió (Full, viajando o en la caja). Debajo, cada parte con su número.'}]},
@@ -5034,6 +5035,7 @@ const REV_HORA='04:00';
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel dice la etapa
 //                     de HOY (una por día de la semana, corre sola a las REV_HORA) y si ya quedó hecha.
 const REV_PENDIENTE=[
+  {etapa:2,t:'27/10 · 6 decisiones de Plata',que:'saldos de MP en el registro público · congelar el mes cobrado · cuándo cargar el retiro · ventas sin factura después de 45 días · stock de Full no disponible · Valor de Stock de Resumen vs Arqueo',pedi:'resolvamos las de Plata'},
   // 21/10/2026: eligió las 62 decisiones (etapas 1, 5, 6 y 7), todas (a), y quedaron aplicadas en v25.75.
 ];
 // Etapa 7 (diseño) cerrada el 01/10/2026: hechas 1-9, 11, 13, 14 y 15; la 10 (Pedidos) y la 12 (sacar
@@ -5051,7 +5053,7 @@ const REV_HIST={
      {f:'2026-10-08',t:'Después del cerebro y la regla del 20%: 27 reales, 21 arreglados y 6 decisiones suyas (manda el cerebro, sin rescate al vender).'},
      {f:'2026-10-20',t:'4 revisores en máximo (escritura en ML, cuentas del margen, listas y techo, web): ~40 arreglos (v25.60: peor caso en descuentos, 🏔️ sólo de techo95, precios exactos $32.999, plata neta en rayas, envío del lado de la barrera). Quedan 6 decisiones suyas.'},
      {f:'2026-10-24',t:'4 revisores en máximo (frenos y escritura, gemelas y publicar, techo y listas, web y vara de compra): ~45 arreglos (v26.41: frenos que no se apagan si la base no contesta, gemelas sin datos en $0 ni 🔒, publicar sin doble retención y con la barrera, rayas con toda la línea, máximo de compra sin la gemela, vara de 35% en las listas de Bs As). Quedan 11 decisiones suyas (36-46).'}],
-  2:[{f:'2026-09-28',t:'4 revisores (Arqueo, Mercado Pago, gastos, monedas): 17 reales, las obvias arregladas.'},
+  2:[{f:'2026-10-27',t:'4 revisores en máximo (Arqueo, Mercado Pago, gastos y cobro, dólar y tope de H): ~40 hallazgos, ~25 arreglados; 6 decisiones a para_mati.'},{f:'2026-09-28',t:'4 revisores (Arqueo, Mercado Pago, gastos, monedas): 17 reales, las obvias arregladas.'},
      {f:'2026-09-29',t:'Cerrada: lo vendido después del reporte de MP suma al patrimonio (A1) y el Telegram usa la misma cuenta que la web (D4).'},
      {f:'2026-09-30',t:'Revisión completa final: lo de plata quedó sin pendientes.'},
      {f:'2026-10-20',t:'Primera del calendario (máximo): Arqueo, cierre, cobro, monedas y robot de MP. Lo obvio arreglado (v25.23 a v25.26), 8 decisiones suyas.'},
@@ -5199,7 +5201,7 @@ function renderInv(){
         <td title="${p.name.replace(/"/g,'&quot;')}">${p.name}</td><td>${costCell}</td>
         ${LOCS.map(l=>{const q=getQ(p.id,l);return`<td class="ac" style="${_negStyle(q)}">${fmtN(q)}</td>`;}).join('')}
         <td class="ac" id="st_${p.id}" style="${_negStyle(sub)}">${fmtN(sub)}</td>
-        <td class="ac" id="vt_${p.id}">${fmt(val)}</td>
+        <td class="ac" id="vt_${p.id}">${fmtUS(val)}</td>
         <td style="text-align:right">${badge}</td>
       </tr>`;
     }
@@ -5209,13 +5211,13 @@ function renderInv(){
     const varRows=[...varsFiltered].sort((a,b)=>a.localeCompare(b,'es',{sensitivity:'base'})).map(v=>{
       let vSub=0;
       const locCells=LOCS.map(l=>{const q=getQV(p.id,l,v);vSub+=q;return`<td class="ac" style="${_negStyle(q)}">${fmtN(q)}</td>`;}).join('');
-      return`<tr class="inv-var-row"><td>↳ ${v}</td><td></td>${locCells}<td class="ac" style="${_negStyle(vSub)}">${fmtN(vSub)}</td><td class="ac">${fmt(vSub*cp)}</td><td></td></tr>`;
+      return`<tr class="inv-var-row"><td>↳ ${v}</td><td></td>${locCells}<td class="ac" style="${_negStyle(vSub)}">${fmtN(vSub)}</td><td class="ac">${fmtUS(vSub*cp)}</td><td></td></tr>`;
     }).join('');
     return`<tr style="background:rgba(124,58,237,.06)">
       <td title="${p.name.replace(/"/g,'&quot;')}"><strong>${p.name}</strong></td><td>${costCell}</td>
       ${LOCS.map(l=>{const q=getQ(p.id,l);return`<td class="ac" style="font-size:.72rem;${_negStyle(q)}">${fmtN(q)}</td>`;}).join('')}
       <td class="ac" id="st_${p.id}">${fmtN(sub)}</td>
-      <td class="ac" id="vt_${p.id}">${fmt(val)}</td>
+      <td class="ac" id="vt_${p.id}">${fmtUS(val)}</td>
       <td style="text-align:right">${badge}</td>
     </tr>${varRows}`;
   }).join('')
@@ -6467,17 +6469,17 @@ function updateTotals(){
     let sub=0;LOCS.forEach(l=>sub+=getQ(p.id,l));
     const val=sub*costP(p);grand+=val;
     const se=document.getElementById('st_'+p.id);const ve=document.getElementById('vt_'+p.id);
-    if(se)se.textContent=fmtN(sub);if(ve)ve.textContent=fmt(val);
+    if(se)se.textContent=fmtN(sub);if(ve)ve.textContent=fmtUS(val);
   });
   LOCS.forEach(l=>{
     let lv=0,lu=0;
     prods.forEach(p=>{const q=getQ(p.id,l);lv+=q*costP(p);lu+=q;});
     const ve=document.getElementById('lv_'+sid(l));const ue=document.getElementById('lu_'+sid(l));
-    if(ve)ve.textContent=fmt(lv);if(ue)ue.textContent=fmtN(lu)+' u.';
+    if(ve)ve.textContent=fmtUS(lv);if(ue)ue.textContent=fmtN(lu)+' u.';
   });
   let tu=0;prods.forEach(p=>LOCS.forEach(l=>tu+=getQ(p.id,l)));
   const tue=document.getElementById('tot_u');const tve=document.getElementById('tot_v');
-  if(tue)tue.textContent=fmtN(tu)+' u.';if(tve)tve.textContent=fmt(grand);
+  if(tue)tue.textContent=fmtN(tu)+' u.';if(tve)tve.textContent=fmtUS(grand);
   updateArqueo();updateHeaderTotal();
 }
 
@@ -6515,7 +6517,7 @@ function renderMono(){
       ? `Se suma <b style="color:var(--accent2)">${pct.toFixed(2)}%</b> al costo de cada producto`
         +(m.pctFact?` (calculado sobre ${fmt(Math.round(m.pctFact))} de facturación mensual)`:'')+'.<br>'
       : '<span style="color:var(--amber)">El robot todavía no calculó el %. Se actualiza en la próxima corrida.</span><br>')
-    +(m.fijoMensual>0?`Autónomo + obra social: <b>${fmt(Math.round(m.fijoMensual))}</b>/mes, se carga solo como gasto el día 1.<br>`:'')
+    +(m.fijoMensual>0?`Autónomo + obra social: <b>${fmt(Math.round(m.fijoMensual))}</b>/mes. <b>No se carga solo</b>: va en la lista de Gastos del mes (desde el 13/08 el robot no carga gastos).<br>`:'')
     +`<span style="font-size:.66rem">Última carga: ${desde}. Volvé a actualizarlo en la próxima recategorización.</span>`;
 }
 
@@ -6719,7 +6721,7 @@ async function saveFin(key,val){
         // resta dos veces) y después se resta sobre lo que haya en la base.
         if(db){(async()=>{
           let libArs=0;
-          const r=await db.ref('cyc/saldoml/'+_cta+'/liberadoSinDisp').transaction(cur=>{libArs=parseFloat(cur)||0;return libArs>0?0:undefined;});
+          const r=await db.ref('cyc/saldoml/'+_cta+'/liberadoSinDisp').transaction(cur=>{libArs=parseFloat(cur)||0;return libArs>0?0:cur;}); // `cur` y no `undefined`: sin `saldoml` en CYC_KEYS la primera vuelta ve null y abortaba sin preguntarle a la base (revisión Plata 27/10/2026)
           if(!r||!r.committed||!(libArs>0))return;
           const libUsd=libArs/_tcA;
           const _resta=k=>db.ref('cyc/finanzas/'+k).transaction(cur=>Math.max(0,Math.round((parseFloat(cur)||0)-libUsd)));
@@ -10349,7 +10351,7 @@ function updateArqueo(){try{if(!_arqViewYM)_btnCerrarTxt();}catch(_){}
     const cyc=parseFloat(state.finanzas.of_viejo)||0;
     const avisar=!_arqViewYM&&_uOfi>0&&cyc>0;
     _ofiAviso.style.display=avisar?'':'none';
-    if(avisar)_ofiAviso.textContent=`Ojo: "Oficina Mati" ahora sale de las ${_uOfi} u. que contaste (${fmt(_valOfi)}). Fijate que esa misma mercadería no esté además adentro de los ${fmt(cyc)} de Oficina CYC.`;
+    if(avisar)_ofiAviso.textContent=`Ojo: "Oficina Mati" ahora sale de las ${_uOfi} u. que contaste (${fmtUS(_valOfi)}). Fijate que esa misma mercadería no esté además adentro de los ${fmtUS(cyc)} de Oficina CYC.`;
   }
   const _mpAviso=document.getElementById('mp-disp-aviso');
   if(_mpAviso){
@@ -10357,7 +10359,7 @@ function updateArqueo(){try{if(!_arqViewYM)_btnCerrarTxt();}catch(_){}
     const tot=parseFloat(state.finanzas.mp_disp)||0;
     const falta=!_arqViewYM&&suma===0&&tot!==0;
     _mpAviso.style.display=falta?'':'none';
-    if(falta)_mpAviso.textContent=`⚠️ Los ${fmt(tot)} están cargados como un número solo, de antes. Poné cuánto hay en cada cuenta y el total se arma solo.`;
+    if(falta)_mpAviso.textContent=`⚠️ Los ${fmtUS(tot)} están cargados como un número solo, de antes. Poné cuánto hay en cada cuenta y el total se arma solo.`;
   }
   const dtEl=document.getElementById('db_total');
   if(dtEl){
@@ -10396,7 +10398,7 @@ function updateArqueo(){try{if(!_arqViewYM)_btnCerrarTxt();}catch(_){}
     else if(!prods.length)res.innerHTML='<div class="empty-msg" style="margin-bottom:14px">No se encontraron productos.</div>';
     else res.innerHTML=`<div class="tbl-outer" style="margin-bottom:14px"><table style="min-width:420px">
       <thead><tr><th style="text-align:left">Producto</th><th>Unidades</th><th>Costo US$</th><th>Valor stock</th></tr></thead>
-      <tbody>${prods.map(p=>{let u=0;LOCS.forEach(l=>u+=getQ(p.id,l));const cuv=costUSDof(p)?('US$'+costUSDof(p).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})):'<span style="color:var(--amber)">sin US$</span>';return`<tr><td>${p.name}</td><td>${fmtN(u)}</td><td>${cuv}</td><td>${fmt(u*costP(p))}</td></tr>`;}).join('')}</tbody>
+      <tbody>${prods.map(p=>{let u=0;LOCS.forEach(l=>u+=getQ(p.id,l));const cuv=costUSDof(p)?('US$'+costUSDof(p).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})):'<span style="color:var(--amber)">sin US$</span>';return`<tr><td>${p.name}</td><td>${fmtN(u)}</td><td>${cuv}</td><td>${fmtUS(u*costP(p))}</td></tr>`;}).join('')}</tbody>
     </table></div>`;
   }
 }
@@ -10934,7 +10936,9 @@ function renderCompAnio(el){
     const keys=Object.keys(snaps).filter(k=>k.startsWith(y+'_'));if(!keys.length)return null;
     const agg={label:y,total:0,stock:0,stockLocal:0,vsrUSD:0,pvUSD:0,arcaUSD:0,finanzas:{},locValues:{},prodValues:{},months:keys.length};
     FIN_FIELDS.forEach(f=>agg.finanzas[f.k]=0);LOCS.forEach(l=>agg.locValues[sid(l)]=0);
-    keys.forEach(k=>{const s=snaps[k];agg.stock+=s.stock||0;agg.total+=s.total||0;
+    // Son SALDOS (lo que había al cierre), no ventas: se toma el último cierre del año, no la suma de los 12 (revisión Plata
+    // 27/10/2026: seis cierres de ~US$8.000 daban "US$ 48.000").
+    [keys.sort().pop()].forEach(k=>{const s=snaps[k];agg.stock+=s.stock||0;agg.total+=s.total||0;
       agg.stockLocal+=Number(s.stockLocal)||0;agg.vsrUSD+=Number(s.vsrUSD)||0;agg.pvUSD+=Number(s.pvUSD)||0;
       agg.arcaUSD+=(Number(s.arcaARS)>0&&Number(s.tipoCambio)>0)?Number(s.arcaARS)/Number(s.tipoCambio):0;
       FIN_FIELDS.forEach(f=>agg.finanzas[f.k]+=(parseFloat(s.finanzas?.[f.k])||0));
@@ -10964,8 +10968,8 @@ function buildCompHTML(dataA,dataB,labelB,isYearly=false){
   const totA=dataA.total||0;const totB=hasB?(dataB.total||0):null;const diff=hasB?totA-totB:0;
   const lbDisplay=hasB&&dataB.tipoCambio?labelB+' (USD $'+dataB.tipoCambio.toLocaleString('es-AR')+')':labelB;
   const summaryHTML=`<div class="summary-cards">
-    <div class="sc"><div class="sc-lbl">${hasB?lbDisplay:'—'}</div><div class="sc-val neu">${hasB?fmtUS(totB):'—'}</div>${isYearly&&hasB?`<div class="sc-sub">${dataB.months||'?'} meses</div>`:''}</div>
-    <div class="sc"><div class="sc-lbl">${la}</div><div class="sc-val ${totA>=0?'pos':'neg'}">${fmtUS(totA)}</div>${isYearly?`<div class="sc-sub">${dataA.months||'?'} meses</div>`:''}</div>
+    <div class="sc"><div class="sc-lbl">${hasB?lbDisplay:'—'}</div><div class="sc-val neu">${hasB?fmtUS(totB):'—'}</div>${isYearly&&hasB?`<div class="sc-sub">${dataB.months||'?'} meses · al último cierre</div>`:''}</div>
+    <div class="sc"><div class="sc-lbl">${la}</div><div class="sc-val ${totA>=0?'pos':'neg'}">${fmtUS(totA)}</div>${isYearly?`<div class="sc-sub">${dataA.months||'?'} meses · al último cierre</div>`:''}</div>
     <div class="sc"><div class="sc-lbl">Diferencia</div><div class="sc-val ${diff>=0?'pos':'neg'}">${hasB?fmtUS(diff):'—'}</div></div>
     <div class="sc"><div class="sc-lbl">Variación</div><div class="sc-val ${diff>=0?'pos':'neg'}">${hasB&&totB!==0?(diff>=0?'▲ +':'▼ ')+Math.abs((diff/Math.abs(totB))*100).toFixed(1)+'%':'—'}</div></div>
   </div>`;
@@ -13686,7 +13690,7 @@ async function vpSaveEdit(grpId,grpKey){
       }
     }
     if(!Object.keys(upd).length)continue;
-    if(o.tcSale==null)upd.tcSale=curTC();
+    if(o.tcSale==null)upd.tcSale=tcForYM(String(grpKey).slice(0,7)); // el del mes de la venta, no el de hoy (revisión Plata 27/10/2026)
     // c2 de la segunda vuelta (25/09/2026): marca de "la toqué a mano". El robot reescribe cada venta
     // de los últimos 2 días en cada vuelta y se comía la edición; con esta marca no la pisa.
     upd.manualTs=Date.now();
@@ -15447,7 +15451,7 @@ async function syncPedidosAuto(){
   const _pyViaja=(()=>{const m={...pyRepoEnCamino()};try{for(const[k,v]of Object.entries(pyRepoSinContar()))m[k]=(m[k]||0)+v;}catch(e){}return m;})();
   // 📋 LO PEDIDO A UNA LISTA QUE VIAJA (o llegó y falta contar) (20/10/2026, decisión 1a): como Paraguay, para que Pedidos no lo
   // vuelva a pedir mientras viaja. Con color va al color (junto con lo del Paulvic, `vPv`); sin color, al total (junto con Paraguay).
-  // El Arqueo NO lo cuenta (decisión 2b: lo de las listas no es mercadería en camino hasta que llega).
+  // El Arqueo lo cuenta sólo si ya se pagó (12a del 24/10, `listaEnCaminoUSD`); sin pagar es deuda al llegar (2b).
   let _liViaja={};try{_liViaja=listaEnCamino();}catch(e){_liViaja={};}
   const _sinDecLista=[];
   for(const p of (state.products||[])){
@@ -18808,7 +18812,7 @@ function pvEnCamino(){
 // `hastaYm` (opcional): la deuda acumulada hasta el cierre de ESE mes. Lo usa "¿Cierra el mes?" para
 // no culpar a un solo mes de lo que se juntó en varios (17/10/2026).
 function arcaDeudaARS(hastaYm){
-  const c=state.mlconfig||{},desde=c.arcaHDesde||'2026_05',mes=Number(c.arcaHMes)||427498,pag=c.arcaHPagadoHasta||'';
+  const c=state.mlconfig||{},desde=String(c.arcaHDesde||'2026_05').replace('-','_'),mes=Number(c.arcaHMes)||427498,pag=String(c.arcaHPagadoHasta||'').replace('-','_'); // "2026-09" = "2026_09" (revisión Plata 27/10/2026: con guión nunca se daba por pagado)
   const n=new Date();let hoy=n.getFullYear()*12+n.getMonth();
   if(hastaYm&&/^\d{4}_\d{2}$/.test(hastaYm)){const [hy,hm]=hastaYm.split('_').map(Number);hoy=Math.min(hoy,hy*12+hm-1);}
   const [y,m]=desde.split('_').map(Number);let t=0,meses=0;
@@ -18824,7 +18828,7 @@ function listaDeudaUSD(){
   const tc=curTC();if(!(tc>0))return 0;let t=0;
   for(const c of Object.values(state.comprasLista||{})){
     if(!c||c.estado!=='llegado'||c.pagado!==false)continue;
-    t+=(c.items||[]).reduce((s,i)=>s+(Number(i.pc)||0)*(parseInt(i.u)||0),0);
+    t+=(c.items||[]).reduce((s,i)=>s+(Number(i.pc)||0)*(i&&i.ul!=null?(parseInt(i.ul)||0):(parseInt(i.u)||0)),0);
   }
   return t/tc;
 }
@@ -18832,6 +18836,9 @@ function pvDeudaUSD(){
   let t=listaDeudaUSD();
   for(const c of Object.values(state.pedidospv||{})){
     if(!c||c.estado!=='llego'||c.pagado||!c.prodId)continue;
+    // Lo que se le debe es la factura (`aPagar`), no el costo con el flete adentro (revisión Plata 27/10/2026: el del 19/10 daba
+    // $776.800 de deuda contra $758.900 pagados). Sin `aPagar` cargado, como antes: unidades × costo.
+    const tcP=curTC();if(Number(c.aPagar)>0&&tcP>0){t+=Number(c.aPagar)/tcP;continue;}
     const p=prodById(c.prodId);if(!p)continue;
     const u=(c.llego||c.items||[]).filter(Boolean).reduce((a,x)=>a+(parseInt(x.u)||0),0);
     t+=u*(costP(p)||0);
@@ -21758,7 +21765,7 @@ function _listaViajando(k){const s=new Set();Object.values(state.comprasLista||{
 //  · "✅ Ya lo pedí" los guarda con `prodId` (y `variante`), `desc:1` y `ts`, y descuenta lo pedido de la decisión
 //    (`clDescontarPed`, como `pyRepoRegistrar`);
 //  · mientras viaja (`listaEnCamino`) cuenta en Pedidos como "pedido" de ese producto/color (`syncPedidosAuto`, `_pedidoViaja`, la
-//    tarjeta y el tanque). El Arqueo NO lo cuenta (decisión 2b);
+//    tarjeta y el tanque). El Arqueo lo cuenta sólo pagado (12a del 24/10; sin pagar, deuda al llegar, 2b);
 //  · al "📦 Llegó" no se crea ficha: se marca llegado (si salió más caro sube el costo, decisión 6a) y se recuerda contar en Mi oficina;
 //    hasta contarlo (7 días como mucho, `ofiAlLlegar`) Pedidos lo sigue restando, igual que `pyRepoSinContar` de Paraguay.
 window._liArmCol=window._liArmCol||{};
@@ -24461,7 +24468,8 @@ function _baseMesFallback(acct,ym){return (ym>='2025_06'&&ym<='2026_05')?(PUNT_F
 function _ventana365(){
   const now=new Date();
   const winEnd=new Date(now.getFullYear(),now.getMonth(),now.getDate());
-  const winStart=new Date(winEnd.getFullYear(),winEnd.getMonth()-11,1); // 12 meses calendario (bisiestos)
+  // 365 días de verdad: del mismo día del año pasado +1 hasta hoy (revisión Plata 27/10/2026: arrancaba el día 1 de hace 11 meses = 335-365 días; el robot `facarca:365` ya usaba 365). El mes más viejo entra partido.
+  const winStart=new Date(winEnd.getFullYear()-1,winEnd.getMonth(),winEnd.getDate()+1);
   return {winStart,winEnd,winStartK:dateToKey(winStart),winEndK:dateToKey(winEnd)};
 }
 // Meses YYYY_MM que TOCA la ventana, del más viejo al más nuevo (normalmente 13: el más viejo entra partido).
@@ -24670,8 +24678,9 @@ function _parejoEsperado(dK,hK,faltan){
     (ped[p.id+'|'+a]=ped[p.id+'|'+a]||[]).push({k,t});
   }));
   const viaja={},sumV=(pid,a,u)=>{if(pid&&u>0&&(a in out))viaja[pid+'|'+a]=(viaja[pid+'|'+a]||0)+Number(u);};
-  Object.values(state.envios_full||{}).forEach(e=>{const a=String(e&&e.cuenta||'').toLowerCase();
-    for(const c of cajasDe(e||{})){if(c.recibida)continue;for(const it of (c.items||[]))if(it)sumV(it.prodId,a,Number(it.u)||0);}});
+  // Sólo lo que sigue arriba del camión (`cajaPendU`): lo de una caja abierta que ya entró a Full lo cuenta `getQ` (revisión Plata 27/10/2026).
+  Object.entries(state.envios_full||{}).forEach(([eid,e])=>{const a=String(e&&e.cuenta||'').toLowerCase();
+    cajasDe(e||{}).forEach((c,i)=>{if(!c||c.recibida)return;for(const it of (c.items||[]))if(it)sumV(it.prodId,a,cajaPendU(eid,i,c,it));});});
   LOCS.forEach(l=>{for(const [k,u] of Object.entries(cajaDe(l)))sumV(String(k).split('|')[0],l.toLowerCase(),Number(u)||0);});
   const pIdx={},claves=new Set([...Object.keys(ped),...Object.keys(viaja)]);
   (state.products||[]).forEach(p=>{pIdx[p.id]=p;MET_ACCTS.forEach(a=>{if(getQ(p.id,L(a))>0)claves.add(p.id+'|'+a);});});
@@ -25753,7 +25762,7 @@ function renderComprasList(){
 const GASTOS_DEL_MES=[
   {n:'Honorarios contables',   cat:'Honorarios contables', nota:'~$100.000'},
   {n:'Alquiler',               cat:'Alquiler',             nota:'~$100.000'},
-  {n:'Servicios',              cat:'Servicios', no:['sancor'], nota:'luz, internet, etc.'},
+  {n:'Servicios',              cat:'Servicios', no:['sancor','obra social'], nota:'luz, internet, etc.'},
   // ── SANCOR Y "OBRA SOCIAL PRIVADA" SON EL MISMO GASTO (22/09/2026) ──────────────────────
   // Lo marcó él: *"sancor y la obra social privada es lo mismo, se pagan aparte"*. Estaban como
   // DOS renglones, y el segundo decía —escrito por mí el 15/09— *"es APARTE del Sancor, no la
@@ -25769,7 +25778,7 @@ const GASTOS_DEL_MES=[
   // adentro. Va SIEMPRE el de la factura, nunca un promedio.
   {n:'Sancor Salud (Ayelen) — la obra social privada',  pal:['sancor','obra social priv'],
    nota:'el monto CAMBIA todos los meses y mucho: va el de la factura, no un promedio · es UN solo gasto, no dos'},
-  {n:'Autónomos + obra social de Ayelen', cat:'Monotributo / Impuestos', pal:['autonomo','autónomo','obra social'], nota:'~$113.083 · el VEP del monotributo NO va acá, ya se descuenta en cada venta'},
+  {n:'Autónomos + obra social de Ayelen', cat:'Monotributo / Impuestos', pal:['autonomo','autónomo','obra social'], no:['sancor','priv'], nota:'~$113.083 · el VEP del monotributo NO va acá, ya se descuenta en cada venta'},
   // Los intereses son DOS por mes y eso importa: junio, julio y agosto tuvieron uno grande (el
   // interés del capital de los socios, ~$240.000) y otro más chico (~$30.000). Con `min:2`, cargar
   // uno solo NO pinta verde: queda en ámbar diciendo que falta el otro. Un ✅ con la mitad adentro
