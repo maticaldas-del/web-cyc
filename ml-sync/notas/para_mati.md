@@ -89,6 +89,7 @@ De 195 publicaciones en 💰 sólo 17 tienen el 🔴 al 95%. 28 nunca se probaro
 1. **Hoy:** si en los últimos 30 días subí por escasez o prueba de techo, Pedidos usa el ritmo de los 30 días de antes (nunca uno más bajo). Lo rematado abajo del 20% no cuenta. Pero lo vendido barato por SOBRA (descuento o escalera de 20-35%) sí cuenta como si fuera la venta normal, y una escasez de más de 30 días ya no se ve. (a) sugerida: el ritmo se mide sólo con los días de precio normal (afuera los días y las ventas de 🔥 escasez, ⏳ sin reposición, 📦 sobra, liquidando y remate); si quedan menos de 14 días normales en 60, se miran los de 180 · (b) dejarlo como está.
 
 ### Stock antiguo (27/10, "¿conviene esperar y venderlas ganando y pagar stock?") — reemplaza lo que le pasé antes
+→ **eligió 1a 3a 4a (27/10)**: Tendedero, Indigo, Silver, Batidora, F9 y Timer se quedan a su precio; Cortapelo 4 en 1 espera a los 90 días (aviso programado para el 16/11). La 2 (Rose) preguntó: retirar, vender a pérdida o esperar → se le explicó; espera su respuesta.
 Ganar la caja daba pérdida en todos (Tendedero −25%, Rose y Silver −10%, Cortapelo 4 en 1 −11,5%).
 1. Tendedero 3 pisos: (a) esperar a $67.990 (deja $12.591 c/u, vende ~4/mes, paga ~$16.000 en total) · (b) retirar.
 2. Paulvic Rose Mujer (2 u., 0 ventas en 30 d; si no vende paga ~$12.000/mes y deja $3.261 c/u): (a) retirar al local · (b) esperar un mes.
