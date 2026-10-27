@@ -77,7 +77,7 @@ const _cortarCiclo = (donde) => {
 // los que escriben en cantidad o en plata se niegan de entrada, y cualquier otro corre con la base,
 // ML, Mercado Pago y Telegram en sólo lectura (se deja renovar y guardar el token de ML, que ML rota).
 const EN_CONSULTA = process.env.GITHUB_WORKFLOW === 'ml-consulta' || process.env.ML_CONSULTA === '1';
-const CONSULTA_ESCRIBE = new Set(['buzon', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
+const CONSULTA_ESCRIBE = new Set(['buzon', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta', 'costopesos']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
 const CONSULTA_NIEGA = new Set(['cajaitems', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'listaped', 'publicar', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'errores', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'promoventas', 'cargosmes', 'arcacierres', 'webpush']);
@@ -453,12 +453,20 @@ function setDevLive(vp, prods) {
   DEV_TUVO = tuvo;
   return out;
 }
+// LO COMPRADO EN PESOS TIENE EL COSTO FIJO EN PESOS (27/10/2026, él eligió la 2a): con `costoPesos:true` el costo es `p.cost` (los pesos
+// pagados) ÷ el dólar que se use, así el dólar no lo mueve. Paraguay sigue en dólares. Misma regla que `costoEnPesos` de index.html.
+function costoEnPesosBot(p) { return !!(p && p.costoPesos && Number(p.cost) > 0); }
 function costoPesos(p, qty, tc) {
   if (!p) return { costo: 0, costBaseUSD: 0, shipUSD: 0 };
-  const costUSD = parseFloat(p.costUSD) || 0;
+  const enPesos = costoEnPesosBot(p) && tc > 0;
+  const costUSD = enPesos ? Number(p.cost) / tc : (parseFloat(p.costUSD) || 0);
   const shipUSD = parseFloat(p.shipUSD) || 0;
   let fullUSD;
   const devVivo = DEV_LIVE[p.id];
+  if (enPesos) {
+    fullUSD = costUSD * (1 + (devVivo != null ? devVivo : (parseFloat(p.devPct) || 0)) / 100) + shipUSD;
+    return { costo: Math.round(fullUSD * tc * qty), costBaseUSD: costUSD, shipUSD };
+  }
   // Misma condición que la web: solo recalcula si el producto tiene envío, % cargado o reclamos.
   // Si no tiene nada de eso, el guardado sigue siendo el bueno.
   // DEV_TUVO va en la condición a propósito: a un producto al que se le sacaron TODOS los reclamos
@@ -8321,6 +8329,21 @@ async function dolarReferencias() {
   const criB = cy ? num(cy.cripto && ((cy.cripto.usdt && (cy.cripto.usdt.ask || cy.cripto.usdt.price)) || cy.cripto.ask)) : null;
   return { of: ofA, mep: mepA ?? mepB, cri: criA ?? criB, fuentes: { mep: mepA != null ? 'dolarapi' : mepB != null ? 'criptoya' : null, cri: criA != null ? 'dolarapi' : criB != null ? 'criptoya' : null, mepB, criB } };
 }
+// Con el dólar nuevo, lo comprado en pesos (`costoPesos:true`) deja `costUSD` = pesos pagados ÷ dólar, para lo que lee `costUSD` directo
+// (los pesos no se tocan). Devuelve cuántas fichas tocó.
+async function sincCostoPesos(db, tc, { DRY: dry = false } = {}) {
+  if (!(tc > 0)) return 0;
+  const P = (await db.get('cyc/products')) || {}; const up = {}; let n = 0;
+  for (const [k, p] of Object.entries(P)) {
+    if (!costoEnPesosBot(p)) continue;
+    const u = Math.round(Number(p.cost) / tc * 10000) / 10000;
+    if (Math.abs(u - (parseFloat(p.costUSD) || 0)) < 0.0001) continue;
+    const full = Math.round((u * (1 + (parseFloat(p.devPct) || 0) / 100) + (parseFloat(p.shipUSD) || 0)) * 100) / 100;
+    up[k + '/costUSD'] = u; up[k + '/costFullUSD'] = full; n++;
+  }
+  if (n && !dry) await db.patch('cyc/products', up);
+  return n;
+}
 async function dolarAuto(db, DRY) {
   const fin = (await db.get('cyc/finanzas')) || {};
   const actual = parseFloat(fin.tipo_cambio) || 0;
@@ -8350,6 +8373,7 @@ async function dolarAuto(db, DRY) {
     return { que: 'salto', actual, nuevo, mov, msg: `⚠️ Dólar: ${fuente} dice ${money(nuevo)} (${mov >= 0 ? '+' : ''}${mov.toFixed(1)}% contra los ${money(actual)} cargados). Es un salto demasiado grande para cargarlo solo${a && b ? '' : ' con una sola fuente'}: NO lo toqué. Si es real, cargalo a mano en Finanzas.` };
   }
   if (!DRY) await db.set('cyc/finanzas/tipo_cambio', nuevo);
+  if (!DRY) { try { await sincCostoPesos(db, nuevo); } catch (e) { console.log('⚠️ costos en pesos: no pude dejar los dólares al día (' + e.message + ')'); } }
   const rele = DRY ? nuevo : parseFloat(await db.get('cyc/finanzas/tipo_cambio'));
   const ok = Math.round(rele) === nuevo;
   return {
@@ -28787,6 +28811,7 @@ async function main() {
         }
         await db.set('cyc/products/' + x.p.id + '/costUSD', usd);
         await db.set('cyc/products/' + x.p.id + '/cost', pesos);
+        if (x.p.origen !== 'py') await db.set('cyc/products/' + x.p.id + '/costoPesos', true);   // 27/10/2026: comprado en pesos = costo fijo en pesos
         await db.set('cyc/products/' + x.p.id + '/costFullUSD', x.fullUSD);
       }
       // Releer de la base: que el comando diga "guardado" no alcanza.
@@ -29088,6 +29113,38 @@ async function main() {
           for (const a of (p.main_features || []).slice(0, 4)) console.log(`   · ${String(a.text || '').slice(0, 120)}`);
           for (const x of (p.pictures || []).slice(0, 6)) { const u = String(x.secure_url || x.url || '').replace(/^http:\/\//, 'https://'); if (/^https:\/\/[^/]*mlstatic\.com\//.test(u)) console.log(`   FOTO ${u}`); }
         } catch (e) { console.log(`\n■ ${id}: ML no contestó (${String(e.message || e).slice(0, 80)})`); }
+      }
+      return;
+    }
+    // BILLING_PROBE=costopesos[:<palabras a sacar con +>][;go] → MARCAR LO COMPRADO EN PESOS (27/10/2026, él eligió la 2a: "dejarlos en $14.990
+    // y cargar el costo de lo comprado en pesos fijo en los pesos que se pagaron"). Lista las fichas que NO son de Paraguay (Bs As, Paulvic,
+    // listas) con costo en pesos (`cost`) y sin la marca, con el dólar que tenían al cargarse (cost ÷ costUSD). Con ;go les pone
+    // `costoPesos:true` y deja `costUSD` = pesos ÷ dólar de hoy (`sincCostoPesos`). Sin go sólo muestra.
+    if (String(process.env.BILLING_PROBE || '').startsWith('costopesos')) {
+      const raw = String(process.env.BILLING_PROBE).replace(/^costopesos:?/, ''), GOc = /(^|;)go$/.test(raw) && !DRY;
+      const sacar = raw.replace(/;?go$/, '').split('+').map((w) => norm(w)).filter(Boolean);
+      const tc = parseFloat(await db.get('cyc/finanzas/tipo_cambio')) || 0; if (!(tc > 0)) { console.log('⚠️ sin dólar cargado'); return; }
+      const P = (await db.get('cyc/products')) || {};
+      const cand = [], ya = [], raros = [];
+      for (const [k, p] of Object.entries(P)) {
+        if (!p || p.origen === 'py') continue;
+        if (sacar.some((w) => norm(p.name || '').includes(w))) continue;
+        const pesos = Number(p.cost) || 0, usd = parseFloat(p.costUSD) || 0;
+        if (!(pesos > 0)) continue;
+        if (p.costoPesos) { ya.push(p); continue; }
+        const tcAl = usd > 0 ? pesos / usd : 0;
+        (tcAl > 0 && (tcAl < 900 || tcAl > 2500) ? raros : cand).push({ k, p, pesos, usd, tcAl });
+      }
+      console.log(`=== COSTO FIJO EN PESOS · ${GOc ? 'SE APLICA' : 'sólo miro (agregá ;go)'} · dólar de hoy ${money(tc)} ===`);
+      console.log(`${cand.length} para marcar · ${ya.length} ya marcadas · ${raros.length} con un dólar raro al cargarse (no se tocan, mirar a mano)\n`);
+      for (const x of cand.sort((a, b) => String(a.p.name).localeCompare(String(b.p.name)))) console.log(`  ${String(x.p.name || '').slice(0, 50).padEnd(50)} ${String(x.p.proveedor || x.p.listaProv || '').slice(0, 14).padEnd(14)} pagado ${money(Math.round(x.pesos)).padStart(10)} · hoy en US$ ${x.usd.toFixed(2)} (dólar al cargarse ${x.tcAl ? money(Math.round(x.tcAl)) : '?'})`);
+      if (raros.length) { console.log('\n── DÓLAR RARO AL CARGARSE (no se marcan) ──'); for (const x of raros) console.log(`  ${String(x.p.name || '').slice(0, 50)} · pagado ${money(Math.round(x.pesos))} · US$ ${x.usd.toFixed(2)} → dólar ${money(Math.round(x.tcAl))}`); }
+      if (GOc && cand.length) {
+        const up = {}; for (const x of cand) up[x.k + '/costoPesos'] = true;
+        await db.patch('cyc/products', up);
+        const n = await sincCostoPesos(db, tc);
+        const rel = (await db.get('cyc/products')) || {}; const ok = cand.filter((x) => rel[x.k] && rel[x.k].costoPesos === true).length;
+        console.log(`\n✓ marcadas ${ok} de ${cand.length} (releído) · ${n} con los dólares puestos al día`);
       }
       return;
     }
@@ -49399,7 +49456,7 @@ async function main() {
         }
         const dev = DEV_LIVE[pv.id] != null ? DEV_LIVE[pv.id] : (parseFloat(pv.devPct) || 0);
         const fullUSD = Math.round((usd * (1 + dev / 100) + (parseFloat(pv.shipUSD) || 0)) * 100) / 100;
-        await db.patch('cyc/products/' + pv.id, { costUSD: usd, cost: cu, costFullUSD: fullUSD });
+        await db.patch('cyc/products/' + pv.id, { costUSD: usd, cost: cu, costFullUSD: fullUSD, costoPesos: true });   // Paulvic se paga en pesos (27/10/2026)
         await db.patch('cyc/pedidospv/' + id, { costoUnit: cu, costoAplicado: Date.now() });
         const rel = (await db.get('cyc/products/' + pv.id)) || {};
         console.log(Math.abs((parseFloat(rel.costUSD) || 0) - usd) < 0.005 ? '  ✓ Costo de la ficha guardado y releído.' : '  ⚠️ Se escribió el costo pero al releer no coincide.');
@@ -50198,7 +50255,7 @@ async function main() {
             // RECOMPRA MÁS CARA (decisión 6a del 20/10/2026, como la web y Paraguay): sube; el costo viejo queda en los meses con ventas.
             if (an > 0) { const meses = new Set(); for (const [dk, o] of Object.entries(vp)) for (const v of Object.values(o || {})) if (v && v.prodId === x.misma.id) meses.add(String(dk).slice(0, 7)); for (const ym of meses) if (!(php[ym] && php[ym][x.misma.id] != null)) await db.set(`cyc/precios_hist_prod/${ym}/${x.misma.id}`, an); }
             const dev = DEV_LIVE[x.misma.id] != null ? DEV_LIVE[x.misma.id] : (parseFloat(x.misma.devPct) || 0);
-            Object.assign(up, { costUSD: nu, cost: Math.round(Number(x.it.pc) || 0), costFullUSD: Math.round((nu * (1 + dev / 100) + (parseFloat(x.misma.shipUSD) || 0)) * 100) / 100 });
+            Object.assign(up, { costUSD: nu, cost: Math.round(Number(x.it.pc) || 0), costoPesos: true, costFullUSD: Math.round((nu * (1 + dev / 100) + (parseFloat(x.misma.shipUSD) || 0)) * 100) / 100 });
             subio.push(`${x.misma.name} US$ ${an.toFixed(2)} → ${nu.toFixed(2)}`);
           }
           if (Object.keys(up).length) await db.patch('cyc/products/' + x.misma.id, up);
@@ -50207,7 +50264,7 @@ async function main() {
         if (!x.nombre) continue;
         if (CORTAR) { console.log('⚠️ Cancelaron la corrida: el pedido ya figura llegado; las fichas que faltan se crean repitiendo el comando con la web (Listas → Llegó no aplica) o a mano.'); break; }
         const usd = tc > 0 ? Math.round((Number(x.it.pc) || 0) / tc * 100) / 100 : 0;
-        const pN = { id: 'p' + Date.now() + 'l' + i, name: String(x.nombre).slice(0, 90), costUSD: usd, cost: Math.round(Number(x.it.pc) || 0), costFullUSD: usd, origen: 'bsas', proveedor: c.provNom || c.prov, listaProv: c.prov, codLista: String(x.it.cod || ''), altaChat: Date.now() };
+        const pN = { id: 'p' + Date.now() + 'l' + i, name: String(x.nombre).slice(0, 90), costUSD: usd, cost: Math.round(Number(x.it.pc) || 0), costoPesos: true, costFullUSD: usd, origen: 'bsas', proveedor: c.provNom || c.prov, listaProv: c.prov, codLista: String(x.it.cod || ''), altaChat: Date.now() };
         if (x.it.mi) pN.mlCatalogo = x.it.mi;
         try { await db.set('cyc/products/' + pN.id, pN); fichaDe[i] = pN; nuevas.push(pN); prods.push(pN); }
         catch (e) { console.log(`⚠️ no pude crear ${pN.name}: ${(e && e.message) || e}`); }

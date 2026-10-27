@@ -3105,7 +3105,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.24';
+const APP_VERSION='27.25';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3118,6 +3118,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.25',f:'27/10',h:'13:45',c:[{n:3,t:'💲 Lo comprado en pesos (Bs As, Paulvic y listas) queda con el costo fijo en los pesos que se pagaron: si sube el dólar ya no parece más caro ni baja su %. Lo de Paraguay sigue en dólares.'}]},
   {v:'27.24',f:'27/10',h:'04:50',c:[{n:2,t:'🔍 Revisión de Plata: la deuda con Paulvic es la factura (no el costo con flete) · la de una lista que llegó incompleta, sólo lo que llegó · ⚖️ tope de H sin contar dos veces una caja que ya entró a Full · la ventana de 365 días del monotributo cuenta 365 días de verdad · montos en dólares con US$ en el inventario y el Arqueo · Comparar por año toma el último cierre (no la suma) · la lista de Gastos no tacha dos renglones con el Sancor'}]},
   {v:'27.24',f:'27/10',h:'13:20',c:[{n:2,t:'🧭 Arqueo → Productos: al lado del buscador, el botón Estrategias muestra cada estrategia con cuántas publicaciones tiene. Tocás una y ves esas publicaciones (cuenta, precio y desde cuándo) y las fichas quedan filtradas.'}]},
   {v:'27.23',f:'27/10',h:'01:45',c:[{n:3,t:'💲 Cada venta usa el dólar del día en que se vendió (antes el mes en curso se recalculaba entero con el dólar de hoy, y un día pasado cambiaba de color sin que pasara nada). Un día ya pasado sólo cambia si se cancela o devuelve una venta. Los meses ya cerrados y los que tienen dólar cargado a mano no se tocan.'}]},
@@ -4353,8 +4354,13 @@ document.addEventListener('focusout',e=>{const t=e.target;if(t&&t.classList&&t.c
 const curTC=()=>parseFloat(state.finanzas&&state.finanzas['tipo_cambio'])||0;
 /* costo real en pesos del producto: usa USD×TC si hay costoUSD, sino el costo peso legacy */
 /* Arqueo TODO en dólares: el stock se valúa en Costo US$ (sin × dólar). Sin US$ cargado = 0. */
-const costP=p=>{const has=p&&p.costUSD!=null&&p.costUSD!=='';return has?(parseFloat(p.costUSD)||0):0;};
-const costUSDof=p=>{if(p&&p.costUSD!=null&&p.costUSD!=='')return parseFloat(p.costUSD)||0;return 0;};
+const costP=p=>{if(costoEnPesos(p))return costUSDof(p);const has=p&&p.costUSD!=null&&p.costUSD!=='';return has?(parseFloat(p.costUSD)||0):0;};   // comprado en pesos: pesos pagados ÷ dólar de hoy (27/10/2026)
+// LO COMPRADO EN PESOS TIENE EL COSTO FIJO EN PESOS (27/10/2026, él eligió la 2a: los Paulvic a $14.990 pasaban a dejar 34% sólo porque
+// subió el dólar, y lo mismo todo Bs As y las listas). Con `costoPesos:true` el costo es `p.cost` (los pesos que se pagaron) y los dólares
+// salen de dividirlo por el dólar que se use; así subir o bajar el dólar no lo mueve. Lo de Paraguay sigue en dólares. Misma regla en el
+// robot (`costoPesos` de sync.mjs y `sincCostoPesos`, que deja `costUSD` al día para los que lo leen directo).
+const costoEnPesos=p=>!!(p&&p.costoPesos&&Number(p.cost)>0);
+const costUSDof=p=>{if(costoEnPesos(p)){const tc=curTC();if(tc>0)return Number(p.cost)/tc;}if(p&&p.costUSD!=null&&p.costUSD!=='')return parseFloat(p.costUSD)||0;return 0;};
 const costFullUSDof=p=>{
   if(!p)return 0;
   const cu=costUSDof(p);
@@ -4362,7 +4368,7 @@ const costFullUSDof=p=>{
   // La condición mira dc (TODOS los reclamos) a propósito: si mirara solo los que encarecen, un
   // producto al que se le sacaron todos volvería a caer en el costFullUSD guardado, que todavía
   // tiene adentro el recargo viejo. Tiene que recalcular igual para que ese recargo se vaya.
-  if(p.shipUSD!=null||p.devPct!=null||dc>0){
+  if(p.shipUSD!=null||p.devPct!=null||dc>0||costoEnPesos(p)){   // comprado en pesos: siempre desde los pesos (el guardado queda viejo con el dólar)
     const ship=parseFloat(p.shipUSD)||0;
     // % reclamos: en vivo desde "Ventas x Producto", sin los marcados "no fue culpa del producto".
     const dev=devPctCosto(p);
@@ -6300,8 +6306,8 @@ async function updCostUSD(id,val){
   const u=parseFloat(val)||0;const tc=curTC();
   const antes=costUSDof(p);
   const cong=Math.abs(u-antes)>0.005?await congelarCostoAnterior(p,antes):0;
-  p.costUSD=u;p.cost=u*tc;
-  await fbSet('products/'+id+'/costUSD',u);await fbSet('products/'+id+'/cost',p.cost);
+  p.costUSD=u;p.cost=u*tc;p.costoPesos=false;
+  await fbSet('products/'+id+'/costUSD',u);await fbSet('products/'+id+'/cost',p.cost);await fbSet('products/'+id+'/costoPesos',false);
   await log('Costo '+p.name+': US$'+u+(cong?' (se congeló US$'+antes+' en '+cong+' mes/es con ventas)':''));updateTotals();
   await recalcAndSaveFullUSD(p);
   if(cong)toast('Las ventas viejas siguen midiendo con US$ '+antes.toFixed(2) ,'ok');
@@ -6315,8 +6321,8 @@ async function updCostPesos(id,val){
   const u=pesos/tc;
   const antes=costUSDof(p);
   const cong=Math.abs(u-antes)>0.005?await congelarCostoAnterior(p,antes):0;
-  p.costUSD=u;p.cost=pesos;
-  await fbSet('products/'+id+'/costUSD',u);await fbSet('products/'+id+'/cost',pesos);
+  p.costUSD=u;p.cost=pesos;p.costoPesos=true;   // 27/10/2026: cargado en pesos = costo fijo en pesos (`costoEnPesos`)
+  await fbSet('products/'+id+'/costUSD',u);await fbSet('products/'+id+'/cost',pesos);await fbSet('products/'+id+'/costoPesos',true);
   await log('Costo '+p.name+': '+fmt(pesos)+(cong?' (se congeló US$'+antes+' en '+cong+' mes/es con ventas)':''));updateTotals();
   await recalcAndSaveFullUSD(p);
   if(cong)toast('Las ventas viejas siguen midiendo con US$ '+antes.toFixed(2),'ok');
@@ -6846,7 +6852,8 @@ async function saveTC(val){
   await fbSet('finanzas/tipo_cambio',num);
   await log('Dólar: '+fmt(num));
   /* recalcular costos peso de productos vinculados a USD */
-  (state.products||[]).forEach(p=>{if(p.costUSD!=null&&p.costUSD!==''){p.cost=(parseFloat(p.costUSD)||0)*num;}});
+  // Lo comprado en pesos (`costoEnPesos`) NO se toca: sus pesos son lo que se pagó (27/10/2026).
+  (state.products||[]).forEach(p=>{if(costoEnPesos(p))return;if(p.costUSD!=null&&p.costUSD!==''){p.cost=(parseFloat(p.costUSD)||0)*num;}});
   renderInv();renderProds();updateTotals();updateArqueo();updateHeaderTotal();
   await recalcTodayCostos(null);
   toast('Dólar actualizado ✓');
@@ -13492,9 +13499,10 @@ function costoOficinaVP(v){
   if(!v._dateKey)return v.costo||0;            // venta vieja sin fecha: lo guardado es lo que hay
   const p=prodDeVenta(v);if(!p)return v.costo||0;
   const ym=v._dateKey.substring(0,7);
-  const baseUSD=getHistCostUSDProd(p.id,ym)??costUSDof(p);   // el costo del MES de la venta
+  const tcV=tcDeVenta(v,ym);
+  const baseUSD=getHistCostUSDProd(p.id,ym)??(costoEnPesos(p)&&tcV>0?Number(p.cost)/tcV:costUSDof(p));   // el costo del MES de la venta
   if(!baseUSD)return v.costo||0;
-  return baseUSD*tcDeVenta(v,ym)*(v.qty||1);
+  return baseUSD*tcV*(v.qty||1);
 }
 // ── LA VENTA SIN COSTO NO SUMA GANANCIA (revisión max #10, 26/09/2026, eligió la a) ──
 // Sin ficha, o con la ficha en costo 0, el costo daba sólo los impuestos y el neto ENTERO se
@@ -13537,9 +13545,10 @@ function _efectivoCostoVP(v){
   // Base USD (SIN envío ni %dev): usar precio histórico del mes si está cargado, si no el costo actual.
   // No se usa v.costBaseUSD porque en ventas viejas ese campo se guardó como base+envío, y abajo
   // se vuelve a sumar `ship` → duplicaba el envío e inflaba el costo. Ver "costo real full" del arqueo.
-  const baseUSD=getHistCostUSDProd(p.id,ym)??costUSDof(p);
   // El dólar del DÍA de la venta (27/10/2026, `tcDeVenta`): antes era el del mes, y el mes en curso usaba el de hoy.
   const tc=tcDeVenta(v,ym);
+  // Comprado en pesos (`costoEnPesos`): los pesos pagados ÷ ese dólar, así por ese dólar vuelve a dar los mismos pesos.
+  const baseUSD=getHistCostUSDProd(p.id,ym)??(costoEnPesos(p)&&tc>0?Number(p.cost)/tc:costUSDof(p));
   // Envío/embalaje: usar SIEMPRE el valor actual del producto (no el congelado por venta).
   // Antes se usaba v.shipUSD congelado, así que ventas viejas cargadas cuando el producto no
   // tenía envío quedaban con envío 0 y el mismo producto mostraba costos distintos. Ver arqueo.
@@ -22103,13 +22112,13 @@ async function _listaLlego(id){
       // RECOMPRA MÁS CARA (decisión 6a del 20/10/2026, como Paraguay): la ficha toma el costo nuevo; el viejo queda congelado
       // en los meses con ventas (`congelarCostoAnterior`). Sólo sube, nunca baja (misma regla que el robot en Paraguay).
       const nu=tc>0?Math.round(x.it.pc/tc*100)/100:0,an=costUSDof(x.misma);
-      if(nu>an+0.005)try{const cg=await congelarCostoAnterior(x.misma,an);x.misma.costUSD=nu;x.misma.cost=x.it.pc;
-        await fbSet('products/'+x.misma.id+'/costUSD',nu);await fbSet('products/'+x.misma.id+'/cost',x.it.pc);await recalcAndSaveFullUSD(x.misma);
+      if(nu>an+0.005)try{const cg=await congelarCostoAnterior(x.misma,an);x.misma.costUSD=nu;x.misma.cost=x.it.pc;x.misma.costoPesos=true;
+        await fbSet('products/'+x.misma.id+'/costUSD',nu);await fbSet('products/'+x.misma.id+'/cost',x.it.pc);await fbSet('products/'+x.misma.id+'/costoPesos',true);await recalcAndSaveFullUSD(x.misma);
         subio.push(x.misma.name+' US$ '+an.toFixed(2)+' → '+nu.toFixed(2));await log('Costo '+x.misma.name+': US$'+nu+' (recompra a '+(c.provNom||c.prov)+(cg?', se congeló US$'+an+' en '+cg+' mes/es':'')+')');}catch(e){toast('No pude subir el costo de '+x.misma.name+': '+(e.message||e),'err',5000);}
       continue;}
     if(!x.nombre)continue;
     const usd=tc>0?Math.round(x.it.pc/tc*100)/100:0;
-    const p={id:'p'+Date.now()+'l'+i,name:x.nombre.slice(0,90),costUSD:usd,cost:x.it.pc,costFullUSD:usd,origen:'bsas',proveedor:c.provNom||c.prov,listaProv:c.prov,codLista:String(x.it.cod)};
+    const p={id:'p'+Date.now()+'l'+i,name:x.nombre.slice(0,90),costUSD:usd,cost:x.it.pc,costoPesos:true,costFullUSD:usd,origen:'bsas',proveedor:c.provNom||c.prov,listaProv:c.prov,codLista:String(x.it.cod)};
     if(x.it.mi)p.mlCatalogo=x.it.mi;
     try{await fbSet('products/'+p.id,p);(state.products=state.products||[]).push(p);n++;_fichaDeI[i]=p;}catch(e){await _devolver();alert('No se pudo crear '+x.nombre+': '+(e.message||e)+'\n\nEl pedido sigue "en camino": tocá Llegó de nuevo cuando vuelva la conexión (las fichas ya creadas no se repiten).');_listaRepintar();return;}
   }

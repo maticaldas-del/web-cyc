@@ -426,6 +426,7 @@
   período de ML va al mes siguiente) — sólo almacenamiento/stock antiguo/retiro/multas (~$130.000/mes), las percepciones ya están en
   `ML_EXTRA_PCT`. Recordárselo a fin de mes. Retiro y gastos se cargan enteros cuando se pagan (no se reparten por día).
 - **Cada venta usa el dólar de SU día** (27/10, él eligió la 1a después de decir "dejalo así"; caso: el 15/10 pasó de dorado a violeta porque el mes en curso se recalculaba con el dólar de hoy): `tcDeVenta` (`v.tcSale`, lo guarda el robot) en `_efectivoCostoVP`; un día pasado sólo cambia por una cancelación/devolución o un cambio del costo en dólares. Meses con dólar a mano o cierres viejos (sin `tcPorVenta`) siguen con el del mes; los cierres nuevos guardan `tcPorVenta`. El robot ya usaba `v.tcSale`. Para explicar un día que cambió: `porquedia:<AAAA_MM_DD>`.
+- **Lo comprado en pesos tiene el costo FIJO en pesos** (27/10, él eligió la 2a): Bs As, Paulvic y listas con `costoPesos:true` → costo = los pesos pagados (`cost`), el dólar no lo mueve; Paraguay sigue en dólares. Se marca solo al cargar en pesos; las viejas con `costopesos[;go]`.
 - Percepciones IIBB medidas por cuenta en `ML_EXTRA_PCT` (Adriana 3,80 · Luciana 4,01 · Ayelen 5,99 · Matías 3,40).
 - Los reclamos que "cubre" ML SÍ nos cuestan (0 de 70 dejaron la plata, 15/10): no volver a proponerlo.
 
