@@ -67,3 +67,9 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 4. **Ventas sin factura de ML:** a los 45 días dejan de contar como facturado contra el tope de H (si el facturador falla unos días, el tope queda corto). (a) sugerida: que sigan contando hasta que aparezca la factura o se cancele · (b) dejarlo.
 5. **Stock en Full que ML marca "no disponible"** (dañado, retirándose, frenado por facturas) no cuenta en el patrimonio. (a) sugerida: contarlo aparte, en una línea propia · (b) dejarlo afuera.
 6. **"Valor de Stock" del Resumen y "Stock total" del Arqueo dan distinto** (el Resumen no suma Oficina CYC ni vendedores). (a) sugerida: el mismo número en los dos · (b) dejarlos y cambiarle el nombre al del Resumen.
+
+### 💰 sin techo confirmado (27/10, por el Adaptador 8 en 1)
+De 195 publicaciones en 💰 sólo 17 tienen el 🔴 al 95%. 28 nunca se probaron más caras y 149 no tienen días que se puedan medir.
+1. **Las 17 que venden 1+ por semana y nunca se probaron más caras** (Adaptador, los dos Centímetro Blanco, Infusor, Pendrive 32 y 64, Espejo 6", Alargue, Funda colchón, Sábanas Azul Acero, Protector talón Rosa + Paulvic Barbarella, Witch Night, Gold Lady, Leyton, Hot): (a) sugerida: pasan a 📈 y la vuelta sube cada una (Paulvic espera la prueba de $21.990) · (b) dejarlas en 💰.
+2. **Freno:** (a) sugerida: el robot no deja poner 💰 si no hay 🔴 al 95% y vende 1+ por semana · (b) sin freno.
+3. Las 11 que venden menos de 1 por semana se quedan en 💰 (tu regla del 23/10). Las 149 sin días medibles: lo estoy investigando.
