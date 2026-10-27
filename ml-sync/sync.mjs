@@ -1961,36 +1961,57 @@ async function mantenerCaja(db, accounts, DRY) {
   const tc = parseFloat(await db.get('cyc/finanzas/tipo_cambio')) || 0;
   const prods = Object.values((await db.get('cyc/products')) || {});
   const toks = {};
+  const esc = (t) => String(t || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   for (const mla of mlas) {
     const e = links[mla] || {}, g = G[mla], piso = Number(g.piso);
     out.mirados++;
     const nom = String(e.title || mla).slice(0, 40);
     if (!e.cuenta) { out.no.push(`${nom}: sin cuenta`); continue; }
     const st = e.caja; const ptw = Number(e.cajaPtw) || 0;
-    if (st === 'winning') { out.no.push(`${nom}: ganando la caja, no se toca`); continue; }
-    if (!['losing', 'sharing'].includes(st) || !(ptw > 0)) { out.no.push(`${nom}: caja "${st || '?'}" sin precio para ganarla`); continue; }
+    // 🔔 AVISO A TELEGRAM cuando deja de ganar la caja con stock (27/10/2026, él con la waflera: "avisar cuando la waflera deje de
+    // ganar. cuando llegue stock"). Una vez por cambio (`cyc/ganacaja/<MLA>/aviso` = 'perdiendo' | 'ganando'); sin stock no avisa.
+    const avisar = async (txt, estado) => {
+      if (DRY || g.aviso === estado) return;
+      try { await sendAlerta(txt, { directo: true }); out.avisos = (out.avisos || 0) + 1; } catch { /* el log lo dice */ }
+      try { await db.patch('cyc/ganacaja/' + mla, { aviso: estado, avisoTs: Date.now() }); } catch { /* */ }
+    };
+    if (st === 'winning') {
+      out.no.push(`${nom}: ganando la caja, no se toca`);
+      if (g.aviso === 'perdiendo') await avisar(`✅ <b>${esc(nom)}</b> (${esc(e.cuenta)}) volvió a ganar el primer lugar del catálogo.`, 'ganando');
+      continue;
+    }
+    if (!['losing', 'sharing'].includes(st)) { out.no.push(`${nom}: caja "${st || '?'}" sin precio para ganarla`); continue; }
     if (!toks[e.cuenta]) { const acc = accounts[e.cuenta]; if (!acc?.refresh_token) { out.no.push(`${nom}: sin permiso de ${e.cuenta}`); continue; }
       try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + e.cuenta, { refresh_token: t.refresh_token, updated_ts: Date.now() }); toks[e.cuenta] = t.access_token; } catch { out.no.push(`${nom}: no pude renovar el permiso`); continue; } }
     let it; try { it = await mlGet('/items/' + mla + '?attributes=id,price,status,available_quantity', toks[e.cuenta]); } catch { out.no.push(`${nom}: ML no contestó`); continue; }
     if (it.status !== 'active' || !(Number(it.available_quantity) > 0)) { out.no.push(`${nom}: ${it.status !== 'active' ? 'no está activa' : 'sin stock (¿se vendió?)'}`); continue; }
     const p0 = Number(it.price) || 0;
+    const nNo = out.no.length, nBa = out.bajadas.length;
+    const avisoPerdida = async () => {
+      const b = out.bajadas.length > nBa ? out.bajadas[out.bajadas.length - 1] : null;
+      const que = b ? `La bajé de ${money(b.de)} a ${money(b.a)} para recuperarlo (queda en ${Math.round(b.mg)}%).`
+        : out.no.length > nNo ? 'No la bajé: ' + String(out.no[out.no.length - 1]).replace(nom + ': ', '') + '.' : '';
+      await avisar(`🥊 <b>${esc(nom)}</b> (${esc(e.cuenta)}) dejó de ganar el primer lugar del catálogo.\nEstamos a ${money(p0)}${ptw > 0 ? ` y para ganarlo ML pide ${money(ptw)}` : ''}.\n${que}`, 'perdiendo');
+    };
+    if (!(ptw > 0)) { out.no.push(`${nom}: la pierde y ML no dice el precio para ganarla`); await avisoPerdida(); continue; }
     let to = Math.floor((ptw - 90) / 100) * 100 + 90; if (to > ptw) to -= 100;
     to = Math.max(to, Math.ceil(p0 * 0.85 / 10) * 10);   // escalera: como mucho 15% por hora
-    if (to < piso) { out.no.push(`${nom}: para ganar la caja pide ${money(ptw)}, abajo del piso que aceptó (${money(piso)}): se queda en ${money(p0)}`); continue; }
-    if (!(to < p0)) { out.no.push(`${nom}: ya está en ${money(p0)}, el precio para ganar es ${money(ptw)}`); continue; }
+    if (to < piso) { out.no.push(`${nom}: para ganar la caja pide ${money(ptw)}, abajo del piso que aceptó (${money(piso)}): se queda en ${money(p0)}`); await avisoPerdida(); continue; }
+    if (!(to < p0)) { out.no.push(`${nom}: ya está en ${money(p0)}, el precio para ganar es ${money(ptw)}`); await avisoPerdida(); continue; }
     // El % en que queda (para el piso duro de setPriceTo): neto a ese precio con la misma proporción que el de hoy, menos impuestos y costo.
     const n0 = np[mla] && Number(np[mla].neto) > 0 && Number(np[mla].precio) > 0 ? Number(np[mla].neto) / Number(np[mla].precio) : 0.8;
     const pr = prods.find((x) => x && x.id === e.prodId); const cu = pr && tc > 0 ? costoPesos(pr, 1, tc).costo : 0;
     const imp = mlExtraPct(e.cuenta) / 100 + 0.04;
     const mg = cu > 0 ? ((to * n0 - to * imp - cu) / to) * 100 : null;
-    if (mg == null || mg < 35) { out.no.push(`${nom}: a ${money(to)} quedaría en ${mg == null ? '?' : mg.toFixed(0) + '%'} (abajo del 35%): no bajo`); continue; }
-    if (DRY) { out.bajadas.push({ mla, nom, de: p0, a: to, mg, dry: true }); continue; }
+    if (mg == null || mg < 35) { out.no.push(`${nom}: a ${money(to)} quedaría en ${mg == null ? '?' : mg.toFixed(0) + '%'} (abajo del 35%): no bajo`); await avisoPerdida(); continue; }
+    if (DRY) { out.bajadas.push({ mla, nom, de: p0, a: to, mg, dry: true }); await avisoPerdida(); continue; }
     const r = await setPriceTo(mla, null, to, toks[e.cuenta], { margen: mg, exacto: true, ganacaja: true, autorizado: `él pidió mantener la caja hasta que se venda (${g.m || ''})` });
-    if (!r.ok) { out.no.push(`${nom}: no pude bajar a ${money(to)} (${r.err})`); continue; }
+    if (!r.ok) { out.no.push(`${nom}: no pude bajar a ${money(to)} (${r.err})`); await avisoPerdida(); continue; }
     let rel = 0; try { rel = Number((await mlGet('/items/' + mla + '?attributes=id,price', toks[e.cuenta])).price) || 0; } catch { rel = 0; }
     out.bajadas.push({ mla, nom, de: p0, a: to, rel, mg });
     try { await db.patch('cyc/ganacaja/' + mla, { ult: { ts: Date.now(), de: p0, a: to, ptw } }); } catch { /* el log ya lo dice */ }
     try { await db.set('cyc/claudecambios/' + Date.now() + '_' + mla, { mla, de: p0, a: to, ts: Date.now(), motivo: 'mantener la caja (lo pidió él)' }); } catch { /* */ }
+    await avisoPerdida();
   }
   return out;
 }
@@ -54717,7 +54738,7 @@ async function main() {
       console.log(`🏷️  Rubros · ${rb.cats.size} categorías distintas · ${rb.catsNuevas} nombre(s) nuevo(s)${rb.catsFaltan ? ` · quedan ${rb.catsFaltan} para la vuelta siguiente` : ''} · 📷 ${rb.fotos} con foto`);
     } catch (e) { console.log('No pude leer la caja de compra: ' + e.message); }
     // 🥊 Lo que él pidió mantener ganando la caja hasta que se venda (26/10/2026, la waflera). Mecánico, como las gemelas.
-    try { const mc = await mantenerCaja(db, accounts, DRY); if (mc.mirados) { for (const b of mc.bajadas) console.log(`🥊 ${b.nom} (${b.mla}): para ganar la caja ${money(b.de)} → ${money(b.a)} (${Math.round(b.mg)}%)${b.rel ? ' · releído ' + money(b.rel) : ''}`); for (const x of mc.no) console.log(`🥊 ${x}`); } }
+    try { const mc = await mantenerCaja(db, accounts, DRY); if (mc.mirados) { for (const b of mc.bajadas) console.log(`🥊 ${b.nom} (${b.mla}): para ganar la caja ${money(b.de)} → ${money(b.a)} (${Math.round(b.mg)}%)${b.rel ? ' · releído ' + money(b.rel) : ''}`); for (const x of mc.no) console.log(`🥊 ${x}`); if (mc.avisos) console.log(`🥊 ${mc.avisos} aviso(s) a Telegram de caja perdida o recuperada`); } }
     catch (e) { console.log('No pude mantener la caja: ' + e.message); }
     // Si una suba que pasó a un competidor sin Full perdió la caja, se vuelve al precio anterior (04/10/2026).
     if (!SOLO_DATOS) try {

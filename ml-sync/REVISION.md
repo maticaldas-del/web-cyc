@@ -79,6 +79,11 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
 
 ## 1 · PRECIOS (lunes)
 
+### 🔔 Aviso a Telegram cuando una 🥊 deja de ganar la caja (27/10/2026, él con la waflera: "avisar cuando la waflera deje de ganar. cuando llegue stock")
+- **Qué es:** `mantenerCaja` (cada hora) manda UN aviso al canal privado cuando una publicación con 🥊 `ganarcaja`, **activa y con stock**, pierde o comparte la caja: a cuánto estamos, cuánto pide ML para ganarla y qué hizo el robot (la bajó a X, o no bajó porque el piso/35% lo frena). Cuando la vuelve a ganar, UN ✅. Sin stock o pausada no avisa.
+- **Dónde vive:** `ml-sync/sync.mjs` → `mantenerCaja` (`avisar`, `avisoPerdida`); estado en `cyc/ganacaja/<MLA>/aviso` = 'perdiendo' | 'ganando' (+ `avisoTs`). Con la caja perdida y sin precio para ganarla ahora también avisa (antes se salteaba sin mirar el stock).
+- **Qué chequear:** que no repita cada hora (sólo al cambiar de estado); que una pausada sin stock no avise; que el ✅ salga sólo después de un 🥊. Probado con datos de prueba (pierde → 1 aviso con la bajada · otra hora igual → 0 · gana → ✅ · sin stock → 0).
+
 ### 🌸 F12 se abre 15 días antes del stock antiguo (27/10/2026, él: *"perfumes hasta 0%"*)
 - **Qué es:** regla nueva del 27/10: con la unidad más vieja a 15 días o menos de pagar stock antiguo se baja hasta ganar la caja, nunca abajo del 0%, y si no se vende se retira. Para perfumes el piso del 10% (F12) deja de valer en esos 15 días; F0 (nunca abajo de 0%) sigue.
 - **Dónde vive:** `frenosBajas` en `ml-sync/sync.mjs` (`antiguo15`, al lado de `antiguoCerca`).
