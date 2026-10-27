@@ -49,7 +49,7 @@ for l in L:
     if m and cur:
         rv=m.group(11); pv=re.search(r'PVviaja (\d+)',rv); li=re.search(r'LIviaja (\d+)',rv); cv=re.search(r' · cambios \((.*?)\)',rv); mn=re.search(r' · mano (\d+)( vencida)?',rv)
         cur['vars'].append(dict(v=m.group(1),v30=int(m.group(2)),v60=int(m.group(3)),v180=int(m.group(4)),ult=m.group(5),dcs=int(m.group(6)) if m.group(6) else cur['dcs'],cortes=int(m.group(7) or 0),full=int(m.group(8)),casa=int(m.group(9)),cam=int(m.group(10)),pv=int(pv.group(1)) if pv else 0,li=int(li.group(1)) if li else 0,nunca=(' · NUNCA' in rv),
-          hist=hist_de(rv),cambios=(cv.group(1) if cv else None),mano=(int(mn.group(1)) if mn else None),manoVenc=bool(mn and mn.group(2)),nor=nor_de(rv)))
+          hist=hist_de(rv),cambios=(cv.group(1) if cv else None),mano=(int(mn.group(1)) if mn else None),manoVenc=bool(mn and mn.group(2)),nor=nor_de(rv),ultv=(int(re.search(r' · ultv \$(\d+)',rv).group(1)) if re.search(r' · ultv \$(\d+)',rv) else None)))
 # N DE M: que se hayan leído TODAS las fichas que imprimió pedidostodo (si no, un renglón con otro formato se pierde callado).
 for gr,n in esper.items():
     if gr in('BSAS','PY','PAULVIC'):
@@ -252,6 +252,18 @@ def venta(p):
         de,a,d=int(m.group(1)),int(m.group(2)),int(m.group(3))
         if not p.get('med60') and d<=3 and pr>de*1.15: best=min(best,de)
     return best
+def ventas_color(p):
+    # 27/10/2026 (él con las Sábanas Rojo: "ese color se vendió a ese precio, no todos"): cada color con venta propia lleva SU precio para el
+    # máximo de compra (la última venta de ESE color, sin escasez/sin reposición/sobra/liquidando/remate, sin pasar el de hoy). Los colores
+    # que nunca vendieron usan el del producto, que con colores es el más bajo de los que vendieron.
+    if p['id'] in VM: return []
+    out=[]
+    for v in p.get('vars') or []:
+        u=v.get('ultv')
+        if not u: continue
+        pr=min(p['precio'],u) if p['precio'] else u
+        out.append(f"ped:{p['id']}#{v['v']}=venta|{pr}|precio de la ultima venta de ese color (${u}) para el maximo de compra")
+    return out
 def venta_mot(p):
     if p['id'] in VM: return 'precio de venta que fijé a mano para el maximo de compra'
     if p.get('ultv') and (not p['precio'] or p['ultv']<=p['precio']): return f"precio de la ultima venta (${p['ultv']}) para el maximo de compra"
@@ -324,7 +336,7 @@ for p,q,d,rent in res:
             # Producto con colores sin ningún color con datos: no se puede escribir sin color (decido lo rechaza). Si había
             # una decisión mía vieja, se borra (=auto) para que no quede pidiendo unidades de otro momento.
             if p['decidido']: N.append(f"ped:{pid}=auto"); avisos.append(f"{p['n']}: tenía decisión vieja y ningún color con datos: la borro (=auto)")
-        if p['precio'] or p.get('med60'): N.append(f"ped:{pid}=venta|{venta(p)}|{venta_mot(p)}")
+        if p['precio'] or p.get('med60'): N.append(f"ped:{pid}=venta|{venta(p)}|{venta_mot(p)}"); N.extend(ventas_color(p))
     else:
         r,t,obj,b=d
         # siempre se escribe (aunque sea 0): si no, una decisión vieja queda colgada (el Ultra Shift del 09/10).
@@ -334,7 +346,7 @@ for p,q,d,rent in res:
             if jc:   # pero un juicio de color sí (etapa 3, 20/10/2026): va color por color
                 for v in jc:
                     jv=juDe(pid,v['v']); qq,mot=juicioQ(jv[0],0,jv[1],p['n']+' #'+v['v']); N.append(f"ped:{pid}#{v['v']}=u|{qq}|{mot}")
-                if p['precio'] or p.get('med60'): N.append(f"ped:{pid}=venta|{venta(p)}|{venta_mot(p)}")
+                if p['precio'] or p.get('med60'): N.append(f"ped:{pid}=venta|{venta(p)}|{venta_mot(p)}"); N.extend(ventas_color(p))
                 continue
             if p['decidido']: N.append(f"ped:{pid}=auto"); avisos.append(f"{p['n']}: tiene colores sin datos por color y una decisión vieja: la borro (=auto)")
             elif q>0: avisos.append(f"{p['n']}: la cuenta pide {q} pero no sé de qué colores: decidilo a mano")
@@ -345,7 +357,7 @@ for p,q,d,rent in res:
         mot=tito(q,r,t,obj,b,rent,p['neto'],None,ex.strip(),p['motNoRenta'])
         if juDe(pid): q,mot=juicioQ(juDe(pid)[0],t,juDe(pid)[1],p['n'])
         N.append(f"ped:{pid}=u|{q}|{mot}")
-        if p['precio'] or p.get('med60'): N.append(f"ped:{pid}=venta|{venta(p)}|{venta_mot(p)}")
+        if p['precio'] or p.get('med60'): N.append(f"ped:{pid}=venta|{venta(p)}|{venta_mot(p)}"); N.extend(ventas_color(p))
 bad=[n for n in N if ';' in n]
 if bad: print('⚠️ renglones con ";" (decido los cortaría):',*bad[:5],sep='\n  '); sys.exit(1)
 open('pedidos.txt','w').write('\n'.join(N)+'\n')
