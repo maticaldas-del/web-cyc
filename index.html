@@ -3104,7 +3104,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.20';
+const APP_VERSION='27.21';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3117,6 +3117,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.21',f:'27/10',h:'00:50',c:[{n:2,t:'⚖️ Tope de H: la barra de cada cuenta tiene tres partes: llena = lo ya facturado, clarita = lo que va a facturar en teoría con lo que ya vende, rayada = lo nuevo que todavía no vendió (Full, viajando o en la caja). Debajo, cada parte con su número.'}]},
   {v:'27.20',f:'27/10',h:'00:30',c:[{n:3,t:'⚖️ Tope de H: cada cuenta muestra dos proyecciones al cierre, la del ritmo de 30 días y 📦 la que viene con la mercadería que ya tiene (lo recién llegado a su ritmo desde que llegó, y lo que está en Full, viajando o en la caja sin vender todavía, a su precio). Se usa la más alta: así se ve venir la subida de Ayelen antes de que pase, y el 💡 de la próxima cuenta lo tiene en cuenta.'}]},
   {v:'27.19',f:'27/10',h:'01:00',c:[{n:2,t:'🏠 Mi oficina: los botones de cada cuenta son más grandes y dicen cuántas unidades hay para mandar y 💵 cuánto deja venderlas (la caja a medio armar o, si no hay, lo que entra en el cupo). "Todas" suma las 4.'}]},
   {v:'27.18',f:'27/10',h:'00:45',c:[{n:1,t:'🏠 Mi oficina: se sacaron los cuadros "u. en casa · hay que mandar · en mercadería".'}]},
@@ -24742,18 +24743,24 @@ function renderHomeParejo(){
   const facARCA=_facARCA();
   const barras=d.filas.map(f=>{
     const col=f.proy>d.topeH?'var(--red)':f.pct>=85?'var(--amber)':'var(--green)';
-    const wReal=Math.min(100,f.pctReal), wFut=Math.max(0,Math.min(100,f.pct)-wReal);
+    // TRES PARTES EN LA MISMA BARRA (27/10/2026, él: "quiero tres colores de la misma barra, lo ya facturado, lo que va a facturar
+    // en teoría y los productos nuevos"): lleno = facturado · medio = lo que ya vende, a su ritmo · rayado = lo nuevo que todavía no
+    // vendió (Full, viajando o en la caja, a su precio de hoy), que NO entra en "en teoría" porque no tiene ritmo.
+    const nuevo=Math.max(0,f.valNuevo||0), teo=Math.max(0,f.proy-f.fac-nuevo);
+    const wFac=Math.min(100,f.fac/d.topeH*100), wTeo=Math.max(0,Math.min(100-wFac,teo/d.topeH*100)), wNue=Math.max(0,Math.min(100-wFac-wTeo,nuevo/d.topeH*100));
+    const raya=`repeating-linear-gradient(135deg,${col} 0 3px,transparent 3px 6px)`;
+    const mu=(bg,op)=>`<span style="display:inline-block;width:9px;height:9px;border-radius:2px;vertical-align:-1px;margin-right:3px;background:${bg};opacity:${op};border:1px solid ${col}"></span>`;
     return `<div style="margin:8px 0">
       <div style="display:flex;justify-content:space-between;gap:8px;font-size:.66rem"><strong>${MET_LABELS[f.a]}</strong>
         <span style="color:${col};font-family:'DM Mono',monospace">${fM(f.proy)} al ${fD(d.fin).slice(0,5)} · ${f.proy>d.topeH?'se pasa '+fM(-f.resta):'le quedan '+fM(f.resta)}</span></div>
-      <div style="height:7px;background:var(--surface2);border-radius:5px;overflow:hidden;margin-top:3px;display:flex"><div style="height:100%;width:${wReal.toFixed(1)}%;background:${col}"></div><div style="height:100%;width:${wFut.toFixed(1)}%;background:${col};opacity:.4"></div></div>
-      <div style="font-size:.6rem;color:var(--muted);margin-top:2px">facturado ${fM(f.fac)} · a ritmo de 30 días: faltan ${d.faltan} d × ${fM(f.diario*30)}/mes = +${fM(f.futuro30)} → ${fM(f.proy30)}</div>
-      <div style="font-size:.6rem;margin-top:1px;color:${f.porMerc?'var(--amber)':'var(--muted)'}">📦 con la mercadería que tiene: ${fM(f.diarioEsp*30)}/mes${f.valNuevo>0?` + ${fM(f.valNuevo)} de lo nuevo sin vender todavía (${f.uNuevo} u. en Full, viajando o en la caja)`:''} → ${fM(f.proyEsp)}${f.porMerc?' · <strong>es la que se usa</strong>':''}</div>
+      <div style="height:9px;background:var(--surface2);border-radius:5px;overflow:hidden;margin-top:3px;display:flex"><div style="height:100%;width:${wFac.toFixed(1)}%;background:${col}"></div><div style="height:100%;width:${wTeo.toFixed(1)}%;background:${col};opacity:.45"></div><div style="height:100%;width:${wNue.toFixed(1)}%;background:${raya}"></div></div>
+      <div style="font-size:.6rem;color:var(--muted);margin-top:3px;line-height:1.5">${mu(col,1)}facturado ${fM(f.fac)} · ${mu(col,.45)}en teoría +${fM(teo)} <span style="opacity:.8">(lo que ya vende, a su ritmo: ${fM((f.diarioEsp||f.diario)*30)}/mes × ${d.faltan} d)</span>${nuevo>0?` · ${mu(raya,1)}nuevo sin vender +${fM(nuevo)} <span style="opacity:.8">(${f.uNuevo} u. en Full, viajando o en la caja, a su precio de hoy)</span>`:''}</div>
+      <div style="font-size:.58rem;color:var(--muted);opacity:.75;margin-top:1px">con el ritmo parejo de los últimos 30 días serían ${fM(f.proy30)}</div>
       <div style="font-size:.6rem;color:var(--muted);margin-top:1px">${_ofiTxt(f.ofi,fM)}</div>
       ${(()=>{const t=_parejoCatLinea(f.a,fM,facARCA);return t?`<div style="font-size:.6rem;color:var(--muted);margin-top:1px">${t}</div>`:'';})()}
     </div>`;}).join('');
   el.innerHTML=caja(`<div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.85rem">⚖️ Las 4 cuentas contra el tope de H (${fM(d.topeH)}/año)</div>
-    <div style="font-size:.6rem;color:var(--muted);margin-top:2px">La próxima recategorización de ARCA mira del ${fD(d.ini)} al ${fD(d.fin)}. Barra llena = lo facturado oficial hasta hoy (canceladas incluidas, como las cuenta ARCA) · barra clarita = lo que falta hasta el cierre: el MAYOR entre el ritmo de los últimos 30 días enteros (hasta ayer) y lo que viene con la mercadería que ya tiene cada cuenta (lo recién llegado a su ritmo desde que llegó, y lo que está en Full, viajando o en la caja sin vender todavía, a su precio de hoy). El tope es por cuenta.</div>
+    <div style="font-size:.6rem;color:var(--muted);margin-top:2px">La próxima recategorización de ARCA mira del ${fD(d.ini)} al ${fD(d.fin)}. La barra tiene tres partes: <strong>llena</strong> = lo facturado oficial hasta hoy (canceladas incluidas, como las cuenta ARCA) · <strong>clarita</strong> = en teoría, lo que ya vende cada producto a su ritmo hasta el cierre (lo recién llegado, a su ritmo desde que llegó) · <strong>rayada</strong> = lo nuevo que todavía no vendió (en Full, viajando o en la caja), a su precio de hoy. El tope es por cuenta.</div>
     ${barras}${aviso}
     <div style="font-size:.66rem;margin-top:8px">💡 Lo próximo nuevo que no sea perfume → <strong style="color:var(--green)">${MET_LABELS[(orden.find(f=>f.a==='ayelen'||f.a==='luciana')||menos).a]}</strong>, la que más lugar tiene entre Ayelen y Luciana. <span style="color:var(--muted)">(Perfumes siguen yendo a Adriana; lo que ya está en una cuenta, queda.)</span></div>
     <div style="text-align:right;margin-top:8px"><button onclick="goMonotributo()" style="background:transparent;border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:2px 8px;font-size:.6rem;cursor:pointer">✎ AFIP / meses</button></div>`);
