@@ -37573,6 +37573,43 @@ async function main() {
       }
       return;
     }
+    // BILLING_PROBE=porquedia:<AAAA_MM_DD> → POR QUÉ CAMBIÓ LA GANANCIA DE UN DÍA QUE YA PASÓ (27/10/2026, él: "el 15 estaba en dorado.
+    // ¿qué pasó?"). Sólo lee. Tres cosas mueven un día viejo: una venta cancelada o devuelta DESPUÉS (`canceladaTs`), el costo de un
+    // producto que cambió en el mes (el mes en curso no está congelado) y el % de reclamos en vivo. Muestra cada una con su plata.
+    // Sin datos de compradores ni números de orden: producto, cuenta y montos.
+    if (String(process.env.BILLING_PROBE || '').startsWith('porquedia')) {
+      const arg = (String(process.env.BILLING_PROBE).split(':')[1] || '').trim();
+      if (!/^\d{4}_\d{2}_\d{2}$/.test(arg)) { console.log('Uso: porquedia:AAAA_MM_DD'); return; }
+      const vp = (await db.get('cyc/ventaprod/' + arg)) || {};
+      const fin = (await db.get('cyc/finanzas')) || {}, mono = (await db.get('cyc/monotributo')) || {};
+      const monoP = parseFloat(mono.pct) || 0, tc = parseFloat(fin.tipo_cambio) || 1500;
+      setDevLive((await db.get('cyc/ventaprod')) || {});
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      const fF = (ts) => { const d = new Date(Number(ts) - 3 * 3600e3); return d.toISOString().slice(8, 10) + '/' + d.toISOString().slice(5, 7) + ' ' + d.toISOString().slice(11, 16); };
+      console.log(`=== POR QUÉ CAMBIÓ LA GANANCIA DEL ${arg.replace(/_/g, '-')} ===`);
+      let gHoy = 0, gGuard = 0, nV = 0; const canc = [], cambio = [];
+      for (const v of Object.values(vp)) {
+        if (!v) continue;
+        if (v.cancelada) { const a = v.antesCancel || {}; canc.push({ nom: (v.prod || '?').slice(0, 40), cta: v.cuenta || '?', tot: Number(a.total) || 0, neto: Number(a.neto) || 0, ts: Number(v.canceladaTs) || 0, tipo: v.tipoCancelacion || '?' }); continue; }
+        nV++;
+        const p = v.prodId ? pIdx[v.prodId] : null, qty = v.qty || 1, total = Number(v.total) || 0, neto = Number(v.neto) || 0;
+        const imp = total * (mlExtraPct(v.cuenta) + monoP) / 100;
+        const cHoy = p ? costoPesos(p, qty, tc).costo : (Number(v.costo) || 0), cG = Number(v.costo) || 0;
+        gHoy += neto - cHoy - imp; gGuard += neto - cG - imp;
+        if (cG > 0 && Math.abs(cHoy - cG) >= 300) cambio.push({ nom: (v.prod || '?').slice(0, 40), cta: v.cuenta || '?', qty, cG, cHoy });
+      }
+      console.log(`${nV} ventas vivas · ${canc.length} cancelada(s)/devuelta(s)`);
+      console.log(`\n── CANCELADAS O DEVUELTAS (ya no suman) ──`);
+      if (!canc.length) console.log('  ninguna');
+      for (const c of canc.sort((a, b) => b.ts - a.ts)) console.log(`  ${c.ts ? 'cancelada el ' + fF(c.ts) : 'cancelada (sin fecha)'} · ${c.tipo} · ${c.cta} · ${c.nom} · era ${money(Math.round(c.tot))} (neto ${money(Math.round(c.neto))})`);
+      console.log(`\n── COSTO DISTINTO AL DE ESE DÍA (costo guardado en la venta → costo de hoy, con el % de reclamos en vivo) ──`);
+      if (!cambio.length) console.log('  ninguno');
+      for (const c of cambio.sort((a, b) => Math.abs(b.cHoy - b.cG) - Math.abs(a.cHoy - a.cG))) console.log(`  ${c.cta} · x${c.qty} · ${c.nom} · ${money(Math.round(c.cG))} → ${money(Math.round(c.cHoy))} (${c.cHoy > c.cG ? '−' : '+'}${money(Math.round(Math.abs(c.cHoy - c.cG)))} de ganancia)`);
+      console.log(`\n── RESUMEN (cuenta del robot, aproximada a la de la web) ──`);
+      console.log(`  ganancia con el costo guardado en cada venta: ${money(Math.round(gGuard))}`);
+      console.log(`  ganancia con el costo de hoy:                  ${money(Math.round(gHoy))}  (diferencia ${money(Math.round(gHoy - gGuard))})`);
+      return;
+    }
     // BILLING_PROBE=margendia[:YYYY_MM_DD] → por qué el margen del día da lo que da. Muestra venta por
     // venta el precio, el neto real, el costo con impuestos y el margen, y marca las que quedaron
     // abajo del piso. Sirve para ver si el promedio bajo es por pocas ventas, por una publicación
