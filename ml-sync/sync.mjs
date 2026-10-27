@@ -11684,6 +11684,21 @@ const RV_VACIAS = new Set(['perfume','eau','parfum','toilette','edp','edt','para
 // (los dos de 100 mL) justo arriba de la mitad, que era el corte. Separado, "100" cuenta
 // como numero -- que es donde tiene que contar -- y "ml" se cae por corta.
 const _rvBase = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ');
+// 🔤 PALABRAS EN COMÚN (27/10/2026, él con Dai Nippon: "hay muchos productos nuevos que no son nada que ver"): "ESPEJO REDONDO FLEXIBLE
+// MED-E902" se midió contra un micrófono Sennheiser E 902 ($734.000, 601%) y las bases Vogue "30h" contra un aire acondicionado. El
+// chequeo de mismo producto no frena cuando faltan palabras (el portugués de Nissei no está en ML), así que pasaba cualquier cosa.
+// Ahora el nombre y el catálogo tienen que compartir 2 palabras de verdad (4+ letras, o letras con números como mach3/520bt; con una
+// sola palabra útil, ésa). Con 133 de Dai Nippon sacó 85 basura y dejó los buenos (Rimmel 060, Otowil Magenta, Vanish).
+const _PAL_VAC = new Set(['para', 'unidad', 'unidades', 'original', 'grande', 'chico', 'mediano', 'color', 'tono', 'pack', 'with']);
+function palabrasEnComun(nombre, titulo) {
+  const util = (w) => !_PAL_VAC.has(w) && ((w.length >= 4 && /[a-z]/.test(w)) || (w.length >= 3 && /[a-z]/.test(w) && /\d/.test(w)));
+  const ws = [...new Set(_rvBase(nombre).split(' ').filter(util))];
+  if (!ws.length) return { ok: true, n: 0, en: 0 };
+  const tt = _rvBase(titulo).split(' ').filter(Boolean); const T = new Set(tt); for (let i = 0; i + 1 < tt.length; i++) T.add(tt[i] + tt[i + 1]);
+  const hay = (w) => T.has(w) || (w.length >= 5 && [...T].some((t) => t.length >= 5 && t.slice(0, 5) === w.slice(0, 5)));
+  const en = ws.filter(hay).length, pide = ws.length >= 2 ? 2 : 1;
+  return { ok: en >= pide, n: ws.length, en };
+}
 const _rvNorm = (t) => _rvBase(t).replace(/(\d)([a-z])/g, '$1 $2').replace(/([a-z])(\d)/g, '$1 $2').trim();
 // EL CODIGO DE MODELO: los pedacitos que mezclan letras y numeros (mdr zx310ap, tl wn822n,
 // m612, h101). Se sacan los que son la MEDIDA y no el modelo -- 100ml, 256gb -- porque esos
@@ -12239,7 +12254,8 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
       // palabra no frena: el portugués no está en ML. Ese reparo blando queda anotado (`rp`) y lo mira la revisión de fotos.
       // Si el primero es un catálogo viejo sin vendedores, se prueba el siguiente (hasta 5).
       const duros = (rr) => rr.filter((x) => !/^en ML no está/.test(x));
-      const okB = _fijo ? [[_fijo, []]] : resB.map((r) => [r, chequeoMismoProducto(nB, r.name || r.title)]).filter(([, rr]) => !duros(rr).length);
+      const _pal = (r) => palabrasEnComun(nB, r.name || r.title).ok || (!!nT && nT !== nB && palabrasEnComun(nT, r.name || r.title).ok);   // 🔤 27/10/2026
+      const okB = _fijo ? [[_fijo, []]] : resB.map((r) => [r, chequeoMismoProducto(nB, r.name || r.title)]).filter(([r, rr]) => !duros(rr).length && _pal(r));
       if (prueba) { console.log(`    ${e.n.slice(0, 60)} · busqué: ${qs.join(' | ')}`); for (const r of resB) { const rr = duros(chequeoMismoProducto(nB, r.name || r.title)); if (rr.length) console.log(`      descarto ${r.id} "${String(r.name || '').slice(0, 60)}" · ${rr.join(' · ').slice(0, 70)}`); } }
       if (!okB.length) { upd.sc = 1; upd.mt = resB[0] ? String(resB[0].name || '').slice(0, 120) : ''; upd.m = null; res.sinCat++;
         console.log(`  · sin catálogo exacto · ${e.n.slice(0, 60)}${resB[0] ? ` (lo más parecido: "${upd.mt.slice(0, 60)}" · ${duros(chequeoMismoProducto(e.n, upd.mt)).join(' · ').slice(0, 90)})` : ' (ML no trajo nada)'}`);
@@ -12258,7 +12274,10 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
         let _soloAfuera = false;
         try { await espera(250); const it = await mlGetR(`/products/${r.id}/items`); const _om = ofertasParaMedir((it && it.results) || []); ofs = _om.ofs; _soloAfuera = _om.soloAfuera; }
         catch (e2) { if (!/404/.test(String(e2.message || e2))) throw e2; ofs = []; }
-        const p2 = precioAIgualar(ofs);
+        let p2 = precioAIgualar(ofs);
+        // 🔤 ¿TIENE SENTIDO? (27/10/2026): un catálogo que se vende a más de 8 veces lo que cuesta en la lista es otro producto (el
+        // Pincel Kolinsky de $19.153 contra un pincel de $1.604, el Otowil x6 sobres contra uno suelto). Se prueba el siguiente.
+        if (esLista && !_fijo && p2 && p2.precio > 0 && Number(e.p) > 0 && p2.precio > 8 * Number(e.p)) { if (prueba) console.log(`      descarto ${r.id}: se vende a ${money(p2.precio)}, más de 8 veces lo que cuesta (${money(Number(e.p))})`); p2 = null; ofs = []; continue; }
         if (prueba) console.log(`      prueba ${r.id} "${String(r.name || '').slice(0, 60)}" · ${ofs.length} vendedor(es)${_soloAfuera ? ' (sólo de afuera: +' + Math.round(RECARGO_INTER * 100) + '%)' : ''}${rr.length ? ' · ' + rr.join(' · ').slice(0, 60) : ''}`);
         if (!prod) { prod = r; rpBlando = rr.length ? rr.join(' · ') : null; }
         if (p2 && p2.precio > 0 && p2.ref && p2.ref.category_id) { prod = r; rpBlando = rr.length ? rr.join(' · ') : null; ofertas = ofs; pi = p2; piAfuera = _soloAfuera; break; }
@@ -12274,6 +12293,9 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
           catch (eH) { if (!/404/.test(String((eH && eH.message) || eH))) throw eH; }
         }
       }
+      if (!prod) { upd.sc = 1; upd.mt = resB[0] ? String(resB[0].name || '').slice(0, 120) : ''; upd.m = null; res.sinCat++;   // 🔤 todos se vendían a 8+ veces el costo
+        console.log(`  · sin catálogo que tenga sentido · ${e.n.slice(0, 60)} (los parecidos se venden a más de 8 veces lo que cuesta)`);
+        if (aplicar) await db.patch(RUTA + '/' + cod, upd); continue; }
       upd.sc = null; upd.mi = prod.id; upd.mt = String(prod.name || prod.title || '').slice(0, 120); upd.rp = rpBlando;
       { const pic = Array.isArray(prod.pictures) && prod.pictures[0]; const u = String((pic && (pic.secure_url || pic.url)) || '').replace(/^http:\/\//, 'https://');
         let h = ''; try { h = new URL(u).hostname.toLowerCase(); } catch { h = ''; } upd.mf = (h === 'mlstatic.com' || h.endsWith('.mlstatic.com')) ? u : null; }
