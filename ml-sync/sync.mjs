@@ -29149,6 +29149,20 @@ async function main() {
       }
       return;
     }
+    // BILLING_PROBE=lineadias:<MLA>[;<MLA>…] → SOLO LEE (27/10/2026): los últimos 21 días de la línea de tiempo (`mlapi/linea/<MLA>`) con lo
+    // que mira la cuenta del techo: precio, stock en Full, visitas, vendidas y estado. Para ver por qué un producto tiene "0 días medibles".
+    if (String(process.env.BILLING_PROBE || '').startsWith('lineadias')) {
+      const ids = String(process.env.BILLING_PROBE).replace(/^lineadias:?/, '').split(/[;,\s]+/).map((x) => x.trim().toUpperCase()).filter((x) => /^MLA\d+$/.test(x));
+      for (const m of ids) {
+        const d = (await db.get('mlapi/linea/' + m)) || {};
+        const ks = Object.keys(d).filter((k) => /^\d{4}_\d{2}_\d{2}$/.test(k)).sort();
+        console.log(`\n■ ${m} · ${ks.length} días en la línea${ks.length ? ' (' + ks[0] + ' a ' + ks[ks.length - 1] + ')' : ''}`);
+        let conVis = 0, st3 = 0; for (const k of ks) { const x = d[k] || {}; if (x.vis != null) conVis++; if (Number(x.st) >= 3) st3++; }
+        console.log(`   días con visitas: ${conVis} · días con 3+ en Full: ${st3}`);
+        for (const k of ks.slice(-21)) { const x = d[k] || {}; console.log(`   ${k} · $${x.p ?? '?'} · Full ${x.st ?? '?'} · visitas ${x.vis ?? '—'} · vendidas ${x.u ?? 0}${x.est && x.est !== 'active' ? ' · ' + x.est : ''}`); }
+      }
+      return;
+    }
     // BILLING_PROBE=costopesoshist[;go] → LOS MESES CERRADOS NO SE MUEVEN (27/10/2026). Al marcar `costoPesos` (comando `costopesos;go`) el
     // `costUSD` de 124 fichas pasó a pesos ÷ dólar de hoy, y los meses viejos sin costo congelado (`precios_hist_prod`) lo usan × su dólar:
     // su ganancia (ya cobrada) cambiaba. Esto congela en cada mes ANTERIOR al de hoy con ventas de esa ficha el US$ que tenía antes
