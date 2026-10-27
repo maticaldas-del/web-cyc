@@ -3105,7 +3105,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.30';
+const APP_VERSION='27.31';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3118,6 +3118,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.31',f:'27/10',h:'14:15',c:[{n:2,t:'📦 Línea de stock: con dos publicaciones del mismo producto y color (o su gemela) alcanza con que una informe el stock del día para dibujarlo. Antes, si una estaba pausada o era la gemela, ese día quedaba sin línea (Centímetro Blanco).'}]},
   {v:'27.30',f:'27/10',h:'14:05',c:[{n:2,t:'💰 "Más plata por día" ahora resta también lo que cuesta DE MÁS mandar la caja cuando las de esa cuenta salen con pocas unidades (últimas 8 cajas), además del envío de la ficha que ya estaba en el costo. Igual en el robot.'}]},
   {v:'27.29',f:'27/10',h:'13:45',c:[{n:2,t:'🧭 Estrategias más claras (elegiste la 6a): "🏔️ techo encontrado" y "↘️ volviendo al normal" ahora se ven como 💰 buscando el de más ganancia (dice "· techo encontrado" o "· volviendo"); la escalera que viene de una sobra se ve 📦 sobra stock con su escalón; el 🆕 lanzamiento se ve 📈 buscando techo "· nuevo" (sigue sin bajar sin 95%); sin stock dice con qué estrategia vuelve.'},{n:2,t:'🔒 Robot: abajo del 35% sólo si la unidad más vieja lleva 90+ días en Full (ahí se abre hasta el 0%), y 💰 no se pone sin techo en rojo a lo que vende 1 o más por semana.'}]},
   {v:'27.28',f:'27/10',h:'14:55',c:[{n:1,t:'📈 Línea de tiempo: la raya 🚧 de una prueba arriba de todo escribe su texto abajo de la línea, para no pisarse con los datos de arriba a la derecha.'}]},
@@ -11576,6 +11577,10 @@ function _lineaJunta(porMla,lks,varSel){
       // línea (y las rayas) cuenta como vendida al precio de su Clásica ese día. Lo cobrado de verdad (`tot`) no se toca.
       if(Number(x.u)>0&&Number(x.tot)>0){const gd=lks&&String((lks[mla]||{}).gemelaDe||'');const pc=gd&&gd!==mla?Number(((porMla[gd]||{})[k]||{}).p)||0:-1;
         if(pc!==0){o.uEq=(o.uEq||0)+Number(x.u);o.totEq=(o.totEq||0)+(pc>0?Number(x.u)*pc:Number(x.tot));}}
+      // 27/10/2026 (él con el Centímetro Blanco: "la línea de stock se rompió al final y no hay datos"): el stock de un día está
+      // completo si cada CUENTA+COLOR tiene al menos una publicación que lo informa. Dos publicaciones del mismo stock (la repetida,
+      // o la gemela, que nunca informa su stock) no piden las dos: antes un día con una pausada sin `st` no se dibujaba.
+      if(lks){const l0=lks[mla]||{};if(!varSel||_lineaColorDe(l0)===varSel){const gk=String(l0.cuenta||'?')+'|'+(_lineaColorDe(l0)||'');(o._gA=o._gA||new Set()).add(gk);if(x.st!=null)(o._gS=o._gS||new Set()).add(gk);}}
       if(x.st!=null){if(lks){const l=lks[mla]||{},cta=String(l.cuenta||'?'),vr=_lineaColorDe(l);
           // Color sacado también del TÍTULO (igual que `_varPorMla` y el robot, etapa 8). Una publicación de UN
           // color que no se identifica: sólo su depósito (relleno) cuenta, como un color aparte; la foto de la noche
@@ -11608,7 +11613,8 @@ function _lineaJunta(porMla,lks,varSel){
       else{const v=o._c.filter(c=>c.viva);if(v.length)o.pA=Math.min(...v.map(c=>c.p));}}
     delete o._c;if(o.pA!=null)o.p=o.pA;
     if(o._eS)o.est=o._eA?'active':o._eO;delete o._eS;delete o._eA;delete o._eO;
-    if(o._st){let t=0,hay=false;for(const S of Object.values(o._st)){if(S.P!=null){t+=S.P;hay=true;}else{const vs=Object.values(S.V);if(vs.length){t+=vs.reduce((a,b)=>a+b,0);hay=true;}}}o.st=hay?t:null;if(!hay)o.stN=0;delete o._st;}}
+    if(o._st){let t=0,hay=false;for(const S of Object.values(o._st)){if(S.P!=null){t+=S.P;hay=true;}else{const vs=Object.values(S.V);if(vs.length){t+=vs.reduce((a,b)=>a+b,0);hay=true;}}}o.st=hay?t:null;if(!hay)o.stN=0;delete o._st;}
+    if(o._gA){if(o.st!=null){o.pubs=o._gA.size;o.stN=o._gS?o._gS.size:0;}delete o._gA;delete o._gS;}}
   return dias;
 }
 async function lineaAbrir(prodId,ev,varSel){
