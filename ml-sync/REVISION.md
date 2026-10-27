@@ -811,6 +811,11 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 
 ## 3 · MERCADERÍA (miércoles)
 
+### 📦 La caja para la máxima plata: lo que se corta recibe lo que vende hasta la próxima caja (27/10/2026, v27.16, él: *"maximizar la máxima ganancia de $ posible siempre"*)
+- **Qué es:** reemplaza "1 u. a lo que se corta" (v27.13): una venta perdida por estar en 0 no vuelve, y lo que tiene stock puede esperar a la caja siguiente sin perder nada. Lo que está en 0 o se corta antes de `CAJA_CORTE_DIAS` (14) recibe ritmo × (14 − máx(días que le quedan, `CAJA_VIAJE_DIAS` 7)), mínimo 1, en orden de lo que más deja por unidad; lo que sobra, por lo que más deja por unidad.
+- **Dónde vive:** `cajaLlenarCupoPlan` (`index.html`, usa `vDia`) · `llenar_cupo` (`decide_cajas.py`, usa `r`).
+- **Qué chequear:** caja de Ayelen del 26/10 (19 lugares): web y robot dan lo mismo — Triples Negro 4 · Balanza 4 · Mouse 4 · Cinta 7.5M 2 · Gua Sha 2 · Kit 1 · Lupa 100mm 1 · p47 1.
+
 ### ⭐ y 💵 en las tarjetas de pedidos hechos de Paraguay (27/10/2026, v27.15, él: *"en estos también poner estrella y $ al venderse ganancia"*)
 - **Qué es:** cada tarjeta de En camino / Ya llegaron suma el ⭐ gana × vende de sus productos y la ganancia de venderlo todo, con las mismas cuentas que el pedido del momento (nuevo: su candidato; con ficha: su publicación de hoy).
 - **Dónde vive:** `pyPedidoEstGan` y `pyPedidoResumenHTML` (`index.html`).

@@ -132,7 +132,7 @@ for p in P:
             D,por=dias_de(p['n'],x['s'][0],x['s'][1],x['dcs'])
             q,r,b=calc(*x['s'],x['full'],x['cam'],x['casa'],x['dcs'],D)
             out.append(dict(cab=f"caja:{p['id']}@{c}#{x['v']}",q=q,cola=f"{b} · hay {x['full']} en Full y {x['cam']} en camino · {txt_dias(D,por)} hacen falta {r*D:.0f} · en la oficina {x['casa']}",
-                            cta=c,nom=f"{p['n'][:38]} · {x['v']}",gan=p['gan'],grande=p['grande'],enCero=(x['full']+x['cam'])==0,dias=((x['full']+x['cam'])/r if r>0 else None)))
+                            cta=c,nom=f"{p['n'][:38]} · {x['v']}",gan=p['gan'],grande=p['grande'],enCero=(x['full']+x['cam'])==0,r=r,dias=((x['full']+x['cam'])/r if r>0 else None)))
             if D==T_LARGO: largos.append(f"{p['n'][:38]} · {x['v']}")
     elif (p['id'],'',cta) in FIJO:
         fq,fm=FIJO[(p['id'],'',cta)]
@@ -141,9 +141,10 @@ for p in P:
         D,por=dias_de(p['n'],p['v'][0],p['v'][1],p['dcs'])
         q,r,b=calc(*p['v'],p['full'],p['cam'],p['casa'],p['dcs'],D)
         out.append(dict(cab=f"caja:{p['id']}@{cta}",q=q,cola=f"{b} · hay {p['full']} en Full y {p['cam']} en camino · {txt_dias(D,por)} hacen falta {r*D:.0f} · en la oficina {p['casa']}",
-                        cta=cta,nom=p['n'][:38],gan=p['gan'],grande=p['grande'],enCero=(p['full']+p['cam'])==0,dias=((p['full']+p['cam'])/r if r>0 else None)))
+                        cta=cta,nom=p['n'][:38],gan=p['gan'],grande=p['grande'],enCero=(p['full']+p['cam'])==0,r=r,dias=((p['full']+p['cam'])/r if r>0 else None)))
         if D==T_LARGO: largos.append(p['n'][:38])
 CAJA_CORTE_DIAS=14   # la próxima caja llega en ~2 semanas (= CAJA_CORTE_DIAS de index.html)
+CAJA_VIAJE_DIAS=7    # lo que tarda en entrar la caja que se arma (= CAJA_VIAJE_DIAS de index.html)
 def llenar_cupo(cands,tope_peq,tope_gra):
     # La regla de la web (`cajaLlenarCupoPlan`, index.html), traída tal cual: orden por lo que deja cada unidad (sin dato al final,
     # pero no afuera), después el que está en cero y después el que menos días tiene. RONDA 1: una unidad a lo que está en 0 o se corta en 14 días. RONDA 2:
@@ -158,8 +159,12 @@ def llenar_cupo(cands,tope_peq,tope_gra):
     # se corta antes de la próxima caja (CAJA_CORTE_DIAS, igual que la web). Dar 1 a cada uno se comía el cupo chico con lo que
     # tiene stock para 25-45 días (caja de Ayelen: $138.406 contra $360.793). Sin ganancia medida (nunca vendió y sin
     # publicación con precio) no entra en la ronda 1: va al final, como antes.
+    # 27/10/2026 (él: "maximizar la máxima ganancia de $ posible siempre"): a lo que se corta antes de la próxima caja, LO QUE VENDE hasta
+    # que llegue (desde que entra ésta, CAJA_VIAJE_DIAS), mínimo 1; no 1 sola. Igual que la web.
     for i in orden:
-        if cands[i]['q']>0 and cands[i]['gan'] is not None and (cands[i]['enCero'] or (cands[i]['dias'] is not None and cands[i]['dias']<CAJA_CORTE_DIAS)): sumar(i,1)
+        c=cands[i]
+        if c['q']>0 and c['gan'] is not None and (c['enCero'] or (c['dias'] is not None and c['dias']<CAJA_CORTE_DIAS)):
+            dd=max(c['dias'] or 0,CAJA_VIAJE_DIAS); sumar(i,max(1,math.ceil((c.get('r') or 0)*(CAJA_CORTE_DIAS-dd)-1e-9)))
     for i in orden:
         if cands[i]['q']>0: sumar(i,cands[i]['q']-dado.get(i,0))
     return {i:int(dado.get(i,0)) for i in range(len(cands))}

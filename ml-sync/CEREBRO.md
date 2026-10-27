@@ -62,7 +62,7 @@ al código; lo que es pensar queda acá, y una regla dura ("nunca", "sólo si") 
 | 4b | **SIN LÍNEA DE TECHO NO SE BAJA** (21/10/2026, él: *"nunca puede bajar si no hay línea de techo y si no hay línea de techo tiene que buscar techo hasta que esté 95% o más seguro de que ése es el techo"*). Línea = 🔴 de las rayas o 🏔️ de techo95. Sin línea: 📈 buscar techo (subir). Afuera sólo sobra, sin reposición, liquidando, remate y la salida de una escasez. **Pasados 15 días de la última suba deja de frenar y decide la plata por día (F4)**. **`!sinlinea` es 🔐 SÓLO SUYA (22/10): escribirla no alcanza, hace falta su "autorizo" por Telegram (ver 🔐 abajo); lo que vendieron OTRAS variantes o la familia NO alcanza nunca** (22/10, él con los Protectores de talón: *"si no encontró techo, ¿por qué bajó?"*). Única salida mía sin él: corregir el precio de una publicación que NUNCA estuvo activa ni vendió, al activarla (`!activar` + "EXCEPCIÓN: …"; lo verifica la línea de tiempo) (2a, 21/10: si no, lo que vende poco quedaba trabado) | 🔒 F7 · lista 🔎 |
 | 4c | **ARRIBA DEL 💰 NO SE BAJA SIN 95%** (21/10/2026, él con el Pendrive 8gb: *"antes de bajar tenés que estar 95% seguro o más que ese precio genera menos ganancia que la línea de ganancia. Si estás seguro volver a bajar en escalera (…) si ves que genera más dinero entonces subir la línea de más ganancia a ese precio"*). Con 🔴 encontrado y el precio arriba del 💰: días seguidos con stock al precio de hoy contra lo que tenía que vender para igualar la plata por día del 💰 (Poisson). Con 95% → otro escalón (al 💰 o al medio); sin 95% → se queda, estrategia 💰 `punto` (*buscando el de más ganancia*). Si deja más, la raya 💰 sube sola. Afuera lo mismo que F5 | 🔒 F8 |
 | 5 | **Lo nuevo no se baja sin 🏔️ al 95%** (primera tanda en Full de menos de 30 d, o 🆕 lanzamiento). Ganar la caja NO es excepción. `!sintecho` es 🔐 sólo suya | 🔒 F1 |
-| 6 | **No llegar a pagar stock antiguo** (120 d lo chico, 60 lo grande/Tenders; apuntar a ~100) | 🧠 (la lista 💸 lo trae) |
+| 6 | **No llegar a pagar stock antiguo** (120 d lo chico, 60 lo grande/Tenders; apuntar a ~100). **15 días antes: ganar la caja hasta el 0% y, si no se vende, se pide el retiro** (27/10, él) | 🧠 (la lista 💸 lo trae) |
 | 7 | **Escasez: se sube** para que dure hasta que vuelva a haber. "Escasez" siempre = el precio sube | 🧠 + la lista 📈 |
 | 8 | **Sobra: se baja en escalera** — lo caro que no vende: a los 60 días sin vender, hasta el precio que GANA la caja (26/10, él) | 🔒 F2-F3 la escalera · 🧠 cuánto |
 | 8b | **🌸 Perfumes nunca abajo del 10%** en el peor caso (26/10, él): antes de liquidar más abajo se retira a la perfumería del local; cerca de pagar stock antiguo se le avisa para que lo retire | 🔒 F12 (salida sólo suya: 🔐 !bajocero) |
@@ -196,7 +196,7 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
    es algo que vende. La lista tiene que quedar vacía.
 6b2. **👯 Mismo producto y color en dos publicaciones = mismo precio y misma estrategia (26/10/2026, él con el Centímetro Blanco y las Cartas Poker).** Lista 👯 de `planilla`
    (mismo stock, activas, sin gemelas). Por cada grupo: ¿es EXACTAMENTE el mismo producto (título, catálogo, foto, variante)? Sí → las dos
-   al mismo precio y estrategia, la del escalón que se está midiendo (`decido` en cada una, mismo #tag). No (otra variante mal vinculada)
+   al mismo precio y estrategia, AL PRECIO MÁS CARO de las dos (27/10, él: *"poner al precio más caro de ambas y que a partir de ahí se cuenten como mismo producto"*) (`decido` en cada una, mismo #tag). No (otra variante mal vinculada)
    → `fijarvar`/`vincular` bien. Borrar una de las dos lo decide él (se le propone en `para_mati.md`). Tiene que quedar vacía.
 6c. **📦 Clásica con envío gratis (22/10/2026, pedido suyo):** lo que esté abajo de $33.000 con stock en Full también lleva su gemela
    Clásica con envío gratis al precio de misma plata neta (`gemelaenvio`, solo lee: la columna ✓ = peor caso ≥ 25%; los
@@ -500,6 +500,7 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
   freno), no sólo acá. Acá se marca 🔒.
 
 ## 22 · PENDIENTES VIVOS (se borran al cerrarse)
+- **03/11 · Centímetro Rosa en catálogo vs las Blancas fuera** (27/10, él eligió 4a: no al catálogo Surtido MLA46897799 por ahora): ventas por día con stock de MLA3559540968 (en catálogo) contra MLA1699834745 + MLA3112784736, a precio parecido. Si la Rosa vende claramente más por día, proponerle probar una Blanca en el Surtido.
 - **27/10:** `techo95` de los 5 lanzamientos (Halloween Man, Ferrari Rojo, Adyan Oud, microSD Pokémon, WD 480; su precio actual es el
   de arranque); baja sólo el que llegue al 95%.
 - **28/10:** `vistas` sobre las 12 que el 20/10 pasaron de descuento a precio liso al mismo precio (tachado contra liso).
