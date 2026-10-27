@@ -3105,7 +3105,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.35';
+const APP_VERSION='27.36';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3118,6 +3118,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.36',f:'27/10',h:'16:45',c:[{n:3,t:'📈 Techo = el precio al que NO se vende. En la línea de tiempo hay dos rayas: 🔴 "techo: no vende" (30 días sin vender ahí o más caro) y 🟠 "deja de convenir" (vende, pero deja menos plata por día que el 💰). Si vende una vez a un precio en prueba, la vuelta lo vuelve a subir'}]},
   {v:'27.35',f:'27/10',h:'16:15',c:[{n:2,t:'📈 Línea de tiempo: un solo techo. La raya roja dice "🔴 techo $X: deja menos plata por día que a $Y"; una prueba vieja que quedó más cara que ese techo se ve gris ("no vendió · ya está arriba del techo"), sin otro 100%. Y el "✓ sí vende" en el techo aclara que vende pero deja menos.'}]},
   {v:'27.34',f:'27/10',h:'15:35',c:[{n:2,t:'⚠️ El aviso de "Todavía no cerraste el mes" sale cuando faltan 7 días (en ámbar, con cuántos días faltan) y se pone en rojo los últimos 3. Si el mes pasado quedó sin cerrar, sale en rojo hasta que lo cierres.'}]},
   {v:'27.33',f:'27/10',h:'15:10',c:[{n:1,t:'🧾 Ventas: en el detalle de una venta con varios productos, los botones de abajo (línea, ficha, no se consigue más) bajan de renglón en vez de empujar la columna de la derecha afuera de la pantalla.'}]},
@@ -11967,7 +11968,7 @@ function lineaPintar(prodId){
         const b=Math.round(pl/10)*10;const g=(G2[b]=G2[b]||{p:b,dias:0,u:0,gan:0});g.dias++;g.u+=Math.max(0,(d.u||0)-(d.uR||0));g.gan+=_ganRaya(k)-_pdDed(d);});
       const L2=Object.values(G2).filter(g=>g.u>0).map(g=>({...g,r:g.u/g.dias,pd:g.gan/g.dias,gu:g.gan/g.u,aprox:true}));
       const b2=L2.length?L2.reduce((a,b)=>b.pd>a.pd?b:a):null;const t2=_t30&&(!b2||_t30.p>b2.p*1.02)?_t30:null;
-      return b2?{best:b2,L:L2,fu:_fueraR.size,techo:t2}:(t2?{techo:t2}:{});}
+      return b2?{best:b2,L:L2,fu:_fueraR.size,techo:t2,noVende:t2}:(t2?{techo:t2,noVende:t2}:{});}
     const best=med.reduce((a,b)=>b.pd>a.pd?b:a);
     const piso=med.filter(g=>g.u>=3).reduce((a,b)=>!a||b.p>a.p?b:a,null);
     const pois=(k,lam)=>{if(!(lam>0))return 1;let p=Math.exp(-lam),s=p;for(let i=1;i<=k;i++){p*=lam/i;s+=p;}return Math.min(1,s);};
@@ -11978,8 +11979,11 @@ function lineaPintar(prodId){
     // el precio más alto medido arriba del 💰 que todavía no es techo: cuánto lleva (misma cuenta que `rayasPrecioLinea`)
     let enPrueba=null;if(!techo&&best.u>=3&&best.gu>0){const g=L.filter(x=>x.p>best.p*1.02).sort((a,b)=>b.p-a.p)[0];
       if(g){const gu1=g.gu!=null?g.gu:best.gu+(g.p-best.p)*0.7;if(gu1>best.gu){const lam=best.rN*(best.gu/gu1)*(g.dF||g.dias);enPrueba={p:g.p,dias:g.dias,u:g.u,lam,seg:1-pois(g.u,lam),umb:umbralTechoW(g.dias)};}}}
-    if(_t30&&_t30.p>best.p*1.02&&(!techo||_t30.p<techo.p)){techo=_t30;enPrueba=null;}
-    return {best,piso,techo,enPrueba,L:L.filter(g=>g.u>0),fu:_fueraR.size};})());
+    // DOS RAYAS (27/10/2026, él: "el techo es saber que no se vende a ese precio"; eligió la a): 🔴 `noVende` = 30 días sin vender ahí o
+    // más caro · 🟠 `convenir` = vende, pero deja menos plata por día que el 💰 (Poisson). `techo` sigue siendo el más bajo de los dos.
+    const convenir=techo,noVende=_t30&&_t30.p>best.p*1.02?_t30:null;
+    if(noVende&&(!techo||noVende.p<techo.p)){techo=noVende;enPrueba=null;}
+    return {best,piso,techo,convenir,noVende,enPrueba,L:L.filter(g=>g.u>0),fu:_fueraR.size};})());
   // POR QUÉ EL 💰 ESTÁ AHÍ, A LA VISTA (24/10/2026, él con los Naipes: "el piso quiero que explique por qué está a esa altura… ¿tiene en
   // cuenta que vender mucho un producto más barato hace que tenga más trabajo/gastos?"). Sí: la plata por día es NETA (−$100 por unidad
   // de trabajo, −3% de lo cobrado por el tope de H, −2%/mes de la plata parada). Se muestran los precios medidos, de más a menos plata.
@@ -11987,7 +11991,7 @@ function lineaPintar(prodId){
     const top=R.L.slice().sort((a,b)=>b.pd-a.pd).slice(0,4);
     const ren=top.map(g=>`<div>${g.p===R.best.p?'💰 ':'· '}a <b>${fmt(g.p)}</b>: vendió ${(Math.round(g.r*10)/10).toString().replace('.',',')} por día × ${fmt(Math.round(g.gu||0))} cada una = <b>${fmt(Math.round(g.pd))} por día</b> <span style="color:var(--muted)">(${g.u} vendidas en ${g.dias} día${g.dias===1?'':'s'})</span></div>`).join('');
     return `<div style="margin-top:8px;font-size:.68rem;line-height:1.55;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:8px 10px"><div style="font-weight:700;margin-bottom:3px">💰 Por qué "más plata" está en ${fmt(R.best.p)}${R.best.aprox?' (provisorio: pocos días)':''}</div>Es el precio que más plata por día dejó, con lo que cuesta cada venta ya restado: la mercadería, los impuestos, <b>$${PD_TRABAJO_U} de trabajo por unidad</b>, el ${Math.round(PD_TOPE_PCT*100)}% del tope de H y la plata parada. Vender más barato vende más, pero cada una deja menos y da más trabajo. Mide los últimos ${RAYAS_DIAS} días${R.fu?` (sin ${R.fu} días de fecha especial en que vendió de más)`:''}.${ren}</div>`;})();
-  const _pcv=ps.concat(_techos.map(t=>Number(t.probado))).concat([_rayas.best,_rayas.piso,_rayas.techo].filter(Boolean).map(g=>g.p)).concat(_techos.map(t=>Number(t.volvio)).filter(v=>v>0));const [pcMin,pcMax]=_pcv.length?_esc(Math.min(..._pcv),Math.max(..._pcv)):[0,1];
+  const _pcv=ps.concat(_techos.map(t=>Number(t.probado))).concat([_rayas.best,_rayas.piso,_rayas.techo,_rayas.convenir,_rayas.noVende].filter(Boolean).map(g=>g.p)).concat(_techos.map(t=>Number(t.volvio)).filter(v=>v>0));const [pcMin,pcMax]=_pcv.length?_esc(Math.min(..._pcv),Math.max(..._pcv)):[0,1];
   // 📦 SACANDO STOCK CON LA ESTRATEGIA DE CADA DÍA (24/10/2026, él: "figura la última el 13/10. está mal"): desde que el robot sólo junta
   // datos nadie marcaba remate/escalera en la línea. Cada día con stock cuenta la estrategia que tenía (`estrategiaDe` al cierre del día):
   // sobra, liquidando, remate → 📦 (`remT`). La 🪜 escalera que viene de buscar techo NO cuenta (él, 24/10); desde el 24/10 cuenta todo día
@@ -12187,7 +12191,7 @@ function lineaPintar(prodId){
     // Y el último precio que SÍ vendía (al que se volvió), en verde: el techo útil está entre las dos rayas.
     const vv=Number(t.volvio);if(vv>0&&vv<t.probado){const y2=L.pr[0]+L.pr[1]-(pcMax>pcMin?(vv-pcMin)/(pcMax-pcMin):.5)*L.pr[1];
       svg+=`<g style="cursor:help"><title>✓ ${fmt(vv)}: el precio que sí vendía, al que se volvió después de la prueba.</title><line x1="${x0.toFixed(1)}" y1="${y2.toFixed(1)}" x2="${W}" y2="${y2.toFixed(1)}" stroke="var(--green)" stroke-width="1.2" stroke-dasharray="2,3" opacity=".85"/>`+
-        `<text ${_txAt(x0)} y="${(y2+11).toFixed(1)}" font-size="10" fill="var(--green)">✓ a ${fmt(vv)} sí vende${_rayas&&_rayas.techo&&_rayas.best&&vv>=_rayas.techo.p*0.98?', pero deja menos que a '+fmt(_rayas.best.p):''}</text></g>`;}});
+        `<text ${_txAt(x0)} y="${(y2+11).toFixed(1)}" font-size="10" fill="var(--green)">✓ a ${fmt(vv)} sí vende${_rayas&&_rayas.convenir&&_rayas.best&&vv>=_rayas.convenir.p*0.98?', pero deja menos que a '+fmt(_rayas.best.p):''}</text></g>`;}});
   {const _yP=v=>L.pr[0]+L.pr[1]-(pcMax>pcMin?(v-pcMin)/(pcMax-pcMin):.5)*L.pr[1];const _ray=(v,col,dash,lbl,tt,dy)=>{const y=_yP(v);
       svg+=`<g style="cursor:help"><title>${tt.replace(/[<>&]/g,'')}</title><line x1="0" y1="${y.toFixed(1)}" x2="${W}" y2="${y.toFixed(1)}" stroke="${col}" stroke-width="1.4" stroke-dasharray="${dash}" opacity=".9"/><text x="4" y="${Math.max(L.pr[0]+9,y+dy).toFixed(1)}" font-size="10" fill="${col}">${lbl}</text></g>`;};
     if(_rayas.sobra)_prNotas.push(`<span style="color:#fb923c">📦 sobra stock: no se busca techo, primero sale lo que sobra</span>`);
@@ -12195,9 +12199,11 @@ function lineaPintar(prodId){
       const _pHoy=(()=>{for(let i=ks.length-1;i>=0;i--){const d=_rayasDias[ks[i]]||dias[ks[i]];const v=d&&Number(d.pLista||d.p);if(v>0)return v;}return 0;})();
       if(_mlaRaya&&(R.best||R.techo))_prRayasDe=_mlaRaya;
       const _prueba=R.techo&&_pHoy>R.techo.p*1.02&&Object.keys(porMlaF).some(m=>{const e=estrategiaDe(m);return e&&(e.t==='techo'||e.t==='escasez');});
-      if(_prueba)_prNotas.push(`<span style="color:#fb923c">🔴 techo medido antes ${fmt(R.techo.p)} · hoy probando ${fmt(_pHoy)}</span>`);
-      if(R.techo&&R.techo.por30)_ray(R.techo.p,'#ef4444','6,3',`🔴 techo ${fmt(R.techo.p)} · ${R.techo.dias} días sin vender`,`🔴 Techo ${fmt(R.techo.p)}: a ese precio o más estuvo ${R.techo.dias} días a la venta con stock y no vendió ninguna. Con 30 días sin vender es techo sí o sí (regla suya del 24/10): se arranca la escalera.`,-3);
-      else if(R.techo)_ray(R.techo.p,'#ef4444','6,3',`🔴 techo ${fmt(R.techo.p)}: deja menos plata por día que a ${fmt(R.best.p)} · ${Math.round(R.techo.seg*100)}% seguro`,`🔴 Techo ${fmt(R.techo.p)}: a ese precio vendió ${R.techo.u} en ${R.techo.dias} días con stock; para dejar la misma plata por día que a ${fmt(R.best.p)} tenía que vender ~${R.techo.lam.toFixed(1)}. ${Math.round(R.techo.seg*100)}% seguro (con ${R.techo.dias} días alcanzaba ${Math.round((R.techo.umb||0.95)*100)}%).`,-3);
+      if(_prueba)_prNotas.push(`<span style="color:#fb923c">${R.techo===R.noVende?'🔴 techo (no vendía)':'🟠 dejaba de convenir'} medido antes ${fmt(R.techo.p)} · hoy probando ${fmt(_pHoy)}</span>`);
+      if(R.noVende)_ray(R.noVende.p,'#ef4444','6,3',`🔴 techo ${fmt(R.noVende.p)}: no vende · ${R.noVende.dias} días sin vender`,`🔴 Techo ${fmt(R.noVende.p)}: a ese precio o más estuvo ${R.noVende.dias} días a la venta con stock y no vendió ninguna. Eso es el techo: el precio al que no se vende (30 días, regla suya del 24/10). Se arranca la escalera.`,-3);
+      // 🟠 deja de convenir (27/10/2026): vende, pero menos de lo que hace falta para dejar la misma plata por día que el 💰. No es el techo
+      // (si vendió, no es techo): es donde subir más ya no conviene. Si queda arriba del 🔴, no se dibuja (el 🔴 ya manda).
+      if(R.convenir&&R.best&&!(R.noVende&&R.convenir.p>=R.noVende.p*0.98))_ray(R.convenir.p,'#f59e0b','4,3',`🟠 ${fmt(R.convenir.p)}: vende, pero deja menos plata por día que a ${fmt(R.best.p)} · ${Math.round(R.convenir.seg*100)}% seguro`,`🟠 Deja de convenir a ${fmt(R.convenir.p)}: a ese precio vendió ${R.convenir.u} en ${R.convenir.dias} días con stock; para dejar la misma plata por día que a ${fmt(R.best.p)} tenía que vender ~${R.convenir.lam.toFixed(1)}. ${Math.round(R.convenir.seg*100)}% seguro (con ${R.convenir.dias} días alcanzaba ${Math.round((R.convenir.umb||0.95)*100)}%). Vende, así que techo no es: es donde subir más ya no conviene.`,-3);
       // CUÁNTO LLEVA LA BÚSQUEDA DEL TECHO (24/10/2026, él: "que diga cuánto % lleva de decir si es techo o no, así veo cuánto le falta").
       // De las rayas (lo medido) o, en un lanzamiento, lo que anotó techo95 de noche (visitas × conversión, `cyc/techo95pct`).
       {const EP=R.enPrueba,T95=Object.keys(porMlaF).map(m=>(state.techo95pct||{})[m]).filter(x=>x&&!x.ok&&x.seg!=null).sort((a,b)=>b.ts-a.ts)[0];
@@ -12380,7 +12386,7 @@ function lineaPintar(prodId){
     if(I.ezTxt)t.push((I.esc?'🔥 Escasez: ':I.cub?'🚚 Cubierto: ':'Reposición: ')+String(I.ezTxt).replace(/<[^>]+>/g,''));
     if(I.cubTxt)t.push(String(I.cubTxt).replace(/<[^>]+>/g,''));return t.join('\n').replace(/"/g,'&quot;');}catch(_){return '';}})();
   const _lnHdr=(n,tit,leg,der)=>lnHdrHTML(L,H,n,tit,leg,der);
-  const _lnHdrs=_lnHdr('pr','💲 Precio',_lgS('var(--text)','color = estrategia')+(_rayas&&(_rayas.best||_rayas.techo)?_lgS('#eab308','💰 más plata')+_lgS('var(--red)','🔴 techo'):''),
+  const _lnHdrs=_lnHdr('pr','💲 Precio',_lgS('var(--text)','color = estrategia')+(_rayas&&(_rayas.best||_rayas.techo)?_lgS('#eab308','💰 más plata')+_lgS('var(--red)','🔴 techo: no vende')+_lgS('#f59e0b','🟠 deja de convenir'):''),
       `${pFin?'hoy <b>'+fmt(pFin)+'</b>':''}${_estHoy&&ESTRATEGIA_UI[_estHoy.t]?' '+_estChip(_estHoy):''}${_prNotas.length?' · <span style="color:var(--muted)">'+_prNotas.join(' · ')+'</span>':''}${_prRayasDe?` <span style="color:var(--muted);cursor:help" title="Hay más de una publicación activa a precios distintos (por ejemplo la Clásica y su gemela Premium): las rayas se miden con la de precio más bajo sola, como el robot (techo95). Es la ${_prRayasDe}.">ⓘ</span>`:''}`)
     +_lnHdr('vent','🛒 Ventas y visitas',_lgS('var(--green)','vendidas',1)+(uPT?_lgS('#f97316','Premium',1):'')+(uGT?_lgS('#38bdf8','envío gratis',1):'')+(uRT?_lgS('#facc15','remate',1):'')+(hayVis?_lgS('#60a5fa','visitas',1):''),`<b>${uT} u.</b> · ${vT} visitas`)
     +_lnHdr('gan','💵 Plata por día',_lgS('var(--green)','promedio del mes')+_lgS('rgba(34,197,94,.5)','días del mes que se vende más',1)+_lgS('rgba(239,68,68,.45)','días flojos',1)+_lgS('rgba(245,158,11,.6)','fecha especial',1),_gHoy!=null?`hoy <b>${fmt(Math.round(_gHoy))}</b> por día`:'')

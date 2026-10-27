@@ -5146,6 +5146,21 @@ const TECHO_RITMO_MIN_SEMANA = 1;   // 4a del 23/10/2026: menos de 1 venta por s
 // el orden es 1º techo al 95% → 2º 💰. Lo que vende 1+ por semana (60 días con stock, con gemelas y hermanas) no queda en 💰 #punto
 // sin un techo medido: el 🔴 de las rayas (`cyc/rayas`, de la noche) o un 🏔️ de techo95 de los últimos 60 días. Lo que vende menos de
 // 1 por semana sí queda en 💰 (4a). → null si pasa · texto si frena. Salida: !chico con "EXCEPCIÓN: …" (en decido).
+// ¿Vendió A ESTE PRECIO? (27/10/2026, él: "si se vende una vez a un precio que está buscando techo, ahí nomás tiene que volver a subir").
+// Ventas (de ésta, sus hermanas de stock y sus gemelas) desde el último cambio de precio mío de más de 2% (`cyc/claudecambios`), en los
+// últimos 30 días. {uds, desde} · null = no se pudo leer (no se adivina).
+async function vendioAEstePrecio(db, mla, links, prods) {
+  let cc = null; try { cc = (await db.get('cyc/claudecambios')) || {}; } catch { return null; }
+  const ahora = Date.now();
+  const desde = Math.max(ahora - 30 * 864e5, ...Object.values(cc).filter((c) => c && String(c.mla) === mla && Math.abs(Number(c.a) - Number(c.de)) > Number(c.de) * 0.02).map((c) => Number(c.ts) || 0));
+  const grupo = [mla, ...hermanasStockDe(links, prods, mla), ...Object.keys(links).filter((g) => (links[g] || {}).gemelaDe === mla)];
+  let uds = 0;
+  for (let t = desde, i = 0; i < 32 && t <= ahora + 864e5; t += 864e5, i++) {
+    let vd; try { vd = (await db.get('cyc/ventaprod/' + dayKeyFromISO(t))) || {}; } catch { return null; }
+    for (const v of Object.values(vd)) { if (!v || v.cancelada || !grupo.includes(v.mla)) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ts > desde) uds += Number(v.qty) || 1; }
+  }
+  return { uds, desde };
+}
 async function puntoSinTecho(db, mla, links, prods, cache = new Map()) {
   let est = null, ray = null;
   try { est = (await db.get('cyc/estrategia/' + mla)) || {}; ray = (await db.get('cyc/rayas/' + mla)) || {}; } catch { return 'no pude leer su estrategia o sus rayas: sin saber si tiene techo no la dejo en 💰'; }
@@ -5371,13 +5386,18 @@ async function detectarErrores(db, o = {}) {
   // algo que FALTÓ hacer: la regla del 21/10 dice que lo nuevo que vende sube +30% a buscar techo en la misma vuelta. Sale acá toda
   // Clásica activa con stock cuyo tag de hoy es 🆕 y que vendió (ella o una gemela/hermana del mismo stock) después del tag sin una
   // suba mía después de esa venta. La lista tiene que quedar vacía al terminar la vuelta (se sube con el comando que trae).
-  const lanza = [], lzC = { nuevo: 0, inact: 0, sinVenta: 0, subio: 0, congelada: 0 };
+  const lanza = [], lzC = { nuevo: 0, inact: 0, sinVenta: 0, subio: 0, congelada: 0, convenir: 0 };
   let nbDet = {}; try { nbDet = (await db.get('cyc/nobajar')) || {}; } catch { nbDet = {}; }
+  let t95Det = {}; try { t95Det = (await db.get('cyc/techo95pct')) || {}; } catch { t95Det = {}; }
   { const vdC = new Map(); const ventasDia = async (k) => { if (!vdC.has(k)) { let o = null; try { o = (await db.get('cyc/ventaprod/' + k)) || {}; } catch { o = null; } vdC.set(k, o); } return vdC.get(k); };
     for (const [m, h] of Object.entries(est)) {
       const e = links[m]; if (!e || e.gemelaDe || e.ignored || e.noVendemosMas) continue;
       let ult = '', tsU = 0; for (const k of Object.keys(h || {}).map(Number).filter((n) => n > 0).sort((x, y) => x - y)) { const x = h[k]; if (!x || !x.t) continue; ult = x.t === 'correccion' ? pasajeDe(ult) : x.t; tsU = k; }
-      if (ult !== 'nuevo' || !tsU) continue;
+      // 27/10/2026 (él: "si se vende una vez a un precio que está buscando techo, ahí nomás tiene que volver a subir… si vende una vez
+      // sabemos que no es techo"; eligió la a): vale para TODA prueba 📈 (#techo), no sólo 🆕. Se cuenta desde el último cambio de precio
+      // (la venta tiene que ser A ESTE precio) y se frena sólo cuando techo95 ya dice "deja de convenir" con su certeza (🟠).
+      if (!['nuevo', 'techo'].includes(ult) || !tsU) continue;
+      { const ultCambio = Object.values(cc).filter((c) => c && String(c.mla) === m && Math.abs(Number(c.a) - Number(c.de)) > Number(c.de) * 0.02).reduce((mx, c) => Math.max(mx, Number(c.ts) || 0), 0); if (ultCambio > tsU) tsU = ultCambio; }
       lzC.nuevo++; if (!/^active/.test(String(e.status || ''))) { lzC.inact++; continue; }   // activa = con stock en Full (sin stock ML la pausa)
       const grupo = [m, ...hermanasStockDe(links, prods, m), ...Object.keys(links).filter((g) => (links[g] || {}).gemelaDe === m)];
       let primera = 0, uds = 0, sinLeer = false;
@@ -5390,15 +5410,19 @@ async function detectarErrores(db, o = {}) {
       if (subio) { lzC.subio++; continue; }
       if (nbDet[m] && nbDet[m].congelado) { lzC.congelada++; continue; }   // 🧊 él pidió que el precio quede ahí (`nobajar …!congelar`)
       const P = Number((np[m] || {}).precio) || 0, obj = P > 0 ? Math.min(objTerm(P * 1.3) || TECHO_DURO, TECHO_DURO) : 0;
-      lanza.push({ mla: m, e, primera, uds, P, obj, tsU });
+      // 🟠 deja de convenir: techo95 (la completa) ya tiene la certeza que pide (95% que baja con los días) de que a este precio deja menos
+      // plata por día. Vendió, pero subir más ya no conviene: ahí termina la búsqueda.
+      { const t9 = t95Det[m]; if (t9 && P > 0 && Number(t9.p) > 0 && Math.abs(Number(t9.p) - P) <= P * 0.02 && Number(t9.seg) >= (Number(t9.umb) || 0.95)) { lzC.convenir++; continue; } }
+      if (P > 0 && P >= TECHO_DURO) { lzC.convenir++; continue; }
+      lanza.push({ mla: m, e, primera, uds, P, obj, tsU, ult });
     }
   }
-  bloque('🆕 LANZAMIENTOS QUE VENDIERON Y NO SUBIERON · subir +30% a buscar techo EN ESTA VUELTA', lanza, (x) => {
+  bloque('📈🆕 PRUEBAS DE TECHO QUE VENDIERON Y NO SUBIERON · vendió a este precio = no es techo: subir +30% EN ESTA VUELTA', lanza, (x) => {
     if (x.sinLeer) { console.log(`${x.mla} · ${x.e.cuenta || '?'} · ${String(x.e.title || '?').slice(0, 44)} · ❓ no pude leer sus ventas: mirarlo a mano`); return; }
-    console.log(`${x.mla} · ${x.e.cuenta || '?'} · ${String(x.e.title || '?').slice(0, 44)} · 🆕 desde ${fecha(x.tsU)} · vendió ${x.uds} u. (la primera ${fecha(x.primera)}) · hoy ${x.P ? $(x.P) : '¿?'}`);
-    if (x.obj > x.P) console.log(`   ▶️ decido:${x.mla}=${x.obj}#techo|Lanzamiento que vendió: +30% a buscar techo (regla del 21/10, el detector);go`);
+    console.log(`${x.mla} · ${x.e.cuenta || '?'} · ${String(x.e.title || '?').slice(0, 44)} · ${x.ult === 'nuevo' ? '🆕' : '📈'} a este precio desde ${fecha(x.tsU)} · vendió ${x.uds} u. (la primera ${fecha(x.primera)}) · hoy ${x.P ? $(x.P) : '¿?'}`);
+    if (x.obj > x.P) console.log(`   ▶️ decido:${x.mla}=${x.obj}!vendio#techo|Vendió a ${$(x.P)} buscando techo: no es techo, +30% (regla del 27/10, el detector);go`);
   });
-  console.log(`(miré ${lzC.nuevo} con 🆕 de hoy: ${lzC.inact} no activas · ${lzC.sinVenta} sin venta desde el tag · ${lzC.subio} ya subieron después de vender · ${lzC.congelada} 🧊 congeladas a pedido suyo · ${lanza.length} para subir)`);
+  console.log(`(miré ${lzC.nuevo} en 📈/🆕: ${lzC.inact} no activas · ${lzC.sinVenta} sin venta a este precio · ${lzC.subio} ya subieron después de vender · ${lzC.congelada} 🧊 congeladas a pedido suyo · ${lzC.convenir} 🟠 ya no conviene subir (techo95 o el tope) · ${lanza.length} para subir)`);
   const res = { n: N, cats, items, foto, fotoGem, fotoHer, hechos: [], noHechos: [], lanza };
   // ── 4 · deshacer (`:go`): sólo lo anotado con el formato nuevo; lo de antes se deshace a mano con su comando
   const aDeshacer = por('pendiente').filter((x) => x.fmt >= 2 && x.fuente !== 'el detector');
@@ -46804,7 +46828,7 @@ async function main() {
         // El precio EXACTO que escribí (etapa 1, 21/10/2026): redondear a $10 hacía $32.999 → $33.000 (cruzaba la barrera) y $4.999 → $5.000.
         forzar[mm[1].toUpperCase()] = { p: soloAct ? 0 : Math.round(pesosArg(mm[2])), motivo: mot.join('|').trim(), piso: banderas.includes('!piso'), cruza: banderas.includes('!cruza'),
           activar: soloAct || banderas.includes('!activar'), salto: banderas.includes('!salto'), sinstock: banderas.includes('!sinstock'), sintecho: banderas.includes('!sintecho'),
-          golpe: banderas.includes('!golpe'), sincerteza: banderas.includes('!sincerteza'), bajopiso: banderas.includes('!bajopiso'), nosobra: banderas.includes('!nosobra'), sinlinea: banderas.includes('!sinlinea'), nobajar: banderas.includes('!nobajar'), chico: banderas.includes('!chico'), lista: banderas.includes('!lista'), escalon: banderas.includes('!escalon'), tag: mm[4] ? mm[4].toLowerCase() : '' };
+          golpe: banderas.includes('!golpe'), sincerteza: banderas.includes('!sincerteza'), bajopiso: banderas.includes('!bajopiso'), nosobra: banderas.includes('!nosobra'), sinlinea: banderas.includes('!sinlinea'), nobajar: banderas.includes('!nobajar'), chico: banderas.includes('!chico'), lista: banderas.includes('!lista'), escalon: banderas.includes('!escalon'), vendio: banderas.includes('!vendio'), tag: mm[4] ? mm[4].toLowerCase() : '' };
         renglonD[mm[1].toUpperCase()] = x;
         // Sin 🎯 base (19/10/2026): un precio nuevo tiene que decir su estrategia (#tag o un motivo que la nombre).
         { const fz = forzar[mm[1].toUpperCase()]; if (!soloAct && !fz.tag && !tagDeMotivo(fz.motivo) && !fz.piso) { delete forzar[mm[1].toUpperCase()]; malos.push(x + ` (falta la estrategia: agregá #techo, #escasez, #sobra… · ${Object.keys(ESTRATEGIAS).filter((k) => !['sindecidir', 'agotado', 'techook'].includes(k)).join(', ')})`); continue; } }
@@ -47010,8 +47034,19 @@ async function main() {
           if (d.accion === 'sube' && !exc('chico') && !vuelveA && !['escasez', 'sinrepo'].includes(tg)) {
             if (globalThis._t95pct === undefined) { try { globalThis._t95pct = (await db.get('cyc/techo95pct')) || {}; } catch { globalThis._t95pct = null; } }
             const t9 = (globalThis._t95pct || {})[d.mla];
-            if (t9 && Number(t9.seg) >= 0.5 && Number(t9.p) > 0 && Date.now() - Number(t9.ts) < 4 * 864e5 && a >= Number(t9.p) * 0.98 && p0 >= Number(t9.p) * 0.98) {
-              d.accion = 'nada'; d.freno = true; d.motivo = `🚫 FRENO 50%: ya hay ${Math.round(Number(t9.seg) * 100)}% de certeza de que ${money(Number(t9.p))} es el techo (techo95 del ${new Date(Number(t9.ts)).toLocaleDateString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })}): para subir hace falta que sea más probable ganar que perder (menos de 50%). Se espera a que la prueba termine.`;
+            // !vendio (27/10/2026, eligió la a): si VENDIÓ a este precio, no es techo ("no vende") y se vuelve a subir. Sólo frena el 🟠
+            // "deja de convenir" con la certeza que pide techo95 (95% que baja con los días). La venta la verifico yo, no la bandera.
+            let umbS = 0.5;
+            if (fz.vendio && tg === 'techo') {
+              if (!globalThis._ritmoCacheD) globalThis._ritmoCacheD = { m: new Map(), prods: null };
+              if (!globalThis._ritmoCacheD.prods) { try { globalThis._ritmoCacheD.prods = (await db.get('cyc/products')) || {}; } catch { globalThis._ritmoCacheD.prods = {}; } }
+              const vv = await vendioAEstePrecio(db, d.mla, linksD, globalThis._ritmoCacheD.prods);
+              if (vv == null) { d.accion = 'nada'; d.freno = true; d.motivo = '🚫 FRENO !vendio: no pude leer sus ventas para confirmar que vendió a este precio. Se vuelve a mirar en la próxima vuelta.'; continue; }
+              if (!vv.uds) { d.accion = 'nada'; d.freno = true; d.motivo = `🚫 FRENO !vendio: no vendió desde el último cambio de precio (${new Date(vv.desde).toLocaleDateString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })}): la bandera dice que sí y el dato dice que no.`; continue; }
+              umbS = Number(t9 && t9.umb) || 0.95;
+            }
+            if (t9 && Number(t9.seg) >= umbS && Number(t9.p) > 0 && Date.now() - Number(t9.ts) < 4 * 864e5 && a >= Number(t9.p) * 0.98 && p0 >= Number(t9.p) * 0.98) {
+              d.accion = 'nada'; d.freno = true; d.motivo = `🚫 FRENO 50%: ya hay ${Math.round(Number(t9.seg) * 100)}% de certeza de que ${money(Number(t9.p))} es el techo (techo95 del ${new Date(Number(t9.ts)).toLocaleDateString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })}): ${umbS > 0.5 ? `vendió a este precio, pero ya deja de convenir (🟠, pide ${Math.round(umbS * 100)}%): termina la búsqueda acá.` : 'para subir hace falta que sea más probable ganar que perder (menos de 50%). Se espera a que la prueba termine.'}`;
             }
           }
           // 37a (24/10/2026, él): vale para TODA baja de lista (no sólo la etiquetada 🪜), salvo ↘️ #volviendo de una escasez al precio
@@ -47064,7 +47099,7 @@ async function main() {
       if (!GOp || DRY) { console.log('\nPRUEBA: no toqué nada. Para aplicar, el mismo comando con ;go al final.'); return; }
       let apP = null; try { apP = (await db.get('cyc/autoprecio')) || {}; } catch { apP = null; }
       // Lo que se guarda en mis cambios (22/10/2026): banderas, estrategia y autorizaciones suyas usadas (ver `aplicarCerebro`).
-      const BAN_DEC = ['piso', 'cruza', 'activar', 'salto', 'sinstock', 'sintecho', 'golpe', 'sincerteza', 'bajopiso', 'nosobra', 'sinlinea', 'nobajar', 'chico', 'lista', 'escalon'];
+      const BAN_DEC = ['piso', 'cruza', 'activar', 'salto', 'sinstock', 'sintecho', 'golpe', 'sincerteza', 'bajopiso', 'nosobra', 'sinlinea', 'nobajar', 'chico', 'lista', 'escalon', 'vendio'];
       for (const d of cz.dec) if (d.accion !== 'nada' && forzar[d.mla]) { const fz = forzar[d.mla]; d.reg = { ban: BAN_DEC.filter((k) => fz[k]), tag: fz.tag || tagDeMotivo(fz.motivo) || '', aut: (d.frenosOk && d.frenosOk.aut) || [] }; }
       const ac = await aplicarCerebro(db, cz, { tokens: tokP, aplica: true, autoprecio: apP });
       console.log(`\n✓ hechos: ${ac.hechos.length} · no se pudo: ${ac.fallidos.length} · sin anotar: ${ac.sinAnotar.length}`);

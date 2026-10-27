@@ -78,6 +78,11 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   por `informe`/`alertas` y no a Telegram; que las cajas que ML da por entradas las marque Claude y no queden contadas dos veces.
 
 ## 1 · PRECIOS (lunes)
+### 📈 Si vende, no es techo: se vuelve a subir · dos rayas 🔴/🟠 (27/10/2026, v27.36, él: *"si se vende una vez a un precio que está buscando techo, ahí nomás tiene que volver a subir… el techo es saber que no se vende a ese precio"*; eligió la a)
+- **Qué es:** una prueba 📈 (o 🆕) que vendió al precio de hoy sube otra vez +30% en la misma vuelta. Frena sólo en 🔴 "no vende" (30 días sin vender ahí o más caro) o en 🟠 "deja de convenir" (techo95 con su certeza: 95% que baja con los días) o en el techo duro.
+- **Dónde vive:** `errores` (lista 📈🆕 PRUEBAS DE TECHO QUE VENDIERON Y NO SUBIERON, antes sólo 🆕; cuenta desde el último cambio de precio de más de 2%) · `decido` bandera `!vendio`: verifica con `vendioAEstePrecio` (ventas de ella, hermanas y gemelas desde el último cambio) y el FRENO 50% pasa a pedir la certeza de techo95 (🟠) en vez de 50% · web `_rayas.noVende` / `_rayas.convenir` (dos rayas; `techo` sigue siendo el más bajo de los dos).
+- **Qué chequear:** que la lista quede vacía al final de cada vuelta; que `!vendio` sin venta real se niegue; que un producto con 🟠 a 95% no suba más; que la web muestre las dos rayas sin encimarse (la 🟠 no se dibuja si queda arriba de la 🔴).
+
 ### 📈 Un solo techo en la línea de tiempo (27/10/2026, v27.35, él con el Enchufe 2 patas: "hay dos techos al 100% de seguridad, no tienen sentido")
 - **Qué es:** el 🔴 de las rayas ($3.140: deja menos plata por día que el 💰 $2.990, 100%) y la 🚧 de una prueba vieja más cara ($3.490 no vendió, 100%) salían los dos como "techo al 100%". Ahora el 🔴 dice "deja menos plata por día que a $Y"; la 🚧 que queda arriba del 🔴 va gris "no vendió · ya está arriba del techo" sin %; el ✓ verde en el precio del techo dice "sí vende, pero deja menos que a $Y".
 - **Dónde vive:** `_techos.forEach` (`_arribaT`) y el `_ray` del 🔴 en la línea de tiempo (index.html).
