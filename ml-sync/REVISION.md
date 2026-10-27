@@ -1978,6 +1978,7 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
     decisión de compra, no código. 11 (dinero que rinde en MP) lo mira él en la app.
 
 ## 7 · DISEÑO (domingo)
+- **27/10/2026 · v27.24 · 🧭 botón Estrategias en Arqueo → Productos** (él: *"al lado de buscar productos que haya un botón que muestre las estrategias con los números de publicaciones en esa estrategia, al clickearlo que muestre esos"*). `prodEstrToggle`/`prodEstrSet`/`_prodEstrDatos`/`_prodEstrBar`: cuenta las publicaciones vinculadas no cerradas ni ignoradas, sin gemelas, con `estrategiaDe` de hoy; tocar una filtra las fichas y lista esas publicaciones (cuenta, título, precio, desde cuándo). Se recuerda en el aparato (`cycProdEstr`). **Chequear:** que la suma de los números dé el total que dice; que los números coincidan con los chips de cada publicación; a 360 px el botón no se corre al cambiar de texto.
 - **27/10/2026 · v27.22 · 🧾 ventas brutas en cada cuadrito del calendario** (él: *"agregar ventas brutas… y en los meses también… o sea en los días"*). Cada mes del año y cada día del mes muestran, debajo de la ganancia, lo que pagaron los compradores en corto (`_brTxt`: 1,2M · 850k; `_brCel`, clase `hcal-br`). Mismo `bruto` de `_homeDiaTot` que el renglón 🧾 de arriba. **Chequear:** que la suma de los días dé el 🧾 del mes; que a 360 px no se corte ningún cuadrito.
 
 ### 🏠 Botones de cuenta de Mi oficina con unidades y 💵 (27/10/2026, v27.19, él: *"ponelos más grande para que entre las unidades a mandar y lo esperado de ganancia al vender los productos"*)

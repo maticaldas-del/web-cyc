@@ -1393,7 +1393,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
         <button class="btn" style="background:rgba(34,197,94,.12);color:var(--green);border:1px solid rgba(34,197,94,.3)" onclick="descargarBackup()" title="Descarga una copia de seguridad de toda la base (JSON)">💾 Descargar backup</button>
       </div>
     </div>
-    <input class="search-box" id="prod-search" type="search" placeholder="Buscar producto..." oninput="renderProds()">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px"><input class="search-box" id="prod-search" type="search" placeholder="Buscar producto..." oninput="renderProds()" style="flex:1 1 220px;margin:0"><button class="btn" id="prod-estr-btn" onclick="prodEstrToggle()" style="white-space:nowrap;background:var(--surface);color:var(--text);border:1px solid var(--border)" title="Las estrategias de precio con cuántas publicaciones tiene cada una. Tocá una para ver esas.">🧭 Estrategias</button></div>
     <div id="prod-list"></div>
     <!-- INVENTARIO, adentro de Productos (21/10/2026, pedido suyo): abajo de las fichas y cerrado, para que no las tape. -->
     <details id="prod-inventario" style="margin-top:18px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px" ontoggle="if(this.open)renderInv()">
@@ -3119,6 +3119,7 @@ const LISTA_NOMBRE_VER=1;
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
   {v:'27.24',f:'27/10',h:'04:50',c:[{n:2,t:'🔍 Revisión de Plata: la deuda con Paulvic es la factura (no el costo con flete) · la de una lista que llegó incompleta, sólo lo que llegó · ⚖️ tope de H sin contar dos veces una caja que ya entró a Full · la ventana de 365 días del monotributo cuenta 365 días de verdad · montos en dólares con US$ en el inventario y el Arqueo · Comparar por año toma el último cierre (no la suma) · la lista de Gastos no tacha dos renglones con el Sancor'}]},
+  {v:'27.24',f:'27/10',h:'13:20',c:[{n:2,t:'🧭 Arqueo → Productos: al lado del buscador, el botón Estrategias muestra cada estrategia con cuántas publicaciones tiene. Tocás una y ves esas publicaciones (cuenta, precio y desde cuándo) y las fichas quedan filtradas.'}]},
   {v:'27.23',f:'27/10',h:'01:45',c:[{n:3,t:'💲 Cada venta usa el dólar del día en que se vendió (antes el mes en curso se recalculaba entero con el dólar de hoy, y un día pasado cambiaba de color sin que pasara nada). Un día ya pasado sólo cambia si se cancela o devuelve una venta. Los meses ya cerrados y los que tienen dólar cargado a mano no se tocan.'}]},
   {v:'27.22',f:'27/10',h:'01:05',c:[{n:2,t:'📅 Calendario de Inicio: cada mes del año y cada día del mes muestran también 🧾 las ventas brutas (lo que pagaron los compradores), en corto (1,2M · 850k), debajo de la ganancia.'}]},
   {v:'27.21',f:'27/10',h:'00:50',c:[{n:2,t:'⚖️ Tope de H: la barra de cada cuenta tiene tres partes: llena = lo ya facturado, clarita = lo que va a facturar en teoría con lo que ya vende, rayada = lo nuevo que todavía no vendió (Full, viajando o en la caja). Debajo, cada parte con su número.'}]},
@@ -5246,6 +5247,50 @@ let prodSoloBajoMeta=false;
 // Sólo filtra lo que se ve; el origen sale de la ficha (sin `origen` = Bs As, como en Pedidos y Métricas).
 let prodOrigenVer=(()=>{try{return localStorage.getItem('cycProdOrigen')||'todos';}catch(e){return 'todos';}})();
 function prodOrigenSet(v){prodOrigenVer=v;try{localStorage.setItem('cycProdOrigen',v);}catch(e){}renderProds();}
+// 🧭 LAS ESTRATEGIAS EN ARQUEO → PRODUCTOS (27/10/2026, él: "al lado de buscar productos que haya un botón que muestre las estrategias
+// con los números de publicaciones en esa estrategia, al clickearlo que muestre esos"). Cuenta las publicaciones vinculadas que no están
+// cerradas ni ignoradas, sin las gemelas (siguen a su Clásica y la contarían dos veces), con la estrategia de HOY (`estrategiaDe`, la misma
+// del chip). Tocar una estrategia filtra las fichas y lista esas publicaciones arriba. Se recuerda en este aparato.
+let prodEstrVer=(()=>{try{return localStorage.getItem('cycProdEstr')||'';}catch(e){return '';}})();
+let prodEstrAbierto=false;
+function prodEstrToggle(){prodEstrAbierto=!prodEstrAbierto;renderProds();}
+function prodEstrSet(t){prodEstrVer=(prodEstrVer===t?'':t);try{localStorage.setItem('cycProdEstr',prodEstrVer);}catch(e){}renderProds();}
+function _prodEstrDatos(){
+  const por={};let n=0;
+  for(const [m,e] of Object.entries(state.mllinks||{})){
+    if(!e||!e.prodId||e.ignored||e.status==='closed'||!/^MLA/i.test(m))continue;
+    if(e.gemelaDe&&String(e.gemelaDe)!==m)continue;
+    let x=null;try{x=estrategiaDe(m);}catch(er){x=null;}
+    const t=(x&&ESTRATEGIA_UI[x.t])?x.t:'sindecidir';
+    (por[t]=por[t]||[]).push({m,e,x});n++;
+  }
+  return {por,n};
+}
+function _prodEstrBar(D){
+  const btn=document.getElementById('prod-estr-btn');
+  const u=prodEstrVer&&ESTRATEGIA_UI[prodEstrVer];
+  if(btn){btn.innerHTML=u?`${u[0]} ${u[1]} <span style="opacity:.7">${(D.por[prodEstrVer]||[]).length}</span> ✕`:'🧭 Estrategias';
+    btn.style.background=u?'var(--green)':'var(--surface)';btn.style.color=u?'#000':'var(--text)';
+    btn.onclick=u&&!prodEstrAbierto?()=>prodEstrSet(prodEstrVer):prodEstrToggle;}
+  if(!prodEstrAbierto&&!u)return '';
+  let h='';
+  if(prodEstrAbierto){
+    const orden=Object.keys(ESTRATEGIA_UI).filter(t=>(D.por[t]||[]).length);
+    h+=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">${orden.map(t=>{const x=ESTRATEGIA_UI[t],on=t===prodEstrVer;
+      return `<button class="btn" onclick="prodEstrSet('${t}')" title="${String(x[3]||'').replace(/"/g,'&quot;')}" style="background:${on?'var(--green)':'var(--surface)'};color:${on?'#000':'var(--text)'};border:1px solid ${on?'var(--green)':x[2]}">${x[0]} ${x[1]} <span style="opacity:.7">${D.por[t].length}</span></button>`;}).join('')}
+      <span style="font-size:.62rem;color:var(--muted);align-self:center">${D.n} publicaciones (sin contar las gemelas, que siguen a su Clásica)</span></div>`;
+  }
+  if(u){
+    const L=(D.por[prodEstrVer]||[]).slice().sort((a,b)=>String(a.e.cuenta||'').localeCompare(String(b.e.cuenta||''))||String(a.e.title||'').localeCompare(String(b.e.title||'')));
+    const pr=x=>{const np=(state.netopub||{})[x.m];const v=Number(np&&np.precio)||Number(x.e.price)||0;return v?fmt(Math.round(v)):'';};
+    const dd=x=>x.x&&x.x.ts?' · desde '+new Date(x.x.ts).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}):'';
+    h+=`<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 10px;margin-bottom:10px">
+      <div style="font-size:.74rem;font-weight:700;margin-bottom:4px">${u[0]} ${u[1]} · ${L.length} publicaci${L.length===1?'ón':'ones'} <button class="btn" onclick="prodEstrSet('${prodEstrVer}')" style="float:right;padding:1px 8px;font-size:.62rem;background:transparent;border:1px solid var(--border2);color:var(--muted)">✕ sacar filtro</button></div>
+      ${L.map(x=>`<div style="font-size:.66rem;display:flex;gap:8px;justify-content:space-between;border-top:1px solid var(--border);padding:3px 0"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(x.e.cuenta||'')} · ${escHtml(String(x.e.title||x.m).slice(0,70))}${x.e.status==='paused'?' <span style="color:var(--amber)">⏸️</span>':''}</span><span style="white-space:nowrap;color:var(--muted);font-family:'DM Mono',monospace">${pr(x)}${dd(x)}</span></div>`).join('')}
+    </div>`;
+  }
+  return h;
+}
 function _prodOrigenBar(){
   const ps=state.products||[],py=ps.filter(p=>p.origen==='py').length,ba=ps.length-py;
   const b=(v,t,n)=>`<button class="btn" onclick="prodOrigenSet('${v}')" style="background:${prodOrigenVer===v?'var(--green)':'var(--surface)'};color:${prodOrigenVer===v?'#000':'var(--text)'};border:1px solid var(--border)">${t} <span style="opacity:.7">${n}</span></button>`;
@@ -5838,7 +5883,9 @@ function renderProds(){
   const banner=_prodIncompletosBanner();
   if(prodSoloIncompletos){const incSet=new Set((state.products||[]).filter(p=>_prodIncompleto(p)).map(p=>p.id));prods=prods.filter(p=>incSet.has(p.id));}
   if(prodOrigenVer==='py')prods=prods.filter(p=>p.origen==='py');else if(prodOrigenVer==='bsas')prods=prods.filter(p=>p.origen!=='py');
-  const mBanner=_prodOrigenBar()+_prodMargenBanner();
+  const _ED=_prodEstrDatos();
+  if(prodEstrVer&&_ED.por[prodEstrVer]){const ids=new Set(_ED.por[prodEstrVer].map(x=>x.e.prodId));prods=prods.filter(p=>ids.has(p.id));}
+  const mBanner=_prodOrigenBar()+_prodEstrBar(_ED)+_prodMargenBanner();
   if(prodSoloBajoMeta){const _M=metaMargenML();prods=prods.filter(p=>{const r=margenMLDe(p);return r.margen!=null&&r.margen<_M;});}
   if(!prods.length){el.innerHTML=mBanner+banner+'<div class="empty-msg">'+(prodSoloBajoMeta?'✓ No hay ningún producto bajo la meta.':(prodSoloIncompletos?'No hay productos incompletos ✓':((state.products||[]).length?'No se encontraron productos.':'No hay productos.')))+'</div>';return;}
   const tc=curTC();
