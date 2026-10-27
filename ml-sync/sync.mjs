@@ -51521,8 +51521,10 @@ async function main() {
         if (c.pagos && c.pagos.envio > 0) console.log(`     correo ${money(Math.round(c.pagos.envio))}${c.kgCorreo ? ` · ${c.kgCorreo} kg` : ''}`);
         if (c.nota) console.log(`     ${c.nota}`);
         if (recPct == null || faltaC.length) continue;
-        const fijoUSD = ((p.envio || 0) + (p.retira || 0) + (p.otros || 0) + (p.adelanto || 0)) / tc;
-        const varPct = ((p.mercaderia || 0) + (p.cambista || 0)) / tc / usd - 1;
+        // 27/10/2026 (él: "el que retira es un 10% del costo de los productos. lo único fijo es el correo"): el que retira ESCALA con lo
+        // comprado (medido: 10,1% el 21/09, 10,6% el 26/10), va con los dólares; lo fijo es el correo (y otros/adelanto, que son ocasionales).
+        const fijoUSD = ((p.envio || 0) + (p.otros || 0) + (p.adelanto || 0)) / tc;
+        const varPct = ((p.mercaderia || 0) + (p.cambista || 0) + (p.retira || 0)) / tc / usd - 1;
         sumU += usd; sumFijoU += fijoUSD; sumVar += varPct * usd; n++;
       }
       console.log(`\n───── EL RECARGO MEDIDO ─────`);
@@ -51541,8 +51543,8 @@ async function main() {
           const usd = parseFloat(c.usdCrudo) || 0;
           if (!(tc > 0 && usd > 0) || !((p.mercaderia || 0) > 0)) continue;
           sumU += usd;
-          sumFijoU += ((p.envio || 0) + (p.retira || 0) + (p.otros || 0) + (p.adelanto || 0)) / tc;
-          sumVar += (((p.mercaderia || 0) + (p.cambista || 0)) / tc / usd - 1) * usd;
+          sumFijoU += ((p.envio || 0) + (p.otros || 0) + (p.adelanto || 0)) / tc;
+          sumVar += (((p.mercaderia || 0) + (p.cambista || 0) + (p.retira || 0)) / tc / usd - 1) * usd;
           n++;
         }
         if (!n) {
@@ -51553,8 +51555,8 @@ async function main() {
       }
       const varProm = sumVar / sumU, fijoProm = sumFijoU / n;
       console.log(`Sobre ${n} compra(s)${hayCompletas ? ' completa(s)' : ' (con el correo pendiente)'}, por US$ ${sumU.toFixed(2)} crudos:`);
-      console.log(`  · los DÓLARES cuestan ${(varProm * 100).toFixed(1)}% de más (eso escala con el tamaño del pedido)`);
-      console.log(`  · y hay US$ ${fijoProm.toFixed(2)} FIJOS por pedido (flete y despacho), que NO escalan`);
+      console.log(`  · los DÓLARES y el que retira (~10% de lo comprado) cuestan ${(varProm * 100).toFixed(1)}% de más: eso escala con el tamaño del pedido`);
+      console.log(`  · y hay US$ ${fijoProm.toFixed(2)} FIJOS por pedido (el correo), que NO escalan`);
       console.log(`\nO sea que el costo puesto en tu oficina es:`);
       console.log(`   mercadería × ${(1 + varProm).toFixed(3)}  +  US$ ${fijoProm.toFixed(2)} repartidos entre lo que pidas`);
       for (const tam of [300, 500, 1000, 2000]) {
@@ -51602,7 +51604,7 @@ async function main() {
           const tc = parseFloat(c.tcPedido) || parseFloat(c.tcPanel) || tcPanel || 0;
           if (tc > 0) tcRef = tc;
           correoTot += (p.envio || 0);                       // por PESO
-          peajeTot += (p.retira || 0) + (p.otros || 0) + (p.adelanto || 0);      // fijo por pedido
+          peajeTot += (p.otros || 0) + (p.adelanto || 0);      // fijo por pedido (el que retira ya no: es ~10% de lo comprado, va en el % que escala)
           for (const it of c.items) {
             const u = parseInt(it.u) || 0; if (!(u > 0)) continue;
             const k = String(it.cod || it.nom || '?').trim();
@@ -51622,9 +51624,9 @@ async function main() {
         const porKg = (pesoCompleto && correoTot > 0) ? correoTot / kgTot : null;
         console.log(`${Object.keys(prod).length} producto(s) distintos · ${uTot} unidades en ${conDet.length} compra(s)`);
         console.log(`\n  Los gastos del pedido NO se reparten todos igual, y por eso van separados:`);
-        console.log(`   · peaje FIJO del pedido (el que retira y despacha): ${money(Math.round(peajeTot))} — se paga igual traigas lo que traigas`);
+        console.log(`   · el que retira y despacha: ~10% de lo comprado, va adentro del % que escala (no es fijo, 27/10) · otros/adelanto: ${money(Math.round(peajeTot))}`);
         console.log(`   · correo: ${money(Math.round(correoTot))} — se cobra por PESO${incompl ? ' ⚠️ falta cargarlo en alguna compra, así que está CORTO' : ''}`);
-        console.log(`   · comprar los dólares: ${(varProm * 100).toFixed(1)}% — escala con el valor`);
+        console.log(`   · comprar los dólares + el que retira: ${(varProm * 100).toFixed(1)}% — escala con el valor`);
         if (porKg) console.log(`   · ${kgTot.toFixed(2)} kg medidos → ${money(Math.round(porKg))} el kilo`);
         else console.log(`   · ⚠️ falta el peso de ${sinPeso} de ${conPeso + sinPeso} producto(s): el correo NO se puede repartir y queda afuera de la tabla`);
         console.log(`   · el peaje repartido entre las ${uTot} u. da ${money(Math.round(uTot > 0 ? peajeTot / uTot : 0))} por unidad, y sirve para UNA sola cosa:`);

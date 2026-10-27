@@ -78,6 +78,11 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   por `informe`/`alertas` y no a Telegram; que las cajas que ML da por entradas las marque Claude y no queden contadas dos veces.
 
 ## 1 · PRECIOS (lunes)
+### 🇵🇾 `compray`: el que retira escala con lo comprado (27/10/2026, él: *"el que retira es un 10% del costo de los productos. lo único fijo es el correo"*)
+- **Qué es:** el recargo medido separaba "fijo por pedido" (correo + el que retira) de lo que escala (los dólares). El que retira cobra ~10% de lo comprado (10,1% el 21/09, 10,6% el 26/10): ahora va con lo que escala; fijo queda el correo (y otros/adelanto).
+- **Dónde vive:** `compray` sin fecha (EL RECARGO MEDIDO y la tabla por producto). El recargo TOTAL de cada pedido no cambia.
+- **Qué chequear:** que la tabla "pedido de US$ 300/500/1.000/2.000" ya no muestre una baja grande al agrandar el pedido.
+
 ### 🛒 Precio del máximo de compra por color y sin sobra/liquidando (27/10/2026, eligió 1a; él con las Sábanas Rojo: *"ese color se vendió a ese precio, no todos"*)
 - **Qué es:** el precio con el que se calcula el máximo de compra = la última venta de ESE color (sin escasez, sin reposición, sobra, liquidando ni remate, mirando la estrategia como el ritmo normal), sin pasar el precio de hoy de SU publicación. El del producto (para los colores que nunca vendieron) = el más bajo de los colores que vendieron.
 - **Dónde vive:** `pedidostodo` (`ultV(pid, va)` con `tagNor`/`NOR_ABN`; renglón de color ` · ultv $X · hoy $Y`, `cyc/netopub`) · `decide_pedidos.py` (`ventas_color` → `ped:<id>#<color>=venta|…`) · la web ya leía `pvVars` por color (`maxCompraDe`).

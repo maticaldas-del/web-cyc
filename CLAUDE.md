@@ -90,8 +90,7 @@
 - **Cobro del mes** (17/10): se cobra lo que dice "💸 cuánto cobrar" del mes cerrado (ganancia real de CYC ÷ 3, cada socio; ×2 =
   retiro). **Reemplaza los $1.800.000 fijos.** El 1º del mes cargo el retiro con ese número (`cobromes:<mes cerrado>`). La tarjeta
   del mes en curso proyecta a fin de mes al ritmo del mes. El interés del capital en dólares ya no se paga desde el 19/09 (ver HISTORIA).
-- **LA ESTRATEGIA PARA GANAR MÁS (22/10/2026, eligió 1a 2a 4a 5a 6a 7a 8b; la 3 quedó para después).** El tope de H no deja
-  facturar más (~$800.000/día, ya estamos ahí): lo que sube la ganancia es **cuánto deja cada $100 facturados** (oct: $19, meta $22;
+- **LA ESTRATEGIA PARA GANAR MÁS (22/10/2026, eligió 1a 2a 4a 5a 6a 7a 8b; la 3 quedó para después).** **El límite es REPONER, no el tope de H** (27/10, él: *"si vendemos mucho, no llegamos a reponer ni por plata ni por lugar en la camioneta ni porque el mayorista se queda sin stock, por eso es mejor defender la mercadería lo máximo… hay muchos productos que se le pueden ganar muchísimo y todavía no compramos… una vez encontrado el techo ahí los precios se bajan para quedar en el precio que más ganancias da"*; `topeh` 27/10: $54,6M de lugar al 31/12): lo que sube la ganancia es **cuánto deja cada $100 facturados** (oct: $19, meta $22;
   meta $1.200.000 c/u = ~37,3% de margen promedio). 1a **comprar algo nuevo pide 35%** (`CAND_VARA_COMPRA`, web y robot; Paraguay y
   Listas); ~~entrada con 30%~~ y ~~reponer en 25%~~: **desde el 24/10 TODO pide 35%** (comprar, reponer, Paulvic incluido, listas y el local; él: *"no tenemos suficiente plata para todo, enfoquémonos en 35 o más"*); lo de 25-34% queda guardado y se sigue midiendo ·
   2a lo que queda abajo de 25% después de buscarle techo **no se repone** y le propongo un reemplazo · lo de **25-35% con el techo ya encontrado se sigue reponiendo** y se reemplaza de a poco sólo cuando aparece algo nuevo de 35%+ que ocupe su lugar (22/10, eligió la a) · 4a tarjeta 🧮 Mezcla en
@@ -99,7 +98,7 @@
   OK** · 7a lo nuevo va a la cuenta con más lugar contra H · 8b **por ahora las 4 cuentas en H, sin 5ª cuenta ni K**. Detalle en
   `ml-sync/CEREBRO.md` (💹). La 3 (ordenar compras y pedidos por ganancia por peso facturado): **no se toca por el momento** (él, 22/10); no volver a proponerla hasta que la saque él.
 - **🎯 Objetivo: bajar hasta que desaparezcan el rojo y el naranja de 🧮 La Mezcla** (27/10, él: *"un objetivo debe ser bajar/desaparecer los naranjas/rojos"*): rojo = ventas abajo de 25%, naranja = 25-35% (de lo facturado). Cada decisión de precio, pedido, caja y compra se pesa contra esto: lo que vende abajo del 35% sube, se reemplaza o no se repone (sin romper sobra/stock antiguo). Se mira por semana en Métricas.
-- **La plata ya no es el límite: el proveedor sí** (24/08). Liberar caja vale menos que el almacenamiento y el descarte.
+- **El límite son los PESOS, el lugar en la Kangoo y el stock del mayorista** (27/10, él: *"nos quedamos sin stock, no porque no queremos comprar, sino porque no hay, no llegamos a tener los pesos suficientes, hay mercadería nueva mucho más atractiva y no tenemos pesos para todo"*; reemplaza el "la plata ya no es el límite" del 24/08). Liberar caja vale menos que el almacenamiento y el descarte.
 - OSDE y el colegio son PERSONALES (no cargar). **Sancor = la obra social privada de Ayelen** (un solo renglón, monto real de la factura).
 
 ## 3 · REGLAS QUE NO SE ROMPEN
@@ -356,7 +355,7 @@
   y ~~🟣 Elegancia~~ **apagada el 26/10** (él: *"eliminá elegancia. nunca se usa y genera problemas"*): sin solapa en la web y el robot no
   mide su catálogo (`PY_PROVS_VER`, `PY_ELEGANCIA_OFF`); sus datos (`EL_<cód>`, `pyel<fecha>`) quedan guardados. No volver a proponerla.
 - **Recargo** = el MEDIDO de los pedidos (`paramcompra`; 22,7% al 17/10), respaldo 20%. El panel lo suma; el chat carga el precio CRUDO.
-  Pedido tiene un costo fijo (retira ~$74.000 + transferencia + correo por kilo): conviene llenarlo. **Adelanto de plata** es ocasional
+  **El que retira cobra ~10% de lo comprado (no es fijo); lo único fijo es el correo (~$20.000-28.000)** (27/10, él): llenar el pedido ahorra poco (~1-2 puntos). **Adelanto de plata** es ocasional
   (`compray:<fecha>|adelanto=<pesos>|go`, renglón aparte del cambista).
 - **El precio de Paraguay NO pisa el costo. Nunca** (17/09): `costUSD` = lo que PAGÓ; `nisseiUSD` = lo que saldría reponer. Al cambiar
   un costo, el viejo se congela por mes (`precios_hist_prod`).
