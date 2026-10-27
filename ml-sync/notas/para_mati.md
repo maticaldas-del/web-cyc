@@ -80,3 +80,7 @@ De 195 publicaciones en 💰 sólo 17 tienen el 🔴 al 95%. 28 nunca se probaro
 - 3b Separador x2 `MLA1474954957`: **lo mete él al catálogo desde ML** (recordárselo a las 12:30 hasta que esté).
 - 4 Hot XEY9: **no** → regla nueva: nunca abajo del 35% si la unidad más vieja lleva menos de 90 días; a los 90 días se abre hasta el 0% (F13).
 - 5a línea de Ganancia queda ventas − mercadería. 6a estrategias (con "bajando por sobra" = 📦 sobra de stock, no 🪜). 7a costo de la caja por unidad en la plata por día.
+
+### Para decidir (27/10, después de las respuestas)
+1. **Regla del 35% contra la de los Victoria's Secret del 26/10** ("a los 60 días sin vender, bajar hasta ganar la caja"): el Pure Seduction `MLA1771209909` está en descuento a $59.990 (20%) y su unidad más vieja lleva ~32 días en Full (fecha aproximada). (a) sugerida: manda la regla nueva: hasta los 90 días nada abajo del 35%, el descuento se saca · (b) lo que lleva 60 días sin vender puede bajar hasta ganar la caja aunque no llegue a 90.
+2. **7a ya estaba:** la caja ya se cuenta en "más plata por día" (el "Envío+embalaje" de cada ficha está dentro del costo; me equivoqué al decir que no). Lo que no se cuenta es cuando la caja va medio vacía (Ayelen: la ficha pone $35-60 por unidad y de verdad cuesta ~$266). (a) sugerida: sumar esa diferencia por cuenta sólo en "más plata por día" · (b) dejarlo así.
