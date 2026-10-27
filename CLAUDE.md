@@ -31,6 +31,7 @@
 - Dale **el número y la conclusión**, no el camino. Si algo está mal, decilo derecho y proponé qué hacer.
 - **Decisiones: TODAS JUNTAS, en UN mensaje, numeradas, cada una corta con (a) sugerida y (b)**; él contesta "1a 2b 3a"
   (08/10, *"quiero que me pases todo lo que hay que decidir todo junto siempre"*). Ideas de revisiones también todas juntas.
+- **Toda decisión de bajar un precio va con el % de seguridad de que es el techo** (27/10, él: *"dame el % de seguridad de que es un techo. sino me faltan datos para responder"*): `techo95:<MLA>` de cada uno; si no hay %, cuántos días lleva y qué falta.
 - **Dudas para él: a `ml-sync/notas/para_mati.md`, no sueltas en el chat** (23/10, *"me pierdo… guardalas y después te pido y
   resolvemos. De mientras andá haciendo"*): se anotan ahí y se sigue con lo que no lo necesita; cuando pida "resolvamos" se le pasa
   la lista entera, numerada. Lo urgente que cuesta plata sigue por `pregunto:URGENTE: …` (CYC Avisos = sólo urgente y recordatorios).
