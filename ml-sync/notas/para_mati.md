@@ -8,6 +8,9 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 
 ## Abiertas
 
+### Del 27/10 a la madrugada (él: *"el 15 estaba en dorado. ¿qué pasó?"*)
+- **Ganancia de días pasados que se mueve con el dólar:** el costo de lo comprado en dólares se pasa a pesos con el dólar de HOY en todo el mes en curso (el mes se congela recién al cerrar). Subió ~1,6% desde el 15/10 → el 15 bajó de ~$307.000 (dorado) a ~$296.000. (a) sugerida: cada venta queda con el dólar de su día (el día sólo cambia si se cancela o devuelve una venta) · (b) dejarlo así hasta el cierre del mes. Ojo: también mueve "cuánto cobrar" del mes en curso.
+
 ### Del 27/10 a la madrugada (contestó 1 2a 3 4a 5 13)
 - **Hecho:** 1 Paulvic Debutante/Witch Night: no se bajan sin techo al 95% salvo cerca de pagar stock (lo mira la vuelta con `techo95`) · 3 Centímetro: las dos Blancas al precio más caro y como un solo producto (regla 👯 cambiada) · 4a: catálogo Surtido no, medir la Rosa una semana (03/11) · 5: caja para la máxima plata (v27.16) · 13: Sancor, contador y Linternas no se nombran más.
 - **2 (perfumes):** contestó "perfumes hasta 0%": en los 15 días antes del stock antiguo F12 se abre (robot, 27/10) · **6:** el tope de US$ 500 es POR CADA pedido (perfumería y resto) · **11:** los 3 probados en duda (PS Portal y las Victoria's Secret sin código) se descartan.
