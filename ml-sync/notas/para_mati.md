@@ -13,7 +13,7 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 - 2a: los Paulvic recién llegados se miden con stock hasta 3 ventas esperadas, los que no vendan bajan en escalera (nunca abajo del 35%).
 - 3 Los 5 Paulvic de 1 u. con 200+ días: preguntó si hay margen para bajar → le pasé los números, esperando su a/b.
 - 4 Separador x2: él lo leyó como techo → le expliqué que la hermana vende al mismo precio con el mismo stock (no es techo, es la publicación), esperando su a/b.
-- 5 Color del Centímetro: "haceme acordar y lo veo" → va en la lista de las 12:30 de mañana.
+- ~~5 Color del Centímetro~~: resuelto el 26/10 a la noche (ver abajo).
 
 ### Del 26/10 al mediodía (contestó 1a 2a 3a 4)
 - 1a CyberMonday: entran 6 (el Coconut no: deja 3% y los perfumes van al 10%+), programado 01/11 23 hs (`trig_0116kaFysCe97PQwbjk2FtJD`) · 2a Tendedero y Pizarra no · 3a VS con piso de 10% (regla nueva de perfumes, F12): Pure Seduction $68.990 → $59.990 → $53.990; Bliss igual desde el 15/11; Amber desde el 10/11 · 4 Espejos: la caja no dice el aumento, manda foto con una moneda (5", 6", 8").
@@ -33,7 +33,7 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 - **Batidora Blanco:** 4 reclamos en 27 ventas ("faltan accesorios", "distinto a lo publicado"): hay que arreglar la descripción o las fotos de la publicación (lo tenés que hacer vos en ML).
 - **Paulvic Hot:** 0 ventas en 30 días con 9 en Full, aun a $14.360: mirar la publicación (fotos, título).
 - **Separador x2 MLA1474954957 (Ayelen):** ML le marca 62% de salud y no vende hace 60 días (la hermana MLA3207459664 sí vende con el mismo stock). (a) sugerida: revisarla en ML (fotos, ficha técnica, título) · (b) pausarla.
-- **Color del Centímetro MLA3112784736 (Luciana):** ML dice que tiene su propio depósito (código de etiqueta **FIGM65688**, 93 u.), distinto del Blanco MLA1699834745 (ZBGG56355, 157 u.), y la caja del 17/10 trajo 70 Gris que ninguna publicación nombra. Lo más fácil: ¿con qué código se etiquetaron las Gris? Si fue FIGM65688, es la Gris. Si es **Blanco**: (a) sugerida: dejar que se terminen sus 93 y mandar el Blanco sólo a MLA1699834745 (queda una sola publicación) · (b) mantener las dos al mismo precio ($5.190 las dos, buscando techo).
+- ~~Color del Centímetro~~ → **26/10 a la noche, él con capturas de ML: MLA3559540968 = Rosa · MLA1699834745 y MLA3112784736 (+ su Premium MLA2218757869) = Blanco.** Fijado con `fijarvar` (releído). No hay catálogo de ML por color (sólo "Surtido" MLA46897799). Queda decidir: las dos Blancas al mismo precio o dejar terminar una.
 - **Preguntas que no sé contestar seguro:** Mentonera (si tiene hueco en el mentón y las medidas de la banda) · Protector metatarso (qué es el color "Ab").
 
 ### De las vueltas del 23/10 (a la noche y a la tarde)
