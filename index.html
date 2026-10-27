@@ -3105,7 +3105,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.36';
+const APP_VERSION='27.37';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3118,6 +3118,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.37',f:'27/10',h:'17:40',c:[{n:2,t:'📦 Pedidos: los chips "🆕 nuevo" y "⬆️ +N" laten una sola vez. Antes volvían a latir cada vez que el robot guardaba algo y en Paraguay parecía que la pantalla se recargaba sola'}]},
   {v:'27.36',f:'27/10',h:'16:45',c:[{n:3,t:'📈 Techo = el precio al que NO se vende. En la línea de tiempo hay dos rayas: 🔴 "techo: no vende" (30 días sin vender ahí o más caro) y 🟠 "deja de convenir" (vende, pero deja menos plata por día que el 💰). Si vende una vez a un precio en prueba, la vuelta lo vuelve a subir'}]},
   {v:'27.35',f:'27/10',h:'16:15',c:[{n:2,t:'📈 Línea de tiempo: un solo techo. La raya roja dice "🔴 techo $X: deja menos plata por día que a $Y"; una prueba vieja que quedó más cara que ese techo se ve gris ("no vendió · ya está arriba del techo"), sin otro 100%. Y el "✓ sí vende" en el techo aclara que vende pero deja menos.'}]},
   {v:'27.34',f:'27/10',h:'15:35',c:[{n:2,t:'⚠️ El aviso de "Todavía no cerraste el mes" sale cuando faltan 7 días (en ámbar, con cuántos días faltan) y se pone en rojo los últimos 3. Si el mes pasado quedó sin cerrar, sale en rojo hasta que lo cierres.'}]},
@@ -8727,6 +8728,7 @@ function pedCambioDe(p){
   if(c.tot!==o.c)return{t:c.tot>o.c?'mas':'menos',d:c.tot-o.c,antes:o.c,cols};
   return cols.length?{t:'colores',cols}:null;
 }
+const _pcLatido=new Set();
 function pedCambioChip(p){
   const x=pedCambioDe(p);if(!x)return '';
   const cuando=_cuandoTxt((pedVistoBase()||{}).ts),det=x.cols.length?' · por color: '+x.cols.join(' · '):'';
@@ -8734,7 +8736,10 @@ function pedCambioChip(p){
     :x.t==='mas'?['pc-mas','⬆️ +'+fmtN(x.d),'Antes pedía '+fmtN(x.antes)+' u. (la última vez que miraste, '+cuando+')'+det]
     :x.t==='menos'?['pc-menos','⬇️ −'+fmtN(-x.d),'Antes pedía '+fmtN(x.antes)+' u. (la última vez que miraste, '+cuando+')'+det]
     :['pc-mas','🎨 '+x.cols.length+' color'+(x.cols.length===1?'':'es'),'El total es el mismo pero cambió por color (desde '+cuando+')'+det];
-  return ` <span class="ped-cchip ${cls}" title="${escHtml(tt)}">${txt}</span>`;
+  // Late UNA sola vez (27/10/2026, él: "en Paraguay hay varias cosas que titilan, como si se recargaran una y otra vez"): cada vez que
+  // el robot escribe algo la página se dibuja entera y todos los chips volvían a latir. Ahora late sólo la primera vez que se ve.
+  const _k=p.id+'|'+txt,_ya=_pcLatido.has(_k);_pcLatido.add(_k);
+  return ` <span class="ped-cchip ${cls}" title="${escHtml(tt)}"${_ya?' style="animation:none"':''}>${txt}</span>`;
 }
 function pedSoloCambioToggle(){_pedSoloCambio=!_pedSoloCambio;renderPedidos();}
 function pedCambioAvisoHTML(sec){
