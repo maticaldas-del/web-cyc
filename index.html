@@ -3105,7 +3105,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.26';
+const APP_VERSION='27.27';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3118,6 +3118,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.27',f:'27/10',h:'14:40',c:[{n:2,t:'📈 Línea de tiempo del precio: las rayas de una prueba (🚧 no vendió / ✓ sí vende) ya no se cortan contra el borde y dicen el % de seguridad de que es techo. Y cuando nunca se probó más caro dice "techo: 0% · nunca se probó más caro que $X".'}]},
   {v:'27.26',f:'27/10',h:'14:05',c:[{n:2,t:'📈 Tendencia → 💰 Ganancia: la barra roja de gastos ya no incluye el retiro de los dueños (no es un gasto). El retiro sólo aparece en 🏢 Ganancia CYC.'}]},
   {v:'27.25',f:'27/10',h:'13:45',c:[{n:3,t:'💲 Lo comprado en pesos (Bs As, Paulvic y listas) queda con el costo fijo en los pesos que se pagaron: si sube el dólar ya no parece más caro ni baja su %. Lo de Paraguay sigue en dólares.'}]},
   {v:'27.24',f:'27/10',h:'04:50',c:[{n:2,t:'🔍 Revisión de Plata: la deuda con Paulvic es la factura (no el costo con flete) · la de una lista que llegó incompleta, sólo lo que llegó · ⚖️ tope de H sin contar dos veces una caja que ya entró a Full · la ventana de 365 días del monotributo cuenta 365 días de verdad · montos en dólares con US$ en el inventario y el Arqueo · Comparar por año toma el último cierre (no la suma) · la lista de Gastos no tacha dos renglones con el Sancor'}]},
@@ -12141,17 +12142,20 @@ function lineaPintar(prodId){
     ks.forEach(k=>{const d=_rayasDias[k];if(!d)return;const pl=Number(d.pLista||d.p)||0;if(!(pl>=t.probado*0.98))return;if(!((d.st||0)>0))return;dd++;uu+=Math.max(0,(d.u||0)-(d.uR||0));});
     if(!dd)return {dias:0,u:0,seg:0};const gu1=B.gu+(t.probado-B.p)*0.7;if(!(gu1>B.gu))return {dias:dd,u:uu,seg:0};
     const lam=B.r*(B.gu/gu1)*dd;let p=Math.exp(-lam),s=p;for(let i=1;i<=uu;i++){p*=lam/i;s+=p;}return {dias:dd,u:uu,lam,seg:1-Math.min(1,s)};};
+  // La etiqueta de una raya que arranca cerca del borde derecho se corta (27/10/2026, él con el Centímetro Blanco: "el techo está con
+  // línea punteada, no entiendo bien qué pasa"): pasado el 55% del ancho se escribe hacia la izquierda, terminando en el borde.
+  const _txAt=x0=>x0>W*0.55?`x="${(W-3).toFixed(1)}" text-anchor="end"`:`x="${(x0+3).toFixed(1)}"`;
   _techos.forEach(t=>{const y=L.pr[0]+L.pr[1]-(pcMax>pcMin?(t.probado-pcMin)/(pcMax-pcMin):.5)*L.pr[1];
     const tk=t.ts?dateToKey(new Date(Number(t.ts))):null,ti=tk?ks.indexOf(tk):-1,x0=ti>=0?X(ti):0;
     const sg=_segTecho(t),seguro=!!(sg&&sg.seg>=0.95),colT=seguro?'var(--red)':'#fb923c';
     const det=sg?`Estuvo ${sg.dias} día${sg.dias===1?'':'s'} con stock a ese precio o más y vendió ${sg.u}${sg.lam!=null?` (para dejar la misma plata por día que a ${fmt(_rayas.best.p)} tenía que vender ~${sg.lam.toFixed(1)})`:''}: ${Math.round(sg.seg*100)}% seguro.`:'Sin un precio con 5+ días medidos para comparar: no se sabe si es seguro.';
     const tt=`🚧 A ${fmt(t.probado)} ${seguro?'ya no vende':'no vendió, SIN CERTEZA'}\nSe probó a ese precio${tk?' (vuelto el '+_lineaFmtDia(tk)+')':''}. ${det}${seguro?'':' Falta medir: se puede volver a probar más arriba, escalón por escalón.'}${t.volvio?'\nVolvió a '+fmt(t.volvio)+'.':''}${t.motivo?'\n🧠 '+t.motivo:''}`.replace(/[<>&]/g,'');
     svg+=`<g style="cursor:help"><title>${tt}</title><line x1="${x0.toFixed(1)}" y1="${y.toFixed(1)}" x2="${W}" y2="${y.toFixed(1)}" stroke="${colT}" stroke-width="1.5" stroke-dasharray="${seguro?'6,3':'2,4'}" opacity=".85"/>`+
-      `<text x="${(x0+3).toFixed(1)}" y="${(y-3).toFixed(1)}" font-size="10" fill="${colT}">🚧 a ${fmt(t.probado)} ${seguro?'ya no vende · '+Math.round(sg.seg*100)+'% seguro':'no vendió · sin certeza ('+(sg?sg.dias:0)+' d)'}</text></g>`;
+      `<text ${_txAt(x0)} y="${(y-3).toFixed(1)}" font-size="10" fill="${colT}">🚧 a ${fmt(t.probado)} ${seguro?'ya no vende · '+Math.round(sg.seg*100)+'% seguro':'no vendió · '+(sg?Math.round(sg.seg*100)+'% seguro de que es techo ('+sg.dias+' d)':'sin dato para medirlo')}</text></g>`;
     // Y el último precio que SÍ vendía (al que se volvió), en verde: el techo útil está entre las dos rayas.
     const vv=Number(t.volvio);if(vv>0&&vv<t.probado){const y2=L.pr[0]+L.pr[1]-(pcMax>pcMin?(vv-pcMin)/(pcMax-pcMin):.5)*L.pr[1];
       svg+=`<g style="cursor:help"><title>✓ ${fmt(vv)}: el precio que sí vendía, al que se volvió después de la prueba.</title><line x1="${x0.toFixed(1)}" y1="${y2.toFixed(1)}" x2="${W}" y2="${y2.toFixed(1)}" stroke="var(--green)" stroke-width="1.2" stroke-dasharray="2,3" opacity=".85"/>`+
-        `<text x="${(x0+3).toFixed(1)}" y="${(y2+11).toFixed(1)}" font-size="10" fill="var(--green)">✓ a ${fmt(vv)} sí vende</text></g>`;}});
+        `<text ${_txAt(x0)} y="${(y2+11).toFixed(1)}" font-size="10" fill="var(--green)">✓ a ${fmt(vv)} sí vende</text></g>`;}});
   {const _yP=v=>L.pr[0]+L.pr[1]-(pcMax>pcMin?(v-pcMin)/(pcMax-pcMin):.5)*L.pr[1];const _ray=(v,col,dash,lbl,tt,dy)=>{const y=_yP(v);
       svg+=`<g style="cursor:help"><title>${tt.replace(/[<>&]/g,'')}</title><line x1="0" y1="${y.toFixed(1)}" x2="${W}" y2="${y.toFixed(1)}" stroke="${col}" stroke-width="1.4" stroke-dasharray="${dash}" opacity=".9"/><text x="4" y="${Math.max(L.pr[0]+9,y+dy).toFixed(1)}" font-size="10" fill="${col}">${lbl}</text></g>`;};
     if(_rayas.sobra)_prNotas.push(`<span style="color:#fb923c">📦 sobra stock: no se busca techo, primero sale lo que sobra</span>`);
@@ -12183,7 +12187,7 @@ function lineaPintar(prodId){
       const _baj=Object.keys(porMlaF).map(m=>estrategiaDe(m)).find(e=>e&&(e.t==='bajando'||e.esc));
       const _tPr=_techos.length?_techos[_techos.length-1].probado:0;
       if(_baj&&!R.sobra&&!_prueba)_prNotas.push(`<span style="color:#fbbf24;cursor:help" title="${('Bajando en escalera: '+(_tPr?'a '+fmt(_tPr)+' no rindió (raya 🚧), ':'')+'se baja de a un escalón (15% como mucho, uno cada 48 h) midiendo cada uno'+(R.best?', y nunca abajo del 💰 piso '+fmt(R.best.p)+', el precio que más plata por día dejó':'')+'.').replace(/[<>&"]/g,'')}">🪜 bajando${_tPr?' desde '+fmt(_tPr):''}${R.best?' · no baja de '+fmt(R.best.p):''}</span>`);
-      else if(!R.techo&&R.best&&!R.sobra&&!_techos.length)_prNotas.push(R.best.aprox?`<span style="cursor:help" title="Para medir el techo hacen falta días con 3 o más unidades en Full y con dato de visitas.">techo: todavía pocos días para medirlo</span>`:'techo: falta probar más caro');}}
+      else if(!R.techo&&R.best&&!R.sobra&&!_techos.length)_prNotas.push(R.best.aprox?`<span style="cursor:help" title="Para medir el techo hacen falta días con 3 o más unidades en Full y con dato de visitas.">📈 techo: <b>0%</b> seguro · todavía pocos días para medirlo</span>`:`<span style="cursor:help" title="27/10/2026, él: 'no dice el % de seguridad que va del techo'. Hoy está en su 💰 (${fmt(R.best.p)}, el que más plata por día dejó) y nunca estuvo más caro con stock: no hay un precio de prueba contra el cual medir. El % empieza a contar cuando suba arriba de ${fmt(R.best.p)}. Si vende menos de 1 por semana no se sube (regla del 23/10) y queda en 💰.">📈 techo: <b>0%</b> seguro · nunca se probó más caro que ${fmt(R.best.p)}</span>`);}}
   // 🏔️ DÓNDE SE ENCONTRÓ EL TECHO (19/10/2026, él: "todos los que digan techo encontrado tienen que marcar en la línea dónde se encontró
   // el techo y por qué estás seguro"). Raya vertical verde el día de la anotación 🏔️ (la anota `techo95` sólo con 95% de seguridad)
   // y el porqué en el globito.

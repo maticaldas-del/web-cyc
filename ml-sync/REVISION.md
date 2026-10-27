@@ -78,6 +78,7 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   por `informe`/`alertas` y no a Telegram; que las cajas que ML da por entradas las marque Claude y no queden contadas dos veces.
 
 ## 1 · PRECIOS (lunes)
+- **27/10/2026 · v27.27 · el % del techo siempre a la vista en la línea de tiempo** (él: *"no dice el % de seguridad que va del techo"* con el Espejo 7", y *"el techo está con línea punteada, no entiendo"* con el Centímetro Blanco). La raya 🚧 de una prueba que no vendió dice ahora "N% seguro de que es techo (d días)"; las etiquetas 🚧/✓ que arrancan pasado el 55% del ancho se escriben hacia la izquierda (`_txAt`) para no cortarse; sin prueba más cara dice "📈 techo: 0% seguro · nunca se probó más caro que $X". Dónde: línea de tiempo del precio (index.html, `_techos.forEach` y `_prNotas`). **Chequear:** a 390 px las dos rayas del Centímetro Blanco se leen enteras; el Espejo dice 0%.
 
 ### 🔔 Aviso a Telegram cuando una 🥊 deja de ganar la caja (27/10/2026, él con la waflera: "avisar cuando la waflera deje de ganar. cuando llegue stock")
 - **Qué es:** `mantenerCaja` (cada hora) manda UN aviso al canal privado cuando una publicación con 🥊 `ganarcaja`, **activa y con stock**, pierde o comparte la caja: a cuánto estamos, cuánto pide ML para ganarla y qué hizo el robot (la bajó a X, o no bajó porque el piso/35% lo frena). Cuando la vuelve a ganar, UN ✅. Sin stock o pausada no avisa.
