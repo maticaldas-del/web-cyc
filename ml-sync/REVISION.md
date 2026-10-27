@@ -83,6 +83,11 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
 - **Dónde vive:** `frenosBajas` en `ml-sync/sync.mjs` (F13, `edad13`, `BAJAR_MIN_PCT_JOVEN`, `EDAD_LIBERA_CERO`); el detector `errores` ahora le pasa también el peor caso (`mgPA`).
 - **Qué chequear:** una baja a 30% con 60 días → frenada (dice cuántos días faltan); con 95 días → pasa; la gemela que acompaña a su Clásica toma la edad de la Clásica. La autorización XEY9 del Hot (20%) queda en no.
 
+### 💰 La caja medio vacía en la plata por día (27/10/2026, v27.30, eligió 2a)
+- **Qué es:** el "Envío+embalaje" de la ficha (`shipUSD`, ya dentro del costo) reparte la caja como si fuera llena. Ahora la plata por día neta resta además, por unidad, lo que cuesta DE MÁS la caja real de esa cuenta (caja ÷ unidades promedio de sus últimas 8 cajas en 120 días, menos el envío de la ficha; nunca negativo). Sólo en la plata por día (rayas 💰/🔴, techo95, frenos F4/F5/F7/F8/F11, ficha y planilla), NO en el %.
+- **Dónde vive:** robot `cargarCajaReal` + `pdCajaExtraU` (al lado de `cajaRealPorCuenta`), parámetro `cajaU` de `rayasPrecioLinea` y `armarFicha`; web `_pdCajaExtra` en `_rayas` (usa `cajaRealDe`). Quedan sin él las cuentas viejas de raros/escmedir/lupa (no deciden 💰).
+- **Qué chequear:** en Ayelen (cajas chicas) el 💰 puede correrse a un precio más alto; en las cuentas con cajas llenas no cambia nada.
+
 ### 🧭 Estrategias unidas en la web (27/10/2026, v27.29, eligió 6a: "bajando por sobra entonces es 'sobra stock' no 'bajando'")
 - **Qué es:** sólo cambia cómo se VEN (el robot sigue guardando los tags de siempre, que usan los frenos): 🏔️ techook → 💰 "· techo encontrado" · ↘️ volviendo → 💰 "· volviendo" · 🪜 que viene de 📈/🏔️/💰/🆕/🔥/⏳/🎁/↘️ → 💰 con su escalón · 🪜 que viene de 📦 sobra o liquidando → 📦 sobra stock con su escalón · 🆕 lanzamiento → 📈 "· nuevo" · ⏸️ sin stock → "· vuelve a <la de antes>".
 - **Dónde vive:** `estrategiaDe` y `estrategiaChip` (index.html). El botón 🧭 Estrategias de Arqueo → Productos cuenta con lo mismo.

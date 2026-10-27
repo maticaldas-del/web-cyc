@@ -3105,7 +3105,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.29';
+const APP_VERSION='27.30';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3118,6 +3118,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.30',f:'27/10',h:'14:05',c:[{n:2,t:'💰 "Más plata por día" ahora resta también lo que cuesta DE MÁS mandar la caja cuando las de esa cuenta salen con pocas unidades (últimas 8 cajas), además del envío de la ficha que ya estaba en el costo. Igual en el robot.'}]},
   {v:'27.29',f:'27/10',h:'13:45',c:[{n:2,t:'🧭 Estrategias más claras (elegiste la 6a): "🏔️ techo encontrado" y "↘️ volviendo al normal" ahora se ven como 💰 buscando el de más ganancia (dice "· techo encontrado" o "· volviendo"); la escalera que viene de una sobra se ve 📦 sobra stock con su escalón; el 🆕 lanzamiento se ve 📈 buscando techo "· nuevo" (sigue sin bajar sin 95%); sin stock dice con qué estrategia vuelve.'},{n:2,t:'🔒 Robot: abajo del 35% sólo si la unidad más vieja lleva 90+ días en Full (ahí se abre hasta el 0%), y 💰 no se pone sin techo en rojo a lo que vende 1 o más por semana.'}]},
   {v:'27.28',f:'27/10',h:'14:55',c:[{n:1,t:'📈 Línea de tiempo: la raya 🚧 de una prueba arriba de todo escribe su texto abajo de la línea, para no pisarse con los datos de arriba a la derecha.'}]},
   {v:'27.27',f:'27/10',h:'14:40',c:[{n:2,t:'📈 Línea de tiempo del precio: las rayas de una prueba (🚧 no vendió / ✓ sí vende) ya no se cortan contra el borde y dicen el % de seguridad de que es techo. Y cuando nunca se probó más caro dice "techo: 0% · nunca se probó más caro que $X".'}]},
@@ -11899,8 +11900,13 @@ function lineaPintar(prodId){
   const _ganRaya=k=>{let g=gd[k];if(!g){if(!(k in _gdFuera))_gdFuera[k]=_gdPanel(k)||_gdViejo(k)||null;g=_gdFuera[k];}if(!g)return 0;if(_mlaRaya)return _grupoRaya.reduce((a,m)=>a+(Number((g.porMla||{})[m])||0),0);return g.ganHoy!=null?g.ganHoy:(g.gan||0);};
   // ⚖️ LO QUE SE RESTA DE CADA DÍA PARA LA PLATA POR DÍA NETA (21/10/2026 · etapa 1): la misma cuenta que `rayasPrecioLinea` del robot
   // (u × $100 + lo cobrado × 3% + stock × costo de hoy × 2%/30). Sin lo cobrado anotado, unidades × precio de lista.
+  // 2a (27/10/2026): la caja medio vacía. Lo que cuesta DE MÁS por unidad mandar una caja de esa cuenta (`cajaRealDe`: últimas 8
+  // cajas) contra el "Envío+embalaje" de la ficha, que ya está en el costo. Sólo en la plata por día, no en el %. Igual que el robot
+  // (`pdCajaExtraU`): si se toca una, la otra.
+  const _pdCajaExtra=(()=>{try{const cta=_mlaRaya?((state.mllinks||{})[_mlaRaya]||{}).cuenta:null;const cr=cta?cajaRealDe(cta):null;const tc=curTC();
+    if(!cr||!(tc>0))return 0;return Math.max(0,Math.round(cr.costoU-(parseFloat(p&&p.shipUSD)||0)*tc));}catch(_){return 0;}})();
   const _pdDed=d=>{if(!d)return 0;const u=Number(d.u)||0,t=d.tot!=null?(Number(d.tot)||0):u*(Number(d.pLista||d.p)||0);
-    return u*PD_TRABAJO_U+t*PD_TOPE_PCT+Math.max(0,Number(d.st)||0)*(_cfHoy>0?_cfHoy:0)*PD_CAPITAL_DIA;};
+    return u*(PD_TRABAJO_U+_pdCajaExtra)+t*PD_TOPE_PCT+Math.max(0,Number(d.st)||0)*(_cfHoy>0?_cfHoy:0)*PD_CAPITAL_DIA;};
   const _rayas=(R=>_rayasSob?{best:R.best,sobra:true}:R)((()=>{
     // UNA SOLA CUENTA CON `techo95` (20/10/2026, él con las Sábanas 140 Blanco: la raya decía techo $20.180 y la estrategia
     // "buscando techo" a $21.990). Sólo cuentan los días MEDIBLES: con 3+ u. en Full y con dato de visitas. Con 1-2 u. o sin
