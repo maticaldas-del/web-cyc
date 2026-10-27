@@ -78,6 +78,11 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   por `informe`/`alertas` y no a Telegram; que las cajas que ML da por entradas las marque Claude y no queden contadas dos veces.
 
 ## 1 · PRECIOS (lunes)
+### 🛒 Precio del máximo de compra por color y sin sobra/liquidando (27/10/2026, eligió 1a; él con las Sábanas Rojo: *"ese color se vendió a ese precio, no todos"*)
+- **Qué es:** el precio con el que se calcula el máximo de compra = la última venta de ESE color (sin escasez, sin reposición, sobra, liquidando ni remate, mirando la estrategia como el ritmo normal), sin pasar el precio de hoy de SU publicación. El del producto (para los colores que nunca vendieron) = el más bajo de los colores que vendieron.
+- **Dónde vive:** `pedidostodo` (`ultV(pid, va)` con `tagNor`/`NOR_ABN`; renglón de color ` · ultv $X · hoy $Y`, `cyc/netopub`) · `decide_pedidos.py` (`ventas_color` → `ped:<id>#<color>=venta|…`) · la web ya leía `pvVars` por color (`maxCompraDe`).
+- **Qué chequear:** Sábanas 1½: Rojo con su $23.490 (si su publicación hoy está a eso o más), los colores sin venta con el más bajo; que ningún color pase el precio de hoy de su publicación.
+
 ### 📦 Chips de Pedidos que latían en cada redibujado (27/10/2026, v27.37, etapa 7, él: *"en Paraguay tarjeta hay varias cosas que titilan, como si se recargaran una y otra vez"*)
 - **Qué es:** los chips 🆕 nuevo / ⬆️ +N / ⬇️ −N / 🎨 de cada renglón de Pedidos tienen un latido de entrada (2 veces). Cada escritura del robot redibuja la página entera y todos volvían a latir.
 - **Dónde vive:** `pedCambioChip` + `_pcLatido` (`index.html`): late sólo la primera vez que se ve cada chip en esa sesión.

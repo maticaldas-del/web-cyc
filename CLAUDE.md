@@ -302,7 +302,7 @@
 - **Pedidos completos, todo el catálogo** (09/10): `pedidostodo` (ml-consulta) → `python3 ml-sync/notas/decide_pedidos.py <log> <salida>`
   (objetivo **30 días**: **ritmo a precio normal** (27/10, él eligió 1a: sin los días ni las ventas de 🔥 escasez, ⏳ sin reposición, 📦 sobra, liquidando y remate; 60 d, con menos de 14 días normales 180 y si no 365, `NOR` de pedidostodo); sin `NOR`, ritmo de 30 d, de 60 d o de 180 d si está agotado; menos Full + oficina + camino + viajando; sin ganancia = 0;
   ritmo normal si hubo remate o prueba; **precio para el máximo de compra = el de la última venta**, aunque sea 1, sin pasar el de hoy ni
-  contar la de escasez; nunca vendió → el de hoy, 23/10) → revisar a mano → `notas/pedidos.txt` → `decido:archivo=pedidos;go`. En la completa.
+  contar escasez, sin reposición, sobra, liquidando ni remate (1a del 27/10); nunca vendió → el de hoy, 23/10; **por color** (27/10, él con las Sábanas Rojo: *"ese color se vendió a ese precio, no todos"*): cada color con venta propia usa la suya, topeada por el precio de hoy de SU publicación, y el del producto es el más bajo de los colores que vendieron) → revisar a mano → `notas/pedidos.txt` → `decido:archivo=pedidos;go`. En la completa.
   Lo de la oficina o viajando a Full cubre lo decidido.
 - Por color: un color agotado hace 30+ d pide con su ritmo viejo ("ritmo viejo"). Pedido a mano ya no existe (lo arma el panel/yo).
 - **Bs As:** el padre compra en persona (~1 semana, plata ~$3M, lugar en la Kangoo). Solapas 🏬 De siempre / 📋 Dai Nippon

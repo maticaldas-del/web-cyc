@@ -110,3 +110,4 @@ Cargado sólo lo que mandó: correo $28.000, 11,55 kg. Él: "cargá solo lo que 
 ## 27/10 · Precio para el máximo de compra: ¿qué ventas cuentan?
 Hoy cuenta la última venta salvo 🔥 escasez, ⏳ sin reposición, remate y lo vendido por una gemela. Las de 📈 buscando techo SÍ cuentan (Sábanas a $23.490 sube el máximo en la completa de las 3).
 1. Las ventas de 📦 sobra y "liquidando" hoy SÍ cuentan (bajan el máximo). El ritmo de Pedidos ya las saca desde el 27/10. (a) sacarlas también del precio, igual que el ritmo · (b) dejarlas.
+→ **eligió 1a (27/10)**: hecho. Y por color: cada color con su última venta (él: "ese color se vendió a ese precio, no todos").
