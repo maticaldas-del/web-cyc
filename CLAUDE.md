@@ -31,6 +31,7 @@
 - Dale **el número y la conclusión**, no el camino. Si algo está mal, decilo derecho y proponé qué hacer.
 - **Decisiones: TODAS JUNTAS, en UN mensaje, numeradas, cada una corta con (a) sugerida y (b)**; él contesta "1a 2b 3a"
   (08/10, *"quiero que me pases todo lo que hay que decidir todo junto siempre"*). Ideas de revisiones también todas juntas.
+- **Toda decisión de bajar un precio va con el % de seguridad de que es el techo** (27/10, él: *"dame el % de seguridad de que es un techo. sino me faltan datos para responder"*): `techo95:<MLA>` de cada uno; si no hay %, cuántos días lleva y qué falta.
 - **Dudas para él: a `ml-sync/notas/para_mati.md`, no sueltas en el chat** (23/10, *"me pierdo… guardalas y después te pido y
   resolvemos. De mientras andá haciendo"*): se anotan ahí y se sigue con lo que no lo necesita; cuando pida "resolvamos" se le pasa
   la lista entera, numerada. Lo urgente que cuesta plata sigue por `pregunto:URGENTE: …` (CYC Avisos = sólo urgente y recordatorios).
@@ -97,6 +98,7 @@
   Métricas · 5a **Watch S5 y Redmi Pad 2 no se reponen más** · 6a **Full: meta menos de $100.000/mes; un retiro de Full sólo con su
   OK** · 7a lo nuevo va a la cuenta con más lugar contra H · 8b **por ahora las 4 cuentas en H, sin 5ª cuenta ni K**. Detalle en
   `ml-sync/CEREBRO.md` (💹). La 3 (ordenar compras y pedidos por ganancia por peso facturado): **no se toca por el momento** (él, 22/10); no volver a proponerla hasta que la saque él.
+- **🎯 Objetivo: bajar hasta que desaparezcan el rojo y el naranja de 🧮 La Mezcla** (27/10, él: *"un objetivo debe ser bajar/desaparecer los naranjas/rojos"*): rojo = ventas abajo de 25%, naranja = 25-35% (de lo facturado). Cada decisión de precio, pedido, caja y compra se pesa contra esto: lo que vende abajo del 35% sube, se reemplaza o no se repone (sin romper sobra/stock antiguo). Se mira por semana en Métricas.
 - **La plata ya no es el límite: el proveedor sí** (24/08). Liberar caja vale menos que el almacenamiento y el descarte.
 - OSDE y el colegio son PERSONALES (no cargar). **Sancor = la obra social privada de Ayelen** (un solo renglón, monto real de la factura).
 
@@ -113,7 +115,7 @@
    que no tenemos suficiente plata para todo… no quiero que nada se venda a menos de 35% excepto si ya está quedando en sobrestock, ahí sí
    liquidar siempre con margen para nunca pagar stock"*; antes 25%; `cyc/mlconfig` minPct = targetPct = 35). Peor caso = ~2% de retención
    IIBB de otra provincia + el peor envío visto + cuotas. Abajo del 35% sólo con `!piso` y motivo de sobra/stock antiguo (liquidar con margen,
-   antes de pagar stock antiguo) o lo que pide él. **Nunca abajo de 0%** (sólo él lo abre, `!bajocero`). El % se mide **costo + impuestos +
+   antes de pagar stock antiguo) o lo que pide él, **y sólo con la unidad más vieja en Full de 90+ días: ahí se abre hasta el 0%** (27/10, él: *"nunca abajo del 35% si lleva menos de 90 dias si pasa los 90 dias de stock si se habilita bajar hasta 0%"*; freno F13; los 15 días antes del stock antiguo también abren). **Nunca abajo de 0%** (sólo él lo abre, `!bajocero`). El % se mide **costo + impuestos +
    envío de Full en el divisor** (`pctGananciaVP`, un solo % en toda la app). Reponer, comprar, listas y perfumería del local: también 35%.
 5. **Bajar un precio sólo con las reglas del CEREBRO** (y las salidas 🔐 sólo con su autorización, §5): sin línea de techo no se baja · escalera (≤15% por escalón) · descuento antes
    que bajar la lista · una suba no se deshace sin 95% · no abajo del 💰. Excepciones siempre las mismas cinco: precio mal puesto ·
@@ -160,7 +162,7 @@
   gris si no cambió nada, color de la estrategia si cambió) → **al terminar, `bajastecho:1` y el detector `errores`, y deshacer en la
   misma vuelta toda ❌ del día** (22/10, 3a: vuelve al precio de antes con `!chico` y "EXCEPCIÓN: vuelve al precio de antes").
 - Listas que tienen que quedar **vacías** al terminar la vuelta: 🚨 escasez que vendió después de mi decisión (`escasez`) · 🛡️ abajo
-  del 35% en el peor caso · 📦 sobra sin decidir · 🔎 sin afinar · 📈 dice techo/escasez y no sube · 📈 prueba con respuesta (3 ventas esperadas, 23/10) · 👯 mismo producto y color con distinto precio o estrategia (26/10) (todas en `planilla`) · 🆕 lanzamiento que vendió (también por su gemela) y no subió (en `errores`, 23/10) · 🧐 revisión a fondo atrasada (`revfondo`, sólo la completa: todo producto con stock en Full y publicación activa con mi nota del 🧠 de menos de 2 días si está quieto o de 7 si vendió; 24/10, eligió la 3a).
+  del 35% en el peor caso · 📦 sobra sin decidir · 🔎 sin afinar · 📈 dice techo/escasez y no sube · 📈 prueba con respuesta (3 ventas esperadas, 23/10) · 👯 mismo producto y color con distinto precio o estrategia (26/10) (todas en `planilla`) · 📈🆕 prueba de techo o lanzamiento que vendió (también por su gemela) y no subió (en `errores`, 23/10; todo 📈 desde el 27/10) · 🔎 vendió ayer u hoy sin techo medido ni estrategia que explique no subir (en `errores`, 27/10) · 🧐 revisión a fondo atrasada (`revfondo`, sólo la completa: todo producto con stock en Full y publicación activa con mi nota del 🧠 de menos de 2 días si está quieto o de 7 si vendió; 24/10, eligió la 3a).
 - **Activar lo pausado es prioridad** (10/10): `pausadas:25` + `activarfull:go:25`; toda pausada con stock en Full que no se activa
   va a `notas/para_mati.md` con motivo (al `pregunto:URGENTE` sólo si vende fuerte). Lo nuevo (nunca estuvo en Full) lo activo yo con el precio ya puesto (peor caso).
 - **Preguntas de compradores:** las contesto yo (`contesto:<id>=<respuesta>;…;go`), sólo las nuevas y sólo las que sé SIN DUDA. **La que no sé se le pasa en el chat EN EL MOMENTO** (26/10, 1a: *"si no respondo guardá para responder después"*): si no contesta, va a `notas/para_mati.md` y sale en el aviso de las 12:30 hasta que la resuelva. **Las viejas (abril-agosto) se dejan** (26/10, 2a).
@@ -194,7 +196,8 @@
 - **El orden de todo precio** (25/10, él: *"para mí tiene que ser prioridad buscar techo, segundo, buscar el precio que más ganancia da
   (siempre sacando que está sacando stock)… la estrategia es buscar el mejor precio por ganancia CON escalera"*): 1º 📈 techo (95%) → 2º 💰
   el de más ganancia, bajando en escalera desde el techo y midiendo cada escalón hasta el que más plata por día deja (en la web la 🪜 que
-  viene de 📈/🏔️/💰 se ve 💰 "· Nº escalón"). Sólo la sobra/stock antiguo baja por otro camino.
+  viene de 📈/🏔️/💰 se ve 💰 "· Nº escalón"). Sólo la sobra/stock antiguo baja por otro camino. **💰 sin 🔴 no** (27/10, eligió 2a): lo que vende 1+ por semana no queda en 💰 sin techo medido (`puntoSinTecho`, freno en `decido` y `tag`).
+- **Si vende, no es techo** (27/10, él: *"si se vende una vez a un precio que está buscando techo, ahí nomás tiene que volver a subir… el techo es saber que no se vende a ese precio"*; eligió la a): toda prueba 📈/🆕 que vendió al precio de hoy sube +30% en la misma vuelta (`!vendio`, lista de `errores` que queda vacía); frena en 🔴 no vende (30 días) o 🟠 deja de convenir (techo95). En la web son dos rayas.
 - **Bajar pide 95%, subir pide 50%** (26/10, él: *"siempre para bajar tenés que estar 95% seguro, siempre para subir 50% o más. entonces no hay chances de perder por vender barato"*): freno 50% en `decido` — si `techo95` ya da 50%+ de que el precio en prueba es el techo (`cyc/techo95pct`), no se sube más; no frena 🔥/⏳ ni volver a un precio de 90 días.
 - **Sin línea de techo no se baja** (21/10; 22/10 decisión 1a): línea = 🔴 de las rayas o 🏔️ de `techo95`. Sin línea → 📈 buscar
   techo (subir). Lo que vendieron otras variantes o la familia NO alcanza. Pasados 15 días de la última suba sin certeza, decide la
@@ -230,8 +233,8 @@
   🚫 "No lo consigo" (`cyc/noconsigo/<prod>[/v/<color>]`); se cae solo al entrar mercadería.
 - **Lo que no vende al 35%** (24/10, eligió la a): no se repone y, al terminarse, la publicación queda pausada (no se borra).
 - **🌸 Perfumes: nunca abajo del 10%** (26/10, él: *"todo lo que es perfume se puede poner en la perfumería. antes de liquidar a 0% conviene pedirlo. intentemos venderlo mínimo al 10%. si está por pagar stock avisame y retiro"*; con los VS: *"menos del 10% nunca, antes retirarlos"*). Freno F12 (`esPerfumeNom`: perfume, body mist/splash, Victoria's Secret, Paulvic/Persea). **Salvo los 15 días antes de pagar stock antiguo: ahí sí hasta el 0%** (27/10, `antiguo15`). Si no sale al 10% y está a 20 días o menos de pagar stock antiguo → se le avisa en el chat (12:30) para que lo retire al local.
-- **15 días antes de pagar stock antiguo: ganar la caja hasta el 0% y, si no se vende, se retira** (27/10, él: *"15 días antes de pagar stock siempre ganar caja hasta llegar al 0% de ganancia, si no se vende se retira"*): con la unidad más vieja a 15 días o menos de pagar stock antiguo, el precio baja al que gana la caja (sin catálogo: escalera) sin bajar del 0%; si llega el día sin venderse, se le pide el retiro. **Perfumes también hasta el 0%** (27/10, él: *"perfumes hasta 0%"*; F12 se abre en esos 15 días).
-- **Sobra** (+90 d de stock al ritmo con stock o sin ventas en 60 d) → escalera/descuento; con sobra no se busca techo. **Lo caro que no vende: a los 60 días sin vender, la escalera apunta al precio que GANA la caja de compra** (26/10, él con los VS, Redmi Watch y Dalí: *"si llegan a 60 días de stock sí bajar los precios hasta estar en ganando"*; nunca abajo de 0%; antes de eso no se baja sin techo y las 16 autorizaciones viejas del 23/10 quedaron en "no"). Stock antiguo: 120 d
+- **15 días antes de pagar stock antiguo: ganar la caja hasta el 0% (al costo) y, si no se vende, se retira 3 días antes de pagar** (27/10, él: *"15 días antes de pagar stock siempre ganar caja hasta llegar al 0% de ganancia"* y *"vende al costo antes de retirar. 3 días antes de pagar por stock retiramos"*): con la unidad más vieja a 15 días o menos de pagar stock antiguo, el precio baja al que gana la caja (sin catálogo: escalera) sin bajar del 0%; si a 3 días de pagar sigue sin venderse, se le pide el retiro (en el chat, 12:30). **Perfumes también hasta el 0%** (F12 se abre en esos 15 días).
+- **Sobra** (+90 d de stock al ritmo con stock o sin ventas en 60 d) → escalera/descuento; con sobra no se busca techo. **Lo caro que no vende: a los 60 días sin vender, la escalera apunta al precio que GANA la caja de compra** (27/10, 1a: con la unidad más vieja de menos de 90 días en Full, sólo hasta el 35%; F13 manda) (26/10, él con los VS, Redmi Watch y Dalí: *"si llegan a 60 días de stock sí bajar los precios hasta estar en ganando"*; nunca abajo de 0%; antes de eso no se baja sin techo y las 16 autorizaciones viejas del 23/10 quedaron en "no"). Stock antiguo: 120 d
   lo chico, 60 lo grande (Tenders); apuntar a vender antes de ~100. Bajar porque seguir igual perdía más = el cerebro ganó; lo que falta
   para el 25% es error de origen (mandar/comprar de más).
 - **Estrategias (tags)** — todo precio tiene una (19/10, **no existe 🎯 base**; `decido` rechaza un precio sin estrategia): 📈 `techo`
@@ -297,7 +300,7 @@
 ## 6 · PEDIDOS Y CAJAS
 
 - **Pedidos completos, todo el catálogo** (09/10): `pedidostodo` (ml-consulta) → `python3 ml-sync/notas/decide_pedidos.py <log> <salida>`
-  (objetivo **30 días**: ritmo de 30 d, de 60 d o de 180 d si está agotado; menos Full + oficina + camino + viajando; sin ganancia = 0;
+  (objetivo **30 días**: **ritmo a precio normal** (27/10, él eligió 1a: sin los días ni las ventas de 🔥 escasez, ⏳ sin reposición, 📦 sobra, liquidando y remate; 60 d, con menos de 14 días normales 180 y si no 365, `NOR` de pedidostodo); sin `NOR`, ritmo de 30 d, de 60 d o de 180 d si está agotado; menos Full + oficina + camino + viajando; sin ganancia = 0;
   ritmo normal si hubo remate o prueba; **precio para el máximo de compra = el de la última venta**, aunque sea 1, sin pasar el de hoy ni
   contar la de escasez; nunca vendió → el de hoy, 23/10) → revisar a mano → `notas/pedidos.txt` → `decido:archivo=pedidos;go`. En la completa.
   Lo de la oficina o viajando a Full cubre lo decidido.
@@ -426,6 +429,7 @@
   período de ML va al mes siguiente) — sólo almacenamiento/stock antiguo/retiro/multas (~$130.000/mes), las percepciones ya están en
   `ML_EXTRA_PCT`. Recordárselo a fin de mes. Retiro y gastos se cargan enteros cuando se pagan (no se reparten por día).
 - **Cada venta usa el dólar de SU día** (27/10, él eligió la 1a después de decir "dejalo así"; caso: el 15/10 pasó de dorado a violeta porque el mes en curso se recalculaba con el dólar de hoy): `tcDeVenta` (`v.tcSale`, lo guarda el robot) en `_efectivoCostoVP`; un día pasado sólo cambia por una cancelación/devolución o un cambio del costo en dólares. Meses con dólar a mano o cierres viejos (sin `tcPorVenta`) siguen con el del mes; los cierres nuevos guardan `tcPorVenta`. El robot ya usaba `v.tcSale`. Para explicar un día que cambió: `porquedia:<AAAA_MM_DD>`.
+- **Lo comprado en pesos tiene el costo FIJO en pesos** (27/10, él eligió la 2a): Bs As, Paulvic y listas con `costoPesos:true` → costo = los pesos pagados (`cost`), el dólar no lo mueve; Paraguay sigue en dólares. Se marca solo al cargar en pesos; las viejas con `costopesos[;go]`.
 - Percepciones IIBB medidas por cuenta en `ML_EXTRA_PCT` (Adriana 3,80 · Luciana 4,01 · Ayelen 5,99 · Matías 3,40).
 - Los reclamos que "cubre" ML SÍ nos cuestan (0 de 70 dejaron la plata, 15/10): no volver a proponerlo.
 
@@ -549,7 +553,7 @@ Si dudás si un comando existe, buscá en `sync.mjs` (`grep -n "'<nombre>'" ml-s
   (el chat de compras no tenía GitHub). Pasada del mes de Guay: no se le manda nada hasta que él pida "hagamos la de guay".
 - **Pedido Paraguay `py20261026` (en camino):** ticket cargado (US$ 553,95, 2 fotos). El Xion no vino ni se cobró. **Al llegar: el Dior
   J'adore 100 ml y el pendrive SanDisk Z430 128GB (agregados de Tito) van con `sololocal` (perfumería y local, él 26/10), no a ML.**
-  Falta: correo y el que retira.
+  Correo cargado el 27/10 ($28.000, 11,55 kg; el que retira $90.000 ya estaba): recargo real 10,7%. Duda: el "reembolso" de $100.000 de la guía (en `notas/para_mati.md`).
 - EX15LP blanco publicado pausado en Ayelen (23/10, `MLA2230467989`, 2 u. sin etiqueta); Joystick PS5 7114209 = sólo local. **Piedra Gua Sha** (ficha sola) y Kit Jade vinculados. (Linternas COB, contador y Sancor: él 27/10 *"no nombrar más"*.)
 - **Almacenamiento** (24/10): ML no da la tarifa por unidad; sale de la factura de septiembre: almacenamiento común $47.735 en las 4 ÷ ~2.640 u. en Full ÷ 30 d ≈ **$0,60 por unidad por día** (cargado con `almactarifa`, chico = grande). El stock antiguo va aparte ($64.155 en sep). Rehacerlo con la factura de octubre (`cargosmes:2026_10`).
 - **Filtro de envíos internacionales** en candidatos: el campo existe (`international_delivery_mode`); escribirlo cuando aparezca uno.
