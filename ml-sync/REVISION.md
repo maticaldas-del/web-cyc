@@ -78,6 +78,11 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   por `informe`/`alertas` y no a Telegram; que las cajas que ML da por entradas las marque Claude y no queden contadas dos veces.
 
 ## 1 · PRECIOS (lunes)
+### 💵 Pedidos: "lo que salva cada $1" (27/10/2026, v27.40, él eligió 1a)
+- **Qué es:** el botón 💵 ordena por 💸 en riesgo (`riesgoComprar`) ÷ costo de la compra (`costUSDof × dólar × cantidad`, el mismo de "Falta reponer"). Reemplaza "lo que deja cada $1" (él con el Kit Jade: comprar lo que tiene stock no da ganancia ahora).
+- **Por qué éste:** simulación con los datos de Pedidos (`sim.py`/`sim2.py` del scratchpad): en una compra con la mitad de la plata, C (salva) $4,4M a 45 d contra A (plata que se pierde) $3,2M, B (deja) $3,7M, E (score) $2,4M; comprando cada 15 días en 90 d B/C/D empatan (±1%) y le ganan a A ~$170-480 mil por mes según cuánta plata falte.
+- **Qué chequear:** que el Kit Jade (con stock) quede abajo y lo que está en 0 arriba; que lo sin costo vaya al final.
+
 ### 💵 Pedidos: ordenar por lo que devuelve cada $1 (27/10/2026, v27.38, etapa 7; él: *"agregá el botón para verlo de esa forma. pero que el predeterminado sea como está ahora"*)
 - **Qué es:** botones "💸 plata que se pierde" (el de siempre, viene así) y "💵 lo que devuelve cada $1" arriba de Prioridad, Bs As, Paraguay y Paulvic; cada renglón dice "💵 cada $1 deja $X". La elección queda guardada en ese aparato.
 - **Dónde vive:** `index.html` · `_pedOrdenPeso`, `_pedDevuelve` (ganancia por unidad ÷ `costoBase` de `margenMLDe`), `_pedSortFnRiesgo`, `.ped-orden-wrap`. v27.39: va adentro del renglón de "Falta reponer" (`renderPedidos` lo agrega al final de cada dibujado); en la v27.38 no se veía porque usaba la clase `pedido-filters`, escondida desde el 03/10. Dibujado a 1200 y 360 px: entra al lado / abajo sin cortarse.

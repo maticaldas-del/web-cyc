@@ -3105,7 +3105,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.39';
+const APP_VERSION='27.40';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3118,6 +3118,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.40',f:'27/10',h:'22:40',c:[{n:2,t:'💵 Pedidos: el botón ahora ordena por lo que SALVA cada $1 (la ganancia que se pierde si no se compra ahora ÷ lo que cuesta la compra). Lo que todavía tiene stock de sobra queda abajo aunque deje mucho; lo que está en 0 sube'}]},
   {v:'27.39',f:'27/10',h:'21:50',c:[{n:1,t:'💵 Pedidos: el botón para ordenar por lo que devuelve cada $1 ahora se ve, al lado de "Falta reponer" (antes quedaba escondido)'}]},
   {v:'27.38',f:'27/10',h:'21:30',c:[{n:2,t:'💵 Pedidos: botón para ordenar por lo que devuelve cada $1 que ponés en la compra (para cuando no alcanza la plata para todo). Cada renglón dice "cada $1 deja $X". El orden de siempre (plata que se pierde) sigue siendo el que viene'}]},
   {v:'27.37',f:'27/10',h:'17:40',c:[{n:2,t:'📦 Pedidos: los chips "🆕 nuevo" y "⬆️ +N" laten una sola vez. Antes volvían a latir cada vez que el robot guardaba algo y en Paraguay parecía que la pantalla se recargaba sola'}]},
@@ -21577,7 +21578,7 @@ function _pedidoItemHtml(p,opts){
   const _riesgoNeto=(p.riesgoComprar!=null?p.riesgoComprar:p.riesgo)||0;
   const riesgoBadge=(opts.showRiesgo&&_riesgoNeto>0)?`<span class="pi-var-toggle" style="background:rgba(239,68,68,.12);color:var(--red);border-color:rgba(239,68,68,.3);cursor:default" title="${p.riesgoMandar>0?`De ${fmt(p.riesgo)} que se pierden por estar sin stock, ${fmt(p.riesgoMandar)} se tapan mandando lo que ya tenés en casa o en camino. Esto es lo que necesita COMPRA.`:'Ganancia de un mes de este producto × los días que vas a pasar sin stock en ML si no se repone.'}">💸 ${fmt(_riesgoNeto)} en riesgo</span>`:'';
   const _dev=opts.showRiesgo?_pedDevuelve(p):null;
-  const devBadge=_dev!=null?` <span class="pi-var-toggle" style="cursor:default;color:${_dev>=1?'var(--green)':'var(--muted)'}" title="Por cada $1 que ponés en la compra, deja $${_dev.toFixed(2).replace('.',',')} de ganancia (ganancia por unidad ÷ lo que cuesta: mercadería + impuestos).">💵 cada $1 deja $${_dev.toFixed(2).replace('.',',')}</span>`:'';
+  const devBadge=_dev!=null?` <span class="pi-var-toggle" style="cursor:default;color:${_dev>=1?'var(--green)':'var(--muted)'}" title="Por cada $1 que ponés en esta compra, salvás $${_dev.toFixed(2).replace('.',',')} de ganancia que se perdería si no la hacés ahora (💸 en riesgo ÷ lo que cuesta la compra). Cerca de 0 = todavía hay stock: puede esperar.">💵 cada $1 salva $${_dev.toFixed(2).replace('.',',')}</span>`:'';
   // ── EL ORIGEN SE CAMBIA DESDE ACÁ (17/09/2026, pedido suyo) ─────────────────────────────
   // Antes este renglón era una ETIQUETA MUERTA que sólo aparecía en la solapa "Prioridad", y el
   // botón para cambiar el origen vivía únicamente en la ficha del producto: para mover algo de
@@ -21704,9 +21705,13 @@ const _pedSortFn=(a,b)=>{const o={pendiente:0,poco_stock:1,suficiente:2};return(
 // costo de la mercadería, la misma ganancia de "$ por unidad"). El orden de siempre (plata que se pierde) sigue siendo el que viene.
 function _pedOrdenPeso(){try{return localStorage.getItem('cycPedOrdenPeso')==='peso'?'peso':'plata';}catch(e){return'plata';}}
 function _pedOrdenPesoSet(k){try{localStorage.setItem('cycPedOrdenPeso',k);}catch(e){} renderPedidos();}
-function _pedDevuelve(p){const pr=prodById(p.prodId);const m=pr&&margenMLDe(pr);if(!m||m.neto==null||!(m.costoBase>0))return null;return (m.neto-m.costoBase)/m.costoBase;}
+// 27/10/2026 (él eligió 1a, después de comparar 5 órdenes en una simulación con los datos de Pedidos): no "lo que DEJA cada $1" sino
+// "lo que SALVA cada $1" = la ganancia que se pierde si NO se compra ahora (💸 en riesgo) ÷ lo que cuesta la compra (el mismo costo que
+// "Falta reponer"). Lo que todavía tiene stock de sobra (el Kit Jade) baja solo; lo que está en 0 sube aunque deje menos por unidad.
+function _pedDevuelve(p){const pr=prodById(p.prodId)||prodByName(p.producto);if(!pr)return null;const cu=(costUSDof(pr)||0)*(curTC()||0);const q=Number(p.cantidad)||0;
+  const r=p.riesgoComprar!=null?p.riesgoComprar:p.riesgo;if(!(cu>0&&q>0)||r==null)return null;return Math.max(0,Number(r)||0)/(cu*q);}
 function _pedOrdenPesoHTML(){const k=_pedOrdenPeso();const b=(v,t,tt)=>`<button class="pf-btn${k===v?' active-all':''}" onclick="_pedOrdenPesoSet('${v}')" title="${tt}">${t}</button>`;
-  return `<div style="display:flex;flex-direction:column;justify-content:center;gap:5px"><span style="font-size:.62rem;color:var(--muted)">Ordenar por</span><div style="display:flex;gap:6px;flex-wrap:wrap">${b('plata','💸 plata que se pierde','El de siempre: primero lo que más plata deja de ganar si no se compra')}${b('peso','💵 lo que devuelve cada $1','Para cuando no alcanza la plata para todo: primero lo que más ganancia deja por cada peso que ponés en la compra')}</div></div>`;}
+  return `<div style="display:flex;flex-direction:column;justify-content:center;gap:5px"><span style="font-size:.62rem;color:var(--muted)">Ordenar por</span><div style="display:flex;gap:6px;flex-wrap:wrap">${b('plata','💸 plata que se pierde','El de siempre: primero lo que más plata deja de ganar si no se compra')}${b('peso','💵 lo que salva cada $1','Para cuando no alcanza la plata para todo: primero lo que más ganancia salva (la que se pierde si no se compra ahora) por cada peso que ponés en la compra. Lo que todavía tiene stock de sobra queda abajo.')}</div></div>`;}
 const _pedSortFnRiesgo=(a,b)=>{
   if(_pedOrdenPeso()==='peso'){const da=_pedDevuelve(a),db=_pedDevuelve(b);if(da!=null||db!=null){if(da==null)return 1;if(db==null)return -1;if(db!==da)return db-da;}}
   // EL ORDEN ES POR PLATA, NO POR COLOR (06/10/2026, él): "quiero que la lista muestre primero los que más

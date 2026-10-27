@@ -118,3 +118,5 @@ Hoy cuenta la última venta salvo 🔥 escasez, ⏳ sin reposición, remate y lo
 3. Paraguay: (a) cada pedido de US$1.000-2.000 (lo que ya pide Pedidos + nuevos de 35%+), cada 10-14 días · (b) seguir con uno por semana de ~US$500.
 → **RESUELTAS (27/10), las tres cayeron**: 1 = "más de lo mismo": no nos quedamos sin stock por no querer comprar sino porque no hay pesos para todo (y el mayorista se queda sin stock); 2 = ya es la estrategia (vender lo máximo defendiendo la mercadería, porque reponer tiene límite de plata, Kangoo y mayorista); 3 = el que retira es ~10% de lo comprado, lo fijo es sólo el correo (arreglé `compray`).
 4. Si los pesos son el límite, cada peso al producto que más devuelve: de los $10,7M que pide Pedidos, con la mitad de la plata eligiendo por lo que devuelve cada peso se ganan ~$7,7M contra ~$5,9M repartiendo parejo. (a) mostrar en Pedidos "cada $1 vuelve con $X" y el orden para gastar la plata que hay · (b) no.
+
+## 27/10 · Botón 💵 de Pedidos → eligió 1a: "lo que salva cada $1" (hecho, v27.40). El orden de siempre sigue por defecto.
