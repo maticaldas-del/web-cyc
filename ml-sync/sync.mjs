@@ -45994,7 +45994,7 @@ async function main() {
           if (inf) s.barata += q;
           addVenta(v, k, q);
           if (k >= k60 && Number(v.total) > 0) (pU[v.prodId] = pU[v.prodId] || []).push(Number(v.total) / q);
-          if (Number(v.total) > 0) (vU[v.prodId] = vU[v.prodId] || []).push({ ts: Number(v.ts) || Date.parse(v.ts || '') || Date.parse(k.slice(0, 10).replace(/_/g, '-') + 'T12:00:00-03:00'), pu: Number(v.total) / q, mla: v.mla || '' });
+          if (Number(v.total) > 0) (vU[v.prodId] = vU[v.prodId] || []).push({ ts: Number(v.ts) || Date.parse(v.ts || '') || Date.parse(k.slice(0, 10).replace(/_/g, '-') + 'T12:00:00-03:00'), pu: Number(v.total) / q, mla: v.mla || '', va: varDe(v) });
         }
       }
       if (clP.fallo.size) console.log(`⚠️ ${clP.fallo.size} venta(s) barata(s) sin poder leer su línea de tiempo: cuentan como venta`);
@@ -46091,12 +46091,15 @@ async function main() {
       // La estrategia vigente en el momento de la venta (la última anotada ANTES de esa hora) y la última venta que no fue de escasez.
       const tagVigente = (mla, ts) => { const h = (esP || {})[mla] || {}; let t = null, tk = -Infinity;
         for (const [k0, x] of Object.entries(h)) { const kt = Number(k0); if (kt > 0 && x && x.t && kt <= ts && kt > tk) { t = x.t; tk = kt; } } return t; };
-      const ultV = (pid) => { const a = [...(vU[pid] || [])].sort((x, y) => y.ts - x.ts);
+      // 27/10/2026 (él, con las Sábanas Rojo vendidas a $23.490 buscando techo: "no las sábanas en general. ese color se vendió a ese
+      // precio, no todos. o por lo menos no se sabe"; y 1a: sin sobra ni liquidando, igual que el ritmo): `va` = sólo las ventas de ESE
+      // color; la estrategia se mira como el ritmo normal (`tagNor`/`NOR_ABN`: sin escasez, sin reposición, sobra, liquidando ni remate).
+      const ultV = (pid, va) => { const a = [...(vU[pid] || [])].filter((x) => va == null || sid(String(x.va || '').toLowerCase()) === sid(String(va).toLowerCase())).sort((x, y) => y.ts - x.ts);
         // Revisión etapa 1 (24/10): la venta por una GEMELA (Premium o envío gratis) trae su estrategia `gemela` y el precio de la
         // gemela (más caro): no sirve para el máximo de compra y escondía la escasez de su Clásica. Se saltea y la estrategia se mira
         // en la Clásica.
         for (const x of a) { const g = x.mla && (L[x.mla] || {}).gemelaDe; if (g) continue;
-          if (!(x.mla && ESC_TAGS.has(tagVigente(x.mla, x.ts)))) return Math.round(x.pu); } return 0; };
+          if (!(x.mla && NOR_ABN.has(tagNor(x.mla, x.ts)))) return Math.round(x.pu); } return 0; };
       const marcaCambio = (mla, ev) => {
         if (!(ev.a > ev.de)) return '';
         let t = tagEnMomento(mla, ev.ts); if (!t || t === 'sindecidir') t = tagDeMotivo(ev.motivo);
@@ -46130,7 +46133,10 @@ async function main() {
         const hP = histD(s);
         const esBsasP = p.origen !== 'py' && !(/paulvic/i.test(provN[p.proveedorId] || '') || /paulvic/i.test(p.name || ''));   // el mismo grupo que BSAS de abajo
         const m60 = med(pU[p.id]);
-        const uv = ultV(p.id);
+        // Con colores, el del producto es el MÁS BAJO de lo que vendió cada color (lo que se sabe que vende); cada color con venta propia
+        // va aparte en su renglón (` · ultv` del color) y Pedidos usa el suyo (`ped:<id>#<color>=venta`).
+        const uvC = (p.variantes || []).map((va) => ultV(p.id, va)).filter((x) => x > 0);
+        const uv = uvC.length ? Math.min(...uvC) : ultV(p.id);
         const dec = dec0 + (m60 ? ` · med60 $${m60}` : '') + (uv ? ` · ultv $${uv}` : '') + ` · ctas [${ctasDe(p.id).map((c) => c.slice(0, 2)).join(' ')}]` + (CD[p.id] ? ` · YA DECIDÍ ${CD[p.id].u != null ? CD[p.id].u : JSON.stringify(CD[p.id].vars || {})}` : '') + (_grandePT && _grandePT(p) ? ' · GRANDE' : '');
         console.log(`\n${p.id} · ${String(p.name).slice(0, 55)} · v30 ${s.t30} v60 ${s.t60} v180 ${s.t180} · últ ${s.ult ? s.ult.slice(8, 10) + '/' + s.ult.slice(5, 7) : '—'}${s.rem ? ' · REMATE ' + s.rem : ''}${s.barata ? ' · BARATA ' + s.barata : ''} · dCS ${dCS(p.id)}${cortes60(p.id) ? ' · cortes ' + cortes60(p.id) : ''} · Full ${ft} [${C4.map((c, i) => full[i] ? c.slice(0, 2) + full[i] : '').filter(Boolean).join(' ')}] · casa ${casa} · camino ${cm}${py ? ' · PYviaja ' + py : ''}${pvv ? ' · PVviaja ' + pvv : ''}${liv ? ' · LIviaja ' + liv : ''} ${(p.variantes || []).length ? ' · colores ' + p.variantes.length : ''} · neto $${Math.round(Number(p.netoCalc) || 0)} costo $${cost}${p.nisseiUSD ? ' · PY US$' + p.nisseiUSD : ''}${hP ? ' · hist ' + hP + 'd' : ''}${NORM[p.id] || ''}${dec}`);
         // Los colores de la FICHA (etapa 3, 20/10/2026): un color sin ventas ni mercadería no tiene renglón, y un juicio de ese color
@@ -46147,7 +46153,7 @@ async function main() {
           const manoTxt = mo && mo.u != null ? ` · mano ${Math.max(0, parseInt(mo.u) || 0)}${esBsasP && Number((ofP || {})[p.id]) > (Number(mo.ts) || 0) ? ' vencida' : ''}` : '';
           if (!sv.t180 && !fv && !cv && !mv && !pvx && !lix && !manoTxt) continue;
           const camV = cambiosDe(mlasP.filter(([mla, e]) => colorMla(mla, e) === va).map(([mla]) => mla)), hV = histD(sv);
-          console.log(`   # ${va} · v30 ${sv.t30} v60 ${sv.t60} v180 ${sv.t180} · últ ${sv.ult ? sv.ult.slice(8, 10) + '/' + sv.ult.slice(5, 7) : '—'} · dCS ${dCS(p.id, '__v__' + sid(va), dCS(p.id))}${cortes60(p.id, '__v__' + sid(va)) ? ' · cortes ' + cortes60(p.id, '__v__' + sid(va)) : ''} · Full ${fv} · casa ${cv} · camino ${mv}${pvx ? ' · PVviaja ' + pvx : ''}${lix ? ' · LIviaja ' + lix : ''}${nuncaPD[p.id + '#' + sid(va)] ? ' · NUNCA' : ''}${hV ? ' · hist ' + hV + 'd' : ''}${NORM[p.id + '#' + va] || ''}${manoTxt}${camV.length ? ' · cambios (' + camV.join(' ') + ')' : ''}`);
+          console.log(`   # ${va} · v30 ${sv.t30} v60 ${sv.t60} v180 ${sv.t180} · últ ${sv.ult ? sv.ult.slice(8, 10) + '/' + sv.ult.slice(5, 7) : '—'} · dCS ${dCS(p.id, '__v__' + sid(va), dCS(p.id))}${cortes60(p.id, '__v__' + sid(va)) ? ' · cortes ' + cortes60(p.id, '__v__' + sid(va)) : ''} · Full ${fv} · casa ${cv} · camino ${mv}${pvx ? ' · PVviaja ' + pvx : ''}${lix ? ' · LIviaja ' + lix : ''}${nuncaPD[p.id + '#' + sid(va)] ? ' · NUNCA' : ''}${hV ? ' · hist ' + hV + 'd' : ''}${NORM[p.id + '#' + va] || ''}${(() => { const u = ultV(p.id, va); return u ? ' · ultv $' + u : ''; })()}${manoTxt}${camV.length ? ' · cambios (' + camV.join(' ') + ')' : ''}`);
         }
       };
       console.log(`dólar ${tc} · ventana 30 d desde ${k30} · ${prods.length} fichas`);
