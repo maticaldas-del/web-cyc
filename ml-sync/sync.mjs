@@ -5424,7 +5424,49 @@ async function detectarErrores(db, o = {}) {
     if (x.obj > x.P) console.log(`   ▶️ decido:${x.mla}=${x.obj}!vendio#techo|Vendió a ${$(x.P)} buscando techo: no es techo, +30% (regla del 27/10, el detector);go`);
   });
   console.log(`(miré ${lzC.nuevo} en 📈/🆕: ${lzC.inact} no activas · ${lzC.sinVenta} sin venta a este precio · ${lzC.subio} ya subieron después de vender · ${lzC.congelada} 🧊 congeladas a pedido suyo · ${lzC.convenir} 🟠 ya no conviene subir (techo95 o el tope) · ${lanza.length} para subir)`);
-  const res = { n: N, cats, items, foto, fotoGem, fotoHer, hechos: [], noHechos: [], lanza };
+  // ── 🔎 VENDIERON AYER U HOY Y NO ESTÁN BUSCANDO TECHO (27/10/2026, él: "que mire todos los productos de ayer y hoy… los que hay que
+  // subir el precio para buscar el techo lo más rápido posible… el objetivo es que todas estén en buscando el mejor precio lo más rápido
+  // posible y a partir de ahí afinar"). Toda Clásica activa que vendió (ella, gemela o hermana) en las últimas 48 h, que NO está en 📈/🆕
+  // (eso va arriba), sin techo medido (🔴/🟠 de las rayas ni 🏔️ de techo95 de 60 días) y sin una estrategia que explique no subir
+  // (sobra, escasez, sin reposición, descuento, promo, bajando, liquidando, remate, 🧊). `decido` sigue pasando por sus frenos (4a etc.).
+  const vendio48 = [], v48C = { vendieron: 0, enPrueba: 0, conTecho: 0, explica: 0, inact: 0 };
+  { const NO_SUBE = new Set(['escasez', 'sinrepo', 'sobra', 'promo', 'descuento', 'liquidando', 'remate', 'desobra', 'gemela', 'bajando']);
+    let ray = {}; try { ray = (await db.get('cyc/rayas')) || {}; } catch { ray = null; }
+    let nos = {}; try { nos = (await db.get('cyc/nosubir')) || {}; } catch { nos = {}; }
+    const clasicaDe = (x) => { let m = x; for (let i = 0; i < 3 && links[m] && links[m].gemelaDe; i++) m = links[m].gemelaDe; return m; };
+    const uds = {}; let fallo = false;
+    for (const t of [ahora - 864e5, ahora]) { let vd; try { vd = (await db.get('cyc/ventaprod/' + dayKeyFromISO(t))) || {}; } catch { fallo = true; continue; }
+      for (const v of Object.values(vd)) { if (!v || v.cancelada || !v.mla) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ts < ahora - 48 * 36e5) continue; const c = clasicaDe(String(v.mla)); uds[c] = (uds[c] || 0) + (Number(v.qty) || 1); } }
+    // una venta por una hermana de stock cuenta para todas las del grupo
+    for (const m of Object.keys(uds)) for (const hm of hermanasStockDe(links, prods, m)) if (!uds[hm]) uds[hm] = uds[m];
+    const enLanza = new Set(lanza.map((x) => x.mla));
+    for (const [m, u] of Object.entries(uds)) {
+      const e = links[m]; if (!e || e.gemelaDe || e.ignored || e.noVendemosMas || ML_REVISION_NO_MIRAR.has(m)) continue;
+      v48C.vendieron++;
+      if (!/^active/.test(String(e.status || ''))) { v48C.inact++; continue; }
+      const h = est[m] || {}; let ult = ''; for (const k of Object.keys(h).map(Number).filter((n) => n > 0).sort((x, y) => x - y)) { const x = h[k]; if (!x || !x.t) continue; ult = x.t === 'correccion' ? pasajeDe(ult) : x.t; }
+      if (['techo', 'nuevo'].includes(ult) || enLanza.has(m)) { v48C.enPrueba++; continue; }
+      const P = Number((np[m] || {}).precio) || 0;
+      const porQue = NO_SUBE.has(ult) ? `está en ${ult}` : (nos[m] ? 'marcada liquidando (no sube)' : (nbDet[m] && nbDet[m].congelado ? '🧊 congelada a pedido suyo' : (P >= TECHO_DURO ? 'en el techo duro' : '')));
+      if (porQue) { v48C.explica++; vendio48.push({ mla: m, e, u, P, ult, no: porQue }); continue; }
+      const rT = ray == null ? null : Number((ray[m] || {}).techo) || 0;
+      const t95 = Object.entries(h).some(([k, x]) => techookDeTecho95(x) && Number(k) > ahora - 60 * 864e5);
+      if (rT == null) { vendio48.push({ mla: m, e, u, P, ult, no: '❓ no pude leer sus rayas' }); continue; }
+      if (rT > 0 || t95) { v48C.conTecho++; vendio48.push({ mla: m, e, u, P, ult, no: `ya tiene techo medido (${rT > 0 ? '🔴/🟠 ' + $(rT) : '🏔️ techo95'}): se afina desde ahí` }); continue; }
+      let obj = P > 0 ? Math.min(objTerm(P * 1.3) || TECHO_DURO, TECHO_DURO) : 0;
+      if (P > 0 && P < 32900 && obj >= UMBRAL_ENVIO_GRATIS) obj = 32990;
+      vendio48.push({ mla: m, e, u, P, ult, obj });
+    }
+    if (fallo) console.log('\n⚠️ no pude leer las ventas de ayer u hoy: la lista de abajo puede estar incompleta');
+  }
+  const subir48 = vendio48.filter((x) => x.obj > x.P);
+  bloque('🔎 VENDIERON AYER U HOY SIN TECHO MEDIDO Y NO ESTÁN BUSCANDO TECHO · subir +30% a buscar techo EN ESTA VUELTA', subir48, (x) => {
+    console.log(`${x.mla} · ${x.e.cuenta || '?'} · ${String(x.e.title || '?').slice(0, 44)} · ${x.ult || 'sin estrategia'} · vendió ${x.u} u. en 48 h · hoy ${$(x.P)}`);
+    console.log(`   ▶️ decido:${x.mla}=${x.obj}#techo|Vendió ayer/hoy y no tiene techo medido: a buscar techo (él, 27/10);go`);
+  });
+  { const resto = vendio48.filter((x) => !(x.obj > x.P)); if (resto.length) { console.log('   (no suben:)'); for (const x of resto) console.log(`   · ${x.mla} · ${String(x.e.title || '?').slice(0, 40)} · ${x.ult || 'sin estrategia'} · ${x.P ? $(x.P) : '¿?'} · ${x.no}`); } }
+  console.log(`(vendieron en 48 h: ${v48C.vendieron} Clásicas · ${v48C.inact} no activas · ${v48C.enPrueba} ya en 📈/🆕 (lista de arriba) · ${v48C.conTecho} con techo medido · ${v48C.explica} con una estrategia que explica no subir · ${subir48.length} para subir)`);
+  const res = { n: N, cats, items, foto, fotoGem, fotoHer, hechos: [], noHechos: [], lanza, subir48 };
   // ── 4 · deshacer (`:go`): sólo lo anotado con el formato nuevo; lo de antes se deshace a mano con su comando
   const aDeshacer = por('pendiente').filter((x) => x.fmt >= 2 && x.fuente !== 'el detector');
   if (!aplicar) { if (aDeshacer.length) console.log(`\n(sin :go no toco nada · errores:${horas}:go por ml-sync deshace ${aDeshacer.length})`); return res; }
