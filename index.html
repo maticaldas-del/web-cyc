@@ -3104,7 +3104,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.18';
+const APP_VERSION='27.19';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3117,6 +3117,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.19',f:'27/10',h:'01:00',c:[{n:2,t:'🏠 Mi oficina: los botones de cada cuenta son más grandes y dicen cuántas unidades hay para mandar y 💵 cuánto deja venderlas (la caja a medio armar o, si no hay, lo que entra en el cupo). "Todas" suma las 4.'}]},
   {v:'27.18',f:'27/10',h:'00:45',c:[{n:1,t:'🏠 Mi oficina: se sacaron los cuadros "u. en casa · hay que mandar · en mercadería".'}]},
   {v:'27.17',f:'27/10',h:'00:35',c:[{n:2,t:'📦 Envíos a Full: cada envío dice 💵 cuánto deja vender todo lo que lleva (ganancia por unidad de hoy de cada producto), y arriba el total de todo lo que está en camino.'}]},
   {v:'27.16',f:'27/10',h:'00:10',c:[{n:3,t:'📦 Armar caja · Cargar lo que entra en el cupo: lo que está en 0 o se corta antes de la próxima caja recibe lo que vende hasta que llegue (no 1 sola), y el lugar que sobra va a lo que más plata deja por unidad. Así no se pierden ventas y se saca la máxima plata del cupo.'}]},
@@ -7332,7 +7333,30 @@ function renderOfiCaja(){
   // podemos esperar". El botón, el número y el 📦 toman el MISMO veredicto del cartel (cajaVeredicto).
   const _ver={};
   LOCS.forEach(l=>{_ver[l]=cajaVeredicto(convieneCaja(filas,l));});
-  if(fc)fc.innerHTML=`<button class="pf-btn${ofiFiltroCuenta===''?' active-all':''}" onclick="setOfiFiltro('')">Todas${aMandarCupo?` <strong title="Lo que se puede mandar hoy entre las 4 cuentas, con el tope del cupo de Full de cada una">${aMandarCupo}</strong>`:''}</button>`
+  // 💵 LO QUE DEJA LA CAJA DE CADA CUENTA (27/10/2026, él con los botones de cuenta: "ponelos más grande para que entre las unidades a
+  // mandar y lo esperado de ganancia al vender los productos"). Si hay caja a medio armar, la de esa caja; si no, lo que entra en el cupo
+  // con la MISMA regla del botón "Cargar lo que entra en el cupo" (`cajaLlenarCupoPlan`). Ganancia por unidad de hoy (`gananciaUnidad`;
+  // sin ella, la de las ventas, `cajaGanUnidad`). Lo que no tiene ninguna no suma.
+  const _ganCta={};
+  { const _cache={},_gU=p=>{let g=null;try{g=gananciaUnidad(p);}catch(er){}if(!(g!=null&&isFinite(g)))g=cajaGanUnidad(p,_cache);return g;};
+    LOCS.forEach(l=>{
+      const arm=cajaDe(l);let gan=0;
+      if(Object.values(arm).some(x=>x>0)){
+        for(const [k,u] of Object.entries(arm)){if(!(u>0))continue;const pid=String(k).split('|')[0];const p=(state.products||[]).find(x=>x.id===pid);const g=p?_gU(p):null;if(g!=null&&isFinite(g))gan+=g*u;}
+      }else{
+        const cands=[];
+        filas.forEach(f=>(f.sug||[]).forEach(x=>{if(x.cuenta!==l||!(x.mandar>0))return;const u=Math.min(x.mandar,f.hay);if(u<=0)return;
+          cands.push({key:_ck(f.p.id,f.variante),p:f.p,u,ganU:cajaGanUnidad(f.p,_cache),enCero:!!x.enCero,vDia:x.vDia||0,dias:x.dias,grande:esGrandeFull(f.p)});}));
+        const cu=cupoRestante(l);
+        const items=cu?cajaLlenarCupoPlan(cands,cu.estPeq,cu.estGra).items:Object.fromEntries(cands.map(c=>[c.key,c.u]));
+        for(const c of cands){const u=items[c.key]||0;if(!(u>0))continue;const g=_gU(c.p);if(g!=null&&isFinite(g))gan+=g*u;}
+      }
+      _ganCta[l]=gan;
+    }); }
+  const _gT=LOCS.reduce((t,l)=>t+(_ganCta[l]||0),0);
+  if(fc)fc.innerHTML=`<button class="pf-btn${ofiFiltroCuenta===''?' active-all':''}" style="padding:8px 14px;min-width:118px;text-align:left;line-height:1.35" onclick="setOfiFiltro('')"><div style="font-size:.8rem;font-weight:700">Todas</div>`
+    +`<div style="font-size:.7rem">${aMandarCupo?`<strong title="Lo que se puede mandar hoy entre las 4 cuentas, con el tope del cupo de Full de cada una">${aMandarCupo} u.</strong> a mandar`:'<span style="color:var(--muted)">nada a mandar</span>'}</div>`
+    +(_gT>0?`<div style="font-size:.7rem;color:var(--green);font-weight:700">💵 ${fmt(Math.round(_gT))}</div>`:'')+`</button>`
     +LOCS.map(l=>{
       const u=Object.values(cajaDe(l)).reduce((a,x)=>a+x,0);
       const nC=porCtaCupo[l]||0;
@@ -7340,7 +7364,10 @@ function renderOfiCaja(){
       const col=vr?vr.col:'';
       const _corte=porCta[l]>nC?` · se sugieren ${porCta[l]} pero el cupo de Full deja mandar ${nC}`:'';
       const tit=vr?(`${vr.txt} · ${vr.k==='verde'?`la caja de ${l} ya se justifica`:vr.k==='naranja'?'se paga en menos de una semana':`todavía no da: juntá más antes de pagar los ${fmt(costoCaja())} del envío`}`+_corte):'';
-      return `<button class="pf-btn${ofiFiltroCuenta===l?' active-all':''}"${col?` style="--cv:${col}"`:''} title="${tit}" onclick="setOfiFiltro('${l}')">${l}${nC?` <strong style="color:${col||'inherit'}">${nC}</strong>`:''}${u?`<span class="pf-badge" title="caja a medio armar${vr?' · '+vr.txt:''}">📦${u}</span>`:''}</button>`;
+      const gC=_ganCta[l]||0;
+      return `<button class="pf-btn${ofiFiltroCuenta===l?' active-all':''}" style="${col?`--cv:${col};`:''}padding:8px 14px;min-width:118px;text-align:left;line-height:1.35" title="${tit}" onclick="setOfiFiltro('${l}')"><div style="font-size:.8rem;font-weight:700">${l}${u?`<span class="pf-badge" title="caja a medio armar${vr?' · '+vr.txt:''}">📦${u}</span>`:''}</div>`
+        +`<div style="font-size:.7rem">${nC?`<strong style="color:${col||'inherit'}">${nC} u.</strong> a mandar`:'<span style="color:var(--muted)">nada a mandar</span>'}</div>`
+        +(gC>0?`<div style="font-size:.7rem;color:var(--green);font-weight:700" title="Lo que deja vender ${u?'la caja a medio armar':'lo que entra en el cupo'} (ganancia por unidad de hoy)">💵 ${fmt(Math.round(gC))}</div>`:'')+`</button>`;
     }).join('');
   // Con una cuenta elegida se entra en MODO ARMAR CAJA: se listan TODOS los productos que hay en
   // casa (no solo los que la cuenta "necesita"), cada uno con una casilla para poner cuántos van

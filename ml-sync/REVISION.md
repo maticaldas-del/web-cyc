@@ -1962,6 +1962,11 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
 
 ## 7 · DISEÑO (domingo)
 
+### 🏠 Botones de cuenta de Mi oficina con unidades y 💵 (27/10/2026, v27.19, él: *"ponelos más grande para que entre las unidades a mandar y lo esperado de ganancia al vender los productos"*)
+- **Qué es:** cada botón (Todas, Adriana, Luciana, Ayelen, Matias) muestra en tres renglones el nombre, las u. a mandar (con el cupo) y 💵 lo que deja venderlas: la caja a medio armar si hay; si no, lo que entraría con el botón "Cargar lo que entra en el cupo" (`cajaLlenarCupoPlan`). Ganancia por unidad de hoy (`gananciaUnidad`, si no la de ventas).
+- **Dónde vive:** el armado de `ofi-filtro-cuentas` (`_ganCta`, `index.html`).
+- **Qué chequear:** con la caja de Ayelen cargada, su 💵 da lo mismo que la cabecera del envío cuando se cierre; a 360 px los 5 botones bajan de renglón sin cortarse.
+
 ### 🏠 Mi oficina sin los cuadros de resumen (27/10/2026, v27.18, él: *"este sacalo"*)
 - **Qué es:** se sacaron "u. en casa · hay que mandar · en mercadería" de `ofi-resumen`; queda sólo el sugerido de la cuenta elegida (si no hay, el lugar se oculta).
 - **Dónde vive:** `renderOfiCaja`/resumen de la oficina (`index.html`, `ofi-resumen`).
