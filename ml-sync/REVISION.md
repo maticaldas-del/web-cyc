@@ -1974,6 +1974,7 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
     decisión de compra, no código. 11 (dinero que rinde en MP) lo mira él en la app.
 
 ## 7 · DISEÑO (domingo)
+- **27/10/2026 · v27.22 · 🧾 ventas brutas en cada cuadrito del calendario** (él: *"agregar ventas brutas… y en los meses también… o sea en los días"*). Cada mes del año y cada día del mes muestran, debajo de la ganancia, lo que pagaron los compradores en corto (: 1,2M · 850k; , clase ). Mismo  de  que el renglón 🧾 de arriba. **Chequear:** que la suma de los días dé el 🧾 del mes; que a 360 px no se corte ningún cuadrito.
 
 ### 🏠 Botones de cuenta de Mi oficina con unidades y 💵 (27/10/2026, v27.19, él: *"ponelos más grande para que entre las unidades a mandar y lo esperado de ganancia al vender los productos"*)
 - **Qué es:** cada botón (Todas, Adriana, Luciana, Ayelen, Matias) muestra en tres renglones el nombre, las u. a mandar (con el cupo) y 💵 lo que deja venderlas: la caja a medio armar si hay; si no, lo que entraría con el botón "Cargar lo que entra en el cupo" (`cajaLlenarCupoPlan`). Ganancia por unidad de hoy (`gananciaUnidad`, si no la de ventas).
