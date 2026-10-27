@@ -3104,7 +3104,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.14';
+const APP_VERSION='27.15';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3117,6 +3117,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.15',f:'26/10',h:'23:20',c:[{n:1,t:'🇵🇾 Pedidos hechos de Paraguay (en camino y ya llegaron): cada tarjeta suma el ⭐ gana × vende de sus productos y la 💵 ganancia que deja venderlo todo, como el pedido del momento.'}]},
   {v:'27.14',f:'26/10',h:'22:55',c:[{n:2,t:'🪄 Pedido de Paraguay: "Llenar" ya no puede pasar el máximo de cada nuevo (hasta US$ 20, máximo 4). Si la base tenía una unidad que la pantalla todavía no mostraba, la sumaba de más (el Mouse Gravastar de US$ 58 quedó en 2).'}]},
   {v:'27.13',f:'26/10',h:'20:20',c:[{n:3,t:'📦 Armar caja · Cargar lo que entra en el cupo: va por lo que más plata deja cada unidad. La primera unidad va sólo a lo que está en 0 o se corta en 14 días (antes 1 a cada uno, que con poco cupo se lo comía lo que tiene stock), y lo nuevo que nunca vendió cuenta con lo que deja hoy su publicación.'}]},
   {v:'27.12',f:'26/10',h:'19:30',c:[{n:1,t:'📈 Línea de tiempo: los colores/aromas van en un desplegable; a la vista quedan sólo "Todas juntas" y el que abriste.'}]},
@@ -17362,6 +17363,26 @@ function _pyItsHTML(its,rec){const _r=rec>=1?rec:RECARGO_PY;
 // el detalle adentro al clickearlo"). Fecha, el % que se le cargó y en qué está. Todo lo demás, al abrirla.
 // El día aprox. de llegada de un pedido en camino: desde la guía del correo si está (`despacho`), si no desde el pedido.
 function pyLlegadaAprox(c){const desp=/^\d{4}-\d{2}-\d{2}$/.test(c&&c.despacho||'');return{d:desp?pyMasHabiles(c.despacho,PY_DIAS_CORREO):pyMasHabiles(c.fecha,PY_DIAS_LLEGADA),desp};}
+// ⭐ Y 💵 DE UN PEDIDO HECHO (27/10/2026, él con las tarjetas de En camino / Ya llegaron: "en estos también poner estrella y $ al venderse
+// ganancia"). Las MISMAS cuentas que el pedido del momento: ⭐ = suma del gana × vende de cada producto (nuevo: `candCombo` de su candidato;
+// probado o ya con ficha: % de su publicación de hoy × log10(ventas + 1) ÷ 10) · 💵 = unidades × ganancia por unidad (con ficha: la de su
+// publicación de hoy; si no, la medida en ML al pedirlo). Lo que no tiene dato no suma (no se inventa).
+function pyPedidoEstGan(c){
+  let est=0,gan=0;
+  const cands=state.candidatos||{};
+  for(const it of (Array.isArray(c&&c.items)?c.items:[])){
+    if(!it||it.desc)continue;const u=parseInt(it.u)||0;if(!(u>0))continue;
+    const pr=it.prodId?(state.products||[]).find(x=>x.id===it.prodId):null;
+    const cand=it.id&&cands[it.id]?cands[it.id]:null;
+    let e=cand?candCombo(cand):null;
+    if(e==null&&pr){let m=null;try{m=margenMLDe(pr);}catch(er){}const v=pedVentasNorm(pr).vendidos;if(m&&m.margen!=null&&v>0)e=Math.max(0,m.margen)*Math.log10(v+1)/10;}
+    if(e!=null&&isFinite(e))est+=e;
+    let g=null;if(pr){try{g=gananciaUnidad(pr);}catch(er){g=null;}}
+    if(!(g!=null&&isFinite(g)))g=Number(it.ganancia)>0?Number(it.ganancia):null;
+    if(g!=null&&isFinite(g))gan+=g*u;
+  }
+  return{est,gan};
+}
 function pyPedidoResumenHTML(c,enCamino,dias,tarde){
   // 16/10/2026, él: "más minimalista (...) muchos íconos y no se nota bien cada pedido, más contraste".
   // Sin íconos: a la izquierda la fecha y en qué está; a la derecha la plata y, chico abajo, el recargo.
@@ -17383,6 +17404,8 @@ function pyPedidoResumenHTML(c,enCamino,dias,tarde){
     <div style="margin-left:auto;text-align:right">
       <div style="font-size:1.05rem;font-weight:800;color:var(--text);white-space:nowrap" title="Lo que te salió el pedido puesto en la oficina: la factura más todos los gastos${R.r?'':' (con el recargo estimado: faltan gastos)'}">US$ ${usd}</div>
       <div style="font-size:.62rem;color:var(--muted);margin-top:2px;white-space:nowrap">${rec}${tk}${tkF}</div>
+      ${(()=>{const EG=pyPedidoEstGan(c);if(!(EG.est>0)&&!(EG.gan>0))return '';
+        return `<div style="font-size:.72rem;font-weight:700;color:var(--green);margin-top:3px;white-space:nowrap">${EG.est>0?`<span title="La suma del ⭐ gana × vende de cada producto del pedido: más alto, mejor pedido.">⭐ ${EG.est.toFixed(1).replace('.',',')}</span>`:''}${EG.est>0&&EG.gan>0?' · ':''}${EG.gan>0?`<span title="Lo que deja vender todo el pedido: unidades × ganancia por unidad (con ficha: la de su publicación de hoy · si no, la medida en ML al pedirlo).">💵 ${fmt(Math.round(EG.gan))} al venderse</span>`:''}</div>`;})()}
     </div>
     <span style="font-size:.7rem;color:var(--muted);margin-left:4px">▾</span>`;
 }
