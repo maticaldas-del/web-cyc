@@ -56,3 +56,4 @@ en que se anota en `correcciones.md`.** El número entre corchetes es de qué ca
 35. ¿Esto que le voy a contar ya lo decidió él y está quieto a propósito? Entonces no se lo repito en cada vuelta (26/10, las 35 pausadas de Paulvic: "no avises más de esas"). Lo que él ya resolvió no es novedad.
 36. Después de tocar un archivo que la web necesita para abrir (`sw.js`, `index.html`, `manifest`), ¿lo releí entero y no está vacío ni cortado? Y si algo falla, ¿encontré la causa antes de explicarla? (26/10, la web no entraba por un `sw.js` vacío)
 37. ¿Le voy a preguntar si bajar un precio? Entonces le paso el % de seguridad de que es el techo (`techo95:<MLA>`) de CADA uno, y si no hay % (pocos días con stock), cuántos días lleva y qué falta (27/10, los Paulvic a $21.990).
+38. ¿Esto que está en 💰 tiene un 🔴 techo al 95% (o 30 días sin vender)? Si la prueba de techo se cortó antes, NO es 💰: vuelve a 📈 buscando techo (27/10, Adaptador 8 en 1 y Centímetro Blanco).
