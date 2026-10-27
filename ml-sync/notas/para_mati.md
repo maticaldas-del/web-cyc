@@ -8,12 +8,15 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 
 ## Abiertas
 
+### Del 27/10 a la madrugada (contestó 1 2a 3 4a 5 13)
+- **Hecho:** 1 Paulvic Debutante/Witch Night: no se bajan sin techo al 95% salvo cerca de pagar stock (lo mira la vuelta con `techo95`) · 3 Centímetro: las dos Blancas al precio más caro y como un solo producto (regla 👯 cambiada) · 4a: catálogo Surtido no, medir la Rosa una semana (03/11) · 5: caja para la máxima plata (v27.16) · 13: Sancor, contador y Linternas no se nombran más.
+- **2 (perfumes):** contestó "perfumes hasta 0%": en los 15 días antes del stock antiguo F12 se abre (robot, 27/10) · **6:** el tope de US$ 500 es POR CADA pedido (perfumería y resto) · **11:** los 3 probados en duda (PS Portal y las Victoria's Secret sin código) se descartan.
+- Siguen sin contestar: 7 Batidora · 8 Paulvic Hot · 9 Separador x2 · 10 preguntas de compradores · ~~12 pagar Paulvic~~: ya estaba pagado y cargado desde el 24/10 (error mío ponerlo en la lista).
+
 ### Del 26/10 a la tarde (contestó 1? 2a 3? 4? 5 después)
-- 1 Paulvic Debutante Mujer y Witch Night: no entendió "la prueba perdió" y pidió nunca abajo del 35% salvo cerca de pagar stock → le expliqué y le pasé escalera $21.990 → $18.790 → $16.490 → $14.990 (40%), esperando su a/b.
 - 2a: los Paulvic recién llegados se miden con stock hasta 3 ventas esperadas, los que no vendan bajan en escalera (nunca abajo del 35%).
-- 3 Los 5 Paulvic de 1 u. con 200+ días: preguntó si hay margen para bajar → le pasé los números, esperando su a/b.
 - 4 Separador x2: él lo leyó como techo → le expliqué que la hermana vende al mismo precio con el mismo stock (no es techo, es la publicación), esperando su a/b.
-- 5 Color del Centímetro: "haceme acordar y lo veo" → va en la lista de las 12:30 de mañana.
+- ~~5 Color del Centímetro~~: resuelto el 26/10 a la noche (ver abajo).
 
 ### Del 26/10 al mediodía (contestó 1a 2a 3a 4)
 - 1a CyberMonday: entran 6 (el Coconut no: deja 3% y los perfumes van al 10%+), programado 01/11 23 hs (`trig_0116kaFysCe97PQwbjk2FtJD`) · 2a Tendedero y Pizarra no · 3a VS con piso de 10% (regla nueva de perfumes, F12): Pure Seduction $68.990 → $59.990 → $53.990; Bliss igual desde el 15/11; Amber desde el 10/11 · 4 Espejos: la caja no dice el aumento, manda foto con una moneda (5", 6", 8").
@@ -26,14 +29,13 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 - 12a: buscar catálogos de pack (primero Cartas Casino) — HECHO 26/10 (`catbusca`, 6 búsquedas): no hay ningún catálogo de pack del mismo mazo Casino x50 con vendedores (el único, "12 cajas de naipes Casino" MLA36486074, está vacío y es otro mazo de 54). Sin catálogo de pack no se arma (regla del 23/10). Se vuelve a mirar en un mes. 14a: pedido de Navidad del P47, Filtro y Sábanas el 03/11 (tarea programada). 15a: buzón hecho.
 
 ### De la completa del lunes 26/10
-- **Paulvic Debutante Mujer (8 en Full) y Witch Night (9 en Full + 10 entre camino y oficina):** siguen a $21.990 desde el 16/10 sin vender 8+ días con stock; la prueba perdió (~28% menos plata por día) y el 24/10 autorizaste volver otros 17 aromas. (a) sugerida: volverlos ya a $14.990 con tu "autorizo", como el 24/10 · (b) esperar al 31/10 y bajar de a un escalón (descuento a $18.790).
 - **Paulvic que recién recibieron stock y siguen a $21.990** (Libre, Fuego, 1.4M Hombre, Turbulence, Flores, Pasión, Boy, Sexy Mujer; Bella cuando entren sus 10) y **Blue Men a $24.990** (5 en Full + 25 entre camino y oficina): (a) sugerida: que se midan con stock hasta 3 ventas esperadas (1.4M Hombre y Blue Men se agotaron en 1-2 días la última vez) y bajar en escalera los que no vendan · (b) volverlos ya a $14.990.
-- **5 Paulvic de 1 unidad con 200+ días** (Rose Mujer, Indigo, Teikirisi, 1.4 Sexy Men, Abismo): pagan ~$5.000 entre todos si siguen el 10/11. (a) sugerida: seguir igual · (b) retirar las que sigan el 08/11 para la perfumería.
 - **Para que sepas (todavía no se decide):** Cortapelo 4 en 1 de Ayelen (5 u.) y Panel solar (5 u.) ya están en el último escalón antes del 0%: si no venden hasta el 08/11, retirar o vender al costo antes de mediados de diciembre.
 - **Batidora Blanco:** 4 reclamos en 27 ventas ("faltan accesorios", "distinto a lo publicado"): hay que arreglar la descripción o las fotos de la publicación (lo tenés que hacer vos en ML).
 - **Paulvic Hot:** 0 ventas en 30 días con 9 en Full, aun a $14.360: mirar la publicación (fotos, título).
 - **Separador x2 MLA1474954957 (Ayelen):** ML le marca 62% de salud y no vende hace 60 días (la hermana MLA3207459664 sí vende con el mismo stock). (a) sugerida: revisarla en ML (fotos, ficha técnica, título) · (b) pausarla.
-- **Color del Centímetro MLA3112784736 (Luciana):** ML dice que tiene su propio depósito (código de etiqueta **FIGM65688**, 93 u.), distinto del Blanco MLA1699834745 (ZBGG56355, 157 u.), y la caja del 17/10 trajo 70 Gris que ninguna publicación nombra. Lo más fácil: ¿con qué código se etiquetaron las Gris? Si fue FIGM65688, es la Gris. Si es **Blanco**: (a) sugerida: dejar que se terminen sus 93 y mandar el Blanco sólo a MLA1699834745 (queda una sola publicación) · (b) mantener las dos al mismo precio ($5.190 las dos, buscando techo).
+- ~~Color del Centímetro~~ → **26/10 a la noche, él con capturas de ML: MLA3559540968 = Rosa · MLA1699834745 y MLA3112784736 (+ su Premium MLA2218757869) = Blanco.** Fijado con `fijarvar` (releído). No hay catálogo de ML por color (sólo "Surtido" MLA46897799). Queda decidir: las dos Blancas al mismo precio o dejar terminar una.
+- **Waflera Disney MLA4087803354 (Ayelen):** se vendió la última a $269.990 (172%). Tenía tu 🥊 "mantener la caja hasta que se venda" (piso $229.990): ya se cumplió. Vienen 4 en el pedido de Paraguay del 26/10. (a) sugerida: sacar la 🥊 y, cuando entren, subirla a $350.990 a buscar techo (si queda puesta, al perder la caja el robot la vuelve a bajar hasta $229.990) · (b) dejar la 🥊 y seguir ganando la caja sin buscar techo.
 - **Preguntas que no sé contestar seguro:** Mentonera (si tiene hueco en el mentón y las medidas de la banda) · Protector metatarso (qué es el color "Ab").
 
 ### De las vueltas del 23/10 (a la noche y a la tarde)
@@ -47,9 +49,5 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 - 52 de la lista de precios eran claramente otro producto: marcados `svprecio:…=otro` (se buscan de nuevo). ~14 quedaron en duda (variante no confirmada): se vuelven a mirar en la próxima tanda.
 
 ## 26/10 · pasada de Nissei (chat de Chrome)
-- **3 probados en duda** (sin código, no confirmó que sea el mismo producto): PS Portal y dos Victoria's Secret (variante). Mirarlos en la página de Nissei y pasarme código y precio, o "no lo tiene".
 - 24 de 28 probados quedaron "Nissei no lo tiene" (`nohabia`). Si la pasada del catálogo trae su código con precio, la marca se cae sola; los que sigan marcados al terminar, revisarlos (sobre todo los que venden).
 - **Preguntas de compradores (Ayelen):** medidas y hueco de la mentonera · qué es el color "Ab" del metatarso · aumento del espejo 8".
-
-## Viejas que siguen esperando (de CLAUDE.md §13)
-- Sancor (respuesta y baja de Vida Plus) · contador (recategorización, actividad, facturas entre cuentas) · costo de las dos Linternas COB de Ayelen.

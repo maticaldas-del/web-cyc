@@ -79,6 +79,11 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
 
 ## 1 · PRECIOS (lunes)
 
+### 🌸 F12 se abre 15 días antes del stock antiguo (27/10/2026, él: *"perfumes hasta 0%"*)
+- **Qué es:** regla nueva del 27/10: con la unidad más vieja a 15 días o menos de pagar stock antiguo se baja hasta ganar la caja, nunca abajo del 0%, y si no se vende se retira. Para perfumes el piso del 10% (F12) deja de valer en esos 15 días; F0 (nunca abajo de 0%) sigue.
+- **Dónde vive:** `frenosBajas` en `ml-sync/sync.mjs` (`antiguo15`, al lado de `antiguoCerca`).
+- **Qué chequear:** un perfume a 16+ días del stock antiguo sigue frenado en 10%; a 15 o menos pasa F12 y se frena recién en 0%.
+
 ### 🔒 Freno 50% para subir (26/10/2026, pedido suyo)
 - **Qué es:** en `decido`, una suba se frena si `cyc/techo95pct/<MLA>` (lo guarda `techo95;go` en la completa, de 4 días o menos) da 50%+ de certeza de que el precio en prueba ya es el techo y el precio nuevo está en o arriba de ese. No frena 🔥 escasez, ⏳ sin reposición, volver a un precio de los últimos 90 días ni `!chico`.
 - **Qué chequear:** que no frene una 📈 que todavía no tiene medición (sin dato no frena) · que el dato sea del MISMO precio (±2%) · que lo frenado aparezca en la vuelta con su motivo.
@@ -811,10 +816,40 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 
 ## 3 · MERCADERÍA (miércoles)
 
+### 💵 Ganancia esperada de cada envío a Full (27/10/2026, v27.17, él: *"quiero que muestre la ganancia esperada de la caja. de todas"*)
+- **Qué es:** en Envíos a Full, la cabecera de cada envío dice 💵 lo que deja vender todo lo que lleva (unidades × `gananciaUnidad` de hoy) y arriba un cuadro con el total de lo que está en camino. Lo sin ganancia medida no suma y se dice cuántas u. son.
+- **Dónde vive:** `cajaGanEsperada` / `cajaGanHTML` y `renderCajasEnCamino` (`index.html`).
+- **Qué chequear:** la caja de Ayelen del 27/10 (19 u.) da un número parecido a sumar a mano unidades × ganancia de cada producto.
+
+### 🧾 `pedir`: el tope es de CADA pedido de Nissei (27/10/2026, él: *"por cada pedido"*)
+- **Qué es:** el aviso "pasa tu tope" sumaba perfumería y resto juntos; ahora dice cada uno y avisa por separado. Las expresiones de perfumería/belleza pasaron a nivel de módulo (`PY_PERF_RE`, `PY_BELLEZA_RE`, copia de `_PERF_RE`/`_BELLEZA_RE` de la web).
+- **Dónde vive:** `pedir` y el armado de `pyb<fecha>` en `ml-sync/sync.mjs`.
+- **Qué chequear:** `pedir:…` (sin go) muestra 🌸 y 📦 por separado y la suma da el total.
+
+### 📦 La caja para la máxima plata: lo que se corta recibe lo que vende hasta la próxima caja (27/10/2026, v27.16, él: *"maximizar la máxima ganancia de $ posible siempre"*)
+- **Qué es:** reemplaza "1 u. a lo que se corta" (v27.13): una venta perdida por estar en 0 no vuelve, y lo que tiene stock puede esperar a la caja siguiente sin perder nada. Lo que está en 0 o se corta antes de `CAJA_CORTE_DIAS` (14) recibe ritmo × (14 − máx(días que le quedan, `CAJA_VIAJE_DIAS` 7)), mínimo 1, en orden de lo que más deja por unidad; lo que sobra, por lo que más deja por unidad.
+- **Dónde vive:** `cajaLlenarCupoPlan` (`index.html`, usa `vDia`) · `llenar_cupo` (`decide_cajas.py`, usa `r`).
+- **Qué chequear:** caja de Ayelen del 26/10 (19 lugares): web y robot dan lo mismo — Triples Negro 4 · Balanza 4 · Mouse 4 · Cinta 7.5M 2 · Gua Sha 2 · Kit 1 · Lupa 100mm 1 · p47 1.
+
+### ⭐ y 💵 en las tarjetas de pedidos hechos de Paraguay (27/10/2026, v27.15, él: *"en estos también poner estrella y $ al venderse ganancia"*)
+- **Qué es:** cada tarjeta de En camino / Ya llegaron suma el ⭐ gana × vende de sus productos y la ganancia de venderlo todo, con las mismas cuentas que el pedido del momento (nuevo: su candidato; con ficha: su publicación de hoy).
+- **Dónde vive:** `pyPedidoEstGan` y `pyPedidoResumenHTML` (`index.html`).
+- **Qué chequear:** que el #1009 dé un ⭐ parecido al que tenía el pedido del momento antes de "Ya lo pedí"; lo que no tiene dato no suma.
+
+### 🪄 "Llenar" no pasa el máximo de cada nuevo (27/10/2026, v27.14, él: *"ya rompió la regla de no más de 20 dólares por producto"*)
+- **Qué es:** el Mouse Gravastar (US$ 58, máximo 1) quedó en 2. `_pedNuevosEscribir` sumaba "lo que había en la base + lo que agregó el plan": si la base tenía una unidad que la pantalla no veía, pasaba el máximo. Ahora escribe el total del plan (ya cortado por `candMaxU`); lo cargado a mano de más no se toca. `pyestado` dice el precio, el máximo y ⚠️ PASA EL MÁXIMO.
+- **Dónde vive:** `_pedNuevosEscribir` (`index.html`, lo usan "Llenar con probados y nuevos" y "Llenar con nuevos") · `pyestado` (`ml-sync/sync.mjs`).
+- **Qué chequear:** apretar Llenar dos veces seguidas no sube nada que ya esté en su máximo; `pyestado` sin ⚠️.
+
+### 🔄 Vuelta de Nissei: la página 1 del otro orden no la reinicia · `nisseivuelta` (27/10/2026)
+- **Qué es:** el 26/10 el chat copió de la A a la M y después arrancó de la Z para atrás; esa "página 1" reinició la cuenta y el cierre con `fin=13497` dio 26% (no contó). Ahora la página 1 no reinicia una vuelta de menos de 24 h. `nisseivuelta[:<horas>][;fin=<total>][;go]` recuenta lo copiado en las últimas horas y, con 90%+, la anota completa.
+- **Dónde vive:** `ml-sync/sync.mjs` (bloque de la vuelta en `pycat` y el comando `nisseivuelta`, que escribe por ml-consulta).
+- **Qué chequear:** en la próxima pasada que vaya y vuelva, que el cierre cuente las dos mitades; y que el chip de Pedidos → Paraguay diga "hace 0 días".
+
 ### 🛒 Informes de Nissei: 35%+ aparte de 25-34% (26/10/2026, él: *"es 35 o más %, no 25"*)
 - **Qué es:** `pycatdia`, la lista de nuevos de `ml-pycat` y `candresumen` decían "dan 25%+ (candidatos)" como si fuera lo que se compra; desde el 24/10 se compra con `CAND_VARA_COMPRA` (35%) y lo de 25-34% sólo queda guardado. Ahora cada uno dice primero cuántos se compran (35%+).
 - **Dónde vive:** `ml-sync/sync.mjs` (`pycatdia`, `nuevosQueDan`, `candresumen`). La web ya los separaba (💾 Guardados 25-34%).
-- **Qué chequear:** que `pycatdia` diga "35%+ (se pueden comprar)" y que esa cifra sea menor que la de 25%+.
+- **Qué chequear:** que `pycatdia` diga "35%+ (se pueden comprar)" y que esa cifra sea menor que la de 25%+. Desde el 27/10 `pycatdia` dice también la última vuelta COMPLETA de Nissei (`cyc/mlconfig/nisseiVuelta`) y la que está en curso: tiene que coincidir con el chip de Pedidos → Paraguay.
 
 ### 📦 La caja se llena por plata, no por cubrir stock (26/10/2026, v27.13, él: *"siempre priorizamos ganar más, no cubrir stock"*)
 - **Qué es:** con cupo chico, "Cargar lo que entra en el cupo" da la primera unidad SÓLO a lo que está en 0 o se corta en 14 días (`CAJA_CORTE_DIAS`) y después llena por lo que más deja cada unidad (el lugar en Full no vuelve al vender). Antes daba 1 a cada uno y se comía el cupo con lo que tiene stock para 25-45 días. Lo nuevo que nunca vendió cuenta con lo que deja hoy su publicación (`margenMLDe` × costo); sin publicación con precio, al final como antes.
@@ -1638,6 +1673,11 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
 
 ## 4 · CHOQUES Y FALLAS MUDAS (jueves · junta las viejas 4 y 5)
 
+### 🔔 El aviso de venta sale apenas se leen las ventas (27/10/2026, él: *"tardó más de 20 mins en avisar. se puede hacer que sea al instante?"*)
+- **Qué es:** `avisarVentasNuevas` se llamaba al FINAL de la vuelta, después del stock de Full, cajas y fichas. Con ML lento (la pasada de Nissei comparte el cupo de ML: 471 consultas en 25 min en vez de 1) la vuelta tardó 20-40 min y el aviso esperó todo eso. Ahora se llama apenas termina el recorrido de ventas de las 4 cuentas; el del final queda de respaldo (la memoria `mlapi/avisoventa` evita avisar dos veces).
+- **Dónde vive:** `main` de `ml-sync/sync.mjs`, después de "✓ <cuenta>: N ventas revisadas".
+- **Qué chequear:** en el registro del ciclo, "Aviso al teléfono" sale antes de "✓ Stock actualizado"; nunca dos avisos de la misma venta.
+
 ### 📲 Telegram cuando ML da de baja una publicación y cuando la vuelve a habilitar (26/10/2026, pedido suyo)
 - **Qué es:** el aviso "⚠️ Problema en una publicación" (cerrada, en revisión, inactiva, falta de papeles/facturas) vuelve a salir por Telegram (con SOLO_DATOS había quedado sólo en `mlapi/cerebroavisos`); y cuando una que avisó vuelve a estar bien sale "✅ ML la volvió a habilitar". Una vez por cambio de estado (`mlapi/pubalert`), tope 8 por vuelta.
 - **Qué chequear:** que al estrenarlo no llegue una catarata (lo que ya estaba inactivo no es novedad) · que una pausa nuestra (fuera de Full, sin stock) NO avise · que las 3 en revisión para siempre no avisen el alta.
@@ -1926,6 +1966,16 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
     decisión de compra, no código. 11 (dinero que rinde en MP) lo mira él en la app.
 
 ## 7 · DISEÑO (domingo)
+
+### 🏠 Botones de cuenta de Mi oficina con unidades y 💵 (27/10/2026, v27.19, él: *"ponelos más grande para que entre las unidades a mandar y lo esperado de ganancia al vender los productos"*)
+- **Qué es:** cada botón (Todas, Adriana, Luciana, Ayelen, Matias) muestra en tres renglones el nombre, las u. a mandar (con el cupo) y 💵 lo que deja venderlas: la caja a medio armar si hay; si no, lo que entraría con el botón "Cargar lo que entra en el cupo" (`cajaLlenarCupoPlan`). Ganancia por unidad de hoy (`gananciaUnidad`, si no la de ventas).
+- **Dónde vive:** el armado de `ofi-filtro-cuentas` (`_ganCta`, `index.html`).
+- **Qué chequear:** con la caja de Ayelen cargada, su 💵 da lo mismo que la cabecera del envío cuando se cierre; a 360 px los 5 botones bajan de renglón sin cortarse.
+
+### 🏠 Mi oficina sin los cuadros de resumen (27/10/2026, v27.18, él: *"este sacalo"*)
+- **Qué es:** se sacaron "u. en casa · hay que mandar · en mercadería" de `ofi-resumen`; queda sólo el sugerido de la cuenta elegida (si no hay, el lugar se oculta).
+- **Dónde vive:** `renderOfiCaja`/resumen de la oficina (`index.html`, `ofi-resumen`).
+- **Qué chequear:** Mi oficina sin cuenta elegida no muestra la fila; con cuenta, el cuadro "sugerido p/".
 
 ### 🔥 Fuego de las ventas vivas desde $20.000 (26/10/2026, v26.72, pedido suyo)
 - **Qué es:** `VIVA_GAN_FUEGO=20000` en `vivaVenta`: el fuego necesita $20.000+ de ganancia (antes alcanzaba $10.000, `VIVA_GAN_TIEMBLA`, que sigue para el temblor). Caso: Lupa de $16.095 ardía.

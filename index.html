@@ -3104,7 +3104,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.13';
+const APP_VERSION='27.19';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3117,6 +3117,12 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.19',f:'27/10',h:'01:00',c:[{n:2,t:'🏠 Mi oficina: los botones de cada cuenta son más grandes y dicen cuántas unidades hay para mandar y 💵 cuánto deja venderlas (la caja a medio armar o, si no hay, lo que entra en el cupo). "Todas" suma las 4.'}]},
+  {v:'27.18',f:'27/10',h:'00:45',c:[{n:1,t:'🏠 Mi oficina: se sacaron los cuadros "u. en casa · hay que mandar · en mercadería".'}]},
+  {v:'27.17',f:'27/10',h:'00:35',c:[{n:2,t:'📦 Envíos a Full: cada envío dice 💵 cuánto deja vender todo lo que lleva (ganancia por unidad de hoy de cada producto), y arriba el total de todo lo que está en camino.'}]},
+  {v:'27.16',f:'27/10',h:'00:10',c:[{n:3,t:'📦 Armar caja · Cargar lo que entra en el cupo: lo que está en 0 o se corta antes de la próxima caja recibe lo que vende hasta que llegue (no 1 sola), y el lugar que sobra va a lo que más plata deja por unidad. Así no se pierden ventas y se saca la máxima plata del cupo.'}]},
+  {v:'27.15',f:'26/10',h:'23:20',c:[{n:1,t:'🇵🇾 Pedidos hechos de Paraguay (en camino y ya llegaron): cada tarjeta suma el ⭐ gana × vende de sus productos y la 💵 ganancia que deja venderlo todo, como el pedido del momento.'}]},
+  {v:'27.14',f:'26/10',h:'22:55',c:[{n:2,t:'🪄 Pedido de Paraguay: "Llenar" ya no puede pasar el máximo de cada nuevo (hasta US$ 20, máximo 4). Si la base tenía una unidad que la pantalla todavía no mostraba, la sumaba de más (el Mouse Gravastar de US$ 58 quedó en 2).'}]},
   {v:'27.13',f:'26/10',h:'20:20',c:[{n:3,t:'📦 Armar caja · Cargar lo que entra en el cupo: va por lo que más plata deja cada unidad. La primera unidad va sólo a lo que está en 0 o se corta en 14 días (antes 1 a cada uno, que con poco cupo se lo comía lo que tiene stock), y lo nuevo que nunca vendió cuenta con lo que deja hoy su publicación.'}]},
   {v:'27.12',f:'26/10',h:'19:30',c:[{n:1,t:'📈 Línea de tiempo: los colores/aromas van en un desplegable; a la vista quedan sólo "Todas juntas" y el que abriste.'}]},
   {v:'27.11',f:'26/10',h:'19:24',c:[{n:1,t:'📦 Productos: cada tarjeta dice cuántas unidades hay en Full (las 4 cuentas juntas; en rojo si no hay).'}]},
@@ -7135,6 +7141,7 @@ async function cajaSugerida(){
 // sólo en un aviso que se va solo: lo recortado es mercadería que sí hacía falta mandar.
 let _cajaCupoFuera=null;
 const CAJA_CORTE_DIAS=14;   // 26/10/2026: la próxima caja llega en ~2 semanas (sale lun-vie 12 + ~7 de viaje)
+const CAJA_VIAJE_DIAS=7;    // 27/10/2026: lo que tarda en entrar a Full la caja que se está armando
 function cajaLlenarCupoPlan(cands,topePeq,topeGra){
   const dado={};
   const lib={peq:(topePeq==null?Infinity:Math.max(0,topePeq)),gra:(topeGra==null?Infinity:Math.max(0,topeGra))};
@@ -7176,10 +7183,15 @@ function cajaLlenarCupoPlan(cands,topePeq,topeGra){
   // stock"*): la unidad de la RONDA 1 va SÓLO a lo que está en CERO o se corta antes de la próxima caja (CAJA_CORTE_DIAS).
   // Con cupo chico, dar 1 a cada uno se comía el cupo con productos que tienen stock para 25-45 días: medido en esa caja,
   // $138.406 contra $360.793 dando primero lo que se corta y llenando por plata. Lo que tiene stock no queda en cero.
+  // 27/10/2026 (él: "maximizar la máxima ganancia de $ posible siempre", eligiendo entre esto y 1 sola unidad): lo que se corta antes de
+  // la próxima caja recibe LO QUE VENDE hasta que llegue (CAJA_CORTE_DIAS, contando desde que llega ésta: CAJA_VIAJE_DIAS), no 1 sola:
+  // una venta que se pierde por estar en 0 no vuelve, y lo que tiene stock puede esperar a la caja siguiente sin perder nada. Mínimo 1
+  // (en cero no vende). Se reparte en el mismo orden (lo que más deja por unidad primero) y lo que sobra se llena por plata como siempre.
   for(const c of orden){
     if(!(c.u>0))continue;
     if(c.ganU==null||!(c.enCero||(c.dias!=null&&c.dias<CAJA_CORTE_DIAS)))continue;   // sin ganancia medida: al final, como antes
-    sumar(c,1);
+    const vD=Number(c.vDia)||0,dd=Math.max(Number(c.dias)||0,CAJA_VIAJE_DIAS);
+    sumar(c,Math.max(1,Math.ceil(vD*(CAJA_CORTE_DIAS-dd)-1e-9)));
   }
   // RONDA 2: llenar con lo que más deja.
   for(const c of orden){
@@ -7302,10 +7314,10 @@ function renderOfiCaja(){
   const res=document.getElementById('ofi-resumen');
   if(res)res.innerHTML=(ofiFiltroCuenta
       ? `<div class="pcount" style="border-color:var(--accent2)"${_cortaCta?` title="Se sugieren ${porCta[ofiFiltroCuenta]} pero el cupo de Full deja mandar ${uCta}"`:''}><strong style="color:var(--accent2)">${uCta}</strong>sugerido p/ ${ofiFiltroCuenta}${_cortaCta?' (cupo)':''}</div>`
-      : '')
-    +`<div class="pcount"><strong>${uHay}</strong>u. en casa</div>`
-    +`<div class="pcount"${aMandarCupo<aMandar?` title="Se sugieren ${aMandar}; con el tope del cupo de Full de cada cuenta se pueden mandar ${aMandarCupo}"`:''}><strong>${aMandarCupo}</strong>${ofiFiltroCuenta?'a mandar en total':'hay que mandar'}${aMandarCupo<aMandar?' (cupo)':''}</div>`
-    +`<div class="pcount"><strong>${fmt(plata)}</strong>en mercadería</div>`;
+      : '');
+  // 27/10/2026 (él, con los cuadros "u. en casa · hay que mandar · en mercadería": "este sacalo"): se sacan. Queda sólo el sugerido
+  // de la cuenta elegida. Si queda vacío, no ocupa lugar.
+  if(res)res.style.display=res.innerHTML?'':'none';
   renderNcOfi(filas);
   // Botones para armar la caja de UNA cuenta: es como se despacha de verdad, una caja por cuenta.
   const fc=document.getElementById('ofi-filtro-cuentas');
@@ -7321,7 +7333,30 @@ function renderOfiCaja(){
   // podemos esperar". El botón, el número y el 📦 toman el MISMO veredicto del cartel (cajaVeredicto).
   const _ver={};
   LOCS.forEach(l=>{_ver[l]=cajaVeredicto(convieneCaja(filas,l));});
-  if(fc)fc.innerHTML=`<button class="pf-btn${ofiFiltroCuenta===''?' active-all':''}" onclick="setOfiFiltro('')">Todas${aMandarCupo?` <strong title="Lo que se puede mandar hoy entre las 4 cuentas, con el tope del cupo de Full de cada una">${aMandarCupo}</strong>`:''}</button>`
+  // 💵 LO QUE DEJA LA CAJA DE CADA CUENTA (27/10/2026, él con los botones de cuenta: "ponelos más grande para que entre las unidades a
+  // mandar y lo esperado de ganancia al vender los productos"). Si hay caja a medio armar, la de esa caja; si no, lo que entra en el cupo
+  // con la MISMA regla del botón "Cargar lo que entra en el cupo" (`cajaLlenarCupoPlan`). Ganancia por unidad de hoy (`gananciaUnidad`;
+  // sin ella, la de las ventas, `cajaGanUnidad`). Lo que no tiene ninguna no suma.
+  const _ganCta={};
+  { const _cache={},_gU=p=>{let g=null;try{g=gananciaUnidad(p);}catch(er){}if(!(g!=null&&isFinite(g)))g=cajaGanUnidad(p,_cache);return g;};
+    LOCS.forEach(l=>{
+      const arm=cajaDe(l);let gan=0;
+      if(Object.values(arm).some(x=>x>0)){
+        for(const [k,u] of Object.entries(arm)){if(!(u>0))continue;const pid=String(k).split('|')[0];const p=(state.products||[]).find(x=>x.id===pid);const g=p?_gU(p):null;if(g!=null&&isFinite(g))gan+=g*u;}
+      }else{
+        const cands=[];
+        filas.forEach(f=>(f.sug||[]).forEach(x=>{if(x.cuenta!==l||!(x.mandar>0))return;const u=Math.min(x.mandar,f.hay);if(u<=0)return;
+          cands.push({key:_ck(f.p.id,f.variante),p:f.p,u,ganU:cajaGanUnidad(f.p,_cache),enCero:!!x.enCero,vDia:x.vDia||0,dias:x.dias,grande:esGrandeFull(f.p)});}));
+        const cu=cupoRestante(l);
+        const items=cu?cajaLlenarCupoPlan(cands,cu.estPeq,cu.estGra).items:Object.fromEntries(cands.map(c=>[c.key,c.u]));
+        for(const c of cands){const u=items[c.key]||0;if(!(u>0))continue;const g=_gU(c.p);if(g!=null&&isFinite(g))gan+=g*u;}
+      }
+      _ganCta[l]=gan;
+    }); }
+  const _gT=LOCS.reduce((t,l)=>t+(_ganCta[l]||0),0);
+  if(fc)fc.innerHTML=`<button class="pf-btn${ofiFiltroCuenta===''?' active-all':''}" style="padding:8px 14px;min-width:118px;text-align:left;line-height:1.35" onclick="setOfiFiltro('')"><div style="font-size:.8rem;font-weight:700">Todas</div>`
+    +`<div style="font-size:.7rem">${aMandarCupo?`<strong title="Lo que se puede mandar hoy entre las 4 cuentas, con el tope del cupo de Full de cada una">${aMandarCupo} u.</strong> a mandar`:'<span style="color:var(--muted)">nada a mandar</span>'}</div>`
+    +(_gT>0?`<div style="font-size:.7rem;color:var(--green);font-weight:700">💵 ${fmt(Math.round(_gT))}</div>`:'')+`</button>`
     +LOCS.map(l=>{
       const u=Object.values(cajaDe(l)).reduce((a,x)=>a+x,0);
       const nC=porCtaCupo[l]||0;
@@ -7329,7 +7364,10 @@ function renderOfiCaja(){
       const col=vr?vr.col:'';
       const _corte=porCta[l]>nC?` · se sugieren ${porCta[l]} pero el cupo de Full deja mandar ${nC}`:'';
       const tit=vr?(`${vr.txt} · ${vr.k==='verde'?`la caja de ${l} ya se justifica`:vr.k==='naranja'?'se paga en menos de una semana':`todavía no da: juntá más antes de pagar los ${fmt(costoCaja())} del envío`}`+_corte):'';
-      return `<button class="pf-btn${ofiFiltroCuenta===l?' active-all':''}"${col?` style="--cv:${col}"`:''} title="${tit}" onclick="setOfiFiltro('${l}')">${l}${nC?` <strong style="color:${col||'inherit'}">${nC}</strong>`:''}${u?`<span class="pf-badge" title="caja a medio armar${vr?' · '+vr.txt:''}">📦${u}</span>`:''}</button>`;
+      const gC=_ganCta[l]||0;
+      return `<button class="pf-btn${ofiFiltroCuenta===l?' active-all':''}" style="${col?`--cv:${col};`:''}padding:8px 14px;min-width:118px;text-align:left;line-height:1.35" title="${tit}" onclick="setOfiFiltro('${l}')"><div style="font-size:.8rem;font-weight:700">${l}${u?`<span class="pf-badge" title="caja a medio armar${vr?' · '+vr.txt:''}">📦${u}</span>`:''}</div>`
+        +`<div style="font-size:.7rem">${nC?`<strong style="color:${col||'inherit'}">${nC} u.</strong> a mandar`:'<span style="color:var(--muted)">nada a mandar</span>'}</div>`
+        +(gC>0?`<div style="font-size:.7rem;color:var(--green);font-weight:700" title="Lo que deja vender ${u?'la caja a medio armar':'lo que entra en el cupo'} (ganancia por unidad de hoy)">💵 ${fmt(Math.round(gC))}</div>`:'')+`</button>`;
     }).join('');
   // Con una cuenta elegida se entra en MODO ARMAR CAJA: se listan TODOS los productos que hay en
   // casa (no solo los que la cuenta "necesita"), cada uno con una casilla para poner cuántos van
@@ -9641,6 +9679,18 @@ function cajaViajeHTML(e,c,uu,uEnt){
     ${uEnt>0?`<div class="cv-ent"><span style="width:${pe.toFixed(1)}%"></span></div><div class="cv-et"><span style="color:var(--green)">📥 entrando a Full: ${uEnt} de ${uu} u.</span></div>`:''}
   </div>`;
 }
+// 💵 LO QUE DEJA VENDER UNA CAJA (27/10/2026, él con la caja de Ayelen: "quiero que muestre la ganancia esperada de la caja. de todas"):
+// unidades × ganancia por unidad de HOY de cada producto (`gananciaUnidad`, la misma que Pedidos y el pedido del momento). Lo que no
+// tiene ganancia medida no suma (no se inventa) y se cuenta aparte para decirlo.
+function cajaGanEsperada(items){
+  let gan=0,sin=0;
+  for(const it of (items||[])){const u=Number(it&&it.u)||0;if(!(u>0)||!it.prodId)continue;
+    const pr=(state.products||[]).find(x=>x.id===it.prodId);let g=null;try{g=pr?gananciaUnidad(pr):null;}catch(er){g=null;}
+    if(g!=null&&isFinite(g))gan+=g*u;else sin+=u;}
+  return{gan,sin};
+}
+function cajaGanHTML(items,est){const G=cajaGanEsperada(items);if(!(G.gan>0)&&!G.sin)return '';
+  return `<span style="font-size:.7rem;font-weight:700;color:var(--green);white-space:nowrap${est||''}" title="Lo que deja vender todo: unidades × ganancia por unidad de hoy de cada producto${G.sin?` · ${G.sin} u. sin ganancia medida no suman`:''}">💵 ${fmt(Math.round(G.gan))} al venderse${G.sin?` <span style="color:var(--muted);font-weight:400">(${G.sin} u. sin dato)</span>`:''}</span>`;}
 function renderCajasEnCamino(){
   const cont=document.getElementById('ofi-camino-list');if(!cont)return;
   const todos0=Object.entries(state.envios_full||{}).map(([id,e])=>({id,...e}))
@@ -9650,15 +9700,16 @@ function renderCajasEnCamino(){
   const q=normTxt(document.getElementById('env-search')?.value||'');
   const todos=q?todos0.filter(e=>normTxt([e.fecha,e.cuenta,e.correo,e.sucursal,e.obs,
       cajasDe(e).map(c=>c.track||'').join(' ')].join(' ')).includes(q)):todos0;
-  let cam=0,tarde=0,uCam=0,lleg=0;
+  let cam=0,tarde=0,uCam=0,lleg=0,ganCam=0;
   todos0.forEach(e=>cajasDe(e).forEach(c=>{
     if(c.recibida){lleg++;return;}
-    cam++;uCam+=(c.items||[]).reduce((a,x)=>a+(x.u||0),0);
+    cam++;uCam+=(c.items||[]).reduce((a,x)=>a+(x.u||0),0);ganCam+=cajaGanEsperada(c.items).gan;
     if(envDias(e)>=ENV_ROJO_DIAS)tarde++;
   }));
   const cnt=document.getElementById('ofi-camino-count');
   if(cnt)cnt.innerHTML=`<div class="pcount"${cam?' style="border-color:rgba(245,158,11,.35)"':''}><strong${cam?' style="color:var(--amber)"':''}>${cam}</strong>cajas en camino</div>`
     +(uCam?`<div class="pcount"><strong>${uCam}</strong>unidades</div>`:'')
+    +(ganCam>0?`<div class="pcount" title="Lo que deja vender todo lo que está en camino a Full (ganancia por unidad de hoy)"><strong style="color:var(--green)">${fmt(Math.round(ganCam))}</strong>al venderse</div>`:'')
     +(tarde?`<div class="pcount" style="border-color:rgba(239,68,68,.4)"><strong style="color:var(--red)">${tarde}</strong>hace +${ENV_ROJO_DIAS} días</div>`:'')
     +`<div class="pcount"><strong>${lleg}</strong>ya llegaron</div>`;
   const chip=document.getElementById('tab-ofi-camino-n');
@@ -9675,6 +9726,7 @@ function renderCajasEnCamino(){
         <strong style="font-family:'DM Mono',monospace;font-size:.76rem">${e.fecha||''}</strong>
         <span class="pi-qty">${cajasDe(e).length} caja(s)</span>
         <span style="color:var(--muted);font-size:.66rem">${e.correo||''}${e.sucursal?' · '+e.sucursal:''}</span>
+        ${cajaGanHTML(cajasDe(e).flatMap(c=>c.items||[]))}
       </div>
       <div style="display:flex;gap:6px;align-items:center">
         ${cajasDe(e).some(c=>!c.recibida)?`<button class="btn" style="padding:5px 10px;font-size:.66rem;${e.pausado?'':'background:transparent;border:1px solid var(--border2);color:var(--text)'}" onclick="setEnvioPausa('${e.id}',${e.pausado?'false':'true'})" title="${e.pausado?'Vuelve a salir: cuenta desde hoy y sale el próximo día hábil a las 12':'No la mandamos todavía: deja de contar los días de viaje hasta que la reanudes'}">${e.pausado?'▶️ Reanudar envío':'⏸️ Pausar envío'}</button>`:''}
@@ -16765,7 +16817,10 @@ async function _pedNuevosEscribir(suma){
     try{if(db){const sn=await db.ref('cyc/candidatos_py/'+x.c.id).once('value');if(sn.val())cur=sn.val();}}catch(e){}
     const peC=cur.pedidoEn&&(state.compraspy||{})[cur.pedidoEn];
     if(cur.no||(peC&&peC.estado==='camino')||(cur.pedidoEn&&!peC&&!(parseInt(cur.pedirU)>0))){salteados++;continue;}
-    const u=Math.max(0,parseInt(cur.pedirU)||0)+(x.u-x.antes);
+    // 27/10/2026 (él, con el Mouse Gravastar de US$ 58 que quedó en 2: "ya rompió la regla de no más de 20 dólares por producto"):
+    // se escribe el TOTAL que calculó el plan (que ya respeta candMaxU), no "lo que había en la base + lo que agregué": si la base
+    // tenía una unidad que la pantalla todavía no veía, la suma pasaba el máximo. Lo que ya había de más (cargado a mano) no se toca.
+    const u=Math.max(Math.max(0,parseInt(cur.pedirU)||0),Math.min(x.u,candMaxU(cur)));
     x.c.pedirU=u;await fbSet('candidatos_py/'+x.c.id+'/pedirU',u);
   }
   return salteados;
@@ -17358,6 +17413,26 @@ function _pyItsHTML(its,rec){const _r=rec>=1?rec:RECARGO_PY;
 // el detalle adentro al clickearlo"). Fecha, el % que se le cargó y en qué está. Todo lo demás, al abrirla.
 // El día aprox. de llegada de un pedido en camino: desde la guía del correo si está (`despacho`), si no desde el pedido.
 function pyLlegadaAprox(c){const desp=/^\d{4}-\d{2}-\d{2}$/.test(c&&c.despacho||'');return{d:desp?pyMasHabiles(c.despacho,PY_DIAS_CORREO):pyMasHabiles(c.fecha,PY_DIAS_LLEGADA),desp};}
+// ⭐ Y 💵 DE UN PEDIDO HECHO (27/10/2026, él con las tarjetas de En camino / Ya llegaron: "en estos también poner estrella y $ al venderse
+// ganancia"). Las MISMAS cuentas que el pedido del momento: ⭐ = suma del gana × vende de cada producto (nuevo: `candCombo` de su candidato;
+// probado o ya con ficha: % de su publicación de hoy × log10(ventas + 1) ÷ 10) · 💵 = unidades × ganancia por unidad (con ficha: la de su
+// publicación de hoy; si no, la medida en ML al pedirlo). Lo que no tiene dato no suma (no se inventa).
+function pyPedidoEstGan(c){
+  let est=0,gan=0;
+  const cands=state.candidatos||{};
+  for(const it of (Array.isArray(c&&c.items)?c.items:[])){
+    if(!it||it.desc)continue;const u=parseInt(it.u)||0;if(!(u>0))continue;
+    const pr=it.prodId?(state.products||[]).find(x=>x.id===it.prodId):null;
+    const cand=it.id&&cands[it.id]?cands[it.id]:null;
+    let e=cand?candCombo(cand):null;
+    if(e==null&&pr){let m=null;try{m=margenMLDe(pr);}catch(er){}const v=pedVentasNorm(pr).vendidos;if(m&&m.margen!=null&&v>0)e=Math.max(0,m.margen)*Math.log10(v+1)/10;}
+    if(e!=null&&isFinite(e))est+=e;
+    let g=null;if(pr){try{g=gananciaUnidad(pr);}catch(er){g=null;}}
+    if(!(g!=null&&isFinite(g)))g=Number(it.ganancia)>0?Number(it.ganancia):null;
+    if(g!=null&&isFinite(g))gan+=g*u;
+  }
+  return{est,gan};
+}
 function pyPedidoResumenHTML(c,enCamino,dias,tarde){
   // 16/10/2026, él: "más minimalista (...) muchos íconos y no se nota bien cada pedido, más contraste".
   // Sin íconos: a la izquierda la fecha y en qué está; a la derecha la plata y, chico abajo, el recargo.
@@ -17379,6 +17454,8 @@ function pyPedidoResumenHTML(c,enCamino,dias,tarde){
     <div style="margin-left:auto;text-align:right">
       <div style="font-size:1.05rem;font-weight:800;color:var(--text);white-space:nowrap" title="Lo que te salió el pedido puesto en la oficina: la factura más todos los gastos${R.r?'':' (con el recargo estimado: faltan gastos)'}">US$ ${usd}</div>
       <div style="font-size:.62rem;color:var(--muted);margin-top:2px;white-space:nowrap">${rec}${tk}${tkF}</div>
+      ${(()=>{const EG=pyPedidoEstGan(c);if(!(EG.est>0)&&!(EG.gan>0))return '';
+        return `<div style="font-size:.72rem;font-weight:700;color:var(--green);margin-top:3px;white-space:nowrap">${EG.est>0?`<span title="La suma del ⭐ gana × vende de cada producto del pedido: más alto, mejor pedido.">⭐ ${EG.est.toFixed(1).replace('.',',')}</span>`:''}${EG.est>0&&EG.gan>0?' · ':''}${EG.gan>0?`<span title="Lo que deja vender todo el pedido: unidades × ganancia por unidad (con ficha: la de su publicación de hoy · si no, la medida en ML al pedirlo).">💵 ${fmt(Math.round(EG.gan))} al venderse</span>`:''}</div>`;})()}
     </div>
     <span style="font-size:.7rem;color:var(--muted);margin-left:4px">▾</span>`;
 }

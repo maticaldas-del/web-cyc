@@ -77,7 +77,7 @@ const _cortarCiclo = (donde) => {
 // los que escriben en cantidad o en plata se niegan de entrada, y cualquier otro corre con la base,
 // ML, Mercado Pago y Telegram en sólo lectura (se deja renovar y guardar el token de ML, que ML rota).
 const EN_CONSULTA = process.env.GITHUB_WORKFLOW === 'ml-consulta' || process.env.ML_CONSULTA === '1';
-const CONSULTA_ESCRIBE = new Set(['buzon', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
+const CONSULTA_ESCRIBE = new Set(['buzon', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
 const CONSULTA_NIEGA = new Set(['cajaitems', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'listaped', 'publicar', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'errores', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'promoventas', 'cargosmes', 'arcacierres', 'webpush']);
@@ -4621,6 +4621,7 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
     const edadF = edadViejaFull(e, 'k', lotes || {}, { k: hSh.aprox === false ? hSh : null });
     const cobraDesde = (tablaAntiguoDe(e, pr, lotes || {}, {}).tabla.find((t) => Number(t[2]) > 0) || [120])[0];
     const antiguoCerca = edadF != null && edadF >= cobraDesde - 20;
+    const antiguo15 = edadF != null && edadF >= cobraDesde - 15;   // 27/10/2026: 15 días antes de pagar stock antiguo (ver F12)
     const mlasSt = [d.mla, ...hermanasStockDe(links, prods || {}, d.mla)];
     // Las unidades vendidas (de ésta y de las que comparten su stock) entre t0 y t1, de `cyc/ventaprod/<día>`. null = no se pudo leer.
     const ventasEntre = async (t0, t1) => {
@@ -4674,7 +4675,9 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
       // ── F12 · PERFUMES: NUNCA ABAJO DEL 10% (26/10/2026, él: "todo lo que es perfume se puede poner en la perfumería. antes de liquidar a 0%
       // conviene pedirlo. pero intentemos venderlo mínimo al 10%. si está por pagar stock entonces avisame y retiro"; y con los VS: "menos del
       // 10% nunca. antes retirarlos"). Abajo del 10% no se liquida: se le avisa (en el chat, aviso de las 12:30) para que lo retire al local.
-      if (esPerfume && d.mgA != null && Number.isFinite(Number(d.mgA)) && Number(d.mgA) < PERFUME_MIN_PCT && !suya('bajocero')) return { regla: 'F12', txt: `perfume: a ${$(a)} queda en ${Number(d.mgA)}% y un perfume no se vende abajo del ${PERFUME_MIN_PCT}% (regla suya del 26/10): ${antiguoCerca ? 'está por pagar stock antiguo → AVISARLE para que lo retire a la perfumería del local' : 'se queda en el escalón del 10% o más; si llega cerca de pagar stock antiguo, avisarle para retirarlo'}` };
+      // 27/10/2026 (él: "15 días antes de pagar stock siempre ganar caja hasta llegar al 0% de ganancia, si no se vende se retira" y "perfumes
+      // hasta 0%"): con la unidad más vieja a 15 días o menos de pagar stock antiguo, el perfume SÍ baja hasta el 0% (F0 sigue).
+      if (esPerfume && !antiguo15 && d.mgA != null && Number.isFinite(Number(d.mgA)) && Number(d.mgA) < PERFUME_MIN_PCT && !suya('bajocero')) return { regla: 'F12', txt: `perfume: a ${$(a)} queda en ${Number(d.mgA)}% y un perfume no se vende abajo del ${PERFUME_MIN_PCT}% (regla suya del 26/10): ${antiguoCerca ? 'está por pagar stock antiguo → AVISARLE para que lo retire a la perfumería del local' : 'se queda en el escalón del 10% o más; si llega cerca de pagar stock antiguo, avisarle para retirarlo'}` };
       // ── F11 · FALTA DE STOCK: SIN TECHO 95% NO SE BAJA (ver arriba). Con el techo medido (🏔️ de techo95 en 60 días o 🔴 de las rayas)
       // sigue por los otros frenos (escalera, F9 de la escasez). La salida de la escasez (#volviendo) pasa sólo si la escasez terminó de
       // verdad: el stock en Full alcanza 30+ días al ritmo con stock. Salida SÓLO SUYA: 🔐 !sinlinea con su autorización.
@@ -10692,6 +10695,10 @@ const CAND_PISO_PCT = 25;       // suyo: "el % sano es de 25 hacia arriba"
 // solo en perfumes"). Vale para lo NUEVO de Paraguay (candidatos). Perfume = el nombre o el título de ML lo
 // dice (misma idea que `repartopy` y que `esPerfumeNom` de la web). El resto sigue en CAND_PISO_PCT.
 const CAND_PISO_PERFUME = 25;   // 17/10/2026: 25 (él: "tienen que llegar a 25, no a 24"); antes 24 para todo lo que se compra (él: "arriba del 24% TODO")
+// Perfumería/belleza/salud de Nissei (pedido `pyb<fecha>`) vs el resto (`py<fecha>`): COPIA de `_PERF_RE` y `_BELLEZA_RE` de index.html
+// (si se toca una, se toca la otra). A nivel de módulo desde el 27/10/2026 para que `pedir` mida el tope de CADA pedido.
+const PY_PERF_RE = /perfum|\bedp\b|\bedt\b|parfum|eau de|body splash|body mist|col[oô]nia|fragr[aâ]n|\bsplash\b/i;
+const PY_BELLEZA_RE = /maquill|maquiag|labial|batom|gloss|lip ?(tint|balm|oil)|b[aá]lsamo|rubor|blush|base (l[ií]quida|de maq|matte)|corrector|corretivo|delineador|delineado|r[ií]mel|m[aá]scara (de pesta|de c[ií]lios|para pesta)|cílios|pesta[ñn]as|sombra|paleta de|iluminador|polvo (compacto|suelto|facial)|p[oó] (compacto|facial)|pincel|esponja de maq|esmalte|u[ñn]as|crema|creme|s[eé]rum|hidratante|protector solar|protetor solar|bronceador|desodorante|antitranspirante|jab[oó]n|sabonete|shampo|shamp[uú]|xampu|acondicionador|condicionador|tratamiento capilar|m[aá]scara capilar|t[oó]nico|micelar|desmaquill|exfolia|loci[oó]n|lo[cç][aã]o|skin ?care|facial|cabello|cabelo|capilar|tintura|alisad|planchita|rizador|secador de pelo|depila|afeitad|barbear|rasurad|cortapelo|recortadora|cuidado personal|higiene|cepillo (de dientes|dental)|dental|bucal|masaje|massag|term[oóô]metro|tens[ií]metro|ox[ií]metro|balan[cç]a (corporal|de banheiro)|balanza (corporal|de ba[ñn]o|personal)|nebuliz|vitamina|suplemento|col[aá]geno|prote[ií]na|ortop[eé]d|plantilla|juanete|metatars|tal[oó]n|faja|rodillera|mu[ñn]equera|tobillera|corrector postural|salud/i;
 const RE_CAND_PERF = /perfum|parfum|\bedp\b|\bedt\b|eau de|fragan|fragr|body splash|body mist|\bcolonia\b|\bsplash\b/i;
 // Lo que se puede vender en la perfumería del local (26/10/2026, él: "todo lo que es perfume se puede poner en la perfumería… intentemos
 // venderlo mínimo al 10%. si está por pagar stock entonces avisame y retiro"): perfumes, body mist/splash, Victoria's Secret y Paulvic/Persea.
@@ -18285,7 +18292,8 @@ async function main() {
       for (const [ts, g] of Object.entries(hist)) for (const v of Object.values(g || {})) console.log(`  ${new Date(Number(ts) - 3 * 3600e3).toISOString().slice(0, 16)} · ${v.cod} · ${v.nom} · ${v.u} u. · US$ ${v.usd}`);
       const cands = (await db.get('cyc/candidatos_py')) || {};
       console.log('── CANDIDATOS con unidades o viajando:');
-      for (const c of Object.values(cands)) if (c && ((parseInt(c.pedirU) || 0) > 0 || c.pedidoEn)) console.log(`  ${c.nombre} · cód ${c.cod} · pedirU ${c.pedirU || 0} · pedidoEn ${c.pedidoEn || '—'}`);
+      for (const c of Object.values(cands)) if (c && ((parseInt(c.pedirU) || 0) > 0 || c.pedidoEn)) { const _u = parseFloat(c.usd) || 0, _mx = _u > 0 ? Math.max(1, Math.min(4, Math.ceil(20 / _u - 1e-9))) : 1;   // 27/10/2026: el máximo de cada nuevo (candMaxU de la web)
+        console.log(`  ${c.nombre} · cód ${c.cod} · US$ ${_u || '—'} · pedirU ${c.pedirU || 0} (máx ${_mx})${(parseInt(c.pedirU) || 0) > _mx ? ' ⚠️ PASA EL MÁXIMO' : ''} · pedidoEn ${c.pedidoEn || '—'}`); }
       return;
     }
     if (/^ventasdia:/.test(String(process.env.BILLING_PROBE || ''))) {
@@ -19043,6 +19051,32 @@ async function main() {
       for (const z of filas.sort((a, b) => b.d - a.d)) console.log(`${z.m} · ${z.cta} · ${z.nom} · ${z.d.toFixed(1)} d · antes ${z.r.toFixed(2)}/día · vendió ${z.uD} (esperadas ${z.esp.toFixed(1)}) · 95% a los ${isFinite(z.d95) ? z.d95.toFixed(0) + ' d' : '—'} · ganancia/día antes $${Math.round(z.gdA).toLocaleString('es-AR')} → después ${z.gdD == null ? '?' : '$' + Math.round(z.gdD).toLocaleString('es-AR')}${z.sinC ? ' (' + z.sinC + ' sin costo)' : ''}`);
       return;
     }
+    // BILLING_PROBE=nisseivuelta[:<horas>][;fin=<productos que dice la web>][;go] (27/10/2026) → RECUENTA LA VUELTA DE NISSEI. Cuenta los
+    // productos de Nissei copiados en las últimas <horas> (12 si no se dice) contra el total de la web (`fin=`; sin él, todo lo guardado).
+    // Con `;go` y 90% o más, la anota como completa (`cyc/mlconfig/nisseiVuelta`, lo mismo que el cierre con `fin=` del chat) y la relee.
+    // Para cuando el cierre del chat contó mal (el 26/10 la página 1 del orden inverso había reiniciado la cuenta).
+    if (/^nisseivuelta(:|;|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const raw = String(process.env.BILLING_PROBE).replace(/^nisseivuelta:?/, '');
+      const GO = /(^|;)go$/.test(raw);
+      const horas = parseFloat((raw.match(/^(\d+(?:\.\d+)?)/) || [])[1]) || 12;
+      const finTot = parseInt((raw.match(/fin=(\d+)/) || [])[1], 10) || 0;
+      const catV = (await db.get('mlapi/pycat')) || {};
+      const ahoraV = Date.now(), desdeV = ahoraV - horas * 3600e3;
+      const nisV = Object.entries(catV).filter(([k, e]) => e && pycatProvDe(k, e) === 'nissei');
+      const vistosV = nisV.filter(([, e]) => Number(e.ts) >= desdeV).length;
+      const totalV = finTot > 0 ? finTot : nisV.length;
+      const pctV = totalV > 0 ? Math.round(vistosV / totalV * 1000) / 10 : 0;
+      console.log(`=== 🔄 VUELTA DE NISSEI · últimas ${horas} h ${GO ? '' : '(PRUEBA — no escribo nada)'} ===`);
+      console.log(`  copiados desde ${new Date(desdeV).toISOString().slice(0, 16).replace('T', ' ')} UTC: ${vistosV} de ${totalV}${finTot ? ' (lo que dice la web)' : ' (todo lo guardado)'} = ${pctV}% · guardados de Nissei en total: ${nisV.length}`);
+      if (pctV < 90) { console.log('  ⚠️ no llega al 90%: NO cuenta como vuelta completa.'); return; }
+      if (!GO) { console.log('  ✓ llega al 90%: con ;go queda anotada como vuelta completa.'); return; }
+      const regV = { fin: ahoraV, desde: desdeV, vistos: vistosV, total: totalV, pct: pctV };
+      await db.set('cyc/mlconfig/nisseiVuelta', regV);
+      await db.set('mlapi/pycatvuelta', { cur: null });
+      const relV = (await db.get('cyc/mlconfig/nisseiVuelta')) || {};
+      console.log(`  ${relV.fin === ahoraV && relV.vistos === vistosV ? '✓ anotada como VUELTA COMPLETA y releída' : '✗ NO QUEDÓ al releer'}`);
+      return;
+    }
     if (/^pycatdia(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const DIAS = Math.max(3, parseInt(String(process.env.BILLING_PROBE).split(':')[1]) || 14);
       const cat = (await db.get('mlapi/pycat')) || {}; const R = (await db.get('cyc/pycatres')) || {};
@@ -19053,6 +19087,8 @@ async function main() {
         if (e.fz) c.fz++; else if (e.m != null && isFinite(e.m)) { if (Number(e.m) >= CAND_PISO_PCT) { c.mAlto++; if (Number(e.m) >= CAND_VARA_COMPRA) c.m35++; } else c.mBajo++; }
         else if (e.sc) { c.sc++; if (Number(e.qp || 0) >= PY_NOMBRE_VER) c.scr++; } else if (e.sv) c.sv++; else if (e.nm) c.nm++; else if (!e.t) c.sinT++; else c.tSinNada++; }
       console.log(`=== CATÁLOGO DE NISSEI · ${c.tot} productos ===`);
+      { const _nv = (await db.get('cyc/mlconfig/nisseiVuelta')) || null, _vc = ((await db.get('mlapi/pycatvuelta')) || {}).cur || null;   // 27/10/2026: la vuelta completa y la que está en curso
+        console.log(`  🔄 última vuelta COMPLETA: ${_nv && _nv.fin ? new Date(_nv.fin).toISOString().slice(0, 16).replace('T', ' ') + ` UTC (${_nv.vistos} de ${_nv.total}, ${_nv.pct}%)` : 'ninguna'}${_vc && _vc.desde ? ` · en curso desde ${new Date(_vc.desde).toISOString().slice(0, 16).replace('T', ' ')} UTC` : ''}`); }
       console.log(`  medido con ${CAND_VARA_COMPRA}%+ (se pueden comprar) ${c.m35} · ${CAND_PISO_PCT}-${CAND_VARA_COMPRA - 1}% (guardados, se siguen midiendo, NO se compran) ${c.mAlto - c.m35} · abajo de ${CAND_PISO_PCT}% ${c.mBajo}`);   // 26/10/2026 (él: "es 35 o más %, no 25")
       console.log(`  buscado y SIN el mismo producto en ML ${c.sc} (de esos ✔️ revisados también traducidos ${c.scr}) · encontrado pero NADIE lo vende ${c.sv} · afuera por regla ${c.fz}`);
       console.log(`  ML no deja medirlo ${c.nm} · NUNCA buscado ${c.sinT} · buscado sin resultado guardado ${c.tSinNada}`);
@@ -22944,7 +22980,11 @@ async function main() {
       const colgados = vivos.filter(([id, c]) => c.no && ((cambios.find((x) => x.id === id) || {}).u ?? (Number(c.pedirU) || 0)) > 0);
       const crudo = final.reduce((s, x) => s + (parseFloat(x.c.usd) || 0) * x.u, 0);
       console.log(`\n🧾 EL PEDIDO QUEDA EN: ${final.length} producto(s) · ${final.reduce((s, x) => s + x.u, 0)} u. · US$ ${crudo.toFixed(2)} crudos · US$ ${(crudo * RECARGO_PAR).toFixed(2)} puestos · ${money(Math.round(crudo * RECARGO_PAR * tcp))}`);
-      if (crudo > _topeP) console.log(`   ⚠️ pasa tu tope de US$ ${_topeP} crudos por US$ ${(crudo - _topeP).toFixed(2)} (sólo nuevos: lo de probados cargado en el pedido del momento también cuenta en el tope del panel)`);
+      // 27/10/2026 (él: "por cada pedido"): perfumería/belleza y el resto son dos pedidos de Nissei, cada uno con SU tope (como la web).
+      { const _esB = (n) => PY_PERF_RE.test(String(n || '')) || PY_BELLEZA_RE.test(String(n || ''));
+        const _cB = final.filter((x) => _esB(x.c.nombre)).reduce((s2, x) => s2 + (parseFloat(x.c.usd) || 0) * x.u, 0), _cR = crudo - _cB;
+        console.log(`   🌸 perfumería y belleza US$ ${_cB.toFixed(2)} · 📦 resto US$ ${_cR.toFixed(2)} (tope de cada uno: US$ ${_topeP})`);
+        for (const [nomG, v] of [['perfumería', _cB], ['resto', _cR]]) if (v > _topeP) console.log(`   ⚠️ el pedido de ${nomG} pasa su tope de US$ ${_topeP} crudos por US$ ${(v - _topeP).toFixed(2)} (sólo nuevos: lo de probados cargado también cuenta en el tope del panel)`); }
       if (colgados.length) console.log(`   (aparte: ${colgados.length} candidato(s) DESCARTADO(s) tienen unidades viejas cargadas. El panel no los muestra y no van en el pedido: ${colgados.map(([, c]) => c.nombre).slice(0, 6).join(' · ')}${colgados.length > 6 ? ' …' : ''})`);
       if (!APLICAR) { console.log('\nPRUEBA: no escribí nada. Para aplicar, agregá  ;go  al final.'); return; }
       let ok = 0;
@@ -23453,7 +23493,9 @@ async function main() {
         const pgs = [...new Set(filas.map((f) => f.pg).filter((x) => x != null))];
         const vu = (await db.get('mlapi/pycatvuelta')) || {};
         let cur = vu.cur || null;
-        if (pgs.includes(1)) cur = { desde: ahora };
+        // 27/10/2026: la página 1 en el OTRO orden (el chat termina de la Z para atrás) no reinicia una vuelta de menos de 24 h.
+        // El 26/10 la reinició a las 21:10 y lo copiado de la A a la M quedó afuera: contó 26% con el catálogo entero copiado.
+        if (pgs.includes(1) && !(cur && ahora - Number(cur.desde) < 24 * 3600e3)) cur = { desde: ahora };
         let msgV = '';
         if (FIN) {
           const desde = cur ? cur.desde : ahora - 8 * 864e5;
@@ -50141,8 +50183,8 @@ async function main() {
       // Nissei se parte en perfumería/belleza/salud (`pyb<fecha>`, misma regla que `esBellezaNom`) y el resto (`py<fecha>`).
       // Antes todo iba a `py<fecha>` sin proveedor: la web lo mostraba como Nissei y `compray` le cargaba los pesos de otro.
       // Las dos expresiones son COPIA de `_PERF_RE` y `_BELLEZA_RE` de index.html: si se toca una, se toca la otra.
-      const _PERF_RE_PY = /perfum|\bedp\b|\bedt\b|parfum|eau de|body splash|body mist|col[oô]nia|fragr[aâ]n|\bsplash\b/i;
-      const _BELLEZA_RE_PY = /maquill|maquiag|labial|batom|gloss|lip ?(tint|balm|oil)|b[aá]lsamo|rubor|blush|base (l[ií]quida|de maq|matte)|corrector|corretivo|delineador|delineado|r[ií]mel|m[aá]scara (de pesta|de c[ií]lios|para pesta)|cílios|pesta[ñn]as|sombra|paleta de|iluminador|polvo (compacto|suelto|facial)|p[oó] (compacto|facial)|pincel|esponja de maq|esmalte|u[ñn]as|crema|creme|s[eé]rum|hidratante|protector solar|protetor solar|bronceador|desodorante|antitranspirante|jab[oó]n|sabonete|shampo|shamp[uú]|xampu|acondicionador|condicionador|tratamiento capilar|m[aá]scara capilar|t[oó]nico|micelar|desmaquill|exfolia|loci[oó]n|lo[cç][aã]o|skin ?care|facial|cabello|cabelo|capilar|tintura|alisad|planchita|rizador|secador de pelo|depila|afeitad|barbear|rasurad|cortapelo|recortadora|cuidado personal|higiene|cepillo (de dientes|dental)|dental|bucal|masaje|massag|term[oóô]metro|tens[ií]metro|ox[ií]metro|balan[cç]a (corporal|de banheiro)|balanza (corporal|de ba[ñn]o|personal)|nebuliz|vitamina|suplemento|col[aá]geno|prote[ií]na|ortop[eé]d|plantilla|juanete|metatars|tal[oó]n|faja|rodillera|mu[ñn]equera|tobillera|corrector postural|salud/i;
+      const _PERF_RE_PY = PY_PERF_RE;
+      const _BELLEZA_RE_PY = PY_BELLEZA_RE;
       let _ctxB = null;
       const ctxBelleza = async () => {
         if (!_ctxB) {
@@ -54250,6 +54292,11 @@ async function main() {
     });
     console.log(`✓ ${label}: ${orders.length} ventas revisadas`);
   }
+  // ── EL AVISO DE VENTA SALE APENAS SE LEEN LAS VENTAS (27/10/2026, él: "el aviso que se vendió algo arriba de $10.000 tardó más de
+  // 20 mins en avisar. se puede hacer que sea al instante?"). Antes salía al FINAL de la vuelta, después del stock de Full, las cajas y
+  // las fichas: con ML lento (la pasada de Nissei usa el mismo cupo de ML) una vuelta tardó 20-40 min y el aviso esperó todo eso. Ahora
+  // sale acá; el llamado del final queda de respaldo (la memoria `mlapi/avisoventa` no deja que una venta se avise dos veces).
+  try { await avisarVentasNuevas(db, _avisoVentas); } catch (e) { console.log('No pude avisar las ventas nuevas (lo reintento al final de la vuelta): ' + e.message); }
 
   // guardar en el mapa lo que tocó el auto-match (sin pisar lo que fijaste vos)
   // c0 de la segunda vuelta (25/09/2026): antes esto reescribía cada renglón ENTERO con la copia
@@ -54675,7 +54722,7 @@ async function main() {
     } catch (e) { console.log('No pude mirar el dólar MEP/cripto: ' + e.message); }
   }
 
-  // ── AVISO DE CADA VENTA NUEVA (15/10/2026, pedido suyo: 1a 2a 3a) ──
+  // ── AVISO DE CADA VENTA NUEVA (15/10/2026, pedido suyo: 1a 2a 3a) · desde el 27/10 sale arriba, apenas se leen las ventas: éste es el respaldo ──
   try { await avisarVentasNuevas(db, _avisoVentas); } catch (e) { console.log('No pude avisar las ventas nuevas: ' + e.message); }
   // ── 🔔 EL TIMBRE DEL REVISOR DE VENTAS (24/10/2026): 6 compras sin revisar o una abajo del 35% → entra el revisor ──
   try { await timbreVentas(db); } catch (e) { console.log('🔔 timbre: falló (' + e.message + '): pruebo en la vuelta siguiente'); }
