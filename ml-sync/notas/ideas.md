@@ -43,3 +43,5 @@ Cada renglón: fecha · idea · plata estimada · estado (hecha / propuesta / de
 - (27/10, completa) **💳 "caja perdida por cuotas" marca casos en que gana una publicación NUESTRA** (Ferrari Rojo 2ª Clásica, Pack x10 Lupa): saltear cuando el que gana es nuestro. Etapa 1.
 - (27/10, completa) **Las gemelas siguen el precio de LISTA de su Clásica, no el del descuento** (Premium de la Pizarra Rosa $7.890 y del Protector Negro $7.990 con la Clásica vendiéndose a $5.590): con la escalera como descuento las Premium quedan ~40% arriba. Revisar `alinearGemelas`. Etapa 1.
 - (27/10, completa) **La completa corre `escasez:expediente`, que no imprime la lista 🚨**: agregar `escasez` a las lecturas de la completa.
+- (27/10, completa) **Los lanzamientos de catálogo que pierden la caja no tienen visitas** (Xiaomi Mi Basic, Switch TP-Link): techo95 no puede medir y sólo los destraban los 30 días sin vender. El Switch ganaría la caja dejando ~40%. Pensar una salida (ej. medir con la caja en vez de visitas).
+- (27/10, completa) **Escalón de $16.490 de los Paulvic cae en la zona muerta de la comisión** ($15.000 a ~$17.250): la escalera útil es $21.990 → $18.790 → $17.990.
