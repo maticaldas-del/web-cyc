@@ -3104,7 +3104,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.16';
+const APP_VERSION='27.17';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3117,6 +3117,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.17',f:'27/10',h:'00:35',c:[{n:2,t:'📦 Envíos a Full: cada envío dice 💵 cuánto deja vender todo lo que lleva (ganancia por unidad de hoy de cada producto), y arriba el total de todo lo que está en camino.'}]},
   {v:'27.16',f:'27/10',h:'00:10',c:[{n:3,t:'📦 Armar caja · Cargar lo que entra en el cupo: lo que está en 0 o se corta antes de la próxima caja recibe lo que vende hasta que llegue (no 1 sola), y el lugar que sobra va a lo que más plata deja por unidad. Así no se pierden ventas y se saca la máxima plata del cupo.'}]},
   {v:'27.15',f:'26/10',h:'23:20',c:[{n:1,t:'🇵🇾 Pedidos hechos de Paraguay (en camino y ya llegaron): cada tarjeta suma el ⭐ gana × vende de sus productos y la 💵 ganancia que deja venderlo todo, como el pedido del momento.'}]},
   {v:'27.14',f:'26/10',h:'22:55',c:[{n:2,t:'🪄 Pedido de Paraguay: "Llenar" ya no puede pasar el máximo de cada nuevo (hasta US$ 20, máximo 4). Si la base tenía una unidad que la pantalla todavía no mostraba, la sumaba de más (el Mouse Gravastar de US$ 58 quedó en 2).'}]},
@@ -9650,6 +9651,18 @@ function cajaViajeHTML(e,c,uu,uEnt){
     ${uEnt>0?`<div class="cv-ent"><span style="width:${pe.toFixed(1)}%"></span></div><div class="cv-et"><span style="color:var(--green)">📥 entrando a Full: ${uEnt} de ${uu} u.</span></div>`:''}
   </div>`;
 }
+// 💵 LO QUE DEJA VENDER UNA CAJA (27/10/2026, él con la caja de Ayelen: "quiero que muestre la ganancia esperada de la caja. de todas"):
+// unidades × ganancia por unidad de HOY de cada producto (`gananciaUnidad`, la misma que Pedidos y el pedido del momento). Lo que no
+// tiene ganancia medida no suma (no se inventa) y se cuenta aparte para decirlo.
+function cajaGanEsperada(items){
+  let gan=0,sin=0;
+  for(const it of (items||[])){const u=Number(it&&it.u)||0;if(!(u>0)||!it.prodId)continue;
+    const pr=(state.products||[]).find(x=>x.id===it.prodId);let g=null;try{g=pr?gananciaUnidad(pr):null;}catch(er){g=null;}
+    if(g!=null&&isFinite(g))gan+=g*u;else sin+=u;}
+  return{gan,sin};
+}
+function cajaGanHTML(items,est){const G=cajaGanEsperada(items);if(!(G.gan>0)&&!G.sin)return '';
+  return `<span style="font-size:.7rem;font-weight:700;color:var(--green);white-space:nowrap${est||''}" title="Lo que deja vender todo: unidades × ganancia por unidad de hoy de cada producto${G.sin?` · ${G.sin} u. sin ganancia medida no suman`:''}">💵 ${fmt(Math.round(G.gan))} al venderse${G.sin?` <span style="color:var(--muted);font-weight:400">(${G.sin} u. sin dato)</span>`:''}</span>`;}
 function renderCajasEnCamino(){
   const cont=document.getElementById('ofi-camino-list');if(!cont)return;
   const todos0=Object.entries(state.envios_full||{}).map(([id,e])=>({id,...e}))
@@ -9659,15 +9672,16 @@ function renderCajasEnCamino(){
   const q=normTxt(document.getElementById('env-search')?.value||'');
   const todos=q?todos0.filter(e=>normTxt([e.fecha,e.cuenta,e.correo,e.sucursal,e.obs,
       cajasDe(e).map(c=>c.track||'').join(' ')].join(' ')).includes(q)):todos0;
-  let cam=0,tarde=0,uCam=0,lleg=0;
+  let cam=0,tarde=0,uCam=0,lleg=0,ganCam=0;
   todos0.forEach(e=>cajasDe(e).forEach(c=>{
     if(c.recibida){lleg++;return;}
-    cam++;uCam+=(c.items||[]).reduce((a,x)=>a+(x.u||0),0);
+    cam++;uCam+=(c.items||[]).reduce((a,x)=>a+(x.u||0),0);ganCam+=cajaGanEsperada(c.items).gan;
     if(envDias(e)>=ENV_ROJO_DIAS)tarde++;
   }));
   const cnt=document.getElementById('ofi-camino-count');
   if(cnt)cnt.innerHTML=`<div class="pcount"${cam?' style="border-color:rgba(245,158,11,.35)"':''}><strong${cam?' style="color:var(--amber)"':''}>${cam}</strong>cajas en camino</div>`
     +(uCam?`<div class="pcount"><strong>${uCam}</strong>unidades</div>`:'')
+    +(ganCam>0?`<div class="pcount" title="Lo que deja vender todo lo que está en camino a Full (ganancia por unidad de hoy)"><strong style="color:var(--green)">${fmt(Math.round(ganCam))}</strong>al venderse</div>`:'')
     +(tarde?`<div class="pcount" style="border-color:rgba(239,68,68,.4)"><strong style="color:var(--red)">${tarde}</strong>hace +${ENV_ROJO_DIAS} días</div>`:'')
     +`<div class="pcount"><strong>${lleg}</strong>ya llegaron</div>`;
   const chip=document.getElementById('tab-ofi-camino-n');
@@ -9684,6 +9698,7 @@ function renderCajasEnCamino(){
         <strong style="font-family:'DM Mono',monospace;font-size:.76rem">${e.fecha||''}</strong>
         <span class="pi-qty">${cajasDe(e).length} caja(s)</span>
         <span style="color:var(--muted);font-size:.66rem">${e.correo||''}${e.sucursal?' · '+e.sucursal:''}</span>
+        ${cajaGanHTML(cajasDe(e).flatMap(c=>c.items||[]))}
       </div>
       <div style="display:flex;gap:6px;align-items:center">
         ${cajasDe(e).some(c=>!c.recibida)?`<button class="btn" style="padding:5px 10px;font-size:.66rem;${e.pausado?'':'background:transparent;border:1px solid var(--border2);color:var(--text)'}" onclick="setEnvioPausa('${e.id}',${e.pausado?'false':'true'})" title="${e.pausado?'Vuelve a salir: cuenta desde hoy y sale el próximo día hábil a las 12':'No la mandamos todavía: deja de contar los días de viaje hasta que la reanudes'}">${e.pausado?'▶️ Reanudar envío':'⏸️ Pausar envío'}</button>`:''}

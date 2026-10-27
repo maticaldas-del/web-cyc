@@ -816,6 +816,11 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 
 ## 3 · MERCADERÍA (miércoles)
 
+### 💵 Ganancia esperada de cada envío a Full (27/10/2026, v27.17, él: *"quiero que muestre la ganancia esperada de la caja. de todas"*)
+- **Qué es:** en Envíos a Full, la cabecera de cada envío dice 💵 lo que deja vender todo lo que lleva (unidades × `gananciaUnidad` de hoy) y arriba un cuadro con el total de lo que está en camino. Lo sin ganancia medida no suma y se dice cuántas u. son.
+- **Dónde vive:** `cajaGanEsperada` / `cajaGanHTML` y `renderCajasEnCamino` (`index.html`).
+- **Qué chequear:** la caja de Ayelen del 27/10 (19 u.) da un número parecido a sumar a mano unidades × ganancia de cada producto.
+
 ### 🧾 `pedir`: el tope es de CADA pedido de Nissei (27/10/2026, él: *"por cada pedido"*)
 - **Qué es:** el aviso "pasa tu tope" sumaba perfumería y resto juntos; ahora dice cada uno y avisa por separado. Las expresiones de perfumería/belleza pasaron a nivel de módulo (`PY_PERF_RE`, `PY_BELLEZA_RE`, copia de `_PERF_RE`/`_BELLEZA_RE` de la web).
 - **Dónde vive:** `pedir` y el armado de `pyb<fecha>` en `ml-sync/sync.mjs`.
