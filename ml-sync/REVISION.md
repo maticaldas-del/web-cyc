@@ -850,6 +850,11 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 (sería doble), y que el número de Gastos y el del Arqueo sean el mismo para cada mes.
 
 ## 3 · MERCADERÍA (miércoles)
+### 📦 La cabecera de Stock en Full dice oficina y camino (27/10/2026, él con el Aromatizante Aer x6: "no lo indica en ninguna parte… tampoco veo las unidades en camino")
+- **Qué es:** el texto de oficina/camino/escasez (`_stHoy`) se calculaba y no se mostraba en ningún lado desde el rediseño de la línea. Ahora la cabecera de 📦 Stock en Full dice 🏠 oficina · 🚚 camino a Full · 📦 pedido que viaja · 🔥 escasez / 🚚 cubierto, y el globito el detalle (cuándo llega cada caja, por qué es o no escasez).
+- **Dónde vive:** `_stRepTit` y el `_lnHdr('st',…)` en index.html (usa `_stI`).
+- **Qué chequear:** a 390 px la cabecera no empuja la leyenda; con un color elegido muestra la oficina y la caja de ESE color.
+
 - **27/10/2026 · `fotopub:<MLA>[;…]` (sólo lee)** (él: *"mirá la foto y respondé"*, y revisar el Separador x2): de una publicación nuestra imprime título, salud, lo que ML le marca, la ficha técnica, las fotos y la descripción (las fotos se bajan desde el scratchpad para mirarlas). **Chequear:** que no imprima datos de compradores (sólo la publicación).
 
 ### 💵 Ganancia esperada de cada envío a Full (27/10/2026, v27.17, él: *"quiero que muestre la ganancia esperada de la caja. de todas"*)

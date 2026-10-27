@@ -3105,7 +3105,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.31';
+const APP_VERSION='27.32';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3118,6 +3118,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.32',f:'27/10',h:'14:30',c:[{n:2,t:'📦 Stock en Full: la cabecera vuelve a decir 🏠 cuántas hay en tu oficina y 🚚 cuántas vienen en camino a Full, y si es 🔥 escasez o 🚚 cubierto. Tocando el texto se ve cuándo llega cada caja y por qué es (o no) escasez.'}]},
   {v:'27.31',f:'27/10',h:'14:15',c:[{n:2,t:'📦 Línea de stock: con dos publicaciones del mismo producto y color (o su gemela) alcanza con que una informe el stock del día para dibujarlo. Antes, si una estaba pausada o era la gemela, ese día quedaba sin línea (Centímetro Blanco).'}]},
   {v:'27.30',f:'27/10',h:'14:05',c:[{n:2,t:'💰 "Más plata por día" ahora resta también lo que cuesta DE MÁS mandar la caja cuando las de esa cuenta salen con pocas unidades (últimas 8 cajas), además del envío de la ficha que ya estaba en el costo. Igual en el robot.'}]},
   {v:'27.29',f:'27/10',h:'13:45',c:[{n:2,t:'🧭 Estrategias más claras (elegiste la 6a): "🏔️ techo encontrado" y "↘️ volviendo al normal" ahora se ven como 💰 buscando el de más ganancia (dice "· techo encontrado" o "· volviendo"); la escalera que viene de una sobra se ve 📦 sobra stock con su escalón; el 🆕 lanzamiento se ve 📈 buscando techo "· nuevo" (sigue sin bajar sin 95%); sin stock dice con qué estrategia vuelve.'},{n:2,t:'🔒 Robot: abajo del 35% sólo si la unidad más vieja lleva 90+ días en Full (ahí se abre hasta el 0%), y 💰 no se pone sin techo en rojo a lo que vende 1 o más por semana.'}]},
@@ -12353,13 +12354,21 @@ function lineaPintar(prodId){
   // hoy a la derecha. Lo técnico (de qué publicación salen las rayas, por qué no se sabe el techo) va al globito o al costado del título.
   const _cjTxt={g:'la ganamos',c:'compartida',p:'la perdemos',n:'no es de catálogo',s:'sin caja',z:'ninguna activa'};
   const _cjHoy=(dias[_kLast]&&dias[_kLast].caja)||null;
+  // 27/10/2026 (él con el Aromatizante Aer x6: "no lo indica en ninguna parte… estaría bueno que lo ponga en la parte de stock en full y
+  // tampoco veo las unidades en camino"): la cabecera del stock dice la oficina (🏠), lo que viene en camino a Full (🚚) y si es escasez o
+  // está cubierto; el detalle (cuándo llega cada caja, el pedido que viaja, por qué es o no es escasez) en el globito.
+  const _stRepTit=(()=>{try{const I=_stI||{};const t=[];t.push('🏠 En tu oficina: '+(I.cs||0)+' u.');
+    t.push('🚚 Camino a Full: '+(I.tr&&I.tr.u>0?String(I.cajTxt||'').replace(/<[^>]+>/g,''):'ninguna caja'));
+    if(I.pv)t.push('📦 Pedido a '+I.pv.de+' del '+String(I.pv.fecha).slice(8,10)+'/'+String(I.pv.fecha).slice(5,7)+' ('+(I.pv.falta>0?'~'+I.pv.falta+' d':'ya debería haber llegado')+')');
+    if(I.ezTxt)t.push((I.esc?'🔥 Escasez: ':I.cub?'🚚 Cubierto: ':'Reposición: ')+String(I.ezTxt).replace(/<[^>]+>/g,''));
+    if(I.cubTxt)t.push(String(I.cubTxt).replace(/<[^>]+>/g,''));return t.join('\n').replace(/"/g,'&quot;');}catch(_){return '';}})();
   const _lnHdr=(n,tit,leg,der)=>lnHdrHTML(L,H,n,tit,leg,der);
   const _lnHdrs=_lnHdr('pr','💲 Precio',_lgS('var(--text)','color = estrategia')+(_rayas&&(_rayas.best||_rayas.techo)?_lgS('#eab308','💰 más plata')+_lgS('var(--red)','🔴 techo'):''),
       `${pFin?'hoy <b>'+fmt(pFin)+'</b>':''}${_estHoy&&ESTRATEGIA_UI[_estHoy.t]?' '+_estChip(_estHoy):''}${_prNotas.length?' · <span style="color:var(--muted)">'+_prNotas.join(' · ')+'</span>':''}${_prRayasDe?` <span style="color:var(--muted);cursor:help" title="Hay más de una publicación activa a precios distintos (por ejemplo la Clásica y su gemela Premium): las rayas se miden con la de precio más bajo sola, como el robot (techo95). Es la ${_prRayasDe}.">ⓘ</span>`:''}`)
     +_lnHdr('vent','🛒 Ventas y visitas',_lgS('var(--green)','vendidas',1)+(uPT?_lgS('#f97316','Premium',1):'')+(uGT?_lgS('#38bdf8','envío gratis',1):'')+(uRT?_lgS('#facc15','remate',1):'')+(hayVis?_lgS('#60a5fa','visitas',1):''),`<b>${uT} u.</b> · ${vT} visitas`)
     +_lnHdr('gan','💵 Plata por día',_lgS('var(--green)','promedio del mes')+_lgS('rgba(34,197,94,.5)','días del mes que se vende más',1)+_lgS('rgba(239,68,68,.45)','días flojos',1)+_lgS('rgba(245,158,11,.6)','fecha especial',1),_gHoy!=null?`hoy <b>${fmt(Math.round(_gHoy))}</b> por día`:'')
     +_lnHdr('pct','📊 % de ganancia',(pvs.length?_lgS('var(--green)','% de lo vendido'):'')+(cvs.length?_lgS('#f59e0b','costo'):''),`${_pctHoy!=null?`<b style="color:${pctColor(_pctHoy)}">${Math.round(_pctHoy)}%</b> la última venta`:''}${_pctCosto>0?` · costo <span style="color:#f59e0b">${fmt(Math.round(_pctCosto))}</span>`:''}`)
-    +_lnHdr('st','📦 Stock en Full',_lgS('var(--green)','con stock',1)+_lgS('var(--red)','sin stock',1)+_lgS('#38bdf8','▼ llegó')+_lgS('var(--red)','edad del stock',1),`<b style="color:${_stI.cHoy||'var(--text)'}">${_stI.q!=null?_stI.q:'—'} u.</b>${_stI.stTxt&&_stI.q>0?' · '+_stI.stTxt:''}${_stReloj?' · <span style="color:var(--red)">'+_stReloj+'</span>':''}`)
+    +_lnHdr('st','📦 Stock en Full',_lgS('var(--green)','con stock',1)+_lgS('var(--red)','sin stock',1)+_lgS('#38bdf8','▼ llegó')+_lgS('var(--red)','edad del stock',1),`<span title="${_stRepTit}"><b style="color:${_stI.cHoy||'var(--text)'}">${_stI.q!=null?_stI.q:'—'} u.</b>${_stI.stTxt&&_stI.q>0?' · '+_stI.stTxt:''}${_stI.esc?' · <b style="color:var(--red)">🔥 escasez</b>':_stI.cub?' · <b style="color:#38bdf8">🚚 cubierto</b>':''} · 🏠 <b style="color:${_stI.cs>0?'var(--text)':'var(--amber)'}">${_stI.cs||0}</b> · 🚚 <b style="color:${_stI.tr&&_stI.tr.u>0?'var(--text)':'var(--amber)'}">${_stI.tr?_stI.tr.u:0}</b>${_stI.pv?' · 📦 pedido':''}${_stReloj?' · <span style="color:var(--red)">'+_stReloj+'</span>':''}</span>`)
     +_lnHdr('est','📦 Sacando stock',_lgS('#f97316','sobra / liquidando / remate · abajo del 35% desde el 24/10',1)+_lgS('#a855f7','escalera vieja del robot',1),'')
     +_lnHdr('caja','🥊 Caja de compra',_lgS('var(--green)','ganada',1)+_lgS('#f59e0b','compartida',1)+_lgS('var(--red)','perdida',1),_cjHoy?'hoy: <b>'+(_cjTxt[_cjHoy]||_cjHoy)+'</b>':'');
   const btn=n=>`<button class="btn" onclick="lineaRango(${n},'${prodId}')" style="font-size:.66rem;padding:3px 10px;${_lineaRango===n?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}">${n} días</button>`;
