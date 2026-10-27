@@ -77,6 +77,11 @@ def ritmo(x,dcs=30):
         if nr['u30']>=3 and nr['d30']>=7: r=max(nr['u30']/nr['d30'],rL*0.8)
         base=f"a precio normal vendió {nr['u']} en {nr['d']} días con stock (últimos {nr['w']} d, sin contar escasez, sobra ni remate)"
         if r!=rL: base+=f" · {nr['u30']} en los últimos {nr['d30']}"
+        # 2a del 16/10 sigue: una suba de PRUEBA de techo (o de escasez) de los últimos 30 días frena las ventas → nunca menos que el ritmo de antes.
+        esc=[int(d) for d in re.findall(r'⬆️\$\d+→\$\d+ (\d+)d(?:ESC|PRU)',x.get('cambios',''))]
+        if esc and min(esc)<=30:
+            rPre=max((x['v60']-x['v30'])/30, x['v60']/60)
+            if rPre>r: r=rPre; base+=f" · subí el precio (escasez o prueba) hace {min(esc)} d: uso el ritmo de antes ({round(x['v60']-x['v30'])} en los 30 d previos)"
         return r,tiene,base
     # `li` (20/10/2026, decisión 1a): lo ya probado pedido a una lista que viaja (o llegó y falta contar), igual que Paraguay y el Paulvic.
     tiene=x['full']+x['casa']+x['cam']+x.get('py',0)+x.get('pv',0)+x.get('li',0)

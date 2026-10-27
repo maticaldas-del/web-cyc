@@ -46126,10 +46126,17 @@ async function main() {
       }
       const NORM = {}, mediodia = (k) => Date.parse(k.replace(/_/g, '-') + 'T12:00:00-03:00');
       const norDe = async (pid, va, mlas) => {
-        const dias = new Set();
+        const dias = new Set(), conDato = new Set();
         for (const m of mlas) { const lin = await lineaDe(m); if (lin == null) return null;
-          for (const [k, x] of Object.entries(lin || {})) if (/^\d{4}_\d{2}_\d{2}$/.test(k) && k >= k365 && k < dk(0) && x && typeof x === 'object' && diaConStock(x) && normalEn(m, mediodia(k))) dias.add(k); }
-        const uD = {}; for (const v of (VN[pid] || [])) { if (va && v.va !== va) continue; if (!normalEn(v.mla, v.ts)) continue; uD[v.k] = (uD[v.k] || 0) + v.q; dias.add(v.k); }
+          for (const [k, x] of Object.entries(lin || {})) { if (!/^\d{4}_\d{2}_\d{2}$/.test(k) || k < k365 || k >= dk(0) || !x || typeof x !== 'object') continue;
+            if (x.st != null || x.est != null) conDato.add(k);
+            if (diaConStock(x) && normalEn(m, mediodia(k))) dias.add(k); } }
+        const vs = (VN[pid] || []).filter((v) => !va || v.va === va);
+        const uD = {}; for (const v of vs) { if (!normalEn(v.mla, v.ts)) continue; uD[v.k] = (uD[v.k] || 0) + v.q; dias.add(v.k); }
+        // Los días que la línea de tiempo no anotó (sin stock ni estado: lo viejo, antes de que se guardara el stock cada día) se cuentan
+        // con stock si caen entre la primera y la última venta (la misma vara que `hist`): si no, 15 ventas "en 7 días" pedían ×6.
+        if (vs.length) { const kk = vs.map((v) => v.k).sort(); const ini = mediodia(kk[0]), fin = mediodia(kk[kk.length - 1]);
+          for (let t = ini; t <= fin; t += 864e5) { const k = dk(Math.round((hoy - t) / 864e5)); if (!conDato.has(k) && mlas.some((m) => normalEn(m, t))) dias.add(k); } }
         const en = (w) => { const k0 = dk(w - 1); let d = 0, u = 0; for (const k of dias) if (k >= k0) { d++; u += uD[k] || 0; } return { d, u }; };
         const a30 = en(30); let W = 365, b = en(365); for (const w of [60, 180]) { const x = en(w); if (x.d >= 14) { W = w; b = x; break; } }
         return ` · NOR ${a30.u}/${a30.d} ${b.u}/${b.d}@${W}`;
