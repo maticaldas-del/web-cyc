@@ -3105,7 +3105,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.41';
+const APP_VERSION='27.42';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3118,6 +3118,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.42',f:'27/10',h:'23:20',c:[{n:2,t:'💵 Pedidos: lo que salva cada $1 usa la ganancia al precio de hoy cuando el producto ya lleva 7+ días con stock desde su último cambio de precio (antes mezclaba 30 días de precios viejos y nuevos)'}]},
   {v:'27.41',f:'27/10',h:'23:00',c:[{n:2,t:'💵 Pedidos: se ordena siempre por lo que salva cada $1 (la ganancia que se pierde si no se compra ÷ lo que cuesta la compra). Se sacaron los botones de orden'}]},
   {v:'27.40',f:'27/10',h:'22:40',c:[{n:2,t:'💵 Pedidos: el botón ahora ordena por lo que SALVA cada $1 (la ganancia que se pierde si no se compra ahora ÷ lo que cuesta la compra). Lo que todavía tiene stock de sobra queda abajo aunque deje mucho; lo que está en 0 sube'}]},
   {v:'27.39',f:'27/10',h:'21:50',c:[{n:1,t:'💵 Pedidos: el botón para ordenar por lo que devuelve cada $1 ahora se ve, al lado de "Falta reponer" (antes quedaba escondido)'}]},
@@ -15491,7 +15492,28 @@ function repartoOficina(){
   return filas;
 }
 // Ganancia real (neto-costo) de un producto en los últimos PED_MAX_DAYS días, normalizada igual que pedVentasNorm.
+// GANANCIA AL PRECIO DE HOY (27/10/2026, él eligió 1a: "¿eso tiene en cuenta el % de ganancia que da ahora el producto? ya que hubo
+// cambios grandes de precio estos últimos días"). Si el último cambio de precio mío de más de 2% (`cyc/claudecambios`, sólo sus Clásicas)
+// fue hace 7-30 días y desde ahí hubo 7+ días con stock, la ganancia del mes sale de las ventas DESDE ese cambio (al precio de hoy),
+// llevada a 30 días por los días con stock. Con menos de 7 días a ese precio, la de 30 días de siempre (2-3 días son ruido).
+function _pedUltCambioPrecio(p){const mlas=new Set(Object.entries(state.mllinks||{}).filter(([m,e])=>e&&e.prodId===p.id&&!e.gemelaDe&&!e.ignored).map(([m])=>m));
+  if(!mlas.size)return 0;let t=0;for(const c of Object.values(state.claudecambios||{})){if(!c||!mlas.has(c.mla))continue;const de=Number(c.de)||0,a=Number(c.a)||0;
+    if(de>0&&Math.abs(a-de)>de*0.02&&Number(c.ts)>t)t=Number(c.ts);}return t;}
+// Días con stock desde `ts` (la misma cuenta que diasConStock, con la ventana empezando en `ts`): el máximo de las cuentas con registro.
+function _pedDiasStockDesde(pid,ts){const now=Date.now();let mx=0,hubo=false;
+  for(const l of LOCS){const h=(state.stockhist||{})[invKey(pid,l)];if(!h)continue;hubo=true;let ms=null;
+    if(h.desde){if(h.aprox!==false){ms=now-ts;}else{ms=now-Math.max(h.desde,ts);const c0=Number(h.cero);if(c0>ts&&c0<=h.desde)ms+=c0-ts;}}
+    else if(h.cero)ms=Math.max(0,Number(h.cero)-ts);
+    if(ms==null)ms=now-ts;const d=ms/864e5;if(d>mx)mx=d;}
+  return hubo?mx:(now-ts)/864e5;}
 function pedGananciaNorm(p){
+  {const tC=_pedUltCambioPrecio(p),dC=tC?(Date.now()-tC)/864e5:0;
+    if(tC&&dC>=7&&dC<=PED_MAX_DAYS){const dS=_pedDiasStockDesde(p.id,tC);
+      if(dS>=7){let g=0;const fk=dateToKey(new Date(tC));
+        Object.keys(state.ventaprod||{}).filter(k=>k>=fk).forEach(k=>{Object.values(state.ventaprod[k]||{}).forEach(v=>{
+          if(!ventaEsDe(v,p)||_esCancelada(v))return;const ts=Number(v.ts)||Date.parse(v.ts||'')||0;if(ts&&ts<tC)return;
+          g+=(v.neto||0)-efectivoCostoVP({...v,_dateKey:k});});});
+        return Math.round(g/Math.max(1,dS)*PED_MAX_DAYS);}}}
   const now=new Date();
   const diasHistorial=Math.max(1,Math.min(PED_MAX_DAYS,Math.floor((now-PED_HIST_START)/86400000)+1));
   const from=new Date(now);from.setDate(now.getDate()-(diasHistorial-1));
