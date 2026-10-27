@@ -3104,7 +3104,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.13';
+const APP_VERSION='27.14';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3117,6 +3117,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.14',f:'26/10',h:'22:55',c:[{n:2,t:'🪄 Pedido de Paraguay: "Llenar" ya no puede pasar el máximo de cada nuevo (hasta US$ 20, máximo 4). Si la base tenía una unidad que la pantalla todavía no mostraba, la sumaba de más (el Mouse Gravastar de US$ 58 quedó en 2).'}]},
   {v:'27.13',f:'26/10',h:'20:20',c:[{n:3,t:'📦 Armar caja · Cargar lo que entra en el cupo: va por lo que más plata deja cada unidad. La primera unidad va sólo a lo que está en 0 o se corta en 14 días (antes 1 a cada uno, que con poco cupo se lo comía lo que tiene stock), y lo nuevo que nunca vendió cuenta con lo que deja hoy su publicación.'}]},
   {v:'27.12',f:'26/10',h:'19:30',c:[{n:1,t:'📈 Línea de tiempo: los colores/aromas van en un desplegable; a la vista quedan sólo "Todas juntas" y el que abriste.'}]},
   {v:'27.11',f:'26/10',h:'19:24',c:[{n:1,t:'📦 Productos: cada tarjeta dice cuántas unidades hay en Full (las 4 cuentas juntas; en rojo si no hay).'}]},
@@ -16765,7 +16766,10 @@ async function _pedNuevosEscribir(suma){
     try{if(db){const sn=await db.ref('cyc/candidatos_py/'+x.c.id).once('value');if(sn.val())cur=sn.val();}}catch(e){}
     const peC=cur.pedidoEn&&(state.compraspy||{})[cur.pedidoEn];
     if(cur.no||(peC&&peC.estado==='camino')||(cur.pedidoEn&&!peC&&!(parseInt(cur.pedirU)>0))){salteados++;continue;}
-    const u=Math.max(0,parseInt(cur.pedirU)||0)+(x.u-x.antes);
+    // 27/10/2026 (él, con el Mouse Gravastar de US$ 58 que quedó en 2: "ya rompió la regla de no más de 20 dólares por producto"):
+    // se escribe el TOTAL que calculó el plan (que ya respeta candMaxU), no "lo que había en la base + lo que agregué": si la base
+    // tenía una unidad que la pantalla todavía no veía, la suma pasaba el máximo. Lo que ya había de más (cargado a mano) no se toca.
+    const u=Math.max(Math.max(0,parseInt(cur.pedirU)||0),Math.min(x.u,candMaxU(cur)));
     x.c.pedirU=u;await fbSet('candidatos_py/'+x.c.id+'/pedirU',u);
   }
   return salteados;

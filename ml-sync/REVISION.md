@@ -811,6 +811,11 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 
 ## 3 · MERCADERÍA (miércoles)
 
+### 🪄 "Llenar" no pasa el máximo de cada nuevo (27/10/2026, v27.14, él: *"ya rompió la regla de no más de 20 dólares por producto"*)
+- **Qué es:** el Mouse Gravastar (US$ 58, máximo 1) quedó en 2. `_pedNuevosEscribir` sumaba "lo que había en la base + lo que agregó el plan": si la base tenía una unidad que la pantalla no veía, pasaba el máximo. Ahora escribe el total del plan (ya cortado por `candMaxU`); lo cargado a mano de más no se toca. `pyestado` dice el precio, el máximo y ⚠️ PASA EL MÁXIMO.
+- **Dónde vive:** `_pedNuevosEscribir` (`index.html`, lo usan "Llenar con probados y nuevos" y "Llenar con nuevos") · `pyestado` (`ml-sync/sync.mjs`).
+- **Qué chequear:** apretar Llenar dos veces seguidas no sube nada que ya esté en su máximo; `pyestado` sin ⚠️.
+
 ### 🔄 Vuelta de Nissei: la página 1 del otro orden no la reinicia · `nisseivuelta` (27/10/2026)
 - **Qué es:** el 26/10 el chat copió de la A a la M y después arrancó de la Z para atrás; esa "página 1" reinició la cuenta y el cierre con `fin=13497` dio 26% (no contó). Ahora la página 1 no reinicia una vuelta de menos de 24 h. `nisseivuelta[:<horas>][;fin=<total>][;go]` recuenta lo copiado en las últimas horas y, con 90%+, la anota completa.
 - **Dónde vive:** `ml-sync/sync.mjs` (bloque de la vuelta en `pycat` y el comando `nisseivuelta`, que escribe por ml-consulta).
