@@ -1,0 +1,5 @@
+MLA1699517557=7590!vendio#techo|Vendió a $5.790 buscando techo: no es techo, +30% (regla del 27/10, el detector). SI NO PASA techo95 decide y vuelve en escalera como descuento propio
+MLA1699834745=7290!vendio#techo|Vendió a $5.590 buscando techo: no es techo, +30% (regla del 27/10, el detector). Las dos Blancas (esta y MLA3112784736) suben juntas al mismo precio y estrategia
+MLA3112784736=7290!vendio#techo|Vendió a $5.590 buscando techo: no es techo, +30% (regla del 27/10, el detector). Las dos Blancas (esta y MLA1699834745) suben juntas al mismo precio y estrategia
+MLA3070987014=10190!vendio#techo|Vendió a $7.790 buscando techo: no es techo, +30% (regla del 27/10, el detector). SI NO PASA techo95 decide y vuelve en escalera como descuento propio
+MLA1472539211=nota|HOY NO LO TOCO PORQUE la prueba de 6.490 ganó (5 ventas en 7,9 días, plata por día de 467 a 1.014) y ya está buscando techo más arriba en 8.490. QUÉ ESPERO VER una venta a 8.490. SI NO PASA techo95 decide
