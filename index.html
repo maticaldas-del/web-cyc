@@ -1394,11 +1394,24 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
         <div><b style="font-size:.85rem">📥 Lo que nos deben</b><div id="cuotas-total2" style="font-size:.72rem;color:var(--muted);margin-top:2px"></div></div>
         <div style="display:flex;gap:6px"><button class="btn" style="font-size:.72rem" onclick="cuotasForm()">➕ Agregar deuda a CYC</button></div>
       </div>
-      <div id="cuotas-form" style="display:none;margin-bottom:10px;padding:10px;border:1px solid var(--border);border-radius:var(--r);max-width:420px">
-          <input id="cq_nom" class="fin-input" type="text" placeholder="Nombre (ej. Juan · auriculares)" style="width:100%;text-align:left;margin-bottom:6px">
-          <input id="cq_monto" class="fin-input" type="text" inputmode="numeric" placeholder="$ total que debe" style="width:100%;margin-bottom:6px" oninput="cuotasTotalVivo()">
-          <label style="display:flex;gap:6px;align-items:center;font-size:.72rem;margin-bottom:6px"><input type="checkbox" id="cq_concuotas" onchange="document.getElementById('cq_n').style.display=this.checked?'':'none';cuotasTotalVivo()"> En cuotas</label>
-          <input id="cq_n" class="fin-input" type="text" inputmode="numeric" placeholder="¿cuántas cuotas?" style="width:100%;margin-bottom:6px;display:none" oninput="cuotasTotalVivo()">
+      <div id="cuotas-form" style="display:none;margin-bottom:10px;padding:10px;border:1px solid var(--border);border-radius:var(--r);max-width:460px">
+          <div id="cq_titulo" style="font-size:.78rem;font-weight:700;margin-bottom:8px">➕ Deuda nueva</div>
+          <input type="hidden" id="cq_id">
+          <label style="font-size:.7rem;color:var(--muted)">Nombre</label>
+          <input id="cq_nom" class="fin-input" type="text"  placeholder="Nombre (ej. Juan · auriculares)" style="width:100%;text-align:left;margin:3px 0 6px">
+          <label style="font-size:.7rem;color:var(--muted)">Total que debe (lo que se le vendió)</label>
+          <input id="cq_monto" class="fin-input" type="text"  inputmode="numeric" placeholder="$ total que debe (lo que se le vendió)" style="width:100%;margin-bottom:6px" oninput="cuotasTotalVivo()">
+          <label style="font-size:.7rem;color:var(--muted)">Cuánto nos costó (opcional, para ver la ganancia)</label>
+          <input id="cq_costo" class="fin-input" type="text"  inputmode="numeric" placeholder="$ cuánto nos costó (opcional)" style="width:100%;margin-bottom:6px" oninput="cuotasTotalVivo()">
+          <label style="display:flex;gap:6px;align-items:center;font-size:.72rem;margin-bottom:6px"><input type="checkbox" id="cq_concuotas" onchange="cuotasVerCampos();cuotasTotalVivo()"> En cuotas</label>
+          <div id="cq_cuotasbox" style="display:none">
+            <label style="font-size:.7rem;color:var(--muted)">Cuántas cuotas</label>
+            <input id="cq_n" class="fin-input" type="text"  inputmode="numeric" placeholder="¿cuántas cuotas?" style="width:100%;margin-bottom:6px" oninput="cuotasTotalVivo()">
+            <label style="font-size:.7rem;color:var(--muted)">Cada cuánto paga</label>
+            <select id="cq_frec" class="fin-input" style="width:100%;text-align:left;margin:3px 0 6px" onchange="cuotasTotalVivo()"><option value="sem">Semanal</option><option value="quin">Cada 15 días</option><option value="men" selected>Mensual</option></select>
+          </div>
+          <label id="cq_vence_lbl" style="font-size:.7rem;color:var(--muted)">Tiene que pagar el (opcional)</label>
+          <input id="cq_vence" class="fin-input" type="date" style="width:100%;text-align:left;margin:3px 0 6px" onchange="cuotasTotalVivo()">
           <div id="cq_total" style="font-size:.7rem;color:var(--muted);margin-bottom:6px"></div>
           <button class="btn" style="font-size:.72rem" onclick="cuotasGuardar()">💾 Guardar</button>
           <button class="btn" style="font-size:.72rem;margin-left:6px" onclick="document.getElementById('cuotas-form').style.display='none'">Cancelar</button>
@@ -3143,7 +3156,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.53';
+const APP_VERSION='27.54';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3156,6 +3169,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.54',f:'28/10',h:'16:25',c:[{n:2,t:'📥 Ver deudas: ✏️ editar cada deuda · cada cuánto paga (semanal, cada 15 días o mensual) y cuándo vence · cuánto nos costó y cuánto se le gana · cada pago guarda su fecha (te la pregunta al tocar 💵 Pagó) · en ROJO la que se atrasó. Y 📋 Ver deudas ahora te lleva directo a la lista'}]},
   {v:'27.53',f:'28/10',h:'16:05',c:[{n:1,t:'📥 Ver deudas: ahora es una lista, un renglón por deuda (nombre y cuotas a la izquierda, lo que falta en el medio, botones a la derecha)'}]},
   {v:'27.52',f:'28/10',h:'15:55',c:[{n:1,t:'🧮 Arqueo tiene una tercera solapa: Ver deudas (al lado de Finanzas y Productos), con la lista de lo que nos deben, ➕ Agregar y 💵 Pagó. El botón 📋 Ver deudas de la tarjeta lleva ahí'}]},
   {v:'27.51',f:'28/10',h:'15:40',c:[{n:1,t:'📥 Arqueo → Lo que nos deben: la tarjeta muestra sólo el total, cuántas deudas hay y lo que falta cobrar. 📋 Ver deudas abre la lista a lo ancho, abajo de las tarjetas, con ➕ Agregar, 💵 Pagó y 🗑️ más cómodos'}]},
@@ -6925,37 +6939,79 @@ async function cuotasSync(){
   state.finanzas.deben_cyc=usd;try{await fbSet('finanzas/deben_cyc',usd);}catch(e){toast('No pude guardar lo que nos deben: '+e.message,'err');}
   try{updateArqueo();updateHeaderTotal();}catch(_){}
 }
+// CADA CUÁNTO SE PAGA, CUÁNDO VENCE, CUÁNTO COSTÓ Y CUÁNTO SE LE GANA (28/10/2026, él: "que se pueda editar, que ponga qué fecha se
+// pagó la cuota, cuánto salió de costo y cuánto se le ganó y que se pueda elegir cada cuánto se paga… semanales y mensuales. que se
+// ponga en rojo cuando pasó el tiempo de pagar"). Campos nuevos: frec (sem|quin|men), vence1 (AAAA-MM-DD: la primera cuota, o el día
+// que tiene que pagar si es sin cuotas), costo (pesos). Cada pago guarda su fecha: pagos/<ts> = {f:'AAAA-MM-DD'} (los viejos = 1 → la
+// fecha sale del ts). La cuota que toca vence en vence1 + (pagadas × período); pasada esa fecha sin pagar, el renglón va en rojo.
+const CUOTA_FREC={sem:{t:'semanal',d:7},quin:{t:'cada 15 días',d:15},men:{t:'mensual',m:1}};
+function _isoHoy(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function _isoDM(f){const m=String(f||'').match(/^(\d{4})-(\d{2})-(\d{2})/);return m?m[3]+'/'+m[2]:'';}
+function _isoMas(f,frec,k){const m=String(f||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);if(!m)return null;const d=new Date(+m[1],+m[2]-1,+m[3],12);const F=CUOTA_FREC[frec]||CUOTA_FREC.men;
+  if(F.m){const dia=d.getDate();d.setDate(1);d.setMonth(d.getMonth()+F.m*k);const ult=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();d.setDate(Math.min(dia,ult));}else d.setDate(d.getDate()+F.d*k);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function cuotaVence(d){if(d.pagadas>=d.n||!d.vence1)return null;return d.n>1?_isoMas(d.vence1,d.frec,d.pagadas):d.vence1;}
+function cuotaPagosFechas(d){return Object.entries(d.pagos||{}).map(([k,v])=>(v&&v.f)?v.f:(()=>{const t=new Date(Number(k));return isFinite(t)?t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0'):'';})()).filter(Boolean).sort();}
 function renderCuotas(){
   const el=document.getElementById('cuotas-lista');if(!el)return;
-  const L=cuotasLista(),abiertas=L.filter(d=>d.pagadas<d.n).length;
-  const t2=document.getElementById('cuotas-total2');if(t2)t2.innerHTML=L.length?`${abiertas} deuda${abiertas===1?'':'s'} sin terminar de pagar · falta cobrar <b style="color:var(--text)">${_pesos(cuotasRestaPesos())}</b>`:'';
-  const rs=document.getElementById('cuotas-resumen');if(rs)rs.innerHTML=L.length?`${abiertas} deuda${abiertas===1?'':'s'} · falta cobrar <b style="color:var(--text)">${_pesos(cuotasRestaPesos())}</b>`:'Ninguna deuda cargada.';
+  const L=cuotasLista(),abiertas=L.filter(d=>d.pagadas<d.n).length,hoy=_isoHoy(),venc=L.filter(d=>{const v=cuotaVence(d);return v&&v<hoy;}).length;
+  const t2=document.getElementById('cuotas-total2');if(t2)t2.innerHTML=L.length?`${abiertas} deuda${abiertas===1?'':'s'} sin terminar de pagar · falta cobrar <b style="color:var(--text)">${_pesos(cuotasRestaPesos())}</b>${venc?` · <b style="color:var(--red)">${venc} atrasada${venc===1?'':'s'}</b>`:''}`:'';
+  const rs=document.getElementById('cuotas-resumen');if(rs)rs.innerHTML=L.length?`${abiertas} deuda${abiertas===1?'':'s'} · falta cobrar <b style="color:var(--text)">${_pesos(cuotasRestaPesos())}</b>${venc?` · <b style="color:var(--red)">⚠️ ${venc} atrasada${venc===1?'':'s'}</b>`:''}`:'Ninguna deuda cargada.';
   if(!L.length){el.innerHTML='<div style="font-size:.7rem;color:var(--muted)">Ninguna deuda cargada.</div>';return;}
-  // EN LISTA (28/10/2026, él: "se pueden poner en listas? en vez de cuadrados, rectángulos de izquierda a derecha"): un renglón por deuda,
-  // nombre y estado a la izquierda, lo que falta en el medio y los botones a la derecha; en el teléfono los botones bajan abajo.
+  // EN LISTA (28/10/2026, él: "en vez de cuadrados, rectángulos de izquierda a derecha"): un renglón por deuda.
   el.innerHTML='<div style="display:flex;flex-direction:column;gap:6px">'+L.map(d=>{const fin=d.pagadas>=d.n,resta=Math.max(0,d.monto-d.pagadas*d.cuota),cq=d.n>1;
-    return `<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;border:1px solid var(--border);border-radius:var(--r);padding:8px 12px;${fin?'opacity:.6':''}">
+    const v=cuotaVence(d),atr=v&&v<hoy,fr=(CUOTA_FREC[d.frec]||CUOTA_FREC.men).t,costo=Number(d.costo)>0?Number(d.costo):null,gan=costo!=null?d.monto-costo:null;
+    const fechas=cuotaPagosFechas(d);
+    const lin1=fin?'✅ pagada':cq?`${_pesos(d.cuota)} × ${d.n} · ${fr} · pagó <b style="color:var(--text)">${d.pagadas} de ${d.n}</b> · total ${_pesos(d.monto)}`:`sin cuotas · total ${_pesos(d.monto)}`;
+    const lin2=[v?(atr?`<b style="color:var(--red)">⚠️ vencía el ${_isoDM(v)}</b>`:`${cq?'próxima cuota':'paga'} el ${_isoDM(v)}`):'',
+      costo!=null?`costo ${_pesos(costo)} · ganancia <b style="color:${gan>=0?'var(--green)':'var(--red)'}">${_pesos(gan)}</b>${d.monto>0?` (${Math.round(gan/d.monto*100)}%)`:''}`:'',
+      fechas.length?`pagos: ${fechas.map(_isoDM).join(', ')}`:''].filter(Boolean).join(' · ');
+    return `<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;border:1px solid ${atr?'var(--red)':'var(--border)'};${atr?'background:rgba(239,68,68,.08);':''}border-radius:var(--r);padding:8px 12px;${fin?'opacity:.6':''}">
       <div style="flex:1 1 220px;min-width:0"><b style="font-size:.8rem;word-break:break-word">${_escC(d.nom)}</b>
-        <div style="font-size:.7rem;color:var(--muted);margin-top:2px">${fin?'✅ pagada':cq?`${_pesos(d.cuota)} × ${d.n} · pagó <b style="color:var(--text)">${d.pagadas} de ${d.n}</b> · total ${_pesos(d.monto)}`:'sin cuotas'}</div></div>
-      <div style="text-align:right;white-space:nowrap"><div style="font-size:.6rem;color:var(--muted)">falta</div><b style="font-size:.85rem">${_pesos(resta)}</b></div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap">${fin?'':`<button class="btn" style="font-size:.7rem" onclick="cuotasPago('${d.id}',1)">💵 ${cq?'Pagó una cuota':'Pagó'}</button>`}${d.pagadas>0?`<button class="btn" style="font-size:.7rem" onclick="cuotasPago('${d.id}',-1)">↩︎ Deshacer</button>`:''}<button class="btn" style="font-size:.7rem" onclick="cuotasBorrar('${d.id}')">🗑️</button></div></div>`;}).join('')+'</div>'
+        <div style="font-size:.7rem;color:var(--muted);margin-top:2px">${lin1}</div>${lin2?`<div style="font-size:.66rem;color:var(--muted);margin-top:2px">${lin2}</div>`:''}</div>
+      <div style="text-align:right;white-space:nowrap"><div style="font-size:.6rem;color:var(--muted)">falta</div><b style="font-size:.85rem;${atr?'color:var(--red)':''}">${_pesos(resta)}</b></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">${fin?'':`<button class="btn" style="font-size:.7rem" onclick="cuotasPago('${d.id}',1)">💵 ${cq?'Pagó una cuota':'Pagó'}</button>`}${d.pagadas>0?`<button class="btn" style="font-size:.7rem" onclick="cuotasPago('${d.id}',-1)">↩︎ Deshacer</button>`:''}<button class="btn" style="font-size:.7rem" onclick="cuotasEditar('${d.id}')" title="Editar">✏️</button><button class="btn" style="font-size:.7rem" onclick="cuotasBorrar('${d.id}')">🗑️</button></div></div>`;}).join('')+'</div>'
     +`<div style="font-size:.7rem;color:var(--muted);margin-top:8px">Falta cobrar: <b style="color:var(--text)">${_pesos(cuotasRestaPesos())}</b></div>`;
 }
 // 📋 Ver deudas de la tarjeta abre la solapa Ver deudas del Arqueo (28/10/2026).
-function cuotasPanel(){const b=document.getElementById('tab-btn-deudas');if(b)goTab('deudas',b);window.scrollTo({top:0,behavior:'smooth'});}
-function cuotasForm(){cuotasPanel(true);const f=document.getElementById('cuotas-form');f.style.display='block';['cq_nom','cq_monto','cq_n'].forEach(i=>document.getElementById(i).value='');document.getElementById('cq_concuotas').checked=false;document.getElementById('cq_n').style.display='none';cuotasTotalVivo();document.getElementById('cq_nom').focus();}
+function cuotasPanel(){const b=document.getElementById('tab-btn-deudas');if(b)goTab('deudas',b);
+  // Lleva a la lista, no al principio de la página (28/10/2026, él: "me lleva al inicio, no a las deudas… tengo que scrolear").
+  const t=b&&b.closest('.tabs');setTimeout(()=>{(t||document.getElementById('tab-deudas'))?.scrollIntoView({behavior:'smooth',block:'start'});},30);}
+function cuotasVerCampos(){const c=document.getElementById('cq_concuotas').checked;document.getElementById('cq_cuotasbox').style.display=c?'':'none';document.getElementById('cq_vence_lbl').textContent=c?'Primera cuota vence el':'Tiene que pagar el (opcional)';}
+function _cuotasLlenar(d){const g=i=>document.getElementById(i);g('cq_id').value=d?d.id:'';g('cq_titulo').textContent=d?'✏️ Editar deuda':'➕ Deuda nueva';
+  g('cq_nom').value=d?d.nom:'';g('cq_monto').value=d?Math.round(d.monto):'';g('cq_costo').value=d&&Number(d.costo)>0?Math.round(d.costo):'';
+  g('cq_concuotas').checked=!!(d&&d.n>1);g('cq_n').value=d&&d.n>1?d.n:'';g('cq_frec').value=(d&&d.frec)||'men';g('cq_vence').value=(d&&d.vence1)||'';
+  cuotasVerCampos();cuotasTotalVivo();g('cuotas-form').style.display='block';g('cq_nom').focus();g('cuotas-form').scrollIntoView({behavior:'smooth',block:'nearest'});}
+function cuotasForm(){cuotasPanel();_cuotasLlenar(null);}
+function cuotasEditar(id){const d=cuotasLista().find(x=>x.id===id);if(d)_cuotasLlenar(d);}
 function _cuotasN(){return document.getElementById('cq_concuotas').checked?(parseInt(document.getElementById('cq_n').value,10)||0):1;}
-function cuotasTotalVivo(){const m=parseMoney(document.getElementById('cq_monto').value)||0,n=_cuotasN();document.getElementById('cq_total').textContent=!(m>0)?'Poné cuánto debe en total':n>1?`${n} cuotas de ${_pesos(m/n)} · total ${_pesos(m)}`:document.getElementById('cq_concuotas').checked?'¿Cuántas cuotas?':`Sin cuotas: ${_pesos(m)}`;}
+function cuotasTotalVivo(){const m=parseMoney(document.getElementById('cq_monto').value)||0,n=_cuotasN(),c=parseMoney(document.getElementById('cq_costo').value)||0;
+  const fr=(CUOTA_FREC[document.getElementById('cq_frec').value]||CUOTA_FREC.men).t,v=document.getElementById('cq_vence').value;
+  let t=!(m>0)?'Poné cuánto debe en total':n>1?`${n} cuotas de ${_pesos(m/n)} · ${fr} · total ${_pesos(m)}`:document.getElementById('cq_concuotas').checked?'¿Cuántas cuotas?':`Sin cuotas: ${_pesos(m)}`;
+  if(m>0&&c>0)t+=` · ganancia ${_pesos(m-c)} (${Math.round((m-c)/m*100)}%)`;
+  if(v&&n>1)t+=` · última cuota el ${_isoDM(_isoMas(v,document.getElementById('cq_frec').value,n-1))}`;
+  document.getElementById('cq_total').textContent=t;}
 async function cuotasGuardar(){
-  const nom=document.getElementById('cq_nom').value.trim(),monto=parseMoney(document.getElementById('cq_monto').value)||0,n=_cuotasN();
+  const g=i=>document.getElementById(i);const id0=g('cq_id').value,nom=g('cq_nom').value.trim(),monto=parseMoney(g('cq_monto').value)||0,n=_cuotasN(),costo=parseMoney(g('cq_costo').value)||0,vence=g('cq_vence').value||'',frec=g('cq_frec').value;
   if(!nom||!(monto>0)||!(n>0)){toast('Falta el nombre, el monto o cuántas cuotas','err');return;}
-  const id='c'+Date.now(),d={nom:nom.slice(0,80),monto:Math.round(monto),n,pagadas:0,ts:Date.now(),quien:whoAmI||''};
+  if(n>1&&!vence){toast('Poné cuándo vence la primera cuota (así avisa en rojo si se atrasa)','err');return;}
+  const ya=id0?(state.debencuotas||{})[id0]:null;if(id0&&!ya){toast('No encuentro esa deuda','err');return;}
+  const pag=ya?Math.min(n,Number(ya.pagadas)||0):0;
+  if(ya&&(Number(ya.pagadas)||0)>n&&!confirm(`Ya pagó ${ya.pagadas} cuotas y ahora serían ${n}: queda pagada entera. ¿Sigo?`))return;
+  const id=id0||('c'+Date.now()),d={...(ya||{}),nom:nom.slice(0,80),monto:Math.round(monto),n,pagadas:pag,costo:costo>0?Math.round(costo):null,vence1:vence||null,frec:n>1?frec:null,ts:ya?ya.ts:Date.now(),quien:ya?(ya.quien||''):(whoAmI||'')};
+  if(ya)d.editado=Date.now();
+  Object.keys(d).forEach(k=>{if(d[k]===null||d[k]===undefined)delete d[k];});
   try{await fbSet('debencuotas/'+id,d);state.debencuotas={...(state.debencuotas||{}),[id]:d};}catch(e){toast('No se guardó: '+e.message,'err');return;}
-  document.getElementById('cuotas-form').style.display='none';renderCuotas();cuotasSync();log(`Deuda a CYC: ${nom} · ${_pesos(monto)}${n>1?' en '+n+' cuotas':''}`).catch(()=>{});toast('✓ Guardada');
+  g('cuotas-form').style.display='none';renderCuotas();cuotasSync();log(`${ya?'Edité la deuda':'Deuda a CYC'}: ${nom} · ${_pesos(monto)}${n>1?' en '+n+' cuotas '+(CUOTA_FREC[frec]||{}).t:''}`).catch(()=>{});toast('✓ Guardada');
 }
 async function cuotasPago(id,delta){
   const d=(state.debencuotas||{})[id];if(!d)return;const n=Math.max(1,Number(d.n)||1),p=Math.max(0,Math.min(n,(Number(d.pagadas)||0)+delta));if(p===(Number(d.pagadas)||0))return;
-  const pagos={...(d.pagos||{})};if(delta>0)pagos[Date.now()]=1;else{const ks=Object.keys(pagos).sort();if(ks.length)delete pagos[ks[ks.length-1]];}
+  const pagos={...(d.pagos||{})};
+  if(delta>0){const r=prompt('¿Qué día pagó? (día/mes/año)',_isoDM(_isoHoy())+'/'+new Date().getFullYear());if(r===null)return;
+    const m=String(r).trim().match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$/);if(!m){toast('No entendí la fecha (va día/mes/año)','err');return;}
+    const y=m[3]?(m[3].length===2?2000+Number(m[3]):Number(m[3])):new Date().getFullYear(),f=y+'-'+String(m[2]).padStart(2,'0')+'-'+String(m[1]).padStart(2,'0');
+    pagos[Date.now()]={f};}
+  else{const ks=Object.keys(pagos).sort((a,b)=>Number(a)-Number(b));if(ks.length)delete pagos[ks[ks.length-1]];}
   try{await fbUpdate({['debencuotas/'+id+'/pagadas']:p,['debencuotas/'+id+'/pagos']:Object.keys(pagos).length?pagos:null});d.pagadas=p;d.pagos=pagos;}catch(e){toast('No se guardó: '+e.message,'err');return;}
   renderCuotas();cuotasSync();log(`${d.nom}: ${delta>0?'pagó':'deshice un pago'}${n>1?` (${p} de ${n})`:''}`).catch(()=>{});
   toast(delta>0?`✓ ${d.nom}: ${n>1?`va ${p} de ${n}`:'pagada'}${p>=n&&n>1?' · ¡pagada entera!':''} · acordate de sumar la plata donde entró (efectivo o MP)`:`↩︎ ${d.nom}${n>1?`: ${p} de ${n}`:''}`);
