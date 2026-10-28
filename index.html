@@ -3167,7 +3167,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.58';
+const APP_VERSION='27.59';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3180,6 +3180,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.59',f:'28/10',h:'17:55',c:[{n:1,t:'🛍️ Mercadería dejada en las perfumerías (Soares, Sarmiento, Ceballos): cada producto que se deja aparece en la historia con dónde quedó, lo que paga la perfumería, lo que nos costó y la ganancia en verde. Esa ganancia se ve sólo ahí, no se suma a la de ML'}]},
   {v:'27.58',f:'28/10',h:'17:35',c:[{n:2,t:'📅 Deudas en cuotas: la próxima cuota vence siempre a un período del ÚLTIMO pago (una semana, un mes o cada X días después). Nueva opción "Cada X días" para elegir cuántos días'}]},
   {v:'27.57',f:'28/10',h:'17:20',c:[{n:2,t:'📥 Ver deudas: tocá cualquier deuda y se despliega el detalle con TODA la historia (en verde lo que se suma, en rojo lo que devuelve, de a 6 por página). Ahí mismo: ➕ Suma deuda / ➖ Devolvió con monto, fecha y nota (para la deuda de la perfumería que se mueve todos los días). 💵 Pagó en las sin cuotas deja poner cuánto devolvió. 🧮 Inicio: la tarjeta Arqueo deja sólo 📦 Productos y 📥 Ver deudas (tocando la tarjeta ya se abre Finanzas)'}]},
   {v:'27.56',f:'28/10',h:'16:55',c:[{n:1,t:'🧾 Inicio: la tarjeta de Facturas muestra una barrita por cuenta con cuán llena va contra el tope de H (lleno = facturado hoy, clarito = a dónde llega al cierre de ARCA; rojo si se pasa, ámbar desde 85%)'}]},
@@ -6953,7 +6954,10 @@ function cuotaHistoria(d){const H=[];
   const ps=Object.entries(d.pagos||{}).sort((a,b)=>Number(a[0])-Number(b[0]));
   ps.forEach(([k,v],i)=>H.push({f:(v&&v.f)||_isoDe(k),ts:Number(k),m:-(d.n>1?d.cuota:d.monto),txt:d.n>1?`pagó la cuota ${i+1} de ${d.n}`:'pagó todo'}));
   for(let i=ps.length;i<d.pagadas;i++)H.push({f:'',ts:0,m:-(d.n>1?d.cuota:d.monto),txt:d.n>1?`pagó la cuota ${i+1} de ${d.n} (sin fecha)`:'pagó todo (sin fecha)'});
-  Object.entries(d.movs||{}).forEach(([k,v])=>{if(v&&Number(v.m))H.push({f:v.f||_isoDe(k),ts:Number(k),m:Number(v.m),txt:v.nota||(Number(v.m)>0?'sumó deuda':'devolvió'),mov:k});});
+  // Mercadería dejada en una perfumería (28/10/2026): el renglón dice qué, cuántas y dónde, y la ganancia en verde (sólo se ve acá).
+  const LOC={soares:'Soares',sarmiento:'Sarmiento',ceballos:'Ceballos'};
+  Object.entries(d.movs||{}).forEach(([k,v])=>{if(!v||!Number(v.m))return;const pr=v.prodNom?`🛍️ ${Number(v.u)>1?v.u+' × ':''}${v.prodNom}${v.local?' · en '+(LOC[v.local]||v.local):''}`:'';
+    H.push({f:v.f||_isoDe(k),ts:Number(k),m:Number(v.m),txt:[pr,v.nota].filter(Boolean).join(' · ')||(Number(v.m)>0?'sumó deuda':'devolvió'),mov:k,gan:Number.isFinite(Number(v.gan))&&v.gan!==undefined&&v.gan!==null?Number(v.gan):null,costoU:Number(v.costoU)||null,pu:Number(v.pu)||null});});
   return H.sort((a,b)=>String(b.f).localeCompare(String(a.f))||b.ts-a.ts);}
 let _debenMig=false;
 async function cuotasSync(){
@@ -7020,12 +7024,13 @@ function cuotaDetalleHTML(d){
   const sum=H.filter(x=>x.m>0).reduce((s,x)=>s+x.m,0),res=H.filter(x=>x.m<0).reduce((s,x)=>s-x.m,0);
   const filas=H.slice((pg-1)*CUOTA_POR_PAG,pg*CUOTA_POR_PAG).map(x=>`<div style="display:flex;align-items:center;gap:10px;padding:5px 0;border-top:1px solid var(--border);font-size:.7rem">
       <span style="width:3.4em;color:var(--muted);font-family:'DM Mono',monospace">${x.f?_isoDM(x.f):'—'}</span>
-      <span style="flex:1;min-width:0;word-break:break-word">${_escC(x.txt)}</span>
+      <span style="flex:1;min-width:0;word-break:break-word">${_escC(x.txt)}${x.gan!=null?`<div style="font-size:.64rem;color:var(--muted)">paga ${_pesos(x.pu)} c/u · costo ${_pesos(x.costoU)} c/u · ganancia <b style="color:${x.gan>=0?'var(--green)':'var(--red)'}">${_pesos(x.gan)}</b></div>`:''}</span>
       <b style="white-space:nowrap;font-family:'DM Mono',monospace;color:${x.m>0?'var(--green)':'var(--red)'}">${x.m>0?'+':'−'}${_pesos(Math.abs(x.m))}</b>
       ${x.mov?`<button class="btn" style="font-size:.6rem;padding:2px 6px" onclick="event.stopPropagation();cuotaMovBorrar('${d.id}','${x.mov}')" title="Borrar este movimiento">✕</button>`:''}</div>`).join('');
   const nav=pags>1?`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px">${Array.from({length:pags},(_,i)=>`<button class="btn" style="font-size:.64rem;padding:3px 9px;${i+1===pg?'background:var(--sel-bg);color:#fff;border-color:var(--sel-bg)':''}" onclick="event.stopPropagation();cuotaPagina(${i+1})">${i+1}</button>`).join('')}</div>`:'';
   return `<div onclick="event.stopPropagation()" style="padding:4px 12px 12px;border-top:1px dashed var(--border)">
     <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:.68rem;color:var(--muted);margin:6px 0">
+      ${(()=>{const g=H.filter(x=>x.gan!=null).reduce((t,x)=>t+x.gan,0),c=H.filter(x=>x.gan!=null).length;return c?`<span>🛍️ ganancia de lo dejado: <b style="color:var(--green)">${_pesos(g)}</b> <span style="opacity:.75">(sólo se ve acá, no entra en ML)</span></span>`:'';})()}
       <span>se sumó <b style="color:var(--green)">${_pesos(sum)}</b></span><span>devolvió <b style="color:var(--red)">${_pesos(res)}</b></span><span>falta <b style="color:var(--text)">${_pesos(d.resta)}</b></span>
       ${d.quien?`<span>cargada por ${_escC(d.quien)}</span>`:''}${d.editado?`<span>editada el ${_isoDM(_isoDe(d.editado))}</span>`:''}</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:8px 0">

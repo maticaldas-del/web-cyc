@@ -2129,6 +2129,11 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
 - **Qué es:** una barra por cuenta contra el tope de H: lleno = facturado oficial hoy, clarito = a dónde llega al cierre de ARCA (misma cuenta que la ⚖️, `parejoDatos`); % de hoy; rojo si al cierre se pasa, ámbar desde 85%. En el teléfono sin ícono y más finitas.
 - **Dónde vive:** `renderNcFacBarras` (la llama `renderNcFacAviso`), `#nc-fac-barras`, clase `ht-fac` (index.html).
 - **Qué chequear:** 390 y 1200 px dibujados el 28/10 sin desborde; los % coinciden con la tarjeta ⚖️ de Inicio.
+### 🛍️ Mercadería dejada en las perfumerías del pueblo (28/10/2026, él: "dejé el xiaomi watch 5 lite en soares… calculás ganancia, ponela en verde, pero esa ganancia no anotar en ningún otro lado")
+- **Qué es:** `debenmov` acepta `|prod=<ficha>|local=<soares|sarmiento|ceballos>|u=<n>`: el monto es lo que paga la perfumería por unidad × u; guarda `prod`, `prodNom`, `u`, `pu`, `costoU` (lo pagado puesto en la oficina = `costBaseUSD` × dólar, sin reclamos ni envío a Full) y `gan`. En Ver deudas el renglón dice qué, cuántas y dónde, con la ganancia en verde, y arriba "🛍️ ganancia de lo dejado" (sólo ahí).
+- **Dónde vive:** `debenmov` (sync.mjs) · `cuotaHistoria` y `cuotaDetalleHTML` (index.html).
+- **Qué chequear:** la ganancia no aparece en Ventas, Métricas, cierres ni "cuánto cobrar"; una ficha sin costo se guarda sin ganancia y lo avisa.
+
 ### 📅 Deudas en cuotas: la próxima vence a un período del último pago (28/10/2026, él: "que la fecha de siguiente pago sea siempre un mes o semana después del último pago, dar opción de si es mensual o poner cada x días")
 - **Qué es:** `cuotaVence`: sin pagos → `vence1`; con pagos fechados → último pago + 1 período; pagos viejos sin fecha → vence1 + N períodos. Frecuencias: semanal · mensual (respeta fin de mes) · **cada X días** (`frec:'dias'`, `cadaDias`); las viejas "cada 15 días" se abren como cada 15 días.
 - **Dónde vive:** `CUOTA_FREC`, `cuotaFrecTxt`, `_isoMas(f,frec,k,dias)`, `cuotaVence`, formulario `#cq_frec`/`#cq_dias` (index.html).

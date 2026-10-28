@@ -39782,10 +39782,31 @@ async function main() {
       const lista = Object.entries(D).filter(([, d]) => d && typeof d === 'object' && d.nom);
       if (!cuerpo) { console.log('=== DEUDAS A CYC ==='); for (const [id, d] of lista) console.log(`  ${id} · ${d.nom} · falta ${money(Math.round(saldo(d)))} · ${Object.keys(d.movs || {}).length} movimiento(s)`); return; }
       const i = cuerpo.indexOf('='); if (i < 1) { console.log('Usá: debenmov:<deuda>=<+N|-N>[@AAAA-MM-DD]|<nota>;go'); return; }
-      const quien = cuerpo.slice(0, i).trim(), resto = cuerpo.slice(i + 1); const [numF, ...notaP] = resto.split('|');
+      const quien = cuerpo.slice(0, i).trim(), resto = cuerpo.slice(i + 1); const [numF, ...partesP] = resto.split('|');
+      // MERCADERÍA DEJADA EN UNA PERFUMERÍA (28/10/2026, él: "mercadería que dejé en los negocios locales… dejé el xiaomi watch 5 lite en soares
+      // (son tres perfumerías locales, soares, sarmiento y ceballos)… tenés el costo de lo que nos costó traerlo a la oficina, te digo cuánto nos
+      // paga la perf y calculás ganancia… esa ganancia no anotar en ningún otro lado, que no se mezcle con lo de ML"): `|prod=<id o palabras>`
+      // `|local=<soares|sarmiento|ceballos>` `|u=<unidades>` → el monto es lo que paga la perfumería (por unidad × u) y se guarda el costo de la
+      // ficha (lo pagado, puesto en la oficina: sin reclamos ni envío a Full) y la ganancia. SÓLO para verla en Ver deudas: no toca ventas,
+      // métricas, cierres ni stock.
+      const extra = {}; const notaP = [];
+      for (const x of partesP) { const mm = String(x).trim().match(/^(prod|local|u)=(.+)$/i); if (mm) extra[mm[1].toLowerCase()] = mm[2].trim(); else notaP.push(x); }
       const m = String(numF).trim().match(/^([+-])\s*\$?\s*([\d.,]+)(?:@(\d{4}-\d{2}-\d{2}))?$/);
       if (!m) { console.log(`❌ "${numF}": va +N (suma deuda) o -N (devolvió), con signo. Ej. +70000 o -70000@2026-10-28`); return; }
-      const monto = Math.round(parseFloat(m[2].replace(/\./g, '').replace(',', '.'))); if (!(monto > 0)) { console.log('❌ monto en cero'); return; }
+      const u = Math.max(1, parseInt(extra.u, 10) || 1);
+      const montoU = Math.round(parseFloat(m[2].replace(/\./g, '').replace(',', '.'))); if (!(montoU > 0)) { console.log('❌ monto en cero'); return; }
+      const monto = extra.prod ? montoU * u : montoU;
+      const LOCALES = ['soares', 'sarmiento', 'ceballos'];
+      let local = null; if (extra.local) { local = LOCALES.find((l) => _n(extra.local).includes(l)); if (!local) { console.log(`❌ local "${extra.local}": va soares, sarmiento o ceballos.`); return; } }
+      let prodF = null, costoU = null;
+      if (extra.prod) {
+        let pc = products.filter((x) => x.id === extra.prod);
+        if (!pc.length) { const pw = _n(extra.prod).split(' ').filter(Boolean); pc = products.filter((x) => pw.every((w) => (' ' + _n(x.name) + ' ').includes(w))); }
+        if (pc.length !== 1) { console.log(`❌ producto "${extra.prod}" agarra ${pc.length} fichas${pc.length ? ': ' + pc.slice(0, 8).map((x) => `${x.name} (${x.id})`).join(' | ') : ''}. No escribo nada.`); return; }
+        prodF = pc[0]; const tcM = parseFloat(await db.get('cyc/finanzas/tipo_cambio')) || 0;
+        const cp = costoPesos(prodF, 1, tcM); costoU = Math.round((cp.costBaseUSD || 0) * tcM);
+        if (!(costoU > 0)) { console.log(`⚠️ ${prodF.name} no tiene costo cargado: la ganancia no se puede calcular (se guarda igual, sin ganancia).`); costoU = null; }
+      }
       const hoyAR = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10), f = m[3] || hoyAR, nota = notaP.join('|').trim().slice(0, 120);
       let cand = lista.filter(([id]) => id === quien);
       if (!cand.length) { const pal = _n(quien).split(' ').filter(Boolean); cand = lista.filter(([, d]) => pal.every((w) => (' ' + _n(d.nom) + ' ').includes(w))); }
@@ -39793,9 +39814,11 @@ async function main() {
       const [id, d] = cand[0]; const signo = m[1] === '+' ? 1 : -1, antes = saldo(d), despues = Math.max(0, antes + signo * monto);
       console.log(`=== MOVIMIENTO EN "${d.nom}" ${GO ? '· APLICANDO' : '· PRUEBA'} ===`);
       console.log(`  ${signo > 0 ? '➕ nos debe más' : '➖ devolvió'} ${money(monto)} · ${f}${nota ? ' · ' + nota : ''}`);
+      if (prodF) console.log(`  🛍️ ${u} × ${prodF.name}${local ? ' · en ' + local : ''} · paga ${money(montoU)} c/u · costo ${costoU != null ? money(costoU) + ' c/u' : '—'}${costoU != null ? ` · ganancia ${money((montoU - costoU) * u)} (${Math.round((montoU - costoU) / montoU * 100)}%)` : ''}  (sólo para Ver deudas: no entra en ML ni en la ganancia del mes)`);
       console.log(`  falta: ${money(Math.round(antes))} → ${money(Math.round(despues))}${signo < 0 && monto > antes + 0.5 ? '  ⚠️ devolvió más de lo que debía' : ''}`);
       if (!GO) { console.log('No se guardó nada (falta ;go).'); return; }
-      const k = String(Date.now()); const mv = { m: signo * monto, f, ...(nota ? { nota } : {}), quien: 'robot' };
+      const k = String(Date.now()); const mv = { m: signo * monto, f, ...(nota ? { nota } : {}), quien: 'robot',
+        ...(prodF ? { prod: prodF.id, prodNom: String(prodF.name).slice(0, 90), u, pu: montoU, ...(costoU != null ? { costoU, gan: (montoU - costoU) * u } : {}) } : {}), ...(local ? { local } : {}) };
       await db.set(`cyc/debencuotas/${id}/movs/${k}`, mv);
       const rel = await db.get(`cyc/debencuotas/${id}/movs/${k}`);
       console.log(rel && Number(rel.m) === mv.m ? '  ✓ guardado y releído (el total de "Lo que nos deben" se rehace al abrir la web)' : '  ⚠️ no lo pude releer');
