@@ -141,3 +141,11 @@ el precio más caro posible… 100 productos con pocas unidades que venden poco 
 bajando del techo **en la primera venta se queda** (freno F14; techo95 anota 🏔️); sólo baja por sobra (90+ días al ritmo de ese precio),
 stock antiguo o 30 días sin vender; **🔙 `vendiocaro`** devuelve al precio más caro que vendió lo que bajó de más; Pedidos, cajas y escasez
 usan el ritmo AL PRECIO DE HOY (v27.45). Ver REVISION etapa 1.
+
+### Revisión de las reglas del cerebro del 28/10 (6 decisiones, para cuando digas "resolvamos")
+1. **Con cuánta seguridad se cierra una prueba de techo:** hoy para BAJAR algo que vende se pide 95%, pero una prueba que no vende se da por techo con 95% hasta el día 7 y baja hasta 70% el día 21 (y a los 30 días sin vender, sí o sí). (a) sugerida: dejarlo así (el 95% es para bajar lo que vende) · (b) 95% siempre, también para cerrar la prueba.
+2. **Una prueba de techo que vendió pero le sobra stock a ese precio** (más de 90 días de stock, o la unidad más vieja con 90+): (a) sugerida: no se sube, primero sale lo que sobra · (b) se sube +50% igual.
+3. **ML pausa por el precio algo en escasez o sin reposición:** (a) sugerida: volver al último precio que ML aceptó sin pedirte · (b) pedirte autorización como hoy.
+4. **Barrera de $33.000:** algo en $32.990 abajo del 35%, ¿desde cuántos días en Full puede quedarse sin cruzar? (a) sugerida: 90 (igual que la regla del 35% hasta los 90 días) · (b) 100, como hoy.
+5. **🥊 Mantener la caja:** hoy lo puedo prender yo solo y pasa por encima de todos los frenos de esa publicación. (a) sugerida: que pida tu "autorizo" como las otras salidas tuyas · (b) dejarlo así (sólo lo prendo cuando lo pedís).
+6. **Gemela de envío gratis cuando la Clásica pasa los $33.000** (la Lupa x10, 27/10): (a) sugerida: pausarla siempre mientras la Clásica esté arriba de $33.000 (es la misma oferta dos veces) · (b) sólo en la Lupa.
