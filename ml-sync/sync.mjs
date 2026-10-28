@@ -5591,7 +5591,9 @@ async function detectarErrores(db, o = {}) {
       // 27/10/2026 (él: "si se vende una vez a un precio que está buscando techo, ahí nomás tiene que volver a subir… si vende una vez
       // sabemos que no es techo"; eligió la a): vale para TODA prueba 📈 (#techo), no sólo 🆕. Se cuenta desde el último cambio de precio
       // (la venta tiene que ser A ESTE precio) y se frena sólo cuando techo95 ya dice "deja de convenir" con su certeza (🟠).
-      if (!['nuevo', 'techo'].includes(ult) || !tsU) continue;
+      // 1a del 28/10/2026 (él con el Espejo 4" en 🔥: "¿por qué no lo subió? no tiene techo conocido aún"): vale también para 🔥 escasez y ⏳ sin
+      // reposición (la escasez sólo agrega que nunca baja). Frena igual que el 📈: el 🟠 de techo95, el techo duro y el stock antiguo.
+      if (!['nuevo', 'techo', 'escasez', 'sinrepo'].includes(ult) || !tsU) continue;
       let viejoU = 0; { const ulc = Object.values(cc).filter((c) => c && String(c.mla) === m && Math.abs(Number(c.a) - Number(c.de)) > Number(c.de) * 0.02).reduce((mx, c) => (!mx || Number(c.ts) > Number(mx.ts) ? c : mx), null); if (ulc && Number(ulc.ts) > tsU) tsU = Number(ulc.ts); if (ulc && Number(ulc.a) > Number(ulc.de)) viejoU = Number(ulc.de); }
       lzC.nuevo++; if (!/^active/.test(String(e.status || ''))) { lzC.inact++; continue; }   // activa = con stock en Full (sin stock ML la pausa)
       const grupo = [m, ...hermanasStockDe(links, prods, m), ...Object.keys(links).filter((g) => (links[g] || {}).gemelaDe === m)];
@@ -5619,10 +5621,12 @@ async function detectarErrores(db, o = {}) {
       lanza.push({ mla: m, e, primera, uds, P, obj, tsU, ult });
     }
   }
-  bloque('📈🆕 PRUEBAS DE TECHO QUE VENDIERON Y NO SUBIERON · vendió a este precio = no es techo: subir +50% EN ESTA VUELTA', lanza, (x) => {
+  bloque('📈🆕🔥⏳ SIN TECHO MEDIDO, VENDIERON Y NO SUBIERON · vendió a este precio = no es techo: subir +50% EN ESTA VUELTA', lanza, (x) => {
     if (x.sinLeer) { console.log(`${x.mla} · ${x.e.cuenta || '?'} · ${String(x.e.title || '?').slice(0, 44)} · ❓ no pude leer sus ventas: mirarlo a mano`); return; }
-    console.log(`${x.mla} · ${x.e.cuenta || '?'} · ${String(x.e.title || '?').slice(0, 44)} · ${x.ult === 'nuevo' ? '🆕' : '📈'} a este precio desde ${fecha(x.tsU)} · vendió ${x.uds} u. (la primera ${fecha(x.primera)}) · hoy ${x.P ? $(x.P) : '¿?'}`);
-    if (x.obj > x.P) console.log(`   ▶️ decido:${x.mla}=${x.obj}!vendio#techo|Vendió a ${$(x.P)} buscando techo: no es techo, +50% (reglas del 27/10, el detector);go`);
+    console.log(`${x.mla} · ${x.e.cuenta || '?'} · ${String(x.e.title || '?').slice(0, 44)} · ${({ nuevo: '🆕', techo: '📈', escasez: '🔥', sinrepo: '⏳' })[x.ult] || '📈'} a este precio desde ${fecha(x.tsU)} · vendió ${x.uds} u. (la primera ${fecha(x.primera)}) · hoy ${x.P ? $(x.P) : '¿?'}`);
+    const esc = x.ult === 'escasez' || x.ult === 'sinrepo';
+    if (x.obj > x.P) console.log(esc ? `   ▶️ decido:${x.mla}=${x.obj}#${x.ult}|Vendió a ${$(x.P)} en ${x.ult === 'escasez' ? 'escasez' : 'sin reposición'} sin techo medido: no es techo, +50% (1a del 28/10, el detector);go`
+      : `   ▶️ decido:${x.mla}=${x.obj}!vendio#techo|Vendió a ${$(x.P)} buscando techo: no es techo, +50% (reglas del 27/10, el detector);go`);
   });
   console.log(`(miré ${lzC.nuevo} en 📈/🆕: ${lzC.inact} no activas · ${lzC.sinVenta} sin venta a este precio · ${lzC.subio} ya subieron después de vender · ${lzC.congelada} 🧊 congeladas a pedido suyo · ${lzC.convenir} 🟠 ya no conviene subir (techo95 o el tope) · ${lzC.antiguo} cerca de pagar stock antiguo · ${lzC.lento || 0} 📈 que venden menos de 1 por semana (4a: quedan 💰) · ${lanza.length} para subir)`);
   // ── 🔎 VENDIERON AYER U HOY Y NO ESTÁN BUSCANDO TECHO (27/10/2026, él: "que mire todos los productos de ayer y hoy… los que hay que
@@ -10517,9 +10521,12 @@ async function timbreVentas(db, opts = {}) {
     let est = {}; try { est = (await db.get('cyc/estrategia/' + clas)) || {}; } catch { est = {}; }
     const ult = Object.entries(est).map(([k, x]) => ({ ts: Number(k), t: x && x.t })).filter((x) => x.ts > 0 && x.t).sort((a, b) => b.ts - a.ts)[0];
     if (ult && ult.t === 'bajando') bajando.push({ nom: String(g[0].v.prod || '?').slice(0, 40), cta: g[0].v.cuenta || '?', mla: clas });
+    // 1a del 28/10/2026 (él con el Espejo 4": "¿por qué no lo subió? no tiene techo conocido aún"): una compra de algo que busca techo
+    // (📈/🆕) o que está en 🔥 escasez / ⏳ sin reposición también toca: si vendió a ese precio, no es techo y sube +50% en esa vuelta.
+    else if (ult && ['techo', 'nuevo', 'escasez', 'sinrepo'].includes(ult.t)) (r.buscando = r.buscando || []).push({ nom: String(g[0].v.prod || '?').slice(0, 40), cta: g[0].v.cuenta || '?', mla: clas, t: ult.t });
   }
-  r.bajando = bajando;
-  r.por = bajas.length ? `${bajas.length} compra(s) abajo del ${r.piso}%` : bajando.length ? `${bajando.length} compra(s) de algo que está bajando de precio (🪜)` : lista.length >= TIMBRE_MIN_COMPRAS ? `${lista.length} compras sin revisar` : '';
+  r.bajando = bajando; r.buscando = r.buscando || [];
+  r.por = bajas.length ? `${bajas.length} compra(s) abajo del ${r.piso}%` : bajando.length ? `${bajando.length} compra(s) de algo que está bajando de precio (🪜)` : r.buscando.length ? `${r.buscando.length} compra(s) de algo sin techo medido (📈/🆕/🔥/⏳): vendió, no es techo` : lista.length >= TIMBRE_MIN_COMPRAS ? `${lista.length} compras sin revisar` : '';
   r.toca = forzar || !!r.por;
   if (!r.toca) return r;
   // el revisor está trabajando (tocó hace menos de 45 min y ventasvistas no se movió desde entonces): espera

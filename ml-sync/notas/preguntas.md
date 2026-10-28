@@ -73,3 +73,4 @@ en que se anota en `correcciones.md`.** El número entre corchetes es de qué ca
 54. ¿Me mandó una foto y dice "esto"? Si hay dos lecturas, hago la que cubre todo lo que se ve en la foto (26/10, el renglón del buscador de Ventas).
 55. ¿Mi orden o puntaje tiene el dato para TODOS los renglones? Uno sin dato no va último: uso la nota que ya existe (⭐) o digo que falta (26/10, el Sony EX15C último: "parece joda").
 56. Con cupo chico, ¿lleno la caja para la MÁXIMA plata o para cubrir días? Y lo que la carga, ¿lee MI archivo o el de la madrugada? (26/10, caja de Ayelen: "siempre priorizamos ganar más, no cubrir stock")
+57. ¿La regla que voy a aplicar vale sólo para una etiqueta? Si el motivo de fondo ("sin techo medido") también vale para otras (🔥/⏳), ¿las cubre? (28/10, el Espejo 4" en escasez vendió y no subió).
