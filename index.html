@@ -3169,7 +3169,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.63';
+const APP_VERSION='27.64';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3182,6 +3182,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.64',f:'28/10',h:'18:20',c:[{n:1,t:'📥 Ver deudas más resumido: cada renglón dice sólo quién, % de ganancia y cuánto falta; qué se llevó, cuotas, fechas y los botones Pagó/Editar están adentro (tocando el renglón)'}]},
   {v:'27.63',f:'28/10',h:'18:05',c:[{n:1,t:'📥 Ver deudas: cada deuda dice quién y, abajo, qué se llevó (🛍️ se llevó: …); se edita con ✏️'}]},
   {v:'27.62',f:'28/10',h:'18:50',c:[{n:1,t:'📥 Ver deudas: una deuda sin cuotas se puede guardar en $0 (cuenta corriente que se mueve sólo con ➕ Suma deuda / ➖ Devolvió)'}]},
   {v:'27.61',f:'28/10',h:'18:40',c:[{n:1,t:'📋 Listas: si el proveedor tiene foto del producto, se ve al lado de la de ML (la cargan los mayoristas del Once)'}]},
@@ -7017,13 +7018,23 @@ function renderCuotas(){
       d.sinGan?'sin ganancia':costo!=null?`costo ${_pesos(costo)} · ganancia <b style="color:${gan>=0?'var(--green)':'var(--red)'}">${_pesos(gan)}</b>${d.monto>0?` (${Math.round(gan/d.monto*100)}%)`:''}`:'',
       fechas.length?`pagos: ${fechas.map(_isoDM).join(', ')}`:''].filter(Boolean).join(' · ');
     const nMov=Object.keys(d.movs||{}).length;
+    // MÁS RESUMIDO (28/10/2026, él: "dejar lo importante, % de ganancia y pesos cuánto falta, nombre de la persona, el detalle adentro. sacar
+    // pagó y editar"): afuera sólo nombre · % de ganancia · falta; lo demás (qué se llevó, cuotas, costo, fechas, botones) va en el desplegable.
+    const gm=Object.values(d.movs||{}).filter(x=>x&&x.gan!=null&&Number(x.m)>0),gmG=gm.reduce((t,x)=>t+Number(x.gan),0),gmV=gm.reduce((t,x)=>t+Number(x.m),0);
+    const pct=d.sinGan?null:gan!=null&&d.monto>0?Math.round(gan/d.monto*100):gmV>0?Math.round(gmG/gmV*100):null;
+    const pctTxt=d.sinGan?'<span style="font-size:.66rem;color:var(--muted)">sin ganancia</span>':pct!=null?`<span style="font-size:.7rem;font-weight:700;color:${pct>=0?'var(--green)':'var(--red)'}">${pct}%</span>`:'';
     const bord=atr?'var(--red)':fin?'rgba(34,197,94,.55)':ab?'var(--border2)':'var(--border)',bg=atr?'background:rgba(239,68,68,.08);':fin?'background:rgba(34,197,94,.07);':'';
+    const venceTxt=fin?'':v?`<span style="color:${atr?'var(--red)':'var(--text)'}">${atr?'⚠️ vencía':'📅 '+(cq?'próx. cuota':'paga')} <b>${_isoDM(v)}</b></span>`:(cuotaFija(d)?'':'<span style="color:var(--amber)">sin fecha (✏️)</span>');
+    const adentro=ab?`<div onclick="event.stopPropagation()" style="padding:6px 12px 0;border-top:1px dashed var(--border);font-size:.7rem;color:var(--muted);display:flex;flex-direction:column;gap:3px">
+        ${d.det?`<div style="word-break:break-word">🛍️ se llevó: <span style="color:var(--text)">${_escC(d.det)}</span></div>`:''}
+        <div>${lin1}</div>${lin2?`<div style="font-size:.66rem">${lin2}</div>`:''}${venceTxt?`<div style="font-size:.66rem">${venceTxt}</div>`:''}
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">${fin?'':cq?`<button class="btn" style="font-size:.68rem" onclick="cuotasPago('${d.id}',1)">💵 Pagó una cuota</button>`:`<button class="btn" style="font-size:.68rem" onclick="cuotaMovAbrir('${d.id}',-1)">💵 Pagó</button>`}${cq&&d.pagadas>0?`<button class="btn" style="font-size:.68rem" onclick="cuotasPago('${d.id}',-1)">↩︎ Deshacer</button>`:''}<button class="btn" style="font-size:.68rem" onclick="cuotasEditar('${d.id}')">✏️ Editar</button></div></div>`:'';
     return `<div style="border:1px solid ${bord};${bg}border-radius:var(--r)">
-      <div onclick="cuotaToggle('${d.id}')" style="cursor:pointer;display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:8px 12px" title="Tocá para ver el detalle y la historia">
-      <div style="flex:1 1 220px;min-width:0"><b style="font-size:.8rem;word-break:break-word;${fin?'color:var(--green)':''}">${ab?'▾':'▸'} ${_escC(d.nom)}</b>${d.det?`<div style="font-size:.68rem;color:var(--muted);word-break:break-word">🛍️ se llevó: ${_escC(d.det)}</div>`:''}${nMov?` <span style="font-size:.62rem;color:var(--muted)">· ${nMov} movimiento${nMov===1?'':'s'}</span>`:''}
-        <div style="font-size:.7rem;color:var(--muted);margin-top:2px">${lin1}</div>${lin2?`<div style="font-size:.66rem;color:var(--muted);margin-top:2px">${lin2}</div>`:''}</div>
-      <div style="text-align:right;white-space:nowrap"><div style="font-size:.6rem;color:var(--muted)">falta</div><b style="font-size:.85rem;${atr?'color:var(--red)':fin?'color:var(--green)':''}">${_pesos(resta)}</b>${fin?'':v?`<div style="font-size:.66rem;margin-top:2px;color:${atr?'var(--red)':'var(--text)'}">${atr?'⚠️ vencía':'📅 '+(cq?'próx. cuota':'paga')} <b>${_isoDM(v)}</b></div>`:(cuotaFija(d)?'':`<div style="font-size:.62rem;margin-top:2px;color:var(--amber)">sin fecha · ✏️</div>`)}</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap" onclick="event.stopPropagation()">${fin?'':cq?`<button class="btn" style="font-size:.7rem" onclick="cuotasPago('${d.id}',1)">💵 Pagó una cuota</button>`:`<button class="btn" style="font-size:.7rem" onclick="cuotaMovAbrir('${d.id}',-1)">💵 Pagó</button>`}${cq&&d.pagadas>0?`<button class="btn" style="font-size:.7rem" onclick="cuotasPago('${d.id}',-1)">↩︎ Deshacer</button>`:''}<button class="btn" style="font-size:.7rem" onclick="cuotasEditar('${d.id}')" title="Editar">✏️</button></div></div>
+      <div onclick="cuotaToggle('${d.id}')" style="cursor:pointer;display:flex;align-items:center;gap:10px;padding:8px 12px" title="Tocá para ver el detalle y la historia">
+      <b style="flex:1;min-width:0;font-size:.8rem;word-break:break-word;${fin?'color:var(--green)':''}">${ab?'▾':'▸'} ${_escC(d.nom)}${atr?' <span style="font-size:.62rem;color:var(--red)">⚠️ atrasada</span>':''}</b>
+      ${pctTxt}
+      <b style="font-size:.85rem;white-space:nowrap;font-family:'DM Mono',monospace;${atr?'color:var(--red)':fin?'color:var(--green)':''}">${fin?'✅':_pesos(resta)}</b></div>
+      ${adentro}
       ${ab?cuotaDetalleHTML(d):''}</div>`;};
   const act=L.filter(d=>!d.fin||cuotaFija(d)).sort((a,b)=>(cuotaFija(b)-cuotaFija(a))||(a.fin-b.fin)||(Number(b.ts)||0)-(Number(a.ts)||0)),pag=L.filter(d=>d.fin&&!cuotaFija(d));
   const pp=Math.max(1,Math.ceil(pag.length/CUOTA_POR_PAG)),pg=Math.min(pp,Math.max(1,window._cuotaPagPag||1));
