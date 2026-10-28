@@ -106,7 +106,7 @@ Ganar la caja daba pérdida en todos (Tendedero −25%, Rose y Silver −10%, Co
 1. Lupa 60mm (hoy Pack x10 a $47.990, vende 1 por mes, ~$1.750 por lupa): suelta a ~$4.990 dejaría ~$1.300 c/u, y las lupas sueltas parecidas que tenemos venden 17-23 por mes. (a) sugerida: publicarla también suelta y probar 30 días · (b) dejar sólo el pack.
 2. Aer suelto como publicación APARTE del x6 (él 27/10: "pueden ser los dos, como el filtro x1 y x4"): suelto deja 35% recién desde ~$4.090 (costo $1.352 c/u + cargo fijo ~$1.230 por venta). Rosas, Berry, Lavanda y Jazmín sueltos se venden a $3.330-3.500 (10-13 vendedores, uno con Full a $3.468): ahí no da. Limón (1 vendedor a $4.690) y Brisa Marina (2 a $4.200-4.690) sí: a ~$4.490 dejaría ~45%. (a) sugerida: publicar suelto sólo Limón y Brisa Marina, sin tocar el x6 · (b) no.
 
-### Volver a subir en una prueba de techo (27/10, él: "si vende una vez a un precio que está buscando techo, ahí nomás tiene que volver a subir")
+### ~~Volver a subir en una prueba de techo~~ RESUELTO 27/10 a la noche (él: "no. seguimos con la a como siempre", ya en CEREBRO) · (27/10, él: "si vende una vez a un precio que está buscando techo, ahí nomás tiene que volver a subir")
 1. (a) sugerida: volver a subir apenas haya 50% de que el precio nuevo deja igual o más plata por día que el anterior, mirándolo con cada venta (no esperar las 3 ventas esperadas) · (b) volver a subir con la primera venta, siempre. (Enchufe 2 patas: a $3.140 y a $3.490 vendió y igual deja menos que a $2.990.)
 
 

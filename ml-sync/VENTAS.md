@@ -383,6 +383,8 @@ ventasvistas:<ts>|esf=max|<MLA>=<texto>|<MLA>=<texto>;go
 (él contesta "1a 2b …"). Va sólo lo grande o sin respuesta clara: dos reglas que chocan sin fila que lo resuelva, algo que cuesta
 plata y sólo él puede hacer (reclamo esperando, ML frenó algo que vende, vende fuerte en 0 en Full con oficina, costo faltante en
 algo que se vende). Lo chico y reversible lo decide el chat y se lo cuenta. Si no hay nada, no se inventa.
+**Toda decisión de bajar un precio va con el % de seguridad de que es el techo** (`techo95:<MLA>` de CADA uno; sin %, cuántos días
+lleva y qué falta) (27/10, él con los Paulvic a $21.990: *"dame el % de seguridad de que es un techo, sino me faltan datos para responder"*).
 
 ---------------------------------------------------------------------------------------------------------------------------
 ## 7 · ERRORES QUE YA SE COMETIERON (no se repiten)
@@ -409,6 +411,26 @@ algo que se vende). Lo chico y reversible lo decide el chat y se lo cuenta. Si n
   escalera.
 - **Pendrive 128 (18/10):** abajo del 35% por haber mandado 48: el error es de la cantidad, no del precio. El cerebro se juzga contra
   no hacer nada.
+- **Masajeador de cara (23/10):** 🆕 que vendió por su gemela Premium y quedó quieto (se leyó la estrategia 💳 de la gemela). La venta
+  de una gemela o hermana se juzga con la estrategia de su CLÁSICA: 🆕/📈 que vendió → +50% en esa vuelta.
+- **Naipes Casino (24/10):** la prueba de $3.890 vendía hace 5 días y no se subió más (*"a ese precio ya vendió, no es techo"*). Si vende
+  al precio de la prueba no es techo: +50% en la misma vuelta, sin quedarse "esperando certeza".
+- **Cuba Gold (24/10):** se pidió bajar de golpe la última unidad ($67.174 → $32.990). La última unidad NO es excepción: escalera y con
+  línea de techo.
+- **Infusor cajita (24/10):** 🔴 $5.290 falso: el 💰 salía de 8 días de fines de julio (antes del Día del Niño) que vendieron el triple;
+  lo pasó y vende a $6.890. Antes de creerle a un 🔴 o un 💰, mirar de qué días sale.
+- **VS Bliss y Pure Seduction (26/10, lo encontré yo):** el peor envío salía de un carrito de 2 productos: daban ~35% estando en ~55% y
+  se subieron con ese número. El peor envío se mide sólo con ventas sueltas.
+- **Cartas Poker y Centímetro Blanco (26-27/10):** dos publicaciones del mismo stock y color con distinto precio o estrategia (*"no
+  entiendo"*). 👯 = mismo precio y misma estrategia, al precio MÁS CARO de las dos.
+- **Adaptador 8 en 1 y Centímetro Blanco (27/10):** quedaron en 💰 con la prueba de techo cortada sin 🔴 (*"es raro, no busca techo"*).
+  Lo que vende 1+ por semana no queda en 💰 sin 🔴 ni 🏔️: vuelve a 📈.
+- **Sábanas Rojo (27/10):** la venta de UN color a $23.490 se usó para el máximo de compra de todas (*"ese color se vendió a ese precio,
+  no todos"*). Cada color su precio y su máximo; el del producto es el más bajo de los colores.
+- **Seagate 500GB (27/10):** *"¿este no llega al 35%?"* sobre una venta se contestó con el costo de lo que ya había, y preguntaba por
+  volver a comprarlo. Dar las dos cuentas (costo de hoy y de reponer) y el precio del 35% repuesto.
+- **Paulvic Hot (27/10):** se pidió bajarlo al 20% con menos de 90 días en Full. Abajo del 35% sólo con la unidad más vieja de 90+ días
+  (F13); antes, ni la sobra ni `!piso`.
 
 ---------------------------------------------------------------------------------------------------------------------------
 ## 8 · PRIVACIDAD

@@ -64,7 +64,7 @@ al código; lo que es pensar queda acá, y una regla dura ("nunca", "sólo si") 
 | 4c | **ARRIBA DEL 💰 NO SE BAJA SIN 95%** (21/10/2026, él con el Pendrive 8gb: *"antes de bajar tenés que estar 95% seguro o más que ese precio genera menos ganancia que la línea de ganancia. Si estás seguro volver a bajar en escalera (…) si ves que genera más dinero entonces subir la línea de más ganancia a ese precio"*). Con 🔴 encontrado y el precio arriba del 💰: días seguidos con stock al precio de hoy contra lo que tenía que vender para igualar la plata por día del 💰 (Poisson). Con 95% y sin venta a este precio en 30 días → otro escalón (≤15%); si vendió, manda 4d (F14). Sin 95% → se queda, estrategia 💰 `punto` (*el más alto que vende*). Si deja más, la raya 💰 sube sola. Afuera lo mismo que F5 | 🔒 F8 |
 | 4d | **LO QUE VENDIÓ A SU PRECIO NO SE BAJA** (27/10/2026 a la noche, él: *"bajaría hasta que venda, una vez que vende, se queda ahí. no busca más abajo… normalmente siempre conviene mantener el precio más caro posible"*). Afuera: sobra de verdad (90+ días al ritmo de ese precio con 7+ días medidos o al de 60 días, o la unidad más vieja con 90+; también liquidando con sobra), ⏳ a 20 días o menos del stock antiguo, los 15 días antes del stock antiguo, remate autorizado, renovar el mismo descuento · **vende muchísimo menos** (1a del 28/10: en ese escalón deja menos de la MITAD de la plata por día que el 💰, 95% seguro y 7+ días con stock → baja un escalón hacia el 💰, sin pasarlo) | 🔒 F14 (salida sólo suya: 🔐 !sincerteza) |
 | 5 | **Lo nuevo no se baja sin 🏔️ de techo95** (primera tanda en Full de menos de 30 d, o 🆕 lanzamiento). Ganar la caja NO es excepción. `!sintecho` es 🔐 sólo suya | 🔒 F1 |
-| 6 | **No llegar a pagar stock antiguo** (120 d lo chico, 60 lo grande/Tenders; apuntar a ~100). **15 días antes: ganar la caja bajando hasta el 0% (al costo; sin catálogo, en escalera); si a 3 días de pagar sigue sin venderse, se le pide el retiro** (27/10, él: *"vende al costo antes de retirar. 3 días antes de pagar por stock retiramos"*; 6a: un retiro sólo con su OK). En esos 15 días se abren F12, F13 y F14; en lo chico la unidad más vieja ya tiene 90+ días (sobra de verdad), así que #sobra abre F5/F7/F8 | 🧠 (la lista 💸 lo trae) |
+| 6 | **No llegar a pagar stock antiguo** (120 d lo chico, 60 lo grande/Tenders; apuntar a ~100). **15 días antes: ganar la caja bajando hasta el 0% (al costo; sin catálogo, en escalera); si a 3 días de pagar sigue sin venderse, se le pide el retiro** (27/10, él: *"vende al costo antes de retirar. 3 días antes de pagar por stock retiramos"*; 6a: un retiro sólo con su OK). En esos 15 días se abren F12, F13 y F14; en lo chico la unidad más vieja ya tiene 90+ días (sobra de verdad), así que #sobra abre F5/F7/F8. **Si ganar la caja pide bajar del 0% y a su precio vende y deja mucho, se queda a su precio y paga el stock antiguo** (27/10, él: *"¿conviene esperar y venderlas ganando y pagar stock?"*; decidido producto por producto el 27/10, 1a 3a: Tendedero, Indigo, Silver, Batidora, F9, Timer); lo que no vende espera hasta 3 días antes del cobro y se retira al local (Rose) y lo de menos de 90 días espera a los 90 para la escalera hasta el 0% (4a, Cortapelo) | 🧠 (la lista 💸 lo trae) |
 | 7 | **Escasez: se sube** para que dure hasta que vuelva a haber. "Escasez" siempre = el precio sube | 🧠 + la lista 📈 |
 | 8 | **Sobra: se baja en escalera** — lo caro que no vende: a los 60 días sin vender, hasta el precio que GANA la caja (26/10, él), **sin pasar el 35% si la unidad más vieja tiene menos de 90 días (F13, 1a del 27/10: manda F13) ni el 10% en perfumes (F12)** | 🔒 F2-F3 la escalera · F12/F13 el piso · 🧠 cuánto |
 | 8b | **🌸 Perfumes nunca abajo del 10%** en el peor caso (26/10, él), **salvo los 15 días antes del stock antiguo: ahí hasta el 0% como todo** (27/10, él: *"perfumes hasta 0%"*); si a 3 días de pagar sigue sin venderse, se le pide el retiro a la perfumería del local (fila 6) | 🔒 F12 (salida sólo suya: 🔐 !bajocero) |
@@ -120,7 +120,7 @@ Después de los 3 Protectores de talón (22/10: el freno "sin línea de techo no
 
 ===========================================================================================================================
 - 🔒 **No bajar lo que él marcó** (23/10/2026, la waflera: *"que sea una excepción si el robot decide bajarlo, quizás lo mejor sería no tocarlo"*): `cyc/nobajar/<MLA>` (comando `nobajar`); freno F10 en `frenosBajas` (decido, entrarpromo, la puerta y el detector). Sólo con su autorización (`!nobajar`, 🔐). **Sacar la marca también pide su "autorizo"** (24/10, 38a): `nobajar:-…;go` sin autorización queda guardado y se lo paso en el chat. Las subas siguen, salvo 🧊 `!congelar` (él: *"queda una sola unidad, quiero que el precio se quede ahí"*): tampoco sube hasta que el stock en Full pase el que tenía al marcarlo; ahí se descongela solo.
-- 🥊 **Mantener la caja hasta que se venda** (26/10, él con la waflera: *"mantenerla en ganando siempre hasta que se venda? sin bajar muchísimo"*): `ganarcaja:<MLA>=<piso>|motivo;go` (ml-sync, SÓLO con su pedido: fila 1) → cada hora `mantenerCaja` baja al precio que pide ML para ganarla si la perdemos, ≤15% por hora, nunca abajo del piso ni del 35%; pasa por encima de 🔒/🧊 para esa publicación. `=-` lo saca.
+- 🥊 **Mantener la caja hasta que se venda** (26/10, él con la waflera: *"mantenerla en ganando siempre hasta que se venda? sin bajar muchísimo"*): `ganarcaja:<MLA>=<piso>|motivo;go` (ml-sync, SÓLO con su pedido: fila 1) → cada hora `mantenerCaja` baja al precio que pide ML para ganarla si la perdemos, ≤15% por hora, nunca abajo del piso ni del 35%; pasa por encima de 🔒/🧊 para esa publicación. Si la pierde con stock, 🥊 a CYC Avisos y ✅ al recuperarla (27/10, él: *"avisar cuando la waflera deje de ganar. cuando llegue stock"*). `=-` lo saca.
 - **Renovar el MISMO descuento no es una baja** (24/10, 46a): no lo frenan F5 (💰), F7 ni F11.
 
 - 🔒 **Publicar: 35% mínimo en el peor caso** (23/10/2026, él): ninguna publicación nueva arranca abajo de 35% (`PUBLICAR_MIN_PCT`, freno en `publicar`). Lo que hoy no llega se publica a su precio de 35% y espera (el otro vendedor se queda sin stock); bajar recién cuando se acerca el stock antiguo, con las reglas de siempre.
@@ -134,8 +134,9 @@ Después de los 3 Protectores de talón (22/10: el freno "sin línea de techo no
    línea final "todos bien"; si falta uno, se repite esa lectura. Una lista que dice "faltan N sin leer" no cuenta como vacía.
 3. **Listas que quedan VACÍAS al terminar** (cada renglón: decisión o nota con motivo): 🛡️ abajo del 35% peor caso · 🚨 escasez
    que vendió después de mi decisión · 📈 dice techo/escasez y no sube · 🤔 descuentos que ya no tienen sentido · 🔁 subas por
-   escasez/sinrepo cuya razón cambió · 👯 mismo producto y color con distinto precio o estrategia (de `planilla`, 26/10) · 🧭 fuera
-   de lo normal · 🔀 no cierra.
+   escasez/sinrepo cuya razón cambió · 👯 mismo producto y color con distinto precio o estrategia (de `planilla`, 26/10) · 📈 prueba con
+   respuesta (3 ventas esperadas, 23/10) · de `errores`: 📈🆕 que vendieron y no subieron y 🔎 vendió ayer u hoy sin techo medido
+   (27/10) · 🧭 fuera de lo normal · 🔀 no cierra.
 4. ⚠️ dato dudoso: no tocar precio, anotar. 💭 sin certeza: juzgar en familia, por visitas o por parecidas, nunca colgado.
    📅 **Antes de cada decisión, el calendario** (24/10, él): ¿en qué franja del mes estamos (11-15 fuerte, 1-5 floja en plata,
    `cyc/mlconfig/franjasMes`) y qué fecha especial viene (`fechas`)? **Es un dato para pesar, no un "nunca"**: a veces conviene esperar 2-3
@@ -167,6 +168,10 @@ Después de los 3 Protectores de talón (22/10: el freno "sin línea de techo no
    queda esperando su "autorizo" (no se reintenta por otro camino).
 11. En el chat: "🚨 N → N · 🧭 N → N · 🔀 N → N · 🚫 frenadas N · 🔐 pedidas N · 🔎 errores N → N · ventas N miradas · ideas …" (nunca callado).
 
+**🔔 Control de ventas cada hora** (a los :07, de 8 a 1; 26/10, él eligió 1a: *"no quiero esperar… un producto que se venda a mal
+precio puede que se vendan muchas unidades a precio en rojo"*): `timbre`; con 6+ compras sin revisar, una abajo del 35% o una de algo
+🪜 bajando (también por su gemela) hace la parte de ventas de la corta; si no, termina en un renglón.
+
 **Completa (03:00, una vez por día) · REHECHA EL 21/10/2026, eligió la (a): *"que mire cosas que nadie miró"* y *"a las 3am siempre, así no molesta"*.**
 Antes recorría las ~590 publicaciones enteras todos los días (3 h, ~100 de tokens, frenaba las vueltas de ventas). Ahora mira SÓLO lo
 que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 29 cambios mal leídos el 21/10). Medida: ~1 h, ~35-40.
@@ -195,7 +200,8 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
 6. Pedidos y cajas como siempre (`decide_pedidos.py`, `decide_cajas.py`, revisados, `decido:archivo=…;go`). Juicios de precio,
    `techo95;go` y **`techo95:buscando;go`** (25/10: las 📈 que ya llegaron al umbral pasan a 🏔️ y arrancan la escalera; desde el 27/10
    a la noche la 🪜 que vendió bajando del 🔴 queda 🏔️ en ese precio; la `TABLA` dice cuándo llega cada una),
-   **🔙 `vendiocaro`** (lo que quedó abajo del precio más caro que vendió vuelve ahí con su `decido` listo: la lista queda vacía), frenos a reabrir. Nota con QUÉ MIRAR MAÑANA de cada una que miré (`decido:archivo=fichas_<fecha>;go`).
+   **🔙 `vendiocaro`** (lo que quedó abajo del precio más caro que vendió vuelve ahí con su `decido` listo: la lista queda vacía), `techo95:punto` una vez por semana (27/10: lo que está en 💰 sin 🔴 al 95%
+   y vende 1+ por semana vuelve a 📈), frenos a reabrir. Nota con QUÉ MIRAR MAÑANA de cada una que miré (`decido:archivo=fichas_<fecha>;go`).
 6b. **💳 Toda publicación con su Premium (21/10/2026, regla suya: *"quiero que todas las publicaciones tengan clásica y premium.
    puede que yo vaya creando publicaciones y queden sin premium"*).** Cada noche `gemela:todas` (ml-consulta, solo lee: cualquier
    precio, activas o pausadas, SÓLO con stock en Full: *"no mirar todas las demás"*). Cada renglón con precio Premium medido se crea con `gemelacrea:<MLA>=<precio>:go`
@@ -222,7 +228,7 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
 11. Los lunes: contar `notas/correcciones.md` de la semana contra la anterior.
 
 ===========================================================================================================================
-- **Si vende, no es techo: se vuelve a subir (27/10/2026, él: *"si se vende una vez a un precio que está buscando techo, ahí nomás tiene que volver a subir… el techo es saber que no se vende a ese precio"*; eligió la a).** Toda prueba 📈/🆕 que vendió al precio de hoy sube **+50%** en la misma vuelta (27/10 a la noche, él: *"aumentar más % el precio. ya que así en vez de hacer 3 subidas, ya nos pasamos de todas las franjas"*; antes +30%; `decido:<MLA>=<precio>!vendio#techo|…;go`; `decido` verifica la venta). Frena sólo en 🔴 **techo: no vende** (30 días sin vender ahí o más caro) o en 🟠 **deja de convenir** (vende, pero deja menos plata por día que el 💰, con la certeza de techo95), y no sube lo que vende menos de 1 por semana (4a: queda 💰 #punto), lo que está a 20 días o menos del stock antiguo, lo 🧊 congelado ni lo que ya llegó al techo duro. El techo es dónde ya no se vende; bajando de ahí, el primer precio que vende es donde se queda (💰 "el más alto que vende", ver §4). La lista de `errores` (📈🆕 que vendieron y no subieron) tiene que quedar vacía.
+- **Si vende, no es techo: se vuelve a subir (27/10/2026, él: *"si se vende una vez a un precio que está buscando techo, ahí nomás tiene que volver a subir… el techo es saber que no se vende a ese precio"*; a la noche, sin sumarle el freno de 50% a lo que vendió: *"no. seguimos con la a como siempre. lo único que me interesó fue aumentar más % el precio"*).** Toda prueba 📈/🆕 que vendió al precio de hoy sube **+50%** en la misma vuelta (27/10 a la noche, él: *"aumentar más % el precio. ya que así en vez de hacer 3 subidas, ya nos pasamos de todas las franjas"*; antes +30%; `decido:<MLA>=<precio>!vendio#techo|…;go`; `decido` verifica la venta). Frena sólo en 🔴 **techo: no vende** (30 días sin vender ahí o más caro) o en 🟠 **deja de convenir** (vende, pero deja menos plata por día que el 💰, con la certeza de techo95), y no sube lo que vende menos de 1 por semana (4a: queda 💰 #punto), lo que está a 20 días o menos del stock antiguo, lo 🧊 congelado ni lo que ya llegó al techo duro. El techo es dónde ya no se vende; bajando de ahí, el primer precio que vende es donde se queda (💰 "el más alto que vende", ver §4). La lista de `errores` (📈🆕 que vendieron y no subieron) tiene que quedar vacía.
 - **🆕 que vende → 📈 en la misma vuelta (21/10/2026, él con el Sony EX15AP Blanco: *"no se buscó techo? (…) hagamos que todas las publicaciones que se puedan busquen techo ya mismo, sacando las que ya estamos con descuento, sobrestock, bajando y todo eso"*).** Un lanzamiento que vendió al precio de hoy ya no baja: sube a buscar el techo (+50%). **También si la venta entró por su gemela o hermana** (23/10, el Masajeador vendió por la Premium y quedó quieto): se mira la estrategia de la Clásica. El detector `errores` lista al final las 🆕 que vendieron y no subieron, con el `decido` listo; esa lista tiene que quedar vacía. Y en cada vuelta, lo activo con stock que no está en ninguna estrategia que lo explique (descuento, promo, sobra, bajando, volviendo, escasez, sin reposición, 🥊, gemela, excepción) y vendió a su precio, busca techo.
 
 ## 2 · QUIÉN HACE QUÉ
@@ -247,6 +253,10 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
 - **Toda decisión tiene su salida:** qué la deshace y dónde se mira. Si no la tiene, no está terminada.
 - **Cada vuelta busca algo nuevo** (`notas/ideas.md`). **Correcciones:** a `notas/correcciones.md` y su pregunta a `notas/preguntas.md`.
 - **No se baja el precio de algo que vende bien sólo para medir** (la prueba del tachado se canceló el 20/10).
+- **Datos suyos que no se vuelven a preguntar** (27/10/2026 a la noche): ML **no castiga** en las búsquedas una publicación que pasa
+  días sin vender · la competencia **no copia** nuestras subas · **dos franjas buenas de precio existen pero son raras** (`franjas`: 3 de
+  86, lo que daría el azar; Cartas Poker Azul $3.520 → $1.268/día, $3.870 → $467, $6.490 → $2.162). Por eso probar arriba cuesta poco:
+  la unidad que no se vende hoy se vende después.
 
 ## 4 · CÓMO SE ESCRIBE CADA DECISIÓN
 - **Todo precio lleva estrategia** (`#tag`); no existe "base". Sin estrategia = ⚪ para decidir; sin stock = ⏸️. 🔒 `decido`
@@ -259,7 +269,7 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
   1º 📈 techo: +50% con cada venta hasta que no vende (🔴). 2º 🪜 escalera desde el 🔴 (≤15%, uno cada 48 h, como descuento) y **en el
   primer escalón que vende se queda** (🔒 F14: lo que vendió a su precio en los últimos 30 días no se baja; `techo95` le anota 🏔️). 3º
   ahí se queda salvo que **sobre** (90+ días de stock al ritmo de ESE precio con 7+ días medidos, o al de 60 días, o la unidad más vieja con
-  90+ días), se acerque el **stock antiguo** (los 15 días de ganar la caja) o pase **30 días sin vender** (vuelve a ser 🔴). No se baja
+  90+ días), se acerque el **stock antiguo** (los 15 días de ganar la caja), pase **30 días sin vender** (vuelve a ser 🔴) o **venda muchísimo menos** (1a del 28/10: menos de la MITAD de la plata por día que el 💰, 95% y 7+ días con stock → un escalón hacia el 💰). No se baja
   para buscar más plata por día. La web lo muestra 💰 "el más alto que vende" (el 🪜 de después del techo, "· Nº escalón").
   **Lo que bajó de más antes de esta regla vuelve al precio más caro que vendió** (60 días, sin escasez ni fechas especiales): lista
   🔙 `vendiocaro` en la completa, con el `decido:…!vendiocaro#punto` listo (decido verifica la venta en la línea de tiempo).
@@ -290,7 +300,9 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
 - **Cada variante sola** (cada color/aroma en su publicación): su precio, su stock, sus ventas, su caja. Nunca el promedio. (Las
   variantes ADENTRO de una misma publicación se suben todas o ninguna: 🔒.)
 - **El % de un producto se mide vendido SOLO**: los carritos no cuentan.
-- **Plata por día NETA:** −$100 por unidad (trabajo) · −3% de lo facturado (tope de H) · −2%/mes del costo del stock parado. A igual
+- **Plata por día NETA:** −$100 por unidad (trabajo) · −3% de lo facturado (tope de H) · −2%/mes del costo del stock parado · − lo que
+  la caja real de esa cuenta cuesta DE MÁS por unidad (27/10, eligió 2a: caja ÷ unidades promedio de sus últimas 8 cajas, menos el envío
+  de la ficha; en Ayelen ~$266/u contra $35-60), sólo en la plata por día (rayas, techo95, F4/F5/F7/F8/F11), no en el %. A igual
   plata neta gana el precio alto.
 - **Lo barato** (hasta ~$5.500): cada unidad deja ~$1.000 o más; si no, se sube de una.
 - **Barrera $33.000:** se frena en $32.999 salvo que cruzar deje claramente más con el envío restado (`!cruza`). 🔒 **Si en $32.990 queda abajo del 35% en el peor caso, cruza al precio del 35%** (24/10, él: *"así sabemos que no sirven (…) que vayan a ser buen producto o que se descarte. no que queden en el medio vendiendo al 30%"*), salvo que la unidad más vieja tenga 100+ días en Full (cerca del stock antiguo): `planilla` las pone en 🛡️ para subir.
@@ -427,7 +439,7 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
 - **Promos de ML:** las analizo en cada completa (`analizapromo` entero) y entro si deja más plata y pasa el 🤔. Mías en
   `cyc/promoclaude`; el guardián saca las que nadie analizó. Medir si vende más (plata por día antes vs durante), no suponerlo.
 - **Stock antiguo:** lista **💸 PAGA O VA A PAGAR STOCK ANTIGUO**, color por color (ML cobra por código de Full); cada SIN DECIDIR se
-  decide en la vuelta (a 15 días: ganar la caja hasta el 0%; a 3 días sin venderse: pedirle el retiro; o por qué se deja). Antes, confirmar en la línea
+  decide en la vuelta (a 15 días: ganar la caja hasta el 0%; a 3 días sin venderse: pedirle el retiro; si ganar la caja da pérdida y vende ganando, se queda y paga, §0 fila 6; o por qué se deja). Antes, confirmar en la línea
   que no estuvo en cero después del lote. Fecha aproximada ≠ recién llegado (va a ⚠️ NO VENDIÓ Y NO SÉ DESDE CUÁNDO). Nunca subirle el
   precio a algo que paga stock antiguo sin decir por qué. Antes de retirar, comparar retiro contra rematar al 0%.
 - **Cuando él retira de Full:** rehacer el descuento con las unidades que quedan ÷ ritmo a cada precio contra los días al stock
@@ -454,15 +466,19 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
 - Premium contra Clásica con plata NETA (la Premium factura más: más IIBB, mono y tope de H): vale sólo si deja igual o más por día.
 - La gemela la creo yo: `gemela` (solo lee) · `gemelacrea:<MLA>=<precio>:go` (misma publicación, comparte stock, tag 💳). Se juzga
   por las ventas que la Clásica sola no hacía.
-- 🔒 **Cuotas en TODO (21/10/2026, él: *"poner cuotas a todas las publicaciones, no sólo a las de más de $50.000 (…) siempre que nos dé la misma ganancia en premium que en clásica (…) puede que en productos baratos tengas que aumentar mucho el precio, hacelo"*):** toda Clásica activa con stock en Full lleva su 💳 gemela Premium al precio que deja la MISMA plata neta (`precioGemelaIgual`, ~+17-24%; las que cruzan los $33.000 pagan el envío y suben más). **Pero nunca abajo del 35% en el peor caso si su Clásica está en el 35% o más** (24/10, él: *"que siga a la principal en el % de ganancia, no? nunca deberían quedar por debajo del 35% (excepto las que ya sabemos)"*): va al precio más alto de los dos (misma plata o 35%, `precioGemelaAlPiso`; también la 📦 de envío gratis). Con la Clásica abajo del 35% por una excepción (sobra, promo, `!piso`) sigue con la misma plata y **sí baja abajo del 35%** (él, 24/10: la publicación está para vender rápido y todas las formas de venta tienen que ayudar); una baja de más de 15% va de a −15% por hora. **Cada gemela sigue sola a su Clásica cada hora** (`alinearGemelas`, tolerancia 1%; `gemelaalinear[:go]` a mano; se apaga con `gemelaSigue=off`): al mover la Clásica no hay que tocar la Premium. Lo nuevo que entre en Full con Clásica se le crea la gemela en la vuelta siguiente (`gemela:1` lista las que faltan).
+- 🔒 **Cuotas en TODO (21/10/2026, él: *"poner cuotas a todas las publicaciones, no sólo a las de más de $50.000 (…) siempre que nos dé la misma ganancia en premium que en clásica (…) puede que en productos baratos tengas que aumentar mucho el precio, hacelo"*):** toda Clásica activa con stock en Full lleva su 💳 gemela Premium al precio que deja la MISMA plata neta (`precioGemelaIgual`, ~+17-24%; las que cruzan los $33.000 pagan el envío y suben más). **Pero nunca abajo del 35% en el peor caso si su Clásica está en el 35% o más** (24/10, él: *"que siga a la principal en el % de ganancia, no? nunca deberían quedar por debajo del 35% (excepto las que ya sabemos)"*): va al precio más alto de los dos (misma plata o 35%, `precioGemelaAlPiso`; también la 📦 de envío gratis, que no BAJA sola abajo del 35%: se queda y sale en `planilla` 📦🛡️ para decidir, 39a del 24/10). Con la Clásica abajo del 35% por una excepción (sobra, promo, `!piso`) sigue con la misma plata y **sí baja abajo del 35%** (él, 24/10: la publicación está para vender rápido y todas las formas de venta tienen que ayudar); una baja de más de 15% va de a −15% por hora. **Cada gemela sigue sola a su Clásica cada hora** (`alinearGemelas`, tolerancia 1%; `gemelaalinear[:go]` a mano; se apaga con `gemelaSigue=off`): al mover la Clásica no hay que tocar la Premium. Lo nuevo que entre en Full con Clásica se le crea la gemela en la vuelta siguiente (`gemela:1` lista las que faltan).
 
-- **Paulvic con nombre de otra marca (21/10/2026, eligió la 1b):** ML congeló "en revisión · prohibido" a Invictus y Phantom con sus gemelas al crearlas. Se sigue con cuotas en todo, también en esos, y se espera que ML los libere. No se frena la creación de gemelas por eso.
+- **Invictus y Phantom (Paulvic): dados de baja en ML para siempre** (24/10; 26/10, él: *"irrecuperables, eliminá todo"*): ocultos en el panel (`nomas`), no se piden ni se mandan a Full; lo de la oficina va al local. **En revisión de ML para siempre, no se miran más** (24/10, él: *"nunca se van a liberar"*): Dalí La Belle `MLA1869295385`, Galaxy A06 `MLA3528837100`, Scandal Bliss `MLA1695210793` (`ML_REVISION_NO_MIRAR`: fuera de `planilla` y del `informe`; su stock sigue contando).
 - Una Premium que ya existe sin `gemelaDe` no la sigue nadie: `gemelacrea:anotar:<Premium>=<Clásica>:go` (chequea misma cuenta y mismo producto de ML).
 
 ## 12 · PAUSADAS, PUBLICACIONES, VÍNCULOS
 - Activar lo pausado con stock en Full es prioridad en todas las vueltas; lo que no se activa, a `notas/para_mati.md` con motivo. Lo que está
   en depósito (fuera de Full) se pausa solo.
-- Publicaciones nuevas: las crea él en ML; yo la ficha y el vínculo (la ficha toma el nombre de ML). La mercadería no se mueve entre cuentas.
+- Publicaciones nuevas: las crea él en ML, o yo con `publicar` + sus gemelas (23/10, él: *"intentalo"*; todo queda PAUSADO hasta que
+  entre a Full); yo la ficha y el vínculo (la ficha toma el nombre de ML). **Al crear: 100% seguro de que el catálogo es ESE producto, y
+  le mando las fotos de ML** (26/10, él: *"tenés que estar 100% seguro que ese es el producto y mandame foto de los productos, las fotos
+  que da ML"*): `fotocat`, contra la foto de la caja o el ticket (modelo, color, capacidad); con duda no se publica. 🔒 `publicar` frena
+  un catálogo vacío si otro de nombre idéntico tiene vendedores (25/10, Bowen). La mercadería no se mueve entre cuentas.
 - Frenadas por ML: no se toca precio; si hay que arreglar algo, se le avisa.
 
 ## 13 · VENTAS Y PREGUNTAS
@@ -485,8 +501,13 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
 - 🎯 **Objetivo (27/10/2026, él): que desaparezcan el rojo (abajo de 25%) y el naranja (25-35%) de 🧮 La Mezcla.** Semana del 26/10 ya va 91% azul; antes 30-60% era rojo+naranja.
 - **Completos, todo el catálogo**, en la completa: objetivo 30 días; 45 en Bs As que se cortó 2+ veces en 60 d, vende 0,5+/día y
   deja 35%+, y en lo nuevo que vuela (1+/día la primera semana). Ritmo por día con stock (y por color); stock de las 4 cuentas
-  sumado; sin costo no se pide; **el precio para el máximo = el de la ÚLTIMA venta** (23/10, él: *"si nunca vendió toma el % que decís vos. si ya vendió no importa si fue sólo 1 unidad. tomar ese %"*), sin pasar el de hoy y salteando la de escasez/sin reposición; nunca vendió → el precio de hoy. Máximo por color con `pvVars`
-  (el precio que el color sostuvo 2+ semanas, nunca de escasez ni de la primera semana de techo).
+  sumado; sin costo no se pide; **el precio para el máximo = el de la ÚLTIMA venta** (23/10, él: *"si nunca vendió toma el % que decís vos. si ya vendió no importa si fue sólo 1 unidad. tomar ese %"*), **por color** (27/10, él con las Sábanas Rojo: *"ese color se vendió a ese precio, no todos"*): cada color
+  con su última venta, sin pasar el precio de hoy de SU publicación y salteando 🔥/⏳/📦/liquidando/remate y lo vendido por una gemela
+  (1a del 27/10); el del producto = el más bajo de los colores que vendieron; nunca vendió → el precio de hoy.
+- 🛒 **Ritmo a precio normal** (27/10/2026, él con el Aer x6, eligió 1a: *"todas las ventas que cuente sin 🔥 escasez, ⏳ sin reposición,
+  📦 sobra, liquidando y remate. y que mire los últimos 365 días"*): días con stock y ventas sin esas estrategias (la 🪜/💸/gemela toma la
+  de la que viene); 60 días, con menos de 14 días normales 180, si no 365 (`NOR` de `pedidostodo`). Con 7+ días desde el último cambio
+  de precio manda el `HOY` (abajo).
 - 🏷️ **Al precio de hoy** (27/10 a la noche): con 7+ días con stock desde el último cambio de precio, Pedidos compra con lo que se
   vende A ESE PRECIO (`HOY u/d` de `pedidostodo`); la suba de prueba de techo ya no pone de piso el ritmo de antes (la de escasez sí).
   Con la estrategia nueva el precio alto se queda: comprar con el ritmo barato llenaba de stock que después hay que liquidar.
@@ -501,25 +522,36 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
   $64.000, almacenamiento $47.700, multa $14.200). No mandar de más (37 días), lo lento se vende con escalera ANTES de los 4 meses
   (stock antiguo), y **un retiro de Full sólo con su OK** (en `notas/para_mati.md`, con lo que cuesta retirar contra lo que cuesta quedarse).
   En la completa del 15, con `cargosmes`, decirle cuánto fue Full contra la meta.
-- Con varias cuentas posibles, decidir a mano mirando `cajasnotas`. Las que ML dio por entradas las marco yo (`cajallego`).
+- 💰 **Con cupo chico, la caja se llena para la MÁXIMA plata** (26/10, él: *"siempre priorizamos ganar más, no cubrir stock"*; 27/10:
+  *"maximizar la máxima ganancia de $ posible siempre"*): lo que está en 0 o se corta antes de 14 días recibe lo que vende hasta la
+  próxima caja (mínimo 1), por lo que más deja por unidad; el resto del cupo, a lo que más deja por unidad (lo nuevo, con lo que deja su
+  publicación). Web (`cajaLlenarCupoPlan`) y `decide_cajas.py` (`llenar_cupo`) iguales.
+- Lo que él decide de una caja va a `FIJO` de `decide_cajas.py` (25/10: si no, la completa se lo pisa); "armá la caja" =
+  `decido:archivo=cajas;go` + `cajaarmar;go`. Las cajas salen de lunes a viernes a las 12 y los días de viaje cuentan desde que sale (25/10).
+- Con varias cuentas posibles, decidir a mano mirando `cajasnotas`. Las que entraron COMPLETAS las marca el robot solo cada hora (24/10,
+  él: *"¿no tenés datos suficientes para darte cuenta?"*); yo marco sólo las que tienen faltantes (`cajallego`).
 - Caja para mandar ya de algo que vende fuerte y está en 0 en Full → `pregunto:URGENTE: …`.
 
 ## 16 · PARAGUAY
-- Pedidos de ~US$1.000 cada 2-3 semanas. Lo no urgente espera al próximo; lo que se corta antes de que llegue se pide igual.
+- Dos pedidos de Nissei (🌸 perfumería y 📦 resto), **tope de US$ 500 crudos por CADA pedido** (`pedTopeUSD`; 27/10, él: *"por cada
+  pedido"*). Lo no urgente espera al próximo; lo que se corta antes de que llegue se pide igual.
 - Precios y códigos SÓLO de comprasparaguay (la fila de Nissei), nunca nissei.com. El chat local los copia en la pasada semanal de
-  los sábados 9:00 (24/10, eligió 1a 2a: probados primero + catálogo entero).
+  los sábados 9:00 (24/10, eligió 1a 2a: probados primero + catálogo entero). Nada pasa 14 días sin volver a mirarse (23/10) y lo
+  mirado hace 7+ días queda en ROJO dentro del pedido: se carga, pero no se manda el mensaje ni se marca "Ya lo pedí" hasta volver a
+  mirarlo (26/10, él: *"que pueda estar dentro del pedido aunque esté en rojo"*).
 - Para pedir: 🔒 **35%, la vara de compra (`CAND_VARA_COMPRA`, 22/10/2026, 1a)** — lo de 25-34% queda guardado y se sigue
   midiendo (el descarte del robot sigue en 25%) — **y** catálogo de ML con 2+ vendedores (o 1 vendedor con 100+ vendidas, o 🌟 sin competencia con el precio visto en ML por el chat: `svprecio`, 24/10/2026 1a 2a) **y** confirmado que es el mismo producto (✅ `mismoOk` o `revcand`
   ok de ESE catálogo). 🔒 **Y al final las 100 vendidas (21/10/2026, regla suya):** sin el dato entra igual; cargado y abajo de 100
-  queda afuera (`CAND_MIN_VENTAS`, web y robot). Las mira el chat de compras sólo de lo que pasó todo (`faltaventas`).
+  queda afuera, salvo 5+ reseñas (24/10, él con el Huawei X1 Pro: *"yo pondría también que tenga aunque sea 5 reseñas"*;
+  `CAND_MIN_VENTAS`, `CAND_MIN_RESENAS`, web y robot). Las mira el chat de compras sólo de lo que pasó todo (`faltaventas`).
 - Cuántas de cada nuevo (26/10, él): 🔒 **hasta llegar a US$ 20 con el precio de la web, máximo 4** (US$ 21 → 1 · 19 → 2 · 9 → 3 ·
   5 o menos → 4; `candMaxU`, robot `candMaxUBot`, botón 🪄 Llenar). Lo que vuela se repone en el pedido siguiente por sus ventas.
 - Ticket real obligatorio para cerrar (`compray:<fecha>|det=…|go`); gastos: dólares, retira, correo (monto y kilos); `adelanto=` y
   `cambio=` sólo cuando él avisa. Recargo: el medido de los pedidos (respaldo 20%).
-- Al llegar: ficha (pagado × recargo), cuenta por rubro (perfumes → Adriana) y si no, la que **más lugar tiene contra el tope de H**
+- Al llegar: ficha (pagado × recargo), cuenta por rubro (perfumes → Adriana) y si no, entre Ayelen y Luciana (23/10) la que **más lugar tiene contra el tope de H**
   (`repartopy`, 7a del 22/10), vínculo. Por ahora siempre las 4 cuentas en H (8b): ni 5ª cuenta ni K.
 - Un proveedor, Nissei, con dos pedidos (perfumería y resto). Elegancia quedó apagada el 26/10 (él: *"eliminá elegancia. nunca se usa y
-  genera problemas"*); no volver a proponerla.
+  genera problemas"*); no volver a proponerla. Shopping China recién cuando Nissei se agote (24/10).
 
 ## 17 · LISTAS (otros proveedores)
 - Todas se miden contra ML, también Dai Nippon (que no tiene pedido: lo trae Tito). Para que "dé": 🔒 35% (vara de compra, 22/10) y catálogo con 2+ vendedores
