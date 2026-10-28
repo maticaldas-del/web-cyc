@@ -318,6 +318,7 @@ html,body{overflow-x:hidden;max-width:100%}html{overflow-x:clip}body{overscroll-
   .ht-grid .ht-pc{display:none!important}
   .ht-grid .nav-card.ht-ped .nc-icon{display:none}
   .ht-ped-grid{gap:4px;margin-top:0}
+  .ht-grid .nav-card.ht-fac .nc-icon,.ht-grid .nav-card.ht-fac #hv-fac{display:none}.ht-fac .ncfb{gap:2px!important;margin-top:2px!important}.ht-fac .ncfb>div{font-size:.52rem!important;gap:3px!important}.ht-fac .ncfb>div>span:nth-child(2){height:4px!important}
   .ht-arq-grid{grid-template-columns:repeat(3,1fr)}.ht-arq-grid .ht-ped-b{padding:3px 0}
   .ht-ped-b{font-size:.85rem;padding:3px 0;border-radius:7px}
   .ht-ped-b span{display:none}
@@ -1134,11 +1135,12 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
       <div class="nc-desc">gráficos</div>
       <span class="nc-arrow">→</span>
     </div>
-    <div class="nav-card nc5 ht" onclick="goPage('facturas')" title="Las facturas que emitió ML por cada cuenta, y si alguna venta quedó sin facturar.">
+    <div class="nav-card nc5 ht ht-fac" onclick="goPage('facturas')" title="Las facturas que emitió ML por cada cuenta, y si alguna venta quedó sin facturar.">
       <span class="nc-icon">🧾</span>
       <div class="nc-title">Facturas</div>
       <div class="ht-vivo ht-cel" id="hv-fac"><span class="nc-desc">de ML</span></div>
       <div id="nc-fac-aviso" class="ht-pc"></div>
+      <div id="nc-fac-barras" style="width:100%;padding-right:14px;box-sizing:border-box"></div>
       <span class="nc-arrow">→</span>
     </div>
     <div class="nav-card ht ht-gastos" onclick="goPage('compras')" title="Registro de inversiones y gastos operativos por categoría.">
@@ -3164,7 +3166,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.55';
+const APP_VERSION='27.56';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3177,6 +3179,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.56',f:'28/10',h:'16:55',c:[{n:1,t:'🧾 Inicio: la tarjeta de Facturas muestra una barrita por cuenta con cuán llena va contra el tope de H (lleno = facturado hoy, clarito = a dónde llega al cierre de ARCA; rojo si se pasa, ámbar desde 85%)'}]},
   {v:'27.55',f:'28/10',h:'16:40',c:[{n:1,t:'🧮 Inicio: la tarjeta de Arqueo tiene tres botones (💵 Finanzas · 📦 Productos · 📥 Ver deudas) que entran directo, como Pedidos. Y en Ver deudas se puede marcar una deuda "sin ganancia" (préstamo o algo que nos devuelven al costo)'}]},
   {v:'27.54',f:'28/10',h:'16:25',c:[{n:2,t:'📥 Ver deudas: ✏️ editar cada deuda · cada cuánto paga (semanal, cada 15 días o mensual) y cuándo vence · cuánto nos costó y cuánto se le gana · cada pago guarda su fecha (te la pregunta al tocar 💵 Pagó) · en ROJO la que se atrasó. Y 📋 Ver deudas ahora te lleva directo a la lista'}]},
   {v:'27.53',f:'28/10',h:'16:05',c:[{n:1,t:'📥 Ver deudas: ahora es una lista, un renglón por deuda (nombre y cuotas a la izquierda, lo que falta en el medio, botones a la derecha)'}]},
@@ -25115,8 +25118,25 @@ function _parejoCatLinea(a,fM,facARCA){
 // ritmo cierra el año arriba de H. Sin ninguna en rojo no se dibuja nada.
 // Las cuentas que a este ritmo pasan el tope de H (la regla de la tarjeta ⚖️). La usan la tarjeta de Facturas y el ☰ (7.17).
 function _facRojas(){try{const d=parejoDatos();return (d&&d.filas)?d.filas.filter(f=>f.proy>d.topeH):[];}catch(e){return [];}}
+// 📊 CUÁN LLENA VA CADA CUENTA, EN LA TARJETA DE FACTURAS (28/10/2026, él: "que muestre barritas de cuán lleno van las cuentas"). La misma
+// cuenta que la tarjeta ⚖️ (`parejoDatos`): lleno = facturado oficial hasta hoy, clarito = a dónde llega al cierre de la ventana de ARCA,
+// contra el tope de H. El % es el de hoy; rojo si al cierre se pasa, ámbar desde 85%.
+function renderNcFacBarras(){
+  const el=document.getElementById('nc-fac-barras');if(!el)return;
+  let d=null;try{d=parejoDatos();}catch(e){}
+  if(!d||!d.filas||!d.filas.length){el.innerHTML='';return;}
+  el.innerHTML='<div class="ncfb" style="display:flex;flex-direction:column;gap:4px;margin-top:8px">'+d.filas.map(f=>{
+    const pf=Math.min(100,f.fac/d.topeH*100),pp=Math.min(100,f.proy/d.topeH*100),col=f.proy>d.topeH?'var(--red)':pp>=85?'var(--amber)':'var(--green)';
+    return `<div title="${MET_LABELS[f.a]}: facturado ${Math.round(pf)}% del tope de H · al cierre ${Math.round(f.proy/d.topeH*100)}%" style="display:flex;align-items:center;gap:6px;font-size:.6rem">
+      <span style="width:3.2em;text-align:left;color:var(--muted)">${MET_LABELS[f.a].slice(0,3)}</span>
+      <span style="flex:1;height:6px;background:var(--surface2);border-radius:4px;overflow:hidden;display:flex"><span style="width:${pf.toFixed(1)}%;background:${col}"></span><span style="width:${Math.max(0,pp-pf).toFixed(1)}%;background:${col};opacity:.4"></span></span>
+      <span style="width:2.6em;text-align:right;font-family:'DM Mono',monospace;color:${col}">${Math.round(pf)}%</span></div>`;}).join('')+'</div>';
+}
 function renderNcFacAviso(){
+  try{renderNcFacBarras();}catch(e){console.warn(e);}
   const el=document.getElementById('nc-fac-aviso');if(!el)return;
+  // Con las barritas a la vista el aviso no entra en la tarjeta: la barra roja ya lo dice (el detalle sigue en la tarjeta ⚖️).
+  if(document.getElementById('nc-fac-barras')?.innerHTML){el.innerHTML='';return;}
   const rojas=_facRojas();
   el.innerHTML=rojas.length?`<div style="margin-top:8px;font-size:.72rem;font-weight:700;color:var(--red);background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.4);border-radius:8px;padding:6px 8px">🔴 ${rojas.map(f=>MET_LABELS[f.a]).join(' y ')} ${rojas.length>1?'pasarían':'pasaría'} el tope de H a este ritmo. Tocá para ver.</div>`:'';
   // 7.16 (21/10/2026): la misma cuenta, corta, para la tarjeta del teléfono.

@@ -2125,6 +2125,10 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
     decisión de compra, no código. 11 (dinero que rinde en MP) lo mira él en la app.
 
 ## 7 · DISEÑO (domingo)
+### 🧾 Inicio → Facturas: barritas de cuán llena va cada cuenta (28/10/2026, él: "que muestre barritas de cuán lleno van las cuentas")
+- **Qué es:** una barra por cuenta contra el tope de H: lleno = facturado oficial hoy, clarito = a dónde llega al cierre de ARCA (misma cuenta que la ⚖️, `parejoDatos`); % de hoy; rojo si al cierre se pasa, ámbar desde 85%. En el teléfono sin ícono y más finitas.
+- **Dónde vive:** `renderNcFacBarras` (la llama `renderNcFacAviso`), `#nc-fac-barras`, clase `ht-fac` (index.html).
+- **Qué chequear:** 390 y 1200 px dibujados el 28/10 sin desborde; los % coinciden con la tarjeta ⚖️ de Inicio.
 ### 📥 Ver deudas: editar, frecuencia, vencimiento, costo/ganancia y fecha de cada pago (28/10/2026, él: "que se pueda editar, que ponga qué fecha se pagó la cuota, cuánto salió de costo y cuánto se le ganó y que se pueda elegir cada cuánto se paga… que se ponga en rojo cuando pasó el tiempo de pagar")
 - **Qué es:** ✏️ por deuda (mismo formulario, con etiquetas); `frec` sem/quin/men; `vence1` = primera cuota (o el día que paga si es sin cuotas; obligatorio con cuotas); `costo` → ganancia y %; 💵 Pagó pregunta la fecha y la guarda (`pagos/<ts>={f}`; los viejos `=1` usan el ts); la cuota que toca vence en `vence1 + pagadas × período` (mensual respeta fin de mes) y pasada sin pagar el renglón va en rojo y la tarjeta dice "⚠️ N atrasadas". 📋 Ver deudas baja directo a la solapa (antes subía al principio de la página).
 - **Además (28/10, él):** "hay deudas que no tienen ganancia" → casilla **Sin ganancia** (`sinGan`, esconde el costo); "que diga cuándo tiene que pagar la próx cuota" → abajo de lo que falta, 📅 próx. cuota dd/mm (o ⚠️ vencía, o "sin fecha · ✏️"). **Inicio:** la tarjeta Arqueo tiene 💵 Finanzas · 📦 Productos · 📥 Ver deudas (`homeArqIr`, `.ht-arq-grid`; en el teléfono sólo los íconos, de a tres).
