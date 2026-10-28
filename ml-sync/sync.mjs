@@ -25910,6 +25910,86 @@ async function main() {
       console.log('carga una persona, no el robot: donde falta, falta.');
       return;
     }
+    // ── 🌎 ¿CUÁNTO MÁS CARO QUE EL DE AFUERA SE VENDE IGUAL? (27/10/2026 a la noche, él con el Echo Spot: "incluir ventas internacionales en
+    // guay para comparar… al mirar internacional no es mano a mano, tenemos algún beneficio nosotros no sé cuánto, pero por ejemplo algo que
+    // internacional esté 150.000 quizás nosotros vendiendo a 200.000 en full lo vendemos igual"). Sólo lee. Toda Clásica activa de catálogo
+    // cuyo catálogo tiene vendedores del exterior (`esOfertaDeAfuera`, la MISMA función que mide los candidatos): nuestro precio a la vista
+    // contra el más barato de afuera (tal como lo muestra ML) y el más barato de acá, quién gana la caja (`price_to_win`: ¿el que gana es de
+    // afuera?) y lo vendido al precio de hoy (días con stock desde el último cambio de 2%+ de la lista, con la línea junta de su stock; con
+    // menos de 7 días, los últimos 30). Contesta hasta qué % arriba del de afuera seguimos vendiendo y con qué ritmo.
+    // `valeinter:<N>` = como mucho N publicaciones por cuenta.
+    if (/^valeinter(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _viN = Math.max(1, Math.min(400, parseInt(String(process.env.BILLING_PROBE).split(':')[1] || '', 10) || 400));
+      const _esp = (ms) => new Promise((r) => setTimeout(r, ms));
+      const links = (await db.get('cyc/mllinks')) || {};
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      const sids = {}; for (const l of labels) if (accounts[l]?.seller_id) sids[String(accounts[l].seller_id)] = l;
+      const hoyK = dayKeyFromISO(Date.now());
+      const $ = (x) => (x == null || !isFinite(x)) ? '—' : '$' + Math.round(x).toLocaleString('es-AR');
+      const LIN = {}; const lineaDe = async (m) => { if (!(m in LIN)) { try { LIN[m] = (await db.get('mlapi/linea/' + m)) || {}; } catch { LIN[m] = null; } } return LIN[m]; };
+      // lo vendido al precio de hoy: hacia atrás desde ayer mientras la lista no cambie 2%+ (con la línea junta, cuenta lo de la gemela)
+      const ritmoHoy = (J) => {
+        const ks = Object.keys(J || {}).filter((k) => /^\d{4}_\d{2}_\d{2}$/.test(k) && k < hoyK && J[k] && typeof J[k] === 'object').sort();
+        if (!ks.length) return null;
+        const pU = Number(J[ks[ks.length - 1]].p) || 0;
+        let dd = 0, uu = 0;
+        for (let i = ks.length - 1; i >= 0; i--) { const x = J[ks[i]]; const p = Number(x.p) || 0; if (pU > 0 && p > 0 && Math.abs(p - pU) > pU * 0.02) break; if (!diaConStock(x)) continue; dd++; uu += Number(x.u) || 0; }
+        if (dd >= 7) return { u: uu, d: dd, hoy: true };
+        const k30 = dayKeyFromISO(Date.now() - 30 * 864e5); dd = 0; uu = 0;
+        for (const k of ks) { if (k < k30) continue; const x = J[k]; if (!diaConStock(x)) continue; dd++; uu += Number(x.u) || 0; }
+        return dd ? { u: uu, d: dd, hoy: false } : null;
+      };
+      const filas = [], noC = {}; const no = (r) => { noC[r] = (noC[r] || 0) + 1; };
+      let mirados = 0, conCat = 0; const cacheCat = {};
+      for (const label of labels) {
+        const acc = accounts[label]; if (!acc?.refresh_token) { no('cuenta sin token'); continue; }
+        let tok; try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() }); tok = t.access_token; } catch { no('no pude renovar el token de ' + label); continue; }
+        const ids = Object.entries(links).filter(([m, e]) => /^MLA\d+$/.test(m) && e && e.cuenta === label && e.prodId && pIdx[e.prodId] && !e.gemelaDe && !e.ignored && !e.noVendemosMas && !e.hidden && /^active/.test(String(e.status || '')) && !ML_REVISION_NO_MIRAR.has(m)).map(([m]) => m).slice(0, _viN);
+        for (let k = 0; k < ids.length; k += 20) {
+          let arr; try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,price,status,catalog_product_id,listing_type_id', tok); } catch { no('ML no contestó un lote de publicaciones'); continue; }
+          for (const row of (arr || [])) {
+            const b = row && row.body; if (!b || !b.id) continue; mirados++;
+            if (b.status !== 'active') { no('no está activa'); continue; }
+            if (!b.catalog_product_id) { no('sin catálogo'); continue; }
+            if (b.listing_type_id === 'gold_pro') { no('Premium'); continue; }
+            conCat++;
+            const cp = b.catalog_product_id;
+            if (cacheCat[cp] === undefined) { try { const it = await mlGet(`/products/${cp}/items`, tok); cacheCat[cp] = (it && it.results) || []; } catch (e2) { cacheCat[cp] = /404/.test(String(e2 && e2.message)) ? [] : null; } await _esp(150); }
+            if (cacheCat[cp] == null) { no('ML no dio los vendedores del catálogo'); continue; }
+            const ofs = cacheCat[cp].filter((o) => o && Number(o.price) > 0);
+            const nuestro = ofs.find((o) => String(o.item_id) === b.id);
+            const ajenos = ofs.filter((o) => !sids[String(o.seller_id)]);
+            const afu = ajenos.filter(esOfertaDeAfuera), aca = ajenos.filter((o) => !esOfertaDeAfuera(o));
+            if (!afu.length) { no('sin vendedores de afuera en su catálogo'); continue; }
+            const P = Math.round(Number((nuestro || {}).price) || Number(b.price) || 0); if (!(P > 0)) { no('sin precio'); continue; }
+            const pr = (o) => Number(o.price) || 0;
+            const minA = Math.min(...afu.map(pr)), minC = aca.length ? Math.min(...aca.map(pr)) : 0;
+            const refA = afu.find((o) => pr(o) === minA) || afu[0];
+            let ptw = null; try { ptw = await mlGet(`/items/${b.id}/price_to_win?version=v2`, tok); } catch { ptw = null; } await _esp(150);
+            const wid = ptw && ptw.winner ? String(ptw.winner.item_id || ptw.winner.id || '') : '';
+            const gAfuera = !!(wid && afu.some((o) => String(o.item_id) === wid));
+            const e = links[b.id] || {};
+            const lin = await lineaDe(b.id); let rh = null;
+            if (lin) { const J = await lineaJuntaStock(links, pIdx, b.id, lin, lineaDe); rh = ritmoHoy(J.d); }
+            filas.push({ m: b.id, e, P, minA, minC, nA: afu.length, nC: aca.length, r: P / minA, caja: (ptw && ptw.status) || e.caja || '?', gAfuera, fullA: esOfertaFull(refA), tagsA: ((refA.shipping && refA.shipping.tags) || []).filter((t) => /cbt|fulfil/i.test(String(t))).join(','), rh, sem: rh && rh.d ? rh.u / rh.d * 7 : null });
+          }
+        }
+      }
+      const pct = (r) => (r >= 1 ? '+' : '−') + Math.round(Math.abs(r - 1) * 100) + '%';
+      console.log(`=== 🌎 ¿CUÁNTO MÁS CARO QUE EL DE AFUERA VENDEMOS IGUAL? · miré ${mirados} Clásicas activas (${conCat} de catálogo) · ${filas.length} tienen vendedores de afuera en su catálogo ===`);
+      console.log('(% = nuestro precio a la vista contra el más barato de afuera, tal como lo muestra ML · por semana = al precio de hoy si lleva 7+ días con stock; si no, los últimos 30 días)');
+      for (const f of filas.sort((a, b) => b.r - a.r)) console.log(`${pct(f.r).padStart(6)} · ${f.m} · ${f.e.cuenta || '?'} · ${String(f.e.title || '').slice(0, 44)} · nosotros ${$(f.P)} · afuera ${$(f.minA)} (${f.nA}${f.tagsA ? ' · ' + f.tagsA : ''}) · acá ${f.minC ? $(f.minC) + ' (' + f.nC + ')' : 'nadie más'} · caja ${f.caja}${f.gAfuera ? ' (la gana uno de AFUERA)' : ''} · ${f.sem == null ? 'sin dato de ventas' : f.sem.toFixed(1) + ' por semana' + (f.rh.hoy ? ` (${f.rh.u} en ${f.rh.d} días con stock al precio de hoy)` : ` (${f.rh.u} en ${f.rh.d} días con stock, 30 d)`)}`);
+      const T = [[0, 1, 'más baratos que el de afuera'], [1, 1.25, 'hasta +25%'], [1.25, 1.5, '+25 a +50%'], [1.5, 2, '+50 a +100%'], [2, 3, '+100 a +200%'], [3, 1e9, '+200% o más']];
+      const med = (a) => { const s = a.filter((x) => x != null).sort((x, y) => x - y); return s.length ? s[Math.floor(s.length / 2)] : null; };
+      console.log('\n── POR TRAMO (cuánto más caros que el más barato de afuera) ──');
+      for (const [lo, hi, nom] of T) { const g = filas.filter((f) => f.r >= lo && f.r < hi); if (!g.length) continue; const cv = g.filter((f) => f.sem != null);
+        console.log(`  ${nom}: ${g.length} · ganamos la caja en ${g.filter((f) => f.caja === 'winning').length} · la gana uno de afuera en ${g.filter((f) => f.gAfuera).length} · venden algo ${cv.filter((f) => f.sem > 0).length} de ${cv.length} · 1+ por semana ${cv.filter((f) => f.sem >= 1).length} · mediana ${med(cv.map((f) => f.sem))?.toFixed(1) ?? '—'} por semana`); }
+      const v1 = filas.filter((f) => f.sem != null && f.sem >= 1 && f.r >= 1);
+      if (v1.length) console.log(`\n  Las que venden 1+ por semana estando más caras que el de afuera: ${v1.length} · cuánto más caras: mediana ${pct(med(v1.map((f) => f.r)))} · de ${pct(Math.min(...v1.map((f) => f.r)))} a ${pct(Math.max(...v1.map((f) => f.r)))}`);
+      console.log(`  La caja la gana uno de afuera en ${filas.filter((f) => f.gAfuera).length} de ${filas.length} catálogos.`);
+      console.log(`\n(no entran: ${Object.entries(noC).sort((a, b) => b[1] - a[1]).map(([r, n]) => `${n} ${r}`).join(' · ')})`);
+      return;
+    }
     // BILLING_PROBE=probarcaja:<MLA del catálogo> → ¿ML DICE QUIÉN TIENE LA CAJA DE COMPRA?
     //
     // Nació el 18/09/2026: al empezar a guardar el precio de la caja de los candidatos, la primera
