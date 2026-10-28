@@ -2125,6 +2125,10 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
     decisión de compra, no código. 11 (dinero que rinde en MP) lo mira él en la app.
 
 ## 7 · DISEÑO (domingo)
+### 📥 Lo que nos deben: la lista sale de la tarjeta (28/10/2026, él: "queda medio apretado todo… abrir un lugar nuevo")
+- **Qué es:** la tarjeta muestra total, cuántas deudas y lo que falta cobrar + 📋 Ver deudas; la lista, ➕ Agregar y el formulario van en un panel a lo ancho abajo de las 4 tarjetas (en compu, grilla de 4 por fila). Queda abierto o cerrado como lo dejó (en ese teléfono).
+- **Dónde vive:** `#cuotas-resumen`, `#cuotas-btn`, `#cuotas-panel` (index.html, Arqueo) · `cuotasPanel`, `renderCuotas`, `cuotasForm` (abre el panel solo).
+- **Qué chequear:** 390 y 1200 px dibujados el 28/10 sin cortes ni scroll de costado; ➕ Agregar abre el panel si estaba cerrado; mirando un mes cerrado la lista no cambia nada.
 ### ↕️ Buscador de todo comprasparaguay: ordenar (28/10/2026, él: "quiero poder organizar… opciones de organizar de ciertas formas")
 - **Qué es:** un selector "↕️ Ordenar" abajo del cuadro de búsqueda: % de ganancia (el de antes) · primero los que pueden entrar al pedido (35%+, foto de Paraguay, 2+ vendedores, nombre que coincide) · $ por unidad (aprox: puesto × %) · precio en Paraguay barato/caro · precio en ML · vendedores · nombre. Lo que no tiene el dato va al final.
 - **Dónde vive:** `PYCAT_ORDENES`, `_pycatEntra`, `_pycatOrdenar` y el `<select id="pycat-ord">` de `pycatBuscarHTML` (index.html); `window._pycatOrd` recuerda la elección mientras la página está abierta.
