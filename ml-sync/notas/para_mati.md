@@ -8,6 +8,12 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 
 ## Abiertas
 
+### Del 27/10 a la noche (estrategia nueva: +50% por venta, en el primer escalón que vende se queda) · pasadas en el chat
+- **1 · 🪜 "Vende muchísimo menos" (el Filtro):** (a) si en el escalón donde vendió deja menos de la MITAD de la plata por día que el 💰, con 95% de seguridad y 7+ días con stock ahí, baja UN escalón (≤15%) hacia el 💰. A lo que vende mucho (Filtro, Enchufe) le salta en una semana; a lo que vende 1 por semana casi nunca: se queda arriba · (b) sin salida: siempre se queda en el primer escalón que vende.
+- **2 · 📊 Piso de 35%:** (a) dejarlo para vender, reponer y comprar · (b) 50% sólo para comprar algo nuevo (vender y reponer sigue en 35%).
+- **3 · 🏷️ Niveles de cada venta:** (a) correrlos: Bajo <35 · Justo 35-50 · Bien 50-75 · Bueno 75-100 · Excelente 100-150 · Estrella 150-250 · Joya 250+ · (b) dejarlos (hoy Bien 35-45 · Bueno 45-70 · Excelente 70-130 · Estrella 130-200 · Joya 200+; Justo quedó vacío).
+- **4 · 🧮 La Mezcla:** (a) rojo y naranja como están (son el objetivo) y partir el celeste: 50-100% celeste · 100%+ violeta · (b) dejarla igual.
+
 ### Para después (él, 27/10 a la noche: "dejá eso para después. lo de las internacionales")
 - **🌎 Los de afuera en la comparación de Paraguay:** preparado y deshecho (commit 1e4d0b3). Medido el 28/10: el precio de ML del de afuera no trae el 21% de IVA que paga el comprador; donde hay varios vendedores de acá, están ~50% arriba del de afuera; nuestro Animale Sexy vende 1,9 por semana a +74% del de afuera; en 5 de 11 catálogos nuestros con uno de afuera la caja la gana él. De 250 de Para probar con 35%+, 22 tienen uno de afuera más barato: con +50% siguen 11 de 20, con +33% 6. Decisión cuando la retome: (a) +50% · (b) +33% (su ejemplo de $150.000 → $200.000). Ojo: en el pedido del momento, con el de afuera, el Adidas Dynamic Pulse (3 u.) daría −9% y el Risala Amalia (2 u.) −5%.
 
