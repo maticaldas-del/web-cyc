@@ -83,6 +83,11 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
 - **Dónde vive:** `ml-sync/sync.mjs`, `informe`, sección 12 (caja perdida en lo que vende).
 - **Qué chequear:** que esas 4 salgan con ⚠️ y que lo que pide un precio normal (arriba de costo + $1.230) siga sin marca.
 
+### 🔕 Desactivar el aviso de cada venta en un teléfono (28/10/2026, v27.43, etapa 7; él: *"no hay opción para desactivar"*)
+- **Qué es:** botón "🔕 Desactivar en este teléfono" al lado de "Volver a anotar": pide confirmación, borra `cyc/pushsubs/<clave>` de ese teléfono y lo da de baja; el cartel de Inicio que invita a activarlo ya no aparece en ese teléfono (`cycPushNo`), hasta que vuelva a tocar Activar.
+- **Dónde vive:** `index.html` · `pushDesactivar`, `renderPush`.
+- **Qué chequear:** que "Teléfonos anotados" baje 1 y que los otros teléfonos sigan recibiendo.
+
 ### 💵 Pedidos: "lo que salva cada $1" (27/10/2026, v27.40, él eligió 1a)
 - **v27.42 (él eligió 1a: "¿tiene en cuenta el % que da ahora? hubo cambios grandes de precio"):** `pedGananciaNorm` usa las ventas DESDE el último cambio de precio de más de 2% (`_pedUltCambioPrecio`, sólo Clásicas, `cyc/claudecambios`) si fue hace 7-30 días y hubo 7+ días con stock desde ahí (`_pedDiasStockDesde`), llevadas a 30 días. Probado: 20 ventas viejas de $1.000 + 8 nuevas de $3.000 → sin cambio $44.000; cambio hace 10 d → $72.000; cambio hace 3 d → $44.000 (sigue la de 30 días).
 - **v27.41 (él: "que quede sólo esa. sacar las otras opciones"):** sin botones; Pedidos se ordena SIEMPRE así (Prioridad, Bs As, Paraguay probados, Paulvic). Se sacaron `_pedOrdenPeso`, `_pedOrdenPesoSet`, `_pedOrdenPesoHTML` y el agregado en `renderPedidos` (comparado contra la versión anterior: no falta nada más).

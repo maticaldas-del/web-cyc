@@ -2811,19 +2811,34 @@ async function renderPush(){
   const h=document.getElementById('home-push'),a=document.getElementById('ajustes-push');
   const n=Object.values(state.pushsubs||{}).filter(x=>x&&x.endpoint).length;
   const btn='<button class="btn" style="background:#22c55e;color:#06210f;font-weight:700;border:none;border-radius:10px;padding:10px 14px;cursor:pointer" onclick="pushActivar()">🔔 Activar aviso de cada venta</button>';
+  // 🔕 DESACTIVAR (28/10/2026, él: "no hay opción para desactivar"): saca este teléfono de la lista y deja de recibir avisos. Si se
+  // desactivó a propósito, el cartel de Inicio que invita a activarlo no vuelve a aparecer en este teléfono (`cycPushNo`).
+  const btnNo='<button class="btn" style="background:var(--surface);color:var(--text);font-weight:700;border:1px solid var(--border2);border-radius:10px;padding:10px 14px;cursor:pointer" onclick="pushDesactivar()">🔕 Desactivar en este teléfono</button>';
+  let _pushNo=false;try{_pushNo=localStorage.getItem('cycPushNo')==='1';}catch(e){}
   // El cartel de Inicio sólo en el teléfono (pantalla táctil): en la PC no suena nada y era un cartel de más (20/10/2026, etapa 7).
   let _tel=true;try{_tel=window.matchMedia('(pointer:coarse)').matches;}catch(e){}
+  if(_pushNo)_tel=false;
   if(h)h.innerHTML=(_pushEstado==='falta'&&_tel)?`<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;margin:10px 0;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span style="font-size:.8rem;color:var(--muted);flex:1;min-width:180px">Que este teléfono vibre y suene con cada compra que deja $10.000 o más (de 00:30 a 10 no suena).</span>${btn}</div>`:'';
   if(!a)return;
   const txt={
-    activo:'<div style="color:var(--green);font-weight:700">✅ Este teléfono recibe el aviso de cada compra que deja $10.000 o más de ganancia (de 00:30 a 10 no suena: lo de esa franja sale junto a las 10).</div><div style="font-size:.75rem;color:var(--muted);margin-top:6px">Si dejan de llegar, tocá de nuevo para volver a anotarlo.</div><div style="margin-top:10px">'+btn.replace('🔔 Activar aviso de cada venta','🔄 Volver a anotar este teléfono')+'</div>',
+    activo:'<div style="color:var(--green);font-weight:700">✅ Este teléfono recibe el aviso de cada compra que deja $10.000 o más de ganancia (de 00:30 a 10 no suena: lo de esa franja sale junto a las 10).</div><div style="font-size:.75rem;color:var(--muted);margin-top:6px">Si dejan de llegar, tocá de nuevo para volver a anotarlo.</div><div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">'+btn.replace('🔔 Activar aviso de cada venta','🔄 Volver a anotar este teléfono')+btnNo+'</div>',
     falta:'<div style="font-size:.8rem;color:var(--muted);margin-bottom:10px">Tocá una vez en cada teléfono (el tuyo y el de tu viejo). Te pide permiso y listo.</div>'+btn,
     negado:'<div style="color:var(--amber)">⚠️ En este teléfono los avisos de CYC están bloqueados. Se habilitan en Ajustes del teléfono → Notificaciones → CYC.</div>',
     nosoporta:'<div style="color:var(--amber)">⚠️ Así no se pueden recibir avisos. En iPhone: abrí CYC desde el ícono de la pantalla de inicio (no desde Safari) y con iOS 16.4 o más.</div>'
   }[_pushEstado];
   a.innerHTML=txt+`<div style="font-size:.7rem;color:var(--muted);margin-top:10px">Teléfonos anotados: ${n}</div>`;
 }
+async function pushDesactivar(){
+  if(!confirm('¿Dejar de recibir el aviso de cada venta en este teléfono? Los otros teléfonos siguen igual.'))return;
+  try{
+    const reg=await navigator.serviceWorker.getRegistration();const sub=reg&&await reg.pushManager.getSubscription();
+    if(sub){const k=_pushClave(sub.endpoint);await fbSet('pushsubs/'+k,null);const ps=Object.assign({},state.pushsubs);delete ps[k];state.pushsubs=ps;try{await sub.unsubscribe();}catch(e){}}
+    try{localStorage.setItem('cycPushNo','1');}catch(e){}
+    renderPush();
+  }catch(e){alert('No se pudo desactivar: '+e.message);}
+}
 async function pushActivar(){
+  try{localStorage.removeItem('cycPushNo');}catch(e){}
   try{
     if(!_pushSoportado()){alert('Así no se pueden recibir avisos. En iPhone: abrí CYC desde el ícono de la pantalla de inicio (no desde Safari), con iOS 16.4 o más.');return;}
     const pub=(state.mlconfig||{}).vapidPublic;
@@ -3105,7 +3120,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.42';
+const APP_VERSION='27.43';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3118,6 +3133,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.43',f:'28/10',h:'00:10',c:[{n:1,t:'🔕 Aviso de cada venta: botón para desactivarlo en este teléfono (los otros siguen igual)'}]},
   {v:'27.42',f:'27/10',h:'23:20',c:[{n:2,t:'💵 Pedidos: lo que salva cada $1 usa la ganancia al precio de hoy cuando el producto ya lleva 7+ días con stock desde su último cambio de precio (antes mezclaba 30 días de precios viejos y nuevos)'}]},
   {v:'27.41',f:'27/10',h:'23:00',c:[{n:2,t:'💵 Pedidos: se ordena siempre por lo que salva cada $1 (la ganancia que se pierde si no se compra ÷ lo que cuesta la compra). Se sacaron los botones de orden'}]},
   {v:'27.40',f:'27/10',h:'22:40',c:[{n:2,t:'💵 Pedidos: el botón ahora ordena por lo que SALVA cada $1 (la ganancia que se pierde si no se compra ahora ÷ lo que cuesta la compra). Lo que todavía tiene stock de sobra queda abajo aunque deje mucho; lo que está en 0 sube'}]},
