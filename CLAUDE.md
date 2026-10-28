@@ -117,7 +117,7 @@
    antes de pagar stock antiguo) o lo que pide él, **y sólo con la unidad más vieja en Full de 90+ días: ahí se abre hasta el 0%** (27/10, él: *"nunca abajo del 35% si lleva menos de 90 dias si pasa los 90 dias de stock si se habilita bajar hasta 0%"*; freno F13; los 15 días antes del stock antiguo también abren). **Nunca abajo de 0%** (sólo él lo abre, `!bajocero`). El % se mide **costo + impuestos +
    envío de Full en el divisor** (`pctGananciaVP`, un solo % en toda la app). Reponer, comprar, listas y perfumería del local: también 35%.
 5. **Bajar un precio sólo con las reglas del CEREBRO** (y las salidas 🔐 sólo con su autorización, §5): sin línea de techo no se baja · escalera (≤15% por escalón) · descuento antes
-   que bajar la lista · una suba no se deshace sin 95% · no abajo del 💰 · **lo que vendió a su precio no se baja** (F14, 27/10, salvo sobra/stock antiguo). Excepciones siempre las mismas cinco: precio mal puesto ·
+   que bajar la lista · una suba no se deshace sin 95% · no abajo del 💰 · **lo que vendió a su precio no se baja** (F14, 27/10, salvo sobra/stock antiguo o que venda muchísimo menos: menos de la mitad de la plata por día que el 💰, 95% y 7+ días, 1a del 28/10). Excepciones siempre las mismas cinco: precio mal puesto ·
    stock antiguo con fecha encima · ML la pausó por el precio · lo pide él · el envío (barrera $33.000). **La última unidad NO es
    excepción** (24/10, él con el Cuba Gold: en escalera y con techo, no de una).
 6. **Releer de ML** cada cambio (precio, promo, estado, gemela) y comparar.
@@ -198,8 +198,9 @@
   bajar. pero normalmente siempre conviene mantener el precio más caro posible… la idea se va en tener 100 productos con pocas unidades que
   venden poco y ganan muchísimo"*): 1º 📈 techo (+50% con cada venta hasta que no vende) → 2º 🪜 escalera desde el 🔴 y **en el primer
   escalón que vende se queda** (🔒 F14; `techo95` le anota 🏔️; en la web 💰 "el más alto que vende") → 3º sólo baja si sobra (90+ días
-  al ritmo de ESE precio, o de 60 días, o la unidad más vieja con 90+), se acerca el stock antiguo o pasa 30 días sin vender. No se baja
-  para buscar más plata por día. Lo que bajó de más antes vuelve al precio más caro que vendió (🔙 `vendiocaro`, en la completa).
+  al ritmo de ESE precio, o de 60 días, o la unidad más vieja con 90+), se acerca el stock antiguo, pasa 30 días sin vender o **vende muchísimo menos** (1a del 28/10: menos de la MITAD de la
+  plata por día que el 💰, 95% y 7+ días con stock → un escalón hacia el 💰; le toca a lo que vende mucho, lo de 1 por semana se queda).
+  No se baja para buscar un poco más de plata por día. Piso 35%, niveles y Mezcla quedan como están (2a 3b 4b del 28/10). Lo que bajó de más antes vuelve al precio más caro que vendió (🔙 `vendiocaro`, en la completa).
   **💰 sin 🔴 no** (27/10, eligió 2a): lo que vende 1+ por semana no queda en 💰 sin techo medido (`puntoSinTecho`, freno en `decido` y `tag`).
 - **Si vende, no es techo** (27/10, él: *"si se vende una vez a un precio que está buscando techo, ahí nomás tiene que volver a subir… el techo es saber que no se vende a ese precio"*; eligió la a): toda prueba 📈/🆕 que vendió al precio de hoy sube **+50%** en la misma vuelta (27/10 a la noche, él: *"aumentar más % el precio… en vez de hacer 3 subidas, ya nos pasamos de todas las franjas"*; antes +30%; `!vendio`, lista de `errores` que queda vacía); frena en 🔴 no vende (30 días) o 🟠 deja de convenir (techo95), y en el 🟠, como vende, se queda. En la web son dos rayas.
 - **Bajar pide 95%, subir pide 50%** (26/10, él: *"siempre para bajar tenés que estar 95% seguro, siempre para subir 50% o más. entonces no hay chances de perder por vender barato"*): freno 50% en `decido` — si `techo95` ya da 50%+ de que el precio en prueba es el techo (`cyc/techo95pct`), no se sube más; no frena 🔥/⏳ ni volver a un precio de 90 días.
