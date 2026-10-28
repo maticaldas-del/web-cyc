@@ -1417,7 +1417,9 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
             <label style="font-size:.7rem;color:var(--muted)">Cuántas cuotas</label>
             <input id="cq_n" class="fin-input" type="text"  inputmode="numeric" placeholder="¿cuántas cuotas?" style="width:100%;margin-bottom:6px" oninput="cuotasTotalVivo()">
             <label style="font-size:.7rem;color:var(--muted)">Cada cuánto paga</label>
-            <select id="cq_frec" class="fin-input" style="width:100%;text-align:left;margin:3px 0 6px" onchange="cuotasTotalVivo()"><option value="sem">Semanal</option><option value="quin">Cada 15 días</option><option value="men" selected>Mensual</option></select>
+            <select id="cq_frec" class="fin-input" style="width:100%;text-align:left;margin:3px 0 6px" onchange="document.getElementById('cq_diasbox').style.display=this.value==='dias'?'':'none';cuotasTotalVivo()"><option value="sem">Semanal</option><option value="men" selected>Mensual</option><option value="dias">Cada X días</option></select>
+            <div id="cq_diasbox" style="display:none"><label style="font-size:.7rem;color:var(--muted)">¿Cada cuántos días?</label>
+            <input id="cq_dias" class="fin-input" type="text" inputmode="numeric" placeholder="ej. 15" style="width:100%;margin:3px 0 6px" oninput="cuotasTotalVivo()"></div>
           </div>
           <label id="cq_vence_lbl" style="font-size:.7rem;color:var(--muted)">Tiene que pagar el (opcional)</label>
           <input id="cq_vence" class="fin-input" type="date" style="width:100%;text-align:left;margin:3px 0 6px" onchange="cuotasTotalVivo()">
@@ -3165,7 +3167,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.57';
+const APP_VERSION='27.58';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3178,6 +3180,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.58',f:'28/10',h:'17:35',c:[{n:2,t:'📅 Deudas en cuotas: la próxima cuota vence siempre a un período del ÚLTIMO pago (una semana, un mes o cada X días después). Nueva opción "Cada X días" para elegir cuántos días'}]},
   {v:'27.57',f:'28/10',h:'17:20',c:[{n:2,t:'📥 Ver deudas: tocá cualquier deuda y se despliega el detalle con TODA la historia (en verde lo que se suma, en rojo lo que devuelve, de a 6 por página). Ahí mismo: ➕ Suma deuda / ➖ Devolvió con monto, fecha y nota (para la deuda de la perfumería que se mueve todos los días). 💵 Pagó en las sin cuotas deja poner cuánto devolvió. 🧮 Inicio: la tarjeta Arqueo deja sólo 📦 Productos y 📥 Ver deudas (tocando la tarjeta ya se abre Finanzas)'}]},
   {v:'27.56',f:'28/10',h:'16:55',c:[{n:1,t:'🧾 Inicio: la tarjeta de Facturas muestra una barrita por cuenta con cuán llena va contra el tope de H (lleno = facturado hoy, clarito = a dónde llega al cierre de ARCA; rojo si se pasa, ámbar desde 85%)'}]},
   {v:'27.55',f:'28/10',h:'16:40',c:[{n:1,t:'🧮 Inicio: la tarjeta de Arqueo tiene tres botones (💵 Finanzas · 📦 Productos · 📥 Ver deudas) que entran directo, como Pedidos. Y en Ver deudas se puede marcar una deuda "sin ganancia" (préstamo o algo que nos devuelven al costo)'}]},
@@ -6970,13 +6973,18 @@ async function cuotasSync(){
 // ponga en rojo cuando pasó el tiempo de pagar"). Campos nuevos: frec (sem|quin|men), vence1 (AAAA-MM-DD: la primera cuota, o el día
 // que tiene que pagar si es sin cuotas), costo (pesos). Cada pago guarda su fecha: pagos/<ts> = {f:'AAAA-MM-DD'} (los viejos = 1 → la
 // fecha sale del ts). La cuota que toca vence en vence1 + (pagadas × período); pasada esa fecha sin pagar, el renglón va en rojo.
-const CUOTA_FREC={sem:{t:'semanal',d:7},quin:{t:'cada 15 días',d:15},men:{t:'mensual',m:1}};
+const CUOTA_FREC={sem:{t:'semanal',d:7},quin:{t:'cada 15 días',d:15},men:{t:'mensual',m:1},dias:{t:'cada X días',d:0}};
+function cuotaFrecTxt(frec,dias){return frec==='dias'?`cada ${Math.max(1,Number(dias)||1)} días`:(CUOTA_FREC[frec]||CUOTA_FREC.men).t;}
 function _isoHoy(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function _isoDM(f){const m=String(f||'').match(/^(\d{4})-(\d{2})-(\d{2})/);return m?m[3]+'/'+m[2]:'';}
-function _isoMas(f,frec,k){const m=String(f||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);if(!m)return null;const d=new Date(+m[1],+m[2]-1,+m[3],12);const F=CUOTA_FREC[frec]||CUOTA_FREC.men;
+function _isoMas(f,frec,k,dias){const m=String(f||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);if(!m)return null;const d=new Date(+m[1],+m[2]-1,+m[3],12);const F=frec==='dias'?{d:Math.max(1,Number(dias)||1)}:(CUOTA_FREC[frec]||CUOTA_FREC.men);
   if(F.m){const dia=d.getDate();d.setDate(1);d.setMonth(d.getMonth()+F.m*k);const ult=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();d.setDate(Math.min(dia,ult));}else d.setDate(d.getDate()+F.d*k);
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
-function cuotaVence(d){if(d.fin||d.pagadas>=d.n||!d.vence1)return null;return d.n>1?_isoMas(d.vence1,d.frec,d.pagadas):d.vence1;}
+// LA PRÓXIMA CUOTA SE CUENTA DESDE EL ÚLTIMO PAGO (28/10/2026, él: "que la fecha de siguiente pago sea siempre un mes o semana después del
+// último pago"): sin pagos, la primera vence en `vence1`; con pagos fechados, último pago + un período; pagos viejos sin fecha, vence1 + N períodos.
+function cuotaVence(d){if(d.fin||d.pagadas>=d.n)return null;if(d.n<=1)return d.vence1||null;
+  const fs=cuotaPagosFechas(d);if(d.pagadas>0&&fs.length)return _isoMas(fs[fs.length-1],d.frec,1,d.cadaDias);
+  return d.vence1?_isoMas(d.vence1,d.frec,d.pagadas,d.cadaDias):null;}
 function cuotaPagosFechas(d){return Object.entries(d.pagos||{}).map(([k,v])=>(v&&v.f)?v.f:(()=>{const t=new Date(Number(k));return isFinite(t)?t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0'):'';})()).filter(Boolean).sort();}
 function renderCuotas(){
   const el=document.getElementById('cuotas-lista');if(!el)return;
@@ -6986,7 +6994,7 @@ function renderCuotas(){
   if(!L.length){el.innerHTML='<div style="font-size:.7rem;color:var(--muted)">Ninguna deuda cargada.</div>';return;}
   // EN LISTA (28/10/2026, él: "en vez de cuadrados, rectángulos de izquierda a derecha"): un renglón por deuda.
   el.innerHTML='<div style="display:flex;flex-direction:column;gap:6px">'+L.map(d=>{const fin=d.fin,resta=d.resta,cq=d.n>1,ab=window._cuotaAbierta===d.id;
-    const v=cuotaVence(d),atr=v&&v<hoy,fr=(CUOTA_FREC[d.frec]||CUOTA_FREC.men).t,costo=Number(d.costo)>0?Number(d.costo):null,gan=costo!=null?d.monto-costo:null;
+    const v=cuotaVence(d),atr=v&&v<hoy,fr=cuotaFrecTxt(d.frec,d.cadaDias),costo=Number(d.costo)>0?Number(d.costo):null,gan=costo!=null?d.monto-costo:null;
     const fechas=cuotaPagosFechas(d);
     const lin1=fin?'✅ pagada':cq?`${_pesos(d.cuota)} × ${d.n} · ${fr} · pagó <b style="color:var(--text)">${d.pagadas} de ${d.n}</b> · total ${_pesos(d.monto)}`:`sin cuotas · total ${_pesos(d.monto)}`;
     const lin2=[
@@ -7055,30 +7063,31 @@ function cuotasPanel(){const b=document.getElementById('tab-btn-deudas');if(b)go
 function cuotasVerCampos(){const c=document.getElementById('cq_concuotas').checked;document.getElementById('cq_costobox').style.display=document.getElementById('cq_singan').checked?'none':'';document.getElementById('cq_cuotasbox').style.display=c?'':'none';document.getElementById('cq_vence_lbl').textContent=c?'Primera cuota vence el':'Tiene que pagar el (opcional)';}
 function _cuotasLlenar(d){const g=i=>document.getElementById(i);g('cq_id').value=d?d.id:'';g('cq_titulo').textContent=d?'✏️ Editar deuda':'➕ Deuda nueva';
   g('cq_nom').value=d?d.nom:'';g('cq_monto').value=d?Math.round(d.monto):'';g('cq_costo').value=d&&Number(d.costo)>0?Math.round(d.costo):'';
-  g('cq_singan').checked=!!(d&&d.sinGan);g('cq_concuotas').checked=!!(d&&d.n>1);g('cq_n').value=d&&d.n>1?d.n:'';g('cq_frec').value=(d&&d.frec)||'men';g('cq_vence').value=(d&&d.vence1)||'';
+  g('cq_singan').checked=!!(d&&d.sinGan);g('cq_concuotas').checked=!!(d&&d.n>1);g('cq_n').value=d&&d.n>1?d.n:'';const fq=d&&d.frec==='quin'?'dias':((d&&d.frec)||'men');g('cq_frec').value=fq;g('cq_dias').value=d&&d.frec==='quin'?15:(d&&d.cadaDias)||'';g('cq_diasbox').style.display=fq==='dias'?'':'none';g('cq_vence').value=(d&&d.vence1)||'';
   cuotasVerCampos();cuotasTotalVivo();g('cuotas-form').style.display='block';g('cq_nom').focus();g('cuotas-form').scrollIntoView({behavior:'smooth',block:'nearest'});}
 function cuotasForm(){cuotasPanel();_cuotasLlenar(null);}
 function cuotasEditar(id){const d=cuotasLista().find(x=>x.id===id);if(d)_cuotasLlenar(d);}
 function _cuotasN(){return document.getElementById('cq_concuotas').checked?(parseInt(document.getElementById('cq_n').value,10)||0):1;}
 function cuotasTotalVivo(){const m=parseMoney(document.getElementById('cq_monto').value)||0,n=_cuotasN(),sg=document.getElementById('cq_singan').checked,c=sg?0:(parseMoney(document.getElementById('cq_costo').value)||0);
-  const fr=(CUOTA_FREC[document.getElementById('cq_frec').value]||CUOTA_FREC.men).t,v=document.getElementById('cq_vence').value;
+  const fq=document.getElementById('cq_frec').value,cd=parseInt(document.getElementById('cq_dias').value,10)||0,fr=fq==='dias'?(cd?`cada ${cd} días`:'¿cada cuántos días?'):cuotaFrecTxt(fq),v=document.getElementById('cq_vence').value;
   let t=!(m>0)?'Poné cuánto debe en total':n>1?`${n} cuotas de ${_pesos(m/n)} · ${fr} · total ${_pesos(m)}`:document.getElementById('cq_concuotas').checked?'¿Cuántas cuotas?':`Sin cuotas: ${_pesos(m)}`;
   if(m>0&&sg)t+=' · sin ganancia';
   if(m>0&&c>0)t+=` · ganancia ${_pesos(m-c)} (${Math.round((m-c)/m*100)}%)`;
-  if(v&&n>1)t+=` · última cuota el ${_isoDM(_isoMas(v,document.getElementById('cq_frec').value,n-1))}`;
+  if(v&&n>1&&(fq!=='dias'||cd))t+=` · si paga a tiempo, la última el ${_isoDM(_isoMas(v,fq,n-1,cd))} (cada cuota vence a un período del pago anterior)`;
   document.getElementById('cq_total').textContent=t;}
 async function cuotasGuardar(){
-  const g=i=>document.getElementById(i);const id0=g('cq_id').value,nom=g('cq_nom').value.trim(),monto=parseMoney(g('cq_monto').value)||0,n=_cuotasN(),sinGan=g('cq_singan').checked,costo=sinGan?0:(parseMoney(g('cq_costo').value)||0),vence=g('cq_vence').value||'',frec=g('cq_frec').value;
+  const g=i=>document.getElementById(i);const id0=g('cq_id').value,nom=g('cq_nom').value.trim(),monto=parseMoney(g('cq_monto').value)||0,n=_cuotasN(),sinGan=g('cq_singan').checked,costo=sinGan?0:(parseMoney(g('cq_costo').value)||0),vence=g('cq_vence').value||'',frec=g('cq_frec').value,cadaDias=parseInt(g('cq_dias').value,10)||0;
+  if(n>1&&frec==='dias'&&!(cadaDias>0)){toast('Poné cada cuántos días paga','err');return;}
   if(!nom||!(monto>0)||!(n>0)){toast('Falta el nombre, el monto o cuántas cuotas','err');return;}
   if(n>1&&!vence){toast('Poné cuándo vence la primera cuota (así avisa en rojo si se atrasa)','err');return;}
   const ya=id0?(state.debencuotas||{})[id0]:null;if(id0&&!ya){toast('No encuentro esa deuda','err');return;}
   const pag=ya?Math.min(n,Number(ya.pagadas)||0):0;
   if(ya&&(Number(ya.pagadas)||0)>n&&!confirm(`Ya pagó ${ya.pagadas} cuotas y ahora serían ${n}: queda pagada entera. ¿Sigo?`))return;
-  const id=id0||('c'+Date.now()),d={...(ya||{}),nom:nom.slice(0,80),monto:Math.round(monto),n,pagadas:pag,costo:costo>0?Math.round(costo):null,sinGan:sinGan||null,vence1:vence||null,frec:n>1?frec:null,ts:ya?ya.ts:Date.now(),quien:ya?(ya.quien||''):(whoAmI||'')};
+  const id=id0||('c'+Date.now()),d={...(ya||{}),nom:nom.slice(0,80),monto:Math.round(monto),n,pagadas:pag,costo:costo>0?Math.round(costo):null,sinGan:sinGan||null,vence1:vence||null,frec:n>1?frec:null,cadaDias:n>1&&frec==='dias'?cadaDias:null,ts:ya?ya.ts:Date.now(),quien:ya?(ya.quien||''):(whoAmI||'')};
   if(ya)d.editado=Date.now();
   Object.keys(d).forEach(k=>{if(d[k]===null||d[k]===undefined)delete d[k];});
   try{await fbSet('debencuotas/'+id,d);state.debencuotas={...(state.debencuotas||{}),[id]:d};}catch(e){toast('No se guardó: '+e.message,'err');return;}
-  g('cuotas-form').style.display='none';renderCuotas();cuotasSync();log(`${ya?'Edité la deuda':'Deuda a CYC'}: ${nom} · ${_pesos(monto)}${n>1?' en '+n+' cuotas '+(CUOTA_FREC[frec]||{}).t:''}`).catch(()=>{});toast('✓ Guardada');
+  g('cuotas-form').style.display='none';renderCuotas();cuotasSync();log(`${ya?'Edité la deuda':'Deuda a CYC'}: ${nom} · ${_pesos(monto)}${n>1?' en '+n+' cuotas '+cuotaFrecTxt(frec,cadaDias):''}`).catch(()=>{});toast('✓ Guardada');
 }
 async function cuotasPago(id,delta){
   const d=(state.debencuotas||{})[id];if(!d)return;const n=Math.max(1,Number(d.n)||1),p=Math.max(0,Math.min(n,(Number(d.pagadas)||0)+delta));if(p===(Number(d.pagadas)||0))return;
