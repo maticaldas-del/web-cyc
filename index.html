@@ -3183,7 +3183,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.72';
+const APP_VERSION='27.73';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3196,6 +3196,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.73',f:'28/10',h:'20:10',c:[{n:1,t:'📄 "Verlo en la lista" en las listas copiadas de la web (Once): muestra la foto del mayorista grande, nombre, precio y un botón para buscarlo en su web'}]},
   {v:'27.72',f:'28/10',h:'19:55',c:[{n:1,t:'📍 Pedidos → Bs As → Listas de Tito: "Direcciones de los mayoristas", cada una abre el mapa'}]},
   {v:'27.71',f:'28/10',h:'19:40',c:[{n:1,t:'💰 Finanzas: al tocar una tarjeta lo primero son las casillas para cargar y el detalle va al final; en el teléfono se abre justo abajo de la tarjeta tocada'}]},
   {v:'27.70',f:'28/10',h:'19:30',c:[{n:1,t:'📥 Las deudas se ven directo al tocar "Lo que nos deben" (ya no hay pestaña aparte)'}]},
@@ -5039,7 +5040,17 @@ async function listaVerOri(k,cod){
   let lb=document.getElementById('lista-ori');
   if(!lb){lb=document.createElement('div');lb.id='lista-ori';lb.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;padding:16px';lb.onclick=()=>{lb.style.display='none';};document.body.appendChild(lb);}
   const td=(t,b)=>`<td style="padding:7px 10px;border:1px solid #ccc;${b?'font-weight:700;':''}color:#111;white-space:normal">${escHtml(t)}</td>`;
-  const cuerpo=!o?`<div style="color:#333;font-size:.8rem">No tengo guardado el renglón original de este producto (la lista vino en fotos o en otro formato, o todavía no se cargó).</div>`
+  // SIN RENGLÓN ORIGINAL (listas copiadas de la web del mayorista, 28/10/2026, él: "esto no me sirve, tengo que ver el producto"):
+  // se muestra el producto tal cual lo cargó la lista: la foto del mayorista grande, el nombre, el precio y el código, y un botón
+  // para buscarlo en la web del mayorista.
+  const e0=((_listaCache&&_listaCache[k])||{})[cod]||null,pvN=((((state.mlconfig||{}).listasProv||{})[k])||{}).nombre||k;
+  const sinOri=e0?`<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start">
+      ${/^https:\/\//.test(e0.f||'')?`<img src="${escHtml(e0.f)}" style="width:min(320px,100%);max-height:320px;object-fit:contain;border:1px solid #ddd;border-radius:8px;background:#fff" onerror="this.style.display='none'">`:'<div style="color:#777;font-size:.75rem">(la lista no trajo foto)</div>'}
+      <div style="flex:1;min-width:200px;color:#111;font-size:.82rem;line-height:1.5"><div style="font-weight:800">${escHtml(e0.n||'')}</div>
+        <div>💲 <b>$${Math.round(Number(e0.p)||0).toLocaleString('es-AR')}</b> por unidad · ${escHtml(pvN)}</div>${cod&&!/^x/i.test(cod)?`<div style="color:#555">código ${escHtml(cod)}</div>`:''}
+        <a href="https://www.google.com/search?q=${encodeURIComponent((e0.n||'')+' '+pvN)}" target="_blank" rel="noopener" style="display:inline-block;margin-top:8px;padding:6px 12px;border-radius:8px;background:#1a73e8;color:#fff;text-decoration:none;font-size:.78rem">🔎 Buscarlo en la web del mayorista</a></div></div>
+      <div style="font-size:.66rem;color:#777;margin-top:8px">Esta lista se copió de la página del mayorista: no hay renglón de archivo, es el producto tal cual lo muestra su web.</div>`:'';
+  const cuerpo=!o?(sinOri||`<div style="color:#333;font-size:.8rem">No tengo guardado el renglón original de este producto (la lista vino en fotos o en otro formato, o todavía no se cargó).</div>`)
     :`<div style="font-size:.72rem;color:#555;margin-bottom:8px">📁 ${escHtml(o.a||'')} · hoja <b>${escHtml(o.h||'')}</b> · fila <b>${o.r||'?'}</b></div>
       <div style="overflow-x:auto"><table style="border-collapse:collapse;font-size:.8rem;background:#fff;min-width:100%">
       ${o.s?`<tr><td style="padding:6px 10px;border:1px solid #ccc;color:#777">↑</td><td colspan="9" style="padding:7px 10px;border:1px solid #ccc;font-weight:700;color:#111;background:#f0f0f0">${escHtml(o.s)}</td></tr>`:''}
