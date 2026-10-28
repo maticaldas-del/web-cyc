@@ -35,6 +35,8 @@ PASO 2 · COPIAR LA LISTA DE CADA UNO (de a un mayorista)
      · Abrí la corrida → job "consulta" → paso "Comando" y fijate que diga cuántos guardó. Si dice "❌ … mal escritos", corregí esos renglones y volvé a correrlo.
  - Cuando terminás un mayorista, marcalo para Bs As (así le aparece a Tito en Pedidos → Bs As):
          lista:<nombre del mayorista>|bsas;go
+ - Si la página dice la DIRECCIÓN del local (calle y número, barrio), cargala así (sin ";" ni "|"; la ve Tito en Pedidos → Bs As):
+         lista:<nombre del mayorista>|dir=<calle y número, barrio>;go
  - Y pedile al robot que lo mida:
          listamedir:<nombre del mayorista>:go
    (tarda unos minutos; no hace falta esperarlo para seguir con el siguiente mayorista).

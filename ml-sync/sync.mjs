@@ -24540,6 +24540,14 @@ async function main() {
       if ((_neg || _sneg) && !partes.length) { if (!provs[provK]) { console.log(`❌ No hay ninguna lista "${provNom}".`); return; }
         console.log(`${provNom}: ${_neg ? 'va a la carpeta 📁 Lista precio negocio' : 'sale de la carpeta 📁 Lista precio negocio'}${APLICAR ? '' : ' · PRUEBA: agregá ;go'}`);
         if (APLICAR) { await db.patch('cyc/mlconfig/listasProv/' + provK, { negocio: _neg ? true : null }); const rr = (await db.get('cyc/mlconfig/listasProv/' + provK)) || {}; console.log(!!rr.negocio === _neg ? '✓ releído' : '❌ no quedó'); } return; }
+      // 📍 DIRECCIÓN DEL MAYORISTA (28/10/2026, él: "poner la dirección de cada mayorista para que Tito la vea en Pedidos → Bs As"):
+      // `lista:<prov>|dir=<calle y número, barrio>;go` · `|dir=-;go` la borra. Es la del negocio (dato público), nunca la de una persona.
+      const _dirO = opc.find((o) => /^\s*dir=/i.test(o));
+      if (_dirO && !partes.length) { if (!provs[provK]) { console.log(`❌ No hay ninguna lista "${provNom}".`); return; }
+        const dv = _dirO.replace(/^\s*dir=/i, '').trim(); const dirN = dv === '-' ? null : dv.slice(0, 160);
+        if (dirN !== null && dirN.length < 4) { console.log('❌ dirección muy corta'); return; }
+        console.log(`${provNom}: 📍 ${dirN || '(se borra)'}${APLICAR ? '' : ' · PRUEBA: agregá ;go'}`);
+        if (APLICAR) { await db.patch('cyc/mlconfig/listasProv/' + provK, { dir: dirN }); const rr = (await db.get('cyc/mlconfig/listasProv/' + provK)) || {}; console.log((rr.dir || null) === dirN ? '✓ releído' : '❌ no quedó'); } return; }
       // LISTA QUE COMPRA TITO EN BS AS (19/10/2026, él con Dai Nippon: "ponelas en Bs As, ya que esos los compra mi viejo cuando viaja"):
       // `lista:<prov>|bsas;go` la muestra en Pedidos → Bs As (no en 📋 Listas); `|nobsas;go` la devuelve.
       const _bsa = opc.some((o) => o.trim() === 'bsas'), _nbsa = opc.some((o) => o.trim() === 'nobsas');
