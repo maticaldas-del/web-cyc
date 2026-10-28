@@ -3143,7 +3143,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.52';
+const APP_VERSION='27.53';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3156,6 +3156,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.53',f:'28/10',h:'16:05',c:[{n:1,t:'📥 Ver deudas: ahora es una lista, un renglón por deuda (nombre y cuotas a la izquierda, lo que falta en el medio, botones a la derecha)'}]},
   {v:'27.52',f:'28/10',h:'15:55',c:[{n:1,t:'🧮 Arqueo tiene una tercera solapa: Ver deudas (al lado de Finanzas y Productos), con la lista de lo que nos deben, ➕ Agregar y 💵 Pagó. El botón 📋 Ver deudas de la tarjeta lleva ahí'}]},
   {v:'27.51',f:'28/10',h:'15:40',c:[{n:1,t:'📥 Arqueo → Lo que nos deben: la tarjeta muestra sólo el total, cuántas deudas hay y lo que falta cobrar. 📋 Ver deudas abre la lista a lo ancho, abajo de las tarjetas, con ➕ Agregar, 💵 Pagó y 🗑️ más cómodos'}]},
   {v:'27.50',f:'28/10',h:'15:15',c:[{n:1,t:'↕️ Pedidos → Paraguay → 🔎 Buscar en todo comprasparaguay: ahora se puede ordenar lo que encuentra (por % de ganancia, primero los que pueden entrar al pedido, $ por unidad, precio en Paraguay o en ML, vendedores o nombre)'}]},
@@ -6930,10 +6931,13 @@ function renderCuotas(){
   const t2=document.getElementById('cuotas-total2');if(t2)t2.innerHTML=L.length?`${abiertas} deuda${abiertas===1?'':'s'} sin terminar de pagar · falta cobrar <b style="color:var(--text)">${_pesos(cuotasRestaPesos())}</b>`:'';
   const rs=document.getElementById('cuotas-resumen');if(rs)rs.innerHTML=L.length?`${abiertas} deuda${abiertas===1?'':'s'} · falta cobrar <b style="color:var(--text)">${_pesos(cuotasRestaPesos())}</b>`:'Ninguna deuda cargada.';
   if(!L.length){el.innerHTML='<div style="font-size:.7rem;color:var(--muted)">Ninguna deuda cargada.</div>';return;}
-  el.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px">'+L.map(d=>{const fin=d.pagadas>=d.n,resta=Math.max(0,d.monto-d.pagadas*d.cuota),cq=d.n>1;
-    return `<div style="border:1px solid var(--border);border-radius:var(--r);padding:8px 10px;${fin?'opacity:.6':''}">
-      <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><b style="font-size:.8rem;word-break:break-word">${_escC(d.nom)}</b><span style="font-size:.72rem;white-space:nowrap">${cq?_pesos(d.cuota)+' × '+d.n:_pesos(d.monto)}</span></div>
-      <div style="font-size:.7rem;color:var(--muted);margin:3px 0 6px">${fin?'✅ pagada':cq?`pagó <b style="color:var(--text)">${d.pagadas} de ${d.n}</b> · falta ${_pesos(resta)} · total ${_pesos(d.monto)}`:'sin cuotas · falta '+_pesos(resta)}</div>
+  // EN LISTA (28/10/2026, él: "se pueden poner en listas? en vez de cuadrados, rectángulos de izquierda a derecha"): un renglón por deuda,
+  // nombre y estado a la izquierda, lo que falta en el medio y los botones a la derecha; en el teléfono los botones bajan abajo.
+  el.innerHTML='<div style="display:flex;flex-direction:column;gap:6px">'+L.map(d=>{const fin=d.pagadas>=d.n,resta=Math.max(0,d.monto-d.pagadas*d.cuota),cq=d.n>1;
+    return `<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;border:1px solid var(--border);border-radius:var(--r);padding:8px 12px;${fin?'opacity:.6':''}">
+      <div style="flex:1 1 220px;min-width:0"><b style="font-size:.8rem;word-break:break-word">${_escC(d.nom)}</b>
+        <div style="font-size:.7rem;color:var(--muted);margin-top:2px">${fin?'✅ pagada':cq?`${_pesos(d.cuota)} × ${d.n} · pagó <b style="color:var(--text)">${d.pagadas} de ${d.n}</b> · total ${_pesos(d.monto)}`:'sin cuotas'}</div></div>
+      <div style="text-align:right;white-space:nowrap"><div style="font-size:.6rem;color:var(--muted)">falta</div><b style="font-size:.85rem">${_pesos(resta)}</b></div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">${fin?'':`<button class="btn" style="font-size:.7rem" onclick="cuotasPago('${d.id}',1)">💵 ${cq?'Pagó una cuota':'Pagó'}</button>`}${d.pagadas>0?`<button class="btn" style="font-size:.7rem" onclick="cuotasPago('${d.id}',-1)">↩︎ Deshacer</button>`:''}<button class="btn" style="font-size:.7rem" onclick="cuotasBorrar('${d.id}')">🗑️</button></div></div>`;}).join('')+'</div>'
     +`<div style="font-size:.7rem;color:var(--muted);margin-top:8px">Falta cobrar: <b style="color:var(--text)">${_pesos(cuotasRestaPesos())}</b></div>`;
 }
