@@ -2121,6 +2121,10 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
     decisión de compra, no código. 11 (dinero que rinde en MP) lo mira él en la app.
 
 ## 7 · DISEÑO (domingo)
+### ↕️ Buscador de todo comprasparaguay: ordenar (28/10/2026, él: "quiero poder organizar… opciones de organizar de ciertas formas")
+- **Qué es:** un selector "↕️ Ordenar" abajo del cuadro de búsqueda: % de ganancia (el de antes) · primero los que pueden entrar al pedido (35%+, foto de Paraguay, 2+ vendedores, nombre que coincide) · $ por unidad (aprox: puesto × %) · precio en Paraguay barato/caro · precio en ML · vendedores · nombre. Lo que no tiene el dato va al final.
+- **Dónde vive:** `PYCAT_ORDENES`, `_pycatEntra`, `_pycatOrdenar` y el `<select id="pycat-ord">` de `pycatBuscarHTML` (index.html); `window._pycatOrd` recuerda la elección mientras la página está abierta.
+- **Qué chequear:** buscar "teclado" y cambiar cada orden: la lista se reordena sin volver a bajar el catálogo; el renglón gris dice por qué se ordenó; en 390 px el selector no se sale de la pantalla.
 ### 🧾 Detalle de venta: la fila de botones salta de renglón (27/10/2026, él: "no puedo ver la otra parte")
 - **Qué es:** en una venta de 2 productos la fila de botones (📈 línea · 📋 ficha × 2 · 🚫 no se consigue × 2) no tenía `flex-wrap` en compu (en el teléfono sí): se hacía más ancha que la tarjeta y empujaba los números de la derecha afuera. Ahora salta de renglón.
 - **Dónde vive:** el `div` de botones del detalle de cada venta en index.html (donde se llama `vpNoConsigoBtn`).
