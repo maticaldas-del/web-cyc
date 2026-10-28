@@ -2126,7 +2126,7 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
 
 ## 7 · DISEÑO (domingo)
 ### 📥 Lo que nos deben: solapa propia "Ver deudas" en el Arqueo (28/10/2026, él: "queda medio apretado todo" y "que estén tres pestañas dentro, finanzas, productos y ver deudas")
-- **Qué es:** la tarjeta muestra total, cuántas deudas y lo que falta cobrar + 📋 Ver deudas, que abre la solapa nueva **Ver deudas** (al lado de Finanzas y Productos) con la lista a lo ancho, ➕ Agregar y el formulario (en compu, grilla de 4 por fila).
+- **Qué es:** la tarjeta muestra total, cuántas deudas y lo que falta cobrar + 📋 Ver deudas, que abre la solapa nueva **Ver deudas** (al lado de Finanzas y Productos) con ➕ Agregar y el formulario; **las deudas en lista, un renglón por deuda** (28/10, él: "en vez de cuadrados, rectángulos de izquierda a derecha"): nombre y cuotas a la izquierda, lo que falta, y los botones a la derecha (en el teléfono bajan abajo).
 - **Dónde vive:** `#tab-btn-deudas`, `#tab-deudas` (index.html) · `goTab` (lista de solapas con 'deudas') · `cuotasPanel` (lleva a la solapa), `renderCuotas` (también `#cuotas-resumen` y `#cuotas-total2`).
 - **Qué chequear:** 390 y 1200 px dibujados el 28/10 sin cortes ni scroll de costado; ➕ Agregar y 💵 Pagó actualizan el total de la tarjeta de Finanzas; mirando un mes cerrado no se escribe nada.
 ### ↕️ Buscador de todo comprasparaguay: ordenar (28/10/2026, él: "quiero poder organizar… opciones de organizar de ciertas formas")
